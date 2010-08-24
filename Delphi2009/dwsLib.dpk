@@ -1,0 +1,57 @@
+package dwsLib;
+
+{$R *.res}
+{$R '..\Source\dws.dcr'}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO ON}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO OFF}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES OFF}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DESCRIPTION 'DelphiWebScript'}
+{$DESIGNONLY}
+{$IMPLICITBUILD ON}
+
+requires
+  designide,
+  vcl,
+  rtl;
+
+contains
+  dwsRegister in '..\source\dwsRegister.pas',
+  dwsExperts in '..\source\dwsExperts.pas',
+  dwsComConnector in '..\Source\dwsComConnector.pas',
+  dwsStrings in '..\Source\dwsStrings.pas',
+  dwsSymbols in '..\Source\dwsSymbols.pas',
+  dwsTimeFunctions in '..\Source\dwsTimeFunctions.pas',
+  dwsTokenizer in '..\Source\dwsTokenizer.pas',
+  dwsVariantFunctions in '..\Source\dwsVariantFunctions.pas',
+  dwsVCLGUIFunctions in '..\Source\dwsVCLGUIFunctions.pas',
+  dwsComp in '..\Source\dwsComp.pas',
+  dwsCompiler in '..\Source\dwsCompiler.pas',
+  dwsDebugger in '..\Source\dwsDebugger.pas',
+  dwsErrors in '..\Source\dwsErrors.pas',
+  dwsExprs in '..\Source\dwsExprs.pas',
+  dwsFunctions in '..\Source\dwsFunctions.pas',
+  dwsGlobalVarsFunctions in '..\Source\dwsGlobalVarsFunctions.pas',
+  dwsMathFunctions in '..\Source\dwsMathFunctions.pas',
+  dwsStack in '..\Source\dwsStack.pas',
+  dwsStringFunctions in '..\Source\dwsStringFunctions.pas',
+  dwsCoreExprs in '..\Source\dwsCoreExprs.pas';
+
+end.
