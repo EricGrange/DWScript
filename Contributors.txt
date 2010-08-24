@@ -1,0 +1,42 @@
+
+Contributors of the DWS-Project
+===============================
+
+The DWS Project is released under the Mozilla Public License v1.1
+
+DelphiWebScript was created by Matthias Ackermann. 
+But there are many people that contributed to the DWS project.
+
+This is the list of initial contributors (in alphabetical order):
+
+- Brink, Danie (South Africa)
+- Darling, Jeremy
+- Egorov, Nikita (Russia)
+- Fuchs, Manfred (Germany)
+- Grange, Eric (France)
+- Hariseno, Jagad (Hungary)
+- Hernler, Hannes (Austria)
+- Krenn, Willibald (Austria)
+- Lind, Martin (Denmark)
+- Listac, John
+- Luleich, Andreas (Germany)
+- Rheinheimer, Danilo Luiz (Brazil)
+- Riepp, Michael (Germany)
+- Ronzano, Juan Luis (Portugal)
+- Tosik
+- Waldenburg, Martin (Germany)
+
+Thank you very much!
+
+After a lull of several years, in which support went "dormant",
+the codebase underwent multiple changes and compatibility upgrades 
+under copyright of Creative IT (http://creative-it.net). 
+Since the original websites went offline, the result was re-released under
+the DWS "Revival" project, which is nowadays maintained by Eric Grange 
+(http://delphitools.info).
+What you see here was historically under the DWS2 name, though as DWS1 has
+been deprecated completely, and DWS2 itself went dormant for a long time, 
+the rerelease went back to the simpler "DWS" name.
+
+The most current source code is currently hosted at google code in 
+the dwscript project (http://code.google.com/p/dwscript/).
