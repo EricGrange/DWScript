@@ -1,0 +1,10 @@
+--- Virtual methods
+BClass.P(Hello World!)
+AClass.P(Hello World!)
+BClass.P(Hello World!)
+AClass.P(Hello World!)
+
+--- Static methods
+AClass.Q: Static method
+AClass.P(inh)
+BClass.Q: Static method
