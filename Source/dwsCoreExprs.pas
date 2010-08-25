@@ -337,8 +337,19 @@ type
 
   // -x
   TNegExpr = class(TUnaryOpExpr)
-    function Eval: Variant; override;
+    function  Eval: Variant; override;
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+    function  Optimize : TNoPosExpr; override;
+  end;
+  TNegExprClass = class of TNegExpr;
+  TNegVariantExpr = class (TNegExpr)
+    procedure EvalAsVariant(var Result : Variant); override;
+  end;
+  TNegIntExpr = class (TNegExpr)
+    function EvalAsInteger : Int64; override;
+  end;
+  TNegFloatExpr = class (TNegExpr)
+    procedure EvalAsFloat(var Result : Double); override;
   end;
 
   TNumberOpExpr = class(TBinaryOpExpr)
@@ -454,13 +465,6 @@ type
     procedure EvalAsFloat(var Result : Double); override;
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
   end;
-
-  // DateTime(x)
-{  TConvDateTimeExpr = class(TUnaryOpExpr)
-    constructor Create(Prog: TProgram; Pos: TScriptPos; Expr: TExpr);
-    function Eval: Variant; override;
-    procedure TypeCheck; override;
-  end;}
 
   // Integer(float)
   TConvIntegerExpr = class(TUnaryOpExpr)
@@ -1691,27 +1695,6 @@ begin
       FProg.Msgs.AddCompilerError(FPos, CPE_IntegerExpected);
 end;
 
-{ TConvDateTimeExpr }
-{
-constructor TConvDateTimeExpr.Create(Prog: TProgram; Pos: TScriptPos;
-  Expr: TExpr);
-begin
-  inherited;
-  FTyp := Prog.FTypDateTime;
-end;
-
-function TConvDateTimeExpr.Eval: Variant;
-begin
-  VarCast(Result, FExpr.Eval, varDate);
-end;
-
-procedure TConvDateTimeExpr.TypeCheck;
-begin
-  inherited;
-  if not IsFloatType(FExpr.Typ) then
-    FProg.Msgs.AddCompilerError(FPos, CPE_FloatExpected);
-end;
-}
 { TConvIntegerExpr }
 
 constructor TConvIntegerExpr.Create(Prog: TProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
@@ -1961,13 +1944,58 @@ end;
 procedure TNegExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   FExpr.TypeCheckNoPos(Pos);
-  if IsVariantType(FExpr.Typ) then
-    FTyp := FProg.TypVariant
-  else if IsIntegerType(FExpr.Typ) then
-    FTyp := FProg.TypInteger
-  else if IsFloatType(FExpr.Typ) then
-    FTyp := FProg.TypFloat
-  else AddCompilerStop(CPE_NumericalExpected);
+end;
+
+// Optimize
+//
+function TNegExpr.Optimize : TNoPosExpr;
+var
+   xi : Int64;
+   xf : Double;
+begin
+   if FExpr is TConstIntExpr then begin
+      xi:=FExpr.EvalAsInteger;
+      Free;
+      Result:=TConstIntExpr.Create(FProg, -xi);
+   end else if FExpr is TConstFloatExpr then begin
+      FExpr.EvalAsFloat(xf);
+      Free;
+      Result:=TConstFloatExpr.Create(FProg, -xf);
+   end else Result:=Self;
+end;
+
+// ------------------
+// ------------------ TNegVariantExpr ------------------
+// ------------------
+
+// EvalAsVariant
+//
+procedure TNegVariantExpr.EvalAsVariant(var Result : Variant);
+begin
+   Result:=-FExpr.Eval;
+end;
+
+// ------------------
+// ------------------ TNegIntExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TNegIntExpr.EvalAsInteger : Int64;
+begin
+   Result:=-FExpr.EvalAsInteger;
+end;
+
+// ------------------
+// ------------------ TNegFloatExpr ------------------
+// ------------------
+
+// EvalAsFloat
+//
+procedure TNegFloatExpr.EvalAsFloat(var Result : Double);
+begin
+   FExpr.EvalAsFloat(Result);
+   Result:=-Result;
 end;
 
 // ------------------

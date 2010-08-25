@@ -177,6 +177,7 @@ type
       function ReadSwitch(const SwitchName: string): Boolean;
       function ReadSymbol(Expr: TNoPosExpr; IsWrite: Boolean = False): TNoPosExpr;
       function ReadTerm: TNoPosExpr;
+      function ReadNegation: TNoPosExpr;
       function ReadTry: TExceptionExpr;
       function ReadType(const TypeName: string = ''): TTypeSymbol;
       function ReadTypeCast(const NamePos: TScriptPos; TypeSym: TSymbol): TExpr;
@@ -2244,8 +2245,10 @@ begin
    Result := (ReadSymbol(Result, IsWrite) as TFuncExpr);
 end;
 
+// ReadFunc
+//
 function TdwsCompiler.ReadFunc(FuncSym: TFuncSymbol; IsWrite: Boolean;
-  CodeExpr: TDataExpr = nil): TFuncExprBase;
+                               CodeExpr: TDataExpr = nil): TFuncExprBase;
 var
    internalFunc : TObject;
    magicFuncSym : TMagicFuncSymbol;
@@ -2253,11 +2256,14 @@ begin
    WarnDeprecated(FuncSym);
 
    if (FuncSym is TMethodSymbol) and not (TMethodSymbol(FuncSym).IsClassMethod) then begin
+
       Result := TMethodStaticExpr.Create(FProg, FTok.HotPos, TMethodSymbol(FuncSym),
                                          TMethodObjExpr.Create(FProg, FTok.HotPos, CodeExpr),
                                          True, CodeExpr,
                                          IsWrite and Assigned(CodeExpr));
+
    end else if (FuncSym is TMagicFuncSymbol) then begin
+
       magicFuncSym:=TMagicFuncSymbol(FuncSym);
       internalFunc:=magicFuncSym.InternalFunction;
       if internalFunc is TInternalMagicIntFunction then
@@ -2269,10 +2275,14 @@ begin
       else if internalFunc is TInternalMagicProcedure then
          Result:=TMagicProcedureExpr.Create(FProg, FTok.HotPos, magicFuncSym)
       else Result:=TMagicVariantFuncExpr.Create(FProg, FTok.HotPos, magicFuncSym);
+
    end else begin
+
       Result:=TFuncExpr.Create(FProg, FTok.HotPos, FuncSym, True, CodeExpr,
                                IsWrite and Assigned(CodeExpr));
+
    end;
+
    try
       ReadFuncArgs(TFuncExprBase(Result).AddArg);
    except
@@ -3257,16 +3267,7 @@ begin
     // (redundant) plus sign
     Result := ReadTerm
   else if FTok.TestDelete(ttMINUS) then
-  begin
-    // Negation
-    Result := TNegExpr.Create(FProg, FTok.HotPos, ReadTerm);
-    try
-      TNegExpr(Result).TypeCheck;
-    except
-      Result.Free;
-      raise;
-    end;
-  end
+    Result := ReadNegation
   else if FTok.TestDelete(ttALEFT) then
     Result := ReadArrayConstant
   else if FTok.TestDelete(ttNOT) then
@@ -3305,6 +3306,34 @@ begin
   // No expression found
   if not Assigned(Result) then
     FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
+end;
+
+// ReadNegation
+//
+function TdwsCompiler.ReadNegation: TNoPosExpr;
+var
+   negExprClass : TNegExprClass;
+   negTerm : TNoPosExpr;
+begin
+   negTerm:=ReadTerm;
+   if TNoPosExpr.IsIntegerType(negTerm.Typ) then
+      negExprClass:=TNegIntExpr
+   else if TNoPosExpr.IsFloatType(negTerm.Typ) then
+      negExprClass:=TNegFloatExpr
+   else if TNoPosExpr.IsVariantType(negTerm.Typ) then
+      negExprClass:=TNegExpr
+   else begin
+      negExprClass:=nil;
+      FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_NumericalExpected);
+   end;
+   Result:=negExprClass.Create(FProg, FTok.HotPos, negTerm);
+   try
+      Result.TypeCheckNoPos(FTok.HotPos);
+      Result:=Result.Optimize;
+   except
+      Result.Free;
+      raise;
+   end;
 end;
 
 function TdwsCompiler.ReadConstValue: TConstExpr;
@@ -3385,8 +3414,6 @@ end;
 procedure TdwsCompiler.ReadParams(Proc: TFuncSymbol; ParamsToDictionary: Boolean);
 var
   i : Integer;
-  xi: Int64;
-  xf: Double;
   names: TStringList;
   Typ: TSymbol;
   varpar, constpar: Boolean;
@@ -3431,18 +3458,6 @@ begin
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_DefaultVarParam);
 
                 defaultExpr := ReadExpr;
-
-                if (defaultExpr is TNegExpr) then begin
-                  if TNegExpr(defaultExpr).Expr is TConstIntExpr then begin
-                     xi:=defaultExpr.EvalAsInteger;
-                     defaultExpr.Free;
-                     defaultExpr:=TConstIntExpr.Create(FProg, xi);
-                  end else if TNegExpr(defaultExpr).Expr is TConstFloatExpr then begin
-                     defaultExpr.EvalAsFloat(xf);
-                     defaultExpr.Free;
-                     defaultExpr:=TConstFloatExpr.Create(FProg, xf);
-                  end;
-                end;
 
                 if not (defaultExpr is TConstExpr) then begin
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
@@ -4360,11 +4375,6 @@ begin
   argExpr := ReadExpr;
 
   try
-    // Cast DateTime(...)
-{    if TypeSym = FProg.TypDateTime then
-      Result := TConvDateTimeExpr.Create(FProg, namePos, argExpr) }
-    // Cast Integer(...)
-//    else
     if TypeSym = FProg.TypInteger then
       Result := TConvIntegerExpr.Create(FProg, namePos, argExpr)
     // Cast Float(...)
