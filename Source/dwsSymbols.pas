@@ -45,6 +45,7 @@ type
       function EvalAsBoolean : Boolean; virtual; abstract;
       procedure EvalAsFloat(var Result : Double); virtual; abstract;
       procedure EvalAsString(var Result : String); overload; virtual; abstract;
+      procedure EvalAsVariant(var Result : Variant); overload; virtual; abstract;
       procedure EvalAsScriptObj(var Result : IScriptObj); virtual; abstract;
    end;
 

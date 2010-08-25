@@ -393,6 +393,7 @@ type
       function  EvalAsBoolean : Boolean; override;
       procedure EvalAsFloat(var Result : Double); override;
       procedure EvalAsString(var Result : String); override;
+      procedure EvalAsVariant(var Result : Variant); override;
       procedure EvalAsScriptObj(var Result : IScriptObj); override;
 
       procedure Initialize; virtual;
@@ -1933,6 +1934,13 @@ end;
 procedure TNoPosExpr.EvalAsString(var Result : String);
 begin
    Result:=String(Eval);
+end;
+
+// EvalAsVariant
+//
+procedure TNoPosExpr.EvalAsVariant(var Result : Variant);
+begin
+   Result:=Eval;
 end;
 
 // EvalAsScriptObj
