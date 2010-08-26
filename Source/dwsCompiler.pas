@@ -2326,7 +2326,7 @@ begin
         hotPos:=FTok.HotPos;
         min.Insert0(ReadExpr);
 
-        if not (min[0] is TConstExpr) then
+        if not (min[0].IsConstant) then
           FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotAConstant);
 
         if not (min[0].Typ = FProg.TypInteger) then
@@ -2339,13 +2339,13 @@ begin
         hotPos:=FTok.HotPos;
         max.Insert0(ReadExpr);
 
-        if not (max[0] is TConstExpr) then
+        if not (max[0].IsConstant) then
           FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotAConstant);
 
         if not (max[0].Typ = FProg.TypInteger) then
           FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotInteger);
 
-        if max[0].Eval < min[0].Eval then
+        if max[0].EvalAsInteger < min[0].EvalAsInteger then
           FMsgs.AddCompilerStop(hotPos, CPE_LowerBoundBiggerThanUpperBound);
 
         if FTok.Test(ttARIGHT) then
@@ -2364,13 +2364,13 @@ begin
     if min.Count > 0 then
     begin
       // initialize innermost array
-      Result := TStaticArraySymbol.Create('', typ, min[0].Eval, max[0].Eval);
+      Result := TStaticArraySymbol.Create('', typ, min[0].EvalAsInteger, max[0].EvalAsInteger);
       try
         // add outer arrays
         Assert(FProg.Table is TProgramSymbolTable);
         for x := 1 to min.Count - 1 do begin
           TProgramSymbolTable(FProg.Table).AddToDestructionList(Result);
-          Result := TStaticArraySymbol.Create('', Result, min[x].Eval, max[x].Eval);
+          Result := TStaticArraySymbol.Create('', Result, min[x].EvalAsInteger, max[x].EvalAsInteger);
         end;
 
         // only outermost array is named
