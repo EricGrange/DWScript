@@ -104,7 +104,7 @@ type
       FFilter: TdwsFilter;
       FMsgs: TMsgs;
       FOnInclude: TIncludeEvent;
-      FProg: TProgram;
+      FProg: TdwsProgram;
       FScriptPaths: TStrings;
       FTok: TTokenizer;
       FIsExcept: Boolean;
@@ -192,16 +192,16 @@ type
                              const Pos: TScriptPos; IsInstruction: Boolean; ForceStatic : Boolean = False): TFuncExpr;
 
       function CreateProgram(SystemTable: TSymbolTable; ResultType: TdwsResultType;
-                             MaxDataSize: Integer; StackChunkSize: Integer): TProgram; virtual;
-      function CreateProcedure(Parent : TProgram) : TProcedure; virtual;
+                             MaxDataSize: Integer; StackChunkSize: Integer): TdwsProgram; virtual;
+      function CreateProcedure(Parent : TdwsProgram) : TProcedure; virtual;
 
    public
       constructor Create;
       destructor Destroy; override;
 
-      function Compile(const aCodeText : String; Conf: TConfiguration): TProgram;
+      function Compile(const aCodeText : String; Conf: TConfiguration): TdwsProgram;
 
-      class function Evaluate(AContext: TProgram; const AExpression: string): TNoPosExpr;
+      class function Evaluate(AContext: TdwsProgram; const AExpression: string): TNoPosExpr;
 
       procedure WarnForVarUsage(varExpr : TVarExpr);
    end;
@@ -362,7 +362,7 @@ end;
 
 // Compile
 //
-function TdwsCompiler.Compile(const aCodeText : String; Conf: TConfiguration): TProgram;
+function TdwsCompiler.Compile(const aCodeText : String; Conf: TConfiguration): TdwsProgram;
 var
    x: Integer;
    stackChunkSize: Integer;
@@ -390,7 +390,7 @@ begin
    if StackChunkSize <= 0 then
      StackChunkSize := 1;
 
-   // Create the TProgram
+   // Create the TdwsProgram
    FProg := CreateProgram(Conf.SystemTable, Conf.ResultType, maxDataSize, stackChunkSize);
    Result := FProg;
    FMsgs := FProg.Msgs;
@@ -543,7 +543,7 @@ begin
     Result := ReadBlock;
 end;
 
-class function TdwsCompiler.Evaluate(AContext: TProgram; const AExpression: string): TNoPosExpr;
+class function TdwsCompiler.Evaluate(AContext: TdwsProgram; const AExpression: string): TNoPosExpr;
 var
   OldProgMsgs: TMsgs;
 begin
@@ -1124,7 +1124,7 @@ end;
 procedure TdwsCompiler.ReadProcBody(Proc: TFuncSymbol);
 var
   x: Integer;
-  oldprog: TProgram;
+  oldprog: TdwsProgram;
   stmt: TExpr;
   names: TStringList;
   typ: TSymbol;
@@ -4044,9 +4044,9 @@ begin
 end;
 
 function TdwsCompiler.CreateProgram(SystemTable: TSymbolTable;
-  ResultType: TdwsResultType; MaxDataSize: Integer; StackChunkSize: Integer): TProgram;
+  ResultType: TdwsResultType; MaxDataSize: Integer; StackChunkSize: Integer): TdwsProgram;
 begin
-  Result := TProgram.Create(SystemTable, ResultType, MaxDataSize, StackChunkSize);
+  Result := TdwsProgram.Create(SystemTable, ResultType, MaxDataSize, StackChunkSize);
 end;
 
 { TdwsFilter }
@@ -4252,7 +4252,7 @@ begin
   end;
 end;
 
-function TdwsCompiler.CreateProcedure(Parent : TProgram): TProcedure;
+function TdwsCompiler.CreateProcedure(Parent : TdwsProgram): TProcedure;
 begin
   Result := TProcedure.Create(Parent);
 end;

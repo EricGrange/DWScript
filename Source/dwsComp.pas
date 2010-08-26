@@ -76,7 +76,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure AddUnit(const Un: IUnit);
-    function Compile(const Text: string): TProgram; virtual;
+    function Compile(const Text: string): TdwsProgram; virtual;
     function RemoveUnit(const Un: IUnit): Boolean;
   published
     property Config: TConfiguration read FConfig write SetConfig stored True;
@@ -248,7 +248,7 @@ type
     function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
   protected
     function GetDisplayName: string; override;
-    procedure Call(Caller: TProgram; Func: TFuncSymbol); virtual;
+    procedure Call(Caller: TdwsProgram; Func: TFuncSymbol); virtual;
     procedure SetParameters(const Value: TdwsParameters);
     function StoreParameters : Boolean;
   public
@@ -396,7 +396,7 @@ type
     procedure SetResultType(const Value: TDataType);
   protected
     function GetDisplayName: string; override;
-    procedure Call(Caller: TProgram; Func: TFuncSymbol); override;
+    procedure Call(Caller: TdwsProgram; Func: TFuncSymbol); override;
   public
     procedure Assign(Source: TPersistent); override;
     function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
@@ -419,7 +419,7 @@ type
     function GetResultType: string;
   protected
     function GetDisplayName: string; override;
-    procedure Call(Caller: TProgram; Func: TFuncSymbol); override;
+    procedure Call(Caller: TdwsProgram; Func: TFuncSymbol); override;
   public
     constructor Create(Collection: TCollection); override;
     procedure Assign(Source: TPersistent); override;
@@ -660,7 +660,7 @@ type
   public
     procedure GetDataTypes(List: TStrings);
     procedure GetClassTypes(List: TStrings);
-    procedure ExposeClassToUnit(AClass, AAncestor: TClass; ASearchProgram: TProgram=nil; const ScriptAncestorType: string='');
+    procedure ExposeClassToUnit(AClass, AAncestor: TClass; ASearchProgram: TdwsProgram=nil; const ScriptAncestorType: string='');
     procedure ExposeInstanceToUnit(const AName, AClassType: string; AInstance: TObject);
     property Table: TUnitSymbolTable read FTable;
   published
@@ -832,7 +832,7 @@ begin
   // the object inspector
 end;
 
-function TDelphiWebScript.Compile(const Text: string): TProgram;
+function TDelphiWebScript.Compile(const Text: string): TdwsProgram;
 begin
   Result := FCompiler.Compile(Text, FConfig);
 end;
@@ -1315,7 +1315,7 @@ end;
   between AAncestor and AClass. The ScriptAncestorType is the type that will be
   used for the new Script class inherited class type. If none is provided then
   AAncestor.ClassName is used. }
-procedure TdwsUnit.ExposeClassToUnit(AClass, AAncestor: TClass;  ASearchProgram: TProgram; const ScriptAncestorType: string);
+procedure TdwsUnit.ExposeClassToUnit(AClass, AAncestor: TClass;  ASearchProgram: TdwsProgram; const ScriptAncestorType: string);
 
     { Determine if the type is available to the program. If so, add the owning
        unit as a dependency. }
@@ -1790,7 +1790,7 @@ begin
   inherited;
 end;
 
-procedure TdwsFunction.Call(Caller: TProgram; Func: TFuncSymbol);
+procedure TdwsFunction.Call(Caller: TdwsProgram; Func: TFuncSymbol);
 var
   info: TProgramInfo;
 begin
@@ -2010,7 +2010,7 @@ begin
     end;
 end;
 
-procedure TdwsMethod.Call(Caller: TProgram; Func: TFuncSymbol);
+procedure TdwsMethod.Call(Caller: TdwsProgram; Func: TFuncSymbol);
 var
   info: TProgramInfo;
   scriptObj: IScriptObj;
@@ -2062,7 +2062,7 @@ begin
     FAttributes := TdwsMethod(Source).Attributes;
 end;
 
-procedure TdwsConstructor.Call(Caller: TProgram; Func: TFuncSymbol);
+procedure TdwsConstructor.Call(Caller: TdwsProgram; Func: TFuncSymbol);
 var
   info: TProgramInfo;
   extObj: TObject;
