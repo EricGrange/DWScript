@@ -1,4 +1,4 @@
-unit UScriptTests;
+unit UAlgorithmsTests;
 
 interface
 
@@ -6,11 +6,9 @@ uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs;
 
 type
 
-   TScriptTests = class (TTestCase)
+   TAlgorithmsTests = class (TTestCase)
       private
          FTests : TStringList;
-         FAlgos : TStringList;
-         FFailures : TStringList;
          FCompiler : TDelphiWebScript;
 
       public
@@ -23,7 +21,6 @@ type
 
          procedure Compilation;
          procedure Execution;
-         procedure CompilationFailure;
    end;
 
 // ------------------------------------------------------------------
@@ -35,12 +32,12 @@ implementation
 // ------------------------------------------------------------------
 
 // ------------------
-// ------------------ TScriptTests ------------------
+// ------------------ TAlgorithmsTests ------------------
 // ------------------
 
 // CollectFiles
 //
-procedure TScriptTests.CollectFiles(const directory, fileMask : String; list : TStrings);
+procedure TAlgorithmsTests.CollectFiles(const directory, fileMask : String; list : TStrings);
 var
    searchRec : TSearchRec;
    found : Integer;
@@ -57,32 +54,27 @@ end;
 
 // SetUp
 //
-procedure TScriptTests.SetUp;
+procedure TAlgorithmsTests.SetUp;
 begin
    FTests:=TStringList.Create;
-   FAlgos:=TStringList.Create;
-   FFailures:=TStringList.Create;
 
-   CollectFiles(ExtractFilePath(ParamStr(0))+'SimpleScripts'+PathDelim, '*.pas', FTests);
-   CollectFiles(ExtractFilePath(ParamStr(0))+'FailureScripts'+PathDelim, '*.pas', FFailures);
-   CollectFiles(ExtractFilePath(ParamStr(0))+'Algorithms'+PathDelim, '*.pas', FAlgos);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'Algorithms'+PathDelim, '*.pas', FTests);
 
    FCompiler:=TDelphiWebScript.Create(nil);
 end;
 
 // TearDown
 //
-procedure TScriptTests.TearDown;
+procedure TAlgorithmsTests.TearDown;
 begin
    FCompiler.Free;
 
    FTests.Free;
-   FFailures.Free;
 end;
 
 // Compilation
 //
-procedure TScriptTests.Compilation;
+procedure TAlgorithmsTests.Compilation;
 var
    source : TStringList;
    i : Integer;
@@ -111,7 +103,7 @@ end;
 
 // Execution
 //
-procedure TScriptTests.Execution;
+procedure TAlgorithmsTests.Execution;
 var
    source, exprectedResult : TStringList;
    i : Integer;
@@ -147,35 +139,6 @@ begin
    end;
 end;
 
-// CompilationFailure
-//
-procedure TScriptTests.CompilationFailure;
-var
-   source : TStringList;
-   i : Integer;
-   prog : TdwsProgram;
-begin
-   source:=TStringList.Create;
-   try
-
-      for i:=0 to FFailures.Count-1 do begin
-
-         source.LoadFromFile(FFailures[i]);
-
-         prog:=FCompiler.Compile(source.Text);
-         try
-            Check(prog.Msgs.AsInfo<>'', FFailures[i]+': undetected error');
-         finally
-            prog.Free;
-         end;
-
-      end;
-
-   finally
-      source.Free;
-   end;
-end;
-
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -184,6 +147,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   TestFramework.RegisterTest('ScriptTests', TScriptTests.Suite);
+   TestFramework.RegisterTest('AlgorithmsTests', TAlgorithmsTests.Suite);
 
 end.

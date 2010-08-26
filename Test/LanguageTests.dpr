@@ -5,7 +5,8 @@ uses
   Forms,
   TestFrameWork,
   GUITestRunner,
-  UScriptTests in 'UScriptTests.pas';
+  UScriptTests in 'UScriptTests.pas',
+  UAlgorithmsTests in 'UAlgorithmsTests.pas';
 
 {$R *.res}
 
