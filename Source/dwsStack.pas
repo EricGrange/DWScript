@@ -141,8 +141,7 @@ end;
 
 function TStack.GetSavedBp(Level: Integer): Integer;
 begin
-  Assert(Level >= 0);
-  Assert(Level < FMaxLevel);
+  Assert(Cardinal(Level)<Cardinal(FMaxLevel));
   Result := FBpStore[Level];
 end;
 
