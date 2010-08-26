@@ -83,7 +83,7 @@ procedure TScriptTests.Compilation;
 var
    source : TStringList;
    i : Integer;
-   prog : TProgram;
+   prog : TdwsProgram;
 begin
    source:=TStringList.Create;
    try
@@ -112,7 +112,7 @@ procedure TScriptTests.Execution;
 var
    source, exprectedResult : TStringList;
    i : Integer;
-   prog : TProgram;
+   prog : TdwsProgram;
    resultsFileName : String;
 begin
    source:=TStringList.Create;
@@ -150,7 +150,7 @@ procedure TScriptTests.CompilationFailure;
 var
    source : TStringList;
    i : Integer;
-   prog : TProgram;
+   prog : TdwsProgram;
 begin
    source:=TStringList.Create;
    try
