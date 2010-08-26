@@ -828,7 +828,9 @@ end;
 //
 function TVarExpr.SameVarAs(expr : TVarExpr) : Boolean;
 begin
-   Result:=(FStack=expr.FStack) and (FStackAddr=expr.FStackAddr);
+   Result:=    (FStack=expr.FStack)
+           and (FStackAddr=expr.FStackAddr)
+           and (ClassType=expr.ClassType);
 end;
 
 function TVarExpr.GetAddr: Integer;
