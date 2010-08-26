@@ -3321,7 +3321,7 @@ begin
    else if TNoPosExpr.IsFloatType(negTerm.Typ) then
       negExprClass:=TNegFloatExpr
    else if TNoPosExpr.IsVariantType(negTerm.Typ) then
-      negExprClass:=TNegExpr
+      negExprClass:=TNegVariantExpr
    else begin
       negExprClass:=nil;
       FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_NumericalExpected);

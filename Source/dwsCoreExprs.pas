@@ -344,12 +344,15 @@ type
   TNegExprClass = class of TNegExpr;
   TNegVariantExpr = class (TNegExpr)
     procedure EvalAsVariant(var Result : Variant); override;
+    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
   end;
   TNegIntExpr = class (TNegExpr)
     function EvalAsInteger : Int64; override;
+    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
   end;
   TNegFloatExpr = class (TNegExpr)
     procedure EvalAsFloat(var Result : Double); override;
+    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
   end;
 
   TNumberOpExpr = class(TBinaryOpExpr)
@@ -1943,7 +1946,9 @@ end;
 //
 procedure TNegExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-  FExpr.TypeCheckNoPos(Pos);
+   FExpr.TypeCheckNoPos(Pos);
+   if FTyp=nil then
+      AddCompilerStop(CPE_NumericalExpected);
 end;
 
 // Optimize
@@ -1975,6 +1980,14 @@ begin
    Result:=-FExpr.Eval;
 end;
 
+// TypeCheckNoPos
+//
+procedure TNegVariantExpr.TypeCheckNoPos(const aPos : TScriptPos);
+begin
+   FTyp:=FProg.TypVariant;
+   inherited;
+end;
+
 // ------------------
 // ------------------ TNegIntExpr ------------------
 // ------------------
@@ -1984,6 +1997,14 @@ end;
 function TNegIntExpr.EvalAsInteger : Int64;
 begin
    Result:=-FExpr.EvalAsInteger;
+end;
+
+// TypeCheckNoPos
+//
+procedure TNegIntExpr.TypeCheckNoPos(const aPos : TScriptPos);
+begin
+   FTyp:=FProg.TypInteger;
+   inherited;
 end;
 
 // ------------------
@@ -1996,6 +2017,14 @@ procedure TNegFloatExpr.EvalAsFloat(var Result : Double);
 begin
    FExpr.EvalAsFloat(Result);
    Result:=-Result;
+end;
+
+// TypeCheckNoPos
+//
+procedure TNegFloatExpr.TypeCheckNoPos(const aPos : TScriptPos);
+begin
+   FTyp:=FProg.TypFloat;
+   inherited;
 end;
 
 // ------------------
