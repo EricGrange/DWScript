@@ -27,7 +27,8 @@ procedure Register;
 implementation
 
 uses
-  Classes, Controls, dwsComp, dwsComConnector, dwsDebugger, dwsGlobalVarsFunctions;
+  Classes, Controls, dwsComp, dwsComConnector, dwsDebugger, dwsGlobalVarsFunctions,
+  dwsVCLGUIFunctions;
 
 procedure Register;
 begin
@@ -38,8 +39,9 @@ begin
                      TDelphiWebScript,
                      TdwsComConnector,
                      TdwsSimpleDebugger,
+                     TdwsUnit,
                      TdwsGlobalVarsFunctions,
-                     TdwsUnit
+                     TdwsGUIFunctions
                      ]);
 end;
 
