@@ -339,7 +339,6 @@ type
   TNegExpr = class(TUnaryOpExpr)
     function  Eval: Variant; override;
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    function  Optimize : TNoPosExpr; override;
   end;
   TNegExprClass = class of TNegExpr;
   TNegVariantExpr = class (TNegExpr)
@@ -349,10 +348,12 @@ type
   TNegIntExpr = class (TNegExpr)
     function EvalAsInteger : Int64; override;
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+    function  Optimize : TNoPosExpr; override;
   end;
   TNegFloatExpr = class (TNegExpr)
     procedure EvalAsFloat(var Result : Double); override;
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+    function  Optimize : TNoPosExpr; override;
   end;
 
   TNumberOpExpr = class(TBinaryOpExpr)
@@ -362,18 +363,22 @@ type
   TIntegerOpExpr = class(TBinaryOpExpr)
     function Eval: Variant; override;
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+    function  Optimize : TNoPosExpr; override;
   end;
   TStringOpExpr = class(TBinaryOpExpr)
     function Eval: Variant; override;
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+    function  Optimize : TNoPosExpr; override;
   end;
   TFloatOpExpr = class(TBinaryOpExpr)
     function Eval: Variant; override;
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+    function  Optimize : TNoPosExpr; override;
   end;
   TBooleanOpExpr = class(TBinaryOpExpr)
     function Eval: Variant; override;
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+    function  Optimize : TNoPosExpr; override;
   end;
 
   TNumberStringOpExpr = class(TBinaryOpExpr)
@@ -408,6 +413,7 @@ type
   // a * b
   TMultExpr = class(TNumberOpExpr)
     function Eval: Variant; override;
+    function Optimize : TNoPosExpr; override;
   end;
   TMultIntExpr = class(TIntegerOpExpr)
     function EvalAsInteger : Int64; override;
@@ -1953,24 +1959,6 @@ begin
       AddCompilerStop(CPE_NumericalExpected);
 end;
 
-// Optimize
-//
-function TNegExpr.Optimize : TNoPosExpr;
-var
-   xi : Int64;
-   xf : Double;
-begin
-   if FExpr is TConstIntExpr then begin
-      xi:=FExpr.EvalAsInteger;
-      Free;
-      Result:=TConstIntExpr.Create(FProg, -xi);
-   end else if FExpr is TConstFloatExpr then begin
-      FExpr.EvalAsFloat(xf);
-      Free;
-      Result:=TConstFloatExpr.Create(FProg, -xf);
-   end else Result:=Self;
-end;
-
 // ------------------
 // ------------------ TNegVariantExpr ------------------
 // ------------------
@@ -2009,6 +1997,16 @@ begin
    inherited;
 end;
 
+// Optimize
+//
+function TNegIntExpr.Optimize : TNoPosExpr;
+begin
+   if FExpr.IsConstant then begin
+      Result:=TConstIntExpr.Create(FProg, -FExpr.EvalAsInteger);
+      Free;
+   end else Result:=Self;
+end;
+
 // ------------------
 // ------------------ TNegFloatExpr ------------------
 // ------------------
@@ -2027,6 +2025,19 @@ procedure TNegFloatExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
    FTyp:=FProg.TypFloat;
    inherited;
+end;
+
+// Optimize
+//
+function TNegFloatExpr.Optimize : TNoPosExpr;
+var
+   xf : Double;
+begin
+   if FExpr.IsConstant then begin
+      FExpr.EvalAsFloat(xf);
+      Result:=TConstFloatExpr.Create(FProg, -xf);
+      Free;
+   end else Result:=Self;
 end;
 
 // ------------------
@@ -2111,6 +2122,23 @@ end;
 function TMultExpr.Eval: Variant;
 begin
   Result := FLeft.Eval * FRight.Eval;
+end;
+
+// Optimize
+//
+function TMultExpr.Optimize : TNoPosExpr;
+begin
+   if IsIntegerType(FLeft.Typ) and IsIntegerType(FRight.Typ) then
+      Result:=TMultIntExpr.Create(FProg, Pos, FLeft, FRight)
+   else if IsNumberType(FLeft.Typ) and IsNumberType(FRight.Typ) then
+      Result:=TMultFloatExpr.Create(FProg, Pos, FLeft, FRight)
+   else Result:=Self;
+   if Result<>Self then begin
+      FLeft:=nil;
+      FRight:=nil;
+      Free;
+      Result:=Result.Optimize;
+   end;
 end;
 
 { TMultIntExpr }
@@ -2257,6 +2285,16 @@ begin
   else AddCompilerStop(CPE_InvalidOperands);
 end;
 
+// Optimize
+//
+function TIntegerOpExpr.Optimize : TNoPosExpr;
+begin
+   if IsConstant then begin
+      Result:=TConstIntExpr.Create(FProg, EvalAsInteger);
+      Free;
+   end else Result:=Self;
+end;
+
 // ------------------
 // ------------------ TStringOpExpr ------------------
 // ------------------
@@ -2280,6 +2318,19 @@ begin
      and (IsVariantType(FRight.Typ) or IsStringType(FRight.Typ)) then
      FTyp:=FProg.TypString
   else AddCompilerStop(CPE_InvalidOperands);
+end;
+
+// Optimize
+//
+function TStringOpExpr.Optimize : TNoPosExpr;
+var
+   buf : String;
+begin
+   if IsConstant then begin
+      EvalAsString(buf);
+      Result:=TConstStringExpr.Create(FProg, buf);
+      Free;
+   end else Result:=Self;
 end;
 
 // ------------------
@@ -2307,6 +2358,23 @@ begin
   else AddCompilerStop(CPE_InvalidOperands);
 end;
 
+// Optimize
+//
+function TFloatOpExpr.Optimize : TNoPosExpr;
+var
+   xf : Double;
+begin
+   if IsConstant then begin
+      EvalAsFloat(xf);
+      Result:=TConstFloatExpr.Create(FProg, xf);
+      Free;
+   end else begin
+      FLeft:=FLeft.OptimizeIntegerConstantToFloatConstant;
+      FRight:=FRight.OptimizeIntegerConstantToFloatConstant;
+      Result:=Self;
+   end;
+end;
+
 // ------------------
 // ------------------ TBooleanOpExpr ------------------
 // ------------------
@@ -2325,6 +2393,16 @@ begin
      and (IsVariantType(FRight.Typ) or IsBooleanType(FRight.Typ)) then
      FTyp:=FProg.TypBoolean
   else AddCompilerStop(CPE_InvalidOperands);
+end;
+
+// Optimize
+//
+function TBooleanOpExpr.Optimize : TNoPosExpr;
+begin
+   if IsConstant then begin
+      Result:=TConstBooleanExpr.Create(FProg, EvalAsBoolean);
+      Free;
+   end else Result:=Self;
 end;
 
 { TNumberStringOpExpr }
