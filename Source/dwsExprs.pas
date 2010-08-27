@@ -398,6 +398,7 @@ type
       procedure TypeCheckNoPos(const aPos : TScriptPos); virtual;
       function IsConstant : Boolean; virtual;
       function Optimize : TNoPosExpr; virtual;
+      function OptimizeIntegerConstantToFloatConstant : TNoPosExpr;
 
       property Prog: TdwsProgram read FProg;
       property Typ: TSymbol read FTyp write FTyp;
@@ -1327,7 +1328,6 @@ begin
 
   // Initialize shortcuts to often used symbols
   FTypBoolean := SystemTable.FindSymbol(SYS_BOOLEAN) as TTypeSymbol;
-//  FTypDateTime := SystemTable.FindSymbol(SYS_DATETIME) as TTypeSymbol;
   FTypFloat := SystemTable.FindSymbol(SYS_FLOAT) as TTypeSymbol;
   FTypInteger := SystemTable.FindSymbol(SYS_INTEGER) as TTypeSymbol;
   FTypString := SystemTable.FindSymbol(SYS_STRING) as TTypeSymbol;
@@ -1917,6 +1917,19 @@ end;
 function TNoPosExpr.Optimize : TNoPosExpr;
 begin
    Result:=Self;
+end;
+
+// OptimizeIntegerConstantToFloatConstant
+//
+function TNoPosExpr.OptimizeIntegerConstantToFloatConstant : TNoPosExpr;
+var
+   temp : Double;
+begin
+   if IsConstant and IsIntegerType(Typ) then begin
+      EvalAsFloat(temp);
+      Result:=TConstFloatExpr.Create(FProg, temp);
+      Free;
+   end else Result:=Self;
 end;
 
 function TNoPosExpr.GetBaseType: TTypeSymbol;
