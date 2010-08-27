@@ -67,9 +67,9 @@ type
   protected
     function GetOnInclude: TIncludeEvent;
     function GetVersion: string;
+    procedure SetVersion(const Value: string);
     procedure SetConfig(const Value: TConfiguration);
     procedure SetOnInclude(const Value: TIncludeEvent);
-    procedure SetVersion(const Value: string);
     procedure AddUnitSymbols(SymbolTable: TSymbolTable); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
@@ -757,7 +757,13 @@ function GetExternalObjForID(Info: TProgramInfo; const AVarName: string): TObjec
 function GetParameters(Symbol: TdwsSymbol;
   Parameters: TdwsParameters; Table: TSymbolTable): TParamArray;
 
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
 uses dwsStrings;
 
@@ -823,7 +829,7 @@ end;
 
 function TDelphiWebScript.GetVersion: string;
 begin
-  Result := '2.0.beta.1';
+  Result := '2.1';
 end;
 
 procedure TDelphiWebScript.SetVersion(const Value: string);
