@@ -19,10 +19,13 @@ type
          procedure SetUp; override;
          procedure TearDown; override;
 
+         procedure Execution;
+
       published
 
          procedure Compilation;
-         procedure Execution;
+         procedure ExecutionNonOptimized;
+         procedure ExecutionOptimized;
          procedure CompilationFailure;
    end;
 
@@ -145,6 +148,22 @@ begin
       exprectedResult.Free;
       source.Free;
    end;
+end;
+
+// ExecutionNonOptimized
+//
+procedure TScriptTests.ExecutionNonOptimized;
+begin
+   FCompiler.Config.CompilerOptions:=[];
+   Execution;
+end;
+
+// ExecutionOptimized
+//
+procedure TScriptTests.ExecutionOptimized;
+begin
+   FCompiler.Config.CompilerOptions:=[coOptimize];
+   Execution;
 end;
 
 // CompilationFailure

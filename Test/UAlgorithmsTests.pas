@@ -17,10 +17,13 @@ type
          procedure SetUp; override;
          procedure TearDown; override;
 
+         procedure Execution;
+
       published
 
          procedure Compilation;
-         procedure Execution;
+         procedure ExecutionNonOptimized;
+         procedure ExecutionOptimized;
    end;
 
 // ------------------------------------------------------------------
@@ -99,6 +102,22 @@ begin
    finally
       source.Free;
    end;
+end;
+
+// ExecutionNonOptimized
+//
+procedure TAlgorithmsTests.ExecutionNonOptimized;
+begin
+   FCompiler.Config.CompilerOptions:=[];
+   Execution;
+end;
+
+// ExecutionOptimized
+//
+procedure TAlgorithmsTests.ExecutionOptimized;
+begin
+   FCompiler.Config.CompilerOptions:=[coOptimize];
+   Execution;
 end;
 
 // Execution
