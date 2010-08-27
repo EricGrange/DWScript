@@ -49,6 +49,7 @@ type
       procedure AssignExpr(Expr: TNoPosExpr); override;
       procedure AssignValue(const Value: Variant); override;
       procedure AssignValueAsInteger(const Value: Int64); override;
+      procedure AssignValueAsFloat(var Value: Double); override;
       procedure AssignValueAsString(const Value: String); override;
       function Eval: Variant; override;
 
@@ -98,170 +99,170 @@ type
          procedure EvalAsScriptObj(var Result : IScriptObj); override;
    end;
 
-  TVarParentExpr = class(TVarExpr)
-  protected
-    FLevel: Integer;
-    function GetAddr: Integer; override;
-  public
-    constructor Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
+   TVarParentExpr = class(TVarExpr)
+   protected
+     FLevel: Integer;
+     function GetAddr: Integer; override;
+   public
+     constructor Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
+   end;
+
+   // Encapsulates a var parameter
+   TVarParamExpr = class(TVarExpr)
+   protected
+     function GetAddr: Integer; override;
+     function GetData: TData; override;
+   public
+     procedure AssignData(const SourceData: TData; SourceAddr: Integer); override;
+     procedure AssignDataExpr(DataExpr: TDataExpr); override;
+     procedure AssignExpr(Expr: TNoPosExpr); override;
+     procedure AssignValue(const Value: Variant); override;
+     function  Eval: Variant; override;
+   end;
+
+   // Encapsulates a var parameter
+   TVarParamParentExpr = class(TVarParamExpr)
+   protected
+     FLevel: Integer;
+     function GetAddr: Integer; override;
+     function GetData: TData; override;
+   public
+     constructor Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
+   end;
+
+   // A constant value (like 0, 3.14159, 'Hello' or true)
+   TConstExpr = class(TDataExpr)
+   protected
+     FData: TData;
+     function GetData: TData; override;
+   public
+     constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); overload;
+     constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Data: TData); overload;
+     function Eval: Variant; override;
+     function IsConstant : Boolean; override;
+
+     class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant) : TConstExpr; overload; static;
+     class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Data: TData) : TConstExpr; overload; static;
+   end;
+
+   TConstBooleanExpr = class(TConstExpr)
+   protected
+     FValue : Boolean;
+   public
+     constructor Create(Prog: TdwsProgram; Value: Boolean);
+     function EvalAsInteger : Int64; override;
+     function EvalAsBoolean : Boolean; override;
+   end;
+
+   TConstIntExpr = class(TConstExpr)
+   protected
+     FValue : Int64;
+   public
+     constructor Create(Prog: TdwsProgram; const Value: Int64; Typ: TSymbol = nil);
+     function EvalAsInteger : Int64; override;
+     procedure EvalAsFloat(var Result : Double); override;
+   end;
+
+   TConstStringExpr = class(TConstExpr)
+   protected
+   public
+     constructor Create(Prog: TdwsProgram; const Value: String);
+     procedure EvalAsString(var Result : String); override;
+   end;
+
+   TConstFloatExpr = class(TConstExpr)
+   protected
+   public
+     constructor Create(Prog: TdwsProgram; const Value: Double);
+     procedure EvalAsFloat(var Result : Double); override;
+   end;
+
+   TArrayConstantExpr = class(TDataExpr)
+   protected
+     FArrayAddr: Integer;
+     FElementExprs: TTightList;
+     FData: TData;
+     function GetData: TData; override;
+   public
+     constructor Create(Prog: TdwsProgram);
+     destructor Destroy; override;
+     procedure AddElementExpr(ElementExpr: TNoPosExpr);
+     procedure Prepare(ElementTyp : TSymbol);
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     function Eval: Variant; override;
+     procedure Initialize; override;
+   end;
+
+   // Array expressions x[index]
+   TArrayExpr = class(TPosDataExpr)
+   protected
+     FBaseExpr: TDataExpr;
+     FElementSize: Integer;
+     FIndexExpr: TNoPosExpr;
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TNoPosExpr);
+     destructor Destroy; override;
+     procedure Initialize; override;
+   end;
+
+   // Array expressions x[index] for static arrays
+   TStaticArrayExpr = class(TArrayExpr)
+   private
+     FLowBound: Integer;
+     FLastIndex: Integer;
+   protected
+     function GetAddr: Integer; override;
+     function GetData: TData; override;
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TNoPosExpr; LowBound, HighBound: Integer);
+   end;
+
+   // Array expressions: x[index0] for dynamic arrays
+   TDynamicArrayExpr = class(TArrayExpr)
+   protected
+     function GetAddr: Integer; override;
+     function GetData: TData; override;
+   end;
+
+   // Record expression: record.member
+   TRecordExpr = class(TPosDataExpr)
+   protected
+     FBaseExpr: TDataExpr;
+     FMemberOffset: Integer;
+     function GetAddr: Integer; override;
+     function GetData: TData; override;
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; MemberSymbol: TMemberSymbol);
+     destructor Destroy; override;
+     procedure Initialize; override;
+   end;
+
+   TInitDataExpr = class(TNoResultExpr)
+   protected
+     FExpr: TDataExpr;
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TDataExpr);
+     destructor Destroy; override;
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+
+   // Field expression: obj.Field
+   TFieldExpr = class(TPosDataExpr)
+   protected
+     FObjectExpr: TDataExpr;
+     FFieldAddr: Integer;
+     function GetAddr: Integer; override;
+     function GetData: TData; override;
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TSymbol;
+                        FieldSym: TFieldSymbol; ObjExpr: TDataExpr);
+     destructor Destroy; override;
+     procedure Initialize; override;
+     function Eval: Variant; override;
+     procedure EvalAsString(var Result : String); override;
+     function EvalAsInteger : Int64; override;
+     procedure EvalAsScriptObj(var Result : IScriptObj); override;
   end;
-
-  // Encapsulates a var parameter
-  TVarParamExpr = class(TVarExpr)
-  protected
-    function GetAddr: Integer; override;
-    function GetData: TData; override;
-  public
-    procedure AssignData(const SourceData: TData; SourceAddr: Integer); override;
-    procedure AssignDataExpr(DataExpr: TDataExpr); override;
-    procedure AssignExpr(Expr: TNoPosExpr); override;
-    procedure AssignValue(const Value: Variant); override;
-    function  Eval: Variant; override;
-  end;
-
-  // Encapsulates a var parameter
-  TVarParamParentExpr = class(TVarParamExpr)
-  protected
-    FLevel: Integer;
-    function GetAddr: Integer; override;
-    function GetData: TData; override;
-  public
-    constructor Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
-  end;
-
-  // A constant value (like 0, 3.14159, 'Hello' or true)
-  TConstExpr = class(TDataExpr)
-  protected
-    FData: TData;
-    function GetData: TData; override;
-  public
-    constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); overload;
-    constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Data: TData); overload;
-    function Eval: Variant; override;
-    function IsConstant : Boolean; override;
-
-    class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant) : TConstExpr; overload; static;
-    class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Data: TData) : TConstExpr; overload; static;
-  end;
-
-  TConstBooleanExpr = class(TConstExpr)
-  protected
-    FValue : Boolean;
-  public
-    constructor Create(Prog: TdwsProgram; Value: Boolean);
-    function EvalAsInteger : Int64; override;
-    function EvalAsBoolean : Boolean; override;
-  end;
-
-  TConstIntExpr = class(TConstExpr)
-  protected
-    FValue : Int64;
-  public
-    constructor Create(Prog: TdwsProgram; const Value: Int64; Typ: TSymbol = nil);
-    function EvalAsInteger : Int64; override;
-    procedure EvalAsFloat(var Result : Double); override;
-  end;
-
-  TConstStringExpr = class(TConstExpr)
-  protected
-  public
-    constructor Create(Prog: TdwsProgram; const Value: String);
-    procedure EvalAsString(var Result : String); override;
-  end;
-
-  TConstFloatExpr = class(TConstExpr)
-  protected
-  public
-    constructor Create(Prog: TdwsProgram; const Value: Double);
-    procedure EvalAsFloat(var Result : Double); override;
-  end;
-
-  TArrayConstantExpr = class(TDataExpr)
-  protected
-    FArrayAddr: Integer;
-    FElementExprs: TTightList;
-    FData: TData;
-    function GetData: TData; override;
-  public
-    constructor Create(Prog: TdwsProgram);
-    destructor Destroy; override;
-    procedure AddElementExpr(ElementExpr: TNoPosExpr);
-    procedure Prepare(ElementTyp : TSymbol);
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    function Eval: Variant; override;
-    procedure Initialize; override;
-  end;
-
-  // Array expressions x[index]
-  TArrayExpr = class(TPosDataExpr)
-  protected
-    FBaseExpr: TDataExpr;
-    FElementSize: Integer;
-    FIndexExpr: TNoPosExpr;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TNoPosExpr);
-    destructor Destroy; override;
-    procedure Initialize; override;
-  end;
-
-  // Array expressions x[index] for static arrays
-  TStaticArrayExpr = class(TArrayExpr)
-  private
-    FLowBound: Integer;
-    FLastIndex: Integer;
-  protected
-    function GetAddr: Integer; override;
-    function GetData: TData; override;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TNoPosExpr; LowBound, HighBound: Integer);
-  end;
-
-  // Array expressions: x[index0] for dynamic arrays
-  TDynamicArrayExpr = class(TArrayExpr)
-  protected
-    function GetAddr: Integer; override;
-    function GetData: TData; override;
-  end;
-
-  // Record expression: record.member
-  TRecordExpr = class(TPosDataExpr)
-  protected
-    FBaseExpr: TDataExpr;
-    FMemberOffset: Integer;
-    function GetAddr: Integer; override;
-    function GetData: TData; override;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; MemberSymbol: TMemberSymbol);
-    destructor Destroy; override;
-    procedure Initialize; override;
-  end;
-
-  TInitDataExpr = class(TNoResultExpr)
-  protected
-    FExpr: TDataExpr;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TDataExpr);
-    destructor Destroy; override;
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
-
-  // Field expression: obj.Field
-  TFieldExpr = class(TPosDataExpr)
-  protected
-    FObjectExpr: TDataExpr;
-    FFieldAddr: Integer;
-    function GetAddr: Integer; override;
-    function GetData: TData; override;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TSymbol;
-                       FieldSym: TFieldSymbol; ObjExpr: TDataExpr);
-    destructor Destroy; override;
-    procedure Initialize; override;
-    function Eval: Variant; override;
-    procedure EvalAsString(var Result : String); override;
-    function EvalAsInteger : Int64; override;
-    procedure EvalAsScriptObj(var Result : IScriptObj); override;
- end;
 
   // length of dynamic arrays
   TArrayLengthExpr = class(TUnaryOpExpr)
@@ -279,513 +280,538 @@ type
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
   end;
 
-  TStringLengthExpr = class(TUnaryOpExpr)
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
-    function Eval: Variant; override;
-    function EvalAsInteger : Int64; override;
-  end;
+   TStringLengthExpr = class(TUnaryOpExpr)
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+     function Eval: Variant; override;
+     function EvalAsInteger : Int64; override;
+   end;
 
-  TChrExpr = class(TUnaryOpExpr)
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
-    function Eval: Variant; override;
-    procedure EvalAsString(var Result : String); override;
-  end;
+   TChrExpr = class(TUnaryOpExpr)
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+     function Eval: Variant; override;
+     procedure EvalAsString(var Result : String); override;
+   end;
 
-  // obj is TMyClass
-  TIsOpExpr = class(TBinaryOpExpr)
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr);
-    function Eval: Variant; override;
-    function EvalAsBoolean : Boolean; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
+   // obj is TMyClass
+   TIsOpExpr = class(TBinaryOpExpr)
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr);
+     function Eval: Variant; override;
+     function EvalAsBoolean : Boolean; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
 
-  // obj as TMyClass
-  TAsOpExpr = class(TBinaryOpExpr)
-    function Eval: Variant; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
+   // obj as TMyClass
+   TAsOpExpr = class(TBinaryOpExpr)
+     function Eval: Variant; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
 
-  // >, <, =, <=, >=, <>
-  TRelOpExpr = class(TBinaryOpExpr)
-    FRelOp: TRelOps;
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr; RelOp: TRelOps);
-    function Eval: Variant; override;
-    function EvalAsBoolean: Boolean; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
-  TRelOpExprClass = class of TRelOpExpr;
+   // >, <, =, <=, >=, <>
+   TRelOpExpr = class(TBinaryOpExpr)
+     FRelOp: TRelOps;
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr; RelOp: TRelOps);
+     function Eval: Variant; override;
+     function EvalAsBoolean: Boolean; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
+   TRelOpExprClass = class of TRelOpExpr;
 
-  TRelOpIntExpr = class(TRelOpExpr)
-    function EvalAsBoolean: Boolean; override;
-  end;
-  TRelOpFloatExpr = class(TRelOpExpr)
-    function EvalAsBoolean: Boolean; override;
-  end;
-  TRelOpStrExpr = class(TRelOpExpr)
-    function EvalAsBoolean: Boolean; override;
-  end;
+   TRelOpIntExpr = class(TRelOpExpr)
+     function EvalAsBoolean: Boolean; override;
+   end;
+   TRelOpFloatExpr = class(TRelOpExpr)
+     function EvalAsBoolean: Boolean; override;
+   end;
+   TRelOpStrExpr = class(TRelOpExpr)
+     function EvalAsBoolean: Boolean; override;
+   end;
 
-  TObjCmpExpr = class(TBinaryOpExpr)
-    FEqual: Boolean;
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr;
-                       Equal: Boolean);
-    function Eval: Variant; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
+   TObjCmpExpr = class(TBinaryOpExpr)
+     FEqual: Boolean;
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr;
+                        Equal: Boolean);
+     function Eval: Variant; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
 
-  // -x
-  TNegExpr = class(TUnaryOpExpr)
-    function  Eval: Variant; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
-  TNegExprClass = class of TNegExpr;
-  TNegVariantExpr = class (TNegExpr)
-    procedure EvalAsVariant(var Result : Variant); override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
-  TNegIntExpr = class (TNegExpr)
-    function EvalAsInteger : Int64; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    function  Optimize : TNoPosExpr; override;
-  end;
-  TNegFloatExpr = class (TNegExpr)
-    procedure EvalAsFloat(var Result : Double); override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    function  Optimize : TNoPosExpr; override;
-  end;
+   // -x
+   TNegExpr = class(TUnaryOpExpr)
+     function  Eval: Variant; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
+   TNegExprClass = class of TNegExpr;
+   TNegVariantExpr = class (TNegExpr)
+     procedure EvalAsVariant(var Result : Variant); override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
+   TNegIntExpr = class (TNegExpr)
+     function EvalAsInteger : Int64; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     function  Optimize : TNoPosExpr; override;
+   end;
+   TNegFloatExpr = class (TNegExpr)
+     procedure EvalAsFloat(var Result : Double); override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     function  Optimize : TNoPosExpr; override;
+   end;
 
-  TNumberOpExpr = class(TBinaryOpExpr)
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
+   TNumberOpExpr = class(TBinaryOpExpr)
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
 
-  TIntegerOpExpr = class(TBinaryOpExpr)
-    function Eval: Variant; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    function  Optimize : TNoPosExpr; override;
-  end;
-  TStringOpExpr = class(TBinaryOpExpr)
-    function Eval: Variant; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    function  Optimize : TNoPosExpr; override;
-  end;
-  TFloatOpExpr = class(TBinaryOpExpr)
-    function Eval: Variant; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    function  Optimize : TNoPosExpr; override;
-  end;
-  TBooleanOpExpr = class(TBinaryOpExpr)
-    function Eval: Variant; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    function  Optimize : TNoPosExpr; override;
-  end;
+   TIntegerOpExpr = class(TBinaryOpExpr)
+     function Eval: Variant; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     function  Optimize : TNoPosExpr; override;
+   end;
+   TStringOpExpr = class(TBinaryOpExpr)
+     function Eval: Variant; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     function  Optimize : TNoPosExpr; override;
+   end;
+   TFloatOpExpr = class(TBinaryOpExpr)
+     function Eval: Variant; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     function  Optimize : TNoPosExpr; override;
+   end;
+   TBooleanOpExpr = class(TBinaryOpExpr)
+     function Eval: Variant; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     function  Optimize : TNoPosExpr; override;
+   end;
 
-  TNumberStringOpExpr = class(TBinaryOpExpr)
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
+   TNumberStringOpExpr = class(TBinaryOpExpr)
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
 
-  // a + b
-  TAddExpr = class(TNumberStringOpExpr)
-    function Eval: Variant; override;
-  end;
-  TAddIntExpr = class(TIntegerOpExpr)
-    function EvalAsInteger : Int64; override;
-  end;
-  TAddStrExpr = class(TStringOpExpr)
-    procedure EvalAsString(var Result : String); override;
-  end;
-  TAddFloatExpr = class(TFloatOpExpr)
-    procedure EvalAsFloat(var Result : Double); override;
-  end;
+   // a + b
+   TAddExpr = class(TNumberStringOpExpr)
+     function Eval: Variant; override;
+   end;
+   TAddIntExpr = class(TIntegerOpExpr)
+     function EvalAsInteger : Int64; override;
+   end;
+   TAddStrExpr = class(TStringOpExpr)
+     procedure EvalAsString(var Result : String); override;
+   end;
+   TAddFloatExpr = class(TFloatOpExpr)
+     procedure EvalAsFloat(var Result : Double); override;
+   end;
 
-  // a - b
-  TSubExpr = class(TNumberOpExpr)
-    function Eval: Variant; override;
-  end;
-  TSubIntExpr = class(TIntegerOpExpr)
-    function EvalAsInteger : Int64; override;
-  end;
-  TSubFloatExpr = class(TFloatOpExpr)
-    procedure EvalAsFloat(var Result : Double); override;
-  end;
+   // a - b
+   TSubExpr = class(TNumberOpExpr)
+     function Eval: Variant; override;
+   end;
+   TSubIntExpr = class(TIntegerOpExpr)
+     function EvalAsInteger : Int64; override;
+   end;
+   TSubFloatExpr = class(TFloatOpExpr)
+     procedure EvalAsFloat(var Result : Double); override;
+   end;
 
-  // a * b
-  TMultExpr = class(TNumberOpExpr)
-    function Eval: Variant; override;
-    function Optimize : TNoPosExpr; override;
-  end;
-  TMultIntExpr = class(TIntegerOpExpr)
-    function EvalAsInteger : Int64; override;
-  end;
-  TMultFloatExpr = class(TFloatOpExpr)
-    procedure EvalAsFloat(var Result : Double); override;
-  end;
+   // a * b
+   TMultExpr = class(TNumberOpExpr)
+     function Eval: Variant; override;
+     function Optimize : TNoPosExpr; override;
+   end;
+   TMultIntExpr = class(TIntegerOpExpr)
+     function EvalAsInteger : Int64; override;
+   end;
+   TMultFloatExpr = class(TFloatOpExpr)
+     procedure EvalAsFloat(var Result : Double); override;
+   end;
 
-  // a / b
-  TDivideExpr = class(TFloatOpExpr)
-    procedure EvalAsFloat(var Result : Double); override;
-  end;
+   // a / b
+   TDivideExpr = class(TFloatOpExpr)
+     procedure EvalAsFloat(var Result : Double); override;
+   end;
 
-  // a div b
-  TDivExpr = class(TIntegerOpExpr)
-    function EvalAsInteger : Int64; override;
-  end;
+   // a div b
+   TDivExpr = class(TIntegerOpExpr)
+     function EvalAsInteger : Int64; override;
+   end;
 
-  // a mod b
-  TModExpr = class(TIntegerOpExpr)
-    function EvalAsInteger : Int64; override;
-  end;
+   // a mod b
+   TModExpr = class(TIntegerOpExpr)
+     function EvalAsInteger : Int64; override;
+   end;
 
-  // not a
-  TNotExpr = class(TUnaryOpExpr)
-    function Eval: Variant; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
+   // not a
+   TNotExpr = class(TUnaryOpExpr)
+     function Eval: Variant; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
 
-  // a and b
-  TIntAndExpr = class(TIntegerOpExpr)
-    function EvalAsInteger : Int64; override;
-  end;
-  TBoolAndExpr = class(TBooleanOpExpr)
-    function EvalAsBoolean : Boolean; override;
-  end;
+   // a and b
+   TIntAndExpr = class(TIntegerOpExpr)
+     function EvalAsInteger : Int64; override;
+   end;
+   TBoolAndExpr = class(TBooleanOpExpr)
+     function EvalAsBoolean : Boolean; override;
+   end;
 
-  // a or b
-  TIntOrExpr = class(TIntegerOpExpr)
-    function EvalAsInteger : Int64; override;
-  end;
-  TBoolOrExpr = class(TBooleanOpExpr)
-    function EvalAsBoolean : Boolean; override;
-  end;
+   // a or b
+   TIntOrExpr = class(TIntegerOpExpr)
+     function EvalAsInteger : Int64; override;
+   end;
+   TBoolOrExpr = class(TBooleanOpExpr)
+     function EvalAsBoolean : Boolean; override;
+   end;
 
-  // a xor b
-  TIntXorExpr = class(TIntegerOpExpr)
-    function EvalAsInteger : Int64; override;
-  end;
-  TBoolXorExpr = class(TBooleanOpExpr)
-    function EvalAsBoolean : Boolean; override;
-  end;
+   // a xor b
+   TIntXorExpr = class(TIntegerOpExpr)
+     function EvalAsInteger : Int64; override;
+   end;
+   TBoolXorExpr = class(TBooleanOpExpr)
+     function EvalAsBoolean : Boolean; override;
+   end;
 
-  // Float(x)
-  TConvFloatExpr = class(TUnaryOpExpr)
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
-    function Eval: Variant; override;
-    procedure EvalAsFloat(var Result : Double); override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
+   // Float(x)
+   TConvFloatExpr = class(TUnaryOpExpr)
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+     function Eval: Variant; override;
+     procedure EvalAsFloat(var Result : Double); override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
 
-  // Integer(float)
-  TConvIntegerExpr = class(TUnaryOpExpr)
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
-    function Eval: Variant; override;
-    function EvalAsInteger : Int64; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
+   // Integer(float)
+   TConvIntegerExpr = class(TUnaryOpExpr)
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+     function Eval: Variant; override;
+     function EvalAsInteger : Int64; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
 
-  // Variant(simple)
-  TConvVariantExpr = class(TUnaryOpExpr)
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
-    function Eval: Variant; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
+   // Variant(simple)
+   TConvVariantExpr = class(TUnaryOpExpr)
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+     function Eval: Variant; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
 
-  // left := right;
-  TAssignExpr = class(TNoResultExpr)
-  protected
-    FLeft: TDataExpr;
-    FRight: TNoPosExpr;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr);
-    destructor Destroy; override;
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-    procedure Initialize; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    function  Optimize : TNoPosExpr; override;
-  end;
+   // left := right;
+   TAssignExpr = class(TNoResultExpr)
+   protected
+     FLeft: TDataExpr;
+     FRight: TNoPosExpr;
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr);
+     destructor Destroy; override;
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+     procedure Initialize; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     function  Optimize : TNoPosExpr; override;
+     function  OptimizeConstAssignment : TNoPosExpr;
+   end;
 
-  // left := right;
-  TAssignDataExpr = class(TAssignExpr)
-  protected
-    FSize: Integer;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr);
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   // left := right;
+   TAssignDataExpr = class(TAssignExpr)
+   protected
+     FSize: Integer;
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr);
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
 
-  // left := right;
-  TAssignConstDataToVarExpr = class(TAssignDataExpr)
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr);
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   // left := const right;
+   TAssignConstDataToVarExpr = class(TAssignDataExpr)
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr);
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
 
-  // left := 0;
-  TAssignZeroToIntegerVarExpr = class(TAssignConstDataToVarExpr)
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr);
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   // left := const right;
+   TAssignConstExpr = class (TAssignExpr)
+      public
+         procedure Initialize; override;
+         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
 
-  // left := '';
-  TAssignEmptyToStringVarExpr = class(TAssignConstDataToVarExpr)
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr);
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   // left := const integer;
+   TAssignConstToIntegerVarExpr = class(TAssignConstExpr)
+      protected
+         FRight : Int64;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Int64);
+         procedure EvalNoResult(var status : TExecutionStatusResult); override;
+         function  Optimize : TNoPosExpr; override;
+         property Right : Int64 read FRight write FRight;
+   end;
 
-  // a := a + b
-  TIncIntVarExpr = class(TAssignExpr)
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
-  // a := a - b
-  TDecIntVarExpr = class(TAssignExpr)
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   // left := const float;
+   TAssignConstToFloatVarExpr = class(TAssignConstExpr)
+      protected
+         FRight : Double;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Double);
+         procedure EvalNoResult(var status : TExecutionStatusResult); override;
+         property Right : Double read FRight write FRight;
+   end;
 
-  // statement; statement; statement;
-  TBlockExpr = class(TNoResultExpr)
-  private
-    FStatements: TTightList;
-    FTable: TSymbolTable;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
-    destructor Destroy; override;
-    procedure AddStatement(Expr: TExpr);
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-    procedure Initialize; override;
-    function  Optimize : TNoPosExpr; override;
-    property  Table: TSymbolTable read FTable;
-  end;
+   // left := const string;
+   TAssignConstToStringVarExpr = class(TAssignConstExpr)
+      protected
+         FRight : String;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : String);
+         procedure EvalNoResult(var status : TExecutionStatusResult); override;
+         property Right : String read FRight write FRight;
+   end;
 
-  // statement; statement; statement;
-  TBlockExprNoStep = class(TBlockExpr)
-  public
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   // a := a + b
+   TIncIntVarExpr = class(TAssignExpr)
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+   // a := a - b
+   TDecIntVarExpr = class(TAssignExpr)
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
 
-  // if FCond then FThen else FElse
-  TIfExpr = class(TNoResultExpr)
-    FCond: TNoPosExpr;
-    FElse: TExpr;
-    FThen: TExpr;
-  public
-    destructor Destroy; override;
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-    procedure Initialize; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
+   // statement; statement; statement;
+   TBlockExpr = class(TNoResultExpr)
+   private
+     FStatements: TTightList;
+     FTable: TSymbolTable;
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
+     destructor Destroy; override;
+     procedure AddStatement(Expr: TExpr);
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+     procedure Initialize; override;
+     function  Optimize : TNoPosExpr; override;
+     property  Table: TSymbolTable read FTable;
+   end;
 
-  // Part of a case statement
-  TCaseCondition = class
-  private
-    FOwnsTrueExpr: Boolean;
-    FTrueExpr: TExpr;
-    FValueExpr: TNoPosExpr;
-    FPos : TScriptPos;
-  public
-    constructor Create(const aPos : TScriptPos; ValueExpr: TNoPosExpr);
-    destructor Destroy; override;
-    procedure Initialize; virtual;
-    function IsTrue(const Value: Variant): Boolean; virtual; abstract;
-    procedure TypeCheck(Typ: TSymbol); virtual; abstract;
-    property Pos : TScriptPos read FPos;
-    property TrueExpr: TExpr read FTrueExpr write FTrueExpr;
-    property OwnsTrueExpr: Boolean read FOwnsTrueExpr write FOwnsTrueExpr;
-  end;
+   // statement; statement; statement;
+   TBlockExprNoStep = class(TBlockExpr)
+   public
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
 
-  TCompareCaseCondition = class(TCaseCondition)
-  private
-    FCompareExpr: TNoPosExpr;
-  public
-    constructor Create(const aPos : TScriptPos; ValueExpr, CompareExpr: TNoPosExpr);
-    destructor Destroy; override;
-    procedure Initialize; override;
-    function IsTrue(const Value: Variant): Boolean; override;
-    procedure TypeCheck(Typ: TSymbol); override;
-  end;
+   // if FCond then FThen else FElse
+   TIfExpr = class(TNoResultExpr)
+     FCond: TNoPosExpr;
+     FElse: TExpr;
+     FThen: TExpr;
+   public
+     destructor Destroy; override;
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+     procedure Initialize; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
 
-  TRangeCaseCondition = class(TCaseCondition)
-  private
-    FFromExpr: TNoPosExpr;
-    FToExpr: TNoPosExpr;
-  public
-    constructor Create(const aPos : TScriptPos; ValueExpr, FromExpr, ToExpr: TNoPosExpr);
-    destructor Destroy; override;
-    procedure Initialize; override;
-    function IsTrue(const Value: Variant): Boolean; override;
-    procedure TypeCheck(Typ: TSymbol); override;
-  end;
+   // Part of a case statement
+   TCaseCondition = class
+   private
+     FOwnsTrueExpr: Boolean;
+     FTrueExpr: TExpr;
+     FValueExpr: TNoPosExpr;
+     FPos : TScriptPos;
+   public
+     constructor Create(const aPos : TScriptPos; ValueExpr: TNoPosExpr);
+     destructor Destroy; override;
+     procedure Initialize; virtual;
+     function IsTrue(const Value: Variant): Boolean; virtual; abstract;
+     procedure TypeCheck(Typ: TSymbol); virtual; abstract;
+     property Pos : TScriptPos read FPos;
+     property TrueExpr: TExpr read FTrueExpr write FTrueExpr;
+     property OwnsTrueExpr: Boolean read FOwnsTrueExpr write FOwnsTrueExpr;
+   end;
 
-  // case FValueExpr of {CaseConditions} else FElseExpr end;
-  TCaseExpr = class(TNoResultExpr)
-  private
-    FCaseConditions: TTightList;
-    FElseExpr: TExpr;
-    FValueExpr: TNoPosExpr;
-  public
-    destructor Destroy; override;
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-    procedure Initialize; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    procedure AddCaseCondition(cond : TCaseCondition);
-    property ValueExpr: TNoPosExpr read FValueExpr write FValueExpr;
-    property ElseExpr: TExpr read FElseExpr write FElseExpr;
-  end;
+   TCompareCaseCondition = class(TCaseCondition)
+   private
+     FCompareExpr: TNoPosExpr;
+   public
+     constructor Create(const aPos : TScriptPos; ValueExpr, CompareExpr: TNoPosExpr);
+     destructor Destroy; override;
+     procedure Initialize; override;
+     function IsTrue(const Value: Variant): Boolean; override;
+     procedure TypeCheck(Typ: TSymbol); override;
+   end;
 
-  // for FVarExpr := FFromExpr to FToExpr do FDoExpr;
-  TForExpr = class(TNoResultExpr)
-  private
-    FDoExpr: TNoPosExpr;
-    FFromExpr: TNoPosExpr;
-    FToExpr: TNoPosExpr;
-    FVarExpr: TIntVarExpr;
-    FIsUpWard: Boolean;
-  public
-    destructor Destroy; override;
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-    procedure Initialize; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    property DoExpr: TNoPosExpr read FDoExpr write FDoExpr;
-    property FromExpr: TNoPosExpr read FFromExpr write FFromExpr;
-    property ToExpr: TNoPosExpr read FToExpr write FToExpr;
-    property IsUpward: Boolean read FIsUpWard write FIsUpWard;
-    property VarExpr: TIntVarExpr read FVarExpr write FVarExpr;
-  end;
+   TRangeCaseCondition = class(TCaseCondition)
+   private
+     FFromExpr: TNoPosExpr;
+     FToExpr: TNoPosExpr;
+   public
+     constructor Create(const aPos : TScriptPos; ValueExpr, FromExpr, ToExpr: TNoPosExpr);
+     destructor Destroy; override;
+     procedure Initialize; override;
+     function IsTrue(const Value: Variant): Boolean; override;
+     procedure TypeCheck(Typ: TSymbol); override;
+   end;
 
-  TLoopExpr = class(TNoResultExpr)
-  private
-    FCondExpr: TNoPosExpr;
-    FLoopExpr: TExpr;
-  public
-    destructor Destroy; override;
-    procedure Initialize; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    property CondExpr: TNoPosExpr read FCondExpr write FCondExpr;
-    property LoopExpr: TExpr read FLoopExpr write FLoopExpr;
-  end;
+   // case FValueExpr of {CaseConditions} else FElseExpr end;
+   TCaseExpr = class(TNoResultExpr)
+   private
+     FCaseConditions: TTightList;
+     FElseExpr: TExpr;
+     FValueExpr: TNoPosExpr;
+   public
+     destructor Destroy; override;
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+     procedure Initialize; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     procedure AddCaseCondition(cond : TCaseCondition);
+     property ValueExpr: TNoPosExpr read FValueExpr write FValueExpr;
+     property ElseExpr: TExpr read FElseExpr write FElseExpr;
+   end;
 
-  // while FCondExpr do FLoopExpr
-  TWhileExpr = class(TLoopExpr)
-  public
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   // for FVarExpr := FFromExpr to FToExpr do FDoExpr;
+   TForExpr = class(TNoResultExpr)
+   private
+     FDoExpr: TNoPosExpr;
+     FFromExpr: TNoPosExpr;
+     FToExpr: TNoPosExpr;
+     FVarExpr: TIntVarExpr;
+     FIsUpWard: Boolean;
+   public
+     destructor Destroy; override;
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+     procedure Initialize; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     property DoExpr: TNoPosExpr read FDoExpr write FDoExpr;
+     property FromExpr: TNoPosExpr read FFromExpr write FFromExpr;
+     property ToExpr: TNoPosExpr read FToExpr write FToExpr;
+     property IsUpward: Boolean read FIsUpWard write FIsUpWard;
+     property VarExpr: TIntVarExpr read FVarExpr write FVarExpr;
+   end;
 
-  // repeat FLoopExpr while FCondExpr
-  TRepeatExpr = class(TLoopExpr)
-  public
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   TLoopExpr = class(TNoResultExpr)
+   private
+     FCondExpr: TNoPosExpr;
+     FLoopExpr: TExpr;
+   public
+     destructor Destroy; override;
+     procedure Initialize; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     property CondExpr: TNoPosExpr read FCondExpr write FCondExpr;
+     property LoopExpr: TExpr read FLoopExpr write FLoopExpr;
+   end;
 
-  TFlowControlExpr = class(TNoResultExpr)
-  public
-  end;
+   // while FCondExpr do FLoopExpr
+   TWhileExpr = class(TLoopExpr)
+   public
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
 
-  TBreakExpr = class(TFlowControlExpr)
-  public
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   // repeat FLoopExpr while FCondExpr
+   TRepeatExpr = class(TLoopExpr)
+   public
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
 
-  TExitExpr = class(TFlowControlExpr)
-  public
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   TFlowControlExpr = class(TNoResultExpr)
+   public
+   end;
 
-  TContinueExpr = class(TFlowControlExpr)
-  public
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   TBreakExpr = class(TFlowControlExpr)
+   public
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
 
-  TRaiseBaseExpr = class(TNoResultExpr)
-  end;
+   TExitExpr = class(TFlowControlExpr)
+   public
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
 
-  // raise TExceptionClass.Create;
-  TRaiseExpr = class(TRaiseBaseExpr)
-  private
-    FExceptionExpr: TNoPosExpr;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; ExceptionExpr: TNoPosExpr);
-    destructor Destroy; override;
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-    procedure Initialize; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
+   TContinueExpr = class(TFlowControlExpr)
+   public
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
 
-  TReraiseExpr = class(TRaiseBaseExpr)
-  public
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   TRaiseBaseExpr = class(TNoResultExpr)
+   end;
 
-  TExceptionExpr = class(TNoResultExpr)
-  private
-    FTryExpr: TExpr;
-    FHandlerExpr: TExpr;
-  public
-    destructor Destroy; override;
-    procedure Initialize; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   // raise TExceptionClass.Create;
+   TRaiseExpr = class(TRaiseBaseExpr)
+   private
+     FExceptionExpr: TNoPosExpr;
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; ExceptionExpr: TNoPosExpr);
+     destructor Destroy; override;
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+     procedure Initialize; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
 
-    property TryExpr: TExpr read FTryExpr write FTryExpr;
-    property HandlerExpr: TExpr read FHandlerExpr write FHandlerExpr;
-  end;
+   TReraiseExpr = class(TRaiseBaseExpr)
+   public
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
 
-  TExceptDoExpr = class;
+   TExceptionExpr = class(TNoResultExpr)
+   private
+     FTryExpr: TExpr;
+     FHandlerExpr: TExpr;
+   public
+     destructor Destroy; override;
+     procedure Initialize; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
 
-  // try FTryExpr except {FDoExprs}; else FElseExpr end;
-  TExceptExpr = class(TExceptionExpr)
-  private
-    FDoExprs: TTightList;
-    FElseExpr: TExpr;
-  public
-    destructor Destroy; override;
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-    procedure Initialize; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    procedure AddDoExpr(expr : TExceptDoExpr);
-    property ElseExpr: TExpr read FElseExpr write FElseExpr;
-  end;
+     property TryExpr: TExpr read FTryExpr write FTryExpr;
+     property HandlerExpr: TExpr read FHandlerExpr write FHandlerExpr;
+   end;
 
-  // try..except on FExceptionVar: FExceptionVar.Typ do FDoBlockExpr; ... end;
-  TExceptDoExpr = class(TNoResultExpr)
-  private
-    FExceptionVar: TDataSymbol;
-    FDoBlockExpr: TExpr;
-  public
-    destructor Destroy; override;
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-    procedure Initialize; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    property DoBlockExpr: TExpr read FDoBlockExpr write FDoBlockExpr;
-    property ExceptionVar: TDataSymbol read FExceptionVar write FExceptionVar;
-  end;
+   TExceptDoExpr = class;
 
-  // try FTryExpr finally FHandlerExpr end;
-  TFinallyExpr = class(TExceptionExpr)
-  public
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   // try FTryExpr except {FDoExprs}; else FElseExpr end;
+   TExceptExpr = class(TExceptionExpr)
+   private
+     FDoExprs: TTightList;
+     FElseExpr: TExpr;
+   public
+     destructor Destroy; override;
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+     procedure Initialize; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     procedure AddDoExpr(expr : TExceptDoExpr);
+     property ElseExpr: TExpr read FElseExpr write FElseExpr;
+   end;
 
-  TStringArraySetExpr = class(TNoResultExpr)
-  private
-    FStringExpr: TDataExpr;
-    FIndexExpr: TNoPosExpr;
-    FValueExpr: TNoPosExpr;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; StringExpr : TDataExpr; IndexExpr, ValueExpr: TNoPosExpr);
-    destructor Destroy; override;
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-    procedure Initialize; override;
-  end;
+   // try..except on FExceptionVar: FExceptionVar.Typ do FDoBlockExpr; ... end;
+   TExceptDoExpr = class(TNoResultExpr)
+   private
+     FExceptionVar: TDataSymbol;
+     FDoBlockExpr: TExpr;
+   public
+     destructor Destroy; override;
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+     procedure Initialize; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     property DoBlockExpr: TExpr read FDoBlockExpr write FDoBlockExpr;
+     property ExceptionVar: TDataSymbol read FExceptionVar write FExceptionVar;
+   end;
 
-  TVarStringArraySetExpr = class(TStringArraySetExpr)
-  public
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   // try FTryExpr finally FHandlerExpr end;
+   TFinallyExpr = class(TExceptionExpr)
+   public
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
 
-  TVarStringArraySetChrExpr = class(TStringArraySetExpr)
-  public
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-  end;
+   TStringArraySetExpr = class(TNoResultExpr)
+   private
+     FStringExpr: TDataExpr;
+     FIndexExpr: TNoPosExpr;
+     FValueExpr: TNoPosExpr;
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; StringExpr : TDataExpr; IndexExpr, ValueExpr: TNoPosExpr);
+     destructor Destroy; override;
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+     procedure Initialize; override;
+   end;
+
+   TVarStringArraySetExpr = class(TStringArraySetExpr)
+   public
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+
+   TVarStringArraySetChrExpr = class(TStringArraySetExpr)
+   public
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -873,14 +899,21 @@ end;
 //
 procedure TVarExpr.AssignValueAsInteger(const Value: Int64);
 begin
-  FStack.WriteIntValue(Addr, Value);
+   FStack.WriteIntValue(Addr, Value);
+end;
+
+// AssignValueAsFloat
+//
+procedure TVarExpr.AssignValueAsFloat(var Value: Double);
+begin
+   FStack.WriteFloatValue(Addr, Value);
 end;
 
 // AssignValueAsString
 //
 procedure TVarExpr.AssignValueAsString(const Value: String);
 begin
-  FStack.WriteStrValue(Addr, Value);
+   FStack.WriteStrValue(Addr, Value);
 end;
 
 // ------------------
@@ -2516,7 +2549,32 @@ begin
             subExpr.Right:=nil;
             Free;
          end;
+      end else if FRight.IsConstant then begin
+         Result:=OptimizeConstAssignment;
       end;
+   end;
+end;
+
+// OptimizeConstAssignment
+//
+function TAssignExpr.OptimizeConstAssignment : TNoPosExpr;
+var
+   floatBuf : Double;
+   stringBuf : String;
+begin
+   Result:=Self;
+   if IsIntegerType(FRight.Typ) then begin
+      Result:=TAssignConstToIntegerVarExpr.Create(Prog, Pos, FLeft, FRight.EvalAsInteger);
+   end else if IsFloatType(FRight.Typ) then begin
+      FRight.EvalAsFloat(floatBuf);
+      Result:=TAssignConstToFloatVarExpr.Create(Prog, Pos, FLeft, floatBuf);
+   end else if IsStringType(FRight.Typ) then begin
+      FRight.EvalAsString(stringBuf);
+      Result:=TAssignConstToStringVarExpr.Create(Prog, Pos, FLeft, stringBuf);
+   end;
+   if Result<>Self then begin
+      FLeft:=nil;
+      Free;
    end;
 end;
 
@@ -2551,43 +2609,89 @@ begin
 end;
 
 // ------------------
-// ------------------ TAssignZeroToIntegerVarExpr ------------------
+// ------------------ TAssignConstExpr ------------------
+// ------------------
+
+// TypeCheckNoPos
+//
+procedure TAssignConstExpr.TypeCheckNoPos(const aPos : TScriptPos);
+begin
+   // nothing, checked during optimize
+end;
+
+// Initialize
+//
+procedure TAssignConstExpr.Initialize;
+begin
+   FLeft.Initialize;
+end;
+
+// ------------------
+// ------------------ TAssignConstToIntegerVarExpr ------------------
 // ------------------
 
 // Create
 //
-constructor TAssignZeroToIntegerVarExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr);
+constructor TAssignConstToIntegerVarExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Int64);
 begin
-  inherited Create(Prog, Pos, Left, nil);
-  Assert(Left is TVarExpr);
-  Assert(Left.Typ=Prog.TypInteger);
+   inherited Create(Prog, Pos, Left, nil);
+   FRight:=rightValue;
 end;
 
 // EvalNoResult
 //
-procedure TAssignZeroToIntegerVarExpr.EvalNoResult(var status : TExecutionStatusResult);
+procedure TAssignConstToIntegerVarExpr.EvalNoResult(var status : TExecutionStatusResult);
 begin
-   TVarExpr(FLeft).AssignValueAsInteger(0);
+   TVarExpr(FLeft).AssignValueAsInteger(FRight);
+end;
+
+// Optimize
+//
+function TAssignConstToIntegerVarExpr.Optimize : TNoPosExpr;
+begin
+   if FRight=0 then begin
+      Result:=TAssignConstToIntegerVarExpr.Create(Prog, Pos, FLeft, 0);
+      FLeft:=nil;
+      Free;
+   end else Result:=Self;
 end;
 
 // ------------------
-// ------------------ TAssignEmptyToStringVarExpr ------------------
+// ------------------ TAssignConstToFloatVarExpr ------------------
 // ------------------
 
 // Create
 //
-constructor TAssignEmptyToStringVarExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr);
+constructor TAssignConstToFloatVarExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Double);
 begin
-  inherited Create(Prog, Pos, Left, nil);
-  Assert(Left is TVarExpr);
-  Assert(Left.Typ=Prog.TypString);
+   inherited Create(Prog, Pos, Left, nil);
+   FRight:=rightValue;
 end;
 
 // EvalNoResult
 //
-procedure TAssignEmptyToStringVarExpr.EvalNoResult(var status : TExecutionStatusResult);
+procedure TAssignConstToFloatVarExpr.EvalNoResult(var status : TExecutionStatusResult);
 begin
-   TVarExpr(FLeft).AssignValueAsString('');
+   TVarExpr(FLeft).AssignValueAsFloat(FRight);
+end;
+
+// ------------------
+// ------------------ TAssignConstToStringVarExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TAssignConstToStringVarExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : String);
+begin
+   inherited Create(Prog, Pos, Left, nil);
+   FRight:=rightValue;
+end;
+
+// EvalNoResult
+//
+procedure TAssignConstToStringVarExpr.EvalNoResult(var status : TExecutionStatusResult);
+begin
+   TVarExpr(FLeft).AssignValueAsString(FRight);
 end;
 
 // ------------------
@@ -2641,12 +2745,14 @@ var
    i : Integer;
    oldTable : TSymbolTable;
    expr : TExpr;
+   list : PPointerList;
 begin
    oldTable:=FProg.Table;
    try
       FProg.Table:=FTable;
+      list:=FStatements.List;
       for i:=0 to FStatements.Count-1 do begin
-         expr:=TExpr(FStatements.List[i]);
+         expr:=TExpr(list[i]);
          FProg.DoStep(expr);
          expr.EvalNoResult(status);
          if status<>esrNone then Break;

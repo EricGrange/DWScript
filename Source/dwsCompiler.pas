@@ -188,7 +188,7 @@ type
       function ReadTypeCast(const NamePos: TScriptPos; TypeSym: TSymbol): TExpr;
       procedure ReadTypeDecl;
       procedure ReadUses;
-      function ReadVarDecl: TExpr;
+      function ReadVarDecl: TNoResultExpr;
       function ReadWhile: TWhileExpr;
       function ResolveUnitReferences(Units: TStrings): TInterfaceList;
 
@@ -608,7 +608,7 @@ begin
     end;
 end;
 
-function TdwsCompiler.ReadVarDecl: TExpr;
+function TdwsCompiler.ReadVarDecl: TNoResultExpr;
 var
   x: Integer;
   names: TStringList;
@@ -618,7 +618,7 @@ var
   vars: TList;
   initData: TData;
   initExpr: TNoPosExpr;
-  assignExpr : TAssignConstDataToVarExpr;
+  assignExpr : TAssignExpr;
   constExpr : TConstExpr;
   varExpr : TVarExpr;
 begin
@@ -666,12 +666,13 @@ begin
         // Initialize with an expression
         Result := TAssignExpr.Create(FProg, pos, GetVarExpr(vars[x]), initExpr);
         initExpr := nil;
-
         try
-          Result.TypeCheck;
+            Result.TypeCheck;
+            if Optimize then
+               Result:=Result.OptimizeToNoResultExpr;
         except
-          Result.Free;
-          raise;
+            Result.Free;
+            raise;
         end;
       end
       else
@@ -686,9 +687,11 @@ begin
           // Initialize with default value
           varExpr:=GetVarExpr(vars[x]);
           if varExpr.Typ=FProg.TypInteger then
-             assignExpr:=TAssignZeroToIntegerVarExpr.Create(FProg, pos, varExpr)
+             assignExpr:=TAssignConstToIntegerVarExpr.Create(FProg, pos, varExpr, 0)
+          else if varExpr.Typ=FProg.TypFloat then
+             assignExpr:=TAssignConstToFloatVarExpr.Create(FProg, pos, varExpr, 0)
           else if varExpr.Typ=FProg.TypString then
-             assignExpr:=TAssignEmptyToStringVarExpr.Create(FProg, pos, varExpr)
+             assignExpr:=TAssignConstToStringVarExpr.Create(FProg, pos, varExpr, '')
           else begin
             initData := nil;
             SetLength(initData, sym.Typ.Size);
@@ -1145,7 +1148,7 @@ var
   pos: TScriptPos;
   posArray: TScriptPosArray;
   varExpr : TVarExpr;
-  assignExpr : TAssignConstDataToVarExpr;
+  assignExpr : TAssignExpr;
 begin
   // Stop if declaration was forwarded or external
   if (TFuncSymbol(Proc).IsForwarded) then
@@ -1203,9 +1206,11 @@ begin
 
               varExpr:=GetVarExpr(dataSym);
               if varExpr.Typ=FProg.TypInteger then
-                 assignExpr:=TAssignZeroToIntegerVarExpr.Create(FProg, pos, varExpr)
+                 assignExpr:=TAssignConstToIntegerVarExpr.Create(FProg, pos, varExpr, 0)
+              else if varExpr.Typ=FProg.TypFloat then
+                 assignExpr:=TAssignConstToFloatVarExpr.Create(FProg, pos, varExpr, 0)
               else if varExpr.Typ=FProg.TypString then
-                 assignExpr:=TAssignEmptyToStringVarExpr.Create(FProg, pos, varExpr)
+                 assignExpr:=TAssignConstToStringVarExpr.Create(FProg, pos, varExpr, '')
               else begin
                  // Initialize with default value
                  initData := nil;
@@ -2225,9 +2230,11 @@ begin
             Result := TAssignDataExpr.Create(FProg, pos, Left, TDataExpr(right))
          end else begin
             Result:=TAssignExpr.Create(FProg, pos, Left, TDataExpr(right));
-            if Optimize then
-               Result:=Result.OptimizeToNoResultExpr;
          end;
+
+         Result.TypeCheck;
+         if Optimize then
+            Result:=Result.OptimizeToNoResultExpr;
       end else FMsgs.AddCompilerStop(Pos, CPE_RightSideNeedsReturnType);
    except
       right.Free;

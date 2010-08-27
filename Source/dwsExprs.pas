@@ -448,6 +448,7 @@ type
     procedure AssignExpr(Expr: TNoPosExpr); virtual;
     procedure AssignValue(const Value: Variant); virtual;
     procedure AssignValueAsInteger(const value : Int64); virtual;
+    procedure AssignValueAsFloat(var value : Double); virtual;
     procedure AssignValueAsString(const value: String); virtual;
     function Eval: Variant; override;
     property Addr: Integer read GetAddr;
@@ -2159,6 +2160,13 @@ end;
 // AssignValueAsInteger
 //
 procedure TDataExpr.AssignValueAsInteger(const value : Int64);
+begin
+   AssignValue(value);
+end;
+
+// AssignValueAsFloat
+//
+procedure TDataExpr.AssignValueAsFloat(var value : Double);
 begin
    AssignValue(value);
 end;
