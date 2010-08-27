@@ -30,8 +30,11 @@ type
   TCompilerOption = (coOptimize, coSymbolDictionary, coContextMap);
   TCompilerOptions = set of TCompilerOption;
 
-  TIncludeEvent = procedure(const scriptName: string; var scriptSource: string) of
-    object;
+const
+   cDefaultCompilerOptions = [coOptimize];
+
+type
+  TIncludeEvent = procedure(const scriptName: string; var scriptSource: string) of object;
 
   TdwsFilter = class;
 
@@ -66,7 +69,7 @@ type
   published
     property Filter: TdwsFilter read FFilter write SetFilter;
     property ResultType: TdwsResultType read FResultType write SetResultType;
-    property CompilerOptions: TCompilerOptions read FCompilerOptions write FCompilerOptions;
+    property CompilerOptions: TCompilerOptions read FCompilerOptions write FCompilerOptions default cDefaultCompilerOptions;
     property MaxDataSize: Integer read FMaxDataSize write FMaxDataSize;
     property ScriptPaths: TStrings read FScriptPaths write SetScriptPaths;
     property Timeout: Integer read FTimeout write FTimeout;
@@ -109,6 +112,8 @@ type
       FTok: TTokenizer;
       FIsExcept: Boolean;
       FForVarExprs: TList;
+
+      function Optimize : Boolean; inline;
 
       function CheckFuncParams(ParamsA, ParamsB: TSymbolTable; IndexSym: TSymbol = nil;
                                TypSym: TSymbol = nil): Boolean;
@@ -477,6 +482,13 @@ begin
    end;
 
    FProg.Compiler := nil;
+end;
+
+// Optimize
+//
+function TdwsCompiler.Optimize : Boolean;
+begin
+   Result:=coOptimize in FCompilerOptions;
 end;
 
 function TdwsCompiler.ReadScript(const AName: string; ScriptType: TScriptSourceType): TBlockExpr;
@@ -1327,7 +1339,8 @@ begin
    Result := nil;
    if FTok.TestDelete(ttBEGIN) then begin
       Result:=ReadBlocks([ttEND], tt);
-      Result:=Result.OptimizeToNoResultExpr;
+      if Optimize then
+         Result:=Result.OptimizeToNoResultExpr;
    end else if FTok.HasTokens then begin
       // Read a single instruction
       Result:=ReadInstr;
@@ -2212,7 +2225,8 @@ begin
             Result := TAssignDataExpr.Create(FProg, pos, Left, TDataExpr(right))
          end else begin
             Result:=TAssignExpr.Create(FProg, pos, Left, TDataExpr(right));
-            Result:=Result.OptimizeToNoResultExpr;
+            if Optimize then
+               Result:=Result.OptimizeToNoResultExpr;
          end;
       end else FMsgs.AddCompilerStop(Pos, CPE_RightSideNeedsReturnType);
    except
@@ -3110,7 +3124,14 @@ begin
                roeClass:=TRelOpFloatExpr
             else if r.Typ=FProg.TypString then
                roeClass:=TRelOpStrExpr;
+          end else if TNoPosExpr.IsNumberType(r.Typ) and TNoPosExpr.IsNumberType(Result.Typ) then begin
+            roeClass:=TRelOpFloatExpr;
+            if Optimize then begin
+               Result:=Result.OptimizeIntegerConstantToFloatConstant;
+               r:=r.OptimizeIntegerConstantToFloatConstant;
+            end;
           end;
+
           case tt of
             ttEQ: Result := roeClass.Create(FProg, hotPos, Result, r, roEqual);
             ttLESS: Result := roeClass.Create(FProg, hotPos, Result, r, roLess);
@@ -3227,30 +3248,26 @@ begin
       // Read right argument
       right := ReadTerm;
       try
-        // Generate function and add left and right argument
-        case tt of
-          ttTIMES: begin
-             if (Result.Typ = right.Typ) and (right.Typ = FProg.TypInteger) then
-                Result := TMultIntExpr.Create(FProg, Pos, Result, right)
-             else if (Result.Typ = right.Typ) and (right.Typ = FProg.TypFloat) then
-                Result := TMultFloatExpr.Create(FProg, Pos, Result, right)
-             else Result := TMultExpr.Create(FProg, Pos, Result, right);
-          end;
-          ttDIVIDE: Result := TDivideExpr.Create(FProg, Pos, Result, right);
-          ttDIV: Result := TDivExpr.Create(FProg, Pos, Result, right);
-          ttMOD: Result := TModExpr.Create(FProg, Pos, Result, right);
-          ttAND: begin
-               if (Result.Typ=FProg.TypBoolean) or (right.Typ=FProg.TypBoolean) then
-                  Result := TBoolAndExpr.Create(FProg, Pos, Result, right)
-               else Result := TIntAndExpr.Create(FProg, Pos, Result, right);
-          end;
-          ttAS: Result := TAsOpExpr.Create(FProg, Pos, Result, right);
-        end;
+         // Generate function and add left and right argument
+         case tt of
+            ttTIMES: Result := TMultExpr.Create(FProg, Pos, Result, right);
+            ttDIVIDE: Result := TDivideExpr.Create(FProg, Pos, Result, right);
+            ttDIV: Result := TDivExpr.Create(FProg, Pos, Result, right);
+            ttMOD: Result := TModExpr.Create(FProg, Pos, Result, right);
+            ttAND: begin
+                 if (Result.Typ=FProg.TypBoolean) or (right.Typ=FProg.TypBoolean) then
+                    Result := TBoolAndExpr.Create(FProg, Pos, Result, right)
+                 else Result := TIntAndExpr.Create(FProg, Pos, Result, right);
+            end;
+            ttAS: Result := TAsOpExpr.Create(FProg, Pos, Result, right);
+         end;
       except
         right.Free;
         raise;
       end;
 
+      if Optimize then
+         Result:=Result.Optimize;
       Result.TypeCheckNoPos(Pos);
     end;
   except
@@ -3329,7 +3346,8 @@ begin
    Result:=negExprClass.Create(FProg, FTok.HotPos, negTerm);
    try
       Result.TypeCheckNoPos(FTok.HotPos);
-      Result:=Result.Optimize;
+      if Optimize then
+         Result:=Result.Optimize;
    except
       Result.Free;
       raise;
@@ -3843,6 +3861,7 @@ begin
   FStackChunkSize := C_DefaultStackChunkSize;
   FDefaultResultType := TdwsDefaultResultType.Create(nil);
   FResultType := FDefaultResultType;
+  FCompilerOptions := cDefaultCompilerOptions;
 end;
 
 destructor TConfiguration.Destroy;
