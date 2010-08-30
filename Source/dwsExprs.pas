@@ -2256,10 +2256,12 @@ begin
       if arg.Typ = nil then
          AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Caption]);
       if (paramSymbol is TVarParamSymbol) and (arg is TDataExpr) then begin
-         if not TDataExpr(arg).IsWritable and TVarParamSymbol(FFunc.Params[x]).IsWritable then
-            AddCompilerErrorFmt(CPE_ConstVarParam, [x]);
-         if arg is TVarExpr then
-            (Prog.FCompiler as TdwsCompiler).WarnForVarUsage(TVarExpr(arg));
+         if TVarParamSymbol(FFunc.Params[x]).IsWritable then begin
+            if not TDataExpr(arg).IsWritable then
+               AddCompilerErrorFmt(CPE_ConstVarParam, [x]);
+            if arg is TVarExpr then
+               (Prog.FCompiler as TdwsCompiler).WarnForVarUsage(TVarExpr(arg));
+         end;
       end;
       if not paramSymbol.Typ.IsCompatible(arg.Typ) then
          AddCompilerErrorFmt(CPE_WrongArgumentType_Long, [x, FFunc.Params[x].Typ.Caption, arg.Typ.Caption]);
