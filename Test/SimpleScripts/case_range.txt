@@ -1,0 +1,16 @@
+-3 elsewhere
+-2 negative
+-1 negative
+0 zero
+1 between 1 and 9 but 5
+2 between 1 and 9 but 5
+3 between 1 and 9 but 5
+4 between 1 and 9 but 5
+5 multiple of five
+6 between 1 and 9 but 5
+7 between 1 and 9 but 5
+8 between 1 and 9 but 5
+9 between 1 and 9 but 5
+10 multiple of five
+11 elsewhere
+Hello!
