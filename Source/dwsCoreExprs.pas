@@ -191,6 +191,7 @@ type
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function Eval: Variant; override;
      procedure Initialize; override;
+     function IsConstant : Boolean; override;
    end;
 
    // Array expressions x[index]
@@ -1438,6 +1439,18 @@ begin
      TNoPosExpr(FElementExprs.List[i]).Initialize;
 end;
 
+// IsConstant
+//
+function TArrayConstantExpr.IsConstant : Boolean;
+var
+   i : Integer;
+begin
+   for i:=0 to FElementExprs.Count-1 do
+      if not TNoPosExpr(FElementExprs.List[i]).IsConstant then
+         Exit(False);
+   Result:=True;
+end;
+
 // TypeCheckNoPos
 //
 procedure TArrayConstantExpr.TypeCheckNoPos(const aPos : TScriptPos);
@@ -1694,7 +1707,7 @@ begin
   scriptObj := IScriptObj(IUnknown(Result));
 
   if Assigned(scriptObj) and not (FRight.Typ.Typ.IsCompatible(scriptObj.ClassSym)) then
-    AddExecutionStopFmt(RTE_ClassCastFailed, [scriptObj.ClassSym.Caption, FRight.Typ.Typ.Caption]);
+    raise EScriptException.CreateFmt(RTE_ClassCastFailed, [scriptObj.ClassSym.Caption, FRight.Typ.Typ.Caption]);
 end;
 
 // TypeCheckNoPos
