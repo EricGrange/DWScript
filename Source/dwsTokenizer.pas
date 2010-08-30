@@ -843,7 +843,7 @@ begin
                // converts ASCII code to character (decimal or hex)
                caChar, caCharHex: begin
                   tokenIntVal:=tokenBuf.ToInt32Def(-1);
-                  if Cardinal(tokenIntVal) > Cardinal($FF) then
+                  if Cardinal(tokenIntVal) > Cardinal($FFFF) then
                      AddCompilerStopFmtTokenBuffer(TOK_InvalidCharConstant)
                   else begin
                      n:=Length(Result.FString)+1;
