@@ -1,0 +1,9 @@
+objA is AClass
+objB is AClass
+objB is BClass
+AClass.Q: Static method
+objA isn't BClass
+objA isn't CClass
+AClass.Q: Static method
+BClass.Q: Static method
+objB isn't CClass
