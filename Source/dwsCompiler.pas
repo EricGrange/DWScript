@@ -3229,14 +3229,15 @@ begin
                exprClass:=nil;
                Assert(False);
             end;
-            
-            Result:=exprClass.Create(FProg, Pos, Result, r);
 
+            Result:=exprClass.Create(FProg, Pos, Result, r);
          except
             r.Free;
             raise;
          end;
 
+         if Optimize then
+            Result:=Result.Optimize;
          Result.TypeCheckNoPos(Pos);
       end;
    except
