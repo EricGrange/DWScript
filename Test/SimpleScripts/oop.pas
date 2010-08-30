@@ -51,3 +51,4 @@ PrintLn('');
 PrintLn('--- Static methods');
 PrintLn(o.Q);
 PrintLn(BClass(o).Q);
+
