@@ -40,3 +40,7 @@ the rerelease went back to the simpler "DWS" name.
 
 The most current source code is currently hosted at google code in 
 the dwscript project (http://code.google.com/p/dwscript/).
+
+Contributors:
+
+- Teti, Daniele (Italy)
