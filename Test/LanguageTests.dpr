@@ -6,7 +6,8 @@ uses
   TestFrameWork,
   GUITestRunner,
   UScriptTests in 'UScriptTests.pas',
-  UAlgorithmsTests in 'UAlgorithmsTests.pas';
+  UAlgorithmsTests in 'UAlgorithmsTests.pas',
+  UHTMLFilterTests in 'UHTMLFilterTests.pas';
 
 {$R *.res}
 
