@@ -158,6 +158,7 @@ begin
                exprectedResult.LoadFromFile(resultsFileName);
                CheckEquals(exprectedResult.Text, (prog.Result as TdwsDefaultResult).Text, FTests[i]);
             end else CheckEquals('', (prog.Result as TdwsDefaultResult).Text, FTests[i]);
+            CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
          finally
             prog.Free;
          end;
