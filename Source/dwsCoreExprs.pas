@@ -3479,12 +3479,12 @@ var
 begin
    i:=FIndexExpr.EvalAsInteger;
    if i<1 then
-      AddExecutionStopFmt(RTE_ArrayLowerBoundExceeded, [i])
+      raise EScriptException.CreateFmt(RTE_ArrayLowerBoundExceeded, [i])
    else begin
       FValueExpr.EvalAsString(buf);
       c:=buf[1];
       if not TStrVarExpr(FStringExpr).SetChar(i, c) then
-         AddExecutionStopFmt(RTE_ArrayUpperBoundExceeded, [i])
+         raise EScriptException.CreateFmt(RTE_ArrayUpperBoundExceeded, [i]);
    end;
 end;
 
@@ -3499,11 +3499,11 @@ var
 begin
    i:=FIndexExpr.EvalAsInteger;
    if i<1 then
-      AddExecutionStopFmt(RTE_ArrayLowerBoundExceeded, [i])
+      raise EScriptException.CreateFmt(RTE_ArrayLowerBoundExceeded, [i])
    else begin
       c:=Chr(FValueExpr.EvalAsInteger);
       if not TStrVarExpr(FStringExpr).SetChar(i, c) then
-         AddExecutionStopFmt(RTE_ArrayUpperBoundExceeded, [i])
+         raise EScriptException.CreateFmt(RTE_ArrayUpperBoundExceeded, [i]);
    end;
 end;
 
