@@ -537,7 +537,6 @@ type
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Int64);
          procedure EvalNoResult(var status : TExecutionStatusResult); override;
-         function  Optimize : TNoPosExpr; override;
          property Right : Int64 read FRight write FRight;
    end;
 
@@ -2656,17 +2655,6 @@ end;
 procedure TAssignConstToIntegerVarExpr.EvalNoResult(var status : TExecutionStatusResult);
 begin
    TVarExpr(FLeft).AssignValueAsInteger(FRight);
-end;
-
-// Optimize
-//
-function TAssignConstToIntegerVarExpr.Optimize : TNoPosExpr;
-begin
-   if FRight=0 then begin
-      Result:=TAssignConstToIntegerVarExpr.Create(Prog, Pos, FLeft, 0);
-      FLeft:=nil;
-      Free;
-   end else Result:=Self;
 end;
 
 // ------------------
