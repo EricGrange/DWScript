@@ -740,7 +740,7 @@ begin
     if not FTok.TestDelete(ttEQ) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
 
-    Expr := ReadExpr;
+    Expr:=ReadExpr;
     try
       Expr.TypeCheckNoPos(FTok.HotPos);
       if not Expr.IsConstant then
@@ -754,8 +754,10 @@ begin
       else
         Typ := Expr.Typ;
 
-      if Typ.Size > 1 then
+      if Typ.Size>1 then
         sym := TConstSymbol.Create(Name, Typ, TConstExpr(Expr).Data, TConstExpr(Expr).Addr)
+      else if Typ is TArraySymbol then
+         sym:=TStaticArraySymbol.Create(Name, Typ, 0, TArraySymbol(Typ).Typ.Size-1)
       else
         sym := TConstSymbol.Create(Name, Typ, Expr.Eval);
       FProg.Table.AddSymbol(sym);
@@ -3100,9 +3102,10 @@ begin
   Result := ReadExprAdd;
   try
     // Read operator
-    while (FTok.Test(ttEQ) or FTok.Test(ttNOTEQ) or
-      FTok.Test(ttLESS) or FTok.Test(ttLESSEQ) or
-      FTok.Test(ttGTR) or FTok.Test(ttGTREQ)) or FTok.Test(ttIS) do
+    while (FTok.Test(ttEQ) or FTok.Test(ttNOTEQ)
+         or FTok.Test(ttLESS) or FTok.Test(ttLESSEQ)
+         or FTok.Test(ttGTR) or FTok.Test(ttGTREQ)
+         or FTok.Test(ttIS) or FTok.Test(ttAS)) do
     begin
       tt := FTok.GetToken.FTyp;
       FTok.TestDelete(tt);
@@ -3117,6 +3120,7 @@ begin
             ttEQ, ttNOTEQ:
               Result := TObjCmpExpr.Create(FProg, hotPos, Result, r, tt = ttEQ);
             ttIS: Result := TIsOpExpr.Create(FProg, hotPos, Result, r);
+            ttAS: Result := TAsOpExpr.Create(FProg, hotPos, Result, r);
           else
             FProg.Msgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
           end;
@@ -3174,8 +3178,11 @@ begin
    Result := ReadExprMult;
    try
 
-      while (   FTok.Test(ttPLUS) or FTok.Test(ttMINUS)
-             or FTok.Test(ttOR) or FTok.Test(ttXOR)) do begin
+      while (   FTok.Test(ttPLUS)
+             or FTok.Test(ttMINUS)
+             or FTok.Test(ttOR)
+             or FTok.Test(ttAND)
+             or FTok.Test(ttXOR)) do begin
 
          tt := FTok.GetToken.FTyp;
          FTok.TestDelete(tt);
@@ -3207,6 +3214,11 @@ begin
                   if (Result.Typ=FProg.TypBoolean) or (r.Typ=FProg.TypBoolean) then
                      exprClass:=TBoolOrExpr
                   else exprClass:=TIntOrExpr;
+               end;
+               ttAND: begin
+                    if (Result.Typ=FProg.TypBoolean) or (r.Typ=FProg.TypBoolean) then
+                       exprClass:=TBoolAndExpr
+                    else exprClass:=TIntAndExpr;
                end;
                ttXOR: begin
                   if (Result.Typ=FProg.TypBoolean) or (r.Typ=FProg.TypBoolean) then
@@ -3242,8 +3254,8 @@ begin
   // Read left argument
   Result := ReadTerm;
   try
-    while (FTok.Test(ttTIMES) or FTok.Test(ttDIVIDE) or FTok.Test(ttMOD)
-           or FTok.Test(ttDIV) or FTok.Test(ttAND) or FTok.Test(ttAS)) do
+    while (   FTok.Test(ttTIMES) or FTok.Test(ttDIVIDE) or FTok.Test(ttMOD)
+           or FTok.Test(ttDIV)) do
     begin
 
       tt := FTok.GetToken.FTyp;
@@ -3261,12 +3273,6 @@ begin
             ttDIVIDE: Result := TDivideExpr.Create(FProg, Pos, Result, right);
             ttDIV: Result := TDivExpr.Create(FProg, Pos, Result, right);
             ttMOD: Result := TModExpr.Create(FProg, Pos, Result, right);
-            ttAND: begin
-                 if (Result.Typ=FProg.TypBoolean) or (right.Typ=FProg.TypBoolean) then
-                    Result := TBoolAndExpr.Create(FProg, Pos, Result, right)
-                 else Result := TIntAndExpr.Create(FProg, Pos, Result, right);
-            end;
-            ttAS: Result := TAsOpExpr.Create(FProg, Pos, Result, right);
          end;
       except
         right.Free;
@@ -3313,6 +3319,9 @@ begin
       Result.Free;
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
     end;
+    if Result.Typ is TClassSymbol then
+      Result:=ReadSymbol(Result);
+
   end
   else if FTok.TestDelete(ttNIL) then
     Result := TConstExpr.CreateTyped(FProg, FProg.TypNil, nilIntf)
