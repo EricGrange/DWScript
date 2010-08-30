@@ -1,0 +1,3 @@
+before include
+Hello include!
+after include
