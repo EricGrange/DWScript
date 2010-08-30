@@ -19,6 +19,8 @@ type
          procedure SetUp; override;
          procedure TearDown; override;
 
+         procedure DoInclude(const scriptName: string; var scriptSource: string);
+
          procedure Execution;
 
       published
@@ -71,6 +73,7 @@ begin
    CollectFiles(ExtractFilePath(ParamStr(0))+'Algorithms'+PathDelim, '*.pas', FAlgos);
 
    FCompiler:=TDelphiWebScript.Create(nil);
+   FCompiler.OnInclude:=DoInclude;
 end;
 
 // TearDown
@@ -81,6 +84,21 @@ begin
 
    FTests.Free;
    FFailures.Free;
+end;
+
+// DoInclude
+//
+procedure TScriptTests.DoInclude(const scriptName: string; var scriptSource: string);
+var
+   sl : TStringList;
+begin
+   sl:=TStringList.Create;
+   try
+      sl.LoadFromFile('SimpleScripts\'+scriptName);
+      scriptSource:=sl.Text;
+   finally
+      sl.Free;
+   end;
 end;
 
 // Compilation
