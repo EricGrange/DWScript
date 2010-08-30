@@ -286,6 +286,7 @@ type
      FIsForwarded: Boolean;
      FDeprecatedMessage : String;
      FIsDeprecated: Boolean;
+     FIsStateless : Boolean;
      FKind: TFuncKind;
      FParams: TParamsSymbolTable;
      FResult: TDataSymbol;
@@ -313,6 +314,7 @@ type
      property Executable: IExecutable read FExecutable write FExecutable;
      property DeprecatedMessage : String read FDeprecatedMessage write FDeprecatedMessage;
      property IsDeprecated : Boolean read GetIsDeprecated write SetIsDeprecated;
+     property IsStateless : Boolean read FIsStateless write FIsStateless;
      property IsForwarded: Boolean read FIsForwarded write FIsForwarded;
      property Kind: TFuncKind read FKind write FKind;
      property Level: Integer read GetLevel;

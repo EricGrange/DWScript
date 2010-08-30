@@ -485,6 +485,8 @@ type
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
     procedure Initialize; override;
     function GetArgs : TExprBaseList;
+    function Optimize : TNoPosExpr; override;
+    function IsConstant : Boolean; override;
     property FuncSym: TFuncSymbol read FFunc;
    end;
 
@@ -2283,6 +2285,31 @@ end;
 function TFuncExprBase.GetArgs : TExprBaseList;
 begin
    Result:=@FArgs;
+end;
+
+// Optimize
+//
+function TFuncExprBase.Optimize : TNoPosExpr;
+begin
+   if IsConstant then begin
+      Result:=TConstExpr.CreateTyped(Prog, Typ, Eval);
+      Free;
+   end else Result:=Self;
+end;
+
+// IsConstant
+//
+function TFuncExprBase.IsConstant : Boolean;
+var
+   i : Integer;
+begin
+   if not FuncSym.IsStateless then Exit(False);
+
+   for i:=0 to FArgs.Count-1 do
+      if not TNoPosExpr(FArgs.ExprBase[i]).IsConstant then
+         Exit(False);
+
+   Result:=True;
 end;
 
 // ------------------

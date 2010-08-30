@@ -51,7 +51,8 @@ type
   TInternalFunction = class(TFunctionPrototype, IUnknown, ICallable)
   public
     constructor Create(Table: TSymbolTable; const FuncName: string;
-                       const FuncParams: array of string; const FuncType: string); dynamic;
+                       const FuncParams: array of string; const FuncType: string;
+                       const isStateLess : Boolean); dynamic;
     procedure Call(Caller: TdwsProgram; Func: TFuncSymbol);
     procedure Execute; virtual; abstract;
   end;
@@ -60,7 +61,8 @@ type
   TInternalMagicFunction = class(TInternalFunction)
   public
     constructor Create(Table: TSymbolTable; const FuncName: string;
-                       const FuncParams: array of string; const FuncType: string); override;
+                       const FuncParams: array of string; const FuncType: string;
+                       const isStateLess : Boolean); override;
     procedure Execute; override;
     function DoEval(args : TExprBaseList) : Variant; virtual; abstract;
   end;
@@ -144,15 +146,16 @@ type
   end;
 
 procedure RegisterInternalFunction(InternalFunctionClass: TInternalFunctionClass;
-      const FuncName: string; const FuncParams: array of string; const FuncType: string);
+      const FuncName: string; const FuncParams: array of string;
+      const FuncType: string; const isStateLess : Boolean = False);
 procedure RegisterInternalIntFunction(InternalFunctionClass: TInternalMagicIntFunctionClass;
-      const FuncName: string; const FuncParams: array of string);
+      const FuncName: string; const FuncParams: array of string; const isStateLess : Boolean = False);
 procedure RegisterInternalBoolFunction(InternalFunctionClass: TInternalMagicBoolFunctionClass;
-      const FuncName: string; const FuncParams: array of string);
+      const FuncName: string; const FuncParams: array of string; const isStateLess : Boolean = False);
 procedure RegisterInternalFloatFunction(InternalFunctionClass: TInternalMagicFloatFunctionClass;
-      const FuncName: string; const FuncParams: array of string);
+      const FuncName: string; const FuncParams: array of string; const isStateLess : Boolean = False);
 procedure RegisterInternalStringFunction(InternalFunctionClass: TInternalMagicStringFunctionClass;
-      const FuncName: string; const FuncParams: array of string);
+      const FuncName: string; const FuncParams: array of string; const isStateLess : Boolean = False);
 procedure RegisterInternalProcedure(InternalFunctionClass: TInternalFunctionClass;
       const FuncName: string; const FuncParams: array of string);
 
@@ -179,13 +182,15 @@ type
     InternalFunctionClass: TInternalFunctionClass;
     FuncName: string;
     FuncParams: array of string;
-    FuncType: string
+    FuncType: string;
+    StateLess : Boolean;
   end;
   PRegisteredInternalFunction = ^TRegisteredInternalFunction;
 
 procedure RegisterInternalFunction(InternalFunctionClass:
   TInternalFunctionClass; const FuncName: string;
-  const FuncParams: array of string; const FuncType: string);
+  const FuncParams: array of string; const FuncType: string;
+  const isStateLess : Boolean = False);
 var
   i: Integer;
   rif: PRegisteredInternalFunction;
@@ -193,6 +198,7 @@ begin
   New(rif);
   rif.InternalFunctionClass := InternalFunctionClass;
   rif.FuncName := FuncName;
+  rif.StateLess:=isStateLess;
 
   SetLength(rif.FuncParams, Length(FuncParams));
 
@@ -206,33 +212,33 @@ end;
 // RegisterInternalIntFunction
 //
 procedure RegisterInternalIntFunction(InternalFunctionClass: TInternalMagicIntFunctionClass;
-      const FuncName: string; const FuncParams: array of string);
+      const FuncName: string; const FuncParams: array of string; const isStateLess : Boolean = False);
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Integer');
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Integer', isStateLess);
 end;
 
 // RegisterInternalBoolFunction
 //
 procedure RegisterInternalBoolFunction(InternalFunctionClass: TInternalMagicBoolFunctionClass;
-      const FuncName: string; const FuncParams: array of string);
+      const FuncName: string; const FuncParams: array of string; const isStateLess : Boolean = False);
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Boolean');
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Boolean', isStateLess);
 end;
 
 // RegisterInternalFloatFunction
 //
 procedure RegisterInternalFloatFunction(InternalFunctionClass: TInternalMagicFloatFunctionClass;
-      const FuncName: string; const FuncParams: array of string);
+      const FuncName: string; const FuncParams: array of string; const isStateLess : Boolean = False);
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Float');
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Float', isStateLess);
 end;
 
 // RegisterInternalStringFunction
 //
 procedure RegisterInternalStringFunction(InternalFunctionClass: TInternalMagicStringFunctionClass;
-      const FuncName: string; const FuncParams: array of string);
+      const FuncName: string; const FuncParams: array of string; const isStateLess : Boolean = False);
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'String');
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'String', isStateLess);
 end;
 
 // RegisterInternalProcedure
@@ -240,7 +246,7 @@ end;
 procedure RegisterInternalProcedure(InternalFunctionClass: TInternalFunctionClass;
       const FuncName: string; const FuncParams: array of string);
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, '');
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, '', False);
 end;
 
 procedure ConvertFuncParams(var Params: TParamArray;
@@ -309,7 +315,8 @@ end;
 { TInternalFunction }
 
 constructor TInternalFunction.Create(Table: TSymbolTable;
-  const FuncName: string; const FuncParams: array of string; const FuncType: string);
+  const FuncName: string; const FuncParams: array of string; const FuncType: string;
+  const isStateLess : Boolean);
 var
   sym: TFuncSymbol;
   Params: TParamArray;
@@ -319,6 +326,7 @@ begin
   sym := TFuncSymbol.Generate(Table, FuncName, Params, FuncType);
   sym.Params.AddParent(Table);
   sym.Executable := ICallable(Self);
+  sym.IsStateless:=isStateLess;
   Table.AddSymbol(sym);
 
   FInfo := TProgramInfo.Create(sym.Params);
@@ -338,7 +346,8 @@ end;
 // Create
 //
 constructor TInternalMagicFunction.Create(Table: TSymbolTable;
-  const FuncName: string; const FuncParams: array of string; const FuncType: string);
+  const FuncName: string; const FuncParams: array of string; const FuncType: string;
+  const isStateLess : Boolean);
 var
   sym: TMagicFuncSymbol;
   Params: TParamArray;
@@ -348,6 +357,7 @@ begin
   sym := TMagicFuncSymbol.Generate(Table, FuncName, Params, FuncType);
   sym.Params.AddParent(Table);
   sym.InternalFunction:=Self;
+  sym.IsStateless:=isStateLess;
   Table.AddSymbol(sym);
 end;
 
@@ -637,7 +647,8 @@ begin
   begin
     rif := PRegisteredInternalFunction(FRegisteredInternalFunctions[i]);
     try
-      rif.InternalFunctionClass.Create(UnitTable, rif.FuncName, rif.FuncParams, rif.FuncType);
+      rif.InternalFunctionClass.Create(UnitTable, rif.FuncName, rif.FuncParams,
+                                       rif.FuncType, rif.StateLess);
     except
       on e: Exception do
         raise

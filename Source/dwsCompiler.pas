@@ -147,7 +147,7 @@ type
       function ReadField(var Expr: TDataExpr; Sym: TFieldSymbol): TNoPosExpr;
       function ReadFor: TForExpr;
       function ReadStaticMethod(methodSym: TMethodSymbol; IsWrite: Boolean): TFuncExpr;
-      function ReadFunc(FuncSym: TFuncSymbol; IsWrite: Boolean; CodeExpr: TDataExpr = nil): TFuncExprBase;
+      function ReadFunc(FuncSym: TFuncSymbol; IsWrite: Boolean; CodeExpr: TDataExpr = nil): TNoPosExpr;
       procedure ReadFuncArgs(AddArgProc: TAddArgProcedure; LDelim: TTokenType = ttBLEFT; RDelim: TTokenType = ttBRIGHT);
       function ReadIf: TIfExpr;
       function ReadInherited(IsWrite: Boolean): TNoPosExpr;
@@ -2271,7 +2271,7 @@ end;
 // ReadFunc
 //
 function TdwsCompiler.ReadFunc(FuncSym: TFuncSymbol; IsWrite: Boolean;
-                               CodeExpr: TDataExpr = nil): TFuncExprBase;
+                               CodeExpr: TDataExpr = nil): TNoPosExpr;
 var
    internalFunc : TObject;
    magicFuncSym : TMagicFuncSymbol;
@@ -2312,6 +2312,9 @@ begin
       Result.Free;
       raise;
    end;
+
+   if Optimize then
+      Result:=Result.Optimize;
 end;
 
 // ReadFuncArgs
@@ -3944,9 +3947,9 @@ begin
     ['Cls', SYS_STRING, 'Msg', SYS_STRING], '', clsDelphiException, SystemTable);
   SystemTable.AddSymbol(clsDelphiException);
 
-  TParamFunc.Create(SystemTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT);
-  TParamStrFunc.Create(SystemTable, 'ParamStr', ['Index', SYS_INTEGER], SYS_STRING);
-  TParamCountFunc.Create(SystemTable, 'ParamCount', [], SYS_INTEGER);
+  TParamFunc.Create(SystemTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, False);
+  TParamStrFunc.Create(SystemTable, 'ParamStr', ['Index', SYS_INTEGER], SYS_STRING, False);
+  TParamCountFunc.Create(SystemTable, 'ParamCount', [], SYS_INTEGER, False);
 end;
 
 procedure TConfiguration.SetFilter(const Value: TdwsFilter);
@@ -4164,8 +4167,8 @@ end;
 procedure TdwsDefaultResultType.AddResultSymbols(SymbolTable: TSymbolTable);
 begin
   inherited;
-  TPrintFunction.Create(SymbolTable, 'Print', ['v', 'Variant'], '');
-  TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['v', 'Variant'], '');
+  TPrintFunction.Create(SymbolTable, 'Print', ['v', 'Variant'], '', False);
+  TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['v', 'Variant'], '', False);
 end;
 
 

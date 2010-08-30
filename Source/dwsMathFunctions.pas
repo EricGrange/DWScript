@@ -536,50 +536,50 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   RegisterInternalIntFunction(TIncFunc, 'Inc', ['@a', cInteger, 'b', cInteger]);
-   RegisterInternalIntFunction(TDecFunc, 'Dec', ['@a', cInteger, 'b', cInteger]);
+   RegisterInternalIntFunction(TIncFunc, 'Inc', ['@a', cInteger, 'b', cInteger], True);
+   RegisterInternalIntFunction(TDecFunc, 'Dec', ['@a', cInteger, 'b', cInteger], True);
 
-   RegisterInternalFloatFunction(TSinFunc, 'Sin', ['a', cFloat]);
-   RegisterInternalFloatFunction(TSinhFunc, 'Sinh', ['a', cFloat]);
-   RegisterInternalFloatFunction(TCosFunc, 'Cos', ['a', cFloat]);
-   RegisterInternalFloatFunction(TCoshFunc, 'Cosh', ['a', cFloat]);
-   RegisterInternalFloatFunction(TTanFunc, 'Tan', ['a', cFloat]);
-   RegisterInternalFloatFunction(TTanhFunc, 'Tanh', ['a', cFloat]);
-   RegisterInternalFloatFunction(TArcSinFunc, 'ArcSin', ['v', cFloat]);
-   RegisterInternalFloatFunction(TArcSinhFunc, 'ArcSinh', ['v', cFloat]);
-   RegisterInternalFloatFunction(TArcCosFunc, 'ArcCos', ['v', cFloat]);
-   RegisterInternalFloatFunction(TArcCoshFunc, 'ArcCosh', ['v', cFloat]);
-   RegisterInternalFloatFunction(TArcTanFunc, 'ArcTan', ['v', cFloat]);
-   RegisterInternalFloatFunction(TArcTanhFunc, 'ArcTanh', ['v', cFloat]);
-   RegisterInternalFloatFunction(TCotanFunc, 'Cotan', ['a', cFloat]);
-   RegisterInternalFloatFunction(THypotFunc, 'Hypot', ['x', cFloat, 'y', cFloat]);
-   RegisterInternalFloatFunction(TAbsFunc, 'Abs', ['v', cFloat]);
-   RegisterInternalFloatFunction(TExpFunc, 'Exp', ['v', cFloat]);
-   RegisterInternalFloatFunction(TLnFunc, 'Ln', ['v', cFloat]);
-   RegisterInternalFloatFunction(TLog2Func, 'Log2', ['v', cFloat]);
-   RegisterInternalFloatFunction(TLog10Func, 'Log10', ['v', cFloat]);
-   RegisterInternalFloatFunction(TLogNFunc, 'LogN', ['n', cFloat, 'x', cFloat]);
-   RegisterInternalFloatFunction(TPowerFunc, 'Power', ['base', cFloat, 'exponent', cFloat]);
-   RegisterInternalFloatFunction(TSqrtFunc, 'Sqrt', ['v', cFloat]);
-   RegisterInternalFloatFunction(TSqrFunc, 'Sqr', ['v', cFloat]);
-   RegisterInternalFloatFunction(TIntFunc, 'Int', ['v', cFloat]);
-   RegisterInternalFloatFunction(TFracFunc, 'Frac', ['v', cFloat]);
-   RegisterInternalFloatFunction(TFloorFunc, 'Floor', ['v', cFloat]);
-   RegisterInternalFloatFunction(TCeilFunc, 'Ceil', ['v', cFloat]);
+   RegisterInternalFloatFunction(TSinFunc, 'Sin', ['a', cFloat], True);
+   RegisterInternalFloatFunction(TSinhFunc, 'Sinh', ['a', cFloat], True);
+   RegisterInternalFloatFunction(TCosFunc, 'Cos', ['a', cFloat], True);
+   RegisterInternalFloatFunction(TCoshFunc, 'Cosh', ['a', cFloat], True);
+   RegisterInternalFloatFunction(TTanFunc, 'Tan', ['a', cFloat], True);
+   RegisterInternalFloatFunction(TTanhFunc, 'Tanh', ['a', cFloat], True);
+   RegisterInternalFloatFunction(TArcSinFunc, 'ArcSin', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TArcSinhFunc, 'ArcSinh', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TArcCosFunc, 'ArcCos', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TArcCoshFunc, 'ArcCosh', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TArcTanFunc, 'ArcTan', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TArcTanhFunc, 'ArcTanh', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TCotanFunc, 'Cotan', ['a', cFloat], True);
+   RegisterInternalFloatFunction(THypotFunc, 'Hypot', ['x', cFloat, 'y', cFloat], True);
+   RegisterInternalFloatFunction(TAbsFunc, 'Abs', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TExpFunc, 'Exp', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TLnFunc, 'Ln', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TLog2Func, 'Log2', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TLog10Func, 'Log10', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TLogNFunc, 'LogN', ['n', cFloat, 'x', cFloat], True);
+   RegisterInternalFloatFunction(TPowerFunc, 'Power', ['base', cFloat, 'exponent', cFloat], True);
+   RegisterInternalFloatFunction(TSqrtFunc, 'Sqrt', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TSqrFunc, 'Sqr', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TIntFunc, 'Int', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TFracFunc, 'Frac', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TFloorFunc, 'Floor', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TCeilFunc, 'Ceil', ['v', cFloat], True);
 
    RegisterInternalFunction(TTruncFunc, 'Trunc', ['v', cFloat], cInteger);
    RegisterInternalFunction(TRoundFunc, 'Round', ['v', cFloat], cInteger);
 
-   RegisterInternalFloatFunction(TDegToRadFunc, 'DegToRad', ['a', cFloat]);
-   RegisterInternalFloatFunction(TRadToDegFunc, 'RadToDeg', ['a', cFloat]);
+   RegisterInternalFloatFunction(TDegToRadFunc, 'DegToRad', ['a', cFloat], True);
+   RegisterInternalFloatFunction(TRadToDegFunc, 'RadToDeg', ['a', cFloat], True);
 
-   RegisterInternalFloatFunction(TMaxFunc, 'Max', ['v1', cFloat, 'v2', cFloat]);
-   RegisterInternalFloatFunction(TMinFunc, 'Min', ['v1', cFloat, 'v2', cFloat]);
+   RegisterInternalFloatFunction(TMaxFunc, 'Max', ['v1', cFloat, 'v2', cFloat], True);
+   RegisterInternalFloatFunction(TMinFunc, 'Min', ['v1', cFloat, 'v2', cFloat], True);
 
-   RegisterInternalIntFunction(TMaxIntFunc, 'MaxInt', ['v1', cInteger, 'v2', cInteger]);
-   RegisterInternalIntFunction(TMinIntFunc, 'MinInt', ['v1', cInteger, 'v2', cInteger]);
+   RegisterInternalIntFunction(TMaxIntFunc, 'MaxInt', ['v1', cInteger, 'v2', cInteger], True);
+   RegisterInternalIntFunction(TMinIntFunc, 'MinInt', ['v1', cInteger, 'v2', cInteger], True);
 
-   RegisterInternalFloatFunction(TPiFunc, 'Pi', []);
+   RegisterInternalFloatFunction(TPiFunc, 'Pi', [], True);
    RegisterInternalFloatFunction(TRandomFunc, 'Random', []);
    RegisterInternalIntFunction(TRandomIntFunc, 'RandomInt', ['range', cInteger]);
    RegisterInternalFunction(TRandomizeFunc, 'Randomize', [], '');
