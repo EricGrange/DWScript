@@ -11,3 +11,4 @@ PrintOut();
 PrintOut(TWO+MINUS_ONE-ONE);
 PrintOut(ONE);
 PrintOut(TWO);
+PrintOut($100);
