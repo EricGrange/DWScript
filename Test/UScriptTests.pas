@@ -21,11 +21,13 @@ type
 
          procedure DoInclude(const scriptName: string; var scriptSource: string);
 
+         procedure Compilation;
          procedure Execution;
 
       published
 
-         procedure Compilation;
+         procedure CompilationNormal;
+         procedure CompilationWithMapAndSymbols;
          procedure ExecutionNonOptimized;
          procedure ExecutionOptimized;
          procedure CompilationFailure;
@@ -168,6 +170,22 @@ begin
    end;
 end;
 
+// CompilationNormal
+//
+procedure TScriptTests.CompilationNormal;
+begin
+   FCompiler.Config.CompilerOptions:=[coOptimize];
+   Compilation;
+end;
+
+// CompilationWithMapAndSymbols
+//
+procedure TScriptTests.CompilationWithMapAndSymbols;
+begin
+   FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap];
+   Compilation;
+end;
+
 // ExecutionNonOptimized
 //
 procedure TScriptTests.ExecutionNonOptimized;
@@ -192,6 +210,7 @@ var
    i : Integer;
    prog : TdwsProgram;
 begin
+   FCompiler.Config.CompilerOptions:=[coOptimize];
    source:=TStringList.Create;
    try
 

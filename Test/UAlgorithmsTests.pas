@@ -18,10 +18,12 @@ type
          procedure TearDown; override;
 
          procedure Execution;
+         procedure Compilation;
 
       published
 
-         procedure Compilation;
+         procedure CompilationNormal;
+         procedure CompilationWithMapAndSymbols;
          procedure ExecutionNonOptimized;
          procedure ExecutionOptimized;
    end;
@@ -104,12 +106,28 @@ begin
    end;
 end;
 
+// CompilationNormal
+//
+procedure TAlgorithmsTests.CompilationNormal;
+begin
+   FCompiler.Config.CompilerOptions:=[coOptimize];
+   Compilation;
+end;
+
+// CompilationWithMapAndSymbols
+//
+procedure TAlgorithmsTests.CompilationWithMapAndSymbols;
+begin
+   FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap];
+   Compilation;
+end;
+
 // ExecutionNonOptimized
 //
 procedure TAlgorithmsTests.ExecutionNonOptimized;
 begin
    FCompiler.Config.CompilerOptions:=[];
-   Execution;
+   Compilation;
 end;
 
 // ExecutionOptimized
