@@ -52,7 +52,7 @@ type
   public
     constructor Create(Table: TSymbolTable; const FuncName: string;
                        const FuncParams: array of string; const FuncType: string;
-                       const isStateLess : Boolean); dynamic;
+                       const isStateLess : Boolean = False); dynamic;
     procedure Call(Caller: TdwsProgram; Func: TFuncSymbol);
     procedure Execute; virtual; abstract;
   end;
@@ -62,7 +62,7 @@ type
   public
     constructor Create(Table: TSymbolTable; const FuncName: string;
                        const FuncParams: array of string; const FuncType: string;
-                       const isStateLess : Boolean); override;
+                       const isStateLess : Boolean = False); override;
     procedure Execute; override;
     function DoEval(args : TExprBaseList) : Variant; virtual; abstract;
   end;
@@ -316,7 +316,7 @@ end;
 
 constructor TInternalFunction.Create(Table: TSymbolTable;
   const FuncName: string; const FuncParams: array of string; const FuncType: string;
-  const isStateLess : Boolean);
+  const isStateLess : Boolean = False);
 var
   sym: TFuncSymbol;
   Params: TParamArray;
@@ -347,7 +347,7 @@ end;
 //
 constructor TInternalMagicFunction.Create(Table: TSymbolTable;
   const FuncName: string; const FuncParams: array of string; const FuncType: string;
-  const isStateLess : Boolean);
+  const isStateLess : Boolean = False);
 var
   sym: TMagicFuncSymbol;
   Params: TParamArray;
