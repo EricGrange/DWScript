@@ -91,6 +91,7 @@ type
          procedure AssignExpr(Expr: TNoPosExpr); override;
          procedure AssignValue(const Value: Variant); override;
          function  EvalAsBoolean : Boolean; override;
+         function  EvalAsInteger : Int64; override;
    end;
 
    TObjectVarExpr = class (TVarExpr)
@@ -571,23 +572,31 @@ type
 
    // statement; statement; statement;
    TBlockExpr = class(TNoResultExpr)
-   private
-     FStatements: TTightList;
-     FTable: TSymbolTable;
-   public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
-     destructor Destroy; override;
-     procedure AddStatement(Expr: TExpr);
-     procedure EvalNoResult(var status : TExecutionStatusResult); override;
-     procedure Initialize; override;
-     function  Optimize : TNoPosExpr; override;
-     property  Table: TSymbolTable read FTable;
+      private
+         FStatements: TTightList;
+         FTable: TSymbolTable;
+
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
+         destructor Destroy; override;
+
+         procedure AddStatement(Expr: TExpr);
+         procedure EvalNoResult(var status : TExecutionStatusResult); override;
+         procedure Initialize; override;
+         function  Optimize : TNoPosExpr; override;
+         property  Table: TSymbolTable read FTable;
+   end;
+
+   // statement; statement; statement;
+   TBlockExprNoTable = class(TBlockExpr)
+      public
+         procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
    // statement; statement; statement;
    TBlockExprNoStep = class(TBlockExpr)
-   public
-     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+      public
+         procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
    // if FCond then FThen else FElse
@@ -1034,6 +1043,13 @@ end;
 function TBoolVarExpr.EvalAsBoolean : Boolean;
 begin
    Result:=FStack.ReadBoolValue(FStack.BasePointer + FStackAddr);
+end;
+
+// EvalAsInteger
+//
+function TBoolVarExpr.EvalAsInteger : Int64;
+begin
+   Result:=Int64(FStack.ReadBoolValue(FStack.BasePointer + FStackAddr));
 end;
 
 // ------------------
@@ -2721,22 +2737,28 @@ end;
 // ------------------ TBlockExpr ------------------
 // ------------------
 
+// Create
+//
 constructor TBlockExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
 begin
-  inherited Create(Prog, Pos);
-  FTable := TSymbolTable.Create(Prog.Table, Prog.Table.AddrGenerator);
+   inherited Create(Prog, Pos);
+   FTable := TSymbolTable.Create(Prog.Table, Prog.Table.AddrGenerator);
 end;
 
+// Destroy
+//
 destructor TBlockExpr.Destroy;
 begin
-  FStatements.Clean;
-  FTable.Free;
-  inherited;
+   FStatements.Clean;
+   FTable.Free;
+   inherited;
 end;
 
+// AddStatement
+//
 procedure TBlockExpr.AddStatement(Expr: TExpr);
 begin
-  FStatements.Add(Expr);
+   FStatements.Add(Expr);
 end;
 
 // EvalNoResult
@@ -2775,11 +2797,38 @@ end;
 //
 function TBlockExpr.Optimize : TNoPosExpr;
 begin
-   if (FStatements.Count=1) and (FTable.Count=0) then begin
-      Result:=TNoPosExpr(FStatements.List[0]);
+   if FTable.Count=0 then begin
+      if FStatements.Count=1 then begin
+         Result:=TNoPosExpr(FStatements.List[0]);
+      end else begin
+         Result:=TBlockExprNoTable.Create(Prog, Pos);
+         TBlockExprNoTable(Result).FStatements.Assign(FStatements);
+      end;
       FStatements.Clear;
       Free;
    end else Result:=Self;
+end;
+
+
+// ------------------
+// ------------------ TBlockExprNoTable ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TBlockExprNoTable.EvalNoResult(var status : TExecutionStatusResult);
+var
+   i : Integer;
+   expr : TExpr;
+   list : PPointerList;
+begin
+   list:=FStatements.List;
+   for i:=0 to FStatements.Count-1 do begin
+      expr:=TExpr(list[i]);
+      FProg.DoStep(expr);
+      expr.EvalNoResult(status);
+      if status<>esrNone then Break;
+   end;
 end;
 
 // ------------------
