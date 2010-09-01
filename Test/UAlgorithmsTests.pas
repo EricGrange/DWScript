@@ -142,13 +142,13 @@ end;
 //
 procedure TAlgorithmsTests.Execution;
 var
-   source, exprectedResult : TStringList;
+   source, expectedResult : TStringList;
    i : Integer;
    prog : TdwsProgram;
    resultsFileName : String;
 begin
    source:=TStringList.Create;
-   exprectedResult:=TStringList.Create;
+   expectedResult:=TStringList.Create;
    try
 
       for i:=0 to FTests.Count-1 do begin
@@ -161,8 +161,8 @@ begin
             prog.Execute;
             resultsFileName:=ChangeFileExt(FTests[i], '.txt');
             if FileExists(resultsFileName) then begin
-               exprectedResult.LoadFromFile(resultsFileName);
-               CheckEquals(exprectedResult.Text, (prog.Result as TdwsDefaultResult).Text, FTests[i]);
+               expectedResult.LoadFromFile(resultsFileName);
+               CheckEquals(expectedResult.Text, (prog.Result as TdwsDefaultResult).Text, FTests[i]);
             end else CheckEquals('', (prog.Result as TdwsDefaultResult).Text, FTests[i]);
          finally
             prog.Free;
@@ -171,7 +171,7 @@ begin
       end;
 
    finally
-      exprectedResult.Free;
+      expectedResult.Free;
       source.Free;
    end;
 end;
