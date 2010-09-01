@@ -147,7 +147,6 @@ type
      procedure ReadToken;
      procedure ReadNextToken;
      procedure AddCompilerStopFmt(const formatString : String; const args: array of const);
-     procedure AddCompilerStopFmtStringChar(const formatString, arg1 : String; const arg2 : Char);
      procedure AddCompilerStopFmtTokenBuffer(const formatString : String);
 
    public
@@ -187,6 +186,8 @@ const cReservedNames : TTokenTypes = [
 
 var
    vCharStrings : array [0..127] of TStringList;
+const
+   cFormatSettings : TFormatSettings = ( DecimalSeparator : '.' );
 
 type
   TStringListCracker = class(TStrings)
@@ -370,7 +371,7 @@ end;
 //
 function TTokenBuffer.ToFloat : Double;
 begin
-   Result:=StrToFloat(ToStr);
+   Result:=StrToFloat(ToStr, cFormatSettings);
 end;
 
 // ToType
@@ -657,21 +658,14 @@ end;
 //
 procedure TTokenizer.AddCompilerStopFmt(const formatString : String; const args: array of const);
 begin
-   FMsgs.AddCompilerStop(FPos, Format(formatString, args));
-end;
-
-// AddCompilerStopFmtStringChar
-//
-procedure TTokenizer.AddCompilerStopFmtStringChar(const formatString, arg1 : String; const arg2 : Char);
-begin
-   AddCompilerStopFmt(formatString, [arg1, arg2]);
+   FMsgs.AddCompilerStopFmt(FPos, formatString, args);
 end;
 
 // AddCompilerStopFmtTokenBuffer
 //
 procedure TTokenizer.AddCompilerStopFmtTokenBuffer(const formatString : String);
 begin
-   FMsgs.AddCompilerStop(FPos, Format(formatString, [tokenBuf.ToStr]));
+   AddCompilerStopFmt(formatString, [tokenBuf.ToStr]);
 end;
 
 function TTokenizer.GetToken: TToken;
@@ -805,7 +799,7 @@ begin
 
          // Handle Errors
          if trnsClassType=TErrorTransition then
-            AddCompilerStopFmtStringChar('%s ("%s")', TErrorTransition(trns).ErrorMessage, ch);
+            AddCompilerStopFmt('%s ("%s")', [TErrorTransition(trns).ErrorMessage, ch]);
 
          // A new token begins
          if trns.Start and (Result.FPos.Line <= 0) then
