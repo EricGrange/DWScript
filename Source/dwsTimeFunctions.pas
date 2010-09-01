@@ -184,7 +184,7 @@ end;
 //
 procedure TDateTimeToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
 begin
-   Result:=DateTimeToStr(args.AsFloat[0])
+   Result:=DateTimeToStr(args.AsFloat[0]);
 end;
 
 { TStrToDateTimeFunc }
