@@ -137,7 +137,7 @@ type
       procedure ReadConstDecl;
       function ReadConstValue: TConstExpr;
       function ReadBlock: TNoResultExpr;
-      function ReadBlocks(EndTokens: TTokenTypes; var FinalToken: TTokenType): TBlockExpr;
+      function ReadBlocks(const endTokens: TTokenTypes; var finalToken: TTokenType): TNoResultExpr;
       function ReadEnumeration(const TypeName: string): TEnumerationSymbol;
       function ReadExcept(TryExpr: TExpr): TExceptExpr;
       function ReadExpr: TNoPosExpr;
@@ -153,10 +153,8 @@ type
       function ReadInherited(IsWrite: Boolean): TNoPosExpr;
       function ReadInstr: TNoResultExpr;
       function ReadInstrSwitch: TNoResultExpr;
-      function ReadMethodDecl(ClassSym: TClassSymbol; FuncKind: TFuncKind;
-        IsClassMethod: Boolean): TMethodSymbol;
-      function ReadMethodImpl(ClassSym: TClassSymbol; FuncKind: TFuncKind;
-        IsClassMethod: Boolean): TMethodSymbol;
+      function ReadMethodDecl(ClassSym: TClassSymbol; FuncKind: TFuncKind; IsClassMethod: Boolean): TMethodSymbol;
+      function ReadMethodImpl(ClassSym: TClassSymbol; FuncKind: TFuncKind; IsClassMethod: Boolean): TMethodSymbol;
       procedure ReadDeprecated(funcSym : TFuncSymbol);
       procedure WarnDeprecated(funcSym : TFuncSymbol);
       function ReadName(IsWrite: Boolean = False): TNoPosExpr;
@@ -167,7 +165,7 @@ type
       // Don't want to add param symbols to dictionary when a method implementation (they get thrown away)
       procedure ReadParams(Proc: TFuncSymbol; ParamsToDictionary: Boolean=True);
       function ReadProcDecl(FuncKind: TFuncKind; ClassSym: TClassSymbol;
-        IsClassMethod: Boolean = False; IsType : Boolean = False): TFuncSymbol;
+                            IsClassMethod: Boolean = False; IsType : Boolean = False): TFuncSymbol;
       procedure ReadProcBody(Proc: TFuncSymbol);
       function ReadProperty(ClassSym: TClassSymbol): TPropertySymbol;
       function ReadPropertyExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TNoPosExpr;
@@ -542,17 +540,20 @@ begin
     Result := ReadStatement;
 end;
 
+// ReadStatement
+//
 function TdwsCompiler.ReadStatement: TExpr;
 begin
-  Result := nil;
-  if FTok.TestDelete(ttVAR) then
-    Result := ReadVarDecl
-  else if FTok.TestDelete(ttCONST) then
-    ReadConstDecl
-  else if FTok.TestDelete(ttUSES) then
-    ReadUses
-  else
-    Result := ReadBlock;
+   Result := nil;
+   if FTok.TestDelete(ttVAR) then
+      Result := ReadVarDecl
+   else if FTok.TestDelete(ttCONST) then
+      ReadConstDecl
+   else if FTok.TestDelete(ttUSES) then
+      ReadUses
+   else begin
+      Result:=ReadBlock;
+   end;
 end;
 
 class function TdwsCompiler.Evaluate(AContext: TdwsProgram; const AExpression: string): TNoPosExpr;
@@ -1272,69 +1273,72 @@ begin
   end;
 end;
 
-function TdwsCompiler.ReadBlocks(EndTokens: TTokenTypes; var FinalToken: TTokenType): TBlockExpr;
+// ReadBlocks
+//
+function TdwsCompiler.ReadBlocks(const endTokens: TTokenTypes; var finalToken: TTokenType): TNoResultExpr;
 var
-  blk: TExpr;
-  oldTable: TSymbolTable;
-  x: Integer;
-  token : TToken;
-  closePos: TScriptPos; // Position at which the ending token was found (for context)
+   blk : TExpr;
+   oldTable : TSymbolTable;
+   x : Integer;
+   token : TToken;
+   closePos : TScriptPos; // Position at which the ending token was found (for context)
 begin
-
-  // Read a block of instructions enclosed in "begin" and "end"
-  Result := TBlockExpr.Create(FProg, FTok.HotPos);
-  try
-    if coContextMap in FCompilerOptions then
-    begin
-      FProg.ContextMap.OpenContext(FTok.CurrentPos, nil);
-      closePos := FTok.CurrentPos;     // default to close context where it openned (used on errors)
-    end;
-    oldTable := FProg.Table;
-    FProg.Table := TBlockExpr(Result).Table;
-    try
-      // Add local table to context for the new block
-      if coContextMap in FCompilerOptions then
-        FProg.ContextMap.Current.LocalTable := FProg.Table;
-
-      while True do
-      begin
-
-        if FTok.HasTokens then
-        begin
-          if FTok.GetToken.FTyp in EndTokens then
-          begin
-            FinalToken := FTok.GetToken.FTyp;
-            closePos := FTok.GetToken.FPos;    // get start position of ending token
-            FTok.KillToken;
-            exit;
-          end;
-        end
-        else
-          FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndOfBlockExpected);
-
-        blk := ReadStatement;
-        if Assigned(blk) then
-          TBlockExpr(Result).AddStatement(blk);
-        if not FTok.TestDelete(ttSEMI) then
-        begin
-          token:=FTok.GetToken;
-          if (token=nil) or (not (token.FTyp in EndTokens)) then
-            FMsgs.AddCompilerStop(FTok.CurrentPos, CPE_SemiExpected);
-        end;
+   // Read a block of instructions enclosed in "begin" and "end"
+   Result := TBlockExpr.Create(FProg, FTok.HotPos);
+   try
+      if coContextMap in FCompilerOptions then begin
+         FProg.ContextMap.OpenContext(FTok.CurrentPos, nil);
+         closePos := FTok.CurrentPos;     // default to close context where it openned (used on errors)
       end;
-    finally
-      FProg.Table := oldTable;
-      if coContextMap in FCompilerOptions then
-        FProg.ContextMap.CloseContext(closePos);   // get to end of block
-    end;
-  except
-    // Remove any symbols in the expression's table. Table will be freed.
-    if coSymbolDictionary in FCompilerOptions then
-      for x := 0 to TBlockExpr(Result).Table.Count - 1 do
-        FProg.SymbolDictionary.Remove(TBlockExpr(Result).Table[x]);
-    Result.Free;
-    raise;
-  end;
+
+      oldTable := FProg.Table;
+      FProg.Table := TBlockExpr(Result).Table;
+      try
+         // Add local table to context for the new block
+         if coContextMap in FCompilerOptions then
+           FProg.ContextMap.Current.LocalTable := FProg.Table;
+
+         while True do begin
+
+            if FTok.HasTokens then begin
+               if FTok.GetToken.FTyp in EndTokens then begin
+                  finalToken := FTok.GetToken.FTyp;
+                  closePos := FTok.GetToken.FPos;    // get start position of ending token
+                  FTok.KillToken;
+                  Break;
+               end;
+            end else begin
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndOfBlockExpected);
+            end;
+
+            blk := ReadStatement;
+            if Assigned(blk) then
+               TBlockExpr(Result).AddStatement(blk);
+            if not FTok.TestDelete(ttSEMI) then begin
+               token:=FTok.GetToken;
+               if (token=nil) or (not (token.FTyp in EndTokens)) then
+                  FMsgs.AddCompilerStop(FTok.CurrentPos, CPE_SemiExpected);
+            end;
+
+         end;
+
+      finally
+         FProg.Table := oldTable;
+         if coContextMap in FCompilerOptions then
+            FProg.ContextMap.CloseContext(closePos);   // get to end of block
+      end;
+
+      if Optimize then
+         Result:=Result.OptimizeToNoResultExpr;
+
+   except
+      // Remove any symbols in the expression's table. Table will be freed.
+      if coSymbolDictionary in FCompilerOptions then
+         for x := 0 to TBlockExpr(Result).Table.Count - 1 do
+            FProg.SymbolDictionary.Remove(TBlockExpr(Result).Table[x]);
+      Result.Free;
+      raise;
+   end;
 end;
 
 // ReadBlock
@@ -1346,8 +1350,6 @@ begin
    Result := nil;
    if FTok.TestDelete(ttBEGIN) then begin
       Result:=ReadBlocks([ttEND], tt);
-      if Optimize then
-         Result:=Result.OptimizeToNoResultExpr;
    end else if FTok.HasTokens then begin
       // Read a single instruction
       Result:=ReadInstr;
