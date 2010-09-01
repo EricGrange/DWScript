@@ -613,73 +613,92 @@ type
       override;
   end;
 
-  TdwsUnit = class(TdwsAbstractStaticUnit)
-  private
-    FArrays: TdwsArrays;
-    FClasses: TdwsClasses;
-    FConstants: TdwsConstants;
-    FEnumerations: TdwsEnumerations;
-    FForwards: TdwsForwards;
-    FFunctions: TdwsFunctions;
-    FInstances: TdwsInstances;
-    FRecords: TdwsRecords;
-    FSynonyms: TdwsSynonyms;
-    FVariables: TdwsVariables;
-    FTable: TUnitSymbolTable;
-  protected
-    FCollections: array[0..9] of TdwsCollection;
-    class function GetArraysClass: TdwsArraysClass; virtual;
-    class function GetClassesClass: TdwsClassesClass; virtual;
-    class function GetConstantsClass: TdwsConstantsClass; virtual;
-    class function GetEnumerationsClass: TdwsEnumerationsClass; virtual;
-    class function GetForwardsClass: TdwsForwardsClass; virtual;
-    class function GetFunctionsClass: TdwsFunctionsClass; virtual;
-    class function GetInstancesClass: TdwsInstancesClass; virtual;
-    class function GetRecordsClass: TdwsRecordsClass; virtual;
-    class function GetVariablesClass: TdwsVariablesClass; virtual;
-    class function GetSynonymsClass: TdwsSynonymsClass; virtual;
-    procedure SetArrays(const Value: TdwsArrays);
-    procedure SetClasses(const Value: TdwsClasses);
-    procedure SetConstants(const Value: TdwsConstants);
-    procedure SetEnumerations(const Value: TdwsEnumerations);
-    procedure SetForwards(const Value: TdwsForwards);
-    procedure SetFunctions(const Value: TdwsFunctions);
-    procedure SetRecords(const Value: TdwsRecords);
-    procedure SetVariables(const Value: TdwsVariables);
-    procedure SetInstances(const Value: TdwsInstances);
-    procedure SetSynonyms(const Value: TdwsSynonyms);
-  protected
-    function GetSymbol(Table: TSymbolTable; const Name: string): TSymbol;
-    procedure AddCollectionSymbols(Collection: TdwsCollection; Table: TSymbolTable); virtual;
-    procedure AddUnitSymbols(Table: TSymbolTable); override;
-    procedure InitUnitTable(SystemTable, UnitSyms: TSymbolTable; UnitTable: TUnitSymbolTable); override;
+   // TdwsUnit
+   //
+   TdwsUnit = class(TdwsAbstractStaticUnit)
+      private
+        FArrays: TdwsArrays;
+        FClasses: TdwsClasses;
+        FConstants: TdwsConstants;
+        FEnumerations: TdwsEnumerations;
+        FForwards: TdwsForwards;
+        FFunctions: TdwsFunctions;
+        FInstances: TdwsInstances;
+        FRecords: TdwsRecords;
+        FSynonyms: TdwsSynonyms;
+        FVariables: TdwsVariables;
+        FTable: TUnitSymbolTable;
 
-    // Method to support get/set property values for dynamicly registered classes
-    procedure HandleDynamicCreate(Info: TProgramInfo; var ExtObject: TObject);
-    procedure HandleDynamicProperty(Info: TProgramInfo; ExtObject: TObject);
-  public
-    procedure GetDataTypes(List: TStrings);
-    procedure GetClassTypes(List: TStrings);
-    procedure ExposeClassToUnit(AClass, AAncestor: TClass; ASearchProgram: TdwsProgram=nil; const ScriptAncestorType: string='');
-    procedure ExposeInstanceToUnit(const AName, AClassType: string; AInstance: TObject);
-    property Table: TUnitSymbolTable read FTable;
-  published
-    constructor Create(AOwner: TComponent); override;
-    destructor Destroy; override;
-    property Arrays: TdwsArrays read FArrays write SetArrays;
-    property Classes: TdwsClasses read FClasses write SetClasses;
-    property Constants: TdwsConstants read FConstants write SetConstants;
-    property Dependencies;
-    property Enumerations: TdwsEnumerations read FEnumerations write SetEnumerations;
-    property Forwards: TdwsForwards read FForwards write SetForwards stored False;
-    property Functions: TdwsFunctions read FFunctions write SetFunctions;
-    property Instances: TdwsInstances read FInstances write SetInstances;
-    property Records: TdwsRecords read FRecords write SetRecords;
-    property Synonyms: TdwsSynonyms read FSynonyms write SetSynonyms;
-    property UnitName;
-    property Variables: TdwsVariables read FVariables write SetVariables;
-    property StaticSymbols;
-  end;
+      protected
+        FCollections: array[0..9] of TdwsCollection;
+
+        class function GetArraysClass: TdwsArraysClass; virtual;
+        class function GetClassesClass: TdwsClassesClass; virtual;
+        class function GetConstantsClass: TdwsConstantsClass; virtual;
+        class function GetEnumerationsClass: TdwsEnumerationsClass; virtual;
+        class function GetForwardsClass: TdwsForwardsClass; virtual;
+        class function GetFunctionsClass: TdwsFunctionsClass; virtual;
+        class function GetInstancesClass: TdwsInstancesClass; virtual;
+        class function GetRecordsClass: TdwsRecordsClass; virtual;
+        class function GetVariablesClass: TdwsVariablesClass; virtual;
+        class function GetSynonymsClass: TdwsSynonymsClass; virtual;
+
+        procedure SetArrays(const Value: TdwsArrays);
+        procedure SetClasses(const Value: TdwsClasses);
+        procedure SetConstants(const Value: TdwsConstants);
+        procedure SetEnumerations(const Value: TdwsEnumerations);
+        procedure SetForwards(const Value: TdwsForwards);
+        procedure SetFunctions(const Value: TdwsFunctions);
+        procedure SetRecords(const Value: TdwsRecords);
+        procedure SetVariables(const Value: TdwsVariables);
+        procedure SetInstances(const Value: TdwsInstances);
+        procedure SetSynonyms(const Value: TdwsSynonyms);
+
+        function StoreArrays : Boolean;
+        function StoreClasses : Boolean;
+        function StoreConstants : Boolean;
+        function StoreEnumerations : Boolean;
+        function StoreFunctions : Boolean;
+        function StoreRecords : Boolean;
+        function StoreVariables : Boolean;
+        function StoreInstances : Boolean;
+        function StoreSynonyms : Boolean;
+
+      protected
+        function GetSymbol(Table: TSymbolTable; const Name: string): TSymbol;
+        procedure AddCollectionSymbols(Collection: TdwsCollection; Table: TSymbolTable); virtual;
+        procedure AddUnitSymbols(Table: TSymbolTable); override;
+        procedure InitUnitTable(SystemTable, UnitSyms: TSymbolTable; UnitTable: TUnitSymbolTable); override;
+
+        // Method to support get/set property values for dynamicly registered classes
+        procedure HandleDynamicCreate(Info: TProgramInfo; var ExtObject: TObject);
+        procedure HandleDynamicProperty(Info: TProgramInfo; ExtObject: TObject);
+
+      public
+        procedure GetDataTypes(List: TStrings);
+        procedure GetClassTypes(List: TStrings);
+        procedure ExposeClassToUnit(AClass, AAncestor: TClass; ASearchProgram: TdwsProgram=nil; const ScriptAncestorType: string='');
+        procedure ExposeInstanceToUnit(const AName, AClassType: string; AInstance: TObject);
+        property Table: TUnitSymbolTable read FTable;
+
+      published
+        constructor Create(AOwner: TComponent); override;
+        destructor Destroy; override;
+
+        property Arrays: TdwsArrays read FArrays write SetArrays stored StoreArrays;
+        property Classes: TdwsClasses read FClasses write SetClasses stored StoreClasses;
+        property Constants: TdwsConstants read FConstants write SetConstants stored StoreConstants;
+        property Dependencies;
+        property Enumerations: TdwsEnumerations read FEnumerations write SetEnumerations stored StoreEnumerations;
+        property Forwards: TdwsForwards read FForwards write SetForwards stored False;
+        property Functions: TdwsFunctions read FFunctions write SetFunctions stored StoreFunctions;
+        property Instances: TdwsInstances read FInstances write SetInstances stored StoreInstances;
+        property Records: TdwsRecords read FRecords write SetRecords stored StoreRecords;
+        property Synonyms: TdwsSynonyms read FSynonyms write SetSynonyms stored StoreSynonyms;
+        property UnitName;
+        property Variables: TdwsVariables read FVariables write SetVariables stored StoreVariables;
+        property StaticSymbols;
+   end;
 
   TCustomInstantiateFunc = class(TAnonymousFunction, IObjectOwner)
   protected
@@ -1266,6 +1285,69 @@ end;
 procedure TdwsUnit.SetSynonyms(const Value: TdwsSynonyms);
 begin
   FSynonyms.Assign(Value);
+end;
+
+// StoreArrays
+//
+function TdwsUnit.StoreArrays : Boolean;
+begin
+   Result:=FArrays.Count>0;
+end;
+
+// StoreClasses
+//
+function TdwsUnit.StoreClasses : Boolean;
+begin
+   Result:=FClasses.Count>0;
+end;
+
+// StoreConstants
+//
+function TdwsUnit.StoreConstants : Boolean;
+begin
+   Result:=FConstants.Count>0;
+end;
+
+// StoreEnumerations
+//
+function TdwsUnit.StoreEnumerations : Boolean;
+begin
+   Result:=FEnumerations.Count>0;
+end;
+
+// StoreFunctions
+//
+function TdwsUnit.StoreFunctions : Boolean;
+begin
+   Result:=FFunctions.Count>0;
+end;
+
+// StoreRecords
+//
+function TdwsUnit.StoreRecords : Boolean;
+begin
+   Result:=FRecords.Count>0;
+end;
+
+// StoreVariables
+//
+function TdwsUnit.StoreVariables : Boolean;
+begin
+   Result:=FVariables.Count>0;
+end;
+
+// StoreInstances
+//
+function TdwsUnit.StoreInstances : Boolean;
+begin
+   Result:=FInstances.Count>0;
+end;
+
+// StoreSynonyms
+//
+function TdwsUnit.StoreSynonyms : Boolean;
+begin
+   Result:=FSynonyms.Count>0;
 end;
 
 procedure TdwsUnit.HandleDynamicProperty(Info: TProgramInfo; ExtObject: TObject);
