@@ -28,7 +28,7 @@ implementation
 
 uses
   Classes, Controls, dwsComp, dwsComConnector, dwsDebugger, dwsGlobalVarsFunctions,
-  dwsVCLGUIFunctions;
+  dwsVCLGUIFunctions, dwsHtmlFilter;
 
 procedure Register;
 begin
@@ -40,6 +40,7 @@ begin
                      TdwsComConnector,
                      TdwsSimpleDebugger,
                      TdwsUnit,
+                     TdwsHtmlFilter,
                      TdwsGlobalVarsFunctions,
                      TdwsGUIFunctions
                      ]);
