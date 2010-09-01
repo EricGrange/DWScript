@@ -133,6 +133,7 @@ type
     procedure AddCompilerError(const Text: string); overload;
     procedure AddCompilerError(const Pos: TScriptPos; const Text: string); overload;
     procedure AddCompilerStop(const Pos: TScriptPos; const Text: string);
+    procedure AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
 
     // Called during execution
     procedure AddExecutionError(const Text: string); overload;
@@ -368,6 +369,13 @@ procedure TMsgs.AddCompilerStop(const Pos: TScriptPos; const Text: string);
 begin
   AddCompilerError(Pos, Text);
   raise EScriptError.Create('')
+end;
+
+// AddCompilerStopFmt
+//
+procedure TMsgs.AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
+begin
+   AddCompilerStop(Pos, Format(textFormat, args));
 end;
 
 procedure TMsgs.AddExecutionError(const Pos: TScriptPos; const Text: string);
