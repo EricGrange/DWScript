@@ -400,7 +400,8 @@ begin
   Table.AddSymbol(TConstSymbol.Create('ComOpt', VariantSym, v));
 
   // Function to create a new COM-Object
-  TCreateOleObjectFunc.Create(Table, 'CreateOleObject', ['ClassName', SYS_STRING], 'ComVariant');
+  TCreateOleObjectFunc.Create(Table, 'CreateOleObject', ['ClassName', SYS_STRING],
+    'ComVariant');
 
   // thy Adds
   TClassIDToProgIDFunc.Create(Table, 'ClassIDToProgID', ['ClassID', SYS_STRING], 'String');
