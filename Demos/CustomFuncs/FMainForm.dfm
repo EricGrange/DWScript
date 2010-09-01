@@ -1,6 +1,6 @@
 object MainForm: TMainForm
-  Left = 584
-  Top = 146
+  Left = 562
+  Top = 140
   Caption = 'CustomFuncs'
   ClientHeight = 377
   ClientWidth = 337
@@ -62,10 +62,6 @@ object MainForm: TMainForm
   end
   object dwsUnit: TdwsUnit
     Script = DelphiWebScript
-    Arrays = <>
-    Classes = <>
-    Constants = <>
-    Enumerations = <>
     Functions = <
       item
         Name = 'SayHello'
@@ -91,11 +87,7 @@ object MainForm: TMainForm
           end>
         OnEval = dwsUnitFunctionsMultiplyByTwoEval
       end>
-    Instances = <>
-    Records = <>
-    Synonyms = <>
     UnitName = 'Test'
-    Variables = <>
     StaticSymbols = False
     Left = 256
     Top = 56

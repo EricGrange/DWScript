@@ -1,6 +1,6 @@
 object MainForm: TMainForm
-  Left = 478
-  Top = 86
+  Left = 462
+  Top = 93
   Caption = 'CustomFuncs'
   ClientHeight = 406
   ClientWidth = 826
@@ -87,8 +87,6 @@ object MainForm: TMainForm
     ParentFont = False
     ScrollBars = ssBoth
     TabOrder = 0
-    ExplicitWidth = 345
-    ExplicitHeight = 425
   end
   object BURun: TButton
     Left = 496
@@ -99,7 +97,6 @@ object MainForm: TMainForm
     Caption = 'Run'
     TabOrder = 1
     OnClick = BURunClick
-    ExplicitLeft = 359
   end
   object MEResult: TMemo
     Left = 496
@@ -108,7 +105,6 @@ object MainForm: TMainForm
     Height = 358
     Anchors = [akTop, akRight, akBottom]
     TabOrder = 2
-    ExplicitLeft = 406
   end
   object DelphiWebScript: TDelphiWebScript
     Config.MaxDataSize = 0
@@ -118,7 +114,6 @@ object MainForm: TMainForm
   end
   object dwsUnit: TdwsUnit
     Script = DelphiWebScript
-    Arrays = <>
     Classes = <
       item
         Name = 'TPlanet'
@@ -199,14 +194,7 @@ object MainForm: TMainForm
         Methods = <>
         Properties = <>
       end>
-    Constants = <>
-    Enumerations = <>
-    Functions = <>
-    Instances = <>
-    Records = <>
-    Synonyms = <>
     UnitName = 'Test'
-    Variables = <>
     StaticSymbols = False
     Left = 656
     Top = 72
