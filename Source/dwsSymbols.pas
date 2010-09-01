@@ -70,6 +70,7 @@ type
          procedure Clean;
          procedure Clear;
          function Add(item : Pointer) : Integer;
+         procedure Assign(const aList : TTightList);
          function IndexOf(item : Pointer) : Integer;
          function Remove(item : Pointer) : Integer;
          procedure Delete(index : Integer);
@@ -830,7 +831,7 @@ end;
 //
 function TExprBaseListRec.GetExprBase(const x: Integer): TExprBase;
 begin
-   Result := TExprBase(FList.List[x]);
+   Result:=TExprBase(FList.List[x]);
 end;
 
 // SetExprBase
@@ -947,6 +948,20 @@ begin
       FList[Count-1]:=item;
    end;
    Result:=FCount-1;
+end;
+
+// Assign
+//
+procedure TTightList.Assign(const aList : TTightList);
+begin
+   Clear;
+   FCount:=aList.FCount;
+   case Count of
+      1 : FList:=aList.FList;
+   else
+      ReallocMem(FList, Count*SizeOf(Pointer));
+      System.Move(aList.FList^, FList^, Count*SizeOf(Pointer));
+   end;
 end;
 
 // IndexOf
