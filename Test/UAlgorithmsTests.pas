@@ -127,7 +127,7 @@ end;
 procedure TAlgorithmsTests.ExecutionNonOptimized;
 begin
    FCompiler.Config.CompilerOptions:=[];
-   Compilation;
+   Execution;
 end;
 
 // ExecutionOptimized
@@ -164,6 +164,7 @@ begin
                expectedResult.LoadFromFile(resultsFileName);
                CheckEquals(expectedResult.Text, (prog.Result as TdwsDefaultResult).Text, FTests[i]);
             end else CheckEquals('', (prog.Result as TdwsDefaultResult).Text, FTests[i]);
+            CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
          finally
             prog.Free;
          end;
