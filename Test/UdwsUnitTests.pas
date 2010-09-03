@@ -23,6 +23,8 @@ type
          procedure FuncOneDotFiveEval(Info: TProgramInfo);
          procedure FuncTrueEval(Info: TProgramInfo);
 
+         procedure FuncExceptionEval(Info: TProgramInfo);
+
          procedure CompilationExecution(execute : Boolean);
 
       published
@@ -31,6 +33,11 @@ type
          procedure CompilationWithMapAndSymbols;
          procedure ExecutionNonOptimized;
          procedure ExecutionOptimized;
+
+         procedure DelphiException;
+   end;
+
+   EDelphiException = class (Exception)
    end;
 
 // ------------------------------------------------------------------
@@ -99,6 +106,11 @@ begin
    func.Name:='FuncTrue';
    func.ResultType:='Boolean';
    func.OnEval:=FuncTrueEval;
+
+   func:=FUnit.Functions.Add as TdwsFunction;
+   func.Name:='FuncException';
+   func.ResultType:='';
+   func.OnEval:=FuncExceptionEval;
 end;
 
 // Func1Eval
@@ -127,6 +139,13 @@ end;
 procedure TdwsUnitTests.FuncTrueEval(Info: TProgramInfo);
 begin
    Info.ResultAsBoolean:=True;
+end;
+
+// FuncExceptionEval
+//
+procedure TdwsUnitTests.FuncExceptionEval(Info: TProgramInfo);
+begin
+   raise EDelphiException.Create('Hello, Delphi Exception here!');
 end;
 
 // CompilationExecution
@@ -178,6 +197,23 @@ procedure TdwsUnitTests.ExecutionOptimized;
 begin
    FCompiler.Config.CompilerOptions:=[coOptimize];
    CompilationExecution(True);
+end;
+
+// DelphiException
+//
+procedure TdwsUnitTests.DelphiException;
+var
+   prog : TdwsProgram;
+begin
+   prog:=FCompiler.Compile('FuncException;');
+   try
+      CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+      prog.Execute;
+      CheckEquals('Runtime Error: Hello, Delphi Exception here! [line: 1, column: 1]'#13#10,
+                  prog.Msgs.AsInfo, 'Execute Msgs');
+   finally
+      prog.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------
