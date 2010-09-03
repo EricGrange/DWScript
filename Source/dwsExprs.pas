@@ -23,7 +23,7 @@ unit dwsExprs;
 interface
 
 uses Classes, Variants, SysUtils, TypInfo, dwsSymbols, dwsErrors,
-   dwsStrings, dwsStack;
+   dwsStrings, dwsStack, SyncObjs;
 
 const
   C_DefaultStackChunkSize = 4096;
@@ -229,13 +229,23 @@ type
     procedure LeaveFunc(Prog: TdwsProgram; funcExpr: TNoPosExpr);
   end;
 
-  // Stops the script after given time (Timeout)
-  TTerminatorThread = class(TThread)
-    FProg: TdwsProgram;
-    FMillisecRemaining: Integer;
-    constructor Create(Prog: TdwsProgram; MilliSecToLive: Integer);
-    procedure Execute; override;
-  end;
+   // TTerminatorThread
+   //
+   // Stops the script after given time (Timeout)
+   TTerminatorThread = class(TThread)
+      private
+         FProg : TdwsProgram;
+         FEvent : TEvent;
+         FMillisecondsToLive : Integer;
+
+      protected
+         procedure Execute; override;
+         procedure DoTerminate; override;
+
+      public
+         constructor Create(aProgram : TdwsProgram; aMilliSecToLive : Integer);
+         destructor Destroy; override;
+   end;
 
   TProgramInfo = class;
 
@@ -266,7 +276,7 @@ type
     FStack: TStack;
     FSymbolDictionary: TSymbolDictionary;
     FTable: TSymbolTable;
-    FTimeout: Integer;
+    FTimeoutMilliseconds: Integer;
     FTypBoolean: TTypeSymbol;
     FTypFloat: TTypeSymbol;
     FTypInteger: TTypeSymbol;
@@ -276,6 +286,7 @@ type
     FTypVariant: TTypeSymbol;
     FUserDef: TObject;
     FCompiler : TObject;
+
   protected
     function GetLevel: Integer;
     function GetResult: TdwsResult; virtual;
@@ -284,10 +295,11 @@ type
     procedure SetResult(const Value: TdwsResult); virtual;
     procedure SetUserDef(const Value: TObject); virtual;
     procedure Evaluate(var status : TExecutionStatusResult); virtual;
+
   public
     constructor Create(SystemTable: TSymbolTable; ResultType: TdwsResultType; MaxDataSize: Integer; StackChunkSize: Integer = C_DefaultStackChunkSize);
     destructor Destroy; override;
-    
+
     procedure DoStep(Expr: TExpr);
 
     procedure BeginProgram(IsRunningMainProgram: Boolean = True);
@@ -295,16 +307,16 @@ type
     procedure EndProgram;
 
     procedure Execute; overload; virtual;
-    procedure Execute(TimeoutValue: Integer); overload;
+    procedure Execute(aTimeoutMilliSeconds: Integer); overload;
     procedure ExecuteParam(const Params: array of Variant); overload;
-    procedure ExecuteParam(const Params: array of Variant; TimeoutValue: Integer); overload;
+    procedure ExecuteParam(const Params: array of Variant; aTimeoutMilliSeconds: Integer); overload;
     procedure ExecuteParam(const Params: OleVariant); overload;
-    procedure ExecuteParam(const Params: OleVariant; TimeoutValue: Integer); overload;
+    procedure ExecuteParam(const Params: OleVariant; aTimeoutMilliSeconds: Integer); overload;
 
     function GetGlobalAddr(DataSize: Integer): Integer;
     function GetTempAddr(DataSize: Integer = -1): Integer;
     procedure ReadyToRun;
-    procedure RunProgram(TimeoutValue: Integer);
+    procedure RunProgram(aTimeoutMilliSeconds: Integer);
     procedure Stop; virtual;
 
     property Debugger: IDebugger read FDebugger write SetDebugger;
@@ -323,7 +335,7 @@ type
     property Stack: TStack read FStack;
     property RootTable: TProgramSymbolTable read FRootTable;
     property Table: TSymbolTable read FTable write FTable;
-    property Timeout: Integer read FTimeout write FTimeout;
+    property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds;
 
     property TypBoolean: TTypeSymbol read FTypBoolean;
     property TypFloat: TTypeSymbol read FTypFloat;
@@ -1445,16 +1457,18 @@ begin
   end;
 end;
 
+// Execute
+//
 procedure TdwsProgram.Execute;
 begin
-  Execute(0);
+   Execute(0);
 end;
 
-procedure TdwsProgram.Execute(TimeoutValue: Integer);
+procedure TdwsProgram.Execute(aTimeoutMilliSeconds: Integer);
 begin
   BeginProgram;
   if ProgramState = psRunning then
-    RunProgram(TimeoutValue);
+    RunProgram(aTimeoutMilliSeconds);
   if ProgramState in [psRunning, psRunningStopped] then
     EndProgram;
 end;
@@ -1466,7 +1480,7 @@ begin
        Msgs.AddExecutionStop(Expr.Pos, RTE_ScriptStopped);
 end;
 
-procedure TdwsProgram.RunProgram(TimeoutValue: Integer);
+procedure TdwsProgram.RunProgram(aTimeoutMilliSeconds: Integer);
 var
    terminator: TTerminatorThread;
    status : TExecutionStatusResult;
@@ -1475,11 +1489,11 @@ begin
       if FProgramState <> psRunning then
          raise Exception.Create('Program state psRunning expected');
 
-      if TimeoutValue > 0 then
-         terminator := TTerminatorThread.Create(Self, TimeoutValue * 1000)
-      else if FTimeout > 0 then
-         terminator := TTerminatorThread.Create(Self, FTimeout * 1000)
-      else terminator := nil;
+      if aTimeoutMilliSeconds=0 then
+         aTimeOutMilliseconds:=TimeoutMilliseconds;
+      if aTimeoutMilliSeconds>0 then
+         terminator:=TTerminatorThread.Create(Self, aTimeoutMilliSeconds)
+      else terminator:=nil;
 
       try
          status:=esrNone;
@@ -1522,7 +1536,7 @@ begin
   ExecuteParam(Params, 0)
 end;
 
-procedure TdwsProgram.ExecuteParam(const Params: array of Variant; TimeoutValue: Integer);
+procedure TdwsProgram.ExecuteParam(const Params: array of Variant; aTimeoutMilliSeconds: Integer);
 var
   x, index: Integer;
 begin
@@ -1534,7 +1548,7 @@ begin
     Inc(index);
   end;
 
-  Execute(TimeoutValue);
+  Execute(aTimeoutMilliSeconds);
 end;
 
 procedure TdwsProgram.ExecuteParam(const Params: OleVariant);
@@ -1542,7 +1556,7 @@ begin
   ExecuteParam(Params, 0);
 end;
 
-procedure TdwsProgram.ExecuteParam(const Params: OleVariant; TimeoutValue: Integer);
+procedure TdwsProgram.ExecuteParam(const Params: OleVariant; aTimeoutMilliSeconds: Integer);
 var
   x: Integer;
 begin
@@ -1558,7 +1572,7 @@ begin
     FParameters[0] := Params;
   end;
 
-  Execute(TimeoutValue);
+  Execute(aTimeoutMilliSeconds);
 end;
 
 procedure TdwsProgram.DoStep(Expr: TExpr);
@@ -1809,32 +1823,48 @@ end;
 
 { TTerminatorThread }
 
-constructor TTerminatorThread.Create(Prog: TdwsProgram; MilliSecToLive: Integer);
+// Create
+//
+constructor TTerminatorThread.Create(aProgram : TdwsProgram; aMilliSecToLive : Integer);
 begin
-  inherited Create(True);
-  FProg := Prog;
-  FMillisecRemaining := MilliSecToLive;
-  FreeOnTerminate := True;
-{$IFDEF WIN32}
-  Priority := tpTimeCritical;
-{$ENDIF}
-  Resume;
+   FProg:=aProgram;
+   FEvent:=TEvent.Create(nil, False, False, '');
+   FMillisecondsToLive:=aMilliSecToLive;
+   FreeOnTerminate:=True;
+   inherited Create(False);
+   {$IFDEF WIN32}
+   Priority:=tpTimeCritical;
+   {$ENDIF}
 end;
 
+// Destroy
+//
+destructor TTerminatorThread.Destroy;
+begin
+   FEvent.Free;
+   inherited;
+end;
+
+// Execute
+//
 procedure TTerminatorThread.Execute;
 begin
-  while (not Terminated) and (FMillisecRemaining > 0) do
-  begin
-    Sleep(50);
-    Dec(FMillisecRemaining, 50);
-  end;
+   FEvent.WaitFor(FMillisecondsToLive);
 
-  if (not Terminated) and Assigned(FProg) then
-    FProg.Stop;
+   if (not Terminated) and Assigned(FProg) then
+      FProg.Stop;
 
-  // Wait until TdwsProgram terminates the thread
-  while not Terminated do
-    Sleep(10);
+   // Wait until TdwsProgram terminates the thread
+   while not Terminated do
+      FEvent.WaitFor(1000);
+end;
+
+// DoTerminate
+//
+procedure TTerminatorThread.DoTerminate;
+begin
+   inherited;
+   FEvent.SetEvent;
 end;
 
 { TNoPosExpr }
