@@ -28,7 +28,7 @@ implementation
 
 uses
   Classes, Controls, dwsComp, dwsComConnector, dwsDebugger, dwsGlobalVarsFunctions,
-  dwsVCLGUIFunctions, dwsHtmlFilter;
+  dwsVCLGUIFunctions, dwsHtmlFilter, dwsClasses, dwsClassesLibModule;
 
 procedure Register;
 begin

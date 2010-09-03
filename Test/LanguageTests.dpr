@@ -9,7 +9,11 @@ uses
   UAlgorithmsTests in 'UAlgorithmsTests.pas',
   UdwsUnitTests in 'UdwsUnitTests.pas',
   UHTMLFilterTests in 'UHTMLFilterTests.pas',
-  UCornerCasesTests in 'UCornerCasesTests.pas';
+  UCornerCasesTests in 'UCornerCasesTests.pas',
+  UdwsClassesTests in 'UdwsClassesTests.pas',
+  dwsClasses in '..\Libraries\ClassesLib\dwsClasses.pas',
+  dwsClassesLibModule in '..\Libraries\ClassesLib\dwsClassesLibModule.pas' {dwsClassesLib: TDataModule},
+  dwsHashtables in '..\Libraries\ClassesLib\dwsHashtables.pas';
 
 {$R *.res}
 
