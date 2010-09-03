@@ -18,6 +18,8 @@ type
       published
          procedure EmptyTokenBuffer;
          procedure IgnoreDecimalSeparator;
+         procedure TimeOutTestFinite;
+         procedure TimeOutTestInfinite;
    end;
 
 // ------------------------------------------------------------------
@@ -99,6 +101,36 @@ begin
    finally
       DecimalSeparator:=dc;
       w.Free;
+   end;
+end;
+
+// TimeOutTestFinite
+//
+procedure TCornerCasesTests.TimeOutTestFinite;
+var
+   prog : TdwsProgram;
+begin
+   prog:=FCompiler.Compile('while false do;');
+   try
+      prog.TimeoutMilliseconds:=1000;
+      prog.Execute;
+   finally
+      prog.Free;
+   end;
+end;
+
+// TimeOutTestInfinite
+//
+procedure TCornerCasesTests.TimeOutTestInfinite;
+var
+   prog : TdwsProgram;
+begin
+   prog:=FCompiler.Compile('while true do;');
+   try
+      prog.TimeoutMilliseconds:=100;
+      prog.Execute;
+   finally
+      prog.Free;
    end;
 end;
 
