@@ -51,7 +51,7 @@ type
     FScriptPaths: TStrings;
     FStackChunkSize: Integer;
     FSystemTable: TSymbolTable;
-    FTimeout: Integer;
+    FTimeoutMilliseconds: Integer;
     FUnits: TStrings;
   protected
     procedure InitSystemTable;
@@ -72,7 +72,7 @@ type
     property CompilerOptions: TCompilerOptions read FCompilerOptions write FCompilerOptions default cDefaultCompilerOptions;
     property MaxDataSize: Integer read FMaxDataSize write FMaxDataSize;
     property ScriptPaths: TStrings read FScriptPaths write SetScriptPaths;
-    property Timeout: Integer read FTimeout write FTimeout;
+    property TimeoutMilliseconds: Integer read FTimeoutMilliseconds write FTimeoutMilliseconds default 0;
     property StackChunkSize: Integer read FStackChunkSize write FStackChunkSize default C_DefaultStackChunkSize;
   end;
 
@@ -398,7 +398,7 @@ begin
    Result := FProg;
    FMsgs := FProg.Msgs;
    FProg.Compiler := Self;
-   FProg.Timeout := Conf.Timeout;
+   FProg.TimeoutMilliseconds := Conf.TimeoutMilliseconds;
 
    try
       // Check for missing units
@@ -3864,7 +3864,7 @@ begin
     FCompilerOptions := TConfiguration(Source).CompilerOptions;
     FMaxDataSize := TConfiguration(Source).MaxDataSize;
     FScriptPaths.Assign(TConfiguration(Source).ScriptPaths);
-    FTimeout := TConfiguration(Source).Timeout;
+    FTimeoutMilliseconds := TConfiguration(Source).TimeoutMilliseconds;
   end
   else
     inherited;
