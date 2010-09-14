@@ -63,12 +63,12 @@ type
   TDelphiWebScript = class(TdwsEmptyUnit)
   private
     FCompiler: TdwsCompiler;
-    FConfig: TConfiguration;
+    FConfig: TdwsConfiguration;
   protected
     function GetOnInclude: TIncludeEvent;
     function GetVersion: string;
     procedure SetVersion(const Value: string);
-    procedure SetConfig(const Value: TConfiguration);
+    procedure SetConfig(const Value: TdwsConfiguration);
     procedure SetOnInclude(const Value: TIncludeEvent);
     procedure AddUnitSymbols(SymbolTable: TSymbolTable); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -79,7 +79,7 @@ type
     function Compile(const Text: string): TdwsProgram; virtual;
     function RemoveUnit(const Un: IUnit): Boolean;
   published
-    property Config: TConfiguration read FConfig write SetConfig stored True;
+    property Config: TdwsConfiguration read FConfig write SetConfig stored True;
     property OnInclude: TIncludeEvent read GetOnInclude write SetOnInclude;
     property Version: string read GetVersion write SetVersion stored False;
   end;
@@ -436,29 +436,38 @@ type
     class function GetSymbolClass : TdwsSymbolClass; override;
   end;
 
-  TdwsClass = class(TdwsSymbol)
-  private
-    FAncestor: string;
-    FConstructors: TdwsConstructors;
-    FFields: TdwsFields;
-    FMethods: TdwsMethods;
-    FOnObjectDestroy: TObjectDestroyEvent;
-    FProperties: TdwsProperties;
-  protected
-    function GetDisplayName: string; override;
-  public
-    constructor Create(Collection: TCollection); override;
-    destructor Destroy; override;
-    procedure Assign(Source: TPersistent); override;
-    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
-  published
-    property Ancestor: string read FAncestor write FAncestor;
-    property Constructors: TdwsConstructors read FConstructors write FConstructors;
-    property Fields: TdwsFields read FFields write FFields;
-    property Methods: TdwsMethods read FMethods write FMethods;
-    property OnCleanUp: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
-    property Properties: TdwsProperties read FProperties write FProperties;
-  end;
+   // TdwsClass
+   //
+   TdwsClass = class(TdwsSymbol)
+      private
+         FAncestor: string;
+         FConstructors: TdwsConstructors;
+         FFields: TdwsFields;
+         FMethods: TdwsMethods;
+         FOnObjectDestroy: TObjectDestroyEvent;
+         FProperties: TdwsProperties;
+         FHelperObject : TObject;
+
+      protected
+         function GetDisplayName: string; override;
+
+      public
+         constructor Create(Collection: TCollection); override;
+         destructor Destroy; override;
+         procedure Assign(Source: TPersistent); override;
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+
+         {: User-side helper object, freed by the TdwsClass. }
+         property HelperObject : TObject read FHelperObject write FHelperObject;
+
+      published
+         property Ancestor: string read FAncestor write FAncestor;
+         property Constructors: TdwsConstructors read FConstructors write FConstructors;
+         property Fields: TdwsFields read FFields write FFields;
+         property Methods: TdwsMethods read FMethods write FMethods;
+         property OnCleanUp: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
+         property Properties: TdwsProperties read FProperties write FProperties;
+   end;
 
   TdwsClasses = class(TdwsCollection)
   protected
@@ -835,7 +844,7 @@ begin
   inherited Create(AOwner);
   FUnitName := 'Default';
   FCompiler := TdwsCompiler.Create;
-  FConfig := TConfiguration.Create(Self);
+  FConfig := TdwsConfiguration.Create(Self);
   AddUnit(Self);
 end;
 
@@ -879,7 +888,7 @@ begin
   Result := x >= 0;
 end;
 
-procedure TDelphiWebScript.SetConfig(const Value: TConfiguration);
+procedure TDelphiWebScript.SetConfig(const Value: TdwsConfiguration);
 begin
   FConfig.Assign(Value);
 end;
@@ -2241,11 +2250,12 @@ end;
 
 destructor TdwsClass.Destroy;
 begin
-  FFields.Free;
-  FConstructors.Free;
-  FMethods.Free;
-  FProperties.Free;
-  inherited;
+   FFields.Free;
+   FConstructors.Free;
+   FMethods.Free;
+   FProperties.Free;
+   FHelperObject.Free;
+   inherited;
 end;
 
 function TdwsClass.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil):
