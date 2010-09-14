@@ -35,6 +35,7 @@ type
          procedure ExecutionOptimized;
 
          procedure DelphiException;
+         procedure DelphiExceptionReRaise;
    end;
 
    EDelphiException = class (Exception)
@@ -210,6 +211,28 @@ begin
       CheckEquals('', prog.Msgs.AsInfo, 'Compile');
       prog.Execute;
       CheckEquals('Runtime Error: Hello, Delphi Exception here! [line: 1, column: 1]'#13#10,
+                  prog.Msgs.AsInfo, 'Execute Msgs');
+   finally
+      prog.Free;
+   end;
+end;
+
+// DelphiExceptionReRaise
+//
+procedure TdwsUnitTests.DelphiExceptionReRaise;
+var
+   prog : TdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'try'#13#10
+                           +#9'FuncException;'#13#10
+                           +'except'#13#10
+                           +#9'raise;'#13#10
+                           +'end;'#13#10
+                           );
+   try
+      CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+      prog.Execute;
+      CheckEquals('Runtime Error: Hello, Delphi Exception here! [line: 2, column: 2]'#13#10,
                   prog.Msgs.AsInfo, 'Execute Msgs');
    finally
       prog.Free;
