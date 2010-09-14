@@ -38,7 +38,7 @@ type
 
   TdwsFilter = class;
 
-  TConfiguration = class(TPersistent)
+  TdwsConfiguration = class(TPersistent)
   private
     FCompilerOptions: TCompilerOptions;
     FConnectors: TStrings;
@@ -57,6 +57,7 @@ type
     procedure InitSystemTable;
     procedure SetResultType(const Value: TdwsResultType);
     procedure SetFilter(const Value: TdwsFilter);
+    procedure SetTimeOut(const val : Integer);
   public
     constructor Create(Owner: TComponent);
     destructor Destroy; override;
@@ -70,9 +71,10 @@ type
     property Filter: TdwsFilter read FFilter write SetFilter;
     property ResultType: TdwsResultType read FResultType write SetResultType;
     property CompilerOptions: TCompilerOptions read FCompilerOptions write FCompilerOptions default cDefaultCompilerOptions;
-    property MaxDataSize: Integer read FMaxDataSize write FMaxDataSize;
+    property MaxDataSize: Integer read FMaxDataSize write FMaxDataSize default 0;
     property ScriptPaths: TStrings read FScriptPaths write SetScriptPaths;
     property TimeoutMilliseconds: Integer read FTimeoutMilliseconds write FTimeoutMilliseconds default 0;
+    property TimeOut : Integer write SetTimeOut;
     property StackChunkSize: Integer read FStackChunkSize write FStackChunkSize default C_DefaultStackChunkSize;
   end;
 
@@ -202,7 +204,7 @@ type
       constructor Create;
       destructor Destroy; override;
 
-      function Compile(const aCodeText : String; Conf: TConfiguration): TdwsProgram;
+      function Compile(const aCodeText : String; Conf: TdwsConfiguration): TdwsProgram;
 
       class function Evaluate(AContext: TdwsProgram; const AExpression: string): TNoPosExpr;
 
@@ -365,7 +367,7 @@ end;
 
 // Compile
 //
-function TdwsCompiler.Compile(const aCodeText : String; Conf: TConfiguration): TdwsProgram;
+function TdwsCompiler.Compile(const aCodeText : String; Conf: TdwsConfiguration): TdwsProgram;
 var
    x: Integer;
    stackChunkSize: Integer;
@@ -3855,22 +3857,22 @@ begin
   end;
 end;
 
-{ TConfiguration }
+{ TdwsConfiguration }
 
-procedure TConfiguration.Assign(Source: TPersistent);
+procedure TdwsConfiguration.Assign(Source: TPersistent);
 begin
-  if Source is TConfiguration then
+  if Source is TdwsConfiguration then
   begin
-    FCompilerOptions := TConfiguration(Source).CompilerOptions;
-    FMaxDataSize := TConfiguration(Source).MaxDataSize;
-    FScriptPaths.Assign(TConfiguration(Source).ScriptPaths);
-    FTimeoutMilliseconds := TConfiguration(Source).TimeoutMilliseconds;
+    FCompilerOptions := TdwsConfiguration(Source).CompilerOptions;
+    FMaxDataSize := TdwsConfiguration(Source).MaxDataSize;
+    FScriptPaths.Assign(TdwsConfiguration(Source).ScriptPaths);
+    FTimeoutMilliseconds := TdwsConfiguration(Source).TimeoutMilliseconds;
   end
   else
     inherited;
 end;
 
-constructor TConfiguration.Create(Owner: TComponent);
+constructor TdwsConfiguration.Create(Owner: TComponent);
 begin
   inherited Create;
   FOwner := Owner;
@@ -3886,7 +3888,7 @@ begin
   FCompilerOptions := cDefaultCompilerOptions;
 end;
 
-destructor TConfiguration.Destroy;
+destructor TdwsConfiguration.Destroy;
 begin
   inherited;
   (FSystemTable as TStaticSymbolTable)._Release;
@@ -3896,7 +3898,7 @@ begin
   FDefaultResultType.Free;
 end;
 
-procedure TConfiguration.InitSystemTable;
+procedure TdwsConfiguration.InitSystemTable;
 var
   clsObject, clsException, clsDelphiException: TClassSymbol;
   meth: TMethodSymbol;
@@ -3954,7 +3956,7 @@ begin
   TParamCountFunc.Create(SystemTable, 'ParamCount', [], SYS_INTEGER, False);
 end;
 
-procedure TConfiguration.SetFilter(const Value: TdwsFilter);
+procedure TdwsConfiguration.SetFilter(const Value: TdwsFilter);
 begin
   if Assigned(FFilter) then
     FFilter.RemoveFreeNotification(FOwner);
@@ -3965,7 +3967,14 @@ begin
     FFilter.FreeNotification(FOwner);
 end;
 
-procedure TConfiguration.SetResultType(const Value: TdwsResultType);
+// SetTimeOut
+//
+procedure TdwsConfiguration.SetTimeOut(const val : Integer);
+begin
+   TimeoutMilliseconds:=val*1000;
+end;
+
+procedure TdwsConfiguration.SetResultType(const Value: TdwsResultType);
 begin
   if Assigned(FResultType) and (FResultType <> FDefaultResultType) then
     FResultType.RemoveFreeNotification(FOwner);
@@ -3978,7 +3987,7 @@ begin
     FResultType := FDefaultResultType;
 end;
 
-procedure TConfiguration.SetScriptPaths(const Value: TStrings);
+procedure TdwsConfiguration.SetScriptPaths(const Value: TStrings);
 const
 {$IFDEF LINUX}
   PathSeparator = '/';
