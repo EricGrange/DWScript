@@ -31,7 +31,8 @@ type
       typStringID,
       typBooleanID,
       typVariantID,
-      typConnectorID
+      typConnectorID,
+      typNoneID
    );
 
 type
@@ -1863,13 +1864,14 @@ const
 {(*}
   compatiblityMask: array[TBaseTypeId, TBaseTypeId] of Boolean =
   (
-   //int    flt    str    bool   var   conn
-    (true,  false, false, false, true, true), // int
-    (false, true,  false, false, true, true), // flt
-    (false, false, true,  false, true, true), // str
-    (false, false, false, true,  true, true), // bool
-    (true,  true,  true,  true,  true, true), // var
-    (true,  true,  true,  true,  true, true)  // conn
+   //int    flt    str    bool   var    conn   none
+    (true,  false, false, false, true,  true,  false), // int
+    (false, true,  false, false, true,  true,  false), // flt
+    (false, false, true,  false, true,  true,  false), // str
+    (false, false, false, true,  true,  true,  false), // bool
+    (true,  true,  true,  true,  true,  true,  false), // var
+    (true,  true,  true,  true,  true,  true,  false),  // conn
+    (false, false, false, false, false, false, false)  // none
   );
 {*)}
 begin
