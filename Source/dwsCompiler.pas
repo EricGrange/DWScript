@@ -146,7 +146,7 @@ type
       function ReadExprAdd: TNoPosExpr;
       function ReadExprMult: TNoPosExpr;
       function ReadExternalVar(Sym: TExternalVarSymbol; IsWrite: Boolean): TFuncExpr;
-      function ReadField(var Expr: TDataExpr; Sym: TFieldSymbol): TNoPosExpr;
+      function ReadField(Expr: TDataExpr; Sym: TFieldSymbol): TNoPosExpr;
       function ReadFor: TForExpr;
       function ReadStaticMethod(methodSym: TMethodSymbol; IsWrite: Boolean): TFuncExpr;
       function ReadFunc(FuncSym: TFuncSymbol; IsWrite: Boolean; CodeExpr: TDataExpr = nil): TNoPosExpr;
@@ -1508,6 +1508,7 @@ var
   sym: TSymbol;
   namePos: TScriptPos;
   varExpr: TDataExpr;
+  fieldExpr: TNoPosExpr;
   progMeth: TMethodSymbol;
   baseType: TTypeSymbol;
   sk: TSpecialKeywordKind;
@@ -1612,11 +1613,12 @@ begin
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
           varExpr := TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym);
           try
-            Result := ReadSymbol(ReadField(varExpr, TFieldSymbol(sym)), IsWrite);
+            fieldExpr:=ReadField(varExpr, TFieldSymbol(sym));
           except
             varExpr.Free;
             raise;
           end;
+          Result := ReadSymbol(fieldExpr, IsWrite);
         end
         else if sym is TPropertySymbol then
         begin
@@ -1653,7 +1655,7 @@ begin
   end;
 end;
 
-function TdwsCompiler.ReadField(var Expr: TDataExpr; Sym: TFieldSymbol): TNoPosExpr;
+function TdwsCompiler.ReadField(Expr: TDataExpr; Sym: TFieldSymbol): TNoPosExpr;
 begin
    Result := TFieldExpr.Create(FProg, FTok.HotPos, Sym.Typ, Sym, Expr);
 end;
