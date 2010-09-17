@@ -210,9 +210,12 @@ var
    source : TStringList;
    i : Integer;
    prog : TdwsProgram;
+   expectedError : TStringList;
+   expectedErrorsFileName : String;
 begin
    FCompiler.Config.CompilerOptions:=[coOptimize];
    source:=TStringList.Create;
+   expectedError:=TStringList.Create;
    try
 
       for i:=0 to FFailures.Count-1 do begin
@@ -221,7 +224,11 @@ begin
 
          prog:=FCompiler.Compile(source.Text);
          try
-            Check(prog.Msgs.AsInfo<>'', FFailures[i]+': undetected error');
+            expectedErrorsFileName:=ChangeFileExt(FFailures[i], '.txt');
+            if FileExists(expectedErrorsFileName) then begin
+               expectedError.LoadFromFile(expectedErrorsFileName);
+               CheckEquals(expectedError.Text, prog.Msgs.AsInfo, FFailures[i]);
+            end else Check(prog.Msgs.AsInfo<>'', FFailures[i]+': undetected error');
          finally
             prog.Free;
          end;
@@ -229,6 +236,7 @@ begin
       end;
 
    finally
+      expectedError.Free;
       source.Free;
    end;
 end;
