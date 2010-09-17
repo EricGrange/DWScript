@@ -688,6 +688,7 @@ type
       BaseExpr: TDataExpr; IsInstruction: Boolean = True;
       CodeExpr: TDataExpr = nil; IsWritable: Boolean = False);
     destructor Destroy; override;
+    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
     procedure Initialize; override;
     property BaseExpr: TDataExpr read FBaseExpr;
   end;
@@ -2510,12 +2511,12 @@ begin
       stack.Push(FFunc.ParamSize);
       try
 
+         // Special operations
+         func := PreCall(scriptObj);
+
          // Push parameters
          for x := 0 to High(FPushExprs) do
            FPushExprs[x].Execute(stack);
-
-         // Special operations
-         func := PreCall(scriptObj);
 
          code := GetCode(func);
          if not Assigned(Code) then
@@ -3003,6 +3004,14 @@ destructor TMethodStaticExpr.Destroy;
 begin
   FBaseExpr.Free;
   inherited;
+end;
+
+// TypeCheckNoPos
+//
+procedure TMethodStaticExpr.TypeCheckNoPos(const aPos : TScriptPos);
+begin
+   FBaseExpr.TypeCheckNoPos(aPos);
+   inherited;
 end;
 
 function TMethodStaticExpr.PreCall(var ScriptObj: IScriptObj): TFuncSymbol;
