@@ -88,8 +88,6 @@ object MainForm: TMainForm
     Top = 24
   end
   object DelphiWebScript: TDelphiWebScript
-    Config.MaxDataSize = 0
-    Config.Timeout = 0
     Left = 232
     Top = 104
   end

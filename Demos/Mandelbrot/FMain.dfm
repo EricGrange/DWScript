@@ -43,8 +43,6 @@ object MainForm: TMainForm
     Caption = 'LADWScript'
   end
   object DelphiWebScript: TDelphiWebScript
-    Config.MaxDataSize = 0
-    Config.Timeout = 0
     Left = 144
     Top = 8
   end

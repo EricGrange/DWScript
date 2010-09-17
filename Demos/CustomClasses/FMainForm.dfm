@@ -107,8 +107,6 @@ object MainForm: TMainForm
     TabOrder = 2
   end
   object DelphiWebScript: TDelphiWebScript
-    Config.MaxDataSize = 0
-    Config.Timeout = 0
     Left = 560
     Top = 72
   end
