@@ -61,7 +61,7 @@ type
     procedure Clear; virtual; abstract;
     procedure Delete(Index: Integer); virtual; abstract;
     procedure EndUpdate;
-    function Equals(Strings: TdwsStrings): Boolean;
+    function Equals(Strings: TdwsStrings): Boolean; reintroduce;
     procedure Exchange(Index1, Index2: Integer); virtual;
     function GetText: PChar; virtual;
     function IndexOf(const S: string): Integer; virtual;
@@ -336,7 +336,7 @@ begin
     begin
       S := Get(I);
       P := PChar(S);
-      while not (P^ in [#0..' ', QuoteChar, Delimiter]) do
+      while not CharInSet(P^, [#0..' ', QuoteChar, Delimiter]) do
       {$IFDEF MSWINDOWS}
         P := CharNext(P);
       {$ELSE}
@@ -562,7 +562,7 @@ begin
       while P^ <> #0 do
       begin
         Start := P;
-        while not (P^ in [#0, #10, #13]) do Inc(P);
+        while not CharInSet(P^, [#0, #10, #13]) do Inc(P);
         SetString(S, Start, P - Start);
         Add(S);
         if P^ = #13 then Inc(P);
@@ -610,7 +610,7 @@ begin
   try
     Clear;
     P := PChar(Value);
-    while P^ in [#1..' '] do
+    while CharInSet(P^, [#1..' ']) do
     {$IFDEF MSWINDOWS}
       P := CharNext(P);
     {$ELSE}
@@ -632,7 +632,7 @@ begin
         SetString(S, P1, P - P1);
       end;
       Add(S);
-      while P^ in [#1..' '] do
+      while CharInSet(P^, [#1..' ']) do
       {$IFDEF MSWINDOWS}
         P := CharNext(P);
       {$ELSE}
@@ -654,7 +654,7 @@ begin
           {$ELSE}
           Inc(P);
           {$ENDIF}
-        until not (P^ in [#1..' ']);
+        until not CharInSet(P^, [#1..' ']);
       end;
     end;
   finally
