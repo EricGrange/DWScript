@@ -207,6 +207,8 @@ type
      procedure Initialize; override;
    end;
 
+   EScriptOutOfBounds = class (EScriptError);
+
    // Array expressions x[index] for static arrays
    TStaticArrayExpr = class(TArrayExpr)
    private
@@ -1324,9 +1326,9 @@ begin
 
    if Cardinal(index)>Cardinal(FLastIndex) then begin
       if index > FLastIndex then
-         AddExecutionStop(RTE_UpperBoundExceeded)
+         raise EScriptOutOfBounds.Create(RTE_UpperBoundExceeded)
       else if index < 0 then
-         AddExecutionStop(RTE_LowerBoundExceeded);
+         raise EScriptOutOfBounds.Create(RTE_LowerBoundExceeded);
    end;
    // Calculate the address
    Result := FBaseExpr.Addr + (index * FElementSize);
