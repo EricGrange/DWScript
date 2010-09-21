@@ -1,19 +1,24 @@
-1,,0
-123,,0
-0,zzz,0
-0,ABC,0
-0,,3.14
-0,,12.3
+1,,0,False
+123,,0,False
+0,zzz,0,False
+0,ABC,0,False
+0,,3.14,False
+0,,12.3,False
+0,,0,False
+0,,0,True
+0,,0,True
 
 ---
 
-0,,0
-456,,0
-2,,0
-2,DEF,0
-2,aaa,0
-2,aaa,4.56
-2,aaa,2.5
+0,,0,False
+456,,0,False
+2,,0,False
+2,DEF,0,False
+2,aaa,0,False
+2,aaa,4.56,False
+2,aaa,2.5,False
+2,aaa,2.5,True
+2,aaa,2.5,False
 
 ---
 
@@ -23,3 +28,6 @@ IJK
 bbb
 78.9
 1.5
+True
+True
+False

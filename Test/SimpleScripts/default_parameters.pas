@@ -3,13 +3,16 @@ type
       FInteger : Integer;
       FString : String;
       FFloat : Float;
+      FBoolean : Boolean;
       constructor CreateInt(i : Integer = 123);
       constructor CreateStr(s : String = 'ABC');
       constructor CreateFloat(f : Float = 12.3);
+      constructor CreateBoolean(b : Boolean = True);
 
       procedure SetInt(i : Integer = 456);
       procedure SetStr(s : String = 'DEF');
       procedure SetFloat(f : Float = 4.56);
+      procedure SetBoolean(b : Boolean = True);
 
       procedure PrintOut;
    end;
@@ -29,6 +32,11 @@ begin
    FFloat:=f;
 end;
 
+constructor TTest.CreateBoolean(b : Boolean = True);
+begin
+   FBoolean:=b;
+end;
+
 procedure TTest.SetInt(i : Integer = 456);
 begin
    FInteger:=i;
@@ -44,9 +52,14 @@ begin
    FFloat:=f;
 end;
 
+procedure TTest.SetBoolean(b : Boolean = True);
+begin
+   FBoolean:=b;
+end;
+
 procedure TTest.PrintOut;
 begin
-   PrintLn(IntToStr(FInteger)+','+FString+','+FloatToStr(FFloat));
+   PrintLn(IntToStr(FInteger)+','+FString+','+FloatToStr(FFloat)+','+VarToStr(FBoolean));
 end;
 
 procedure PrintInt(i : Integer = 789);
@@ -64,6 +77,11 @@ begin
    PrintLn(FloatToStr(f));
 end;
 
+procedure PrintBoolean(b : Boolean = True);
+begin
+   PrintLn(VarToStr(b));
+end;
+
 var t : TTest;
 
 TTest.CreateInt(1).PrintOut;
@@ -72,6 +90,9 @@ TTest.CreateStr('zzz').PrintOut;
 TTest.CreateStr.PrintOut;
 TTest.CreateFloat(3.14).PrintOut;
 TTest.CreateFloat.PrintOut;
+TTest.CreateBoolean(False).PrintOut;
+TTest.CreateBoolean(True).PrintOut;
+TTest.CreateBoolean.PrintOut;
 
 PrintLn('');
 PrintLn('---');
@@ -95,6 +116,11 @@ t.PrintOut;
 t.SetFloat(2.5);
 t.PrintOut;
 
+t.SetBoolean;
+t.PrintOut;
+t.SetBoolean(False);
+t.PrintOut;
+
 PrintLn('');
 PrintLn('---');
 PrintLn('');
@@ -105,4 +131,7 @@ PrintStr;
 PrintStr('bbb');
 PrintFloat;
 PrintFloat(1.5);
+PrintBoolean;
+PrintBoolean(True);
+PrintBoolean(False);
 
