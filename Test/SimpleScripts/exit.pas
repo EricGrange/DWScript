@@ -16,3 +16,5 @@ end;
 
 PrintLn(Test1);
 PrintLn(Test2);
+Exit;
+PrintLn('Not printed');
