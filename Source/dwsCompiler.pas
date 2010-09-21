@@ -142,6 +142,7 @@ type
       function ReadBlocks(const endTokens: TTokenTypes; var finalToken: TTokenType): TNoResultExpr;
       function ReadEnumeration(const TypeName: string): TEnumerationSymbol;
       function ReadExcept(TryExpr: TExpr): TExceptExpr;
+      function ReadExit: TNoResultExpr;
       function ReadExpr: TNoPosExpr;
       function ReadExprAdd: TNoPosExpr;
       function ReadExprMult: TNoPosExpr;
@@ -1156,7 +1157,7 @@ var
   assignExpr : TAssignExpr;
 begin
   // Stop if declaration was forwarded or external
-  if (TFuncSymbol(Proc).IsForwarded) then
+  if (Proc.IsForwarded) then
   begin
     // Closed context of procedure (was only a forward)
     if coContextMap in FCompilerOptions then
@@ -1379,8 +1380,8 @@ begin
       Result := ReadRaise
    else if FTok.TestDelete(ttBREAK) then
       Result := TBreakExpr.Create(FProg, FTok.HotPos)
-   else if FTok.TestDelete(ttEXIT) then
-      Result := TExitExpr.Create(FProg, FTok.HotPos)
+   else if FTok.Test(ttEXIT) then
+      Result := ReadExit
    else if FTok.TestDelete(ttCONTINUE) then
       Result := TContinueExpr.Create(FProg, FTok.HotPos)
    // Try to read a function call, method call or an assignment
@@ -3028,6 +3029,43 @@ begin
     Result.Free;
     raise;
   end;
+end;
+
+// ReadExit
+//
+function TdwsCompiler.ReadExit: TNoResultExpr;
+var
+   leftExpr : TDataExpr;
+   assignExpr : TNoResultExpr;
+   proc : TProcedure;
+   exitPos : TScriptPos;
+begin
+   exitPos:=FTok.HotPos;
+   if not FTok.TestDelete(ttEXIT) then
+      Assert(False);
+   if FTok.TestDelete(ttBLEFT) then begin
+      if not (FProg is TProcedure) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoResultRequired);
+      proc:=TProcedure(FProg);
+      if proc.Func.Result=nil then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoResultRequired);
+      leftExpr:=TVarExpr.CreateTyped(FProg, proc.Func.Result.Typ, proc.Func.Result);
+      try
+         assignExpr:=ReadAssign(leftExpr);
+         try
+            leftExpr:=nil;
+            if not FTok.TestDelete(ttBRIGHT) then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+            Result:=TExitValueExpr.Create(FProg, exitPos, assignExpr);
+         except
+            assignExpr.Free;
+            raise;
+         end;
+      except
+         leftExpr.Free;
+         raise;
+      end;
+   end else Result:=TExitExpr.Create(FProg, FTok.HotPos)
 end;
 
 function TdwsCompiler.ReadType(const TypeName: string): TTypeSymbol;

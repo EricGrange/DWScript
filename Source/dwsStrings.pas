@@ -225,6 +225,7 @@ const
 
   CPE_NoResultTypeRequired = 'No result type required';
   CPE_ResultTypeExpected = 'Result type expected';
+  CPE_NoResultRequired = 'No result required';
 
   CPE_CanNotOverride = 'Method %s not found in parent class. Can''t override!';
   CPE_InvalidArgCombination = 'Invalid argument combination';

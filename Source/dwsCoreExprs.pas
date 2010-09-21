@@ -728,6 +728,16 @@ type
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
+   TExitValueExpr = class(TExitExpr)
+      private
+         FAssignExpr : TNoResultExpr;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; assignExpr : TNoResultExpr);
+         destructor Destroy; override;
+         procedure Initialize; override;
+         procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+
    TContinueExpr = class(TFlowControlExpr)
    public
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
@@ -3227,6 +3237,42 @@ end;
 
 procedure TExitExpr.EvalNoResult(var status : TExecutionStatusResult);
 begin
+   status:=esrExit;
+end;
+
+// ------------------
+// ------------------ TExitValueExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TExitValueExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; assignExpr : TNoResultExpr);
+begin
+   inherited Create(Prog, Pos);
+   FAssignExpr:=assignExpr;
+end;
+
+// Destroy
+//
+destructor TExitValueExpr.Destroy;
+begin
+   FAssignExpr.Free;
+   inherited;
+end;
+
+// Initialize
+//
+procedure TExitValueExpr.Initialize;
+begin
+   inherited;
+   FAssignExpr.Initialize;
+end;
+
+// EvalNoResult
+//
+procedure TExitValueExpr.EvalNoResult(var status : TExecutionStatusResult);
+begin
+   FAssignExpr.EvalNoResult(status);
    status:=esrExit;
 end;
 
