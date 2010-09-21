@@ -395,7 +395,7 @@ procedure TMsgs.AddExecutionStop(const Pos: TScriptPos; const Text: string);
 begin
    if (Count=0) or (Msgs[Count-1].FText<>Text) then
      AddExecutionError(Pos, Text);
-  raise EScriptError.Create('');
+  raise EScriptError.Create(Text);
 end;
 
 procedure TMsgs.Clear;
