@@ -531,13 +531,13 @@ begin
    inherited Destroy;
 end;
 
-function TState.FindTransition(c: char): TTransition;
+function TState.FindTransition(c : Char): TTransition;
 var
-   ac : AnsiChar;
+   oc : Integer;
 begin
-   ac:=AnsiChar(c);
-   if (ac<#128) then
-      Result:=FTransitions[Ord(ac)]
+   oc:=Ord(c);
+   if oc<128 then
+      Result:=FTransitions[oc]
    else Result:=FTransitions[127];
 end;
 
