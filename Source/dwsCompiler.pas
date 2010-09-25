@@ -3922,7 +3922,7 @@ begin
   FScriptPaths := TStringList.Create;
   FUnits := TStringList.Create;
   InitSystemTable;
-  FUnits.AddObject(SYS_INTERNAL, Pointer(IUnit(vInternalUnit)));
+  FUnits.AddObject(SYS_INTERNAL, Pointer(IUnit(dwsInternalUnit)));
   FStackChunkSize := C_DefaultStackChunkSize;
   FDefaultResultType := TdwsDefaultResultType.Create(nil);
   FResultType := FDefaultResultType;

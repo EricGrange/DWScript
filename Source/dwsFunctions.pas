@@ -161,8 +161,7 @@ procedure RegisterInternalProcedure(InternalFunctionClass: TInternalFunctionClas
 
 procedure RegisterInternalInitProc(Proc: TInternalInitProc);
 
-var
-   vInternalUnit: TInternalUnit;
+function dwsInternalUnit : TInternalUnit;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -172,41 +171,56 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+var
+   vInternalUnit : TInternalUnit;
+
+// dwsInternalUnit
+//
+function dwsInternalUnit : TInternalUnit;
+begin
+   if not Assigned(vInternalUnit) then
+      vInternalUnit:=TInternalUnit.Create;
+   Result:=vInternalUnit;
+end;
+
 procedure RegisterInternalInitProc(Proc: TInternalInitProc);
 begin
-  vInternalUnit.AddInitProc(Proc);
+   vInternalUnit.AddInitProc(Proc);
 end;
 
 type
-  TRegisteredInternalFunction = record
-    InternalFunctionClass: TInternalFunctionClass;
-    FuncName: string;
-    FuncParams: array of string;
-    FuncType: string;
-    StateLess : Boolean;
-  end;
-  PRegisteredInternalFunction = ^TRegisteredInternalFunction;
+   TRegisteredInternalFunction = record
+      InternalFunctionClass : TInternalFunctionClass;
+      FuncName : String;
+      FuncParams : array of String;
+      FuncType : String;
+      StateLess : Boolean;
+   end;
+   PRegisteredInternalFunction = ^TRegisteredInternalFunction;
 
-procedure RegisterInternalFunction(InternalFunctionClass:
-  TInternalFunctionClass; const FuncName: string;
-  const FuncParams: array of string; const FuncType: string;
-  const isStateLess : Boolean = False);
+// RegisterInternalFunction
+//
+procedure RegisterInternalFunction(InternalFunctionClass: TInternalFunctionClass;
+                                   const FuncName: string;
+                                   const FuncParams: array of string;
+                                   const FuncType: string;
+                                   const isStateLess : Boolean = False);
 var
-  i: Integer;
-  rif: PRegisteredInternalFunction;
+   i : Integer;
+   rif : PRegisteredInternalFunction;
 begin
-  New(rif);
-  rif.InternalFunctionClass := InternalFunctionClass;
-  rif.FuncName := FuncName;
-  rif.StateLess:=isStateLess;
+   New(rif);
+   rif.InternalFunctionClass := InternalFunctionClass;
+   rif.FuncName := FuncName;
+   rif.StateLess:=isStateLess;
 
-  SetLength(rif.FuncParams, Length(FuncParams));
+   SetLength(rif.FuncParams, Length(FuncParams));
 
-  for i := 0 to Length(FuncParams) - 1 do
-    rif.FuncParams[i] := FuncParams[i];
-  rif.FuncType := FuncType;
+   for i := 0 to Length(FuncParams) - 1 do
+      rif.FuncParams[i] := FuncParams[i];
+   rif.FuncType := FuncType;
 
-  vInternalUnit.AddInternalFunction(rif);
+   dwsInternalUnit.AddInternalFunction(rif);
 end;
 
 // RegisterInternalIntFunction
@@ -682,8 +696,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-   vInternalUnit := TInternalUnit.Create;
 
 finalization
 
