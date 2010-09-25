@@ -2315,6 +2315,7 @@ begin
 
    try
       ReadFuncArgs(TFuncExprBase(Result).AddArg);
+      TFuncExprBase(Result).TypeCheck;
    except
       Result.Free;
       raise;
