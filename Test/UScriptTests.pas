@@ -66,6 +66,8 @@ end;
 //
 procedure TScriptTests.SetUp;
 begin
+   DecimalSeparator:='.';
+
    FTests:=TStringList.Create;
    FAlgos:=TStringList.Create;
    FFailures:=TStringList.Create;
