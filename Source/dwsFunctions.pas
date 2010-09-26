@@ -185,7 +185,7 @@ end;
 
 procedure RegisterInternalInitProc(Proc: TInternalInitProc);
 begin
-   vInternalUnit.AddInitProc(Proc);
+   dwsInternalUnit.AddInitProc(Proc);
 end;
 
 type
