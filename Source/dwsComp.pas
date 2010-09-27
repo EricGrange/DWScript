@@ -1701,7 +1701,9 @@ begin
   // Get the type symbol of this variable
   typSym := GetDataType(Table, DataType);
   if typSym is TArraySymbol then
-    raise EHandledGenerationError.CreateFmt('Variables of array type not supported: %s in %s', [Name, FUnit.Name]);
+    raise EHandledGenerationError.CreateFmt('Globals of array type not supported: %s in %s', [Name, FUnit.Name]);
+  if typSym is TRecordSymbol then
+    raise EHandledGenerationError.CreateFmt('Globals of record type not supported: %s in %s', [Name, FUnit.Name]);
 
   if (Assigned(FOnReadVar) or Assigned(FOnWriteVar)) then
   begin
