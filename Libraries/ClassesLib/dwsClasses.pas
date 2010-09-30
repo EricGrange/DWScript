@@ -2,15 +2,11 @@ unit dwsClasses;
 
 interface
 
-{$IFDEF MSWINDOWS}
 uses Windows, SysUtils, Classes;
-{$ENDIF}
-{$IFDEF LINUX}
-uses Libc, SysUtils, Variants, TypInfo, Types, Classes;
-{$ENDIF}
 
 type
-{ TdwsStrings class }
+
+   { TdwsStrings class }
 
   TStringsDefined = set of (sdDelimiter, sdQuoteChar);
 
@@ -366,32 +362,30 @@ end;
 
 function TdwsStrings.GetTextStr: string;
 var
-  I, L, Size, Count: Integer;
-  P: PChar;
-  S, LB: string;
+   I, L, Size, Count: Integer;
+   P: PChar;
+   S, LB: string;
 begin
-  Count := GetCount;
-  Size := 0;
-  LB := sLineBreak;
-  for I := 0 to Count - 1 do Inc(Size, Length(Get(I)) + Length(LB));
-  SetString(Result, nil, Size);
-  P := Pointer(Result);
-  for I := 0 to Count - 1 do
-  begin
-    S := Get(I);
-    L := Length(S);
-    if L <> 0 then
-    begin
-      System.Move(Pointer(S)^, P^, L);
-      Inc(P, L);
-    end;
-    L := Length(LB);
-    if L <> 0 then
-    begin
-      System.Move(Pointer(LB)^, P^, L);
-      Inc(P, L);
-    end;
-  end;
+   Count := GetCount;
+   Size := 0;
+   LB := sLineBreak;
+   for I := 0 to Count - 1 do
+   Inc(Size, Length(Get(I)) + Length(LB));
+   SetString(Result, nil, Size);
+   P := Pointer(Result);
+   for I := 0 to Count - 1 do begin
+      S := Get(I);
+      L := Length(S);
+      if L <> 0 then begin
+         System.Move(Pointer(S)^, P^, L*SizeOf(Char));
+         Inc(P, L);
+      end;
+      L := Length(LB);
+      if L <> 0 then begin
+         System.Move(Pointer(LB)^, P^, L*SizeOf(Char));
+         Inc(P, L);
+      end;
+   end;
 end;
 
 function TdwsStrings.GetValue(const Name: string): string;
@@ -795,8 +789,8 @@ end;
 
 function TdwsStringList.Get(Index: Integer): string;
 begin
-  if (Index < 0) or (Index >= FCount) then Error(@SListIndexError, Index);
-  Result := FList^[Index].FString;
+   if Cardinal(Index) >= Cardinal(FCount) then Error(@SListIndexError, Index);
+   Result := FList^[Index].FString;
 end;
 
 function TdwsStringList.GetCapacity: Integer;
@@ -811,8 +805,8 @@ end;
 
 function TdwsStringList.GetObject(Index: Integer): IUnknown;
 begin
-  if (Index < 0) or (Index >= FCount) then Error(@SListIndexError, Index);
-  Result := FList^[Index].FObject;
+   if Cardinal(Index) >= Cardinal(FCount) then Error(@SListIndexError, Index);
+   Result := FList^[Index].FObject;
 end;
 
 procedure TdwsStringList.Grow;
