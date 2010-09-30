@@ -612,106 +612,119 @@ begin
     end;
 end;
 
-function TdwsCompiler.ReadVarDecl: TNoResultExpr;
+// ReadVarDecl
+//
+function TdwsCompiler.ReadVarDecl : TNoResultExpr;
 var
-  x: Integer;
-  names: TStringList;
-  sym, typ: TSymbol;
-  pos: TScriptPos;
-  posArray: TScriptPosArray;
-  vars: TList;
-  initData: TData;
-  initExpr: TNoPosExpr;
-  assignExpr : TAssignExpr;
-  constExpr : TConstExpr;
-  varExpr : TVarExpr;
+   x : Integer;
+   names : TStringList;
+   sym, typ : TSymbol;
+   pos : TScriptPos;
+   posArray : TScriptPosArray;
+   vars : TList;
+   initData : TData;
+   initExpr : TNoPosExpr;
+   assignExpr : TAssignExpr;
+   constExpr : TConstExpr;
+   varExpr : TVarExpr;
 begin
-  Result := nil;
+   Result := nil;
 
-  names := TStringList.Create;
-  vars := TList.Create;
-  initExpr := nil;
-  try
-    // Conditionally pass in dynamic array
-    if coSymbolDictionary in FCompilerOptions then
-      ReadNameList(names, posArray)     // use overloaded version
-    else
-      ReadNameList(names);
-
-    if not FTok.TestDelete(ttCOLON) then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
-
-    pos := FTok.HotPos;
-    typ := ReadType('');
-
-    for x := 0 to names.Count - 1 do
-    begin
-      CheckName(names[x]);
-      sym := TDataSymbol.Create(names[x], typ);
-      vars.Add(sym);
-      FProg.Table.AddSymbol(sym);
+   names := TStringList.Create;
+   vars := TList.Create;
+   initExpr := nil;
+   try
+      // Conditionally pass in dynamic array
       if coSymbolDictionary in FCompilerOptions then
-        FProg.SymbolDictionary.Add(sym, posArray[x], [suDeclaration]);   // entry for variable
-    end;
-
-    if names.Count = 1 then
-    begin
-      if FTok.TestDelete(ttEQ) then
-        initExpr := ReadExpr
-    end;
-
-    // Create variable initializations
-    for x := 0 to vars.Count - 1 do
-    begin
-      sym := vars[x];
-
-      if Assigned(initExpr) then
-      begin
-        // Initialize with an expression
-        Result := TAssignExpr.Create(FProg, pos, GetVarExpr(vars[x]), initExpr);
-        initExpr := nil;
-        try
-            Result.TypeCheck;
-            if Optimize then
-               Result:=Result.OptimizeToNoResultExpr;
-        except
-            Result.Free;
-            raise;
-        end;
-      end
+         ReadNameList(names, posArray)     // use overloaded version
       else
-      begin
-        if sym.Typ is TArraySymbol then
-        begin // TODO: if Sym.DynamicInit?
-          TBlockExpr(FProg.InitExpr).AddStatement(
-            TInitDataExpr.Create(FProg, Pos, GetVarExpr(vars[x]) as TDataExpr));
-        end
-        else
-        begin
-          // Initialize with default value
-          varExpr:=GetVarExpr(vars[x]);
-          if varExpr.Typ=FProg.TypInteger then
-             assignExpr:=TAssignConstToIntegerVarExpr.Create(FProg, pos, varExpr, 0)
-          else if varExpr.Typ=FProg.TypFloat then
-             assignExpr:=TAssignConstToFloatVarExpr.Create(FProg, pos, varExpr, 0)
-          else if varExpr.Typ=FProg.TypString then
-             assignExpr:=TAssignConstToStringVarExpr.Create(FProg, pos, varExpr, '')
-          else begin
-            initData := nil;
-            SetLength(initData, sym.Typ.Size);
-            TDataSymbol(sym).initData(initData, 0);
+         ReadNameList(names);
 
-            constExpr:=TConstExpr.CreateTyped(FProg, sym.Typ, initData);
-            assignExpr:=TAssignConstDataToVarExpr.Create(FProg, pos, varExpr, constExpr);
-          end;
-          TBlockExpr(FProg.InitExpr).AddStatement(assignExpr);
-        end;
+      pos := FTok.HotPos;
+
+      if FTok.TestDelete(ttCOLON) then begin
+
+         // explicit typing
+         //    var myVar : type
+         //    var myVar : type = expr
+         //    var myVar : type := expr
+         typ := ReadType('');
+         if names.Count = 1 then begin
+            if FTok.TestDelete(ttEQ) or FTok.TestDelete(ttASSIGN) then
+               initExpr := ReadExpr
+         end;
+
+      end else if FTok.TestDelete(ttEQ) or FTok.TestDelete(ttASSIGN) then begin
+
+         // inferred typing
+         //    var myVar = expr
+         //    var myVar := expr
+         if names.Count <> 1 then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
+         initExpr := ReadExpr;
+         typ := initExpr.Typ;
+
+      end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
+
+      for x := 0 to names.Count - 1 do begin
+         CheckName(names[x]);
+         sym := TDataSymbol.Create(names[x], typ);
+         vars.Add(sym);
+         FProg.Table.AddSymbol(sym);
+         if coSymbolDictionary in FCompilerOptions then
+            FProg.SymbolDictionary.Add(sym, posArray[x], [suDeclaration]);   // entry for variable
       end;
-    end;
+
+      // Create variable initializations
+      for x := 0 to vars.Count - 1 do begin
+         sym := vars[x];
+
+         if Assigned(initExpr) then begin
+
+            // Initialize with an expression
+            Result := TAssignExpr.Create(FProg, pos, GetVarExpr(vars[x]), initExpr);
+            initExpr := nil;
+            try
+               Result.TypeCheck;
+               if Optimize then
+                  Result:=Result.OptimizeToNoResultExpr;
+            except
+               Result.Free;
+               raise;
+            end;
+
+         end else begin
+
+            if sym.Typ is TArraySymbol then begin
+               // TODO: if Sym.DynamicInit?
+               TBlockExpr(FProg.InitExpr).AddStatement(
+                  TInitDataExpr.Create(FProg, Pos, GetVarExpr(vars[x]) as TDataExpr));
+            end else begin
+               // Initialize with default value
+               varExpr:=GetVarExpr(vars[x]);
+               if varExpr.Typ=FProg.TypInteger then
+                  assignExpr:=TAssignConstToIntegerVarExpr.Create(FProg, pos, varExpr, 0)
+               else if varExpr.Typ=FProg.TypFloat then
+                  assignExpr:=TAssignConstToFloatVarExpr.Create(FProg, pos, varExpr, 0)
+               else if varExpr.Typ=FProg.TypString then
+                  assignExpr:=TAssignConstToStringVarExpr.Create(FProg, pos, varExpr, '')
+               else begin
+                  initData := nil;
+                  SetLength(initData, sym.Typ.Size);
+                  TDataSymbol(sym).initData(initData, 0);
+
+                  constExpr:=TConstExpr.CreateTyped(FProg, sym.Typ, initData);
+                  assignExpr:=TAssignConstDataToVarExpr.Create(FProg, pos, varExpr, constExpr);
+               end;
+               TBlockExpr(FProg.InitExpr).AddStatement(assignExpr);
+            end;
+
+         end;
+      end;
   finally
-    initExpr.Free;
-    names.Free;
-    vars.Free;
+      initExpr.Free;
+      names.Free;
+      vars.Free;
   end;
 end;
 
