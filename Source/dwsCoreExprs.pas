@@ -23,7 +23,7 @@ unit dwsCoreExprs;
 interface
 
 uses Classes, Variants, SysUtils, dwsSymbols, dwsErrors, dwsStrings,
-   dwsStack, dwsExprs, dwsTokenizer;
+   dwsStack, dwsExprs;
 
 type
 

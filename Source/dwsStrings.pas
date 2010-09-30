@@ -22,6 +22,8 @@ unit dwsStrings;
 
 interface
 
+uses Classes, SysUtils;
+
 const
   // Constants of "System.pas"
   SYS_INTEGER = 'Integer';
@@ -361,6 +363,99 @@ const
   ADP_ChainIsFormingLoop = 'Adapter chain is forming a loop!';
   ADP_IncompatibleAdapters = 'Incompatible Adapters: %s -> %s';
 
+procedure UnifyCopyString(const fromStr : String; var toStr : String);
+procedure TidyStringsUnifier;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+type
+  TStringListCracker = class(TStrings)
+     private
+       FList: PStringItemList;
+  end;
+
+var
+   vCharStrings : array [0..127] of TStringList;
+
+// UnifyCopyString
+//
+procedure UnifyCopyString(const fromStr : String; var toStr : String);
+var
+   i : Integer;
+   sl : TStringList;
+begin
+   if fromStr='' then
+      toStr:=''
+   else begin
+      i:=Ord(fromStr[1]);
+      if i<=High(vCharStrings) then begin
+         sl:=vCharStrings[i];
+         System.MonitorEnter(sl);
+         i:=sl.IndexOf(fromStr);
+         if i<0 then
+            i:=sl.Add(fromStr);
+         toStr:=TStringListCracker(sl).FList[i].FString;
+         System.MonitorExit(sl);
+      end else toStr:=fromStr;
+   end;
+end;
+
+// TidyStringsUnifier
+//
+procedure TidyStringsUnifier;
+var
+   i : Integer;
+   sl : TStringList;
+begin
+   for i:=Low(vCharStrings) to High(vCharStrings) do begin
+      sl:=vCharStrings[i];
+      System.MonitorEnter(sl);
+      sl.Clear;
+      System.MonitorExit(sl);
+   end;
+end;
+
+// InitializeStringsUnifier
+//
+procedure InitializeStringsUnifier;
+var
+   i : Integer;
+begin
+   for i:=Low(vCharStrings) to High(vCharStrings) do begin
+      vCharStrings[i]:=TStringList.Create;
+      vCharStrings[i].Sorted:=True;
+      vCharStrings[i].CaseSensitive:=True;
+   end;
+end;
+
+// FinalizeStringsUnifier
+//
+procedure FinalizeStringsUnifier;
+var
+   i : Integer;
+begin
+   for i:=Low(vCharStrings) to High(vCharStrings) do
+      FreeAndNil(vCharStrings[i]);
+end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   InitializeStringsUnifier;
+
+finalization
+
+   FinalizeStringsUnifier;
 
 end.

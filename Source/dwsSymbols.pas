@@ -794,7 +794,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsFunctions, dwsErrors, dwsCoreExprs, dwsTokenizer;
+uses dwsFunctions, dwsErrors, dwsCoreExprs;
 
 // ------------------
 // ------------------ TExprBaseListRec ------------------
