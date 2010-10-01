@@ -2028,8 +2028,10 @@ begin
          expr:=ReadName;
          if not (expr is TVarExpr) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_VariableExpected);
-         if not (expr is TIntVarExpr) then
+         if not (expr.IsIntegerType(expr.Typ)) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
+         if not (expr is TIntVarExpr) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_FORLoopMustBeLocalVariable);
 
          loopVarExpr:=TIntVarExpr(expr);
          WarnForVarUsage(loopVarExpr);

@@ -224,6 +224,7 @@ const
   CPE_Deprecated = '"%s" has been deprecated';
   CPE_DeprecatedWithMessage = '"%s" has been deprecated: %s';
   CPE_AssignementToFORLoopVariable = 'Assignment to FOR-Loop variable';
+  CPE_FORLoopMustBeLocalVariable = 'For loop control variable must be simple local variable';
 
   CPE_NoResultTypeRequired = 'No result type required';
   CPE_ResultTypeExpected = 'Result type expected';
