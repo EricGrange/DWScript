@@ -567,8 +567,8 @@ initialization
    RegisterInternalFloatFunction(TFloorFunc, 'Floor', ['v', cFloat], True);
    RegisterInternalFloatFunction(TCeilFunc, 'Ceil', ['v', cFloat], True);
 
-   RegisterInternalFunction(TTruncFunc, 'Trunc', ['v', cFloat], cInteger);
-   RegisterInternalFunction(TRoundFunc, 'Round', ['v', cFloat], cInteger);
+   RegisterInternalFunction(TTruncFunc, 'Trunc', ['v', cFloat], cInteger, True);
+   RegisterInternalFunction(TRoundFunc, 'Round', ['v', cFloat], cInteger, True);
 
    RegisterInternalFloatFunction(TDegToRadFunc, 'DegToRad', ['a', cFloat], True);
    RegisterInternalFloatFunction(TRadToDegFunc, 'RadToDeg', ['a', cFloat], True);
