@@ -38,7 +38,9 @@ type
      ttBEGIN, ttEND, ttBREAK, ttCONTINUE, ttEXIT,
      ttIF, ttTHEN, ttELSE, ttWHILE, ttREPEAT, ttUNTIL, ttFOR, ttTO, ttDOWNTO, ttDO,
      ttCASE,
-     ttTRUE, ttFALSE, ttAND, ttOR, ttXOR, ttDIV, ttMOD, ttNOT, ttPLUS, ttMINUS,
+     ttTRUE, ttFALSE,
+     ttAND, ttOR, ttXOR, ttDIV, ttMOD, ttNOT, ttSHL, ttSHR,
+     ttPLUS, ttMINUS,
      ttTIMES, ttDIVIDE,
      ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ, ttSEMI, ttCOMMA, ttCOLON,
      ttASSIGN,
@@ -353,7 +355,7 @@ end;
 // ToAlphaType
 //
 const
-   cAlphaTypeTokens : array [0..66] of TTokenType = (
+   cAlphaTypeTokens : array [0..68] of TTokenType = (
       ttAND, ttARRAY, ttABSTRACT, ttAS,
       ttBEGIN, ttBREAK,
       ttCONST, ttCLASS, ttCONSTRUCTOR, ttCASE, ttCDECL, ttCONTINUE,
@@ -366,7 +368,7 @@ const
       ttOR, ttOF, ttON, ttOVERRIDE, ttOBJECT,
       ttPROCEDURE, ttPROPERTY, ttPASCAL, ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
       ttREPEAT, ttRECORD, ttREAD, ttRAISE, ttREINTRODUCE, ttREGISTER,
-      ttSTDCALL,
+      ttSHL, ttSHR, ttSTDCALL,
       ttTHEN, ttTO, ttTRUE, ttTRY, ttTYPE,
       ttUNTIL, ttUSES,
       ttVAR, ttVIRTUAL,

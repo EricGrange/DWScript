@@ -3250,7 +3250,10 @@ begin
              or FTok.Test(ttMINUS)
              or FTok.Test(ttOR)
              or FTok.Test(ttAND)
-             or FTok.Test(ttXOR)) do begin
+             or FTok.Test(ttXOR)
+             or FTok.Test(ttSHL)
+             or FTok.Test(ttSHR)
+            ) do begin
 
          tt := FTok.GetToken.FTyp;
          FTok.TestDelete(tt);
@@ -3293,6 +3296,10 @@ begin
                      exprClass:=TBoolXorExpr
                   else exprClass:=TIntXorExpr;
                end;
+               ttSHL:
+                  exprClass:=TShlExpr;
+               ttSHR:
+                  exprClass:=TShrExpr;
             else
                exprClass:=nil;
                Assert(False);

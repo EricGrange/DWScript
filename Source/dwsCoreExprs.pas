@@ -472,6 +472,16 @@ type
      function EvalAsBoolean : Boolean; override;
    end;
 
+   // a shl b
+   TShlExpr = class(TIntegerOpExpr)
+     function EvalAsInteger : Int64; override;
+   end;
+
+   // a shr b
+   TShrExpr = class(TIntegerOpExpr)
+     function EvalAsInteger : Int64; override;
+   end;
+
    // Float(x)
    TConvFloatExpr = class(TUnaryOpExpr)
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
@@ -2320,6 +2330,20 @@ end;
 function TBoolXorExpr.EvalAsBoolean : Boolean;
 begin
    Result := FLeft.EvalAsBoolean xor FRight.EvalAsBoolean;
+end;
+
+{ TShlExpr }
+
+function TShlExpr.EvalAsInteger : Int64;
+begin
+   Result := FLeft.EvalAsInteger shl FRight.EvalAsInteger
+end;
+
+{ TShrExpr }
+
+function TShrExpr.EvalAsInteger : Int64;
+begin
+   Result := FLeft.EvalAsInteger shr FRight.EvalAsInteger
 end;
 
 { TNumberOpExpr }
