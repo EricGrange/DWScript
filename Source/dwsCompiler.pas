@@ -664,7 +664,12 @@ begin
          initExpr := ReadExpr;
          typ := initExpr.Typ;
 
-      end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
+      end else begin
+
+         typ := nil;
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
+
+      end;
 
       for x := 0 to names.Count - 1 do begin
          CheckName(names[x]);
