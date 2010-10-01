@@ -454,7 +454,7 @@ begin
   try
     Size := Stream.Size - Stream.Position;
     SetString(S, nil, Size);
-    Stream.Read(Pointer(S)^, Size);
+    Stream.Read(Pointer(S)^, Size*SizeOf(Char));
     SetTextStr(S);
   finally
     EndUpdate;
@@ -523,7 +523,7 @@ var
   S: string;
 begin
   S := GetTextStr;
-  Stream.WriteBuffer(Pointer(S)^, Length(S));
+  Stream.WriteBuffer(Pointer(S)^, Length(S)*SizeOf(Char));
 end;
 
 procedure TdwsStrings.SetCapacity(NewCapacity: Integer);
