@@ -4125,7 +4125,7 @@ begin
       fmShareDenyWrite);
     try
       SetLength(Result, sFile.Size);
-      sFile.Read(Result[1], sFile.Size);
+      sFile.Read(Result[1], sFile.Size*SizeOf(Char));
     finally
       sFile.Free;
     end;
