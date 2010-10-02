@@ -380,6 +380,7 @@ type
 
   // Base class of all expressions attached to a program
   TNoPosExpr = class(TExprBase)
+  private
     protected
       FProg: TdwsProgram;
       FTyp: TSymbol;
@@ -389,12 +390,12 @@ type
     public
       constructor Create(Prog: TdwsProgram);
 
-      class function IsBooleanType(Typ: TSymbol): Boolean; static;
-      class function IsFloatType(Typ: TSymbol): Boolean; static;
-      class function IsIntegerType(Typ: TSymbol): Boolean; static;
-      class function IsNumberType(Typ: TSymbol): Boolean; static;
-      class function IsStringType(Typ: TSymbol): Boolean; static;
-      class function IsVariantType(Typ: TSymbol): Boolean; static;
+      function IsBooleanValue : Boolean;
+      function IsIntegerValue : Boolean;
+      function IsFloatValue : Boolean;
+      function IsNumberValue : Boolean;
+      function IsStringValue : Boolean;
+      function IsVariantValue : Boolean;
 
       function GetBaseType: TTypeSymbol;
 
@@ -428,8 +429,9 @@ type
 
          procedure TypeCheck;
 
+         procedure AddCompilerError(const Text : String);
          procedure AddCompilerErrorFmt(const fmtText: string; const Args: array of const);
-         procedure AddCompilerStop(const Text : String); overload;
+         procedure AddCompilerStop(const Text : String);
          procedure AddExecutionStop(const Text : String);
          procedure AddExecutionStopFmt(const fmtText: string; const Args: array of const);
 
@@ -1908,35 +1910,46 @@ begin
             and IsBaseTypeCompatible(TBaseSymbol(Typ.BaseType).Id, BType);
 end;
 
-class function TNoPosExpr.IsBooleanType(Typ: TSymbol): Boolean;
+// IsBooleanValue
+//
+function TNoPosExpr.IsBooleanValue : Boolean;
 begin
-  Result := IsType(Typ,TypBooleanId);
+   Result:=Typ.IsBaseTypeIDValue(typBooleanID);
 end;
 
-class function TNoPosExpr.IsFloatType(Typ: TSymbol): Boolean;
+// IsFloatValue
+//
+function TNoPosExpr.IsFloatValue : Boolean;
 begin
-  Result := IsType(Typ,TypFloatId);
+   Result:=Typ.IsBaseTypeIDValue(typFloatID);
 end;
 
-class function TNoPosExpr.IsIntegerType(Typ: TSymbol): Boolean;
+// IsIntegerValue
+//
+function TNoPosExpr.IsIntegerValue : Boolean;
 begin
-  Result := IsType(Typ,TypIntegerId);
+   Result:=Typ.IsBaseTypeIDValue(typIntegerID);
 end;
 
-class function TNoPosExpr.IsNumberType(Typ: TSymbol): Boolean;
+// IsNumberValue
+//
+function TNoPosExpr.IsNumberValue : Boolean;
 begin
-  Result := IsIntegerType(Typ) or IsFloatType(Typ);
+   Result:=Typ.BaseTypeID in [typFloatID, typIntegerID];
 end;
 
-class function TNoPosExpr.IsStringType(Typ: TSymbol): Boolean;
+// IsStringValue
+//
+function TNoPosExpr.IsStringValue : Boolean;
 begin
-  Result := IsType(Typ,TypStringId);
+   Result:=Typ.IsBaseTypeIDValue(typStringID);
 end;
 
-class function TNoPosExpr.IsVariantType(Typ: TSymbol): Boolean;
+// IsVariantValue
+//
+function TNoPosExpr.IsVariantValue : Boolean;
 begin
-  Result := Assigned(Typ) and (Typ.BaseType is TBaseSymbol)
-           and (TBaseSymbol(Typ.BaseType).Id=TypVariantId);
+   Result:=Typ.IsBaseTypeIDValue(typVariantID);
 end;
 
 // IsConstant
@@ -1959,7 +1972,7 @@ function TNoPosExpr.OptimizeIntegerConstantToFloatConstant : TNoPosExpr;
 var
    temp : Double;
 begin
-   if IsConstant and IsIntegerType(Typ) then begin
+   if IsConstant and IsIntegerValue then begin
       EvalAsFloat(temp);
       Result:=TConstFloatExpr.Create(FProg, temp);
       Free;
@@ -2042,11 +2055,18 @@ begin
    TypeCheckNoPos(Pos);
 end;
 
+// AddCompilerError
+//
+procedure TExpr.AddCompilerError(const Text : String);
+begin
+   Prog.Msgs.AddCompilerError(Pos, Text);
+end;
+
 // AddCompilerErrorFmt
 //
 procedure TExpr.AddCompilerErrorFmt(const fmtText: string; const Args: array of const);
 begin
-   Prog.Msgs.AddCompilerError(Format(fmttext, Args));
+   Prog.Msgs.AddCompilerErrorFmt(Pos, fmtText, Args);
 end;
 
 // AddCompilerStop

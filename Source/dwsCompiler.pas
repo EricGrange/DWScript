@@ -408,7 +408,7 @@ begin
       if Assigned(FFilter) then begin
          for x := 0 to FFilter.Dependencies.Count - 1 do begin
             if Conf.Units.IndexOf(FFilter.Dependencies[x]) = -1 then
-               FMsgs.AddCompilerError(Format(CPE_FilterDependsOnUnit,[FFilter.ClassName, FFilter.Dependencies[x]]));
+               FMsgs.AddCompilerErrorFmt(cNullPos, CPE_FilterDependsOnUnit, [FFilter.ClassName, FFilter.Dependencies[x]]);
          end;
       end;
 
@@ -479,7 +479,7 @@ begin
       on e: EScriptError do
          ;
       on e: Exception do
-         FMsgs.AddCompilerError(e.Message);
+         FMsgs.AddCompilerError(cNullPos, e.Message);
    end;
 
    FProg.Compiler := nil;
@@ -2033,7 +2033,7 @@ begin
          expr:=ReadName;
          if not (expr is TVarExpr) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_VariableExpected);
-         if not (expr.IsIntegerType(expr.Typ)) then
+         if not expr.IsIntegerValue then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
          if not (expr is TIntVarExpr) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_FORLoopMustBeLocalVariable);
@@ -3203,7 +3203,7 @@ begin
                roeClass:=TRelOpFloatExpr
             else if r.Typ=FProg.TypString then
                roeClass:=TRelOpStrExpr;
-          end else if TNoPosExpr.IsNumberType(r.Typ) and TNoPosExpr.IsNumberType(Result.Typ) then begin
+          end else if r.IsNumberValue and Result.IsNumberValue then begin
             roeClass:=TRelOpFloatExpr;
             if Optimize then begin
                Result:=Result.OptimizeIntegerConstantToFloatConstant;
@@ -3263,6 +3263,7 @@ begin
          r := ReadExprMult;
          try
             // Generate function and add left and right argument
+            exprClass:=nil;
             sameType:=(Result.Typ=r.Typ);
             case tt of
                ttPLUS: begin
@@ -3291,17 +3292,14 @@ begin
                        exprClass:=TBoolAndExpr
                     else exprClass:=TIntAndExpr;
                end;
-               ttXOR: begin
-                  if (Result.Typ=FProg.TypBoolean) or (r.Typ=FProg.TypBoolean) then
+               ttXOR : begin
+                  if (Result.IsBooleanValue) or (r.IsBooleanValue) then
                      exprClass:=TBoolXorExpr
                   else exprClass:=TIntXorExpr;
                end;
-               ttSHL:
-                  exprClass:=TShlExpr;
-               ttSHR:
-                  exprClass:=TShrExpr;
+               ttSHL : exprClass:=TShlExpr;
+               ttSHR : exprClass:=TShrExpr;
             else
-               exprClass:=nil;
                Assert(False);
             end;
 
@@ -3311,9 +3309,9 @@ begin
             raise;
          end;
 
+         Result.TypeCheckNoPos(Pos);
          if Optimize then
             Result:=Result.Optimize;
-         Result.TypeCheckNoPos(Pos);
       end;
    except
       Result.Free;
@@ -3425,11 +3423,11 @@ var
    negTerm : TNoPosExpr;
 begin
    negTerm:=ReadTerm;
-   if TNoPosExpr.IsIntegerType(negTerm.Typ) then
+   if negTerm.IsIntegerValue then
       negExprClass:=TNegIntExpr
-   else if TNoPosExpr.IsFloatType(negTerm.Typ) then
+   else if negTerm.IsFloatValue then
       negExprClass:=TNegFloatExpr
-   else if TNoPosExpr.IsVariantType(negTerm.Typ) then
+   else if negTerm.IsVariantValue then
       negExprClass:=TNegVariantExpr
    else begin
       negExprClass:=nil;

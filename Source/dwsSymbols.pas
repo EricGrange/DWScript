@@ -25,7 +25,7 @@ interface
 uses Windows, SysUtils, Variants, Classes, dwsStrings, dwsStack;
 
 type
-   TBaseTypeId = (
+   TBaseTypeID = (
       typIntegerID,
       typFloatID,
       typStringID,
@@ -157,29 +157,38 @@ type
    end;
    TAddrGenerator = ^TAddrGeneratorRec;
 
+   // TSymbol
+   //
    // Named item in the script
    TSymbol = class
-   strict private
-     FName: string;
-   protected
-     FSize: Integer;
-     FTyp: TSymbol;
-     function GetCaption: string; virtual;
-     function GetDescription: string; virtual;
-   public
-     constructor Create(const Name: string; Typ: TSymbol);
+      strict private
+         FName : String;
 
-     procedure InitData(const Data: TData; Offset: Integer); virtual;
-     procedure Initialize; virtual;
-     function IsCompatible(typSym: TSymbol): Boolean; virtual;
-     function BaseType: TTypeSymbol; virtual;
-     procedure SetName(const newName : String);
+      protected
+         FSize : Integer;
+         FTyp : TSymbol;
+         function GetCaption : String; virtual;
+         function GetDescription : String; virtual;
 
-     property Caption: string read GetCaption;
-     property Description: string read GetDescription;
-     property Name: string read FName;
-     property Typ: TSymbol read FTyp write FTyp;
-     property Size: Integer read FSize;
+      public
+         constructor Create(const name : string; typ : TSymbol);
+
+         procedure InitData(const data : TData; offset : Integer); virtual;
+         procedure Initialize; virtual;
+         function BaseType : TTypeSymbol; virtual;
+         procedure SetName(const newName : String);
+
+         function IsCompatible(typSym : TSymbol) : Boolean; virtual;
+
+         function BaseTypeID : TBaseTypeID; virtual;
+         function IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean;
+         function IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean;
+
+         property Caption : String read GetCaption;
+         property Description : String read GetDescription;
+         property Name : String read FName;
+         property Typ : TSymbol read FTyp write FTyp;
+         property Size : Integer read FSize;
    end;
 
    TSymbolClass = class of TSymbol;
@@ -401,16 +410,17 @@ type
      function IsCompatible(typSym: TSymbol): Boolean; override;
    end;
 
-   // integer/string/float/boolean
+   // integer/string/float/boolean/variant
    TBaseSymbol = class(TNameSymbol)
    protected
      FDefault: Variant;
-     FId: TBaseTypeId;
+     FID : TBaseTypeID;
    public
-     constructor Create(const Name: string; Id: TBaseTypeId; Default: Variant);
+     constructor Create(const Name: string; Id: TBaseTypeID; const Default: Variant);
      procedure InitData(const Data: TData; Offset: Integer); override;
      function IsCompatible(typSym: TSymbol): Boolean; override;
-     property Id: TBaseTypeId read FId;
+     function BaseTypeID : TBaseTypeID; override;
+     property ID : TBaseTypeID read FID;
    end;
 
    IConnectorType = interface;
@@ -784,7 +794,7 @@ type
      procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
    end;
 
-function IsBaseTypeCompatible(AType, BType: TBaseTypeId): Boolean;
+function IsBaseTypeCompatible(AType, BType: TBaseTypeID): Boolean;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1123,6 +1133,31 @@ end;
 function TSymbol.IsCompatible(typSym: TSymbol): Boolean;
 begin
   Result := False;
+end;
+
+// BaseTypeID
+//
+function TSymbol.BaseTypeID : TBaseTypeID;
+begin
+   if Typ<>nil then
+      Result:=Typ.BaseTypeID
+   else if BaseType<>nil then
+      Result:=BaseType.BaseTypeID
+   else Result:=typNoneID;
+end;
+
+// IsBaseTypeIDValue
+//
+function TSymbol.IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean;
+begin
+   Result:=(FSize<=1) and (BaseTypeID=aBaseTypeID);
+end;
+
+// IsBaseTypeIDArray
+//
+function TSymbol.IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean;
+begin
+   Result:=(FSize>1) and (BaseTypeID=aBaseTypeID);
 end;
 
 function TSymbol.BaseType: TTypeSymbol;
@@ -1859,10 +1894,10 @@ begin
   Result := (typSym is TClassOfSymbol) and Typ.IsCompatible(typSym.Typ);
 end;
 
-function IsBaseTypeCompatible(AType, BType: TBaseTypeId): Boolean;
+function IsBaseTypeCompatible(AType, BType: TBaseTypeID): Boolean;
 const
 {(*}
-  compatiblityMask: array[TBaseTypeId, TBaseTypeId] of Boolean =
+  compatiblityMask: array[TBaseTypeID, TBaseTypeID] of Boolean =
   (
    //int    flt    str    bool   var    conn   none
     (true,  false, false, false, true,  true,  false), // int
@@ -1880,7 +1915,7 @@ end;
 
 { TBaseSymbol }
 
-constructor TBaseSymbol.Create(const Name: string; Id: TBaseTypeId; Default: Variant);
+constructor TBaseSymbol.Create(const Name: string; Id: TBaseTypeID; const Default: Variant);
 begin
   inherited Create(Name, nil);
   FId := Id;
@@ -1900,6 +1935,13 @@ begin
     typSym := TEnumerationSymbol(typSym).Typ.BaseType;
   Result := (typSym is TBaseSymbol) and
     IsBaseTypeCompatible(Self.FId, TBaseSymbol(typSym).FId);
+end;
+
+// BaseTypeID
+//
+function TBaseSymbol.BaseTypeID : TBaseTypeID;
+begin
+   Result:=ID;
 end;
 
 { TConnectorSymbol }

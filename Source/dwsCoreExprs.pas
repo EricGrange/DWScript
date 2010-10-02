@@ -1691,7 +1691,7 @@ end;
 procedure TStringArrayOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
-  if not (IsStringType(FLeft.Typ) and IsIntegerType(FRight.Typ)) then
+  if not (FLeft.IsStringValue) and (FRight.IsIntegerValue) then
     AddCompilerStop(CPE_StringExpected);
 end;
 
@@ -1785,7 +1785,7 @@ end;
 procedure TConvFloatExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
    inherited;
-   if not (IsIntegerType(FExpr.Typ) or IsVariantType(FExpr.Typ)) then
+   if not (FExpr.IsIntegerValue) or (FExpr.IsVariantValue) then
       FProg.Msgs.AddCompilerError(FPos, CPE_IntegerExpected);
 end;
 
@@ -1812,8 +1812,8 @@ end;
 procedure TConvIntegerExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
-  if not (IsIntegerType(FExpr.Typ) or IsFloatType(FExpr.Typ) or IsBooleanType(FExpr.Typ)
-          or (FExpr.Typ is TEnumerationSymbol) or IsVariantType(FExpr.Typ)) then
+  if not (   FExpr.IsNumberValue or FExpr.IsBooleanValue
+          or (FExpr.Typ is TEnumerationSymbol) or FExpr.IsVariantValue) then
     FProg.Msgs.AddCompilerError(FPos, CPE_IntegerCastInvalid);
 end;
 
@@ -1835,7 +1835,7 @@ end;
 procedure TConvVariantExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
-  if not IsVariantType(FExpr.Typ) then
+  if not FExpr.IsVariantValue then
     FProg.Msgs.AddCompilerError(FPos, CPE_VariantExpected);
 end;
 
@@ -2211,9 +2211,9 @@ end;
 //
 function TMultExpr.Optimize : TNoPosExpr;
 begin
-   if IsIntegerType(FLeft.Typ) and IsIntegerType(FRight.Typ) then
+   if FLeft.IsIntegerValue and FRight.IsIntegerValue then
       Result:=TMultIntExpr.Create(FProg, Pos, FLeft, FRight)
-   else if IsNumberType(FLeft.Typ) and IsNumberType(FRight.Typ) then
+   else if FLeft.IsNumberValue and FRight.IsNumberValue then
       Result:=TMultFloatExpr.Create(FProg, Pos, FLeft, FRight)
    else Result:=Self;
    if Result<>Self then begin
@@ -2281,11 +2281,11 @@ end;
 procedure TNotExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   FExpr.TypeCheckNoPos(Pos);
-  if IsVariantType(FExpr.Typ) then
+  if FExpr.IsVariantValue then
     FTyp := FProg.TypVariant
-  else if IsBooleanType(FExpr.Typ) then
+  else if FExpr.IsBooleanValue then
     FTyp := FProg.TypBoolean
-  else if IsIntegerType(FExpr.Typ) then
+  else if FExpr.IsIntegerValue then
     FTyp := FProg.TypInteger
   else AddCompilerStop(CPE_BooleanOrIntegerExpected);
 end;
@@ -2353,11 +2353,11 @@ end;
 procedure TNumberOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
-  if IsVariantType(FLeft.Typ) and IsVariantType(FRight.Typ) then
+  if FLeft.IsVariantValue and FRight.IsVariantValue then
     FTyp := FProg.TypVariant
-  else if IsIntegerType(FLeft.Typ) and IsIntegerType(FRight.Typ) then
+  else if FLeft.IsIntegerValue and FRight.IsIntegerValue then
     FTyp := FProg.TypInteger
-  else if IsNumberType(FLeft.Typ) and IsNumberType(FRight.Typ) then
+  else if FLeft.IsNumberValue and FRight.IsNumberValue then
     FTyp := FProg.TypFloat
   else AddCompilerStop(CPE_InvalidOperands);
 end;
@@ -2376,10 +2376,10 @@ end;
 procedure TIntegerOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
-  if     (IsVariantType(FLeft.Typ) or IsIntegerType(FLeft.Typ))
-     and (IsVariantType(FRight.Typ) or IsIntegerType(FRight.Typ)) then
+  if     (FLeft.IsVariantValue or FLeft.IsIntegerValue)
+     and (FRight.IsVariantValue or FRight.IsIntegerValue) then
      FTyp:=FProg.TypInteger
-  else AddCompilerStop(CPE_InvalidOperands);
+  else AddCompilerError(CPE_InvalidOperands);
 end;
 
 // Optimize
@@ -2411,8 +2411,8 @@ end;
 procedure TStringOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
-  if     (IsVariantType(FLeft.Typ) or IsStringType(FLeft.Typ))
-     and (IsVariantType(FRight.Typ) or IsStringType(FRight.Typ)) then
+  if     (FLeft.IsVariantValue or FLeft.IsStringValue)
+     and (FRight.IsVariantValue or FRight.IsStringValue) then
      FTyp:=FProg.TypString
   else AddCompilerStop(CPE_InvalidOperands);
 end;
@@ -2449,8 +2449,8 @@ end;
 procedure TFloatOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
-  if     (IsVariantType(FLeft.Typ) or IsNumberType(FLeft.Typ))
-     and (IsVariantType(FRight.Typ) or IsNumberType(FRight.Typ)) then
+  if     (FLeft.IsVariantValue or FLeft.IsNumberValue)
+     and (FLeft.IsVariantValue or FRight.IsNumberValue) then
      FTyp:=FProg.TypFloat
   else AddCompilerStop(CPE_InvalidOperands);
 end;
@@ -2486,8 +2486,8 @@ end;
 procedure TBooleanOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
-  if     (IsVariantType(FLeft.Typ) or IsBooleanType(FLeft.Typ))
-     and (IsVariantType(FRight.Typ) or IsBooleanType(FRight.Typ)) then
+  if     (FLeft.IsVariantValue or FLeft.IsBooleanValue)
+     and (FLeft.IsVariantValue or FRight.IsBooleanValue) then
      FTyp:=FProg.TypBoolean
   else AddCompilerStop(CPE_InvalidOperands);
 end;
@@ -2509,15 +2509,15 @@ end;
 procedure TNumberStringOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
-  if IsVariantType(FLeft.Typ) or IsVariantType(FRight.Typ) then
+  if FLeft.IsVariantValue or FLeft.IsVariantValue then
     FTyp := FProg.TypVariant
-  else if IsIntegerType(FLeft.Typ) and IsIntegerType(FRight.Typ) then
+  else if FLeft.IsIntegerValue and FRight.IsIntegerValue then
     FTyp := FProg.TypInteger
-  else if IsNumberType(FLeft.Typ) and IsNumberType(FRight.Typ) then
+  else if FLeft.IsNumberValue and FRight.IsNumberValue then
     FTyp := FProg.TypFloat
-  else if IsStringType(FLeft.Typ) and IsStringType(FRight.Typ) then
+  else if FLeft.IsStringValue and FRight.IsStringValue then
     FTyp := FProg.TypString
-  else if IsBooleanType(FLeft.Typ) and IsBooleanType(FRight.Typ) then
+  else if FLeft.IsBooleanValue and FRight.IsBooleanValue then
     FTyp := FProg.TypBoolean
   else
     AddCompilerStop(CPE_IncompatibleOperands);
@@ -2627,12 +2627,12 @@ var
    stringBuf : String;
 begin
    Result:=Self;
-   if IsIntegerType(FRight.Typ) then begin
+   if FRight.IsIntegerValue then begin
       Result:=TAssignConstToIntegerVarExpr.Create(Prog, Pos, FLeft, FRight.EvalAsInteger);
-   end else if IsFloatType(FRight.Typ) then begin
+   end else if FRight.IsFloatValue then begin
       FRight.EvalAsFloat(floatBuf);
       Result:=TAssignConstToFloatVarExpr.Create(Prog, Pos, FLeft, floatBuf);
-   end else if IsStringType(FRight.Typ) then begin
+   end else if FRight.IsStringValue then begin
       FRight.EvalAsString(stringBuf);
       Result:=TAssignConstToStringVarExpr.Create(Prog, Pos, FLeft, stringBuf);
    end;
@@ -2929,7 +2929,7 @@ end;
 procedure TIfExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
    FCond.TypeCheckNoPos(Pos);
-   if not IsBooleanType(FCond.Typ) then
+   if not FCond.IsBooleanValue then
       AddCompilerStop(CPE_BooleanExpected);
 end;
 
@@ -3042,8 +3042,8 @@ end;
 
 procedure TCompareCaseCondition.TypeCheck(Typ: TSymbol);
 begin
-  if FTrueExpr.IsFloatType(FValueExpr.Typ) then
-    if FTrueExpr.IsIntegerType(FCompareExpr.Typ) then
+  if FValueExpr.IsFloatValue then
+    if FCompareExpr.IsIntegerValue then
       FCompareExpr := TConvFloatExpr.Create(FValueExpr.Prog, Pos, FCompareExpr);
 
   if not FCompareExpr.Typ.IsCompatible(FValueExpr.Typ) then
@@ -3085,13 +3085,13 @@ var
 begin
   Prog := FValueExpr.Prog;
 
-  if FTrueExpr.IsFloatType(FValueExpr.Typ) then
+  if FValueExpr.IsFloatValue then
   begin
     // Convert integers to float if necessary
-    if FTrueExpr.IsIntegerType(FFromExpr.Typ) then
+    if FFromExpr.IsIntegerValue then
       FFromExpr := TConvFloatExpr.Create(Prog, Pos, FFromExpr);
 
-    if FTrueExpr.IsIntegerType(FToExpr.Typ) then
+    if FToExpr.IsIntegerValue then
       FToExpr := TConvFloatExpr.Create(Prog, Pos, FToExpr);
   end;
 
@@ -3177,10 +3177,10 @@ end;
 procedure TForExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
    FFromExpr.TypeCheckNoPos(Pos);
-   if not IsIntegerType(FFromExpr.Typ) then
+   if not FFromExpr.IsIntegerValue then
       AddCompilerStop(CPE_IntegerExpected);
    FToExpr.TypeCheckNoPos(Pos);
-   if not IsIntegerType(FToExpr.Typ) then
+   if not FToExpr.IsIntegerValue then
       AddCompilerStop(CPE_IntegerExpected);
 end;
 
@@ -3204,7 +3204,7 @@ end;
 procedure TLoopExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   FCondExpr.TypeCheckNoPos(Pos);
-  if not IsBooleanType(FCondExpr.Typ) then
+  if not FCondExpr.IsBooleanValue then
     AddCompilerStop(CPE_BooleanExpected);
 end;
 

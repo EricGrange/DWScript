@@ -130,8 +130,8 @@ type
     procedure AddCompilerInfo(const Text: string);
     procedure AddCompilerHint(const Pos: TScriptPos; const Text: string);
     procedure AddCompilerWarning(const Pos: TScriptPos; const Text: string);
-    procedure AddCompilerError(const Text: string); overload;
-    procedure AddCompilerError(const Pos: TScriptPos; const Text: string); overload;
+    procedure AddCompilerError(const Pos: TScriptPos; const Text: string);
+    procedure AddCompilerErrorFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
     procedure AddCompilerStop(const Pos: TScriptPos; const Text: string);
     procedure AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
 
@@ -360,15 +360,20 @@ begin
    FHasCompilerErrors := True;
 end;
 
-procedure TMsgs.AddCompilerError(const Text: string);
+// AddCompilerErrorFmt
+//
+procedure TMsgs.AddCompilerErrorFmt(const Pos: TScriptPos;
+   const textFormat: String; const args: array of const);
 begin
-  AddCompilerError(cNullPos, Text);
+   AddCompilerError(Pos, Format(textFormat, args));
 end;
 
+// AddCompilerStop
+//
 procedure TMsgs.AddCompilerStop(const Pos: TScriptPos; const Text: string);
 begin
-  AddCompilerError(Pos, Text);
-  raise EScriptError.Create('')
+   AddCompilerError(Pos, Text);
+   raise EScriptError.Create(Text);
 end;
 
 // AddCompilerStopFmt
