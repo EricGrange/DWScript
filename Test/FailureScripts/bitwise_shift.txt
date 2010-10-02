@@ -1,0 +1,2 @@
+Syntax Error: Invalid Operands [line: 1, column: 25]
+Syntax Error: Invalid Operands [line: 2, column: 22]
