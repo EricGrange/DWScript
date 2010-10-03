@@ -4112,6 +4112,7 @@ function TdwsCompiler.GetScriptSource(const ScriptName: string): string;
 var
   path: string;
   sFile: TFileStream;
+  sl : TStringList;
 begin
   Result := '';
 
@@ -4120,14 +4121,15 @@ begin
 
   if Result = '' then
   begin
+    // TODO: obsolete this or at least re-route to virtualized filesystem
+    // (security risk)
     path := FindScriptPathForFile(ScriptName);
-    sFile := TFileStream.Create(path + ScriptName, fmOpenRead +
-      fmShareDenyWrite);
+    sl := TStringList.Create;
     try
-      SetLength(Result, sFile.Size);
-      sFile.Read(Result[1], sFile.Size*SizeOf(Char));
+      sl.LoadFromFile(path + ScriptName);
+      Result := sl.Text;
     finally
-      sFile.Free;
+      sl.Free;
     end;
   end;
 end;
