@@ -123,8 +123,8 @@ type
       procedure CheckSpecialName(const Name: string);
       function CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
       procedure CompareFuncSymbols(A, B: TFuncSymbol; IsCheckingParameters: Boolean);
-      function FindScriptPathForFile(const FileName: string): string;
-      function GetScriptSource(const ScriptName: string): string;
+      function FindScriptFileNameForFile(const scriptName : String) : String;
+      function GetScriptSource(const scriptName : String) : String;
       function GetVarExpr(dataSym: TDataSymbol): TVarExpr;
       function GetVarParamExpr(dataSym: TVarParamSymbol): TVarParamExpr;
       function ReadAssign(Left: TDataExpr): TNoResultExpr;
@@ -3729,22 +3729,16 @@ begin
    end;
 end;
 
-function TdwsCompiler.FindScriptPathForFile(const FileName: string): string;
+// FindScriptFileNameForFile
+//
+function TdwsCompiler.FindScriptFileNameForFile(const scriptName : String) : String;
 var
-  x: Integer;
+   i : Integer;
 begin
-  if FileExists(FileName) then
-    Result := ''
-  else
-  begin
-    for x := 0 to FScriptPaths.Count - 1 do
-      if FileExists(FScriptPaths[x] + FileName) then
-      begin
-        Result := FScriptPaths[x];
-        exit;
-      end;
-    FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_IncludeFileNotFound, [FileName]));
-  end;
+   for i:=0 to FScriptPaths.Count-1 do begin
+      Result:=FScriptPaths[i]+scriptName;
+      if FileExists(Result) then Exit;
+   end;
 end;
 
 function TdwsCompiler.GetVarExpr(dataSym: TDataSymbol): TVarExpr;
@@ -4108,30 +4102,32 @@ begin
   Info.ResultAsInteger := Length(Info.Caller.Parameters);
 end;
 
-function TdwsCompiler.GetScriptSource(const ScriptName: string): string;
+// GetScriptSource
+//
+function TdwsCompiler.GetScriptSource(const scriptName : String) : String;
 var
-  path: string;
-  sFile: TFileStream;
-  sl : TStringList;
+   fileName : String;
+   sl : TStringList;
 begin
-  Result := '';
+   Result:='';
 
-  if Assigned(FOnInclude) then
-    FOnInclude(ScriptName, Result);
+   if Assigned(FOnInclude) then
+      FOnInclude(ScriptName, Result);
 
-  if Result = '' then
-  begin
-    // TODO: obsolete this or at least re-route to virtualized filesystem
-    // (security risk)
-    path := FindScriptPathForFile(ScriptName);
-    sl := TStringList.Create;
-    try
-      sl.LoadFromFile(path + ScriptName);
-      Result := sl.Text;
-    finally
-      sl.Free;
-    end;
-  end;
+   if Result='' then begin
+      fileName:=FindScriptFileNameForFile(scriptName);
+      if fileName='' then
+         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncludeFileNotFound, [scriptName])
+      else begin
+         sl:=TStringList.Create;
+         try
+            sl.LoadFromFile(fileName);
+            Result:=sl.Text;
+         finally
+            sl.Free;
+         end;
+      end;
+   end;
 end;
 
 function TdwsCompiler.ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TExpr;
