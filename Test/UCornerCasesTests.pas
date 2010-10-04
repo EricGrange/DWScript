@@ -150,8 +150,6 @@ end;
 procedure TCornerCasesTests.IncludeViaEvent;
 var
    prog : TdwsProgram;
-   sl : TStringList;
-   tempFile : String;
 begin
    FCompiler.OnInclude:=nil;
    FCompiler.Config.ScriptPaths.Clear;
