@@ -407,6 +407,12 @@ type
       procedure EvalAsVariant(var Result : Variant); override;
       procedure EvalAsScriptObj(var Result : IScriptObj); override;
 
+      procedure AssignValue(const value : Variant); override;
+      procedure AssignValueAsInteger(const value : Int64); override;
+      procedure AssignValueAsBoolean(const value : Boolean); override;
+      procedure AssignValueAsFloat(var value : Double); override;
+      procedure AssignValueAsString(const value: String); override;
+
       procedure Initialize; virtual;
       procedure TypeCheckNoPos(const aPos : TScriptPos); virtual;
       function IsConstant : Boolean; virtual;
@@ -460,10 +466,11 @@ type
     procedure AssignData(const SourceData: TData; SourceAddr: Integer); virtual;
     procedure AssignDataExpr(DataExpr: TDataExpr); virtual;
     procedure AssignExpr(Expr: TNoPosExpr); virtual;
-    procedure AssignValue(const Value: Variant); virtual;
-    procedure AssignValueAsInteger(const value : Int64); virtual;
-    procedure AssignValueAsFloat(var value : Double); virtual;
-    procedure AssignValueAsString(const value: String); virtual;
+    procedure AssignValue(const Value: Variant); override;
+    procedure AssignValueAsInteger(const value : Int64); override;
+    procedure AssignValueAsBoolean(const value : Boolean); override;
+    procedure AssignValueAsFloat(var value : Double); override;
+    procedure AssignValueAsString(const value: String); override;
     function Eval: Variant; override;
     property Addr: Integer read GetAddr;
     property Data: TData read GetData;
@@ -2008,6 +2015,41 @@ begin
    Result:=IScriptObj(IUnknown(Eval));
 end;
 
+// AssignValue
+//
+procedure TNoPosExpr.AssignValue(const value : Variant);
+begin
+   raise EScriptError.CreateFmt('Cannot assign to %s', [ClassName]);
+end;
+
+// AssignValueAsInteger
+//
+procedure TNoPosExpr.AssignValueAsInteger(const value : Int64);
+begin
+   AssignValue(value);
+end;
+
+// AssignValueAsBoolean
+//
+procedure TNoPosExpr.AssignValueAsBoolean(const value : Boolean);
+begin
+   AssignValue(value);
+end;
+
+// AssignValueAsFloat
+//
+procedure TNoPosExpr.AssignValueAsFloat(var value : Double);
+begin
+   AssignValue(value);
+end;
+
+// AssignValueAsString
+//
+procedure TNoPosExpr.AssignValueAsString(const value: String);
+begin
+   AssignValue(value);
+end;
+
 // EvalAsInteger
 //
 function TNoPosExpr.EvalAsInteger : Int64;
@@ -2213,6 +2255,13 @@ end;
 // AssignValueAsInteger
 //
 procedure TDataExpr.AssignValueAsInteger(const value : Int64);
+begin
+   AssignValue(value);
+end;
+
+// AssignValueAsBoolean
+//
+procedure TDataExpr.AssignValueAsBoolean(const value : Boolean);
 begin
    AssignValue(value);
 end;

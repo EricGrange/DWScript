@@ -22,7 +22,7 @@ unit dwsSymbols;
 
 interface
 
-uses Windows, SysUtils, Variants, Classes, dwsStrings, dwsStack;
+uses Windows, SysUtils, Variants, Classes, dwsStrings, dwsStack, dwsErrors;
 
 type
    TBaseTypeID = (
@@ -41,13 +41,19 @@ type
 
    // Base class for all Exprs
    TExprBase = class
-      function Eval: Variant; virtual; abstract;
+      function Eval : Variant; virtual; abstract;
       function EvalAsInteger : Int64; virtual; abstract;
       function EvalAsBoolean : Boolean; virtual; abstract;
       procedure EvalAsFloat(var Result : Double); virtual; abstract;
       procedure EvalAsString(var Result : String); overload; virtual; abstract;
       procedure EvalAsVariant(var Result : Variant); overload; virtual; abstract;
       procedure EvalAsScriptObj(var Result : IScriptObj); virtual; abstract;
+
+      procedure AssignValue(const value : Variant); virtual; abstract;
+      procedure AssignValueAsInteger(const value : Int64); virtual; abstract;
+      procedure AssignValueAsBoolean(const value : Boolean); virtual; abstract;
+      procedure AssignValueAsFloat(var value : Double); virtual; abstract;
+      procedure AssignValueAsString(const value: String); virtual; abstract;
    end;
 
    // TTightList
@@ -794,6 +800,23 @@ type
      procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
    end;
 
+
+   // Is thrown by "raise" statements in script code
+   EScriptException = class(Exception)
+      private
+         FTyp: TSymbol;
+         FValue: Variant;
+         FPos: TScriptPos;
+      public
+         constructor Create(const Message: string; const ExceptionObj: IScriptObj; const Pos: TScriptPos); overload;
+         constructor Create(const Message: string; const Value: Variant; Typ: TSymbol; const Pos: TScriptPos); overload;
+
+         property ExceptionObj: Variant read FValue;
+         property Value: Variant read FValue;
+         property Typ: TSymbol read FTyp;
+         property Pos: TScriptPos read FPos;
+   end;
+
 function IsBaseTypeCompatible(AType, BType: TBaseTypeID): Boolean;
 
 // ------------------------------------------------------------------
@@ -803,8 +826,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-uses dwsFunctions, dwsErrors, dwsCoreExprs;
 
 // ------------------
 // ------------------ TExprBaseListRec ------------------
@@ -863,7 +884,7 @@ end;
 //
 procedure TExprBaseListRec.SetAsInteger(const x : Integer; const value : Int64);
 begin
-   (TExprBase(FList.List[x]) as TVarExpr).AssignValueAsInteger(value);
+   TExprBase(FList.List[x]).AssignValueAsInteger(value);
 end;
 
 // GetAsBoolean
@@ -2711,6 +2732,23 @@ end;
 function TTypeSymbol.IsCompatible(typSym: TSymbol): Boolean;
 begin
   Result := BaseType = typSym.BaseType;
+end;
+
+{ EScriptException }
+
+constructor EScriptException.Create(const Message: string; const Value: Variant;
+  Typ: TSymbol; const Pos: TScriptPos);
+begin
+  inherited Create(Message);
+  FValue := Value;
+  FTyp := Typ;
+  FPos := Pos;
+end;
+
+constructor EScriptException.Create(const Message: string;
+  const ExceptionObj: IScriptObj; const Pos: TScriptPos);
+begin
+  Create(Message,ExceptionObj,ExceptionObj.ClassSym,Pos);
 end;
 
 end.

@@ -24,7 +24,7 @@ interface
 
 uses
   Variants, Classes, SysUtils, TypInfo, dwsCompiler, dwsDebugger,
-  dwsExprs, dwsSymbols, dwsStack, dwsFunctions,
+  dwsExprs, dwsSymbols, dwsStack, dwsFunctions, dwsStrings,
   // Built-In functions
 {$IFNDEF DWS_NO_BUILTIN_FUNCTIONS}
   dwsMathFunctions, dwsStringFunctions, dwsTimeFunctions, dwsVariantFunctions,
@@ -792,8 +792,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-uses dwsStrings;
 
 type
   EGenerationError = class(Exception);

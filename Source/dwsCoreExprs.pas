@@ -49,6 +49,7 @@ type
       procedure AssignExpr(Expr: TNoPosExpr); override;
       procedure AssignValue(const Value: Variant); override;
       procedure AssignValueAsInteger(const Value: Int64); override;
+      procedure AssignValueAsBoolean(const value : Boolean); override;
       procedure AssignValueAsFloat(var Value: Double); override;
       procedure AssignValueAsString(const Value: String); override;
       function Eval: Variant; override;
@@ -931,6 +932,13 @@ end;
 procedure TVarExpr.AssignValueAsInteger(const Value: Int64);
 begin
    FStack.WriteIntValue(Addr, Value);
+end;
+
+// AssignValueAsBoolean
+//
+procedure TVarExpr.AssignValueAsBoolean(const value : Boolean);
+begin
+   FStack.WriteBoolValue(Addr, Value);
 end;
 
 // AssignValueAsFloat

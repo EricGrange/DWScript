@@ -23,10 +23,11 @@ unit dwsErrors;
 interface
 
 uses
-  Classes, SysUtils, dwsStrings, dwsSymbols;
+  Classes, SysUtils, dwsStrings;
 
 type
-  TMsgs = class;
+
+   TMsgs = class;
 
    TSourceFile = class
       public
@@ -170,21 +171,6 @@ type
   EScriptError = class(Exception);
 
   EReraise = class(Exception);
-
-  // Is thrown by "raise" statements in script code
-  EScriptException = class(Exception)
-  private
-    FTyp: TSymbol;
-    FValue: Variant;
-    FPos: TScriptPos;
-  public
-    constructor Create(const Message: string; const ExceptionObj: IScriptObj; const Pos: TScriptPos); overload;
-    constructor Create(const Message: string; const Value: Variant; Typ: TSymbol; const Pos: TScriptPos); overload;
-    property ExceptionObj: Variant read FValue;
-    property Value: Variant read FValue;
-    property Typ: TSymbol read FTyp;
-    property Pos: TScriptPos read FPos;
-  end;
 
 const
    cNullPos: TScriptPos = (FLineCol: 0; SourceFile: nil);
@@ -532,23 +518,6 @@ end;
 function TExecutionErrorMsg.AsInfo: string;
 begin
   Result := Format(MSG_RuntimeError, [inherited AsInfo]);
-end;
-
-{ EScriptException }
-
-constructor EScriptException.Create(const Message: string; const Value: Variant;
-  Typ: TSymbol; const Pos: TScriptPos);
-begin
-  inherited Create(Message);
-  FValue := Value;
-  FTyp := Typ;
-  FPos := Pos;
-end;
-
-constructor EScriptException.Create(const Message: string;
-  const ExceptionObj: IScriptObj; const Pos: TScriptPos);
-begin
-  Create(Message,ExceptionObj,ExceptionObj.ClassSym,Pos);
 end;
 
 end.

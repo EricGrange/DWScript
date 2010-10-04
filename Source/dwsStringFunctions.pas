@@ -22,8 +22,7 @@ unit dwsStringFunctions;
 
 interface
 
-uses Windows, Classes, SysUtils, dwsFunctions, dwsExprs, dwsSymbols, dwsErrors,
-   dwsStrings, StrUtils;
+uses Classes, SysUtils, StrUtils, dwsFunctions, dwsSymbols, dwsStrings;
 
 type
 
