@@ -2,7 +2,7 @@ unit UCornerCasesTests;
 
 interface
 
-uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
+uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer;
 
 type
@@ -14,12 +14,15 @@ type
       public
          procedure SetUp; override;
          procedure TearDown; override;
+         procedure DoOnInclude(const scriptName : String; var scriptSource : String);
 
       published
          procedure EmptyTokenBuffer;
          procedure IgnoreDecimalSeparator;
          procedure TimeOutTestFinite;
          procedure TimeOutTestInfinite;
+         procedure IncludeViaEvent;
+         procedure IncludeViaFile;
    end;
 
 // ------------------------------------------------------------------
@@ -132,6 +135,106 @@ begin
    finally
       prog.Free;
    end;
+end;
+
+// DoOnInclude
+//
+procedure TCornerCasesTests.DoOnInclude(const scriptName : String; var scriptSource : String);
+begin
+   CheckEquals('test.dummy', scriptName, 'DoOnInclude');
+   scriptSource:='Print(''hello'');';
+end;
+
+// IncludeViaEvent
+//
+procedure TCornerCasesTests.IncludeViaEvent;
+var
+   prog : TdwsProgram;
+   sl : TStringList;
+   tempFile : String;
+begin
+   FCompiler.OnInclude:=nil;
+   FCompiler.Config.ScriptPaths.Clear;
+
+   prog:=FCompiler.Compile('{$include}');
+   try
+      CheckEquals('Syntax Error: Name of include file expected [line: 1, column: 10]'#13#10,
+                  prog.Msgs.AsInfo, 'include missing');
+   finally
+      prog.Free;
+   end;
+
+   prog:=FCompiler.Compile('{$include ''test.dummy''}');
+   try
+      CheckEquals('Syntax Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+                  prog.Msgs.AsInfo, 'include forbidden');
+   finally
+      prog.Free;
+   end;
+
+   FCompiler.OnInclude:=DoOnInclude;
+   prog:=FCompiler.Compile('{$include ''test.dummy''}');
+   try
+      CheckEquals('', prog.Msgs.AsInfo, 'include via event');
+      prog.Execute;
+      CheckEquals('hello', (prog.Result as TdwsDefaultResult).Text, 'exec include via event');
+   finally
+      prog.Free;
+   end;
+end;
+
+// IncludeViaFile
+//
+procedure TCornerCasesTests.IncludeViaFile;
+
+   function GetTemporaryFilesPath : String;
+   var
+      n: Integer;
+   begin
+      SetLength(Result, MAX_PATH);
+      n:=GetTempPath(MAX_PATH-1, PChar(Result));
+      SetLength(Result, n);
+   end;
+
+var
+   prog : TdwsProgram;
+   sl : TStringList;
+   tempDir : String;
+   tempFile : String;
+begin
+   FCompiler.OnInclude:=nil;
+
+   tempDir:=GetTemporaryFilesPath;
+   tempFile:=tempDir+'test.dummy';
+
+   sl:=TStringList.Create;
+   try
+      sl.Add('Print(''world'');');
+      sl.SaveToFile(tempFile);
+   finally
+      sl.Free;
+   end;
+
+   FCompiler.Config.ScriptPaths.Clear;
+   prog:=FCompiler.Compile('{$include ''test.dummy''}');
+   try
+      CheckEquals('Syntax Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+                  prog.Msgs.AsInfo, 'include via file no paths');
+   finally
+      prog.Free;
+   end;
+
+   FCompiler.Config.ScriptPaths.Add(tempDir);
+   prog:=FCompiler.Compile('{$include ''test.dummy''}');
+   try
+      CheckEquals('', prog.Msgs.AsInfo, 'include via event');
+      prog.Execute;
+      CheckEquals('world', (prog.Result as TdwsDefaultResult).Text, 'exec include via file');
+   finally
+      prog.Free;
+   end;
+
+   DeleteFile(tempFile);
 end;
 
 // ------------------------------------------------------------------
