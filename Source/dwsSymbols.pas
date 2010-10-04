@@ -1150,7 +1150,7 @@ end;
 //
 function TSymbol.IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean;
 begin
-   Result:=(FSize<=1) and (BaseTypeID=aBaseTypeID);
+   Result:=Assigned(Self) and (FSize<=1) and (BaseTypeID=aBaseTypeID);
 end;
 
 // IsBaseTypeIDArray
@@ -1930,11 +1930,17 @@ end;
 
 function TBaseSymbol.IsCompatible(typSym: TSymbol): Boolean;
 begin
-  typSym := typSym.BaseType;
-  if typSym is TEnumerationSymbol then
-    typSym := TEnumerationSymbol(typSym).Typ.BaseType;
-  Result := (typSym is TBaseSymbol) and
-    IsBaseTypeCompatible(Self.FId, TBaseSymbol(typSym).FId);
+   if typSym=nil then
+      Exit(False)
+   else begin
+      typSym:=typSym.BaseType;
+      if typSym=nil then
+         Exit(False);
+      if typSym is TEnumerationSymbol then
+         typSym:=TEnumerationSymbol(typSym).Typ.BaseType;
+      Result:=    (typSym is TBaseSymbol)
+              and IsBaseTypeCompatible(Self.FId, TBaseSymbol(typSym).FId);
+   end;
 end;
 
 // BaseTypeID

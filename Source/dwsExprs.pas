@@ -1935,7 +1935,7 @@ end;
 //
 function TNoPosExpr.IsNumberValue : Boolean;
 begin
-   Result:=Typ.BaseTypeID in [typFloatID, typIntegerID];
+   Result:=Assigned(Typ) and (Typ.BaseTypeID in [typFloatID, typIntegerID]);
 end;
 
 // IsStringValue
@@ -2316,7 +2316,9 @@ begin
                (Prog.FCompiler as TdwsCompiler).WarnForVarUsage(TVarExpr(arg));
          end;
       end;
-      if not paramSymbol.Typ.IsCompatible(arg.Typ) then
+      if arg.Typ=nil then
+         AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Caption])
+      else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
          AddCompilerErrorFmt(CPE_WrongArgumentType_Long, [x, FFunc.Params[x].Typ.Caption, arg.Typ.Caption]);
    end;
 end;
