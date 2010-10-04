@@ -3739,6 +3739,7 @@ begin
       Result:=FScriptPaths[i]+scriptName;
       if FileExists(Result) then Exit;
    end;
+   Result:='';
 end;
 
 function TdwsCompiler.GetVarExpr(dataSym: TDataSymbol): TVarExpr;
