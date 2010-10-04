@@ -1842,9 +1842,7 @@ begin
    FMillisecondsToLive:=aMilliSecToLive;
    FreeOnTerminate:=True;
    inherited Create(False);
-   {$IFDEF WIN32}
    Priority:=tpTimeCritical;
-   {$ENDIF}
 end;
 
 // Destroy

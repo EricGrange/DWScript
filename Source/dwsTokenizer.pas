@@ -23,7 +23,7 @@ unit dwsTokenizer;
 interface
 
 uses
-  SysUtils, Classes, TypInfo, dwsErrors, dwsStrings;
+  SysUtils, Classes, TypInfo, dwsErrors, dwsStrings, dwsXPlatform;
 
 type
 
@@ -527,27 +527,23 @@ var
   sString0, sStringF, sAssign0: TState;
   sGreaterF, sSmallerF, sDotDot: TState;
 
-  { TTokenizer }
+{ TTokenizer }
 
-constructor TTokenizer.Create;
+constructor TTokenizer.Create(const Text, SourceFile: string; Msgs: TMsgs);
 begin
-{$IFDEF LINUX}
-  FText := Text + #10#0;
-{$ELSE}
-  FText := Text + #13#10#0;
-{$ENDIF}
-  FToken := nil;
-  FMsgs := Msgs;
-  FNextToken := nil;
-  FDefaultPos := cNullPos;
-  FDefaultPos.SourceFile := FMsgs.RegisterSourceFile(SourceFile, Text);
-  FHotPos := FDefaultPos;
-  FPos := FDefaultPos;
-  FPosPos := 1;
-  FPos.Line := 1;
-  FPos.Col := 1;
-  FStartState := sStart;
-  tokenBuf.Grow;
+   FText := Text + (cLineTerminator+#0);
+   FToken := nil;
+   FMsgs := Msgs;
+   FNextToken := nil;
+   FDefaultPos := cNullPos;
+   FDefaultPos.SourceFile := FMsgs.RegisterSourceFile(SourceFile, Text);
+   FHotPos := FDefaultPos;
+   FPos := FDefaultPos;
+   FPosPos := 1;
+   FPos.Line := 1;
+   FPos.Col := 1;
+   FStartState := sStart;
+   tokenBuf.Grow;
 
    SetLength(FTokenStore, 8);
 end;
