@@ -62,7 +62,7 @@ type
     constructor Create(Owner: TComponent);
     destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
-    procedure SetScriptPaths(const Value: TStrings);
+    procedure SetScriptPaths(const values : TStrings);
     property Connectors: TStrings read FConnectors write FConnectors;
     property OnInclude: TIncludeEvent read FOnInclude write FOnInclude;
     property SystemTable: TSymbolTable read FSystemTable write FSystemTable;
@@ -3736,7 +3736,9 @@ var
    i : Integer;
 begin
    for i:=0 to FScriptPaths.Count-1 do begin
-      Result:=FScriptPaths[i]+scriptName;
+      if FScriptPaths[i]<>'' then
+         Result:=IncludeTrailingPathDelimiter(FScriptPaths[i])+scriptName
+      else Result:=scriptName;
       if FileExists(Result) then Exit;
    end;
    Result:='';
@@ -4048,23 +4050,11 @@ begin
     FResultType := FDefaultResultType;
 end;
 
-procedure TdwsConfiguration.SetScriptPaths(const Value: TStrings);
-const
-{$IFDEF LINUX}
-  PathSeparator = '/';
-{$ELSE}
-  PathSeparator = '\';
-{$ENDIF}
-var
-  x: Integer;
+// SetScriptPaths
+//
+procedure TdwsConfiguration.SetScriptPaths(const values : TStrings);
 begin
-  FScriptPaths.Assign(Value);
-
-  for x := 0 to FScriptPaths.Count - 1 do
-  begin
-    if Copy(FScriptPaths[x], Length(FScriptPaths[x]), 1) <> PathSeparator then
-      FScriptPaths[x] := FScriptPaths[x] + PathSeparator;
-  end;
+   FScriptPaths.Assign(values);
 end;
 
 { TExceptionCreateMethod }
