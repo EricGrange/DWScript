@@ -3,7 +3,7 @@ unit UCornerCasesTests;
 interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer;
+   dwsTokenizer, dwsXPlatform;
 
 type
 
@@ -88,21 +88,21 @@ var
    dc : Char;
 begin
    w:=TTokenBufferWrapper.Create;
-   dc:=DecimalSeparator;
+   dc:=GetDecimalSeparator;
    try
       w.Buffer.AppendChar('1');
       w.Buffer.AppendChar('.');
       w.Buffer.AppendChar('5');
 
-      DecimalSeparator:='.';
+      SetDecimalSeparator('.');
       CheckEquals(1.5, w.Buffer.ToFloat, 'With dot');
-      DecimalSeparator:=',';
+      SetDecimalSeparator(',');
       CheckEquals(1.5, w.Buffer.ToFloat, 'With comma');
-      DecimalSeparator:='P';
+      SetDecimalSeparator('P');
       CheckEquals(1.5, w.Buffer.ToFloat, 'With P');
 
    finally
-      DecimalSeparator:=dc;
+      SetDecimalSeparator(dc);
       w.Free;
    end;
 end;
