@@ -32,6 +32,7 @@ type
       typBooleanID,
       typVariantID,
       typConnectorID,
+      typClassID,
       typNoneID
    );
 
@@ -1162,7 +1163,7 @@ function TSymbol.BaseTypeID : TBaseTypeID;
 begin
    if Typ<>nil then
       Result:=Typ.BaseTypeID
-   else if BaseType<>nil then
+   else if (BaseType<>nil) and (BaseType<>Self) then
       Result:=BaseType.BaseTypeID
    else Result:=typNoneID;
 end;
@@ -1920,14 +1921,15 @@ const
 {(*}
   compatiblityMask: array[TBaseTypeID, TBaseTypeID] of Boolean =
   (
-   //int    flt    str    bool   var    conn   none
-    (true,  false, false, false, true,  true,  false), // int
-    (false, true,  false, false, true,  true,  false), // flt
-    (false, false, true,  false, true,  true,  false), // str
-    (false, false, false, true,  true,  true,  false), // bool
-    (true,  true,  true,  true,  true,  true,  false), // var
-    (true,  true,  true,  true,  true,  true,  false),  // conn
-    (false, false, false, false, false, false, false)  // none
+   //int    flt    str    bool   var    conn   class   none
+    (true,  false, false, false, true,  true,  false, false), // int
+    (false, true,  false, false, true,  true,  false, false), // flt
+    (false, false, true,  false, true,  true,  false, false), // str
+    (false, false, false, true,  true,  true,  false, false), // bool
+    (true,  true,  true,  true,  true,  true,  false, false), // var
+    (true,  true,  true,  true,  true,  true,  false, false), // conn
+    (false, false, false, false, false, false, true,  false), // class
+    (false, false, false, false, false, false, false, false)  // none
   );
 {*)}
 begin
