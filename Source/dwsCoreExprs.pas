@@ -2498,7 +2498,7 @@ procedure TBooleanOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
   if     (FLeft.IsVariantValue or FLeft.IsBooleanValue)
-     and (FLeft.IsVariantValue or FRight.IsBooleanValue) then
+     and (FRight.IsVariantValue or FRight.IsBooleanValue) then
      FTyp:=FProg.TypBoolean
   else AddCompilerStop(CPE_InvalidOperands);
 end;
