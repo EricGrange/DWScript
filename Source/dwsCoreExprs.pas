@@ -2360,14 +2360,15 @@ end;
 //
 procedure TNumberOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-  inherited;
-  if FLeft.IsVariantValue and FRight.IsVariantValue then
-    FTyp := FProg.TypVariant
-  else if FLeft.IsIntegerValue and FRight.IsIntegerValue then
-    FTyp := FProg.TypInteger
-  else if FLeft.IsNumberValue and FRight.IsNumberValue then
-    FTyp := FProg.TypFloat
-  else AddCompilerStop(CPE_InvalidOperands);
+   inherited;
+   if FLeft.IsIntegerValue and FRight.IsIntegerValue then
+      FTyp := FProg.TypInteger
+   else if FLeft.IsNumberValue and FRight.IsNumberValue then
+      FTyp := FProg.TypFloat
+   else if    (FLeft.IsVariantValue and FRight.IsNumberValue)
+           or (FLeft.IsNumberValue and FRight.IsVariantValue) then
+      FTyp := FProg.TypVariant
+   else AddCompilerError(CPE_InvalidOperands);
 end;
 
 // ------------------
