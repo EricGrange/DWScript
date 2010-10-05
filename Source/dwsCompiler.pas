@@ -3429,10 +3429,7 @@ begin
       negExprClass:=TNegFloatExpr
    else if negTerm.IsVariantValue then
       negExprClass:=TNegVariantExpr
-   else begin
-      negExprClass:=nil;
-      FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_NumericalExpected);
-   end;
+   else negExprClass:=TNegExpr;
    Result:=negExprClass.Create(FProg, FTok.HotPos, negTerm);
    try
       Result.TypeCheckNoPos(FTok.HotPos);

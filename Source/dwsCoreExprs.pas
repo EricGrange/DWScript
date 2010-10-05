@@ -2046,8 +2046,10 @@ end;
 procedure TNegExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
    FExpr.TypeCheckNoPos(Pos);
-   if FTyp=nil then
-      AddCompilerStop(CPE_NumericalExpected);
+   if FTyp=nil then begin
+      AddCompilerError(CPE_NumericalExpected);
+      FTyp:=FProg.TypVariant;
+   end;
 end;
 
 // ------------------
