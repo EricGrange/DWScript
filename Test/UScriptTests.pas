@@ -2,7 +2,7 @@ unit UScriptTests;
 
 interface
 
-uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs;
+uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs, dwsXPlatform;
 
 type
 
@@ -66,7 +66,7 @@ end;
 //
 procedure TScriptTests.SetUp;
 begin
-   DecimalSeparator:='.';
+   SetDecimalSeparator('.');
 
    FTests:=TStringList.Create;
    FAlgos:=TStringList.Create;
