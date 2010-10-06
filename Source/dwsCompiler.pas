@@ -3976,6 +3976,8 @@ begin
   SystemTable.AddSymbol(TConstSymbol.Create('Null', varSym, Null));
   SystemTable.AddSymbol(TConstSymbol.Create('Unassigned', varSym, Unassigned));
 
+  SystemTable.AddSymbol(TDynamicArraySymbol.Create('array of Variant', varSym));
+
   // Create "root" class TObject
   clsObject := TClassSymbol.Create(SYS_TOBJECT);
   // Add constructor Create
