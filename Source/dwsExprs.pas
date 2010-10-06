@@ -2365,7 +2365,7 @@ begin
       end;
       if arg.Typ=nil then
          AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Caption])
-      else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
+      else if not arg.Typ.IsCompatible(paramSymbol.Typ) then
          AddCompilerErrorFmt(CPE_WrongArgumentType_Long, [x, FFunc.Params[x].Typ.Caption, arg.Typ.Caption]);
    end;
 end;
