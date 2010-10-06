@@ -23,7 +23,7 @@ unit dwsCoreExprs;
 interface
 
 uses Classes, Variants, SysUtils, dwsSymbols, dwsErrors, dwsStrings,
-   dwsStack, dwsExprs;
+   dwsStack, dwsExprs, dwsUtils;
 
 type
 
@@ -192,6 +192,7 @@ type
      procedure Prepare(ElementTyp : TSymbol);
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function Eval: Variant; override;
+     function EvalAsVarRecArray : TVarRecArrayContainer;
      procedure Initialize; override;
      function IsConstant : Boolean; override;
    end;
@@ -1452,7 +1453,8 @@ var
   x: Integer;
   elemSize: Integer;
 begin
-  Prog.Stack.WriteValue(FArrayAddr, FElementExprs.Count);
+   if FElementExprs.Count>0 then
+      Prog.Stack.WriteValue(FArrayAddr, FElementExprs.Count);
 
   elemSize := Typ.Typ.Size;
   if elemSize = 1 then
@@ -1473,6 +1475,20 @@ begin
     end;
   end;
   Result := FArrayAddr + 1;
+end;
+
+// EvalAsVarRecArray
+//
+function TArrayConstantExpr.EvalAsVarRecArray : TVarRecArrayContainer;
+var
+   i : Integer;
+   expr : TNoPosExpr;
+begin
+   Result:=TVarRecArrayContainer.Create;
+   for i:=0 to FElementExprs.Count-1 do begin
+      expr:=TNoPosExpr(FElementExprs.List[i]);
+      Result.Add(expr.Eval);
+   end;
 end;
 
 procedure TArrayConstantExpr.Initialize;
@@ -2367,8 +2383,8 @@ begin
       FTyp := FProg.TypInteger
    else if FLeft.IsNumberValue and FRight.IsNumberValue then
       FTyp := FProg.TypFloat
-   else if    (FLeft.IsVariantValue and FRight.IsNumberValue)
-           or (FLeft.IsNumberValue and FRight.IsVariantValue) then
+   else if     (FLeft.IsVariantValue or FLeft.IsNumberValue)
+           and (FRight.IsVariantValue or FRight.IsNumberValue) then
       FTyp := FProg.TypVariant
    else AddCompilerError(CPE_InvalidOperands);
 end;
@@ -2461,7 +2477,7 @@ procedure TFloatOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
   if     (FLeft.IsVariantValue or FLeft.IsNumberValue)
-     and (FLeft.IsVariantValue or FRight.IsNumberValue) then
+     and (FRight.IsVariantValue or FRight.IsNumberValue) then
      FTyp:=FProg.TypFloat
   else AddCompilerStop(CPE_InvalidOperands);
 end;
@@ -2520,7 +2536,7 @@ end;
 procedure TNumberStringOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
-  if FLeft.IsVariantValue or FLeft.IsVariantValue then
+  if FLeft.IsVariantValue or FRight.IsVariantValue then
     FTyp := FProg.TypVariant
   else if FLeft.IsIntegerValue and FRight.IsIntegerValue then
     FTyp := FProg.TypInteger
