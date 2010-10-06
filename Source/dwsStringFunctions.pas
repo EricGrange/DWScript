@@ -22,7 +22,8 @@ unit dwsStringFunctions;
 
 interface
 
-uses Classes, SysUtils, StrUtils, dwsFunctions, dwsSymbols, dwsStrings;
+uses Classes, SysUtils, Variants, StrUtils, dwsFunctions, dwsSymbols, dwsStrings,
+   dwsUtils, dwsCoreExprs;
 
 type
 
@@ -56,6 +57,10 @@ type
 
   TStrToFloatDefFunc = class(TInternalMagicFloatFunction)
     procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+  end;
+
+  TFormatFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
 
   TChrFunc = class(TInternalMagicStringFunction)
@@ -696,6 +701,26 @@ begin
    else Result:=str;
 end;
 
+{ TFormatFunc }
+
+// DoEvalAsString
+//
+procedure TFormatFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+var
+   expr : TExprBase;
+   varRecs : TVarRecArrayContainer;
+begin
+   expr:=args.ExprBase[1];
+   if not (expr is TArrayConstantExpr) then // current implementation, limitation may be relaxed later
+      raise EScriptException.Create(CPE_ConstantExpressionExpected);
+   varRecs:=TArrayConstantExpr(expr).EvalAsVarRecArray;
+   try
+      Result:=Format(args.AsString[0], varRecs.VarRecArray);
+   finally
+      varRecs.Free;
+   end;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -716,6 +741,8 @@ initialization
    RegisterInternalFloatFunction(TStrToFloatFunc, 'StrToFloat', ['str', cString], True);
    RegisterInternalFloatFunction(TStrToFloatDefFunc, 'StrToFloatDef', ['str', cString, 'def', cFloat], True);
    RegisterInternalFloatFunction(TStrToFloatDefFunc, 'VarToFloatDef', ['val', cVariant, 'def', cFloat], True);
+
+   RegisterInternalStringFunction(TFormatFunc, 'Format', ['fmt', cString, 'args', 'array of Variant'], True);
 
    RegisterInternalStringFunction(TChrFunc, 'Chr', ['x', cInteger], True);
    RegisterInternalIntFunction(TOrdFunc, 'Ord', ['s', cString], True);
