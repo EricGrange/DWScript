@@ -66,10 +66,8 @@ type
     procedure Insert(Index: Integer; const S: string); virtual; abstract;
     procedure InsertObject(Index: Integer; const S: string;
       AObject: IUnknown); virtual;
-    procedure LoadFromFile(const FileName: string); virtual;
     procedure LoadFromStream(Stream: TStream); virtual;
     procedure Move(CurIndex, NewIndex: Integer); virtual;
-    procedure SaveToFile(const FileName: string); virtual;
     procedure SaveToStream(Stream: TStream); virtual;
     procedure SetText(Text: PChar); virtual;
     property Capacity: Integer read GetCapacity write SetCapacity;
@@ -433,18 +431,6 @@ begin
   PutObject(Index, AObject);
 end;
 
-procedure TdwsStrings.LoadFromFile(const FileName: string);
-var
-  Stream: TStream;
-begin
-  Stream := TFileStream.Create(FileName, fmOpenRead or fmShareDenyWrite);
-  try
-    LoadFromStream(Stream);
-  finally
-    Stream.Free;
-  end;
-end;
-
 procedure TdwsStrings.LoadFromStream(Stream: TStream);
 var
   Size: Integer;
@@ -504,18 +490,6 @@ begin
     EndUpdate;
   end;
   Reader.ReadListEnd;
-end;
-
-procedure TdwsStrings.SaveToFile(const FileName: string);
-var
-  Stream: TStream;
-begin
-  Stream := TFileStream.Create(FileName, fmCreate);
-  try
-    SaveToStream(Stream);
-  finally
-    Stream.Free;
-  end;
 end;
 
 procedure TdwsStrings.SaveToStream(Stream: TStream);

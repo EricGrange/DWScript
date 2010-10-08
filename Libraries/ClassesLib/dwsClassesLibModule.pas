@@ -4,7 +4,8 @@ interface
 
 uses
   Windows, Messages, SysUtils, Graphics, Controls, Forms, Dialogs,
-  dwsComp, dwsExprs, Classes;
+  dwsComp, dwsExprs, Classes, Contnrs, dwsHashtables, dwsSymbols,
+  dwsClasses, dwsFileSystem;
 
 type
   TdwsClassesLib = class(TDataModule)
@@ -170,9 +171,6 @@ var
   dwsClassesLib: TdwsClassesLib;
 
 implementation
-
-uses
-  dwsHashtables, dwsSymbols, Contnrs, dwsClasses;
 
 {$R *.DFM}
 
@@ -409,8 +407,17 @@ end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsLoadFromFileEval(
   Info: TProgramInfo; ExtObject: TObject);
+var
+   stream : TStream;
+   fileSystem : IdwsFileSystem;
 begin
-  TdwsStrings(ExtObject).LoadFromFile(Info.ValueAsString['FileName']);
+   fileSystem:=Info.Caller.Root.FileSystem;
+   stream:=fileSystem.OpenFileStream(Info.ValueAsString['FileName'], fomReadOnly);
+   try
+      TdwsStrings(ExtObject).LoadFromStream(stream);
+   finally
+      stream.Free;
+   end;
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsMoveEval(
@@ -421,8 +428,17 @@ end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsSaveToFileEval(
   Info: TProgramInfo; ExtObject: TObject);
+var
+   stream : TStream;
+   fileSystem : IdwsFileSystem;
 begin
-  TdwsStrings(ExtObject).SaveToFile(Info.ValueAsString['FileName']);
+   fileSystem:=Info.Caller.Root.FileSystem;
+   stream:=fileSystem.OpenFileStream(Info.ValueAsString['FileName'], fomCreate);
+   try
+      TdwsStrings(ExtObject).SaveToStream(stream);
+   finally
+      stream.Free;
+   end;
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsSetCommaTextEval(
