@@ -2074,7 +2074,7 @@ begin
   if Length(FDefaultValue) > 0 then
     if VarIsStr(FDefaultValue[0]) then
       Result := Result + ' = ''' + VarToStr(FDefaultValue[0]) + ''''  // put quotes around value
-    else
+    else if VarIsOrdinal(FDefaultValue[0]) or VarIsFloat(FDefaultValue[0]) then
       Result := Result + ' = ' + VarToStr(FDefaultValue[0]);
 end;
 

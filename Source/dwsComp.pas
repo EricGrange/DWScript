@@ -24,7 +24,7 @@ interface
 
 uses
   Variants, Classes, SysUtils, TypInfo, dwsCompiler, dwsDebugger,
-  dwsExprs, dwsSymbols, dwsStack, dwsFunctions, dwsStrings,
+  dwsExprs, dwsSymbols, dwsStack, dwsFunctions, dwsStrings, dwsFileSystem,
   // Built-In functions
 {$IFNDEF DWS_NO_BUILTIN_FUNCTIONS}
   dwsMathFunctions, dwsStringFunctions, dwsTimeFunctions, dwsVariantFunctions,
@@ -60,29 +60,34 @@ type
     property Script: TDelphiWebScript read FScript write SetScript;
   end;
 
-  TDelphiWebScript = class(TdwsEmptyUnit)
-  private
-    FCompiler: TdwsCompiler;
-    FConfig: TdwsConfiguration;
-  protected
-    function GetOnInclude: TIncludeEvent;
-    function GetVersion: string;
-    procedure SetVersion(const Value: string);
-    procedure SetConfig(const Value: TdwsConfiguration);
-    procedure SetOnInclude(const Value: TIncludeEvent);
-    procedure AddUnitSymbols(SymbolTable: TSymbolTable); override;
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    destructor Destroy; override;
-    procedure AddUnit(const Un: IUnit);
-    function Compile(const Text: string): TdwsProgram; virtual;
-    function RemoveUnit(const Un: IUnit): Boolean;
-  published
-    property Config: TdwsConfiguration read FConfig write SetConfig stored True;
-    property OnInclude: TIncludeEvent read GetOnInclude write SetOnInclude;
-    property Version: string read GetVersion write SetVersion stored False;
-  end;
+   // TDelphiWebScript
+   //
+   TDelphiWebScript = class (TdwsEmptyUnit)
+      private
+         FCompiler: TdwsCompiler;
+         FConfig: TdwsConfiguration;
+
+      protected
+         function GetOnInclude: TIncludeEvent;
+         function GetVersion: string;
+         procedure SetVersion(const Value: string);
+         procedure SetConfig(const Value: TdwsConfiguration);
+         procedure SetOnInclude(const Value: TIncludeEvent);
+         procedure AddUnitSymbols(SymbolTable: TSymbolTable); override;
+         procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+
+      public
+         constructor Create(AOwner: TComponent); override;
+         destructor Destroy; override;
+         procedure AddUnit(const Un: IUnit);
+         function Compile(const Text: string): TdwsProgram; virtual;
+         function RemoveUnit(const Un: IUnit): Boolean;
+
+      published
+         property Config: TdwsConfiguration read FConfig write SetConfig stored True;
+         property OnInclude: TIncludeEvent read GetOnInclude write SetOnInclude;
+         property Version: string read GetVersion write SetVersion stored False;
+   end;
 
   TdwsAbstractUnit = class(TComponent, IUnknown, IUnit)
   private
@@ -866,7 +871,7 @@ end;
 
 function TDelphiWebScript.Compile(const Text: string): TdwsProgram;
 begin
-  Result := FCompiler.Compile(Text, FConfig);
+   Result := FCompiler.Compile(Text, FConfig);
 end;
 
 procedure TDelphiWebScript.AddUnit(const Un: IUnit);

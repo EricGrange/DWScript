@@ -23,7 +23,7 @@ unit dwsExprs;
 interface
 
 uses Classes, Variants, SysUtils, TypInfo, dwsSymbols, dwsErrors,
-   dwsStrings, dwsStack, SyncObjs;
+   dwsStrings, dwsStack, SyncObjs, dwsFileSystem;
 
 const
   C_DefaultStackChunkSize = 4096;
@@ -286,6 +286,8 @@ type
     FTypVariant: TTypeSymbol;
     FUserDef: TObject;
     FCompiler : TObject;
+    FRuntimeFileSystem : TdwsCustomFileSystem;
+    FFileSystem : IdwsFileSystem;
 
   protected
     function GetLevel: Integer;
@@ -321,6 +323,8 @@ type
 
     property Debugger: IDebugger read FDebugger write SetDebugger;
     property Compiler: TObject read FCompiler write FCompiler;
+    property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
+    property FileSystem : IdwsFileSystem read FFileSystem write FFileSystem;
     property Expr: TExpr read FExpr write FExpr;
     property InitExpr: TExpr read FInitExpr;
     property Info: TProgramInfo read FInfo;
@@ -1422,9 +1426,15 @@ begin
     if FIsDebugging then
       FDebugger.StartDebug(Self);
 
+    // Prepare FileSystem
+    if FRuntimeFileSystem<>nil then
+       FFileSystem:=FRuntimeFileSystem.AllocateFileSystem
+    else FFileSystem:=TdwsOSFileSystem.Create;
+
     // Initialize global variables
     status:=esrNone;
     FInitExpr.EvalNoResult(status);
+
   except
     on e: EScriptError do
       ;
@@ -1451,6 +1461,9 @@ begin
     FStack.Pop(
       FAddrGenerator.DataSize +
       FGlobalAddrGenerator.DataSize);
+
+    // FileSystem
+    FFileSystem:=nil;
 
     // Debugger
     if Assigned(FDebugger) then

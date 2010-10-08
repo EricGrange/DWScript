@@ -24,7 +24,7 @@ interface
 
 uses
   Variants, Classes, SysUtils, dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors,
-  dwsStrings, dwsFunctions, dwsStack, dwsCoreExprs;
+  dwsStrings, dwsFunctions, dwsStack, dwsCoreExprs, dwsFileSystem;
 
 type
   TCompilerOption = (coOptimize, coSymbolDictionary, coContextMap);
@@ -53,26 +53,34 @@ type
     FSystemTable: TSymbolTable;
     FTimeoutMilliseconds: Integer;
     FUnits: TStrings;
+    FCompileFileSystem : TdwsCustomFileSystem;
+    FRuntimeFileSystem : TdwsCustomFileSystem;
+
   protected
     procedure InitSystemTable;
     procedure SetResultType(const Value: TdwsResultType);
     procedure SetFilter(const Value: TdwsFilter);
     procedure SetTimeOut(const val : Integer);
+
   public
     constructor Create(Owner: TComponent);
     destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
     procedure SetScriptPaths(const values : TStrings);
+
     property Connectors: TStrings read FConnectors write FConnectors;
     property OnInclude: TIncludeEvent read FOnInclude write FOnInclude;
     property SystemTable: TSymbolTable read FSystemTable write FSystemTable;
     property Units: TStrings read FUnits write FUnits;
+
   published
     property Filter: TdwsFilter read FFilter write SetFilter;
     property ResultType: TdwsResultType read FResultType write SetResultType;
     property CompilerOptions: TCompilerOptions read FCompilerOptions write FCompilerOptions default cDefaultCompilerOptions;
     property MaxDataSize: Integer read FMaxDataSize write FMaxDataSize default 0;
     property ScriptPaths: TStrings read FScriptPaths write SetScriptPaths;
+    property CompileFileSystem : TdwsCustomFileSystem read FCompileFileSystem write FCompileFileSystem;
+    property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
     property TimeoutMilliseconds: Integer read FTimeoutMilliseconds write FTimeoutMilliseconds default 0;
     property TimeOut : Integer write SetTimeOut;
     property StackChunkSize: Integer read FStackChunkSize write FStackChunkSize default C_DefaultStackChunkSize;
@@ -114,6 +122,7 @@ type
       FTok: TTokenizer;
       FIsExcept: Boolean;
       FForVarExprs: TList;
+      FCompileFileSystem : IdwsFileSystem;
 
       function Optimize : Boolean; inline;
 
@@ -123,7 +132,7 @@ type
       procedure CheckSpecialName(const Name: string);
       function CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
       procedure CompareFuncSymbols(A, B: TFuncSymbol; IsCheckingParameters: Boolean);
-      function FindScriptFileNameForFile(const scriptName : String) : String;
+      function OpenStreamForFile(const scriptName : String) : TStream;
       function GetScriptSource(const scriptName : String) : String;
       function GetVarExpr(dataSym: TDataSymbol): TVarExpr;
       function GetVarParamExpr(dataSym: TVarParamSymbol): TVarParamExpr;
@@ -386,6 +395,10 @@ begin
    FOnInclude := Conf.OnInclude;
    FScriptPaths := Conf.ScriptPaths;
 
+   if Conf.CompileFileSystem<>nil then
+      FCompileFileSystem := Conf.CompileFileSystem.AllocateFileSystem
+   else FCompileFileSystem := TdwsOSFileSystem.Create;
+
    FForVarExprs.Clear;
 
    maxDataSize := Conf.MaxDataSize;
@@ -402,6 +415,7 @@ begin
    FMsgs := FProg.Msgs;
    FProg.Compiler := Self;
    FProg.TimeoutMilliseconds := Conf.TimeoutMilliseconds;
+   FProg.RuntimeFileSystem := Conf.RuntimeFileSystem;
 
    try
       // Check for missing units
@@ -481,6 +495,8 @@ begin
       on e: Exception do
          FMsgs.AddCompilerError(cNullPos, e.Message);
    end;
+
+   FCompileFileSystem := nil;
 
    FProg.Compiler := nil;
 end;
@@ -3726,19 +3742,21 @@ begin
    end;
 end;
 
-// FindScriptFileNameForFile
+// OpenStreamForFile
 //
-function TdwsCompiler.FindScriptFileNameForFile(const scriptName : String) : String;
+function TdwsCompiler.OpenStreamForFile(const scriptName : String) : TStream;
 var
    i : Integer;
+   fname : String;
 begin
    for i:=0 to FScriptPaths.Count-1 do begin
       if FScriptPaths[i]<>'' then
-         Result:=IncludeTrailingPathDelimiter(FScriptPaths[i])+scriptName
-      else Result:=scriptName;
-      if FileExists(Result) then Exit;
+         fname:=IncludeTrailingPathDelimiter(FScriptPaths[i])+scriptName
+      else fname:=scriptName;
+      if FCompileFileSystem.FileExists(fname) then
+         Exit(FCompileFileSystem.OpenFileStream(fname, fomReadOnly);
    end;
-   Result:='';
+   Result:=nil;
 end;
 
 function TdwsCompiler.GetVarExpr(dataSym: TDataSymbol): TVarExpr;
@@ -3919,19 +3937,6 @@ end;
 
 { TdwsConfiguration }
 
-procedure TdwsConfiguration.Assign(Source: TPersistent);
-begin
-  if Source is TdwsConfiguration then
-  begin
-    FCompilerOptions := TdwsConfiguration(Source).CompilerOptions;
-    FMaxDataSize := TdwsConfiguration(Source).MaxDataSize;
-    FScriptPaths.Assign(TdwsConfiguration(Source).ScriptPaths);
-    FTimeoutMilliseconds := TdwsConfiguration(Source).TimeoutMilliseconds;
-  end
-  else
-    inherited;
-end;
-
 constructor TdwsConfiguration.Create(Owner: TComponent);
 begin
   inherited Create;
@@ -3956,6 +3961,21 @@ begin
   FScriptPaths.Free;
   FUnits.Free;
   FDefaultResultType.Free;
+end;
+
+procedure TdwsConfiguration.Assign(Source: TPersistent);
+begin
+  if Source is TdwsConfiguration then
+  begin
+    FCompilerOptions := TdwsConfiguration(Source).CompilerOptions;
+    FMaxDataSize := TdwsConfiguration(Source).MaxDataSize;
+    FScriptPaths.Assign(TdwsConfiguration(Source).ScriptPaths);
+    FTimeoutMilliseconds := TdwsConfiguration(Source).TimeoutMilliseconds;
+    FCompileFileSystem := TdwsConfiguration(Source).CompileFileSystem;
+    FRuntimeFileSystem := TdwsConfiguration(Source).RuntimeFileSystem;
+  end
+  else
+    inherited;
 end;
 
 procedure TdwsConfiguration.InitSystemTable;
@@ -4096,7 +4116,7 @@ end;
 //
 function TdwsCompiler.GetScriptSource(const scriptName : String) : String;
 var
-   fileName : String;
+   stream : TStream;
    sl : TStringList;
 begin
    Result:='';
@@ -4105,13 +4125,14 @@ begin
       FOnInclude(ScriptName, Result);
 
    if Result='' then begin
-      fileName:=FindScriptFileNameForFile(scriptName);
-      if fileName='' then
+
+      stream:=OpenStreamForFile(scriptName);
+      if stream=nil then
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncludeFileNotFound, [scriptName])
       else begin
          sl:=TStringList.Create;
          try
-            sl.LoadFromFile(fileName);
+            sl.LoadFromStream(stream);
             Result:=sl.Text;
          finally
             sl.Free;

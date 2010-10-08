@@ -28,7 +28,7 @@ implementation
 
 uses
   Classes, Controls, dwsComp, dwsComConnector, dwsDebugger, dwsGlobalVarsFunctions,
-  dwsVCLGUIFunctions, dwsHtmlFilter, dwsClasses, dwsClassesLibModule;
+  dwsVCLGUIFunctions, dwsHtmlFilter, dwsClasses, dwsClassesLibModule, dwsFileSystem;
 
 procedure Register;
 begin
@@ -42,7 +42,9 @@ begin
                      TdwsUnit,
                      TdwsHtmlFilter,
                      TdwsGlobalVarsFunctions,
-                     TdwsGUIFunctions
+                     TdwsGUIFunctions,
+                     TdwsRestrictedFileSystem,
+                     TdwsNoFileSystem
                      ]);
 end;
 
