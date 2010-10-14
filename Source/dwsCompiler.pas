@@ -323,8 +323,7 @@ begin
     for y := 0 to deps.Count - 1 do
     begin
       if Units.IndexOf(deps[y]) < 0 then
-        FMsgs.AddCompilerStop(cNullPos, Format(CPE_UnitNotFound, [deps[y],
-          Units[x]]));
+        FMsgs.AddCompilerStopFmt(cNullPos, CPE_UnitNotFound, [deps[y], Units[x]]);
     end;
     refCount[x] := deps.Count;
   end;
@@ -733,6 +732,7 @@ begin
                   assignExpr:=TAssignConstDataToVarExpr.Create(FProg, pos, varExpr, constExpr);
                end;
                TBlockExpr(FProg.InitExpr).AddStatement(assignExpr);
+
             end;
 
          end;
@@ -743,62 +743,59 @@ begin
   end;
 end;
 
+// ReadConstDecl
+//
 procedure TdwsCompiler.ReadConstDecl;
 var
-  Name: string;
-  Expr: TNoPosExpr;
-  Typ: TSymbol;
-  constPos: TScriptPos;
-  sym: TSymbol;
+   name : String;
+   expr: TNoPosExpr;
+   typ : TSymbol;
+   constPos : TScriptPos;
+   sym : TSymbol;
 begin
-  if not FTok.TestName then
-    FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected)
-  else
-  begin
-    Name:=FTok.GetToken.FString;
-    constPos := FTok.HotPos;
-    FTok.KillToken;
+   if not FTok.TestName then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected)
+   else begin
+      name:=FTok.GetToken.FString;
+      constPos := FTok.HotPos;
+      FTok.KillToken;
 
-    CheckName(Name);
+      CheckName(name);
 
-    if FTok.TestDelete(ttCOLON) then
-      Typ := ReadType('')
-    else
-      Typ := nil;
+      if FTok.TestDelete(ttCOLON) then
+         typ := ReadType('')
+      else typ := nil;
 
-    if Typ is TFuncSymbol then
-      FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_InvalidConstType,[Typ.Caption]));
+      if typ is TFuncSymbol then
+         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_InvalidConstType, [typ.Caption]);
 
-    if not FTok.TestDelete(ttEQ) then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
+      if not FTok.TestDelete(ttEQ) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
 
-    Expr:=ReadExpr;
-    try
-      Expr.TypeCheckNoPos(FTok.HotPos);
-      if not Expr.IsConstant then
-        FMsgs.AddCompilerStop(FTok.HotPos, CPE_ConstantExpressionExpected);
+      expr:=ReadExpr;
+      try
+         expr.TypeCheckNoPos(FTok.HotPos);
+         if not expr.IsConstant then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ConstantExpressionExpected);
 
-      if Assigned(Typ) then
-      begin
-        if not Typ.IsCompatible(Expr.Typ) then
-          FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_AssignIncompatibleTypes, [Expr.Typ.Caption, Typ.Caption]));
-      end
-      else
-        Typ := Expr.Typ;
+         if Assigned(typ) then begin
+            if not typ.IsCompatible(expr.typ) then
+               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_AssignIncompatibleTypes,
+                                        [expr.typ.Caption, typ.Caption]);
+         end else typ := expr.typ;
 
-      if Typ.Size>1 then
-        sym := TConstSymbol.Create(Name, Typ, TConstExpr(Expr).Data, TConstExpr(Expr).Addr)
-      else if Typ is TArraySymbol then
-         sym:=TStaticArraySymbol.Create(Name, Typ, 0, TArraySymbol(Typ).Typ.Size-1)
-      else
-        sym := TConstSymbol.Create(Name, Typ, Expr.Eval);
-      FProg.Table.AddSymbol(sym);
-      if coSymbolDictionary in FCompilerOptions then
-        FProg.SymbolDictionary.Add(sym, constPos, [suDeclaration]);
-    finally
-      Expr.Free;
-    end;
-  end;
+         if typ.Size>1 then
+            sym := TConstSymbol.Create(name, typ, TConstExpr(expr).Data, TConstExpr(expr).Addr)
+         else if typ is TArraySymbol then
+            sym:=TStaticArraySymbol.Create(name, typ, 0, TArraySymbol(typ).typ.Size-1)
+         else sym := TConstSymbol.Create(name, typ, expr.Eval);
+         FProg.Table.AddSymbol(sym);
+         if coSymbolDictionary in FCompilerOptions then
+            FProg.SymbolDictionary.Add(sym, constPos, [suDeclaration]);
+      finally
+         expr.Free;
+      end;
+   end;
 end;
 
 procedure TdwsCompiler.ReadTypeDecl;
@@ -1013,12 +1010,12 @@ begin
    // Check if name is already used
    meth := ClassSym.Members.FindSymbol(Name);
    if meth is TFieldSymbol then
-      FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_FieldRedefined, [Name]))
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_FieldRedefined, [Name])
    else if meth is TPropertySymbol then
-      FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_PropertyRedefined, [Name]))
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_PropertyRedefined, [Name])
    else if meth is TMethodSymbol then begin
       if TMethodSymbol(meth).ClassSymbol = ClassSym then
-         FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_MethodRedefined, [Name]));
+         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_MethodRedefined, [Name]);
    end;
 
    // Read declaration of method implementation
@@ -1053,9 +1050,9 @@ begin
             end;
          end else if FTok.TestDelete(ttOVERRIDE) then begin
             if not Assigned(meth) or not (meth is TMethodSymbol) then
-               FMsgs.AddCompilerStop(methPos, Format(CPE_CantOverrideNotInherited, [Name]))
+               FMsgs.AddCompilerStopFmt(methPos, CPE_CantOverrideNotInherited, [Name])
             else if not TMethodSymbol(meth).IsVirtual then
-               FMsgs.AddCompilerStop(methPos, Format(CPE_CantOverrideNotVirtual, [Name]))
+               FMsgs.AddCompilerStopFmt(methPos, CPE_CantOverrideNotVirtual, [Name])
             else begin
                if not ParamsCheck(TMethodSymbol(Result), TMethodSymbol(meth)) then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_CantOverrideWrongParameterList);
@@ -1064,7 +1061,7 @@ begin
             end;
          end else if FTok.TestDelete(ttREINTRODUCE) then begin
             if not IsReintroduced then
-               FMsgs.AddCompilerStop(methPos, Format(CPE_CantReintroduce, [Name]));
+               FMsgs.AddCompilerStopFmt(methPos, CPE_CantReintroduce, [Name]);
             IsReintroduced := False;
          end;
 
@@ -1074,7 +1071,7 @@ begin
       ReadDeprecated(Result);
 
       if IsReintroduced then
-         FMsgs.AddCompilerWarning(methPos, Format(CPE_ReintroduceWarning, [Name]));
+         FMsgs.AddCompilerWarningFmt(methPos, CPE_ReintroduceWarning, [Name]);
 
       // Added as last step. OnExcept, won't need to be freed.
       if coSymbolDictionary in FCompilerOptions then
@@ -1106,11 +1103,10 @@ begin
     FMsgs.AddCompilerStop(methPos, CPE_ImplNotAMethod);
 
   if TMethodSymbol(meth).ClassSymbol <> ClassSym then
-    FMsgs.AddCompilerStop(methPos, Format(CPE_ImplInvalidClass, [methName,
-      ClassSym.Name]));
+    FMsgs.AddCompilerStopFmt(methPos, CPE_ImplInvalidClass, [methName, ClassSym.Name]);
 
   if TMethodSymbol(meth).IsAbstract then
-    FMsgs.AddCompilerError(methPos, Format(CPE_ImplAbstract, [ClassSym.Name, methName]));
+    FMsgs.AddCompilerErrorFmt(methPos, CPE_ImplAbstract, [ClassSym.Name, methName]);
 
   if TMethodSymbol(meth).IsClassMethod and not IsClassMethod then
     FMsgs.AddCompilerStop(methPos, CPE_ImplClassExpected)
@@ -1165,8 +1161,9 @@ procedure TdwsCompiler.WarnDeprecated(funcSym : TFuncSymbol);
 begin
    if FuncSym.IsDeprecated then begin
       if FuncSym.DeprecatedMessage<>'!' then
-         FMsgs.AddCompilerWarning(FTok.HotPos, Format(CPE_DeprecatedWithMessage, [FuncSym.Name, FuncSym.DeprecatedMessage]))
-      else FMsgs.AddCompilerWarning(FTok.HotPos, Format(CPE_Deprecated, [FuncSym.Name]));
+         FMsgs.AddCompilerWarningFmt(FTok.HotPos, CPE_DeprecatedWithMessage,
+                                     [FuncSym.Name, FuncSym.DeprecatedMessage])
+      else FMsgs.AddCompilerWarningFmt(FTok.HotPos, CPE_Deprecated, [FuncSym.Name]);
    end;
 end;
 
@@ -1488,7 +1485,7 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedWithoutName);
   end
   else
-    FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_InheritedMethodNotFound, [Name]));
+    FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_InheritedMethodNotFound, [Name]);
 end;
 
 function TdwsCompiler.ReadName(IsWrite: Boolean): TNoPosExpr;
@@ -1563,7 +1560,7 @@ begin
           baseType := TEnumerationSymbol(baseType).Typ.BaseType;
 
         if not Assigned(sym) then
-          FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_UnknownName, [name]))
+          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownName, [name])
         // "Variables"
         else if sym is TVarParamSymbol then
           Result := ReadSymbol(GetVarParamExpr(TVarParamSymbol(sym)), IsWrite)
@@ -1634,7 +1631,7 @@ begin
         else if sym is TTypeSymbol then
           Result := ReadTypeCast(namePos, sym)
         else
-          FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_UnknownType, [sym.Caption]));
+          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownType, [sym.Caption]);
 
       except
         Result.Free;
@@ -1844,7 +1841,7 @@ begin
             if Assigned(member) then
               Result := TRecordExpr.Create(FProg, FTok.HotPos, TDataExpr(Result), TMemberSymbol(member))
             else
-              FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_UnknownMember, [Name]));
+              FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [Name]);
             Expr := nil;
           end
           // Class
@@ -1871,7 +1868,7 @@ begin
               // Member is a property
               Result := ReadPropertyExpr(TDataExpr(Result), TPropertySymbol(member), IsWrite)
             else
-              FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_UnknownMember, [Name]));
+              FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [Name]);
           end
           // Class Of
           else if baseType is TClassOfSymbol then
@@ -1924,7 +1921,7 @@ begin
             if Assigned(DefaultProperty) then
               Result := ReadPropertyExpr(TDataExpr(Result), DefaultProperty, IsWrite)
             else
-              FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_NoDefaultProperty, [Result.Typ.Name]));
+              FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NoDefaultProperty, [Result.Typ.Name]);
           end
           else
           begin
@@ -2483,9 +2480,9 @@ begin
 
     Typ := FProg.Table.FindSymbol(Name);
     if not Assigned(Typ) then
-      FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_UnknownClass, [Name]));
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownClass, [Name]);
     if not (Typ is TClassSymbol) then
-      FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_NotAClass, [Name]));
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NotAClass, [Name]);
 
     if TypeName <> '' then
     begin
@@ -2510,8 +2507,7 @@ begin
           Result := TClassSymbol(sym)
       end
       else
-        FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_NameAlreadyExists,
-          [sym.Caption]));
+        FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [sym.Caption]);
 
     isInSymbolTable := Assigned(Result);
 
@@ -2542,11 +2538,10 @@ begin
 
         Typ := FProg.Table.FindSymbol(Name);
         if not (Typ is TClassSymbol) then
-          FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_NotAClass, [Name]));
+          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NotAClass, [Name]);
 
         if TClassSymbol(Typ).IsForward then
-          FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_ClassNotImplementedYet,
-            [Name]));
+          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ClassNotImplementedYet, [Name]);
 
         TClassSymbol(Result).InheritFrom(TClassSymbol(Typ));
 
@@ -2592,7 +2587,7 @@ begin
                 if not FTok.TestDelete(ttSEMI) then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
                 if Assigned(TClassSymbol(Result).DefaultProperty) then
-                  FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_MultipleDefaultProperties, [TClassSymbol(Result).Name]));
+                  FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_MultipleDefaultProperties, [TClassSymbol(Result).Name]);
               end;
             end;
             TClassSymbol(Result).AddProperty(propSym);
@@ -2626,8 +2621,7 @@ begin
               // Check if name isn't already used
               sym := TClassSymbol(Result).Members.FindLocal(Names[x]);
               if Assigned(sym) then
-                FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_NameAlreadyExists,
-                  [Names[x]]));
+                FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [Names[x]]);
 
               // Create Internal Field
               sym := TFieldSymbol.Create(Names[x], Typ);
@@ -2730,10 +2724,10 @@ begin
     if sym is TPropertySymbol then
     begin
       if TPropertySymbol(sym).ClassSymbol = ClassSym then
-        FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_NameAlreadyExists, [Name]));
+        FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [Name]);
     end
     else
-      FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_NameAlreadyExists, [Name]));
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [Name]);
 
   arrayIndices := TSymbolTable.Create;
   try
@@ -2775,20 +2769,20 @@ begin
         if not Assigned(sym) or (sym is TPropertySymbol) then
         begin
           { Register the error and break the compilation process }
-          FMsgs.AddCompilerError(FTok.HotPos, Format(CPE_FieldMethodUnknown, [name]));
+          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_FieldMethodUnknown, [name]);
           raise EClassPropertyIncompleteError.Create('');
         end;
 
         if sym is TMethodSymbol then
         begin
           if not CheckFuncParams(arrayIndices, TMethodSymbol(sym).Params, indexTyp) then
-            FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_IncompatibleType, [name]));
+            FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncompatibleType, [name]);
         end
         else if arrayIndices.Count > 0 then
           FMsgs.AddCompilerStop(FTok.HotPos, CPE_FunctionMethodExpected);
 
         if Result.Typ <> sym.Typ then
-          FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_IncompatibleType, [name]));
+          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncompatibleType, [name]);
 
         Result.ReadSym := sym;
         if coSymbolDictionary in FCompilerOptions then
@@ -2811,7 +2805,7 @@ begin
         if not Assigned(sym) or (sym is TPropertySymbol) then
         begin
           { Register the error and break the compilation process }
-          FMsgs.AddCompilerError(FTok.HotPos, Format(CPE_FieldMethodUnknown, [name]));
+          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_FieldMethodUnknown, [name]);
           raise EClassPropertyIncompleteError.Create('');
         end;
 
@@ -2820,11 +2814,10 @@ begin
           if TFuncSymbol(sym).Kind <> fkProcedure then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcedureMethodExpected);
           if not CheckFuncParams(arrayIndices, TFuncSymbol(sym).Params, indexTyp, Result.Typ) then
-            FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_IncompatibleType, [name]));
+            FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncompatibleType, [name]);
         end
         else if Result.Typ <> sym.Typ then
-          FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_IncompatibleWriteSymbol,
-            [Name]));
+          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncompatibleWriteSymbol, [Name]);
 
         Result.WriteSym := sym;
         if coSymbolDictionary in FCompilerOptions then
@@ -2832,7 +2825,7 @@ begin
       end;
 
       if (Result.ReadSym = nil) and (Result.WriteSym = nil) then
-        FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_ReadOrWriteExpected, [name]));
+        FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ReadOrWriteExpected, [name]);
 
       if not FTok.TestDelete(ttSEMI) then
         FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
@@ -2884,8 +2877,7 @@ begin
         for x := 0 to Names.Count - 1 do
         begin
           if TRecordSymbol(Result).Members.FindLocal(Names[x]) <> nil then
-            FMsgs.AddCompilerError(FTok.HotPos, Format(CPE_NameAlreadyExists,
-              [Names[x]]));
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [Names[x]]);
 
           member := TMemberSymbol.Create(Names[x], Typ);
           TRecordSymbol(Result).AddMember(TMemberSymbol(member));
@@ -3103,9 +3095,9 @@ begin
     end;
 
     if not Assigned(sym) then
-      FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_TypeUnknown, [name]))
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_TypeUnknown, [name])
     else if not (sym is TTypeSymbol) then
-      FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_InvalidType, [name]))
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_InvalidType, [name])
     else
       Result := TTypeSymbol(sym); // TTypeSymbol(sym).BaseType ??
     // Create name symbol, e. g.: type a = integer;
@@ -3540,8 +3532,8 @@ begin
                 end;
 
                 if not Typ.IsCompatible(defaultExpr.Typ) then begin
-                  FMsgs.AddCompilerError(FTok.HotPos,
-                    Format(CPE_IncompatibleTypes,[Typ.Caption,defaultExpr.Typ.Caption]));
+                  FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleTypes,
+                                            [Typ.Caption,defaultExpr.Typ.Caption]);
                   FreeAndNil(defaultExpr);
                 end;
               end;
@@ -3596,8 +3588,7 @@ begin
   begin
     Result := False;
 
-    FMsgs.AddCompilerError(FTok.HotPos, Format(CPE_CompilerSwitchUnknown,
-      [SwitchName]));
+    FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CompilerSwitchUnknown, [SwitchName]);
 
     while not FTok.TestDelete(ttCRIGHT) do
       FTok.KillToken;
@@ -3656,7 +3647,7 @@ begin
 
   end
   else
-    FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_CompilerSwitchUnknown, [Name]));
+    FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_CompilerSwitchUnknown, [Name]);
 
   // Kill everthing up to the next "}"
   while not FTok.Test(ttCRIGHT) do
@@ -3678,7 +3669,7 @@ begin
       sym := TProcedure(FProg).Func.Params.FindLocal(Name);
 
    if Assigned(sym) then
-      FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_NameAlreadyExists, [Name]))
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [Name])
    else CheckSpecialName(Name);
 end;
 
@@ -3690,7 +3681,7 @@ var
 begin
    for sk:=Low(sk) to High(sk) do begin
       if SameText(cSpecialKeywordMap[sk], Name) then begin
-         FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_NameIsReserved, [Name]));
+         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameIsReserved, [Name]);
          Break;
       end;
    end;
@@ -3739,21 +3730,18 @@ begin
   for x := 0 to A.Count - 1 do begin
     r := False;
     if CheckNames and not SameText(A[x].Name, B[x].Name) then
-        FMsgs.AddCompilerError(FTok.HotPos, Format(CPE_BadParameterName, [x,
-          A[x].Name]))
+        FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterName, [x, A[x].Name])
     else if not A[x].Typ.IsCompatible(B[x].Typ) then
-      FMsgs.AddCompilerError(FTok.HotPos, Format(CPE_BadParameterType, [x,
-        A[x].Typ.Caption, B[x].Typ.Caption]))
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterType,
+                                [x, A[x].Typ.Caption, B[x].Typ.Caption])
     else if (A[x] is TVarParamSymbol) and not (B[x] is TVarParamSymbol) then
-      FMsgs.AddCompilerError(FTok.HotPos, Format(CPE_VarParameterExpected, [x,
-        A[x].Name]))
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_VarParameterExpected, [x, A[x].Name])
     else if not (A[x] is TVarParamSymbol) and (B[x] is TVarParamSymbol) then
-      FMsgs.AddCompilerError(FTok.HotPos, Format(CPE_ValueParameterExpected, [x,
-        A[x].Name]))
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ValueParameterExpected, [x, A[x].Name])
     else if (A[x] is TVarParamSymbol) and (B[x] is TVarParamSymbol) and
       (TVarParamSymbol(A[x]).IsWritable <> TVarParamSymbol(B[x]).IsWritable) then
-      FMsgs.AddCompilerError(FTok.HotPos, Format(CPE_BadParameterType, [x,
-        A[x].Description, B[x].Description]))
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterType,
+                                [x, A[x].Description, B[x].Description])
     else r := True;
     Result := Result and r;
   end;
@@ -3774,16 +3762,14 @@ begin
 
   if IsCheckingParameters then
   begin
-
     if Assigned(A.Typ) and not A.Typ.IsCompatible(B.Typ) then
-      FMsgs.AddCompilerError(FTok.HotPos, Format(CPE_BadResultType,
-        [A.Typ.Caption]));
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadResultType, [A.Typ.Caption]);
 
     if A.Params.Count <> B.Params.Count then
-      FMsgs.AddCompilerError(FTok.HotPos, Format(CPE_BadNumberOfParameters,
-        [A.Params.Count, B.Params.Count]))
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadNumberOfParameters,
+                                [A.Params.Count, B.Params.Count])
     else
-      CheckParams(A.Params,B.Params,True);
+      CheckParams(A.Params, B.Params, True);
   end;
 end;
 
@@ -3814,8 +3800,8 @@ begin
     Result := TryConnectorCall;
 
     if not Assigned(Result) then
-      FMsgs.AddCompilerStop(FTok.HotPos,
-        Format(CPE_ConnectorCall, [Name, ConnectorType.ConnectorCaption]));
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorCall,
+                               [Name, ConnectorType.ConnectorCaption]);
   end
   else if not IsWrite then
   begin
@@ -3827,8 +3813,8 @@ begin
     if not TConnectorReadExpr(Result).AssignConnectorSym(ConnectorType) then
     begin
       Result.Free;
-      FMsgs.AddCompilerStop(FTok.HotPos,
-        Format(CPE_ConnectorMember, [Name, ConnectorType.ConnectorCaption]));
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
+                               [Name, ConnectorType.ConnectorCaption]);
     end;
   end
   else if FTok.TestDelete(ttASSIGN) then
@@ -3842,8 +3828,8 @@ begin
     if not TConnectorWriteExpr(Result).AssignConnectorSym(ConnectorType) then
     begin
       Result.Free;
-      FMsgs.AddCompilerStop(FTok.HotPos,
-        Format(CPE_ConnectorMember, [Name, ConnectorType.ConnectorCaption]));
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
+                               [Name, ConnectorType.ConnectorCaption]);
     end;
   end
   else
@@ -3863,8 +3849,8 @@ begin
     end;
 
     if not Assigned(Result) then
-      FMsgs.AddCompilerStop(FTok.HotPos,
-        Format(CPE_ConnectorMember, [Name, ConnectorType.ConnectorCaption]));
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
+                               [Name, ConnectorType.ConnectorCaption]);
   end;
 end;
 
@@ -3881,8 +3867,7 @@ begin
       Result.AddArg(ReadExpr);
 
     if not Result.AssignConnectorSym(ConnectorType) then
-      FMsgs.AddCompilerStop(FTok.HotPos,
-        Format(CPE_ConnectorIndex, [ConnectorType.ConnectorCaption]));
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorIndex, [ConnectorType.ConnectorCaption]);
   except
     Result.Free;
     raise;
@@ -4327,7 +4312,7 @@ begin
         Inc(y);
       end;
       if z < 0 then
-        FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_UnknownUnit,[Names[x]]));
+        FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownUnit, [Names[x]]);
     end;
   finally
     Names.Free;
