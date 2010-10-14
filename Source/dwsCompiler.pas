@@ -223,10 +223,12 @@ type
 
   TdwsDefaultResult = class(TdwsResult)
   private
-    FText: String;
+    FTextBuilder: TStringBuilder;
     function GetText: String;
   public
-    procedure AddString(const Str: String);
+    constructor Create(resultType : TdwsResultType); override;
+    destructor Destroy; override;
+    procedure AddString(const str : String); override;
     property Text: String read GetText;
   end;
 
@@ -4192,15 +4194,34 @@ end;
 
 { TdwsDefaultResult }
 
-
-procedure TdwsDefaultResult.AddString(const Str: String);
+// Create
+//
+constructor TdwsDefaultResult.Create(resultType: TdwsResultType);
 begin
-  FText := FText + Str;
+   inherited;
+   FTextBuilder:=TStringBuilder.Create;
 end;
 
-function TdwsDefaultResult.GetText: String;
+// Destroy
+//
+destructor TdwsDefaultResult.Destroy;
 begin
-  Result := FText;
+   inherited;
+   FTextBuilder.Free;
+end;
+
+// AddString
+//
+procedure TdwsDefaultResult.AddString(const str : String);
+begin
+   FTextBuilder.Append(Str);
+end;
+
+// GetText
+//
+function TdwsDefaultResult.GetText : String;
+begin
+   Result:=FTextBuilder.ToString;
 end;
 
 { TdwsDefaultResultType }
@@ -4217,20 +4238,25 @@ begin
   TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['v', 'Variant'], '', False);
 end;
 
-
 { TPrintFunction }
 
 procedure TPrintFunction.Execute;
 begin
-  TdwsDefaultResult(Info.Caller.Result).AddString(Info.ValueAsString['v']);
+   Info.Caller.Result.AddString(Info.ValueAsString['v']);
 end;
 
 { TPrintLnFunction }
 
 procedure TPrintLnFunction.Execute;
+var
+   result : TdwsResult;
 begin
-  TdwsDefaultResult(Info.Caller.Result).AddString(Info.ValueAsString['v'] + #13#10);
+   result:=Info.Caller.Result;
+   result.AddString(Info.ValueAsString['v']);
+   result.AddString(#13#10);
 end;
+
+{ TdwsCompiler }
 
 function TdwsCompiler.ReadEnumeration(const TypeName: string): TEnumerationSymbol;
 var

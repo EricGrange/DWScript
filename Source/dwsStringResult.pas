@@ -31,19 +31,21 @@ unit dwsStringResult;
 interface
 
 uses
-  Variants,
-  Classes, dwsExprs, dwsSymbols, dwsComp;
+  Variants, Classes, SysUtils, dwsExprs, dwsSymbols, dwsComp;
 
 type
   TdwsStringResult = class(TdwsResult)
   private
-    FStr: string;
+    FStrBuilder: TStringBuilder;
+    function GetStr : String;
   public
-    procedure AddStr(const Str: string);
+    constructor Create(resultType : TdwsResultType); override;
+    destructor Destroy; override;
+    procedure AddString(const Str: string); override;
     procedure SetStr(const Str: string);
     function ReadLn: string;
     function ReadChar: string;
-    property Str: string read FStr;
+    property Str: string read GetStr;
   end;
 
   TChangeStringEvent = procedure (Result: TdwsStringResult; const Str: string) of object;
@@ -107,19 +109,35 @@ type
     procedure Execute; override;
   end;
 
-
 { TdwsStringResult }
 
-procedure TdwsStringResult.AddStr(const Str: string);
+// Create
+//
+constructor TdwsStringResult.Create(resultType : TdwsResultType);
 begin
-  FStr := FStr + Str;
+   inherited;
+   FStrBuilder:=TStringBuilder.Create;
+end;
+
+// Destroy
+//
+destructor TdwsStringResult.Destroy;
+begin
+   inherited;
+   FStrBuilder.Free;
+end;
+
+procedure TdwsStringResult.AddString(const Str: string);
+begin
+  FStrBuilder.Append(Str);
   if Assigned(TdwsStringResultType(ResultType).OnAddString) then
     TdwsStringResultType(ResultType).OnAddString(Self, Str)
 end;
 
 procedure TdwsStringResult.SetStr(const Str: string);
 begin
-  FStr := Str;
+  FStrBuilder.Clear;
+  FStrBuilder.Append(Str);
   if Assigned(TdwsStringResultType(ResultType).OnSetString) then
     TdwsStringResultType(ResultType).OnSetString(Self, Str)
 end;
@@ -138,6 +156,13 @@ begin
     TdwsStringResultType(ResultType).OnReadLn(Self, Result)
   else
     Result := '';
+end;
+
+// GetStr
+//
+function TdwsStringResult.GetStr : String;
+begin
+   Result:=FStrBuilder.ToString;
 end;
 
 { TdwsStringResultType }
@@ -173,21 +198,21 @@ end;
 
 procedure TWriteFunction.Execute;
 begin
-  TdwsStringResult(Info.Caller.Result).AddStr(VarToStr(Info.ValueAsVariant['Str']));
+  Info.Caller.Result.AddString(Info.ValueAsString['Str']);
 end;
 
 { TWriteLnFunction }
 
 procedure TWriteLnFunction.Execute;
 begin
-  TdwsStringResult(Info.Caller.Result).AddStr(VarToStr(Info.ValueAsVariant['Str']) + #13#10);
+  Info.Caller.Result.AddString(Info.ValueAsString['Str'] + #13#10);
 end;
 
 { TWriteAllFunction }
 
 procedure TWriteAllFunction.Execute;
 begin
-  TdwsStringResult(Info.Caller.Result).SetStr(VarToStr(Info.ValueAsVariant['Str']));
+  (Info.Caller.Result as TdwsStringResult).SetStr(VarToStr(Info.ValueAsVariant['Str']));
 end;
 
 { TReadCharFunction }

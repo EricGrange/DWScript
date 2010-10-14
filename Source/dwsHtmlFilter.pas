@@ -31,9 +31,8 @@ unit dwsHtmlFilter;
 interface
 
 uses
-  Variants,
-  Classes, SysUtils, dwsComp, dwsExprs, dwsFunctions, dwsSymbols,
-  dwsErrors, dwsCompiler;
+  Variants, Classes, SysUtils, dwsComp, dwsExprs, dwsFunctions, dwsSymbols,
+  dwsErrors, dwsCompiler, dwsStrings, dwsStringResult;
 
 type
   TdwsHtmlFilter = class(TdwsFilter)
@@ -73,9 +72,6 @@ type
 
 implementation
 
-uses
-  dwsStrings, dwsStringResult;
-
 { TdwsHtmlFilter }
 
 constructor TdwsHtmlFilter.Create(AOwner: TComponent);
@@ -88,113 +84,124 @@ begin
   FPatternEval := '=';
 end;
 
-function TdwsHtmlFilter.Process(const Text: string; Msgs: TMsgs): string;
+function TdwsHtmlFilter.Process(const Text: String; Msgs: TMsgs): String;
 
-  function StuffString(const Str: string): string;
-  var
-    IsQuoted: Boolean;
-    x, LineCount: Integer;
-  begin
-    Result := '''';
-    IsQuoted := True;
-    LineCount := 0;
-    for x := 1 to Length(Str) do
-      if IsQuoted then
-        case Str[x] of
-          '''': Result := Result + '''''';
-          #10:
-            begin
-              Result := Result + '''#10';
-              IsQuoted := False;
-              Inc(LineCount);
+   procedure StuffString(const str: String; start, stop : Integer;
+                         dest : TStringBuilder);
+   var
+      isQuoted: Boolean;
+      i, lineCount: Integer;
+   begin
+      dest.Append('''');
+      isQuoted := True;
+      lineCount := 0;
+      for i := start to stop do begin
+         if isQuoted then begin
+            case str[i] of
+               '''': dest.Append('''''');
+               #10: begin
+                  dest.Append('''#10');
+                  isQuoted := False;
+                  Inc(lineCount);
+               end;
+               #13: begin
+                  dest.Append('''#13');
+                  isQuoted := False;
+               end;
+               #9: begin
+                  dest.Append('''#9');
+                  isQuoted := False;
+               end;
+            else
+               dest.Append(str[i]);
+            end
+         end else begin
+            case str[i] of
+               '''': begin
+                  dest.Append('''''''');
+                  isQuoted := True;
+               end;
+               #10: begin
+                  dest.Append('#10');
+                  Inc(lineCount);
+               end;
+               #13: dest.Append('#13');
+               #9: dest.Append('#9');
+            else
+               dest.Append('''');
+               dest.Append(Str[i]);
+               isQuoted := True;
             end;
-          #13:
-            begin
-              Result := Result + '''#13';
-              IsQuoted := False;
-            end;
-          #9:
-            begin
-              Result := Result + '''#9';
-              IsQuoted := False;
-            end;
-        else
-          Result := Result + Str[x];
-        end
-      else
-        case Str[x] of
-          '''':
-            begin
-              Result := Result + '''''''';
-              IsQuoted := True;
-            end;
-          #10:
-            begin
-              Result := Result + '#10';
-              Inc(LineCount);
-            end;
-          #13: Result := Result + '#13';
-          #9: Result := Result + '#9';
-        else
-          Result := Result + '''' + Str[x];
-          IsQuoted := True;
-        end;
+         end;
+      end;
 
-    if IsQuoted then
-      Result := Result + '''';
+      if isQuoted then
+         dest.Append('''');
 
-    for x := 1 to LineCount do
-      Result := Result + #13#10;
-  end;
+      for i := 1 to lineCount do
+         dest.Append(#13#10);
+   end;
 
 var
-  state: (sNone, sSend);
-  index, patOpen, patClose, patEval: Integer;
-  htmlText, chunk, pattern: string;
+   state: (sNone, sSend);
+   index, patOpen, patClose, patEval: Integer;
+   htmlText, chunk, pattern: string;
+   builder : TStringBuilder;
 begin
-  // Initializations
-  htmlText := inherited Process(Text, Msgs);
-  patOpen := Length(FPatternOpen) - 1;
-  patClose := Length(FPatternClose) - 1;
-  patEval := Length(FPatternEval) + 1;
+   // Initializations
+   htmlText := inherited Process(Text, Msgs);
+   patOpen := Length(FPatternOpen) - 1;
+   patClose := Length(FPatternClose) - 1;
+   patEval := Length(FPatternEval) + 1;
 
-  state := sNone;
-  pattern := FPatternOpen;
-  Result := '';
+   builder:=TStringBuilder.Create;
+   try
 
-  // Start conversion
-  repeat
-    index := AnsiPos(pattern, htmlText);
-    if index = 0 then
-      index := Length(htmlText) + 1;
+      state := sNone;
+      pattern := FPatternOpen;
 
-    case state of
-      sNone:
-        // Normal HTML code.
-        // Looking for <%
-        begin
-          if index > 1 then
-            Result := Result +
-              Format('Send(%s);', [StuffString(Copy(htmlText, 1, index - 1))]);
-          Delete(htmlText, 1, index + patOpen);
-          pattern := FPatternClose;
-          state := sSend;
-        end;
-      sSend:
-        // Inside a <% %> tag
-        // Looking for %>
-        begin
-          chunk := Copy(htmlText, 1, index - 1);
-          if Pos(FPatternEval, chunk) = 1 then
-            Result := Result + Format('Send(%s);', [Copy(chunk, patEval, Length(chunk))])
-          else
-            Result := Result + chunk;
-          Delete(htmlText, 1, index + patClose);
-          pattern := FPatternOpen;
-          state := sNone;
-        end;
-    end;
-  until Length(htmlText) = 0;
+      // Start conversion
+      repeat
+         index := AnsiPos(pattern, htmlText);
+         if index = 0 then
+            index := Length(htmlText) + 1;
+
+         case state of
+            sNone: begin
+               // Normal HTML code.
+               // Looking for <%
+               if index > 1 then begin
+                  builder.Append('Send(');
+                  StuffString(htmlText, 1, index-1, builder);
+                  builder.Append(');');
+               end;
+               Delete(htmlText, 1, index + patOpen);
+               pattern := FPatternClose;
+               state := sSend;
+            end;
+            sSend: begin
+               // Inside a <% %> tag
+               // Looking for %>
+               chunk := Copy(htmlText, 1, index - 1);
+               if Pos(FPatternEval, chunk) = 1 then begin
+                  builder.Append('Send(');
+                  builder.Append(Copy(chunk, patEval, Length(chunk)));
+                  builder.Append(');');
+               end else begin
+                  builder.Append( chunk );
+               end;
+               Delete(htmlText, 1, index + patClose);
+               pattern := FPatternOpen;
+               state := sNone;
+            end;
+         end;
+      until Length(htmlText) = 0;
+
+      Result:=builder.ToString;
+
+   finally
+      builder.Free;
+   end;
 end;
 
 procedure TdwsHtmlFilter.SetPatternClose(const Value: string);
@@ -229,14 +236,18 @@ end;
 
 procedure TSendFunction.Execute;
 begin
-  TdwsStringResult(Info.Caller.Result).AddStr(VarToStr(Info.ValueAsVariant['s']));
+  Info.Caller.Result.AddString(Info.ValueAsString['s']);
 end;
 
 { TSendLnFunction }
 
 procedure TSendLnFunction.Execute;
+var
+   result : TdwsResult;
 begin
-  TdwsStringResult(Info.Caller.Result).AddStr(VarToStr(Info.ValueAsVariant['s']) + #13#10);
+   result:=Info.Caller.Result;
+   result.AddString(Info.ValueAsString['s']);
+   result.AddString(#13#10);
 end;
 
 { TdwsHtmlUnit }

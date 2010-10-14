@@ -201,10 +201,12 @@ type
   private
     FResultType: TdwsResultType;
   protected
-    constructor Create(ResultType: TdwsResultType);
+    constructor Create(ResultType: TdwsResultType); virtual;
     procedure InitializeProgram(Prog: TdwsProgram); virtual;
     procedure FinalizeProgram(Prog: TdwsProgram); virtual;
     property ResultType: TdwsResultType read FResultType;
+  public
+    procedure AddString(const str : String); virtual;
   end;
 
   TdwsResultType = class(TComponent)
@@ -1836,6 +1838,13 @@ procedure TdwsResult.FinalizeProgram(Prog: TdwsProgram);
 begin
   if Assigned(FResultType.FOnFinalizeProgram) then
     FResultType.FOnFinalizeProgram(Prog);
+end;
+
+// AddString
+//
+procedure TdwsResult.AddString(const str : String);
+begin
+   // ignore by default
 end;
 
 procedure TdwsResult.InitializeProgram(Prog: TdwsProgram);
