@@ -23,6 +23,8 @@ type
          procedure TimeOutTestInfinite;
          procedure IncludeViaEvent;
          procedure IncludeViaFile;
+         procedure StackMaxRecursion;
+         procedure StackOverFlow;
    end;
 
 // ------------------------------------------------------------------
@@ -233,6 +235,48 @@ begin
    end;
 
    DeleteFile(tempFile);
+end;
+
+// StackMaxRecursion
+//
+procedure TCornerCasesTests.StackMaxRecursion;
+var
+   prog : TdwsProgram;
+begin
+   FCompiler.Config.MaxRecursionDepth:=20;
+
+   prog:=FCompiler.Compile('procedure Dummy; begin Dummy; end; Dummy;');
+   try
+      CheckEquals('', prog.Msgs.AsInfo, 'compile');
+      prog.Execute;
+      CheckEquals('Runtime Error: Maximal recursion exceeded (20 calls)'#13#10,
+                  prog.Msgs.AsInfo, 'stack max recursion');
+   finally
+      prog.Free;
+   end;
+
+   FCompiler.Config.MaxDataSize:=cDefaultMaxRecursionDepth;
+end;
+
+// StackOverFlow
+//
+procedure TCornerCasesTests.StackOverFlow;
+var
+   prog : TdwsProgram;
+begin
+   FCompiler.Config.MaxDataSize:=1024;
+
+   prog:=FCompiler.Compile('procedure Dummy; var i : Integer; begin Dummy; end; Dummy;');
+   try
+      CheckEquals('', prog.Msgs.AsInfo, 'compile');
+      prog.Execute;
+      CheckEquals('Runtime Error: Maximal data size exceeded (64 Variants)'#13#10,
+                  prog.Msgs.AsInfo, 'stack overflow');
+   finally
+      prog.Free;
+   end;
+
+   FCompiler.Config.MaxDataSize:=0;
 end;
 
 // ------------------------------------------------------------------
