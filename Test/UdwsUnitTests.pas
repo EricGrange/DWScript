@@ -3,7 +3,7 @@ unit UdwsUnitTests;
 interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer;
+   dwsTokenizer, dwsSymbols;
 
 type
 
@@ -22,12 +22,16 @@ type
          procedure FuncOneEval(Info: TProgramInfo);
          procedure FuncOneDotFiveEval(Info: TProgramInfo);
          procedure FuncTrueEval(Info: TProgramInfo);
+         procedure FuncIncEval(Info: TProgramInfo);
 
          procedure FuncExceptionEval(Info: TProgramInfo);
 
          procedure CompilationExecution(execute : Boolean);
 
       published
+
+         procedure DesignTimeDisplayValues;
+         procedure CompiledDescriptions;
 
          procedure CompilationNormal;
          procedure CompilationWithMapAndSymbols;
@@ -56,6 +60,10 @@ const
       +'if FuncOneDotFive<>1.5 then PrintLn(''FuncOneDotFive failed'');'#13#10
       +'if FuncTrue<>True then PrintLn(''FuncTrue failed'');'#13#10
       ;
+
+type
+   TdwsFunctionCracker = class (TdwsFunction)
+   end;
 
 // ------------------
 // ------------------ TdwsUnitTests ------------------
@@ -87,6 +95,7 @@ end;
 procedure TdwsUnitTests.DeclareTestFuncs;
 var
    func : TdwsFunction;
+   param : TdwsParameter;
 begin
    func:=FUnit.Functions.Add as TdwsFunction;
    func.Name:='Func1';
@@ -112,6 +121,14 @@ begin
    func.Name:='FuncException';
    func.ResultType:='';
    func.OnEval:=FuncExceptionEval;
+
+   func:=FUnit.Functions.Add as TdwsFunction;
+   func.Name:='FuncInc';
+   func.ResultType:='Integer';
+   func.OnEval:=FuncIncEval;
+   param:=func.Parameters.Add as TdwsParameter;
+   param.Name:='v';
+   param.DataType:='Integer';
 end;
 
 // Func1Eval
@@ -142,6 +159,13 @@ begin
    Info.ResultAsBoolean:=True;
 end;
 
+// FuncIncEval
+//
+procedure TdwsUnitTests.FuncIncEval(Info: TProgramInfo);
+begin
+   Info.ResultAsInteger:=Info.ValueAsInteger['v']+1;
+end;
+
 // FuncExceptionEval
 //
 procedure TdwsUnitTests.FuncExceptionEval(Info: TProgramInfo);
@@ -163,6 +187,53 @@ begin
          CheckEquals('', (prog.Result as TdwsDefaultResult).Text, 'FuncsTest result');
          CheckEquals('', prog.Msgs.AsInfo, 'FuncsTest Msgs');
       end;
+   finally
+      prog.Free;
+   end;
+end;
+
+// DesignTimeDisplayValues
+//
+procedure TdwsUnitTests.DesignTimeDisplayValues;
+
+   function FuncByName(const aName : String) : TdwsFunctionCracker;
+   var
+      i : Integer;
+   begin
+      i:=FUnit.Functions.IndexOf(aName);
+      Result:=TdwsFunctionCracker(FUnit.Functions.Items[i] as TdwsFunction);
+   end;
+
+begin
+   CheckEquals('function Func1 : Integer;', FuncByName('Func1').GetDisplayName);
+   CheckEquals('function FuncOne : String;', FuncByName('FuncOne').GetDisplayName);
+   CheckEquals('function FuncOneDotFive : Float;', FuncByName('FuncOneDotFive').GetDisplayName);
+   CheckEquals('function FuncTrue : Boolean;', FuncByName('FuncTrue').GetDisplayName);
+   CheckEquals('procedure FuncException;', FuncByName('FuncException').GetDisplayName);
+   CheckEquals('function FuncInc(v : Integer) : Integer;', FuncByName('FuncInc').GetDisplayName);
+end;
+
+// CompiledDescriptions
+//
+procedure TdwsUnitTests.CompiledDescriptions;
+var
+   prog : TdwsProgram;
+   sym : TSymbol;
+begin
+   prog:=FCompiler.Compile('');
+   try
+      sym:=prog.Table.FindSymbol('Func1');
+      CheckEquals('function Func1(): Integer', sym.Description);
+      sym:=prog.Table.FindSymbol('FuncOne');
+      CheckEquals('function FuncOne(): String', sym.Description);
+      sym:=prog.Table.FindSymbol('FuncOneDotFive');
+      CheckEquals('function FuncOneDotFive(): Float', sym.Description);
+      sym:=prog.Table.FindSymbol('FuncTrue');
+      CheckEquals('function FuncTrue(): Boolean', sym.Description);
+      sym:=prog.Table.FindSymbol('FuncException');
+      CheckEquals('procedure FuncException()', sym.Description);
+      sym:=prog.Table.FindSymbol('FuncInc');
+      CheckEquals('function FuncInc(v: Integer): Integer', sym.Description);
    finally
       prog.Free;
    end;
