@@ -634,10 +634,10 @@ function TdwsCompiler.ReadVarDecl : TNoResultExpr;
 var
    x : Integer;
    names : TStringList;
-   sym, typ : TSymbol;
+   sym : TDataSymbol;
+   typ : TSymbol;
    pos : TScriptPos;
    posArray : TScriptPosArray;
-   vars : TList;
    initData : TData;
    initExpr : TNoPosExpr;
    assignExpr : TAssignExpr;
@@ -647,14 +647,12 @@ begin
    Result := nil;
 
    names := TStringList.Create;
-   vars := TList.Create;
    initExpr := nil;
    try
       // Conditionally pass in dynamic array
       if coSymbolDictionary in FCompilerOptions then
          ReadNameList(names, posArray)     // use overloaded version
-      else
-         ReadNameList(names);
+      else ReadNameList(names);
 
       pos := FTok.HotPos;
 
@@ -690,20 +688,15 @@ begin
       for x := 0 to names.Count - 1 do begin
          CheckName(names[x]);
          sym := TDataSymbol.Create(names[x], typ);
-         vars.Add(sym);
          FProg.Table.AddSymbol(sym);
          if coSymbolDictionary in FCompilerOptions then
             FProg.SymbolDictionary.Add(sym, posArray[x], [suDeclaration]);   // entry for variable
-      end;
 
-      // Create variable initializations
-      for x := 0 to vars.Count - 1 do begin
-         sym := vars[x];
-
+         varExpr:=GetVarExpr(sym);
          if Assigned(initExpr) then begin
 
             // Initialize with an expression
-            Result := TAssignExpr.Create(FProg, pos, GetVarExpr(vars[x]), initExpr);
+            Result := TAssignExpr.Create(FProg, pos, varExpr, initExpr);
             initExpr := nil;
             try
                Result.TypeCheck;
@@ -717,12 +710,14 @@ begin
          end else begin
 
             if sym.Typ is TArraySymbol then begin
+
                // TODO: if Sym.DynamicInit?
                TBlockExpr(FProg.InitExpr).AddStatement(
-                  TInitDataExpr.Create(FProg, Pos, GetVarExpr(vars[x]) as TDataExpr));
+                  TInitDataExpr.Create(FProg, Pos, varExpr));
+
             end else begin
+
                // Initialize with default value
-               varExpr:=GetVarExpr(vars[x]);
                if varExpr.Typ=FProg.TypInteger then
                   assignExpr:=TAssignConstToIntegerVarExpr.Create(FProg, pos, varExpr, 0)
                else if varExpr.Typ=FProg.TypFloat then
@@ -745,7 +740,6 @@ begin
   finally
       initExpr.Free;
       names.Free;
-      vars.Free;
   end;
 end;
 
@@ -1176,138 +1170,98 @@ begin
    end;
 end;
 
+// ReadProcBody
+//
 procedure TdwsCompiler.ReadProcBody(Proc: TFuncSymbol);
 var
-  x: Integer;
-  oldprog: TdwsProgram;
-  stmt: TExpr;
-  names: TStringList;
-  typ: TSymbol;
-  dataSym: TDataSymbol;
-  initData: TData;
-  pos: TScriptPos;
-  posArray: TScriptPosArray;
-  varExpr : TVarExpr;
-  assignExpr : TAssignExpr;
+   oldprog: TdwsProgram;
+   stmt: TExpr;
+   assignExpr : TNoResultExpr;
+   sectionType : TTokenType;
 begin
-  // Stop if declaration was forwarded or external
-  if (Proc.IsForwarded) then
-  begin
-    // Closed context of procedure (was only a forward)
-    if coContextMap in FCompilerOptions then
-      FProg.ContextMap.CloseContext(FTok.HotPos);
-    Exit;
-  end;
-
-  if Proc.Executable<>nil then
-     FMsgs.AddCompilerStop(FTok.HotPos, Format(CPE_MethodRedefined, [Proc.Name]));
-
-  // Open context of full procedure body (may include a 'var' section)
-  if coContextMap in FCompilerOptions then
-    FProg.ContextMap.OpenContext(FTok.CurrentPos, Proc);   // attach to symbol that it belongs to (perhaps a class)
-
-  try
-    // Funktion Body
-    oldprog := FProg;
-    FProg := CreateProcedure(FProg);
-    try
-      FProg.Compiler := Self;
-      TProcedure(FProg).AssignTo(Proc);
-      // Set the current context's LocalTable to be the table of the new procedure
+   // Stop if declaration was forwarded or external
+   if (Proc.IsForwarded) then begin
+      // Closed context of procedure (was only a forward)
       if coContextMap in FCompilerOptions then
-        FProg.ContextMap.Current.LocalTable := FProg.Table;
+         FProg.ContextMap.CloseContext(FTok.HotPos);
+      Exit;
+   end;
 
-      // Read local variable declarations
-      if FTok.TestDelete(ttVAR) then
-      begin
-        names := TStringList.Create;
-        try
-          // Read names of local variable
-          repeat
-            // Track Procedure local variables positions
-            if coSymbolDictionary in FCompilerOptions then
-              ReadNameList(names, posArray)
-            else
-              ReadNameList(names);
-            if not FTok.TestDelete(ttCOLON) then
-              FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
+   if Proc.Executable<>nil then
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_MethodRedefined, [Proc.Name]);
 
-            // Read type of local variables
-            pos := FTok.HotPos;
-            typ := ReadType('');
-            for x := 0 to names.Count - 1 do
-            begin
-              CheckName(names[x]);
-              dataSym := TDataSymbol.Create(names[x], typ);
-              FProg.Table.AddSymbol(dataSym);
-              // Add local proc variable declarations
-              if coSymbolDictionary in FCompilerOptions then
-                FProg.SymbolDictionary.Add(dataSym, posArray[x], [suDeclaration]);
+   // Open context of full procedure body (may include a 'var' section)
+   if coContextMap in FCompilerOptions then
+      FProg.ContextMap.OpenContext(FTok.CurrentPos, Proc);   // attach to symbol that it belongs to (perhaps a class)
 
-              varExpr:=GetVarExpr(dataSym);
-              if varExpr.Typ=FProg.TypInteger then
-                 assignExpr:=TAssignConstToIntegerVarExpr.Create(FProg, pos, varExpr, 0)
-              else if varExpr.Typ=FProg.TypFloat then
-                 assignExpr:=TAssignConstToFloatVarExpr.Create(FProg, pos, varExpr, 0)
-              else if varExpr.Typ=FProg.TypString then
-                 assignExpr:=TAssignConstToStringVarExpr.Create(FProg, pos, varExpr, '')
-              else begin
-                 // Initialize with default value
-                 initData := nil;
-                 SetLength(initData, typ.Size);
-                 dataSym.initData(initData, 0);
-
-                 assignExpr:=TAssignConstDataToVarExpr.Create(FProg, pos, varExpr,
-                                                 TConstExpr.CreateTyped(FProg, typ, initData));
-              end;
-              TBlockExpr(FProg.InitExpr).AddStatement(assignExpr);
-            end;
-
-            if not FTok.TestDelete(ttSEMI) then
-              FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
-
-          until FTok.Test(ttBEGIN);
-        finally
-          names.Free;
-        end;
-      end;
-
-      if coContextMap in FCompilerOptions then
-        FProg.ContextMap.OpenContext(FTok.CurrentPos, nil);
+   try
+      // Funktion Body
+      oldprog := FProg;
+      FProg := CreateProcedure(FProg);
       try
-        // Read procedure body
-        if not FTok.TestDelete(ttBEGIN) then
-          FMsgs.AddCompilerStop(FTok.HotPos, CPE_BeginExpected);
+         FProg.Compiler := Self;
+         TProcedure(FProg).AssignTo(Proc);
+         // Set the current context's LocalTable to be the table of the new procedure
+         if coContextMap in FCompilerOptions then
+            FProg.ContextMap.Current.LocalTable := FProg.Table;
 
-        // Read Statements enclosed in "begin" and "end"
-        FProg.Expr := TBlockExpr.Create(FProg, FTok.HotPos);
-        while not FTok.TestDelete(ttEND) do
-        begin
-          stmt := ReadRootStatement;
-          if Assigned(stmt) then
-            TBlockExpr(FProg.Expr).AddStatement(Stmt);
-          if not FTok.TestDelete(ttSEMI) then
-          begin
-            if not FTok.Test(ttEND) then
-              FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
-          end;
-        end;
+         // Read local variable declarations
+         if FTok.Test(ttVAR) or FTok.Test(ttCONST) then begin
+            // Read names of local variable and constants
+            sectionType:=ttNone;
+            repeat
+
+               if FTok.TestDelete(ttVAR) then
+                  sectionType:=ttVAR
+               else if FTok.TestDelete(ttCONST) then
+                  sectionType:=ttCONST;
+
+               if sectionType=ttVAR then begin
+                  assignExpr:=ReadVarDecl;
+                  if assignExpr<>nil then
+                     TBlockExpr(FProg.InitExpr).AddStatement(assignExpr);
+               end else if sectionType=ttCONST then
+                  ReadConstDecl;
+
+               if not FTok.TestDelete(ttSEMI) then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+
+            until FTok.Test(ttBEGIN);
+         end;
+
+         if coContextMap in FCompilerOptions then
+            FProg.ContextMap.OpenContext(FTok.CurrentPos, nil);
+         try
+            // Read procedure body
+            if not FTok.TestDelete(ttBEGIN) then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_BeginExpected);
+
+            // Read Statements enclosed in "begin" and "end"
+            FProg.Expr := TBlockExpr.Create(FProg, FTok.HotPos);
+            while not FTok.TestDelete(ttEND) do begin
+               stmt := ReadRootStatement;
+               if Assigned(stmt) then
+                  TBlockExpr(FProg.Expr).AddStatement(Stmt);
+               if not FTok.TestDelete(ttSEMI) then begin
+                  if not FTok.Test(ttEND) then
+                     FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+               end;
+            end;
+         finally
+            if coContextMap in FCompilerOptions then
+               FProg.ContextMap.CloseContext(FTok.HotPos);  // close with inside procedure end
+         end;
       finally
-        if coContextMap in FCompilerOptions then
-          FProg.ContextMap.CloseContext(FTok.HotPos);  // close with inside procedure end
+         FProg.Compiler := nil;
+         FProg := oldprog;
       end;
-    finally
-      FProg.Compiler := nil;
-      FProg := oldprog;
-    end;
-  finally
-    // Closed procedure body and procedure implementation (from declaration to body)
-    if coContextMap in FCompilerOptions then
-    begin
-      FProg.ContextMap.CloseContext(FTok.CurrentPos);  // closed begin..end body (may include 'var' section)
-      FProg.ContextMap.CloseContext(FTok.CurrentPos);  // closed from declaration through implementation
-    end;
-  end;
+   finally
+      // Closed procedure body and procedure implementation (from declaration to body)
+      if coContextMap in FCompilerOptions then begin
+         FProg.ContextMap.CloseContext(FTok.CurrentPos);  // closed begin..end body (may include 'var' section)
+         FProg.ContextMap.CloseContext(FTok.CurrentPos);  // closed from declaration through implementation
+      end;
+   end;
 end;
 
 // ReadBlocks
@@ -4121,12 +4075,13 @@ var
 begin
    Result:='';
 
-   if Assigned(FOnInclude) then
+   if Assigned(FOnInclude) then begin
       FOnInclude(ScriptName, Result);
+      if Result<>'' then Exit;
+   end;
 
-   if Result='' then begin
-
-      stream:=OpenStreamForFile(scriptName);
+   stream:=OpenStreamForFile(scriptName);
+   try
       if stream=nil then
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncludeFileNotFound, [scriptName])
       else begin
@@ -4138,6 +4093,8 @@ begin
             sl.Free;
          end;
       end;
+   finally
+      stream.Free;
    end;
 end;
 
