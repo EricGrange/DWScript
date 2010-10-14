@@ -131,6 +131,7 @@ type
     procedure AddCompilerInfo(const Text: string);
     procedure AddCompilerHint(const Pos: TScriptPos; const Text: string);
     procedure AddCompilerWarning(const Pos: TScriptPos; const Text: string);
+    procedure AddCompilerWarningFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
     procedure AddCompilerError(const Pos: TScriptPos; const Text: string);
     procedure AddCompilerErrorFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
     procedure AddCompilerStop(const Pos: TScriptPos; const Text: string);
@@ -328,6 +329,13 @@ end;
 procedure TMsgs.AddCompilerWarning(const Pos: TScriptPos; const Text: string);
 begin
   FMessages.Add(TWarningMsg.Create(Self, Text, Pos));
+end;
+
+// AddCompilerWarningFmt
+//
+procedure TMsgs.AddCompilerWarningFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
+begin
+   AddCompilerWarning(Pos, Format(textFormat, args));
 end;
 
 procedure TMsgs.AddCompilerError(const Pos: TScriptPos; const Text: string);
