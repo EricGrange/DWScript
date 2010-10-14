@@ -32,6 +32,7 @@ type
 
 const
    cDefaultCompilerOptions = [coOptimize];
+   cDefaultMaxRecursionDepth = 1024;
 
 type
   TIncludeEvent = procedure(const scriptName: string; var scriptSource: string) of object;
@@ -45,6 +46,7 @@ type
     FDefaultResultType: TdwsResultType;
     FFilter: TdwsFilter;
     FMaxDataSize: Integer;
+    FMaxRecursionDepth : Integer;
     FOnInclude: TIncludeEvent;
     FOwner: TComponent;
     FResultType: TdwsResultType;
@@ -78,6 +80,7 @@ type
     property ResultType: TdwsResultType read FResultType write SetResultType;
     property CompilerOptions: TCompilerOptions read FCompilerOptions write FCompilerOptions default cDefaultCompilerOptions;
     property MaxDataSize: Integer read FMaxDataSize write FMaxDataSize default 0;
+    property MaxRecursionDepth : Integer read FMaxRecursionDepth write FMaxRecursionDepth default cDefaultMaxRecursionDepth;
     property ScriptPaths: TStrings read FScriptPaths write SetScriptPaths;
     property CompileFileSystem : TdwsCustomFileSystem read FCompileFileSystem write FCompileFileSystem;
     property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
@@ -207,7 +210,8 @@ type
                              const Pos: TScriptPos; IsInstruction: Boolean; ForceStatic : Boolean = False): TFuncExpr;
 
       function CreateProgram(SystemTable: TSymbolTable; ResultType: TdwsResultType;
-                             MaxDataSize: Integer; StackChunkSize: Integer): TdwsProgram; virtual;
+                             MaxDataSize, StackChunkSize: Integer;
+                             MaxRecursionDepth : Integer): TdwsProgram; virtual;
       function CreateProcedure(Parent : TdwsProgram) : TProcedure; virtual;
 
    public
@@ -411,7 +415,7 @@ begin
      StackChunkSize := 1;
 
    // Create the TdwsProgram
-   FProg := CreateProgram(Conf.SystemTable, Conf.ResultType, maxDataSize, stackChunkSize);
+   FProg := CreateProgram(Conf.SystemTable, Conf.ResultType, maxDataSize, stackChunkSize, Conf.MaxRecursionDepth);
    Result := FProg;
    FMsgs := FProg.Msgs;
    FProg.Compiler := Self;
@@ -3910,6 +3914,7 @@ begin
   FDefaultResultType := TdwsDefaultResultType.Create(nil);
   FResultType := FDefaultResultType;
   FCompilerOptions := cDefaultCompilerOptions;
+  FMaxRecursionDepth := cDefaultMaxRecursionDepth;
 end;
 
 destructor TdwsConfiguration.Destroy;
@@ -4130,10 +4135,12 @@ begin
    end;
 end;
 
-function TdwsCompiler.CreateProgram(SystemTable: TSymbolTable;
-  ResultType: TdwsResultType; MaxDataSize: Integer; StackChunkSize: Integer): TdwsProgram;
+function TdwsCompiler.CreateProgram(SystemTable: TSymbolTable; ResultType: TdwsResultType;
+                                    MaxDataSize, StackChunkSize: Integer;
+                                    MaxRecursionDepth : Integer): TdwsProgram;
 begin
-  Result := TdwsProgram.Create(SystemTable, ResultType, MaxDataSize, StackChunkSize);
+  Result := TdwsProgram.Create(SystemTable, ResultType, MaxRecursionDepth,
+                               MaxDataSize, StackChunkSize);
 end;
 
 { TdwsFilter }

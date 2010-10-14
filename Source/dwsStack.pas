@@ -40,18 +40,24 @@ type
          FMaxSize: Integer;
          FSize: Integer;
          FStackPointer: Integer;
+         FRecursionDepth : Integer;
+         FMaxRecursionDepth : Integer;
+
          function GetFrameSize: Integer;
 
       public
          Data: TData;
 
-         constructor Create(ChunkSize: Integer; MaxByteSize: Integer);
+         constructor Create(chunkSize, maxByteSize: Integer; maxRecursionDepth : Integer);
 
          function GetSavedBp(Level: Integer): Integer;
          function NextLevel(Level: Integer): Integer;
     
          procedure Push(Delta: Integer);
          procedure Pop(Delta: Integer);
+
+         procedure IncRecursion;
+         procedure DecRecursion;
 
          procedure WriteData(SourceAddr, DestAddr, Size: Integer; const sourceData: TData);
          procedure ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);
@@ -86,6 +92,8 @@ type
          property FrameSize: Integer read GetFrameSize;
          property MaxSize: Integer read FMaxSize write FMaxSize;
          property StackPointer: Integer read FStackPointer;
+         property RecursionDepth : Integer read FRecursionDepth;
+         property MaxRecursionDepth : Integer read FMaxRecursionDepth write FMaxRecursionDepth;
    end;
 
 procedure CopyData(const SourceData: TData; SourceAddr: Integer;
@@ -99,7 +107,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsErrors;
+uses dwsErrors, dwsSymbols;
 
 // CopyData
 //
@@ -116,10 +124,11 @@ end;
 
 { TStack }
 
-constructor TStack.Create;
+constructor TStack.Create(chunkSize, maxByteSize: Integer; maxRecursionDepth : Integer);
 begin
-  FChunkSize := ChunkSize;
-  FMaxSize := MaxByteSize div SizeOf(Variant);
+  FChunkSize := chunkSize;
+  FMaxSize := maxByteSize div SizeOf(Variant);
+  FMaxRecursionDepth := maxRecursionDepth;
   FMaxLevel := 1;
 end;
 
@@ -172,7 +181,23 @@ begin
 
   // Free memory
   Dec(FStackPointer, Delta);
-end;                                 
+end;
+
+// IncRecursion
+//
+procedure TStack.IncRecursion;
+begin
+   Inc(FRecursionDepth);
+   if FRecursionDepth>FMaxRecursionDepth then
+      raise EScriptException.CreateFmt(RTE_MaximalRecursionExceeded, [FMaxRecursionDepth]);
+end;
+
+// DecRecursion
+//
+procedure TStack.DecRecursion;
+begin
+   Dec(FRecursionDepth);
+end;
 
 procedure TStack.Push(Delta: Integer);
 var
@@ -184,7 +209,7 @@ begin
   if sp > FSize then
   begin
     if sp > FMaxSize then
-      raise Exception.CreateFmt(RTE_MaximalDatasizeExceeded, [FMaxSize]);
+      raise EScriptException.CreateFmt(RTE_MaximalDatasizeExceeded, [FMaxSize]);
     FSize := ((sp) div FChunkSize + 1) * FChunkSize;
     if FSize > FMaxSize then
       FSize := FMaxSize;

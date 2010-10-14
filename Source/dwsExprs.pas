@@ -301,7 +301,9 @@ type
     procedure Evaluate(var status : TExecutionStatusResult); virtual;
 
   public
-    constructor Create(SystemTable: TSymbolTable; ResultType: TdwsResultType; MaxDataSize: Integer; StackChunkSize: Integer = C_DefaultStackChunkSize);
+    constructor Create(SystemTable: TSymbolTable; ResultType: TdwsResultType;
+                       MaxRecursionDepth : Integer;
+                       MaxDataSize, StackChunkSize: Integer);
     destructor Destroy; override;
 
     procedure DoStep(Expr: TExpr);
@@ -1331,7 +1333,8 @@ end;
 { TdwsProgram }
 
 constructor TdwsProgram.Create(SystemTable: TSymbolTable; ResultType: TdwsResultType;
-                            MaxDataSize: Integer; StackChunkSize: Integer = C_DefaultStackChunkSize);
+                               MaxRecursionDepth : Integer;
+                               MaxDataSize, StackChunkSize: Integer);
 begin
   FResultType := ResultType;
   FProgramState := psUndefined;
@@ -1347,7 +1350,7 @@ begin
   FSourceList := TScriptSourceList.Create;
 
   // Create the program stack
-  FStack := TStack.Create(StackChunkSize, MaxDataSize);
+  FStack := TStack.Create(StackChunkSize, MaxDataSize, MaxRecursionDepth);
   FAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
   FGlobalAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
 
@@ -2599,6 +2602,7 @@ begin
    try
       // Allocate memory for parameters on the stack
       stack:=FProg.Stack;
+      stack.IncRecursion;
       stack.Push(FFunc.ParamSize);
       try
 
@@ -2647,6 +2651,7 @@ begin
       finally
          // Remove parameters from stack
          stack.Pop(FFunc.ParamSize);
+         stack.DecRecursion;
       end;
    except
       FProg.Msgs.SetLastScriptError(FPos,ExceptObject);
