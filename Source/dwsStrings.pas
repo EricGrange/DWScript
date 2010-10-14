@@ -136,6 +136,7 @@ const
   // CompareFuncSymbols
   CPE_FunctionExpected = 'Declaration should be FUNCTION!';
   CPE_ProcedureExpected = 'Declaration should be PROCEDURE!';
+  CPE_MethodExpected = 'Declaration should be METHOD!';
   CPE_ConstructorExpected = 'Declaration should be CONSTRUCTOR!';
   CPE_DestructorExpected = 'Declaration should be DESTRUCTOR!';
   CPE_BadResultType = 'Result type should be "%s"';

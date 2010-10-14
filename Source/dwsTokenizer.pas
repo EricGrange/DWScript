@@ -31,7 +31,8 @@ type
      (ttNone, ttStrVal, ttIntVal, ttFloatVal, ttNAME, ttSWITCH,
      ttVAR, ttCONST, ttTYPE, ttRECORD, ttARRAY, ttDOT, ttDOTDOT, ttOF,
      ttTRY, ttEXCEPT, ttRAISE, ttFINALLY, ttON, ttREAD, ttWRITE, ttPROPERTY,
-     ttPROCEDURE, ttFUNCTION, ttCONSTRUCTOR, ttDESTRUCTOR, ttCLASS, ttNIL, ttIS,
+     ttPROCEDURE, ttFUNCTION, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD,
+     ttCLASS, ttNIL, ttIS,
      ttAS, ttINDEX, ttOBJECT,
      ttVIRTUAL, ttOVERRIDE, ttREINTRODUCE, ttINHERITED, ttABSTRACT, ttDEPRECATED,
      ttEXTERNAL, ttFORWARD, ttIN,
@@ -355,7 +356,7 @@ end;
 // ToAlphaType
 //
 const
-   cAlphaTypeTokens : array [0..68] of TTokenType = (
+   cAlphaTypeTokens : array [0..69] of TTokenType = (
       ttAND, ttARRAY, ttABSTRACT, ttAS,
       ttBEGIN, ttBREAK,
       ttCONST, ttCLASS, ttCONSTRUCTOR, ttCASE, ttCDECL, ttCONTINUE,
@@ -363,7 +364,7 @@ const
       ttEND, ttELSE, ttEXCEPT, ttEXIT, ttEXTERNAL,
       ttFOR, ttFALSE, ttFUNCTION, ttFINALLY, ttFORWARD,
       ttIF, ttIN, ttIS, ttINHERITED, ttINDEX,
-      ttMOD,
+      ttMETHOD, ttMOD,
       ttNOT, ttNIL,
       ttOR, ttOF, ttON, ttOVERRIDE, ttOBJECT,
       ttPROCEDURE, ttPROPERTY, ttPASCAL, ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,

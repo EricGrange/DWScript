@@ -545,12 +545,16 @@ begin
     ReadProcBody(ReadProcDecl(fkConstructor, nil))
   else if FTok.TestDelete(ttDESTRUCTOR) then
     ReadProcBody(ReadProcDecl(fkDestructor, nil))
+  else if FTok.TestDelete(ttMETHOD) then
+    ReadProcBody(ReadProcDecl(fkMethod, nil))
   else if FTok.TestDelete(ttCLASS) then
   begin
     if FTok.TestDelete(ttPROCEDURE) then
       ReadProcBody(ReadProcDecl(fkProcedure, nil, True))
     else if FTok.TestDelete(ttFUNCTION) then
       ReadProcBody(ReadProcDecl(fkFunction, nil, True))
+    else if FTok.TestDelete(ttMETHOD) then
+      ReadProcBody(ReadProcDecl(fkMethod, nil, True))
     else
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
   end
@@ -899,7 +903,7 @@ begin
       Result := ReadMethodImpl(TClassSymbol(sym), FuncKind, IsClassMethod);
    end else begin
       // Read normal procedure/function declaration
-      if IsClassMethod or (FuncKind = fkConstructor) or (FuncKind = fkDestructor) then
+      if IsClassMethod or (FuncKind in [fkConstructor, fkDestructor, fkMethod]) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ImplClassNameExpected);
 
       if (sym is TFuncSymbol) and TFuncSymbol(sym).IsForwarded then
@@ -916,10 +920,11 @@ begin
       try
          ReadParams(Result, forwardedSym=nil);  // Don't add params to dictionary when function is forwarded. It is already declared.
 
-         if FuncKind = fkFunction then begin
-            if not FTok.TestDelete(ttCOLON) then
+         if FuncKind in [fkFunction, fkMethod] then begin
+            if FTok.TestDelete(ttCOLON) then
+               Result.Typ := ReadType('')
+            else if FuncKind = fkFunction then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_FunctionTypeExpected);
-            Result.Typ := ReadType('');
          end;
 
          if not IsType then begin
@@ -1032,10 +1037,11 @@ begin
 
       ReadParams(Result);
 
-      if FuncKind = fkFunction then begin
-         if not FTok.TestDelete(ttCOLON) then
+      if FuncKind in [fkFunction, fkMethod] then begin
+         if FTok.TestDelete(ttCOLON) then
+            Result.Typ := ReadType('')
+         else if FuncKind = fkFunction then
             FMsgs.AddCompilerStop(methPos, CPE_FunctionTypeExpected);
-         Result.Typ := ReadType('');
       end;
       if not FTok.TestDelete(ttSEMI) then
          FMsgs.AddCompilerStop(methPos, CPE_SemiExpected);
@@ -1119,11 +1125,11 @@ begin
     begin
       ReadParams(Result, False);  // Don't store these params to Dictionary. They will become invalid when the method is freed.
 
-      if FuncKind = fkFunction then
-      begin
-        if not FTok.TestDelete(ttCOLON) then
+      if FuncKind in [fkFunction, fkMethod] then begin
+        if FTok.TestDelete(ttCOLON) then
+          Result.Typ := ReadType('')
+        else if FuncKind = fkFunction then
           FMsgs.AddCompilerStop(FTok.HotPos, CPE_FunctionTypeExpected);
-        Result.Typ := ReadType('');
       end;
 
       if not FTok.TestDelete(ttSEMI) then
@@ -1881,7 +1887,7 @@ begin
             if member is TMethodSymbol then
             begin
               case TMethodSymbol(member).Kind of
-                fkFunction, fkProcedure:
+                fkFunction, fkProcedure, fkMethod:
                   if not TMethodSymbol(member).IsClassMethod then
                     FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticMethodExpected);
                 fkDestructor:
@@ -2565,12 +2571,16 @@ begin
             TClassSymbol(Result).AddMethod(TMethodSymbol(ReadMethodDecl(TClassSymbol(Result), fkConstructor, False)))
           else if FTok.TestDelete(ttDESTRUCTOR) then
             TClassSymbol(Result).AddMethod(TMethodSymbol(ReadMethodDecl(TClassSymbol(Result), fkDestructor, False)))
+          else if FTok.TestDelete(ttMETHOD) then
+            TClassSymbol(Result).AddMethod(TMethodSymbol(ReadMethodDecl(TClassSymbol(Result), fkMethod, False)))
           else if FTok.TestDelete(ttCLASS) then
           begin
             if FTok.TestDelete(ttPROCEDURE) then
               TClassSymbol(Result).AddMethod(TMethodSymbol(ReadMethodDecl(TClassSymbol(Result), fkProcedure, True)))
             else if FTok.TestDelete(ttFUNCTION) then
               TClassSymbol(Result).AddMethod(TMethodSymbol(ReadMethodDecl(TClassSymbol(Result), fkFunction, True)))
+            else if FTok.TestDelete(ttMETHOD) then
+              TClassSymbol(Result).AddMethod(TMethodSymbol(ReadMethodDecl(TClassSymbol(Result), fkMethod, True)))
             else
               FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
           end
@@ -3073,6 +3083,11 @@ begin
   else if FTok.TestDelete(ttFUNCTION) then
   begin
     Result := ReadProcDecl(fkFunction,nil,False,True);
+    Result.SetName(TypeName);
+  end
+  else if FTok.TestDelete(ttMETHOD) then
+  begin
+    Result := ReadProcDecl(fkMethod,nil,False,True);
     Result.SetName(TypeName);
   end
   else if FTok.TestName then
@@ -3757,6 +3772,9 @@ begin
       fkProcedure: FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcedureExpected);
       fkConstructor: FMsgs.AddCompilerStop(FTok.HotPos, CPE_ConstructorExpected);
       fkDestructor: FMsgs.AddCompilerStop(FTok.HotPos, CPE_DestructorExpected);
+      fkMethod: FMsgs.AddCompilerStop(FTok.HotPos, CPE_MethodExpected);
+    else
+      Assert(False);
     end;
   end;
 

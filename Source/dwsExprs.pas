@@ -1276,7 +1276,7 @@ begin
 
   // Return the right expression
   case meth.Kind of
-    fkFunction, fkProcedure:
+    fkFunction, fkProcedure, fkMethod:
       if meth.IsClassMethod then
       begin
         if not ForceStatic and meth.IsVirtual and (RefKind = rkClassOfRef) then

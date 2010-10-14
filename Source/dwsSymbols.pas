@@ -282,7 +282,7 @@ type
      function IsCompatible(typSym: TSymbol): Boolean; override;
    end;
 
-   TFuncKind = (fkFunction, fkProcedure, fkConstructor, fkDestructor);
+   TFuncKind = (fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod);
 
    // Record used for TFuncSymbol.Generate
    TParamRec = record
@@ -364,8 +364,8 @@ type
          property InternalFunction : TObject read FInternalFunction write FInternalFunction;
    end;
 
-   TMethodKind = (mkProcedure, mkFunction, mkConstructor, mkDestructor,
-     mkClassProcedure, mkClassFunction);
+   TMethodKind = ( mkProcedure, mkFunction, mkConstructor, mkDestructor, mkMethod,
+                   mkClassProcedure, mkClassFunction, mkClassMethod );
    TMethodAttribute = (maVirtual, maOverride, maReintroduce, maAbstract);
    TMethodAttributes = set of TMethodAttribute;
 
@@ -1372,6 +1372,7 @@ begin
       fkProcedure   : nam := 'procedure ';
       fkConstructor : nam := 'constructor ';
       fkDestructor  : nam := 'destructor ';
+      fkMethod      : nam := 'method ';
     end;
 
   if Params.Count > 0 then
@@ -1393,20 +1394,27 @@ end;
 function TFuncSymbol.GetDescription: string;
 begin
    Result:=ParamsDescription;
-  case FKind of
-    fkFunction:
-      begin
-        if Typ <> nil then
-          Result := 'function ' + Name + Result + ': ' + Typ.Name
-        else
-          Result := 'function ' + Name + Result + ': ???';
+   case FKind of
+      fkFunction : begin
+         Result:='function '+Name+Result+': ';
+         if Typ <> nil then
+            Result:=Result+Typ.Name
+        else Result:=Result+'???';
       end;
-    fkProcedure: Result := 'procedure ' + Name + Result;
-    fkConstructor: Result := 'constructor ' + Name + Result;
-    fkDestructor: Result := 'destructor ' + Name + Result;
-  else
-    Assert(False)
-  end;
+      fkProcedure :
+         Result:='procedure '+Name+Result;
+      fkConstructor :
+         Result:='constructor '+Name+Result;
+      fkDestructor :
+         Result:='destructor '+Name+Result;
+      fkMethod : begin
+         Result:='method '+Name+Result;
+         if Typ<>nil then
+            Result:=Result+': '+Typ.Name;
+      end;
+   else
+      Assert(False)
+   end;
 end;
 
 procedure TFuncSymbol.Initialize;
@@ -1552,16 +1560,20 @@ begin
       Create(MethName, fkProcedure, Cls);
     mkFunction:
       Create(MethName, fkFunction, Cls);
+    mkMethod :
+      Create(MethName, fkMethod, Cls);
     mkClassProcedure:
       Create(MethName, fkProcedure, Cls.ClassOf);
     mkClassFunction:
       Create(MethName, fkFunction, Cls.ClassOf);
+    mkClassMethod:
+      Create(MethName, fkMethod, Cls.ClassOf);
   end;
 
   // Set Resulttype
   if MethType <> '' then
   begin
-    if Kind <> fkFunction then
+    if not (Kind in [fkFunction, fkMethod]) then
       raise Exception.Create(CPE_NoResultTypeRequired);
 
     typSym := Table.FindSymbol(MethType);
