@@ -890,6 +890,46 @@ object dwsClassesLib: TdwsClassesLib
             Kind = mkFunction
           end>
         Properties = <>
+      end
+      item
+        Name = 'TStringBuilder'
+        Constructors = <
+          item
+            Name = 'Create'
+            OnEval = dwsUnitClassesTStringBuilderConstructorsCreateEval
+          end>
+        Fields = <>
+        Methods = <
+          item
+            Name = 'Append'
+            Parameters = <
+              item
+                Name = 'value'
+                DataType = 'Variant'
+              end>
+            ResultType = 'TStringBuilder'
+            OnEval = dwsUnitClassesTStringBuilderMethodsAppendEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'Length'
+            ResultType = 'Integer'
+            OnEval = dwsUnitClassesTStringBuilderMethodsLengthEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'Clear'
+            OnEval = dwsUnitClassesTStringBuilderMethodsClearEval
+            Kind = mkProcedure
+          end
+          item
+            Name = 'ToString'
+            ResultType = 'String'
+            OnEval = dwsUnitClassesTStringBuilderMethodsToStringEval
+            Kind = mkFunction
+          end>
+        OnCleanUp = dwsUnitClassesTStringBuilderCleanUp
+        Properties = <>
       end>
     Constants = <
       item

@@ -156,6 +156,17 @@ type
       var ExtObject: TObject);
     procedure dwsUnitClassesTQueueConstructorsCreateEval(Info: TProgramInfo;
       var ExtObject: TObject);
+    procedure dwsUnitClassesTStringBuilderMethodsAppendEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsUnitClassesTStringBuilderMethodsLengthEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsUnitClassesTStringBuilderMethodsClearEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsUnitClassesTStringBuilderMethodsToStringEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTStringBuilderConstructorsCreateEval(
+      Info: TProgramInfo; var ExtObject: TObject);
+    procedure dwsUnitClassesTStringBuilderCleanUp(ExternalObject: TObject);
   private
     FScript: TDelphiWebScript;
     procedure SetScript(const Value: TDelphiWebScript);
@@ -681,6 +692,43 @@ procedure TdwsClassesLib.dwsUnitClassesTQueueMethodsCountEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
   Info.ResultAsInteger := TInterfaceList(ExtObject).Count;
+end;
+
+procedure TdwsClassesLib.dwsUnitClassesTStringBuilderConstructorsCreateEval(
+  Info: TProgramInfo; var ExtObject: TObject);
+begin
+   ExtObject:=TStringBuilder.Create;
+end;
+
+procedure TdwsClassesLib.dwsUnitClassesTStringBuilderCleanUp(
+  ExternalObject: TObject);
+begin
+   ExternalObject.Free;
+end;
+
+procedure TdwsClassesLib.dwsUnitClassesTStringBuilderMethodsAppendEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   TStringBuilder(ExtObject).Append(Info.ValueAsString['value']);
+   Info.ResultAsVariant := Info.ScriptObj;
+end;
+
+procedure TdwsClassesLib.dwsUnitClassesTStringBuilderMethodsClearEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   TStringBuilder(ExtObject).Clear;
+end;
+
+procedure TdwsClassesLib.dwsUnitClassesTStringBuilderMethodsLengthEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=TStringBuilder(ExtObject).Length;
+end;
+
+procedure TdwsClassesLib.dwsUnitClassesTStringBuilderMethodsToStringEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=TStringBuilder(ExtObject).ToString;
 end;
 
 end.
