@@ -1,0 +1,3 @@
+method Stuff;
+begin
+end;
