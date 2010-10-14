@@ -1,0 +1,12 @@
+abcd
+efgh
+efgh
+1.234
+5.678
+5.678
+1234
+5678
+5678
+True
+False
+False
