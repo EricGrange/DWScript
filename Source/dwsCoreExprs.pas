@@ -1424,7 +1424,10 @@ begin
       if arraySymbol.Typ<>ElementExpr.Typ then begin
          if arraySymbol.Typ=Prog.TypNil then
             arraySymbol.Typ:=ElementExpr.Typ
-         else arraySymbol.Typ:=Prog.TypVariant;
+         else if (arraySymbol.Typ=Prog.TypInteger) and (ElementExpr.Typ=Prog.TypFloat) then
+            arraySymbol.Typ:=Prog.TypFloat
+         else if not ((arraySymbol.Typ=Prog.TypFloat) and (ElementExpr.Typ=Prog.TypInteger)) then
+            arraySymbol.Typ:=Prog.TypVariant;
       end;
    end;
    FElementExprs.Add(ElementExpr);
@@ -1537,6 +1540,10 @@ begin
    for x:=0 to FElementExprs.Count - 1 do begin
       expr:=TNoPosExpr(FElementExprs.List[x]);
       expr.TypeCheckNoPos(aPos);
+      if (Typ.Typ=Prog.TypFloat) and (expr.Typ=Prog.TypInteger) then begin
+         expr:=TConvFloatExpr.Create(Prog, aPos, expr);
+         FElementExprs.List[x]:=expr;
+      end;
       if not expr.Typ.IsCompatible(Typ.Typ) then
          expr.Prog.Msgs.AddCompilerErrorFmt(aPos, CPE_AssignIncompatibleTypes,
                                             [expr.Typ.Caption, Typ.Typ.Caption]);
