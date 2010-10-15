@@ -155,6 +155,7 @@ begin
          try
             CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
             prog.Execute;
+            CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
             resultsFileName:=ChangeFileExt(FTests[i], '.txt');
             if FileExists(resultsFileName) then begin
                expectedResult.LoadFromFile(resultsFileName);
