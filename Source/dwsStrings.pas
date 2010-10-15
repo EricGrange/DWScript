@@ -174,7 +174,7 @@ const
   CPE_EndOfBlockExpected = 'End of block expected';
   CPE_ContructorExpected = 'Constructor expected';
   CPE_TooManyArguments = 'Too many arguments!';
-  CPE_TooLessArguments = 'More arguments expected!';
+  CPE_TooFewArguments = 'More arguments expected!';
   CPE_NoArgumentsExpected = 'No arguments expected!';
   CPE_WrongArgumentType = 'Argument %d expects type "%s"';
   CPE_WrongArgumentType_Long = 'Argument %d expects type "%s" instead of "%s"';
@@ -222,10 +222,12 @@ const
   CPE_FieldExists = 'There is already a field with name "%s"';
   CPE_PropertyExists = 'There is already a property with name "%s"';
   CPE_MethodExists = 'There is already a method with name "%s"';
-  CPE_Deprecated = '"%s" has been deprecated';
-  CPE_DeprecatedWithMessage = '"%s" has been deprecated: %s';
   CPE_AssignementToFORLoopVariable = 'Assignment to FOR-Loop variable';
   CPE_FORLoopMustBeLocalVariable = 'For loop control variable must be simple local variable';
+
+  CPW_Deprecated = '"%s" has been deprecated';
+  CPW_DeprecatedWithMessage = '"%s" has been deprecated: %s';
+  CPW_InfiniteLoop = 'Infinite loop';
 
   CPE_NoResultTypeRequired = 'No result type required';
   CPE_ResultTypeExpected = 'Result type expected';

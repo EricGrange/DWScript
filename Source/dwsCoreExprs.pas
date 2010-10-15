@@ -183,8 +183,8 @@ type
    protected
      FArrayAddr: Integer;
      FElementExprs: TTightList;
-     FData: TData;
-     function GetData: TData; override;
+     function GetData : TData; override;
+     function GetAddr : Integer; override;
    public
      constructor Create(Prog: TdwsProgram);
      destructor Destroy; override;
@@ -717,12 +717,14 @@ type
    // while FCondExpr do FLoopExpr
    TWhileExpr = class(TLoopExpr)
    public
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
    // repeat FLoopExpr while FCondExpr
    TRepeatExpr = class(TLoopExpr)
    public
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
@@ -1399,9 +1401,8 @@ end;
 
 constructor TArrayConstantExpr.Create(Prog: TdwsProgram);
 begin
-  inherited Create(Prog, TDynamicArraySymbol.Create('', Prog.TypNil));
+  inherited Create(Prog, TStaticArraySymbol.Create('', Prog.TypNil, 0, -1));
   FIsWritable := False;
-  SetLength(FData, 1);
 end;
 
 destructor TArrayConstantExpr.Destroy;
@@ -1412,40 +1413,54 @@ begin
 end;
 
 procedure TArrayConstantExpr.AddElementExpr(ElementExpr: TNoPosExpr);
+var
+   arraySymbol : TStaticArraySymbol;
 begin
-  if FElementExprs.Count = 0 then
-  begin
-    FTyp.Free;
-    FTyp := TDynamicArraySymbol.Create('', ElementExpr.Typ);
-  end;
-  FElementExprs.Add(ElementExpr);
+   arraySymbol:=(FTyp as TStaticArraySymbol);
+   if arraySymbol.Typ<>Prog.TypVariant then begin
+      if arraySymbol.Typ=Prog.TypNil then
+         arraySymbol.Typ:=ElementExpr.Typ
+      else
+      if arraySymbol.Typ<>ElementExpr.Typ then begin
+         if arraySymbol.Typ=Prog.TypNil then
+            arraySymbol.Typ:=ElementExpr.Typ
+         else arraySymbol.Typ:=Prog.TypVariant;
+      end;
+   end;
+   FElementExprs.Add(ElementExpr);
+   arraySymbol.AddElement;
 end;
 
 procedure TArrayConstantExpr.Prepare(ElementTyp : TSymbol);
 var
-  x : Integer;
-  elemExpr : TNoPosExpr;
+   x : Integer;
+   elemExpr : TNoPosExpr;
 begin
-  if FTyp.Typ <> ElementTyp then
-  begin
-    FTyp.Free;
-    FTyp := TDynamicArraySymbol.Create('', ElementTyp);
-  end;
+   if FTyp.Typ <> ElementTyp then begin
+      // need a compatibility check here maybe???
+      (FTyp as TStaticArraySymbol).Typ:=ElementTyp;
+   end;
 
-  for x := 0 to FElementExprs.Count - 1 do begin
-    elemExpr:=FElementExprs.List[x];
-    if elemExpr is TArrayConstantExpr then
-      TArrayConstantExpr(elemExpr).Prepare(FTyp.Typ.Typ);
-  end;
+   for x := 0 to FElementExprs.Count - 1 do begin
+      elemExpr:=FElementExprs.List[x];
+      if elemExpr is TArrayConstantExpr then
+         TArrayConstantExpr(elemExpr).Prepare(FTyp.Typ.Typ);
+   end;
 
-  FArrayAddr := FProg.GetGlobalAddr(FElementExprs.Count * FTyp.Typ.Size + 1);
-  FData[0] := FArrayAddr + 1;
+   FArrayAddr := FProg.GetGlobalAddr(FElementExprs.Count * FTyp.Typ.Size + 1);
 end;
 
 function TArrayConstantExpr.GetData: TData;
 begin
   Eval;
-  Result := FData;
+  Result := FProg.Stack.Data;// FData;
+end;
+
+// GetAddr
+//
+function TArrayConstantExpr.GetAddr : Integer;
+begin
+   Result:=FArrayAddr+1;
 end;
 
 function TArrayConstantExpr.Eval: Variant;
@@ -1523,8 +1538,8 @@ begin
       expr:=TNoPosExpr(FElementExprs.List[x]);
       expr.TypeCheckNoPos(aPos);
       if not expr.Typ.IsCompatible(Typ.Typ) then
-         expr.Prog.Msgs.AddCompilerError(aPos,
-            Format(CPE_AssignIncompatibleTypes,[expr.Typ.Caption, Typ.Typ.Caption]));
+         expr.Prog.Msgs.AddCompilerErrorFmt(aPos, CPE_AssignIncompatibleTypes,
+                                            [expr.Typ.Caption, Typ.Typ.Caption]);
    end;
 end;
 
@@ -2594,8 +2609,7 @@ begin
     cright := FRight.Typ.Caption;
 
   if (FRight.Typ = nil) or (FLeft.Typ = nil) then
-    FProg.Msgs.AddCompilerError(FPos, Format(CPE_AssignIncompatibleTypes, [cright,
-      cleft]))
+    AddCompilerErrorFmt(CPE_AssignIncompatibleTypes, [cright, cleft])
   else begin
     if FRight is TArrayConstantExpr then
       TArrayConstantExpr(FRight).Prepare(FLeft.Typ.Typ);
@@ -2608,8 +2622,7 @@ begin
 
     // Look if Types are compatible
     if not FLeft.Typ.IsCompatible(FRight.Typ) then
-      FProg.Msgs.AddCompilerError(FPos, Format(CPE_AssignIncompatibleTypes, [cright,
-        cleft]));
+      AddCompilerErrorFmt(CPE_AssignIncompatibleTypes, [cright, cleft]);
   end;
 end;
 
@@ -2861,9 +2874,10 @@ end;
 function TBlockExpr.Optimize : TNoPosExpr;
 begin
    if FTable.Count=0 then begin
-      if FStatements.Count=1 then begin
-         Result:=TNoPosExpr(FStatements.List[0]);
-      end else begin
+      case FStatements.Count of
+         0 : Result:=TNullExpr.Create(Prog, Pos);
+         1 : Result:=TNoPosExpr(FStatements.List[0]);
+      else
          Result:=TBlockExprNoTable.Create(Prog, Pos);
          TBlockExprNoTable(Result).FStatements.Assign(FStatements);
       end;
@@ -3074,8 +3088,8 @@ begin
       FCompareExpr := TConvFloatExpr.Create(FValueExpr.Prog, Pos, FCompareExpr);
 
   if not FCompareExpr.Typ.IsCompatible(FValueExpr.Typ) then
-    FCompareExpr.Prog.Msgs.AddCompilerError(Pos,
-      Format(CPE_IncompatibleTypes, [FValueExpr.Typ.Caption, FCompareExpr.Typ.Caption]));
+    FCompareExpr.Prog.Msgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
+                                               [FValueExpr.Typ.Caption, FCompareExpr.Typ.Caption]);
 end;
 
 { TRangeCaseCondition }
@@ -3123,14 +3137,12 @@ begin
   end;
 
   if not FFromExpr.Typ.IsCompatible(FToExpr.Typ) then
-    FFromExpr.Prog.Msgs.AddCompilerError(Pos,
-      Format(CPE_RangeIncompatibleTypes, [FFromExpr.Typ.Caption,
-      FToExpr.Typ.Caption]));
+    FFromExpr.Prog.Msgs.AddCompilerErrorFmt(Pos, CPE_RangeIncompatibleTypes,
+                                            [FFromExpr.Typ.Caption, FToExpr.Typ.Caption]);
 
   if not FValueExpr.Typ.IsCompatible(FFromExpr.Typ) then
-    FFromExpr.Prog.Msgs.AddCompilerError(Pos,
-      Format(CPE_IncompatibleTypes, [FValueExpr.Typ.Caption,
-      FFromExpr.Typ.Caption]));
+    FFromExpr.Prog.Msgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
+                                            [FValueExpr.Typ.Caption, FFromExpr.Typ.Caption]);
 end;
 
 { TForExpr }
@@ -3230,9 +3242,9 @@ end;
 //
 procedure TLoopExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-  FCondExpr.TypeCheckNoPos(Pos);
-  if not FCondExpr.IsBooleanValue then
-    AddCompilerStop(CPE_BooleanExpected);
+   FCondExpr.TypeCheckNoPos(Pos);
+   if not FCondExpr.IsBooleanValue then
+      AddCompilerStop(CPE_BooleanExpected);
 end;
 
 { TWhileExpr }
@@ -3256,6 +3268,15 @@ begin
    end;
 end;
 
+// TypeCheckNoPos
+//
+procedure TWhileExpr.TypeCheckNoPos(const aPos : TScriptPos);
+begin
+   inherited;
+   if (FCondExpr.IsConstant) and (FLoopExpr is TNullExpr) and (FCondExpr.EvalAsBoolean) then
+      AddCompilerWarning(CPW_InfiniteLoop);
+end;
+
 { TRepeatExpr }
 
 procedure TRepeatExpr.EvalNoResult(var status : TExecutionStatusResult);
@@ -3275,6 +3296,15 @@ begin
          end;
       end;
    until FCondExpr.EvalAsBoolean;
+end;
+
+// TypeCheckNoPos
+//
+procedure TRepeatExpr.TypeCheckNoPos(const aPos : TScriptPos);
+begin
+   inherited;
+   if (FCondExpr.IsConstant) and (FLoopExpr is TNullExpr) and (not FCondExpr.EvalAsBoolean) then
+      AddCompilerWarning(CPW_InfiniteLoop);
 end;
 
 { TBreakExpr }

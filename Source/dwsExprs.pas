@@ -443,6 +443,7 @@ type
 
          procedure TypeCheck;
 
+         procedure AddCompilerWarning(const Text : String);
          procedure AddCompilerError(const Text : String);
          procedure AddCompilerErrorFmt(const fmtText: string; const Args: array of const);
          procedure AddCompilerStop(const Text : String);
@@ -2120,6 +2121,13 @@ begin
    TypeCheckNoPos(Pos);
 end;
 
+// AddCompilerWarning
+//
+procedure TExpr.AddCompilerWarning(const Text : String);
+begin
+   Prog.Msgs.AddCompilerWarning(Pos, Text);
+end;
+
 // AddCompilerError
 //
 procedure TExpr.AddCompilerError(const Text : String);
@@ -2178,7 +2186,7 @@ end;
 //
 procedure TPosDataExpr.AddCompilerErrorFmt(const fmtText: string; const Args: array of const);
 begin
-   Prog.Msgs.AddCompilerError(Pos, Format(fmttext, Args));
+   Prog.Msgs.AddCompilerErrorFmt(Pos, fmttext, Args);
 end;
 
 // AddCompilerStop
@@ -2355,7 +2363,7 @@ begin
       if paramSymbol is TParamSymbolWithDefaultValue then
          FArgs.Add(TConstExpr.CreateTyped(Prog, paramSymbol.Typ,
                                           TParamSymbolWithDefaultValue(paramSymbol).DefaultValue))
-      else AddCompilerStop(CPE_TooLessArguments);
+      else AddCompilerStop(CPE_TooFewArguments);
    end;
 
    for x := 0 to FArgs.Count - 1 do begin
@@ -2390,7 +2398,7 @@ begin
       end;
       if arg.Typ=nil then
          AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Caption])
-      else if not arg.Typ.IsCompatible(paramSymbol.Typ) then
+      else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
          AddCompilerErrorFmt(CPE_WrongArgumentType_Long, [x, FFunc.Params[x].Typ.Caption, arg.Typ.Caption]);
    end;
 end;
@@ -2999,8 +3007,8 @@ begin
       expr:=TNoPosExpr(FList.List[x]);
       expr.TypeCheckNoPos(pos);
       if not expr.Typ.IsCompatible(ExpectedTyp) then
-         expr.Prog.Msgs.AddCompilerError(pos,
-            Format(CPE_AssignIncompatibleTypes,[expr.Typ.Caption, ExpectedTyp.Caption]));
+         expr.Prog.Msgs.AddCompilerErrorFmt(pos, CPE_AssignIncompatibleTypes,
+                                            [expr.Typ.Caption, ExpectedTyp.Caption]);
    end;
 end;
 

@@ -503,9 +503,16 @@ type
      constructor Create(const Name: string; Typ: TSymbol; LowBound, HighBound: Integer);
      procedure InitData(const Data: TData; Offset: Integer); override;
      function IsCompatible(TypSym: TSymbol): Boolean; override;
+     procedure AddElement;
      property HighBound: Integer read FHighBound;
      property LowBound: Integer read FLowBound;
      property ElementCount: Integer read FElementCount;
+   end;
+
+   // static array whose bounds are contextual
+   TOpenArraySymbol = class (TStaticArraySymbol)
+     constructor Create(const Name: string; Typ: TSymbol);
+     function IsCompatible(TypSym: TSymbol): Boolean; override;
    end;
 
    // Member of a record
@@ -1454,7 +1461,8 @@ begin
 end;
 
 function TFuncSymbol.IsCompatible(typSym: TSymbol): Boolean;
-var funcSym : TFuncSymbol;
+var
+  funcSym : TFuncSymbol;
 begin
   typSym := typSym.BaseType;
   if typSym is TNilSymbol then
@@ -2502,8 +2510,8 @@ end;
 
 function TDynamicArraySymbol.IsCompatible(TypSym: TSymbol): Boolean;
 begin
-  Result := (TypSym is TDynamicArraySymbol) and
-    (Typ.IsCompatible(TypSym.Typ) or (TypSym.Typ is TNilSymbol));
+  Result :=     (TypSym is TDynamicArraySymbol)
+            and (Typ.IsCompatible(TypSym.Typ) or (TypSym.Typ is TNilSymbol));
 end;
 
 { TStaticArraySymbol }
@@ -2531,9 +2539,17 @@ end;
 function TStaticArraySymbol.IsCompatible(TypSym: TSymbol): Boolean;
 begin
   TypSym := TypSym.BaseType;
-  Result := (TypSym is TStaticArraySymbol)
-    and (ElementCount = TStaticArraySymbol(TypSym).ElementCount)
-    and Typ.IsCompatible(TypSym.Typ);
+  Result :=     (TypSym is TStaticArraySymbol)
+            and (ElementCount = TStaticArraySymbol(TypSym).ElementCount)
+            and Typ.IsCompatible(TypSym.Typ);
+end;
+
+// AddElement
+//
+procedure TStaticArraySymbol.AddElement;
+begin
+   Inc(FHighBound);
+   Inc(FElementCount);
 end;
 
 function TStaticArraySymbol.GetCaption;
@@ -2543,6 +2559,26 @@ begin
     Result := Result + FTyp.Caption
   else
     Result := Result + '<unknown>';
+end;
+
+// ------------------
+// ------------------ TOpenArraySymbol ------------------
+// ------------------
+
+// Create
+//
+constructor TOpenArraySymbol.Create(const Name: string; Typ: TSymbol);
+begin
+   inherited Create(Name, Typ, 0, -1);
+end;
+
+// IsCompatible
+//
+function TOpenArraySymbol.IsCompatible(TypSym: TSymbol): Boolean;
+begin
+  TypSym := TypSym.BaseType;
+  Result :=     (TypSym is TStaticArraySymbol)
+            and Typ.IsCompatible(TypSym.Typ);
 end;
 
 { TElementSymbol }

@@ -213,6 +213,7 @@ type
                              MaxDataSize, StackChunkSize: Integer;
                              MaxRecursionDepth : Integer): TdwsProgram; virtual;
       function CreateProcedure(Parent : TdwsProgram) : TProcedure; virtual;
+      function CreateAssign(const pos : TScriptPos; left : TDataExpr; right : TNoPosExpr) : TNoResultExpr;
 
    public
       constructor Create;
@@ -705,16 +706,8 @@ begin
          if Assigned(initExpr) then begin
 
             // Initialize with an expression
-            Result := TAssignExpr.Create(FProg, pos, varExpr, initExpr);
-            initExpr := nil;
-            try
-               Result.TypeCheck;
-               if Optimize then
-                  Result:=Result.OptimizeToNoResultExpr;
-            except
-               Result.Free;
-               raise;
-            end;
+            Result := CreateAssign(pos, varExpr, initExpr);
+            initExpr:=nil;
 
          end else begin
 
@@ -1173,9 +1166,9 @@ procedure TdwsCompiler.WarnDeprecated(funcSym : TFuncSymbol);
 begin
    if FuncSym.IsDeprecated then begin
       if FuncSym.DeprecatedMessage<>'!' then
-         FMsgs.AddCompilerWarningFmt(FTok.HotPos, CPE_DeprecatedWithMessage,
+         FMsgs.AddCompilerWarningFmt(FTok.HotPos, CPW_DeprecatedWithMessage,
                                      [FuncSym.Name, FuncSym.DeprecatedMessage])
-      else FMsgs.AddCompilerWarningFmt(FTok.HotPos, CPE_Deprecated, [FuncSym.Name]);
+      else FMsgs.AddCompilerWarningFmt(FTok.HotPos, CPW_Deprecated, [FuncSym.Name]);
    end;
 end;
 
@@ -2217,7 +2210,6 @@ var
    pos : TScriptPos;
    right : TNoPosExpr;
 begin
-   Result := nil;
    pos := FTok.HotPos;
    right := ReadExpr;
    try
@@ -2231,19 +2223,7 @@ begin
             right := TFuncCodeExpr.Create(FProg,FTok.HotPos,TFuncExpr(right));
       end;
 
-      if Assigned(right.Typ) then begin
-         if (right is TDataExpr) and (right.Typ.Size <> 1) then begin
-            if right is TFuncExpr then
-               TFuncExpr(right).SetResultAddr;
-            Result := TAssignDataExpr.Create(FProg, pos, Left, TDataExpr(right))
-         end else begin
-            Result:=TAssignExpr.Create(FProg, pos, Left, TDataExpr(right));
-         end;
-
-         Result.TypeCheck;
-         if Optimize then
-            Result:=Result.OptimizeToNoResultExpr;
-      end else FMsgs.AddCompilerStop(Pos, CPE_RightSideNeedsReturnType);
+      Result:=CreateAssign(pos, left, right);
    except
       right.Free;
       raise;
@@ -3960,7 +3940,7 @@ begin
   SystemTable.AddSymbol(TConstSymbol.Create('Null', varSym, Null));
   SystemTable.AddSymbol(TConstSymbol.Create('Unassigned', varSym, Unassigned));
 
-  SystemTable.AddSymbol(TDynamicArraySymbol.Create('array of Variant', varSym));
+  SystemTable.AddSymbol(TOpenArraySymbol.Create('array of Variant', varSym));
 
   // Create "root" class TObject
   clsObject := TClassSymbol.Create(SYS_TOBJECT);
@@ -4373,6 +4353,28 @@ end;
 function TdwsCompiler.CreateProcedure(Parent : TdwsProgram): TProcedure;
 begin
   Result := TProcedure.Create(Parent);
+end;
+
+// CreateAssign
+//
+function TdwsCompiler.CreateAssign(const pos : TScriptPos; left : TDataExpr; right : TNoPosExpr) : TNoResultExpr;
+begin
+   if Assigned(right.Typ) then begin
+      if (right is TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
+         if right is TFuncExpr then
+            TFuncExpr(right).SetResultAddr;
+         Result := TAssignDataExpr.Create(FProg, pos, Left, right)
+      end else begin
+         Result:=TAssignExpr.Create(FProg, pos, Left, TDataExpr(right));
+      end;
+
+      Result.TypeCheck;
+      if Optimize then
+         Result:=Result.OptimizeToNoResultExpr;
+   end else begin
+      FMsgs.AddCompilerStop(Pos, CPE_RightSideNeedsReturnType);
+      Result:=nil;
+   end;
 end;
 
 function TdwsCompiler.ReadSpecialFunction(const NamePos: TScriptPos; SpecialKind: TSpecialKeywordKind): TNoPosExpr;
