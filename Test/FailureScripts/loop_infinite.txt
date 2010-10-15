@@ -1,0 +1,2 @@
+Warning: Infinite loop [line: 1, column: 1]
+Warning: Infinite loop [line: 2, column: 1]
