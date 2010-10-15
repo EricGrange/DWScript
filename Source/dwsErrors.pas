@@ -171,6 +171,8 @@ type
   // The script has to be stopped because of an error
   EScriptError = class(Exception);
 
+  ECompileError = class(EScriptError);
+
   EReraise = class(Exception);
 
 const
@@ -367,7 +369,7 @@ end;
 procedure TMsgs.AddCompilerStop(const Pos: TScriptPos; const Text: string);
 begin
    AddCompilerError(Pos, Text);
-   raise EScriptError.Create(Text);
+   raise ECompileError.Create(Text);
 end;
 
 // AddCompilerStopFmt
@@ -385,9 +387,7 @@ end;
 
 procedure TMsgs.AddExecutionError(const Text: string);
 begin
-//   if Assigned(FLastScriptError.ExceptObj) and (FLastScriptError.ExceptObj = ExceptObject) then
-      AddExecutionError(FLastScriptError.Pos, Text)
-//   else AddExecutionError(Text);
+   AddExecutionError(FLastScriptError.Pos, Text)
 end;
 
 procedure TMsgs.AddExecutionStop(const Pos: TScriptPos; const Text: string);

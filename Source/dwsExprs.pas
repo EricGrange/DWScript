@@ -1538,8 +1538,6 @@ begin
          except
             on e: EScriptException do
                Msgs.AddExecutionError(e.Pos, e.Message);
-            on e: EScriptError do
-               ;
             on e: Exception do
                Msgs.AddExecutionError(e.Message);
          end;

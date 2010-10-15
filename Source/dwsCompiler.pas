@@ -496,7 +496,7 @@ begin
          FTok.Free;
       end;
    except
-      on e: EScriptError do
+      on e: ECompileError do
          ;
       on e: Exception do
          FMsgs.AddCompilerError(cNullPos, e.Message);
