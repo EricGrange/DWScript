@@ -166,7 +166,7 @@ begin
 
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
    try
-      CheckEquals('Syntax Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+      CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
                   prog.Msgs.AsInfo, 'include forbidden');
    finally
       prog.Free;
@@ -218,7 +218,7 @@ begin
    FCompiler.Config.ScriptPaths.Clear;
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
    try
-      CheckEquals('Syntax Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+      CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
                   prog.Msgs.AsInfo, 'include via file no paths');
    finally
       prog.Free;
