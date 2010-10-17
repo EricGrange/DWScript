@@ -85,6 +85,8 @@ type
     function AsInfo: string; override;
   end;
 
+  TScriptMsgClass = class of TScriptMsg;
+
   THintMsg = class(TScriptMsg)
     function AsInfo: string; override;
   end;
@@ -94,6 +96,10 @@ type
   end;
 
   TCompilerErrorMsg = class(TScriptMsg)
+    function AsInfo: string; override;
+  end;
+
+  TSyntaxErrorMsg = class(TScriptMsg)
     function AsInfo: string; override;
   end;
 
@@ -132,10 +138,14 @@ type
     procedure AddCompilerHint(const Pos: TScriptPos; const Text: string);
     procedure AddCompilerWarning(const Pos: TScriptPos; const Text: string);
     procedure AddCompilerWarningFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
-    procedure AddCompilerError(const Pos: TScriptPos; const Text: string);
-    procedure AddCompilerErrorFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
-    procedure AddCompilerStop(const Pos: TScriptPos; const Text: string);
-    procedure AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
+    procedure AddCompilerError(const Pos: TScriptPos; const Text: string; msgClass : TScriptMsgClass); overload;
+    procedure AddCompilerError(const Pos: TScriptPos; const Text: string); overload;
+    procedure AddCompilerErrorFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const; msgClass : TScriptMsgClass); overload;
+    procedure AddCompilerErrorFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const); overload;
+    procedure AddCompilerStop(const Pos: TScriptPos; const Text: string; msgClass : TScriptMsgClass); overload;
+    procedure AddCompilerStop(const Pos: TScriptPos; const Text: string); overload;
+    procedure AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const; msgClass : TScriptMsgClass); overload;
+    procedure AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const); overload;
 
     // Called during execution
     procedure AddExecutionError(const Text: string); overload;
@@ -340,20 +350,35 @@ begin
    AddCompilerWarning(Pos, Format(textFormat, args));
 end;
 
-procedure TMsgs.AddCompilerError(const Pos: TScriptPos; const Text: string);
+// AddCompilerError
+//
+procedure TMsgs.AddCompilerError(const Pos: TScriptPos; const Text: string; msgClass : TScriptMsgClass);
 var
    lastMsg : TdwsMsg;
-   lastCompilerErrMsg : TCompilerErrorMsg;
 begin
    if FMessages.Count>0 then begin
       lastMsg:=TdwsMsg(FMessages[FMessages.Count-1]);
-      if lastMsg is TCompilerErrorMsg then begin
-         lastCompilerErrMsg:=TCompilerErrorMsg(lastMsg);
-         if (lastCompilerErrMsg.FText=Text) and lastCompilerErrMsg.Pos.SamePosAs(Pos) then Exit;
+      if lastMsg.ClassType=msgClass then begin
+         if (lastMsg.FText=Text) and (lastMsg as TScriptMsg).Pos.SamePosAs(Pos) then Exit;
       end;
    end;
-   FMessages.Add(TCompilerErrorMsg.Create(Self, Text, Pos));
+   FMessages.Add(msgClass.Create(Self, Text, Pos));
    FHasCompilerErrors := True;
+end;
+
+// AddCompilerError
+//
+procedure TMsgs.AddCompilerError(const Pos: TScriptPos; const Text: string);
+begin
+   AddCompilerError(Pos, Text, TSyntaxErrorMsg);
+end;
+
+// AddCompilerErrorFmt
+//
+procedure TMsgs.AddCompilerErrorFmt(const Pos: TScriptPos;
+   const textFormat: String; const args: array of const; msgClass : TScriptMsgClass);
+begin
+   AddCompilerError(Pos, Format(textFormat, args), msgClass);
 end;
 
 // AddCompilerErrorFmt
@@ -361,22 +386,37 @@ end;
 procedure TMsgs.AddCompilerErrorFmt(const Pos: TScriptPos;
    const textFormat: String; const args: array of const);
 begin
-   AddCompilerError(Pos, Format(textFormat, args));
+   AddCompilerErrorFmt(Pos, textFormat, args, TSyntaxErrorMsg);
+end;
+
+// AddCompilerStop
+//
+procedure TMsgs.AddCompilerStop(const Pos: TScriptPos; const Text: string; msgClass : TScriptMsgClass);
+begin
+   AddCompilerError(Pos, Text, msgClass);
+   raise ECompileError.Create(Text);
 end;
 
 // AddCompilerStop
 //
 procedure TMsgs.AddCompilerStop(const Pos: TScriptPos; const Text: string);
 begin
-   AddCompilerError(Pos, Text);
-   raise ECompileError.Create(Text);
+   AddCompilerStop(Pos, Text, TSyntaxErrorMsg);
+end;
+
+// AddCompilerStopFmt
+//
+procedure TMsgs.AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String;
+                                   const args: array of const; msgClass : TScriptMsgClass);
+begin
+   AddCompilerStop(Pos, Format(textFormat, args), msgClass);
 end;
 
 // AddCompilerStopFmt
 //
 procedure TMsgs.AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
 begin
-   AddCompilerStop(Pos, Format(textFormat, args));
+   AddCompilerStop(Pos, Format(textFormat, args), TSyntaxErrorMsg);
 end;
 
 procedure TMsgs.AddExecutionError(const Pos: TScriptPos; const Text: string);
@@ -514,9 +554,16 @@ begin
   Result := Format(MSG_Warning, [inherited AsInfo]);
 end;
 
-{ TErrorMsg }
+{ TCompilerErrorMsg }
 
 function TCompilerErrorMsg.AsInfo: string;
+begin
+  Result := Format(MSG_CompileError, [inherited AsInfo]);
+end;
+
+{ TSyntaxErrorMsg }
+
+function TSyntaxErrorMsg.AsInfo: string;
 begin
   Result := Format(MSG_SyntaxError, [inherited AsInfo]);
 end;
