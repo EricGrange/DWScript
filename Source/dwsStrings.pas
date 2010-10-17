@@ -144,6 +144,7 @@ const
   CPE_BadParameterName = 'Parameter %d - Name "%s" expected';
   CPE_BadParameterType = 'Parameter %d - Type "%s" expected (instead of "%s")';
   CPE_VarParameterExpected = 'Parameter %d - Var-parameter expected';
+  CPE_ConstParameterExpected = 'Parameter %d - Const-parameter expected';
   CPE_ValueParameterExpected = 'Parameter %d - Value-parameter expected';
   CPE_DefaultVarParam = 'Default Parameter must not be a var-parameter';
 
@@ -219,6 +220,7 @@ const
   CPE_TypeIsUnknown = 'Type "%s" unknown';
   CPE_TypeForParamNotFound = 'Type "%s" not found for parameter "%s" of function "%s"';
   CPE_VarParamCantHaveDefaultValue = 'var parameter can''t have a default value';
+  CPE_ConstParamCantHaveDefaultValue = 'const parameter can''t have a default value';
   CPE_FieldExists = 'There is already a field with name "%s"';
   CPE_PropertyExists = 'There is already a property with name "%s"';
   CPE_MethodExists = 'There is already a method with name "%s"';
@@ -276,6 +278,7 @@ const
   MSG_ScriptMsgLong = '%s [line: %d, column: %d, file: %s]';
   MSG_Hint = 'Hint: %s';
   MSG_Warning = 'Warning: %s';
+  MSG_CompileError = 'Compile Error: %s';
   MSG_SyntaxError = 'Syntax Error: %s';
   MSG_RuntimeError = 'Runtime Error: %s';
 
