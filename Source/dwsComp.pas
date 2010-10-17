@@ -1831,9 +1831,11 @@ function TdwsParameter.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil)
 var ParamSym : TParamSymbol;
 begin
   FIsGenerating := True;
-  if IsVarParam then
-    ParamSym := TVarParamSymbol.Create(Name, GetDataType(Table, DataType),IsWritable)
-  else if HasDefaultValue then begin
+  if IsVarParam then begin
+    if IsWritable then
+      ParamSym := TVarParamSymbol.Create(Name, GetDataType(Table, DataType))
+    else ParamSym := TConstParamSymbol.Create(Name, GetDataType(Table, DataType))
+  end else if HasDefaultValue then begin
     ParamSym := TParamSymbolWithDefaultValue.Create(Name, GetDataType(Table, DataType));
     TParamSymbolWithDefaultValue(ParamSym).SetDefaultValue(DefaultValue);
   end else begin
@@ -1978,8 +1980,8 @@ begin
         raise Exception.CreateFmt(UNT_ParameterNameAlreadyExists, [name]);
     end;
 
-    Result[x].IsVarParam := TdwsParameter(Parameters.Items[x]).IsVarParam;
-    Result[x].IsWritable := TdwsParameter(Parameters.Items[x]).IsWritable;
+    Result[x].IsVarParam := TdwsParameter(Parameters.Items[x]).IsVarParam and TdwsParameter(Parameters.Items[x]).IsWritable;
+    Result[x].IsConstParam := TdwsParameter(Parameters.Items[x]).IsVarParam and not TdwsParameter(Parameters.Items[x]).IsWritable;
     Result[x].ParamName := name;
     Result[x].ParamType := TdwsParameter(Parameters.Items[x]).DataType;
     Result[x].HasDefaultValue := TdwsParameter(Parameters.Items[x]).HasDefaultValue;

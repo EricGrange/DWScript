@@ -3448,7 +3448,6 @@ begin
         if not isVarParam then
         begin
           isConstParam := FTok.TestDelete(ttCONST);
-          isVarParam := isConstParam;
         end
         else
           isConstParam := False;
@@ -3463,7 +3462,9 @@ begin
           for x := 0 to names.Count - 1 do
           begin
             if isVarParam then
-              ArrayIndices.AddSymbol(TVarParamSymbol.Create(names[x], typSym, not isConstParam))
+              ArrayIndices.AddSymbol(TVarParamSymbol.Create(names[x], typSym))
+            else if isConstParam then
+              ArrayIndices.AddSymbol(TConstParamSymbol.Create(names[x], typSym))
             else
               ArrayIndices.AddSymbol(TParamSymbol.Create(names[x], typSym));
           end;
@@ -3502,7 +3503,6 @@ begin
           if not varpar then
           begin
             constpar := FTok.TestDelete(ttCONST);
-            varpar := constpar;
           end
           else
             constpar := False;
@@ -3543,7 +3543,11 @@ begin
                 if varpar then begin
                    if Assigned(defaultExpr) then
                       FMsgs.AddCompilerError(FTok.HotPos, CPE_VarParamCantHaveDefaultValue);
-                   sym := TVarParamSymbol.Create(names[i], Typ, not constpar)
+                   sym := TVarParamSymbol.Create(names[i], Typ)
+                end else if constpar then begin
+                   if Assigned(defaultExpr) then
+                      FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstParamCantHaveDefaultValue);
+                   sym := TConstParamSymbol.Create(names[i], Typ)
                 end else begin
                    if Assigned(defaultExpr) then begin
                       sym := TParamSymbolWithDefaultValue.Create(names[i], Typ);
@@ -3739,10 +3743,14 @@ begin
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_VarParameterExpected, [x, A[x].Name])
     else if not (A[x] is TVarParamSymbol) and (B[x] is TVarParamSymbol) then
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ValueParameterExpected, [x, A[x].Name])
-    else if (A[x] is TVarParamSymbol) and (B[x] is TVarParamSymbol) and
-      (TVarParamSymbol(A[x]).IsWritable <> TVarParamSymbol(B[x]).IsWritable) then
-      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterType,
-                                [x, A[x].Description, B[x].Description])
+    else if (A[x] is TConstParamSymbol) and not (B[x] is TConstParamSymbol) then
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConstParameterExpected, [x, A[x].Name])
+    else if not (A[x] is TConstParamSymbol) and (B[x] is TConstParamSymbol) then
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ValueParameterExpected, [x, A[x].Name])
+//    else if (A[x] is TVarParamSymbol) and (B[x] is TVarParamSymbol) and
+//      (TVarParamSymbol(A[x]).IsWritable <> TVarParamSymbol(B[x]).IsWritable) then
+//      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterType,
+//                                [x, A[x].Description, B[x].Description])
     else r := True;
     Result := Result and r;
   end;
@@ -4073,7 +4081,8 @@ begin
    stream:=OpenStreamForFile(scriptName);
    try
       if stream=nil then
-         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncludeFileNotFound, [scriptName])
+         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncludeFileNotFound,
+                                  [scriptName], TCompilerErrorMsg)
       else begin
          sl:=TStringList.Create;
          try

@@ -281,13 +281,13 @@ begin
 
       case c of
         '@','&': begin
-          IsVarParam := True;
-          IsWritable := c = '@';
+          IsVarParam := (c = '@');
+          IsConstParam := (c = '&');
           ParamName  := Copy(FuncParams[x], 2, MaxInt)
         end;
       else
         IsVarParam := False;
-        IsWritable := True; // ignored
+        IsConstParam := False;
         ParamName := FuncParams[x];
       end;
       ParamType := FuncParams[x + 1];

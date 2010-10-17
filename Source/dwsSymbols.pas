@@ -251,15 +251,19 @@ type
      property DefaultValue : TData read FDefaultValue;
    end;
 
-   // var parameter: procedure P(var x: Integer)
-   TVarParamSymbol = class(TParamSymbol)
-   private
-     FIsWritable: Boolean;
+   // const parameter: procedure P(const x: Integer)
+   TConstParamSymbol = class(TParamSymbol)
    protected
      function GetDescription: string; override;
    public
-     constructor Create(const Name: string; Typ: TSymbol; IsWritable: Boolean = True);
-     property IsWritable: Boolean read FIsWritable;
+   end;
+
+   // var parameter: procedure P(var x: Integer)
+   TVarParamSymbol = class(TParamSymbol)
+   protected
+     function GetDescription: string; override;
+   public
+     constructor Create(const Name: string; Typ: TSymbol);
    end;
 
    // variable with functions for read/write: var x: integer; extern 'type' in 'selector';
@@ -287,7 +291,7 @@ type
    // Record used for TFuncSymbol.Generate
    TParamRec = record
      IsVarParam: Boolean;
-     IsWritable: Boolean;
+     IsConstParam: Boolean;
      ParamName: string;
      ParamType: string;
      HasDefaultValue: Boolean;
@@ -1344,6 +1348,8 @@ begin
 
        if FuncParams[x].IsVarParam then
           raise Exception.Create(CPE_VarParamCantHaveDefaultValue);
+       if FuncParams[x].IsConstParam then
+          raise Exception.Create(CPE_ConstParamCantHaveDefaultValue);
 
        paramSym := TParamSymbolWithDefaultValue.Create(FuncParams[x].ParamName, typSym);
        TParamSymbolWithDefaultValue(paramSym).SetDefaultValue(FuncParams[x].DefaultValue,0);
@@ -1351,7 +1357,9 @@ begin
     end else begin
 
        if FuncParams[x].IsVarParam then
-          paramSym := TVarParamSymbol.Create(FuncParams[x].ParamName, typSym, FuncParams[x].IsWritable)
+          paramSym := TVarParamSymbol.Create(FuncParams[x].ParamName, typSym)
+       else if FuncParams[x].IsConstParam then
+          paramSym := TConstParamSymbol.Create(FuncParams[x].ParamName, typSym)
        else
           paramSym := TParamSymbol.Create(FuncParams[x].ParamName, typSym);
           
@@ -2111,22 +2119,24 @@ begin
   VarCopy(FDefaultValue[0], Value);
 end;
 
+{ TConstParamSymbol }
+
+function TConstParamSymbol.GetDescription: string;
+begin
+  Result := 'const ' + inherited GetDescription;
+end;
+
 { TVarParamSymbol }
 
-constructor TVarParamSymbol.Create(const Name: string; Typ: TSymbol; IsWritable: Boolean);
+constructor TVarParamSymbol.Create(const Name: string; Typ: TSymbol);
 begin
   inherited Create(Name, Typ);
   FSize := 1;
-  FIsWritable := IsWritable;
 end;
 
 function TVarParamSymbol.GetDescription: string;
 begin
-  if FIsWritable then
-    Result := 'var '
-  else
-    Result := 'const ';
-  Result := Result + inherited GetDescription;  
+  Result := 'var ' + inherited GetDescription;
 end;
 
 { TSymbolTable }

@@ -2387,12 +2387,10 @@ begin
       if arg.Typ = nil then
          AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Caption]);
       if (paramSymbol is TVarParamSymbol) and (arg is TDataExpr) then begin
-         if TVarParamSymbol(FFunc.Params[x]).IsWritable then begin
-            if not TDataExpr(arg).IsWritable then
-               AddCompilerErrorFmt(CPE_ConstVarParam, [x]);
-            if arg is TVarExpr then
-               (Prog.FCompiler as TdwsCompiler).WarnForVarUsage(TVarExpr(arg));
-         end;
+         if not TDataExpr(arg).IsWritable then
+            AddCompilerErrorFmt(CPE_ConstVarParam, [x]);
+         if arg is TVarExpr then
+            (Prog.FCompiler as TdwsCompiler).WarnForVarUsage(TVarExpr(arg));
       end;
       if arg.Typ=nil then
          AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Caption])
@@ -2716,7 +2714,7 @@ begin
       arg := TNoPosExpr(FArgs.ExprBase[x]);
       param := TParamSymbol(FFunc.Params[x]);
       if arg is TDataExpr then begin
-         if param is TVarParamSymbol then begin
+         if (param is TVarParamSymbol) then begin
             pushOperator.InitPushAddr(param.StackAddr, arg)
          end else if param.Size > 1 then
             pushOperator.InitPushData(param.StackAddr, TDataExpr(arg), param)
