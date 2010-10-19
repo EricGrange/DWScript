@@ -3,7 +3,7 @@ unit UCornerCasesTests;
 interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsXPlatform;
+   dwsTokenizer, dwsXPlatform, dwsFileSystem;
 
 type
 
@@ -23,6 +23,7 @@ type
          procedure TimeOutTestInfinite;
          procedure IncludeViaEvent;
          procedure IncludeViaFile;
+         procedure IncludeViaFileRestricted;
          procedure StackMaxRecursion;
          procedure StackOverFlow;
    end;
@@ -227,7 +228,75 @@ begin
    FCompiler.Config.ScriptPaths.Add(tempDir);
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
    try
-      CheckEquals('', prog.Msgs.AsInfo, 'include via event');
+      CheckEquals('', prog.Msgs.AsInfo, 'include via file');
+      prog.Execute;
+      CheckEquals('world', (prog.Result as TdwsDefaultResult).Text, 'exec include via file');
+   finally
+      prog.Free;
+   end;
+
+   FCompiler.Config.ScriptPaths.Clear;
+   DeleteFile(tempFile);
+end;
+
+// IncludeViaFileRestricted
+//
+procedure TCornerCasesTests.IncludeViaFileRestricted;
+
+   function GetTemporaryFilesPath : String;
+   var
+      n: Integer;
+   begin
+      SetLength(Result, MAX_PATH);
+      n:=GetTempPath(MAX_PATH-1, PChar(Result));
+      SetLength(Result, n);
+   end;
+
+var
+   prog : TdwsProgram;
+   sl : TStringList;
+   tempDir : String;
+   tempFile : String;
+   restricted : TdwsRestrictedFileSystem;
+begin
+   restricted:=TdwsRestrictedFileSystem.Create(nil);
+   FCompiler.OnInclude:=nil;
+   FCompiler.Config.CompileFileSystem:=restricted;
+
+   tempDir:=GetTemporaryFilesPath;
+   tempFile:=tempDir+'test.dummy';
+
+   sl:=TStringList.Create;
+   try
+      sl.Add('Print(''world'');');
+      sl.SaveToFile(tempFile);
+   finally
+      sl.Free;
+   end;
+
+   restricted.Paths.Text:=tempDir+'\nothing';
+   prog:=FCompiler.Compile('{$include ''test.dummy''}');
+   try
+      CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+                  prog.Msgs.AsInfo, 'include via file no paths');
+   finally
+      prog.Free;
+   end;
+
+   restricted.Paths.Text:=tempDir;
+
+   prog:=FCompiler.Compile('{$include ''test.dummy''}');
+   try
+      CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+                  prog.Msgs.AsInfo, 'include via file restricted - no paths');
+   finally
+      prog.Free;
+   end;
+
+   FCompiler.Config.ScriptPaths.Add('.');
+   prog:=FCompiler.Compile('{$include ''test.dummy''}');
+   try
+      CheckEquals('', prog.Msgs.AsInfo, 'include via file restricted - dot path');
       prog.Execute;
       CheckEquals('world', (prog.Result as TdwsDefaultResult).Text, 'exec include via file');
    finally
@@ -235,6 +304,9 @@ begin
    end;
 
    DeleteFile(tempFile);
+   restricted.Free;
+
+   CheckTrue(FCompiler.Config.CompileFileSystem=nil, 'Notification release');
 end;
 
 // StackMaxRecursion
