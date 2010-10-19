@@ -1255,7 +1255,7 @@ begin
             end;
          finally
             if coContextMap in FCompilerOptions then
-               FProg.ContextMap.CloseContext(FTok.HotPos);  // close with inside procedure end
+               FProg.ContextMap.CloseContext(FTok.CurrentPos);  // close with inside procedure end
          end;
       finally
          FProg.Compiler := nil;
