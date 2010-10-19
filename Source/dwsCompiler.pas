@@ -63,12 +63,15 @@ type
     procedure SetResultType(const Value: TdwsResultType);
     procedure SetFilter(const Value: TdwsFilter);
     procedure SetTimeOut(const val : Integer);
+    procedure SetCompileFileSystem(const val : TdwsCustomFileSystem);
+    procedure SetRuntimeFileSystem(const val : TdwsCustomFileSystem);
 
   public
     constructor Create(Owner: TComponent);
     destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
     procedure SetScriptPaths(const values : TStrings);
+    procedure Notification(AComponent: TComponent; Operation: TOperation);
 
     property Connectors: TStrings read FConnectors write FConnectors;
     property OnInclude: TIncludeEvent read FOnInclude write FOnInclude;
@@ -82,8 +85,8 @@ type
     property MaxDataSize: Integer read FMaxDataSize write FMaxDataSize default 0;
     property MaxRecursionDepth : Integer read FMaxRecursionDepth write FMaxRecursionDepth default cDefaultMaxRecursionDepth;
     property ScriptPaths: TStrings read FScriptPaths write SetScriptPaths;
-    property CompileFileSystem : TdwsCustomFileSystem read FCompileFileSystem write FCompileFileSystem;
-    property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
+    property CompileFileSystem : TdwsCustomFileSystem read FCompileFileSystem write SetCompileFileSystem;
+    property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write SetRuntimeFileSystem;
     property TimeoutMilliseconds: Integer read FTimeoutMilliseconds write FTimeoutMilliseconds default 0;
     property TimeOut : Integer write SetTimeOut;
     property StackChunkSize: Integer read FStackChunkSize write FStackChunkSize default C_DefaultStackChunkSize;
@@ -4003,15 +4006,31 @@ begin
   TParamCountFunc.Create(SystemTable, 'ParamCount', [], SYS_INTEGER, False);
 end;
 
+// SetFilter
+//
 procedure TdwsConfiguration.SetFilter(const Value: TdwsFilter);
 begin
-  if Assigned(FFilter) then
-    FFilter.RemoveFreeNotification(FOwner);
+   if Assigned(FFilter) then
+      FFilter.RemoveFreeNotification(FOwner);
 
-  FFilter := Value;
+   FFilter := Value;
 
-  if Assigned(FFilter) then
-    FFilter.FreeNotification(FOwner);
+   if Assigned(FFilter) then
+      FFilter.FreeNotification(FOwner);
+end;
+
+// SetResultType
+//
+procedure TdwsConfiguration.SetResultType(const Value: TdwsResultType);
+begin
+   if Assigned(FResultType) and (FResultType <> FDefaultResultType) then
+      FResultType.RemoveFreeNotification(FOwner);
+
+   FResultType := Value;
+
+   if Assigned(FResultType) then
+      FResultType.FreeNotification(FOwner)
+   else FResultType := FDefaultResultType;
 end;
 
 // SetTimeOut
@@ -4021,17 +4040,46 @@ begin
    TimeoutMilliseconds:=val*1000;
 end;
 
-procedure TdwsConfiguration.SetResultType(const Value: TdwsResultType);
+// SetCompileFileSystem
+//
+procedure TdwsConfiguration.SetCompileFileSystem(const val : TdwsCustomFileSystem);
 begin
-  if Assigned(FResultType) and (FResultType <> FDefaultResultType) then
-    FResultType.RemoveFreeNotification(FOwner);
+   if Assigned(FCompileFileSystem) then
+      FOwner.RemoveFreeNotification(FCompileFileSystem);
 
-  FResultType := Value;
+   FCompileFileSystem:=val;
 
-  if Assigned(FResultType) then
-    FResultType.FreeNotification(FOwner)
-  else
-    FResultType := FDefaultResultType;
+   if Assigned(FCompileFileSystem) then
+      FOwner.FreeNotification(FCompileFileSystem);
+end;
+
+// SetRuntimeFileSystem
+//
+procedure TdwsConfiguration.SetRuntimeFileSystem(const val : TdwsCustomFileSystem);
+begin
+   if Assigned(FRuntimeFileSystem) then
+      FOwner.RemoveFreeNotification(FRuntimeFileSystem);
+
+   FRuntimeFileSystem:=val;
+
+   if Assigned(FRuntimeFileSystem) then
+      FOwner.FreeNotification(FRuntimeFileSystem);
+end;
+
+// Notification
+//
+procedure TdwsConfiguration.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+   if (Operation=opRemove) then begin
+      if AComponent=Filter then
+         Filter:=nil
+      else if AComponent=ResultType then
+         ResultType:=nil
+      else if AComponent=CompileFileSystem then
+         CompileFileSystem:=nil
+      else if AComponent=RuntimeFileSystem then
+         RuntimeFileSystem:=nil;
+   end;
 end;
 
 // SetScriptPaths

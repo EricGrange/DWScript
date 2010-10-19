@@ -916,18 +916,14 @@ end;
 procedure TDelphiWebScript.Notification(AComponent: TComponent;
   Operation: TOperation);
 begin
-  inherited;
-  if Operation = opRemove then
-  begin
-    if AComponent = FConfig.Filter then
-      Config.Filter := nil
-    else if AComponent = Config.ResultType then
-      Config.ResultType := nil
-    else if AComponent is TdwsUnitComponent then
-      Self.RemoveUnit(TdwsUnitComponent(AComponent))
-    else if AComponent is TdwsAbstractUnit then
-      Self.RemoveUnit(TdwsAbstractUnit(AComponent));
-  end;
+   inherited;
+   Config.Notification(AComponent, Operation);
+   if Operation = opRemove then begin
+      if AComponent is TdwsUnitComponent then
+         Self.RemoveUnit(TdwsUnitComponent(AComponent))
+      else if AComponent is TdwsAbstractUnit then
+         Self.RemoveUnit(TdwsAbstractUnit(AComponent));
+   end;
 end;
 
 { TdwsCollection }
