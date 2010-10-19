@@ -568,6 +568,7 @@ type
   private
   protected
     function GetData: TData; override;
+    function GetAddr: Integer; override;
   public
     procedure AddArg(Arg: TNoPosExpr); override;
   end;
@@ -2388,7 +2389,7 @@ begin
          AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Caption]);
       if (paramSymbol is TVarParamSymbol) and (arg is TDataExpr) then begin
          if not TDataExpr(arg).IsWritable then
-            AddCompilerErrorFmt(CPE_ConstVarParam, [x]);
+            AddCompilerErrorFmt(CPE_ConstVarParam, [x, paramSymbol.Name]);
          if arg is TVarExpr then
             (Prog.FCompiler as TdwsCompiler).WarnForVarUsage(TVarExpr(arg));
       end;
@@ -2714,7 +2715,7 @@ begin
       arg := TNoPosExpr(FArgs.ExprBase[x]);
       param := TParamSymbol(FFunc.Params[x]);
       if arg is TDataExpr then begin
-         if (param is TVarParamSymbol) then begin
+         if (param is TByRefParamSymbol) then begin
             pushOperator.InitPushAddr(param.StackAddr, arg)
          end else if param.Size > 1 then
             pushOperator.InitPushData(param.StackAddr, TDataExpr(arg), param)
@@ -2772,7 +2773,15 @@ end;
 //
 function TMagicFuncExpr.GetData: TData;
 begin
-   Assert(False);
+   Prog.Stack.Data[FProg.Stack.BasePointer]:=Eval;
+   Result:=Prog.Stack.Data;
+end;
+
+// GetAddr
+//
+function TMagicFuncExpr.GetAddr: Integer;
+begin
+   Result := FProg.Stack.BasePointer;
 end;
 
 // ------------------
