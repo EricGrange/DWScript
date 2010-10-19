@@ -139,6 +139,7 @@ type
       function GetScriptSource(const scriptName : String) : String;
       function GetVarExpr(dataSym: TDataSymbol): TVarExpr;
       function GetVarParamExpr(dataSym: TVarParamSymbol): TVarParamExpr;
+      function GetConstParamExpr(dataSym: TConstParamSymbol): TVarParamExpr;
       function ReadAssign(Left: TDataExpr): TNoResultExpr;
       function ReadArray(const TypeName: string): TTypeSymbol;
       function ReadArrayConstant: TArrayConstantExpr;
@@ -1569,6 +1570,8 @@ begin
         // "Variables"
         else if sym is TVarParamSymbol then
           Result := ReadSymbol(GetVarParamExpr(TVarParamSymbol(sym)), IsWrite)
+        else if sym is TConstParamSymbol then
+          Result := ReadSymbol(GetConstParamExpr(TConstParamSymbol(sym)), IsWrite)
         else if sym is TConstSymbol then
           Result := ReadSymbol(TConstExpr.CreateTyped(FProg, sym.Typ, TConstSymbol(sym).Data), IsWrite)
         else if sym is TDataSymbol then
@@ -3724,6 +3727,16 @@ begin
     Result := TVarParamExpr.Create(FProg, dataSym.Typ, dataSym)
   else
     Result := TVarParamParentExpr.Create(FProg, dataSym.Typ, dataSym)
+end;
+
+// GetConstParamExpr
+//
+function TdwsCompiler.GetConstParamExpr(dataSym: TConstParamSymbol): TVarParamExpr;
+begin
+   if FProg.Level = dataSym.Level then
+      Result := TVarParamExpr.Create(FProg, dataSym.Typ, dataSym)
+   else Result := TVarParamParentExpr.Create(FProg, dataSym.Typ, dataSym);
+   Result.IsWritable:=False;
 end;
 
 function TdwsCompiler.CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
