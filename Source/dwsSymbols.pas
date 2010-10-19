@@ -251,19 +251,25 @@ type
      property DefaultValue : TData read FDefaultValue;
    end;
 
+   // const/var parameter: procedure P(const/var x: Integer)
+   TByRefParamSymbol = class(TParamSymbol)
+   protected
+   public
+     constructor Create(const Name: string; Typ: TSymbol);
+   end;
+
    // const parameter: procedure P(const x: Integer)
-   TConstParamSymbol = class(TParamSymbol)
+   TConstParamSymbol = class(TByRefParamSymbol)
    protected
      function GetDescription: string; override;
    public
    end;
 
    // var parameter: procedure P(var x: Integer)
-   TVarParamSymbol = class(TParamSymbol)
+   TVarParamSymbol = class(TByRefParamSymbol)
    protected
      function GetDescription: string; override;
    public
-     constructor Create(const Name: string; Typ: TSymbol);
    end;
 
    // variable with functions for read/write: var x: integer; extern 'type' in 'selector';
@@ -2119,6 +2125,14 @@ begin
   VarCopy(FDefaultValue[0], Value);
 end;
 
+{ TByRefParamSymbol }
+
+constructor TByRefParamSymbol.Create(const Name: string; Typ: TSymbol);
+begin
+  inherited Create(Name, Typ);
+  FSize := 1;
+end;
+
 { TConstParamSymbol }
 
 function TConstParamSymbol.GetDescription: string;
@@ -2127,12 +2141,6 @@ begin
 end;
 
 { TVarParamSymbol }
-
-constructor TVarParamSymbol.Create(const Name: string; Typ: TSymbol);
-begin
-  inherited Create(Name, Typ);
-  FSize := 1;
-end;
 
 function TVarParamSymbol.GetDescription: string;
 begin
