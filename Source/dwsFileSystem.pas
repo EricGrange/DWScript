@@ -283,7 +283,7 @@ begin
    for i:=0 to FPaths.Count-1 do begin
       path:=FPaths[i];
       Result:=ExpandFileName(path+fileName);
-      if SameText(path, Copy(Result, Length(path))) then Exit;
+      if SameText(path, Copy(Result, 1, Length(path))) then Exit;
    end;
    raise EdwsFSInvalidFileName.Create(fileName);
 end;
