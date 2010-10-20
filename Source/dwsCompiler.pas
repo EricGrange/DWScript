@@ -791,10 +791,11 @@ begin
                                         [expr.typ.Caption, typ.Caption]);
          end else typ := expr.typ;
 
-         if typ.Size>1 then
+         if typ is TArraySymbol then begin
+            sym := TStaticArraySymbol.Create(name, typ, 0, TArraySymbol(typ).typ.Size-1);
+            sym := TConstSymbol.Create(name, sym, (expr as TArrayConstantExpr).EvalAsTData, 0);
+         end else if typ.Size>1 then
             sym := TConstSymbol.Create(name, typ, TConstExpr(expr).Data, TConstExpr(expr).Addr)
-         else if typ is TArraySymbol then
-            sym:=TStaticArraySymbol.Create(name, typ, 0, TArraySymbol(typ).typ.Size-1)
          else sym := TConstSymbol.Create(name, typ, expr.Eval);
          FProg.Table.AddSymbol(sym);
          if coSymbolDictionary in FCompilerOptions then
@@ -1575,9 +1576,13 @@ begin
           Result := ReadSymbol(GetVarParamExpr(TVarParamSymbol(sym)), IsWrite)
         else if sym is TConstParamSymbol then
           Result := ReadSymbol(GetConstParamExpr(TConstParamSymbol(sym)), IsWrite)
-        else if sym is TConstSymbol then
-          Result := ReadSymbol(TConstExpr.CreateTyped(FProg, sym.Typ, TConstSymbol(sym).Data), IsWrite)
-        else if sym is TDataSymbol then
+        else if sym is TConstSymbol then begin
+          if sym.Typ.Typ is TArraySymbol then begin
+            Result := ReadSymbol(TConstExpr.CreateTyped(FProg, sym.Typ.Typ, TConstSymbol(sym).Data), IsWrite)
+          end else begin
+            Result := ReadSymbol(TConstExpr.CreateTyped(FProg, sym.Typ, TConstSymbol(sym).Data), IsWrite)
+          end;
+        end else if sym is TDataSymbol then
         begin
           if sym.Typ is TFuncSymbol then
             Result := ReadFunc(TFuncSymbol(sym.Typ), IsWrite, GetVarExpr(TDataSymbol(sym)))
@@ -2421,6 +2426,8 @@ begin
       if not FTok.TestDelete(ttARIGHT) then
         FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
     end;
+    if Optimize then
+      Result := Result.Optimize as TArrayConstantExpr;
   except
     Result.Free;
     raise;

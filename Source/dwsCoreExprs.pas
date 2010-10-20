@@ -192,8 +192,10 @@ type
      procedure Prepare(ElementTyp : TSymbol);
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function Eval: Variant; override;
+     function EvalAsTData : TData;
      function EvalAsVarRecArray : TVarRecArrayContainer;
      procedure Initialize; override;
+     function Optimize : TNoPosExpr; override;
      function IsConstant : Boolean; override;
    end;
 
@@ -1439,7 +1441,7 @@ var
    x : Integer;
    elemExpr : TNoPosExpr;
 begin
-   if FTyp.Typ <> ElementTyp then begin
+   if (ElementTyp<>nil) and (FTyp.Typ <> ElementTyp) then begin
       // need a compatibility check here maybe???
       (FTyp as TStaticArraySymbol).Typ:=ElementTyp;
    end;
@@ -1495,6 +1497,20 @@ begin
   Result := FArrayAddr + 1;
 end;
 
+// EvalAsTData
+//
+function TArrayConstantExpr.EvalAsTData : TData;
+var
+   i : Integer;
+   expr : TNoPosExpr;
+begin
+   SetLength(Result, FElementExprs.Count);
+   for i:=0 to FElementExprs.Count-1 do begin
+      expr:=TNoPosExpr(FElementExprs.List[i]);
+      Result[i]:=expr.Eval;
+   end;
+end;
+
 // EvalAsVarRecArray
 //
 function TArrayConstantExpr.EvalAsVarRecArray : TVarRecArrayContainer;
@@ -1516,6 +1532,20 @@ begin
   inherited;
   for i:=0 to FElementExprs.Count-1 do
      TNoPosExpr(FElementExprs.List[i]).Initialize;
+end;
+
+// Optimize
+//
+function TArrayConstantExpr.Optimize : TNoPosExpr;
+var
+   i : Integer;
+   expr : TNoPosExpr;
+begin
+   Result:=Self;
+   for i:=0 to FElementExprs.Count-1 do begin
+      expr:=TNoPosExpr(FElementExprs.List[i]);
+      FElementExprs.List[i]:=expr.Optimize;
+   end;
 end;
 
 // IsConstant
