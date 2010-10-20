@@ -34,6 +34,10 @@ type
       function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
    end;
 
+   TOddFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
+   end;
+
    TSinFunc = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
@@ -232,6 +236,13 @@ function TDecFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 begin
    Result:=args.AsInteger[0]-args.AsInteger[1];
    args.AsInteger[0]:=Result;
+end;
+
+{ TOddFunc }
+
+function TOddFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
+begin
+   Result:=Odd(args.AsInteger[0]);
 end;
 
 { TSinFunc }
@@ -538,6 +549,7 @@ initialization
 
    RegisterInternalIntFunction(TIncFunc, 'Inc', ['@a', cInteger, 'b', cInteger], True);
    RegisterInternalIntFunction(TDecFunc, 'Dec', ['@a', cInteger, 'b', cInteger], True);
+   RegisterInternalBoolFunction(TOddFunc, 'Odd', ['i', cInteger], True);
 
    RegisterInternalFloatFunction(TSinFunc, 'Sin', ['a', cFloat], True);
    RegisterInternalFloatFunction(TSinhFunc, 'Sinh', ['a', cFloat], True);
