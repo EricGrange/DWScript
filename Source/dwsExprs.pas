@@ -520,7 +520,10 @@ type
     property FuncSym: TFuncSymbol read FFunc;
    end;
 
-   TPushOperatorType = (potUnknown, potAddr, potResultString, potResult, potData);
+   TPushOperatorType = (potUnknown,
+                        potAddr, potTempAddr,
+                        potResultString, potResult,
+                        potData);
    PPushOperator = ^TPushOperator;
    TPushOperator = packed record
       FStackAddr: Integer;
@@ -528,10 +531,12 @@ type
       FTypeParamSym: TSymbol;  // TSymbol / TPushOperatorType union
 
       procedure InitPushAddr(StackAddr: Integer; ArgExpr: TNoPosExpr);
+      procedure InitPushTempAddr(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushResult(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushData(StackAddr: Integer; ArgExpr: TNoPosExpr; ParamSym: TSymbol);
       procedure Execute(stack : TStack);
       procedure ExecuteAddr(stack : TStack);
+      procedure ExecuteTempAddr(stack : TStack);
       procedure ExecuteResult(stack : TStack);
       procedure ExecuteResultString(stack : TStack);
       procedure ExecuteData(stack : TStack);
@@ -2455,6 +2460,15 @@ begin
    FArgExpr:=ArgExpr;
 end;
 
+// InitPushAddr
+//
+procedure TPushOperator.InitPushTempAddr(StackAddr: Integer; ArgExpr: TNoPosExpr);
+begin
+   FTypeParamSym:=TSymbol(potTempAddr);
+   FStackAddr:=StackAddr;
+   FArgExpr:=ArgExpr;
+end;
+
 // InitPushResult
 //
 procedure TPushOperator.InitPushResult(StackAddr: Integer; ArgExpr: TNoPosExpr);
@@ -2481,6 +2495,8 @@ procedure TPushOperator.Execute(stack : TStack);
 begin
    if FTypeParamSym=TSymbol(potAddr) then
       ExecuteAddr(stack)
+   else if FTypeParamSym=TSymbol(potTempAddr) then
+      ExecuteTempAddr(stack)
    else if FTypeParamSym=TSymbol(potResultString) then
       ExecuteResultString(stack)
    else if FTypeParamSym=TSymbol(potResult) then
@@ -2527,6 +2543,19 @@ var
    vpd: IVarParamData;
 begin
    vpd := TVarParamData.Create(TDataExpr(FArgExpr).Data, TDataExpr(FArgExpr).Addr);
+   stack.WriteValue(stack.StackPointer + FStackAddr, vpd);
+end;
+
+// ExecuteTempAddr
+//
+procedure TPushOperator.ExecuteTempAddr(stack : TStack);
+var
+   vpd : IVarParamData;
+   data : TData;
+begin
+   SetLength(data, 1);
+   data[0]:=FArgExpr.Eval;
+   vpd := TVarParamData.Create(data, 0);
    stack.WriteValue(stack.StackPointer + FStackAddr, vpd);
 end;
 
@@ -2715,12 +2744,16 @@ begin
       arg := TNoPosExpr(FArgs.ExprBase[x]);
       param := TParamSymbol(FFunc.Params[x]);
       if arg is TDataExpr then begin
-         if (param is TByRefParamSymbol) then begin
+         if param is TByRefParamSymbol then begin
             pushOperator.InitPushAddr(param.StackAddr, arg)
          end else if param.Size > 1 then
             pushOperator.InitPushData(param.StackAddr, TDataExpr(arg), param)
          else pushOperator.InitPushResult(param.StackAddr, arg)
-      end else pushOperator.InitPushResult(param.StackAddr, arg);
+      end else begin
+         if param is TByRefParamSymbol then
+            pushOperator.InitPushTempAddr(param.StackAddr, arg)
+         else pushOperator.InitPushResult(param.StackAddr, arg);
+      end;
    end;
 
    if Assigned(FInitResultExpr) then
