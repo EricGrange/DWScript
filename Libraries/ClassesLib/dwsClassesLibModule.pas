@@ -3,8 +3,7 @@ unit dwsClassesLibModule;
 interface
 
 uses
-  Windows, Messages, SysUtils, Graphics, Controls, Forms, Dialogs,
-  dwsComp, dwsExprs, Classes, Contnrs, dwsHashtables, dwsSymbols,
+  Classes, SysUtils, dwsComp, dwsExprs, dwsHashtables, dwsSymbols,
   dwsClasses, dwsFileSystem;
 
 type
@@ -177,9 +176,6 @@ type
   end;
 
 procedure Register;
-
-var
-  dwsClassesLib: TdwsClassesLib;
 
 implementation
 

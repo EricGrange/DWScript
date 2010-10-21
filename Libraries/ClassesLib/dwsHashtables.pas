@@ -2,6 +2,8 @@ unit dwsHashtables;
 
 interface
 
+uses SysUtils;
+
 type
   ValueType = IUnknown;
 
@@ -73,9 +75,6 @@ type
   end;
 
 implementation
-
-uses
-  SysUtils;
 
 var
   HashTable: array[#0..#255] of Byte;
