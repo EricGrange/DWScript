@@ -1,0 +1,5 @@
+PrintLn('Got '+IntToStr(ParamCount)+' parameters');
+
+var i : Integer;
+for i:=0 to ParamCount-1 do
+   PrintLn(IntToStr(i)+': '+ParamStr(i));
