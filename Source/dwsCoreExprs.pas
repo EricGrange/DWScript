@@ -209,6 +209,7 @@ type
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TNoPosExpr);
      destructor Destroy; override;
      procedure Initialize; override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
 
    EScriptOutOfBounds = class (EScriptError);
@@ -217,7 +218,7 @@ type
    TStaticArrayExpr = class(TArrayExpr)
    private
      FLowBound: Integer;
-     FLastIndex: Integer;
+     FCount: Integer;
    protected
      function GetAddr: Integer; override;
      function GetData: TData; override;
@@ -1341,13 +1342,23 @@ begin
   inherited;
 end;
 
+// TypeCheckNoPos
+//
+procedure TArrayExpr.TypeCheckNoPos(const aPos : TScriptPos);
+begin
+   inherited;
+   FBaseExpr.TypeCheckNoPos(aPos);
+   FIndexExpr.TypeCheckNoPos(aPos);
+   FTyp:=FBaseExpr.Typ.Typ;
+end;
+
 { TStaticArrayExpr }
 
 constructor TStaticArrayExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TNoPosExpr; LowBound, HighBound: Integer);
 begin
-  inherited Create(Prog, Pos, BaseExpr, IndexExpr);
-  FLowBound := LowBound;
-  FLastIndex := HighBound - LowBound;
+   inherited Create(Prog, Pos, BaseExpr, IndexExpr);
+   FLowBound:=LowBound;
+   FCount:=HighBound-LowBound+1;
 end;
 
 function TStaticArrayExpr.GetAddr: Integer;
@@ -1357,11 +1368,10 @@ begin
    // Get index
    index := FIndexExpr.Eval - FLowBound;
 
-   if Cardinal(index)>Cardinal(FLastIndex) then begin
-      if index > FLastIndex then
+   if Cardinal(index)>=Cardinal(FCount) then begin
+      if index>=FCount then
          raise EScriptOutOfBounds.Create(RTE_UpperBoundExceeded)
-      else if index < 0 then
-         raise EScriptOutOfBounds.Create(RTE_LowerBoundExceeded);
+      else raise EScriptOutOfBounds.Create(RTE_LowerBoundExceeded);
    end;
    // Calculate the address
    Result := FBaseExpr.Addr + (index * FElementSize);
@@ -1564,9 +1574,13 @@ end;
 //
 procedure TArrayConstantExpr.TypeCheckNoPos(const aPos : TScriptPos);
 var
-  x: Integer;
-  expr : TNoPosExpr;
+   x: Integer;
+   expr : TNoPosExpr;
 begin
+   if FElementExprs.Count=0 then begin
+      (FTyp as TStaticArraySymbol).Typ:=Prog.TypVariant;
+      Exit;
+   end;
    for x:=0 to FElementExprs.Count - 1 do begin
       expr:=TNoPosExpr(FElementExprs.List[x]);
       expr.TypeCheckNoPos(aPos);
