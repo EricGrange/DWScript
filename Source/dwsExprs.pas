@@ -1421,15 +1421,17 @@ begin
 
     // Stack
     FStack.Reset;
-    FStack.Push(
-      FGlobalAddrGenerator.DataSize +
-      FAddrGenerator.DataSize);
-    FStack.SaveBp(0, FStack.BasePointer);
 
     FInfo := TProgramInfo.Create(FTable, Self);
 
     // Result
     FResult.InitializeProgram(Self);
+
+    // allocate global stack space
+    FStack.Push(
+      FGlobalAddrGenerator.DataSize +
+      FAddrGenerator.DataSize);
+    FStack.SaveBp(0, FStack.BasePointer);
 
     FProgramState := psRunning;
 
@@ -1664,7 +1666,7 @@ end;
 
 function TdwsProgram.GetGlobalAddr(DataSize: Integer): Integer;
 begin
-  Result := FRoot.FAddrGenerator.GetStackAddr(DataSize);
+  Result := FRoot.FGlobalAddrGenerator.GetStackAddr(DataSize);
 end;
 
 procedure TdwsProgram.DestroyScriptObj(const ScriptObj: IScriptObj);
