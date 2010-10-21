@@ -1351,7 +1351,7 @@ begin
    end else if FTok.HasTokens then begin
       // Read a single instruction
       Result:=ReadInstr;
-   end;
+   end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndOfBlockExpected);
 end;
 
 function TdwsCompiler.ReadInstr: TNoResultExpr;
