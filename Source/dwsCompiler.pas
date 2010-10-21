@@ -1792,6 +1792,7 @@ function TdwsCompiler.ReadSymbol(Expr: TNoPosExpr; IsWrite: Boolean): TNoPosExpr
    var
       indexExpr: TNoPosExpr;
       baseType: TTypeSymbol;
+      arraySymbol : TStaticArraySymbol;
    begin
       FTok.KillToken;
 
@@ -1806,10 +1807,11 @@ function TdwsCompiler.ReadSymbol(Expr: TNoPosExpr; IsWrite: Boolean): TNoPosExpr
          baseType := BaseExpr.BaseType;
 
          try
-            if baseType is TStaticArraySymbol then
+            if baseType is TStaticArraySymbol then begin
+               arraySymbol:=TStaticArraySymbol(baseType);
                Result := TStaticArrayExpr.Create(FProg, FTok.HotPos, BaseExpr, indexExpr,
-                                                 TStaticArraySymbol(baseType).LowBound, TStaticArraySymbol(baseType).HighBound)
-            else if baseType is TDynamicArraySymbol then
+                                                 arraySymbol.LowBound, arraySymbol.HighBound)
+            end else if baseType is TDynamicArraySymbol then
                Result := TDynamicArrayExpr.Create(FProg, FTok.HotPos, BaseExpr, indexExpr)
             else FMsgs.AddCompilerStop(FTok.HotPos, RTE_TooManyIndices);
          except
