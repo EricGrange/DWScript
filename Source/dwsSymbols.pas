@@ -2568,6 +2568,7 @@ procedure TStaticArraySymbol.AddElement;
 begin
    Inc(FHighBound);
    Inc(FElementCount);
+   FSize := FElementCount * Typ.Size;
 end;
 
 function TStaticArraySymbol.GetCaption;
