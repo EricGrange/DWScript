@@ -534,7 +534,15 @@ type
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
-   // left := const right;
+   // left := [constant array];
+   TAssignArrayConstantExpr = class(TAssignDataExpr)
+   protected
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TArrayConstantExpr);
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+
+   // var left := const right;
    TAssignConstDataToVarExpr = class(TAssignDataExpr)
    public
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr);
@@ -2744,6 +2752,19 @@ end;
 procedure TAssignDataExpr.EvalNoResult(var status : TExecutionStatusResult);
 begin
    FLeft.AssignDataExpr(TDataExpr(FRight));
+end;
+
+{ TAssignArrayConstantExpr }
+
+constructor TAssignArrayConstantExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
+                                            Left : TDataExpr; Right: TArrayConstantExpr);
+begin
+  inherited Create(Prog, Pos, Left, Right);
+end;
+
+procedure TAssignArrayConstantExpr.EvalNoResult(var status : TExecutionStatusResult);
+begin
+   FLeft.AssignData(TArrayConstantExpr(FRight).EvalAsTData, 0);
 end;
 
 { TAssignConstDataToVarExpr }

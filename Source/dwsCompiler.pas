@@ -4442,9 +4442,11 @@ begin
       if (right is TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
          if right is TFuncExpr then
             TFuncExpr(right).SetResultAddr;
-         Result := TAssignDataExpr.Create(FProg, pos, Left, right)
+         if right is TArrayConstantExpr then
+            Result := TAssignArrayConstantExpr.Create(FProg, pos, left, TArrayConstantExpr(right))
+         else Result := TAssignDataExpr.Create(FProg, pos, left, right)
       end else begin
-         Result:=TAssignExpr.Create(FProg, pos, Left, TDataExpr(right));
+         Result:=TAssignExpr.Create(FProg, pos, left, TDataExpr(right));
       end;
 
       Result.TypeCheck;
