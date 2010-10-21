@@ -5,12 +5,13 @@ program dwsRunner;
 {$APPTYPE CONSOLE}
 
 uses
-   Classes, SysUtils, dwsComp, dwsCompiler, dwsExprs,
+   Classes, SysUtils, dwsComp, dwsCompiler, dwsExprs, dwsClassesLibModule,
    dwsMathFunctions, dwsStringFunctions, dwsTimeFunctions, dwsVariantFunctions;
 
 var
    sl : TStringList;
    script : TDelphiWebScript;
+   classesLibModule : TdwsClassesLib;
    prog : TdwsProgram;
    i : Integer;
    params : array of Variant;
@@ -25,8 +26,11 @@ begin
    end;
    try
       script:=TDelphiWebScript.Create(nil);
+      classesLibModule:=TdwsClassesLib.Create(nil);
       sl:=TStringList.Create;
       try
+         classesLibModule.Script:=script;
+
          sl.LoadFromFile(ParamStr(1));
          prog:=script.Compile(sl.Text);
          try
@@ -46,6 +50,7 @@ begin
          end;
       finally
          sl.Free;
+         classesLibModule.Free;
          script.Free;
       end;
    except
