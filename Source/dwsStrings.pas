@@ -146,7 +146,6 @@ const
   CPE_VarParameterExpected = 'Parameter %d - Var-parameter expected';
   CPE_ConstParameterExpected = 'Parameter %d - Const-parameter expected';
   CPE_ValueParameterExpected = 'Parameter %d - Value-parameter expected';
-  CPE_DefaultVarParam = 'Default Parameter must not be a var-parameter';
 
   // Arrays
   CPE_ArrayBoundNotAConstant = 'Bound isn''t a constant expression';
@@ -221,6 +220,7 @@ const
   CPE_TypeForParamNotFound = 'Type "%s" not found for parameter "%s" of function "%s"';
   CPE_VarParamCantHaveDefaultValue = 'var parameter can''t have a default value';
   CPE_ConstParamCantHaveDefaultValue = 'const parameter can''t have a default value';
+  CPE_OpenArrayParamMustBeConst = 'open array parameter must be const';
   CPE_FieldExists = 'There is already a field with name "%s"';
   CPE_PropertyExists = 'There is already a property with name "%s"';
   CPE_MethodExists = 'There is already a method with name "%s"';

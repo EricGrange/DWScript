@@ -39,6 +39,9 @@ type
       public
          VarRecArray : array of TVarRec;
 
+         constructor Create; overload;
+         constructor Create(const variantArray : array of Variant); overload;
+
          procedure Add(const v : Variant);
          procedure AddBoolean(const b : Boolean);
          procedure AddInteger(const i : Int64);
@@ -57,6 +60,23 @@ implementation
 // ------------------
 // ------------------ TVarRecArrayContainer ------------------
 // ------------------
+
+// Create
+//
+constructor TVarRecArrayContainer.Create;
+begin
+end;
+
+// Create
+//
+constructor TVarRecArrayContainer.Create(const variantArray : array of Variant);
+var
+   i : Integer;
+begin
+   Create;
+   for i:=Low(variantArray) to High(variantArray) do
+      Add(variantArray[i]);
+end;
 
 // AddVarRec
 //

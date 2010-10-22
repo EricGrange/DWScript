@@ -1574,9 +1574,9 @@ begin
         // "Variables"
         else if sym is TVarParamSymbol then
           Result := ReadSymbol(GetVarParamExpr(TVarParamSymbol(sym)), IsWrite)
-        else if sym is TConstParamSymbol then
+        else if sym is TConstParamSymbol then begin
           Result := ReadSymbol(GetConstParamExpr(TConstParamSymbol(sym)), IsWrite)
-        else if sym is TConstSymbol then begin
+        end else if sym is TConstSymbol then begin
           if sym.Typ.Typ is TArraySymbol then begin
             Result := ReadSymbol(TConstExpr.CreateTyped(FProg, sym.Typ.Typ, TConstSymbol(sym).Data), IsWrite)
           end else begin
@@ -1788,10 +1788,10 @@ function TdwsCompiler.ReadSymbol(Expr: TNoPosExpr; IsWrite: Boolean): TNoPosExpr
       else Result := nil;
    end;
 
-   function ReadArrayExpr(var BaseExpr: TDataExpr): TArrayExpr;
+   function ReadArrayExpr(var baseExpr : TDataExpr) : TArrayExpr;
    var
-      indexExpr: TNoPosExpr;
-      baseType: TTypeSymbol;
+      indexExpr : TNoPosExpr;
+      baseType : TTypeSymbol;
       arraySymbol : TStaticArraySymbol;
    begin
       FTok.KillToken;
@@ -1804,22 +1804,26 @@ function TdwsCompiler.ReadSymbol(Expr: TNoPosExpr; IsWrite: Boolean): TNoPosExpr
       // There is at one index expression
       repeat
          indexExpr := ReadExpr;
-         baseType := BaseExpr.BaseType;
+         baseType := baseExpr.BaseType;
 
          try
             if baseType is TStaticArraySymbol then begin
                arraySymbol:=TStaticArraySymbol(baseType);
-               Result := TStaticArrayExpr.Create(FProg, FTok.HotPos, BaseExpr, indexExpr,
-                                                 arraySymbol.LowBound, arraySymbol.HighBound)
+               if arraySymbol is TOpenArraySymbol then begin
+                  Result := TOpenArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
+               end else begin
+                  Result := TStaticArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+                                                    arraySymbol.LowBound, arraySymbol.HighBound)
+               end;
             end else if baseType is TDynamicArraySymbol then
-               Result := TDynamicArrayExpr.Create(FProg, FTok.HotPos, BaseExpr, indexExpr)
+               Result := TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
             else FMsgs.AddCompilerStop(FTok.HotPos, RTE_TooManyIndices);
          except
             indexExpr.Free;
             raise;
          end;
 
-         BaseExpr := Result;
+         baseExpr := Result;
       until not FTok.TestDelete(ttCOMMA);
 
       if not FTok.TestDelete(ttARIGHT) then
@@ -2333,85 +2337,94 @@ begin
    end;
 end;
 
-function TdwsCompiler.ReadArray(const TypeName: string): TTypeSymbol;
+// ReadArray
+//
+function TdwsCompiler.ReadArray(const TypeName: String): TTypeSymbol;
 var
-  x: Integer;
-  min, max: TNoPosExprList;
-  typ: TSymbol;
-  hotPos : TScriptPos;
+   x: Integer;
+   min, max: TNoPosExprList;
+   typ: TSymbol;
+   hotPos : TScriptPos;
 begin
-  min := TNoPosExprList.Create;
-  max := TNoPosExprList.Create;
-  try
+   min := TNoPosExprList.Create;
+   max := TNoPosExprList.Create;
+   try
 
-    if FTok.TestDelete(ttALEFT) then
-    begin
+      if FTok.TestDelete(ttALEFT) then begin
 
-      repeat
-        // Lower bound
-        hotPos:=FTok.HotPos;
-        min.Insert0(ReadExpr);
+         repeat
+            // Lower bound
+            hotPos:=FTok.HotPos;
+            min.Insert0(ReadExpr);
 
-        if not (min[0].IsConstant) then
-          FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotAConstant);
+            if not (min[0].IsConstant) then
+               FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotAConstant);
 
-        if not (min[0].Typ = FProg.TypInteger) then
-          FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotInteger);
+            if not (min[0].Typ = FProg.TypInteger) then
+               FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotInteger);
 
-        if not FTok.TestDelete(ttDOTDOT) then
-          FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotDotExpected);
+            if not FTok.TestDelete(ttDOTDOT) then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotDotExpected);
 
-        // Upper bound
-        hotPos:=FTok.HotPos;
-        max.Insert0(ReadExpr);
+            // Upper bound
+            hotPos:=FTok.HotPos;
+            max.Insert0(ReadExpr);
 
-        if not (max[0].IsConstant) then
-          FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotAConstant);
+            if not (max[0].IsConstant) then
+               FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotAConstant);
 
-        if not (max[0].Typ = FProg.TypInteger) then
-          FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotInteger);
+            if not (max[0].Typ = FProg.TypInteger) then
+               FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotInteger);
 
-        if max[0].EvalAsInteger < min[0].EvalAsInteger then
-          FMsgs.AddCompilerStop(hotPos, CPE_LowerBoundBiggerThanUpperBound);
+            if max[0].EvalAsInteger < min[0].EvalAsInteger then
+               FMsgs.AddCompilerStop(hotPos, CPE_LowerBoundBiggerThanUpperBound);
 
-        if FTok.Test(ttARIGHT) then
-          Break;
-      until not FTok.TestDelete(ttCOMMA);
+            if FTok.Test(ttARIGHT) then
+               Break;
+         until not FTok.TestDelete(ttCOMMA);
 
-      if not FTok.TestDelete(ttARIGHT) then
-        FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
-    end;
-
-    if not FTok.TestDelete(ttOF) then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_OfExpected);
-
-    typ := ReadType('');
-
-    if min.Count > 0 then
-    begin
-      // initialize innermost array
-      Result := TStaticArraySymbol.Create('', typ, min[0].EvalAsInteger, max[0].EvalAsInteger);
-      try
-        // add outer arrays
-        Assert(FProg.Table is TProgramSymbolTable);
-        for x := 1 to min.Count - 1 do begin
-          TProgramSymbolTable(FProg.Table).AddToDestructionList(Result);
-          Result := TStaticArraySymbol.Create('', Result, min[x].EvalAsInteger, max[x].EvalAsInteger);
-        end;
-
-        // only outermost array is named
-        Result.SetName(TypeName);
-      except
-        Result.Free;
-        raise;
+         if not FTok.TestDelete(ttARIGHT) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
       end;
-    end
-    else
-      Result := TDynamicArraySymbol.Create(TypeName, typ);
-  finally
-    min.Free;
-    max.Free;
-  end;
+
+      if not FTok.TestDelete(ttOF) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_OfExpected);
+
+      if FTok.TestDelete(ttCONST) then begin
+
+         Result := TOpenArraySymbol.Create(TypeName, FProg.TypVariant);
+
+      end else begin
+
+         typ := ReadType('');
+
+         if min.Count > 0 then begin
+            // initialize innermost array
+            Result := TStaticArraySymbol.Create('', typ, min[0].EvalAsInteger, max[0].EvalAsInteger);
+            try
+               // add outer arrays
+               Assert(FProg.Table is TProgramSymbolTable);
+               for x := 1 to min.Count - 1 do begin
+                  TProgramSymbolTable(FProg.Table).AddToDestructionList(Result);
+                  Result := TStaticArraySymbol.Create('', Result, min[x].EvalAsInteger, max[x].EvalAsInteger);
+               end;
+
+               // only outermost array is named
+               Result.SetName(TypeName);
+            except
+               Result.Free;
+               raise;
+            end;
+         end else begin
+            Result := TDynamicArraySymbol.Create(TypeName, typ);
+         end;
+
+      end;
+
+   finally
+      min.Free;
+      max.Free;
+   end;
 end;
 
 function TdwsCompiler.ReadArrayConstant: TArrayConstantExpr;
@@ -3497,104 +3510,97 @@ end;
 
 procedure TdwsCompiler.ReadParams(Proc: TFuncSymbol; ParamsToDictionary: Boolean);
 var
-  i : Integer;
-  names: TStringList;
-  Typ: TSymbol;
-  varpar, constpar: Boolean;
-  PosArray: TScriptPosArray;
-  sym: TParamSymbol;
-  defaultExpr : TNoPosExpr;
+   i : Integer;
+   names: TStringList;
+   Typ: TSymbol;
+   varpar, constpar: Boolean;
+   PosArray: TScriptPosArray;
+   sym: TParamSymbol;
+   defaultExpr : TNoPosExpr;
 begin
-  if FTok.TestDelete(ttBLEFT) then
-  begin
-    if not FTok.TestDelete(ttBRIGHT) then
-    begin
-      // At least one argument was found
-      names := TStringList.Create;
-      try
-        repeat
-          varpar := FTok.TestDelete(ttVAR);
+   if FTok.TestDelete(ttBLEFT) then begin
+      if not FTok.TestDelete(ttBRIGHT) then begin
+         // At least one argument was found
+         names := TStringList.Create;
+         try
+            repeat
+               varpar := FTok.TestDelete(ttVAR);
 
-          if not varpar then
-          begin
-            constpar := FTok.TestDelete(ttCONST);
-          end
-          else
-            constpar := False;
+               if not varpar then
+                  constpar := FTok.TestDelete(ttCONST)
+               else constpar := False;
 
-          // Conditionally pass in dynamic array
-          if ParamsToDictionary and (coSymbolDictionary in FCompilerOptions) then
-            ReadNameList(names, PosArray)     // use overloaded version
-          else
-            ReadNameList(names);
+               // Conditionally pass in dynamic array
+               if ParamsToDictionary and (coSymbolDictionary in FCompilerOptions) then
+                  ReadNameList(names, PosArray)     // use overloaded version
+               else ReadNameList(names);
 
-          if not FTok.TestDelete(ttCOLON) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected)
-          else
-          begin
-            defaultExpr := nil;
-            Typ := ReadType('');
-            try
-              if FTok.TestDelete(ttEQ) then
-              begin
-                if varpar and not constpar then
-                  FMsgs.AddCompilerError(FTok.HotPos, CPE_DefaultVarParam);
+               if not FTok.TestDelete(ttCOLON) then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected)
+               else begin
+                  defaultExpr := nil;
+                  Typ := ReadType('');
+                  try
+                     if (not constpar) and (typ is TOpenArraySymbol) then
+                        FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamMustBeConst);
 
-                defaultExpr := ReadExpr;
+                     if FTok.TestDelete(ttEQ) then begin
+                        if varpar then
+                           FMsgs.AddCompilerError(FTok.HotPos, CPE_VarParamCantHaveDefaultValue);
+                        if constpar then
+                           FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstParamCantHaveDefaultValue);
 
-                if not (defaultExpr is TConstExpr) then begin
-                  FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
-                  FreeAndNil(defaultExpr);
-                end;
+                        defaultExpr := ReadExpr;
 
-                if not Typ.IsCompatible(defaultExpr.Typ) then begin
-                  FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleTypes,
-                                            [Typ.Caption,defaultExpr.Typ.Caption]);
-                  FreeAndNil(defaultExpr);
-                end;
-              end;
+                        if not (defaultExpr is TConstExpr) then begin
+                           FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+                           FreeAndNil(defaultExpr);
+                        end;
 
-              for i:=0 to names.Count-1 do begin
-                if varpar then begin
-                   if Assigned(defaultExpr) then
-                      FMsgs.AddCompilerError(FTok.HotPos, CPE_VarParamCantHaveDefaultValue);
-                   sym := TVarParamSymbol.Create(names[i], Typ)
-                end else if constpar then begin
-                   if Assigned(defaultExpr) then
-                      FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstParamCantHaveDefaultValue);
-                   sym := TConstParamSymbol.Create(names[i], Typ)
-                end else begin
-                   if Assigned(defaultExpr) then begin
-                      sym := TParamSymbolWithDefaultValue.Create(names[i], Typ);
-                      TParamSymbolWithDefaultValue(sym).SetDefaultValue(TConstExpr(defaultExpr).Data,
-                                                                        TConstExpr(defaultExpr).Addr);
-                   end else begin
-                      sym := TParamSymbol.Create(names[i], Typ);
-                   end;
-                end;
+                        if not Typ.IsCompatible(defaultExpr.Typ) then begin
+                           FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleTypes,
+                                                     [Typ.Caption,defaultExpr.Typ.Caption]);
+                           FreeAndNil(defaultExpr);
+                        end;
+                     end;
 
-                Proc.AddParam(sym);
-                // Enter Field symbol in dictionary
-                if ParamsToDictionary and (coSymbolDictionary in FCompilerOptions) then
-                begin
-                  FProg.SymbolDictionary.Add(sym, PosArray[i], [suDeclaration]);  // add variable symbol
-                  FProg.SymbolDictionary.Add(Typ, FTok.HotPos);  // add type symbol
-                end;
-              end;
-            finally
-              FreeAndNil(defaultExpr);
-            end;
-          end;
-        until not FTok.TestDelete(ttSEMI);
+                     for i:=0 to names.Count-1 do begin
+                        if varpar then begin
+                           sym := TVarParamSymbol.Create(names[i], Typ)
+                        end else if constpar then begin
+                           sym := TConstParamSymbol.Create(names[i], Typ)
+                        end else begin
+                           if Assigned(defaultExpr) then begin
+                              sym := TParamSymbolWithDefaultValue.Create(names[i], Typ);
+                              TParamSymbolWithDefaultValue(sym).SetDefaultValue(TConstExpr(defaultExpr).Data,
+                                                                                TConstExpr(defaultExpr).Addr);
+                           end else begin
+                              sym := TParamSymbol.Create(names[i], Typ);
+                           end;
+                        end;
 
-      finally
-        names.Free;
+                        Proc.AddParam(sym);
+
+                        // Enter Field symbol in dictionary
+                        if ParamsToDictionary and (coSymbolDictionary in FCompilerOptions) then begin
+                           FProg.SymbolDictionary.Add(sym, PosArray[i], [suDeclaration]);  // add variable symbol
+                           FProg.SymbolDictionary.Add(Typ, FTok.HotPos);  // add type symbol
+                        end;
+                     end;
+                  finally
+                     FreeAndNil(defaultExpr);
+                  end;
+               end;
+            until not FTok.TestDelete(ttSEMI);
+
+         finally
+            names.Free;
+         end;
+
+         if not FTok.TestDelete(ttBRIGHT) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
       end;
-
-      if not FTok.TestDelete(ttBRIGHT) then
-        FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-    end;
-  end
+   end;
 end;
 
 function TdwsCompiler.ReadSwitch(const SwitchName: string): Boolean;
@@ -3973,7 +3979,7 @@ begin
   SystemTable.AddSymbol(TConstSymbol.Create('Null', varSym, Null));
   SystemTable.AddSymbol(TConstSymbol.Create('Unassigned', varSym, Unassigned));
 
-  SystemTable.AddSymbol(TOpenArraySymbol.Create('array of Variant', varSym));
+  SystemTable.AddSymbol(TOpenArraySymbol.Create('array of const', varSym));
 
   // Create "root" class TObject
   clsObject := TClassSymbol.Create(SYS_TOBJECT);
@@ -4477,9 +4483,6 @@ begin
     FTok.KillToken;
     FTok.KillToken;
   end else begin
-//    if FTok.Test(ttName) then
-//       argExpr := ReadName
-//    else
     argExpr := ReadExpr;
     argTyp := argExpr.BaseType;
   end;
@@ -4496,7 +4499,11 @@ begin
     case SpecialKind of
       skLength:
         begin
-          if (argTyp is TDynamicArraySymbol) and Assigned(argExpr) then
+          if argTyp is TOpenArraySymbol then begin
+            if argExpr=nil then
+               FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+            Result:=TOpenArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), 0)
+          end else if (argTyp is TDynamicArraySymbol) and Assigned(argExpr) then
             Result:=TArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), 0)
           else if ((argTyp=FProg.TypString) or (argTyp=FProg.TypVariant)) and Assigned(argExpr) then
             Result:=TStringLengthExpr.Create(FProg, NamePos, argExpr)
@@ -4520,7 +4527,11 @@ begin
         end;
       skHigh:
         begin
-          if argTyp is TDynamicArraySymbol and Assigned(argExpr) then
+          if argTyp is TOpenArraySymbol then begin
+            if argExpr=nil then
+               FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+            Result:=TOpenArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), -1)
+          end else if argTyp is TDynamicArraySymbol and Assigned(argExpr) then
             Result := TArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), -1)
           else if (argTyp = FProg.TypString) and Assigned(argExpr) then
             Result := TStringLengthExpr.Create(FProg, NamePos, argExpr)

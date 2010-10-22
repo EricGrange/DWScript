@@ -2589,6 +2589,7 @@ end;
 constructor TOpenArraySymbol.Create(const Name: string; Typ: TSymbol);
 begin
    inherited Create(Name, Typ, 0, -1);
+   FSize:=1;
 end;
 
 // IsCompatible

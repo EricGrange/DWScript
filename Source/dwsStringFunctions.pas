@@ -23,7 +23,7 @@ unit dwsStringFunctions;
 interface
 
 uses Classes, SysUtils, Variants, StrUtils, dwsFunctions, dwsSymbols, dwsStrings,
-   dwsUtils, dwsCoreExprs;
+   dwsUtils, dwsExprs, dwsCoreExprs;
 
 type
 
@@ -710,10 +710,17 @@ var
    expr : TExprBase;
    varRecs : TVarRecArrayContainer;
 begin
+   varRecs:=nil;
    expr:=args.ExprBase[1];
-   if not (expr is TArrayConstantExpr) then // current implementation, limitation may be relaxed later
-      raise EScriptException.Create(CPE_ConstantExpressionExpected);
-   varRecs:=TArrayConstantExpr(expr).EvalAsVarRecArray;
+   if expr is TArrayConstantExpr then
+      varRecs:=TArrayConstantExpr(expr).EvalAsVarRecArray
+   else if expr is TVarParamExpr then begin
+      if TVarParamExpr(expr).Typ is TOpenArraySymbol then
+         varRecs:=TVarRecArrayContainer.Create(TVarParamExpr(expr).Data)
+   end;
+   // current implementation, limitations may be relaxed later
+   if varRecs=nil then
+      raise EScriptException.Create('Constant expression or open array expected');
    try
       Result:=Format(args.AsString[0], varRecs.VarRecArray);
    finally
@@ -742,7 +749,7 @@ initialization
    RegisterInternalFloatFunction(TStrToFloatDefFunc, 'StrToFloatDef', ['str', cString, 'def', cFloat], True);
    RegisterInternalFloatFunction(TStrToFloatDefFunc, 'VarToFloatDef', ['val', cVariant, 'def', cFloat], True);
 
-   RegisterInternalStringFunction(TFormatFunc, 'Format', ['fmt', cString, 'args', 'array of Variant'], True);
+   RegisterInternalStringFunction(TFormatFunc, 'Format', ['fmt', cString, 'args', 'array of const'], True);
 
    RegisterInternalStringFunction(TChrFunc, 'Chr', ['x', cInteger], True);
    RegisterInternalIntFunction(TOrdFunc, 'Ord', ['s', cString], True);

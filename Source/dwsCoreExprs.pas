@@ -203,8 +203,8 @@ type
    TArrayExpr = class(TPosDataExpr)
    protected
      FBaseExpr: TDataExpr;
-     FElementSize: Integer;
      FIndexExpr: TNoPosExpr;
+     FElementSize: Integer;
    public
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TNoPosExpr);
      destructor Destroy; override;
@@ -224,6 +224,13 @@ type
      function GetData: TData; override;
    public
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TNoPosExpr; LowBound, HighBound: Integer);
+   end;
+
+   // Array expressions x[index] for open arrays
+   TOpenArrayExpr = class(TArrayExpr)
+   protected
+     function GetAddr: Integer; override;
+     function GetData: TData; override;
    end;
 
    // Array expressions: x[index0] for dynamic arrays
@@ -280,6 +287,12 @@ type
   public
     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TDataExpr; Delta: Integer);
     function Eval: Variant; override;
+    function EvalAsInteger : Int64; override;
+  end;
+
+  // length of an open array
+  TOpenArrayLengthExpr = class(TArrayLengthExpr)
+  public
     function EvalAsInteger : Int64; override;
   end;
 
@@ -1390,6 +1403,31 @@ begin
   Result := FBaseExpr.Data;
 end;
 
+{ TOpenArrayExpr }
+
+function TOpenArrayExpr.GetAddr: Integer;
+var
+   index, len: Integer;
+begin
+   index := FIndexExpr.EvalAsInteger;
+
+   len := Length(FBaseExpr.Data);
+
+   if Cardinal(index)>=Cardinal(len) then begin
+      if index >= len then
+         AddExecutionStop(RTE_UpperBoundExceeded)
+      else if index < 0 then
+         AddExecutionStop(RTE_LowerBoundExceeded);
+   end;
+   // Calculate the address
+   Result := index;
+end;
+
+function TOpenArrayExpr.GetData: TData;
+begin
+  Result := FBaseExpr.Data;
+end;
+
 { TDynamicArrayExpr }
 
 function TDynamicArrayExpr.GetAddr: Integer;
@@ -1759,6 +1797,13 @@ var
 begin
   adr := TDataExpr(FExpr).Data[TDataExpr(FExpr).Addr];
   Result := TDataExpr(FExpr).Data[adr - 1] + FDelta;
+end;
+
+{ TOpenArrayLengthExpr }
+
+function TOpenArrayLengthExpr.EvalAsInteger : Int64;
+begin
+  Result := Length(TDataExpr(FExpr).Data)+FDelta;
 end;
 
 { TStringArrayOpExpr }
