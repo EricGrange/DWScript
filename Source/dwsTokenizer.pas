@@ -149,7 +149,6 @@ type
      function ConsumeToken: TToken;
      procedure ReadToken;
      procedure ReadNextToken;
-     procedure AddCompilerStopFmt(const formatString : String; const args: array of const);
      procedure AddCompilerStopFmtTokenBuffer(const formatString : String);
 
    public
@@ -581,18 +580,14 @@ begin
     FNextToken := ConsumeToken;
 end;
 
-// AddCompilerStopFmt
-//
-procedure TTokenizer.AddCompilerStopFmt(const formatString : String; const args: array of const);
-begin
-   FMsgs.AddCompilerStopFmt(FPos, formatString, args);
-end;
-
 // AddCompilerStopFmtTokenBuffer
 //
 procedure TTokenizer.AddCompilerStopFmtTokenBuffer(const formatString : String);
+var
+   buf : String;
 begin
-   AddCompilerStopFmt(formatString, [tokenBuf.ToStr]);
+   buf:=tokenBuf.ToStr;
+   FMsgs.AddCompilerStopFmt(FPos, formatString, [buf]);
 end;
 
 function TTokenizer.GetToken: TToken;
@@ -726,7 +721,7 @@ begin
 
          // Handle Errors
          if trnsClassType=TErrorTransition then
-            AddCompilerStopFmt('%s ("%s")', [TErrorTransition(trns).ErrorMessage, ch]);
+            FMsgs.AddCompilerStopFmt(FPos, '%s ("%s")', [TErrorTransition(trns).ErrorMessage, ch]);
 
          // A new token begins
          if trns.Start and (Result.FPos.Line <= 0) then
