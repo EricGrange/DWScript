@@ -78,6 +78,10 @@ type
     function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
   end;
 
+  TDayOfTheWeekFunc = class(TInternalMagicIntFunction)
+    function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+  end;
+
   TFormatDateTimeFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
@@ -127,6 +131,10 @@ type
   end;
 
   TDayOfYearFunc = class(TInternalMagicIntFunction)
+    function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+  end;
+
+  TMonthOfYearFunc = class(TInternalMagicIntFunction)
     function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
   end;
 
@@ -252,6 +260,13 @@ end;
 function TDayOfWeekFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 begin
    Result:=DayOfWeek(args.AsFloat[0]);
+end;
+
+{ TDayOfTheWeekFunc }
+
+function TDayOfTheWeekFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+begin
+   Result:=(DayOfWeek(args.AsFloat[0])+5) mod 7 +1;
 end;
 
 { TFormatDateTimeFunc }
@@ -404,6 +419,20 @@ begin
    Result:=Trunc(dt-EncodeDate(y, 1, 1))+1;
 end;
 
+{ TMonthOfYearFunc }
+
+function TMonthOfYearFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+var
+   dt : TDateTime;
+   y, m, d : Word;
+begin
+   dt:=args.AsFloat[0];
+   if dt=0 then
+      dt:=Now;
+   DecodeDate(dt, y, m, d);
+   Result:=m;
+end;
+
 { TDayOfMonthFunc }
 
 function TDayOfMonthFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
@@ -515,6 +544,7 @@ initialization
    RegisterInternalFloatFunction(TStrToTimeDefFunc, 'StrToTimeDef', ['str', cString, 'def', cDateTime]);
 
    RegisterInternalIntFunction(TDayOfWeekFunc, 'DayOfWeek', ['dt', cDateTime]);
+   RegisterInternalIntFunction(TDayOfTheWeekFunc, 'DayOfTheWeek', ['dt', cDateTime]);
    RegisterInternalStringFunction(TFormatDateTimeFunc, 'FormatDateTime', ['frm', cString, 'dt', cDateTime]);
    RegisterInternalBoolFunction(TIsLeapYearFunc, 'IsLeapYear', ['year', cInteger]);
    RegisterInternalFunction(TIncMonthFunc, 'IncMonth', ['dt', cDateTime, 'nb', cInteger], cDateTime);
@@ -529,6 +559,7 @@ initialization
    RegisterInternalFloatFunction(TFirstDayOfNextMonthFunc, 'FirstDayOfNextMonth', ['dt', cDateTime]);
    RegisterInternalFloatFunction(TFirstDayOfWeekFunc, 'FirstDayOfWeek', ['dt', cDateTime]);
    RegisterInternalIntFunction(TDayOfYearFunc, 'DayOfYear', ['dt', cDateTime]);
+   RegisterInternalIntFunction(TMonthOfYearFunc, 'MonthOfYear', ['dt', cDateTime]);
    RegisterInternalIntFunction(TDayOfMonthFunc, 'DayOfMonth', ['dt', cDateTime]);
 
    RegisterInternalIntFunction(TWeekNumberFunc, 'DateToWeekNumber', ['dt', cDateTime]);
