@@ -40,6 +40,11 @@ type
          procedure SetUp; override;
    end;
 
+   TdwsFuncFunctionsTestsString = class (TdwsFunctionsTestsBase)
+      public
+         procedure SetUp; override;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -213,6 +218,18 @@ begin
    inherited;
 end;
 
+// ------------------
+// ------------------ TdwsFuncFunctionsTestsString ------------------
+// ------------------
+
+// SetUp
+//
+procedure TdwsFuncFunctionsTestsString.SetUp;
+begin
+   FFolder:='FunctionsString';
+   inherited;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -223,5 +240,6 @@ initialization
 
    TestFramework.RegisterTest('FunctionsMath', TdwsFuncFunctionsTestsMath.Suite);
    TestFramework.RegisterTest('FunctionsTime', TdwsFuncFunctionsTestsTime.Suite);
+   TestFramework.RegisterTest('FunctionsString', TdwsFuncFunctionsTestsString.Suite);
 
 end.
