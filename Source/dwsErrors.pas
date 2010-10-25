@@ -23,18 +23,22 @@ unit dwsErrors;
 interface
 
 uses
-  Classes, SysUtils, dwsStrings;
+   Classes, SysUtils, dwsStrings, Contnrs;
 
 type
 
-   TMsgs = class;
+   TdwsMessageList = class;
 
+   // TSourceFile
+   //
    TSourceFile = class
       public
-         SourceFile: string;
-         SourceCode: string;
+         SourceFile: String;
+         SourceCode: String;
    end;
 
+   // TScriptPos
+   //
    PScriptPos = ^TScriptPos;
    TScriptPos = packed record
       private
@@ -59,131 +63,155 @@ type
    end;
    TScriptPosArray = array of TScriptPos; // dynamic array that can hold ScriptPos settings (needed for ReadNameList)
 
-  TdwsMsg = class
-  private
-    FMsgs: TMsgs;
-    FText: string;
-  public
-    constructor Create(Msgs: TMsgs; Text: string);
-    function AsInfo: string; virtual;
-    function AsString: string; virtual;
-  end;
+   // TdwsMessage
+   //
+   TdwsMessage = class
+      private
+         FMsgs: TdwsMessageList;
+         FText: String;
 
-  // Messages without position
-  TInfoMsg = class(TdwsMsg)
-    function AsInfo: string; override;
-  end;
+      public
+         constructor Create(Msgs: TdwsMessageList; const Text: String);
 
-  TErrorMsg = class(TdwsMsg)
-    function AsInfo: string; override;
-  end;
+         function SameMessageAs(aMsg : TdwsMessage) : Boolean; virtual;
+         function AsInfo: String; virtual;
+         property Text : String read FText;
+   end;
 
-  // Messages with position
-  TScriptMsg = class(TdwsMsg)
-    Pos: TScriptPos;
-    constructor Create(Msgs: TMsgs; const Text: string; const P: TScriptPos); overload;
-    function AsInfo: string; override;
-  end;
+   // Messages without position
 
-  TScriptMsgClass = class of TScriptMsg;
+   TInfoMessage = class(TdwsMessage)
+      function AsInfo: String; override;
+   end;
 
-  THintMsg = class(TScriptMsg)
-    function AsInfo: string; override;
-  end;
+   TErrorMessage = class(TdwsMessage)
+      function AsInfo: String; override;
+   end;
 
-  TWarningMsg = class(TScriptMsg)
-    function AsInfo: string; override;
-  end;
+   // Messages with position
 
-  TCompilerErrorMsg = class(TScriptMsg)
-    function AsInfo: string; override;
-  end;
+   // TScriptMessage
+   //
+   TScriptMessage = class(TdwsMessage)
+      Pos: TScriptPos;
+      constructor Create(Msgs: TdwsMessageList; const Text: String; const P: TScriptPos); overload;
+      function SameMessageAs(aMsg : TdwsMessage) : Boolean; override;
+      function AsInfo: String; override;
+   end;
 
-  TSyntaxErrorMsg = class(TScriptMsg)
-    function AsInfo: string; override;
-  end;
+   TScriptMessageClass = class of TScriptMessage;
 
-  TExecutionErrorMsg = class(TScriptMsg)
-    function AsInfo: string; override;
-  end;
+   THintMessage = class(TScriptMessage)
+      function AsInfo: String; override;
+   end;
 
-  TLastScriptError = record
-    Pos : TScriptPos;
-    ExceptObj : TObject;
-  end;
+   TWarningMessage = class(TScriptMessage)
+      function AsInfo: String; override;
+   end;
 
-  TMsgs = class
-  private
-    FSourceFiles: TList;
-    FMessages: TList;
-    FHasErrors: Boolean;
-    FHasCompilerErrors: Boolean;
-    FHasExecutionErrors: Boolean;
-    FLastScriptError: TLastScriptError;
+   TCompilerErrorMessage = class(TScriptMessage)
+      function AsInfo: String; override;
+   end;
 
-    function GetMsg(Index: Integer): TdwsMsg;
-    function GetMsgCount: Integer;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    function RegisterSourceFile(const SourceFile: string; const SourceCode: string): TSourceFile;
-    function GetSourceFile(SourceFile: string): TSourceFile;
+   TSyntaxErrorMessage = class(TScriptMessage)
+      function AsInfo: String; override;
+   end;
 
-    procedure AddInfo(const Text: string);
-    procedure AddError(const Text: string);
-    procedure AddErrorStop(const Text: string);
+   TExecutionErrorMessage = class(TScriptMessage)
+      function AsInfo: String; override;
+   end;
 
-    // Called in compiler
-    procedure AddCompilerInfo(const Text: string);
-    procedure AddCompilerHint(const Pos: TScriptPos; const Text: string);
-    procedure AddCompilerWarning(const Pos: TScriptPos; const Text: string);
-    procedure AddCompilerWarningFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
-    procedure AddCompilerError(const Pos: TScriptPos; const Text: string; msgClass : TScriptMsgClass); overload;
-    procedure AddCompilerError(const Pos: TScriptPos; const Text: string); overload;
-    procedure AddCompilerErrorFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const; msgClass : TScriptMsgClass); overload;
-    procedure AddCompilerErrorFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const); overload;
-    procedure AddCompilerStop(const Pos: TScriptPos; const Text: string; msgClass : TScriptMsgClass); overload;
-    procedure AddCompilerStop(const Pos: TScriptPos; const Text: string); overload;
-    procedure AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const; msgClass : TScriptMsgClass); overload;
-    procedure AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const); overload;
+   // TLastScriptError
+   //
+   TLastScriptError = record
+      Pos : TScriptPos;
+      ExceptObj : TObject;
+   end;
 
-    // Called during execution
-    procedure AddExecutionError(const Text: string); overload;
-    procedure AddExecutionError(const Pos: TScriptPos; const Text: string); overload;
-    procedure AddExecutionStop(const Pos: TScriptPos; const Text: string);
+   // TdwsMessageList
+   //
+   TdwsMessageList = class
+      private
+         FSourceFiles: TObjectList;
+         FMessageList: TObjectList;
+         FHasErrors : Boolean;
+         FHasCompilerErrors : Boolean;
+         FHasExecutionErrors : Boolean;
+         FLastScriptError : TLastScriptError;
 
-    procedure SetLastScriptError(const Pos: TScriptPos; ExceptObj : TObject = nil);
+         function GetMsg(Index: Integer): TdwsMessage;
+         function GetMsgCount: Integer;
+         procedure AddMsg(aMessage: TdwsMessage);
 
-    procedure Clear;
+      public
+         constructor Create;
+         destructor Destroy; override;
 
-    function AsInfo: string;
-    function AsString: string;
+         function RegisterSourceFile(const SourceFile: String; const SourceCode: String): TSourceFile;
+         function GetSourceFile(const aSourceFile: String): TSourceFile;
 
-    property Msgs[Index: Integer]: TdwsMsg read GetMsg; default;
-    property Count: Integer read GetMsgCount;
-    property HasErrors: Boolean read FHasErrors;
-    property HasCompilerErrors: Boolean read FHasCompilerErrors;
-    property HasExecutionErrors: Boolean read FHasExecutionErrors;
-  end;
+         procedure AddInfo(const Text: String);
+         procedure AddError(const Text: String);
+         procedure AddErrorStop(const Text: String);
 
-  // The script initialization failed because a class needs one or more methods
-  // to be implemented.
-  EClassIncompleteError = class(Exception)
-  private
-    FClassSymObj: TObject;   // object that refers to the TClassSymbol
-  public
-    property ClassSymObj: TObject read FClassSymObj write FClassSymObj;
-  end;
+         // Called in compiler
 
-  EClassMethodImplIncompleteError = class(EClassIncompleteError);
-  EClassPropertyIncompleteError = class(EClassIncompleteError);
+         procedure AddCompilerInfo(const Text: String);
 
-  // The script has to be stopped because of an error
-  EScriptError = class(Exception);
+         procedure AddCompilerHint(const Pos: TScriptPos; const Text: String);
 
-  ECompileError = class(EScriptError);
+         procedure AddCompilerWarning(const Pos: TScriptPos; const Text: String);
+         procedure AddCompilerWarningFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
 
-  EReraise = class(Exception);
+         procedure AddCompilerError(const Pos: TScriptPos; const Text: String; messageClass : TScriptMessageClass); overload;
+         procedure AddCompilerError(const Pos: TScriptPos; const Text: String); overload;
+         procedure AddCompilerErrorFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const; messageClass : TScriptMessageClass); overload;
+         procedure AddCompilerErrorFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const); overload;
+
+         procedure AddCompilerStop(const Pos: TScriptPos; const Text: String; messageClass : TScriptMessageClass); overload;
+         procedure AddCompilerStop(const Pos: TScriptPos; const Text: String); overload;
+         procedure AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const; messageClass : TScriptMessageClass); overload;
+         procedure AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const); overload;
+
+         // Called during execution
+
+         procedure AddExecutionError(const Text: String); overload;
+         procedure AddExecutionError(const Pos: TScriptPos; const Text: String); overload;
+
+         procedure AddExecutionStop(const Pos: TScriptPos; const Text: String);
+
+         procedure SetLastScriptError(const Pos: TScriptPos; ExceptObj : TObject = nil);
+
+         procedure Clear;
+
+         function AsInfo: String;
+
+         property Msgs[Index: Integer]: TdwsMessage read GetMsg; default;
+         property Count: Integer read GetMsgCount;
+         property HasErrors: Boolean read FHasErrors;
+         property HasCompilerErrors: Boolean read FHasCompilerErrors;
+         property HasExecutionErrors: Boolean read FHasExecutionErrors;
+   end;
+
+   // The script initialization failed because a class needs one or more methods
+   // to be implemented.
+   EClassIncompleteError = class(Exception)
+      private
+         FClassSymObj: TObject;   // object that refers to the TClassSymbol
+
+      public
+         property ClassSymObj: TObject read FClassSymObj write FClassSymObj;
+   end;
+
+   EClassMethodImplIncompleteError = class(EClassIncompleteError);
+   EClassPropertyIncompleteError = class(EClassIncompleteError);
+
+   // The script has to be stopped because of an error
+   EScriptError = class(Exception);
+
+   ECompileError = class(EScriptError);
+
+   EReraise = class(Exception);
 
 const
    cNullPos: TScriptPos = (FLineCol: 0; SourceFile: nil);
@@ -197,7 +225,7 @@ implementation
 // ------------------------------------------------------------------
 
 const
-  cNoScriptError: TLastScriptError = (Pos: (FLineCol: 0; SourceFile: nil); ExceptObj: nil);
+   cNoScriptError: TLastScriptError = (Pos: (FLineCol: 0; SourceFile: nil); ExceptObj: nil);
 
 // ------------------
 // ------------------ TScriptPos ------------------
@@ -254,325 +282,397 @@ begin
 end;
 
 // ------------------
-// ------------------ TMsgs ------------------
+// ------------------ TdwsMessageList ------------------
 // ------------------
 
-constructor TMsgs.Create;
+// Create
+//
+constructor TdwsMessageList.Create;
 begin
-  FSourceFiles := TList.Create;
-  FMessages := TList.Create;
-  FLastScriptError := cNoScriptError;
+   FSourceFiles:=TObjectList.Create;
+   FMessageList:=TObjectList.Create;
+   FLastScriptError:=cNoScriptError;
 end;
 
-destructor TMsgs.Destroy;
+// Destroy
+//
+destructor TdwsMessageList.Destroy;
+begin
+   Clear;
+   FSourceFiles.Free;
+   FMessageList.Free;
+   inherited;
+end;
+
+// Clear
+//
+procedure TdwsMessageList.Clear;
+begin
+   FMessageList.Clear;
+   FHasErrors:=False;
+   FHasCompilerErrors:=False;
+   FHasExecutionErrors:=False;
+   FLastScriptError:=cNoScriptError;
+end;
+
+// GetMsg
+//
+function TdwsMessageList.GetMsg(Index: Integer): TdwsMessage;
+begin
+   Result:=TdwsMessage(FMessageList[Index]);
+end;
+
+// GetMsgCount
+//
+function TdwsMessageList.GetMsgCount: Integer;
+begin
+   Result:=FMessageList.Count;
+end;
+
+// AddMsg
+//
+procedure TdwsMessageList.AddMsg(aMessage: TdwsMessage);
 var
-  x: Integer;
+   i : Integer;
+   msg : TdwsMessage;
 begin
-  Clear;
-  for x := 0 to FSourceFiles.Count - 1 do
-    TSourceFile(FSourceFiles[x]).Free;
-  FSourceFiles.Free;
-  FMessages.Free;
-  inherited;
+   for i:=0 to FMessageList.Count-1 do begin
+      msg:=TdwsMessage(FMessageList[i]);
+      if msg.SameMessageAs(aMessage) then begin
+         aMessage.Free;
+         Exit;
+      end;
+   end;
+   FMessageList.Add(aMessage);
 end;
 
-function TMsgs.RegisterSourceFile(const SourceFile: string; const SourceCode:
-  string): TSourceFile;
+// RegisterSourceFile
+//
+function TdwsMessageList.RegisterSourceFile(const SourceFile: String; const SourceCode: String): TSourceFile;
 var
-  sf: TSourceFile;
+   sf: TSourceFile;
 begin
-  sf := GetSourceFile(SourceFile);
-  if not Assigned(sf) or (sf.SourceCode <> SourceCode) then
-  begin
-    Result := TSourceFile.Create;
-    if SourceFile = MSG_MainModule then
-      Result.SourceFile := MSG_MainModule
-    else
-      Result.SourceFile := AnsiLowerCase(ExpandFileName(SourceFile));
-    Result.SourceCode := SourceCode;
-    FSourceFiles.Add(Result);
-  end
-  else
-    Result := sf;
+   sf:=GetSourceFile(SourceFile);
+   if not Assigned(sf) or (sf.SourceCode <> SourceCode) then begin
+      Result:=TSourceFile.Create;
+      if SourceFile=MSG_MainModule then
+         Result.SourceFile:=MSG_MainModule
+      else Result.SourceFile:=AnsiLowerCase(ExpandFileName(SourceFile));
+      Result.SourceCode:=SourceCode;
+      FSourceFiles.Add(Result);
+   end else Result:=sf;
 end;
 
-function TMsgs.GetSourceFile(SourceFile: string): TSourceFile;
+// GetSourceFile
+//
+function TdwsMessageList.GetSourceFile(const aSourceFile: String): TSourceFile;
 var
-  x: Integer;
+   i : Integer;
+   sourceFile : String;
 begin
-  Result := nil;
-  if SourceFile <> MSG_MainModule then
-    SourceFile := AnsiLowerCase(ExpandFileName(SourceFile));
-  for x := 0 to FSourceFiles.Count - 1 do
-    if TSourceFile(FSourceFiles[x]).SourceFile = SourceFile then
-    begin
-      Result := TSourceFile(FSourceFiles[x]);
-      exit;
-    end;
+   if aSourceFile<>MSG_MainModule then
+      sourceFile:=AnsiLowerCase(ExpandFileName(aSourceFile))
+   else sourceFile:=aSourceFile;
+   for i:=0 to FSourceFiles.Count-1 do begin
+      Result:=TSourceFile(FSourceFiles[i]);
+      if Result.SourceFile=SourceFile then Exit;
+   end;
+   Result:=nil;
 end;
 
-procedure TMsgs.AddInfo;
+// AddInfo
+//
+procedure TdwsMessageList.AddInfo(const Text: String);
 begin
-  FMessages.Add(TInfoMsg.Create(Self, Text));
+   AddMsg(TInfoMessage.Create(Self, Text));
 end;
 
-procedure TMsgs.AddError(const Text: string);
+// AddError
+//
+procedure TdwsMessageList.AddError(const Text: String);
 begin
-  FMessages.Add(TErrorMsg.Create(Self, Text));
-  FHasErrors := True;
+   AddMsg(TErrorMessage.Create(Self, Text));
+   FHasErrors:=True;
 end;
 
-procedure TMsgs.AddErrorStop(const Text: string);
+// AddErrorStop
+//
+procedure TdwsMessageList.AddErrorStop(const Text: String);
 begin
-  AddError(Text);
-  raise EScriptError.Create('')
+   AddError(Text);
+   raise EScriptError.Create('')
 end;
 
-procedure TMsgs.AddCompilerInfo;
+// AddCompilerInfo
+//
+procedure TdwsMessageList.AddCompilerInfo;
 begin
-  FMessages.Add(TInfoMsg.Create(Self, Text));
+   AddMsg(TInfoMessage.Create(Self, Text));
 end;
 
-procedure TMsgs.AddCompilerHint(const Pos: TScriptPos; const Text: string);
+// AddCompilerHint
+//
+procedure TdwsMessageList.AddCompilerHint(const Pos: TScriptPos; const Text: String);
 begin
-  FMessages.Add(THintMsg.Create(Self, Text, Pos));
+   AddMsg(THintMessage.Create(Self, Text, Pos));
 end;
 
-procedure TMsgs.AddCompilerWarning(const Pos: TScriptPos; const Text: string);
+// AddCompilerWarning
+//
+procedure TdwsMessageList.AddCompilerWarning(const Pos: TScriptPos; const Text: String);
 begin
-  FMessages.Add(TWarningMsg.Create(Self, Text, Pos));
+   AddMsg(TWarningMessage.Create(Self, Text, Pos));
 end;
 
 // AddCompilerWarningFmt
 //
-procedure TMsgs.AddCompilerWarningFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
+procedure TdwsMessageList.AddCompilerWarningFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
 begin
    AddCompilerWarning(Pos, Format(textFormat, args));
 end;
 
 // AddCompilerError
 //
-procedure TMsgs.AddCompilerError(const Pos: TScriptPos; const Text: string; msgClass : TScriptMsgClass);
-var
-   lastMsg : TdwsMsg;
+procedure TdwsMessageList.AddCompilerError(const Pos: TScriptPos; const Text: String; messageClass : TScriptMessageClass);
 begin
-   if FMessages.Count>0 then begin
-      lastMsg:=TdwsMsg(FMessages[FMessages.Count-1]);
-      if lastMsg.ClassType=msgClass then begin
-         if (lastMsg.FText=Text) and (lastMsg as TScriptMsg).Pos.SamePosAs(Pos) then Exit;
-      end;
-   end;
-   FMessages.Add(msgClass.Create(Self, Text, Pos));
-   FHasCompilerErrors := True;
+   AddMsg(messageClass.Create(Self, Text, Pos));
+   FHasCompilerErrors:=True;
 end;
 
 // AddCompilerError
 //
-procedure TMsgs.AddCompilerError(const Pos: TScriptPos; const Text: string);
+procedure TdwsMessageList.AddCompilerError(const Pos: TScriptPos; const Text: String);
 begin
-   AddCompilerError(Pos, Text, TSyntaxErrorMsg);
+   AddCompilerError(Pos, Text, TSyntaxErrorMessage);
 end;
 
 // AddCompilerErrorFmt
 //
-procedure TMsgs.AddCompilerErrorFmt(const Pos: TScriptPos;
-   const textFormat: String; const args: array of const; msgClass : TScriptMsgClass);
+procedure TdwsMessageList.AddCompilerErrorFmt(const Pos: TScriptPos;
+   const textFormat: String; const args: array of const; messageClass : TScriptMessageClass);
 begin
-   AddCompilerError(Pos, Format(textFormat, args), msgClass);
+   AddCompilerError(Pos, Format(textFormat, args), messageClass);
 end;
 
 // AddCompilerErrorFmt
 //
-procedure TMsgs.AddCompilerErrorFmt(const Pos: TScriptPos;
+procedure TdwsMessageList.AddCompilerErrorFmt(const Pos: TScriptPos;
    const textFormat: String; const args: array of const);
 begin
-   AddCompilerErrorFmt(Pos, textFormat, args, TSyntaxErrorMsg);
+   AddCompilerErrorFmt(Pos, textFormat, args, TSyntaxErrorMessage);
 end;
 
 // AddCompilerStop
 //
-procedure TMsgs.AddCompilerStop(const Pos: TScriptPos; const Text: string; msgClass : TScriptMsgClass);
+procedure TdwsMessageList.AddCompilerStop(const Pos: TScriptPos; const Text: String; messageClass : TScriptMessageClass);
 begin
-   AddCompilerError(Pos, Text, msgClass);
+   AddCompilerError(Pos, Text, messageClass);
    raise ECompileError.Create(Text);
 end;
 
 // AddCompilerStop
 //
-procedure TMsgs.AddCompilerStop(const Pos: TScriptPos; const Text: string);
+procedure TdwsMessageList.AddCompilerStop(const Pos: TScriptPos; const Text: String);
 begin
-   AddCompilerStop(Pos, Text, TSyntaxErrorMsg);
+   AddCompilerStop(Pos, Text, TSyntaxErrorMessage);
 end;
 
 // AddCompilerStopFmt
 //
-procedure TMsgs.AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String;
-                                   const args: array of const; msgClass : TScriptMsgClass);
+procedure TdwsMessageList.AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String;
+                                   const args: array of const; messageClass : TScriptMessageClass);
 begin
-   AddCompilerStop(Pos, Format(textFormat, args), msgClass);
+   AddCompilerStop(Pos, Format(textFormat, args), messageClass);
 end;
 
 // AddCompilerStopFmt
 //
-procedure TMsgs.AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
+procedure TdwsMessageList.AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
 begin
-   AddCompilerStop(Pos, Format(textFormat, args), TSyntaxErrorMsg);
+   AddCompilerStop(Pos, Format(textFormat, args), TSyntaxErrorMessage);
 end;
 
-procedure TMsgs.AddExecutionError(const Pos: TScriptPos; const Text: string);
+// AddExecutionError
+//
+procedure TdwsMessageList.AddExecutionError(const Pos: TScriptPos; const Text: String);
 begin
-  FMessages.Add(TExecutionErrorMsg.Create(Self, Text, Pos));
-  FHasExecutionErrors := True;
+   AddMsg(TExecutionErrorMessage.Create(Self, Text, Pos));
+   FHasExecutionErrors:=True;
 end;
 
-procedure TMsgs.AddExecutionError(const Text: string);
+// AddExecutionError
+//
+procedure TdwsMessageList.AddExecutionError(const Text: String);
 begin
    AddExecutionError(FLastScriptError.Pos, Text)
 end;
 
-procedure TMsgs.AddExecutionStop(const Pos: TScriptPos; const Text: string);
+// AddExecutionStop
+//
+procedure TdwsMessageList.AddExecutionStop(const Pos: TScriptPos; const Text: String);
 begin
    if (Count=0) or (Msgs[Count-1].FText<>Text) then
-     AddExecutionError(Pos, Text);
-  raise EScriptError.Create(Text);
+      AddExecutionError(Pos, Text);
+   raise EScriptError.Create(Text);
 end;
 
-procedure TMsgs.Clear;
-var
-  x: Integer;
-begin
-  for x := 0 to FMessages.Count - 1 do
-    TdwsMsg(FMessages[x]).Free;
-  FMessages.Clear;
-  FHasErrors := False;
-  FHasCompilerErrors := False;
-  FHasExecutionErrors := False;
-  FLastScriptError := cNoScriptError;
-end;
-
-function TMsgs.GetMsg(Index: Integer): TdwsMsg;
-begin
-  Result := FMessages[Index];
-end;
-
-function TMsgs.GetMsgCount: Integer;
-begin
-  Result := FMessages.Count;
-end;
-
-procedure TMsgs.SetLastScriptError(const Pos: TScriptPos; ExceptObj : TObject);
+// SetLastScriptError
+//
+procedure TdwsMessageList.SetLastScriptError(const Pos: TScriptPos; ExceptObj : TObject);
 begin
   // new exception or non-NullPos if same Exception
-  if (FLastScriptError.ExceptObj <> ExceptObj)
-     or (FLastScriptError.Pos.Line <= 0) and Assigned(FLastScriptError.ExceptObj) then
-  begin
-    FLastScriptError.Pos := Pos;
-    FLastScriptError.ExceptObj := ExceptObj;
+  if (FLastScriptError.ExceptObj<>ExceptObj)
+     or (FLastScriptError.Pos.Line<=0) and Assigned(FLastScriptError.ExceptObj) then begin
+    FLastScriptError.Pos:=Pos;
+    FLastScriptError.ExceptObj:=ExceptObj;
   end;
 end;
 
-function TMsgs.AsInfo: string;
+// AsInfo
+//
+function TdwsMessageList.AsInfo: String;
 var
-  x: Integer;
+   i: Integer;
 begin
-  Result := '';
-  for x := 0 to Count - 1 do
-    Result := Result + Msgs[x].AsInfo + #13#10
+   Result:='';
+   for i:=0 to Count-1 do
+      Result:=Result+Msgs[i].AsInfo+#13#10
 end;
 
-function TMsgs.AsString: string;
-var
-  x: Integer;
+// ------------------
+// ------------------ TdwsMessage ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsMessage.Create(Msgs: TdwsMessageList; const Text: String);
 begin
-  Result := '';
-  for x := 0 to Count - 1 do
-    Result := Result + Msgs[x].AsString + #13#10
+   FMsgs:=Msgs;
+   FText:=Text;
 end;
 
-{ TdwsMsg }
-
-function TdwsMsg.AsInfo: string;
+// AsInfo
+//
+function TdwsMessage.AsInfo: String;
 begin
-  Result := FText;
+   Result:=FText;
 end;
 
-function TdwsMsg.AsString: string;
+// SameMessageAs
+//
+function TdwsMessage.SameMessageAs(aMsg : TdwsMessage) : Boolean;
 begin
-  Result := FText;
+   Result:=(ClassType=aMsg.ClassType) and (FText=aMsg.FText);
 end;
 
-constructor TdwsMsg.Create;
+// ------------------
+// ------------------ TInfoMessage ------------------
+// ------------------
+
+// AsInfo
+//
+function TInfoMessage.AsInfo: String;
 begin
-  FMsgs := Msgs;
-  FText := Text;
+   Result:=Format(MSG_Info, [inherited AsInfo]);
 end;
 
-{ TInfoMsg }
+// ------------------
+// ------------------ TErrorMessage ------------------
+// ------------------
 
-function TInfoMsg.AsInfo: string;
+// AsInfo
+//
+function TErrorMessage.AsInfo: String;
 begin
-  Result := Format(MSG_Info, [inherited AsInfo]);
+   Result:=Format(MSG_Error, [inherited AsInfo]);
 end;
 
-{ TErrorMsg }
+// ------------------
+// ------------------ TScriptMessage ------------------
+// ------------------
 
-function TErrorMsg.AsInfo: string;
+// Create
+//
+constructor TScriptMessage.Create(Msgs: TdwsMessageList; const Text: String; const P: TScriptPos);
 begin
-  Result := Format(MSG_Error, [inherited AsInfo]);
+   inherited Create(Msgs, Text);
+   Pos:=P;
 end;
 
-{ TScriptMsg }
-
-constructor TScriptMsg.Create(Msgs: TMsgs; const Text: string; const P: TScriptPos);
+// SameMessageAs
+//
+function TScriptMessage.SameMessageAs(aMsg : TdwsMessage) : Boolean;
 begin
-  inherited Create(Msgs, Text);
-  Pos := P;
+   Result:=    inherited SameMessageAs(aMsg)
+           and (Pos.SamePosAs((aMsg as TScriptMessage).Pos));
 end;
 
-function TScriptMsg.AsInfo: string;
+// AsInfo
+//
+function TScriptMessage.AsInfo: String;
 begin
-  if (Pos.Line = cNullPos.Line) and (Pos.Col = cNullPos.Col) then
-    Result := FText
-  else if not Assigned(Pos.SourceFile) or (Pos.SourceFile.SourceFile = MSG_MainModule) then
-    Result := Format(MSG_ScriptMsg, [FText, Pos.Line, Pos.Col])
-  else
-    Result := Format(MSG_ScriptMsgLong, [FText, Pos.Line, Pos.Col,
+   if (Pos.Line=cNullPos.Line) and (Pos.Col=cNullPos.Col) then
+      Result:=FText
+   else if not Assigned(Pos.SourceFile) or (Pos.SourceFile.SourceFile = MSG_MainModule) then
+      Result:=Format(MSG_ScriptMsg, [FText, Pos.Line, Pos.Col])
+   else
+      Result:=Format(MSG_ScriptMsgLong, [FText, Pos.Line, Pos.Col,
                                          ExtractFileName(Pos.SourceFile.SourceFile)])
 end;
 
-{ THintMsg }
+// ------------------
+// ------------------ THintMessage ------------------
+// ------------------
 
-function THintMsg.AsInfo: string;
+// AsInfo
+//
+function THintMessage.AsInfo: String;
 begin
-  Result := Format(MSG_Hint, [inherited AsInfo]);
+   Result:=Format(MSG_Hint, [inherited AsInfo]);
 end;
 
-{ TWarningMsg }
+// ------------------
+// ------------------ TWarningMessage ------------------
+// ------------------
 
-function TWarningMsg.AsInfo: string;
+// AsInfo
+//
+function TWarningMessage.AsInfo: String;
 begin
-  Result := Format(MSG_Warning, [inherited AsInfo]);
+   Result:=Format(MSG_Warning, [inherited AsInfo]);
 end;
 
-{ TCompilerErrorMsg }
+// ------------------
+// ------------------ TCompilerErrorMessage ------------------
+// ------------------
 
-function TCompilerErrorMsg.AsInfo: string;
+// AsInfo
+//
+function TCompilerErrorMessage.AsInfo: String;
 begin
-  Result := Format(MSG_CompileError, [inherited AsInfo]);
+   Result:=Format(MSG_CompileError, [inherited AsInfo]);
 end;
 
-{ TSyntaxErrorMsg }
+// ------------------
+// ------------------ TSyntaxErrorMessage ------------------
+// ------------------
 
-function TSyntaxErrorMsg.AsInfo: string;
+// AsInfo
+//
+function TSyntaxErrorMessage.AsInfo: String;
 begin
-  Result := Format(MSG_SyntaxError, [inherited AsInfo]);
+   Result:=Format(MSG_SyntaxError, [inherited AsInfo]);
 end;
 
-{ TRuntimeErrorMsg }
+// ------------------
+// ------------------ TExecutionErrorMessage ------------------
+// ------------------
 
-function TExecutionErrorMsg.AsInfo: string;
+// AsInfo
+//
+function TExecutionErrorMessage.AsInfo: String;
 begin
-  Result := Format(MSG_RuntimeError, [inherited AsInfo]);
+   Result:=Format(MSG_RuntimeError, [inherited AsInfo]);
 end;
 
 end.

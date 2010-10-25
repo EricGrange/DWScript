@@ -131,7 +131,7 @@ type
      tokenBuf : TTokenBuffer;
      FDefaultPos: TScriptPos;
      FHotPos: TScriptPos;
-     FMsgs: TMsgs;
+     FMsgs: TdwsMessageList;
      FNextToken: TToken;
      FPos: TScriptPos;
      FPosPos : Integer;
@@ -152,7 +152,7 @@ type
      procedure AddCompilerStopFmtTokenBuffer(const formatString : String);
 
    public
-     constructor Create(const Text, SourceFile: string; Msgs: TMsgs);
+     constructor Create(const Text, SourceFile: string; Msgs: TdwsMessageList);
      destructor Destroy; override;
      function GetToken: TToken; inline;
      function HasTokens: Boolean;
@@ -529,7 +529,7 @@ var
 
 { TTokenizer }
 
-constructor TTokenizer.Create(const Text, SourceFile: string; Msgs: TMsgs);
+constructor TTokenizer.Create(const Text, SourceFile: string; Msgs: TdwsMessageList);
 begin
    FText := Text + (cLineTerminator+#0);
    FToken := nil;

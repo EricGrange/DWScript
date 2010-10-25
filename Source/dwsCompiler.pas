@@ -105,7 +105,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function Process(const Text: string; Msgs: TMsgs): string; virtual;
+    function Process(const Text: string; Msgs: TdwsMessageList): string; virtual;
     property SubFilter: TdwsFilter read FSubFilter write SetSubFilter;
     property Dependencies: TStrings read GetDependencies;
   end;
@@ -121,7 +121,7 @@ type
       FCompilerOptions: TCompilerOptions;
       FConnectors: TStrings;
       FFilter: TdwsFilter;
-      FMsgs: TMsgs;
+      FMsgs: TdwsMessageList;
       FOnInclude: TIncludeEvent;
       FProg: TdwsProgram;
       FScriptPaths: TStrings;
@@ -591,7 +591,7 @@ end;
 
 class function TdwsCompiler.Evaluate(AContext: TdwsProgram; const AExpression: string): TNoPosExpr;
 var
-  OldProgMsgs: TMsgs;
+  OldProgMsgs: TdwsMessageList;
 begin
   { This will evaluate an expression by tokenizing it evaluating it in the
     Context provided. }
@@ -604,7 +604,7 @@ begin
       try
         OldProgMsgs := FProg.Msgs;
 
-        FMsgs := TMsgs.Create;
+        FMsgs := TdwsMessageList.Create;
         FProg.Msgs := FMsgs;
         try
           FTok := TTokenizer.Create(AExpression, MSG_MainModule, FMsgs);
@@ -622,7 +622,7 @@ begin
               begin
                 if FMsgs.Count > 0 then
                 begin
-                  E.Message := FMsgs[0].AsString;
+                  E.Message := FMsgs[0].AsInfo;
                   raise;    // change the message and re-raise the EScriptError exception
                 end;
               end;
@@ -4158,7 +4158,7 @@ begin
    try
       if stream=nil then
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncludeFileNotFound,
-                                  [scriptName], TCompilerErrorMsg)
+                                  [scriptName], TCompilerErrorMessage)
       else begin
          sl:=TStringList.Create;
          try
@@ -4244,7 +4244,7 @@ begin
     SetSubFilter(nil);
 end;
 
-function TdwsFilter.Process(const Text: string; Msgs: TMsgs): string;
+function TdwsFilter.Process(const Text: string; Msgs: TdwsMessageList): string;
 begin
   if Assigned(FSubFilter) then
     Result := FSubFilter.Process(Text, Msgs)

@@ -46,7 +46,7 @@ type
     procedure CheckPatterns;
   public
     constructor Create(AOwner: TComponent); override;
-    function Process(const Text: string; Msgs: TMsgs): string; override;
+    function Process(const Text: string; Msgs: TdwsMessageList): string; override;
   published
     property PatternClose: string read FPatternClose write SetPatternClose;
     property PatternEval: string read FPatternEval write SetPatternEval;
@@ -84,7 +84,7 @@ begin
   FPatternEval := '=';
 end;
 
-function TdwsHtmlFilter.Process(const Text: String; Msgs: TMsgs): String;
+function TdwsHtmlFilter.Process(const Text: String; Msgs: TdwsMessageList): String;
 
    procedure StuffString(const str: String; start, stop : Integer;
                          dest : TStringBuilder);

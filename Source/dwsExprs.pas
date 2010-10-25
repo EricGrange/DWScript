@@ -266,7 +266,7 @@ type
     FAddrGenerator: TAddrGeneratorRec;
     FGlobalAddrGenerator: TAddrGeneratorRec;
     FInfo: TProgramInfo;
-    FMsgs: TMsgs;
+    FMsgs: TdwsMessageList;
     FParameters: TData;
     FParent: TdwsProgram;
     FProgramState: TProgramState;
@@ -334,7 +334,7 @@ type
     property Info: TProgramInfo read FInfo;
     property IsDebugging: Boolean read FIsDebugging;
     property Level: Integer read GetLevel;
-    property Msgs: TMsgs read FMsgs write FMsgs;
+    property Msgs: TdwsMessageList read FMsgs write FMsgs;
     property Parameters: TData read FParameters;
     property Parent: TdwsProgram read FParent;
     property ProgramState: TProgramState read FProgramState;
@@ -1348,7 +1348,7 @@ begin
   FResultType := ResultType;
   FProgramState := psUndefined;
 
-  FMsgs := TMsgs.Create;
+  FMsgs := TdwsMessageList.Create;
   FRoot := Self;
 
   // Create the Symbol Dictionary
