@@ -1,0 +1,11 @@
+2010-10-25
+2010-10-25
+DayOfWeek 2
+DayOfTheWeek 1
+DayOfMonth 25
+MonthOfYear 10
+DayOfYear 298
+IsLeapYear 2010 False
+IsLeapYear 2012 True
+2010-10-25 12:34:45.567
+12:34:45.567

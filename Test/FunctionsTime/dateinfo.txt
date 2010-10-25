@@ -1,0 +1,9 @@
+> 2011-10-25
+IncMonth 1 2011-11-25
+IncMonth 3 2012-01-25
+FirstDayOfYear 2011-01-01
+FirstDayOfNextYear 2012-01-01
+FirstDayOfMonth 2011-10-01
+FirstDayOfNextMonth 2011-11-01
+FirstDayOfNextMonth 2 2012-01-01
+FirstDayOfWeek 2011-10-24
