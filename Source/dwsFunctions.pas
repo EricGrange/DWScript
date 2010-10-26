@@ -52,7 +52,7 @@ type
   public
     constructor Create(Table: TSymbolTable; const FuncName: string;
                        const FuncParams: array of string; const FuncType: string;
-                       const isStateLess : Boolean = False); dynamic;
+                       const isStateLess : Boolean = False); virtual;
     procedure Call(Caller: TdwsProgram; Func: TFuncSymbol);
     procedure Execute; virtual; abstract;
   end;
