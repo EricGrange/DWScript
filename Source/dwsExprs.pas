@@ -4813,7 +4813,7 @@ begin
 	inherited;
    FBaseExpr.Initialize;
    for i:=0 to FArgs.Count-1 do
-      TNoPosExpr(FArgs.List).Initialize;
+      TNoPosExpr(FArgs.List[0]).Initialize;
 end;
 
 { TConnectorReadExpr }
