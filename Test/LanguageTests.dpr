@@ -17,7 +17,8 @@ uses
   dwsClasses in '..\Libraries\ClassesLib\dwsClasses.pas',
   dwsClassesLibModule in '..\Libraries\ClassesLib\dwsClassesLibModule.pas' {dwsClassesLib: TDataModule},
   dwsHashtables in '..\Libraries\ClassesLib\dwsHashtables.pas',
-  UdwsFunctionsTests in 'UdwsFunctionsTests.pas';
+  UdwsFunctionsTests in 'UdwsFunctionsTests.pas',
+  UComConnectorTests in 'UCOMConnectorTests.pas';
 
 {$R *.res}
 
