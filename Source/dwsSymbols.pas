@@ -1076,6 +1076,7 @@ end;
 procedure TTightList.Insert(index : Integer; item : Pointer);
 var
    i : Integer;
+   locList : PPointerList;
 begin
    if Cardinal(index)>Cardinal(FCount) then
       RaiseIndexOutOfBounds
@@ -1094,10 +1095,11 @@ begin
       end;
    else
       ReallocMem(FList, (FCount+1)*SizeOf(Pointer));
+      locList:=FList;
       for i:=Count-1 downto index do
-         FList[i+1]:=FList[i];
+         locList[i+1]:=locList[i];
+      locList[index]:=item;
       Inc(FCount);
-      FList[index]:=item;
    end;
 end;
 
@@ -2166,10 +2168,12 @@ end;
 
 procedure TSymbolTable.Initialize;
 var
-   x: Integer;
+   i : Integer;
+   ptrList : PPointerList;
 begin
-   for x := 0 to FSymbols.Count - 1 do
-      TSymbol(FSymbols.List[x]).Initialize;
+   ptrList:=FSymbols.List;
+   for i:=0 to FSymbols.Count-1 do
+      TSymbol(ptrList[i]).Initialize;
 end;
 
 function TSymbolTable.FindLocal(const Name: string): TSymbol;
@@ -2228,7 +2232,7 @@ end;
 function TSymbolTable.FindLocalSorted(const name: string): TSymbol;
 var
    lo, hi, mid, cmpResult: Integer;
-  ptrList : PPointerList;
+   ptrList : PPointerList;
 begin
    lo:=0;
    hi:=FSymbols.Count-1;
@@ -2292,13 +2296,25 @@ begin
 end;
 
 function TSymbolTable.AddSymbol(Sym: TSymbol): Integer;
+var
+   n : Integer;
+   ptrList : PPointerList;
 begin
-   Result := FSymbols.Add(sym);
+   if FSymbolsSorted then begin
+      Result:=0;
+      n:=FSymbols.Count;
+      ptrList:=FSymbols.List;
+      while Result<n do begin
+         if CompareText(TSymbol(ptrList[Result]).Name, Sym.Name)>=0 then
+            Break;
+         Inc(Result);
+      end;
+      FSymbols.Insert(Result, sym);
+   end else Result:=FSymbols.Add(sym);
    if (sym is TDataSymbol) and (FAddrGenerator <> nil) then begin
       TDataSymbol(sym).Level := FAddrGenerator.Level;
       TDataSymbol(sym).StackAddr := FAddrGenerator.GetStackAddr(sym.Size);
    end;
-   FSymbolsSorted:=False;
 end;
 
 function TSymbolTable.Remove(Sym: TSymbol): Integer;
