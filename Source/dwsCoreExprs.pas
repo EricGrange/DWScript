@@ -145,6 +145,7 @@ type
 
      class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant) : TConstExpr; overload; static;
      class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Data: TData) : TConstExpr; overload; static;
+     class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; constSymbol : TConstSymbol) : TConstExpr; overload; static;
    end;
 
    TConstBooleanExpr = class(TConstExpr)
@@ -1244,6 +1245,13 @@ begin
    else Result:=TConstExpr.Create(Prog, Typ, Data);
 end;
 
+// CreateTyped
+//
+class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TSymbol; constSymbol : TConstSymbol) : TConstExpr;
+begin
+   Result:=CreateTyped(Prog, Typ, constSymbol.Data);
+end;
+
 // GetData
 //
 function TConstExpr.GetData: TData;
@@ -1529,6 +1537,8 @@ var
   x: Integer;
   elemSize: Integer;
 begin
+   Assert(False); // at the moment, Eval shouldn't ever be invoked
+
    if FElementExprs.Count>0 then
       Prog.Stack.WriteValue(FArrayAddr, FElementExprs.Count);
 
