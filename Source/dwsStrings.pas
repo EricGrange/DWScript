@@ -383,13 +383,24 @@ implementation
 // ------------------------------------------------------------------
 
 type
-  TStringListCracker = class(TStrings)
-     private
-       FList: PStringItemList;
-  end;
+   TStringListCracker = class (TStrings)
+      private
+         FList: PStringItemList;
+   end;
+
+   TFastCompareStringList = class (TStringList)
+      function CompareStrings(const S1, S2: string): Integer; override;
+   end;
 
 var
    vCharStrings : array [0..127] of TStringList;
+
+// CompareStrings
+//
+function TFastCompareStringList.CompareStrings(const S1, S2: string): Integer;
+begin
+   Result:=CompareStr(S1, S2);
+end;
 
 // UnifyCopyString
 //
@@ -436,9 +447,8 @@ var
    i : Integer;
 begin
    for i:=Low(vCharStrings) to High(vCharStrings) do begin
-      vCharStrings[i]:=TStringList.Create;
+      vCharStrings[i]:=TFastCompareStringList.Create;
       vCharStrings[i].Sorted:=True;
-      vCharStrings[i].CaseSensitive:=True;
    end;
 end;
 
