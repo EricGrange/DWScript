@@ -1498,163 +1498,147 @@ begin
     FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_InheritedMethodNotFound, [Name]);
 end;
 
+// ReadName
+//
 function TdwsCompiler.ReadName(IsWrite: Boolean): TNoPosExpr;
 var
-  name: string;
-  sym: TSymbol;
-  namePos: TScriptPos;
-  varExpr: TDataExpr;
-  fieldExpr: TNoPosExpr;
-  progMeth: TMethodSymbol;
-  baseType: TTypeSymbol;
-  sk: TSpecialKeywordKind;
+   name: string;
+   sym: TSymbol;
+   namePos: TScriptPos;
+   varExpr: TDataExpr;
+   fieldExpr: TNoPosExpr;
+   progMeth: TMethodSymbol;
+   baseType: TTypeSymbol;
+   sk: TSpecialKeywordKind;
 begin
-  Result := nil;
+   Result := nil;
 
-  if FTok.TestDelete(ttINHERITED) then
-  begin
-    // Name with inherited
-    Result := ReadInherited(IsWrite);
-    try
-      Result := ReadSymbol(Result, IsWrite);
-    except
-      Result.Free;
-      raise;
-    end;
-  end
-  else
-  begin
-    // Get name
-    FTok.TestName;
-    name := FTok.GetToken.FString;
-    namePos := FTok.HotPos;
-    FTok.KillToken;
+   if FTok.TestDelete(ttINHERITED) then begin
 
-    // Test for special functions
-    for sk := Low(sk) to High(sk) do
-      if SameText(name, cSpecialKeywordMap[sk]) then
-      begin
-        Result := ReadSpecialFunction(namePos, sk);
-        Break;
-      end;
-
-    if Result = nil then
-    begin
-      // Find name in symboltable
-      sym := FProg.Table.FindSymbol(Name);
+      // Name with inherited
+      Result := ReadInherited(IsWrite);
       try
-
-        baseType := GetBaseType(sym);
-
-        // Add the symbol usage to Dictionary
-        if coSymbolDictionary in FCompilerOptions then
-          FProg.SymbolDictionary.Add(sym, namePos);
-
-        // Unit prefix found
-        if baseType is TUnitSymbol then
-        begin
-          if not FTok.TestDelete(ttDOT) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotExpected);
-          if not FTok.TestName then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-          name := FTok.GetToken.FString;
-          namePos := FTok.HotPos;   // reuse token pos variable
-          FTok.KillToken;
-          sym := TUnitSymbol(baseType).Table.FindLocal(Name);
-          // Already added symbol usage of the unit. Now add for the unit's specified symbol.
-          if coSymbolDictionary in FCompilerOptions then
-            FProg.SymbolDictionary.Add(sym, namePos);
-        end;
-
-        if baseType is TEnumerationSymbol then
-          baseType := TEnumerationSymbol(baseType).Typ.BaseType;
-
-        if not Assigned(sym) then
-          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownName, [name])
-        // "Variables"
-        else if sym is TVarParamSymbol then
-          Result := ReadSymbol(GetVarParamExpr(TVarParamSymbol(sym)), IsWrite)
-        else if sym is TConstParamSymbol then begin
-          Result := ReadSymbol(GetConstParamExpr(TConstParamSymbol(sym)), IsWrite)
-        end else if sym is TConstSymbol then begin
-          if sym.Typ.Typ is TArraySymbol then begin
-            Result := ReadSymbol(TConstExpr.CreateTyped(FProg, sym.Typ.Typ, TConstSymbol(sym).Data), IsWrite)
-          end else begin
-            Result := ReadSymbol(TConstExpr.CreateTyped(FProg, sym.Typ, TConstSymbol(sym).Data), IsWrite)
-          end;
-        end else if sym is TDataSymbol then
-        begin
-          if sym.Typ is TFuncSymbol then
-            Result := ReadFunc(TFuncSymbol(sym.Typ), IsWrite, GetVarExpr(TDataSymbol(sym)))
-          else
-            Result := ReadSymbol(GetVarExpr(TDataSymbol(sym)), IsWrite);
-        end
-        else if sym is TExternalVarSymbol then
-          Result := ReadSymbol(ReadExternalVar(TExternalVarSymbol(sym), IsWrite),
-            IsWrite)
-        // OOP related stuff
-        else if baseType is TClassSymbol then
-        begin
-          if FTok.TestDelete(ttBLEFT) then
-          begin
-            // Cast
-            Result := ReadExpr;
-            Result.Typ := sym;
-            if not (FTok.TestDelete(ttBRIGHT)) then
-              FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-            Result := ReadSymbol(Result, IsWrite);
-          end
-          else
-            Result := ReadSymbol(TConstExpr.CreateTyped(FProg,
-              TClassSymbol(baseType).ClassOf, baseType.Name), IsWrite)
-        end
-        else if sym is TFieldSymbol then
-        begin
-          progMeth := TMethodSymbol(TProcedure(FProg).Func);
-          if progMeth.IsClassMethod then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
-          varExpr := TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym);
-          try
-            fieldExpr:=ReadField(varExpr, TFieldSymbol(sym));
-          except
-            varExpr.Free;
-            raise;
-          end;
-          Result := ReadSymbol(fieldExpr, IsWrite);
-        end
-        else if sym is TPropertySymbol then
-        begin
-          progMeth := TMethodSymbol(TProcedure(FProg).Func);
-          if progMeth.IsClassMethod then
-            varExpr := TConstExpr.CreateTyped(FProg, progMeth.ClassSymbol, nil)
-          else
-            varExpr := TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym);
-          try
-            Result := ReadSymbol(ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite), IsWrite);
-          except
-            varExpr.Free;
-            raise;
-          end;
-        end
-        else if sym is TMethodSymbol then
-        begin
-          Result:=ReadStaticMethod(TMethodSymbol(sym), IsWrite);
-        end
-        // Functions/Procedures
-        else if sym is TFuncSymbol then
-          Result := ReadSymbol(ReadFunc(TFuncSymbol(sym), IsWrite), IsWrite)
-        // Type casts
-        else if sym is TTypeSymbol then
-          Result := ReadTypeCast(namePos, sym)
-        else
-          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownType, [sym.Caption]);
-
+         Result := ReadSymbol(Result, IsWrite);
       except
-        Result.Free;
-        raise;
+         Result.Free;
+         raise;
       end;
-    end;
-  end;
+
+   end else begin
+
+      // Get name
+      FTok.TestName;
+      name := FTok.GetToken.FString;
+      namePos := FTok.HotPos;
+      FTok.KillToken;
+
+      // Test for special functions
+      for sk := Low(sk) to High(sk) do begin
+         if SameText(name, cSpecialKeywordMap[sk]) then begin
+            Result := ReadSpecialFunction(namePos, sk);
+            Break;
+         end;
+      end;
+
+      if Result = nil then begin
+         // Find name in symboltable
+         sym := FProg.Table.FindSymbol(Name);
+         try
+
+            baseType := GetBaseType(sym);
+
+            // Add the symbol usage to Dictionary
+            if coSymbolDictionary in FCompilerOptions then
+               FProg.SymbolDictionary.Add(sym, namePos);
+
+            // Unit prefix found
+            if baseType is TUnitSymbol then begin
+               if not FTok.TestDelete(ttDOT) then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotExpected);
+               if not FTok.TestName then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+               name := FTok.GetToken.FString;
+               namePos := FTok.HotPos;   // reuse token pos variable
+               FTok.KillToken;
+               sym := TUnitSymbol(baseType).Table.FindLocal(Name);
+               // Already added symbol usage of the unit. Now add for the unit's specified symbol.
+               if coSymbolDictionary in FCompilerOptions then
+                  FProg.SymbolDictionary.Add(sym, namePos);
+            end;
+
+            if baseType is TEnumerationSymbol then
+               baseType := TEnumerationSymbol(baseType).Typ.BaseType;
+
+            if not Assigned(sym) then
+               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownName, [name])
+            // "Variables"
+            else if sym is TVarParamSymbol then
+               Result := ReadSymbol(GetVarParamExpr(TVarParamSymbol(sym)), IsWrite)
+            else if sym is TConstParamSymbol then begin
+               Result := ReadSymbol(GetConstParamExpr(TConstParamSymbol(sym)), IsWrite)
+            end else if sym is TConstSymbol then begin
+               if sym.Typ.Typ is TArraySymbol then begin
+                  Result := ReadSymbol(TConstExpr.CreateTyped(FProg, sym.Typ.Typ, TConstSymbol(sym)), IsWrite)
+               end else begin
+                  Result := ReadSymbol(TConstExpr.CreateTyped(FProg, sym.Typ, TConstSymbol(sym)), IsWrite)
+               end;
+            end else if sym is TDataSymbol then begin
+               if sym.Typ is TFuncSymbol then
+                  Result := ReadFunc(TFuncSymbol(sym.Typ), IsWrite, GetVarExpr(TDataSymbol(sym)))
+               else Result := ReadSymbol(GetVarExpr(TDataSymbol(sym)), IsWrite);
+            end else if sym is TExternalVarSymbol then
+               Result := ReadSymbol(ReadExternalVar(TExternalVarSymbol(sym), IsWrite), IsWrite)
+            // OOP related stuff
+            else if baseType is TClassSymbol then begin
+               if FTok.TestDelete(ttBLEFT) then begin
+                  // Cast
+                  Result := ReadExpr;
+                  Result.Typ := sym;
+                  if not (FTok.TestDelete(ttBRIGHT)) then
+                     FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+                  Result := ReadSymbol(Result, IsWrite);
+               end else Result := ReadSymbol(TConstExpr.CreateTyped(FProg, TClassSymbol(baseType).ClassOf, baseType.Name), IsWrite)
+            end else if sym is TFieldSymbol then begin
+               progMeth := TMethodSymbol(TProcedure(FProg).Func);
+               if progMeth.IsClassMethod then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
+               varExpr := TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym);
+               try
+                  fieldExpr:=ReadField(varExpr, TFieldSymbol(sym));
+               except
+                  varExpr.Free;
+                  raise;
+               end;
+               Result := ReadSymbol(fieldExpr, IsWrite);
+            end else if sym is TPropertySymbol then begin
+               progMeth := TMethodSymbol(TProcedure(FProg).Func);
+               if progMeth.IsClassMethod then
+                  varExpr := TConstExpr.CreateTyped(FProg, progMeth.ClassSymbol, nil)
+               else varExpr := TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym);
+               try
+                  Result := ReadSymbol(ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite), IsWrite);
+               except
+                  varExpr.Free;
+                  raise;
+               end;
+            end else if sym is TMethodSymbol then
+               Result:=ReadStaticMethod(TMethodSymbol(sym), IsWrite)
+            // Functions/Procedures
+            else if sym is TFuncSymbol then
+               Result := ReadSymbol(ReadFunc(TFuncSymbol(sym), IsWrite), IsWrite)
+            // Type casts
+            else if sym is TTypeSymbol then
+               Result := ReadTypeCast(namePos, sym)
+            else begin
+               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownType, [sym.Caption]);
+            end;
+
+         except
+            Result.Free;
+            raise;
+         end;
+      end;
+   end;
 end;
 
 function TdwsCompiler.ReadField(Expr: TDataExpr; Sym: TFieldSymbol): TNoPosExpr;
@@ -1776,6 +1760,8 @@ begin
   end;
 end;
 
+// ReadSymbol
+//
 function TdwsCompiler.ReadSymbol(Expr: TNoPosExpr; IsWrite: Boolean): TNoPosExpr;
 
    function GetDefaultProperty(cls: TClassSymbol): TPropertySymbol;
@@ -1838,141 +1824,115 @@ var
    baseType: TTypeSymbol;
    dataExpr : TDataExpr;
 begin
-  Result := Expr;
-  try
-    repeat
-      Expr := Result;
-      baseType := Result.BaseType;
+   Result := Expr;
+   try
+      repeat
+         Expr := Result;
+         baseType := Result.BaseType;
 
-      // Member
-      if FTok.TestDelete(ttDOT) then
-      begin
-        if FTok.TestName then
-        begin
-          Name := FTok.GetToken.FString;
-          symPos := FTok.HotPos;
-          FTok.KillToken;
+         // Member
+         if FTok.TestDelete(ttDOT) then begin
+            if FTok.TestName then begin
+               Name := FTok.GetToken.FString;
+               symPos := FTok.HotPos;
+               FTok.KillToken;
 
-          // Record
-          if baseType is TRecordSymbol then
-          begin
-            member := TRecordSymbol(baseType).Members.FindLocal(Name);
-            if coSymbolDictionary in FCompilerOptions then
-              FProg.SymbolDictionary.Add(member, symPos);
+               // Record
+               if baseType is TRecordSymbol then begin
+                  member := TRecordSymbol(baseType).Members.FindLocal(Name);
+                  if coSymbolDictionary in FCompilerOptions then
+                     FProg.SymbolDictionary.Add(member, symPos);
 
-            if Assigned(member) then
-              Result := TRecordExpr.Create(FProg, FTok.HotPos, TDataExpr(Result), TMemberSymbol(member))
-            else
-              FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [Name]);
-            Expr := nil;
-          end
-          // Class
-          else if baseType is TClassSymbol then
-          begin
-            member := TClassSymbol(baseType).Members.FindSymbol(Name);
-            if coSymbolDictionary in FCompilerOptions then
-              FProg.SymbolDictionary.Add(member, symPos);
+                  if Assigned(member) then
+                     Result := TRecordExpr.Create(FProg, FTok.HotPos, TDataExpr(Result), TMemberSymbol(member))
+                  else FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [Name]);
+                  Expr := nil;
+               end
+               // Class
+               else if baseType is TClassSymbol then begin
+                  member := TClassSymbol(baseType).Members.FindSymbol(Name);
+                  if coSymbolDictionary in FCompilerOptions then
+                     FProg.SymbolDictionary.Add(member, symPos);
 
-            if member is TMethodSymbol then
-            begin
-              // Member is a method
-              if Assigned(TMethodSymbol(member).SelfSym) then
-                Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkObjRef, symPos, IsWrite)
-              else
-                Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkClassOfRef, symPos, IsWrite);
-              ReadFuncArgs(TFuncExpr(Result).AddArg);
-            end
-            else if member is TFieldSymbol then
-              // Member is a field
-              Result := TFieldExpr.Create(FProg, FTok.HotPos, member.Typ,
-                TFieldSymbol(member), TDataExpr(Result))
-            else if member is TPropertySymbol then
-              // Member is a property
-              Result := ReadPropertyExpr(TDataExpr(Result), TPropertySymbol(member), IsWrite)
-            else
-              FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [Name]);
-          end
-          // Class Of
-          else if baseType is TClassOfSymbol then
-          begin
-            member := TClassSymbol(baseType.Typ).Members.FindSymbol(Name);
-            if coSymbolDictionary in FCompilerOptions then
-              FProg.SymbolDictionary.Add(member, FTok.HotPos);
+                  if member is TMethodSymbol then begin
+                     // Member is a method
+                     if Assigned(TMethodSymbol(member).SelfSym) then
+                        Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkObjRef, symPos, IsWrite)
+                     else Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkClassOfRef, symPos, IsWrite);
+                     ReadFuncArgs(TFuncExpr(Result).AddArg);
+                  end else if member is TFieldSymbol then
+                     // Member is a field
+                     Result := TFieldExpr.Create(FProg, FTok.HotPos, member.Typ,
+                                                 TFieldSymbol(member), TDataExpr(Result))
+                  else if member is TPropertySymbol then
+                     // Member is a property
+                     Result := ReadPropertyExpr(TDataExpr(Result), TPropertySymbol(member), IsWrite)
+                  else FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [Name]);
+               end
+               // Class Of
+               else if baseType is TClassOfSymbol then begin
+                  member := TClassSymbol(baseType.Typ).Members.FindSymbol(Name);
+                  if coSymbolDictionary in FCompilerOptions then
+                     FProg.SymbolDictionary.Add(member, FTok.HotPos);
 
-            // Class method
-            if member is TMethodSymbol then
-            begin
-              case TMethodSymbol(member).Kind of
-                fkFunction, fkProcedure, fkMethod:
-                  if not TMethodSymbol(member).IsClassMethod then
-                    FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticMethodExpected);
-                fkDestructor:
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticMethodExpected);
-              end;
-              Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result),
-                rkClassOfRef, symPos, IsWrite);
-              ReadFuncArgs(TFuncExpr(Result).AddArg);
-            end
-              // Static property
-            else if member is TPropertySymbol then
-              Result := ReadPropertyExpr(TDataExpr(Result), TPropertySymbol(member), IsWrite)
-            else
-              FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticMethodExpected);
-          end
-          // Connector symbol
-          else if baseType is TConnectorSymbol then
-          begin
-            Result := ReadConnectorSym(Name, Result,
-              TConnectorSymbol(baseType).ConnectorType, IsWrite)
-          end
-          else
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMemberExpected);
-        end
-        else
-          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-      end
-      // Arrays
-      else if FTok.Test(ttALEFT) then
-      begin
-        if Assigned(Result) then
-        begin
-          if baseType is TClassSymbol then
-          begin
-            // array property
-            DefaultProperty := GetDefaultProperty(TClassSymbol(baseType));
-            if Assigned(DefaultProperty) then
-              Result := ReadPropertyExpr(TDataExpr(Result), DefaultProperty, IsWrite)
-            else
-              FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NoDefaultProperty, [Result.Typ.Name]);
-          end
-          else
-          begin
-            // Type "array"
-            dataExpr:=(Result as TDataExpr);
-            if baseType is TArraySymbol then
-              Result := ReadArrayExpr(dataExpr)
-            else if baseType is TConnectorSymbol then
-              Result := ReadConnectorArray('', Result, TConnectorSymbol(baseType).ConnectorType, IsWrite)
-            else begin
-              FTok.KillToken;
-              Result := ReadStringArray(dataExpr, IsWrite)
+                  // Class method
+                  if member is TMethodSymbol then begin
+                     case TMethodSymbol(member).Kind of
+                        fkFunction, fkProcedure, fkMethod:
+                           if not TMethodSymbol(member).IsClassMethod then
+                              FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticMethodExpected);
+                        fkDestructor:
+                           FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticMethodExpected);
+                     end;
+                     Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result),
+                                             rkClassOfRef, symPos, IsWrite);
+                     ReadFuncArgs(TFuncExpr(Result).AddArg);
+                  end
+                  // Static property
+                  else if member is TPropertySymbol then
+                     Result := ReadPropertyExpr(TDataExpr(Result), TPropertySymbol(member), IsWrite)
+                  else FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticMethodExpected);
+               end
+               // Connector symbol
+               else if baseType is TConnectorSymbol then begin
+                  Result := ReadConnectorSym(Name, Result,
+                                             TConnectorSymbol(baseType).ConnectorType, IsWrite)
+               end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMemberExpected);
+            end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+         end
+         // Arrays
+         else if FTok.Test(ttALEFT) then begin
+            if Assigned(Result) then begin
+               if baseType is TClassSymbol then begin
+                  // array property
+                  DefaultProperty := GetDefaultProperty(TClassSymbol(baseType));
+                  if Assigned(DefaultProperty) then
+                     Result := ReadPropertyExpr(TDataExpr(Result), DefaultProperty, IsWrite)
+                  else FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NoDefaultProperty, [Result.Typ.Name]);
+               end else begin
+                  // Type "array"
+                  dataExpr:=(Result as TDataExpr);
+                  if baseType is TArraySymbol then
+                     Result := ReadArrayExpr(dataExpr)
+                  else if baseType is TConnectorSymbol then
+                     Result := ReadConnectorArray('', Result, TConnectorSymbol(baseType).ConnectorType, IsWrite)
+                  else begin
+                     FTok.KillToken;
+                     Result := ReadStringArray(dataExpr, IsWrite)
+                  end;
+               end;
             end;
-          end;
-        end;
-      end
-      else if FTok.Test(ttBLEFT) then
-      begin
-        if baseType is TFuncSymbol then
-          Result := ReadFunc(TFuncSymbol(baseType), IsWrite, Result as TDataExpr)
-        else
-          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMethodExpected);
-      end;
+         end else if FTok.Test(ttBLEFT) then begin
+            if baseType is TFuncSymbol then
+               Result := ReadFunc(TFuncSymbol(baseType), IsWrite, Result as TDataExpr)
+            else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMethodExpected);
+         end;
 
-    until (Expr = Result);
-  except
-    Result.Free;
-    raise;
-  end;
+      until (Expr = Result);
+   except
+      Result.Free;
+      raise;
+   end;
 end;
 
 function TdwsCompiler.ReadExternalVar;
