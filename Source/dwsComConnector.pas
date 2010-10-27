@@ -42,7 +42,13 @@ type
     property StaticSymbols;
   end;
 
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
 // DwsOleCheck
 //
@@ -65,7 +71,6 @@ type
     procedure Execute; override;
   end;
 
-  // thy Adds
   TGetActiveOleObjectFunc = class(TInternalFunction)
     procedure Execute; override;
   end;
@@ -73,7 +78,18 @@ type
   TClassIDToProgIDFunc = class(TInternalFunction)
     procedure Execute; override;
   end;
-  // thy Adds end //
+
+  TOleInt32Func = class(TInternalFunction)
+    procedure Execute; override;
+  end;
+
+  TOleInt64Func = class(TInternalFunction)
+    procedure Execute; override;
+  end;
+
+  TOleDateFunc = class(TInternalFunction)
+    procedure Execute; override;
+  end;
 
   TComConnectorType = class(TInterfacedObject, IUnknown, IConnectorType)
   private
@@ -213,8 +229,7 @@ begin
   VariantSym := Table.FindSymbol('Variant');
 
   // Datatype of com-objects
-  ComVariantSym := TConnectorSymbol.Create('ComVariant',
-    TComConnectorType.Create(Table));
+  ComVariantSym := TConnectorSymbol.Create('ComVariant', TComConnectorType.Create(Table));
   Table.AddSymbol(ComVariantSym);
   Table.AddSymbol(TAliasSymbol.Create('OleVariant',ComVariantSym));
 
@@ -224,19 +239,16 @@ begin
   Table.AddSymbol(TConstSymbol.Create('ComOpt', VariantSym, v));
 
   // Function to create a new COM-Object
-  TCreateOleObjectFunc.Create(Table, 'CreateOleObject', ['ClassName', SYS_STRING],
-    'ComVariant');
+  TCreateOleObjectFunc.Create(Table, 'CreateOleObject', ['ClassName', SYS_STRING], 'ComVariant');
 
-  // thy Adds
   TClassIDToProgIDFunc.Create(Table, 'ClassIDToProgID', ['ClassID', SYS_STRING], 'String');
+  TGetActiveOleObjectFunc.Create(Table, 'GetActiveOleObject', ['ClassName', SYS_STRING], 'ComVariant');
 
-  TGetActiveOleObjectFunc.Create(Table, 'GetActiveOleObject', ['ClassName', SYS_STRING],
-    'ComVariant');
-  // thy Adds end //
+  TOleInt32Func.Create(Table, 'OleInt32', ['v', SYS_INTEGER], 'ComVariant');
+  TOleInt64Func.Create(Table, 'OleInt64', ['v', SYS_INTEGER], 'ComVariant');
+  TOleDateFunc.Create(Table, 'OleDate', ['v', SYS_FLOAT], 'ComVariant');
 
-
-  Table.AddSymbol(TComVariantArraySymbol.Create('ComVariantArray',
-    TComVariantArrayType.Create(Table), VariantSym));
+  Table.AddSymbol(TComVariantArraySymbol.Create('ComVariantArray', TComVariantArrayType.Create(Table), VariantSym));
 end;
 
 { TCreateOleObjectFunc }
@@ -246,7 +258,8 @@ begin
   Info.ResultAsVariant := CreateOleObject(Info.ValueAsString['ClassName']);
 end;
 
-// thy Adds
+{ TClassIDToProgIDFunc }
+
 procedure TClassIDToProgIDFunc.Execute;
 var
    guid : TGUID;
@@ -255,11 +268,33 @@ begin
    Info.ResultAsString := ClassIDToProgID(guid);
 end;
 
+{ TGetActiveOleObjectFunc }
+
 procedure TGetActiveOleObjectFunc.Execute;
 begin
   Info.ResultAsVariant := GetActiveOleObject(Info.ValueAsString['ClassName']);
 end;
-// thy Adds end //
+
+{ TOleInt32Func }
+
+procedure TOleInt32Func.Execute;
+begin
+  Info.ResultAsVariant := Int32(Info.ValueAsInteger['v']);
+end;
+
+{ TOleInt64Func }
+
+procedure TOleInt64Func.Execute;
+begin
+  Info.ResultAsVariant := Info.ValueAsInteger['v'];
+end;
+
+{ TOleDateFunc }
+
+procedure TOleDateFunc.Execute;
+begin
+  Info.ResultAsVariant := VarFromDateTime(Info.ValueAsFloat['v']);
+end;
 
 { TComConnectorSymbol }
 
