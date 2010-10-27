@@ -2365,7 +2365,7 @@ end;
 //
 procedure TFuncExprBase.TypeCheckNoPos(const aPos : TScriptPos);
 var
-   arg, oldArg: TNoPosExpr;
+   arg : TNoPosExpr;
    x, paramCount: Integer;
    paramSymbol : TParamSymbol;
 begin
@@ -2386,7 +2386,7 @@ begin
 
    for x := 0 to FArgs.Count - 1 do begin
       arg := TNoPosExpr(FArgs.ExprBase[x]);
-      paramSymbol:=TParamSymbol(FFunc.Params[x]);
+      paramSymbol := TParamSymbol(FFunc.Params[x]);
 
       if arg is TArrayConstantExpr then
          TArrayConstantExpr(arg).Prepare(FFunc.Params[x].Typ.Typ);
@@ -2395,17 +2395,13 @@ begin
       arg.TypeCheckNoPos(Pos);
 
       // Expand integer arguments to float if necessary
-      if (paramSymbol.Typ = FProg.TypFloat) and (arg.Typ = FProg.TypInteger) then begin
-         if arg is TConstExpr then begin
-            oldArg:=arg;
-            arg:=TConstFloatExpr.Create(FProg, Double(oldArg.Eval));
-            oldArg.Free;
-         end else arg := TConvFloatExpr.Create(FProg, FPos, arg);
-      end;
+      if (paramSymbol.Typ = FProg.TypFloat) and (arg.Typ = FProg.TypInteger) then
+         arg := TConvFloatExpr.Create(FProg, FPos, arg);
+
       FArgs.ExprBase[x] := arg;
 
       if arg.Typ = nil then
-         AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Caption]);
+         AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Name]);
       if (paramSymbol is TVarParamSymbol) and (arg is TDataExpr) then begin
          if not TDataExpr(arg).IsWritable then
             AddCompilerErrorFmt(CPE_ConstVarParam, [x, paramSymbol.Name]);
@@ -2413,9 +2409,9 @@ begin
             (Prog.FCompiler as TdwsCompiler).WarnForVarUsage(TVarExpr(arg));
       end;
       if arg.Typ=nil then
-         AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Caption])
+         AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Name])
       else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
-         AddCompilerErrorFmt(CPE_WrongArgumentType_Long, [x, FFunc.Params[x].Typ.Caption, arg.Typ.Caption]);
+         AddCompilerErrorFmt(CPE_WrongArgumentType_Long, [x, FFunc.Params[x].Typ.Name, arg.Typ.Name]);
    end;
 end;
 
