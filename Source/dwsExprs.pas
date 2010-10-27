@@ -2624,24 +2624,28 @@ end;
 
 constructor TFuncExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol;
   IsInstruction : Boolean; CodeExpr: TDataExpr; IsWritable: Boolean);
-var
-  initData: TData;
+
+   procedure CreateResultExpr;
+   var
+      initData: TData;
+   begin
+      // Initialize Result
+      SetLength(initData, FTyp.Size);
+      FTyp.InitData(initData, 0);
+      FInitResultExpr := TConstExpr.CreateTyped(Prog, FTyp, initData);
+
+      SetResultAddr;
+   end;
+
 begin
-  inherited Create(Prog, Pos, Func);
-  FIsInstruction := IsInstruction;
-  FIsWritable := IsWritable;
-  FResultAddr := -1;
-  FCodeExpr := CodeExpr;
+   inherited Create(Prog, Pos, Func);
+   FIsInstruction := IsInstruction;
+   FIsWritable := IsWritable;
+   FResultAddr := -1;
+   FCodeExpr := CodeExpr;
 
-  if Assigned(FTyp) then
-  begin
-    // Initialize Result
-    SetLength(initData, FTyp.Size);
-    FTyp.InitData(initData, 0);
-    FInitResultExpr := TConstExpr.CreateTyped(Prog, FTyp, initData);
-
-    SetResultAddr;
-  end;
+   if Assigned(FTyp) then
+      CreateResultExpr;
 end;
 
 destructor TFuncExpr.Destroy;
