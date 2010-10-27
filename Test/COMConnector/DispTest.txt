@@ -1,0 +1,9 @@
+Naturals
+param index: 0, type: ByRef Int64 (16404)
+param index: 1, type: ByRef OleStr (16392)
+param index: 2, type: ByRef Double (16389)
+param index: 3, type: ByRef Boolean (16395)
+OleCasts
+param index: 0, type: ByRef Integer (16387)
+param index: 1, type: ByRef Int64 (16404)
+param index: 2, type: ByRef Date (16391)
