@@ -122,6 +122,11 @@ type
      function  Eval: Variant; override;
    end;
 
+   TConstParamExpr = class(TVarParamExpr)
+   public
+      function IsWritable : Boolean; override;
+   end;
+
    // Encapsulates a var parameter
    TVarParamParentExpr = class(TVarParamExpr)
    protected
@@ -130,6 +135,11 @@ type
      function GetData: TData; override;
    public
      constructor Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
+   end;
+
+   TConstParamParentExpr = class(TVarParamParentExpr)
+   public
+      function IsWritable : Boolean; override;
    end;
 
    // A constant value (like 0, 3.14159, 'Hello' or true)
@@ -142,6 +152,7 @@ type
      constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Data: TData); overload;
      function Eval: Variant; override;
      function IsConstant : Boolean; override;
+     function IsWritable : Boolean; override;
 
      class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant) : TConstExpr; overload; static;
      class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Data: TData) : TConstExpr; overload; static;
@@ -198,6 +209,7 @@ type
      procedure Initialize; override;
      function Optimize : TNoPosExpr; override;
      function IsConstant : Boolean; override;
+     function IsWritable : Boolean; override;
    end;
 
    // Array expressions x[index]
@@ -211,6 +223,7 @@ type
      destructor Destroy; override;
      procedure Initialize; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     function IsWritable : Boolean; override;
    end;
 
    EScriptOutOfBounds = class (EScriptError);
@@ -252,6 +265,7 @@ type
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; MemberSymbol: TMemberSymbol);
      destructor Destroy; override;
      procedure Initialize; override;
+     function IsWritable : Boolean; override;
    end;
 
    TInitDataExpr = class(TNoResultExpr)
@@ -1173,6 +1187,13 @@ begin
   Result := Data[Addr];
 end;
 
+{ TConstParamExpr }
+
+function TConstParamExpr.IsWritable : Boolean;
+begin
+   Result:=False;
+end;
+
 { TVarParamParentExpr }
 
 constructor TVarParamParentExpr.Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
@@ -1191,6 +1212,13 @@ begin
   Result := IVarParamData(IUnknown(FStack.Data[FStack.GetSavedBp(FLevel) + FStackAddr])).Data;
 end;
 
+{ TConstParamParentExpr }
+
+function TConstParamParentExpr.IsWritable : Boolean;
+begin
+   Result:=False;
+end;
+
 { TConstExpr }
 
 constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
@@ -1199,14 +1227,12 @@ begin
   Assert(Typ.Size=1);
   SetLength(FData, 1);
   FData[0] := Value;
-  FIsWritable := False;
 end;
 
 constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Data: TData);
 begin
   inherited Create(Prog, Typ);
   FData := Data;
-  FIsWritable := False;
 end;
 
 function TConstExpr.Eval: Variant;
@@ -1219,6 +1245,13 @@ end;
 function TConstExpr.IsConstant : Boolean;
 begin
    Result:=True;
+end;
+
+// IsWritable
+//
+function TConstExpr.IsWritable : Boolean;
+begin
+   Result:=False;
 end;
 
 // CreateTyped
@@ -1354,7 +1387,6 @@ begin
   FBaseExpr := BaseExpr;
   FIndexExpr := IndexExpr;
   FElementSize := Typ.Size; // Necessary because of arrays of records!
-  FIsWritable := BaseExpr.IsWritable;
 end;
 
 destructor TArrayExpr.Destroy;
@@ -1379,6 +1411,13 @@ begin
    FBaseExpr.TypeCheckNoPos(aPos);
    FIndexExpr.TypeCheckNoPos(aPos);
    FTyp:=FBaseExpr.Typ.Typ;
+end;
+
+// IsWritable
+//
+function TArrayExpr.IsWritable : Boolean;
+begin
+   Result:=FBaseExpr.IsWritable;
 end;
 
 { TStaticArrayExpr }
@@ -1468,7 +1507,6 @@ end;
 constructor TArrayConstantExpr.Create(Prog: TdwsProgram);
 begin
   inherited Create(Prog, TStaticArraySymbol.Create('', Prog.TypNil, 0, -1));
-  FIsWritable := False;
 end;
 
 destructor TArrayConstantExpr.Destroy;
@@ -1626,6 +1664,13 @@ begin
    Result:=True;
 end;
 
+// IsWritable
+//
+function TArrayConstantExpr.IsWritable : Boolean;
+begin
+   Result:=False;
+end;
+
 // TypeCheckNoPos
 //
 procedure TArrayConstantExpr.TypeCheckNoPos(const aPos : TScriptPos);
@@ -1658,7 +1703,6 @@ begin
   inherited Create(Prog, Pos, MemberSymbol.Typ);
   FBaseExpr := BaseExpr;
   FMemberOffset := MemberSymbol.Offset;
-  FIsWritable := FBaseExpr.IsWritable;
 end;
 
 destructor TRecordExpr.Destroy;
@@ -1681,6 +1725,13 @@ procedure TRecordExpr.Initialize;
 begin
   inherited;
   FBaseExpr.Initialize;
+end;
+
+// IsWritable
+//
+function TRecordExpr.IsWritable : Boolean;
+begin
+   Result:=FBaseExpr.IsWritable;
 end;
 
 { TInitDataExpr }

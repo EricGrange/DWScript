@@ -3712,9 +3712,8 @@ end;
 function TdwsCompiler.GetConstParamExpr(dataSym: TConstParamSymbol): TVarParamExpr;
 begin
    if FProg.Level = dataSym.Level then
-      Result := TVarParamExpr.Create(FProg, dataSym.Typ, dataSym)
-   else Result := TVarParamParentExpr.Create(FProg, dataSym.Typ, dataSym);
-   Result.IsWritable:=False;
+      Result := TConstParamExpr.Create(FProg, dataSym.Typ, dataSym)
+   else Result := TConstParamParentExpr.Create(FProg, dataSym.Typ, dataSym);
 end;
 
 function TdwsCompiler.CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;

@@ -467,7 +467,6 @@ type
   // Encapsulates data
   TDataExpr = class(TNoPosExpr)
   protected
-    FIsWritable: Boolean;
     function GetAddr: Integer; virtual;
     function GetData: TData; virtual; abstract;
   public
@@ -483,7 +482,7 @@ type
     function Eval: Variant; override;
     property Addr: Integer read GetAddr;
     property Data: TData read GetData;
-    property IsWritable: Boolean read FIsWritable write FIsWritable;
+    function IsWritable: Boolean; virtual;
   end;
 
   // Encapsulates data
@@ -548,7 +547,8 @@ type
   TFuncExpr = class(TFuncExprBase)
   private
     FInitResultExpr: TDataExpr;
-    FIsInstruction: Boolean;
+    FIsInstruction : Boolean;
+    FIsWritable: Boolean;
     FPushExprs: packed array of TPushOperator;
     FResultAddr: Integer;
     FCodeExpr : TDataExpr;
@@ -568,6 +568,7 @@ type
     function GetCode(Func : TFuncSymbol) : ICallable; virtual;
     procedure Initialize; override;
     procedure SetResultAddr(ResultAddr: Integer = -1);
+    function IsWritable : Boolean; override;
     property CodeExpr : TDataExpr read FCodeExpr;
   end;
 
@@ -656,9 +657,10 @@ type
     FConnectorCall: IConnectorCall;
     FConnectorParams: TConnectorParamArray;
     FIsInstruction: Boolean;
+    FIsWritable: Boolean;
+    FIsIndex: Boolean;
     FName: string;
     FResultData: TData;
-    FIsIndex: Boolean;
     function GetData: TData; override;
   public
     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const Name: string;
@@ -668,6 +670,7 @@ type
     procedure AddArg(ArgExpr: TNoPosExpr);
     function Eval: Variant; override;
     procedure Initialize; override;
+    function IsWritable : Boolean; override;
   end;
 
   TConnectorReadExpr = class(TPosDataExpr)
@@ -2264,14 +2267,20 @@ end;
 
 constructor TDataExpr.Create(Prog: TdwsProgram; Typ: TSymbol);
 begin
-  inherited Create(Prog);
-  FTyp := Typ;
-  FIsWritable := True;
+   inherited Create(Prog);
+   FTyp := Typ;
 end;
 
 function TDataExpr.Eval: Variant;
 begin
   Result := Data[Addr];
+end;
+
+// IsWritable
+//
+function TDataExpr.IsWritable: Boolean;
+begin
+   Result:=True;
 end;
 
 function TDataExpr.GetAddr: Integer;
@@ -2281,13 +2290,13 @@ end;
 
 procedure TDataExpr.AssignData(const SourceData: TData; SourceAddr: Integer);
 begin
-  Assert(FIsWritable);
+  Assert(IsWritable);
   CopyData(SourceData, SourceAddr, Data, Addr, Typ.Size);
 end;
 
 procedure TDataExpr.AssignValue(const Value: Variant);
 begin
-  Assert(FIsWritable);
+  Assert(IsWritable);
   VarCopy(Data[Addr], Value);
 end;
 
@@ -2321,7 +2330,7 @@ end;
 
 procedure TDataExpr.AssignExpr(Expr: TNoPosExpr);
 begin
-  Assert(FIsWritable);
+  Assert(IsWritable);
   VarCopy(Data[Addr], Expr.Eval);
 end;
 
@@ -2812,6 +2821,13 @@ begin
     FResultAddr := ResultAddr;
 end;
 
+// IsWritable
+//
+function TFuncExpr.IsWritable : Boolean;
+begin
+   Result:=FIsWritable;
+end;
+
 function TFuncExpr.GetCode(Func: TFuncSymbol): ICallable;
 begin
   if Assigned(FCodeExpr) then
@@ -3081,8 +3097,7 @@ end;
 
 { TBinaryOpExpr }
 
-constructor TBinaryOpExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-                                 aLeft, aRight : TNoPosExpr);
+constructor TBinaryOpExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; aLeft, aRight : TNoPosExpr);
 begin
    inherited Create(Prog, Pos);
    FLeft := aLeft;
@@ -3111,12 +3126,12 @@ end;
 //
 procedure TBinaryOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-  FLeft.TypeCheckNoPos(Pos);
-  FRight.TypeCheckNoPos(Pos);
+  FLeft.TypeCheckNoPos(aPos);
+  FRight.TypeCheckNoPos(aPos);
   if (FLeft.Typ = FProg.TypInteger) and (FRight.Typ = FProg.TypFloat) then
-    FLeft := TConvFloatExpr.Create(FProg, FPos, FLeft)
+    FLeft := TConvFloatExpr.Create(FProg, aPos, FLeft)
   else if (FLeft.Typ = FProg.TypFloat) and (FRight.Typ = FProg.TypInteger) then
-    FRight := TConvFloatExpr.Create(FProg, FPos, FRight)
+    FRight := TConvFloatExpr.Create(FProg, aPos, FRight)
 end;
 
 // IsConstant
@@ -4780,9 +4795,10 @@ begin
     except
       on e: EScriptException do
         raise;
-    else
-      FProg.Msgs.SetLastScriptError(FPos,ExceptObject);
-      raise;
+      on e: Exception do begin
+        FProg.Msgs.SetLastScriptError(FPos, e);
+        raise;
+      end;
     end;
 
     for x := 0 to Length(FConnectorArgs) - 1 do
@@ -4814,6 +4830,13 @@ begin
    FBaseExpr.Initialize;
    for i:=0 to FArgs.Count-1 do
       TNoPosExpr(FArgs.List[0]).Initialize;
+end;
+
+// IsWritable
+//
+function TConnectorCallExpr.IsWritable : Boolean;
+begin
+   Result:=FIsWritable;
 end;
 
 { TConnectorReadExpr }
