@@ -295,6 +295,7 @@ type
    TFuncKind = (fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod);
 
    // Record used for TFuncSymbol.Generate
+   PParamRec = ^TParamRec;
    TParamRec = record
      IsVarParam: Boolean;
      IsConstParam: Boolean;

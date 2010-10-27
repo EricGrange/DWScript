@@ -547,8 +547,8 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   RegisterInternalIntFunction(TIncFunc, 'Inc', ['@a', cInteger, 'b', cInteger], True);
-   RegisterInternalIntFunction(TDecFunc, 'Dec', ['@a', cInteger, 'b', cInteger], True);
+   RegisterInternalIntFunction(TIncFunc, 'Inc', ['@a', cInteger, 'b=1', cInteger], True);
+   RegisterInternalIntFunction(TDecFunc, 'Dec', ['@a', cInteger, 'b=1', cInteger], True);
    RegisterInternalBoolFunction(TOddFunc, 'Odd', ['i', cInteger], True);
 
    RegisterInternalFloatFunction(TSinFunc, 'Sin', ['a', cFloat], True);

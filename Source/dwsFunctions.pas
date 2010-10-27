@@ -263,37 +263,56 @@ begin
    RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, '', False);
 end;
 
-procedure ConvertFuncParams(var Params: TParamArray;
-  const FuncParams: array of string);
+// ConvertFuncParams
+//
+procedure ConvertFuncParams(var Params: TParamArray; const FuncParams: array of string);
+
+   procedure ParamSpecifier(c : Char; paramRec : PParamRec);
+   begin
+      paramRec.IsVarParam:=(c='@');
+      paramRec.IsConstParam:=(c='&');
+      paramRec.ParamName:=Copy(paramRec.ParamName, 2, MaxInt)
+   end;
+
+   procedure ParamDefaultValue(p : Integer; paramRec : PParamRec);
+   begin
+      SetLength(paramRec.DefaultValue, 1);
+      paramRec.DefaultValue[0]:=Trim(Copy(paramRec.ParamName, p+1, MaxInt));
+      paramRec.HasDefaultValue:=True;
+      paramRec.ParamName:=Trim(Copy(paramRec.ParamName, 1, p-1));
+   end;
+
 var
-  x: Integer;
-  c: Char;
+   x, p : Integer;
+   c : Char;
+   paramRec : PParamRec;
 begin
-  SetLength(Params, Length(FuncParams) div 2);
-  x := 0;
-  while x < Length(FuncParams) - 1 do
-  begin
-    with Params[x div 2] do begin
-      if Length(FuncParams[x]) > 0 then
-        c := FuncParams[x][1]
-      else
-        c := #0;
+   SetLength(Params, Length(FuncParams) div 2);
+   x:=0;
+   while x<Length(FuncParams)-1 do begin
+      paramRec:=@Params[x div 2];
+
+      paramRec.ParamName:=FuncParams[x];
+      c:=#0;
+      if paramRec.ParamName<>'' then
+         c:=paramRec.ParamName[1];
 
       case c of
-        '@','&': begin
-          IsVarParam := (c = '@');
-          IsConstParam := (c = '&');
-          ParamName  := Copy(FuncParams[x], 2, MaxInt)
-        end;
+         '@','&':
+            ParamSpecifier(c, paramRec);
       else
-        IsVarParam := False;
-        IsConstParam := False;
-        ParamName := FuncParams[x];
+         paramRec.IsVarParam:=False;
+         paramRec.IsConstParam:=False;
       end;
-      ParamType := FuncParams[x + 1];
-    end;
-    Inc(x, 2);
-  end;
+
+      p:=Pos('=', paramRec.ParamName);
+      if p>0 then
+         ParamDefaultValue(p, paramRec);
+
+      paramRec.ParamType:=FuncParams[x+1];
+
+      Inc(x, 2);
+   end;
 end;
 
 { TEmptyFunc }
