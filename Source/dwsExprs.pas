@@ -668,6 +668,7 @@ type
     destructor Destroy; override;
     function AssignConnectorSym(ConnectorType: IConnectorType): Boolean;
     procedure AddArg(ArgExpr: TNoPosExpr);
+    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
     function Eval: Variant; override;
     procedure Initialize; override;
     function IsWritable : Boolean; override;
@@ -4722,6 +4723,15 @@ end;
 procedure TConnectorCallExpr.AddArg(ArgExpr: TNoPosExpr);
 begin
   FArgs.Add(ArgExpr);
+end;
+
+// TypeCheckNoPos
+//
+procedure TConnectorCallExpr.TypeCheckNoPos(const aPos : TScriptPos);
+begin
+   inherited;
+   if FArgs.Count>64 then
+      AddCompilerErrorFmt(CPE_ConnectorTooManyArguments, [FArgs.Count]);
 end;
 
 function TConnectorCallExpr.AssignConnectorSym(ConnectorType: IConnectorType):

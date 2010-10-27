@@ -205,6 +205,7 @@ const
   CPE_ConnectorMember = 'Member "%s" readonly or not found in connector "%s"';
   CPE_ConnectorTypeMismatch = 'Type mismatch in connector';
   CPE_ConnectorIndex = 'No index access in connector "%s"';
+  CPE_ConnectorTooManyArguments = 'Too many arguments for connector call (%d)';
 
   // Others
   CPE_ConstantExpressionExpected = 'Constant expression expected';
