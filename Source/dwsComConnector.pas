@@ -22,7 +22,8 @@ unit dwsComConnector;
 
 interface
 
-uses Windows, Variants, Classes, SysUtils, SysConst, dwsComp, dwsSymbols, dwsExprs;
+uses Windows, Variants, Classes, SysUtils, SysConst, dwsComp, dwsSymbols,
+   dwsExprs, dwsStrings, dwsFunctions, dwsStack, ComObj, ComConst, ActiveX, AxCtrls;
 
 const
   COM_ConnectorCaption = 'COM Connector 1.0';
@@ -43,8 +44,21 @@ type
 
 implementation
 
-uses
-  dwsStrings, dwsFunctions, dwsStack, ComObj, ComConst, ActiveX, AxCtrls;
+// DwsOleCheck
+//
+procedure DwsOleCheck(Result: HResult);
+
+   procedure RaiseOleError;
+   begin
+      raise EOleSysError.Create(Format('OLE Error %.8x (%s)',
+                                       [Cardinal(Result), SysErrorMessage(Cardinal(Result))]),
+                                Result, 0);
+   end;
+
+begin
+   if not Succeeded(Result) then
+      RaiseOleError;
+end;
 
 type
   TCreateOleObjectFunc = class(TInternalFunction)
@@ -167,196 +181,6 @@ type
   public
     constructor Create(Table: TSymbolTable);
   end;
-
-{$IFNDEF DELPHI6up}
-
-// this code was taken from Delphi 5 unit "System.pas"
-
-const
-  oleaut = 'oleaut32.dll';
-
-const
-  reVarNotArray = 19;
-  reVarArrayBounds = 20;
-
-procedure Error(errorCode: Byte);
-var
-  Msg: string;
-begin
-  case errorCode of
-    reVarNotArray: Msg := SVarInvalid;
-    reVarArrayBounds: Msg := SVarArrayBounds;
-  end;
-  raise Exception.Create(Msg);
-end;
-
-function SafeArrayGetElement(VarArray: PVarArray; Indices,
-  Data: Pointer): Integer; stdcall;
-  external oleaut name 'SafeArrayGetElement';
-
-function SafeArrayPtrOfIndex(VarArray: PVarArray; Indices: Pointer;
-  var pvData: Pointer): HResult; stdcall;
-  external oleaut name 'SafeArrayPtrOfIndex';
-
-function SafeArrayPutElement(VarArray: PVarArray; Indices,
-  Data: Pointer): Integer; stdcall;
-  external oleaut name 'SafeArrayPutElement';
-
-procedure VarStringToOleStr(var Dest: Variant; const Source: Variant);
-var
-  OleStrPtr: PWideChar;
-begin
-  OleStrPtr := StringToOleStr(string(TVarData(Source).VString));
-  VarClear(Dest);
-  TVarData(Dest).VType := varOleStr;
-  TVarData(Dest).VOleStr := OleStrPtr;
-end;
-
-function GetVarArray(const A: Variant): PVarArray;
-begin
-  if TVarData(A).VType and varArray = 0 then
-    Error(reVarNotArray);
-  if TVarData(A).VType and varByRef <> 0 then
-    Result := PVarArray(TVarData(A).VPointer^)
-  else
-    Result := TVarData(A).VArray;
-end;
-
-function _VarArrayGet(var A: Variant; IndexCount: Integer;
-  Indices: Integer): Variant; cdecl;
-var
-  VarArrayPtr: PVarArray;
-  VarType: Integer;
-  P: Pointer;
-begin
-  if TVarData(A).VType and varArray = 0 then
-    Error(reVarNotArray);
-  VarArrayPtr := GetVarArray(A);
-  if VarArrayPtr^.DimCount <> IndexCount then
-    Error(reVarArrayBounds);
-  VarType := TVarData(A).VType and varTypeMask;
-  VarClear(Result);
-  if VarType = varVariant then
-  begin
-    if SafeArrayPtrOfIndex(VarArrayPtr, @Indices, P) <> 0 then
-      Error(reVarArrayBounds);
-    Result := PVariant(P)^;
-  end
-  else
-  begin
-    if SafeArrayGetElement(VarArrayPtr, @Indices,
-      @TVarData(Result).VPointer) <> 0 then
-      Error(reVarArrayBounds);
-    TVarData(Result).VType := VarType;
-  end;
-end;
-
-procedure _VarArrayPut(var A: Variant; const Value: Variant;
-  IndexCount: Integer; Indices: Integer); cdecl;
-type
-  TAnyPutArrayProc = procedure(var A: Variant; const Value: Variant; Index: Integer);
-var
-  VarArrayPtr: PVarArray;
-  VarType: Integer;
-  P: Pointer;
-  Temp: TVarData;
-begin
-  if TVarData(A).VType and varArray = 0 then
-    Error(reVarNotArray);
-  VarArrayPtr := GetVarArray(A);
-  if VarArrayPtr^.DimCount <> IndexCount then
-    Error(reVarArrayBounds);
-  VarType := TVarData(A).VType and varTypeMask;
-  if (VarType = varVariant) and (not VarIsStr(Value)) then
-  begin
-    if SafeArrayPtrOfIndex(VarArrayPtr, @Indices, P) <> 0 then
-      Error(reVarArrayBounds);
-    PVariant(P)^ := Value;
-  end
-  else
-  begin
-    Temp.VType := varEmpty;
-    try
-      if VarType = varVariant then
-      begin
-        VarStringToOleStr(Variant(Temp), Value);
-        P := @Temp;
-      end
-      else
-      begin
-        VarCast(Variant(Temp), Value, VarType);
-        case VarType of
-          varOleStr, varDispatch, varUnknown:
-            P := Temp.VPointer;
-        else
-          P := @Temp.VPointer;
-        end;
-      end;
-      if SafeArrayPutElement(VarArrayPtr, @Indices, P) <> 0 then
-        ; // Error(reVarArrayBounds);
-    finally
-      VarClear(Variant(Temp));
-    end;
-  end;
-end;
-
-function VarArrayGet(const A: Variant; const Indices: array of Integer): Variant;
-asm
-        {     ->EAX     Pointer to A            }
-        {       EDX     Pointer to Indices      }
-        {       ECX     High bound of Indices   }
-        {       [EBP+8] Pointer to Result       }
-
-        PUSH    EBX
-
-        MOV     EBX,ECX
-        INC     EBX
-        JLE     @@endLoop
-@@loop:
-        PUSH    [EDX+ECX*4].Integer
-        DEC     ECX
-        JNS     @@loop
-@@endLoop:
-        PUSH    EBX
-        PUSH    EAX
-        MOV     EAX,[EBP+8]
-        PUSH    EAX
-        CALL    _VarArrayGet
-        LEA     ESP,[ESP+EBX*4+3*4]
-
-        POP     EBX
-end;
-
-procedure VarArrayPut(var A: Variant; const Value: Variant; const Indices: array of Integer);
-asm
-        {     ->EAX     Pointer to A            }
-        {       EDX     Pointer to Value        }
-        {       ECX     Pointer to Indices      }
-        {       [EBP+8] High bound of Indices   }
-
-        PUSH    EBX
-
-        MOV     EBX,[EBP+8]
-
-        TEST    EBX,EBX
-        JS      @@endLoop
-@@loop:
-        PUSH    [ECX+EBX*4].Integer
-        DEC     EBX
-        JNS     @@loop
-@@endLoop:
-        MOV     EBX,[EBP+8]
-        INC     EBX
-        PUSH    EBX
-        PUSH    EDX
-        PUSH    EAX
-        CALL    _VarArrayPut
-        LEA     ESP,[ESP+EBX*4+3*4]
-
-        POP     EBX
-end;
-
-{$ENDIF}
 
 { TdwsComConnector }
 
@@ -551,6 +375,11 @@ begin
               argPtr.vt := VT_I4 or VT_BYREF;
               argPtr.plVal := @TVarData(PParams[x]^).VInteger;
             end;
+          varInt64:
+            begin
+              argPtr.vt := VT_I8 or VT_BYREF;
+              argPtr.plVal := @TVarData(PParams[x]^).VInt64;
+            end;
           varDouble:
             begin
               argPtr.vt := VT_R8 or VT_BYREF;
@@ -611,7 +440,7 @@ begin
               argPtr.pvarVal := PParams[x];
             end;
         else
-          raise Exception.CreateFmt('Invalid data type (%d) for DWSII Com-Wrapper!', [argType]);
+          raise Exception.CreateFmt('Invalid data type (%d) for DWS Com-Wrapper!', [argType]);
         end;
       end;
     end;
@@ -660,29 +489,28 @@ end;
 
 function TComConnectorCall.Call(const Base: Variant; Args: TConnectorArgs): TData;
 const
-  maxOleArgs = 64;
+   maxOleArgs = 64;
 var
-  x: Integer;
-  paramData: array[0..maxOleArgs - 1] of Pointer;
-  disp: IDispatch;
-  pMethodName: PWideChar;
+   x: Integer;
+   paramData: array[0..maxOleArgs - 1] of Pointer;
+   disp: IDispatch;
+   pMethodName: PWideChar;
 begin
-  for x := 0 to Length(Args) - 1 do
-    paramData[x] := @Args[x][0];
+   for x := 0 to Length(Args) - 1 do
+      paramData[x] := @Args[x][0];
 
-  disp := Base;
+   disp := Base;
 
-  if not FIsInitialized then
-  begin
-    pMethodName := PWideChar(FMethodName);
-    // Get DISPID of this method
-    OleCheck(disp.GetIDsOfNames(GUID_NULL, @pMethodName, 1, LOCALE_SYSTEM_DEFAULT, @FDispId));
-    FIsInitialized := True;
-  end;
+   if not FIsInitialized then begin
+      pMethodName := PWideChar(FMethodName);
+      // Get DISPID of this method
+      DwsOleCheck(disp.GetIDsOfNames(GUID_NULL, @pMethodName, 1, LOCALE_SYSTEM_DEFAULT, @FDispId));
 
-  SetLength(Result, 1);
-  OleCheck(DispatchInvoke(disp, FMethodType,
-    Length(Args), 0, @FDispId, @paramData, @Result[0]));
+      FIsInitialized := True;
+   end;
+
+   SetLength(Result, 1);
+   DwsOleCheck(DispatchInvoke(disp, FMethodType, Length(Args), 0, @FDispId, @paramData, @Result[0]));
 end;
 
 constructor TComConnectorCall.Create(const MethodName: string;
@@ -704,7 +532,7 @@ var
   pMemberName: PWideChar;
 begin
   pMemberName := PWideChar(FMemberName);
-  OleCheck(disp.GetIDsOfNames(GUID_NULL, @pMemberName, 1, LOCALE_SYSTEM_DEFAULT, @FDispId));
+  DwsOleCheck(disp.GetIDsOfNames(GUID_NULL, @pMemberName, 1, LOCALE_SYSTEM_DEFAULT, @FDispId));
   FIsInitialized := True;
 end;
 
