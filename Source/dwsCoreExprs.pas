@@ -155,6 +155,7 @@ type
      function IsWritable : Boolean; override;
 
      class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant) : TConstExpr; overload; static;
+     class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Value: String) : TConstExpr; overload; static;
      class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Data: TData) : TConstExpr; overload; static;
      class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; constSymbol : TConstSymbol) : TConstExpr; overload; static;
    end;
@@ -515,8 +516,13 @@ type
      function EvalAsInteger : Int64; override;
    end;
 
+   // newType(x)
+   TConvExpr = class(TUnaryOpExpr)
+      function IsConstant : Boolean; override;
+   end;
+
    // Float(x)
-   TConvFloatExpr = class(TUnaryOpExpr)
+   TConvFloatExpr = class (TConvExpr)
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
      function Eval: Variant; override;
      procedure EvalAsFloat(var Result : Double); override;
@@ -524,7 +530,7 @@ type
    end;
 
    // Integer(float)
-   TConvIntegerExpr = class(TUnaryOpExpr)
+   TConvIntegerExpr = class (TConvExpr)
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
      function Eval: Variant; override;
      function EvalAsInteger : Int64; override;
@@ -532,7 +538,7 @@ type
    end;
 
    // Variant(simple)
-   TConvVariantExpr = class(TUnaryOpExpr)
+   TConvVariantExpr = class (TConvExpr)
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
      function Eval: Variant; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
@@ -1271,6 +1277,13 @@ end;
 
 // CreateTyped
 //
+class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Value: String) : TConstExpr;
+begin
+   Result:=CreateTyped(Prog, Typ, Variant(Value));
+end;
+
+// CreateTyped
+//
 class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Data: TData) : TConstExpr;
 begin
    if Length(Data)=1 then
@@ -1962,6 +1975,17 @@ begin
   if not (FRight.Typ is TClassOfSymbol) then
     AddCompilerStop(CPE_ClassRefExpected);
   FTyp := FRight.Typ.Typ;
+end;
+
+// ------------------
+// ------------------ TConvExpr ------------------
+// ------------------
+
+// IsConstant
+//
+function TConvExpr.IsConstant : Boolean;
+begin
+   Result:=FExpr.IsConstant;
 end;
 
 { TConvFloatExpr }
