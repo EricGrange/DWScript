@@ -286,8 +286,30 @@ end;
 // ToInt64
 //
 function TTokenBuffer.ToInt64 : Int64;
+
+   function ComplexToInt64(var buffer : TTokenBuffer) : Int64;
+   begin
+      Result:=StrToInt64(ToStr);
+   end;
+
+var
+   i, i2 : Integer;
 begin
-   Result:=StrToInt64(ToStr);
+   case Len of
+      1 : begin
+         i:=Ord(Buffer[0])-Ord('0');
+         if Cardinal(i)<Cardinal(10) then Exit(i);
+      end;
+      2 : begin
+         i:=Ord(Buffer[0])-Ord('0');
+         if Cardinal(i)<Cardinal(10) then begin
+            i2:=Ord(Buffer[1])-Ord('0');
+            if Cardinal(i2)<Cardinal(10) then
+               Exit(i*10+i2);
+         end;
+      end;
+   end;
+   Result:=ComplexToInt64(Self);
 end;
 
 // ToInt32Def
@@ -597,23 +619,28 @@ end;
 
 function TTokenizer.Test(t: TTokenType): Boolean;
 begin
-   if not Assigned(FToken) then
+   if not Assigned(FToken) then begin
       ReadToken;
-   if Assigned(FToken) then begin
-      Result:=(FToken.FTyp=t);
-      FHotPos:=FToken.FPos;
-   end else Result:=False;
+      if not Assigned(FToken) then
+         Exit(False);
+   end;
+
+   Result:=(FToken.FTyp=t);
+   FHotPos.LineCol:=FToken.FPos.LineCol;
 end;
 
 function TTokenizer.TestDelete(t: TTokenType): Boolean;
 begin
-   if not Assigned(FToken) then
+   if not Assigned(FToken) then begin
       ReadToken;
-   if Assigned(FToken) then begin
-      FHotPos:=FToken.FPos;
-      Result:=(FToken.FTyp=t);
-      if Result then
-         KillToken
+      if not Assigned(FToken) then
+         Exit(False);
+   end;
+
+   FHotPos.LineCol:=FToken.FPos.LineCol;
+   if FToken.FTyp=t then begin
+      KillToken;
+      Result:=True;
    end else Result:=False;
 end;
 

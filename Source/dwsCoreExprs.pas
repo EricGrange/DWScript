@@ -2784,35 +2784,37 @@ end;
 // TypeCheckNoPos
 //
 procedure TAssignExpr.TypeCheckNoPos(const aPos : TScriptPos);
-var
-  cleft, cright: string;
-begin
-  if FLeft.Typ = nil then
-    cleft := SYS_VOID
-  else
-    cleft := FLeft.Typ.Caption;
 
-  if FRight.Typ = nil then
-    cright := SYS_VOID
-  else
-    cright := FRight.Typ.Caption;
-
-  if (FRight.Typ = nil) or (FLeft.Typ = nil) then
-    AddCompilerErrorFmt(CPE_AssignIncompatibleTypes, [cright, cleft])
-  else begin
-    if FRight is TArrayConstantExpr then
-      TArrayConstantExpr(FRight).Prepare(FLeft.Typ.Typ);
-
-    FRight.TypeCheckNoPos(Pos);
-
-    // Automatic conversion from int to float values
-    if (FLeft.Typ = FProg.TypFloat) and (FRight.Typ = FProg.TypInteger) then
-      FRight := TConvFloatExpr.Create(FProg, FPos, FRight);
-
-    // Look if Types are compatible
-    if not FLeft.Typ.IsCompatible(FRight.Typ) then
+   procedure ReportIncompatibleTypes;
+   var
+      cleft, cright: string;
+   begin
+      if FLeft.Typ = nil then
+         cleft := SYS_VOID
+      else cleft := FLeft.Typ.Caption;
+      if FRight.Typ = nil then
+         cright := SYS_VOID
+      else cright := FRight.Typ.Caption;
       AddCompilerErrorFmt(CPE_AssignIncompatibleTypes, [cright, cleft]);
-  end;
+   end;
+
+begin
+   if (FRight.Typ = nil) or (FLeft.Typ = nil) then
+      ReportIncompatibleTypes
+   else begin
+      if FRight.InheritsFrom(TArrayConstantExpr) then
+         TArrayConstantExpr(FRight).Prepare(FLeft.Typ.Typ);
+
+      FRight.TypeCheckNoPos(Pos);
+
+      // Automatic conversion from int to float values
+      if (FLeft.Typ = FProg.TypFloat) and (FRight.Typ = FProg.TypInteger) then
+         FRight := TConvFloatExpr.Create(FProg, FPos, FRight);
+
+      // Look if Types are compatible
+      if not FLeft.Typ.IsCompatible(FRight.Typ) then
+         ReportIncompatibleTypes;
+   end;
 end;
 
 // Optimize
@@ -2824,9 +2826,9 @@ var
    subExpr : TSubIntExpr;
 begin
    Result:=Self;
-   if FLeft is TIntVarExpr then begin
+   if FLeft.InheritsFrom(TIntVarExpr) then begin
       leftVarExpr:=TVarExpr(FLeft);
-      if FRight is TAddIntExpr then begin
+      if FRight.InheritsFrom(TAddIntExpr) then begin
          addExpr:=TAddIntExpr(FRight);
          if (addExpr.Left is TVarExpr) and (TVarExpr(addExpr.Left).SameVarAs(leftVarExpr)) then begin
             Result:=TIncIntVarExpr.Create(Prog, Pos, FLeft, addExpr.Right);
@@ -2834,7 +2836,7 @@ begin
             addExpr.Right:=nil;
             Free;
          end;
-      end else if FRight is TSubIntExpr then begin
+      end else if FRight.InheritsFrom(TSubIntExpr) then begin
          subExpr:=TSubIntExpr(FRight);
          if (subExpr.Left is TVarExpr) and (TVarExpr(subExpr.Left).SameVarAs(leftVarExpr)) then begin
             Result:=TDecIntVarExpr.Create(Prog, Pos, FLeft, subExpr.Right);

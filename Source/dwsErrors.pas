@@ -53,6 +53,7 @@ type
 
       public
          SourceFile: TSourceFile;
+         property LineCol : Cardinal read FLineCol write FLineCol;
          property Line : Integer read GetLine write SetLine;
          property Col : Integer read GetCol write SetCol;
 

@@ -24,7 +24,7 @@ interface
 
 uses
   Variants, Classes, SysUtils, dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors,
-  dwsStrings, dwsFunctions, dwsStack, dwsCoreExprs, dwsFileSystem;
+  dwsStrings, dwsFunctions, dwsStack, dwsCoreExprs, dwsFileSystem, dwsMagicExprs;
 
 type
   TCompilerOption = (coOptimize, coSymbolDictionary, coContextMap);
@@ -1596,7 +1596,7 @@ begin
             Result := ReadSymbol(Result, IsWrite);
          end else Result := ReadSymbol(TConstExpr.CreateTyped(FProg, TClassSymbol(baseType).ClassOf, baseType.Name), IsWrite)
 
-      end else if sym is TFieldSymbol then begin
+      end else if sym.InheritsFrom(TFieldSymbol) then begin
          progMeth := TMethodSymbol(TProcedure(FProg).Func);
          if progMeth.IsClassMethod then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
@@ -1609,7 +1609,7 @@ begin
          end;
          Result := ReadSymbol(fieldExpr, IsWrite);
 
-      end else if sym is TPropertySymbol then begin
+      end else if sym.InheritsFrom(TPropertySymbol) then begin
          progMeth := TMethodSymbol(TProcedure(FProg).Func);
          if progMeth.IsClassMethod then
             varExpr := TConstExpr.CreateTyped(FProg, progMeth.ClassSymbol, nil)
@@ -1621,15 +1621,15 @@ begin
             raise;
          end;
 
-      end else if sym is TMethodSymbol then
+      end else if sym.InheritsFrom(TMethodSymbol) then
          Result:=ReadStaticMethod(TMethodSymbol(sym), IsWrite)
 
       // Functions/Procedures
 
-      else if sym is TFuncSymbol then
+      else if sym.InheritsFrom(TFuncSymbol) then
          Result := ReadSymbol(ReadFunc(TFuncSymbol(sym), IsWrite), IsWrite)
       // Type casts
-      else if sym is TTypeSymbol then
+      else if sym.InheritsFrom(TTypeSymbol) then
          Result := ReadTypeCast(namePos, sym)
       else begin
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownType, [sym.Name]);
@@ -2204,14 +2204,14 @@ begin
    pos := FTok.HotPos;
    right := ReadExpr;
    try
-      if (Left is TFuncExpr) and TFuncExpr(Left).IsWritable then begin
-         Left := TFuncCodeExpr.Create(FProg,FTok.HotPos,TFuncExpr(Left));
+      if Left.InheritsFrom(TFuncExpr) and TFuncExpr(Left).IsWritable then begin
+         Left := TFuncCodeExpr.Create(FProg, FTok.HotPos, TFuncExpr(Left));
          if right.Typ = FProg.TypNil then begin
             right.Free;
-            Result := TInitDataExpr.Create(FProg,FTok.HotPos,TDataExpr(Left));
+            Result := TInitDataExpr.Create(FProg, FTok.HotPos, TDataExpr(Left));
             Exit;
-         end else if right is TFuncExpr then
-            right := TFuncCodeExpr.Create(FProg,FTok.HotPos,TFuncExpr(right));
+         end else if right.InheritsFrom(TFuncExpr) then
+            right := TFuncCodeExpr.Create(FProg, FTok.HotPos, TFuncExpr(right));
       end;
 
       Result:=CreateAssign(pos, left, right);
@@ -2255,24 +2255,24 @@ var
 begin
    WarnDeprecated(FuncSym);
 
-   if (FuncSym is TMethodSymbol) and not (TMethodSymbol(FuncSym).IsClassMethod) then begin
+   if FuncSym.InheritsFrom(TMethodSymbol) and not (TMethodSymbol(FuncSym).IsClassMethod) then begin
 
       Result := TMethodStaticExpr.Create(FProg, FTok.HotPos, TMethodSymbol(FuncSym),
                                          TMethodObjExpr.Create(FProg, FTok.HotPos, CodeExpr),
                                          True, CodeExpr,
                                          IsWrite and Assigned(CodeExpr));
 
-   end else if (FuncSym is TMagicFuncSymbol) then begin
+   end else if FuncSym.InheritsFrom(TMagicFuncSymbol) then begin
 
       magicFuncSym:=TMagicFuncSymbol(FuncSym);
       internalFunc:=magicFuncSym.InternalFunction;
-      if internalFunc is TInternalMagicIntFunction then
+      if internalFunc.InheritsFrom(TInternalMagicIntFunction) then
          Result:=TMagicIntFuncExpr.Create(FProg, FTok.HotPos, magicFuncSym)
-      else if internalFunc is TInternalMagicFloatFunction then
+      else if internalFunc.InheritsFrom(TInternalMagicFloatFunction) then
          Result:=TMagicFloatFuncExpr.Create(FProg, FTok.HotPos, magicFuncSym)
-      else if internalFunc is TInternalMagicStringFunction then
+      else if internalFunc.InheritsFrom(TInternalMagicStringFunction) then
          Result:=TMagicStringFuncExpr.Create(FProg, FTok.HotPos, magicFuncSym)
-      else if internalFunc is TInternalMagicProcedure then
+      else if internalFunc.InheritsFrom(TInternalMagicProcedure) then
          Result:=TMagicProcedureExpr.Create(FProg, FTok.HotPos, magicFuncSym)
       else Result:=TMagicVariantFuncExpr.Create(FProg, FTok.HotPos, magicFuncSym);
 
@@ -3328,56 +3328,62 @@ begin
   end;
 end;
 
+// ReadTerm
+//
 function TdwsCompiler.ReadTerm: TNoPosExpr;
-const
-  nilIntf: IUnknown = nil;
+
+   function ReadNilTerm : TNoPosExpr;
+   const
+      cNilIntf : IUnknown = nil;
+   begin
+      Result:=TConstExpr.CreateTyped(FProg, FProg.TypNil, cNilIntf);
+   end;
+
+   function ReadNotTerm : TNotExpr;
+   begin
+      Result:=TNotExpr.Create(FProg, FTok.HotPos, ReadTerm);
+      try
+         Result.TypeCheck;
+      except
+         Result.Free;
+         raise;
+      end;
+   end;
+
 begin
-  if FTok.TestDelete(ttPLUS) then
-    // (redundant) plus sign
-    Result := ReadTerm
-  else if FTok.TestDelete(ttMINUS) then
-    Result := ReadNegation
-  else if FTok.TestDelete(ttALEFT) then
-    Result := ReadArrayConstant
-  else if FTok.TestDelete(ttNOT) then
-  begin
-    Result := TNotExpr.Create(FProg, FTok.HotPos, ReadTerm);
-    try
-      TNotExpr(Result).TypeCheck;
-    except
-      Result.Free;
-      raise;
-    end;
-  end
-  else if FTok.TestDelete(ttBLEFT) then
-  begin
-    // Read expression in brackets
-    Result := ReadExpr;
-    if not FTok.TestDelete(ttBRIGHT) then
-    begin
-      Result.Free;
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-    end;
-    if Result.Typ is TClassSymbol then
-      Result:=ReadSymbol(Result);
+   if FTok.TestDelete(ttPLUS) then
+      // (redundant) plus sign
+      Result := ReadTerm
+   else if FTok.TestDelete(ttMINUS) then
+      Result := ReadNegation
+   else if FTok.TestDelete(ttALEFT) then
+      Result := ReadArrayConstant
+   else if FTok.TestDelete(ttNOT) then
+      Result:=ReadNotTerm
+   else if FTok.TestDelete(ttBLEFT) then begin
+      // Read expression in brackets
+      Result := ReadExpr;
+      if not FTok.TestDelete(ttBRIGHT) then begin
+         Result.Free;
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+      end;
+      if Result.Typ is TClassSymbol then
+         Result:=ReadSymbol(Result);
+   end else if FTok.TestDelete(ttNIL) then
+      Result := ReadNilTerm
+   else if FTok.TestDelete(ttTRUE) then
+      Result := TConstBooleanExpr.Create(FProg, True)
+   else if FTok.TestDelete(ttFALSE) then
+      Result := TConstBooleanExpr.Create(FProg, False)
+   else if FTok.Test(ttINHERITED) or FTok.TestName  then
+      // Variable or Function
+      Result := ReadName
+   else // Constant values in the code
+      Result := ReadConstValue;
 
-  end
-  else if FTok.TestDelete(ttNIL) then
-    Result := TConstExpr.CreateTyped(FProg, FProg.TypNil, nilIntf)
-  else if FTok.TestDelete(ttTRUE) then
-    Result := TConstBooleanExpr.Create(FProg, True)
-  else if FTok.TestDelete(ttFALSE) then
-    Result := TConstBooleanExpr.Create(FProg, False)
-  else if FTok.Test(ttINHERITED) or FTok.TestName  then
-    // Variable or Function
-    Result := ReadName
-  else
-    // Constant values in the code
-    Result := ReadConstValue;
-
-  // No expression found
-  if not Assigned(Result) then
-    FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
+   // No expression found
+   if not Assigned(Result) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
 end;
 
 // ReadNegation

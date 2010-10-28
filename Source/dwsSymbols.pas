@@ -1761,9 +1761,12 @@ begin
       typSym:=typSym.BaseType;
       if typSym=nil then
          Exit(False);
-      if typSym is TEnumerationSymbol then
+      if typSym.InheritsFrom(TEnumerationSymbol) then begin
          typSym:=TEnumerationSymbol(typSym).Typ.BaseType;
-      Result:=    (typSym is TBaseSymbol)
+         if typSym=nil then
+            Exit(False);
+      end;
+      Result:=    typSym.InheritsFrom(TBaseSymbol)
               and IsBaseTypeCompatible(Self.FId, TBaseSymbol(typSym).FId);
    end;
 end;

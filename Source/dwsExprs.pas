@@ -485,8 +485,8 @@ type
     function IsWritable: Boolean; virtual;
   end;
 
-  // Encapsulates data
-  TPosDataExpr = class(TDataExpr)
+   // Encapsulates data
+   TPosDataExpr = class(TDataExpr)
       protected
          FPos: TScriptPos;
 
@@ -501,22 +501,24 @@ type
          procedure AddExecutionStopFmt(const fmtText: string; const Args: array of const);
 
          property Pos: TScriptPos read FPos;
-  end;
+   end;
 
-  TFuncExprBase = class(TPosDataExpr)
-  protected
-    FArgs: TExprBaseListRec;
-    FFunc: TFuncSymbol;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol);
-    destructor Destroy; override;
-    procedure AddArg(Arg: TNoPosExpr); virtual; abstract;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    procedure Initialize; override;
-    function GetArgs : TExprBaseList;
-    function Optimize : TNoPosExpr; override;
-    function IsConstant : Boolean; override;
-    property FuncSym: TFuncSymbol read FFunc;
+   // TFuncExprBase
+   //
+   TFuncExprBase = class(TPosDataExpr)
+      protected
+         FArgs: TExprBaseListRec;
+         FFunc: TFuncSymbol;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol);
+         destructor Destroy; override;
+         procedure AddArg(Arg: TNoPosExpr); virtual; abstract;
+         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+         procedure Initialize; override;
+         function GetArgs : TExprBaseList;
+         function Optimize : TNoPosExpr; override;
+         function IsConstant : Boolean; override;
+         property FuncSym: TFuncSymbol read FFunc;
    end;
 
    TPushOperatorType = (potUnknown,
@@ -543,88 +545,39 @@ type
       procedure ExecuteData(stack : TStack);
    end;
 
-  // Function call: func(arg0, arg1, ...);
-  TFuncExpr = class(TFuncExprBase)
-  private
-    FInitResultExpr: TDataExpr;
-    FIsInstruction : Boolean;
-    FIsWritable: Boolean;
-    FPushExprs: packed array of TPushOperator;
-    FResultAddr: Integer;
-    FCodeExpr : TDataExpr;
-  protected
-    function PostCall(const ScriptObj: IScriptObj): Variant; virtual;
-    function PreCall(var ScriptObj: IScriptObj): TFuncSymbol; virtual;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol;
-      IsInstruction: Boolean = True; CodeExpr: TDataExpr = nil;
-      IsWritable: Boolean = False);
-    destructor Destroy; override;
-    procedure AddArg(Arg: TNoPosExpr); override;
-    procedure AddPushExprs;
-    function Eval: Variant; override;
-    function GetData: TData; override;
-    function GetAddr: Integer; override;
-    function GetCode(Func : TFuncSymbol) : ICallable; virtual;
-    procedure Initialize; override;
-    procedure SetResultAddr(ResultAddr: Integer = -1);
-    function IsWritable : Boolean; override;
-    property CodeExpr : TDataExpr read FCodeExpr;
-  end;
+   TFuncExprState = (fesIsInstruction, fesIsWritable, fesTypeChecked);
+   TFuncExprStates = set of TFuncExprState;
 
-  TMagicFuncExpr = class(TFuncExprBase)
-  private
-  protected
-    function GetData: TData; override;
-    function GetAddr: Integer; override;
-  public
-    procedure AddArg(Arg: TNoPosExpr); override;
-  end;
+   // Function call: func(arg0, arg1, ...);
+   TFuncExpr = class(TFuncExprBase)
+      private
+         FInitResultExpr: TDataExpr;
+         FStates : TFuncExprStates;
+         FPushExprs: packed array of TPushOperator;
+         FResultAddr: Integer;
+         FCodeExpr : TDataExpr;
 
-  TMagicVariantFuncExpr = class(TMagicFuncExpr)
-  private
-    FOnEval : TMagicFuncDoEvalEvent;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-    function Eval: Variant; override;
-  end;
+      protected
+         function PostCall(const ScriptObj: IScriptObj): Variant; virtual;
+         function PreCall(var ScriptObj: IScriptObj): TFuncSymbol; virtual;
 
-  TMagicProcedureExpr = class(TMagicFuncExpr)
-  private
-    FOnEval : TMagicProcedureDoEvalEvent;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-    function Eval: Variant; override;
-  end;
-
-  TMagicIntFuncExpr = class(TMagicFuncExpr)
-  private
-    FOnEval : TMagicFuncDoEvalAsIntegerEvent;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-    procedure EvalNoResult(var status : TExecutionStatusResult); override;
-    function Eval: Variant; override;
-    function EvalAsInteger : Int64; override;
-  end;
-
-  TMagicStringFuncExpr = class(TMagicFuncExpr)
-  private
-    FOnEval : TMagicFuncDoEvalAsStringEvent;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-    function Eval : Variant; override;
-    procedure EvalAsString(var Result : String); override;
-  end;
-
-  TMagicFloatFuncExpr = class(TMagicFuncExpr)
-  private
-    FOnEval : TMagicFuncDoEvalAsFloatEvent;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-    function Eval: Variant; override;
-    procedure EvalAsFloat(var Result : Double); override;
-  end;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol;
+                            IsInstruction: Boolean = True; CodeExpr: TDataExpr = nil;
+                            IsWritable: Boolean = False);
+         destructor Destroy; override;
+         procedure AddArg(Arg: TNoPosExpr); override;
+         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+         procedure AddPushExprs;
+         function Eval: Variant; override;
+         function GetData: TData; override;
+         function GetAddr: Integer; override;
+         function GetCode(Func : TFuncSymbol) : ICallable; virtual;
+         procedure Initialize; override;
+         procedure SetResultAddr(ResultAddr: Integer = -1);
+         function IsWritable : Boolean; override;
+         property CodeExpr : TDataExpr read FCodeExpr;
+   end;
 
   TFuncCodeExpr = class(TPosDataExpr)
   private
@@ -2636,8 +2589,10 @@ constructor TFuncExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFu
 
 begin
    inherited Create(Prog, Pos, Func);
-   FIsInstruction := IsInstruction;
-   FIsWritable := IsWritable;
+   if IsInstruction then
+      Include(FStates, fesIsInstruction);
+   if IsWritable then
+      Include(FStates, fesIsWritable);
    FResultAddr := -1;
    FCodeExpr := CodeExpr;
 
@@ -2659,6 +2614,17 @@ begin
     Arg := TFuncCodeExpr.Create(Prog,Pos,TFuncExpr(Arg));
 
   FArgs.Add(Arg);
+end;
+
+// TypeCheckNoPos
+//
+procedure TFuncExpr.TypeCheckNoPos(const aPos : TScriptPos);
+begin
+   if fesTypeChecked in FStates then Exit;
+
+   inherited TypeCheckNoPos(aPos);
+
+   Include(FStates, fesTypeChecked);
 end;
 
 function TFuncExpr.Eval: Variant;
@@ -2826,7 +2792,7 @@ end;
 //
 function TFuncExpr.IsWritable : Boolean;
 begin
-   Result:=FIsWritable;
+   Result:=(fesIsWritable in FStates);
 end;
 
 function TFuncExpr.GetCode(Func: TFuncSymbol): ICallable;
@@ -2835,197 +2801,6 @@ begin
     Result := ICallable(IUnknown(FCodeExpr.Eval))
   else
     Result := ICallable(Func.Executable);
-end;
-
-// ------------------
-// ------------------ TMagicFuncExpr ------------------
-// ------------------
-
-// AddArg
-//
-procedure TMagicFuncExpr.AddArg(Arg: TNoPosExpr);
-begin
-  FArgs.Add(Arg);
-end;
-
-// GetData
-//
-function TMagicFuncExpr.GetData: TData;
-begin
-   Prog.Stack.Data[FProg.Stack.BasePointer]:=Eval;
-   Result:=Prog.Stack.Data;
-end;
-
-// GetAddr
-//
-function TMagicFuncExpr.GetAddr: Integer;
-begin
-   Result := FProg.Stack.BasePointer;
-end;
-
-// ------------------
-// ------------------ TMagicVariantFuncExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TMagicVariantFuncExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-begin
-   inherited Create(Prog, Pos, Func);
-   FOnEval:=TInternalMagicFunction(Func.InternalFunction).DoEval;
-end;
-
-// Eval
-//
-function TMagicVariantFuncExpr.Eval: Variant;
-begin
-   try
-      Result:=FOnEval(@FArgs);
-   except
-      FProg.Msgs.SetLastScriptError(Pos, ExceptObject);
-      raise;
-   end;
-end;
-
-// ------------------
-// ------------------ TMagicIntFuncExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TMagicIntFuncExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-begin
-   inherited Create(Prog, Pos, Func);
-   FOnEval:=TInternalMagicIntFunction(Func.InternalFunction).DoEvalAsInteger;
-end;
-
-// EvalNoResult
-//
-procedure TMagicIntFuncExpr.EvalNoResult(var status : TExecutionStatusResult);
-begin
-   EvalAsInteger;
-end;
-
-// Eval
-//
-function TMagicIntFuncExpr.Eval: Variant;
-begin
-   Result:=EvalAsInteger;
-end;
-
-// EvalAsInteger
-//
-function TMagicIntFuncExpr.EvalAsInteger : Int64;
-begin
-   try
-      Result:=FOnEval(@FArgs);
-   except
-      FProg.Msgs.SetLastScriptError(Pos, ExceptObject);
-      raise;
-   end;
-end;
-
-// ------------------
-// ------------------ TMagicStringFuncExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TMagicStringFuncExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-begin
-   inherited Create(Prog, Pos, Func);
-   FOnEval:=TInternalMagicStringFunction(Func.InternalFunction).DoEvalAsString;
-end;
-
-// Eval
-//
-function TMagicStringFuncExpr.Eval: Variant;
-var
-   buf : String;
-begin
-   EvalAsString(buf);
-   Result:=buf;
-end;
-
-// EvalAsString
-//
-procedure TMagicStringFuncExpr.EvalAsString(var Result : String);
-begin
-   try
-      FOnEval(@FArgs, Result);
-   except
-      FProg.Msgs.SetLastScriptError(Pos, ExceptObject);
-      raise;
-   end;
-end;
-
-// ------------------
-// ------------------ TMagicFloatFuncExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TMagicFloatFuncExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-begin
-   inherited Create(Prog, Pos, Func);
-   FOnEval:=TInternalMagicFloatFunction(Func.InternalFunction).DoEvalAsFloat;
-end;
-
-// Eval
-//
-function TMagicFloatFuncExpr.Eval : Variant;
-var
-   buf : Double;
-begin
-   EvalAsFloat(buf);
-   Result:=buf;
-end;
-
-// EvalAsFloat
-//
-procedure TMagicFloatFuncExpr.EvalAsFloat(var Result : Double);
-begin
-   try
-      FOnEval(@FArgs, Result);
-   except
-      FProg.Msgs.SetLastScriptError(Pos, ExceptObject);
-      raise;
-   end;
-end;
-
-// ------------------
-// ------------------ TMagicProcedureExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TMagicProcedureExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-begin
-   inherited Create(Prog, Pos, Func);
-   FOnEval:=TInternalMagicProcedure(Func.InternalFunction).DoEvalProc;
-end;
-
-// EvalNoResult
-//
-procedure TMagicProcedureExpr.EvalNoResult(var status : TExecutionStatusResult);
-begin
-   try
-      FOnEval(@FArgs);
-   except
-      FProg.Msgs.SetLastScriptError(Pos, ExceptObject);
-      raise;
-   end;
-end;
-
-// Eval
-//
-function TMagicProcedureExpr.Eval: Variant;
-var
-   status : TExecutionStatusResult;
-begin
-   status:=esrNone;
-   EvalNoResult(status);
-   Assert(status=esrNone);
 end;
 
 { TNoPosExprList }
