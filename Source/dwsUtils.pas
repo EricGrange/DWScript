@@ -54,7 +54,7 @@ type
    {: Compact list embedded in a record.<p>
       If the list holds only 1 item, no dynamic memory is allocated
       (the list pointer is used).
-      Make sure to Clear or Clear in the destructor of the Owner. }
+      Make sure to Clear or Clean in the destructor of the Owner. }
    TTightList = record
       private
          FList: PPointerList;
@@ -68,8 +68,8 @@ type
          property List : PPointerList read GetList;
          property Count : Integer read FCount;
 
-         procedure Clean;
-         procedure Clear;
+         procedure Clean;  // clear the list and free the item objects
+         procedure Clear;  // clear the list without freeing the items
          function Add(item : Pointer) : Integer;
          procedure Assign(const aList : TTightList);
          function IndexOf(item : Pointer) : Integer;
