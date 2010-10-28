@@ -22,7 +22,7 @@ unit dwsUtils;
 
 interface
 
-uses Variants;
+uses Classes, SysUtils, Variants;
 
 type
 
@@ -49,6 +49,9 @@ type
          procedure AddString(const s : String);
    end;
 
+procedure UnifyAssignString(const fromStr : String; var toStr : String);
+procedure TidyStringsUnifier;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -56,6 +59,86 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+type
+   TStringListCracker = class (TStrings)
+      private
+         FList: PStringItemList;
+   end;
+
+   TFastCompareStringList = class (TStringList)
+      function CompareStrings(const S1, S2: string): Integer; override;
+   end;
+
+var
+   vCharStrings : array [0..127] of TStringList;
+
+// CompareStrings
+//
+function TFastCompareStringList.CompareStrings(const S1, S2: string): Integer;
+begin
+   Result:=CompareStr(S1, S2);
+end;
+
+// UnifyAssignString
+//
+procedure UnifyAssignString(const fromStr : String; var toStr : String);
+var
+   i : Integer;
+   sl : TStringList;
+begin
+   if fromStr='' then
+      toStr:=''
+   else begin
+      i:=Ord(fromStr[1]);
+      if i<=High(vCharStrings) then begin
+         sl:=vCharStrings[i];
+         System.MonitorEnter(sl);
+         i:=sl.IndexOf(fromStr);
+         if i<0 then
+            i:=sl.Add(fromStr);
+         toStr:=TStringListCracker(sl).FList[i].FString;
+         System.MonitorExit(sl);
+      end else toStr:=fromStr;
+   end;
+end;
+
+// TidyStringsUnifier
+//
+procedure TidyStringsUnifier;
+var
+   i : Integer;
+   sl : TStringList;
+begin
+   for i:=Low(vCharStrings) to High(vCharStrings) do begin
+      sl:=vCharStrings[i];
+      System.MonitorEnter(sl);
+      sl.Clear;
+      System.MonitorExit(sl);
+   end;
+end;
+
+// InitializeStringsUnifier
+//
+procedure InitializeStringsUnifier;
+var
+   i : Integer;
+begin
+   for i:=Low(vCharStrings) to High(vCharStrings) do begin
+      vCharStrings[i]:=TFastCompareStringList.Create;
+      vCharStrings[i].Sorted:=True;
+   end;
+end;
+
+// FinalizeStringsUnifier
+//
+procedure FinalizeStringsUnifier;
+var
+   i : Integer;
+begin
+   for i:=Low(vCharStrings) to High(vCharStrings) do
+      FreeAndNil(vCharStrings[i]);
+end;
 
 // ------------------
 // ------------------ TVarRecArrayContainer ------------------
@@ -164,5 +247,19 @@ begin
       VUnicodeString:=Pointer(FStrings[n]);
    end;
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   InitializeStringsUnifier;
+
+finalization
+
+   FinalizeStringsUnifier;
 
 end.

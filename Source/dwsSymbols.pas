@@ -22,7 +22,7 @@ unit dwsSymbols;
 
 interface
 
-uses Windows, SysUtils, Variants, Classes, dwsStrings, dwsStack, dwsErrors;
+uses Windows, SysUtils, Variants, Classes, dwsStrings, dwsStack, dwsErrors, dwsUtils;
 
 type
    TBaseTypeID = (
@@ -1144,7 +1144,7 @@ end;
 constructor TSymbol.Create(const Name: string; Typ: TSymbol);
 begin
 //  FName := Name;
-  UnifyCopyString(Name, FName);
+  UnifyAssignString(Name, FName);
   FTyp := Typ;
   if Assigned(FTyp) then
     FSize := FTyp.FSize

@@ -1367,7 +1367,7 @@ constructor TConstStringExpr.Create(Prog: TdwsProgram; const Value: String);
 var
    str : String;
 begin
-   UnifyCopyString(Value, str);
+   UnifyAssignString(Value, str);
    inherited Create(Prog, Prog.TypString, str);
 end;
 
