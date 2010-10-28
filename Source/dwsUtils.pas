@@ -49,6 +49,37 @@ type
          procedure AddString(const s : String);
    end;
 
+   // TTightList
+   //
+   {: Compact list embedded in a record.<p>
+      If the list holds only 1 item, no dynamic memory is allocated
+      (the list pointer is used).
+      Make sure to Clear or Clear in the destructor of the Owner. }
+   TTightList = record
+      private
+         FList: PPointerList;
+
+         procedure RaiseIndexOutOfBounds;
+         function GetList : PPointerList;
+
+      public
+         FCount: Integer;     // exposed so it can be used for direct property access
+
+         property List : PPointerList read GetList;
+         property Count : Integer read FCount;
+
+         procedure Clean;
+         procedure Clear;
+         function Add(item : Pointer) : Integer;
+         procedure Assign(const aList : TTightList);
+         function IndexOf(item : Pointer) : Integer;
+         function Remove(item : Pointer) : Integer;
+         procedure Delete(index : Integer);
+         procedure Insert(index : Integer; item : Pointer);
+         procedure Move(curIndex, newIndex : Integer);
+         procedure Exchange(index1, index2 : Integer);
+   end;
+
 procedure UnifyAssignString(const fromStr : String; var toStr : String);
 procedure TidyStringsUnifier;
 
@@ -246,6 +277,213 @@ begin
       VType:=vtUnicodeString;
       VUnicodeString:=Pointer(FStrings[n]);
    end;
+end;
+
+// ------------------
+// ------------------ TVarRecArrayContainer ------------------
+// ------------------
+
+// Clean
+//
+procedure TTightList.Clean;
+var
+   i : Integer;
+begin
+   case Count of
+      0 : Exit;
+      1 : TObject(FList).Free;
+   else
+      for i:=Count-1 downto 0 do
+         TObject(FList[i]).Free;
+   end;
+   Clear;
+end;
+
+// Clear
+//
+procedure TTightList.Clear;
+begin
+   case Count of
+      0 : Exit;
+      1 : ;
+   else
+      FreeMem(FList);
+   end;
+   FList:=nil;
+   FCount:=0;
+end;
+
+// GetList
+//
+function TTightList.GetList : PPointerList;
+begin
+   if Count=1 then
+      Result:=@FList
+   else Result:=FList;
+end;
+
+// Add
+//
+function TTightList.Add(item : Pointer) : Integer;
+var
+   buf : Pointer;
+begin
+   case Count of
+      0 : begin
+         FList:=item;
+         FCount:=1;
+      end;
+      1 : begin
+         buf:=FList;
+         FList:=AllocMem(2*SizeOf(Pointer));
+         FList[0]:=buf;
+         FList[1]:=item;
+         FCount:=2;
+      end;
+   else
+      Inc(FCount);
+      ReallocMem(FList, Count*SizeOf(Pointer));
+      FList[Count-1]:=item;
+   end;
+   Result:=FCount-1;
+end;
+
+// Assign
+//
+procedure TTightList.Assign(const aList : TTightList);
+begin
+   Clear;
+   FCount:=aList.FCount;
+   case Count of
+      1 : FList:=aList.FList;
+   else
+      ReallocMem(FList, Count*SizeOf(Pointer));
+      System.Move(aList.FList^, FList^, Count*SizeOf(Pointer));
+   end;
+end;
+
+// IndexOf
+//
+function TTightList.IndexOf(item : Pointer) : Integer;
+begin
+   case Count of
+      0 : Result:=-1;
+      1 : if FList=item then Result:=0 else Result:=-1;
+   else
+      Result:=0;
+      while Result<FCount do begin
+         if FList[Result]=item then Exit;
+         Inc(Result);
+      end;
+      Result:=-1;
+   end;
+end;
+
+// Remove
+//
+function TTightList.Remove(item : Pointer) : Integer;
+begin
+   Result:=IndexOf(item);
+   if Result>=0 then
+      Delete(Result);
+end;
+
+// Delete
+//
+procedure TTightList.Delete(index : Integer);
+var
+   i : Integer;
+   buf : Pointer;
+begin
+   if Cardinal(index)>=Cardinal(Count) then
+      RaiseIndexOutOfBounds
+   else begin
+      case Count of
+         1 : begin
+            FList:=nil;
+            FCount:=0;
+         end;
+         2 : begin
+            buf:=FList;
+            if index=0 then
+               FList:=FList[1]
+            else FList:=FList[0];
+            FreeMem(buf);
+            FCount:=1;
+         end;
+      else
+         for i:=index+1 to Count-1 do
+            FList[i-1]:=FList[i];
+         Dec(FCount);
+      end;
+   end;
+end;
+
+// Insert
+//
+procedure TTightList.Insert(index : Integer; item : Pointer);
+var
+   i : Integer;
+   locList : PPointerList;
+begin
+   if Cardinal(index)>Cardinal(FCount) then
+      RaiseIndexOutOfBounds
+   else case Count of
+      0 : begin
+         FList:=item;
+         FCount:=1;
+      end;
+      1 : begin
+         if index=1 then
+            Add(item)
+         else begin
+            Add(FList);
+            FList[0]:=item;
+         end;
+      end;
+   else
+      ReallocMem(FList, (FCount+1)*SizeOf(Pointer));
+      locList:=FList;
+      for i:=Count-1 downto index do
+         locList[i+1]:=locList[i];
+      locList[index]:=item;
+      Inc(FCount);
+   end;
+end;
+
+// Move
+//
+procedure TTightList.Move(curIndex, newIndex : Integer);
+var
+   item : Pointer;
+begin
+   if (Cardinal(curIndex)>=Cardinal(FCount)) or (Cardinal(newIndex)>=Cardinal(FCount)) then
+      RaiseIndexOutOfBounds
+   else if curIndex<>newIndex then begin
+      item:=FList[curIndex];
+      Delete(curIndex);
+      Insert(newIndex, item);
+   end;
+end;
+
+// Exchange
+//
+procedure TTightList.Exchange(index1, index2 : Integer);
+var
+   item : Pointer;
+begin
+   if index1<>index2 then begin
+      item:=FList[index1];
+      FList[index1]:=FList[index2];
+      FList[index2]:=item;
+   end;
+end;
+
+// RaiseIndexOutOfBounds
+//
+procedure TTightList.RaiseIndexOutOfBounds;
+begin
+   raise Exception.Create('List index out of bounds');
 end;
 
 // ------------------------------------------------------------------

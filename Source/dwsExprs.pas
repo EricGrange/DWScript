@@ -23,7 +23,7 @@ unit dwsExprs;
 interface
 
 uses Classes, Variants, SysUtils, TypInfo, dwsSymbols, dwsErrors,
-   dwsStrings, dwsStack, SyncObjs, dwsFileSystem;
+   dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsUtils;
 
 const
   C_DefaultStackChunkSize = 4096;
