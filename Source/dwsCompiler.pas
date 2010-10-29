@@ -1987,36 +1987,42 @@ end;
 function TdwsCompiler.ReadFor: TForExpr;
 var
    expr : TNoPosExpr;
-   loopVarExpr : TIntVarExpr;
+   loopVarExpr, loopVarExprSafe : TIntVarExpr;
+   fromExpr : TNoPosExpr;
 begin
    loopVarExpr:=nil;
+   loopVarExprSafe:=nil;
+   fromExpr:=nil;
    try
-      Result:=TForExpr.Create(FProg, FTok.HotPos);
+      expr:=ReadName;
+      if not (expr is TVarExpr) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_VariableExpected);
+      if not expr.IsIntegerValue then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
+      if not (expr is TIntVarExpr) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_FORLoopMustBeLocalVariable);
+
+      loopVarExpr:=TIntVarExpr(expr);
+      loopVarExprSafe:=loopVarExpr;
+      WarnForVarUsage(loopVarExpr);
+      FForVarExprs.Add(loopVarExpr);
+
+      if not FTok.TestDelete(ttASSIGN) then
+        FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
+
+      fromExpr:=ReadExpr;
+
+      if FTok.TestDelete(ttTO) then
+         Result:=TForUpwardExpr.Create(FProg, FTok.HotPos)
+      else if FTok.TestDelete(ttDOWNTO) then
+         Result:=TForDownwardExpr.Create(FProg, FTok.HotPos)
+      else FMsgs.AddCompilerStop(FTok.HotPos, CPE_ToOrDowntoExpected);
       try
-         expr:=ReadName;
-         if not (expr is TVarExpr) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_VariableExpected);
-         if not expr.IsIntegerValue then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
-         if not (expr is TIntVarExpr) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_FORLoopMustBeLocalVariable);
-
-         loopVarExpr:=TIntVarExpr(expr);
-         WarnForVarUsage(loopVarExpr);
-         FForVarExprs.Add(loopVarExpr);
-
          Result.VarExpr:=loopVarExpr;
+         loopVarExprSafe:=nil;
 
-         if not FTok.TestDelete(ttASSIGN) then
-           FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
-
-         Result.FromExpr:=ReadExpr;
-
-         if FTok.TestDelete(ttTO) then
-            TForExpr(Result).IsUpward:=True
-         else if FTok.TestDelete(ttDOWNTO) then
-            TForExpr(Result).IsUpward:=False
-         else FMsgs.AddCompilerStop(FTok.HotPos, CPE_ToOrDowntoExpected);
+         Result.FromExpr:=fromExpr;
+         fromExpr:=nil;
 
          Result.ToExpr:=ReadExpr;
 
@@ -2030,6 +2036,8 @@ begin
       end;
    finally
       FForVarExprs.Remove(loopVarExpr);
+      loopVarExprSafe.Free;
+      fromExpr.Free;
    end;
 end;
 
@@ -3372,9 +3380,9 @@ begin
    end else if FTok.TestDelete(ttNIL) then
       Result := ReadNilTerm
    else if FTok.TestDelete(ttTRUE) then
-      Result := TConstBooleanExpr.Create(FProg, True)
+      Result := TConstBooleanExpr.CreateUnified(FProg, nil, True)
    else if FTok.TestDelete(ttFALSE) then
-      Result := TConstBooleanExpr.Create(FProg, False)
+      Result := TConstBooleanExpr.CreateUnified(FProg, nil, False)
    else if FTok.Test(ttINHERITED) or FTok.TestName  then
       // Variable or Function
       Result := ReadName
@@ -3425,11 +3433,11 @@ begin
     tt := t.FTyp;
     case tt of
       ttIntVal:
-        Result := TConstIntExpr.Create(FProg, t.FInteger);
+        Result := TConstIntExpr.CreateUnified(FProg, nil, t.FInteger);
       ttFloatVal:
-        Result := TConstFloatExpr.Create(FProg, t.FFloat);
+        Result := TConstFloatExpr.CreateUnified(FProg, nil, t.FFloat);
       ttStrVal:
-        Result := TConstStringExpr.Create(FProg, t.FString);
+        Result := TConstStringExpr.CreateUnified(FProg, nil, t.FString);
     end;
     FTok.KillToken;
   end;

@@ -22,8 +22,8 @@ unit dwsExprs;
 
 interface
 
-uses Classes, Variants, SysUtils, TypInfo, dwsSymbols, dwsErrors,
-   dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsUtils;
+uses Classes, Variants, SysUtils, TypInfo, dwsSymbols, dwsErrors, dwsUtils,
+   dwsStrings, dwsStack, SyncObjs, dwsFileSystem;
 
 const
   C_DefaultStackChunkSize = 4096;
@@ -273,6 +273,7 @@ type
     FResult: TdwsResult;
     FResultType: TdwsResultType;
     FRoot: TdwsProgram;
+    FUnifiedConstList: TSortedList;
     FRootTable: TProgramSymbolTable;
     FSourceList: TScriptSourceList;
     FStack: TStack;
@@ -344,6 +345,8 @@ type
     property RootTable: TProgramSymbolTable read FRootTable;
     property Table: TSymbolTable read FTable write FTable;
     property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds;
+
+    property UnifiedConstList: TSortedList read FUnifiedConstList;
 
     property TypBoolean: TTypeSymbol read FTypBoolean;
     property TypFloat: TTypeSymbol read FTypFloat;
@@ -1320,6 +1323,8 @@ begin
   FAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
   FGlobalAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
 
+  FUnifiedConstList:=TUnifiedConstList.Create;
+
   // Initialize the system table
   FRootTable := TProgramSymbolTable.Create(SystemTable, @FAddrGenerator);
   FTable := FRootTable;
@@ -1338,19 +1343,18 @@ end;
 
 destructor TdwsProgram.Destroy;
 begin
-  FResult.Free;
-  FExpr.Free;
-  FInitExpr.Free;
-  FRootTable.Free;
-  FStack.Free;
-//  FAddrGenerator.Free;
-//  FGlobalAddrGenerator.Free;
-  FTypNil.Free;
-  FMsgs.Free;
-  FSymbolDictionary.Free;
-  FContextMap.Free;
-  FSourceList.Free;
-  inherited;
+   FResult.Free;
+   FExpr.Free;
+   FInitExpr.Free;
+   FRootTable.Free;
+   FStack.Free;
+   FTypNil.Free;
+   FMsgs.Free;
+   FSymbolDictionary.Free;
+   FContextMap.Free;
+   FSourceList.Free;
+   FUnifiedConstList.Free;
+   inherited;
 end;
 
 // Starts the program but does not terminate it.
@@ -1970,7 +1974,7 @@ var
 begin
    if IsConstant and IsIntegerValue then begin
       EvalAsFloat(temp);
-      Result:=TConstFloatExpr.Create(FProg, temp);
+      Result:=TConstFloatExpr.CreateUnified(FProg, nil, temp);
       Free;
    end else Result:=Self;
 end;

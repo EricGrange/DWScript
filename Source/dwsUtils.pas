@@ -80,6 +80,27 @@ type
          procedure Exchange(index1, index2 : Integer);
    end;
 
+   // TSortedList
+   //
+   {: List that maintains its elements sorted }
+   TSortedList = class
+      private
+         FItems : array of Pointer;
+         FCount : Integer;
+      protected
+         function GetItem(index : Integer) : Pointer;
+         function Find(const item : Pointer; var index : Integer) : Boolean;
+         function Compare(const item1, item2 : Pointer) : Integer; virtual;
+         procedure InsertItem(index : Integer; const anItem : Pointer);
+      public
+         function Add(const anItem : Pointer) : Integer;
+         function AddOrFind(const anItem : Pointer; var added : Boolean) : Integer;
+         function IndexOf(const anItem : Pointer) : Integer;
+         procedure Clear;
+         property Items[index : Integer] : Pointer read GetItem; default;
+         property Count : Integer read FCount;
+   end;
+
 procedure UnifyAssignString(const fromStr : String; var toStr : String);
 procedure TidyStringsUnifier;
 
@@ -484,6 +505,92 @@ end;
 procedure TTightList.RaiseIndexOutOfBounds;
 begin
    raise Exception.Create('List index out of bounds');
+end;
+
+// ------------------
+// ------------------ TSortedList ------------------
+// ------------------
+
+// GetItem
+//
+function TSortedList.GetItem(index : Integer) : Pointer;
+begin
+   Result:=FItems[index];
+end;
+
+// Find
+//
+function TSortedList.Find(const item : Pointer; var index : Integer) : Boolean;
+var
+   lo, hi, mid, compResult : Integer;
+begin
+   Result:=False;
+   lo:=0;
+   hi:=FCount-1;
+   while lo<=hi do begin
+      mid:=(lo+hi) shr 1;
+      compResult:=Compare(FItems[mid], item);
+      if compResult<0 then
+         lo:=mid+1
+      else begin
+         hi:=mid- 1;
+         if compResult=0 then
+            Result:=True;
+      end;
+   end;
+   index:=lo;
+end;
+
+// Compare
+//
+function TSortedList.Compare(const item1, item2 : Pointer) : Integer;
+begin
+   Result:=NativeInt(item1)-NativeInt(item2);
+end;
+
+// InsertItem
+//
+procedure TSortedList.InsertItem(index : Integer; const anItem : Pointer);
+begin
+   if Count=Length(FItems) then
+      SetLength(FItems, Count+8+(Count shr 24));
+   if index<Count then
+      System.Move(FItems[index], FItems[index+1], (Count-index)*SizeOf(Pointer));
+   Inc(FCount);
+   FItems[index]:=anItem;
+end;
+
+// Add
+//
+function TSortedList.Add(const anItem : Pointer) : Integer;
+begin
+   Find(anItem, Result);
+   InsertItem(Result, anItem);
+end;
+
+// AddOrFind
+//
+function TSortedList.AddOrFind(const anItem : Pointer; var added : Boolean) : Integer;
+begin
+   added:=not Find(anItem, Result);
+   if added then
+      InsertItem(Result, anItem);
+end;
+
+// IndexOf
+//
+function TSortedList.IndexOf(const anItem : Pointer) : Integer;
+begin
+   if not Find(anItem, Result) then
+      Result:=-1;
+end;
+
+// Clear
+//
+procedure TSortedList.Clear;
+begin
+   SetLength(FItems, 0);
+   FCount:=0;
 end;
 
 // ------------------------------------------------------------------

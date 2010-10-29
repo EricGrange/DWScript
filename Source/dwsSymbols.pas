@@ -655,6 +655,7 @@ type
    public
      constructor Create(const Name: string; BaseType: TTypeSymbol);
      destructor Destroy; override;
+     procedure InitData(const Data: TData; Offset: Integer); override;
      procedure AddElement(Element: TElementSymbol);
      property Elements: TSymbolTable read FElements;
      function ShortDescription : String;
@@ -2417,6 +2418,18 @@ begin
   FElements.Clear;
   FElements.Free;
   inherited;
+end;
+
+// InitData
+//
+procedure TEnumerationSymbol.InitData(const Data: TData; Offset: Integer);
+var
+   v : Integer;
+begin
+   if FElements.Count>0 then
+      v:=TElementSymbol(FElements[0]).FUserDefValue
+   else v:=0;
+   Data[Offset]:=v;
 end;
 
 procedure TEnumerationSymbol.AddElement(Element: TElementSymbol);

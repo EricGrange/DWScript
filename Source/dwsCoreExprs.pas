@@ -22,7 +22,7 @@ unit dwsCoreExprs;
 
 interface
 
-uses Classes, Variants, SysUtils, dwsSymbols, dwsErrors, dwsStrings,
+uses Windows, Classes, Variants, SysUtils, dwsSymbols, dwsErrors, dwsStrings,
    dwsStack, dwsExprs, dwsUtils;
 
 type
@@ -160,36 +160,63 @@ type
      class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; constSymbol : TConstSymbol) : TConstExpr; overload; static;
    end;
 
-   TConstBooleanExpr = class(TConstExpr)
-   protected
-     FValue : Boolean;
-   public
-     constructor Create(Prog: TdwsProgram; Value: Boolean);
-     function EvalAsInteger : Int64; override;
-     function EvalAsBoolean : Boolean; override;
+   // TUnifiedConstList
+   //
+   TUnifiedConstList = class (TSortedList)
+      protected
+         function Compare(const item1, item2 : Pointer) : Integer; override;
+      public
+         destructor Destroy; override;
    end;
 
-   TConstIntExpr = class(TConstExpr)
-   protected
-     FValue : Int64;
-   public
-     constructor Create(Prog: TdwsProgram; const Value: Int64; Typ: TSymbol = nil);
-     function EvalAsInteger : Int64; override;
-     procedure EvalAsFloat(var Result : Double); override;
+   TUnifiedConstExprClass = class of TUnifiedConstExpr;
+
+   // TUnifiedConstExpr
+   //
+   {: Unified constants go into a program root unified const list. }
+   TUnifiedConstExpr = class (TConstExpr)
+      protected
+         procedure DoNothing;
+      public
+         constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); virtual;
+         class function CreateUnified(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant) : TUnifiedConstExpr;
+         destructor DestroyTrue;
    end;
 
-   TConstStringExpr = class(TConstExpr)
-   protected
-   public
-     constructor Create(Prog: TdwsProgram; const Value: String);
-     procedure EvalAsString(var Result : String); override;
+   // TConstBooleanExpr
+   //
+   TConstBooleanExpr = class(TUnifiedConstExpr)
+      protected
+         FValue : Boolean;
+      public
+         constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
+         function EvalAsInteger : Int64; override;
+         function EvalAsBoolean : Boolean; override;
    end;
 
-   TConstFloatExpr = class(TConstExpr)
-   protected
-   public
-     constructor Create(Prog: TdwsProgram; const Value: Double);
-     procedure EvalAsFloat(var Result : Double); override;
+   // TConstIntExpr
+   //
+   TConstIntExpr = class (TUnifiedConstExpr)
+      public
+         constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
+         function EvalAsInteger : Int64; override;
+         procedure EvalAsFloat(var Result : Double); override;
+   end;
+
+   // TConstStringExpr
+   //
+   TConstStringExpr = class(TUnifiedConstExpr)
+      public
+         constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
+         procedure EvalAsString(var Result : String); override;
+   end;
+
+   // TConstFloatExpr
+   //
+   TConstFloatExpr = class(TUnifiedConstExpr)
+      public
+         constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
+         procedure EvalAsFloat(var Result : Double); override;
    end;
 
    TArrayConstantExpr = class(TDataExpr)
@@ -734,17 +761,24 @@ type
      FFromExpr: TNoPosExpr;
      FToExpr: TNoPosExpr;
      FVarExpr: TIntVarExpr;
-     FIsUpWard: Boolean;
    public
      destructor Destroy; override;
-     procedure EvalNoResult(var status : TExecutionStatusResult); override;
      procedure Initialize; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      property DoExpr: TNoPosExpr read FDoExpr write FDoExpr;
      property FromExpr: TNoPosExpr read FFromExpr write FFromExpr;
      property ToExpr: TNoPosExpr read FToExpr write FToExpr;
-     property IsUpward: Boolean read FIsUpWard write FIsUpWard;
      property VarExpr: TIntVarExpr read FVarExpr write FVarExpr;
+   end;
+
+   TForUpwardExpr = class(TForExpr)
+   public
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+
+   TForDownwardExpr = class(TForExpr)
+   public
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
    TLoopExpr = class(TNoResultExpr)
@@ -1225,6 +1259,43 @@ begin
    Result:=False;
 end;
 
+// ------------------
+// ------------------ TUnifiedConstList ------------------
+// ------------------
+
+// Compare
+//
+function TUnifiedConstList.Compare(const item1, item2 : Pointer) : Integer;
+var
+   unified1, unified2 : TUnifiedConstExpr;
+begin
+   unified1:=TUnifiedConstExpr(item1);
+   unified2:=TUnifiedConstExpr(item2);
+   if unified1.ClassType=unified2.ClassType then begin
+      if unified1.Typ=unified2.Typ then begin
+         case VarCompareValue(unified1.FData[0], unified2.FData[0]) of
+            vrEqual : Result:=0;
+            vrLessThan : Result:=-1;
+            vrGreaterThan : Result:=1;
+         else
+            Result:=0;
+            Assert(False);
+         end;
+      end else Result:=NativeInt(unified1.Typ)-NativeInt(unified2.Typ);
+   end else Result:=NativeInt(unified1.ClassType)-NativeInt(unified2.ClassType);
+end;
+
+// Destroy
+//
+destructor TUnifiedConstList.Destroy;
+var
+   i : Integer;
+begin
+   for i:=0 to Count-1 do
+      TUnifiedConstExpr(Items[i]).DestroyTrue;
+   inherited;
+end;
+
 { TConstExpr }
 
 constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
@@ -1265,13 +1336,13 @@ end;
 class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant) : TConstExpr;
 begin
    if Typ=Prog.TypString then
-      Result:=TConstStringExpr.Create(Prog, Value)
+      Result:=TConstStringExpr.CreateUnified(Prog, Typ, Value)
    else if (Typ=Prog.TypInteger) or (Typ.Typ=Prog.TypInteger) then
-      Result:=TConstIntExpr.Create(Prog, Value, Typ)
+      Result:=TConstIntExpr.CreateUnified(Prog, Typ, Value)
    else if Typ=Prog.TypBoolean then
-      Result:=TConstBooleanExpr.Create(Prog, Value)
+      Result:=TConstBooleanExpr.CreateUnified(Prog, Typ, Value)
    else if Typ=Prog.TypFloat then
-      Result:=TConstFloatExpr.Create(Prog, Value)
+      Result:=TConstFloatExpr.CreateUnified(Prog, Typ, Value)
    else Result:=TConstExpr.Create(Prog, Typ, Value);
 end;
 
@@ -1306,14 +1377,70 @@ begin
 end;
 
 // ------------------
+// ------------------ TUnifiedConstExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TUnifiedConstExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
+begin
+   inherited Create(Prog, Typ, Value);
+end;
+
+// CreateUnified
+//
+class function TUnifiedConstExpr.CreateUnified(Prog: TdwsProgram; Typ: TSymbol;
+                                               const Value: Variant) : TUnifiedConstExpr;
+const
+   vmtDestroy = -4;
+var
+   i : Integer;
+   p : Pointer;
+   n : Cardinal;
+   added : Boolean;
+begin
+   Result:=Self.Create(Prog, Typ, Value);
+
+   i:=Prog.Root.UnifiedConstList.AddOrFind(Result, added);
+   if not added then begin
+      Result.DestroyTrue;
+      Result:=TUnifiedConstExpr(Prog.Root.UnifiedConstList[i]);
+      Exit;
+   end;
+
+   p:=@TUnifiedConstExpr.DoNothing;
+   if PPointer(NativeInt(Self)+vmtDestroy)^<>p then begin
+      WriteProcessMemory(GetCurrentProcess,
+                         Pointer(NativeInt(Self)+vmtDestroy),
+                         @p, SizeOf(Pointer), n);
+   end;
+end;
+
+// DoNothing
+//
+procedure TUnifiedConstExpr.DoNothing;
+begin
+   // nothing
+end;
+
+// DestroyTrue
+//
+destructor TUnifiedConstExpr.DestroyTrue;
+begin
+   inherited Destroy;
+end;
+
+// ------------------
 // ------------------ TConstBooleanExpr ------------------
 // ------------------
 
 // Create
 //
-constructor TConstBooleanExpr.Create(Prog: TdwsProgram; Value: Boolean);
+constructor TConstBooleanExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
 begin
-   inherited Create(Prog, Prog.TypBoolean, Value);
+   if Typ=nil then
+      Typ:=Prog.TypBoolean;
+   inherited Create(Prog, Typ, Value);
    FValue:=Value;
 end;
 
@@ -1337,38 +1464,44 @@ end;
 
 // Create
 //
-constructor TConstIntExpr.Create(Prog: TdwsProgram; const Value: Int64; Typ: TSymbol = nil);
+constructor TConstIntExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
+var
+   i64 : Int64;
 begin
    if Typ=nil then
       Typ:=Prog.TypInteger;
-   inherited Create(Prog, Typ, Value);
-   FValue:=Value;
+   i64:=Value;
+   inherited Create(Prog, Typ, i64);
 end;
 
 // EvalAsInteger
 //
 function TConstIntExpr.EvalAsInteger : Int64;
 begin
-   Result:=FValue;
+   Result:=PVarData(@FData[0]).VInt64;
 end;
 
 // EvalAsFloat
 //
 procedure TConstIntExpr.EvalAsFloat(var Result : Double);
 begin
-   Result:=FValue;
+   Result:=PVarData(@FData[0]).VInt64;
 end;
 
 // ------------------
 // ------------------ TConstStringExpr ------------------
 // ------------------
 
-constructor TConstStringExpr.Create(Prog: TdwsProgram; const Value: String);
+// Create
+//
+constructor TConstStringExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
 var
    str : String;
 begin
+   if Typ=nil then
+      Typ:=Prog.TypString;
    UnifyAssignString(Value, str);
-   inherited Create(Prog, Prog.TypString, str);
+   inherited Create(Prog, Typ, str);
 end;
 
 // EvalAsString
@@ -1382,11 +1515,17 @@ end;
 // ------------------ TConstFloatExpr ------------------
 // ------------------
 
-constructor TConstFloatExpr.Create(Prog: TdwsProgram; const Value: Double);
+// Create
+//
+constructor TConstFloatExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
 begin
-   inherited Create(Prog, Prog.TypFloat, Value);
+   if Typ=nil then
+      Typ:=Prog.TypFloat;
+   inherited Create(Prog, Typ, Double(Value));
 end;
 
+// EvalAsFloat
+//
 procedure TConstFloatExpr.EvalAsFloat(var Result : Double);
 begin
    Result:=PVarData(@FData[0]).VDouble;
@@ -2315,7 +2454,7 @@ end;
 function TNegIntExpr.Optimize : TNoPosExpr;
 begin
    if FExpr.IsConstant then begin
-      Result:=TConstIntExpr.Create(FProg, -FExpr.EvalAsInteger);
+      Result:=TConstIntExpr.CreateUnified(FProg, nil, -FExpr.EvalAsInteger);
       Free;
    end else Result:=Self;
 end;
@@ -2348,7 +2487,7 @@ var
 begin
    if FExpr.IsConstant then begin
       FExpr.EvalAsFloat(xf);
-      Result:=TConstFloatExpr.Create(FProg, -xf);
+      Result:=TConstFloatExpr.CreateUnified(FProg, nil, -xf);
       Free;
    end else Result:=Self;
 end;
@@ -2618,7 +2757,7 @@ end;
 function TIntegerOpExpr.Optimize : TNoPosExpr;
 begin
    if IsConstant then begin
-      Result:=TConstIntExpr.Create(FProg, EvalAsInteger);
+      Result:=TConstIntExpr.CreateUnified(FProg, nil, EvalAsInteger);
       Free;
    end else Result:=Self;
 end;
@@ -2656,7 +2795,7 @@ var
 begin
    if IsConstant then begin
       EvalAsString(buf);
-      Result:=TConstStringExpr.Create(FProg, buf);
+      Result:=TConstStringExpr.CreateUnified(FProg, nil, buf);
       Free;
    end else Result:=Self;
 end;
@@ -2694,7 +2833,7 @@ var
 begin
    if IsConstant then begin
       EvalAsFloat(xf);
-      Result:=TConstFloatExpr.Create(FProg, xf);
+      Result:=TConstFloatExpr.CreateUnified(FProg, nil, xf);
       Free;
    end else begin
       FLeft:=FLeft.OptimizeIntegerConstantToFloatConstant;
@@ -2728,7 +2867,7 @@ end;
 function TBooleanOpExpr.Optimize : TNoPosExpr;
 begin
    if IsConstant then begin
-      Result:=TConstBooleanExpr.Create(FProg, EvalAsBoolean);
+      Result:=TConstBooleanExpr.CreateUnified(FProg, nil, EvalAsBoolean);
       Free;
    end else Result:=Self;
 end;
@@ -3360,53 +3499,6 @@ begin
   inherited;
 end;
 
-procedure TForExpr.EvalNoResult(var status : TExecutionStatusResult);
-var
-   i : Int64;
-   toValue: Int64;
-begin
-   status:=esrNone;
-   i:=FFromExpr.EvalAsInteger;
-   toValue:=FToExpr.EvalAsInteger;
-   if FIsUpWard then begin
-      FVarExpr.AssignValueAsPInteger(@i);
-      while i<=toValue do begin
-         FProg.DoStep(Self);
-         FDoExpr.EvalNoResult(status);
-         if status<>esrNone then begin
-            case status of
-               esrBreak : begin
-                  status:=esrNone;
-                  break;
-               end;
-               esrContinue : status:=esrNone;
-               esrExit : Exit;
-            end;
-         end;
-         Inc(i);
-         FVarExpr.AssignValueAsPInteger(@i);
-      end;
-   end else begin
-      FVarExpr.AssignValueAsPInteger(@i);
-      while i>=toValue do begin
-         FProg.DoStep(Self);
-         FDoExpr.EvalNoResult(status);
-         if status<>esrNone then begin
-            case status of
-               esrBreak : begin
-                  status:=esrNone;
-                  break;
-               end;
-               esrContinue : status:=esrNone;
-               esrExit : Exit;
-            end;
-         end;
-         Dec(i);
-         FVarExpr.AssignValueAsPInteger(@i);
-      end;
-   end;
-end;
-
 procedure TForExpr.Initialize;
 begin
   inherited;
@@ -3425,6 +3517,64 @@ begin
    FToExpr.TypeCheckNoPos(Pos);
    if not FToExpr.IsIntegerValue then
       AddCompilerStop(CPE_IntegerExpected);
+end;
+
+{ TForUpwardExpr }
+
+procedure TForUpwardExpr.EvalNoResult(var status : TExecutionStatusResult);
+var
+   i : Int64;
+   toValue: Int64;
+begin
+   status:=esrNone;
+   i:=FFromExpr.EvalAsInteger;
+   toValue:=FToExpr.EvalAsInteger;
+   FVarExpr.AssignValueAsPInteger(@i);
+   while i<=toValue do begin
+      FProg.DoStep(Self);
+      FDoExpr.EvalNoResult(status);
+      if status<>esrNone then begin
+         case status of
+            esrBreak : begin
+               status:=esrNone;
+               break;
+            end;
+            esrContinue : status:=esrNone;
+            esrExit : Exit;
+         end;
+      end;
+      Inc(i);
+      FVarExpr.AssignValueAsPInteger(@i);
+   end;
+end;
+
+{ TForUpwardExpr }
+
+procedure TForDownwardExpr.EvalNoResult(var status : TExecutionStatusResult);
+var
+   i : Int64;
+   toValue: Int64;
+begin
+   status:=esrNone;
+   i:=FFromExpr.EvalAsInteger;
+   toValue:=FToExpr.EvalAsInteger;
+   FVarExpr.AssignValueAsPInteger(@i);
+   while i>=toValue do begin
+      FProg.DoStep(Self);
+      FDoExpr.EvalNoResult(status);
+      if status<>esrNone then begin
+         case status of
+            esrBreak : begin
+               status:=esrNone;
+               break;
+            end;
+            esrContinue : status:=esrNone;
+            esrExit : Exit;
+         end;
+      end;
+      Dec(i);
+      FVarExpr.AssignValueAsPInteger(@i);
+   end;
 end;
 
 { TLoopExpr }
