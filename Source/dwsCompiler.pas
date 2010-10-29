@@ -2016,7 +2016,10 @@ begin
          Result:=TForUpwardExpr.Create(FProg, FTok.HotPos)
       else if FTok.TestDelete(ttDOWNTO) then
          Result:=TForDownwardExpr.Create(FProg, FTok.HotPos)
-      else FMsgs.AddCompilerStop(FTok.HotPos, CPE_ToOrDowntoExpected);
+      else begin
+         Result:=nil;
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ToOrDowntoExpected);
+      end;
       try
          Result.VarExpr:=loopVarExpr;
          loopVarExprSafe:=nil;
@@ -2080,98 +2083,92 @@ begin
   end;
 end;
 
+// ReadCase
+//
 function TdwsCompiler.ReadCase;
 var
-  Expr : TExpr;
-  exprFrom, exprTo: TNoPosExpr;
-  condList: TList;
-  tt: TTokenType;
-  x: Integer;
-  hotPos : TScriptPos;
+   expr : TExpr;
+   exprFrom, exprTo: TNoPosExpr;
+   condList: TList;
+   tt: TTokenType;
+   x: Integer;
+   hotPos : TScriptPos;
 begin
-  condList := TList.Create;
-  try
-    Result := TCaseExpr.Create(FProg, FTok.HotPos);
-    try
-      Result.ValueExpr := ReadExpr;
+   condList := TList.Create;
+   try
+      Result := TCaseExpr.Create(FProg, FTok.HotPos);
+      try
+         Result.ValueExpr := ReadExpr;
 
-      if not FTok.TestDelete(ttOF) then
-        FMsgs.AddCompilerStop(FTok.HotPos, CPE_OfExpected);
+         if not FTok.TestDelete(ttOF) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_OfExpected);
 
-      while not FTok.TestDelete(ttEND) do
-      begin
-        if FTok.TestDelete(ttELSE) then
-        begin
-          Result.ElseExpr := ReadBlocks([ttEND], tt);
-          break;
-        end
-        else
-        begin
-          try
-            // Find a comma sparated list of case conditions  0, 1, 2..4: ;
-            repeat
+         while not FTok.TestDelete(ttEND) do begin
+            if FTok.TestDelete(ttELSE) then begin
+               Result.ElseExpr := ReadBlocks([ttEND], tt);
+               break;
+            end else begin
+               try
+                  // Find a comma sparated list of case conditions  0, 1, 2..4: ;
+                  repeat
 
-              hotPos:=FTok.HotPos;
-              exprFrom := ReadExpr;
+                     hotPos:=FTok.HotPos;
+                     exprFrom := ReadExpr;
 
-              try
-                if not Assigned(exprFrom) then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
+                     try
+                        if not Assigned(exprFrom) then
+                           FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
 
-                if FTok.TestDelete(ttDOTDOT) then
-                begin
-                  // range condition e. g. 0..12
-                  exprTo := ReadExpr;
-                  if not Assigned(exprTo) then
-                  begin
-                    exprTo.Free;
-                    FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
-                  end;
-                  condList.Add(TRangeCaseCondition.Create(hotPos, Result.ValueExpr, exprFrom, exprTo));
-                end
-                else
-                  // compare condition e. g. 123:
-                  condList.Add(TCompareCaseCondition.Create(hotPos, Result.ValueExpr, exprFrom));
+                        if FTok.TestDelete(ttDOTDOT) then begin
+                           // range condition e. g. 0..12
+                           exprTo := ReadExpr;
+                           if not Assigned(exprTo) then begin
+                              exprTo.Free;
+                              FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
+                           end;
+                           condList.Add(TRangeCaseCondition.Create(hotPos, Result.ValueExpr, exprFrom, exprTo));
+                        end else begin
+                           // compare condition e. g. 123:
+                           condList.Add(TCompareCaseCondition.Create(hotPos, Result.ValueExpr, exprFrom));
+                        end;
+                     except
+                        exprFrom.Free;
+                        raise;
+                     end;
 
-              except
-                exprFrom.Free;
-                raise;
-              end;
+                  until not FTok.TestDelete(ttCOMMA);
 
-            until not FTok.TestDelete(ttCOMMA);
+                  if not FTok.TestDelete(ttCOLON) then
+                     FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
 
-            if not FTok.TestDelete(ttCOLON) then
-              FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
+                  Expr := ReadBlock;
 
-            Expr := ReadBlock;
+               except
+                  for x := 0 to condList.Count - 1 do
+                     TCaseCondition(condList[x]).Free;
+                  raise;
+               end;
 
-          except
-            for x := 0 to condList.Count - 1 do
-              TCaseCondition(condList[x]).Free;
-            raise;
-          end;
+               // Add case conditions to TCaseExpr
+               for x := 0 to condList.Count - 1 do begin
+                  TCaseCondition(condList[x]).TrueExpr := Expr;
+                  if x = 0 then
+                     TCaseCondition(condList[0]).OwnsTrueExpr := True;
+                  Result.AddCaseCondition(condList[x]);
+               end;
+               condList.Clear;
 
-          // Add case conditions to TCaseExpr
-          for x := 0 to condList.Count - 1 do
-          begin
-            TCaseCondition(condList[x]).TrueExpr := Expr;
-            if x = 0 then
-              TCaseCondition(condList[0]).OwnsTrueExpr := True;
-            Result.AddCaseCondition(condList[x]);
-          end;
-          condList.Clear;
-
-          if not (FTok.Test(ttELSE) or FTok.Test(ttEND) or FTok.TestDelete(ttSEMI)) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
-        end;
+               if not (FTok.Test(ttELSE) or FTok.Test(ttEND) or FTok.TestDelete(ttSEMI)) then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+            end;
+         end;
+      except
+         Result.Free;
+         raise;
       end;
-    except
-      Result.Free;
-      raise;
-    end;
-  finally
-    condList.Free;
-  end;
+   finally
+      condList.Free;
+   end;
 end;
 
 function TdwsCompiler.ReadWhile: TWhileExpr;
