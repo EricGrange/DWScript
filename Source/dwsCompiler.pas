@@ -147,6 +147,7 @@ type
       function ReadArray(const TypeName: string): TTypeSymbol;
       function ReadArrayConstant: TArrayConstantExpr;
       function ReadCase: TCaseExpr;
+      function ReadCaseConditions(condList : TList; valueExpr : TNoPosExpr) : Integer;
       function ReadClass(const TypeName: string): TTypeSymbol;
       function ReadConnectorSym(const Name: string; var BaseExpr: TNoPosExpr;
                                 const ConnectorType: IConnectorType; IsWrite: Boolean): TNoPosExpr;
@@ -162,6 +163,7 @@ type
       function ReadExpr: TNoPosExpr;
       function ReadExprAdd: TNoPosExpr;
       function ReadExprMult: TNoPosExpr;
+      function ReadExprIn(var left : TNoPosExpr) : TInOpExpr;
       function ReadExternalVar(Sym: TExternalVarSymbol; IsWrite: Boolean): TFuncExpr;
       function ReadField(Expr: TDataExpr; Sym: TFieldSymbol): TNoPosExpr;
       function ReadFor: TForExpr;
@@ -2088,11 +2090,9 @@ end;
 function TdwsCompiler.ReadCase;
 var
    expr : TExpr;
-   exprFrom, exprTo: TNoPosExpr;
    condList: TList;
    tt: TTokenType;
    x: Integer;
-   hotPos : TScriptPos;
 begin
    condList := TList.Create;
    try
@@ -2109,34 +2109,7 @@ begin
                break;
             end else begin
                try
-                  // Find a comma sparated list of case conditions  0, 1, 2..4: ;
-                  repeat
-
-                     hotPos:=FTok.HotPos;
-                     exprFrom := ReadExpr;
-
-                     try
-                        if not Assigned(exprFrom) then
-                           FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
-
-                        if FTok.TestDelete(ttDOTDOT) then begin
-                           // range condition e. g. 0..12
-                           exprTo := ReadExpr;
-                           if not Assigned(exprTo) then begin
-                              exprTo.Free;
-                              FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
-                           end;
-                           condList.Add(TRangeCaseCondition.Create(hotPos, Result.ValueExpr, exprFrom, exprTo));
-                        end else begin
-                           // compare condition e. g. 123:
-                           condList.Add(TCompareCaseCondition.Create(hotPos, Result.ValueExpr, exprFrom));
-                        end;
-                     except
-                        exprFrom.Free;
-                        raise;
-                     end;
-
-                  until not FTok.TestDelete(ttCOMMA);
+                  ReadCaseConditions(condList, Result.ValueExpr);
 
                   if not FTok.TestDelete(ttCOLON) then
                      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
@@ -2169,6 +2142,45 @@ begin
    finally
       condList.Free;
    end;
+end;
+
+// ReadCaseConditions
+//
+function TdwsCompiler.ReadCaseConditions(condList : TList; valueExpr : TNoPosExpr) : Integer;
+var
+   hotPos : TScriptPos;
+   exprFrom, exprTo : TNoPosExpr;
+begin
+   // Find a comma sparated list of case conditions  0, 1, 2..4: ;
+   repeat
+
+      hotPos:=FTok.HotPos;
+      exprFrom := ReadExpr;
+
+      try
+         if not Assigned(exprFrom) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
+
+         if FTok.TestDelete(ttDOTDOT) then begin
+            // range condition e. g. 0..12
+            exprTo := ReadExpr;
+            if not Assigned(exprTo) then begin
+               exprTo.Free;
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
+            end;
+            condList.Add(TRangeCaseCondition.Create(hotPos, valueExpr, exprFrom, exprTo));
+         end else begin
+            // compare condition e. g. 123:
+            condList.Add(TCompareCaseCondition.Create(hotPos, valueExpr, exprFrom));
+         end;
+      except
+         exprFrom.Free;
+         raise;
+      end;
+
+   until not FTok.TestDelete(ttCOMMA);
+
+   Result:=condList.Count;
 end;
 
 function TdwsCompiler.ReadWhile: TWhileExpr;
@@ -3140,10 +3152,10 @@ begin
   Result := ReadExprAdd;
   try
     // Read operator
-    while (FTok.Test(ttEQ) or FTok.Test(ttNOTEQ)
-         or FTok.Test(ttLESS) or FTok.Test(ttLESSEQ)
-         or FTok.Test(ttGTR) or FTok.Test(ttGTREQ)
-         or FTok.Test(ttIS) or FTok.Test(ttAS)) do
+    while (   FTok.Test(ttEQ)    or FTok.Test(ttNOTEQ)
+           or FTok.Test(ttLESS)  or FTok.Test(ttLESSEQ)
+           or FTok.Test(ttGTR)   or FTok.Test(ttGTREQ)
+           or FTok.Test(ttIS)    or FTok.Test(ttAS)) do
     begin
       tt := FTok.GetToken.FTyp;
       FTok.TestDelete(tt);
@@ -3223,60 +3235,65 @@ begin
              or FTok.Test(ttXOR)
              or FTok.Test(ttSHL)
              or FTok.Test(ttSHR)
+             or FTok.Test(ttIN)
             ) do begin
 
          tt := FTok.GetToken.FTyp;
          FTok.TestDelete(tt);
          Pos := FTok.HotPos;
 
-         // Read right argument
-         r := ReadExprMult;
-         try
-            // Generate function and add left and right argument
-            exprClass:=nil;
-            sameType:=(Result.Typ=r.Typ);
-            case tt of
-               ttPLUS: begin
-                  if sameType and (r.Typ=FProg.TypInteger) then
-                     exprClass:=TAddIntExpr
-                  else if sameType and (r.Typ=FProg.TypString) then
-                     exprClass:=TAddStrExpr
-                  else if (Result.Typ=FProg.TypFloat) or (r.Typ=FProg.TypFloat) then
-                     exprClass:=TAddFloatExpr
-                  else exprClass:=TAddExpr;
+         if tt = ttIN then
+            Result := ReadExprIn(Result)
+         else begin
+            // Read right argument
+            r := ReadExprMult;
+            try
+               // Generate function and add left and right argument
+               exprClass:=nil;
+               sameType:=(Result.Typ=r.Typ);
+               case tt of
+                  ttPLUS: begin
+                     if sameType and (r.Typ=FProg.TypInteger) then
+                        exprClass:=TAddIntExpr
+                     else if sameType and (r.Typ=FProg.TypString) then
+                        exprClass:=TAddStrExpr
+                     else if (Result.Typ=FProg.TypFloat) or (r.Typ=FProg.TypFloat) then
+                        exprClass:=TAddFloatExpr
+                     else exprClass:=TAddExpr;
+                  end;
+                  ttMINUS: begin
+                     if sameType and (r.Typ=FProg.TypInteger) then
+                        exprClass:=TSubIntExpr
+                     else if sameType and (r.Typ=FProg.TypFloat) then
+                        exprClass:=TSubFloatExpr
+                     else exprClass:=TSubExpr;
+                  end;
+                  ttOR: begin
+                     if (Result.Typ=FProg.TypBoolean) or (r.Typ=FProg.TypBoolean) then
+                        exprClass:=TBoolOrExpr
+                     else exprClass:=TIntOrExpr;
+                  end;
+                  ttAND: begin
+                       if (Result.Typ=FProg.TypBoolean) or (r.Typ=FProg.TypBoolean) then
+                          exprClass:=TBoolAndExpr
+                       else exprClass:=TIntAndExpr;
+                  end;
+                  ttXOR : begin
+                     if (Result.IsBooleanValue) or (r.IsBooleanValue) then
+                        exprClass:=TBoolXorExpr
+                     else exprClass:=TIntXorExpr;
+                  end;
+                  ttSHL : exprClass:=TShlExpr;
+                  ttSHR : exprClass:=TShrExpr;
+               else
+                  Assert(False);
                end;
-               ttMINUS: begin
-                  if sameType and (r.Typ=FProg.TypInteger) then
-                     exprClass:=TSubIntExpr
-                  else if sameType and (r.Typ=FProg.TypFloat) then
-                     exprClass:=TSubFloatExpr
-                  else exprClass:=TSubExpr;
-               end;
-               ttOR: begin
-                  if (Result.Typ=FProg.TypBoolean) or (r.Typ=FProg.TypBoolean) then
-                     exprClass:=TBoolOrExpr
-                  else exprClass:=TIntOrExpr;
-               end;
-               ttAND: begin
-                    if (Result.Typ=FProg.TypBoolean) or (r.Typ=FProg.TypBoolean) then
-                       exprClass:=TBoolAndExpr
-                    else exprClass:=TIntAndExpr;
-               end;
-               ttXOR : begin
-                  if (Result.IsBooleanValue) or (r.IsBooleanValue) then
-                     exprClass:=TBoolXorExpr
-                  else exprClass:=TIntXorExpr;
-               end;
-               ttSHL : exprClass:=TShlExpr;
-               ttSHR : exprClass:=TShrExpr;
-            else
-               Assert(False);
-            end;
 
-            Result:=exprClass.Create(FProg, Pos, Result, r);
-         except
-            r.Free;
-            raise;
+               Result:=exprClass.Create(FProg, Pos, Result, r);
+            except
+               r.Free;
+               raise;
+            end;
          end;
 
          Result.TypeCheckNoPos(Pos);
@@ -3331,6 +3348,47 @@ begin
     Result.Free;
     raise;
   end;
+end;
+
+// ReadExprIn
+//
+function TdwsCompiler.ReadExprIn(var left : TNoPosExpr) : TInOpExpr;
+var
+   i : Integer;
+   condList : TList;
+   hotPos : TScriptPos;
+begin
+   if not FTok.TestDelete(ttALEFT) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketLeftExpected);
+
+   hotPos:=FTok.HotPos;
+
+   Result:=nil;
+   condList:=TList.Create;
+   try
+      try
+         if not FTok.TestDelete(ttARIGHT) then begin
+            ReadCaseConditions(condList, left);
+            if not FTok.TestDelete(ttARIGHT) then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
+         end;
+
+         Result:=TInOpExpr.Create(FProg, hotPos, left);
+         left:=nil;
+
+         // Add case conditions to TCaseExpr
+         for i:=0 to condList.Count-1 do
+            Result.AddCaseCondition(condList[i]);
+         condList.Clear;
+
+      except
+         for i:=0 to condList.Count-1 do
+            TCaseCondition(condList[i]).Free;
+         raise;
+      end;
+   finally
+      condList.Free;
+   end;
 end;
 
 // ReadTerm

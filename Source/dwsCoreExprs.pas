@@ -27,6 +27,8 @@ uses Windows, Classes, Variants, SysUtils, dwsSymbols, dwsErrors, dwsStrings,
 
 type
 
+   TCaseCondition = class;
+
    IVarParamData = interface
       function GetData: TData;
       function GetAddr: Integer;
@@ -656,6 +658,23 @@ type
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
+   // val in [case conditions list]
+   TInOpExpr = class(TExpr)
+      private
+         FLeft : TNoPosExpr;
+         FCaseConditions: TTightList;
+
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TNoPosExpr);
+         destructor Destroy; override;
+         function Eval: Variant; override;
+         function EvalAsBoolean: Boolean; override;
+         procedure Initialize; override;
+         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+         function IsConstant : Boolean; override;
+         procedure AddCaseCondition(cond : TCaseCondition);
+   end;
+
    // statement; statement; statement;
    TBlockExpr = class(TNoResultExpr)
       private
@@ -710,6 +729,7 @@ type
      procedure Initialize; virtual;
      function IsTrue(const Value: Variant): Boolean; virtual; abstract;
      procedure TypeCheck(Typ: TSymbol); virtual; abstract;
+     function IsConstant : Boolean; virtual; abstract;
      property Pos : TScriptPos read FPos;
      property TrueExpr: TExpr read FTrueExpr write FTrueExpr;
      property OwnsTrueExpr: Boolean read FOwnsTrueExpr write FOwnsTrueExpr;
@@ -724,6 +744,7 @@ type
      procedure Initialize; override;
      function IsTrue(const Value: Variant): Boolean; override;
      procedure TypeCheck(Typ: TSymbol); override;
+     function IsConstant : Boolean; override;
    end;
 
    TRangeCaseCondition = class(TCaseCondition)
@@ -736,6 +757,7 @@ type
      procedure Initialize; override;
      function IsTrue(const Value: Variant): Boolean; override;
      procedure TypeCheck(Typ: TSymbol); override;
+     function IsConstant : Boolean; override;
    end;
 
    // case FValueExpr of {CaseConditions} else FElseExpr end;
@@ -2116,6 +2138,91 @@ begin
   FTyp := FRight.Typ.Typ;
 end;
 
+{ TInOpExpr }
+
+// Create
+//
+constructor TInOpExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left: TNoPosExpr);
+begin
+   inherited Create(Prog, Pos);
+   FLeft:=Left;
+   FTyp:=Prog.TypBoolean;
+end;
+
+// Destroy
+//
+destructor TInOpExpr.Destroy;
+begin
+   FLeft.Free;
+   FCaseConditions.Clean;
+   inherited;
+end;
+
+// Eval
+//
+function TInOpExpr.Eval: Variant;
+begin
+   Result:=EvalAsBoolean;
+end;
+
+// EvalAsBoolean
+//
+function TInOpExpr.EvalAsBoolean: Boolean;
+var
+   i : Integer;
+   value : Variant;
+   cc : TCaseCondition;
+begin
+   value:=FLeft.Eval;
+   for i:=0 to FCaseConditions.Count-1 do begin
+      cc:=TCaseCondition(FCaseConditions.List[i]);
+      if cc.IsTrue(Value) then
+         Exit(True);
+   end;
+   Result:=False;
+end;
+
+// Initialize
+//
+procedure TInOpExpr.Initialize;
+var
+   i : Integer;
+begin
+   FLeft.Initialize;
+   for i:=0 to FCaseConditions.Count-1 do
+      TCaseCondition(FCaseConditions.List[i]).Initialize;
+end;
+
+// TypeCheckNoPos
+//
+procedure TInOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
+var
+   i : Integer;
+begin
+   for i:=0 to FCaseConditions.Count-1 do
+      TCaseCondition(FCaseConditions.List[i]).TypeCheck(FLeft.Typ);
+end;
+
+// IsConstant
+//
+function TInOpExpr.IsConstant : Boolean;
+var
+   i : Integer;
+begin
+   Result:=FLeft.IsConstant;
+   if Result then
+      for i:=0 to FCaseConditions.Count-1 do
+         if not TCaseCondition(FCaseConditions.List[i]).IsConstant then
+            Exit(False);
+end;
+
+// AddCaseCondition
+//
+procedure TInOpExpr.AddCaseCondition(cond : TCaseCondition);
+begin
+   FCaseConditions.Add(cond);
+end;
+
 // ------------------
 // ------------------ TConvExpr ------------------
 // ------------------
@@ -3396,7 +3503,8 @@ end;
 
 procedure TCaseCondition.Initialize;
 begin
-  FTrueExpr.Initialize;
+   if FTrueExpr<>nil then
+      FTrueExpr.Initialize;
 end;
 
 { TCompareCaseCondition }
@@ -3433,6 +3541,13 @@ begin
   if not FCompareExpr.Typ.IsCompatible(FValueExpr.Typ) then
     FCompareExpr.Prog.Msgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
                                                [FValueExpr.Typ.Caption, FCompareExpr.Typ.Caption]);
+end;
+
+// IsConstant
+//
+function TCompareCaseCondition.IsConstant : Boolean;
+begin
+   Result:=FCompareExpr.IsConstant;
 end;
 
 { TRangeCaseCondition }
@@ -3486,6 +3601,13 @@ begin
   if not FValueExpr.Typ.IsCompatible(FFromExpr.Typ) then
     FFromExpr.Prog.Msgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
                                             [FValueExpr.Typ.Caption, FFromExpr.Typ.Caption]);
+end;
+
+// IsConstant
+//
+function TRangeCaseCondition.IsConstant : Boolean;
+begin
+   Result:=FFromExpr.IsConstant and FToExpr.IsConstant;
 end;
 
 { TForExpr }
