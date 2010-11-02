@@ -130,7 +130,7 @@ type
       FForVarExprs: TList;
       FCompileFileSystem : IdwsFileSystem;
 
-      function Optimize : Boolean; inline;
+      function Optimize : Boolean;
 
       function CheckFuncParams(ParamsA, ParamsB: TSymbolTable; IndexSym: TSymbol = nil;
                                TypSym: TSymbol = nil): Boolean;
@@ -149,7 +149,9 @@ type
       function ReadArrayConstant: TArrayConstantExpr;
       function ReadCase: TCaseExpr;
       function ReadCaseConditions(condList : TList; valueExpr : TNoPosExpr) : Integer;
-      function ReadClass(const TypeName: string): TTypeSymbol;
+      function ReadClassOf(const TypeName: string): TClassOfSymbol;
+      function ReadClass(const TypeName: string): TClassSymbol;
+      procedure ReadClassFields(const classSymbol : TClassSymbol);
       function ReadConnectorSym(const Name: string; var BaseExpr: TNoPosExpr;
                                 const ConnectorType: IConnectorType; IsWrite: Boolean): TNoPosExpr;
       function ReadConnectorArray(const Name: String; var BaseExpr: TNoPosExpr;
@@ -506,7 +508,7 @@ end;
 //
 function TdwsCompiler.Optimize : Boolean;
 begin
-   Result:=coOptimize in FCompilerOptions;
+   Result:=(coOptimize in FCompilerOptions) and (not FMsgs.HasErrors);
 end;
 
 function TdwsCompiler.ReadScript(const AName: string; ScriptType: TScriptSourceType): TBlockExpr;
@@ -2464,212 +2466,211 @@ begin
   until not FTok.TestDelete(ttCOMMA);
 end;
 
-function TdwsCompiler.ReadClass(const TypeName: string): TTypeSymbol;
+// ReadClassOf
+//
+function TdwsCompiler.ReadClassOf(const TypeName: string): TClassOfSymbol;
 var
-  x: Integer;
-  Name: string;
-  Names: TStringList;
-  Fields: TList;
-  sym, Typ: TSymbol;
-  propSym: TPropertySymbol;
-  defProp: Boolean;
-  PosArray: TScriptPosArray;    // positions of items pulled from ReadNameList call
-  isInSymbolTable: Boolean;
+   name : String;
+   typ : TSymbol;
 begin
-  if FTok.TestDelete(ttOF) then
-  begin
-    // Declaration of a class reference
-    if not FTok.TestName then
+   // Declaration of a class reference
+   if not FTok.TestName then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-    Name := FTok.GetToken.FString;
-    FTok.KillToken;
+   name := FTok.GetToken.FString;
+   FTok.KillToken;
 
-    Typ := FProg.Table.FindSymbol(Name);
-    if not Assigned(Typ) then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownClass, [Name]);
-    if not (Typ is TClassSymbol) then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NotAClass, [Name]);
+   typ := FProg.Table.FindSymbol(name);
+   if not Assigned(typ) then
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownClass, [name]);
+   if not (typ is TClassSymbol) then
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NotAClass, [name]);
 
-    if TypeName <> '' then
-    begin
-      Result := TClassOfSymbol.Create(TypeName, TClassSymbol(Typ));
+   if TypeName <> '' then begin
+      Result := TClassOfSymbol.Create(TypeName, TClassSymbol(typ));
       // Add reference of class type to Dictionary
       if coSymbolDictionary in FCompilerOptions then
-        FProg.SymbolDictionary.Add(Typ, FTok.HotPos);
-    end
-    else
-      Result := TClassSymbol(Typ).ClassOf;
-  end
-  else
-  begin
-    // Check for a forward declaration of this class
-    sym := FProg.Table.FindSymbol(TypeName);
-    Result := nil;
+      FProg.SymbolDictionary.Add(typ, FTok.HotPos);
+   end else Result := TClassSymbol(typ).ClassOf;
+end;
 
-    if Assigned(sym) then
-      if sym is TClassSymbol then
-      begin
-        if TClassSymbol(sym).IsForward then
-          Result := TClassSymbol(sym)
-      end
-      else
-        FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [sym.Caption]);
+// ReadClass
+//
+function TdwsCompiler.ReadClass(const TypeName: string): TClassSymbol;
+var
+   name: string;
+   sym, Typ: TSymbol;
+   propSym: TPropertySymbol;
+   defProp: Boolean;
+   isInSymbolTable: Boolean;
+begin
+   // Check for a forward declaration of this class
+   sym:=FProg.Table.FindSymbol(TypeName);
+   Result:=nil;
 
-    isInSymbolTable := Assigned(Result);
+   if Assigned(sym) then begin
+      if sym is TClassSymbol then begin
+         if TClassSymbol(sym).IsForward then
+            Result:=TClassSymbol(sym)
+      end else begin
+         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [sym.Caption]);
+      end;
+   end;
 
-    if not Assigned(Result) then
+   isInSymbolTable := Assigned(Result);
+
+   if not Assigned(Result) then
       Result := TClassSymbol.Create(TypeName);
 
-    // forwarded declaration
-    if FTok.Test(ttSEMI) then
-    begin
-      if TClassSymbol(Result).IsForward then
-        FMsgs.AddCompilerError(FTok.HotPos, CPE_ForwardAlreadyExists);
-
-      TClassSymbol(Result).IsForward := True;
+   // forwarded declaration
+   if FTok.Test(ttSEMI) then begin
+      if Result.IsForward then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_ForwardAlreadyExists);
+      Result.IsForward := True;
       Exit;
-    end
-    else
-      TClassSymbol(Result).IsForward := False;
+   end else Result.IsForward := False;
 
-    try
-      // inheritance
-      if FTok.TestDelete(ttBLEFT) then
-      begin
-        if not FTok.TestName then
-          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-
-        Name := FTok.GetToken.FString;
-        FTok.KillToken;
-
-        Typ := FProg.Table.FindSymbol(Name);
-        if not (Typ is TClassSymbol) then
-          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NotAClass, [Name]);
-
-        if TClassSymbol(Typ).IsForward then
-          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ClassNotImplementedYet, [Name]);
-
-        TClassSymbol(Result).InheritFrom(TClassSymbol(Typ));
-
-        if not FTok.TestDelete(ttBRIGHT) then
-          FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-      end
-      else
-        TClassSymbol(Result).InheritFrom(FProg.TypObject);
-
-      // standard class definition
-      Names := TStringList.Create;
-      Fields := TList.Create;
+   if not isInSymbolTable then
+      FProg.Table.AddSymbol(Result);   // auto-forward
+   try
       try
-        repeat
-          // Read methods and properties
-          if FTok.TestDelete(ttFUNCTION) then
-            TClassSymbol(Result).AddMethod(TMethodSymbol(ReadMethodDecl(TClassSymbol(Result), fkFunction, False)))
-          else if FTok.TestDelete(ttPROCEDURE) then
-            TClassSymbol(Result).AddMethod(TMethodSymbol(ReadMethodDecl(TClassSymbol(Result), fkProcedure, False)))
-          else if FTok.TestDelete(ttCONSTRUCTOR) then
-            TClassSymbol(Result).AddMethod(TMethodSymbol(ReadMethodDecl(TClassSymbol(Result), fkConstructor, False)))
-          else if FTok.TestDelete(ttDESTRUCTOR) then
-            TClassSymbol(Result).AddMethod(TMethodSymbol(ReadMethodDecl(TClassSymbol(Result), fkDestructor, False)))
-          else if FTok.TestDelete(ttMETHOD) then
-            TClassSymbol(Result).AddMethod(TMethodSymbol(ReadMethodDecl(TClassSymbol(Result), fkMethod, False)))
-          else if FTok.TestDelete(ttCLASS) then
-          begin
-            if FTok.TestDelete(ttPROCEDURE) then
-              TClassSymbol(Result).AddMethod(TMethodSymbol(ReadMethodDecl(TClassSymbol(Result), fkProcedure, True)))
-            else if FTok.TestDelete(ttFUNCTION) then
-              TClassSymbol(Result).AddMethod(TMethodSymbol(ReadMethodDecl(TClassSymbol(Result), fkFunction, True)))
-            else if FTok.TestDelete(ttMETHOD) then
-              TClassSymbol(Result).AddMethod(TMethodSymbol(ReadMethodDecl(TClassSymbol(Result), fkMethod, True)))
-            else
-              FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
-          end
-          else if FTok.TestDelete(ttPROPERTY) then
-          begin
-            propSym := ReadProperty(TClassSymbol(Result));
-            defProp := False;
-            // Array-Prop can be default
-            if propSym.ArrayIndices.Count > 0 then
-            begin
-              defProp := FTok.TestDelete(ttDEFAULT);
-              if defProp then
-              begin
-                if not FTok.TestDelete(ttSEMI) then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
-                if Assigned(TClassSymbol(Result).DefaultProperty) then
-                  FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_MultipleDefaultProperties, [TClassSymbol(Result).Name]);
-              end;
-            end;
-            TClassSymbol(Result).AddProperty(propSym);
-            if defProp then
-              TClassSymbol(Result).DefaultProperty := propSym;
-          end
-          else if FTok.Test(ttPRIVATE) or FTok.Test(ttPROTECTED) or
-            FTok.Test(ttPUBLIC) or FTok.Test(ttPUBLISHED) then
-          begin
-            // visibility ignored
+         // inheritance
+         if FTok.TestDelete(ttBLEFT) then begin
+            if not FTok.TestName then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+
+            Name := FTok.GetToken.FString;
             FTok.KillToken;
-          end
-          else if FTok.Test(ttEND) then
-            Break
-          else if FTok.TestName then
-          begin
-            // Read fields
-            Fields.Clear;
-            // Conditionally pass in dynamic array
-            if coSymbolDictionary in FCompilerOptions then
-              ReadNameList(Names, PosArray)     // use overloaded version
-            else
-              ReadNameList(Names);
 
-            if not FTok.TestDelete(ttCOLON) then
-              FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
+            Typ := FProg.Table.FindSymbol(Name);
+            if not (Typ is TClassSymbol) then
+               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NotAClass, [Name]);
 
-            Typ := ReadType('');
-            for x := 0 to Names.Count - 1 do
-            begin
-              // Check if name isn't already used
-              sym := TClassSymbol(Result).Members.FindLocal(Names[x]);
-              if Assigned(sym) then
-                FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [Names[x]]);
+            if TClassSymbol(Typ).IsForward then
+               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ClassNotImplementedYet, [Name]);
 
-              // Create Internal Field
-              sym := TFieldSymbol.Create(Names[x], Typ);
-              Fields.Add(sym);
-              TClassSymbol(Result).AddField(TFieldSymbol(sym));
-              // Enter Field symbol in dictionary
-              if coSymbolDictionary in FCompilerOptions then
-                FProg.SymbolDictionary.Add(sym, PosArray[x], [suDeclaration]);
+            Result.InheritFrom(TClassSymbol(Typ));
+
+            if not FTok.TestDelete(ttBRIGHT) then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+         end else Result.InheritFrom(FProg.TypObject);
+
+         // standard class definition
+         while not FTok.Test(ttEND) do begin
+
+            // Read methods and properties
+            if FTok.TestDelete(ttFUNCTION) then
+               Result.AddMethod(ReadMethodDecl(Result, fkFunction, False))
+            else if FTok.TestDelete(ttPROCEDURE) then
+               Result.AddMethod(ReadMethodDecl(Result, fkProcedure, False))
+            else if FTok.TestDelete(ttCONSTRUCTOR) then
+               Result.AddMethod(ReadMethodDecl(Result, fkConstructor, False))
+            else if FTok.TestDelete(ttDESTRUCTOR) then
+               Result.AddMethod(ReadMethodDecl(Result, fkDestructor, False))
+            else if FTok.TestDelete(ttMETHOD) then
+               Result.AddMethod(ReadMethodDecl(Result, fkMethod, False))
+            else if FTok.TestDelete(ttCLASS) then begin
+
+               if FTok.TestDelete(ttPROCEDURE) then
+                  Result.AddMethod(ReadMethodDecl(Result, fkProcedure, True))
+               else if FTok.TestDelete(ttFUNCTION) then
+                  Result.AddMethod(ReadMethodDecl(Result, fkFunction, True))
+               else if FTok.TestDelete(ttMETHOD) then
+                  Result.AddMethod(ReadMethodDecl(Result, fkMethod, True))
+               else FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
+
+            end else if FTok.TestDelete(ttPROPERTY) then begin
+
+               propSym := ReadProperty(Result);
+               defProp := False;
+               // Array-Prop can be default
+               if propSym.ArrayIndices.Count > 0 then begin
+                  defProp := FTok.TestDelete(ttDEFAULT);
+                  if defProp then begin
+                     if not FTok.TestDelete(ttSEMI) then
+                        FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+                     if Assigned(Result.DefaultProperty) then
+                        FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_MultipleDefaultProperties, [Result.Name]);
+                  end;
+               end;
+               Result.AddProperty(propSym);
+               if defProp then
+                  Result.DefaultProperty := propSym;
+
+            end else if    FTok.Test(ttPRIVATE) or FTok.Test(ttPROTECTED)
+                        or FTok.Test(ttPUBLIC) or FTok.Test(ttPUBLISHED) then begin
+               // visibility ignored
+               FTok.KillToken;
+            end else if FTok.TestName then begin
+               ReadClassFields(Result);
+               if not (FTok.TestDelete(ttSEMI) or FTok.Test(ttEND)) then
+                  Break;
+            end else Break;
+
+         end; // while
+
+         if not FTok.TestDelete(ttEND) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
+      except
+         on E: EClassIncompleteError do
+            ; // leave it handled
+         else begin
+            // if not ClassIncompleteError then free the class and re-raise error
+            if not isInSymbolTable then begin
+               if coSymbolDictionary in FCompilerOptions then
+                  FProg.SymbolDictionary.Remove(Result);
+               Result.Free;
             end;
-            if not (FTok.TestDelete(ttSEMI) or FTok.Test(ttEND)) then
-              Break;
-          end
-          else
-            Break;
-        until FTok.Test(ttEND);
+            raise;
+         end;
+      end; {except}
+   finally
+      if not isInSymbolTable then
+         FProg.Table.Remove(Result);  // auto-forward
+   end;
+end;
 
-        if not FTok.TestDelete(ttEND) then
-          FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
-      finally
-        Names.Free;
-        Fields.Free;
+// ReadClassFields
+//
+procedure TdwsCompiler.ReadClassFields(const classSymbol : TClassSymbol);
+var
+   i : Integer;
+   sym, typ : TSymbol;
+   fieldSym : TFieldSymbol;
+   names : TStringList;
+   fields : TList;
+   posArray : TScriptPosArray;    // positions of items pulled from ReadNameList call
+begin
+   names:=TStringList.Create;
+   fields:=TList.Create;
+   try
+      // Conditionally pass in dynamic array
+      if coSymbolDictionary in FCompilerOptions then
+         ReadNameList(Names, PosArray)     // use overloaded version
+      else ReadNameList(Names);
+
+      if not FTok.TestDelete(ttCOLON) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
+
+      Typ := ReadType('');
+      for i := 0 to Names.Count - 1 do begin
+         // Check if name isn't already used
+         sym := classSymbol.Members.FindLocal(Names[i]);
+         if Assigned(sym) then
+            FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [Names[i]]);
+
+         // Create Internal Field
+         fieldSym := TFieldSymbol.Create(Names[i], Typ);
+         Fields.Add(sym);
+         classSymbol.AddField(fieldSym);
+
+         // Enter Field symbol in dictionary
+         if coSymbolDictionary in FCompilerOptions then
+            FProg.SymbolDictionary.Add(sym, PosArray[i], [suDeclaration]);
       end;
-    except
-      on E: EClassIncompleteError do
-        ;                  // leave it handled
-      else
-      begin
-        // if not ClassCompleteError then free the class and re-raise error
-        if not isInSymbolTable then
-        begin
-          if coSymbolDictionary in FCompilerOptions then
-            FProg.SymbolDictionary.Remove(Result);
-          Result.Free;
-        end;
-        raise;
-      end;
-    end; {except}
-  end;
+   finally
+      names.Free;
+      fields.Free;
+   end;
 end;
 
 function TdwsCompiler.CheckFuncParams(ParamsA, ParamsB: TSymbolTable;
@@ -3071,9 +3072,11 @@ begin
     Result := ReadRecord(TypeName)
   else if FTok.TestDelete(ttARRAY) then
     Result := ReadArray(TypeName)
-  else if FTok.TestDelete(ttCLASS) then
-    Result := ReadClass(TypeName)
-  else if FTok.TestDelete(ttBLEFT) then
+  else if FTok.TestDelete(ttCLASS) then begin
+    if FTok.TestDelete(ttOF) then
+      Result:=ReadClassOf(TypeName)
+    else Result:=ReadClass(TypeName)
+  end else if FTok.TestDelete(ttBLEFT) then
     Result := ReadEnumeration(TypeName)
   else if FTok.TestDelete(ttPROCEDURE) then
   begin
