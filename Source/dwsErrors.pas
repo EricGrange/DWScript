@@ -180,6 +180,7 @@ type
          procedure AddExecutionError(const Pos: TScriptPos; const Text: String); overload;
 
          procedure AddExecutionStop(const Pos: TScriptPos; const Text: String);
+         procedure AddExecutionStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
 
          procedure SetLastScriptError(const Pos: TScriptPos; ExceptObj : TObject = nil);
 
@@ -515,6 +516,13 @@ begin
    if (Count=0) or (Msgs[Count-1].FText<>Text) then
       AddExecutionError(Pos, Text);
    raise EScriptError.Create(Text);
+end;
+
+// AddExecutionStopFmt
+//
+procedure TdwsMessageList.AddExecutionStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
+begin
+   AddExecutionStop(Pos, Format(textFormat, args));
 end;
 
 // SetLastScriptError
