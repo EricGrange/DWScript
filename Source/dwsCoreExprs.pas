@@ -443,26 +443,35 @@ type
      function  Optimize : TNoPosExpr; override;
    end;
 
+
+   TIntegerUnaryOpExpr = class(TUnaryOpExpr)
+
+   end;
+
    TNumberOpExpr = class(TBinaryOpExpr)
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
 
    TIntegerBinOpExpr = class(TBinaryOpExpr)
+     constructor Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr); override;
      function Eval: Variant; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function  Optimize : TNoPosExpr; override;
    end;
    TStringBinOpExpr = class(TBinaryOpExpr)
+     constructor Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr); override;
      function Eval: Variant; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function  Optimize : TNoPosExpr; override;
    end;
    TFloatBinOpExpr = class(TBinaryOpExpr)
+     constructor Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr); override;
      function Eval: Variant; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function  Optimize : TNoPosExpr; override;
    end;
    TBooleanBinOpExpr = class(TBinaryOpExpr)
+     constructor Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr); override;
      function Eval: Variant; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function  Optimize : TNoPosExpr; override;
@@ -2916,6 +2925,14 @@ end;
 // ------------------ TIntegerBinOpExpr ------------------
 // ------------------
 
+// Create
+//
+constructor TIntegerBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr);
+begin
+   inherited;
+   FTyp:=FProg.TypInteger;
+end;
+
 function TIntegerBinOpExpr.Eval: Variant;
 begin
    Result:=EvalAsInteger;
@@ -2925,11 +2942,9 @@ end;
 //
 procedure TIntegerBinOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-  inherited;
-  if     (FLeft.IsVariantValue or FLeft.IsIntegerValue)
-     and (FRight.IsVariantValue or FRight.IsIntegerValue) then
-     FTyp:=FProg.TypInteger
-  else Prog.Msgs.AddCompilerError(aPos, CPE_InvalidOperands);
+   if not (    (FLeft.IsVariantValue or FLeft.IsIntegerValue)
+           and (FRight.IsVariantValue or FRight.IsIntegerValue)) then
+      Prog.Msgs.AddCompilerError(aPos, CPE_InvalidOperands);
 end;
 
 // Optimize
@@ -2946,6 +2961,14 @@ end;
 // ------------------ TStringBinOpExpr ------------------
 // ------------------
 
+// Create
+//
+constructor TStringBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr);
+begin
+   inherited;
+   FTyp:=FProg.TypString;
+end;
+
 // Eval
 //
 function TStringBinOpExpr.Eval: Variant;
@@ -2960,11 +2983,9 @@ end;
 //
 procedure TStringBinOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-  inherited;
-  if     (FLeft.IsVariantValue or FLeft.IsStringValue)
-     and (FRight.IsVariantValue or FRight.IsStringValue) then
-     FTyp:=FProg.TypString
-  else Prog.Msgs.AddCompilerStop(aPos, CPE_InvalidOperands);
+   if not (    (FLeft.IsVariantValue or FLeft.IsStringValue)
+           and (FRight.IsVariantValue or FRight.IsStringValue)) then
+      Prog.Msgs.AddCompilerStop(aPos, CPE_InvalidOperands);
 end;
 
 // Optimize
@@ -2984,6 +3005,14 @@ end;
 // ------------------ TFloatBinOpExpr ------------------
 // ------------------
 
+// Create
+//
+constructor TFloatBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr);
+begin
+   inherited;
+   FTyp:=FProg.TypFloat;
+end;
+
 // Eval
 //
 function TFloatBinOpExpr.Eval: Variant;
@@ -2998,11 +3027,9 @@ end;
 //
 procedure TFloatBinOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-  inherited;
-  if     (FLeft.IsVariantValue or FLeft.IsNumberValue)
-     and (FRight.IsVariantValue or FRight.IsNumberValue) then
-     FTyp:=FProg.TypFloat
-  else Prog.Msgs.AddCompilerStop(aPos, CPE_InvalidOperands);
+   if not (    (FLeft.IsVariantValue or FLeft.IsNumberValue)
+           and (FRight.IsVariantValue or FRight.IsNumberValue)) then
+      Prog.Msgs.AddCompilerStop(aPos, CPE_InvalidOperands);
 end;
 
 // Optimize
@@ -3026,6 +3053,14 @@ end;
 // ------------------ TBooleanBinOpExpr ------------------
 // ------------------
 
+// Create
+//
+constructor TBooleanBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr);
+begin
+   inherited;
+   FTyp:=FProg.TypBoolean;
+end;
+
 function TBooleanBinOpExpr.Eval: Variant;
 begin
    Result:=EvalAsBoolean;
@@ -3035,11 +3070,9 @@ end;
 //
 procedure TBooleanBinOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-  inherited;
-  if     (FLeft.IsVariantValue or FLeft.IsBooleanValue)
-     and (FRight.IsVariantValue or FRight.IsBooleanValue) then
-     FTyp:=FProg.TypBoolean
-  else Prog.Msgs.AddCompilerStop(aPos, CPE_InvalidOperands);
+   if not (    (FLeft.IsVariantValue or FLeft.IsBooleanValue)
+           and (FRight.IsVariantValue or FRight.IsBooleanValue)) then
+      Prog.Msgs.AddCompilerStop(aPos, CPE_InvalidOperands);
 end;
 
 // Optimize

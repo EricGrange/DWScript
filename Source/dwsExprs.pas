@@ -797,7 +797,7 @@ type
          FLeft : TNoPosExpr;
          FRight : TNoPosExpr;
       public
-         constructor Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr);
+         constructor Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr); virtual;
          destructor Destroy; override;
 
          function Eval: Variant; override;
