@@ -63,14 +63,6 @@ type
     procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
 
-  TChrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
-  end;
-
-  TOrdFunc = class(TInternalMagicIntFunction)
-    function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
-  end;
-
   TCharAtFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
@@ -525,22 +517,6 @@ begin
    Result:=QuotedStr(args.AsString[0]);
 end;
 
-{ TChrFunc }
-
-// DoEvalAsString
-//
-procedure TChrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
-begin
-   Result:=Chr(args.AsInteger[0]);
-end;
-
-{ TOrdFunc }
-
-function TOrdFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
-begin
-   Result:=Ord(args.AsString[0][1]);
-end;
-
 { TCharAtFunc }
 
 // DoEvalAsString
@@ -750,9 +726,6 @@ initialization
    RegisterInternalFloatFunction(TStrToFloatDefFunc, 'VarToFloatDef', ['val', cVariant, 'def', cFloat], True);
 
    RegisterInternalStringFunction(TFormatFunc, 'Format', ['fmt', cString, 'args', 'array of const'], True);
-
-   RegisterInternalStringFunction(TChrFunc, 'Chr', ['x', cInteger], True);
-   RegisterInternalIntFunction(TOrdFunc, 'Ord', ['s', cString], True);
 
    RegisterInternalStringFunction(TCharAtFunc, 'CharAt', ['s', cString, 'x', cInteger], True);
    RegisterInternalFunction(TSetCharAtFunc, 'SetCharAt', ['@s', cString, 'x', cInteger, 'c', cString], '');
