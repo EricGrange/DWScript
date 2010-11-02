@@ -649,6 +649,7 @@ type
    TEnumerationSymbol = class(TNameSymbol)
    private
      FElements: TSymbolTable;
+     FLowBound, FHighBound : Integer;
    protected
      function GetCaption: string; override;
      function GetDescription: string; override;
@@ -658,6 +659,8 @@ type
      procedure InitData(const Data: TData; Offset: Integer); override;
      procedure AddElement(Element: TElementSymbol);
      property Elements: TSymbolTable read FElements;
+     property LowBound : Integer read FLowBound write FLowBound;
+     property HighBound : Integer read FHighBound write FHighBound;
      function ShortDescription : String;
    end;
 
@@ -2411,6 +2414,8 @@ constructor TEnumerationSymbol.Create(const Name: string; BaseType: TTypeSymbol)
 begin
   inherited Create(Name, BaseType);
   FElements := TSymbolTable.Create;
+  FLowBound := MaxInt;
+  FHighBound := -MaxInt;
 end;
 
 destructor TEnumerationSymbol.Destroy;
@@ -2434,7 +2439,11 @@ end;
 
 procedure TEnumerationSymbol.AddElement(Element: TElementSymbol);
 begin
-  FElements.AddSymbol(Element);
+   FElements.AddSymbol(Element);
+   if Element.UserDefValue<FLowBound then
+      FLowBound:=Element.UserDefValue;
+   if Element.UserDefValue>FHighBound then
+      FHighBound:=Element.UserDefValue;
 end;
 
 function TEnumerationSymbol.GetCaption: string;
