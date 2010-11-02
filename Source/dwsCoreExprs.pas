@@ -361,6 +361,23 @@ type
      procedure EvalAsString(var Result : String); override;
    end;
 
+   TOrdExpr = class(TUnaryOpExpr)
+   public
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+     function Eval: Variant; override;
+     function EvalAsInteger : Int64; override;
+   end;
+
+   TOrdIntExpr = class(TOrdExpr)
+   public
+     function EvalAsInteger : Int64; override;
+   end;
+
+   TOrdStrExpr = class(TOrdExpr)
+   public
+     function EvalAsInteger : Int64; override;
+   end;
+
    // obj is TMyClass
    TIsOpExpr = class(TBinaryOpExpr)
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr);
@@ -974,17 +991,20 @@ end;
 //
 class function TVarExpr.CreateTyped(Prog: TdwsProgram; Typ: TSymbol; DataSym : TDataSymbol) : TVarExpr;
 begin
-   if Typ=Prog.TypInteger then
-      Result:=TIntVarExpr.Create(Prog, Typ, dataSym)
-   else if Typ=Prog.TypFloat then
-      Result:=TFloatVarExpr.Create(Prog, Typ, dataSym)
-   else if Typ=Prog.TypString then
-      Result:=TStrVarExpr.Create(Prog, Typ, dataSym)
-   else if Typ=Prog.TypBoolean then
-      Result:=TBoolVarExpr.Create(Prog, Typ, dataSym)
-   else if Typ is TClassSymbol then
-      Result:=TObjectVarExpr.Create(Prog, Typ, dataSym)
-   else Result:=TVarExpr.Create(Prog, Typ, dataSym);
+   case Typ.BaseTypeID of
+      typIntegerID :
+         Result:=TIntVarExpr.Create(Prog, Typ, dataSym);
+      typFloatID :
+         Result:=TFloatVarExpr.Create(Prog, Typ, dataSym);
+      typStringID :
+         Result:=TStrVarExpr.Create(Prog, Typ, dataSym);
+      typBooleanID :
+         Result:=TBoolVarExpr.Create(Prog, Typ, dataSym);
+   else
+      if Typ is TClassSymbol then
+         Result:=TObjectVarExpr.Create(Prog, Typ, dataSym)
+      else Result:=TVarExpr.Create(Prog, Typ, dataSym);
+   end;
 end;
 
 function TVarExpr.Eval: Variant;
@@ -2357,6 +2377,60 @@ end;
 procedure TChrExpr.EvalAsString(var Result : String);
 begin
    Result:=Chr(FExpr.EvalAsInteger);
+end;
+
+{ TOrdExpr }
+
+constructor TOrdExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+begin
+   inherited;
+   FTyp := FProg.TypInteger;
+end;
+
+function TOrdExpr.Eval: Variant;
+begin
+   Result:=EvalAsInteger;
+end;
+
+// EvalAsInteger
+//
+function TOrdExpr.EvalAsInteger : Int64;
+var
+   v : Variant;
+   s : String;
+begin
+   v:=FExpr.Eval;
+   if VarIsOrdinal(v) then
+      Result:=v
+   else if VarIsStr(v) then begin
+      s:=v;
+      if s<>'' then
+         Result:=Ord(s[1])
+      else Result:=0;
+   end else Result:=0;
+end;
+
+{ TOrdIntExpr }
+
+// EvalAsInteger
+//
+function TOrdIntExpr.EvalAsInteger : Int64;
+begin
+   Result:=FExpr.EvalAsInteger;
+end;
+
+{ TOrdStrExpr }
+
+// EvalAsInteger
+//
+function TOrdStrExpr.EvalAsInteger : Int64;
+var
+   s : String;
+begin
+   FExpr.EvalAsString(s);
+   if s<>'' then
+      Result:=Ord(s[1])
+   else Result:=0;
 end;
 
 { TObjCmpExpr }
