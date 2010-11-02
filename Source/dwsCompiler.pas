@@ -204,8 +204,8 @@ type
       function ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TNoPosExpr;
       function ReadSwitch(const SwitchName: string): Boolean;
       function ReadSymbol(Expr: TNoPosExpr; IsWrite: Boolean = False): TNoPosExpr;
-      function ReadTerm: TNoPosExpr;
-      function ReadNegation: TNoPosExpr;
+      function ReadTerm : TNoPosExpr;
+      function ReadNegation : TNoPosExpr;
       function ReadTry: TExceptionExpr;
       function ReadType(const TypeName: string = ''): TTypeSymbol;
       function ReadTypeCast(const NamePos: TScriptPos; TypeSym: TSymbol): TNoPosExpr;
@@ -1352,59 +1352,63 @@ var
    locExpr : TNoPosExpr;
 begin
    // Decide which instruction to read
-   if FTok.TestDelete(ttIF) then
-      Result := ReadIf
-   else if FTok.TestDelete(ttCASE) then
-      Result := ReadCase
-   else if FTok.TestDelete(ttFOR) then
-      Result := ReadFor
-   else if FTok.TestDelete(ttWHILE) then
-      Result := ReadWhile
-   else if FTok.TestDelete(ttREPEAT) then
-      Result := ReadRepeat
-   else if FTok.TestDelete(ttTRY) then
-      Result := ReadTry
-   else if FTok.TestDelete(ttRAISE) then
-      Result := ReadRaise
-   else if FTok.TestDelete(ttBREAK) then
-      Result := TBreakExpr.Create(FProg, FTok.HotPos)
-   else if FTok.Test(ttEXIT) then
-      Result := ReadExit
-   else if FTok.TestDelete(ttCONTINUE) then
-      Result := TContinueExpr.Create(FProg, FTok.HotPos)
-   // Try to read a function call, method call or an assignment
-   else if FTok.Test(ttSWITCH) then
-      Result := ReadInstrSwitch
-   else if FTok.Test(ttBLEFT) or FTok.Test(ttINHERITED) or FTok.TestName then begin // !! TestName must be the last !!
-      if FTok.Test(ttBLEFT) then // (X as TY)
-         locExpr := ReadSymbol(ReadTerm)
-      else locExpr := ReadName(True);
-      try
-         if FTok.TestDelete(ttASSIGN) then begin
-            if not (locExpr is TDataExpr) or not TDataExpr(locExpr).IsWritable then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_CantWriteToLeftSide);
-            if locExpr is TVarExpr then
-               WarnForVarUsage(TVarExpr(locExpr));
-            Result := ReadAssign(TDataExpr(locExpr));
-         end else if locExpr is TAssignExpr then
-            Result:=TAssignExpr(locExpr)
-         else if    (locExpr is TFuncExprBase)
-                 or (locExpr is TConnectorCallExpr) then begin
-            Result:=TNoResultWrapperExpr.Create(FProg, FTok.HotPos, locExpr);
-         end else if locExpr is TConnectorWriteExpr then
-            Result:=TConnectorWriteExpr(locExpr)
-         else if locExpr is TStringArraySetExpr then
-            Result:=TStringArraySetExpr(locExpr)
-         else begin
-            Result:=nil;
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidInstruction)
+   case FTok.TestDeleteAny([ttIF, ttCASE, ttFOR, ttWHILE, ttREPEAT, ttBREAK,
+                            ttEXIT, ttTRY, ttRAISE, ttCONTINUE]) of
+      ttIF :
+         Result := ReadIf;
+      ttCASE :
+         Result := ReadCase;
+      ttFOR :
+         Result := ReadFor;
+      ttWHILE :
+         Result := ReadWhile;
+      ttREPEAT :
+         Result := ReadRepeat;
+      ttBREAK :
+         Result := TBreakExpr.Create(FProg, FTok.HotPos);
+      ttEXIT :
+         Result := ReadExit;
+      ttTRY :
+         Result := ReadTry;
+      ttCONTINUE :
+         Result := TContinueExpr.Create(FProg, FTok.HotPos);
+      ttRAISE :
+         Result := ReadRaise;
+   else
+      // Try to read a function call, method call or an assignment
+      if FTok.Test(ttSWITCH) then
+         Result := ReadInstrSwitch
+      else if FTok.Test(ttBLEFT) or FTok.Test(ttINHERITED) or FTok.TestName then begin // !! TestName must be the last !!
+         if FTok.Test(ttBLEFT) then // (X as TY)
+            locExpr := ReadSymbol(ReadTerm)
+         else locExpr := ReadName(True);
+         try
+            if FTok.TestDelete(ttASSIGN) then begin
+               if not (locExpr is TDataExpr) or not TDataExpr(locExpr).IsWritable then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_CantWriteToLeftSide);
+               if locExpr is TVarExpr then
+                  WarnForVarUsage(TVarExpr(locExpr));
+               Result := ReadAssign(TDataExpr(locExpr));
+            end else if locExpr is TAssignExpr then
+               Result:=TAssignExpr(locExpr)
+            else if    (locExpr is TFuncExprBase)
+                    or (locExpr is TConnectorCallExpr) then begin
+               Result:=TNoResultWrapperExpr.Create(FProg, FTok.HotPos, locExpr);
+            end else if locExpr is TConnectorWriteExpr then
+               Result:=TConnectorWriteExpr(locExpr)
+            else if locExpr is TStringArraySetExpr then
+               Result:=TStringArraySetExpr(locExpr)
+            else begin
+               Result:=nil;
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidInstruction)
+            end;
+         except
+            locExpr.Free;
+            raise;
          end;
-      except
-         locExpr.Free;
-         raise;
+      end else begin
+         Result := TNullExpr.Create(FProg, FTok.HotPos);
       end;
-   end else begin
-      Result := TNullExpr.Create(FProg, FTok.HotPos);
    end;
 
    if Assigned(Result) then begin
@@ -3035,8 +3039,6 @@ var
    exitPos : TScriptPos;
 begin
    exitPos:=FTok.HotPos;
-   if not FTok.TestDelete(ttEXIT) then
-      Assert(False);
    if FTok.TestDelete(ttBLEFT) then begin
       if not (FProg is TProcedure) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoResultRequired);
@@ -3138,82 +3140,80 @@ begin
    end;
 end;
 
+// ReadExpr
+//
 function TdwsCompiler.ReadExpr: TNoPosExpr;
 var
-  r: TNoPosExpr;
-  tt: TTokenType;
-  hotPos: TScriptPos;
-  roeClass : TRelOpExprClass;
+   r: TNoPosExpr;
+   tt: TTokenType;
+   hotPos: TScriptPos;
+   roeClass : TRelOpExprClass;
 begin
-  // Read left argument
-  hotPos:=FTok.HotPos;
-  Result := ReadExprAdd;
-  try
-    // Read operator
-    while (   FTok.Test(ttEQ)    or FTok.Test(ttNOTEQ)
-           or FTok.Test(ttLESS)  or FTok.Test(ttLESSEQ)
-           or FTok.Test(ttGTR)   or FTok.Test(ttGTREQ)
-           or FTok.Test(ttIS)    or FTok.Test(ttAS)) do
-    begin
-      tt := FTok.GetToken.FTyp;
-      FTok.TestDelete(tt);
-      hotPos := FTok.HotPos;
+   // Read left argument
+   hotPos:=FTok.HotPos;
+   Result := ReadExprAdd;
+   try
+      // Read operator
+      while True do begin
+         tt:=FTok.TestDeleteAny([ttEQ, ttNOTEQ, ttLESS, ttLESSEQ, ttGTR, ttGTREQ, ttIS, ttAS]);
+         if tt=ttNone then Break;
 
-      // Read right argument
-      r := ReadExprAdd;
-      try
-        if (Result.Typ is TClassSymbol) or (Result.Typ = FProg.TypNil) then
-        begin
-          case tt of
-            ttEQ, ttNOTEQ:
-              Result := TObjCmpExpr.Create(FProg, Result, r, tt = ttEQ);
-            ttIS: Result := TIsOpExpr.Create(FProg, Result, r);
-            ttAS: Result := TAsOpExpr.Create(FProg, Result, r);
-          else
-            FProg.Msgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
-          end;
-        end
-        else
-        begin
-          roeClass:=TRelOpExpr;
-          if (r.Typ=Result.Typ) then begin
-            if r.Typ=FProg.TypInteger then
-               roeClass:=TRelOpIntExpr
-            else if r.Typ=FProg.TypFloat then
-               roeClass:=TRelOpFloatExpr
-            else if r.Typ=FProg.TypString then
-               roeClass:=TRelOpStrExpr;
-          end else if r.IsNumberValue and Result.IsNumberValue then begin
-            roeClass:=TRelOpFloatExpr;
-            if Optimize then begin
-               Result:=Result.OptimizeIntegerConstantToFloatConstant;
-               r:=r.OptimizeIntegerConstantToFloatConstant;
+         hotPos := FTok.HotPos;
+
+         // Read right argument
+         r := ReadExprAdd;
+         try
+            if (Result.Typ is TClassSymbol) or (Result.Typ = FProg.TypNil) then begin
+               case tt of
+                  ttEQ, ttNOTEQ:
+                     Result := TObjCmpExpr.Create(FProg, Result, r, tt = ttEQ);
+                  ttIS: Result := TIsOpExpr.Create(FProg, Result, r);
+                  ttAS: Result := TAsOpExpr.Create(FProg, Result, r);
+               else
+                  FProg.Msgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
+               end;
+            end else begin
+               roeClass:=TRelOpExpr;
+               if (r.Typ=Result.Typ) then begin
+                  if r.Typ=FProg.TypInteger then
+                     roeClass:=TRelOpIntExpr
+                  else if r.Typ=FProg.TypFloat then
+                     roeClass:=TRelOpFloatExpr
+                  else if r.Typ=FProg.TypString then
+                     roeClass:=TRelOpStrExpr;
+               end else if r.IsNumberValue and Result.IsNumberValue then begin
+                  roeClass:=TRelOpFloatExpr;
+                  if Optimize then begin
+                     Result:=Result.OptimizeIntegerConstantToFloatConstant;
+                     r:=r.OptimizeIntegerConstantToFloatConstant;
+                  end;
+               end;
+
+               case tt of
+                  ttEQ: Result := roeClass.Create(FProg, Result, r, roEqual);
+                  ttLESS: Result := roeClass.Create(FProg, Result, r, roLess);
+                  ttGTR: Result := roeClass.Create(FProg, Result, r, roMore);
+                  ttLESSEQ: Result := roeClass.Create(FProg, Result, r, roLessEqual);
+                  ttGTREQ: Result := roeClass.Create(FProg, Result, r, roMoreEqual);
+                  ttNOTEQ: Result := roeClass.Create(FProg, Result, r, roUnEqual);
+               else
+                  FProg.Msgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
+               end;
             end;
-          end;
-
-          case tt of
-            ttEQ: Result := roeClass.Create(FProg, Result, r, roEqual);
-            ttLESS: Result := roeClass.Create(FProg, Result, r, roLess);
-            ttGTR: Result := roeClass.Create(FProg, Result, r, roMore);
-            ttLESSEQ: Result := roeClass.Create(FProg, Result, r, roLessEqual);
-            ttGTREQ: Result := roeClass.Create(FProg, Result, r, roMoreEqual);
-            ttNOTEQ: Result := roeClass.Create(FProg, Result, r, roUnEqual);
-          else
-            FProg.Msgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
-          end;
-        end;
-      except
-        r.Free;
-        raise;
+         except
+            r.Free;
+            raise;
+         end;
+         Result.TypeCheckNoPos(hotPos);
       end;
-      Result.TypeCheckNoPos(hotPos);
-    end;
-  except
-    Result.Free;
-    raise;
-  end;
+   except
+      Result.Free;
+      raise;
+   end;
 end;
 
+// ReadExprAdd
+//
 function TdwsCompiler.ReadExprAdd: TNoPosExpr;
 var
    r: TNoPosExpr;
@@ -3226,18 +3226,10 @@ begin
    Result := ReadExprMult;
    try
 
-      while (   FTok.Test(ttPLUS)
-             or FTok.Test(ttMINUS)
-             or FTok.Test(ttOR)
-             or FTok.Test(ttAND)
-             or FTok.Test(ttXOR)
-             or FTok.Test(ttSHL)
-             or FTok.Test(ttSHR)
-             or FTok.Test(ttIN)
-            ) do begin
+      while True do begin
+         tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttOR, ttAND, ttXOR, ttSHL, ttSHR, ttIN]);
+         if tt=ttNone then Break;
 
-         tt := FTok.GetToken.FTyp;
-         FTok.TestDelete(tt);
          Pos := FTok.HotPos;
 
          if tt = ttIN then
@@ -3304,48 +3296,47 @@ begin
    end;
 end;
 
+// ReadExprMult
+//
 function TdwsCompiler.ReadExprMult: TNoPosExpr;
 var
-  right: TNoPosExpr;
-  tt: TTokenType;
-  Pos: TScriptPos;
+   right: TNoPosExpr;
+   tt: TTokenType;
+   Pos: TScriptPos;
 begin
-  // Read left argument
-  Result := ReadTerm;
-  try
-    while (   FTok.Test(ttTIMES) or FTok.Test(ttDIVIDE) or FTok.Test(ttMOD)
-           or FTok.Test(ttDIV)) do
-    begin
+   // Read left argument
+   Result := ReadTerm;
+   try
+      while True do begin
+         tt:=FTok.TestDeleteAny([ttTIMES, ttDIVIDE, ttMOD, ttDIV]);
+         if tt=ttNone then Break;
 
-      tt := FTok.GetToken.FTyp;
-      FTok.TestDelete(tt);
+         // Save position of the operator
+         Pos := FTok.HotPos;
 
-      // Save position of the operator
-      Pos := FTok.HotPos;
-
-      // Read right argument
-      right := ReadTerm;
-      try
-         // Generate function and add left and right argument
-         case tt of
-            ttTIMES: Result := TMultExpr.Create(FProg, Result, right);
-            ttDIVIDE: Result := TDivideExpr.Create(FProg, Result, right);
-            ttDIV: Result := TDivExpr.Create(FProg, Result, right);
-            ttMOD: Result := TModExpr.Create(FProg, Result, right);
+         // Read right argument
+         right := ReadTerm;
+         try
+            // Generate function and add left and right argument
+            case tt of
+               ttTIMES: Result := TMultExpr.Create(FProg, Result, right);
+               ttDIVIDE: Result := TDivideExpr.Create(FProg, Result, right);
+               ttDIV: Result := TDivExpr.Create(FProg, Result, right);
+               ttMOD: Result := TModExpr.Create(FProg, Result, right);
+            end;
+         except
+            right.Free;
+            raise;
          end;
-      except
-        right.Free;
-        raise;
-      end;
 
-      if Optimize then
-         Result:=Result.Optimize;
-      Result.TypeCheckNoPos(Pos);
-    end;
-  except
-    Result.Free;
-    raise;
-  end;
+         Result.TypeCheckNoPos(Pos);
+         if Optimize then
+            Result:=Result.Optimize;
+      end;
+   except
+      Result.Free;
+      raise;
+   end;
 end;
 
 // ReadExprIn
@@ -3411,36 +3402,41 @@ function TdwsCompiler.ReadTerm: TNoPosExpr;
       end;
    end;
 
+var
+   tt : TTokenType;
 begin
-   if FTok.TestDelete(ttPLUS) then
-      // (redundant) plus sign
-      Result := ReadTerm
-   else if FTok.TestDelete(ttMINUS) then
-      Result := ReadNegation
-   else if FTok.TestDelete(ttALEFT) then
-      Result := ReadArrayConstant
-   else if FTok.TestDelete(ttNOT) then
-      Result:=ReadNotTerm
-   else if FTok.TestDelete(ttBLEFT) then begin
-      // Read expression in brackets
-      Result := ReadExpr;
-      if not FTok.TestDelete(ttBRIGHT) then begin
-         Result.Free;
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+   tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT,
+                           ttNIL, ttTRUE, ttFALSE]);
+   case tt of
+      ttPLUS :
+         Result:=ReadTerm; // (redundant) plus sign
+      ttMINUS :
+         Result:=ReadNegation;
+      ttALEFT :
+         Result:=ReadArrayConstant;
+      ttNOT :
+         Result:=ReadNotTerm;
+      ttBLEFT : begin
+         // Read expression in brackets
+         Result := ReadExpr;
+         if not FTok.TestDelete(ttBRIGHT) then begin
+            Result.Free;
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+         end;
+         if Result.Typ is TClassSymbol then
+            Result:=ReadSymbol(Result);
       end;
-      if Result.Typ is TClassSymbol then
-         Result:=ReadSymbol(Result);
-   end else if FTok.TestDelete(ttNIL) then
-      Result := ReadNilTerm
-   else if FTok.TestDelete(ttTRUE) then
-      Result := TConstBooleanExpr.CreateUnified(FProg, nil, True)
-   else if FTok.TestDelete(ttFALSE) then
-      Result := TConstBooleanExpr.CreateUnified(FProg, nil, False)
-   else if FTok.Test(ttINHERITED) or FTok.TestName  then
-      // Variable or Function
-      Result := ReadName
-   else // Constant values in the code
-      Result := ReadConstValue;
+      ttTRUE, ttFALSE :
+         Result:=TConstBooleanExpr.CreateUnified(FProg, nil, (tt=ttTRUE));
+      ttNIL :
+         Result:=ReadNilTerm;
+   else
+      if FTok.Test(ttINHERITED) or FTok.TestName  then
+         // Variable or Function
+         Result := ReadName
+      else // Constant values in the code
+         Result := ReadConstValue;
+   end;
 
    // No expression found
    if not Assigned(Result) then

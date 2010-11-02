@@ -160,6 +160,7 @@ type
      function NextTest(t: TTokenType): Boolean;
      function Test(t: TTokenType): Boolean; inline;
      function TestDelete(t: TTokenType): Boolean;
+     function TestDeleteAny(const t: TTokenTypes) : TTokenType;
      function NextTestName: Boolean;
      function TestName: Boolean;
      function TestDeleteName: Boolean;
@@ -641,6 +642,23 @@ begin
       KillToken;
       Result:=True;
    end else Result:=False;
+end;
+
+// TestDeleteAny
+//
+function TTokenizer.TestDeleteAny(const t: TTokenTypes) : TTokenType;
+begin
+   if not Assigned(FToken) then begin
+      ReadToken;
+      if not Assigned(FToken) then
+         Exit(ttNone);
+   end;
+
+   FHotPos.LineCol:=FToken.FPos.LineCol;
+   if FToken.FTyp in t then begin
+      Result:=FToken.FTyp;
+      KillToken;
+   end else Result:=ttNone;
 end;
 
 function TTokenizer.NextTest(t: TTokenType): Boolean;
