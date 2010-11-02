@@ -112,7 +112,7 @@ type
 
   TAddArgProcedure = procedure(ArgExpr: TNoPosExpr) of object;
 
-  TSpecialKeywordKind = (skLength, skLow, skHigh, skSizeOf, skChr);
+  TSpecialKeywordKind = (skNone, skChr, skHigh, skLength, skLow, skOrd, skSizeOf);
 
    // TdwsCompiler
    //
@@ -135,7 +135,8 @@ type
       function CheckFuncParams(ParamsA, ParamsB: TSymbolTable; IndexSym: TSymbol = nil;
                                TypSym: TSymbol = nil): Boolean;
       procedure CheckName(const Name: string);
-      procedure CheckSpecialName(const Name: string);
+      function IdentifySpecialName(const name: string) : TSpecialKeywordKind;
+      procedure CheckSpecialName(const name: string);
       function CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
       procedure CompareFuncSymbols(A, B: TFuncSymbol; IsCheckingParameters: Boolean);
       function OpenStreamForFile(const scriptName : String) : TStream;
@@ -268,11 +269,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-type
-  TSpecialKeywordMap = array[TSpecialKeywordKind] of string;
-const
-  cSpecialKeywordMap: TSpecialKeywordMap = ('length', 'low', 'high', 'sizeof', 'chr');
 
 type
   TExceptionCreateMethod = class(TInternalMethod)
@@ -1515,11 +1511,10 @@ begin
    namePos := FTok.HotPos;
 
    // Test for special functions
-   for sk := Low(sk) to High(sk) do begin
-      if SameText(nameToken.FString, cSpecialKeywordMap[sk]) then begin
-         FTok.KillToken;
-         Exit(ReadSpecialFunction(namePos, sk));
-      end;
+   sk:=IdentifySpecialName(nameToken.FString);
+   if sk<>skNone then begin
+      FTok.KillToken;
+      Exit(ReadSpecialFunction(namePos, sk));
    end;
 
    // Find name in symboltable
@@ -3742,18 +3737,37 @@ begin
    else CheckSpecialName(Name);
 end;
 
+// IdentifySpecialName
+//
+function TdwsCompiler.IdentifySpecialName(const name: string) : TSpecialKeywordKind;
+var
+   ch : Char;
+begin
+   ch:=name[1];
+   if (ch>='A') and (ch<='Z') then
+      ch:=Char(Word(ch) or $0020);
+   Result:=skNone;
+   case ch of
+      'c' :
+         if SameText(name, 'chr') then Result:=skChr;
+      'h' :
+         if SameText(name, 'high') then Result:=skHigh;
+      'l' :
+         if SameText(name, 'low') then Result:=skLow
+         else if SameText(name, 'length') then Result:=skLength;
+      'o' :
+         if SameText(name, 'ord') then Result:=skOrd;
+      's' :
+         if SameText(name, 'sizeof') then Result:=skSizeOf;
+   end;
+end;
+
 // CheckSpecialName
 //
-procedure TdwsCompiler.CheckSpecialName(const Name: string);
-var
-   sk : TSpecialKeywordKind;
+procedure TdwsCompiler.CheckSpecialName(const name: string);
 begin
-   for sk:=Low(sk) to High(sk) do begin
-      if SameText(cSpecialKeywordMap[sk], Name) then begin
-         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameIsReserved, [Name]);
-         Break;
-      end;
-   end;
+   if IdentifySpecialName(name)<>skNone then
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameIsReserved, [Name]);
 end;
 
 // OpenStreamForFile
@@ -4506,115 +4520,128 @@ begin
    end;
 end;
 
+// ReadSpecialFunction
+//
 function TdwsCompiler.ReadSpecialFunction(const NamePos: TScriptPos; SpecialKind: TSpecialKeywordKind): TNoPosExpr;
 var
-  argExpr: TNoPosExpr;
-  argTyp: TSymbol;
+   argExpr: TNoPosExpr;
+   argTyp: TSymbol;
 begin
-  if not FTok.TestDelete(ttBLEFT) then
-    FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
+   if not FTok.TestDelete(ttBLEFT) then
+      FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
 
-  // Test for statements like "Low(Integer)"
-  if FTok.Test(ttName) and FTok.NextTest(ttBRIGHT) then
-    argTyp := FProg.Table.FindSymbol(FTok.GetToken.FString)
-  else
-    argTyp := nil;
+   // Test for statements like "Low(Integer)"
+   if FTok.Test(ttName) and FTok.NextTest(ttBRIGHT) then
+      argTyp := FProg.Table.FindSymbol(FTok.GetToken.FString)
+   else argTyp := nil;
 
-  if Assigned(argTyp) and (argTyp is TTypeSymbol) then begin
-    argExpr := nil;
-    FTok.KillToken;
-    FTok.KillToken;
-  end else begin
-    argExpr := ReadExpr;
-    argTyp := argExpr.BaseType;
-  end;
+   if Assigned(argTyp) and (argTyp is TTypeSymbol) then begin
+      argExpr := nil;
+      FTok.KillToken;
+      FTok.KillToken;
+   end else begin
+      argExpr := ReadExpr;
+      argTyp := argExpr.BaseType;
+   end;
 
-  try
-    if Assigned(argExpr) then
-      argExpr.TypeCheckNoPos(FTok.HotPos);
+   try
+      if Assigned(argExpr) then
+         argExpr.TypeCheckNoPos(FTok.HotPos);
 
-    if not Assigned(argTyp) then
-      FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+      if not Assigned(argTyp) then
+         FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
 
-    Result := nil;
+      Result := nil;
 
-    case SpecialKind of
-      skLength:
-        begin
-          if argTyp is TOpenArraySymbol then begin
-            if argExpr=nil then
+      case SpecialKind of
+         skChr: begin
+            if argTyp.BaseTypeID in [typIntegerID, typVariantID] then begin
+               Result:=TChrExpr.Create(FProg, NamePos, argExpr);
+               argExpr:=nil;
+            end else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+         end;
+         skHigh: begin
+            if argTyp is TOpenArraySymbol then begin
+               if argExpr=nil then
+                  FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+               Result:=TOpenArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), -1)
+            end else if argTyp is TEnumerationSymbol then
+               Result:= TConstExpr.CreateTyped(FProg, FProg.TypInteger, TEnumerationSymbol(argTyp).HighBound)
+            else if argTyp is TDynamicArraySymbol and Assigned(argExpr) then
+               Result := TArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), -1)
+            else if (argTyp = FProg.TypString) and Assigned(argExpr) then
+               Result := TStringLengthExpr.Create(FProg, NamePos, argExpr)
+            else if argTyp is TStaticArraySymbol then begin
+               FreeAndNil(argExpr);
+               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(argTyp).HighBound);
+            end else if argTyp = FProg.TypInteger then begin
+               FreeAndNil(argExpr);
+               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, MaxInt);
+            end else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+         end;
+         skLength: begin
+            if argTyp is TOpenArraySymbol then begin
+               if argExpr=nil then
+                  FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+               Result:=TOpenArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), 0)
+            end else if (argTyp is TDynamicArraySymbol) and Assigned(argExpr) then
+               Result:=TArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), 0)
+            else if ((argTyp=FProg.TypString) or (argTyp=FProg.TypVariant)) and Assigned(argExpr) then
+               Result:=TStringLengthExpr.Create(FProg, NamePos, argExpr)
+            else if argTyp is TStaticArraySymbol then begin
+               FreeAndNil(argExpr);
+               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger,
+                                                TStaticArraySymbol(argTyp).ElementCount);
+            end else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+         end;
+         skLow: begin
+            FreeAndNil(argExpr); // not needed
+            if argTyp is TStaticArraySymbol then
+               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(argTyp).LowBound)
+            else if argTyp is TEnumerationSymbol then
+               Result:= TConstExpr.CreateTyped(FProg, FProg.TypInteger, TEnumerationSymbol(argTyp).LowBound)
+            else if argTyp=FProg.TypString then
+               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, 1)
+            else if (argTyp=FProg.TypInteger) or (argTyp is TDynamicArraySymbol) then
+               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, 0)
+            else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+         end;
+         skOrd: begin
+            case argTyp.BaseTypeID of
+               typIntegerID, typBooleanID : begin
+                  Result:=TOrdIntExpr.Create(FProg, NamePos, argExpr);
+                  argExpr:=nil;
+               end;
+               typStringID : begin
+                  Result:=TOrdStrExpr.Create(FProg, NamePos, argExpr);
+                  argExpr:=nil;
+               end;
+               typVariantID : begin
+                  Result:=TOrdExpr.Create(FProg, NamePos, argExpr);
+                  argExpr:=nil;
+               end
+            else
                FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-            Result:=TOpenArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), 0)
-          end else if (argTyp is TDynamicArraySymbol) and Assigned(argExpr) then
-            Result:=TArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), 0)
-          else if ((argTyp=FProg.TypString) or (argTyp=FProg.TypVariant)) and Assigned(argExpr) then
-            Result:=TStringLengthExpr.Create(FProg, NamePos, argExpr)
-          else if argTyp is TStaticArraySymbol then begin
-            FreeAndNil(argExpr);
-            Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger,
-                                        TStaticArraySymbol(argTyp).ElementCount);
-          end else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-        end;
-      skLow:
-        begin
-          FreeAndNil(argExpr); // not needed
-          if argTyp is TStaticArraySymbol then
-            Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(argTyp).LowBound)
-          else if argTyp = FProg.TypString then
-            Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, 1)
-          else if (argTyp = FProg.TypInteger) or (argTyp is TDynamicArraySymbol) then
-            Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, 0)
-          else
-            FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-        end;
-      skHigh:
-        begin
-          if argTyp is TOpenArraySymbol then begin
-            if argExpr=nil then
-               FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-            Result:=TOpenArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), -1)
-          end else if argTyp is TDynamicArraySymbol and Assigned(argExpr) then
-            Result := TArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), -1)
-          else if (argTyp = FProg.TypString) and Assigned(argExpr) then
-            Result := TStringLengthExpr.Create(FProg, NamePos, argExpr)
-          else if argTyp is TStaticArraySymbol then
-          begin
-            FreeAndNil(argExpr);
-            Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(argTyp).HighBound);
-          end
-          else if argTyp = FProg.TypInteger then
-          begin
-            FreeAndNil(argExpr);
-            Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, MaxInt);
-          end
-          else
-            FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-        end;
-      skSizeOf:
-        begin
-          FreeAndNil(argExpr);
-          Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, argTyp.Size);
-        end;
-      skChr: begin
-         if argTyp.Typ <> FProg.TypInteger then begin
-            Result:=TChrExpr.Create(FProg, NamePos, argExpr);
-            argExpr:=nil;
-         end else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+            end;
+         end;
+         skSizeOf: begin
+             FreeAndNil(argExpr);
+             Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, argTyp.Size);
+         end;
       end;
-    end;
 
-    try
-      if not FTok.TestDelete(ttBRIGHT) then
-        FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-    except
-      Result.Free;
+      try
+         if not FTok.TestDelete(ttBRIGHT) then
+            FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+      except
+         Result.Free;
+         raise;
+      end;
+
+   except
+      argExpr.Free;
       raise;
-    end;
-
-  except
-    argExpr.Free;
-    raise;
-  end;
+   end;
 end;
 
 function TdwsCompiler.ReadTypeCast(const NamePos: TScriptPos; TypeSym: TSymbol): TExpr;
