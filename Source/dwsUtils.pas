@@ -376,6 +376,7 @@ begin
    Clear;
    FCount:=aList.FCount;
    case Count of
+      0 : Exit;
       1 : FList:=aList.FList;
    else
       ReallocMem(FList, Count*SizeOf(Pointer));
