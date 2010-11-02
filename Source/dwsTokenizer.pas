@@ -128,13 +128,13 @@ type
 
    TTokenizer = class
    private
-     tokenBuf : TTokenBuffer;
+     FTokenBuf : TTokenBuffer;
      FDefaultPos: TScriptPos;
      FHotPos: TScriptPos;
      FMsgs: TdwsMessageList;
      FNextToken: TToken;
      FPos: TScriptPos;
-     FPosPos : Integer;
+     FPosPos : PChar;
      FStartState: TState;
      FSwitchHandler: TSwitchHandler;
      FText: string;
@@ -166,8 +166,7 @@ type
      property DefaultPos: TScriptPos read FDefaultPos;
      property HotPos: TScriptPos read FHotPos;
      property CurrentPos: TScriptPos read FPos;
-     property SwitchHandler: TSwitchHandler read FSwitchHandler write
-       FSwitchHandler;
+     property SwitchHandler: TSwitchHandler read FSwitchHandler write FSwitchHandler;
    end;
 
 // ------------------------------------------------------------------
@@ -561,11 +560,11 @@ begin
    FDefaultPos.SourceFile := FMsgs.RegisterSourceFile(SourceFile, Text);
    FHotPos := FDefaultPos;
    FPos := FDefaultPos;
-   FPosPos := 1;
+   FPosPos := PChar(FText);
    FPos.Line := 1;
    FPos.Col := 1;
    FStartState := sStart;
-   tokenBuf.Grow;
+   FTokenBuf.Grow;
 
    SetLength(FTokenStore, 8);
 end;
@@ -608,7 +607,7 @@ procedure TTokenizer.AddCompilerStopFmtTokenBuffer(const formatString : String);
 var
    buf : String;
 begin
-   buf:=tokenBuf.ToStr;
+   buf:=FTokenBuf.ToStr;
    FMsgs.AddCompilerStopFmt(FPos, formatString, [buf]);
 end;
 
@@ -736,17 +735,18 @@ begin
    Result.FTyp:=ttNone;
    Result.FPos:=cNullPos;
    state := FStartState;
-   tokenBuf.Len:=0;
+   FTokenBuf.Len:=0;
 
    try
       // Look for the next token in FText
-      while (FPosPos<=Length(FText)) and Assigned(state) do begin
+      while Assigned(state) do begin
 
          // Next character
-         ch := FText[FPosPos];
+         ch:=FPosPos^;
+         if ch=#0 then Break;
 
          // Find next state
-         trns := state.FindTransition(ch);
+         trns:=state.FindTransition(ch);
          trnsClassType:=trns.ClassType;
 
          // Handle Errors
@@ -754,81 +754,81 @@ begin
             FMsgs.AddCompilerStopFmt(FPos, '%s ("%s")', [TErrorTransition(trns).ErrorMessage, ch]);
 
          // A new token begins
-         if trns.Start and (Result.FPos.Line <= 0) then
-            Result.FPos := FPos;
+         if trns.Start and (Result.FPos.Line<=0) then
+            Result.FPos:=FPos;
 
          // Add actual character to s
          if trnsClassType=TConsumeTransition then begin
-            tokenBuf.AppendChar(ch);
+            FTokenBuf.AppendChar(ch);
          end;
 
          // Proceed to the next character
          if (trnsClassType=TSeekTransition) or (trnsClassType=TConsumeTransition) then begin
             Inc(FPosPos);
             FPos.IncCol;
-            if ch = #10 then begin
+            if ch=#10 then begin
                FPos.IncLine;
-               FPos.Col := 1;
+               FPos.Col:=1;
             end;
          end;
 
          // The characters in 's' have to be converted
-         if trns.Action <> caNone then begin
+         if trns.Action<>caNone then begin
             case trns.Action of
                caClear: begin
-                  tokenBuf.Len:=0;
-                  Result.FPos := DefaultPos;
+                  FTokenBuf.Len:=0;
+                  Result.FPos:=DefaultPos;
                end;
 
                // Convert name to token
                caName: begin
-                  Result.FTyp := tokenBuf.ToType;
-                  tokenBuf.ToStr(Result.FString);
+                  Result.FTyp:=FTokenBuf.ToType;
+                  FTokenBuf.ToStr(Result.FString);
                end;
 
                // converts ASCII code to character (decimal or hex)
                caChar, caCharHex: begin
-                  tokenIntVal:=tokenBuf.ToInt32Def(-1);
-                  if Cardinal(tokenIntVal) > Cardinal($FFFF) then
+                  tokenIntVal:=FTokenBuf.ToInt32Def(-1);
+                  if Cardinal(tokenIntVal)>Cardinal($FFFF) then
                      AddCompilerStopFmtTokenBuffer(TOK_InvalidCharConstant)
                   else begin
                      n:=Length(Result.FString)+1;
                      SetLength(Result.FString, n);
                      Result.FString[n]:= Char(tokenIntVal);
-                     Result.FTyp := ttStrVal;
+                     Result.FTyp:=ttStrVal;
                   end;
                end;
 
                // Concatenates the parts of a string constant
                caString: begin
-                  tokenBuf.AppendToStr(Result.FString);
-                  Result.FTyp := ttStrVal;
+                  FTokenBuf.AppendToStr(Result.FString);
+                  Result.FTyp:=ttStrVal;
                end;
 
                // Converts hexadecimal number to integer
                caHex:
-                  HandleHexa(tokenBuf, Result);
+                  HandleHexa(FTokenBuf, Result);
 
                // Converts integer constants
                caInteger:
-                  HandleInteger(tokenBuf, Result);
+                  HandleInteger(FTokenBuf, Result);
 
                // Converts Floating Point numbers
                caFloat:
-                  HandleFloat(tokenBuf, Result);
+                  HandleFloat(FTokenBuf, Result);
 
                caSwitch:
                   if Assigned(FSwitchHandler) then begin
                      FHotPos := Result.FPos;
 
                      // Ask parser if we should create a token or not
-                     tokenBuf.ToUpperStr(Result.FString);
+                     FTokenBuf.ToUpperStr(Result.FString);
                      if FSwitchHandler(Result.FString) then begin
                         Result.FTyp := ttSWITCH;
                      end else begin
                         Result.FString :='';
                         state := sStart;
-                        tokenBuf.Len:=0;
+                        FTokenBuf.Len:=0;
                         Continue;
                      end;
                   end;
@@ -836,7 +836,7 @@ begin
                caDotDot:
                   Result.FTyp := ttDOTDOT;
            end;
-           tokenBuf.Len:=0;
+           FTokenBuf.Len:=0;
          end;
 
          // If the token is complete then exit
