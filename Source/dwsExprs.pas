@@ -548,7 +548,7 @@ type
       procedure ExecuteData(stack : TStack);
    end;
 
-   TFuncExprState = (fesIsInstruction, fesIsWritable, fesTypeChecked);
+   TFuncExprState = (fesIsInstruction, fesIsWritable);
    TFuncExprStates = set of TFuncExprState;
 
    // Function call: func(arg0, arg1, ...);
@@ -570,7 +570,6 @@ type
                             IsWritable: Boolean = False);
          destructor Destroy; override;
          procedure AddArg(Arg: TNoPosExpr); override;
-         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
          procedure AddPushExprs;
          function Eval: Variant; override;
          function GetData: TData; override;
@@ -767,22 +766,16 @@ type
   TDestructorVirtualExpr = class(TMethodVirtualExpr)
   end;
 
-  TUnaryOpExpr = class(TExpr)
+  TUnaryOpExpr = class(TNoPosExpr)
   protected
     FExpr: TNoPosExpr;
   public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+    constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
     destructor Destroy; override;
     procedure Initialize; override;
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
     function IsConstant : Boolean; override;
     property Expr: TNoPosExpr read FExpr write FExpr;
-  end;
-
-  TPosWrapperExpr = class(TUnaryOpExpr)
-  public
-     function Eval : Variant; override;
-     procedure EvalNoResult(var status : TExecutionStatusResult); override;
   end;
 
   TNoResultWrapperExpr = class(TNoResultExpr)
@@ -799,12 +792,12 @@ type
   end;
 
    // left "op" right
-   TBinaryOpExpr = class(TExpr)
+   TBinaryOpExpr = class(TNoPosExpr)
       protected
          FLeft : TNoPosExpr;
          FRight : TNoPosExpr;
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; aLeft, aRight : TNoPosExpr);
+         constructor Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr);
          destructor Destroy; override;
 
          function Eval: Variant; override;
@@ -2348,12 +2341,9 @@ begin
       if arg is TArrayConstantExpr then
          TArrayConstantExpr(arg).Prepare(FFunc.Params[x].Typ.Typ);
 
-      // Check arguments type
-      arg.TypeCheckNoPos(Pos);
-
       // Expand integer arguments to float if necessary
       if (paramSymbol.Typ = FProg.TypFloat) and (arg.Typ = FProg.TypInteger) then
-         arg := TConvFloatExpr.Create(FProg, FPos, arg);
+         arg := TConvFloatExpr.Create(FProg, arg);
 
       FArgs.ExprBase[x] := arg;
 
@@ -2620,17 +2610,6 @@ begin
   FArgs.Add(Arg);
 end;
 
-// TypeCheckNoPos
-//
-procedure TFuncExpr.TypeCheckNoPos(const aPos : TScriptPos);
-begin
-   if fesTypeChecked in FStates then Exit;
-
-   inherited TypeCheckNoPos(aPos);
-
-   Include(FStates, fesTypeChecked);
-end;
-
 function TFuncExpr.Eval: Variant;
 var
    x: Integer;
@@ -2877,9 +2856,9 @@ end;
 
 { TBinaryOpExpr }
 
-constructor TBinaryOpExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; aLeft, aRight : TNoPosExpr);
+constructor TBinaryOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr);
 begin
-   inherited Create(Prog, Pos);
+   inherited Create(Prog);
    FLeft := aLeft;
    FRight := aRight;
 end;
@@ -2906,12 +2885,10 @@ end;
 //
 procedure TBinaryOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-  FLeft.TypeCheckNoPos(aPos);
-  FRight.TypeCheckNoPos(aPos);
   if (FLeft.Typ = FProg.TypInteger) and (FRight.Typ = FProg.TypFloat) then
-    FLeft := TConvFloatExpr.Create(FProg, aPos, FLeft)
+    FLeft := TConvFloatExpr.Create(FProg, FLeft)
   else if (FLeft.Typ = FProg.TypFloat) and (FRight.Typ = FProg.TypInteger) then
-    FRight := TConvFloatExpr.Create(FProg, aPos, FRight)
+    FRight := TConvFloatExpr.Create(FProg, FRight)
 end;
 
 // IsConstant
@@ -2923,9 +2900,9 @@ end;
 
 { TUnaryOpExpr }
 
-constructor TUnaryOpExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+constructor TUnaryOpExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
 begin
-  inherited Create(Prog, Pos);
+  inherited Create(Prog);
   FExpr := Expr;
 end;
 
@@ -2944,7 +2921,7 @@ end;
 //
 procedure TUnaryOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-   FExpr.TypeCheckNoPos(Pos);
+   // nothing by default
 end;
 
 // IsConstant
@@ -5758,24 +5735,6 @@ begin
   SetLength(dat,1);
   dat[0] := Value;
   IInfo(Self).Data := dat;
-end;
-
-// ------------------
-// ------------------ TPosWrapperExpr ------------------
-// ------------------
-
-// EvalNoResult
-//
-procedure TPosWrapperExpr.EvalNoResult(var status : TExecutionStatusResult);
-begin
-   FExpr.EvalNoResult(status);
-end;
-
-// Eval
-//
-function TPosWrapperExpr.Eval : Variant;
-begin
-   Result:=FExpr.Eval;
 end;
 
 // ------------------

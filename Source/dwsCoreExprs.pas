@@ -330,7 +330,7 @@ type
   private
     FDelta: Integer;
   public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TDataExpr; Delta: Integer);
+    constructor Create(Prog: TdwsProgram; Expr: TDataExpr; Delta: Integer);
     function Eval: Variant; override;
     function EvalAsInteger : Int64; override;
   end;
@@ -342,6 +342,9 @@ type
   end;
 
   TStringArrayOpExpr = class(TBinaryOpExpr)
+  private
+    FPos : TScriptPos;
+  public
     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr);
     function Eval: Variant; override;
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
@@ -349,21 +352,21 @@ type
 
    TStringLengthExpr = class(TUnaryOpExpr)
    public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+     constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
      function Eval: Variant; override;
      function EvalAsInteger : Int64; override;
    end;
 
    TChrExpr = class(TUnaryOpExpr)
    public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+     constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
      function Eval: Variant; override;
      procedure EvalAsString(var Result : String); override;
    end;
 
    TOrdExpr = class(TUnaryOpExpr)
    public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+     constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
      function Eval: Variant; override;
      function EvalAsInteger : Int64; override;
    end;
@@ -380,7 +383,7 @@ type
 
    // obj is TMyClass
    TIsOpExpr = class(TBinaryOpExpr)
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr);
+     constructor Create(Prog: TdwsProgram; Left, Right: TNoPosExpr);
      function Eval: Variant; override;
      function EvalAsBoolean : Boolean; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
@@ -395,7 +398,7 @@ type
    // >, <, =, <=, >=, <>
    TRelOpExpr = class(TBinaryOpExpr)
      FRelOp: TRelOps;
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr; RelOp: TRelOps);
+     constructor Create(Prog: TdwsProgram; Left, Right: TNoPosExpr; RelOp: TRelOps);
      function Eval: Variant; override;
      function EvalAsBoolean: Boolean; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
@@ -414,8 +417,7 @@ type
 
    TObjCmpExpr = class(TBinaryOpExpr)
      FEqual: Boolean;
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr;
-                        Equal: Boolean);
+     constructor Create(Prog: TdwsProgram; Left, Right: TNoPosExpr; Equal: Boolean);
      function Eval: Variant; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
@@ -445,42 +447,42 @@ type
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
 
-   TIntegerOpExpr = class(TBinaryOpExpr)
+   TIntegerBinOpExpr = class(TBinaryOpExpr)
      function Eval: Variant; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function  Optimize : TNoPosExpr; override;
    end;
-   TStringOpExpr = class(TBinaryOpExpr)
+   TStringBinOpExpr = class(TBinaryOpExpr)
      function Eval: Variant; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function  Optimize : TNoPosExpr; override;
    end;
-   TFloatOpExpr = class(TBinaryOpExpr)
+   TFloatBinOpExpr = class(TBinaryOpExpr)
      function Eval: Variant; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function  Optimize : TNoPosExpr; override;
    end;
-   TBooleanOpExpr = class(TBinaryOpExpr)
+   TBooleanBinOpExpr = class(TBinaryOpExpr)
      function Eval: Variant; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function  Optimize : TNoPosExpr; override;
    end;
 
-   TNumberStringOpExpr = class(TBinaryOpExpr)
+   TNumberStringBinOpExpr = class(TBinaryOpExpr)
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
 
    // a + b
-   TAddExpr = class(TNumberStringOpExpr)
+   TAddExpr = class(TNumberStringBinOpExpr)
      function Eval: Variant; override;
    end;
-   TAddIntExpr = class(TIntegerOpExpr)
+   TAddIntExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger : Int64; override;
    end;
-   TAddStrExpr = class(TStringOpExpr)
+   TAddStrExpr = class(TStringBinOpExpr)
      procedure EvalAsString(var Result : String); override;
    end;
-   TAddFloatExpr = class(TFloatOpExpr)
+   TAddFloatExpr = class(TFloatBinOpExpr)
      procedure EvalAsFloat(var Result : Double); override;
    end;
 
@@ -488,10 +490,10 @@ type
    TSubExpr = class(TNumberOpExpr)
      function Eval: Variant; override;
    end;
-   TSubIntExpr = class(TIntegerOpExpr)
+   TSubIntExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger : Int64; override;
    end;
-   TSubFloatExpr = class(TFloatOpExpr)
+   TSubFloatExpr = class(TFloatBinOpExpr)
      procedure EvalAsFloat(var Result : Double); override;
    end;
 
@@ -500,25 +502,25 @@ type
      function Eval: Variant; override;
      function Optimize : TNoPosExpr; override;
    end;
-   TMultIntExpr = class(TIntegerOpExpr)
+   TMultIntExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger : Int64; override;
    end;
-   TMultFloatExpr = class(TFloatOpExpr)
+   TMultFloatExpr = class(TFloatBinOpExpr)
      procedure EvalAsFloat(var Result : Double); override;
    end;
 
    // a / b
-   TDivideExpr = class(TFloatOpExpr)
+   TDivideExpr = class(TFloatBinOpExpr)
      procedure EvalAsFloat(var Result : Double); override;
    end;
 
    // a div b
-   TDivExpr = class(TIntegerOpExpr)
+   TDivExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger : Int64; override;
    end;
 
    // a mod b
-   TModExpr = class(TIntegerOpExpr)
+   TModExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger : Int64; override;
    end;
 
@@ -529,36 +531,36 @@ type
    end;
 
    // a and b
-   TIntAndExpr = class(TIntegerOpExpr)
+   TIntAndExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger : Int64; override;
    end;
-   TBoolAndExpr = class(TBooleanOpExpr)
+   TBoolAndExpr = class(TBooleanBinOpExpr)
      function EvalAsBoolean : Boolean; override;
    end;
 
    // a or b
-   TIntOrExpr = class(TIntegerOpExpr)
+   TIntOrExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger : Int64; override;
    end;
-   TBoolOrExpr = class(TBooleanOpExpr)
+   TBoolOrExpr = class(TBooleanBinOpExpr)
      function EvalAsBoolean : Boolean; override;
    end;
 
    // a xor b
-   TIntXorExpr = class(TIntegerOpExpr)
+   TIntXorExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger : Int64; override;
    end;
-   TBoolXorExpr = class(TBooleanOpExpr)
+   TBoolXorExpr = class(TBooleanBinOpExpr)
      function EvalAsBoolean : Boolean; override;
    end;
 
    // a shl b
-   TShlExpr = class(TIntegerOpExpr)
+   TShlExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger : Int64; override;
    end;
 
    // a shr b
-   TShrExpr = class(TIntegerOpExpr)
+   TShrExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger : Int64; override;
    end;
 
@@ -569,7 +571,7 @@ type
 
    // Float(x)
    TConvFloatExpr = class (TConvExpr)
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+     constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
      function Eval: Variant; override;
      procedure EvalAsFloat(var Result : Double); override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
@@ -577,7 +579,7 @@ type
 
    // Integer(float)
    TConvIntegerExpr = class (TConvExpr)
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+     constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
      function Eval: Variant; override;
      function EvalAsInteger : Int64; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
@@ -585,7 +587,7 @@ type
 
    // Variant(simple)
    TConvVariantExpr = class (TConvExpr)
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+     constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
      function Eval: Variant; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
@@ -1880,7 +1882,7 @@ begin
       expr:=TNoPosExpr(FElementExprs.List[x]);
       expr.TypeCheckNoPos(aPos);
       if (Typ.Typ=Prog.TypFloat) and (expr.Typ=Prog.TypInteger) then begin
-         expr:=TConvFloatExpr.Create(Prog, aPos, expr);
+         expr:=TConvFloatExpr.Create(Prog, expr);
          FElementExprs.List[x]:=expr;
       end;
       if not expr.Typ.IsCompatible(Typ.Typ) then
@@ -2033,10 +2035,9 @@ end;
 
 { TArrayLengthExpr }
 
-constructor TArrayLengthExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-  Expr: TDataExpr; Delta: Integer);
+constructor TArrayLengthExpr.Create(Prog: TdwsProgram; Expr: TDataExpr; Delta: Integer);
 begin
-  inherited Create(Prog, Pos, Expr);
+  inherited Create(Prog, Expr);
   FDelta := Delta;
   FTyp := FProg.TypInteger;
 end;
@@ -2064,9 +2065,10 @@ end;
 { TStringArrayOpExpr }
 
 constructor TStringArrayOpExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-  Left, Right: TNoPosExpr);
+                                      Left, Right: TNoPosExpr);
 begin
-  inherited;
+  inherited Create(Prog, Left, Right);
+  FPos := Pos;
   FTyp := FProg.TypString;
 end;
 
@@ -2078,9 +2080,9 @@ begin
    FLeft.EvalAsString(buf);
    i:=FRight.EvalAsInteger;
    if i>Length(buf) then
-      AddExecutionStopFmt(RTE_ArrayUpperBoundExceeded, [i])
+      Prog.Msgs.AddExecutionStopFmt(FPos, RTE_ArrayUpperBoundExceeded, [i])
    else if i<1 then
-      AddExecutionStopFmt(RTE_ArrayLowerBoundExceeded, [i]);
+      Prog.Msgs.AddExecutionStopFmt(FPos, RTE_ArrayLowerBoundExceeded, [i]);
    Result:=buf[i];
 end;
 
@@ -2088,18 +2090,17 @@ end;
 //
 procedure TStringArrayOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-  inherited;
-  if not (FLeft.IsStringValue) and (FRight.IsIntegerValue) then
-    AddCompilerStop(CPE_StringExpected);
+   inherited;
+   if not (FLeft.IsStringValue) and (FRight.IsIntegerValue) then
+      Prog.Msgs.AddCompilerStop(FPos, CPE_StringExpected);
 end;
 
 { TIsOpExpr }
 
-constructor TIsOpExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left,
-  Right: TNoPosExpr);
+constructor TIsOpExpr.Create(Prog: TdwsProgram; Left, Right: TNoPosExpr);
 begin
-  inherited;
-  FTyp := Prog.TypBoolean;
+   inherited;
+   FTyp := Prog.TypBoolean;
 end;
 
 function TIsOpExpr.Eval: Variant;
@@ -2124,12 +2125,12 @@ end;
 //
 procedure TIsOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-   FLeft.TypeCheckNoPos(Pos);
-   FRight.TypeCheckNoPos(Pos);
+   FLeft.TypeCheckNoPos(aPos);
+   FRight.TypeCheckNoPos(aPos);
    if not (FLeft.Typ is TClassSymbol) then
-      AddCompilerStop(CPE_ObjectExpected);
+      FProg.Msgs.AddCompilerStop(aPos, CPE_ObjectExpected);
    if not (FRight.Typ is TClassOfSymbol) then
-      AddCompilerStop(CPE_ClassRefExpected);
+      FProg.Msgs.AddCompilerStop(aPos, CPE_ClassRefExpected);
 end;
 
 { TAsOpExpr }
@@ -2149,13 +2150,13 @@ end;
 //
 procedure TAsOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-  FLeft.TypeCheckNoPos(Pos);
-  FRight.TypeCheckNoPos(Pos);
-  if not (FLeft.Typ is TClassSymbol) then
-    AddCompilerStop(CPE_ObjectExpected);
-  if not (FRight.Typ is TClassOfSymbol) then
-    AddCompilerStop(CPE_ClassRefExpected);
-  FTyp := FRight.Typ.Typ;
+   FLeft.TypeCheckNoPos(aPos);
+   FRight.TypeCheckNoPos(aPos);
+   if not (FLeft.Typ is TClassSymbol) then
+      FProg.Msgs.AddCompilerStop(aPos, CPE_ObjectExpected);
+   if not (FRight.Typ is TClassOfSymbol) then
+      FProg.Msgs.AddCompilerStop(aPos, CPE_ClassRefExpected);
+   FTyp := FRight.Typ.Typ;
 end;
 
 { TInOpExpr }
@@ -2256,7 +2257,7 @@ end;
 
 { TConvFloatExpr }
 
-constructor TConvFloatExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+constructor TConvFloatExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
 begin
   inherited;
   FTyp := Prog.TypFloat;
@@ -2280,12 +2281,12 @@ procedure TConvFloatExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
    inherited;
    if not (FExpr.IsIntegerValue) or (FExpr.IsVariantValue) then
-      FProg.Msgs.AddCompilerError(FPos, CPE_IntegerExpected);
+      FProg.Msgs.AddCompilerError(aPos, CPE_IntegerExpected);
 end;
 
 { TConvIntegerExpr }
 
-constructor TConvIntegerExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+constructor TConvIntegerExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
 begin
   inherited;
   FTyp := Prog.TypInteger;
@@ -2308,12 +2309,12 @@ begin
   inherited;
   if not (   FExpr.IsNumberValue or FExpr.IsBooleanValue
           or (FExpr.Typ is TEnumerationSymbol) or FExpr.IsVariantValue) then
-    FProg.Msgs.AddCompilerError(FPos, CPE_IntegerCastInvalid);
+    FProg.Msgs.AddCompilerError(aPos, CPE_IntegerCastInvalid);
 end;
 
 { TConvVariantExpr }
 
-constructor TConvVariantExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+constructor TConvVariantExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
 begin
   inherited;
   FTyp := FProg.TypInteger;
@@ -2330,12 +2331,12 @@ procedure TConvVariantExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
   if not FExpr.IsVariantValue then
-    FProg.Msgs.AddCompilerError(FPos, CPE_VariantExpected);
+    FProg.Msgs.AddCompilerError(aPos, CPE_VariantExpected);
 end;
 
 { TStringLengthExpr }
 
-constructor TStringLengthExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+constructor TStringLengthExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
 begin
   inherited;
   FTyp := FProg.TypInteger;
@@ -2358,7 +2359,7 @@ end;
 
 { TChrExpr }
 
-constructor TChrExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+constructor TChrExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
 begin
    inherited;
    FTyp := FProg.TypString;
@@ -2381,7 +2382,7 @@ end;
 
 { TOrdExpr }
 
-constructor TOrdExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+constructor TOrdExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
 begin
    inherited;
    FTyp := FProg.TypInteger;
@@ -2435,10 +2436,9 @@ end;
 
 { TObjCmpExpr }
 
-constructor TObjCmpExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left,
-  Right: TNoPosExpr; Equal: Boolean);
+constructor TObjCmpExpr.Create(Prog: TdwsProgram; Left, Right: TNoPosExpr; Equal: Boolean);
 begin
-  inherited Create(Prog, Pos, Left, Right);
+  inherited Create(Prog, Left, Right);
   FEqual := Equal;
   FTyp := FProg.TypBoolean;
 end;
@@ -2462,20 +2462,19 @@ end;
 //
 procedure TObjCmpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-  FLeft.TypeCheckNoPos(Pos);
-  FRight.TypeCheckNoPos(Pos);
-  if not ((FLeft.Typ is TClassSymbol) or (FLeft.Typ = FProg.TypNil)) then
-    AddCompilerStop(CPE_ObjectExpected);
-  if not ((FRight.Typ is TClassSymbol) or (FRight.Typ = FProg.TypNil)) then
-    AddCompilerStop(CPE_ObjectExpected);
+   FLeft.TypeCheckNoPos(aPos);
+   FRight.TypeCheckNoPos(aPos);
+   if not ((FLeft.Typ is TClassSymbol) or (FLeft.Typ = FProg.TypNil)) then
+      Prog.Msgs.AddCompilerStop(aPos, CPE_ObjectExpected);
+   if not ((FRight.Typ is TClassSymbol) or (FRight.Typ = FProg.TypNil)) then
+      Prog.Msgs.AddCompilerStop(aPos, CPE_ObjectExpected);
 end;
 
 { TRelOpExpr }
 
-constructor TRelOpExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr;
-  RelOp: TRelOps);
+constructor TRelOpExpr.Create(Prog: TdwsProgram; Left, Right: TNoPosExpr; RelOp: TRelOps);
 begin
-  inherited Create(Prog, Pos, Left, Right);
+  inherited Create(Prog, Left, Right);
   FRelOp := RelOp;
   FTyp := FProg.TypBoolean;
 end;
@@ -2506,7 +2505,7 @@ procedure TRelOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
   if not (FLeft.Typ.IsCompatible(FRight.Typ)) then
-    AddCompilerStop(CPE_InvalidOperands);
+    Prog.Msgs.AddCompilerStop(aPOs, CPE_InvalidOperands);
 end;
 
 // ------------------
@@ -2585,9 +2584,9 @@ end;
 //
 procedure TNegExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-   FExpr.TypeCheckNoPos(Pos);
+   FExpr.TypeCheckNoPos(aPos);
    if FTyp=nil then begin
-      AddCompilerError(CPE_NumericalExpected);
+      Prog.Msgs.AddCompilerError(aPos, CPE_NumericalExpected);
       FTyp:=FProg.TypVariant;
    end;
 end;
@@ -2761,10 +2760,10 @@ end;
 //
 function TMultExpr.Optimize : TNoPosExpr;
 begin
-   if FLeft.IsIntegerValue and FRight.IsIntegerValue then
-      Result:=TMultIntExpr.Create(FProg, Pos, FLeft, FRight)
-   else if FLeft.IsNumberValue and FRight.IsNumberValue then
-      Result:=TMultFloatExpr.Create(FProg, Pos, FLeft, FRight)
+   if FLeft.IsIntegerValue and FRight.IsIntegerValue then begin
+      Result:=TMultIntExpr.Create(FProg, FLeft, FRight)
+   end else if FLeft.IsNumberValue and FRight.IsNumberValue then
+      Result:=TMultFloatExpr.Create(FProg, FLeft, FRight)
    else Result:=Self;
    if Result<>Self then begin
       FLeft:=nil;
@@ -2830,14 +2829,14 @@ end;
 //
 procedure TNotExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-  FExpr.TypeCheckNoPos(Pos);
+  FExpr.TypeCheckNoPos(aPos);
   if FExpr.IsVariantValue then
     FTyp := FProg.TypVariant
   else if FExpr.IsBooleanValue then
     FTyp := FProg.TypBoolean
   else if FExpr.IsIntegerValue then
     FTyp := FProg.TypInteger
-  else AddCompilerStop(CPE_BooleanOrIntegerExpected);
+  else Prog.Msgs.AddCompilerStop(aPos, CPE_BooleanOrIntegerExpected);
 end;
 
 { TIntAndExpr }
@@ -2910,32 +2909,32 @@ begin
    else if     (FLeft.IsVariantValue or FLeft.IsNumberValue)
            and (FRight.IsVariantValue or FRight.IsNumberValue) then
       FTyp := FProg.TypVariant
-   else AddCompilerError(CPE_InvalidOperands);
+   else Prog.Msgs.AddCompilerError(aPos, CPE_InvalidOperands);
 end;
 
 // ------------------
-// ------------------ TIntegerOpExpr ------------------
+// ------------------ TIntegerBinOpExpr ------------------
 // ------------------
 
-function TIntegerOpExpr.Eval: Variant;
+function TIntegerBinOpExpr.Eval: Variant;
 begin
    Result:=EvalAsInteger;
 end;
 
 // TypeCheckNoPos
 //
-procedure TIntegerOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
+procedure TIntegerBinOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
   if     (FLeft.IsVariantValue or FLeft.IsIntegerValue)
      and (FRight.IsVariantValue or FRight.IsIntegerValue) then
      FTyp:=FProg.TypInteger
-  else AddCompilerError(CPE_InvalidOperands);
+  else Prog.Msgs.AddCompilerError(aPos, CPE_InvalidOperands);
 end;
 
 // Optimize
 //
-function TIntegerOpExpr.Optimize : TNoPosExpr;
+function TIntegerBinOpExpr.Optimize : TNoPosExpr;
 begin
    if IsConstant then begin
       Result:=TConstIntExpr.CreateUnified(FProg, nil, EvalAsInteger);
@@ -2944,12 +2943,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TStringOpExpr ------------------
+// ------------------ TStringBinOpExpr ------------------
 // ------------------
 
 // Eval
 //
-function TStringOpExpr.Eval: Variant;
+function TStringBinOpExpr.Eval: Variant;
 var
    buf : String;
 begin
@@ -2959,18 +2958,18 @@ end;
 
 // TypeCheckNoPos
 //
-procedure TStringOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
+procedure TStringBinOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
   if     (FLeft.IsVariantValue or FLeft.IsStringValue)
      and (FRight.IsVariantValue or FRight.IsStringValue) then
      FTyp:=FProg.TypString
-  else AddCompilerStop(CPE_InvalidOperands);
+  else Prog.Msgs.AddCompilerStop(aPos, CPE_InvalidOperands);
 end;
 
 // Optimize
 //
-function TStringOpExpr.Optimize : TNoPosExpr;
+function TStringBinOpExpr.Optimize : TNoPosExpr;
 var
    buf : String;
 begin
@@ -2982,12 +2981,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TFloatOpExpr ------------------
+// ------------------ TFloatBinOpExpr ------------------
 // ------------------
 
 // Eval
 //
-function TFloatOpExpr.Eval: Variant;
+function TFloatBinOpExpr.Eval: Variant;
 var
    d : Double;
 begin
@@ -2997,18 +2996,18 @@ end;
 
 // TypeCheckNoPos
 //
-procedure TFloatOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
+procedure TFloatBinOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
   if     (FLeft.IsVariantValue or FLeft.IsNumberValue)
      and (FRight.IsVariantValue or FRight.IsNumberValue) then
      FTyp:=FProg.TypFloat
-  else AddCompilerStop(CPE_InvalidOperands);
+  else Prog.Msgs.AddCompilerStop(aPos, CPE_InvalidOperands);
 end;
 
 // Optimize
 //
-function TFloatOpExpr.Optimize : TNoPosExpr;
+function TFloatBinOpExpr.Optimize : TNoPosExpr;
 var
    xf : Double;
 begin
@@ -3024,28 +3023,28 @@ begin
 end;
 
 // ------------------
-// ------------------ TBooleanOpExpr ------------------
+// ------------------ TBooleanBinOpExpr ------------------
 // ------------------
 
-function TBooleanOpExpr.Eval: Variant;
+function TBooleanBinOpExpr.Eval: Variant;
 begin
    Result:=EvalAsBoolean;
 end;
 
 // TypeCheckNoPos
 //
-procedure TBooleanOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
+procedure TBooleanBinOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
   if     (FLeft.IsVariantValue or FLeft.IsBooleanValue)
      and (FRight.IsVariantValue or FRight.IsBooleanValue) then
      FTyp:=FProg.TypBoolean
-  else AddCompilerStop(CPE_InvalidOperands);
+  else Prog.Msgs.AddCompilerStop(aPos, CPE_InvalidOperands);
 end;
 
 // Optimize
 //
-function TBooleanOpExpr.Optimize : TNoPosExpr;
+function TBooleanBinOpExpr.Optimize : TNoPosExpr;
 begin
    if IsConstant then begin
       Result:=TConstBooleanExpr.CreateUnified(FProg, nil, EvalAsBoolean);
@@ -3053,11 +3052,11 @@ begin
    end else Result:=Self;
 end;
 
-{ TNumberStringOpExpr }
+{ TNumberStringBinOpExpr }
 
 // TypeCheckNoPos
 //
-procedure TNumberStringOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
+procedure TNumberStringBinOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
   if FLeft.IsVariantValue or FRight.IsVariantValue then
@@ -3071,7 +3070,7 @@ begin
   else if FLeft.IsBooleanValue and FRight.IsBooleanValue then
     FTyp := FProg.TypBoolean
   else
-    AddCompilerStop(CPE_IncompatibleOperands);
+    Prog.Msgs.AddCompilerStop(aPos, CPE_IncompatibleOperands);
 end;
 
 { TAssignExpr }
@@ -3129,7 +3128,7 @@ begin
 
       // Automatic conversion from int to float values
       if (FLeft.Typ = FProg.TypFloat) and (FRight.Typ = FProg.TypInteger) then
-         FRight := TConvFloatExpr.Create(FProg, FPos, FRight);
+         FRight := TConvFloatExpr.Create(FProg, FRight);
 
       // Look if Types are compatible
       if not FLeft.Typ.IsCompatible(FRight.Typ) then
@@ -3610,7 +3609,7 @@ procedure TCompareCaseCondition.TypeCheck(Typ: TSymbol);
 begin
   if FValueExpr.IsFloatValue then
     if FCompareExpr.IsIntegerValue then
-      FCompareExpr := TConvFloatExpr.Create(FValueExpr.Prog, Pos, FCompareExpr);
+      FCompareExpr := TConvFloatExpr.Create(FValueExpr.Prog, FCompareExpr);
 
   if not FCompareExpr.Typ.IsCompatible(FValueExpr.Typ) then
     FCompareExpr.Prog.Msgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
@@ -3662,10 +3661,10 @@ begin
   begin
     // Convert integers to float if necessary
     if FFromExpr.IsIntegerValue then
-      FFromExpr := TConvFloatExpr.Create(Prog, Pos, FFromExpr);
+      FFromExpr := TConvFloatExpr.Create(Prog, FFromExpr);
 
     if FToExpr.IsIntegerValue then
-      FToExpr := TConvFloatExpr.Create(Prog, Pos, FToExpr);
+      FToExpr := TConvFloatExpr.Create(Prog, FToExpr);
   end;
 
   if not FFromExpr.Typ.IsCompatible(FToExpr.Typ) then

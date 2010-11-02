@@ -199,14 +199,14 @@ type
       function ReadScript(const AName: string=''; ScriptType: TScriptSourceType=stMain): TBlockExpr;  // AName might be the name of an INCLUDEd script
       function ReadSpecialFunction(const NamePos: TScriptPos; SpecialKind: TSpecialKeywordKind): TNoPosExpr;
       function ReadStatement: TExpr;
-      function ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TExpr;
+      function ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TNoPosExpr;
       function ReadSwitch(const SwitchName: string): Boolean;
       function ReadSymbol(Expr: TNoPosExpr; IsWrite: Boolean = False): TNoPosExpr;
       function ReadTerm: TNoPosExpr;
       function ReadNegation: TNoPosExpr;
       function ReadTry: TExceptionExpr;
       function ReadType(const TypeName: string = ''): TTypeSymbol;
-      function ReadTypeCast(const NamePos: TScriptPos; TypeSym: TSymbol): TExpr;
+      function ReadTypeCast(const NamePos: TScriptPos; TypeSym: TSymbol): TNoPosExpr;
       procedure ReadTypeDecl;
       procedure ReadUses;
       function ReadVarDecl: TNoResultExpr;
@@ -3163,9 +3163,9 @@ begin
         begin
           case tt of
             ttEQ, ttNOTEQ:
-              Result := TObjCmpExpr.Create(FProg, hotPos, Result, r, tt = ttEQ);
-            ttIS: Result := TIsOpExpr.Create(FProg, hotPos, Result, r);
-            ttAS: Result := TAsOpExpr.Create(FProg, hotPos, Result, r);
+              Result := TObjCmpExpr.Create(FProg, Result, r, tt = ttEQ);
+            ttIS: Result := TIsOpExpr.Create(FProg, Result, r);
+            ttAS: Result := TAsOpExpr.Create(FProg, Result, r);
           else
             FProg.Msgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
           end;
@@ -3189,12 +3189,12 @@ begin
           end;
 
           case tt of
-            ttEQ: Result := roeClass.Create(FProg, hotPos, Result, r, roEqual);
-            ttLESS: Result := roeClass.Create(FProg, hotPos, Result, r, roLess);
-            ttGTR: Result := roeClass.Create(FProg, hotPos, Result, r, roMore);
-            ttLESSEQ: Result := roeClass.Create(FProg, hotPos, Result, r, roLessEqual);
-            ttGTREQ: Result := roeClass.Create(FProg, hotPos, Result, r, roMoreEqual);
-            ttNOTEQ: Result := roeClass.Create(FProg, hotPos, Result, r, roUnEqual);
+            ttEQ: Result := roeClass.Create(FProg, Result, r, roEqual);
+            ttLESS: Result := roeClass.Create(FProg, Result, r, roLess);
+            ttGTR: Result := roeClass.Create(FProg, Result, r, roMore);
+            ttLESSEQ: Result := roeClass.Create(FProg, Result, r, roLessEqual);
+            ttGTREQ: Result := roeClass.Create(FProg, Result, r, roMoreEqual);
+            ttNOTEQ: Result := roeClass.Create(FProg, Result, r, roUnEqual);
           else
             FProg.Msgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
           end;
@@ -3284,7 +3284,7 @@ begin
                   Assert(False);
                end;
 
-               Result:=exprClass.Create(FProg, Pos, Result, r);
+               Result:=exprClass.Create(FProg, Result, r);
             except
                r.Free;
                raise;
@@ -3325,10 +3325,10 @@ begin
       try
          // Generate function and add left and right argument
          case tt of
-            ttTIMES: Result := TMultExpr.Create(FProg, Pos, Result, right);
-            ttDIVIDE: Result := TDivideExpr.Create(FProg, Pos, Result, right);
-            ttDIV: Result := TDivExpr.Create(FProg, Pos, Result, right);
-            ttMOD: Result := TModExpr.Create(FProg, Pos, Result, right);
+            ttTIMES: Result := TMultExpr.Create(FProg, Result, right);
+            ttDIVIDE: Result := TDivideExpr.Create(FProg, Result, right);
+            ttDIV: Result := TDivExpr.Create(FProg, Result, right);
+            ttMOD: Result := TModExpr.Create(FProg, Result, right);
          end;
       except
         right.Free;
@@ -3399,9 +3399,9 @@ function TdwsCompiler.ReadTerm: TNoPosExpr;
 
    function ReadNotTerm : TNotExpr;
    begin
-      Result:=TNotExpr.Create(FProg, FTok.HotPos, ReadTerm);
+      Result:=TNotExpr.Create(FProg, ReadTerm);
       try
-         Result.TypeCheck;
+         Result.TypeCheckNoPos(FTok.HotPos);
       except
          Result.Free;
          raise;
@@ -3459,7 +3459,7 @@ begin
    else if negTerm.IsVariantValue then
       negExprClass:=TNegVariantExpr
    else negExprClass:=TNegExpr;
-   Result:=negExprClass.Create(FProg, FTok.HotPos, negTerm);
+   Result:=negExprClass.Create(FProg, negTerm);
    try
       Result.TypeCheckNoPos(FTok.HotPos);
       if Optimize then
@@ -4229,7 +4229,7 @@ begin
    end;
 end;
 
-function TdwsCompiler.ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TExpr;
+function TdwsCompiler.ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TNoPosExpr;
 var
    indexExpr, valueExpr: TNoPosExpr;
    pos: TScriptPos;
@@ -4249,7 +4249,7 @@ begin
                valueExpr.Free;
             end else Result:=TVarStringArraySetExpr.Create(FProg, pos, Expr, indexExpr, valueExpr)
          else Result := TStringArraySetExpr.Create(FProg, pos, Expr, indexExpr, valueExpr);
-      end else Result := TStringArrayOpExpr.Create(FProg, pos, TDataExpr(Expr), indexExpr)
+      end else Result := TStringArrayOpExpr.Create(FProg, pos, TDataExpr(Expr), indexExpr);
    except
       indexExpr.Free;
       raise;
@@ -4556,7 +4556,7 @@ begin
       case SpecialKind of
          skChr: begin
             if argTyp.BaseTypeID in [typIntegerID, typVariantID] then begin
-               Result:=TChrExpr.Create(FProg, NamePos, argExpr);
+               Result:=TChrExpr.Create(FProg, argExpr);
                argExpr:=nil;
             end else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
          end;
@@ -4564,13 +4564,13 @@ begin
             if argTyp is TOpenArraySymbol then begin
                if argExpr=nil then
                   FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-               Result:=TOpenArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), -1)
+               Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(argExpr), -1)
             end else if argTyp is TEnumerationSymbol then
                Result:= TConstExpr.CreateTyped(FProg, FProg.TypInteger, TEnumerationSymbol(argTyp).HighBound)
             else if argTyp is TDynamicArraySymbol and Assigned(argExpr) then
-               Result := TArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), -1)
+               Result := TArrayLengthExpr.Create(FProg, TDataExpr(argExpr), -1)
             else if (argTyp = FProg.TypString) and Assigned(argExpr) then
-               Result := TStringLengthExpr.Create(FProg, NamePos, argExpr)
+               Result := TStringLengthExpr.Create(FProg, argExpr)
             else if argTyp is TStaticArraySymbol then begin
                FreeAndNil(argExpr);
                Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(argTyp).HighBound);
@@ -4583,11 +4583,11 @@ begin
             if argTyp is TOpenArraySymbol then begin
                if argExpr=nil then
                   FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-               Result:=TOpenArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), 0)
+               Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(argExpr), 0)
             end else if (argTyp is TDynamicArraySymbol) and Assigned(argExpr) then
-               Result:=TArrayLengthExpr.Create(FProg, NamePos, TDataExpr(argExpr), 0)
+               Result:=TArrayLengthExpr.Create(FProg, TDataExpr(argExpr), 0)
             else if ((argTyp=FProg.TypString) or (argTyp=FProg.TypVariant)) and Assigned(argExpr) then
-               Result:=TStringLengthExpr.Create(FProg, NamePos, argExpr)
+               Result:=TStringLengthExpr.Create(FProg, argExpr)
             else if argTyp is TStaticArraySymbol then begin
                FreeAndNil(argExpr);
                Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger,
@@ -4609,15 +4609,15 @@ begin
          skOrd: begin
             case argTyp.BaseTypeID of
                typIntegerID, typBooleanID : begin
-                  Result:=TOrdIntExpr.Create(FProg, NamePos, argExpr);
+                  Result:=TOrdIntExpr.Create(FProg, argExpr);
                   argExpr:=nil;
                end;
                typStringID : begin
-                  Result:=TOrdStrExpr.Create(FProg, NamePos, argExpr);
+                  Result:=TOrdStrExpr.Create(FProg, argExpr);
                   argExpr:=nil;
                end;
                typVariantID : begin
-                  Result:=TOrdExpr.Create(FProg, NamePos, argExpr);
+                  Result:=TOrdExpr.Create(FProg, argExpr);
                   argExpr:=nil;
                end
             else
@@ -4644,31 +4644,44 @@ begin
    end;
 end;
 
-function TdwsCompiler.ReadTypeCast(const NamePos: TScriptPos; TypeSym: TSymbol): TExpr;
+// ReadTypeCast
+//
+function TdwsCompiler.ReadTypeCast(const NamePos: TScriptPos; TypeSym: TSymbol): TNoPosExpr;
 var
-  argExpr: TNoPosExpr;
+   argExpr: TNoPosExpr;
+   hotPos : TScriptPos;
 begin
-  if not FTok.TestDelete(ttBLEFT) then
-    FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
+   if not FTok.TestDelete(ttBLEFT) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
 
-  Result := nil;
 
-  argExpr := ReadExpr;
+   hotPos:=FTok.CurrentPos;
+   argExpr:=ReadExpr;
 
-  try
-    if TypeSym = FProg.TypInteger then
-      Result := TConvIntegerExpr.Create(FProg, namePos, argExpr)
-    // Cast Float(...)
-    else if TypeSym = FProg.TypFloat then
-      Result := TConvFloatExpr.Create(FProg, namePos, argExpr)
-    // Cast Variant(...)
-    else if TypeSym = FProg.TypVariant then
-      Result := TConvVariantExpr.Create(FProg, namePos, argExpr)
-    else
-      FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+   Result:=nil;
+   try
+      if not FTok.TestDelete(ttBRIGHT) then
+         FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
 
-    if not FTok.TestDelete(ttBRIGHT) then
-      FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+      if TypeSym = FProg.TypInteger then
+         Result := TConvIntegerExpr.Create(FProg, argExpr)
+      // Cast Float(...)
+      else if TypeSym = FProg.TypFloat then
+         Result := TConvFloatExpr.Create(FProg, argExpr)
+      // Cast Variant(...)
+      else if TypeSym = FProg.TypVariant then
+         Result := TConvVariantExpr.Create(FProg, argExpr)
+      else
+         FProg.Msgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
+
+      argExpr:=nil;
+      try
+         Result.TypeCheckNoPos(hotPos);
+      except
+         Result.Free;
+         raise;
+      end;
+
   except
     argExpr.Free;
     raise;
