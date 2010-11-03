@@ -3166,7 +3166,7 @@ begin
             if (Result.Typ is TClassSymbol) or (Result.Typ = FProg.TypNil) then begin
                case tt of
                   ttEQ, ttNOTEQ:
-                     Result := TObjCmpExpr.Create(FProg, Result, r, tt = ttEQ);
+                     Result := TObjCmpExpr.CreateCmp(FProg, Result, r, tt = ttEQ);
                   ttIS: Result := TIsOpExpr.Create(FProg, Result, r);
                   ttAS: Result := TAsOpExpr.Create(FProg, Result, r);
                else
@@ -3190,12 +3190,12 @@ begin
                end;
 
                case tt of
-                  ttEQ: Result := roeClass.Create(FProg, Result, r, roEqual);
-                  ttLESS: Result := roeClass.Create(FProg, Result, r, roLess);
-                  ttGTR: Result := roeClass.Create(FProg, Result, r, roMore);
-                  ttLESSEQ: Result := roeClass.Create(FProg, Result, r, roLessEqual);
-                  ttGTREQ: Result := roeClass.Create(FProg, Result, r, roMoreEqual);
-                  ttNOTEQ: Result := roeClass.Create(FProg, Result, r, roUnEqual);
+                  ttEQ: Result := roeClass.CreateRel(FProg, Result, r, roEqual);
+                  ttLESS: Result := roeClass.CreateRel(FProg, Result, r, roLess);
+                  ttGTR: Result := roeClass.CreateRel(FProg, Result, r, roMore);
+                  ttLESSEQ: Result := roeClass.CreateRel(FProg, Result, r, roLessEqual);
+                  ttGTREQ: Result := roeClass.CreateRel(FProg, Result, r, roMoreEqual);
+                  ttNOTEQ: Result := roeClass.CreateRel(FProg, Result, r, roUnEqual);
                else
                   FProg.Msgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
                end;
@@ -3303,6 +3303,7 @@ var
    right: TNoPosExpr;
    tt: TTokenType;
    Pos: TScriptPos;
+   exprClass : TBinaryOpExprClass;
 begin
    // Read left argument
    Result := ReadTerm;
@@ -3318,12 +3319,24 @@ begin
          right := ReadTerm;
          try
             // Generate function and add left and right argument
+            exprClass:=nil;
+
             case tt of
-               ttTIMES: Result := TMultExpr.Create(FProg, Result, right);
-               ttDIVIDE: Result := TDivideExpr.Create(FProg, Result, right);
-               ttDIV: Result := TDivExpr.Create(FProg, Result, right);
-               ttMOD: Result := TModExpr.Create(FProg, Result, right);
+               ttTIMES: begin
+                  if Result.IsIntegerValue and right.IsIntegerValue then
+                     exprClass:=TMultIntExpr
+                  else if Result.IsNumberValue and right.IsNumberValue then
+                     exprClass:=TMultFloatExpr
+                  else exprClass:=TMultExpr;
+               end;
+               ttDIVIDE : exprClass:=TDivideExpr;
+               ttDIV :    exprClass:=TDivExpr;
+               ttMOD :    exprClass:=TModExpr;
+            else
+               Assert(False);
             end;
+
+            Result:=exprClass.Create(FProg, Result, right);
          except
             right.Free;
             raise;
@@ -4248,7 +4261,7 @@ begin
                valueExpr.Free;
             end else Result:=TVarStringArraySetExpr.Create(FProg, pos, Expr, indexExpr, valueExpr)
          else Result := TStringArraySetExpr.Create(FProg, pos, Expr, indexExpr, valueExpr);
-      end else Result := TStringArrayOpExpr.Create(FProg, pos, TDataExpr(Expr), indexExpr);
+      end else Result := TStringArrayOpExpr.CreatePos(FProg, pos, TDataExpr(Expr), indexExpr);
    except
       indexExpr.Free;
       raise;

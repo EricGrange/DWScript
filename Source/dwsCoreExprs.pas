@@ -345,7 +345,7 @@ type
   private
     FPos : TScriptPos;
   public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr);
+    constructor CreatePos(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr);
     function Eval: Variant; override;
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
   end;
@@ -383,7 +383,7 @@ type
 
    // obj is TMyClass
    TIsOpExpr = class(TBinaryOpExpr)
-     constructor Create(Prog: TdwsProgram; Left, Right: TNoPosExpr);
+     constructor Create(Prog: TdwsProgram; Left, Right: TNoPosExpr); override;
      function Eval: Variant; override;
      function EvalAsBoolean : Boolean; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
@@ -398,7 +398,7 @@ type
    // >, <, =, <=, >=, <>
    TRelOpExpr = class(TBinaryOpExpr)
      FRelOp: TRelOps;
-     constructor Create(Prog: TdwsProgram; Left, Right: TNoPosExpr; RelOp: TRelOps);
+     constructor CreateRel(Prog: TdwsProgram; Left, Right: TNoPosExpr; RelOp: TRelOps);
      function Eval: Variant; override;
      function EvalAsBoolean: Boolean; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
@@ -417,7 +417,7 @@ type
 
    TObjCmpExpr = class(TBinaryOpExpr)
      FEqual: Boolean;
-     constructor Create(Prog: TdwsProgram; Left, Right: TNoPosExpr; Equal: Boolean);
+     constructor CreateCmp(Prog: TdwsProgram; Left, Right: TNoPosExpr; Equal: Boolean);
      function Eval: Variant; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
@@ -443,11 +443,6 @@ type
      function  Optimize : TNoPosExpr; override;
    end;
 
-
-   TIntegerUnaryOpExpr = class(TUnaryOpExpr)
-
-   end;
-
    TNumberOpExpr = class(TBinaryOpExpr)
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
@@ -455,6 +450,7 @@ type
    TIntegerBinOpExpr = class(TBinaryOpExpr)
      constructor Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr); override;
      function Eval: Variant; override;
+     procedure EvalAsFloat(var Result : Double); override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function  Optimize : TNoPosExpr; override;
    end;
@@ -509,7 +505,6 @@ type
    // a * b
    TMultExpr = class(TNumberOpExpr)
      function Eval: Variant; override;
-     function Optimize : TNoPosExpr; override;
    end;
    TMultIntExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger : Int64; override;
@@ -2073,8 +2068,8 @@ end;
 
 { TStringArrayOpExpr }
 
-constructor TStringArrayOpExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-                                      Left, Right: TNoPosExpr);
+constructor TStringArrayOpExpr.CreatePos(Prog: TdwsProgram; const Pos: TScriptPos;
+                                         Left, Right: TNoPosExpr);
 begin
   inherited Create(Prog, Left, Right);
   FPos := Pos;
@@ -2445,7 +2440,7 @@ end;
 
 { TObjCmpExpr }
 
-constructor TObjCmpExpr.Create(Prog: TdwsProgram; Left, Right: TNoPosExpr; Equal: Boolean);
+constructor TObjCmpExpr.CreateCmp(Prog: TdwsProgram; Left, Right: TNoPosExpr; Equal: Boolean);
 begin
   inherited Create(Prog, Left, Right);
   FEqual := Equal;
@@ -2481,7 +2476,7 @@ end;
 
 { TRelOpExpr }
 
-constructor TRelOpExpr.Create(Prog: TdwsProgram; Left, Right: TNoPosExpr; RelOp: TRelOps);
+constructor TRelOpExpr.CreateRel(Prog: TdwsProgram; Left, Right: TNoPosExpr; RelOp: TRelOps);
 begin
   inherited Create(Prog, Left, Right);
   FRelOp := RelOp;
@@ -2758,38 +2753,27 @@ begin
    Result:=Result-bufRight;
 end;
 
-{ TMultExpr }
+// ------------------
+// ------------------ TMultExpr ------------------
+// ------------------
 
 function TMultExpr.Eval: Variant;
 begin
   Result := FLeft.Eval * FRight.Eval;
 end;
 
-// Optimize
-//
-function TMultExpr.Optimize : TNoPosExpr;
-begin
-   if FLeft.IsIntegerValue and FRight.IsIntegerValue then begin
-      Result:=TMultIntExpr.Create(FProg, FLeft, FRight)
-   end else if FLeft.IsNumberValue and FRight.IsNumberValue then
-      Result:=TMultFloatExpr.Create(FProg, FLeft, FRight)
-   else Result:=Self;
-   if Result<>Self then begin
-      FLeft:=nil;
-      FRight:=nil;
-      Free;
-      Result:=Result.Optimize;
-   end;
-end;
-
-{ TMultIntExpr }
+// ------------------
+// ------------------ TMultIntExpr ------------------
+// ------------------
 
 function TMultIntExpr.EvalAsInteger : Int64;
 begin
   Result := FLeft.EvalAsInteger * FRight.EvalAsInteger;
 end;
 
-{ TMultFloatExpr }
+// ------------------
+// ------------------ TMultFloatExpr ------------------
+// ------------------
 
 procedure TMultFloatExpr.EvalAsFloat(var Result : Double);
 var
@@ -2933,7 +2917,16 @@ begin
    FTyp:=FProg.TypInteger;
 end;
 
+// Eval
+//
 function TIntegerBinOpExpr.Eval: Variant;
+begin
+   Result:=EvalAsInteger;
+end;
+
+// EvalAsFloat
+//
+procedure TIntegerBinOpExpr.EvalAsFloat(var Result : Double);
 begin
    Result:=EvalAsInteger;
 end;
