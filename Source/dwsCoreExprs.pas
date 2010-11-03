@@ -823,6 +823,8 @@ type
      property VarExpr: TIntVarExpr read FVarExpr write FVarExpr;
    end;
 
+   TForExprClass = class of TForExpr;
+
    TForUpwardExpr = class(TForExpr)
    public
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
