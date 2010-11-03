@@ -101,6 +101,11 @@ type
          property Count : Integer read FCount;
    end;
 
+{: Changes the class of an object (by altering the VMT pointer).<p>
+   Only checks IntanceSize.
+   Use only if you understand fully what the above means. }
+procedure ChangeObjectClass(ref : TObject; newClass : TClass);
+
 procedure UnifyAssignString(const fromStr : String; var toStr : String);
 procedure TidyStringsUnifier;
 
@@ -111,6 +116,18 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+// MorphObjectClass
+//
+procedure ChangeObjectClass(ref : TObject; newClass : TClass);
+begin
+   Assert(ref.InstanceSize=newClass.InstanceSize);
+   PPointer(ref)^:=Pointer(newClass);
+end;
+
+// ------------------
+// ------------------ String Unifier ------------------
+// ------------------
 
 type
    TStringListCracker = class (TStrings)

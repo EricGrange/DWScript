@@ -282,8 +282,8 @@ type
      FAddrGenerator: TAddrGeneratorRec;
      FExecutable: IExecutable;
      FInternalParams: TSymbolTable;
-     FIsForwarded: Boolean;
      FDeprecatedMessage : String;
+     FIsForwarded: Boolean;
      FIsDeprecated: Boolean;
      FIsStateless : Boolean;
      FKind: TFuncKind;
