@@ -1991,12 +1991,18 @@ function TdwsCompiler.ReadFor: TForExpr;
 var
    expr : TNoPosExpr;
    loopVarExpr, loopVarExprSafe : TIntVarExpr;
-   fromExpr : TNoPosExpr;
+   fromExpr, toExpr : TNoPosExpr;
+   sym : TSymbol;
+   forPos, enumPos : TScriptPos;
+   forExprClass : TForExprClass;
 begin
    loopVarExpr:=nil;
    loopVarExprSafe:=nil;
    fromExpr:=nil;
+   toExpr:=nil;
    try
+      forPos:=FTok.HotPos;
+
       expr:=ReadName;
       if not (expr is TVarExpr) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_VariableExpected);
@@ -2010,19 +2016,53 @@ begin
       WarnForVarUsage(loopVarExpr);
       FForVarExprs.Add(loopVarExpr);
 
-      if not FTok.TestDelete(ttASSIGN) then
-        FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
+      if FTok.TestDelete(ttIN) then begin
 
-      fromExpr:=ReadExpr;
+         forExprClass:=TForUpwardExpr;
 
-      if FTok.TestDelete(ttTO) then
-         Result:=TForUpwardExpr.Create(FProg, FTok.HotPos)
-      else if FTok.TestDelete(ttDOWNTO) then
-         Result:=TForDownwardExpr.Create(FProg, FTok.HotPos)
-      else begin
-         Result:=nil;
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ToOrDowntoExpected);
+         if not FTok.TestName then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+
+         enumPos:=FTok.HotPos;
+         sym:=FProg.Table.FindSymbol(FTok.GetToken.FString);
+         if not Assigned(sym) then
+            FMsgs.AddCompilerStopFmt(enumPos, CPE_UnknownName, [FTok.GetToken.FString]);
+         FTok.KillToken;
+
+         if coSymbolDictionary in FCompilerOptions then
+            FProg.SymbolDictionary.Add(sym, enumPos);
+
+         if sym.InheritsFrom(TEnumerationSymbol) then begin
+
+            if loopVarExpr.Typ<>sym then
+               FMsgs.AddCompilerStop(enumPos, CPE_IncompatibleOperands);
+
+            fromExpr:=TConstExpr.CreateTyped(FProg, loopVarExpr.Typ, TEnumerationSymbol(sym).LowBound);
+            toExpr:=TConstExpr.CreateTyped(FProg, loopVarExpr.Typ, TEnumerationSymbol(sym).HighBound);
+
+         end else FMsgs.AddCompilerStop(enumPos, CPE_EnumerationExpected);
+
+      end else begin
+
+         if not FTok.TestDelete(ttASSIGN) then
+           FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
+
+         fromExpr:=ReadExpr;
+
+         if FTok.TestDelete(ttTO) then
+            forExprClass:=TForUpwardExpr
+         else if FTok.TestDelete(ttDOWNTO) then
+            forExprClass:=TForDownwardExpr
+         else begin
+            forExprClass:=nil;
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ToOrDowntoExpected);
+         end;
+
+         toExpr:=ReadExpr;
+
       end;
+
+      Result:=forExprClass.Create(FProg, forPos);
       try
          Result.VarExpr:=loopVarExpr;
          loopVarExprSafe:=nil;
@@ -2030,7 +2070,8 @@ begin
          Result.FromExpr:=fromExpr;
          fromExpr:=nil;
 
-         Result.ToExpr:=ReadExpr;
+         Result.ToExpr:=toExpr;
+         toExpr:=nil;
 
          if not FTok.TestDelete(ttDO) then
            FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
@@ -2044,6 +2085,7 @@ begin
       FForVarExprs.Remove(loopVarExpr);
       loopVarExprSafe.Free;
       fromExpr.Free;
+      toExpr.Free;
    end;
 end;
 
