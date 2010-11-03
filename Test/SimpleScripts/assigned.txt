@@ -1,0 +1,15 @@
+Errors >>>>
+Runtime Error: Object not instantiated [line: 37, column: 6]
+Runtime Error: Object not instantiated [line: 11, column: 12]
+Runtime Error: Object not instantiated [line: 49, column: 6]
+Result >>>>
+Assigned
+Proc
+1234
+ProcVirtual
+1234
+not Assigned
+Object not instantiated
+Proc
+Object not instantiated
+Object not instantiated
