@@ -187,7 +187,7 @@ const
   CPE_IntegerExpected = 'Integer expected';
   CPE_FloatExpected = 'Float expected';
   CPE_VariantExpected = 'Simple type expected';
-  CPE_EnumerationExpected = 'Enumeration element expected';
+  CPE_EnumerationExpected = 'Enumeration expected';
   CPE_NumericalExpected = 'Numerical operand expected';
   CPE_BooleanOrIntegerExpected = 'Boolean or integer operand expected';
   CPE_ObjectExpected = 'Object expected';
