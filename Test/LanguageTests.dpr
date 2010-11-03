@@ -19,7 +19,8 @@ uses
   dwsHashtables in '..\Libraries\ClassesLib\dwsHashtables.pas',
   UdwsFunctionsTests in 'UdwsFunctionsTests.pas',
   UCOMConnectorTests in 'UCOMConnectorTests.pas',
-  UTestDispatcher in 'UTestDispatcher.pas';
+  UTestDispatcher in 'UTestDispatcher.pas',
+  UMemoryTests in 'UMemoryTests.pas';
 
 {$R *.res}
 
