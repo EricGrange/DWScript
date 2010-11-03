@@ -513,8 +513,7 @@ end;
 //
 procedure TdwsMessageList.AddExecutionStop(const Pos: TScriptPos; const Text: String);
 begin
-   if (Count=0) or (Msgs[Count-1].FText<>Text) then
-      AddExecutionError(Pos, Text);
+   AddExecutionError(Pos, Text);
    raise EScriptError.Create(Text);
 end;
 
