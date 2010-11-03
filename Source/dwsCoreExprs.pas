@@ -357,6 +357,13 @@ type
      function EvalAsInteger : Int64; override;
    end;
 
+   TAssignedExpr = class(TUnaryOpExpr)
+   public
+     constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+     function Eval: Variant; override;
+     function EvalAsBoolean : Boolean; override;
+   end;
+
    TChrExpr = class(TUnaryOpExpr)
    public
      constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
@@ -2359,6 +2366,29 @@ var
 begin
    FExpr.EvalAsString(buf);
    Result:=Length(buf);
+end;
+
+{ TAssignedExpr }
+
+constructor TAssignedExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+begin
+   inherited;
+   FTyp := FProg.TypBoolean;
+end;
+
+function TAssignedExpr.Eval: Variant;
+begin
+   Result:=EvalAsBoolean;
+end;
+
+// EvalAsBoolean
+//
+function TAssignedExpr.EvalAsBoolean : Boolean;
+var
+   obj : IScriptObj;
+begin
+   FExpr.EvalAsScriptObj(obj);
+   Result:=(obj<>nil);
 end;
 
 { TChrExpr }
