@@ -40,6 +40,7 @@ type
   TdwsProgram = class;
   TSymbolPositionList = class;
   TFuncExprBase = class;
+  TScriptObj = class;
 
   // Interface for units
   IUnit = interface
@@ -291,6 +292,8 @@ type
     FCompiler : TObject;
     FRuntimeFileSystem : TdwsCustomFileSystem;
     FFileSystem : IdwsFileSystem;
+    FFirstObject, FLastObject : TScriptObj;
+    FObjectCount : Integer;
 
   protected
     function GetLevel: Integer;
@@ -310,6 +313,8 @@ type
     procedure DoStep(Expr: TExpr);
 
     procedure BeginProgram(IsRunningMainProgram: Boolean = True);
+    procedure ScriptObjCreated(scriptObj: TScriptObj);
+    procedure ScriptObjDestroyed(scriptObj: TScriptObj);
     procedure DestroyScriptObj(const ScriptObj: IScriptObj);
     procedure EndProgram;
 
@@ -330,6 +335,7 @@ type
     property Compiler: TObject read FCompiler write FCompiler;
     property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
     property FileSystem : IdwsFileSystem read FFileSystem write FFileSystem;
+    property ObjectCount : Integer read FObjectCount write FObjectCount;
     property Expr: TExpr read FExpr write FExpr;
     property InitExpr: TExpr read FInitExpr;
     property Info: TProgramInfo read FInfo;
@@ -961,6 +967,7 @@ type
     FExternalObj: TObject;
     FProg: TdwsProgram;
     FOnObjectDestroy: TObjectDestroyEvent;
+    FNextObject, FPrevObject : TScriptObj;
   protected
     { IScriptObj }
     function GetClassSym: TClassSymbol;
@@ -977,6 +984,10 @@ type
     destructor Destroy; override;
     procedure BeforeDestruction; override;
     property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
+
+    property Prog : TdwsProgram read FProg write FProg;
+    property NextObject : TScriptObj read FNextObject write FNextObject;
+    property PrevObject : TScriptObj read FPrevObject write FPrevObject;
   end;
 
 function CreateMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
@@ -1413,41 +1424,58 @@ begin
   end;
 end;
 
+// EndProgram
+//
 procedure TdwsProgram.EndProgram;
+
+   procedure ReleaseObjects;
+   var
+      iter : TScriptObj;
+   begin
+      while FFirstObject<>nil do begin
+         iter:=FFirstObject;
+         ScriptObjDestroyed(iter);
+         iter.FRefCount:=0;
+         iter.Free;
+      end;
+   end;
+
 begin
-  if not (FProgramState in [psRunning, psRunningStopped]) then
-    raise Exception.Create('Program was not started!');
+   if not (FProgramState in [psRunning, psRunningStopped]) then
+      raise Exception.Create('Program was not started!');
 
-  FProgramState := psTerminated;
+   FProgramState := psTerminated;
 
-  try
-    // Result
-    FResult.FinalizeProgram(Self);
+   try
+      // Result
+      FResult.FinalizeProgram(Self);
 
-    // Flags
-    FIsDebugging := False;
+      // Flags
+      FIsDebugging := False;
 
-    // Stack
-    FStack.Pop(
-      FAddrGenerator.DataSize +
-      FGlobalAddrGenerator.DataSize);
+      // Stack
+      FStack.Pop(FAddrGenerator.DataSize + FGlobalAddrGenerator.DataSize);
 
-    // FileSystem
-    FFileSystem:=nil;
+      // Object Cycles
+      if FFirstObject<>nil then
+         ReleaseObjects;
 
-    // Debugger
-    if Assigned(FDebugger) then
-      FDebugger.StopDebug(Self);
+      // FileSystem
+      FFileSystem:=nil;
 
-    FProgramState := psReadyToRun;
+      // Debugger
+      if Assigned(FDebugger) then
+         FDebugger.StopDebug(Self);
 
-    FreeAndNil(FInfo);
-  except
-    on e: EScriptError do
-      ;
-    on e: Exception do
-      Msgs.AddExecutionError(e.Message);
-  end;
+      FProgramState := psReadyToRun;
+
+      FreeAndNil(FInfo);
+   except
+      on e: EScriptError do
+         ;
+      on e: Exception do
+         Msgs.AddExecutionError(e.Message);
+   end;
 end;
 
 // Execute
@@ -1625,36 +1653,77 @@ begin
   Result := FRoot.FGlobalAddrGenerator.GetStackAddr(DataSize);
 end;
 
+// ScriptObjCreated
+//
+procedure TdwsProgram.ScriptObjCreated(scriptObj: TScriptObj);
+begin
+   scriptObj.Prog:=Self;
+   if FObjectCount=0 then begin
+      FFirstObject:=scriptObj;
+      FLastObject:=scriptObj;
+   end else begin
+      scriptObj.PrevObject:=FLastObject;
+      FLastObject.NextObject:=scriptObj;
+      FLastObject:=scriptObj;
+   end;
+   Inc(FObjectCount);
+end;
+
+// ScriptObjDestroyed
+//
+procedure TdwsProgram.ScriptObjDestroyed(scriptObj: TScriptObj);
+begin
+   scriptObj.Prog:=nil;
+   Dec(FObjectCount);
+
+   if FObjectCount>0 then begin
+      if scriptObj.PrevObject<>nil then
+         scriptObj.PrevObject.NextObject:=scriptObj.NextObject
+      else begin
+         FFirstObject:=scriptObj.NextObject;
+         FFirstObject.PrevObject:=nil;
+      end;
+      if scriptObj.NextObject<>nil then
+         scriptObj.NextObject.PrevObject:=scriptObj.PrevObject
+      else begin
+         FLastObject:=scriptObj.PrevObject;
+         FLastObject.NextObject:=nil;
+      end;
+   end else begin
+      FFirstObject:=nil;
+      FLastObject:=nil;
+   end;
+end;
+
+// DestroyScriptObj
+//
 procedure TdwsProgram.DestroyScriptObj(const ScriptObj: IScriptObj);
 var
-  sym: TSymbol;
-  func: TMethodSymbol;
-  expr: TDestructorVirtualExpr;
-  status : TExecutionStatusResult;
+   sym: TSymbol;
+   func: TMethodSymbol;
+   expr: TDestructorVirtualExpr;
+   status : TExecutionStatusResult;
 begin
-  try
-    sym := ScriptObj.ClassSym.Members.FindSymbol(SYS_TOBJECT_DESTROY);
+   try
+      sym := ScriptObj.ClassSym.Members.FindSymbol(SYS_TOBJECT_DESTROY);
 
-    if sym is TMethodSymbol then
-    begin
-      func := TMethodSymbol(sym);
-      if (func.Kind = fkDestructor) and (func.Params.Count = 0) then
-      begin
-        expr :=
-          TDestructorVirtualExpr.Create(Self, cNullPos, func,
-            TConstExpr.Create(Self, ScriptObj.ClassSym, ScriptObj));
-        try
-          status:=esrNone;
-          expr.EvalNoResult(status);
-        finally
-          expr.Free;
-        end;
+      if sym is TMethodSymbol then begin
+         func := TMethodSymbol(sym);
+         if (func.Kind = fkDestructor) and (func.Params.Count = 0) then begin
+            expr := TDestructorVirtualExpr.Create(Self, cNullPos, func,
+                                                  TConstExpr.Create(Self, ScriptObj.ClassSym, ScriptObj));
+            try
+               status:=esrNone;
+               expr.EvalNoResult(status);
+            finally
+               expr.Free;
+            end;
+         end;
       end;
-    end;
-  except
-    on e: Exception do
-      Msgs.AddError(e.Message);
-  end;
+   except
+      on e: Exception do
+         Msgs.AddError(e.Message);
+   end;
 end;
 
 function TdwsProgram.GetTempAddr(DataSize: Integer): Integer;
@@ -3661,35 +3730,40 @@ end;
 
 constructor TScriptObj.Create(ClassSym: TClassSymbol; Prog: TdwsProgram);
 var
-  x: Integer;
-  c: TClassSymbol;
+   x: Integer;
+   c: TClassSymbol;
 begin
-  FClassSym := ClassSym;
-  FProg := Prog;
-  SetLength(FData, ClassSym.InstanceSize);
+   FClassSym := ClassSym;
 
-  // Initialize fields
-  c := TClassSymbol(ClassSym);
-  while c <> nil do
-  begin
-    for x := 0 to c.Members.Count - 1 do
-      if c.Members[x] is TFieldSymbol then
-        with TFieldSymbol(c.Members[x]) do
-          Typ.InitData(FData, Offset);
-    c := c.Parent;
-  end;
+   if Prog<>nil then
+      Prog.ScriptObjCreated(Self);
 
-  FOnObjectDestroy := ClassSym.OnObjectDestroy;
+   SetLength(FData, ClassSym.InstanceSize);
+
+   // Initialize fields
+   c := TClassSymbol(ClassSym);
+   while c <> nil do begin
+      for x := 0 to c.Members.Count - 1 do
+         if c.Members[x] is TFieldSymbol then
+            with TFieldSymbol(c.Members[x]) do
+               Typ.InitData(FData, Offset);
+      c := c.Parent;
+   end;
+
+   FOnObjectDestroy := ClassSym.OnObjectDestroy;
 end;
 
 procedure TScriptObj.BeforeDestruction;
-var SO : IScriptObj;
+var
+   iso : IScriptObj;
 begin
-  // we are released, so never do: Self as IScriptObj
-  SO := TScriptObjectWrapper.Create(Self);
-  if Assigned(FProg) then
-    FProg.DestroyScriptObj(SO);
-  inherited;
+   if Assigned(FProg) then begin
+      // we are released, so never do: Self as IScriptObj
+      iso:=TScriptObjectWrapper.Create(Self);
+      FProg.DestroyScriptObj(iso);
+      FProg.ScriptObjDestroyed(Self);
+   end;
+   inherited;
 end;
 
 destructor TScriptObj.Destroy;
