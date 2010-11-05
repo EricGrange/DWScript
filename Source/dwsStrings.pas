@@ -48,6 +48,11 @@ const
   SWI_INCLUDE_SHORT = 'I';
   SWI_FILTER_LONG = 'FILTER';
   SWI_FILTER_SHORT = 'F';
+  SWI_DEFINE = 'DEFINE';
+  SWI_UNDEF = 'UNDEF';
+  SWI_IFDEF = 'IFDEF';
+  SWI_IFNDEF = 'IFNDEF';
+  SWI_ENDIF = 'ENDIF';
 
   // COMPILER ERRORS
   //
@@ -65,6 +70,7 @@ const
   CPE_BrackRightExpected = '")" expected.';
   CPE_ArrayBracketRightExpected = '"]" expected';
   CPE_ArrayBracketLeftExpected = '"[" expected';
+  CPE_CurlyRightExpected = '"}" expected';
   CPE_ColonExpected = 'Colon ":" expected';
   CPE_DotExpected = 'Dot "." expected';
   CPE_NameExpected = 'Name expected';
@@ -210,10 +216,12 @@ const
   CPE_IntegerExpressionExpected = 'Integer expression expected';
   CPE_InvalidConstType = 'Invalid const type "%s"';
 
-  CPE_CompilerSwitchUnknown = 'Compilerswitch "%s" unknown';
+  CPE_CompilerSwitchUnknown = 'Compiler switch "%s" unknown';
 
   CPE_IncludeFileNotFound = 'Couldn''t find file "%s" on input paths';
   CPE_IncludeFileExpected = 'Name of include file expected';
+
+  CPE_UnbalancedConditionalDirective = 'Unbalanced conditional directive';
 
   CPE_TypeIsUnknown = 'Type "%s" unknown';
   CPE_TypeForParamNotFound = 'Type "%s" not found for parameter "%s" of function "%s"';
