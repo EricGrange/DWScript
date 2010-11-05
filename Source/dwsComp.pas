@@ -1822,22 +1822,32 @@ begin
   FHasDefaultValue := False;
 end;
 
-function TdwsParameter.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil):
-  TSymbol;
-var ParamSym : TParamSymbol;
+function TdwsParameter.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
+var
+   paramSym : TParamSymbol;
+   paramType : TTypeSymbol;
+   elemSym : TSymbol;
+   elemValue : Integer;
 begin
-  FIsGenerating := True;
-  if IsVarParam then begin
-    if IsWritable then
-      ParamSym := TVarParamSymbol.Create(Name, GetDataType(Table, DataType))
-    else ParamSym := TConstParamSymbol.Create(Name, GetDataType(Table, DataType))
-  end else if HasDefaultValue then begin
-    ParamSym := TParamSymbolWithDefaultValue.Create(Name, GetDataType(Table, DataType));
-    TParamSymbolWithDefaultValue(ParamSym).SetDefaultValue(DefaultValue);
-  end else begin
-    ParamSym := TParamSymbol.Create(Name, GetDataType(Table, DataType));
-  end;
-  Result := ParamSym;
+   FIsGenerating := True;
+   paramType := GetDataType(Table, DataType);
+   if IsVarParam then begin
+      if IsWritable then
+         ParamSym := TVarParamSymbol.Create(Name, paramType)
+      else ParamSym := TConstParamSymbol.Create(Name, paramType)
+   end else if HasDefaultValue then begin
+      ParamSym := TParamSymbolWithDefaultValue.Create(Name, paramType);
+      if paramType is TEnumerationSymbol then begin
+         elemSym:=TEnumerationSymbol(paramType).Elements.FindLocal(DefaultValue);
+         if elemSym=nil then
+            elemValue:=DefaultValue
+         else elemValue:=TElementSymbol(elemSym).UserDefValue;
+         TParamSymbolWithDefaultValue(ParamSym).SetDefaultValue(elemValue);
+      end else TParamSymbolWithDefaultValue(ParamSym).SetDefaultValue(DefaultValue);
+   end else begin
+      ParamSym := TParamSymbol.Create(Name, paramType);
+   end;
+   Result := ParamSym;
 end;
 
 function TdwsParameter.GetDisplayName: string;
@@ -1958,20 +1968,18 @@ begin
   end;
 end;
 
-function GetParameters(Symbol: TdwsSymbol;
-  Parameters: TdwsParameters; Table: TSymbolTable): TParamArray;
+function GetParameters(Symbol: TdwsSymbol; Parameters: TdwsParameters; Table: TSymbolTable): TParamArray;
 var
-  x, y: Integer;
+  x, y, elemValue: Integer;
   name: string;
+  paramSym, elemSym : TSymbol;
 begin
   SetLength(Result, Parameters.Count);
-  for x := 0 to Parameters.Count - 1 do
-  begin
+  for x := 0 to Parameters.Count - 1 do begin
     name := Parameters.Items[x].Name;
 
     // Check wether parameter name is unique
-    for y := x - 1 downto 0 do
-    begin
+    for y := x - 1 downto 0 do begin
       if SameText(Result[y].ParamName, name) then
         raise Exception.CreateFmt(UNT_ParameterNameAlreadyExists, [name]);
     end;
@@ -1980,14 +1988,19 @@ begin
     Result[x].IsConstParam := TdwsParameter(Parameters.Items[x]).IsVarParam and not TdwsParameter(Parameters.Items[x]).IsWritable;
     Result[x].ParamName := name;
     Result[x].ParamType := TdwsParameter(Parameters.Items[x]).DataType;
+
     Result[x].HasDefaultValue := TdwsParameter(Parameters.Items[x]).HasDefaultValue;
-    if Result[x].HasDefaultValue then
-    begin
-      SetLength(Result[x].DefaultValue,1);
-      Result[x].DefaultValue[0] := TdwsParameter(Parameters.Items[x]).DefaultValue;
-    end
-    else
-      Result[x].DefaultValue := nil;
+    if Result[x].HasDefaultValue then begin
+       SetLength(Result[x].DefaultValue, 1);
+       paramSym:=Symbol.GetDataType(Table, Result[x].ParamType);
+       if paramSym is TEnumerationSymbol then begin
+          elemSym:=TEnumerationSymbol(paramSym).Elements.FindLocal(TdwsParameter(Parameters.Items[x]).DefaultValue);
+          if elemSym=nil then
+             elemValue:=TdwsParameter(Parameters.Items[x]).DefaultValue
+          else elemValue:=TElementSymbol(elemSym).UserDefValue;
+          Result[x].DefaultValue[0] := elemValue;
+       end else Result[x].DefaultValue[0] := TdwsParameter(Parameters.Items[x]).DefaultValue;
+    end else Result[x].DefaultValue := nil;
 
     Symbol.GetUnit.GetSymbol(Table, Result[x].ParamType);
   end;
