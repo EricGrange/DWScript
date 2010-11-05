@@ -1,0 +1,2 @@
+{$ifdef test}
+PrintLn('hello');
