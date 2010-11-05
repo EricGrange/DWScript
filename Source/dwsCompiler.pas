@@ -521,7 +521,7 @@ begin
          FProg.Expr := ReadScript('', stMain);
 
          // Initialize symbol table
-         FProg.Table.Initialize;
+         FProg.Table.Initialize(FMsgs);
 
          // Initialize the expressions
          FProg.Expr.Initialize;
@@ -550,28 +550,28 @@ begin
    Result:=(coOptimize in FCompilerOptions) and (not FMsgs.HasErrors);
 end;
 
+// ReadScript
+//
 function TdwsCompiler.ReadScript(const AName: string; ScriptType: TScriptSourceType): TBlockExpr;
 var
-  Stmt: TExpr;
+   stmt : TExpr;
 begin
-  Result := TBlockExpr.Create(FProg, FTok.DefaultPos);
-  try
-    FProg.SourceList.Add(AName, FTok.HotPos.SourceFile, ScriptType);
-    while FTok.HasTokens do
-    begin
-      Stmt := ReadRootStatement;
-      if Assigned(Stmt) then
-        TBlockExpr(Result).AddStatement(Stmt);
+   Result := TBlockExpr.Create(FProg, FTok.DefaultPos);
+   try
+      FProg.SourceList.Add(AName, FTok.HotPos.SourceFile, ScriptType);
+      while FTok.HasTokens do begin
+         Stmt := ReadRootStatement;
+         if Assigned(Stmt) then
+            TBlockExpr(Result).AddStatement(Stmt);
 
-      if not FTok.TestDelete(ttSEMI) then
-      begin
-        if FTok.HasTokens then
-          FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+         if not FTok.TestDelete(ttSEMI) then begin
+            if FTok.HasTokens then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+         end;
       end;
-    end;
   except
-    Result.Free;
-    raise;
+      Result.Free;
+      raise;
   end;
 end;
 
@@ -972,7 +972,7 @@ begin
                if FTok.Test(ttSEMI) then begin
                   FTok.KillToken; // SEMI
                   if FTok.Test(ttFORWARD) then begin
-                     Result.IsForwarded := True;
+                     Result.SetForwardedPos(funcPos);
                      FTok.TestDelete(ttFORWARD);
                   end;
                end;
@@ -991,7 +991,7 @@ begin
 
                Result.Free;
                Result := forwardedSym;
-               Result.IsForwarded := False;
+               Result.ClearIsForwarded;
             end else FProg.Table.AddSymbol(Result);
          end else if FTok.TestDelete(ttOF) then begin
             if not FTok.TestDelete(ttOBJECT) then

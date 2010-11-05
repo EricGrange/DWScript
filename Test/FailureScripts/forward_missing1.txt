@@ -1,0 +1,2 @@
+Syntax Error: The function "Test1" was forward declared but not implemented! [line: 1, column: 10]
+Syntax Error: The function "Test2" was forward declared but not implemented! [line: 2, column: 10]

@@ -4190,7 +4190,7 @@ end;
 procedure TExceptDoExpr.Initialize;
 begin
   FDoBlockExpr.Initialize;
-  FExceptionVar.Initialize;
+  FExceptionVar.Initialize(Prog.Msgs);
 end;
 
 // TypeCheckNoPos

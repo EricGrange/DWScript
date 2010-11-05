@@ -1827,7 +1827,7 @@ end;
 
 procedure TProcedure.InitSymbol(Symbol: TSymbol);
 begin
-  FTable.Initialize;
+  FTable.Initialize(msgs);
   FExpr.Initialize;
 end;
 
