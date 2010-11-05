@@ -53,6 +53,7 @@ const
   SWI_IFDEF = 'IFDEF';
   SWI_IFNDEF = 'IFNDEF';
   SWI_ENDIF = 'ENDIF';
+  SWI_ELSE = 'ELSE';
 
   // COMPILER ERRORS
   //
@@ -222,6 +223,7 @@ const
   CPE_IncludeFileExpected = 'Name of include file expected';
 
   CPE_UnbalancedConditionalDirective = 'Unbalanced conditional directive';
+  CPE_UnfinishedConditionalDirective = 'Unfinished conditional directive';
 
   CPE_TypeIsUnknown = 'Type "%s" unknown';
   CPE_TypeForParamNotFound = 'Type "%s" not found for parameter "%s" of function "%s"';

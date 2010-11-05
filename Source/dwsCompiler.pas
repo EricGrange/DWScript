@@ -130,7 +130,7 @@ type
       FForVarExprs: TList;
       FCompileFileSystem : IdwsFileSystem;
       FConditionalDefines : TStringList;
-      FConditionalBlockDepth : Integer;
+      FConditionalDepth : TList;
 
       function Optimize : Boolean;
 
@@ -179,7 +179,7 @@ type
       function ReadInherited(IsWrite: Boolean): TNoPosExpr;
       function ReadInstr: TNoResultExpr;
       function ReadInstrSwitch: TNoResultExpr;
-      procedure ReadUntilEndOrElseSwitch;
+      function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
       function ReadMethodDecl(ClassSym: TClassSymbol; FuncKind: TFuncKind; IsClassMethod: Boolean): TMethodSymbol;
       function ReadMethodImpl(ClassSym: TClassSymbol; FuncKind: TFuncKind; IsClassMethod: Boolean): TMethodSymbol;
       procedure ReadDeprecated(funcSym : TFuncSymbol);
@@ -276,6 +276,21 @@ implementation
 // ------------------------------------------------------------------
 
 type
+   TSwitchInstruction = (siNone,
+                         siIncludeLong, siIncludeShort,
+                         siFilterLong, siFilterShort,
+                         siDefine, siUndef,
+                         siIfDef, siIfNDef, siEndIf, siElse);
+
+const
+   cSwitchInstructions : array [TSwitchInstruction] of String = (
+      '',
+      SWI_INCLUDE_LONG, SWI_INCLUDE_SHORT, SWI_FILTER_LONG, SWI_FILTER_SHORT,
+      SWI_DEFINE, SWI_UNDEF,
+      SWI_IFDEF, SWI_IFNDEF, SWI_ENDIF, SWI_ELSE
+      );
+
+type
   TExceptionCreateMethod = class(TInternalMethod)
     procedure Execute(var ExternalObject: TObject); override;
   end;
@@ -296,6 +311,18 @@ type
     procedure Execute; override;
   end;
 
+// StringToSwitchInstruction
+//
+function StringToSwitchInstruction(const str : String) : TSwitchInstruction;
+begin
+   // This procedure is called by the tokenizer if it finds {$xx in the string
+   for Result:=Low(TSwitchInstruction) to High(TSwitchInstruction) do begin
+      if str=cSwitchInstructions[Result] then
+         Exit;
+   end;
+   Result:=siNone;
+end;
+
 // Create
 //
 constructor TdwsCompiler.Create;
@@ -306,12 +333,14 @@ begin
    FConditionalDefines.Sorted:=True;
    FConditionalDefines.CaseSensitive:=False;
    FConditionalDefines.Duplicates:=dupIgnore;
+   FConditionalDepth:=TList.Create;
 end;
 
 // Destroy
 //
 destructor TdwsCompiler.Destroy;
 begin
+   FConditionalDepth.Free;
    FConditionalDefines.Free;
    FForVarExprs.Free;
    inherited;
@@ -412,7 +441,7 @@ begin
 
    FForVarExprs.Clear;
    FConditionalDefines.Clear;
-   FConditionalBlockDepth:=0;
+   FConditionalDepth.Clear;
 
    maxDataSize := Conf.MaxDataSize;
    if maxDataSize = 0 then
@@ -3707,30 +3736,28 @@ end;
 
 // ReadSwitch
 //
-function TdwsCompiler.ReadSwitch(const SwitchName: string): Boolean;
+function TdwsCompiler.ReadSwitch(const SwitchName: string) : Boolean;
+var
+   sw : TSwitchInstruction;
 begin
-   // This procedure is called by the tokenizer if it finds {$xx in the string
-   if    (SwitchName = SWI_INCLUDE_LONG) or (SwitchName = SWI_INCLUDE_SHORT)
-      or (SwitchName = SWI_FILTER_LONG) or (SwitchName = SWI_FILTER_SHORT)
-      or (SwitchName = SWI_DEFINE) or (SwitchName = SWI_UNDEF)
-      or (SwitchName = SWI_IFDEF) or (SwitchName = SWI_IFNDEF)
-      or (SwitchName = SWI_ENDIF) then
-      Result := True
-   else begin
-      Result := False;
+   sw:=StringToSwitchInstruction(SwitchName);
+   if sw<>siNone then
+      Exit(True);
 
-      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CompilerSwitchUnknown, [SwitchName]);
+   Result := False;
 
-      while not FTok.TestDelete(ttCRIGHT) do
-         FTok.KillToken;
-   end;
+   FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CompilerSwitchUnknown, [SwitchName]);
+
+   while not FTok.TestDelete(ttCRIGHT) do
+      FTok.KillToken;
 end;
 
 // ReadInstrSwitch
 //
 function TdwsCompiler.ReadInstrSwitch: TNoResultExpr;
 var
-   switchName, name, scriptSource : String;
+   switch : TSwitchInstruction;
+   name, scriptSource : String;
    oldTok : TTokenizer;
    i : Integer;
    conditionalTrue : Boolean;
@@ -3739,89 +3766,108 @@ begin
    Result := nil;
 
    switchPos:=FTok.HotPos;
-   switchName := FTok.GetToken.FString;
+
+   switch:=StringToSwitchInstruction(FTok.GetToken.FString);
    FTok.KillToken;
 
-   if    (switchName = SWI_INCLUDE_LONG)
-      or (switchName = SWI_INCLUDE_SHORT)
-      or (switchName = SWI_FILTER_LONG)
-      or (switchName = SWI_FILTER_SHORT) then begin
+   case switch of
+      siIncludeLong, siIncludeShort, siFilterLong, siFilterShort : begin
 
-      if not FTok.Test(ttStrVal) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_IncludeFileExpected);
-      name := FTok.GetToken.FString;
-      FTok.KillToken;
-
-      try
-         oldTok := FTok;
-         scriptSource := GetScriptSource(name);
-
-         if (switchName = SWI_FILTER_LONG) or (switchName = SWI_FILTER_SHORT) then begin
-            if Assigned(FFilter) then
-               // Include file is processed by the filter
-               FTok := TTokenizer.Create(FFilter.Process(scriptSource, FMsgs), name, FProg.Msgs)
-            else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoFilterAvailable);
-         end else begin
-            // Include file is included as-is
-            FTok := TTokenizer.Create(scriptSource, name, FProg.Msgs);
-         end;
+         if not FTok.Test(ttStrVal) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_IncludeFileExpected);
+         name := FTok.GetToken.FString;
+         FTok.KillToken;
 
          try
-            FTok.SwitchHandler := ReadSwitch;
-            Result := ReadScript(name, stInclude);
-         finally
-            FTok.Free;
-            FTok := oldTok;
+            oldTok := FTok;
+            scriptSource := GetScriptSource(name);
+
+            if switch in [siFilterLong, siFilterShort] then begin
+               if Assigned(FFilter) then
+                  // Include file is processed by the filter
+                  FTok := TTokenizer.Create(FFilter.Process(scriptSource, FMsgs), name, FProg.Msgs)
+               else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoFilterAvailable);
+            end else begin
+               // Include file is included as-is
+               FTok := TTokenizer.Create(scriptSource, name, FProg.Msgs);
+            end;
+
+            try
+               FTok.SwitchHandler := ReadSwitch;
+               Result := ReadScript(name, stInclude);
+            finally
+               FTok.Free;
+               FTok := oldTok;
+            end;
+         except
+            on e: EScriptError do
+               raise;
+            on e: Exception do
+               FMsgs.AddCompilerStop(FTok.HotPos, e.Message);
          end;
-      except
-         on e: EScriptError do
-            raise;
-         on e: Exception do
-            FMsgs.AddCompilerStop(FTok.HotPos, e.Message);
+
       end;
+      siDefine : begin
 
-   end else if (switchName = SWI_DEFINE) then begin
+         if not FTok.Test(ttNAME) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-      if not FTok.Test(ttNAME) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+         FConditionalDefines.Add(FTok.GetToken.FString);
+         FTok.KillToken;
 
-      FConditionalDefines.Add(FTok.GetToken.FString);
-      FTok.KillToken;
+      end;
+      siUndef : begin
 
-   end else if (switchName = SWI_UNDEF) then begin
+         if not FTok.Test(ttNAME) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-      if not FTok.Test(ttNAME) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+         i:=FConditionalDefines.IndexOf(FTok.GetToken.FString);
+         if i>=0 then
+            FConditionalDefines.Delete(i);
+         FTok.KillToken;
 
-      i:=FConditionalDefines.IndexOf(FTok.GetToken.FString);
-      if i>=0 then
-         FConditionalDefines.Delete(i);
-      FTok.KillToken;
+      end;
+      siIfDef, siIfNDef : begin
 
-   end else if (switchName = SWI_IFDEF) or (switchName = SWI_IFNDEF) then begin
+         if not FTok.Test(ttNAME) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-      if not FTok.Test(ttNAME) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+         conditionalTrue:=    (FConditionalDefines.IndexOf(FTok.GetToken.FString)>=0)
+                          xor (switch = siIfNDef);
+         FTok.KillToken;
 
-      conditionalTrue:=    (FConditionalDefines.IndexOf(FTok.GetToken.FString)>=0)
-                       xor (switchName = SWI_IFNDEF);
-      FTok.KillToken;
+         if conditionalTrue then
+            FConditionalDepth.Add(Pointer(switch))
+         else begin
+            if ReadUntilEndOrElseSwitch(True) then
+               FConditionalDepth.Add(Pointer(siElse));
+            if not FTok.HasTokens then
+               FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective);
+         end;
 
-      if conditionalTrue then
-         Inc(FConditionalBlockDepth)
-      else begin
-         ReadUntilEndOrElseSwitch;
+      end;
+      siElse : begin
+
+         if FConditionalDepth.Count=0 then
+            FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective);
+         if FConditionalDepth.Last=Pointer(siElse) then
+            FMsgs.AddCompilerStop(switchPos, CPE_UnfinishedConditionalDirective);
+
+         ReadUntilEndOrElseSwitch(False);
          if not FTok.HasTokens then
             FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective);
+
       end;
+      siEndIf : begin
 
-   end else if (switchName = SWI_ENDIF) then begin
+         if FConditionalDepth.Count=0 then
+            FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective)
+         else FConditionalDepth.Delete(FConditionalDepth.Count-1);
 
-      Dec(FConditionalBlockDepth);
-      if (FConditionalBlockDepth<0) then
-         FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective);
-
-   end else FMsgs.AddCompilerStopFmt(switchPos, CPE_CompilerSwitchUnknown, [Name]);
+      end;
+   else
+      FMsgs.AddCompilerStopFmt(switchPos, CPE_CompilerSwitchUnknown, [Name]);
+   end;
 
    if not FTok.Test(ttCRIGHT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_CurlyRightExpected);
@@ -3832,10 +3878,10 @@ end;
 
 // ReadUntilEndOrElseSwitch
 //
-procedure TdwsCompiler.ReadUntilEndOrElseSwitch;
+function TdwsCompiler.ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
 var
    startPos : TScriptPos;
-   switchName : String;
+   switch : TSwitchInstruction;
    innerDepth : Integer;
 begin
    startPos:=FTok.HotPos;
@@ -3845,6 +3891,7 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_CurlyRightExpected);
 
    innerDepth:=0;
+   Result:=False;
 
    while FTok.HasTokens do begin
 
@@ -3857,20 +3904,35 @@ begin
          Break;
       end;
 
-      switchName:=FTok.GetToken.FString;
+      startPos:=FTok.HotPos;
+      switch:=StringToSwitchInstruction(FTok.GetToken.FString);
       FTok.KillToken;
 
-      if (switchName = SWI_ENDIF) then begin
+      case switch of
 
-         Dec(innerDepth);
-         if innerDepth<0 then Break;
+         siEndIf : begin
 
-      end else if    (switchName = SWI_IFDEF)
-                  or (switchName = SWI_IFNDEF) then begin
+            Dec(innerDepth);
+            if innerDepth<0 then Break;
 
-         while FTok.HasTokens and not FTok.Test(ttCRIGHT) do
-            FTok.KillToken;
-         Inc(innerDepth);
+         end;
+         siElse : begin
+
+            if innerDepth=0 then begin
+               if not allowElse then
+                  FMsgs.AddCompilerStop(startPos, CPE_UnfinishedConditionalDirective);
+               Result:=True;
+               Break;
+            end;
+
+         end;
+         siIfDef, siIfNDef : begin
+
+            while FTok.HasTokens and not FTok.Test(ttCRIGHT) do
+               FTok.KillToken;
+            Inc(innerDepth);
+
+         end;
 
       end;
 
