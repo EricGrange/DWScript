@@ -16,6 +16,7 @@ type
          procedure SetUp; override;
          procedure TearDown; override;
 
+         procedure DeclareTestEnumerate;
          procedure DeclareTestFuncs;
 
          procedure Func1Eval(Info: TProgramInfo);
@@ -23,6 +24,7 @@ type
          procedure FuncOneDotFiveEval(Info: TProgramInfo);
          procedure FuncTrueEval(Info: TProgramInfo);
          procedure FuncIncEval(Info: TProgramInfo);
+         procedure FuncEnumEval(Info: TProgramInfo);
 
          procedure FuncExceptionEval(Info: TProgramInfo);
 
@@ -59,6 +61,8 @@ const
       +'if FuncOne<>''One'' then PrintLn(''FuncOne failed'');'#13#10
       +'if FuncOneDotFive<>1.5 then PrintLn(''FuncOneDotFive failed'');'#13#10
       +'if FuncTrue<>True then PrintLn(''FuncTrue failed'');'#13#10
+      +'if FuncEnum<>1 then PrintLn(''FuncEnum default failed'');'#13#10
+      +'if FuncEnum(meTen)<>10 then PrintLn(''FuncEnum meTen failed'');'#13#10
       ;
 
 type
@@ -79,6 +83,7 @@ begin
    FUnit.UnitName:='Test';
    FUnit.Script:=FCompiler;
 
+   DeclareTestEnumerate;
    DeclareTestFuncs;
 end;
 
@@ -88,6 +93,23 @@ procedure TdwsUnitTests.TearDown;
 begin
    FUnit.Free;
    FCompiler.Free;
+end;
+
+// DeclareTestEnumerate
+//
+procedure TdwsUnitTests.DeclareTestEnumerate;
+var
+   enum : TdwsEnumeration;
+   elem : TdwsElement;
+begin
+   enum:=FUnit.Enumerations.Add as TdwsEnumeration;
+   enum.Name:='TMyEnum';
+   elem:=enum.Elements.Add as TdwsElement;
+   elem.Name:='meOne';
+   elem.UserDefValue:=1;
+   elem:=enum.Elements.Add as TdwsElement;
+   elem.Name:='meTen';
+   elem.UserDefValue:=10;
 end;
 
 // DeclareTestFuncs
@@ -129,6 +151,15 @@ begin
    param:=func.Parameters.Add as TdwsParameter;
    param.Name:='v';
    param.DataType:='Integer';
+
+   func:=FUnit.Functions.Add as TdwsFunction;
+   func.Name:='FuncEnum';
+   func.ResultType:='Integer';
+   func.OnEval:=FuncEnumEval;
+   param:=func.Parameters.Add as TdwsParameter;
+   param.Name:='e';
+   param.DataType:='TMyEnum';
+   param.DefaultValue:='meOne';
 end;
 
 // Func1Eval
@@ -164,6 +195,13 @@ end;
 procedure TdwsUnitTests.FuncIncEval(Info: TProgramInfo);
 begin
    Info.ResultAsInteger:=Info.ValueAsInteger['v']+1;
+end;
+
+// FuncEnumEval
+//
+procedure TdwsUnitTests.FuncEnumEval(Info: TProgramInfo);
+begin
+   Info.ResultAsInteger:=Info.ValueAsInteger['e'];
 end;
 
 // FuncExceptionEval
