@@ -1074,7 +1074,8 @@ end;
 
 destructor TFuncSymbol.Destroy;
 begin
-   Dispose(FForwardPosition);
+   if FForwardPosition<>nil then
+      Dispose(FForwardPosition);
    FParams.Free;
    FInternalParams.Free;
    inherited;
@@ -1306,8 +1307,8 @@ end;
 //
 procedure TFuncSymbol.SetForwardedPos(const pos : TScriptPos);
 begin
-   Dispose(FForwardPosition);
-   New(FForwardPosition);
+   if FForwardPosition=nil then
+      New(FForwardPosition);
    FForwardPosition^:=pos;
 end;
 
@@ -1316,6 +1317,7 @@ end;
 procedure TFuncSymbol.ClearIsForwarded;
 begin
    Dispose(FForwardPosition);
+   FForwardPosition:=nil;
 end;
 
 // ------------------
