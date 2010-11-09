@@ -3135,15 +3135,19 @@ end;
 //
 function TdwsCompiler.ReadExit: TNoResultExpr;
 var
+   gotParenthesis : Boolean;
    leftExpr : TDataExpr;
    assignExpr : TNoResultExpr;
    proc : TProcedure;
    exitPos : TScriptPos;
 begin
    exitPos:=FTok.HotPos;
-   if FTok.TestDelete(ttBLEFT) then begin
+   if FTok.Test(ttSEMI) or FTok.Test(ttEND) then
+      Result:=TExitExpr.Create(FProg, FTok.HotPos)
+   else begin
       if not (FProg is TProcedure) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoResultRequired);
+      gotParenthesis:=FTok.TestDelete(ttBLEFT);
       proc:=TProcedure(FProg);
       if proc.Func.Result=nil then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoResultRequired);
@@ -3152,7 +3156,7 @@ begin
          assignExpr:=ReadAssign(leftExpr);
          try
             leftExpr:=nil;
-            if not FTok.TestDelete(ttBRIGHT) then
+            if gotParenthesis and not FTok.TestDelete(ttBRIGHT) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
             Result:=TExitValueExpr.Create(FProg, exitPos, assignExpr);
          except
@@ -3163,7 +3167,7 @@ begin
          leftExpr.Free;
          raise;
       end;
-   end else Result:=TExitExpr.Create(FProg, FTok.HotPos)
+   end;
 end;
 
 function TdwsCompiler.ReadType(const TypeName: string): TTypeSymbol;
