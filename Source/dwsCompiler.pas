@@ -51,6 +51,7 @@ type
     FOwner: TComponent;
     FResultType: TdwsResultType;
     FScriptPaths: TStrings;
+    FConditionals: TStrings;
     FStackChunkSize: Integer;
     FSystemTable: TSymbolTable;
     FTimeoutMilliseconds: Integer;
@@ -65,12 +66,13 @@ type
     procedure SetTimeOut(const val : Integer);
     procedure SetCompileFileSystem(const val : TdwsCustomFileSystem);
     procedure SetRuntimeFileSystem(const val : TdwsCustomFileSystem);
+    procedure SetScriptPaths(const values : TStrings);
+    procedure SetConditionals(const val : TStrings);
 
   public
     constructor Create(Owner: TComponent);
     destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
-    procedure SetScriptPaths(const values : TStrings);
     procedure Notification(AComponent: TComponent; Operation: TOperation);
 
     property Connectors: TStrings read FConnectors write FConnectors;
@@ -84,6 +86,7 @@ type
     property CompilerOptions: TCompilerOptions read FCompilerOptions write FCompilerOptions default cDefaultCompilerOptions;
     property MaxDataSize: Integer read FMaxDataSize write FMaxDataSize default 0;
     property MaxRecursionDepth : Integer read FMaxRecursionDepth write FMaxRecursionDepth default cDefaultMaxRecursionDepth;
+    property Conditionals : TStrings read FConditionals write SetConditionals;
     property ScriptPaths: TStrings read FScriptPaths write SetScriptPaths;
     property CompileFileSystem : TdwsCustomFileSystem read FCompileFileSystem write SetCompileFileSystem;
     property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write SetRuntimeFileSystem;
@@ -442,7 +445,7 @@ begin
    else FCompileFileSystem := TdwsOSFileSystem.Create;
 
    FForVarExprs.Clear;
-   FConditionalDefines.Clear;
+   FConditionalDefines.Assign(conf.Conditionals);
    FConditionalDepth.Clear;
 
    maxDataSize := Conf.MaxDataSize;
@@ -4221,6 +4224,7 @@ begin
   FSystemTable := TStaticSymbolTable.Create;
   FConnectors := TStringList.Create;
   FScriptPaths := TStringList.Create;
+  FConditionals := TStringList.Create;
   FUnits := TStringList.Create;
   InitSystemTable;
   FUnits.AddObject(SYS_INTERNAL, Pointer(IUnit(dwsInternalUnit)));
@@ -4237,6 +4241,7 @@ begin
   (FSystemTable as TStaticSymbolTable)._Release;
   FConnectors.Free;
   FScriptPaths.Free;
+  FConditionals.Free;
   FUnits.Free;
   FDefaultResultType.Free;
 end;
@@ -4397,6 +4402,13 @@ end;
 procedure TdwsConfiguration.SetScriptPaths(const values : TStrings);
 begin
    FScriptPaths.Assign(values);
+end;
+
+// SetConditionals
+//
+procedure TdwsConfiguration.SetConditionals(const val : TStrings);
+begin
+   FConditionals.Assign(val);
 end;
 
 { TExceptionCreateMethod }
