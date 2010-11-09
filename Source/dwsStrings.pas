@@ -225,6 +225,9 @@ const
   CPE_IncludeFileNotFound = 'Couldn''t find file "%s" on input paths';
   CPE_IncludeFileExpected = 'Name of include file expected';
 
+  CPE_BreakOutsideOfLoop = '"Break" outside of loop';
+  CPE_ContinueOutsideOfLoop = '"Continue" outside of loop';
+
   CPE_UnbalancedConditionalDirective = 'Unbalanced conditional directive';
   CPE_UnfinishedConditionalDirective = 'Unfinished conditional directive';
 

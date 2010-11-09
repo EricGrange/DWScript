@@ -130,7 +130,7 @@ type
       FScriptPaths: TStrings;
       FTok: TTokenizer;
       FIsExcept: Boolean;
-      FForVarExprs: TList;
+      FLoopExprs: TList;
       FCompileFileSystem : IdwsFileSystem;
       FConditionalDefines : TStringList;
       FConditionalDepth : TList;
@@ -333,7 +333,7 @@ end;
 constructor TdwsCompiler.Create;
 begin
    inherited;
-   FForVarExprs:=TList.Create;
+   FLoopExprs:=TList.Create;
    FConditionalDefines:=TStringList.Create;
    FConditionalDefines.Sorted:=True;
    FConditionalDefines.CaseSensitive:=False;
@@ -347,7 +347,7 @@ destructor TdwsCompiler.Destroy;
 begin
    FConditionalDepth.Free;
    FConditionalDefines.Free;
-   FForVarExprs.Free;
+   FLoopExprs.Free;
    inherited;
 end;
 
@@ -444,7 +444,7 @@ begin
       FCompileFileSystem := Conf.CompileFileSystem.AllocateFileSystem
    else FCompileFileSystem := TdwsOSFileSystem.Create;
 
-   FForVarExprs.Clear;
+   FLoopExprs.Clear;
    FConditionalDefines.Assign(conf.Conditionals);
    FConditionalDepth.Clear;
 
@@ -1408,14 +1408,20 @@ begin
          Result := ReadWhile;
       ttREPEAT :
          Result := ReadRepeat;
-      ttBREAK :
+      ttBREAK : begin
+         if FLoopExprs.Count=0 then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_BreakOutsideOfLoop);
          Result := TBreakExpr.Create(FProg, FTok.HotPos);
+      end;
       ttEXIT :
          Result := ReadExit;
       ttTRY :
          Result := ReadTry;
-      ttCONTINUE :
+      ttCONTINUE : begin
+         if FLoopExprs.Count=0 then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ContinueOutsideOfLoop);
          Result := TContinueExpr.Create(FProg, FTok.HotPos);
+      end;
       ttRAISE :
          Result := ReadRaise;
    else
@@ -2034,14 +2040,13 @@ end;
 function TdwsCompiler.ReadFor: TForExpr;
 var
    expr : TNoPosExpr;
-   loopVarExpr, loopVarExprSafe : TIntVarExpr;
+   loopVarExpr : TIntVarExpr;
    fromExpr, toExpr : TNoPosExpr;
    sym : TSymbol;
    forPos, enumPos : TScriptPos;
    forExprClass : TForExprClass;
 begin
    loopVarExpr:=nil;
-   loopVarExprSafe:=nil;
    fromExpr:=nil;
    toExpr:=nil;
    try
@@ -2056,9 +2061,7 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_FORLoopMustBeLocalVariable);
 
       loopVarExpr:=TIntVarExpr(expr);
-      loopVarExprSafe:=loopVarExpr;
       WarnForVarUsage(loopVarExpr);
-      FForVarExprs.Add(loopVarExpr);
 
       if FTok.TestDelete(ttIN) then begin
 
@@ -2107,9 +2110,10 @@ begin
       end;
 
       Result:=forExprClass.Create(FProg, forPos);
+      FLoopExprs.Add(Result);
       try
          Result.VarExpr:=loopVarExpr;
-         loopVarExprSafe:=nil;
+         loopVarExpr:=nil;
 
          Result.FromExpr:=fromExpr;
          fromExpr:=nil;
@@ -2125,9 +2129,9 @@ begin
          Result.Free;
          raise;
       end;
+      FLoopExprs.Delete(FLoopExprs.Count-1);
    finally
-      FForVarExprs.Remove(loopVarExpr);
-      loopVarExprSafe.Free;
+      loopVarExpr.Free;
       fromExpr.Free;
       toExpr.Free;
    end;
@@ -2138,13 +2142,17 @@ end;
 procedure TdwsCompiler.WarnForVarUsage(varExpr : TVarExpr);
 var
    i : Integer;
+   loopExpr : TExprBase;
    currVarExpr : TVarExpr;
 begin
-   for i:=0 to FForVarExprs.Count-1 do begin
-      currVarExpr:=TVarExpr(FForVarExprs.List[i]);
-      if currVarExpr.SameVarAs(varExpr) then begin
-         FMsgs.AddCompilerWarning(FTok.HotPos, CPE_AssignementToFORLoopVariable);
-         Break;
+   for i:=FLoopExprs.Count-1 downto 0 do begin
+      loopExpr:=TExprBase(FLoopExprs.List[i]);
+      if loopExpr.InheritsFrom(TForExpr) then begin
+         currVarExpr:=TForExpr(loopExpr).VarExpr;
+         if currVarExpr.SameVarAs(varExpr) then begin
+            FMsgs.AddCompilerWarning(FTok.HotPos, CPE_AssignementToFORLoopVariable);
+            Break;
+         end;
       end;
    end;
 end;
@@ -2270,34 +2278,42 @@ begin
    Result:=condList.Count;
 end;
 
+// ReadWhile
+//
 function TdwsCompiler.ReadWhile: TWhileExpr;
 begin
-  Result := TWhileExpr.Create(FProg, FTok.HotPos);
-  try
-    TWhileExpr(Result).CondExpr := ReadExpr;
+   Result := TWhileExpr.Create(FProg, FTok.HotPos);
+   FLoopExprs.Add(Result);
+   try
+      TWhileExpr(Result).CondExpr := ReadExpr;
 
-    if not FTok.TestDelete(ttDO) then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
+      if not FTok.TestDelete(ttDO) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
 
-    TWhileExpr(Result).LoopExpr := ReadBlock;
-  except
-    Result.Free;
-    raise;
-  end;
+      TWhileExpr(Result).LoopExpr := ReadBlock;
+   except
+      Result.Free;
+      raise;
+   end;
+   FLoopExprs.Delete(FLoopExprs.Count-1);
 end;
 
+// ReadRepeat
+//
 function TdwsCompiler.ReadRepeat: TRepeatExpr;
 var
-  tt: TTokenType;
+   tt: TTokenType;
 begin
-  Result := TRepeatExpr.Create(FProg, FTok.HotPos);
-  try
-    TRepeatExpr(Result).LoopExpr := ReadBlocks([ttUNTIL], tt);
-    TRepeatExpr(Result).CondExpr := ReadExpr;
-  except
-    Result.Free;
-    raise;
-  end;
+   Result := TRepeatExpr.Create(FProg, FTok.HotPos);
+   FLoopExprs.Add(Result);
+   try
+      TRepeatExpr(Result).LoopExpr := ReadBlocks([ttUNTIL], tt);
+      TRepeatExpr(Result).CondExpr := ReadExpr;
+   except
+      Result.Free;
+      raise;
+   end;
+   FLoopExprs.Delete(FLoopExprs.Count-1);
 end;
 
 function TdwsCompiler.ReadAssign(Left: TDataExpr): TNoResultExpr;
