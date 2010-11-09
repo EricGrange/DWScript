@@ -3322,9 +3322,9 @@ end;
 //
 function TdwsCompiler.ReadExprAdd: TNoPosExpr;
 var
-   r: TNoPosExpr;
+   right: TNoPosExpr;
    tt: TTokenType;
-   Pos: TScriptPos;
+   hotPos: TScriptPos;
    sameType : Boolean;
    exprClass : TBinaryOpExprClass;
 begin
@@ -3333,49 +3333,59 @@ begin
    try
 
       while True do begin
-         tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttOR, ttAND, ttXOR, ttSHL, ttSHR, ttIN]);
+         tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttOR, ttAND, ttXOR, ttSHL, ttSHR,
+                                 ttIN, ttNOT]);
          if tt=ttNone then Break;
 
-         Pos := FTok.HotPos;
+         hotPos := FTok.HotPos;
 
-         if tt = ttIN then
+         if tt = ttNOT then begin
+
+            if not FTok.TestDelete(ttIN) then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_InExpected);
+            Result := ReadExprIn(Result);
+            Result := TNotExpr.Create(FProg, Result);
+
+         end else if tt = ttIN then
+
             Result := ReadExprIn(Result)
+
          else begin
             // Read right argument
-            r := ReadExprMult;
+            right := ReadExprMult;
             try
                // Generate function and add left and right argument
                exprClass:=nil;
-               sameType:=(Result.Typ=r.Typ);
+               sameType:=(Result.Typ=right.Typ);
                case tt of
                   ttPLUS: begin
-                     if sameType and (r.Typ=FProg.TypInteger) then
+                     if sameType and (right.Typ=FProg.TypInteger) then
                         exprClass:=TAddIntExpr
-                     else if sameType and (r.Typ=FProg.TypString) then
+                     else if sameType and (right.Typ=FProg.TypString) then
                         exprClass:=TAddStrExpr
-                     else if (Result.Typ=FProg.TypFloat) or (r.Typ=FProg.TypFloat) then
+                     else if (Result.Typ=FProg.TypFloat) or (right.Typ=FProg.TypFloat) then
                         exprClass:=TAddFloatExpr
                      else exprClass:=TAddExpr;
                   end;
                   ttMINUS: begin
-                     if sameType and (r.Typ=FProg.TypInteger) then
+                     if sameType and (right.Typ=FProg.TypInteger) then
                         exprClass:=TSubIntExpr
-                     else if sameType and (r.Typ=FProg.TypFloat) then
+                     else if sameType and (right.Typ=FProg.TypFloat) then
                         exprClass:=TSubFloatExpr
                      else exprClass:=TSubExpr;
                   end;
                   ttOR: begin
-                     if (Result.Typ=FProg.TypBoolean) or (r.Typ=FProg.TypBoolean) then
+                     if (Result.Typ=FProg.TypBoolean) or (right.Typ=FProg.TypBoolean) then
                         exprClass:=TBoolOrExpr
                      else exprClass:=TIntOrExpr;
                   end;
                   ttAND: begin
-                       if (Result.Typ=FProg.TypBoolean) or (r.Typ=FProg.TypBoolean) then
+                       if (Result.Typ=FProg.TypBoolean) or (right.Typ=FProg.TypBoolean) then
                           exprClass:=TBoolAndExpr
                        else exprClass:=TIntAndExpr;
                   end;
                   ttXOR : begin
-                     if (Result.IsBooleanValue) or (r.IsBooleanValue) then
+                     if (Result.IsBooleanValue) or (right.IsBooleanValue) then
                         exprClass:=TBoolXorExpr
                      else exprClass:=TIntXorExpr;
                   end;
@@ -3385,14 +3395,14 @@ begin
                   Assert(False);
                end;
 
-               Result:=exprClass.Create(FProg, Result, r);
+               Result:=exprClass.Create(FProg, Result, right);
             except
-               r.Free;
+               right.Free;
                raise;
             end;
          end;
 
-         Result.TypeCheckNoPos(Pos);
+         Result.TypeCheckNoPos(hotPos);
          if Optimize then
             Result:=Result.Optimize;
       end;
