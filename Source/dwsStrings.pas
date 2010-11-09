@@ -54,6 +54,9 @@ const
   SWI_IFNDEF = 'IFNDEF';
   SWI_ENDIF = 'ENDIF';
   SWI_ELSE = 'ELSE';
+  SWI_HINT = 'HINT';
+  SWI_WARNING = 'WARNING';
+  SWI_ERROR = 'ERROR';
 
   // COMPILER ERRORS
   //

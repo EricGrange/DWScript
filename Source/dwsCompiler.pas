@@ -280,14 +280,16 @@ type
                          siIncludeLong, siIncludeShort,
                          siFilterLong, siFilterShort,
                          siDefine, siUndef,
-                         siIfDef, siIfNDef, siEndIf, siElse);
+                         siIfDef, siIfNDef, siEndIf, siElse,
+                         siHint, siWarning, siError );
 
 const
    cSwitchInstructions : array [TSwitchInstruction] of String = (
       '',
       SWI_INCLUDE_LONG, SWI_INCLUDE_SHORT, SWI_FILTER_LONG, SWI_FILTER_SHORT,
       SWI_DEFINE, SWI_UNDEF,
-      SWI_IFDEF, SWI_IFNDEF, SWI_ENDIF, SWI_ELSE
+      SWI_IFDEF, SWI_IFNDEF, SWI_ENDIF, SWI_ELSE,
+      SWI_HINT, SWI_WARNING, SWI_ERROR
       );
 
 type
@@ -3865,6 +3867,20 @@ begin
          else FConditionalDepth.Delete(FConditionalDepth.Count-1);
 
       end;
+      siHint, siWarning, siError : begin
+
+         if not FTok.Test(ttStrVal) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected)
+         else begin
+            case switch of
+               siHint    : FMsgs.AddCompilerHint(switchPos, FTok.GetToken.FString);
+               siWarning : FMsgs.AddCompilerWarning(switchPos, FTok.GetToken.FString);
+               siError   : FMsgs.AddCompilerError(switchPos, FTok.GetToken.FString);
+            end;
+            FTok.KillToken;
+         end;
+
+      end
    else
       FMsgs.AddCompilerStopFmt(switchPos, CPE_CompilerSwitchUnknown, [Name]);
    end;
