@@ -3709,6 +3709,8 @@ begin
                   try
                      if (not constpar) and (typ is TOpenArraySymbol) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamMustBeConst);
+                     if (typ is TDynamicArraySymbol) then
+                        FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamElementsMustBeVariant);
 
                      if FTok.TestDelete(ttEQ) then begin
                         if varpar then

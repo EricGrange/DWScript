@@ -236,6 +236,7 @@ const
   CPE_VarParamCantHaveDefaultValue = 'var parameter can''t have a default value';
   CPE_ConstParamCantHaveDefaultValue = 'const parameter can''t have a default value';
   CPE_OpenArrayParamMustBeConst = 'open array parameter must be const';
+  CPE_OpenArrayParamElementsMustBeVariant = 'open array parameter elements must be Variant';
   CPE_FieldExists = 'There is already a field with name "%s"';
   CPE_PropertyExists = 'There is already a property with name "%s"';
   CPE_MethodExists = 'There is already a method with name "%s"';
