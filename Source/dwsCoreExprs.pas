@@ -812,14 +812,17 @@ type
      FDoExpr: TNoPosExpr;
      FFromExpr: TNoPosExpr;
      FToExpr: TNoPosExpr;
+     FStepExpr: TNoPosExpr;
      FVarExpr: TIntVarExpr;
    public
      destructor Destroy; override;
      procedure Initialize; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     function EvalStep : Int64;
      property DoExpr: TNoPosExpr read FDoExpr write FDoExpr;
      property FromExpr: TNoPosExpr read FFromExpr write FFromExpr;
      property ToExpr: TNoPosExpr read FToExpr write FToExpr;
+     property StepExpr : TNoPosExpr read FStepExpr write FStepExpr;
      property VarExpr: TIntVarExpr read FVarExpr write FVarExpr;
    end;
 
@@ -3748,6 +3751,7 @@ begin
   FDoExpr.Free;
   FFromExpr.Free;
   FToExpr.Free;
+  FStepExpr.Free;
   FVarExpr.Free;
   inherited;
 end;
@@ -3757,6 +3761,8 @@ begin
   inherited;
   FFromExpr.Initialize;
   FToExpr.Initialize;
+  if FStepExpr<>nil then
+     FStepExpr.Initialize;
   FDoExpr.Initialize;
 end;
 
@@ -3764,24 +3770,30 @@ end;
 //
 procedure TForExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
-   FFromExpr.TypeCheckNoPos(Pos);
-   if not FFromExpr.IsIntegerValue then
-      AddCompilerStop(CPE_IntegerExpected);
-   FToExpr.TypeCheckNoPos(Pos);
-   if not FToExpr.IsIntegerValue then
-      AddCompilerStop(CPE_IntegerExpected);
+   // checked in compiler
+end;
+
+// EvalStep
+//
+function TForExpr.EvalStep : Int64;
+begin
+   if FStepExpr<>nil then begin
+      Result:=FStepExpr.EvalAsInteger;
+      if Result<=0 then
+         AddExecutionStopFmt(RTE_ForLoopStepShouldBeStrictlyPositive, [Result])
+   end else Result:=1;
 end;
 
 { TForUpwardExpr }
 
 procedure TForUpwardExpr.EvalNoResult(var status : TExecutionStatusResult);
 var
-   i : Int64;
-   toValue: Int64;
+   i, step, toValue: Int64;
 begin
    status:=esrNone;
    i:=FFromExpr.EvalAsInteger;
    toValue:=FToExpr.EvalAsInteger;
+   step:=EvalStep;
    FVarExpr.AssignValueAsPInteger(@i);
    while i<=toValue do begin
       FProg.DoStep(Self);
@@ -3796,7 +3808,7 @@ begin
             esrExit : Exit;
          end;
       end;
-      Inc(i);
+      Inc(i, step);
       FVarExpr.AssignValueAsPInteger(@i);
    end;
 end;
@@ -3805,12 +3817,12 @@ end;
 
 procedure TForDownwardExpr.EvalNoResult(var status : TExecutionStatusResult);
 var
-   i : Int64;
-   toValue: Int64;
+   i, step, toValue: Int64;
 begin
    status:=esrNone;
    i:=FFromExpr.EvalAsInteger;
    toValue:=FToExpr.EvalAsInteger;
+   step:=EvalStep;
    FVarExpr.AssignValueAsPInteger(@i);
    while i>=toValue do begin
       FProg.DoStep(Self);
@@ -3825,7 +3837,7 @@ begin
             esrExit : Exit;
          end;
       end;
-      Dec(i);
+      Dec(i, step);
       FVarExpr.AssignValueAsPInteger(@i);
    end;
 end;

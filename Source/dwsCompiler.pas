@@ -2041,7 +2041,7 @@ function TdwsCompiler.ReadFor: TForExpr;
 var
    expr : TNoPosExpr;
    loopVarExpr : TIntVarExpr;
-   fromExpr, toExpr : TNoPosExpr;
+   fromExpr, toExpr, stepExpr : TNoPosExpr;
    sym : TSymbol;
    forPos, enumPos : TScriptPos;
    forExprClass : TForExprClass;
@@ -2095,6 +2095,8 @@ begin
            FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
 
          fromExpr:=ReadExpr;
+         if not fromExpr.IsIntegerValue then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
 
          if FTok.TestDelete(ttTO) then
             forExprClass:=TForUpwardExpr
@@ -2102,10 +2104,12 @@ begin
             forExprClass:=TForDownwardExpr
          else begin
             forExprClass:=nil;
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ToOrDowntoExpected);
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ToOrDowntoExpected);
          end;
 
          toExpr:=ReadExpr;
+         if not toExpr.IsIntegerValue then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
 
       end;
 
@@ -2120,6 +2124,17 @@ begin
 
          Result.ToExpr:=toExpr;
          toExpr:=nil;
+
+         if FTok.Test(ttNAME) and SameText(FTok.GetToken.FString, 'step') then begin
+            FTok.KillToken;
+            stepExpr:=ReadExpr;
+            Result.StepExpr:=stepExpr;
+            if not stepExpr.IsIntegerValue then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
+            if stepExpr.InheritsFrom(TConstIntExpr) and (TConstIntExpr(stepExpr).EvalAsInteger<=0) then
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ForLoopStepShouldBeStrictlyPositive,
+                                         [TConstIntExpr(stepExpr).EvalAsInteger]);
+         end;
 
          if not FTok.TestDelete(ttDO) then
            FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);

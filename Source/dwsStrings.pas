@@ -310,6 +310,7 @@ const
   RTE_ArrayLowerBoundExceeded = 'Lower bound exceeded! Index %d';
   RTE_UpperBoundExceeded = 'Upper bound exceeded!';
   RTE_LowerBoundExceeded = 'Lower bound exceeded!';
+  RTE_ForLoopStepShouldBeStrictlyPositive = 'FOR loop STEP should be strictly positive: %d';
   RTE_InvalidBreak = 'break without for/while/repeat or case';
   RTE_InvalidContinue = 'continue without for/while/repeat or case';
   RTE_ClassCastFailed = 'Can''t cast instance of type "%s" to class "%s"';
