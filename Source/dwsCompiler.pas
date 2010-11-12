@@ -24,7 +24,8 @@ interface
 
 uses
   Variants, Classes, SysUtils, dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors,
-  dwsStrings, dwsFunctions, dwsStack, dwsCoreExprs, dwsFileSystem, dwsMagicExprs;
+  dwsStrings, dwsFunctions, dwsStack, dwsCoreExprs, dwsFileSystem, dwsUtils,
+  dwsMagicExprs;
 
 type
   TCompilerOption = (coOptimize, coSymbolDictionary, coContextMap);
@@ -113,27 +114,38 @@ type
     property Dependencies: TStrings read GetDependencies;
   end;
 
-  TAddArgProcedure = procedure(ArgExpr: TNoPosExpr) of object;
+   TAddArgProcedure = procedure(ArgExpr: TNoPosExpr) of object;
 
-  TSpecialKeywordKind = (skNone, skAssigned, skChr, skHigh, skLength, skLow, skOrd, skSizeOf);
+   TSpecialKeywordKind = (skNone, skAssigned, skChr, skHigh, skLength, skLow, skOrd, skSizeOf);
+
+   TSwitchInstruction = (siNone,
+                         siIncludeLong, siIncludeShort,
+                         siFilterLong, siFilterShort,
+                         siDefine, siUndef,
+                         siIfDef, siIfNDef, siEndIf, siElse,
+                         siHint, siWarning, siError );
+
+   TLoopExitable = (leNotExitable, leBreak, leExit);
 
    // TdwsCompiler
    //
    TdwsCompiler = class
    private
-      FCompilerOptions: TCompilerOptions;
-      FConnectors: TStrings;
-      FFilter: TdwsFilter;
-      FMsgs: TdwsMessageList;
-      FOnInclude: TIncludeEvent;
-      FProg: TdwsProgram;
-      FScriptPaths: TStrings;
-      FTok: TTokenizer;
-      FIsExcept: Boolean;
-      FLoopExprs: TList;
-      FCompileFileSystem : IdwsFileSystem;
+      FCompilerOptions : TCompilerOptions;
+      FMsgs : TdwsMessageList;
+      FProg : TdwsProgram;
+      FTok : TTokenizer;
+      FLoopExprs : TSimpleStack<TNoResultExpr>;
+      FLoopExitable : TSimpleStack<TLoopExitable>;
+      FConditionalDepth : TSimpleStack<TSwitchInstruction>;
+
+      FConnectors : TStrings;
       FConditionalDefines : TStringList;
-      FConditionalDepth : TList;
+      FCompileFileSystem : IdwsFileSystem;
+      FOnInclude : TIncludeEvent;
+      FScriptPaths : TStrings;
+      FFilter : TdwsFilter;
+      FIsExcept : Boolean;
 
       function Optimize : Boolean;
 
@@ -222,6 +234,10 @@ type
       function ResolveUnitReferences(Units: TStrings): TInterfaceList;
 
    protected
+      procedure EnterLoop(loopExpr : TNoResultExpr);
+      procedure MarkLoopExitable(level : TLoopExitable);
+      procedure LeaveLoop;
+
       function GetMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
                              const Pos: TScriptPos; IsInstruction: Boolean; ForceStatic : Boolean = False): TFuncExpr;
 
@@ -278,14 +294,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-type
-   TSwitchInstruction = (siNone,
-                         siIncludeLong, siIncludeShort,
-                         siFilterLong, siFilterShort,
-                         siDefine, siUndef,
-                         siIfDef, siIfNDef, siEndIf, siElse,
-                         siHint, siWarning, siError );
-
 const
    cSwitchInstructions : array [TSwitchInstruction] of String = (
       '',
@@ -333,12 +341,13 @@ end;
 constructor TdwsCompiler.Create;
 begin
    inherited;
-   FLoopExprs:=TList.Create;
    FConditionalDefines:=TStringList.Create;
    FConditionalDefines.Sorted:=True;
    FConditionalDefines.CaseSensitive:=False;
    FConditionalDefines.Duplicates:=dupIgnore;
-   FConditionalDepth:=TList.Create;
+   FLoopExprs:=TSimpleStack<TNoResultExpr>.Create;
+   FLoopExitable:=TSimpleStack<TLoopExitable>.Create;
+   FConditionalDepth:=TSimpleStack<TSwitchInstruction>.Create;
 end;
 
 // Destroy
@@ -347,6 +356,7 @@ destructor TdwsCompiler.Destroy;
 begin
    FConditionalDepth.Free;
    FConditionalDefines.Free;
+   FLoopExitable.Free;
    FLoopExprs.Free;
    inherited;
 end;
@@ -411,6 +421,43 @@ begin
   end;
 end;
 
+// EnterLoop
+//
+procedure TdwsCompiler.EnterLoop(loopExpr : TNoResultExpr);
+begin
+   FLoopExprs.Push(loopExpr);
+   FLoopExitable.Push(leNotExitable);
+end;
+
+// MarkLoopExitable
+//
+procedure TdwsCompiler.MarkLoopExitable(level : TLoopExitable);
+var
+   i : Integer;
+begin
+   if FLoopExprs.Count=0 then Exit;
+   case level of
+      leBreak : begin
+         if FLoopExitable.Peek=leNotExitable then
+            FLoopExitable.Peek:=level;
+      end;
+      leExit : begin
+         for i:=0 to FLoopExitable.Count-1 do begin
+            if FLoopExitable.Items[i]=level then Break;
+            FLoopExitable.Items[i]:=level;
+         end;
+      end;
+   end;
+end;
+
+// LeaveLoop
+//
+procedure TdwsCompiler.LeaveLoop;
+begin
+   FLoopExprs.Pop;
+   FLoopExitable.Pop;
+end;
+
 // GetMethodExpr
 //
 function TdwsCompiler.GetMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
@@ -445,6 +492,7 @@ begin
    else FCompileFileSystem := TdwsOSFileSystem.Create;
 
    FLoopExprs.Clear;
+   FLoopExitable.Clear;
    FConditionalDefines.Assign(conf.Conditionals);
    FConditionalDepth.Clear;
 
@@ -1412,9 +1460,12 @@ begin
          if FLoopExprs.Count=0 then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_BreakOutsideOfLoop);
          Result := TBreakExpr.Create(FProg, FTok.HotPos);
+         MarkLoopExitable(leBreak);
       end;
-      ttEXIT :
+      ttEXIT : begin
          Result := ReadExit;
+         MarkLoopExitable(leExit);
+      end;
       ttTRY :
          Result := ReadTry;
       ttCONTINUE : begin
@@ -2114,7 +2165,7 @@ begin
       end;
 
       Result:=forExprClass.Create(FProg, forPos);
-      FLoopExprs.Add(Result);
+      EnterLoop(Result);
       try
          Result.VarExpr:=loopVarExpr;
          loopVarExpr:=nil;
@@ -2144,7 +2195,7 @@ begin
          Result.Free;
          raise;
       end;
-      FLoopExprs.Delete(FLoopExprs.Count-1);
+      LeaveLoop;
    finally
       loopVarExpr.Free;
       fromExpr.Free;
@@ -2157,11 +2208,11 @@ end;
 procedure TdwsCompiler.WarnForVarUsage(varExpr : TVarExpr);
 var
    i : Integer;
-   loopExpr : TExprBase;
+   loopExpr : TNoResultExpr;
    currVarExpr : TVarExpr;
 begin
-   for i:=FLoopExprs.Count-1 downto 0 do begin
-      loopExpr:=TExprBase(FLoopExprs.List[i]);
+   for i:=0 to FLoopExprs.Count-1 do begin
+      loopExpr:=FLoopExprs.Items[i];
       if loopExpr.InheritsFrom(TForExpr) then begin
          currVarExpr:=TForExpr(loopExpr).VarExpr;
          if currVarExpr.SameVarAs(varExpr) then begin
@@ -2298,7 +2349,7 @@ end;
 function TdwsCompiler.ReadWhile: TWhileExpr;
 begin
    Result := TWhileExpr.Create(FProg, FTok.HotPos);
-   FLoopExprs.Add(Result);
+   EnterLoop(Result);
    try
       TWhileExpr(Result).CondExpr := ReadExpr;
 
@@ -2310,7 +2361,7 @@ begin
       Result.Free;
       raise;
    end;
-   FLoopExprs.Delete(FLoopExprs.Count-1);
+   LeaveLoop;
 end;
 
 // ReadRepeat
@@ -2320,7 +2371,7 @@ var
    tt: TTokenType;
 begin
    Result := TRepeatExpr.Create(FProg, FTok.HotPos);
-   FLoopExprs.Add(Result);
+   EnterLoop(Result);
    try
       TRepeatExpr(Result).LoopExpr := ReadBlocks([ttUNTIL], tt);
       TRepeatExpr(Result).CondExpr := ReadExpr;
@@ -2328,7 +2379,7 @@ begin
       Result.Free;
       raise;
    end;
-   FLoopExprs.Delete(FLoopExprs.Count-1);
+   LeaveLoop;
 end;
 
 function TdwsCompiler.ReadAssign(Left: TDataExpr): TNoResultExpr;
@@ -3157,7 +3208,7 @@ var
    exitPos : TScriptPos;
 begin
    exitPos:=FTok.HotPos;
-   if FTok.Test(ttSEMI) or FTok.Test(ttEND) then
+   if FTok.TestAny([ttEND, ttSEMI, ttELSE, ttUNTIL])<>ttNone then
       Result:=TExitExpr.Create(FProg, FTok.HotPos)
    else begin
       if not (FProg is TProcedure) then
@@ -3889,10 +3940,10 @@ begin
          FTok.KillToken;
 
          if conditionalTrue then
-            FConditionalDepth.Add(Pointer(switch))
+            FConditionalDepth.Push(switch)
          else begin
             if ReadUntilEndOrElseSwitch(True) then
-               FConditionalDepth.Add(Pointer(siElse));
+               FConditionalDepth.Push(siElse);
             if not FTok.HasTokens then
                FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective);
          end;
@@ -3902,7 +3953,7 @@ begin
 
          if FConditionalDepth.Count=0 then
             FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective);
-         if FConditionalDepth.Last=Pointer(siElse) then
+         if FConditionalDepth.Peek=siElse then
             FMsgs.AddCompilerStop(switchPos, CPE_UnfinishedConditionalDirective);
 
          ReadUntilEndOrElseSwitch(False);
@@ -3914,7 +3965,7 @@ begin
 
          if FConditionalDepth.Count=0 then
             FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective)
-         else FConditionalDepth.Delete(FConditionalDepth.Count-1);
+         else FConditionalDepth.Pop;
 
       end;
       siHint, siWarning, siError : begin
