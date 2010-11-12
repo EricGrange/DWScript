@@ -158,7 +158,8 @@ type
      function HasTokens: Boolean;
      procedure KillToken;
      function NextTest(t: TTokenType): Boolean;
-     function Test(t: TTokenType): Boolean; inline;
+     function Test(t: TTokenType): Boolean;
+     function TestAny(const t: TTokenTypes) : TTokenType;
      function TestDelete(t: TTokenType): Boolean;
      function TestDeleteAny(const t: TTokenTypes) : TTokenType;
      function NextTestName: Boolean;
@@ -627,6 +628,22 @@ begin
 
    Result:=(FToken.FTyp=t);
    FHotPos.LineCol:=FToken.FPos.LineCol;
+end;
+
+// TestAny
+//
+function TTokenizer.TestAny(const t: TTokenTypes) : TTokenType;
+begin
+   if not Assigned(FToken) then begin
+      ReadToken;
+      if not Assigned(FToken) then
+         Exit(ttNone);
+   end;
+
+   FHotPos.LineCol:=FToken.FPos.LineCol;
+   if (FToken.FTyp in t) then
+      Result:=FToken.FTyp
+   else Result:=ttNone;
 end;
 
 function TTokenizer.TestDelete(t: TTokenType): Boolean;
