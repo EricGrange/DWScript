@@ -4,7 +4,9 @@ begin
       exit -1
    else begin
       Result:=i;
-      if i=10 then
+      if i<10 then
+         exit
+      else if i=10 then
          exit i+1
       else if i>10 then
          exit Result+2
