@@ -68,6 +68,7 @@ type
          property List : PPointerList read GetList;
          property Count : Integer read FCount;
 
+         procedure Free; // to posture as a regular TList
          procedure Clean;  // clear the list and free the item objects
          procedure Clear;  // clear the list without freeing the items
          function Add(item : Pointer) : Integer;
@@ -100,6 +101,28 @@ type
          property Items[index : Integer] : Pointer read GetItem; default;
          property Count : Integer read FCount;
    end;
+
+   // TSimpleStack<T>
+   //
+   {: A minimalistic generic stack }
+   TSimpleStack<T> = class
+      private
+         FItems : array of T;
+         FCount : Integer;
+      protected
+         function GetPeek : T;
+         procedure SetPeek(const item : T);
+         function GetItems(const position : Integer) : T;
+         procedure SetItems(const position : Integer; const value : T);
+      public
+         procedure Push(const item : T);
+         function Pop : T;
+         procedure Clear;
+         property Peek : T read GetPeek write SetPeek;
+         property Items[const position : Integer] : T read GetItems write SetItems;
+         property Count : Integer read FCount;
+   end;
+
 
 {: Changes the class of an object (by altering the VMT pointer).<p>
    Only checks IntanceSize.
@@ -351,6 +374,13 @@ begin
    FCount:=0;
 end;
 
+// Free
+//
+procedure TTightList.Free;
+begin
+   Clear;
+end;
+
 // GetList
 //
 function TTightList.GetList : PPointerList;
@@ -498,10 +528,15 @@ var
 begin
    if (Cardinal(curIndex)>=Cardinal(FCount)) or (Cardinal(newIndex)>=Cardinal(FCount)) then
       RaiseIndexOutOfBounds
-   else if curIndex<>newIndex then begin
-      item:=FList[curIndex];
-      Delete(curIndex);
-      Insert(newIndex, item);
+   else begin
+      case curIndex-newIndex of
+         0 : ; // ignore
+         -1, 1 : Exchange(curIndex, newIndex);
+      else
+         item:=FList[curIndex];
+         Delete(curIndex);
+         Insert(newIndex, item);
+      end;
    end;
 end;
 
@@ -571,7 +606,7 @@ end;
 procedure TSortedList.InsertItem(index : Integer; const anItem : Pointer);
 begin
    if Count=Length(FItems) then
-      SetLength(FItems, Count+8+(Count shr 24));
+      SetLength(FItems, Count+8+(Count shr 4));
    if index<Count then
       System.Move(FItems[index], FItems[index+1], (Count-index)*SizeOf(Pointer));
    Inc(FCount);
@@ -606,6 +641,67 @@ end;
 // Clear
 //
 procedure TSortedList.Clear;
+begin
+   SetLength(FItems, 0);
+   FCount:=0;
+end;
+
+// ------------------
+// ------------------ TSimpleStack<T> ------------------
+// ------------------
+
+// Push
+//
+procedure TSimpleStack<T>.Push(const item : T);
+var
+   capacity : Integer;
+begin
+   capacity:=Length(FItems);
+   if FCount=capacity then
+      SetLength(FItems, capacity+8+(capacity shr 2));
+   FItems[FCount]:=item;
+   Inc(FCount);
+end;
+
+// Pop
+//
+function TSimpleStack<T>.Pop : T;
+begin
+   Result:=FItems[FCount-1];
+   Dec(FCount);
+end;
+
+// GetPeek
+//
+function TSimpleStack<T>.GetPeek : T;
+begin
+   Result:=FItems[FCount-1];
+end;
+
+// SetPeek
+//
+procedure TSimpleStack<T>.SetPeek(const item : T);
+begin
+   FItems[FCount-1]:=item;
+end;
+
+// GetItems
+//
+function TSimpleStack<T>.GetItems(const position : Integer) : T;
+begin
+   Result:=FItems[FCount-1-position];
+end;
+
+// SetItems
+//
+procedure TSimpleStack<T>.SetItems(const position : Integer; const value : T);
+begin
+   FItems[FCount-1-position]:=value;
+end;
+
+// Clear
+//
+procedure TSimpleStack<T>.Clear;
 begin
    SetLength(FItems, 0);
    FCount:=0;
