@@ -1,4 +1,5 @@
 Hint: first hint [line: 1, column: 3]
 Syntax Error: String expected [line: 2, column: 8]
 Warning: second warn [line: 3, column: 3]
-Syntax Error: then error [line: 4, column: 3]
+Compile Error: then error [line: 4, column: 3]
+Compile Error: all ends here [line: 5, column: 3]

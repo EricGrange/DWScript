@@ -123,7 +123,7 @@ type
                          siFilterLong, siFilterShort,
                          siDefine, siUndef,
                          siIfDef, siIfNDef, siEndIf, siElse,
-                         siHint, siWarning, siError );
+                         siHint, siWarning, siError, siFatal );
 
    TLoopExitable = (leNotExitable, leBreak, leExit);
 
@@ -300,7 +300,7 @@ const
       SWI_INCLUDE_LONG, SWI_INCLUDE_SHORT, SWI_FILTER_LONG, SWI_FILTER_SHORT,
       SWI_DEFINE, SWI_UNDEF,
       SWI_IFDEF, SWI_IFNDEF, SWI_ENDIF, SWI_ELSE,
-      SWI_HINT, SWI_WARNING, SWI_ERROR
+      SWI_HINT, SWI_WARNING, SWI_ERROR, SWI_FATAL
       );
 
 type
@@ -3968,7 +3968,7 @@ begin
          else FConditionalDepth.Pop;
 
       end;
-      siHint, siWarning, siError : begin
+      siHint, siWarning, siError, siFatal : begin
 
          if not FTok.Test(ttStrVal) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected)
@@ -3976,7 +3976,8 @@ begin
             case switch of
                siHint    : FMsgs.AddCompilerHint(switchPos, FTok.GetToken.FString);
                siWarning : FMsgs.AddCompilerWarning(switchPos, FTok.GetToken.FString);
-               siError   : FMsgs.AddCompilerError(switchPos, FTok.GetToken.FString);
+               siError   : FMsgs.AddCompilerError(switchPos, FTok.GetToken.FString, TCompilerErrorMessage);
+               siFatal   : FMsgs.AddCompilerStop(switchPos, FTok.GetToken.FString, TCompilerErrorMessage);
             end;
             FTok.KillToken;
          end;

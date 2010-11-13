@@ -57,6 +57,7 @@ const
   SWI_HINT = 'HINT';
   SWI_WARNING = 'WARNING';
   SWI_ERROR = 'ERROR';
+  SWI_FATAL = 'FATAL';
 
   // COMPILER ERRORS
   //
