@@ -4052,6 +4052,9 @@ begin
 
          end;
 
+      else
+         while FTok.HasTokens and not FTok.Test(ttCRIGHT) do
+            FTok.KillToken;
       end;
 
       if not FTok.TestDelete(ttCRIGHT) then
