@@ -454,6 +454,9 @@ end;
 //
 procedure TdwsCompiler.LeaveLoop;
 begin
+   if FLoopExitable.Peek=leNotExitable then
+      FProg.Msgs.AddCompilerWarning(FLoopExprs.Peek.Pos, CPW_InfiniteLoop);
+
    FLoopExprs.Pop;
    FLoopExitable.Pop;
 end;
@@ -2167,6 +2170,7 @@ begin
       Result:=forExprClass.Create(FProg, forPos);
       EnterLoop(Result);
       try
+         MarkLoopExitable(leBreak);
          Result.VarExpr:=loopVarExpr;
          loopVarExpr:=nil;
 
@@ -2351,12 +2355,17 @@ begin
    Result := TWhileExpr.Create(FProg, FTok.HotPos);
    EnterLoop(Result);
    try
-      TWhileExpr(Result).CondExpr := ReadExpr;
+      Result.CondExpr := ReadExpr;
 
       if not FTok.TestDelete(ttDO) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
 
-      TWhileExpr(Result).LoopExpr := ReadBlock;
+      if    (not Result.CondExpr.IsConstant)
+         or (not Result.CondExpr.IsBooleanValue)
+         or (not Result.CondExpr.EvalAsBoolean) then
+         MarkLoopExitable(leBreak);
+
+      Result.LoopExpr := ReadBlock;
    except
       Result.Free;
       raise;
@@ -2373,8 +2382,10 @@ begin
    Result := TRepeatExpr.Create(FProg, FTok.HotPos);
    EnterLoop(Result);
    try
-      TRepeatExpr(Result).LoopExpr := ReadBlocks([ttUNTIL], tt);
-      TRepeatExpr(Result).CondExpr := ReadExpr;
+      Result.LoopExpr := ReadBlocks([ttUNTIL], tt);
+      Result.CondExpr := ReadExpr;
+      if (not Result.CondExpr.IsConstant) or Result.CondExpr.EvalAsBoolean then
+         MarkLoopExitable(leBreak);
    except
       Result.Free;
       raise;
