@@ -165,6 +165,9 @@ type
      function NextTestName: Boolean;
      function TestName: Boolean;
      function TestDeleteName: Boolean;
+
+     property PosPos : PChar read FPosPos;
+     property Text : string read FText;
      property DefaultPos: TScriptPos read FDefaultPos;
      property HotPos: TScriptPos read FHotPos;
      property CurrentPos: TScriptPos read FPos;

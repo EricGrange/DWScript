@@ -25,6 +25,7 @@ interface
 uses
   Variants, Classes, SysUtils, TypInfo, dwsCompiler, dwsDebugger,
   dwsExprs, dwsSymbols, dwsStack, dwsFunctions, dwsStrings, dwsFileSystem,
+  dwsLanguageExtension,
   // Built-In functions
 {$IFNDEF DWS_NO_BUILTIN_FUNCTIONS}
   dwsMathFunctions, dwsStringFunctions, dwsTimeFunctions, dwsVariantFunctions,
@@ -32,7 +33,28 @@ uses
   dwsErrors;
 
 type
-  TDelphiWebScript = class;
+   TDelphiWebScript = class;
+
+   // TdwsCustomLangageExtension
+   //
+   TdwsCustomLangageExtension = class (TComponent)
+      private
+         FExtension : TdwsLanguageExtension;
+         FScript : TDelphiWebScript;
+
+      protected
+         function CreateExtension : TdwsLanguageExtension; virtual; abstract;
+         procedure SetScript(const val : TDelphiWebScript);
+         procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+
+         property Extension : TdwsLanguageExtension read FExtension write FExtension;
+
+      public
+         constructor Create(AOwner: TComponent); override;
+         destructor Destroy; override;
+
+         property Script : TDelphiWebScript read FScript write SetScript;
+   end;
 
   TdwsEmptyUnit = class(TComponent, IUnknown, IUnit)
   private
@@ -64,8 +86,9 @@ type
    //
    TDelphiWebScript = class (TdwsEmptyUnit)
       private
-         FCompiler: TdwsCompiler;
-         FConfig: TdwsConfiguration;
+         FCompiler : TdwsCompiler;
+         FConfig : TdwsConfiguration;
+         FExtensions : TdwsLanguageExtensionAggregator;
 
       protected
          function GetOnInclude: TIncludeEvent;
@@ -842,20 +865,26 @@ end;
 
 { TDelphiWebScript }
 
+// Create
+//
 constructor TDelphiWebScript.Create(AOwner: TComponent);
 begin
-  inherited Create(AOwner);
-  FUnitName := 'Default';
-  FCompiler := TdwsCompiler.Create;
-  FConfig := TdwsConfiguration.Create(Self);
-  AddUnit(Self);
+   inherited Create(AOwner);
+   FUnitName := 'Default';
+   FCompiler := TdwsCompiler.Create;
+   FConfig := TdwsConfiguration.Create(Self);
+   AddUnit(Self);
+   FExtensions := TdwsLanguageExtensionAggregator.Create;
 end;
 
+// Destroy
+//
 destructor TDelphiWebScript.Destroy;
 begin
-  inherited;
-  FCompiler.Free;
-  FConfig.Free;
+   inherited;
+   FCompiler.Free;
+   FConfig.Free;
+   FExtensions.Free;
 end;
 
 function TDelphiWebScript.GetVersion: string;
@@ -869,8 +898,16 @@ begin
   // the object inspector
 end;
 
+// Compile
+//
 function TDelphiWebScript.Compile(const Text: string): TdwsProgram;
 begin
+   if FExtensions.Count>0 then begin
+      FCompiler.OnReadInstr:=FExtensions.ReadInstr;
+   end else begin
+      FCompiler.OnReadInstr:=nil;
+   end;
+
    Result := FCompiler.Compile(Text, FConfig);
 end;
 
@@ -3325,6 +3362,53 @@ begin
     FScriptObj.ExternalObject := FExternalObject;
     Info.ResultAsVariant := FScriptObj;
   end;
+end;
+
+// ------------------
+// ------------------ TdwsCustomLangageExtension ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsCustomLangageExtension.Create(AOwner: TComponent);
+begin
+   inherited;
+   FExtension:=CreateExtension;
+end;
+
+// Destroy
+//
+destructor TdwsCustomLangageExtension.Destroy;
+begin
+   inherited;
+   Script:=nil;
+   FExtension.Free;
+end;
+
+// SetScript
+//
+procedure TdwsCustomLangageExtension.SetScript(const val : TDelphiWebScript);
+begin
+   if FScript<>nil then begin
+      FScript.FExtensions.Remove(FExtension);
+      FScript.RemoveFreeNotification(Self);
+   end;
+
+   FScript:=val;
+
+   if FScript<>nil then begin
+      FScript.FExtensions.Add(FExtension);
+      FScript.FreeNotification(Self);
+   end;
+end;
+
+// Notification
+//
+procedure TdwsCustomLangageExtension.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+   inherited;
+   if (Operation=opRemove) and (AComponent=FScript) then
+      Script:=nil;
 end;
 
 end.

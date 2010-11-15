@@ -28,8 +28,8 @@ uses
   dwsMagicExprs;
 
 type
-  TCompilerOption = (coOptimize, coSymbolDictionary, coContextMap);
-  TCompilerOptions = set of TCompilerOption;
+   TCompilerOption = (coOptimize, coSymbolDictionary, coContextMap);
+   TCompilerOptions = set of TCompilerOption;
 
 const
    cDefaultCompilerOptions = [coOptimize];
@@ -37,6 +37,9 @@ const
 
 type
   TIncludeEvent = procedure(const scriptName: string; var scriptSource: string) of object;
+
+  TdwsCompiler = class;
+  TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
 
   TdwsFilter = class;
 
@@ -147,6 +150,8 @@ type
       FFilter : TdwsFilter;
       FIsExcept : Boolean;
 
+      FOnReadInstr : TCompilerReadInstrEvent;
+
       function Optimize : Boolean;
 
       function CheckFuncParams(ParamsA, ParamsB: TSymbolTable; IndexSym: TSymbol = nil;
@@ -256,6 +261,11 @@ type
       class function Evaluate(AContext: TdwsProgram; const AExpression: string): TNoPosExpr;
 
       procedure WarnForVarUsage(varExpr : TVarExpr);
+
+      property CurrentProg : TdwsProgram read FProg write FProg;
+      property Tokenizer : TTokenizer read FTok write FTok;
+
+      property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
    end;
 
   TdwsDefaultResult = class(TdwsResult)
@@ -268,7 +278,6 @@ type
     procedure AddString(const str : String); override;
     property Text: String read GetText;
   end;
-
 
   TdwsDefaultResultType = class(TdwsResultType)
   public
@@ -1446,6 +1455,11 @@ function TdwsCompiler.ReadInstr: TNoResultExpr;
 var
    locExpr : TNoPosExpr;
 begin
+   if Assigned(FOnReadInstr) then begin
+      Result:=FOnReadInstr(Self);
+      if Result<>nil then Exit;
+   end;
+
    // Decide which instruction to read
    case FTok.TestDeleteAny([ttIF, ttCASE, ttFOR, ttWHILE, ttREPEAT, ttBREAK,
                             ttEXIT, ttTRY, ttRAISE, ttCONTINUE]) of
