@@ -43,7 +43,9 @@ type
      ttAND, ttOR, ttXOR, ttDIV, ttMOD, ttNOT, ttSHL, ttSHR,
      ttPLUS, ttMINUS,
      ttTIMES, ttDIVIDE,
-     ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ, ttSEMI, ttCOMMA, ttCOLON,
+     ttAT,
+     ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
+     ttSEMI, ttCOMMA, ttCOLON,
      ttASSIGN,
      ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCRIGHT,
      ttDEFAULT, ttUSES,
@@ -183,7 +185,7 @@ implementation
 // ------------------------------------------------------------------
 
 const cReservedNames : TTokenTypes = [
-  ttStrVal, ttSWITCH, ttSEMI, ttDIVIDE, ttTIMES, ttPLUS, ttMINUS, ttSEMI,
+  ttStrVal, ttSWITCH, ttSEMI, ttDIVIDE, ttTIMES, ttPLUS, ttMINUS, ttAT, ttSEMI,
   ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttEQ, ttLESS, ttLESSEQ, ttNOTEQ, ttGTR,
   ttGTREQ, ttCOLON, ttASSIGN, ttCOMMA, ttCRIGHT, ttDOT ];
 
@@ -342,6 +344,7 @@ begin
      '*': Result := ttTIMES;
      '+': Result := ttPLUS;
      '-': Result := ttMINUS;
+     '@': Result := ttAT;
      ';': Result := ttSEMI;
      '(': Result := ttBLEFT;
      ')': Result := ttBRIGHT;
@@ -894,7 +897,7 @@ begin
 end;
 
 const
-  OPS = ['+', '-', '*', '/', '=', '<', '>'];
+  OPS = ['+', '-', '*', '/', '=', '<', '>', '@'];
   SPACE = [' ', #9, #13, #10, #0];
   SPEC = ['(', ')', ',', ';', '[', ']', '}'];
   STOP = SPEC + OPS + SPACE + [':', '%', '.', '{'];
@@ -975,7 +978,7 @@ initialization
    sStart.AddTransition([''''], TSeekTransition.Create(sString0, [toStart], caNone));
    sStart.AddTransition(['#'], TSeekTransition.Create(sChar0, [toStart], caNone));
    sStart.AddTransition([':'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
-   sStart.AddTransition(['+', '-', '*', '='], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
+   sStart.AddTransition(['+', '-', '*', '=', '@'], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
    sStart.AddTransition(SPEC, TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
    sStart.AddTransition(['/'], TConsumeTransition.Create(sSlashComment0, [toStart], caNone));
    sStart.AddTransition(['<'], TConsumeTransition.Create(sSmallerF, [toStart], caNone));
