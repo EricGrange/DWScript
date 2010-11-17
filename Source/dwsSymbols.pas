@@ -909,8 +909,20 @@ end;
 // GetAsDataString
 //
 function TExprBaseListRec.GetAsDataString(const x : Integer) : RawByteString;
+var
+   ustr : String;
+   i, n : Integer;
+   pSrc : PChar;
+   pDest : PByteArray;
 begin
-   Result:=RawByteString(GetAsString(x));
+   ustr:=GetAsString(x);
+   if ustr='' then Exit('');
+   n:=Length(ustr);
+   SetLength(Result, n);
+   pSrc:=PChar(NativeUInt(ustr));
+   pDest:=PByteArray(NativeUInt(Result));
+   for i:=0 to n-1 do
+      pDest[i]:=PByte(@pSrc[i])^;
 end;
 
 { TSymbol }
