@@ -291,8 +291,9 @@ const
   MSG_MainModule = '*MainModule*';
   MSG_Info = 'Info: %s';
   MSG_Error = 'Error: %s';
-  MSG_ScriptMsg = '%s [line: %d, column: %d]';
-  MSG_ScriptMsgLong = '%s [line: %d, column: %d, file: %s]';
+  MSG_ScriptMsgColumn = ', column: %d';
+  MSG_ScriptMsg = '%s [line: %d%s]';
+  MSG_ScriptMsgLong = '%s [line: %d%s, file: %s]';
   MSG_Hint = 'Hint: %s';
   MSG_Warning = 'Warning: %s';
   MSG_CompileError = 'Compile Error: %s';
