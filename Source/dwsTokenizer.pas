@@ -136,7 +136,7 @@ type
      FMsgs: TdwsMessageList;
      FNextToken: TToken;
      FPos: TScriptPos;
-     FPosPos : PChar;
+     FPosPtr : PChar;
      FStartState: TState;
      FSwitchHandler: TSwitchHandler;
      FText: string;
@@ -168,7 +168,7 @@ type
      function TestName: Boolean;
      function TestDeleteName: Boolean;
 
-     property PosPos : PChar read FPosPos;
+     property PosPtr : PChar read FPosPtr;
      property Text : string read FText;
      property DefaultPos: TScriptPos read FDefaultPos;
      property HotPos: TScriptPos read FHotPos;
@@ -568,7 +568,7 @@ begin
    FDefaultPos.SourceFile := FMsgs.RegisterSourceFile(SourceFile, Text);
    FHotPos := FDefaultPos;
    FPos := FDefaultPos;
-   FPosPos := PChar(FText);
+   FPosPtr := PChar(FText);
    FPos.Line := 1;
    FPos.Col := 1;
    FStartState := sStart;
@@ -783,7 +783,7 @@ begin
       while Assigned(state) do begin
 
          // Next character
-         ch:=FPosPos^;
+         ch:=FPosPtr^;
          if ch=#0 then Break;
 
          // Find next state
@@ -805,7 +805,7 @@ begin
 
          // Proceed to the next character
          if (trnsClassType=TSeekTransition) or (trnsClassType=TConsumeTransition) then begin
-            Inc(FPosPos);
+            Inc(FPosPtr);
             FPos.IncCol;
             if ch=#10 then begin
                FPos.IncLine;
