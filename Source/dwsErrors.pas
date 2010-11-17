@@ -52,7 +52,10 @@ type
          procedure SetCol(const aCol : Integer); inline;
 
       public
-         SourceFile: TSourceFile;
+         SourceFile : TSourceFile;
+
+         constructor Create(aSourceFile : TSourceFile; aLine, aCol : Integer);
+
          property LineCol : Cardinal read FLineCol write FLineCol;
          property Line : Integer read GetLine write SetLine;
          property Col : Integer read GetCol write SetCol;
@@ -232,6 +235,14 @@ const
 // ------------------
 // ------------------ TScriptPos ------------------
 // ------------------
+
+// Create
+//
+constructor TScriptPos.Create(aSourceFile : TSourceFile; aLine, aCol : Integer);
+begin
+   SourceFile:=aSourceFile;
+   Line:=(aCol shr 20)+aLine;
+end;
 
 // GetLine
 //
@@ -618,14 +629,21 @@ end;
 // AsInfo
 //
 function TScriptMessage.AsInfo: String;
+var
+   column : String;
 begin
    if (Pos.Line=cNullPos.Line) and (Pos.Col=cNullPos.Col) then
       Result:=FText
-   else if not Assigned(Pos.SourceFile) or (Pos.SourceFile.SourceFile = MSG_MainModule) then
-      Result:=Format(MSG_ScriptMsg, [FText, Pos.Line, Pos.Col])
-   else
-      Result:=Format(MSG_ScriptMsgLong, [FText, Pos.Line, Pos.Col,
-                                         ExtractFileName(Pos.SourceFile.SourceFile)])
+   else begin
+      if Pos.Col=cNullPos.Col then
+         column:=''
+      else column:=Format(MSG_ScriptMsgColumn, [Pos.Col]);
+      if not Assigned(Pos.SourceFile) or (Pos.SourceFile.SourceFile = MSG_MainModule) then
+         Result:=Format(MSG_ScriptMsg, [FText, Pos.Line, column])
+      else
+         Result:=Format(MSG_ScriptMsgLong, [FText, Pos.Line, column,
+                                            ExtractFileName(Pos.SourceFile.SourceFile)])
+   end;
 end;
 
 // ------------------
