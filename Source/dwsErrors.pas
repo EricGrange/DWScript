@@ -208,7 +208,6 @@ type
          property ClassSymObj: TObject read FClassSymObj write FClassSymObj;
    end;
 
-   EClassMethodImplIncompleteError = class(EClassIncompleteError);
    EClassPropertyIncompleteError = class(EClassIncompleteError);
 
    // The script has to be stopped because of an error

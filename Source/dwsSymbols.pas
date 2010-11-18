@@ -357,36 +357,40 @@ type
 
    // A method of a script class: TMyClass = class procedure X(param: String); end;
    TMethodSymbol = class(TFuncSymbol)
-   private
-     FClassSymbol: TClassSymbol;
-     FIsAbstract: Boolean;
-     FIsVirtual: Boolean;
-     FIsOverride: Boolean;
-     FIsOverlap: Boolean;
-     FParentMeth: TMethodSymbol;
-     FSelfSym: TDataSymbol;
-   protected
-     function GetIsClassMethod: Boolean;
-   public
-     constructor Create(const Name: string; FuncKind: TFuncKind; ClassSym: TSymbol;
-       FuncLevel: Integer = 1); virtual;
-     constructor Generate(Table: TSymbolTable; MethKind: TMethodKind;
-                          Attributes: TMethodAttributes; const MethName: string;
-                          const MethParams: TParamArray;
-                          const MethType: string; Cls: TClassSymbol);
-     procedure SetOverride(meth: TMethodSymbol);
-     procedure SetOverlap(meth: TMethodSymbol);
-     procedure InitData(const Data: TData; Offset: Integer); override;
-     function IsCompatible(typSym: TSymbol): Boolean; override;
-     property ClassSymbol: TClassSymbol read FClassSymbol;
-     property IsAbstract: Boolean read FIsAbstract write FIsAbstract;
-     property IsVirtual: Boolean read FIsVirtual write FIsVirtual;
-     property IsOverride: Boolean read FIsOverride;
-     property IsOverlap: Boolean read FIsOverlap;
-     property IsClassMethod: Boolean read GetIsClassMethod;
-     property ParentMeth: TMethodSymbol read FParentMeth;
-     property SelfSym: TDataSymbol read FSelfSym write FSelfSym;
-   end;
+      private
+         FClassSymbol: TClassSymbol;
+         FParentMeth: TMethodSymbol;
+         FSelfSym: TDataSymbol;
+         FDeclarationPos : TScriptPos;
+         FIsAbstract: Boolean;
+         FIsVirtual: Boolean;
+         FIsOverride: Boolean;
+         FIsOverlap: Boolean;
+      protected
+         function GetIsClassMethod: Boolean;
+      public
+         constructor Create(const Name: string; FuncKind: TFuncKind; ClassSym: TSymbol;
+                            FuncLevel: Integer = 1); virtual;
+         constructor Generate(Table: TSymbolTable; MethKind: TMethodKind;
+                              Attributes: TMethodAttributes; const MethName: string;
+                              const MethParams: TParamArray;
+                              const MethType: string; Cls: TClassSymbol);
+
+         procedure SetOverride(meth: TMethodSymbol);
+         procedure SetOverlap(meth: TMethodSymbol);
+         procedure InitData(const Data: TData; Offset: Integer); override;
+         function IsCompatible(typSym: TSymbol): Boolean; override;
+
+         property ClassSymbol : TClassSymbol read FClassSymbol;
+         property DeclarationPos : TScriptPos read FDeclarationPos write FDeclarationPos;
+         property IsAbstract : Boolean read FIsAbstract write FIsAbstract;
+         property IsVirtual : Boolean read FIsVirtual write FIsVirtual;
+         property IsOverride : Boolean read FIsOverride;
+         property IsOverlap : Boolean read FIsOverlap;
+         property IsClassMethod: Boolean read GetIsClassMethod;
+         property ParentMeth: TMethodSymbol read FParentMeth;
+         property SelfSym: TDataSymbol read FSelfSym write FSelfSym;
+      end;
 
    TSourceMethodSymbol = class(TMethodSymbol)
    end;
@@ -583,36 +587,44 @@ type
 
    // type X = class ... end;
    TClassSymbol = class(TTypeSymbol)
-   private
-     FClassOfSymbol: TClassOfSymbol;
-     FIsAbstract: Boolean;
-     FIsForward: Boolean;
-     FMembers: TSymbolTable;
-     FInstanceSize: Integer;
-     FOnObjectDestroy: TObjectDestroyEvent;
-     FParent: TClassSymbol;
-     FDefaultProperty: TPropertySymbol;
-   protected
-     function CreateMembersTable: TSymbolTable; virtual;
-     function GetDescription: string; override;
-   public
-     constructor Create(const Name: string);
-     destructor Destroy; override;
-     procedure AddField(Sym: TFieldSymbol);
-     procedure AddMethod(Sym: TMethodSymbol);
-     procedure AddProperty(Sym: TPropertySymbol);
-     procedure InheritFrom(Typ: TClassSymbol);
-     procedure InitData(const Data: TData; Offset: Integer); override;
-     procedure Initialize(const msgs : TdwsMessageList); override;
-     function IsCompatible(typSym: TSymbol): Boolean; override;
-     function InstanceSize : Integer; // avoids warning
-     property ClassOf: TClassOfSymbol read FClassOfSymbol;
-     property IsAbstract: Boolean read FIsAbstract write FIsAbstract;
-     property IsForward: Boolean read FIsForward write FIsForward;
-     property Members: TSymbolTable read FMembers;
-     property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
-     property Parent: TClassSymbol read FParent;
-     property DefaultProperty: TPropertySymbol read FDefaultProperty write FDefaultProperty;
+      private
+         FClassOfSymbol: TClassOfSymbol;
+         FIsAbstract: Boolean;
+         FForwardPosition : PScriptPos;
+         FMembers: TSymbolTable;
+         FInstanceSize: Integer;
+         FOnObjectDestroy: TObjectDestroyEvent;
+         FParent: TClassSymbol;
+         FDefaultProperty: TPropertySymbol;
+
+      protected
+         function CreateMembersTable: TSymbolTable; virtual;
+         function GetDescription: string; override;
+         function GetIsForwarded : Boolean;
+
+      public
+         constructor Create(const Name: string);
+         destructor Destroy; override;
+
+         procedure AddField(Sym: TFieldSymbol);
+         procedure AddMethod(Sym: TMethodSymbol);
+         procedure AddProperty(Sym: TPropertySymbol);
+         procedure InheritFrom(Typ: TClassSymbol);
+         procedure InitData(const Data: TData; Offset: Integer); override;
+         procedure Initialize(const msgs : TdwsMessageList); override;
+         function IsCompatible(typSym: TSymbol): Boolean; override;
+         function InstanceSize : Integer; // avoids warning
+
+         procedure SetForwardedPos(const pos : TScriptPos);
+         procedure ClearIsForwarded;
+
+         property ClassOf: TClassOfSymbol read FClassOfSymbol;
+         property IsAbstract: Boolean read FIsAbstract write FIsAbstract;
+         property IsForwarded : Boolean read GetIsForwarded;
+         property Members: TSymbolTable read FMembers;
+         property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
+         property Parent: TClassSymbol read FParent;
+         property DefaultProperty: TPropertySymbol read FDefaultProperty write FDefaultProperty;
    end;
 
    // nil "class"
@@ -1589,6 +1601,8 @@ end;
 
 destructor TClassSymbol.Destroy;
 begin
+   if FForwardPosition<>nil then
+      Dispose(FForwardPosition);
   FMembers.Free;
   FClassOfSymbol.Free;
   inherited;
@@ -1643,32 +1657,32 @@ begin
   Data[Offset] := IUnknown(nilIntf);
 end;
 
+// Initialize
+//
 procedure TClassSymbol.Initialize(const msgs : TdwsMessageList);
 var
-  x: Integer;
-  Err: EClassMethodImplIncompleteError;
+   i : Integer;
+   methSym : TMethodSymbol;
 begin
-  // Check validity of the class declaration
+   // Check validity of the class declaration
+   if IsForwarded then begin
+      msgs.AddCompilerErrorFmt(FForwardPosition^, CPE_ClassNotCompletelyDefined, [Name]);
+      Exit;
+   end;
 
-  if FIsForward then
-    raise Exception.CreateFmt(CPE_ClassNotCompletelyDefined, [Caption]);
-
-  for x := 0 to FMembers.Count - 1 do
-    if FMembers[x] is TMethodSymbol then
-    begin
-      if not TMethodSymbol(FMembers[x]).IsAbstract then
-      begin
-        if Assigned(TMethodSymbol(FMembers[x]).FExecutable) then
-          TMethodSymbol(FMembers[x]).FExecutable.InitSymbol(FMembers[x])
-        else
-        begin
-          Err := EClassMethodImplIncompleteError.CreateFmt(CPE_MethodNotImplemented,
-            [FMembers[x].Caption, TMethodSymbol(FMembers[x]).ClassSymbol.Caption]);
-          Err.ClassSymObj := Self;
-          raise Err;
-        end;
+   for i := 0 to FMembers.Count-1 do begin
+      if FMembers[i] is TMethodSymbol then begin
+         methSym:=TMethodSymbol(FMembers[i]);
+         if not methSym.IsAbstract then begin
+            if Assigned(methSym.FExecutable) then
+               methSym.FExecutable.InitSymbol(FMembers[i])
+            else begin
+               msgs.AddCompilerErrorFmt(methSym.DeclarationPos, CPE_MethodNotImplemented,
+                                        [methSym.Name, methSym.ClassSymbol.Caption]);
+            end;
+         end;
       end;
-    end;
+   end;
 end;
 
 procedure TClassSymbol.InheritFrom(Typ: TClassSymbol);
@@ -1716,10 +1730,35 @@ begin
   Result := Result + 'end';
 end;
 
+// GetIsForwarded
+//
+function TClassSymbol.GetIsForwarded : Boolean;
+begin
+   Result:=Assigned(FForwardPosition);
+end;
+
 function TClassSymbol.InstanceSize: Integer;
 begin
   Result := FInstanceSize;
 end;
+
+// SetForwardedPos
+//
+procedure TClassSymbol.SetForwardedPos(const pos : TScriptPos);
+begin
+   if FForwardPosition=nil then
+      New(FForwardPosition);
+   FForwardPosition^:=pos;
+end;
+
+// ClearIsForwarded
+//
+procedure TClassSymbol.ClearIsForwarded;
+begin
+   Dispose(FForwardPosition);
+   FForwardPosition:=nil;
+end;
+
 
 { TNilSymbol }
 

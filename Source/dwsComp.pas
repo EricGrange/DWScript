@@ -2313,64 +2313,61 @@ begin
    inherited;
 end;
 
-function TdwsClass.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil):
-  TSymbol;
+// DoGenerate
+//
+function TdwsClass.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
 var
-  x: Integer;
-  ancestorSym: TClassSymbol;
+   x: Integer;
+   ancestorSym: TClassSymbol;
 begin
-  FIsGenerating := True;
+   FIsGenerating := True;
 
-  Result := GetUnit.Table.FindSymbol(Name);
+   Result := GetUnit.Table.FindSymbol(Name);
 
-  if Assigned(Result) then
-  begin
-    if Result is TClassSymbol then
-    begin
-      if not TClassSymbol(Result).IsForward then
-        raise Exception.Create(UNT_ClassAlreadyDefined);
-    end
-    else
-      raise Exception.CreateFmt(UNT_ClassNameAlreadyDefined, [Name,
-        Result.Caption]);
-  end;
+   if Assigned(Result) then begin
+      if Result is TClassSymbol then begin
+         if not TClassSymbol(Result).IsForwarded then
+            raise Exception.Create(UNT_ClassAlreadyDefined);
+      end else raise Exception.CreateFmt(UNT_ClassNameAlreadyDefined,
+                                         [Name, Result.Caption]);
+   end;
 
-  try
+   try
 
-    if not Assigned(Result) then
-      Result := TClassSymbol.Create(Name);
+      if not Assigned(Result) then
+         Result := TClassSymbol.Create(Name);
 
-    TClassSymbol(Result).OnObjectDestroy := FOnObjectDestroy;
+      TClassSymbol(Result).OnObjectDestroy := FOnObjectDestroy;
 
-    if FAncestor = '' then
-      FAncestor := SYS_TOBJECT;
+      if FAncestor = '' then
+         FAncestor := SYS_TOBJECT;
 
-    ancestorSym := TClassSymbol(GetUnit.GetSymbol(Table, FAncestor));
-    if ancestorSym = nil then
-      raise Exception.CreateFmt(UNT_SuperClassUnknwon, [FAncestor]);
+      ancestorSym := TClassSymbol(GetUnit.GetSymbol(Table, FAncestor));
+      if ancestorSym = nil then
+         raise Exception.CreateFmt(UNT_SuperClassUnknwon, [FAncestor]);
 
-    TClassSymbol(Result).InheritFrom(ancestorSym);
+      TClassSymbol(Result).InheritFrom(ancestorSym);
 
-    for x := 0 to FFields.Count - 1 do
-      TClassSymbol(Result).AddField(TFieldSymbol(TdwsField(FFields.Items[x]).Generate(Table, Result)));
+      for x := 0 to FFields.Count - 1 do
+         TClassSymbol(Result).AddField(TFieldSymbol(TdwsField(FFields.Items[x]).Generate(Table, Result)));
 
-    for x := 0 to FConstructors.Count - 1 do
-      TClassSymbol(Result).AddMethod(TMethodSymbol(TdwsConstructor(FConstructors.Items[x]).Generate(Table, Result)));
+      for x := 0 to FConstructors.Count - 1 do
+         TClassSymbol(Result).AddMethod(TMethodSymbol(TdwsConstructor(FConstructors.Items[x]).Generate(Table, Result)));
 
-    for x := 0 to FMethods.Count - 1 do
-      TClassSymbol(Result).AddMethod(TMethodSymbol(TdwsMethod(FMethods.Items[x]).Generate(Table, Result)));
+      for x := 0 to FMethods.Count - 1 do
+         TClassSymbol(Result).AddMethod(TMethodSymbol(TdwsMethod(FMethods.Items[x]).Generate(Table, Result)));
 
-    for x := 0 to FProperties.Count - 1 do
-      TClassSymbol(Result).AddProperty(TPropertySymbol(TdwsProperty(FProperties.Items[x]).Generate(Table, Result)));
+      for x := 0 to FProperties.Count - 1 do
+         TClassSymbol(Result).AddProperty(TPropertySymbol(TdwsProperty(FProperties.Items[x]).Generate(Table, Result)));
 
-  except
-    if not TClassSymbol(Result).IsForward then
-      Result.Free;
-    raise;
-  end;
+   except
+      if not TClassSymbol(Result).IsForwarded then
+         Result.Free;
+      raise;
+   end;
 
-  if TClassSymbol(Result).IsForward then
-    TClassSymbol(Result).IsForward := false;
+   if TClassSymbol(Result).IsForwarded then
+      TClassSymbol(Result).ClearIsForwarded;
 end;
 
 function TdwsClass.GetDisplayName: string;
@@ -2704,12 +2701,12 @@ end;
 
 function TdwsForward.DoGenerate;
 begin
-  FIsGenerating := True;
-  CheckName(Table, Name);
+   FIsGenerating := True;
+   CheckName(Table, Name);
 
-  Result := TClassSymbol.Create(Name);
-  TClassSymbol(Result).IsForward := True;
-  GetUnit.Table.AddSymbol(Result);
+   Result := TClassSymbol.Create(Name);
+   TClassSymbol(Result).SetForwardedPos(cNullPos);
+   GetUnit.Table.AddSymbol(Result);
 end;
 
 function TdwsForward.GetDisplayName: string;

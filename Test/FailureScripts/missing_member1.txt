@@ -1,0 +1,4 @@
+Syntax Error: abstract is only valid for virtual methods! [line: 6, column: 25]
+Syntax Error: Method "Stuff" of class "TMyClass" not implemented [line: 3, column: 17]
+Syntax Error: Method "OtherStuff" of class "TMyClass" not implemented [line: 4, column: 16]
+Syntax Error: Method "Dummy2" of class "TMyClass" not implemented [line: 6, column: 17]

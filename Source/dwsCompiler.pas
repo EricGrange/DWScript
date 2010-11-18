@@ -1104,6 +1104,7 @@ var
    meth: TSymbol;
    IsReintroduced: Boolean;
    methPos: TScriptPos;
+   qualifier : TTokenType;
 begin
    // Find Symbol for Functionname
    if not FTok.TestName then
@@ -1127,8 +1128,8 @@ begin
    // Read declaration of method implementation
    if IsClassMethod then
       Result := TSourceMethodSymbol.Create(Name, FuncKind, ClassSym.ClassOf)
-   else
-      Result := TSourceMethodSymbol.Create(Name, FuncKind, ClassSym);
+   else Result := TSourceMethodSymbol.Create(Name, FuncKind, ClassSym);
+   Result.DeclarationPos:=methPos;
 
    try
       if meth is TMethodSymbol then begin
@@ -1147,29 +1148,37 @@ begin
       if not FTok.TestDelete(ttSEMI) then
          FMsgs.AddCompilerStop(methPos, CPE_SemiExpected);
 
-      if FTok.Test(ttVIRTUAL) or FTok.Test(ttOVERRIDE) or FTok.Test(ttREINTRODUCE) then begin
-         if FTok.TestDelete(ttVIRTUAL) then begin
-            TMethodSymbol(Result).IsVirtual := True;
-            if FTok.Test(ttSEMI) and FTok.NextTest(ttABSTRACT) then begin
-               FTok.KillToken;
-               FTok.TestDelete(ttABSTRACT);
-               TMethodSymbol(Result).IsAbstract := True;
+      qualifier:=FTok.TestDeleteAny([ttVIRTUAL, ttOVERRIDE, ttREINTRODUCE, ttABSTRACT]);
+      if qualifier<>ttNone then begin
+         case qualifier of
+            ttVIRTUAL : begin
+               TMethodSymbol(Result).IsVirtual := True;
+               if FTok.Test(ttSEMI) and FTok.NextTest(ttABSTRACT) then begin
+                  FTok.KillToken;
+                  FTok.TestDelete(ttABSTRACT);
+                  TMethodSymbol(Result).IsAbstract := True;
+               end;
             end;
-         end else if FTok.TestDelete(ttOVERRIDE) then begin
-            if not Assigned(meth) or not (meth is TMethodSymbol) then
-               FMsgs.AddCompilerStopFmt(methPos, CPE_CantOverrideNotInherited, [Name])
-            else if not TMethodSymbol(meth).IsVirtual then
-               FMsgs.AddCompilerStopFmt(methPos, CPE_CantOverrideNotVirtual, [Name])
-            else begin
-               if not ParamsCheck(TMethodSymbol(Result), TMethodSymbol(meth)) then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_CantOverrideWrongParameterList);
-               TMethodSymbol(Result).SetOverride(TMethodSymbol(meth));
+            ttOVERRIDE : begin
+               if not Assigned(meth) or not (meth is TMethodSymbol) then
+                  FMsgs.AddCompilerStopFmt(methPos, CPE_CantOverrideNotInherited, [Name])
+               else if not TMethodSymbol(meth).IsVirtual then
+                  FMsgs.AddCompilerStopFmt(methPos, CPE_CantOverrideNotVirtual, [Name])
+               else begin
+                  if not ParamsCheck(TMethodSymbol(Result), TMethodSymbol(meth)) then
+                     FMsgs.AddCompilerStop(FTok.HotPos, CPE_CantOverrideWrongParameterList);
+                  TMethodSymbol(Result).SetOverride(TMethodSymbol(meth));
+                  IsReintroduced := False;
+               end;
+            end;
+            ttREINTRODUCE : begin
+               if not IsReintroduced then
+                  FMsgs.AddCompilerStopFmt(methPos, CPE_CantReintroduce, [Name]);
                IsReintroduced := False;
             end;
-         end else if FTok.TestDelete(ttREINTRODUCE) then begin
-            if not IsReintroduced then
-               FMsgs.AddCompilerStopFmt(methPos, CPE_CantReintroduce, [Name]);
-            IsReintroduced := False;
+            ttABSTRACT : begin
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_NonVirtualAbstract);
+            end;
          end;
 
          if not FTok.TestDelete(ttSEMI) then
@@ -2706,7 +2715,7 @@ begin
 
    if Assigned(sym) then begin
       if sym is TClassSymbol then begin
-         if TClassSymbol(sym).IsForward then
+         if TClassSymbol(sym).IsForwarded then
             Result:=TClassSymbol(sym)
       end else begin
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [sym.Caption]);
@@ -2720,11 +2729,11 @@ begin
 
    // forwarded declaration
    if FTok.Test(ttSEMI) then begin
-      if Result.IsForward then
+      if Result.IsForwarded then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_ForwardAlreadyExists);
-      Result.IsForward := True;
+      Result.SetForwardedPos(FTok.HotPos);
       Exit;
-   end else Result.IsForward := False;
+   end else Result.ClearIsForwarded;
 
    if not isInSymbolTable then
       FProg.Table.AddSymbol(Result);   // auto-forward
@@ -2739,11 +2748,13 @@ begin
             FTok.KillToken;
 
             Typ := FProg.Table.FindSymbol(Name);
-            if not (Typ is TClassSymbol) then
-               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NotAClass, [Name]);
+            if not (Typ is TClassSymbol) then begin
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NotAClass, [Name]);
+               Typ:=FProg.TypObject;
+            end;
 
-            if TClassSymbol(Typ).IsForward then
-               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ClassNotImplementedYet, [Name]);
+            if TClassSymbol(Typ).IsForwarded then
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassNotImplementedYet, [Name]);
 
             Result.InheritFrom(TClassSymbol(Typ));
 

@@ -112,6 +112,7 @@ const
   CPE_ImplNotAMethod = 'Member is not a method';
   CPE_ImplInvalidClass = '"%s" is not a method of class "%s"';
   CPE_ImplAbstract = '"%s.%s" is declared abstract. No implementation allowed!';
+  CPE_NonVirtualAbstract = 'abstract is only valid for virtual methods!';
   CPE_ImplClassExpected = 'Declaration should start with CLASS!';
   CPE_ImplNotClassExpected = 'Declaration shouldn''t start with "class"!';
   CPE_InheritedOnlyInMethodsAllowed = 'Inherited only in methods allowed';

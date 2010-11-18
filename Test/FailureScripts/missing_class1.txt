@@ -1,0 +1,2 @@
+Syntax Error: "TMissingClass" is not a class [line: 2, column: 21]
+Syntax Error: Unknown name "TMissingClass" [line: 7, column: 9]
