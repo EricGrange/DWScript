@@ -20,3 +20,8 @@ PrintLn(v and vtrue);
 PrintLn(vfalse and v);
 
 if v then else PrintLn('Bug 2');
+
+while v do
+   repeat
+      Exit;
+   until v;

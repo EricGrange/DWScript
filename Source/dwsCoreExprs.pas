@@ -3862,7 +3862,7 @@ end;
 procedure TLoopExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
    FCondExpr.TypeCheckNoPos(Pos);
-   if not FCondExpr.IsBooleanValue then
+   if not (FCondExpr.IsBooleanValue or FCondExpr.IsVariantValue) then
       AddCompilerStop(CPE_BooleanExpected);
 end;
 
