@@ -1204,8 +1204,18 @@ type
   TCleanUpEvent = procedure(ScriptObj: IScriptObj; ExternalObject: TObject) of object;
 
 function ScriptStringToRawByteString(const s : String) : RawByteString;
+var
+   i, n : Integer;
+   pSrc : PChar;
+   pDest : PByteArray;
 begin
-   Result:=RawByteString(s);
+   if s='' then Exit('');
+   n:=Length(s);
+   SetLength(Result, n);
+   pSrc:=PChar(NativeUInt(s));
+   pDest:=PByteArray(NativeUInt(Result));
+   for i:=0 to n-1 do
+      pDest[i]:=PByte(@pSrc[i])^;
 end;
 
 function RawByteStringToScriptString(const s : RawByteString) : String;
