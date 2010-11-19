@@ -46,7 +46,7 @@ type
      ttAT,
      ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
      ttSEMI, ttCOMMA, ttCOLON,
-     ttASSIGN,
+     ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
      ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCRIGHT,
      ttDEFAULT, ttUSES,
 
@@ -185,9 +185,11 @@ implementation
 // ------------------------------------------------------------------
 
 const cReservedNames : TTokenTypes = [
-  ttStrVal, ttSWITCH, ttSEMI, ttDIVIDE, ttTIMES, ttPLUS, ttMINUS, ttAT, ttSEMI,
-  ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttEQ, ttLESS, ttLESSEQ, ttNOTEQ, ttGTR,
-  ttGTREQ, ttCOLON, ttASSIGN, ttCOMMA, ttCRIGHT, ttDOT ];
+   ttStrVal, ttSWITCH, ttSEMI, ttDIVIDE, ttTIMES, ttPLUS, ttMINUS, ttAT, ttSEMI,
+   ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttEQ, ttLESS, ttLESSEQ, ttNOTEQ, ttGTR,
+   ttGTREQ, ttCOLON,
+   ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
+   ttCOMMA, ttCRIGHT, ttDOT ];
 
 const
    cFormatSettings : TFormatSettings = ( DecimalSeparator : '.' );
@@ -340,10 +342,30 @@ begin
    if Len=0 then Exit;
 
    case Buffer[0] of
-     '/': Result := ttDIVIDE;
-     '*': Result := ttTIMES;
-     '+': Result := ttPLUS;
-     '-': Result := ttMINUS;
+     '/':
+       if Len=1 then
+         Result := ttDIVIDE
+       else if Len=2 then
+         if Buffer[1]='=' then
+            Result := ttDIVIDE_ASSIGN; // '/='
+     '*':
+       if Len=1 then
+         Result := ttTIMES
+       else if Len=2 then
+         if Buffer[1]='=' then
+            Result := ttTIMES_ASSIGN; // '*='
+     '+':
+       if Len=1 then
+         Result := ttPLUS
+       else if Len=2 then
+         if Buffer[1]='=' then
+            Result := ttPLUS_ASSIGN; // '+='
+     '-':
+       if Len=1 then
+         Result := ttMINUS
+       else if Len=2 then
+         if Buffer[1]='=' then
+            Result := ttMINUS_ASSIGN; // '-='
      '@': Result := ttAT;
      ';': Result := ttSEMI;
      '(': Result := ttBLEFT;
@@ -977,8 +999,8 @@ initialization
    sStart.AddTransition(INT, TConsumeTransition.Create(sIntF, [toStart], caNone));
    sStart.AddTransition([''''], TSeekTransition.Create(sString0, [toStart], caNone));
    sStart.AddTransition(['#'], TSeekTransition.Create(sChar0, [toStart], caNone));
-   sStart.AddTransition([':'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
-   sStart.AddTransition(['+', '-', '*', '=', '@'], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
+   sStart.AddTransition([':', '+', '-', '*'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
+   sStart.AddTransition(['=', '@'], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
    sStart.AddTransition(SPEC, TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
    sStart.AddTransition(['/'], TConsumeTransition.Create(sSlashComment0, [toStart], caNone));
    sStart.AddTransition(['<'], TConsumeTransition.Create(sSmallerF, [toStart], caNone));
@@ -1003,6 +1025,7 @@ initialization
    sSwitchNameF.SetElse(TErrorTransition.Create(TOK_InvalidChar));
 
    sSlashComment0.AddTransition(['/'], TSeekTransition.Create(sSlashComment, [], caNone));
+   sSlashComment0.AddTransition(['='], TConsumeTransition.Create(sStart, [toFinal], caName));
    sSlashComment0.SetElse(TCheckTransition.Create(sStart, [toFinal], caName));
 
    sSlashComment.AddTransition([#0, #10], TSeekTransition.Create(sStart, [], caClear));
