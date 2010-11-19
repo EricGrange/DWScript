@@ -482,6 +482,8 @@ type
 
    TNumberStringBinOpExpr = class(TBinaryOpExpr)
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     class function DoTypeCheckNoPos(const aPos : TScriptPos; prog : TdwsProgram;
+                                     left, right : TNoPosExpr) : TSymbol; static;
    end;
 
    // a + b
@@ -679,11 +681,22 @@ type
          property Right : String read FRight write FRight;
    end;
 
-   // a := a + b
+   // a := a op b
+   TOpAssignExpr = class(TAssignExpr)
+     function  Optimize : TNoPosExpr; override;
+   end;
+
+   // a += b
+   TPlusAssignExpr = class(TOpAssignExpr)
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
+
+   // a += b
    TIncIntVarExpr = class(TAssignExpr)
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
-   // a := a - b
+   // a -= b
    TDecIntVarExpr = class(TAssignExpr)
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
@@ -3120,18 +3133,28 @@ end;
 procedure TNumberStringBinOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
   inherited;
-  if FLeft.IsVariantValue or FRight.IsVariantValue then
-    FTyp := FProg.TypVariant
-  else if FLeft.IsIntegerValue and FRight.IsIntegerValue then
-    FTyp := FProg.TypInteger
-  else if FLeft.IsNumberValue and FRight.IsNumberValue then
-    FTyp := FProg.TypFloat
-  else if FLeft.IsStringValue and FRight.IsStringValue then
-    FTyp := FProg.TypString
-  else if FLeft.IsBooleanValue and FRight.IsBooleanValue then
-    FTyp := FProg.TypBoolean
-  else
-    Prog.Msgs.AddCompilerStop(aPos, CPE_IncompatibleOperands);
+  FTyp:=DoTypeCheckNoPos(aPos, FProg, FLeft, FRight);
+end;
+
+// DoTypeCheckNoPos
+//
+class function TNumberStringBinOpExpr.DoTypeCheckNoPos(
+         const aPos : TScriptPos; prog : TdwsProgram; left, right : TNoPosExpr) : TSymbol;
+begin
+   if left.IsVariantValue or right.IsVariantValue then
+      Result := prog.TypVariant
+   else if left.IsIntegerValue and right.IsIntegerValue then
+      Result := prog.TypInteger
+   else if left.IsNumberValue and right.IsNumberValue then
+      Result := prog.TypFloat
+   else if left.IsStringValue and right.IsStringValue then
+      Result := prog.TypString
+   else if left.IsBooleanValue and right.IsBooleanValue then
+      Result := prog.TypBoolean
+   else begin
+      Result := prog.TypVariant;
+      Prog.Msgs.AddCompilerStop(aPos, CPE_IncompatibleOperands);
+   end;
 end;
 
 { TAssignExpr }
@@ -3369,6 +3392,36 @@ end;
 procedure TAssignConstToStringVarExpr.EvalNoResult(var status : TExecutionStatusResult);
 begin
    TVarExpr(FLeft).AssignValueAsString(FRight);
+end;
+
+// ------------------
+// ------------------ TOpAssignExpr ------------------
+// ------------------
+
+// Optimize
+//
+function TOpAssignExpr.Optimize : TNoPosExpr;
+begin
+   Result:=Self;
+end;
+
+// ------------------
+// ------------------ TPlusAssignExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TPlusAssignExpr.EvalNoResult(var status : TExecutionStatusResult);
+begin
+   FLeft.AssignValue(FLeft.Eval + FRight.Eval);
+end;
+
+// TypeCheckNoPos
+//
+procedure TPlusAssignExpr.TypeCheckNoPos(const aPos : TScriptPos);
+begin
+   inherited;
+   TNumberStringBinOpExpr.DoTypeCheckNoPos(aPos, FProg, FLeft, FRight);
 end;
 
 // ------------------

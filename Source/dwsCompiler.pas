@@ -166,7 +166,7 @@ type
       function GetVarExpr(dataSym: TDataSymbol): TVarExpr;
       function GetVarParamExpr(dataSym: TVarParamSymbol): TVarParamExpr;
       function GetConstParamExpr(dataSym: TConstParamSymbol): TVarParamExpr;
-      function ReadAssign(Left: TDataExpr): TNoResultExpr;
+      function ReadAssign(token : TTokenType; Left: TDataExpr): TNoResultExpr;
       function ReadArray(const TypeName: string): TTypeSymbol;
       function ReadArrayConstant: TArrayConstantExpr;
       function ReadCase: TCaseExpr;
@@ -250,7 +250,7 @@ type
                              MaxDataSize, StackChunkSize: Integer;
                              MaxRecursionDepth : Integer): TdwsProgram; virtual;
       function CreateProcedure(Parent : TdwsProgram) : TProcedure; virtual;
-      function CreateAssign(const pos : TScriptPos; left : TDataExpr; right : TNoPosExpr) : TNoResultExpr;
+      function CreateAssign(const pos : TScriptPos; token : TTokenType; left : TDataExpr; right : TNoPosExpr) : TNoResultExpr;
 
    public
       constructor Create;
@@ -807,7 +807,7 @@ begin
          if Assigned(initExpr) then begin
 
             // Initialize with an expression
-            Result := CreateAssign(pos, varExpr, initExpr);
+            Result := CreateAssign(pos, ttASSIGN, varExpr, initExpr);
             initExpr:=nil;
 
          end else begin
@@ -1462,6 +1462,7 @@ end;
 
 function TdwsCompiler.ReadInstr: TNoResultExpr;
 var
+   token : TTokenType;
    locExpr : TNoPosExpr;
 begin
    if Assigned(FOnReadInstr) then begin
@@ -1510,12 +1511,13 @@ begin
             locExpr := ReadSymbol(ReadTerm)
          else locExpr := ReadName(True);
          try
-            if FTok.TestDelete(ttASSIGN) then begin
+            token:=FTok.TestDeleteAny([ttASSIGN, ttPLUS_ASSIGN]);
+            if token<>ttNone then begin
                if not (locExpr is TDataExpr) or not TDataExpr(locExpr).IsWritable then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_CantWriteToLeftSide);
                if locExpr is TVarExpr then
                   WarnForVarUsage(TVarExpr(locExpr));
-               Result := ReadAssign(TDataExpr(locExpr));
+               Result := ReadAssign(token, TDataExpr(locExpr));
             end else if locExpr is TAssignExpr then
                Result:=TAssignExpr(locExpr)
             else if    (locExpr is TFuncExprBase)
@@ -1818,7 +1820,7 @@ begin
         if Expr.Typ is TClassOfSymbol then
           FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
         fieldExpr := TFieldExpr.Create(FProg, FTok.HotPos, sym.Typ, TFieldSymbol(sym), TDataExpr(Expr));
-        Result := ReadAssign(fieldExpr);
+        Result := ReadAssign(ttASSIGN, fieldExpr);
       end
       // WriteSym is a Method
       else if sym is TMethodSymbol then
@@ -2416,7 +2418,7 @@ begin
    LeaveLoop;
 end;
 
-function TdwsCompiler.ReadAssign(Left: TDataExpr): TNoResultExpr;
+function TdwsCompiler.ReadAssign(token : TTokenType; Left: TDataExpr): TNoResultExpr;
 var
    pos : TScriptPos;
    right : TNoPosExpr;
@@ -2434,7 +2436,7 @@ begin
             right := TFuncCodeExpr.Create(FProg, FTok.HotPos, TFuncExpr(right));
       end;
 
-      Result:=CreateAssign(pos, left, right);
+      Result:=CreateAssign(pos, token, left, right);
    except
       right.Free;
       raise;
@@ -3255,7 +3257,7 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoResultRequired);
       leftExpr:=TVarExpr.CreateTyped(FProg, proc.Func.Result.Typ, proc.Func.Result);
       try
-         assignExpr:=ReadAssign(leftExpr);
+         assignExpr:=ReadAssign(ttASSIGN, leftExpr);
          try
             leftExpr:=nil;
             if gotParenthesis and not FTok.TestDelete(ttBRIGHT) then
@@ -4887,25 +4889,40 @@ end;
 
 // CreateAssign
 //
-function TdwsCompiler.CreateAssign(const pos : TScriptPos; left : TDataExpr; right : TNoPosExpr) : TNoResultExpr;
+function TdwsCompiler.CreateAssign(const pos : TScriptPos; token : TTokenType;
+                                   left : TDataExpr; right : TNoPosExpr) : TNoResultExpr;
 begin
    if Assigned(right.Typ) then begin
-      if (right is TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
-         if right is TFuncExpr then
-            TFuncExpr(right).SetResultAddr;
-         if right is TArrayConstantExpr then
-            Result := TAssignArrayConstantExpr.Create(FProg, pos, left, TArrayConstantExpr(right))
-         else Result := TAssignDataExpr.Create(FProg, pos, left, right)
-      end else begin
-         Result:=TAssignExpr.Create(FProg, pos, left, TDataExpr(right));
+
+      case token of
+         ttASSIGN : begin
+            if (right is TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
+               if right is TFuncExpr then
+                  TFuncExpr(right).SetResultAddr;
+               if right is TArrayConstantExpr then
+                  Result := TAssignArrayConstantExpr.Create(FProg, pos, left, TArrayConstantExpr(right))
+               else Result := TAssignDataExpr.Create(FProg, pos, left, right)
+            end else begin
+               Result:=TAssignExpr.Create(FProg, pos, left, right);
+            end;
+         end;
+         ttPLUS_ASSIGN : begin
+            Result:=TPlusAssignExpr.Create(FProg, pos, left, right);
+         end;
+      else
+         Result:=nil;
+         Assert(False);
       end;
 
       Result.TypeCheck;
       if Optimize then
          Result:=Result.OptimizeToNoResultExpr;
+
    end else begin
+
       FMsgs.AddCompilerStop(Pos, CPE_RightSideNeedsReturnType);
       Result:=nil;
+
    end;
 end;
 
