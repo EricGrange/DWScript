@@ -286,8 +286,8 @@ begin
 
    if sym is TConstSymbol then begin
 
-      Result:=Format( '%%define %0:s %1:s [%xh]'#13#10
-                     +'%%define @%0:s %sh',
+      Result:=Format( '%%define %0:s %1:s [%2:.8xh]'#13#10
+                     +'%%define @%0:s %2:.8xh',
                      [sym.Name, size, NativeUInt(@(TConstSymbol(sym).Data[0]))+$8]);
 
    end else if sym is TDataSymbol then begin
