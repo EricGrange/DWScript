@@ -119,13 +119,14 @@ type
 
    TAddArgProcedure = procedure(ArgExpr: TNoPosExpr) of object;
 
-   TSpecialKeywordKind = (skNone, skAssigned, skChr, skHigh, skLength, skLow, skOrd, skSizeOf);
+   TSpecialKeywordKind = (skNone, skAssigned, skChr, skHigh, skLength, skLow,
+                          skOrd, skSizeOf, skDefined, skDeclared);
 
    TSwitchInstruction = (siNone,
                          siIncludeLong, siIncludeShort,
                          siFilterLong, siFilterShort,
                          siDefine, siUndef,
-                         siIfDef, siIfNDef, siEndIf, siElse,
+                         siIfDef, siIfNDef, siIf, siEndIf, siElse,
                          siHint, siWarning, siError, siFatal );
 
    TLoopExitable = (leNotExitable, leBreak, leExit);
@@ -148,6 +149,7 @@ type
       FScriptPaths : TStrings;
       FFilter : TdwsFilter;
       FIsExcept : Boolean;
+      FIsSwitch : Boolean;
 
       FOnReadInstr : TCompilerReadInstrEvent;
 
@@ -307,7 +309,7 @@ const
       '',
       SWI_INCLUDE_LONG, SWI_INCLUDE_SHORT, SWI_FILTER_LONG, SWI_FILTER_SHORT,
       SWI_DEFINE, SWI_UNDEF,
-      SWI_IFDEF, SWI_IFNDEF, SWI_ENDIF, SWI_ELSE,
+      SWI_IFDEF, SWI_IFNDEF, SWI_IF, SWI_ENDIF, SWI_ELSE,
       SWI_HINT, SWI_WARNING, SWI_ERROR, SWI_FATAL
       );
 
@@ -3896,7 +3898,8 @@ var
    oldTok : TTokenizer;
    i : Integer;
    conditionalTrue : Boolean;
-   switchPos : TScriptPos;
+   switchPos, condPos : TScriptPos;
+   condExpr : TNoPosExpr;
 begin
    Result := nil;
 
@@ -3962,14 +3965,39 @@ begin
          FTok.KillToken;
 
       end;
-      siIfDef, siIfNDef : begin
+      siIfDef, siIfNDef, siIf : begin
 
-         if not FTok.Test(ttNAME) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+         case switch of
+            siIfDef, siIfNDef : begin
+               if not FTok.Test(ttNAME) then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+               conditionalTrue:=    (FProg.ConditionalDefines.IndexOf(FTok.GetToken.FString)>=0)
+                                xor (switch = siIfNDef);
+               FTok.KillToken;
+            end;
+            siIf : begin
+               condPos:=Ftok.HotPos;
+               FIsSwitch:=True;
+               try
+                  condExpr:=ReadExpr;
+                  try
+                     if not condExpr.IsConstant then
+                        FMsgs.AddCompilerStop(condPos, CPE_ConstantExpressionExpected);
+                     if not condExpr.IsBooleanValue then
+                        FMsgs.AddCompilerStop(condPos, CPE_BooleanExpected);
 
-         conditionalTrue:=    (FProg.ConditionalDefines.IndexOf(FTok.GetToken.FString)>=0)
-                          xor (switch = siIfNDef);
-         FTok.KillToken;
+                     conditionalTrue:=condExpr.EvalAsBoolean;
+                  finally
+                     condExpr.Free;
+                  end;
+               finally
+                  FIsSwitch:=False;
+               end;
+            end
+         else
+            conditionalTrue:=False;
+            Assert(False);
+         end;
 
          if conditionalTrue then
             FConditionalDepth.Push(switch)
@@ -4126,6 +4154,9 @@ begin
          if SameText(name, 'assigned') then Result:=skAssigned;
       'c' :
          if SameText(name, 'chr') then Result:=skChr;
+      'd' :
+         if SameText(name, 'defined') then Result:=skDefined
+         else if SameText(name, 'declared') then Result:=skDeclared;
       'h' :
          if SameText(name, 'high') then Result:=skHigh;
       'l' :
@@ -4923,6 +4954,23 @@ end;
 // ReadSpecialFunction
 //
 function TdwsCompiler.ReadSpecialFunction(const NamePos: TScriptPos; SpecialKind: TSpecialKeywordKind): TNoPosExpr;
+
+   function EvaluateDefined(argExpr : TNoPosExpr) : Boolean;
+   var
+      name : String;
+   begin
+      argExpr.EvalAsString(name);
+      Result:=(FProg.ConditionalDefines.IndexOf(name)>=0);
+   end;
+
+   function EvaluateDeclared(argExpr : TNoPosExpr) : Boolean;
+   var
+      name : String;
+   begin
+      argExpr.EvalAsString(name);
+      Result:=(TDeclaredExpr.FindSymbol(FProg.Root.Table, name)<>nil);
+   end;
+
 var
    argExpr: TNoPosExpr;
    argTyp: TSymbol;
@@ -5030,9 +5078,35 @@ begin
                FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
             end;
          end;
-         skSizeOf: begin
+         skSizeOf : begin
              FreeAndNil(argExpr);
              Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, argTyp.Size);
+         end;
+         skDefined, skDeclared : begin
+            if not argExpr.IsStringValue then
+               FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_StringExpected);
+            if FIsSwitch then begin
+               if not argExpr.IsConstant then
+                  FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_ConstantExpressionExpected);
+               try
+                  case SpecialKind of
+                     skDefined :
+                        Result:=TConstBooleanExpr.CreateUnified(FProg, FProg.TypBoolean, EvaluateDefined(argExpr));
+                     skDeclared :
+                        Result:=TConstBooleanExpr.CreateUnified(FProg, FProg.TypBoolean, EvaluateDeclared(argExpr));
+                  end;
+               finally
+                  FreeAndNil(argExpr);
+               end;
+            end else begin
+               case SpecialKind of
+                  skDefined :
+                     Result:=TDefinedExpr.Create(FProg, argExpr);
+                  skDeclared :
+                     Result:=TDeclaredExpr.Create(FProg, argExpr);
+               end;
+               argExpr:=nil;
+            end;
          end;
       end;
 

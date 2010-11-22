@@ -52,6 +52,7 @@ const
   SWI_UNDEF = 'UNDEF';
   SWI_IFDEF = 'IFDEF';
   SWI_IFNDEF = 'IFNDEF';
+  SWI_IF = 'IF';
   SWI_ENDIF = 'ENDIF';
   SWI_ELSE = 'ELSE';
   SWI_HINT = 'HINT';

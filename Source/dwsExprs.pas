@@ -928,6 +928,7 @@ type
   protected
     function CreateUnitList: TList; dynamic;
     function FindSymbolInUnits(AUnitList: TList; const Name: string): TSymbol; overload; virtual;
+
   public
     constructor Create(Table: TSymbolTable; Caller: TdwsProgram = nil);
     function RegisterExternalObject(AObject: TObject; AutoFree: Boolean=False; ExactClassMatch: Boolean=True): Variant;
@@ -1342,6 +1343,7 @@ begin
 
    // Create the program stack
    FStack := TStack.Create(StackChunkSize, MaxDataSize, MaxRecursionDepth);
+   FStack.Reset;
    FAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
    FGlobalAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
 
@@ -2479,6 +2481,7 @@ end;
 function TFuncExprBase.Optimize : TNoPosExpr;
 begin
    if IsConstant then begin
+      Initialize;
       Result:=TConstExpr.CreateTyped(Prog, Typ, Eval);
       Free;
    end else Result:=Self;

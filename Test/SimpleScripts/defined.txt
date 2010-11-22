@@ -1,0 +1,7 @@
+BETA 1
+Alpha not defined
+Alpha defined
+BETA 2
+BETA 3
+BETA 4
+Alpha not defined

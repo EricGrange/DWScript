@@ -997,6 +997,24 @@ type
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
+   TSpecialUnaryBoolExpr = class(TUnaryOpExpr)
+      public
+         constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+         function IsConstant : Boolean; override;
+         function Eval: Variant; override;
+   end;
+
+   TDefinedExpr = class(TSpecialUnaryBoolExpr)
+      public
+         function EvalAsBoolean: Boolean; override;
+   end;
+
+   TDeclaredExpr = class(TSpecialUnaryBoolExpr)
+      public
+         function EvalAsBoolean: Boolean; override;
+         class function FindSymbol(symbolTable : TSymbolTable; const name : String) : TSymbol; static;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -4342,6 +4360,84 @@ begin
       c:=Chr(FValueExpr.EvalAsInteger);
       if not TStrVarExpr(FStringExpr).SetChar(i, c) then
          raise EScriptException.CreateFmt(RTE_ArrayUpperBoundExceeded, [i]);
+   end;
+end;
+
+// ------------------
+// ------------------ TSpecialUnaryBoolExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TSpecialUnaryBoolExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+begin
+   inherited;
+   FTyp:=Prog.TypBoolean;
+end;
+
+// IsConstant
+//
+function TSpecialUnaryBoolExpr.IsConstant : Boolean;
+begin
+   Result:=False;
+end;
+
+// Eval
+//
+function TSpecialUnaryBoolExpr.Eval: Variant;
+begin
+   Result:=EvalAsBoolean;
+end;
+
+// ------------------
+// ------------------ TDefinedExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TDefinedExpr.EvalAsBoolean : Boolean;
+var
+   name : String;
+begin
+   Expr.EvalAsString(name);
+   Result:=(FProg.ConditionalDefines.IndexOf(name)>=0);
+end;
+
+// ------------------
+// ------------------ TDeclaredExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TDeclaredExpr.EvalAsBoolean: Boolean;
+var
+   name : String;
+begin
+   Expr.EvalAsString(name);
+   Result:=(FindSymbol(FProg.Root.Table, name)<>nil);
+end;
+
+// FindSymbol
+//
+class function TDeclaredExpr.FindSymbol(symbolTable : TSymbolTable; const name : String) : TSymbol;
+var
+   p : Integer;
+   identifier : String;
+begin
+   p:=Pos('.', name);
+   if p<=0 then
+      Result:=symbolTable.FindSymbol(name)
+   else begin
+      Result:=symbolTable.FindSymbol(Copy(name, 1, p-1));
+      if Result=nil then Exit;
+      identifier:=Copy(name, p+1, MaxInt);
+      if Result.InheritsFrom(TUnitSymbol) then
+         Result:=FindSymbol(TUnitSymbol(Result).Table, identifier)
+      else if Result.InheritsFrom(TClassSymbol) then
+         Result:=FindSymbol(TClassSymbol(Result).Members, identifier)
+      else if Result.InheritsFrom(TRecordSymbol) then
+         Result:=FindSymbol(TRecordSymbol(Result).Members, identifier)
+      else Result:=nil;
    end;
 end;
 
