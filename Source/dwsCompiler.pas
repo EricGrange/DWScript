@@ -630,7 +630,7 @@ begin
 
          if not FTok.TestDelete(ttSEMI) then begin
             if FTok.HasTokens then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+               FMsgs.AddCompilerStop(FTok.CurrentPos, CPE_SemiExpectedButEndOfScriptReached);
          end;
       end;
   except

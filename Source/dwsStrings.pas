@@ -72,6 +72,7 @@ const
 
   // Missing Tokens
   CPE_SemiExpected = '";" expected.';
+  CPE_SemiExpectedButEndOfScriptReached = '";" expected but end of script reached.';
   CPE_BrackLeftExpected = '"(" expected.';
   CPE_BrackRightExpected = '")" expected.';
   CPE_ArrayBracketRightExpected = '"]" expected';
