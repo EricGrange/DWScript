@@ -117,20 +117,20 @@ type
    //
    TAddrGeneratorRec = record
       private
-         FDataSize: Integer;
-         FLevel: Integer;
-         FSign: TAddrGeneratorSign;
+         FDataSize : Integer;
+         FLevel : SmallInt;
+         FSign : TAddrGeneratorSign;
 
-         function GetDataSize: Integer;
+         function GetDataSize : Integer;
 
       public
-         constructor CreatePositive(aLevel: Integer; anInitialSize: Integer = 0);
-         constructor CreateNegative(aLevel: Integer);
+         constructor CreatePositive(aLevel : SmallInt; anInitialSize : Integer = 0);
+         constructor CreateNegative(aLevel : SmallInt);
 
-         function GetStackAddr(Size: Integer): Integer;
+         function GetStackAddr(Size : Integer) : Integer;
 
-         property DataSize: Integer read GetDataSize;
-         property Level: Integer read FLevel;
+         property DataSize : Integer read GetDataSize;
+         property Level : SmallInt read FLevel;
    end;
    TAddrGenerator = ^TAddrGeneratorRec;
 
@@ -192,14 +192,14 @@ type
 
    // variable: var x: Integer;
    TDataSymbol = class(TValueSymbol)
-   protected
-     FLevel: Integer;
-     FStackAddr: Integer;
-     function GetDescription: string; override;
-   public
-     procedure InitData(const Data: TData; Offset: Integer); override;
-     property Level: Integer read FLevel write FLevel;
-     property StackAddr: Integer read FStackAddr write FStackAddr;
+      protected
+         FStackAddr : Integer;
+         FLevel : SmallInt;
+         function GetDescription: string; override;
+      public
+         procedure InitData(const Data: TData; Offset: Integer); override;
+         property Level : SmallInt read FLevel write FLevel;
+         property StackAddr: Integer read FStackAddr write FStackAddr;
    end;
 
    // parameter: procedure P(x: Integer);
@@ -279,27 +279,27 @@ type
    // A script function / procedure: procedure X(param: Integer);
    TFuncSymbol = class(TTypeSymbol)
    protected
-     FAddrGenerator: TAddrGeneratorRec;
-     FExecutable: IExecutable;
-     FInternalParams: TSymbolTable;
+     FAddrGenerator : TAddrGeneratorRec;
+     FExecutable : IExecutable;
+     FInternalParams : TSymbolTable;
      FDeprecatedMessage : String;
      FForwardPosition : PScriptPos;
-     FIsDeprecated : Boolean;
      FIsStateless : Boolean;
-     FKind: TFuncKind;
-     FParams: TParamsSymbolTable;
-     FResult: TDataSymbol;
+     FKind : TFuncKind;
+     FParams : TParamsSymbolTable;
+     FResult : TDataSymbol;
+
      procedure SetType(const Value: TSymbol); virtual;
      function GetCaption: string; override;
      function GetIsForwarded : Boolean;
      function GetDescription: string; override;
-     function GetLevel: Integer;
+     function GetLevel: SmallInt;
      function GetParamSize: Integer;
      function GetIsDeprecated : Boolean;
      procedure SetIsDeprecated(const val : Boolean);
 
    public
-     constructor Create(const Name: string; FuncKind: TFuncKind; FuncLevel: Integer);
+     constructor Create(const Name: string; FuncKind: TFuncKind; FuncLevel: SmallInt);
      destructor Destroy; override;
 
      constructor Generate(Table: TSymbolTable; const FuncName: string;
@@ -321,7 +321,7 @@ type
      property IsStateless : Boolean read FIsStateless write FIsStateless;
      property IsForwarded : Boolean read GetIsForwarded;
      property Kind: TFuncKind read FKind write FKind;
-     property Level: Integer read GetLevel;
+     property Level: SmallInt read GetLevel;
      property Params: TParamsSymbolTable read FParams;
      property ParamSize: Integer read GetParamSize;
      property Result: TDataSymbol read FResult;
@@ -352,27 +352,35 @@ type
 
    TMethodKind = ( mkProcedure, mkFunction, mkConstructor, mkDestructor, mkMethod,
                    mkClassProcedure, mkClassFunction, mkClassMethod );
-   TMethodAttribute = (maVirtual, maOverride, maReintroduce, maAbstract);
+   TMethodAttribute = (maVirtual, maOverride, maReintroduce, maAbstract, maOverlap);
    TMethodAttributes = set of TMethodAttribute;
 
    // A method of a script class: TMyClass = class procedure X(param: String); end;
    TMethodSymbol = class(TFuncSymbol)
       private
-         FClassSymbol: TClassSymbol;
-         FParentMeth: TMethodSymbol;
-         FSelfSym: TDataSymbol;
+         FClassSymbol : TClassSymbol;
+         FParentMeth : TMethodSymbol;
+         FSelfSym : TDataSymbol;
          FDeclarationPos : TScriptPos;
-         FIsAbstract: Boolean;
-         FIsVirtual: Boolean;
-         FIsOverride: Boolean;
-         FIsOverlap: Boolean;
+         FAttributes : TMethodAttributes;
+
       protected
-         function GetIsClassMethod: Boolean;
+         function GetIsClassMethod : Boolean;
+
+         function GetIsOverride : Boolean; inline;
+         procedure SetIsOverride(const val : Boolean); inline;
+         function GetIsOverlap : Boolean; inline;
+         procedure SetIsOverlap(const val : Boolean); inline;
+         function GetIsVirtual : Boolean; inline;
+         procedure SetIsVirtual(const val : Boolean); inline;
+         function GetIsAbstract : Boolean; inline;
+         procedure SetIsAbstract(const val : Boolean); inline;
+
       public
          constructor Create(const Name: string; FuncKind: TFuncKind; ClassSym: TSymbol;
-                            FuncLevel: Integer = 1); virtual;
+                            FuncLevel: SmallInt = 1); virtual;
          constructor Generate(Table: TSymbolTable; MethKind: TMethodKind;
-                              Attributes: TMethodAttributes; const MethName: string;
+                              const Attributes: TMethodAttributes; const MethName: string;
                               const MethParams: TParamArray;
                               const MethType: string; Cls: TClassSymbol);
 
@@ -383,10 +391,10 @@ type
 
          property ClassSymbol : TClassSymbol read FClassSymbol;
          property DeclarationPos : TScriptPos read FDeclarationPos write FDeclarationPos;
-         property IsAbstract : Boolean read FIsAbstract write FIsAbstract;
-         property IsVirtual : Boolean read FIsVirtual write FIsVirtual;
-         property IsOverride : Boolean read FIsOverride;
-         property IsOverlap : Boolean read FIsOverlap;
+         property IsAbstract : Boolean read GetIsAbstract write SetIsAbstract;
+         property IsVirtual : Boolean read GetIsVirtual write SetIsVirtual;
+         property IsOverride : Boolean read GetIsOverride write SetIsOverride;
+         property IsOverlap : Boolean read GetIsOverlap write SetIsOverlap;
          property IsClassMethod: Boolean read GetIsClassMethod;
          property ParentMeth: TMethodSymbol read FParentMeth;
          property SelfSym: TDataSymbol read FSelfSym write FSelfSym;
@@ -687,48 +695,48 @@ type
 
    // A table of symbols connected to other symboltables (property Parents)
    TSymbolTable = class
-   private
-     FAddrGenerator: TAddrGenerator;
-     FSymbols: TTightList;
-     FParents: TTightList;
-     FSymbolsSorted : Boolean;
+      private
+         FAddrGenerator : TAddrGenerator;
+         FSymbols : TTightList;
+         FParents : TTightList;
+         FSymbolsSorted : Boolean;
 
-     function GetParentCount: Integer;
-     function GetParents(Index: Integer): TSymbolTable;
+         function GetParentCount: Integer;
+         function GetParents(Index: Integer): TSymbolTable;
 
-   protected
-     function GetSymbol(Index: Integer): TSymbol;
-     function GetCount: Integer;
+      protected
+         function GetSymbol(Index: Integer): TSymbol;
+         function GetCount : Integer;
 
-     procedure SortSymbols(minIndex, maxIndex : Integer);
-     function FindLocalSorted(const name: string) : TSymbol;
-     function FindLocalUnSorted(const name: string) : TSymbol;
+         procedure SortSymbols(minIndex, maxIndex : Integer);
+         function FindLocalSorted(const name: string) : TSymbol;
+         function FindLocalUnSorted(const name: string) : TSymbol;
 
-   public
-     constructor Create(Parent: TSymbolTable = nil; AddrGenerator: TAddrGenerator = nil);
-     destructor Destroy; override;
+      public
+         constructor Create(Parent: TSymbolTable = nil; AddrGenerator: TAddrGenerator = nil);
+         destructor Destroy; override;
 
-     procedure InsertParent(Index: Integer; Parent: TSymbolTable); virtual;
-     function RemoveParent(Parent: TSymbolTable): Integer; virtual;
-     function IndexOfParent(Parent: TSymbolTable): Integer;
-     procedure MoveParent(CurIndex, NewIndex: Integer);
-     procedure ClearParents;
-     procedure AddParent(Parent: TSymbolTable);
+         procedure InsertParent(Index: Integer; Parent: TSymbolTable); virtual;
+         function RemoveParent(Parent: TSymbolTable): Integer; virtual;
+         function IndexOfParent(Parent: TSymbolTable): Integer;
+         procedure MoveParent(CurIndex, NewIndex: Integer);
+         procedure ClearParents;
+         procedure AddParent(Parent: TSymbolTable);
 
-     function AddSymbol(Sym: TSymbol): Integer;
-     function FindLocal(const Name: string): TSymbol; virtual;
-     function Remove(Sym: TSymbol): Integer;
-     procedure Clear;
+         function AddSymbol(Sym: TSymbol): Integer;
+         function FindLocal(const Name: string): TSymbol; virtual;
+         function Remove(Sym: TSymbol): Integer;
+         procedure Clear;
 
-     function FindSymbol(const Name: string): TSymbol; virtual;
+         function FindSymbol(const Name: string): TSymbol; virtual;
 
-     procedure Initialize(const msgs : TdwsMessageList); virtual;
+         procedure Initialize(const msgs : TdwsMessageList); virtual;
 
-     property AddrGenerator: TAddrGenerator read FAddrGenerator;
-     property Count: Integer read GetCount;
-     property Symbols[x: Integer]: TSymbol read GetSymbol; default;
-     property ParentCount: Integer read GetParentCount;
-     property Parents[Index: Integer]: TSymbolTable read GetParents;
+         property AddrGenerator: TAddrGenerator read FAddrGenerator;
+         property Count: Integer read GetCount;
+         property Symbols[x: Integer]: TSymbol read GetSymbol; default;
+         property ParentCount: Integer read GetParentCount;
+         property Parents[Index: Integer]: TSymbolTable read GetParents;
    end;
 
    TSymbolTableClass = class of TSymbolTable;
@@ -1086,7 +1094,7 @@ end;
 { TFuncSymbol }
 
 constructor TFuncSymbol.Create(const Name: string; FuncKind: TFuncKind;
-  FuncLevel: Integer);
+                               FuncLevel: SmallInt);
 begin
   inherited Create(Name, nil);
   FKind := FuncKind;
@@ -1259,9 +1267,11 @@ begin
       msgs.AddCompilerErrorFmt(FForwardPosition^, CPE_ForwardNotImplemented, [Name]);
 end;
 
-function TFuncSymbol.GetLevel: Integer;
+// GetLevel
+//
+function TFuncSymbol.GetLevel: SmallInt;
 begin
-  Result := FAddrGenerator.Level;
+   Result := FAddrGenerator.Level;
 end;
 
 function TFuncSymbol.GetParamSize: Integer;
@@ -1364,25 +1374,24 @@ end;
 { TMethodSymbol }
 
 constructor TMethodSymbol.Create(const Name: string; FuncKind: TFuncKind;
-  ClassSym: TSymbol; FuncLevel: Integer);
+  ClassSym: TSymbol; FuncLevel: SmallInt);
 begin
-  inherited Create(Name, FuncKind, FuncLevel);
-  if ClassSym is TClassSymbol then
-  begin
-    // Method
-    FClassSymbol := TClassSymbol(ClassSym);
-    FSelfSym := TDataSymbol.Create(SYS_SELF, ClassSym);
-    FInternalParams.AddSymbol(FSelfSym);
-    FSize := 2; // code + data
-  end
-  else
-    // Class function -> self is "class of"
-    FClassSymbol := TClassSymbol(ClassSym.Typ);
-  FParams.AddParent(FClassSymbol.Members);
+   inherited Create(Name, FuncKind, FuncLevel);
+   if ClassSym is TClassSymbol then begin
+      // Method
+      FClassSymbol := TClassSymbol(ClassSym);
+      FSelfSym := TDataSymbol.Create(SYS_SELF, ClassSym);
+      FInternalParams.AddSymbol(FSelfSym);
+      FSize := 2; // code + data
+   end else begin
+      // Class function -> self is "class of"
+      FClassSymbol := TClassSymbol(ClassSym.Typ);
+   end;
+   FParams.AddParent(FClassSymbol.Members);
 end;
 
 constructor TMethodSymbol.Generate(Table: TSymbolTable; MethKind: TMethodKind;
-  Attributes: TMethodAttributes; const MethName: string; const MethParams: TParamArray;
+  const Attributes: TMethodAttributes; const MethName: string; const MethParams: TParamArray;
   const MethType: string; Cls: TClassSymbol);
 var
   typSym: TSymbol;
@@ -1441,15 +1450,15 @@ begin
     SetOverlap(TMethodSymbol(meth));
 
   if Attributes = [maVirtual] then
-    FIsVirtual := True
+    IsVirtual := True
   else if Attributes = [maVirtual, maAbstract] then
   begin
-    FIsVirtual := True;
-    FIsAbstract := True;
+    IsVirtual := True;
+    IsAbstract := True;
   end
   else if Attributes = [maOverride] then
   begin
-    if FIsOverlap then
+    if IsOverlap then
       SetOverride(TMethodSymbol(meth))
     else
       raise Exception.CreateFmt(CPE_CanNotOverride, [Name]);
@@ -1463,6 +1472,70 @@ end;
 function TMethodSymbol.GetIsClassMethod: Boolean;
 begin
   Result := not Assigned(FSelfSym);
+end;
+
+// GetIsOverride
+//
+function TMethodSymbol.GetIsOverride : Boolean;
+begin
+   Result:=maOverride in FAttributes;
+end;
+
+// SetIsOverride
+//
+procedure TMethodSymbol.SetIsOverride(const val : Boolean);
+begin
+   if val then
+      Include(FAttributes, maOverride)
+   else Exclude(FAttributes, maOverride);
+end;
+
+// GetIsOverlap
+//
+function TMethodSymbol.GetIsOverlap : Boolean;
+begin
+   Result:=maOverlap in FAttributes;
+end;
+
+// SetIsOverlap
+//
+procedure TMethodSymbol.SetIsOverlap(const val : Boolean);
+begin
+   if val then
+      Include(FAttributes, maOverlap)
+   else Exclude(FAttributes, maOverlap);
+end;
+
+// GetIsVirtual
+//
+function TMethodSymbol.GetIsVirtual : Boolean;
+begin
+   Result:=maVirtual in FAttributes;
+end;
+
+// SetIsVirtual
+//
+procedure TMethodSymbol.SetIsVirtual(const val : Boolean);
+begin
+   if val then
+      Include(FAttributes, maVirtual)
+   else Exclude(FAttributes, maVirtual);
+end;
+
+// GetIsAbstract
+//
+function TMethodSymbol.GetIsAbstract : Boolean;
+begin
+   Result:=maAbstract in FAttributes;
+end;
+
+// SetIsAbstract
+//
+procedure TMethodSymbol.SetIsAbstract(const val : Boolean);
+begin
+   if val then
+      Include(FAttributes, maAbstract)
+   else Exclude(FAttributes, maAbstract);
 end;
 
 procedure TMethodSymbol.InitData(const Data: TData; Offset: Integer);
@@ -1479,19 +1552,23 @@ begin
   Result := inherited IsCompatible(typSym);
 end;
 
+// SetOverlap
+//
 procedure TMethodSymbol.SetOverlap(meth: TMethodSymbol);
 begin
-  FParentMeth := meth;
-  FIsOverride := False;
-  FIsOverlap := True;
+   FParentMeth := meth;
+   IsOverride := False;
+   IsOverlap := True;
 end;
 
+// SetOverride
+//
 procedure TMethodSymbol.SetOverride(meth: TMethodSymbol);
 begin
-  FParentMeth := meth;
-  FIsOverride := True;
-  FIsVirtual := True;
-  FIsOverlap := False;
+   FParentMeth := meth;
+   IsOverride := True;
+   IsVirtual := True;
+   IsOverlap := False;
 end;
 
 { TPropertySymbol }
@@ -2009,9 +2086,9 @@ end;
 
 constructor TSymbolTable.Create(Parent: TSymbolTable; AddrGenerator: TAddrGenerator);
 begin
-  FAddrGenerator := AddrGenerator;
-  if Assigned(Parent) then
-    AddParent(Parent);
+   FAddrGenerator := AddrGenerator;
+   if Assigned(Parent) then
+      AddParent(Parent);
 end;
 
 destructor TSymbolTable.Destroy;
@@ -2122,33 +2199,37 @@ begin
    Result:=nil;
 end;
 
-
+// FindSymbol
+//
 function TSymbolTable.FindSymbol(const Name: string): TSymbol;
 var
-  x: Integer;
+   x: Integer;
 begin
-  // Find Symbol in the local List
-  Result := FindLocal(Name);
-  if Assigned(Result) then
-    Exit;
+   // Find Symbol in the local List
+   Result := FindLocal(Name);
+   if Assigned(Result) then
+      Exit;
 
-  // Find Symbol in all parent lists
-  x := 0;
-  while not Assigned(Result) and (x < ParentCount) do
-  begin
-    Result := Parents[x].FindSymbol(Name);
-    Inc(x);
-  end;
+   // Find Symbol in all parent lists
+   x := 0;
+   while not Assigned(Result) and (x < ParentCount) do begin
+      Result := Parents[x].FindSymbol(Name);
+      Inc(x);
+   end;
 end;
 
+// GetCount
+//
 function TSymbolTable.GetCount: Integer;
 begin
    Result := FSymbols.Count
 end;
 
+// GetSymbol
+//
 function TSymbolTable.GetSymbol(Index: Integer): TSymbol;
 begin
-  Result := TSymbol(FSymbols.List[Index])
+   Result := TSymbol(FSymbols.List[Index])
 end;
 
 function TSymbolTable.AddSymbol(Sym: TSymbol): Integer;
@@ -2173,52 +2254,72 @@ begin
    end;
 end;
 
+// Remove
+//
 function TSymbolTable.Remove(Sym: TSymbol): Integer;
 begin
    Result:=FSymbols.Remove(Sym);
 end;
 
+// Clear
+//
 procedure TSymbolTable.Clear;
 begin
    FSymbols.Clear;
 end;
 
+// AddParent
+//
 procedure TSymbolTable.AddParent(Parent: TSymbolTable);
 begin
-  InsertParent(ParentCount,Parent);
+   InsertParent(ParentCount,Parent);
 end;
 
+// InsertParent
+//
 procedure TSymbolTable.InsertParent(Index: Integer; Parent: TSymbolTable);
 begin
    FParents.Insert(Index,Parent);
 end;
 
+// RemoveParent
+//
 function TSymbolTable.RemoveParent(Parent: TSymbolTable): Integer;
 begin
    Result := FParents.Remove(Parent);
 end;
 
+// ClearParents
+//
 procedure TSymbolTable.ClearParents;
 begin
    while FParents.Count > 0 do
       RemoveParent(FParents.List[0]);
 end;
 
+// GetParentCount
+//
 function TSymbolTable.GetParentCount: Integer;
 begin
    Result := FParents.Count
 end;
 
+// GetParents
+//
 function TSymbolTable.GetParents(Index: Integer): TSymbolTable;
 begin
-  Result := TSymbolTable(FParents.List[Index]);
+   Result := TSymbolTable(FParents.List[Index]);
 end;
 
+// IndexOfParent
+//
 function TSymbolTable.IndexOfParent(Parent: TSymbolTable): Integer;
 begin
    Result := FParents.IndexOf(Parent)
 end;
 
+// MoveParent
+//
 procedure TSymbolTable.MoveParent(CurIndex, NewIndex: Integer);
 begin
    FParents.Move(CurIndex,NewIndex);
@@ -2270,17 +2371,16 @@ end;
 //
 procedure TUnitSymbolTable.BeforeDestruction;
 var
-  O : IObjectOwner;
+   objOwner : IObjectOwner;
 begin
-  if Assigned(FObjects) then begin
-    while FObjects.Count > 0 do
-    begin
-      O := IObjectOwner(FObjects[0]);
-      FObjects.Delete(0);
-      O.ReleaseObject;
-    end;
-  end;
-  inherited;
+   if Assigned(FObjects) then begin
+      while FObjects.Count > 0 do begin
+         objOwner := IObjectOwner(FObjects[0]);
+         FObjects.Delete(0);
+         objOwner.ReleaseObject;
+      end;
+   end;
+   inherited;
 end;
 
 // AddObjectOwner
@@ -2342,7 +2442,7 @@ end;
 
 // CreatePositive
 //
-constructor TAddrGeneratorRec.CreatePositive(aLevel: Integer; anInitialSize: Integer = 0);
+constructor TAddrGeneratorRec.CreatePositive(aLevel : SmallInt; anInitialSize: Integer = 0);
 begin
    FLevel := aLevel;
    FDataSize := anInitialSize;
@@ -2351,7 +2451,7 @@ end;
 
 // CreateNegative
 //
-constructor TAddrGeneratorRec.CreateNegative(aLevel: Integer);
+constructor TAddrGeneratorRec.CreateNegative(aLevel : SmallInt);
 begin
    FLevel := aLevel;
    FDataSize := 0;
