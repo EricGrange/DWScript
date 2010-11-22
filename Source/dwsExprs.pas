@@ -259,6 +259,8 @@ type
   // A script executable program
   TdwsProgram = class(TInterfacedObject)
   private
+    FFirstObject, FLastObject : TScriptObj;
+    FObjectCount : Integer;
     FDebugger: IDebugger;
     FIsDebugging: Boolean;
     FContextMap: TContextMap;
@@ -292,8 +294,7 @@ type
     FCompiler : TObject;
     FRuntimeFileSystem : TdwsCustomFileSystem;
     FFileSystem : IdwsFileSystem;
-    FFirstObject, FLastObject : TScriptObj;
-    FObjectCount : Integer;
+    FConditionalDefines : TStringList;
 
   protected
     function GetLevel: Integer;
@@ -303,6 +304,7 @@ type
     procedure SetResult(const Value: TdwsResult); virtual;
     procedure SetUserDef(const Value: TObject); virtual;
     procedure Evaluate(var status : TExecutionStatusResult); virtual;
+    procedure SetConditionalDefines(const val : TStringList);
 
   public
     constructor Create(SystemTable: TSymbolTable; ResultType: TdwsResultType;
@@ -335,6 +337,7 @@ type
     property Compiler: TObject read FCompiler write FCompiler;
     property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
     property FileSystem : IdwsFileSystem read FFileSystem write FFileSystem;
+    property ConditionalDefines : TStringList read FConditionalDefines write SetConditionalDefines;
     property ObjectCount : Integer read FObjectCount write FObjectCount;
     property Expr: TExpr read FExpr write FExpr;
     property InitExpr: TExpr read FInitExpr;
@@ -1319,40 +1322,45 @@ constructor TdwsProgram.Create(SystemTable: TSymbolTable; ResultType: TdwsResult
                                MaxRecursionDepth : Integer;
                                MaxDataSize, StackChunkSize: Integer);
 begin
-  FResultType := ResultType;
-  FProgramState := psUndefined;
+   FConditionalDefines:=TStringList.Create;
+   FConditionalDefines.Sorted:=True;
+   FConditionalDefines.CaseSensitive:=False;
+   FConditionalDefines.Duplicates:=dupIgnore;
 
-  FMsgs := TdwsMessageList.Create;
-  FRoot := Self;
+   FResultType := ResultType;
+   FProgramState := psUndefined;
 
-  // Create the Symbol Dictionary
-  FSymbolDictionary := TSymbolDictionary.Create;
-  // Create Context Map
-  FContextMap := TContextMap.Create;
-  //Create Script Source List
-  FSourceList := TScriptSourceList.Create;
+   FMsgs := TdwsMessageList.Create;
+   FRoot := Self;
 
-  // Create the program stack
-  FStack := TStack.Create(StackChunkSize, MaxDataSize, MaxRecursionDepth);
-  FAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
-  FGlobalAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
+   // Create the Symbol Dictionary
+   FSymbolDictionary := TSymbolDictionary.Create;
+   // Create Context Map
+   FContextMap := TContextMap.Create;
+   //Create Script Source List
+   FSourceList := TScriptSourceList.Create;
 
-  FUnifiedConstList:=TUnifiedConstList.Create;
+   // Create the program stack
+   FStack := TStack.Create(StackChunkSize, MaxDataSize, MaxRecursionDepth);
+   FAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
+   FGlobalAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
 
-  // Initialize the system table
-  FRootTable := TProgramSymbolTable.Create(SystemTable, @FAddrGenerator);
-  FTable := FRootTable;
+   FUnifiedConstList:=TUnifiedConstList.Create;
 
-  FInitExpr := TBlockExprNoStep.Create(Self, cNullPos);
+   // Initialize the system table
+   FRootTable := TProgramSymbolTable.Create(SystemTable, @FAddrGenerator);
+   FTable := FRootTable;
 
-  // Initialize shortcuts to often used symbols
-  FTypBoolean := SystemTable.FindSymbol(SYS_BOOLEAN) as TTypeSymbol;
-  FTypFloat := SystemTable.FindSymbol(SYS_FLOAT) as TTypeSymbol;
-  FTypInteger := SystemTable.FindSymbol(SYS_INTEGER) as TTypeSymbol;
-  FTypString := SystemTable.FindSymbol(SYS_STRING) as TTypeSymbol;
-  FTypVariant := SystemTable.FindSymbol(SYS_VARIANT) as TTypeSymbol;
-  FTypNil := TNilSymbol.Create;
-  FTypObject := TClassSymbol(SystemTable.FindSymbol(SYS_TOBJECT));
+   FInitExpr := TBlockExprNoStep.Create(Self, cNullPos);
+
+   // Initialize shortcuts to often used symbols
+   FTypBoolean := SystemTable.FindSymbol(SYS_BOOLEAN) as TTypeSymbol;
+   FTypFloat := SystemTable.FindSymbol(SYS_FLOAT) as TTypeSymbol;
+   FTypInteger := SystemTable.FindSymbol(SYS_INTEGER) as TTypeSymbol;
+   FTypString := SystemTable.FindSymbol(SYS_STRING) as TTypeSymbol;
+   FTypVariant := SystemTable.FindSymbol(SYS_VARIANT) as TTypeSymbol;
+   FTypNil := TNilSymbol.Create;
+   FTypObject := TClassSymbol(SystemTable.FindSymbol(SYS_TOBJECT));
 end;
 
 destructor TdwsProgram.Destroy;
@@ -1368,6 +1376,7 @@ begin
    FContextMap.Free;
    FSourceList.Free;
    FUnifiedConstList.Free;
+   FConditionalDefines.Free;
    inherited;
 end;
 
@@ -1509,6 +1518,13 @@ begin
     FExpr.EvalNoResult(status);
     if FRoot.ProgramState = psRunningStopped then
        Msgs.AddExecutionStop(Expr.Pos, RTE_ScriptStopped);
+end;
+
+// SetConditionalDefines
+//
+procedure TdwsProgram.SetConditionalDefines(const val : TStringList);
+begin
+   FConditionalDefines.Assign(val);
 end;
 
 procedure TdwsProgram.RunProgram(aTimeoutMilliSeconds: Integer);

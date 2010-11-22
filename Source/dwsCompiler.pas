@@ -55,7 +55,7 @@ type
     FOwner: TComponent;
     FResultType: TdwsResultType;
     FScriptPaths: TStrings;
-    FConditionals: TStrings;
+    FConditionals: TStringList;
     FStackChunkSize: Integer;
     FSystemTable: TSymbolTable;
     FTimeoutMilliseconds: Integer;
@@ -71,7 +71,7 @@ type
     procedure SetCompileFileSystem(const val : TdwsCustomFileSystem);
     procedure SetRuntimeFileSystem(const val : TdwsCustomFileSystem);
     procedure SetScriptPaths(const values : TStrings);
-    procedure SetConditionals(const val : TStrings);
+    procedure SetConditionals(const val : TStringList);
 
   public
     constructor Create(Owner: TComponent);
@@ -90,7 +90,7 @@ type
     property CompilerOptions: TCompilerOptions read FCompilerOptions write FCompilerOptions default cDefaultCompilerOptions;
     property MaxDataSize: Integer read FMaxDataSize write FMaxDataSize default 0;
     property MaxRecursionDepth : Integer read FMaxRecursionDepth write FMaxRecursionDepth default cDefaultMaxRecursionDepth;
-    property Conditionals : TStrings read FConditionals write SetConditionals;
+    property Conditionals : TStringList read FConditionals write SetConditionals;
     property ScriptPaths: TStrings read FScriptPaths write SetScriptPaths;
     property CompileFileSystem : TdwsCustomFileSystem read FCompileFileSystem write SetCompileFileSystem;
     property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write SetRuntimeFileSystem;
@@ -143,7 +143,6 @@ type
       FConditionalDepth : TSimpleStack<TSwitchInstruction>;
 
       FConnectors : TStrings;
-      FConditionalDefines : TStringList;
       FCompileFileSystem : IdwsFileSystem;
       FOnInclude : TIncludeEvent;
       FScriptPaths : TStrings;
@@ -350,10 +349,6 @@ end;
 constructor TdwsCompiler.Create;
 begin
    inherited;
-   FConditionalDefines:=TStringList.Create;
-   FConditionalDefines.Sorted:=True;
-   FConditionalDefines.CaseSensitive:=False;
-   FConditionalDefines.Duplicates:=dupIgnore;
    FLoopExprs:=TSimpleStack<TNoResultExpr>.Create;
    FLoopExitable:=TSimpleStack<TLoopExitable>.Create;
    FConditionalDepth:=TSimpleStack<TSwitchInstruction>.Create;
@@ -364,7 +359,6 @@ end;
 destructor TdwsCompiler.Destroy;
 begin
    FConditionalDepth.Free;
-   FConditionalDefines.Free;
    FLoopExitable.Free;
    FLoopExprs.Free;
    inherited;
@@ -505,7 +499,6 @@ begin
 
    FLoopExprs.Clear;
    FLoopExitable.Clear;
-   FConditionalDefines.Assign(conf.Conditionals);
    FConditionalDepth.Clear;
 
    maxDataSize := Conf.MaxDataSize;
@@ -523,6 +516,7 @@ begin
    FProg.Compiler := Self;
    FProg.TimeoutMilliseconds := Conf.TimeoutMilliseconds;
    FProg.RuntimeFileSystem := Conf.RuntimeFileSystem;
+   FProg.ConditionalDefines:=conf.Conditionals;
 
    try
       // Check for missing units
@@ -3953,7 +3947,7 @@ begin
          if not FTok.Test(ttNAME) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-         FConditionalDefines.Add(FTok.GetToken.FString);
+         FProg.ConditionalDefines.Add(FTok.GetToken.FString);
          FTok.KillToken;
 
       end;
@@ -3962,9 +3956,9 @@ begin
          if not FTok.Test(ttNAME) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-         i:=FConditionalDefines.IndexOf(FTok.GetToken.FString);
+         i:=FProg.ConditionalDefines.IndexOf(FTok.GetToken.FString);
          if i>=0 then
-            FConditionalDefines.Delete(i);
+            FProg.ConditionalDefines.Delete(i);
          FTok.KillToken;
 
       end;
@@ -3973,7 +3967,7 @@ begin
          if not FTok.Test(ttNAME) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-         conditionalTrue:=    (FConditionalDefines.IndexOf(FTok.GetToken.FString)>=0)
+         conditionalTrue:=    (FProg.ConditionalDefines.IndexOf(FTok.GetToken.FString)>=0)
                           xor (switch = siIfNDef);
          FTok.KillToken;
 
@@ -4546,7 +4540,7 @@ end;
 
 // SetConditionals
 //
-procedure TdwsConfiguration.SetConditionals(const val : TStrings);
+procedure TdwsConfiguration.SetConditionals(const val : TStringList);
 begin
    FConditionals.Assign(val);
 end;
