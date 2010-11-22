@@ -23,6 +23,6 @@ PrintLn('Bug 3');
 {$ENDIF}
 
 {$IFNDEF TEST}
-PrintLn('!');
+PrintLn('!')
 {$ENDIF}
 

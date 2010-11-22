@@ -23,7 +23,7 @@ unit dwsCoreExprs;
 interface
 
 uses Windows, Classes, Variants, SysUtils, dwsSymbols, dwsErrors, dwsStrings,
-   dwsStack, dwsExprs, dwsUtils;
+   dwsStack, dwsExprs, dwsUtils, dwsTokenizer;
 
 type
 
@@ -164,9 +164,9 @@ type
 
    // TUnifiedConstList
    //
-   TUnifiedConstList = class (TSortedList)
+   TUnifiedConstList = class (TSortedList<TExprBase>)
       protected
-         function Compare(const item1, item2 : Pointer) : Integer; override;
+         function Compare(const item1, item2 : TExprBase) : Integer; override;
       public
          destructor Destroy; override;
    end;
@@ -450,10 +450,10 @@ type
      function  Optimize : TNoPosExpr; override;
    end;
 
-   TNumberOpExpr = class(TBinaryOpExpr)
-     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   TVariantBinOpExpr = class(TBinaryOpExpr)
+     constructor Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr); override;
+     function  Optimize : TNoPosExpr; override;
    end;
-
    TIntegerBinOpExpr = class(TBinaryOpExpr)
      constructor Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr); override;
      function Eval: Variant; override;
@@ -487,21 +487,21 @@ type
    end;
 
    // a + b
-   TAddExpr = class(TNumberStringBinOpExpr)
-     function Eval: Variant; override;
+   TAddExpr = class(TVariantBinOpExpr)
+      function Eval: Variant; override;
    end;
    TAddIntExpr = class(TIntegerBinOpExpr)
-     function EvalAsInteger : Int64; override;
+      function EvalAsInteger : Int64; override;
    end;
    TAddStrExpr = class(TStringBinOpExpr)
-     procedure EvalAsString(var Result : String); override;
+      procedure EvalAsString(var Result : String); override;
    end;
    TAddFloatExpr = class(TFloatBinOpExpr)
-     procedure EvalAsFloat(var Result : Double); override;
+      procedure EvalAsFloat(var Result : Double); override;
    end;
 
    // a - b
-   TSubExpr = class(TNumberOpExpr)
+   TSubExpr = class(TVariantBinOpExpr)
      function Eval: Variant; override;
    end;
    TSubIntExpr = class(TIntegerBinOpExpr)
@@ -512,7 +512,7 @@ type
    end;
 
    // a * b
-   TMultExpr = class(TNumberOpExpr)
+   TMultExpr = class(TVariantBinOpExpr)
      function Eval: Variant; override;
    end;
    TMultIntExpr = class(TIntegerBinOpExpr)
@@ -1015,6 +1015,27 @@ type
          class function FindSymbol(symbolTable : TSymbolTable; const name : String) : TSymbol; static;
    end;
 
+   TRegisteredBinaryOperator = record
+      ExprClass : TBinaryOpExprClass;
+      LeftType : TSymbol;
+      RighType : TSymbol;
+   end;
+
+   // lists of binary operators and their expression classes
+   // used for operator overloading
+   TBinaryOperators = class
+      private
+         FItems : array [TTokenType] of array of TRegisteredBinaryOperator;
+
+      public
+         constructor Create(table : TSymbolTable);
+
+         procedure RegisterOperator(aToken : TTokenType; aExprClass : TBinaryOpExprClass;
+                                    aLeftType, aRightType : TSymbol);
+
+         function OperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TBinaryOpExprClass;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1351,12 +1372,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TUnifiedConstList ------------------
+// ------------------ TUnifiedConstList<TExprBase> ------------------
 // ------------------
 
 // Compare
 //
-function TUnifiedConstList.Compare(const item1, item2 : Pointer) : Integer;
+function TUnifiedConstList.Compare(const item1, item2 : TExprBase) : Integer;
 var
    unified1, unified2 : TUnifiedConstExpr;
 begin
@@ -2954,21 +2975,26 @@ begin
    Result := FLeft.EvalAsInteger shr FRight.EvalAsInteger
 end;
 
-{ TNumberOpExpr }
+// ------------------
+// ------------------ TVariantBinOpExpr ------------------
+// ------------------
 
-// TypeCheckNoPos
+// Create
 //
-procedure TNumberOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
+constructor TVariantBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr);
 begin
    inherited;
-   if FLeft.IsIntegerValue and FRight.IsIntegerValue then
-      FTyp := FProg.TypInteger
-   else if FLeft.IsNumberValue and FRight.IsNumberValue then
-      FTyp := FProg.TypFloat
-   else if     (FLeft.IsVariantValue or FLeft.IsNumberValue)
-           and (FRight.IsVariantValue or FRight.IsNumberValue) then
-      FTyp := FProg.TypVariant
-   else Prog.Msgs.AddCompilerError(aPos, CPE_InvalidOperands);
+   FTyp:=FProg.TypVariant;
+end;
+
+// Optimize
+//
+function TVariantBinOpExpr.Optimize : TNoPosExpr;
+begin
+   if IsConstant then begin
+      Result:=TUnifiedConstExpr.CreateUnified(FProg, Prog.TypVariant, Eval);
+      Free;
+   end else Result:=Self;
 end;
 
 // ------------------
@@ -4439,6 +4465,145 @@ begin
          Result:=FindSymbol(TRecordSymbol(Result).Members, identifier)
       else Result:=nil;
    end;
+end;
+
+// ------------------
+// ------------------ TBinaryOperators ------------------
+// ------------------
+
+// Create
+//
+constructor TBinaryOperators.Create(table : TSymbolTable);
+var
+   typInteger : TTypeSymbol;
+   typFloat : TTypeSymbol;
+   typBoolean : TTypeSymbol;
+   typString : TTypeSymbol;
+   typVariant : TTypeSymbol;
+begin
+   typInteger:=table.FindSymbol(SYS_INTEGER) as TTypeSymbol;
+   typFloat:=table.FindSymbol(SYS_FLOAT) as TTypeSymbol;
+   typBoolean:=table.FindSymbol(SYS_BOOLEAN) as TTypeSymbol;
+   typString:=table.FindSymbol(SYS_STRING) as TTypeSymbol;
+   typVariant:=table.FindSymbol(SYS_VARIANT) as TTypeSymbol;
+
+   RegisterOperator(ttPLUS,   TAddIntExpr,      typInteger,  typInteger);
+   RegisterOperator(ttPLUS,   TAddStrExpr,      typString,   typString);
+   RegisterOperator(ttPLUS,   TAddFloatExpr,    typInteger,  typFloat);
+   RegisterOperator(ttPLUS,   TAddFloatExpr,    typFloat,    typInteger);
+   RegisterOperator(ttPLUS,   TAddFloatExpr,    typFloat,    typFloat);
+   RegisterOperator(ttPLUS,   TAddExpr,         typInteger,  typVariant);
+   RegisterOperator(ttPLUS,   TAddExpr,         typFloat,    typVariant);
+   RegisterOperator(ttPLUS,   TAddExpr,         typString,   typVariant);
+   RegisterOperator(ttPLUS,   TAddExpr,         typVariant,  typInteger);
+   RegisterOperator(ttPLUS,   TAddExpr,         typVariant,  typFloat);
+   RegisterOperator(ttPLUS,   TAddExpr,         typVariant,  typString);
+   RegisterOperator(ttPLUS,   TAddExpr,         typVariant,  typVariant);
+
+   RegisterOperator(ttMINUS,  TSubIntExpr,      typInteger,  typInteger);
+   RegisterOperator(ttMINUS,  TSubFloatExpr,    typInteger,  typFloat);
+   RegisterOperator(ttMINUS,  TSubFloatExpr,    typFloat,    typInteger);
+   RegisterOperator(ttMINUS,  TSubFloatExpr,    typFloat,    typFloat);
+   RegisterOperator(ttMINUS,  TSubExpr,         typInteger,  typVariant);
+   RegisterOperator(ttMINUS,  TSubExpr,         typFloat,    typVariant);
+   RegisterOperator(ttMINUS,  TSubExpr,         typVariant,  typInteger);
+   RegisterOperator(ttMINUS,  TSubExpr,         typVariant,  typFloat);
+   RegisterOperator(ttMINUS,  TSubExpr,         typVariant,  typVariant);
+
+   RegisterOperator(ttTIMES,  TMultIntExpr,     typInteger,  typInteger);
+   RegisterOperator(ttTIMES,  TMultFloatExpr,   typInteger,  typFloat);
+   RegisterOperator(ttTIMES,  TMultFloatExpr,   typFloat,    typInteger);
+   RegisterOperator(ttTIMES,  TMultFloatExpr,   typFloat,    typFloat);
+   RegisterOperator(ttTIMES,  TMultExpr,        typInteger,  typVariant);
+   RegisterOperator(ttTIMES,  TMultExpr,        typFloat,    typVariant);
+   RegisterOperator(ttTIMES,  TMultExpr,        typVariant,  typInteger);
+   RegisterOperator(ttTIMES,  TMultExpr,        typVariant,  typFloat);
+   RegisterOperator(ttTIMES,  TMultExpr,        typVariant,  typVariant);
+
+   RegisterOperator(ttDIVIDE, TDivideExpr,      typInteger,  typInteger);
+   RegisterOperator(ttDIVIDE, TDivideExpr,      typInteger,  typFloat);
+   RegisterOperator(ttDIVIDE, TDivideExpr,      typFloat,    typInteger);
+   RegisterOperator(ttDIVIDE, TDivideExpr,      typFloat,    typFloat);
+   RegisterOperator(ttDIVIDE, TDivideExpr,      typInteger,  typVariant);
+   RegisterOperator(ttDIVIDE, TDivideExpr,      typFloat,    typVariant);
+   RegisterOperator(ttDIVIDE, TDivideExpr,      typVariant,  typInteger);
+   RegisterOperator(ttDIVIDE, TDivideExpr,      typVariant,  typFloat);
+   RegisterOperator(ttDIVIDE, TDivideExpr,      typVariant,  typVariant);
+
+   RegisterOperator(ttDIV,    TDivExpr,         typInteger,  typInteger);
+   RegisterOperator(ttDIV,    TDivExpr,         typInteger,  typVariant);
+   RegisterOperator(ttDIV,    TDivExpr,         typVariant,  typInteger);
+   RegisterOperator(ttDIV,    TDivExpr,         typVariant,  typVariant);
+
+   RegisterOperator(ttMOD,    TModExpr,         typInteger,  typInteger);
+   RegisterOperator(ttMOD,    TModExpr,         typInteger,  typVariant);
+   RegisterOperator(ttMOD,    TModExpr,         typVariant,  typInteger);
+   RegisterOperator(ttMOD,    TModExpr,         typVariant,  typVariant);
+
+   RegisterOperator(ttOR,     TBoolOrExpr,      typBoolean,  typBoolean);
+   RegisterOperator(ttOR,     TBoolOrExpr,      typBoolean,  typVariant);
+   RegisterOperator(ttOR,     TBoolOrExpr,      typVariant,  typBoolean);
+   RegisterOperator(ttOR,     TIntOrExpr,       typInteger,  typInteger);
+   RegisterOperator(ttOR,     TIntOrExpr,       typInteger,  typVariant);
+   RegisterOperator(ttOR,     TIntOrExpr,       typVariant,  typInteger);
+   RegisterOperator(ttOR,     TIntOrExpr,       typVariant,  typVariant);
+
+   RegisterOperator(ttAND,    TBoolAndExpr,     typBoolean,  typBoolean);
+   RegisterOperator(ttAND,    TBoolAndExpr,     typBoolean,  typVariant);
+   RegisterOperator(ttAND,    TBoolAndExpr,     typVariant,  typBoolean);
+   RegisterOperator(ttAND,    TIntAndExpr,      typInteger,  typInteger);
+   RegisterOperator(ttAND,    TIntAndExpr,      typInteger,  typVariant);
+   RegisterOperator(ttAND,    TIntAndExpr,      typVariant,  typInteger);
+   RegisterOperator(ttAND,    TIntAndExpr,      typVariant,  typVariant);
+
+   RegisterOperator(ttXOR,    TBoolXorExpr,     typBoolean,  typBoolean);
+   RegisterOperator(ttXOR,    TBoolXorExpr,     typBoolean,  typVariant);
+   RegisterOperator(ttXOR,    TBoolXorExpr,     typVariant,  typBoolean);
+   RegisterOperator(ttXOR,    TIntXorExpr,      typInteger,  typInteger);
+   RegisterOperator(ttXOR,    TIntXorExpr,      typInteger,  typVariant);
+   RegisterOperator(ttXOR,    TIntXorExpr,      typVariant,  typInteger);
+   RegisterOperator(ttXOR,    TIntXorExpr,      typVariant,  typVariant);
+
+   RegisterOperator(ttSHL,    TShlExpr,         typInteger,  typInteger);
+   RegisterOperator(ttSHL,    TShlExpr,         typInteger,  typVariant);
+   RegisterOperator(ttSHL,    TShlExpr,         typVariant,  typInteger);
+   RegisterOperator(ttSHL,    TShlExpr,         typVariant,  typVariant);
+
+   RegisterOperator(ttSHR,    TShrExpr,         typInteger,  typInteger);
+   RegisterOperator(ttSHR,    TShrExpr,         typInteger,  typVariant);
+   RegisterOperator(ttSHR,    TShrExpr,         typVariant,  typInteger);
+   RegisterOperator(ttSHR,    TShrExpr,         typVariant,  typVariant);
+end;
+
+// RegisterOperator
+//
+procedure TBinaryOperators.RegisterOperator(aToken : TTokenType; aExprClass : TBinaryOpExprClass;
+                                            aLeftType, aRightType : TSymbol);
+var
+   n : Integer;
+begin
+   n:=Length(FItems[aToken]);
+   SetLength(FItems[aToken], n+1);
+   with FItems[aToken][n] do begin
+      ExprClass:=aExprClass;
+      LeftType:=aLeftType;
+      RighType:=aRightType;
+   end;
+end;
+
+// OperatorClassFor
+//
+function TBinaryOperators.OperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TBinaryOpExprClass;
+var
+   i : Integer;
+begin
+   if (aLeftType<>nil) and (aRightType<>nil) then begin
+      for i:=0 to High(FItems[aToken]) do with FItems[aToken][i] do begin
+         if aLeftType.IsOfType(LeftType) and aRightType.IsOfType(RighType) then
+            Exit(ExprClass);
+      end;
+   end;
+   Result:=nil;
 end;
 
 end.

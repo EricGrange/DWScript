@@ -1,3 +1,4 @@
 Syntax Error: Invalid Operands [line: 1, column: 25]
 Syntax Error: Invalid Operands [line: 2, column: 22]
 Syntax Error: Invalid Operands [line: 3, column: 22]
+Syntax Error: Argument 0 expects type "Float" instead of "String" [line: 3, column: 9]

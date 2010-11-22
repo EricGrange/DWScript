@@ -26,7 +26,6 @@ const
   // Constants of "System.pas"
   SYS_INTEGER = 'Integer';
   SYS_FLOAT = 'Float';
-  SYS_FLOAT_DT = 'DateTime';
   SYS_STRING = 'String';
   SYS_BOOLEAN = 'Boolean';
   SYS_VARIANT = 'Variant';
@@ -72,7 +71,6 @@ const
 
   // Missing Tokens
   CPE_SemiExpected = '";" expected.';
-  CPE_SemiExpectedButEndOfScriptReached = '";" expected but end of script reached.';
   CPE_BrackLeftExpected = '"(" expected.';
   CPE_BrackRightExpected = '")" expected.';
   CPE_ArrayBracketRightExpected = '"]" expected';

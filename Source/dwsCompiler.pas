@@ -139,6 +139,7 @@ type
       FMsgs : TdwsMessageList;
       FProg : TdwsProgram;
       FTok : TTokenizer;
+      FBinaryOperators : TBinaryOperators;
       FLoopExprs : TSimpleStack<TNoResultExpr>;
       FLoopExitable : TSimpleStack<TLoopExitable>;
       FConditionalDepth : TSimpleStack<TSwitchInstruction>;
@@ -199,7 +200,7 @@ type
       function ReadIf: TIfExpr;
       function ReadInherited(IsWrite: Boolean): TNoPosExpr;
       function ReadInstr: TNoResultExpr;
-      function ReadInstrSwitch: TNoResultExpr;
+      function ReadInstrSwitch(semiPending : Boolean): TNoResultExpr;
       function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
       function ReadMethodDecl(ClassSym: TClassSymbol; FuncKind: TFuncKind; IsClassMethod: Boolean): TMethodSymbol;
       function ReadMethodImpl(ClassSym: TClassSymbol; FuncKind: TFuncKind; IsClassMethod: Boolean): TMethodSymbol;
@@ -520,6 +521,7 @@ begin
    FProg.RuntimeFileSystem := Conf.RuntimeFileSystem;
    FProg.ConditionalDefines:=conf.Conditionals;
 
+   FBinaryOperators:=TBinaryOperators.Create(FProg.Table);
    try
       // Check for missing units
       if Assigned(FFilter) then begin
@@ -602,6 +604,8 @@ begin
          FMsgs.AddCompilerError(cNullPos, e.Message);
    end;
 
+   FreeAndNil(FBinaryOperators);
+
    FCompileFileSystem := nil;
 
    FProg.Compiler := nil;
@@ -629,8 +633,12 @@ begin
             TBlockExpr(Result).AddStatement(Stmt);
 
          if not FTok.TestDelete(ttSEMI) then begin
+            while FTok.HasTokens and FTok.Test(ttSWITCH) do begin
+               ReadInstrSwitch(True);
+               FTok.KillToken;
+            end;
             if FTok.HasTokens then
-               FMsgs.AddCompilerStop(FTok.CurrentPos, CPE_SemiExpectedButEndOfScriptReached);
+               FMsgs.AddCompilerStop(FTok.CurrentPos, CPE_SemiExpected);
          end;
       end;
   except
@@ -1504,7 +1512,7 @@ begin
    else
       // Try to read a function call, method call or an assignment
       if FTok.Test(ttSWITCH) then
-         Result := ReadInstrSwitch
+         Result := ReadInstrSwitch(False)
       else if FTok.Test(ttBLEFT) or FTok.Test(ttINHERITED) or FTok.TestName then begin // !! TestName must be the last !!
          if FTok.Test(ttBLEFT) then // (X as TY)
             locExpr := ReadSymbol(ReadTerm)
@@ -3428,7 +3436,6 @@ var
    right: TNoPosExpr;
    tt: TTokenType;
    hotPos: TScriptPos;
-   sameType : Boolean;
    exprClass : TBinaryOpExprClass;
 begin
    // Read left argument
@@ -3458,47 +3465,17 @@ begin
             right := ReadExprMult;
             try
                // Generate function and add left and right argument
-               exprClass:=nil;
-               sameType:=(Result.Typ=right.Typ);
-               case tt of
-                  ttPLUS: begin
-                     if sameType and (right.Typ=FProg.TypInteger) then
-                        exprClass:=TAddIntExpr
-                     else if sameType and (right.Typ=FProg.TypString) then
-                        exprClass:=TAddStrExpr
-                     else if (Result.Typ=FProg.TypFloat) or (right.Typ=FProg.TypFloat) then
-                        exprClass:=TAddFloatExpr
-                     else exprClass:=TAddExpr;
-                  end;
-                  ttMINUS: begin
-                     if sameType and (right.Typ=FProg.TypInteger) then
-                        exprClass:=TSubIntExpr
-                     else if sameType and (right.Typ=FProg.TypFloat) then
-                        exprClass:=TSubFloatExpr
-                     else exprClass:=TSubExpr;
-                  end;
-                  ttOR: begin
-                     if (Result.Typ=FProg.TypBoolean) or (right.Typ=FProg.TypBoolean) then
-                        exprClass:=TBoolOrExpr
-                     else exprClass:=TIntOrExpr;
-                  end;
-                  ttAND: begin
-                       if (Result.Typ=FProg.TypBoolean) or (right.Typ=FProg.TypBoolean) then
-                          exprClass:=TBoolAndExpr
-                       else exprClass:=TIntAndExpr;
-                  end;
-                  ttXOR : begin
-                     if (Result.IsBooleanValue) or (right.IsBooleanValue) then
-                        exprClass:=TBoolXorExpr
-                     else exprClass:=TIntXorExpr;
-                  end;
-                  ttSHL : exprClass:=TShlExpr;
-                  ttSHR : exprClass:=TShrExpr;
-               else
-                  Assert(False);
+               if (Result.Typ=nil) or (right.Typ=nil) then
+                  FProg.Msgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands)
+               else begin
+                  exprClass:=FBinaryOperators.OperatorClassFor(tt, Result.Typ, right.Typ);
+                  if exprClass=nil then begin
+                     FProg.Msgs.AddCompilerError(hotPos, CPE_InvalidOperands);
+                     // fake result to keep compiler going and report further issues
+                     Result:=TBinaryOpExpr.Create(FProg, Result, right);
+                     Result.Typ:=right.Typ;
+                  end else Result:=exprClass.Create(FProg, Result, right);
                end;
-
-               Result:=exprClass.Create(FProg, Result, right);
             except
                right.Free;
                raise;
@@ -3521,7 +3498,7 @@ function TdwsCompiler.ReadExprMult: TNoPosExpr;
 var
    right: TNoPosExpr;
    tt: TTokenType;
-   Pos: TScriptPos;
+   hotPos: TScriptPos;
    exprClass : TBinaryOpExprClass;
 begin
    // Read left argument
@@ -3532,36 +3509,31 @@ begin
          if tt=ttNone then Break;
 
          // Save position of the operator
-         Pos := FTok.HotPos;
+         hotPos := FTok.HotPos;
 
          // Read right argument
          right := ReadTerm;
          try
-            // Generate function and add left and right argument
-            exprClass:=nil;
 
-            case tt of
-               ttTIMES: begin
-                  if Result.IsIntegerValue and right.IsIntegerValue then
-                     exprClass:=TMultIntExpr
-                  else if Result.IsNumberValue and right.IsNumberValue then
-                     exprClass:=TMultFloatExpr
-                  else exprClass:=TMultExpr;
-               end;
-               ttDIVIDE : exprClass:=TDivideExpr;
-               ttDIV :    exprClass:=TDivExpr;
-               ttMOD :    exprClass:=TModExpr;
-            else
-               Assert(False);
+            // Generate function and add left and right argument
+            if (Result.Typ=nil) or (right.Typ=nil) then
+               FProg.Msgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands)
+            else begin
+               exprClass:=FBinaryOperators.OperatorClassFor(tt, Result.Typ, right.Typ);
+               if exprClass=nil then begin
+                  FProg.Msgs.AddCompilerError(hotPos, CPE_InvalidOperands);
+                  // fake result to keep compiler going and report further issues
+                  Result:=TBinaryOpExpr.Create(FProg, Result, right);
+                  Result.Typ:=right.Typ;
+               end else Result:=exprClass.Create(FProg, Result, right);
             end;
 
-            Result:=exprClass.Create(FProg, Result, right);
          except
             right.Free;
             raise;
          end;
 
-         Result.TypeCheckNoPos(Pos);
+         Result.TypeCheckNoPos(hotPos);
          if Optimize then
             Result:=Result.Optimize;
       end;
@@ -3894,7 +3866,7 @@ end;
 
 // ReadInstrSwitch
 //
-function TdwsCompiler.ReadInstrSwitch: TNoResultExpr;
+function TdwsCompiler.ReadInstrSwitch(semiPending : Boolean): TNoResultExpr;
 var
    switch : TSwitchInstruction;
    name, scriptSource : String;
@@ -3913,6 +3885,9 @@ begin
 
    case switch of
       siIncludeLong, siIncludeShort, siFilterLong, siFilterShort : begin
+
+         if semiPending then
+            FProg.Msgs.AddCompilerStop(switchPos, CPE_SemiExpected);
 
          if not FTok.Test(ttStrVal) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_IncludeFileExpected);
@@ -4437,9 +4412,8 @@ var
    varSym: TBaseSymbol;
 begin
    // Create base data types
-   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_BOOLEAN, typBooleanID, false));
+   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_BOOLEAN, typBooleanID, False));
    SystemTable.AddSymbol(TBaseSymbol.Create(SYS_FLOAT, typFloatID, 0.0));
-   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_FLOAT_DT, typFloatID, 0.0));
    SystemTable.AddSymbol(TBaseSymbol.Create(SYS_INTEGER, typIntegerID, VarAsType(0, varInteger)));
    SystemTable.AddSymbol(TBaseSymbol.Create(SYS_STRING, typStringID, ''));
 
@@ -4485,6 +4459,7 @@ begin
                                        ['Cls', SYS_STRING, 'Msg', SYS_STRING], '', clsDelphiException, SystemTable);
    SystemTable.AddSymbol(clsDelphiException);
 
+   // Runtime parameters
    TParamFunc.Create(SystemTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, False);
    TParamStrFunc.Create(SystemTable, 'ParamStr', ['Index', SYS_INTEGER], SYS_STRING, False);
    TParamCountFunc.Create(SystemTable, 'ParamCount', [], SYS_INTEGER, False);

@@ -23,7 +23,7 @@ unit dwsExprs;
 interface
 
 uses Classes, Variants, SysUtils, TypInfo, dwsSymbols, dwsErrors, dwsUtils,
-   dwsStrings, dwsStack, SyncObjs, dwsFileSystem;
+   dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsTokenizer;
 
 const
   C_DefaultStackChunkSize = 4096;
@@ -276,7 +276,7 @@ type
     FResult: TdwsResult;
     FResultType: TdwsResultType;
     FRoot: TdwsProgram;
-    FUnifiedConstList: TSortedList;
+    FUnifiedConstList: TSortedList<TExprBase>;
     FRootTable: TProgramSymbolTable;
     FSourceList: TScriptSourceList;
     FStack: TStack;
@@ -355,7 +355,7 @@ type
     property Table: TSymbolTable read FTable write FTable;
     property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds;
 
-    property UnifiedConstList: TSortedList read FUnifiedConstList;
+    property UnifiedConstList: TSortedList<TExprBase> read FUnifiedConstList;
 
     property TypBoolean: TTypeSymbol read FTypBoolean;
     property TypFloat: TTypeSymbol read FTypFloat;
@@ -820,28 +820,28 @@ type
 
    TBinaryOpExprClass = class of TBinaryOpExpr;
 
-  // A list of no pos expressions
-  TNoPosExprList = class
-  protected
-    FList : TTightList;
+   // A list of no pos expressions
+   TNoPosExprList = class
+      protected
+         FList : TTightList;
 
-    function GetExpr(const x: Integer): TNoPosExpr;
-    procedure SetExpr(const x: Integer; const Value: TNoPosExpr);
-    function GetCount : Integer;
+         function GetExpr(const x: Integer): TNoPosExpr;
+         procedure SetExpr(const x: Integer; const Value: TNoPosExpr);
+         function GetCount : Integer;
 
-  public
-    destructor Destroy; override;
+      public
+         destructor Destroy; override;
 
-    procedure AddExpr(AExpr: TNoPosExpr);
-    procedure Insert0(expr : TExprBase);
-    procedure Delete(index : Integer);
+         procedure AddExpr(AExpr: TNoPosExpr);
+         procedure Insert0(expr : TExprBase);
+         procedure Delete(index : Integer);
 
-    procedure Initialize;
-    procedure TypeCheck(const pos : TScriptPos; ExpectedTyp : TSymbol);
+         procedure Initialize;
+         procedure TypeCheck(const pos : TScriptPos; ExpectedTyp : TSymbol);
 
-    property Expr[const x: Integer]: TNoPosExpr read GetExpr write SetExpr; default;
-    property Count : Integer read GetCount;
-  end;
+         property Expr[const x: Integer]: TNoPosExpr read GetExpr write SetExpr; default;
+         property Count : Integer read GetCount;
+   end;
 
   // Helper object for access to symbols
   IInfo = interface

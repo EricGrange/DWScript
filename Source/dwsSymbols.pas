@@ -156,6 +156,7 @@ type
          procedure SetName(const newName : String);
 
          function IsCompatible(typSym : TSymbol) : Boolean; virtual;
+         function IsOfType(typSym : TSymbol) : Boolean; virtual;
 
          function BaseTypeID : TBaseTypeID; virtual;
          function IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean;
@@ -413,6 +414,7 @@ type
      function BaseType: TTypeSymbol; override;
      procedure InitData(const Data: TData; Offset: Integer); override;
      function IsCompatible(typSym: TSymbol): Boolean; override;
+     function IsOfType(typSym : TSymbol) : Boolean; override;
    end;
 
    // integer/string/float/boolean/variant
@@ -621,6 +623,7 @@ type
          procedure InitData(const Data: TData; Offset: Integer); override;
          procedure Initialize(const msgs : TdwsMessageList); override;
          function IsCompatible(typSym: TSymbol): Boolean; override;
+         function IsOfType(typSym : TSymbol) : Boolean; override;
          function InstanceSize : Integer; // avoids warning
 
          procedure SetForwardedPos(const pos : TScriptPos);
@@ -981,6 +984,13 @@ end;
 function TSymbol.IsCompatible(typSym: TSymbol): Boolean;
 begin
   Result := False;
+end;
+
+// IsOfType
+//
+function TSymbol.IsOfType(typSym : TSymbol) : Boolean;
+begin
+   Result:=(Self=typSym);
 end;
 
 // BaseTypeID
@@ -1790,6 +1800,17 @@ begin
       csym := csym.Parent;
     end;
   end;
+end;
+
+// IsOfType
+//
+function TClassSymbol.IsOfType(typSym : TSymbol) : Boolean;
+begin
+   Result:=(Self=typSym);
+   if Result then Exit;
+   if Parent<>nil then
+      Result:=Parent.IsOfType(typSym)
+   else Result:=False;
 end;
 
 function TClassSymbol.GetDescription: string;
@@ -2780,6 +2801,13 @@ end;
 function TAliasSymbol.IsCompatible(typSym: TSymbol): Boolean;
 begin
   Result := BaseType.IsCompatible(typSym);
+end;
+
+// IsOfType
+//
+function TAliasSymbol.IsOfType(typSym : TSymbol) : Boolean;
+begin
+   Result:=BaseType.IsOfType(typSym);
 end;
 
 { TTypeSymbol }

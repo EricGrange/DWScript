@@ -84,21 +84,21 @@ type
    // TSortedList
    //
    {: List that maintains its elements sorted }
-   TSortedList = class
+   TSortedList<T> = class
       private
-         FItems : array of Pointer;
+         FItems : array of T;
          FCount : Integer;
       protected
-         function GetItem(index : Integer) : Pointer;
-         function Find(const item : Pointer; var index : Integer) : Boolean;
-         function Compare(const item1, item2 : Pointer) : Integer; virtual;
-         procedure InsertItem(index : Integer; const anItem : Pointer);
+         function GetItem(index : Integer) : T;
+         function Find(const item : T; var index : Integer) : Boolean;
+         function Compare(const item1, item2 : T) : Integer; virtual; abstract;
+         procedure InsertItem(index : Integer; const anItem : T);
       public
-         function Add(const anItem : Pointer) : Integer;
-         function AddOrFind(const anItem : Pointer; var added : Boolean) : Integer;
-         function IndexOf(const anItem : Pointer) : Integer;
+         function Add(const anItem : T) : Integer;
+         function AddOrFind(const anItem : T; var added : Boolean) : Integer;
+         function IndexOf(const anItem : T) : Integer;
          procedure Clear;
-         property Items[index : Integer] : Pointer read GetItem; default;
+         property Items[index : Integer] : T read GetItem; default;
          property Count : Integer read FCount;
    end;
 
@@ -561,19 +561,19 @@ begin
 end;
 
 // ------------------
-// ------------------ TSortedList ------------------
+// ------------------ TSortedList<T> ------------------
 // ------------------
 
 // GetItem
 //
-function TSortedList.GetItem(index : Integer) : Pointer;
+function TSortedList<T>.GetItem(index : Integer) : T;
 begin
    Result:=FItems[index];
 end;
 
 // Find
 //
-function TSortedList.Find(const item : Pointer; var index : Integer) : Boolean;
+function TSortedList<T>.Find(const item : T; var index : Integer) : Boolean;
 var
    lo, hi, mid, compResult : Integer;
 begin
@@ -594,16 +594,9 @@ begin
    index:=lo;
 end;
 
-// Compare
-//
-function TSortedList.Compare(const item1, item2 : Pointer) : Integer;
-begin
-   Result:=NativeInt(item1)-NativeInt(item2);
-end;
-
 // InsertItem
 //
-procedure TSortedList.InsertItem(index : Integer; const anItem : Pointer);
+procedure TSortedList<T>.InsertItem(index : Integer; const anItem : T);
 begin
    if Count=Length(FItems) then
       SetLength(FItems, Count+8+(Count shr 4));
@@ -615,7 +608,7 @@ end;
 
 // Add
 //
-function TSortedList.Add(const anItem : Pointer) : Integer;
+function TSortedList<T>.Add(const anItem : T) : Integer;
 begin
    Find(anItem, Result);
    InsertItem(Result, anItem);
@@ -623,7 +616,7 @@ end;
 
 // AddOrFind
 //
-function TSortedList.AddOrFind(const anItem : Pointer; var added : Boolean) : Integer;
+function TSortedList<T>.AddOrFind(const anItem : T; var added : Boolean) : Integer;
 begin
    added:=not Find(anItem, Result);
    if added then
@@ -632,7 +625,7 @@ end;
 
 // IndexOf
 //
-function TSortedList.IndexOf(const anItem : Pointer) : Integer;
+function TSortedList<T>.IndexOf(const anItem : T) : Integer;
 begin
    if not Find(anItem, Result) then
       Result:=-1;
@@ -640,7 +633,7 @@ end;
 
 // Clear
 //
-procedure TSortedList.Clear;
+procedure TSortedList<T>.Clear;
 begin
    SetLength(FItems, 0);
    FCount:=0;
