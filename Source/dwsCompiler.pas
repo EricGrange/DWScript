@@ -581,6 +581,9 @@ begin
          // Start compilation
          FProg.Expr := ReadScript('', stMain);
 
+         if FConditionalDepth.Count>0 then
+            FProg.Msgs.AddCompilerError(FTok.HotPos, CPE_UnbalancedConditionalDirective);
+
          // Initialize symbol table
          FProg.Table.Initialize(FMsgs);
 
@@ -4016,6 +4019,7 @@ begin
          if FConditionalDepth.Peek=siElse then
             FMsgs.AddCompilerStop(switchPos, CPE_UnfinishedConditionalDirective);
 
+         FConditionalDepth.Pop;
          ReadUntilEndOrElseSwitch(False);
          if not FTok.HasTokens then
             FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective);
@@ -4428,62 +4432,62 @@ end;
 
 procedure TdwsConfiguration.InitSystemTable;
 var
-  clsObject, clsException, clsDelphiException: TClassSymbol;
-  meth: TMethodSymbol;
-  varSym: TBaseSymbol;
+   clsObject, clsException, clsDelphiException: TClassSymbol;
+   meth: TMethodSymbol;
+   varSym: TBaseSymbol;
 begin
-  // Create base data types
-  SystemTable.AddSymbol(TBaseSymbol.Create(SYS_BOOLEAN, typBooleanID, false));
-  SystemTable.AddSymbol(TBaseSymbol.Create(SYS_FLOAT, typFloatID, 0.0));
-  SystemTable.AddSymbol(TBaseSymbol.Create(SYS_FLOAT_DT, typFloatID, 0.0));
-  SystemTable.AddSymbol(TBaseSymbol.Create(SYS_INTEGER, typIntegerID, VarAsType(0, varInteger)));
-  SystemTable.AddSymbol(TBaseSymbol.Create(SYS_STRING, typStringID, ''));
+   // Create base data types
+   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_BOOLEAN, typBooleanID, false));
+   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_FLOAT, typFloatID, 0.0));
+   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_FLOAT_DT, typFloatID, 0.0));
+   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_INTEGER, typIntegerID, VarAsType(0, varInteger)));
+   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_STRING, typStringID, ''));
 
-  varSym := TBaseSymbol.Create(SYS_VARIANT, typVariantID, Unassigned);
-  SystemTable.AddSymbol(varSym);
-  SystemTable.AddSymbol(TConstSymbol.Create('Null', varSym, Null));
-  SystemTable.AddSymbol(TConstSymbol.Create('Unassigned', varSym, Unassigned));
+   varSym := TBaseSymbol.Create(SYS_VARIANT, typVariantID, Unassigned);
+   SystemTable.AddSymbol(varSym);
+   SystemTable.AddSymbol(TConstSymbol.Create('Null', varSym, Null));
+   SystemTable.AddSymbol(TConstSymbol.Create('Unassigned', varSym, Unassigned));
 
-  SystemTable.AddSymbol(TOpenArraySymbol.Create('array of const', varSym));
+   SystemTable.AddSymbol(TOpenArraySymbol.Create('array of const', varSym));
 
-  // Create "root" class TObject
-  clsObject := TClassSymbol.Create(SYS_TOBJECT);
-  // Add constructor Create
-  meth := TSourceMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, clsObject);
-  meth.Executable := ICallable(TEmptyFunc.Create);
-  clsObject.AddMethod(meth);
-  // Add destructor Destroy
-  meth := TSourceMethodSymbol.Create(SYS_TOBJECT_DESTROY, fkDestructor, clsObject);
-  meth.IsVirtual := True;
-  meth.Executable := ICallable(TEmptyFunc.Create);
-  clsObject.AddMethod(meth);
-  // Add destructor Free
-  meth := TSourceMethodSymbol.Create('Free', fkDestructor, clsObject);
-  meth.Executable := ICallable(TEmptyFunc.Create);
-  clsObject.AddMethod(meth);
-  SystemTable.AddSymbol(clsObject);
+   // Create "root" class TObject
+   clsObject := TClassSymbol.Create(SYS_TOBJECT);
+   // Add constructor Create
+   meth := TSourceMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, clsObject);
+   meth.Executable := ICallable(TEmptyFunc.Create);
+   clsObject.AddMethod(meth);
+   // Add destructor Destroy
+   meth := TSourceMethodSymbol.Create(SYS_TOBJECT_DESTROY, fkDestructor, clsObject);
+   meth.IsVirtual := True;
+   meth.Executable := ICallable(TEmptyFunc.Create);
+   clsObject.AddMethod(meth);
+   // Add destructor Free
+   meth := TSourceMethodSymbol.Create('Free', fkDestructor, clsObject);
+   meth.Executable := ICallable(TEmptyFunc.Create);
+   clsObject.AddMethod(meth);
+   SystemTable.AddSymbol(clsObject);
 
-  // Create class Exception
-  clsException := TClassSymbol.Create(SYS_EXCEPTION);
-  clsException.InheritFrom(clsObject);
-  clsException.AddField(TFieldSymbol.Create(SYS_EXCEPTION_MESSAGE,
+   // Create class Exception
+   clsException := TClassSymbol.Create(SYS_EXCEPTION);
+   clsException.InheritFrom(clsObject);
+   clsException.AddField(TFieldSymbol.Create(SYS_EXCEPTION_MESSAGE,
     SystemTable.FindSymbol(SYS_STRING)));
-  TExceptionCreateMethod.Create(mkConstructor, [], 0, SYS_TOBJECT_CREATE, ['Msg',
-    SYS_STRING], '', clsException, SystemTable);
-  SystemTable.AddSymbol(clsException);
+   TExceptionCreateMethod.Create(mkConstructor, [], 0, SYS_TOBJECT_CREATE,
+                                 ['Msg', SYS_STRING], '', clsException, SystemTable);
+   SystemTable.AddSymbol(clsException);
 
-  // Create class EDelphi
-  clsDelphiException := TClassSymbol.Create(SYS_EDELPHI);
-  clsDelphiException.InheritFrom(clsException);
-  clsDelphiException.AddField(TFieldSymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS,
-    SystemTable.FindSymbol(SYS_STRING)));
-  TDelphiExceptionCreateMethod.Create(mkConstructor, [], 0, SYS_TOBJECT_CREATE,
-    ['Cls', SYS_STRING, 'Msg', SYS_STRING], '', clsDelphiException, SystemTable);
-  SystemTable.AddSymbol(clsDelphiException);
+   // Create class EDelphi
+   clsDelphiException := TClassSymbol.Create(SYS_EDELPHI);
+   clsDelphiException.InheritFrom(clsException);
+   clsDelphiException.AddField(TFieldSymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS,
+                                                   SystemTable.FindSymbol(SYS_STRING)));
+   TDelphiExceptionCreateMethod.Create(mkConstructor, [], 0, SYS_TOBJECT_CREATE,
+                                       ['Cls', SYS_STRING, 'Msg', SYS_STRING], '', clsDelphiException, SystemTable);
+   SystemTable.AddSymbol(clsDelphiException);
 
-  TParamFunc.Create(SystemTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, False);
-  TParamStrFunc.Create(SystemTable, 'ParamStr', ['Index', SYS_INTEGER], SYS_STRING, False);
-  TParamCountFunc.Create(SystemTable, 'ParamCount', [], SYS_INTEGER, False);
+   TParamFunc.Create(SystemTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, False);
+   TParamStrFunc.Create(SystemTable, 'ParamStr', ['Index', SYS_INTEGER], SYS_STRING, False);
+   TParamCountFunc.Create(SystemTable, 'ParamCount', [], SYS_INTEGER, False);
 end;
 
 // SetFilter
