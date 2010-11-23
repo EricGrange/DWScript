@@ -647,48 +647,62 @@ begin
   end;
 end;
 
+// ReadRootStatement
+//
 function TdwsCompiler.ReadRootStatement: TExpr;
+var
+   token : TTokenType;
 begin
-  Result := nil;
-  if FTok.TestDelete(ttTYPE) then
-    ReadTypeDecl
-  else if FTok.TestDelete(ttPROCEDURE) then
-    ReadProcBody(ReadProcDecl(fkProcedure, nil))
-  else if FTok.TestDelete(ttFUNCTION) then
-    ReadProcBody(ReadProcDecl(fkFunction, nil))
-  else if FTok.TestDelete(ttCONSTRUCTOR) then
-    ReadProcBody(ReadProcDecl(fkConstructor, nil))
-  else if FTok.TestDelete(ttDESTRUCTOR) then
-    ReadProcBody(ReadProcDecl(fkDestructor, nil))
-  else if FTok.TestDelete(ttMETHOD) then
-    ReadProcBody(ReadProcDecl(fkMethod, nil))
-  else if FTok.TestDelete(ttCLASS) then
-  begin
-    if FTok.TestDelete(ttPROCEDURE) then
-      ReadProcBody(ReadProcDecl(fkProcedure, nil, True))
-    else if FTok.TestDelete(ttFUNCTION) then
-      ReadProcBody(ReadProcDecl(fkFunction, nil, True))
-    else if FTok.TestDelete(ttMETHOD) then
-      ReadProcBody(ReadProcDecl(fkMethod, nil, True))
-    else
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
-  end
-  else
-    Result := ReadStatement;
+   Result:=nil;
+   token:=FTok.TestDeleteAny([ttTYPE, ttPROCEDURE, ttFUNCTION,
+                              ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttCLASS]);
+   case token of
+      ttTYPE :
+         ReadTypeDecl;
+      ttPROCEDURE :
+         ReadProcBody(ReadProcDecl(fkProcedure, nil));
+      ttFUNCTION :
+         ReadProcBody(ReadProcDecl(fkFunction, nil));
+      ttCONSTRUCTOR :
+         ReadProcBody(ReadProcDecl(fkConstructor, nil));
+      ttDESTRUCTOR :
+         ReadProcBody(ReadProcDecl(fkDestructor, nil));
+      ttMETHOD :
+         ReadProcBody(ReadProcDecl(fkMethod, nil));
+      ttCLASS : begin
+         token:=FTok.TestDeleteAny([ttPROCEDURE, ttFUNCTION, ttMETHOD]);
+         case token of
+            ttPROCEDURE :
+               ReadProcBody(ReadProcDecl(fkProcedure, nil, True));
+            ttFUNCTION :
+               ReadProcBody(ReadProcDecl(fkFunction, nil, True));
+            ttMETHOD :
+               ReadProcBody(ReadProcDecl(fkMethod, nil, True));
+         else
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
+         end;
+      end;
+   else
+      Result:=ReadStatement;
+   end;
 end;
 
 // ReadStatement
 //
 function TdwsCompiler.ReadStatement: TExpr;
+var
+   token : TTokenType;
 begin
-   Result := nil;
-   if FTok.TestDelete(ttVAR) then
-      Result := ReadVarDecl
-   else if FTok.TestDelete(ttCONST) then
-      ReadConstDecl
-   else if FTok.TestDelete(ttUSES) then
-      ReadUses
-   else begin
+   Result:=nil;
+   token:=Ftok.TestDeleteAny([ttVAR, ttCONST, ttUSES]);
+   case token of
+      ttVAR :
+         Result:=ReadVarDecl;
+      ttCONST :
+         ReadConstDecl;
+      ttUSES :
+         ReadUses
+   else
       Result:=ReadBlock;
    end;
 end;
@@ -3673,27 +3687,25 @@ begin
    end;
 end;
 
+// ReadConstValue
+//
 function TdwsCompiler.ReadConstValue: TConstExpr;
 var
-  t: TToken;
-  tt: TTokenType;
+   tt : TTokenType;
 begin
-  Result := nil;
-  if FTok.Test(ttStrVal) or FTok.Test(ttIntVal)
-    or FTok.Test(ttFloatVal) then
-  begin
-    t := FTok.GetToken;
-    tt := t.FTyp;
-    case tt of
-      ttIntVal:
-        Result := TConstIntExpr.CreateUnified(FProg, nil, t.FInteger);
-      ttFloatVal:
-        Result := TConstFloatExpr.CreateUnified(FProg, nil, t.FFloat);
-      ttStrVal:
-        Result := TConstStringExpr.CreateUnified(FProg, nil, t.FString);
-    end;
-    FTok.KillToken;
-  end;
+   Result:=nil;
+   tt:=FTok.TestAny([ttStrVal, ttIntVal, ttFloatVal]);
+   if tt<>ttNone then begin
+      case tt of
+         ttIntVal :
+            Result:=TConstIntExpr.CreateUnified(FProg, nil, FTok.GetToken.FInteger);
+         ttFloatVal:
+            Result:=TConstFloatExpr.CreateUnified(FProg, nil, FTok.GetToken.FFloat);
+         ttStrVal:
+            Result:=TConstStringExpr.CreateUnified(FProg, nil, FTok.GetToken.FString);
+      end;
+      FTok.KillToken;
+   end;
 end;
 
 procedure TdwsCompiler.ReadArrayParams(ArrayIndices: TSymbolTable);
