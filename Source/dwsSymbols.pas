@@ -101,6 +101,7 @@ type
    TParamSymbol = class;
    TVarParamSymbol = class;
    TSymbolTable = class;
+   TUnSortedSymbolTable = class;
    TTypeSymbol = class;
    TParamsSymbolTable = class;
 
@@ -744,13 +745,18 @@ type
 
    TSymbolTableClass = class of TSymbolTable;
 
-   // TParamsSymbolTable
+   // TUnSortedSymbolTable
    //
-   TParamsSymbolTable = class (TSymbolTable)
+   TUnSortedSymbolTable = class (TSymbolTable)
       private
 
       public
          function FindLocal(const Name: string): TSymbol; override;
+   end;
+
+   // TParamsSymbolTable
+   //
+   TParamsSymbolTable = class (TUnSortedSymbolTable)
    end;
 
    // TProgramSymbolTable
@@ -2347,12 +2353,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TParamsSymbolTable ------------------
+// ------------------ TUnSortedSymbolTable ------------------
 // ------------------
 
 // FindLocal
 //
-function TParamsSymbolTable.FindLocal(const Name: string): TSymbol;
+function TUnSortedSymbolTable.FindLocal(const Name: string): TSymbol;
 begin
    Result:=FindLocalUnSorted(name);
 end;
@@ -2617,7 +2623,7 @@ end;
 constructor TEnumerationSymbol.Create(const Name: string; BaseType: TTypeSymbol);
 begin
   inherited Create(Name, BaseType);
-  FElements := TSymbolTable.Create;
+  FElements := TUnSortedSymbolTable.Create;
   FLowBound := MaxInt;
   FHighBound := -MaxInt;
 end;

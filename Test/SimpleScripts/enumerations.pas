@@ -33,3 +33,7 @@ type TMonths = (
   December = 12,
   FirstMonth = 1,
   SecondMonth = 2);
+
+Print(Ord(Monday));
+Print('..');
+PrintLn(Ord(Sunday));

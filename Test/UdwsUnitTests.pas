@@ -42,6 +42,7 @@ type
 
          procedure DelphiException;
          procedure DelphiExceptionReRaise;
+         procedure ListOrdAutoEnum;
    end;
 
    EDelphiException = class (Exception)
@@ -99,6 +100,7 @@ end;
 //
 procedure TdwsUnitTests.DeclareTestEnumerate;
 var
+   i : Integer;
    enum : TdwsEnumeration;
    elem : TdwsElement;
 begin
@@ -110,6 +112,13 @@ begin
    elem:=enum.Elements.Add as TdwsElement;
    elem.Name:='meTen';
    elem.UserDefValue:=10;
+
+   enum:=FUnit.Enumerations.Add as TdwsEnumeration;
+   enum.Name:='TAutoEnum';
+   for i:=1 to 9 do begin
+      elem:=enum.Elements.Add as TdwsElement;
+      elem.Name:='aeVal'+IntToStr(10-i);
+   end;
 end;
 
 // DeclareTestFuncs
@@ -343,6 +352,28 @@ begin
       prog.Execute;
       CheckEquals('Runtime Error: Hello, Delphi Exception here! [line: 2, column: 2]'#13#10,
                   prog.Msgs.AsInfo, 'Execute Msgs');
+   finally
+      prog.Free;
+   end;
+end;
+
+// ListOrdAutoEnum
+//
+procedure TdwsUnitTests.ListOrdAutoEnum;
+var
+   i : Integer;
+   script : String;
+   prog : TdwsProgram;
+begin
+   script:='';
+   for i:=1 to 9 do begin
+      script:=script+'Print(Ord(aeVal'+IntToStr(i)+'));'#13#10;
+   end;
+   prog:=FCompiler.Compile(script);
+   try
+      CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+      prog.Execute;
+      CheckEquals('876543210', (prog.Result as TdwsDefaultResult).Text, 'Enums Ord');
    finally
       prog.Free;
    end;
