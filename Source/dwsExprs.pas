@@ -1784,19 +1784,15 @@ begin
   FTypNil := FRoot.TypNil;
   FTypString := FRoot.TypString;
   FTypVariant := FRoot.TypVariant;
-//  FTypDateTime := FRoot.FTypDateTime;
   FTypObject := FRoot.TypObject;
   FStack := Root.Stack;
   FSymbolDictionary := Parent.SymbolDictionary;
   FContextMap := Parent.ContextMap;
-
-
 end;
 
 destructor TProcedure.Destroy;
 begin
   FRootTable.Free;
-//  FAddrGenerator.Free;
   FExpr.Free;
   FInitExpr.Free;
 end;
@@ -5891,5 +5887,4 @@ begin
 end;
 
 end.
-
 
