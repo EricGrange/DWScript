@@ -119,7 +119,7 @@ type
 
    TAddArgProcedure = procedure(ArgExpr: TNoPosExpr) of object;
 
-   TSpecialKeywordKind = (skNone, skAssigned, skChr, skHigh, skLength, skLow,
+   TSpecialKeywordKind = (skNone, skAssigned, skHigh, skLength, skLow,
                           skOrd, skSizeOf, skDefined, skDeclared);
 
    TSwitchInstruction = (siNone,
@@ -4177,8 +4177,6 @@ begin
    case ch of
       'a' :
          if SameText(name, 'assigned') then Result:=skAssigned;
-      'c' :
-         if SameText(name, 'chr') then Result:=skChr;
       'd' :
          if SameText(name, 'defined') then Result:=skDefined
          else if SameText(name, 'declared') then Result:=skDeclared;
@@ -5037,12 +5035,6 @@ begin
          skAssigned: begin
             if argTyp is TClassSymbol then begin
                Result:=TAssignedExpr.Create(FProg, argExpr);
-               argExpr:=nil;
-            end else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-         end;
-         skChr: begin
-            if argTyp.BaseTypeID in [typIntegerID, typVariantID] then begin
-               Result:=TChrExpr.Create(FProg, argExpr);
                argExpr:=nil;
             end else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
          end;

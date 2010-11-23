@@ -27,6 +27,10 @@ uses Classes, SysUtils, Variants, StrUtils, dwsFunctions, dwsSymbols, dwsStrings
 
 type
 
+  TChrFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+  end;
+
   TIntToStrFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
@@ -213,6 +217,15 @@ const // type constants
   cString = 'String';
   cBoolean = 'Boolean';
   cVariant = 'Variant';
+
+{ TChrFunc }
+
+// DoEvalAsString
+//
+procedure TChrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+begin
+   Result:=Char(args.AsInteger[0]);
+end;
 
 { TIntToStrFunc }
 
@@ -711,6 +724,8 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+   RegisterInternalStringFunction(TChrFunc, 'Chr', ['i', cInteger], True);
 
    RegisterInternalStringFunction(TIntToStrFunc, 'IntToStr', ['i', cInteger], True);
    RegisterInternalIntFunction(TStrToIntFunc, 'StrToInt', ['str', cString], True);
