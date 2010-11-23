@@ -611,7 +611,7 @@ type
      FLeft: TDataExpr;
      FRight: TNoPosExpr;
    public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr);
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr); virtual;
      destructor Destroy; override;
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
      procedure Initialize; override;
@@ -620,12 +620,14 @@ type
      function  OptimizeConstAssignment : TNoPosExpr;
    end;
 
+   TAssignExprClass = class of TAssignExpr;
+
    // left := right;
    TAssignDataExpr = class(TAssignExpr)
    protected
      FSize: Integer;
    public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr);
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr); override;
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
@@ -633,14 +635,14 @@ type
    TAssignArrayConstantExpr = class(TAssignDataExpr)
    protected
    public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TArrayConstantExpr);
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr); override;
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
    // var left := const right;
    TAssignConstDataToVarExpr = class(TAssignDataExpr)
    public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr);
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr); override;
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
@@ -656,7 +658,7 @@ type
       protected
          FRight : Int64;
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Int64);
+         constructor CreateVal(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Int64);
          procedure EvalNoResult(var status : TExecutionStatusResult); override;
          property Right : Int64 read FRight write FRight;
    end;
@@ -666,7 +668,7 @@ type
       protected
          FRight : Double;
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Double);
+         constructor CreateVal(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Double);
          procedure EvalNoResult(var status : TExecutionStatusResult); override;
          property Right : Double read FRight write FRight;
    end;
@@ -676,7 +678,7 @@ type
       protected
          FRight : String;
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : String);
+         constructor CreateVal(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : String);
          procedure EvalNoResult(var status : TExecutionStatusResult); override;
          property Right : String read FRight write FRight;
    end;
@@ -689,14 +691,40 @@ type
    // a += b
    TPlusAssignExpr = class(TOpAssignExpr)
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
-     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
+   // a += b (int)
+   TPlusAssignIntExpr = class(TPlusAssignExpr)
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+     function  Optimize : TNoPosExpr; override;
+   end;
+   // a += b (float)
+   TPlusAssignFloatExpr = class(TPlusAssignExpr)
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+   // a += b (string)
+   TPlusAssignStrExpr = class(TPlusAssignExpr)
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
-   // a += b
+   // a -= b
+   TMinusAssignExpr = class(TOpAssignExpr)
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+   // a -= b (int)
+   TMinusAssignIntExpr = class(TMinusAssignExpr)
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+     function  Optimize : TNoPosExpr; override;
+   end;
+   // a -= b (float)
+   TMinusAssignFloatExpr = class(TMinusAssignExpr)
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+
+   // a += b (int var)
    TIncIntVarExpr = class(TAssignExpr)
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
-   // a -= b
+   // a -= b (int var)
    TDecIntVarExpr = class(TAssignExpr)
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
@@ -1016,7 +1044,7 @@ type
    end;
 
    TRegisteredBinaryOperator = record
-      ExprClass : TBinaryOpExprClass;
+      ExprClass : TNoPosExprClass;
       LeftType : TSymbol;
       RighType : TSymbol;
    end;
@@ -1030,10 +1058,12 @@ type
       public
          constructor Create(table : TSymbolTable);
 
-         procedure RegisterOperator(aToken : TTokenType; aExprClass : TBinaryOpExprClass;
+         procedure RegisterOperator(aToken : TTokenType; aExprClass : TNoPosExprClass;
                                     aLeftType, aRightType : TSymbol);
 
-         function OperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TBinaryOpExprClass;
+         function ExprClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TNoPosExprClass;
+         function BinaryOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TBinaryOpExprClass;
+         function AssignmentOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TAssignExprClass;
    end;
 
 // ------------------------------------------------------------------
@@ -3306,13 +3336,13 @@ var
 begin
    Result:=Self;
    if FRight.IsIntegerValue then begin
-      Result:=TAssignConstToIntegerVarExpr.Create(Prog, Pos, FLeft, FRight.EvalAsInteger);
+      Result:=TAssignConstToIntegerVarExpr.CreateVal(Prog, Pos, FLeft, FRight.EvalAsInteger);
    end else if FRight.IsFloatValue then begin
       FRight.EvalAsFloat(floatBuf);
-      Result:=TAssignConstToFloatVarExpr.Create(Prog, Pos, FLeft, floatBuf);
+      Result:=TAssignConstToFloatVarExpr.CreateVal(Prog, Pos, FLeft, floatBuf);
    end else if FRight.IsStringValue then begin
       FRight.EvalAsString(stringBuf);
-      Result:=TAssignConstToStringVarExpr.Create(Prog, Pos, FLeft, stringBuf);
+      Result:=TAssignConstToStringVarExpr.CreateVal(Prog, Pos, FLeft, stringBuf);
    end;
    if Result<>Self then begin
       FLeft:=nil;
@@ -3336,9 +3366,9 @@ end;
 { TAssignArrayConstantExpr }
 
 constructor TAssignArrayConstantExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-                                            Left : TDataExpr; Right: TArrayConstantExpr);
+                                            Left : TDataExpr; Right: TNoPosExpr);
 begin
-  inherited Create(Prog, Pos, Left, Right);
+  inherited Create(Prog, Pos, Left, Right as TArrayConstantExpr); // typecheck Right
 end;
 
 procedure TAssignArrayConstantExpr.EvalNoResult(var status : TExecutionStatusResult);
@@ -3387,7 +3417,7 @@ end;
 
 // Create
 //
-constructor TAssignConstToIntegerVarExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Int64);
+constructor TAssignConstToIntegerVarExpr.CreateVal(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Int64);
 begin
    inherited Create(Prog, Pos, Left, nil);
    FRight:=rightValue;
@@ -3406,7 +3436,7 @@ end;
 
 // Create
 //
-constructor TAssignConstToFloatVarExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Double);
+constructor TAssignConstToFloatVarExpr.CreateVal(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Double);
 begin
    inherited Create(Prog, Pos, Left, nil);
    FRight:=rightValue;
@@ -3425,7 +3455,7 @@ end;
 
 // Create
 //
-constructor TAssignConstToStringVarExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : String);
+constructor TAssignConstToStringVarExpr.CreateVal(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : String);
 begin
    inherited Create(Prog, Pos, Left, nil);
    FRight:=rightValue;
@@ -3460,12 +3490,110 @@ begin
    FLeft.AssignValue(FLeft.Eval + FRight.Eval);
 end;
 
-// TypeCheckNoPos
+// ------------------
+// ------------------ TPlusAssignIntExpr ------------------
+// ------------------
+
+// EvalNoResult
 //
-procedure TPlusAssignExpr.TypeCheckNoPos(const aPos : TScriptPos);
+procedure TPlusAssignIntExpr.EvalNoResult(var status : TExecutionStatusResult);
 begin
-   inherited;
-   TNumberStringBinOpExpr.DoTypeCheckNoPos(aPos, FProg, FLeft, FRight);
+   FLeft.AssignValueAsInteger(FLeft.EvalAsInteger + FRight.EvalAsInteger);
+end;
+
+// Optimize
+//
+function TPlusAssignIntExpr.Optimize : TNoPosExpr;
+begin
+   Result:=Self;
+   if FLeft is TIntVarExpr then begin
+      Result:=TIncIntVarExpr.Create(FProg, Pos, FLeft, FRight);
+      FLeft:=nil;
+      FRight:=nil;
+      Free;
+   end;
+end;
+
+// ------------------
+// ------------------ TPlusAssignFloatExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TPlusAssignFloatExpr.EvalNoResult(var status : TExecutionStatusResult);
+var
+   v1, v2 : Double;
+begin
+   FLeft.EvalAsFloat(v1);
+   FRight.EvalAsFloat(v2);
+   v1:=v1+v2;
+   FLeft.AssignValueAsFloat(v1);
+end;
+
+// ------------------
+// ------------------ TPlusAssignStrExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TPlusAssignStrExpr.EvalNoResult(var status : TExecutionStatusResult);
+var
+   v1, v2 : String;
+begin
+   FLeft.EvalAsString(v1);
+   FRight.EvalAsString(v2);
+   FLeft.AssignValueAsString(v1+v2);
+end;
+
+// ------------------
+// ------------------ TMinusAssignExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TMinusAssignExpr.EvalNoResult(var status : TExecutionStatusResult);
+begin
+   FLeft.AssignValue(FLeft.Eval - FRight.Eval);
+end;
+
+// ------------------
+// ------------------ TMinusAssignIntExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TMinusAssignIntExpr.EvalNoResult(var status : TExecutionStatusResult);
+begin
+   FLeft.AssignValueAsInteger(FLeft.EvalAsInteger - FRight.EvalAsInteger);
+end;
+
+// Optimize
+//
+function TMinusAssignIntExpr.Optimize : TNoPosExpr;
+begin
+   Result:=Self;
+   if FLeft is TIntVarExpr then begin
+      Result:=TDecIntVarExpr.Create(FProg, Pos, FLeft, FRight);
+      FLeft:=nil;
+      FRight:=nil;
+      Free;
+   end;
+end;
+
+// ------------------
+// ------------------ TMinusAssignFloatExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TMinusAssignFloatExpr.EvalNoResult(var status : TExecutionStatusResult);
+var
+   v1, v2 : Double;
+begin
+   FLeft.EvalAsFloat(v1);
+   FRight.EvalAsFloat(v2);
+   v1:=v1-v2;
+   FLeft.AssignValueAsFloat(v1);
 end;
 
 // ------------------
@@ -4487,37 +4615,39 @@ begin
    typString:=table.FindSymbol(SYS_STRING) as TTypeSymbol;
    typVariant:=table.FindSymbol(SYS_VARIANT) as TTypeSymbol;
 
+   // computation operators
+
    RegisterOperator(ttPLUS,   TAddIntExpr,      typInteger,  typInteger);
    RegisterOperator(ttPLUS,   TAddStrExpr,      typString,   typString);
+   RegisterOperator(ttPLUS,   TAddStrExpr,      typString,   typVariant);
+   RegisterOperator(ttPLUS,   TAddStrExpr,      typVariant,  typString);
    RegisterOperator(ttPLUS,   TAddFloatExpr,    typInteger,  typFloat);
    RegisterOperator(ttPLUS,   TAddFloatExpr,    typFloat,    typInteger);
    RegisterOperator(ttPLUS,   TAddFloatExpr,    typFloat,    typFloat);
+   RegisterOperator(ttPLUS,   TAddFloatExpr,    typFloat,    typVariant);
+   RegisterOperator(ttPLUS,   TAddFloatExpr,    typVariant,  typFloat);
    RegisterOperator(ttPLUS,   TAddExpr,         typInteger,  typVariant);
-   RegisterOperator(ttPLUS,   TAddExpr,         typFloat,    typVariant);
-   RegisterOperator(ttPLUS,   TAddExpr,         typString,   typVariant);
    RegisterOperator(ttPLUS,   TAddExpr,         typVariant,  typInteger);
-   RegisterOperator(ttPLUS,   TAddExpr,         typVariant,  typFloat);
-   RegisterOperator(ttPLUS,   TAddExpr,         typVariant,  typString);
    RegisterOperator(ttPLUS,   TAddExpr,         typVariant,  typVariant);
 
    RegisterOperator(ttMINUS,  TSubIntExpr,      typInteger,  typInteger);
    RegisterOperator(ttMINUS,  TSubFloatExpr,    typInteger,  typFloat);
    RegisterOperator(ttMINUS,  TSubFloatExpr,    typFloat,    typInteger);
    RegisterOperator(ttMINUS,  TSubFloatExpr,    typFloat,    typFloat);
+   RegisterOperator(ttMINUS,  TSubFloatExpr,    typFloat,    typVariant);
+   RegisterOperator(ttMINUS,  TSubFloatExpr,    typVariant,  typFloat);
    RegisterOperator(ttMINUS,  TSubExpr,         typInteger,  typVariant);
-   RegisterOperator(ttMINUS,  TSubExpr,         typFloat,    typVariant);
    RegisterOperator(ttMINUS,  TSubExpr,         typVariant,  typInteger);
-   RegisterOperator(ttMINUS,  TSubExpr,         typVariant,  typFloat);
    RegisterOperator(ttMINUS,  TSubExpr,         typVariant,  typVariant);
 
    RegisterOperator(ttTIMES,  TMultIntExpr,     typInteger,  typInteger);
    RegisterOperator(ttTIMES,  TMultFloatExpr,   typInteger,  typFloat);
    RegisterOperator(ttTIMES,  TMultFloatExpr,   typFloat,    typInteger);
    RegisterOperator(ttTIMES,  TMultFloatExpr,   typFloat,    typFloat);
+   RegisterOperator(ttTIMES,  TMultFloatExpr,   typFloat,    typVariant);
+   RegisterOperator(ttTIMES,  TMultFloatExpr,   typVariant,  typFloat);
    RegisterOperator(ttTIMES,  TMultExpr,        typInteger,  typVariant);
-   RegisterOperator(ttTIMES,  TMultExpr,        typFloat,    typVariant);
    RegisterOperator(ttTIMES,  TMultExpr,        typVariant,  typInteger);
-   RegisterOperator(ttTIMES,  TMultExpr,        typVariant,  typFloat);
    RegisterOperator(ttTIMES,  TMultExpr,        typVariant,  typVariant);
 
    RegisterOperator(ttDIVIDE, TDivideExpr,      typInteger,  typInteger);
@@ -4573,11 +4703,34 @@ begin
    RegisterOperator(ttSHR,    TShrExpr,         typInteger,  typVariant);
    RegisterOperator(ttSHR,    TShrExpr,         typVariant,  typInteger);
    RegisterOperator(ttSHR,    TShrExpr,         typVariant,  typVariant);
+
+   // combined assignment operator
+
+   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignIntExpr,     typInteger,    typInteger);
+   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignFloatExpr,   typFloat,      typFloat);
+   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignFloatExpr,   typFloat,      typInteger);
+   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignFloatExpr,   typFloat,      typVariant);
+   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignFloatExpr,   typVariant,    typFloat);
+   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignStrExpr,     typString,     typString);
+   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignStrExpr,     typString,     typVariant);
+   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignStrExpr,     typVariant,    typString);
+   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignExpr,        typVariant,    typVariant);
+   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignExpr,        typInteger,    typVariant);
+   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignExpr,        typVariant,    typInteger);
+
+   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignIntExpr,    typInteger,    typInteger);
+   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignFloatExpr,  typFloat,      typFloat);
+   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignFloatExpr,  typFloat,      typInteger);
+   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignFloatExpr,  typFloat,      typVariant);
+   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignFloatExpr,  typVariant,    typFloat);
+   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignExpr,       typInteger,    typVariant);
+   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignExpr,       typVariant,    typVariant);
+   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignExpr,       typVariant,    typInteger);
 end;
 
 // RegisterOperator
 //
-procedure TBinaryOperators.RegisterOperator(aToken : TTokenType; aExprClass : TBinaryOpExprClass;
+procedure TBinaryOperators.RegisterOperator(aToken : TTokenType; aExprClass : TNoPosExprClass;
                                             aLeftType, aRightType : TSymbol);
 var
    n : Integer;
@@ -4591,9 +4744,9 @@ begin
    end;
 end;
 
-// OperatorClassFor
+// ExprClassFor
 //
-function TBinaryOperators.OperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TBinaryOpExprClass;
+function TBinaryOperators.ExprClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TNoPosExprClass;
 var
    i : Integer;
 begin
@@ -4604,6 +4757,30 @@ begin
       end;
    end;
    Result:=nil;
+end;
+
+// BinaryOperatorClassFor
+//
+function TBinaryOperators.BinaryOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TBinaryOpExprClass;
+var
+   expr : TNoPosExprClass;
+begin
+   expr:=ExprClassFor(aToken, aLeftType, aRightType);
+   if (expr<>nil) and expr.InheritsFrom(TBinaryOpExpr) then
+      Result:=TBinaryOpExprClass(expr)
+   else Result:=nil;
+end;
+
+// AssignmentOperatorClassFor
+//
+function TBinaryOperators.AssignmentOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TAssignExprClass;
+var
+   expr : TNoPosExprClass;
+begin
+   expr:=ExprClassFor(aToken, aLeftType, aRightType);
+   if (expr<>nil) and expr.InheritsFrom(TAssignExpr) then
+      Result:=TAssignExprClass(expr)
+   else Result:=nil;
 end;
 
 end.

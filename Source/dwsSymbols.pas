@@ -280,55 +280,55 @@ type
 
    // A script function / procedure: procedure X(param: Integer);
    TFuncSymbol = class(TTypeSymbol)
-   protected
-     FAddrGenerator : TAddrGeneratorRec;
-     FExecutable : IExecutable;
-     FInternalParams : TSymbolTable;
-     FDeprecatedMessage : String;
-     FForwardPosition : PScriptPos;
-     FIsStateless : Boolean;
-     FKind : TFuncKind;
-     FParams : TParamsSymbolTable;
-     FResult : TDataSymbol;
+      protected
+         FAddrGenerator : TAddrGeneratorRec;
+         FExecutable : IExecutable;
+         FInternalParams : TSymbolTable;
+         FDeprecatedMessage : String;
+         FForwardPosition : PScriptPos;
+         FIsStateless : Boolean;
+         FKind : TFuncKind;
+         FParams : TParamsSymbolTable;
+         FResult : TDataSymbol;
 
-     procedure SetType(const Value: TSymbol); virtual;
-     function GetCaption: string; override;
-     function GetIsForwarded : Boolean;
-     function GetDescription: string; override;
-     function GetLevel: SmallInt;
-     function GetParamSize: Integer;
-     function GetIsDeprecated : Boolean;
-     procedure SetIsDeprecated(const val : Boolean);
+         procedure SetType(const Value: TSymbol); virtual;
+         function GetCaption: string; override;
+         function GetIsForwarded : Boolean;
+         function GetDescription: string; override;
+         function GetLevel: SmallInt;
+         function GetParamSize: Integer;
+         function GetIsDeprecated : Boolean;
+         procedure SetIsDeprecated(const val : Boolean);
 
-   public
-     constructor Create(const Name: string; FuncKind: TFuncKind; FuncLevel: SmallInt);
-     destructor Destroy; override;
+      public
+         constructor Create(const Name: string; FuncKind: TFuncKind; FuncLevel: SmallInt);
+         destructor Destroy; override;
 
-     constructor Generate(Table: TSymbolTable; const FuncName: string;
-                          const FuncParams: TParamArray; const FuncType: string);
-     function IsCompatible(typSym: TSymbol): Boolean; override;
-     procedure AddParam(param: TParamSymbol); virtual;
-     procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
-     procedure Initialize(const msgs : TdwsMessageList); override;
-     procedure InitData(const Data: TData; Offset: Integer); override;
+         constructor Generate(Table: TSymbolTable; const FuncName: string;
+                             const FuncParams: TParamArray; const FuncType: string);
+         function IsCompatible(typSym: TSymbol): Boolean; override;
+         procedure AddParam(param: TParamSymbol); virtual;
+         procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
+         procedure Initialize(const msgs : TdwsMessageList); override;
+         procedure InitData(const Data: TData; Offset: Integer); override;
 
-     function ParamsDescription : String;
+         function ParamsDescription : String;
 
-     procedure SetForwardedPos(const pos : TScriptPos);
-     procedure ClearIsForwarded;
+         procedure SetForwardedPos(const pos : TScriptPos);
+         procedure ClearIsForwarded;
 
-     property Executable: IExecutable read FExecutable write FExecutable;
-     property DeprecatedMessage : String read FDeprecatedMessage write FDeprecatedMessage;
-     property IsDeprecated : Boolean read GetIsDeprecated write SetIsDeprecated;
-     property IsStateless : Boolean read FIsStateless write FIsStateless;
-     property IsForwarded : Boolean read GetIsForwarded;
-     property Kind: TFuncKind read FKind write FKind;
-     property Level: SmallInt read GetLevel;
-     property Params: TParamsSymbolTable read FParams;
-     property ParamSize: Integer read GetParamSize;
-     property Result: TDataSymbol read FResult;
-     property Typ: TSymbol read FTyp write SetType;
-     property InternalParams: TSymbolTable read FInternalParams;
+         property Executable: IExecutable read FExecutable write FExecutable;
+         property DeprecatedMessage : String read FDeprecatedMessage write FDeprecatedMessage;
+         property IsDeprecated : Boolean read GetIsDeprecated write SetIsDeprecated;
+         property IsStateless : Boolean read FIsStateless write FIsStateless;
+         property IsForwarded : Boolean read GetIsForwarded;
+         property Kind: TFuncKind read FKind write FKind;
+         property Level: SmallInt read GetLevel;
+         property Params: TParamsSymbolTable read FParams;
+         property ParamSize: Integer read GetParamSize;
+         property Result: TDataSymbol read FResult;
+         property Typ: TSymbol read FTyp write SetType;
+         property InternalParams: TSymbolTable read FInternalParams;
    end;
 
    TSourceFuncSymbol = class(TFuncSymbol)

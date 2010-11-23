@@ -444,6 +444,8 @@ type
       property BaseType: TTypeSymbol read GetBaseType;
   end;
 
+  TNoPosExprClass = class of TNoPosExpr;
+
    // TExpr
    //
    TExpr = class (TNoPosExpr)

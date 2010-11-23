@@ -219,6 +219,8 @@ type
       procedure ReadProcBody(Proc: TFuncSymbol);
       function ReadProperty(ClassSym: TClassSymbol): TPropertySymbol;
       function ReadPropertyExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TNoPosExpr;
+      function ReadPropertyReadExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol): TNoPosExpr;
+      function ReadPropertyWriteExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol): TNoPosExpr;
       function ReadRecord(const TypeName: string): TTypeSymbol;
       function ReadRaise: TRaiseBaseExpr;
       function ReadRepeat: TRepeatExpr;
@@ -313,6 +315,7 @@ const
       SWI_IFDEF, SWI_IFNDEF, SWI_IF, SWI_ENDIF, SWI_ELSE,
       SWI_HINT, SWI_WARNING, SWI_ERROR, SWI_FATAL
       );
+   cAssignmentTokens : TTokenTypes = [ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN];
 
 type
   TExceptionCreateMethod = class(TInternalMethod)
@@ -843,11 +846,11 @@ begin
 
                // Initialize with default value
                if varExpr.Typ=FProg.TypInteger then
-                  assignExpr:=TAssignConstToIntegerVarExpr.Create(FProg, pos, varExpr, 0)
+                  assignExpr:=TAssignConstToIntegerVarExpr.CreateVal(FProg, pos, varExpr, 0)
                else if varExpr.Typ=FProg.TypFloat then
-                  assignExpr:=TAssignConstToFloatVarExpr.Create(FProg, pos, varExpr, 0)
+                  assignExpr:=TAssignConstToFloatVarExpr.CreateVal(FProg, pos, varExpr, 0)
                else if varExpr.Typ=FProg.TypString then
-                  assignExpr:=TAssignConstToStringVarExpr.Create(FProg, pos, varExpr, '')
+                  assignExpr:=TAssignConstToStringVarExpr.CreateVal(FProg, pos, varExpr, '')
                else begin
                   initData := nil;
                   SetLength(initData, sym.Typ.Size);
@@ -1532,7 +1535,7 @@ begin
             locExpr := ReadSymbol(ReadTerm)
          else locExpr := ReadName(True);
          try
-            token:=FTok.TestDeleteAny([ttASSIGN, ttPLUS_ASSIGN]);
+            token:=FTok.TestDeleteAny(cAssignmentTokens);
             if token<>ttNone then begin
                if not (locExpr is TDataExpr) or not TDataExpr(locExpr).IsWritable then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_CantWriteToLeftSide);
@@ -1815,116 +1818,147 @@ end;
 
 // Parses statements like "property[i, j, k] := expr" and "expr := property[i, j, k]"
 function TdwsCompiler.ReadPropertyExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TNoPosExpr;
-var
-  sym: TSymbol;
-  arrayArgs: TNoPosExprList;
-   aPos : TScriptPos;
-   fieldExpr : TFieldExpr;
 begin
-  Result := nil;
-  aPos:=FTok.HotPos;
-  arrayArgs := TNoPosExprList.Create;
-  try
-    if PropertySym.ArrayIndices.Count > 0 then
-      ReadFuncArgs(arrayArgs.AddExpr, ttALEFT, ttARIGHT);
+   if IsWrite then
+      Result:=ReadPropertyWriteExpr(Expr, PropertySym)
+   else Result:=ReadPropertyReadExpr(Expr, PropertySym);
+end;
 
-    if IsWrite and FTok.TestDelete(ttASSIGN) then
-    begin
-      sym := PropertySym.WriteSym;
+// ReadPropertyReadExpr
+//
+function TdwsCompiler.ReadPropertyReadExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol): TNoPosExpr;
+var
+   sym : TSymbol;
+   arrayArgs : TNoPosExprList;
+   aPos : TScriptPos;
+begin
+   Result := nil;
+   aPos:=FTok.HotPos;
+   arrayArgs := TNoPosExprList.Create;
+   try
+      if PropertySym.ArrayIndices.Count > 0 then
+         ReadFuncArgs(arrayArgs.AddExpr, ttALEFT, ttARIGHT);
 
-      // No WriteSym
-      if sym = nil then
-        FMsgs.AddCompilerStop(FTok.HotPos, CPE_ReadOnlyProperty)
-      // WriteSym is a Field
-      else if sym is TFieldSymbol then
-      begin
-        if Expr.Typ is TClassOfSymbol then
-          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
-        fieldExpr := TFieldExpr.Create(FProg, FTok.HotPos, sym.Typ, TFieldSymbol(sym), TDataExpr(Expr));
-        Result := ReadAssign(ttASSIGN, fieldExpr);
-      end
-      // WriteSym is a Method
-      else if sym is TMethodSymbol then
-      begin
-        // Convert an assignment to a function call f := x  -->  f(x)
-        if Expr.Typ is TClassOfSymbol then
-        begin
-          // Class properties
-          if not TMethodSymbol(sym).IsClassMethod then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticPropertyWriteExpected);
-
-          Result := GetMethodExpr(TMethodSymbol(sym), Expr, rkClassOfRef, aPos, True);
-        end
-        else
-          Result := GetMethodExpr(TMethodSymbol(sym), Expr, rkObjRef, aPos, True);
-
-        try
-          Expr := nil; // is part of Result
-
-          // Add array indizes (if any)
-          while arrayArgs.Count > 0 do
-          begin
-            TFuncExpr(Result).AddArg(arrayArgs[0]);
-            arrayArgs.Delete(0);
-          end;
-
-          if Assigned(PropertySym.IndexSym) then
-            TFuncExpr(Result).AddArg(TConstExpr.CreateTyped(FProg,
-              PropertySym.IndexSym, PropertySym.IndexValue));
-
-          // Add right side of assignment
-          TFuncExpr(Result).AddArg(ReadExpr);
-        except
-          Result.Free;
-          raise;
-        end;
-      end;
-    end
-    else
-    begin
       sym := PropertySym.ReadSym;
 
       // No ReadSym
       if sym = nil then
-        FMsgs.AddCompilerStop(FTok.HotPos, CPE_WriteOnlyProperty)
-      // ReadSym is a field
-      else if sym is TFieldSymbol then
-      begin
-        if Expr.Typ is TClassSymbol then
-          Result := TFieldExpr.Create(FProg, FTok.HotPos, sym.Typ, TFieldSymbol(sym),
-            TDataExpr(Expr))
-        else
-          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
-      end
-      // ReadSym is a method
-      else if sym is TMethodSymbol then
-      begin
-        if Expr.Typ is TClassOfSymbol then
-          Result := GetMethodExpr(TMethodSymbol(sym), TDataExpr(Expr), rkClassOfRef, aPos, False)
-        else
-          Result := GetMethodExpr(TMethodSymbol(sym), TDataExpr(Expr), rkObjRef, aPos, False);
 
-        try
-          // Add array indizes if any
-          while ArrayArgs.Count > 0 do
-          begin
-            TFuncExpr(Result).AddArg(ArrayArgs[0]);
-            ArrayArgs.Delete(0);
-          end;
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_WriteOnlyProperty)
 
-          if Assigned(PropertySym.IndexSym) then
-            TFuncExpr(Result).AddArg(TConstExpr.CreateTyped(FProg,PropertySym.IndexSym,PropertySym.IndexValue));
-        except
-          Result.Free;
-          raise;
-        end;
+      else if sym is TFieldSymbol then begin
+
+         // ReadSym is a field
+         if Expr.Typ is TClassSymbol then
+            Result := TFieldExpr.Create(FProg, FTok.HotPos, sym.Typ, TFieldSymbol(sym),
+                                        TDataExpr(Expr))
+         else FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
+
+      end else if sym is TMethodSymbol then begin
+
+         // ReadSym is a method
+         if Expr.Typ is TClassOfSymbol then
+            Result := GetMethodExpr(TMethodSymbol(sym), TDataExpr(Expr), rkClassOfRef, aPos, False)
+         else Result := GetMethodExpr(TMethodSymbol(sym), TDataExpr(Expr), rkObjRef, aPos, False);
+
+         try
+            // Add array indizes if any
+            while ArrayArgs.Count > 0 do begin
+               TFuncExpr(Result).AddArg(ArrayArgs[0]);
+               ArrayArgs.Delete(0);
+            end;
+
+            if Assigned(PropertySym.IndexSym) then
+               TFuncExpr(Result).AddArg(TConstExpr.CreateTyped(FProg,PropertySym.IndexSym,PropertySym.IndexValue));
+         except
+            Result.Free;
+            raise;
+         end;
 
       end;
-    end;
 
-  finally
-    arrayArgs.Free;
-  end;
+   finally
+      arrayArgs.Free;
+   end;
+end;
+
+// ReadPropertyWriteExpr
+//
+function TdwsCompiler.ReadPropertyWriteExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol): TNoPosExpr;
+var
+   sym : TSymbol;
+   arrayArgs : TNoPosExprList;
+   aPos : TScriptPos;
+   fieldExpr : TFieldExpr;
+   tokenType : TTokenType;
+begin
+   Result := nil;
+   aPos:=FTok.HotPos;
+   arrayArgs := TNoPosExprList.Create;
+   try
+      if PropertySym.ArrayIndices.Count > 0 then
+         ReadFuncArgs(arrayArgs.AddExpr, ttALEFT, ttARIGHT);
+
+      tokenType:=FTok.TestDeleteAny(cAssignmentTokens);
+
+      if tokenType<>ttNone then begin
+
+         if tokenType<>ttASSIGN then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_CantUseCombinedAssignmentOnProperty);
+
+         sym := PropertySym.WriteSym;
+
+         // No WriteSym
+         if sym = nil then
+
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ReadOnlyProperty)
+
+         else if sym is TFieldSymbol then begin
+
+            // WriteSym is a Field
+            if Expr.Typ is TClassOfSymbol then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
+            fieldExpr := TFieldExpr.Create(FProg, FTok.HotPos, sym.Typ, TFieldSymbol(sym), TDataExpr(Expr));
+            Result := ReadAssign(ttASSIGN, fieldExpr);
+
+         end else if sym is TMethodSymbol then begin
+
+            // WriteSym is a Method
+            // Convert an assignment to a function call f := x  -->  f(x)
+
+            if Expr.Typ is TClassOfSymbol then begin
+               // Class properties
+               if not TMethodSymbol(sym).IsClassMethod then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticPropertyWriteExpected);
+               Result := GetMethodExpr(TMethodSymbol(sym), Expr, rkClassOfRef, aPos, True);
+            end else Result := GetMethodExpr(TMethodSymbol(sym), Expr, rkObjRef, aPos, True);
+
+            try
+               Expr := nil; // is part of Result
+
+               // Add array indizes (if any)
+               while arrayArgs.Count > 0 do begin
+                  TFuncExpr(Result).AddArg(arrayArgs[0]);
+                  arrayArgs.Delete(0);
+               end;
+
+               if Assigned(PropertySym.IndexSym) then
+                  TFuncExpr(Result).AddArg(TConstExpr.CreateTyped(FProg, PropertySym.IndexSym,
+                                                                  PropertySym.IndexValue));
+
+               // Add right side of assignment
+               TFuncExpr(Result).AddArg(ReadExpr);
+            except
+               Result.Free;
+               raise;
+            end;
+         end;
+
+      end else Result:=ReadPropertyReadExpr(Expr, PropertySym);
+
+   finally
+      arrayArgs.Free;
+   end;
 end;
 
 // ReadSymbol
@@ -3482,7 +3516,7 @@ begin
                if (Result.Typ=nil) or (right.Typ=nil) then
                   FProg.Msgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands)
                else begin
-                  exprClass:=FBinaryOperators.OperatorClassFor(tt, Result.Typ, right.Typ);
+                  exprClass:=FBinaryOperators.BinaryOperatorClassFor(tt, Result.Typ, right.Typ);
                   if exprClass=nil then begin
                      FProg.Msgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                      // fake result to keep compiler going and report further issues
@@ -3533,7 +3567,7 @@ begin
             if (Result.Typ=nil) or (right.Typ=nil) then
                FProg.Msgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands)
             else begin
-               exprClass:=FBinaryOperators.OperatorClassFor(tt, Result.Typ, right.Typ);
+               exprClass:=FBinaryOperators.BinaryOperatorClassFor(tt, Result.Typ, right.Typ);
                if exprClass=nil then begin
                   FProg.Msgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                   // fake result to keep compiler going and report further issues
@@ -4907,6 +4941,8 @@ end;
 //
 function TdwsCompiler.CreateAssign(const pos : TScriptPos; token : TTokenType;
                                    left : TDataExpr; right : TNoPosExpr) : TNoResultExpr;
+var
+   exprClass : TAssignExprClass;
 begin
    if Assigned(right.Typ) then begin
 
@@ -4922,8 +4958,13 @@ begin
                Result:=TAssignExpr.Create(FProg, pos, left, right);
             end;
          end;
-         ttPLUS_ASSIGN : begin
-            Result:=TPlusAssignExpr.Create(FProg, pos, left, right);
+         ttPLUS_ASSIGN, ttMINUS_ASSIGN : begin
+            exprClass:=FBinaryOperators.AssignmentOperatorClassFor(token, left.Typ, right.Typ);
+            if exprClass=nil then begin
+               FMsgs.AddCompilerError(pos, CPE_IncompatibleOperands);
+               exprClass:=TAssignExpr; // fake to keep compiler going
+            end;
+            Result:=exprClass.Create(FProg, pos, left, right);
          end;
       else
          Result:=nil;

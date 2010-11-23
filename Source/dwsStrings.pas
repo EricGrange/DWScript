@@ -140,6 +140,7 @@ const
   CPE_ClassNotCompletelyDefined = 'Class "%s" isn''t defined completely';
   CPE_MethodNotImplemented = 'Method "%s" of class "%s" not implemented';
   CPE_CantWriteProperty = 'Can''t write properties of complex type (record, array)';
+  CPE_CantUseCombinedAssignmentOnProperty = 'Can''t use combined assignment on property';
   CPE_MultipleDefaultProperties = 'Class "%s" already has a default property';
   CPE_ParamsExpected = 'Parameters expected';
 
