@@ -63,7 +63,7 @@ type
          function SamePosAs(const aPos : TScriptPos) : Boolean;
 
          procedure IncCol; inline;
-         procedure IncLine; inline;
+         procedure NewLine; inline;
    end;
    TScriptPosArray = array of TScriptPos; // dynamic array that can hold ScriptPos settings (needed for ReadNameList)
 
@@ -286,11 +286,11 @@ begin
    Inc(FLineCol, $100000);
 end;
 
-// IncLine
+// NewLine
 //
-procedure TScriptPos.IncLine;
+procedure TScriptPos.NewLine;
 begin
-   Inc(FLineCol);
+   FLineCol:=(FLineCol and $FFFFF)+$100001;
 end;
 
 // ------------------

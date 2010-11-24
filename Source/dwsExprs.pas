@@ -295,6 +295,7 @@ type
     FRuntimeFileSystem : TdwsCustomFileSystem;
     FFileSystem : IdwsFileSystem;
     FConditionalDefines : TStringList;
+    FLineCount : Integer;
 
   protected
     function GetLevel: Integer;
@@ -338,6 +339,7 @@ type
     property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
     property FileSystem : IdwsFileSystem read FFileSystem write FFileSystem;
     property ConditionalDefines : TStringList read FConditionalDefines write SetConditionalDefines;
+    property LineCount : Integer read FLineCount write FLineCount;
     property ObjectCount : Integer read FObjectCount write FObjectCount;
     property Expr: TExpr read FExpr write FExpr;
     property InitExpr: TExpr read FInitExpr;

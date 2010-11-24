@@ -151,6 +151,7 @@ type
       FFilter : TdwsFilter;
       FIsExcept : Boolean;
       FIsSwitch : Boolean;
+      FLineCount : Integer;
 
       FOnReadInstr : TCompilerReadInstrEvent;
 
@@ -515,6 +516,8 @@ begin
    if StackChunkSize <= 0 then
      StackChunkSize := 1;
 
+   FLineCount:=0;
+
    // Create the TdwsProgram
    FProg := CreateProgram(Conf.SystemTable, Conf.ResultType, maxDataSize, stackChunkSize, Conf.MaxRecursionDepth);
    Result := FProg;
@@ -598,6 +601,7 @@ begin
          // Every thing is done, set program state to "prepared"
          FProg.ReadyToRun;
       finally
+         Inc(FLineCount, FTok.CurrentPos.Line-2);
          FTok.Free;
       end;
    except
@@ -611,7 +615,8 @@ begin
 
    FCompileFileSystem := nil;
 
-   FProg.Compiler := nil;
+   FProg.LineCount:=FLineCount;
+   FProg.Compiler:=nil;
 end;
 
 // Optimize
@@ -3958,6 +3963,7 @@ begin
                FTok.SwitchHandler := ReadSwitch;
                Result := ReadScript(name, stInclude);
             finally
+               Inc(FLineCount, FTok.CurrentPos.Line-2);
                FTok.Free;
                FTok := oldTok;
             end;

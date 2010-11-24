@@ -828,11 +828,9 @@ begin
          // Proceed to the next character
          if (trnsClassType=TSeekTransition) or (trnsClassType=TConsumeTransition) then begin
             Inc(FPosPtr);
-            FPos.IncCol;
-            if ch=#10 then begin
-               FPos.IncLine;
-               FPos.Col:=1;
-            end;
+            if ch=#10 then
+               FPos.NewLine
+            else FPos.IncCol;
          end;
 
          // The characters in 's' have to be converted
