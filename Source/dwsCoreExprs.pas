@@ -361,6 +361,15 @@ type
    public
      constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
      function Eval: Variant; override;
+   end;
+
+   TAssignedInstanceExpr = class(TAssignedExpr)
+   public
+     function EvalAsBoolean : Boolean; override;
+   end;
+
+   TAssignedMetaClassExpr = class(TAssignedExpr)
+   public
      function EvalAsBoolean : Boolean; override;
    end;
 
@@ -2468,14 +2477,32 @@ begin
    Result:=EvalAsBoolean;
 end;
 
+// ------------------
+// ------------------ TAssignedInstanceExpr ------------------
+// ------------------
+
 // EvalAsBoolean
 //
-function TAssignedExpr.EvalAsBoolean : Boolean;
+function TAssignedInstanceExpr.EvalAsBoolean : Boolean;
 var
    obj : IScriptObj;
 begin
    FExpr.EvalAsScriptObj(obj);
    Result:=(obj<>nil);
+end;
+
+// ------------------
+// ------------------ TAssignedMetaClassExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TAssignedMetaClassExpr.EvalAsBoolean : Boolean;
+var
+   s : String;
+begin
+   FExpr.EvalAsString(s);
+   Result:=(s<>'');
 end;
 
 { TChrExpr }

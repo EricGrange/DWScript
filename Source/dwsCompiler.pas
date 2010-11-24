@@ -5039,10 +5039,12 @@ begin
 
       case SpecialKind of
          skAssigned: begin
-            if argTyp is TClassSymbol then begin
-               Result:=TAssignedExpr.Create(FProg, argExpr);
-               argExpr:=nil;
-            end else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+            if argTyp is TClassSymbol then
+               Result:=TAssignedInstanceExpr.Create(FProg, argExpr)
+            else if argTyp is TClassOfSymbol then
+               Result:=TAssignedMetaClassExpr.Create(FProg, argExpr)
+            else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+            argExpr:=nil;
          end;
          skHigh: begin
             if argTyp is TOpenArraySymbol then begin
