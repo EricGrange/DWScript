@@ -4952,7 +4952,9 @@ begin
 
       case token of
          ttASSIGN : begin
-            if (right is TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
+            if left.Typ is TClassOfSymbol then begin
+               Result := TAssignClassOfExpr.Create(FProg, pos, left, right);
+            end else if (right is TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
                if right is TFuncExpr then
                   TFuncExpr(right).SetResultAddr;
                if right is TArrayConstantExpr then

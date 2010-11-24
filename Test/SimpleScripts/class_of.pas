@@ -35,6 +35,14 @@ obj1:=meta.Create;
 meta:=TChild;
 var obj2 = meta.Create;
 
+if meta=TBase then PrintLn('Bug Equal TBase');
+if meta<>TChild then PrintLn('Bug Not Equal TChild');
+
 PrintLn(obj1.Field);
 PrintLn(obj2.Field);
+
+meta:=nil;
+
+if Assigned(meta) then PrintLn('Clear Assigned bug');
+
 

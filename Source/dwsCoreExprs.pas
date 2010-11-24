@@ -631,6 +631,12 @@ type
 
    TAssignExprClass = class of TAssignExpr;
 
+   // left := right; (class of)
+   TAssignClassOfExpr = class(TAssignExpr)
+   public
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+
    // left := right;
    TAssignDataExpr = class(TAssignExpr)
    protected
@@ -642,7 +648,6 @@ type
 
    // left := [constant array];
    TAssignArrayConstantExpr = class(TAssignDataExpr)
-   protected
    public
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr); override;
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
@@ -3374,6 +3379,28 @@ begin
    if Result<>Self then begin
       FLeft:=nil;
       Free;
+   end;
+end;
+
+// ------------------
+// ------------------ TAssignClassOfExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TAssignClassOfExpr.EvalNoResult(var status : TExecutionStatusResult);
+var
+   v : Variant;
+   obj : IScriptObj;
+begin
+   FRight.EvalAsVariant(v);
+   if VarIsStr(v) then
+      FLeft.AssignValue(v)
+   else begin
+      obj:=IScriptObj(IUnknown(v));
+      if obj<>nil then
+         FLeft.AssignValueAsString(IScriptObj(IUnknown(v)).ClassSym.Name)
+      else FLeft.AssignValueAsString('');
    end;
 end;
 

@@ -1906,7 +1906,8 @@ end;
 function TClassOfSymbol.IsCompatible(typSym: TSymbol): Boolean;
 begin
   typSym := typSym.BaseType;
-  Result := (typSym is TClassOfSymbol) and Typ.IsCompatible(typSym.Typ);
+  Result :=    (typSym is TNilSymbol)
+            or ((typSym is TClassOfSymbol) and Typ.IsCompatible(typSym.Typ));
 end;
 
 function IsBaseTypeCompatible(AType, BType: TBaseTypeID): Boolean;
