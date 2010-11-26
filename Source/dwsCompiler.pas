@@ -995,8 +995,10 @@ begin
   end;
 end;
 
+// ReadProcDecl
+//
 function TdwsCompiler.ReadProcDecl(FuncKind: TFuncKind; ClassSym: TClassSymbol;
-  IsClassMethod: Boolean; IsType : Boolean): TFuncSymbol;
+                                   IsClassMethod: Boolean; IsType : Boolean): TFuncSymbol;
 var
    Name: string;
    sym: TSymbol;
@@ -1335,6 +1337,8 @@ begin
    // Open context of full procedure body (may include a 'var' section)
    if coContextMap in FCompilerOptions then
       FProg.ContextMap.OpenContext(FTok.CurrentPos, Proc);   // attach to symbol that it belongs to (perhaps a class)
+
+   Proc.SourcePosition:=FTok.HotPos;
 
    try
       // Funktion Body

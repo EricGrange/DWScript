@@ -176,6 +176,33 @@ type
      property SwitchHandler: TSwitchHandler read FSwitchHandler write FSwitchHandler;
    end;
 
+const
+   cTokenStrings : array [TTokenType] of String = (
+     '', 'StrVal', 'IntVal', 'FloatVal', 'NAME', 'SWITCH',
+     'VAR', 'CONST', 'TYPE', 'RECORD', 'ARRAY', '.', '..', 'OF',
+     'TRY', 'EXCEPT', 'RAISE', 'FINALLY', 'ON', 'READ', 'WRITE', 'PROPERTY',
+     'PROCEDURE', 'FUNCTION', 'CONSTRUCTOR', 'DESTRUCTOR', 'METHOD',
+     'CLASS', 'NIL', 'IS',
+     'AS', 'INDEX', 'OBJECT',
+     'VIRTUAL', 'OVERRIDE', 'REINTRODUCE', 'INHERITED', 'ABSTRACT', 'DEPRECATED',
+     'EXTERNAL', 'FORWARD', 'IN',
+     'BEGIN', 'END', 'BREAK', 'CONTINUE', 'EXIT',
+     'IF', 'THEN', 'ELSE', 'WHILE', 'REPEAT', 'UNTIL', 'FOR', 'TO', 'DOWNTO', 'DO',
+     'CASE',
+     'TRUE', 'FALSE',
+     'AND', 'OR', 'XOR', 'DIV', 'MOD', 'NOT', 'SHL', 'SHR',
+     '+', '-',
+     '*', '/',
+     'AT',
+     '=', '<>', '>', '>=', '<', '<=',
+     ';', ',', ':',
+     ':=', '+=', '-=', '*=', '/=',
+     '(', ')', '[', ']', '}',
+     'DEFAULT', 'USES',
+     'PRIVATE', 'PROTECTED', 'PUBLIC', 'PUBLISHED',
+     'REGISTER', 'PASCAL', 'CDECL', 'STDCALL', 'FASTCALL'
+     );
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------

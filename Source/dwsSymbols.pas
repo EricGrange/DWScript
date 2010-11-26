@@ -22,7 +22,8 @@ unit dwsSymbols;
 
 interface
 
-uses Windows, SysUtils, Variants, Classes, dwsStrings, dwsStack, dwsErrors, dwsUtils;
+uses Windows, SysUtils, Variants, Classes, dwsStrings, dwsStack, dwsErrors,
+   dwsUtils, dwsTokenizer;
 
 type
    TBaseTypeID = (
@@ -147,6 +148,8 @@ type
          FTyp : TSymbol;
          function GetCaption : String; virtual;
          function GetDescription : String; virtual;
+         function GetSourcePosition : TScriptPos; virtual;
+         procedure SetSourcePosition(const val : TScriptPos); virtual;
 
       public
          constructor Create(const name : string; typ : TSymbol);
@@ -168,6 +171,7 @@ type
          property Name : String read FName;
          property Typ : TSymbol read FTyp write FTyp;
          property Size : Integer read FSize;
+         property SourcePosition : TScriptPos read GetSourcePosition write SetSourcePosition;
    end;
 
    TSymbolClass = class of TSymbol;
@@ -332,6 +336,11 @@ type
    end;
 
    TSourceFuncSymbol = class(TFuncSymbol)
+      private
+         FSourcePosition : TScriptPos;
+      protected
+         function GetSourcePosition : TScriptPos; override;
+         procedure SetSourcePosition(const val : TScriptPos); override;
    end;
 
    TMagicFuncDoEvalEvent = function(args : TExprBaseList) : Variant of object;
@@ -403,6 +412,11 @@ type
       end;
 
    TSourceMethodSymbol = class(TMethodSymbol)
+      private
+         FSourcePosition : TScriptPos;
+      protected
+         function GetSourcePosition : TScriptPos; override;
+         procedure SetSourcePosition(const val : TScriptPos); override;
    end;
 
    TNameSymbol = class(TTypeSymbol)
@@ -565,8 +579,6 @@ type
    protected
      function GetCaption: string; override;
      function GetDescription: string; override;
-     function GetReadSym: TSymbol; virtual;
-     function GetWriteSym: TSymbol; virtual;
      function GetIsDefault: Boolean; virtual;
      procedure AddParam(Param: TParamSymbol);
    public
@@ -576,22 +588,49 @@ type
      procedure SetIndex(const Data: TData; Addr: Integer; Sym: TSymbol);
      function GetArrayIndicesDescription: string;
      property ArrayIndices: TSymbolTable read FArrayIndices;
-     property ReadSym: TSymbol read GetReadSym write FReadSym;
-     property WriteSym: TSymbol read GetWriteSym write FWriteSym;
+     property ReadSym: TSymbol read FReadSym write FReadSym;
+     property WriteSym: TSymbol read FWriteSym write FWriteSym;
      property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
      property IsDefault: Boolean read GetIsDefault;
      property IndexValue: TData read FIndexValue;
      property IndexSym: TSymbol read FIndexSym;
    end;
 
+   // property X: Integer read FReadSym write FWriteSym;
+   TClassOperatorSymbol = class(TValueSymbol)
+      private
+         FClassSymbol : TClassSymbol;
+         FTokenType : TTokenType;
+         FParameters : TSymbolTable;
+         FUsesSym : TSymbol;
+         FResult : TDataSymbol;
+
+      protected
+         function GetCaption: string; override;
+         function GetDescription: string; override;
+         procedure AddParam(Param: TParamSymbol);
+
+      public
+         constructor Create(const Name: string; tokenType : TTokenType; Typ: TSymbol);
+         destructor Destroy; override;
+         procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
+         function GetParametersDescription: string;
+
+         property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
+         property TokenType : TTokenType read FTokenType write FTokenType;
+         property Parameters : TSymbolTable read FParameters;
+         property UsesSym : TSymbol read FUsesSym write FUsesSym;
+         property Result : TDataSymbol read FResult write FResult;
+   end;
+
    // type X = class of TMyClass;
    TClassOfSymbol = class(TTypeSymbol)
-   protected
-     function GetCaption: string; override;
-   public
-     constructor Create(const Name: string; Typ: TClassSymbol);
-     procedure InitData(const Data: TData; Offset: Integer); override;
-     function IsCompatible(typSym: TSymbol): Boolean; override;
+      protected
+         function GetCaption: string; override;
+      public
+         constructor Create(const Name: string; Typ: TClassSymbol);
+         procedure InitData(const Data: TData; Offset: Integer); override;
+         function IsCompatible(typSym: TSymbol): Boolean; override;
    end;
 
    TObjectDestroyEvent = procedure(ExternalObject: TObject) of object;
@@ -741,6 +780,16 @@ type
          property Symbols[x: Integer]: TSymbol read GetSymbol; default;
          property ParentCount: Integer read GetParentCount;
          property Parents[Index: Integer]: TSymbolTable read GetParents;
+
+         type
+            TSymbolTableEnumerator = record
+               Index : Integer;
+               Table : TSymbolTable;
+               function MoveNext : Boolean;
+               function GetCurrent : TSymbol;
+               property Current : TSymbol read GetCurrent;
+            end;
+         function GetEnumerator : TSymbolTableEnumerator;
    end;
 
    TSymbolTableClass = class of TSymbolTable;
@@ -1035,6 +1084,20 @@ procedure TSymbol.SetName(const newName : String);
 begin
    Assert(FName='');
    FName:=newName;
+end;
+
+// GetSourcePosition
+//
+function TSymbol.GetSourcePosition : TScriptPos;
+begin
+   Result:=cNullPos;
+end;
+
+// SetSourcePosition
+//
+procedure TSymbol.SetSourcePosition(const val : TScriptPos);
+begin
+   // ignore
 end;
 
 { TRecordSymbol }
@@ -1371,6 +1434,24 @@ begin
 end;
 
 // ------------------
+// ------------------ TSourceFuncSymbol ------------------
+// ------------------
+
+// GetSourcePosition
+//
+function TSourceFuncSymbol.GetSourcePosition : TScriptPos;
+begin
+   Result:=FSourcePosition;
+end;
+
+// SetSourcePosition
+//
+procedure TSourceFuncSymbol.SetSourcePosition(const val : TScriptPos);
+begin
+   FSourcePosition:=val;
+end;
+
+// ------------------
 // ------------------ TMagicFuncSymbol ------------------
 // ------------------
 
@@ -1587,6 +1668,24 @@ begin
    IsOverlap := False;
 end;
 
+// ------------------
+// ------------------ TSourceMethodSymbol ------------------
+// ------------------
+
+// GetSourcePosition
+//
+function TSourceMethodSymbol.GetSourcePosition : TScriptPos;
+begin
+   Result:=FSourcePosition;
+end;
+
+// SetSourcePosition
+//
+procedure TSourceMethodSymbol.SetSourcePosition(const val : TScriptPos);
+begin
+   FSourcePosition:=val;
+end;
+
 { TPropertySymbol }
 
 procedure TPropertySymbol.AddParam(Param: TParamSymbol);
@@ -1664,21 +1763,70 @@ begin
   Result := ClassSymbol.DefaultProperty = Self;
 end;
 
-function TPropertySymbol.GetReadSym: TSymbol;
-begin
-  Result := FReadSym;
-end;
-
-function TPropertySymbol.GetWriteSym: TSymbol;
-begin
-  Result := FWriteSym;
-end;
-
 procedure TPropertySymbol.SetIndex(const Data: TData; Addr: Integer; Sym: TSymbol);
 begin
   FIndexSym := Sym;
   SetLength(FIndexValue,FIndexSym.Size);
   CopyData(Data, Addr, FIndexValue, 0, FIndexSym.Size);
+end;
+
+// ------------------
+// ------------------ TClassOperatorSymbol ------------------
+// ------------------
+
+// Create
+//
+constructor TClassOperatorSymbol.Create(const Name: string; tokenType : TTokenType; Typ: TSymbol);
+begin
+   inherited Create(Name, Typ);
+   FTokenType:=tokenType;
+   FParameters:=TSymbolTable.Create;
+end;
+
+// Destroy
+//
+destructor TClassOperatorSymbol.Destroy;
+begin
+   inherited;
+   FParameters.Free;
+end;
+
+// GenerateParams
+//
+procedure TClassOperatorSymbol.GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
+begin
+   dwsSymbols.GenerateParams(Name, Table, FuncParams, AddParam);
+end;
+
+// GetParametersDescription
+//
+function TClassOperatorSymbol.GetParametersDescription: string;
+begin
+   Result:=''; // todo
+end;
+
+// AddParam
+//
+procedure TClassOperatorSymbol.AddParam(Param: TParamSymbol);
+begin
+   Parameters.AddSymbol(Param);
+end;
+
+// GetCaption
+//
+function TClassOperatorSymbol.GetCaption: string;
+begin
+   Result:='operator '+cTokenStrings[TokenType]+' '+GetParametersDescription;
+   if FResult<>nil then
+      Result:=Result+' : '+FResult.Name;
+   Result:=Result+' uses '+FUsesSym.Name;
+end;
+
+// GetDescription
+//
+function TClassOperatorSymbol.GetDescription: string;
+begin
+   Result:=GetCaption;
 end;
 
 { TClassSymbol }
@@ -2351,6 +2499,34 @@ end;
 procedure TSymbolTable.MoveParent(CurIndex, NewIndex: Integer);
 begin
    FParents.Move(CurIndex,NewIndex);
+end;
+
+// MoveNext
+//
+function TSymbolTable.TSymbolTableEnumerator.MoveNext : Boolean;
+begin
+   Dec(Index);
+   Result:=(Index>=0);
+end;
+
+// GetCurrent
+//
+function TSymbolTable.TSymbolTableEnumerator.GetCurrent : TSymbol;
+begin
+   Result:=Table[Index];
+end;
+
+// GetEnumerator
+//
+function TSymbolTable.GetEnumerator : TSymbolTableEnumerator;
+begin
+   if Self=nil then begin
+      Result.Table:=nil;
+      Result.Index:=0;
+   end else begin
+      Result.Table:=Self;
+      Result.Index:=Count;
+   end;
 end;
 
 // ------------------

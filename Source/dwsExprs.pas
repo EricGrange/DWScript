@@ -1227,8 +1227,18 @@ begin
 end;
 
 function RawByteStringToScriptString(const s : RawByteString) : String;
+var
+   i, n : Integer;
+   pSrc : PByteArray;
+   pDest : PWordArray;
 begin
-   Result:=String(s);
+   if s='' then Exit('');
+   n:=Length(s);
+   SetLength(Result, n);
+   pSrc:=PByteArray(NativeUInt(s));
+   pDest:=PWordArray(NativeUInt(Result));
+   for i:=0 to n-1 do
+      pDest[i]:=Word(PByte(@pSrc[i])^);
 end;
 
 procedure RaiseVariableNotFound(const s : String);

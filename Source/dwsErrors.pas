@@ -64,6 +64,8 @@ type
 
          procedure IncCol; inline;
          procedure NewLine; inline;
+
+         function AsInfo : String;
    end;
    TScriptPosArray = array of TScriptPos; // dynamic array that can hold ScriptPos settings (needed for ReadNameList)
 
@@ -291,6 +293,31 @@ end;
 procedure TScriptPos.NewLine;
 begin
    FLineCol:=(FLineCol and $FFFFF)+$100001;
+end;
+
+// AsInfo
+//
+function TScriptPos.AsInfo : String;
+begin
+   if SourceFile=nil then
+      Result:=''
+   else begin
+      if SourceFile.SourceFile<>MSG_MainModule then
+         Result:=Format(MSG_ScriptPosFile, [SourceFile.SourceFile])
+      else Result:='';
+      if Col<>cNullPos.Col then begin
+         if Result<>'' then
+            Result:=', '+Result;
+         Result:=Format(MSG_ScriptPosColumn, [Col])+Result;
+      end;
+      if Line<>cNullPos.Line then begin
+         if Result<>'' then
+            Result:=', '+Result;
+         Result:=Format(MSG_ScriptPosLine, [Line])+Result;
+      end;
+      if Result<>'' then
+         Result:=' ['+Result+']';
+   end;
 end;
 
 // ------------------
@@ -628,21 +655,8 @@ end;
 // AsInfo
 //
 function TScriptMessage.AsInfo: String;
-var
-   column : String;
 begin
-   if (Pos.Line=cNullPos.Line) and (Pos.Col=cNullPos.Col) then
-      Result:=FText
-   else begin
-      if Pos.Col=cNullPos.Col then
-         column:=''
-      else column:=Format(MSG_ScriptMsgColumn, [Pos.Col]);
-      if not Assigned(Pos.SourceFile) or (Pos.SourceFile.SourceFile = MSG_MainModule) then
-         Result:=Format(MSG_ScriptMsg, [FText, Pos.Line, column])
-      else
-         Result:=Format(MSG_ScriptMsgLong, [FText, Pos.Line, column,
-                                            ExtractFileName(Pos.SourceFile.SourceFile)])
-   end;
+   Result:=FText+Pos.AsInfo;
 end;
 
 // ------------------

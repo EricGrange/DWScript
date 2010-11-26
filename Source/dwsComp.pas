@@ -25,7 +25,7 @@ interface
 uses
   Variants, Classes, SysUtils, TypInfo, dwsCompiler, dwsDebugger,
   dwsExprs, dwsSymbols, dwsStack, dwsFunctions, dwsStrings, dwsFileSystem,
-  dwsLanguageExtension,
+  dwsLanguageExtension, dwsTokenizer,
   // Built-In functions
 {$IFNDEF DWS_NO_BUILTIN_FUNCTIONS}
   dwsMathFunctions, dwsStringFunctions, dwsTimeFunctions, dwsVariantFunctions,
@@ -411,6 +411,32 @@ type
     class function GetSymbolClass : TdwsSymbolClass; override;
   end;
 
+  TdwsClassOperator = class(TdwsSymbol)
+  private
+    FOperator: TTokenType;
+    FDataType: TDataType;
+    FUsesAccess: string;
+    FParameters: TdwsParameters;
+  protected
+    function GetDisplayName: string; override;
+    procedure SetParameters(const Value: TdwsParameters);
+    function StoreParameters : Boolean;
+  public
+    constructor Create(Collection: TCollection); override;
+    destructor Destroy; override;
+    procedure Assign(Source: TPersistent); override;
+    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+  published
+    property DataType: TDataType read FDataType write FDataType;
+    property Operator : TTokenType read FOperator write FOperator;
+    property UsesAccess : string read FUsesAccess write FUsesAccess;
+    property Parameters: TdwsParameters read FParameters write SetParameters stored StoreParameters;
+  end;
+
+  TdwsClassOperators = class(TdwsCollection)
+  protected
+    class function GetSymbolClass : TdwsSymbolClass; override;
+  end;
 
   TAssignExternalObjectEvent = procedure(Info: TProgramInfo; var ExtObject: TObject) of object;
   TMethodEvalEvent = procedure(Info: TProgramInfo; ExtObject: TObject) of object;
@@ -2623,6 +2649,64 @@ begin
    Result:=(FParameters.Count>0);
 end;
 
+{ TdwsClassOperator }
+
+procedure TdwsClassOperator.Assign(Source: TPersistent);
+begin
+  inherited;
+  if Source is TdwsClassOperator then
+  begin
+    FDataType := TdwsClassOperator(Source).DataType;
+    FUsesAccess := TdwsClassOperator(Source).UsesAccess;
+    FParameters.Assign(TdwsClassOperator(Source).Parameters);
+    FOperator := TdwsClassOperator(Source).&Operator;
+  end;
+end;
+
+constructor TdwsClassOperator.Create(Collection: TCollection);
+begin
+  inherited;
+  FParameters := TdwsParameters.Create(Self);
+end;
+
+destructor TdwsClassOperator.Destroy;
+begin
+  FParameters.Free;
+  inherited;
+end;
+
+function TdwsClassOperator.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
+begin
+  FIsGenerating := True;
+
+  Result:=nil;
+end;
+
+function TdwsClassOperator.GetDisplayName: string;
+var
+   params, dt : string;
+begin
+   if FParameters.Count>0 then
+      params:='('+FParameters.GetDisplayName+')'
+   else params:='';
+   if DataType<>'' then
+      dt:=': '+DataType
+   else dt:='';
+  Result:=Format('operator %s %s%s uses %s;', [cTokenStrings[FOperator], Params, dt, UsesAccess])
+end;
+
+procedure TdwsClassOperator.SetParameters(const Value: TdwsParameters);
+begin
+  FParameters.Assign(Value);
+end;
+
+// StoreParameters
+//
+function TdwsClassOperator.StoreParameters : Boolean;
+begin
+   Result:=(FParameters.Count>0);
+end;
+
 { TdwsSymbol }
 
 constructor TdwsSymbol.Create(Collection: TCollection);
@@ -3182,6 +3266,13 @@ end;
 class function TdwsProperties.GetSymbolClass: TdwsSymbolClass;
 begin
   Result := TdwsProperty;
+end;
+
+{ TdwsClassOperators }
+
+class function TdwsClassOperators.GetSymbolClass: TdwsSymbolClass;
+begin
+  Result := TdwsClassOperator;
 end;
 
 { TdwsMembers }
