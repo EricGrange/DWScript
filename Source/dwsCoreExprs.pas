@@ -37,26 +37,29 @@ type
    end;
 
    TVarExpr = class (TDataExpr)
-   protected
-      FStackAddr : Integer; // = DataSym.StackAddr
-      FStack : TStack;
-      function GetAddr: Integer; override;
-      function GetData: TData; override;
-   public
-      constructor Create(Prog: TdwsProgram; Typ: TSymbol; DataSym : TDataSymbol);
-      class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; DataSym : TDataSymbol) : TVarExpr;
+      protected
+         FStackAddr : Integer; // = DataSym.StackAddr
+         FStack : TStack;
+         function GetAddr: Integer; override;
+         function GetData: TData; override;
 
-      procedure AssignData(const SourceData: TData; SourceAddr: Integer); override;
-      procedure AssignDataExpr(DataExpr: TDataExpr); override;
-      procedure AssignExpr(Expr: TNoPosExpr); override;
-      procedure AssignValue(const Value: Variant); override;
-      procedure AssignValueAsInteger(const Value: Int64); override;
-      procedure AssignValueAsBoolean(const value : Boolean); override;
-      procedure AssignValueAsFloat(var Value: Double); override;
-      procedure AssignValueAsString(const Value: String); override;
-      function Eval: Variant; override;
+      public
+         constructor Create(Prog: TdwsProgram; Typ: TSymbol; DataSym : TDataSymbol);
+         class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; DataSym : TDataSymbol) : TVarExpr;
 
-      function SameVarAs(expr : TVarExpr) : Boolean;
+         procedure AssignData(const SourceData: TData; SourceAddr: Integer); override;
+         procedure AssignDataExpr(DataExpr: TDataExpr); override;
+         procedure AssignExpr(Expr: TNoPosExpr); override;
+         procedure AssignValue(const Value: Variant); override;
+         procedure AssignValueAsInteger(const Value: Int64); override;
+         procedure AssignValueAsBoolean(const value : Boolean); override;
+         procedure AssignValueAsFloat(var Value: Double); override;
+         procedure AssignValueAsString(const Value: String); override;
+
+         function Eval: Variant; override;
+         function EvalAsInteger : Int64; override;
+
+         function SameVarAs(expr : TVarExpr) : Boolean;
    end;
 
    TIntVarExpr = class (TVarExpr)
@@ -1124,6 +1127,25 @@ end;
 function TVarExpr.Eval: Variant;
 begin
   Result := FStack.ReadValue(Addr);
+end;
+
+// EvalAsInteger
+//
+function TVarExpr.EvalAsInteger : Int64;
+var
+   v : Variant;
+begin
+   v:=Eval;
+   try
+      Result:=v;
+   except
+      // workaround for RTL bug that will sometimes report a failed cast to Int64
+      // as being a failed cast to Boolean
+      on E : EVariantTypeCastError do begin
+         raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes,
+                                               [VarTypeAsText(VarType(v)), VarTypeAsText(varInt64)])
+      end else raise;
+   end;
 end;
 
 // SameVarAs
