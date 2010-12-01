@@ -9,6 +9,7 @@ type
 
    TCOMConnectorTests = class (TTestCase)
       private
+         FCW : Word;
          FTests : TStringList;
          FFailures : TStringList;
          FCompiler : TDelphiWebScript;
@@ -77,6 +78,8 @@ begin
    FConnector:=TdwsComConnector.Create(nil);
    FConnector.Script:=FCompiler;
 
+   FCW:=Get8087CW;
+
    ReCreateTestMDB;
 end;
 
@@ -89,6 +92,8 @@ begin
 
    FFailures.Free;
    FTests.Free;
+
+   Set8087CW(FCW);
 end;
 
 // ReCreateTestMDB
@@ -221,6 +226,7 @@ var
    i : Integer;
    prog : TdwsProgram;
    resultsFileName : String;
+   output : String;
 begin
    source:=TStringList.Create;
    expectedResult:=TStringList.Create;
@@ -234,12 +240,19 @@ begin
          try
             CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
             prog.Execute;
+            if prog.Msgs.Count=0 then
+               output:=(prog.Result as TdwsDefaultResult).Text
+            else begin
+               output:= 'Errors >>>>'#13#10
+                       +prog.Msgs.AsInfo
+                       +'Result >>>>'#13#10
+                       +(prog.Result as TdwsDefaultResult).Text;
+            end;
             resultsFileName:=ChangeFileExt(FTests[i], '.txt');
             if FileExists(resultsFileName) then begin
                expectedResult.LoadFromFile(resultsFileName);
-               CheckEquals(expectedResult.Text, (prog.Result as TdwsDefaultResult).Text, FTests[i]);
-            end else CheckEquals('', (prog.Result as TdwsDefaultResult).Text, FTests[i]);
-            CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
+               CheckEquals(expectedResult.Text, output, FTests[i]);
+            end else CheckEquals('', output, FTests[i]);
          finally
             prog.Free;
          end;
