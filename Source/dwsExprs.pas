@@ -2090,13 +2090,6 @@ begin
     result := nil;
 end;
 
-// EvalAsString
-//
-procedure TNoPosExpr.EvalAsString(var Result : String);
-begin
-   Result:=String(Eval);
-end;
-
 // EvalAsVariant
 //
 procedure TNoPosExpr.EvalAsVariant(var Result : Variant);
@@ -2149,22 +2142,74 @@ end;
 // EvalAsInteger
 //
 function TNoPosExpr.EvalAsInteger : Int64;
+var
+   v : Variant;
 begin
-   Result:=Eval;
+   v:=Eval;
+   try
+      Result:=v;
+   except
+      // workaround for RTL bug that will sometimes report a failed cast to Int64
+      // as being a failed cast to Boolean
+      on E : EVariantTypeCastError do begin
+         raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes,
+                                               [VarTypeAsText(VarType(v)), 'Integer'])
+      end else raise;
+   end;
 end;
 
 // EvalAsBoolean
 //
 function TNoPosExpr.EvalAsBoolean : Boolean;
+var
+   v : Variant;
 begin
-   Result:=Eval;
+   v:=Eval;
+   try
+      Result:=v;
+   except
+      // standardize RTL message
+      on E : EVariantTypeCastError do begin
+         raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes,
+                                               [VarTypeAsText(VarType(v)), 'Boolean'])
+      end else raise;
+   end;
 end;
 
 // EvalAsFloat
 //
 procedure TNoPosExpr.EvalAsFloat(var Result : Double);
+var
+   v : Variant;
 begin
-   Result:=Eval;
+   v:=Eval;
+   try
+      Result:=v;
+   except
+      // standardize RTL message
+      on E : EVariantTypeCastError do begin
+         raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes,
+                                               [VarTypeAsText(VarType(v)), 'Float'])
+      end else raise;
+   end;
+end;
+
+// EvalAsString
+//
+procedure TNoPosExpr.EvalAsString(var Result : String);
+var
+   v : Variant;
+begin
+   v:=Eval;
+   try
+      Result:=String(v);
+   except
+      // standardize RTL message
+      on E : EVariantTypeCastError do begin
+         raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes,
+                                               [VarTypeAsText(VarType(v)), 'String'])
+      end else raise;
+   end;
 end;
 
 // EvalNoResult

@@ -1,3 +1,4 @@
-Errors >>>>
-Runtime Error: Incompatible types: Cannot assign "Dispatch" to "Int64"
-Result >>>>
+Incompatible types: Cannot assign "Dispatch" to "Integer"
+Incompatible types: Cannot assign "Dispatch" to "String"
+Incompatible types: Cannot assign "Dispatch" to "Float"
+Incompatible types: Cannot assign "Dispatch" to "Boolean"

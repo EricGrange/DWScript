@@ -57,7 +57,6 @@ type
          procedure AssignValueAsString(const Value: String); override;
 
          function Eval: Variant; override;
-         function EvalAsInteger : Int64; override;
 
          function SameVarAs(expr : TVarExpr) : Boolean;
    end;
@@ -1127,25 +1126,6 @@ end;
 function TVarExpr.Eval: Variant;
 begin
   Result := FStack.ReadValue(Addr);
-end;
-
-// EvalAsInteger
-//
-function TVarExpr.EvalAsInteger : Int64;
-var
-   v : Variant;
-begin
-   v:=Eval;
-   try
-      Result:=v;
-   except
-      // workaround for RTL bug that will sometimes report a failed cast to Int64
-      // as being a failed cast to Boolean
-      on E : EVariantTypeCastError do begin
-         raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes,
-                                               [VarTypeAsText(VarType(v)), VarTypeAsText(varInt64)])
-      end else raise;
-   end;
 end;
 
 // SameVarAs
