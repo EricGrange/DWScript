@@ -394,9 +394,7 @@ begin
    sf:=GetSourceFile(SourceFile);
    if not Assigned(sf) or (sf.SourceCode <> SourceCode) then begin
       Result:=TSourceFile.Create;
-      if SourceFile=MSG_MainModule then
-         Result.SourceFile:=MSG_MainModule
-      else Result.SourceFile:=AnsiLowerCase(ExpandFileName(SourceFile));
+      Result.SourceFile:=SourceFile;
       Result.SourceCode:=SourceCode;
       FSourceFiles.Add(Result);
    end else Result:=sf;
@@ -407,14 +405,10 @@ end;
 function TdwsMessageList.GetSourceFile(const aSourceFile: String): TSourceFile;
 var
    i : Integer;
-   sourceFile : String;
 begin
-   if aSourceFile<>MSG_MainModule then
-      sourceFile:=AnsiLowerCase(ExpandFileName(aSourceFile))
-   else sourceFile:=aSourceFile;
    for i:=0 to FSourceFiles.Count-1 do begin
       Result:=TSourceFile(FSourceFiles[i]);
-      if Result.SourceFile=SourceFile then Exit;
+      if Result.SourceFile=aSourceFile then Exit;
    end;
    Result:=nil;
 end;
