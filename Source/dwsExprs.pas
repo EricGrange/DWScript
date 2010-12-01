@@ -1001,6 +1001,9 @@ type
 function CreateMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
                           const Pos: TScriptPos; IsInstruction: Boolean; ForceStatic : Boolean = False): TFuncExpr;
 
+function RawByteStringToScriptString(const s : RawByteString) : String;
+function ScriptStringToRawByteString(const s : String) : RawByteString;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
