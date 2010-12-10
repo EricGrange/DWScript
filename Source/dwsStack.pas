@@ -22,7 +22,7 @@ unit dwsStack;
 
 interface
 
-uses Variants, Classes, SysUtils, dwsStrings;
+uses Variants, Classes, SysUtils, dwsStrings, dwsUtils;
 
 type
 
@@ -34,7 +34,7 @@ type
    TStack = class
       private
          FBasePointer: Integer;
-         FBpStore: array of Integer;
+         FBpStore : array of TSimpleStack<Integer>;
          FChunkSize: Integer;
          FMaxLevel: Integer;
          FMaxSize: Integer;
@@ -45,12 +45,14 @@ type
 
          function GetFrameSize: Integer;
 
+         procedure ClearBpStore;
+
       public
          Data: TData;
 
          constructor Create(chunkSize, maxByteSize: Integer; maxRecursionDepth : Integer);
+         destructor Destroy; override;
 
-         function GetSavedBp(Level: Integer): Integer;
          function NextLevel(Level: Integer): Integer;
     
          procedure Push(Delta: Integer);
@@ -83,12 +85,15 @@ type
 
          procedure IncIntValue(DestAddr: Integer; const Value: Int64);
 
-         function SaveBp(Level, Bp: Integer): Integer;
+         procedure PushBp(Level, Bp: Integer);
+         function GetSavedBp(Level: Integer): Integer;
+         function PopBp(Level : Integer): Integer;
+
          procedure SwitchFrame(var oldBasePointer: Integer);
          procedure RestoreFrame(oldBasePointer: Integer);
          procedure Reset;
     
-         property BasePointer: Integer read FBasePointer;
+         property BasePointer: Integer read FBasePointer write FBasePointer;
          property FrameSize: Integer read GetFrameSize;
          property MaxSize: Integer read FMaxSize write FMaxSize;
          property StackPointer: Integer read FStackPointer;
@@ -132,6 +137,25 @@ begin
   FMaxLevel := 1;
 end;
 
+// Destroy
+//
+destructor TStack.Destroy;
+begin
+   inherited;
+   ClearBpStore;
+end;
+
+// ClearBpStore
+//
+procedure TStack.ClearBpStore;
+var
+   i : Integer;
+begin
+   for i:=0 to High(FBpStore) do
+      FBpStore[i].Free;
+end;
+
+
 procedure TStack.CopyData(SourceAddr, DestAddr, Size: Integer);
 begin
   while Size > 0 do
@@ -146,12 +170,6 @@ end;
 function TStack.GetFrameSize: Integer;
 begin
   Result := FStackPointer - FBasePointer;
-end;
-
-function TStack.GetSavedBp(Level: Integer): Integer;
-begin
-  Assert(Cardinal(Level)<Cardinal(FMaxLevel));
-  Result := FBpStore[Level];
 end;
 
 function TStack.NextLevel(Level: Integer): Integer;
@@ -220,12 +238,19 @@ begin
 end;
 
 procedure TStack.Reset;
+var
+   i : Integer;
 begin
-  Data := nil;
-  FSize := 0;
-  FStackPointer := 0;
-  FBasePointer := 0;
-  SetLength(FBpStore, FMaxLevel + 1);
+   Data := nil;
+   FSize := 0;
+   FStackPointer := 0;
+   FBasePointer := 0;
+   ClearBpStore;
+   SetLength(FBpStore, FMaxLevel + 1);
+   for i:=0 to High(FBpStore) do begin
+      FBpStore[i]:=TSimpleStack<Integer>.Create;
+      FBpStore[i].Push(0);
+   end;
 end;
 
 procedure TStack.RestoreFrame(oldBasePointer: Integer);
@@ -234,12 +259,28 @@ begin
   FBasePointer := oldBasePointer;
 end;
 
-function TStack.SaveBp(Level, Bp: Integer): Integer;
+// PushBp
+//
+procedure TStack.PushBp(Level, Bp: Integer);
 begin
-  Assert(Level >= 0);
-  Assert(Level <= FMaxLevel);
-  Result := FBpStore[Level];
-  FBpStore[Level] := Bp;
+   Assert(Cardinal(Level)<=Cardinal(FMaxLevel));
+   FBpStore[Level].Push(Bp);
+end;
+
+// GetSavedBp
+//
+function TStack.GetSavedBp(Level: Integer): Integer;
+begin
+   Assert(Cardinal(Level)<=Cardinal(FMaxLevel));
+   Result := FBpStore[Level].Peek;
+end;
+
+// PopBp
+//
+function TStack.PopBp(Level : Integer): Integer;
+begin
+   Assert(Cardinal(Level)<=Cardinal(FMaxLevel));
+   Result:=FBpStore[Level].Pop;
 end;
 
 procedure TStack.SwitchFrame(var oldBasePointer: Integer);

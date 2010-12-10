@@ -166,9 +166,13 @@ type
       procedure CompareFuncSymbols(A, B: TFuncSymbol; IsCheckingParameters: Boolean);
       function OpenStreamForFile(const scriptName : String) : TStream;
       function GetScriptSource(const scriptName : String) : String;
+
       function GetVarExpr(dataSym: TDataSymbol): TVarExpr;
+
+      function GetLazyParamExpr(dataSym: TLazyParamSymbol): TLazyParamExpr;
       function GetVarParamExpr(dataSym: TVarParamSymbol): TVarParamExpr;
       function GetConstParamExpr(dataSym: TConstParamSymbol): TVarParamExpr;
+
       function ReadAssign(token : TTokenType; Left: TDataExpr): TNoResultExpr;
       function ReadArray(const TypeName: string): TTypeSymbol;
       function ReadArrayConstant: TArrayConstantExpr;
@@ -1546,11 +1550,17 @@ begin
          try
             token:=FTok.TestDeleteAny(cAssignmentTokens);
             if token<>ttNone then begin
-               if not (locExpr is TDataExpr) or not TDataExpr(locExpr).IsWritable then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_CantWriteToLeftSide);
-               if locExpr is TVarExpr then
-                  WarnForVarUsage(TVarExpr(locExpr));
-               Result := ReadAssign(token, TDataExpr(locExpr));
+               if not (locExpr is TDataExpr) then begin
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_CantWriteToLeftSide);
+                  ReadExpr.Free; // keep compiling
+                  Result:=nil;
+               end else begin
+                  if not TDataExpr(locExpr).IsWritable then
+                     FMsgs.AddCompilerError(FTok.HotPos, CPE_CantWriteToLeftSide);
+                  if locExpr is TVarExpr then
+                     WarnForVarUsage(TVarExpr(locExpr));
+                  Result := ReadAssign(token, TDataExpr(locExpr));
+               end;
             end else if locExpr is TAssignExpr then
                Result:=TAssignExpr(locExpr)
             else if    (locExpr is TFuncExprBase)
@@ -1723,6 +1733,11 @@ begin
       end;
 
       // "Variables"
+
+      if sym.InheritsFrom(TLazyParamSymbol) then begin
+         Result := ReadSymbol(GetLazyParamExpr(TLazyParamSymbol(sym)), IsWrite);
+         Exit;
+      end;
 
       if sym.InheritsFrom(TByRefParamSymbol) then begin
          if sym.InheritsFrom(TVarParamSymbol) then
@@ -2494,12 +2509,11 @@ begin
          Left := TFuncCodeExpr.Create(FProg, FTok.HotPos, TFuncExpr(Left));
          if right.Typ = FProg.TypNil then begin
             right.Free;
-            Result := TInitDataExpr.Create(FProg, FTok.HotPos, TDataExpr(Left));
+            Result := TInitDataExpr.Create(FProg, FTok.HotPos, Left);
             Exit;
          end else if right.InheritsFrom(TFuncExpr) then
             right := TFuncCodeExpr.Create(FProg, FTok.HotPos, TFuncExpr(right));
       end;
-
       Result:=CreateAssign(pos, token, left, right);
    except
       right.Free;
@@ -3804,14 +3818,16 @@ begin
   end;
 end;
 
+// ReadParams
+//
 procedure TdwsCompiler.ReadParams(Proc: TFuncSymbol; ParamsToDictionary: Boolean);
 var
    i : Integer;
-   names: TStringList;
-   Typ: TSymbol;
-   varpar, constpar: Boolean;
-   PosArray: TScriptPosArray;
-   sym: TParamSymbol;
+   names : TStringList;
+   typ : TSymbol;
+   lazyParam, varParam, constParam : Boolean;
+   posArray : TScriptPosArray;
+   sym : TParamSymbol;
    defaultExpr : TNoPosExpr;
 begin
    if FTok.TestDelete(ttBLEFT) then begin
@@ -3820,32 +3836,37 @@ begin
          names := TStringList.Create;
          try
             repeat
-               varpar := FTok.TestDelete(ttVAR);
+               lazyParam := FTok.TestDelete(ttLAZY);
+               varParam := FTok.TestDelete(ttVAR);
+               if not varParam then
+                  constParam := FTok.TestDelete(ttCONST)
+               else constParam := False;
 
-               if not varpar then
-                  constpar := FTok.TestDelete(ttCONST)
-               else constpar := False;
+               if lazyParam and (varParam or constParam) then
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantBeVarOrConst);
 
                // Conditionally pass in dynamic array
                if ParamsToDictionary and (coSymbolDictionary in FCompilerOptions) then
-                  ReadNameList(names, PosArray)     // use overloaded version
+                  ReadNameList(names, posArray)     // use overloaded version
                else ReadNameList(names);
 
                if not FTok.TestDelete(ttCOLON) then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected)
                else begin
                   defaultExpr := nil;
-                  Typ := ReadType('');
+                  typ := ReadType('');
                   try
-                     if (not constpar) and (typ is TOpenArraySymbol) then
+                     if (not constParam) and (typ is TOpenArraySymbol) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamMustBeConst);
                      if (typ is TDynamicArraySymbol) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamElementsMustBeVariant);
 
                      if FTok.TestDelete(ttEQ) then begin
-                        if varpar then
+                        if lazyParam then
+                           FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantHaveDefaultValue);
+                        if varParam then
                            FMsgs.AddCompilerError(FTok.HotPos, CPE_VarParamCantHaveDefaultValue);
-                        if constpar then
+                        if constParam then
                            FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstParamCantHaveDefaultValue);
 
                         defaultExpr := ReadExpr;
@@ -3863,9 +3884,11 @@ begin
                      end;
 
                      for i:=0 to names.Count-1 do begin
-                        if varpar then begin
+                        if lazyParam then begin
+                           sym := TLazyParamSymbol.Create(names[i], Typ)
+                        end else if varParam then begin
                            sym := TVarParamSymbol.Create(names[i], Typ)
-                        end else if constpar then begin
+                        end else if constParam then begin
                            sym := TConstParamSymbol.Create(names[i], Typ)
                         end else begin
                            if Assigned(defaultExpr) then begin
@@ -3881,7 +3904,7 @@ begin
 
                         // Enter Field symbol in dictionary
                         if ParamsToDictionary and (coSymbolDictionary in FCompilerOptions) then begin
-                           FProg.SymbolDictionary.Add(sym, PosArray[i], [suDeclaration]);  // add variable symbol
+                           FProg.SymbolDictionary.Add(sym, posArray[i], [suDeclaration]);  // add variable symbol
                            FProg.SymbolDictionary.Add(Typ, FTok.HotPos);  // add type symbol
                         end;
                      end;
@@ -4236,12 +4259,20 @@ begin
    end;
 end;
 
+// GetLazyParamExpr
+//
+function TdwsCompiler.GetLazyParamExpr(dataSym: TLazyParamSymbol): TLazyParamExpr;
+begin
+   Result:=TLazyParamExpr.Create(FProg, dataSym.Typ, dataSym.Level, dataSym.StackAddr);
+end;
+
+// GetVarParamExpr
+//
 function TdwsCompiler.GetVarParamExpr(dataSym: TVarParamSymbol): TVarParamExpr;
 begin
-  if FProg.Level = dataSym.Level then
-    Result := TVarParamExpr.Create(FProg, dataSym.Typ, dataSym)
-  else
-    Result := TVarParamParentExpr.Create(FProg, dataSym.Typ, dataSym)
+  if FProg.Level=dataSym.Level then
+      Result:=TVarParamExpr.Create(FProg, dataSym.Typ, dataSym)
+  else Result:=TVarParamParentExpr.Create(FProg, dataSym.Typ, dataSym)
 end;
 
 // GetConstParamExpr

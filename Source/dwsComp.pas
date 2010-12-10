@@ -228,27 +228,33 @@ type
 
   TdwsVariablesClass = class of TdwsVariables;
 
-  TdwsParameter = class(TdwsVariable)
-  private
-    FIsVarParam: Boolean;
-    FIsWritable: Boolean;
-    FDefaultValue: Variant;
-    FHasDefaultValue: Boolean;
-    procedure SetIsVarParam(const Value: Boolean);
-    procedure SetHasDefaultValue(const Value: Boolean);
-    procedure SetIsWritable(const Value: Boolean);
-  protected
-    procedure SetDefaultValue(const Value: Variant);
-    function GetDisplayName: string; override;
-  public
-    constructor Create(Collection: TCollection); override;
-    procedure Assign(Source: TPersistent); override;
-    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
-  published
-    property IsVarParam: Boolean read FIsVarParam write SetIsVarParam default False;
-    property IsWritable: Boolean read FIsWritable write SetIsWritable default True;
-    property HasDefaultValue: Boolean read FHasDefaultValue write SetHasDefaultValue default False;
-    property DefaultValue: Variant read FDefaultValue write SetDefaultValue;
+   // TdwsParameter
+   //
+   TdwsParameter = class(TdwsVariable)
+      private
+         FIsVarParam : Boolean;
+         FIsLazy : Boolean;
+         FIsWritable : Boolean;
+         FDefaultValue : Variant;
+         FHasDefaultValue : Boolean;
+      protected
+         procedure SetIsVarParam(const Value: Boolean);
+         procedure SetHasDefaultValue(const Value: Boolean);
+         procedure SetIsWritable(const Value: Boolean);
+         procedure SetIsLazy(const val : Boolean);
+         procedure SetDefaultValue(const Value: Variant);
+         function GetDisplayName: string; override;
+      public
+         constructor Create(Collection: TCollection); override;
+         procedure Assign(Source: TPersistent); override;
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+         // not supported here yet, experimental
+         property IsLazy : Boolean read FIsLazy write SetIsLazy default False;
+      published
+         property IsVarParam : Boolean read FIsVarParam write SetIsVarParam default False;
+         property IsWritable : Boolean read FIsWritable write SetIsWritable default True;
+         property HasDefaultValue : Boolean read FHasDefaultValue write SetHasDefaultValue default False;
+         property DefaultValue: Variant read FDefaultValue write SetDefaultValue;
   end;
 
   TdwsParameters = class(TdwsVariables)
@@ -1894,36 +1900,38 @@ var
 begin
    FIsGenerating := True;
    paramType := GetDataType(Table, DataType);
-   if IsVarParam then begin
+   if IsLazy then
+      paramSym:=TLazyParamSymbol.Create(Name, paramType)
+   else if IsVarParam then begin
       if IsWritable then
-         ParamSym := TVarParamSymbol.Create(Name, paramType)
-      else ParamSym := TConstParamSymbol.Create(Name, paramType)
+         paramSym := TVarParamSymbol.Create(Name, paramType)
+      else paramSym := TConstParamSymbol.Create(Name, paramType)
    end else if HasDefaultValue then begin
-      ParamSym := TParamSymbolWithDefaultValue.Create(Name, paramType);
+      paramSym := TParamSymbolWithDefaultValue.Create(Name, paramType);
       if paramType is TEnumerationSymbol then begin
          elemSym:=TEnumerationSymbol(paramType).Elements.FindLocal(DefaultValue);
          if elemSym=nil then
             elemValue:=DefaultValue
          else elemValue:=TElementSymbol(elemSym).UserDefValue;
-         TParamSymbolWithDefaultValue(ParamSym).SetDefaultValue(elemValue);
-      end else TParamSymbolWithDefaultValue(ParamSym).SetDefaultValue(DefaultValue);
+         TParamSymbolWithDefaultValue(paramSym).SetDefaultValue(elemValue);
+      end else TParamSymbolWithDefaultValue(paramSym).SetDefaultValue(DefaultValue);
    end else begin
-      ParamSym := TParamSymbol.Create(Name, paramType);
+      paramSym := TParamSymbol.Create(Name, paramType);
    end;
-   Result := ParamSym;
+   Result := paramSym;
 end;
 
 function TdwsParameter.GetDisplayName: string;
 begin
-  if IsVarParam then
-    if IsWritable then
-      Result := 'var ' + inherited GetDisplayName
-    else
-      Result := 'const ' + inherited GetDisplayName
-  else
-    Result := inherited GetDisplayName;
-  if HasDefaultValue then
-    Result := Result + Format(' = %s',[ValueToString(DefaultValue)]);
+   Result:=inherited GetDisplayName;
+   if IsVarParam then
+      if IsWritable then
+         Result:='var '+Result
+      else Result:='const '+Result
+   else if IsLazy then
+      Result:='lazy '+Result;
+   if HasDefaultValue then
+      Result:=Result+Format(' = %s', [ValueToString(DefaultValue)]);
 end;
 
 procedure TdwsParameter.SetDefaultValue(const Value: Variant);
@@ -1939,16 +1947,31 @@ end;
 
 procedure TdwsParameter.SetIsVarParam(const Value: Boolean);
 begin
-  FIsVarParam := Value;
-  if FIsVarParam and FIsWritable then
-    FHasDefaultValue := False;
+   FIsVarParam := Value;
+   if FIsVarParam and FIsWritable then
+      FHasDefaultValue := False;
+   if FIsVarParam then
+      FIsLazy:=False;
 end;
 
 procedure TdwsParameter.SetIsWritable(const Value: Boolean);
 begin
-  FIsWritable := Value;
-  if FIsVarParam and FIsWritable then
-    FHasDefaultValue := False;
+   FIsWritable := Value;
+   if FIsVarParam and FIsWritable then
+      FHasDefaultValue := False;
+   if FIsWritable then
+      FIsLazy:=False;
+end;
+
+// SetIsLazy
+//
+procedure TdwsParameter.SetIsLazy(const val : Boolean);
+begin
+   FIsLazy:=val;
+   if FIsLazy then begin
+      IsVarParam:=False;
+      IsWritable:=False;
+   end;
 end;
 
 { TdwsFunction }
@@ -2075,17 +2098,18 @@ begin
   Result := dwsComp.GetParameters(Self,Parameters,Table);
 end;
 
+// GetDisplayName
+//
 function TdwsFunction.GetDisplayName: string;
 begin
-  Result := Parameters.GetDisplayName;
-
-  if Result <> '' then
-    Result := '(' + Result + ')';
-
-  if ResultType = '' then
-    Result := Format('procedure %s%s;', [Name, Result])
-  else
-    Result := Format('function %s%s : %s;', [Name, Result, ResultType]);
+   Result:=Parameters.GetDisplayName;
+   if Result<>'' then
+      Result:='('+Result+')';
+   if ResultType='' then
+      Result:=Format('procedure %s%s;', [Name, Result])
+   else Result:=Format('function %s%s : %s;', [Name, Result, ResultType]);
+   if Deprecated<>'' then
+      Result:=Result+' deprecated;'
 end;
 
 procedure TdwsFunction.InitSymbol(Symbol: TSymbol);
@@ -2144,29 +2168,33 @@ begin
   end;
 end;
 
+// GetDisplayName
+//
 function TdwsMethod.GetDisplayName: string;
 begin
-  Result := Parameters.GetDisplayName;
+   Result:=Parameters.GetDisplayName;
 
-  if Result <> '' then
-    Result := '(' + Result + ')';
+   if Result<>'' then
+      Result:='('+Result+')';
 
-  case FKind of
-    mkProcedure:
-      Result := Format('procedure %s%s;', [Name, Result]);
-    mkFunction:
-      Result := Format('function %s%s : %s;', [Name, Result, ResultType]);
-    mkConstructor:
-      Result := Format('constructor %s%s;', [Name, Result]);
-    mkDestructor:
-      Result := Format('destructor %s%s;', [Name, Result]);
-    mkClassProcedure:
-      Result := Format('class procedure %s%s;', [Name, Result]);
-    mkClassFunction:
-      Result := Format('class function %s%s : %s;', [Name, Result, ResultType]);
-  else
-    Assert(false); // if triggered, this func needs upgrade !
-  end;
+   case FKind of
+      mkProcedure:
+         Result:=Format('procedure %s%s;', [Name, Result]);
+      mkFunction:
+         Result:=Format('function %s%s : %s;', [Name, Result, ResultType]);
+      mkConstructor:
+         Result:=Format('constructor %s%s;', [Name, Result]);
+      mkDestructor:
+         Result:=Format('destructor %s%s;', [Name, Result]);
+      mkClassProcedure:
+         Result:=Format('class procedure %s%s;', [Name, Result]);
+      mkClassFunction:
+         Result:=Format('class function %s%s : %s;', [Name, Result, ResultType]);
+   else
+      Assert(false); // if triggered, this func needs upgrade !
+   end;
+   if Deprecated<>'' then
+      Result:=Result+' deprecated;'
 end;
 
 procedure TdwsMethod.SetResultType(const Value: TDataType);

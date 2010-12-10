@@ -29,7 +29,7 @@ type
 
    TTokenType =
      (ttNone, ttStrVal, ttIntVal, ttFloatVal, ttNAME, ttSWITCH,
-     ttVAR, ttCONST, ttTYPE, ttRECORD, ttARRAY, ttDOT, ttDOTDOT, ttOF,
+     ttLAZY, ttVAR, ttCONST, ttTYPE, ttRECORD, ttARRAY, ttDOT, ttDOTDOT, ttOF,
      ttTRY, ttEXCEPT, ttRAISE, ttFINALLY, ttON, ttREAD, ttWRITE, ttPROPERTY,
      ttPROCEDURE, ttFUNCTION, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD,
      ttCLASS, ttNIL, ttIS,
@@ -179,7 +179,7 @@ type
 const
    cTokenStrings : array [TTokenType] of String = (
      '', 'StrVal', 'IntVal', 'FloatVal', 'NAME', 'SWITCH',
-     'VAR', 'CONST', 'TYPE', 'RECORD', 'ARRAY', '.', '..', 'OF',
+     'LAZY', 'VAR', 'CONST', 'TYPE', 'RECORD', 'ARRAY', '.', '..', 'OF',
      'TRY', 'EXCEPT', 'RAISE', 'FINALLY', 'ON', 'READ', 'WRITE', 'PROPERTY',
      'PROCEDURE', 'FUNCTION', 'CONSTRUCTOR', 'DESTRUCTOR', 'METHOD',
      'CLASS', 'NIL', 'IS',
@@ -433,7 +433,7 @@ end;
 // ToAlphaType
 //
 const
-   cAlphaTypeTokens : array [0..69] of TTokenType = (
+   cAlphaTypeTokens : array [0..70] of TTokenType = (
       ttAND, ttARRAY, ttABSTRACT, ttAS,
       ttBEGIN, ttBREAK,
       ttCONST, ttCLASS, ttCONSTRUCTOR, ttCASE, ttCDECL, ttCONTINUE,
@@ -441,6 +441,7 @@ const
       ttEND, ttELSE, ttEXCEPT, ttEXIT, ttEXTERNAL,
       ttFOR, ttFALSE, ttFUNCTION, ttFINALLY, ttFORWARD,
       ttIF, ttIN, ttIS, ttINHERITED, ttINDEX,
+      ttLAZY,
       ttMETHOD, ttMOD,
       ttNOT, ttNIL,
       ttOR, ttOF, ttON, ttOVERRIDE, ttOBJECT,

@@ -236,6 +236,8 @@ const
 
   CPE_TypeIsUnknown = 'Type "%s" unknown';
   CPE_TypeForParamNotFound = 'Type "%s" not found for parameter "%s" of function "%s"';
+  CPE_LazyParamCantBeVarOrConst = 'lazy parameter can''t be var or const';
+  CPE_LazyParamCantHaveDefaultValue = 'lazy parameter can''t have a default value';
   CPE_VarParamCantHaveDefaultValue = 'var parameter can''t have a default value';
   CPE_ConstParamCantHaveDefaultValue = 'const parameter can''t have a default value';
   CPE_OpenArrayParamMustBeConst = 'open array parameter must be const';

@@ -113,6 +113,18 @@ type
      constructor Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
    end;
 
+   // Encapsulates a lazy parameter
+   TLazyParamExpr = class(TNoPosExpr)
+      private
+         FStackAddr : Integer;
+         FLevel : Integer;
+      public
+         constructor Create(Prog: TdwsProgram; aTyp : TSymbol; level, stackAddr : Integer);
+         function  Eval : Variant; override;
+         property StackAddr : Integer read FStackAddr write FStackAddr;
+         property Level : Integer read FLevel write FLevel;
+   end;
+
    // Encapsulates a var parameter
    TVarParamExpr = class(TVarExpr)
    protected
@@ -123,7 +135,7 @@ type
      procedure AssignDataExpr(DataExpr: TDataExpr); override;
      procedure AssignExpr(Expr: TNoPosExpr); override;
      procedure AssignValue(const Value: Variant); override;
-     function  Eval: Variant; override;
+     function  Eval : Variant; override;
    end;
 
    TConstParamExpr = class(TVarParamExpr)
@@ -2145,6 +2157,43 @@ begin
    if obj=nil then
       AddExecutionStop(RTE_ObjectNotInstantiated);
    obj.DataOfAddrAsScriptObj(FFieldAddr, Result);
+end;
+
+// ------------------
+// ------------------ TLazyParamExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TLazyParamExpr.Create(Prog: TdwsProgram; aTyp : TSymbol; level, stackAddr : Integer);
+begin
+   inherited Create(Prog);
+   FTyp:=aTyp;
+   FLevel:=level;
+   FStackAddr:=stackAddr;
+end;
+
+// Eval
+//
+function TLazyParamExpr.Eval : Variant;
+var
+   stack : TStack;
+   lazyExpr : TExprBase;
+   prevProgBp, oldBasePointer: Integer;
+   lazyContext : Int64;
+begin
+   stack:=FProg.Stack;
+
+   lazyContext:=stack.ReadIntValue(stack.BasePointer + FStackAddr);
+   lazyExpr:=TExprBase(lazyContext and $FFFFFFFF);
+
+   oldBasePointer:=stack.BasePointer;
+   stack.BasePointer:=(lazyContext shr 32);//  stack.GetSavedBp(Level);
+   try
+      Result:=lazyExpr.Eval;
+   finally
+      stack.BasePointer:=oldBasePointer;
+   end;
 end;
 
 { TArrayLengthExpr }

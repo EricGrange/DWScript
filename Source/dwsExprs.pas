@@ -540,7 +540,7 @@ type
    TPushOperatorType = (potUnknown,
                         potAddr, potTempAddr, potTempArrayAddr,
                         potResultString, potResult,
-                        potData);
+                        potData, potLazy);
    PPushOperator = ^TPushOperator;
    TPushOperator = packed record
       FStackAddr: Integer;
@@ -552,6 +552,7 @@ type
       procedure InitPushTempArrayAddr(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushResult(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushData(StackAddr: Integer; ArgExpr: TNoPosExpr; ParamSym: TSymbol);
+      procedure InitPushLazy(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure Execute(stack : TStack);
       procedure ExecuteAddr(stack : TStack);
       procedure ExecuteTempAddr(stack : TStack);
@@ -559,6 +560,7 @@ type
       procedure ExecuteResult(stack : TStack);
       procedure ExecuteResultString(stack : TStack);
       procedure ExecuteData(stack : TStack);
+      procedure ExecuteLazy(stack : TStack);
    end;
 
    TFuncExprState = (fesIsInstruction, fesIsWritable);
@@ -1436,7 +1438,7 @@ begin
     FStack.Push(
       FGlobalAddrGenerator.DataSize +
       FAddrGenerator.DataSize);
-    FStack.SaveBp(0, FStack.BasePointer);
+    FStack.PushBp(0, FStack.BasePointer);
 
     FProgramState := psRunning;
 
@@ -2504,11 +2506,13 @@ begin
 
       if arg.Typ = nil then
          AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Name]);
-      if (paramSymbol is TVarParamSymbol) and (arg is TDataExpr) then begin
-         if not TDataExpr(arg).IsWritable then
-            AddCompilerErrorFmt(CPE_ConstVarParam, [x, paramSymbol.Name]);
-         if arg is TVarExpr then
-            (Prog.FCompiler as TdwsCompiler).WarnForVarUsage(TVarExpr(arg));
+      if paramSymbol.InheritsFrom(TVarParamSymbol) then begin
+         if arg is TDataExpr then begin
+            if not TDataExpr(arg).IsWritable then
+               AddCompilerErrorFmt(CPE_ConstVarParam, [x, paramSymbol.Name]);
+            if arg is TVarExpr then
+               (Prog.FCompiler as TdwsCompiler).WarnForVarUsage(TVarExpr(arg));
+         end else AddCompilerErrorFmt(CPE_ConstVarParam, [x, paramSymbol.Name]);
       end;
       if arg.Typ=nil then
          AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Name])
@@ -2611,6 +2615,15 @@ begin
    FTypeParamSym:=ParamSym;
 end;
 
+// InitPushData
+//
+procedure TPushOperator.InitPushLazy(StackAddr: Integer; ArgExpr: TNoPosExpr);
+begin
+   FTypeParamSym:=TSymbol(potLazy);
+   FStackAddr:=StackAddr;
+   FArgExpr:=ArgExpr;
+end;
+
 // Execute
 //
 procedure TPushOperator.Execute(stack : TStack);
@@ -2625,6 +2638,8 @@ begin
       ExecuteResultString(stack)
    else if FTypeParamSym=TSymbol(potResult) then
       ExecuteResult(stack)
+   else if FTypeParamSym=TSymbol(potLazy) then
+      ExecuteLazy(stack)
    else ExecuteData(stack);
 end;
 
@@ -2720,6 +2735,13 @@ begin
                    FTypeParamSym.Typ.Size, TDataExpr(FArgExpr).Data);
 end;
 
+// ExecuteLazy
+//
+procedure TPushOperator.ExecuteLazy(stack : TStack);
+begin
+   stack.WriteIntValue(stack.StackPointer + FStackAddr, Int64(FArgExpr)+(Int64(stack.BasePointer) shl 32));
+end;
+
 { TFuncExpr }
 
 constructor TFuncExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol;
@@ -2769,7 +2791,7 @@ end;
 function TFuncExpr.Eval: Variant;
 var
    x: Integer;
-   prevProgBp, oldBasePointer: Integer;
+   oldBasePointer: Integer;
    func: TFuncSymbol;
    scriptObj: IScriptObj;
    code: ICallable;
@@ -2795,7 +2817,7 @@ begin
 
          // Switch frame
          stack.SwitchFrame(oldBasePointer);
-         prevProgBp := stack.SaveBp(FProg.Level, oldBasePointer);
+         stack.PushBp(FProg.Level, oldBasePointer);
 
          if FProg.Root.IsDebugging then
             FProg.Root.Debugger.EnterFunc(FProg, Self);
@@ -2819,7 +2841,7 @@ begin
             // Restore frame
 
             stack.RestoreFrame(oldBasePointer);
-            stack.SaveBp(FProg.Level, prevProgBp);
+            stack.PopBp(FProg.Level);
 
             Result := PostCall(scriptObj);
          end;
@@ -2885,7 +2907,9 @@ begin
       pushOperator:=@FPushExprs[x];
       arg := TNoPosExpr(FArgs.ExprBase[x]);
       param := TParamSymbol(FFunc.Params[x]);
-      if arg is TDataExpr then begin
+      if param.InheritsFrom(TLazyParamSymbol) then
+         pushOperator.InitPushLazy(param.StackAddr, arg)
+      else if arg is TDataExpr then begin
          if param.Typ is TOpenArraySymbol then begin
             pushOperator.InitPushTempArrayAddr(param.StackAddr, arg)
          end else if param is TByRefParamSymbol then begin
@@ -2894,7 +2918,7 @@ begin
             pushOperator.InitPushData(param.StackAddr, TDataExpr(arg), param)
          else pushOperator.InitPushResult(param.StackAddr, arg)
       end else begin
-         if param is TByRefParamSymbol then
+         if param.InheritsFrom(TByRefParamSymbol) then
             pushOperator.InitPushTempAddr(param.StackAddr, arg)
          else pushOperator.InitPushResult(param.StackAddr, arg);
       end;

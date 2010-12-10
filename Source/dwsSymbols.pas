@@ -234,10 +234,17 @@ type
      constructor Create(const Name: string; Typ: TSymbol);
    end;
 
+   // lazy parameter: procedure P(lazy x: Integer)
+   TLazyParamSymbol = class(TParamSymbol)
+      protected
+         function GetDescription : String; override;
+      public
+   end;
+
    // const parameter: procedure P(const x: Integer)
    TConstParamSymbol = class(TByRefParamSymbol)
    protected
-     function GetDescription: string; override;
+     function GetDescription : string; override;
    public
    end;
 
@@ -2242,6 +2249,17 @@ constructor TByRefParamSymbol.Create(const Name: string; Typ: TSymbol);
 begin
   inherited Create(Name, Typ);
   FSize := 1;
+end;
+
+// ------------------
+// ------------------ TLazyParamSymbol ------------------
+// ------------------
+
+// GetDescription
+//
+function TLazyParamSymbol.GetDescription: string;
+begin
+   Result:='lazy '+inherited GetDescription;
 end;
 
 { TConstParamSymbol }
