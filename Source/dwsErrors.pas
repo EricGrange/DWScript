@@ -470,6 +470,7 @@ procedure TdwsMessageList.AddCompilerError(const Pos: TScriptPos; const Text: St
 begin
    AddMsg(messageClass.Create(Self, Text, Pos));
    FHasCompilerErrors:=True;
+   FHasErrors:=True;
 end;
 
 // AddCompilerError
@@ -531,6 +532,7 @@ procedure TdwsMessageList.AddExecutionError(const Pos: TScriptPos; const Text: S
 begin
    AddMsg(TExecutionErrorMessage.Create(Self, Text, Pos));
    FHasExecutionErrors:=True;
+   FHasErrors:=True;
 end;
 
 // AddExecutionError
