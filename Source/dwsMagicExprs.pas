@@ -34,6 +34,7 @@ type
          function GetAddr: Integer; override;
       public
          procedure AddArg(Arg: TNoPosExpr); override;
+         function IsWritable : Boolean; override;
    end;
 
    // TMagicVariantFuncExpr
@@ -110,6 +111,13 @@ implementation
 procedure TMagicFuncExpr.AddArg(Arg: TNoPosExpr);
 begin
    FArgs.Add(Arg);
+end;
+
+// IsWritable
+//
+function TMagicFuncExpr.IsWritable : Boolean;
+begin
+   Result:=False;
 end;
 
 // GetData
