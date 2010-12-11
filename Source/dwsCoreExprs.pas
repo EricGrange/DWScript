@@ -2179,7 +2179,7 @@ function TLazyParamExpr.Eval : Variant;
 var
    stack : TStack;
    lazyExpr : TExprBase;
-   prevProgBp, oldBasePointer: Integer;
+   oldBasePointer: Integer;
    lazyContext : Int64;
 begin
    stack:=FProg.Stack;
