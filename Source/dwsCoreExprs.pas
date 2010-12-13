@@ -323,21 +323,25 @@ type
 
    // Field expression: obj.Field
    TFieldExpr = class(TPosDataExpr)
-   protected
-     FObjectExpr: TDataExpr;
-     FFieldAddr: Integer;
-     function GetAddr: Integer; override;
-     function GetData: TData; override;
-   public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TSymbol;
-                        FieldSym: TFieldSymbol; ObjExpr: TDataExpr);
-     destructor Destroy; override;
-     procedure Initialize; override;
-     function Eval: Variant; override;
-     procedure EvalAsString(var Result : String); override;
-     function EvalAsInteger : Int64; override;
-     procedure EvalAsScriptObj(var Result : IScriptObj); override;
-  end;
+      protected
+         FObjectExpr: TDataExpr;
+         FFieldAddr: Integer;
+         function GetAddr: Integer; override;
+         function GetData: TData; override;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TSymbol;
+                           FieldSym: TFieldSymbol; ObjExpr: TDataExpr);
+         destructor Destroy; override;
+         procedure Initialize; override;
+         function Eval: Variant; override;
+         procedure EvalAsString(var Result : String); override;
+         function EvalAsInteger : Int64; override;
+         procedure EvalAsScriptObj(var Result : IScriptObj); override;
+   end;
+
+   TReadOnlyFieldExpr = class(TFieldExpr)
+      function IsWritable: Boolean; override;
+   end;
 
   // length of dynamic arrays
   TArrayLengthExpr = class(TUnaryOpExpr)
@@ -2157,6 +2161,17 @@ begin
    if obj=nil then
       AddExecutionStop(RTE_ObjectNotInstantiated);
    obj.DataOfAddrAsScriptObj(FFieldAddr, Result);
+end;
+
+// ------------------
+// ------------------ TReadOnlyFieldExpr ------------------
+// ------------------
+
+// IsWritable
+//
+function TReadOnlyFieldExpr.IsWritable: Boolean;
+begin
+   Result:=False;
 end;
 
 // ------------------

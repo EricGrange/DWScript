@@ -1874,8 +1874,8 @@ begin
 
          // ReadSym is a field
          if Expr.Typ is TClassSymbol then
-            Result := TFieldExpr.Create(FProg, FTok.HotPos, sym.Typ, TFieldSymbol(sym),
-                                        TDataExpr(Expr))
+            Result := TReadOnlyFieldExpr.Create(FProg, FTok.HotPos, sym.Typ, TFieldSymbol(sym),
+                                                TDataExpr(Expr))
          else FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
 
       end else if sym is TMethodSymbol then begin
