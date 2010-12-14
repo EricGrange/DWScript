@@ -3,7 +3,7 @@ unit UMemoryTests;
 interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsComConnector, Variants, ActiveX, ComObj;
+   dwsComConnector, Variants, ActiveX, ComObj, dwsXPlatform;
 
 type
 
@@ -13,8 +13,6 @@ type
          FCompiler : TDelphiWebScript;
 
       public
-         procedure CollectFiles(const directory, fileMask : String; list : TStrings);
-
          procedure SetUp; override;
          procedure TearDown; override;
 
@@ -40,23 +38,6 @@ implementation
 // ------------------
 // ------------------ TMemoryTests ------------------
 // ------------------
-
-// CollectFiles
-//
-procedure TMemoryTests.CollectFiles(const directory, fileMask : String; list : TStrings);
-var
-   searchRec : TSearchRec;
-   found : Integer;
-begin
-   found:=FindFirst(directory+'*.pas', faArchive or faReadOnly or faHidden, searchRec);
-   while found=0 do begin
-      if (searchRec.Attr and faDirectory)=0 then begin
-         list.Add(directory+searchRec.Name);
-      end;
-      found:=FindNext(searchRec);
-   end;
-   FindClose(searchRec);
-end;
 
 // SetUp
 //

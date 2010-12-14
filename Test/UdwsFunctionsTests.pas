@@ -3,7 +3,7 @@ unit UdwsFunctionsTests;
 interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsSymbols, dwsMathFunctions, dwsTimeFunctions;
+   dwsTokenizer, dwsSymbols, dwsMathFunctions, dwsTimeFunctions, dwsXPlatform;
 
 type
 
@@ -14,8 +14,6 @@ type
          FCompiler : TDelphiWebScript;
 
       public
-         procedure CollectFiles(const directory, fileMask : String; list : TStrings);
-
          procedure SetUp; override;
          procedure TearDown; override;
 
@@ -175,23 +173,6 @@ procedure TdwsFunctionsTestsBase.ExecutionOptimized;
 begin
    FCompiler.Config.CompilerOptions:=[coOptimize];
    Execution;
-end;
-
-// CollectFiles
-//
-procedure TdwsFunctionsTestsBase.CollectFiles(const directory, fileMask : String; list : TStrings);
-var
-   searchRec : TSearchRec;
-   found : Integer;
-begin
-   found:=FindFirst(directory+'*.pas', faArchive or faReadOnly or faHidden, searchRec);
-   while found=0 do begin
-      if (searchRec.Attr and faDirectory)=0 then begin
-         list.Add(directory+searchRec.Name);
-      end;
-      found:=FindNext(searchRec);
-   end;
-   FindClose(searchRec);
 end;
 
 // ------------------

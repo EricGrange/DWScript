@@ -3,7 +3,7 @@ unit UdwsClassesTests;
 interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsClassesLibModule;
+   dwsClassesLibModule, dwsXPlatform;
 
 type
 
@@ -14,8 +14,6 @@ type
          FClassesLib : TdwsClassesLib;
 
       public
-         procedure CollectFiles(const directory, fileMask : String; list : TStrings);
-
          procedure SetUp; override;
          procedure TearDown; override;
 
@@ -41,23 +39,6 @@ implementation
 // ------------------
 // ------------------ TdwsClassesTests ------------------
 // ------------------
-
-// CollectFiles
-//
-procedure TdwsClassesTests.CollectFiles(const directory, fileMask : String; list : TStrings);
-var
-   searchRec : TSearchRec;
-   found : Integer;
-begin
-   found:=FindFirst(directory+'*.pas', faArchive or faReadOnly or faHidden, searchRec);
-   while found=0 do begin
-      if (searchRec.Attr and faDirectory)=0 then begin
-         list.Add(directory+searchRec.Name);
-      end;
-      found:=FindNext(searchRec);
-   end;
-   FindClose(searchRec);
-end;
 
 // SetUp
 //

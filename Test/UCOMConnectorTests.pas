@@ -3,7 +3,7 @@ unit UCOMConnectorTests;
 interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsComConnector, Variants, ActiveX, ComObj;
+   dwsComConnector, Variants, ActiveX, ComObj, dwsXPlatform;
 
 type
 
@@ -16,8 +16,6 @@ type
          FConnector : TdwsComConnector;
 
       public
-         procedure CollectFiles(const directory, fileMask : String; list : TStrings);
-
          procedure SetUp; override;
          procedure TearDown; override;
 
@@ -46,23 +44,6 @@ implementation
 // ------------------
 // ------------------ TCOMConnectorTests ------------------
 // ------------------
-
-// CollectFiles
-//
-procedure TCOMConnectorTests.CollectFiles(const directory, fileMask : String; list : TStrings);
-var
-   searchRec : TSearchRec;
-   found : Integer;
-begin
-   found:=FindFirst(directory+'*.pas', faArchive or faReadOnly or faHidden, searchRec);
-   while found=0 do begin
-      if (searchRec.Attr and faDirectory)=0 then begin
-         list.Add(directory+searchRec.Name);
-      end;
-      found:=FindNext(searchRec);
-   end;
-   FindClose(searchRec);
-end;
 
 // SetUp
 //

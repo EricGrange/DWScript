@@ -3,13 +3,8 @@ unit UHTMLFilterTests;
 interface
 
 uses
-  Classes,
-  SysUtils,
-  TestFrameWork,
-  dwsComp,
-  dwsCompiler,
-  dwsExprs,
-  dwsHtmlfilter;
+  Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
+  dwsHtmlFilter, dwsXPlatform;
 
 type
 
@@ -21,8 +16,6 @@ type
       FUnit: TdwsHTMLUnit;
 
    public
-      procedure CollectFiles(const directory, fileMask: string; list: TStrings);
-
       procedure SetUp; override;
       procedure TearDown; override;
 
@@ -44,25 +37,6 @@ implementation
 // ------------------
 // ------------------ THTMLFilterTests ------------------
 // ------------------
-
-// CollectFiles
-//
-procedure THTMLFilterTests.CollectFiles(const directory, fileMask: string; list: TStrings);
-var
-  searchRec: TSearchRec;
-  found: Integer;
-begin
-  found := FindFirst(directory + fileMask, faArchive or faReadOnly or faHidden, searchRec);
-  while found = 0 do
-  begin
-    if (searchRec.Attr and faDirectory) = 0 then
-    begin
-      list.Add(directory + searchRec.name);
-    end;
-    found := FindNext(searchRec);
-  end;
-  FindClose(searchRec);
-end;
 
 // SetUp
 //

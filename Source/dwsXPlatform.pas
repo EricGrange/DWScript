@@ -28,7 +28,7 @@ unit dwsXPlatform;
 
 interface
 
-uses SysUtils;
+uses Classes, SysUtils;
 
 const
 {$IFDEF LINUX}
@@ -39,6 +39,8 @@ const
 
 procedure SetDecimalSeparator(c : Char);
 function GetDecimalSeparator : Char;
+
+procedure CollectFiles(const directory, fileMask : String; list : TStrings);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -68,6 +70,23 @@ begin
    {$ELSE}
    Result:=DecimalSeparator;
    {$IFEND}
+end;
+
+// CollectFiles
+//
+procedure CollectFiles(const directory, fileMask : String; list : TStrings);
+var
+   searchRec : TSearchRec;
+   found : Integer;
+begin
+   found:=FindFirst(directory+'*.pas', faArchive or faReadOnly or faHidden, searchRec);
+   while found=0 do begin
+      if (searchRec.Attr and faDirectory)=0 then begin
+         list.Add(directory+searchRec.Name);
+      end;
+      found:=FindNext(searchRec);
+   end;
+   FindClose(searchRec);
 end;
 
 end.
