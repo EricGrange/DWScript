@@ -79,7 +79,7 @@ var
    searchRec : TSearchRec;
    found : Integer;
 begin
-   found:=FindFirst(directory+'*.pas', faArchive or faReadOnly or faHidden, searchRec);
+   found:=FindFirst(directory+fileMask, faArchive or faReadOnly or faHidden, searchRec);
    while found=0 do begin
       if (searchRec.Attr and faDirectory)=0 then begin
          list.Add(directory+searchRec.Name);
