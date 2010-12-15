@@ -71,7 +71,7 @@ type
 
    // TdwsMessage
    //
-   TdwsMessage = class
+   TdwsMessage = class abstract
       private
          FMsgs: TdwsMessageList;
          FText: String;
@@ -80,7 +80,7 @@ type
          constructor Create(Msgs: TdwsMessageList; const Text: String);
 
          function SameMessageAs(aMsg : TdwsMessage) : Boolean; virtual;
-         function AsInfo: String; virtual;
+         function AsInfo: String; virtual; abstract;
          property Text : String read FText;
    end;
 
@@ -610,13 +610,6 @@ constructor TdwsMessage.Create(Msgs: TdwsMessageList; const Text: String);
 begin
    FMsgs:=Msgs;
    FText:=Text;
-end;
-
-// AsInfo
-//
-function TdwsMessage.AsInfo: String;
-begin
-   Result:=FText;
 end;
 
 // SameMessageAs
