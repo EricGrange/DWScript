@@ -768,6 +768,15 @@ type
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
+   // (string var) += (string const)
+   TAppendConstStringVarExpr = class(TAssignExpr)
+      private
+         FAppendString : String;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr); override;
+         procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+
    // val in [case conditions list]
    TInOpExpr = class(TExpr)
       private
@@ -3443,7 +3452,11 @@ begin
          if FRight.InheritsFrom(TAddStrExpr) then begin
             addStrExpr:=TAddStrExpr(FRight);
             if (addStrExpr.Left is TVarExpr) and (TVarExpr(addStrExpr.Left).SameVarAs(leftVarExpr)) then begin
-               Result:=TAppendStringVarExpr.Create(Prog, Pos, FLeft, addStrExpr.Right);
+               if addStrExpr.Right.InheritsFrom(TConstStringExpr) then begin
+                  Result:=TAppendConstStringVarExpr.Create(Prog, Pos, FLeft, TConstStringExpr(addStrExpr.Right));
+               end else begin
+                  Result:=TAppendStringVarExpr.Create(Prog, Pos, FLeft, addStrExpr.Right);
+               end;
                FLeft:=nil;
                addStrExpr.Right:=nil;
                Free;
@@ -3791,6 +3804,25 @@ var
 begin
    FRight.EvalAsString(buf);
    TStrVarExpr(FLeft).Append(buf);
+end;
+
+// ------------------
+// ------------------ TAppendConstStringVarExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TAppendConstStringVarExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr);
+begin
+   inherited Create(Prog, Pos, Left, Right);
+   Right.EvalAsString(FAppendString);
+end;
+
+// EvalNoResult
+//
+procedure TAppendConstStringVarExpr.EvalNoResult(var status : TExecutionStatusResult);
+begin
+   TStrVarExpr(FLeft).Append(FAppendString);
 end;
 
 // ------------------
