@@ -24,6 +24,7 @@ type
          procedure FuncOneDotFiveEval(Info: TProgramInfo);
          procedure FuncTrueEval(Info: TProgramInfo);
          procedure FuncIncEval(Info: TProgramInfo);
+         procedure FuncIncNEval(Info: TProgramInfo);
          procedure FuncEnumEval(Info: TProgramInfo);
 
          procedure FuncExceptionEval(Info: TProgramInfo);
@@ -162,6 +163,18 @@ begin
    param.DataType:='Integer';
 
    func:=FUnit.Functions.Add as TdwsFunction;
+   func.Name:='FuncIncN';
+   func.ResultType:='Integer';
+   func.OnEval:=FuncIncNEval;
+   param:=func.Parameters.Add as TdwsParameter;
+   param.Name:='v';
+   param.DataType:='Integer';
+   param:=func.Parameters.Add as TdwsParameter;
+   param.Name:='n';
+   param.DataType:='Integer';
+   param.DefaultValue:='1';
+
+   func:=FUnit.Functions.Add as TdwsFunction;
    func.Name:='FuncEnum';
    func.ResultType:='Integer';
    func.OnEval:=FuncEnumEval;
@@ -204,6 +217,13 @@ end;
 procedure TdwsUnitTests.FuncIncEval(Info: TProgramInfo);
 begin
    Info.ResultAsInteger:=Info.ValueAsInteger['v']+1;
+end;
+
+// FuncIncNEval
+//
+procedure TdwsUnitTests.FuncIncNEval(Info: TProgramInfo);
+begin
+   Info.ResultAsInteger:=Info.ValueAsInteger['v']+Info.ValueAsInteger['n'];
 end;
 
 // FuncEnumEval
@@ -281,6 +301,8 @@ begin
       CheckEquals('procedure FuncException()', sym.Description);
       sym:=prog.Table.FindSymbol('FuncInc');
       CheckEquals('function FuncInc(v: Integer): Integer', sym.Description);
+      sym:=prog.Table.FindSymbol('FuncIncN');
+      CheckEquals('function FuncIncN(v: Integer; n: Integer = 1): Integer', sym.Description);
    finally
       prog.Free;
    end;

@@ -2220,14 +2220,14 @@ end;
 
 function TParamSymbolWithDefaultValue.GetDescription: string;
 begin
-  Result := inherited GetDescription;
+   Result := inherited GetDescription;
 
-  // Has a default parameter. Format display of param to show it.
-  if Length(FDefaultValue) > 0 then
-    if VarIsStr(FDefaultValue[0]) then
-      Result := Result + ' = ''' + VarToStr(FDefaultValue[0]) + ''''  // put quotes around value
-    else if VarIsOrdinal(FDefaultValue[0]) or VarIsFloat(FDefaultValue[0]) then
-      Result := Result + ' = ' + VarToStr(FDefaultValue[0]);
+   // Has a default parameter. Format display of param to show it.
+   if Length(FDefaultValue) > 0 then begin
+      if Typ.BaseTypeID=typStringID then
+         Result := Result + ' = ''' + VarToStr(FDefaultValue[0]) + ''''  // put quotes around value
+       else Result := Result + ' = ' + VarToStr(FDefaultValue[0]);
+   end;
 end;
 
 procedure TParamSymbolWithDefaultValue.SetDefaultValue(const Data: TData; Addr: Integer);
