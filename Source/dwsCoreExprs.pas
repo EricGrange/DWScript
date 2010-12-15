@@ -2258,9 +2258,9 @@ begin
    FLeft.EvalAsString(buf);
    i:=FRight.EvalAsInteger;
    if i>Length(buf) then
-      Prog.Msgs.AddExecutionStopFmt(FPos, RTE_ArrayUpperBoundExceeded, [i])
+      raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayUpperBoundExceeded, [i])
    else if i<1 then
-      Prog.Msgs.AddExecutionStopFmt(FPos, RTE_ArrayLowerBoundExceeded, [i]);
+      raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayLowerBoundExceeded, [i]);
    Result:=buf[i];
 end;
 
@@ -4584,9 +4584,9 @@ begin
    FStringExpr.EvalAsString(s);
    i:=FIndexExpr.EvalAsInteger;
    if i>Length(s) then
-      AddExecutionStopFmt(RTE_ArrayUpperBoundExceeded, [i])
+      raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayUpperBoundExceeded, [i])
    else if i<1 then
-      AddExecutionStopFmt(RTE_ArrayLowerBoundExceeded, [i]);
+      raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayLowerBoundExceeded, [i]);
    FValueExpr.EvalAsString(buf);
    s[i]:=buf[1];
    FStringExpr.AssignValue(s);
@@ -4609,12 +4609,12 @@ var
 begin
    i:=FIndexExpr.EvalAsInteger;
    if i<1 then
-      raise EScriptException.CreateFmt(RTE_ArrayLowerBoundExceeded, [i])
+      raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayLowerBoundExceeded, [i])
    else begin
       FValueExpr.EvalAsString(buf);
       c:=buf[1];
       if not TStrVarExpr(FStringExpr).SetChar(i, c) then
-         raise EScriptException.CreateFmt(RTE_ArrayUpperBoundExceeded, [i]);
+         raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayUpperBoundExceeded, [i]);
    end;
 end;
 
@@ -4629,11 +4629,11 @@ var
 begin
    i:=FIndexExpr.EvalAsInteger;
    if i<1 then
-      raise EScriptException.CreateFmt(RTE_ArrayLowerBoundExceeded, [i])
+      raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayLowerBoundExceeded, [i])
    else begin
       c:=Chr(FValueExpr.EvalAsInteger);
       if not TStrVarExpr(FStringExpr).SetChar(i, c) then
-         raise EScriptException.CreateFmt(RTE_ArrayUpperBoundExceeded, [i]);
+         raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayUpperBoundExceeded, [i]);
    end;
 end;
 

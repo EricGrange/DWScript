@@ -213,7 +213,15 @@ type
    EClassPropertyIncompleteError = class(EClassIncompleteError);
 
    // The script has to be stopped because of an error
-   EScriptError = class(Exception);
+   EScriptError = class(Exception)
+      private
+         FScriptPos : TScriptPos;
+
+      public
+         constructor CreatePosFmt(const pos : TScriptPos; const Msg: string; const Args: array of const);
+
+         property Pos : TScriptPos read FScriptPos;
+   end;
 
    ECompileError = class(EScriptError);
 
@@ -318,6 +326,18 @@ begin
       if Result<>'' then
          Result:=' ['+Result+']';
    end;
+end;
+
+// ------------------
+// ------------------ EScriptError ------------------
+// ------------------
+
+// CreatePosFmt
+//
+constructor EScriptError.CreatePosFmt(const pos : TScriptPos; const Msg: string; const Args: array of const);
+begin
+   inherited CreateFmt(msg, args);
+   FScriptPos:=pos;
 end;
 
 // ------------------
