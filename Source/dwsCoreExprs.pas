@@ -88,6 +88,7 @@ type
          procedure AssignValue(const Value: Variant); override;
          function  SetChar(index : Integer; c : Char) : Boolean;
          procedure EvalAsString(var Result : String); override;
+         procedure Append(const value : String);
    end;
 
    TBoolVarExpr = class (TVarExpr)
@@ -736,6 +737,7 @@ type
    // a += b (string)
    TPlusAssignStrExpr = class(TPlusAssignExpr)
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
+     function  Optimize : TNoPosExpr; override;
    end;
 
    // a -= b
@@ -758,6 +760,11 @@ type
    end;
    // a -= b (int var)
    TDecIntVarExpr = class(TAssignExpr)
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+
+   // a += b (string var)
+   TAppendStringVarExpr = class(TAssignExpr)
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
@@ -1310,6 +1317,13 @@ end;
 procedure TStrVarExpr.EvalAsString(var Result : String);
 begin
    FStack.ReadStrValue(FStack.BasePointer + FStackAddr, Result);
+end;
+
+// Append
+//
+procedure TStrVarExpr.Append(const value : String);
+begin
+   FStack.AppendStringValue(FStack.BasePointer + FStackAddr, value);
 end;
 
 // ------------------
@@ -3397,30 +3411,44 @@ end;
 function TAssignExpr.Optimize : TNoPosExpr;
 var
    leftVarExpr : TVarExpr;
-   addExpr : TAddIntExpr;
-   subExpr : TSubIntExpr;
+   addIntExpr : TAddIntExpr;
+   addStrExpr : TAddStrExpr;
+   subIntExpr : TSubIntExpr;
 begin
+   if FRight.IsConstant then
+      Exit(OptimizeConstAssignment);
+
    Result:=Self;
-   if FLeft.InheritsFrom(TIntVarExpr) then begin
+   if FLeft.InheritsFrom(TVarExpr) then begin
       leftVarExpr:=TVarExpr(FLeft);
-      if FRight.InheritsFrom(TAddIntExpr) then begin
-         addExpr:=TAddIntExpr(FRight);
-         if (addExpr.Left is TVarExpr) and (TVarExpr(addExpr.Left).SameVarAs(leftVarExpr)) then begin
-            Result:=TIncIntVarExpr.Create(Prog, Pos, FLeft, addExpr.Right);
-            FLeft:=nil;
-            addExpr.Right:=nil;
-            Free;
+      if leftVarExpr.ClassType=TIntVarExpr then begin
+         if FRight.InheritsFrom(TAddIntExpr) then begin
+            addIntExpr:=TAddIntExpr(FRight);
+            if (addIntExpr.Left is TVarExpr) and (TVarExpr(addIntExpr.Left).SameVarAs(leftVarExpr)) then begin
+               Result:=TIncIntVarExpr.Create(Prog, Pos, FLeft, addIntExpr.Right);
+               FLeft:=nil;
+               addIntExpr.Right:=nil;
+               Free;
+            end;
+         end else if FRight.InheritsFrom(TSubIntExpr) then begin
+            subIntExpr:=TSubIntExpr(FRight);
+            if (subIntExpr.Left is TVarExpr) and (TVarExpr(subIntExpr.Left).SameVarAs(leftVarExpr)) then begin
+               Result:=TDecIntVarExpr.Create(Prog, Pos, FLeft, subIntExpr.Right);
+               FLeft:=nil;
+               subIntExpr.Right:=nil;
+               Free;
+            end;
          end;
-      end else if FRight.InheritsFrom(TSubIntExpr) then begin
-         subExpr:=TSubIntExpr(FRight);
-         if (subExpr.Left is TVarExpr) and (TVarExpr(subExpr.Left).SameVarAs(leftVarExpr)) then begin
-            Result:=TDecIntVarExpr.Create(Prog, Pos, FLeft, subExpr.Right);
-            FLeft:=nil;
-            subExpr.Right:=nil;
-            Free;
+      end else if leftVarExpr.ClassType=TStrVarExpr then begin
+         if FRight.InheritsFrom(TAddStrExpr) then begin
+            addStrExpr:=TAddStrExpr(FRight);
+            if (addStrExpr.Left is TVarExpr) and (TVarExpr(addStrExpr.Left).SameVarAs(leftVarExpr)) then begin
+               Result:=TAppendStringVarExpr.Create(Prog, Pos, FLeft, addStrExpr.Right);
+               FLeft:=nil;
+               addStrExpr.Right:=nil;
+               Free;
+            end;
          end;
-      end else if FRight.IsConstant then begin
-         Result:=OptimizeConstAssignment;
       end;
    end;
 end;
@@ -3665,6 +3693,19 @@ begin
    FLeft.AssignValueAsString(v1+v2);
 end;
 
+// Optimize
+//
+function TPlusAssignStrExpr.Optimize : TNoPosExpr;
+begin
+   Result:=Self;
+   if FLeft is TStrVarExpr then begin
+      Result:=TAppendStringVarExpr.Create(FProg, Pos, FLeft, FRight);
+      FLeft:=nil;
+      FRight:=nil;
+      Free;
+   end;
+end;
+
 // ------------------
 // ------------------ TMinusAssignExpr ------------------
 // ------------------
@@ -3736,6 +3777,20 @@ end;
 procedure TDecIntVarExpr.EvalNoResult(var status : TExecutionStatusResult);
 begin
    TIntVarExpr(FLeft).IncValue(-FRight.EvalAsInteger);
+end;
+
+// ------------------
+// ------------------ TAppendStringVarExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TAppendStringVarExpr.EvalNoResult(var status : TExecutionStatusResult);
+var
+   buf : String;
+begin
+   FRight.EvalAsString(buf);
+   TStrVarExpr(FLeft).Append(buf);
 end;
 
 // ------------------

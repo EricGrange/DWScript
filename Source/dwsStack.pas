@@ -83,7 +83,8 @@ type
          function ReadBoolValue(SourceAddr: Integer): Boolean;
          procedure ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown);
 
-         procedure IncIntValue(DestAddr: Integer; const Value: Int64);
+         procedure IncIntValue(destAddr : Integer; const value : Int64);
+         procedure AppendStringValue(destAddr : Integer; const value : String);
 
          procedure PushBp(Level, Bp: Integer);
          function GetSavedBp(Level: Integer): Integer;
@@ -395,9 +396,29 @@ begin
    else Fallback(varData);
 end;
 
+// AppendStringValue
+//
+procedure TStack.AppendStringValue(destAddr : Integer; const value : String);
+
+   procedure Fallback(varData : PVarData);
+   begin
+      PVariant(varData)^:=PVariant(varData)^+value;
+   end;
+
+var
+   varData : PVarData;
+begin
+   varData:=@Data[destAddr];
+   if varData.VType=varUString then
+      String(varData.VUString):=String(varData.VUString)+value
+   else Fallback(varData);
+end;
+
+// WriteData
+//
 procedure TStack.WriteData(SourceAddr, DestAddr, Size: Integer; const SourceData: TData);
 begin
-   while Size > 0 do begin
+   while Size>0 do begin
       Data[DestAddr]:=SourceData[SourceAddr];
       Inc(SourceAddr);
       Inc(DestAddr);
@@ -405,6 +426,8 @@ begin
    end;
 end;
 
+// WriteValue
+//
 procedure TStack.WriteValue(DestAddr: Integer; const Value: Variant);
 begin
   VarCopy(Data[DestAddr], Value);
