@@ -123,6 +123,44 @@ type
          property Count : Integer read FCount;
    end;
 
+const
+   cWriteOnlyBlockStreamBlockSize = $2000 - 2*SizeOf(Pointer);
+
+type
+
+   // TWriteOnlyBlockStream
+   //
+   {: Provides a write-only block-based stream. }
+   TWriteOnlyBlockStream = class (TStream)
+      private
+         FFirstBlock : PPointerArray;
+         FCurrentBlock : PPointerArray;
+         FBlockRemaining : PInteger;
+         FTotalSize : Integer;
+
+      protected
+          function GetSize: Int64; override;
+
+          procedure AllocateCurrentBlock;
+          procedure FreeBlocks;
+
+      public
+         constructor Create;
+         destructor Destroy; override;
+
+         function Seek(Offset: Longint; Origin: Word): Longint; override;
+         function Read(var Buffer; Count: Longint): Longint; override;
+         function Write(const buffer; count: Longint): Longint; override;
+         // must be strictly an utf16 string
+         procedure WriteString(const utf16String : String);
+         // assumes data is an utf16 string
+         function ToString : String; override;
+
+         procedure Clear;
+
+         procedure StoreData(var buffer); overload;
+         procedure StoreData(destStream : TStream); overload;
+   end;
 
 {: Changes the class of an object (by altering the VMT pointer).<p>
    Only checks IntanceSize.
@@ -698,6 +736,194 @@ procedure TSimpleStack<T>.Clear;
 begin
    SetLength(FItems, 0);
    FCount:=0;
+end;
+
+// ------------------
+// ------------------ TWriteOnlyBlockStream ------------------
+// ------------------
+
+// Create
+//
+constructor TWriteOnlyBlockStream.Create;
+begin
+   inherited Create;
+   AllocateCurrentBlock;
+end;
+
+// Destroy
+//
+destructor TWriteOnlyBlockStream.Destroy;
+begin
+   inherited;
+   FreeBlocks;
+end;
+
+// FreeBlocks
+//
+procedure TWriteOnlyBlockStream.FreeBlocks;
+var
+   iterator, next : PPointerArray;
+begin
+   iterator:=FFirstBlock;
+   while iterator<>nil do begin
+      next:=PPointerArray(iterator[0]);
+      FreeMem(iterator);
+      iterator:=next;
+   end;
+   FCurrentBlock:=nil;
+   FFirstBlock:=nil;
+end;
+
+// AllocateCurrentBlock
+//
+procedure TWriteOnlyBlockStream.AllocateCurrentBlock;
+var
+   newBlock : PPointerArray;
+begin
+   newBlock:=GetMemory(cWriteOnlyBlockStreamBlockSize+2*SizeOf(Pointer));
+   newBlock[0]:=nil;
+   FBlockRemaining:=@newBlock[1];
+   FBlockRemaining^:=0;
+
+   if FCurrentBlock<>nil then
+      FCurrentBlock[0]:=newBlock
+   else FFirstBlock:=newBlock;
+   FCurrentBlock:=newBlock;
+end;
+
+// Clear
+//
+procedure TWriteOnlyBlockStream.Clear;
+begin
+   FreeBlocks;
+   AllocateCurrentBlock;
+end;
+
+// StoreData
+//
+procedure TWriteOnlyBlockStream.StoreData(var buffer);
+var
+   n : Integer;
+   iterator : PPointerArray;
+   dest : PByteArray;
+begin
+   dest:=@buffer;
+   iterator:=FFirstBlock;
+   while iterator<>nil do begin
+      n:=PInteger(@iterator[1])^;
+      if n>0 then begin
+         Move(iterator[2], dest^, n);
+         dest:=@dest[n];
+      end;
+      iterator:=iterator[0];
+   end;
+end;
+
+// StoreData
+//
+procedure TWriteOnlyBlockStream.StoreData(destStream : TStream);
+var
+   n : Integer;
+   iterator : PPointerArray;
+begin
+   iterator:=FFirstBlock;
+   while iterator<>nil do begin
+      n:=PInteger(@iterator[1])^;
+      destStream.Write(iterator[2], n);
+      iterator:=iterator[0];
+   end;
+end;
+
+// Seek
+//
+function TWriteOnlyBlockStream.Seek(Offset: Longint; Origin: Word): Longint;
+begin
+   if (Origin=soFromCurrent) and (Offset=0) then
+      Result:=FTotalSize
+   else raise EStreamError.Create('not allowed');
+end;
+
+// Read
+//
+function TWriteOnlyBlockStream.Read(var Buffer; Count: Longint): Longint;
+begin
+   raise EStreamError.Create('not allowed');
+end;
+
+// Write
+//
+function TWriteOnlyBlockStream.Write(const buffer; count: Longint): Longint;
+var
+   newBlock : PPointerArray;
+   source : PByteArray;
+   fraction : Integer;
+begin
+   Result:=count;
+   if count<=0 then Exit;
+
+   Inc(FTotalSize, count);
+   source:=@Buffer;
+
+   fraction:=cWriteOnlyBlockStreamBlockSize-FBlockRemaining^;
+   if count>fraction then begin
+      // does not fit in current block
+      if FBlockRemaining^>0 then begin
+         // current block contains some data, write fraction, allocate new block
+         Move(source^, PByteArray(@FCurrentBlock[2])[FBlockRemaining^], fraction);
+         Dec(count, fraction);
+         source:=@source[fraction];
+         FBlockRemaining^:=cWriteOnlyBlockStreamBlockSize;
+
+         AllocateCurrentBlock;
+      end;
+
+      if count>cWriteOnlyBlockStreamBlockSize div 2 then begin
+         // large amount still to be written, insert specific block
+         newBlock:=GetMemory(count+2*SizeOf(Pointer));
+         newBlock[0]:=FCurrentBlock;
+         PInteger(@newBlock[1])^:=count;
+         Move(source^, newBlock[2], count);
+         if FFirstBlock=FCurrentBlock then
+            FFirstBlock:=newBlock;
+         Exit;
+      end;
+   end;
+
+   // if we reach here, everything fits in current block
+   Move(source^, PByteArray(@FCurrentBlock[2])[FBlockRemaining^], count);
+   Inc(FBlockRemaining^, count);
+end;
+
+// WriteString
+//
+procedure TWriteOnlyBlockStream.WriteString(const utf16String : String);
+var
+   stringCracker : NativeInt;
+begin
+   if utf16String<>'' then begin
+      stringCracker:=NativeInt(utf16String);
+      Write(Pointer(stringCracker)^, PInteger(stringCracker-SizeOf(Integer))^*SizeOf(Char));
+   end;
+end;
+
+// ToString
+//
+function TWriteOnlyBlockStream.ToString : String;
+begin
+   if FTotalSize>0 then begin
+
+      Assert((FTotalSize and 1) = 0);
+      SetLength(Result, FTotalSize div 2);
+      StoreData(Result[1]);
+
+   end else Result:='';
+end;
+
+// GetSize
+//
+function TWriteOnlyBlockStream.GetSize: Int64;
+begin
+   Result:=FTotalSize;
 end;
 
 // ------------------------------------------------------------------

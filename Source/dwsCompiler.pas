@@ -279,7 +279,7 @@ type
 
   TdwsDefaultResult = class(TdwsResult)
   private
-    FTextBuilder: TStringBuilder;
+    FTextBuilder: TWriteOnlyBlockStream;
     function GetText: String;
   public
     constructor Create(resultType : TdwsResultType); override;
@@ -4807,7 +4807,7 @@ end;
 constructor TdwsDefaultResult.Create(resultType: TdwsResultType);
 begin
    inherited;
-   FTextBuilder:=TStringBuilder.Create;
+   FTextBuilder:=TWriteOnlyBlockStream.Create;
 end;
 
 // Destroy
@@ -4822,7 +4822,7 @@ end;
 //
 procedure TdwsDefaultResult.AddString(const str : String);
 begin
-   FTextBuilder.Append(Str);
+   FTextBuilder.WriteString(str);
 end;
 
 // GetText

@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, dwsComp, dwsExprs, dwsHashtables, dwsSymbols,
-  dwsClasses, dwsFileSystem;
+  dwsClasses, dwsFileSystem, dwsUtils;
 
 type
   TdwsClassesLib = class(TDataModule)
@@ -693,7 +693,7 @@ end;
 procedure TdwsClassesLib.dwsUnitClassesTStringBuilderConstructorsCreateEval(
   Info: TProgramInfo; var ExtObject: TObject);
 begin
-   ExtObject:=TStringBuilder.Create;
+   ExtObject:=TWriteOnlyBlockStream.Create;
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringBuilderCleanUp(
@@ -705,26 +705,26 @@ end;
 procedure TdwsClassesLib.dwsUnitClassesTStringBuilderMethodsAppendEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   TStringBuilder(ExtObject).Append(Info.ValueAsString['value']);
+   TWriteOnlyBlockStream(ExtObject).WriteString(Info.ValueAsString['value']);
    Info.ResultAsVariant := Info.ScriptObj;
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringBuilderMethodsClearEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   TStringBuilder(ExtObject).Clear;
+   TWriteOnlyBlockStream(ExtObject).Clear;
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringBuilderMethodsLengthEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsInteger:=TStringBuilder(ExtObject).Length;
+   Info.ResultAsInteger:=TWriteOnlyBlockStream(ExtObject).Size;
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringBuilderMethodsToStringEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsString:=TStringBuilder(ExtObject).ToString;
+   Info.ResultAsString:=TWriteOnlyBlockStream(ExtObject).ToString;
 end;
 
 end.

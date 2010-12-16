@@ -32,7 +32,7 @@ interface
 
 uses
   Variants, Classes, SysUtils, dwsComp, dwsExprs, dwsFunctions, dwsSymbols,
-  dwsErrors, dwsCompiler, dwsStrings, dwsStringResult;
+  dwsErrors, dwsCompiler, dwsStrings, dwsStringResult, dwsUtils;
 
 type
   TdwsHtmlFilter = class(TdwsFilter)
@@ -87,66 +87,66 @@ end;
 function TdwsHtmlFilter.Process(const Text: String; Msgs: TdwsMessageList): String;
 
    procedure StuffString(const str: String; start, stop : Integer;
-                         dest : TStringBuilder);
+                         dest : TWriteOnlyBlockStream);
    var
       isQuoted: Boolean;
       i, lineCount: Integer;
    begin
-      dest.Append('''');
+      dest.WriteString('''');
       isQuoted := True;
       lineCount := 0;
       for i := start to stop do begin
          if isQuoted then begin
             case str[i] of
-               '''': dest.Append('''''');
+               '''': dest.WriteString('''''');
                #10: begin
-                  dest.Append('''#10');
+                  dest.WriteString('''#10');
                   isQuoted := False;
                   Inc(lineCount);
                end;
                #13: begin
-                  dest.Append('''#13');
+                  dest.WriteString('''#13');
                   isQuoted := False;
                end;
                #9: begin
-                  dest.Append('''#9');
+                  dest.WriteString('''#9');
                   isQuoted := False;
                end;
             else
-               dest.Append(str[i]);
+               dest.WriteString(str[i]);
             end
          end else begin
             case str[i] of
                '''': begin
-                  dest.Append('''''''');
+                  dest.WriteString('''''''');
                   isQuoted := True;
                end;
                #10: begin
-                  dest.Append('#10');
+                  dest.WriteString('#10');
                   Inc(lineCount);
                end;
-               #13: dest.Append('#13');
-               #9: dest.Append('#9');
+               #13: dest.WriteString('#13');
+               #9: dest.WriteString('#9');
             else
-               dest.Append('''');
-               dest.Append(Str[i]);
+               dest.WriteString('''');
+               dest.WriteString(Str[i]);
                isQuoted := True;
             end;
          end;
       end;
 
       if isQuoted then
-         dest.Append('''');
+         dest.WriteString('''');
 
       for i := 1 to lineCount do
-         dest.Append(#13#10);
+         dest.WriteString(#13#10);
    end;
 
 var
    state: (sNone, sSend);
    index, patOpen, patClose, patEval: Integer;
    htmlText, chunk, pattern: string;
-   builder : TStringBuilder;
+   builder : TWriteOnlyBlockStream;
 begin
    // Initializations
    htmlText := inherited Process(Text, Msgs);
@@ -154,7 +154,7 @@ begin
    patClose := Length(FPatternClose) - 1;
    patEval := Length(FPatternEval) + 1;
 
-   builder:=TStringBuilder.Create;
+   builder:=TWriteOnlyBlockStream.Create;
    try
 
       state := sNone;
@@ -171,9 +171,9 @@ begin
                // Normal HTML code.
                // Looking for <%
                if index > 1 then begin
-                  builder.Append('Send(');
+                  builder.WriteString('Send(');
                   StuffString(htmlText, 1, index-1, builder);
-                  builder.Append(');');
+                  builder.WriteString(');');
                end;
                Delete(htmlText, 1, index + patOpen);
                pattern := FPatternClose;
@@ -184,11 +184,11 @@ begin
                // Looking for %>
                chunk := Copy(htmlText, 1, index - 1);
                if Pos(FPatternEval, chunk) = 1 then begin
-                  builder.Append('Send(');
-                  builder.Append(Copy(chunk, patEval, Length(chunk)));
-                  builder.Append(');');
+                  builder.WriteString('Send(');
+                  builder.WriteString(Copy(chunk, patEval, Length(chunk)));
+                  builder.WriteString(');');
                end else begin
-                  builder.Append( chunk );
+                  builder.WriteString( chunk );
                end;
                Delete(htmlText, 1, index + patClose);
                pattern := FPatternOpen;
