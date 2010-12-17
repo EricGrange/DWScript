@@ -1990,18 +1990,16 @@ end;
 
 procedure TdwsFunction.Call(Caller: TdwsProgram; Func: TFuncSymbol);
 var
-  info: TProgramInfo;
+   info: TProgramInfo;
 begin
-  if Assigned(FOnEval) then
-  begin
-    info := TProgramInfo.Create(Func.Params, Caller);
-    try
-      info.FuncSym := Func;
-      FOnEval(info);
-    finally
-      info.Free;
-    end;
-  end;
+   if Assigned(FOnEval) then begin
+      info:=Caller.AcquireProgramInfo(Func);
+      try
+         FOnEval(info);
+      finally
+         Caller.ReleaseProgramInfo(info);
+      end;
+   end;
 end;
 
 // SetParameters
@@ -2218,32 +2216,28 @@ end;
 
 procedure TdwsMethod.Call(Caller: TdwsProgram; Func: TFuncSymbol);
 var
-  info: TProgramInfo;
-  scriptObj: IScriptObj;
+  info : TProgramInfo;
   isClassMethod : Boolean;
   methodSymbol : TMethodSymbol;
 begin
    if Assigned(FOnEval) then begin
-      info:=TProgramInfo.Create(Func.Params, Caller);
+      info:=Caller.AcquireProgramInfo(func);
       try
-         info.FuncSym:=Func;
          methodSymbol:=(Func as TMethodSymbol);
 
          isClassMethod:=methodSymbol.IsClassMethod;
          if not isClassMethod then
-            scriptObj:=info.Vars['Self'].ScriptObj;
+            info.PrepareScriptObj;
 
-         info.ScriptObj:=scriptObj;
-
-         if Assigned(scriptObj) then  begin
-            FOnEval(info, scriptObj.ExternalObject);
-            if (Func as TMethodSymbol).Kind=fkDestructor then
-               scriptObj.ExternalObject:=nil;
+         if Assigned(info.ScriptObj) then  begin
+            FOnEval(info, info.ScriptObj.ExternalObject);
+            if methodSymbol.Kind=fkDestructor then
+               info.ScriptObj.ExternalObject:=nil;
          end else if isClassMethod then
             FOnEval(info, nil)
          else raise Exception.Create('Object not instantiated');
       finally
-         info.Free;
+         Caller.ReleaseProgramInfo(info);
       end;
    end;
 end;
@@ -2270,27 +2264,23 @@ end;
 
 procedure TdwsConstructor.Call(Caller: TdwsProgram; Func: TFuncSymbol);
 var
-  info: TProgramInfo;
-  extObj: TObject;
-  scriptObj: IScriptObj;
+   info: TProgramInfo;
+   extObj: TObject;
 begin
-  info := TProgramInfo.Create(Func.Params, Caller);
-  try
-    info.FuncSym := Func;
+   info := Caller.AcquireProgramInfo(Func);
+   try
+      info.PrepareScriptObj;
 
-    scriptObj := info.Vars['Self'].ScriptObj;
-    info.ScriptObj := scriptObj;
-
-    if Assigned(FOnAssignExternalObject) then
-      if Assigned(scriptObj) then
-      begin
-        extObj := scriptObj.ExternalObject; // may assigned by Info.GetConstructor()
-        FOnAssignExternalObject(info, extObj);
-        scriptObj.ExternalObject := extObj;
+      if Assigned(FOnAssignExternalObject) then begin
+         if Assigned(info.ScriptObj) then begin
+            extObj := info.ScriptObj.ExternalObject; // may assigned by Info.GetConstructor()
+            FOnAssignExternalObject(info, extObj);
+            info.ScriptObj.ExternalObject := extObj;
+         end;
       end;
-  finally
-    info.Free;
-  end;
+   finally
+      Caller.ReleaseProgramInfo(info);
+   end;
 end;
 
 constructor TdwsConstructor.Create(Collection: TCollection);

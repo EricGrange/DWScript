@@ -357,6 +357,7 @@ const
   RTE_InvalidNumberOfParams = 'Invalid number of parameters (%d instead of %d) to call function %s';
   RTE_UseParameter = 'Use ''Parameter'' property to set paramter "%s" of Function "%s"';
   RTE_NoParameterFound = 'No parameter "%s" found in function "%s"';
+  RTE_IncorrectParameterIndex = 'Incorrect parameter index %d';
   RTE_NoIndexFound = 'No index parameter "%s" found for property "%s"';
 
   RTE_NoRecordMemberFound = 'No member "%s" found in record "%s"';

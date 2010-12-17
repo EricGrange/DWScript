@@ -1185,7 +1185,7 @@ begin
   inherited Create(Name, nil);
   FKind := FuncKind;
   FAddrGenerator := TAddrGeneratorRec.CreateNegative(FuncLevel);
-  FInternalParams := TSymbolTable.Create(nil, @FAddrGenerator);
+  FInternalParams := TUnSortedSymbolTable.Create(nil, @FAddrGenerator);
   FParams := TParamsSymbolTable.Create(FInternalParams, @FAddrGenerator);
   FSize := 1;
 end;

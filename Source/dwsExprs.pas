@@ -296,6 +296,7 @@ type
     FFileSystem : IdwsFileSystem;
     FConditionalDefines : TStringList;
     FLineCount : Integer;
+    FProgramInfo : TProgramInfo;
 
   protected
     function GetLevel: Integer;
@@ -333,6 +334,9 @@ type
     procedure ReadyToRun;
     procedure RunProgram(aTimeoutMilliSeconds: Integer);
     procedure Stop; virtual;
+
+    function AcquireProgramInfo(funcSym : TFuncSymbol) : TProgramInfo;
+    procedure ReleaseProgramInfo(info : TProgramInfo);
 
     property Debugger: IDebugger read FDebugger write SetDebugger;
     property Compiler: TObject read FCompiler write FCompiler;
@@ -589,7 +593,7 @@ type
          function Eval: Variant; override;
          function GetData: TData; override;
          function GetAddr: Integer; override;
-         function GetCode(Func : TFuncSymbol) : ICallable; virtual;
+         procedure GetCode(Func : TFuncSymbol; var result : ICallable); virtual;
          procedure Initialize; override;
          procedure SetResultAddr(ResultAddr: Integer = -1);
          function IsWritable : Boolean; override;
@@ -931,18 +935,27 @@ type
     procedure SetResultAsFloat(const value : Double);
     function GetResultAsFloat : Double;
 
+    function GetParamAsPVariant(index : Integer) : PVariant;
+    function GetParamAsVariant(index : Integer) : Variant;
+    function GetParamAsInteger(index : Integer) : Int64;
+    function GetParamAsString(index : Integer) : String;
+    function GetParamAsFloat(index : Integer) : Double;
+    function GetParamAsBoolean(index : Integer) : Boolean;
+
   protected
     function CreateUnitList: TList; dynamic;
     function FindSymbolInUnits(AUnitList: TList; const Name: string): TSymbol; overload; virtual;
 
   public
-    constructor Create(Table: TSymbolTable; Caller: TdwsProgram = nil);
+    procedure PrepareScriptObj;
+
     function RegisterExternalObject(AObject: TObject; AutoFree: Boolean=False; ExactClassMatch: Boolean=True): Variant;
     function GetExternalObjForVar(const s: string): TObject;
     // cycle ancestry hierarchy and find the nearest matching type
     function FindClassMatch(AObject: TObject; ExactMatch: Boolean=True): TClassSymbol; dynamic;
     function FindSymbolInUnits(const Name: string): TSymbol; overload; virtual;
     function GetTemp(const DataType: string): IInfo;
+    property Table : TSymbolTable read FTable write FTable;
     property Caller: TdwsProgram read FCaller write FCaller;
     property Data[const s: string]: TData read GetData write SetData;
     property Func[const s: string]: IInfo read GetFunc;
@@ -951,9 +964,9 @@ type
     property ScriptObj: IScriptObj read FScriptObj write FScriptObj;
     property ResultAsVariant: Variant read GetResultAsVariant write SetResultAsVariant;
     property ResultVars: IInfo read GetResultVars;
-    property ValueAsVariant[const s: string]: Variant read GetValueAsVariant write SetValueAsVariant;
     property Vars[const s: string]: IInfo read GetVars;
 
+    property ValueAsVariant[const s : String] : Variant read GetValueAsVariant write SetValueAsVariant;
     property ValueAsChar[const s : String] : Char read GetValueAsChar;
     property ValueAsString[const s : String] : String read GetValueAsString write SetValueAsString;
     property ValueAsDataString[const s : String] : RawByteString read GetValueAsDataString write SetValueAsDataString;
@@ -962,6 +975,13 @@ type
     property ValueAsFloat[const s : String] : Double read GetValueAsFloat write SetValueAsFloat;
     property ValueAsObject[const s : String] : TObject read GetValueAsObject;
     property ValueAsTStrings[const s : String] : TStrings read GetValueAsTStrings;
+
+    property ParamAsVariant[index : Integer] : Variant read GetParamAsVariant;
+    property ParamAsInteger[index : Integer] : Int64 read GetParamAsInteger;
+    property ParamAsString[index : Integer] : String read GetParamAsString;
+    property ParamAsFloat[index : Integer] : Double read GetParamAsFloat;
+    property ParamAsBoolean[index : Integer] : Boolean read GetParamAsBoolean;
+
     property ResultAsString : String read GetResultAsString write SetResultAsString;
     property ResultAsDataString : RawByteString read GetResultAsDataString write SetResultAsDataString;
     property ResultAsBoolean : Boolean read GetResultAsBoolean write SetResultAsBoolean;
@@ -1251,6 +1271,11 @@ begin
    raise Exception.CreateFmt(RTE_VariableNotFound, [s]);
 end;
 
+procedure RaiseIncorrectParameterIndex(i : Integer);
+begin
+   raise Exception.CreateFmt(RTE_IncorrectParameterIndex, [i]);
+end;
+
 procedure RaiseOnlyVarSymbols(sym : TSymbol);
 begin
    raise Exception.CreateFmt(RTE_OnlyVarSymbols, [sym.Caption]);
@@ -1386,6 +1411,7 @@ end;
 
 destructor TdwsProgram.Destroy;
 begin
+   FProgramInfo.Free;
    FResult.Free;
    FExpr.Free;
    FInitExpr.Free;
@@ -1429,7 +1455,9 @@ begin
     // Stack
     FStack.Reset;
 
-    FInfo := TProgramInfo.Create(FTable, Self);
+    FInfo := TProgramInfo.Create;
+    FInfo.Table := FTable;
+    FInfo.Caller := Self;
 
     // Result
     FResult.InitializeProgram(Self);
@@ -1663,6 +1691,31 @@ procedure TdwsProgram.Stop;
 begin
   if FProgramState = psRunning then
     FProgramState := psRunningStopped;
+end;
+
+// AcquireProgramInfo
+//
+function TdwsProgram.AcquireProgramInfo(funcSym : TFuncSymbol) : TProgramInfo;
+begin
+   if FProgramInfo=nil then begin
+      Result:=TProgramInfo.Create;
+      Result.Caller:=Self;
+   end else begin
+      Result:=FProgramInfo;
+      FProgramInfo:=nil;
+   end;
+   Result.FuncSym:=funcSym;
+   Result.FTable:=funcSym.Params;
+end;
+
+// ReleaseProgramInfo
+//
+procedure TdwsProgram.ReleaseProgramInfo(info : TProgramInfo);
+begin
+   if FProgramInfo=nil then begin
+      FProgramInfo:=info;
+      info.ScriptObj:=nil;
+   end else info.Free;
 end;
 
 function TdwsProgram.GetLevel: Integer;
@@ -1988,16 +2041,12 @@ end;
 
 function TNoPosExpr.CreateEDelphiObj(const ClassName, Message: string): IScriptObj;
 var
-  info: TProgramInfo;
+   info: TProgramInfo;
 begin
-  info := TProgramInfo.Create(FProg.Table, FProg);
-  try
-    Result := IScriptObj(IUnknown(
-      Info.Vars[SYS_EDELPHI].Method[SYS_TOBJECT_CREATE].Call([
+   info := FProg.Info;
+   Result := IScriptObj(IUnknown(
+      info.Vars[SYS_EDELPHI].Method[SYS_TOBJECT_CREATE].Call([
         ClassName, Message]).Value));
-  finally
-    info.Free;
-  end;
 end;
 
 procedure TNoPosExpr.Initialize;
@@ -2790,13 +2839,13 @@ begin
   FArgs.Add(Arg);
 end;
 
-function TFuncExpr.Eval: Variant;
+function TFuncExpr.Eval : Variant;
 var
-   x: Integer;
-   oldBasePointer: Integer;
-   func: TFuncSymbol;
-   scriptObj: IScriptObj;
-   code: ICallable;
+   x : Integer;
+   oldBasePointer : Integer;
+   func : TFuncSymbol;
+   scriptObj : IScriptObj;
+   code : ICallable;
    stack : TStack;
 begin
    try
@@ -2813,7 +2862,7 @@ begin
          for x := 0 to High(FPushExprs) do
            FPushExprs[x].Execute(stack);
 
-         code := GetCode(func);
+         GetCode(func, code);
          if not Assigned(Code) then
            FProg.Msgs.AddExecutionStop(FPos, RTE_InvalidFunctionCall);
 
@@ -2833,7 +2882,7 @@ begin
                on e: EScriptException do
                   raise;
             else
-               FProg.Msgs.SetLastScriptError(FPos,ExceptObject);
+               FProg.Msgs.SetLastScriptError(FPos, ExceptObject);
                raise;
             end;
          finally
@@ -2960,12 +3009,19 @@ begin
    Result:=(fesIsWritable in FStates);
 end;
 
-function TFuncExpr.GetCode(Func: TFuncSymbol): ICallable;
+// GetCode
+//
+procedure TFuncExpr.GetCode(Func : TFuncSymbol; var result : ICallable);
+
+   procedure GetCodeExpr(codeExpr : TDataExpr; var result : ICallable);
+   begin
+      Result:=ICallable(IUnknown(codeExpr.Eval));
+   end;
+
 begin
   if Assigned(FCodeExpr) then
-    Result := ICallable(IUnknown(FCodeExpr.Eval))
-  else
-    Result := ICallable(Func.Executable);
+      GetCodeExpr(codeExpr, result)
+  else result:=ICallable(Func.Executable);
 end;
 
 { TNoPosExprList }
@@ -3305,12 +3361,6 @@ end;
 
 { TProgramInfo }
 
-constructor TProgramInfo.Create(Table: TSymbolTable; Caller: TdwsProgram);
-begin
-  FTable := Table;
-  FCaller := Caller;
-end;
-
 function TProgramInfo.GetValueAsVariant(const s: string): Variant;
 begin
   Result := GetVars(s).Value;
@@ -3621,6 +3671,96 @@ begin
    Result:=GetVars(SYS_RESULT).Value;
 end;
 
+// GetParamAsPVariant
+//
+function TProgramInfo.GetParamAsPVariant(index : Integer) : PVariant;
+
+   function GetVarParam(stackAddr : Integer) : PVariant;
+   var
+      vpd : IVarParamData;
+   begin
+      vpd:=IVarParamData(IUnknown(FCaller.Stack.Data[stackAddr]));
+      Result:=@vpd.Data[vpd.Addr];
+   end;
+
+var
+   ip : TSymbolTable;
+   sym : TDataSymbol;
+   stack : TStack;
+   stackAddr : Integer;
+begin
+   ip:=FuncSym.Params;
+   if Cardinal(index)>=Cardinal(ip.Count) then begin
+      RaiseIncorrectParameterIndex(index);
+      Result:=nil;
+   end else begin
+      sym:=TDataSymbol(ip[index]);
+      Assert(sym.InheritsFrom(TDataSymbol));
+      stack:=Caller.Stack;
+      if sym.Level=FLevel then
+         stackAddr:=sym.StackAddr+stack.BasePointer
+      else stackAddr:=sym.StackAddr+stack.GetSavedBp(FCaller.Level);
+      if sym.InheritsFrom(TByRefParamSymbol) then
+         Result:=GetVarParam(stackAddr)
+      else Result:=@stack.Data[stackAddr];
+   end;
+end;
+
+// GetParamAsVariant
+//
+function TProgramInfo.GetParamAsVariant(index : Integer) : Variant;
+begin
+   Result:=GetParamAsPVariant(index)^;
+end;
+
+// GetParamAsInteger
+//
+function TProgramInfo.GetParamAsInteger(index : Integer) : Int64;
+var
+   p : PVarData;
+begin
+   p:=PVarData(GetParamAsPVariant(index));
+   if p^.VType=varInt64 then
+      Result:=p.VInt64
+   else Result:=PVariant(p)^;
+end;
+
+// GetParamAsString
+//
+function TProgramInfo.GetParamAsString(index : Integer) : String;
+var
+   p : PVarData;
+begin
+   p:=PVarData(GetParamAsPVariant(index));
+   if p^.VType=varUString then
+      Result:=String(p.VUString)
+   else Result:=PVariant(p)^;
+end;
+
+// GetParamAsFloat
+//
+function TProgramInfo.GetParamAsFloat(index : Integer) : Double;
+var
+   p : PVarData;
+begin
+   p:=PVarData(GetParamAsPVariant(index));
+   if p^.VType=varDouble then
+      Result:=p.VDouble
+   else Result:=PVariant(p)^;
+end;
+
+// GetParamAsBoolean
+//
+function TProgramInfo.GetParamAsBoolean(index : Integer) : Boolean;
+var
+   p : PVarData;
+begin
+   p:=PVarData(GetParamAsPVariant(index));
+   if p^.VType=varBoolean then
+      Result:=p.VBoolean
+   else Result:=PVariant(p)^;
+end;
+
 { TScriptObjectWrapper }
 
 // wrapper to interact with an released script object
@@ -3801,6 +3941,19 @@ begin
     if Assigned(Result) then
       Break;
   end;
+end;
+
+// PrepareScriptObj
+//
+procedure TProgramInfo.PrepareScriptObj;
+type
+   PIUnknown = ^IUnknown;
+var
+   stack : TStack;
+begin
+   stack:=Caller.Stack;
+   stack.ReadInterfaceValue(stack.BasePointer+TDataSymbol(FuncSym.InternalParams[0]).StackAddr,
+                            PIUnknown(@FScriptObj)^);
 end;
 
 function TProgramInfo.FindSymbolInUnits(const Name: string): TSymbol;
@@ -5734,8 +5887,11 @@ begin
 end;
 
 function TFuncCodeExpr.Eval: Variant;
+var
+   callable : ICallable;
 begin
-  Result := FFuncExpr.GetCode(FFuncExpr.FuncSym);
+   FFuncExpr.GetCode(FFuncExpr.FuncSym, callable);
+   Result := callable;
 end;
 
 function TFuncCodeExpr.GetAddr: Integer;

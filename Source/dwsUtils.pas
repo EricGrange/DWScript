@@ -772,6 +772,7 @@ begin
    end;
    FCurrentBlock:=nil;
    FFirstBlock:=nil;
+   FTotalSize:=0;
 end;
 
 // AllocateCurrentBlock

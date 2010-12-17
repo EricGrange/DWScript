@@ -705,7 +705,7 @@ end;
 procedure TdwsClassesLib.dwsUnitClassesTStringBuilderMethodsAppendEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   TWriteOnlyBlockStream(ExtObject).WriteString(Info.ValueAsString['value']);
+   TWriteOnlyBlockStream(ExtObject).WriteString(Info.ParamAsString[0]);
    Info.ResultAsVariant := Info.ScriptObj;
 end;
 

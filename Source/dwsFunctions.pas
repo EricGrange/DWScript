@@ -362,7 +362,8 @@ begin
   sym.IsStateless:=isStateLess;
   Table.AddSymbol(sym);
 
-  FInfo := TProgramInfo.Create(sym.Params);
+  FInfo := TProgramInfo.Create;
+  FInfo.Table := sym.Params;
   FInfo.FuncSym := sym;
 end;
 
@@ -479,7 +480,8 @@ begin
   // Add method to its class
   Cls.AddMethod(sym);
 
-  FInfo := TProgramInfo.Create(sym.Params);
+  FInfo := TProgramInfo.Create;
+  FInfo.Table := sym.Params;
   FInfo.FuncSym := sym;
 end;
 
@@ -514,7 +516,8 @@ end;
 
 constructor TAnonymousFunction.Create;
 begin
-  FInfo := TProgramInfo.Create(FuncSym.Params);
+  FInfo := TProgramInfo.Create;
+  FInfo.Table := FuncSym.Params;
   FInfo.FuncSym := FuncSym;
   FuncSym.Executable := ICallable(Self);
 end;
@@ -555,7 +558,8 @@ end;
 
 constructor TAnonymousMethod.Create(MethSym: TMethodSymbol);
 begin
-  FInfo := TProgramInfo.Create(MethSym.Params);
+  FInfo := TProgramInfo.Create;
+  FInfo.Table := MethSym.Params;
   FInfo.FuncSym := MethSym;
   MethSym.Executable := ICallable(Self);
 end;

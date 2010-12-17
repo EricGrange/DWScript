@@ -26,6 +26,7 @@ type
          procedure FuncIncEval(Info: TProgramInfo);
          procedure FuncIncNEval(Info: TProgramInfo);
          procedure FuncEnumEval(Info: TProgramInfo);
+         procedure FuncVarEval(Info: TProgramInfo);
 
          procedure FuncExceptionEval(Info: TProgramInfo);
 
@@ -65,6 +66,9 @@ const
       +'if FuncTrue<>True then PrintLn(''FuncTrue failed'');'#13#10
       +'if FuncEnum<>1 then PrintLn(''FuncEnum default failed'');'#13#10
       +'if FuncEnum(meTen)<>10 then PrintLn(''FuncEnum meTen failed'');'#13#10
+      +'var i=1; FuncVar(i); if i<>2 then PrintLn(''FuncVar def failed'');'#13#10
+      +'FuncVar(i, 10); if i<>12 then PrintLn(''FuncVar 10 failed'');'#13#10
+      +'FuncVar(i, i); if i<>24 then PrintLn(''FuncVar i failed'');'#13#10
       ;
 
 type
@@ -182,6 +186,19 @@ begin
    param.Name:='e';
    param.DataType:='TMyEnum';
    param.DefaultValue:='meOne';
+
+   func:=FUnit.Functions.Add as TdwsFunction;
+   func.Name:='FuncVar';
+   func.OnEval:=FuncVarEval;
+   param:=func.Parameters.Add as TdwsParameter;
+   param.Name:='i';
+   param.DataType:='Integer';
+   param.IsVarParam:=True;
+   param.IsWritable:=True;
+   param:=func.Parameters.Add as TdwsParameter;
+   param.Name:='n';
+   param.DataType:='Integer';
+   param.DefaultValue:='1';
 end;
 
 // Func1Eval
@@ -231,6 +248,13 @@ end;
 procedure TdwsUnitTests.FuncEnumEval(Info: TProgramInfo);
 begin
    Info.ResultAsInteger:=Info.ValueAsInteger['e'];
+end;
+
+// FuncVarEval
+//
+procedure TdwsUnitTests.FuncVarEval(Info: TProgramInfo);
+begin
+   Info.ValueAsInteger['i']:=Info.ParamAsInteger[0]+Info.ParamAsInteger[1];
 end;
 
 // FuncExceptionEval
