@@ -1772,7 +1772,7 @@ var
   index: Integer;
 begin
    // Get index
-   index := FIndexExpr.Eval - FLowBound;
+   index := FIndexExpr.EvalAsInteger - FLowBound;
 
    if Cardinal(index)>=Cardinal(FCount) then begin
       if index>=FCount then
