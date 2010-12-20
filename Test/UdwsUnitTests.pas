@@ -46,6 +46,7 @@ type
          procedure DelphiException;
          procedure DelphiExceptionReRaise;
          procedure ListOrdAutoEnum;
+         procedure CallFunc;
    end;
 
    EDelphiException = class (Exception)
@@ -349,6 +350,8 @@ begin
       CheckEquals('function FuncInc(v: Integer): Integer', sym.Description);
       sym:=prog.Table.FindSymbol('FuncIncN');
       CheckEquals('function FuncIncN(v: Integer; n: Integer = 1): Integer', sym.Description);
+      sym:=prog.Table.FindSymbol('TAutoEnum');
+      CheckEquals('(aeVal9, aeVal8, aeVal7, aeVal6, aeVal5, aeVal4, aeVal3, aeVal2, aeVal1)', sym.Description);
    finally
       prog.Free;
    end;
@@ -442,6 +445,38 @@ begin
       CheckEquals('', prog.Msgs.AsInfo, 'Compile');
       prog.Execute;
       CheckEquals('876543210', (prog.Result as TdwsDefaultResult).Text, 'Enums Ord');
+   finally
+      prog.Free;
+   end;
+end;
+
+// CallFunc
+//
+procedure TdwsUnitTests.CallFunc;
+var
+   prog : TdwsProgram;
+   funcInfo : IInfo;
+begin
+   prog:=FCompiler.Compile( 'function Hello(name : String) : String;'
+                           +'begin'
+                           +'   Result:=''Hello ''+name;'
+                           +'end;');
+   try
+      CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+      prog.BeginProgram;
+      try
+         funcInfo:=prog.Info.Func['Func1'];
+         CheckEquals(1, funcInfo.Call.Value, 'Func1 call');
+
+         funcInfo:=prog.Info.Func['FuncOne'];
+         CheckEquals('One', funcInfo.Call.Value, 'FuncOne call');
+
+         funcInfo:=prog.Info.Func['Hello'];
+         CheckEquals('Hello world', funcInfo.Call(['world']).Value, 'Hello world');
+      finally
+         prog.EndProgram;
+      end;
    finally
       prog.Free;
    end;
