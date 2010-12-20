@@ -47,6 +47,8 @@ type
 
          procedure ClearBpStore;
 
+         procedure GrowTo(desiredSize : Integer);
+
       public
          Data: TData;
 
@@ -58,8 +60,8 @@ type
          procedure Push(Delta: Integer);
          procedure Pop(Delta: Integer);
 
-         procedure IncRecursion;
-         procedure DecRecursion;
+         procedure IncRecursion; inline;
+         procedure DecRecursion; inline;
 
          procedure WriteData(SourceAddr, DestAddr, Size: Integer; const sourceData: TData);
          procedure ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);
@@ -156,7 +158,6 @@ begin
       FBpStore[i].Free;
 end;
 
-
 procedure TStack.CopyData(SourceAddr, DestAddr, Size: Integer);
 begin
   while Size > 0 do
@@ -180,26 +181,21 @@ begin
     FMaxLevel := Result;
 end;
 
-procedure TStack.Pop(Delta: Integer);
+procedure TStack.Pop(delta : Integer);
 var
-  x: Integer;
+   x, sp : Integer;
+   v : PVariant;
 begin
-{
-  // Release ScriptObjs
-  for x := FStackPointer - 1 downto FStackPointer - Delta do
-    if VarType(Data[x]) = varUnknown then
-      VarClear(Data[x]);
+   sp:=FStackPointer;
+   v:=@Data[sp];
+   sp:=sp-delta;
+   for x:=1 to delta do begin
+      Dec(v);
+      VarClear(v^);
+   end;
 
-  // Release other data
-  for x := FStackPointer - 1 downto FStackPointer - Delta do
-    if VarType(Data[x]) <> varEmpty then
-      VarClear(Data[x]);
-}
-  for x:=FStackPointer-1 downto FStackPointer-Delta do
-    VarClear(Data[x]);
-
-  // Free memory
-  Dec(FStackPointer, Delta);
+   // Free memory
+   FStackPointer:=sp;
 end;
 
 // IncRecursion
@@ -218,24 +214,33 @@ begin
    Dec(FRecursionDepth);
 end;
 
+
+// GrowTo
+//
+procedure TStack.GrowTo(desiredSize : Integer);
+begin
+   if desiredSize > FMaxSize then
+      raise EScriptException.CreateFmt(RTE_MaximalDatasizeExceeded, [FMaxSize]);
+   FSize := ((desiredSize) div FChunkSize + 1) * FChunkSize;
+   if FSize > FMaxSize then
+      FSize := FMaxSize;
+   SetLength(Data, FSize);
+end;
+
+
+// Push
+//
 procedure TStack.Push(Delta: Integer);
 var
-  sp : Integer;
+   sp : Integer;
 begin
-  sp := FStackPointer + Delta;
+   sp := FStackPointer + Delta;
 
-  // Increase stack size if necessary
-  if sp > FSize then
-  begin
-    if sp > FMaxSize then
-      raise EScriptException.CreateFmt(RTE_MaximalDatasizeExceeded, [FMaxSize]);
-    FSize := ((sp) div FChunkSize + 1) * FChunkSize;
-    if FSize > FMaxSize then
-      FSize := FMaxSize;
-    SetLength(Data, FSize);
-  end;
+   // Increase stack size if necessary
+   if sp > FSize then
+      GrowTo(sp);
 
-  FStackPointer := sp;
+   FStackPointer := sp;
 end;
 
 procedure TStack.Reset;

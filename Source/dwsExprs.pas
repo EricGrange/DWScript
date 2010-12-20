@@ -543,7 +543,9 @@ type
 
    TPushOperatorType = (potUnknown,
                         potAddr, potTempAddr, potTempArrayAddr,
-                        potResultString, potResult,
+                        potResult,
+                        potResultInteger, potResultFloat, potResultBoolean,
+                        potResultString, potResultConstString,
                         potData, potLazy);
    PPushOperator = ^TPushOperator;
    TPushOperator = packed record
@@ -557,12 +559,18 @@ type
       procedure InitPushResult(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushData(StackAddr: Integer; ArgExpr: TNoPosExpr; ParamSym: TSymbol);
       procedure InitPushLazy(StackAddr: Integer; ArgExpr: TNoPosExpr);
+
       procedure Execute(stack : TStack);
+
       procedure ExecuteAddr(stack : TStack);
       procedure ExecuteTempAddr(stack : TStack);
       procedure ExecuteTempArrayAddr(stack : TStack);
       procedure ExecuteResult(stack : TStack);
+      procedure ExecuteResultBoolean(stack : TStack);
+      procedure ExecuteResultInteger(stack : TStack);
+      procedure ExecuteResultFloat(stack : TStack);
       procedure ExecuteResultString(stack : TStack);
+      procedure ExecuteResultConstString(stack : TStack);
       procedure ExecuteData(stack : TStack);
       procedure ExecuteLazy(stack : TStack);
    end;
@@ -2649,10 +2657,23 @@ end;
 // InitPushResult
 //
 procedure TPushOperator.InitPushResult(StackAddr: Integer; ArgExpr: TNoPosExpr);
+var
+   typID : TBaseTypeID;
 begin
-   if ArgExpr.Typ=ArgExpr.Prog.TypString then
-      FTypeParamSym:=TSymbol(potResultString)
-   else FTypeParamSym:=TSymbol(potResult);
+   if ArgExpr.Typ<>nil then
+      typID:=ArgExpr.Typ.BaseTypeID
+   else typID:=typNoneID;
+   case typID of
+      typIntegerID : FTypeParamSym:=TSymbol(potResultInteger);
+      typFloatID : FTypeParamSym:=TSymbol(potResultFloat);
+      typBooleanID : FTypeParamSym:=TSymbol(potResultBoolean);
+      typStringID :
+         if ArgExpr.InheritsFrom(TConstStringExpr) then
+            FTypeParamSym:=TSymbol(potResultConstString)
+         else FTypeParamSym:=TSymbol(potResultString);
+   else
+      FTypeParamSym:=TSymbol(potResult);
+   end;
    FStackAddr:=StackAddr;
    FArgExpr:=ArgExpr;
 end;
@@ -2679,19 +2700,20 @@ end;
 //
 procedure TPushOperator.Execute(stack : TStack);
 begin
-   if FTypeParamSym=TSymbol(potAddr) then
-      ExecuteAddr(stack)
-   else if FTypeParamSym=TSymbol(potTempAddr) then
-      ExecuteTempAddr(stack)
-   else if FTypeParamSym=TSymbol(potTempArrayAddr) then
-      ExecuteTempArrayAddr(stack)
-   else if FTypeParamSym=TSymbol(potResultString) then
-      ExecuteResultString(stack)
-   else if FTypeParamSym=TSymbol(potResult) then
-      ExecuteResult(stack)
-   else if FTypeParamSym=TSymbol(potLazy) then
-      ExecuteLazy(stack)
-   else ExecuteData(stack);
+   case TPushOperatorType(FTypeParamSym) of
+      potAddr : ExecuteAddr(stack);
+      potTempAddr : ExecuteTempAddr(stack);
+      potTempArrayAddr : ExecuteTempArrayAddr(stack);
+      potResultBoolean : ExecuteResultBoolean(stack);
+      potResultInteger : ExecuteResultInteger(stack);
+      potResultFloat : ExecuteResultFloat(stack);
+      potResultString : ExecuteResultString(stack);
+      potResultConstString : ExecuteResultConstString(stack);
+      potResult : ExecuteResult(stack);
+      potLazy : ExecuteLazy(stack);
+   else
+      ExecuteData(stack);
+   end;
 end;
 
 type
@@ -2768,6 +2790,30 @@ begin
    stack.WriteValue(stack.StackPointer + FStackAddr, FArgExpr.Eval);
 end;
 
+// ExecuteResultBoolean
+//
+procedure TPushOperator.ExecuteResultBoolean(stack : TStack);
+begin
+   stack.WriteBoolValue(stack.StackPointer + FStackAddr, FArgExpr.EvalAsBoolean);
+end;
+
+// ExecuteResultInteger
+//
+procedure TPushOperator.ExecuteResultInteger(stack : TStack);
+begin
+   stack.WriteIntValue(stack.StackPointer + FStackAddr, FArgExpr.EvalAsInteger);
+end;
+
+// ExecuteResultFloat
+//
+procedure TPushOperator.ExecuteResultFloat(stack : TStack);
+var
+   buf : Double;
+begin
+   FArgExpr.EvalAsFloat(buf);
+   stack.WriteFloatValue(stack.StackPointer + FStackAddr, buf);
+end;
+
 // ExecuteResultString
 //
 procedure TPushOperator.ExecuteResultString(stack : TStack);
@@ -2776,6 +2822,16 @@ var
 begin
    FArgExpr.EvalAsString(buf);
    stack.WriteStrValue(stack.StackPointer + FStackAddr, buf);
+end;
+
+// ExecuteResultConstString
+//
+procedure TPushOperator.ExecuteResultConstString(stack : TStack);
+var
+   buf : PString;
+begin
+   buf:=TConstStringExpr(FArgExpr).EvalsAsPString;
+   stack.WriteStrValue(stack.StackPointer + FStackAddr, buf^);
 end;
 
 // ExecuteData
@@ -3196,14 +3252,7 @@ begin
 end;
 
 function TMethodStaticExpr.PreCall(var ScriptObj: IScriptObj): TFuncSymbol;
-//var
-//   vobj : Variant;
 begin
-   // Set Self variable
-//   vobj:=FBaseExpr.Eval;
-//   ScriptObj := IScriptObj(IUnknown(vobj));
-//   VarCopy(FProg.Stack.Data[FProg.Stack.StackPointer + FSelfAddr], vobj);
-
    FBaseExpr.EvalAsScriptObj(ScriptObj);
    FProg.Stack.WriteInterfaceValue(FProg.Stack.StackPointer + FSelfAddr, ScriptObj);
 
