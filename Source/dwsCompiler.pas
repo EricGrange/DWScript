@@ -25,7 +25,7 @@ interface
 uses
   Variants, Classes, SysUtils, dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors,
   dwsStrings, dwsFunctions, dwsStack, dwsCoreExprs, dwsFileSystem, dwsUtils,
-  dwsMagicExprs;
+  dwsMagicExprs, dwsRelExprs;
 
 type
    TCompilerOption = (coOptimize, coSymbolDictionary, coContextMap);
@@ -120,7 +120,7 @@ type
    TAddArgProcedure = procedure(ArgExpr: TNoPosExpr) of object;
 
    TSpecialKeywordKind = (skNone, skAssigned, skHigh, skLength, skLow,
-                          skOrd, skSizeOf, skDefined, skDeclared);
+                          skOrd, skSizeOf, skDefined, skDeclared, skSqr);
 
    TSwitchInstruction = (siNone,
                          siIncludeLong, siIncludeShort,
@@ -3449,9 +3449,9 @@ begin
          hotPos := FTok.HotPos;
 
          // Read right argument
-         r := ReadExprAdd;
+         r:=ReadExprAdd;
          try
-            if (Result.Typ is TClassSymbol) or (Result.Typ = FProg.TypNil) then begin
+            if (Result.Typ is TClassSymbol) or (Result.Typ=FProg.TypNil) then begin
                case tt of
                   ttEQ, ttNOTEQ:
                      Result := TObjCmpExpr.CreateCmp(FProg, Result, r, tt = ttEQ);
@@ -3461,31 +3461,13 @@ begin
                   FProg.Msgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
                end;
             end else begin
-               roeClass:=TRelOpExpr;
-               if (r.Typ=Result.Typ) then begin
-                  if r.Typ=FProg.TypInteger then
-                     roeClass:=TRelOpIntExpr
-                  else if r.Typ=FProg.TypFloat then
-                     roeClass:=TRelOpFloatExpr
-                  else if r.Typ=FProg.TypString then
-                     roeClass:=TRelOpStrExpr;
-               end else if r.IsNumberValue and Result.IsNumberValue then begin
-                  roeClass:=TRelOpFloatExpr;
-                  if Optimize then begin
-                     Result:=Result.OptimizeIntegerConstantToFloatConstant;
-                     r:=r.OptimizeIntegerConstantToFloatConstant;
-                  end;
-               end;
-
-               case tt of
-                  ttEQ: Result := roeClass.CreateRel(FProg, Result, r, roEqual);
-                  ttLESS: Result := roeClass.CreateRel(FProg, Result, r, roLess);
-                  ttGTR: Result := roeClass.CreateRel(FProg, Result, r, roMore);
-                  ttLESSEQ: Result := roeClass.CreateRel(FProg, Result, r, roLessEqual);
-                  ttGTREQ: Result := roeClass.CreateRel(FProg, Result, r, roMoreEqual);
-                  ttNOTEQ: Result := roeClass.CreateRel(FProg, Result, r, roUnEqual);
-               else
-                  FProg.Msgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
+               roeClass:=FBinaryOperators.RelOperatorClassFor(tt, Result.Typ, r.Typ);
+               if roeClass<>nil then
+                  Result:=roeClass.Create(FProg, Result, r)
+               else begin
+                  FProg.Msgs.AddCompilerError(hotPos, CPE_InvalidOperands);
+                  // keep going
+                  Result:=TRelOpExpr.Create(FProg, Result, r);
                end;
             end;
          except
@@ -4221,7 +4203,8 @@ begin
       'o' :
          if SameText(name, 'ord') then Result:=skOrd;
       's' :
-         if SameText(name, 'sizeof') then Result:=skSizeOf;
+         if SameText(name, 'sizeof') then Result:=skSizeOf
+         else if SameText(name, 'sqr') then Result:=skSqr;
    end;
 end;
 
@@ -4492,9 +4475,10 @@ end;
 
 procedure TdwsConfiguration.InitSystemTable;
 var
-   clsObject, clsException, clsDelphiException: TClassSymbol;
-   meth: TMethodSymbol;
-   varSym: TBaseSymbol;
+   clsObject, clsException, clsDelphiException : TClassSymbol;
+   clsMeta : TClassOfSymbol;
+   meth : TMethodSymbol;
+   varSym : TBaseSymbol;
 begin
    // Create base data types
    SystemTable.AddSymbol(TBaseSymbol.Create(SYS_BOOLEAN, typBooleanID, False));
@@ -4525,6 +4509,10 @@ begin
    meth.Executable := ICallable(TEmptyFunc.Create);
    clsObject.AddMethod(meth);
    SystemTable.AddSymbol(clsObject);
+
+   // Create "root" metaclass TObject
+   clsMeta:=TClassOfSymbol.Create(SYS_TCLASS, clsObject);
+   SystemTable.AddSymbol(clsMeta);
 
    // Create class Exception
    clsException := TClassSymbol.Create(SYS_EXCEPTION);
@@ -5128,6 +5116,20 @@ begin
             else if (argTyp=FProg.TypInteger) or (argTyp is TDynamicArraySymbol) then
                Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, 0)
             else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+         end;
+         skSqr : begin
+            case argTyp.BaseTypeID of
+               typIntegerID : begin
+                  Result:=TSqrIntExpr.Create(FProg, argExpr);
+                  argExpr:=nil;
+               end;
+               typFloatID : begin
+                  Result:=TSqrFloatExpr.Create(FProg, argExpr);
+                  argExpr:=nil;
+               end;
+            else
+               FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_NumericalExpected);
+            end;
          end;
          skOrd: begin
             case argTyp.BaseTypeID of

@@ -34,6 +34,7 @@ const
   SYS_SELF = 'Self';
   SYS_INTERNAL = 'Internal';
   SYS_SYSTEM = 'System';
+  SYS_TCLASS = 'TClass';
   SYS_TOBJECT = 'TObject';
   SYS_TOBJECT_CREATE = 'Create';
   SYS_TOBJECT_DESTROY = 'Destroy';

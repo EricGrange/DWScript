@@ -793,17 +793,46 @@ type
   TDestructorVirtualExpr = class(TMethodVirtualExpr)
   end;
 
-  TUnaryOpExpr = class(TNoPosExpr)
-  protected
-    FExpr: TNoPosExpr;
-  public
-    constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
-    destructor Destroy; override;
-    procedure Initialize; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    function IsConstant : Boolean; override;
-    property Expr: TNoPosExpr read FExpr write FExpr;
-  end;
+   TUnaryOpExpr = class(TNoPosExpr)
+      protected
+         FExpr: TNoPosExpr;
+      public
+         constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+         destructor Destroy; override;
+         procedure Initialize; override;
+         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+         function IsConstant : Boolean; override;
+         property Expr: TNoPosExpr read FExpr write FExpr;
+   end;
+
+   // bool unary result
+   TUnaryOpBoolExpr = class(TUnaryOpExpr)
+      public
+         constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+         function Eval : Variant; override;
+   end;
+
+   // int unary result
+   TUnaryOpIntExpr = class(TUnaryOpExpr)
+      public
+         constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+         function Eval : Variant; override;
+   end;
+
+   // float unary result
+   TUnaryOpFloatExpr = class(TUnaryOpExpr)
+      public
+         constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+         function Eval : Variant; override;
+   end;
+
+   // string unary result
+   TUnaryOpStringExpr = class(TUnaryOpExpr)
+      public
+         constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+         function Eval : Variant; override;
+   end;
+
 
   TNoResultWrapperExpr = class(TNoResultExpr)
   protected
@@ -3223,6 +3252,88 @@ end;
 function TUnaryOpExpr.IsConstant : Boolean;
 begin
    Result:=FExpr.IsConstant;
+end;
+
+// ------------------
+// ------------------ TUnaryOpBoolExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TUnaryOpBoolExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+begin
+   inherited;
+   Typ:=Prog.TypBoolean;
+end;
+
+// Eval
+//
+function TUnaryOpBoolExpr.Eval : Variant;
+begin
+   Result:=EvalAsBoolean;
+end;
+
+// ------------------
+// ------------------ TUnaryOpIntExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TUnaryOpIntExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+begin
+   inherited;
+   Typ:=Prog.TypInteger;
+end;
+
+// Eval
+//
+function TUnaryOpIntExpr.Eval : Variant;
+begin
+   Result:=EvalAsInteger;
+end;
+
+// ------------------
+// ------------------ TUnaryOpFloatExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TUnaryOpFloatExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+begin
+   inherited;
+   Typ:=Prog.TypFloat;
+end;
+
+// Eval
+//
+function TUnaryOpFloatExpr.Eval : Variant;
+var
+   dbl : Double;
+begin
+   EvalAsFloat(dbl);
+   Result:=dbl;
+end;
+
+// ------------------
+// ------------------ TUnaryOpStringExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TUnaryOpStringExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+begin
+   inherited;
+   Typ:=Prog.TypString;
+end;
+
+// Eval
+//
+function TUnaryOpStringExpr.Eval : Variant;
+var
+   str : String;
+begin
+   EvalAsString(str);
+   Result:=str;
 end;
 
 { TMethodStaticExpr }

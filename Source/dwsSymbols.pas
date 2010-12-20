@@ -34,6 +34,7 @@ type
       typVariantID,
       typConnectorID,
       typClassID,
+      typClassOfID,
       typNoneID
    );
 
@@ -638,6 +639,8 @@ type
          constructor Create(const Name: string; Typ: TClassSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
          function IsCompatible(typSym: TSymbol): Boolean; override;
+         function IsOfType(typSym : TSymbol) : Boolean; override;
+         function BaseTypeID : TBaseTypeID; override;
    end;
 
    TObjectDestroyEvent = procedure(ExternalObject: TObject) of object;
@@ -2065,20 +2068,37 @@ begin
             or ((typSym is TClassOfSymbol) and Typ.IsCompatible(typSym.Typ));
 end;
 
+// IsOfType
+//
+function TClassOfSymbol.IsOfType(typSym : TSymbol) : Boolean;
+begin
+   if typSym is TClassOfSymbol then
+      Result:=Typ.IsOfType(typSym.Typ)
+   else Result:=False;
+end;
+
+// BaseTypeID
+//
+function TClassOfSymbol.BaseTypeID : TBaseTypeID;
+begin
+   Result:=typClassOfID;
+end;
+
 function IsBaseTypeCompatible(AType, BType: TBaseTypeID): Boolean;
 const
 {(*}
   compatiblityMask: array[TBaseTypeID, TBaseTypeID] of Boolean =
   (
-   //int    flt    str    bool   var    conn   class   none
-    (true,  false, false, false, true,  true,  false, false), // int
-    (false, true,  false, false, true,  true,  false, false), // flt
-    (false, false, true,  false, true,  true,  false, false), // str
-    (false, false, false, true,  true,  true,  false, false), // bool
-    (true,  true,  true,  true,  true,  true,  false, false), // var
-    (true,  true,  true,  true,  true,  true,  false, false), // conn
-    (false, false, false, false, false, false, true,  false), // class
-    (false, false, false, false, false, false, false, false)  // none
+   //int    flt    str    bool   var    conn   class   classof, none
+    (true,  false, false, false, true,  true,  false, false, false), // int
+    (false, true,  false, false, true,  true,  false, false, false), // flt
+    (false, false, true,  false, true,  true,  false, false, false), // str
+    (false, false, false, true,  true,  true,  false, false, false), // bool
+    (true,  true,  true,  true,  true,  true,  false, false, false), // var
+    (true,  true,  true,  true,  true,  true,  false, false, false), // conn
+    (false, false, false, false, false, false, true,  false, false), // class
+    (false, false, false, false, false, false, false,  true, false), // classof
+    (false, false, false, false, false, false, false, false, false)  // none
   );
 {*)}
 begin

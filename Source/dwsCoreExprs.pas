@@ -23,7 +23,7 @@ unit dwsCoreExprs;
 interface
 
 uses Windows, Classes, Variants, SysUtils, dwsSymbols, dwsErrors, dwsStrings,
-   dwsStack, dwsExprs, dwsUtils, dwsTokenizer;
+   dwsStack, dwsExprs, dwsUtils, dwsTokenizer, dwsRelExprs;
 
 type
 
@@ -346,12 +346,11 @@ type
    end;
 
   // length of dynamic arrays
-  TArrayLengthExpr = class(TUnaryOpExpr)
+  TArrayLengthExpr = class(TUnaryOpIntExpr)
   private
     FDelta: Integer;
   public
     constructor Create(Prog: TdwsProgram; Expr: TDataExpr; Delta: Integer);
-    function Eval: Variant; override;
     function EvalAsInteger : Int64; override;
   end;
 
@@ -370,17 +369,12 @@ type
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
   end;
 
-   TStringLengthExpr = class(TUnaryOpExpr)
+   TStringLengthExpr = class(TUnaryOpIntExpr)
    public
-     constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
-     function Eval: Variant; override;
      function EvalAsInteger : Int64; override;
    end;
 
-   TAssignedExpr = class(TUnaryOpExpr)
-   public
-     constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
-     function Eval: Variant; override;
+   TAssignedExpr = class(TUnaryOpBoolExpr)
    end;
 
    TAssignedInstanceExpr = class(TAssignedExpr)
@@ -393,17 +387,13 @@ type
      function EvalAsBoolean : Boolean; override;
    end;
 
-   TChrExpr = class(TUnaryOpExpr)
+   TChrExpr = class(TUnaryOpStringExpr)
    public
-     constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
-     function Eval: Variant; override;
      procedure EvalAsString(var Result : String); override;
    end;
 
-   TOrdExpr = class(TUnaryOpExpr)
+   TOrdExpr = class(TUnaryOpIntExpr)
    public
-     constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
-     function Eval: Variant; override;
      function EvalAsInteger : Int64; override;
    end;
 
@@ -429,26 +419,6 @@ type
    TAsOpExpr = class(TBinaryOpExpr)
      function Eval: Variant; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-   end;
-
-   // >, <, =, <=, >=, <>
-   TRelOpExpr = class(TBinaryOpExpr)
-     FRelOp: TRelOps;
-     constructor CreateRel(Prog: TdwsProgram; Left, Right: TNoPosExpr; RelOp: TRelOps);
-     function Eval: Variant; override;
-     function EvalAsBoolean: Boolean; override;
-     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-   end;
-   TRelOpExprClass = class of TRelOpExpr;
-
-   TRelOpIntExpr = class(TRelOpExpr)
-     function EvalAsBoolean: Boolean; override;
-   end;
-   TRelOpFloatExpr = class(TRelOpExpr)
-     function EvalAsBoolean: Boolean; override;
-   end;
-   TRelOpStrExpr = class(TRelOpExpr)
-     function EvalAsBoolean: Boolean; override;
    end;
 
    TObjCmpExpr = class(TBinaryOpExpr)
@@ -521,6 +491,7 @@ type
    end;
    TAddIntExpr = class(TIntegerBinOpExpr)
       function EvalAsInteger : Int64; override;
+      procedure EvalAsFloat(var Result : Double); override;
    end;
    TAddStrExpr = class(TStringBinOpExpr)
       procedure EvalAsString(var Result : String); override;
@@ -535,6 +506,7 @@ type
    end;
    TSubIntExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger : Int64; override;
+     procedure EvalAsFloat(var Result : Double); override;
    end;
    TSubFloatExpr = class(TFloatBinOpExpr)
      procedure EvalAsFloat(var Result : Double); override;
@@ -546,8 +518,17 @@ type
    end;
    TMultIntExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger : Int64; override;
+     procedure EvalAsFloat(var Result : Double); override;
+     function  Optimize : TNoPosExpr; override;
+   end;
+   TSqrIntExpr = class(TUnaryOpIntExpr)
+     function EvalAsInteger : Int64; override;
    end;
    TMultFloatExpr = class(TFloatBinOpExpr)
+     procedure EvalAsFloat(var Result : Double); override;
+     function  Optimize : TNoPosExpr; override;
+   end;
+   TSqrFloatExpr = class(TUnaryOpFloatExpr)
      procedure EvalAsFloat(var Result : Double); override;
    end;
 
@@ -608,7 +589,6 @@ type
 
    // newType(x)
    TConvExpr = class(TUnaryOpExpr)
-      function IsConstant : Boolean; override;
    end;
 
    // Float(x)
@@ -1113,6 +1093,7 @@ type
          function ExprClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TNoPosExprClass;
          function BinaryOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TBinaryOpExprClass;
          function AssignmentOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TAssignExprClass;
+         function RelOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TRelOpExprClass;
    end;
 
 // ------------------------------------------------------------------
@@ -2248,12 +2229,6 @@ constructor TArrayLengthExpr.Create(Prog: TdwsProgram; Expr: TDataExpr; Delta: I
 begin
   inherited Create(Prog, Expr);
   FDelta := Delta;
-  FTyp := FProg.TypInteger;
-end;
-
-function TArrayLengthExpr.Eval: Variant;
-begin
-   Result:=EvalAsInteger;
 end;
 
 function TArrayLengthExpr.EvalAsInteger : Int64;
@@ -2453,17 +2428,6 @@ begin
    FCaseConditions.Add(cond);
 end;
 
-// ------------------
-// ------------------ TConvExpr ------------------
-// ------------------
-
-// IsConstant
-//
-function TConvExpr.IsConstant : Boolean;
-begin
-   Result:=FExpr.IsConstant;
-end;
-
 { TConvFloatExpr }
 
 constructor TConvFloatExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
@@ -2545,17 +2509,6 @@ end;
 
 { TStringLengthExpr }
 
-constructor TStringLengthExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
-begin
-  inherited;
-  FTyp := FProg.TypInteger;
-end;
-
-function TStringLengthExpr.Eval: Variant;
-begin
-   Result:=EvalAsInteger;
-end;
-
 // EvalAsInteger
 //
 function TStringLengthExpr.EvalAsInteger : Int64;
@@ -2564,19 +2517,6 @@ var
 begin
    FExpr.EvalAsString(buf);
    Result:=Length(buf);
-end;
-
-{ TAssignedExpr }
-
-constructor TAssignedExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
-begin
-   inherited;
-   FTyp := FProg.TypBoolean;
-end;
-
-function TAssignedExpr.Eval: Variant;
-begin
-   Result:=EvalAsBoolean;
 end;
 
 // ------------------
@@ -2609,20 +2549,6 @@ end;
 
 { TChrExpr }
 
-constructor TChrExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
-begin
-   inherited;
-   FTyp := FProg.TypString;
-end;
-
-function TChrExpr.Eval: Variant;
-var
-   buf : String;
-begin
-   EvalAsString(buf);
-   Result:=buf;
-end;
-
 // EvalAsString
 //
 procedure TChrExpr.EvalAsString(var Result : String);
@@ -2631,17 +2557,6 @@ begin
 end;
 
 { TOrdExpr }
-
-constructor TOrdExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
-begin
-   inherited;
-   FTyp := FProg.TypInteger;
-end;
-
-function TOrdExpr.Eval: Variant;
-begin
-   Result:=EvalAsInteger;
-end;
 
 // EvalAsInteger
 //
@@ -2718,109 +2633,6 @@ begin
       Prog.Msgs.AddCompilerStop(aPos, CPE_ObjectExpected);
    if not ((FRight.Typ is TClassSymbol) or (FRight.Typ = FProg.TypNil)) then
       Prog.Msgs.AddCompilerStop(aPos, CPE_ObjectExpected);
-end;
-
-{ TRelOpExpr }
-
-constructor TRelOpExpr.CreateRel(Prog: TdwsProgram; Left, Right: TNoPosExpr; RelOp: TRelOps);
-begin
-  inherited Create(Prog, Left, Right);
-  FRelOp := RelOp;
-  FTyp := FProg.TypBoolean;
-end;
-
-function TRelOpExpr.Eval: Variant;
-begin
-  Result:=EvalAsBoolean;
-end;
-
-function TRelOpExpr.EvalAsBoolean: Boolean;
-begin
-   case FRelOp of
-      roEqual:      Result := FLeft.Eval = FRight.Eval;
-      roUnEqual:    Result := FLeft.Eval <> FRight.Eval;
-      roLess:       Result := FLeft.Eval < FRight.Eval;
-      roLessEqual:  Result := FLeft.Eval <= FRight.Eval;
-      roMore:       Result := FLeft.Eval > FRight.Eval;
-      roMoreEqual:  Result := FLeft.Eval >= FRight.Eval;
-   else
-      Result:=False;
-      Assert(False);
-   end;
-end;
-
-// TypeCheckNoPos
-//
-procedure TRelOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
-begin
-  inherited;
-  if not (FLeft.Typ.IsCompatible(FRight.Typ)) then
-    Prog.Msgs.AddCompilerStop(aPOs, CPE_InvalidOperands);
-end;
-
-// ------------------
-// ------------------ TRelOpIntExpr ------------------
-// ------------------
-
-function TRelOpIntExpr.EvalAsBoolean: Boolean;
-begin
-   case FRelOp of
-      roEqual:      Result := FLeft.EvalAsInteger = FRight.EvalAsInteger;
-      roUnEqual:    Result := FLeft.EvalAsInteger <> FRight.EvalAsInteger;
-      roLess:       Result := FLeft.EvalAsInteger < FRight.EvalAsInteger;
-      roLessEqual:  Result := FLeft.EvalAsInteger <= FRight.EvalAsInteger;
-      roMore:       Result := FLeft.EvalAsInteger > FRight.EvalAsInteger;
-      roMoreEqual:  Result := FLeft.EvalAsInteger >= FRight.EvalAsInteger;
-   else
-      Result:=False;
-      Assert(False);
-   end;
-end;
-
-// ------------------
-// ------------------ TRelOpFloatExpr ------------------
-// ------------------
-
-function TRelOpFloatExpr.EvalAsBoolean: Boolean;
-var
-   left, right : Double;
-begin
-   FLeft.EvalAsFloat(left);
-   FRight.EvalAsFloat(right);
-   case FRelOp of
-      roEqual:      Result := left = right;
-      roUnEqual:    Result := left <> right;
-      roLess:       Result := left < right;
-      roLessEqual:  Result := left <= right;
-      roMore:       Result := left > right;
-      roMoreEqual:  Result := left >= right;
-   else
-      Result:=False;
-      Assert(False);
-   end;
-end;
-
-// ------------------
-// ------------------ TRelOpStrExpr ------------------
-// ------------------
-
-function TRelOpStrExpr.EvalAsBoolean: Boolean;
-var
-   bufLeft, bufRight : String;
-begin
-   FLeft.EvalAsString(bufLeft);
-   FRight.EvalAsString(bufRight);
-   case FRelOp of
-      roEqual:      Result := bufLeft = bufRight;
-      roUnEqual:    Result := bufLeft <> bufRight;
-      roLess:       Result := bufLeft < bufRight;
-      roLessEqual:  Result := bufLeft <= bufRight;
-      roMore:       Result := bufLeft > bufRight;
-      roMoreEqual:  Result := bufLeft >= bufRight;
-   else
-      Result:=False;
-      Assert(False);
-   end;
 end;
 
 { TNegExpr }
@@ -2940,6 +2752,13 @@ begin
    Result := FLeft.EvalAsInteger + FRight.EvalAsInteger;
 end;
 
+// EvalAsFloat
+//
+procedure TAddIntExpr.EvalAsFloat(var Result : Double);
+begin
+   Result := FLeft.EvalAsInteger + FRight.EvalAsInteger;
+end;
+
 // ------------------
 // ------------------ TAddStrExpr ------------------
 // ------------------
@@ -2986,6 +2805,13 @@ begin
    Result := FLeft.EvalAsInteger - FRight.EvalAsInteger;
 end;
 
+// EvalAsFloat
+//
+procedure TSubIntExpr.EvalAsFloat(var Result : Double);
+begin
+   Result := FLeft.EvalAsInteger - FRight.EvalAsInteger;
+end;
+
 // ------------------
 // ------------------ TSubFloatExpr ------------------
 // ------------------
@@ -3014,7 +2840,38 @@ end;
 
 function TMultIntExpr.EvalAsInteger : Int64;
 begin
-  Result := FLeft.EvalAsInteger * FRight.EvalAsInteger;
+   Result := FLeft.EvalAsInteger * FRight.EvalAsInteger;
+end;
+
+// EvalAsFloat
+//
+procedure TMultIntExpr.EvalAsFloat(var Result : Double);
+begin
+   Result := FLeft.EvalAsInteger * FRight.EvalAsInteger;
+end;
+
+// Optimize
+//
+function TMultIntExpr.Optimize : TNoPosExpr;
+begin
+   Result:=Self;
+   if (FLeft is TVarExpr) and (FRight is TVarExpr) then begin
+      if TVarExpr(FLeft).SameVarAs(TVarExpr(FRight)) then begin
+         Result:=TSqrIntExpr.Create(Prog, FLeft);
+         FLeft:=nil;
+      end;
+   end;
+end;
+
+// ------------------
+// ------------------ TSqrIntExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TSqrIntExpr.EvalAsInteger : Int64;
+begin
+   Result:=Sqr(FExpr.EvalAsInteger);
 end;
 
 // ------------------
@@ -3028,6 +2885,31 @@ begin
    FLeft.EvalAsFloat(Result);
    FRight.EvalAsFloat(bufRight);
    Result:=Result*bufRight;
+end;
+
+// Optimize
+//
+function TMultFloatExpr.Optimize : TNoPosExpr;
+begin
+   Result:=Self;
+   if (FLeft is TVarExpr) and (FRight is TVarExpr) then begin
+      if TVarExpr(FLeft).SameVarAs(TVarExpr(FRight)) then begin
+         Result:=TSqrFloatExpr.Create(Prog, FLeft);
+         FLeft:=nil;
+      end;
+   end;
+end;
+
+// ------------------
+// ------------------ TSqrFloatExpr ------------------
+// ------------------
+
+// EvalAsFloat
+//
+procedure TSqrFloatExpr.EvalAsFloat(var Result : Double);
+begin
+   FExpr.EvalAsFloat(Result);
+   Result:=Sqr(Result);
 end;
 
 { TDivideExpr }
@@ -4823,12 +4705,31 @@ var
    typBoolean : TTypeSymbol;
    typString : TTypeSymbol;
    typVariant : TTypeSymbol;
+   typClassOf : TTypeSymbol;
+
+   procedure RegisterRelOp(aToken : TTokenType; intExpr, floatExpr, strExpr, varExpr : TNoPosExprClass);
+   begin
+      RegisterOperator(aToken,   intExpr,    typInteger, typInteger);
+      RegisterOperator(aToken,   floatExpr,  typFloat,   typFloat);
+      RegisterOperator(aToken,   floatExpr,  typFloat,   typInteger);
+      RegisterOperator(aToken,   floatExpr,  typInteger, typFloat);
+      RegisterOperator(aToken,   strExpr,    typString,  typString);
+      RegisterOperator(aToken,   strExpr,    typString,  typVariant);
+      RegisterOperator(aToken,   strExpr,    typVariant, typString);
+      RegisterOperator(aToken,   varExpr,    typVariant, typVariant);
+      RegisterOperator(aToken,   varExpr,    typFloat,   typVariant);
+      RegisterOperator(aToken,   varExpr,    typInteger, typVariant);
+      RegisterOperator(aToken,   varExpr,    typVariant, typInteger);
+      RegisterOperator(aToken,   varExpr,    typVariant, typFloat);
+   end;
+
 begin
    typInteger:=table.FindSymbol(SYS_INTEGER) as TTypeSymbol;
    typFloat:=table.FindSymbol(SYS_FLOAT) as TTypeSymbol;
    typBoolean:=table.FindSymbol(SYS_BOOLEAN) as TTypeSymbol;
    typString:=table.FindSymbol(SYS_STRING) as TTypeSymbol;
    typVariant:=table.FindSymbol(SYS_VARIANT) as TTypeSymbol;
+   typClassOf:=table.FindSymbol(SYS_TCLASS) as TTypeSymbol;
 
    // computation operators
 
@@ -4919,6 +4820,26 @@ begin
    RegisterOperator(ttSHR,    TShrExpr,         typVariant,  typInteger);
    RegisterOperator(ttSHR,    TShrExpr,         typVariant,  typVariant);
 
+   // comparison operators
+
+   RegisterOperator(ttEQ,     TRelEqualBoolExpr,      typBoolean, typBoolean);
+   RegisterOperator(ttEQ,     TRelEqualBoolExpr,      typVariant, typBoolean);
+   RegisterOperator(ttEQ,     TRelEqualBoolExpr,      typBoolean, typVariant);
+
+   RegisterOperator(ttNOTEQ,  TRelNotEqualBoolExpr,   typBoolean, typBoolean);
+   RegisterOperator(ttNOTEQ,  TRelNotEqualBoolExpr,   typBoolean, typVariant);
+   RegisterOperator(ttNOTEQ,  TRelNotEqualBoolExpr,   typVariant, typBoolean);
+
+   RegisterRelOp(ttEQ,     TRelEqualIntExpr, TRelEqualFloatExpr, TRelEqualStringExpr, TRelEqualVariantExpr);
+   RegisterRelOp(ttNOTEQ,  TRelNotEqualIntExpr, TRelNotEqualFloatExpr, TRelNotEqualStringExpr, TRelNotEqualVariantExpr);
+   RegisterRelOp(ttLESS,   TRelLessIntExpr, TRelLessFloatExpr, TRelLessStringExpr, TRelLessVariantExpr);
+   RegisterRelOp(ttLESSEQ, TRelLessEqualIntExpr, TRelLessEqualFloatExpr, TRelLessEqualStringExpr, TRelLessEqualVariantExpr);
+   RegisterRelOp(ttGTR,    TRelGreaterIntExpr, TRelGreaterFloatExpr, TRelGreaterStringExpr, TRelGreaterVariantExpr);
+   RegisterRelOp(ttGTREQ,  TRelGreaterEqualIntExpr, TRelGreaterEqualFloatExpr, TRelGreaterEqualStringExpr, TRelGreaterEqualVariantExpr);
+
+   RegisterOperator(ttEQ,     TRelEqualStringExpr,    typClassOf, typClassOf);
+   RegisterOperator(ttNOTEQ,  TRelNotEqualStringExpr, typClassOf, typClassOf);
+
    // combined assignment operator
 
    RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignIntExpr,     typInteger,    typInteger);
@@ -4995,6 +4916,18 @@ begin
    expr:=ExprClassFor(aToken, aLeftType, aRightType);
    if (expr<>nil) and expr.InheritsFrom(TAssignExpr) then
       Result:=TAssignExprClass(expr)
+   else Result:=nil;
+end;
+
+// RelOperatorClassFor
+//
+function TBinaryOperators.RelOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TRelOpExprClass;
+var
+   expr : TNoPosExprClass;
+begin
+   expr:=ExprClassFor(aToken, aLeftType, aRightType);
+   if (expr<>nil) and expr.InheritsFrom(dwsRelExprs.TRelOpExpr) then
+      Result:=TRelOpExprClass(expr)
    else Result:=nil;
 end;
 

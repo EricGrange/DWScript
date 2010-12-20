@@ -134,10 +134,6 @@ type
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
 
-   TSqrFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
-   end;
-
    TIntFunc = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
@@ -414,13 +410,6 @@ begin
    Result:=Sqrt(args.AsFloat[0]);
 end;
 
-{ TSqrFunc }
-
-procedure TSqrFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
-begin
-   Result:=Sqr(args.AsFloat[0]);
-end;
-
 { TIntFunc }
 
 procedure TIntFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
@@ -597,7 +586,6 @@ initialization
    RegisterInternalFloatFunction(TLogNFunc, 'LogN', ['n', cFloat, 'x', cFloat], True);
    RegisterInternalFloatFunction(TPowerFunc, 'Power', ['base', cFloat, 'exponent', cFloat], True);
    RegisterInternalFloatFunction(TSqrtFunc, 'Sqrt', ['v', cFloat], True);
-   RegisterInternalFloatFunction(TSqrFunc, 'Sqr', ['v', cFloat], True);
    RegisterInternalFloatFunction(TIntFunc, 'Int', ['v', cFloat], True);
    RegisterInternalFloatFunction(TFracFunc, 'Frac', ['v', cFloat], True);
    RegisterInternalFloatFunction(TFloorFunc, 'Floor', ['v', cFloat], True);
