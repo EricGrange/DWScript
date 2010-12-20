@@ -226,6 +226,7 @@ type
       public
          constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
          procedure EvalAsString(var Result : String); override;
+         function EvalsAsPString : PString; inline;
    end;
 
    // TConstFloatExpr
@@ -1706,6 +1707,13 @@ end;
 procedure TConstStringExpr.EvalAsString(var Result : String);
 begin
    Result:=String(PVarData(@FData[0]).VUString);
+end;
+
+// EvalsAsPString
+//
+function TConstStringExpr.EvalsAsPString : PString;
+begin
+   Result:=PString(@PVarData(@FData[0]).VUString);
 end;
 
 // ------------------
