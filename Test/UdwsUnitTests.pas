@@ -27,6 +27,7 @@ type
          procedure FuncIncNEval(Info: TProgramInfo);
          procedure FuncEnumEval(Info: TProgramInfo);
          procedure FuncVarEval(Info: TProgramInfo);
+         procedure FuncFloatEval(Info: TProgramInfo);
 
          procedure FuncExceptionEval(Info: TProgramInfo);
 
@@ -69,6 +70,8 @@ const
       +'var i=1; FuncVar(i); if i<>2 then PrintLn(''FuncVar def failed'');'#13#10
       +'FuncVar(i, 10); if i<>12 then PrintLn(''FuncVar 10 failed'');'#13#10
       +'FuncVar(i, i); if i<>24 then PrintLn(''FuncVar i failed'');'#13#10
+      +'if FuncFloat(10)<>10.5 then PrintLn(''FuncFloat def failed'');'#13#10
+      +'if FuncFloat(5.1, 4.2)<>9.3 then PrintLn(''FuncFloat failed'');'#13#10
       ;
 
 type
@@ -199,6 +202,18 @@ begin
    param.Name:='n';
    param.DataType:='Integer';
    param.DefaultValue:='1';
+
+   func:=FUnit.Functions.Add as TdwsFunction;
+   func.Name:='FuncFloat';
+   func.OnEval:=FuncFloatEval;
+   func.ResultType:='Float';
+   param:=func.Parameters.Add as TdwsParameter;
+   param.Name:='a';
+   param.DataType:='Float';
+   param:=func.Parameters.Add as TdwsParameter;
+   param.Name:='b';
+   param.DataType:='Float';
+   param.DefaultValue:='0.5';
 end;
 
 // Func1Eval
@@ -255,6 +270,13 @@ end;
 procedure TdwsUnitTests.FuncVarEval(Info: TProgramInfo);
 begin
    Info.ValueAsInteger['i']:=Info.ParamAsInteger[0]+Info.ParamAsInteger[1];
+end;
+
+// FuncFloatEval
+//
+procedure TdwsUnitTests.FuncFloatEval(Info: TProgramInfo);
+begin
+   Info.ResultAsFloat:=Info.ParamAsFloat[0]+Info.ValueAsFloat['b'];
 end;
 
 // FuncExceptionEval
