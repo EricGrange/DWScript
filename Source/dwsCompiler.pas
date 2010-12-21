@@ -5087,7 +5087,7 @@ begin
                Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(argTyp).HighBound);
             end else if argTyp = FProg.TypInteger then begin
                FreeAndNil(argExpr);
-               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, MaxInt);
+               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, High(Int64));
             end else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
          end;
          skLength: begin
@@ -5113,7 +5113,9 @@ begin
                Result:= TConstExpr.CreateTyped(FProg, FProg.TypInteger, TEnumerationSymbol(argTyp).LowBound)
             else if argTyp=FProg.TypString then
                Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, 1)
-            else if (argTyp=FProg.TypInteger) or (argTyp is TDynamicArraySymbol) then
+            else if (argTyp=FProg.TypInteger) then begin
+               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, Low(Int64))
+            end else if (argTyp is TDynamicArraySymbol) then
                Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, 0)
             else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
          end;
