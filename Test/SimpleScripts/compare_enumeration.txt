@@ -1,0 +1,4 @@
+1 = 1 is True
+1 <> 1 is False
+1 = 2 is False
+1 <> 2 is True

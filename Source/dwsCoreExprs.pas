@@ -4925,6 +4925,10 @@ function TBinaryOperators.RelOperatorClassFor(aToken : TTokenType; aLeftType, aR
 var
    expr : TNoPosExprClass;
 begin
+   if (aLeftType=aRightType) and (aLeftType is TEnumerationSymbol) then begin
+      aLeftType:=aLeftType.Typ;
+      aRightType:=aRightType.Typ;
+   end;
    expr:=ExprClassFor(aToken, aLeftType, aRightType);
    if (expr<>nil) and expr.InheritsFrom(dwsRelExprs.TRelOpExpr) then
       Result:=TRelOpExprClass(expr)
