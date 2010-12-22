@@ -1383,8 +1383,11 @@ begin
             FProg.ContextMap.OpenContext(FTok.CurrentPos, nil);
          try
             // Read procedure body
-            if not FTok.TestDelete(ttBEGIN) then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_BeginExpected);
+            if not FTok.TestDelete(ttBEGIN) then begin
+               if FTok.Test(ttFORWARD) then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_FuncForwardAlreadyExists)
+               else FMsgs.AddCompilerStop(FTok.HotPos, CPE_BeginExpected);
+            end;
 
             // Read Statements enclosed in "begin" and "end"
             FProg.Expr := TBlockExpr.Create(FProg, FTok.HotPos);
@@ -2831,7 +2834,7 @@ begin
    // forwarded declaration
    if FTok.Test(ttSEMI) then begin
       if Result.IsForwarded then
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_ForwardAlreadyExists);
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassForwardAlreadyExists);
       Result.SetForwardedPos(FTok.HotPos);
       Exit;
    end else Result.ClearIsForwarded;
