@@ -2207,6 +2207,7 @@ begin
    loopVarExpr:=nil;
    fromExpr:=nil;
    toExpr:=nil;
+   stepExpr:=nil;
    try
       forPos:=FTok.HotPos;
 
@@ -2271,6 +2272,19 @@ begin
 
       end;
 
+      if FTok.Test(ttNAME) and SameText(FTok.GetToken.FString, 'step') then begin
+         FTok.KillToken;
+         stepExpr:=ReadExpr;
+         if not stepExpr.IsIntegerValue then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
+         if stepExpr.InheritsFrom(TConstIntExpr) and (TConstIntExpr(stepExpr).EvalAsInteger<=0) then
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ForLoopStepShouldBeStrictlyPositive,
+                                      [TConstIntExpr(stepExpr).EvalAsInteger]);
+         if forExprClass=TForUpwardExpr then
+            forExprClass:=TForUpwardStepExpr
+         else forExprClass:=TForDownwardStepExpr
+      end;
+
       Result:=forExprClass.Create(FProg, forPos);
       EnterLoop(Result);
       try
@@ -2284,15 +2298,9 @@ begin
          Result.ToExpr:=toExpr;
          toExpr:=nil;
 
-         if FTok.Test(ttNAME) and SameText(FTok.GetToken.FString, 'step') then begin
-            FTok.KillToken;
-            stepExpr:=ReadExpr;
-            Result.StepExpr:=stepExpr;
-            if not stepExpr.IsIntegerValue then
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
-            if stepExpr.InheritsFrom(TConstIntExpr) and (TConstIntExpr(stepExpr).EvalAsInteger<=0) then
-               FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ForLoopStepShouldBeStrictlyPositive,
-                                         [TConstIntExpr(stepExpr).EvalAsInteger]);
+         if stepExpr<>nil then begin
+            TForStepExpr(Result).StepExpr:=stepExpr;
+            stepExpr:=nil;
          end;
 
          if not FTok.TestDelete(ttDO) then
@@ -2308,6 +2316,7 @@ begin
       loopVarExpr.Free;
       fromExpr.Free;
       toExpr.Free;
+      stepExpr.Free;
    end;
 end;
 

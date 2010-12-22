@@ -71,6 +71,7 @@ type
          procedure IncValue(const value: Int64);
          function  EvalAsInteger : Int64; override;
          procedure EvalAsFloat(var Result : Double); override;
+         function  EvalAsPInteger : PInt64;
    end;
 
    TFloatVarExpr = class (TVarExpr)
@@ -878,34 +879,55 @@ type
 
    // for FVarExpr := FFromExpr to FToExpr do FDoExpr;
    TForExpr = class(TNoResultExpr)
-   private
-     FDoExpr: TNoPosExpr;
-     FFromExpr: TNoPosExpr;
-     FToExpr: TNoPosExpr;
-     FStepExpr: TNoPosExpr;
-     FVarExpr: TIntVarExpr;
-   public
-     destructor Destroy; override;
-     procedure Initialize; override;
-     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-     function EvalStep : Int64;
-     property DoExpr: TNoPosExpr read FDoExpr write FDoExpr;
-     property FromExpr: TNoPosExpr read FFromExpr write FFromExpr;
-     property ToExpr: TNoPosExpr read FToExpr write FToExpr;
-     property StepExpr : TNoPosExpr read FStepExpr write FStepExpr;
-     property VarExpr: TIntVarExpr read FVarExpr write FVarExpr;
+      private
+         FDoExpr: TNoPosExpr;
+         FFromExpr: TNoPosExpr;
+         FToExpr: TNoPosExpr;
+         FVarExpr: TIntVarExpr;
+      public
+         destructor Destroy; override;
+         procedure Initialize; override;
+
+         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+         property DoExpr: TNoPosExpr read FDoExpr write FDoExpr;
+         property FromExpr: TNoPosExpr read FFromExpr write FFromExpr;
+         property ToExpr: TNoPosExpr read FToExpr write FToExpr;
+         property VarExpr: TIntVarExpr read FVarExpr write FVarExpr;
    end;
 
    TForExprClass = class of TForExpr;
 
    TForUpwardExpr = class(TForExpr)
-   public
-     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+      public
+         procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
    TForDownwardExpr = class(TForExpr)
-   public
-     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+      public
+         procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+
+   // for FVarExpr := FFromExpr to FToExpr step FStepExpr do FDoExpr;
+   TForStepExpr = class(TForExpr)
+      private
+         FStepExpr: TNoPosExpr;
+      public
+         destructor Destroy; override;
+         procedure Initialize; override;
+         function EvalStep : Int64;
+         property StepExpr : TNoPosExpr read FStepExpr write FStepExpr;
+   end;
+
+   TFoSteprExprClass = class of TForStepExpr;
+
+   TForUpwardStepExpr = class(TForStepExpr)
+      public
+         procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+
+   TForDownwardStepExpr = class(TForStepExpr)
+      public
+         procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
    TLoopExpr = class(TNoResultExpr)
@@ -1254,6 +1276,13 @@ end;
 procedure TIntVarExpr.EvalAsFloat(var Result : Double);
 begin
    FStack.ReadIntAsFloatValue(FStack.BasePointer + FStackAddr, Result);
+end;
+
+// EvalAsPInteger
+//
+function TIntVarExpr.EvalAsPInteger : PInt64;
+begin
+   Result:=FStack.PointerToIntValue(FStack.BasePointer + FStackAddr);
 end;
 
 // ------------------
@@ -4073,7 +4102,6 @@ begin
   FDoExpr.Free;
   FFromExpr.Free;
   FToExpr.Free;
-  FStepExpr.Free;
   FVarExpr.Free;
   inherited;
 end;
@@ -4083,8 +4111,6 @@ begin
   inherited;
   FFromExpr.Initialize;
   FToExpr.Initialize;
-  if FStepExpr<>nil then
-     FStepExpr.Initialize;
   FDoExpr.Initialize;
 end;
 
@@ -4095,29 +4121,41 @@ begin
    // checked in compiler
 end;
 
+{ TForStepExpr }
+
+destructor TForStepExpr.Destroy;
+begin
+   FStepExpr.Free;
+   inherited;
+end;
+
+procedure TForStepExpr.Initialize;
+begin
+   inherited;
+   FStepExpr.Initialize;
+end;
+
 // EvalStep
 //
-function TForExpr.EvalStep : Int64;
+function TForStepExpr.EvalStep : Int64;
 begin
-   if FStepExpr<>nil then begin
-      Result:=FStepExpr.EvalAsInteger;
-      if Result<=0 then
-         AddExecutionStopFmt(RTE_ForLoopStepShouldBeStrictlyPositive, [Result])
-   end else Result:=1;
+   Result:=FStepExpr.EvalAsInteger;
+   if Result<=0 then
+      AddExecutionStopFmt(RTE_ForLoopStepShouldBeStrictlyPositive, [Result])
 end;
 
 { TForUpwardExpr }
 
 procedure TForUpwardExpr.EvalNoResult(var status : TExecutionStatusResult);
 var
-   i, step, toValue: Int64;
+   toValue: Int64;
+   i : PInt64;
 begin
    status:=esrNone;
-   i:=FFromExpr.EvalAsInteger;
+   i:=FVarExpr.EvalAsPInteger;
+   i^:=FFromExpr.EvalAsInteger;
    toValue:=FToExpr.EvalAsInteger;
-   step:=EvalStep;
-   FVarExpr.AssignValueAsPInteger(@i);
-   while i<=toValue do begin
+   while i^<=toValue do begin
       FProg.DoStep(Self);
       FDoExpr.EvalNoResult(status);
       if status<>esrNone then begin
@@ -4130,8 +4168,7 @@ begin
             esrExit : Exit;
          end;
       end;
-      Inc(i, step);
-      FVarExpr.AssignValueAsPInteger(@i);
+      Inc(i^);
    end;
 end;
 
@@ -4139,14 +4176,14 @@ end;
 
 procedure TForDownwardExpr.EvalNoResult(var status : TExecutionStatusResult);
 var
-   i, step, toValue: Int64;
+   toValue: Int64;
+   i : PInt64;
 begin
    status:=esrNone;
-   i:=FFromExpr.EvalAsInteger;
+   i:=FVarExpr.EvalAsPInteger;
+   i^:=FFromExpr.EvalAsInteger;
    toValue:=FToExpr.EvalAsInteger;
-   step:=EvalStep;
-   FVarExpr.AssignValueAsPInteger(@i);
-   while i>=toValue do begin
+   while i^>=toValue do begin
       FProg.DoStep(Self);
       FDoExpr.EvalNoResult(status);
       if status<>esrNone then begin
@@ -4159,8 +4196,77 @@ begin
             esrExit : Exit;
          end;
       end;
-      Dec(i, step);
-      FVarExpr.AssignValueAsPInteger(@i);
+      Dec(i^);
+   end;
+end;
+
+{ TForUpwardStepExpr }
+
+procedure TForUpwardStepExpr.EvalNoResult(var status : TExecutionStatusResult);
+var
+   step, toValue: Int64;
+   i : PInt64;
+begin
+   status:=esrNone;
+   i:=FVarExpr.EvalAsPInteger;
+   i^:=FFromExpr.EvalAsInteger;
+   toValue:=FToExpr.EvalAsInteger;
+   step:=EvalStep;
+   while i^<=toValue do begin
+      FProg.DoStep(Self);
+      FDoExpr.EvalNoResult(status);
+      if status<>esrNone then begin
+         case status of
+            esrBreak : begin
+               status:=esrNone;
+               break;
+            end;
+            esrContinue : status:=esrNone;
+            esrExit : Exit;
+         end;
+      end;
+      try
+         {$OVERFLOWCHECKS ON}
+         i^:=i^+step;
+         {$OVERFLOWCHECKS OFF}
+      except
+         Break;
+      end;
+   end;
+end;
+
+{ TForDownwardStepExpr }
+
+procedure TForDownwardStepExpr.EvalNoResult(var status : TExecutionStatusResult);
+var
+   step, toValue: Int64;
+   i : PInt64;
+begin
+   status:=esrNone;
+   i:=FVarExpr.EvalAsPInteger;
+   i^:=FFromExpr.EvalAsInteger;
+   toValue:=FToExpr.EvalAsInteger;
+   step:=EvalStep;
+   while i^>=toValue do begin
+      FProg.DoStep(Self);
+      FDoExpr.EvalNoResult(status);
+      if status<>esrNone then begin
+         case status of
+            esrBreak : begin
+               status:=esrNone;
+               break;
+            end;
+            esrContinue : status:=esrNone;
+            esrExit : Exit;
+         end;
+      end;
+      try
+         {$OVERFLOWCHECKS ON}
+         i^:=i^-step;
+         {$OVERFLOWCHECKS OFF}
+      except
+         Break;
+      end;
    end;
 end;
 

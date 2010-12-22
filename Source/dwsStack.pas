@@ -85,6 +85,8 @@ type
          function ReadBoolValue(SourceAddr: Integer): Boolean;
          procedure ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown);
 
+         function  PointerToIntValue(addr : Integer) : PInt64;
+
          procedure IncIntValue(destAddr : Integer; const value : Int64);
          procedure AppendStringValue(destAddr : Integer; const value : String);
 
@@ -381,6 +383,24 @@ begin
    if varData.VType=varUnknown then
       Result:=IUnknown(varData.VUnknown)
    else Result:=PVariant(varData)^;
+end;
+
+// PointerToIntValue
+//
+function TStack.PointerToIntValue(addr : Integer) : PInt64;
+
+   procedure Fallback(varData : PVarData);
+   begin
+      PVariant(varData)^:=Int64(0)+PVariant(varData)^;
+   end;
+
+var
+   varData : PVarData;
+begin
+   varData:=@Data[addr];
+   if varData.VType<>varInt64 then
+      Fallback(varData);
+   Result:=@varData.VInt64;
 end;
 
 // IncIntValue
