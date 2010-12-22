@@ -4141,7 +4141,7 @@ function TForStepExpr.EvalStep : Int64;
 begin
    Result:=FStepExpr.EvalAsInteger;
    if Result<=0 then
-      AddExecutionStopFmt(RTE_ForLoopStepShouldBeStrictlyPositive, [Result])
+      raise EScriptError.CreatePosFmt(Pos, RTE_ForLoopStepShouldBeStrictlyPositive, [Result])
 end;
 
 { TForUpwardExpr }
