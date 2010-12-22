@@ -33,7 +33,7 @@ type
          function GetData: TData; override;
          function GetAddr: Integer; override;
       public
-         procedure AddArg(Arg: TNoPosExpr); override;
+         function AddArg(Arg: TNoPosExpr) : TSymbol; override;
          function IsWritable : Boolean; override;
    end;
 
@@ -108,8 +108,12 @@ implementation
 
 // AddArg
 //
-procedure TMagicFuncExpr.AddArg(Arg: TNoPosExpr);
+function TMagicFuncExpr.AddArg(Arg: TNoPosExpr) : TSymbol;
 begin
+   if FArgs.Count<FFunc.Params.Count then
+      Result:=FFunc.Params[FArgs.Count]
+   else Result:=nil;
+
    FArgs.Add(Arg);
 end;
 

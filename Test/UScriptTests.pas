@@ -135,7 +135,7 @@ begin
 
          prog:=FCompiler.Compile(source.Text);
          try
-            CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
+            CheckEquals(False, prog.Msgs.HasErrors, FTests[i]);
             prog.Execute;
             if prog.Msgs.Count=0 then
                output:=(prog.Result as TdwsDefaultResult).Text

@@ -1,0 +1,2 @@
+Warning: Assignment to FOR-Loop variable [line: 4, column: 7]
+Syntax Error: End of block expected [line: 4, column: 9]

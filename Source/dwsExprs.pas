@@ -532,7 +532,7 @@ type
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol);
          destructor Destroy; override;
-         procedure AddArg(Arg: TNoPosExpr); virtual; abstract;
+         function AddArg(Arg: TNoPosExpr) : TSymbol; virtual; abstract;
          procedure TypeCheckNoPos(const aPos : TScriptPos); override;
          procedure Initialize; override;
          function GetArgs : TExprBaseList;
@@ -579,12 +579,12 @@ type
    TFuncExprStates = set of TFuncExprState;
 
    // Function call: func(arg0, arg1, ...);
-   TFuncExpr = class(TFuncExprBase)
+   TFuncExpr = class (TFuncExprBase)
       private
-         FInitResultExpr: TDataExpr;
+         FInitResultExpr : TDataExpr;
          FStates : TFuncExprStates;
-         FPushExprs: packed array of TPushOperator;
-         FResultAddr: Integer;
+         FPushExprs : packed array of TPushOperator;
+         FResultAddr : Integer;
          FCodeExpr : TDataExpr;
 
       protected
@@ -596,7 +596,7 @@ type
                             IsInstruction: Boolean = True; CodeExpr: TDataExpr = nil;
                             IsWritable: Boolean = False);
          destructor Destroy; override;
-         procedure AddArg(Arg: TNoPosExpr); override;
+         function AddArg(Arg: TNoPosExpr) : TSymbol; override;
          procedure AddPushExprs;
          function Eval: Variant; override;
          function GetData: TData; override;
@@ -649,7 +649,7 @@ type
                        BaseExpr: TNoPosExpr; IsWritable: Boolean = True; IsIndex: Boolean = False);
     destructor Destroy; override;
     function AssignConnectorSym(ConnectorType: IConnectorType): Boolean;
-    procedure AddArg(ArgExpr: TNoPosExpr);
+    function AddArg(ArgExpr: TNoPosExpr) : TSymbol;
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
     function Eval: Variant; override;
     procedure Initialize; override;
@@ -879,7 +879,7 @@ type
       public
          destructor Destroy; override;
 
-         procedure AddExpr(AExpr: TNoPosExpr);
+         function AddExpr(AExpr: TNoPosExpr) : TSymbol;
          procedure Insert0(expr : TExprBase);
          procedure Delete(index : Integer);
 
@@ -1071,7 +1071,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsFunctions, dwsCoreExprs, dwsCompiler;
+uses dwsFunctions, dwsCoreExprs;
 
 type
   IDataMaster = interface
@@ -2598,8 +2598,6 @@ begin
          if arg is TDataExpr then begin
             if not TDataExpr(arg).IsWritable then
                AddCompilerErrorFmt(CPE_ConstVarParam, [x, paramSymbol.Name]);
-            if arg is TVarExpr then
-               (Prog.FCompiler as TdwsCompiler).WarnForVarUsage(TVarExpr(arg));
          end else AddCompilerErrorFmt(CPE_ConstVarParam, [x, paramSymbol.Name]);
       end;
       if arg.Typ=nil then
@@ -2915,13 +2913,16 @@ begin
   inherited;
 end;
 
-procedure TFuncExpr.AddArg(Arg: TNoPosExpr);
+function TFuncExpr.AddArg(Arg: TNoPosExpr) : TSymbol;
 begin
-  if (FArgs.Count < FFunc.Params.Count) and (Arg is TFuncExpr)
-     and (FFunc.Params[FArgs.Count].Typ is TFuncSymbol) then
-    Arg := TFuncCodeExpr.Create(Prog,Pos,TFuncExpr(Arg));
+   if FArgs.Count<FFunc.Params.Count then begin
+      Result:=FFunc.Params[FArgs.Count];
+      if     (Arg is TFuncExpr)
+         and (Result.Typ is TFuncSymbol) then
+      Arg:=TFuncCodeExpr.Create(Prog, Pos, TFuncExpr(Arg));
+   end else Result:=nil;
 
-  FArgs.Add(Arg);
+   FArgs.Add(Arg);
 end;
 
 function TFuncExpr.Eval : Variant;
@@ -3119,9 +3120,10 @@ begin
    inherited;
 end;
 
-procedure TNoPosExprList.AddExpr(AExpr: TNoPosExpr);
+function TNoPosExprList.AddExpr(AExpr: TNoPosExpr) : TSymbol;
 begin
-  FList.Add(AExpr);
+   FList.Add(AExpr);
+   Result:=nil;
 end;
 
 // Insert0
@@ -4972,9 +4974,10 @@ begin
   inherited;
 end;
 
-procedure TConnectorCallExpr.AddArg(ArgExpr: TNoPosExpr);
+function TConnectorCallExpr.AddArg(ArgExpr: TNoPosExpr) : TSymbol;
 begin
-  FArgs.Add(ArgExpr);
+   FArgs.Add(ArgExpr);
+   Result:=nil;
 end;
 
 // TypeCheckNoPos

@@ -117,7 +117,7 @@ type
     property Dependencies: TStrings read GetDependencies;
   end;
 
-   TAddArgProcedure = procedure(ArgExpr: TNoPosExpr) of object;
+   TAddArgFunction = function (ArgExpr: TNoPosExpr) : TSymbol of object;
 
    TSpecialKeywordKind = (skNone, skAssigned, skHigh, skLength, skLow,
                           skOrd, skSizeOf, skDefined, skDeclared, skSqr);
@@ -201,7 +201,7 @@ type
       function ReadFor: TForExpr;
       function ReadStaticMethod(methodSym: TMethodSymbol; IsWrite: Boolean): TFuncExpr;
       function ReadFunc(FuncSym: TFuncSymbol; IsWrite: Boolean; CodeExpr: TDataExpr = nil): TNoPosExpr;
-      procedure ReadFuncArgs(AddArgProc: TAddArgProcedure; LDelim: TTokenType = ttBLEFT; RDelim: TTokenType = ttBRIGHT);
+      procedure ReadFuncArgs(const AddArgProc: TAddArgFunction; LDelim: TTokenType = ttBLEFT; RDelim: TTokenType = ttBRIGHT);
       function ReadIf: TIfExpr;
       function ReadInherited(IsWrite: Boolean): TNoPosExpr;
       function ReadInstr: TNoResultExpr;
@@ -269,7 +269,7 @@ type
 
       class function Evaluate(AContext: TdwsProgram; const AExpression: string): TNoPosExpr;
 
-      procedure WarnForVarUsage(varExpr : TVarExpr);
+      procedure WarnForVarUsage(varExpr : TVarExpr; const pos : TScriptPos);
 
       property CurrentProg : TdwsProgram read FProg write FProg;
       property Tokenizer : TTokenizer read FTok write FTok;
@@ -1501,6 +1501,7 @@ function TdwsCompiler.ReadInstr: TNoResultExpr;
 var
    token : TTokenType;
    locExpr : TNoPosExpr;
+   hotPos : TScriptPos;
 begin
    if Assigned(FOnReadInstr) then begin
       Result:=FOnReadInstr(Self);
@@ -1544,6 +1545,7 @@ begin
       if FTok.Test(ttSWITCH) then
          Result := ReadInstrSwitch(False)
       else if FTok.Test(ttBLEFT) or FTok.Test(ttINHERITED) or FTok.TestName then begin // !! TestName must be the last !!
+         hotPos:=FTok.HotPos;
          if FTok.Test(ttBLEFT) then // (X as TY)
             locExpr := ReadSymbol(ReadTerm)
          else locExpr := ReadName(True);
@@ -1551,28 +1553,28 @@ begin
             token:=FTok.TestDeleteAny(cAssignmentTokens);
             if token<>ttNone then begin
                if not (locExpr is TDataExpr) then begin
-                  FMsgs.AddCompilerError(FTok.HotPos, CPE_CantWriteToLeftSide);
+                  FMsgs.AddCompilerError(hotPos, CPE_CantWriteToLeftSide);
                   ReadExpr.Free; // keep compiling
                   Result:=nil;
                end else begin
                   if not TDataExpr(locExpr).IsWritable then
                      FMsgs.AddCompilerError(FTok.HotPos, CPE_CantWriteToLeftSide);
                   if locExpr is TVarExpr then
-                     WarnForVarUsage(TVarExpr(locExpr));
+                     WarnForVarUsage(TVarExpr(locExpr), hotPos);
                   Result := ReadAssign(token, TDataExpr(locExpr));
                end;
             end else if locExpr is TAssignExpr then
                Result:=TAssignExpr(locExpr)
             else if    (locExpr is TFuncExprBase)
                     or (locExpr is TConnectorCallExpr) then begin
-               Result:=TNoResultWrapperExpr.Create(FProg, FTok.HotPos, locExpr);
+               Result:=TNoResultWrapperExpr.Create(FProg, (locExpr as  TPosDataExpr).Pos, locExpr);
             end else if locExpr is TConnectorWriteExpr then
                Result:=TConnectorWriteExpr(locExpr)
             else if locExpr is TStringArraySetExpr then
                Result:=TStringArraySetExpr(locExpr)
             else begin
                Result:=nil;
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidInstruction)
+               FMsgs.AddCompilerStop(hotPos, CPE_InvalidInstruction)
             end;
          except
             locExpr.Free;
@@ -2201,7 +2203,7 @@ var
    loopVarExpr : TIntVarExpr;
    fromExpr, toExpr, stepExpr : TNoPosExpr;
    sym : TSymbol;
-   forPos, enumPos : TScriptPos;
+   forPos, enumPos, stepPos : TScriptPos;
    forExprClass : TForExprClass;
 begin
    loopVarExpr:=nil;
@@ -2220,7 +2222,7 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_FORLoopMustBeLocalVariable);
 
       loopVarExpr:=TIntVarExpr(expr);
-      WarnForVarUsage(loopVarExpr);
+      WarnForVarUsage(loopVarExpr, FTok.HotPos);
 
       if FTok.TestDelete(ttIN) then begin
 
@@ -2274,11 +2276,13 @@ begin
 
       if FTok.Test(ttNAME) and SameText(FTok.GetToken.FString, 'step') then begin
          FTok.KillToken;
+         FTok.Test(ttNone);
+         stepPos:=FTok.HotPos;
          stepExpr:=ReadExpr;
          if not stepExpr.IsIntegerValue then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
+            FMsgs.AddCompilerError(stepPos, CPE_IntegerExpected);
          if stepExpr.InheritsFrom(TConstIntExpr) and (TConstIntExpr(stepExpr).EvalAsInteger<=0) then
-            FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ForLoopStepShouldBeStrictlyPositive,
+            FMsgs.AddCompilerErrorFmt(stepPos, RTE_ForLoopStepShouldBeStrictlyPositive,
                                       [TConstIntExpr(stepExpr).EvalAsInteger]);
          if forExprClass=TForUpwardExpr then
             forExprClass:=TForUpwardStepExpr
@@ -2322,7 +2326,7 @@ end;
 
 // WarnForVarUsage
 //
-procedure TdwsCompiler.WarnForVarUsage(varExpr : TVarExpr);
+procedure TdwsCompiler.WarnForVarUsage(varExpr : TVarExpr; const pos : TScriptPos);
 var
    i : Integer;
    loopExpr : TNoResultExpr;
@@ -2333,7 +2337,7 @@ begin
       if loopExpr.InheritsFrom(TForExpr) then begin
          currVarExpr:=TForExpr(loopExpr).VarExpr;
          if currVarExpr.SameVarAs(varExpr) then begin
-            FMsgs.AddCompilerWarning(FTok.HotPos, CPE_AssignementToFORLoopVariable);
+            FMsgs.AddCompilerWarning(pos, CPE_AssignementToFORLoopVariable);
             Break;
          end;
       end;
@@ -2606,13 +2610,21 @@ end;
 
 // ReadFuncArgs
 //
-procedure TdwsCompiler.ReadFuncArgs(AddArgProc: TAddArgProcedure; LDelim: TTokenType; RDelim: TTokenType);
+procedure TdwsCompiler.ReadFuncArgs(const AddArgProc: TAddArgFunction; LDelim: TTokenType; RDelim: TTokenType);
+var
+   arg : TNoPosExpr;
+   argSym : TSymbol;
+   argPos : TScriptPos;
 begin
    if FTok.TestDelete(LDelim) then begin
       if not FTok.TestDelete(RDelim) then begin
          // At least one argument was found
          repeat
-            AddArgProc(ReadExpr);
+            argPos:=FTok.HotPos;
+            arg:=ReadExpr;
+            argSym:=AddArgProc(arg);
+            if (argSym is TVarParamSymbol) and (arg is TVarExpr) then
+               WarnForVarUsage(TVarExpr(arg), argPos);
          until not FTok.TestDelete(ttCOMMA);
          if not FTok.TestDelete(RDelim) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
