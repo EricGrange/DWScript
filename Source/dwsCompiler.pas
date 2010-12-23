@@ -3043,6 +3043,11 @@ begin
 
    Result:=TClassOperatorSymbol.Create(tt);
    try
+      Result.Typ:=ReadType('');
+
+      if ClassSym.FindClassOperatorStrict(tt, Result.Typ, False)<>nil then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassOperatorRedefined, [Result.Typ.Name]);
+
       if not FTok.TestDelete(ttUSES) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_UsesExpected);
 
@@ -3065,9 +3070,8 @@ begin
 
       if Result.UsesSym.Params.Count<>1 then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_SingleParameterExpected);
-
-      if ClassSym.FindClassOperatorStrict(tt, Result.Typ, False)<>nil then
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassOperatorRedefined, [Result.Typ.Name]);
+      if Result.UsesSym.Params[0].Typ<>Result.Typ then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidParameterType, [Result.UsesSym.Name]);
 
       if not FTok.TestDelete(ttSEMI) then
         FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);

@@ -615,14 +615,12 @@ type
          function GetCaption: string; override;
          function GetDescription: string; override;
 
-         procedure SetUsesSym(const val : TMethodSymbol);
-
       public
          constructor Create(tokenType : TTokenType);
 
          property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
          property TokenType : TTokenType read FTokenType write FTokenType;
-         property UsesSym : TMethodSymbol read FUsesSym write SetUsesSym;
+         property UsesSym : TMethodSymbol read FUsesSym write FUsesSym;
    end;
 
    // type X = class of TMyClass;
@@ -1808,16 +1806,6 @@ end;
 function TClassOperatorSymbol.GetDescription: string;
 begin
    Result:=GetCaption;
-end;
-
-// SetUsesSym
-//
-procedure TClassOperatorSymbol.SetUsesSym(const val : TMethodSymbol);
-begin
-   FUsesSym:=val;
-   if (val<>nil) and (val.Params.Count>0) then
-      Typ:=val.Params[0].Typ
-   else Typ:=nil;
 end;
 
 { TClassSymbol }

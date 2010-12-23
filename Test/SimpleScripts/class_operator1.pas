@@ -1,7 +1,7 @@
 type TTest = class
    Field : String;
    procedure AppendString(str : String);
-   class operator += uses AppendString;
+   class operator += String uses AppendString;
 end;
 
 type TSubTest = class(TTest) end;

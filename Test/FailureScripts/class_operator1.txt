@@ -1,1 +1,1 @@
-Syntax Error: Single parameter expected [line: 4, column: 27]
+Syntax Error: Single parameter expected [line: 4, column: 34]

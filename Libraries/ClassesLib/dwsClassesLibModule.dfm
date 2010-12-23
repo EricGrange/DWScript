@@ -125,10 +125,12 @@ object dwsClassesLib: TdwsClassesLib
           end>
         Operators = <
           item
+            DataType = 'TObject'
             Operator = ttPLUS_ASSIGN
             UsesAccess = 'Add'
           end
           item
+            DataType = 'TObject'
             Operator = ttMINUS_ASSIGN
             UsesAccess = 'Remove'
           end>
@@ -505,10 +507,12 @@ object dwsClassesLib: TdwsClassesLib
           end>
         Operators = <
           item
+            DataType = 'String'
             Operator = ttPLUS_ASSIGN
             UsesAccess = 'Add'
           end
           item
+            DataType = 'String'
             Operator = ttMINUS_ASSIGN
             UsesAccess = 'Remove'
           end>
@@ -964,6 +968,7 @@ object dwsClassesLib: TdwsClassesLib
           end>
         Operators = <
           item
+            DataType = 'Variant'
             Operator = ttPLUS_ASSIGN
             UsesAccess = 'Append'
           end>

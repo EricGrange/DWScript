@@ -2,8 +2,8 @@ type TTest = class
    Field : String;
    procedure AppendString(str : String);
    procedure AppendInteger(i : Integer);
-   class operator += uses AppendString;
-   class operator += uses AppendInteger;
+   class operator += String uses AppendString;
+   class operator += Integer uses AppendInteger;
 end;
 
 procedure TTest.AppendString(str : String);

@@ -1,1 +1,1 @@
-Syntax Error: Class operator already defined for type "String" [line: 6, column: 27]
+Syntax Error: Class operator already defined for type "String" [line: 6, column: 22]

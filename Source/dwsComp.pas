@@ -2691,10 +2691,16 @@ begin
    opSymbol:=TClassOperatorSymbol.Create(FOperator);
    Result:=opSymbol;
 
+   Result.Typ:=GetDataType(Table, DataType);
    sym:=TClassSymbol(ParentSym).Members.FindLocal(FUsesAccess);
    if (sym=nil) or not (sym is TMethodSymbol) then
       raise Exception.CreateFmt(UNT_UsesAccessNotFound, [FUsesAccess]);
    opSymbol.UsesSym:=TMethodSymbol(sym);
+
+   if opSymbol.UsesSym.Params.Count<>1 then
+      raise Exception.Create(CPE_SingleParameterExpected);
+   if opSymbol.UsesSym.Params[0].Typ<>Result.Typ then
+      raise Exception.CreateFmt(CPE_InvalidParameterType, [opSymbol.UsesSym.Name]);
 end;
 
 function TdwsClassOperator.GetDisplayName: string;
