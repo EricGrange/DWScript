@@ -222,6 +222,7 @@ type
       function ReadProcDecl(FuncKind: TFuncKind; ClassSym: TClassSymbol;
                             IsClassMethod: Boolean = False; IsType : Boolean = False): TFuncSymbol;
       procedure ReadProcBody(Proc: TFuncSymbol);
+      function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
       function ReadProperty(ClassSym: TClassSymbol): TPropertySymbol;
       function ReadPropertyExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TNoPosExpr;
       function ReadPropertyReadExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol): TNoPosExpr;
@@ -320,7 +321,8 @@ const
       SWI_IFDEF, SWI_IFNDEF, SWI_IF, SWI_ENDIF, SWI_ELSE,
       SWI_HINT, SWI_WARNING, SWI_ERROR, SWI_FATAL
       );
-   cAssignmentTokens : TTokenTypes = [ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN];
+   cAssignmentTokens : TTokenTypes = [ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN,
+                                      ttTIMES_ASSIGN, ttDIVIDE_ASSIGN];
 
 type
   TExceptionCreateMethod = class(TInternalMethod)
@@ -488,7 +490,7 @@ end;
 //
 function TdwsCompiler.Compile(const aCodeText : String; Conf: TdwsConfiguration): TdwsProgram;
 var
-   x: Integer;
+   x : Integer;
    stackChunkSize: Integer;
    maxDataSize: Integer;
    unitsResolved: TInterfaceList;
@@ -496,6 +498,7 @@ var
    unitTables: TList;
    unitTable: TSymbolTable;
    codeText : String;
+   unitSymbol : TUnitSymbol;
 begin
    FIsExcept := False;
    FFilter := Conf.Filter;
@@ -564,11 +567,10 @@ begin
 
             // Add the units to the program-symboltable
             for x := 0 to unitsTable.Count - 1 do begin
-               FProg.Table.AddSymbol(TUnitSymbol.Create(
-                                       TUnitSymbol(unitsTable[x]).Name,
-                                       TUnitSymbol(unitsTable[x]).Table,
-                                       True));
-               FProg.Table.AddParent(TUnitSymbol(unitsTable[x]).Table);
+               unitSymbol:=TUnitSymbol(unitsTable[x]);
+
+               FProg.Table.AddSymbol(TUnitSymbol.Create( unitSymbol.Name, unitSymbol.Table, True));
+               FProg.Table.AddParent(unitSymbol.Table);
             end;
 
          finally
@@ -2888,6 +2890,8 @@ begin
                   Result.AddMethod(ReadMethodDecl(Result, fkFunction, True))
                else if FTok.TestDelete(ttMETHOD) then
                   Result.AddMethod(ReadMethodDecl(Result, fkMethod, True))
+               else if FTok.TestDelete(ttOPERATOR) then
+                  Result.AddOperator(ReadClassOperatorDecl(Result))
                else FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
 
             end else if FTok.TestDelete(ttPROPERTY) then begin
@@ -3021,6 +3025,61 @@ begin
   end;
 
   Result := CheckParams(ParamsA,ParamsB,False);
+end;
+
+
+// ReadClassOperatorDecl
+//
+function TdwsCompiler.ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
+var
+   tt : TTokenType;
+   usesName : String;
+   usesPos : TScriptPos;
+   sym : TSymbol;
+   rightTyp : TSymbol;
+begin
+   tt:=FTok.TestDeleteAny([ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN]);
+   if tt=ttNone then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_OverloadableOperatorExpected);
+
+   Result:=TClassOperatorSymbol.Create(tt);
+   try
+      if not FTok.TestDelete(ttUSES) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_UsesExpected);
+
+      if not FTok.TestName then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+
+      usesName:=FTok.GetToken.FString;
+      usesPos:=FTok.HotPos;
+      FTok.KillToken;
+
+      sym:=ClassSym.Members.FindSymbol(usesName);
+
+      if    (not Assigned(sym))
+         or (not (sym is TMethodSymbol)) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcedureMethodExpected);
+
+      Result.UsesSym:=TMethodSymbol(sym);
+      if coSymbolDictionary in FCompilerOptions then
+         FProg.SymbolDictionary.Add(sym, usesPos);
+
+      if Result.UsesSym.Params.Count<>1 then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_SingleParameterExpected);
+
+      rightTyp:=Result.UsesSym.Params[0].Typ;
+      if ClassSym.FindClassOperatorStrict(tt, rightTyp)<>nil then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassOperatorRedefined, [rightTyp.Name]);
+
+      if not FTok.TestDelete(ttSEMI) then
+        FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+   except
+      // Remove reference to symbol (gets freed)
+      if coSymbolDictionary in FCompilerOptions then
+         FProg.SymbolDictionary.Remove(Result);
+      Result.Free;
+      raise;
+   end;
 end;
 
 function TdwsCompiler.ReadProperty(ClassSym: TClassSymbol): TPropertySymbol;
@@ -4994,6 +5053,8 @@ function TdwsCompiler.CreateAssign(const pos : TScriptPos; token : TTokenType;
                                    left : TDataExpr; right : TNoPosExpr) : TNoResultExpr;
 var
    exprClass : TAssignExprClass;
+   classOpSymbol : TClassOperatorSymbol;
+   classOpExpr : TFuncExpr;
 begin
    if Assigned(right.Typ) then begin
 
@@ -5011,13 +5072,31 @@ begin
                Result:=TAssignExpr.Create(FProg, pos, left, right);
             end;
          end;
-         ttPLUS_ASSIGN, ttMINUS_ASSIGN : begin
-            exprClass:=FBinaryOperators.AssignmentOperatorClassFor(token, left.Typ, right.Typ);
-            if exprClass=nil then begin
-               FMsgs.AddCompilerError(pos, CPE_IncompatibleOperands);
-               exprClass:=TAssignExpr; // fake to keep compiler going
+         ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN : begin
+            if left.Typ is TClassSymbol then begin
+
+               classOpSymbol:=(left.Typ as TClassSymbol).FindClassOperator(token, right.Typ);
+               if classOpSymbol=nil then
+                  FMsgs.AddCompilerStop(pos, CPE_IncompatibleOperands);
+               classOpExpr:=GetMethodExpr(classOpSymbol.UsesSym, left, rkObjRef, pos, False);
+               try
+                  TFuncExpr(classOpExpr).AddArg(right);
+               except
+                  classOpExpr.Free;
+                  raise;
+               end;
+               Result:=TNoResultWrapperExpr.Create(FProg, pos, classOpExpr);
+
+            end else begin
+
+               exprClass:=FBinaryOperators.AssignmentOperatorClassFor(token, left.Typ, right.Typ);
+               if exprClass=nil then begin
+                  FMsgs.AddCompilerError(pos, CPE_IncompatibleOperands);
+                  exprClass:=TAssignExpr; // fake to keep compiler going
+               end;
+               Result:=exprClass.Create(FProg, pos, left, right);
+
             end;
-            Result:=exprClass.Create(FProg, pos, left, right);
          end;
       else
          Result:=nil;

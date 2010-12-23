@@ -101,7 +101,7 @@ const
   CPE_UnknownUnit = 'Unknown unit "%s"';
 
   // Class declaration errors
-  CPE_CantOverrideNotInherited = 'No method "%s" found in class: "override" not applicable';
+  CPE_CantOverrideNotInherited = 'No method* "%s" found in class: "override" not applicable';
   CPE_CantOverrideNotVirtual = 'Inherited method "%s" isn''t virtual. "override" not applicable';
   CPE_CantOverrideWrongParameterList = 'Parameter list doesn''t match the inherited method';
   CPE_CantReintroduce = 'Method "%s" isn''t overlapping a virtual method';
@@ -109,6 +109,7 @@ const
   CPE_FieldRedefined = 'There is already a field with name "%s"';
   CPE_PropertyRedefined = 'There is already a property with name "%s"';
   CPE_MethodRedefined = 'There is already a method with name "%s"';
+  CPE_ClassOperatorRedefined = 'Class operator already defined for type "%s"';
   CPE_ImplClassNameExpected = 'Class name expected';
   CPE_ImplNotAMethod = 'Member is not a method';
   CPE_ImplInvalidClass = '"%s" is not a method of class "%s"';
@@ -130,7 +131,10 @@ const
   CPE_FuncForwardAlreadyExists = 'There is already a forward declaration of this function!';
   CPE_ClassNotImplementedYet = 'Class "%s" not fully implemented.';
   CPE_ForwardNotImplemented = 'The function "%s" was forward declared but not implemented!';
-  CPE_MethodOrPropertyExpected = 'Method or property declaration Expected';
+  CPE_MethodOrPropertyExpected = 'Method or property declaration expected';
+  CPE_OverloadableOperatorExpected = 'Overloadable operator expected';
+  CPE_SingleParameterExpected = 'Single parameter expected';
+  CPE_UsesExpected = '"USES" expected';
   CPE_FieldMethodUnknown = 'Field/method "%s" not found!';
   CPE_IncompatibleType = 'Field/method "%s" has an incompatible type';
   CPE_ProcedureMethodExpected = 'Procedure expected';
@@ -386,6 +390,7 @@ const
   UNT_SuperClassUnknwon = 'Superclass "%s" not found';
   UNT_ReadAccessNotFound = 'ReadAccess "%s" not found';
   UNT_WriteAccessNotFound = 'WriteAccess "%s" not found';
+  UNT_UsesAccessNotFound = 'UsesAccess "%s" not found';
 
   UNT_InvalidArrayBounds = 'LowBound is higher than HighBound';
 

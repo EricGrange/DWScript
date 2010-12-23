@@ -56,6 +56,7 @@ type
     procedure BeginUpdate;
     procedure Clear; virtual; abstract;
     procedure Delete(Index: Integer); virtual; abstract;
+    procedure Remove(const str : String);
     procedure EndUpdate;
     function Equals(Strings: TdwsStrings): Boolean; reintroduce;
     procedure Exchange(Index1, Index2: Integer); virtual;
@@ -665,6 +666,17 @@ end;
 function TdwsStrings.CompareStrings(const S1, S2: string): Integer;
 begin
   Result := AnsiCompareText(S1, S2);
+end;
+
+// Remove
+//
+procedure TdwsStrings.Remove(const str : String);
+var
+   i : Integer;
+begin
+   i:=IndexOf(str);
+   if i>=0 then
+      Delete(i);
 end;
 
 { TdwsStringList }

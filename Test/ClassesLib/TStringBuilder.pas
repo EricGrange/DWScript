@@ -3,7 +3,7 @@ var sb = TStringBuilder.Create;
 PrintLn('<'+sb.ToString+'>');
 sb.Append('hello');
 PrintLn('<'+sb.ToString+'>');
-sb.Append(' world');
+sb += ' world';
 PrintLn('<'+sb.ToString+'>');
 
 sb.Clear;

@@ -166,6 +166,8 @@ type
     procedure dwsUnitClassesTStringBuilderConstructorsCreateEval(
       Info: TProgramInfo; var ExtObject: TObject);
     procedure dwsUnitClassesTStringBuilderCleanUp(ExternalObject: TObject);
+    procedure dwsUnitClassesTStringsMethodsRemoveEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     FScript: TDelphiWebScript;
     procedure SetScript(const Value: TDelphiWebScript);
@@ -326,6 +328,12 @@ procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsDeleteEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
   TdwsStrings(ExtObject).Delete(Info.ValueAsInteger['Index']);
+end;
+
+procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsRemoveEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+  TdwsStrings(ExtObject).Remove(Info.ParamAsString[0]);
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringsMethodsExchangeEval(

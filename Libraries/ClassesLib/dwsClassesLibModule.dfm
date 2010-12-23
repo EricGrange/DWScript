@@ -123,6 +123,7 @@ object dwsClassesLib: TdwsClassesLib
             OnEval = dwsUnitClassesTListMethodsSetItemsEval
             Kind = mkProcedure
           end>
+        Operators = <>
         Properties = <
           item
             Name = 'Items'
@@ -483,6 +484,25 @@ object dwsClassesLib: TdwsClassesLib
               end>
             OnEval = dwsUnitClassesTStringsMethodsSetValuesEval
             Kind = mkProcedure
+          end
+          item
+            Name = 'Remove'
+            Parameters = <
+              item
+                Name = 'str'
+                DataType = 'String'
+              end>
+            OnEval = dwsUnitClassesTStringsMethodsRemoveEval
+            Kind = mkProcedure
+          end>
+        Operators = <
+          item
+            Operator = ttPLUS_ASSIGN
+            UsesAccess = 'Add'
+          end
+          item
+            Operator = ttMINUS_ASSIGN
+            UsesAccess = 'Remove'
           end>
         Properties = <
           item
@@ -619,6 +639,7 @@ object dwsClassesLib: TdwsClassesLib
             OnEval = dwsUnitClassesTStringListMethodsSetSortedEval
             Kind = mkProcedure
           end>
+        Operators = <>
         Properties = <
           item
             Name = 'Duplicates'
@@ -657,6 +678,7 @@ object dwsClassesLib: TdwsClassesLib
             OnEval = dwsUnitClassesTHashtableMethodsClearEval
             Kind = mkProcedure
           end>
+        Operators = <>
         Properties = <>
       end
       item
@@ -727,6 +749,7 @@ object dwsClassesLib: TdwsClassesLib
             OnEval = dwsUnitClassesTIntegerHashtableMethodsRemoveKeyEval
             Kind = mkFunction
           end>
+        Operators = <>
         Properties = <>
       end
       item
@@ -797,6 +820,7 @@ object dwsClassesLib: TdwsClassesLib
             OnEval = dwsUnitClassesTStringHashtableMethodsRemoveKeyEval
             Kind = mkFunction
           end>
+        Operators = <>
         Properties = <>
       end
       item
@@ -843,6 +867,7 @@ object dwsClassesLib: TdwsClassesLib
             OnEval = dwsUnitClassesTStackMethodsCountEval
             Kind = mkFunction
           end>
+        Operators = <>
         Properties = <>
       end
       item
@@ -889,6 +914,7 @@ object dwsClassesLib: TdwsClassesLib
             OnEval = dwsUnitClassesTQueueMethodsCountEval
             Kind = mkFunction
           end>
+        Operators = <>
         Properties = <>
       end
       item
@@ -928,8 +954,13 @@ object dwsClassesLib: TdwsClassesLib
             OnEval = dwsUnitClassesTStringBuilderMethodsToStringEval
             Kind = mkFunction
           end>
-        OnCleanUp = dwsUnitClassesTStringBuilderCleanUp
+        Operators = <
+          item
+            Operator = ttPLUS_ASSIGN
+            UsesAccess = 'Append'
+          end>
         Properties = <>
+        OnCleanUp = dwsUnitClassesTStringBuilderCleanUp
       end>
     Constants = <
       item

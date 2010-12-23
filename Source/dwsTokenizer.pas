@@ -31,7 +31,7 @@ type
      (ttNone, ttStrVal, ttIntVal, ttFloatVal, ttNAME, ttSWITCH,
      ttLAZY, ttVAR, ttCONST, ttTYPE, ttRECORD, ttARRAY, ttDOT, ttDOTDOT, ttOF,
      ttTRY, ttEXCEPT, ttRAISE, ttFINALLY, ttON, ttREAD, ttWRITE, ttPROPERTY,
-     ttPROCEDURE, ttFUNCTION, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD,
+     ttPROCEDURE, ttFUNCTION, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttOPERATOR,
      ttCLASS, ttNIL, ttIS,
      ttAS, ttINDEX, ttOBJECT,
      ttVIRTUAL, ttOVERRIDE, ttREINTRODUCE, ttINHERITED, ttABSTRACT, ttDEPRECATED,
@@ -181,7 +181,7 @@ const
      '', 'StrVal', 'IntVal', 'FloatVal', 'NAME', 'SWITCH',
      'LAZY', 'VAR', 'CONST', 'TYPE', 'RECORD', 'ARRAY', '.', '..', 'OF',
      'TRY', 'EXCEPT', 'RAISE', 'FINALLY', 'ON', 'READ', 'WRITE', 'PROPERTY',
-     'PROCEDURE', 'FUNCTION', 'CONSTRUCTOR', 'DESTRUCTOR', 'METHOD',
+     'PROCEDURE', 'FUNCTION', 'CONSTRUCTOR', 'DESTRUCTOR', 'METHOD', 'OPERATOR',
      'CLASS', 'NIL', 'IS',
      'AS', 'INDEX', 'OBJECT',
      'VIRTUAL', 'OVERRIDE', 'REINTRODUCE', 'INHERITED', 'ABSTRACT', 'DEPRECATED',
@@ -433,7 +433,7 @@ end;
 // ToAlphaType
 //
 const
-   cAlphaTypeTokens : array [0..70] of TTokenType = (
+   cAlphaTypeTokens : array [0..71] of TTokenType = (
       ttAND, ttARRAY, ttABSTRACT, ttAS,
       ttBEGIN, ttBREAK,
       ttCONST, ttCLASS, ttCONSTRUCTOR, ttCASE, ttCDECL, ttCONTINUE,
@@ -444,7 +444,7 @@ const
       ttLAZY,
       ttMETHOD, ttMOD,
       ttNOT, ttNIL,
-      ttOR, ttOF, ttON, ttOVERRIDE, ttOBJECT,
+      ttOBJECT, ttOF, ttON, ttOPERATOR, ttOR, ttOVERRIDE,
       ttPROCEDURE, ttPROPERTY, ttPASCAL, ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
       ttREPEAT, ttRECORD, ttREAD, ttRAISE, ttREINTRODUCE, ttREGISTER,
       ttSHL, ttSHR, ttSTDCALL,
@@ -521,7 +521,7 @@ begin
       if UpperMatchLen(lookups^[i].Alpha) then
          Exit(lookups^[i].Token);
    end;
-   Result:=ttName;
+   Result:=ttNAME;
 end;
 
 { TState }

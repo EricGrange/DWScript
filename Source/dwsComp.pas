@@ -422,21 +422,15 @@ type
     FOperator: TTokenType;
     FDataType: TDataType;
     FUsesAccess: string;
-    FParameters: TdwsParameters;
   protected
     function GetDisplayName: string; override;
-    procedure SetParameters(const Value: TdwsParameters);
-    function StoreParameters : Boolean;
   public
-    constructor Create(Collection: TCollection); override;
-    destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
     function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
   published
     property DataType: TDataType read FDataType write FDataType;
     property Operator : TTokenType read FOperator write FOperator;
     property UsesAccess : string read FUsesAccess write FUsesAccess;
-    property Parameters: TdwsParameters read FParameters write SetParameters stored StoreParameters;
   end;
 
   TdwsClassOperators = class(TdwsCollection)
@@ -506,6 +500,7 @@ type
          FMethods: TdwsMethods;
          FOnObjectDestroy: TObjectDestroyEvent;
          FProperties: TdwsProperties;
+         FOperators : TdwsClassOperators;
          FHelperObject : TObject;
 
       protected
@@ -525,8 +520,9 @@ type
          property Constructors: TdwsConstructors read FConstructors write FConstructors;
          property Fields: TdwsFields read FFields write FFields;
          property Methods: TdwsMethods read FMethods write FMethods;
-         property OnCleanUp: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
+         property Operators : TdwsClassOperators read FOperators write FOperators;
          property Properties: TdwsProperties read FProperties write FProperties;
+         property OnCleanUp: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
    end;
 
   TdwsClasses = class(TdwsCollection)
@@ -2340,11 +2336,12 @@ end;
 
 constructor TdwsClass.Create(Collection: TCollection);
 begin
-  inherited;
-  FFields := TdwsFields.Create(Self);
-  FConstructors := TdwsConstructors.Create(Self);
-  FMethods := TdwsMethods.Create(Self);
-  FProperties := TdwsProperties.Create(Self);
+   inherited;
+   FFields := TdwsFields.Create(Self);
+   FConstructors := TdwsConstructors.Create(Self);
+   FMethods := TdwsMethods.Create(Self);
+   FProperties := TdwsProperties.Create(Self);
+   FOperators := TdwsClassOperators.Create(Self);
 end;
 
 destructor TdwsClass.Destroy;
@@ -2353,6 +2350,7 @@ begin
    FConstructors.Free;
    FMethods.Free;
    FProperties.Free;
+   FOperators.Free;
    FHelperObject.Free;
    inherited;
 end;
@@ -2403,6 +2401,9 @@ begin
 
       for x := 0 to FProperties.Count - 1 do
          TClassSymbol(Result).AddProperty(TPropertySymbol(TdwsProperty(FProperties.Items[x]).Generate(Table, Result)));
+
+      for x := 0 to FOperators.Count - 1 do
+         TClassSymbol(Result).AddOperator(TClassOperatorSymbol(TdwsClassOperator(FOperators.Items[x]).Generate(Table, Result)));
 
    except
       if not TClassSymbol(Result).IsForwarded then
@@ -2676,53 +2677,29 @@ begin
   begin
     FDataType := TdwsClassOperator(Source).DataType;
     FUsesAccess := TdwsClassOperator(Source).UsesAccess;
-    FParameters.Assign(TdwsClassOperator(Source).Parameters);
     FOperator := TdwsClassOperator(Source).&Operator;
   end;
 end;
 
-constructor TdwsClassOperator.Create(Collection: TCollection);
-begin
-  inherited;
-  FParameters := TdwsParameters.Create(Self);
-end;
-
-destructor TdwsClassOperator.Destroy;
-begin
-  FParameters.Free;
-  inherited;
-end;
-
 function TdwsClassOperator.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
+var
+   opSymbol : TClassOperatorSymbol;
+   sym : TSymbol;
 begin
-  FIsGenerating := True;
+   FIsGenerating := True;
 
-  Result:=nil;
+   opSymbol:=TClassOperatorSymbol.Create(FOperator);
+   Result:=opSymbol;
+
+   sym:=TClassSymbol(ParentSym).Members.FindLocal(FUsesAccess);
+   if (sym=nil) or not (sym is TMethodSymbol) then
+      raise Exception.CreateFmt(UNT_UsesAccessNotFound, [FUsesAccess]);
+   opSymbol.UsesSym:=TMethodSymbol(sym);
 end;
 
 function TdwsClassOperator.GetDisplayName: string;
-var
-   params, dt : string;
 begin
-   if FParameters.Count>0 then
-      params:='('+FParameters.GetDisplayName+')'
-   else params:='';
-   if DataType<>'' then
-      dt:=': '+DataType
-   else dt:='';
-  Result:=Format('operator %s %s%s uses %s;', [cTokenStrings[FOperator], Params, dt, UsesAccess])
-end;
-
-procedure TdwsClassOperator.SetParameters(const Value: TdwsParameters);
-begin
-  FParameters.Assign(Value);
-end;
-
-// StoreParameters
-//
-function TdwsClassOperator.StoreParameters : Boolean;
-begin
-   Result:=(FParameters.Count>0);
+   Result:=Format('operator %s %s uses %s;', [cTokenStrings[FOperator], DataType, UsesAccess])
 end;
 
 { TdwsSymbol }
