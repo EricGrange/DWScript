@@ -152,7 +152,7 @@ initialization
    RegisterInternalFunction(TVarClearFunc, 'VarClear', ['@v', cVariant], '');
    RegisterInternalBoolFunction(TVarIsNullFunc, 'VarIsNull', ['v', cVariant]);
    RegisterInternalBoolFunction(TVarIsEmptyFunc, 'VarIsEmpty', ['v', cVariant]);
-   RegisterInternalIntFunction(TVarTypeFunc, 'VarType', ['v', cVariant]);
+   RegisterInternalFunction(TVarTypeFunc, 'VarType', ['v', cVariant], 'TVarType');
    RegisterInternalFunction(TVarAsTypeFunc, 'VarAsType', ['v', cVariant, 'VarType', cInteger], cVariant);
    RegisterInternalStringFunction(TVarToStrFunc, 'VarToStr', ['v', cVariant]);
 
