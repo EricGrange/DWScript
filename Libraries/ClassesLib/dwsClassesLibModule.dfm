@@ -123,7 +123,15 @@ object dwsClassesLib: TdwsClassesLib
             OnEval = dwsUnitClassesTListMethodsSetItemsEval
             Kind = mkProcedure
           end>
-        Operators = <>
+        Operators = <
+          item
+            Operator = ttPLUS_ASSIGN
+            UsesAccess = 'Add'
+          end
+          item
+            Operator = ttMINUS_ASSIGN
+            UsesAccess = 'Remove'
+          end>
         Properties = <
           item
             Name = 'Items'
