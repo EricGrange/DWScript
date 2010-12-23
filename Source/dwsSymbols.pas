@@ -615,12 +615,14 @@ type
          function GetCaption: string; override;
          function GetDescription: string; override;
 
+         procedure SetUsesSym(const val : TMethodSymbol);
+
       public
          constructor Create(tokenType : TTokenType);
 
          property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
          property TokenType : TTokenType read FTokenType write FTokenType;
-         property UsesSym : TMethodSymbol read FUsesSym write FUsesSym;
+         property UsesSym : TMethodSymbol read FUsesSym write SetUsesSym;
    end;
 
    // type X = class of TMyClass;
@@ -644,6 +646,7 @@ type
          FIsAbstract: Boolean;
          FForwardPosition : PScriptPos;
          FMembers: TSymbolTable;
+         FOperators: TTightList;
          FInstanceSize: Integer;
          FOnObjectDestroy: TObjectDestroyEvent;
          FParent: TClassSymbol;
@@ -673,7 +676,7 @@ type
          procedure SetForwardedPos(const pos : TScriptPos);
          procedure ClearIsForwarded;
 
-         function FindClassOperatorStrict(tokenType : TTokenType; paramType : TSymbol) : TClassOperatorSymbol;
+         function FindClassOperatorStrict(tokenType : TTokenType; paramType : TSymbol; recursive : Boolean) : TClassOperatorSymbol;
          function FindClassOperator(tokenType : TTokenType; paramType : TSymbol) : TClassOperatorSymbol;
 
          property ClassOf: TClassOfSymbol read FClassOfSymbol;
@@ -1807,6 +1810,16 @@ begin
    Result:=GetCaption;
 end;
 
+// SetUsesSym
+//
+procedure TClassOperatorSymbol.SetUsesSym(const val : TMethodSymbol);
+begin
+   FUsesSym:=val;
+   if (val<>nil) and (val.Params.Count>0) then
+      Typ:=val.Params[0].Typ
+   else Typ:=nil;
+end;
+
 { TClassSymbol }
 
 constructor TClassSymbol.Create;
@@ -1822,9 +1835,10 @@ destructor TClassSymbol.Destroy;
 begin
    if FForwardPosition<>nil then
       Dispose(FForwardPosition);
-  FMembers.Free;
-  FClassOfSymbol.Free;
-  inherited;
+   FOperators.Free;
+   FMembers.Free;
+   FClassOfSymbol.Free;
+   inherited;
 end;
 
 function TClassSymbol.CreateMembersTable: TSymbolTable;
@@ -1871,10 +1885,11 @@ end;
 
 // AddOperator
 //
-procedure TClassSymbol.AddOperator(Sym: TClassOperatorSymbol);
+procedure TClassSymbol.AddOperator(sym: TClassOperatorSymbol);
 begin
-   FMembers.AddSymbol(Sym);
-   sym.FClassSymbol := Self;
+   sym.FClassSymbol:=Self;
+   FMembers.AddSymbol(sym);
+   FOperators.Add(sym);
 end;
 
 procedure TClassSymbol.InitData(const Data: TData; Offset: Integer);
@@ -1999,21 +2014,18 @@ end;
 
 // FindClassOperatorStrict
 //
-function TClassSymbol.FindClassOperatorStrict(tokenType : TTokenType; paramType : TSymbol) : TClassOperatorSymbol;
+function TClassSymbol.FindClassOperatorStrict(tokenType : TTokenType; paramType : TSymbol; recursive : Boolean) : TClassOperatorSymbol;
 var
    i : Integer;
-   member : TMemberSymbol;
 begin
-   for i:=0 to Members.Count-1 do begin
-      member:=TMemberSymbol(Members[i]);
-      if     (member.ClassType=TClassOperatorSymbol)
-         and (TClassOperatorSymbol(member).TokenType=tokenType)
-         and (TClassOperatorSymbol(member).UsesSym.Params[0].Typ=paramType) then begin
-         Result:=TClassOperatorSymbol(member);
-         Exit;
-      end;
+   for i:=0 to FOperators.Count-1 do begin
+      Result:=TClassOperatorSymbol(FOperators.List[i]);
+      if     (Result.TokenType=tokenType)
+         and (Result.Typ=paramType) then Exit;
    end;
-   Result:=nil;
+   if recursive and (Parent<>nil) then
+      Result:=Parent.FindClassOperatorStrict(tokenType, paramType, True)
+   else Result:=nil;
 end;
 
 // FindClassOperator
@@ -2021,28 +2033,25 @@ end;
 function TClassSymbol.FindClassOperator(tokenType : TTokenType; paramType : TSymbol) : TClassOperatorSymbol;
 var
    i : Integer;
-   member : TMemberSymbol;
 begin
-   Result:=FindClassOperatorStrict(tokenType, paramType);
+   Result:=FindClassOperatorStrict(tokenType, paramType, False);
    if Result<>nil then Exit;
-   for i:=0 to Members.Count-1 do begin
-      member:=TMemberSymbol(Members[i]);
-      if     (member.ClassType=TClassOperatorSymbol)
-         and (TClassOperatorSymbol(member).TokenType=tokenType)
-         and paramType.IsOfType(TClassOperatorSymbol(member).UsesSym.Params[0].Typ) then begin
-         Result:=TClassOperatorSymbol(member);
-         Exit;
+
+   if FOperators.Count>0 then begin
+      for i:=0 to FOperators.Count-1 do begin
+         Result:=TClassOperatorSymbol(FOperators.List[i]);
+         if     (Result.TokenType=tokenType)
+            and paramType.IsOfType(Result.Typ) then Exit;
+      end;
+      for i:=0 to FOperators.Count-1 do begin
+         Result:=TClassOperatorSymbol(FOperators.List[i]);
+         if     (Result.TokenType=tokenType)
+            and paramType.IsCompatible(Result.Typ) then Exit;
       end;
    end;
-   for i:=0 to Members.Count-1 do begin
-      member:=TMemberSymbol(Members[i]);
-      if     (member.ClassType=TClassOperatorSymbol)
-         and (TClassOperatorSymbol(member).TokenType=tokenType)
-         and paramType.IsCompatible(TClassOperatorSymbol(member).UsesSym.Params[0].Typ) then begin
-         Result:=TClassOperatorSymbol(member);
-         Exit;
-      end;
-   end;
+   if Parent<>nil then
+      Result:=Parent.FindClassOperator(tokenType, paramType)
+   else Result:=nil;
 end;
 
 { TNilSymbol }

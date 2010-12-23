@@ -4,6 +4,8 @@ type TTest = class
    class operator += uses AppendString;
 end;
 
+type TSubTest = class(TTest) end;
+
 procedure TTest.AppendString(str : String);
 begin
    Field:=Field+str+',';
@@ -16,3 +18,10 @@ PrintLn(t.Field);
 
 t += 'second';
 PrintLn(t.Field);
+
+var st = TSubTest.Create;
+
+st.Field:='Hello ';
+st += 'World';
+
+PrintLn(st.Field);

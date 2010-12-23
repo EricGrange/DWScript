@@ -3036,7 +3036,6 @@ var
    usesName : String;
    usesPos : TScriptPos;
    sym : TSymbol;
-   rightTyp : TSymbol;
 begin
    tt:=FTok.TestDeleteAny([ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN]);
    if tt=ttNone then
@@ -3067,9 +3066,8 @@ begin
       if Result.UsesSym.Params.Count<>1 then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_SingleParameterExpected);
 
-      rightTyp:=Result.UsesSym.Params[0].Typ;
-      if ClassSym.FindClassOperatorStrict(tt, rightTyp)<>nil then
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassOperatorRedefined, [rightTyp.Name]);
+      if ClassSym.FindClassOperatorStrict(tt, Result.Typ, False)<>nil then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassOperatorRedefined, [Result.Typ.Name]);
 
       if not FTok.TestDelete(ttSEMI) then
         FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
