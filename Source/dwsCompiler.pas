@@ -1774,16 +1774,30 @@ begin
       // OOP related stuff
 
       else if baseType is TClassSymbol then begin
+
          if FTok.TestDelete(ttBLEFT) then begin
             // Cast
-            Result := ReadExpr;
-            Result.Typ := sym;
+            FTok.TestName;
+            namePos:=FTok.HotPos;
+            Result:=ReadExpr;
+            if    (not (Result.Typ is TClassSymbol))
+               or (
+                     (not TClassSymbol(Result.Typ).IsOfType(baseType))
+                     and (not TClassSymbol(baseType).IsOfType(Result.Typ))
+                  ) then
+               FMsgs.AddCompilerErrorFmt(namePos, CPE_IncompatibleTypes,
+                                         [Result.Typ.Name, baseType.Name]);
+            Result:=TConvClassExpr.Create(FProg, TClassSymbol(baseType), Result);
             if not (FTok.TestDelete(ttBRIGHT)) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
             Result := ReadSymbol(Result, IsWrite);
-         end else Result := ReadSymbol(TConstExpr.CreateTyped(FProg, TClassSymbol(baseType).ClassOf, baseType.Name), IsWrite)
+         end else begin
+            Result := TConstExpr.CreateTyped(FProg, TClassSymbol(baseType).ClassOf, baseType.Name);
+            Result := ReadSymbol(Result, IsWrite)
+         end;
 
       end else if sym.InheritsFrom(TFieldSymbol) then begin
+
          progMeth := TMethodSymbol(TProcedure(FProg).Func);
          if progMeth.IsClassMethod then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
@@ -5311,7 +5325,6 @@ var
 begin
    if not FTok.TestDelete(ttBLEFT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
-
 
    hotPos:=FTok.CurrentPos;
    argExpr:=ReadExpr;

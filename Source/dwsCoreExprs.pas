@@ -615,6 +615,12 @@ type
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
 
+   // Class(x)
+   TConvClassExpr = class (TConvExpr)
+     constructor Create(Prog: TdwsProgram; toTyp : TClassSymbol; Expr: TNoPosExpr);
+     function Eval: Variant; override;
+   end;
+
    // left := right;
    TAssignExpr = class(TNoResultExpr)
    protected
@@ -1117,6 +1123,8 @@ type
          function AssignmentOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TAssignExprClass;
          function RelOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TRelOpExprClass;
    end;
+
+   EClassCast = class (Exception) end;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -2356,7 +2364,7 @@ begin
   scriptObj := IScriptObj(IUnknown(Result));
 
   if Assigned(scriptObj) and not (FRight.Typ.Typ.IsCompatible(scriptObj.ClassSym)) then
-    raise EScriptException.CreateFmt(RTE_ClassCastFailed, [scriptObj.ClassSym.Caption, FRight.Typ.Typ.Caption]);
+    raise EClassCast.CreateFmt(RTE_ClassCastFailed, [scriptObj.ClassSym.Caption, FRight.Typ.Typ.Caption]);
 end;
 
 // TypeCheckNoPos
@@ -2534,6 +2542,30 @@ begin
   inherited;
   if not FExpr.IsVariantValue then
     FProg.Msgs.AddCompilerError(aPos, CPE_VariantExpected);
+end;
+
+// ------------------
+// ------------------ TConvClassExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TConvClassExpr.Create(Prog: TdwsProgram; toTyp : TClassSymbol; Expr: TNoPosExpr);
+begin
+   inherited Create(Prog, Expr);
+   FTyp:=toTyp;
+end;
+
+// Eval
+//
+function TConvClassExpr.Eval: Variant;
+var
+   obj : IScriptObj;
+begin
+   FExpr.EvalAsScriptObj(obj);
+   if (obj<>nil) and (not obj.ClassSym.IsOfType(Typ)) then
+      raise EClassCast.CreateFmt(RTE_ClassCastFailed, [obj.ClassSym.Name, Typ.Name]);
+   Result:=obj;
 end;
 
 { TStringLengthExpr }
