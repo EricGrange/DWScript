@@ -2584,7 +2584,7 @@ begin
       paramSymbol := TParamSymbol(FFunc.Params[x]);
 
       if arg is TArrayConstantExpr then
-         TArrayConstantExpr(arg).Prepare(FFunc.Params[x].Typ.Typ);
+         TArrayConstantExpr(arg).Prepare(paramSymbol.Typ.Typ);
 
       // Expand integer arguments to float if necessary
       if (paramSymbol.Typ = FProg.TypFloat) and (arg.Typ = FProg.TypInteger) then
@@ -2593,7 +2593,7 @@ begin
       FArgs.ExprBase[x] := arg;
 
       if arg.Typ = nil then
-         AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Name]);
+         AddCompilerErrorFmt(CPE_WrongArgumentType, [x, paramSymbol.Typ.Name]);
       if paramSymbol.InheritsFrom(TVarParamSymbol) then begin
          if arg is TDataExpr then begin
             if not TDataExpr(arg).IsWritable then
@@ -2601,9 +2601,9 @@ begin
          end else AddCompilerErrorFmt(CPE_ConstVarParam, [x, paramSymbol.Name]);
       end;
       if arg.Typ=nil then
-         AddCompilerErrorFmt(CPE_WrongArgumentType, [x, FFunc.Params[x].Typ.Name])
+         AddCompilerErrorFmt(CPE_WrongArgumentType, [x, paramSymbol.Typ.Name])
       else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
-         AddCompilerErrorFmt(CPE_WrongArgumentType_Long, [x, FFunc.Params[x].Typ.Name, arg.Typ.Name]);
+         AddCompilerErrorFmt(CPE_WrongArgumentType_Long, [x, paramSymbol.Typ.Name, arg.Typ.Name]);
    end;
 end;
 
