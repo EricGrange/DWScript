@@ -35,12 +35,17 @@ type
 
   TNoPosExpr = class;
   TNoResultExpr = class;
+  TBlockInitExpr = class;
   TExpr = class;
   TNoPosExprList = class;
   TdwsProgram = class;
   TSymbolPositionList = class;
   TFuncExprBase = class;
   TScriptObj = class;
+
+  TExprList = array[0..MaxListSize - 1] of TExpr;
+  PExprList = ^TExprList;
+  PExpr = ^TExpr;
 
   // Interface for units
   IUnit = interface
@@ -265,7 +270,7 @@ type
     FIsDebugging: Boolean;
     FContextMap: TContextMap;
     FExpr: TExpr;
-    FInitExpr: TExpr;
+    FInitExpr: TBlockInitExpr;
     FAddrGenerator: TAddrGeneratorRec;
     FGlobalAddrGenerator: TAddrGeneratorRec;
     FInfo: TProgramInfo;
@@ -346,7 +351,7 @@ type
     property LineCount : Integer read FLineCount write FLineCount;
     property ObjectCount : Integer read FObjectCount write FObjectCount;
     property Expr: TExpr read FExpr write FExpr;
-    property InitExpr: TExpr read FInitExpr;
+    property InitExpr: TBlockInitExpr read FInitExpr;
     property Info: TProgramInfo read FInfo;
     property IsDebugging: Boolean read FIsDebugging;
     property Level: Integer read GetLevel;
@@ -483,6 +488,26 @@ type
   TNullExpr = class(TNoResultExpr)
     procedure EvalNoResult(var status : TExecutionStatusResult); override;
   end;
+
+   // statement; statement; statement;
+   TBlockExprBase = class(TNoResultExpr)
+      protected
+         FStatements : PExprList;
+         FCount : Integer;
+
+      public
+         destructor Destroy; override;
+
+         procedure AddStatement(expr : TExpr);
+
+         procedure Initialize; override;
+   end;
+
+   // statement; statement; statement;
+   TBlockInitExpr = class(TBlockExprBase)
+      public
+         procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
 
   // Encapsulates data
   TDataExpr = class(TNoPosExpr)
@@ -1434,7 +1459,7 @@ begin
    FRootTable := TProgramSymbolTable.Create(SystemTable, @FAddrGenerator);
    FTable := FRootTable;
 
-   FInitExpr := TBlockExprNoStep.Create(Self, cNullPos);
+   FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
 
    // Initialize shortcuts to often used symbols
    FTypBoolean := SystemTable.FindSymbol(SYS_BOOLEAN) as TTypeSymbol;
@@ -1882,7 +1907,7 @@ begin
   FRootTable := TProgramSymbolTable.Create(Parent.Table, @FAddrGenerator);
   FTable := FRootTable;
 
-  FInitExpr := TBlockExpr.Create(Self, cNullPos);
+  FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
 
   // Connect the procedure to the root TdwsProgram
   FRoot := Parent.Root;
@@ -2459,7 +2484,62 @@ begin
    //nothing
 end;
 
-{ TDataExpr }
+// ------------------
+// ------------------ TBlockExprBase ------------------
+// ------------------
+
+// Destroy
+//
+destructor TBlockExprBase.Destroy;
+var
+   i : Integer;
+begin
+   for i:=0 to FCount-1 do
+      FStatements[i].Free;
+   FreeMem(FStatements);
+   inherited;
+end;
+
+// AddStatement
+//
+procedure TBlockExprBase.AddStatement(expr : TExpr);
+begin
+   ReallocMem(FStatements, (FCount+1)*SizeOf(TExpr));
+   FStatements[FCount]:=expr;
+   Inc(FCount);
+end;
+
+// Initialize
+//
+procedure TBlockExprBase.Initialize;
+var
+   i : Integer;
+begin
+   for i:=0 to FCount-1 do
+      FStatements[i].Initialize;
+end;
+
+// ------------------
+// ------------------ TBlockInitExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TBlockInitExpr.EvalNoResult(var status : TExecutionStatusResult);
+var
+   i : Integer;
+   expr : TExpr;
+begin
+   for i:=0 to FCount-1 do begin
+      expr:=FStatements[i];
+      expr.EvalNoResult(status);
+      if status<>esrNone then Break;
+   end;
+end;
+
+// ------------------
+// ------------------ TDataExpr ------------------
+// ------------------
 
 constructor TDataExpr.Create(Prog: TdwsProgram; Typ: TSymbol);
 begin
@@ -2854,11 +2934,9 @@ end;
 // ExecuteResultConstString
 //
 procedure TPushOperator.ExecuteResultConstString(stack : TStack);
-var
-   buf : PString;
 begin
-   buf:=TConstStringExpr(FArgExpr).EvalAsPString;
-   stack.WriteStrValue(stack.StackPointer + FStackAddr, buf^);
+   stack.WriteStrValue(stack.StackPointer + FStackAddr,
+                       TConstStringExpr(FArgExpr).Value);
 end;
 
 // ExecuteData

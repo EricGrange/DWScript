@@ -60,7 +60,7 @@ type
          FList: PPointerList;
 
          procedure RaiseIndexOutOfBounds;
-         function GetList : PPointerList;
+         function GetList : PPointerList; inline;
 
       public
          FCount: Integer;     // exposed so it can be used for direct property access

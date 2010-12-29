@@ -36,5 +36,6 @@
 {$T-} // typed addr off - otherwise you'll get problems with ComSupport
       // <<.CreateResFmt(@SNoMethod, [Names]);>>
 
+{.$DEFINE PUREPASCAL}
 
 

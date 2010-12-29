@@ -80,7 +80,7 @@ type
          procedure AssignExpr(Expr: TNoPosExpr); override;
          procedure AssignValue(const Value: Variant); override;
          procedure EvalAsFloat(var Result : Double); override;
-         function  EvalAsPFloat : PDouble; inline;
+         function  EvalAsPFloat : PDouble;
    end;
 
    TStrVarExpr = class (TVarExpr)
@@ -216,27 +216,33 @@ type
    // TConstIntExpr
    //
    TConstIntExpr = class (TUnifiedConstExpr)
+      private
+         FValue : Int64;
       public
          constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
          function EvalAsInteger : Int64; override;
          procedure EvalAsFloat(var Result : Double); override;
    end;
 
-   // TConstStringExpr
-   //
-   TConstStringExpr = class(TUnifiedConstExpr)
-      public
-         constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
-         procedure EvalAsString(var Result : String); override;
-         function EvalAsPString : PString; inline;
-   end;
-
    // TConstFloatExpr
    //
    TConstFloatExpr = class(TUnifiedConstExpr)
+      private
+         FValue : Double;
       public
          constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
          procedure EvalAsFloat(var Result : Double); override;
+   end;
+
+   // TConstStringExpr
+   //
+   TConstStringExpr = class(TUnifiedConstExpr)
+      private
+         FValue : String;
+      public
+         constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
+         procedure EvalAsString(var Result : String); override;
+         property Value : String read FValue write FValue;
    end;
 
    TArrayConstantExpr = class(TDataExpr)
@@ -807,30 +813,22 @@ type
    end;
 
    // statement; statement; statement;
-   TBlockExpr = class(TNoResultExpr)
+   TBlockExpr = class(TBlockExprBase)
       private
-         FStatements: TTightList;
-         FTable: TSymbolTable;
+         FTable : TSymbolTable;
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
          destructor Destroy; override;
 
-         procedure AddStatement(Expr: TExpr);
          procedure EvalNoResult(var status : TExecutionStatusResult); override;
-         procedure Initialize; override;
          function  Optimize : TNoPosExpr; override;
+
          property  Table: TSymbolTable read FTable;
    end;
 
    // statement; statement; statement;
-   TBlockExprNoTable = class(TBlockExpr)
-      public
-         procedure EvalNoResult(var status : TExecutionStatusResult); override;
-   end;
-
-   // statement; statement; statement;
-   TBlockExprNoStep = class(TBlockExpr)
+   TBlockExprNoTable = class(TBlockExprBase)
       public
          procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
@@ -1326,7 +1324,7 @@ var
    buf : Double;
 begin
    Expr.EvalAsFloat(buf);
-   FStack.WriteFloatValue(FStack.BasePointer + FStackAddr, buf);
+   FStack.WriteFloatValue(FStack.BasePointer+FStackAddr, buf);
 end;
 
 procedure TFloatVarExpr.AssignValue(const Value: Variant);
@@ -1687,8 +1685,8 @@ constructor TConstBooleanExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Valu
 begin
    if Typ=nil then
       Typ:=Prog.TypBoolean;
-   inherited Create(Prog, Typ, Value);
    FValue:=Value;
+   inherited Create(Prog, Typ, FValue);
 end;
 
 // EvalAsInteger
@@ -1712,57 +1710,37 @@ end;
 // Create
 //
 constructor TConstIntExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
-var
-   i64 : Int64;
 begin
    if Typ=nil then
       Typ:=Prog.TypInteger;
-   i64:=Value;
-   inherited Create(Prog, Typ, i64);
+   FValue:=Value;
+   inherited Create(Prog, Typ, FValue);
 end;
 
 // EvalAsInteger
 //
 function TConstIntExpr.EvalAsInteger : Int64;
+{$ifdef PUREPASCAL}
 begin
-   Result:=PVarData(@FData[0]).VInt64;
+   Result:=FValue;
+{$else}
+asm
+   mov   edx, [eax + OFFSET FValue + 4]
+   mov   eax, [eax + OFFSET FValue]
+{$endif}
 end;
 
 // EvalAsFloat
 //
 procedure TConstIntExpr.EvalAsFloat(var Result : Double);
+{$ifdef PUREPASCAL}
 begin
-   Result:=PVarData(@FData[0]).VInt64;
-end;
-
-// ------------------
-// ------------------ TConstStringExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TConstStringExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
-var
-   str : String;
-begin
-   if Typ=nil then
-      Typ:=Prog.TypString;
-   UnifyAssignString(Value, str);
-   inherited Create(Prog, Typ, str);
-end;
-
-// EvalAsString
-//
-procedure TConstStringExpr.EvalAsString(var Result : String);
-begin
-   Result:=String(PVarData(@FData[0]).VUString);
-end;
-
-// EvalAsPString
-//
-function TConstStringExpr.EvalAsPString : PString;
-begin
-   Result:=PString(@PVarData(@FData[0]).VUString);
+   Result:=FValue;
+{$else}
+asm
+   fild  qword ptr [eax + OFFSET FValue]
+   fstp  qword ptr [edx]
+{$endif}
 end;
 
 // ------------------
@@ -1775,14 +1753,36 @@ constructor TConstFloatExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value:
 begin
    if Typ=nil then
       Typ:=Prog.TypFloat;
-   inherited Create(Prog, Typ, Double(Value));
+   FValue:=Value;
+   inherited Create(Prog, Typ, FValue);
 end;
 
 // EvalAsFloat
 //
 procedure TConstFloatExpr.EvalAsFloat(var Result : Double);
 begin
-   Result:=PVarData(@FData[0]).VDouble;
+   Result:=FValue;
+end;
+
+// ------------------
+// ------------------ TConstStringExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TConstStringExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
+begin
+   if Typ=nil then
+      Typ:=Prog.TypString;
+   UnifyAssignString(Value, FValue);
+   inherited Create(Prog, Typ, FValue);
+end;
+
+// EvalAsString
+//
+procedure TConstStringExpr.EvalAsString(var Result : String);
+begin
+   Result:=FValue;
 end;
 
 { TArrayExpr }
@@ -3882,23 +3882,15 @@ end;
 constructor TBlockExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
 begin
    inherited Create(Prog, Pos);
-   FTable := TSymbolTable.Create(Prog.Table, Prog.Table.AddrGenerator);
+   FTable:=TSymbolTable.Create(Prog.Table, Prog.Table.AddrGenerator);
 end;
 
 // Destroy
 //
 destructor TBlockExpr.Destroy;
 begin
-   FStatements.Clean;
    FTable.Free;
    inherited;
-end;
-
-// AddStatement
-//
-procedure TBlockExpr.AddStatement(Expr: TExpr);
-begin
-   FStatements.Add(Expr);
 end;
 
 // EvalNoResult
@@ -3908,14 +3900,12 @@ var
    i : Integer;
    oldTable : TSymbolTable;
    expr : TExpr;
-   list : PPointerList;
 begin
    oldTable:=FProg.Table;
    try
       FProg.Table:=FTable;
-      list:=FStatements.List;
-      for i:=0 to FStatements.Count-1 do begin
-         expr:=TExpr(list[i]);
+      for i:=0 to FCount-1 do begin
+         expr:=FStatements[i];
          FProg.DoStep(expr);
          expr.EvalNoResult(status);
          if status<>esrNone then Break;
@@ -3925,31 +3915,27 @@ begin
    end;
 end;
 
-procedure TBlockExpr.Initialize;
-var
-   i : Integer;
-begin
-   for i:=0 to FStatements.Count-1 do
-      TNoPosExpr(FStatements.List[i]).Initialize;
-end;
-
 // Optimize
 //
 function TBlockExpr.Optimize : TNoPosExpr;
 begin
    if FTable.Count=0 then begin
-      case FStatements.Count of
+      case FCount of
          0 : Result:=TNullExpr.Create(Prog, Pos);
-         1 : Result:=TNoPosExpr(FStatements.List[0]);
+         1 : begin
+            Result:=FStatements[0];
+            FreeMem(FStatements);
+         end;
       else
          Result:=TBlockExprNoTable.Create(Prog, Pos);
-         TBlockExprNoTable(Result).FStatements.Assign(FStatements);
+         TBlockExprNoTable(Result).FStatements:=FStatements;
+         TBlockExprNoTable(Result).FCount:=FCount;
       end;
-      FStatements.Clear;
+      FStatements:=nil;
+      FCount:=0;
       Free;
    end else Result:=Self;
 end;
-
 
 // ------------------
 // ------------------ TBlockExprNoTable ------------------
@@ -3960,40 +3946,14 @@ end;
 procedure TBlockExprNoTable.EvalNoResult(var status : TExecutionStatusResult);
 var
    i : Integer;
-   expr : TExpr;
-   list : PPointerList;
+   iterator : PExpr;
 begin
-   list:=FStatements.List;
-   for i:=0 to FStatements.Count-1 do begin
-      expr:=TExpr(list[i]);
-      FProg.DoStep(expr);
-      expr.EvalNoResult(status);
+   iterator:=PExpr(FStatements);
+   for i:=1 to FCount do begin
+      FProg.DoStep(iterator^);
+      iterator^.EvalNoResult(status);
       if status<>esrNone then Break;
-   end;
-end;
-
-// ------------------
-// ------------------ TBlockExprNoStep ------------------
-// ------------------
-
-// EvalNoResult
-//
-procedure TBlockExprNoStep.EvalNoResult(var status : TExecutionStatusResult);
-var
-   i : Integer;
-   oldTable : TSymbolTable;
-   expr : TExpr;
-begin
-   oldTable:=FProg.Table;
-   try
-      FProg.Table:=FTable;
-      for i:=0 to FStatements.Count-1 do begin
-         expr:=TExpr(FStatements.List[i]);
-         expr.EvalNoResult(status);
-         if status<>esrNone then Break;
-      end;
-   finally
-      FProg.Table:=oldTable;
+      Inc(iterator);
    end;
 end;
 
@@ -4459,7 +4419,6 @@ procedure TRepeatExpr.EvalNoResult(var status : TExecutionStatusResult);
 begin
    status:=esrNone;
    repeat
-      FProg.DoStep(Self);
       FLoopExpr.EvalNoResult(status);
       if status<>esrNone then begin
          case status of
@@ -4471,6 +4430,7 @@ begin
             esrExit : Exit;
          end;
       end;
+      FProg.DoStep(Self);
    until FCondExpr.EvalAsBoolean;
 end;
 

@@ -851,7 +851,7 @@ begin
             if sym.Typ is TArraySymbol then begin
 
                // TODO: if Sym.DynamicInit?
-               TBlockExpr(FProg.InitExpr).AddStatement(
+               FProg.InitExpr.AddStatement(
                   TInitDataExpr.Create(FProg, Pos, varExpr));
 
             end else begin
@@ -871,7 +871,7 @@ begin
                   constExpr:=TConstExpr.CreateTyped(FProg, sym.Typ, initData);
                   assignExpr:=TAssignConstDataToVarExpr.Create(FProg, pos, varExpr, constExpr);
                end;
-               TBlockExpr(FProg.InitExpr).AddStatement(assignExpr);
+               FProg.InitExpr.AddStatement(assignExpr);
 
             end;
 
@@ -1372,7 +1372,7 @@ begin
                if sectionType=ttVAR then begin
                   assignExpr:=ReadVarDecl;
                   if assignExpr<>nil then
-                     TBlockExpr(FProg.InitExpr).AddStatement(assignExpr);
+                     FProg.InitExpr.AddStatement(assignExpr);
                end else if sectionType=ttCONST then
                   ReadConstDecl;
 
@@ -1424,43 +1424,44 @@ end;
 //
 function TdwsCompiler.ReadBlocks(const endTokens: TTokenTypes; var finalToken: TTokenType): TNoResultExpr;
 var
-   blk : TExpr;
+   stmt : TExpr;
    oldTable : TSymbolTable;
    x : Integer;
    token : TToken;
    closePos : TScriptPos; // Position at which the ending token was found (for context)
+   blockExpr : TBlockExpr;
 begin
    // Read a block of instructions enclosed in "begin" and "end"
-   Result := TBlockExpr.Create(FProg, FTok.HotPos);
+   blockExpr:=TBlockExpr.Create(FProg, FTok.HotPos);
    try
       if coContextMap in FCompilerOptions then begin
          FProg.ContextMap.OpenContext(FTok.CurrentPos, nil);
-         closePos := FTok.CurrentPos;     // default to close context where it openned (used on errors)
+         closePos:=FTok.CurrentPos;     // default to close context where it opened (used on errors)
       end;
 
-      oldTable := FProg.Table;
-      FProg.Table := TBlockExpr(Result).Table;
+      oldTable:=FProg.Table;
+      FProg.Table:=blockExpr.Table;
       try
          // Add local table to context for the new block
          if coContextMap in FCompilerOptions then
-           FProg.ContextMap.Current.LocalTable := FProg.Table;
+            FProg.ContextMap.Current.LocalTable:=FProg.Table;
 
          while True do begin
 
-            if FTok.HasTokens then begin
-               if FTok.GetToken.FTyp in EndTokens then begin
-                  finalToken := FTok.GetToken.FTyp;
-                  closePos := FTok.GetToken.FPos;    // get start position of ending token
-                  FTok.KillToken;
-                  Break;
-               end;
-            end else begin
+            if not FTok.HasTokens then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndOfBlockExpected);
+
+            if FTok.GetToken.FTyp in EndTokens then begin
+               finalToken:=FTok.GetToken.FTyp;
+               closePos:=FTok.GetToken.FPos;    // get start position of ending token
+               FTok.KillToken;
+               Break;
             end;
 
-            blk := ReadStatement;
-            if Assigned(blk) then
-               TBlockExpr(Result).AddStatement(blk);
+            stmt := ReadStatement;
+            if Assigned(stmt) then
+               blockExpr.AddStatement(stmt);
+
             if not FTok.TestDelete(ttSEMI) then begin
                token:=FTok.GetToken;
                if (token=nil) or (not (token.FTyp in EndTokens)) then
@@ -1470,20 +1471,21 @@ begin
          end;
 
       finally
-         FProg.Table := oldTable;
+         FProg.Table:=oldTable;
          if coContextMap in FCompilerOptions then
             FProg.ContextMap.CloseContext(closePos);   // get to end of block
       end;
 
       if Optimize then
-         Result:=Result.OptimizeToNoResultExpr;
+         Result:=blockExpr.OptimizeToNoResultExpr
+      else Result:=blockExpr;
 
    except
       // Remove any symbols in the expression's table. Table will be freed.
       if coSymbolDictionary in FCompilerOptions then
-         for x := 0 to TBlockExpr(Result).Table.Count - 1 do
-            FProg.SymbolDictionary.Remove(TBlockExpr(Result).Table[x]);
-      Result.Free;
+         for x:=0 to blockExpr.Table.Count - 1 do
+            FProg.SymbolDictionary.Remove(blockExpr.Table[x]);
+      blockExpr.Free;
       raise;
    end;
 end;

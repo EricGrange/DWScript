@@ -80,15 +80,15 @@ type
          function  ReadValue(SourceAddr: Integer): Variant; inline;
          function  ReadIntValue(SourceAddr: Integer): Int64; inline;
          procedure ReadIntAsFloatValue(SourceAddr: Integer; var Result : Double); inline;
-         procedure ReadFloatValue(SourceAddr: Integer; var Result : Double); inline;
-         procedure ReadStrValue(SourceAddr: Integer; var Result : String); inline;
-         function  ReadBoolValue(SourceAddr: Integer): Boolean; inline;
-         procedure ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown); inline;
+         procedure ReadFloatValue(SourceAddr: Integer; var Result : Double);
+         procedure ReadStrValue(SourceAddr: Integer; var Result : String);
+         function  ReadBoolValue(SourceAddr: Integer): Boolean;
+         procedure ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown);
 
          function  PointerToIntValue(addr : Integer) : PInt64;
          function  PointerToFloatValue(addr : Integer) : PDouble;
 
-         procedure IncIntValue(destAddr : Integer; const value : Int64);
+         procedure IncIntValue(destAddr : Integer; const value : Int64); inline;
          procedure AppendStringValue(destAddr : Integer; const value : String);
 
          procedure PushBp(Level, Bp: Integer);
@@ -342,9 +342,8 @@ var
    varData : PVarData;
 begin
    varData:=@Data[SourceAddr];
-   if varData.VType=varInt64 then
-      Result:=varData.VInt64
-   else Result:=PVariant(varData)^;
+   Assert(varData.VType=varInt64);
+   Result:=varData.VInt64;
 end;
 
 // ReadFloatValue
@@ -420,19 +419,12 @@ end;
 // IncIntValue
 //
 procedure TStack.IncIntValue(destAddr: Integer; const value: Int64);
-
-   procedure Fallback(varData : PVarData);
-   begin
-      PVariant(varData)^:=value+PVariant(varData)^;
-   end;
-
 var
    varData : PVarData;
 begin
    varData:=@Data[destAddr];
-   if varData.VType=varInt64 then
-      varData.VInt64:=varData.VInt64+value
-   else Fallback(varData);
+   Assert(varData.VType=varInt64);
+   varData.VInt64:=varData.VInt64+value
 end;
 
 // AppendStringValue
