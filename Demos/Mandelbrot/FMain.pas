@@ -77,7 +77,7 @@ begin
    QueryPerformanceCounter(tStop);
    IMDWScript.Picture.Assign(FBitmap);
    FBitmap.Free;
-   LADWScript.Caption:=Format('DWScript: %0.1f ms', [1000*(tStop-tStart)/tFreq]);
+   LADWScript.Caption:=Format('DWScript: %0.1f ms (incl. compilation)', [1000*(tStop-tStart)/tFreq]);
 end;
 
 // PrepareBitmap
