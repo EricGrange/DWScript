@@ -899,7 +899,7 @@ begin
                   HandleHexa(FTokenBuf, Result);
 
                // Converts integer constants
-               caInteger:
+               caInteger :
                   HandleInteger(FTokenBuf, Result);
 
                // Converts Floating Point numbers
@@ -922,10 +922,13 @@ begin
                      end;
                   end;
 
-               caDotDot:
-                  Result.FTyp := ttDOTDOT;
-           end;
-           FTokenBuf.Len:=0;
+               caDotDot: begin
+                  Result.FPos:=FPos;
+                  Result.FPos.Col:=Result.FPos.Col-1;
+                  Result.FTyp:=ttDOTDOT;
+               end;
+            end;
+            FTokenBuf.Len:=0;
          end;
 
          // If the token is complete then exit
