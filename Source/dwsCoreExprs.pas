@@ -80,7 +80,7 @@ type
          procedure AssignExpr(Expr: TNoPosExpr); override;
          procedure AssignValue(const Value: Variant); override;
          procedure EvalAsFloat(var Result : Double); override;
-         function  EvalAsPFloat : PDouble;
+         function  EvalAsPFloat : PDouble; inline;
    end;
 
    TStrVarExpr = class (TVarExpr)
