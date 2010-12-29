@@ -71,7 +71,7 @@ type
          procedure IncValue(const value: Int64);
          function  EvalAsInteger : Int64; override;
          procedure EvalAsFloat(var Result : Double); override;
-         function  EvalAsPInteger : PInt64;
+         function  EvalAsPInteger : PInt64; inline;
    end;
 
    TFloatVarExpr = class (TVarExpr)
@@ -80,6 +80,7 @@ type
          procedure AssignExpr(Expr: TNoPosExpr); override;
          procedure AssignValue(const Value: Variant); override;
          procedure EvalAsFloat(var Result : Double); override;
+         function  EvalAsPFloat : PDouble; inline;
    end;
 
    TStrVarExpr = class (TVarExpr)
@@ -227,7 +228,7 @@ type
       public
          constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
          procedure EvalAsString(var Result : String); override;
-         function EvalsAsPString : PString; inline;
+         function EvalAsPString : PString; inline;
    end;
 
    // TConstFloatExpr
@@ -522,14 +523,19 @@ type
      procedure EvalAsFloat(var Result : Double); override;
      function  Optimize : TNoPosExpr; override;
    end;
-   TSqrIntExpr = class(TUnaryOpIntExpr)
-     function EvalAsInteger : Int64; override;
-   end;
    TMultFloatExpr = class(TFloatBinOpExpr)
      procedure EvalAsFloat(var Result : Double); override;
      function  Optimize : TNoPosExpr; override;
    end;
+
+   // Sqr ( a )
+   TSqrIntExpr = class(TUnaryOpIntExpr)
+     function EvalAsInteger : Int64; override;
+   end;
    TSqrFloatExpr = class(TUnaryOpFloatExpr)
+     procedure EvalAsFloat(var Result : Double); override;
+   end;
+   TSqrFloatVarExpr = class(TUnaryOpFloatExpr)
      procedure EvalAsFloat(var Result : Double); override;
    end;
 
@@ -739,6 +745,24 @@ type
    end;
    // a -= b (float)
    TMinusAssignFloatExpr = class(TMinusAssignExpr)
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+
+   // a *= b
+   TMultAssignExpr = class(TOpAssignExpr)
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+   // a *= b (int)
+   TMultAssignIntExpr = class(TMultAssignExpr)
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+   // a *= b (float)
+   TMultAssignFloatExpr = class(TMultAssignExpr)
+     procedure EvalNoResult(var status : TExecutionStatusResult); override;
+   end;
+
+   // a /= b
+   TDivideAssignExpr = class(TOpAssignExpr)
      procedure EvalNoResult(var status : TExecutionStatusResult); override;
    end;
 
@@ -1318,6 +1342,13 @@ begin
    FStack.ReadFloatValue(FStack.BasePointer + FStackAddr, Result);
 end;
 
+// EvalAsPFloat
+//
+function TFloatVarExpr.EvalAsPFloat : PDouble;
+begin
+   Result:=FStack.PointerToFloatValue(FStack.BasePointer + FStackAddr);
+end;
+
 // ------------------
 // ------------------ TStrVarExpr ------------------
 // ------------------
@@ -1727,9 +1758,9 @@ begin
    Result:=String(PVarData(@FData[0]).VUString);
 end;
 
-// EvalsAsPString
+// EvalAsPString
 //
-function TConstStringExpr.EvalsAsPString : PString;
+function TConstStringExpr.EvalAsPString : PString;
 begin
    Result:=PString(@PVarData(@FData[0]).VUString);
 end;
@@ -2841,11 +2872,11 @@ end;
 
 procedure TAddFloatExpr.EvalAsFloat(var Result : Double);
 var
-   bufRight : Double;
+   bufLeft, bufRight : Double;
 begin
-   FLeft.EvalAsFloat(Result);
+   FLeft.EvalAsFloat(bufLeft);
    FRight.EvalAsFloat(bufRight);
-   Result:=Result+bufRight;
+   Result:=bufLeft+bufRight;
 end;
 
 // ------------------
@@ -2879,11 +2910,11 @@ end;
 
 procedure TSubFloatExpr.EvalAsFloat(var Result : Double);
 var
-   bufRight : Double;
+   bufLeft, bufRight : Double;
 begin
-   FLeft.EvalAsFloat(Result);
+   FLeft.EvalAsFloat(bufLeft);
    FRight.EvalAsFloat(bufRight);
-   Result:=Result-bufRight;
+   Result:=bufLeft-bufRight;
 end;
 
 // ------------------
@@ -2925,6 +2956,33 @@ begin
 end;
 
 // ------------------
+// ------------------ TMultFloatExpr ------------------
+// ------------------
+
+procedure TMultFloatExpr.EvalAsFloat(var Result : Double);
+var
+   bufLeft, bufRight : Double;
+begin
+   FLeft.EvalAsFloat(bufLeft);
+   FRight.EvalAsFloat(bufRight);
+   Result:=bufLeft*bufRight;
+end;
+
+// Optimize
+//
+function TMultFloatExpr.Optimize : TNoPosExpr;
+begin
+   Result:=Self;
+   if (FLeft is TFloatVarExpr) and (FRight is TFloatVarExpr) then begin
+      if TFloatVarExpr(FLeft).SameVarAs(TFloatVarExpr(FRight)) then begin
+         Result:=TSqrFloatVarExpr.Create(Prog, FLeft);
+         FLeft:=nil;
+         Free;
+      end;
+   end;
+end;
+
+// ------------------
 // ------------------ TSqrIntExpr ------------------
 // ------------------
 
@@ -2933,32 +2991,6 @@ end;
 function TSqrIntExpr.EvalAsInteger : Int64;
 begin
    Result:=Sqr(FExpr.EvalAsInteger);
-end;
-
-// ------------------
-// ------------------ TMultFloatExpr ------------------
-// ------------------
-
-procedure TMultFloatExpr.EvalAsFloat(var Result : Double);
-var
-   bufRight : Double;
-begin
-   FLeft.EvalAsFloat(Result);
-   FRight.EvalAsFloat(bufRight);
-   Result:=Result*bufRight;
-end;
-
-// Optimize
-//
-function TMultFloatExpr.Optimize : TNoPosExpr;
-begin
-   Result:=Self;
-   if (FLeft is TVarExpr) and (FRight is TVarExpr) then begin
-      if TVarExpr(FLeft).SameVarAs(TVarExpr(FRight)) then begin
-         Result:=TSqrFloatExpr.Create(Prog, FLeft);
-         FLeft:=nil;
-      end;
-   end;
 end;
 
 // ------------------
@@ -2973,17 +3005,28 @@ begin
    Result:=Sqr(Result);
 end;
 
+// ------------------
+// ------------------ TSqrFloatVarExpr ------------------
+// ------------------
+
+// EvalAsFloat
+//
+procedure TSqrFloatVarExpr.EvalAsFloat(var Result : Double);
+begin
+   Result:=Sqr(TFloatVarExpr(FExpr).EvalAsPFloat^);
+end;
+
 { TDivideExpr }
 
 // EvalAsFloat
 //
 procedure TDivideExpr.EvalAsFloat(var Result : Double);
 var
-   b : Double;
+   bufLeft, bufRight : Double;
 begin
-   FLeft.EvalAsFloat(Result);
-   FRight.EvalAsFloat(b);
-   Result:=Result/b;
+   FLeft.EvalAsFloat(bufLeft);
+   FRight.EvalAsFloat(bufRight);
+   Result:=bufLeft/bufRight;
 end;
 
 { TDivExpr }
@@ -3718,6 +3761,60 @@ begin
    FLeft.EvalAsFloat(v1);
    FRight.EvalAsFloat(v2);
    v1:=v1-v2;
+   FLeft.AssignValueAsFloat(v1);
+end;
+
+// ------------------
+// ------------------ TMultAssignExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TMultAssignExpr.EvalNoResult(var status : TExecutionStatusResult);
+begin
+   FLeft.AssignValue(FLeft.Eval * FRight.Eval);
+end;
+
+// ------------------
+// ------------------ TMultAssignIntExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TMultAssignIntExpr.EvalNoResult(var status : TExecutionStatusResult);
+begin
+   FLeft.AssignValueAsInteger(FLeft.EvalAsInteger * FRight.EvalAsInteger);
+end;
+
+// ------------------
+// ------------------ TMultAssignFloatExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TMultAssignFloatExpr.EvalNoResult(var status : TExecutionStatusResult);
+var
+   v1, v2 : Double;
+begin
+   FLeft.EvalAsFloat(v1);
+   FRight.EvalAsFloat(v2);
+   v1:=v1*v2;
+   FLeft.AssignValueAsFloat(v1);
+end;
+
+// ------------------
+// ------------------ TDivideAssignExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TDivideAssignExpr.EvalNoResult(var status : TExecutionStatusResult);
+var
+   v1, v2 : Double;
+begin
+   FLeft.EvalAsFloat(v1);
+   FRight.EvalAsFloat(v2);
+   v1:=v1/v2;
    FLeft.AssignValueAsFloat(v1);
 end;
 
@@ -4983,6 +5080,7 @@ begin
    RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignIntExpr,     typInteger,    typInteger);
    RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignFloatExpr,   typFloat,      typFloat);
    RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignFloatExpr,   typFloat,      typInteger);
+   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignFloatExpr,   typInteger,    typFloat);
    RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignFloatExpr,   typFloat,      typVariant);
    RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignFloatExpr,   typVariant,    typFloat);
    RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignStrExpr,     typString,     typString);
@@ -4995,11 +5093,32 @@ begin
    RegisterOperator(ttMINUS_ASSIGN, TMinusAssignIntExpr,    typInteger,    typInteger);
    RegisterOperator(ttMINUS_ASSIGN, TMinusAssignFloatExpr,  typFloat,      typFloat);
    RegisterOperator(ttMINUS_ASSIGN, TMinusAssignFloatExpr,  typFloat,      typInteger);
+   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignFloatExpr,  typInteger,    typFloat);
    RegisterOperator(ttMINUS_ASSIGN, TMinusAssignFloatExpr,  typFloat,      typVariant);
    RegisterOperator(ttMINUS_ASSIGN, TMinusAssignFloatExpr,  typVariant,    typFloat);
    RegisterOperator(ttMINUS_ASSIGN, TMinusAssignExpr,       typInteger,    typVariant);
    RegisterOperator(ttMINUS_ASSIGN, TMinusAssignExpr,       typVariant,    typVariant);
    RegisterOperator(ttMINUS_ASSIGN, TMinusAssignExpr,       typVariant,    typInteger);
+
+   RegisterOperator(ttTIMES_ASSIGN, TMultAssignIntExpr,     typInteger,     typInteger);
+   RegisterOperator(ttTIMES_ASSIGN, TMultAssignFloatExpr,   typFloat,       typFloat);
+   RegisterOperator(ttTIMES_ASSIGN, TMultAssignFloatExpr,   typFloat,       typInteger);
+   RegisterOperator(ttTIMES_ASSIGN, TMultAssignFloatExpr,   typInteger,     typFloat);
+   RegisterOperator(ttTIMES_ASSIGN, TMultAssignFloatExpr,   typFloat,       typVariant);
+   RegisterOperator(ttTIMES_ASSIGN, TMultAssignFloatExpr,   typVariant,     typFloat);
+   RegisterOperator(ttTIMES_ASSIGN, TMultAssignExpr,        typInteger,     typVariant);
+   RegisterOperator(ttTIMES_ASSIGN, TMultAssignExpr,        typVariant,     typVariant);
+   RegisterOperator(ttTIMES_ASSIGN, TMultAssignExpr,        typVariant,     typInteger);
+
+   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typInteger,     typInteger);
+   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typInteger,     typFloat);
+   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typInteger,     typVariant);
+   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typFloat,       typFloat);
+   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typFloat,       typInteger);
+   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typFloat,       typVariant);
+   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typVariant,     typFloat);
+   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typVariant,     typVariant);
+   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typVariant,     typInteger);
 end;
 
 // RegisterOperator

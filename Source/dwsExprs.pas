@@ -2857,7 +2857,7 @@ procedure TPushOperator.ExecuteResultConstString(stack : TStack);
 var
    buf : PString;
 begin
-   buf:=TConstStringExpr(FArgExpr).EvalsAsPString;
+   buf:=TConstStringExpr(FArgExpr).EvalAsPString;
    stack.WriteStrValue(stack.StackPointer + FStackAddr, buf^);
 end;
 

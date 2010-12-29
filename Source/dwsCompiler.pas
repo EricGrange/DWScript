@@ -164,6 +164,7 @@ type
       procedure CheckSpecialName(const name: string);
       function CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
       procedure CompareFuncSymbols(A, B: TFuncSymbol; IsCheckingParameters: Boolean);
+
       function OpenStreamForFile(const scriptName : String) : TStream;
       function GetScriptSource(const scriptName : String) : String;
 
@@ -842,7 +843,7 @@ begin
          if Assigned(initExpr) then begin
 
             // Initialize with an expression
-            Result := CreateAssign(pos, ttASSIGN, varExpr, initExpr);
+            Result:=CreateAssign(pos, ttASSIGN, varExpr, initExpr);
             initExpr:=nil;
 
          end else begin
@@ -5245,7 +5246,9 @@ begin
                   argExpr:=nil;
                end;
                typFloatID : begin
-                  Result:=TSqrFloatExpr.Create(FProg, argExpr);
+                  if argExpr is TFloatVarExpr then
+                     Result:=TSqrFloatVarExpr.Create(FProg, argExpr)
+                  else Result:=TSqrFloatExpr.Create(FProg, argExpr);
                   argExpr:=nil;
                end;
             else

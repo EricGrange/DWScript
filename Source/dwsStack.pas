@@ -67,25 +67,26 @@ type
          procedure ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);
          procedure CopyData(SourceAddr, DestAddr, Size: Integer);
 
-         procedure WriteValue(DestAddr: Integer; const Value: Variant);
-         procedure WriteIntValue(DestAddr: Integer; const Value: Int64); overload;
-         procedure WriteIntValue(DestAddr: Integer; const pValue: PInt64); overload;
-         procedure WriteFloatValue(DestAddr: Integer; var Value: Double);
-         procedure WriteStrValue(DestAddr: Integer; const Value: String);
-         procedure WriteBoolValue(DestAddr: Integer; const Value: Boolean);
-         procedure WriteInterfaceValue(DestAddr: Integer; const intf: IUnknown);
+         procedure WriteValue(DestAddr: Integer; const Value: Variant); inline;
+         procedure WriteIntValue(DestAddr: Integer; const Value: Int64); overload; inline;
+         procedure WriteIntValue(DestAddr: Integer; const pValue: PInt64); overload; inline;
+         procedure WriteFloatValue(DestAddr: Integer; var Value: Double); inline;
+         procedure WriteStrValue(DestAddr: Integer; const Value: String); inline;
+         procedure WriteBoolValue(DestAddr: Integer; const Value: Boolean); inline;
+         procedure WriteInterfaceValue(DestAddr: Integer; const intf: IUnknown); inline;
 
          function SetStrChar(DestAddr: Integer; index : Integer; c : Char) : Boolean;
 
-         function ReadValue(SourceAddr: Integer): Variant;
-         function ReadIntValue(SourceAddr: Integer): Int64;
-         procedure ReadIntAsFloatValue(SourceAddr: Integer; var Result : Double);
-         procedure ReadFloatValue(SourceAddr: Integer; var Result : Double);
-         procedure ReadStrValue(SourceAddr: Integer; var Result : String);
-         function ReadBoolValue(SourceAddr: Integer): Boolean;
-         procedure ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown);
+         function  ReadValue(SourceAddr: Integer): Variant; inline;
+         function  ReadIntValue(SourceAddr: Integer): Int64; inline;
+         procedure ReadIntAsFloatValue(SourceAddr: Integer; var Result : Double); inline;
+         procedure ReadFloatValue(SourceAddr: Integer; var Result : Double); inline;
+         procedure ReadStrValue(SourceAddr: Integer; var Result : String); inline;
+         function  ReadBoolValue(SourceAddr: Integer): Boolean; inline;
+         procedure ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown); inline;
 
          function  PointerToIntValue(addr : Integer) : PInt64;
+         function  PointerToFloatValue(addr : Integer) : PDouble;
 
          procedure IncIntValue(destAddr : Integer; const value : Int64);
          procedure AppendStringValue(destAddr : Integer; const value : String);
@@ -132,7 +133,16 @@ begin
    end;
 end;
 
-{ TStack }
+// FallBack_VarDataToInt64
+//
+procedure FallBack_VarDataToInt64(varData : PVarData);
+begin
+
+end;
+
+// ------------------
+// ------------------ TStack ------------------
+// ------------------
 
 constructor TStack.Create(chunkSize, maxByteSize: Integer; maxRecursionDepth : Integer);
 begin
@@ -388,19 +398,23 @@ end;
 // PointerToIntValue
 //
 function TStack.PointerToIntValue(addr : Integer) : PInt64;
-
-   procedure Fallback(varData : PVarData);
-   begin
-      PVariant(varData)^:=Int64(0)+PVariant(varData)^;
-   end;
-
 var
    varData : PVarData;
 begin
    varData:=@Data[addr];
-   if varData.VType<>varInt64 then
-      Fallback(varData);
+   Assert(varData.VType=varInt64);
    Result:=@varData.VInt64;
+end;
+
+// PointerToFloatValue
+//
+function TStack.PointerToFloatValue(addr : Integer) : PDouble;
+var
+   varData : PVarData;
+begin
+   varData:=@Data[addr];
+   Assert(varData.VType=varDouble);
+   Result:=@varData.VDouble;
 end;
 
 // IncIntValue
