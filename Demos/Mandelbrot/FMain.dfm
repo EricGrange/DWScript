@@ -1,10 +1,12 @@
 object MainForm: TMainForm
   Left = 383
   Top = 136
+  AutoSize = True
   BorderStyle = bsDialog
+  BorderWidth = 8
   Caption = 'MainForm'
-  ClientHeight = 289
-  ClientWidth = 545
+  ClientHeight = 417
+  ClientWidth = 806
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -17,27 +19,27 @@ object MainForm: TMainForm
   PixelsPerInch = 96
   TextHeight = 14
   object IMDelphi: TImage
-    Left = 8
-    Top = 25
-    Width = 256
-    Height = 256
+    Left = 0
+    Top = 17
+    Width = 400
+    Height = 400
   end
   object IMDWScript: TImage
-    Left = 280
-    Top = 25
-    Width = 256
-    Height = 256
+    Left = 406
+    Top = 17
+    Width = 400
+    Height = 400
   end
   object LADelphi: TLabel
-    Left = 8
-    Top = 8
+    Left = 0
+    Top = 0
     Width = 43
     Height = 14
     Caption = 'LADelphi'
   end
   object LADWScript: TLabel
-    Left = 280
-    Top = 8
+    Left = 406
+    Top = 0
     Width = 59
     Height = 14
     Caption = 'LADWScript'

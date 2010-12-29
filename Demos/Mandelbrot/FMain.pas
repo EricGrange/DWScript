@@ -88,8 +88,8 @@ var
 begin
    FBitmap:=TBitmap.Create;
    FBitmap.PixelFormat:=pf32bit;
-   FBitmap.Width:=256;
-   FBitmap.Height:=256;
+   FBitmap.Width:=400;
+   FBitmap.Height:=400;
 
    SetLength(FScanLines, FBitmap.Height);
    for i:=0 to FBitmap.Height-1 do
@@ -100,9 +100,10 @@ end;
 //
 procedure TMainForm.SetPixel(x, y, color : Integer);
 const
-  cColors: array[0..14] of TColor = (clBlack, clMaroon, clGreen, clNavy,
-    clPurple, clTeal, clGray, clSilver, clRed, clLime, clBlue, clFuchsia,
-    clAqua, clWhite, clBlack);
+   cColors: array[0..14] of TColor = (
+      $000022, $000033, $000044, $000055, $000066, $000077, $000088,
+      $101099, $3030AA, $4040BB, $5050CC, $6060DD, $7070EE, $8080FF, $000000
+      );
 begin
    PIntegerArray(FScanLines[y])[x]:=cColors[color];
 end;
@@ -114,10 +115,10 @@ var
    i, j, newColor : Integer;
    u, v, x, y, z : Double;
 begin
-   for i := 0 to 256-2 do begin
-      for j := 0 to 256-2 do begin
-         x := -0.8 + 3 * i / 256;
-         y := -1.4 + 2.8 * j / 256;
+   for i := 0 to 400-2 do begin
+      for j := 0 to 400-2 do begin
+         x := -0.8 + 3 * i / 400;
+         y := -1.4 + 2.8 * j / 400;
          newColor := 0;
          u := 0;
          v := 0;
@@ -140,10 +141,10 @@ const
       +'var i, j, newColor : Integer;'#13#10
       +'var u, v, x, y, z : Float;'#13#10
       +#13#10
-      +'for i := 0 to 256-2 do begin'#13#10
-      +'   for j := 0 to 256-2 do begin'#13#10
-      +'      x := -0.8 + 3 * i / 256;'#13#10
-      +'      y := -1.4 + 2.8 * j / 256;'#13#10
+      +'for i := 0 to 400-2 do begin'#13#10
+      +'   for j := 0 to 400-2 do begin'#13#10
+      +'      x := -0.8 + 3 * i / 400;'#13#10
+      +'      y := -1.4 + 2.8 * j / 400;'#13#10
       +'      newColor := 0;'#13#10
       +'      u := 0;'#13#10
       +'      v := 0;'#13#10
