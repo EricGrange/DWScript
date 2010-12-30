@@ -42,11 +42,11 @@ type
      ttTRUE, ttFALSE,
      ttAND, ttOR, ttXOR, ttDIV, ttMOD, ttNOT, ttSHL, ttSHR,
      ttPLUS, ttMINUS,
-     ttTIMES, ttDIVIDE,
-     ttAT,
+     ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT,
      ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
      ttSEMI, ttCOMMA, ttCOLON,
      ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
+     ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN,
      ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCRIGHT,
      ttDEFAULT, ttUSES,
 
@@ -192,11 +192,11 @@ const
      'TRUE', 'FALSE',
      'AND', 'OR', 'XOR', 'DIV', 'MOD', 'NOT', 'SHL', 'SHR',
      '+', '-',
-     '*', '/',
-     'AT',
+     '*', '/', '%', '^', '@',
      '=', '<>', '>', '>=', '<', '<=',
      ';', ',', ':',
      ':=', '+=', '-=', '*=', '/=',
+     '%=', '^=', '@=',
      '(', ')', '[', ']', '}',
      'DEFAULT', 'USES',
      'PRIVATE', 'PROTECTED', 'PUBLIC', 'PUBLISHED',
@@ -393,7 +393,24 @@ begin
        else if Len=2 then
          if Buffer[1]='=' then
             Result := ttMINUS_ASSIGN; // '-='
-     '@': Result := ttAT;
+     '@':
+       if Len=1 then
+         Result := ttAT
+       else if Len=2 then
+         if Buffer[1]='=' then
+            Result := ttAT_ASSIGN; // '@='
+     '%':
+       if Len=1 then
+         Result := ttPERCENT
+       else if Len=2 then
+         if Buffer[1]='=' then
+            Result := ttPERCENT_ASSIGN; // '%='
+     '^':
+       if Len=1 then
+         Result := ttCARET
+       else if Len=2 then
+         if Buffer[1]='=' then
+            Result := ttCARET_ASSIGN; // '^='
      ';': Result := ttSEMI;
      '(': Result := ttBLEFT;
      ')': Result := ttBRIGHT;
@@ -948,10 +965,10 @@ begin
 end;
 
 const
-  OPS = ['+', '-', '*', '/', '=', '<', '>', '@'];
+  OPS = ['+', '-', '*', '/', '=', '<', '>', '@', '%', '^'];
   SPACE = [' ', #9, #13, #10, #0];
   SPEC = ['(', ')', ',', ';', '[', ']', '}'];
-  STOP = SPEC + OPS + SPACE + [':', '%', '.', '{'];
+  STOP = SPEC + OPS + SPACE + [':', '.', '{'];
   ANYCHAR = [#0..#255];
   NAM = ['A'..'Z', 'a'..'z', '_'];
   INT = ['0'..'9'];
@@ -1028,8 +1045,8 @@ initialization
    sStart.AddTransition(INT, TConsumeTransition.Create(sIntF, [toStart], caNone));
    sStart.AddTransition([''''], TSeekTransition.Create(sString0, [toStart], caNone));
    sStart.AddTransition(['#'], TSeekTransition.Create(sChar0, [toStart], caNone));
-   sStart.AddTransition([':', '+', '-', '*'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
-   sStart.AddTransition(['=', '@'], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
+   sStart.AddTransition([':', '+', '-', '*', '@', '%', '^'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
+   sStart.AddTransition(['='], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
    sStart.AddTransition(SPEC, TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
    sStart.AddTransition(['/'], TConsumeTransition.Create(sSlashComment0, [toStart], caNone));
    sStart.AddTransition(['<'], TConsumeTransition.Create(sSmallerF, [toStart], caNone));

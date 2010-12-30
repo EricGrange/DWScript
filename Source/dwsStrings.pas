@@ -233,6 +233,8 @@ const
 
   CPE_IncludeFileNotFound = 'Couldn''t find file "%s" on input paths';
   CPE_IncludeFileExpected = 'Name of include file expected';
+  CPE_IncludeItemUnknown = 'Include item "%s" unknown';
+  CPE_IncludeItemExpected = 'Include item expected';
 
   CPE_BreakOutsideOfLoop = '"Break" outside of loop';
   CPE_ContinueOutsideOfLoop = '"Continue" outside of loop';

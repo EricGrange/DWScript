@@ -207,6 +207,7 @@ type
       function ReadInherited(IsWrite: Boolean): TNoPosExpr;
       function ReadInstr: TNoResultExpr;
       function ReadInstrSwitch(semiPending : Boolean): TNoResultExpr;
+      function ReadExprSwitch : TNoPosExpr;
       function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
       function ReadMethodDecl(ClassSym: TClassSymbol; FuncKind: TFuncKind; IsClassMethod: Boolean): TMethodSymbol;
       function ReadMethodImpl(ClassSym: TClassSymbol; FuncKind: TFuncKind; IsClassMethod: Boolean): TMethodSymbol;
@@ -3764,8 +3765,10 @@ function TdwsCompiler.ReadTerm: TNoPosExpr;
 var
    tt : TTokenType;
 begin
-   tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT,
-                           ttNIL, ttTRUE, ttFALSE]);
+   tt:=FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT,
+                     ttTRUE, ttFALSE, ttNIL, ttSWITCH]);
+   if not (tt in [ttNone, ttSWITCH]) then
+      FTok.KillToken;
    case tt of
       ttPLUS :
          Result:=ReadTerm; // (redundant) plus sign
@@ -3789,6 +3792,8 @@ begin
          Result:=TConstBooleanExpr.CreateUnified(FProg, nil, (tt=ttTRUE));
       ttNIL :
          Result:=ReadNilTerm;
+      ttSWITCH :
+         Result:=ReadExprSwitch;
    else
       if FTok.Test(ttINHERITED) or FTok.TestName  then
          // Variable or Function
@@ -4194,6 +4199,65 @@ begin
 
    // Simulate a semicolon
    FTok.GetToken.FTyp := ttSEMI
+end;
+
+// ReadExprSwitch
+//
+function TdwsCompiler.ReadExprSwitch : TNoPosExpr;
+var
+   switch : TSwitchInstruction;
+   name, value : String;
+   hotPos : TScriptPos;
+   funcSym : TFuncSymbol;
+begin
+   Result:=nil;
+
+   hotPos:=FTok.HotPos;
+
+   switch:=StringToSwitchInstruction(FTok.GetToken.FString);
+   FTok.KillToken;
+
+   case switch of
+      siIncludeLong, siIncludeShort : begin
+
+         name:='';
+         hotPos:=FTok.HotPos;
+         if FTok.TestDelete(ttPERCENT) then begin
+            if FTok.TestAny([ttNAME, ttFUNCTION])<>ttNone then begin
+               name:=FTok.GetToken.FString;
+               FTok.KillToken;
+               if not FTok.TestDelete(ttPERCENT) then
+                  name:='';
+            end;
+         end;
+         value:='';
+         if name='' then
+            FMsgs.AddCompilerError(hotPos, CPE_IncludeItemExpected)
+         else if SameText(name, 'FILE') then
+            value:=hotPos.SourceFile.SourceFile
+         else if SameText(name, 'LINE') then
+            value:=IntToStr(hotPos.Line)
+         else if SameText(name, 'DATE') then
+            value:=FormatDateTime('yyyy-mm-dd', Date)
+         else if SameText(name, 'TIME') then
+            value:=FormatDateTime('hh:nn:ss', Time)
+         else if SameText(name, 'FUNCTION') then begin
+            if FProg is TProcedure then begin
+               funcSym:=TProcedure(FProg).Func;
+               if funcSym is TMethodSymbol then
+                  value:=TMethodSymbol(funcSym).ClassSymbol.Name+'.'+funcSym.Name
+               else value:=funcSym.Name;
+            end else value:='*Main*';
+         end else FMsgs.AddCompilerErrorFmt(hotPos, CPE_IncludeItemUnknown, [name]);
+
+         Result:=TConstStringExpr.CreateUnified(FProg, nil, value);
+      end;
+   else
+      FMsgs.AddCompilerStopFmt(hotPos, CPE_CompilerSwitchUnknown, [Name]);
+   end;
+
+   if not FTok.TestDelete(ttCRIGHT) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_CurlyRightExpected);
 end;
 
 // ReadUntilEndOrElseSwitch
