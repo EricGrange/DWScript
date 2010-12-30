@@ -1,0 +1,5 @@
+Syntax Error: Include item expected [line: 2, column: 11]
+Syntax Error: Include item expected [line: 3, column: 11]
+Syntax Error: Include item expected [line: 4, column: 11]
+Syntax Error: Compiler switch "Z" unknown [line: 5, column: 11]
+Syntax Error: More arguments expected! [line: 5, column: 1]

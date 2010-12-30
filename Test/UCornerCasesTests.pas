@@ -3,7 +3,7 @@ unit UCornerCasesTests;
 interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsXPlatform, dwsFileSystem;
+   dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors;
 
 type
 
@@ -19,6 +19,7 @@ type
       published
          procedure EmptyTokenBuffer;
          procedure IgnoreDecimalSeparator;
+         procedure TokenizerSpecials;
          procedure TimeOutTestFinite;
          procedure TimeOutTestInfinite;
          procedure IncludeViaEvent;
@@ -107,6 +108,31 @@ begin
    finally
       SetDecimalSeparator(dc);
       w.Free;
+   end;
+end;
+
+// TokenizerSpecials
+//
+procedure TCornerCasesTests.TokenizerSpecials;
+var
+   t : TTokenizer;
+   msgs : TdwsMessageList;
+begin
+   msgs:=TdwsMessageList.Create;
+   t:=TTokenizer.Create('@ @= %= ^ ^=', '', msgs);
+   try
+      CheckTrue(t.TestDelete(ttAT), '@');
+      CheckTrue(t.TestDelete(ttAT_ASSIGN), '@=');
+      CheckTrue(t.TestDelete(ttPERCENT_ASSIGN), '%=');
+      CheckTrue(t.TestDelete(ttCARET), '^');
+      CheckTrue(t.TestDelete(ttCARET_ASSIGN), '^=');
+
+      CheckTrue(t.TestAny([ttNAME])=ttNone, 'Any at end');
+      CheckTrue(t.TestDeleteAny([ttNAME])=ttNone, 'DeleteAny at end');
+
+   finally
+      t.Free;
+      msgs.Free;
    end;
 end;
 

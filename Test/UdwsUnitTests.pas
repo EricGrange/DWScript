@@ -18,6 +18,7 @@ type
 
          procedure DeclareTestEnumerate;
          procedure DeclareTestFuncs;
+         procedure DeclareTestClasses;
 
          procedure Func1Eval(Info: TProgramInfo);
          procedure FuncOneEval(Info: TProgramInfo);
@@ -79,6 +80,12 @@ type
    TdwsFunctionCracker = class (TdwsFunction)
    end;
 
+   TdwsClassCracker = class (TdwsClass)
+   end;
+
+   TdwsPropertyCracker = class (TdwsProperty)
+   end;
+
 // ------------------
 // ------------------ TdwsUnitTests ------------------
 // ------------------
@@ -95,6 +102,7 @@ begin
 
    DeclareTestEnumerate;
    DeclareTestFuncs;
+   DeclareTestClasses;
 end;
 
 // TearDown
@@ -217,6 +225,27 @@ begin
    param.DefaultValue:='0.5';
 end;
 
+// DeclareTestClasses
+//
+procedure TdwsUnitTests.DeclareTestClasses;
+var
+   cls : TdwsClass;
+   meth : TdwsMethod;
+   prop : TdwsProperty;
+begin
+   cls:=FUnit.Classes.Add as TdwsClass;
+   cls.Name:='TTestClass';
+
+   meth:=cls.Methods.Add as TdwsMethod;
+   meth.Name:='GetMyProp';
+   meth.ResultType:='Integer';
+
+   prop:=cls.Properties.Add as TdwsProperty;
+   prop.Name:='MyReadOnlyProp';
+   prop.DataType:='Integer';
+   prop.ReadAccess:='GetMyProp';
+end;
+
 // Func1Eval
 //
 procedure TdwsUnitTests.Func1Eval(Info: TProgramInfo);
@@ -318,6 +347,23 @@ procedure TdwsUnitTests.DesignTimeDisplayValues;
       Result:=TdwsFunctionCracker(FUnit.Functions.Items[i] as TdwsFunction);
    end;
 
+   function ClassByName(const aName : String) : TdwsClassCracker;
+   var
+      i : Integer;
+   begin
+      i:=FUnit.Classes.IndexOf(aName);
+      Result:=TdwsClassCracker(FUnit.Classes.Items[i] as TdwsClass);
+   end;
+
+   function PropertyByName(cls : TdwsClass; const aName : String) : TdwsPropertyCracker;
+   var
+      i : Integer;
+   begin
+      i:=cls.Properties.IndexOf(aName);
+      Result:=TdwsPropertyCracker(cls.Properties.Items[i] as TdwsProperty);
+   end;
+var
+   cls : TdwsClassCracker;
 begin
    CheckEquals('function Func1 : Integer;', FuncByName('Func1').GetDisplayName);
    CheckEquals('function FuncOne : String;', FuncByName('FuncOne').GetDisplayName);
@@ -325,6 +371,10 @@ begin
    CheckEquals('function FuncTrue : Boolean;', FuncByName('FuncTrue').GetDisplayName);
    CheckEquals('procedure FuncException;', FuncByName('FuncException').GetDisplayName);
    CheckEquals('function FuncInc(v : Integer) : Integer;', FuncByName('FuncInc').GetDisplayName);
+
+   cls:=ClassByName('TTestClass');
+   CheckEquals('TTestClass (TObject)', cls.GetDisplayName);
+   CheckEquals('property MyReadOnlyProp: Integer read GetMyProp;', PropertyByName(cls, 'MyReadOnlyProp').GetDisplayName);
 end;
 
 // CompiledDescriptions
@@ -350,8 +400,13 @@ begin
       CheckEquals('function FuncInc(v: Integer): Integer', sym.Description);
       sym:=prog.Table.FindSymbol('FuncIncN');
       CheckEquals('function FuncIncN(v: Integer; n: Integer = 1): Integer', sym.Description);
+
       sym:=prog.Table.FindSymbol('TAutoEnum');
       CheckEquals('(aeVal9, aeVal8, aeVal7, aeVal6, aeVal5, aeVal4, aeVal3, aeVal2, aeVal1)', sym.Description);
+
+      sym:=prog.Table.FindSymbol('TTestClass');
+      sym:=(sym as TClassSymbol).Members.FindLocal('MyReadOnlyProp');
+      CheckEquals('property MyReadOnlyProp: Integer read GetMyProp', sym.Description);
    finally
       prog.Free;
    end;
