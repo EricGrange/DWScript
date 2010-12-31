@@ -567,7 +567,7 @@ type
    end;
 
    TPushOperatorType = (potUnknown,
-                        potAddr, potTempAddr, potTempArrayAddr,
+                        potAddr, potTempAddr, potTempArrayAddr, potTempArray,
                         potResult,
                         potResultInteger, potResultFloat, potResultBoolean,
                         potResultString, potResultConstString,
@@ -581,6 +581,7 @@ type
       procedure InitPushAddr(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushTempAddr(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushTempArrayAddr(StackAddr: Integer; ArgExpr: TNoPosExpr);
+      procedure InitPushTempArray(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushResult(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushData(StackAddr: Integer; ArgExpr: TNoPosExpr; ParamSym: TSymbol);
       procedure InitPushLazy(StackAddr: Integer; ArgExpr: TNoPosExpr);
@@ -590,12 +591,14 @@ type
       procedure ExecuteAddr(stack : TStack);
       procedure ExecuteTempAddr(stack : TStack);
       procedure ExecuteTempArrayAddr(stack : TStack);
+      procedure ExecuteTempArray(stack : TStack);
       procedure ExecuteResult(stack : TStack);
       procedure ExecuteResultBoolean(stack : TStack);
       procedure ExecuteResultInteger(stack : TStack);
       procedure ExecuteResultFloat(stack : TStack);
       procedure ExecuteResultString(stack : TStack);
       procedure ExecuteResultConstString(stack : TStack);
+//      procedure ExecuteResultArray(stack : TStack);
       procedure ExecuteData(stack : TStack);
       procedure ExecuteLazy(stack : TStack);
    end;
@@ -2761,6 +2764,15 @@ begin
    FArgExpr:=ArgExpr as TArrayConstantExpr;
 end;
 
+// InitPushTempArray
+//
+procedure TPushOperator.InitPushTempArray(StackAddr: Integer; ArgExpr: TNoPosExpr);
+begin
+   FTypeParamSym:=TSymbol(potTempArray);
+   FStackAddr:=StackAddr;
+   FArgExpr:=ArgExpr as TConstParamExpr;
+end;
+
 // InitPushResult
 //
 procedure TPushOperator.InitPushResult(StackAddr: Integer; ArgExpr: TNoPosExpr);
@@ -2811,6 +2823,7 @@ begin
       potAddr : ExecuteAddr(stack);
       potTempAddr : ExecuteTempAddr(stack);
       potTempArrayAddr : ExecuteTempArrayAddr(stack);
+      potTempArray : ExecuteTempArray(stack);
       potResultBoolean : ExecuteResultBoolean(stack);
       potResultInteger : ExecuteResultInteger(stack);
       potResultFloat : ExecuteResultFloat(stack);
@@ -2886,8 +2899,20 @@ var
    data : TData;
 begin
    data:=TArrayConstantExpr(FArgExpr).EvalAsTData;
-   vpd := TVarParamData.Create(data, 0);
-   stack.WriteValue(stack.StackPointer + FStackAddr, vpd);
+   vpd:=TVarParamData.Create(data, 0);
+   stack.WriteValue(stack.StackPointer+FStackAddr, vpd);
+end;
+
+// ExecuteTempArray
+//
+procedure TPushOperator.ExecuteTempArray(stack : TStack);
+var
+   vpd : IVarParamData;
+   data : TData;
+begin
+   data:=TConstParamExpr(FArgExpr).Data;
+   vpd:=TVarParamData.Create(data, 0);
+   stack.WriteValue(stack.StackPointer+FStackAddr, vpd);
 end;
 
 // ExecuteResult
@@ -3126,7 +3151,9 @@ begin
          pushOperator.InitPushLazy(param.StackAddr, arg)
       else if arg is TDataExpr then begin
          if param.Typ is TOpenArraySymbol then begin
-            pushOperator.InitPushTempArrayAddr(param.StackAddr, arg)
+            if arg is TArrayConstantExpr then
+               pushOperator.InitPushTempArrayAddr(param.StackAddr, arg)
+            else pushOperator.InitPushTempArray(param.StackAddr, arg);
          end else if param is TByRefParamSymbol then begin
             pushOperator.InitPushAddr(param.StackAddr, arg)
          end else if param.Size > 1 then
