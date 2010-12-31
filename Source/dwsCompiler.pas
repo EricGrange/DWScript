@@ -1684,12 +1684,13 @@ function TdwsCompiler.ReadName(IsWrite: Boolean): TNoPosExpr;
 var
    sym: TSymbol;
    nameToken : TToken;
-   namePos: TScriptPos;
-   varExpr: TDataExpr;
-   fieldExpr: TNoPosExpr;
-   progMeth: TMethodSymbol;
-   baseType: TTypeSymbol;
-   sk: TSpecialKeywordKind;
+   namePos : TScriptPos;
+   varExpr : TDataExpr;
+   fieldExpr, constExpr : TNoPosExpr;
+   convExpr : TConvClassExpr;
+   progMeth : TMethodSymbol;
+   baseType : TTypeSymbol;
+   sk : TSpecialKeywordKind;
 begin
    if FTok.TestDelete(ttINHERITED) then
       Exit(ReadNameInherited(IsWrite));
@@ -1791,13 +1792,14 @@ begin
                   ) then
                FMsgs.AddCompilerErrorFmt(namePos, CPE_IncompatibleTypes,
                                          [Result.Typ.Name, baseType.Name]);
-            Result:=TConvClassExpr.Create(FProg, TClassSymbol(baseType), Result);
             if not (FTok.TestDelete(ttBRIGHT)) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-            Result := ReadSymbol(Result, IsWrite);
+            convExpr:=TConvClassExpr.Create(FProg, TClassSymbol(baseType), Result);
+            Result:=nil; // protect ReadSymbol exception
+            Result:=ReadSymbol(convExpr, IsWrite);
          end else begin
-            Result := TConstExpr.CreateTyped(FProg, TClassSymbol(baseType).ClassOf, baseType.Name);
-            Result := ReadSymbol(Result, IsWrite)
+            constExpr:=TConstExpr.CreateTyped(FProg, TClassSymbol(baseType).ClassOf, baseType.Name);
+            Result:=ReadSymbol(constExpr, IsWrite);
          end;
 
       end else if sym.InheritsFrom(TFieldSymbol) then begin
@@ -3629,7 +3631,7 @@ begin
                      FProg.Msgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                      // fake result to keep compiler going and report further issues
                      Result:=TBinaryOpExpr.Create(FProg, Result, right);
-                     Result.Typ:=right.Typ;
+                     Result.Typ:=FProg.TypVariant;
                   end else Result:=exprClass.Create(FProg, Result, right);
                end;
             except

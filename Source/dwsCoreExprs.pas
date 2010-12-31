@@ -142,8 +142,8 @@ type
    end;
 
    TConstParamExpr = class(TVarParamExpr)
-   public
-      function IsWritable : Boolean; override;
+      public
+         function IsWritable : Boolean; override;
    end;
 
    // Encapsulates a var parameter
