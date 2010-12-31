@@ -31,12 +31,12 @@ unit dwsStringResult;
 interface
 
 uses
-  Variants, Classes, SysUtils, dwsExprs, dwsSymbols, dwsComp;
+  Variants, Classes, SysUtils, dwsExprs, dwsSymbols, dwsComp, dwsUtils;
 
 type
   TdwsStringResult = class(TdwsResult)
   private
-    FStrBuilder: TStringBuilder;
+    FStrBuilder: TWriteOnlyBlockStream;
     function GetStr : String;
   public
     constructor Create(resultType : TdwsResultType); override;
@@ -116,7 +116,7 @@ type
 constructor TdwsStringResult.Create(resultType : TdwsResultType);
 begin
    inherited;
-   FStrBuilder:=TStringBuilder.Create;
+   FStrBuilder:=TWriteOnlyBlockStream.Create;
 end;
 
 // Destroy
@@ -129,7 +129,7 @@ end;
 
 procedure TdwsStringResult.AddString(const Str: string);
 begin
-  FStrBuilder.Append(Str);
+  FStrBuilder.WriteString(Str);
   if Assigned(TdwsStringResultType(ResultType).OnAddString) then
     TdwsStringResultType(ResultType).OnAddString(Self, Str)
 end;
@@ -137,7 +137,7 @@ end;
 procedure TdwsStringResult.SetStr(const Str: string);
 begin
   FStrBuilder.Clear;
-  FStrBuilder.Append(Str);
+  FStrBuilder.WriteString(Str);
   if Assigned(TdwsStringResultType(ResultType).OnSetString) then
     TdwsStringResultType(ResultType).OnSetString(Self, Str)
 end;

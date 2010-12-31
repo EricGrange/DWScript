@@ -18,8 +18,9 @@ unit dwsAsmLibModule;
 
 interface
 
-uses Windows, Classes, SysUtils, dwsLanguageExtension, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs, IOUtils, dwsStack, dwsStrings;
+uses Windows, Classes, SysUtils, dwsLanguageExtension, dwsComp, dwsCompiler,
+   dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs, dwsStack,
+   dwsStrings, dwsXPlatform;
 
 type
 

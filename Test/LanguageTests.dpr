@@ -1,7 +1,7 @@
 program LanguageTests;
 
 {.$WEAKLINKRTTI ON}
-{$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
+{.$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
 
 uses
   Classes,

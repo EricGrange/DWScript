@@ -26,9 +26,13 @@ unit dwsXPlatform;
 //
 // no ifdefs in the main code.
 
+{$WARN SYMBOL_PLATFORM OFF}
+
 interface
 
-uses Classes, SysUtils;
+uses Windows, Classes, SysUtils
+   {$IFNDEF VER200}, IOUtils{$ENDIF}
+   ;
 
 const
 {$IFDEF LINUX}
@@ -41,6 +45,15 @@ procedure SetDecimalSeparator(c : Char);
 function GetDecimalSeparator : Char;
 
 procedure CollectFiles(const directory, fileMask : String; list : TStrings);
+
+type
+   TPath = class
+      class function GetTempFileName : String; static;
+   end;
+
+   TFile = class
+      class function ReadAllBytes(const filename : String) : TBytes; static;
+   end;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -87,6 +100,56 @@ begin
       found:=FindNext(searchRec);
    end;
    FindClose(searchRec);
+end;
+
+
+// ------------------
+// ------------------ TPath ------------------
+// ------------------
+
+// GetTempFileName
+//
+class function TPath.GetTempFileName : String;
+{$IFDEF VER200} // Delphi 2009
+var
+   tempPath, tempFileName : array [0..MAX_PATH] of Char; // Buf sizes are MAX_PATH+1
+begin
+   if Windows.GetTempPath(MAX_PATH, @tempPath[0])=0 then
+      tempPath:='.'; // Current directory
+   if Windows.GetTempFileName(@tempPath[0], 'DWS', 0, tempFileName)=0 then
+      RaiseLastOSError; // should never happen
+   Result:=tempFileName;
+{$ELSE}
+begin
+   Result:=IOUTils.TPath.GetTempFileName;
+{$ENDIF}
+end;
+
+// ------------------
+// ------------------ TFile ------------------
+// ------------------
+
+// ReadAllBytes
+//
+class function TFile.ReadAllBytes(const filename : String) : TBytes;
+{$IFDEF VER200} // Delphi 2009
+var
+   fileStream : TFileStream;
+   n : Integer;
+begin
+   fileStream:=TFileStream.Create(filename, fmOpenRead or fmShareDenyWrite);
+   try
+      n:=fileStream.Size;
+      SetLength(Result, n);
+      if n>0 then
+         fileStream.ReadBuffer(Result[0], n);
+   finally
+      fileStream.Free;
+   end;
+{$ELSE}
+begin
+   Result:=IOUTils.TFile.ReadAllBytes(filename);
+{$ENDIF}
 end;
 
 end.
