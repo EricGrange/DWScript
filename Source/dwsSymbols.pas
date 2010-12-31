@@ -526,6 +526,7 @@ type
      constructor Create(const Name: string; Typ: TSymbol; LowBound, HighBound: Integer);
      procedure InitData(const Data: TData; Offset: Integer); override;
      function IsCompatible(TypSym: TSymbol): Boolean; override;
+     function IsOfType(typSym : TSymbol) : Boolean; override;
      procedure AddElement;
      property HighBound: Integer read FHighBound;
      property LowBound: Integer read FLowBound;
@@ -2794,6 +2795,17 @@ begin
   Result :=     (TypSym is TStaticArraySymbol)
             and (ElementCount = TStaticArraySymbol(TypSym).ElementCount)
             and Typ.IsCompatible(TypSym.Typ);
+end;
+
+// IsOfType
+//
+function TStaticArraySymbol.IsOfType(typSym : TSymbol) : Boolean;
+begin
+   Result:=inherited IsOfType(typSym);
+   if not Result then begin
+      if (typSym is TOpenArraySymbol) then
+         Result:=(ElementCount=0) or (Typ.IsCompatible(TypSym.Typ));
+   end;
 end;
 
 // AddElement
