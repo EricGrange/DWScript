@@ -23,7 +23,7 @@ unit dwsTokenizer;
 interface
 
 uses
-  SysUtils, Classes, TypInfo, dwsErrors, dwsStrings, dwsXPlatform;
+  SysUtils, Classes, TypInfo, dwsErrors, dwsStrings, dwsXPlatform, dwsUtils;
 
 type
 
@@ -91,9 +91,8 @@ type
    TTransition = class;
 
    TState = class
-     FOwnedTransitions : TList;
+     FOwnedTransitions : TTightList;
      FTransitions : array [0..127] of TTransition;
-     constructor Create;
      destructor Destroy; override;
      function FindTransition(c: char): TTransition;
      procedure AddTransition(const chrs: TCharsType; o: TTransition);
@@ -543,17 +542,9 @@ end;
 
 { TState }
 
-constructor TState.Create;
-begin
-   FOwnedTransitions:=TList.Create;
-end;
-
 destructor TState.Destroy;
-var
-   i : Integer;
 begin
-   for i:=0 to FOwnedTransitions.Count-1 do
-      TTransition(FOwnedTransitions[i]).Free;
+   FOwnedTransitions.Clean;
    inherited Destroy;
 end;
 
@@ -576,7 +567,7 @@ begin
          if FTransitions[Ord(c)]=nil then
             FTransitions[Ord(c)]:=o;
       end;
-  FOwnedTransitions.Add(o);
+   FOwnedTransitions.Add(o);
 end;
 
 procedure TState.SetElse(o: TTransition);
