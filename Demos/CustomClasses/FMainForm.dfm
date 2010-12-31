@@ -146,7 +146,7 @@ object MainForm: TMainForm
             OnEval = dwsUnitClassesTPlanetMethodsSatelliteCountEval
             Kind = mkFunction
           end>
-        OnCleanUp = dwsUnitClassesTPlanetCleanUp
+        Operators = <>
         Properties = <
           item
             Name = 'Name'
@@ -165,6 +165,7 @@ object MainForm: TMainForm
               end>
             IsDefault = False
           end>
+        OnCleanUp = dwsUnitClassesTPlanetCleanUp
       end
       item
         Name = 'TEarth'
@@ -177,7 +178,9 @@ object MainForm: TMainForm
           end>
         Fields = <>
         Methods = <>
+        Operators = <>
         Properties = <>
+        OnCleanUp = dwsUnitClassesTPlanetCleanUp
       end
       item
         Name = 'TMoon'
@@ -190,7 +193,9 @@ object MainForm: TMainForm
           end>
         Fields = <>
         Methods = <>
+        Operators = <>
         Properties = <>
+        OnCleanUp = dwsUnitClassesTPlanetCleanUp
       end>
     UnitName = 'Test'
     StaticSymbols = False

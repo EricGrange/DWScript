@@ -1929,9 +1929,10 @@ end;
 
 destructor TProcedure.Destroy;
 begin
-  FRootTable.Free;
-  FExpr.Free;
-  FInitExpr.Free;
+   FProgramInfo.Free;
+   FRootTable.Free;
+   FExpr.Free;
+   FInitExpr.Free;
 end;
 
 procedure TProcedure.AssignTo(sym: TFuncSymbol);
