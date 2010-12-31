@@ -23,6 +23,7 @@ the dwscript project (http://code.google.com/p/dwscript/).
 Recent Contributors (in alphabetical order):
 
 - Kazantsev, Alexey (Russia)
+- Krystian Bigaj
 - Teti, Daniele (Italy)
 
 This is the list of initial contributors (in alphabetical order):

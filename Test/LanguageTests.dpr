@@ -1,7 +1,9 @@
 program LanguageTests;
 
-{.$WEAKLINKRTTI ON}
+{$IFNDEF VER200}
+{$WEAKLINKRTTI ON}
 {.$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
+{$ENDIF}
 
 uses
   Classes,
