@@ -1581,6 +1581,8 @@ begin
                Result:=TConnectorWriteExpr(locExpr)
             else if locExpr is TStringArraySetExpr then
                Result:=TStringArraySetExpr(locExpr)
+            else if locExpr is TNullExpr then
+               Result:=TStringArraySetExpr(locExpr)
             else begin
                Result:=nil;
                FMsgs.AddCompilerStop(hotPos, CPE_InvalidInstruction)
@@ -1926,7 +1928,7 @@ begin
             raise;
          end;
 
-      end;
+      end else Assert(False);
 
    finally
       arrayArgs.Free;
@@ -2005,7 +2007,13 @@ begin
             end;
          end;
 
-      end else Result:=ReadPropertyReadExpr(Expr, PropertySym);
+      end else begin
+
+         FMsgs.AddCompilerError(aPos, CPE_InvalidInstruction);
+         // fake to keep going
+         Result:=TNullExpr.Create(FProg, aPos);
+
+      end;
 
    finally
       arrayArgs.Free;

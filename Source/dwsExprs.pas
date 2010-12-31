@@ -2645,27 +2645,35 @@ end;
 procedure TFuncExprBase.TypeCheckNoPos(const aPos : TScriptPos);
 var
    arg : TNoPosExpr;
-   x, paramCount: Integer;
+   x, paramCount, nbParamsToCheck : Integer;
    paramSymbol : TParamSymbol;
 begin
    paramCount := FFunc.Params.Count;
 
    // Check number of arguments = number of parameters
-   if FArgs.Count > paramCount then
-      AddCompilerStop(CPE_TooManyArguments);
-
-   while FArgs.Count < paramCount do begin
-      // Complete missing args by default values
-      paramSymbol:=TParamSymbol(FFunc.Params[FArgs.Count]);
-      if paramSymbol is TParamSymbolWithDefaultValue then
-         FArgs.Add(TConstExpr.CreateTyped(Prog, paramSymbol.Typ,
-                                          TParamSymbolWithDefaultValue(paramSymbol).DefaultValue))
-      else AddCompilerStop(CPE_TooFewArguments);
+   if FArgs.Count>paramCount then
+      AddCompilerErrorFmt(CPE_TooManyArguments, [])
+   else begin
+      while FArgs.Count<paramCount do begin
+         // Complete missing args by default values
+         paramSymbol:=TParamSymbol(FFunc.Params[FArgs.Count]);
+         if paramSymbol is TParamSymbolWithDefaultValue then
+            FArgs.Add(TConstExpr.CreateTyped(Prog, paramSymbol.Typ,
+                                             TParamSymbolWithDefaultValue(paramSymbol).DefaultValue))
+         else begin
+            AddCompilerErrorFmt(CPE_TooFewArguments, []);
+            Break;
+         end;
+      end;
    end;
 
-   for x := 0 to FArgs.Count - 1 do begin
-      arg := TNoPosExpr(FArgs.ExprBase[x]);
-      paramSymbol := TParamSymbol(FFunc.Params[x]);
+   if paramCount<FArgs.Count then
+      nbParamsToCheck:=paramCount
+   else nbParamsToCheck:=FArgs.Count;
+
+   for x:=0 to nbParamsToCheck-1 do begin
+      arg:=TNoPosExpr(FArgs.ExprBase[x]);
+      paramSymbol:=TParamSymbol(FFunc.Params[x]);
 
       if arg is TArrayConstantExpr then
          TArrayConstantExpr(arg).Prepare(paramSymbol.Typ.Typ);

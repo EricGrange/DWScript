@@ -1,0 +1,3 @@
+Syntax Error: Invalid Instruction - function or assignment expected [line: 12, column: 2]
+Syntax Error: Invalid Instruction - function or assignment expected [line: 13, column: 3]
+Syntax Error: Invalid Instruction - function or assignment expected [line: 14, column: 1]
