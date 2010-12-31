@@ -1581,7 +1581,10 @@ begin
                Result:=TConnectorWriteExpr(locExpr)
             else if locExpr is TStringArraySetExpr then
                Result:=TStringArraySetExpr(locExpr)
-            else if locExpr is TNullExpr then
+            else if locExpr is TConstExpr then begin
+               Result:=TNullExpr.Create(FProg, hotPos);
+               FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
+            end else if locExpr is TNullExpr then
                Result:=TStringArraySetExpr(locExpr)
             else begin
                Result:=nil;

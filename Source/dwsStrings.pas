@@ -188,6 +188,7 @@ const
   CPE_NoArrayExpected = 'Not an array!';
   CPE_NoMethodExpected = 'Not a method!';
   CPE_InvalidInstruction = 'Invalid Instruction - function or assignment expected';
+  CPE_ConstantInstruction = 'Constant Instruction - has no effect';
   CPE_EndOfBlockExpected = 'End of block expected';
   CPE_ContructorExpected = 'Constructor expected';
   CPE_TooManyArguments = 'Too many arguments!';
@@ -200,6 +201,8 @@ const
 
   CPE_InvalidOperands = 'Invalid Operands';
   CPE_IncompatibleOperands = 'Incompatible operands';
+
+  CPE_FunctionOptimizationFailed = 'Evaluation of "%s" failed: %s %s';
 
   // TypeCheck
   CPE_BooleanExpected = 'Boolean expected';

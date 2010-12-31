@@ -158,7 +158,7 @@ begin
    try
       Result:=FOnEval(@FArgs);
    except
-      FProg.Msgs.SetLastScriptError(Pos, ExceptObject);
+      FProg.Msgs.SetLastScriptError(Pos);
       raise;
    end;
 end;
@@ -196,8 +196,8 @@ begin
    try
       Result:=FOnEval(@FArgs);
    except
-      FProg.Msgs.SetLastScriptError(Pos, ExceptObject);
-      raise ExceptObject;
+      FProg.Msgs.SetLastScriptError(Pos);
+      raise;
    end;
 end;
 
@@ -239,7 +239,7 @@ begin
    try
       FOnEval(@FArgs, Result);
    except
-      FProg.Msgs.SetLastScriptError(Pos, ExceptObject);
+      FProg.Msgs.SetLastScriptError(Pos);
       raise;
    end;
 end;
@@ -282,7 +282,7 @@ begin
    try
       FOnEval(@FArgs, Result);
    except
-      FProg.Msgs.SetLastScriptError(Pos, ExceptObject);
+      FProg.Msgs.SetLastScriptError(Pos);
       raise;
    end;
 end;
@@ -306,7 +306,7 @@ begin
    try
       FOnEval(@FArgs);
    except
-      FProg.Msgs.SetLastScriptError(Pos, ExceptObject);
+      FProg.Msgs.SetLastScriptError(Pos);
       raise;
    end;
 end;

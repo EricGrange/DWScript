@@ -23,7 +23,7 @@ unit dwsErrors;
 interface
 
 uses
-   Classes, SysUtils, dwsStrings, Contnrs;
+   Classes, SysUtils, dwsStrings, dwsUtils;
 
 type
 
@@ -127,23 +127,16 @@ type
       function AsInfo: String; override;
    end;
 
-   // TLastScriptError
-   //
-   TLastScriptError = record
-      Pos : TScriptPos;
-      ExceptObj : TObject;
-   end;
-
    // TdwsMessageList
    //
    TdwsMessageList = class
       private
-         FSourceFiles: TObjectList;
-         FMessageList: TObjectList;
+         FSourceFiles: TTightList;
+         FMessageList: TTightList;
          FHasErrors : Boolean;
          FHasCompilerErrors : Boolean;
          FHasExecutionErrors : Boolean;
-         FLastScriptError : TLastScriptError;
+         FLastScriptError : TScriptPos;
 
          function GetMsg(Index: Integer): TdwsMessage;
          function GetMsgCount: Integer;
@@ -187,7 +180,7 @@ type
          procedure AddExecutionStop(const Pos: TScriptPos; const Text: String);
          procedure AddExecutionStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
 
-         procedure SetLastScriptError(const Pos: TScriptPos; ExceptObj : TObject = nil);
+         procedure SetLastScriptError(const Pos: TScriptPos);
 
          procedure Clear;
 
@@ -237,9 +230,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-const
-   cNoScriptError: TLastScriptError = (Pos: (FLineCol: 0; SourceFile: nil); ExceptObj: nil);
 
 // ------------------
 // ------------------ TScriptPos ------------------
@@ -348,18 +338,15 @@ end;
 //
 constructor TdwsMessageList.Create;
 begin
-   FSourceFiles:=TObjectList.Create;
-   FMessageList:=TObjectList.Create;
-   FLastScriptError:=cNoScriptError;
+   FLastScriptError:=cNullPos;
 end;
 
 // Destroy
 //
 destructor TdwsMessageList.Destroy;
 begin
-   Clear;
-   FSourceFiles.Free;
-   FMessageList.Free;
+   FSourceFiles.Clean;
+   FMessageList.Clean;
    inherited;
 end;
 
@@ -367,18 +354,18 @@ end;
 //
 procedure TdwsMessageList.Clear;
 begin
-   FMessageList.Clear;
+   FMessageList.Clean;
    FHasErrors:=False;
    FHasCompilerErrors:=False;
    FHasExecutionErrors:=False;
-   FLastScriptError:=cNoScriptError;
+   FLastScriptError:=cNullPos;
 end;
 
 // GetMsg
 //
 function TdwsMessageList.GetMsg(Index: Integer): TdwsMessage;
 begin
-   Result:=TdwsMessage(FMessageList[Index]);
+   Result:=TdwsMessage(FMessageList.List[Index]);
 end;
 
 // GetMsgCount
@@ -396,7 +383,7 @@ var
    msg : TdwsMessage;
 begin
    for i:=0 to FMessageList.Count-1 do begin
-      msg:=TdwsMessage(FMessageList[i]);
+      msg:=TdwsMessage(FMessageList.List[i]);
       if msg.SameMessageAs(aMessage) then begin
          aMessage.Free;
          Exit;
@@ -427,7 +414,7 @@ var
    i : Integer;
 begin
    for i:=0 to FSourceFiles.Count-1 do begin
-      Result:=TSourceFile(FSourceFiles[i]);
+      Result:=TSourceFile(FSourceFiles.List[i]);
       if Result.SourceFile=aSourceFile then Exit;
    end;
    Result:=nil;
@@ -559,7 +546,7 @@ end;
 //
 procedure TdwsMessageList.AddExecutionError(const Text: String);
 begin
-   AddExecutionError(FLastScriptError.Pos, Text)
+   AddExecutionError(FLastScriptError, Text)
 end;
 
 // AddExecutionStop
@@ -579,14 +566,9 @@ end;
 
 // SetLastScriptError
 //
-procedure TdwsMessageList.SetLastScriptError(const Pos: TScriptPos; ExceptObj : TObject);
+procedure TdwsMessageList.SetLastScriptError(const Pos: TScriptPos);
 begin
-  // new exception or non-NullPos if same Exception
-  if (FLastScriptError.ExceptObj<>ExceptObj)
-     or (FLastScriptError.Pos.Line<=0) and Assigned(FLastScriptError.ExceptObj) then begin
-    FLastScriptError.Pos:=Pos;
-    FLastScriptError.ExceptObj:=ExceptObj;
-  end;
+   FLastScriptError:=Pos;
 end;
 
 // AsInfo

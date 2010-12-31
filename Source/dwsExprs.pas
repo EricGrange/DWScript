@@ -2720,11 +2720,21 @@ end;
 //
 function TFuncExprBase.Optimize : TNoPosExpr;
 begin
+   Result:=Self;
    if IsConstant then begin
       Initialize;
-      Result:=TConstExpr.CreateTyped(Prog, Typ, Eval);
-      Free;
-   end else Result:=Self;
+      try
+         Result:=TConstExpr.CreateTyped(Prog, Typ, Eval);
+      except
+         on E: Exception do begin
+            FProg.Msgs.AddCompilerErrorFmt(Pos, CPE_FunctionOptimizationFailed,
+                                           [FuncSym.Name, E.ClassName, E.Message],
+                                           TCompilerErrorMessage);
+         end;
+      end;
+      if Result<>Self then
+         Free;
+   end;
 end;
 
 // IsConstant
@@ -3080,7 +3090,7 @@ begin
                on e: EScriptException do
                   raise;
             else
-               FProg.Msgs.SetLastScriptError(FPos, ExceptObject);
+               FProg.Msgs.SetLastScriptError(FPos);
                raise;
             end;
          finally
@@ -3101,7 +3111,7 @@ begin
          stack.DecRecursion;
       end;
    except
-      FProg.Msgs.SetLastScriptError(FPos,ExceptObject);
+      FProg.Msgs.SetLastScriptError(FPos);
       raise;
    end;
 end;
@@ -5179,7 +5189,7 @@ begin
       on e: EScriptException do
         raise;
       on e: Exception do begin
-        FProg.Msgs.SetLastScriptError(FPos, e);
+        FProg.Msgs.SetLastScriptError(FPos);
         raise;
       end;
     end;
@@ -5254,7 +5264,7 @@ begin
       FResultData := FConnectorMember.Read(FBaseExpr.Eval);
     Result := FResultData[0];
   except
-    FProg.Msgs.SetLastScriptError(FPos,ExceptObject);
+    FProg.Msgs.SetLastScriptError(FPos);
     raise;
   end;
 end;
@@ -5323,7 +5333,7 @@ begin
   try
     FConnectorMember.Write(Base^, dat);
   except
-    FProg.Msgs.SetLastScriptError(FPos,ExceptObject);
+    FProg.Msgs.SetLastScriptError(FPos);
     raise;
   end;
 end;
