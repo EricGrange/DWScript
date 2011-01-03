@@ -68,6 +68,7 @@ begin
    FCompiler.Free;
 
    FTests.Free;
+   FAlgos.Free;
    FFailures.Free;
 end;
 
