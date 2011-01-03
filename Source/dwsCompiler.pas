@@ -557,7 +557,7 @@ begin
                for x := 0 to unitsResolved.Count - 1 do begin
                   unitTable := IUnit(unitsResolved[x]).GetUnitTable(Conf.SystemTable, unitsTable);
                   unitTables.Add(unitTable);
-                  unitsTable.AddSymbol(TUnitSymbol.Create(IUnit(unitsResolved[x]).GetUnitName,unitTable));
+                  unitsTable.AddSymbol(TUnitSymbol.Create(IUnit(unitsResolved[x]).GetUnitName, unitTable));
                end;
             except
                on e: Exception do begin
@@ -574,6 +574,9 @@ begin
                FProg.Table.AddSymbol(TUnitSymbol.Create( unitSymbol.Name, unitSymbol.Table, True));
                FProg.Table.AddParent(unitSymbol.Table);
             end;
+
+            unitSymbol:=FProg.Table.FindSymbol(SYS_INTERNAL) as TUnitSymbol;
+            FProg.Table.AddSymbol(TUnitSymbol.Create( SYS_SYSTEM, unitSymbol.Table, False ));
 
          finally
             unitsTable.Free;
@@ -926,7 +929,8 @@ begin
          end else typ := expr.typ;
 
          if typ is TArraySymbol then begin
-            sym := TStaticArraySymbol.Create(name, typ, 0, TArraySymbol(typ).typ.Size-1);
+            sym := TStaticArraySymbol.Create('', typ, 0, TArraySymbol(typ).typ.Size-1);
+            FProg.Table.AddSymbol(sym);
             sym := TConstSymbol.Create(name, sym, (expr as TArrayConstantExpr).EvalAsTData, 0);
          end else if typ.Size>1 then
             sym := TConstSymbol.Create(name, typ, TConstExpr(expr).Data, TConstExpr(expr).Addr)
@@ -1563,6 +1567,7 @@ begin
             if token<>ttNone then begin
                if not (locExpr is TDataExpr) then begin
                   FMsgs.AddCompilerError(hotPos, CPE_CantWriteToLeftSide);
+                  FreeAndNil(locExpr);
                   ReadExpr.Free; // keep compiling
                   Result:=nil;
                end else begin
@@ -1584,9 +1589,10 @@ begin
             else if locExpr is TConstExpr then begin
                Result:=TNullExpr.Create(FProg, hotPos);
                FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
-            end else if locExpr is TNullExpr then
-               Result:=TStringArraySetExpr(locExpr)
-            else begin
+            end else if locExpr is TNullExpr then begin
+               Result:=TNullExpr(locExpr);
+               locExpr:=nil;
+            end else begin
                Result:=nil;
                FMsgs.AddCompilerStop(hotPos, CPE_InvalidInstruction)
             end;
@@ -2014,6 +2020,7 @@ begin
 
          FMsgs.AddCompilerError(aPos, CPE_InvalidInstruction);
          // fake to keep going
+         FreeAndNil(Expr);
          Result:=TNullExpr.Create(FProg, aPos);
 
       end;
@@ -2242,6 +2249,7 @@ var
    forPos, enumPos, stepPos : TScriptPos;
    forExprClass : TForExprClass;
 begin
+   Result:=nil;
    loopVarExpr:=nil;
    fromExpr:=nil;
    toExpr:=nil;
@@ -2250,12 +2258,17 @@ begin
       forPos:=FTok.HotPos;
 
       expr:=ReadName;
-      if not (expr is TVarExpr) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_VariableExpected);
-      if not expr.IsIntegerValue then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
-      if not (expr is TIntVarExpr) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_FORLoopMustBeLocalVariable);
+      try
+         if not (expr is TVarExpr) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_VariableExpected);
+         if not expr.IsIntegerValue then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
+         if not (expr is TIntVarExpr) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_FORLoopMustBeLocalVariable);
+      except
+         expr.Free;
+         raise;
+      end;
 
       loopVarExpr:=TIntVarExpr(expr);
       WarnForVarUsage(loopVarExpr, FTok.HotPos);
@@ -2322,7 +2335,7 @@ begin
                                       [TConstIntExpr(stepExpr).EvalAsInteger]);
          if forExprClass=TForUpwardExpr then
             forExprClass:=TForUpwardStepExpr
-         else forExprClass:=TForDownwardStepExpr
+         else forExprClass:=TForDownwardStepExpr;
       end;
 
       Result:=forExprClass.Create(FProg, forPos);
@@ -5274,48 +5287,55 @@ begin
             if argTyp is TOpenArraySymbol then begin
                if argExpr=nil then
                   FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-               Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(argExpr), -1)
-            end else if argTyp is TEnumerationSymbol then
-               Result:= TConstExpr.CreateTyped(FProg, FProg.TypInteger, TEnumerationSymbol(argTyp).HighBound)
-            else if argTyp is TDynamicArraySymbol and Assigned(argExpr) then
-               Result := TArrayLengthExpr.Create(FProg, TDataExpr(argExpr), -1)
-            else if (argTyp = FProg.TypString) and Assigned(argExpr) then
-               Result := TStringLengthExpr.Create(FProg, argExpr)
-            else if argTyp is TStaticArraySymbol then begin
+               Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(argExpr), -1);
+               argExpr:=nil;
+            end else if argTyp is TEnumerationSymbol then begin
                FreeAndNil(argExpr);
-               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(argTyp).HighBound);
-            end else if argTyp = FProg.TypInteger then begin
+               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TEnumerationSymbol(argTyp).HighBound)
+            end else if argTyp is TDynamicArraySymbol and Assigned(argExpr) then begin
+               Result:=TArrayLengthExpr.Create(FProg, TDataExpr(argExpr), -1);
+               argExpr:=nil;
+            end else if (argTyp = FProg.TypString) and Assigned(argExpr) then begin
+               Result:=TStringLengthExpr.Create(FProg, argExpr);
+               argExpr:=nil;
+            end else if argTyp is TStaticArraySymbol then begin
                FreeAndNil(argExpr);
-               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, High(Int64));
+               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(argTyp).HighBound);
+            end else if argTyp=FProg.TypInteger then begin
+               FreeAndNil(argExpr);
+               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, High(Int64));
             end else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
          end;
          skLength: begin
             if argTyp is TOpenArraySymbol then begin
                if argExpr=nil then
                   FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-               Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(argExpr), 0)
-            end else if (argTyp is TDynamicArraySymbol) and Assigned(argExpr) then
-               Result:=TArrayLengthExpr.Create(FProg, TDataExpr(argExpr), 0)
-            else if ((argTyp=FProg.TypString) or (argTyp=FProg.TypVariant)) and Assigned(argExpr) then
-               Result:=TStringLengthExpr.Create(FProg, argExpr)
-            else if argTyp is TStaticArraySymbol then begin
+               Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(argExpr), 0);
+               argExpr:=nil;
+            end else if (argTyp is TDynamicArraySymbol) and Assigned(argExpr) then begin
+               Result:=TArrayLengthExpr.Create(FProg, TDataExpr(argExpr), 0);
+               argExpr:=nil;
+            end else if ((argTyp=FProg.TypString) or (argTyp=FProg.TypVariant)) and Assigned(argExpr) then begin
+               Result:=TStringLengthExpr.Create(FProg, argExpr);
+               argExpr:=nil;
+            end else if argTyp is TStaticArraySymbol then begin
                FreeAndNil(argExpr);
                Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger,
                                                 TStaticArraySymbol(argTyp).ElementCount);
             end else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
          end;
          skLow: begin
-            FreeAndNil(argExpr); // not needed
+               FreeAndNil(argExpr);
             if argTyp is TStaticArraySymbol then
-               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(argTyp).LowBound)
+               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(argTyp).LowBound)
             else if argTyp is TEnumerationSymbol then
-               Result:= TConstExpr.CreateTyped(FProg, FProg.TypInteger, TEnumerationSymbol(argTyp).LowBound)
+               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TEnumerationSymbol(argTyp).LowBound)
             else if argTyp=FProg.TypString then
-               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, 1)
+               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, 1)
             else if (argTyp=FProg.TypInteger) then begin
-               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, Low(Int64))
+               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, Low(Int64))
             end else if (argTyp is TDynamicArraySymbol) then
-               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, 0)
+               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, 0)
             else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
          end;
          skSqr : begin
@@ -5353,8 +5373,8 @@ begin
             end;
          end;
          skSizeOf : begin
+             Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, argTyp.Size);
              FreeAndNil(argExpr);
-             Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger, argTyp.Size);
          end;
          skDefined, skDeclared : begin
             if not argExpr.IsStringValue then
@@ -5368,6 +5388,8 @@ begin
                         Result:=TConstBooleanExpr.CreateUnified(FProg, FProg.TypBoolean, EvaluateDefined(argExpr));
                      skDeclared :
                         Result:=TConstBooleanExpr.CreateUnified(FProg, FProg.TypBoolean, EvaluateDeclared(argExpr));
+                  else
+                     Assert(False);
                   end;
                finally
                   FreeAndNil(argExpr);
@@ -5378,6 +5400,8 @@ begin
                      Result:=TDefinedExpr.Create(FProg, argExpr);
                   skDeclared :
                      Result:=TDeclaredExpr.Create(FProg, argExpr);
+               else
+                  Assert(False);
                end;
                argExpr:=nil;
             end;
