@@ -47,6 +47,8 @@ type
          procedure AddInteger(const i : Int64);
          procedure AddFloat(const f : Double);
          procedure AddString(const s : String);
+
+         procedure Initialize;
    end;
 
    // TTightList
@@ -289,6 +291,7 @@ begin
    Create;
    for i:=Low(variantArray) to High(variantArray) do
       Add(variantArray[i]);
+   Initialize;
 end;
 
 // AddVarRec
@@ -344,7 +347,7 @@ begin
    FIntegers[n]:=i;
    with AddVarRec^ do begin
       VType:=vtInt64;
-      VInt64:=@FIntegers[n];
+      VInteger:=n;
    end;
 end;
 
@@ -359,7 +362,7 @@ begin
    FFloats[n]:=f;
    with AddVarRec^ do begin
       VType:=vtExtended;
-      VExtended:=@FFloats[n];
+      VInteger:=n;
    end;
 end;
 
@@ -374,7 +377,24 @@ begin
    FStrings[n]:=s;
    with AddVarRec^ do begin
       VType:=vtUnicodeString;
-      VUnicodeString:=Pointer(FStrings[n]);
+      VInteger:=n;
+   end;
+end;
+
+// Initialize
+//
+procedure TVarRecArrayContainer.Initialize;
+var
+   i : Integer;
+   rec : PVarRec;
+begin
+   for i:=0 to High(VarRecArray) do begin
+      rec:=@VarRecArray[i];
+      case rec.VType of
+         vtInt64 : rec.VInt64:=@FIntegers[rec.VInteger];
+         vtExtended : rec.VExtended:=@FFloats[rec.VInteger];
+         vtUnicodeString : rec.VString:=Pointer(FStrings[rec.VInteger]);
+      end;
    end;
 end;
 
