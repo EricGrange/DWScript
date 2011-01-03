@@ -1611,7 +1611,9 @@ end;
 //
 class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TSymbol; constSymbol : TConstSymbol) : TConstExpr;
 begin
-   Result:=CreateTyped(Prog, Typ, constSymbol.Data);
+   if constSymbol<>nil then
+      Result:=CreateTyped(Prog, Typ, constSymbol.Data)
+   else Result:=CreateTyped(Prog, Typ, Unassigned);
 end;
 
 // GetData
@@ -2033,6 +2035,7 @@ begin
       expr:=TNoPosExpr(FElementExprs.List[i]);
       Result.Add(expr.Eval);
    end;
+   Result.Initialize;
 end;
 
 procedure TArrayConstantExpr.Initialize;
