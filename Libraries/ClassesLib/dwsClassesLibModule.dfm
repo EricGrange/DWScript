@@ -650,6 +650,22 @@ object dwsClassesLib: TdwsClassesLib
               end>
             OnEval = dwsUnitClassesTStringListMethodsSetSortedEval
             Kind = mkProcedure
+          end
+          item
+            Name = 'GetCaseSensitive'
+            ResultType = 'Boolean'
+            OnEval = dwsUnitClassesTStringListMethodsGetCaseSensitiveEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'SetCaseSensitive'
+            Parameters = <
+              item
+                Name = 'value'
+                DataType = 'Boolean'
+              end>
+            OnEval = dwsUnitClassesTStringListMethodsSetCaseSensitiveEval
+            Kind = mkProcedure
           end>
         Operators = <>
         Properties = <
@@ -665,6 +681,13 @@ object dwsClassesLib: TdwsClassesLib
             DataType = 'Boolean'
             ReadAccess = 'GetSorted'
             WriteAccess = 'SetSorted'
+            IsDefault = False
+          end
+          item
+            Name = 'CaseSensitive'
+            DataType = 'Boolean'
+            ReadAccess = 'GetCaseSensitive'
+            WriteAccess = 'SetCaseSensitive'
             IsDefault = False
           end>
       end

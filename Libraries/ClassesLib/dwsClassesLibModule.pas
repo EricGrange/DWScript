@@ -168,6 +168,10 @@ type
     procedure dwsUnitClassesTStringBuilderCleanUp(ExternalObject: TObject);
     procedure dwsUnitClassesTStringsMethodsRemoveEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsUnitClassesTStringListMethodsGetCaseSensitiveEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsUnitClassesTStringListMethodsSetCaseSensitiveEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     FScript: TDelphiWebScript;
     procedure SetScript(const Value: TDelphiWebScript);
@@ -501,10 +505,22 @@ begin
   Info.ValueAsInteger['Index'] := Index;
 end;
 
+procedure TdwsClassesLib.dwsUnitClassesTStringListMethodsGetCaseSensitiveEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+  Info.ResultAsBoolean := TdwsStringList(ExtObject).CaseSensitive;
+end;
+
 procedure TdwsClassesLib.dwsUnitClassesTStringListMethodsGetDuplicatesEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
   Info.ResultAsInteger := Integer(TdwsStringList(ExtObject).Duplicates);
+end;
+
+procedure TdwsClassesLib.dwsUnitClassesTStringListMethodsSetCaseSensitiveEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+  TdwsStringList(ExtObject).CaseSensitive := Info.ValueAsBoolean['value'];
 end;
 
 procedure TdwsClassesLib.dwsUnitClassesTStringListMethodsSetDuplicatesEval(
