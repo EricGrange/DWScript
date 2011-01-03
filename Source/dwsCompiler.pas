@@ -2018,10 +2018,16 @@ begin
 
       end else begin
 
-         FMsgs.AddCompilerError(aPos, CPE_InvalidInstruction);
-         // fake to keep going
-         FreeAndNil(Expr);
-         Result:=TNullExpr.Create(FProg, aPos);
+         if FTok.Test(ttDOT) then begin
+
+            Result:=ReadSymbol(ReadPropertyReadExpr(Expr, PropertySym), True);
+
+         end else begin
+            FMsgs.AddCompilerError(aPos, CPE_InvalidInstruction);
+            // fake to keep going
+            FreeAndNil(Expr);
+            Result:=TNullExpr.Create(FProg, aPos);
+         end;
 
       end;
 
