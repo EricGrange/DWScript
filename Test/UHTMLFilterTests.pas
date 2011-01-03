@@ -82,14 +82,18 @@ begin
       for s in FTests do begin
          sl.LoadFromFile(s);
          prog := FCompiler.Compile(sl.Text);
-         CheckEquals('', prog.Msgs.AsInfo, s);
-         prog.Execute;
+         try
+            CheckEquals('', prog.Msgs.AsInfo, s);
+            prog.Execute;
 
-         resultFileName:=ChangeFileExt(s, '.txt');
-         if FileExists(resultFileName) then
-            sl.LoadFromFile(ChangeFileExt(resultFileName, '.txt'))
-         else sl.Clear;
-         CheckEquals(sl.Text, (prog.Result as TdwsDefaultResult).Text, s);
+            resultFileName:=ChangeFileExt(s, '.txt');
+            if FileExists(resultFileName) then
+               sl.LoadFromFile(ChangeFileExt(resultFileName, '.txt'))
+            else sl.Clear;
+            CheckEquals(sl.Text, (prog.Result as TdwsDefaultResult).Text, s);
+         finally
+            prog.Free;
+         end;
       end;
    finally
       sl.Free;
