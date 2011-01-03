@@ -6,6 +6,7 @@ program LanguageTests;
 {$ENDIF}
 
 uses
+   FastMM4,
   Classes,
   Forms,
   TestFrameWork,
@@ -28,6 +29,7 @@ uses
 {$R *.res}
 
 begin
+   ReportMemoryLeaksOnShutdown:=True;
    Application.Initialize;
    GUITestRunner.RunRegisteredTests;
 end.
