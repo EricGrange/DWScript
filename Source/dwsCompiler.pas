@@ -3961,7 +3961,7 @@ begin
                      if (not constParam) and (typ is TOpenArraySymbol) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamMustBeConst);
                      if (typ is TDynamicArraySymbol) then
-                        FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamElementsMustBeVariant);
+                        FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamElementsMustBeConst);
 
                      if FTok.TestDelete(ttEQ) then begin
                         if lazyParam then
