@@ -23,6 +23,7 @@ type
 
    published
       procedure TestHTMLScript;
+      procedure TestPatterns;
 
    end;
 
@@ -97,6 +98,30 @@ begin
       end;
    finally
       sl.Free;
+   end;
+end;
+
+// TestPatterns
+//
+procedure THTMLFilterTests.TestPatterns;
+var
+   locFilter : TdwsHtmlFilter;
+begin
+   locFilter:=TdwsHtmlFilter.Create(nil);
+   try
+      locFilter.PatternClose:='';
+      CheckException(locFilter.CheckPatterns, EHTMLFilterException);
+      locFilter.PatternClose:='a';
+
+      locFilter.PatternOpen:='';
+      CheckException(locFilter.CheckPatterns, EHTMLFilterException);
+      locFilter.PatternOpen:='b';
+
+      locFilter.PatternEval:='';
+      CheckException(locFilter.CheckPatterns, EHTMLFilterException);
+      locFilter.PatternEval:='c';
+   finally
+      locFilter.Free;
    end;
 end;
 

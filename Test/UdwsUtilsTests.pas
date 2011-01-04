@@ -8,6 +8,7 @@ type
 
    TdwsUtilsTests = class (TTestCase)
       private
+         FTightList : TTightList;
 
       public
 
@@ -15,6 +16,7 @@ type
 
          procedure StackIntegerTest;
          procedure WriteOnlyBlockStreamTest;
+         procedure TightListTest;
    end;
 
 // ------------------------------------------------------------------
@@ -90,6 +92,44 @@ begin
    buffer.Free;
 
    CheckEquals('123456789', bs);
+end;
+
+// TightListTest
+//
+procedure TdwsUtilsTests.TightListTest;
+begin
+   CheckEquals(-1, FTightList.IndexOf(nil), 'empty search');
+
+   FTightList.Add(Self);
+   CheckEquals(-1, FTightList.IndexOf(nil), 'single search nil');
+   CheckEquals(0, FTightList.IndexOf(Self), 'single search Self');
+
+   FTightList.Move(0, 0);
+
+   CheckEquals(0, FTightList.IndexOf(Self), 'single search Self 2');
+
+   FTightList.Add(nil);
+   CheckEquals(1, FTightList.IndexOf(nil), 'two search nil');
+   CheckEquals(0, FTightList.IndexOf(Self), 'two search Self');
+   CheckEquals(-1, FTightList.IndexOf(Pointer(-1)), 'two search -1');
+
+   FTightList.Move(0, 1);
+
+   CheckEquals(0, FTightList.IndexOf(nil), 'two search nil 2');
+   CheckEquals(1, FTightList.IndexOf(Self), 'two search Self 2');
+
+   FTightList.Move(1, 0);
+
+   CheckEquals(1, FTightList.IndexOf(nil), 'two search nil 3');
+   CheckEquals(0, FTightList.IndexOf(Self), 'two search Self 3');
+
+   FTightList.Add(nil);
+   FTightList.Move(2, 0);
+
+   CheckEquals(0, FTightList.IndexOf(nil), 'three search nil');
+   CheckEquals(1, FTightList.IndexOf(Self), 'three search Self');
+
+   FTightList.Clear
 end;
 
 // ------------------------------------------------------------------

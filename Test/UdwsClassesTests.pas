@@ -3,7 +3,7 @@ unit UdwsClassesTests;
 interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsClassesLibModule, dwsXPlatform;
+   dwsClassesLibModule, dwsXPlatform, dwsSymbols;
 
 type
 
@@ -26,6 +26,8 @@ type
          procedure CompilationWithMapAndSymbols;
          procedure ExecutionNonOptimized;
          procedure ExecutionOptimized;
+
+         procedure SymbolDescriptions;
    end;
 
 // ------------------------------------------------------------------
@@ -124,6 +126,23 @@ procedure TdwsClassesTests.ExecutionOptimized;
 begin
    FCompiler.Config.CompilerOptions:=[coOptimize];
    Execution;
+end;
+
+// SymbolDescriptions
+//
+procedure TdwsClassesTests.SymbolDescriptions;
+var
+   prog : TdwsProgram;
+   stringsSymbol : TClassSymbol;
+begin
+   prog:=FCompiler.Compile('');
+   try
+      stringsSymbol:=prog.Table.FindSymbol('TStrings') as TClassSymbol;
+      CheckEquals('property Strings[x: Integer]: String read GetStrings write SetStrings; default;',
+                  stringsSymbol.Members.FindSymbol('Strings').Description, 'Strings Description');
+   finally
+      prog.Free;
+   end;
 end;
 
 // Execution
