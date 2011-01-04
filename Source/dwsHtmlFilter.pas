@@ -35,23 +35,27 @@ uses
   dwsErrors, dwsCompiler, dwsStrings, dwsStringResult, dwsUtils;
 
 type
-  TdwsHtmlFilter = class(TdwsFilter)
-  private
-    FPatternOpen: string;
-    FPatternClose: string;
-    FPatternEval: string;
-    procedure SetPatternClose(const Value: string);
-    procedure SetPatternEval(const Value: string);
-    procedure SetPatternOpen(const Value: string);
-    procedure CheckPatterns;
-  public
-    constructor Create(AOwner: TComponent); override;
-    function Process(const Text: string; Msgs: TdwsMessageList): string; override;
-  published
-    property PatternClose: string read FPatternClose write SetPatternClose;
-    property PatternEval: string read FPatternEval write SetPatternEval;
-    property PatternOpen: string read FPatternOpen write SetPatternOpen;
-  end;
+
+   // TdwsHtmlFilter
+   //
+   TdwsHtmlFilter = class(TdwsFilter)
+      private
+         FPatternOpen: string;
+         FPatternClose: string;
+         FPatternEval: string;
+
+      public
+         constructor Create(AOwner: TComponent); override;
+
+         procedure CheckPatterns;
+
+         function Process(const Text: string; Msgs: TdwsMessageList): string; override;
+
+      published
+         property PatternClose: string read FPatternClose write FPatternClose;
+         property PatternEval: string read FPatternEval write FPatternEval;
+         property PatternOpen: string read FPatternOpen write FPatternOpen;
+   end;
 
   TdwsHtmlUnit = class(TdwsUnitComponent)
   protected
@@ -70,7 +74,15 @@ type
     procedure Execute; override;
   end;
 
+  EHTMLFilterException = class (Exception) end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
 { TdwsHtmlFilter }
 
@@ -84,6 +96,8 @@ begin
   FPatternEval := '=';
 end;
 
+// Process
+//
 function TdwsHtmlFilter.Process(const Text: String; Msgs: TdwsMessageList): String;
 
    procedure StuffString(const str: String; start, stop : Integer;
@@ -145,9 +159,11 @@ function TdwsHtmlFilter.Process(const Text: String; Msgs: TdwsMessageList): Stri
 var
    state: (sNone, sSend);
    index, patOpen, patClose, patEval: Integer;
-   htmlText, chunk, pattern: string;
+   htmlText, chunk, pattern: String;
    builder : TWriteOnlyBlockStream;
 begin
+   CheckPatterns;
+
    // Initializations
    htmlText := inherited Process(Text, Msgs);
    patOpen := Length(FPatternOpen) - 1;
@@ -204,32 +220,14 @@ begin
    end;
 end;
 
-procedure TdwsHtmlFilter.SetPatternClose(const Value: string);
-begin
-  FPatternClose := Value;
-  CheckPatterns;
-end;
-
-procedure TdwsHtmlFilter.SetPatternEval(const Value: string);
-begin
-  FPatternEval := Value;
-  CheckPatterns;
-end;
-
-procedure TdwsHtmlFilter.SetPatternOpen(const Value: string);
-begin
-  FPatternOpen := Value;
-  CheckPatterns;
-end;
-
 procedure TdwsHtmlFilter.CheckPatterns;
 begin
-  if Length(FPatternOpen) = 0 then
-    raise Exception.Create('Property "PatternOpen" must be set!');
-  if Length(FPatternClose) = 0 then
-    raise Exception.Create('Property "PatternClose" must be set!');
-  if Length(FPatternEval) = 0 then
-    raise Exception.Create('Property "PatternEval" must be set!');
+   if FPatternOpen='' then
+      raise EHTMLFilterException.Create('Property "PatternOpen" must be set!');
+   if FPatternClose='' then
+      raise EHTMLFilterException.Create('Property "PatternClose" must be set!');
+   if FPatternEval='' then
+      raise EHTMLFilterException.Create('Property "PatternEval" must be set!');
 end;
 
 { TSendFunction }

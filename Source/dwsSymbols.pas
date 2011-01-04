@@ -1764,7 +1764,7 @@ begin
       Result := Result + ' write ' + FWriteSym.Name;
 
    if ClassSymbol.DefaultProperty = Self then
-      Result := Result + '; default';
+      Result := Result + '; default;';
 end;
 
 function TPropertySymbol.GetIsDefault: Boolean;

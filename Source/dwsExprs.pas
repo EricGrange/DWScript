@@ -1008,8 +1008,8 @@ type
     function GetParamAsBoolean(index : Integer) : Boolean;
 
   protected
-    function CreateUnitList: TList; dynamic;
-    function FindSymbolInUnits(AUnitList: TList; const Name: string): TSymbol; overload; virtual;
+    function CreateUnitList : TList;
+    function FindSymbolInUnits(AUnitList: TList; const Name: string): TSymbol; overload;
 
   public
     procedure PrepareScriptObj;
@@ -1017,9 +1017,10 @@ type
     function RegisterExternalObject(AObject: TObject; AutoFree: Boolean=False; ExactClassMatch: Boolean=True): Variant;
     function GetExternalObjForVar(const s: string): TObject;
     // cycle ancestry hierarchy and find the nearest matching type
-    function FindClassMatch(AObject: TObject; ExactMatch: Boolean=True): TClassSymbol; dynamic;
-    function FindSymbolInUnits(const Name: string): TSymbol; overload; virtual;
+    function FindClassMatch(AObject: TObject; ExactMatch: Boolean=True): TClassSymbol;
+    function FindSymbolInUnits(const Name: string): TSymbol; overload;
     function GetTemp(const DataType: string): IInfo;
+
     property Table : TSymbolTable read FTable write FTable;
     property Caller: TdwsProgram read FCaller write FCaller;
     property Data[const s: string]: TData read GetData write SetData;
