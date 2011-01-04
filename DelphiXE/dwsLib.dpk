@@ -1,7 +1,6 @@
 package dwsLib;
 
 {$R *.res}
-{$R '..\Source\dws.dcr'}
 {$ALIGN 8}
 {$ASSERTIONS ON}
 {$BOOLEVAL OFF}
@@ -52,6 +51,18 @@ contains
   dwsMathFunctions in '..\Source\dwsMathFunctions.pas',
   dwsStack in '..\Source\dwsStack.pas',
   dwsStringFunctions in '..\Source\dwsStringFunctions.pas',
-  dwsCoreExprs in '..\Source\dwsCoreExprs.pas';
+  dwsCoreExprs in '..\Source\dwsCoreExprs.pas',
+  dwsUtils in '..\Source\dwsUtils.pas',
+  dwsXPlatform in '..\Source\dwsXPlatform.pas',
+  dwsClasses in '..\Libraries\ClassesLib\dwsClasses.pas',
+  dwsHashtables in '..\Libraries\ClassesLib\dwsHashtables.pas',
+  dwsFileSystem in '..\Source\dwsFileSystem.pas',
+  dwsHtmlFilter in '..\Source\dwsHtmlFilter.pas',
+  dwsLanguageExtension in '..\Source\dwsLanguageExtension.pas',
+  dwsMagicExprs in '..\Source\dwsMagicExprs.pas',
+  dwsRelExprs in '..\Source\dwsRelExprs.pas',
+  dwsStringResult in '..\source\dwsStringResult.pas',
+  dwsClassesLibModule in '..\Libraries\ClassesLib\dwsClassesLibModule.pas' {dwsClassesLib: TDataModule},
+  dwsAsmLibModule in '..\Libraries\asmLib\dwsAsmLibModule.pas';
 
 end.

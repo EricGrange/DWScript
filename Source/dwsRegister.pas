@@ -26,6 +26,8 @@ procedure Register;
 
 implementation
 
+{$R 'dws.dcr'}
+
 uses
   Classes, Controls, dwsComp, dwsComConnector, dwsDebugger, dwsGlobalVarsFunctions,
   dwsVCLGUIFunctions, dwsHtmlFilter, dwsClasses, dwsClassesLibModule, dwsFileSystem;
