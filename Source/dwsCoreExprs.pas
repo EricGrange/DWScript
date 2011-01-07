@@ -1513,21 +1513,40 @@ end;
 function TUnifiedConstList.Compare(const item1, item2 : TExprBase) : Integer;
 var
    unified1, unified2 : TUnifiedConstExpr;
+   vd1, vd2 : PVarData;
+   rawResult : Int64;
 begin
    unified1:=TUnifiedConstExpr(item1);
    unified2:=TUnifiedConstExpr(item2);
    if unified1.ClassType=unified2.ClassType then begin
       if unified1.Typ=unified2.Typ then begin
-         case VarCompareValue(unified1.FData[0], unified2.FData[0]) of
-            vrEqual : Result:=0;
-            vrLessThan : Result:=-1;
-            vrGreaterThan : Result:=1;
-         else
-            Result:=0;
-            Assert(False);
+         vd1:=@unified1.FData[0];
+         vd2:=@unified2.FData[0];
+         rawResult:=Integer(vd1.VType)-Integer(vd2.VType);
+         if rawResult=0 then begin
+            case vd1.VType of
+               varUString : rawResult:=CompareStr(String(vd1.VUString), String(vd2.VUString));
+               varInt64 : rawResult:=vd1.VInt64-vd2.VInt64;
+               varBoolean : rawResult:=Integer(vd1.VBoolean)-Integer(vd2.VBoolean);
+            else
+               case VarCompareValue(unified1.FData[0], unified2.FData[0]) of
+                  vrEqual : rawResult:=0;
+                  vrLessThan : rawResult:=-1;
+                  vrGreaterThan : rawResult:=1;
+               else
+                  rawResult:=0;
+                  Assert(False);
+               end;
+            end;
          end;
-      end else Result:=NativeInt(unified1.Typ)-NativeInt(unified2.Typ);
-   end else Result:=NativeInt(unified1.ClassType)-NativeInt(unified2.ClassType);
+      end else rawResult:=NativeInt(unified1.Typ)-NativeInt(unified2.Typ);
+   end else rawResult:=NativeInt(unified1.ClassType)-NativeInt(unified2.ClassType);
+
+   if rawResult=0 then
+      Result:=0
+   else if rawResult>0 then
+      Result:=1
+   else Result:=-1;
 end;
 
 // Destroy
