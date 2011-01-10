@@ -65,7 +65,7 @@ type
       procedure AppendChar(c : Char);
       procedure Grow;
       function LastChar : Char;
-      function ToStr : String; overload;
+      function ToStr : String; overload; inline;
       procedure ToStr(var result : String); overload;
       procedure AppendToStr(var result : String);
       procedure ToUpperStr(var result : String); overload;
@@ -252,9 +252,7 @@ end;
 //
 function TTokenBuffer.ToStr : String;
 begin
-   if Len=0 then
-      Result:=''
-   else SetString(Result, PChar(@Buffer[0]), Len);
+   ToStr(Result);
 end;
 
 // ToStr
@@ -263,19 +261,22 @@ procedure TTokenBuffer.ToStr(var result : String);
 begin
    if Len=0 then
       result:=''
-   else SetString(result, PChar(@Buffer[0]), Len);
+   else begin
+      SetLength(result, Len);
+      Move(Buffer[0], Pointer(NativeInt(result))^, Len*SizeOf(Char));
+   end;
 end;
 
 // ToStr
 //
 procedure TTokenBuffer.AppendToStr(var result : String);
 var
-//   n : Integer;
-   s : String;
+   n : Integer;
 begin
    if Len>0 then begin
-      ToStr(s);
-      result:=result+s;
+      n:=Length(result);
+      SetLength(result, n+Len);
+      Move(Buffer[0], PChar(NativeInt(result))[n], Len*SizeOf(Char));
    end;
 end;
 
