@@ -282,7 +282,7 @@ type
     function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
   protected
     function GetDisplayName: string; override;
-    procedure Call(Caller: TdwsProgram; Func: TFuncSymbol); virtual;
+    procedure Call(Caller: TdwsProgramExecution; Func: TFuncSymbol); virtual;
     procedure SetParameters(const Value: TdwsParameters);
     function StoreParameters : Boolean;
   public
@@ -450,7 +450,7 @@ type
     procedure SetResultType(const Value: TDataType);
   protected
     function GetDisplayName: string; override;
-    procedure Call(Caller: TdwsProgram; Func: TFuncSymbol); override;
+    procedure Call(Caller: TdwsProgramExecution; Func: TFuncSymbol); override;
   public
     procedure Assign(Source: TPersistent); override;
     function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
@@ -473,7 +473,7 @@ type
     function GetResultType: string;
   protected
     function GetDisplayName: string; override;
-    procedure Call(Caller: TdwsProgram; Func: TFuncSymbol); override;
+    procedure Call(Caller: TdwsProgramExecution; Func: TFuncSymbol); override;
   public
     constructor Create(Collection: TCollection); override;
     procedure Assign(Source: TPersistent); override;
@@ -1984,7 +1984,7 @@ begin
   inherited;
 end;
 
-procedure TdwsFunction.Call(Caller: TdwsProgram; Func: TFuncSymbol);
+procedure TdwsFunction.Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
 var
    info: TProgramInfo;
 begin
@@ -2210,7 +2210,7 @@ begin
     end;
 end;
 
-procedure TdwsMethod.Call(Caller: TdwsProgram; Func: TFuncSymbol);
+procedure TdwsMethod.Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
 var
   info : TProgramInfo;
   isClassMethod : Boolean;
@@ -2258,7 +2258,7 @@ begin
     FAttributes := TdwsMethod(Source).Attributes;
 end;
 
-procedure TdwsConstructor.Call(Caller: TdwsProgram; Func: TFuncSymbol);
+procedure TdwsConstructor.Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
 var
    info: TProgramInfo;
    extObj: TObject;

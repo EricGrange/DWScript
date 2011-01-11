@@ -71,7 +71,7 @@ function TVarIsNullFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
 var
    v : Variant;
 begin
-   args.ExprBase[0].EvalAsVariant(v);
+   args.ExprBase[0].EvalAsVariant(args.Exec, v);
    Result:=VarIsNull(v);
 end;
 
@@ -81,7 +81,7 @@ function TVarIsEmptyFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
 var
    v : Variant;
 begin
-   args.ExprBase[0].EvalAsVariant(v);
+   args.ExprBase[0].EvalAsVariant(args.Exec, v);
    Result:=VarIsEmpty(v);
 end;
 
@@ -91,7 +91,7 @@ function TVarTypeFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 var
    v : Variant;
 begin
-   args.ExprBase[0].EvalAsVariant(v);
+   args.ExprBase[0].EvalAsVariant(args.Exec, v);
    Result:=VarType(v);
 end;
 
@@ -110,7 +110,7 @@ procedure TVarToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String
 var
    v : Variant;
 begin
-   args.ExprBase[0].EvalAsVariant(v);
+   args.ExprBase[0].EvalAsVariant(args.Exec, v);
    Result:=VarToStr(v);
 end;
 

@@ -186,7 +186,7 @@ begin
    prog:=FCompiler.Compile('{$include}');
    try
       CheckEquals('Syntax Error: Name of include file expected [line: 1, column: 10]'#13#10,
-                  prog.Msgs.AsInfo, 'include missing');
+                  prog.CompileMsgs.AsInfo, 'include missing');
    finally
       prog.Free;
    end;
@@ -194,7 +194,7 @@ begin
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
    try
       CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
-                  prog.Msgs.AsInfo, 'include forbidden');
+                  prog.CompileMsgs.AsInfo, 'include forbidden');
    finally
       prog.Free;
    end;
@@ -202,9 +202,9 @@ begin
    FCompiler.OnInclude:=DoOnInclude;
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
    try
-      CheckEquals('', prog.Msgs.AsInfo, 'include via event');
+      CheckEquals('', prog.CompileMsgs.AsInfo, 'include via event');
       prog.Execute;
-      CheckEquals('hello', (prog.Result as TdwsDefaultResult).Text, 'exec include via event');
+      CheckEquals('hello', (prog.ExecutionContext.Result as TdwsDefaultResult).Text, 'exec include via event');
    finally
       prog.Free;
    end;
@@ -246,7 +246,7 @@ begin
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
    try
       CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
-                  prog.Msgs.AsInfo, 'include via file no paths');
+                  prog.CompileMsgs.AsInfo, 'include via file no paths');
    finally
       prog.Free;
    end;
@@ -254,9 +254,9 @@ begin
    FCompiler.Config.ScriptPaths.Add(tempDir);
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
    try
-      CheckEquals('', prog.Msgs.AsInfo, 'include via file');
+      CheckEquals('', prog.CompileMsgs.AsInfo, 'include via file');
       prog.Execute;
-      CheckEquals('world', (prog.Result as TdwsDefaultResult).Text, 'exec include via file');
+      CheckEquals('world', (prog.ExecutionContext.Result as TdwsDefaultResult).Text, 'exec include via file');
    finally
       prog.Free;
    end;
@@ -304,7 +304,7 @@ begin
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
    try
       CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
-                  prog.Msgs.AsInfo, 'include via file no paths');
+                  prog.CompileMsgs.AsInfo, 'include via file no paths');
    finally
       prog.Free;
    end;
@@ -314,7 +314,7 @@ begin
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
    try
       CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
-                  prog.Msgs.AsInfo, 'include via file restricted - no paths');
+                  prog.CompileMsgs.AsInfo, 'include via file restricted - no paths');
    finally
       prog.Free;
    end;
@@ -322,9 +322,9 @@ begin
    FCompiler.Config.ScriptPaths.Add('.');
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
    try
-      CheckEquals('', prog.Msgs.AsInfo, 'include via file restricted - dot path');
+      CheckEquals('', prog.CompileMsgs.AsInfo, 'include via file restricted - dot path');
       prog.Execute;
-      CheckEquals('world', (prog.Result as TdwsDefaultResult).Text, 'exec include via file');
+      CheckEquals('world', (prog.ExecutionContext.Result as TdwsDefaultResult).Text, 'exec include via file');
    finally
       prog.Free;
    end;
@@ -345,10 +345,10 @@ begin
 
    prog:=FCompiler.Compile('procedure Dummy; begin Dummy; end; Dummy;');
    try
-      CheckEquals('', prog.Msgs.AsInfo, 'compile');
+      CheckEquals('', prog.CompileMsgs.AsInfo, 'compile');
       prog.Execute;
-      CheckEquals('Runtime Error: Maximal recursion exceeded (20 calls)'#13#10,
-                  prog.Msgs.AsInfo, 'stack max recursion');
+      CheckEquals('Runtime Error: Maximal recursion exceeded (20 calls) [line: 1, column: 36]'#13#10,
+                  prog.ExecutionContext.Msgs.AsInfo, 'stack max recursion');
    finally
       prog.Free;
    end;
@@ -366,10 +366,10 @@ begin
 
    prog:=FCompiler.Compile('procedure Dummy; var i : Integer; begin Dummy; end; Dummy;');
    try
-      CheckEquals('', prog.Msgs.AsInfo, 'compile');
+      CheckEquals('', prog.CompileMsgs.AsInfo, 'compile');
       prog.Execute;
-      CheckEquals('Runtime Error: Maximal data size exceeded (64 Variants)'#13#10,
-                  prog.Msgs.AsInfo, 'stack overflow');
+      CheckEquals('Runtime Error: Maximal data size exceeded (64 Variants) [line: 1, column: 53]'#13#10,
+                  prog.ExecutionContext.Msgs.AsInfo, 'stack overflow');
    finally
       prog.Free;
    end;

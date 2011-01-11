@@ -10,10 +10,6 @@
 {    or implied. See the License for the specific language             }
 {    governing rights and limitations under the License.               }
 {                                                                      }
-{    The Initial Developer of the Original Code is Matthias            }
-{    Ackermann. For other initial contributors, see contributors.txt   }
-{    Subsequent portions Copyright Creative IT.                        }
-{                                                                      }
 {    Current maintainer: Eric Grange                                   }
 {                                                                      }
 {**********************************************************************}

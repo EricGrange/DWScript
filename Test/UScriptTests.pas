@@ -104,7 +104,7 @@ begin
 
          prog:=FCompiler.Compile(source.Text);
          try
-            CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
+            CheckEquals('', prog.CompileMsgs.AsInfo, FTests[i]);
          finally
             prog.Free;
          end;
@@ -136,15 +136,16 @@ begin
 
          prog:=FCompiler.Compile(source.Text);
          try
-            CheckEquals(False, prog.Msgs.HasErrors, FTests[i]);
+            CheckEquals(False, prog.CompileMsgs.HasErrors, FTests[i]);
             prog.Execute;
-            if prog.Msgs.Count=0 then
-               output:=(prog.Result as TdwsDefaultResult).Text
+            if prog.CompileMsgs.Count+prog.ExecutionContext.Msgs.Count=0 then
+               output:=(prog.ExecutionContext.Result as TdwsDefaultResult).Text
             else begin
                output:= 'Errors >>>>'#13#10
-                       +prog.Msgs.AsInfo
+                       +prog.CompileMsgs.AsInfo
+                       +prog.ExecutionContext.Msgs.AsInfo
                        +'Result >>>>'#13#10
-                       +(prog.Result as TdwsDefaultResult).Text;
+                       +(prog.ExecutionContext.Result as TdwsDefaultResult).Text;
             end;
             resultsFileName:=ChangeFileExt(FTests[i], '.txt');
             if FileExists(resultsFileName) then begin
@@ -219,8 +220,8 @@ begin
             expectedErrorsFileName:=ChangeFileExt(FFailures[i], '.txt');
             if FileExists(expectedErrorsFileName) then begin
                expectedError.LoadFromFile(expectedErrorsFileName);
-               CheckEquals(expectedError.Text, prog.Msgs.AsInfo, FFailures[i]);
-            end else Check(prog.Msgs.AsInfo<>'', FFailures[i]+': undetected error');
+               CheckEquals(expectedError.Text, prog.CompileMsgs.AsInfo, FFailures[i]);
+            end else Check(prog.CompileMsgs.AsInfo<>'', FFailures[i]+': undetected error');
          finally
             prog.Free;
          end;

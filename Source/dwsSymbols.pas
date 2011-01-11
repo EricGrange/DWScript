@@ -22,10 +22,11 @@ unit dwsSymbols;
 
 interface
 
-uses Windows, SysUtils, Variants, Classes, dwsStrings, dwsStack, dwsErrors,
-   dwsUtils, dwsTokenizer;
+uses Windows, SysUtils, Variants, Classes, dwsStrings, dwsErrors,
+   dwsUtils, dwsTokenizer, dwsBaseExprs, dwsStack;
 
 type
+
    TBaseTypeID = (
       typIntegerID,
       typFloatID,
@@ -38,25 +39,39 @@ type
       typNoneID
    );
 
-type
-
    IScriptObj = interface;
+
+   TdwsExecution = class abstract (TInterfacedObject)
+      private
+         FStack : TStack;
+
+      protected
+         function GetMsgs : TdwsMessageList; virtual; abstract;
+
+      public
+         constructor Create(stackParams : TStackParameters);
+         destructor Destroy; override;
+
+         property Stack : TStack read FStack;
+
+         property Msgs : TdwsMessageList read GetMsgs;
+   end;
 
    // Base class for all Exprs
    TExprBase = class
-      function Eval : Variant; virtual; abstract;
-      function EvalAsInteger : Int64; virtual; abstract;
-      function EvalAsBoolean : Boolean; virtual; abstract;
-      procedure EvalAsFloat(var Result : Double); virtual; abstract;
-      procedure EvalAsString(var Result : String); overload; virtual; abstract;
-      procedure EvalAsVariant(var Result : Variant); overload; virtual; abstract;
-      procedure EvalAsScriptObj(var Result : IScriptObj); virtual; abstract;
+      function Eval(exec : TdwsExecution) : Variant; virtual; abstract;
+      function EvalAsInteger(exec : TdwsExecution) : Int64; virtual; abstract;
+      function EvalAsBoolean(exec : TdwsExecution) : Boolean; virtual; abstract;
+      procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); virtual; abstract;
+      procedure EvalAsString(exec : TdwsExecution; var Result : String); overload; virtual; abstract;
+      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); overload; virtual; abstract;
+      procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); virtual; abstract;
 
-      procedure AssignValue(const value : Variant); virtual; abstract;
-      procedure AssignValueAsInteger(const value : Int64); virtual; abstract;
-      procedure AssignValueAsBoolean(const value : Boolean); virtual; abstract;
-      procedure AssignValueAsFloat(var value : Double); virtual; abstract;
-      procedure AssignValueAsString(const value: String); virtual; abstract;
+      procedure AssignValue(exec : TdwsExecution; const value : Variant); virtual; abstract;
+      procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); virtual; abstract;
+      procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); virtual; abstract;
+      procedure AssignValueAsFloat(exec : TdwsExecution; var value : Double); virtual; abstract;
+      procedure AssignValueAsString(exec : TdwsExecution; const value: String); virtual; abstract;
    end;
 
    // TExprBaseList
@@ -65,6 +80,7 @@ type
    TExprBaseListRec = record
       private
          FList : TTightList;
+         FExec : TdwsExecution;
 
          function GetExprBase(const x : Integer): TExprBase;
          procedure SetExprBase(const x : Integer; expr : TExprBase);
@@ -81,6 +97,8 @@ type
          function Add(expr : TExprBase) : Integer; inline;
          procedure Insert(index : Integer; expr : TExprBase);
          procedure Delete(index : Integer);
+
+         property Exec : TdwsExecution read FExec write FExec;
 
          property ExprBase[const x : Integer] : TExprBase read GetExprBase write SetExprBase; default;
          property Count : Integer read FList.FCount;
@@ -885,7 +903,6 @@ type
      procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
    end;
 
-
    // Is thrown by "raise" statements in script code
    EScriptException = class(Exception)
       private
@@ -962,35 +979,35 @@ end;
 //
 function TExprBaseListRec.GetAsInteger(const x : Integer) : Int64;
 begin
-   Result:=TExprBase(FList.List[x]).EvalAsInteger;
+   Result:=TExprBase(FList.List[x]).EvalAsInteger(Exec);
 end;
 
 // SetAsInteger
 //
 procedure TExprBaseListRec.SetAsInteger(const x : Integer; const value : Int64);
 begin
-   TExprBase(FList.List[x]).AssignValueAsInteger(value);
+   TExprBase(FList.List[x]).AssignValueAsInteger(Exec, value);
 end;
 
 // GetAsBoolean
 //
 function TExprBaseListRec.GetAsBoolean(const x : Integer) : Boolean;
 begin
-   Result:=TExprBase(FList.List[x]).EvalAsBoolean;
+   Result:=TExprBase(FList.List[x]).EvalAsBoolean(Exec);
 end;
 
 // GetAsFloat
 //
 function TExprBaseListRec.GetAsFloat(const x : Integer) : Double;
 begin
-   TExprBase(FList.List[x]).EvalAsFloat(Result);
+   TExprBase(FList.List[x]).EvalAsFloat(Exec, Result);
 end;
 
 // GetAsString
 //
 function TExprBaseListRec.GetAsString(const x : Integer) : String;
 begin
-   TExprBase(FList.List[x]).EvalAsString(Result);
+   TExprBase(FList.List[x]).EvalAsString(Exec, Result);
 end;
 
 // GetAsDataString
@@ -3090,6 +3107,27 @@ constructor EScriptException.Create(const Message: string;
   const ExceptionObj: IScriptObj; const Pos: TScriptPos);
 begin
   Create(Message,ExceptionObj,ExceptionObj.ClassSym,Pos);
+end;
+
+// ------------------
+// ------------------ TdwsExecution ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsExecution.Create(stackParams : TStackParameters);
+begin
+   inherited Create;
+   FStack:=TStack.Create(stackParams);
+   FStack.Reset;
+end;
+
+// Destroy
+//
+destructor TdwsExecution.Destroy;
+begin
+   inherited;
+   FStack.Free;
 end;
 
 end.

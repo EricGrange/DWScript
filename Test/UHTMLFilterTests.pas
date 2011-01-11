@@ -84,14 +84,14 @@ begin
          sl.LoadFromFile(s);
          prog := FCompiler.Compile(sl.Text);
          try
-            CheckEquals('', prog.Msgs.AsInfo, s);
+            CheckEquals('', prog.CompileMsgs.AsInfo, s);
             prog.Execute;
 
             resultFileName:=ChangeFileExt(s, '.txt');
             if FileExists(resultFileName) then
                sl.LoadFromFile(ChangeFileExt(resultFileName, '.txt'))
             else sl.Clear;
-            CheckEquals(sl.Text, (prog.Result as TdwsDefaultResult).Text, s);
+            CheckEquals(sl.Text, (prog.ExecutionContext.Result as TdwsDefaultResult).Text, s);
          finally
             prog.Free;
          end;

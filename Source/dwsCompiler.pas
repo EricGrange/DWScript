@@ -131,6 +131,15 @@ type
 
    TLoopExitable = (leNotExitable, leBreak, leExit);
 
+   // holds execution context for optimizations during compilation
+   TdwsCompilerExecution = class (TdwsExecution)
+      private
+         FCompiler : TdwsCompiler;
+
+      protected
+         function GetMsgs : TdwsMessageList; override;
+   end;
+
    // TdwsCompiler
    //
    TdwsCompiler = class
@@ -146,6 +155,7 @@ type
 
       FConnectors : TStrings;
       FCompileFileSystem : IdwsFileSystem;
+      FExec : TdwsCompilerExecution;
       FOnInclude : TIncludeEvent;
       FScriptPaths : TStrings;
       FFilter : TdwsFilter;
@@ -362,17 +372,28 @@ end;
 // Create
 //
 constructor TdwsCompiler.Create;
+var
+   stackParams : TStackParameters;
 begin
    inherited;
    FLoopExprs:=TSimpleStack<TNoResultExpr>.Create;
    FLoopExitable:=TSimpleStack<TLoopExitable>.Create;
    FConditionalDepth:=TSimpleStack<TSwitchInstruction>.Create;
+
+   stackParams.MaxLevel:=1;
+   stackParams.ChunkSize:=512;
+   stackParams.MaxByteSize:=MaxInt;
+   stackParams.MaxRecursionDepth:=MaxInt;
+
+   FExec:=TdwsCompilerExecution.Create(stackParams);
+   FExec.FCompiler:=Self;
 end;
 
 // Destroy
 //
 destructor TdwsCompiler.Destroy;
 begin
+   FExec.Free;
    FConditionalDepth.Free;
    FLoopExitable.Free;
    FLoopExprs.Free;
@@ -473,7 +494,7 @@ end;
 procedure TdwsCompiler.LeaveLoop;
 begin
    if FLoopExitable.Peek=leNotExitable then
-      FProg.Msgs.AddCompilerWarning(FLoopExprs.Peek.Pos, CPW_InfiniteLoop);
+      FProg.CompileMsgs.AddCompilerWarning(FLoopExprs.Peek.Pos, CPW_InfiniteLoop);
 
    FLoopExprs.Pop;
    FLoopExitable.Pop;
@@ -530,7 +551,7 @@ begin
    // Create the TdwsProgram
    FProg := CreateProgram(Conf.SystemTable, Conf.ResultType, maxDataSize, stackChunkSize, Conf.MaxRecursionDepth);
    Result := FProg;
-   FMsgs := FProg.Msgs;
+   FMsgs := FProg.CompileMsgs;
    FProg.Compiler := Self;
    FProg.TimeoutMilliseconds := Conf.TimeoutMilliseconds;
    FProg.RuntimeFileSystem := Conf.RuntimeFileSystem;
@@ -593,7 +614,7 @@ begin
       else codeText := aCodeText;
 
       // Initialize tokenizer
-      FTok := TTokenizer.Create(codeText, MSG_MainModule, FProg.Msgs);
+      FTok := TTokenizer.Create(codeText, MSG_MainModule, FProg.CompileMsgs);
       try
          FTok.SwitchHandler := ReadSwitch;
 
@@ -601,16 +622,13 @@ begin
          FProg.Expr := ReadScript('', stMain);
 
          if FConditionalDepth.Count>0 then
-            FProg.Msgs.AddCompilerError(FTok.HotPos, CPE_UnbalancedConditionalDirective);
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_UnbalancedConditionalDirective);
 
          // Initialize symbol table
          FProg.Table.Initialize(FMsgs);
 
          // Initialize the expressions
          FProg.Expr.Initialize;
-
-         // Every thing is done, set program state to "prepared"
-         FProg.ReadyToRun;
       finally
          Inc(FLineCount, FTok.CurrentPos.Line-2);
          FTok.Free;
@@ -739,10 +757,10 @@ begin
     try
       FProg := AContext;
       try
-        OldProgMsgs := FProg.Msgs;
+        OldProgMsgs := FProg.CompileMsgs;
 
         FMsgs := TdwsMessageList.Create;
-        FProg.Msgs := FMsgs;
+        FProg.CompileMsgs := FMsgs;
         try
           FTok := TTokenizer.Create(AExpression, MSG_MainModule, FMsgs);
           try
@@ -768,7 +786,7 @@ begin
             FreeAndNil(FTok);
           end;
         finally
-          FProg.Msgs := OldProgMsgs;
+          FProg.CompileMsgs := OldProgMsgs;
           FreeAndNil(FMsgs);
         end;
       finally
@@ -931,10 +949,10 @@ begin
          if typ is TArraySymbol then begin
             sym := TStaticArraySymbol.Create('', typ, 0, TArraySymbol(typ).typ.Size-1);
             FProg.Table.AddSymbol(sym);
-            sym := TConstSymbol.Create(name, sym, (expr as TArrayConstantExpr).EvalAsTData, 0);
+            sym := TConstSymbol.Create(name, sym, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
          end else if typ.Size>1 then
-            sym := TConstSymbol.Create(name, typ, TConstExpr(expr).Data, TConstExpr(expr).Addr)
-         else sym := TConstSymbol.Create(name, typ, expr.Eval);
+            sym := TConstSymbol.Create(name, typ, TConstExpr(expr).Data[FExec], TConstExpr(expr).Addr[FExec])
+         else sym := TConstSymbol.Create(name, typ, expr.Eval(FExec));
          FProg.Table.AddSymbol(sym);
          if coSymbolDictionary in FCompilerOptions then
             FProg.SymbolDictionary.Add(sym, constPos, [suDeclaration]);
@@ -1060,7 +1078,7 @@ begin
 
       if IsType then
          Result := TSourceFuncSymbol.Create('', FuncKind, -1)
-      else Result := TSourceFuncSymbol.Create(Name, FuncKind, FProg.Stack.NextLevel(FProg.Level));
+      else Result := TSourceFuncSymbol.Create(Name, FuncKind, FProg.NextStackLevel(FProg.Level));
       try
          ReadParams(Result, forwardedSym=nil);  // Don't add params to dictionary when function is forwarded. It is already declared.
 
@@ -1482,7 +1500,7 @@ begin
       end;
 
       if Optimize then
-         Result:=blockExpr.OptimizeToNoResultExpr
+         Result:=blockExpr.OptimizeToNoResultExpr(FExec)
       else Result:=blockExpr;
 
    except
@@ -2220,7 +2238,7 @@ begin
       if FTok.TestDelete(ttASSIGN) then
       begin
         if not Assigned(Sym.WriteFunc) then
-          FProg.Msgs.AddCompilerStop(FTok.HotPos,CPE_CantWriteToLeftSide);
+          FMsgs.AddCompilerStop(FTok.HotPos,CPE_CantWriteToLeftSide);
         // Transform a := b into a(b)
         Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.WriteFunc, True);
         Result.AddArg(ReadExpr);
@@ -2228,7 +2246,7 @@ begin
       else if (Sym.Typ is TClassSymbol) or (Sym.Typ is TClassOfSymbol) then
       begin
         if not Assigned(Sym.ReadFunc) then
-          FProg.Msgs.AddCompilerStop(FTok.HotPos,CPE_RightSideNeedsReturnType);
+          FMsgs.AddCompilerStop(FTok.HotPos,CPE_RightSideNeedsReturnType);
         Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc, False)
       end
       else
@@ -2237,7 +2255,7 @@ begin
     else if Assigned(Sym.ReadFunc) then
       Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc, False)
     else
-      FProg.Msgs.AddCompilerStop(FTok.HotPos,CPE_WriteOnlyProperty); // ??
+      FMsgs.AddCompilerStop(FTok.HotPos,CPE_WriteOnlyProperty); // ??
   except
     Result.Free;
     raise;
@@ -2336,9 +2354,9 @@ begin
          stepExpr:=ReadExpr;
          if not stepExpr.IsIntegerValue then
             FMsgs.AddCompilerError(stepPos, CPE_IntegerExpected);
-         if stepExpr.InheritsFrom(TConstIntExpr) and (TConstIntExpr(stepExpr).EvalAsInteger<=0) then
+         if stepExpr.InheritsFrom(TConstIntExpr) and (TConstIntExpr(stepExpr).Value<=0) then
             FMsgs.AddCompilerErrorFmt(stepPos, RTE_ForLoopStepShouldBeStrictlyPositive,
-                                      [TConstIntExpr(stepExpr).EvalAsInteger]);
+                                      [TConstIntExpr(stepExpr).Value]);
          if forExprClass=TForUpwardExpr then
             forExprClass:=TForUpwardStepExpr
          else forExprClass:=TForDownwardStepExpr;
@@ -2534,7 +2552,7 @@ begin
 
       if    (not Result.CondExpr.IsConstant)
          or (not Result.CondExpr.IsBooleanValue)
-         or (not Result.CondExpr.EvalAsBoolean) then
+         or (not Result.CondExpr.EvalAsBoolean(FExec)) then
          MarkLoopExitable(leBreak);
 
       Result.LoopExpr := ReadBlock;
@@ -2556,7 +2574,7 @@ begin
    try
       Result.LoopExpr := ReadBlocks([ttUNTIL], tt);
       Result.CondExpr := ReadExpr;
-      if (not Result.CondExpr.IsConstant) or Result.CondExpr.EvalAsBoolean then
+      if (not Result.CondExpr.IsConstant) or Result.CondExpr.EvalAsBoolean(FExec) then
          MarkLoopExitable(leBreak);
    except
       Result.Free;
@@ -2660,7 +2678,7 @@ begin
    end;
 
    if Optimize then
-      Result:=Result.Optimize;
+      Result:=Result.Optimize(FExec);
 end;
 
 // ReadFuncArgs
@@ -2726,7 +2744,7 @@ begin
             if not (max[0].Typ = FProg.TypInteger) then
                FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotInteger);
 
-            if max[0].EvalAsInteger < min[0].EvalAsInteger then
+            if max[0].EvalAsInteger(FExec) < min[0].EvalAsInteger(FExec) then
                FMsgs.AddCompilerStop(hotPos, CPE_LowerBoundBiggerThanUpperBound);
 
             if FTok.Test(ttARIGHT) then
@@ -2750,13 +2768,17 @@ begin
 
          if min.Count > 0 then begin
             // initialize innermost array
-            Result := TStaticArraySymbol.Create('', typ, min[0].EvalAsInteger, max[0].EvalAsInteger);
+            Result := TStaticArraySymbol.Create('', typ,
+                                 min[0].EvalAsInteger(FExec),
+                                 max[0].EvalAsInteger(FExec));
             try
                // add outer arrays
                Assert(FProg.Table is TProgramSymbolTable);
                for x := 1 to min.Count - 1 do begin
                   TProgramSymbolTable(FProg.Table).AddToDestructionList(Result);
-                  Result := TStaticArraySymbol.Create('', Result, min[x].EvalAsInteger, max[x].EvalAsInteger);
+                  Result := TStaticArraySymbol.Create('', Result,
+                                 min[x].EvalAsInteger(FExec),
+                                 max[x].EvalAsInteger(FExec));
                end;
 
                // only outermost array is named
@@ -2792,7 +2814,7 @@ begin
         FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
     end;
     if Optimize then
-      Result := Result.Optimize as TArrayConstantExpr;
+      Result := Result.Optimize(FExec) as TArrayConstantExpr;
   except
     Result.Free;
     raise;
@@ -3183,7 +3205,7 @@ begin
         if not (indexExpr is TConstExpr) then
           FMsgs.AddCompilerStop(FTok.HotPos, CPE_ConstantExpressionExpected);
         indexTyp := indexExpr.Typ;
-        Result.SetIndex(TConstExpr(indexExpr).Data, TConstExpr(indexExpr).Addr,
+        Result.SetIndex(TConstExpr(indexExpr).Data[FExec], TConstExpr(indexExpr).Addr[FExec],
           indexTyp);
       end
       else
@@ -3378,7 +3400,7 @@ begin
     exceptExpr := ReadExpr;
     try
       if not Assigned(exceptExpr.Typ) then
-        FProg.Msgs.AddCompilerError(FTok.HotPos,CPE_TypeExpected);
+        FMsgs.AddCompilerError(FTok.HotPos,CPE_TypeExpected);
       Result := TRaiseExpr.Create(FProg, FTok.HotPos, exceptExpr);
     except
       exceptExpr.Free;
@@ -3593,14 +3615,14 @@ begin
                   ttIS: Result := TIsOpExpr.Create(FProg, Result, r);
                   ttAS: Result := TAsOpExpr.Create(FProg, Result, r);
                else
-                  FProg.Msgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
+                  FMsgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
                end;
             end else begin
                roeClass:=FBinaryOperators.RelOperatorClassFor(tt, Result.Typ, r.Typ);
                if roeClass<>nil then
                   Result:=roeClass.Create(FProg, Result, r)
                else begin
-                  FProg.Msgs.AddCompilerError(hotPos, CPE_InvalidOperands);
+                  FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                   // keep going
                   Result:=TRelOpExpr.Create(FProg, Result, r);
                end;
@@ -3654,11 +3676,11 @@ begin
             try
                // Generate function and add left and right argument
                if (Result.Typ=nil) or (right.Typ=nil) then
-                  FProg.Msgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands)
+                  FMsgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands)
                else begin
                   exprClass:=FBinaryOperators.BinaryOperatorClassFor(tt, Result.Typ, right.Typ);
                   if exprClass=nil then begin
-                     FProg.Msgs.AddCompilerError(hotPos, CPE_InvalidOperands);
+                     FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                      // fake result to keep compiler going and report further issues
                      Result:=TBinaryOpExpr.Create(FProg, Result, right);
                      Result.Typ:=FProg.TypVariant;
@@ -3672,7 +3694,7 @@ begin
 
          Result.TypeCheckNoPos(hotPos);
          if Optimize then
-            Result:=Result.Optimize;
+            Result:=Result.Optimize(FExec);
       end;
    except
       Result.Free;
@@ -3705,11 +3727,11 @@ begin
 
             // Generate function and add left and right argument
             if (Result.Typ=nil) or (right.Typ=nil) then
-               FProg.Msgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands)
+               FMsgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands)
             else begin
                exprClass:=FBinaryOperators.BinaryOperatorClassFor(tt, Result.Typ, right.Typ);
                if exprClass=nil then begin
-                  FProg.Msgs.AddCompilerError(hotPos, CPE_InvalidOperands);
+                  FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                   // fake result to keep compiler going and report further issues
                   Result:=TBinaryOpExpr.Create(FProg, Result, right);
                   Result.Typ:=right.Typ;
@@ -3723,7 +3745,7 @@ begin
 
          Result.TypeCheckNoPos(hotPos);
          if Optimize then
-            Result:=Result.Optimize;
+            Result:=Result.Optimize(FExec);
       end;
    except
       Result.Free;
@@ -3858,7 +3880,7 @@ begin
    try
       Result.TypeCheckNoPos(FTok.HotPos);
       if Optimize then
-         Result:=Result.Optimize;
+         Result:=Result.Optimize(FExec);
    except
       Result.Free;
       raise;
@@ -4014,8 +4036,8 @@ begin
                         end else begin
                            if Assigned(defaultExpr) then begin
                               sym := TParamSymbolWithDefaultValue.Create(names[i], Typ);
-                              TParamSymbolWithDefaultValue(sym).SetDefaultValue(TConstExpr(defaultExpr).Data,
-                                                                                TConstExpr(defaultExpr).Addr);
+                              TParamSymbolWithDefaultValue(sym).SetDefaultValue(TConstExpr(defaultExpr).Data[FExec],
+                                                                                TConstExpr(defaultExpr).Addr[FExec]);
                            end else begin
                               sym := TParamSymbol.Create(names[i], Typ);
                            end;
@@ -4086,7 +4108,7 @@ begin
       siIncludeLong, siIncludeShort, siFilterLong, siFilterShort : begin
 
          if semiPending then
-            FProg.Msgs.AddCompilerStop(switchPos, CPE_SemiExpected);
+            FMsgs.AddCompilerStop(switchPos, CPE_SemiExpected);
 
          if not FTok.Test(ttStrVal) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_IncludeFileExpected);
@@ -4100,11 +4122,11 @@ begin
             if switch in [siFilterLong, siFilterShort] then begin
                if Assigned(FFilter) then
                   // Include file is processed by the filter
-                  FTok := TTokenizer.Create(FFilter.Process(scriptSource, FMsgs), name, FProg.Msgs)
+                  FTok := TTokenizer.Create(FFilter.Process(scriptSource, FMsgs), name, FMsgs)
                else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoFilterAvailable);
             end else begin
                // Include file is included as-is
-               FTok := TTokenizer.Create(scriptSource, name, FProg.Msgs);
+               FTok := TTokenizer.Create(scriptSource, name, FMsgs);
             end;
 
             try
@@ -4164,7 +4186,7 @@ begin
                      if not condExpr.IsBooleanValue then
                         FMsgs.AddCompilerStop(condPos, CPE_BooleanExpected);
 
-                     conditionalTrue:=condExpr.EvalAsBoolean;
+                     conditionalTrue:=condExpr.EvalAsBoolean(FExec);
                   finally
                      condExpr.Free;
                   end;
@@ -4845,21 +4867,21 @@ end;
 
 procedure TParamFunc.Execute;
 begin
-  Info.ResultAsVariant := Info.Caller.Parameters[Info.ValueAsInteger['Index']];
+  Info.ResultAsVariant := Info.ExecutionContext.Prog.Parameters[Info.ValueAsInteger['Index']];
 end;
 
 { TParamStrFunc }
 
 procedure TParamStrFunc.Execute;
 begin
-  Info.ResultAsString := Info.Caller.Parameters[Info.ValueAsInteger['Index']];
+  Info.ResultAsString := Info.ExecutionContext.Prog.Parameters[Info.ValueAsInteger['Index']];
 end;
 
 { TParamCount }
 
 procedure TParamCountFunc.Execute;
 begin
-  Info.ResultAsInteger := Length(Info.Caller.Parameters);
+  Info.ResultAsInteger := Length(Info.ExecutionContext.Prog.Parameters);
 end;
 
 // GetScriptSource
@@ -5036,7 +5058,7 @@ end;
 
 procedure TPrintFunction.Execute;
 begin
-   Info.Caller.Result.AddString(Info.ValueAsString['v']);
+   Info.ExecutionContext.Result.AddString(Info.ValueAsString['v']);
 end;
 
 { TPrintLnFunction }
@@ -5045,7 +5067,7 @@ procedure TPrintLnFunction.Execute;
 var
    result : TdwsResult;
 begin
-   result:=Info.Caller.Result;
+   result:=Info.ExecutionContext.Result;
    result.AddString(Info.ValueAsString['v']);
    result.AddString(#13#10);
 end;
@@ -5091,7 +5113,7 @@ begin
         end;
 
         if Assigned(constExpr) then
-          enumInt := constExpr.Eval;
+          enumInt := constExpr.Eval(FExec);
 
         isUserDef := True;
       end
@@ -5220,7 +5242,7 @@ begin
 
       Result.TypeCheck;
       if Optimize then
-         Result:=Result.OptimizeToNoResultExpr;
+         Result:=Result.OptimizeToNoResultExpr(FExec);
 
    end else begin
 
@@ -5238,7 +5260,7 @@ function TdwsCompiler.ReadSpecialFunction(const NamePos: TScriptPos; SpecialKind
    var
       name : String;
    begin
-      argExpr.EvalAsString(name);
+      argExpr.EvalAsString(FExec, name);
       Result:=(FProg.ConditionalDefines.IndexOf(name)>=0);
    end;
 
@@ -5246,7 +5268,7 @@ function TdwsCompiler.ReadSpecialFunction(const NamePos: TScriptPos; SpecialKind
    var
       name : String;
    begin
-      argExpr.EvalAsString(name);
+      argExpr.EvalAsString(FExec, name);
       Result:=(TDeclaredExpr.FindSymbol(FProg.Root.Table, name)<>nil);
    end;
 
@@ -5255,7 +5277,7 @@ var
    argTyp: TSymbol;
 begin
    if not FTok.TestDelete(ttBLEFT) then
-      FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
 
    // Test for statements like "Low(Integer)"
    if FTok.Test(ttName) and FTok.NextTest(ttBRIGHT) then
@@ -5276,7 +5298,7 @@ begin
          argExpr.TypeCheckNoPos(FTok.HotPos);
 
       if not Assigned(argTyp) then
-         FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
 
       Result := nil;
 
@@ -5286,13 +5308,13 @@ begin
                Result:=TAssignedInstanceExpr.Create(FProg, argExpr)
             else if argTyp is TClassOfSymbol then
                Result:=TAssignedMetaClassExpr.Create(FProg, argExpr)
-            else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+            else FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
             argExpr:=nil;
          end;
          skHigh: begin
             if argTyp is TOpenArraySymbol then begin
                if argExpr=nil then
-                  FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
                Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(argExpr), -1);
                argExpr:=nil;
             end else if argTyp is TEnumerationSymbol then begin
@@ -5310,12 +5332,12 @@ begin
             end else if argTyp=FProg.TypInteger then begin
                FreeAndNil(argExpr);
                Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, High(Int64));
-            end else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+            end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
          end;
          skLength: begin
             if argTyp is TOpenArraySymbol then begin
                if argExpr=nil then
-                  FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
                Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(argExpr), 0);
                argExpr:=nil;
             end else if (argTyp is TDynamicArraySymbol) and Assigned(argExpr) then begin
@@ -5328,7 +5350,7 @@ begin
                FreeAndNil(argExpr);
                Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger,
                                                 TStaticArraySymbol(argTyp).ElementCount);
-            end else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+            end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
          end;
          skLow: begin
                FreeAndNil(argExpr);
@@ -5342,7 +5364,7 @@ begin
                Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, Low(Int64))
             end else if (argTyp is TDynamicArraySymbol) then
                Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, 0)
-            else FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+            else FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
          end;
          skSqr : begin
             case argTyp.BaseTypeID of
@@ -5357,7 +5379,7 @@ begin
                   argExpr:=nil;
                end;
             else
-               FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_NumericalExpected);
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_NumericalExpected);
             end;
          end;
          skOrd: begin
@@ -5375,7 +5397,7 @@ begin
                   argExpr:=nil;
                end
             else
-               FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
             end;
          end;
          skSizeOf : begin
@@ -5384,10 +5406,10 @@ begin
          end;
          skDefined, skDeclared : begin
             if not argExpr.IsStringValue then
-               FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_StringExpected);
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_StringExpected);
             if FIsSwitch then begin
                if not argExpr.IsConstant then
-                  FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_ConstantExpressionExpected);
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_ConstantExpressionExpected);
                try
                   case SpecialKind of
                      skDefined :
@@ -5416,7 +5438,7 @@ begin
 
       try
          if not FTok.TestDelete(ttBRIGHT) then
-            FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
       except
          Result.Free;
          raise;
@@ -5444,7 +5466,7 @@ begin
    Result:=nil;
    try
       if not FTok.TestDelete(ttBRIGHT) then
-         FProg.Msgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
 
       if TypeSym = FProg.TypInteger then
          Result := TConvIntegerExpr.Create(FProg, argExpr)
@@ -5455,7 +5477,7 @@ begin
       else if TypeSym = FProg.TypVariant then
          Result := TConvVariantExpr.Create(FProg, argExpr)
       else
-         FProg.Msgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
+         FMsgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
 
       argExpr:=nil;
       try
@@ -5469,6 +5491,17 @@ begin
     argExpr.Free;
     raise;
   end;
+end;
+
+// ------------------
+// ------------------ TdwsCompilerExecution ------------------
+// ------------------
+
+// GetMsgs
+//
+function TdwsCompilerExecution.GetMsgs : TdwsMessageList;
+begin
+   Result:=FCompiler.FMsgs;
 end;
 
 end.

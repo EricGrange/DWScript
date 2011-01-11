@@ -702,10 +702,10 @@ begin
    varRecs:=nil;
    expr:=args.ExprBase[1];
    if expr is TArrayConstantExpr then
-      varRecs:=TArrayConstantExpr(expr).EvalAsVarRecArray
+      varRecs:=TArrayConstantExpr(expr).EvalAsVarRecArray(args.Exec)
    else if expr is TVarParamExpr then begin
       if TVarParamExpr(expr).Typ is TOpenArraySymbol then
-         varRecs:=TVarRecArrayContainer.Create(TVarParamExpr(expr).Data)
+         varRecs:=TVarRecArrayContainer.Create(TVarParamExpr(expr).Data[args.Exec])
    end;
    // current implementation, limitations may be relaxed later
    if varRecs=nil then

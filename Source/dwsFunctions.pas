@@ -27,7 +27,7 @@ uses
 
 type
   TEmptyFunc = class(TInterfacedObject, ICallable)
-    procedure Call(Caller: TdwsProgram; Func: TFuncSymbol);
+    procedure Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
     procedure InitSymbol(Symbol: TSymbol);
     procedure InitExpression(Expr: TExprBase);
   end;
@@ -44,7 +44,7 @@ type
 
   TAnonymousFunction = class(TFunctionPrototype, IUnknown, ICallable)
     constructor Create(FuncSym: TFuncSymbol);
-    procedure Call(Caller: TdwsProgram; Func: TFuncSymbol);
+    procedure Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
     procedure Execute; virtual; abstract;
   end;
 
@@ -53,7 +53,7 @@ type
     constructor Create(Table: TSymbolTable; const FuncName: string;
                        const FuncParams: array of string; const FuncType: string;
                        const isStateLess : Boolean = False); virtual;
-    procedure Call(Caller: TdwsProgram; Func: TFuncSymbol);
+    procedure Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
     procedure Execute; virtual; abstract;
   end;
   TInternalFunctionClass = class of TInternalFunction;
@@ -103,7 +103,7 @@ type
 
   TAnonymousMethod = class(TFunctionPrototype, IUnknown, ICallable)
     constructor Create(MethSym: TMethodSymbol);
-    procedure Call(Caller: TdwsProgram; Func: TFuncSymbol);
+    procedure Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
     procedure Execute(var ExternalObject: TObject); virtual; abstract;
   end;
 
@@ -112,7 +112,7 @@ type
     constructor Create(MethKind: TMethodKind; Attributes: TMethodAttributes;
       bugFix: Integer; const methName: string; const MethParams: array of string;
       const MethType: string; Cls: TClassSymbol; Table: TSymbolTable);
-    procedure Call(Caller: TdwsProgram; Func: TFuncSymbol);
+    procedure Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
     procedure Execute(var ExternalObject: TObject); virtual; abstract;
   end;
 
@@ -317,7 +317,7 @@ end;
 
 { TEmptyFunc }
 
-procedure TEmptyFunc.Call(Caller: TdwsProgram; Func: TFuncSymbol);
+procedure TEmptyFunc.Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
 begin
 end;
 
@@ -367,9 +367,9 @@ begin
   FInfo.FuncSym := sym;
 end;
 
-procedure TInternalFunction.Call(Caller: TdwsProgram; Func: TFuncSymbol);
+procedure TInternalFunction.Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
 begin
-  FInfo.Caller := Caller;
+  FInfo.ExecutionContext := Caller as TdwsProgramExecution;
   Execute;
 end;
 
@@ -485,12 +485,12 @@ begin
   FInfo.FuncSym := sym;
 end;
 
-procedure TInternalMethod.Call(Caller: TdwsProgram; Func: TFuncSymbol);
+procedure TInternalMethod.Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
 var
   scriptObj: IScriptObj;
   extObj: TObject;
 begin
-  FInfo.Caller := Caller;
+  FInfo.ExecutionContext := Caller as TdwsProgramExecution;
   scriptObj := Info.Vars['Self'].ScriptObj;
 
   if Assigned(scriptObj) then
@@ -522,20 +522,20 @@ begin
   FuncSym.Executable := ICallable(Self);
 end;
 
-procedure TAnonymousFunction.Call(Caller: TdwsProgram; Func: TFuncSymbol);
+procedure TAnonymousFunction.Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
 begin
-  FInfo.Caller := Caller;
+  FInfo.ExecutionContext := Caller as TdwsProgramExecution;
   Execute;
 end;
 
 { TAnonymousMethod }
 
-procedure TAnonymousMethod.Call(Caller: TdwsProgram; Func: TFuncSymbol);
+procedure TAnonymousMethod.Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
 var
   scriptObj: IScriptObj;
   extObj: TObject;
 begin
-  FInfo.Caller := Caller;
+  FInfo.ExecutionContext := Caller as TdwsProgramExecution;
   scriptObj := Info.Vars['Self'].ScriptObj;
 
   if Assigned(scriptObj) then

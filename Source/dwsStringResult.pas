@@ -198,42 +198,42 @@ end;
 
 procedure TWriteFunction.Execute;
 begin
-  Info.Caller.Result.AddString(Info.ValueAsString['Str']);
+  Info.ExecutionContext.Result.AddString(Info.ValueAsString['Str']);
 end;
 
 { TWriteLnFunction }
 
 procedure TWriteLnFunction.Execute;
 begin
-  Info.Caller.Result.AddString(Info.ValueAsString['Str'] + #13#10);
+  Info.ExecutionContext.Result.AddString(Info.ValueAsString['Str'] + #13#10);
 end;
 
 { TWriteAllFunction }
 
 procedure TWriteAllFunction.Execute;
 begin
-  (Info.Caller.Result as TdwsStringResult).SetStr(VarToStr(Info.ValueAsVariant['Str']));
+  (Info.ExecutionContext.Result as TdwsStringResult).SetStr(VarToStr(Info.ValueAsVariant['Str']));
 end;
 
 { TReadCharFunction }
 
 procedure TReadCharFunction.Execute;
 begin
-  Info.ResultAsString := TdwsStringResult(Info.Caller.Result).ReadChar;
+   Info.ResultAsString := TdwsStringResult(Info.ExecutionContext.Result).ReadChar;
 end;
 
 { TReadLnFunction }
 
 procedure TReadLnFunction.Execute;
 begin
-  Info.ResultAsString := TdwsStringResult(Info.Caller.Result).ReadLn;
+   Info.ResultAsString := TdwsStringResult(Info.ExecutionContext.Result).ReadLn;
 end;
 
 { TReadAllFunction }
 
 procedure TReadAllFunction.Execute;
 begin
-  Info.ResultAsString := TdwsStringResult(Info.Caller.Result).Str;
+   Info.ResultAsString := TdwsStringResult(Info.ExecutionContext.Result).Str;
 end;
 
 end.

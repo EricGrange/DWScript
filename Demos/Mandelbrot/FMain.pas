@@ -163,9 +163,9 @@ var
 begin
    prog:=DelphiWebScript.Compile(cSource);
    try
-      if prog.Msgs.Count=0 then
+      if prog.CompileMsgs.Count=0 then
          prog.Execute
-      else ShowMessage(prog.Msgs.AsInfo);
+      else ShowMessage(prog.CompileMsgs.AsInfo);
    finally
       prog.Free;
    end;

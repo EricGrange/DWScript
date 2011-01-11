@@ -30,8 +30,8 @@ type
    //
    TMagicFuncExpr = class(TFuncExprBase)
       protected
-         function GetData: TData; override;
-         function GetAddr: Integer; override;
+         function GetData(exec : TdwsExecution) : TData; override;
+         function GetAddr(exec : TdwsExecution) : Integer; override;
       public
          function AddArg(Arg: TNoPosExpr) : TSymbol; override;
          function IsWritable : Boolean; override;
@@ -44,7 +44,7 @@ type
          FOnEval : TMagicFuncDoEvalEvent;
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-         function Eval: Variant; override;
+         function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // TMagicProcedureExpr
@@ -54,8 +54,8 @@ type
          FOnEval : TMagicProcedureDoEvalEvent;
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-         procedure EvalNoResult(var status : TExecutionStatusResult); override;
-         function Eval: Variant; override;
+         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // TMagicIntFuncExpr
@@ -65,9 +65,9 @@ type
          FOnEval : TMagicFuncDoEvalAsIntegerEvent;
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-         procedure EvalNoResult(var status : TExecutionStatusResult); override;
-         function Eval : Variant; override;
-         function EvalAsInteger : Int64; override;
+         procedure EvalNoResult(exec : TdwsExecution;var status : TExecutionStatusResult); override;
+         function Eval(exec : TdwsExecution) : Variant; override;
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
    // TMagicStringFuncExpr
@@ -77,9 +77,9 @@ type
          FOnEval : TMagicFuncDoEvalAsStringEvent;
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-         procedure EvalNoResult(var status : TExecutionStatusResult); override;
-         function Eval : Variant; override;
-         procedure EvalAsString(var Result : String); override;
+         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
    end;
 
    // TMagicFloatFuncExpr
@@ -89,9 +89,9 @@ type
          FOnEval : TMagicFuncDoEvalAsFloatEvent;
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
-         procedure EvalNoResult(var status : TExecutionStatusResult); override;
-         function Eval: Variant; override;
-         procedure EvalAsFloat(var Result : Double); override;
+         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
    end;
 
 // ------------------------------------------------------------------
@@ -126,15 +126,15 @@ end;
 
 // GetData
 //
-function TMagicFuncExpr.GetData: TData;
+function TMagicFuncExpr.GetData(exec : TdwsExecution) : TData;
 begin
-   Prog.Stack.Data[FProg.Stack.BasePointer]:=Eval;
+   Prog.Stack.Data[FProg.Stack.BasePointer]:=Eval(exec);
    Result:=Prog.Stack.Data;
 end;
 
 // GetAddr
 //
-function TMagicFuncExpr.GetAddr: Integer;
+function TMagicFuncExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
    Result:=FProg.Stack.BasePointer;
 end;
@@ -153,12 +153,13 @@ end;
 
 // Eval
 //
-function TMagicVariantFuncExpr.Eval: Variant;
+function TMagicVariantFuncExpr.Eval(exec : TdwsExecution) : Variant;
 begin
    try
+      FArgs.Exec:=exec;
       Result:=FOnEval(@FArgs);
    except
-      FProg.Msgs.SetLastScriptError(Pos);
+      FProg.ExecutionContext.Msgs.SetLastScriptError(Pos);
       raise;
    end;
 end;
@@ -177,26 +178,27 @@ end;
 
 // EvalNoResult
 //
-procedure TMagicIntFuncExpr.EvalNoResult(var status : TExecutionStatusResult);
+procedure TMagicIntFuncExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
 begin
-   EvalAsInteger;
+   EvalAsInteger(exec);
 end;
 
 // Eval
 //
-function TMagicIntFuncExpr.Eval: Variant;
+function TMagicIntFuncExpr.Eval(exec : TdwsExecution) : Variant;
 begin
-   Result:=EvalAsInteger;
+   Result:=EvalAsInteger(exec);
 end;
 
 // EvalAsInteger
 //
-function TMagicIntFuncExpr.EvalAsInteger : Int64;
+function TMagicIntFuncExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
    try
+      FArgs.Exec:=exec;
       Result:=FOnEval(@FArgs);
    except
-      FProg.Msgs.SetLastScriptError(Pos);
+      exec.Msgs.SetLastScriptError(Pos);
       raise;
    end;
 end;
@@ -215,31 +217,32 @@ end;
 
 // EvalNoResult
 //
-procedure TMagicStringFuncExpr.EvalNoResult(var status : TExecutionStatusResult);
+procedure TMagicStringFuncExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
 var
    buf : String;
 begin
-   EvalAsString(buf);
+   EvalAsString(exec, buf);
 end;
 
 // Eval
 //
-function TMagicStringFuncExpr.Eval: Variant;
+function TMagicStringFuncExpr.Eval(exec : TdwsExecution) : Variant;
 var
    buf : String;
 begin
-   EvalAsString(buf);
+   EvalAsString(exec, buf);
    Result:=buf;
 end;
 
 // EvalAsString
 //
-procedure TMagicStringFuncExpr.EvalAsString(var Result : String);
+procedure TMagicStringFuncExpr.EvalAsString(exec : TdwsExecution; var Result : String);
 begin
    try
+      FArgs.Exec:=exec;
       FOnEval(@FArgs, Result);
    except
-      FProg.Msgs.SetLastScriptError(Pos);
+      FProg.ExecutionContext.Msgs.SetLastScriptError(Pos);
       raise;
    end;
 end;
@@ -258,31 +261,32 @@ end;
 
 // EvalNoResult
 //
-procedure TMagicFloatFuncExpr.EvalNoResult(var status : TExecutionStatusResult);
+procedure TMagicFloatFuncExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
 var
    buf : Double;
 begin
-   EvalAsFloat(buf);
+   EvalAsFloat(exec, buf);
 end;
 
 // Eval
 //
-function TMagicFloatFuncExpr.Eval : Variant;
+function TMagicFloatFuncExpr.Eval(exec : TdwsExecution) : Variant;
 var
    buf : Double;
 begin
-   EvalAsFloat(buf);
+   EvalAsFloat(exec, buf);
    Result:=buf;
 end;
 
 // EvalAsFloat
 //
-procedure TMagicFloatFuncExpr.EvalAsFloat(var Result : Double);
+procedure TMagicFloatFuncExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
 begin
    try
+      FArgs.Exec:=exec;
       FOnEval(@FArgs, Result);
    except
-      FProg.Msgs.SetLastScriptError(Pos);
+      FProg.ExecutionContext.Msgs.SetLastScriptError(Pos);
       raise;
    end;
 end;
@@ -301,24 +305,25 @@ end;
 
 // EvalNoResult
 //
-procedure TMagicProcedureExpr.EvalNoResult(var status : TExecutionStatusResult);
+procedure TMagicProcedureExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
 begin
    try
+      FArgs.Exec:=exec;
       FOnEval(@FArgs);
    except
-      FProg.Msgs.SetLastScriptError(Pos);
+      FProg.ExecutionContext.Msgs.SetLastScriptError(Pos);
       raise;
    end;
 end;
 
 // Eval
 //
-function TMagicProcedureExpr.Eval: Variant;
+function TMagicProcedureExpr.Eval(exec : TdwsExecution) : Variant;
 var
    status : TExecutionStatusResult;
 begin
    status:=esrNone;
-   EvalNoResult(status);
+   EvalNoResult(exec, status);
    Assert(status=esrNone);
 end;
 

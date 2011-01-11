@@ -324,11 +324,11 @@ var
 begin
    prog:=FCompiler.Compile(cFuncsTestsSource);
    try
-      CheckEquals('', prog.Msgs.AsInfo, 'FuncsTest compile');
+      CheckEquals('', prog.CompileMsgs.AsInfo, 'FuncsTest compile');
       if execute then begin
          prog.Execute;
-         CheckEquals('', (prog.Result as TdwsDefaultResult).Text, 'FuncsTest result');
-         CheckEquals('', prog.Msgs.AsInfo, 'FuncsTest Msgs');
+         CheckEquals('', (prog.ExecutionContext.Result as TdwsDefaultResult).Text, 'FuncsTest result');
+         CheckEquals('', prog.ExecutionContext.Msgs.AsInfo, 'FuncsTest Msgs');
       end;
    finally
       prog.Free;
@@ -452,10 +452,10 @@ var
 begin
    prog:=FCompiler.Compile('FuncException;');
    try
-      CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+      CheckEquals('', prog.CompileMsgs.AsInfo, 'Compile');
       prog.Execute;
       CheckEquals('Runtime Error: Hello, Delphi Exception here! [line: 1, column: 1]'#13#10,
-                  prog.Msgs.AsInfo, 'Execute Msgs');
+                  prog.ExecutionContext.Msgs.AsInfo, 'Execute Msgs');
    finally
       prog.Free;
    end;
@@ -474,10 +474,10 @@ begin
                            +'end;'#13#10
                            );
    try
-      CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+      CheckEquals('', prog.CompileMsgs.AsInfo, 'Compile');
       prog.Execute;
       CheckEquals('Runtime Error: Hello, Delphi Exception here! [line: 2, column: 2]'#13#10,
-                  prog.Msgs.AsInfo, 'Execute Msgs');
+                  prog.ExecutionContext.Msgs.AsInfo, 'Execute Msgs');
    finally
       prog.Free;
    end;
@@ -497,9 +497,9 @@ begin
    end;
    prog:=FCompiler.Compile(script);
    try
-      CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+      CheckEquals('', prog.CompileMsgs.AsInfo, 'Compile');
       prog.Execute;
-      CheckEquals('876543210', (prog.Result as TdwsDefaultResult).Text, 'Enums Ord');
+      CheckEquals('876543210', (prog.ExecutionContext.Result as TdwsDefaultResult).Text, 'Enums Ord');
    finally
       prog.Free;
    end;
@@ -517,7 +517,7 @@ begin
                            +'   Result:=''Hello ''+name;'
                            +'end;');
    try
-      CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+      CheckEquals('', prog.CompileMsgs.AsInfo, 'Compile');
 
       prog.BeginProgram;
       try

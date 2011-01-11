@@ -84,7 +84,7 @@ begin
 
          prog:=FCompiler.Compile(source.Text);
          try
-            CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
+            CheckEquals('', prog.CompileMsgs.AsInfo, FTests[i]);
          finally
             prog.Free;
          end;
@@ -164,14 +164,14 @@ begin
 
          prog:=FCompiler.Compile(source.Text);
          try
-            CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
+            CheckEquals('', prog.CompileMsgs.AsInfo, FTests[i]);
             prog.Execute;
             resultsFileName:=ChangeFileExt(FTests[i], '.txt');
             if FileExists(resultsFileName) then begin
                expectedResult.LoadFromFile(resultsFileName);
-               CheckEquals(expectedResult.Text, (prog.Result as TdwsDefaultResult).Text, FTests[i]);
-            end else CheckEquals('', (prog.Result as TdwsDefaultResult).Text, FTests[i]);
-            CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
+               CheckEquals(expectedResult.Text, (prog.ExecutionContext.Result as TdwsDefaultResult).Text, FTests[i]);
+            end else CheckEquals('', (prog.ExecutionContext.Result as TdwsDefaultResult).Text, FTests[i]);
+            CheckEquals('', prog.ExecutionContext.Msgs.AsInfo, FTests[i]);
          finally
             prog.Free;
          end;

@@ -29,19 +29,24 @@ type
    TData = array of Variant;
    PData = ^TData;
 
+   TStackParameters = record
+      MaxLevel : Integer;
+      ChunkSize : Integer;
+      MaxByteSize : Integer;
+      MaxRecursionDepth : Integer;
+   end;
+
    // TStack
    //
    TStack = class
       private
          FBasePointer: Integer;
          FBpStore : array of TSimpleStack<Integer>;
-         FChunkSize: Integer;
-         FMaxLevel: Integer;
+         FParams : TStackParameters;
          FMaxSize: Integer;
          FSize: Integer;
          FStackPointer: Integer;
          FRecursionDepth : Integer;
-         FMaxRecursionDepth : Integer;
 
          function GetFrameSize: Integer;
 
@@ -52,11 +57,9 @@ type
       public
          Data: TData;
 
-         constructor Create(chunkSize, maxByteSize: Integer; maxRecursionDepth : Integer);
+         constructor Create(const params : TStackParameters);
          destructor Destroy; override;
 
-         function NextLevel(Level: Integer): Integer;
-    
          procedure Push(Delta: Integer);
          procedure Pop(Delta: Integer);
 
@@ -104,8 +107,10 @@ type
          property MaxSize: Integer read FMaxSize write FMaxSize;
          property StackPointer: Integer read FStackPointer;
          property RecursionDepth : Integer read FRecursionDepth;
-         property MaxRecursionDepth : Integer read FMaxRecursionDepth write FMaxRecursionDepth;
+         property MaxRecursionDepth : Integer read FParams.MaxRecursionDepth write FParams.MaxRecursionDepth;
    end;
+
+   EStackException = class (Exception) end;
 
 procedure CopyData(const SourceData: TData; SourceAddr: Integer;
                    DestData: TData; DestAddr: Integer; Size: Integer);
@@ -117,8 +122,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-uses dwsErrors, dwsSymbols;
 
 // CopyData
 //
@@ -144,12 +147,10 @@ end;
 // ------------------ TStack ------------------
 // ------------------
 
-constructor TStack.Create(chunkSize, maxByteSize: Integer; maxRecursionDepth : Integer);
+constructor TStack.Create(const params : TStackParameters);
 begin
-  FChunkSize := chunkSize;
-  FMaxSize := maxByteSize div SizeOf(Variant);
-  FMaxRecursionDepth := maxRecursionDepth;
-  FMaxLevel := 1;
+   FParams:=params;
+   FMaxSize:=params.MaxByteSize div SizeOf(Variant);
 end;
 
 // Destroy
@@ -186,13 +187,6 @@ begin
   Result := FStackPointer - FBasePointer;
 end;
 
-function TStack.NextLevel(Level: Integer): Integer;
-begin
-  Result := Level + 1;
-  if Result > FMaxLevel then
-    FMaxLevel := Result;
-end;
-
 procedure TStack.Pop(delta : Integer);
 var
    x, sp : Integer;
@@ -215,8 +209,8 @@ end;
 procedure TStack.IncRecursion;
 begin
    Inc(FRecursionDepth);
-   if FRecursionDepth>FMaxRecursionDepth then
-      raise EScriptException.CreateFmt(RTE_MaximalRecursionExceeded, [FMaxRecursionDepth]);
+   if FRecursionDepth>FParams.MaxRecursionDepth then
+      raise EStackException.CreateFmt(RTE_MaximalRecursionExceeded, [FParams.MaxRecursionDepth]);
 end;
 
 // DecRecursion
@@ -226,14 +220,13 @@ begin
    Dec(FRecursionDepth);
 end;
 
-
 // GrowTo
 //
 procedure TStack.GrowTo(desiredSize : Integer);
 begin
    if desiredSize > FMaxSize then
-      raise EScriptException.CreateFmt(RTE_MaximalDatasizeExceeded, [FMaxSize]);
-   FSize := ((desiredSize) div FChunkSize + 1) * FChunkSize;
+      raise EStackException.CreateFmt(RTE_MaximalDatasizeExceeded, [FMaxSize]);
+   FSize := ((desiredSize) div FParams.ChunkSize + 1) * FParams.ChunkSize;
    if FSize > FMaxSize then
       FSize := FMaxSize;
    SetLength(Data, FSize);
@@ -264,7 +257,7 @@ begin
    FStackPointer := 0;
    FBasePointer := 0;
    ClearBpStore;
-   SetLength(FBpStore, FMaxLevel + 1);
+   SetLength(FBpStore, FParams.MaxLevel + 1);
    for i:=0 to High(FBpStore) do begin
       FBpStore[i]:=TSimpleStack<Integer>.Create;
       FBpStore[i].Push(0);
@@ -281,7 +274,7 @@ end;
 //
 procedure TStack.PushBp(Level, Bp: Integer);
 begin
-   Assert(Cardinal(Level)<=Cardinal(FMaxLevel));
+   Assert(Cardinal(Level)<=Cardinal(FParams.MaxLevel));
    FBpStore[Level].Push(Bp);
 end;
 
@@ -289,7 +282,7 @@ end;
 //
 function TStack.GetSavedBp(Level: Integer): Integer;
 begin
-   Assert(Cardinal(Level)<=Cardinal(FMaxLevel));
+   Assert(Cardinal(Level)<=Cardinal(FParams.MaxLevel));
    Result := FBpStore[Level].Peek;
 end;
 
@@ -297,7 +290,7 @@ end;
 //
 function TStack.PopBp(Level : Integer): Integer;
 begin
-   Assert(Cardinal(Level)<=Cardinal(FMaxLevel));
+   Assert(Cardinal(Level)<=Cardinal(FParams.MaxLevel));
    Result:=FBpStore[Level].Pop;
 end;
 
