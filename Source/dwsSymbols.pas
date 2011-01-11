@@ -23,7 +23,7 @@ unit dwsSymbols;
 interface
 
 uses Windows, SysUtils, Variants, Classes, dwsStrings, dwsErrors,
-   dwsUtils, dwsTokenizer, dwsBaseExprs, dwsStack;
+   dwsUtils, dwsTokenizer, dwsStack;
 
 type
 

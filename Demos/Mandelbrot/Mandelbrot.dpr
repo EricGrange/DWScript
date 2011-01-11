@@ -2,8 +2,7 @@ program Mandelbrot;
 
 uses
   Forms,
-  FMain in 'FMain.pas' {MainForm},
-  dwsBaseExprs in '..\..\Source\dwsBaseExprs.pas';
+  FMain in 'FMain.pas' {MainForm};
 
 {$R *.res}
 
