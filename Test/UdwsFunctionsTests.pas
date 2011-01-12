@@ -3,8 +3,8 @@ unit UdwsFunctionsTests;
 interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsSymbols, dwsMathFunctions, dwsTimeFunctions,
-   dwsVariantFunctions, dwsXPlatform, dwsUtils;
+   dwsTokenizer, dwsSymbols, dwsXPlatform, dwsUtils,
+   dwsMathFunctions, dwsTimeFunctions, dwsGlobalVarsFunctions, dwsVariantFunctions;
 
 type
 
@@ -45,6 +45,11 @@ type
    end;
 
    TdwsFuncFunctionsTestsVariant = class (TdwsFunctionsTestsBase)
+      public
+         procedure SetUp; override;
+   end;
+
+   TdwsFuncFunctionsTestsGlobalVars = class (TdwsFunctionsTestsBase)
       public
          procedure SetUp; override;
    end;
@@ -221,6 +226,18 @@ begin
    inherited;
 end;
 
+// ------------------
+// ------------------ TdwsFuncFunctionsTestsGlobalVars ------------------
+// ------------------
+
+// SetUp
+//
+procedure TdwsFuncFunctionsTestsGlobalVars.SetUp;
+begin
+   FFolder:='FunctionsGlobalVars';
+   inherited;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -233,5 +250,6 @@ initialization
    TestFramework.RegisterTest('FunctionsTime', TdwsFuncFunctionsTestsTime.Suite);
    TestFramework.RegisterTest('FunctionsString', TdwsFuncFunctionsTestsString.Suite);
    TestFramework.RegisterTest('FunctionsVariant', TdwsFuncFunctionsTestsVariant.Suite);
+   TestFramework.RegisterTest('FunctionsGlobalVars', TdwsFuncFunctionsTestsGlobalVars.Suite);
 
 end.

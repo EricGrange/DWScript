@@ -38,43 +38,46 @@ unit dwsGlobalVarsFunctions;
 interface
 
 uses
-  Variants, Windows, Classes, SysUtils, dwsFunctions, dwsExprs, dwsSymbols;
+  Variants, Windows, Classes, SysUtils, dwsFunctions, dwsExprs, dwsSymbols, dwsUtils;
 
 type
 
   TReadGlobalVarFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TReadGlobalVarDefFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TWriteGlobalVarFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TDeleteGlobalVarFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TCleanupGlobalVarsFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TGlobalVarsNamesCommaText = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TSaveGlobalVarsToString = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TLoadGlobalVarsFromString = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TdwsGlobalVarsFunctions = class(TComponent)
+  end;
+
+  EGlobalVarError = class (Exception)
   end;
 
 {: Directly write a global var.<p> }
@@ -89,9 +92,9 @@ function DeleteGlobalVar(const aName : String) : Boolean;
 procedure CleanupGlobalVars;
 
 {: Save current global vars and their values to a string. }
-function SaveGlobalVarsToString : String;
+function SaveGlobalVarsToString : RawByteString;
 {: Load global vars and their values to a file. }
-procedure LoadGlobalVarsFromString(const srcString : String);
+procedure LoadGlobalVarsFromString(const srcString : RawByteString);
 {: Save current global vars and their values to a file. }
 procedure SaveGlobalVarsToFile(const destFileName : String);
 {: Load global vars and their values to a file. }
@@ -104,7 +107,13 @@ procedure LoadGlobalVarsFromStream(srcStream : TStream);
 {: CommaText of the names of all global vars. }
 function GlobalVarsNamesCommaText : String;
 
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
 var
    vGlobalVarsCS : TRTLCriticalSection;
@@ -118,7 +127,7 @@ const // type constants to make sure strings get reused by the compiler
    cBoolean = 'Boolean';
    cVariant = 'Variant';
 
-   cGlobalVarsFiles = 'GBF 2.0';
+   cGlobalVarsFiles : AnsiString = 'GBF 2.0';
 
 type
 
@@ -218,28 +227,40 @@ begin
    end;
 end;
 
-function SaveGlobalVarsToString: string;
+// SaveGlobalVarsToString
+//
+function SaveGlobalVarsToString : RawByteString;
 var
-   fs: TStringStream;
+   ms : TMemoryStream;
 begin
-   fs := TStringStream.Create('');
+   ms := TMemoryStream.Create;
    try
-      SaveGlobalVarsToStream(fs);
-      Result := fs.DataString;
+      SaveGlobalVarsToStream(ms);
+      SetLength(Result, ms.Position);
+      if Result<>'' then
+         Move(ms.Memory^, Result[1], Length(Result));
    finally
-      fs.Free;
+      ms.Free;
    end;
 end;
 
-procedure LoadGlobalVarsFromString(const srcString: string);
+// LoadGlobalVarsFromString
+//
+procedure LoadGlobalVarsFromString(const srcString : RawByteString);
 var
-  fs: TStringStream;
+  ms : TMemoryStream;
 begin
-   fs := TStringStream.Create(srcString);
-   try
-      LoadGlobalVarsFromStream(fs);
-   finally
-      fs.Free;
+   if srcString='' then
+      CleanupGlobalVars
+   else begin
+      ms:=TMemoryStream.Create;
+      try
+         ms.SetSize(Length(srcString));
+         Move(srcString[1], ms.Memory^, Length(srcString));
+         LoadGlobalVarsFromStream(ms);
+      finally
+         ms.Free;
+      end;
    end;
 end;
 
@@ -301,15 +322,18 @@ end;
 procedure LoadGlobalVarsFromStream(srcStream : TStream);
 var
    reader : TReader;
-   fileTag, name : string;
+   fileTag : AnsiString;
+   name : string;
    gv : TGlobalVar;
 begin
    reader:=TReader.Create(srcStream, 16384);
    try
       SetLength(fileTag, Length(cGlobalVarsFiles));
-      reader.Read(fileTag[1], Length(cGlobalVarsFiles));
+      if (srcStream.Size-srcStream.Position)>=Length(cGlobalVarsFiles) then
+         reader.Read(fileTag[1], Length(cGlobalVarsFiles))
+      else fileTag:='';
       if fileTag<>cGlobalVarsFiles then
-         raise Exception.Create('Invalid file tag');
+         raise EGlobalVarError.Create('Invalid file tag');
 
       EnterCriticalSection(vGlobalVarsCS);
       try
@@ -351,33 +375,42 @@ end;
 //
 procedure WriteVariant(writer: TWriter; const value: Variant);
 
-  procedure WriteValue(const value: TValueType);
-  begin
-    writer.Write(value, SizeOf(value));
-  end;
+   procedure WriteValue(const value: TValueType);
+   begin
+      writer.Write(value, SizeOf(value));
+   end;
 
 begin
-  with writer do
-    case VarType(Value) of
-      varEmpty: WriteValue(vaNil);
-      varNull: WriteValue(vaNull);
-      varOleStr: WriteWideString(value);
-      varString: WriteString(value);
-      varUString: WriteString(value);
-      varByte, varSmallInt, varInteger:
-        WriteInteger(value);
-      varSingle: WriteSingle(value);
-      varDouble: WriteFloat(value);
-      varCurrency: WriteCurrency(value);
-      varDate: WriteDate(value);
-      varBoolean: WriteBoolean(value);
-    else
+   case VarType(Value) of
+      varInt64 :
+         writer.WriteInteger(PVarData(@value).VUInt64);
+      varUString :
+         writer.WriteString(String(PVarData(@value).VUString));
+      varDouble :
+         writer.WriteFloat(PVarData(@value).VDouble);
+      varBoolean :
+         writer.WriteBoolean(PVarData(@value).VBoolean);
+      varEmpty :
+         WriteValue(vaNil);
+      varNull :
+         WriteValue(vaNull);
+      varByte, varSmallInt, varInteger :
+         writer.WriteInteger(value);
+      varString, varOleStr :
+         writer.WriteString(value);
+      varSingle :
+         writer.WriteSingle(value);
+      varCurrency :
+         writer.WriteCurrency(value);
+      varDate :
+         writer.WriteDate(value);
+   else
       try
-        WriteString(Value);
+         writer.WriteString(Value);
       except
-        raise EWriteError.Create('Streaming not supported');
+         raise EWriteError.Create('Streaming not supported');
       end;
-    end;
+   end;
 end;
 
 // ReadVariant
@@ -391,12 +424,11 @@ function ReadVariant(reader: TReader): Variant;
 
 const
 
-  cValTtoVarT: array[TValueType] of Integer = (varNull, varError, varByte,
-    varSmallInt, varInteger, varDouble, varString, varError, varBoolean,
-    varBoolean, varError, varError, varString, varEmpty, varError, varSingle,
-    varCurrency, varDate, varOleStr, varError
-    , varError // UTF8
-    , varDouble
+   cValTtoVarT: array[TValueType] of Integer = (
+      varNull, varError, varByte, varSmallInt, varInteger, varDouble,
+      varUString, varError, varBoolean, varBoolean, varError, varError, varUString,
+      varEmpty, varError, varSingle, varCurrency, varDate, varOleStr,
+      varUInt64, varUString, varDouble
     );
 
 var
@@ -415,14 +447,16 @@ begin
       vaInt8: TVarData(Result).VByte := Byte(ReadInteger);
       vaInt16: TVarData(Result).VSmallint := Smallint(ReadInteger);
       vaInt32: TVarData(Result).VInteger := ReadInteger;
+      vaInt64: TVarData(Result).VUInt64 := ReadInt64;
       vaExtended: TVarData(Result).VDouble := ReadFloat;
       vaSingle: TVarData(Result).VSingle := ReadSingle;
       vaCurrency: TVarData(Result).VCurrency := ReadCurrency;
       vaDate: TVarData(Result).VDate := ReadDate;
       vaString, vaLString, vaUTF8String:
-        Result := ReadString;
+         Result := String(ReadString);
       vaWString: Result := ReadWideString;
-      vaFalse, vaTrue: TVarData(Result).VBoolean := (ReadValue = vaTrue);
+      vaFalse, vaTrue:
+         TVarData(Result).VBoolean := (ReadValue = vaTrue);
     else
       raise EReadError.Create('Invalid variant stream');
     end;
@@ -489,14 +523,14 @@ end;
 
 procedure TSaveGlobalVarsToString.Execute;
 begin
-   Info.ResultAsString:=SaveGlobalVarsToString;
+   Info.ResultAsDataString:=SaveGlobalVarsToString;
 end;
 
 { TLoadGlobalVarsFromString }
 
 procedure TLoadGlobalVarsFromString.Execute;
 begin
-   LoadGlobalVarsFromString(Info.ValueAsString['s']);
+   LoadGlobalVarsFromString(Info.ValueAsDataString['s']);
 end;
 
 initialization
