@@ -4,7 +4,7 @@ interface
 
 uses
   Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-  dwsHtmlFilter, dwsXPlatform;
+  dwsHtmlFilter, dwsXPlatform, dwsUtils;
 
 type
 
@@ -92,7 +92,7 @@ begin
          if FileExists(resultFileName) then
             sl.LoadFromFile(ChangeFileExt(resultFileName, '.txt'))
          else sl.Clear;
-         CheckEquals(sl.Text, (exec.Result as TdwsDefaultResult).Text, s);
+         CheckEquals(sl.Text, exec.Result.ToString, s);
       end;
    finally
       sl.Free;

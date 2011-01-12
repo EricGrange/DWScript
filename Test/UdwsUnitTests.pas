@@ -3,7 +3,7 @@ unit UdwsUnitTests;
 interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsSymbols;
+   dwsTokenizer, dwsSymbols, dwsUtils;
 
 type
 
@@ -328,7 +328,7 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'FuncsTest compile');
    if execute then begin
       exec:=prog.Execute;
-      CheckEquals('', (exec.Result as TdwsDefaultResult).Text, 'FuncsTest result');
+      CheckEquals('', exec.Result.ToString, 'FuncsTest result');
       CheckEquals('', exec.Msgs.AsInfo, 'FuncsTest Msgs');
    end;
 end;
@@ -490,7 +490,7 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
    exec:=prog.Execute;
-   CheckEquals('876543210', (exec.Result as TdwsDefaultResult).Text, 'Enums Ord');
+   CheckEquals('876543210', exec.Result.ToString, 'Enums Ord');
 end;
 
 // CallFunc

@@ -292,11 +292,12 @@ type
   TdwsDefaultResult = class(TdwsResult)
   private
     FTextBuilder: TWriteOnlyBlockStream;
-    function GetText: String;
+    function GetText: String; inline;
   public
     constructor Create(resultType : TdwsResultType); override;
     destructor Destroy; override;
     procedure AddString(const str : String); override;
+    function ToString : String; override;
     property Text: String read GetText;
   end;
 
@@ -5031,6 +5032,13 @@ end;
 procedure TdwsDefaultResult.AddString(const str : String);
 begin
    FTextBuilder.WriteString(str);
+end;
+
+// ToString
+//
+function TdwsDefaultResult.ToString : String;
+begin
+   Result:=GetText;
 end;
 
 // GetText

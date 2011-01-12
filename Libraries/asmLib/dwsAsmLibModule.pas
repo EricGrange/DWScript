@@ -54,7 +54,7 @@ type
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const binary : TBytes);
          destructor Destroy; override;
-         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
 // ------------------------------------------------------------------
@@ -335,7 +335,7 @@ end;
 
 // EvalNoResult
 //
-procedure TdwsASMBlockExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TdwsASMBlockExpr.EvalNoResult(exec : TdwsExecution);
 type
    TJumpFunc = procedure(stack : Pointer);
 begin

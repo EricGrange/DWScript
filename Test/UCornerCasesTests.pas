@@ -3,7 +3,7 @@ unit UCornerCasesTests;
 interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors;
+   dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils;
 
 type
 
@@ -193,7 +193,7 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'include via event');
    exec:=prog.Execute;
-   CheckEquals('hello', (exec.Result as TdwsDefaultResult).Text, 'exec include via event');
+   CheckEquals('hello', exec.Result.ToString, 'exec include via event');
 end;
 
 // IncludeViaFile
@@ -238,7 +238,7 @@ begin
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
    CheckEquals('', prog.Msgs.AsInfo, 'include via file');
    exec:=prog.Execute;
-   CheckEquals('world', (exec.Result as TdwsDefaultResult).Text, 'exec include via file');
+   CheckEquals('world', exec.Result.ToString, 'exec include via file');
 
    FCompiler.Config.ScriptPaths.Clear;
    DeleteFile(tempFile);
@@ -295,7 +295,7 @@ begin
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
    CheckEquals('', prog.Msgs.AsInfo, 'include via file restricted - dot path');
    exec:=prog.Execute;
-   CheckEquals('world', (exec.Result as TdwsDefaultResult).Text, 'exec include via file');
+   CheckEquals('world', exec.Result.ToString, 'exec include via file');
 
    DeleteFile(tempFile);
    restricted.Free;

@@ -53,8 +53,6 @@ type
       procedure LeaveFunc(exec: TdwsExecution; funcExpr: TExprBase);
    end;
 
-   TProgramState = (psUndefined, psReadyToRun, psRunning, psRunningStopped, psTerminated);
-
    IdwsExecution = interface
       ['{8F2D1D7E-9954-4391-B919-86EF1EE21C8C}']
       function GetMsgs : TdwsMessageList;
@@ -67,10 +65,15 @@ type
       property UserObject : TObject read GetUserObject write SetUserObject;
    end;
 
+   TProgramState = (psUndefined, psReadyToRun, psRunning, psRunningStopped, psTerminated);
+
+   TExecutionStatusResult = (esrNone, esrExit, esrBreak, esrContinue);
+
    // TdwsExecution
    //
    TdwsExecution = class abstract (TInterfacedObject, IdwsExecution)
       private
+         FStatus : TExecutionStatusResult;
          FStack : TStackMixIn;
 
          FDebugger : IDebugger;
@@ -98,6 +101,7 @@ type
 
          procedure DoStep(expr : TExprBase);
 
+         property Status : TExecutionStatusResult read FStatus write FStatus;
          property Stack : TStackMixIn read FStack;
 
          property ProgramState : TProgramState read FProgramState;
@@ -129,20 +133,13 @@ type
 
    // TExprBaseList
    //
-   TExprBaseList = ^TExprBaseListRec;
+   PExprBaseListRec = ^TExprBaseListRec;
    TExprBaseListRec = record
       private
          FList : TTightList;
-         FExec : TdwsExecution;
 
          function GetExprBase(const x : Integer): TExprBase;
          procedure SetExprBase(const x : Integer; expr : TExprBase);
-         function GetAsInteger(const x : Integer) : Int64;
-         procedure SetAsInteger(const x : Integer; const value : Int64);
-         function GetAsBoolean(const x : Integer) : Boolean;
-         function GetAsFloat(const x : Integer) : Double;
-         function GetAsString(const x : Integer) : String;
-         function GetAsDataString(const x : Integer) : RawByteString;
 
       public
          procedure Clean;
@@ -151,10 +148,35 @@ type
          procedure Insert(index : Integer; expr : TExprBase);
          procedure Delete(index : Integer);
 
+         property ExprBase[const x : Integer] : TExprBase read GetExprBase write SetExprBase; default;
+         property Count : Integer read FList.FCount;
+   end;
+
+   // TExprBaseList
+   //
+   TExprBaseList = ^TExprBaseListExec;
+   TExprBaseListExec = record
+      private
+         FList : PExprBaseListRec;
+         FExec : TdwsExecution;
+
+         function GetExprBase(const x : Integer): TExprBase; inline;
+         procedure SetExprBase(const x : Integer; expr : TExprBase); inline;
+         function GetCount : Integer; inline;
+
+         function GetAsInteger(const x : Integer) : Int64;
+         procedure SetAsInteger(const x : Integer; const value : Int64);
+         function GetAsBoolean(const x : Integer) : Boolean;
+         function GetAsFloat(const x : Integer) : Double;
+         function GetAsString(const x : Integer) : String;
+         function GetAsDataString(const x : Integer) : RawByteString;
+
+      public
+         property List : PExprBaseListRec read FList write FList;
          property Exec : TdwsExecution read FExec write FExec;
 
          property ExprBase[const x : Integer] : TExprBase read GetExprBase write SetExprBase; default;
-         property Count : Integer read FList.FCount;
+         property Count : Integer read GetCount;
 
          property AsInteger[const x : Integer] : Int64 read GetAsInteger write SetAsInteger;
          property AsBoolean[const x : Integer] : Boolean read GetAsBoolean;
@@ -986,7 +1008,7 @@ implementation
 // ------------------ TExprBaseListRec ------------------
 // ------------------
 
-// Destroy
+// Clean
 //
 procedure TExprBaseListRec.Clean;
 begin
@@ -1028,44 +1050,69 @@ begin
    FList.List[x]:=expr;
 end;
 
+// ------------------
+// ------------------ TExprBaseListExec ------------------
+// ------------------
+
+// GetExprBase
+//
+function TExprBaseListExec.GetExprBase(const x: Integer): TExprBase;
+begin
+   Result:=FList.ExprBase[x];
+end;
+
+// SetExprBase
+//
+procedure TExprBaseListExec.SetExprBase(const x : Integer; expr : TExprBase);
+begin
+   FList.ExprBase[x]:=expr;
+end;
+
+// GetCount
+//
+function TExprBaseListExec.GetCount : Integer;
+begin
+   Result:=FList.Count;
+end;
+
 // GetAsInteger
 //
-function TExprBaseListRec.GetAsInteger(const x : Integer) : Int64;
+function TExprBaseListExec.GetAsInteger(const x : Integer) : Int64;
 begin
-   Result:=TExprBase(FList.List[x]).EvalAsInteger(Exec);
+   Result:=ExprBase[x].EvalAsInteger(Exec);
 end;
 
 // SetAsInteger
 //
-procedure TExprBaseListRec.SetAsInteger(const x : Integer; const value : Int64);
+procedure TExprBaseListExec.SetAsInteger(const x : Integer; const value : Int64);
 begin
-   TExprBase(FList.List[x]).AssignValueAsInteger(Exec, value);
+   ExprBase[x].AssignValueAsInteger(Exec, value);
 end;
 
 // GetAsBoolean
 //
-function TExprBaseListRec.GetAsBoolean(const x : Integer) : Boolean;
+function TExprBaseListExec.GetAsBoolean(const x : Integer) : Boolean;
 begin
-   Result:=TExprBase(FList.List[x]).EvalAsBoolean(Exec);
+   Result:=ExprBase[x].EvalAsBoolean(Exec);
 end;
 
 // GetAsFloat
 //
-function TExprBaseListRec.GetAsFloat(const x : Integer) : Double;
+function TExprBaseListExec.GetAsFloat(const x : Integer) : Double;
 begin
-   TExprBase(FList.List[x]).EvalAsFloat(Exec, Result);
+   ExprBase[x].EvalAsFloat(Exec, Result);
 end;
 
 // GetAsString
 //
-function TExprBaseListRec.GetAsString(const x : Integer) : String;
+function TExprBaseListExec.GetAsString(const x : Integer) : String;
 begin
-   TExprBase(FList.List[x]).EvalAsString(Exec, Result);
+   ExprBase[x].EvalAsString(Exec, Result);
 end;
 
 // GetAsDataString
 //
-function TExprBaseListRec.GetAsDataString(const x : Integer) : RawByteString;
+function TExprBaseListExec.GetAsDataString(const x : Integer) : RawByteString;
 var
    ustr : String;
    i, n : Integer;
@@ -1082,7 +1129,9 @@ begin
       pDest[i]:=PByte(@pSrc[i])^;
 end;
 
-{ TSymbol }
+// ------------------
+// ------------------ TSymbol ------------------
+// ------------------
 
 constructor TSymbol.Create(const Name: string; Typ: TSymbol);
 begin
@@ -1094,8 +1143,6 @@ begin
   else
     FSize := 0;
 end;
-
-{ TVarSymbol }
 
 function TSymbol.GetCaption: string;
 begin

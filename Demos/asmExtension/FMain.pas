@@ -46,7 +46,7 @@ begin
       exec:=prog.Execute;
       if exec.Msgs.Count>0 then
          ShowMessage(exec.Msgs.AsInfo)
-      else ShowMessage((exec.Result as TdwsDefaultResult).Text);
+      else ShowMessage(exec.Result.ToString);
    end;
 end;
 

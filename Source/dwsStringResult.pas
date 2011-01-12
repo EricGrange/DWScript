@@ -45,6 +45,7 @@ type
     procedure SetStr(const Str: string);
     function ReadLn: string;
     function ReadChar: string;
+    function ToString : String; override;
     property Str: string read GetStr;
   end;
 
@@ -156,6 +157,13 @@ begin
     TdwsStringResultType(ResultType).OnReadLn(Self, Result)
   else
     Result := '';
+end;
+
+// ToString
+//
+function TdwsStringResult.ToString : String;
+begin
+   Result:=GetStr;
 end;
 
 // GetStr

@@ -328,7 +328,7 @@ type
    public
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TDataExpr);
      destructor Destroy; override;
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // Field expression: obj.Field
@@ -641,7 +641,7 @@ type
    public
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr); virtual;
      destructor Destroy; override;
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
      procedure Initialize; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function  Optimize(exec : TdwsExecution) : TNoPosExpr; override;
@@ -653,7 +653,7 @@ type
    // left := right; (class of)
    TAssignClassOfExpr = class(TAssignExpr)
    public
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // left := right;
@@ -662,21 +662,21 @@ type
      FSize: Integer;
    public
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr); override;
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // left := [constant array];
    TAssignArrayConstantExpr = class(TAssignDataExpr)
    public
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr); override;
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // var left := const right;
    TAssignConstDataToVarExpr = class(TAssignDataExpr)
    public
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr); override;
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // left := const right;
@@ -692,7 +692,7 @@ type
          FRight : Int64;
       public
          constructor CreateVal(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Int64);
-         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
          property Right : Int64 read FRight write FRight;
    end;
 
@@ -702,7 +702,7 @@ type
          FRight : Double;
       public
          constructor CreateVal(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Double);
-         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
          property Right : Double read FRight write FRight;
    end;
 
@@ -712,7 +712,7 @@ type
          FRight : String;
       public
          constructor CreateVal(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : String);
-         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
          property Right : String read FRight write FRight;
    end;
 
@@ -723,67 +723,67 @@ type
 
    // a += b
    TPlusAssignExpr = class(TOpAssignExpr)
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
    // a += b (int)
    TPlusAssignIntExpr = class(TPlusAssignExpr)
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
      function  Optimize(exec : TdwsExecution) : TNoPosExpr; override;
    end;
    // a += b (float)
    TPlusAssignFloatExpr = class(TPlusAssignExpr)
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
    // a += b (string)
    TPlusAssignStrExpr = class(TPlusAssignExpr)
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
      function  Optimize(exec : TdwsExecution) : TNoPosExpr; override;
    end;
 
    // a -= b
    TMinusAssignExpr = class(TOpAssignExpr)
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
    // a -= b (int)
    TMinusAssignIntExpr = class(TMinusAssignExpr)
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
      function  Optimize(exec : TdwsExecution) : TNoPosExpr; override;
    end;
    // a -= b (float)
    TMinusAssignFloatExpr = class(TMinusAssignExpr)
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // a *= b
    TMultAssignExpr = class(TOpAssignExpr)
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
    // a *= b (int)
    TMultAssignIntExpr = class(TMultAssignExpr)
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
    // a *= b (float)
    TMultAssignFloatExpr = class(TMultAssignExpr)
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // a /= b
    TDivideAssignExpr = class(TOpAssignExpr)
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // a += b (int var)
    TIncIntVarExpr = class(TAssignExpr)
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
    // a -= b (int var)
    TDecIntVarExpr = class(TAssignExpr)
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // a += b (string var)
    TAppendStringVarExpr = class(TAssignExpr)
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // (string var) += (string const)
@@ -792,7 +792,7 @@ type
          FAppendString : String;
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TNoPosExpr); override;
-         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // val in [case conditions list]
@@ -821,7 +821,7 @@ type
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
          destructor Destroy; override;
 
-         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
          function  Optimize(exec : TdwsExecution) : TNoPosExpr; override;
 
          property  Table: TSymbolTable read FTable;
@@ -830,7 +830,7 @@ type
    // statement; statement; statement;
    TBlockExprNoTable = class(TBlockExprBase)
       public
-         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // if FCond then FThen else FElse
@@ -840,7 +840,7 @@ type
      FThen: TExpr;
    public
      destructor Destroy; override;
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
      procedure Initialize; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
@@ -897,7 +897,7 @@ type
      FValueExpr: TNoPosExpr;
    public
      destructor Destroy; override;
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
      procedure Initialize; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      procedure AddCaseCondition(cond : TCaseCondition);
@@ -927,12 +927,12 @@ type
 
    TForUpwardExpr = class(TForExpr)
       public
-         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TForDownwardExpr = class(TForExpr)
       public
-         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // for FVarExpr := FFromExpr to FToExpr step FStepExpr do FDoExpr;
@@ -950,12 +950,12 @@ type
 
    TForUpwardStepExpr = class(TForStepExpr)
       public
-         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TForDownwardStepExpr = class(TForStepExpr)
       public
-         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TLoopExpr = class(TNoResultExpr)
@@ -973,14 +973,14 @@ type
    // while FCondExpr do FLoopExpr
    TWhileExpr = class(TLoopExpr)
    public
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
      function Optimize(exec : TdwsExecution) : TNoPosExpr; override;
    end;
 
    // repeat FLoopExpr while FCondExpr
    TRepeatExpr = class(TLoopExpr)
    public
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
      function Optimize(exec : TdwsExecution) : TNoPosExpr; override;
    end;
 
@@ -990,12 +990,12 @@ type
 
    TBreakExpr = class(TFlowControlExpr)
    public
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TExitExpr = class(TFlowControlExpr)
    public
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TExitValueExpr = class(TExitExpr)
@@ -1005,12 +1005,12 @@ type
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; assignExpr : TNoResultExpr);
          destructor Destroy; override;
          procedure Initialize; override;
-         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TContinueExpr = class(TFlowControlExpr)
    public
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TRaiseBaseExpr = class(TNoResultExpr)
@@ -1023,14 +1023,14 @@ type
    public
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; ExceptionExpr: TNoPosExpr);
      destructor Destroy; override;
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
      procedure Initialize; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
 
    TReraiseExpr = class(TRaiseBaseExpr)
    public
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TExceptionExpr = class(TNoResultExpr)
@@ -1060,7 +1060,7 @@ type
       public
          destructor Destroy; override;
 
-         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
          procedure Initialize; override;
          procedure TypeCheckNoPos(const aPos : TScriptPos); override;
          procedure AddDoExpr(expr : TExceptDoExpr);
@@ -1075,7 +1075,7 @@ type
      FDoBlockExpr: TExpr;
    public
      destructor Destroy; override;
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
      procedure Initialize; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      property DoBlockExpr: TExpr read FDoBlockExpr write FDoBlockExpr;
@@ -1085,7 +1085,7 @@ type
    // try FTryExpr finally FHandlerExpr end;
    TFinallyExpr = class(TExceptionExpr)
    public
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TStringArraySetExpr = class(TNoResultExpr)
@@ -1096,18 +1096,18 @@ type
    public
      constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; StringExpr : TDataExpr; IndexExpr, ValueExpr: TNoPosExpr);
      destructor Destroy; override;
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
      procedure Initialize; override;
    end;
 
    TVarStringArraySetExpr = class(TStringArraySetExpr)
    public
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TVarStringArraySetChrExpr = class(TStringArraySetExpr)
    public
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TSpecialUnaryBoolExpr = class(TUnaryOpExpr)
@@ -2180,7 +2180,7 @@ begin
   inherited;
 end;
 
-procedure TInitDataExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TInitDataExpr.EvalNoResult(exec : TdwsExecution);
 begin
   FExpr.Typ.InitData(FExpr.Data[exec], FExpr.Addr[exec]);
 end;
@@ -3385,7 +3385,7 @@ begin
   inherited;
 end;
 
-procedure TAssignExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TAssignExpr.EvalNoResult(exec : TdwsExecution);
 begin
    FLeft.AssignExpr(exec, FRight);
 end;
@@ -3512,7 +3512,7 @@ end;
 
 // EvalNoResult
 //
-procedure TAssignClassOfExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TAssignClassOfExpr.EvalNoResult(exec : TdwsExecution);
 var
    v : Variant;
    obj : IScriptObj;
@@ -3536,7 +3536,7 @@ begin
   FSize := FLeft.Typ.Size;
 end;
 
-procedure TAssignDataExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TAssignDataExpr.EvalNoResult(exec : TdwsExecution);
 begin
    FLeft.AssignDataExpr(exec, TDataExpr(FRight));
 end;
@@ -3549,7 +3549,7 @@ begin
   inherited Create(Prog, Pos, Left, Right as TArrayConstantExpr); // typecheck Right
 end;
 
-procedure TAssignArrayConstantExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TAssignArrayConstantExpr.EvalNoResult(exec : TdwsExecution);
 begin
    FLeft.AssignData(exec, TArrayConstantExpr(FRight).EvalAsTData(exec), 0);
 end;
@@ -3566,7 +3566,7 @@ begin
    else Assert(Right is TConstExpr);
 end;
 
-procedure TAssignConstDataToVarExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TAssignConstDataToVarExpr.EvalNoResult(exec : TdwsExecution);
 begin
    TVarExpr(FLeft).AssignData(exec, TConstExpr(FRight).FData, TConstExpr(FRight).Addr[exec]);
 end;
@@ -3603,7 +3603,7 @@ end;
 
 // EvalNoResult
 //
-procedure TAssignConstToIntegerVarExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TAssignConstToIntegerVarExpr.EvalNoResult(exec : TdwsExecution);
 begin
    TVarExpr(FLeft).AssignValueAsInteger(exec, FRight);
 end;
@@ -3622,7 +3622,7 @@ end;
 
 // EvalNoResult
 //
-procedure TAssignConstToFloatVarExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TAssignConstToFloatVarExpr.EvalNoResult(exec : TdwsExecution);
 begin
    TVarExpr(FLeft).AssignValueAsFloat(exec, FRight);
 end;
@@ -3641,7 +3641,7 @@ end;
 
 // EvalNoResult
 //
-procedure TAssignConstToStringVarExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TAssignConstToStringVarExpr.EvalNoResult(exec : TdwsExecution);
 begin
    TVarExpr(FLeft).AssignValueAsString(exec, FRight);
 end;
@@ -3663,7 +3663,7 @@ end;
 
 // EvalNoResult
 //
-procedure TPlusAssignExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TPlusAssignExpr.EvalNoResult(exec : TdwsExecution);
 begin
    FLeft.AssignValue(exec, FLeft.Eval(exec) + FRight.Eval(exec));
 end;
@@ -3674,7 +3674,7 @@ end;
 
 // EvalNoResult
 //
-procedure TPlusAssignIntExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TPlusAssignIntExpr.EvalNoResult(exec : TdwsExecution);
 begin
    FLeft.AssignValueAsInteger(exec, FLeft.EvalAsInteger(exec) + FRight.EvalAsInteger(exec));
 end;
@@ -3698,7 +3698,7 @@ end;
 
 // EvalNoResult
 //
-procedure TPlusAssignFloatExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TPlusAssignFloatExpr.EvalNoResult(exec : TdwsExecution);
 var
    v1, v2 : Double;
 begin
@@ -3714,7 +3714,7 @@ end;
 
 // EvalNoResult
 //
-procedure TPlusAssignStrExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TPlusAssignStrExpr.EvalNoResult(exec : TdwsExecution);
 var
    v1, v2 : String;
 begin
@@ -3742,7 +3742,7 @@ end;
 
 // EvalNoResult
 //
-procedure TMinusAssignExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TMinusAssignExpr.EvalNoResult(exec : TdwsExecution);
 begin
    FLeft.AssignValue(exec, FLeft.Eval(exec) - FRight.Eval(exec));
 end;
@@ -3753,7 +3753,7 @@ end;
 
 // EvalNoResult
 //
-procedure TMinusAssignIntExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TMinusAssignIntExpr.EvalNoResult(exec : TdwsExecution);
 begin
    FLeft.AssignValueAsInteger(exec, FLeft.EvalAsInteger(exec) - FRight.EvalAsInteger(exec));
 end;
@@ -3777,7 +3777,7 @@ end;
 
 // EvalNoResult
 //
-procedure TMinusAssignFloatExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TMinusAssignFloatExpr.EvalNoResult(exec : TdwsExecution);
 var
    v1, v2 : Double;
 begin
@@ -3793,7 +3793,7 @@ end;
 
 // EvalNoResult
 //
-procedure TMultAssignExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TMultAssignExpr.EvalNoResult(exec : TdwsExecution);
 begin
    FLeft.AssignValue(exec, FLeft.Eval(exec) * FRight.Eval(exec));
 end;
@@ -3804,7 +3804,7 @@ end;
 
 // EvalNoResult
 //
-procedure TMultAssignIntExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TMultAssignIntExpr.EvalNoResult(exec : TdwsExecution);
 begin
    FLeft.AssignValueAsInteger(exec, FLeft.EvalAsInteger(exec) * FRight.EvalAsInteger(exec));
 end;
@@ -3815,7 +3815,7 @@ end;
 
 // EvalNoResult
 //
-procedure TMultAssignFloatExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TMultAssignFloatExpr.EvalNoResult(exec : TdwsExecution);
 var
    v1, v2 : Double;
 begin
@@ -3831,7 +3831,7 @@ end;
 
 // EvalNoResult
 //
-procedure TDivideAssignExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TDivideAssignExpr.EvalNoResult(exec : TdwsExecution);
 var
    v1, v2 : Double;
 begin
@@ -3847,7 +3847,7 @@ end;
 
 // EvalNoResult
 //
-procedure TIncIntVarExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TIncIntVarExpr.EvalNoResult(exec : TdwsExecution);
 begin
    TIntVarExpr(FLeft).IncValue(exec, FRight.EvalAsInteger(exec));
 end;
@@ -3858,7 +3858,7 @@ end;
 
 // EvalNoResult
 //
-procedure TDecIntVarExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TDecIntVarExpr.EvalNoResult(exec : TdwsExecution);
 begin
    TIntVarExpr(FLeft).IncValue(exec, -FRight.EvalAsInteger(exec));
 end;
@@ -3869,7 +3869,7 @@ end;
 
 // EvalNoResult
 //
-procedure TAppendStringVarExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TAppendStringVarExpr.EvalNoResult(exec : TdwsExecution);
 var
    buf : String;
 begin
@@ -3891,7 +3891,7 @@ end;
 
 // EvalNoResult
 //
-procedure TAppendConstStringVarExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TAppendConstStringVarExpr.EvalNoResult(exec : TdwsExecution);
 begin
    TStrVarExpr(FLeft).Append(exec, FAppendString);
 end;
@@ -3918,7 +3918,7 @@ end;
 
 // EvalNoResult
 //
-procedure TBlockExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TBlockExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
    oldTable : TSymbolTable;
@@ -3930,8 +3930,8 @@ begin
       for i:=0 to FCount-1 do begin
          expr:=FStatements[i];
          exec.DoStep(expr);
-         expr.EvalNoResult(exec, status);
-         if status<>esrNone then Break;
+         expr.EvalNoResult(exec);
+         if exec.Status<>esrNone then Break;
       end;
    finally
       FProg.Table:=oldTable;
@@ -3966,7 +3966,7 @@ end;
 
 // EvalNoResult
 //
-procedure TBlockExprNoTable.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TBlockExprNoTable.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
    iterator : PExpr;
@@ -3974,8 +3974,8 @@ begin
    iterator:=PExpr(FStatements);
    for i:=1 to FCount do begin
       exec.DoStep(iterator^);
-      iterator^.EvalNoResult(exec, status);
-      if status<>esrNone then Break;
+      iterator^.EvalNoResult(exec);
+      if exec.Status<>esrNone then Break;
       Inc(iterator);
    end;
 end;
@@ -3992,15 +3992,15 @@ begin
   inherited;
 end;
 
-procedure TIfExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TIfExpr.EvalNoResult(exec : TdwsExecution);
 begin
    exec.DoStep(Self);
    if FCond.EvalAsBoolean(exec) then begin
       exec.DoStep(FThen);
-      FThen.EvalNoResult(exec, status);
+      FThen.EvalNoResult(exec);
    end else if Assigned(FElse) then begin
       exec.DoStep(FElse);
-      FElse.EvalNoResult(exec, status);
+      FElse.EvalNoResult(exec);
    end;
 end;
 
@@ -4031,7 +4031,7 @@ begin
   inherited;
 end;
 
-procedure TCaseExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TCaseExpr.EvalNoResult(exec : TdwsExecution);
 var
   x: Integer;
   Value: Variant;
@@ -4044,14 +4044,14 @@ begin
       cc:=TCaseCondition(FCaseConditions.List[x]);
       if cc.IsTrue(exec, Value) then begin
          exec.DoStep(cc.TrueExpr);
-         cc.TrueExpr.EvalNoResult(exec, status);
+         cc.TrueExpr.EvalNoResult(exec);
          Exit;
       end;
    end;
 
    if Assigned(FElseExpr) then begin
       exec.DoStep(FElseExpr);
-      FElseExpr.EvalNoResult(exec, status);
+      FElseExpr.EvalNoResult(exec);
    end;
 end;
 
@@ -4258,25 +4258,25 @@ end;
 
 { TForUpwardExpr }
 
-procedure TForUpwardExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TForUpwardExpr.EvalNoResult(exec : TdwsExecution);
 var
    toValue: Int64;
    i : PInt64;
 begin
-   status:=esrNone;
+   exec.Status:=esrNone;
    i:=FVarExpr.EvalAsPInteger(exec);
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
    while i^<=toValue do begin
       exec.DoStep(Self);
-      FDoExpr.EvalNoResult(exec, status);
-      if status<>esrNone then begin
-         case status of
+      FDoExpr.EvalNoResult(exec);
+      if exec.Status<>esrNone then begin
+         case exec.Status of
             esrBreak : begin
-               status:=esrNone;
+               exec.Status:=esrNone;
                break;
             end;
-            esrContinue : status:=esrNone;
+            esrContinue : exec.Status:=esrNone;
             esrExit : Exit;
          end;
       end;
@@ -4286,25 +4286,25 @@ end;
 
 { TForUpwardExpr }
 
-procedure TForDownwardExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TForDownwardExpr.EvalNoResult(exec : TdwsExecution);
 var
    toValue: Int64;
    i : PInt64;
 begin
-   status:=esrNone;
+   exec.Status:=esrNone;
    i:=FVarExpr.EvalAsPInteger(exec);
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
    while i^>=toValue do begin
       exec.DoStep(Self);
-      FDoExpr.EvalNoResult(exec, status);
-      if status<>esrNone then begin
-         case status of
+      FDoExpr.EvalNoResult(exec);
+      if exec.Status<>esrNone then begin
+         case exec.Status of
             esrBreak : begin
-               status:=esrNone;
+               exec.Status:=esrNone;
                break;
             end;
-            esrContinue : status:=esrNone;
+            esrContinue : exec.Status:=esrNone;
             esrExit : Exit;
          end;
       end;
@@ -4314,26 +4314,26 @@ end;
 
 { TForUpwardStepExpr }
 
-procedure TForUpwardStepExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TForUpwardStepExpr.EvalNoResult(exec : TdwsExecution);
 var
    step, toValue: Int64;
    i : PInt64;
 begin
-   status:=esrNone;
+   exec.Status:=esrNone;
    i:=FVarExpr.EvalAsPInteger(exec);
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
    step:=EvalStep(exec);
    while i^<=toValue do begin
       exec.DoStep(Self);
-      FDoExpr.EvalNoResult(exec, status);
-      if status<>esrNone then begin
-         case status of
+      FDoExpr.EvalNoResult(exec);
+      if exec.Status<>esrNone then begin
+         case exec.Status of
             esrBreak : begin
-               status:=esrNone;
+               exec.Status:=esrNone;
                break;
             end;
-            esrContinue : status:=esrNone;
+            esrContinue : exec.Status:=esrNone;
             esrExit : Exit;
          end;
       end;
@@ -4349,26 +4349,26 @@ end;
 
 { TForDownwardStepExpr }
 
-procedure TForDownwardStepExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TForDownwardStepExpr.EvalNoResult(exec : TdwsExecution);
 var
    step, toValue: Int64;
    i : PInt64;
 begin
-   status:=esrNone;
+   exec.Status:=esrNone;
    i:=FVarExpr.EvalAsPInteger(exec);
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
    step:=EvalStep(exec);
    while i^>=toValue do begin
       exec.DoStep(Self);
-      FDoExpr.EvalNoResult(exec, status);
-      if status<>esrNone then begin
-         case status of
+      FDoExpr.EvalNoResult(exec);
+      if exec.Status<>esrNone then begin
+         case exec.Status of
             esrBreak : begin
-               status:=esrNone;
+               exec.Status:=esrNone;
                break;
             end;
-            esrContinue : status:=esrNone;
+            esrContinue : exec.Status:=esrNone;
             esrExit : Exit;
          end;
       end;
@@ -4408,19 +4408,19 @@ end;
 
 { TWhileExpr }
 
-procedure TWhileExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TWhileExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   status:=esrNone;
+   exec.Status:=esrNone;
    while FCondExpr.EvalAsBoolean(exec) do begin
       exec.DoStep(Self);
-      FLoopExpr.EvalNoResult(exec, status);
-      if status<>esrNone then begin
-         case status of
+      FLoopExpr.EvalNoResult(exec);
+      if exec.Status<>esrNone then begin
+         case exec.Status of
             esrBreak : begin
-               status:=esrNone;
+               exec.Status:=esrNone;
                Break;
             end;
-            esrContinue : status:=esrNone;
+            esrContinue : exec.Status:=esrNone;
             esrExit : Exit;
          end;
       end;
@@ -4442,18 +4442,18 @@ end;
 
 { TRepeatExpr }
 
-procedure TRepeatExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TRepeatExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   status:=esrNone;
+   exec.Status:=esrNone;
    repeat
-      FLoopExpr.EvalNoResult(exec, status);
-      if status<>esrNone then begin
-         case status of
+      FLoopExpr.EvalNoResult(exec);
+      if exec.Status<>esrNone then begin
+         case exec.Status of
             esrBreak : begin
-               status:=esrNone;
+               exec.Status:=esrNone;
                Break;
             end;
-            esrContinue : status:=esrNone;
+            esrContinue : exec.Status:=esrNone;
             esrExit : Exit;
          end;
       end;
@@ -4477,16 +4477,16 @@ end;
 
 { TBreakExpr }
 
-procedure TBreakExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TBreakExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   status:=esrBreak;
+   exec.Status:=esrBreak;
 end;
 
 { TExitExpr }
 
-procedure TExitExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TExitExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   status:=esrExit;
+   exec.Status:=esrExit;
 end;
 
 // ------------------
@@ -4519,17 +4519,17 @@ end;
 
 // EvalNoResult
 //
-procedure TExitValueExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TExitValueExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   FAssignExpr.EvalNoResult(exec, status);
-   status:=esrExit;
+   FAssignExpr.EvalNoResult(exec);
+   exec.Status:=esrExit;
 end;
 
 { TContinueExpr }
 
-procedure TContinueExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TContinueExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   status:=esrContinue;
+   exec.Status:=esrContinue;
 end;
 
 { TExceptionExpr }
@@ -4565,7 +4565,7 @@ begin
   FElseExpr.Free;
 end;
 
-procedure TExceptExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TExceptExpr.EvalNoResult(exec : TdwsExecution);
 var
    x: Integer;
    obj: Variant;
@@ -4576,7 +4576,7 @@ var
 begin
    try
       exec.DoStep(FTryExpr);
-      FTryExpr.EvalNoResult(exec, status);
+      FTryExpr.EvalNoResult(exec);
    except
       on e: Exception do begin
          if e is EScriptException then begin
@@ -4602,7 +4602,7 @@ begin
                   isReraise := False;
                   try
                      exec.DoStep(doExpr);
-                     doExpr.EvalNoResult(exec, status);
+                     doExpr.EvalNoResult(exec);
                   except
                      on E : EReraise do isReraise := True;
                   end;
@@ -4617,7 +4617,7 @@ begin
                isReraise := False;
                try
                   exec.DoStep(FElseExpr);
-                  FElseExpr.EvalNoResult(exec, status);
+                  FElseExpr.EvalNoResult(exec);
                except
                   on E : EReraise do isReraise := True;
                end;
@@ -4627,7 +4627,7 @@ begin
             isReraise := False;
             try
                exec.DoStep(FHandlerExpr);
-               FHandlerExpr.EvalNoResult(exec, status);
+               FHandlerExpr.EvalNoResult(exec);
             except
                on E : EReraise do isReraise := True;
             end;
@@ -4682,14 +4682,14 @@ end;
 
 { TFinallyExpr }
 
-procedure TFinallyExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TFinallyExpr.EvalNoResult(exec : TdwsExecution);
 begin
   try
     exec.DoStep(FTryExpr);
-    FTryExpr.EvalNoResult(exec, status);
+    FTryExpr.EvalNoResult(exec);
   finally
     exec.DoStep(FHandlerExpr);
-    FHandlerExpr.EvalNoResult(exec, status);
+    FHandlerExpr.EvalNoResult(exec);
   end;
 end;
 
@@ -4707,7 +4707,7 @@ begin
   inherited;
 end;
 
-procedure TRaiseExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TRaiseExpr.EvalNoResult(exec : TdwsExecution);
 var
    exceptVal : Variant;
    exceptMessage : String;
@@ -4737,7 +4737,7 @@ end;
 
 { TReraiseExpr }
 
-procedure TReraiseExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TReraiseExpr.EvalNoResult(exec : TdwsExecution);
 begin
   exec.DoStep(Self);
   raise EReraise.Create('');
@@ -4752,9 +4752,9 @@ begin
   inherited;
 end;
 
-procedure TExceptDoExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TExceptDoExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   DoBlockExpr.EvalNoResult(exec, status);
+   DoBlockExpr.EvalNoResult(exec);
 end;
 
 procedure TExceptDoExpr.Initialize;
@@ -4789,7 +4789,7 @@ begin
   inherited;
 end;
 
-procedure TStringArraySetExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TStringArraySetExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
    s, buf : String;
@@ -4814,7 +4814,7 @@ end;
 
 { TVarStringArraySetExpr }
 
-procedure TVarStringArraySetExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TVarStringArraySetExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
    c : Char;
@@ -4835,7 +4835,7 @@ end;
 
 // EvalNoResult
 //
-procedure TVarStringArraySetChrExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TVarStringArraySetChrExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
    c : Char;

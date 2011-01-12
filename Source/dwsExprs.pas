@@ -39,6 +39,7 @@ type
   TExpr = class;
   TNoPosExprList = class;
   TdwsProgram = class;
+  IdwsProgram = interface;
   TdwsProgramExecution = class;
   TSymbolPositionList = class;
   TFuncExprBase = class;
@@ -248,13 +249,12 @@ type
 
    TProgramInfo = class;
 
-   TExecutionStatusResult = (esrNone, esrExit, esrBreak, esrContinue);
-
    IdwsProgramExecution = interface (IdwsExecution)
       ['{D0603CA6-40E3-4CBA-9C75-BD87C7A84650}']
       function GetInfo : TProgramInfo;
       function GetResult : TdwsResult;
       function GetObjectCount : Integer;
+      function GetProg : IdwsProgram;
 
       procedure Execute(aTimeoutMilliSeconds : Integer = 0); overload;
       procedure ExecuteParam(const Params : array of Variant; aTimeoutMilliSeconds : Integer = 0); overload;
@@ -265,9 +265,32 @@ type
       procedure Stop;
       procedure EndProgram;
 
+      property Prog : IdwsProgram read GetProg;
       property Info : TProgramInfo read GetInfo;
       property Result : TdwsResult read GetResult;
       property ObjectCount : Integer read GetObjectCount;
+   end;
+
+   IdwsProgram = interface
+      ['{AD513983-F033-44AF-9F2B-9CFFF94B9BB3}']
+      function GetMsgs : TdwsMessageList;
+      function GetConditionalDefines : TStringList;
+      function GetLineCount : Integer;
+      function GetTable : TSymbolTable;
+      function GetTimeoutMilliseconds : Integer;
+      procedure SetTimeoutMilliseconds(const val : Integer);
+
+      function CreateNewExecution : IdwsProgramExecution;
+      function BeginNewExecution : IdwsProgramExecution;
+      function Execute(aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution;
+      function ExecuteParam(const Params : array of Variant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
+      function ExecuteParam(const Params : OleVariant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
+
+      property Table : TSymbolTable read GetTable;
+      property Msgs : TdwsMessageList read GetMsgs;
+      property ConditionalDefines : TStringList read GetConditionalDefines;
+      property TimeoutMilliseconds : Integer read GetTimeoutMilliseconds write SetTimeoutMilliseconds;
+      property LineCount : Integer read GetLineCount;
    end;
 
    // holds execution context for a script
@@ -296,6 +319,7 @@ type
          function GetMsgs : TdwsMessageList; override;
 
          // for interface only, script exprs use direct properties
+         function GetProg : IdwsProgram;
          function GetInfo : TProgramInfo;
          function GetResult : TdwsResult;
          function GetObjectCount : Integer;
@@ -327,33 +351,9 @@ type
          property Msgs : TdwsMessageList read FMsgs;
    end;
 
-   IdwsProgram = interface
-      ['{AD513983-F033-44AF-9F2B-9CFFF94B9BB3}']
-      function GetMsgs : TdwsMessageList;
-      function GetConditionalDefines : TStringList;
-      function GetLineCount : Integer;
-      function GetTable : TSymbolTable;
-      function GetTimeoutMilliseconds : Integer;
-      procedure SetTimeoutMilliseconds(const val : Integer);
-
-      function CreateNewExecution : IdwsProgramExecution;
-      function BeginNewExecution : IdwsProgramExecution;
-      function Execute(aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution;
-      function ExecuteParam(const Params : array of Variant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
-      function ExecuteParam(const Params : OleVariant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
-
-      property Table : TSymbolTable read GetTable;
-      property Msgs : TdwsMessageList read GetMsgs;
-      property ConditionalDefines : TStringList read GetConditionalDefines;
-      property TimeoutMilliseconds : Integer read GetTimeoutMilliseconds write SetTimeoutMilliseconds;
-      property LineCount : Integer read GetLineCount;
-   end;
-
    // A script executable program
    TdwsProgram = class (TInterfacedObject, IdwsProgram)
       private
-         // temporarily embedded for migration purposes
-         FCompileContext : TdwsExecution;
          FContextMap: TContextMap;
          FExpr: TExpr;
          FInitExpr: TBlockInitExpr;
@@ -424,7 +424,6 @@ type
          property MaxDataSize : Integer read FStackParameters.MaxByteSize write FStackParameters.MaxByteSize;
          property StackChunkSize : Integer read FStackParameters.ChunkSize write FStackParameters.ChunkSize;
 
-         property CompileContext : TdwsExecution read FCompileContext write FCompileContext; // to be deprecated
          property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds;
 
          property Expr: TExpr read FExpr write FExpr;
@@ -491,7 +490,7 @@ type
 
       function GetBaseType: TTypeSymbol;
 
-      procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); virtual;
+      procedure EvalNoResult(exec : TdwsExecution); virtual;
       function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
       function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
       procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
@@ -539,13 +538,13 @@ type
 
   TNoResultExpr = class(TExpr)
     function Eval(exec : TdwsExecution) : Variant; override;
-    procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+    procedure EvalNoResult(exec : TdwsExecution); override;
     function OptimizeToNoResultExpr(exec : TdwsExecution) : TNoResultExpr;
   end;
 
   // Does nothing! E. g.: "for x := 1 to 10 do {TNullExpr};"
   TNullExpr = class(TNoResultExpr)
-    procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+    procedure EvalNoResult(exec : TdwsExecution); override;
   end;
 
    // statement; statement; statement;
@@ -565,7 +564,7 @@ type
    // statement; statement; statement;
    TBlockInitExpr = class(TBlockExprBase)
       public
-         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
   // Encapsulates data
@@ -769,7 +768,7 @@ type
                        BaseExpr, ValueExpr: TNoPosExpr);
     destructor Destroy; override;
     function AssignConnectorSym(ConnectorType: IConnectorType): Boolean;
-    procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+    procedure EvalNoResult(exec : TdwsExecution); override;
     procedure Initialize; override;
   end;
 
@@ -926,7 +925,7 @@ type
     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
     destructor Destroy; override;
     procedure Initialize; override;
-    procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+    procedure EvalNoResult(exec : TdwsExecution); override;
     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
     function IsConstant : Boolean; override;
     property Expr: TNoPosExpr read FExpr write FExpr;
@@ -1575,8 +1574,6 @@ end;
 // BeginProgram
 //
 procedure TdwsProgramExecution.BeginProgram;
-var
-   status : TExecutionStatusResult;
 begin
    // Check program state
    case FProgramState of
@@ -1620,8 +1617,8 @@ begin
       else FFileSystem:=TdwsOSFileSystem.Create;
 
       // Initialize global variables
-      status:=esrNone;
-      FProg.FInitExpr.EvalNoResult(Self, status);
+      Status:=esrNone;
+      FProg.FInitExpr.EvalNoResult(Self);
 
    except
       on e: EScriptError do
@@ -1636,7 +1633,6 @@ end;
 procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
 var
    terminator : TTerminatorThread;
-   status : TExecutionStatusResult;
 begin
    try
       if FProgramState <> psRunning then
@@ -1649,10 +1645,10 @@ begin
       else terminator:=nil;
 
       try
-         status:=esrNone;
+         Status:=esrNone;
          try
             // Run the script
-            FProg.FExpr.EvalNoResult(Self, status);
+            FProg.FExpr.EvalNoResult(Self);
 //            if ProgramState=psRunningStopped then
 //               Msgs.AddExecutionStop(Expr.Pos, RTE_ScriptStopped);
 
@@ -1818,7 +1814,6 @@ var
    sym: TSymbol;
    func: TMethodSymbol;
    expr: TDestructorVirtualExpr;
-   status : TExecutionStatusResult;
 begin
    try
       sym := ScriptObj.ClassSym.Members.FindSymbol(SYS_TOBJECT_DESTROY);
@@ -1829,8 +1824,8 @@ begin
             expr := TDestructorVirtualExpr.Create(FProg, cNullPos, func,
                                                   TConstExpr.Create(FProg, ScriptObj.ClassSym, ScriptObj));
             try
-               status:=esrNone;
-               expr.EvalNoResult(Self, status);
+               Status:=esrNone;
+               expr.EvalNoResult(Self);
             finally
                expr.Free;
             end;
@@ -1870,10 +1865,19 @@ begin
    Result:=FMsgs;
 end;
 
+// GetProg
+//
+function TdwsProgramExecution.GetProg : IdwsProgram;
+begin
+   Result:=FProg;
+end;
+
 // ------------------
 // ------------------ TdwsProgram ------------------
 // ------------------
 
+// Create
+//
 constructor TdwsProgram.Create(SystemTable: TSymbolTable; ResultType: TdwsResultType;
                                const stackParameters : TStackParameters);
 begin
@@ -1921,6 +1925,8 @@ begin
    FTypObject := TClassSymbol(SystemTable.FindSymbol(SYS_TOBJECT));
 end;
 
+// Destroy
+//
 destructor TdwsProgram.Destroy;
 begin
    FExecutionsLock.Enter;
@@ -1932,7 +1938,6 @@ begin
    end;
 
    FExecutionsLock.Free;
-   FCompileContext.Free;
    FExpr.Free;
    FInitExpr.Free;
    FRootTable.Free;
@@ -2079,8 +2084,12 @@ begin
       FStackParameters.MaxLevel:=Result;
 end;
 
-{ TProcedure }
+// ------------------
+// ------------------ TProcedure ------------------
+// ------------------
 
+// Create
+//
 constructor TProcedure.Create(Parent: TdwsProgram);
 begin
   FParent := Parent;
@@ -2124,22 +2133,22 @@ end;
 // Call
 //
 procedure TProcedure.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
-var
-   status : TExecutionStatusResult;
 begin
    // Allocate stack space for local variables
    exec.Stack.Push(FAddrGenerator.DataSize);
 
    // Run the procedure
    try
-      status:=esrNone;
-      FInitExpr.EvalNoResult(exec, status);
-      FExpr.EvalNoResult(exec, status);
+      exec.Status:=esrNone;
+      FInitExpr.EvalNoResult(exec);
+      FExpr.EvalNoResult(exec);
 
-      if status<>esrNone then begin
-         case status of
+      if exec.Status<>esrNone then begin
+         case exec.Status of
             esrBreak : exec.Msgs.AddExecutionError(RTE_InvalidBreak);
             esrContinue : exec.Msgs.AddExecutionError(RTE_InvalidContinue);
+         else
+            exec.Status:=esrNone;
          end;
       end;
 
@@ -2468,7 +2477,7 @@ end;
 
 // EvalNoResult
 //
-procedure TNoPosExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TNoPosExpr.EvalNoResult(exec : TdwsExecution);
 begin
    Eval(exec);
 end;
@@ -2558,17 +2567,14 @@ end;
 // ------------------
 
 function TNoResultExpr.Eval(exec : TdwsExecution) : Variant;
-var
-   status : TExecutionStatusResult;
 begin
-   status:=esrNone;
-   EvalNoResult(exec, status);
-   Assert(status=esrNone);
+   EvalNoResult(exec);
+   Assert(exec.Status=esrNone);
 end;
 
 // EvalNoResult
 //
-procedure TNoResultExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TNoResultExpr.EvalNoResult(exec : TdwsExecution);
 begin
    //nothing
 end;
@@ -2590,7 +2596,7 @@ end;
 
 { TNullExpr }
 
-procedure TNullExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TNullExpr.EvalNoResult(exec : TdwsExecution);
 begin
    //nothing
 end;
@@ -2636,15 +2642,15 @@ end;
 
 // EvalNoResult
 //
-procedure TBlockInitExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TBlockInitExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
    expr : TExpr;
 begin
    for i:=0 to FCount-1 do begin
       expr:=FStatements[i];
-      expr.EvalNoResult(exec, status);
-      if status<>esrNone then Break;
+      expr.EvalNoResult(exec);
+      if exec.Status<>esrNone then Break;
    end;
 end;
 
@@ -4862,7 +4868,6 @@ var
    funcExpr: TFuncExpr;
    resultAddr: Integer;
    resultData: TData;
-   status : TExecutionStatusResult;
 begin
    resultData := nil;
    if not FUsesTempParams then
@@ -4923,9 +4928,9 @@ begin
                SetChild(Result, FProgramInfo, funcExpr.Typ, FResult, 0);
             end else begin
                // Execute as procedure
-               status:=esrNone;
-               funcExpr.EvalNoResult(FExec, status);
-               Assert(status=esrNone);
+               FExec.Status:=esrNone;
+               funcExpr.EvalNoResult(FExec);
+               Assert(FExec.Status=esrNone);
                Result := nil;
             end;
          finally
@@ -4954,7 +4959,6 @@ var
   funcExpr: TFuncExpr;
   resultAddr: Integer;
   resultData: TData;
-  status : TExecutionStatusResult;
 begin
   resultData := nil;
   funcSym := TFuncSymbol(FTypeSym);
@@ -5012,9 +5016,9 @@ begin
       SetChild(Result, FProgramInfo, funcExpr.Typ, FResult, 0);
     end
     else begin
-      status:=esrNone;
-      funcExpr.EvalNoResult(FExec, status);
-      Assert(status=esrNone);
+      FExec.Status:=esrNone;
+      funcExpr.EvalNoResult(FExec);
+      Assert(FExec.Status=esrNone);
     end;
   finally
     funcExpr.Free;
@@ -5416,7 +5420,7 @@ begin
   inherited;
 end;
 
-procedure TConnectorWriteExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TConnectorWriteExpr.EvalNoResult(exec : TdwsExecution);
 var
   dat: TData;
   tmp: Variant;
@@ -5482,7 +5486,6 @@ var
   x: Integer;
   expr: TConnectorCallExpr;
   resultData: TData;
-  status : TExecutionStatusResult;
 begin
   expr := TConnectorCallExpr.Create(FExec.Prog, cNullPos, FName,
     TConstExpr.Create(FExec.Prog, FExec.Prog.TypVariant, FData[FOffset]));
@@ -5502,9 +5505,9 @@ begin
       else
       begin
         resultData := nil;
-        status:=esrNone;
-        expr.EvalNoResult(FExec, status);
-        Assert(status=esrNone);
+        FExec.Status:=esrNone;
+        expr.EvalNoResult(FExec);
+        Assert(FExec.Status=esrNone);
         Result := nil;
       end;
     end
@@ -5581,15 +5584,14 @@ end;
 procedure TExternalVarDataMaster.Write(exec : TdwsExecution; const Data: TData);
 var
   funcExpr: TFuncExpr;
-  status : TExecutionStatusResult;
 begin
   funcExpr := GetFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).WriteFunc, nil, nil);
   try
     funcExpr.AddArg(TConstExpr.CreateTyped(FCaller.Prog, FSym.Typ, Data));
     funcExpr.AddPushExprs;
-    status:=esrNone;
-    funcExpr.EvalNoResult(exec, status);
-    Assert(status=esrNone);
+    exec.Status:=esrNone;
+    funcExpr.EvalNoResult(exec);
+    Assert(exec.Status=esrNone);
   finally
     funcExpr.Free;
   end;
@@ -5625,7 +5627,6 @@ end;
 procedure TConnectorMemberDataMaster.Write(exec : TdwsExecution; const Data: TData);
 var
   writeExpr: TConnectorWriteExpr;
-  status : TExecutionStatusResult;
 begin
   writeExpr := TConnectorWriteExpr.Create(FCaller.Prog, cNullPos, FName,
     TConstExpr.Create(FCaller.Prog, FCaller.Prog.TypVariant, FBaseValue),
@@ -5633,9 +5634,9 @@ begin
 
   if writeExpr.AssignConnectorSym(TConnectorSymbol(FSym).ConnectorType) then
   begin
-    status:=esrNone;
-    writeExpr.EvalNoResult(exec, status);
-    Assert(status=esrNone);
+    exec.Status:=esrNone;
+    writeExpr.EvalNoResult(exec);
+    Assert(exec.Status=esrNone);
   end
   else
     raise Exception.Create(RTE_ConnectorWriteError);
@@ -6503,9 +6504,9 @@ end;
 
 // EvalNoResult
 //
-procedure TNoResultWrapperExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
+procedure TNoResultWrapperExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   Expr.EvalNoResult(exec, status);
+   Expr.EvalNoResult(exec);
 end;
 
 // TypeCheckNoPos

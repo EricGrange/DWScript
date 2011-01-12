@@ -3,7 +3,7 @@ unit UCOMConnectorTests;
 interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsComConnector, Variants, ActiveX, ComObj, dwsXPlatform;
+   dwsComConnector, Variants, ActiveX, ComObj, dwsXPlatform, dwsUtils;
 
 type
 
@@ -216,12 +216,12 @@ begin
          CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
          exec:=prog.Execute;
          if exec.Msgs.Count=0 then
-            output:=(exec.Result as TdwsDefaultResult).Text
+            output:=exec.Result.ToString
          else begin
             output:= 'Errors >>>>'#13#10
                     +exec.Msgs.AsInfo
                     +'Result >>>>'#13#10
-                    +(exec.Result as TdwsDefaultResult).Text;
+                    +exec.Result.ToString;
          end;
          resultsFileName:=ChangeFileExt(FTests[i], '.txt');
          if FileExists(resultsFileName) then begin

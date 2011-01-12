@@ -4,7 +4,7 @@ interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsSymbols, dwsMathFunctions, dwsTimeFunctions,
-   dwsVariantFunctions, dwsXPlatform;
+   dwsVariantFunctions, dwsXPlatform, dwsUtils;
 
 type
 
@@ -130,8 +130,8 @@ begin
          resultsFileName:=ChangeFileExt(FTests[i], '.txt');
          if FileExists(resultsFileName) then begin
             expectedResult.LoadFromFile(resultsFileName);
-            CheckEquals(expectedResult.Text, (exec.Result as TdwsDefaultResult).Text, FTests[i]);
-         end else CheckEquals('', (exec.Result as TdwsDefaultResult).Text, FTests[i]);
+            CheckEquals(expectedResult.Text, exec.Result.ToString, FTests[i]);
+         end else CheckEquals('', exec.Result.ToString, FTests[i]);
 
       end;
 

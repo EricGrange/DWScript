@@ -49,7 +49,7 @@ begin
 
    if prog.Msgs.Count=0 then begin
       exec:=prog.Execute;
-      MEResult.Lines.Text:=(exec.Result as TdwsDefaultResult).Text;
+      MEResult.Lines.Text:=exec.Result.ToString;
    end else MEResult.Lines.Text:=prog.Msgs.AsInfo;
 end;
 

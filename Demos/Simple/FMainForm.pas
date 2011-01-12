@@ -70,7 +70,7 @@ begin
       MEResult.Clear;
       try
          exec:=prog.Execute;
-         MEResult.Lines.Text:=(exec.Result as TdwsDefaultResult).Text;
+         MEResult.Lines.Text:=exec.Result.ToString;
       except
          on E: Exception do begin
             MEResult.Lines.Text:=E.ClassName+': '+E.Message;

@@ -145,7 +145,7 @@ begin
       CheckEquals('', prog.Msgs.AsInfo, 'Compile');
       prog.Execute;
       CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
-      CheckEquals('012653', (prog.Result as TdwsDefaultResult).Text, 'Exec Result');
+      CheckEquals('012653', exec.Result.ToString, 'Exec Result');
    finally
       prog.Free;
    end;
@@ -178,7 +178,7 @@ begin
       CheckEquals('', prog.Msgs.AsInfo, 'Compile');
       prog.Execute;
       CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
-      CheckEquals('012', (prog.Result as TdwsDefaultResult).Text, 'Exec Result');
+      CheckEquals('012', exec.Result.ToString, 'Exec Result');
    finally
       prog.Free;
    end;

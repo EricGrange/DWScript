@@ -2,7 +2,8 @@ unit UScriptTests;
 
 interface
 
-uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs, dwsXPlatform;
+uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs, dwsUtils,
+   dwsXPlatform;
 
 type
 
@@ -137,13 +138,13 @@ begin
          CheckEquals(False, prog.Msgs.HasErrors, FTests[i]);
          exec:=prog.Execute;
          if prog.Msgs.Count+exec.Msgs.Count=0 then
-            output:=(exec.Result as TdwsDefaultResult).Text
+            output:=exec.Result.ToString
          else begin
             output:= 'Errors >>>>'#13#10
                     +prog.Msgs.AsInfo
                     +exec.Msgs.AsInfo
                     +'Result >>>>'#13#10
-                    +(exec.Result as TdwsDefaultResult).Text;
+                    +exec.Result.ToString;
          end;
          resultsFileName:=ChangeFileExt(FTests[i], '.txt');
          if FileExists(resultsFileName) then begin

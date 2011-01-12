@@ -3,7 +3,7 @@ unit UdwsClassesTests;
 interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsClassesLibModule, dwsXPlatform, dwsSymbols;
+   dwsClassesLibModule, dwsXPlatform, dwsSymbols, dwsUtils;
 
 type
 
@@ -162,8 +162,8 @@ begin
          resultsFileName:=ChangeFileExt(FTests[i], '.txt');
          if FileExists(resultsFileName) then begin
             expectedResult.LoadFromFile(resultsFileName);
-            CheckEquals(expectedResult.Text, (exec.Result as TdwsDefaultResult).Text, FTests[i]);
-         end else CheckEquals('', (exec.Result as TdwsDefaultResult).Text, FTests[i]);
+            CheckEquals(expectedResult.Text, exec.Result.ToString, FTests[i]);
+         end else CheckEquals('', exec.Result.ToString, FTests[i]);
          CheckEquals('', exec.Msgs.AsInfo, FTests[i]);
 
       end;

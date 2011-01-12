@@ -44,7 +44,7 @@ begin
             for i:=2 to ParamCount do
                params[i-2]:=ParamStr(i);
             exec:=prog.ExecuteParam(params);
-            Writeln((exec.Result as TdwsDefaultResult).Text);
+            Writeln(exec.Result.ToString);
             if exec.Msgs.Count>0 then
                Writeln(exec.Msgs.AsInfo);
          end;

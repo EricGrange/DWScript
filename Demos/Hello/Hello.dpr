@@ -10,7 +10,6 @@ procedure DwsHello;
 var
    dws : TDelphiWebScript;
    prog : IdwsProgram;
-   exec : IdwsProgramExecution;
 begin
    // create the compiler component
    // internal functions (like ShowMessage) register at a global level
