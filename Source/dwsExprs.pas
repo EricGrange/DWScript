@@ -1015,7 +1015,7 @@ type
    // Informations about the program in external procedures
    TProgramInfo = class
       private
-         FExecutionContext : TdwsProgramExecution;
+         FExecution : TdwsProgramExecution;
          FFuncSym : TFuncSymbol;
          FLevel: Integer;
          FScriptObj: IScriptObj;
@@ -1078,7 +1078,7 @@ type
          function GetTemp(const DataType: string): IInfo;
 
          property Table : TSymbolTable read FTable write FTable;
-         property ExecutionContext : TdwsProgramExecution read FExecutionContext write FExecutionContext;
+         property Execution : TdwsProgramExecution read FExecution write FExecution;
          property Level : Integer read FLevel write FLevel;
          property Data[const s: string]: TData read GetData write SetData;
          property Func[const s: string]: IInfo read GetFunc;
@@ -1595,7 +1595,7 @@ begin
 
       FProgramInfo := TProgramInfo.Create;
       FProgramInfo.Table := FProg.FTable;
-      FProgramInfo.ExecutionContext := Self;
+      FProgramInfo.Execution := Self;
 
       // allocate global stack space
       Stack.Push(FProg.FGlobalAddrGenerator.DataSize + FProg.FAddrGenerator.DataSize);
@@ -1732,7 +1732,7 @@ function TdwsProgramExecution.AcquireProgramInfo(funcSym : TFuncSymbol) : TProgr
 begin
    if FProgInfoPool=nil then begin
       Result:=TProgramInfo.Create;
-      Result.ExecutionContext:=Self;
+      Result.Execution:=Self;
    end else begin
       Result:=FProgInfoPool;
       FProgInfoPool:=nil;
@@ -3787,9 +3787,9 @@ function TProgramInfo.GetVars(const str : string): IInfo;
       extVDM : TExternalVarDataMaster;
    begin
       SetLength(dat, sym.Typ.Size);
-      extVDM := TExternalVarDataMaster.Create(ExecutionContext, TExternalVarSymbol(sym));
+      extVDM := TExternalVarDataMaster.Create(Execution, TExternalVarSymbol(sym));
       if sym.Typ is TClassSymbol then
-         extVDM.Read(ExecutionContext, dat); // initialize 'Self'-Object
+         extVDM.Read(Execution, dat); // initialize 'Self'-Object
       TInfo.SetChild(Result, Self, sym.Typ, dat, 0, extVDM);
    end;
 
@@ -3808,7 +3808,7 @@ function TProgramInfo.GetVars(const str : string): IInfo;
    var
       vpd : IVarParamData;
    begin
-      vpd:=IVarParamData(IUnknown(ExecutionContext.Stack.Data[basePointer+sym.StackAddr]));
+      vpd:=IVarParamData(IUnknown(Execution.Stack.Data[basePointer+sym.StackAddr]));
       TInfo.SetChild(Result, Self, sym.Typ, vpd.Data, vpd.Addr);
    end;
 
@@ -3819,7 +3819,7 @@ function TProgramInfo.GetVars(const str : string): IInfo;
       exec : TdwsExecution;
    begin
       pin:=Self;
-      exec:=pin.ExecutionContext;
+      exec:=pin.Execution;
       if sym.Level=pin.FLevel then
          basePointer:=exec.Stack.BasePointer
       else basePointer:=exec.Stack.GetSavedBp(pin.Level);
@@ -4077,7 +4077,7 @@ function TProgramInfo.GetParamAsPVariant(index : Integer) : PVariant;
    var
       vpd : IVarParamData;
    begin
-      vpd:=IVarParamData(IUnknown(ExecutionContext.Stack.Data[stackAddr]));
+      vpd:=IVarParamData(IUnknown(Execution.Stack.Data[stackAddr]));
       Result:=@vpd.Data[vpd.Addr];
    end;
 
@@ -4094,7 +4094,7 @@ begin
    end else begin
       sym:=TDataSymbol(ip[index]);
       Assert(sym.InheritsFrom(TDataSymbol));
-      exec:=ExecutionContext;
+      exec:=Execution;
       if sym.Level=FLevel then
          stackAddr:=sym.StackAddr+exec.Stack.BasePointer
       else stackAddr:=sym.StackAddr+exec.Stack.GetSavedBp(Level);
@@ -4293,7 +4293,7 @@ var
   ClassSym: TClassSymbol;
   context: TdwsProgramExecution;
 begin
-  Assert(Assigned(ExecutionContext));
+  Assert(Assigned(Execution));
   { This will register an external object (known or not known to the system)
     with the DWS system. If an object that is already registered is passed in
     it will NOT point to the same script object. Currently it is too difficult
@@ -4305,7 +4305,7 @@ begin
   if Assigned(ClassSym) and Assigned(AObject) then
   begin
     if AutoFree then
-      context := ExecutionContext
+      context := Execution
     else
       context := nil;
     NewScriptObj := TScriptObj.Create(ClassSym, context);
@@ -4349,7 +4349,7 @@ type
 var
    exec : TdwsExecution;
 begin
-   exec:=ExecutionContext;
+   exec:=Execution;
    exec.Stack.ReadInterfaceValue(exec.Stack.BasePointer+TDataSymbol(FuncSym.InternalParams[0]).StackAddr,
                                  PIUnknown(@FScriptObj)^);
 end;
@@ -4372,8 +4372,8 @@ var
   i: Integer;
 begin
   // Find the root table for the full compiled program (not just the function)
-  if Assigned(ExecutionContext) then
-    root := ExecutionContext.Prog.RootTable
+  if Assigned(Execution) then
+    root := Execution.Prog.RootTable
   else
   // if no caller provided, make a 'best effort' to find a root.
   begin
@@ -4503,7 +4503,7 @@ constructor TInfo.Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol;
 begin
   FProgramInfo := ProgramInfo;
   if Assigned(ProgramInfo) then
-    FExec := ProgramInfo.ExecutionContext;
+    FExec := ProgramInfo.Execution;
   FTypeSym := TypeSym;
   FData := Data;
   FOffset := Offset;
@@ -5132,11 +5132,11 @@ begin
   h := TStaticArraySymbol(FTypeSym).HighBound;
   l := TStaticArraySymbol(FTypeSym).LowBound;
   if SameText('length', s) then
-    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.ExecutionContext.Prog.TypInteger, h - l + 1)
+    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, h - l + 1)
   else if SameText('low', s) then
-    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.ExecutionContext.Prog.TypInteger, l)
+    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, l)
   else if SameText('high', s) then
-    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.ExecutionContext.Prog.TypInteger, h)
+    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, h)
   else
     raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
 end;
@@ -5180,11 +5180,11 @@ begin
   elemOff := FData[FOffset];
   l := FData[elemOff - 1];
   if SameText('length', s) then
-    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.ExecutionContext.Prog.TypInteger, l)
+    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, l)
   else if SameText('low', s) then
-    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.ExecutionContext.Prog.TypInteger, 0)
+    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, 0)
   else if SameText('high', s) then
-    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.ExecutionContext.Prog.TypInteger, l - 1)
+    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, l - 1)
   else
     raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
 end;

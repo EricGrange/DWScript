@@ -430,7 +430,7 @@ var
    stream : TStream;
    fileSystem : IdwsFileSystem;
 begin
-   fileSystem:=Info.ExecutionContext.FileSystem;
+   fileSystem:=Info.Execution.FileSystem;
    stream:=fileSystem.OpenFileStream(Info.ValueAsString['FileName'], fomReadOnly);
    try
       TdwsStrings(ExtObject).LoadFromStream(stream);
@@ -451,7 +451,7 @@ var
    stream : TStream;
    fileSystem : IdwsFileSystem;
 begin
-   fileSystem:=Info.ExecutionContext.FileSystem;
+   fileSystem:=Info.Execution.FileSystem;
    stream:=fileSystem.OpenFileStream(Info.ValueAsString['FileName'], fomCreate);
    try
       TdwsStrings(ExtObject).SaveToStream(stream);

@@ -234,7 +234,7 @@ end;
 
 procedure TSendFunction.Execute(info : TProgramInfo);
 begin
-  Info.ExecutionContext.Result.AddString(Info.ValueAsString['s']);
+  Info.Execution.Result.AddString(Info.ValueAsString['s']);
 end;
 
 { TSendLnFunction }
@@ -243,7 +243,7 @@ procedure TSendLnFunction.Execute(info : TProgramInfo);
 var
    result : TdwsResult;
 begin
-   result:=Info.ExecutionContext.Result;
+   result:=Info.Execution.Result;
    result.AddString(Info.ValueAsString['s']);
    result.AddString(#13#10);
 end;

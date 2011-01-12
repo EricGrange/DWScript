@@ -4870,21 +4870,21 @@ end;
 
 procedure TParamFunc.Execute(info : TProgramInfo);
 begin
-  Info.ResultAsVariant := Info.ExecutionContext.Parameters[Info.ValueAsInteger['Index']];
+  Info.ResultAsVariant := Info.Execution.Parameters[Info.ValueAsInteger['Index']];
 end;
 
 { TParamStrFunc }
 
 procedure TParamStrFunc.Execute(info : TProgramInfo);
 begin
-  Info.ResultAsString := Info.ExecutionContext.Parameters[Info.ValueAsInteger['Index']];
+  Info.ResultAsString := Info.Execution.Parameters[Info.ValueAsInteger['Index']];
 end;
 
 { TParamCount }
 
 procedure TParamCountFunc.Execute(info : TProgramInfo);
 begin
-  Info.ResultAsInteger := Length(Info.ExecutionContext.Parameters);
+  Info.ResultAsInteger := Length(Info.Execution.Parameters);
 end;
 
 // GetScriptSource
@@ -5066,7 +5066,7 @@ end;
 
 procedure TPrintFunction.Execute(info : TProgramInfo);
 begin
-   info.ExecutionContext.Result.AddString(info.ValueAsString['v']);
+   info.Execution.Result.AddString(info.ValueAsString['v']);
 end;
 
 { TPrintLnFunction }
@@ -5075,7 +5075,7 @@ procedure TPrintLnFunction.Execute(info : TProgramInfo);
 var
    result : TdwsResult;
 begin
-   result:=info.ExecutionContext.Result;
+   result:=info.Execution.Result;
    result.AddString(Info.ValueAsString['v']);
    result.AddString(#13#10);
 end;
