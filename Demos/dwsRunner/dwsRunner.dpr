@@ -14,7 +14,8 @@ var
    sl : TStringList;
    script : TDelphiWebScript;
    classesLibModule : TdwsClassesLib;
-   prog : TdwsProgram;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
    i : Integer;
    params : array of Variant;
 begin
@@ -35,20 +36,17 @@ begin
 
          sl.LoadFromFile(ParamStr(1));
          prog:=script.Compile(sl.Text);
-         try
-            if prog.Msgs.Count>0 then begin
-               Writeln(prog.Msgs.AsInfo);
-            end else begin
-               SetLength(params, ParamCount-1);
-               for i:=2 to ParamCount do
-                  params[i-2]:=ParamStr(i);
-               prog.ExecuteParam(params);
-               Writeln((prog.Result as TdwsDefaultResult).Text);
-               if prog.Msgs.Count>0 then
-                  Writeln(prog.Msgs.AsInfo);
-            end;
-         finally
-            prog.Free;
+
+         if prog.Msgs.Count>0 then begin
+            Writeln(prog.Msgs.AsInfo);
+         end else begin
+            SetLength(params, ParamCount-1);
+            for i:=2 to ParamCount do
+               params[i-2]:=ParamStr(i);
+            exec:=prog.ExecuteParam(params);
+            Writeln((exec.Result as TdwsDefaultResult).Text);
+            if exec.Msgs.Count>0 then
+               Writeln(exec.Msgs.AsInfo);
          end;
       finally
          sl.Free;

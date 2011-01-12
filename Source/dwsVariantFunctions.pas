@@ -26,7 +26,7 @@ uses Classes, Variants, SysUtils, dwsFunctions, dwsExprs, dwsSymbols;
 
 type
   TVarClearFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TVarIsNullFunc = class(TInternalMagicBoolFunction)
@@ -42,7 +42,7 @@ type
   end;
 
   TVarAsTypeFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TVarToStrFunc = class(TInternalMagicStringFunction)
@@ -60,7 +60,7 @@ const // type constants
 
 { TVarClearFunc }
 
-procedure TVarClearFunc.Execute;
+procedure TVarClearFunc.Execute(info : TProgramInfo);
 begin
   Info.ValueAsVariant['v'] := Unassigned;
 end;
@@ -97,7 +97,7 @@ end;
 
 { TVarAsTypeFunc }
 
-procedure TVarAsTypeFunc.Execute;
+procedure TVarAsTypeFunc.Execute(info : TProgramInfo);
 begin
   Info.ResultAsVariant := VarAsType(Info.ValueAsVariant['v'], Info.ValueAsInteger['VarType']);
 end;

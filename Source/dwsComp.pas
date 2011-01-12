@@ -103,7 +103,7 @@ type
          constructor Create(AOwner: TComponent); override;
          destructor Destroy; override;
          procedure AddUnit(const Un: IUnit);
-         function Compile(const Text: string): TdwsProgram; virtual;
+         function Compile(const Text: string): IdwsProgram; virtual;
          function RemoveUnit(const Un: IUnit): Boolean;
 
       published
@@ -282,7 +282,7 @@ type
     function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
   protected
     function GetDisplayName: string; override;
-    procedure Call(Caller: TdwsProgramExecution; Func: TFuncSymbol); virtual;
+    procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); virtual;
     procedure SetParameters(const Value: TdwsParameters);
     function StoreParameters : Boolean;
   public
@@ -779,7 +779,7 @@ type
     FExternalObject: TObject;
   public
     constructor Create(FuncSym: TFuncSymbol; AExternalObject: TObject); reintroduce; virtual;
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TInstantiateFunc = class(TCustomInstantiateFunc)
@@ -789,7 +789,7 @@ type
     FOnInitSymbol: TInitSymbolEvent;
     FOnInitExpr: TInitExprEvent;
   public
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
     procedure InitSymbol(Symbol: TSymbol); override;
     procedure InitExpression(Expr: TExprBase); override;
     property OnInstantiate: TInstantiateEvent read FOnInstantiate write FOnInstantiate;
@@ -802,7 +802,7 @@ type
   private
     FOnReadVar: TReadVarEvent;
   public
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
     property OnReadVar: TReadVarEvent read FOnReadVar write FOnReadVar;
   end;
 
@@ -810,7 +810,7 @@ type
   private
     FOnWriteVar: TWriteVarEvent;
   public
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
     property OnWriteVar: TWriteVarEvent read FOnWriteVar write FOnWriteVar;
   end;
 
@@ -820,7 +820,7 @@ type
     FTyp: TSymbol;
   public
     constructor Create(FuncSym: TFuncSymbol);
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
     procedure SetValue(const Data: TData);
   end;
 
@@ -829,7 +829,7 @@ type
     FReadVarFunc: TReadVarFunc;
   public
     constructor Create(FuncSym: TFuncSymbol; ReadVarFunc: TReadVarFunc);
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
 // Return the external object for a variable name.
@@ -928,7 +928,7 @@ end;
 
 // Compile
 //
-function TDelphiWebScript.Compile(const Text: string): TdwsProgram;
+function TDelphiWebScript.Compile(const Text: string): IdwsProgram;
 begin
    if FExtensions.Count>0 then begin
       FCompiler.OnReadInstr:=FExtensions.ReadInstr;
@@ -1830,7 +1830,7 @@ end;
 
 { TInstantiateFunc }
 
-procedure TInstantiateFunc.Execute;
+procedure TInstantiateFunc.Execute(info : TProgramInfo);
 var
   scriptObj: TScriptObj;
   extObj: TObject;
@@ -1984,16 +1984,16 @@ begin
   inherited;
 end;
 
-procedure TdwsFunction.Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
+procedure TdwsFunction.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
 var
    info: TProgramInfo;
 begin
    if Assigned(FOnEval) then begin
-      info:=Caller.AcquireProgramInfo(Func);
+      info:=exec.AcquireProgramInfo(Func);
       try
          FOnEval(info);
       finally
-         Caller.ReleaseProgramInfo(info);
+         exec.ReleaseProgramInfo(info);
       end;
    end;
 end;
@@ -2801,7 +2801,7 @@ end;
 
 { TReadVarEventFunc }
 
-procedure TReadVarEventFunc.Execute;
+procedure TReadVarEventFunc.Execute(info : TProgramInfo);
 var
   Value: Variant;
 begin
@@ -2813,7 +2813,7 @@ end;
 
 { TWriteVarEventFunc }
 
-procedure TWriteVarEventFunc.Execute;
+procedure TWriteVarEventFunc.Execute(info : TProgramInfo);
 begin
   if Assigned(FOnWriteVar) then
     FOnWriteVar(Info.ValueAsVariant['Value']);
@@ -2829,7 +2829,7 @@ begin
   FTyp.InitData(FData, 0);
 end;
 
-procedure TReadVarFunc.Execute;
+procedure TReadVarFunc.Execute(info : TProgramInfo);
 begin
   Info.Data[SYS_RESULT] := FData;
 end;
@@ -2847,7 +2847,7 @@ begin
   FReadVarFunc := ReadVarFunc;
 end;
 
-procedure TWriteVarFunc.Execute;
+procedure TWriteVarFunc.Execute(info : TProgramInfo);
 begin
   FReadVarFunc.SetValue(Info.Data['Value']);
 end;
@@ -3439,7 +3439,7 @@ begin
   FExternalObject := AExternalObject;
 end;
 
-procedure TDynamicInstantiateFunc.Execute;
+procedure TDynamicInstantiateFunc.Execute(info : TProgramInfo);
 begin
   if Assigned(FScriptObj) then
     // Instance was already created

@@ -140,30 +140,24 @@ end;
 //
 procedure TCornerCasesTests.TimeOutTestFinite;
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
 begin
    prog:=FCompiler.Compile('while false do;');
-   try
-      prog.TimeoutMilliseconds:=1000;
-      prog.Execute;
-   finally
-      prog.Free;
-   end;
+
+   prog.TimeoutMilliseconds:=1000;
+   prog.Execute;
 end;
 
 // TimeOutTestInfinite
 //
 procedure TCornerCasesTests.TimeOutTestInfinite;
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
 begin
    prog:=FCompiler.Compile('while true do;');
-   try
-      prog.TimeoutMilliseconds:=100;
-      prog.Execute;
-   finally
-      prog.Free;
-   end;
+
+   prog.TimeoutMilliseconds:=100;
+   prog.Execute;
 end;
 
 // DoOnInclude
@@ -178,36 +172,28 @@ end;
 //
 procedure TCornerCasesTests.IncludeViaEvent;
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
 begin
    FCompiler.OnInclude:=nil;
    FCompiler.Config.ScriptPaths.Clear;
 
    prog:=FCompiler.Compile('{$include}');
-   try
-      CheckEquals('Syntax Error: Name of include file expected [line: 1, column: 10]'#13#10,
-                  prog.CompileMsgs.AsInfo, 'include missing');
-   finally
-      prog.Free;
-   end;
+
+   CheckEquals('Syntax Error: Name of include file expected [line: 1, column: 10]'#13#10,
+               prog.Msgs.AsInfo, 'include missing');
 
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
-   try
-      CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
-                  prog.CompileMsgs.AsInfo, 'include forbidden');
-   finally
-      prog.Free;
-   end;
+
+   CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+               prog.Msgs.AsInfo, 'include forbidden');
 
    FCompiler.OnInclude:=DoOnInclude;
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
-   try
-      CheckEquals('', prog.CompileMsgs.AsInfo, 'include via event');
-      prog.Execute;
-      CheckEquals('hello', (prog.ExecutionContext.Result as TdwsDefaultResult).Text, 'exec include via event');
-   finally
-      prog.Free;
-   end;
+
+   CheckEquals('', prog.Msgs.AsInfo, 'include via event');
+   exec:=prog.Execute;
+   CheckEquals('hello', (exec.Result as TdwsDefaultResult).Text, 'exec include via event');
 end;
 
 // IncludeViaFile
@@ -224,7 +210,8 @@ procedure TCornerCasesTests.IncludeViaFile;
    end;
 
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
    sl : TStringList;
    tempDir : String;
    tempFile : String;
@@ -244,22 +231,14 @@ begin
 
    FCompiler.Config.ScriptPaths.Clear;
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
-   try
-      CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
-                  prog.CompileMsgs.AsInfo, 'include via file no paths');
-   finally
-      prog.Free;
-   end;
+   CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+               prog.Msgs.AsInfo, 'include via file no paths');
 
    FCompiler.Config.ScriptPaths.Add(tempDir);
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
-   try
-      CheckEquals('', prog.CompileMsgs.AsInfo, 'include via file');
-      prog.Execute;
-      CheckEquals('world', (prog.ExecutionContext.Result as TdwsDefaultResult).Text, 'exec include via file');
-   finally
-      prog.Free;
-   end;
+   CheckEquals('', prog.Msgs.AsInfo, 'include via file');
+   exec:=prog.Execute;
+   CheckEquals('world', (exec.Result as TdwsDefaultResult).Text, 'exec include via file');
 
    FCompiler.Config.ScriptPaths.Clear;
    DeleteFile(tempFile);
@@ -279,7 +258,8 @@ procedure TCornerCasesTests.IncludeViaFileRestricted;
    end;
 
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
    sl : TStringList;
    tempDir : String;
    tempFile : String;
@@ -302,32 +282,20 @@ begin
 
    restricted.Paths.Text:=tempDir+'\nothing';
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
-   try
-      CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
-                  prog.CompileMsgs.AsInfo, 'include via file no paths');
-   finally
-      prog.Free;
-   end;
+   CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+               prog.Msgs.AsInfo, 'include via file no paths');
 
    restricted.Paths.Text:=tempDir;
 
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
-   try
-      CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
-                  prog.CompileMsgs.AsInfo, 'include via file restricted - no paths');
-   finally
-      prog.Free;
-   end;
+   CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+               prog.Msgs.AsInfo, 'include via file restricted - no paths');
 
    FCompiler.Config.ScriptPaths.Add('.');
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
-   try
-      CheckEquals('', prog.CompileMsgs.AsInfo, 'include via file restricted - dot path');
-      prog.Execute;
-      CheckEquals('world', (prog.ExecutionContext.Result as TdwsDefaultResult).Text, 'exec include via file');
-   finally
-      prog.Free;
-   end;
+   CheckEquals('', prog.Msgs.AsInfo, 'include via file restricted - dot path');
+   exec:=prog.Execute;
+   CheckEquals('world', (exec.Result as TdwsDefaultResult).Text, 'exec include via file');
 
    DeleteFile(tempFile);
    restricted.Free;
@@ -339,19 +307,16 @@ end;
 //
 procedure TCornerCasesTests.StackMaxRecursion;
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
 begin
    FCompiler.Config.MaxRecursionDepth:=20;
 
    prog:=FCompiler.Compile('procedure Dummy; begin Dummy; end; Dummy;');
-   try
-      CheckEquals('', prog.CompileMsgs.AsInfo, 'compile');
-      prog.Execute;
-      CheckEquals('Runtime Error: Maximal recursion exceeded (20 calls) [line: 1, column: 36]'#13#10,
-                  prog.ExecutionContext.Msgs.AsInfo, 'stack max recursion');
-   finally
-      prog.Free;
-   end;
+   CheckEquals('', prog.Msgs.AsInfo, 'compile');
+   exec:=prog.Execute;
+   CheckEquals('Runtime Error: Maximal recursion exceeded (20 calls) [line: 1, column: 36]'#13#10,
+               exec.Msgs.AsInfo, 'stack max recursion');
 
    FCompiler.Config.MaxDataSize:=cDefaultMaxRecursionDepth;
 end;
@@ -360,19 +325,16 @@ end;
 //
 procedure TCornerCasesTests.StackOverFlow;
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
 begin
    FCompiler.Config.MaxDataSize:=1024;
 
    prog:=FCompiler.Compile('procedure Dummy; var i : Integer; begin Dummy; end; Dummy;');
-   try
-      CheckEquals('', prog.CompileMsgs.AsInfo, 'compile');
-      prog.Execute;
-      CheckEquals('Runtime Error: Maximal data size exceeded (64 Variants) [line: 1, column: 53]'#13#10,
-                  prog.ExecutionContext.Msgs.AsInfo, 'stack overflow');
-   finally
-      prog.Free;
-   end;
+   CheckEquals('', prog.Msgs.AsInfo, 'compile');
+   exec:=prog.Execute;
+   CheckEquals('Runtime Error: Maximal data size exceeded (64 Variants) [line: 1, column: 53]'#13#10,
+               exec.Msgs.AsInfo, 'stack overflow');
 
    FCompiler.Config.MaxDataSize:=0;
 end;

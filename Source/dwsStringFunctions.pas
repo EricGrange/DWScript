@@ -72,7 +72,7 @@ type
   end;
 
   TSetCharAtFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TCopyFunc = class(TInternalMagicStringFunction)
@@ -96,11 +96,11 @@ type
   end;
 
   TDeleteFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TInsertFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TLowerCaseFunc = class(TInternalMagicStringFunction)
@@ -132,7 +132,7 @@ type
   end;
 
   TSetLengthFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TTrimLeftFunc = class(TInternalMagicStringFunction)
@@ -346,7 +346,7 @@ end;
 
 { TDeleteFunc }
 
-procedure TDeleteFunc.Execute;
+procedure TDeleteFunc.Execute(info : TProgramInfo);
 var
   s: string;
 begin
@@ -357,7 +357,7 @@ end;
 
 { TInsertFunc }
 
-procedure TInsertFunc.Execute;
+procedure TInsertFunc.Execute(info : TProgramInfo);
 var
   s: string;
 begin
@@ -548,26 +548,26 @@ end;
 
 { TSetCharAtFunc }
 
-procedure TSetCharAtFunc.Execute;
+procedure TSetCharAtFunc.Execute(info : TProgramInfo);
 var
    buf : String;
    n : Integer;
 begin
-   buf:=Info.ValueAsString['s'];
-   n:=Info.ValueAsInteger['x'];
+   buf:=info.ValueAsString['s'];
+   n:=info.ValueAsInteger['x'];
    if n<=0 then
       raise Exception.CreateFmt(RTE_ArrayLowerBoundExceeded, [n])
    else if n>Length(buf) then
       raise Exception.CreateFmt(RTE_ArrayUpperBoundExceeded, [n])
    else begin
-      buf[n]:=Info.ValueAsChar['c'];
-      Info.ValueAsString['s']:=buf;
+      buf[n]:=info.ValueAsChar['c'];
+      info.ValueAsString['s']:=buf;
    end;
 end;
 
 { TSetLengthFunc }
 
-procedure TSetLengthFunc.Execute;
+procedure TSetLengthFunc.Execute(info : TProgramInfo);
 var
    i, n : Integer;
    s : String;

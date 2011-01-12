@@ -66,12 +66,12 @@ type
 
   TSendFunction = class(TInternalFunction)
   public
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TSendLnFunction = class(TInternalFunction)
   public
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   EHTMLFilterException = class (Exception) end;
@@ -232,14 +232,14 @@ end;
 
 { TSendFunction }
 
-procedure TSendFunction.Execute;
+procedure TSendFunction.Execute(info : TProgramInfo);
 begin
   Info.ExecutionContext.Result.AddString(Info.ValueAsString['s']);
 end;
 
 { TSendLnFunction }
 
-procedure TSendLnFunction.Execute;
+procedure TSendLnFunction.Execute(info : TProgramInfo);
 var
    result : TdwsResult;
 begin
@@ -253,7 +253,9 @@ end;
 procedure TdwsHtmlUnit.AddUnitSymbols(SymbolTable: TSymbolTable);
 begin
   TSendFunction.Create(SymbolTable, 'Send', ['s', SYS_VARIANT], '', False);
+  TSendFunction.Create(SymbolTable, 'Print', ['s', SYS_VARIANT], '', False);
   TSendLnFunction.Create(SymbolTable, 'SendLn', ['s', SYS_VARIANT], '', False);
+  TSendLnFunction.Create(SymbolTable, 'PrintLn', ['s', SYS_VARIANT], '', False);
 end;
 
 constructor TdwsHtmlUnit.Create(AOwner: TComponent);

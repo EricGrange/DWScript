@@ -1050,16 +1050,22 @@ type
 
    // try FTryExpr except {FDoExprs}; else FElseExpr end;
    TExceptExpr = class(TExceptionExpr)
-   private
-     FDoExprs: TTightList;
-     FElseExpr: TExpr;
-   public
-     destructor Destroy; override;
-     procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
-     procedure Initialize; override;
-     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-     procedure AddDoExpr(expr : TExceptDoExpr);
-     property ElseExpr: TExpr read FElseExpr write FElseExpr;
+      private
+         FDoExprs: TTightList;
+         FElseExpr: TExpr;
+
+      protected
+         function CreateEDelphiObj(exec : TdwsExecution; const ClassName, Message: string): IScriptObj;
+
+      public
+         destructor Destroy; override;
+
+         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
+         procedure Initialize; override;
+         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+         procedure AddDoExpr(expr : TExceptDoExpr);
+
+         property ElseExpr: TExpr read FElseExpr write FElseExpr;
    end;
 
    // try..except on FExceptionVar: FExceptionVar.Typ do FDoBlockExpr; ... end;
@@ -1190,7 +1196,7 @@ end;
 
 function TVarExpr.Eval(exec : TdwsExecution) : Variant;
 begin
-  Result := FProg.Stack.ReadValue(Addr[exec]);
+  Result := exec.Stack.ReadValue(Addr[exec]);
 end;
 
 // SameVarAs
@@ -1203,60 +1209,60 @@ end;
 
 function TVarExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-  Result := FProg.Stack.BasePointer + FStackAddr;
+  Result := exec.Stack.BasePointer + FStackAddr;
 end;
 
 function TVarExpr.GetData(exec : TdwsExecution) : TData;
 begin
-  Result := FProg.Stack.Data;
+  Result := exec.Stack.Data;
 end;
 
 procedure TVarExpr.AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer);
 begin
-  FProg.Stack.WriteData(SourceAddr, Addr[exec], Typ.Size, SourceData);
+  exec.Stack.WriteData(SourceAddr, Addr[exec], Typ.Size, SourceData);
 end;
 
 procedure TVarExpr.AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr);
 begin
-  FProg.Stack.WriteData(DataExpr.Addr[exec], Addr[exec], Typ.Size, DataExpr.Data[exec]);
+  exec.Stack.WriteData(DataExpr.Addr[exec], Addr[exec], Typ.Size, DataExpr.Data[exec]);
 end;
 
 procedure TVarExpr.AssignExpr(exec : TdwsExecution; Expr: TNoPosExpr);
 begin
-  FProg.Stack.WriteValue(Addr[exec], Expr.Eval(exec));
+  exec.Stack.WriteValue(Addr[exec], Expr.Eval(exec));
 end;
 
 procedure TVarExpr.AssignValue(exec : TdwsExecution; const Value: Variant);
 begin
-  FProg.Stack.WriteValue(Addr[exec], Value);
+  exec.Stack.WriteValue(Addr[exec], Value);
 end;
 
 // AssignValueAsInteger
 //
 procedure TVarExpr.AssignValueAsInteger(exec : TdwsExecution; const Value: Int64);
 begin
-   FProg.Stack.WriteIntValue(Addr[exec], Value);
+   exec.Stack.WriteIntValue(Addr[exec], Value);
 end;
 
 // AssignValueAsBoolean
 //
 procedure TVarExpr.AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean);
 begin
-   FProg.Stack.WriteBoolValue(Addr[exec], Value);
+   exec.Stack.WriteBoolValue(Addr[exec], Value);
 end;
 
 // AssignValueAsFloat
 //
 procedure TVarExpr.AssignValueAsFloat(exec : TdwsExecution; var Value: Double);
 begin
-   FProg.Stack.WriteFloatValue(Addr[exec], Value);
+   exec.Stack.WriteFloatValue(Addr[exec], Value);
 end;
 
 // AssignValueAsString
 //
 procedure TVarExpr.AssignValueAsString(exec : TdwsExecution; const Value: String);
 begin
-   FProg.Stack.WriteStrValue(Addr[exec], Value);
+   exec.Stack.WriteStrValue(Addr[exec], Value);
 end;
 
 // ------------------
@@ -1265,52 +1271,52 @@ end;
 
 procedure TIntVarExpr.AssignExpr(exec : TdwsExecution; Expr: TNoPosExpr);
 begin
-   FProg.Stack.WriteIntValue(FProg.Stack.BasePointer + FStackAddr, Expr.EvalAsInteger(exec));
+   exec.Stack.WriteIntValue(exec.Stack.BasePointer + FStackAddr, Expr.EvalAsInteger(exec));
 end;
 
 procedure TIntVarExpr.AssignValue(exec : TdwsExecution; const Value: Variant);
 begin
-   FProg.Stack.WriteIntValue(FProg.Stack.BasePointer + FStackAddr, Value);
+   exec.Stack.WriteIntValue(exec.Stack.BasePointer + FStackAddr, Value);
 end;
 
 // AssignValueAsInteger
 //
 procedure TIntVarExpr.AssignValueAsInteger(exec : TdwsExecution; const Value: Int64);
 begin
-   FProg.Stack.WriteIntValue(FProg.Stack.BasePointer + FStackAddr, Value);
+   exec.Stack.WriteIntValue(exec.Stack.BasePointer + FStackAddr, Value);
 end;
 
 // AssignValueAsPInteger
 //
 procedure TIntVarExpr.AssignValueAsPInteger(exec : TdwsExecution; const pValue: PInt64);
 begin
-   FProg.Stack.WriteIntValue(FProg.Stack.BasePointer + FStackAddr, pValue);
+   exec.Stack.WriteIntValue(exec.Stack.BasePointer + FStackAddr, pValue);
 end;
 
 // IncValue
 //
 procedure TIntVarExpr.IncValue(exec : TdwsExecution; const value: Int64);
 begin
-   FProg.Stack.IncIntValue(FProg.Stack.BasePointer + FStackAddr, value);
+   exec.Stack.IncIntValue(exec.Stack.BasePointer + FStackAddr, value);
 end;
 
 function TIntVarExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result:=FProg.Stack.ReadIntValue(FProg.Stack.BasePointer + FStackAddr);
+   Result:=exec.Stack.ReadIntValue(exec.Stack.BasePointer + FStackAddr);
 end;
 
 // EvalAsFloat
 //
 procedure TIntVarExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
 begin
-   FProg.Stack.ReadIntAsFloatValue(FProg.Stack.BasePointer + FStackAddr, Result);
+   exec.Stack.ReadIntAsFloatValue(exec.Stack.BasePointer + FStackAddr, Result);
 end;
 
 // EvalAsPInteger
 //
 function TIntVarExpr.EvalAsPInteger(exec : TdwsExecution) : PInt64;
 begin
-   Result:=FProg.Stack.PointerToIntValue(FProg.Stack.BasePointer + FStackAddr);
+   Result:=exec.Stack.PointerToIntValue(exec.Stack.BasePointer + FStackAddr);
 end;
 
 // ------------------
@@ -1322,7 +1328,7 @@ var
    buf : Double;
 begin
    Expr.EvalAsFloat(exec, buf);
-   FProg.Stack.WriteFloatValue(FProg.Stack.BasePointer+FStackAddr, buf);
+   exec.Stack.WriteFloatValue(exec.Stack.BasePointer+FStackAddr, buf);
 end;
 
 procedure TFloatVarExpr.AssignValue(exec : TdwsExecution; const Value: Variant);
@@ -1330,19 +1336,19 @@ var
    buf : Double;
 begin
    buf:=Value;
-   FProg.Stack.WriteFloatValue(FProg.Stack.BasePointer + FStackAddr, buf);
+   exec.Stack.WriteFloatValue(exec.Stack.BasePointer + FStackAddr, buf);
 end;
 
 procedure TFloatVarExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
 begin
-   FProg.Stack.ReadFloatValue(FProg.Stack.BasePointer + FStackAddr, Result);
+   exec.Stack.ReadFloatValue(exec.Stack.BasePointer + FStackAddr, Result);
 end;
 
 // EvalAsPFloat
 //
 function TFloatVarExpr.EvalAsPFloat(exec : TdwsExecution) : PDouble;
 begin
-   Result:=FProg.Stack.PointerToFloatValue(FProg.Stack.BasePointer + FStackAddr);
+   Result:=exec.Stack.PointerToFloatValue(exec.Stack.BasePointer + FStackAddr);
 end;
 
 // ------------------
@@ -1354,31 +1360,31 @@ var
    buf : String;
 begin
    Expr.EvalAsString(exec, buf);
-   FProg.Stack.WriteStrValue(FProg.Stack.BasePointer + FStackAddr, buf);
+   exec.Stack.WriteStrValue(exec.Stack.BasePointer + FStackAddr, buf);
 end;
 
 procedure TStrVarExpr.AssignValue(exec : TdwsExecution; const Value: Variant);
 begin
-   FProg.Stack.WriteStrValue(FProg.Stack.BasePointer + FStackAddr, Value);
+   exec.Stack.WriteStrValue(exec.Stack.BasePointer + FStackAddr, Value);
 end;
 
 function TStrVarExpr.SetChar(exec : TdwsExecution; index : Integer; c : Char) : Boolean;
 begin
-  Result:=FProg.Stack.SetStrChar(FProg.Stack.BasePointer + FStackAddr, index, c);
+  Result:=exec.Stack.SetStrChar(exec.Stack.BasePointer + FStackAddr, index, c);
 end;
 
 // EvalAsString
 //
 procedure TStrVarExpr.EvalAsString(exec : TdwsExecution; var Result : String);
 begin
-   FProg.Stack.ReadStrValue(FProg.Stack.BasePointer + FStackAddr, Result);
+   exec.Stack.ReadStrValue(exec.Stack.BasePointer + FStackAddr, Result);
 end;
 
 // Append
 //
 procedure TStrVarExpr.Append(exec : TdwsExecution; const value : String);
 begin
-   FProg.Stack.AppendStringValue(FProg.Stack.BasePointer + FStackAddr, value);
+   exec.Stack.AppendStringValue(exec.Stack.BasePointer + FStackAddr, value);
 end;
 
 // ------------------
@@ -1387,24 +1393,24 @@ end;
 
 procedure TBoolVarExpr.AssignExpr(exec : TdwsExecution; Expr: TNoPosExpr);
 begin
-   FProg.Stack.WriteBoolValue(FProg.Stack.BasePointer + FStackAddr, Expr.EvalAsBoolean(exec));
+   exec.Stack.WriteBoolValue(exec.Stack.BasePointer + FStackAddr, Expr.EvalAsBoolean(exec));
 end;
 
 procedure TBoolVarExpr.AssignValue(exec : TdwsExecution; const Value: Variant);
 begin
-   FProg.Stack.WriteBoolValue(FProg.Stack.BasePointer + FStackAddr, Value);
+   exec.Stack.WriteBoolValue(exec.Stack.BasePointer + FStackAddr, Value);
 end;
 
 function TBoolVarExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
-   Result:=FProg.Stack.ReadBoolValue(FProg.Stack.BasePointer + FStackAddr);
+   Result:=exec.Stack.ReadBoolValue(exec.Stack.BasePointer + FStackAddr);
 end;
 
 // EvalAsInteger
 //
 function TBoolVarExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result:=Int64(FProg.Stack.ReadBoolValue(FProg.Stack.BasePointer + FStackAddr));
+   Result:=Int64(exec.Stack.ReadBoolValue(exec.Stack.BasePointer + FStackAddr));
 end;
 
 // ------------------
@@ -1417,7 +1423,7 @@ procedure TObjectVarExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScr
 type
    PUnknown = ^IUnknown;
 begin
-   FProg.Stack.ReadInterfaceValue(FProg.Stack.BasePointer + FStackAddr, PUnknown(@Result)^);
+   exec.Stack.ReadInterfaceValue(exec.Stack.BasePointer + FStackAddr, PUnknown(@Result)^);
 end;
 
 { TVarParentExpr }
@@ -1430,19 +1436,19 @@ end;
 
 function TVarParentExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-  Result := FProg.Stack.GetSavedBp(FLevel) + FStackAddr;
+  Result := exec.Stack.GetSavedBp(FLevel) + FStackAddr;
 end;
 
 { TVarParamExpr }
 
 function TVarParamExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-  Result := IVarParamData(IUnknown(FProg.Stack.Data[FProg.Stack.BasePointer + FStackAddr])).Addr;
+  Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.BasePointer + FStackAddr])).Addr;
 end;
 
 function TVarParamExpr.GetData(exec : TdwsExecution) : TData;
 begin
-  Result := IVarParamData(IUnknown(FProg.Stack.Data[FProg.Stack.BasePointer + FStackAddr])).Data;
+  Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.BasePointer + FStackAddr])).Data;
 end;
 
 procedure TVarParamExpr.AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer);
@@ -1487,12 +1493,12 @@ end;
 
 function TVarParamParentExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-  Result := IVarParamData(IUnknown(FProg.Stack.Data[FProg.Stack.GetSavedBp(FLevel) + FStackAddr])).Addr;
+  Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel) + FStackAddr])).Addr;
 end;
 
 function TVarParamParentExpr.GetData(exec : TdwsExecution) : TData;
 begin
-  Result := IVarParamData(IUnknown(FProg.Stack.Data[FProg.Stack.GetSavedBp(FLevel) + FStackAddr])).Data;
+  Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel) + FStackAddr])).Data;
 end;
 
 { TConstParamParentExpr }
@@ -1887,9 +1893,9 @@ begin
 
    if Cardinal(index)>=Cardinal(len) then begin
       if index >= len then
-         AddExecutionStop(RTE_UpperBoundExceeded)
+         exec.Msgs.AddExecutionStop(Pos, RTE_UpperBoundExceeded)
       else if index < 0 then
-         AddExecutionStop(RTE_LowerBoundExceeded);
+         exec.Msgs.AddExecutionStop(Pos, RTE_LowerBoundExceeded);
    end;
    // Calculate the address
    Result := index;
@@ -1910,13 +1916,13 @@ begin
    baseAddr := FBaseExpr.EvalAsInteger(exec);
    index := FIndexExpr.EvalAsInteger(exec);
 
-   length := Prog.Stack.Data[baseAddr - 1];
+   length := exec.Stack.Data[baseAddr - 1];
 
    if Cardinal(index)>=Cardinal(length) then begin
       if index >= length then
-         AddExecutionStop(RTE_UpperBoundExceeded)
+         exec.Msgs.AddExecutionStop(Pos, RTE_UpperBoundExceeded)
       else if index < 0 then
-         AddExecutionStop(RTE_LowerBoundExceeded);
+         exec.Msgs.AddExecutionStop(Pos, RTE_LowerBoundExceeded);
    end;
    // Calculate the address
    Result := baseAddr + (index * FElementSize);
@@ -1924,7 +1930,7 @@ end;
 
 function TDynamicArrayExpr.GetData(exec : TdwsExecution) : TData;
 begin
-  Result := Prog.Stack.Data;
+  Result := exec.Stack.Data;
 end;
 
 { TArrayConstantExpr }
@@ -1985,7 +1991,7 @@ end;
 function TArrayConstantExpr.GetData(exec : TdwsExecution) : TData;
 begin
   Eval(exec);
-  Result := FProg.Stack.Data;// FData;
+  Result := exec.Stack.Data;// FData;
 end;
 
 // GetAddr
@@ -2003,20 +2009,20 @@ begin
    Assert(False); // at the moment, Eval shouldn't ever be invoked
 
    if FElementExprs.Count>0 then
-      Prog.Stack.WriteValue(FArrayAddr, FElementExprs.Count);
+      exec.Stack.WriteValue(FArrayAddr, FElementExprs.Count);
 
   elemSize := Typ.Typ.Size;
   if elemSize = 1 then
   begin
     for x := 0 to FElementExprs.Count - 1 do
     begin
-      FProg.Stack.WriteValue(FArrayAddr + 1 + x, TNoPosExpr(FElementExprs.List[x]).Eval(exec));
+      exec.Stack.WriteValue(FArrayAddr + 1 + x, TNoPosExpr(FElementExprs.List[x]).Eval(exec));
     end;
   end
   else begin
     for x := 0 to FElementExprs.Count - 1 do
     begin
-      FProg.Stack.WriteData(
+      exec.Stack.WriteData(
         TDataExpr(FElementExprs.List[x]).Addr[exec],
         FArrayAddr + 1 + x * elemSize,
         elemSize,
@@ -2206,7 +2212,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      AddExecutionStop(RTE_ObjectNotInstantiated);
+      exec.Msgs.AddExecutionStop(Pos, RTE_ObjectNotInstantiated);
    Result:=obj.Data;
 end;
 
@@ -2223,7 +2229,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      AddExecutionStop(RTE_ObjectNotInstantiated);
+      exec.Msgs.AddExecutionStop(Pos, RTE_ObjectNotInstantiated);
    Result:=obj.DataOfAddr(FFieldAddr);
 end;
 
@@ -2235,7 +2241,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      AddExecutionStop(RTE_ObjectNotInstantiated);
+      exec.Msgs.AddExecutionStop(Pos, RTE_ObjectNotInstantiated);
    Result:=obj.DataOfAddrAsString(FFieldAddr);
 end;
 
@@ -2247,7 +2253,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      AddExecutionStop(RTE_ObjectNotInstantiated);
+      exec.Msgs.AddExecutionStop(Pos, RTE_ObjectNotInstantiated);
    Result:=obj.DataOfAddrAsInteger(FFieldAddr);
 end;
 
@@ -2259,7 +2265,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      AddExecutionStop(RTE_ObjectNotInstantiated);
+      exec.Msgs.AddExecutionStop(Pos, RTE_ObjectNotInstantiated);
    obj.DataOfAddrAsScriptObj(FFieldAddr, Result);
 end;
 
@@ -2292,22 +2298,19 @@ end;
 //
 function TLazyParamExpr.Eval(exec : TdwsExecution) : Variant;
 var
-   stack : TStack;
    lazyExpr : TExprBase;
    oldBasePointer: Integer;
    lazyContext : Int64;
 begin
-   stack:=FProg.Stack;
-
-   lazyContext:=stack.ReadIntValue(stack.BasePointer + FStackAddr);
+   lazyContext:=exec.Stack.ReadIntValue(exec.Stack.BasePointer + FStackAddr);
    lazyExpr:=TExprBase(lazyContext and $FFFFFFFF);
 
-   oldBasePointer:=stack.BasePointer;
-   stack.BasePointer:=(lazyContext shr 32);//  stack.GetSavedBp(Level);
+   oldBasePointer:=exec.Stack.BasePointer;
+   exec.Stack.BasePointer:=(lazyContext shr 32);//  stack.GetSavedBp(Level);
    try
       Result:=lazyExpr.Eval(exec);
    finally
-      stack.BasePointer:=oldBasePointer;
+      exec.Stack.BasePointer:=oldBasePointer;
    end;
 end;
 
@@ -3926,7 +3929,7 @@ begin
       FProg.Table:=FTable;
       for i:=0 to FCount-1 do begin
          expr:=FStatements[i];
-         FProg.DoStep(expr);
+         exec.DoStep(expr);
          expr.EvalNoResult(exec, status);
          if status<>esrNone then Break;
       end;
@@ -3970,7 +3973,7 @@ var
 begin
    iterator:=PExpr(FStatements);
    for i:=1 to FCount do begin
-      FProg.DoStep(iterator^);
+      exec.DoStep(iterator^);
       iterator^.EvalNoResult(exec, status);
       if status<>esrNone then Break;
       Inc(iterator);
@@ -3991,12 +3994,12 @@ end;
 
 procedure TIfExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
 begin
-   FProg.DoStep(Self);
+   exec.DoStep(Self);
    if FCond.EvalAsBoolean(exec) then begin
-      FProg.DoStep(FThen);
+      exec.DoStep(FThen);
       FThen.EvalNoResult(exec, status);
    end else if Assigned(FElse) then begin
-      FProg.DoStep(FElse);
+      exec.DoStep(FElse);
       FElse.EvalNoResult(exec, status);
    end;
 end;
@@ -4034,20 +4037,20 @@ var
   Value: Variant;
   cc : TCaseCondition;
 begin
-   FProg.DoStep(Self);
+   exec.DoStep(Self);
 
    Value := FValueExpr.Eval(exec);
    for x := 0 to FCaseConditions.Count - 1 do begin
       cc:=TCaseCondition(FCaseConditions.List[x]);
       if cc.IsTrue(exec, Value) then begin
-         FProg.DoStep(cc.TrueExpr);
+         exec.DoStep(cc.TrueExpr);
          cc.TrueExpr.EvalNoResult(exec, status);
          Exit;
       end;
    end;
 
    if Assigned(FElseExpr) then begin
-      FProg.DoStep(FElseExpr);
+      exec.DoStep(FElseExpr);
       FElseExpr.EvalNoResult(exec, status);
    end;
 end;
@@ -4265,7 +4268,7 @@ begin
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
    while i^<=toValue do begin
-      FProg.DoStep(Self);
+      exec.DoStep(Self);
       FDoExpr.EvalNoResult(exec, status);
       if status<>esrNone then begin
          case status of
@@ -4293,7 +4296,7 @@ begin
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
    while i^>=toValue do begin
-      FProg.DoStep(Self);
+      exec.DoStep(Self);
       FDoExpr.EvalNoResult(exec, status);
       if status<>esrNone then begin
          case status of
@@ -4322,7 +4325,7 @@ begin
    toValue:=FToExpr.EvalAsInteger(exec);
    step:=EvalStep(exec);
    while i^<=toValue do begin
-      FProg.DoStep(Self);
+      exec.DoStep(Self);
       FDoExpr.EvalNoResult(exec, status);
       if status<>esrNone then begin
          case status of
@@ -4357,7 +4360,7 @@ begin
    toValue:=FToExpr.EvalAsInteger(exec);
    step:=EvalStep(exec);
    while i^>=toValue do begin
-      FProg.DoStep(Self);
+      exec.DoStep(Self);
       FDoExpr.EvalNoResult(exec, status);
       if status<>esrNone then begin
          case status of
@@ -4409,7 +4412,7 @@ procedure TWhileExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionS
 begin
    status:=esrNone;
    while FCondExpr.EvalAsBoolean(exec) do begin
-      FProg.DoStep(Self);
+      exec.DoStep(Self);
       FLoopExpr.EvalNoResult(exec, status);
       if status<>esrNone then begin
          case status of
@@ -4454,7 +4457,7 @@ begin
             esrExit : Exit;
          end;
       end;
-      FProg.DoStep(Self);
+      exec.DoStep(Self);
    until FCondExpr.EvalAsBoolean(exec);
 end;
 
@@ -4570,10 +4573,9 @@ var
    doExpr: TExceptDoExpr;
    isCatched: Boolean;
    isReraise: Boolean;
-   stack : TStack;
 begin
    try
-      FProg.DoStep(FTryExpr);
+      exec.DoStep(FTryExpr);
       FTryExpr.EvalNoResult(exec, status);
    except
       on e: Exception do begin
@@ -4583,7 +4585,7 @@ begin
             objSym := EScriptException(e).Typ;
          end else begin
             // A Delphi exception. Transform it to a EDelphi-dws exception
-            obj := CreateEDelphiObj(e.ClassName, e.Message);
+            obj := CreateEDelphiObj(exec, e.ClassName, e.Message);
             objSym := IScriptObj(IUnknown(Obj)).ClassSym;
          end;
 
@@ -4596,18 +4598,16 @@ begin
                // Find a "on x: Class do ..." statement matching to this exception class
                doExpr := TExceptDoExpr(FDoExprs.List[x]);
                if doExpr.ExceptionVar.Typ.IsCompatible(objSym) then begin
-                  stack:=FProg.Stack;
-                  stack.Data[stack.BasePointer +  doExpr.FExceptionVar.StackAddr] := obj;
+                  exec.Stack.Data[exec.Stack.BasePointer +  doExpr.FExceptionVar.StackAddr] := obj;
                   isReraise := False;
                   try
-                     FProg.DoStep(doExpr);
+                     exec.DoStep(doExpr);
                      doExpr.EvalNoResult(exec, status);
                   except
                      on E : EReraise do isReraise := True;
                   end;
                   if isReraise then raise;
-                  stack:=FProg.Stack;
-                  VarClear(stack.Data[stack.BasePointer + doExpr.FExceptionVar.StackAddr]);
+                  VarClear(exec.Stack.Data[exec.Stack.BasePointer + doExpr.FExceptionVar.StackAddr]);
                   isCatched := True;
                   Break;
                end;
@@ -4616,7 +4616,7 @@ begin
             if not isCatched and Assigned(FElseExpr) then begin
                isReraise := False;
                try
-                  FProg.DoStep(FElseExpr);
+                  exec.DoStep(FElseExpr);
                   FElseExpr.EvalNoResult(exec, status);
                except
                   on E : EReraise do isReraise := True;
@@ -4626,7 +4626,7 @@ begin
          end else begin
             isReraise := False;
             try
-               FProg.DoStep(FHandlerExpr);
+               exec.DoStep(FHandlerExpr);
                FHandlerExpr.EvalNoResult(exec, status);
             except
                on E : EReraise do isReraise := True;
@@ -4635,7 +4635,7 @@ begin
          end;
       end;
    end;
-   FProg.ExecutionContext.Msgs.SetLastScriptError(cNullPos);
+   exec.Msgs.SetLastScriptError(cNullPos);
 end;
 
 procedure TExceptExpr.Initialize;
@@ -4668,15 +4668,27 @@ begin
    FDoExprs.Add(expr);
 end;
 
+// CreateEDelphiObj
+//
+function TExceptExpr.CreateEDelphiObj(exec : TdwsExecution; const ClassName, Message: string): IScriptObj;
+var
+   info: TProgramInfo;
+begin
+   info := (exec as TdwsProgramExecution).ProgramInfo;
+   Result := IScriptObj(IUnknown(
+      info.Vars[SYS_EDELPHI].Method[SYS_TOBJECT_CREATE].Call([
+        ClassName, Message]).Value));
+end;
+
 { TFinallyExpr }
 
 procedure TFinallyExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
 begin
   try
-    FProg.DoStep(FTryExpr);
+    exec.DoStep(FTryExpr);
     FTryExpr.EvalNoResult(exec, status);
   finally
-    FProg.DoStep(FHandlerExpr);
+    exec.DoStep(FHandlerExpr);
     FHandlerExpr.EvalNoResult(exec, status);
   end;
 end;
@@ -4700,7 +4712,7 @@ var
    exceptVal : Variant;
    exceptMessage : String;
 begin
-  FProg.DoStep(Self);
+  exec.DoStep(Self);
   exceptVal:=FExceptionExpr.Eval(exec);
   exceptMessage:=VarToStr(IScriptObj(IUnknown(exceptVal)).GetData[0]);
   if exceptMessage<>'' then
@@ -4727,7 +4739,7 @@ end;
 
 procedure TReraiseExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
 begin
-  FProg.DoStep(Self);
+  exec.DoStep(Self);
   raise EReraise.Create('');
 end;
 

@@ -86,7 +86,7 @@ procedure TdwsFunctionsTestsBase.Compilation;
 var
    source : TStringList;
    i : Integer;
-   prog : TdwsProgram;
+   prog : IdwsProgram;
 begin
    source:=TStringList.Create;
    try
@@ -96,11 +96,7 @@ begin
          source.LoadFromFile(FTests[i]);
 
          prog:=FCompiler.Compile(source.Text);
-         try
-            CheckEquals('', prog.CompileMsgs.AsInfo, FTests[i]);
-         finally
-            prog.Free;
-         end;
+         CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
 
       end;
 
@@ -115,7 +111,8 @@ procedure TdwsFunctionsTestsBase.Execution;
 var
    source, expectedResult : TStringList;
    i : Integer;
-   prog : TdwsProgram;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
    resultsFileName : String;
 begin
    source:=TStringList.Create;
@@ -127,18 +124,14 @@ begin
          source.LoadFromFile(FTests[i]);
 
          prog:=FCompiler.Compile(source.Text);
-         try
-            CheckEquals('', prog.CompileMsgs.AsInfo, FTests[i]);
-            prog.Execute;
-            CheckEquals('', prog.ExecutionContext.Msgs.AsInfo, FTests[i]);
-            resultsFileName:=ChangeFileExt(FTests[i], '.txt');
-            if FileExists(resultsFileName) then begin
-               expectedResult.LoadFromFile(resultsFileName);
-               CheckEquals(expectedResult.Text, (prog.ExecutionContext.Result as TdwsDefaultResult).Text, FTests[i]);
-            end else CheckEquals('', (prog.ExecutionContext.Result as TdwsDefaultResult).Text, FTests[i]);
-         finally
-            prog.Free;
-         end;
+         CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
+         exec:=prog.Execute;
+         CheckEquals('', exec.Msgs.AsInfo, FTests[i]);
+         resultsFileName:=ChangeFileExt(FTests[i], '.txt');
+         if FileExists(resultsFileName) then begin
+            expectedResult.LoadFromFile(resultsFileName);
+            CheckEquals(expectedResult.Text, (exec.Result as TdwsDefaultResult).Text, FTests[i]);
+         end else CheckEquals('', (exec.Result as TdwsDefaultResult).Text, FTests[i]);
 
       end;
 

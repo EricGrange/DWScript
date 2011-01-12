@@ -54,7 +54,7 @@ type
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const binary : TBytes);
          destructor Destroy; override;
-         procedure EvalNoResult(var status : TExecutionStatusResult); override;
+         procedure EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult); override;
    end;
 
 // ------------------------------------------------------------------
@@ -130,7 +130,7 @@ begin
                SetString(curInstr, startPos, (NativeUInt(curPos)-NativeUInt(startPos)) div SizeOf(Char)-1);
                curInstr:=Trim(curInstr);
                if LastDelimiter(#13#10, curInstr)>0 then
-                  compiler.CurrentProg.Msgs.AddCompilerStop(tok.HotPos, CPE_SemiExpected);
+                  compiler.CurrentProg.CompileMsgs.AddCompilerStop(tok.HotPos, CPE_SemiExpected);
 
                case token of
                   ttSEMI : begin
@@ -152,7 +152,7 @@ begin
                SetString(curInstr, startPos, (NativeUInt(tok.PosPtr)-NativeUInt(startPos)) div SizeOf(Char)-1);
                curInstr:=Trim(curInstr);
                if LastDelimiter(#13#10, curInstr)>0 then
-                  compiler.CurrentProg.Msgs.AddCompilerStop(asmPos, CPE_SemiExpected);
+                  compiler.CurrentProg.CompileMsgs.AddCompilerStop(asmPos, CPE_SemiExpected);
                tok.KillToken;
                Break;
             end;
@@ -166,7 +166,7 @@ begin
       outputAsm.Add('ret');
 
       if not tok.HasTokens then begin
-         compiler.CurrentProg.Msgs.AddErrorStop('Incomplete asm block');
+         compiler.CurrentProg.CompileMsgs.AddErrorStop('Incomplete asm block');
          Exit;
       end;
 
@@ -181,7 +181,7 @@ begin
       // assemble via NASM
 
       Result:=TdwsASMBlockExpr.Create(compiler.CurrentProg, hotPos,
-                                      AssembleViaNASM(outputAsm, hotPos, compiler.CurrentProg.Msgs));
+                                      AssembleViaNASM(outputAsm, hotPos, compiler.CurrentProg.CompileMsgs));
 
    finally
       nameSymbols.Free;
@@ -298,7 +298,7 @@ begin
       dataSym:=TDataSymbol(sym);
       if dataSym.Level<>compiler.CurrentProg.Level then Exit('');
 
-      offset:=(dataSym.StackAddr-compiler.CurrentProg.Stack.BasePointer)*SizeOf(Variant)+$8;
+      offset:=dataSym.StackAddr*SizeOf(Variant)+$8;
       if offset>0 then
          sign:='+'
       else sign:='';
@@ -335,14 +335,11 @@ end;
 
 // EvalNoResult
 //
-procedure TdwsASMBlockExpr.EvalNoResult(var status : TExecutionStatusResult);
+procedure TdwsASMBlockExpr.EvalNoResult(exec : TdwsExecution; var status : TExecutionStatusResult);
 type
    TJumpFunc = procedure(stack : Pointer);
-var
-   stack : TStack;
 begin
-   stack:=Prog.Stack;
-   TJumpFunc(FCodePtr)(@stack.Data[stack.BasePointer]);
+   TJumpFunc(FCodePtr)(@exec.Stack.Data[exec.Stack.BasePointer]);
 end;
 
 end.

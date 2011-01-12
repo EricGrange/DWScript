@@ -68,27 +68,27 @@ end;
 
 type
   TCreateOleObjectFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TGetActiveOleObjectFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TClassIDToProgIDFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TOleInt32Func = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TOleInt64Func = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TOleDateFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TComConnectorType = class(TInterfacedObject, IUnknown, IConnectorType)
@@ -253,14 +253,14 @@ end;
 
 { TCreateOleObjectFunc }
 
-procedure TCreateOleObjectFunc.Execute;
+procedure TCreateOleObjectFunc.Execute(info : TProgramInfo);
 begin
   Info.ResultAsVariant := CreateOleObject(Info.ValueAsString['ClassName']);
 end;
 
 { TClassIDToProgIDFunc }
 
-procedure TClassIDToProgIDFunc.Execute;
+procedure TClassIDToProgIDFunc.Execute(info : TProgramInfo);
 var
    guid : TGUID;
 begin
@@ -270,28 +270,28 @@ end;
 
 { TGetActiveOleObjectFunc }
 
-procedure TGetActiveOleObjectFunc.Execute;
+procedure TGetActiveOleObjectFunc.Execute(info : TProgramInfo);
 begin
   Info.ResultAsVariant := GetActiveOleObject(Info.ValueAsString['ClassName']);
 end;
 
 { TOleInt32Func }
 
-procedure TOleInt32Func.Execute;
+procedure TOleInt32Func.Execute(info : TProgramInfo);
 begin
   Info.ResultAsVariant := Int32(Info.ValueAsInteger['v']);
 end;
 
 { TOleInt64Func }
 
-procedure TOleInt64Func.Execute;
+procedure TOleInt64Func.Execute(info : TProgramInfo);
 begin
   Info.ResultAsVariant := Info.ValueAsInteger['v'];
 end;
 
 { TOleDateFunc }
 
-procedure TOleDateFunc.Execute;
+procedure TOleDateFunc.Execute(info : TProgramInfo);
 begin
   Info.ResultAsVariant := VarFromDateTime(Info.ValueAsFloat['v']);
 end;

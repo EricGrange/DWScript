@@ -91,11 +91,11 @@ type
   end;
 
   TIncMonthFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TDecodeDateFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TEncodeDateFunc = class(TInternalMagicFloatFunction)
@@ -103,7 +103,7 @@ type
   end;
 
   TDecodeTimeFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TEncodeTimeFunc = class(TInternalMagicFloatFunction)
@@ -287,14 +287,14 @@ end;
 
 { TIncMonthFunc }
 
-procedure TIncMonthFunc.Execute;
+procedure TIncMonthFunc.Execute(info : TProgramInfo);
 begin
   Info.ResultAsFloat := IncMonth(Info.ValueAsFloat['dt'], Info.ValueAsInteger['nb']);
 end;
 
 { TDecodeDateFunc }
 
-procedure TDecodeDateFunc.Execute;
+procedure TDecodeDateFunc.Execute(info : TProgramInfo);
 var
   y, m, d: word;
 begin
@@ -313,7 +313,7 @@ end;
 
 { TDecodeTimeFunc }
 
-procedure TDecodeTimeFunc.Execute;
+procedure TDecodeTimeFunc.Execute(info : TProgramInfo);
 var
   h, m, s, ms: word;
 begin

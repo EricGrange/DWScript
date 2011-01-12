@@ -205,6 +205,8 @@ type
 
    EClassPropertyIncompleteError = class(EClassIncompleteError);
 
+   EScriptStopped = class (Exception) end;
+
    // The script has to be stopped because of an error
    EScriptError = class(Exception)
       private

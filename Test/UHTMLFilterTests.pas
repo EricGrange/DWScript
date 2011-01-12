@@ -73,28 +73,26 @@ end;
 
 procedure THTMLFilterTests.TestHTMLScript;
 var
-  s: string;
-  resultFileName : String;
-  prog: TdwsProgram;
-  sl : TStringList;
+   s: string;
+   resultFileName : String;
+   prog: IdwsProgram;
+   sl : TStringList;
+   exec : IdwsProgramExecution;
 begin
    sl:=TStringList.Create;
    try
       for s in FTests do begin
          sl.LoadFromFile(s);
          prog := FCompiler.Compile(sl.Text);
-         try
-            CheckEquals('', prog.CompileMsgs.AsInfo, s);
-            prog.Execute;
 
-            resultFileName:=ChangeFileExt(s, '.txt');
-            if FileExists(resultFileName) then
-               sl.LoadFromFile(ChangeFileExt(resultFileName, '.txt'))
-            else sl.Clear;
-            CheckEquals(sl.Text, (prog.ExecutionContext.Result as TdwsDefaultResult).Text, s);
-         finally
-            prog.Free;
-         end;
+         CheckEquals('', prog.Msgs.AsInfo, s);
+         exec:=prog.Execute;
+
+         resultFileName:=ChangeFileExt(s, '.txt');
+         if FileExists(resultFileName) then
+            sl.LoadFromFile(ChangeFileExt(resultFileName, '.txt'))
+         else sl.Clear;
+         CheckEquals(sl.Text, (exec.Result as TdwsDefaultResult).Text, s);
       end;
    finally
       sl.Free;

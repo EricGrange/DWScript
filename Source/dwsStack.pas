@@ -36,16 +36,17 @@ type
       MaxRecursionDepth : Integer;
    end;
 
-   // TStack
+   // TStackMixIn
    //
-   TStack = class
+   TStack = ^TStackMixIn;
+   TStackMixIn = record
       private
          FBasePointer: Integer;
          FBpStore : array of TSimpleStack<Integer>;
          FParams : TStackParameters;
-         FMaxSize: Integer;
-         FSize: Integer;
-         FStackPointer: Integer;
+         FMaxSize : Integer;
+         FSize : Integer;
+         FStackPointer : Integer;
          FRecursionDepth : Integer;
 
          function GetFrameSize: Integer;
@@ -54,11 +55,13 @@ type
 
          procedure GrowTo(desiredSize : Integer);
 
+         procedure SetBasePointer(newBp : Integer); inline;
+
       public
          Data: TData;
 
-         constructor Create(const params : TStackParameters);
-         destructor Destroy; override;
+         procedure Initialize(const params : TStackParameters);
+         procedure Finalize;
 
          procedure Push(Delta: Integer);
          procedure Pop(Delta: Integer);
@@ -102,7 +105,7 @@ type
          procedure RestoreFrame(oldBasePointer: Integer);
          procedure Reset;
     
-         property BasePointer: Integer read FBasePointer write FBasePointer;
+         property BasePointer: Integer read FBasePointer write SetBasePointer;
          property FrameSize: Integer read GetFrameSize;
          property MaxSize: Integer read FMaxSize write FMaxSize;
          property StackPointer: Integer read FStackPointer;
@@ -136,18 +139,13 @@ begin
    end;
 end;
 
-// FallBack_VarDataToInt64
+// ------------------
+// ------------------ TStackMixIn ------------------
+// ------------------
+
+// Initialize
 //
-procedure FallBack_VarDataToInt64(varData : PVarData);
-begin
-
-end;
-
-// ------------------
-// ------------------ TStack ------------------
-// ------------------
-
-constructor TStack.Create(const params : TStackParameters);
+procedure TStackMixIn.Initialize(const params : TStackParameters);
 begin
    FParams:=params;
    FMaxSize:=params.MaxByteSize div SizeOf(Variant);
@@ -155,15 +153,14 @@ end;
 
 // Destroy
 //
-destructor TStack.Destroy;
+procedure TStackMixIn.Finalize;
 begin
-   inherited;
    ClearBpStore;
 end;
 
 // ClearBpStore
 //
-procedure TStack.ClearBpStore;
+procedure TStackMixIn.ClearBpStore;
 var
    i : Integer;
 begin
@@ -171,7 +168,7 @@ begin
       FBpStore[i].Free;
 end;
 
-procedure TStack.CopyData(SourceAddr, DestAddr, Size: Integer);
+procedure TStackMixIn.CopyData(SourceAddr, DestAddr, Size: Integer);
 begin
   while Size > 0 do
   begin
@@ -182,12 +179,12 @@ begin
   end;
 end;
 
-function TStack.GetFrameSize: Integer;
+function TStackMixIn.GetFrameSize: Integer;
 begin
   Result := FStackPointer - FBasePointer;
 end;
 
-procedure TStack.Pop(delta : Integer);
+procedure TStackMixIn.Pop(delta : Integer);
 var
    x, sp : Integer;
    v : PVariant;
@@ -206,7 +203,7 @@ end;
 
 // IncRecursion
 //
-procedure TStack.IncRecursion;
+procedure TStackMixIn.IncRecursion;
 begin
    Inc(FRecursionDepth);
    if FRecursionDepth>FParams.MaxRecursionDepth then
@@ -215,14 +212,14 @@ end;
 
 // DecRecursion
 //
-procedure TStack.DecRecursion;
+procedure TStackMixIn.DecRecursion;
 begin
    Dec(FRecursionDepth);
 end;
 
 // GrowTo
 //
-procedure TStack.GrowTo(desiredSize : Integer);
+procedure TStackMixIn.GrowTo(desiredSize : Integer);
 begin
    if desiredSize > FMaxSize then
       raise EStackException.CreateFmt(RTE_MaximalDatasizeExceeded, [FMaxSize]);
@@ -232,10 +229,16 @@ begin
    SetLength(Data, FSize);
 end;
 
+// SetBasePointer
+//
+procedure TStackMixIn.SetBasePointer(newBp : Integer);
+begin
+   FBasePointer:=newBp;
+end;
 
 // Push
 //
-procedure TStack.Push(Delta: Integer);
+procedure TStackMixIn.Push(Delta: Integer);
 var
    sp : Integer;
 begin
@@ -248,7 +251,7 @@ begin
    FStackPointer := sp;
 end;
 
-procedure TStack.Reset;
+procedure TStackMixIn.Reset;
 var
    i : Integer;
 begin
@@ -264,7 +267,7 @@ begin
    end;
 end;
 
-procedure TStack.RestoreFrame(oldBasePointer: Integer);
+procedure TStackMixIn.RestoreFrame(oldBasePointer: Integer);
 begin
   FStackPointer := FBasePointer;
   FBasePointer := oldBasePointer;
@@ -272,7 +275,7 @@ end;
 
 // PushBp
 //
-procedure TStack.PushBp(Level, Bp: Integer);
+procedure TStackMixIn.PushBp(Level, Bp: Integer);
 begin
    Assert(Cardinal(Level)<=Cardinal(FParams.MaxLevel));
    FBpStore[Level].Push(Bp);
@@ -280,7 +283,7 @@ end;
 
 // GetSavedBp
 //
-function TStack.GetSavedBp(Level: Integer): Integer;
+function TStackMixIn.GetSavedBp(Level: Integer): Integer;
 begin
    Assert(Cardinal(Level)<=Cardinal(FParams.MaxLevel));
    Result := FBpStore[Level].Peek;
@@ -288,19 +291,19 @@ end;
 
 // PopBp
 //
-function TStack.PopBp(Level : Integer): Integer;
+function TStackMixIn.PopBp(Level : Integer): Integer;
 begin
    Assert(Cardinal(Level)<=Cardinal(FParams.MaxLevel));
    Result:=FBpStore[Level].Pop;
 end;
 
-procedure TStack.SwitchFrame(var oldBasePointer: Integer);
+procedure TStackMixIn.SwitchFrame(var oldBasePointer: Integer);
 begin
   oldBasePointer := FBasePointer;
   FBasePointer := FStackPointer;
 end;
 
-procedure TStack.ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);
+procedure TStackMixIn.ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);
 begin
   while Size > 0 do
   begin
@@ -311,14 +314,14 @@ begin
   end;
 end;
 
-function TStack.ReadValue(SourceAddr: Integer): Variant;
+function TStackMixIn.ReadValue(SourceAddr: Integer): Variant;
 begin
   Result := Data[SourceAddr];
 end;
 
 // ReadIntValue
 //
-function TStack.ReadIntValue(SourceAddr: Integer): Int64;
+function TStackMixIn.ReadIntValue(SourceAddr: Integer): Int64;
 var
    varData : PVarData;
 begin
@@ -330,7 +333,7 @@ end;
 
 // ReadIntAsFloatValue
 //
-procedure TStack.ReadIntAsFloatValue(SourceAddr: Integer; var Result : Double);
+procedure TStackMixIn.ReadIntAsFloatValue(SourceAddr: Integer; var Result : Double);
 var
    varData : PVarData;
 begin
@@ -341,7 +344,7 @@ end;
 
 // ReadFloatValue
 //
-procedure TStack.ReadFloatValue(SourceAddr: Integer; var Result : Double);
+procedure TStackMixIn.ReadFloatValue(SourceAddr: Integer; var Result : Double);
 var
    varData : PVarData;
 begin
@@ -353,7 +356,7 @@ end;
 
 // ReadStrValue
 //
-procedure TStack.ReadStrValue(SourceAddr: Integer; var Result : String);
+procedure TStackMixIn.ReadStrValue(SourceAddr: Integer; var Result : String);
 var
    varData : PVarData;
 begin
@@ -365,7 +368,7 @@ end;
 
 // ReadBoolValue
 //
-function TStack.ReadBoolValue(SourceAddr: Integer): Boolean;
+function TStackMixIn.ReadBoolValue(SourceAddr: Integer): Boolean;
 var
    varData : PVarData;
 begin
@@ -377,7 +380,7 @@ end;
 
 // ReadInterfaceValue
 //
-procedure TStack.ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown);
+procedure TStackMixIn.ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown);
 var
    varData : PVarData;
 begin
@@ -389,7 +392,7 @@ end;
 
 // PointerToIntValue
 //
-function TStack.PointerToIntValue(addr : Integer) : PInt64;
+function TStackMixIn.PointerToIntValue(addr : Integer) : PInt64;
 var
    varData : PVarData;
 begin
@@ -400,7 +403,7 @@ end;
 
 // PointerToFloatValue
 //
-function TStack.PointerToFloatValue(addr : Integer) : PDouble;
+function TStackMixIn.PointerToFloatValue(addr : Integer) : PDouble;
 var
    varData : PVarData;
 begin
@@ -411,7 +414,7 @@ end;
 
 // IncIntValue
 //
-procedure TStack.IncIntValue(destAddr: Integer; const value: Int64);
+procedure TStackMixIn.IncIntValue(destAddr: Integer; const value: Int64);
 var
    varData : PVarData;
 begin
@@ -422,7 +425,7 @@ end;
 
 // AppendStringValue
 //
-procedure TStack.AppendStringValue(destAddr : Integer; const value : String);
+procedure TStackMixIn.AppendStringValue(destAddr : Integer; const value : String);
 
    procedure Fallback(varData : PVarData);
    begin
@@ -440,7 +443,7 @@ end;
 
 // WriteData
 //
-procedure TStack.WriteData(SourceAddr, DestAddr, Size: Integer; const SourceData: TData);
+procedure TStackMixIn.WriteData(SourceAddr, DestAddr, Size: Integer; const SourceData: TData);
 begin
    while Size>0 do begin
       Data[DestAddr]:=SourceData[SourceAddr];
@@ -452,14 +455,14 @@ end;
 
 // WriteValue
 //
-procedure TStack.WriteValue(DestAddr: Integer; const Value: Variant);
+procedure TStackMixIn.WriteValue(DestAddr: Integer; const Value: Variant);
 begin
   VarCopy(Data[DestAddr], Value);
 end;
 
 // WriteIntValue
 //
-procedure TStack.WriteIntValue(DestAddr: Integer; const Value: Int64);
+procedure TStackMixIn.WriteIntValue(DestAddr: Integer; const Value: Int64);
 var
    varData : PVarData;
 begin
@@ -471,7 +474,7 @@ end;
 
 // WriteIntValue
 //
-procedure TStack.WriteIntValue(DestAddr: Integer; const pValue: PInt64);
+procedure TStackMixIn.WriteIntValue(DestAddr: Integer; const pValue: PInt64);
 var
    varData : PVarData;
 begin
@@ -483,7 +486,7 @@ end;
 
 // WriteFloatValue
 //
-procedure TStack.WriteFloatValue(DestAddr: Integer; var value : Double);
+procedure TStackMixIn.WriteFloatValue(DestAddr: Integer; var value : Double);
 var
    varData : PVarData;
 begin
@@ -495,7 +498,7 @@ end;
 
 // WriteStrValue
 //
-procedure TStack.WriteStrValue(DestAddr: Integer; const Value: String);
+procedure TStackMixIn.WriteStrValue(DestAddr: Integer; const Value: String);
 var
    varData : PVarData;
 begin
@@ -507,7 +510,7 @@ end;
 
 // WriteBoolValue
 //
-procedure TStack.WriteBoolValue(DestAddr: Integer; const Value: Boolean);
+procedure TStackMixIn.WriteBoolValue(DestAddr: Integer; const Value: Boolean);
 var
    varData : PVarData;
 begin
@@ -519,7 +522,7 @@ end;
 
 // WriteInterfaceValue
 //
-procedure TStack.WriteInterfaceValue(DestAddr: Integer; const intf: IUnknown);
+procedure TStackMixIn.WriteInterfaceValue(DestAddr: Integer; const intf: IUnknown);
 var
    varData : PVarData;
 begin
@@ -531,7 +534,7 @@ end;
 
 // SetStrChar
 //
-function TStack.SetStrChar(DestAddr: Integer; index : Integer; c : Char) : Boolean;
+function TStackMixIn.SetStrChar(DestAddr: Integer; index : Integer; c : Char) : Boolean;
 var
    varData : PVarData;
 begin

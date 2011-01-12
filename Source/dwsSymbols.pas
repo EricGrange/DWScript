@@ -40,21 +40,74 @@ type
    );
 
    IScriptObj = interface;
+   TdwsExecution = class;
+   TExprBase = class;
 
-   TdwsExecution = class abstract (TInterfacedObject)
+   // Interface for external debuggers
+   IDebugger = interface
+      ['{8D534D14-4C6B-11D5-8DCB-0000216D9E86}']
+      procedure StartDebug(exec: TdwsExecution);
+      procedure DoDebug(exec: TdwsExecution; expr: TExprBase);
+      procedure StopDebug(exec: TdwsExecution);
+      procedure EnterFunc(exec: TdwsExecution; funcExpr: TExprBase);
+      procedure LeaveFunc(exec: TdwsExecution; funcExpr: TExprBase);
+   end;
+
+   TProgramState = (psUndefined, psReadyToRun, psRunning, psRunningStopped, psTerminated);
+
+   IdwsExecution = interface
+      ['{8F2D1D7E-9954-4391-B919-86EF1EE21C8C}']
+      function GetMsgs : TdwsMessageList;
+      function GetUserObject : TObject;
+      procedure SetUserObject(const value : TObject);
+      function GetStack : TStack;
+
+      property Stack : TStack read GetStack;
+      property Msgs : TdwsMessageList read GetMsgs;
+      property UserObject : TObject read GetUserObject write SetUserObject;
+   end;
+
+   // TdwsExecution
+   //
+   TdwsExecution = class abstract (TInterfacedObject, IdwsExecution)
       private
-         FStack : TStack;
+         FStack : TStackMixIn;
+
+         FDebugger : IDebugger;
+         FIsDebugging : Boolean;
+
+         FUserObject : TObject;
 
       protected
+         FProgramState : TProgramState;
+
+         procedure SetDebugger(const aDebugger : IDebugger);
+         procedure StartDebug;
+         procedure StopDebug;
+
          function GetMsgs : TdwsMessageList; virtual; abstract;
 
+         function GetUserObject : TObject; virtual;
+         procedure SetUserObject(const value : TObject); virtual;
+
+         function GetStack : TStack;
+
       public
-         constructor Create(stackParams : TStackParameters);
+         constructor Create(const stackParams : TStackParameters);
          destructor Destroy; override;
 
-         property Stack : TStack read FStack;
+         procedure DoStep(expr : TExprBase);
+
+         property Stack : TStackMixIn read FStack;
+
+         property ProgramState : TProgramState read FProgramState;
+
+         property Debugger : IDebugger read FDebugger write SetDebugger;
+         property IsDebugging : Boolean read FIsDebugging;
 
          property Msgs : TdwsMessageList read GetMsgs;
+
+         property UserObject : TObject read GetUserObject write SetUserObject;
    end;
 
    // Base class for all Exprs
@@ -3115,10 +3168,10 @@ end;
 
 // Create
 //
-constructor TdwsExecution.Create(stackParams : TStackParameters);
+constructor TdwsExecution.Create(const stackParams : TStackParameters);
 begin
    inherited Create;
-   FStack:=TStack.Create(stackParams);
+   FStack.Initialize(stackParams);
    FStack.Reset;
 end;
 
@@ -3127,7 +3180,64 @@ end;
 destructor TdwsExecution.Destroy;
 begin
    inherited;
-   FStack.Free;
+   FStack.Finalize;
+end;
+
+// DoStep
+//
+procedure TdwsExecution.DoStep(expr : TExprBase);
+begin
+   if ProgramState=psRunningStopped then begin
+      raise EScriptStopped.Create(RTE_ScriptStopped)
+   end else if IsDebugging then
+      Debugger.DoDebug(Self, Expr);
+end;
+
+// SetDebugger
+//
+procedure TdwsExecution.SetDebugger(const aDebugger : IDebugger);
+begin
+   FDebugger:=aDebugger;
+   FIsDebugging:=(aDebugger<>nil);
+end;
+
+// StartDebug
+//
+procedure TdwsExecution.StartDebug;
+begin
+   FIsDebugging:=Assigned(FDebugger);
+   if FIsDebugging then
+      FDebugger.StartDebug(Self);
+end;
+
+// StopDebug
+//
+procedure TdwsExecution.StopDebug;
+begin
+   if Assigned(FDebugger) then
+      FDebugger.StopDebug(Self);
+   FIsDebugging:=False;
+end;
+
+// GetUserObject
+//
+function TdwsExecution.GetUserObject : TObject;
+begin
+   Result:=FUserObject;
+end;
+
+// SetUserObject
+//
+procedure TdwsExecution.SetUserObject(const value : TObject);
+begin
+   FUserObject:=value;
+end;
+
+// GetStack
+//
+function TdwsExecution.GetStack : TStack;
+begin
+   Result:=@FStack;
 end;
 
 end.

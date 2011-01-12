@@ -35,20 +35,18 @@ end;
 
 procedure TasmExtensionTest.Button1Click(Sender: TObject);
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
 begin
    prog:=DelphiWebScript.Compile(MECode.Lines.Text);
-   try
-      if prog.Msgs.Count>0 then
-         ShowMessage(prog.Msgs.AsInfo)
-      else begin
-         prog.Execute;
-         if prog.Msgs.Count>0 then
-            ShowMessage(prog.Msgs.AsInfo)
-         else ShowMessage((prog.Result as TdwsDefaultResult).Text);
-      end;
-   finally
-      prog.Free;
+
+   if prog.Msgs.Count>0 then
+      ShowMessage(prog.Msgs.AsInfo)
+   else begin
+      exec:=prog.Execute;
+      if exec.Msgs.Count>0 then
+         ShowMessage(exec.Msgs.AsInfo)
+      else ShowMessage((exec.Result as TdwsDefaultResult).Text);
    end;
 end;
 

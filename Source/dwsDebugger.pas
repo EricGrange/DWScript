@@ -23,11 +23,11 @@ unit dwsDebugger;
 interface
 
 uses
-  Classes, dwsExprs;
+  Classes, dwsExprs, dwsSymbols;
 
 type
-  TOnDebugStartStopEvent = procedure(MainProg: TdwsProgram) of object;
-  TOnDebugEvent = procedure(Prog: TdwsProgram; expr: TNoPosExpr) of object;
+  TOnDebugStartStopEvent = procedure(exec: TdwsExecution) of object;
+  TOnDebugEvent = procedure(exec: TdwsExecution; expr: TExprBase) of object;
 
   TdwsSimpleDebugger = class(TComponent, IUnknown, IDebugger)
   private
@@ -36,11 +36,11 @@ type
     FOnStopDebug: TOnDebugStartStopEvent;
     FOnEnterFunc: TOnDebugEvent;
     FOnLeaveFunc: TOnDebugEvent;
-    procedure StartDebug(MainProg: TdwsProgram);
-    procedure DoDebug(Prog: TdwsProgram; Expr: TExpr);
-    procedure StopDebug(MainProg: TdwsProgram);
-    procedure EnterFunc(Prog: TdwsProgram; funcExpr: TNoPosExpr);
-    procedure LeaveFunc(Prog: TdwsProgram; funcExpr: TNoPosExpr);
+    procedure StartDebug(exec: TdwsExecution);
+    procedure DoDebug(exec: TdwsExecution; expr: TExprBase);
+    procedure StopDebug(exec: TdwsExecution);
+    procedure EnterFunc(exec: TdwsExecution; funcExpr: TExprBase);
+    procedure LeaveFunc(exec: TdwsExecution; funcExpr: TExprBase);
   published
     property OnDebug: TOnDebugEvent read FOnDebug write FOnDebug;
     property OnDebugStart: TOnDebugStartStopEvent read FOnStartDebug write FOnStartDebug;
@@ -53,36 +53,36 @@ implementation
 
 { TdwsSimpleDebugger }
 
-procedure TdwsSimpleDebugger.DoDebug(Prog: TdwsProgram; Expr: TExpr);
+procedure TdwsSimpleDebugger.DoDebug(exec: TdwsExecution; expr: TExprBase);
 begin
   if Assigned(FOnDebug) then
-    FOnDebug(Prog, Expr);
+    FOnDebug(exec, Expr);
 end;
 
-procedure TdwsSimpleDebugger.EnterFunc(Prog: TdwsProgram; funcExpr: TNoPosExpr);
+procedure TdwsSimpleDebugger.EnterFunc(exec: TdwsExecution; funcExpr: TExprBase);
 begin
    if Assigned(FOnEnterFunc) then
       if funcExpr is TFuncExprBase then
-         FOnEnterFunc(Prog, TFuncExprBase(funcExpr));
+         FOnEnterFunc(exec, TFuncExprBase(funcExpr));
 end;
 
-procedure TdwsSimpleDebugger.LeaveFunc(Prog: TdwsProgram; funcExpr: TNoPosExpr);
+procedure TdwsSimpleDebugger.LeaveFunc(exec: TdwsExecution; funcExpr: TExprBase);
 begin
    if Assigned(FOnLeaveFunc) then
       if funcExpr is TFuncExprBase then
-         FOnLeaveFunc(Prog, TFuncExprBase(funcExpr));
+         FOnLeaveFunc(exec, TFuncExprBase(funcExpr));
 end;
 
-procedure TdwsSimpleDebugger.StartDebug(MainProg: TdwsProgram);
+procedure TdwsSimpleDebugger.StartDebug(exec: TdwsExecution);
 begin
   if Assigned(FOnStartDebug) then
-    FOnStartDebug(MainProg);
+    FOnStartDebug(exec);
 end;
 
-procedure TdwsSimpleDebugger.StopDebug(MainProg: TdwsProgram);
+procedure TdwsSimpleDebugger.StopDebug(exec: TdwsExecution);
 begin
   if Assigned(FOnStopDebug) then
-    FOnStopDebug(MainProg);
+    FOnStopDebug(exec);
 end;
 
 end.

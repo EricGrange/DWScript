@@ -320,18 +320,16 @@ end;
 //
 procedure TdwsUnitTests.CompilationExecution(execute : Boolean);
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
 begin
    prog:=FCompiler.Compile(cFuncsTestsSource);
-   try
-      CheckEquals('', prog.CompileMsgs.AsInfo, 'FuncsTest compile');
-      if execute then begin
-         prog.Execute;
-         CheckEquals('', (prog.ExecutionContext.Result as TdwsDefaultResult).Text, 'FuncsTest result');
-         CheckEquals('', prog.ExecutionContext.Msgs.AsInfo, 'FuncsTest Msgs');
-      end;
-   finally
-      prog.Free;
+
+   CheckEquals('', prog.Msgs.AsInfo, 'FuncsTest compile');
+   if execute then begin
+      exec:=prog.Execute;
+      CheckEquals('', (exec.Result as TdwsDefaultResult).Text, 'FuncsTest result');
+      CheckEquals('', exec.Msgs.AsInfo, 'FuncsTest Msgs');
    end;
 end;
 
@@ -381,35 +379,32 @@ end;
 //
 procedure TdwsUnitTests.CompiledDescriptions;
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
    sym : TSymbol;
 begin
    prog:=FCompiler.Compile('');
-   try
-      sym:=prog.Table.FindSymbol('Func1');
-      CheckEquals('function Func1(): Integer', sym.Description);
-      sym:=prog.Table.FindSymbol('FuncOne');
-      CheckEquals('function FuncOne(): String', sym.Description);
-      sym:=prog.Table.FindSymbol('FuncOneDotFive');
-      CheckEquals('function FuncOneDotFive(): Float', sym.Description);
-      sym:=prog.Table.FindSymbol('FuncTrue');
-      CheckEquals('function FuncTrue(): Boolean', sym.Description);
-      sym:=prog.Table.FindSymbol('FuncException');
-      CheckEquals('procedure FuncException()', sym.Description);
-      sym:=prog.Table.FindSymbol('FuncInc');
-      CheckEquals('function FuncInc(v: Integer): Integer', sym.Description);
-      sym:=prog.Table.FindSymbol('FuncIncN');
-      CheckEquals('function FuncIncN(v: Integer; n: Integer = 1): Integer', sym.Description);
 
-      sym:=prog.Table.FindSymbol('TAutoEnum');
-      CheckEquals('(aeVal9, aeVal8, aeVal7, aeVal6, aeVal5, aeVal4, aeVal3, aeVal2, aeVal1)', sym.Description);
+   sym:=prog.Table.FindSymbol('Func1');
+   CheckEquals('function Func1(): Integer', sym.Description);
+   sym:=prog.Table.FindSymbol('FuncOne');
+   CheckEquals('function FuncOne(): String', sym.Description);
+   sym:=prog.Table.FindSymbol('FuncOneDotFive');
+   CheckEquals('function FuncOneDotFive(): Float', sym.Description);
+   sym:=prog.Table.FindSymbol('FuncTrue');
+   CheckEquals('function FuncTrue(): Boolean', sym.Description);
+   sym:=prog.Table.FindSymbol('FuncException');
+   CheckEquals('procedure FuncException()', sym.Description);
+   sym:=prog.Table.FindSymbol('FuncInc');
+   CheckEquals('function FuncInc(v: Integer): Integer', sym.Description);
+   sym:=prog.Table.FindSymbol('FuncIncN');
+   CheckEquals('function FuncIncN(v: Integer; n: Integer = 1): Integer', sym.Description);
 
-      sym:=prog.Table.FindSymbol('TTestClass');
-      sym:=(sym as TClassSymbol).Members.FindLocal('MyReadOnlyProp');
-      CheckEquals('property MyReadOnlyProp: Integer read GetMyProp', sym.Description);
-   finally
-      prog.Free;
-   end;
+   sym:=prog.Table.FindSymbol('TAutoEnum');
+   CheckEquals('(aeVal9, aeVal8, aeVal7, aeVal6, aeVal5, aeVal4, aeVal3, aeVal2, aeVal1)', sym.Description);
+
+   sym:=prog.Table.FindSymbol('TTestClass');
+   sym:=(sym as TClassSymbol).Members.FindLocal('MyReadOnlyProp');
+   CheckEquals('property MyReadOnlyProp: Integer read GetMyProp', sym.Description);
 end;
 
 // CompilationNormal
@@ -448,24 +443,23 @@ end;
 //
 procedure TdwsUnitTests.DelphiException;
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
 begin
    prog:=FCompiler.Compile('FuncException;');
-   try
-      CheckEquals('', prog.CompileMsgs.AsInfo, 'Compile');
-      prog.Execute;
-      CheckEquals('Runtime Error: Hello, Delphi Exception here! [line: 1, column: 1]'#13#10,
-                  prog.ExecutionContext.Msgs.AsInfo, 'Execute Msgs');
-   finally
-      prog.Free;
-   end;
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+   exec:=prog.Execute;
+   CheckEquals('Runtime Error: Hello, Delphi Exception here! [line: 1, column: 1]'#13#10,
+               exec.Msgs.AsInfo, 'Execute Msgs');
 end;
 
 // DelphiExceptionReRaise
 //
 procedure TdwsUnitTests.DelphiExceptionReRaise;
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
 begin
    prog:=FCompiler.Compile( 'try'#13#10
                            +#9'FuncException;'#13#10
@@ -473,14 +467,10 @@ begin
                            +#9'raise;'#13#10
                            +'end;'#13#10
                            );
-   try
-      CheckEquals('', prog.CompileMsgs.AsInfo, 'Compile');
-      prog.Execute;
-      CheckEquals('Runtime Error: Hello, Delphi Exception here! [line: 2, column: 2]'#13#10,
-                  prog.ExecutionContext.Msgs.AsInfo, 'Execute Msgs');
-   finally
-      prog.Free;
-   end;
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+   exec:=prog.Execute;
+   CheckEquals('Runtime Error: Hello, Delphi Exception here! [line: 2, column: 2]'#13#10,
+               exec.Msgs.AsInfo, 'Execute Msgs');
 end;
 
 // ListOrdAutoEnum
@@ -489,51 +479,47 @@ procedure TdwsUnitTests.ListOrdAutoEnum;
 var
    i : Integer;
    script : String;
-   prog : TdwsProgram;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
 begin
    script:='';
    for i:=1 to 9 do begin
       script:=script+'Print(Ord(aeVal'+IntToStr(i)+'));'#13#10;
    end;
    prog:=FCompiler.Compile(script);
-   try
-      CheckEquals('', prog.CompileMsgs.AsInfo, 'Compile');
-      prog.Execute;
-      CheckEquals('876543210', (prog.ExecutionContext.Result as TdwsDefaultResult).Text, 'Enums Ord');
-   finally
-      prog.Free;
-   end;
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+   exec:=prog.Execute;
+   CheckEquals('876543210', (exec.Result as TdwsDefaultResult).Text, 'Enums Ord');
 end;
 
 // CallFunc
 //
 procedure TdwsUnitTests.CallFunc;
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
    funcInfo : IInfo;
+   exec : IdwsProgramExecution;
 begin
    prog:=FCompiler.Compile( 'function Hello(name : String) : String;'
                            +'begin'
                            +'   Result:=''Hello ''+name;'
                            +'end;');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.BeginNewExecution;
    try
-      CheckEquals('', prog.CompileMsgs.AsInfo, 'Compile');
+      funcInfo:=exec.Info.Func['Func1'];
+      CheckEquals(1, funcInfo.Call.Value, 'Func1 call');
 
-      prog.BeginProgram;
-      try
-         funcInfo:=prog.Info.Func['Func1'];
-         CheckEquals(1, funcInfo.Call.Value, 'Func1 call');
+      funcInfo:=exec.Info.Func['FuncOne'];
+      CheckEquals('One', funcInfo.Call.Value, 'FuncOne call');
 
-         funcInfo:=prog.Info.Func['FuncOne'];
-         CheckEquals('One', funcInfo.Call.Value, 'FuncOne call');
-
-         funcInfo:=prog.Info.Func['Hello'];
-         CheckEquals('Hello world', funcInfo.Call(['world']).Value, 'Hello world');
-      finally
-         prog.EndProgram;
-      end;
+      funcInfo:=exec.Info.Func['Hello'];
+      CheckEquals('Hello world', funcInfo.Call(['world']).Value, 'Hello world');
    finally
-      prog.Free;
+      exec.EndProgram;
    end;
 end;
 

@@ -316,8 +316,11 @@ const
   // ==========================
   RTE_CantRunScript = 'Script compiled with errors. Can''t execute!';
   RTE_ScriptAlreadyRunning = 'Script is already running!';
+  RTE_ScriptStillRunning = 'Script is still running!';
   RTE_ScriptStopped = 'Script was stopped.';
+  RTE_ScriptHasLiveExecutions = 'Script has %d live executions!';
   RTE_StateInitializedExpected = 'ProgramState "psInitialized" expected.';
+  RTE_StateReadyToRunExpected = 'ProgramState "psReadyToRun" expected.';
 
   RTE_InstanceOfAbstractClass = 'Trying to create an instance of an abstract class';
   RTE_ArrayUpperBoundExceeded = 'Upper bound exceeded! Index %d';

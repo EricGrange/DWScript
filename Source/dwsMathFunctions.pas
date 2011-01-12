@@ -194,8 +194,8 @@ type
       function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
    end;
 
-   TRandomizeFunc = class(TInternalFunction)
-      procedure Execute; override;
+   TRandomizeFunc = class(TInternalMagicProcedure)
+      procedure DoEvalProc(args : TExprBaseList); override;
    end;
 
    TRandGFunc = class(TInternalMagicFloatFunction)
@@ -524,9 +524,11 @@ end;
 
 { TRandomizeFunc }
 
-procedure TRandomizeFunc.Execute;
+// DoEvalProc
+//
+procedure TRandomizeFunc.DoEvalProc(args : TExprBaseList);
 begin
-  Randomize;
+   Randomize;
 end;
 
 { TRandGFunc }

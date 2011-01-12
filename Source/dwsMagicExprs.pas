@@ -128,15 +128,15 @@ end;
 //
 function TMagicFuncExpr.GetData(exec : TdwsExecution) : TData;
 begin
-   Prog.Stack.Data[FProg.Stack.BasePointer]:=Eval(exec);
-   Result:=Prog.Stack.Data;
+   exec.Stack.Data[exec.Stack.BasePointer]:=Eval(exec);
+   Result:=exec.Stack.Data;
 end;
 
 // GetAddr
 //
 function TMagicFuncExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-   Result:=FProg.Stack.BasePointer;
+   Result:=exec.Stack.BasePointer;
 end;
 
 // ------------------
@@ -159,7 +159,7 @@ begin
       FArgs.Exec:=exec;
       Result:=FOnEval(@FArgs);
    except
-      FProg.ExecutionContext.Msgs.SetLastScriptError(Pos);
+      exec.Msgs.SetLastScriptError(Pos);
       raise;
    end;
 end;
@@ -242,7 +242,7 @@ begin
       FArgs.Exec:=exec;
       FOnEval(@FArgs, Result);
    except
-      FProg.ExecutionContext.Msgs.SetLastScriptError(Pos);
+      exec.Msgs.SetLastScriptError(Pos);
       raise;
    end;
 end;
@@ -286,7 +286,7 @@ begin
       FArgs.Exec:=exec;
       FOnEval(@FArgs, Result);
    except
-      FProg.ExecutionContext.Msgs.SetLastScriptError(Pos);
+      exec.Msgs.SetLastScriptError(Pos);
       raise;
    end;
 end;
@@ -311,7 +311,7 @@ begin
       FArgs.Exec:=exec;
       FOnEval(@FArgs);
    except
-      FProg.ExecutionContext.Msgs.SetLastScriptError(Pos);
+      exec.Msgs.SetLastScriptError(Pos);
       raise;
    end;
 end;

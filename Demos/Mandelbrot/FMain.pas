@@ -159,16 +159,13 @@ const
       +'end;';
 
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
 begin
    prog:=DelphiWebScript.Compile(cSource);
-   try
-      if prog.CompileMsgs.Count=0 then
-         prog.Execute
-      else ShowMessage(prog.CompileMsgs.AsInfo);
-   finally
-      prog.Free;
-   end;
+
+   if prog.Msgs.Count=0 then
+      prog.Execute
+   else ShowMessage(prog.Msgs.AsInfo);
 end;
 
 end.

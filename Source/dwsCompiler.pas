@@ -269,8 +269,7 @@ type
                              const Pos: TScriptPos; IsInstruction: Boolean; ForceStatic : Boolean = False): TFuncExpr;
 
       function CreateProgram(SystemTable: TSymbolTable; ResultType: TdwsResultType;
-                             MaxDataSize, StackChunkSize: Integer;
-                             MaxRecursionDepth : Integer): TdwsProgram; virtual;
+                             const stackParams : TStackParameters) : TdwsProgram; virtual;
       function CreateProcedure(Parent : TdwsProgram) : TProcedure; virtual;
       function CreateAssign(const pos : TScriptPos; token : TTokenType; left : TDataExpr; right : TNoPosExpr) : TNoResultExpr;
 
@@ -278,7 +277,7 @@ type
       constructor Create;
       destructor Destroy; override;
 
-      function Compile(const aCodeText : String; Conf: TdwsConfiguration): TdwsProgram;
+      function Compile(const aCodeText : String; Conf: TdwsConfiguration) : IdwsProgram;
 
       class function Evaluate(AContext: TdwsProgram; const AExpression: string): TNoPosExpr;
 
@@ -309,12 +308,12 @@ type
 
   TPrintFunction = class(TInternalFunction)
   public
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TPrintLnFunction = class(TInternalFunction)
   public
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
 // ------------------------------------------------------------------
@@ -338,23 +337,23 @@ const
 
 type
   TExceptionCreateMethod = class(TInternalMethod)
-    procedure Execute(var ExternalObject: TObject); override;
+    procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
   end;
 
   TDelphiExceptionCreateMethod = class(TInternalMethod)
-    procedure Execute(var ExternalObject: TObject); override;
+    procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
   end;
 
   TParamFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TParamStrFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
   TParamCountFunc = class(TInternalFunction)
-    procedure Execute; override;
+    procedure Execute(info : TProgramInfo); override;
   end;
 
 // StringToSwitchInstruction
@@ -511,11 +510,10 @@ end;
 
 // Compile
 //
-function TdwsCompiler.Compile(const aCodeText : String; Conf: TdwsConfiguration): TdwsProgram;
+function TdwsCompiler.Compile(const aCodeText : String; Conf: TdwsConfiguration) : IdwsProgram;
 var
    x : Integer;
-   stackChunkSize: Integer;
-   maxDataSize: Integer;
+   stackParams : TStackParameters;
    unitsResolved: TInterfaceList;
    unitsTable: TSymbolTable;
    unitTables: TList;
@@ -538,19 +536,20 @@ begin
    FLoopExitable.Clear;
    FConditionalDepth.Clear;
 
-   maxDataSize := Conf.MaxDataSize;
-   if maxDataSize = 0 then
-     maxDataSize := MaxInt;
+   stackParams.MaxByteSize:=Conf.MaxDataSize;
+   if stackParams.MaxByteSize=0 then
+      stackParams.MaxByteSize:=MaxInt;
 
-   StackChunkSize := Conf.StackChunkSize;
-   if StackChunkSize <= 0 then
-     StackChunkSize := 1;
+   stackParams.ChunkSize:=Conf.StackChunkSize;
+   if stackParams.ChunkSize<=0 then
+      stackParams.ChunkSize:=1;
+
+   stackParams.MaxRecursionDepth:=Conf.MaxRecursionDepth;
 
    FLineCount:=0;
 
    // Create the TdwsProgram
-   FProg := CreateProgram(Conf.SystemTable, Conf.ResultType, maxDataSize, stackChunkSize, Conf.MaxRecursionDepth);
-   Result := FProg;
+   FProg := CreateProgram(Conf.SystemTable, Conf.ResultType, stackParams);
    FMsgs := FProg.CompileMsgs;
    FProg.Compiler := Self;
    FProg.TimeoutMilliseconds := Conf.TimeoutMilliseconds;
@@ -646,6 +645,9 @@ begin
 
    FProg.LineCount:=FLineCount;
    FProg.Compiler:=nil;
+
+   Result:=FProg;
+   FProg:=nil;
 end;
 
 // Optimize
@@ -4857,7 +4859,7 @@ end;
 
 { TDelphiExceptionCreateMethod }
 
-procedure TDelphiExceptionCreateMethod.Execute(var ExternalObject: TObject);
+procedure TDelphiExceptionCreateMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
 begin
   Info.ValueAsString[SYS_EXCEPTION_MESSAGE] := Info.ValueAsString['Msg'];
   Info.ValueAsVariant[SYS_EDELPHI_EXCEPTIONCLASS] := Info.ValueAsVariant['Cls']
@@ -4865,23 +4867,23 @@ end;
 
 { TParamFunc }
 
-procedure TParamFunc.Execute;
+procedure TParamFunc.Execute(info : TProgramInfo);
 begin
-  Info.ResultAsVariant := Info.ExecutionContext.Prog.Parameters[Info.ValueAsInteger['Index']];
+  Info.ResultAsVariant := Info.ExecutionContext.Parameters[Info.ValueAsInteger['Index']];
 end;
 
 { TParamStrFunc }
 
-procedure TParamStrFunc.Execute;
+procedure TParamStrFunc.Execute(info : TProgramInfo);
 begin
-  Info.ResultAsString := Info.ExecutionContext.Prog.Parameters[Info.ValueAsInteger['Index']];
+  Info.ResultAsString := Info.ExecutionContext.Parameters[Info.ValueAsInteger['Index']];
 end;
 
 { TParamCount }
 
-procedure TParamCountFunc.Execute;
+procedure TParamCountFunc.Execute(info : TProgramInfo);
 begin
-  Info.ResultAsInteger := Length(Info.ExecutionContext.Prog.Parameters);
+  Info.ResultAsInteger := Length(Info.ExecutionContext.Parameters);
 end;
 
 // GetScriptSource
@@ -4945,11 +4947,9 @@ begin
 end;
 
 function TdwsCompiler.CreateProgram(SystemTable: TSymbolTable; ResultType: TdwsResultType;
-                                    MaxDataSize, StackChunkSize: Integer;
-                                    MaxRecursionDepth : Integer): TdwsProgram;
+                                    const stackParams : TStackParameters): TdwsProgram;
 begin
-  Result := TdwsProgram.Create(SystemTable, ResultType, MaxRecursionDepth,
-                               MaxDataSize, StackChunkSize);
+  Result := TdwsProgram.Create(SystemTable, ResultType, stackParams);
 end;
 
 { TdwsFilter }
@@ -5056,18 +5056,18 @@ end;
 
 { TPrintFunction }
 
-procedure TPrintFunction.Execute;
+procedure TPrintFunction.Execute(info : TProgramInfo);
 begin
-   Info.ExecutionContext.Result.AddString(Info.ValueAsString['v']);
+   info.ExecutionContext.Result.AddString(info.ValueAsString['v']);
 end;
 
 { TPrintLnFunction }
 
-procedure TPrintLnFunction.Execute;
+procedure TPrintLnFunction.Execute(info : TProgramInfo);
 var
    result : TdwsResult;
 begin
-   result:=Info.ExecutionContext.Result;
+   result:=info.ExecutionContext.Result;
    result.AddString(Info.ValueAsString['v']);
    result.AddString(#13#10);
 end;
@@ -5201,7 +5201,7 @@ begin
                Result := TAssignClassOfExpr.Create(FProg, pos, left, right);
             end else if (right is TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
                if right is TFuncExpr then
-                  TFuncExpr(right).SetResultAddr;
+                  TFuncExpr(right).SetResultAddr(nil);
                if right is TArrayConstantExpr then
                   Result := TAssignArrayConstantExpr.Create(FProg, pos, left, TArrayConstantExpr(right))
                else Result := TAssignDataExpr.Create(FProg, pos, left, right)
