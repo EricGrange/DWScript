@@ -550,7 +550,7 @@ type
          procedure AddCompilerErrorFmt(const fmtText: string; const Args: array of const);
          procedure AddCompilerStop(const Text : String);
 
-         property Pos: TScriptPos read FPos write FPos;
+         property Pos: TScriptPos read FPos;
    end;
 
   TNoResultExpr = class(TExpr)
@@ -1676,6 +1676,8 @@ begin
                end;
             end;
          except
+            on e: EScriptAssertionFailed do
+               Msgs.AddExecutionError(e.Message);
             on e: EScriptException do
                Msgs.AddExecutionError(e.Pos, e.Message);
             on e: EScriptError do

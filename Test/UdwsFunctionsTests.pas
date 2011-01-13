@@ -158,7 +158,7 @@ end;
 //
 procedure TdwsFunctionsTestsBase.CompilationWithMapAndSymbols;
 begin
-   FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap];
+   FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap, coAssertions];
    Compilation;
 end;
 
@@ -166,7 +166,7 @@ end;
 //
 procedure TdwsFunctionsTestsBase.ExecutionNonOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=[];
+   FCompiler.Config.CompilerOptions:=[coAssertions];
    Execution;
 end;
 
@@ -174,7 +174,7 @@ end;
 //
 procedure TdwsFunctionsTestsBase.ExecutionOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=[coOptimize];
+   FCompiler.Config.CompilerOptions:=[coOptimize, coAssertions];
    Execution;
 end;
 

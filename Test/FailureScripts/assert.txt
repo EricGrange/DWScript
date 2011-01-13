@@ -1,0 +1,7 @@
+Syntax Error: Boolean expected [line: 1, column: 11]
+Syntax Error: Boolean expected [line: 2, column: 13]
+Syntax Error: Boolean expected [line: 3, column: 13]
+Syntax Error: String expected [line: 3, column: 17]
+Syntax Error: String expected [line: 4, column: 16]
+Syntax Error: String expected [line: 5, column: 16]
+Syntax Error: ")" expected. [line: 5, column: 16]

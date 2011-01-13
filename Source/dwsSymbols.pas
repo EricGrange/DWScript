@@ -1002,6 +1002,10 @@ type
          property Pos: TScriptPos read FPos;
    end;
 
+   // Is thrown by failed Assert() statements in script code
+   EScriptAssertionFailed = class(EScriptException)
+   end;
+
 function IsBaseTypeCompatible(AType, BType: TBaseTypeID): Boolean;
 
 // ------------------------------------------------------------------

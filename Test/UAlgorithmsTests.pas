@@ -133,7 +133,7 @@ end;
 //
 procedure TAlgorithmsTests.CompilationWithMapAndSymbols;
 begin
-   FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap];
+   FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap, coAssertions];
    Compilation;
 end;
 
@@ -141,7 +141,7 @@ end;
 //
 procedure TAlgorithmsTests.ExecutionNonOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=[];
+   FCompiler.Config.CompilerOptions:=[coAssertions];
    Execution;
 end;
 
@@ -149,7 +149,7 @@ end;
 //
 procedure TAlgorithmsTests.ExecutionOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=[coOptimize];
+   FCompiler.Config.CompilerOptions:=[coOptimize, coAssertions];
    Execution;
 end;
 
@@ -166,7 +166,7 @@ var
    threads : array of TThreadedRunner;
    runner : TThreadedRunner;
 begin
-   FCompiler.Config.CompilerOptions:=[coOptimize];
+   FCompiler.Config.CompilerOptions:=[coOptimize, coAssertions];
 
    source:=TStringList.Create;
    expectedResult:=TStringList.Create;

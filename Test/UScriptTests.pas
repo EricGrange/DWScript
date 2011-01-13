@@ -172,7 +172,7 @@ end;
 //
 procedure TScriptTests.CompilationWithMapAndSymbols;
 begin
-   FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap];
+   FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap, coAssertions];
    Compilation;
 end;
 
@@ -180,7 +180,7 @@ end;
 //
 procedure TScriptTests.ExecutionNonOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=[];
+   FCompiler.Config.CompilerOptions:=[coAssertions];
    Execution;
 end;
 
@@ -188,7 +188,7 @@ end;
 //
 procedure TScriptTests.ExecutionOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=[coOptimize];
+   FCompiler.Config.CompilerOptions:=[coOptimize, coAssertions];
    Execution;
 end;
 
@@ -202,7 +202,7 @@ var
    expectedError : TStringList;
    expectedErrorsFileName : String;
 begin
-   FCompiler.Config.CompilerOptions:=[coOptimize];
+   FCompiler.Config.CompilerOptions:=[coOptimize, coAssertions];
    source:=TStringList.Create;
    expectedError:=TStringList.Create;
    try

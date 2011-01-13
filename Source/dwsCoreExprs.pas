@@ -638,6 +638,20 @@ type
      function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
+   // Assert(condition, message);
+   TAssertExpr = class(TNoResultExpr)
+      protected
+         FCond : TNoPosExpr;
+         FMessage : TNoPosExpr;
+
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; condExpr, msgExpr : TNoPosExpr);
+         destructor Destroy; override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         procedure Initialize; override;
+         function  Optimize(exec : TdwsExecution) : TNoPosExpr; override;
+   end;
+
    // left := right;
    TAssignExpr = class(TNoResultExpr)
    protected
@@ -2603,6 +2617,18 @@ begin
     FProg.CompileMsgs.AddCompilerError(aPos, CPE_VariantExpected);
 end;
 
+{ TStringLengthExpr }
+
+// EvalAsInteger
+//
+function TStringLengthExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   buf : String;
+begin
+   FExpr.EvalAsString(exec, buf);
+   Result:=Length(buf);
+end;
+
 // ------------------
 // ------------------ TConvClassExpr ------------------
 // ------------------
@@ -2627,16 +2653,71 @@ begin
    Result:=obj;
 end;
 
-{ TStringLengthExpr }
+// ------------------
+// ------------------ TAssertExpr ------------------
+// ------------------
 
-// EvalAsInteger
+// Create
 //
-function TStringLengthExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
-var
-   buf : String;
+constructor TAssertExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; condExpr, msgExpr : TNoPosExpr);
 begin
-   FExpr.EvalAsString(exec, buf);
-   Result:=Length(buf);
+   inherited Create(Prog, Pos);
+   FCond:=condExpr;
+   FMessage:=msgExpr;
+end;
+
+// Destroy
+//
+destructor TAssertExpr.Destroy;
+begin
+   FCond.Free;
+   FMessage.Free;
+   inherited;
+end;
+
+// EvalNoResult
+//
+procedure TAssertExpr.EvalNoResult(exec : TdwsExecution);
+
+   procedure Triggered;
+   var
+      msg : String;
+      exceptObj : IScriptObj;
+      info : TProgramInfo;
+   begin
+      if FMessage<>nil then begin
+         FMessage.EvalAsString(exec, msg);
+         msg:=' : '+msg;
+      end else msg:='';
+      msg:=Format(RTE_AssertionFailed, [Pos.AsInfo, msg]);
+      info:=(exec as TdwsProgramExecution).ProgramInfo;
+      exceptObj:=IScriptObj(IUnknown(info.Vars[SYS_EASSERTIONFAILED].Method[SYS_TOBJECT_CREATE].Call([msg]).Value));
+      raise EScriptAssertionFailed.Create(msg, exceptObj, FPos);
+   end;
+
+begin
+   if not FCond.EvalAsBoolean(exec) then
+      Triggered;
+end;
+
+// Initialize
+//
+procedure TAssertExpr.Initialize;
+begin
+   FCond.Initialize;
+   if FMessage<>nil then
+      FMessage.Initialize;
+end;
+
+// Optimize
+//
+function TAssertExpr.Optimize(exec : TdwsExecution) : TNoPosExpr;
+begin
+   Result:=Self;
+   if FCond.IsConstant and (not FCond.EvalAsBoolean(exec)) then begin
+      Result:=TNullExpr.Create(Prog, Pos);
+      Free;
+   end;
 end;
 
 // ------------------
@@ -3965,7 +4046,19 @@ end;
 // Optimize
 //
 function TBlockExpr.Optimize(exec : TdwsExecution) : TNoPosExpr;
+var
+   i : Integer;
 begin
+   for i:=FCount-1 downto 0 do begin
+      if FStatements[i].ClassType=TNullExpr then begin
+         FStatements[i].Free;
+         if i+1<FCount then
+            Move(FStatements[i+1], FStatements[i], SizeOf(TExpr)*(FCount-1-i));
+         Dec(FCount);
+         ReallocMem(FStatements, FCount*SizeOf(TExpr));
+      end;
+   end;
+
    if FTable.Count=0 then begin
       case FCount of
          0 : Result:=TNullExpr.Create(Prog, Pos);

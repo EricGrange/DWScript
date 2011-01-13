@@ -28,11 +28,11 @@ uses
   dwsMagicExprs, dwsRelExprs;
 
 type
-   TCompilerOption = (coOptimize, coSymbolDictionary, coContextMap);
+   TCompilerOption = (coOptimize, coSymbolDictionary, coContextMap, coAssertions);
    TCompilerOptions = set of TCompilerOption;
 
 const
-   cDefaultCompilerOptions = [coOptimize];
+   cDefaultCompilerOptions = [coOptimize, coAssertions];
    cDefaultMaxRecursionDepth = 1024;
 
 type
@@ -119,7 +119,7 @@ type
 
    TAddArgFunction = function (ArgExpr: TNoPosExpr) : TSymbol of object;
 
-   TSpecialKeywordKind = (skNone, skAssigned, skHigh, skLength, skLow,
+   TSpecialKeywordKind = (skNone, skAssert, skAssigned, skHigh, skLength, skLow,
                           skOrd, skSizeOf, skDefined, skDeclared, skSqr);
 
    TSwitchInstruction = (siNone,
@@ -244,7 +244,7 @@ type
       function ReadRepeat: TRepeatExpr;
       function ReadRootStatement: TExpr;
       function ReadScript(const AName: string=''; ScriptType: TScriptSourceType=stMain): TBlockExpr;  // AName might be the name of an INCLUDEd script
-      function ReadSpecialFunction(const NamePos: TScriptPos; SpecialKind: TSpecialKeywordKind): TNoPosExpr;
+      function ReadSpecialFunction(const namePos: TScriptPos; SpecialKind: TSpecialKeywordKind): TNoPosExpr;
       function ReadStatement: TExpr;
       function ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TNoPosExpr;
       function ReadSwitch(const SwitchName: string): Boolean;
@@ -1612,6 +1612,9 @@ begin
                FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
             end else if locExpr is TNullExpr then begin
                Result:=TNullExpr(locExpr);
+               locExpr:=nil;
+            end else if locExpr is TAssertExpr then begin
+               Result:=TAssertExpr(locExpr);
                locExpr:=nil;
             end else begin
                Result:=nil;
@@ -3372,7 +3375,6 @@ begin
    FIsExcept := False;
    try
       tryBlock := ReadBlocks([ttFINALLY, ttEXCEPT], tt);
-      tryBlock.Pos:=FTok.HotPos;
       if tt = ttEXCEPT then begin
          FIsExcept := True;
          Result := ReadExcept(tryBlock);
@@ -4414,7 +4416,8 @@ begin
    Result:=skNone;
    case ch of
       'a' :
-         if SameText(name, 'assigned') then Result:=skAssigned;
+         if SameText(name, 'assert') then Result:=skAssert
+         else if SameText(name, 'assigned') then Result:=skAssigned;
       'd' :
          if SameText(name, 'defined') then Result:=skDefined
          else if SameText(name, 'declared') then Result:=skDeclared;
@@ -4698,7 +4701,7 @@ end;
 
 procedure TdwsConfiguration.InitSystemTable;
 var
-   clsObject, clsException, clsDelphiException : TClassSymbol;
+   clsObject, clsException, clsDelphiException, clsAssertionFailed : TClassSymbol;
    clsMeta : TClassOfSymbol;
    meth : TMethodSymbol;
    varSym : TBaseSymbol;
@@ -4745,6 +4748,11 @@ begin
    TExceptionCreateMethod.Create(mkConstructor, [], 0, SYS_TOBJECT_CREATE,
                                  ['Msg', SYS_STRING], '', clsException, SystemTable);
    SystemTable.AddSymbol(clsException);
+
+   // Create class EAssertionFailed
+   clsAssertionFailed := TClassSymbol.Create(SYS_EASSERTIONFAILED);
+   clsAssertionFailed.InheritFrom(clsException);
+   SystemTable.AddSymbol(clsAssertionFailed);
 
    // Create class EDelphi
    clsDelphiException := TClassSymbol.Create(SYS_EDELPHI);
@@ -5262,7 +5270,7 @@ end;
 
 // ReadSpecialFunction
 //
-function TdwsCompiler.ReadSpecialFunction(const NamePos: TScriptPos; SpecialKind: TSpecialKeywordKind): TNoPosExpr;
+function TdwsCompiler.ReadSpecialFunction(const namePos: TScriptPos; SpecialKind: TSpecialKeywordKind): TNoPosExpr;
 
    function EvaluateDefined(argExpr : TNoPosExpr) : Boolean;
    var
@@ -5281,7 +5289,7 @@ function TdwsCompiler.ReadSpecialFunction(const NamePos: TScriptPos; SpecialKind
    end;
 
 var
-   argExpr: TNoPosExpr;
+   argExpr, msgExpr: TNoPosExpr;
    argTyp: TSymbol;
 begin
    if not FTok.TestDelete(ttBLEFT) then
@@ -5301,6 +5309,7 @@ begin
       argTyp := argExpr.BaseType;
    end;
 
+   msgExpr:=nil;
    try
       if Assigned(argExpr) then
          argExpr.TypeCheckNoPos(FTok.HotPos);
@@ -5311,6 +5320,24 @@ begin
       Result := nil;
 
       case SpecialKind of
+         skAssert: begin
+            if argTyp.BaseTypeID<>typBooleanID then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_BooleanExpected);
+            if FTok.TestDelete(ttCOMMA) then begin
+               msgExpr:=ReadExpr;
+               if (msgExpr=nil) or (not msgExpr.IsStringValue) then
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
+            end;
+            if coAssertions in FCompilerOptions then
+               Result:=TAssertExpr.Create(FProg, namePos, argExpr, msgExpr)
+            else begin
+               Result:=TNullExpr.Create(FProg, namePos);
+               argExpr.Free;
+               msgExpr.Free;
+            end;
+            argExpr:=nil;
+            msgExpr:=nil;
+         end;
          skAssigned: begin
             if argTyp is TClassSymbol then
                Result:=TAssignedInstanceExpr.Create(FProg, argExpr)
@@ -5454,6 +5481,7 @@ begin
 
    except
       argExpr.Free;
+      msgExpr.Free;
       raise;
    end;
 end;

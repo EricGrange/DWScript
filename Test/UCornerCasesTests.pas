@@ -27,6 +27,7 @@ type
          procedure IncludeViaFileRestricted;
          procedure StackMaxRecursion;
          procedure StackOverFlow;
+         procedure Assertions;
    end;
 
 // ------------------------------------------------------------------
@@ -337,6 +338,32 @@ begin
                exec.Msgs.AsInfo, 'stack overflow');
 
    FCompiler.Config.MaxDataSize:=0;
+end;
+
+// Assertions
+//
+procedure TCornerCasesTests.Assertions;
+
+   procedure CheckCase(options : TCompilerOptions; const expected, testName : String);
+   var
+      prog : IdwsProgram;
+      exec : IdwsProgramExecution;
+   begin
+      FCompiler.Config.CompilerOptions:=options;
+      prog:=FCompiler.Compile('Assert(False);');
+      exec:=prog.Execute;
+      CheckEquals(expected, Trim(exec.Msgs.AsInfo), testName);
+   end;
+
+begin
+   try
+      CheckCase([coOptimize, coAssertions], 'Runtime Error: Assertion failed [line: 1, column: 1]', 'assertions optimization');
+      CheckCase([coAssertions], 'Runtime Error: Assertion failed [line: 1, column: 1]', 'assertions');
+      CheckCase([coOptimize], '', 'optimization');
+      CheckCase([], '', 'neither');
+   finally
+      FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions;
+   end;
 end;
 
 // ------------------------------------------------------------------

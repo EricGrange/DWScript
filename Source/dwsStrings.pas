@@ -40,6 +40,7 @@ const
   SYS_TOBJECT_DESTROY = 'Destroy';
   SYS_EXCEPTION = 'Exception';
   SYS_EXCEPTION_MESSAGE = 'Message';
+  SYS_EASSERTIONFAILED = 'EAssertionFailed';
   SYS_EDELPHI = 'EDelphi';
   SYS_EDELPHI_EXCEPTIONCLASS = 'ExceptionClass';
 
@@ -338,6 +339,7 @@ const
   RTE_ScriptException = 'Script exception: %s';
   RTE_UserDefinedException = 'User defined exception';
   RTE_UserDefinedException_Msg = 'User defined exception: %s';
+  RTE_AssertionFailed = 'Assertion failed%s%s';
 
   // Connectors
   RTE_ConnectorCallFailed = 'Connector Call "%s" failed';

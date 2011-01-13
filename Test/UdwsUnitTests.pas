@@ -419,7 +419,7 @@ end;
 //
 procedure TdwsUnitTests.CompilationWithMapAndSymbols;
 begin
-   FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap];
+   FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap, coAssertions];
    CompilationExecution(False);
 end;
 
@@ -427,7 +427,7 @@ end;
 //
 procedure TdwsUnitTests.ExecutionNonOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=[];
+   FCompiler.Config.CompilerOptions:=[coAssertions];
    CompilationExecution(True);
 end;
 
@@ -435,7 +435,7 @@ end;
 //
 procedure TdwsUnitTests.ExecutionOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=[coOptimize];
+   FCompiler.Config.CompilerOptions:=[coOptimize, coAssertions];
    CompilationExecution(True);
 end;
 
