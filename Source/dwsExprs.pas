@@ -279,6 +279,11 @@ type
       function GetTable : TSymbolTable;
       function GetTimeoutMilliseconds : Integer;
       procedure SetTimeoutMilliseconds(const val : Integer);
+      function GetDefaultUserObject : TObject;
+      procedure SetDefaultUserObject(const val : TObject);
+      function GetSymbolDictionary : TSymbolDictionary;
+      function GetContextMap : TContextMap;
+      function GetSourceList : TScriptSourceList;
 
       function CreateNewExecution : IdwsProgramExecution;
       function BeginNewExecution : IdwsProgramExecution;
@@ -290,6 +295,11 @@ type
       property Msgs : TdwsMessageList read GetMsgs;
       property ConditionalDefines : TStringList read GetConditionalDefines;
       property TimeoutMilliseconds : Integer read GetTimeoutMilliseconds write SetTimeoutMilliseconds;
+      property DefaultUserObject : TObject read GetDefaultUserObject write SetDefaultUserObject;
+
+      property SymbolDictionary : TSymbolDictionary read GetSymbolDictionary;
+      property ContextMap : TContextMap read GetContextMap;
+      property SourceList : TScriptSourceList read GetSourceList;
       property LineCount : Integer read GetLineCount;
    end;
 
@@ -380,6 +390,7 @@ type
          FRuntimeFileSystem : TdwsCustomFileSystem;
          FConditionalDefines : TStringList;
          FLineCount : Integer;
+         FDefaultUserObject : TObject;
 
          FStackParameters : TStackParameters;
 
@@ -399,6 +410,11 @@ type
          function GetTable : TSymbolTable;
          function GetTimeoutMilliseconds : Integer;
          procedure SetTimeoutMilliseconds(const val : Integer);
+         function GetDefaultUserObject : TObject;
+         procedure SetDefaultUserObject(const val : TObject);
+         function GetSymbolDictionary : TSymbolDictionary;
+         function GetContextMap : TContextMap;
+         function GetSourceList : TScriptSourceList;
 
       public
          constructor Create(SystemTable: TSymbolTable; ResultType: TdwsResultType;
@@ -419,6 +435,7 @@ type
          property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
          property ConditionalDefines : TStringList read FConditionalDefines write SetConditionalDefines;
          property LineCount : Integer read FLineCount write FLineCount;
+         property DefaultUserObject : TObject read FDefaultUserObject write FDefaultUserObject;
 
          property MaxRecursionDepth : Integer read FStackParameters.MaxRecursionDepth write FStackParameters.MaxRecursionDepth;
          property MaxDataSize : Integer read FStackParameters.MaxByteSize write FStackParameters.MaxByteSize;
@@ -1958,6 +1975,7 @@ var
    exec : TdwsProgramExecution;
 begin
    exec:=TdwsProgramExecution.Create(Self, FStackParameters);
+   exec.UserObject:=DefaultUserObject;
    FExecutionsLock.Enter;
    try
       FExecutions.Add(exec);
@@ -2058,6 +2076,41 @@ end;
 procedure TdwsProgram.SetTimeoutMilliseconds(const val : Integer);
 begin
    FTimeoutMilliseconds:=val;
+end;
+
+// GetDefaultUserObject
+//
+function TdwsProgram.GetDefaultUserObject : TObject;
+begin
+   Result:=FDefaultUserObject;
+end;
+
+// SetDefaultUserObject
+//
+procedure TdwsProgram.SetDefaultUserObject(const val : TObject);
+begin
+   FDefaultUserObject:=val;
+end;
+
+// GetSymbolDictionary
+//
+function TdwsProgram.GetSymbolDictionary : TSymbolDictionary;
+begin
+   Result:=FSymbolDictionary;
+end;
+
+// GetContextMap
+//
+function TdwsProgram.GetContextMap : TContextMap;
+begin
+   Result:=FContextMap;
+end;
+
+// GetSourceList
+//
+function TdwsProgram.GetSourceList : TScriptSourceList;
+begin
+   Result:=FSourceList;
 end;
 
 function TdwsProgram.GetLevel: Integer;

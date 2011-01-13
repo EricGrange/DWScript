@@ -590,6 +590,11 @@ type
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
+   // a implies b
+   TBoolImpliesExpr = class(TBooleanBinOpExpr)
+     function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
    // a shl b
    TShlExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -3129,15 +3134,34 @@ begin
    Result := FLeft.EvalAsBoolean(exec) xor FRight.EvalAsBoolean(exec);
 end;
 
-{ TShlExpr }
+// ------------------
+// ------------------ TBoolImpliesExpr ------------------
+// ------------------
 
+// EvalAsBoolean
+//
+function TBoolImpliesExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+begin
+   Result:=(not FLeft.EvalAsBoolean(exec)) or FRight.EvalAsBoolean(exec);;
+end;
+
+// ------------------
+// ------------------ TShlExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
 function TShlExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
    Result := FLeft.EvalAsInteger(exec) shl FRight.EvalAsInteger(exec);
 end;
 
-{ TShrExpr }
+// ------------------
+// ------------------ TShrExpr ------------------
+// ------------------
 
+// EvalAsInteger
+//
 function TShrExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
    Result := FLeft.EvalAsInteger(exec) shr FRight.EvalAsInteger(exec);
@@ -5045,6 +5069,11 @@ begin
    RegisterOperator(ttXOR,    TIntXorExpr,      typInteger,  typVariant);
    RegisterOperator(ttXOR,    TIntXorExpr,      typVariant,  typInteger);
    RegisterOperator(ttXOR,    TIntXorExpr,      typVariant,  typVariant);
+
+   RegisterOperator(ttIMPLIES,TBoolImpliesExpr, typBoolean,  typBoolean);
+   RegisterOperator(ttIMPLIES,TBoolImpliesExpr, typVariant,  typBoolean);
+   RegisterOperator(ttIMPLIES,TBoolImpliesExpr, typBoolean,  typVariant);
+   RegisterOperator(ttIMPLIES,TBoolImpliesExpr, typVariant,  typVariant);
 
    RegisterOperator(ttSHL,    TShlExpr,         typInteger,  typInteger);
    RegisterOperator(ttSHL,    TShlExpr,         typInteger,  typVariant);

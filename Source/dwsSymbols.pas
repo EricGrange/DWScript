@@ -53,19 +53,24 @@ type
       procedure LeaveFunc(exec: TdwsExecution; funcExpr: TExprBase);
    end;
 
+   TProgramState = (psUndefined, psReadyToRun, psRunning, psRunningStopped, psTerminated);
+
    IdwsExecution = interface
       ['{8F2D1D7E-9954-4391-B919-86EF1EE21C8C}']
       function GetMsgs : TdwsMessageList;
+      function  GetDebugger : IDebugger;
+      procedure SetDebugger(const aDebugger : IDebugger);
       function GetUserObject : TObject;
       procedure SetUserObject(const value : TObject);
       function GetStack : TStack;
+      function GetProgramState : TProgramState;
 
+      property ProgramState : TProgramState read GetProgramState;
       property Stack : TStack read GetStack;
       property Msgs : TdwsMessageList read GetMsgs;
+      property Debugger : IDebugger read GetDebugger write SetDebugger;
       property UserObject : TObject read GetUserObject write SetUserObject;
    end;
-
-   TProgramState = (psUndefined, psReadyToRun, psRunning, psRunningStopped, psTerminated);
 
    TExecutionStatusResult = (esrNone, esrExit, esrBreak, esrContinue);
 
@@ -84,6 +89,7 @@ type
       protected
          FProgramState : TProgramState;
 
+         function  GetDebugger : IDebugger;
          procedure SetDebugger(const aDebugger : IDebugger);
          procedure StartDebug;
          procedure StopDebug;
@@ -94,6 +100,8 @@ type
          procedure SetUserObject(const value : TObject); virtual;
 
          function GetStack : TStack;
+
+         function GetProgramState : TProgramState;
 
       public
          constructor Create(const stackParams : TStackParameters);
@@ -3240,6 +3248,13 @@ begin
       Debugger.DoDebug(Self, Expr);
 end;
 
+// GetDebugger
+//
+function TdwsExecution.GetDebugger : IDebugger;
+begin
+   Result:=FDebugger;
+end;
+
 // SetDebugger
 //
 procedure TdwsExecution.SetDebugger(const aDebugger : IDebugger);
@@ -3285,6 +3300,13 @@ end;
 function TdwsExecution.GetStack : TStack;
 begin
    Result:=@FStack;
+end;
+
+// GetProgramState
+//
+function TdwsExecution.GetProgramState : TProgramState;
+begin
+   Result:=FProgramState;
 end;
 
 end.

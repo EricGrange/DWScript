@@ -3656,8 +3656,8 @@ begin
    try
 
       while True do begin
-         tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttOR, ttAND, ttXOR, ttSHL, ttSHR,
-                                 ttIN, ttNOT]);
+         tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttOR, ttAND, ttXOR, ttIMPLIES,
+                                 ttSHL, ttSHR, ttIN, ttNOT]);
          if tt=ttNone then Break;
 
          hotPos := FTok.HotPos;

@@ -40,7 +40,7 @@ type
      ttIF, ttTHEN, ttELSE, ttWHILE, ttREPEAT, ttUNTIL, ttFOR, ttTO, ttDOWNTO, ttDO,
      ttCASE,
      ttTRUE, ttFALSE,
-     ttAND, ttOR, ttXOR, ttDIV, ttMOD, ttNOT, ttSHL, ttSHR,
+     ttAND, ttOR, ttXOR, ttIMPLIES, ttDIV, ttMOD, ttNOT, ttSHL, ttSHR,
      ttPLUS, ttMINUS,
      ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT,
      ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
@@ -189,7 +189,7 @@ const
      'IF', 'THEN', 'ELSE', 'WHILE', 'REPEAT', 'UNTIL', 'FOR', 'TO', 'DOWNTO', 'DO',
      'CASE',
      'TRUE', 'FALSE',
-     'AND', 'OR', 'XOR', 'DIV', 'MOD', 'NOT', 'SHL', 'SHR',
+     'AND', 'OR', 'XOR', 'IMPLIES', 'DIV', 'MOD', 'NOT', 'SHL', 'SHR',
      '+', '-',
      '*', '/', '%', '^', '@',
      '=', '<>', '>', '>=', '<', '<=',
@@ -450,14 +450,14 @@ end;
 // ToAlphaType
 //
 const
-   cAlphaTypeTokens : array [0..71] of TTokenType = (
+   cAlphaTypeTokens : array [0..72] of TTokenType = (
       ttAND, ttARRAY, ttABSTRACT, ttAS,
       ttBEGIN, ttBREAK,
       ttCONST, ttCLASS, ttCONSTRUCTOR, ttCASE, ttCDECL, ttCONTINUE,
       ttDO, ttDOWNTO, ttDIV, ttDEFAULT, ttDESTRUCTOR, ttDEPRECATED,
       ttEND, ttELSE, ttEXCEPT, ttEXIT, ttEXTERNAL,
       ttFOR, ttFALSE, ttFUNCTION, ttFINALLY, ttFORWARD,
-      ttIF, ttIN, ttIS, ttINHERITED, ttINDEX,
+      ttIF, ttIMPLIES, ttIN, ttIS, ttINHERITED, ttINDEX,
       ttLAZY,
       ttMETHOD, ttMOD,
       ttNOT, ttNIL,
