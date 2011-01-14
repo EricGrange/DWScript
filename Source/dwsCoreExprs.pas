@@ -336,13 +336,17 @@ type
       protected
          FObjectExpr: TDataExpr;
          FFieldAddr: Integer;
+
          function GetAddr(exec : TdwsExecution) : Integer; override;
          function GetData(exec : TdwsExecution) : TData; override;
+
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TSymbol;
                            FieldSym: TFieldSymbol; ObjExpr: TDataExpr);
          destructor Destroy; override;
+
          procedure Initialize; override;
+
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -2233,7 +2237,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      exec.Msgs.AddExecutionError(Pos, RTE_ObjectNotInstantiated);
+      RaiseObjectNotInstantiated;
    Result:=obj.Data;
 end;
 
@@ -2250,7 +2254,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      exec.Msgs.AddExecutionError(Pos, RTE_ObjectNotInstantiated);
+      RaiseObjectNotInstantiated;
    Result:=obj.DataOfAddr(FFieldAddr);
 end;
 
@@ -2262,7 +2266,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      exec.Msgs.AddExecutionError(Pos, RTE_ObjectNotInstantiated);
+      RaiseObjectNotInstantiated;
    Result:=obj.DataOfAddrAsString(FFieldAddr);
 end;
 
@@ -2274,7 +2278,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      exec.Msgs.AddExecutionError(Pos, RTE_ObjectNotInstantiated);
+      RaiseObjectNotInstantiated;
    Result:=obj.DataOfAddrAsInteger(FFieldAddr);
 end;
 
@@ -2286,7 +2290,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      exec.Msgs.AddExecutionError(Pos, RTE_ObjectNotInstantiated);
+      RaiseObjectNotInstantiated;
    obj.DataOfAddrAsScriptObj(FFieldAddr, Result);
 end;
 
@@ -4384,7 +4388,7 @@ function TForStepExpr.EvalStep(exec : TdwsExecution) : Int64;
 begin
    Result:=FStepExpr.EvalAsInteger(exec);
    if Result<=0 then
-      raise EScriptError.CreatePosFmt(Pos, RTE_ForLoopStepShouldBeStrictlyPositive, [Result])
+      RaiseScriptError(EScriptError.CreateFmt(RTE_ForLoopStepShouldBeStrictlyPositive, [Result]));
 end;
 
 { TForUpwardExpr }

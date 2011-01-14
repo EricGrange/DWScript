@@ -23,7 +23,7 @@ unit dwsStringFunctions;
 interface
 
 uses Classes, SysUtils, Variants, StrUtils, dwsFunctions, dwsSymbols, dwsStrings,
-   dwsUtils, dwsExprs, dwsCoreExprs;
+   dwsUtils, dwsExprs, dwsCoreExprs, dwsErrors;
 
 type
 
@@ -709,7 +709,7 @@ begin
    end;
    // current implementation, limitations may be relaxed later
    if varRecs=nil then
-      raise EScriptException.Create('Constant expression or open array expected');
+      raise EScriptError.Create('Constant expression or open array expected');
    try
       Result:=Format(args.AsString[0], varRecs.VarRecArray);
    finally

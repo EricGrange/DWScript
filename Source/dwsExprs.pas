@@ -533,10 +533,12 @@ type
          procedure RaiseScriptError(e : EScriptError); overload; virtual;
          procedure RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String); overload;
          procedure RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String;
-                                 const args : array of const); overload;
+                                    const args : array of const); overload;
 
          procedure RaiseUpperExceeded(index : Integer);
          procedure RaiseLowerExceeded(index : Integer);
+
+         procedure RaiseObjectNotInstantiated;
 
          property Prog: TdwsProgram read FProg;
          property Typ: TSymbol read FTyp write FTyp;
@@ -1658,7 +1660,7 @@ begin
 
    except
       on e: EScriptError do
-         ;
+         FMsgs.AddError(e.Message);
       on e: Exception do
          FMsgs.AddExecutionError(e.Message);
    end;
@@ -1700,9 +1702,9 @@ begin
             on e: EScriptException do
                Msgs.AddExecutionError(e.Pos, e.Message);
             on e: EScriptError do
-               Msgs.AddExecutionError(e.Pos, e.Message);
+               Msgs.AddError(e.Message);
             on e: Exception do
-               Msgs.AddExecutionError(e.Message);
+               Msgs.AddError(e.Message);
          end;
 
       finally
@@ -1714,7 +1716,7 @@ begin
 
    except
       on e: EScriptError do
-         ; // Error message in FMsgs
+         Msgs.AddError(e.Message);
       on e: Exception do
          Msgs.AddExecutionError(e.Message);
    end;
@@ -1757,7 +1759,7 @@ begin
       FProgramState:=psReadyToRun;
    except
       on e: EScriptError do
-         ;
+         Msgs.AddError(e.Message);
       on e: Exception do
          Msgs.AddExecutionError(e.Message);
    end;
@@ -2434,7 +2436,23 @@ end;
 //
 procedure TNoPosExpr.RaiseScriptError(e : EScriptError);
 begin
+   e.Message:=e.Message+e.Pos.AsInfo;
    raise e;
+end;
+
+// RaiseScriptError
+//
+procedure TNoPosExpr.RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String);
+begin
+   RaiseScriptError(exceptClass.Create(msg));
+end;
+
+// RaiseScriptError
+//
+procedure TNoPosExpr.RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String;
+                                      const args : array of const);
+begin
+   RaiseScriptError(exceptClass.CreateFmt(msg, args));
 end;
 
 // RaiseUpperExceeded
@@ -2451,19 +2469,11 @@ begin
    RaiseScriptError(EScriptOutOfBounds.CreateFmt(RTE_ArrayLowerBoundExceeded, [index]));
 end;
 
-// RaiseScriptError
+// RaiseObjectNotInstantiated
 //
-procedure TNoPosExpr.RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String);
+procedure TNoPosExpr.RaiseObjectNotInstantiated;
 begin
-   RaiseScriptError(exceptClass.Create(msg));
-end;
-
-// RaiseScriptError
-//
-procedure TNoPosExpr.RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String;
-                                      const args : array of const);
-begin
-   RaiseScriptError(exceptClass.CreateFmt(msg, args));
+   RaiseScriptError(EScriptError.Create(RTE_ObjectNotInstantiated));
 end;
 
 function TNoPosExpr.GetBaseType: TTypeSymbol;
@@ -3819,7 +3829,7 @@ begin
    // Find virtual method
    ScriptObj := IScriptObj(IUnknown(FBaseExpr.Eval(exec)));
    if ScriptObj=nil then
-      exec.Msgs.AddExecutionError(FPos, RTE_ObjectNotInstantiated);
+      RaiseObjectNotInstantiated;
    Result := FindVirtualMethod(ScriptObj.ClassSym);
    exec.Stack.WriteValue(exec.Stack.StackPointer + FSelfAddr, ScriptObj);
 end;
@@ -3830,7 +3840,7 @@ function TClassMethodVirtualExpr.PreCall(exec : TdwsExecution; var scriptObj: IS
 begin
   ScriptObj := IScriptObj(IUnknown(FBaseExpr.Eval(exec)));
    if ScriptObj=nil then
-      exec.Msgs.AddExecutionError(Pos, RTE_ObjectNotInstantiated);
+      RaiseObjectNotInstantiated;
   Result := FindVirtualMethod(ScriptObj.ClassSym);
 end;
 

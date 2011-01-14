@@ -614,7 +614,7 @@ end;
 //
 function TErrorMessage.AsInfo: String;
 begin
-   Result:=Format(MSG_Error, [inherited AsInfo]);
+   Result:=Format(MSG_RuntimeError, [Text]);
 end;
 
 // ------------------
