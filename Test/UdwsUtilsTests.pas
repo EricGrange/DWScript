@@ -91,7 +91,7 @@ begin
 
    buffer.Free;
 
-   CheckEquals('123456789', bs);
+   CheckEquals(AnsiString('123456789'), bs);
 end;
 
 // TightListTest

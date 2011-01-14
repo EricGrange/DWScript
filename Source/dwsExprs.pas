@@ -531,6 +531,7 @@ type
          function OptimizeIntegerConstantToFloatConstant(exec : TdwsExecution) : TNoPosExpr;
 
          procedure RaiseScriptError(e : EScriptError); overload; virtual;
+         procedure RaiseScriptError(const msg : String); overload;
          procedure RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String); overload;
          procedure RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String;
                                     const args : array of const); overload;
@@ -1657,12 +1658,15 @@ begin
       // Initialize global variables
       Status:=esrNone;
       FProg.FInitExpr.EvalNoResult(Self);
-
    except
-      on e: EScriptError do
+      on e: EScriptError do begin
          FMsgs.AddError(e.Message);
-      on e: Exception do
-         FMsgs.AddExecutionError(e.Message);
+         FProgramState:=psRunningStopped;
+      end;
+      on e: Exception do begin
+         FMsgs.AddError(e.Message+Msgs.LastScriptError.AsInfo);
+         FProgramState:=psRunningStopped;
+      end;
    end;
 end;
 
@@ -1672,54 +1676,48 @@ procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
 var
    terminator : TTerminatorThread;
 begin
+   if FProgramState <> psRunning then begin
+      Msgs.AddError('Program state psRunning expected');
+      Exit;
+   end;
+
+   if aTimeoutMilliSeconds=0 then
+      aTimeOutMilliseconds:=FProg.TimeoutMilliseconds;
+   if aTimeoutMilliSeconds>0 then
+      terminator:=TTerminatorThread.Create(Self, aTimeoutMilliSeconds)
+   else terminator:=nil;
+
    try
-      if FProgramState <> psRunning then
-         raise Exception.Create('Program state psRunning expected');
-
-      if aTimeoutMilliSeconds=0 then
-         aTimeOutMilliseconds:=FProg.TimeoutMilliseconds;
-      if aTimeoutMilliSeconds>0 then
-         terminator:=TTerminatorThread.Create(Self, aTimeoutMilliSeconds)
-      else terminator:=nil;
-
+      Status:=esrNone;
       try
-         Status:=esrNone;
-         try
-            // Run the script
-            FProg.FExpr.EvalNoResult(Self);
-//            if ProgramState=psRunningStopped then
-//               Msgs.AddExecutionStop(Expr.Pos, RTE_ScriptStopped);
+         // Run the script
+         FProg.FExpr.EvalNoResult(Self);
+//         if ProgramState=psRunningStopped then
+//            Msgs.AddExecutionStop(Expr.Pos, RTE_ScriptStopped);
 
-            if status<>esrNone then begin
-               case status of
-                  esrBreak : Msgs.AddExecutionError(RTE_InvalidBreak);
-                  esrContinue : Msgs.AddExecutionError(RTE_InvalidContinue);
-               end;
+         if status<>esrNone then begin
+            case status of
+               esrBreak : Msgs.AddError(RTE_InvalidBreak);
+               esrContinue : Msgs.AddError(RTE_InvalidContinue);
             end;
-         except
-            on e: EScriptAssertionFailed do
-               Msgs.AddExecutionError(e.Message);
-            on e: EScriptException do
-               Msgs.AddExecutionError(e.Pos, e.Message);
-            on e: EScriptError do
-               Msgs.AddError(e.Message);
-            on e: Exception do
-               Msgs.AddError(e.Message);
          end;
-
-      finally
-         if Assigned(terminator) then
-            terminator.Terminate;
+      except
+         on e: EScriptAssertionFailed do
+            Msgs.AddError(e.Message);
+         on e: EScriptException do
+            Msgs.AddError(e.Message+e.Pos.AsInfo);
+         on e: EScriptError do
+            Msgs.AddError(e.Message);
+         on e: Exception do
+            Msgs.AddError(e.Message+Msgs.LastScriptError.AsInfo);
       end;
 
-      Msgs.SetLastScriptError(cNullPos);
-
-   except
-      on e: EScriptError do
-         Msgs.AddError(e.Message);
-      on e: Exception do
-         Msgs.AddExecutionError(e.Message);
+   finally
+      if Assigned(terminator) then
+         terminator.Terminate;
    end;
+
+   Msgs.LastScriptError:=cNullPos;
 end;
 
 // Stop
@@ -1761,7 +1759,7 @@ begin
       on e: EScriptError do
          Msgs.AddError(e.Message);
       on e: Exception do
-         Msgs.AddExecutionError(e.Message);
+         Msgs.AddError(e.Message+Msgs.LastScriptError.AsInfo);
    end;
 
 end;
@@ -2232,8 +2230,8 @@ begin
 
       if exec.Status<>esrNone then begin
          case exec.Status of
-            esrBreak : exec.Msgs.AddExecutionError(RTE_InvalidBreak);
-            esrContinue : exec.Msgs.AddExecutionError(RTE_InvalidContinue);
+            esrBreak : exec.Msgs.AddError(RTE_InvalidBreak);
+            esrContinue : exec.Msgs.AddError(RTE_InvalidContinue);
          else
             exec.Status:=esrNone;
          end;
@@ -2438,6 +2436,13 @@ procedure TNoPosExpr.RaiseScriptError(e : EScriptError);
 begin
    e.Message:=e.Message+e.Pos.AsInfo;
    raise e;
+end;
+
+// RaiseScriptError
+//
+procedure TNoPosExpr.RaiseScriptError(const msg : String);
+begin
+   RaiseScriptError(EScriptError.Create(msg));
 end;
 
 // RaiseScriptError
@@ -3332,7 +3337,7 @@ begin
 
          GetCode(exec, func, code);
          if not Assigned(Code) then
-           exec.Msgs.AddExecutionError(FPos, RTE_InvalidFunctionCall);
+            RaiseScriptError(RTE_InvalidFunctionCall);
 
          // Switch frame
          exec.Stack.SwitchFrame(oldBasePointer);
@@ -3350,7 +3355,7 @@ begin
                on e: EScriptException do
                   raise;
             else
-               exec.Msgs.SetLastScriptError(FPos);
+               exec.Msgs.LastScriptError:=FPos;
                raise;
             end;
          finally
@@ -3371,7 +3376,7 @@ begin
          exec.DecRecursion;
       end;
    except
-      exec.Msgs.SetLastScriptError(FPos);
+      exec.Msgs.LastScriptError:=FPos;
       raise;
    end;
 end;
@@ -3886,7 +3891,7 @@ begin
   Assert(classSym <> nil);
 
   if classSym.IsAbstract then
-    exec.Msgs.AddExecutionError(Pos, RTE_InstanceOfAbstractClass);
+    RaiseScriptError(RTE_InstanceOfAbstractClass);
 
   Result := FindVirtualMethod(classSym);
 
@@ -5447,7 +5452,7 @@ begin
       on e: EScriptException do
         raise;
       on e: Exception do begin
-        exec.Msgs.SetLastScriptError(FPos);
+        exec.Msgs.LastScriptError:=FPos;
         raise;
       end;
     end;
@@ -5522,7 +5527,7 @@ begin
       FResultData := FConnectorMember.Read(FBaseExpr.Eval(exec));
     Result := FResultData[0];
   except
-    exec.Msgs.SetLastScriptError(FPos);
+    exec.Msgs.LastScriptError:=FPos;
     raise;
   end;
 end;
@@ -5591,7 +5596,7 @@ begin
   try
     FConnectorMember.Write(Base^, dat);
   except
-    exec.Msgs.SetLastScriptError(FPos);
+    exec.Msgs.LastScriptError:=FPos;
     raise;
   end;
 end;

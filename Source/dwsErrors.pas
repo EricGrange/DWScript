@@ -135,12 +135,13 @@ type
          FMessageList: TTightList;
          FHasErrors : Boolean;
          FHasCompilerErrors : Boolean;
-         FHasExecutionErrors : Boolean;
          FLastScriptError : TScriptPos;
 
          function GetMsg(Index: Integer): TdwsMessage;
          function GetMsgCount: Integer;
          procedure AddMsg(aMessage: TdwsMessage);
+
+         procedure SetLastScriptError(const Pos: TScriptPos);
 
       public
          constructor Create;
@@ -174,11 +175,7 @@ type
 
          // Called during execution
 
-         procedure AddExecutionError(const Text: String); overload;
-         procedure AddExecutionError(const Pos: TScriptPos; const Text: String); overload;
-         procedure AddExecutionError(const Pos: TScriptPos; const Text: String; const args: array of const); overload;
-
-         procedure SetLastScriptError(const Pos: TScriptPos);
+         property LastScriptError : TScriptPos read FLastScriptError write SetLastScriptError;
 
          procedure Clear;
 
@@ -188,7 +185,6 @@ type
          property Count: Integer read GetMsgCount;
          property HasErrors: Boolean read FHasErrors;
          property HasCompilerErrors: Boolean read FHasCompilerErrors;
-         property HasExecutionErrors: Boolean read FHasExecutionErrors;
    end;
 
    // The script initialization failed because a class needs one or more methods
@@ -358,7 +354,6 @@ begin
    FMessageList.Clean;
    FHasErrors:=False;
    FHasCompilerErrors:=False;
-   FHasExecutionErrors:=False;
    FLastScriptError:=cNullPos;
 end;
 
@@ -532,30 +527,6 @@ end;
 procedure TdwsMessageList.AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
 begin
    AddCompilerStop(Pos, Format(textFormat, args), TSyntaxErrorMessage);
-end;
-
-// AddExecutionError
-//
-procedure TdwsMessageList.AddExecutionError(const Pos: TScriptPos; const Text: String);
-begin
-   AddMsg(TExecutionErrorMessage.Create(Self, Text, Pos));
-   FHasExecutionErrors:=True;
-   FHasErrors:=True;
-   raise EScriptError.Create(Text);
-end;
-
-// AddExecutionError
-//
-procedure TdwsMessageList.AddExecutionError(const Text: String);
-begin
-   AddExecutionError(FLastScriptError, Text)
-end;
-
-// AddExecutionError
-//
-procedure TdwsMessageList.AddExecutionError(const pos: TScriptPos; const Text: String; const args: array of const);
-begin
-   AddExecutionError(pos, Format(text, args));
 end;
 
 // SetLastScriptError
