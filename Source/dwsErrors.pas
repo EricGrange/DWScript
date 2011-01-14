@@ -176,9 +176,7 @@ type
 
          procedure AddExecutionError(const Text: String); overload;
          procedure AddExecutionError(const Pos: TScriptPos; const Text: String); overload;
-
-         procedure AddExecutionStop(const Pos: TScriptPos; const Text: String);
-         procedure AddExecutionStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
+         procedure AddExecutionError(const Pos: TScriptPos; const Text: String; const args: array of const); overload;
 
          procedure SetLastScriptError(const Pos: TScriptPos);
 
@@ -215,8 +213,9 @@ type
       public
          constructor CreatePosFmt(const pos : TScriptPos; const Msg: string; const Args: array of const);
 
-         property Pos : TScriptPos read FScriptPos;
+         property Pos : TScriptPos read FScriptPos write FScriptPos;
    end;
+   EScriptErrorClass = class of EScriptError;
 
    ECompileError = class(EScriptError);
 
@@ -542,6 +541,7 @@ begin
    AddMsg(TExecutionErrorMessage.Create(Self, Text, Pos));
    FHasExecutionErrors:=True;
    FHasErrors:=True;
+   raise EScriptError.Create(Text);
 end;
 
 // AddExecutionError
@@ -551,19 +551,11 @@ begin
    AddExecutionError(FLastScriptError, Text)
 end;
 
-// AddExecutionStop
+// AddExecutionError
 //
-procedure TdwsMessageList.AddExecutionStop(const Pos: TScriptPos; const Text: String);
+procedure TdwsMessageList.AddExecutionError(const pos: TScriptPos; const Text: String; const args: array of const);
 begin
-   AddExecutionError(Pos, Text);
-   raise EScriptError.Create(Text);
-end;
-
-// AddExecutionStopFmt
-//
-procedure TdwsMessageList.AddExecutionStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
-begin
-   AddExecutionStop(Pos, Format(textFormat, args));
+   AddExecutionError(pos, Format(text, args));
 end;
 
 // SetLastScriptError

@@ -368,14 +368,16 @@ type
     function EvalAsInteger(exec : TdwsExecution) : Int64; override;
   end;
 
-  TStringArrayOpExpr = class(TBinaryOpExpr)
-  private
-    FPos : TScriptPos;
-  public
-    constructor CreatePos(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr);
-    function Eval(exec : TdwsExecution) : Variant; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-  end;
+   // left[right] string read access
+   TStringArrayOpExpr = class(TBinaryOpExpr)
+      private
+         FPos : TScriptPos;
+      public
+         constructor CreatePos(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr);
+         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+         procedure RaiseScriptError(e : EScriptError); override;
+   end;
 
    TStringLengthExpr = class(TUnaryOpIntExpr)
    public
@@ -1888,8 +1890,8 @@ begin
 
    if Cardinal(index)>=Cardinal(FCount) then begin
       if index>=FCount then
-         raise EScriptOutOfBounds.Create(RTE_UpperBoundExceeded)
-      else raise EScriptOutOfBounds.Create(RTE_LowerBoundExceeded);
+         RaiseUpperExceeded(index)
+      else RaiseLowerExceeded(index);
    end;
    // Calculate the address
    Result := FBaseExpr.Addr[exec] + (index * FElementSize);
@@ -1912,9 +1914,9 @@ begin
 
    if Cardinal(index)>=Cardinal(len) then begin
       if index >= len then
-         exec.Msgs.AddExecutionStop(Pos, RTE_UpperBoundExceeded)
+         RaiseUpperExceeded(index)
       else if index < 0 then
-         exec.Msgs.AddExecutionStop(Pos, RTE_LowerBoundExceeded);
+         RaiseLowerExceeded(index);
    end;
    // Calculate the address
    Result := index;
@@ -1939,9 +1941,9 @@ begin
 
    if Cardinal(index)>=Cardinal(length) then begin
       if index >= length then
-         exec.Msgs.AddExecutionStop(Pos, RTE_UpperBoundExceeded)
+         RaiseUpperExceeded(index)
       else if index < 0 then
-         exec.Msgs.AddExecutionStop(Pos, RTE_LowerBoundExceeded);
+         RaiseLowerExceeded(index);
    end;
    // Calculate the address
    Result := baseAddr + (index * FElementSize);
@@ -2231,7 +2233,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      exec.Msgs.AddExecutionStop(Pos, RTE_ObjectNotInstantiated);
+      exec.Msgs.AddExecutionError(Pos, RTE_ObjectNotInstantiated);
    Result:=obj.Data;
 end;
 
@@ -2248,7 +2250,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      exec.Msgs.AddExecutionStop(Pos, RTE_ObjectNotInstantiated);
+      exec.Msgs.AddExecutionError(Pos, RTE_ObjectNotInstantiated);
    Result:=obj.DataOfAddr(FFieldAddr);
 end;
 
@@ -2260,7 +2262,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      exec.Msgs.AddExecutionStop(Pos, RTE_ObjectNotInstantiated);
+      exec.Msgs.AddExecutionError(Pos, RTE_ObjectNotInstantiated);
    Result:=obj.DataOfAddrAsString(FFieldAddr);
 end;
 
@@ -2272,7 +2274,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      exec.Msgs.AddExecutionStop(Pos, RTE_ObjectNotInstantiated);
+      exec.Msgs.AddExecutionError(Pos, RTE_ObjectNotInstantiated);
    Result:=obj.DataOfAddrAsInteger(FFieldAddr);
 end;
 
@@ -2284,7 +2286,7 @@ var
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    if obj=nil then
-      exec.Msgs.AddExecutionStop(Pos, RTE_ObjectNotInstantiated);
+      exec.Msgs.AddExecutionError(Pos, RTE_ObjectNotInstantiated);
    obj.DataOfAddrAsScriptObj(FFieldAddr, Result);
 end;
 
@@ -2358,14 +2360,18 @@ end;
 
 { TStringArrayOpExpr }
 
+// CreatePos
+//
 constructor TStringArrayOpExpr.CreatePos(Prog: TdwsProgram; const Pos: TScriptPos;
                                          Left, Right: TNoPosExpr);
 begin
-  inherited Create(Prog, Left, Right);
-  FPos := Pos;
-  FTyp := FProg.TypString;
+   inherited Create(Prog, Left, Right);
+   FPos := Pos;
+   FTyp := FProg.TypString;
 end;
 
+// Eval
+//
 function TStringArrayOpExpr.Eval(exec : TdwsExecution) : Variant;
 var
    i : Integer;
@@ -2374,9 +2380,9 @@ begin
    FLeft.EvalAsString(exec, buf);
    i:=FRight.EvalAsInteger(exec);
    if i>Length(buf) then
-      raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayUpperBoundExceeded, [i])
+      RaiseUpperExceeded(i)
    else if i<1 then
-      raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayLowerBoundExceeded, [i]);
+      RaiseLowerExceeded(i);
    Result:=buf[i];
 end;
 
@@ -2387,6 +2393,14 @@ begin
    inherited;
    if not (FLeft.IsStringValue) and (FRight.IsIntegerValue) then
       Prog.CompileMsgs.AddCompilerStop(FPos, CPE_StringExpected);
+end;
+
+// RaiseScriptError
+//
+procedure TStringArrayOpExpr.RaiseScriptError(e : EScriptError);
+begin
+   e.Pos:=FPos;
+   inherited;
 end;
 
 { TIsOpExpr }
@@ -4914,9 +4928,9 @@ begin
    FStringExpr.EvalAsString(exec, s);
    i:=FIndexExpr.EvalAsInteger(exec);
    if i>Length(s) then
-      raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayUpperBoundExceeded, [i])
+      RaiseUpperExceeded(i)
    else if i<1 then
-      raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayLowerBoundExceeded, [i]);
+      RaiseLowerExceeded(i);
    FValueExpr.EvalAsString(exec, buf);
    s[i]:=buf[1];
    FStringExpr.AssignValue(exec, s);
@@ -4939,12 +4953,12 @@ var
 begin
    i:=FIndexExpr.EvalAsInteger(exec);
    if i<1 then
-      raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayLowerBoundExceeded, [i])
+      RaiseLowerExceeded(i)
    else begin
       FValueExpr.EvalAsString(exec, buf);
       c:=buf[1];
       if not TStrVarExpr(FStringExpr).SetChar(exec, i, c) then
-         raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayUpperBoundExceeded, [i]);
+         RaiseUpperExceeded(i);
    end;
 end;
 
@@ -4959,11 +4973,11 @@ var
 begin
    i:=FIndexExpr.EvalAsInteger(exec);
    if i<1 then
-      raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayLowerBoundExceeded, [i])
+      RaiseLowerExceeded(i)
    else begin
       c:=Chr(FValueExpr.EvalAsInteger(exec));
       if not TStrVarExpr(FStringExpr).SetChar(exec, i, c) then
-         raise EScriptOutOfBounds.CreatePosFmt(FPos, RTE_ArrayUpperBoundExceeded, [i]);
+         RaiseUpperExceeded(i);
    end;
 end;
 

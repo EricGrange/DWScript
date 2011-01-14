@@ -492,49 +492,56 @@ type
     property Func: TFuncSymbol read FFunc write FFunc;
   end;
 
-  // Base class of all expressions attached to a program
-  TNoPosExpr = class(TExprBase)
-  private
-    protected
-      FProg: TdwsProgram;
-      FTyp: TSymbol;
+   // Base class of all expressions attached to a program
+   TNoPosExpr = class(TExprBase)
+      protected
+         FProg: TdwsProgram;
+         FTyp: TSymbol;
 
-    public
-      constructor Create(Prog: TdwsProgram);
+      public
+         constructor Create(Prog: TdwsProgram);
 
-      function IsBooleanValue : Boolean;
-      function IsIntegerValue : Boolean;
-      function IsFloatValue : Boolean;
-      function IsNumberValue : Boolean;
-      function IsStringValue : Boolean;
-      function IsVariantValue : Boolean;
+         function IsBooleanValue : Boolean;
+         function IsIntegerValue : Boolean;
+         function IsFloatValue : Boolean;
+         function IsNumberValue : Boolean;
+         function IsStringValue : Boolean;
+         function IsVariantValue : Boolean;
 
-      function GetBaseType: TTypeSymbol;
+         function GetBaseType: TTypeSymbol;
 
-      procedure EvalNoResult(exec : TdwsExecution); virtual;
-      function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
-      function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
-      procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
-      procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
-      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
-      procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+         procedure EvalNoResult(exec : TdwsExecution); virtual;
+         function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+         procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+         procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
 
-      procedure AssignValue(exec : TdwsExecution; const value : Variant); override;
-      procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
-      procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
-      procedure AssignValueAsFloat(exec : TdwsExecution; var value : Double); override;
-      procedure AssignValueAsString(exec : TdwsExecution; const value: String); override;
+         procedure AssignValue(exec : TdwsExecution; const value : Variant); override;
+         procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
+         procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
+         procedure AssignValueAsFloat(exec : TdwsExecution; var value : Double); override;
+         procedure AssignValueAsString(exec : TdwsExecution; const value: String); override;
 
-      procedure Initialize; virtual;
-      procedure TypeCheckNoPos(const aPos : TScriptPos); virtual;
-      function IsConstant : Boolean; virtual;
-      function Optimize(exec : TdwsExecution) : TNoPosExpr; virtual;
-      function OptimizeIntegerConstantToFloatConstant(exec : TdwsExecution) : TNoPosExpr;
+         procedure Initialize; virtual;
+         procedure TypeCheckNoPos(const aPos : TScriptPos); virtual;
+         function IsConstant : Boolean; virtual;
+         function Optimize(exec : TdwsExecution) : TNoPosExpr; virtual;
+         function OptimizeIntegerConstantToFloatConstant(exec : TdwsExecution) : TNoPosExpr;
 
-      property Prog: TdwsProgram read FProg;
-      property Typ: TSymbol read FTyp write FTyp;
-      property BaseType: TTypeSymbol read GetBaseType;
-  end;
+         procedure RaiseScriptError(e : EScriptError); overload; virtual;
+         procedure RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String); overload;
+         procedure RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String;
+                                 const args : array of const); overload;
+
+         procedure RaiseUpperExceeded(index : Integer);
+         procedure RaiseLowerExceeded(index : Integer);
+
+         property Prog: TdwsProgram read FProg;
+         property Typ: TSymbol read FTyp write FTyp;
+         property BaseType: TTypeSymbol read GetBaseType;
+   end;
 
   TNoPosExprClass = class of TNoPosExpr;
 
@@ -553,6 +560,8 @@ type
          procedure AddCompilerError(const Text : String);
          procedure AddCompilerErrorFmt(const fmtText: string; const Args: array of const);
          procedure AddCompilerStop(const Text : String);
+
+         procedure RaiseScriptError(e : EScriptError); override;
 
          property Pos: TScriptPos read FPos;
    end;
@@ -589,25 +598,29 @@ type
    end;
 
   // Encapsulates data
-  TDataExpr = class(TNoPosExpr)
-  protected
-    function GetAddr(exec : TdwsExecution) : Integer; virtual;
-    function GetData(exec : TdwsExecution) : TData; virtual; abstract;
-  public
-    constructor Create(Prog: TdwsProgram; Typ: TSymbol);
-    procedure AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer); virtual;
-    procedure AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr); virtual;
-    procedure AssignExpr(exec : TdwsExecution; Expr: TNoPosExpr); virtual;
-    procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
-    procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
-    procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
-    procedure AssignValueAsFloat(exec : TdwsExecution; var value : Double); override;
-    procedure AssignValueAsString(exec : TdwsExecution; const value: String); override;
-    function Eval(exec : TdwsExecution) : Variant; override;
-    property Addr[exec : TdwsExecution] : Integer read GetAddr;
-    property Data[exec : TdwsExecution] : TData read GetData;
-    function IsWritable: Boolean; virtual;
-  end;
+   TDataExpr = class(TNoPosExpr)
+      protected
+         function GetAddr(exec : TdwsExecution) : Integer; virtual;
+         function GetData(exec : TdwsExecution) : TData; virtual; abstract;
+
+      public
+         constructor Create(Prog: TdwsProgram; Typ: TSymbol);
+
+         procedure AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer); virtual;
+         procedure AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr); virtual;
+         procedure AssignExpr(exec : TdwsExecution; Expr: TNoPosExpr); virtual;
+         procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
+         procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
+         procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
+         procedure AssignValueAsFloat(exec : TdwsExecution; var value : Double); override;
+         procedure AssignValueAsString(exec : TdwsExecution; const value: String); override;
+
+         function Eval(exec : TdwsExecution) : Variant; override;
+         function IsWritable: Boolean; virtual;
+
+         property Addr[exec : TdwsExecution] : Integer read GetAddr;
+         property Data[exec : TdwsExecution] : TData read GetData;
+   end;
 
    // Encapsulates data
    TPosDataExpr = class(TDataExpr)
@@ -621,6 +634,8 @@ type
 
          procedure AddCompilerErrorFmt(const fmtText: string; const Args: array of const);
          procedure AddCompilerStop(const Text : String); overload;
+
+         procedure RaiseScriptError(e : EScriptError); override;
 
          property Pos: TScriptPos read FPos;
    end;
@@ -2415,6 +2430,42 @@ begin
    end else Result:=Self;
 end;
 
+// RaiseScriptError
+//
+procedure TNoPosExpr.RaiseScriptError(e : EScriptError);
+begin
+   raise e;
+end;
+
+// RaiseUpperExceeded
+//
+procedure TNoPosExpr.RaiseUpperExceeded(index : Integer);
+begin
+   RaiseScriptError(EScriptOutOfBounds.CreateFmt(RTE_ArrayUpperBoundExceeded, [index]));
+end;
+
+// RaiseLowerExceeded
+//
+procedure TNoPosExpr.RaiseLowerExceeded(index : Integer);
+begin
+   RaiseScriptError(EScriptOutOfBounds.CreateFmt(RTE_ArrayLowerBoundExceeded, [index]));
+end;
+
+// RaiseScriptError
+//
+procedure TNoPosExpr.RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String);
+begin
+   RaiseScriptError(exceptClass.Create(msg));
+end;
+
+// RaiseScriptError
+//
+procedure TNoPosExpr.RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String;
+                                      const args : array of const);
+begin
+   RaiseScriptError(exceptClass.CreateFmt(msg, args));
+end;
+
 function TNoPosExpr.GetBaseType: TTypeSymbol;
 begin
   if Assigned(Typ) then
@@ -2599,6 +2650,14 @@ begin
    Prog.CompileMsgs.AddCompilerStop(Pos, Text);
 end;
 
+// RaiseScriptError
+//
+procedure TExpr.RaiseScriptError(e : EScriptError);
+begin
+   e.Pos:=Pos;
+   inherited;
+end;
+
 // ------------------
 // ------------------ TPosDataExpr ------------------
 // ------------------
@@ -2630,6 +2689,14 @@ end;
 procedure TPosDataExpr.AddCompilerStop(const Text : String);
 begin
    Prog.CompileMsgs.AddCompilerStop(Pos, Text);
+end;
+
+// RaiseScriptError
+//
+procedure TPosDataExpr.RaiseScriptError(e : EScriptError);
+begin
+   e.Pos:=Pos;
+   inherited;
 end;
 
 // ------------------
@@ -3255,7 +3322,7 @@ begin
 
          GetCode(exec, func, code);
          if not Assigned(Code) then
-           exec.Msgs.AddExecutionStop(FPos, RTE_InvalidFunctionCall);
+           exec.Msgs.AddExecutionError(FPos, RTE_InvalidFunctionCall);
 
          // Switch frame
          exec.Stack.SwitchFrame(oldBasePointer);
@@ -3752,7 +3819,7 @@ begin
    // Find virtual method
    ScriptObj := IScriptObj(IUnknown(FBaseExpr.Eval(exec)));
    if ScriptObj=nil then
-      exec.Msgs.AddExecutionStop(FPos, RTE_ObjectNotInstantiated);
+      exec.Msgs.AddExecutionError(FPos, RTE_ObjectNotInstantiated);
    Result := FindVirtualMethod(ScriptObj.ClassSym);
    exec.Stack.WriteValue(exec.Stack.StackPointer + FSelfAddr, ScriptObj);
 end;
@@ -3763,7 +3830,7 @@ function TClassMethodVirtualExpr.PreCall(exec : TdwsExecution; var scriptObj: IS
 begin
   ScriptObj := IScriptObj(IUnknown(FBaseExpr.Eval(exec)));
    if ScriptObj=nil then
-      exec.Msgs.AddExecutionStop(Pos, RTE_ObjectNotInstantiated);
+      exec.Msgs.AddExecutionError(Pos, RTE_ObjectNotInstantiated);
   Result := FindVirtualMethod(ScriptObj.ClassSym);
 end;
 
@@ -3809,7 +3876,7 @@ begin
   Assert(classSym <> nil);
 
   if classSym.IsAbstract then
-    exec.Msgs.AddExecutionStop(Pos, RTE_InstanceOfAbstractClass);
+    exec.Msgs.AddExecutionError(Pos, RTE_InstanceOfAbstractClass);
 
   Result := FindVirtualMethod(classSym);
 
@@ -5182,10 +5249,10 @@ begin
       raise Exception.Create(RTE_TooManyIndices);
 
     if Indices[x] > arrTyp.HighBound then
-      raise Exception.CreateFmt(RTE_ArrayUpperBoundExceeded,[x]);
+      raise Exception.CreateFmt(RTE_ArrayUpperBoundExceeded, [x]);
 
     if Indices[x] < arrTyp.LowBound then
-      raise Exception.CreateFmt(RTE_ArrayLowerBoundExceeded,[x]);
+      raise Exception.CreateFmt(RTE_ArrayLowerBoundExceeded, [x]);
 
     elemTyp := arrTyp.Typ;
     elemIdx := Indices[x] - arrTyp.LowBound;
