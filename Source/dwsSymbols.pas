@@ -80,6 +80,7 @@ type
       private
          FStatus : TExecutionStatusResult;
          FStack : TStackMixIn;
+         FCallStack : TTightStack;
 
          FDebugger : IDebugger;
          FIsDebugging : Boolean;
@@ -109,8 +110,12 @@ type
 
          procedure DoStep(expr : TExprBase);
 
+         procedure IncRecursion(caller : TExprBase); inline;
+         procedure DecRecursion; inline;
+
          property Status : TExecutionStatusResult read FStatus write FStatus;
          property Stack : TStackMixIn read FStack;
+         property CallStack : TTightStack read FCallStack;
 
          property ProgramState : TProgramState read FProgramState;
 
@@ -3240,6 +3245,7 @@ destructor TdwsExecution.Destroy;
 begin
    inherited;
    FStack.Finalize;
+   FCallStack.Free;
 end;
 
 // DoStep
@@ -3250,6 +3256,22 @@ begin
       raise EScriptStopped.Create(RTE_ScriptStopped)
    end else if IsDebugging then
       Debugger.DoDebug(Self, Expr);
+end;
+
+// IncRecursion
+//
+procedure TdwsExecution.IncRecursion(caller : TExprBase);
+begin
+   FCallStack.Push(caller);
+   if FCallStack.Count>=FStack.MaxRecursionDepth then
+      raise EStackException.CreateFmt(RTE_MaximalRecursionExceeded, [FStack.MaxRecursionDepth]);
+end;
+
+// DecRecursion
+//
+procedure TdwsExecution.DecRecursion;
+begin
+   FCallStack.Pop;
 end;
 
 // GetDebugger

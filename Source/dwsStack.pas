@@ -47,7 +47,6 @@ type
          FMaxSize : Integer;
          FSize : Integer;
          FStackPointer : Integer;
-         FRecursionDepth : Integer;
 
          function GetFrameSize: Integer;
 
@@ -65,9 +64,6 @@ type
 
          procedure Push(Delta: Integer);
          procedure Pop(Delta: Integer);
-
-         procedure IncRecursion; inline;
-         procedure DecRecursion; inline;
 
          procedure WriteData(SourceAddr, DestAddr, Size: Integer; const sourceData: TData);
          procedure ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);
@@ -109,7 +105,6 @@ type
          property FrameSize: Integer read GetFrameSize;
          property MaxSize: Integer read FMaxSize write FMaxSize;
          property StackPointer: Integer read FStackPointer;
-         property RecursionDepth : Integer read FRecursionDepth;
          property MaxRecursionDepth : Integer read FParams.MaxRecursionDepth write FParams.MaxRecursionDepth;
    end;
 
@@ -199,22 +194,6 @@ begin
 
    // Free memory
    FStackPointer:=sp;
-end;
-
-// IncRecursion
-//
-procedure TStackMixIn.IncRecursion;
-begin
-   Inc(FRecursionDepth);
-   if FRecursionDepth>FParams.MaxRecursionDepth then
-      raise EStackException.CreateFmt(RTE_MaximalRecursionExceeded, [FParams.MaxRecursionDepth]);
-end;
-
-// DecRecursion
-//
-procedure TStackMixIn.DecRecursion;
-begin
-   Dec(FRecursionDepth);
 end;
 
 // GrowTo

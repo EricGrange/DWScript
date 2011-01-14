@@ -265,6 +265,8 @@ type
       procedure Stop;
       procedure EndProgram;
 
+      function GetCallStackScriptPosArray : TScriptPosArray;
+
       property Prog : IdwsProgram read GetProg;
       property Info : TProgramInfo read GetInfo;
       property Result : TdwsResult read GetResult;
@@ -346,6 +348,8 @@ type
          procedure RunProgram(aTimeoutMilliSeconds : Integer);
          procedure Stop;
          procedure EndProgram;
+
+         function GetCallStackScriptPosArray : TScriptPosArray;
 
          function AcquireProgramInfo(funcSym : TFuncSymbol) : TProgramInfo;
          procedure ReleaseProgramInfo(info : TProgramInfo);
@@ -1743,6 +1747,17 @@ begin
          Msgs.AddExecutionError(e.Message);
    end;
 
+end;
+
+// GetCallStackScriptPosArray
+//
+function TdwsProgramExecution.GetCallStackScriptPosArray : TScriptPosArray;
+var
+   i : Integer;
+begin
+   SetLength(Result, CallStack.Count);
+   for i:=0 to CallStack.Count-1 do
+      Result[i]:=(TObject(CallStack.List[CallStack.Count-1-i]) as TExpr).Pos;
 end;
 
 // AcquireProgramInfo
@@ -3227,7 +3242,7 @@ var
 begin
    try
       // Allocate memory for parameters on the stack
-      exec.Stack.IncRecursion;
+      exec.IncRecursion(Self);
       exec.Stack.Push(FFunc.ParamSize);
       try
 
@@ -3276,7 +3291,7 @@ begin
       finally
          // Remove parameters from stack
          exec.Stack.Pop(FFunc.ParamSize);
-         exec.Stack.DecRecursion;
+         exec.DecRecursion;
       end;
    except
       exec.Msgs.SetLastScriptError(FPos);

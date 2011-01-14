@@ -79,6 +79,26 @@ type
          procedure Exchange(index1, index2 : Integer);
    end;
 
+   // TTightStack
+   //
+   {: Embeddable stack functionality }
+   TTightStack = record
+      private
+         FList : PPointerList;
+         FCount : Integer;
+         FCapacity : Integer;
+
+      public
+         procedure Push(item : Pointer);
+         function Pop : Pointer; inline;
+
+         procedure Clear; inline;
+         procedure Free;
+
+         property List : PPointerList read FList;
+         property Count : Integer read FCount;
+   end;
+
    // TSortedList
    //
    {: List that maintains its elements sorted }
@@ -941,6 +961,47 @@ end;
 function TWriteOnlyBlockStream.GetSize: Int64;
 begin
    Result:=FTotalSize;
+end;
+
+// ------------------
+// ------------------ TTightStack ------------------
+// ------------------
+
+// Push
+//
+procedure TTightStack.Push(item : Pointer);
+begin
+   if FCount=FCapacity then begin
+      FCapacity:=FCapacity+8+FCapacity shr 1;
+      ReallocMem(FList, FCapacity*SizeOf(Pointer));
+   end;
+   FList[FCount]:=item;
+   Inc(FCount);
+end;
+
+// Pop
+//
+function TTightStack.Pop : Pointer;
+begin
+   Result:=FList[FCount-1];
+   Dec(FCount);
+end;
+
+// Clear
+//
+procedure TTightStack.Clear;
+begin
+   FCount:=0;
+end;
+
+// Free
+//
+procedure TTightStack.Free;
+begin
+   FCount:=0;
+   FCapacity:=0;
+   FreeMem(FList);
+   FList:=nil;
 end;
 
 // ------------------------------------------------------------------
