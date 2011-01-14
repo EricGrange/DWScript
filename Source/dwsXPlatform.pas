@@ -55,6 +55,12 @@ type
       class function ReadAllBytes(const filename : String) : TBytes; static;
    end;
 
+   TdwsThread = class (TThread)
+      {$IFDEF VER200}
+      procedure Start;
+      {$ENDIF}
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -151,5 +157,20 @@ begin
    Result:=IOUTils.TFile.ReadAllBytes(filename);
 {$ENDIF}
 end;
+
+// ------------------
+// ------------------ TdwsThread ------------------
+// ------------------
+
+{$IFDEF VER200}
+
+// Start
+//
+procedure TdwsThread.Start;
+begin
+   Resume;
+end;
+
+{$ENDIF}
 
 end.

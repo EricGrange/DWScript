@@ -39,7 +39,7 @@ implementation
 
 type
 
-   TThreadedRunner = class(TThread)
+   TThreadedRunner = class(TdwsThread)
       Script : String;
       Exec : IdwsProgramExecution;
       Count : Integer;

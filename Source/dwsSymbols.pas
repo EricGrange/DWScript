@@ -168,7 +168,7 @@ type
          FList : PExprBaseListRec;
          FExec : TdwsExecution;
 
-         function GetExprBase(const x : Integer): TExprBase; inline;
+         function GetExprBase(const x : Integer): TExprBase; {$IFNDEF VER200}inline;{$ENDIF} // D2009 Compiler bug workaround
          procedure SetExprBase(const x : Integer; expr : TExprBase); inline;
          function GetCount : Integer; inline;
 
