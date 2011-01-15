@@ -4770,7 +4770,7 @@ begin
          end;
       end;
    end;
-   exec.Msgs.LastScriptError:=cNullPos;
+   exec.LastScriptError:=cNullPos;
 end;
 
 procedure TExceptExpr.Initialize;

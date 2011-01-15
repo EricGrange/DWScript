@@ -145,7 +145,7 @@ type
    TdwsCompiler = class
    private
       FCompilerOptions : TCompilerOptions;
-      FMsgs : TdwsMessageList;
+      FMsgs : TdwsCompileMessageList;
       FProg : TdwsProgram;
       FTok : TTokenizer;
       FBinaryOperators : TBinaryOperators;
@@ -521,6 +521,7 @@ var
    unitTable: TSymbolTable;
    codeText : String;
    unitSymbol : TUnitSymbol;
+   sourceFile : TSourceFile;
 begin
    FIsExcept := False;
    FFilter := Conf.Filter;
@@ -613,8 +614,10 @@ begin
          codeText := FFilter.Process(aCodeText, FMsgs)
       else codeText := aCodeText;
 
+      sourceFile:=FProg.RegisterSourceFile(MSG_MainModule, codeText);
+
       // Initialize tokenizer
-      FTok := TTokenizer.Create(codeText, MSG_MainModule, FProg.CompileMsgs);
+      FTok := TTokenizer.Create(sourceFile, FProg.CompileMsgs);
       try
          FTok.SwitchHandler := ReadSwitch;
 
@@ -749,7 +752,8 @@ end;
 
 class function TdwsCompiler.Evaluate(AContext: TdwsProgram; const AExpression: string): TNoPosExpr;
 var
-  OldProgMsgs: TdwsMessageList;
+   oldProgMsgs: TdwsCompileMessageList;
+   sourceFile : TSourceFile;
 begin
   { This will evaluate an expression by tokenizing it evaluating it in the
     Context provided. }
@@ -762,10 +766,13 @@ begin
       try
         OldProgMsgs := FProg.CompileMsgs;
 
-        FMsgs := TdwsMessageList.Create;
+        FMsgs := TdwsCompileMessageList.Create;
         FProg.CompileMsgs := FMsgs;
+        sourceFile:=TSourceFile.Create;
         try
-          FTok := TTokenizer.Create(AExpression, MSG_MainModule, FMsgs);
+          sourceFile.SourceCode:=AExpression;
+          sourceFile.SourceFile:=MSG_MainModule;
+          FTok := TTokenizer.Create(sourceFile, FMsgs);
           try
             try
               Result := ReadExpr;
@@ -789,6 +796,7 @@ begin
             FreeAndNil(FTok);
           end;
         finally
+          FreeAndNil(sourceFile);
           FProg.CompileMsgs := OldProgMsgs;
           FreeAndNil(FMsgs);
         end;
@@ -4101,6 +4109,7 @@ var
    conditionalTrue : Boolean;
    switchPos, condPos : TScriptPos;
    condExpr : TNoPosExpr;
+   sourceFile : TSourceFile;
 begin
    Result := nil;
 
@@ -4125,13 +4134,15 @@ begin
             scriptSource := GetScriptSource(name);
 
             if switch in [siFilterLong, siFilterShort] then begin
-               if Assigned(FFilter) then
+               if Assigned(FFilter) then begin
                   // Include file is processed by the filter
-                  FTok := TTokenizer.Create(FFilter.Process(scriptSource, FMsgs), name, FMsgs)
-               else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoFilterAvailable);
+                  sourceFile:=FProg.RegisterSourceFile(name, FFilter.Process(scriptSource, FMsgs));
+                  FTok := TTokenizer.Create(sourceFile, FMsgs)
+               end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoFilterAvailable);
             end else begin
                // Include file is included as-is
-               FTok := TTokenizer.Create(scriptSource, name, FMsgs);
+               sourceFile:=FProg.RegisterSourceFile(name, scriptSource);
+               FTok := TTokenizer.Create(sourceFile, FMsgs);
             end;
 
             try

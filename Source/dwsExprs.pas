@@ -373,7 +373,8 @@ type
          FInitExpr: TBlockInitExpr;
          FAddrGenerator: TAddrGeneratorRec;
          FGlobalAddrGenerator: TAddrGeneratorRec;
-         FCompileMsgs: TdwsMessageList;
+         FCompileMsgs: TdwsCompileMessageList;
+         FSourceFiles : TTightList;
          FParent: TdwsProgram;
          FResultType: TdwsResultType;
          FRoot: TdwsProgram;
@@ -435,6 +436,9 @@ type
          function GetTempAddr(DataSize: Integer = -1): Integer;
          function NextStackLevel(level : Integer) : Integer;
 
+         function RegisterSourceFile(const sourceFile : String; const sourceCode : String) : TSourceFile;
+         function GetSourceFile(const aSourceFile : String) : TSourceFile;
+
          property Compiler: TObject read FCompiler write FCompiler;
          property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
          property ConditionalDefines : TStringList read FConditionalDefines write SetConditionalDefines;
@@ -450,7 +454,7 @@ type
          property Expr: TExpr read FExpr write FExpr;
          property InitExpr: TBlockInitExpr read FInitExpr;
          property Level: Integer read GetLevel;
-         property CompileMsgs: TdwsMessageList read FCompileMsgs write FCompileMsgs;
+         property CompileMsgs: TdwsCompileMessageList read FCompileMsgs write FCompileMsgs;
          property Parent: TdwsProgram read FParent;
          property Root: TdwsProgram read FRoot write FRoot;
 
@@ -1664,7 +1668,7 @@ begin
          FProgramState:=psRunningStopped;
       end;
       on e: Exception do begin
-         FMsgs.AddError(e.Message+Msgs.LastScriptError.AsInfo);
+         FMsgs.AddError(e.Message+LastScriptError.AsInfo);
          FProgramState:=psRunningStopped;
       end;
    end;
@@ -1709,7 +1713,7 @@ begin
          on e: EScriptError do
             Msgs.AddError(e.Message);
          on e: Exception do
-            Msgs.AddError(e.Message+Msgs.LastScriptError.AsInfo);
+            Msgs.AddError(e.Message+LastScriptError.AsInfo);
       end;
 
    finally
@@ -1717,7 +1721,7 @@ begin
          terminator.Terminate;
    end;
 
-   Msgs.LastScriptError:=cNullPos;
+   LastScriptError:=cNullPos;
 end;
 
 // Stop
@@ -1759,7 +1763,7 @@ begin
       on e: EScriptError do
          Msgs.AddError(e.Message);
       on e: Exception do
-         Msgs.AddError(e.Message+Msgs.LastScriptError.AsInfo);
+         Msgs.AddError(e.Message+LastScriptError.AsInfo);
    end;
 
 end;
@@ -1939,7 +1943,7 @@ begin
 
    FResultType := ResultType;
 
-   FCompileMsgs := TdwsMessageList.Create;
+   FCompileMsgs := TdwsCompileMessageList.Create;
    FRoot := Self;
 
    // Create the Symbol Dictionary
@@ -1997,6 +2001,8 @@ begin
    FSourceList.Free;
    FUnifiedConstList.Free;
    FConditionalDefines.Free;
+   FSourceFiles.Clean;
+
    inherited;
 end;
 
@@ -2066,6 +2072,34 @@ begin
    finally
       FExecutionsLock.Leave;
    end;
+end;
+
+// RegisterSourceFile
+//
+function TdwsProgram.RegisterSourceFile(const sourceFile : String; const sourceCode : String) : TSourceFile;
+var
+   sf: TSourceFile;
+begin
+   sf:=GetSourceFile(SourceFile);
+   if not Assigned(sf) or (sf.SourceCode <> SourceCode) then begin
+      Result:=TSourceFile.Create;
+      Result.SourceFile:=SourceFile;
+      Result.SourceCode:=SourceCode;
+      FSourceFiles.Add(Result);
+   end else Result:=sf;
+end;
+
+// GetSourceFile
+//
+function TdwsProgram.GetSourceFile(const aSourceFile : String) : TSourceFile;
+var
+   i : Integer;
+begin
+   for i:=0 to FSourceFiles.Count-1 do begin
+      Result:=TSourceFile(FSourceFiles.List[i]);
+      if Result.SourceFile=aSourceFile then Exit;
+   end;
+   Result:=nil;
 end;
 
 // GetMsgs
@@ -3355,7 +3389,7 @@ begin
                on e: EScriptException do
                   raise;
             else
-               exec.Msgs.LastScriptError:=FPos;
+               exec.LastScriptError:=FPos;
                raise;
             end;
          finally
@@ -3376,7 +3410,7 @@ begin
          exec.DecRecursion;
       end;
    except
-      exec.Msgs.LastScriptError:=FPos;
+      exec.LastScriptError:=FPos;
       raise;
    end;
 end;
@@ -5452,7 +5486,7 @@ begin
       on e: EScriptException do
         raise;
       on e: Exception do begin
-        exec.Msgs.LastScriptError:=FPos;
+        exec.LastScriptError:=FPos;
         raise;
       end;
     end;
@@ -5527,7 +5561,7 @@ begin
       FResultData := FConnectorMember.Read(FBaseExpr.Eval(exec));
     Result := FResultData[0];
   except
-    exec.Msgs.LastScriptError:=FPos;
+    exec.LastScriptError:=FPos;
     raise;
   end;
 end;
@@ -5596,7 +5630,7 @@ begin
   try
     FConnectorMember.Write(Base^, dat);
   except
-    exec.Msgs.LastScriptError:=FPos;
+    exec.LastScriptError:=FPos;
     raise;
   end;
 end;

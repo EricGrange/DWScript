@@ -81,6 +81,7 @@ type
          FStatus : TExecutionStatusResult;
          FStack : TStackMixIn;
          FCallStack : TTightStack;
+         FLastScriptError : TScriptPos;
 
          FDebugger : IDebugger;
          FIsDebugging : Boolean;
@@ -116,6 +117,7 @@ type
          property Status : TExecutionStatusResult read FStatus write FStatus;
          property Stack : TStackMixIn read FStack;
          property CallStack : TTightStack read FCallStack;
+         property LastScriptError : TScriptPos read FLastScriptError write FLastScriptError;
 
          property ProgramState : TProgramState read FProgramState;
 
@@ -262,7 +264,7 @@ type
          constructor Create(const name : string; typ : TSymbol);
 
          procedure InitData(const data : TData; offset : Integer); virtual;
-         procedure Initialize(const msgs : TdwsMessageList); virtual;
+         procedure Initialize(const msgs : TdwsCompileMessageList); virtual;
          function BaseType : TTypeSymbol; virtual;
          procedure SetName(const newName : String);
 
@@ -299,7 +301,7 @@ type
    public
      constructor Create(const Name: string; Typ: TSymbol; const Value: Variant); overload;
      constructor Create(const Name: string; Typ: TSymbol; const Data: TData; Addr: Integer); overload;
-     procedure Initialize(const msgs : TdwsMessageList); override;
+     procedure Initialize(const msgs : TdwsCompileMessageList); override;
      property Data: TData read FData;
    end;
 
@@ -427,7 +429,7 @@ type
          function IsCompatible(typSym: TSymbol): Boolean; override;
          procedure AddParam(param: TParamSymbol); virtual;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
-         procedure Initialize(const msgs : TdwsMessageList); override;
+         procedure Initialize(const msgs : TdwsCompileMessageList); override;
          procedure InitData(const Data: TData; Offset: Integer); override;
 
          function ParamsDescription : String;
@@ -471,7 +473,7 @@ type
          FInternalFunction : TObject;
       public
          destructor Destroy; override;
-         procedure Initialize(const msgs : TdwsMessageList); override;
+         procedure Initialize(const msgs : TdwsCompileMessageList); override;
          property InternalFunction : TObject read FInternalFunction write FInternalFunction;
    end;
 
@@ -773,7 +775,7 @@ type
 
          procedure InheritFrom(Typ: TClassSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
-         procedure Initialize(const msgs : TdwsMessageList); override;
+         procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function IsCompatible(typSym: TSymbol): Boolean; override;
          function IsOfType(typSym : TSymbol) : Boolean; override;
          function InstanceSize : Integer; // avoids warning
@@ -811,7 +813,7 @@ type
    public
      constructor Create(const Name: string; Table: TSymbolTable; IsTableOwner: Boolean = False);
      destructor Destroy; override;
-     procedure Initialize(const msgs : TdwsMessageList); override;
+     procedure Initialize(const msgs : TdwsCompileMessageList); override;
      property Table: TSymbolTable read FTable write FTable;
    end;
 
@@ -888,7 +890,7 @@ type
 
          function FindSymbol(const Name: string): TSymbol; virtual;
 
-         procedure Initialize(const msgs : TdwsMessageList); virtual;
+         procedure Initialize(const msgs : TdwsCompileMessageList); virtual;
 
          property AddrGenerator: TAddrGenerator read FAddrGenerator;
          property Count: Integer read GetCount;
@@ -955,7 +957,7 @@ type
    public
      constructor Create(Parent: TStaticSymbolTable = nil; Reference: Boolean = True);
      destructor Destroy; override;
-     procedure Initialize(const msgs : TdwsMessageList); override;
+     procedure Initialize(const msgs : TdwsCompileMessageList); override;
      procedure InsertParent(Index: Integer; Parent: TSymbolTable); override;
      function RemoveParent(Parent: TSymbolTable): Integer; override;
      procedure _AddRef;
@@ -970,7 +972,7 @@ type
      destructor Destroy; override;
      function FindLocal(const Name: string): TSymbol; override;
      function FindSymbol(const Name: string): TSymbol; override;
-     procedure Initialize(const msgs : TdwsMessageList); override;
+     procedure Initialize(const msgs : TdwsCompileMessageList); override;
      property Parent: TStaticSymbolTable read FParent;
    end;
 
@@ -1175,7 +1177,7 @@ procedure TSymbol.InitData(const Data: TData; Offset: Integer);
 begin
 end;
 
-procedure TSymbol.Initialize(const msgs : TdwsMessageList);
+procedure TSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
 end;
 
@@ -1479,7 +1481,7 @@ end;
 
 // Initialize
 //
-procedure TFuncSymbol.Initialize(const msgs : TdwsMessageList);
+procedure TFuncSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
    inherited;
    FInternalParams.Initialize(msgs);
@@ -1598,7 +1600,7 @@ end;
 // ------------------ TMagicFuncSymbol ------------------
 // ------------------
 
-procedure TMagicFuncSymbol.Initialize(const msgs : TdwsMessageList);
+procedure TMagicFuncSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
    FInternalParams.Initialize(msgs);
 end;
@@ -2024,7 +2026,7 @@ end;
 
 // Initialize
 //
-procedure TClassSymbol.Initialize(const msgs : TdwsMessageList);
+procedure TClassSymbol.Initialize(const msgs : TdwsCompileMessageList);
 var
    i : Integer;
    methSym : TMethodSymbol;
@@ -2355,7 +2357,7 @@ begin
     Result := 'const ' + inherited GetDescription + ' = ' + VarToStr(FData[0]);
 end;
 
-procedure TConstSymbol.Initialize(const msgs : TdwsMessageList);
+procedure TConstSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
 end;
 
@@ -2468,7 +2470,7 @@ begin
    inherited;
 end;
 
-procedure TSymbolTable.Initialize(const msgs : TdwsMessageList);
+procedure TSymbolTable.Initialize(const msgs : TdwsCompileMessageList);
 var
    i : Integer;
    ptrList : PPointerList;
@@ -2826,7 +2828,7 @@ begin
   inherited;
 end;
 
-procedure TUnitSymbol.Initialize(const msgs : TdwsMessageList);
+procedure TUnitSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
   if not FInitialized then
   begin
@@ -3122,7 +3124,7 @@ begin
   inherited;
 end;
 
-procedure TStaticSymbolTable.Initialize(const msgs : TdwsMessageList);
+procedure TStaticSymbolTable.Initialize(const msgs : TdwsCompileMessageList);
 begin
   if not FInitialized then
   begin
@@ -3161,7 +3163,7 @@ begin
     Result := inherited FindSymbol(Name);
 end;
 
-procedure TLinkedSymbolTable.Initialize(const msgs : TdwsMessageList);
+procedure TLinkedSymbolTable.Initialize(const msgs : TdwsCompileMessageList);
 begin
   FParent.Initialize(msgs);
   inherited;

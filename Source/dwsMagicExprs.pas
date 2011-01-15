@@ -162,7 +162,7 @@ begin
    try
       Result:=FOnEval(@execRec);
    except
-      exec.Msgs.LastScriptError:=Pos;
+      exec.LastScriptError:=Pos;
       raise;
    end;
 end;
@@ -204,7 +204,7 @@ begin
    try
       Result:=FOnEval(@execRec);
    except
-      exec.Msgs.LastScriptError:=Pos;
+      exec.LastScriptError:=Pos;
       raise;
    end;
 end;
@@ -251,7 +251,7 @@ begin
    try
       FOnEval(@execRec, Result);
    except
-      exec.Msgs.LastScriptError:=Pos;
+      exec.LastScriptError:=Pos;
       raise;
    end;
 end;
@@ -298,7 +298,7 @@ begin
    try
       FOnEval(@execRec, Result);
    except
-      exec.Msgs.LastScriptError:=Pos;
+      exec.LastScriptError:=Pos;
       raise;
    end;
 end;
@@ -326,7 +326,7 @@ begin
    try
       FOnEval(@execRec);
    except
-      exec.Msgs.LastScriptError:=Pos;
+      exec.LastScriptError:=Pos;
       raise;
    end;
 end;

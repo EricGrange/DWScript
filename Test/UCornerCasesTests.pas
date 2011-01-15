@@ -117,10 +117,13 @@ end;
 procedure TCornerCasesTests.TokenizerSpecials;
 var
    t : TTokenizer;
-   msgs : TdwsMessageList;
+   msgs : TdwsCompileMessageList;
+   sourceFile : TSourceFile;
 begin
-   msgs:=TdwsMessageList.Create;
-   t:=TTokenizer.Create('@ @= %= ^ ^=', '', msgs);
+   msgs:=TdwsCompileMessageList.Create;
+   sourceFile:=TSourceFile.Create;
+   sourceFile.SourceCode:='@ @= %= ^ ^=';
+   t:=TTokenizer.Create(sourceFile, msgs);
    try
       CheckTrue(t.TestDelete(ttAT), '@');
       CheckTrue(t.TestDelete(ttAT_ASSIGN), '@=');
@@ -132,6 +135,7 @@ begin
       CheckTrue(t.TestDeleteAny([ttNAME])=ttNone, 'DeleteAny at end');
 
    finally
+      sourceFile.Free;
       t.Free;
       msgs.Free;
    end;

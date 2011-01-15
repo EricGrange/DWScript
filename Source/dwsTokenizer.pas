@@ -132,7 +132,7 @@ type
      FTokenBuf : TTokenBuffer;
      FDefaultPos: TScriptPos;
      FHotPos: TScriptPos;
-     FMsgs: TdwsMessageList;
+     FMsgs: TdwsCompileMessageList;
      FNextToken: TToken;
      FPos: TScriptPos;
      FPosPtr : PChar;
@@ -153,7 +153,7 @@ type
      procedure AddCompilerStopFmtTokenBuffer(const formatString : String);
 
    public
-     constructor Create(const Text, SourceFile: string; Msgs: TdwsMessageList);
+     constructor Create(sourceFile : TSourceFile; msgs : TdwsCompileMessageList);
      destructor Destroy; override;
      function GetToken: TToken; inline;
      function HasTokens: Boolean;
@@ -617,14 +617,14 @@ var
 
 { TTokenizer }
 
-constructor TTokenizer.Create(const Text, SourceFile: string; Msgs: TdwsMessageList);
+constructor TTokenizer.Create(sourceFile : TSourceFile; msgs : TdwsCompileMessageList);
 begin
-   FText := Text + (cLineTerminator+#0);
+   FText := sourceFile.SourceCode + (cLineTerminator+#0);
    FToken := nil;
    FMsgs := Msgs;
    FNextToken := nil;
    FDefaultPos := cNullPos;
-   FDefaultPos.SourceFile := FMsgs.RegisterSourceFile(SourceFile, Text);
+   FDefaultPos.SourceFile := sourceFile;
    FHotPos := FDefaultPos;
    FPos := FDefaultPos;
    FPosPtr := PChar(FText);
