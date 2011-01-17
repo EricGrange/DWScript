@@ -113,7 +113,7 @@ type
    TInternalMethod = class(TFunctionPrototype, IUnknown, ICallable)
       public
          constructor Create(MethKind: TMethodKind; Attributes: TMethodAttributes;
-                            bugFix: Integer; const methName: string; const MethParams: array of string;
+                            const methName: string; const MethParams: array of string;
                             const MethType: string; Cls: TClassSymbol; Table: TSymbolTable);
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); override;
          procedure Execute(info : TProgramInfo; var ExternalObject: TObject); virtual; abstract;

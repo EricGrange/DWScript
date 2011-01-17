@@ -1,0 +1,12 @@
+booh
+ [line: 13, column: 20]
+boom!
+ThisOneBombs [line: 3, column: 20]
+ [line: 22, column: 4]
+boom!
+ThisOneBombs [line: 3, column: 20]
+CallsABomb [line: 8, column: 4]
+ [line: 31, column: 4]
+class boom
+TMyClass.Boom [line: 46, column: 20]
+ [line: 51, column: 6]

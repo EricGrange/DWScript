@@ -380,7 +380,7 @@ type
          constructor CreatePos(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TNoPosExpr);
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-         procedure RaiseScriptError(e : EScriptError); override;
+         function ScriptPos : TScriptPos; override;
    end;
 
    TStringLengthExpr = class(TUnaryOpIntExpr)
@@ -2399,12 +2399,11 @@ begin
       Prog.CompileMsgs.AddCompilerStop(FPos, CPE_StringExpected);
 end;
 
-// RaiseScriptError
+// ScriptPos
 //
-procedure TStringArrayOpExpr.RaiseScriptError(e : EScriptError);
+function TStringArrayOpExpr.ScriptPos : TScriptPos;
 begin
-   e.Pos:=FPos;
-   inherited;
+   Result:=FPos;
 end;
 
 { TIsOpExpr }
@@ -4770,7 +4769,7 @@ begin
          end;
       end;
    end;
-   exec.LastScriptError:=cNullPos;
+   exec.ClearScriptError;
 end;
 
 procedure TExceptExpr.Initialize;

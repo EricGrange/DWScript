@@ -42,6 +42,7 @@ type
    IScriptObj = interface;
    TdwsExecution = class;
    TExprBase = class;
+   TExprBaseArray = array of TExprBase;
 
    // Interface for external debuggers
    IDebugger = interface
@@ -81,7 +82,8 @@ type
          FStatus : TExecutionStatusResult;
          FStack : TStackMixIn;
          FCallStack : TTightStack;
-         FLastScriptError : TScriptPos;
+         FLastScriptError : TExprBase;
+         FLastScriptCallStack : TExprBaseArray;
 
          FDebugger : IDebugger;
          FIsDebugging : Boolean;
@@ -117,7 +119,12 @@ type
          property Status : TExecutionStatusResult read FStatus write FStatus;
          property Stack : TStackMixIn read FStack;
          property CallStack : TTightStack read FCallStack;
-         property LastScriptError : TScriptPos read FLastScriptError write FLastScriptError;
+
+         procedure SetScriptError(const expr : TExprBase);
+         procedure ClearScriptError;
+
+         property LastScriptError : TExprBase read FLastScriptError;
+         property LastScriptCallStack : TExprBaseArray read FLastScriptCallStack;
 
          property ProgramState : TProgramState read FProgramState;
 
@@ -144,6 +151,9 @@ type
       procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); virtual; abstract;
       procedure AssignValueAsFloat(exec : TdwsExecution; var value : Double); virtual; abstract;
       procedure AssignValueAsString(exec : TdwsExecution; const value: String); virtual; abstract;
+
+      function ScriptPos : TScriptPos; virtual; abstract;
+      function ScriptLocation : String; virtual; abstract;
    end;
 
    // TExprBaseList
@@ -274,6 +284,8 @@ type
          function BaseTypeID : TBaseTypeID; virtual;
          function IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean;
          function IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean;
+
+         function QualifiedName : String; virtual;
 
          property Caption : String read GetCaption;
          property Description : String read GetDescription;
@@ -515,6 +527,7 @@ type
          procedure SetOverlap(meth: TMethodSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
          function IsCompatible(typSym: TSymbol): Boolean; override;
+         function QualifiedName : String; override;
 
          property ClassSymbol : TClassSymbol read FClassSymbol;
          property DeclarationPos : TScriptPos read FDeclarationPos write FDeclarationPos;
@@ -649,13 +662,15 @@ type
 
    // Member of a record
    TMemberSymbol = class(TValueSymbol)
-   protected
-     FRecordSymbol: TRecordSymbol;
-     FOffset: Integer;
-   public
-     procedure InitData(const Data: TData; Offset: Integer); override;
-     property Offset: Integer read FOffset write FOffset;
-     property RecordSymbol: TRecordSymbol read FRecordSymbol write FRecordSymbol;
+      protected
+         FRecordSymbol: TRecordSymbol;
+         FOffset: Integer;
+      public
+         procedure InitData(const Data: TData; Offset: Integer); override;
+         function QualifiedName : String; override;
+
+         property Offset: Integer read FOffset write FOffset;
+         property RecordSymbol: TRecordSymbol read FRecordSymbol write FRecordSymbol;
    end;
 
    // record member1: Integer; member2: Integer end;
@@ -676,41 +691,45 @@ type
 
    // Field of a script object
    TFieldSymbol = class(TValueSymbol)
-   protected
-     FClassSymbol: TClassSymbol;
-     FOffset: Integer;
-   public
-     property Offset: Integer read FOffset;
-     property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
+      protected
+         FClassSymbol: TClassSymbol;
+         FOffset: Integer;
+
+      public
+         function QualifiedName : String; override;
+         property Offset: Integer read FOffset;
+         property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
    end;
 
    // property X: Integer read FReadSym write FWriteSym;
    TPropertySymbol = class(TValueSymbol)
-   private
-     FClassSymbol: TClassSymbol;
-     FReadSym: TSymbol;
-     FWriteSym: TSymbol;
-     FArrayIndices: TSymbolTable;
-     FIndexSym: TSymbol;
-     FIndexValue: TData;
-   protected
-     function GetCaption: string; override;
-     function GetDescription: string; override;
-     function GetIsDefault: Boolean; virtual;
-     procedure AddParam(Param: TParamSymbol);
-   public
-     constructor Create(const Name: string; Typ: TSymbol);
-     destructor Destroy; override;
-     procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
-     procedure SetIndex(const Data: TData; Addr: Integer; Sym: TSymbol);
-     function GetArrayIndicesDescription: string;
-     property ArrayIndices: TSymbolTable read FArrayIndices;
-     property ReadSym: TSymbol read FReadSym write FReadSym;
-     property WriteSym: TSymbol read FWriteSym write FWriteSym;
-     property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
-     property IsDefault: Boolean read GetIsDefault;
-     property IndexValue: TData read FIndexValue;
-     property IndexSym: TSymbol read FIndexSym;
+      private
+         FClassSymbol: TClassSymbol;
+         FReadSym: TSymbol;
+         FWriteSym: TSymbol;
+         FArrayIndices: TSymbolTable;
+         FIndexSym: TSymbol;
+         FIndexValue: TData;
+      protected
+         function GetCaption: string; override;
+         function GetDescription: string; override;
+         function GetIsDefault: Boolean; virtual;
+         procedure AddParam(Param: TParamSymbol);
+      public
+         constructor Create(const Name: string; Typ: TSymbol);
+         destructor Destroy; override;
+         procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
+         procedure SetIndex(const Data: TData; Addr: Integer; Sym: TSymbol);
+         function GetArrayIndicesDescription: string;
+         function QualifiedName : String; override;
+
+         property ArrayIndices: TSymbolTable read FArrayIndices;
+         property ReadSym: TSymbol read FReadSym write FReadSym;
+         property WriteSym: TSymbol read FWriteSym write FWriteSym;
+         property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
+         property IsDefault: Boolean read GetIsDefault;
+         property IndexValue: TData read FIndexValue;
+         property IndexSym: TSymbol read FIndexSym;
    end;
 
    // class operator X (params) uses method;
@@ -726,6 +745,7 @@ type
 
       public
          constructor Create(tokenType : TTokenType);
+         function QualifiedName : String; override;
 
          property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
          property TokenType : TTokenType read FTokenType write FTokenType;
@@ -993,12 +1013,27 @@ type
      procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
    end;
 
+   // The script has to be stopped because of an error
+   EScriptError = class(Exception)
+      private
+         FScriptPos : TScriptPos;
+         FScriptCallStack : TExprBaseArray;
+
+      public
+         constructor CreatePosFmt(const pos : TScriptPos; const Msg: string; const Args: array of const);
+
+         property Pos : TScriptPos read FScriptPos write FScriptPos;
+         property ScriptCallStack : TExprBaseArray read FScriptCallStack write FScriptCallStack;
+   end;
+   EScriptErrorClass = class of EScriptError;
+
    // Is thrown by "raise" statements in script code
    EScriptException = class(Exception)
       private
          FTyp: TSymbol;
          FValue: Variant;
          FPos: TScriptPos;
+         FScriptCallStack : TExprBaseArray;
       public
          constructor Create(const Message: string; const ExceptionObj: IScriptObj; const Pos: TScriptPos); overload;
          constructor Create(const Message: string; const Value: Variant; Typ: TSymbol; const Pos: TScriptPos); overload;
@@ -1007,6 +1042,7 @@ type
          property Value: Variant read FValue;
          property Typ: TSymbol read FTyp;
          property Pos: TScriptPos read FPos;
+         property ScriptCallStack : TExprBaseArray read FScriptCallStack;
    end;
 
    // Is thrown by failed Assert() statements in script code
@@ -1218,6 +1254,13 @@ begin
    Result:=(FSize>1) and (BaseTypeID=aBaseTypeID);
 end;
 
+// QualifiedName
+//
+function TSymbol.QualifiedName : String;
+begin
+   Result:=Name;
+end;
+
 function TSymbol.BaseType: TTypeSymbol;
 begin
   Result := nil;
@@ -1313,6 +1356,17 @@ begin
    for x:=0 to FMembers.Count-1 do
       Result:=Result+'   '+FMembers[x].Name+' : '+FMembers[x].Typ.Name+';'#13#10;
    Result:=Result+'end;';
+end;
+
+// ------------------
+// ------------------ TFieldSymbol ------------------
+// ------------------
+
+// QualifiedName
+//
+function TFieldSymbol.QualifiedName : String;
+begin
+   Result:=ClassSymbol.QualifiedName+'.'+Name;
 end;
 
 { TFuncSymbol }
@@ -1794,6 +1848,13 @@ begin
   Result := inherited IsCompatible(typSym);
 end;
 
+// QualifiedName
+//
+function TMethodSymbol.QualifiedName : String;
+begin
+   Result:=ClassSymbol.QualifiedName+'.'+Name;
+end;
+
 // SetOverlap
 //
 procedure TMethodSymbol.SetOverlap(meth: TMethodSymbol);
@@ -1889,6 +1950,13 @@ begin
     end;
 end;
 
+// QualifiedName
+//
+function TPropertySymbol.QualifiedName : String;
+begin
+   Result:=ClassSymbol.QualifiedName+'.'+Name;
+end;
+
 function TPropertySymbol.GetDescription: string;
 begin
    Result := Format('property %s%s: %s', [Name, GetArrayIndicesDescription, Typ.Name]);
@@ -1925,6 +1993,13 @@ constructor TClassOperatorSymbol.Create(tokenType : TTokenType);
 begin
    inherited Create(cTokenStrings[tokenType], nil);
    FTokenType:=tokenType;
+end;
+
+// QualifiedName
+//
+function TClassOperatorSymbol.QualifiedName : String;
+begin
+   Result:=ClassSymbol.QualifiedName+'.'+Name;
 end;
 
 // GetCaption
@@ -2366,6 +2441,13 @@ end;
 procedure TMemberSymbol.InitData(const Data: TData; Offset: Integer);
 begin
   Typ.InitData(Data, Offset);
+end;
+
+// QualifiedName
+//
+function TMemberSymbol.QualifiedName : String;
+begin
+   Result:=RecordSymbol.QualifiedName+'.'+Name;
 end;
 
 { TDataSymbol }
@@ -3211,7 +3293,21 @@ begin
   Result := BaseType = typSym.BaseType;
 end;
 
-{ EScriptException }
+// ------------------
+// ------------------ EScriptError ------------------
+// ------------------
+
+// CreatePosFmt
+//
+constructor EScriptError.CreatePosFmt(const pos : TScriptPos; const Msg: string; const Args: array of const);
+begin
+   inherited CreateFmt(msg, args);
+   FScriptPos:=pos;
+end;
+
+// ------------------
+// ------------------ EScriptException ------------------
+// ------------------
 
 constructor EScriptException.Create(const Message: string; const Value: Variant;
   Typ: TSymbol; const Pos: TScriptPos);
@@ -3265,8 +3361,10 @@ end;
 procedure TdwsExecution.IncRecursion(caller : TExprBase);
 begin
    FCallStack.Push(caller);
-   if FCallStack.Count>=FStack.MaxRecursionDepth then
+   if FCallStack.Count>=FStack.MaxRecursionDepth then begin
+      SetScriptError(caller);
       raise EStackException.CreateFmt(RTE_MaximalRecursionExceeded, [FStack.MaxRecursionDepth]);
+   end;
 end;
 
 // DecRecursion
@@ -3274,6 +3372,27 @@ end;
 procedure TdwsExecution.DecRecursion;
 begin
    FCallStack.Pop;
+end;
+
+// SetScriptError
+//
+procedure TdwsExecution.SetScriptError(const expr : TExprBase);
+var
+   i : Integer;
+begin
+   if FLastScriptError<>nil then Exit;
+   FLastScriptError:=expr;
+   SetLength(FLastScriptCallStack, FCallStack.Count);
+   for i:=0 to FCallStack.Count-1 do
+      FLastScriptCallStack[i]:=TExprBase(FCallStack.List[FCallStack.Count-1-i]);
+end;
+
+// ClearScriptError
+//
+procedure TdwsExecution.ClearScriptError;
+begin
+   FLastScriptError:=nil;
+   SetLength(FLastScriptCallStack, 0);
 end;
 
 // GetDebugger

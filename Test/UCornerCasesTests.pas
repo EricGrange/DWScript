@@ -315,12 +315,17 @@ var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
 begin
-   FCompiler.Config.MaxRecursionDepth:=20;
+   FCompiler.Config.MaxRecursionDepth:=5;
 
    prog:=FCompiler.Compile('procedure Dummy; begin Dummy; end; Dummy;');
    CheckEquals('', prog.Msgs.AsInfo, 'compile');
    exec:=prog.Execute;
-   CheckEquals('Runtime Error: Maximal recursion exceeded (20 calls) [line: 1, column: 36]'#13#10,
+   CheckEquals('Runtime Error: Maximal recursion exceeded (5 calls) in Dummy [line: 1, column: 24]'#13#10
+               +'Dummy [line: 1, column: 24]'#13#10
+               +'Dummy [line: 1, column: 24]'#13#10
+               +'Dummy [line: 1, column: 24]'#13#10
+               +'Dummy [line: 1, column: 24]'#13#10
+               +' [line: 1, column: 36]'#13#10,
                exec.Msgs.AsInfo, 'stack max recursion');
 
    FCompiler.Config.MaxDataSize:=cDefaultMaxRecursionDepth;
@@ -333,12 +338,15 @@ var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
 begin
-   FCompiler.Config.MaxDataSize:=1024;
+   FCompiler.Config.MaxDataSize:=32;
 
    prog:=FCompiler.Compile('procedure Dummy; var i : Integer; begin Dummy; end; Dummy;');
    CheckEquals('', prog.Msgs.AsInfo, 'compile');
    exec:=prog.Execute;
-   CheckEquals('Runtime Error: Maximal data size exceeded (64 Variants) [line: 1, column: 53]'#13#10,
+   CheckEquals('Runtime Error: Maximal data size exceeded (2 Variants) in Dummy [line: 1, column: 41]'#13#10
+               +'Dummy [line: 1, column: 41]'#13#10
+               +'Dummy [line: 1, column: 41]'#13#10
+               +' [line: 1, column: 53]'#13#10,
                exec.Msgs.AsInfo, 'stack overflow');
 
    FCompiler.Config.MaxDataSize:=0;

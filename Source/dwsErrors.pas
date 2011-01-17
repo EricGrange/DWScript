@@ -139,7 +139,6 @@ type
 
          procedure AddInfo(const Text: String);
          procedure AddError(const Text: String);
-         procedure AddErrorStop(const Text: String);
 
          procedure Clear;
 
@@ -186,8 +185,8 @@ type
 
    EScriptStopped = class (Exception) end;
 
-   // The script has to be stopped because of an error
-   EScriptError = class(Exception)
+   // The compilation has to be stopped because of an error
+   ECompileError = class(Exception)
       private
          FScriptPos : TScriptPos;
 
@@ -196,9 +195,6 @@ type
 
          property Pos : TScriptPos read FScriptPos write FScriptPos;
    end;
-   EScriptErrorClass = class of EScriptError;
-
-   ECompileError = class(EScriptError);
 
    EReraise = class(Exception);
 
@@ -301,12 +297,12 @@ begin
 end;
 
 // ------------------
-// ------------------ EScriptError ------------------
+// ------------------ ECompileError ------------------
 // ------------------
 
 // CreatePosFmt
 //
-constructor EScriptError.CreatePosFmt(const pos : TScriptPos; const Msg: string; const Args: array of const);
+constructor ECompileError.CreatePosFmt(const pos : TScriptPos; const Msg: string; const Args: array of const);
 begin
    inherited CreateFmt(msg, args);
    FScriptPos:=pos;
@@ -376,14 +372,6 @@ procedure TdwsMessageList.AddError(const Text: String);
 begin
    AddMsg(TErrorMessage.Create(Self, Text));
    FHasErrors:=True;
-end;
-
-// AddErrorStop
-//
-procedure TdwsMessageList.AddErrorStop(const Text: String);
-begin
-   AddError(Text);
-   raise EScriptError.Create('')
 end;
 
 // AsInfo

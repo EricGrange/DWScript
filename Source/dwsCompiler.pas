@@ -337,25 +337,38 @@ const
                                       ttTIMES_ASSIGN, ttDIVIDE_ASSIGN];
 
 type
-  TExceptionCreateMethod = class(TInternalMethod)
-    procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
-  end;
 
-  TDelphiExceptionCreateMethod = class(TInternalMethod)
-    procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
-  end;
+   TExceptionContext = class
+      CallStack : TExprBaseArray;
+   end;
 
-  TParamFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
-  end;
+   TExceptionCreateMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
 
-  TParamStrFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
-  end;
+   TExceptionDestroyMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
 
-  TParamCountFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
-  end;
+   TExceptionStackTraceMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
+   TDelphiExceptionCreateMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
+   TParamFunc = class(TInternalFunction)
+      procedure Execute(info : TProgramInfo); override;
+   end;
+
+   TParamStrFunc = class(TInternalFunction)
+      procedure Execute(info : TProgramInfo); override;
+   end;
+
+   TParamCountFunc = class(TInternalFunction)
+      procedure Execute(info : TProgramInfo); override;
+   end;
 
 // StringToSwitchInstruction
 //
@@ -4154,7 +4167,7 @@ begin
                FTok := oldTok;
             end;
          except
-            on e: EScriptError do
+            on e: ECompileError do
                raise;
             on e: Exception do
                FMsgs.AddCompilerStop(FTok.HotPos, e.Message);
@@ -4716,12 +4729,14 @@ var
    clsMeta : TClassOfSymbol;
    meth : TMethodSymbol;
    varSym : TBaseSymbol;
+   typString : TBaseSymbol;
 begin
    // Create base data types
    SystemTable.AddSymbol(TBaseSymbol.Create(SYS_BOOLEAN, typBooleanID, False));
    SystemTable.AddSymbol(TBaseSymbol.Create(SYS_FLOAT, typFloatID, 0.0));
    SystemTable.AddSymbol(TBaseSymbol.Create(SYS_INTEGER, typIntegerID, VarAsType(0, varInteger)));
-   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_STRING, typStringID, ''));
+   typString:=TBaseSymbol.Create(SYS_STRING, typStringID, '');
+   SystemTable.AddSymbol(typString);
 
    varSym := TBaseSymbol.Create(SYS_VARIANT, typVariantID, Unassigned);
    SystemTable.AddSymbol(varSym);
@@ -4754,10 +4769,13 @@ begin
    // Create class Exception
    clsException := TClassSymbol.Create(SYS_EXCEPTION);
    clsException.InheritFrom(clsObject);
-   clsException.AddField(TFieldSymbol.Create(SYS_EXCEPTION_MESSAGE,
-    SystemTable.FindSymbol(SYS_STRING)));
-   TExceptionCreateMethod.Create(mkConstructor, [], 0, SYS_TOBJECT_CREATE,
+   clsException.AddField(TFieldSymbol.Create(SYS_EXCEPTION_MESSAGE, typString));
+   TExceptionCreateMethod.Create(mkConstructor, [], SYS_TOBJECT_CREATE,
                                  ['Msg', SYS_STRING], '', clsException, SystemTable);
+   TExceptionDestroyMethod.Create(mkDestructor, [maOverride], SYS_TOBJECT_DESTROY,
+                                 [], '', clsException, SystemTable);
+   TExceptionStackTraceMethod.Create(mkFunction, [], SYS_EXCEPTION_STACKTRACE,
+                                 [], SYS_STRING, clsException, SystemTable);
    SystemTable.AddSymbol(clsException);
 
    // Create class EAssertionFailed
@@ -4768,9 +4786,8 @@ begin
    // Create class EDelphi
    clsDelphiException := TClassSymbol.Create(SYS_EDELPHI);
    clsDelphiException.InheritFrom(clsException);
-   clsDelphiException.AddField(TFieldSymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS,
-                                                   SystemTable.FindSymbol(SYS_STRING)));
-   TDelphiExceptionCreateMethod.Create(mkConstructor, [], 0, SYS_TOBJECT_CREATE,
+   clsDelphiException.AddField(TFieldSymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS, typString));
+   TDelphiExceptionCreateMethod.Create(mkConstructor, [], SYS_TOBJECT_CREATE,
                                        ['Cls', SYS_STRING, 'Msg', SYS_STRING], '', clsDelphiException, SystemTable);
    SystemTable.AddSymbol(clsDelphiException);
 
@@ -4870,11 +4887,46 @@ begin
    FConditionals.Assign(val);
 end;
 
-{ TExceptionCreateMethod }
+// ------------------
+// ------------------ TExceptionCreateMethod ------------------
+// ------------------
 
-procedure TExceptionCreateMethod.Execute;
+// Execute
+//
+procedure TExceptionCreateMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+var
+   context : TExceptionContext;
 begin
-  Info.ValueAsString[SYS_EXCEPTION_MESSAGE] := Info.ValueAsString['Msg'];
+   Info.ValueAsString[SYS_EXCEPTION_MESSAGE]:=Info.ValueAsString['Msg'];
+
+   context:=TExceptionContext.Create;
+   context.CallStack:=info.Execution.GetCallStack;
+   ExternalObject:=context;
+end;
+
+// ------------------
+// ------------------ TExceptionDestroyMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TExceptionDestroyMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+begin
+   FreeAndNil(ExternalObject);
+end;
+
+// ------------------
+// ------------------ TExceptionStackTraceMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TExceptionStackTraceMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+var
+   context : TExceptionContext;
+begin
+   context:=ExternalObject as TExceptionContext;
+   Info.ResultAsString:=info.Execution.CallStackToString(context.CallStack);
 end;
 
 { TDelphiExceptionCreateMethod }
