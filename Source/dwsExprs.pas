@@ -44,6 +44,7 @@ type
   TSymbolPositionList = class;
   TFuncExprBase = class;
   TScriptObj = class;
+  TSourceConditions = class;
 
   TExprList = array[0..MaxListSize - 1] of TExpr;
   PExprList = ^TExprList;
@@ -351,6 +352,8 @@ type
 
          function GetCallStack : TExprBaseArray;
          function CallStackToString(const callStack : TExprBaseArray) : String;
+         procedure RaiseAssertionFailed(const msg : String; const scriptPos : TScriptPos);
+         procedure RaiseAssertionFailedFmt(const fmt : String; const args : array of const; const scriptPos : TScriptPos);
 
          function AcquireProgramInfo(funcSym : TFuncSymbol) : TProgramInfo;
          procedure ReleaseProgramInfo(info : TProgramInfo);
@@ -477,25 +480,33 @@ type
          property SourceList: TScriptSourceList read FSourceList;
    end;
 
-  // Functions callable from a script program implement this interfaces
-  ICallable = interface(IExecutable)
-    ['{8D534D15-4C6B-11D5-8DCB-0000216D9E86}']
-    procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol);
-  end;
+   // Functions callable from a script program implement this interfaces
+   ICallable = interface(IExecutable)
+      ['{8D534D15-4C6B-11D5-8DCB-0000216D9E86}']
+      procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol);
+   end;
 
-  // A script procedure
-  TProcedure = class(TdwsProgram, IUnknown, ICallable)
-  private
-    FFunc: TFuncSymbol;
-  public
-    constructor Create(Parent: TdwsProgram);
-    destructor Destroy; override;
-    procedure AssignTo(sym: TFuncSymbol);
-    procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol);
-    procedure InitSymbol(Symbol: TSymbol);
-    procedure InitExpression(Expr: TExprBase);
-    property Func: TFuncSymbol read FFunc write FFunc;
-  end;
+   // A script procedure
+   TProcedure = class (TdwsProgram, IUnknown, ICallable)
+      private
+         FFunc : TFuncSymbol;
+         FPreConditions : TSourceConditions;
+         FPostConditions : TSourceConditions;
+
+      public
+         constructor Create(Parent: TdwsProgram);
+         destructor Destroy; override;
+
+         procedure AssignTo(sym: TFuncSymbol);
+         procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol);
+         procedure InitSymbol(Symbol: TSymbol);
+         procedure InitExpression(Expr: TExprBase);
+
+         property Func: TFuncSymbol read FFunc write FFunc;
+
+         property PreConditions : TSourceConditions read FPreConditions write FPreConditions;
+         property PostConditions : TSourceConditions read FPostConditions write FPostConditions;
+   end;
 
    // Base class of all expressions attached to a program
    TNoPosExpr = class(TExprBase)
@@ -513,7 +524,7 @@ type
          function IsStringValue : Boolean;
          function IsVariantValue : Boolean;
 
-         function GetBaseType: TTypeSymbol;
+         function GetBaseType : TTypeSymbol;
 
          procedure EvalNoResult(exec : TdwsExecution); virtual;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -554,7 +565,7 @@ type
          property BaseType: TTypeSymbol read GetBaseType;
    end;
 
-  TNoPosExprClass = class of TNoPosExpr;
+   TNoPosExprClass = class of TNoPosExpr;
 
    // TExpr
    //
@@ -583,10 +594,10 @@ type
     function OptimizeToNoResultExpr(exec : TdwsExecution) : TNoResultExpr;
   end;
 
-  // Does nothing! E. g.: "for x := 1 to 10 do {TNullExpr};"
-  TNullExpr = class(TNoResultExpr)
-    procedure EvalNoResult(exec : TdwsExecution); override;
-  end;
+   // Does nothing! E. g.: "for x := 1 to 10 do {TNullExpr};"
+   TNullExpr = class(TNoResultExpr)
+      procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
 
    // statement; statement; statement;
    TBlockExprBase = class(TNoResultExpr)
@@ -763,6 +774,55 @@ type
     function GetData(exec : TdwsExecution) : TData; override;
     function GetAddr(exec : TdwsExecution) : Integer; override;
   end;
+
+   TSourceCondition = class
+      private
+         FPos : TScriptPos;
+         FTest : TNoPosExpr;
+         FMsg : TNoPosExpr;
+
+      public
+         constructor Create(const pos : TScriptPos; aTest, aMsg : TNoPosExpr);
+         destructor Destroy; override;
+
+         property Pos : TScriptPos read FPos write FPos;
+         property Test : TNoPosExpr read FTest;
+         property Msg : TNoPosExpr read FMsg write FMsg;
+   end;
+
+   TSourceConditions = class
+      private
+         FProg : TProcedure;
+         FItems : TTightList;
+         FAncestor : TSourceConditions;
+
+      public
+         constructor Create(aProg : TProcedure);
+         destructor Destroy; override;
+
+         procedure AddCondition(condition : TSourceCondition);
+
+         procedure RaiseConditionFailed(exec : TdwsExecution; failed : TSourceCondition); virtual; abstract;
+         function Test(exec : TdwsExecution) : TSourceCondition;
+         procedure EvalNoresult(exec : TdwsExecution); virtual;
+
+         property Ancestor : TSourceConditions read FAncestor write FAncestor;
+   end;
+   TSourceConditionsClass = class of TSourceConditions;
+
+   TSourcePreConditions = class (TSourceConditions)
+      public
+         procedure RaiseConditionFailed(exec : TdwsExecution; failed : TSourceCondition); override;
+   end;
+   TSourcePostConditions = class (TSourceConditions)
+      public
+         procedure RaiseConditionFailed(exec : TdwsExecution; failed : TSourceCondition); override;
+   end;
+
+   TSourceMethodPreConditions = class (TSourceConditions)
+   end;
+   TSourceMethodPostConditions = class (TSourceConditions)
+   end;
 
   TConnectorCallExpr = class(TPosDataExpr)
   protected
@@ -1820,6 +1880,25 @@ begin
    end;
 end;
 
+// RaiseAssertionFailed
+//
+procedure TdwsProgramExecution.RaiseAssertionFailed(const msg : String; const scriptPos : TScriptPos);
+begin
+   RaiseAssertionFailedFmt(RTE_AssertionFailed, [scriptPos.AsInfo, msg], scriptPos);
+end;
+
+// RaiseAssertionFailedFmt
+//
+procedure TdwsProgramExecution.RaiseAssertionFailedFmt(const fmt : String; const args : array of const; const scriptPos : TScriptPos);
+var
+   exceptObj : IScriptObj;
+   fmtMsg : String;
+begin
+   fmtMsg:=Format(fmt, args);
+   exceptObj:=IScriptObj(IUnknown(ProgramInfo.Vars[SYS_EASSERTIONFAILED].Method[SYS_TOBJECT_CREATE].Call([fmtMsg]).Value));
+   raise EScriptAssertionFailed.Create(fmtMsg, exceptObj, scriptPos)
+end;
+
 // AcquireProgramInfo
 //
 function TdwsProgramExecution.AcquireProgramInfo(funcSym : TFuncSymbol) : TProgramInfo;
@@ -2280,6 +2359,8 @@ begin
    FRootTable.Free;
    FExpr.Free;
    FInitExpr.Free;
+   FPreConditions.Free;
+   FPostConditions.Free;
 end;
 
 procedure TProcedure.AssignTo(sym: TFuncSymbol);
@@ -2300,7 +2381,12 @@ begin
    // Run the procedure
    try
       exec.Status:=esrNone;
+
+      if FPreConditions<>nil then
+         FPreConditions.EvalNoresult(exec);
+
       FInitExpr.EvalNoResult(exec);
+
       FExpr.EvalNoResult(exec);
 
       if exec.Status<>esrNone then begin
@@ -2311,6 +2397,9 @@ begin
             exec.Status:=esrNone;
          end;
       end;
+
+      if FPostConditions<>nil then
+         FPostConditions.EvalNoresult(exec);
 
    finally
       // Free stack space for local variables
@@ -6763,6 +6852,112 @@ end;
 function TNoResultWrapperExpr.IsConstant : Boolean;
 begin
    Result:=Expr.IsConstant;
+end;
+
+// ------------------
+// ------------------ TSourceCondition ------------------
+// ------------------
+
+// Create
+//
+constructor TSourceCondition.Create(const pos : TScriptPos; aTest, aMsg : TNoPosExpr);
+begin
+   inherited Create;
+   FPos:=pos;
+   FTest:=aTest;
+   FMsg:=aMsg;
+end;
+
+// Destroy
+//
+destructor TSourceCondition.Destroy;
+begin
+   inherited;
+   FTest.Free;
+   FMsg.Free;
+end;
+
+// ------------------
+// ------------------ TSourceConditions ------------------
+// ------------------
+
+// Create
+//
+constructor TSourceConditions.Create(aProg : TProcedure);
+begin
+   inherited Create;
+   FProg:=aProg;
+end;
+
+// Destroy
+//
+destructor TSourceConditions.Destroy;
+begin
+   inherited;
+   FItems.Clean;
+end;
+
+// AddCondition
+//
+procedure TSourceConditions.AddCondition(condition : TSourceCondition);
+begin
+   FItems.Add(condition);
+end;
+
+// Test
+//
+function TSourceConditions.Test(exec : TdwsExecution) : TSourceCondition;
+var
+   i : Integer;
+   ptrList : PPointerList;
+begin
+   ptrList:=FItems.List;
+   for i:=0 to FItems.Count-1 do begin
+      Result:=TSourceCondition(ptrList[i]);
+      if not Result.Test.EvalAsBoolean(exec) then Exit;
+   end;
+   Result:=nil;
+end;
+
+// EvalNoresult
+//
+procedure TSourceConditions.EvalNoresult(exec : TdwsExecution);
+var
+   failed : TSourceCondition;
+begin
+   failed:=Test(exec);
+   if failed<>nil then
+      RaiseConditionFailed(exec, failed);
+end;
+
+// ------------------
+// ------------------ TSourcePreConditions ------------------
+// ------------------
+
+// RaiseConditionFailed
+//
+procedure TSourcePreConditions.RaiseConditionFailed(exec : TdwsExecution; failed : TSourceCondition);
+var
+   msg : String;
+begin
+   failed.Msg.EvalAsString(exec, msg);
+   (exec as TdwsProgramExecution).RaiseAssertionFailedFmt(
+      RTE_PreConditionFailed, [FProg.Func.QualifiedName, failed.Pos.AsInfo, msg], failed.Pos);
+end;
+
+// ------------------
+// ------------------ TSourcePostConditions ------------------
+// ------------------
+
+// RaiseConditionFailed
+//
+procedure TSourcePostConditions.RaiseConditionFailed(exec : TdwsExecution; failed : TSourceCondition);
+var
+   msg : String;
+begin
+   failed.Msg.EvalAsString(exec, msg);
+   (exec as TdwsProgramExecution).RaiseAssertionFailedFmt(
+      RTE_PostConditionFailed, [FProg.Func.QualifiedName, failed.Pos.AsInfo, msg], failed.Pos);
 end;
 
 end.

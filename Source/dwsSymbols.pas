@@ -224,12 +224,23 @@ type
    TUnSortedSymbolTable = class;
    TTypeSymbol = class;
    TParamsSymbolTable = class;
+   TConditionsSymbolTable = class;
 
    // All functions callable from the script implement this interface
    IExecutable = interface
       ['{8D534D18-4C6B-11D5-8DCB-0000216D9E86}']
       procedure InitSymbol(Symbol: TSymbol);
       procedure InitExpression(Expr: TExprBase);
+   end;
+
+   IBooleanEvalable = interface (IExecutable)
+      ['{6D0552ED-6FBD-4BC7-AADA-8D8F8DBDF29B}']
+      function EvalAsBoolean(exec : TdwsExecution) : Boolean;
+   end;
+
+   IStringEvalable = interface (IExecutable)
+      ['{6D0552ED-6FBD-4BC7-AADA-8D8F8DBDF29B}']
+      procedure EvalAsString(exec : TdwsExecution; var Result : String);
    end;
 
    TAddrGeneratorSign = (agsPositive, agsNegative);
@@ -410,6 +421,53 @@ type
    end;
    TParamArray = array of TParamRec;
 
+   // Condition, as part of contracts
+   TConditionSymbol = class (TSymbol)
+      private
+         FSourcePosition : TScriptPos;
+         FCondition : IBooleanEvalable;
+         FMessage : IStringEvalable;
+
+      protected
+
+      public
+         property SourcePosition : TScriptPos read FSourcePosition write FSourcePosition;
+         property Condition : IBooleanEvalable read FCondition write FCondition;
+         property Message : IStringEvalable read FMessage write FMessage;
+   end;
+
+   TPreConditionSymbol = class (TConditionSymbol)
+      private
+
+      protected
+
+      public
+
+   end;
+
+   TPostConditionSymbol = class (TConditionSymbol)
+      private
+
+      protected
+
+      public
+
+   end;
+
+   TClassInvariantSymbol = class (TConditionSymbol)
+      private
+
+      protected
+
+      public
+
+   end;
+
+   TFuncSymbolFlag = (fsfStateless,
+                      fsfHasPreConditions, fsfHasInheritedPreConditions,
+                      fsfHasPostConditions, fsfHasInheritedPostConditions);
+   TFuncSymbolFlags = set of TFuncSymbolFlag;
+
    // A script function / procedure: procedure X(param: Integer);
    TFuncSymbol = class(TTypeSymbol)
       protected
@@ -418,19 +476,22 @@ type
          FInternalParams : TSymbolTable;
          FDeprecatedMessage : String;
          FForwardPosition : PScriptPos;
-         FIsStateless : Boolean;
-         FKind : TFuncKind;
          FParams : TParamsSymbolTable;
          FResult : TDataSymbol;
+         FConditions : TConditionsSymbolTable;
+         FFlags : TFuncSymbolFlags;
+         FKind : TFuncKind;
 
          procedure SetType(const Value: TSymbol); virtual;
          function GetCaption: string; override;
          function GetIsForwarded : Boolean;
          function GetDescription: string; override;
-         function GetLevel: SmallInt;
-         function GetParamSize: Integer;
+         function GetLevel: SmallInt; inline;
+         function GetParamSize: Integer; inline;
          function GetIsDeprecated : Boolean;
          procedure SetIsDeprecated(const val : Boolean);
+         function GetIsStateless : Boolean; inline;
+         procedure SetIsStateless(const val : Boolean);
 
       public
          constructor Create(const Name: string; FuncKind: TFuncKind; FuncLevel: SmallInt);
@@ -438,13 +499,13 @@ type
 
          constructor Generate(Table: TSymbolTable; const FuncName: string;
                              const FuncParams: TParamArray; const FuncType: string);
-         function IsCompatible(typSym: TSymbol): Boolean; override;
+         function  IsCompatible(typSym: TSymbol): Boolean; override;
          procedure AddParam(param: TParamSymbol); virtual;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          procedure InitData(const Data: TData; Offset: Integer); override;
 
-         function ParamsDescription : String;
+         function  ParamsDescription : String;
 
          procedure SetForwardedPos(const pos : TScriptPos);
          procedure ClearIsForwarded;
@@ -452,7 +513,7 @@ type
          property Executable: IExecutable read FExecutable write FExecutable;
          property DeprecatedMessage : String read FDeprecatedMessage write FDeprecatedMessage;
          property IsDeprecated : Boolean read GetIsDeprecated write SetIsDeprecated;
-         property IsStateless : Boolean read FIsStateless write FIsStateless;
+         property IsStateless : Boolean read GetIsStateless write SetIsStateless;
          property IsForwarded : Boolean read GetIsForwarded;
          property Kind: TFuncKind read FKind write FKind;
          property Level: SmallInt read GetLevel;
@@ -461,6 +522,7 @@ type
          property Result: TDataSymbol read FResult;
          property Typ: TSymbol read FTyp write SetType;
          property InternalParams: TSymbolTable read FInternalParams;
+         property Conditions : TConditionsSymbolTable read FConditions;
    end;
 
    TSourceFuncSymbol = class(TFuncSymbol)
@@ -500,7 +562,6 @@ type
          FClassSymbol : TClassSymbol;
          FParentMeth : TMethodSymbol;
          FSelfSym : TDataSymbol;
-         FDeclarationPos : TScriptPos;
          FAttributes : TMethodAttributes;
 
       protected
@@ -530,7 +591,6 @@ type
          function QualifiedName : String; override;
 
          property ClassSymbol : TClassSymbol read FClassSymbol;
-         property DeclarationPos : TScriptPos read FDeclarationPos write FDeclarationPos;
          property IsAbstract : Boolean read GetIsAbstract write SetIsAbstract;
          property IsVirtual : Boolean read GetIsVirtual write SetIsVirtual;
          property IsOverride : Boolean read GetIsOverride write SetIsOverride;
@@ -542,10 +602,15 @@ type
 
    TSourceMethodSymbol = class(TMethodSymbol)
       private
+         FDeclarationPos : TScriptPos;
          FSourcePosition : TScriptPos;
+
       protected
          function GetSourcePosition : TScriptPos; override;
          procedure SetSourcePosition(const val : TScriptPos); override;
+
+      public
+         property DeclarationPos : TScriptPos read FDeclarationPos write FDeclarationPos;
    end;
 
    TNameSymbol = class(TTypeSymbol)
@@ -885,8 +950,8 @@ type
          function GetParents(Index: Integer): TSymbolTable;
 
       protected
-         function GetSymbol(Index: Integer): TSymbol;
-         function GetCount : Integer;
+         function GetSymbol(Index: Integer): TSymbol; inline;
+         function GetCount : Integer; inline;
 
          procedure SortSymbols(minIndex, maxIndex : Integer);
          function FindLocalSorted(const name: string) : TSymbol;
@@ -909,6 +974,8 @@ type
          procedure Clear;
 
          function FindSymbol(const Name: string): TSymbol; virtual;
+
+         function HasClass(const aClass : TSymbolClass) : Boolean;
 
          procedure Initialize(const msgs : TdwsCompileMessageList); virtual;
 
@@ -934,10 +1001,13 @@ type
    // TUnSortedSymbolTable
    //
    TUnSortedSymbolTable = class (TSymbolTable)
-      private
-
       public
          function FindLocal(const Name: string): TSymbol; override;
+   end;
+
+   // TConditionsSymbolTable
+   //
+   TConditionsSymbolTable = class (TUnSortedSymbolTable)
    end;
 
    // TParamsSymbolTable
@@ -1539,6 +1609,7 @@ procedure TFuncSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
    inherited;
    FInternalParams.Initialize(msgs);
+//   FConditions.Initialize(msgs);
    if Assigned(FExecutable) then
       FExecutable.InitSymbol(Self)
    else if Level>=0 then
@@ -1571,6 +1642,22 @@ begin
    if val then
       FDeprecatedMessage:='!'
    else FDeprecatedMessage:='';
+end;
+
+// GetIsStateless
+//
+function TFuncSymbol.GetIsStateless : Boolean;
+begin
+   Result:=(fsfStateless in FFlags);
+end;
+
+// SetIsStateless
+//
+procedure TFuncSymbol.SetIsStateless(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, fsfStateless)
+   else Exclude(FFlags, fsfStateless);
 end;
 
 function TFuncSymbol.IsCompatible(typSym: TSymbol): Boolean;
@@ -2119,7 +2206,7 @@ begin
             if Assigned(methSym.FExecutable) then
                methSym.FExecutable.InitSymbol(FMembers[i])
             else begin
-               msgs.AddCompilerErrorFmt(methSym.DeclarationPos, CPE_MethodNotImplemented,
+               msgs.AddCompilerErrorFmt((methSym as TSourceMethodSymbol).DeclarationPos, CPE_MethodNotImplemented,
                                         [methSym.Name, methSym.ClassSymbol.Caption]);
             end;
          end;
@@ -2669,6 +2756,21 @@ begin
       Result := Parents[x].FindSymbol(Name);
       Inc(x);
    end;
+end;
+
+// HasClass
+//
+function TSymbolTable.HasClass(const aClass : TSymbolClass) : Boolean;
+var
+   i : Integer;
+   ptrList : PPointerList;
+begin
+   ptrList:=FSymbols.List;
+   for i:=FSymbols.Count-1 downto 0 do begin
+      if TSymbol(ptrList[i]) is aClass then
+         Exit(True);
+   end;
+   Result:=False;
 end;
 
 // GetCount

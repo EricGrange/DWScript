@@ -22,7 +22,7 @@ unit dwsMagicExprs;
 
 interface
 
-uses dwsExprs, dwsSymbols, dwsStack, dwsErrors, dwsFunctions, dwsUtils;
+uses Classes, dwsExprs, dwsSymbols, dwsStack, dwsErrors, dwsFunctions, dwsUtils;
 
 type
 

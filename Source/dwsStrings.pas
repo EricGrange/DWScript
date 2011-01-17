@@ -339,6 +339,8 @@ const
   RTE_UserDefinedException = 'User defined exception';
   RTE_UserDefinedException_Msg = 'User defined exception: %s';
   RTE_AssertionFailed = 'Assertion failed%s%s';
+  RTE_PreConditionFailed = 'Pre-condition failed in %s%s, %s';
+  RTE_PostConditionFailed = 'Post-condition failed in %s%s, %s';
 
   // Connectors
   RTE_ConnectorCallFailed = 'Connector Call "%s" failed';

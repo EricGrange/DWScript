@@ -2706,10 +2706,7 @@ procedure TAssertExpr.EvalNoResult(exec : TdwsExecution);
          FMessage.EvalAsString(exec, msg);
          msg:=' : '+msg;
       end else msg:='';
-      msg:=Format(RTE_AssertionFailed, [Pos.AsInfo, msg]);
-      info:=(exec as TdwsProgramExecution).ProgramInfo;
-      exceptObj:=IScriptObj(IUnknown(info.Vars[SYS_EASSERTIONFAILED].Method[SYS_TOBJECT_CREATE].Call([msg]).Value));
-      raise EScriptAssertionFailed.Create(msg, exceptObj, FPos);
+      (exec as TdwsProgramExecution).RaiseAssertionFailed(msg, FPos);
    end;
 
 begin

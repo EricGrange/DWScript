@@ -135,7 +135,7 @@ begin
 
          prog:=FCompiler.Compile(source.Text);
 
-         CheckEquals(False, prog.Msgs.HasErrors, FTests[i]);
+         CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
          exec:=prog.Execute;
          if prog.Msgs.Count+exec.Msgs.Count=0 then
             output:=exec.Result.ToString

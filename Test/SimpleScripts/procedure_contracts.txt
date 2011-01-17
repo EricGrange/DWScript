@@ -1,0 +1,8 @@
+TestPositive 10
+Pre-condition failed in TestPositive [line: 2, column: 1], i >= 0
+Pre-condition failed in TestPositive [line: 4, column: 4], must be strictly positive
+TestInc 11
+TestInc -9
+Post-condition failed in TestInc [line: 13, column: 1], Result >= 0
+TestInc 1
+Post-condition failed in TestInc [line: 15, column: 4], must be above 10, was 1

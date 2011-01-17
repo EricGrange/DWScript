@@ -36,6 +36,7 @@ type
      ttAS, ttINDEX, ttOBJECT,
      ttVIRTUAL, ttOVERRIDE, ttREINTRODUCE, ttINHERITED, ttABSTRACT, ttDEPRECATED,
      ttEXTERNAL, ttFORWARD, ttIN,
+     ttENSURE, ttREQUIRE, ttINVARIANTS, ttOLD,
      ttBEGIN, ttEND, ttBREAK, ttCONTINUE, ttEXIT,
      ttIF, ttTHEN, ttELSE, ttWHILE, ttREPEAT, ttUNTIL, ttFOR, ttTO, ttDOWNTO, ttDO,
      ttCASE,
@@ -185,6 +186,7 @@ const
      'AS', 'INDEX', 'OBJECT',
      'VIRTUAL', 'OVERRIDE', 'REINTRODUCE', 'INHERITED', 'ABSTRACT', 'DEPRECATED',
      'EXTERNAL', 'FORWARD', 'IN',
+     'ENSURE', 'REQUIRE', 'INVARIANTS', 'OLD',
      'BEGIN', 'END', 'BREAK', 'CONTINUE', 'EXIT',
      'IF', 'THEN', 'ELSE', 'WHILE', 'REPEAT', 'UNTIL', 'FOR', 'TO', 'DOWNTO', 'DO',
      'CASE',
@@ -450,20 +452,20 @@ end;
 // ToAlphaType
 //
 const
-   cAlphaTypeTokens : array [0..72] of TTokenType = (
+   cAlphaTypeTokens : array [0..76] of TTokenType = (
       ttAND, ttARRAY, ttABSTRACT, ttAS,
       ttBEGIN, ttBREAK,
       ttCONST, ttCLASS, ttCONSTRUCTOR, ttCASE, ttCDECL, ttCONTINUE,
       ttDO, ttDOWNTO, ttDIV, ttDEFAULT, ttDESTRUCTOR, ttDEPRECATED,
-      ttEND, ttELSE, ttEXCEPT, ttEXIT, ttEXTERNAL,
+      ttEND, ttENSURE, ttELSE, ttEXCEPT, ttEXIT, ttEXTERNAL,
       ttFOR, ttFALSE, ttFUNCTION, ttFINALLY, ttFORWARD,
-      ttIF, ttIMPLIES, ttIN, ttIS, ttINHERITED, ttINDEX,
+      ttIF, ttIMPLIES, ttIN, ttINVARIANTS, ttIS, ttINHERITED, ttINDEX,
       ttLAZY,
       ttMETHOD, ttMOD,
       ttNOT, ttNIL,
-      ttOBJECT, ttOF, ttON, ttOPERATOR, ttOR, ttOVERRIDE,
+      ttOBJECT, ttOF, ttOLD, ttON, ttOPERATOR, ttOR, ttOVERRIDE,
       ttPROCEDURE, ttPROPERTY, ttPASCAL, ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
-      ttREPEAT, ttRECORD, ttREAD, ttRAISE, ttREINTRODUCE, ttREGISTER,
+      ttREPEAT, ttREQUIRE, ttRECORD, ttREAD, ttRAISE, ttREINTRODUCE, ttREGISTER,
       ttSHL, ttSHR, ttSTDCALL,
       ttTHEN, ttTO, ttTRUE, ttTRY, ttTYPE,
       ttUNTIL, ttUSES,
