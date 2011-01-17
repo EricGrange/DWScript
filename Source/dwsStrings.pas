@@ -272,6 +272,9 @@ const
   CPE_CanNotOverride = 'Method %s not found in parent class. Can''t override!';
   CPE_InvalidArgCombination = 'Invalid argument combination';
 
+  // Contracts
+  CPE_PreconditionsMustBeInRootMethod = 'Preconditions must be defined in the root method only.';
+
   // Units
   CPE_UnitNotFound = 'Unit "%s" referenced in unit "%s" not found';
   CPE_UnitCircularReference = 'Circular referencing units detected!';

@@ -233,8 +233,9 @@ type
       procedure ReadParams(Proc: TFuncSymbol; ParamsToDictionary: Boolean=True);
       function ReadProcDecl(FuncKind: TFuncKind; ClassSym: TClassSymbol;
                             IsClassMethod: Boolean = False; IsType : Boolean = False): TFuncSymbol;
-      procedure ReadProcBody(proc : TFuncSymbol);
-      function ReadConditions(proc : TFuncSymbol; conditionsClass : TSourceConditionsClass) : TSourceConditions;
+      procedure ReadProcBody(funcSymbol : TFuncSymbol);
+      procedure ReadConditions(funcSymbol : TFuncSymbol; conditions : TSourceConditions;
+                               condsSymClass : TConditionSymbolClass);
       function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
       function ReadProperty(ClassSym: TClassSymbol): TPropertySymbol;
       function ReadPropertyExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TNoPosExpr;
@@ -1371,43 +1372,54 @@ end;
 
 // ReadProcBody
 //
-procedure TdwsCompiler.ReadProcBody(Proc: TFuncSymbol);
+procedure TdwsCompiler.ReadProcBody(funcSymbol : TFuncSymbol);
 var
-   oldprog: TdwsProgram;
-   stmt: TExpr;
+   oldprog : TdwsProgram;
+   proc : TProcedure;
+   stmt : TExpr;
    assignExpr : TNoResultExpr;
    sectionType : TTokenType;
 begin
    // Stop if declaration was forwarded or external
-   if (Proc.IsForwarded) then begin
+   if (funcSymbol.IsForwarded) then begin
       // Closed context of procedure (was only a forward)
       if coContextMap in FCompilerOptions then
          FProg.ContextMap.CloseContext(FTok.HotPos);
       Exit;
    end;
 
-   if Proc.Executable<>nil then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_MethodRedefined, [Proc.Name]);
+   if funcSymbol.Executable<>nil then
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_MethodRedefined, [funcSymbol.Name]);
 
    // Open context of full procedure body (may include a 'var' section)
    if coContextMap in FCompilerOptions then
-      FProg.ContextMap.OpenContext(FTok.CurrentPos, Proc);   // attach to symbol that it belongs to (perhaps a class)
+      FProg.ContextMap.OpenContext(FTok.CurrentPos, funcSymbol);   // attach to symbol that it belongs to (perhaps a class)
 
-   Proc.SourcePosition:=FTok.HotPos;
+   funcSymbol.SourcePosition:=FTok.HotPos;
 
    try
       // Function Body
-      oldprog := FProg;
-      FProg := CreateProcedure(FProg);
+      oldprog:=FProg;
+      proc:=CreateProcedure(FProg);
+      FProg:=proc;
       try
          FProg.Compiler := Self;
-         TProcedure(FProg).AssignTo(Proc);
+         TProcedure(FProg).AssignTo(funcSymbol);
          // Set the current context's LocalTable to be the table of the new procedure
          if coContextMap in FCompilerOptions then
             FProg.ContextMap.Current.LocalTable := FProg.Table;
 
-         if FTok.TestDelete(ttREQUIRE) then
-            (FProg as TProcedure).PreConditions:=ReadConditions(proc, TSourcePreConditions);
+         if FTok.TestDelete(ttREQUIRE) then begin
+            if funcSymbol is TMethodSymbol then begin
+               proc.PreConditions:=TSourceMethodPreConditions.Create(proc);
+               if TMethodSymbol(funcSymbol).IsOverride then
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_PreconditionsMustBeInRootMethod);
+            end else proc.PreConditions:=TSourcePreConditions.Create(proc);
+            ReadConditions(funcSymbol, proc.PreConditions, TPreConditionSymbol);
+         end else if funcSymbol is TMethodSymbol then begin
+            if TMethodSymbol(funcSymbol).HasConditions then
+               proc.PreConditions:=TSourceMethodPreConditions.Create(proc);
+         end;
 
          // Read local variable declarations
          if FTok.Test(ttVAR) or FTok.Test(ttCONST) then begin
@@ -1456,8 +1468,15 @@ begin
                end;
             end;
 
-            if FTok.TestDelete(ttENSURE) then
-               (FProg as TProcedure).PostConditions:=ReadConditions(proc, TSourcePostConditions);
+            if FTok.TestDelete(ttENSURE) then begin
+               if funcSymbol is TMethodSymbol then
+                  proc.PostConditions:=TSourceMethodPostConditions.Create(proc)
+               else proc.PostConditions:=TSourcePostConditions.Create(proc);
+               ReadConditions(funcSymbol, proc.PostConditions, TPostConditionSymbol);
+            end else if funcSymbol is TMethodSymbol then begin
+               if TMethodSymbol(funcSymbol).HasConditions then
+                  proc.PostConditions:=TSourceMethodPostConditions.Create(proc);
+            end;
 
             if not FTok.TestDelete(ttEND) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndOfBlockExpected);
@@ -1481,62 +1500,58 @@ end;
 
 // ReadConditions
 //
-function TdwsCompiler.ReadConditions(proc : TFuncSymbol; conditionsClass : TSourceConditionsClass) : TSourceConditions;
+procedure TdwsCompiler.ReadConditions(funcSymbol : TFuncSymbol; conditions : TSourceConditions;
+                                      condsSymClass : TConditionSymbolClass);
 var
    hotPos : TScriptPos;
    testExpr, msgExpr : TNoPosExpr;
    testStart : PChar;
    testLength : Integer;
    msg : String;
+   srcCond : TSourceCondition;
 begin
-   Result:=conditionsClass.Create(FProg as TProcedure);
-   try
+   repeat
 
-      repeat
+      hotPos:=FTok.HotPos;
+      testStart:=FTok.PosPtr;
 
-         hotPos:=FTok.HotPos;
-         testStart:=FTok.PosPtr;
+      msgExpr:=nil;
+      testExpr:=ReadExpr;
+      try
+         if not testExpr.IsBooleanValue then
+            FMsgs.AddCompilerError(hotPos, CPE_BooleanExpected);
+         if Optimize then
+            testExpr:=testExpr.Optimize(FExec);
 
-         msgExpr:=nil;
-         testExpr:=ReadExpr;
-         try
-            if not testExpr.IsBooleanValue then
-               FMsgs.AddCompilerError(hotPos, CPE_BooleanExpected);
+         testLength:=(NativeUInt(FTok.PosPtr)-NativeUInt(testStart)) div 2;
+         if FTok.TestDelete(ttCOLON) then begin
+            msgExpr:=ReadExpr;
+            if not msgExpr.IsStringValue then
+               FMsgs.AddCompilerError(hotPos, CPE_StringExpected);
             if Optimize then
-               testExpr:=testExpr.Optimize(FExec);
-
-            testLength:=(NativeUInt(FTok.PosPtr)-NativeUInt(testStart)) div 2;
-            if FTok.TestDelete(ttCOLON) then begin
-               msgExpr:=ReadExpr;
-               if not msgExpr.IsStringValue then
-                  FMsgs.AddCompilerError(hotPos, CPE_StringExpected);
-               if Optimize then
-                  msgExpr:=msgExpr.Optimize(FExec);
-            end else begin
-               SetString(msg, testStart, testLength);
-               msg:=Trim(msg);
-               if Copy(msg, Length(msg), 1)=';' then
-                  SetLength(msg, Length(msg)-1);
-               msgExpr:=TConstStringExpr.CreateUnified(FProg, FProg.TypString, msg);
-            end;
-
-            if not FTok.TestDelete(ttSEMI) then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
-
-            Result.AddCondition(TSourceCondition.Create(hotPos, testExpr, msgExpr));
-         except
-            testExpr.Free;
-            msgExpr.Free;
-            raise;
+               msgExpr:=msgExpr.Optimize(FExec);
+         end else begin
+            SetString(msg, testStart, testLength);
+            msg:=Trim(msg);
+            if (msg<>'') and (msg[Length(msg)]=';') then
+               SetLength(msg, Length(msg)-1);
+            msgExpr:=TConstStringExpr.CreateUnified(FProg, FProg.TypString, msg);
          end;
 
-      until FTok.TestAny([ttVAR, ttCONST, ttBEGIN, ttEND, ttENSURE, ttREQUIRE,
-                          ttFUNCTION, ttPROCEDURE, ttTYPE])<>ttNone;
+         if not FTok.TestDelete(ttSEMI) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
 
-   except
-      Result.Free;
-      raise;
-   end;
+         srcCond:=TSourceCondition.Create(hotPos, testExpr, msgExpr);
+         conditions.AddCondition(srcCond);
+         funcSymbol.AddCondition(condsSymClass.Create(hotPos, srcCond, srcCond));
+      except
+         testExpr.Free;
+         msgExpr.Free;
+         raise;
+      end;
+
+   until FTok.TestAny([ttVAR, ttCONST, ttBEGIN, ttEND, ttENSURE, ttREQUIRE,
+                       ttFUNCTION, ttPROCEDURE, ttTYPE])<>ttNone;
 end;
 
 // ReadBlocks

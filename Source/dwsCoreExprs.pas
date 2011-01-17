@@ -2699,8 +2699,6 @@ procedure TAssertExpr.EvalNoResult(exec : TdwsExecution);
    procedure Triggered;
    var
       msg : String;
-      exceptObj : IScriptObj;
-      info : TProgramInfo;
    begin
       if FMessage<>nil then begin
          FMessage.EvalAsString(exec, msg);

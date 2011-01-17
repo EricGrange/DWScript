@@ -775,7 +775,7 @@ type
     function GetAddr(exec : TdwsExecution) : Integer; override;
   end;
 
-   TSourceCondition = class
+   TSourceCondition = class (TInterfacedObject, IBooleanEvalable, IStringEvalable)
       private
          FPos : TScriptPos;
          FTest : TNoPosExpr;
@@ -784,6 +784,12 @@ type
       public
          constructor Create(const pos : TScriptPos; aTest, aMsg : TNoPosExpr);
          destructor Destroy; override;
+
+         procedure InitSymbol(Symbol: TSymbol);
+         procedure InitExpression(Expr: TExprBase);
+
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean;
+         procedure EvalAsString(exec : TdwsExecution; var Result : String);
 
          property Pos : TScriptPos read FPos write FPos;
          property Test : TNoPosExpr read FTest;
@@ -802,9 +808,10 @@ type
 
          procedure AddCondition(condition : TSourceCondition);
 
-         procedure RaiseConditionFailed(exec : TdwsExecution; failed : TSourceCondition); virtual; abstract;
-         function Test(exec : TdwsExecution) : TSourceCondition;
-         procedure EvalNoresult(exec : TdwsExecution); virtual;
+         procedure RaiseConditionFailed(exec : TdwsExecution; const scriptPos : TScriptPos;
+                                        const msg : IStringEvalable); virtual; abstract;
+         function  Test(exec : TdwsExecution) : TSourceCondition;
+         procedure EvalNoResult(exec : TdwsExecution); virtual;
 
          property Ancestor : TSourceConditions read FAncestor write FAncestor;
    end;
@@ -812,16 +819,22 @@ type
 
    TSourcePreConditions = class (TSourceConditions)
       public
-         procedure RaiseConditionFailed(exec : TdwsExecution; failed : TSourceCondition); override;
+         procedure RaiseConditionFailed(exec : TdwsExecution; const scriptPos : TScriptPos;
+                                        const msg : IStringEvalable); override;
    end;
    TSourcePostConditions = class (TSourceConditions)
       public
-         procedure RaiseConditionFailed(exec : TdwsExecution; failed : TSourceCondition); override;
+         procedure RaiseConditionFailed(exec : TdwsExecution; const scriptPos : TScriptPos;
+                                        const msg : IStringEvalable); override;
    end;
 
-   TSourceMethodPreConditions = class (TSourceConditions)
+   TSourceMethodPreConditions = class (TSourcePreConditions)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
-   TSourceMethodPostConditions = class (TSourceConditions)
+   TSourceMethodPostConditions = class (TSourcePostConditions)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
   TConnectorCallExpr = class(TPosDataExpr)
@@ -6877,6 +6890,35 @@ begin
    FMsg.Free;
 end;
 
+// InitSymbol
+//
+procedure TSourceCondition.InitSymbol(Symbol: TSymbol);
+begin
+   FTest.Initialize;
+   FMsg.Initialize;
+end;
+
+// InitExpression
+//
+procedure TSourceCondition.InitExpression(Expr: TExprBase);
+begin
+   // nothing
+end;
+
+// EvalAsBoolean
+//
+function TSourceCondition.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+begin
+   Result:=FTest.EvalAsBoolean(exec);
+end;
+
+// EvalAsString
+//
+procedure TSourceCondition.EvalAsString(exec : TdwsExecution; var Result : String);
+begin
+   FMsg.EvalAsString(exec, Result);
+end;
+
 // ------------------
 // ------------------ TSourceConditions ------------------
 // ------------------
@@ -6892,15 +6934,20 @@ end;
 // Destroy
 //
 destructor TSourceConditions.Destroy;
+var
+   i : Integer;
 begin
    inherited;
-   FItems.Clean;
+   for i:=0 to FItems.Count-1 do
+      TSourceCondition(FItems.List[i])._Release;
+   FItems.Clear;
 end;
 
 // AddCondition
 //
 procedure TSourceConditions.AddCondition(condition : TSourceCondition);
 begin
+   condition._AddRef;
    FItems.Add(condition);
 end;
 
@@ -6914,7 +6961,7 @@ begin
    ptrList:=FItems.List;
    for i:=0 to FItems.Count-1 do begin
       Result:=TSourceCondition(ptrList[i]);
-      if not Result.Test.EvalAsBoolean(exec) then Exit;
+      if not Result.EvalAsBoolean(exec) then Exit;
    end;
    Result:=nil;
 end;
@@ -6927,7 +6974,7 @@ var
 begin
    failed:=Test(exec);
    if failed<>nil then
-      RaiseConditionFailed(exec, failed);
+      RaiseConditionFailed(exec, failed.Pos, failed);
 end;
 
 // ------------------
@@ -6936,13 +6983,14 @@ end;
 
 // RaiseConditionFailed
 //
-procedure TSourcePreConditions.RaiseConditionFailed(exec : TdwsExecution; failed : TSourceCondition);
+procedure TSourcePreConditions.RaiseConditionFailed(exec : TdwsExecution;
+                 const scriptPos : TScriptPos; const msg : IStringEvalable);
 var
-   msg : String;
+   msgStr : String;
 begin
-   failed.Msg.EvalAsString(exec, msg);
+   msg.EvalAsString(exec, msgStr);
    (exec as TdwsProgramExecution).RaiseAssertionFailedFmt(
-      RTE_PreConditionFailed, [FProg.Func.QualifiedName, failed.Pos.AsInfo, msg], failed.Pos);
+      RTE_PreConditionFailed, [FProg.Func.QualifiedName, scriptPos.AsInfo, msgStr], scriptPos);
 end;
 
 // ------------------
@@ -6951,13 +6999,75 @@ end;
 
 // RaiseConditionFailed
 //
-procedure TSourcePostConditions.RaiseConditionFailed(exec : TdwsExecution; failed : TSourceCondition);
+procedure TSourcePostConditions.RaiseConditionFailed(exec : TdwsExecution;
+                 const scriptPos : TScriptPos; const msg : IStringEvalable);
 var
-   msg : String;
+   msgStr : String;
 begin
-   failed.Msg.EvalAsString(exec, msg);
+   msg.EvalAsString(exec, msgStr);
    (exec as TdwsProgramExecution).RaiseAssertionFailedFmt(
-      RTE_PostConditionFailed, [FProg.Func.QualifiedName, failed.Pos.AsInfo, msg], failed.Pos);
+      RTE_PostConditionFailed, [FProg.Func.QualifiedName, scriptPos.AsInfo, msgStr], scriptPos);
+end;
+
+// ------------------
+// ------------------ TSourceMethodPreConditions ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TSourceMethodPreConditions.EvalNoResult(exec : TdwsExecution);
+var
+   methSym : TMethodSymbol;
+   current : TConditionSymbol;
+   conds : TConditionsSymbolTable;
+   i : Integer;
+begin
+   // for pre-conditions find the root and test against those
+   methSym:=(FProg.Func as TMethodSymbol);
+   if not methSym.IsOverride then begin
+      inherited EvalNoResult(exec);
+      Exit;
+   end;
+
+   while (methSym.ParentMeth<>nil) and (methSym.IsOverride) do
+      methSym:=methSym.ParentMeth;
+   if methSym.IsOverride then Exit;
+
+   conds:=methSym.Conditions;
+   for i:=0 to conds.Count-1 do begin
+      current:=TConditionSymbol(conds[i]);
+      if (current.ClassType=TPreConditionSymbol) and not current.Condition.EvalAsBoolean(exec) then
+         RaiseConditionFailed(exec, current.ScriptPos, current.Message);
+   end;
+end;
+
+// ------------------
+// ------------------ TSourceMethodPostConditions ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TSourceMethodPostConditions.EvalNoResult(exec : TdwsExecution);
+var
+   methSym : TMethodSymbol;
+   current : TConditionSymbol;
+   conds : TConditionsSymbolTable;
+   i : Integer;
+begin
+   // for post-conditions, all must pass
+   inherited EvalNoResult(exec);
+   methSym:=(FProg.Func as TMethodSymbol);
+   if not methSym.IsOverride then Exit;
+   while methSym<>nil do begin
+      conds:=methSym.Conditions;
+      for i:=0 to conds.Count-1 do begin
+         current:=TConditionSymbol(conds[i]);
+         if (current.ClassType=TPostConditionSymbol) and not current.Condition.EvalAsBoolean(exec) then
+            RaiseConditionFailed(exec, current.ScriptPos, current.Message);
+      end;
+      methSym:=methSym.ParentMeth;
+   end;
+
 end;
 
 end.

@@ -424,17 +424,20 @@ type
    // Condition, as part of contracts
    TConditionSymbol = class (TSymbol)
       private
-         FSourcePosition : TScriptPos;
+         FScriptPos : TScriptPos;
          FCondition : IBooleanEvalable;
          FMessage : IStringEvalable;
 
       protected
 
       public
-         property SourcePosition : TScriptPos read FSourcePosition write FSourcePosition;
+         constructor Create(const pos : TScriptPos; const cond : IBooleanEvalable; const msg : IStringEvalable);
+
+         property ScriptPos : TScriptPos read FScriptPos write FScriptPos;
          property Condition : IBooleanEvalable read FCondition write FCondition;
          property Message : IStringEvalable read FMessage write FMessage;
    end;
+   TConditionSymbolClass = class of TConditionSymbol;
 
    TPreConditionSymbol = class (TConditionSymbol)
       private
@@ -504,6 +507,7 @@ type
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          procedure InitData(const Data: TData; Offset: Integer); override;
+         procedure AddCondition(cond : TConditionSymbol);
 
          function  ParamsDescription : String;
 
@@ -589,6 +593,7 @@ type
          procedure InitData(const Data: TData; Offset: Integer); override;
          function IsCompatible(typSym: TSymbol): Boolean; override;
          function QualifiedName : String; override;
+         function HasConditions : Boolean;
 
          property ClassSymbol : TClassSymbol read FClassSymbol;
          property IsAbstract : Boolean read GetIsAbstract write SetIsAbstract;
@@ -1458,6 +1463,7 @@ begin
       Dispose(FForwardPosition);
    FParams.Free;
    FInternalParams.Free;
+   FConditions.Free;
    inherited;
 end;
 
@@ -1686,6 +1692,15 @@ const
   nilIntf: IUnknown = nil;
 begin
   Data[Offset] := nilIntf;
+end;
+
+// AddCondition
+//
+procedure TFuncSymbol.AddCondition(cond : TConditionSymbol);
+begin
+   if FConditions=nil then
+      FConditions:=TConditionsSymbolTable.Create(nil, @FAddrGenerator);
+   FConditions.AddSymbol(cond);
 end;
 
 // ParamsDescription
@@ -1940,6 +1955,15 @@ end;
 function TMethodSymbol.QualifiedName : String;
 begin
    Result:=ClassSymbol.QualifiedName+'.'+Name;
+end;
+
+// HasConditions
+//
+function TMethodSymbol.HasConditions : Boolean;
+begin
+   Result:=(FConditions<>nil);
+   if (not Result) and IsOverride and (ParentMeth<>nil) then
+      Result:=ParentMeth.HasConditions;
 end;
 
 // SetOverlap
@@ -3556,6 +3580,20 @@ end;
 function TdwsExecution.GetProgramState : TProgramState;
 begin
    Result:=FProgramState;
+end;
+
+// ------------------
+// ------------------ TConditionSymbol ------------------
+// ------------------
+
+// Create
+//
+constructor TConditionSymbol.Create(const pos : TScriptPos; const cond : IBooleanEvalable; const msg : IStringEvalable);
+begin
+   inherited Create('', nil);
+   FScriptPos:=pos;
+   FCondition:=cond;
+   FMessage:=msg;
 end;
 
 end.
