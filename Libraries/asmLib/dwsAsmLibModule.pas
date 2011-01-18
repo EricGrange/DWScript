@@ -40,7 +40,7 @@ type
    TdwsAsmLanguageExtension = class (TdwsLanguageExtension)
       protected
          function SymbolDefines(const symbolName : String; compiler : TdwsCompiler) : String;
-         function AssembleViaNASM(const code : TStrings; const basePos : TScriptPos; msgs : TdwsMessageList) : TBytes;
+         function AssembleViaNASM(const code : TStrings; const basePos : TScriptPos; msgs : TdwsCompileMessageList) : TBytes;
       public
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; override;
    end;
@@ -165,10 +165,8 @@ begin
       outputAsm.Add('pop ebp');
       outputAsm.Add('ret');
 
-      if not tok.HasTokens then begin
-         compiler.CurrentProg.CompileMsgs.AddErrorStop('Incomplete asm block');
-         Exit;
-      end;
+      if not tok.HasTokens then
+         raise EScriptError.CreatePosFmt(tok.HotPos, 'Incomplete asm block%s', [tok.HotPos.AsInfo]);
 
       // generate defines for encountered symbols
 
@@ -193,7 +191,7 @@ end;
 // AssembleViaNASM
 //
 function TdwsAsmLanguageExtension.AssembleViaNASM(const code : TStrings;
-      const basePos : TScriptPos; msgs : TdwsMessageList) : TBytes;
+      const basePos : TScriptPos; msgs : TdwsCompileMessageList) : TBytes;
 var
    i, p, k : Integer;
    tempFileNameAsm, tempFileNameBin, tempFileNameErr : String;
@@ -225,7 +223,7 @@ begin
             // timeout is in milliseconds or INFINITE if you want to wait forever
             waitResult:=WaitForSingleObject(ProcessInfo.hProcess, 5000);
             if waitResult<>WAIT_OBJECT_0 then
-               msgs.AddErrorStop('NASM call timed out');
+               raise EScriptError.Create('NASM call timed out');
 
             errors:=TStringList.Create;
             try
@@ -256,7 +254,7 @@ begin
             CloseHandle(ProcessInfo.hProcess);
          end;
       end else begin
-         msgs.AddErrorStop('NASM call failed out '+IntToStr(GetLastError));
+         raise EScriptError.CreateFmt('NASM call failed with error %d', [GetLastError]);
       end;
 
    finally
