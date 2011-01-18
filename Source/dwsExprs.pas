@@ -26,29 +26,31 @@ uses Classes, Variants, SysUtils, TypInfo, dwsSymbols, dwsErrors, dwsUtils,
    dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsTokenizer;
 
 const
-  C_DefaultStackChunkSize = 4096;
+   C_DefaultStackChunkSize = 4096;
 
 type
-  TRelOps = (roEqual, roUnEqual, roLess, roLessEqual, roMore, roMoreEqual);
+   TRelOps = (roEqual, roUnEqual, roLess, roLessEqual, roMore, roMoreEqual);
 
-  TRefKind = (rkObjRef, rkClassOfRef);
+   TRefKind = (rkObjRef, rkClassOfRef);
 
-  TNoPosExpr = class;
-  TNoResultExpr = class;
-  TBlockInitExpr = class;
-  TExpr = class;
-  TNoPosExprList = class;
-  TdwsProgram = class;
-  IdwsProgram = interface;
-  TdwsProgramExecution = class;
-  TSymbolPositionList = class;
-  TFuncExprBase = class;
-  TScriptObj = class;
-  TSourceConditions = class;
+   TNoPosExpr = class;
+   TNoResultExpr = class;
+   TBlockInitExpr = class;
+   TExpr = class;
+   TNoPosExprList = class;
+   TdwsProgram = class;
+   IdwsProgram = interface;
+   TdwsProgramExecution = class;
+   TSymbolPositionList = class;
+   TFuncExprBase = class;
+   TScriptObj = class;
+   TSourceConditions = class;
+   TSourcePreConditions = class;
+   TSourcePostConditions = class;
 
-  TExprList = array[0..MaxListSize - 1] of TExpr;
-  PExprList = ^TExprList;
-  PExpr = ^TExpr;
+   TExprList = array[0..MaxListSize - 1] of TExpr;
+   PExprList = ^TExprList;
+   PExpr = ^TExpr;
 
   // Interface for units
   IUnit = interface
@@ -490,8 +492,8 @@ type
    TProcedure = class (TdwsProgram, IUnknown, ICallable)
       private
          FFunc : TFuncSymbol;
-         FPreConditions : TSourceConditions;
-         FPostConditions : TSourceConditions;
+         FPreConditions : TSourcePreConditions;
+         FPostConditions : TSourcePostConditions;
 
       public
          constructor Create(Parent: TdwsProgram);
@@ -504,8 +506,8 @@ type
 
          property Func: TFuncSymbol read FFunc write FFunc;
 
-         property PreConditions : TSourceConditions read FPreConditions write FPreConditions;
-         property PostConditions : TSourceConditions read FPostConditions write FPostConditions;
+         property PreConditions : TSourcePreConditions read FPreConditions write FPreConditions;
+         property PostConditions : TSourcePostConditions read FPostConditions write FPostConditions;
    end;
 
    // Base class of all expressions attached to a program
@@ -588,11 +590,11 @@ type
          property Pos: TScriptPos read FPos;
    end;
 
-  TNoResultExpr = class(TExpr)
-    function Eval(exec : TdwsExecution) : Variant; override;
-    procedure EvalNoResult(exec : TdwsExecution); override;
-    function OptimizeToNoResultExpr(exec : TdwsExecution) : TNoResultExpr;
-  end;
+   TNoResultExpr = class(TExpr)
+      function Eval(exec : TdwsExecution) : Variant; override;
+      procedure EvalNoResult(exec : TdwsExecution); override;
+      function OptimizeToNoResultExpr(exec : TdwsExecution) : TNoResultExpr;
+   end;
 
    // Does nothing! E. g.: "for x := 1 to 10 do {TNullExpr};"
    TNullExpr = class(TNoResultExpr)
@@ -609,6 +611,7 @@ type
          destructor Destroy; override;
 
          procedure AddStatement(expr : TExpr);
+         procedure AddStatementFirst(expr : TExpr);
 
          procedure Initialize; override;
    end;
@@ -822,6 +825,7 @@ type
          procedure RaiseConditionFailed(exec : TdwsExecution; const scriptPos : TScriptPos;
                                         const msg : IStringEvalable); override;
    end;
+
    TSourcePostConditions = class (TSourceConditions)
       public
          procedure RaiseConditionFailed(exec : TdwsExecution; const scriptPos : TScriptPos;
@@ -2967,6 +2971,16 @@ procedure TBlockExprBase.AddStatement(expr : TExpr);
 begin
    ReallocMem(FStatements, (FCount+1)*SizeOf(TExpr));
    FStatements[FCount]:=expr;
+   Inc(FCount);
+end;
+
+// AddStatementFirst
+//
+procedure TBlockExprBase.AddStatementFirst(expr : TExpr);
+begin
+   ReallocMem(FStatements, (FCount+1)*SizeOf(TExpr));
+   Move(FStatements[0], FStatements[1], FCount);
+   FStatements[0]:=expr;
    Inc(FCount);
 end;
 

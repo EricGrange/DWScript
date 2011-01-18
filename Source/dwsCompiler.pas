@@ -162,6 +162,7 @@ type
       FIsExcept : Boolean;
       FIsSwitch : Boolean;
       FLineCount : Integer;
+      FSourcePostConditionsIndex : Integer;
 
       FOnReadInstr : TCompilerReadInstrEvent;
 
@@ -224,6 +225,7 @@ type
       procedure ReadDeprecated(funcSym : TFuncSymbol);
       procedure WarnDeprecated(funcSym : TFuncSymbol);
       function ReadName(IsWrite: Boolean = False): TNoPosExpr;
+      function ReadNameOld(IsWrite: Boolean): TNoPosExpr;
       function ReadNameInherited(IsWrite: Boolean): TNoPosExpr;
       // Created overloaded ReadNameList to deal with script positions
       procedure ReadNameList(Names: TStrings); overload;
@@ -236,6 +238,8 @@ type
       procedure ReadProcBody(funcSymbol : TFuncSymbol);
       procedure ReadConditions(funcSymbol : TFuncSymbol; conditions : TSourceConditions;
                                condsSymClass : TConditionSymbolClass);
+      procedure ReadPostConditions(funcSymbol : TFuncSymbol; conditions : TSourcePostConditions;
+                                   condsSymClass : TConditionSymbolClass);
       function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
       function ReadProperty(ClassSym: TClassSymbol): TPropertySymbol;
       function ReadPropertyExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TNoPosExpr;
@@ -1472,7 +1476,7 @@ begin
                if funcSymbol is TMethodSymbol then
                   proc.PostConditions:=TSourceMethodPostConditions.Create(proc)
                else proc.PostConditions:=TSourcePostConditions.Create(proc);
-               ReadConditions(funcSymbol, proc.PostConditions, TPostConditionSymbol);
+               ReadPostConditions(funcSymbol, proc.PostConditions, TPostConditionSymbol);
             end else if funcSymbol is TMethodSymbol then begin
                if TMethodSymbol(funcSymbol).HasConditions then
                   proc.PostConditions:=TSourceMethodPostConditions.Create(proc);
@@ -1552,6 +1556,20 @@ begin
 
    until FTok.TestAny([ttVAR, ttCONST, ttBEGIN, ttEND, ttENSURE, ttREQUIRE,
                        ttFUNCTION, ttPROCEDURE, ttTYPE])<>ttNone;
+end;
+
+// ReadPostConditions
+//
+procedure TdwsCompiler.ReadPostConditions(funcSymbol : TFuncSymbol; conditions : TSourcePostConditions;
+                                          condsSymClass : TConditionSymbolClass);
+begin
+   if conditions is TSourcePostConditions then
+      FSourcePostConditionsIndex:=1;
+   try
+      ReadConditions(funcSymbol, conditions, condsSymClass);
+   finally
+      FSourcePostConditionsIndex:=0;
+   end;
 end;
 
 // ReadBlocks
@@ -1835,6 +1853,9 @@ var
    baseType : TTypeSymbol;
    sk : TSpecialKeywordKind;
 begin
+   if (FSourcePostConditionsIndex<>0) and FTok.TestDelete(ttOLD) then
+      Exit(ReadNameOld(IsWrite));
+
    if FTok.TestDelete(ttINHERITED) then
       Exit(ReadNameInherited(IsWrite));
 
@@ -1989,6 +2010,33 @@ begin
       Result.Free;
       raise;
    end;
+end;
+
+// ReadNameOld
+//
+function TdwsCompiler.ReadNameOld(IsWrite: Boolean): TNoPosExpr;
+var
+   sym : TDataSymbol;
+   expr : TNoPosExpr;
+   initExpr : TExpr;
+   varExpr : TVarExpr;
+begin
+   expr:=ReadName(IsWrite);
+   if (expr.Typ=nil) then begin
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionOrValueExpected);
+      // keep going
+      expr.Free;
+      expr:=TUnifiedConstExpr.CreateUnified(FProg, FProg.TypVariant, Unassigned);
+   end;
+
+   sym:=TDataSymbol.Create('old '+IntToStr(FSourcePostConditionsIndex), expr.Typ);
+   Inc(FSourcePostConditionsIndex);
+   FProg.Table.AddSymbol(sym);
+   varExpr:=GetVarExpr(sym);
+   initExpr:=CreateAssign(FTok.HotPos, ttASSIGN, varExpr, expr);
+   FProg.InitExpr.AddStatement(initExpr);
+
+   Result:=GetVarExpr(sym);
 end;
 
 // ReadNameInherited

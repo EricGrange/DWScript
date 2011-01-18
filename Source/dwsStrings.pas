@@ -141,6 +141,7 @@ const
   CPE_IncompatibleType = 'Field/method "%s" has an incompatible type';
   CPE_ProcedureMethodExpected = 'Procedure expected';
   CPE_FunctionMethodExpected = 'Function expected';
+  CPE_FunctionOrValueExpected = 'Function or value expected';
   CPE_InvalidNumberOfArguments = 'Method "%s" has a wrong number of arguments';
   CPE_InvalidParameterType = 'Method "%s" has an incompatible parameter type';
   CPE_ReadOrWriteExpected = 'Neither READ nor WRITE directive found';
