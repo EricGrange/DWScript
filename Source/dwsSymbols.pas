@@ -293,8 +293,8 @@ type
          function IsOfType(typSym : TSymbol) : Boolean; virtual;
 
          function BaseTypeID : TBaseTypeID; virtual;
-         function IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean;
-         function IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean;
+         function IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean; virtual;
+         function IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean; virtual;
 
          function QualifiedName : String; virtual;
 
@@ -693,6 +693,9 @@ type
    end;
 
    TArraySymbol = class(TTypeSymbol)
+      public
+         function IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean; override;
+         function IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean; override;
    end;
 
    // array of FTyp
@@ -1319,14 +1322,14 @@ end;
 //
 function TSymbol.IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean;
 begin
-   Result:=Assigned(Self) and (FSize<=1) and (BaseTypeID=aBaseTypeID);
+   Result:=(FSize=1) and (BaseTypeID=aBaseTypeID);
 end;
 
 // IsBaseTypeIDArray
 //
 function TSymbol.IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean;
 begin
-   Result:=(FSize>1) and (BaseTypeID=aBaseTypeID);
+   Result:=False;
 end;
 
 // QualifiedName
@@ -3085,6 +3088,24 @@ begin
    if FSign=agsPositive then
       Result:=FDataSize
    else Result:=-FDataSize;
+end;
+
+// ------------------
+// ------------------ TArraySymbol ------------------
+// ------------------
+
+// IsBaseTypeIDValue
+//
+function TArraySymbol.IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean;
+begin
+   Result:=False;
+end;
+
+// IsBaseTypeIDArray
+//
+function TArraySymbol.IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean;
+begin
+   Result:=(BaseTypeID=aBaseTypeID);
 end;
 
 { TDynamicArraySymbol }
