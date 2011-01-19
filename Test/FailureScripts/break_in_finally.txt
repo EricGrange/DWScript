@@ -1,0 +1,3 @@
+Syntax Error: Direct "Break" or "Continue" not allowed in "Finally" block [line: 9, column: 13]
+Syntax Error: Direct "Break" or "Continue" not allowed in "Finally" block [line: 14, column: 10]
+Syntax Error: "Exit" not allowed in "Finally" block [line: 17, column: 7]

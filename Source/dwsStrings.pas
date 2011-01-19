@@ -244,6 +244,8 @@ const
 
   CPE_BreakOutsideOfLoop = '"Break" outside of loop';
   CPE_ContinueOutsideOfLoop = '"Continue" outside of loop';
+  CPE_ExitInFinally = '"Exit" not allowed in "Finally" block';
+  CPE_BreakContinueInFinally = 'Direct "Break" or "Continue" not allowed in "Finally" block';
 
   CPE_UnbalancedConditionalDirective = 'Unbalanced conditional directive';
   CPE_UnfinishedConditionalDirective = 'Unfinished conditional directive';
@@ -265,6 +267,7 @@ const
   CPW_Deprecated = '"%s" has been deprecated';
   CPW_DeprecatedWithMessage = '"%s" has been deprecated: %s';
   CPW_InfiniteLoop = 'Infinite loop';
+  CPW_ConstantCondition = 'Constant condition';
 
   CPE_NoResultTypeRequired = 'No result type required';
   CPE_ResultTypeExpected = 'Result type expected';

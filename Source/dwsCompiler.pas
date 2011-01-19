@@ -151,6 +151,7 @@ type
       FBinaryOperators : TBinaryOperators;
       FLoopExprs : TSimpleStack<TNoResultExpr>;
       FLoopExitable : TSimpleStack<TLoopExitable>;
+      FFinallyExprs : TSimpleStack<Boolean>;
       FConditionalDepth : TSimpleStack<TSwitchInstruction>;
 
       FConnectors : TStrings;
@@ -398,6 +399,7 @@ begin
    FLoopExprs:=TSimpleStack<TNoResultExpr>.Create;
    FLoopExitable:=TSimpleStack<TLoopExitable>.Create;
    FConditionalDepth:=TSimpleStack<TSwitchInstruction>.Create;
+   FFinallyExprs:=TSimpleStack<Boolean>.Create;
 
    stackParams.MaxLevel:=1;
    stackParams.ChunkSize:=512;
@@ -413,6 +415,7 @@ end;
 destructor TdwsCompiler.Destroy;
 begin
    FExec.Free;
+   FFinallyExprs.Free;
    FConditionalDepth.Free;
    FLoopExitable.Free;
    FLoopExprs.Free;
@@ -485,6 +488,8 @@ procedure TdwsCompiler.EnterLoop(loopExpr : TNoResultExpr);
 begin
    FLoopExprs.Push(loopExpr);
    FLoopExitable.Push(leNotExitable);
+   if FFinallyExprs.Count>0 then
+      FFinallyExprs.Push(False);
 end;
 
 // MarkLoopExitable
@@ -514,6 +519,9 @@ procedure TdwsCompiler.LeaveLoop;
 begin
    if FLoopExitable.Peek=leNotExitable then
       FProg.CompileMsgs.AddCompilerWarning(FLoopExprs.Peek.Pos, CPW_InfiniteLoop);
+
+   if (FFinallyExprs.Count>0) and (not FFinallyExprs.Peek) then
+      FFinallyExprs.Pop;
 
    FLoopExprs.Pop;
    FLoopExitable.Pop;
@@ -556,6 +564,7 @@ begin
    FLoopExprs.Clear;
    FLoopExitable.Clear;
    FConditionalDepth.Clear;
+   FFinallyExprs.Clear;
 
    stackParams.MaxByteSize:=Conf.MaxDataSize;
    if stackParams.MaxByteSize=0 then
@@ -1526,6 +1535,8 @@ begin
             FMsgs.AddCompilerError(hotPos, CPE_BooleanExpected);
          if Optimize then
             testExpr:=testExpr.Optimize(FExec);
+         if testExpr.IsConstant then
+            FMsgs.AddCompilerWarning(hotPos, CPW_ConstantCondition);
 
          testLength:=(NativeUInt(FTok.PosPtr)-NativeUInt(testStart)) div 2;
          if FTok.TestDelete(ttCOLON) then begin
@@ -1683,11 +1694,15 @@ begin
          Result := ReadRepeat;
       ttBREAK : begin
          if FLoopExprs.Count=0 then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_BreakOutsideOfLoop);
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_BreakOutsideOfLoop)
+         else if (FFinallyExprs.Count>0) and FFinallyExprs.Peek then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_BreakContinueInFinally);
          Result := TBreakExpr.Create(FProg, FTok.HotPos);
          MarkLoopExitable(leBreak);
       end;
       ttEXIT : begin
+         if FFinallyExprs.Count>0 then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ExitInFinally);
          Result := ReadExit;
          MarkLoopExitable(leExit);
       end;
@@ -1695,7 +1710,9 @@ begin
          Result := ReadTry;
       ttCONTINUE : begin
          if FLoopExprs.Count=0 then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_ContinueOutsideOfLoop);
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ContinueOutsideOfLoop)
+         else if (FFinallyExprs.Count>0) and FFinallyExprs.Peek then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_BreakContinueInFinally);
          Result := TContinueExpr.Create(FProg, FTok.HotPos);
       end;
       ttRAISE :
@@ -3538,11 +3555,16 @@ begin
       end else begin
          Result := TFinallyExpr.Create(FProg, FTok.HotPos);
          TExceptionExpr(Result).TryExpr := tryBlock;
+         FFinallyExprs.Push(True);
          try
-            TExceptionExpr(Result).HandlerExpr := ReadBlocks([ttEND], tt);
-         except
-            Result.Free;
-            raise;
+            try
+               TExceptionExpr(Result).HandlerExpr := ReadBlocks([ttEND], tt);
+            except
+               Result.Free;
+               raise;
+            end;
+         finally
+            FFinallyExprs.Pop;
          end;
       end;
    finally
