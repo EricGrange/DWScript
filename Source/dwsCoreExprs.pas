@@ -2778,15 +2778,25 @@ var
    v : Variant;
    s : String;
 begin
+   Result:=0;
    v:=FExpr.Eval(exec);
-   if VarIsOrdinal(v) then
-      Result:=v
-   else if VarIsStr(v) then begin
-      s:=v;
-      if s<>'' then
-         Result:=Ord(s[1])
-      else Result:=0;
-   end else Result:=0;
+   case VarType(v) of
+      varSmallInt, varInteger, varShortInt, varByte, varWord, varLongWord, varInt64, varUInt64 :
+         Result:=v;
+      varBoolean :
+         if v then
+            Result:=1
+         else Result:=0;
+      varSingle, varDouble, varCurrency :
+         Result:=Round(v);
+      varString, varUString, varOleStr : begin
+         s:=v;
+         if s<>'' then
+            Result:=Ord(s[1]);
+      end;
+   else
+      RaiseScriptError(EScriptError.Create(RTE_OrdinalExpected));
+   end;
 end;
 
 { TOrdIntExpr }
