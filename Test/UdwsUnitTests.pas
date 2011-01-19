@@ -11,6 +11,7 @@ type
       private
          FCompiler : TDelphiWebScript;
          FUnit : TdwsUnit;
+         FMagicVar : String;
 
       public
          procedure SetUp; override;
@@ -19,6 +20,7 @@ type
          procedure DeclareTestEnumerate;
          procedure DeclareTestFuncs;
          procedure DeclareTestClasses;
+         procedure DeclareTestVars;
 
          procedure Func1Eval(Info: TProgramInfo);
          procedure FuncOneEval(Info: TProgramInfo);
@@ -31,6 +33,9 @@ type
          procedure FuncFloatEval(Info: TProgramInfo);
 
          procedure FuncExceptionEval(Info: TProgramInfo);
+
+         procedure DoReadVar(info: TProgramInfo; var value : Variant);
+         procedure DoWriteVar(info: TProgramInfo; const value : Variant);
 
          procedure CompilationExecution(execute : Boolean);
 
@@ -48,6 +53,8 @@ type
          procedure DelphiExceptionReRaise;
          procedure ListOrdAutoEnum;
          procedure CallFunc;
+
+         procedure PredefinedVar;
    end;
 
    EDelphiException = class (Exception)
@@ -103,6 +110,7 @@ begin
    DeclareTestEnumerate;
    DeclareTestFuncs;
    DeclareTestClasses;
+   DeclareTestVars;
 end;
 
 // TearDown
@@ -246,6 +254,24 @@ begin
    prop.ReadAccess:='GetMyProp';
 end;
 
+// DeclareTestVars
+//
+procedure TdwsUnitTests.DeclareTestVars;
+var
+   v : TdwsGlobal;
+begin
+   v:=FUnit.Variables.Add as TdwsGlobal;
+   v.Name:='xyzVar';
+   v.DataType:='String';
+
+   v:=FUnit.Variables.Add as TdwsGlobal;
+   v.Name:='magicVar';
+   v.DataType:='String';
+
+   v.OnReadVar:=DoReadVar;
+   v.OnWriteVar:=DoWriteVar;
+end;
+
 // Func1Eval
 //
 procedure TdwsUnitTests.Func1Eval(Info: TProgramInfo);
@@ -314,6 +340,20 @@ end;
 procedure TdwsUnitTests.FuncExceptionEval(Info: TProgramInfo);
 begin
    raise EDelphiException.Create('Hello, Delphi Exception here!');
+end;
+
+// DoReadVar
+//
+procedure TdwsUnitTests.DoReadVar(info: TProgramInfo; var value : Variant);
+begin
+   value:=FMagicVar;
+end;
+
+// DoWriteVar
+//
+procedure TdwsUnitTests.DoWriteVar(info: TProgramInfo; const value : Variant);
+begin
+   FMagicVar:=value;
 end;
 
 // CompilationExecution
@@ -520,6 +560,34 @@ begin
 
       funcInfo:=exec.Info.Func['Hello'];
       CheckEquals('Hello world', funcInfo.Call(['world']).Value, 'Hello world');
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// PredefinedVar
+//
+procedure TdwsUnitTests.PredefinedVar;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'PrintLn(xyzVar); xyzVar:=''XYZ''; PrintLn(xyzVar);'#13#10
+                           +'PrintLn(magicVar); magicVar:=''MAGIC''; PrintLn(magicVar);'#13#10);
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.Info.ValueAsString['xyzVar']:='xyz';
+      FMagicVar:='magic';
+
+      exec.RunProgram(0);
+
+      CheckEquals( 'xyz'#13#10'XYZ'#13#10
+                  +'magic'#13#10'MAGIC'#13#10, exec.Result.ToString, 'Result');
+      CheckEquals('XYZ', exec.Info.ValueAsString['xyzVar'], 'xyz var value');
+      CheckEquals('MAGIC', FMagicVar, 'magic var value');
    finally
       exec.EndProgram;
    end;
