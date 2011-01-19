@@ -2001,9 +2001,10 @@ end;
 //
 procedure TdwsProgramExecution.DestroyScriptObj(const scriptObj: IScriptObj);
 var
-   sym: TSymbol;
-   func: TMethodSymbol;
-   expr: TDestructorVirtualExpr;
+   sym : TSymbol;
+   func : TMethodSymbol;
+   expr : TDestructorVirtualExpr;
+   oldStatus : TExecutionStatusResult;
 begin
    try
       sym := ScriptObj.ClassSym.Members.FindSymbol(SYS_TOBJECT_DESTROY);
@@ -2013,10 +2014,12 @@ begin
          if (func.Kind = fkDestructor) and (func.Params.Count = 0) then begin
             expr := TDestructorVirtualExpr.Create(FProg, cNullPos, func,
                                                   TConstExpr.Create(FProg, ScriptObj.ClassSym, ScriptObj));
+            oldStatus:=Status;
             try
                Status:=esrNone;
                expr.EvalNoResult(Self);
             finally
+               Status:=oldStatus;
                expr.Free;
             end;
          end;
@@ -2546,21 +2549,21 @@ end;
 //
 function TNoPosExpr.IsBooleanValue : Boolean;
 begin
-   Result:=Typ.IsBaseTypeIDValue(typBooleanID);
+   Result:=Assigned(Typ) and Typ.IsBaseTypeIDValue(typBooleanID);
 end;
 
 // IsFloatValue
 //
 function TNoPosExpr.IsFloatValue : Boolean;
 begin
-   Result:=Typ.IsBaseTypeIDValue(typFloatID);
+   Result:=Assigned(Typ) and Typ.IsBaseTypeIDValue(typFloatID);
 end;
 
 // IsIntegerValue
 //
 function TNoPosExpr.IsIntegerValue : Boolean;
 begin
-   Result:=Typ.IsBaseTypeIDValue(typIntegerID);
+   Result:=Assigned(Typ) and Typ.IsBaseTypeIDValue(typIntegerID);
 end;
 
 // IsNumberValue
@@ -2574,14 +2577,14 @@ end;
 //
 function TNoPosExpr.IsStringValue : Boolean;
 begin
-   Result:=Typ.IsBaseTypeIDValue(typStringID);
+   Result:=Assigned(Typ) and Typ.IsBaseTypeIDValue(typStringID);
 end;
 
 // IsVariantValue
 //
 function TNoPosExpr.IsVariantValue : Boolean;
 begin
-   Result:=Typ.IsBaseTypeIDValue(typVariantID);
+   Result:=Assigned(Typ) and Typ.IsBaseTypeIDValue(typVariantID);
 end;
 
 // IsConstant
