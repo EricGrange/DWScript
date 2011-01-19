@@ -1,0 +1,2 @@
+Warning: Constant condition [line: 2, column: 1]
+Warning: Constant condition [line: 5, column: 1]
