@@ -208,7 +208,8 @@ type
       function ReadExpr: TNoPosExpr;
       function ReadExprAdd: TNoPosExpr;
       function ReadExprMult: TNoPosExpr;
-      function ReadExprIn(var left : TNoPosExpr) : TInOpExpr;
+      function ReadExprIn(var left : TNoPosExpr) : TNoPosExpr;
+      function ReadExprInConditions(var left : TNoPosExpr) : TInOpExpr;
       function ReadExternalVar(Sym: TExternalVarSymbol; IsWrite: Boolean): TFuncExpr;
       function ReadField(Expr: TDataExpr; Sym: TFieldSymbol): TNoPosExpr;
       function ReadFor: TForExpr;
@@ -3292,7 +3293,7 @@ var
    usesPos : TScriptPos;
    sym : TSymbol;
 begin
-   tt:=FTok.TestDeleteAny([ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN]);
+   tt:=FTok.TestDeleteAny([ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN, ttIN]);
    if tt=ttNone then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_OverloadableOperatorExpected);
 
@@ -3325,8 +3326,15 @@ begin
 
       if Result.UsesSym.Params.Count<>1 then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_SingleParameterExpected);
-      if Result.UsesSym.Params[0].Typ<>Result.Typ then
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidParameterType, [Result.UsesSym.Name]);
+      if tt=ttIN then begin
+         if Result.UsesSym.Params[0].Typ<>Result.Typ then
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidParameterType, [Result.UsesSym.Name]);
+         if Result.UsesSym.Result.Typ.BaseTypeID<>typBooleanID then
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidResultType, [Result.UsesSym.Result.Typ.Name]);
+      end else begin
+         if Result.UsesSym.Params[0].Typ<>Result.Typ then
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidParameterType, [Result.UsesSym.Name]);
+      end;
 
       if not FTok.TestDelete(ttSEMI) then
         FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
@@ -3942,18 +3950,63 @@ end;
 
 // ReadExprIn
 //
-function TdwsCompiler.ReadExprIn(var left : TNoPosExpr) : TInOpExpr;
+function TdwsCompiler.ReadExprIn(var left : TNoPosExpr) : TNoPosExpr;
+var
+   hotPos : TScriptPos;
+   setExpr : TNoPosExpr;
+   classOpSymbol : TClassOperatorSymbol;
+   classOpExpr : TFuncExpr;
+begin
+   hotPos:=FTok.HotPos;
+
+   if FTok.TestDelete(ttALEFT) then begin
+
+      Result:=ReadExprInConditions(left);
+
+   end else begin
+
+      setExpr:=ReadExpr;
+      try
+
+         if (setExpr.Typ=nil) or not (setExpr.Typ is TClassSymbol) then
+            FMsgs.AddCompilerStop(hotPos, CPE_ArrayBracketOrClassExpected);
+         if not (setExpr is TDataExpr) then
+            FMsgs.AddCompilerStop(hotPos, CPE_ObjectExpected);
+
+         classOpSymbol:=(setExpr.Typ as TClassSymbol).FindClassOperator(ttIN, left.Typ);
+         if classOpSymbol=nil then
+            FMsgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands);
+         classOpExpr:=GetMethodExpr(classOpSymbol.UsesSym, (setExpr as TDataExpr),
+                                    rkObjRef, hotPos, False);
+         try
+            setExpr:=nil;
+            TFuncExpr(classOpExpr).AddArg(left);
+            left:=nil;
+         except
+            classOpExpr.Free;
+            raise;
+         end;
+         Result:=classOpExpr;
+
+      except
+         setExpr.Free;
+         raise;
+      end;
+
+   end;
+end;
+
+// ReadExprInConditions
+//
+function TdwsCompiler.ReadExprInConditions(var left : TNoPosExpr) : TInOpExpr;
 var
    i : Integer;
    condList : TList;
    hotPos : TScriptPos;
 begin
-   if not FTok.TestDelete(ttALEFT) then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketLeftExpected);
-
    hotPos:=FTok.HotPos;
-
    Result:=nil;
+
    condList:=TList.Create;
    try
       try
@@ -3979,6 +4032,7 @@ begin
    finally
       condList.Free;
    end;
+
 end;
 
 // ReadTerm

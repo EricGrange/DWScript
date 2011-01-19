@@ -606,9 +606,12 @@ type
 
   TdwsEnumerationsClass = class of TdwsEnumerations;
 
-  TReadVarEvent = procedure(var Value: Variant) of object;
-  TWriteVarEvent = procedure(Value: Variant) of object;
-  TInstantiateEvent = procedure(var ExtObject: TObject) of object;
+  TdwsGlobal = class;
+  TdwsCustomInstance = class;
+
+  TReadVarEvent = procedure (info: TProgramInfo; var value : Variant) of object;
+  TWriteVarEvent = procedure (info: TProgramInfo; const value : Variant) of object;
+  TInstantiateEvent = procedure (info: TProgramInfo; var ExtObject: TObject) of object;
 
   TdwsGlobal = class(TdwsVariable)
   private
@@ -638,7 +641,7 @@ type
     FOnInitExpr: TInitExprEvent;
   protected
     procedure DoDestroy(ExternalObject: TObject); virtual;
-    procedure DoInstantiate(var ExternalObject: TObject); virtual;
+    procedure DoInstantiate(info : TProgramInfo; var ExternalObject: TObject); virtual;
     procedure DoInitSymbol(Sender: TObject; Symbol: TSymbol); virtual;
     procedure DoInitExpr(Sender: TObject; Expr: TExprBase); virtual;
   public
@@ -1845,7 +1848,7 @@ begin
     scriptObj.OnObjectDestroy := FOnObjectDestroy;
     FScriptObj := scriptObj;
 
-    FOnInstantiate(extObj);
+    FOnInstantiate(info, extObj);
     FScriptObj.ExternalObject := extObj;
 
     Info.ResultAsVariant := FScriptObj;
@@ -1888,33 +1891,35 @@ begin
 end;
 
 function TdwsParameter.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
-var
-   paramSym : TParamSymbol;
-   paramType : TTypeSymbol;
-   elemSym : TSymbol;
-   elemValue : Integer;
+//var
+//   paramSym : TParamSymbol;
+//   paramType : TTypeSymbol;
+//   elemSym : TSymbol;
+//   elemValue : Integer;
 begin
-   FIsGenerating := True;
-   paramType := GetDataType(Table, DataType);
-   if IsLazy then
-      paramSym:=TLazyParamSymbol.Create(Name, paramType)
-   else if IsVarParam then begin
-      if IsWritable then
-         paramSym := TVarParamSymbol.Create(Name, paramType)
-      else paramSym := TConstParamSymbol.Create(Name, paramType)
-   end else if HasDefaultValue then begin
-      paramSym := TParamSymbolWithDefaultValue.Create(Name, paramType);
-      if paramType is TEnumerationSymbol then begin
-         elemSym:=TEnumerationSymbol(paramType).Elements.FindLocal(DefaultValue);
-         if elemSym=nil then
-            elemValue:=DefaultValue
-         else elemValue:=TElementSymbol(elemSym).UserDefValue;
-         TParamSymbolWithDefaultValue(paramSym).SetDefaultValue(elemValue);
-      end else TParamSymbolWithDefaultValue(paramSym).SetDefaultValue(DefaultValue);
-   end else begin
-      paramSym := TParamSymbol.Create(Name, paramType);
-   end;
-   Result := paramSym;
+   Result:=nil;
+   Assert(False);  // shouldn't be used anymore (not sure yet)
+//   FIsGenerating := True;
+//   paramType := GetDataType(Table, DataType);
+//   if IsLazy then
+//      paramSym:=TLazyParamSymbol.Create(Name, paramType)
+//   else if IsVarParam then begin
+//      if IsWritable then
+//         paramSym := TVarParamSymbol.Create(Name, paramType)
+//      else paramSym := TConstParamSymbol.Create(Name, paramType)
+//   end else if HasDefaultValue then begin
+//      paramSym := TParamSymbolWithDefaultValue.Create(Name, paramType);
+//      if paramType is TEnumerationSymbol then begin
+//         elemSym:=TEnumerationSymbol(paramType).Elements.FindLocal(DefaultValue);
+//         if elemSym=nil then
+//            elemValue:=DefaultValue
+//         else elemValue:=TElementSymbol(elemSym).UserDefValue;
+//         TParamSymbolWithDefaultValue(paramSym).SetDefaultValue(elemValue);
+//      end else TParamSymbolWithDefaultValue(paramSym).SetDefaultValue(DefaultValue);
+//   end else begin
+//      paramSym := TParamSymbol.Create(Name, paramType);
+//   end;
+//   Result := paramSym;
 end;
 
 function TdwsParameter.GetDisplayName: string;
@@ -2048,41 +2053,45 @@ begin
   end;
 end;
 
+// GetParameters
+//
 function GetParameters(Symbol: TdwsSymbol; Parameters: TdwsParameters; Table: TSymbolTable): TParamArray;
 var
-  x, y, elemValue: Integer;
-  name: string;
-  paramSym, elemSym : TSymbol;
+   i, j, elemValue: Integer;
+   name: string;
+   paramSym, elemSym : TSymbol;
+   param : TdwsParameter;
 begin
-  SetLength(Result, Parameters.Count);
-  for x := 0 to Parameters.Count - 1 do begin
-    name := Parameters.Items[x].Name;
+   SetLength(Result, Parameters.Count);
+   for i := 0 to Parameters.Count - 1 do begin
+      param:=TdwsParameter(Parameters.Items[i]);
+      name := param.Name;
 
-    // Check wether parameter name is unique
-    for y := x - 1 downto 0 do begin
-      if SameText(Result[y].ParamName, name) then
-        raise Exception.CreateFmt(UNT_ParameterNameAlreadyExists, [name]);
-    end;
+      // Check wether parameter name is unique
+      for j := i - 1 downto 0 do begin
+         if SameText(Result[j].ParamName, name) then
+            raise Exception.CreateFmt(UNT_ParameterNameAlreadyExists, [name]);
+      end;
 
-    Result[x].IsVarParam := TdwsParameter(Parameters.Items[x]).IsVarParam and TdwsParameter(Parameters.Items[x]).IsWritable;
-    Result[x].IsConstParam := TdwsParameter(Parameters.Items[x]).IsVarParam and not TdwsParameter(Parameters.Items[x]).IsWritable;
-    Result[x].ParamName := name;
-    Result[x].ParamType := TdwsParameter(Parameters.Items[x]).DataType;
+      Result[i].IsVarParam := param.IsVarParam and param.IsWritable;
+      Result[i].IsConstParam := param.IsVarParam and not param.IsWritable;
+      Result[i].ParamName := name;
+      Result[i].ParamType := param.DataType;
 
-    Result[x].HasDefaultValue := TdwsParameter(Parameters.Items[x]).HasDefaultValue;
-    if Result[x].HasDefaultValue then begin
-       SetLength(Result[x].DefaultValue, 1);
-       paramSym:=Symbol.GetDataType(Table, Result[x].ParamType);
-       if paramSym is TEnumerationSymbol then begin
-          elemSym:=TEnumerationSymbol(paramSym).Elements.FindLocal(TdwsParameter(Parameters.Items[x]).DefaultValue);
-          if elemSym=nil then
-             elemValue:=TdwsParameter(Parameters.Items[x]).DefaultValue
-          else elemValue:=TElementSymbol(elemSym).UserDefValue;
-          Result[x].DefaultValue[0] := elemValue;
-       end else Result[x].DefaultValue[0] := TdwsParameter(Parameters.Items[x]).DefaultValue;
-    end else Result[x].DefaultValue := nil;
+      Result[i].HasDefaultValue := param.HasDefaultValue;
+      if Result[i].HasDefaultValue then begin
+         SetLength(Result[i].DefaultValue, 1);
+         paramSym:=Symbol.GetDataType(Table, Result[i].ParamType);
+         if paramSym is TEnumerationSymbol then begin
+            elemSym:=TEnumerationSymbol(paramSym).Elements.FindLocal(param.DefaultValue);
+            if elemSym=nil then
+               elemValue:=param.DefaultValue
+            else elemValue:=TElementSymbol(elemSym).UserDefValue;
+            Result[i].DefaultValue[0] := elemValue;
+         end else Result[i].DefaultValue[0] := param.DefaultValue;
+      end else Result[i].DefaultValue := nil;
 
-    Symbol.GetUnit.GetSymbol(Table, Result[x].ParamType);
+      Symbol.GetUnit.GetSymbol(Table, Result[i].ParamType);
   end;
 end;
 
@@ -2807,7 +2816,7 @@ var
 begin
   VarClear(Value);
   if Assigned(FOnReadVar) then
-    FOnReadVar(Value);
+    FOnReadVar(info, Value);
   Info.ResultAsVariant := Value;
 end;
 
@@ -2816,7 +2825,7 @@ end;
 procedure TWriteVarEventFunc.Execute(info : TProgramInfo);
 begin
   if Assigned(FOnWriteVar) then
-    FOnWriteVar(Info.ValueAsVariant['Value']);
+    FOnWriteVar(Info, Info.ValueAsVariant['Value']);
 end;
 
 { TReadVarFunc }
@@ -3172,10 +3181,10 @@ begin
     FOnInitExpr(Self,Expr)
 end;
 
-procedure TdwsCustomInstance.DoInstantiate(var ExternalObject: TObject);
+procedure TdwsCustomInstance.DoInstantiate(info : TProgramInfo; var ExternalObject: TObject);
 begin
   if Assigned(FOnInstantiate) then
-    FOnInstantiate(ExternalObject);
+    FOnInstantiate(info, ExternalObject);
 end;
 
 { TdwsFunctions }

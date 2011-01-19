@@ -1,0 +1,3 @@
+Syntax Error: Invalid type "Integer" for function result [line: 7, column: 37]
+Syntax Error: Method "Test2" has an incompatible parameter type [line: 8, column: 36]
+Syntax Error: Single parameter expected [line: 9, column: 38]

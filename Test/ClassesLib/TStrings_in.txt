@@ -1,0 +1,18 @@
+Case sensitive
+alpha - NOT IN
+beta - IN
+gamma - NOT IN
+delta - NOT IN
+ALPHA - NOT IN
+BETA - NOT IN
+GAMMA - IN
+DELTA - NOT IN
+Case in sensitive
+alpha - NOT IN
+beta - IN
+gamma - IN
+delta - NOT IN
+ALPHA - NOT IN
+BETA - IN
+GAMMA - IN
+DELTA - NOT IN

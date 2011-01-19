@@ -96,6 +96,7 @@ const
   CPE_DotDotExpected = '".." expected';
   CPE_EndExpected = 'END expected';
   CPE_AssignExpected = '":=" expected';
+  CPE_ArrayBracketOrClassExpected = '"[" or class expected';
 
   // ReadName
   CPE_UnknownName = 'Unknown name "%s"';
