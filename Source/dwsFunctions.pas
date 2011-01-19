@@ -114,7 +114,9 @@ type
       public
          constructor Create(MethKind: TMethodKind; Attributes: TMethodAttributes;
                             const methName: string; const MethParams: array of string;
-                            const MethType: string; Cls: TClassSymbol; Table: TSymbolTable);
+                            const MethType: string; Cls: TClassSymbol;
+                            aVisibility : TClassVisibility;
+                            Table: TSymbolTable);
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); override;
          procedure Execute(info : TProgramInfo; var ExternalObject: TObject); virtual; abstract;
    end;
@@ -460,7 +462,11 @@ end;
 
 { TInternalMethod }
 
-constructor TInternalMethod.Create;
+constructor TInternalMethod.Create(MethKind: TMethodKind; Attributes: TMethodAttributes;
+                   const methName: string; const MethParams: array of string;
+                   const MethType: string; Cls: TClassSymbol;
+                   aVisibility : TClassVisibility;
+                   Table: TSymbolTable);
 var
   sym: TMethodSymbol;
   Params: TParamArray;
@@ -468,7 +474,7 @@ begin
   ConvertFuncParams(Params, MethParams);
 
   sym := TMethodSymbol.Generate(Table, MethKind, Attributes, methName, Params,
-    MethType, Cls);
+                                MethType, Cls, aVisibility);
   sym.Params.AddParent(Table);
   sym.Executable := ICallable(Self);
 

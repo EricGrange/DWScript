@@ -21,6 +21,8 @@ type
          procedure DeclareTestFuncs;
          procedure DeclareTestClasses;
          procedure DeclareTestVars;
+         procedure DeclareTestArrays;
+         procedure DeclareTestRecords;
 
          procedure Func1Eval(Info: TProgramInfo);
          procedure FuncOneEval(Info: TProgramInfo);
@@ -53,8 +55,10 @@ type
          procedure DelphiExceptionReRaise;
          procedure ListOrdAutoEnum;
          procedure CallFunc;
-
          procedure PredefinedVar;
+         procedure AssignTest;
+         procedure PredefinedArray;
+         procedure PredefinedRecord;
    end;
 
    EDelphiException = class (Exception)
@@ -108,9 +112,11 @@ begin
    FUnit.Script:=FCompiler;
 
    DeclareTestEnumerate;
-   DeclareTestFuncs;
+   DeclareTestRecords;
    DeclareTestClasses;
    DeclareTestVars;
+   DeclareTestArrays;
+   DeclareTestFuncs;
 end;
 
 // TearDown
@@ -270,6 +276,38 @@ begin
 
    v.OnReadVar:=DoReadVar;
    v.OnWriteVar:=DoWriteVar;
+end;
+
+// DeclareTestArrays
+//
+procedure TdwsUnitTests.DeclareTestArrays;
+var
+   a : TdwsArray;
+begin
+   a:=FUnit.Arrays.Add as TdwsArray;
+   a.Name:='array_5_10';
+   a.DataType:='Integer';
+   a.LowBound:=5;
+   a.HighBound:=10;
+end;
+
+// DeclareTestRecords
+//
+procedure TdwsUnitTests.DeclareTestRecords;
+var
+   r : TdwsRecord;
+   m : TdwsMember;
+begin
+   r:=FUnit.Records.Add as TdwsRecord;
+   r.Name:='TPoint';
+
+   m:=r.Members.Add as TdwsMember;
+   m.Name:='X';
+   m.DataType:='Integer';
+
+   m:=r.Members.Add as TdwsMember;
+   m.Name:='Y';
+   m.DataType:='Integer';
 end;
 
 // Func1Eval
@@ -588,6 +626,88 @@ begin
                   +'magic'#13#10'MAGIC'#13#10, exec.Result.ToString, 'Result');
       CheckEquals('XYZ', exec.Info.ValueAsString['xyzVar'], 'xyz var value');
       CheckEquals('MAGIC', FMagicVar, 'magic var value');
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// AssignTest
+//
+procedure TdwsUnitTests.AssignTest;
+var
+   otherUnit : TdwsUnit;
+begin
+   otherUnit:=TdwsUnit.Create(nil);
+   try
+      otherUnit.Arrays:=FUnit.Arrays;
+      otherUnit.Classes:=FUnit.Classes;
+      otherUnit.Constants:=FUnit.Constants;
+      otherUnit.Enumerations:=FUnit.Enumerations;
+      otherUnit.Forwards:=FUnit.Forwards;
+      otherUnit.Functions:=FUnit.Functions;
+      otherUnit.Instances:=FUnit.Instances;
+      otherUnit.Records:=FUnit.Records;
+      otherUnit.Synonyms:=FUnit.Synonyms;
+      otherUnit.Variables:=FUnit.Variables;
+      CheckTrue(True, '');
+   finally
+      otherUnit.Free;
+   end;
+end;
+
+// PredefinedArray
+//
+procedure TdwsUnitTests.PredefinedArray;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   i : Integer;
+   a : IInfo;
+begin
+   prog:=FCompiler.Compile( 'var i : Integer;'#13#10
+                           +'var a : array_5_10;'#13#10
+                           +'for i:=Low(array_5_10) to High(a) do Print(a[i]);');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.BeginNewExecution;
+   try
+      a:=exec.Info.Vars['a'];
+      for i:=a.Member['low'].Value to a.Member['high'].Value do
+         a.Element([i]).Value:=100+i;
+      a:=nil;
+
+      exec.RunProgram(0);
+
+      CheckEquals( '105106107108109110', exec.Result.ToString, 'Result');
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// PredefinedRecord
+//
+procedure TdwsUnitTests.PredefinedRecord;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   p : IInfo;
+begin
+   prog:=FCompiler.Compile( 'var p : TPoint;'#13#10
+                           +'Print(Format(''%d, %d'', [p.X, p.Y]));');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.BeginNewExecution;
+   try
+      p:=exec.Info.Vars['p'];
+      p.Member['x'].Value:=123;
+      p.Member['y'].Value:=456;
+      p:=nil;
+
+      exec.RunProgram(0);
+
+      CheckEquals( '123, 456', exec.Result.ToString, 'Result');
    finally
       exec.EndProgram;
    end;

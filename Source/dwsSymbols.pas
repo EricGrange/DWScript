@@ -560,12 +560,15 @@ type
    TMethodAttribute = (maVirtual, maOverride, maReintroduce, maAbstract, maOverlap);
    TMethodAttributes = set of TMethodAttribute;
 
+   TClassVisibility = (cvPrivate, cvProtected, cvPublic, cvPublished);
+
    // A method of a script class: TMyClass = class procedure X(param: String); end;
    TMethodSymbol = class(TFuncSymbol)
       private
          FClassSymbol : TClassSymbol;
          FParentMeth : TMethodSymbol;
          FSelfSym : TDataSymbol;
+         FVisibility : TClassVisibility;
          FAttributes : TMethodAttributes;
 
       protected
@@ -582,11 +585,11 @@ type
 
       public
          constructor Create(const Name: string; FuncKind: TFuncKind; ClassSym: TSymbol;
-                            FuncLevel: SmallInt = 1); virtual;
+                            aVisibility : TClassVisibility; FuncLevel: SmallInt = 1); virtual;
          constructor Generate(Table: TSymbolTable; MethKind: TMethodKind;
                               const Attributes: TMethodAttributes; const MethName: string;
-                              const MethParams: TParamArray;
-                              const MethType: string; Cls: TClassSymbol);
+                              const MethParams: TParamArray; const MethType: string;
+                              Cls: TClassSymbol; aVisibility : TClassVisibility);
 
          procedure SetOverride(meth: TMethodSymbol);
          procedure SetOverlap(meth: TMethodSymbol);
@@ -603,6 +606,7 @@ type
          property IsClassMethod: Boolean read GetIsClassMethod;
          property ParentMeth: TMethodSymbol read FParentMeth;
          property SelfSym: TDataSymbol read FSelfSym write FSelfSym;
+         property Visibility : TClassVisibility read FVisibility write FVisibility;
       end;
 
    TSourceMethodSymbol = class(TMethodSymbol)
@@ -766,12 +770,15 @@ type
    TFieldSymbol = class(TValueSymbol)
       protected
          FClassSymbol: TClassSymbol;
+         FVisibility : TClassVisibility;
          FOffset: Integer;
 
       public
          function QualifiedName : String; override;
-         property Offset: Integer read FOffset;
+
          property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
+         property Offset: Integer read FOffset;
+         property Visibility : TClassVisibility read FVisibility write FVisibility;
    end;
 
    // property X: Integer read FReadSym write FWriteSym;
@@ -783,23 +790,27 @@ type
          FArrayIndices: TSymbolTable;
          FIndexSym: TSymbol;
          FIndexValue: TData;
+         FVisibility : TClassVisibility;
+
       protected
          function GetCaption: string; override;
          function GetDescription: string; override;
          function GetIsDefault: Boolean; virtual;
          procedure AddParam(Param: TParamSymbol);
+
       public
-         constructor Create(const Name: string; Typ: TSymbol);
+         constructor Create(const Name: string; Typ: TSymbol; aVisibility : TClassVisibility);
          destructor Destroy; override;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
          procedure SetIndex(const Data: TData; Addr: Integer; Sym: TSymbol);
          function GetArrayIndicesDescription: string;
          function QualifiedName : String; override;
 
+         property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
+         property Visibility : TClassVisibility read FVisibility write FVisibility;
          property ArrayIndices: TSymbolTable read FArrayIndices;
          property ReadSym: TSymbol read FReadSym write FReadSym;
          property WriteSym: TSymbol read FWriteSym write FWriteSym;
-         property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
          property IsDefault: Boolean read GetIsDefault;
          property IndexValue: TData read FIndexValue;
          property IndexSym: TSymbol read FIndexSym;
@@ -1775,7 +1786,7 @@ end;
 { TMethodSymbol }
 
 constructor TMethodSymbol.Create(const Name: string; FuncKind: TFuncKind;
-  ClassSym: TSymbol; FuncLevel: SmallInt);
+  ClassSym: TSymbol; aVisibility : TClassVisibility; FuncLevel: SmallInt);
 begin
    inherited Create(Name, FuncKind, FuncLevel);
    if ClassSym is TClassSymbol then begin
@@ -1789,11 +1800,12 @@ begin
       FClassSymbol := TClassSymbol(ClassSym.Typ);
    end;
    FParams.AddParent(FClassSymbol.Members);
+   FVisibility:=aVisibility;
 end;
 
 constructor TMethodSymbol.Generate(Table: TSymbolTable; MethKind: TMethodKind;
   const Attributes: TMethodAttributes; const MethName: string; const MethParams: TParamArray;
-  const MethType: string; Cls: TClassSymbol);
+  const MethType: string; Cls: TClassSymbol; aVisibility : TClassVisibility);
 var
   typSym: TSymbol;
   meth: TSymbol;
@@ -1813,21 +1825,21 @@ begin
   // Initialize MethodSymbol
   case MethKind of
     mkConstructor:
-      Create(MethName, fkConstructor, Cls);
+      Create(MethName, fkConstructor, Cls, aVisibility);
     mkDestructor:
-      Create(MethName, fkDestructor, Cls);
+      Create(MethName, fkDestructor, Cls, aVisibility);
     mkProcedure:
-      Create(MethName, fkProcedure, Cls);
+      Create(MethName, fkProcedure, Cls, aVisibility);
     mkFunction:
-      Create(MethName, fkFunction, Cls);
+      Create(MethName, fkFunction, Cls, aVisibility);
     mkMethod :
-      Create(MethName, fkMethod, Cls);
+      Create(MethName, fkMethod, Cls, aVisibility);
     mkClassProcedure:
-      Create(MethName, fkProcedure, Cls.ClassOf);
+      Create(MethName, fkProcedure, Cls.ClassOf, aVisibility);
     mkClassFunction:
-      Create(MethName, fkFunction, Cls.ClassOf);
+      Create(MethName, fkFunction, Cls.ClassOf, aVisibility);
     mkClassMethod:
-      Create(MethName, fkMethod, Cls.ClassOf);
+      Create(MethName, fkMethod, Cls.ClassOf, aVisibility);
   end;
 
   // Set Resulttype
@@ -2008,22 +2020,25 @@ end;
 
 { TPropertySymbol }
 
-procedure TPropertySymbol.AddParam(Param: TParamSymbol);
+// Create
+//
+constructor TPropertySymbol.Create(const Name: string; Typ: TSymbol; aVisibility : TClassVisibility);
 begin
-  ArrayIndices.AddSymbol(Param);
-end;
-
-constructor TPropertySymbol.Create(const Name: string; Typ: TSymbol);
-begin
-  inherited;
-  FArrayIndices := TSymbolTable.Create;
-  FIndexValue := nil;
+   inherited Create(Name, Typ);
+   FArrayIndices:=TSymbolTable.Create;
+   FIndexValue:=nil;
+   FVisibility:=aVisibility;
 end;
 
 destructor TPropertySymbol.Destroy;
 begin
   FArrayIndices.Free;
   inherited;
+end;
+
+procedure TPropertySymbol.AddParam(Param: TParamSymbol);
+begin
+  ArrayIndices.AddSymbol(Param);
 end;
 
 procedure TPropertySymbol.GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);

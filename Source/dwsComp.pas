@@ -193,7 +193,7 @@ type
     FSortedSymbols: TdwsSymbolArray;
     function GetSortedItem(Index: Integer): TdwsSymbol;
   protected
-    class function GetSymbolClass : TdwsSymbolClass; virtual;
+    class function GetSymbolClass : TdwsSymbolClass; virtual; abstract;
     function GetSymbols(const Name: String): TdwsSymbol;
     function GetItem(Index: Integer): TdwsSymbol;
     procedure SetItem(Index: Integer; Value: TdwsSymbol);
@@ -391,6 +391,7 @@ type
     FIsDefault: Boolean;
     FIndexType: TDataType;
     FIndexValue: Variant;
+    FVisibility : TClassVisibility;
   protected
     function GetDisplayName: string; override;
     function GetIsDefault: Boolean;
@@ -404,6 +405,7 @@ type
     function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
   published
     property DataType: TDataType read FDataType write FDataType;
+    property Visibility : TClassVisibility read FVisibility write FVisibility default cvPublic;
     property ReadAccess: string read FReadAccess write FReadAccess;
     property WriteAccess: string read FWriteAccess write FWriteAccess;
     property Parameters: TdwsParameters read FParameters write SetParameters stored StoreParameters;
@@ -443,19 +445,22 @@ type
 
   TdwsMethod = class(TdwsFunction)
   private
-    FAttributes: TMethodAttributes;
-    FKind: TMethodKind;
-    FOnEval: TMethodEvalEvent;
-    FResultType: TDataType;
+    FAttributes : TMethodAttributes;
+    FKind : TMethodKind;
+    FOnEval : TMethodEvalEvent;
+    FResultType : TDataType;
+    FVisibility : TClassVisibility;
     procedure SetResultType(const Value: TDataType);
   protected
     function GetDisplayName: string; override;
     procedure Call(Caller: TdwsProgramExecution; Func: TFuncSymbol); override;
   public
+    constructor Create(Collection: TCollection); override;
     procedure Assign(Source: TPersistent); override;
     function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
   published
     property Attributes: TMethodAttributes read FAttributes write FAttributes default [];
+    property Visibility : TClassVisibility read FVisibility write FVisibility default cvPublic;
     property Kind: TMethodKind read FKind write FKind;
     property OnEval: TMethodEvalEvent read FOnEval write FOnEval;
     property ResultType: TDataType read FResultType write SetResultType;
@@ -470,6 +475,7 @@ type
   private
     FAttributes: TMethodAttributes;
     FOnAssignExternalObject: TAssignExternalObjectEvent;
+    FVisibility : TClassVisibility;
     function GetResultType: string;
   protected
     function GetDisplayName: string; override;
@@ -477,9 +483,9 @@ type
   public
     constructor Create(Collection: TCollection); override;
     procedure Assign(Source: TPersistent); override;
-    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
-      override;
+    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
   published
+    property Visibility : TClassVisibility read FVisibility write FVisibility default cvPublic;
     property Attributes: TMethodAttributes read FAttributes write FAttributes default [];
     property OnEval: TAssignExternalObjectEvent read FOnAssignExternalObject write FOnAssignExternalObject;
     property ResultType: string read GetResultType;
@@ -574,6 +580,7 @@ type
   protected
     function GetDisplayName: string; override;
   public
+    procedure Assign(Source: TPersistent); override;
     function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
   published
     property UserDefValue: Integer read FUserDefValue write SetUserDefValue;
@@ -1052,11 +1059,6 @@ begin
       Exit;
   end;
   Result := nil;
-end;
-
-class function TdwsCollection.GetSymbolClass: TdwsSymbolClass;
-begin
-  Result := TdwsSymbol;
 end;
 
 function TdwsCollection.GetSortedItems: TdwsSymbolArray;
@@ -2159,7 +2161,7 @@ begin
     GetUnit.GetSymbol(Table, ResultType);
 
   Result := TMethodSymbol.Generate(Table, Kind, Attributes, Name,
-    GetParameters(Table), ResultType, TClassSymbol(ParentSym));
+    GetParameters(Table), ResultType, TClassSymbol(ParentSym), Visibility);
   try
     TFuncSymbol(Result).Params.AddParent(Table);
     TFuncSymbol(Result).DeprecatedMessage:=Deprecated;
@@ -2247,6 +2249,14 @@ begin
    end;
 end;
 
+// Create
+//
+constructor TdwsMethod.Create(Collection: TCollection);
+begin
+   inherited;
+   FVisibility:=cvPublic;
+end;
+
 procedure TdwsMethod.Assign(Source: TPersistent);
 begin
   inherited;
@@ -2255,6 +2265,7 @@ begin
     FAttributes := TdwsMethod(Source).Attributes;
     FKind := TdwsMethod(Source).Kind;
     FResultType := TdwsMethod(Source).ResultType;
+    FVisibility := TdwsMethod(Source).Visibility;
   end;
 end;
 
@@ -2263,8 +2274,10 @@ end;
 procedure TdwsConstructor.Assign(Source: TPersistent);
 begin
   inherited;
-  if Source is TdwsMethod then
+  if Source is TdwsMethod then begin
     FAttributes := TdwsMethod(Source).Attributes;
+    FVisibility := TdwsMethod(Source).Visibility;
+  end;
 end;
 
 procedure TdwsConstructor.Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
@@ -2294,6 +2307,7 @@ begin
   // Name the first constructor "Create" by default
   if Collection.Count = 1 then
     FName := 'Create';
+  FVisibility:=cvPublic;
 end;
 
 function TdwsConstructor.DoGenerate(Table: TSymbolTable;
@@ -2303,7 +2317,7 @@ begin
   CheckName(TClassSymbol(ParentSym).Members, Name);
 
   Result := TMethodSymbol.Generate(Table, mkConstructor, Attributes, Name,
-    GetParameters(Table), '', TClassSymbol(ParentSym));
+    GetParameters(Table), '', TClassSymbol(ParentSym), Visibility);
   try
     TFuncSymbol(Result).Params.AddParent(Table);
     TMethodSymbol(Result).Executable := ICallable(Self);
@@ -2448,7 +2462,7 @@ procedure TdwsRecord.Assign(Source: TPersistent);
 begin
   inherited;
   if Source is TdwsRecord then
-    FMembers := TdwsRecord(Source).Members;
+    FMembers.Assign(TdwsRecord(Source).Members);
 end;
 
 constructor TdwsRecord.Create;
@@ -2557,6 +2571,7 @@ begin
     FWriteAccess := TdwsProperty(Source).WriteAccess;
     FParameters.Assign(TdwsProperty(Source).Parameters);
     FIsDefault := TdwsProperty(Source).IsDefault;
+    FVisibility:=TdwsProperty(Source).Visibility;
   end;
 end;
 
@@ -2564,6 +2579,7 @@ constructor TdwsProperty.Create(Collection: TCollection);
 begin
   inherited;
   FParameters := TdwsParameters.Create(Self);
+  FVisibility:=cvPublic;
 end;
 
 destructor TdwsProperty.Destroy;
@@ -2581,7 +2597,7 @@ var
 begin
   FIsGenerating := True;
 
-  propSym := TPropertySymbol.Create(Name, GetDataType(Table, DataType));
+  propSym := TPropertySymbol.Create(Name, GetDataType(Table, DataType), Visibility);
   Result := PropSym;
 
   propSym.GenerateParams(Table,GetParameters(Self, Parameters, Table));
@@ -3013,7 +3029,7 @@ procedure TdwsEnumeration.Assign(Source: TPersistent);
 begin
   inherited;
   if Source is TdwsEnumeration then
-    FElements := TdwsEnumeration(Source).Elements;
+    FElements.Assign(TdwsEnumeration(Source).Elements);
 end;
 
 constructor TdwsEnumeration.Create(Collection: TCollection);
@@ -3091,6 +3107,15 @@ begin
     Result := Name + ' = ' + IntToStr(FUserDefValue)
   else
     Result := Name;
+end;
+
+procedure TdwsElement.Assign(Source: TPersistent);
+begin
+  inherited;
+  if Source is TdwsElement then begin
+    FIsUserDef := TdwsElement(Source).IsUserDef;
+    FUserDefValue := TdwsElement(Source).UserDefValue;
+  end;
 end;
 
 procedure TdwsElement.SetIsUserDef(const Value: Boolean);

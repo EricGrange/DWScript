@@ -222,7 +222,7 @@ type
       function ReadInstrSwitch(semiPending : Boolean): TNoResultExpr;
       function ReadExprSwitch : TNoPosExpr;
       function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
-      function ReadMethodDecl(ClassSym: TClassSymbol; FuncKind: TFuncKind; IsClassMethod: Boolean): TMethodSymbol;
+      function ReadMethodDecl(ClassSym: TClassSymbol; FuncKind: TFuncKind; aVisibility : TClassVisibility; IsClassMethod: Boolean): TMethodSymbol;
       function ReadMethodImpl(ClassSym: TClassSymbol; FuncKind: TFuncKind; IsClassMethod: Boolean): TMethodSymbol;
       procedure ReadDeprecated(funcSym : TFuncSymbol);
       procedure WarnDeprecated(funcSym : TFuncSymbol);
@@ -243,7 +243,7 @@ type
       procedure ReadPostConditions(funcSymbol : TFuncSymbol; conditions : TSourcePostConditions;
                                    condsSymClass : TConditionSymbolClass);
       function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
-      function ReadProperty(ClassSym: TClassSymbol): TPropertySymbol;
+      function ReadProperty(ClassSym: TClassSymbol; aVisibility : TClassVisibility): TPropertySymbol;
       function ReadPropertyExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TNoPosExpr;
       function ReadPropertyReadExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol): TNoPosExpr;
       function ReadPropertyWriteExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol): TNoPosExpr;
@@ -1162,7 +1162,8 @@ begin
          end else if FTok.TestDelete(ttOF) then begin
             if not FTok.TestDelete(ttOBJECT) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectExpected);
-            methSym := TSourceMethodSymbol.Create('',FuncKind, FProg.TypObject,-1);
+            methSym := TSourceMethodSymbol.Create('',FuncKind, FProg.TypObject,
+                                                  cvPublic, -1);
             methSym.Typ := Result.Typ;
             for i := 0 to Result.Params.Count - 1 do
                methSym.Params.AddSymbol(Result.Params[i]);
@@ -1184,8 +1185,10 @@ begin
    end;
 end;
 
+// ReadMethodDecl
+//
 function TdwsCompiler.ReadMethodDecl(ClassSym: TClassSymbol; FuncKind: TFuncKind;
-  IsClassMethod: Boolean): TMethodSymbol;
+   aVisibility : TClassVisibility; IsClassMethod: Boolean): TMethodSymbol;
 
    function ParamsCheck(newMeth, oldMeth: TMethodSymbol): Boolean;
    var
@@ -1228,8 +1231,8 @@ begin
 
    // Read declaration of method implementation
    if IsClassMethod then
-      Result := TSourceMethodSymbol.Create(Name, FuncKind, ClassSym.ClassOf)
-   else Result := TSourceMethodSymbol.Create(Name, FuncKind, ClassSym);
+      Result := TSourceMethodSymbol.Create(Name, FuncKind, ClassSym.ClassOf, aVisibility)
+   else Result := TSourceMethodSymbol.Create(Name, FuncKind, ClassSym, aVisibility);
    TSourceMethodSymbol(Result).DeclarationPos:=methPos;
 
    try
@@ -1330,7 +1333,7 @@ begin
   else if not TMethodSymbol(meth).IsClassMethod and IsClassMethod then
     FMsgs.AddCompilerStop(methPos, CPE_ImplNotClassExpected);
 
-  Result := TSourceMethodSymbol.Create(methName, FuncKind, ClassSym);
+  Result := TSourceMethodSymbol.Create(methName, FuncKind, ClassSym, TMethodSymbol(meth).Visibility);
   try
     if not FTok.TestDelete(ttSEMI) then
     begin
@@ -3070,6 +3073,8 @@ var
    propSym: TPropertySymbol;
    defProp: Boolean;
    isInSymbolTable: Boolean;
+   visibility : TClassVisibility;
+   tt : TTokenType;
 begin
    // Check for a forward declaration of this class
    sym:=FProg.Table.FindSymbol(TypeName);
@@ -3124,35 +3129,37 @@ begin
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
          end else Result.InheritFrom(FProg.TypObject);
 
+         visibility:=cvPublic;
+
          // standard class definition
          while not FTok.Test(ttEND) do begin
 
             // Read methods and properties
             if FTok.TestDelete(ttFUNCTION) then
-               Result.AddMethod(ReadMethodDecl(Result, fkFunction, False))
+               Result.AddMethod(ReadMethodDecl(Result, fkFunction, visibility, False))
             else if FTok.TestDelete(ttPROCEDURE) then
-               Result.AddMethod(ReadMethodDecl(Result, fkProcedure, False))
+               Result.AddMethod(ReadMethodDecl(Result, fkProcedure, visibility, False))
             else if FTok.TestDelete(ttCONSTRUCTOR) then
-               Result.AddMethod(ReadMethodDecl(Result, fkConstructor, False))
+               Result.AddMethod(ReadMethodDecl(Result, fkConstructor, visibility, False))
             else if FTok.TestDelete(ttDESTRUCTOR) then
-               Result.AddMethod(ReadMethodDecl(Result, fkDestructor, False))
+               Result.AddMethod(ReadMethodDecl(Result, fkDestructor, visibility, False))
             else if FTok.TestDelete(ttMETHOD) then
-               Result.AddMethod(ReadMethodDecl(Result, fkMethod, False))
+               Result.AddMethod(ReadMethodDecl(Result, fkMethod, visibility, False))
             else if FTok.TestDelete(ttCLASS) then begin
 
                if FTok.TestDelete(ttPROCEDURE) then
-                  Result.AddMethod(ReadMethodDecl(Result, fkProcedure, True))
+                  Result.AddMethod(ReadMethodDecl(Result, fkProcedure, visibility, True))
                else if FTok.TestDelete(ttFUNCTION) then
-                  Result.AddMethod(ReadMethodDecl(Result, fkFunction, True))
+                  Result.AddMethod(ReadMethodDecl(Result, fkFunction, visibility, True))
                else if FTok.TestDelete(ttMETHOD) then
-                  Result.AddMethod(ReadMethodDecl(Result, fkMethod, True))
+                  Result.AddMethod(ReadMethodDecl(Result, fkMethod, visibility, True))
                else if FTok.TestDelete(ttOPERATOR) then
                   Result.AddOperator(ReadClassOperatorDecl(Result))
                else FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
 
             end else if FTok.TestDelete(ttPROPERTY) then begin
 
-               propSym := ReadProperty(Result);
+               propSym := ReadProperty(Result, visibility);
                defProp := False;
                // Array-Prop can be default
                if propSym.ArrayIndices.Count > 0 then begin
@@ -3168,15 +3175,23 @@ begin
                if defProp then
                   Result.DefaultProperty := propSym;
 
-            end else if    FTok.Test(ttPRIVATE) or FTok.Test(ttPROTECTED)
-                        or FTok.Test(ttPUBLIC) or FTok.Test(ttPUBLISHED) then begin
-               // visibility ignored
-               FTok.KillToken;
-            end else if FTok.TestName then begin
-               ReadClassFields(Result);
-               if not (FTok.TestDelete(ttSEMI) or FTok.Test(ttEND)) then
-                  Break;
-            end else Break;
+            end else begin
+               tt:=FTok.TestDeleteAny([ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED]);
+               if tt<>ttNone then begin
+
+                  case tt of
+                     ttPRIVATE : visibility:=cvPrivate;
+                     ttPROTECTED : visibility:=cvProtected;
+                     ttPUBLIC : visibility:=cvPublic;
+                     ttPUBLISHED : visibility:=cvPublished;
+                  end;
+
+               end else if FTok.TestName then begin
+                  ReadClassFields(Result);
+                  if not (FTok.TestDelete(ttSEMI) or FTok.Test(ttEND)) then
+                     Break;
+               end else Break;
+            end;
 
          end; // while
 
@@ -3347,7 +3362,7 @@ begin
    end;
 end;
 
-function TdwsCompiler.ReadProperty(ClassSym: TClassSymbol): TPropertySymbol;
+function TdwsCompiler.ReadProperty(ClassSym: TClassSymbol; aVisibility : TClassVisibility): TPropertySymbol;
 var
   x: Integer;
   name: string;
@@ -3385,7 +3400,7 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
 
     sym := ReadType('');
-    Result := TPropertySymbol.Create(name, sym);
+    Result := TPropertySymbol.Create(name, sym, aVisibility);
     try
       if coSymbolDictionary in FCompilerOptions then
         FProg.SymbolDictionary.Add(Result, propPos, [suDeclaration]);
@@ -4963,16 +4978,16 @@ begin
    // Create "root" class TObject
    clsObject := TClassSymbol.Create(SYS_TOBJECT);
    // Add constructor Create
-   meth := TSourceMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, clsObject);
+   meth := TSourceMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, clsObject, cvPublic);
    meth.Executable := ICallable(TEmptyFunc.Create);
    clsObject.AddMethod(meth);
    // Add destructor Destroy
-   meth := TSourceMethodSymbol.Create(SYS_TOBJECT_DESTROY, fkDestructor, clsObject);
+   meth := TSourceMethodSymbol.Create(SYS_TOBJECT_DESTROY, fkDestructor, clsObject, cvPublic);
    meth.IsVirtual := True;
    meth.Executable := ICallable(TEmptyFunc.Create);
    clsObject.AddMethod(meth);
    // Add destructor Free
-   meth := TSourceMethodSymbol.Create('Free', fkDestructor, clsObject);
+   meth := TSourceMethodSymbol.Create('Free', fkDestructor, clsObject, cvPublic);
    meth.Executable := ICallable(TEmptyFunc.Create);
    clsObject.AddMethod(meth);
    SystemTable.AddSymbol(clsObject);
@@ -4986,11 +5001,11 @@ begin
    clsException.InheritFrom(clsObject);
    clsException.AddField(TFieldSymbol.Create(SYS_EXCEPTION_MESSAGE, typString));
    TExceptionCreateMethod.Create(mkConstructor, [], SYS_TOBJECT_CREATE,
-                                 ['Msg', SYS_STRING], '', clsException, SystemTable);
+                                 ['Msg', SYS_STRING], '', clsException, cvPublic, SystemTable);
    TExceptionDestroyMethod.Create(mkDestructor, [maOverride], SYS_TOBJECT_DESTROY,
-                                 [], '', clsException, SystemTable);
+                                 [], '', clsException, cvPublic, SystemTable);
    TExceptionStackTraceMethod.Create(mkFunction, [], SYS_EXCEPTION_STACKTRACE,
-                                 [], SYS_STRING, clsException, SystemTable);
+                                 [], SYS_STRING, clsException, cvPublic, SystemTable);
    SystemTable.AddSymbol(clsException);
 
    // Create class EAssertionFailed
@@ -5003,7 +5018,8 @@ begin
    clsDelphiException.InheritFrom(clsException);
    clsDelphiException.AddField(TFieldSymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS, typString));
    TDelphiExceptionCreateMethod.Create(mkConstructor, [], SYS_TOBJECT_CREATE,
-                                       ['Cls', SYS_STRING, 'Msg', SYS_STRING], '', clsDelphiException, SystemTable);
+                                       ['Cls', SYS_STRING, 'Msg', SYS_STRING], '',
+                                       clsDelphiException, cvPublic, SystemTable);
    SystemTable.AddSymbol(clsDelphiException);
 
    // Runtime parameters
