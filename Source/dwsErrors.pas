@@ -139,6 +139,7 @@ type
 
          procedure AddInfo(const Text: String);
          procedure AddError(const Text: String);
+         function LastMessagePos : TScriptPos;
 
          procedure Clear;
 
@@ -372,6 +373,20 @@ procedure TdwsMessageList.AddError(const Text: String);
 begin
    AddMsg(TErrorMessage.Create(Self, Text));
    FHasErrors:=True;
+end;
+
+// LastMessagePos
+//
+function TdwsMessageList.LastMessagePos : TScriptPos;
+var
+   lastMsg : TdwsMessage;
+begin
+   if Count=0 then
+      lastMsg:=nil
+   else lastMsg:=Msgs[Count-1];
+   if lastMsg is TScriptMessage then
+      Result:=TScriptMessage(lastMsg).Pos
+   else Result:=cNullPos
 end;
 
 // AsInfo

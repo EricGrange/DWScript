@@ -22,6 +22,7 @@ type
 
          procedure Compilation;
          procedure Execution;
+         procedure CompilationFailure;
 
       published
 
@@ -29,7 +30,8 @@ type
          procedure CompilationWithMapAndSymbols;
          procedure ExecutionNonOptimized;
          procedure ExecutionOptimized;
-         procedure CompilationFailure;
+         procedure FailuresNonOptimized;
+         procedure FailuresOptimized;
    end;
 
 // ------------------------------------------------------------------
@@ -172,7 +174,7 @@ end;
 //
 procedure TScriptTests.CompilationWithMapAndSymbols;
 begin
-   FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap, coAssertions];
+   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coSymbolDictionary, coContextMap];
    Compilation;
 end;
 
@@ -180,7 +182,7 @@ end;
 //
 procedure TScriptTests.ExecutionNonOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=[coAssertions];
+   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions-[coOptimize];
    Execution;
 end;
 
@@ -188,8 +190,24 @@ end;
 //
 procedure TScriptTests.ExecutionOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=[coOptimize, coAssertions];
+   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coOptimize];
    Execution;
+end;
+
+// FailuresNonOptimized
+//
+procedure TScriptTests.FailuresNonOptimized;
+begin
+   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions-[coOptimize]+[coSymbolDictionary, coContextMap];
+   CompilationFailure;
+end;
+
+// FailuresOptimized
+//
+procedure TScriptTests.FailuresOptimized;
+begin
+   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coOptimize]-[coAssertions];
+   CompilationFailure;
 end;
 
 // CompilationFailure
@@ -202,7 +220,6 @@ var
    expectedError : TStringList;
    expectedErrorsFileName : String;
 begin
-   FCompiler.Config.CompilerOptions:=[coOptimize, coAssertions];
    source:=TStringList.Create;
    expectedError:=TStringList.Create;
    try
@@ -213,7 +230,12 @@ begin
 
          prog:=FCompiler.Compile(source.Text);
 
-         expectedErrorsFileName:=ChangeFileExt(FFailures[i], '.txt');
+         if coOptimize in FCompiler.Config.CompilerOptions then begin
+            expectedErrorsFileName:=ChangeFileExt(FFailures[i], '.optimized.txt');
+            if not FileExists(expectedErrorsFileName) then
+               expectedErrorsFileName:=ChangeFileExt(FFailures[i], '.txt');
+         end else expectedErrorsFileName:=ChangeFileExt(FFailures[i], '.txt');
+
          if FileExists(expectedErrorsFileName) then begin
             expectedError.LoadFromFile(expectedErrorsFileName);
             CheckEquals(expectedError.Text, prog.Msgs.AsInfo, FFailures[i]);

@@ -1628,7 +1628,7 @@ begin
             if not FTok.TestDelete(ttSEMI) then begin
                token:=FTok.GetToken;
                if (token=nil) or (not (token.FTyp in EndTokens)) then
-                  FMsgs.AddCompilerStop(FTok.CurrentPos, CPE_SemiExpected);
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
             end;
 
          end;
@@ -1746,6 +1746,10 @@ begin
             else if    (locExpr is TFuncExprBase)
                     or (locExpr is TConnectorCallExpr) then begin
                Result:=TNoResultWrapperExpr.Create(FProg, (locExpr as  TPosDataExpr).Pos, locExpr);
+               if locExpr.IsConstant then begin
+                  if not FMsgs.LastMessagePos.SamePosAs(hotPos) then   // avoid hint on calls with issues
+                     FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
+               end;
             end else if locExpr is TConnectorWriteExpr then
                Result:=TConnectorWriteExpr(locExpr)
             else if locExpr is TStringArraySetExpr then
@@ -5563,7 +5567,7 @@ begin
                Result:=TAssignedInstanceExpr.Create(FProg, argExpr)
             else if argTyp is TClassOfSymbol then
                Result:=TAssignedMetaClassExpr.Create(FProg, argExpr)
-            else FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+            else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
             argExpr:=nil;
          end;
          skHigh: begin
@@ -5587,7 +5591,7 @@ begin
             end else if argTyp=FProg.TypInteger then begin
                FreeAndNil(argExpr);
                Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, High(Int64));
-            end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+            end else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
          end;
          skLength: begin
             if argTyp is TOpenArraySymbol then begin
@@ -5605,7 +5609,7 @@ begin
                FreeAndNil(argExpr);
                Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger,
                                                 TStaticArraySymbol(argTyp).ElementCount);
-            end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+            end else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
          end;
          skLow: begin
                FreeAndNil(argExpr);
@@ -5619,7 +5623,7 @@ begin
                Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, Low(Int64))
             end else if (argTyp is TDynamicArraySymbol) then
                Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, 0)
-            else FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+            else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
          end;
          skSqr : begin
             case argTyp.BaseTypeID of
@@ -5634,7 +5638,7 @@ begin
                   argExpr:=nil;
                end;
             else
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_NumericalExpected);
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_NumericalExpected);
             end;
          end;
          skOrd: begin
@@ -5652,7 +5656,7 @@ begin
                   argExpr:=nil;
                end
             else
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
             end;
          end;
          skSizeOf : begin
@@ -5671,8 +5675,6 @@ begin
                         Result:=TConstBooleanExpr.CreateUnified(FProg, FProg.TypBoolean, EvaluateDefined(argExpr));
                      skDeclared :
                         Result:=TConstBooleanExpr.CreateUnified(FProg, FProg.TypBoolean, EvaluateDeclared(argExpr));
-                  else
-                     Assert(False);
                   end;
                finally
                   FreeAndNil(argExpr);
@@ -5683,11 +5685,20 @@ begin
                      Result:=TDefinedExpr.Create(FProg, argExpr);
                   skDeclared :
                      Result:=TDeclaredExpr.Create(FProg, argExpr);
-               else
-                  Assert(False);
                end;
                argExpr:=nil;
             end;
+         end;
+      end;
+
+      if Result=nil then begin
+         // fake expression to keep compiling
+         FreeAndNil(argExpr);
+         case SpecialKind of
+            skDefined, skDeclared, skAssigned :
+               Result:=TConstBooleanExpr.CreateUnified(FProg, nil, False);
+         else
+            Result:=TConstIntExpr.CreateUnified(FProg, nil, 0);
          end;
       end;
 
