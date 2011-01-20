@@ -11,6 +11,12 @@ type
       private
          FTests : TStringList;
          FCompiler : TDelphiWebScript;
+         FUnits : TdwsUnit;
+         FTestObjects : TList;
+
+         procedure DoCreateExternal(Info: TProgramInfo; var ExtObject: TObject);
+         procedure DoCreateBoomExternal(Info: TProgramInfo; var ExtObject: TObject);
+         procedure DoCleanupExternal(externalObject : TObject);
 
       public
          procedure SetUp; override;
@@ -35,6 +41,10 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+type
+   TTestObject = class
+   end;
+
 // ------------------
 // ------------------ TMemoryTests ------------------
 // ------------------
@@ -42,21 +52,72 @@ implementation
 // SetUp
 //
 procedure TMemoryTests.SetUp;
+var
+   cls : TdwsClass;
+   cst : TdwsConstructor;
 begin
    FTests:=TStringList.Create;
 
    CollectFiles(ExtractFilePath(ParamStr(0))+'Memory'+PathDelim, '*.pas', FTests);
 
    FCompiler:=TDelphiWebScript.Create(nil);
+   FUnits:=TdwsUnit.Create(nil);
+   FUnits.UnitName:='TestUnit';
+   FUnits.Script:=FCompiler;
+
+   cls:=FUnits.Classes.Add as TdwsClass;
+   cls.Name:='TExposedClass';
+   cls.OnCleanUp:=DoCleanupExternal;
+   cst:=cls.Constructors.Add as TdwsConstructor;
+   cst.Name:='Create';
+   cst.OnEval:=DoCreateExternal;
+
+   cls:=FUnits.Classes.Add as TdwsClass;
+   cls.Name:='TExposedBoomClass';
+   cls.OnCleanUp:=DoCleanupExternal;
+   cst:=cls.Constructors.Add as TdwsConstructor;
+   cst.Name:='Create';
+   cst.OnEval:=DoCreateBoomExternal;
+
+   FTestObjects:=TList.Create;
 end;
 
 // TearDown
 //
 procedure TMemoryTests.TearDown;
 begin
+   FTestObjects.Free;
+
+   FUnits.Free;
    FCompiler.Free;
 
    FTests.Free;
+end;
+
+// DoCreateExternal
+//
+procedure TMemoryTests.DoCreateExternal(Info: TProgramInfo; var ExtObject: TObject);
+begin
+   ExtObject:=TTestObject.Create;
+   FTestObjects.Add(ExtObject);
+end;
+
+// DoCreateBoomExternal
+//
+procedure TMemoryTests.DoCreateBoomExternal(Info: TProgramInfo; var ExtObject: TObject);
+begin
+   raise ETestFailure.Create('boom');
+end;
+
+// DoCleanupExternal
+//
+procedure TMemoryTests.DoCleanupExternal(externalObject : TObject);
+begin
+   if externalObject<>nil then begin
+      CheckTrue(FTestObjects.IndexOf(externalObject)>=0, 'Invalid object ref');
+      FTestObjects.Remove(externalObject);
+      externalObject.Free;
+   end;
 end;
 
 // Compilation
@@ -126,6 +187,8 @@ var
    exec : IdwsProgramExecution;
    resultsFileName : String;
 begin
+   FTestObjects.Clear;
+
    source:=TStringList.Create;
    expectedResult:=TStringList.Create;
    try
@@ -144,7 +207,8 @@ begin
             CheckEquals(expectedResult.Text, exec.Result.ToString, FTests[i]);
          end else CheckEquals('', exec.Result.ToString, FTests[i]);
          CheckEquals('', exec.Msgs.AsInfo, FTests[i]);
-         CheckEquals(0, exec.ObjectCount, 'Leaked '+IntToStr(exec.ObjectCount));
+         CheckEquals(0, exec.ObjectCount, FTests[i]+', leaked '+IntToStr(exec.ObjectCount)+' script objects');
+         CheckEquals(0, FTestObjects.Count, FTests[i]+', leaked '+IntToStr(FTestObjects.Count)+' external objects');
 
       end;
 
@@ -153,6 +217,8 @@ begin
       source.Free;
    end;
 end;
+
+
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
