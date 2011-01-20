@@ -774,6 +774,8 @@ type
          FOffset: Integer;
 
       public
+         constructor Create(const Name: string; Typ: TSymbol; aVisibility : TClassVisibility);
+
          function QualifiedName : String; override;
 
          property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
@@ -1450,6 +1452,14 @@ end;
 // ------------------
 // ------------------ TFieldSymbol ------------------
 // ------------------
+
+// Create
+//
+constructor TFieldSymbol.Create(const Name: string; Typ: TSymbol; aVisibility : TClassVisibility);
+begin
+   inherited Create(Name, Typ);
+   FVisibility:=aVisibility;
+end;
 
 // QualifiedName
 //

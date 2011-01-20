@@ -193,7 +193,7 @@ type
       function ReadCaseConditions(condList : TList; valueExpr : TNoPosExpr) : Integer;
       function ReadClassOf(const TypeName: string): TClassOfSymbol;
       function ReadClass(const TypeName: string): TClassSymbol;
-      procedure ReadClassFields(const classSymbol : TClassSymbol);
+      procedure ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TClassVisibility);
       function ReadConnectorSym(const Name: string; var BaseExpr: TNoPosExpr;
                                 const ConnectorType: IConnectorType; IsWrite: Boolean): TNoPosExpr;
       function ReadConnectorArray(const Name: String; var BaseExpr: TNoPosExpr;
@@ -3187,7 +3187,7 @@ begin
                   end;
 
                end else if FTok.TestName then begin
-                  ReadClassFields(Result);
+                  ReadClassFields(Result, visibility);
                   if not (FTok.TestDelete(ttSEMI) or FTok.Test(ttEND)) then
                      Break;
                end else Break;
@@ -3218,7 +3218,7 @@ end;
 
 // ReadClassFields
 //
-procedure TdwsCompiler.ReadClassFields(const classSymbol : TClassSymbol);
+procedure TdwsCompiler.ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TClassVisibility);
 var
    i : Integer;
    sym, typ : TSymbol;
@@ -3246,7 +3246,7 @@ begin
             FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [Names[i]]);
 
          // Create Internal Field
-         fieldSym := TFieldSymbol.Create(Names[i], Typ);
+         fieldSym := TFieldSymbol.Create(Names[i], Typ, aVisibility);
          Fields.Add(sym);
          classSymbol.AddField(fieldSym);
 
@@ -4959,6 +4959,8 @@ var
    clsMeta : TClassOfSymbol;
    meth : TMethodSymbol;
    varSym : TBaseSymbol;
+   fldSym : TFieldSymbol;
+   propSym : TPropertySymbol;
    typString : TBaseSymbol;
 begin
    // Create base data types
@@ -4978,16 +4980,16 @@ begin
    // Create "root" class TObject
    clsObject := TClassSymbol.Create(SYS_TOBJECT);
    // Add constructor Create
-   meth := TSourceMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, clsObject, cvPublic);
+   meth := TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, clsObject, cvPublic);
    meth.Executable := ICallable(TEmptyFunc.Create);
    clsObject.AddMethod(meth);
    // Add destructor Destroy
-   meth := TSourceMethodSymbol.Create(SYS_TOBJECT_DESTROY, fkDestructor, clsObject, cvPublic);
+   meth := TMethodSymbol.Create(SYS_TOBJECT_DESTROY, fkDestructor, clsObject, cvPublic);
    meth.IsVirtual := True;
    meth.Executable := ICallable(TEmptyFunc.Create);
    clsObject.AddMethod(meth);
    // Add destructor Free
-   meth := TSourceMethodSymbol.Create('Free', fkDestructor, clsObject, cvPublic);
+   meth := TMethodSymbol.Create('Free', fkDestructor, clsObject, cvPublic);
    meth.Executable := ICallable(TEmptyFunc.Create);
    clsObject.AddMethod(meth);
    SystemTable.AddSymbol(clsObject);
@@ -4999,7 +5001,12 @@ begin
    // Create class Exception
    clsException := TClassSymbol.Create(SYS_EXCEPTION);
    clsException.InheritFrom(clsObject);
-   clsException.AddField(TFieldSymbol.Create(SYS_EXCEPTION_MESSAGE, typString));
+   fldSym:=TFieldSymbol.Create(SYS_EXCEPTION_MESSAGE_FIELD, typString, cvProtected);
+   clsException.AddField(fldSym);
+   propSym:=TPropertySymbol.Create(SYS_EXCEPTION_MESSAGE, typString, cvPublic);
+   propSym.ReadSym:=fldSym;
+   propSym.WriteSym:=fldSym;
+   clsException.AddProperty(propSym);
    TExceptionCreateMethod.Create(mkConstructor, [], SYS_TOBJECT_CREATE,
                                  ['Msg', SYS_STRING], '', clsException, cvPublic, SystemTable);
    TExceptionDestroyMethod.Create(mkDestructor, [maOverride], SYS_TOBJECT_DESTROY,
@@ -5016,7 +5023,12 @@ begin
    // Create class EDelphi
    clsDelphiException := TClassSymbol.Create(SYS_EDELPHI);
    clsDelphiException.InheritFrom(clsException);
-   clsDelphiException.AddField(TFieldSymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS, typString));
+   fldSym:=TFieldSymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS_FIELD, typString, cvProtected);
+   clsDelphiException.AddField(fldSym);
+   propSym:=TPropertySymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS, typString, cvPublic);
+   propSym.ReadSym:=fldSym;
+   propSym.WriteSym:=fldSym;
+   clsDelphiException.AddProperty(propSym);
    TDelphiExceptionCreateMethod.Create(mkConstructor, [], SYS_TOBJECT_CREATE,
                                        ['Cls', SYS_STRING, 'Msg', SYS_STRING], '',
                                        clsDelphiException, cvPublic, SystemTable);
@@ -5128,7 +5140,7 @@ procedure TExceptionCreateMethod.Execute(info : TProgramInfo; var ExternalObject
 var
    context : TExceptionContext;
 begin
-   Info.ValueAsString[SYS_EXCEPTION_MESSAGE]:=Info.ValueAsString['Msg'];
+   Info.ValueAsString[SYS_EXCEPTION_MESSAGE_FIELD]:=Info.ValueAsString['Msg'];
 
    context:=TExceptionContext.Create;
    context.CallStack:=info.Execution.GetCallStack;
@@ -5164,8 +5176,8 @@ end;
 
 procedure TDelphiExceptionCreateMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
 begin
-  Info.ValueAsString[SYS_EXCEPTION_MESSAGE] := Info.ValueAsString['Msg'];
-  Info.ValueAsVariant[SYS_EDELPHI_EXCEPTIONCLASS] := Info.ValueAsVariant['Cls']
+  Info.ValueAsString[SYS_EXCEPTION_MESSAGE_FIELD] := Info.ValueAsString['Msg'];
+  Info.ValueAsVariant[SYS_EDELPHI_EXCEPTIONCLASS_FIELD] := Info.ValueAsVariant['Cls']
 end;
 
 { TParamFunc }

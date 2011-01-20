@@ -40,10 +40,12 @@ const
   SYS_TOBJECT_DESTROY = 'Destroy';
   SYS_EXCEPTION = 'Exception';
   SYS_EXCEPTION_MESSAGE = 'Message';
+  SYS_EXCEPTION_MESSAGE_FIELD = 'FMessage';
   SYS_EXCEPTION_STACKTRACE = 'StackTrace';
   SYS_EASSERTIONFAILED = 'EAssertionFailed';
   SYS_EDELPHI = 'EDelphi';
   SYS_EDELPHI_EXCEPTIONCLASS = 'ExceptionClass';
+  SYS_EDELPHI_EXCEPTIONCLASS_FIELD = 'FExceptionClass';
 
   // Compiler switches
   SWI_INCLUDE_LONG = 'INCLUDE';

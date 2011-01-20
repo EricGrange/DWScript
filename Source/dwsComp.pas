@@ -372,9 +372,12 @@ type
   TdwsForwardsClass = class of TdwsForwards;
 
   TdwsField = class(TdwsVariable)
+  private
+    FVisibility : TClassVisibility;
   public
-    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
-      override;
+    constructor Create(Collection: TCollection); override;
+    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+    property Visibility : TClassVisibility read FVisibility write FVisibility default cvPublic;
   end;
 
   TdwsFields = class(TdwsCollection)
@@ -2141,12 +2144,20 @@ end;
 
 { TdwsField }
 
+// Create
+//
+constructor TdwsField.Create(Collection: TCollection);
+begin
+   inherited;
+   FVisibility:=cvPublic;
+end;
+
 function TdwsField.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil):
   TSymbol;
 begin
   FIsGenerating := True;
   CheckName(TClassSymbol(ParentSym).Members, Name);
-  Result := TFieldSymbol.Create(Name, GetDataType(Table, DataType));
+  Result := TFieldSymbol.Create(Name, GetDataType(Table, DataType), Visibility);
 end;
 
 { TdwsMethod }
