@@ -490,7 +490,7 @@ var
 begin
    info:=exec.AcquireProgramInfo(func);
    try
-      scriptObj := Info.Vars['Self'].ScriptObj;
+      scriptObj := Info.Vars[SYS_SELF].ScriptObj;
 
       if Assigned(scriptObj) then begin
          info.ScriptObj := scriptObj;
@@ -547,7 +547,7 @@ var
 begin
    info:=exec.AcquireProgramInfo(func);
    try
-      scriptObj:=info.Vars['Self'].ScriptObj;
+      scriptObj:=info.Vars[SYS_SELF].ScriptObj;
 
       if Assigned(scriptObj) then begin
          info.ScriptObj := scriptObj;

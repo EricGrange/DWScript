@@ -346,6 +346,14 @@ const
 
 type
 
+   TObjectClassNameMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
+   TObjectClassTypeMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
    TExceptionContext = class
       CallStack : TExprBaseArray;
    end;
@@ -4992,11 +5000,18 @@ begin
    meth := TMethodSymbol.Create('Free', fkDestructor, clsObject, cvPublic);
    meth.Executable := ICallable(TEmptyFunc.Create);
    clsObject.AddMethod(meth);
+   // Add ClassName method
+   TObjectClassNameMethod.Create(mkClassFunction, [], SYS_TOBJECT_CLASSNAME,
+                                 [], SYS_STRING, clsObject, cvPublic, SystemTable);
    SystemTable.AddSymbol(clsObject);
 
    // Create "root" metaclass TObject
    clsMeta:=TClassOfSymbol.Create(SYS_TCLASS, clsObject);
    SystemTable.AddSymbol(clsMeta);
+
+   // Add ClassType method
+   TObjectClassTypeMethod.Create(mkClassFunction, [], SYS_TOBJECT_CLASSTYPE,
+                                 [], SYS_TCLASS, clsObject, cvPublic, SystemTable);
 
    // Create class Exception
    clsException := TClassSymbol.Create(SYS_EXCEPTION);
@@ -5128,6 +5143,28 @@ end;
 procedure TdwsConfiguration.SetConditionals(const val : TStringList);
 begin
    FConditionals.Assign(val);
+end;
+
+// ------------------
+// ------------------ TObjectClassNameMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TObjectClassNameMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+begin
+   Info.ResultAsString:=info.Vars[SYS_SELF].ValueAsString; //.ClassSym.Name;
+end;
+
+// ------------------
+// ------------------ TObjectClassTypeMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TObjectClassTypeMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+begin
+   Info.ResultAsString:=info.Vars[SYS_SELF].ValueAsString; //.ClassSym.Name;
 end;
 
 // ------------------

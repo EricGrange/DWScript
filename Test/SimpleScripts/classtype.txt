@@ -1,0 +1,10 @@
+TObject
+TObject
+TObject
+TObject
+Ancestor: TMyClass
+TMyClass
+TMyClass
+I'm TChild
+TChild
+TChild

@@ -557,7 +557,7 @@ type
 
    TMethodKind = ( mkProcedure, mkFunction, mkConstructor, mkDestructor, mkMethod,
                    mkClassProcedure, mkClassFunction, mkClassMethod );
-   TMethodAttribute = (maVirtual, maOverride, maReintroduce, maAbstract, maOverlap);
+   TMethodAttribute = (maVirtual, maOverride, maReintroduce, maAbstract, maOverlap, maClassMethod);
    TMethodAttributes = set of TMethodAttribute;
 
    TClassVisibility = (cvPrivate, cvProtected, cvPublic, cvPublished);
@@ -1802,13 +1802,14 @@ begin
    if ClassSym is TClassSymbol then begin
       // Method
       FClassSymbol := TClassSymbol(ClassSym);
-      FSelfSym := TDataSymbol.Create(SYS_SELF, ClassSym);
-      FInternalParams.AddSymbol(FSelfSym);
-      FSize := 2; // code + data
    end else begin
       // Class function -> self is "class of"
       FClassSymbol := TClassSymbol(ClassSym.Typ);
+      Include(FAttributes, maClassMethod);
    end;
+   FSelfSym := TDataSymbol.Create(SYS_SELF, ClassSym);
+   FInternalParams.AddSymbol(FSelfSym);
+   FSize := 2; // code + data
    FParams.AddParent(FClassSymbol.Members);
    FVisibility:=aVisibility;
 end;
@@ -1894,7 +1895,7 @@ end;
 
 function TMethodSymbol.GetIsClassMethod: Boolean;
 begin
-  Result := not Assigned(FSelfSym);
+   Result:=(maClassMethod in FAttributes);
 end;
 
 // GetIsOverride
@@ -2163,11 +2164,10 @@ end;
 
 constructor TClassSymbol.Create;
 begin
-  inherited Create(Name, nil);
-  FSize := 1;
-  FMembers := CreateMembersTable;
-  FClassOfSymbol := TClassOfSymbol.Create('class of ' + Name, Self);
-  FMembers.AddSymbol(TAliasSymbol.Create('Self',Self)); // private member ?!
+   inherited Create(Name, nil);
+   FSize := 1;
+   FMembers := CreateMembersTable;
+   FClassOfSymbol := TClassOfSymbol.Create('class of ' + Name, Self);
 end;
 
 destructor TClassSymbol.Destroy;

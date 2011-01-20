@@ -38,6 +38,8 @@ const
   SYS_TOBJECT = 'TObject';
   SYS_TOBJECT_CREATE = 'Create';
   SYS_TOBJECT_DESTROY = 'Destroy';
+  SYS_TOBJECT_CLASSNAME = 'ClassName';
+  SYS_TOBJECT_CLASSTYPE = 'ClassType';
   SYS_EXCEPTION = 'Exception';
   SYS_EXCEPTION_MESSAGE = 'Message';
   SYS_EXCEPTION_MESSAGE_FIELD = 'FMessage';

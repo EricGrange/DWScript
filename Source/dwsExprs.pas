@@ -1369,8 +1369,6 @@ type
   end;
 
   TInfoClassOf = class(TInfoClass)
-    constructor Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol; const Data:
-      TData; Offset: Integer; const DataMaster: IDataMaster = nil);
   end;
 
   TInfoRecord = class(TInfoData)
@@ -3952,10 +3950,9 @@ constructor TMethodStaticExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
   Func: TMethodSymbol; BaseExpr: TDataExpr; IsInstruction: Boolean;
   CodeExpr: TDataExpr; IsWritable: Boolean);
 begin
-  inherited Create(Prog, Pos, Func, IsInstruction, CodeExpr, IsWritable);
-  FBaseExpr := BaseExpr;
-  if not Func.IsClassMethod then
-    FSelfAddr := TDataSymbol(Func.SelfSym).StackAddr;
+   inherited Create(Prog, Pos, Func, IsInstruction, CodeExpr, IsWritable);
+   FBaseExpr := BaseExpr;
+   FSelfAddr := TDataSymbol(Func.SelfSym).StackAddr;
 end;
 
 destructor TMethodStaticExpr.Destroy;
@@ -3989,8 +3986,18 @@ end;
 { TClassMethodStaticExpr }
 
 function TClassMethodStaticExpr.PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol;
+var
+   buf : String;
 begin
-  Result := FFunc;
+   if FBaseExpr.Typ is TClassOfSymbol then
+      FBaseExpr.EvalAsString(exec, buf)
+   else begin
+      FBaseExpr.EvalAsScriptObj(exec, ScriptObj);
+      buf:=ScriptObj.ClassSym.Name;
+      ScriptObj:=nil;
+   end;
+   exec.Stack.WriteStrValue(exec.Stack.StackPointer + FSelfAddr, buf);
+   Result := FFunc;
 end;
 
 { TConstructorStaticExpr }
@@ -5190,15 +5197,6 @@ begin
   end
   else
     raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
-end;
-
-{ TInfoClassOf }
-
-constructor TInfoClassOf.Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol;
-  const Data: TData; Offset: Integer; const DataMaster: IDataMaster);
-begin
-  inherited;
-  FTypeSym := FExec.Prog.Table.FindSymbol(FData[FOffset]);
 end;
 
 { TTempParam }
