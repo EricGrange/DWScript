@@ -1642,9 +1642,10 @@ begin
 
    FProg.NotifyExecutionDestruction(Self);
 
+   ReleaseObjects;
+
    FProgramInfo.Free;
    FProgInfoPool.Free;
-   ReleaseObjects;
    FResult.Free;
    FMsgs.Free;
 
@@ -1840,7 +1841,8 @@ begin
    FProgramState:=psTerminated;
    try
       // Stack
-      Stack.Pop(FProg.FAddrGenerator.DataSize + FProg.FGlobalAddrGenerator.DataSize);
+      Stack.PopBp(0);
+      Stack.Pop(Stack.StackPointer); // FProg.FAddrGenerator.DataSize + FProg.FGlobalAddrGenerator.DataSize);
 
       // Object Cycles
       ReleaseObjects;
@@ -1861,7 +1863,9 @@ begin
       on e: EScriptError do
          Msgs.AddError(e.Message);
       on e: Exception do
-         Msgs.AddError(e.Message+LastScriptError.ScriptPos.AsInfo);
+         if LastScriptError<>nil then
+            Msgs.AddError(e.Message+LastScriptError.ScriptPos.AsInfo)
+         else Msgs.AddError(e.Message);
    end;
 
 end;
@@ -1947,11 +1951,17 @@ procedure TdwsProgramExecution.ReleaseObjects;
 var
    iter : TScriptObj;
 begin
+   if FObjectCount=0 then Exit;
+   // clear all the datas, then the object
    while FFirstObject<>nil do begin
       iter:=FFirstObject;
-      ScriptObjDestroyed(iter);
-      iter.FRefCount:=0;
-      iter.Free;
+      SetLength(iter.FData, 0);
+      if iter=FFirstObject then begin
+         ScriptObjDestroyed(iter);
+         iter.ExecutionContext:=nil;
+         iter.FRefCount:=0;
+         iter.Free;
+      end;
    end;
 end;
 
@@ -4757,6 +4767,7 @@ constructor TScriptObj.Create(ClassSym: TClassSymbol; executionContext : TdwsPro
 var
    x: Integer;
    c: TClassSymbol;
+   externalClass : TClassSymbol;
 begin
    FClassSym := ClassSym;
 
@@ -4775,7 +4786,11 @@ begin
       c := c.Parent;
    end;
 
-   FOnObjectDestroy := ClassSym.OnObjectDestroy;
+   externalClass:=ClassSym;
+   while (externalClass<>nil) and not Assigned(externalClass.OnObjectDestroy) do
+      externalClass:=externalClass.Parent;
+   if externalClass<>nil then
+      FOnObjectDestroy:=externalClass.OnObjectDestroy;
 end;
 
 procedure TScriptObj.BeforeDestruction;
