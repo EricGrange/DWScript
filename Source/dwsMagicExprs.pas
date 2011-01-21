@@ -22,7 +22,7 @@ unit dwsMagicExprs;
 
 interface
 
-uses Classes, dwsExprs, dwsSymbols, dwsStack, dwsErrors, dwsFunctions, dwsUtils;
+uses Classes, SysUtils, dwsExprs, dwsSymbols, dwsStack, dwsErrors, dwsFunctions, dwsUtils;
 
 type
 
@@ -108,13 +108,12 @@ implementation
 
 // AddArg
 //
-function TMagicFuncExpr.AddArg(Arg: TNoPosExpr) : TSymbol;
+function TMagicFuncExpr.AddArg(arg: TNoPosExpr) : TSymbol;
 begin
-   if FArgs.Count<FFunc.Params.Count then
-      Result:=FFunc.Params[FArgs.Count]
-   else Result:=nil;
-
-   FArgs.Add(Arg);
+   if FArgs.Count<FFunc.Params.Count then begin
+      Result:=FFunc.Params[FArgs.Count];
+   end else Result:=nil;
+   FArgs.Add(arg);
 end;
 
 // IsWritable
@@ -162,8 +161,7 @@ begin
    try
       Result:=FOnEval(@execRec);
    except
-      exec.SetScriptError(Self);
-      raise;
+      RaiseScriptError;
    end;
 end;
 
@@ -204,8 +202,7 @@ begin
    try
       Result:=FOnEval(@execRec);
    except
-      exec.SetScriptError(Self);
-      raise;
+      RaiseScriptError;
    end;
 end;
 
@@ -251,8 +248,7 @@ begin
    try
       FOnEval(@execRec, Result);
    except
-      exec.SetScriptError(Self);
-      raise;
+      RaiseScriptError;
    end;
 end;
 
@@ -298,8 +294,7 @@ begin
    try
       FOnEval(@execRec, Result);
    except
-      exec.SetScriptError(Self);
-      raise;
+      RaiseScriptError;
    end;
 end;
 
@@ -326,8 +321,7 @@ begin
    try
       FOnEval(@execRec);
    except
-      exec.SetScriptError(Self);
-      raise;
+      RaiseScriptError;
    end;
 end;
 

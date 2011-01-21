@@ -1113,12 +1113,16 @@ type
       private
          FScriptPos : TScriptPos;
          FScriptCallStack : TExprBaseArray;
+         FRawClassName : String;
+         FRawMessage : String;
 
       public
          constructor CreatePosFmt(const pos : TScriptPos; const Msg: string; const Args: array of const);
 
          property Pos : TScriptPos read FScriptPos write FScriptPos;
          property ScriptCallStack : TExprBaseArray read FScriptCallStack write FScriptCallStack;
+         property RawClassName : String read FRawClassName write FRawClassName;
+         property RawMessage : String read FRawMessage write FRawMessage;
    end;
    EScriptErrorClass = class of EScriptError;
 

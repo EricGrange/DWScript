@@ -346,7 +346,6 @@ begin
    exec:=prog.Execute;
    CheckEquals('Runtime Error: Maximal data size exceeded (2 Variants) in Dummy [line: 1, column: 41]'#13#10
                +'Dummy [line: 1, column: 41]'#13#10
-               +'Dummy [line: 1, column: 41]'#13#10
                +' [line: 1, column: 53]'#13#10,
                exec.Msgs.AsInfo, 'stack overflow');
 

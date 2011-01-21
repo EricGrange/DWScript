@@ -558,6 +558,7 @@ type
          function ScriptLocation : String; override;
 
          procedure RaiseScriptError(e : EScriptError); overload;
+         procedure RaiseScriptError; overload;
          procedure RaiseScriptError(const msg : String); overload;
          procedure RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String); overload;
          procedure RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String;
@@ -680,7 +681,7 @@ type
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol);
          destructor Destroy; override;
-         function AddArg(Arg: TNoPosExpr) : TSymbol; virtual; abstract;
+         function AddArg(arg : TNoPosExpr) : TSymbol; virtual; abstract;
          procedure TypeCheckNoPos(const aPos : TScriptPos); override;
          procedure Initialize; override;
          function GetArgs : TExprBaseList;
@@ -748,7 +749,7 @@ type
                             IsWritable: Boolean = False; exec : TdwsProgramExecution = nil);
          destructor Destroy; override;
 
-         function AddArg(Arg: TNoPosExpr) : TSymbol; override;
+         function AddArg(arg : TNoPosExpr) : TSymbol; override;
          procedure AddPushExprs;
          function Eval(exec : TdwsExecution) : Variant; override;
          function GetData(exec : TdwsExecution) : TData; override;
@@ -2644,8 +2645,23 @@ end;
 procedure TNoPosExpr.RaiseScriptError(e : EScriptError);
 begin
    e.Pos:=ScriptPos;
+   e.RawMessage:=e.Message;
    e.Message:=e.Message+e.Pos.AsInfo;
    raise e;
+end;
+
+// RaiseScriptError
+//
+procedure TNoPosExpr.RaiseScriptError;
+var
+   exc : Exception;
+   e : EScriptError;
+begin
+   Assert(ExceptObject is Exception);
+   exc:=Exception(ExceptObject);
+   e:=EScriptError.Create(exc.Message);
+   e.RawClassName:=exc.ClassName;
+   RaiseScriptError(e);
 end;
 
 // RaiseScriptError
@@ -3134,19 +3150,22 @@ begin
    paramCount := FFunc.Params.Count;
 
    // Check number of arguments = number of parameters
-   if FArgs.Count>paramCount then
-      AddCompilerErrorFmt(CPE_TooManyArguments, [])
-   else begin
-      while FArgs.Count<paramCount do begin
-         // Complete missing args by default values
-         paramSymbol:=TParamSymbol(FFunc.Params[FArgs.Count]);
-         if paramSymbol is TParamSymbolWithDefaultValue then
-            FArgs.Add(TConstExpr.CreateTyped(Prog, paramSymbol.Typ,
-                                             TParamSymbolWithDefaultValue(paramSymbol).DefaultValue))
-         else begin
-            AddCompilerErrorFmt(CPE_TooFewArguments, []);
-            Break;
-         end;
+   if FArgs.Count>paramCount then begin
+      AddCompilerErrorFmt(CPE_TooManyArguments, []);
+      while FArgs.Count>paramCount do begin
+         FArgs.ExprBase[FArgs.Count-1].Free;
+         FArgs.Delete(FArgs.Count-1);
+      end;
+   end;
+   while FArgs.Count<paramCount do begin
+      // Complete missing args by default values
+      paramSymbol:=TParamSymbol(FFunc.Params[FArgs.Count]);
+      if paramSymbol is TParamSymbolWithDefaultValue then
+         FArgs.Add(TConstExpr.CreateTyped(Prog, paramSymbol.Typ,
+                                          TParamSymbolWithDefaultValue(paramSymbol).DefaultValue))
+      else begin
+         AddCompilerErrorFmt(CPE_TooFewArguments, []);
+         Break;
       end;
    end;
 
@@ -3209,6 +3228,11 @@ begin
       try
          Result:=TConstExpr.CreateTyped(Prog, Typ, Eval(exec));
       except
+         on E: EScriptError do begin
+            FProg.CompileMsgs.AddCompilerErrorFmt(E.Pos, CPE_FunctionOptimizationFailed,
+                                                  [FuncSym.Name, E.RawClassName, E.RawMessage],
+                                                   TCompilerErrorMessage);
+         end;
          on E: Exception do begin
             FProg.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_FunctionOptimizationFailed,
                                                   [FuncSym.Name, E.ClassName, E.Message],
@@ -3520,16 +3544,17 @@ begin
   inherited;
 end;
 
-function TFuncExpr.AddArg(Arg: TNoPosExpr) : TSymbol;
+// AddArg
+//
+function TFuncExpr.AddArg(arg: TNoPosExpr) : TSymbol;
 begin
    if FArgs.Count<FFunc.Params.Count then begin
       Result:=FFunc.Params[FArgs.Count];
       if     (Arg is TFuncExpr)
          and (Result.Typ is TFuncSymbol) then
-      Arg:=TFuncCodeExpr.Create(Prog, Pos, TFuncExpr(Arg));
+      arg:=TFuncCodeExpr.Create(Prog, Pos, TFuncExpr(arg));
    end else Result:=nil;
-
-   FArgs.Add(Arg);
+   FArgs.Add(arg);
 end;
 
 function TFuncExpr.Eval(exec : TdwsExecution) : Variant;
@@ -3566,16 +3591,7 @@ begin
 
          // Call function
          try
-            try
-               // The call itself
-               code.Call(exec as TdwsProgramExecution, func);
-            except
-               on e: EScriptException do
-                  raise;
-            else
-               exec.SetScriptError(Self);
-               raise;
-            end;
+            code.Call(exec as TdwsProgramExecution, func);
          finally
             if exec.IsDebugging then
                exec.Debugger.LeaveFunc(exec, Self);

@@ -529,8 +529,7 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
    exec:=prog.Execute;
-   CheckEquals('Runtime Error: Hello, Delphi Exception here! in FuncException [line: 1, column: 1]'#13#10
-               +' [line: 1, column: 1]'#13#10,
+   CheckEquals('Runtime Error: Hello, Delphi Exception here! in FuncException [line: 1, column: 1]'#13#10,
                exec.Msgs.AsInfo, 'Execute Msgs');
 end;
 
@@ -549,8 +548,7 @@ begin
                            );
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
    exec:=prog.Execute;
-   CheckEquals('Runtime Error: Hello, Delphi Exception here! in FuncException [line: 2, column: 2]'#13#10
-               +' [line: 2, column: 2]'#13#10,
+   CheckEquals('Runtime Error: Hello, Delphi Exception here! in FuncException [line: 2, column: 2]'#13#10,
                exec.Msgs.AsInfo, 'Execute Msgs');
 end;
 
