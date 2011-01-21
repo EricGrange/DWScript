@@ -202,6 +202,7 @@ begin
    try
       Result:=FOnEval(@execRec);
    except
+      Result:=0;
       RaiseScriptError;
    end;
 end;
