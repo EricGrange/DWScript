@@ -930,7 +930,7 @@ end;
 
 function TDelphiWebScript.GetVersion: string;
 begin
-  Result := '2.1';
+  Result := '2.2';
 end;
 
 procedure TDelphiWebScript.SetVersion(const Value: string);
