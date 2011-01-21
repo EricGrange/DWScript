@@ -27,6 +27,8 @@ uses Classes, SysUtils, Variants, StrUtils, dwsFunctions, dwsSymbols, dwsStrings
 
 type
 
+  EChrConvertError = class (Exception);
+
   TChrFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
@@ -223,8 +225,20 @@ const // type constants
 // DoEvalAsString
 //
 procedure TChrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+var
+   c : Integer;
 begin
-   Result:=Char(args.AsInteger[0]);
+   c:=args.AsInteger[0];
+   case c of
+      0..$FFFF :
+         Result:=Char(c);
+      $10000..$10FFFF : begin
+         c:=c-$10000;
+         Result:=Char($D800+(c shr 10))+Char($DC00+(c and $3FF));
+      end;
+   else
+      raise EChrConvertError.CreateFmt('Invalid codepoint: %d', [c]);
+   end;
 end;
 
 { TIntToStrFunc }
