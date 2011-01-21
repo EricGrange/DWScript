@@ -55,6 +55,7 @@ type
          procedure DelphiExceptionReRaise;
          procedure ListOrdAutoEnum;
          procedure CallFunc;
+         procedure CallFuncVarParam;
          procedure PredefinedVar;
          procedure AssignTest;
          procedure PredefinedArray;
@@ -598,6 +599,43 @@ begin
 
       funcInfo:=exec.Info.Func['Hello'];
       CheckEquals('Hello world', funcInfo.Call(['world']).Value, 'Hello world');
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// CallFuncVarParam
+//
+procedure TdwsUnitTests.CallFuncVarParam;
+var
+   prog : IdwsProgram;
+   funcInfo : IInfo;
+   exec : IdwsProgramExecution;
+   paramString : String;
+begin
+   prog:=FCompiler.Compile( 'function Hello(var name : String) : String;'
+                           +'begin'
+                           +'   Result:=''was ''+name;'
+                           +'   name:=''world'';'
+                           +'end;');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.BeginNewExecution;
+   try
+      funcInfo:=exec.Info.Func['FuncVar'];
+      funcInfo.Parameter['i'].Value:=10;
+      funcInfo.Parameter['n'].Value:=3;
+      CheckEquals(10, funcInfo.Parameter['i'].Value, 'FuncVar before call');
+      funcInfo.Call;
+      CheckEquals(13, funcInfo.Parameter['i'].Value, 'FuncVar after call');
+
+      paramString:='Eric';
+      funcInfo:=exec.Info.Func['Hello'];
+      funcInfo.Parameter['name'].Value:=paramString;
+      CheckEquals('was Eric', funcInfo.Call.Value, 'Hello Eric result');
+      paramString:=funcInfo.Parameter['name'].ValueAsString;
+      CheckEquals('world', paramString, 'Hello Eric var');
    finally
       exec.EndProgram;
    end;

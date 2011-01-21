@@ -28,6 +28,7 @@ type
          procedure StackMaxRecursion;
          procedure StackOverFlow;
          procedure Assertions;
+         procedure ScriptVersion;
    end;
 
 // ------------------------------------------------------------------
@@ -376,6 +377,17 @@ begin
    finally
       FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions;
    end;
+end;
+
+// ScriptVersion
+//
+procedure TCornerCasesTests.ScriptVersion;
+var
+   v : String;
+begin
+   v:=FCompiler.Version;
+   FCompiler.Version:='???';
+   CheckEquals(v, FCompiler.Version);
 end;
 
 // ------------------------------------------------------------------
