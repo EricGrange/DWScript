@@ -5238,7 +5238,7 @@ procedure TExceptObjFunc.Execute(info : TProgramInfo);
 begin
    if info.Execution.ExceptionObjectStack.Count>0 then
       info.ResultAsVariant:=info.Execution.ExceptionObjectStack.Peek
-   else info.ResultAsVariant:=Null;
+   else info.ResultAsVariant:=IScriptObj(nil);
 end;
 
 { TParamFunc }
@@ -5667,7 +5667,9 @@ begin
       argTyp := FProg.Table.FindSymbol(FTok.GetToken.FString)
    else argTyp := nil;
 
-   if Assigned(argTyp) and (argTyp is TTypeSymbol) then begin
+   if     Assigned(argTyp)
+      and argTyp.InheritsFrom(TTypeSymbol)
+      and not argTyp.InheritsFrom(TFuncSymbol) then begin
       argExpr := nil;
       FTok.KillToken;
       FTok.KillToken;
