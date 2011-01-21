@@ -374,6 +374,10 @@ type
       procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
    end;
 
+   TExceptObjFunc = class(TInternalFunction)
+      procedure Execute(info : TProgramInfo); override;
+   end;
+
    TParamFunc = class(TInternalFunction)
       procedure Execute(info : TProgramInfo); override;
    end;
@@ -3607,24 +3611,28 @@ begin
    end;
 end;
 
-function TdwsCompiler.ReadRaise: TRaiseBaseExpr;
+// ReadRaise
+//
+function TdwsCompiler.ReadRaise : TRaiseBaseExpr;
 var
    exceptExpr : TNoPosExpr;
+   exceptObjTyp : TSymbol;
 begin
-  if FIsExcept and (FTok.Test(ttSEMI) or FTok.Test(ttEND)) then
-    Result := TReraiseExpr.Create(FProg, FTok.HotPos)
-  else
-  begin
-    exceptExpr := ReadExpr;
-    try
-      if not Assigned(exceptExpr.Typ) then
-        FMsgs.AddCompilerError(FTok.HotPos,CPE_TypeExpected);
-      Result := TRaiseExpr.Create(FProg, FTok.HotPos, exceptExpr);
-    except
-      exceptExpr.Free;
-      raise;
-    end;
-  end;
+   if FIsExcept and (FTok.Test(ttSEMI) or FTok.Test(ttEND)) then
+      Result:=TReraiseExpr.Create(FProg, FTok.HotPos)
+   else begin
+      exceptExpr:=ReadExpr;
+      try
+         exceptObjTyp:=exceptExpr.Typ;
+         if not (    (exceptObjTyp is TClassSymbol)
+                 and TClassSymbol(exceptObjTyp).IsOfType(FProg.TypException)) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ExceptionObjectExpected);
+         Result:=TRaiseExpr.Create(FProg, FTok.HotPos, exceptExpr);
+      except
+         exceptExpr.Free;
+         raise;
+      end;
+   end;
 end;
 
 function TdwsCompiler.ReadExcept(TryExpr: TExpr): TExceptExpr;
@@ -5049,6 +5057,9 @@ begin
                                        clsDelphiException, cvPublic, SystemTable);
    SystemTable.AddSymbol(clsDelphiException);
 
+   // ExceptObj function
+   TExceptObjFunc.Create(SystemTable, 'ExceptObj', [], SYS_EXCEPTION, False);
+
    // Runtime parameters
    TParamFunc.Create(SystemTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, False);
    TParamStrFunc.Create(SystemTable, 'ParamStr', ['Index', SYS_INTEGER], SYS_STRING, False);
@@ -5215,6 +5226,19 @@ procedure TDelphiExceptionCreateMethod.Execute(info : TProgramInfo; var External
 begin
   Info.ValueAsString[SYS_EXCEPTION_MESSAGE_FIELD] := Info.ValueAsString['Msg'];
   Info.ValueAsVariant[SYS_EDELPHI_EXCEPTIONCLASS_FIELD] := Info.ValueAsVariant['Cls']
+end;
+
+// ------------------
+// ------------------ TExceptObjFunc ------------------
+// ------------------
+
+// Execute
+//
+procedure TExceptObjFunc.Execute(info : TProgramInfo);
+begin
+   if info.Execution.ExceptionObjectStack.Count>0 then
+      info.ResultAsVariant:=info.Execution.ExceptionObjectStack.Peek
+   else info.ResultAsVariant:=Null;
 end;
 
 { TParamFunc }

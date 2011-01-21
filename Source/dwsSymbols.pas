@@ -84,6 +84,7 @@ type
          FCallStack : TTightStack;
          FLastScriptError : TExprBase;
          FLastScriptCallStack : TExprBaseArray;
+         FExceptionObjectStack : TSimpleStack<Variant>;
 
          FDebugger : IDebugger;
          FIsDebugging : Boolean;
@@ -125,6 +126,7 @@ type
 
          property LastScriptError : TExprBase read FLastScriptError;
          property LastScriptCallStack : TExprBaseArray read FLastScriptCallStack;
+         property ExceptionObjectStack : TSimpleStack<Variant> read FExceptionObjectStack;
 
          property ProgramState : TProgramState read FProgramState;
 
@@ -582,6 +584,8 @@ type
          procedure SetIsVirtual(const val : Boolean); inline;
          function GetIsAbstract : Boolean; inline;
          procedure SetIsAbstract(const val : Boolean); inline;
+
+         function GetDescription: string; override;
 
       public
          constructor Create(const Name: string; FuncKind: TFuncKind; ClassSym: TSymbol;
@@ -1960,6 +1964,15 @@ begin
    if val then
       Include(FAttributes, maAbstract)
    else Exclude(FAttributes, maAbstract);
+end;
+
+// GetDescription
+//
+function TMethodSymbol.GetDescription: string;
+begin
+   Result:=inherited GetDescription;
+   if IsClassMethod then
+      Result:='class '+Result;
 end;
 
 procedure TMethodSymbol.InitData(const Data: TData; Offset: Integer);
@@ -3507,6 +3520,7 @@ begin
    inherited Create;
    FStack.Initialize(stackParams);
    FStack.Reset;
+   FExceptionObjectStack:=TSimpleStack<Variant>.Create;
 end;
 
 // Destroy
@@ -3514,6 +3528,7 @@ end;
 destructor TdwsExecution.Destroy;
 begin
    inherited;
+   FExceptionObjectStack.Free;
    FStack.Finalize;
    FCallStack.Free;
 end;

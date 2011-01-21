@@ -222,6 +222,7 @@ const
   CPE_BooleanOrIntegerExpected = 'Boolean or integer operand expected';
   CPE_ObjectExpected = 'Object expected';
   CPE_ClassRefExpected = 'Class reference expected';
+  CPE_ExceptionObjectExpected = 'Exception object expected';
 
   CPE_IntegerCastInvalid = 'Cannot cast this type to "Integer"';
   CPE_IncompatibleTypes = 'Incompatible types: "%s" and "%s"';

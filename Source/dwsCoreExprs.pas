@@ -4706,72 +4706,82 @@ end;
 
 procedure TExceptExpr.EvalNoResult(exec : TdwsExecution);
 var
-   x: Integer;
-   obj: Variant;
-   objSym: TSymbol;
-   doExpr: TExceptDoExpr;
-   isCatched: Boolean;
-   isReraise: Boolean;
+   x : Integer;
+   obj : Variant;
+   objSym : TSymbol;
+   doExpr : TExceptDoExpr;
+   isCaught : Boolean;
+   isReraise : Boolean;
 begin
    try
       exec.DoStep(FTryExpr);
       FTryExpr.EvalNoResult(exec);
    except
-      on e: Exception do begin
-         if e is EScriptException then begin
+      on mainException : Exception do begin
+         if mainException is EScriptException then begin
             // a raise-statement created an Exception object
-            obj := EScriptException(e).Value;
-            objSym := EScriptException(e).Typ;
+            obj := EScriptException(mainException).Value;
+            objSym := EScriptException(mainException).Typ;
          end else begin
             // A Delphi exception. Transform it to a EDelphi-dws exception
-            obj := CreateEDelphiObj(exec, e.ClassName, e.Message);
+            obj := CreateEDelphiObj(exec, mainException.ClassName, mainException.Message);
             objSym := IScriptObj(IUnknown(Obj)).ClassSym;
          end;
 
-         // script exceptions
-         if FDoExprs.Count > 0 then begin
+         exec.ExceptionObjectStack.Push(obj);
+         try
 
-            isCatched := False;
+            isReraise := False;
 
-            for x := 0 to FDoExprs.Count - 1 do begin
-               // Find a "on x: Class do ..." statement matching to this exception class
-               doExpr := TExceptDoExpr(FDoExprs.List[x]);
-               if doExpr.ExceptionVar.Typ.IsCompatible(objSym) then begin
-                  exec.Stack.Data[exec.Stack.BasePointer +  doExpr.FExceptionVar.StackAddr] := obj;
-                  isReraise := False;
+            // script exceptions
+            if FDoExprs.Count > 0 then begin
+
+               isCaught := False;
+
+               for x := 0 to FDoExprs.Count - 1 do begin
+                  // Find a "on x: Class do ..." statement matching to this exception class
+                  doExpr := TExceptDoExpr(FDoExprs.List[x]);
+                  if doExpr.ExceptionVar.Typ.IsCompatible(objSym) then begin
+                     exec.Stack.Data[exec.Stack.BasePointer +  doExpr.FExceptionVar.StackAddr] := obj;
+                     try
+                        exec.DoStep(doExpr);
+                        doExpr.EvalNoResult(exec);
+                     except
+                        on E : EReraise do isReraise := True;
+                     end;
+                     if isReraise then break;
+                     VarClear(exec.Stack.Data[exec.Stack.BasePointer + doExpr.FExceptionVar.StackAddr]);
+                     isCaught := True;
+                     Break;
+                  end;
+               end;
+
+               if (not isReraise) and (not isCaught) and Assigned(FElseExpr) then begin
                   try
-                     exec.DoStep(doExpr);
-                     doExpr.EvalNoResult(exec);
+                     exec.DoStep(FElseExpr);
+                     FElseExpr.EvalNoResult(exec);
                   except
                      on E : EReraise do isReraise := True;
                   end;
-                  if isReraise then raise;
-                  VarClear(exec.Stack.Data[exec.Stack.BasePointer + doExpr.FExceptionVar.StackAddr]);
-                  isCatched := True;
-                  Break;
                end;
-            end;
 
-            if not isCatched and Assigned(FElseExpr) then begin
-               isReraise := False;
+            end else begin
+
                try
-                  exec.DoStep(FElseExpr);
-                  FElseExpr.EvalNoResult(exec);
+                  exec.DoStep(FHandlerExpr);
+                  FHandlerExpr.EvalNoResult(exec);
                except
                   on E : EReraise do isReraise := True;
                end;
-               if isReraise then raise;
+
             end;
-         end else begin
-            isReraise := False;
-            try
-               exec.DoStep(FHandlerExpr);
-               FHandlerExpr.EvalNoResult(exec);
-            except
-               on E : EReraise do isReraise := True;
-            end;
-            if isReraise then raise;
+
+         finally
+            exec.ExceptionObjectStack.Peek:=Unassigned;
+            exec.ExceptionObjectStack.Pop;
          end;
+
+         if isReraise then raise;
       end;
    end;
    exec.ClearScriptError;

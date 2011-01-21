@@ -371,6 +371,17 @@ type
          property Msgs : TdwsMessageList read FMsgs;
    end;
 
+   TdwsProgramBaseTypes = record
+      FTypBoolean: TTypeSymbol;
+      FTypFloat: TTypeSymbol;
+      FTypInteger: TTypeSymbol;
+      FTypNil: TNilSymbol;
+      FTypObject: TClassSymbol;
+      FTypString: TTypeSymbol;
+      FTypVariant: TTypeSymbol;
+      FTypException: TClassSymbol;
+   end;
+
    // A script executable program
    TdwsProgram = class (TInterfacedObject, IdwsProgram)
       private
@@ -390,16 +401,10 @@ type
          FSymbolDictionary: TSymbolDictionary;
          FTable: TSymbolTable;
          FTimeoutMilliseconds: Integer;
-         FTypBoolean: TTypeSymbol;
-         FTypFloat: TTypeSymbol;
-         FTypInteger: TTypeSymbol;
-         FTypNil: TNilSymbol;
-         FTypObject: TClassSymbol;
-         FTypString: TTypeSymbol;
-         FTypVariant: TTypeSymbol;
          FCompiler : TObject;
          FRuntimeFileSystem : TdwsCustomFileSystem;
          FConditionalDefines : TStringList;
+         FBaseTypes : TdwsProgramBaseTypes;
          FLineCount : Integer;
          FDefaultUserObject : TObject;
 
@@ -469,13 +474,14 @@ type
 
          property UnifiedConstList: TSortedList<TExprBase> read FUnifiedConstList;
 
-         property TypBoolean: TTypeSymbol read FTypBoolean;
-         property TypFloat: TTypeSymbol read FTypFloat;
-         property TypInteger: TTypeSymbol read FTypInteger;
-         property TypNil: TNilSymbol read FTypNil;
-         property TypObject: TClassSymbol read FTypObject;
-         property TypString: TTypeSymbol read FTypString;
-         property TypVariant: TTypeSymbol read FTypVariant;
+         property TypBoolean: TTypeSymbol read FBaseTypes.FTypBoolean;
+         property TypFloat: TTypeSymbol read FBaseTypes.FTypFloat;
+         property TypInteger: TTypeSymbol read FBaseTypes.FTypInteger;
+         property TypNil: TNilSymbol read FBaseTypes.FTypNil;
+         property TypObject: TClassSymbol read FBaseTypes.FTypObject;
+         property TypString: TTypeSymbol read FBaseTypes.FTypString;
+         property TypVariant: TTypeSymbol read FBaseTypes.FTypVariant;
+         property TypException: TClassSymbol read FBaseTypes.FTypException;
 
          property SymbolDictionary: TSymbolDictionary read FSymbolDictionary;
          property ContextMap: TContextMap read FContextMap;
@@ -2117,13 +2123,14 @@ begin
    FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
 
    // Initialize shortcuts to often used symbols
-   FTypBoolean := SystemTable.FindSymbol(SYS_BOOLEAN) as TTypeSymbol;
-   FTypFloat := SystemTable.FindSymbol(SYS_FLOAT) as TTypeSymbol;
-   FTypInteger := SystemTable.FindSymbol(SYS_INTEGER) as TTypeSymbol;
-   FTypString := SystemTable.FindSymbol(SYS_STRING) as TTypeSymbol;
-   FTypVariant := SystemTable.FindSymbol(SYS_VARIANT) as TTypeSymbol;
-   FTypNil := TNilSymbol.Create;
-   FTypObject := TClassSymbol(SystemTable.FindSymbol(SYS_TOBJECT));
+   FBaseTypes.FTypBoolean := SystemTable.FindSymbol(SYS_BOOLEAN) as TTypeSymbol;
+   FBaseTypes.FTypFloat := SystemTable.FindSymbol(SYS_FLOAT) as TTypeSymbol;
+   FBaseTypes.FTypInteger := SystemTable.FindSymbol(SYS_INTEGER) as TTypeSymbol;
+   FBaseTypes.FTypString := SystemTable.FindSymbol(SYS_STRING) as TTypeSymbol;
+   FBaseTypes.FTypVariant := SystemTable.FindSymbol(SYS_VARIANT) as TTypeSymbol;
+   FBaseTypes.FTypNil := TNilSymbol.Create;
+   FBaseTypes.FTypObject := TClassSymbol(SystemTable.FindSymbol(SYS_TOBJECT));
+   FBaseTypes.FTypException := SystemTable.FindSymbol(SYS_EXCEPTION) as TClassSymbol;
 end;
 
 // Destroy
@@ -2142,7 +2149,7 @@ begin
    FExpr.Free;
    FInitExpr.Free;
    FRootTable.Free;
-   FTypNil.Free;
+   FBaseTypes.FTypNil.Free;
    FCompileMsgs.Free;
    FSymbolDictionary.Free;
    FContextMap.Free;
@@ -2371,13 +2378,7 @@ begin
 
   // Connect the procedure to the root TdwsProgram
   FRoot := Parent.Root;
-  FTypBoolean := FRoot.TypBoolean;
-  FTypFloat := FRoot.TypFloat;
-  FTypInteger := FRoot.TypInteger;
-  FTypNil := FRoot.TypNil;
-  FTypString := FRoot.TypString;
-  FTypVariant := FRoot.TypVariant;
-  FTypObject := FRoot.TypObject;
+  FBaseTypes := FRoot.FBaseTypes;
   FSymbolDictionary := Parent.SymbolDictionary;
   FContextMap := Parent.ContextMap;
 end;
