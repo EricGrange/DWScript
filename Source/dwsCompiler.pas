@@ -117,7 +117,7 @@ type
     property Dependencies: TStrings read GetDependencies;
   end;
 
-   TAddArgFunction = function (ArgExpr: TNoPosExpr) : TSymbol of object;
+   TAddArgFunction = function (argExpr: TNoPosExpr) : TSymbol of object;
 
    TSpecialKeywordKind = (skNone, skAssert, skAssigned, skHigh, skLength, skLow,
                           skOrd, skSizeOf, skDefined, skDeclared, skSqr);
@@ -686,7 +686,9 @@ begin
 
    FreeAndNil(FBinaryOperators);
 
-   FCompileFileSystem := nil;
+   FMsgs:=nil;
+
+   FCompileFileSystem:=nil;
 
    FProg.LineCount:=FLineCount;
    FProg.Compiler:=nil;
