@@ -122,7 +122,9 @@ type
 
    // TSimpleStack<T>
    //
-   {: A minimalistic generic stack }
+   {: A minimalistic generic stack.
+      Note that internal array items are NOT cleared on Pop, for refcounted types,
+      you need to clear yourself manually via Peek. }
    TSimpleStack<T> = class
       private
          FItems : array of T;
