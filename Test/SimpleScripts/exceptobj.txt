@@ -2,3 +2,5 @@ Exception: hello
 EMyExcept: world
 EMyExcept: world
 Exception: hello
+EMyExcept: hello world
+EMyExcept: hello world

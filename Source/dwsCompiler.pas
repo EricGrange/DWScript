@@ -5060,7 +5060,7 @@ begin
    SystemTable.AddSymbol(clsDelphiException);
 
    // ExceptObj function
-   TExceptObjFunc.Create(SystemTable, 'ExceptObj', [], SYS_EXCEPTION, False);
+   TExceptObjFunc.Create(SystemTable, 'ExceptObject', [], SYS_EXCEPTION, False);
 
    // Runtime parameters
    TParamFunc.Create(SystemTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, False);

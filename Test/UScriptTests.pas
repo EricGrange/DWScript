@@ -138,7 +138,13 @@ begin
          prog:=FCompiler.Compile(source.Text);
 
          CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
-         exec:=prog.Execute;
+         try
+            exec:=prog.Execute;
+         except
+            on E: Exception do begin
+               CheckEquals('', E.Message, FTests[i]);
+            end;
+         end;
          if prog.Msgs.Count+exec.Msgs.Count=0 then
             output:=exec.Result.ToString
          else begin

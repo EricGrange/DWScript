@@ -1059,16 +1059,23 @@ type
    end;
 
    TExceptionExpr = class(TNoResultExpr)
-   private
-     FTryExpr: TExpr;
-     FHandlerExpr: TExpr;
-   public
-     destructor Destroy; override;
-     procedure Initialize; override;
-     procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+      private
+         FTryExpr : TExpr;
+         FHandlerExpr : TExpr;
 
-     property TryExpr: TExpr read FTryExpr write FTryExpr;
-     property HandlerExpr: TExpr read FHandlerExpr write FHandlerExpr;
+      protected
+         function CreateEDelphiObj(exec : TdwsExecution; const ClassName, Message: string): IScriptObj;
+
+         function EnterExceptionBlock(exec : TdwsExecution) : Variant;
+         procedure LeaveExceptionBlock(exec : TdwsExecution);
+
+      public
+         destructor Destroy; override;
+         procedure Initialize; override;
+         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+
+         property TryExpr : TExpr read FTryExpr write FTryExpr;
+         property HandlerExpr : TExpr read FHandlerExpr write FHandlerExpr;
    end;
 
    TExceptDoExpr = class;
@@ -1078,9 +1085,6 @@ type
       private
          FDoExprs: TTightList;
          FElseExpr: TExpr;
-
-      protected
-         function CreateEDelphiObj(exec : TdwsExecution; const ClassName, Message: string): IScriptObj;
 
       public
          destructor Destroy; override;
@@ -4695,6 +4699,45 @@ begin
    FHandlerExpr.TypeCheck;
 end;
 
+// CreateEDelphiObj
+//
+function TExceptionExpr.CreateEDelphiObj(exec : TdwsExecution; const ClassName, Message: string): IScriptObj;
+var
+   info: TProgramInfo;
+begin
+   info := (exec as TdwsProgramExecution).ProgramInfo;
+   Result := IScriptObj(IUnknown(
+      info.Vars[SYS_EDELPHI].Method[SYS_TOBJECT_CREATE].Call([
+        ClassName, Message]).Value));
+end;
+
+// EnterExceptionBlock
+//
+function TExceptionExpr.EnterExceptionBlock(exec : TdwsExecution) : Variant;
+var
+   mainException : Exception;
+begin
+   mainException:=System.ExceptObject as Exception;
+
+   if mainException is EScriptException then begin
+      // a raise-statement created an Exception object
+      Result:=EScriptException(mainException).Value
+   end else begin
+      // A Delphi exception. Transform it to a EDelphi-dws exception
+      Result:=CreateEDelphiObj(exec, mainException.ClassName, mainException.Message);
+   end;
+
+   exec.ExceptionObjectStack.Push(Result);
+end;
+
+// LeaveExceptionBlock
+//
+procedure TExceptionExpr.LeaveExceptionBlock(exec : TdwsExecution);
+begin
+   exec.ExceptionObjectStack.Peek:=Unassigned;
+   exec.ExceptionObjectStack.Pop;
+end;
+
 { TExceptExpr }
 
 destructor TExceptExpr.Destroy;
@@ -4717,72 +4760,62 @@ begin
       exec.DoStep(FTryExpr);
       FTryExpr.EvalNoResult(exec);
    except
-      on mainException : Exception do begin
-         if mainException is EScriptException then begin
-            // a raise-statement created an Exception object
-            obj := EScriptException(mainException).Value;
-            objSym := EScriptException(mainException).Typ;
-         end else begin
-            // A Delphi exception. Transform it to a EDelphi-dws exception
-            obj := CreateEDelphiObj(exec, mainException.ClassName, mainException.Message);
+      if not (System.ExceptObject is Exception) then raise;
+
+      obj:=EnterExceptionBlock(exec);
+      try
+
+         isReraise := False;
+
+         // script exceptions
+         if FDoExprs.Count > 0 then begin
+
+            isCaught := False;
             objSym := IScriptObj(IUnknown(Obj)).ClassSym;
-         end;
 
-         exec.ExceptionObjectStack.Push(obj);
-         try
-
-            isReraise := False;
-
-            // script exceptions
-            if FDoExprs.Count > 0 then begin
-
-               isCaught := False;
-
-               for x := 0 to FDoExprs.Count - 1 do begin
-                  // Find a "on x: Class do ..." statement matching to this exception class
-                  doExpr := TExceptDoExpr(FDoExprs.List[x]);
-                  if doExpr.ExceptionVar.Typ.IsCompatible(objSym) then begin
-                     exec.Stack.Data[exec.Stack.BasePointer +  doExpr.FExceptionVar.StackAddr] := obj;
-                     try
-                        exec.DoStep(doExpr);
-                        doExpr.EvalNoResult(exec);
-                     except
-                        on E : EReraise do isReraise := True;
-                     end;
-                     if isReraise then break;
-                     VarClear(exec.Stack.Data[exec.Stack.BasePointer + doExpr.FExceptionVar.StackAddr]);
-                     isCaught := True;
-                     Break;
-                  end;
-               end;
-
-               if (not isReraise) and (not isCaught) and Assigned(FElseExpr) then begin
+            for x := 0 to FDoExprs.Count - 1 do begin
+               // Find a "on x: Class do ..." statement matching to this exception class
+               doExpr := TExceptDoExpr(FDoExprs.List[x]);
+               if doExpr.ExceptionVar.Typ.IsCompatible(objSym) then begin
+                  exec.Stack.Data[exec.Stack.BasePointer +  doExpr.FExceptionVar.StackAddr] := obj;
                   try
-                     exec.DoStep(FElseExpr);
-                     FElseExpr.EvalNoResult(exec);
+                     exec.DoStep(doExpr);
+                     doExpr.EvalNoResult(exec);
                   except
                      on E : EReraise do isReraise := True;
                   end;
+                  if isReraise then break;
+                  VarClear(exec.Stack.Data[exec.Stack.BasePointer + doExpr.FExceptionVar.StackAddr]);
+                  isCaught := True;
+                  Break;
                end;
+            end;
 
-            end else begin
-
+            if (not isReraise) and (not isCaught) and Assigned(FElseExpr) then begin
                try
-                  exec.DoStep(FHandlerExpr);
-                  FHandlerExpr.EvalNoResult(exec);
+                  exec.DoStep(FElseExpr);
+                  FElseExpr.EvalNoResult(exec);
                except
                   on E : EReraise do isReraise := True;
                end;
-
             end;
 
-         finally
-            exec.ExceptionObjectStack.Peek:=Unassigned;
-            exec.ExceptionObjectStack.Pop;
+         end else begin
+
+            try
+               exec.DoStep(FHandlerExpr);
+               FHandlerExpr.EvalNoResult(exec);
+            except
+               on E : EReraise do isReraise := True;
+            end;
+
          end;
 
-         if isReraise then raise;
+      finally
+         LeaveExceptionBlock(exec);
       end;
+
+      if isReraise then raise;
    end;
    exec.ClearScriptError;
 end;
@@ -4817,29 +4850,27 @@ begin
    FDoExprs.Add(expr);
 end;
 
-// CreateEDelphiObj
-//
-function TExceptExpr.CreateEDelphiObj(exec : TdwsExecution; const ClassName, Message: string): IScriptObj;
-var
-   info: TProgramInfo;
-begin
-   info := (exec as TdwsProgramExecution).ProgramInfo;
-   Result := IScriptObj(IUnknown(
-      info.Vars[SYS_EDELPHI].Method[SYS_TOBJECT_CREATE].Call([
-        ClassName, Message]).Value));
-end;
-
 { TFinallyExpr }
 
 procedure TFinallyExpr.EvalNoResult(exec : TdwsExecution);
 begin
-  try
-    exec.DoStep(FTryExpr);
-    FTryExpr.EvalNoResult(exec);
-  finally
-    exec.DoStep(FHandlerExpr);
-    FHandlerExpr.EvalNoResult(exec);
-  end;
+   try
+      exec.DoStep(FTryExpr);
+      FTryExpr.EvalNoResult(exec);
+   finally
+      if System.ExceptObject is Exception then begin
+         EnterExceptionBlock(exec);
+         try
+            exec.DoStep(FHandlerExpr);
+            FHandlerExpr.EvalNoResult(exec);
+         finally
+            LeaveExceptionBlock(exec);
+         end;
+      end else begin
+         exec.DoStep(FHandlerExpr);
+         FHandlerExpr.EvalNoResult(exec);
+      end;
+   end;
 end;
 
 { TRaiseExpr }

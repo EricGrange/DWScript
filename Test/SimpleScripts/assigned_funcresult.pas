@@ -20,5 +20,5 @@ if Assigned(Test(nil)) then
 if Assigned(TestNil) then
    PrintLn('bug 4');
 
-if Assigned(ExceptObj) then
+if Assigned(ExceptObject) then
    PrintLn('bug 5');
