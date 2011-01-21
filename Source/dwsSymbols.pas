@@ -474,7 +474,7 @@ type
    TFuncSymbolFlags = set of TFuncSymbolFlag;
 
    // A script function / procedure: procedure X(param: Integer);
-   TFuncSymbol = class(TTypeSymbol)
+   TFuncSymbol = class (TTypeSymbol)
       protected
          FAddrGenerator : TAddrGeneratorRec;
          FExecutable : IExecutable;
