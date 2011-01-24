@@ -1245,7 +1245,7 @@ type
          property ResultAsFloat : Double read GetResultAsFloat write SetResultAsFloat;
   end;
 
-  // A instance of a script class FClassSym. Instance data in FData,
+   // An instance of a script class FClassSym. Instance data in FData,
    TScriptObj = class(TInterfacedObject, IScriptObj)
       private
          FClassSym: TClassSymbol;
@@ -1268,7 +1268,7 @@ type
          procedure SetExternalObject(Value: TObject);
 
       public
-         constructor Create(ClassSym: TClassSymbol; executionContext : TdwsProgramExecution = nil);
+         constructor Create(aClassSym : TClassSymbol; executionContext : TdwsProgramExecution = nil);
          destructor Destroy; override;
          procedure BeforeDestruction; override;
          property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
@@ -1954,20 +1954,45 @@ end;
 //
 procedure TdwsProgramExecution.ReleaseObjects;
 var
+   i : Integer;
    iter : TScriptObj;
+   buffer : array of TScriptObj;
 begin
    if FObjectCount=0 then Exit;
-   // clear all the datas, then the object
-   while FFirstObject<>nil do begin
-      iter:=FFirstObject;
-      SetLength(iter.FData, 0);
-      if iter=FFirstObject then begin
-         ScriptObjDestroyed(iter);
-         iter.ExecutionContext:=nil;
-         iter.FRefCount:=0;
-         iter.Free;
-      end;
+
+   // add refcount to keep all alive during cleanup
+   // detach from execution, add to buffer
+   SetLength(buffer, FObjectCount);
+   i:=0;
+   iter:=FFirstObject;
+   while iter<>nil do begin
+      buffer[i]:=iter;
+      Inc(i);
+      iter._AddRef;
+      iter.ExecutionContext:=nil;
+      iter:=iter.NextObject;
    end;
+
+   // clear all datas, kill references
+   for i:=0 to FObjectCount-1 do begin
+      iter:=buffer[i];
+      SetLength(buffer[i].FData, 0);
+      iter.FClassSym:=nil;
+      iter.PrevObject:=nil;
+      iter.NextObject:=nil;
+   end;
+
+   // dec refcount
+   for i:=0 to FObjectCount-1 do begin
+      iter:=buffer[i];
+      iter._Release;
+   end;
+
+   // all remaining objects should now be referred only outside of scripts
+   // can't do anything about them without triggering crashes
+   FFirstObject:=nil;
+   FLastObject:=nil;
+   FObjectCount:=0;
 end;
 
 // ScriptObjCreated
@@ -4785,38 +4810,50 @@ begin
         Result.Add(root.Symbols[i]);
 end;
 
-{ TScriptObj }
+// ------------------
+// ------------------ TScriptObj ------------------
+// ------------------
 
-constructor TScriptObj.Create(ClassSym: TClassSymbol; executionContext : TdwsProgramExecution);
+// Create
+//
+constructor TScriptObj.Create(aClassSym : TClassSymbol; executionContext : TdwsProgramExecution);
 var
-   x: Integer;
-   c: TClassSymbol;
+   i : Integer;
+   classSymIter : TClassSymbol;
    externalClass : TClassSymbol;
+   fs : TFieldSymbol;
+   member : TSymbol;
 begin
-   FClassSym := ClassSym;
+   FClassSym:=aClassSym;
 
    if executionContext<>nil then
       executionContext.ScriptObjCreated(Self);
 
-   SetLength(FData, ClassSym.InstanceSize);
+   SetLength(FData, aClassSym.InstanceSize);
 
-   // Initialize fields
-   c := TClassSymbol(ClassSym);
-   while c <> nil do begin
-      for x := 0 to c.Members.Count - 1 do
-         if c.Members[x] is TFieldSymbol then
-            with TFieldSymbol(c.Members[x]) do
-               Typ.InitData(FData, Offset);
-      c := c.Parent;
+   // initialize fields
+   classSymIter:=aClassSym;
+   while classSymIter<>nil do begin
+      for i:=0 to classSymIter.Members.Count-1 do begin
+         member:=classSymIter.Members[i];
+         if member is TFieldSymbol then begin
+            fs:=TFieldSymbol(member);
+            fs.Typ.InitData(FData, fs.Offset);
+         end;
+      end;
+      classSymIter := classSymIter.Parent;
    end;
 
-   externalClass:=ClassSym;
+   // initialize OnObjectDestroy
+   externalClass:=aClassSym;
    while (externalClass<>nil) and not Assigned(externalClass.OnObjectDestroy) do
       externalClass:=externalClass.Parent;
    if externalClass<>nil then
       FOnObjectDestroy:=externalClass.OnObjectDestroy;
 end;
 
+// BeforeDestruction
+//
 procedure TScriptObj.BeforeDestruction;
 var
    iso : IScriptObj;
@@ -4830,11 +4867,13 @@ begin
    inherited;
 end;
 
+// Destroy
+//
 destructor TScriptObj.Destroy;
 begin
-  if Assigned(FOnObjectDestroy) then
-    FOnObjectDestroy(FExternalObj);
-  inherited;
+   if Assigned(FOnObjectDestroy) then
+      FOnObjectDestroy(FExternalObj);
+   inherited;
 end;
 
 function TScriptObj.GetClassSym: TClassSymbol;

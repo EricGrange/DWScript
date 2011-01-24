@@ -3,7 +3,8 @@ unit UMemoryTests;
 interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsComConnector, Variants, ActiveX, ComObj, dwsXPlatform, dwsUtils;
+   dwsComConnector, Variants, ActiveX, ComObj, dwsXPlatform, dwsUtils,
+   dwsSymbols;
 
 type
 
@@ -13,10 +14,12 @@ type
          FCompiler : TDelphiWebScript;
          FUnits : TdwsUnit;
          FTestObjects : TList;
+         FExternalRef : IScriptObj;
 
          procedure DoCreateExternal(Info: TProgramInfo; var ExtObject: TObject);
          procedure DoCreateBoomExternal(Info: TProgramInfo; var ExtObject: TObject);
          procedure DoCleanupExternal(externalObject : TObject);
+         procedure DoKeepExternalRef(Info: TProgramInfo; ExtObject: TObject);
 
       public
          procedure SetUp; override;
@@ -31,6 +34,8 @@ type
          procedure CompilationWithMapAndSymbols;
          procedure ExecutionNonOptimized;
          procedure ExecutionOptimized;
+
+         procedure KeepExternalRefAfterExecution;
    end;
 
 // ------------------------------------------------------------------
@@ -43,7 +48,31 @@ implementation
 
 type
    TTestObject = class
+      FAlreadyDestroyed : Boolean;
+      constructor Create;
+      destructor Destroy; override;
    end;
+
+var
+   vTestObjetCount : Integer;
+
+// Create
+//
+constructor TTestObject.Create;
+begin
+   inherited;
+   Inc(vTestObjetCount);
+end;
+
+// Destroy
+//
+destructor TTestObject.Destroy;
+begin
+   Assert(not FAlreadyDestroyed);
+   FAlreadyDestroyed:=True;
+   Dec(vTestObjetCount);
+   inherited;
+end;
 
 // ------------------
 // ------------------ TMemoryTests ------------------
@@ -55,6 +84,7 @@ procedure TMemoryTests.SetUp;
 var
    cls : TdwsClass;
    cst : TdwsConstructor;
+   meth : TdwsMethod;
 begin
    FTests:=TStringList.Create;
 
@@ -71,6 +101,10 @@ begin
    cst:=cls.Constructors.Add as TdwsConstructor;
    cst.Name:='Create';
    cst.OnEval:=DoCreateExternal;
+
+   meth:=cls.Methods.Add as TdwsMethod;
+   meth.Name:='KeepExternalRef';
+   meth.OnEval:=DoKeepExternalRef;
 
    cls:=FUnits.Classes.Add as TdwsClass;
    cls.Name:='TExposedBoomClass';
@@ -118,6 +152,15 @@ begin
       FTestObjects.Remove(externalObject);
       externalObject.Free;
    end;
+end;
+
+// DoKeepExternalRef
+//
+procedure TMemoryTests.DoKeepExternalRef(Info: TProgramInfo; ExtObject: TObject);
+begin
+   // don't do that at home, you're not really supposed to,
+   // it's just to make sure things won't bomb even if you do
+   FExternalRef:=Info.Vars['Self'].ScriptObj;
 end;
 
 // Compilation
@@ -209,6 +252,7 @@ begin
          CheckEquals('', exec.Msgs.AsInfo, FTests[i]);
          CheckEquals(0, exec.ObjectCount, FTests[i]+', leaked '+IntToStr(exec.ObjectCount)+' script objects');
          CheckEquals(0, FTestObjects.Count, FTests[i]+', leaked '+IntToStr(FTestObjects.Count)+' external objects');
+         CheckEquals(0, vTestObjetCount, 'test object count');
 
       end;
 
@@ -218,7 +262,44 @@ begin
    end;
 end;
 
+// KeepExternalRefAfterExecution
+//
+procedure TMemoryTests.KeepExternalRefAfterExecution;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile('var v = TExposedClass.Create; v.KeepExternalRef;');
+   CheckEquals('', prog.Msgs.AsInfo, 'compile');
 
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+
+      CheckEquals('', exec.Msgs.AsInfo, 'run');
+      CheckEquals(1, exec.ObjectCount, 'object count');
+      CheckTrue(FExternalRef<>nil, 'got external ref');
+      CheckEquals('TExposedClass', FExternalRef.ClassSym.Name, 'external ref classname');
+      CheckEquals(False, (FExternalRef.ExternalObject as TTestObject).FAlreadyDestroyed, 'external ref ok');
+   finally
+      exec.EndProgram;
+   end;
+
+   CheckEquals(0, exec.ObjectCount, 'object count after exec ended');
+   CheckEquals(1, vTestObjetCount, 'test object count after exec ended');
+   CheckTrue(FExternalRef.ClassSym=nil, 'external ref disconnected');
+   CheckEquals(False, (FExternalRef.ExternalObject as TTestObject).FAlreadyDestroyed, 'external not dead just yet');
+
+   exec:=nil;
+
+   CheckEquals(1, vTestObjetCount, 'test object count after exec death');
+   CheckTrue(FExternalRef.ClassSym=nil, 'external ref disconnected after death');
+   CheckEquals(False, (FExternalRef.ExternalObject as TTestObject).FAlreadyDestroyed, 'external still not dead');
+
+   FExternalRef:=nil;
+
+   CheckEquals(0, vTestObjetCount, 'test object count after external ref dropped');
+end;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
