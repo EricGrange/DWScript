@@ -30,7 +30,7 @@ unit dwsXPlatform;
 
 interface
 
-uses Windows, Classes, SysUtils
+uses Windows, Forms, Classes, SysUtils
    {$IFNDEF VER200}, IOUtils{$ENDIF}
    ;
 
@@ -61,6 +61,8 @@ type
       {$ENDIF}
    end;
 
+procedure ProcessApplicationMessages(sleepMilliSeconds : Integer);
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -68,6 +70,15 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+// ProcessApplicationMessages
+//
+procedure ProcessApplicationMessages(sleepMilliSeconds : Integer);
+begin
+   Application.ProcessMessages;
+   if sleepMilliSeconds>0 then
+      Sleep(sleepMilliSeconds);
+end;
 
 // SetDecimalSeparator
 //

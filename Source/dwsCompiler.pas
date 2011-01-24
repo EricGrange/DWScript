@@ -287,7 +287,8 @@ type
 
       function Compile(const aCodeText : String; Conf: TdwsConfiguration) : IdwsProgram;
 
-      class function Evaluate(AContext: TdwsProgram; const AExpression: string): TNoPosExpr;
+      class function Evaluate(const exec : IdwsProgramExecution; const anExpression : String;
+                              contextProgram : TdwsProgram = nil) : TNoPosExpr;
 
       procedure WarnForVarUsage(varExpr : TVarExpr; const pos : TScriptPos);
 
@@ -600,6 +601,8 @@ begin
    FProg.ConditionalDefines:=conf.Conditionals;
 
    FBinaryOperators:=TBinaryOperators.Create(FProg.Table);
+   FProg.BinaryOperators:=FBinaryOperators;
+
    try
       // Check for missing units
       if Assigned(FFilter) then begin
@@ -684,7 +687,7 @@ begin
          FMsgs.AddCompilerError(cNullPos, e.Message);
    end;
 
-   FreeAndNil(FBinaryOperators);
+   FBinaryOperators:=nil;
 
    FMsgs:=nil;
 
@@ -793,62 +796,68 @@ begin
    end;
 end;
 
-class function TdwsCompiler.Evaluate(AContext: TdwsProgram; const AExpression: string): TNoPosExpr;
+// Evaluate
+//
+class function TdwsCompiler.Evaluate(const exec : IdwsProgramExecution;
+                                     const anExpression : String;
+                                     contextProgram : TdwsProgram = nil) : TNoPosExpr;
 var
-   oldProgMsgs: TdwsCompileMessageList;
+   oldProgMsgs : TdwsCompileMessageList;
    sourceFile : TSourceFile;
+   compiler : TdwsCompiler;
 begin
-  { This will evaluate an expression by tokenizing it evaluating it in the
-    Context provided. }
+   { This will evaluate an expression by tokenizing it evaluating it in the
+     Context provided. }
 
-  Result := nil;
-
-  with Self.Create do
-    try
-      FProg := AContext;
+   Result := nil;
+   compiler:=Self.Create;
+   try
+      if contextProgram=nil then
+         contextProgram:=(exec.Prog as TdwsProgram);
+      compiler.FProg:=contextProgram;
       try
-        OldProgMsgs := FProg.CompileMsgs;
+         oldProgMsgs:=compiler.FProg.CompileMsgs;
+         compiler.FMsgs:=TdwsCompileMessageList.Create;
+         compiler.FProg.CompileMsgs:=compiler.FMsgs;
+         compiler.FBinaryOperators:=(compiler.FProg.BinaryOperators as TBinaryOperators);
 
-        FMsgs := TdwsCompileMessageList.Create;
-        FProg.CompileMsgs := FMsgs;
-        sourceFile:=TSourceFile.Create;
-        try
-          sourceFile.SourceCode:=AExpression;
-          sourceFile.SourceFile:=MSG_MainModule;
-          FTok := TTokenizer.Create(sourceFile, FMsgs);
-          try
+         sourceFile:=TSourceFile.Create;
+         try
+            sourceFile.SourceCode:=anExpression;
+            sourceFile.SourceFile:=MSG_MainModule;
+            compiler.FTok:=TTokenizer.Create(sourceFile, compiler.FMsgs);
             try
-              Result := ReadExpr;
-              try
-                Result.Initialize;
-              except
-                FreeAndNil(Result);
-                raise;
-              end;
-            except
-              on E: EScriptError do
-              begin
-                if FMsgs.Count > 0 then
-                begin
-                  E.Message := FMsgs[0].AsInfo;
-                  raise;    // change the message and re-raise the EScriptError exception
-                end;
-              end;
+               try
+                  Result:=compiler.ReadExpr;
+                  try
+                     Result.Initialize;
+                  except
+                     FreeAndNil(Result);
+                     raise;
+                  end;
+               except
+                  on E : Exception do begin
+                     FreeAndNil(Result);
+                     if compiler.FMsgs.Count>0 then
+                        E.Message:=compiler.FMsgs[0].AsInfo;
+                     raise;
+                  end;
+
+               end;
+            finally
+               FreeAndNil(compiler.FTok);
             end;
-          finally
-            FreeAndNil(FTok);
-          end;
-        finally
-          FreeAndNil(sourceFile);
-          FProg.CompileMsgs := OldProgMsgs;
-          FreeAndNil(FMsgs);
-        end;
+         finally
+            FreeAndNil(sourceFile);
+            compiler.FProg.CompileMsgs:=oldProgMsgs;
+            FreeAndNil(compiler.FMsgs);
+         end;
       finally
-        FProg := nil;
+         compiler.FProg:=nil;
       end;
-    finally
-      Free;
-    end;
+   finally
+      compiler.Free;
+   end;
 end;
 
 // ReadVarDecl
@@ -5324,10 +5333,12 @@ begin
    end;
 end;
 
+// CreateProgram
+//
 function TdwsCompiler.CreateProgram(SystemTable: TSymbolTable; ResultType: TdwsResultType;
-                                    const stackParams : TStackParameters): TdwsProgram;
+                                    const stackParams : TStackParameters) : TdwsProgram;
 begin
-  Result := TdwsProgram.Create(SystemTable, ResultType, stackParams);
+   Result:=TdwsProgram.Create(SystemTable, ResultType, stackParams);
 end;
 
 { TdwsFilter }

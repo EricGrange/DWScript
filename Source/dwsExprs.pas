@@ -48,6 +48,8 @@ type
    TSourcePreConditions = class;
    TSourcePostConditions = class;
 
+   TVariantDynArray = array of Variant;
+
    TExprList = array[0..MaxListSize - 1] of TExpr;
    PExprList = ^TExprList;
    PExpr = ^TExpr;
@@ -260,8 +262,8 @@ type
       function GetProg : IdwsProgram;
 
       procedure Execute(aTimeoutMilliSeconds : Integer = 0); overload;
-      procedure ExecuteParam(const Params : array of Variant; aTimeoutMilliSeconds : Integer = 0); overload;
-      procedure ExecuteParam(const Params : OleVariant; aTimeoutMilliSeconds : Integer = 0); overload;
+      procedure ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0); overload;
+      procedure ExecuteParam(const params : OleVariant; aTimeoutMilliSeconds : Integer = 0); overload;
 
       procedure BeginProgram;
       procedure RunProgram(aTimeoutMilliSeconds : Integer);
@@ -293,8 +295,8 @@ type
       function CreateNewExecution : IdwsProgramExecution;
       function BeginNewExecution : IdwsProgramExecution;
       function Execute(aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution;
-      function ExecuteParam(const Params : array of Variant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
-      function ExecuteParam(const Params : OleVariant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
+      function ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
+      function ExecuteParam(const params : OleVariant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
 
       property Table : TSymbolTable read GetTable;
       property Msgs : TdwsMessageList read GetMsgs;
@@ -312,6 +314,7 @@ type
    TdwsProgramExecution = class (TdwsExecution, IdwsProgramExecution)
       private
          FProg : TdwsProgram;
+         FCurrentProg : TdwsProgram;
 
          FFirstObject, FLastObject : TScriptObj;
          FObjectCount : Integer;
@@ -344,7 +347,7 @@ type
          destructor Destroy; override;
 
          procedure Execute(aTimeoutMilliSeconds : Integer = 0); overload;
-         procedure ExecuteParam(const Params : array of Variant; aTimeoutMilliSeconds : Integer = 0); overload;
+         procedure ExecuteParam(const Params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0); overload;
          procedure ExecuteParam(const Params : OleVariant; aTimeoutMilliSeconds : Integer = 0); overload;
 
          procedure BeginProgram;
@@ -361,6 +364,7 @@ type
          procedure ReleaseProgramInfo(info : TProgramInfo);
 
          property Prog : TdwsProgram read FProg;
+         property CurrentProg : TdwsProgram read FCurrentProg;
          property ProgramInfo : TProgramInfo read FProgramInfo;
 
          property Parameters : TData read FParameters;
@@ -397,6 +401,7 @@ type
          FRoot: TdwsProgram;
          FUnifiedConstList: TSortedList<TExprBase>;
          FRootTable: TProgramSymbolTable;
+         FBinaryOperators : TObject;
          FSourceList: TScriptSourceList;
          FSymbolDictionary: TSymbolDictionary;
          FTable: TSymbolTable;
@@ -440,8 +445,8 @@ type
          function CreateNewExecution : IdwsProgramExecution;
          function BeginNewExecution : IdwsProgramExecution;
          function Execute(aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution;
-         function ExecuteParam(const Params : array of Variant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
-         function ExecuteParam(const Params : OleVariant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
+         function ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
+         function ExecuteParam(const params : OleVariant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
 
          function GetGlobalAddr(DataSize: Integer): Integer;
          function GetTempAddr(DataSize: Integer = -1): Integer;
@@ -471,6 +476,7 @@ type
 
          property RootTable: TProgramSymbolTable read FRootTable;
          property Table: TSymbolTable read FTable write FTable;
+         property BinaryOperators : TObject read FBinaryOperators write FBinaryOperators;
 
          property UnifiedConstList: TSortedList<TExprBase> read FUnifiedConstList;
 
@@ -1671,7 +1677,7 @@ end;
 
 // ExecuteParam
 //
-procedure TdwsProgramExecution.ExecuteParam(const Params : array of Variant; aTimeoutMilliSeconds : Integer = 0);
+procedure TdwsProgramExecution.ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0);
 var
    x, index: Integer;
 begin
@@ -1687,7 +1693,7 @@ end;
 
 // ExecuteParam
 //
-procedure TdwsProgramExecution.ExecuteParam(const Params : OleVariant; aTimeoutMilliSeconds : Integer = 0);
+procedure TdwsProgramExecution.ExecuteParam(const params : OleVariant; aTimeoutMilliSeconds : Integer = 0);
 var
    x: Integer;
 begin
@@ -1723,6 +1729,8 @@ begin
    FProgramState:=psRunning;
    try
       Msgs.Clear;
+
+      FCurrentProg:=FProg;
 
       // Stack
       Stack.Reset;
@@ -2171,6 +2179,7 @@ begin
       FExecutionsLock.Leave;
    end;
 
+   FBinaryOperators.Free;
    FExecutionsLock.Free;
    FExpr.Free;
    FInitExpr.Free;
@@ -2222,10 +2231,10 @@ end;
 
 // ExecuteParam
 //
-function TdwsProgram.ExecuteParam(const Params : array of Variant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution;
+function TdwsProgram.ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution;
 begin
    Result:=CreateNewExecution;
-   Result.ExecuteParam(Params, aTimeoutMilliSeconds);
+   Result.ExecuteParam(params, aTimeoutMilliSeconds);
 end;
 
 // ExecuteParam
@@ -2429,7 +2438,12 @@ end;
 // Call
 //
 procedure TProcedure.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
+var
+   oldProg : TdwsProgram;
 begin
+   oldProg:=exec.CurrentProg;
+   exec.FCurrentProg:=Self;
+
    // Allocate stack space for local variables
    exec.Stack.Push(FAddrGenerator.DataSize);
 
@@ -2459,6 +2473,8 @@ begin
    finally
       // Free stack space for local variables
       exec.Stack.Pop(FAddrGenerator.DataSize);
+
+      exec.FCurrentProg:=oldProg;
    end;
 end;
 

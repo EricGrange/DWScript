@@ -22,8 +22,9 @@ uses
   UdwsFunctionsTests in 'UdwsFunctionsTests.pas',
   UCOMConnectorTests in 'UCOMConnectorTests.pas',
   UTestDispatcher in 'UTestDispatcher.pas',
-  UMemoryTests in 'UMemoryTests.pas',
-  UdwsUtilsTests in 'UdwsUtilsTests.pas';
+  UDebuggerTests in 'UDebuggerTests.pas',
+  UdwsUtilsTests in 'UdwsUtilsTests.pas',
+  UMemoryTests in 'UMemoryTests.pas';
 
 {$R *.res}
 
