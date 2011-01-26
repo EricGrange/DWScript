@@ -584,7 +584,7 @@ begin
    end else begin
       case FState of
          dsIdle :
-            Result:=[daCanBeginDebug];
+            Result:=[daCanBeginDebug, daCanEvaluate];
       end;
    end;
 end;
