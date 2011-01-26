@@ -35,7 +35,6 @@ type
       typVariantID,
       typConnectorID,
       typClassID,
-      typClassOfID,
       typNoneID
    );
 
@@ -223,6 +222,7 @@ type
    TParamSymbol = class;
    TVarParamSymbol = class;
    TSymbolTable = class;
+   TMembersSymbolTable = class;
    TUnSortedSymbolTable = class;
    TTypeSymbol = class;
    TParamsSymbolTable = class;
@@ -268,6 +268,8 @@ type
    end;
    TAddrGenerator = ^TAddrGeneratorRec;
 
+   TClassVisibility = (cvMagic, cvPrivate, cvProtected, cvPublic, cvPublished);
+
    // TSymbol
    //
    // Named item in the script
@@ -299,6 +301,8 @@ type
          function IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean; virtual;
 
          function QualifiedName : String; virtual;
+
+         function IsVisibleFor(const aVisibility : TClassVisibility) : Boolean; virtual;
 
          property Caption : String read GetCaption;
          property Description : String read GetDescription;
@@ -562,8 +566,6 @@ type
    TMethodAttribute = (maVirtual, maOverride, maReintroduce, maAbstract, maOverlap, maClassMethod);
    TMethodAttributes = set of TMethodAttribute;
 
-   TClassVisibility = (cvPrivate, cvProtected, cvPublic, cvPublished);
-
    // A method of a script class: TMyClass = class procedure X(param: String); end;
    TMethodSymbol = class(TFuncSymbol)
       private
@@ -601,6 +603,7 @@ type
          function IsCompatible(typSym: TSymbol): Boolean; override;
          function QualifiedName : String; override;
          function HasConditions : Boolean;
+         function IsVisibleFor(const aVisibility : TClassVisibility) : Boolean; override;
 
          property ClassSymbol : TClassSymbol read FClassSymbol;
          property IsAbstract : Boolean read GetIsAbstract write SetIsAbstract;
@@ -781,6 +784,7 @@ type
          constructor Create(const Name: string; Typ: TSymbol; aVisibility : TClassVisibility);
 
          function QualifiedName : String; override;
+         function IsVisibleFor(const aVisibility : TClassVisibility) : Boolean; override;
 
          property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
          property Offset: Integer read FOffset;
@@ -811,6 +815,7 @@ type
          procedure SetIndex(const Data: TData; Addr: Integer; Sym: TSymbol);
          function GetArrayIndicesDescription: string;
          function QualifiedName : String; override;
+         function IsVisibleFor(const aVisibility : TClassVisibility) : Boolean; override;
 
          property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
          property Visibility : TClassVisibility read FVisibility write FVisibility;
@@ -859,18 +864,18 @@ type
    // type X = class ... end;
    TClassSymbol = class(TTypeSymbol)
       private
-         FClassOfSymbol: TClassOfSymbol;
-         FIsAbstract: Boolean;
+         FClassOfSymbol : TClassOfSymbol;
+         FIsAbstract : Boolean;
          FForwardPosition : PScriptPos;
-         FMembers: TSymbolTable;
-         FOperators: TTightList;
-         FInstanceSize: Integer;
-         FOnObjectDestroy: TObjectDestroyEvent;
-         FParent: TClassSymbol;
-         FDefaultProperty: TPropertySymbol;
+         FMembers : TMembersSymbolTable;
+         FOperators : TTightList;
+         FInstanceSize : Integer;
+         FOnObjectDestroy : TObjectDestroyEvent;
+         FParent : TClassSymbol;
+         FDefaultProperty : TPropertySymbol;
 
       protected
-         function CreateMembersTable: TSymbolTable; virtual;
+         function CreateMembersTable : TMembersSymbolTable; virtual;
          function GetDescription: string; override;
          function GetIsForwarded : Boolean;
 
@@ -886,9 +891,10 @@ type
          procedure InheritFrom(Typ: TClassSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
-         function IsCompatible(typSym: TSymbol): Boolean; override;
-         function IsOfType(typSym : TSymbol) : Boolean; override;
-         function InstanceSize : Integer; // avoids warning
+         function  IsCompatible(typSym: TSymbol): Boolean; override;
+         function  IsOfType(typSym : TSymbol) : Boolean; override;
+         function  BaseTypeID : TBaseTypeID; override;
+         function  InstanceSize : Integer; // avoids warning
 
          procedure SetForwardedPos(const pos : TScriptPos);
          procedure ClearIsForwarded;
@@ -899,7 +905,7 @@ type
          property ClassOf: TClassOfSymbol read FClassOfSymbol;
          property IsAbstract: Boolean read FIsAbstract write FIsAbstract;
          property IsForwarded : Boolean read GetIsForwarded;
-         property Members: TSymbolTable read FMembers;
+         property Members: TMembersSymbolTable read FMembers;
          property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
          property Parent: TClassSymbol read FParent;
          property DefaultProperty: TPropertySymbol read FDefaultProperty write FDefaultProperty;
@@ -1022,6 +1028,14 @@ type
    end;
 
    TSymbolTableClass = class of TSymbolTable;
+
+   // TMembersSymbolTable
+   //
+   TMembersSymbolTable = class (TSymbolTable)
+      public
+         procedure AddParent(parent : TMembersSymbolTable);
+         function FindSymbol(const aName : String; minVisibility : TClassVisibility = cvMagic) : TSymbol; reintroduce;
+   end;
 
    // TUnSortedSymbolTable
    //
@@ -1360,6 +1374,13 @@ begin
    Result:=Name;
 end;
 
+// IsVisibleFor
+//
+function TSymbol.IsVisibleFor(const aVisibility : TClassVisibility) : Boolean;
+begin
+   Result:=True;
+end;
+
 function TSymbol.BaseType: TTypeSymbol;
 begin
   Result := nil;
@@ -1474,6 +1495,13 @@ end;
 function TFieldSymbol.QualifiedName : String;
 begin
    Result:=ClassSymbol.QualifiedName+'.'+Name;
+end;
+
+// IsVisibleFor
+//
+function TFieldSymbol.IsVisibleFor(const aVisibility : TClassVisibility) : Boolean;
+begin
+   Result:=(FVisibility>=aVisibility);
 end;
 
 { TFuncSymbol }
@@ -1826,20 +1854,21 @@ constructor TMethodSymbol.Generate(Table: TSymbolTable; MethKind: TMethodKind;
   const Attributes: TMethodAttributes; const MethName: string; const MethParams: TParamArray;
   const MethType: string; Cls: TClassSymbol; aVisibility : TClassVisibility);
 var
-  typSym: TSymbol;
-  meth: TSymbol;
+   typSym : TSymbol;
+   meth : TSymbol;
 begin
-  // Check if name is already used
-  meth := Cls.Members.FindSymbol(MethName);
-  if meth is TFieldSymbol then
-    raise Exception.CreateFmt(CPE_FieldExists, [MethName])
-  else if meth is TPropertySymbol then
-    raise Exception.CreateFmt(CPE_PropertyExists, [MethName])
-  else if meth is TMethodSymbol then
-  begin
-    if TMethodSymbol(meth).ClassSymbol = Cls then
-      raise Exception.CreateFmt(CPE_MethodExists, [MethName]);
-  end;
+   // Check if name is already used
+   meth:=Cls.Members.FindSymbol(MethName, cvPrivate);
+   if meth<>nil then begin
+      if meth is TFieldSymbol then
+         raise Exception.CreateFmt(CPE_FieldExists, [MethName])
+      else if meth is TPropertySymbol then
+         raise Exception.CreateFmt(CPE_PropertyExists, [MethName])
+      else if meth is TMethodSymbol then begin
+         if TMethodSymbol(meth).ClassSymbol = Cls then
+            raise Exception.CreateFmt(CPE_MethodExists, [MethName]);
+      end;
+   end;
 
   // Initialize MethodSymbol
   case MethKind of
@@ -2009,13 +2038,11 @@ begin
       Result:=ParentMeth.HasConditions;
 end;
 
-// SetOverlap
+// IsVisibleFor
 //
-procedure TMethodSymbol.SetOverlap(meth: TMethodSymbol);
+function TMethodSymbol.IsVisibleFor(const aVisibility : TClassVisibility) : Boolean;
 begin
-   FParentMeth := meth;
-   IsOverride := False;
-   IsOverlap := True;
+   Result:=(FVisibility>=aVisibility);
 end;
 
 // SetOverride
@@ -2026,6 +2053,15 @@ begin
    IsOverride := True;
    IsVirtual := True;
    IsOverlap := False;
+end;
+
+// SetOverlap
+//
+procedure TMethodSymbol.SetOverlap(meth: TMethodSymbol);
+begin
+   FParentMeth := meth;
+   IsOverride := False;
+   IsOverlap := True;
 end;
 
 // ------------------
@@ -2114,6 +2150,13 @@ begin
    Result:=ClassSymbol.QualifiedName+'.'+Name;
 end;
 
+// IsVisibleFor
+//
+function TPropertySymbol.IsVisibleFor(const aVisibility : TClassVisibility) : Boolean;
+begin
+   Result:=(FVisibility>=aVisibility);
+end;
+
 function TPropertySymbol.GetDescription: string;
 begin
    Result := Format('property %s%s: %s', [Name, GetArrayIndicesDescription, Typ.Name]);
@@ -2197,9 +2240,11 @@ begin
    inherited;
 end;
 
-function TClassSymbol.CreateMembersTable: TSymbolTable;
+// CreateMembersTable
+//
+function TClassSymbol.CreateMembersTable : TMembersSymbolTable;
 begin
-  Result := TSymbolTable.Create(nil);
+   Result:=TMembersSymbolTable.Create(nil);
 end;
 
 procedure TClassSymbol.AddField(Sym: TFieldSymbol);
@@ -2322,6 +2367,13 @@ begin
    if Parent<>nil then
       Result:=Parent.IsOfType(typSym)
    else Result:=False;
+end;
+
+// BaseTypeID
+//
+function TClassSymbol.BaseTypeID : TBaseTypeID;
+begin
+   Result:=typClassID;
 end;
 
 function TClassSymbol.GetDescription: string;
@@ -2469,7 +2521,7 @@ end;
 //
 function TClassOfSymbol.BaseTypeID : TBaseTypeID;
 begin
-   Result:=typClassOfID;
+   Result:=typClassID;
 end;
 
 function IsBaseTypeCompatible(AType, BType: TBaseTypeID): Boolean;
@@ -2478,15 +2530,14 @@ const
   compatiblityMask: array[TBaseTypeID, TBaseTypeID] of Boolean =
   (
    //int    flt    str    bool   var    conn   class   classof, none
-    (true,  false, false, false, true,  true,  false, false, false), // int
-    (false, true,  false, false, true,  true,  false, false, false), // flt
-    (false, false, true,  false, true,  true,  false, false, false), // str
-    (false, false, false, true,  true,  true,  false, false, false), // bool
-    (true,  true,  true,  true,  true,  true,  false, false, false), // var
-    (true,  true,  true,  true,  true,  true,  false, false, false), // conn
-    (false, false, false, false, false, false, true,  false, false), // class
-    (false, false, false, false, false, false, false,  true, false), // classof
-    (false, false, false, false, false, false, false, false, false)  // none
+    (true,  false, false, false, true,  true,  false, false), // int
+    (false, true,  false, false, true,  true,  false, false), // flt
+    (false, false, true,  false, true,  true,  false, false), // str
+    (false, false, false, true,  true,  true,  false, false), // bool
+    (true,  true,  true,  true,  true,  true,  false, false), // var
+    (true,  true,  true,  true,  true,  true,  false, false), // conn
+    (false, false, false, false, false, false, true,  false), // class
+    (false, false, false, false, false, false, false, false)  // none
   );
 {*)}
 begin
@@ -2976,6 +3027,38 @@ begin
    end else begin
       Result.Table:=Self;
       Result.Index:=Count;
+   end;
+end;
+
+// ------------------
+// ------------------ TMembersSymbolTable ------------------
+// ------------------
+
+// AddParent
+//
+procedure TMembersSymbolTable.AddParent(parent : TMembersSymbolTable);
+begin
+   inherited AddParent(parent);
+end;
+
+// FindSymbol
+//
+function TMembersSymbolTable.FindSymbol(const aName : String; minVisibility : TClassVisibility = cvMagic) : TSymbol;
+var
+   i : Integer;
+begin
+   // Find Symbol in the local List
+   Result:=FindLocal(aName);
+   if Assigned(Result) and Result.IsVisibleFor(minVisibility) then
+      Exit;
+
+   // Find Symbol in all parent lists
+   if minVisibility=cvPrivate then
+      minVisibility:=cvProtected;
+   i:=0;
+   while not Assigned(Result) and (i<ParentCount) do begin
+      Result:=(Parents[i] as TMembersSymbolTable).FindSymbol(aName, minVisibility);
+      Inc(i);
    end;
 end;
 
