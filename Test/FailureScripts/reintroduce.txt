@@ -1,0 +1,8 @@
+Warning: Method "Func" overlaps a virtual method [line: 13, column: 17]
+Syntax Error: Inherited method "Func" isn't virtual. "override" not applicable [line: 18, column: 17]
+Syntax Error: Method "Func" isn't overlapping a virtual method [line: 23, column: 17]
+Syntax Error: Method "Func" of class "TBase" not implemented [line: 3, column: 17]
+Syntax Error: Method "Func" of class "TChild" not implemented [line: 8, column: 17]
+Syntax Error: Method "Func" of class "TChild2" not implemented [line: 13, column: 17]
+Syntax Error: Method "Func" of class "TSubChild" not implemented [line: 18, column: 17]
+Syntax Error: Method "Func" of class "TSubChild2" not implemented [line: 23, column: 17]

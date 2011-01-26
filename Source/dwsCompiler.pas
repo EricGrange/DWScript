@@ -1354,19 +1354,19 @@ begin
             end;
             ttOVERRIDE : begin
                if not Assigned(meth) or not (meth is TMethodSymbol) then
-                  FMsgs.AddCompilerStopFmt(methPos, CPE_CantOverrideNotInherited, [Name])
+                  FMsgs.AddCompilerErrorFmt(methPos, CPE_CantOverrideNotInherited, [Name])
                else if not TMethodSymbol(meth).IsVirtual then
-                  FMsgs.AddCompilerStopFmt(methPos, CPE_CantOverrideNotVirtual, [Name])
+                  FMsgs.AddCompilerErrorFmt(methPos, CPE_CantOverrideNotVirtual, [Name])
                else begin
                   if not ParamsCheck(TMethodSymbol(Result), TMethodSymbol(meth)) then
-                     FMsgs.AddCompilerStop(FTok.HotPos, CPE_CantOverrideWrongParameterList);
+                     FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongParameterList);
                   TMethodSymbol(Result).SetOverride(TMethodSymbol(meth));
                   IsReintroduced := False;
                end;
             end;
             ttREINTRODUCE : begin
                if not IsReintroduced then
-                  FMsgs.AddCompilerStopFmt(methPos, CPE_CantReintroduce, [Name]);
+                  FMsgs.AddCompilerErrorFmt(methPos, CPE_CantReintroduce, [Name]);
                IsReintroduced := False;
             end;
             ttABSTRACT : begin
