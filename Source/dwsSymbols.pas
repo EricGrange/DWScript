@@ -994,7 +994,7 @@ type
          procedure AddParent(Parent: TSymbolTable);
 
          function AddSymbol(Sym: TSymbol): Integer;
-         function FindLocal(const Name: string): TSymbol; virtual;
+         function FindLocal(const aName : String) : TSymbol;
          function Remove(Sym: TSymbol): Integer;
          procedure Clear;
 
@@ -2718,7 +2718,9 @@ begin
       TSymbol(ptrList[i]).Initialize(msgs);
 end;
 
-function TSymbolTable.FindLocal(const Name: string): TSymbol;
+// FindLocal
+//
+function TSymbolTable.FindLocal(const aName : String) : TSymbol;
 var
    n : Integer;
 begin
@@ -2728,9 +2730,9 @@ begin
          SortSymbols(0, n-1);
          FSymbolsSorted:=True;
       end;
-      Result:=FindLocalSorted(Name);
+      Result:=FindLocalSorted(aName);
    end else begin
-      Result:=FindLocalUnSorted(Name);
+      Result:=FindLocalUnSorted(aName);
    end;
 end;
 
