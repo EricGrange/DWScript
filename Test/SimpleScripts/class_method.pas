@@ -51,3 +51,12 @@ myo:=TMyOtherClass.Create;
 myo.PrintMyName;
 PrintLn(myo.GetMyName);
 
+myo:=nil;
+try
+   myo.PrintMyName;
+except
+   on E: Exception do
+      PrintLn(e.Message);
+end;
+
+

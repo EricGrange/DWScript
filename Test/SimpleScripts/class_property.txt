@@ -1,0 +1,13 @@
+Direct
+TBase.SetName on Base with Base
+TChild.SetName on Child with Child
+TSubChild.SetName on Child with Child
+Class Var
+TBase.SetName on Base with Base
+TChild.SetName on Child with Child
+TSubChild.SetName on Child with Child
+Object Var
+TBase.SetName on Base with Base
+TChild.SetName on Child with Child
+TSubChild.SetName on Child with Child
+Object not instantiated [line: 69, column: 6]

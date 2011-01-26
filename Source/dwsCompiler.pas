@@ -2095,9 +2095,11 @@ begin
          Result := ReadSymbol(fieldExpr, IsWrite);
 
       end else if sym.InheritsFrom(TPropertySymbol) then begin
+
          progMeth := TMethodSymbol(TdwsProcedure(FProg).Func);
          if progMeth.IsClassMethod then
-            varExpr := TConstExpr.CreateTyped(FProg, progMeth.ClassSymbol, nil)
+            //varExpr := TConstExpr.CreateTyped(FProg, progMeth.ClassSymbol, nil)
+            varExpr := TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym)
          else varExpr := TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym);
          try
             Result := ReadSymbol(ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite), IsWrite);
@@ -2107,6 +2109,7 @@ begin
          end;
 
       end else if sym.InheritsFrom(TMethodSymbol) then
+
          Result:=ReadStaticMethod(TMethodSymbol(sym), IsWrite)
 
       // Functions/Procedures

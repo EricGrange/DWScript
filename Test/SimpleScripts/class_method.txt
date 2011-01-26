@@ -8,3 +8,4 @@ TMyClass
 I'm TMyOtherClass
 TMyOtherClass
 I'm TMyOtherClass
+Object not instantiated [line: 56, column: 8]

@@ -911,28 +911,44 @@ type
     procedure Initialize; override;
   end;
 
-  // Call of static methods (not virtual)
-  TMethodStaticExpr = class(TFuncExpr)
-  private
-    FBaseExpr: TDataExpr;
-    FSelfAddr: Integer;
-  protected
-    function PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol; override;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-      BaseExpr: TDataExpr; IsInstruction: Boolean = True;
-      CodeExpr: TDataExpr = nil; IsWritable: Boolean = False);
-    destructor Destroy; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    procedure Initialize; override;
-    property BaseExpr: TDataExpr read FBaseExpr;
-  end;
+   // Call of static methods (not virtual)
+   TMethodStaticExpr = class(TFuncExpr)
+      private
+         FBaseExpr: TDataExpr;
+         FSelfAddr: Integer;
+      protected
+         function PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol; override;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
+                            BaseExpr: TDataExpr; IsInstruction: Boolean = True;
+                            CodeExpr: TDataExpr = nil; IsWritable: Boolean = False);
+         destructor Destroy; override;
+         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+         procedure Initialize; override;
+         property BaseExpr: TDataExpr read FBaseExpr;
+   end;
 
-  // Class methods
-  TClassMethodStaticExpr = class(TMethodStaticExpr)
-  protected
-    function PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol; override;
-  end;
+   // Call to a virtual method
+   TMethodVirtualExpr = class(TMethodStaticExpr)
+      protected
+         function FindVirtualMethod(ClassSym: TClassSymbol): TMethodSymbol;
+         function PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol; override;
+
+      public
+   end;
+
+   // Class methods (non virtual)
+   TClassMethodStaticExpr = class(TMethodStaticExpr)
+      protected
+         function PreCall(exec : TdwsExecution; var scriptObj : IScriptObj) : TFuncSymbol; override;
+   end;
+
+   // Call to a virtual class method
+   TClassMethodVirtualExpr = class(TClassMethodStaticExpr)
+      protected
+         function FindVirtualMethod(exec : TdwsExecution) : TMethodSymbol;
+         function PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol; override;
+   end;
 
   TConstructorStaticExpr = class(TMethodStaticExpr)
   private
@@ -948,40 +964,6 @@ type
   end;
 
   TDestructorStaticExpr = class(TMethodStaticExpr)
-  end;
-
-  TMethodVirtualExpr = class(TMethodStaticExpr)
-  private
-    FMethName: string;
-  protected
-    function FindVirtualMethod(ClassSym: TClassSymbol): TMethodSymbol;
-    function PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol; override;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-                       Base: TDataExpr; IsInstruction: Boolean = True);
-    property MethName: string read FMethName;
-  end;
-
-  // Call to Class method with class reference: TMyClass.ClassMethod(..)
-  TClassMethodVirtualExpr = class(TMethodVirtualExpr)
-  protected
-    function PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol; override;
-  end;
-
-  TClassMethodVirtualNameExpr = class(TMethodVirtualExpr)
-  protected
-    function PreCall(exec : TdwsExecution; var scriptObj: IScriptObj): TFuncSymbol; override;
-  end;
-
-  // Call to Class method with object reference: obj.ClassMethod(..)
-  TClassMethodObjVirtualExpr = class(TMethodVirtualExpr)
-  protected
-    function PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol; override;
-  end;
-
-  TClassMethodObjVirtualNameExpr = class(TMethodVirtualExpr)
-  protected
-    function PreCall(exec : TdwsExecution; var scriptObj: IScriptObj): TFuncSymbol; override;
   end;
 
   TConstructorVirtualExpr = class(TMethodVirtualExpr)
@@ -1568,59 +1550,40 @@ end;
 function CreateMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
                           const Pos: TScriptPos; IsInstruction: Boolean; ForceStatic : Boolean = False): TFuncExpr;
 begin
-  // Create the correct TExpr for a method symbol
-  Result := nil;
+   // Create the correct TExpr for a method symbol
+   Result := nil;
 
-  // Return the right expression
-  case meth.Kind of
-    fkFunction, fkProcedure, fkMethod:
-      if meth.IsClassMethod then
-      begin
-        if not ForceStatic and meth.IsVirtual and (RefKind = rkClassOfRef) then
-          if (Expr is TConstExpr) and (Expr.Typ.BaseTypeID=typClassOfID) then
-            Result := TClassMethodVirtualNameExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-          else
-            Result := TClassMethodVirtualExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-        else if not ForceStatic and meth.IsVirtual and (RefKind = rkObjRef) then
-          if (Expr is TConstExpr) and (Expr.Typ.BaseTypeID=typClassOfID) then
-            Result := TClassMethodObjVirtualNameExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-          else
-            Result := TClassMethodObjVirtualExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-        else
-          Result := TClassMethodStaticExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-      end
-      else
-      begin
-        Assert(RefKind = rkObjRef);
-        if not ForceStatic and meth.IsVirtual then
-          Result := TMethodVirtualExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-        else
-          Result := TMethodStaticExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction);
-      end;
-    fkConstructor:
-      if RefKind = rkClassOfRef then
-      begin
-        if not ForceStatic and meth.IsVirtual then
-          Result := TConstructorVirtualExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-        else
-          Result := TConstructorStaticExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction);
-      end
-      else
-      begin
-        if not ForceStatic and meth.IsVirtual then
-          Result := TConstructorVirtualObjExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-        else
-          Result := TConstructorStaticObjExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction);
-      end;
-    fkDestructor:
-      begin
-        Assert(RefKind = rkObjRef);
-        if not ForceStatic and meth.IsVirtual then
-          Result := TDestructorVirtualExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-        else
-          Result := TDestructorStaticExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-      end;
-  end;
+   // Return the right expression
+   case meth.Kind of
+      fkFunction, fkProcedure, fkMethod:
+         if meth.IsClassMethod then begin
+            if not ForceStatic and meth.IsVirtual then
+               Result := TClassMethodVirtualExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
+            else Result := TClassMethodStaticExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
+         end else begin
+            Assert(RefKind = rkObjRef);
+            if not ForceStatic and meth.IsVirtual then
+               Result := TMethodVirtualExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
+            else Result := TMethodStaticExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction);
+         end;
+      fkConstructor:
+         if RefKind = rkClassOfRef then begin
+            if not ForceStatic and meth.IsVirtual then
+               Result := TConstructorVirtualExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
+            else Result := TConstructorStaticExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction);
+         end else begin
+            if not ForceStatic and meth.IsVirtual then
+               Result := TConstructorVirtualObjExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
+            else Result := TConstructorStaticObjExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction);
+         end;
+      fkDestructor:
+         begin
+            Assert(RefKind = rkObjRef);
+            if not ForceStatic and meth.IsVirtual then
+               Result := TDestructorVirtualExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
+            else Result := TDestructorStaticExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
+         end;
+   end;
 end;
 
 // ------------------
@@ -2055,7 +2018,7 @@ var
    oldStatus : TExecutionStatusResult;
 begin
    try
-      sym := ScriptObj.ClassSym.Members.FindSymbol(SYS_TOBJECT_DESTROY);
+      sym := ScriptObj.ClassSym.Members.FindSymbol(SYS_TOBJECT_DESTROY, cvPublic);
 
       if sym is TMethodSymbol then begin
          func := TMethodSymbol(sym);
@@ -4041,23 +4004,6 @@ begin
   FBaseExpr.Initialize;
 end;
 
-{ TClassMethodStaticExpr }
-
-function TClassMethodStaticExpr.PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol;
-var
-   buf : String;
-begin
-   if FBaseExpr.Typ is TClassOfSymbol then
-      FBaseExpr.EvalAsString(exec, buf)
-   else begin
-      FBaseExpr.EvalAsScriptObj(exec, ScriptObj);
-      buf:=ScriptObj.ClassSym.Name;
-      ScriptObj:=nil;
-   end;
-   exec.Stack.WriteStrValue(exec.Stack.StackPointer + FSelfAddr, buf);
-   Result := FFunc;
-end;
-
 { TConstructorStaticExpr }
 
 constructor TConstructorStaticExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
@@ -4098,61 +4044,73 @@ end;
 
 { TMethodVirtualExpr }
 
-constructor TMethodVirtualExpr.Create;
-begin
-  inherited Create(Prog, Pos, Func, Base, IsInstruction);
-  FMethName := Func.Name;
-end;
-
+// FindVirtualMethod
+//
 function TMethodVirtualExpr.FindVirtualMethod(ClassSym: TClassSymbol): TMethodSymbol;
 begin
-  Result := TMethodSymbol(ClassSym.Members.FindSymbol(FMethName));
-  Assert(Result <> nil);
+   Result:=TMethodSymbol(ClassSym.Members.FindSymbol(FFunc.Name));
+   Assert(Result<>nil);
 
-  while not TMethodSymbol(Result).IsVirtual and TMethodSymbol(Result).IsOverlap do
-    Result := TMethodSymbol(Result).ParentMeth;
+   while not TMethodSymbol(Result).IsVirtual and TMethodSymbol(Result).IsOverlap do
+      Result:=TMethodSymbol(Result).ParentMeth;
 end;
 
-function TMethodVirtualExpr.PreCall(exec : TdwsExecution; var scriptObj: IScriptObj): TFuncSymbol;
+// PreCall
+//
+function TMethodVirtualExpr.PreCall(exec : TdwsExecution; var scriptObj : IScriptObj) : TFuncSymbol;
 begin
    // Find virtual method
-   ScriptObj := IScriptObj(IUnknown(FBaseExpr.Eval(exec)));
+   ScriptObj:=IScriptObj(IUnknown(FBaseExpr.Eval(exec)));
    if ScriptObj=nil then
       RaiseObjectNotInstantiated;
-   Result := FindVirtualMethod(ScriptObj.ClassSym);
-   exec.Stack.WriteValue(exec.Stack.StackPointer + FSelfAddr, ScriptObj);
+   exec.Stack.WriteValue(exec.Stack.StackPointer+FSelfAddr, ScriptObj);
+   Result:=FindVirtualMethod(ScriptObj.ClassSym);
+end;
+
+{ TClassMethodStaticExpr }
+
+function TClassMethodStaticExpr.PreCall(exec : TdwsExecution; var scriptObj : IScriptObj) : TFuncSymbol;
+var
+   buf : String;
+begin
+   if FBaseExpr.Typ is TClassOfSymbol then
+      FBaseExpr.EvalAsString(exec, buf)
+   else begin
+      FBaseExpr.EvalAsScriptObj(exec, ScriptObj);
+      if scriptObj=nil then
+         RaiseObjectNotInstantiated;
+      buf:=scriptObj.ClassSym.Name;
+      scriptObj:=nil;
+   end;
+   exec.Stack.WriteStrValue(exec.Stack.StackPointer + FSelfAddr, buf);
+   Result := FFunc;
 end;
 
 { TClassMethodVirtualExpr }
 
+// FindVirtualMethod
+//
+function TClassMethodVirtualExpr.FindVirtualMethod(exec : TdwsExecution) : TMethodSymbol;
+var
+   clsName : String;
+   classSym : TClassSymbol;
+begin
+   exec.Stack.ReadStrValue(exec.Stack.StackPointer+FSelfAddr, clsName);
+   classSym:=Prog.Table.FindSymbol(clsName) as TClassSymbol;
+
+   Result:=TMethodSymbol(ClassSym.Members.FindSymbol(FFunc.Name));
+   Assert(Result<>nil);
+
+   while not TMethodSymbol(Result).IsVirtual and TMethodSymbol(Result).IsOverlap do
+      Result:=TMethodSymbol(Result).ParentMeth;
+end;
+
+// PreCall
+//
 function TClassMethodVirtualExpr.PreCall(exec : TdwsExecution; var scriptObj: IScriptObj): TFuncSymbol;
 begin
-  ScriptObj := IScriptObj(IUnknown(FBaseExpr.Eval(exec)));
-   if ScriptObj=nil then
-      RaiseObjectNotInstantiated;
-  Result := FindVirtualMethod(ScriptObj.ClassSym);
-end;
-
-{ TClassMethodVirtualNameExpr }
-
-function TClassMethodVirtualNameExpr.PreCall(exec : TdwsExecution;
-                                             var ScriptObj: IScriptObj): TFuncSymbol;
-begin
-  Result := FindVirtualMethod(FProg.Table.FindSymbol(FBaseExpr.Eval(exec)) as TClassSymbol);
-end;
-
-{ TClassMethodObjVirtualExpr }
-function TClassMethodObjVirtualExpr.PreCall(exec : TdwsExecution; var scriptObj: IScriptObj): TFuncSymbol;
-begin
-  ScriptObj := IScriptObj(IUnknown(FBaseExpr.Eval(exec)));
-  Result := FindVirtualMethod(ScriptObj.ClassSym);
-end;
-
-{ TClassMethodObjVirtualNameExpr }
-
-function TClassMethodObjVirtualNameExpr.PreCall(exec : TdwsExecution; var scriptObj: IScriptObj): TFuncSymbol;
-begin
-  Result := FindVirtualMethod(FProg.Table.FindSymbol(FBaseExpr.Eval(exec)) as TClassSymbol);
+   inherited PreCall(exec, scriptObj);
+   Result:=FindVirtualMethod(exec);
 end;
 
 { TConstructorVirtualExpr }
