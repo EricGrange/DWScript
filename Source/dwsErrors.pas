@@ -427,7 +427,7 @@ end;
 //
 function TInfoMessage.AsInfo: String;
 begin
-   Result:=Format(MSG_Info, [inherited AsInfo]);
+   Result:=Format(MSG_Info, [Text]);
 end;
 
 // ------------------
