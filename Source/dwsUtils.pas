@@ -102,7 +102,7 @@ type
    // TSortedList
    //
    {: List that maintains its elements sorted }
-   TSortedList<T> = class
+   TSortedList<T: class> = class
       private
          FItems : array of T;
          FCount : Integer;
@@ -114,8 +114,10 @@ type
       public
          function Add(const anItem : T) : Integer;
          function AddOrFind(const anItem : T; var added : Boolean) : Integer;
+         function Extract(const anItem : T) : Integer;
          function IndexOf(const anItem : T) : Integer;
          procedure Clear;
+         procedure Clean;
          property Items[index : Integer] : T read GetItem; default;
          property Count : Integer read FCount;
    end;
@@ -699,6 +701,19 @@ begin
       InsertItem(Result, anItem);
 end;
 
+// Extract
+//
+function TSortedList<T>.Extract(const anItem : T) : Integer;
+var
+   i : Integer;
+begin
+   if Find(anItem, Result) then begin
+      Move(FItems[Result+1], FItems[Result], FCount-Result-1);
+      SetLength(FItems, FCount-1);
+      Dec(FCount);
+   end else Result:=-1;
+end;
+
 // IndexOf
 //
 function TSortedList<T>.IndexOf(const anItem : T) : Integer;
@@ -713,6 +728,16 @@ procedure TSortedList<T>.Clear;
 begin
    SetLength(FItems, 0);
    FCount:=0;
+end;
+
+// Clean
+//
+procedure TSortedList<T>.Clean;
+var
+   i : Integer;
+begin
+   for i:=0 to FCount-1 do
+      FItems[i].Free;
 end;
 
 // ------------------
