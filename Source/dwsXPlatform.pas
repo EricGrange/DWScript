@@ -63,6 +63,8 @@ type
 
 procedure ProcessApplicationMessages(sleepMilliSeconds : Integer);
 
+function GetSystemMilliseconds : Cardinal;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -78,6 +80,13 @@ begin
    Application.ProcessMessages;
    if sleepMilliSeconds>0 then
       Sleep(sleepMilliSeconds);
+end;
+
+// GetSystemMilliseconds
+//
+function GetSystemMilliseconds : Cardinal;
+begin
+   Result:=GetTickCount;
 end;
 
 // SetDecimalSeparator

@@ -501,7 +501,7 @@ type
    end;
 
    // A script procedure
-   TProcedure = class (TdwsProgram, IUnknown, ICallable)
+   TdwsProcedure = class (TdwsProgram, IUnknown, ICallable)
       private
          FFunc : TFuncSymbol;
          FPreConditions : TSourcePreConditions;
@@ -814,12 +814,12 @@ type
 
    TSourceConditions = class
       private
-         FProg : TProcedure;
+         FProg : TdwsProcedure;
          FItems : TTightList;
          FAncestor : TSourceConditions;
 
       public
-         constructor Create(aProg : TProcedure);
+         constructor Create(aProg : TdwsProcedure);
          destructor Destroy; override;
 
          procedure AddCondition(condition : TSourceCondition);
@@ -1803,8 +1803,6 @@ begin
       try
          // Run the script
          FProg.FExpr.EvalNoResult(Self);
-//         if ProgramState=psRunningStopped then
-//            Msgs.AddExecutionStop(Expr.Pos, RTE_ScriptStopped);
 
          if status<>esrNone then begin
             case status of
@@ -1813,6 +1811,8 @@ begin
             end;
          end;
       except
+         on e: EScriptStopped do
+            Msgs.AddInfo(e.Message);
          on e: EScriptAssertionFailed do
             Msgs.AddError(AppendCallStack(e.Message, e.ScriptCallStack));
          on e: EScriptException do
@@ -2394,12 +2394,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TProcedure ------------------
+// ------------------ TdwsProcedure ------------------
 // ------------------
 
 // Create
 //
-constructor TProcedure.Create(Parent: TdwsProgram);
+constructor TdwsProcedure.Create(Parent: TdwsProgram);
 begin
   FParent := Parent;
 
@@ -2418,7 +2418,7 @@ begin
   FContextMap := Parent.ContextMap;
 end;
 
-destructor TProcedure.Destroy;
+destructor TdwsProcedure.Destroy;
 begin
    FRootTable.Free;
    FExpr.Free;
@@ -2427,7 +2427,7 @@ begin
    FPostConditions.Free;
 end;
 
-procedure TProcedure.AssignTo(sym: TFuncSymbol);
+procedure TdwsProcedure.AssignTo(sym: TFuncSymbol);
 begin
   // Add parameter symboltable into the symboltable chain
   FTable.InsertParent(0, sym.Params);
@@ -2437,7 +2437,7 @@ end;
 
 // Call
 //
-procedure TProcedure.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
+procedure TdwsProcedure.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
 var
    oldProg : TdwsProgram;
 begin
@@ -2478,13 +2478,13 @@ begin
    end;
 end;
 
-procedure TProcedure.InitSymbol(Symbol: TSymbol);
+procedure TdwsProcedure.InitSymbol(Symbol: TSymbol);
 begin
    FTable.Initialize(CompileMsgs);
    FExpr.Initialize;
 end;
 
-procedure TProcedure.InitExpression(Expr: TExprBase);
+procedure TdwsProcedure.InitExpression(Expr: TExprBase);
 begin
 end;
 
@@ -2676,8 +2676,8 @@ end;
 //
 function TNoPosExpr.ScriptLocation : String;
 begin
-   if Prog is TProcedure then
-      Result:=TProcedure(Prog).Func.QualifiedName+ScriptPos.AsInfo
+   if Prog is TdwsProcedure then
+      Result:=TdwsProcedure(Prog).Func.QualifiedName+ScriptPos.AsInfo
    else Result:=ScriptPos.AsInfo;
 end;
 
@@ -7027,7 +7027,7 @@ end;
 
 // Create
 //
-constructor TSourceConditions.Create(aProg : TProcedure);
+constructor TSourceConditions.Create(aProg : TdwsProcedure);
 begin
    inherited Create;
    FProg:=aProg;

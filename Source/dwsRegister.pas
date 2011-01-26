@@ -41,6 +41,7 @@ begin
                      TDelphiWebScript,
                      TdwsComConnector,
                      TdwsSimpleDebugger,
+                     TdwsDebugger,
                      TdwsUnit,
                      TdwsHtmlFilter,
                      TdwsGlobalVarsFunctions,

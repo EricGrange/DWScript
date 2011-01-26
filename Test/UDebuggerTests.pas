@@ -131,7 +131,7 @@ procedure TDebuggerTests.EvaluateSimpleTest;
 var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
-   expr : TNoPosExpr;
+   expr : IdwsEvaluateExpr;
 begin
    prog:=FCompiler.Compile('var i := 10;');
    try
@@ -143,16 +143,16 @@ begin
 
          expr:=TdwsCompiler.Evaluate(exec, 'i+i*10');
          try
-            CheckEquals(110, expr.EvalAsInteger(exec as TdwsExecution), 'i+i*10');
+            CheckEquals(110, expr.Expression.EvalAsInteger(exec as TdwsExecution), 'i+i*10');
          finally
-            expr.Free;
+            expr:=nil;
          end;
 
          expr:=TdwsCompiler.Evaluate(exec, 'StrToInt(''123'')');
          try
-            CheckEquals(123, expr.EvalAsInteger(exec as TdwsExecution), 'StrToInt(''123'')');
+            CheckEquals(123, expr.Expression.EvalAsInteger(exec as TdwsExecution), 'StrToInt(''123'')');
          finally
-            expr.Free;
+            expr:=nil;
          end;
 
          try

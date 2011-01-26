@@ -140,6 +140,48 @@ type
          function GetMsgs : TdwsMessageList; override;
    end;
 
+   IdwsEvaluateExpr = interface
+      ['{43410A86-3D04-4201-ABD5-02B935D6C6AF}']
+      function GetExecution : IdwsProgramExecution;
+      function GetRootProgram : IdwsProgram;
+      function GetContextProcedure : TdwsProcedure;
+      function GetExpression : TNoPosExpr;
+
+      function ContextIsValid : Boolean;
+
+      property Execution : IdwsProgramExecution read GetExecution;
+      property RootProgram : IdwsProgram read GetRootProgram;
+      property ContextProcedure : TdwsProcedure read GetContextProcedure;
+      property Expression : TNoPosExpr read GetExpression;
+   end;
+
+   TdwsEvaluateOption = (eoRootContext);
+   TdwsEvaluateOptions = set of TdwsEvaluateOption;
+
+   // holds and evaluated expression
+   TdwsEvaluateExpr = class (TInterfacedObject, IdwsEvaluateExpr)
+      private
+         FExecution : IdwsProgramExecution;
+         FContextProcedure : TdwsProcedure;
+         FExpression : TNoPosExpr;
+
+      protected
+         function GetExecution : IdwsProgramExecution;
+         function GetRootProgram : IdwsProgram;
+         function GetContextProcedure : TdwsProcedure;
+         function GetExpression : TNoPosExpr;
+
+      public
+         destructor Destroy; override;
+
+         function ContextIsValid : Boolean;
+
+         property Execution : IdwsProgramExecution read FExecution;
+         property RootProgram : IdwsProgram read GetRootProgram;
+         property ContextProcedure : TdwsProcedure read FContextProcedure;
+         property Expression : TNoPosExpr read FExpression;
+   end;
+
    // TdwsCompiler
    //
    TdwsCompiler = class
@@ -278,7 +320,7 @@ type
 
       function CreateProgram(SystemTable: TSymbolTable; ResultType: TdwsResultType;
                              const stackParams : TStackParameters) : TdwsProgram; virtual;
-      function CreateProcedure(Parent : TdwsProgram) : TProcedure; virtual;
+      function CreateProcedure(Parent : TdwsProgram) : TdwsProcedure; virtual;
       function CreateAssign(const pos : TScriptPos; token : TTokenType; left : TDataExpr; right : TNoPosExpr) : TNoResultExpr;
 
    public
@@ -287,8 +329,8 @@ type
 
       function Compile(const aCodeText : String; Conf: TdwsConfiguration) : IdwsProgram;
 
-      class function Evaluate(const exec : IdwsProgramExecution; const anExpression : String;
-                              contextProgram : TdwsProgram = nil) : TNoPosExpr;
+      class function Evaluate(exec : IdwsProgramExecution; const anExpression : String;
+                              options : TdwsEvaluateOptions = []) : IdwsEvaluateExpr;
 
       procedure WarnForVarUsage(varExpr : TVarExpr; const pos : TScriptPos);
 
@@ -798,22 +840,39 @@ end;
 
 // Evaluate
 //
-class function TdwsCompiler.Evaluate(const exec : IdwsProgramExecution;
+class function TdwsCompiler.Evaluate(exec : IdwsProgramExecution;
                                      const anExpression : String;
-                                     contextProgram : TdwsProgram = nil) : TNoPosExpr;
+                                     options : TdwsEvaluateOptions = []) : IdwsEvaluateExpr;
 var
    oldProgMsgs : TdwsCompileMessageList;
    sourceFile : TSourceFile;
    compiler : TdwsCompiler;
+   expr : TNoPosExpr;
+   resultObj : TdwsEvaluateExpr;
+   contextProgram : TdwsProgram;
+   config : TdwsConfiguration;
 begin
    { This will evaluate an expression by tokenizing it evaluating it in the
      Context provided. }
 
-   Result := nil;
+   expr:=nil;
    compiler:=Self.Create;
    try
-      if contextProgram=nil then
-         contextProgram:=(exec.Prog as TdwsProgram);
+      if exec=nil then begin
+         config:=TdwsConfiguration.Create(nil);
+         try
+            exec:=compiler.Compile('', config).CreateNewExecution;
+         finally
+            config.Free;
+         end;
+      end;
+      if (eoRootContext in options) then
+         contextProgram:=exec.Prog as TdwsProgram
+      else begin
+         contextProgram:=(exec as TdwsProgramExecution).CurrentProg;
+         if contextProgram=nil then
+            contextProgram:=exec.Prog as TdwsProgram;
+      end;
       compiler.FProg:=contextProgram;
       try
          oldProgMsgs:=compiler.FProg.CompileMsgs;
@@ -828,16 +887,16 @@ begin
             compiler.FTok:=TTokenizer.Create(sourceFile, compiler.FMsgs);
             try
                try
-                  Result:=compiler.ReadExpr;
+                  expr:=compiler.ReadExpr;
                   try
-                     Result.Initialize;
+                     expr.Initialize;
                   except
-                     FreeAndNil(Result);
+                     FreeAndNil(expr);
                      raise;
                   end;
                except
                   on E : Exception do begin
-                     FreeAndNil(Result);
+                     FreeAndNil(expr);
                      if compiler.FMsgs.Count>0 then
                         E.Message:=compiler.FMsgs[0].AsInfo;
                      raise;
@@ -858,6 +917,13 @@ begin
    finally
       compiler.Free;
    end;
+
+   resultObj:=TdwsEvaluateExpr.Create;
+   resultObj.FExecution:=exec;
+   if contextProgram is TdwsProcedure then
+      resultObj.FContextProcedure:=TdwsProcedure(contextProgram);
+   resultObj.FExpression:=expr;
+   Result:=resultObj;
 end;
 
 // ReadVarDecl
@@ -1415,7 +1481,7 @@ end;
 procedure TdwsCompiler.ReadProcBody(funcSymbol : TFuncSymbol);
 var
    oldprog : TdwsProgram;
-   proc : TProcedure;
+   proc : TdwsProcedure;
    stmt : TExpr;
    assignExpr : TNoResultExpr;
    sectionType : TTokenType;
@@ -1444,7 +1510,7 @@ begin
       FProg:=proc;
       try
          FProg.Compiler := Self;
-         TProcedure(FProg).AssignTo(funcSymbol);
+         TdwsProcedure(FProg).AssignTo(funcSymbol);
          // Set the current context's LocalTable to be the table of the new procedure
          if coContextMap in FCompilerOptions then
             FProg.ContextMap.Current.LocalTable := FProg.Table;
@@ -1824,10 +1890,10 @@ var
   varExpr: TDataExpr;
 begin
   Result := nil;
-  if not ((FProg is TProcedure) and (TProcedure(FProg).Func is TMethodSymbol)) then
+  if not ((FProg is TdwsProcedure) and (TdwsProcedure(FProg).Func is TMethodSymbol)) then
     FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedOnlyInMethodsAllowed);
 
-  methSym := TMethodSymbol(TProcedure(FProg).Func);
+  methSym := TMethodSymbol(TdwsProcedure(FProg).Func);
   classSym := methSym.ClassSymbol;
   parentSym := ClassSym.Parent;
   sym := nil;
@@ -2016,7 +2082,7 @@ begin
 
       end else if sym.InheritsFrom(TFieldSymbol) then begin
 
-         progMeth := TMethodSymbol(TProcedure(FProg).Func);
+         progMeth := TMethodSymbol(TdwsProcedure(FProg).Func);
          if progMeth.IsClassMethod then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
          varExpr := TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym);
@@ -2029,7 +2095,7 @@ begin
          Result := ReadSymbol(fieldExpr, IsWrite);
 
       end else if sym.InheritsFrom(TPropertySymbol) then begin
-         progMeth := TMethodSymbol(TProcedure(FProg).Func);
+         progMeth := TMethodSymbol(TdwsProcedure(FProg).Func);
          if progMeth.IsClassMethod then
             varExpr := TConstExpr.CreateTyped(FProg, progMeth.ClassSymbol, nil)
          else varExpr := TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym);
@@ -2823,7 +2889,7 @@ function TdwsCompiler.ReadStaticMethod(methodSym: TMethodSymbol; IsWrite: Boolea
 var
    progMeth: TMethodSymbol;
 begin
-   progMeth := TMethodSymbol(TProcedure(FProg).Func);
+   progMeth := TMethodSymbol(TdwsProcedure(FProg).Func);
    if not progMeth.IsClassMethod then
       Result := GetMethodExpr(methodSym,
                               TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym),
@@ -3714,17 +3780,17 @@ var
    gotParenthesis : Boolean;
    leftExpr : TDataExpr;
    assignExpr : TNoResultExpr;
-   proc : TProcedure;
+   proc : TdwsProcedure;
    exitPos : TScriptPos;
 begin
    exitPos:=FTok.HotPos;
    if FTok.TestAny([ttEND, ttSEMI, ttELSE, ttUNTIL])<>ttNone then
       Result:=TExitExpr.Create(FProg, FTok.HotPos)
    else begin
-      if not (FProg is TProcedure) then
+      if not (FProg is TdwsProcedure) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoResultRequired);
       gotParenthesis:=FTok.TestDelete(ttBLEFT);
-      proc:=TProcedure(FProg);
+      proc:=TdwsProcedure(FProg);
       if proc.Func.Result=nil then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoResultRequired);
       leftExpr:=TVarExpr.CreateTyped(FProg, proc.Func.Result.Typ, proc.Func.Result);
@@ -4582,8 +4648,8 @@ begin
          else if SameText(name, 'TIME') then
             value:=FormatDateTime('hh:nn:ss', Time)
          else if SameText(name, 'FUNCTION') then begin
-            if FProg is TProcedure then begin
-               funcSym:=TProcedure(FProg).Func;
+            if FProg is TdwsProcedure then begin
+               funcSym:=TdwsProcedure(FProg).Func;
                if funcSym is TMethodSymbol then
                   value:=TMethodSymbol(funcSym).ClassSymbol.Name+'.'+funcSym.Name
                else value:=funcSym.Name;
@@ -4677,8 +4743,8 @@ var
 begin
    sym := FProg.Table.FindLocal(Name);
 
-   if not Assigned(sym) and (FProg is TProcedure) then
-      sym := TProcedure(FProg).Func.Params.FindLocal(Name);
+   if not Assigned(sym) and (FProg is TdwsProcedure) then
+      sym := TdwsProcedure(FProg).Func.Params.FindLocal(Name);
 
    if Assigned(sym) then
       FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [Name])
@@ -5575,9 +5641,9 @@ begin
   end;
 end;
 
-function TdwsCompiler.CreateProcedure(Parent : TdwsProgram): TProcedure;
+function TdwsCompiler.CreateProcedure(Parent : TdwsProgram): TdwsProcedure;
 begin
-  Result := TProcedure.Create(Parent);
+  Result := TdwsProcedure.Create(Parent);
 end;
 
 // CreateAssign
@@ -5927,6 +5993,54 @@ end;
 function TdwsCompilerExecution.GetMsgs : TdwsMessageList;
 begin
    Result:=FCompiler.FMsgs;
+end;
+
+// ------------------
+// ------------------ TdwsEvaluateExpr ------------------
+// ------------------
+
+// Destroy
+//
+destructor TdwsEvaluateExpr.Destroy;
+begin
+   FExpression.Free;
+   inherited;
+end;
+
+// ContextIsValid
+//
+function TdwsEvaluateExpr.ContextIsValid : Boolean;
+begin
+   Result:=   (FContextProcedure=nil)
+           or (FContextProcedure=(FExecution as TdwsProgramExecution).CurrentProg);
+end;
+
+// GetExecution
+//
+function TdwsEvaluateExpr.GetExecution : IdwsProgramExecution;
+begin
+   Result:=FExecution;
+end;
+
+// GetRootProgram
+//
+function TdwsEvaluateExpr.GetRootProgram : IdwsProgram;
+begin
+   Result:=FExecution.Prog;
+end;
+
+// GetContextProcedure
+//
+function TdwsEvaluateExpr.GetContextProcedure : TdwsProcedure;
+begin
+   Result:=FContextProcedure;
+end;
+
+// GetExpression
+//
+function TdwsEvaluateExpr.GetExpression : TNoPosExpr;
+begin
+   Result:=FExpression;
 end;
 
 end.

@@ -4411,7 +4411,7 @@ begin
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
    while i^<=toValue do begin
-      exec.DoStep(Self);
+      exec.DoStep(FDoExpr);
       FDoExpr.EvalNoResult(exec);
       if exec.Status<>esrNone then begin
          case exec.Status of
@@ -4439,7 +4439,7 @@ begin
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
    while i^>=toValue do begin
-      exec.DoStep(Self);
+      exec.DoStep(FDoExpr);
       FDoExpr.EvalNoResult(exec);
       if exec.Status<>esrNone then begin
          case exec.Status of
@@ -4468,7 +4468,7 @@ begin
    toValue:=FToExpr.EvalAsInteger(exec);
    step:=EvalStep(exec);
    while i^<=toValue do begin
-      exec.DoStep(Self);
+      exec.DoStep(FDoExpr);
       FDoExpr.EvalNoResult(exec);
       if exec.Status<>esrNone then begin
          case exec.Status of
@@ -4503,7 +4503,7 @@ begin
    toValue:=FToExpr.EvalAsInteger(exec);
    step:=EvalStep(exec);
    while i^>=toValue do begin
-      exec.DoStep(Self);
+      exec.DoStep(FDoExpr);
       FDoExpr.EvalNoResult(exec);
       if exec.Status<>esrNone then begin
          case exec.Status of
