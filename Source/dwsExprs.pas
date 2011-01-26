@@ -4803,7 +4803,7 @@ begin
    if executionContext<>nil then
       executionContext.ScriptObjCreated(Self);
 
-   SetLength(FData, aClassSym.InstanceSize);
+   SetLength(FData, aClassSym.ScriptInstanceSize);
 
    // initialize fields
    classSymIter:=aClassSym;

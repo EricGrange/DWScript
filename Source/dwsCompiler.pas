@@ -3198,6 +3198,14 @@ begin
       FProg.Table.AddSymbol(Result);   // auto-forward
    try
       try
+         tt:=FTok.TestDeleteAny([ttABSTRACT, ttSEALED]);
+         case tt of
+            ttABSTRACT :
+               Result.IsExplicitAbstract:=True;
+            ttSEALED :
+               Result.IsSealed:=True;
+         end;
+
          // inheritance
          if FTok.TestDelete(ttBLEFT) then begin
             if not FTok.TestName then
@@ -3215,10 +3223,14 @@ begin
             if TClassSymbol(Typ).IsForwarded then
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassNotImplementedYet, [Name]);
 
+            if TClassSymbol(Typ).IsSealed then
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassIsSealed, [Typ.Name]);
+
             Result.InheritFrom(TClassSymbol(Typ));
 
             if not FTok.TestDelete(ttBRIGHT) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+
          end else Result.InheritFrom(FProg.TypObject);
 
          visibility:=cvPublic;

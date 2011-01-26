@@ -859,17 +859,20 @@ type
          function BaseTypeID : TBaseTypeID; override;
    end;
 
-   TObjectDestroyEvent = procedure(ExternalObject: TObject) of object;
+   TObjectDestroyEvent = procedure (ExternalObject: TObject) of object;
+
+   TClassSymbolFlag = (csfAbstract, csfExplicitAbstract, csfSealed);
+   TClassSymbolFlags = set of TClassSymbolFlag;
 
    // type X = class ... end;
-   TClassSymbol = class(TTypeSymbol)
+   TClassSymbol = class (TTypeSymbol)
       private
          FClassOfSymbol : TClassOfSymbol;
-         FIsAbstract : Boolean;
+         FFlags : TClassSymbolFlags;
          FForwardPosition : PScriptPos;
          FMembers : TMembersSymbolTable;
          FOperators : TTightList;
-         FInstanceSize : Integer;
+         FScriptInstanceSize : Integer;
          FOnObjectDestroy : TObjectDestroyEvent;
          FParent : TClassSymbol;
          FDefaultProperty : TPropertySymbol;
@@ -877,24 +880,28 @@ type
       protected
          function CreateMembersTable : TMembersSymbolTable; virtual;
          function GetDescription: string; override;
-         function GetIsForwarded : Boolean;
+         function GetIsForwarded : Boolean; inline;
+         function GetIsExplicitAbstract : Boolean; inline;
+         procedure SetIsExplicitAbstract(const val : Boolean); inline;
+         function GetIsAbstract : Boolean; inline;
+         function GetIsSealed : Boolean; inline;
+         procedure SetIsSealed(const val : Boolean); inline;
 
       public
          constructor Create(const Name: string);
          destructor Destroy; override;
 
          procedure AddField(Sym: TFieldSymbol);
-         procedure AddMethod(Sym: TMethodSymbol);
+         procedure AddMethod(methSym : TMethodSymbol);
          procedure AddProperty(Sym: TPropertySymbol);
          procedure AddOperator(Sym: TClassOperatorSymbol);
 
-         procedure InheritFrom(Typ: TClassSymbol);
+         procedure InheritFrom(ancestorClassSym : TClassSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
-         function  IsCompatible(typSym: TSymbol): Boolean; override;
+         function  IsCompatible(typSym: TSymbol) : Boolean; override;
          function  IsOfType(typSym : TSymbol) : Boolean; override;
          function  BaseTypeID : TBaseTypeID; override;
-         function  InstanceSize : Integer; // avoids warning
 
          procedure SetForwardedPos(const pos : TScriptPos);
          procedure ClearIsForwarded;
@@ -903,8 +910,11 @@ type
          function FindClassOperator(tokenType : TTokenType; paramType : TSymbol) : TClassOperatorSymbol;
 
          property ClassOf: TClassOfSymbol read FClassOfSymbol;
-         property IsAbstract: Boolean read FIsAbstract write FIsAbstract;
+         property ScriptInstanceSize : Integer read FScriptInstanceSize;
          property IsForwarded : Boolean read GetIsForwarded;
+         property IsExplicitAbstract : Boolean read GetIsExplicitAbstract write SetIsExplicitAbstract;
+         property IsAbstract : Boolean read GetIsAbstract;
+         property IsSealed : Boolean read GetIsSealed write SetIsSealed;
          property Members: TMembersSymbolTable read FMembers;
          property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
          property Parent: TClassSymbol read FParent;
@@ -2252,30 +2262,33 @@ begin
   FMembers.AddSymbol(Sym);
   Sym.FClassSymbol := Self;
 
-  Sym.FOffset := FInstanceSize;
-  FInstanceSize := FInstanceSize + Sym.Typ.Size;
+  Sym.FOffset := FScriptInstanceSize;
+  FScriptInstanceSize := FScriptInstanceSize + Sym.Typ.Size;
 end;
 
-procedure TClassSymbol.AddMethod(Sym: TMethodSymbol);
+// AddMethod
+//
+procedure TClassSymbol.AddMethod(methSym : TMethodSymbol);
 var
-  x: Integer;
+   x : Integer;
+   memberSymbol : TSymbol;
 begin
-  FMembers.AddSymbol(Sym);
-  sym.FClassSymbol := Self;
+   FMembers.AddSymbol(methSym);
+   methSym.FClassSymbol:=Self;
 
-  // Check if class is abstract or not
-  if Sym.IsAbstract then
-    FIsAbstract := True
-  else if Sym.IsOverride and Sym.FParentMeth.IsAbstract then
-  begin
-    FIsAbstract := False;
-    for x := 0 to FMembers.Count - 1 do
-      if (FMembers[x] is TMethodSymbol) and (TMethodSymbol(FMembers[x]).IsAbstract) then
-      begin
-        FIsAbstract := True;
-        break;
+   // Check if class is abstract or not
+   if methSym.IsAbstract then
+      Include(FFlags, csfAbstract)
+   else if methSym.IsOverride and methSym.FParentMeth.IsAbstract then begin
+      Exclude(FFlags, csfAbstract);
+      for x:=0 to FMembers.Count - 1 do begin
+         memberSymbol:=FMembers[x];
+         if (memberSymbol is TMethodSymbol) and (TMethodSymbol(memberSymbol).IsAbstract) then begin
+            Include(FFlags, csfAbstract);
+            Break;
+         end;
       end;
-  end;
+   end;
 end;
 
 procedure TClassSymbol.AddProperty(Sym: TPropertySymbol);
@@ -2328,11 +2341,15 @@ begin
    end;
 end;
 
-procedure TClassSymbol.InheritFrom(Typ: TClassSymbol);
+// InheritFrom
+//
+procedure TClassSymbol.InheritFrom(ancestorClassSym : TClassSymbol);
 begin
-  FMembers.AddParent(Typ.Members);
-  FInstanceSize := Typ.InstanceSize;
-  FParent := Typ;
+   FMembers.AddParent(ancestorClassSym.Members);
+   if csfAbstract in ancestorClassSym.FFlags then
+      Include(FFlags, csfAbstract);
+   FScriptInstanceSize:=ancestorClassSym.ScriptInstanceSize;
+   FParent:=ancestorClassSym;
 end;
 
 function TClassSymbol.IsCompatible(typSym: TSymbol): Boolean;
@@ -2398,9 +2415,39 @@ begin
    Result:=Assigned(FForwardPosition);
 end;
 
-function TClassSymbol.InstanceSize: Integer;
+// GetIsExplicitAbstract
+//
+function TClassSymbol.GetIsExplicitAbstract : Boolean;
 begin
-  Result := FInstanceSize;
+   Result:=(csfExplicitAbstract in FFlags);
+end;
+
+// SetIsExplicitAbstract
+//
+procedure TClassSymbol.SetIsExplicitAbstract(const val : Boolean);
+begin
+   Include(FFlags, csfExplicitAbstract);
+end;
+
+// GetIsAbstract
+//
+function TClassSymbol.GetIsAbstract : Boolean;
+begin
+   Result:=(([csfAbstract, csfExplicitAbstract]*FFlags)<>[]);
+end;
+
+// GetIsSealed
+//
+function TClassSymbol.GetIsSealed : Boolean;
+begin
+   Result:=(csfSealed in FFlags);
+end;
+
+// SetIsSealed
+//
+procedure TClassSymbol.SetIsSealed(const val : Boolean);
+begin
+   Include(FFlags, csfSealed);
 end;
 
 // SetForwardedPos

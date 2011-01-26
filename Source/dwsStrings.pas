@@ -138,6 +138,7 @@ const
   CPE_FuncForwardAlreadyExists = 'There is already a forward declaration of this function!';
   CPE_ClassNotImplementedYet = 'Class "%s" not fully implemented.';
   CPE_ForwardNotImplemented = 'The function "%s" was forward declared but not implemented!';
+  CPE_ClassIsSealed = 'Class "%s" is sealed, inheriting is not allowed!';
   CPE_MethodOrPropertyExpected = 'Method or property declaration expected';
   CPE_OverloadableOperatorExpected = 'Overloadable operator expected';
   CPE_SingleParameterExpected = 'Single parameter expected';
