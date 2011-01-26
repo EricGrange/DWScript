@@ -994,11 +994,11 @@ type
          procedure AddParent(Parent: TSymbolTable);
 
          function AddSymbol(Sym: TSymbol): Integer;
-         function FindLocal(const aName : String) : TSymbol;
+         function FindLocal(const aName : String) : TSymbol; virtual;
          function Remove(Sym: TSymbol): Integer;
          procedure Clear;
 
-         function FindSymbol(const Name: string): TSymbol; virtual;
+         function FindSymbol(const aName : string) : TSymbol; virtual;
 
          function HasClass(const aClass : TSymbolClass) : Boolean;
 
@@ -1027,7 +1027,7 @@ type
    //
    TUnSortedSymbolTable = class (TSymbolTable)
       public
-         function FindLocal(const Name: string): TSymbol; override;
+         function FindLocal(const aName : String) : TSymbol; override;
    end;
 
    // TConditionsSymbolTable
@@ -2812,20 +2812,20 @@ end;
 
 // FindSymbol
 //
-function TSymbolTable.FindSymbol(const Name: string): TSymbol;
+function TSymbolTable.FindSymbol(const aName : String) : TSymbol;
 var
-   x: Integer;
+   i : Integer;
 begin
    // Find Symbol in the local List
-   Result := FindLocal(Name);
+   Result:=FindLocal(aName);
    if Assigned(Result) then
       Exit;
 
    // Find Symbol in all parent lists
-   x := 0;
-   while not Assigned(Result) and (x < ParentCount) do begin
-      Result := Parents[x].FindSymbol(Name);
-      Inc(x);
+   i:=0;
+   while not Assigned(Result) and (i<ParentCount) do begin
+      Result:=Parents[i].FindSymbol(aName);
+      Inc(i);
    end;
 end;
 
@@ -2985,9 +2985,9 @@ end;
 
 // FindLocal
 //
-function TUnSortedSymbolTable.FindLocal(const Name: string): TSymbol;
+function TUnSortedSymbolTable.FindLocal(const aName : String) : TSymbol;
 begin
-   Result:=FindLocalUnSorted(name);
+   Result:=FindLocalUnSorted(aName);
 end;
 
 // ------------------
