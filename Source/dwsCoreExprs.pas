@@ -401,11 +401,6 @@ type
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
-   TChrExpr = class(TUnaryOpStringExpr)
-   public
-     procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
-   end;
-
    TOrdExpr = class(TUnaryOpIntExpr)
    public
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -1134,11 +1129,6 @@ type
      procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
-   TVarStringArraySetChrExpr = class(TStringArraySetExpr)
-   public
-     procedure EvalNoResult(exec : TdwsExecution); override;
-   end;
-
    TSpecialUnaryBoolExpr = class(TUnaryOpExpr)
       public
          constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
@@ -1640,7 +1630,10 @@ begin
       Result:=TConstBooleanExpr.CreateUnified(Prog, Typ, Value)
    else if Typ=Prog.TypFloat then
       Result:=TConstFloatExpr.CreateUnified(Prog, Typ, Value)
-   else Result:=TConstExpr.Create(Prog, Typ, Value);
+   else if Typ is TClassOfSymbol then begin
+      Assert(VarType(Value) in [varInt64, varEmpty]);
+      Result:=TConstExpr.Create(Prog, Typ, Value);
+   end else Result:=TConstExpr.Create(Prog, Typ, Value);
 end;
 
 // CreateTyped
@@ -2757,23 +2750,13 @@ end;
 // EvalAsBoolean
 //
 function TAssignedMetaClassExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
-var
-   s : String;
 begin
-   FExpr.EvalAsString(exec, s);
-   Result:=(s<>'');
+   Result:=(FExpr.EvalAsInteger(exec)<>0);
 end;
 
-{ TChrExpr }
-
-// EvalAsString
-//
-procedure TChrExpr.EvalAsString(exec : TdwsExecution; var Result : String);
-begin
-   Result:=Chr(FExpr.EvalAsInteger(exec));
-end;
-
-{ TOrdExpr }
+// ------------------
+// ------------------ TOrdExpr ------------------
+// ------------------
 
 // EvalAsInteger
 //
@@ -3649,13 +3632,13 @@ var
    obj : IScriptObj;
 begin
    FRight.EvalAsVariant(exec, v);
-   if VarIsStr(v) then
+   if VarIsOrdinal(v) then
       FLeft.AssignValue(exec, v)
    else begin
       obj:=IScriptObj(IUnknown(v));
       if obj<>nil then
-         FLeft.AssignValueAsString(exec, IScriptObj(IUnknown(v)).ClassSym.Name)
-      else FLeft.AssignValueAsString(exec, '');
+         FLeft.AssignValueAsInteger(exec, Int64(IScriptObj(IUnknown(v)).ClassSym))
+      else FLeft.AssignValueAsInteger(exec, 0);
    end;
 end;
 
@@ -5006,25 +4989,6 @@ begin
    else begin
       FValueExpr.EvalAsString(exec, buf);
       c:=buf[1];
-      if not TStrVarExpr(FStringExpr).SetChar(exec, i, c) then
-         RaiseUpperExceeded(i);
-   end;
-end;
-
-{ TVarStringArraySetChrExpr }
-
-// EvalNoResult
-//
-procedure TVarStringArraySetChrExpr.EvalNoResult(exec : TdwsExecution);
-var
-   i : Integer;
-   c : Char;
-begin
-   i:=FIndexExpr.EvalAsInteger(exec);
-   if i<1 then
-      RaiseLowerExceeded(i)
-   else begin
-      c:=Chr(FValueExpr.EvalAsInteger(exec));
       if not TStrVarExpr(FStringExpr).SetChar(exec, i, c) then
          RaiseUpperExceeded(i);
    end;

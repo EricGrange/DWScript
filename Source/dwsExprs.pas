@@ -495,9 +495,9 @@ type
    end;
 
    // Functions callable from a script program implement this interfaces
-   ICallable = interface(IExecutable)
+   ICallable = interface (IExecutable)
       ['{8D534D15-4C6B-11D5-8DCB-0000216D9E86}']
-      procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol);
+      procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol);
    end;
 
    // A script procedure
@@ -743,16 +743,14 @@ type
          FStates : TFuncExprStates;
          FPushExprs : packed array of TPushOperator;
          FResultAddr : Integer;
-         FCodeExpr : TDataExpr;
 
       protected
-         function PostCall(exec : TdwsExecution; const ScriptObj: IScriptObj): Variant; virtual;
-         function PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol; virtual;
+         function PreCall(exec : TdwsExecution) : TFuncSymbol; virtual;
+         function PostCall(exec : TdwsExecution) : Variant; virtual;
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol;
-                            IsInstruction: Boolean = True; CodeExpr: TDataExpr = nil;
-                            IsWritable: Boolean = False; exec : TdwsProgramExecution = nil);
+                            IsInstruction: Boolean = True; exec : TdwsProgramExecution = nil);
          destructor Destroy; override;
 
          function AddArg(arg : TNoPosExpr) : TSymbol; override;
@@ -760,27 +758,10 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
          function GetData(exec : TdwsExecution) : TData; override;
          function GetAddr(exec : TdwsExecution) : Integer; override;
-         procedure GetCode(exec : TdwsExecution; Func : TFuncSymbol; var result : ICallable); virtual;
          procedure Initialize; override;
          procedure SetResultAddr(exec : TdwsExecution; ResultAddr: Integer = -1);
          function IsWritable : Boolean; override;
-
-         property CodeExpr : TDataExpr read FCodeExpr;
    end;
-
-  TFuncCodeExpr = class(TPosDataExpr)
-  private
-    FFuncExpr : TFuncExpr;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; FuncExpr: TFuncExpr);
-    destructor Destroy; override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    procedure AssignDataExpr(exec : TdwsExecution; Right: TDataExpr); override;
-    function Eval(exec : TdwsExecution) : Variant; override;
-    function GetData(exec : TdwsExecution) : TData; override;
-    function GetAddr(exec : TdwsExecution) : Integer; override;
-    property FuncExpr : TFuncExpr read FFuncExpr;
-  end;
 
   TMethodObjExpr = class(TPosDataExpr)
   private
@@ -911,28 +892,37 @@ type
     procedure Initialize; override;
   end;
 
-   // Call of static methods (not virtual)
-   TMethodStaticExpr = class(TFuncExpr)
+   // Call of a method
+   TMethodExpr = class abstract (TFuncExpr)
       private
          FBaseExpr: TDataExpr;
          FSelfAddr: Integer;
-      protected
-         function PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol; override;
+
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-                            BaseExpr: TDataExpr; IsInstruction: Boolean = True;
-                            CodeExpr: TDataExpr = nil; IsWritable: Boolean = False);
+                            BaseExpr: TDataExpr; IsInstruction: Boolean = True);
          destructor Destroy; override;
+
          procedure TypeCheckNoPos(const aPos : TScriptPos); override;
          procedure Initialize; override;
+
          property BaseExpr: TDataExpr read FBaseExpr;
+   end;
+
+   // Call of static methods (not virtual)
+   TMethodStaticExpr = class(TMethodExpr)
+      protected
+         function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
+
+      public
+         function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // Call to a virtual method
    TMethodVirtualExpr = class(TMethodStaticExpr)
       protected
-         function FindVirtualMethod(ClassSym: TClassSymbol): TMethodSymbol;
-         function PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol; override;
+         function FindVirtualMethod(classSym : TClassSymbol): TMethodSymbol; inline;
+         function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
 
       public
    end;
@@ -940,63 +930,60 @@ type
    // Class methods (non virtual)
    TClassMethodStaticExpr = class(TMethodStaticExpr)
       protected
-         function PreCall(exec : TdwsExecution; var scriptObj : IScriptObj) : TFuncSymbol; override;
+         function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
    end;
 
    // Call to a virtual class method
    TClassMethodVirtualExpr = class(TClassMethodStaticExpr)
       protected
          function FindVirtualMethod(exec : TdwsExecution) : TMethodSymbol;
-         function PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol; override;
+         function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
    end;
 
-  TConstructorStaticExpr = class(TMethodStaticExpr)
-  private
-    FExternalObject: TObject;
-  protected
-    function PostCall(exec : TdwsExecution; const ScriptObj: IScriptObj): Variant; override;
-    function PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol; override;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-                       Base: TDataExpr; IsInstruction: Boolean = True);
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    property ExternalObject: TObject read FExternalObject write FExternalObject;
-  end;
+   TConstructorStaticExpr = class(TMethodStaticExpr)
+      protected
+         function PostCall(exec : TdwsExecution) : Variant; override;
+         function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
 
-  TDestructorStaticExpr = class(TMethodStaticExpr)
-  end;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
+                            Base: TDataExpr; IsInstruction: Boolean = True);
+         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+   end;
 
-  TConstructorVirtualExpr = class(TMethodVirtualExpr)
-  private
-    FExternalObject: TObject;
-  protected
-    function PostCall(exec : TdwsExecution; const scriptObj: IScriptObj): Variant; override;
-    function PreCall(exec : TdwsExecution; var scriptObj: IScriptObj): TFuncSymbol; override;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-                       Base: TDataExpr; IsInstruction: Boolean = True);
-    property ExternalObject: TObject read FExternalObject write FExternalObject;
-  end;
+   TConstructorVirtualExpr = class(TMethodVirtualExpr)
+      private
+         FExternalObject: TObject;
+      protected
+         function PostCall(exec : TdwsExecution) : Variant; override;
+         function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
+                            Base: TDataExpr; IsInstruction: Boolean = True);
+         property ExternalObject: TObject read FExternalObject write FExternalObject;
+   end;
 
-  TConstructorStaticObjExpr = class(TMethodStaticExpr)
-  protected
-    function PostCall(exec : TdwsExecution; const ScriptObj: IScriptObj): Variant; override;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-      BaseExpr: TDataExpr; IsInstruction: Boolean = True;
-      CodeExpr: TDataExpr = nil; IsWritable: Boolean = False);
-  end;
+   TConstructorStaticObjExpr = class(TMethodStaticExpr)
+      protected
+         function PostCall(exec : TdwsExecution) : Variant; override;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
+                            BaseExpr: TDataExpr; IsInstruction: Boolean = True);
+   end;
 
-  TConstructorVirtualObjExpr = class(TMethodVirtualExpr)
-  protected
-    function PostCall(exec : TdwsExecution; const ScriptObj: IScriptObj): Variant; override;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol; Base:
-      TDataExpr; IsInstruction: Boolean = True);
-  end;
+   TConstructorVirtualObjExpr = class(TMethodVirtualExpr)
+      protected
+         function PostCall(exec : TdwsExecution): Variant; override;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol; Base:
+                            TDataExpr; IsInstruction: Boolean = True);
+   end;
 
-  TDestructorVirtualExpr = class(TMethodVirtualExpr)
-  end;
+   TDestructorStaticExpr = class(TMethodStaticExpr)
+   end;
+
+   TDestructorVirtualExpr = class(TMethodVirtualExpr)
+   end;
 
    TUnaryOpExpr = class(TNoPosExpr)
       protected
@@ -1166,6 +1153,7 @@ type
          function GetValueAsFloat(const s: string): Double;
          procedure SetValueAsFloat(const s: string; const Value: Double);
          function GetValueAsObject(const s: String): TObject;
+         function GetValueAsClassSymbol(const s: String): TClassSymbol;
          function GetValueAsTStrings(const s: String): TStrings;
          procedure SetResultAsString(const value : String);
          function GetResultAsString : String;
@@ -1218,6 +1206,7 @@ type
          property ValueAsBoolean[const s : String] : Boolean read GetValueAsBoolean write SetValueAsBoolean;
          property ValueAsFloat[const s : String] : Double read GetValueAsFloat write SetValueAsFloat;
          property ValueAsObject[const s : String] : TObject read GetValueAsObject;
+         property ValueAsClassSymbol[const s : String] : TClassSymbol read GetValueAsClassSymbol;
          property ValueAsTStrings[const s : String] : TStrings read GetValueAsTStrings;
 
          property ParamAsVariant[index : Integer] : Variant read GetParamAsVariant;
@@ -1266,7 +1255,7 @@ type
          property PrevObject : TScriptObj read FPrevObject write FPrevObject;
    end;
 
-function CreateMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
+function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
                           const Pos: TScriptPos; IsInstruction: Boolean; ForceStatic : Boolean = False): TFuncExpr;
 
 function RawByteStringToScriptString(const s : RawByteString) : String;
@@ -1525,29 +1514,29 @@ begin
    raise Exception.CreateFmt(RTE_OnlyVarSymbols, [sym.Caption]);
 end;
 
-function GetFuncExpr(Prog: TdwsProgram; FuncSym: TFuncSymbol; ScriptObj: IScriptObj;
+// GetFuncExpr
+//
+function GetFuncExpr(Prog: TdwsProgram; FuncSym: TFuncSymbol; scriptObj: IScriptObj;
   ClassSym: TClassSymbol; ForceStatic: Boolean = False; exec : TdwsProgramExecution = nil): TFuncExpr;
 begin
-  if FuncSym is TMethodSymbol then
-  begin
-    if Assigned(ScriptObj) then
-      Result := CreateMethodExpr(
-        TMethodSymbol(funcSym),
-        TConstExpr.Create(Prog, {ScriptObj.}ClassSym, ScriptObj),
-                          rkObjRef, cNullPos, True, ForceStatic)
-    else
-      Result := CreateMethodExpr(
-        TMethodSymbol(funcSym),
-        TConstExpr.Create(Prog, ClassSym.ClassOf, ClassSym.Name),
-                          rkClassOfRef, cNullPos, True, ForceStatic)
-  end
-  else
-    Result := TFuncExpr.Create(Prog, cNullPos, TFuncSymbol(funcSym), True, nil, False, exec);
+   if FuncSym is TMethodSymbol then begin
+      if Assigned(scriptObj) then begin
+         Result := CreateMethodExpr(Prog, TMethodSymbol(funcSym),
+                                    TConstExpr.Create(Prog, ClassSym, scriptObj),
+                                                      rkObjRef, cNullPos, True, ForceStatic)
+      end else begin
+         Result := CreateMethodExpr(Prog, TMethodSymbol(funcSym),
+                                    TConstExpr.Create(Prog, ClassSym.ClassOf, Int64(ClassSym)),
+                                                      rkClassOfRef, cNullPos, True, ForceStatic)
+      end;
+   end else begin
+      Result := TFuncExpr.Create(Prog, cNullPos, funcSym, True, exec);
+   end;
 end;
 
 // CreateMethodExpr
 //
-function CreateMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
+function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
                           const Pos: TScriptPos; IsInstruction: Boolean; ForceStatic : Boolean = False): TFuncExpr;
 begin
    // Create the correct TExpr for a method symbol
@@ -1583,6 +1572,8 @@ begin
                Result := TDestructorVirtualExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
             else Result := TDestructorStaticExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
          end;
+   else
+      Assert(False);
    end;
 end;
 
@@ -2421,14 +2412,7 @@ begin
 
       FExpr.EvalNoResult(exec);
 
-      if exec.Status<>esrNone then begin
-         case exec.Status of
-            esrBreak : exec.Msgs.AddError(RTE_InvalidBreak);
-            esrContinue : exec.Msgs.AddError(RTE_InvalidContinue);
-         else
-            exec.Status:=esrNone;
-         end;
-      end;
+      exec.Status:=esrNone;
 
       if FPostConditions<>nil then
          FPostConditions.EvalNoresult(exec);
@@ -3510,11 +3494,12 @@ begin
                             Int64(FArgExpr)+(Int64(exec.Stack.BasePointer) shl 32));
 end;
 
-{ TFuncExpr }
+// ------------------
+// ------------------ TFuncExpr ------------------
+// ------------------
 
 constructor TFuncExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol;
-                             IsInstruction: Boolean = True; CodeExpr: TDataExpr = nil;
-                             IsWritable: Boolean = False; exec : TdwsProgramExecution = nil);
+                             IsInstruction: Boolean = True; exec : TdwsProgramExecution = nil);
 
    procedure CreateResultExpr;
    var
@@ -3535,39 +3520,36 @@ begin
    if IsWritable then
       Include(FStates, fesIsWritable);
    FResultAddr := -1;
-   FCodeExpr := CodeExpr;
 
    if Assigned(FTyp) then
       CreateResultExpr;
 end;
 
+// Destroy
+//
 destructor TFuncExpr.Destroy;
 begin
-  FInitResultExpr.Free;
-  FCodeExpr.Free;
-  inherited;
+   FInitResultExpr.Free;
+   inherited;
 end;
 
 // AddArg
 //
 function TFuncExpr.AddArg(arg: TNoPosExpr) : TSymbol;
 begin
-   if FArgs.Count<FFunc.Params.Count then begin
-      Result:=FFunc.Params[FArgs.Count];
-      if     (Arg is TFuncExpr)
-         and (Result.Typ is TFuncSymbol) then
-      arg:=TFuncCodeExpr.Create(Prog, Pos, TFuncExpr(arg));
-   end else Result:=nil;
+   if FArgs.Count<FFunc.Params.Count then
+      Result:=FFunc.Params[FArgs.Count]
+   else Result:=nil;
    FArgs.Add(arg);
 end;
 
+// Eval
+//
 function TFuncExpr.Eval(exec : TdwsExecution) : Variant;
 var
-   x : Integer;
+   i : Integer;
    oldBasePointer : Integer;
    func : TFuncSymbol;
-   scriptObj : IScriptObj;
-   code : ICallable;
 begin
    try
       // Allocate memory for parameters on the stack
@@ -3576,14 +3558,13 @@ begin
       try
 
          // Special operations
-         func := PreCall(exec, scriptObj);
+         func:=PreCall(exec);
 
          // Push parameters
-         for x := 0 to High(FPushExprs) do
-           FPushExprs[x].Execute(exec);
+         for i:=0 to High(FPushExprs) do
+           FPushExprs[i].Execute(exec);
 
-         GetCode(exec, func, code);
-         if not Assigned(Code) then
+         if not Assigned(func.Executable) then
             RaiseScriptError(RTE_InvalidFunctionCall);
 
          // Switch frame
@@ -3595,7 +3576,7 @@ begin
 
          // Call function
          try
-            code.Call(exec as TdwsProgramExecution, func);
+            ICallable(func.Executable).Call(TdwsProgramExecution(exec), func);
          finally
             if exec.IsDebugging then
                exec.Debugger.LeaveFunc(exec, Self);
@@ -3605,7 +3586,7 @@ begin
             exec.Stack.RestoreFrame(oldBasePointer);
             exec.Stack.PopBp(FProg.Level);
 
-            Result := PostCall(exec, scriptObj);
+            Result:=PostCall(exec);
          end;
 
       finally
@@ -3619,28 +3600,31 @@ begin
    end;
 end;
 
-function TFuncExpr.PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol;
+// PreCall
+//
+function TFuncExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
 begin
-  Result := FFunc;
+   Result:=FFunc;
 end;
 
-function TFuncExpr.PostCall(exec : TdwsExecution; const ScriptObj: IScriptObj): Variant;
+// PostCall
+//
+function TFuncExpr.PostCall(exec : TdwsExecution) : Variant;
 var
-  sourceAddr, destAddr: Integer;
+   sourceAddr, destAddr: Integer;
 begin
-  if Assigned(FInitResultExpr) then begin
-    // Result.StackAddr is relative to BasePointer of the called function
-    // But the frame is already restored so its relative to the stackpointer here
-    sourceAddr := exec.Stack.StackPointer + FFunc.Result.StackAddr;
-    // Copy return value
-    Result := exec.Stack.ReadValue(sourceAddr);
+   if Assigned(FInitResultExpr) then begin
+      // Result.StackAddr is relative to BasePointer of the called function
+      // But the frame is already restored so its relative to the stackpointer here
+      sourceAddr:=exec.Stack.StackPointer+FFunc.Result.StackAddr;
+      // Copy return value
+      Result:=exec.Stack.ReadValue(sourceAddr);
 
-    if FResultAddr >= 0 then
-    begin
-      destAddr := exec.Stack.BasePointer + FResultAddr;
-      exec.Stack.CopyData(sourceAddr, destAddr, FFunc.Typ.Size);
-    end;
-  end;
+      if FResultAddr>=0 then begin
+         destAddr:=exec.Stack.BasePointer+FResultAddr;
+         exec.Stack.CopyData(sourceAddr, destAddr, FFunc.Typ.Size);
+      end;
+   end;
 end;
 
 function TFuncExpr.GetData(exec : TdwsExecution) : TData;
@@ -3692,12 +3676,12 @@ begin
       FPushExprs[FArgs.Count].InitPushData(FFunc.Result.StackAddr, FInitResultExpr, FFunc.Result);
 end;
 
+// Initialize
+//
 procedure TFuncExpr.Initialize;
 begin
    inherited;
-   if Assigned(FCodeExpr) then
-      FCodeExpr.Initialize
-   else if Assigned(FFunc.Executable) then
+   if Assigned(FFunc.Executable) then
       FFunc.Executable.InitExpression(Self);
    AddPushExprs;
 end;
@@ -3720,21 +3704,6 @@ end;
 function TFuncExpr.IsWritable : Boolean;
 begin
    Result:=(fesIsWritable in FStates);
-end;
-
-// GetCode
-//
-procedure TFuncExpr.GetCode(exec : TdwsExecution; Func : TFuncSymbol; var result : ICallable);
-
-   procedure GetCodeExpr(exec : TdwsExecution; codeExpr : TDataExpr; var result : ICallable);
-   begin
-      Result:=ICallable(IUnknown(codeExpr.Eval(exec)));
-   end;
-
-begin
-  if Assigned(FCodeExpr) then
-      GetCodeExpr(exec, codeExpr, result)
-  else result:=ICallable(Func.Executable);
 end;
 
 { TNoPosExprList }
@@ -3965,46 +3934,153 @@ begin
    Result:=str;
 end;
 
-{ TMethodStaticExpr }
+// ------------------
+// ------------------ TMethodExpr ------------------
+// ------------------
 
-constructor TMethodStaticExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-  Func: TMethodSymbol; BaseExpr: TDataExpr; IsInstruction: Boolean;
-  CodeExpr: TDataExpr; IsWritable: Boolean);
+// Create
+//
+constructor TMethodExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
+  Func: TMethodSymbol; BaseExpr: TDataExpr; IsInstruction: Boolean);
 begin
-   inherited Create(Prog, Pos, Func, IsInstruction, CodeExpr, IsWritable);
-   FBaseExpr := BaseExpr;
-   FSelfAddr := TDataSymbol(Func.SelfSym).StackAddr;
+   inherited Create(Prog, Pos, Func, IsInstruction);
+   FBaseExpr:=BaseExpr;
+   FSelfAddr:=Func.SelfSym.StackAddr;
 end;
 
-destructor TMethodStaticExpr.Destroy;
+// Destroy
+//
+destructor TMethodExpr.Destroy;
 begin
-  FBaseExpr.Free;
-  inherited;
+   FBaseExpr.Free;
+   inherited;
 end;
 
 // TypeCheckNoPos
 //
-procedure TMethodStaticExpr.TypeCheckNoPos(const aPos : TScriptPos);
+procedure TMethodExpr.TypeCheckNoPos(const aPos : TScriptPos);
 begin
    FBaseExpr.TypeCheckNoPos(aPos);
    inherited;
 end;
 
-function TMethodStaticExpr.PreCall(exec : TdwsExecution; var scriptObj: IScriptObj): TFuncSymbol;
+// Initialize
+//
+procedure TMethodExpr.Initialize;
 begin
-   FBaseExpr.EvalAsScriptObj(exec, ScriptObj);
-   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer + FSelfAddr, ScriptObj);
+   inherited;
+   FBaseExpr.Initialize;
+end;
 
+// ------------------
+// ------------------ TMethodStaticExpr ------------------
+// ------------------
+
+// Eval
+//
+function TMethodStaticExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   scriptObj : Pointer;
+   oldSelf : PIScriptObj;
+begin
+   scriptObj:=nil;
+   oldSelf:=exec.SelfScriptObject;
+   try
+      exec.SelfScriptObject:=@scriptObj;
+      Result:=inherited Eval(exec);
+   finally
+      exec.SelfScriptObject:=oldSelf;
+      IScriptObj(scriptObj):=nil;
+   end;
+end;
+
+// PreCall
+//
+function TMethodStaticExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
+begin
+   FBaseExpr.EvalAsScriptObj(exec, exec.SelfScriptObject^);
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, exec.SelfScriptObject^);
+
+   Result:=FFunc;
+end;
+
+// ------------------
+// ------------------ TMethodVirtualExpr ------------------
+// ------------------
+
+// FindVirtualMethod
+//
+function TMethodVirtualExpr.FindVirtualMethod(ClassSym: TClassSymbol): TMethodSymbol;
+begin
+   Result:=ClassSym.VMTMethod(TMethodSymbol(FFunc).VMTIndex);
+end;
+
+// PreCall
+//
+function TMethodVirtualExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
+begin
+   // Find virtual method
+   FBaseExpr.EvalAsScriptObj(exec, exec.SelfScriptObject^);
+   if exec.SelfScriptObject^=nil then
+      RaiseObjectNotInstantiated;
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, exec.SelfScriptObject^);
+   Result:=FindVirtualMethod(exec.SelfScriptObject^.ClassSym);
+end;
+
+// ------------------
+// ------------------ TClassMethodStaticExpr ------------------
+// ------------------
+
+// PreCall
+//
+function TClassMethodStaticExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
+var
+   buf : Int64;
+begin
+   if FBaseExpr.Typ is TClassOfSymbol then
+      buf:=FBaseExpr.EvalAsInteger(exec)
+   else begin
+      FBaseExpr.EvalAsScriptObj(exec, exec.SelfScriptObject^);
+      if exec.SelfScriptObject^=nil then
+         RaiseObjectNotInstantiated;
+      buf:=Int64(exec.SelfScriptObject^.ClassSym);
+      exec.SelfScriptObject^:=nil;
+   end;
+   exec.Stack.WriteIntValue(exec.Stack.StackPointer + FSelfAddr, buf);
    Result := FFunc;
 end;
 
-procedure TMethodStaticExpr.Initialize;
+// ------------------
+// ------------------ TClassMethodVirtualExpr ------------------
+// ------------------
+
+// FindVirtualMethod
+//
+function TClassMethodVirtualExpr.FindVirtualMethod(exec : TdwsExecution) : TMethodSymbol;
+var
+   clsInt : Int64;
+   classSym : TClassSymbol;
 begin
-  inherited;
-  FBaseExpr.Initialize;
+   clsInt:=exec.Stack.ReadIntValue(exec.Stack.StackPointer+FSelfAddr);
+   classSym:=TClassSymbol(clsInt);
+   if classSym=nil then
+      RaiseObjectNotInstantiated;
+
+   Result:=ClassSym.VMTMethod(TMethodSymbol(FFunc).VMTIndex);
 end;
 
-{ TConstructorStaticExpr }
+// PreCall
+//
+function TClassMethodVirtualExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
+begin
+   inherited PreCall(exec);
+
+   Result:=FindVirtualMethod(exec);
+end;
+
+// ------------------
+// ------------------ TConstructorStaticExpr ------------------
+// ------------------
 
 constructor TConstructorStaticExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
    Func: TMethodSymbol; Base: TDataExpr; IsInstruction: Boolean = True);
@@ -4016,21 +4092,25 @@ begin
     FTyp := Base.Typ;
 end;
 
-function TConstructorStaticExpr.PreCall(exec : TdwsExecution; var ScriptObj: IScriptObj): TFuncSymbol;
+// PreCall
+//
+function TConstructorStaticExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
 begin
-  Result := FFunc;
+   // Create object
+   exec.SelfScriptObject^:=TScriptObj.Create(TClassSymbol(FTyp), exec as TdwsProgramExecution);
+   exec.SelfScriptObject^.ExternalObject:=exec.ExternalObject;
 
-  // Create object
-  ScriptObj := TScriptObj.Create(TClassSymbol(FTyp), exec as TdwsProgramExecution);
-  ScriptObj.ExternalObject := ExternalObject;
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, exec.SelfScriptObject^);
 
-  exec.Stack.WriteValue(exec.Stack.StackPointer + FSelfAddr, ScriptObj);
+   Result:=FFunc;
 end;
 
-function TConstructorStaticExpr.PostCall(exec : TdwsExecution; const ScriptObj: IScriptObj): Variant;
+// PostCall
+//
+function TConstructorStaticExpr.PostCall(exec : TdwsExecution) : Variant;
 begin
-  Assert(FResultAddr = -1);
-  Result := ScriptObj;
+   Assert(FResultAddr=-1);
+   Result:=exec.SelfScriptObject^;
 end;
 
 // TypeCheckNoPos
@@ -4042,77 +4122,6 @@ begin
       FProg.CompileMsgs.AddCompilerError(FPos, RTE_InstanceOfAbstractClass);
 end;
 
-{ TMethodVirtualExpr }
-
-// FindVirtualMethod
-//
-function TMethodVirtualExpr.FindVirtualMethod(ClassSym: TClassSymbol): TMethodSymbol;
-begin
-   Result:=TMethodSymbol(ClassSym.Members.FindSymbol(FFunc.Name));
-   Assert(Result<>nil);
-
-   while not TMethodSymbol(Result).IsVirtual and TMethodSymbol(Result).IsOverlap do
-      Result:=TMethodSymbol(Result).ParentMeth;
-end;
-
-// PreCall
-//
-function TMethodVirtualExpr.PreCall(exec : TdwsExecution; var scriptObj : IScriptObj) : TFuncSymbol;
-begin
-   // Find virtual method
-   ScriptObj:=IScriptObj(IUnknown(FBaseExpr.Eval(exec)));
-   if ScriptObj=nil then
-      RaiseObjectNotInstantiated;
-   exec.Stack.WriteValue(exec.Stack.StackPointer+FSelfAddr, ScriptObj);
-   Result:=FindVirtualMethod(ScriptObj.ClassSym);
-end;
-
-{ TClassMethodStaticExpr }
-
-function TClassMethodStaticExpr.PreCall(exec : TdwsExecution; var scriptObj : IScriptObj) : TFuncSymbol;
-var
-   buf : String;
-begin
-   if FBaseExpr.Typ is TClassOfSymbol then
-      FBaseExpr.EvalAsString(exec, buf)
-   else begin
-      FBaseExpr.EvalAsScriptObj(exec, ScriptObj);
-      if scriptObj=nil then
-         RaiseObjectNotInstantiated;
-      buf:=scriptObj.ClassSym.Name;
-      scriptObj:=nil;
-   end;
-   exec.Stack.WriteStrValue(exec.Stack.StackPointer + FSelfAddr, buf);
-   Result := FFunc;
-end;
-
-{ TClassMethodVirtualExpr }
-
-// FindVirtualMethod
-//
-function TClassMethodVirtualExpr.FindVirtualMethod(exec : TdwsExecution) : TMethodSymbol;
-var
-   clsName : String;
-   classSym : TClassSymbol;
-begin
-   exec.Stack.ReadStrValue(exec.Stack.StackPointer+FSelfAddr, clsName);
-   classSym:=Prog.Table.FindSymbol(clsName) as TClassSymbol;
-
-   Result:=TMethodSymbol(ClassSym.Members.FindSymbol(FFunc.Name));
-   Assert(Result<>nil);
-
-   while not TMethodSymbol(Result).IsVirtual and TMethodSymbol(Result).IsOverlap do
-      Result:=TMethodSymbol(Result).ParentMeth;
-end;
-
-// PreCall
-//
-function TClassMethodVirtualExpr.PreCall(exec : TdwsExecution; var scriptObj: IScriptObj): TFuncSymbol;
-begin
-   inherited PreCall(exec, scriptObj);
-   Result:=FindVirtualMethod(exec);
-end;
-
 { TConstructorVirtualExpr }
 
 constructor TConstructorVirtualExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
@@ -4122,14 +4131,16 @@ begin
   FTyp := Base.Typ.Typ;
 end;
 
-function TConstructorVirtualExpr.PreCall(exec : TdwsExecution; var scriptObj: IScriptObj): TFuncSymbol;
+// PreCall
+//
+function TConstructorVirtualExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
 var
-  className: string;
-  classSym: TClassSymbol;
+  classInt : Int64;
+  classSym : TClassSymbol;
 begin
   // Get class symbol
-  className := FBaseExpr.Eval(exec);
-  classSym := TClassSymbol(FProg.Table.FindSymbol(className));
+  classInt := FBaseExpr.EvalAsInteger(exec);
+  classSym := TClassSymbol(classInt);
   Assert(classSym <> nil);
 
   if classSym.IsAbstract then
@@ -4138,17 +4149,19 @@ begin
   Result := FindVirtualMethod(classSym);
 
   // Create object
-  ScriptObj := TScriptObj.Create(classSym, exec as TdwsProgramExecution);
-  ScriptObj.ExternalObject := ExternalObject;
+  exec.SelfScriptObject^ := TScriptObj.Create(classSym, exec as TdwsProgramExecution);
+  exec.SelfScriptObject^.ExternalObject := ExternalObject;
 
-  exec.Stack.WriteValue(exec.Stack.StackPointer + FSelfAddr, ScriptObj);
+  exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer + FSelfAddr, exec.SelfScriptObject^);
 end;
 
-function TConstructorVirtualExpr.PostCall(exec : TdwsExecution; const ScriptObj: IScriptObj): Variant;
+// PostCall
+//
+function TConstructorVirtualExpr.PostCall(exec : TdwsExecution) : Variant;
 begin
-  // Return Self as Result
-  Assert(FResultAddr = -1);
-  Result := ScriptObj;
+   // Return Self as Result
+   Assert(FResultAddr=-1);
+   Result:=exec.SelfScriptObject^;
 end;
 
 { TProgramInfo }
@@ -4397,6 +4410,13 @@ begin
          Result:=scriptobj.ExternalObject
       else Result:=nil;
    end else Result:=nil;
+end;
+
+// GetValueAsClassSymbol
+//
+function TProgramInfo.GetValueAsClassSymbol(const s: String): TClassSymbol;
+begin
+   Result:=TClassSymbol(GetVars(s).ValueAsInteger);
 end;
 
 function TProgramInfo.GetValueAsTStrings(const s: String): TStrings;
@@ -4738,14 +4758,8 @@ end;
 // PrepareScriptObj
 //
 procedure TProgramInfo.PrepareScriptObj;
-type
-   PIUnknown = ^IUnknown;
-var
-   exec : TdwsExecution;
 begin
-   exec:=Execution;
-   exec.Stack.ReadInterfaceValue(exec.Stack.BasePointer+TDataSymbol(FuncSym.InternalParams[0]).StackAddr,
-                                 PIUnknown(@FScriptObj)^);
+   FScriptObj:=FExecution.SelfScriptObject^;
 end;
 
 function TProgramInfo.FindSymbolInUnits(const Name: string): TSymbol;
@@ -5294,11 +5308,8 @@ begin
          // Create the TFuncExpr
          funcExpr := GetFuncExpr(FExec.Prog, TFuncSymbol(FTypeSym), FScriptObj,
                                  FClassSym, FForceStatic, FExec);
+         FExec.ExternalObject:=FExternalObject;
          try
-            if funcExpr is TConstructorVirtualExpr then
-               TConstructorVirtualExpr(funcExpr).ExternalObject := FExternalObject
-            else if funcExpr is TConstructorStaticExpr then
-               TConstructorStaticExpr(funcExpr).ExternalObject := FExternalObject;
 
             for x := 0 to FTempParams.Count - 1 do begin
                tp := TTempParam(FTempParams[x]);
@@ -5338,6 +5349,7 @@ begin
                Result := nil;
             end;
          finally
+            FExec.ExternalObject:=nil;
             funcExpr.Free;
          end;
       finally
@@ -5374,10 +5386,7 @@ begin
   // Create the TFuncExpr
   funcExpr := GetFuncExpr(FExec.Prog, funcSym, FScriptObj, FClassSym, FForceStatic, FExec);
 
-  if funcExpr is TConstructorVirtualExpr then
-    TConstructorVirtualExpr(funcExpr).ExternalObject := FExternalObject
-  else if funcExpr is TConstructorStaticExpr then
-    TConstructorStaticExpr(funcExpr).ExternalObject := FExternalObject;
+  FExec.ExternalObject:=FExternalObject;
 
   try
     // Add arguments to the expression
@@ -5425,6 +5434,7 @@ begin
       Assert(FExec.Status=esrNone);
     end;
   finally
+    FExec.ExternalObject:=nil;
     funcExpr.Free;
   end;
 end;
@@ -6652,57 +6662,6 @@ begin
   FSourceList[Index] := SourceItem;
 end;
 
-{ TFuncCodeExpr }
-
-procedure TFuncCodeExpr.AssignDataExpr(exec : TdwsExecution; Right: TDataExpr);
-begin
-  Assert(Right is TFuncCodeExpr);
-  Assert(FFuncExpr is TMethodStaticExpr);
-  Assert(TFuncCodeExpr(Right).FuncExpr is TMethodStaticExpr);
-  FFuncExpr.CodeExpr.AssignValue(exec, TFuncCodeExpr(Right).Eval(exec));
-  TMethodStaticExpr(FFuncExpr).BaseExpr.AssignValue(exec,
-    TMethodStaticExpr(TFuncCodeExpr(Right).FuncExpr).BaseExpr.Eval(exec));
-end;
-
-constructor TFuncCodeExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-  FuncExpr: TFuncExpr);
-begin
-  inherited Create(Prog,Pos,FuncExpr.FuncSym);
-  FFuncExpr := FuncExpr;
-end;
-
-destructor TFuncCodeExpr.Destroy;
-begin
-  FFuncExpr.Free;
-  inherited;
-end;
-
-// TypeCheckNoPos
-//
-procedure TFuncCodeExpr.TypeCheckNoPos(const aPos : TScriptPos);
-begin
-  if FFuncExpr.FArgs.Count > 0 then
-    FProg.CompileMsgs.AddCompilerError(FPos, CPE_NoArgumentsExpected);
-end;
-
-function TFuncCodeExpr.Eval(exec : TdwsExecution): Variant;
-var
-   callable : ICallable;
-begin
-   FFuncExpr.GetCode(exec, FFuncExpr.FuncSym, callable);
-   Result := callable;
-end;
-
-function TFuncCodeExpr.GetAddr(exec : TdwsExecution) : Integer;
-begin
-  Result := FFuncExpr.CodeExpr.Addr[exec];
-end;
-
-function TFuncCodeExpr.GetData(exec : TdwsExecution) : TData;
-begin
-  Result := FFuncExpr.CodeExpr.Data[exec];
-end;
-
 { TMethodObjExpr }
 
 constructor TMethodObjExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
@@ -6727,15 +6686,15 @@ end;
 
 constructor TConstructorStaticObjExpr.Create(Prog: TdwsProgram;
   const Pos: TScriptPos; Func: TMethodSymbol; BaseExpr: TDataExpr;
-  IsInstruction: Boolean; CodeExpr: TDataExpr; IsWritable: Boolean);
+  IsInstruction: Boolean);
 begin
-  inherited Create(Prog,Pos,Func,BaseExpr,IsInstruction,CodeExpr,IsWritable);
+  inherited Create(Prog,Pos,Func,BaseExpr,IsInstruction);
   Typ := BaseExpr.Typ;
 end;
 
-function TConstructorStaticObjExpr.PostCall(exec : TdwsExecution; const ScriptObj: IScriptObj): Variant;
+function TConstructorStaticObjExpr.PostCall(exec : TdwsExecution) : Variant;
 begin
-  result := ScriptObj;
+   Result := exec.SelfScriptObject^;
 end;
 
 { TConstructorVirtualObjExpr }
@@ -6747,9 +6706,9 @@ begin
   Typ := Base.Typ;
 end;
 
-function TConstructorVirtualObjExpr.PostCall(exec : TdwsExecution; const ScriptObj: IScriptObj): Variant;
+function TConstructorVirtualObjExpr.PostCall(exec : TdwsExecution): Variant;
 begin
-  result := ScriptObj;
+   Result := exec.SelfScriptObject^;
 end;
 
 { TInfoProperty }

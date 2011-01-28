@@ -511,6 +511,8 @@ type
          FProperties: TdwsProperties;
          FOperators : TdwsClassOperators;
          FHelperObject : TObject;
+         FIsSealed : Boolean;
+         FIsAbstract : Boolean;
 
       protected
          function GetDisplayName: string; override;
@@ -526,6 +528,8 @@ type
 
       published
          property Ancestor: string read FAncestor write FAncestor;
+         property IsSealed : Boolean read FIsSealed write FIsSealed;
+         property IsAbstract : Boolean read FIsAbstract write FIsAbstract;
          property Constructors: TdwsConstructors read FConstructors write FConstructors;
          property Fields: TdwsFields read FFields write FFields;
          property Methods: TdwsMethods read FMethods write FMethods;
@@ -534,10 +538,12 @@ type
          property OnCleanUp: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
    end;
 
-  TdwsClasses = class(TdwsCollection)
-  protected
-    class function GetSymbolClass : TdwsSymbolClass; override;
-  end;
+   TdwsClasses = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+      public
+         function Add : TdwsClass;
+   end;
 
   TdwsClassesClass = class of TdwsClasses;
 
@@ -1545,7 +1551,7 @@ begin
   if not Assigned(useClass) then
   begin
     // Create the class declaration
-    useClass := Classes.Add as TdwsClass;
+    useClass := Classes.Add;
     if ScriptAncestorType <> '' then
       useClass.Ancestor := ScriptAncestorType
     else
@@ -2393,27 +2399,32 @@ end;
 //
 function TdwsClass.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
 var
-   x: Integer;
-   ancestorSym: TClassSymbol;
+   x : Integer;
+   sym : TSymbol;
+   ancestorSym, classSym : TClassSymbol;
 begin
    FIsGenerating := True;
 
-   Result := GetUnit.Table.FindSymbol(Name);
+   classSym := nil;
+   sym := GetUnit.Table.FindSymbol(Name);
 
-   if Assigned(Result) then begin
-      if Result is TClassSymbol then begin
-         if not TClassSymbol(Result).IsForwarded then
+   if Assigned(sym) then begin
+      if sym is TClassSymbol then begin
+         classSym:=TClassSymbol(sym);
+         if not classSym.IsForwarded then
             raise Exception.Create(UNT_ClassAlreadyDefined);
-      end else raise Exception.CreateFmt(UNT_ClassNameAlreadyDefined,
-                                         [Name, Result.Caption]);
+      end else begin
+         raise Exception.CreateFmt(UNT_ClassNameAlreadyDefined,
+                                  [Name, sym.Caption]);
+      end;
    end;
+
+   if not Assigned(classSym) then
+      classSym := TClassSymbol.Create(Name);
 
    try
 
-      if not Assigned(Result) then
-         Result := TClassSymbol.Create(Name);
-
-      TClassSymbol(Result).OnObjectDestroy := FOnObjectDestroy;
+      classSym.OnObjectDestroy := FOnObjectDestroy;
 
       if FAncestor = '' then
          FAncestor := SYS_TOBJECT;
@@ -2422,31 +2433,39 @@ begin
       if ancestorSym = nil then
          raise Exception.CreateFmt(UNT_SuperClassUnknwon, [FAncestor]);
 
-      TClassSymbol(Result).InheritFrom(ancestorSym);
+      if ancestorSym.IsSealed then
+         raise Exception.CreateFmt(CPE_ClassIsSealed, [FAncestor]);
+
+      classSym.InheritFrom(ancestorSym);
+
+      classSym.IsSealed:=IsSealed;
+      classSym.IsExplicitAbstract:=IsAbstract;
 
       for x := 0 to FFields.Count - 1 do
-         TClassSymbol(Result).AddField(TFieldSymbol(TdwsField(FFields.Items[x]).Generate(Table, Result)));
+         classSym.AddField(TFieldSymbol(TdwsField(FFields.Items[x]).Generate(Table, classSym)));
 
       for x := 0 to FConstructors.Count - 1 do
-         TClassSymbol(Result).AddMethod(TMethodSymbol(TdwsConstructor(FConstructors.Items[x]).Generate(Table, Result)));
+         classSym.AddMethod(TMethodSymbol(TdwsConstructor(FConstructors.Items[x]).Generate(Table, classSym)));
 
       for x := 0 to FMethods.Count - 1 do
-         TClassSymbol(Result).AddMethod(TMethodSymbol(TdwsMethod(FMethods.Items[x]).Generate(Table, Result)));
+         classSym.AddMethod(TMethodSymbol(TdwsMethod(FMethods.Items[x]).Generate(Table, classSym)));
 
       for x := 0 to FProperties.Count - 1 do
-         TClassSymbol(Result).AddProperty(TPropertySymbol(TdwsProperty(FProperties.Items[x]).Generate(Table, Result)));
+         classSym.AddProperty(TPropertySymbol(TdwsProperty(FProperties.Items[x]).Generate(Table, classSym)));
 
       for x := 0 to FOperators.Count - 1 do
-         TClassSymbol(Result).AddOperator(TClassOperatorSymbol(TdwsClassOperator(FOperators.Items[x]).Generate(Table, Result)));
+         classSym.AddOperator(TClassOperatorSymbol(TdwsClassOperator(FOperators.Items[x]).Generate(Table, classSym)));
 
    except
-      if not TClassSymbol(Result).IsForwarded then
-         Result.Free;
+      if not classSym.IsForwarded then
+         classSym.Free;
       raise;
    end;
 
-   if TClassSymbol(Result).IsForwarded then
-      TClassSymbol(Result).ClearIsForwarded;
+   if classSym.IsForwarded then
+      classSym.ClearIsForwarded;
+
+   Result:=classSym;
 end;
 
 function TdwsClass.GetDisplayName: string;
@@ -3256,6 +3275,13 @@ end;
 class function TdwsClasses.GetSymbolClass: TdwsSymbolClass;
 begin
   Result := TdwsClass;
+end;
+
+// Add
+//
+function TdwsClasses.Add : TdwsClass;
+begin
+   Result:=TdwsClass(inherited Add);
 end;
 
 { TdwsArrays }

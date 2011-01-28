@@ -90,7 +90,8 @@ type
 
       public
          procedure Push(item : Pointer);
-         function Pop : Pointer; inline;
+         function  Peek : Pointer; inline;
+         procedure Pop; inline;
 
          procedure Clear; inline;
          procedure Free;
@@ -1006,11 +1007,17 @@ begin
    Inc(FCount);
 end;
 
-// Pop
+// Peek
 //
-function TTightStack.Pop : Pointer;
+function TTightStack.Peek : Pointer;
 begin
    Result:=FList[FCount-1];
+end;
+
+// Pop
+//
+procedure TTightStack.Pop;
+begin
    Dec(FCount);
 end;
 

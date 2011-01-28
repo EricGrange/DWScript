@@ -74,7 +74,7 @@ begin
    FDebugger:=TdwsDebugger.Create(nil);
    FDebugger.OnDebug:=DoDebugEval;
 
-   cls:=FUnits.Classes.Add as TdwsClass;
+   cls:=FUnits.Classes.Add;
    cls.Name:='TTestClass';
    cls.OnCleanUp:=DoCleanupExternal;
    cst:=cls.Constructors.Add as TdwsConstructor;

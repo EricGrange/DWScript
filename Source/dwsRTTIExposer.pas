@@ -342,7 +342,7 @@ var
    helper : TdwsRTTIHelper;
    scriptConstructor : TdwsConstructor;
 begin
-   Result:=(Classes.Add as TdwsClass);
+   Result:=Classes.Add;
    Result.Name:=dwsPublished.NameOf(cls);
    Result.OnCleanUp:=DoStandardCleanUp;
 

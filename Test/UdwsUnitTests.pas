@@ -248,7 +248,7 @@ var
    meth : TdwsMethod;
    prop : TdwsProperty;
 begin
-   cls:=FUnit.Classes.Add as TdwsClass;
+   cls:=FUnit.Classes.Add;
    cls.Name:='TTestClass';
 
    meth:=cls.Methods.Add as TdwsMethod;

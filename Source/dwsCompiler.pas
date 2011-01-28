@@ -589,7 +589,7 @@ function TdwsCompiler.GetMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKin
              const Pos: TScriptPos; IsInstruction: Boolean; ForceStatic : Boolean = False): TFuncExpr;
 begin
    WarnDeprecated(meth);
-   Result:=CreateMethodExpr(meth, Expr, RefKind, Pos, IsInstruction, ForceStatic);
+   Result:=CreateMethodExpr(FProg, meth, Expr, RefKind, Pos, IsInstruction, ForceStatic);
 end;
 
 // Compile
@@ -1252,7 +1252,7 @@ begin
             if not FTok.TestDelete(ttOBJECT) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectExpected);
             methSym := TSourceMethodSymbol.Create('',FuncKind, FProg.TypObject,
-                                                  cvPublic, -1);
+                                                  cvPublic, False, -1);
             methSym.Typ := Result.Typ;
             for i := 0 to Result.Params.Count - 1 do
                methSym.Params.AddSymbol(Result.Params[i]);
@@ -1319,9 +1319,7 @@ begin
    end;
 
    // Read declaration of method implementation
-   if IsClassMethod then
-      Result := TSourceMethodSymbol.Create(Name, FuncKind, ClassSym.ClassOf, aVisibility)
-   else Result := TSourceMethodSymbol.Create(Name, FuncKind, ClassSym, aVisibility);
+   Result := TSourceMethodSymbol.Create(Name, FuncKind, ClassSym, aVisibility, IsClassMethod);
    TSourceMethodSymbol(Result).DeclarationPos:=methPos;
 
    try
@@ -1422,7 +1420,8 @@ begin
   else if not TMethodSymbol(meth).IsClassMethod and IsClassMethod then
     FMsgs.AddCompilerStop(methPos, CPE_ImplNotClassExpected);
 
-  Result := TSourceMethodSymbol.Create(methName, FuncKind, ClassSym, TMethodSymbol(meth).Visibility);
+  Result := TSourceMethodSymbol.Create(methName, FuncKind, ClassSym,
+                                       TMethodSymbol(meth).Visibility, IsClassMethod);
   try
     if not FTok.TestDelete(ttSEMI) then
     begin
@@ -1915,7 +1914,7 @@ begin
     if sym is TMethodSymbol then
     begin
       if methSym.IsClassMethod then
-        varExpr := TConstExpr.CreateTyped(FProg, parentSym.ClassOf, parentSym.Name)
+        varExpr := TConstExpr.CreateTyped(FProg, parentSym.ClassOf, Int64(parentSym))
       else
         varExpr := TVarExpr.CreateTyped(FProg, parentSym, methSym.SelfSym);
       try
@@ -2076,7 +2075,7 @@ begin
             Result:=nil; // protect ReadSymbol exception
             Result:=ReadSymbol(convExpr, IsWrite);
          end else begin
-            constExpr:=TConstExpr.CreateTyped(FProg, TClassSymbol(baseType).ClassOf, baseType.Name);
+            constExpr:=TConstExpr.CreateTyped(FProg, TClassSymbol(baseType).ClassOf, Int64(baseType));
             Result:=ReadSymbol(constExpr, IsWrite);
          end;
 
@@ -2098,7 +2097,6 @@ begin
 
          progMeth := TMethodSymbol(TdwsProcedure(FProg).Func);
          if progMeth.IsClassMethod then
-            //varExpr := TConstExpr.CreateTyped(FProg, progMeth.ClassSymbol, nil)
             varExpr := TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym)
          else varExpr := TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym);
          try
@@ -2429,9 +2427,9 @@ begin
 
                   if member is TMethodSymbol then begin
                      // Member is a method
-                     if Assigned(TMethodSymbol(member).SelfSym) then
-                        Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkObjRef, symPos, IsWrite)
-                     else Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkClassOfRef, symPos, IsWrite);
+                     if TMethodSymbol(member).IsClassMethod then
+                        Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkClassOfRef, symPos, IsWrite)
+                     else Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkObjRef, symPos, IsWrite);
                      ReadFuncArgs(TFuncExpr(Result).AddArg);
                   end else if member is TFieldSymbol then
                      // Member is a field
@@ -2871,13 +2869,7 @@ begin
    right := ReadExpr;
    try
       if Left.InheritsFrom(TFuncExpr) and TFuncExpr(Left).IsWritable then begin
-         Left := TFuncCodeExpr.Create(FProg, FTok.HotPos, TFuncExpr(Left));
-         if right.Typ = FProg.TypNil then begin
-            right.Free;
-            Result := TInitDataExpr.Create(FProg, FTok.HotPos, Left);
-            Exit;
-         end else if right.InheritsFrom(TFuncExpr) then
-            right := TFuncCodeExpr.Create(FProg, FTok.HotPos, TFuncExpr(right));
+         Assert(False);
       end;
       Result:=CreateAssign(pos, token, left, right);
    except
@@ -2899,7 +2891,7 @@ begin
                               rkObjRef, FTok.HotPos, IsWrite)
    else if (methodSym.Kind = fkConstructor) or (methodSym.IsClassMethod) then
       Result := GetMethodExpr(methodSym,
-                              TConstExpr.CreateTyped(FProg, progMeth.ClassSymbol, nil),
+                              TConstExpr.CreateTyped(FProg, progMeth.ClassSymbol, Int64(progMeth.ClassSymbol)),
                               rkClassOfRef, FTok.HotPos, IsWrite, True)
    else begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticMethodExpected);
@@ -2922,10 +2914,21 @@ begin
 
    if FuncSym.InheritsFrom(TMethodSymbol) and not (TMethodSymbol(FuncSym).IsClassMethod) then begin
 
-      Result := TMethodStaticExpr.Create(FProg, FTok.HotPos, TMethodSymbol(FuncSym),
-                                         TMethodObjExpr.Create(FProg, FTok.HotPos, CodeExpr),
-                                         True, CodeExpr,
-                                         IsWrite and Assigned(CodeExpr));
+      if CodeExpr=nil then begin
+
+         Result:=TMethodStaticExpr.Create(FProg, FTok.HotPos, TMethodSymbol(FuncSym),
+                                          TMethodObjExpr.Create(FProg, FTok.HotPos, CodeExpr),
+                                          True);
+
+      end else begin
+
+         Result:=nil;
+         Assert(False);
+//         Result:=TMethodStaticExpr.Create(FProg, FTok.HotPos, TMethodSymbol(FuncSym),
+//                                          TMethodObjExpr.Create(FProg, FTok.HotPos, CodeExpr),
+//                                          True, CodeExpr, IsWrite);
+
+      end;
 
    end else if FuncSym.InheritsFrom(TMagicFuncSymbol) then begin
 
@@ -2941,10 +2944,15 @@ begin
          Result:=TMagicProcedureExpr.Create(FProg, FTok.HotPos, magicFuncSym)
       else Result:=TMagicVariantFuncExpr.Create(FProg, FTok.HotPos, magicFuncSym);
 
+   end else if CodeExpr=nil then begin
+
+      Result:=TFuncExpr.Create(FProg, FTok.HotPos, FuncSym, True);
+
    end else begin
 
-      Result:=TFuncExpr.Create(FProg, FTok.HotPos, FuncSym, True, CodeExpr,
-                               IsWrite and Assigned(CodeExpr));
+      Result:=nil;
+      Assert(False);
+//      Result:=TFuncExpr.Create(FProg, FTok.HotPos, FuncSym, True, CodeExpr, IsWrite);
 
    end;
 
@@ -5088,16 +5096,16 @@ begin
    // Create "root" class TObject
    clsObject := TClassSymbol.Create(SYS_TOBJECT);
    // Add constructor Create
-   meth := TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, clsObject, cvPublic);
+   meth := TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, clsObject, cvPublic, False);
    meth.Executable := ICallable(TEmptyFunc.Create);
    clsObject.AddMethod(meth);
    // Add destructor Destroy
-   meth := TMethodSymbol.Create(SYS_TOBJECT_DESTROY, fkDestructor, clsObject, cvPublic);
+   meth := TMethodSymbol.Create(SYS_TOBJECT_DESTROY, fkDestructor, clsObject, cvPublic, False);
    meth.IsVirtual := True;
    meth.Executable := ICallable(TEmptyFunc.Create);
    clsObject.AddMethod(meth);
    // Add destructor Free
-   meth := TMethodSymbol.Create('Free', fkDestructor, clsObject, cvPublic);
+   meth := TMethodSymbol.Create('Free', fkDestructor, clsObject, cvPublic, False);
    meth.Executable := ICallable(TEmptyFunc.Create);
    clsObject.AddMethod(meth);
    // Add ClassName method
@@ -5256,7 +5264,7 @@ end;
 //
 procedure TObjectClassNameMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
 begin
-   Info.ResultAsString:=info.Vars[SYS_SELF].ValueAsString; //.ClassSym.Name;
+   Info.ResultAsString:=info.ValueAsClassSymbol[SYS_SELF].Name; //.ClassSym.Name;
 end;
 
 // ------------------
@@ -5267,7 +5275,7 @@ end;
 //
 procedure TObjectClassTypeMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
 begin
-   Info.ResultAsString:=info.Vars[SYS_SELF].ValueAsString; //.ClassSym.Name;
+   Info.ResultAsInteger:=Int64(info.ValueAsClassSymbol[SYS_SELF]);
 end;
 
 // ------------------
@@ -5401,11 +5409,7 @@ begin
       if FTok.TestDelete(ttASSIGN) and IsWrite then begin
          valueExpr:=ReadExpr;
          if Expr is TStrVarExpr then
-            if valueExpr is TChrExpr then begin
-               Result:=TVarStringArraySetChrExpr.Create(FProg, pos, Expr, indexExpr, TChrExpr(valueExpr).Expr);
-               TChrExpr(valueExpr).Expr:=nil;
-               valueExpr.Free;
-            end else Result:=TVarStringArraySetExpr.Create(FProg, pos, Expr, indexExpr, valueExpr)
+            Result:=TVarStringArraySetExpr.Create(FProg, pos, Expr, indexExpr, valueExpr)
          else Result := TStringArraySetExpr.Create(FProg, pos, Expr, indexExpr, valueExpr);
       end else Result := TStringArrayOpExpr.CreatePos(FProg, pos, TDataExpr(Expr), indexExpr);
    except

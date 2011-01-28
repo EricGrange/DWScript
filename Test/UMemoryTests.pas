@@ -95,7 +95,7 @@ begin
    FUnits.UnitName:='TestUnit';
    FUnits.Script:=FCompiler;
 
-   cls:=FUnits.Classes.Add as TdwsClass;
+   cls:=FUnits.Classes.Add;
    cls.Name:='TExposedClass';
    cls.OnCleanUp:=DoCleanupExternal;
    cst:=cls.Constructors.Add as TdwsConstructor;
@@ -106,7 +106,7 @@ begin
    meth.Name:='KeepExternalRef';
    meth.OnEval:=DoKeepExternalRef;
 
-   cls:=FUnits.Classes.Add as TdwsClass;
+   cls:=FUnits.Classes.Add;
    cls.Name:='TExposedBoomClass';
    cls.OnCleanUp:=DoCleanupExternal;
    cst:=cls.Constructors.Add as TdwsConstructor;

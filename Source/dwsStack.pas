@@ -28,6 +28,7 @@ type
 
    TData = array of Variant;
    PData = ^TData;
+   PIUnknown = ^IUnknown;
 
    TStackParameters = record
       MaxLevel : Integer;
@@ -69,7 +70,7 @@ type
          procedure ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);
          procedure CopyData(SourceAddr, DestAddr, Size: Integer);
 
-         procedure WriteValue(DestAddr: Integer; const Value: Variant); inline;
+         procedure WriteValue(DestAddr: Integer; const Value: Variant);
          procedure WriteIntValue(DestAddr: Integer; const Value: Int64); overload; inline;
          procedure WriteIntValue(DestAddr: Integer; const pValue: PInt64); overload; inline;
          procedure WriteFloatValue(DestAddr: Integer; var Value: Double); inline;
@@ -79,7 +80,7 @@ type
 
          function SetStrChar(DestAddr: Integer; index : Integer; c : Char) : Boolean;
 
-         function  ReadValue(SourceAddr: Integer): Variant; inline;
+         function  ReadValue(SourceAddr: Integer): Variant;
          function  ReadIntValue(SourceAddr: Integer): Int64; inline;
          procedure ReadIntAsFloatValue(SourceAddr: Integer; var Result : Double); inline;
          procedure ReadFloatValue(SourceAddr: Integer; var Result : Double);
@@ -89,6 +90,7 @@ type
 
          function  PointerToIntValue(addr : Integer) : PInt64;
          function  PointerToFloatValue(addr : Integer) : PDouble;
+         function  PointerToInterfaceValue(addr : Integer) : PIUnknown;
 
          procedure IncIntValue(destAddr : Integer; const value : Int64); inline;
          procedure AppendStringValue(destAddr : Integer; const value : String);
@@ -389,6 +391,17 @@ begin
    varData:=@Data[addr];
    Assert(varData.VType=varDouble);
    Result:=@varData.VDouble;
+end;
+
+// PointerToInterfaceValue
+//
+function TStackMixIn.PointerToInterfaceValue(addr : Integer) : PIUnknown;
+var
+   varData : PVarData;
+begin
+   varData:=@Data[addr];
+   Assert(varData.VType=varUnknown);
+   Result:=@varData.VUnknown;
 end;
 
 // IncIntValue

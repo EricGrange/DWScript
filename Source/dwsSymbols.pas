@@ -39,9 +39,26 @@ type
    );
 
    IScriptObj = interface;
+   PIScriptObj = ^IScriptObj;
    TdwsExecution = class;
    TExprBase = class;
    TExprBaseArray = array of TExprBase;
+   TSymbol = class;
+   TBaseSymbol = class;
+   TDataSymbol = class;
+   TFuncSymbol = class;
+   TClassSymbol = class;
+   TMethodSymbol = class;
+   TFieldSymbol = class;
+   TRecordSymbol = class;
+   TParamSymbol = class;
+   TVarParamSymbol = class;
+   TSymbolTable = class;
+   TMembersSymbolTable = class;
+   TUnSortedSymbolTable = class;
+   TTypeSymbol = class;
+   TParamsSymbolTable = class;
+   TConditionsSymbolTable = class;
 
    // Interface for external debuggers
    IDebugger = interface
@@ -81,6 +98,8 @@ type
          FStatus : TExecutionStatusResult;
          FStack : TStackMixIn;
          FCallStack : TTightStack;
+         FSelfScriptObject : PIScriptObj;
+         FSelfScriptClassSymbol : TClassSymbol;
          FLastScriptError : TExprBase;
          FLastScriptCallStack : TExprBaseArray;
          FExceptionObjectStack : TSimpleStack<Variant>;
@@ -88,6 +107,7 @@ type
          FDebugger : IDebugger;
          FIsDebugging : Boolean;
 
+         FExternalObject : TObject;
          FUserObject : TObject;
 
       protected
@@ -115,10 +135,13 @@ type
 
          procedure IncRecursion(caller : TExprBase); inline;
          procedure DecRecursion; inline;
+         procedure RaiseMaxRecursionReached(caller : TExprBase);
 
          property Status : TExecutionStatusResult read FStatus write FStatus;
          property Stack : TStackMixIn read FStack;
          property CallStack : TTightStack read FCallStack;
+         property SelfScriptObject : PIScriptObj read FSelfScriptObject write FSelfScriptObject;
+         property SelfScriptClassSymbol : TClassSymbol read FSelfScriptClassSymbol write FSelfScriptClassSymbol;
 
          procedure SetScriptError(const expr : TExprBase);
          procedure ClearScriptError;
@@ -134,6 +157,10 @@ type
 
          property Msgs : TdwsMessageList read GetMsgs;
 
+         // specifies an external object for IInfo constructors, temporary
+         property ExternalObject : TObject read FExternalObject write FExternalObject;
+
+         // user object, to attach to an execution
          property UserObject : TObject read GetUserObject write SetUserObject;
    end;
 
@@ -211,23 +238,6 @@ type
          property AsDataString[const x : Integer] : RawByteString read GetAsDataString;
    end;
 
-   TSymbol = class;
-   TBaseSymbol = class;
-   TDataSymbol = class;
-   TFuncSymbol = class;
-   TMethodSymbol = class;
-   TFieldSymbol = class;
-   TClassSymbol = class;
-   TRecordSymbol = class;
-   TParamSymbol = class;
-   TVarParamSymbol = class;
-   TSymbolTable = class;
-   TMembersSymbolTable = class;
-   TUnSortedSymbolTable = class;
-   TTypeSymbol = class;
-   TParamsSymbolTable = class;
-   TConditionsSymbolTable = class;
-
    // All functions callable from the script implement this interface
    IExecutable = interface
       ['{8D534D18-4C6B-11D5-8DCB-0000216D9E86}']
@@ -255,15 +265,13 @@ type
          FLevel : SmallInt;
          FSign : TAddrGeneratorSign;
 
-         function GetDataSize : Integer;
-
       public
          constructor CreatePositive(aLevel : SmallInt; anInitialSize : Integer = 0);
          constructor CreateNegative(aLevel : SmallInt);
 
-         function GetStackAddr(Size : Integer) : Integer;
+         function GetStackAddr(size : Integer) : Integer;
 
-         property DataSize : Integer read GetDataSize;
+         property DataSize : Integer read FDataSize;
          property Level : SmallInt read FLevel;
    end;
    TAddrGenerator = ^TAddrGeneratorRec;
@@ -496,8 +504,8 @@ type
          function GetIsForwarded : Boolean;
          function GetDescription: string; override;
          function GetLevel: SmallInt; inline;
-         function GetParamSize: Integer; inline;
-         function GetIsDeprecated : Boolean;
+         function GetParamSize : Integer; inline;
+         function GetIsDeprecated : Boolean; inline;
          procedure SetIsDeprecated(const val : Boolean);
          function GetIsStateless : Boolean; inline;
          procedure SetIsStateless(const val : Boolean);
@@ -527,11 +535,11 @@ type
          property IsForwarded : Boolean read GetIsForwarded;
          property Kind: TFuncKind read FKind write FKind;
          property Level: SmallInt read GetLevel;
+         property InternalParams : TSymbolTable read FInternalParams;
          property Params: TParamsSymbolTable read FParams;
          property ParamSize: Integer read GetParamSize;
          property Result: TDataSymbol read FResult;
          property Typ: TSymbol read FTyp write SetType;
-         property InternalParams: TSymbolTable read FInternalParams;
          property Conditions : TConditionsSymbolTable read FConditions;
    end;
 
@@ -574,6 +582,7 @@ type
          FSelfSym : TDataSymbol;
          FVisibility : TClassVisibility;
          FAttributes : TMethodAttributes;
+         FVMTIndex : Integer;
 
       protected
          function GetIsClassMethod : Boolean;
@@ -583,15 +592,16 @@ type
          function GetIsOverlap : Boolean; inline;
          procedure SetIsOverlap(const val : Boolean); inline;
          function GetIsVirtual : Boolean; inline;
-         procedure SetIsVirtual(const val : Boolean); inline;
+         procedure SetIsVirtual(const val : Boolean);
          function GetIsAbstract : Boolean; inline;
          procedure SetIsAbstract(const val : Boolean); inline;
 
          function GetDescription: string; override;
 
       public
-         constructor Create(const Name: string; FuncKind: TFuncKind; ClassSym: TSymbol;
-                            aVisibility : TClassVisibility; FuncLevel: SmallInt = 1); virtual;
+         constructor Create(const Name: string; FuncKind: TFuncKind; aClassSym : TClassSymbol;
+                            aVisibility : TClassVisibility; isClassMethod : Boolean;
+                            FuncLevel: SmallInt = 1); virtual;
          constructor Generate(Table: TSymbolTable; MethKind: TMethodKind;
                               const Attributes: TMethodAttributes; const MethName: string;
                               const MethParams: TParamArray; const MethType: string;
@@ -606,14 +616,15 @@ type
          function IsVisibleFor(const aVisibility : TClassVisibility) : Boolean; override;
 
          property ClassSymbol : TClassSymbol read FClassSymbol;
+         property VMTIndex : Integer read FVMTIndex;
          property IsAbstract : Boolean read GetIsAbstract write SetIsAbstract;
          property IsVirtual : Boolean read GetIsVirtual write SetIsVirtual;
-         property IsOverride : Boolean read GetIsOverride write SetIsOverride;
-         property IsOverlap : Boolean read GetIsOverlap write SetIsOverlap;
+         property IsOverride : Boolean read GetIsOverride;
+         property IsOverlap : Boolean read GetIsOverlap;
          property IsClassMethod: Boolean read GetIsClassMethod;
          property ParentMeth: TMethodSymbol read FParentMeth;
-         property SelfSym: TDataSymbol read FSelfSym write FSelfSym;
-         property Visibility : TClassVisibility read FVisibility write FVisibility;
+         property SelfSym: TDataSymbol read FSelfSym;
+         property Visibility : TClassVisibility read FVisibility;
       end;
 
    TSourceMethodSymbol = class(TMethodSymbol)
@@ -857,6 +868,7 @@ type
          function IsCompatible(typSym: TSymbol): Boolean; override;
          function IsOfType(typSym : TSymbol) : Boolean; override;
          function BaseTypeID : TBaseTypeID; override;
+         function TypClassSymbol : TClassSymbol; inline;
    end;
 
    TObjectDestroyEvent = procedure (ExternalObject: TObject) of object;
@@ -876,6 +888,7 @@ type
          FOnObjectDestroy : TObjectDestroyEvent;
          FParent : TClassSymbol;
          FDefaultProperty : TPropertySymbol;
+         FVirtualMethodTable : array of TMethodSymbol;
 
       protected
          function CreateMembersTable : TMembersSymbolTable; virtual;
@@ -886,6 +899,8 @@ type
          function GetIsAbstract : Boolean; inline;
          function GetIsSealed : Boolean; inline;
          procedure SetIsSealed(const val : Boolean); inline;
+
+         function AllocateVMTindex : Integer;
 
       public
          constructor Create(const Name: string);
@@ -902,6 +917,8 @@ type
          function  IsCompatible(typSym: TSymbol) : Boolean; override;
          function  IsOfType(typSym : TSymbol) : Boolean; override;
          function  BaseTypeID : TBaseTypeID; override;
+
+         function  VMTMethod(index : Integer) : TMethodSymbol;
 
          procedure SetForwardedPos(const pos : TScriptPos);
          procedure ClearIsForwarded;
@@ -1116,20 +1133,20 @@ type
    end;
 
    IScriptObj = interface
-     ['{8D534D1E-4C6B-11D5-8DCB-0000216D9E86}']
-     function GetClassSym: TClassSymbol;
-     function GetData: TData;
-     procedure SetData(const Dat: TData);
-     function GetExternalObject: TObject;
-     procedure SetExternalObject(Value: TObject);
-     property ClassSym: TClassSymbol read GetClassSym;
-     property Data: TData read GetData write SetData;
-     property ExternalObject: TObject read GetExternalObject write SetExternalObject;
+      ['{8D534D1E-4C6B-11D5-8DCB-0000216D9E86}']
+      function GetClassSym: TClassSymbol;
+      function GetData: TData;
+      procedure SetData(const Dat: TData);
+      function GetExternalObject: TObject;
+      procedure SetExternalObject(Value: TObject);
+      property ClassSym: TClassSymbol read GetClassSym;
+      property Data: TData read GetData write SetData;
+      property ExternalObject: TObject read GetExternalObject write SetExternalObject;
 
-     function DataOfAddr(addr : Integer) : Variant;
-     function DataOfAddrAsString(addr : Integer) : String;
-     function DataOfAddrAsInteger(addr : Integer) : Int64;
-     procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
+      function DataOfAddr(addr : Integer) : Variant;
+      function DataOfAddrAsString(addr : Integer) : String;
+      function DataOfAddrAsInteger(addr : Integer) : Int64;
+      procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
    end;
 
    // The script has to be stopped because of an error
@@ -1519,12 +1536,12 @@ end;
 constructor TFuncSymbol.Create(const Name: string; FuncKind: TFuncKind;
                                FuncLevel: SmallInt);
 begin
-  inherited Create(Name, nil);
-  FKind := FuncKind;
-  FAddrGenerator := TAddrGeneratorRec.CreateNegative(FuncLevel);
-  FInternalParams := TUnSortedSymbolTable.Create(nil, @FAddrGenerator);
-  FParams := TParamsSymbolTable.Create(FInternalParams, @FAddrGenerator);
-  FSize := 1;
+   inherited Create(Name, nil);
+   FKind := FuncKind;
+   FAddrGenerator := TAddrGeneratorRec.CreateNegative(FuncLevel);
+   FInternalParams := TUnSortedSymbolTable.Create(nil, @FAddrGenerator);
+   FParams := TParamsSymbolTable.Create(FInternalParams, @FAddrGenerator);
+   FSize := 1;
 end;
 
 destructor TFuncSymbol.Destroy;
@@ -1685,7 +1702,6 @@ procedure TFuncSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
    inherited;
    FInternalParams.Initialize(msgs);
-//   FConditions.Initialize(msgs);
    if Assigned(FExecutable) then
       FExecutable.InitSymbol(Self)
    else if Level>=0 then
@@ -1699,9 +1715,11 @@ begin
    Result := FAddrGenerator.Level;
 end;
 
+// GetParamSize
+//
 function TFuncSymbol.GetParamSize: Integer;
 begin
-  Result := FAddrGenerator.DataSize;
+   Result := FAddrGenerator.DataSize;
 end;
 
 // GetIsDeprecated
@@ -1839,25 +1857,27 @@ begin
    inherited;
 end;
 
-{ TMethodSymbol }
+// ------------------
+// ------------------ TMethodSymbol ------------------
+// ------------------
 
+// Create
+//
 constructor TMethodSymbol.Create(const Name: string; FuncKind: TFuncKind;
-  ClassSym: TSymbol; aVisibility : TClassVisibility; FuncLevel: SmallInt);
+  aClassSym : TClassSymbol; aVisibility : TClassVisibility; isClassMethod : Boolean;
+  FuncLevel: SmallInt);
 begin
    inherited Create(Name, FuncKind, FuncLevel);
-   if ClassSym is TClassSymbol then begin
-      // Method
-      FClassSymbol := TClassSymbol(ClassSym);
-   end else begin
-      // Class function -> self is "class of"
-      FClassSymbol := TClassSymbol(ClassSym.Typ);
+   FClassSymbol := aClassSym;
+   if isClassMethod then begin
       Include(FAttributes, maClassMethod);
-   end;
-   FSelfSym := TDataSymbol.Create(SYS_SELF, ClassSym);
+      FSelfSym := TDataSymbol.Create(SYS_SELF, aClassSym.ClassOf);
+   end else FSelfSym := TDataSymbol.Create(SYS_SELF, aClassSym);
    FInternalParams.AddSymbol(FSelfSym);
    FSize := 2; // code + data
    FParams.AddParent(FClassSymbol.Members);
    FVisibility:=aVisibility;
+   FVMTIndex:=-1;
 end;
 
 constructor TMethodSymbol.Generate(Table: TSymbolTable; MethKind: TMethodKind;
@@ -1880,66 +1900,65 @@ begin
       end;
    end;
 
-  // Initialize MethodSymbol
-  case MethKind of
-    mkConstructor:
-      Create(MethName, fkConstructor, Cls, aVisibility);
-    mkDestructor:
-      Create(MethName, fkDestructor, Cls, aVisibility);
-    mkProcedure:
-      Create(MethName, fkProcedure, Cls, aVisibility);
-    mkFunction:
-      Create(MethName, fkFunction, Cls, aVisibility);
-    mkMethod :
-      Create(MethName, fkMethod, Cls, aVisibility);
-    mkClassProcedure:
-      Create(MethName, fkProcedure, Cls.ClassOf, aVisibility);
-    mkClassFunction:
-      Create(MethName, fkFunction, Cls.ClassOf, aVisibility);
-    mkClassMethod:
-      Create(MethName, fkMethod, Cls.ClassOf, aVisibility);
-  end;
+   // Initialize MethodSymbol
+   case MethKind of
+      mkConstructor:
+         Create(MethName, fkConstructor, Cls, aVisibility, False);
+      mkDestructor:
+         Create(MethName, fkDestructor, Cls, aVisibility, False);
+      mkProcedure:
+         Create(MethName, fkProcedure, Cls, aVisibility, False);
+      mkFunction:
+         Create(MethName, fkFunction, Cls, aVisibility, False);
+      mkMethod :
+         Create(MethName, fkMethod, Cls, aVisibility, False);
+      mkClassProcedure:
+         Create(MethName, fkProcedure, Cls, aVisibility, True);
+      mkClassFunction:
+         Create(MethName, fkFunction, Cls, aVisibility, True);
+      mkClassMethod:
+         Create(MethName, fkMethod, Cls, aVisibility, True);
+   else
+      Assert(False);
+   end;
 
-  // Set Resulttype
-  if MethType <> '' then
-  begin
-    if not (Kind in [fkFunction, fkMethod]) then
-      raise Exception.Create(CPE_NoResultTypeRequired);
+   // Set Resulttype
+   if MethType <> '' then begin
+      if not (Kind in [fkFunction, fkMethod]) then
+         raise Exception.Create(CPE_NoResultTypeRequired);
 
-    typSym := Table.FindSymbol(MethType);
-    if not Assigned(typSym) then
-      raise Exception.CreateFmt(CPE_TypeIsUnknown, [MethType]);
-    SetType(typSym);
-  end;
+      typSym := Table.FindSymbol(MethType);
+      if not Assigned(typSym) then
+         raise Exception.CreateFmt(CPE_TypeIsUnknown, [MethType]);
+      SetType(typSym);
+   end;
 
-  if (Kind = fkFunction) and (MethType = '') then
-    raise Exception.Create(CPE_ResultTypeExpected);
+   if (Kind = fkFunction) and (MethType = '') then
+      raise Exception.Create(CPE_ResultTypeExpected);
 
-  GenerateParams(Table, MethParams);
+   GenerateParams(Table, MethParams);
 
-  if Assigned(meth) then
-    SetOverlap(TMethodSymbol(meth));
+   if Assigned(meth) then
+      SetOverlap(TMethodSymbol(meth));
 
-  if Attributes = [maVirtual] then
-    IsVirtual := True
-  else if Attributes = [maVirtual, maAbstract] then
-  begin
-    IsVirtual := True;
-    IsAbstract := True;
-  end
-  else if Attributes = [maOverride] then
-  begin
-    if IsOverlap then
-      SetOverride(TMethodSymbol(meth))
-    else
-      raise Exception.CreateFmt(CPE_CanNotOverride, [Name]);
-  end
-  else if Attributes = [maReintroduce] then
-  else if Attributes = [] then
-  else
-    raise Exception.Create(CPE_InvalidArgCombination);
+   if Attributes = [maVirtual] then
+      IsVirtual := True
+   else if Attributes = [maVirtual, maAbstract] then begin
+      IsVirtual := True;
+      IsAbstract := True;
+   end else if Attributes = [maOverride] then begin
+      if IsOverlap then
+         SetOverride(TMethodSymbol(meth))
+      else raise Exception.CreateFmt(CPE_CanNotOverride, [Name]);
+   end else if Attributes = [maReintroduce] then
+      //
+   else if Attributes = [] then
+      //
+   else raise Exception.Create(CPE_InvalidArgCombination);
 end;
 
+// GetIsClassMethod
+//
 function TMethodSymbol.GetIsClassMethod: Boolean;
 begin
    Result:=(maClassMethod in FAttributes);
@@ -1988,9 +2007,13 @@ end;
 //
 procedure TMethodSymbol.SetIsVirtual(const val : Boolean);
 begin
-   if val then
-      Include(FAttributes, maVirtual)
-   else Exclude(FAttributes, maVirtual);
+   if val then begin
+      Include(FAttributes, maVirtual);
+      if FVMTIndex<0 then begin
+         FVMTIndex:=ClassSymbol.AllocateVMTindex;
+         ClassSymbol.FVirtualMethodTable[FVMTIndex]:=Self;
+      end;
+   end else Exclude(FAttributes, maVirtual);
 end;
 
 // GetIsAbstract
@@ -2059,10 +2082,15 @@ end;
 //
 procedure TMethodSymbol.SetOverride(meth: TMethodSymbol);
 begin
-   FParentMeth := meth;
-   IsOverride := True;
-   IsVirtual := True;
-   IsOverlap := False;
+   FParentMeth:=meth;
+   FVMTIndex:=meth.FVMTIndex;
+   IsVirtual:=True;
+   SetIsOverride(True);
+   SetIsOverlap(False);
+
+   // make array unique
+   SetLength(ClassSymbol.FVirtualMethodTable, Length(ClassSymbol.FVirtualMethodTable));
+   ClassSymbol.FVirtualMethodTable[FVMTIndex]:=Self;
 end;
 
 // SetOverlap
@@ -2070,8 +2098,8 @@ end;
 procedure TMethodSymbol.SetOverlap(meth: TMethodSymbol);
 begin
    FParentMeth := meth;
-   IsOverride := False;
-   IsOverlap := True;
+   SetIsOverride(False);
+   SetIsOverlap(True);
 end;
 
 // ------------------
@@ -2350,6 +2378,8 @@ begin
       Include(FFlags, csfAbstract);
    FScriptInstanceSize:=ancestorClassSym.ScriptInstanceSize;
    FParent:=ancestorClassSym;
+
+   FVirtualMethodTable:=ancestorClassSym.FVirtualMethodTable;
 end;
 
 function TClassSymbol.IsCompatible(typSym: TSymbol): Boolean;
@@ -2393,6 +2423,14 @@ begin
    Result:=typClassID;
 end;
 
+// VMTMethod
+//
+function TClassSymbol.VMTMethod(index : Integer) : TMethodSymbol;
+begin
+   Assert(Cardinal(index)<Cardinal(Length(FVirtualMethodTable)));
+   Result:=FVirtualMethodTable[index];
+end;
+
 function TClassSymbol.GetDescription: string;
 var
   i: Integer;
@@ -2426,7 +2464,9 @@ end;
 //
 procedure TClassSymbol.SetIsExplicitAbstract(const val : Boolean);
 begin
-   Include(FFlags, csfExplicitAbstract);
+   if val then
+      Include(FFlags, csfExplicitAbstract)
+   else Exclude(FFlags, csfExplicitAbstract);
 end;
 
 // GetIsAbstract
@@ -2447,7 +2487,17 @@ end;
 //
 procedure TClassSymbol.SetIsSealed(const val : Boolean);
 begin
-   Include(FFlags, csfSealed);
+   if val then
+      Include(FFlags, csfSealed)
+   else Exclude(FFlags, csfSealed);
+end;
+
+// AllocateVMTindex
+//
+function TClassSymbol.AllocateVMTindex : Integer;
+begin
+   Result:=Length(FVirtualMethodTable);
+   SetLength(FVirtualMethodTable, Result+1);
 end;
 
 // SetForwardedPos
@@ -2530,7 +2580,7 @@ end;
 
 { TClassOfSymbol }
 
-constructor TClassOfSymbol.Create;
+constructor TClassOfSymbol.Create(const Name: string; Typ: TClassSymbol);
 begin
   inherited Create(Name, Typ);
 end;
@@ -2545,7 +2595,7 @@ end;
 
 procedure TClassOfSymbol.InitData(const Data: TData; Offset: Integer);
 begin
-  Data[Offset] := '';
+  Data[Offset] := Int64(0);
 end;
 
 function TClassOfSymbol.IsCompatible(typSym: TSymbol): Boolean;
@@ -2569,6 +2619,13 @@ end;
 function TClassOfSymbol.BaseTypeID : TBaseTypeID;
 begin
    Result:=typClassID;
+end;
+
+// TypClassSymbol
+//
+function TClassOfSymbol.TypClassSymbol : TClassSymbol;
+begin
+   Result:=TClassSymbol(Typ);
 end;
 
 function IsBaseTypeCompatible(AType, BType: TBaseTypeID): Boolean;
@@ -2897,13 +2954,13 @@ end;
 //
 function TSymbolTable.FindLocalUnSorted(const name: string) : TSymbol;
 var
-   x : Integer;
+   i : Integer;
    ptrList : PPointerList;
 begin
    ptrList:=FSymbols.List;
-   for x:=FSymbols.Count-1 downto 0 do begin
-      if CompareText(TSymbol(ptrList[x]).Name, Name)=0 then
-         Exit(TSymbol(ptrList[x]));
+   for i:=FSymbols.Count-1 downto 0 do begin
+      if CompareText(TSymbol(ptrList[i]).Name, Name)=0 then
+         Exit(TSymbol(ptrList[i]));
    end;
    Result:=nil;
 end;
@@ -3222,46 +3279,39 @@ begin
   end;
 end;
 
-{ TAddrGeneratorRec }
+// ------------------
+// ------------------ TAddrGeneratorRec ------------------
+// ------------------
 
 // CreatePositive
 //
 constructor TAddrGeneratorRec.CreatePositive(aLevel : SmallInt; anInitialSize: Integer = 0);
 begin
-   FLevel := aLevel;
-   FDataSize := anInitialSize;
-   FSign := agsPositive;
+   FDataSize:=anInitialSize;
+   FLevel:=aLevel;
+   FSign:=agsPositive;
 end;
 
 // CreateNegative
 //
 constructor TAddrGeneratorRec.CreateNegative(aLevel : SmallInt);
 begin
-   FLevel := aLevel;
-   FDataSize := 0;
-   FSign := agsNegative;
+   FDataSize:=0;
+   FLevel:=aLevel;
+   FSign:=agsNegative;
 end;
 
 // GetStackAddr
 //
-function TAddrGeneratorRec.GetStackAddr(Size: Integer): Integer;
+function TAddrGeneratorRec.GetStackAddr(size : Integer): Integer;
 begin
    if FSign=agsPositive then begin
-      Result := FDataSize;
+      Result:=FDataSize;
       Inc(FDataSize, Size);
    end else begin
-      Dec(FDataSize, Size);
-      Result := FDataSize;
+      Inc(FDataSize, Size);
+      Result:=-FDataSize;
    end;
-end;
-
-// GetDataSize
-//
-function TAddrGeneratorRec.GetDataSize: Integer;
-begin
-   if FSign=agsPositive then
-      Result:=FDataSize
-   else Result:=-FDataSize;
 end;
 
 // ------------------
@@ -3663,10 +3713,11 @@ end;
 //
 destructor TdwsExecution.Destroy;
 begin
-   inherited;
+   Assert(not Assigned(FSelfScriptObject));
    FExceptionObjectStack.Free;
    FStack.Finalize;
    FCallStack.Free;
+   inherited;
 end;
 
 // DoStep
@@ -3684,10 +3735,8 @@ end;
 procedure TdwsExecution.IncRecursion(caller : TExprBase);
 begin
    FCallStack.Push(caller);
-   if FCallStack.Count>=FStack.MaxRecursionDepth then begin
-      SetScriptError(caller);
-      raise EStackException.CreateFmt(RTE_MaximalRecursionExceeded, [FStack.MaxRecursionDepth]);
-   end;
+   if FCallStack.Count>=FStack.MaxRecursionDepth then
+      RaiseMaxRecursionReached(caller);
 end;
 
 // DecRecursion
@@ -3695,6 +3744,14 @@ end;
 procedure TdwsExecution.DecRecursion;
 begin
    FCallStack.Pop;
+end;
+
+// RaiseMaxRecursionReached
+//
+procedure TdwsExecution.RaiseMaxRecursionReached(caller : TExprBase);
+begin
+   SetScriptError(caller);
+   raise EStackException.CreateFmt(RTE_MaximalRecursionExceeded, [FStack.MaxRecursionDepth]);
 end;
 
 // SetScriptError

@@ -1,0 +1,9 @@
+Object not instantiated [line: 31, column: 6]
+TBase
+base_TBase
+TChild
+child_TChild
+TBase
+base_TBase
+TChild
+child_TChild
