@@ -160,6 +160,7 @@ type
 
   TDataType = string;
   TdwsUnit = class;
+  TdwsGlobal = class;
 
   TdwsSymbol = class(TCollectionItem)
   private
@@ -220,11 +221,13 @@ type
     property DataType: TDataType read FDataType write FDataType;
   end;
 
-  TdwsVariables = class(TdwsCollection)
-  protected
-    class function GetSymbolClass : TdwsSymbolClass; override;
-    function GetDisplayName: string;
-  end;
+   TdwsVariables = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+         function GetDisplayName: string;
+      public
+         function Add : TdwsGlobal;
+   end;
 
   TdwsVariablesClass = class of TdwsVariables;
 
@@ -257,10 +260,12 @@ type
          property DefaultValue: Variant read FDefaultValue write SetDefaultValue;
   end;
 
-  TdwsParameters = class(TdwsVariables)
-  protected
-    class function GetSymbolClass : TdwsSymbolClass; override;
-  end;
+   TdwsParameters = class(TdwsVariables)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+      public
+         function Add : TdwsParameter;
+   end;
 
   TdwsFunction = class;
 
@@ -302,10 +307,12 @@ type
     property Deprecated : String read FDeprecated write FDeprecated;
   end;
 
-  TdwsFunctions = class(TdwsCollection)
-  protected
-    class function GetSymbolClass : TdwsSymbolClass; override;
-  end;
+   TdwsFunctions = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+      public
+         function Add : TdwsFunction;
+   end;
 
   TdwsFunctionsClass = class of TdwsFunctions;
 
@@ -622,7 +629,6 @@ type
 
   TdwsEnumerationsClass = class of TdwsEnumerations;
 
-  TdwsGlobal = class;
   TdwsCustomInstance = class;
 
   TReadVarEvent = procedure (info: TProgramInfo; var value : Variant) of object;
@@ -1627,7 +1633,7 @@ begin
           newMeth := (useClass.Methods.Add as TdwsMethod);
           newMeth.Name := setMethName;
           newMeth.OnEval := HandleDynamicProperty;
-          with newMeth.Parameters.Add as TdwsParameter do
+          with newMeth.Parameters.Add do
           begin
             Name := 'Value';
             DataType := PropertyType;
@@ -1755,6 +1761,13 @@ begin
   end
   else
     Result := '';
+end;
+
+// Add
+//
+function TdwsVariables.Add : TdwsGlobal;
+begin
+   Result:=TdwsGlobal(inherited Add);
 end;
 
 class function TdwsVariables.GetSymbolClass: TdwsSymbolClass;
@@ -3246,7 +3259,14 @@ end;
 
 class function TdwsFunctions.GetSymbolClass: TdwsSymbolClass;
 begin
-  Result := TdwsFunction;
+   Result := TdwsFunction;
+end;
+
+// Add
+//
+function TdwsFunctions.Add : TdwsFunction;
+begin
+   Result:=TdwsFunction(inherited Add);
 end;
 
 { TdwsForwards }
@@ -3303,6 +3323,13 @@ end;
 class function TdwsParameters.GetSymbolClass: TdwsSymbolClass;
 begin
   Result := TdwsParameter;
+end;
+
+// Add
+//
+function TdwsParameters.Add : TdwsParameter;
+begin
+   Result:=TdwsParameter(inherited Add);
 end;
 
 { TdwsInstances }

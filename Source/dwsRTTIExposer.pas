@@ -456,7 +456,7 @@ begin
       setterMethod:=(scriptClass.Methods.Add as TdwsMethod);
       setterMethod.Name:='Set'+prop.Name;
       Result.WriteAccess:=setterMethod.Name;
-      setterParam:=(setterMethod.Parameters.Add as TdwsParameter);
+      setterParam:=setterMethod.Parameters.Add;
       setterParam.Name:='v';
       setterParam.DataType:=RTTITypeToScriptType(prop.PropertyType);
       setterMethod.OnEval:=setterInvoker.Invoke;
@@ -468,7 +468,7 @@ end;
 function TdwsRTTIExposer.ExposeRTTIParameter(param : TRttiParameter; scriptParameters : TdwsParameters;
                                              const options : TdwsRTTIExposerOptions) : TdwsParameter;
 begin
-   Result:=(scriptParameters.Add as TdwsParameter);
+   Result:=scriptParameters.Add;
    Result.Name:=dwsPublished.NameOf(param);
    Result.DataType:=RTTITypeToScriptType(param.ParamType);
 end;

@@ -160,81 +160,81 @@ var
    func : TdwsFunction;
    param : TdwsParameter;
 begin
-   func:=FUnit.Functions.Add as TdwsFunction;
+   func:=FUnit.Functions.Add;
    func.Name:='Func1';
    func.ResultType:='Integer';
    func.OnEval:=Func1Eval;
 
-   func:=FUnit.Functions.Add as TdwsFunction;
+   func:=FUnit.Functions.Add;
    func.Name:='FuncOne';
    func.ResultType:='String';
    func.OnEval:=FuncOneEval;
 
-   func:=FUnit.Functions.Add as TdwsFunction;
+   func:=FUnit.Functions.Add;
    func.Name:='FuncOneDotFive';
    func.ResultType:='Float';
    func.OnEval:=FuncOneDotFiveEval;
 
-   func:=FUnit.Functions.Add as TdwsFunction;
+   func:=FUnit.Functions.Add;
    func.Name:='FuncTrue';
    func.ResultType:='Boolean';
    func.OnEval:=FuncTrueEval;
 
-   func:=FUnit.Functions.Add as TdwsFunction;
+   func:=FUnit.Functions.Add;
    func.Name:='FuncException';
    func.ResultType:='';
    func.OnEval:=FuncExceptionEval;
 
-   func:=FUnit.Functions.Add as TdwsFunction;
+   func:=FUnit.Functions.Add;
    func.Name:='FuncInc';
    func.ResultType:='Integer';
    func.OnEval:=FuncIncEval;
-   param:=func.Parameters.Add as TdwsParameter;
+   param:=func.Parameters.Add;
    param.Name:='v';
    param.DataType:='Integer';
 
-   func:=FUnit.Functions.Add as TdwsFunction;
+   func:=FUnit.Functions.Add;
    func.Name:='FuncIncN';
    func.ResultType:='Integer';
    func.OnEval:=FuncIncNEval;
-   param:=func.Parameters.Add as TdwsParameter;
+   param:=func.Parameters.Add;
    param.Name:='v';
    param.DataType:='Integer';
-   param:=func.Parameters.Add as TdwsParameter;
+   param:=func.Parameters.Add;
    param.Name:='n';
    param.DataType:='Integer';
    param.DefaultValue:='1';
 
-   func:=FUnit.Functions.Add as TdwsFunction;
+   func:=FUnit.Functions.Add;
    func.Name:='FuncEnum';
    func.ResultType:='Integer';
    func.OnEval:=FuncEnumEval;
-   param:=func.Parameters.Add as TdwsParameter;
+   param:=func.Parameters.Add;
    param.Name:='e';
    param.DataType:='TMyEnum';
    param.DefaultValue:='meOne';
 
-   func:=FUnit.Functions.Add as TdwsFunction;
+   func:=FUnit.Functions.Add;
    func.Name:='FuncVar';
    func.OnEval:=FuncVarEval;
-   param:=func.Parameters.Add as TdwsParameter;
+   param:=func.Parameters.Add;
    param.Name:='i';
    param.DataType:='Integer';
    param.IsVarParam:=True;
    param.IsWritable:=True;
-   param:=func.Parameters.Add as TdwsParameter;
+   param:=func.Parameters.Add;
    param.Name:='n';
    param.DataType:='Integer';
    param.DefaultValue:='1';
 
-   func:=FUnit.Functions.Add as TdwsFunction;
+   func:=FUnit.Functions.Add;
    func.Name:='FuncFloat';
    func.OnEval:=FuncFloatEval;
    func.ResultType:='Float';
-   param:=func.Parameters.Add as TdwsParameter;
+   param:=func.Parameters.Add;
    param.Name:='a';
    param.DataType:='Float';
-   param:=func.Parameters.Add as TdwsParameter;
+   param:=func.Parameters.Add;
    param.Name:='b';
    param.DataType:='Float';
    param.DefaultValue:='0.5';
@@ -267,11 +267,11 @@ procedure TdwsUnitTests.DeclareTestVars;
 var
    v : TdwsGlobal;
 begin
-   v:=FUnit.Variables.Add as TdwsGlobal;
+   v:=FUnit.Variables.Add;
    v.Name:='xyzVar';
    v.DataType:='String';
 
-   v:=FUnit.Variables.Add as TdwsGlobal;
+   v:=FUnit.Variables.Add;
    v.Name:='magicVar';
    v.DataType:='String';
 

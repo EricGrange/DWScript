@@ -198,7 +198,6 @@ type
          procedure Clean;
 
          function Add(expr : TExprBase) : Integer; inline;
-         procedure Insert(index : Integer; expr : TExprBase);
          procedure Delete(index : Integer);
 
          property ExprBase[const x : Integer] : TExprBase read GetExprBase write SetExprBase; default;
@@ -323,27 +322,28 @@ type
    TSymbolClass = class of TSymbol;
 
    // All Symbols containing a value
-   TValueSymbol = class(TSymbol)
-   protected
-     function GetCaption: string; override;
-     function GetDescription: string; override;
+   TValueSymbol = class (TSymbol)
+      protected
+         function GetCaption: string; override;
+         function GetDescription: string; override;
    end;
 
    // named constant: const x = 123;
-   TConstSymbol = class(TValueSymbol)
-   protected
-     FData: TData;
-     function GetCaption: string; override;
-     function GetDescription: string; override;
-   public
-     constructor Create(const Name: string; Typ: TSymbol; const Value: Variant); overload;
-     constructor Create(const Name: string; Typ: TSymbol; const Data: TData; Addr: Integer); overload;
-     procedure Initialize(const msgs : TdwsCompileMessageList); override;
-     property Data: TData read FData;
+   TConstSymbol = class (TValueSymbol)
+      protected
+         FData: TData;
+         function GetCaption: string; override;
+         function GetDescription: string; override;
+
+      public
+         constructor Create(const Name: string; Typ: TSymbol; const Value: Variant); overload;
+         constructor Create(const Name: string; Typ: TSymbol; const Data: TData; Addr: Integer); overload;
+         procedure Initialize(const msgs : TdwsCompileMessageList); override;
+         property Data: TData read FData;
    end;
 
    // variable: var x: Integer;
-   TDataSymbol = class(TValueSymbol)
+   TDataSymbol = class (TValueSymbol)
       protected
          FStackAddr : Integer;
          FLevel : SmallInt;
@@ -355,11 +355,9 @@ type
    end;
 
    // parameter: procedure P(x: Integer);
-   TParamSymbol = class(TDataSymbol)
-   private
-   protected
-     function GetDescription: string; override;
-   public
+   TParamSymbol = class (TDataSymbol)
+      protected
+         function GetDescription: string; override;
    end;
 
    TParamSymbolWithDefaultValue = class(TParamSymbol)
@@ -1136,14 +1134,13 @@ type
       ['{8D534D1E-4C6B-11D5-8DCB-0000216D9E86}']
       function GetClassSym: TClassSymbol;
       function GetData: TData;
-      procedure SetData(const Dat: TData);
       function GetExternalObject: TObject;
       procedure SetExternalObject(value: TObject);
       function GetDestroyed : Boolean;
       procedure SetDestroyed(const val : Boolean);
 
       property ClassSym : TClassSymbol read GetClassSym;
-      property Data : TData read GetData write SetData;
+      property Data : TData read GetData;
       property ExternalObject : TObject read GetExternalObject write SetExternalObject;
       property Destroyed : Boolean read GetDestroyed write SetDestroyed;
 
@@ -1219,13 +1216,6 @@ end;
 function TExprBaseListRec.Add(expr : TExprBase) : Integer;
 begin
    Result:=FList.Add(expr);
-end;
-
-// Insert
-//
-procedure TExprBaseListRec.Insert(index : Integer; expr : TExprBase);
-begin
-   FList.Insert(index, expr);
 end;
 
 // Delete

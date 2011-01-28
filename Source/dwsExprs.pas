@@ -1243,7 +1243,6 @@ type
          function DataOfAddrAsString(addr : Integer) : String;
          function DataOfAddrAsInteger(addr : Integer) : Int64;
          procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
-         procedure SetData(const Dat: TData);
          function GetDestroyed : Boolean;
          procedure SetDestroyed(const val : Boolean);
          function GetExternalObject: TObject;
@@ -1474,6 +1473,97 @@ type
   end;
 
   TCleanUpEvent = procedure(ScriptObj: IScriptObj; ExternalObject: TObject) of object;
+
+{ TScriptObjectWrapper }
+
+// wrapper to interact with an released script object
+type
+   TScriptObjectWrapper = class (TInterfacedObject, IScriptObj)
+      private
+         FScriptObj : TScriptObj;
+      protected
+         { IScriptObj }
+         function GetClassSym: TClassSymbol;
+         function GetData : TData;
+         function DataOfAddr(addr : Integer) : Variant;
+         function DataOfAddrAsString(addr : Integer) : String;
+         function DataOfAddrAsInteger(addr : Integer) : Int64;
+         procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
+         function GetExternalObject: TObject;
+         procedure SetExternalObject(Value: TObject);
+         function GetDestroyed : Boolean;
+         procedure SetDestroyed(const val : Boolean);
+      public
+         constructor Create(ScriptObj : TScriptObj);
+   end;
+
+constructor TScriptObjectWrapper.Create(ScriptObj: TScriptObj);
+begin
+  inherited Create;
+  FScriptObj := ScriptObj;
+end;
+
+function TScriptObjectWrapper.GetClassSym: TClassSymbol;
+begin
+  Result := FScriptObj.FClassSym;
+end;
+
+function TScriptObjectWrapper.GetData : TData;
+begin
+  Result := FScriptObj.GetData;
+end;
+
+// DataOfAddr
+//
+function TScriptObjectWrapper.DataOfAddr(addr : Integer) : Variant;
+begin
+   Result:=FScriptObj.DataOfAddr(addr);
+end;
+
+// DataOfAddrAsString
+//
+function TScriptObjectWrapper.DataOfAddrAsString(addr : Integer) : String;
+begin
+   Result:=FScriptObj.DataOfAddrAsString(addr);
+end;
+
+// DataOfAddrAsInteger
+//
+function TScriptObjectWrapper.DataOfAddrAsInteger(addr : Integer) : Int64;
+begin
+   Result:=FScriptObj.DataOfAddrAsInteger(addr);
+end;
+
+// DataOfAddrAsScriptObj
+//
+procedure TScriptObjectWrapper.DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
+begin
+   FScriptObj.DataOfAddrAsScriptObj(addr, scriptObj);
+end;
+
+function TScriptObjectWrapper.GetExternalObject: TObject;
+begin
+  Result := FScriptObj.GetExternalObject;
+end;
+
+procedure TScriptObjectWrapper.SetExternalObject(Value: TObject);
+begin
+  FScriptObj.SetExternalObject(Value);
+end;
+
+// GetDestroyed
+//
+function TScriptObjectWrapper.GetDestroyed : Boolean;
+begin
+   Result:=FScriptObj.Destroyed
+end;
+
+// SetDestroyed
+//
+procedure TScriptObjectWrapper.SetDestroyed(const val : Boolean);
+begin
+   FScriptObj.Destroyed:=val;
+end;
 
 function ScriptStringToRawByteString(const s : String) : RawByteString;
 var
@@ -4597,103 +4687,6 @@ begin
    else Result:=PVariant(p)^;
 end;
 
-{ TScriptObjectWrapper }
-
-// wrapper to interact with an released script object
-type
-   TScriptObjectWrapper = class (TInterfacedObject, IScriptObj)
-      private
-         FScriptObj : TScriptObj;
-      protected
-         { IScriptObj }
-         function GetClassSym: TClassSymbol;
-         function GetData : TData;
-         function DataOfAddr(addr : Integer) : Variant;
-         function DataOfAddrAsString(addr : Integer) : String;
-         function DataOfAddrAsInteger(addr : Integer) : Int64;
-         procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
-         procedure SetData(const Dat: TData);
-         function GetExternalObject: TObject;
-         procedure SetExternalObject(Value: TObject);
-         function GetDestroyed : Boolean;
-         procedure SetDestroyed(const val : Boolean);
-      public
-         constructor Create(ScriptObj : TScriptObj);
-   end;
-
-constructor TScriptObjectWrapper.Create(ScriptObj: TScriptObj);
-begin
-  inherited Create;
-  FScriptObj := ScriptObj;
-end;
-
-function TScriptObjectWrapper.GetClassSym: TClassSymbol;
-begin
-  Result := FScriptObj.FClassSym;
-end;
-
-function TScriptObjectWrapper.GetData : TData;
-begin
-  Result := FScriptObj.GetData;
-end;
-
-// DataOfAddr
-//
-function TScriptObjectWrapper.DataOfAddr(addr : Integer) : Variant;
-begin
-   Result:=FScriptObj.DataOfAddr(addr);
-end;
-
-// DataOfAddrAsString
-//
-function TScriptObjectWrapper.DataOfAddrAsString(addr : Integer) : String;
-begin
-   Result:=FScriptObj.DataOfAddrAsString(addr);
-end;
-
-// DataOfAddrAsInteger
-//
-function TScriptObjectWrapper.DataOfAddrAsInteger(addr : Integer) : Int64;
-begin
-   Result:=FScriptObj.DataOfAddrAsInteger(addr);
-end;
-
-// DataOfAddrAsScriptObj
-//
-procedure TScriptObjectWrapper.DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
-begin
-   FScriptObj.DataOfAddrAsScriptObj(addr, scriptObj);
-end;
-
-function TScriptObjectWrapper.GetExternalObject: TObject;
-begin
-  Result := FScriptObj.GetExternalObject;
-end;
-
-procedure TScriptObjectWrapper.SetData(const Dat: TData);
-begin
-  FScriptObj.SetData(Dat);
-end;
-
-procedure TScriptObjectWrapper.SetExternalObject(Value: TObject);
-begin
-  FScriptObj.SetExternalObject(Value);
-end;
-
-// GetDestroyed
-//
-function TScriptObjectWrapper.GetDestroyed : Boolean;
-begin
-   Result:=FScriptObj.Destroyed
-end;
-
-// SetDestroyed
-//
-procedure TScriptObjectWrapper.SetDestroyed(const val : Boolean);
-begin
-   FScriptObj.Destroyed:=val;
-end;
-
 function TProgramInfo.FindClassMatch(AObject: TObject; ExactMatch: Boolean): TClassSymbol;
 var
   ParentRTTI: PPTypeInfo;
@@ -4954,11 +4947,6 @@ begin
   Result := FExternalObj;
 end;
 
-procedure TScriptObj.SetData(const Dat: TData);
-begin
-  FData := Dat;
-end;
-
 // GetDestroyed
 //
 function TScriptObj.GetDestroyed : Boolean;
@@ -5176,14 +5164,9 @@ var
 begin
    if (FDataMaster=nil) and (FTypeSym<>nil) and (FTypeSym.Size=1) then begin
       varData:=@FData[FOffset];
-      case varData.VType of
-         varInt64 : Result:=varData.VInt64;
-         varInteger : Result:=varData.VInteger;
-         varSmallint : Result:=varData.VSmallInt;
-         varShortInt : Result:=varData.VShortInt;
-      else
-         Result:=PVariant(varData)^;
-      end;
+      if varData.VType=varInt64 then
+         Result:=varData.VInt64
+      else Result:=PVariant(varData)^;
    end else Result:=inherited GetValueAsInteger;
 end;
 
@@ -5195,12 +5178,9 @@ var
 begin
    if (FDataMaster=nil) and (FTypeSym<>nil) and (FTypeSym.Size=1) then begin
       varData:=@FData[FOffset];
-      case varData.VType of
-         varDouble : Result:=varData.VDouble;
-         varSingle : Result:=varData.VSingle;
-      else
-         Result:=PVariant(varData)^;
-      end;
+      if varData.VType=varDouble then
+         Result:=varData.VDouble
+      else Result:=PVariant(varData)^;
    end else Result:=inherited GetValueAsFloat;
 end;
 
