@@ -2233,8 +2233,7 @@ var
    obj : IScriptObj;
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
-   if obj=nil then
-      RaiseObjectNotInstantiated;
+   CheckScriptObject(obj);
    Result:=obj.Data;
 end;
 
@@ -2250,8 +2249,7 @@ var
    obj : IScriptObj;
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
-   if obj=nil then
-      RaiseObjectNotInstantiated;
+   CheckScriptObject(obj);
    Result:=obj.DataOfAddr(FFieldAddr);
 end;
 
@@ -2262,8 +2260,7 @@ var
    obj : IScriptObj;
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
-   if obj=nil then
-      RaiseObjectNotInstantiated;
+   CheckScriptObject(obj);
    Result:=obj.DataOfAddrAsString(FFieldAddr);
 end;
 
@@ -2274,8 +2271,7 @@ var
    obj : IScriptObj;
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
-   if obj=nil then
-      RaiseObjectNotInstantiated;
+   CheckScriptObject(obj);
    Result:=obj.DataOfAddrAsInteger(FFieldAddr);
 end;
 
@@ -2286,8 +2282,7 @@ var
    obj : IScriptObj;
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
-   if obj=nil then
-      RaiseObjectNotInstantiated;
+   CheckScriptObject(obj);
    obj.DataOfAddrAsScriptObj(FFieldAddr, Result);
 end;
 

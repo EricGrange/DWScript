@@ -1138,10 +1138,14 @@ type
       function GetData: TData;
       procedure SetData(const Dat: TData);
       function GetExternalObject: TObject;
-      procedure SetExternalObject(Value: TObject);
-      property ClassSym: TClassSymbol read GetClassSym;
-      property Data: TData read GetData write SetData;
-      property ExternalObject: TObject read GetExternalObject write SetExternalObject;
+      procedure SetExternalObject(value: TObject);
+      function GetDestroyed : Boolean;
+      procedure SetDestroyed(const val : Boolean);
+
+      property ClassSym : TClassSymbol read GetClassSym;
+      property Data : TData read GetData write SetData;
+      property ExternalObject : TObject read GetExternalObject write SetExternalObject;
+      property Destroyed : Boolean read GetDestroyed write SetDestroyed;
 
       function DataOfAddr(addr : Integer) : Variant;
       function DataOfAddrAsString(addr : Integer) : String;

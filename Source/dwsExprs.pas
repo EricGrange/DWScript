@@ -573,7 +573,9 @@ type
          procedure RaiseUpperExceeded(index : Integer);
          procedure RaiseLowerExceeded(index : Integer);
 
+         procedure CheckScriptObject(const scriptObj : IScriptObj); inline;
          procedure RaiseObjectNotInstantiated;
+         procedure RaiseObjectAlreadyDestroyed;
 
          property Prog: TdwsProgram read FProg;
          property Typ: TSymbol read FTyp write FTyp;
@@ -1225,9 +1227,10 @@ type
    // An instance of a script class FClassSym. Instance data in FData,
    TScriptObj = class(TInterfacedObject, IScriptObj)
       private
-         FClassSym: TClassSymbol;
-         FData: TData;
-         FExternalObj: TObject;
+         FClassSym : TClassSymbol;
+         FData : TData;
+         FExternalObj : TObject;
+         FDestroyed : Boolean;
          FExecutionContext : TdwsProgramExecution;
          FOnObjectDestroy: TObjectDestroyEvent;
          FNextObject, FPrevObject : TScriptObj;
@@ -1241,6 +1244,8 @@ type
          function DataOfAddrAsInteger(addr : Integer) : Int64;
          procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
          procedure SetData(const Dat: TData);
+         function GetDestroyed : Boolean;
+         procedure SetDestroyed(const val : Boolean);
          function GetExternalObject: TObject;
          procedure SetExternalObject(Value: TObject);
 
@@ -1251,6 +1256,7 @@ type
          property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
 
          property ExecutionContext : TdwsProgramExecution read FExecutionContext write FExecutionContext;
+         property Destroyed : Boolean read FDestroyed write FDestroyed;
          property NextObject : TScriptObj read FNextObject write FNextObject;
          property PrevObject : TScriptObj read FPrevObject write FPrevObject;
    end;
@@ -2019,8 +2025,10 @@ begin
             oldStatus:=Status;
             try
                Status:=esrNone;
+               scriptObj.Destroyed:=False;
                expr.EvalNoResult(Self);
             finally
+               scriptObj.Destroyed:=True;
                Status:=oldStatus;
                expr.Free;
             end;
@@ -2688,6 +2696,16 @@ begin
    RaiseScriptError(EScriptOutOfBounds.CreateFmt(RTE_ArrayLowerBoundExceeded, [index]));
 end;
 
+// CheckScriptObject
+//
+procedure TNoPosExpr.CheckScriptObject(const scriptObj : IScriptObj);
+begin
+   if scriptObj=nil then
+      RaiseObjectNotInstantiated
+   else if scriptObj.Destroyed then
+      RaiseObjectAlreadyDestroyed;
+end;
+
 // RaiseObjectNotInstantiated
 //
 procedure TNoPosExpr.RaiseObjectNotInstantiated;
@@ -2695,12 +2713,20 @@ begin
    RaiseScriptError(EScriptError.Create(RTE_ObjectNotInstantiated));
 end;
 
-function TNoPosExpr.GetBaseType: TTypeSymbol;
+// RaiseObjectAlreadyDestroyed
+//
+procedure TNoPosExpr.RaiseObjectAlreadyDestroyed;
 begin
-  if Assigned(Typ) then
-    result := Typ.BaseType
-  else
-    result := nil;
+   RaiseScriptError(EScriptError.Create(RTE_ObjectAlreadyDestroyed));
+end;
+
+// GetBaseType
+//
+function TNoPosExpr.GetBaseType : TTypeSymbol;
+begin
+   if Assigned(Typ) then
+      Result:=Typ.BaseType
+   else Result:=nil;
 end;
 
 // EvalAsVariant
@@ -4021,8 +4047,7 @@ function TMethodVirtualExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
 begin
    // Find virtual method
    FBaseExpr.EvalAsScriptObj(exec, exec.SelfScriptObject^);
-   if exec.SelfScriptObject^=nil then
-      RaiseObjectNotInstantiated;
+   CheckScriptObject(exec.SelfScriptObject^);
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, exec.SelfScriptObject^);
    Result:=FindVirtualMethod(exec.SelfScriptObject^.ClassSym);
 end;
@@ -4041,8 +4066,7 @@ begin
       buf:=FBaseExpr.EvalAsInteger(exec)
    else begin
       FBaseExpr.EvalAsScriptObj(exec, exec.SelfScriptObject^);
-      if exec.SelfScriptObject^=nil then
-         RaiseObjectNotInstantiated;
+      CheckScriptObject(exec.SelfScriptObject^);
       buf:=Int64(exec.SelfScriptObject^.ClassSym);
       exec.SelfScriptObject^:=nil;
    end;
@@ -4064,7 +4088,7 @@ begin
    clsInt:=exec.Stack.ReadIntValue(exec.Stack.StackPointer+FSelfAddr);
    classSym:=TClassSymbol(clsInt);
    if classSym=nil then
-      RaiseObjectNotInstantiated;
+      RaiseScriptError(EScriptError.Create(RTE_ClassTypeIsNil));
 
    Result:=ClassSym.VMTMethod(TMethodSymbol(FFunc).VMTIndex);
 end;
@@ -4577,23 +4601,25 @@ end;
 
 // wrapper to interact with an released script object
 type
-  TScriptObjectWrapper = class (TInterfacedObject, IScriptObj)
-  private
-    FScriptObj : TScriptObj;
-  protected
-    { IScriptObj }
-    function GetClassSym: TClassSymbol;
-    function GetData : TData;
-    function DataOfAddr(addr : Integer) : Variant;
-    function DataOfAddrAsString(addr : Integer) : String;
-    function DataOfAddrAsInteger(addr : Integer) : Int64;
-    procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
-    procedure SetData(const Dat: TData);
-    function GetExternalObject: TObject;
-    procedure SetExternalObject(Value: TObject);
-  public
-    constructor Create(ScriptObj : TScriptObj);
-end;
+   TScriptObjectWrapper = class (TInterfacedObject, IScriptObj)
+      private
+         FScriptObj : TScriptObj;
+      protected
+         { IScriptObj }
+         function GetClassSym: TClassSymbol;
+         function GetData : TData;
+         function DataOfAddr(addr : Integer) : Variant;
+         function DataOfAddrAsString(addr : Integer) : String;
+         function DataOfAddrAsInteger(addr : Integer) : Int64;
+         procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
+         procedure SetData(const Dat: TData);
+         function GetExternalObject: TObject;
+         procedure SetExternalObject(Value: TObject);
+         function GetDestroyed : Boolean;
+         procedure SetDestroyed(const val : Boolean);
+      public
+         constructor Create(ScriptObj : TScriptObj);
+   end;
 
 constructor TScriptObjectWrapper.Create(ScriptObj: TScriptObj);
 begin
@@ -4652,6 +4678,20 @@ end;
 procedure TScriptObjectWrapper.SetExternalObject(Value: TObject);
 begin
   FScriptObj.SetExternalObject(Value);
+end;
+
+// GetDestroyed
+//
+function TScriptObjectWrapper.GetDestroyed : Boolean;
+begin
+   Result:=FScriptObj.Destroyed
+end;
+
+// SetDestroyed
+//
+procedure TScriptObjectWrapper.SetDestroyed(const val : Boolean);
+begin
+   FScriptObj.Destroyed:=val;
 end;
 
 function TProgramInfo.FindClassMatch(AObject: TObject; ExactMatch: Boolean): TClassSymbol;
@@ -4848,6 +4888,7 @@ var
 begin
    if Assigned(FExecutionContext) then begin
       // we are released, so never do: Self as IScriptObj
+      FDestroyed:=True;
       iso:=TScriptObjectWrapper.Create(Self);
       ExecutionContext.DestroyScriptObj(iso);
       ExecutionContext.ScriptObjDestroyed(Self);
@@ -4916,6 +4957,20 @@ end;
 procedure TScriptObj.SetData(const Dat: TData);
 begin
   FData := Dat;
+end;
+
+// GetDestroyed
+//
+function TScriptObj.GetDestroyed : Boolean;
+begin
+   Result:=FDestroyed;
+end;
+
+// SetDestroyed
+//
+procedure TScriptObj.SetDestroyed(const val : Boolean);
+begin
+   FDestroyed:=True;
 end;
 
 procedure TScriptObj.SetExternalObject(Value: TObject);
@@ -7086,7 +7141,6 @@ begin
       end;
       methSym:=methSym.ParentMeth;
    end;
-
 end;
 
 end.

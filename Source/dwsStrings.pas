@@ -38,6 +38,7 @@ const
   SYS_TOBJECT = 'TObject';
   SYS_TOBJECT_CREATE = 'Create';
   SYS_TOBJECT_DESTROY = 'Destroy';
+  SYS_TOBJECT_FREE = 'Free';
   SYS_TOBJECT_CLASSNAME = 'ClassName';
   SYS_TOBJECT_CLASSTYPE = 'ClassType';
   SYS_EXCEPTION = 'Exception';
@@ -349,6 +350,8 @@ const
   RTE_OrdinalExpected = 'Ordinal expected';
 
   RTE_ObjectNotInstantiated = 'Object not instantiated';
+  RTE_ObjectAlreadyDestroyed = 'Object already destroyed';
+  RTE_ClassTypeIsNil = 'ClassType is nil';
 
   RTE_ScriptException = 'Script exception: %s';
   RTE_UserDefinedException = 'User defined exception';

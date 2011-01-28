@@ -1,0 +1,10 @@
+Free
+Object already destroyed [line: 17, column: 14]
+Object already destroyed [line: 22, column: 14]
+Destroy
+Object already destroyed [line: 31, column: 6]
+Object already destroyed [line: 36, column: 14]
+Object already destroyed [line: 41, column: 14]
+nil
+Object not instantiated [line: 51, column: 14]
+Object not instantiated [line: 56, column: 14]

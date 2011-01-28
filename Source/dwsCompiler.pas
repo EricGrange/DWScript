@@ -397,6 +397,14 @@ type
       procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
    end;
 
+   TObjectDestroyMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
+   TObjectFreeMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
    TExceptionContext = class
       CallStack : TExprBaseArray;
    end;
@@ -5100,14 +5108,11 @@ begin
    meth.Executable := ICallable(TEmptyFunc.Create);
    clsObject.AddMethod(meth);
    // Add destructor Destroy
-   meth := TMethodSymbol.Create(SYS_TOBJECT_DESTROY, fkDestructor, clsObject, cvPublic, False);
-   meth.IsVirtual := True;
-   meth.Executable := ICallable(TEmptyFunc.Create);
-   clsObject.AddMethod(meth);
-   // Add destructor Free
-   meth := TMethodSymbol.Create('Free', fkDestructor, clsObject, cvPublic, False);
-   meth.Executable := ICallable(TEmptyFunc.Create);
-   clsObject.AddMethod(meth);
+   TObjectDestroyMethod.Create(mkDestructor, [maVirtual], SYS_TOBJECT_DESTROY,
+                               [], '', clsObject, cvPublic, SystemTable);
+   // Add procedure Free
+   TObjectFreeMethod.Create(mkProcedure, [], SYS_TOBJECT_FREE,
+                            [], '', clsObject, cvPublic, SystemTable);
    // Add ClassName method
    TObjectClassNameMethod.Create(mkClassFunction, [], SYS_TOBJECT_CLASSNAME,
                                  [], SYS_STRING, clsObject, cvPublic, SystemTable);
@@ -5276,6 +5281,35 @@ end;
 procedure TObjectClassTypeMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
 begin
    Info.ResultAsInteger:=Int64(info.ValueAsClassSymbol[SYS_SELF]);
+end;
+
+// ------------------
+// ------------------ TObjectDestroyMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TObjectDestroyMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+var
+   scriptObj : PIScriptObj;
+begin
+   scriptObj:=info.Execution.SelfScriptObject;
+   scriptObj.Destroyed:=True;
+end;
+
+// ------------------
+// ------------------ TObjectFreeMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TObjectFreeMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+var
+   scriptObj : PIScriptObj;
+begin
+   scriptObj:=info.Execution.SelfScriptObject;
+   if scriptObj^<>nil then
+      scriptObj^.Destroyed:=True;
 end;
 
 // ------------------
