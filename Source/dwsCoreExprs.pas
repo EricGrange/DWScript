@@ -852,6 +852,18 @@ type
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
+   TBlockExprNoTable2 = class(TBlockExprBase)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+   TBlockExprNoTable3 = class(TBlockExprBase)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+   TBlockExprNoTable4 = class(TBlockExprBase)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
 
    // if FCond then FThen else FElse
    TIfExpr = class(TNoResultExpr)
@@ -4071,7 +4083,13 @@ begin
             FreeMem(FStatements);
          end;
       else
-         Result:=TBlockExprNoTable.Create(Prog, Pos);
+         case FCount of
+            2 : Result:=TBlockExprNoTable2.Create(Prog, Pos);
+            3 : Result:=TBlockExprNoTable3.Create(Prog, Pos);
+            4 : Result:=TBlockExprNoTable4.Create(Prog, Pos);
+         else
+            Result:=TBlockExprNoTable.Create(Prog, Pos);
+         end;
          TBlockExprNoTable(Result).FStatements:=FStatements;
          TBlockExprNoTable(Result).FCount:=FCount;
       end;
@@ -4099,6 +4117,69 @@ begin
       if exec.Status<>esrNone then Break;
       Inc(iterator);
    end;
+end;
+
+// ------------------
+// ------------------ TBlockExprNoTable2 ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TBlockExprNoTable2.EvalNoResult(exec : TdwsExecution);
+var
+   statements : PExprList;
+begin
+   statements:=FStatements;
+   exec.DoStep(statements[0]);
+   statements[0].EvalNoResult(exec);
+   if exec.Status<>esrNone then Exit;
+   exec.DoStep(statements[1]);
+   statements[1].EvalNoResult(exec);
+end;
+
+// ------------------
+// ------------------ TBlockExprNoTable3 ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TBlockExprNoTable3.EvalNoResult(exec : TdwsExecution);
+var
+   statements : PExprList;
+begin
+   statements:=FStatements;
+   exec.DoStep(statements[0]);
+   statements[0].EvalNoResult(exec);
+   if exec.Status<>esrNone then Exit;
+   exec.DoStep(statements[1]);
+   statements[1].EvalNoResult(exec);
+   if exec.Status<>esrNone then Exit;
+   exec.DoStep(statements[2]);
+   statements[2].EvalNoResult(exec);
+end;
+
+// ------------------
+// ------------------ TBlockExprNoTable4 ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TBlockExprNoTable4.EvalNoResult(exec : TdwsExecution);
+var
+   statements : PExprList;
+begin
+   statements:=FStatements;
+   exec.DoStep(statements[0]);
+   statements[0].EvalNoResult(exec);
+   if exec.Status<>esrNone then Exit;
+   exec.DoStep(statements[1]);
+   statements[1].EvalNoResult(exec);
+   if exec.Status<>esrNone then Exit;
+   exec.DoStep(statements[2]);
+   statements[2].EvalNoResult(exec);
+   if exec.Status<>esrNone then Exit;
+   exec.DoStep(statements[3]);
+   statements[3].EvalNoResult(exec);
 end;
 
 // ------------------

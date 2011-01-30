@@ -131,7 +131,7 @@ type
          constructor Create(const stackParams : TStackParameters);
          destructor Destroy; override;
 
-         procedure DoStep(expr : TExprBase);
+         procedure DoStep(expr : TExprBase); inline;
 
          procedure IncRecursion(caller : TExprBase); inline;
          procedure DecRecursion; inline;
