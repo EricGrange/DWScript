@@ -1981,7 +1981,9 @@ begin
       Exit(ReadNameInherited(IsWrite));
 
    // Get name
-   FTok.TestName;
+   if not FTok.TestName then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+
    nameToken := FTok.GetToken;
    namePos := FTok.HotPos;
 
