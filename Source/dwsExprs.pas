@@ -2212,14 +2212,14 @@ begin
    FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
 
    // Initialize shortcuts to often used symbols
-   FBaseTypes.FTypBoolean := SystemTable.FindSymbol(SYS_BOOLEAN) as TTypeSymbol;
-   FBaseTypes.FTypFloat := SystemTable.FindSymbol(SYS_FLOAT) as TTypeSymbol;
-   FBaseTypes.FTypInteger := SystemTable.FindSymbol(SYS_INTEGER) as TTypeSymbol;
-   FBaseTypes.FTypString := SystemTable.FindSymbol(SYS_STRING) as TTypeSymbol;
-   FBaseTypes.FTypVariant := SystemTable.FindSymbol(SYS_VARIANT) as TTypeSymbol;
+   FBaseTypes.FTypBoolean := SystemTable.FindSymbol(SYS_BOOLEAN, cvMagic) as TTypeSymbol;
+   FBaseTypes.FTypFloat := SystemTable.FindSymbol(SYS_FLOAT, cvMagic) as TTypeSymbol;
+   FBaseTypes.FTypInteger := SystemTable.FindSymbol(SYS_INTEGER, cvMagic) as TTypeSymbol;
+   FBaseTypes.FTypString := SystemTable.FindSymbol(SYS_STRING, cvMagic) as TTypeSymbol;
+   FBaseTypes.FTypVariant := SystemTable.FindSymbol(SYS_VARIANT, cvMagic) as TTypeSymbol;
    FBaseTypes.FTypNil := TNilSymbol.Create;
-   FBaseTypes.FTypObject := TClassSymbol(SystemTable.FindSymbol(SYS_TOBJECT));
-   FBaseTypes.FTypException := SystemTable.FindSymbol(SYS_EXCEPTION) as TClassSymbol;
+   FBaseTypes.FTypObject := TClassSymbol(SystemTable.FindSymbol(SYS_TOBJECT, cvMagic));
+   FBaseTypes.FTypException := SystemTable.FindSymbol(SYS_EXCEPTION, cvMagic) as TClassSymbol;
 end;
 
 // Destroy
@@ -4376,7 +4376,7 @@ function TProgramInfo.GetVars(const str : string): IInfo;
 var
    sym : TSymbol;
 begin
-   sym:=FTable.FindSymbol(str);
+   sym:=FTable.FindSymbol(str, cvMagic);
 
    if not Assigned(sym) then
       RaiseVariableNotFound(str)
@@ -4397,7 +4397,7 @@ function TProgramInfo.GetFunc(const s: string): IInfo;
 var
   sym: TSymbol;
 begin
-  sym := FTable.FindSymbol(s);
+  sym := FTable.FindSymbol(s, cvMagic);
 
   if not Assigned(sym) then
     raise Exception.CreateFmt(RTE_FunctionNotFound, [s]);
@@ -4418,7 +4418,7 @@ var
   data: TData;
   typSym: TSymbol;
 begin
-  typSym := FTable.FindSymbol(DataType);
+  typSym := FTable.FindSymbol(DataType, cvMagic);
 
   if not Assigned(typSym) then
     raise Exception.CreateFmt(RTE_DatatypeNotFound, [DataType]);
@@ -5242,7 +5242,7 @@ begin
   if not (FTypeSym is TClassSymbol) then
     raise Exception.CreateFmt(RTE_NoClassNoMethod, [FTypeSym.Caption, s]);
 
-  sym := TClassSymbol(FTypeSym).Members.FindSymbol(s);
+  sym := TClassSymbol(FTypeSym).Members.FindSymbol(s, cvMagic);
 
   if not (sym is TMethodSymbol) then
     sym := nil;
@@ -5491,7 +5491,7 @@ begin
   if not FUsesTempParams then
     InitTempParams;
 
-  tp := TTempParam(FTempParams.FindSymbol(s));
+  tp := TTempParam(FTempParams.FindSymbol(s, cvMagic));
 
   if Assigned(tp) then
     SetChild(Result, FProgramInfo, tp.Typ, tp.FData, 0)
@@ -6780,7 +6780,7 @@ begin
   if not Assigned(FTempParams) then
     InitTempParams;
 
-  tp := TTempParam(FTempParams.FindSymbol(s));
+  tp := TTempParam(FTempParams.FindSymbol(s, cvMagic));
 
   if Assigned(tp) then
     SetChild(Result, FProgramInfo, tp.Typ, tp.FData, 0)

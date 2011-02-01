@@ -1249,7 +1249,7 @@ function TdwsUnit.GetSymbol(Table: TSymbolTable; const Name: string): TSymbol;
   item: TdwsSymbol;
   coll: TdwsCollection; }
 begin
-   Result:=Table.FindSymbol(Name);
+   Result:=Table.FindSymbol(Name, cvMagic);
    if not Assigned(Result) then
       raise EHandledGenerationError.CreateFmt('Symbol not found: %s in %s', [Name, self.Name]);
 //      if FIs
@@ -2419,7 +2419,7 @@ begin
    FIsGenerating := True;
 
    classSym := nil;
-   sym := GetUnit.Table.FindSymbol(Name);
+   sym := GetUnit.Table.FindSymbol(Name, cvMagic);
 
    if Assigned(sym) then begin
       if sym is TClassSymbol then begin
@@ -3018,7 +3018,7 @@ begin
     // insert links to units this unit depends of
     for x := 0 to FDependencies.Count - 1 do
     begin
-      sym := UnitSyms.FindSymbol(FDependencies[x]);
+      sym := UnitSyms.FindSymbol(FDependencies[x], cvMagic);
       Result.AddParent(TUnitSymbol(sym).Table);
       Result.AddSymbol(TUnitSymbol.Create(TUnitSymbol(sym).Name,
         TUnitSymbol(sym).Table));
@@ -3094,7 +3094,7 @@ begin
   FIsGenerating := True;
   CheckName(Table, Name);
 
-  Result := TEnumerationSymbol.Create(Name, Table.FindSymbol(SYS_INTEGER) as TTypeSymbol);
+  Result := TEnumerationSymbol.Create(Name, Table.FindSymbol(SYS_INTEGER, cvMagic) as TTypeSymbol);
   try
     for x := 0 to FElements.Count - 1 do
       TEnumerationSymbol(Result).AddElement(
@@ -3488,7 +3488,7 @@ begin
 
   for x := 0 to FDependencies.Count - 1 do
   begin
-    sym := UnitSyms.FindSymbol(FDependencies[x]);
+    sym := UnitSyms.FindSymbol(FDependencies[x], cvMagic);
     try
       UnitTable.AddParent(TUnitSymbol(sym).Table);
     except

@@ -132,9 +132,9 @@ var
    stringsSymbol : TClassSymbol;
 begin
    prog:=FCompiler.Compile('');
-   stringsSymbol:=prog.Table.FindSymbol('TStrings') as TClassSymbol;
+   stringsSymbol:=prog.Table.FindSymbol('TStrings', cvMagic) as TClassSymbol;
    CheckEquals('property Strings[x: Integer]: String read GetStrings write SetStrings; default;',
-               stringsSymbol.Members.FindSymbol('Strings').Description, 'Strings Description');
+               stringsSymbol.Members.FindSymbol('Strings', cvPublic).Description, 'Strings Description');
 end;
 
 // Execution

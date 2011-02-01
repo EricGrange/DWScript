@@ -463,25 +463,25 @@ var
 begin
    prog:=FCompiler.Compile('');
 
-   sym:=prog.Table.FindSymbol('Func1');
+   sym:=prog.Table.FindSymbol('Func1', cvMagic);
    CheckEquals('function Func1(): Integer', sym.Description);
-   sym:=prog.Table.FindSymbol('FuncOne');
+   sym:=prog.Table.FindSymbol('FuncOne', cvMagic);
    CheckEquals('function FuncOne(): String', sym.Description);
-   sym:=prog.Table.FindSymbol('FuncOneDotFive');
+   sym:=prog.Table.FindSymbol('FuncOneDotFive', cvMagic);
    CheckEquals('function FuncOneDotFive(): Float', sym.Description);
-   sym:=prog.Table.FindSymbol('FuncTrue');
+   sym:=prog.Table.FindSymbol('FuncTrue', cvMagic);
    CheckEquals('function FuncTrue(): Boolean', sym.Description);
-   sym:=prog.Table.FindSymbol('FuncException');
+   sym:=prog.Table.FindSymbol('FuncException', cvMagic);
    CheckEquals('procedure FuncException()', sym.Description);
-   sym:=prog.Table.FindSymbol('FuncInc');
+   sym:=prog.Table.FindSymbol('FuncInc', cvMagic);
    CheckEquals('function FuncInc(v: Integer): Integer', sym.Description);
-   sym:=prog.Table.FindSymbol('FuncIncN');
+   sym:=prog.Table.FindSymbol('FuncIncN', cvMagic);
    CheckEquals('function FuncIncN(v: Integer; n: Integer = 1): Integer', sym.Description);
 
-   sym:=prog.Table.FindSymbol('TAutoEnum');
+   sym:=prog.Table.FindSymbol('TAutoEnum', cvMagic);
    CheckEquals('(aeVal9, aeVal8, aeVal7, aeVal6, aeVal5, aeVal4, aeVal3, aeVal2, aeVal1)', sym.Description);
 
-   sym:=prog.Table.FindSymbol('TTestClass');
+   sym:=prog.Table.FindSymbol('TTestClass', cvMagic);
    sym:=(sym as TClassSymbol).Members.FindLocal('MyReadOnlyProp');
    CheckEquals('property MyReadOnlyProp: Integer read GetMyProp', sym.Description);
 end;

@@ -218,6 +218,7 @@ type
       procedure CheckSpecialName(const name: string);
       function CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
       procedure CompareFuncSymbols(A, B: TFuncSymbol; IsCheckingParameters: Boolean);
+      function CurrentClass : TClassSymbol;
 
       function OpenStreamForFile(const scriptName : String) : TStream;
       function GetScriptSource(const scriptName : String) : String;
@@ -285,7 +286,7 @@ type
       procedure ReadPostConditions(funcSymbol : TFuncSymbol; conditions : TSourcePostConditions;
                                    condsSymClass : TConditionSymbolClass);
       function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
-      function ReadProperty(ClassSym: TClassSymbol; aVisibility : TClassVisibility): TPropertySymbol;
+      function ReadPropertyDecl(ClassSym: TClassSymbol; aVisibility : TClassVisibility): TPropertySymbol;
       function ReadPropertyExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TNoPosExpr;
       function ReadPropertyReadExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol): TNoPosExpr;
       function ReadPropertyWriteExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol): TNoPosExpr;
@@ -691,7 +692,7 @@ begin
                FProg.Table.AddParent(unitSymbol.Table);
             end;
 
-            unitSymbol:=FProg.Table.FindSymbol(SYS_INTERNAL) as TUnitSymbol;
+            unitSymbol:=FProg.Table.FindSymbol(SYS_INTERNAL, cvMagic) as TUnitSymbol;
             FProg.Table.AddSymbol(TUnitSymbol.Create( SYS_SYSTEM, unitSymbol.Table, False ));
 
          finally
@@ -1117,7 +1118,7 @@ begin
     if not FTok.TestDelete(ttEQ) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
 
-    typOld := FProg.Table.FindSymbol(Name);
+    typOld := FProg.Table.FindSymbol(Name, cvMagic);
     oldSymPos := nil;
     if coSymbolDictionary in FCompilerOptions then
     begin
@@ -1184,7 +1185,7 @@ begin
       funcPos := FTok.HotPos;
       FTok.KillToken;
 
-      sym := FProg.Table.FindSymbol(Name);
+      sym := FProg.Table.FindSymbol(Name, cvMagic);
 
       // Open context for procedure declaration. Closed in ReadProcBody.
       if coContextMap in FCompilerOptions then
@@ -1316,7 +1317,7 @@ begin
    methPos := FTok.HotPos;
 
    // Check if name is already used
-   meth := ClassSym.Members.FindSymbol(Name);
+   meth := ClassSym.Members.FindSymbolFromClass(Name, ClassSym);
    if meth is TFieldSymbol then
       FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_FieldRedefined, [Name])
    else if meth is TPropertySymbol then
@@ -1412,7 +1413,7 @@ begin
   FTok.KillToken;
   FTok.Test(ttBLEFT);
 
-  meth := ClassSym.Members.FindSymbol(methName);
+  meth := ClassSym.Members.FindSymbol(methName, cvPrivate);
 
   if not (meth is TMethodSymbol) then
     FMsgs.AddCompilerStop(methPos, CPE_ImplNotAMethod);
@@ -1910,7 +1911,7 @@ begin
     name := FTok.GetToken.FString;
     FTok.KillToken;
 
-    sym := ParentSym.Members.FindSymbol(name);
+    sym := ParentSym.Members.FindSymbol(name, cvPrivate);
   end
   else if not methSym.IsOverride then
     FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedWithoutName)
@@ -1995,7 +1996,7 @@ begin
    end;
 
    // Find name in symboltable
-   sym := FProg.Table.FindSymbol(nameToken.FString);
+   sym := FProg.Table.FindSymbol(nameToken.FString, cvPrivate);
 
    if not Assigned(sym) then
       FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownName, [nameToken.FString]);
@@ -2402,7 +2403,7 @@ var
    member: TSymbol;
    defaultProperty: TPropertySymbol;
    symPos: TScriptPos;
-   baseType: TTypeSymbol;
+   baseType : TTypeSymbol;
    dataExpr : TDataExpr;
 begin
    Result := Expr;
@@ -2431,7 +2432,9 @@ begin
                end
                // Class
                else if baseType is TClassSymbol then begin
-                  member := TClassSymbol(baseType).Members.FindSymbol(Name);
+
+                  member:=TClassSymbol(baseType).Members.FindSymbolFromClass(Name, CurrentClass);
+
                   if coSymbolDictionary in FCompilerOptions then
                      FProg.SymbolDictionary.Add(member, symPos);
 
@@ -2452,7 +2455,8 @@ begin
                end
                // Class Of
                else if baseType is TClassOfSymbol then begin
-                  member := TClassSymbol(baseType.Typ).Members.FindSymbol(Name);
+
+                  member := TClassSymbol(baseType.Typ).Members.FindSymbolFromClass(Name, CurrentClass);
                   if coSymbolDictionary in FCompilerOptions then
                      FProg.SymbolDictionary.Add(member, FTok.HotPos);
 
@@ -2592,7 +2596,7 @@ begin
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
          enumPos:=FTok.HotPos;
-         sym:=FProg.Table.FindSymbol(FTok.GetToken.FString);
+         sym:=FProg.Table.FindSymbol(FTok.GetToken.FString, cvPrivate);
          if not Assigned(sym) then
             FMsgs.AddCompilerStopFmt(enumPos, CPE_UnknownName, [FTok.GetToken.FString]);
          FTok.KillToken;
@@ -3160,7 +3164,7 @@ begin
    name := FTok.GetToken.FString;
    FTok.KillToken;
 
-   typ := FProg.Table.FindSymbol(name);
+   typ := FProg.Table.FindSymbol(name, cvMagic);
    if not Assigned(typ) then
       FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownClass, [name]);
    if not (typ is TClassSymbol) then
@@ -3187,7 +3191,7 @@ var
    tt : TTokenType;
 begin
    // Check for a forward declaration of this class
-   sym:=FProg.Table.FindSymbol(TypeName);
+   sym:=FProg.Table.FindSymbol(TypeName, cvMagic);
    Result:=nil;
 
    if Assigned(sym) then begin
@@ -3232,7 +3236,7 @@ begin
             Name := FTok.GetToken.FString;
             FTok.KillToken;
 
-            Typ := FProg.Table.FindSymbol(Name);
+            Typ := FProg.Table.FindSymbol(Name, cvMagic);
             if not (Typ is TClassSymbol) then begin
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NotAClass, [Name]);
                Typ:=FProg.TypObject;
@@ -3251,7 +3255,7 @@ begin
 
          end else Result.InheritFrom(FProg.TypObject);
 
-         visibility:=cvPublic;
+         visibility:=cvPublished;
 
          // standard class definition
          while not FTok.Test(ttEND) do begin
@@ -3281,7 +3285,7 @@ begin
 
             end else if FTok.TestDelete(ttPROPERTY) then begin
 
-               propSym := ReadProperty(Result, visibility);
+               propSym := ReadPropertyDecl(Result, visibility);
                defProp := False;
                // Array-Prop can be default
                if propSym.ArrayIndices.Count > 0 then begin
@@ -3451,7 +3455,7 @@ begin
       usesPos:=FTok.HotPos;
       FTok.KillToken;
 
-      sym:=ClassSym.Members.FindSymbol(usesName);
+      sym:=ClassSym.Members.FindSymbol(usesName, cvPrivate);
 
       if    (not Assigned(sym))
          or (not (sym is TMethodSymbol)) then
@@ -3484,7 +3488,7 @@ begin
    end;
 end;
 
-function TdwsCompiler.ReadProperty(ClassSym: TClassSymbol; aVisibility : TClassVisibility): TPropertySymbol;
+function TdwsCompiler.ReadPropertyDecl(ClassSym: TClassSymbol; aVisibility : TClassVisibility): TPropertySymbol;
 var
   x: Integer;
   name: string;
@@ -3503,7 +3507,7 @@ begin
   FTok.KillToken;
 
   // Check if property name is free
-  sym := ClassSym.Members.FindSymbol(name);
+  sym := ClassSym.Members.FindSymbolFromClass(name, CurrentClass);
   if Assigned(sym) then
     if sym is TPropertySymbol then
     begin
@@ -3548,13 +3552,12 @@ begin
         accessPos := FTok.HotPos;
         FTok.KillToken;
 
-        sym := ClassSym.Members.FindSymbol(name);
+        sym := ClassSym.Members.FindSymbol(name, cvPrivate);
 
         if not Assigned(sym) or (sym is TPropertySymbol) then
         begin
           { Register the error and break the compilation process }
-          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_FieldMethodUnknown, [name]);
-          raise EClassPropertyIncompleteError.Create('');
+          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_FieldMethodUnknown, [name]);
         end;
 
         if sym is TMethodSymbol then
@@ -3584,7 +3587,7 @@ begin
         FTok.KillToken;
 
         // Check if symbol exists
-        sym := ClassSym.Members.FindSymbol(Name);
+        sym := ClassSym.Members.FindSymbol(Name, cvPrivate);
 
         if not Assigned(sym) or (sym is TPropertySymbol) then
         begin
@@ -3881,7 +3884,7 @@ begin
     name := FTok.GetToken.FString;
     namePos := FTok.HotPos;        // get the position before token is deleted
     FTok.KillToken;
-    sym := FProg.Table.FindSymbol(name);
+    sym := FProg.Table.FindSymbol(name, cvMagic);
     Result := nil;
 
     if sym is TUnitSymbol then
@@ -4932,6 +4935,15 @@ begin
   end;
 end;
 
+// CurrentClass
+//
+function TdwsCompiler.CurrentClass : TClassSymbol;
+begin
+   if (FProg is TdwsProcedure) and (TdwsProcedure(FProg).Func is TMethodSymbol) then
+      Result:=TMethodSymbol(TdwsProcedure(FProg).Func).ClassSymbol
+   else Result:=nil;
+end;
+
 function TdwsCompiler.ReadConnectorSym(const Name: string;
   var BaseExpr: TNoPosExpr; const ConnectorType: IConnectorType; IsWrite: Boolean): TNoPosExpr;
 
@@ -5798,7 +5810,7 @@ begin
 
    // Test for statements like "Low(Integer)"
    if FTok.Test(ttName) and FTok.NextTest(ttBRIGHT) then
-      argTyp := FProg.Table.FindSymbol(FTok.GetToken.FString)
+      argTyp := FProg.Table.FindSymbol(FTok.GetToken.FString, cvMagic)
    else argTyp := nil;
 
    if     Assigned(argTyp)

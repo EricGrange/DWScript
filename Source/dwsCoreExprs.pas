@@ -5133,9 +5133,9 @@ var
 begin
    p:=Pos('.', name);
    if p<=0 then
-      Result:=symbolTable.FindSymbol(name)
+      Result:=symbolTable.FindSymbol(name, cvMagic)
    else begin
-      Result:=symbolTable.FindSymbol(Copy(name, 1, p-1));
+      Result:=symbolTable.FindSymbol(Copy(name, 1, p-1), cvMagic);
       if Result=nil then Exit;
       identifier:=Copy(name, p+1, MaxInt);
       if Result.InheritsFrom(TUnitSymbol) then
@@ -5180,12 +5180,12 @@ var
    end;
 
 begin
-   typInteger:=table.FindSymbol(SYS_INTEGER) as TTypeSymbol;
-   typFloat:=table.FindSymbol(SYS_FLOAT) as TTypeSymbol;
-   typBoolean:=table.FindSymbol(SYS_BOOLEAN) as TTypeSymbol;
-   typString:=table.FindSymbol(SYS_STRING) as TTypeSymbol;
-   typVariant:=table.FindSymbol(SYS_VARIANT) as TTypeSymbol;
-   typClassOf:=table.FindSymbol(SYS_TCLASS) as TTypeSymbol;
+   typInteger:=table.FindSymbol(SYS_INTEGER, cvMagic) as TTypeSymbol;
+   typFloat:=table.FindSymbol(SYS_FLOAT, cvMagic) as TTypeSymbol;
+   typBoolean:=table.FindSymbol(SYS_BOOLEAN, cvMagic) as TTypeSymbol;
+   typString:=table.FindSymbol(SYS_STRING, cvMagic) as TTypeSymbol;
+   typVariant:=table.FindSymbol(SYS_VARIANT, cvMagic) as TTypeSymbol;
+   typClassOf:=table.FindSymbol(SYS_TCLASS, cvMagic) as TTypeSymbol;
 
    // computation operators
 

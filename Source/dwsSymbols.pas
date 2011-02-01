@@ -1033,7 +1033,7 @@ type
          function Remove(Sym: TSymbol): Integer;
          procedure Clear;
 
-         function FindSymbol(const aName : string) : TSymbol; virtual;
+         function FindSymbol(const aName : string; minVisibility : TClassVisibility) : TSymbol; virtual;
 
          function HasClass(const aClass : TSymbolClass) : Boolean;
 
@@ -1061,9 +1061,15 @@ type
    // TMembersSymbolTable
    //
    TMembersSymbolTable = class (TSymbolTable)
+      private
+         FClassSym : TClassSymbol;
+
       public
          procedure AddParent(parent : TMembersSymbolTable);
-         function FindSymbol(const aName : String; minVisibility : TClassVisibility = cvMagic) : TSymbol; reintroduce;
+         function FindSymbol(const aName : String; minVisibility : TClassVisibility) : TSymbol; override;
+         function FindSymbolFromClass(const aName : String; fromClass : TClassSymbol) : TSymbol; reintroduce;
+
+         property ClassSym : TClassSymbol read FClassSym write FClassSym;
    end;
 
    // TUnSortedSymbolTable
@@ -1129,7 +1135,7 @@ type
      constructor Create(Parent: TStaticSymbolTable; AddrGenerator: TAddrGenerator = nil);
      destructor Destroy; override;
      function FindLocal(const Name: string): TSymbol; override;
-     function FindSymbol(const Name: string): TSymbol; override;
+     function FindSymbol(const Name: string; minVisibility : TClassVisibility): TSymbol; override;
      procedure Initialize(const msgs : TdwsCompileMessageList); override;
      property Parent: TStaticSymbolTable read FParent;
    end;
@@ -1561,7 +1567,7 @@ begin
   begin
     Self.Create(FuncName, fkFunction, 1);
     // Set function type
-    typSym := Table.FindSymbol(FuncType);
+    typSym := Table.FindSymbol(FuncType, cvMagic);
     if not (Assigned(typSym) and (typSym.BaseType <> nil)) then
       raise Exception.CreateFmt(CPE_TypeIsUnknown, [FuncType]);
     Self.SetType(typSym);
@@ -1594,7 +1600,7 @@ var
 begin
   for x := 0 to Length(FuncParams) - 1 do
   begin
-    typSym := Table.FindSymbol(FuncParams[x].ParamType);
+    typSym := Table.FindSymbol(FuncParams[x].ParamType, cvMagic);
     if not Assigned(typSym) then
       raise Exception.CreateFmt(CPE_TypeForParamNotFound, [FuncParams[x].ParamType,
         FuncParams[x].ParamName, Name]);
@@ -1925,7 +1931,7 @@ begin
       if not (Kind in [fkFunction, fkMethod]) then
          raise Exception.Create(CPE_NoResultTypeRequired);
 
-      typSym := Table.FindSymbol(MethType);
+      typSym := Table.FindSymbol(MethType, cvMagic);
       if not Assigned(typSym) then
          raise Exception.CreateFmt(CPE_TypeIsUnknown, [MethType]);
       SetType(typSym);
@@ -2281,6 +2287,7 @@ end;
 function TClassSymbol.CreateMembersTable : TMembersSymbolTable;
 begin
    Result:=TMembersSymbolTable.Create(nil);
+   Result.ClassSym:=Self;
 end;
 
 procedure TClassSymbol.AddField(Sym: TFieldSymbol);
@@ -2408,7 +2415,7 @@ end;
 function TClassSymbol.IsOfType(typSym : TSymbol) : Boolean;
 begin
    Result:=(Self=typSym);
-   if Result then Exit;
+   if Result or (Self=nil) then Exit;
    if Parent<>nil then
       Result:=Parent.IsOfType(typSym)
    else Result:=False;
@@ -2965,19 +2972,20 @@ end;
 
 // FindSymbol
 //
-function TSymbolTable.FindSymbol(const aName : String) : TSymbol;
+function TSymbolTable.FindSymbol(const aName : String; minVisibility : TClassVisibility) : TSymbol;
 var
    i : Integer;
 begin
    // Find Symbol in the local List
    Result:=FindLocal(aName);
-   if Assigned(Result) then
+   if Assigned(Result) and Result.IsVisibleFor(minVisibility) then
       Exit;
+   Result:=nil;
 
    // Find Symbol in all parent lists
    i:=0;
    while not Assigned(Result) and (i<ParentCount) do begin
-      Result:=Parents[i].FindSymbol(aName);
+      Result:=Parents[i].FindSymbol(aName, minVisibility);
       Inc(i);
    end;
 end;
@@ -3145,7 +3153,7 @@ end;
 
 // FindSymbol
 //
-function TMembersSymbolTable.FindSymbol(const aName : String; minVisibility : TClassVisibility = cvMagic) : TSymbol;
+function TMembersSymbolTable.FindSymbol(const aName : String; minVisibility : TClassVisibility) : TSymbol;
 var
    i : Integer;
 begin
@@ -3153,6 +3161,7 @@ begin
    Result:=FindLocal(aName);
    if Assigned(Result) and Result.IsVisibleFor(minVisibility) then
       Exit;
+   Result:=nil;
 
    // Find Symbol in all parent lists
    if minVisibility=cvPrivate then
@@ -3162,6 +3171,19 @@ begin
       Result:=(Parents[i] as TMembersSymbolTable).FindSymbol(aName, minVisibility);
       Inc(i);
    end;
+end;
+
+// FindSymbolFromClass
+//
+function TMembersSymbolTable.FindSymbolFromClass(const aName : String; fromClass : TClassSymbol) : TSymbol;
+begin
+   if fromClass=nil then
+      Result:=FindSymbol(aName, cvPublic)
+   else if fromClass=ClassSym then
+      Result:=FindSymbol(aName, cvPrivate)
+   else if fromClass.IsOfType(ClassSym) then
+      Result:=FindSymbol(aName, cvProtected)
+   else Result:=FindSymbol(aName, cvPublic);
 end;
 
 // ------------------
@@ -3607,11 +3629,11 @@ begin
     Result := inherited FindLocal(Name);
 end;
 
-function TLinkedSymbolTable.FindSymbol(const Name: string): TSymbol;
+function TLinkedSymbolTable.FindSymbol(const Name: string; minVisibility : TClassVisibility): TSymbol;
 begin
-  Result := FParent.FindSymbol(Name);
+  Result := FParent.FindSymbol(Name, minVisibility);
   if not Assigned(Result) then
-    Result := inherited FindSymbol(Name);
+    Result := inherited FindSymbol(Name, minVisibility);
 end;
 
 procedure TLinkedSymbolTable.Initialize(const msgs : TdwsCompileMessageList);

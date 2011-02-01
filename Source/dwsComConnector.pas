@@ -226,7 +226,7 @@ var
   VariantSym: TSymbol;
   ComVariantSym: TTypeSymbol;
 begin
-  VariantSym := Table.FindSymbol('Variant');
+  VariantSym := Table.FindSymbol('Variant', cvMagic);
 
   // Datatype of com-objects
   ComVariantSym := TConnectorSymbol.Create('ComVariant', TComConnectorType.Create(Table));
@@ -325,7 +325,7 @@ begin
     end;
   end;
 
-  TypSym := FTable.FindSymbol('ComVariant');
+  TypSym := FTable.FindSymbol('ComVariant', cvMagic);
   if isValid then
   begin
     if IsWrite then
@@ -341,7 +341,7 @@ end;
 function TComConnectorType.HasMember(Const MemberName: string;
   var TypSym: TSymbol; IsWrite: Boolean): IConnectorMember;
 begin
-  TypSym := FTable.FindSymbol('ComVariant');
+  TypSym := FTable.FindSymbol('ComVariant', cvMagic);
   Result := TComConnectorMember.Create(MemberName);
 end;
 
@@ -361,7 +361,7 @@ begin
     end;
   end;
 
-  TypSym := FTable.FindSymbol('ComVariant');
+  TypSym := FTable.FindSymbol('ComVariant', cvMagic);
   if isValid then
   begin
     Result := TComConnectorCall.Create(MethodName, Params);
@@ -637,8 +637,8 @@ var
 begin
   Result := nil;
 
-  SymVariant := FTable.FindSymbol(SYS_VARIANT);
-  SymInteger := FTable.FindSymbol(SYS_INTEGER);
+  SymVariant := FTable.FindSymbol(SYS_VARIANT, cvMagic);
+  SymInteger := FTable.FindSymbol(SYS_INTEGER, cvMagic);
 
   l := Length(Params);
   if IsWrite then
@@ -674,7 +674,7 @@ begin
   if SameText(MemberName, 'high') then
   begin
     Result := IComVariantArrayHighBound(Self);
-    TypSym := FTable.FindSymbol(SYS_INTEGER);
+    TypSym := FTable.FindSymbol(SYS_INTEGER, cvMagic);
   end
   else if IsWrite then
     Result := nil
@@ -683,17 +683,17 @@ begin
     if SameText(MemberName, 'length') then
     begin
       Result := IComVariantArrayLength(Self);
-      TypSym := FTable.FindSymbol(SYS_INTEGER);
+      TypSym := FTable.FindSymbol(SYS_INTEGER, cvMagic);
     end
     else if SameText(MemberName, 'low') then
     begin
       Result := IComVariantArrayLowBound(Self);
-      TypSym := FTable.FindSymbol(SYS_INTEGER);
+      TypSym := FTable.FindSymbol(SYS_INTEGER, cvMagic);
     end
     else if SameText(MemberName, 'dimcount') then
     begin
       Result := IComVariantArrayDimCount(Self);
-      TypSym := FTable.FindSymbol(SYS_INTEGER);
+      TypSym := FTable.FindSymbol(SYS_INTEGER, cvMagic);
     end
     else
       Result := nil;
@@ -704,22 +704,22 @@ function TComVariantArrayType.HasMethod(Const MethodName: string;
   const Params: TConnectorParamArray; var TypSym: TSymbol): IConnectorCall;
 begin
   if (Length(Params) = 1) and
-    FTable.FindSymbol(SYS_INTEGER).IsCompatible(Params[0].TypSym) then
+    FTable.FindSymbol(SYS_INTEGER, cvMagic).IsCompatible(Params[0].TypSym) then
   begin
     if SameText(MethodName, 'length') then
     begin
       Result := IComVariantArrayLengthCall(Self);
-      TypSym := FTable.FindSymbol(SYS_INTEGER);
+      TypSym := FTable.FindSymbol(SYS_INTEGER, cvMagic);
     end
     else if SameText(MethodName, 'low') then
     begin
       Result := IComVariantArrayLowBoundCall(Self);
-      TypSym := FTable.FindSymbol(SYS_INTEGER);
+      TypSym := FTable.FindSymbol(SYS_INTEGER, cvMagic);
     end
     else if SameText(MethodName, 'high') then
     begin
       Result := IComVariantArrayHighBoundCall(Self);
-      TypSym := FTable.FindSymbol(SYS_INTEGER);
+      TypSym := FTable.FindSymbol(SYS_INTEGER, cvMagic);
     end
     else
       Result := nil;

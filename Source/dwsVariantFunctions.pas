@@ -138,7 +138,7 @@ var
    i : Integer;
    T, E : TTypeSymbol;
 begin
-   T := SystemTable.FindSymbol('Integer') as TTypeSymbol;
+   T := SystemTable.FindSymbol('Integer', cvMagic) as TTypeSymbol;
    E := TEnumerationSymbol.Create('TVarType', T);
    UnitTable.AddSymbol(E);
    for i:=Low(cVarTypes) to High(cVarTypes) do
