@@ -2,7 +2,7 @@ unit UdwsUtilsTests;
 
 interface
 
-uses Windows, Classes, SysUtils, TestFrameWork, dwsUtils;
+uses Windows, Classes, SysUtils, TestFrameWork, dwsUtils, dwsJSON;
 
 type
 
@@ -17,6 +17,9 @@ type
          procedure StackIntegerTest;
          procedure WriteOnlyBlockStreamTest;
          procedure TightListTest;
+
+         procedure JSONTest;
+         procedure ParseJSON;
    end;
 
 // ------------------------------------------------------------------
@@ -130,6 +133,77 @@ begin
    CheckEquals(1, FTightList.IndexOf(Self), 'three search Self');
 
    FTightList.Clear
+end;
+
+// JSONTest
+//
+procedure TdwsUtilsTests.JSONTest;
+var
+   json : TdwsJSONObject;
+begin
+   json:=TdwsJSONObject.Create(nil);
+
+   CheckEquals('{}', json.ToString);
+   CheckEquals('{ }', json.ToBeautifiedString(0, 3));
+
+   json.AddValue('hello').AsString:='world';
+
+   CheckEquals('{"hello":"world"}', json.ToString);
+   CheckEquals('{'#13#10#9'"hello" : "world"'#13#10'}', json.ToBeautifiedString(0, 1));
+
+   with json.AddArray('items') do begin
+      AddValue;
+      AddValue.AsNumber:=12.3;
+      AddValue.AsBoolean:=True;
+      AddValue.AsBoolean:=False;
+      AddValue.IsNull:=True;
+   end;
+
+   CheckEquals('{"hello":"world","items":[null,12.3,true,false,null]}', json.ToString);
+   CheckEquals( '{'#13#10
+                  +#9'"hello" : "world",'#13#10
+                  +#9'"items" : ['#13#10
+                     +#9#9'null,'#13#10
+                     +#9#9'12.3,'#13#10
+                     +#9#9'true,'#13#10
+                     +#9#9'false,'#13#10
+                     +#9#9'null'#13#10
+                  +#9']'#13#10
+               +'}', json.ToBeautifiedString(0, 1));
+
+   json.Free;
+end;
+
+// ParseJSON
+//
+procedure TdwsUtilsTests.ParseJSON;
+var
+   json : TdwsJSONValue;
+   sl : TStringList;
+begin
+   json:=TdwsJSONValue.ParseString('"hello"');
+   CheckEquals(TdwsJSONImmediate.ClassName, json.ClassName, '"hello"');
+   CheckEquals('"hello"', json.ToString, '"hello"');
+   json.Free;
+
+   json:=TdwsJSONValue.ParseString('{"hello":"world","abc":123}');
+   CheckEquals(TdwsJSONObject.ClassName, json.ClassName, '"hello"');
+   CheckEquals('{"hello":"world","abc":123}', json.ToString, '"hello"');
+   json.Free;
+
+   sl:=TStringList.Create;
+   try
+      sl.LoadFromFile(ExtractFilePath(ParamStr(0))+'\Data\json.txt');
+      json:=TdwsJSONValue.ParseString(sl.Text);
+      CheckEquals(TdwsJSONObject.ClassName, json.ClassName, 'json.txt');
+      CheckEquals(1, json.ElementCount, 'json.txt');
+      CheckEquals(3, json.Elements[0].ElementCount, 'json.txt');
+      CheckEquals('"templates"', json[0]['servlet'][0]['init-param']['templatePath'].ToString, 'json.txt');
+      CheckEquals('', json['doh'][5]['bug'].ToString, 'json.txt');
+      json.Free;
+   finally
+      sl.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------
