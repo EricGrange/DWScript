@@ -241,7 +241,7 @@ implementation
 // ------------------------------------------------------------------
 
 type
-   TThreadedDebugger = class (TThread)
+   TThreadedDebugger = class (TdwsThread)
       FMain : TdwsDebugger;
       FExec : IdwsProgramExecution;
       constructor Create(exec : IdwsProgramExecution; main : TdwsDebugger);
@@ -269,7 +269,7 @@ type
 //
 constructor TThreadedDebugger.Create(exec : IdwsProgramExecution; main : TdwsDebugger);
 begin
-   inherited Create;
+   inherited Create(False);
    FExec:=exec;
    FMain:=main;
    FreeOnTerminate:=True;
@@ -552,7 +552,7 @@ begin
       expr:=Evaluate(expression);
       try
          Result:='(no result)';
-         expr.Expression.EvalAsString(FExecution as TdwsExecution, Result);
+         expr.Expression.EvalAsString(FExecution.ExecutionObject, Result);
       finally
          expr:=nil;
       end;

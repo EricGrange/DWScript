@@ -875,11 +875,11 @@ begin
          end;
       end;
       if (eoRootContext in options) then
-         contextProgram:=exec.Prog as TdwsProgram
+         contextProgram:=exec.Prog.ProgramObject
       else begin
-         contextProgram:=(exec as TdwsProgramExecution).CurrentProg;
+         contextProgram:=(exec.ExecutionObject as TdwsProgramExecution).CurrentProg;
          if contextProgram=nil then
-            contextProgram:=exec.Prog as TdwsProgram;
+            contextProgram:=exec.Prog.ProgramObject;
       end;
       compiler.FProg:=contextProgram;
       try
@@ -6067,7 +6067,7 @@ end;
 function TdwsEvaluateExpr.ContextIsValid : Boolean;
 begin
    Result:=   (FContextProcedure=nil)
-           or (FContextProcedure=(FExecution as TdwsProgramExecution).CurrentProg);
+           or (FContextProcedure=(FExecution.ExecutionObject as TdwsProgramExecution).CurrentProg);
 end;
 
 // GetExecution

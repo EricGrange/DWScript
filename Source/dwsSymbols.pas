@@ -77,6 +77,7 @@ type
       function GetMsgs : TdwsMessageList;
       function  GetDebugger : IDebugger;
       procedure SetDebugger(const aDebugger : IDebugger);
+      function GetExecutionObject : TdwsExecution;
       function GetUserObject : TObject;
       procedure SetUserObject(const value : TObject);
       function GetStack : TStack;
@@ -86,6 +87,7 @@ type
       property Stack : TStack read GetStack;
       property Msgs : TdwsMessageList read GetMsgs;
       property Debugger : IDebugger read GetDebugger write SetDebugger;
+      property ExecutionObject : TdwsExecution read GetExecutionObject;
       property UserObject : TObject read GetUserObject write SetUserObject;
    end;
 
@@ -119,6 +121,8 @@ type
          procedure StopDebug;
 
          function GetMsgs : TdwsMessageList; virtual; abstract;
+
+         function GetExecutionObject : TdwsExecution;
 
          function GetUserObject : TObject; virtual;
          procedure SetUserObject(const value : TObject); virtual;
@@ -3828,6 +3832,13 @@ end;
 function TdwsExecution.GetProgramState : TProgramState;
 begin
    Result:=FProgramState;
+end;
+
+// GetExecutionObject
+//
+function TdwsExecution.GetExecutionObject : TdwsExecution;
+begin
+   Result:=Self;
 end;
 
 // ------------------

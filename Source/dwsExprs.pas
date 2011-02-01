@@ -291,6 +291,7 @@ type
       function GetSymbolDictionary : TSymbolDictionary;
       function GetContextMap : TContextMap;
       function GetSourceList : TScriptSourceList;
+      function GetProgramObject : TdwsProgram;
 
       function CreateNewExecution : IdwsProgramExecution;
       function BeginNewExecution : IdwsProgramExecution;
@@ -307,6 +308,7 @@ type
       property SymbolDictionary : TSymbolDictionary read GetSymbolDictionary;
       property ContextMap : TContextMap read GetContextMap;
       property SourceList : TScriptSourceList read GetSourceList;
+      property ProgramObject : TdwsProgram read GetProgramObject;
       property LineCount : Integer read GetLineCount;
    end;
 
@@ -436,6 +438,7 @@ type
          function GetSymbolDictionary : TSymbolDictionary;
          function GetContextMap : TContextMap;
          function GetSourceList : TScriptSourceList;
+         function GetProgramObject : TdwsProgram;
 
       public
          constructor Create(SystemTable: TSymbolTable; ResultType: TdwsResultType;
@@ -2419,6 +2422,13 @@ end;
 function TdwsProgram.GetSourceList : TScriptSourceList;
 begin
    Result:=FSourceList;
+end;
+
+// GetProgramObject
+//
+function TdwsProgram.GetProgramObject : TdwsProgram;
+begin
+   Result:=Self;
 end;
 
 function TdwsProgram.GetLevel: Integer;

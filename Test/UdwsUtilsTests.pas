@@ -141,7 +141,7 @@ procedure TdwsUtilsTests.JSONTest;
 var
    json : TdwsJSONObject;
 begin
-   json:=TdwsJSONObject.Create(nil);
+   json:=TdwsJSONObject.Create;
 
    CheckEquals('{}', json.ToString);
    CheckEquals('{ }', json.ToBeautifiedString(0, 3));
