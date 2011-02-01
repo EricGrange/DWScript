@@ -176,6 +176,7 @@ type
          function Write(const buffer; count: Longint): Longint; override;
          // must be strictly an utf16 string
          procedure WriteString(const utf16String : String);
+         procedure WriteChar(utf16Char : Char);
          // assumes data is an utf16 string
          function ToString : String; override;
 
@@ -969,6 +970,13 @@ begin
       stringCracker:=NativeInt(utf16String);
       Write(Pointer(stringCracker)^, PInteger(stringCracker-SizeOf(Integer))^*SizeOf(Char));
    end;
+end;
+
+// WriteChar
+//
+procedure TWriteOnlyBlockStream.WriteChar(utf16Char : Char);
+begin
+   Write(utf16Char, SizeOf(Char));
 end;
 
 // ToString
