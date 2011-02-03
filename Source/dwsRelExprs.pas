@@ -263,12 +263,8 @@ end;
 // EvalAsBoolean
 //
 function TRelEqualFloatExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
-var
-   a, b : Double;
 begin
-   FLeft.EvalAsFloat(exec, a);
-   FRight.EvalAsFloat(exec, b);
-   Result:=(a=b);
+   Result:=(FLeft.EvalAsFloat(exec)=FRight.EvalAsFloat(exec));
 end;
 
 // ------------------
@@ -278,12 +274,8 @@ end;
 // EvalAsBoolean
 //
 function TRelNotEqualFloatExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
-var
-   a, b : Double;
 begin
-   FLeft.EvalAsFloat(exec, a);
-   FRight.EvalAsFloat(exec, b);
-   Result:=(a<>b);
+   Result:=(FLeft.EvalAsFloat(exec)<>FRight.EvalAsFloat(exec));
 end;
 
 // ------------------
@@ -293,12 +285,8 @@ end;
 // EvalAsBoolean
 //
 function TRelLessFloatExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
-var
-   a, b : Double;
 begin
-   FLeft.EvalAsFloat(exec, a);
-   FRight.EvalAsFloat(exec, b);
-   Result:=(a<b);
+   Result:=(FLeft.EvalAsFloat(exec)<FRight.EvalAsFloat(exec));
 end;
 
 // ------------------
@@ -308,12 +296,8 @@ end;
 // EvalAsBoolean
 //
 function TRelLessEqualFloatExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
-var
-   a, b : Double;
 begin
-   FLeft.EvalAsFloat(exec, a);
-   FRight.EvalAsFloat(exec, b);
-   Result:=(a<=b);
+   Result:=(FLeft.EvalAsFloat(exec)<=FRight.EvalAsFloat(exec));
 end;
 
 // ------------------
@@ -323,12 +307,8 @@ end;
 // EvalAsBoolean
 //
 function TRelGreaterFloatExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
-var
-   a, b : Double;
 begin
-   FLeft.EvalAsFloat(exec, a);
-   FRight.EvalAsFloat(exec, b);
-   Result:=(a>b);
+   Result:=(FLeft.EvalAsFloat(exec)>FRight.EvalAsFloat(exec));
 end;
 
 // ------------------
@@ -338,12 +318,8 @@ end;
 // EvalAsBoolean
 //
 function TRelGreaterEqualFloatExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
-var
-   a, b : Double;
 begin
-   FLeft.EvalAsFloat(exec, a);
-   FRight.EvalAsFloat(exec, b);
-   Result:=(a>=b);
+   Result:=(FLeft.EvalAsFloat(exec)>=FRight.EvalAsFloat(exec));
 end;
 
 // ------------------

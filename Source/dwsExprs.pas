@@ -546,7 +546,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); virtual;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
-         procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+         function EvalAsFloat(exec : TdwsExecution) : Double; override;
          procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
@@ -554,7 +554,7 @@ type
          procedure AssignValue(exec : TdwsExecution; const value : Variant); override;
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
          procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
-         procedure AssignValueAsFloat(exec : TdwsExecution; var value : Double); override;
+         procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
          procedure AssignValueAsString(exec : TdwsExecution; const value: String); override;
 
          procedure Initialize; virtual;
@@ -655,7 +655,7 @@ type
          procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
          procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
-         procedure AssignValueAsFloat(exec : TdwsExecution; var value : Double); override;
+         procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
          procedure AssignValueAsString(exec : TdwsExecution; const value: String); override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
@@ -2710,12 +2710,9 @@ end;
 // OptimizeIntegerConstantToFloatConstant
 //
 function TNoPosExpr.OptimizeIntegerConstantToFloatConstant(exec : TdwsExecution) : TNoPosExpr;
-var
-   temp : Double;
 begin
    if IsConstant and IsIntegerValue then begin
-      EvalAsFloat(exec, temp);
-      Result:=TConstFloatExpr.CreateUnified(FProg, nil, temp);
+      Result:=TConstFloatExpr.CreateUnified(FProg, nil, EvalAsFloat(exec));
       Free;
    end else Result:=Self;
 end;
@@ -2866,7 +2863,7 @@ end;
 
 // AssignValueAsFloat
 //
-procedure TNoPosExpr.AssignValueAsFloat(exec : TdwsExecution; var value : Double);
+procedure TNoPosExpr.AssignValueAsFloat(exec : TdwsExecution; const value : Double);
 begin
    AssignValue(exec, value);
 end;
@@ -2917,7 +2914,7 @@ end;
 
 // EvalAsFloat
 //
-procedure TNoPosExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
+function TNoPosExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 var
    v : Variant;
 begin
@@ -3209,7 +3206,7 @@ end;
 
 // AssignValueAsFloat
 //
-procedure TDataExpr.AssignValueAsFloat(exec : TdwsExecution; var value : Double);
+procedure TDataExpr.AssignValueAsFloat(exec : TdwsExecution; const value : Double);
 begin
    AssignValue(exec, value);
 end;
@@ -3579,11 +3576,8 @@ end;
 // ExecuteResultFloat
 //
 procedure TPushOperator.ExecuteResultFloat(exec : TdwsExecution);
-var
-   buf : Double;
 begin
-   FArgExpr.EvalAsFloat(exec, buf);
-   exec.Stack.WriteFloatValue(exec.Stack.StackPointer + FStackAddr, buf);
+   exec.Stack.WriteFloatValue(exec.Stack.StackPointer + FStackAddr, FArgExpr.EvalAsFloat(exec));
 end;
 
 // ExecuteResultString
@@ -4031,11 +4025,8 @@ end;
 // Eval
 //
 function TUnaryOpFloatExpr.Eval(exec : TdwsExecution) : Variant;
-var
-   dbl : Double;
 begin
-   EvalAsFloat(exec, dbl);
-   Result:=dbl;
+   Result:=EvalAsFloat(exec);
 end;
 
 // ------------------

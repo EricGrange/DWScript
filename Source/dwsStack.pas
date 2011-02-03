@@ -28,6 +28,8 @@ type
 
    TData = array of Variant;
    PData = ^TData;
+   TDataArray = array [0..0] of Variant;
+   PDataArray = ^TDataArray;
    PIUnknown = ^IUnknown;
 
    TStackParameters = record
@@ -42,7 +44,8 @@ type
    TStack = ^TStackMixIn;
    TStackMixIn = record
       private
-         FBasePointer: Integer;
+         FBasePointer : Integer;
+         FBaseData : PDataArray;
          FBpStore : array of TSimpleStack<Integer>;
          FParams : TStackParameters;
          FMaxSize : Integer;
@@ -73,7 +76,8 @@ type
          procedure WriteValue(DestAddr: Integer; const Value: Variant);
          procedure WriteIntValue(DestAddr: Integer; const Value: Int64); overload; inline;
          procedure WriteIntValue(DestAddr: Integer; const pValue: PInt64); overload; inline;
-         procedure WriteFloatValue(DestAddr: Integer; var Value: Double); inline;
+         procedure WriteFloatValue(DestAddr: Integer; const Value: Double); inline;
+         procedure WriteFloatValue_BaseRelative(DestAddr: Integer; const Value: Double); inline;
          procedure WriteStrValue(DestAddr: Integer; const Value: String); inline;
          procedure WriteBoolValue(DestAddr: Integer; const Value: Boolean); inline;
          procedure WriteInterfaceValue(DestAddr: Integer; const intf: IUnknown); inline;
@@ -82,18 +86,20 @@ type
 
          function  ReadValue(SourceAddr: Integer): Variant;
          function  ReadIntValue(SourceAddr: Integer): Int64; inline;
-         procedure ReadIntAsFloatValue(SourceAddr: Integer; var Result : Double); inline;
-         procedure ReadFloatValue(SourceAddr: Integer; var Result : Double);
+         function  ReadIntValue_BaseRelative(SourceAddr: Integer): Int64; inline;
+         function  ReadIntAsFloatValue(SourceAddr: Integer) : Double; inline;
+         function  ReadFloatValue(SourceAddr: Integer) : Double; inline;
+         function  ReadFloatValue_BaseRelative(SourceAddr: Integer) : Double; inline;
          procedure ReadStrValue(SourceAddr: Integer; var Result : String);
          function  ReadBoolValue(SourceAddr: Integer): Boolean;
          procedure ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown);
 
          function  PointerToIntValue(addr : Integer) : PInt64;
-         function  PointerToFloatValue(addr : Integer) : PDouble;
+         function  PointerToFloatValue_BaseRelative(addr : Integer) : PDouble;
          function  PointerToInterfaceValue(addr : Integer) : PIUnknown;
 
-         procedure IncIntValue(destAddr : Integer; const value : Int64); inline;
-         procedure AppendStringValue(destAddr : Integer; const value : String);
+         procedure IncIntValue_BaseRelative(destAddr : Integer; const value : Int64); inline;
+         procedure AppendStringValue_BaseRelative(destAddr : Integer; const value : String);
 
          procedure PushBp(Level, Bp: Integer);
          function GetSavedBp(Level: Integer): Integer;
@@ -208,6 +214,7 @@ begin
    if FSize > FMaxSize then
       FSize := FMaxSize;
    SetLength(Data, FSize);
+   BasePointer:=BasePointer;
 end;
 
 // SetBasePointer
@@ -215,6 +222,7 @@ end;
 procedure TStackMixIn.SetBasePointer(newBp : Integer);
 begin
    FBasePointer:=newBp;
+   FBaseData:=@Data[FBasePointer];
 end;
 
 // Push
@@ -240,6 +248,7 @@ begin
    FSize := 0;
    FStackPointer := 0;
    FBasePointer := 0;
+   FBaseData:=nil;
    ClearBpStore;
    SetLength(FBpStore, FParams.MaxLevel + 1);
    for i:=0 to High(FBpStore) do begin
@@ -251,7 +260,7 @@ end;
 procedure TStackMixIn.RestoreFrame(oldBasePointer: Integer);
 begin
   FStackPointer := FBasePointer;
-  FBasePointer := oldBasePointer;
+  BasePointer := oldBasePointer;
 end;
 
 // PushBp
@@ -281,7 +290,7 @@ end;
 procedure TStackMixIn.SwitchFrame(var oldBasePointer: Integer);
 begin
   oldBasePointer := FBasePointer;
-  FBasePointer := FStackPointer;
+  BasePointer := FStackPointer;
 end;
 
 procedure TStackMixIn.ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);
@@ -312,9 +321,21 @@ begin
    else Result:=PVariant(varData)^;
 end;
 
+// ReadIntValue
+//
+function TStackMixIn.ReadIntValue_BaseRelative(SourceAddr: Integer): Int64;
+var
+   varData : PVarData;
+begin
+   varData:=@FBaseData[SourceAddr];
+   if varData.VType=varInt64 then
+      Result:=varData.VInt64
+   else Result:=PVariant(varData)^;
+end;
+
 // ReadIntAsFloatValue
 //
-procedure TStackMixIn.ReadIntAsFloatValue(SourceAddr: Integer; var Result : Double);
+function TStackMixIn.ReadIntAsFloatValue(SourceAddr: Integer) : Double;
 var
    varData : PVarData;
 begin
@@ -325,14 +346,24 @@ end;
 
 // ReadFloatValue
 //
-procedure TStackMixIn.ReadFloatValue(SourceAddr: Integer; var Result : Double);
+function TStackMixIn.ReadFloatValue(SourceAddr: Integer) : Double;
 var
    varData : PVarData;
 begin
    varData:=@Data[SourceAddr];
-   if varData.VType=varDouble then
-      Result:=varData.VDouble
-   else Result:=PVariant(varData)^;
+   Assert(varData.VType=varDouble);
+   Result:=varData.VDouble;
+end;
+
+// ReadFloatValue_BaseRelative
+//
+function TStackMixIn.ReadFloatValue_BaseRelative(SourceAddr: Integer) : Double;
+var
+   varData : PVarData;
+begin
+   varData:=@FBaseData[SourceAddr];
+   Assert(varData.VType=varDouble);
+   Result:=varData.VDouble;
 end;
 
 // ReadStrValue
@@ -382,13 +413,13 @@ begin
    Result:=@varData.VInt64;
 end;
 
-// PointerToFloatValue
+// PointerToFloatValue_BaseRelative
 //
-function TStackMixIn.PointerToFloatValue(addr : Integer) : PDouble;
+function TStackMixIn.PointerToFloatValue_BaseRelative(addr : Integer) : PDouble;
 var
    varData : PVarData;
 begin
-   varData:=@Data[addr];
+   varData:=@FBaseData[addr];
    Assert(varData.VType=varDouble);
    Result:=@varData.VDouble;
 end;
@@ -404,20 +435,20 @@ begin
    Result:=@varData.VUnknown;
 end;
 
-// IncIntValue
+// IncIntValue_BaseRelative
 //
-procedure TStackMixIn.IncIntValue(destAddr: Integer; const value: Int64);
+procedure TStackMixIn.IncIntValue_BaseRelative(destAddr: Integer; const value: Int64);
 var
    varData : PVarData;
 begin
-   varData:=@Data[destAddr];
+   varData:=@FBaseData[destAddr];
    Assert(varData.VType=varInt64);
    varData.VInt64:=varData.VInt64+value
 end;
 
-// AppendStringValue
+// AppendStringValue_BaseRelative
 //
-procedure TStackMixIn.AppendStringValue(destAddr : Integer; const value : String);
+procedure TStackMixIn.AppendStringValue_BaseRelative(destAddr : Integer; const value : String);
 
    procedure Fallback(varData : PVarData);
    begin
@@ -427,7 +458,7 @@ procedure TStackMixIn.AppendStringValue(destAddr : Integer; const value : String
 var
    varData : PVarData;
 begin
-   varData:=@Data[destAddr];
+   varData:=@FBaseData[destAddr];
    if varData.VType=varUString then
       String(varData.VUString):=String(varData.VUString)+value
    else Fallback(varData);
@@ -478,11 +509,23 @@ end;
 
 // WriteFloatValue
 //
-procedure TStackMixIn.WriteFloatValue(DestAddr: Integer; var value : Double);
+procedure TStackMixIn.WriteFloatValue(DestAddr: Integer; const value : Double);
 var
    varData : PVarData;
 begin
    varData:=@Data[DestAddr];
+   if varData.VType=varDouble then
+      varData.VDouble:=Value
+   else PVariant(varData)^:=Value;
+end;
+
+// WriteFloatValue_BaseRelative
+//
+procedure TStackMixIn.WriteFloatValue_BaseRelative(DestAddr: Integer; const value : Double);
+var
+   varData : PVarData;
+begin
+   varData:=@FBaseData[DestAddr];
    if varData.VType=varDouble then
       varData.VDouble:=Value
    else PVariant(varData)^:=Value;

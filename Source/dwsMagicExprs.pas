@@ -91,7 +91,7 @@ type
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Eval(exec : TdwsExecution) : Variant; override;
-         procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+         function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
 // ------------------------------------------------------------------
@@ -268,25 +268,20 @@ end;
 // EvalNoResult
 //
 procedure TMagicFloatFuncExpr.EvalNoResult(exec : TdwsExecution);
-var
-   buf : Double;
 begin
-   EvalAsFloat(exec, buf);
+   EvalAsFloat(exec);
 end;
 
 // Eval
 //
 function TMagicFloatFuncExpr.Eval(exec : TdwsExecution) : Variant;
-var
-   buf : Double;
 begin
-   EvalAsFloat(exec, buf);
-   Result:=buf;
+   Result:=EvalAsFloat(exec);
 end;
 
 // EvalAsFloat
 //
-procedure TMagicFloatFuncExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
+function TMagicFloatFuncExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 var
    execRec : TExprBaseListExec;
 begin

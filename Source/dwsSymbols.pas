@@ -96,9 +96,9 @@ type
    // TdwsExecution
    //
    TdwsExecution = class abstract (TInterfacedObject, IdwsExecution)
-      private
-         FStatus : TExecutionStatusResult;
+      protected
          FStack : TStackMixIn;
+         FStatus : TExecutionStatusResult;
          FCallStack : TTightStack;
          FSelfScriptObject : PIScriptObj;
          FSelfScriptClassSymbol : TClassSymbol;
@@ -173,7 +173,7 @@ type
       function Eval(exec : TdwsExecution) : Variant; virtual; abstract;
       function EvalAsInteger(exec : TdwsExecution) : Int64; virtual; abstract;
       function EvalAsBoolean(exec : TdwsExecution) : Boolean; virtual; abstract;
-      procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); virtual; abstract;
+      function EvalAsFloat(exec : TdwsExecution) : Double; virtual; abstract;
       procedure EvalAsString(exec : TdwsExecution; var Result : String); overload; virtual; abstract;
       procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); overload; virtual; abstract;
       procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); virtual; abstract;
@@ -181,8 +181,8 @@ type
       procedure AssignValue(exec : TdwsExecution; const value : Variant); virtual; abstract;
       procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); virtual; abstract;
       procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); virtual; abstract;
-      procedure AssignValueAsFloat(exec : TdwsExecution; var value : Double); virtual; abstract;
-      procedure AssignValueAsString(exec : TdwsExecution; const value: String); virtual; abstract;
+      procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); virtual; abstract;
+      procedure AssignValueAsString(exec : TdwsExecution; const value : String); virtual; abstract;
 
       function ScriptPos : TScriptPos; virtual; abstract;
       function ScriptLocation : String; virtual; abstract;
@@ -1299,7 +1299,7 @@ end;
 //
 function TExprBaseListExec.GetAsFloat(const x : Integer) : Double;
 begin
-   ExprBase[x].EvalAsFloat(Exec, Result);
+   Result:=ExprBase[x].EvalAsFloat(Exec);
 end;
 
 // GetAsString

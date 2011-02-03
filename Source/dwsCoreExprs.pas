@@ -52,7 +52,7 @@ type
          procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
          procedure AssignValueAsInteger(exec : TdwsExecution; const Value: Int64); override;
          procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
-         procedure AssignValueAsFloat(exec : TdwsExecution; var Value: Double); override;
+         procedure AssignValueAsFloat(exec : TdwsExecution; const Value: Double); override;
          procedure AssignValueAsString(exec : TdwsExecution; const Value: String); override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
@@ -69,7 +69,7 @@ type
          procedure AssignValueAsPInteger(exec : TdwsExecution; const pValue: PInt64);
          procedure IncValue(exec : TdwsExecution; const value: Int64);
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
-         procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+         function EvalAsFloat(exec : TdwsExecution) : Double; override;
          function  EvalAsPInteger(exec : TdwsExecution) : PInt64; inline;
    end;
 
@@ -78,7 +78,7 @@ type
       public
          procedure AssignExpr(exec : TdwsExecution; Expr: TNoPosExpr); override;
          procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
-         procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+         function  EvalAsFloat(exec : TdwsExecution) : Double; override;
          function  EvalAsPFloat(exec : TdwsExecution) : PDouble; inline;
    end;
 
@@ -220,7 +220,7 @@ type
       public
          constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-         procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+         function EvalAsFloat(exec : TdwsExecution) : Double; override;
          property Value : Int64 read FValue;
    end;
 
@@ -231,7 +231,7 @@ type
          FValue : Double;
       public
          constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
-         procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+         function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
    // TConstStringExpr
@@ -453,7 +453,7 @@ type
      function  Optimize(exec : TdwsExecution) : TNoPosExpr; override;
    end;
    TNegFloatExpr = class (TNegExpr)
-     procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+     function EvalAsFloat(exec : TdwsExecution) : Double; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function  Optimize(exec : TdwsExecution) : TNoPosExpr; override;
    end;
@@ -465,7 +465,7 @@ type
    TIntegerBinOpExpr = class(TBinaryOpExpr)
      constructor Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr); override;
      function Eval(exec : TdwsExecution) : Variant; override;
-     procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+     function EvalAsFloat(exec : TdwsExecution) : Double; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
      function  Optimize(exec : TdwsExecution) : TNoPosExpr; override;
    end;
@@ -500,13 +500,13 @@ type
    end;
    TAddIntExpr = class(TIntegerBinOpExpr)
       function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-      procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+      function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
    TAddStrExpr = class(TStringBinOpExpr)
       procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
    end;
    TAddFloatExpr = class(TFloatBinOpExpr)
-      procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+      function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
    // a - b
@@ -515,10 +515,10 @@ type
    end;
    TSubIntExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-     procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+     function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
    TSubFloatExpr = class(TFloatBinOpExpr)
-     procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+     function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
    // a * b
@@ -527,11 +527,11 @@ type
    end;
    TMultIntExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-     procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+     function EvalAsFloat(exec : TdwsExecution) : Double; override;
      function  Optimize(exec : TdwsExecution) : TNoPosExpr; override;
    end;
    TMultFloatExpr = class(TFloatBinOpExpr)
-     procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+     function EvalAsFloat(exec : TdwsExecution) : Double; override;
      function  Optimize(exec : TdwsExecution) : TNoPosExpr; override;
    end;
 
@@ -540,15 +540,15 @@ type
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
    TSqrFloatExpr = class(TUnaryOpFloatExpr)
-     procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+     function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
    TSqrFloatVarExpr = class(TUnaryOpFloatExpr)
-     procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+     function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
    // a / b
    TDivideExpr = class(TFloatBinOpExpr)
-     procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+     function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
    // a div b
@@ -614,7 +614,7 @@ type
    TConvFloatExpr = class (TConvExpr)
      constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
      function Eval(exec : TdwsExecution) : Variant; override;
-     procedure EvalAsFloat(exec : TdwsExecution; var Result : Double); override;
+     function EvalAsFloat(exec : TdwsExecution) : Double; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
 
@@ -1286,7 +1286,7 @@ end;
 
 // AssignValueAsFloat
 //
-procedure TVarExpr.AssignValueAsFloat(exec : TdwsExecution; var Value: Double);
+procedure TVarExpr.AssignValueAsFloat(exec : TdwsExecution; const Value: Double);
 begin
    exec.Stack.WriteFloatValue(Addr[exec], Value);
 end;
@@ -1330,58 +1330,69 @@ end;
 //
 procedure TIntVarExpr.IncValue(exec : TdwsExecution; const value: Int64);
 begin
-   exec.Stack.IncIntValue(exec.Stack.BasePointer + FStackAddr, value);
+   exec.Stack.IncIntValue_BaseRelative(FStackAddr, value);
 end;
 
 function TIntVarExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result:=exec.Stack.ReadIntValue(exec.Stack.BasePointer + FStackAddr);
+   Result:=exec.Stack.ReadIntValue_BaseRelative(FStackAddr);
 end;
 
 // EvalAsFloat
 //
-procedure TIntVarExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
+function TIntVarExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   exec.Stack.ReadIntAsFloatValue(exec.Stack.BasePointer + FStackAddr, Result);
+   Result:=exec.Stack.ReadIntAsFloatValue(exec.Stack.BasePointer+FStackAddr);
 end;
 
 // EvalAsPInteger
 //
 function TIntVarExpr.EvalAsPInteger(exec : TdwsExecution) : PInt64;
 begin
-   Result:=exec.Stack.PointerToIntValue(exec.Stack.BasePointer + FStackAddr);
+   Result:=exec.Stack.PointerToIntValue(exec.Stack.BasePointer+FStackAddr);
 end;
 
 // ------------------
 // ------------------ TFloatVarExpr ------------------
 // ------------------
 
+// AssignExpr
+//
 procedure TFloatVarExpr.AssignExpr(exec : TdwsExecution; Expr: TNoPosExpr);
-var
-   buf : Double;
 begin
-   Expr.EvalAsFloat(exec, buf);
-   exec.Stack.WriteFloatValue(exec.Stack.BasePointer+FStackAddr, buf);
+   exec.Stack.WriteFloatValue_BaseRelative(FStackAddr, Expr.EvalAsFloat(exec));
 end;
 
+// AssignValue
+//
 procedure TFloatVarExpr.AssignValue(exec : TdwsExecution; const Value: Variant);
-var
-   buf : Double;
 begin
-   buf:=Value;
-   exec.Stack.WriteFloatValue(exec.Stack.BasePointer + FStackAddr, buf);
+   exec.Stack.WriteFloatValue_BaseRelative(FStackAddr, Value);
 end;
 
-procedure TFloatVarExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
+// EvalAsFloat
+//
+type
+   TdwsExecutionCracker = class(TdwsExecution);
+function TFloatVarExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+{$ifdef PUREPASCAL}
 begin
-   exec.Stack.ReadFloatValue(exec.Stack.BasePointer + FStackAddr, Result);
+   Result:=exec.Stack.PointerToFloatValue_BaseRelative(FStackAddr)^;
+{$else}
+asm
+   lea   ecx, [edx].TdwsExecutionCracker.FStack
+   mov   edx, [eax].FStackAddr
+   mov   eax, ecx
+   call  TStackMixIn.PointerToFloatValue_BaseRelative;
+   fld   qword [eax]
+{$endif}
 end;
 
 // EvalAsPFloat
 //
 function TFloatVarExpr.EvalAsPFloat(exec : TdwsExecution) : PDouble;
 begin
-   Result:=exec.Stack.PointerToFloatValue(exec.Stack.BasePointer + FStackAddr);
+   Result:=exec.Stack.PointerToFloatValue_BaseRelative(FStackAddr);
 end;
 
 // ------------------
@@ -1417,7 +1428,7 @@ end;
 //
 procedure TStrVarExpr.Append(exec : TdwsExecution; const value : String);
 begin
-   exec.Stack.AppendStringValue(exec.Stack.BasePointer + FStackAddr, value);
+   exec.Stack.AppendStringValue_BaseRelative(FStackAddr, value);
 end;
 
 // ------------------
@@ -1793,14 +1804,13 @@ end;
 
 // EvalAsFloat
 //
-procedure TConstIntExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
+function TConstIntExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 {$ifdef PUREPASCAL}
 begin
    Result:=FValue;
 {$else}
 asm
-   fild  qword ptr [eax + OFFSET FValue]
-   fstp  qword ptr [ecx]
+   fild  qword [eax + OFFSET FValue]
 {$endif}
 end;
 
@@ -1820,9 +1830,14 @@ end;
 
 // EvalAsFloat
 //
-procedure TConstFloatExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
+function TConstFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+{$ifdef PUREPASCAL}
 begin
    Result:=FValue;
+{$else}
+asm
+   fld qword [eax].FValue
+{$endif}
 end;
 
 // ------------------
@@ -2576,9 +2591,9 @@ end;
 
 // EvalAsFloat
 //
-procedure TConvFloatExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
+function TConvFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   FExpr.EvalAsFloat(exec, Result);
+   Result:=FExpr.EvalAsFloat(exec);
 end;
 
 // TypeCheckNoPos
@@ -2926,10 +2941,9 @@ end;
 
 // EvalAsFloat
 //
-procedure TNegFloatExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
+function TNegFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   FExpr.EvalAsFloat(exec, Result);
-   Result:=-Result;
+   Result:=-FExpr.EvalAsFloat(exec);
 end;
 
 // TypeCheckNoPos
@@ -2943,12 +2957,9 @@ end;
 // Optimize
 //
 function TNegFloatExpr.Optimize(exec : TdwsExecution) : TNoPosExpr;
-var
-   xf : Double;
 begin
    if FExpr.IsConstant then begin
-      FExpr.EvalAsFloat(exec, xf);
-      Result:=TConstFloatExpr.CreateUnified(FProg, nil, -xf);
+      Result:=TConstFloatExpr.CreateUnified(FProg, nil, -FExpr.EvalAsFloat(exec));
       Free;
    end else Result:=Self;
 end;
@@ -2973,7 +2984,7 @@ end;
 
 // EvalAsFloat
 //
-procedure TAddIntExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
+function TAddIntExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
    Result := FLeft.EvalAsInteger(exec) + FRight.EvalAsInteger(exec);
 end;
@@ -2997,13 +3008,9 @@ end;
 // ------------------ TAddFloatExpr ------------------
 // ------------------
 
-procedure TAddFloatExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
-var
-   bufLeft, bufRight : Double;
+function TAddFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   FLeft.EvalAsFloat(exec, bufLeft);
-   FRight.EvalAsFloat(exec, bufRight);
-   Result:=bufLeft+bufRight;
+   Result:=FLeft.EvalAsFloat(exec)+FRight.EvalAsFloat(exec);
 end;
 
 // ------------------
@@ -3026,7 +3033,7 @@ end;
 
 // EvalAsFloat
 //
-procedure TSubIntExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
+function TSubIntExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
    Result := FLeft.EvalAsInteger(exec) - FRight.EvalAsInteger(exec);
 end;
@@ -3035,13 +3042,9 @@ end;
 // ------------------ TSubFloatExpr ------------------
 // ------------------
 
-procedure TSubFloatExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
-var
-   bufLeft, bufRight : Double;
+function TSubFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   FLeft.EvalAsFloat(exec, bufLeft);
-   FRight.EvalAsFloat(exec, bufRight);
-   Result:=bufLeft-bufRight;
+   Result:=FLeft.EvalAsFloat(exec)-FRight.EvalAsFloat(exec);
 end;
 
 // ------------------
@@ -3064,7 +3067,7 @@ end;
 
 // EvalAsFloat
 //
-procedure TMultIntExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
+function TMultIntExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
    Result := FLeft.EvalAsInteger(exec) * FRight.EvalAsInteger(exec);
 end;
@@ -3086,13 +3089,9 @@ end;
 // ------------------ TMultFloatExpr ------------------
 // ------------------
 
-procedure TMultFloatExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
-var
-   bufLeft, bufRight : Double;
+function TMultFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   FLeft.EvalAsFloat(exec, bufLeft);
-   FRight.EvalAsFloat(exec, bufRight);
-   Result:=bufLeft*bufRight;
+   Result:=FLeft.EvalAsFloat(exec)*FRight.EvalAsFloat(exec);
 end;
 
 // Optimize
@@ -3126,10 +3125,9 @@ end;
 
 // EvalAsFloat
 //
-procedure TSqrFloatExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
+function TSqrFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   FExpr.EvalAsFloat(exec, Result);
-   Result:=Sqr(Result);
+   Result:=Sqr(FExpr.EvalAsFloat(exec));
 end;
 
 // ------------------
@@ -3138,7 +3136,7 @@ end;
 
 // EvalAsFloat
 //
-procedure TSqrFloatVarExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
+function TSqrFloatVarExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
    Result:=Sqr(TFloatVarExpr(FExpr).EvalAsPFloat(exec)^);
 end;
@@ -3147,13 +3145,9 @@ end;
 
 // EvalAsFloat
 //
-procedure TDivideExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
-var
-   bufLeft, bufRight : Double;
+function TDivideExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   FLeft.EvalAsFloat(exec, bufLeft);
-   FRight.EvalAsFloat(exec, bufRight);
-   Result:=bufLeft/bufRight;
+   Result:=FLeft.EvalAsFloat(exec)/FRight.EvalAsFloat(exec);
 end;
 
 { TDivExpr }
@@ -3309,7 +3303,7 @@ end;
 
 // EvalAsFloat
 //
-procedure TIntegerBinOpExpr.EvalAsFloat(exec : TdwsExecution; var Result : Double);
+function TIntegerBinOpExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
    Result:=EvalAsInteger(exec);
 end;
@@ -3392,11 +3386,8 @@ end;
 // Eval
 //
 function TFloatBinOpExpr.Eval(exec : TdwsExecution) : Variant;
-var
-   d : Double;
 begin
-   EvalAsFloat(exec, d);
-   Result:=d;
+   Result:=EvalAsFloat(exec);
 end;
 
 // TypeCheckNoPos
@@ -3411,12 +3402,9 @@ end;
 // Optimize
 //
 function TFloatBinOpExpr.Optimize(exec : TdwsExecution) : TNoPosExpr;
-var
-   xf : Double;
 begin
    if IsConstant then begin
-      EvalAsFloat(exec, xf);
-      Result:=TConstFloatExpr.CreateUnified(FProg, nil, xf);
+      Result:=TConstFloatExpr.CreateUnified(FProg, nil, EvalAsFloat(exec));
       Free;
    end else begin
       FLeft:=FLeft.OptimizeIntegerConstantToFloatConstant(exec);
@@ -3610,15 +3598,13 @@ end;
 //
 function TAssignExpr.OptimizeConstAssignment(exec : TdwsExecution) : TNoPosExpr;
 var
-   floatBuf : Double;
    stringBuf : String;
 begin
    Result:=Self;
    if FRight.IsIntegerValue then begin
       Result:=TAssignConstToIntegerVarExpr.CreateVal(Prog, Pos, FLeft, FRight.EvalAsInteger(exec));
    end else if FRight.IsFloatValue then begin
-      FRight.EvalAsFloat(exec, floatBuf);
-      Result:=TAssignConstToFloatVarExpr.CreateVal(Prog, Pos, FLeft, floatBuf);
+      Result:=TAssignConstToFloatVarExpr.CreateVal(Prog, Pos, FLeft, FRight.EvalAsFloat(exec));
    end else if FRight.IsStringValue then begin
       FRight.EvalAsString(exec, stringBuf);
       Result:=TAssignConstToStringVarExpr.CreateVal(Prog, Pos, FLeft, stringBuf);
@@ -3822,13 +3808,8 @@ end;
 // EvalNoResult
 //
 procedure TPlusAssignFloatExpr.EvalNoResult(exec : TdwsExecution);
-var
-   v1, v2 : Double;
 begin
-   FLeft.EvalAsFloat(exec, v1);
-   FRight.EvalAsFloat(exec, v2);
-   v1:=v1+v2;
-   FLeft.AssignValueAsFloat(exec, v1);
+   FLeft.AssignValueAsFloat(exec, FLeft.EvalAsFloat(exec)+FRight.EvalAsFloat(exec));
 end;
 
 // ------------------
@@ -3901,13 +3882,8 @@ end;
 // EvalNoResult
 //
 procedure TMinusAssignFloatExpr.EvalNoResult(exec : TdwsExecution);
-var
-   v1, v2 : Double;
 begin
-   FLeft.EvalAsFloat(exec, v1);
-   FRight.EvalAsFloat(exec, v2);
-   v1:=v1-v2;
-   FLeft.AssignValueAsFloat(exec, v1);
+   FLeft.AssignValueAsFloat(exec, FLeft.EvalAsFloat(exec)-FRight.EvalAsFloat(exec));
 end;
 
 // ------------------
@@ -3939,13 +3915,8 @@ end;
 // EvalNoResult
 //
 procedure TMultAssignFloatExpr.EvalNoResult(exec : TdwsExecution);
-var
-   v1, v2 : Double;
 begin
-   FLeft.EvalAsFloat(exec, v1);
-   FRight.EvalAsFloat(exec, v2);
-   v1:=v1*v2;
-   FLeft.AssignValueAsFloat(exec, v1);
+   FLeft.AssignValueAsFloat(exec, FLeft.EvalAsFloat(exec)*FRight.EvalAsFloat(exec));
 end;
 
 // ------------------
@@ -3955,13 +3926,8 @@ end;
 // EvalNoResult
 //
 procedure TDivideAssignExpr.EvalNoResult(exec : TdwsExecution);
-var
-   v1, v2 : Double;
 begin
-   FLeft.EvalAsFloat(exec, v1);
-   FRight.EvalAsFloat(exec, v2);
-   v1:=v1/v2;
-   FLeft.AssignValueAsFloat(exec, v1);
+   FLeft.AssignValueAsFloat(exec, FLeft.EvalAsFloat(exec)/FRight.EvalAsFloat(exec));
 end;
 
 // ------------------
