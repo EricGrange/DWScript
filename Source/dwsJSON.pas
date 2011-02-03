@@ -72,7 +72,7 @@ type
                               var trailCharacter : Char) : TdwsJSONValue; static;
          class function ParseString(const json : String) : TdwsJSONValue; static;
 
-         function ToString : String; override;
+         function ToString : String; reintroduce;
          function ToBeautifiedString(initialTabs, indentTabs : Integer) : String;
          procedure Detach;
 
