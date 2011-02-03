@@ -999,6 +999,7 @@ type
      destructor Destroy; override;
      procedure Initialize; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+     procedure EvalNoResult(exec : TdwsExecution); override;
      property CondExpr: TNoPosExpr read FCondExpr write FCondExpr;
      property LoopExpr: TExpr read FLoopExpr write FLoopExpr;
    end;
@@ -4628,6 +4629,27 @@ begin
       AddCompilerStop(CPE_BooleanExpected);
 end;
 
+// EvalNoResult
+//
+procedure TLoopExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   exec.Status:=esrNone;
+   repeat
+      exec.DoStep(Self);
+      FLoopExpr.EvalNoResult(exec);
+      if exec.Status<>esrNone then begin
+         case exec.Status of
+            esrBreak : begin
+               exec.Status:=esrNone;
+               Break;
+            end;
+            esrContinue : exec.Status:=esrNone;
+            esrExit : Exit;
+         end;
+      end;
+   until False;
+end;
+
 { TWhileExpr }
 
 procedure TWhileExpr.EvalNoResult(exec : TdwsExecution);
@@ -4657,8 +4679,12 @@ begin
    if FCondExpr.IsConstant then begin
       if not FCondExpr.EvalAsBoolean(exec) then begin
          Result:=TNullExpr.Create(Prog, Pos);
-         Free;
+      end else begin
+         Result:=TLoopExpr.Create(Prog, Pos);
+         TLoopExpr(Result).FLoopExpr:=FLoopExpr;
+         FLoopExpr:=nil;
       end;
+      Free;
    end;
 end;
 
@@ -4689,11 +4715,14 @@ function TRepeatExpr.Optimize(exec : TdwsExecution) : TNoPosExpr;
 begin
    Result:=Self;
    if FCondExpr.IsConstant then begin
-      if not FCondExpr.EvalAsBoolean(exec) then begin
-         Result:=FLoopExpr;
-         FLoopExpr:=nil;
-         Free;
+      if not FCondExpr.EvalAsBoolean(exec) then
+         Result:=FLoopExpr
+      else begin
+         Result:=TLoopExpr.Create(Prog, Pos);
+         TLoopExpr(Result).FLoopExpr:=FLoopExpr;
       end;
+      FLoopExpr:=nil;
+      Free;
    end;
 end;
 
