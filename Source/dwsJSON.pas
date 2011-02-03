@@ -35,7 +35,7 @@ type
       Indent : Integer;
    end;
 
-   TdwsJSONNeedCharFunc = reference to function : Char;
+   TdwsJSONNeedCharFunc = function : Char of object;
 
    // TdwsJSONValue
    //
@@ -62,6 +62,9 @@ type
                            var trailCharacter : Char); virtual; abstract;
          procedure WriteTo(writer : TdwsJSONWriter); virtual; abstract;
 
+         class procedure RaiseJSONException(const msg : String); static;
+         class procedure RaiseJSONParseError(const msg : String; c : Char = #0); static;
+
       public
          destructor Destroy; override;
 
@@ -69,7 +72,7 @@ type
                               var trailCharacter : Char) : TdwsJSONValue; static;
          class function ParseString(const json : String) : TdwsJSONValue; static;
 
-         function ToString : String; reintroduce;
+         function ToString : String; override;
          function ToBeautifiedString(initialTabs, indentTabs : Integer) : String;
          procedure Detach;
 
@@ -80,6 +83,8 @@ type
          property Elements[index : Integer] : TdwsJSONValue read GetElement;
          function ElementCount : Integer;
          property Values[const index : Variant] : TdwsJSONValue read GetValue; default;
+
+         function Value : TdwsJSONImmediate; inline;
    end;
 
    TdwsJSONPair = record
@@ -98,6 +103,7 @@ type
          FCount : Integer;
 
       protected
+         procedure Grow;
          function IndexOfName(const name : String) : Integer;
          function IndexOfValue(const value : TdwsJSONValue) : Integer;
          procedure DetachChild(child : TdwsJSONValue); override;
@@ -117,7 +123,7 @@ type
 
          procedure Clear;
 
-         procedure Add(const name : String; value : TdwsJSONValue);
+         procedure Add(const aName : String; aValue : TdwsJSONValue);
          function AddObject(const name : String) : TdwsJSONObject;
          function AddArray(const name : String) : TdwsJSONArray;
          function AddValue(const name : String) : TdwsJSONImmediate;
@@ -174,8 +180,6 @@ type
          procedure WriteTo(writer : TdwsJSONWriter); override;
 
       public
-         constructor Create;
-
          property AsString : String read GetAsString write SetAsString;
          property IsNull : Boolean read GetIsNull write SetIsNull;
          property AsBoolean : Boolean read GetAsBoolean write SetAsBoolean;
@@ -243,7 +247,8 @@ type
          procedure WriteName(const aName : String); override;
    end;
 
-   EdwsJSONParseError = class (Exception);
+   EdwsJSONException = class (Exception);
+   EdwsJSONParseError = class (EdwsJSONException);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -253,28 +258,22 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+var
+   vJSONFormatSettings : TFormatSettings;
+
 // SkipBlanks
 //
-function SkipBlanks(currentChar : Char; const needChar : TdwsJSONNeedCharFunc) : Char;
+function SkipBlanks(currentChar : Char; const needChar : TdwsJSONNeedCharFunc) : Char; inline;
 begin
    Result:=currentChar;
    repeat
       case Result of
-         #13, #10, #9, ' ' : ;
+         #9..#13, ' ' : ;
       else
          Break;
       end;
       Result:=needChar;
    until False;
-end;
-
-// RaiseJSONParseError
-//
-procedure RaiseJSONParseError(const msg : String; c : Char = #0);
-begin
-   if c>#31 then
-      raise EdwsJSONParseError.CreateFmt(msg, [c])
-   else raise EdwsJSONParseError.CreateFmt(msg, ['U+'+IntToHex(Ord(c), 4)])
 end;
 
 // ParseJSONString
@@ -284,19 +283,18 @@ var
    c : Char;
    wobs : TWriteOnlyBlockStream;
    hexBuf, hexCount, n, nw : Integer;
-   localBuffer : array [0..99] of Char;
    localBufferPtr : PChar;
-   localBufferEnd : PChar;
+   localBuffer : array [0..49] of Char;
 begin
    Assert(initialChar='"');
    localBufferPtr:=@localBuffer[0];
-   localBufferEnd:=@localBuffer[High(localBuffer)];
    wobs:=nil;
    try
       repeat
          c:=needChar;
          case c of
-            #0..#31 : RaiseJSONParseError('Invalid string character %s', c);
+            #0..#31 :
+               TdwsJSONValue.RaiseJSONParseError('Invalid string character %s', c);
             '"' : Break;
             '\' : begin
                c:=needChar;
@@ -319,19 +317,19 @@ begin
                            'A'..'F' :
                               hexBuf:=(hexBuf shl 4)+Ord(c)-Ord('A');
                         else
-                           RaiseJSONParseError('Invalid unicode hex character "%s"', c);
+                           TdwsJSONValue.RaiseJSONParseError('Invalid unicode hex character "%s"', c);
                         end;
                      end;
                      localBufferPtr^:=Char(hexBuf);
                   end;
                else
-                  RaiseJSONParseError('Invalid character "%s" after escape', c);
+                  TdwsJSONValue.RaiseJSONParseError('Invalid character "%s" after escape', c);
                end;
             end;
          else
             localBufferPtr^:=c;
          end;
-         if localBufferPtr=localBufferEnd then begin
+         if localBufferPtr=@localBuffer[High(localBuffer)] then begin
             if wobs=nil then
                wobs:=TWriteOnlyBlockStream.Create;
             wobs.Write(localBuffer[0], Length(localBuffer)*SizeOf(Char));
@@ -343,12 +341,11 @@ begin
          nw:=(wobs.Size div SizeOf(Char));
          SetLength(Result, n+nw);
          wobs.StoreData(Result[1]);
-         Move(localBuffer[0], Result[nw+1], n*SizeOf(Char));
       end else begin
          SetLength(Result, n);
-         if n>0 then
-            Move(localBuffer[0], Result[1], n*SizeOf(Char));
       end;
+      if n>0 then
+         Move(localBuffer[0], Result[1], n*SizeOf(Char));
    finally
       wobs.Free;
    end;
@@ -372,7 +369,7 @@ begin
          Break;
       end;
    until False;
-   Result:=StrToFloat(buf);
+   Result:=StrToFloat(buf, vJSONFormatSettings);
 end;
 
 // ------------------
@@ -383,7 +380,8 @@ end;
 //
 destructor TdwsJSONValue.Destroy;
 begin
-   Detach;
+   if FOwner<>nil then
+      Detach;
    inherited;
 end;
 
@@ -418,32 +416,70 @@ begin
    end;
 end;
 
+type
+   TStringCharProvider = class
+      Str : String;
+      Ptr, ColStart : PChar;
+      Line : Integer;
+      constructor Create(const aStr : String);
+      function NeedChar : Char;
+      function Location : String;
+   end;
+
+// Create
+//
+constructor TStringCharProvider.Create(const aStr : String);
+begin
+   Str:=aStr;
+   Ptr:=PChar(aStr);
+end;
+
+// NeedChar
+//
+function TStringCharProvider.NeedChar : Char;
+var
+   p : PChar;
+begin
+   p:=Ptr;
+   Inc(Ptr);
+   if p^=#10 then begin
+      ColStart:=p;
+      Inc(Line);
+   end;
+   Result:=p^;
+end;
+
+// Location
+//
+function TStringCharProvider.Location : String;
+begin
+   Result:=Format('line %d, col %d (offset %d)',
+                  [Line+1,
+                   (NativeInt(Ptr)-NativeInt(ColStart)) div SizeOf(Char)+1,
+                   (NativeInt(Ptr)-NativeInt(PChar(Str))) div SizeOf(Char)+1]);
+end;
+
 // ParseString
 //
 class function TdwsJSONValue.ParseString(const json : String) : TdwsJSONValue;
 var
-   i, line, col : Integer;
    c : Char;
+   provider : TStringCharProvider;
 begin
-   i:=1;
-   line:=1;
-   col:=1;
+   Result:=nil;
+   provider:=TStringCharProvider.Create(json);
    try
-      Result:=TdwsJSONValue.Parse(function : Char
-                                  begin
-                                     Result:=json[i];
-                                     if Result=#10 then begin
-                                        col:=1;
-                                        Inc(line);
-                                     end else Inc(col);
-                                     Inc(i);
-                                  end, c);
-   except
-      on e : EdwsJSONParseError do
-         raise EdwsJSONParseError.CreateFmt('%s, at line %d, col %d (offset %d)',
-                                            [e.Message, line, col, i]);
-   else
-      raise;
+      try
+         Result:=TdwsJSONValue.Parse(provider.NeedChar, c);
+      except
+         on e : EdwsJSONParseError do
+            raise EdwsJSONParseError.CreateFmt('%s, at %s',
+                                               [e.Message, provider.Location]);
+      else
+         raise;
+      end;
+   finally
+      provider.Free;
    end;
 end;
 
@@ -503,6 +539,15 @@ begin
    if Assigned(Self) then
       Result:=DoElementCount
    else Result:=0;
+end;
+
+// Value
+//
+function TdwsJSONValue.Value : TdwsJSONImmediate;
+begin
+   if FValueType in [jvtObject, jvtArray] then
+      RaiseJSONException('Not a value');
+   Result:=TdwsJSONImmediate(Self);
 end;
 
 // GetValue
@@ -580,6 +625,22 @@ begin
    Result:=nil;
 end;
 
+// RaiseJSONException
+//
+class procedure TdwsJSONValue.RaiseJSONException(const msg : String);
+begin
+   raise EdwsJSONException.Create(msg);
+end;
+
+// RaiseJSONParseError
+//
+class procedure TdwsJSONValue.RaiseJSONParseError(const msg : String; c : Char = #0);
+begin
+   if c>#31 then
+      raise EdwsJSONParseError.CreateFmt(msg, [c])
+   else raise EdwsJSONParseError.CreateFmt(msg, ['U+'+IntToHex(Ord(c), 4)])
+end;
+
 // ------------------
 // ------------------ TdwsJSONObject ------------------
 // ------------------
@@ -631,7 +692,7 @@ begin
       v:=FItems[i].Value;
       v.FOwner:=nil;
       v.Free;
-      Finalize(FItems[i]);
+      FItems[i].Name:='';
    end;
    FreeMem(FItems);
    FItems:=nil;
@@ -639,19 +700,24 @@ begin
    FCapacity:=0;
 end;
 
+// Grow
+//
+procedure TdwsJSONObject.Grow;
+begin
+   FCapacity:=FCapacity+8+(FCapacity shr 2);
+   ReallocMem(FItems, FCapacity*SizeOf(TdwsJSONPair));
+   FillChar(FItems[FCount], (FCapacity-FCount)*SizeOf(TdwsJSONPair), 0);
+end;
+
 // Add
 //
-procedure TdwsJSONObject.Add(const name : String; value : TdwsJSONValue);
+procedure TdwsJSONObject.Add(const aName : String; aValue : TdwsJSONValue);
 begin
-   Assert(value.Owner=nil);
-   value.FOwner:=Self;
-   if FCount=FCapacity then begin
-      FCapacity:=FCapacity+8+(FCapacity shr 2);
-      ReallocMem(FItems, FCapacity*SizeOf(TdwsJSONPair));
-      FillChar(FItems[FCount], (FCapacity-FCount)*SizeOf(TdwsJSONPair), 0);
-   end;
-   FItems[FCount].Name:=name;
-   FItems[FCount].Value:=value;
+   Assert(aValue.Owner=nil);
+   aValue.FOwner:=Self;
+   if FCount=FCapacity then Grow;
+   FItems[FCount].Value:=aValue;
+   FItems[FCount].Name:=aName;
    Inc(FCount);
 end;
 
@@ -926,13 +992,6 @@ end;
 // ------------------ TdwsJSONImmediate ------------------
 // ------------------
 
-// Create
-//
-constructor TdwsJSONImmediate.Create;
-begin
-   FValueType:=jvtNull;
-end;
-
 // GetAsString
 //
 function TdwsJSONImmediate.GetAsString : String;
@@ -1175,7 +1234,7 @@ end;
 procedure TdwsJSONWriter.WriteNumber(const n : Double);
 begin
    BeforeWriteImmediate;
-   FStream.WriteString(FloatToStr(n));
+   FStream.WriteString(FloatToStr(n, vJSONFormatSettings));
    AfterWriteImmediate;
 end;
 
@@ -1323,5 +1382,15 @@ begin
    FStream.WriteString(' : ');
    FState:=wsObjectValue;
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   vJSONFormatSettings.DecimalSeparator:='.';
 
 end.
