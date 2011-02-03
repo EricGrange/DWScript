@@ -873,6 +873,7 @@ type
    public
      destructor Destroy; override;
      procedure EvalNoResult(exec : TdwsExecution); override;
+     function Optimize(exec : TdwsExecution) : TNoPosExpr; override;
      procedure Initialize; override;
      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
@@ -4203,6 +4204,25 @@ begin
    end else if Assigned(FElse) then begin
       exec.DoStep(FElse);
       FElse.EvalNoResult(exec);
+   end;
+end;
+
+// Optimize
+//
+function TIfExpr.Optimize(exec : TdwsExecution) : TNoPosExpr;
+begin
+   Result:=Self;
+   if FCond.IsConstant then begin
+      if FCond.EvalAsBoolean(exec) then begin
+         Result:=FThen;
+         FThen:=nil;
+      end else begin
+         Result:=FElse;
+         FElse:=nil;
+      end;
+      if Result=nil then
+         Result:=TNullExpr.Create(Prog, Pos);
+      Free;
    end;
 end;
 
