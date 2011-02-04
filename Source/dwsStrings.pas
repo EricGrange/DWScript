@@ -346,7 +346,6 @@ const
   RTE_InvalidBreak = 'break without for/while/repeat or case';
   RTE_InvalidContinue = 'continue without for/while/repeat or case';
   RTE_ClassCastFailed = 'Can''t cast instance of type "%s" to class "%s"';
-  RTE_InvalidFunctionCall = 'Function not assigned';
   RTE_OrdinalExpected = 'Ordinal expected';
 
   RTE_ObjectNotInstantiated = 'Object not instantiated';

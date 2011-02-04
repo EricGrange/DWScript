@@ -55,7 +55,7 @@ type
       Make sure to Clear or Clean in the destructor of the Owner. }
    TTightList = record
       private
-         FList: PPointerList;
+         FList : PPointerList;
 
          procedure RaiseIndexOutOfBounds;
          function GetList : PPointerList; inline;
@@ -88,8 +88,10 @@ type
          FCount : Integer;
          FCapacity : Integer;
 
+         procedure Grow;
+
       public
-         procedure Push(item : Pointer);
+         procedure Push(item : Pointer); inline;
          function  Peek : Pointer; inline;
          procedure Pop; inline;
 
@@ -1003,14 +1005,19 @@ end;
 // ------------------ TTightStack ------------------
 // ------------------
 
+// Grow
+//
+procedure TTightStack.Grow;
+begin
+   FCapacity:=FCapacity+8+FCapacity shr 1;
+   ReallocMem(FList, FCapacity*SizeOf(Pointer));
+end;
+
 // Push
 //
 procedure TTightStack.Push(item : Pointer);
 begin
-   if FCount=FCapacity then begin
-      FCapacity:=FCapacity+8+FCapacity shr 1;
-      ReallocMem(FList, FCapacity*SizeOf(Pointer));
-   end;
+   if FCount=FCapacity then Grow;
    FList[FCount]:=item;
    Inc(FCount);
 end;

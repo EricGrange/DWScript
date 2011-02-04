@@ -66,7 +66,7 @@ type
          procedure Initialize(const params : TStackParameters);
          procedure Finalize;
 
-         procedure Push(Delta: Integer);
+         procedure Push(Delta: Integer); inline;
          procedure Pop(Delta: Integer);
 
          procedure WriteData(SourceAddr, DestAddr, Size: Integer; const sourceData: TData);
@@ -101,12 +101,12 @@ type
          procedure IncIntValue_BaseRelative(destAddr : Integer; const value : Int64); inline;
          procedure AppendStringValue_BaseRelative(destAddr : Integer; const value : String);
 
-         procedure PushBp(Level, Bp: Integer);
-         function GetSavedBp(Level: Integer): Integer;
-         function PopBp(Level : Integer): Integer;
+         procedure PushBp(Level, Bp: Integer); inline;
+         function GetSavedBp(Level: Integer): Integer; inline;
+         function PopBp(Level : Integer): Integer; inline;
 
-         procedure SwitchFrame(var oldBasePointer: Integer);
-         procedure RestoreFrame(oldBasePointer: Integer);
+         procedure SwitchFrame(var oldBasePointer: Integer); inline;
+         procedure RestoreFrame(oldBasePointer: Integer); inline;
          procedure Reset;
     
          property BasePointer: Integer read FBasePointer write SetBasePointer;
@@ -259,8 +259,8 @@ end;
 
 procedure TStackMixIn.RestoreFrame(oldBasePointer: Integer);
 begin
-  FStackPointer := FBasePointer;
-  BasePointer := oldBasePointer;
+   FStackPointer := FBasePointer;
+   BasePointer := oldBasePointer;
 end;
 
 // PushBp
@@ -289,8 +289,8 @@ end;
 
 procedure TStackMixIn.SwitchFrame(var oldBasePointer: Integer);
 begin
-  oldBasePointer := FBasePointer;
-  BasePointer := FStackPointer;
+   oldBasePointer := FBasePointer;
+   BasePointer := FStackPointer;
 end;
 
 procedure TStackMixIn.ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);

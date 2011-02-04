@@ -721,7 +721,7 @@ type
       procedure InitPushData(StackAddr: Integer; ArgExpr: TNoPosExpr; ParamSym: TSymbol);
       procedure InitPushLazy(StackAddr: Integer; ArgExpr: TNoPosExpr);
 
-      procedure Execute(exec : TdwsExecution);
+      procedure Execute(exec : TdwsExecution); inline;
 
       procedure ExecuteAddr(exec : TdwsExecution);
       procedure ExecuteTempAddr(exec : TdwsExecution);
@@ -752,6 +752,8 @@ type
       protected
          function PreCall(exec : TdwsExecution) : TFuncSymbol; virtual;
          function PostCall(exec : TdwsExecution) : Variant; virtual;
+
+         procedure EvalPushExprs(exec : TdwsExecution);
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol;
@@ -2502,12 +2504,16 @@ end;
 procedure TdwsProcedure.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
 var
    oldProg : TdwsProgram;
+   locExec : TdwsProgramExecution;
+   stackSize : Integer;
 begin
+   locExec:=exec;
    oldProg:=exec.CurrentProg;
    exec.FCurrentProg:=Self;
 
    // Allocate stack space for local variables
-   exec.Stack.Push(FAddrGenerator.DataSize);
+   stackSize:=FAddrGenerator.DataSize;
+   exec.Stack.Push(stackSize);
 
    // Run the procedure
    try
@@ -2527,8 +2533,8 @@ begin
 
    finally
       // Free stack space for local variables
-      exec.Stack.Pop(FAddrGenerator.DataSize);
-
+      exec:=locExec;
+      exec.Stack.Pop(stackSize);
       exec.FCurrentProg:=oldProg;
    end;
 end;
@@ -3142,12 +3148,12 @@ end;
 procedure TBlockInitExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
-   expr : TExpr;
+   expr : PExpr;
 begin
-   for i:=0 to FCount-1 do begin
-      expr:=FStatements[i];
+   expr:=@FStatements[0];
+   for i:=1 to FCount do begin
       expr.EvalNoResult(exec);
-      if exec.Status<>esrNone then Break;
+      Inc(expr);
    end;
 end;
 
@@ -3663,11 +3669,24 @@ begin
    FArgs.Add(arg);
 end;
 
+// EvalPushExprs
+//
+procedure TFuncExpr.EvalPushExprs(exec : TdwsExecution);
+var
+   i : Integer;
+   p : PPushOperator;
+begin
+   p:=PPushOperator(FPushExprs);
+   for i:=1 to Length(FPushExprs) do begin
+      p.Execute(exec);
+      Inc(p);
+   end;
+end;
+
 // Eval
 //
 function TFuncExpr.Eval(exec : TdwsExecution) : Variant;
 var
-   i : Integer;
    oldBasePointer : Integer;
    func : TFuncSymbol;
 begin
@@ -3680,12 +3699,7 @@ begin
          // Special operations
          func:=PreCall(exec);
 
-         // Push parameters
-         for i:=0 to High(FPushExprs) do
-           FPushExprs[i].Execute(exec);
-
-         if not Assigned(func.Executable) then
-            RaiseScriptError(RTE_InvalidFunctionCall);
+         EvalPushExprs(exec);
 
          // Switch frame
          exec.Stack.SwitchFrame(oldBasePointer);
