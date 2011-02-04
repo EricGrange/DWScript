@@ -52,7 +52,7 @@ type
          FSize : Integer;
          FStackPointer : Integer;
 
-         function GetFrameSize: Integer;
+         function GetFrameSize : Integer;
 
          procedure ClearBpStore;
 
@@ -75,7 +75,8 @@ type
 
          procedure WriteValue(DestAddr: Integer; const Value: Variant);
          procedure WriteIntValue(DestAddr: Integer; const Value: Int64); overload; inline;
-         procedure WriteIntValue(DestAddr: Integer; const pValue: PInt64); overload; inline;
+         procedure WriteIntValue_BaseRelative(DestAddr: Integer; const Value: Int64); overload; inline;
+         procedure WriteIntValue_BaseRelative(DestAddr: Integer; const pValue: PInt64); overload; inline;
          procedure WriteFloatValue(DestAddr: Integer; const Value: Double); inline;
          procedure WriteFloatValue_BaseRelative(DestAddr: Integer; const Value: Double); inline;
          procedure WriteStrValue(DestAddr: Integer; const Value: String); inline;
@@ -87,7 +88,7 @@ type
          function  ReadValue(SourceAddr: Integer): Variant;
          function  ReadIntValue(SourceAddr: Integer): Int64; inline;
          function  ReadIntValue_BaseRelative(SourceAddr: Integer): Int64; inline;
-         function  ReadIntAsFloatValue(SourceAddr: Integer) : Double; inline;
+         function  ReadIntAsFloatValue_BaseRelative(SourceAddr: Integer) : Double; inline;
          function  ReadFloatValue(SourceAddr: Integer) : Double; inline;
          function  ReadFloatValue_BaseRelative(SourceAddr: Integer) : Double; inline;
          procedure ReadStrValue(SourceAddr: Integer; var Result : String);
@@ -95,7 +96,7 @@ type
          procedure ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown);
 
          function  PointerToIntValue(addr : Integer) : PInt64;
-         function  PointerToFloatValue_BaseRelative(addr : Integer) : PDouble;
+         function  PointerToFloatValue_BaseRelative(addr : Integer) : PDouble; inline;
          function  PointerToInterfaceValue(addr : Integer) : PIUnknown;
 
          procedure IncIntValue_BaseRelative(destAddr : Integer; const value : Int64); inline;
@@ -105,10 +106,10 @@ type
          function GetSavedBp(Level: Integer): Integer; inline;
          function PopBp(Level : Integer): Integer; inline;
 
-         procedure SwitchFrame(var oldBasePointer: Integer); inline;
-         procedure RestoreFrame(oldBasePointer: Integer); inline;
+         procedure SwitchFrame(level : Integer; var oldBasePointer: Integer); inline;
+         procedure RestoreFrame(level, oldBasePointer: Integer); inline;
          procedure Reset;
-    
+
          property BasePointer: Integer read FBasePointer write SetBasePointer;
          property FrameSize: Integer read GetFrameSize;
          property MaxSize: Integer read FMaxSize write FMaxSize;
@@ -257,12 +258,6 @@ begin
    end;
 end;
 
-procedure TStackMixIn.RestoreFrame(oldBasePointer: Integer);
-begin
-   FStackPointer := FBasePointer;
-   BasePointer := oldBasePointer;
-end;
-
 // PushBp
 //
 procedure TStackMixIn.PushBp(Level, Bp: Integer);
@@ -276,7 +271,7 @@ end;
 function TStackMixIn.GetSavedBp(Level: Integer): Integer;
 begin
    Assert(Cardinal(Level)<=Cardinal(FParams.MaxLevel));
-   Result := FBpStore[Level].Peek;
+   Result:=FBpStore[Level].Peek;
 end;
 
 // PopBp
@@ -287,10 +282,22 @@ begin
    Result:=FBpStore[Level].Pop;
 end;
 
-procedure TStackMixIn.SwitchFrame(var oldBasePointer: Integer);
+// SwitchFrame
+//
+procedure TStackMixIn.SwitchFrame(level : Integer; var oldBasePointer: Integer);
 begin
-   oldBasePointer := FBasePointer;
-   BasePointer := FStackPointer;
+   oldBasePointer:=FBasePointer;
+   BasePointer:=FStackPointer;
+   PushBP(level, oldBasePointer);
+end;
+
+// RestoreFrame
+//
+procedure TStackMixIn.RestoreFrame(level, oldBasePointer : Integer);
+begin
+   FStackPointer:=BasePointer;
+   BasePointer:=oldBasePointer;
+   PopBp(level);
 end;
 
 procedure TStackMixIn.ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);
@@ -333,13 +340,13 @@ begin
    else Result:=PVariant(varData)^;
 end;
 
-// ReadIntAsFloatValue
+// ReadIntAsFloatValue_BaseRelative
 //
-function TStackMixIn.ReadIntAsFloatValue(SourceAddr: Integer) : Double;
+function TStackMixIn.ReadIntAsFloatValue_BaseRelative(SourceAddr: Integer) : Double;
 var
    varData : PVarData;
 begin
-   varData:=@Data[SourceAddr];
+   varData:=@FBaseData[SourceAddr];
    Assert(varData.VType=varInt64);
    Result:=varData.VInt64;
 end;
@@ -495,13 +502,25 @@ begin
    else PVariant(varData)^:=Value;
 end;
 
-// WriteIntValue
+// WriteIntValue_BaseRelative
 //
-procedure TStackMixIn.WriteIntValue(DestAddr: Integer; const pValue: PInt64);
+procedure TStackMixIn.WriteIntValue_BaseRelative(DestAddr: Integer; const Value: Int64);
 var
    varData : PVarData;
 begin
-   varData:=@Data[DestAddr];
+   varData:=@FBaseData[DestAddr];
+   if varData.VType=varInt64 then
+      varData.VInt64:=Value
+   else PVariant(varData)^:=Value;
+end;
+
+// WriteIntValue_BaseRelative
+//
+procedure TStackMixIn.WriteIntValue_BaseRelative(DestAddr: Integer; const pValue: PInt64);
+var
+   varData : PVarData;
+begin
+   varData:=@FBaseData[DestAddr];
    if varData.VType=varInt64 then
       varData.VInt64:=pValue^
    else PVariant(varData)^:=pValue^;

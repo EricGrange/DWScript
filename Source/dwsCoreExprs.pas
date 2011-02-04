@@ -1304,26 +1304,26 @@ end;
 
 procedure TIntVarExpr.AssignExpr(exec : TdwsExecution; Expr: TNoPosExpr);
 begin
-   exec.Stack.WriteIntValue(exec.Stack.BasePointer + FStackAddr, Expr.EvalAsInteger(exec));
+   exec.Stack.WriteIntValue_BaseRelative(FStackAddr, Expr.EvalAsInteger(exec));
 end;
 
 procedure TIntVarExpr.AssignValue(exec : TdwsExecution; const Value: Variant);
 begin
-   exec.Stack.WriteIntValue(exec.Stack.BasePointer + FStackAddr, Value);
+   exec.Stack.WriteIntValue_BaseRelative(FStackAddr, Value);
 end;
 
 // AssignValueAsInteger
 //
 procedure TIntVarExpr.AssignValueAsInteger(exec : TdwsExecution; const Value: Int64);
 begin
-   exec.Stack.WriteIntValue(exec.Stack.BasePointer + FStackAddr, Value);
+   exec.Stack.WriteIntValue_BaseRelative(FStackAddr, Value);
 end;
 
 // AssignValueAsPInteger
 //
 procedure TIntVarExpr.AssignValueAsPInteger(exec : TdwsExecution; const pValue: PInt64);
 begin
-   exec.Stack.WriteIntValue(exec.Stack.BasePointer + FStackAddr, pValue);
+   exec.Stack.WriteIntValue_BaseRelative(FStackAddr, pValue);
 end;
 
 // IncValue
@@ -1342,7 +1342,7 @@ end;
 //
 function TIntVarExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   Result:=exec.Stack.ReadIntAsFloatValue(exec.Stack.BasePointer+FStackAddr);
+   Result:=exec.Stack.ReadIntAsFloatValue_BaseRelative(FStackAddr);
 end;
 
 // EvalAsPInteger
@@ -4011,16 +4011,17 @@ procedure TBlockExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
    oldTable : TSymbolTable;
-   expr : TExpr;
+   expr : PExpr;
 begin
    oldTable:=FProg.Table;
    try
       FProg.Table:=FTable;
-      for i:=0 to FCount-1 do begin
-         expr:=FStatements[i];
-         exec.DoStep(expr);
+      expr:=@FStatements[0];
+      for i:=1 to FCount do begin
+         exec.DoStep(expr^);
          expr.EvalNoResult(exec);
          if exec.Status<>esrNone then Break;
+         Inc(expr);
       end;
    finally
       FProg.Table:=oldTable;

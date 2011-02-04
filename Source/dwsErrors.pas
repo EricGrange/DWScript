@@ -184,7 +184,10 @@ type
 
    EClassPropertyIncompleteError = class(EClassIncompleteError);
 
-   EScriptStopped = class (Exception) end;
+   EScriptStopped = class (Exception)
+      public
+         class procedure DoRaise; static;
+   end;
 
    // The compilation has to be stopped because of an error
    ECompileError = class(Exception)
@@ -603,6 +606,17 @@ end;
 procedure TdwsCompileMessageList.AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
 begin
    AddCompilerStop(Pos, Format(textFormat, args), TSyntaxErrorMessage);
+end;
+
+// ------------------
+// ------------------ EScriptStopped ------------------
+// ------------------
+
+// DoRaise
+//
+class procedure EScriptStopped.DoRaise;
+begin
+   raise EScriptStopped.Create(RTE_ScriptStopped);
 end;
 
 end.

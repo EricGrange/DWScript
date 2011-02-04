@@ -137,8 +137,8 @@ type
 
          procedure DoStep(expr : TExprBase); inline;
 
-         procedure IncRecursion(caller : TExprBase); inline;
-         procedure DecRecursion; inline;
+         procedure EnterRecursion(caller : TExprBase); inline;
+         procedure LeaveRecursion; inline;
          procedure RaiseMaxRecursionReached(caller : TExprBase);
 
          property Status : TExecutionStatusResult read FStatus write FStatus;
@@ -3744,25 +3744,31 @@ end;
 //
 procedure TdwsExecution.DoStep(expr : TExprBase);
 begin
-   if ProgramState=psRunningStopped then begin
-      raise EScriptStopped.Create(RTE_ScriptStopped)
-   end else if IsDebugging then
-      Debugger.DoDebug(Self, Expr);
+   if ProgramState=psRunningStopped then
+      EScriptStopped.DoRaise;
+   if IsDebugging then
+      Debugger.DoDebug(Self, expr);
 end;
 
-// IncRecursion
+// EnterRecursion
 //
-procedure TdwsExecution.IncRecursion(caller : TExprBase);
+procedure TdwsExecution.EnterRecursion(caller : TExprBase);
 begin
    FCallStack.Push(caller);
    if FCallStack.Count>=FStack.MaxRecursionDepth then
       RaiseMaxRecursionReached(caller);
+
+   if IsDebugging then
+      Debugger.EnterFunc(Self, caller);
 end;
 
-// DecRecursion
+// LeaveRecursion
 //
-procedure TdwsExecution.DecRecursion;
+procedure TdwsExecution.LeaveRecursion;
 begin
+   if IsDebugging then
+      Debugger.LeaveFunc(Self, FCallStack.Peek);
+
    FCallStack.Pop;
 end;
 

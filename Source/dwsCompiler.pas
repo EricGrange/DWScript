@@ -1581,6 +1581,8 @@ begin
                   Break;
                end;
             end;
+            if Optimize then
+               FProg.Expr:=FProg.Expr.Optimize(FExec) as TExpr;
 
             if FTok.TestDelete(ttENSURE) then begin
                if funcSymbol is TMethodSymbol then

@@ -421,7 +421,7 @@ type
          FExecutionsLock : TCriticalSection;
 
       protected
-         function GetLevel: Integer;
+         function GetLevel: Integer; inline;
          procedure SetConditionalDefines(const val : TStringList);
 
          procedure NotifyExecutionDestruction(exec : TdwsProgramExecution);
@@ -2504,10 +2504,8 @@ end;
 procedure TdwsProcedure.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
 var
    oldProg : TdwsProgram;
-   locExec : TdwsProgramExecution;
    stackSize : Integer;
 begin
-   locExec:=exec;
    oldProg:=exec.CurrentProg;
    exec.FCurrentProg:=Self;
 
@@ -2533,7 +2531,6 @@ begin
 
    finally
       // Free stack space for local variables
-      exec:=locExec;
       exec.Stack.Pop(stackSize);
       exec.FCurrentProg:=oldProg;
    end;
@@ -3692,41 +3689,25 @@ var
 begin
    try
       // Allocate memory for parameters on the stack
-      exec.IncRecursion(Self);
       exec.Stack.Push(FFunc.ParamSize);
       try
-
-         // Special operations
          func:=PreCall(exec);
 
          EvalPushExprs(exec);
 
-         // Switch frame
-         exec.Stack.SwitchFrame(oldBasePointer);
-         exec.Stack.PushBp(FProg.Level, oldBasePointer);
-
-         if exec.IsDebugging then
-            exec.Debugger.EnterFunc(exec, Self);
-
-         // Call function
+         exec.Stack.SwitchFrame(FProg.Level, oldBasePointer);
+         exec.EnterRecursion(Self);
          try
             ICallable(func.Executable).Call(TdwsProgramExecution(exec), func);
          finally
-            if exec.IsDebugging then
-               exec.Debugger.LeaveFunc(exec, Self);
-
-            // Restore frame
-
-            exec.Stack.RestoreFrame(oldBasePointer);
-            exec.Stack.PopBp(FProg.Level);
-
-            Result:=PostCall(exec);
+            exec.LeaveRecursion;
+            exec.Stack.RestoreFrame(FProg.Level, oldBasePointer);
          end;
 
+         Result:=PostCall(exec);
       finally
          // Remove parameters from stack
          exec.Stack.Pop(FFunc.ParamSize);
-         exec.DecRecursion;
       end;
    except
       exec.SetScriptError(Self);
@@ -6919,6 +6900,7 @@ end;
 //
 procedure TNoResultWrapperExpr.EvalNoResult(exec : TdwsExecution);
 begin
+   exec.DoStep(Self);
    Expr.EvalNoResult(exec);
 end;
 
