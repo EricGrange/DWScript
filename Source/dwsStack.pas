@@ -73,6 +73,8 @@ type
          procedure ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);
          procedure CopyData(SourceAddr, DestAddr, Size: Integer);
 
+         procedure ClearData(addr, size : Integer);
+
          procedure WriteValue(DestAddr: Integer; const Value: Variant);
          procedure WriteIntValue(DestAddr: Integer; const Value: Int64); overload; inline;
          procedure WriteIntValue_BaseRelative(DestAddr: Integer; const Value: Int64); overload; inline;
@@ -117,7 +119,7 @@ type
          property MaxRecursionDepth : Integer read FParams.MaxRecursionDepth write FParams.MaxRecursionDepth;
    end;
 
-   EStackException = class (Exception) end;
+   EStackException = class(Exception);
 
 procedure CopyData(const SourceData: TData; SourceAddr: Integer;
                    DestData: TData; DestAddr: Integer; Size: Integer);
@@ -183,6 +185,15 @@ begin
   end;
 end;
 
+procedure TStackMixIn.ClearData(addr, size : Integer);
+begin
+   while size>0 do begin
+      VarClear(Data[addr]);
+      Inc(addr);
+      Dec(size);
+   end;
+end;
+
 function TStackMixIn.GetFrameSize: Integer;
 begin
   Result := FStackPointer - FBasePointer;
@@ -200,8 +211,6 @@ begin
       Dec(v);
       VarClear(v^);
    end;
-
-   // Free memory
    FStackPointer:=sp;
 end;
 
@@ -278,7 +287,6 @@ end;
 //
 function TStackMixIn.PopBp(Level : Integer): Integer;
 begin
-   Assert(Cardinal(Level)<=Cardinal(FParams.MaxLevel));
    Result:=FBpStore[Level].Pop;
 end;
 

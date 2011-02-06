@@ -546,7 +546,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); virtual;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
-         function EvalAsFloat(exec : TdwsExecution) : Double; override;
+         function  EvalAsFloat(exec : TdwsExecution) : Double; override;
          procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
@@ -706,7 +706,7 @@ type
                         potResult,
                         potResultInteger, potResultFloat, potResultBoolean,
                         potResultString, potResultConstString,
-                        potData, potLazy);
+                        potData, potLazy, potClear);
    PPushOperator = ^TPushOperator;
    TPushOperator = packed record
       FStackAddr: Integer;
@@ -719,6 +719,7 @@ type
       procedure InitPushTempArray(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushResult(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushData(StackAddr: Integer; ArgExpr: TNoPosExpr; ParamSym: TSymbol);
+      procedure InitPushClear(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushLazy(StackAddr: Integer; ArgExpr: TNoPosExpr);
 
       procedure Execute(exec : TdwsExecution); inline;
@@ -735,19 +736,16 @@ type
       procedure ExecuteResultConstString(exec : TdwsExecution);
 //      procedure ExecuteResultArray(exec : TdwsExecution);
       procedure ExecuteData(exec : TdwsExecution);
+      procedure ExecuteClear(exec : TdwsExecution);
       procedure ExecuteLazy(exec : TdwsExecution);
    end;
-
-   TFuncExprState = (fesIsInstruction, fesIsWritable);
-   TFuncExprStates = set of TFuncExprState;
 
    // Function call: func(arg0, arg1, ...);
    TFuncExpr = class (TFuncExprBase)
       private
-         FInitResultExpr : TDataExpr;
-         FStates : TFuncExprStates;
          FPushExprs : packed array of TPushOperator;
          FResultAddr : Integer;
+         FLevel : Integer;
 
       protected
          function PreCall(exec : TdwsExecution) : TFuncSymbol; virtual;
@@ -757,8 +755,7 @@ type
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol;
-                            IsInstruction: Boolean = True; exec : TdwsProgramExecution = nil);
-         destructor Destroy; override;
+                            exec : TdwsProgramExecution = nil);
 
          function AddArg(arg : TNoPosExpr) : TSymbol; override;
          procedure AddPushExprs;
@@ -907,7 +904,7 @@ type
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-                            BaseExpr: TDataExpr; IsInstruction: Boolean = True);
+                            BaseExpr: TDataExpr);
          destructor Destroy; override;
 
          procedure TypeCheckNoPos(const aPos : TScriptPos); override;
@@ -954,7 +951,7 @@ type
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-                            Base: TDataExpr; IsInstruction: Boolean = True);
+                            Base: TDataExpr);
          procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
 
@@ -966,7 +963,7 @@ type
          function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-                            Base: TDataExpr; IsInstruction: Boolean = True);
+                            Base: TDataExpr);
          property ExternalObject: TObject read FExternalObject write FExternalObject;
    end;
 
@@ -975,15 +972,15 @@ type
          function PostCall(exec : TdwsExecution) : Variant; override;
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-                            BaseExpr: TDataExpr; IsInstruction: Boolean = True);
+                            BaseExpr: TDataExpr);
    end;
 
    TConstructorVirtualObjExpr = class(TMethodVirtualExpr)
       protected
          function PostCall(exec : TdwsExecution): Variant; override;
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol; Base:
-                            TDataExpr; IsInstruction: Boolean = True);
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
+                            Base: TDataExpr);
    end;
 
    TDestructorStaticExpr = class(TMethodStaticExpr)
@@ -1263,6 +1260,11 @@ type
          property Destroyed : Boolean read FDestroyed write FDestroyed;
          property NextObject : TScriptObj read FNextObject write FNextObject;
          property PrevObject : TScriptObj read FPrevObject write FPrevObject;
+   end;
+
+   EdwsVariantTypeCastError = class(EVariantTypeCastError)
+      public
+         constructor Create(const v : Variant; const desiredType : String);
    end;
 
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
@@ -1631,7 +1633,7 @@ begin
                                                       rkClassOfRef, cNullPos, True, ForceStatic)
       end;
    end else begin
-      Result := TFuncExpr.Create(Prog, cNullPos, funcSym, True, exec);
+      Result := TFuncExpr.Create(Prog, cNullPos, funcSym, exec);
    end;
 end;
 
@@ -1648,30 +1650,30 @@ begin
       fkFunction, fkProcedure, fkMethod:
          if meth.IsClassMethod then begin
             if not ForceStatic and meth.IsVirtual then
-               Result := TClassMethodVirtualExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-            else Result := TClassMethodStaticExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
+               Result := TClassMethodVirtualExpr.Create(Expr.Prog, Pos, meth, Expr)
+            else Result := TClassMethodStaticExpr.Create(Expr.Prog, Pos, meth, Expr)
          end else begin
             Assert(RefKind = rkObjRef);
             if not ForceStatic and meth.IsVirtual then
-               Result := TMethodVirtualExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-            else Result := TMethodStaticExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction);
+               Result := TMethodVirtualExpr.Create(Expr.Prog, Pos, meth, Expr)
+            else Result := TMethodStaticExpr.Create(Expr.Prog, Pos, meth, Expr);
          end;
       fkConstructor:
          if RefKind = rkClassOfRef then begin
             if not ForceStatic and meth.IsVirtual then
-               Result := TConstructorVirtualExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-            else Result := TConstructorStaticExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction);
+               Result := TConstructorVirtualExpr.Create(Expr.Prog, Pos, meth, Expr)
+            else Result := TConstructorStaticExpr.Create(Expr.Prog, Pos, meth, Expr);
          end else begin
             if not ForceStatic and meth.IsVirtual then
-               Result := TConstructorVirtualObjExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-            else Result := TConstructorStaticObjExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction);
+               Result := TConstructorVirtualObjExpr.Create(Expr.Prog, Pos, meth, Expr)
+            else Result := TConstructorStaticObjExpr.Create(Expr.Prog, Pos, meth, Expr);
          end;
       fkDestructor:
          begin
             Assert(RefKind = rkObjRef);
             if not ForceStatic and meth.IsVirtual then
-               Result := TDestructorVirtualExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
-            else Result := TDestructorStaticExpr.Create(Expr.Prog, Pos, meth, Expr, IsInstruction)
+               Result := TDestructorVirtualExpr.Create(Expr.Prog, Pos, meth, Expr)
+            else Result := TDestructorStaticExpr.Create(Expr.Prog, Pos, meth, Expr)
          end;
    else
       Assert(False);
@@ -2891,8 +2893,7 @@ begin
       // workaround for RTL bug that will sometimes report a failed cast to Int64
       // as being a failed cast to Boolean
       on E : EVariantTypeCastError do begin
-         raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes,
-                                               [VarTypeAsText(VarType(v)), 'Integer'])
+         raise EdwsVariantTypeCastError.Create(v, 'Integer');
       end else raise;
    end;
 end;
@@ -2909,8 +2910,7 @@ begin
    except
       // standardize RTL message
       on E : EVariantTypeCastError do begin
-         raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes,
-                                               [VarTypeAsText(VarType(v)), 'Boolean'])
+         raise EdwsVariantTypeCastError.Create(v, 'Boolean');
       end else raise;
    end;
 end;
@@ -2927,8 +2927,7 @@ begin
    except
       // standardize RTL message
       on E : EVariantTypeCastError do begin
-         raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes,
-                                               [VarTypeAsText(VarType(v)), 'Float'])
+         raise EdwsVariantTypeCastError.Create(v, 'Float');
       end else raise;
    end;
 end;
@@ -2945,8 +2944,7 @@ begin
    except
       // standardize RTL message
       on E : EVariantTypeCastError do begin
-         raise EVariantTypeCastError.CreateFmt(CPE_AssignIncompatibleTypes,
-                                               [VarTypeAsText(VarType(v)), 'String'])
+         raise EdwsVariantTypeCastError.Create(v, 'String');
       end else raise;
    end;
 end;
@@ -3446,7 +3444,16 @@ begin
    FTypeParamSym:=ParamSym;
 end;
 
-// InitPushData
+// InitPushClear
+//
+procedure TPushOperator.InitPushClear(StackAddr: Integer; ArgExpr: TNoPosExpr);
+begin
+   FTypeParamSym:=TSymbol(potClear);
+   FStackAddr:=StackAddr;
+   FArgExpr:=ArgExpr;
+end;
+
+// InitPushLazy
 //
 procedure TPushOperator.InitPushLazy(StackAddr: Integer; ArgExpr: TNoPosExpr);
 begin
@@ -3470,6 +3477,7 @@ begin
       potResultString : ExecuteResultString(exec);
       potResultConstString : ExecuteResultConstString(exec);
       potResult : ExecuteResult(exec);
+      potClear : ExecuteClear(exec);
       potLazy : ExecuteLazy(exec);
    else
       ExecuteData(exec);
@@ -3609,6 +3617,14 @@ begin
                         FTypeParamSym.Typ.Size, TDataExpr(FArgExpr).Data[exec]);
 end;
 
+// ExecuteClear
+//
+procedure TPushOperator.ExecuteClear(exec : TdwsExecution);
+begin
+   exec.Stack.ClearData(exec.Stack.StackPointer + FStackAddr,
+                        TFuncExpr(FArgExpr).Typ.Size);
+end;
+
 // ExecuteLazy
 //
 procedure TPushOperator.ExecuteLazy(exec : TdwsExecution);
@@ -3622,38 +3638,11 @@ end;
 // ------------------
 
 constructor TFuncExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol;
-                             IsInstruction: Boolean = True; exec : TdwsProgramExecution = nil);
-
-   procedure CreateResultExpr;
-   var
-      initData: TData;
-   begin
-      // Initialize Result
-      SetLength(initData, FTyp.Size);
-      FTyp.InitData(initData, 0);
-      FInitResultExpr := TConstExpr.CreateTyped(Prog, FTyp, initData);
-
-      SetResultAddr(exec);
-   end;
-
+                             exec : TdwsProgramExecution = nil);
 begin
    inherited Create(Prog, Pos, Func);
-   if IsInstruction then
-      Include(FStates, fesIsInstruction);
-   if IsWritable then
-      Include(FStates, fesIsWritable);
-   FResultAddr := -1;
-
-   if Assigned(FTyp) then
-      CreateResultExpr;
-end;
-
-// Destroy
-//
-destructor TFuncExpr.Destroy;
-begin
-   FInitResultExpr.Free;
-   inherited;
+   FLevel:=Prog.Level;
+   FResultAddr:=-1;
 end;
 
 // AddArg
@@ -3695,13 +3684,13 @@ begin
 
          EvalPushExprs(exec);
 
-         oldBasePointer:=exec.Stack.SwitchFrame(FProg.Level);
+         oldBasePointer:=exec.Stack.SwitchFrame(FLevel);
          exec.EnterRecursion(Self);
          try
             ICallable(func.Executable).Call(TdwsProgramExecution(exec), func);
          finally
             exec.LeaveRecursion;
-            exec.Stack.RestoreFrame(FProg.Level, oldBasePointer);
+            exec.Stack.RestoreFrame(FLevel, oldBasePointer);
          end;
 
          Result:=PostCall(exec);
@@ -3728,7 +3717,7 @@ function TFuncExpr.PostCall(exec : TdwsExecution) : Variant;
 var
    sourceAddr, destAddr: Integer;
 begin
-   if Assigned(FInitResultExpr) then begin
+   if Assigned(FTyp) then begin
       // Result.StackAddr is relative to BasePointer of the called function
       // But the frame is already restored so its relative to the stackpointer here
       sourceAddr:=exec.Stack.StackPointer+FFunc.Result.StackAddr;
@@ -3760,7 +3749,7 @@ var
    param: TParamSymbol;
    pushOperator : PPushOperator;
 begin
-   if Assigned(FInitResultExpr) then
+   if Assigned(FFunc.Result) then
       SetLength(FPushExprs, FArgs.Count+1)
    else SetLength(FPushExprs, FArgs.Count);
 
@@ -3787,8 +3776,9 @@ begin
       end;
    end;
 
-   if Assigned(FInitResultExpr) then
-      FPushExprs[FArgs.Count].InitPushData(FFunc.Result.StackAddr, FInitResultExpr, FFunc.Result);
+   if Assigned(FFunc.Result) then
+      FPushExprs[FArgs.Count].InitPushClear(FFunc.Result.StackAddr, Self);
+
 end;
 
 // Initialize
@@ -3818,7 +3808,7 @@ end;
 //
 function TFuncExpr.IsWritable : Boolean;
 begin
-   Result:=(fesIsWritable in FStates);
+   Result:=False;
 end;
 
 { TNoPosExprList }
@@ -4053,9 +4043,9 @@ end;
 // Create
 //
 constructor TMethodExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-  Func: TMethodSymbol; BaseExpr: TDataExpr; IsInstruction: Boolean);
+  Func: TMethodSymbol; BaseExpr: TDataExpr);
 begin
-   inherited Create(Prog, Pos, Func, IsInstruction);
+   inherited Create(Prog, Pos, Func);
    FBaseExpr:=BaseExpr;
    FSelfAddr:=Func.SelfSym.StackAddr;
 end;
@@ -4193,9 +4183,9 @@ end;
 // ------------------
 
 constructor TConstructorStaticExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-   Func: TMethodSymbol; Base: TDataExpr; IsInstruction: Boolean = True);
+   Func: TMethodSymbol; Base: TDataExpr);
 begin
-  inherited Create(Prog, Pos, Func, Base, IsInstruction);
+  inherited Create(Prog, Pos, Func, Base);
   if Base.Typ is TClassOfSymbol then
     FTyp := Base.Typ.Typ
   else
@@ -4235,9 +4225,9 @@ end;
 { TConstructorVirtualExpr }
 
 constructor TConstructorVirtualExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-   Func: TMethodSymbol; Base: TDataExpr; IsInstruction: Boolean);
+   Func: TMethodSymbol; Base: TDataExpr);
 begin
-  inherited Create(Prog, Pos, Func, Base, IsInstruction);
+  inherited Create(Prog, Pos, Func, Base);
   FTyp := Base.Typ.Typ;
 end;
 
@@ -6716,10 +6706,9 @@ end;
 { TConstructorStaticObjExpr }
 
 constructor TConstructorStaticObjExpr.Create(Prog: TdwsProgram;
-  const Pos: TScriptPos; Func: TMethodSymbol; BaseExpr: TDataExpr;
-  IsInstruction: Boolean);
+  const Pos: TScriptPos; Func: TMethodSymbol; BaseExpr: TDataExpr);
 begin
-  inherited Create(Prog,Pos,Func,BaseExpr,IsInstruction);
+  inherited Create(Prog,Pos,Func,BaseExpr);
   Typ := BaseExpr.Typ;
 end;
 
@@ -6731,9 +6720,9 @@ end;
 { TConstructorVirtualObjExpr }
 
 constructor TConstructorVirtualObjExpr.Create(Prog: TdwsProgram;
-  const Pos: TScriptPos; Func: TMethodSymbol; Base: TDataExpr; IsInstruction: Boolean);
+  const Pos: TScriptPos; Func: TMethodSymbol; Base: TDataExpr);
 begin
-  inherited Create(Prog,Pos,Func,Base,IsInstruction);
+  inherited Create(Prog,Pos,Func,Base);
   Typ := Base.Typ;
 end;
 
@@ -7118,6 +7107,19 @@ begin
       end;
       methSym:=methSym.ParentMeth;
    end;
+end;
+
+// ------------------
+// ------------------ EdwsVariantTypeCastError ------------------
+// ------------------
+
+// Create
+//
+constructor EdwsVariantTypeCastError.Create(const v : Variant; const desiredType : String);
+begin
+   inherited CreateFmt(CPE_AssignIncompatibleTypes,
+                       [VarTypeAsText(VarType(v)), desiredType])
+
 end;
 
 end.

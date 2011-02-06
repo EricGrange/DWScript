@@ -2533,20 +2533,20 @@ begin
         if not Assigned(Sym.WriteFunc) then
           FMsgs.AddCompilerStop(FTok.HotPos,CPE_CantWriteToLeftSide);
         // Transform a := b into a(b)
-        Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.WriteFunc, True);
+        Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.WriteFunc);
         Result.AddArg(ReadExpr);
       end
       else if (Sym.Typ is TClassSymbol) or (Sym.Typ is TClassOfSymbol) then
       begin
         if not Assigned(Sym.ReadFunc) then
           FMsgs.AddCompilerStop(FTok.HotPos,CPE_RightSideNeedsReturnType);
-        Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc, False)
+        Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc)
       end
       else
         FMsgs.AddCompilerStop(FTok.HotPos, CPE_AssignExpected);
     end
     else if Assigned(Sym.ReadFunc) then
-      Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc, False)
+      Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc)
     else
       FMsgs.AddCompilerStop(FTok.HotPos,CPE_WriteOnlyProperty); // ??
   except
@@ -2933,8 +2933,7 @@ begin
       if CodeExpr=nil then begin
 
          Result:=TMethodStaticExpr.Create(FProg, FTok.HotPos, TMethodSymbol(FuncSym),
-                                          TMethodObjExpr.Create(FProg, FTok.HotPos, CodeExpr),
-                                          True);
+                                          TMethodObjExpr.Create(FProg, FTok.HotPos, CodeExpr));
 
       end else begin
 
@@ -2962,7 +2961,7 @@ begin
 
    end else if CodeExpr=nil then begin
 
-      Result:=TFuncExpr.Create(FProg, FTok.HotPos, FuncSym, True);
+      Result:=TFuncExpr.Create(FProg, FTok.HotPos, FuncSym);
 
    end else begin
 
