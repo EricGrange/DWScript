@@ -3695,7 +3695,7 @@ begin
 
          EvalPushExprs(exec);
 
-         exec.Stack.SwitchFrame(FProg.Level, oldBasePointer);
+         oldBasePointer:=exec.Stack.SwitchFrame(FProg.Level);
          exec.EnterRecursion(Self);
          try
             ICallable(func.Executable).Call(TdwsProgramExecution(exec), func);

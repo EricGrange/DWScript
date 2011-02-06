@@ -106,7 +106,7 @@ type
          function GetSavedBp(Level: Integer): Integer; inline;
          function PopBp(Level : Integer): Integer; inline;
 
-         procedure SwitchFrame(level : Integer; var oldBasePointer: Integer); inline;
+         function  SwitchFrame(level : Integer) : Integer; inline;
          procedure RestoreFrame(level, oldBasePointer: Integer); inline;
          procedure Reset;
 
@@ -284,11 +284,11 @@ end;
 
 // SwitchFrame
 //
-procedure TStackMixIn.SwitchFrame(level : Integer; var oldBasePointer: Integer);
+function TStackMixIn.SwitchFrame(level : Integer) : Integer;
 begin
-   oldBasePointer:=FBasePointer;
+   Result:=FBasePointer;
    BasePointer:=FStackPointer;
-   PushBP(level, oldBasePointer);
+   PushBP(level, Result);
 end;
 
 // RestoreFrame
