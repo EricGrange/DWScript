@@ -706,7 +706,7 @@ type
                         potResult,
                         potResultInteger, potResultFloat, potResultBoolean,
                         potResultString, potResultConstString,
-                        potData, potLazy, potClear);
+                        potData, potLazy, potInitResult);
    PPushOperator = ^TPushOperator;
    TPushOperator = packed record
       FStackAddr: Integer;
@@ -719,7 +719,7 @@ type
       procedure InitPushTempArray(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushResult(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushData(StackAddr: Integer; ArgExpr: TNoPosExpr; ParamSym: TSymbol);
-      procedure InitPushClear(StackAddr: Integer; ArgExpr: TNoPosExpr);
+      procedure InitPushInitResult(StackAddr: Integer; ArgExpr: TNoPosExpr);
       procedure InitPushLazy(StackAddr: Integer; ArgExpr: TNoPosExpr);
 
       procedure Execute(exec : TdwsExecution); inline;
@@ -736,7 +736,7 @@ type
       procedure ExecuteResultConstString(exec : TdwsExecution);
 //      procedure ExecuteResultArray(exec : TdwsExecution);
       procedure ExecuteData(exec : TdwsExecution);
-      procedure ExecuteClear(exec : TdwsExecution);
+      procedure ExecuteInitResult(exec : TdwsExecution);
       procedure ExecuteLazy(exec : TdwsExecution);
    end;
 
@@ -3448,13 +3448,13 @@ begin
    FTypeParamSym:=ParamSym;
 end;
 
-// InitPushClear
+// InitPushInitResult
 //
-procedure TPushOperator.InitPushClear(StackAddr: Integer; ArgExpr: TNoPosExpr);
+procedure TPushOperator.InitPushInitResult(StackAddr: Integer; ArgExpr: TNoPosExpr);
 begin
-   FTypeParamSym:=TSymbol(potClear);
+   FTypeParamSym:=TSymbol(potInitResult);
    FStackAddr:=StackAddr;
-   FArgExpr:=ArgExpr;
+   FArgExpr:=TNoPosExpr((ArgExpr as TFuncExpr).Typ); // dirty hack
 end;
 
 // InitPushLazy
@@ -3481,7 +3481,7 @@ begin
       potResultString : ExecuteResultString(exec);
       potResultConstString : ExecuteResultConstString(exec);
       potResult : ExecuteResult(exec);
-      potClear : ExecuteClear(exec);
+      potInitResult : ExecuteInitResult(exec);
       potLazy : ExecuteLazy(exec);
    else
       ExecuteData(exec);
@@ -3621,12 +3621,11 @@ begin
                         FTypeParamSym.Typ.Size, TDataExpr(FArgExpr).Data[exec]);
 end;
 
-// ExecuteClear
+// ExecuteInitResult
 //
-procedure TPushOperator.ExecuteClear(exec : TdwsExecution);
+procedure TPushOperator.ExecuteInitResult(exec : TdwsExecution);
 begin
-   exec.Stack.ClearData(exec.Stack.StackPointer + FStackAddr,
-                        TFuncExpr(FArgExpr).Typ.Size);
+   TSymbol(FArgExpr).InitData(exec.Stack.Data, exec.Stack.StackPointer+FStackAddr);
 end;
 
 // ExecuteLazy
@@ -3781,7 +3780,7 @@ begin
    end;
 
    if Assigned(FFunc.Result) then
-      FPushExprs[FArgs.Count].InitPushClear(FFunc.Result.StackAddr, Self);
+      FPushExprs[FArgs.Count].InitPushInitResult(FFunc.Result.StackAddr, Self);
 
 end;
 

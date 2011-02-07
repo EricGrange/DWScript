@@ -657,15 +657,15 @@ type
 
    // integer/string/float/boolean/variant
    TBaseSymbol = class(TNameSymbol)
-   protected
-     FDefault: Variant;
-     FID : TBaseTypeID;
-   public
-     constructor Create(const Name: string; Id: TBaseTypeID; const Default: Variant);
-     procedure InitData(const Data: TData; Offset: Integer); override;
-     function IsCompatible(typSym: TSymbol): Boolean; override;
-     function BaseTypeID : TBaseTypeID; override;
-     property ID : TBaseTypeID read FID;
+      protected
+         FDefault: Variant;
+         FID : TBaseTypeID;
+      public
+         constructor Create(const Name: string; Id: TBaseTypeID; const Default: Variant);
+         procedure InitData(const Data: TData; Offset: Integer); override;
+         function IsCompatible(typSym: TSymbol): Boolean; override;
+         function BaseTypeID : TBaseTypeID; override;
+         property ID : TBaseTypeID read FID;
    end;
 
    IConnectorType = interface;
@@ -1461,12 +1461,17 @@ begin
   FMembers.AddSymbol(Member);
 end;
 
+// InitData
+//
 procedure TRecordSymbol.InitData(const Data: TData; Offset: Integer);
 var
-  x: Integer;
+   i : Integer;
+   member : TMemberSymbol;
 begin
-  for x := 0 to FMembers.Count - 1 do
-    FMembers[x].InitData(Data, Offset + TMemberSymbol(FMembers[x]).Offset);
+   for i:=0 to FMembers.Count-1 do begin
+      member:=TMemberSymbol(FMembers[i]);
+      member.InitData(Data, offset+member.Offset);
+   end;
 end;
 
 function TRecordSymbol.IsCompatible(typSym: TSymbol): Boolean;

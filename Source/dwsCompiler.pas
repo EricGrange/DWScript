@@ -5104,8 +5104,8 @@ var
 begin
    // Create base data types
    SystemTable.AddSymbol(TBaseSymbol.Create(SYS_BOOLEAN, typBooleanID, False));
-   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_FLOAT, typFloatID, 0.0));
-   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_INTEGER, typIntegerID, VarAsType(0, varInteger)));
+   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_FLOAT, typFloatID, VarAsType(0, varDouble)));
+   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_INTEGER, typIntegerID, VarAsType(0, varInt64)));
    typString:=TBaseSymbol.Create(SYS_STRING, typStringID, '');
    SystemTable.AddSymbol(typString);
 

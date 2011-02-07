@@ -273,7 +273,7 @@ var
    dataSym : TDataSymbol;
    size, sign : String;
 begin
-   sym:=compiler.CurrentProg.Table.FindSymbol(symbolName);
+   sym:=compiler.CurrentProg.Table.FindSymbol(symbolName, cvMagic);
    if not Assigned(sym) then Exit('');
 
    case sym.BaseTypeID of
