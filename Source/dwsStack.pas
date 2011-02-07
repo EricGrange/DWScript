@@ -73,7 +73,7 @@ type
          procedure ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);
          procedure CopyData(SourceAddr, DestAddr, Size: Integer);
 
-         procedure ClearData(addr, size : Integer);
+         procedure ClearData(addr, size : Integer); inline;
 
          procedure WriteValue(DestAddr: Integer; const Value: Variant);
          procedure WriteIntValue(DestAddr: Integer; const Value: Int64); overload; inline;
@@ -85,7 +85,7 @@ type
          procedure WriteBoolValue(DestAddr: Integer; const Value: Boolean); inline;
          procedure WriteInterfaceValue(DestAddr: Integer; const intf: IUnknown); inline;
 
-         function SetStrChar(DestAddr: Integer; index : Integer; c : Char) : Boolean;
+         function  SetStrChar(DestAddr: Integer; index : Integer; c : Char) : Boolean;
 
          function  ReadValue(SourceAddr: Integer): Variant;
          function  ReadIntValue(SourceAddr: Integer): Int64; inline;
@@ -105,8 +105,8 @@ type
          procedure AppendStringValue_BaseRelative(destAddr : Integer; const value : String);
 
          procedure PushBp(Level, Bp: Integer); inline;
-         function GetSavedBp(Level: Integer): Integer; inline;
-         function PopBp(Level : Integer): Integer; inline;
+         function  GetSavedBp(Level: Integer): Integer; inline;
+         function  PopBp(Level : Integer): Integer; inline;
 
          function  SwitchFrame(level : Integer) : Integer; inline;
          procedure RestoreFrame(level, oldBasePointer: Integer); inline;
@@ -186,11 +186,14 @@ begin
 end;
 
 procedure TStackMixIn.ClearData(addr, size : Integer);
+var
+   p : PVariant;
+   i : Integer;
 begin
-   while size>0 do begin
-      VarClear(Data[addr]);
-      Inc(addr);
-      Dec(size);
+   p:=@Data[addr];
+   for i:=1 to size do begin
+      VarClear(p^);
+      Inc(p);
    end;
 end;
 
