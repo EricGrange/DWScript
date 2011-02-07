@@ -28,7 +28,6 @@ type
    TRelOpExpr = class(TBinaryOpExpr)
       constructor Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr); override;
       function Eval(exec : TdwsExecution) : Variant; override;
-      procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
    TRelOpExprClass = class of TRelOpExpr;
 
@@ -157,15 +156,6 @@ end;
 function TRelOpExpr.Eval(exec : TdwsExecution) : Variant;
 begin
    Result:=EvalAsBoolean(exec);
-end;
-
-// TypeCheckNoPos
-//
-procedure TRelOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
-begin
-   inherited;
-   if not (FLeft.Typ.IsCompatible(FRight.Typ)) then
-      Prog.CompileMsgs.AddCompilerStop(aPOs, CPE_InvalidOperands);
 end;
 
 // ------------------

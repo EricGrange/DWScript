@@ -87,7 +87,7 @@ type
 
          function  SetStrChar(DestAddr: Integer; index : Integer; c : Char) : Boolean;
 
-         function  ReadValue(SourceAddr: Integer): Variant;
+         procedure ReadValue(sourceAddr : Integer; var result : Variant); inline;
          function  ReadIntValue(SourceAddr: Integer): Int64; inline;
          function  ReadIntValue_BaseRelative(SourceAddr: Integer): Int64; inline;
          function  ReadIntAsFloatValue_BaseRelative(SourceAddr: Integer) : Double; inline;
@@ -322,9 +322,11 @@ begin
   end;
 end;
 
-function TStackMixIn.ReadValue(SourceAddr: Integer): Variant;
+// ReadValue
+//
+procedure TStackMixIn.ReadValue(sourceAddr : Integer; var result : Variant);
 begin
-  Result := Data[SourceAddr];
+   result:=Data[sourceAddr];
 end;
 
 // ReadIntValue

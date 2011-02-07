@@ -527,9 +527,11 @@ type
 
    // Base class of all expressions attached to a program
    TNoPosExpr = class(TExprBase)
+      private
+         FProg : TdwsProgram;
+
       protected
-         FProg: TdwsProgram;
-         FTyp: TSymbol;
+         FTyp : TSymbol;
 
       public
          constructor Create(Prog: TdwsProgram);
@@ -580,7 +582,7 @@ type
          procedure RaiseObjectNotInstantiated;
          procedure RaiseObjectAlreadyDestroyed;
 
-         property Prog: TdwsProgram read FProg;
+         property Prog : TdwsProgram read FProg;
          property Typ: TSymbol read FTyp write FTyp;
          property BaseType: TTypeSymbol read GetBaseType;
    end;
@@ -597,11 +599,6 @@ type
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
 
          procedure TypeCheck;
-
-         procedure AddCompilerWarning(const Text : String);
-         procedure AddCompilerError(const Text : String);
-         procedure AddCompilerErrorFmt(const fmtText: string; const Args: array of const);
-         procedure AddCompilerStop(const Text : String);
 
          function ScriptPos : TScriptPos; override;
 
@@ -734,31 +731,34 @@ type
       procedure ExecuteResultFloat(exec : TdwsExecution);
       procedure ExecuteResultString(exec : TdwsExecution);
       procedure ExecuteResultConstString(exec : TdwsExecution);
-//      procedure ExecuteResultArray(exec : TdwsExecution);
       procedure ExecuteData(exec : TdwsExecution);
       procedure ExecuteInitResult(exec : TdwsExecution);
       procedure ExecuteLazy(exec : TdwsExecution);
    end;
+   TPushOperatorArray = packed array [0..0] of TPushOperator;
+   PPushOperatorArray = ^TPushOperatorArray;
 
    // Function call: func(arg0, arg1, ...);
    TFuncExpr = class (TFuncExprBase)
       private
-         FPushExprs : packed array of TPushOperator;
+         FPushExprs : PPushOperatorArray;
+         FPushExprsCount : SmallInt;
+         FLevel : SmallInt;
          FResultAddr : Integer;
-         FLevel : Integer;
 
       protected
          function PreCall(exec : TdwsExecution) : TFuncSymbol; virtual;
          function PostCall(exec : TdwsExecution) : Variant; virtual;
 
-         procedure EvalPushExprs(exec : TdwsExecution);
+         procedure AddPushExprs;
+         procedure EvalPushExprs(exec : TdwsExecution); inline;
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol;
                             exec : TdwsProgramExecution = nil);
+         destructor Destroy; override;
 
          function AddArg(arg : TNoPosExpr) : TSymbol; override;
-         procedure AddPushExprs;
          function Eval(exec : TdwsExecution) : Variant; override;
          function GetData(exec : TdwsExecution) : TData; override;
          function GetAddr(exec : TdwsExecution) : Integer; override;
@@ -952,7 +952,6 @@ type
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
                             Base: TDataExpr);
-         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
    end;
 
    TConstructorVirtualExpr = class(TMethodVirtualExpr)
@@ -996,7 +995,6 @@ type
          constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
          destructor Destroy; override;
          procedure Initialize; override;
-         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
          function IsConstant : Boolean; override;
          property Expr: TNoPosExpr read FExpr write FExpr;
    end;
@@ -1054,7 +1052,6 @@ type
 
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure Initialize; override;
-         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
          function IsConstant : Boolean; override;
 
          property Left : TNoPosExpr read FLeft write FLeft;
@@ -1268,7 +1265,7 @@ type
    end;
 
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
-                          const Pos: TScriptPos; IsInstruction: Boolean; ForceStatic : Boolean = False): TFuncExpr;
+                          const Pos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
 
 function RawByteStringToScriptString(const s : RawByteString) : String;
 function ScriptStringToRawByteString(const s : String) : RawByteString;
@@ -1626,11 +1623,11 @@ begin
       if Assigned(scriptObj) then begin
          Result := CreateMethodExpr(Prog, TMethodSymbol(funcSym),
                                     TConstExpr.Create(Prog, ClassSym, scriptObj),
-                                                      rkObjRef, cNullPos, True, ForceStatic)
+                                                      rkObjRef, cNullPos, ForceStatic)
       end else begin
          Result := CreateMethodExpr(Prog, TMethodSymbol(funcSym),
                                     TConstExpr.Create(Prog, ClassSym.ClassOf, Int64(ClassSym)),
-                                                      rkClassOfRef, cNullPos, True, ForceStatic)
+                                                      rkClassOfRef, cNullPos, ForceStatic)
       end;
    end else begin
       Result := TFuncExpr.Create(Prog, cNullPos, funcSym, exec);
@@ -1640,10 +1637,13 @@ end;
 // CreateMethodExpr
 //
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
-                          const Pos: TScriptPos; IsInstruction: Boolean; ForceStatic : Boolean = False): TFuncExpr;
+                          const Pos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
 begin
    // Create the correct TExpr for a method symbol
    Result := nil;
+
+   if Expr.IsConstant and (Expr.Typ is TClassOfSymbol) and TClassOfSymbol(Expr.Typ).TypClassSymbol.IsAbstract then
+      prog.CompileMsgs.AddCompilerError(Pos, RTE_InstanceOfAbstractClass);
 
    // Return the right expression
    case meth.Kind of
@@ -2979,34 +2979,6 @@ begin
    TypeCheckNoPos(Pos);
 end;
 
-// AddCompilerWarning
-//
-procedure TExpr.AddCompilerWarning(const Text : String);
-begin
-   Prog.CompileMsgs.AddCompilerWarning(Pos, Text);
-end;
-
-// AddCompilerError
-//
-procedure TExpr.AddCompilerError(const Text : String);
-begin
-   Prog.CompileMsgs.AddCompilerError(Pos, Text);
-end;
-
-// AddCompilerErrorFmt
-//
-procedure TExpr.AddCompilerErrorFmt(const fmtText: string; const Args: array of const);
-begin
-   Prog.CompileMsgs.AddCompilerErrorFmt(Pos, fmtText, Args);
-end;
-
-// AddCompilerStop
-//
-procedure TExpr.AddCompilerStop(const Text : String);
-begin
-   Prog.CompileMsgs.AddCompilerStop(Pos, Text);
-end;
-
 // ScriptPos
 //
 function TExpr.ScriptPos : TScriptPos;
@@ -3648,6 +3620,14 @@ begin
    FResultAddr:=-1;
 end;
 
+// Destroy
+//
+destructor TFuncExpr.Destroy;
+begin
+   FreeMem(FPushExprs);
+   inherited;
+end;
+
 // AddArg
 //
 function TFuncExpr.AddArg(arg: TNoPosExpr) : TSymbol;
@@ -3666,7 +3646,7 @@ var
    p : PPushOperator;
 begin
    p:=PPushOperator(FPushExprs);
-   for i:=1 to Length(FPushExprs) do begin
+   for i:=1 to FPushExprsCount do begin
       p.Execute(exec);
       Inc(p);
    end;
@@ -3725,7 +3705,7 @@ begin
       // But the frame is already restored so its relative to the stackpointer here
       sourceAddr:=exec.Stack.StackPointer+FFunc.Result.StackAddr;
       // Copy return value
-      Result:=exec.Stack.ReadValue(sourceAddr);
+      exec.Stack.ReadValue(sourceAddr, Result);
 
       if FResultAddr>=0 then begin
          destAddr:=exec.Stack.BasePointer+FResultAddr;
@@ -3745,21 +3725,24 @@ begin
   Result := exec.Stack.BasePointer + FResultAddr;
 end;
 
+// AddPushExprs
+//
 procedure TFuncExpr.AddPushExprs;
 var
-   x: Integer;
-   arg: TNoPosExpr;
-   param: TParamSymbol;
+   i : Integer;
+   arg : TNoPosExpr;
+   param : TParamSymbol;
    pushOperator : PPushOperator;
 begin
    if Assigned(FFunc.Result) then
-      SetLength(FPushExprs, FArgs.Count+1)
-   else SetLength(FPushExprs, FArgs.Count);
+      FPushExprsCount:=FArgs.Count+1
+   else FPushExprsCount:=FArgs.Count;
+   ReallocMem(FPushExprs, FPushExprsCount*SizeOf(TPushOperator));
 
-   for x := 0 to FArgs.Count - 1 do begin
-      pushOperator:=@FPushExprs[x];
-      arg := TNoPosExpr(FArgs.ExprBase[x]);
-      param := TParamSymbol(FFunc.Params[x]);
+   for i := 0 to FArgs.Count - 1 do begin
+      pushOperator:=@FPushExprs[i];
+      arg := TNoPosExpr(FArgs.ExprBase[i]);
+      param := TParamSymbol(FFunc.Params[i]);
       if param.InheritsFrom(TLazyParamSymbol) then
          pushOperator.InitPushLazy(param.StackAddr, arg)
       else if arg is TDataExpr then begin
@@ -3910,16 +3893,6 @@ begin
   FRight.Initialize;
 end;
 
-// TypeCheckNoPos
-//
-procedure TBinaryOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
-begin
-  if (FLeft.Typ = FProg.TypInteger) and (FRight.Typ = FProg.TypFloat) then
-    FLeft := TConvFloatExpr.Create(FProg, FLeft)
-  else if (FLeft.Typ = FProg.TypFloat) and (FRight.Typ = FProg.TypInteger) then
-    FRight := TConvFloatExpr.Create(FProg, FRight)
-end;
-
 // IsConstant
 //
 function TBinaryOpExpr.IsConstant : Boolean;
@@ -3944,13 +3917,6 @@ end;
 procedure TUnaryOpExpr.Initialize;
 begin
   FExpr.Initialize;
-end;
-
-// TypeCheckNoPos
-//
-procedure TUnaryOpExpr.TypeCheckNoPos(const aPos : TScriptPos);
-begin
-   // nothing by default
 end;
 
 // IsConstant
@@ -4214,15 +4180,6 @@ function TConstructorStaticExpr.PostCall(exec : TdwsExecution) : Variant;
 begin
    Assert(FResultAddr=-1);
    Result:=exec.SelfScriptObject^;
-end;
-
-// TypeCheckNoPos
-//
-procedure TConstructorStaticExpr.TypeCheckNoPos(const aPos : TScriptPos);
-begin
-   inherited;
-   if TClassSymbol(FTyp).IsAbstract then
-      FProg.CompileMsgs.AddCompilerError(FPos, RTE_InstanceOfAbstractClass);
 end;
 
 { TConstructorVirtualExpr }
