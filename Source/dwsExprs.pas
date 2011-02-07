@@ -1818,6 +1818,9 @@ begin
       // Initialize global variables
       Status:=esrNone;
       FProg.FInitExpr.EvalNoResult(Self);
+
+      DoStep(FProg.FExpr);
+
    except
       on e: EScriptError do begin
          FMsgs.AddError(e.Message);
@@ -2524,6 +2527,7 @@ begin
 
       FInitExpr.EvalNoResult(exec);
 
+      exec.DoStep(FExpr);
       FExpr.EvalNoResult(exec);
 
       exec.Status:=esrNone;
@@ -6889,7 +6893,6 @@ end;
 //
 procedure TNoResultWrapperExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   exec.DoStep(Self);
    Expr.EvalNoResult(exec);
 end;
 

@@ -4165,7 +4165,6 @@ end;
 
 procedure TIfExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   exec.DoStep(Self);
    if FCond.EvalAsBoolean(exec) then begin
       exec.DoStep(FThen);
       FThen.EvalNoResult(exec);
@@ -4227,8 +4226,6 @@ var
   Value: Variant;
   cc : TCaseCondition;
 begin
-   exec.DoStep(Self);
-
    Value := FValueExpr.Eval(exec);
    for x := 0 to FCaseConditions.Count - 1 do begin
       cc:=TCaseCondition(FCaseConditions.List[x]);
@@ -4623,7 +4620,7 @@ procedure TWhileExpr.EvalNoResult(exec : TdwsExecution);
 begin
    exec.Status:=esrNone;
    while FCondExpr.EvalAsBoolean(exec) do begin
-      exec.DoStep(Self);
+      exec.DoStep(FLoopExpr);
       FLoopExpr.EvalNoResult(exec);
       if exec.Status<>esrNone then begin
          case exec.Status of
@@ -4661,6 +4658,7 @@ procedure TRepeatExpr.EvalNoResult(exec : TdwsExecution);
 begin
    exec.Status:=esrNone;
    repeat
+      exec.DoStep(FLoopExpr);
       FLoopExpr.EvalNoResult(exec);
       if exec.Status<>esrNone then begin
          case exec.Status of
@@ -4967,7 +4965,6 @@ var
    exceptVal : Variant;
    exceptMessage : String;
 begin
-  exec.DoStep(Self);
   exceptVal:=FExceptionExpr.Eval(exec);
   exceptMessage:=VarToStr(IScriptObj(IUnknown(exceptVal)).GetData[0]);
   if exceptMessage<>'' then
@@ -4994,8 +4991,7 @@ end;
 
 procedure TReraiseExpr.EvalNoResult(exec : TdwsExecution);
 begin
-  exec.DoStep(Self);
-  raise EReraise.Create('');
+   raise EReraise.Create('');
 end;
 
 { TExceptDoExpr }
