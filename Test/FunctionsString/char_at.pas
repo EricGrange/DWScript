@@ -1,4 +1,6 @@
-PrintLn(CharAt('banana', 1));
-PrintLn(CharAt('banana', 0));
-PrintLn(CharAt('banana', 7));
-PrintLn(CharAt('banana', 6));
+var s : String = 'banana';
+
+PrintLn(CharAt(s, 1));
+PrintLn(CharAt(s, 0));
+PrintLn(CharAt(s, 7));
+PrintLn(CharAt(s, 6));

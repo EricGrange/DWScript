@@ -73,10 +73,6 @@ type
     procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
 
-  TSetCharAtFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
-  end;
-
   TCopyFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
@@ -560,25 +556,6 @@ begin
    else Result:='';
 end;
 
-{ TSetCharAtFunc }
-
-procedure TSetCharAtFunc.Execute(info : TProgramInfo);
-var
-   buf : String;
-   n : Integer;
-begin
-   buf:=info.ValueAsString['s'];
-   n:=info.ValueAsInteger['x'];
-   if n<=0 then
-      raise Exception.CreateFmt(RTE_ArrayLowerBoundExceeded, [n])
-   else if n>Length(buf) then
-      raise Exception.CreateFmt(RTE_ArrayUpperBoundExceeded, [n])
-   else begin
-      buf[n]:=info.ValueAsChar['c'];
-      info.ValueAsString['s']:=buf;
-   end;
-end;
-
 { TSetLengthFunc }
 
 procedure TSetLengthFunc.Execute(info : TProgramInfo);
@@ -757,7 +734,6 @@ initialization
    RegisterInternalStringFunction(TFormatFunc, 'Format', ['fmt', cString, 'args', 'array of const'], True);
 
    RegisterInternalStringFunction(TCharAtFunc, 'CharAt', ['s', cString, 'x', cInteger], True);
-   RegisterInternalFunction(TSetCharAtFunc, 'SetCharAt', ['@s', cString, 'x', cInteger, 'c', cString], '');
 
    RegisterInternalFunction(TDeleteFunc, 'Delete', ['@S', cString, 'index', cInteger, 'Len', cInteger], '');
    RegisterInternalFunction(TInsertFunc, 'Insert', ['src', cString, '@S', cString, 'index', cInteger], '');

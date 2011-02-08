@@ -1157,15 +1157,10 @@ type
          function GetValueAsClassSymbol(const s: String): TClassSymbol;
          function GetValueAsTStrings(const s: String): TStrings;
          procedure SetResultAsString(const value : String);
-         function GetResultAsString : String;
          procedure SetResultAsDataString(const value : RawByteString);
-         function GetResultAsDataString : RawByteString;
          procedure SetResultAsInteger(const value : Int64);
-         function GetResultAsInteger : Int64;
          procedure SetResultAsBoolean(const value : Boolean);
-         function GetResultAsBoolean : Boolean;
          procedure SetResultAsFloat(const value : Double);
-         function GetResultAsFloat : Double;
 
          function GetParamAsPVariant(index : Integer) : PVariant;
          function GetParamAsVariant(index : Integer) : Variant;
@@ -1216,11 +1211,11 @@ type
          property ParamAsFloat[index : Integer] : Double read GetParamAsFloat;
          property ParamAsBoolean[index : Integer] : Boolean read GetParamAsBoolean;
 
-         property ResultAsString : String read GetResultAsString write SetResultAsString;
-         property ResultAsDataString : RawByteString read GetResultAsDataString write SetResultAsDataString;
-         property ResultAsBoolean : Boolean read GetResultAsBoolean write SetResultAsBoolean;
-         property ResultAsInteger : Int64 read GetResultAsInteger write SetResultAsInteger;
-         property ResultAsFloat : Double read GetResultAsFloat write SetResultAsFloat;
+         property ResultAsString : String write SetResultAsString;
+         property ResultAsDataString : RawByteString write SetResultAsDataString;
+         property ResultAsBoolean : Boolean write SetResultAsBoolean;
+         property ResultAsInteger : Int64 write SetResultAsInteger;
+         property ResultAsFloat : Double write SetResultAsFloat;
   end;
 
    // An instance of a script class FClassSym. Instance data in FData,
@@ -4489,14 +4484,11 @@ begin
    else Result:=nil;
 end;
 
+// SetResultAsString
+//
 procedure TProgramInfo.SetResultAsString(const value : String);
 begin
    GetVars(SYS_RESULT).Value:=value;
-end;
-
-function TProgramInfo.GetResultAsString : String;
-begin
-   Result:=GetVars(SYS_RESULT).ValueAsString;
 end;
 
 // SetResultAsDataString
@@ -4506,41 +4498,25 @@ begin
    SetResultAsString(RawByteStringToScriptString(value));
 end;
 
-// GetResultAsDataString
+// SetResultAsInteger
 //
-function TProgramInfo.GetResultAsDataString : RawByteString;
-begin
-   Result:=ScriptStringToRawByteString(GetResultAsString);
-end;
-
 procedure TProgramInfo.SetResultAsInteger(const value : Int64);
 begin
    GetVars(SYS_RESULT).Value:=value;
 end;
 
-function TProgramInfo.GetResultAsInteger : Int64;
-begin
-   Result:=GetVars(SYS_RESULT).ValueAsInteger;
-end;
-
+// SetResultAsBoolean
+//
 procedure TProgramInfo.SetResultAsBoolean(const value : Boolean);
 begin
    GetVars(SYS_RESULT).Value:=value;
 end;
 
-function TProgramInfo.GetResultAsBoolean : Boolean;
-begin
-   Result:=GetVars(SYS_RESULT).Value;
-end;
-
+// SetResultAsFloat
+//
 procedure TProgramInfo.SetResultAsFloat(const value : Double);
 begin
    GetVars(SYS_RESULT).Value:=value;
-end;
-
-function TProgramInfo.GetResultAsFloat : Double;
-begin
-   Result:=GetVars(SYS_RESULT).Value;
 end;
 
 // GetParamAsPVariant

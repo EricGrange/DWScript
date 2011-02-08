@@ -3,7 +3,7 @@ unit UCornerCasesTests;
 interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils;
+   dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants;
 
 type
 
@@ -29,6 +29,7 @@ type
          procedure StackOverFlow;
          procedure Assertions;
          procedure ScriptVersion;
+         procedure ExecuteParams;
    end;
 
 // ------------------------------------------------------------------
@@ -387,6 +388,31 @@ begin
    v:=FCompiler.Version;
    FCompiler.Version:='???';
    CheckEquals(v, FCompiler.Version);
+end;
+
+// ExecuteParams
+//
+procedure TCornerCasesTests.ExecuteParams;
+var
+   prog : IdwsProgram;
+   params : TVariantDynArray;
+begin
+   prog:=FCompiler.Compile('PrintLn(ParamCount);'
+                           +'var i : Integer;'
+                           +'for i:=0 to ParamCount-1 do PrintLn(ParamStr(i));');
+
+   CheckEquals('1'#13#10'hello world'#13#10, prog.ExecuteParam('hello world').Result.ToString);
+   CheckEquals('2'#13#10'hello'#13#10'world'#13#10, prog.ExecuteParam(VarArrayOf(['hello','world'])).Result.ToString);
+
+
+   SetLength(params, 0);
+   CheckEquals('0'#13#10, prog.ExecuteParam(params).Result.ToString);
+   SetLength(params, 1);
+   params[0]:='hello';
+   CheckEquals('1'#13#10'hello'#13#10, prog.ExecuteParam(params).Result.ToString);
+   SetLength(params, 2);
+   params[1]:=123;
+   CheckEquals('2'#13#10'hello'#13#10'123'#13#10, prog.ExecuteParam(params).Result.ToString);
 end;
 
 // ------------------------------------------------------------------
