@@ -1,0 +1,5 @@
+Syntax Error: Cannot cast this type to "Integer" [line: 8, column: 12]
+Syntax Error: Boolean or integer operand expected [line: 10, column: 12]
+Syntax Error: Numerical operand expected [line: 12, column: 10]
+Syntax Error: Numerical operand expected [line: 13, column: 10]
+Syntax Error: Invalid Operands [line: 19, column: 9]

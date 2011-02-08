@@ -56,6 +56,7 @@ type
    TSymbolTable = class;
    TMembersSymbolTable = class;
    TUnSortedSymbolTable = class;
+   TStaticSymbolTable = class;
    TTypeSymbol = class;
    TParamsSymbolTable = class;
    TConditionsSymbolTable = class;
@@ -1093,9 +1094,11 @@ type
    //
    TProgramSymbolTable = class (TSymbolTable)
       private
+         FSystemTable : TStaticSymbolTable;
          FDestructionList: TTightList;
 
       public
+         constructor Create(Parent: TSymbolTable = nil; AddrGenerator: TAddrGenerator = nil);
          destructor Destroy; override;
 
          procedure AddToDestructionList(Sym: TSymbol);
@@ -3206,12 +3209,25 @@ end;
 // ------------------ TProgramSymbolTable ------------------
 // ------------------
 
+// Create
+//
+constructor TProgramSymbolTable.Create(Parent: TSymbolTable = nil; AddrGenerator: TAddrGenerator = nil);
+begin
+   inherited;
+   if Parent is TStaticSymbolTable then begin
+      FSystemTable:=(Parent as TStaticSymbolTable);
+      FSystemTable._AddRef;
+   end;
+end;
+
 // Destroy
 //
 destructor TProgramSymbolTable.Destroy;
 begin
    inherited;
    FDestructionList.Clean;
+   if FSystemTable<>nil then
+      FSystemTable._Release;
 end;
 
 // AddToDestructionList

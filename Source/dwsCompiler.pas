@@ -1712,7 +1712,7 @@ begin
          if coContextMap in FCompilerOptions then
             FProg.ContextMap.Current.LocalTable:=FProg.Table;
 
-         while True do begin
+         repeat
 
             if not FTok.HasTokens then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndOfBlockExpected);
@@ -1734,7 +1734,7 @@ begin
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
             end;
 
-         end;
+         until False;
 
       finally
          FProg.Table:=oldTable;
@@ -3998,7 +3998,7 @@ begin
    Result := ReadExprAdd;
    try
       // Read operator
-      while True do begin
+      repeat
          tt:=FTok.TestDeleteAny([ttEQ, ttNOTEQ, ttLESS, ttLESSEQ, ttGTR, ttGTREQ, ttIS, ttAS]);
          if tt=ttNone then Break;
 
@@ -4022,13 +4022,14 @@ begin
                   case tt of
                      ttEQ, ttNOTEQ: begin
                         if not ((r.Typ is TClassSymbol) or (r.Typ=FProg.TypNil)) then
-                           FMsgs.AddCompilerStop(hotPos, CPE_ObjectExpected);
+                           FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
                         Result:=TObjCmpExpr.Create(FProg, Result, r);
                         if tt=ttNOTEQ then
                            Result:=TNotBoolExpr.Create(FProg, Result);
                      end;
                   else
-                     FMsgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
+                     FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
+                     Result:=TRelOpExpr.Create(FProg, Result, r); // keep going
                   end;
                end else begin
                   roeClass:=FBinaryOperators.RelOperatorClassFor(tt, Result.Typ, r.Typ);
@@ -4046,7 +4047,7 @@ begin
             raise;
          end;
          Result.TypeCheckNoPos(hotPos);
-      end;
+      until False;
    except
       Result.Free;
       raise;
@@ -4066,7 +4067,7 @@ begin
    Result := ReadExprMult;
    try
 
-      while True do begin
+      repeat
          tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttOR, ttAND, ttXOR, ttIMPLIES,
                                  ttSHL, ttSHR, ttIN, ttNOT]);
          if tt=ttNone then Break;
@@ -4109,7 +4110,7 @@ begin
          Result.TypeCheckNoPos(hotPos);
          if Optimize then
             Result:=Result.Optimize(FExec);
-      end;
+      until False;
    except
       Result.Free;
       raise;
@@ -4128,7 +4129,7 @@ begin
    // Read left argument
    Result := ReadTerm;
    try
-      while True do begin
+      repeat
          tt:=FTok.TestDeleteAny([ttTIMES, ttDIVIDE, ttMOD, ttDIV]);
          if tt=ttNone then Break;
 
@@ -4160,7 +4161,7 @@ begin
          Result.TypeCheckNoPos(hotPos);
          if Optimize then
             Result:=Result.Optimize(FExec);
-      end;
+      until False;
    except
       Result.Free;
       raise;

@@ -30,8 +30,8 @@ type
 
       published
          procedure EvaluateSimpleTest;
+         procedure EvaluateOutsideOfExec;
          procedure EvaluateContextTest;
-
    end;
 
 // ------------------------------------------------------------------
@@ -169,6 +169,20 @@ begin
       end;
    finally
       prog:=nil;
+   end;
+end;
+
+// EvaluateOutsideOfExec
+//
+procedure TDebuggerTests.EvaluateOutsideOfExec;
+var
+   expr : IdwsEvaluateExpr;
+begin
+   expr:=TdwsCompiler.Evaluate(nil, 'StrToInt(''113'')+10');
+   try
+      CheckEquals(123, expr.Expression.EvalAsInteger(expr.Execution.ExecutionObject), 'StrToInt(''113'')+10');
+   finally
+      expr:=nil;
    end;
 end;
 
