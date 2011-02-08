@@ -65,8 +65,8 @@ procedure ProcessApplicationMessages(sleepMilliSeconds : Integer);
 
 function GetSystemMilliseconds : Cardinal;
 
-function AnsiCompareText(const S1, S2: string) : Integer; inline;
-function AnsiCompareStr(const S1, S2: string) : Integer; inline;
+function AnsiCompareText(const S1, S2: string) : Integer;
+function AnsiCompareStr(const S1, S2: string) : Integer;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -94,24 +94,16 @@ end;
 
 // AnsiCompareText
 //
-function AnsiCompareText(const S1, S2: string) : Integer; inline;
+function AnsiCompareText(const S1, S2: string) : Integer;
 begin
-   {$ifdef VER200}
-   Result:=Windows.AnsiCompareText(S1, S2);
-   {$else}
    Result:=SysUtils.AnsiCompareText(S1, S2);
-   {$endif}
 end;
 
 // AnsiCompareStr
 //
-function AnsiCompareStr(const S1, S2: string) : Integer; inline;
+function AnsiCompareStr(const S1, S2: string) : Integer;
 begin
-   {$ifdef VER200}
-   Result:=Windows.AnsiCompareStr(S1, S2);
-   {$else}
    Result:=SysUtils.AnsiCompareStr(S1, S2);
-   {$endif}
 end;
 
 // SetDecimalSeparator
