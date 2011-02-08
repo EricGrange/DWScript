@@ -23,7 +23,7 @@ unit dwsStringFunctions;
 interface
 
 uses Classes, SysUtils, Variants, StrUtils, dwsFunctions, dwsSymbols, dwsStrings,
-   dwsUtils, dwsExprs, dwsCoreExprs, dwsErrors;
+   dwsUtils, dwsExprs, dwsCoreExprs, dwsErrors, dwsXPlatform;
 
 type
 
@@ -504,7 +504,7 @@ end;
 
 function TAnsiCompareTextFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 begin
-   Result:=AnsiCompareText(args.AsString[0], args.AsString[1]);
+   Result:=dwsXPlatform.AnsiCompareText(args.AsString[0], args.AsString[1]);
 end;
 
 { TCompareStrFunc }
@@ -518,7 +518,7 @@ end;
 
 function TAnsiCompareStrFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 begin
-   Result:=AnsiCompareStr(args.AsString[0], args.AsString[1]);
+   Result:=dwsXPlatform.AnsiCompareStr(args.AsString[0], args.AsString[1]);
 end;
 
 { TIsDelimiterFunc }

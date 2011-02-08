@@ -39,6 +39,12 @@ type
       MaxRecursionDepth : Integer;
    end;
 
+   {$IFDEF VER200}
+   // D2009 workaround for:
+   // [DCC Fatal Error] dwsCoreExprs.pas(5327): F2051 Unit dwsCoreExprs was compiled with a different version of dwsStack.TSimpleStack<System.Integer>
+   TSimpleStackIntegerDummy = TSimpleStack<Integer>;
+   {$ENDIF}
+
    // TStackMixIn
    //
    TStack = ^TStackMixIn;
