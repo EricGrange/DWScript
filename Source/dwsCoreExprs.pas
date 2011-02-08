@@ -621,6 +621,13 @@ type
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
+   // Boolean(float)
+   TConvBoolExpr = class (TConvExpr)
+     constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+     function Eval(exec : TdwsExecution) : Variant; override;
+     function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
    // Variant(simple)
    TConvVariantExpr = class (TConvExpr)
      constructor Create(Prog: TdwsProgram; Expr: TNoPosExpr);
@@ -2624,6 +2631,26 @@ end;
 function TConvIntegerExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
    Result:=FExpr.EvalAsInteger(exec);
+end;
+
+{ TConvBoolExpr }
+
+constructor TConvBoolExpr.Create(Prog: TdwsProgram; Expr: TNoPosExpr);
+begin
+  inherited;
+  FTyp := Prog.TypBoolean;
+end;
+
+function TConvBoolExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result:=FExpr.EvalAsBoolean(exec);
+end;
+
+// EvalAsBoolean
+//
+function TConvBoolExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+begin
+   Result:=FExpr.EvalAsBoolean(exec);
 end;
 
 { TConvVariantExpr }

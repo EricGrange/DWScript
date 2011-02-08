@@ -6128,6 +6128,13 @@ begin
          if not (argExpr.IsNumberValue or argExpr.IsVariantValue) then
             FMsgs.AddCompilerError(hotPos, CPE_NumericalExpected);
 
+      end else if typeSym = FProg.TypBoolean then begin
+
+         // Cast Boolean(...)
+         Result := TConvBoolExpr.Create(FProg, argExpr);
+         if not (argExpr.IsBooleanValue or argExpr.IsNumberValue or argExpr.IsVariantValue) then
+            FMsgs.AddCompilerError(hotPos, CPE_BooleanOrIntegerExpected);
+
       end else if typeSym = FProg.TypVariant then
 
          // Cast Variant(...)
