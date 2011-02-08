@@ -30,6 +30,7 @@ type
          procedure Assertions;
          procedure ScriptVersion;
          procedure ExecuteParams;
+         procedure CallFuncThatReturnsARecord;
    end;
 
 // ------------------------------------------------------------------
@@ -413,6 +414,28 @@ begin
    SetLength(params, 2);
    params[1]:=123;
    CheckEquals('2'#13#10'hello'#13#10'123'#13#10, prog.ExecuteParam(params).Result.ToString);
+end;
+
+// CallFuncThatReturnsARecord
+//
+procedure TCornerCasesTests.CallFuncThatReturnsARecord;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   result : IInfo;
+begin
+   prog:=FCompiler.Compile('type TMyRec = record x, y : Integer; end;'
+                           +'function Hello : TMyRec;'
+                           +'begin Result.x:=1; Result.y:=2; end;');
+
+   exec:=prog.BeginNewExecution;
+   try
+      result:=exec.Info.Func['Hello'].Call;
+      CheckEquals(1, result.Member['x'].ValueAsInteger, 'x');
+      CheckEquals(2, result.Member['y'].ValueAsInteger, 'y');
+   finally
+      exec.EndProgram;
+   end;
 end;
 
 // ------------------------------------------------------------------
