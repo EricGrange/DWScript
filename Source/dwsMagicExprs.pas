@@ -33,7 +33,7 @@ type
          function GetData(exec : TdwsExecution) : TData; override;
          function GetAddr(exec : TdwsExecution) : Integer; override;
       public
-         function AddArg(Arg: TNoPosExpr) : TSymbol; override;
+         function AddArg(Arg: TTypedExpr) : TSymbol; override;
          function IsWritable : Boolean; override;
    end;
 
@@ -108,7 +108,7 @@ implementation
 
 // AddArg
 //
-function TMagicFuncExpr.AddArg(arg: TNoPosExpr) : TSymbol;
+function TMagicFuncExpr.AddArg(arg: TTypedExpr) : TSymbol;
 begin
    if FArgs.Count<FFunc.Params.Count then begin
       Result:=FFunc.Params[FArgs.Count];

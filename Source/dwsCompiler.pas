@@ -117,7 +117,7 @@ type
     property Dependencies: TStrings read GetDependencies;
   end;
 
-   TAddArgFunction = function (argExpr: TNoPosExpr) : TSymbol of object;
+   TAddArgFunction = function (argExpr: TTypedExpr) : TSymbol of object;
 
    TSpecialKeywordKind = (skNone, skAssert, skAssigned, skHigh, skLength, skLow,
                           skOrd, skSizeOf, skDefined, skDeclared, skSqr);
@@ -145,14 +145,14 @@ type
       function GetExecution : IdwsProgramExecution;
       function GetRootProgram : IdwsProgram;
       function GetContextProcedure : TdwsProcedure;
-      function GetExpression : TNoPosExpr;
+      function GetExpression : TTypedExpr;
 
       function ContextIsValid : Boolean;
 
       property Execution : IdwsProgramExecution read GetExecution;
       property RootProgram : IdwsProgram read GetRootProgram;
       property ContextProcedure : TdwsProcedure read GetContextProcedure;
-      property Expression : TNoPosExpr read GetExpression;
+      property Expression : TTypedExpr read GetExpression;
    end;
 
    TdwsEvaluateOption = (eoRootContext);
@@ -163,13 +163,13 @@ type
       private
          FExecution : IdwsProgramExecution;
          FContextProcedure : TdwsProcedure;
-         FExpression : TNoPosExpr;
+         FExpression : TTypedExpr;
 
       protected
          function GetExecution : IdwsProgramExecution;
          function GetRootProgram : IdwsProgram;
          function GetContextProcedure : TdwsProcedure;
-         function GetExpression : TNoPosExpr;
+         function GetExpression : TTypedExpr;
 
       public
          destructor Destroy; override;
@@ -179,7 +179,7 @@ type
          property Execution : IdwsProgramExecution read FExecution;
          property RootProgram : IdwsProgram read GetRootProgram;
          property ContextProcedure : TdwsProcedure read FContextProcedure;
-         property Expression : TNoPosExpr read FExpression;
+         property Expression : TTypedExpr read FExpression;
    end;
 
    // TdwsCompiler
@@ -236,13 +236,13 @@ type
       function ReadArray(const TypeName: string): TTypeSymbol;
       function ReadArrayConstant: TArrayConstantExpr;
       function ReadCase: TCaseExpr;
-      function ReadCaseConditions(condList : TList; valueExpr : TNoPosExpr) : Integer;
+      function ReadCaseConditions(condList : TList; valueExpr : TTypedExpr) : Integer;
       function ReadClassOf(const TypeName: string): TClassOfSymbol;
       function ReadClass(const TypeName: string): TClassSymbol;
       procedure ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TClassVisibility);
-      function ReadConnectorSym(const Name: string; BaseExpr: TNoPosExpr;
+      function ReadConnectorSym(const Name: string; BaseExpr: TTypedExpr;
                                 const ConnectorType: IConnectorType; IsWrite: Boolean): TProgramExpr;
-      function ReadConnectorArray(const Name: String; BaseExpr: TNoPosExpr;
+      function ReadConnectorArray(const Name: String; BaseExpr: TTypedExpr;
                                   const ConnectorType: IConnectorType; IsWrite: Boolean): TConnectorCallExpr;
       procedure ReadConstDecl;
       function ReadConstValue: TConstExpr;
@@ -251,30 +251,30 @@ type
       function ReadEnumeration(const TypeName: string): TEnumerationSymbol;
       function ReadExcept(TryExpr: TNoResultExpr): TExceptExpr;
       function ReadExit: TNoResultExpr;
-      function ReadExpr: TNoPosExpr;
-      function ReadTypedExpr : TNoPosExpr;
-      function ReadExprAdd: TNoPosExpr;
-      function ReadExprMult: TNoPosExpr;
-      function ReadExprIn(var left : TNoPosExpr) : TNoPosExpr;
-      function ReadExprInConditions(var left : TNoPosExpr) : TInOpExpr;
+      function ReadExpr: TTypedExpr;
+      function ReadTypedExpr : TTypedExpr;
+      function ReadExprAdd: TTypedExpr;
+      function ReadExprMult: TTypedExpr;
+      function ReadExprIn(var left : TTypedExpr) : TTypedExpr;
+      function ReadExprInConditions(var left : TTypedExpr) : TInOpExpr;
       function ReadExternalVar(Sym: TExternalVarSymbol; IsWrite: Boolean): TFuncExpr;
-      function ReadField(Expr: TDataExpr; Sym: TFieldSymbol): TNoPosExpr;
+      function ReadField(Expr: TDataExpr; Sym: TFieldSymbol): TTypedExpr;
       function ReadFor: TForExpr;
       function ReadStaticMethod(methodSym: TMethodSymbol; IsWrite: Boolean): TFuncExpr;
-      function ReadFunc(FuncSym: TFuncSymbol; IsWrite: Boolean; CodeExpr: TDataExpr = nil): TNoPosExpr;
+      function ReadFunc(FuncSym: TFuncSymbol; IsWrite: Boolean; CodeExpr: TDataExpr = nil): TTypedExpr;
       procedure ReadFuncArgs(const AddArgProc: TAddArgFunction; LDelim: TTokenType = ttBLEFT; RDelim: TTokenType = ttBRIGHT);
       function ReadIf: TNoResultExpr;
       function ReadInherited(IsWrite: Boolean): TProgramExpr;
       function ReadInstr: TNoResultExpr;
       function ReadInstrSwitch(semiPending : Boolean): TNoResultExpr;
-      function ReadExprSwitch : TNoPosExpr;
+      function ReadExprSwitch : TTypedExpr;
       function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
       function ReadMethodDecl(ClassSym: TClassSymbol; FuncKind: TFuncKind; aVisibility : TClassVisibility; IsClassMethod: Boolean): TMethodSymbol;
       function ReadMethodImpl(ClassSym: TClassSymbol; FuncKind: TFuncKind; IsClassMethod: Boolean): TMethodSymbol;
       procedure ReadDeprecated(funcSym : TFuncSymbol);
       procedure WarnDeprecated(funcSym : TFuncSymbol);
       function ReadName(IsWrite: Boolean = False): TProgramExpr;
-      function ReadNameOld(IsWrite: Boolean): TNoPosExpr;
+      function ReadNameOld(IsWrite: Boolean): TTypedExpr;
       function ReadNameInherited(IsWrite: Boolean): TProgramExpr;
       // Created overloaded ReadNameList to deal with script positions
       procedure ReadNameList(Names: TStrings); overload;
@@ -292,7 +292,7 @@ type
       function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
       function ReadPropertyDecl(ClassSym: TClassSymbol; aVisibility : TClassVisibility): TPropertySymbol;
       function ReadPropertyExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TProgramExpr;
-      function ReadPropertyReadExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol): TNoPosExpr;
+      function ReadPropertyReadExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol): TTypedExpr;
       function ReadPropertyWriteExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol) : TProgramExpr;
       function ReadRecord(const TypeName: string): TTypeSymbol;
       function ReadRaise : TRaiseBaseExpr;
@@ -304,11 +304,11 @@ type
       function ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TProgramExpr;
       function ReadSwitch(const SwitchName: string): Boolean;
       function ReadSymbol(Expr: TProgramExpr; IsWrite: Boolean = False): TProgramExpr;
-      function ReadTerm : TNoPosExpr;
-      function ReadNegation : TNoPosExpr;
+      function ReadTerm : TTypedExpr;
+      function ReadNegation : TTypedExpr;
       function ReadTry: TExceptionExpr;
       function ReadType(const TypeName: string = ''): TTypeSymbol;
-      function ReadTypeCast(const namePos : TScriptPos; typeSym : TSymbol) : TNoPosExpr;
+      function ReadTypeCast(const namePos : TScriptPos; typeSym : TSymbol) : TTypedExpr;
       procedure ReadTypeDecl;
       procedure ReadUses;
       function ReadVarDecl: TNoResultExpr;
@@ -326,7 +326,7 @@ type
       function CreateProgram(SystemTable: TSymbolTable; ResultType: TdwsResultType;
                              const stackParams : TStackParameters) : TdwsMainProgram; virtual;
       function CreateProcedure(Parent : TdwsProgram) : TdwsProcedure; virtual;
-      function CreateAssign(const pos : TScriptPos; token : TTokenType; left : TDataExpr; right : TNoPosExpr) : TNoResultExpr;
+      function CreateAssign(const pos : TScriptPos; token : TTokenType; left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
 
    public
       constructor Create;
@@ -867,7 +867,7 @@ var
    oldProgMsgs : TdwsCompileMessageList;
    sourceFile : TSourceFile;
    compiler : TdwsCompiler;
-   expr : TNoPosExpr;
+   expr : TTypedExpr;
    resultObj : TdwsEvaluateExpr;
    contextProgram : TdwsProgram;
    config : TdwsConfiguration;
@@ -963,7 +963,7 @@ var
    pos : TScriptPos;
    posArray : TScriptPosArray;
    initData : TData;
-   initExpr : TNoPosExpr;
+   initExpr : TTypedExpr;
    assignExpr : TAssignExpr;
    constExpr : TConstExpr;
    varExpr : TVarExpr;
@@ -1065,7 +1065,7 @@ end;
 procedure TdwsCompiler.ReadConstDecl;
 var
    name : String;
-   expr: TNoPosExpr;
+   expr: TTypedExpr;
    typ : TSymbol;
    constPos : TScriptPos;
    sym : TSymbol;
@@ -1637,7 +1637,7 @@ procedure TdwsCompiler.ReadConditions(funcSymbol : TFuncSymbol; conditions : TSo
                                       condsSymClass : TConditionSymbolClass);
 var
    hotPos : TScriptPos;
-   testExpr, msgExpr : TNoPosExpr;
+   testExpr, msgExpr : TTypedExpr;
    testStart : PChar;
    testLength : Integer;
    msg : String;
@@ -1988,7 +1988,7 @@ var
    nameToken : TToken;
    namePos : TScriptPos;
    varExpr : TDataExpr;
-   fieldExpr, constExpr : TNoPosExpr;
+   fieldExpr, constExpr : TTypedExpr;
    convExpr : TConvClassExpr;
    progMeth : TMethodSymbol;
    baseType : TTypeSymbol;
@@ -2093,10 +2093,10 @@ begin
             FTok.TestName;
             namePos:=FTok.HotPos;
             Result:=ReadExpr;
-            if not (Result is TNoPosExpr) then
+            if not (Result is TTypedExpr) then
                FMsgs.AddCompilerStopFmt(namePos, CPE_IncompatibleTypes,
                                         ['void', baseType.Name]);
-            castedExprTyp:=TNoPosExpr(Result).Typ;
+            castedExprTyp:=TTypedExpr(Result).Typ;
             if    (not (castedExprTyp is TClassSymbol))
                or (
                      (not TClassSymbol(castedExprTyp).IsOfType(baseType))
@@ -2106,7 +2106,7 @@ begin
                                          [castedExprTyp.Name, baseType.Name]);
             if not (FTok.TestDelete(ttBRIGHT)) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-            convExpr:=TConvClassExpr.Create(FProg, TClassSymbol(baseType), TNoPosExpr(Result));
+            convExpr:=TConvClassExpr.Create(FProg, TClassSymbol(baseType), TTypedExpr(Result));
             Result:=nil; // protect ReadSymbol exception
             Result:=ReadSymbol(convExpr, IsWrite);
 
@@ -2167,21 +2167,21 @@ end;
 
 // ReadNameOld
 //
-function TdwsCompiler.ReadNameOld(IsWrite: Boolean): TNoPosExpr;
+function TdwsCompiler.ReadNameOld(IsWrite: Boolean): TTypedExpr;
 var
    sym : TDataSymbol;
    oldExpr : TProgramExpr;
-   expr : TNoPosExpr;
+   expr : TTypedExpr;
    initExpr : TNoResultExpr;
    varExpr : TVarExpr;
 begin
    oldExpr:=ReadName(IsWrite);
-   if (not (oldExpr is TNoPosExpr)) or (TNoPosExpr(oldExpr).Typ=nil) then begin
+   if (not (oldExpr is TTypedExpr)) or (TTypedExpr(oldExpr).Typ=nil) then begin
       FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionOrValueExpected);
       // keep going
       oldExpr.Free;
       expr:=TUnifiedConstExpr.CreateUnified(FProg, FProg.TypVariant, Unassigned);
-   end else expr:=TNoPosExpr(oldExpr);
+   end else expr:=TTypedExpr(oldExpr);
 
    sym:=TDataSymbol.Create('old '+IntToStr(FSourcePostConditionsIndex), expr.Typ);
    Inc(FSourcePostConditionsIndex);
@@ -2207,7 +2207,7 @@ begin
    end;
 end;
 
-function TdwsCompiler.ReadField(Expr: TDataExpr; Sym: TFieldSymbol): TNoPosExpr;
+function TdwsCompiler.ReadField(Expr: TDataExpr; Sym: TFieldSymbol): TTypedExpr;
 begin
    Result := TFieldExpr.Create(FProg, FTok.HotPos, Sym.Typ, Sym, Expr);
 end;
@@ -2222,15 +2222,15 @@ end;
 
 // ReadPropertyReadExpr
 //
-function TdwsCompiler.ReadPropertyReadExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol): TNoPosExpr;
+function TdwsCompiler.ReadPropertyReadExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol): TTypedExpr;
 var
    sym : TSymbol;
-   arrayArgs : TNoPosExprList;
+   arrayArgs : TTypedExprList;
    aPos : TScriptPos;
 begin
    Result := nil;
    aPos:=FTok.HotPos;
-   arrayArgs := TNoPosExprList.Create;
+   arrayArgs := TTypedExprList.Create;
    try
       if PropertySym.ArrayIndices.Count > 0 then
          ReadFuncArgs(arrayArgs.AddExpr, ttALEFT, ttARIGHT);
@@ -2283,7 +2283,7 @@ end;
 function TdwsCompiler.ReadPropertyWriteExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol) : TProgramExpr;
 var
    sym : TSymbol;
-   arrayArgs : TNoPosExprList;
+   arrayArgs : TTypedExprList;
    aPos : TScriptPos;
    fieldExpr : TFieldExpr;
    tokenType : TTokenType;
@@ -2291,7 +2291,7 @@ var
 begin
    Result := nil;
    aPos:=FTok.HotPos;
-   arrayArgs := TNoPosExprList.Create;
+   arrayArgs := TTypedExprList.Create;
    try
       if PropertySym.ArrayIndices.Count > 0 then
          ReadFuncArgs(arrayArgs.AddExpr, ttALEFT, ttARIGHT);
@@ -2390,7 +2390,7 @@ function TdwsCompiler.ReadSymbol(Expr: TProgramExpr; IsWrite: Boolean): TProgram
 
    function ReadArrayExpr(var baseExpr : TDataExpr) : TArrayExpr;
    var
-      indexExpr : TNoPosExpr;
+      indexExpr : TTypedExpr;
       baseType : TTypeSymbol;
       arraySymbol : TStaticArraySymbol;
    begin
@@ -2512,7 +2512,7 @@ begin
                end
                // Connector symbol
                else if baseType is TConnectorSymbol then begin
-                  Result := ReadConnectorSym(Name, Result as TNoPosExpr,
+                  Result := ReadConnectorSym(Name, Result as TTypedExpr,
                                              TConnectorSymbol(baseType).ConnectorType, IsWrite)
                end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMemberExpected);
             end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
@@ -2533,7 +2533,7 @@ begin
                   if baseType is TArraySymbol then
                      Result := ReadArrayExpr(dataExpr)
                   else if baseType is TConnectorSymbol then
-                     Result := ReadConnectorArray('', Result as TNoPosExpr,
+                     Result := ReadConnectorArray('', Result as TTypedExpr,
                                                   TConnectorSymbol(baseType).ConnectorType, IsWrite)
                   else if dataExpr.IsStringValue then begin
                      FTok.KillToken;
@@ -2593,7 +2593,7 @@ function TdwsCompiler.ReadFor: TForExpr;
 var
    expr : TProgramExpr;
    loopVarExpr : TIntVarExpr;
-   fromExpr, toExpr, stepExpr : TNoPosExpr;
+   fromExpr, toExpr, stepExpr : TTypedExpr;
    sym : TSymbol;
    forPos, enumPos, stepPos : TScriptPos;
    forExprClass : TForExprClass;
@@ -2747,7 +2747,7 @@ end;
 function TdwsCompiler.ReadIf : TNoResultExpr;
 var
    hotPos : TScriptPos;
-   condExpr : TNoPosExpr;
+   condExpr : TTypedExpr;
    thenExpr : TNoResultExpr;
    elseExpr : TNoResultExpr;
 begin
@@ -2858,10 +2858,10 @@ end;
 
 // ReadCaseConditions
 //
-function TdwsCompiler.ReadCaseConditions(condList : TList; valueExpr : TNoPosExpr) : Integer;
+function TdwsCompiler.ReadCaseConditions(condList : TList; valueExpr : TTypedExpr) : Integer;
 var
    hotPos : TScriptPos;
-   exprFrom, exprTo : TNoPosExpr;
+   exprFrom, exprTo : TTypedExpr;
 begin
    // Find a comma sparated list of case conditions  0, 1, 2..4: ;
    repeat
@@ -2899,7 +2899,7 @@ end;
 //
 function TdwsCompiler.ReadWhile : TNoResultExpr;
 var
-   condExpr : TNoPosExpr;
+   condExpr : TTypedExpr;
 begin
    Result:=TWhileExpr.Create(FProg, FTok.HotPos);
    EnterLoop(Result);
@@ -2939,7 +2939,7 @@ end;
 function TdwsCompiler.ReadRepeat : TNoResultExpr;
 var
    tt : TTokenType;
-   condExpr : TNoPosExpr;
+   condExpr : TTypedExpr;
 begin
    Result := TRepeatExpr.Create(FProg, FTok.HotPos);
    EnterLoop(Result);
@@ -2970,7 +2970,7 @@ end;
 function TdwsCompiler.ReadAssign(token : TTokenType; Left: TDataExpr): TNoResultExpr;
 var
    pos : TScriptPos;
-   right : TNoPosExpr;
+   right : TTypedExpr;
 begin
    pos := FTok.HotPos;
    right := ReadTypedExpr;
@@ -3012,7 +3012,7 @@ end;
 // ReadFunc
 //
 function TdwsCompiler.ReadFunc(FuncSym: TFuncSymbol; IsWrite: Boolean;
-                               CodeExpr: TDataExpr = nil): TNoPosExpr;
+                               CodeExpr: TDataExpr = nil): TTypedExpr;
 var
    internalFunc : TObject;
    magicFuncSym : TMagicFuncSymbol;
@@ -3078,7 +3078,7 @@ end;
 //
 procedure TdwsCompiler.ReadFuncArgs(const AddArgProc: TAddArgFunction; LDelim: TTokenType; RDelim: TTokenType);
 var
-   arg : TNoPosExpr;
+   arg : TTypedExpr;
    argSym : TSymbol;
    argPos : TScriptPos;
 begin
@@ -3103,12 +3103,12 @@ end;
 function TdwsCompiler.ReadArray(const TypeName: String): TTypeSymbol;
 var
    x: Integer;
-   min, max: TNoPosExprList;
+   min, max: TTypedExprList;
    typ: TSymbol;
    hotPos : TScriptPos;
 begin
-   min := TNoPosExprList.Create;
-   max := TNoPosExprList.Create;
+   min := TTypedExprList.Create;
+   max := TTypedExprList.Create;
    try
 
       if FTok.TestDelete(ttALEFT) then begin
@@ -3588,7 +3588,7 @@ var
   arrayIndices: TSymbolTable;
   propPos: TScriptPos;
   accessPos: TScriptPos;  // Position where either a Read or Write symbol is found
-  indexExpr: TNoPosExpr;
+  indexExpr: TTypedExpr;
   indexTyp: TSymbol;
 begin
   // Read property name
@@ -3820,7 +3820,7 @@ end;
 //
 function TdwsCompiler.ReadRaise : TRaiseBaseExpr;
 var
-   exceptExpr : TNoPosExpr;
+   exceptExpr : TTypedExpr;
    exceptObjTyp : TSymbol;
 begin
    if FIsExcept and (FTok.Test(ttSEMI) or FTok.Test(ttEND)) then
@@ -4018,9 +4018,9 @@ end;
 
 // ReadExpr
 //
-function TdwsCompiler.ReadExpr: TNoPosExpr;
+function TdwsCompiler.ReadExpr: TTypedExpr;
 var
-   r: TNoPosExpr;
+   r: TTypedExpr;
    tt: TTokenType;
    hotPos: TScriptPos;
    roeClass : TRelOpExprClass;
@@ -4088,21 +4088,21 @@ end;
 
 // ReadTypedExpr
 //
-function TdwsCompiler.ReadTypedExpr : TNoPosExpr;
+function TdwsCompiler.ReadTypedExpr : TTypedExpr;
 var
    buf : TProgramExpr;
 begin
    buf:=ReadExpr;
-   if not (buf is TNoPosExpr) then
+   if not (buf is TTypedExpr) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
-   Result:=TNoPosExpr(buf);
+   Result:=TTypedExpr(buf);
 end;
 
 // ReadExprAdd
 //
-function TdwsCompiler.ReadExprAdd: TNoPosExpr;
+function TdwsCompiler.ReadExprAdd: TTypedExpr;
 var
-   right: TNoPosExpr;
+   right: TTypedExpr;
    tt: TTokenType;
    hotPos: TScriptPos;
    exprClass : TBinaryOpExprClass;
@@ -4163,9 +4163,9 @@ end;
 
 // ReadExprMult
 //
-function TdwsCompiler.ReadExprMult: TNoPosExpr;
+function TdwsCompiler.ReadExprMult: TTypedExpr;
 var
-   right: TNoPosExpr;
+   right: TTypedExpr;
    tt: TTokenType;
    hotPos: TScriptPos;
    exprClass : TBinaryOpExprClass;
@@ -4214,10 +4214,10 @@ end;
 
 // ReadExprIn
 //
-function TdwsCompiler.ReadExprIn(var left : TNoPosExpr) : TNoPosExpr;
+function TdwsCompiler.ReadExprIn(var left : TTypedExpr) : TTypedExpr;
 var
    hotPos : TScriptPos;
-   setExpr : TNoPosExpr;
+   setExpr : TTypedExpr;
    classOpSymbol : TClassOperatorSymbol;
    classOpExpr : TFuncExpr;
 begin
@@ -4262,7 +4262,7 @@ end;
 
 // ReadExprInConditions
 //
-function TdwsCompiler.ReadExprInConditions(var left : TNoPosExpr) : TInOpExpr;
+function TdwsCompiler.ReadExprInConditions(var left : TTypedExpr) : TInOpExpr;
 var
    i : Integer;
    condList : TList;
@@ -4301,9 +4301,9 @@ end;
 
 // ReadTerm
 //
-function TdwsCompiler.ReadTerm: TNoPosExpr;
+function TdwsCompiler.ReadTerm: TTypedExpr;
 
-   function ReadNilTerm : TNoPosExpr;
+   function ReadNilTerm : TTypedExpr;
    const
       cNilIntf : IUnknown = nil;
    begin
@@ -4312,7 +4312,7 @@ function TdwsCompiler.ReadTerm: TNoPosExpr;
 
    function ReadNotTerm : TNotExpr;
    var
-      operand : TNoPosExpr;
+      operand : TTypedExpr;
       hotPos : TScriptPos;
    begin
       hotPos:=FTok.HotPos;
@@ -4353,7 +4353,7 @@ begin
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
          end;
          if Result.Typ is TClassSymbol then
-            Result:=ReadSymbol(Result) as TNoPosExpr;
+            Result:=ReadSymbol(Result) as TTypedExpr;
       end;
       ttTRUE, ttFALSE :
          Result:=TConstBooleanExpr.CreateUnified(FProg, nil, (tt=ttTRUE));
@@ -4365,10 +4365,10 @@ begin
       if FTok.Test(ttINHERITED) or FTok.TestName  then begin
          // Variable or Function
          nameExpr:=ReadName;
-         if not (nameExpr is TNoPosExpr) then begin
+         if not (nameExpr is TTypedExpr) then begin
             nameExpr.Free;
             Result:=nil;
-         end else Result:=TNoPosExpr(nameExpr);
+         end else Result:=TTypedExpr(nameExpr);
       end else // Constant values in the code
          Result := ReadConstValue;
    end;
@@ -4380,10 +4380,10 @@ end;
 
 // ReadNegation
 //
-function TdwsCompiler.ReadNegation: TNoPosExpr;
+function TdwsCompiler.ReadNegation: TTypedExpr;
 var
    negExprClass : TNegExprClass;
-   negTerm : TNoPosExpr;
+   negTerm : TTypedExpr;
 begin
    negTerm:=ReadTerm;
    if negTerm.IsIntegerValue then
@@ -4490,7 +4490,7 @@ var
    lazyParam, varParam, constParam : Boolean;
    posArray : TScriptPosArray;
    sym : TParamSymbol;
-   defaultExpr : TNoPosExpr;
+   defaultExpr : TTypedExpr;
 begin
    if FTok.TestDelete(ttBLEFT) then begin
       if not FTok.TestDelete(ttBRIGHT) then begin
@@ -4614,7 +4614,7 @@ var
    i : Integer;
    conditionalTrue : Boolean;
    switchPos, condPos : TScriptPos;
-   condExpr : TNoPosExpr;
+   condExpr : TTypedExpr;
    sourceFile : TSourceFile;
 begin
    Result := nil;
@@ -4779,7 +4779,7 @@ end;
 
 // ReadExprSwitch
 //
-function TdwsCompiler.ReadExprSwitch : TNoPosExpr;
+function TdwsCompiler.ReadExprSwitch : TTypedExpr;
 var
    switch : TSwitchInstruction;
    name, value : String;
@@ -5079,7 +5079,7 @@ begin
 end;
 
 function TdwsCompiler.ReadConnectorSym(const Name: string;
-  BaseExpr: TNoPosExpr; const ConnectorType: IConnectorType; IsWrite: Boolean): TProgramExpr;
+  BaseExpr: TTypedExpr; const ConnectorType: IConnectorType; IsWrite: Boolean): TProgramExpr;
 
   function TryConnectorCall: TConnectorCallExpr;
   begin
@@ -5153,7 +5153,7 @@ begin
   end;
 end;
 
-function TdwsCompiler.ReadConnectorArray(const Name: String; BaseExpr: TNoPosExpr;
+function TdwsCompiler.ReadConnectorArray(const Name: String; BaseExpr: TTypedExpr;
             const ConnectorType: IConnectorType; IsWrite: Boolean): TConnectorCallExpr;
 begin
   Result := TConnectorCallExpr.Create(FProg, FTok.HotPos, Name, BaseExpr, IsWrite, True);
@@ -5572,7 +5572,7 @@ end;
 
 function TdwsCompiler.ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TProgramExpr;
 var
-   indexExpr, valueExpr: TNoPosExpr;
+   indexExpr, valueExpr: TTypedExpr;
    pos: TScriptPos;
 begin
    pos := FTok.HotPos;
@@ -5737,7 +5737,7 @@ function TdwsCompiler.ReadEnumeration(const TypeName: string): TEnumerationSymbo
 var
   name: string;
   elemSym: TElementSymbol;
-  constExpr: TNoPosExpr;
+  constExpr: TTypedExpr;
   enumInt: Integer;
   namePos: TScriptPos;
   isUserDef: Boolean;
@@ -5846,7 +5846,7 @@ end;
 // CreateAssign
 //
 function TdwsCompiler.CreateAssign(const pos : TScriptPos; token : TTokenType;
-                                   left : TDataExpr; right : TNoPosExpr) : TNoResultExpr;
+                                   left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
 var
    exprClass : TAssignExprClass;
    classOpSymbol : TClassOperatorSymbol;
@@ -5915,7 +5915,7 @@ end;
 //
 function TdwsCompiler.ReadSpecialFunction(const namePos: TScriptPos; SpecialKind: TSpecialKeywordKind) : TProgramExpr;
 
-   function EvaluateDefined(argExpr : TNoPosExpr) : Boolean;
+   function EvaluateDefined(argExpr : TTypedExpr) : Boolean;
    var
       name : String;
    begin
@@ -5923,7 +5923,7 @@ function TdwsCompiler.ReadSpecialFunction(const namePos: TScriptPos; SpecialKind
       Result:=(FMainProg.ConditionalDefines.IndexOf(name)>=0);
    end;
 
-   function EvaluateDeclared(argExpr : TNoPosExpr) : Boolean;
+   function EvaluateDeclared(argExpr : TTypedExpr) : Boolean;
    var
       name : String;
    begin
@@ -5932,7 +5932,7 @@ function TdwsCompiler.ReadSpecialFunction(const namePos: TScriptPos; SpecialKind
    end;
 
 var
-   argExpr, msgExpr: TNoPosExpr;
+   argExpr, msgExpr: TTypedExpr;
    argTyp: TSymbol;
 begin
    if not FTok.TestDelete(ttBLEFT) then
@@ -6140,9 +6140,9 @@ end;
 
 // ReadTypeCast
 //
-function TdwsCompiler.ReadTypeCast(const namePos : TScriptPos; typeSym : TSymbol) : TNoPosExpr;
+function TdwsCompiler.ReadTypeCast(const namePos : TScriptPos; typeSym : TSymbol) : TTypedExpr;
 var
-   argExpr : TNoPosExpr;
+   argExpr : TTypedExpr;
    hotPos : TScriptPos;
 begin
    if not FTok.TestDelete(ttBLEFT) then
@@ -6245,7 +6245,7 @@ end;
 
 // GetExpression
 //
-function TdwsEvaluateExpr.GetExpression : TNoPosExpr;
+function TdwsEvaluateExpr.GetExpression : TTypedExpr;
 begin
    Result:=FExpression;
 end;

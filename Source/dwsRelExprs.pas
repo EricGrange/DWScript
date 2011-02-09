@@ -26,7 +26,7 @@ uses dwsExprs, dwsErrors, dwsStrings, dwsSymbols;
 type
 
    TRelOpExpr = class(TBinaryOpExpr)
-      constructor Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr); override;
+      constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
       function Eval(exec : TdwsExecution) : Variant; override;
    end;
    TRelOpExprClass = class of TRelOpExpr;
@@ -145,7 +145,7 @@ implementation
 
 // Create
 //
-constructor TRelOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TNoPosExpr);
+constructor TRelOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
 begin
    inherited;
    FTyp:=Prog.TypBoolean;
