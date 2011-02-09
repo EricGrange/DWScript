@@ -74,7 +74,6 @@ type
       function UpperFirstChar : Char;
       function UpperMatchLen(const str : String) : Boolean;
       function ToInt64 : Int64;
-      function ToInt32Def(aDef : Integer) : Integer;
       function ToFloat : Double;
       function ToType : TTokenType;
       function ToAlphaType : TTokenType;
@@ -351,18 +350,16 @@ begin
    Result:=ComplexToInt64(Self);
 end;
 
-// ToInt32Def
-//
-function TTokenBuffer.ToInt32Def(aDef : Integer) : Integer;
-begin
-   Result:=StrToIntDef(ToStr, aDef);
-end;
-
 // ToFloat
 //
 function TTokenBuffer.ToFloat : Double;
+var
+   buf : Extended;
 begin
-   Result:=StrToFloat(ToStr, cFormatSettings);
+   AppendChar(#0);
+   if not TextToFloat(PChar(@Buffer[0]), buf, fvExtended, cFormatSettings) then
+      raise EConvertError.Create('');
+   Result:=buf;
 end;
 
 // ToType
@@ -821,7 +818,7 @@ function TTokenizer.ConsumeToken: TToken;
          result.FFloat := tokenBuf.ToFloat;
          result.FTyp := ttFloatVal;
       except
-         on e: Exception do
+         on e: EConvertError do
             AddCompilerStopFmtTokenBuffer(TOK_InvalidFloatConstant);
       end;
    end;
@@ -890,7 +887,7 @@ begin
 
                // converts ASCII code to character (decimal or hex)
                caChar, caCharHex: begin
-                  tokenIntVal:=FTokenBuf.ToInt32Def(-1);
+                  tokenIntVal:=FTokenBuf.ToInt64;
                   if Cardinal(tokenIntVal)>Cardinal($FFFF) then
                      AddCompilerStopFmtTokenBuffer(TOK_InvalidCharConstant)
                   else begin
