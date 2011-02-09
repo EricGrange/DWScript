@@ -134,14 +134,16 @@ type
       private
          FItems : array of T;
          FCount : Integer;
+         FCapacity : Integer;
       protected
-         function GetPeek : T;
+         procedure Grow;
+         function GetPeek : T; inline;
          procedure SetPeek(const item : T);
          function GetItems(const position : Integer) : T;
          procedure SetItems(const position : Integer; const value : T);
       public
          procedure Push(const item : T);
-         function Pop : T;
+         procedure Pop; inline;
          procedure Clear;
          property Peek : T read GetPeek write SetPeek;
          property Items[const position : Integer] : T read GetItems write SetItems;
@@ -748,24 +750,27 @@ end;
 // ------------------ TSimpleStack<T> ------------------
 // ------------------
 
+// Grow
+//
+procedure TSimpleStack<T>.Grow;
+begin
+   FCapacity:=FCapacity+8+(FCapacity shr 2);
+   SetLength(FItems, FCapacity);
+end;
+
 // Push
 //
 procedure TSimpleStack<T>.Push(const item : T);
-var
-   capacity : Integer;
 begin
-   capacity:=Length(FItems);
-   if FCount=capacity then
-      SetLength(FItems, capacity+8+(capacity shr 2));
+   if FCount=FCapacity then Grow;
    FItems[FCount]:=item;
    Inc(FCount);
 end;
 
 // Pop
 //
-function TSimpleStack<T>.Pop : T;
+procedure TSimpleStack<T>.Pop;
 begin
-   Result:=FItems[FCount-1];
    Dec(FCount);
 end;
 
@@ -803,6 +808,7 @@ procedure TSimpleStack<T>.Clear;
 begin
    SetLength(FItems, 0);
    FCount:=0;
+   FCapacity:=0;
 end;
 
 // ------------------

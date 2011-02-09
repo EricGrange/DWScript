@@ -112,7 +112,7 @@ type
 
          procedure PushBp(Level, Bp: Integer); inline;
          function  GetSavedBp(Level: Integer): Integer; inline;
-         function  PopBp(Level : Integer): Integer; inline;
+         procedure PopBp(Level : Integer); inline;
 
          function  SwitchFrame(level : Integer) : Integer; inline;
          procedure RestoreFrame(level, oldBasePointer: Integer); inline;
@@ -294,9 +294,9 @@ end;
 
 // PopBp
 //
-function TStackMixIn.PopBp(Level : Integer): Integer;
+procedure TStackMixIn.PopBp(Level : Integer);
 begin
-   Result:=FBpStore[Level].Pop;
+   FBpStore[Level].Pop;
 end;
 
 // SwitchFrame

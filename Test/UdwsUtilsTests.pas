@@ -54,11 +54,13 @@ begin
    CheckEquals(2, stack.Count);
    CheckEquals(456, stack.Peek);
 
-   CheckEquals(456, stack.Pop);
+   CheckEquals(456, stack.Peek);
+   stack.Pop;
 
    CheckEquals(1, stack.Count);
 
-   CheckEquals(123, stack.Pop);
+   CheckEquals(123, stack.Peek);
+   stack.Pop;
 
    CheckEquals(0, stack.Count);
 
