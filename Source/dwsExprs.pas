@@ -39,6 +39,7 @@ type
    TExpr = class;
    TNoPosExprList = class;
    TdwsProgram = class;
+   TdwsMainProgram = class;
    IdwsProgram = interface;
    TdwsProgramExecution = class;
    TSymbolPositionList = class;
@@ -315,7 +316,7 @@ type
    // holds execution context for a script
    TdwsProgramExecution = class (TdwsExecution, IdwsProgramExecution)
       private
-         FProg : TdwsProgram;
+         FProg : TdwsMainProgram;
          FCurrentProg : TdwsProgram;
 
          FFirstObject, FLastObject : TScriptObj;
@@ -345,7 +346,7 @@ type
          function GetObjectCount : Integer;
 
       public
-         constructor Create(aProgram : TdwsProgram; const stackParams : TStackParameters);
+         constructor Create(aProgram : TdwsMainProgram; const stackParams : TStackParameters);
          destructor Destroy; override;
 
          procedure Execute(aTimeoutMilliSeconds : Integer = 0); overload;
@@ -365,7 +366,7 @@ type
          function AcquireProgramInfo(funcSym : TFuncSymbol) : TProgramInfo;
          procedure ReleaseProgramInfo(info : TProgramInfo);
 
-         property Prog : TdwsProgram read FProg;
+         property Prog : TdwsMainProgram read FProg;
          property CurrentProg : TdwsProgram read FCurrentProg;
          property ProgramInfo : TProgramInfo read FProgramInfo;
 
@@ -389,55 +390,92 @@ type
    end;
 
    // A script executable program
-   TdwsProgram = class (TInterfacedObject, IdwsProgram)
+   TdwsProgram = class (TInterfacedObject)
       private
-         FContextMap: TContextMap;
-         FExpr: TExpr;
-         FInitExpr: TBlockInitExpr;
-         FAddrGenerator: TAddrGeneratorRec;
-         FGlobalAddrGenerator: TAddrGeneratorRec;
-         FCompileMsgs: TdwsCompileMessageList;
-         FSourceFiles : TTightList;
-         FParent: TdwsProgram;
-         FResultType: TdwsResultType;
-         FRoot: TdwsProgram;
-         FUnifiedConstList: TSortedList<TExprBase>;
-         FRootTable: TProgramSymbolTable;
-         FBinaryOperators : TObject;
-         FSourceList: TScriptSourceList;
-         FSymbolDictionary: TSymbolDictionary;
-         FTable: TSymbolTable;
-         FTimeoutMilliseconds: Integer;
-         FCompiler : TObject;
-         FRuntimeFileSystem : TdwsCustomFileSystem;
-         FConditionalDefines : TStringList;
+         FExpr : TExpr;
+         FInitExpr : TBlockInitExpr;
+         FAddrGenerator : TAddrGeneratorRec;
+         FCompileMsgs : TdwsCompileMessageList;
+         FParent : TdwsProgram;
+         FRoot : TdwsMainProgram;
+         FRootTable : TProgramSymbolTable;
+         FTable : TSymbolTable;
          FBaseTypes : TdwsProgramBaseTypes;
-         FLineCount : Integer;
-         FDefaultUserObject : TObject;
-
-         FStackParameters : TStackParameters;
-
-         FExecutions : TTightList;
-         FExecutionsLock : TCriticalSection;
 
       protected
          function GetLevel: Integer; inline;
+
+      public
+         constructor Create(SystemTable: TSymbolTable);
+         destructor Destroy; override;
+
+         function GetGlobalAddr(DataSize: Integer): Integer;
+         function GetTempAddr(DataSize: Integer = -1): Integer;
+
+         property Expr : TExpr read FExpr write FExpr;
+         property InitExpr : TBlockInitExpr read FInitExpr;
+         property Level : Integer read GetLevel;
+         property CompileMsgs : TdwsCompileMessageList read FCompileMsgs write FCompileMsgs;
+         property Parent : TdwsProgram read FParent;
+         property Root : TdwsMainProgram read FRoot write FRoot;
+
+         property RootTable: TProgramSymbolTable read FRootTable;
+         property Table: TSymbolTable read FTable write FTable;
+
+         property TypBoolean: TTypeSymbol read FBaseTypes.FTypBoolean;
+         property TypFloat: TTypeSymbol read FBaseTypes.FTypFloat;
+         property TypInteger: TTypeSymbol read FBaseTypes.FTypInteger;
+         property TypNil: TNilSymbol read FBaseTypes.FTypNil;
+         property TypObject: TClassSymbol read FBaseTypes.FTypObject;
+         property TypString: TTypeSymbol read FBaseTypes.FTypString;
+         property TypVariant: TTypeSymbol read FBaseTypes.FTypVariant;
+         property TypException: TClassSymbol read FBaseTypes.FTypException;
+   end;
+
+   // A script main executable program
+   TdwsMainProgram = class (TdwsProgram, IdwsProgram)
+      private
+         FUnifiedConstList : TSortedList<TExprBase>;
+
+         FDefaultUserObject : TObject;
+
+         FStackParameters : TStackParameters;
+         FGlobalAddrGenerator : TAddrGeneratorRec;
+
+         FResultType : TdwsResultType;
+         FRuntimeFileSystem : TdwsCustomFileSystem;
+         FExecutions : TTightList;
+         FExecutionsLock : TCriticalSection;
+         FTimeoutMilliseconds : Integer;
+
+         FContextMap : TContextMap;
+         FSymbolDictionary : TSymbolDictionary;
+
+         FBinaryOperators : TObject;
+         FConditionalDefines : TStringList;
+         FSourceFiles : TTightList;
+         FSourceList : TScriptSourceList;
+         FLineCount : Integer;
+         FCompiler : TObject;
+
+      protected
          procedure SetConditionalDefines(const val : TStringList);
+         function GetConditionalDefines : TStringList;
+         function GetDefaultUserObject : TObject;
+         procedure SetDefaultUserObject(const val : TObject);
+
+         function GetSourceList : TScriptSourceList;
+         function GetLineCount : Integer;
 
          procedure NotifyExecutionDestruction(exec : TdwsProgramExecution);
 
          // for interface only, script exprs use direct properties
          function GetMsgs : TdwsMessageList;
-         function GetConditionalDefines : TStringList;
-         function GetLineCount : Integer;
          function GetTable : TSymbolTable;
          function GetTimeoutMilliseconds : Integer;
          procedure SetTimeoutMilliseconds(const val : Integer);
-         function GetDefaultUserObject : TObject;
-         procedure SetDefaultUserObject(const val : TObject);
          function GetSymbolDictionary : TSymbolDictionary;
          function GetContextMap : TContextMap;
-         function GetSourceList : TScriptSourceList;
          function GetProgramObject : TdwsProgram;
 
       public
@@ -451,50 +489,27 @@ type
          function ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
          function ExecuteParam(const params : OleVariant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
 
-         function GetGlobalAddr(DataSize: Integer): Integer;
-         function GetTempAddr(DataSize: Integer = -1): Integer;
-         function NextStackLevel(level : Integer) : Integer;
-
          function RegisterSourceFile(const sourceFile : String; const sourceCode : String) : TSourceFile;
          function GetSourceFile(const aSourceFile : String) : TSourceFile;
 
-         property Compiler: TObject read FCompiler write FCompiler;
-         property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
-         property ConditionalDefines : TStringList read FConditionalDefines write SetConditionalDefines;
-         property LineCount : Integer read FLineCount write FLineCount;
-         property DefaultUserObject : TObject read FDefaultUserObject write FDefaultUserObject;
+         function NextStackLevel(level : Integer) : Integer;
 
+         property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds;
          property MaxRecursionDepth : Integer read FStackParameters.MaxRecursionDepth write FStackParameters.MaxRecursionDepth;
          property MaxDataSize : Integer read FStackParameters.MaxByteSize write FStackParameters.MaxByteSize;
          property StackChunkSize : Integer read FStackParameters.ChunkSize write FStackParameters.ChunkSize;
+         property UnifiedConstList : TSortedList<TExprBase> read FUnifiedConstList;
+         property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
 
-         property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds;
-
-         property Expr: TExpr read FExpr write FExpr;
-         property InitExpr: TBlockInitExpr read FInitExpr;
-         property Level: Integer read GetLevel;
-         property CompileMsgs: TdwsCompileMessageList read FCompileMsgs write FCompileMsgs;
-         property Parent: TdwsProgram read FParent;
-         property Root: TdwsProgram read FRoot write FRoot;
-
-         property RootTable: TProgramSymbolTable read FRootTable;
-         property Table: TSymbolTable read FTable write FTable;
          property BinaryOperators : TObject read FBinaryOperators write FBinaryOperators;
-
-         property UnifiedConstList: TSortedList<TExprBase> read FUnifiedConstList;
-
-         property TypBoolean: TTypeSymbol read FBaseTypes.FTypBoolean;
-         property TypFloat: TTypeSymbol read FBaseTypes.FTypFloat;
-         property TypInteger: TTypeSymbol read FBaseTypes.FTypInteger;
-         property TypNil: TNilSymbol read FBaseTypes.FTypNil;
-         property TypObject: TClassSymbol read FBaseTypes.FTypObject;
-         property TypString: TTypeSymbol read FBaseTypes.FTypString;
-         property TypVariant: TTypeSymbol read FBaseTypes.FTypVariant;
-         property TypException: TClassSymbol read FBaseTypes.FTypException;
-
+         property ConditionalDefines : TStringList read FConditionalDefines write SetConditionalDefines;
+         property Compiler : TObject read FCompiler write FCompiler;
+         property ContextMap : TContextMap read FContextMap;
          property SymbolDictionary: TSymbolDictionary read FSymbolDictionary;
-         property ContextMap: TContextMap read FContextMap;
-         property SourceList: TScriptSourceList read FSourceList;
+         property SourceList : TScriptSourceList read FSourceList;
+         property LineCount : Integer read FLineCount write FLineCount;
+
+         property DefaultUserObject : TObject read FDefaultUserObject write FDefaultUserObject;
    end;
 
    // Functions callable from a script program implement this interfaces
@@ -1681,7 +1696,7 @@ end;
 
 // Create
 //
-constructor TdwsProgramExecution.Create(aProgram : TdwsProgram; const stackParams : TStackParameters);
+constructor TdwsProgramExecution.Create(aProgram : TdwsMainProgram; const stackParams : TStackParameters);
 begin
    inherited Create(stackParams);
 
@@ -2176,36 +2191,11 @@ end;
 
 // Create
 //
-constructor TdwsProgram.Create(SystemTable: TSymbolTable; ResultType: TdwsResultType;
-                               const stackParameters : TStackParameters);
+constructor TdwsProgram.Create(SystemTable: TSymbolTable);
 begin
-   FExecutionsLock:=TCriticalSection.Create;
-
-   FConditionalDefines:=TStringList.Create;
-   FConditionalDefines.Sorted:=True;
-   FConditionalDefines.CaseSensitive:=False;
-   FConditionalDefines.Duplicates:=dupIgnore;
-
-   FResultType := ResultType;
-
    FCompileMsgs := TdwsCompileMessageList.Create;
-   FRoot := Self;
 
-   // Create the Symbol Dictionary
-   FSymbolDictionary := TSymbolDictionary.Create;
-   // Create Context Map
-   FContextMap := TContextMap.Create;
-   //Create Script Source List
-   FSourceList := TScriptSourceList.Create;
-
-   FStackParameters:=stackParameters;
-
-   // Initialize address generators
    FAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
-   FGlobalAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
-   FStackParameters.MaxLevel:=1;
-
-   FUnifiedConstList:=TUnifiedConstList.Create;
 
    // Initialize the system table
    FRootTable := TProgramSymbolTable.Create(SystemTable, @FAddrGenerator);
@@ -2228,209 +2218,13 @@ end;
 //
 destructor TdwsProgram.Destroy;
 begin
-   FExecutionsLock.Enter;
-   try
-      if FExecutions.Count>0 then
-         raise Exception.CreateFmt(RTE_ScriptHasLiveExecutions, [FExecutions.Count]);
-   finally
-      FExecutionsLock.Leave;
-   end;
-
-   FBinaryOperators.Free;
-   FExecutionsLock.Free;
    FExpr.Free;
    FInitExpr.Free;
    FRootTable.Free;
    FBaseTypes.FTypNil.Free;
    FCompileMsgs.Free;
-   FSymbolDictionary.Free;
-   FContextMap.Free;
-   FSourceList.Free;
-   FUnifiedConstList.Free;
-   FConditionalDefines.Free;
-   FSourceFiles.Clean;
 
    inherited;
-end;
-
-// CreateNewExecution
-//
-function TdwsProgram.CreateNewExecution : IdwsProgramExecution;
-var
-   exec : TdwsProgramExecution;
-begin
-   exec:=TdwsProgramExecution.Create(Self, FStackParameters);
-   exec.UserObject:=DefaultUserObject;
-   FExecutionsLock.Enter;
-   try
-      FExecutions.Add(exec);
-   finally
-      FExecutionsLock.Leave;
-   end;
-   Result:=exec;
-end;
-
-// BeginNewExecution
-//
-function TdwsProgram.BeginNewExecution : IdwsProgramExecution;
-begin
-   Result:=CreateNewExecution;
-   Result.BeginProgram;
-end;
-
-// Execute
-//
-function TdwsProgram.Execute(aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution;
-begin
-   Result:=CreateNewExecution;
-   Result.Execute(aTimeoutMilliSeconds);
-end;
-
-// ExecuteParam
-//
-function TdwsProgram.ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution;
-begin
-   Result:=CreateNewExecution;
-   Result.ExecuteParam(params, aTimeoutMilliSeconds);
-end;
-
-// ExecuteParam
-//
-function TdwsProgram.ExecuteParam(const Params : OleVariant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution;
-begin
-   Result:=CreateNewExecution;
-   Result.ExecuteParam(Params, aTimeoutMilliSeconds);
-end;
-
-// SetConditionalDefines
-//
-procedure TdwsProgram.SetConditionalDefines(const val : TStringList);
-begin
-   FConditionalDefines.Assign(val);
-end;
-
-// NotifyExecutionDestruction
-//
-procedure TdwsProgram.NotifyExecutionDestruction(exec : TdwsProgramExecution);
-begin
-   FExecutionsLock.Enter;
-   try
-      FExecutions.Remove(exec);
-   finally
-      FExecutionsLock.Leave;
-   end;
-end;
-
-// RegisterSourceFile
-//
-function TdwsProgram.RegisterSourceFile(const sourceFile : String; const sourceCode : String) : TSourceFile;
-var
-   sf: TSourceFile;
-begin
-   sf:=GetSourceFile(SourceFile);
-   if not Assigned(sf) or (sf.SourceCode <> SourceCode) then begin
-      Result:=TSourceFile.Create;
-      Result.SourceFile:=SourceFile;
-      Result.SourceCode:=SourceCode;
-      FSourceFiles.Add(Result);
-   end else Result:=sf;
-end;
-
-// GetSourceFile
-//
-function TdwsProgram.GetSourceFile(const aSourceFile : String) : TSourceFile;
-var
-   i : Integer;
-begin
-   for i:=0 to FSourceFiles.Count-1 do begin
-      Result:=TSourceFile(FSourceFiles.List[i]);
-      if Result.SourceFile=aSourceFile then Exit;
-   end;
-   Result:=nil;
-end;
-
-// GetMsgs
-//
-function TdwsProgram.GetMsgs : TdwsMessageList;
-begin
-   Result:=FCompileMsgs;
-end;
-
-// GetConditionalDefines
-//
-function TdwsProgram.GetConditionalDefines : TStringList;
-begin
-   Result:=FConditionalDefines;
-end;
-
-// GetLineCount
-//
-function TdwsProgram.GetLineCount : Integer;
-begin
-   Result:=FLineCount;
-end;
-
-// GetTable
-//
-function TdwsProgram.GetTable : TSymbolTable;
-begin
-   Result:=FTable;
-end;
-
-// GetTimeoutMilliseconds
-//
-function TdwsProgram.GetTimeoutMilliseconds : Integer;
-begin
-   Result:=FTimeoutMilliseconds;
-end;
-
-// SetTimeoutMilliseconds
-//
-procedure TdwsProgram.SetTimeoutMilliseconds(const val : Integer);
-begin
-   FTimeoutMilliseconds:=val;
-end;
-
-// GetDefaultUserObject
-//
-function TdwsProgram.GetDefaultUserObject : TObject;
-begin
-   Result:=FDefaultUserObject;
-end;
-
-// SetDefaultUserObject
-//
-procedure TdwsProgram.SetDefaultUserObject(const val : TObject);
-begin
-   FDefaultUserObject:=val;
-end;
-
-// GetSymbolDictionary
-//
-function TdwsProgram.GetSymbolDictionary : TSymbolDictionary;
-begin
-   Result:=FSymbolDictionary;
-end;
-
-// GetContextMap
-//
-function TdwsProgram.GetContextMap : TContextMap;
-begin
-   Result:=FContextMap;
-end;
-
-// GetSourceList
-//
-function TdwsProgram.GetSourceList : TScriptSourceList;
-begin
-   Result:=FSourceList;
-end;
-
-// GetProgramObject
-//
-function TdwsProgram.GetProgramObject : TdwsProgram;
-begin
-   Result:=Self;
 end;
 
 function TdwsProgram.GetLevel: Integer;
@@ -2448,9 +2242,249 @@ begin
   Result := FAddrGenerator.GetStackAddr(DataSize);
 end;
 
+// ------------------
+// ------------------ TdwsMainProgram ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsMainProgram.Create(SystemTable: TSymbolTable; ResultType: TdwsResultType;
+                            const stackParameters : TStackParameters);
+begin
+   inherited Create(SystemTable);
+
+   FResultType:=ResultType;
+
+   FExecutionsLock:=TCriticalSection.Create;
+
+   FStackParameters:=stackParameters;
+   FStackParameters.MaxLevel:=1;
+
+   FGlobalAddrGenerator:=TAddrGeneratorRec.CreatePositive(0);
+
+   FContextMap:=TContextMap.Create;
+
+   FSymbolDictionary:=TSymbolDictionary.Create;
+
+   FConditionalDefines:=TStringList.Create;
+   FConditionalDefines.Sorted:=True;
+   FConditionalDefines.CaseSensitive:=False;
+   FConditionalDefines.Duplicates:=dupIgnore;
+
+   FSourceList:=TScriptSourceList.Create;
+
+   FUnifiedConstList:=TUnifiedConstList.Create;
+
+   FRoot:=Self;
+end;
+
+// Destroy
+//
+destructor TdwsMainProgram.Destroy;
+begin
+   FExecutionsLock.Enter;
+   try
+      if FExecutions.Count>0 then
+         raise Exception.CreateFmt(RTE_ScriptHasLiveExecutions, [FExecutions.Count]);
+   finally
+      FExecutionsLock.Leave;
+   end;
+   FExecutionsLock.Free;
+
+   inherited;
+
+   FBinaryOperators.Free;
+   FContextMap.Free;
+   FSymbolDictionary.Free;
+   FConditionalDefines.Free;
+   FUnifiedConstList.Free;
+   FSourceFiles.Clean;
+   FSourceList.Free;
+end;
+
+// CreateNewExecution
+//
+function TdwsMainProgram.CreateNewExecution : IdwsProgramExecution;
+var
+   exec : TdwsProgramExecution;
+begin
+   exec:=TdwsProgramExecution.Create(Self, FStackParameters);
+   exec.UserObject:=DefaultUserObject;
+   FExecutionsLock.Enter;
+   try
+      FExecutions.Add(exec);
+   finally
+      FExecutionsLock.Leave;
+   end;
+   Result:=exec;
+end;
+
+// BeginNewExecution
+//
+function TdwsMainProgram.BeginNewExecution : IdwsProgramExecution;
+begin
+   Result:=CreateNewExecution;
+   Result.BeginProgram;
+end;
+
+// NotifyExecutionDestruction
+//
+procedure TdwsMainProgram.NotifyExecutionDestruction(exec : TdwsProgramExecution);
+begin
+   FExecutionsLock.Enter;
+   try
+      FExecutions.Remove(exec);
+   finally
+      FExecutionsLock.Leave;
+   end;
+end;
+
+// Execute
+//
+function TdwsMainProgram.Execute(aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution;
+begin
+   Result:=CreateNewExecution;
+   Result.Execute(aTimeoutMilliSeconds);
+end;
+
+// ExecuteParam
+//
+function TdwsMainProgram.ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution;
+begin
+   Result:=CreateNewExecution;
+   Result.ExecuteParam(params, aTimeoutMilliSeconds);
+end;
+
+// ExecuteParam
+//
+function TdwsMainProgram.ExecuteParam(const Params : OleVariant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution;
+begin
+   Result:=CreateNewExecution;
+   Result.ExecuteParam(Params, aTimeoutMilliSeconds);
+end;
+
+// GetMsgs
+//
+function TdwsMainProgram.GetMsgs : TdwsMessageList;
+begin
+   Result:=FCompileMsgs;
+end;
+
+// GetTable
+//
+function TdwsMainProgram.GetTable : TSymbolTable;
+begin
+   Result:=FTable;
+end;
+
+// GetTimeoutMilliseconds
+//
+function TdwsMainProgram.GetTimeoutMilliseconds : Integer;
+begin
+   Result:=FTimeoutMilliseconds;
+end;
+
+// SetTimeoutMilliseconds
+//
+procedure TdwsMainProgram.SetTimeoutMilliseconds(const val : Integer);
+begin
+   FTimeoutMilliseconds:=val;
+end;
+
+// GetSymbolDictionary
+//
+function TdwsMainProgram.GetSymbolDictionary : TSymbolDictionary;
+begin
+   Result:=FSymbolDictionary;
+end;
+
+// GetContextMap
+//
+function TdwsMainProgram.GetContextMap : TContextMap;
+begin
+   Result:=FContextMap;
+end;
+
+// GetProgramObject
+//
+function TdwsMainProgram.GetProgramObject : TdwsProgram;
+begin
+   Result:=Self;
+end;
+
+// RegisterSourceFile
+//
+function TdwsMainProgram.RegisterSourceFile(const sourceFile : String; const sourceCode : String) : TSourceFile;
+var
+   sf: TSourceFile;
+begin
+   sf:=GetSourceFile(SourceFile);
+   if not Assigned(sf) or (sf.SourceCode <> SourceCode) then begin
+      Result:=TSourceFile.Create;
+      Result.SourceFile:=SourceFile;
+      Result.SourceCode:=SourceCode;
+      FSourceFiles.Add(Result);
+   end else Result:=sf;
+end;
+
+// GetSourceFile
+//
+function TdwsMainProgram.GetSourceFile(const aSourceFile : String) : TSourceFile;
+var
+   i : Integer;
+begin
+   for i:=0 to FSourceFiles.Count-1 do begin
+      Result:=TSourceFile(FSourceFiles.List[i]);
+      if Result.SourceFile=aSourceFile then Exit;
+   end;
+   Result:=nil;
+end;
+
+// GetSourceList
+//
+function TdwsMainProgram.GetSourceList : TScriptSourceList;
+begin
+   Result:=FSourceList;
+end;
+
+// GetLineCount
+//
+function TdwsMainProgram.GetLineCount : Integer;
+begin
+   Result:=FLineCount;
+end;
+
+// GetConditionalDefines
+//
+function TdwsMainProgram.GetConditionalDefines : TStringList;
+begin
+   Result:=FConditionalDefines;
+end;
+
+// SetConditionalDefines
+//
+procedure TdwsMainProgram.SetConditionalDefines(const val : TStringList);
+begin
+   FConditionalDefines.Assign(val);
+end;
+
+// GetDefaultUserObject
+//
+function TdwsMainProgram.GetDefaultUserObject : TObject;
+begin
+   Result:=FDefaultUserObject;
+end;
+
+// SetDefaultUserObject
+//
+procedure TdwsMainProgram.SetDefaultUserObject(const val : TObject);
+begin
+   FDefaultUserObject:=val;
+end;
+
 // NextStackLevel
 //
-function TdwsProgram.NextStackLevel(level : Integer) : Integer;
+function TdwsMainProgram.NextStackLevel(level : Integer) : Integer;
 begin
    Result:=level+1;
    if Result>FStackParameters.MaxLevel then
@@ -2478,8 +2512,6 @@ begin
   // Connect the procedure to the root TdwsProgram
   FRoot := Parent.Root;
   FBaseTypes := FRoot.FBaseTypes;
-  FSymbolDictionary := Parent.SymbolDictionary;
-  FContextMap := Parent.ContextMap;
 end;
 
 destructor TdwsProcedure.Destroy;

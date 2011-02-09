@@ -5038,7 +5038,7 @@ var
    name : String;
 begin
    Expr.EvalAsString(exec, name);
-   Result:=(Prog.ConditionalDefines.IndexOf(name)>=0);
+   Result:=(Prog.Root.ConditionalDefines.IndexOf(name)>=0);
 end;
 
 // ------------------
