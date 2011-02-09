@@ -36,7 +36,6 @@ type
    TNoPosExpr = class;
    TNoResultExpr = class;
    TBlockInitExpr = class;
-   TExpr = class;
    TNoPosExprList = class;
    TdwsProgram = class;
    TdwsMainProgram = class;
@@ -51,9 +50,9 @@ type
 
    TVariantDynArray = array of Variant;
 
-   TExprList = array[0..MaxListSize - 1] of TExpr;
-   PExprList = ^TExprList;
-   PExpr = ^TExpr;
+   TNoResultExprList = array[0..MaxListSize - 1] of TNoResultExpr;
+   PNoResultExprList = ^TNoResultExprList;
+   PNoResultExpr = ^TNoResultExpr;
 
   // Interface for units
   IUnit = interface
@@ -392,7 +391,7 @@ type
    // A script executable program
    TdwsProgram = class (TInterfacedObject)
       private
-         FExpr : TExpr;
+         FExpr : TNoResultExpr;
          FInitExpr : TBlockInitExpr;
          FAddrGenerator : TAddrGeneratorRec;
          FCompileMsgs : TdwsCompileMessageList;
@@ -412,7 +411,7 @@ type
          function GetGlobalAddr(DataSize: Integer): Integer;
          function GetTempAddr(DataSize: Integer = -1): Integer;
 
-         property Expr : TExpr read FExpr write FExpr;
+         property Expr : TNoResultExpr read FExpr write FExpr;
          property InitExpr : TBlockInitExpr read FInitExpr;
          property Level : Integer read GetLevel;
          property CompileMsgs : TdwsCompileMessageList read FCompileMsgs write FCompileMsgs;
@@ -541,24 +540,21 @@ type
    end;
 
    // Base class of all expressions attached to a program
-   TNoPosExpr = class(TExprBase)
+   TProgramExpr = class(TExprBase)
       private
          FProg : TdwsProgram;
 
       protected
-         FTyp : TSymbol;
+         function GetType : TSymbol; virtual;
+         function GetBaseType : TTypeSymbol; virtual;
 
       public
          constructor Create(Prog: TdwsProgram);
 
-         function IsBooleanValue : Boolean;
-         function IsIntegerValue : Boolean;
-         function IsFloatValue : Boolean;
-         function IsNumberValue : Boolean;
-         function IsStringValue : Boolean;
-         function IsVariantValue : Boolean;
-
-         function GetBaseType : TTypeSymbol;
+         procedure Initialize; virtual;
+         function  IsConstant : Boolean; virtual;
+         function  Optimize(exec : TdwsExecution) : TProgramExpr; virtual;
+         procedure TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList); virtual;
 
          procedure EvalNoResult(exec : TdwsExecution); virtual;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -574,15 +570,6 @@ type
          procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
          procedure AssignValueAsString(exec : TdwsExecution; const value: String); override;
 
-         procedure Initialize; virtual;
-         procedure TypeCheckNoPos(const aPos : TScriptPos); virtual;
-         function IsConstant : Boolean; virtual;
-         function Optimize(exec : TdwsExecution) : TNoPosExpr; virtual;
-         function OptimizeIntegerConstantToFloatConstant(exec : TdwsExecution) : TNoPosExpr;
-
-         function ScriptPos : TScriptPos; override;
-         function ScriptLocation : String; override;
-
          procedure RaiseScriptError(e : EScriptError); overload;
          procedure RaiseScriptError; overload;
          procedure RaiseScriptError(const msg : String); overload;
@@ -593,37 +580,60 @@ type
          procedure RaiseUpperExceeded(index : Integer);
          procedure RaiseLowerExceeded(index : Integer);
 
+         function ScriptLocation : String; override;
+
+         property Prog : TdwsProgram read FProg;
+         property Typ : TSymbol read GetType;
+         property BaseType : TTypeSymbol read GetBaseType;
+   end;
+
+   TProgramExprClass = class of TProgramExpr;
+
+   // Base class of all typed expressions
+   TNoPosExpr = class(TProgramExpr)
+      protected
+         FTyp : TSymbol;
+
+         function GetType : TSymbol; override;
+         function GetBaseType : TTypeSymbol; override;
+
+      public
+         function IsBooleanValue : Boolean;
+         function IsIntegerValue : Boolean;
+         function IsFloatValue : Boolean;
+         function IsNumberValue : Boolean;
+         function IsStringValue : Boolean;
+         function IsVariantValue : Boolean;
+
+         function OptimizeToNoPosExpr(exec : TdwsExecution) : TNoPosExpr;
+         function OptimizeIntegerConstantToFloatConstant(exec : TdwsExecution) : TNoPosExpr;
+
+         function ScriptPos : TScriptPos; override;
+
          procedure CheckScriptObject(const scriptObj : IScriptObj); inline;
          procedure RaiseObjectNotInstantiated;
          procedure RaiseObjectAlreadyDestroyed;
 
-         property Prog : TdwsProgram read FProg;
-         property Typ: TSymbol read FTyp write FTyp;
-         property BaseType: TTypeSymbol read GetBaseType;
+         property Typ : TSymbol read FTyp write FTyp;
    end;
 
    TNoPosExprClass = class of TNoPosExpr;
 
-   // TExpr
-   //
-   TExpr = class (TNoPosExpr)
+   // base class of expressions that return no result
+   TNoResultExpr = class(TProgramExpr)
       protected
-         FPos: TScriptPos;
+         FPos : TScriptPos;
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
 
-         procedure TypeCheck;
+         procedure TypeCheck(compileMsgs : TdwsCompileMessageList);
+         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         function OptimizeToNoResultExpr(exec : TdwsExecution) : TNoResultExpr;
 
          function ScriptPos : TScriptPos; override;
-
-         property Pos: TScriptPos read FPos;
-   end;
-
-   TNoResultExpr = class(TExpr)
-      function Eval(exec : TdwsExecution) : Variant; override;
-      procedure EvalNoResult(exec : TdwsExecution); override;
-      function OptimizeToNoResultExpr(exec : TdwsExecution) : TNoResultExpr;
+         property Pos : TScriptPos read FPos;
    end;
 
    // Does nothing! E. g.: "for x := 1 to 10 do {TNullExpr};"
@@ -634,14 +644,14 @@ type
    // statement; statement; statement;
    TBlockExprBase = class(TNoResultExpr)
       protected
-         FStatements : PExprList;
+         FStatements : PNoResultExprList;
          FCount : Integer;
 
       public
          destructor Destroy; override;
 
-         procedure AddStatement(expr : TExpr);
-         procedure AddStatementFirst(expr : TExpr);
+         procedure AddStatement(expr : TNoResultExpr);
+         procedure AddStatementFirst(expr : TNoResultExpr);
 
          procedure Initialize; override;
    end;
@@ -685,10 +695,7 @@ type
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TSymbol);
 
-         procedure TypeCheck;
-
-         procedure AddCompilerErrorFmt(const fmtText: string; const Args: array of const);
-         procedure AddCompilerStop(const Text : String); overload;
+         procedure TypeCheck(compileMsgs : TdwsCompileMessageList);
 
          function ScriptPos : TScriptPos; override;
 
@@ -705,10 +712,10 @@ type
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol);
          destructor Destroy; override;
          function AddArg(arg : TNoPosExpr) : TSymbol; virtual; abstract;
-         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+         procedure TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList); override;
          procedure Initialize; override;
          function GetArgs : TExprBaseList;
-         function Optimize(exec : TdwsExecution) : TNoPosExpr; override;
+         function Optimize(exec : TdwsExecution) : TProgramExpr; override;
          function IsConstant : Boolean; override;
          property FuncSym: TFuncSymbol read FFunc;
    end;
@@ -873,10 +880,11 @@ type
     destructor Destroy; override;
     function AssignConnectorSym(ConnectorType: IConnectorType): Boolean;
     function AddArg(ArgExpr: TNoPosExpr) : TSymbol;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+    procedure TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList); override;
     function Eval(exec : TdwsExecution) : Variant; override;
     procedure Initialize; override;
     function IsWritable : Boolean; override;
+    property BaseExpr : TNoPosExpr read FBaseExpr write FBaseExpr;
   end;
 
   TConnectorReadExpr = class(TPosDataExpr)
@@ -898,6 +906,7 @@ type
 
   TConnectorWriteExpr = class(TNoResultExpr)
   private
+    FTyp : TSymbol;
     FBaseExpr: TNoPosExpr;
     FValueExpr: TNoPosExpr;
     FConnectorMember: IConnectorMember;
@@ -922,7 +931,7 @@ type
                             BaseExpr: TDataExpr);
          destructor Destroy; override;
 
-         procedure TypeCheckNoPos(const aPos : TScriptPos); override;
+         procedure TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList); override;
          procedure Initialize; override;
 
          property BaseExpr: TDataExpr read FBaseExpr;
@@ -1042,19 +1051,21 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
+   // wraps an expression with a result into a no-result one and discard the result
+   TNoResultWrapperExpr = class(TNoResultExpr)
+      protected
+         FExpr: TProgramExpr;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TProgramExpr);
+         destructor Destroy; override;
 
-  TNoResultWrapperExpr = class(TNoResultExpr)
-  protected
-    FExpr: TNoPosExpr;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
-    destructor Destroy; override;
-    procedure Initialize; override;
-    procedure EvalNoResult(exec : TdwsExecution); override;
-    procedure TypeCheckNoPos(const aPos : TScriptPos); override;
-    function IsConstant : Boolean; override;
-    property Expr: TNoPosExpr read FExpr write FExpr;
-  end;
+         procedure Initialize; override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         procedure TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList); override;
+         function  IsConstant : Boolean; override;
+
+         property Expr: TProgramExpr read FExpr write FExpr;
+   end;
 
    // left "op" right
    TBinaryOpExpr = class(TNoPosExpr)
@@ -1092,7 +1103,7 @@ type
          procedure Delete(index : Integer);
 
          procedure Initialize;
-         procedure TypeCheck(const pos : TScriptPos; ExpectedTyp : TSymbol);
+         procedure TypeCheck(const pos : TScriptPos; ExpectedTyp : TSymbol; compileMsgs : TdwsCompileMessageList);
 
          property Expr[const x: Integer]: TNoPosExpr read GetExpr write SetExpr; default;
          property Count : Integer read GetCount;
@@ -1660,30 +1671,30 @@ begin
       fkFunction, fkProcedure, fkMethod:
          if meth.IsClassMethod then begin
             if not ForceStatic and meth.IsVirtual then
-               Result := TClassMethodVirtualExpr.Create(Expr.Prog, Pos, meth, Expr)
-            else Result := TClassMethodStaticExpr.Create(Expr.Prog, Pos, meth, Expr)
+               Result := TClassMethodVirtualExpr.Create(prog, Pos, meth, Expr)
+            else Result := TClassMethodStaticExpr.Create(prog, Pos, meth, Expr)
          end else begin
             Assert(RefKind = rkObjRef);
             if not ForceStatic and meth.IsVirtual then
-               Result := TMethodVirtualExpr.Create(Expr.Prog, Pos, meth, Expr)
-            else Result := TMethodStaticExpr.Create(Expr.Prog, Pos, meth, Expr);
+               Result := TMethodVirtualExpr.Create(prog, Pos, meth, Expr)
+            else Result := TMethodStaticExpr.Create(prog, Pos, meth, Expr);
          end;
       fkConstructor:
          if RefKind = rkClassOfRef then begin
             if not ForceStatic and meth.IsVirtual then
-               Result := TConstructorVirtualExpr.Create(Expr.Prog, Pos, meth, Expr)
-            else Result := TConstructorStaticExpr.Create(Expr.Prog, Pos, meth, Expr);
+               Result := TConstructorVirtualExpr.Create(prog, Pos, meth, Expr)
+            else Result := TConstructorStaticExpr.Create(prog, Pos, meth, Expr);
          end else begin
             if not ForceStatic and meth.IsVirtual then
-               Result := TConstructorVirtualObjExpr.Create(Expr.Prog, Pos, meth, Expr)
-            else Result := TConstructorStaticObjExpr.Create(Expr.Prog, Pos, meth, Expr);
+               Result := TConstructorVirtualObjExpr.Create(prog, Pos, meth, Expr)
+            else Result := TConstructorStaticObjExpr.Create(prog, Pos, meth, Expr);
          end;
       fkDestructor:
          begin
             Assert(RefKind = rkObjRef);
             if not ForceStatic and meth.IsVirtual then
-               Result := TDestructorVirtualExpr.Create(Expr.Prog, Pos, meth, Expr)
-            else Result := TDestructorStaticExpr.Create(Expr.Prog, Pos, meth, Expr)
+               Result := TDestructorVirtualExpr.Create(prog, Pos, meth, Expr)
+            else Result := TDestructorStaticExpr.Create(prog, Pos, meth, Expr)
          end;
    else
       Assert(False);
@@ -2499,19 +2510,19 @@ end;
 //
 constructor TdwsProcedure.Create(Parent: TdwsProgram);
 begin
-  FParent := Parent;
+   FParent := Parent;
 
-  // Create a local symbol table and connect it to the parent symboltable
-  FAddrGenerator := TAddrGeneratorRec.CreatePositive(Parent.Level + 1);
-  FRootTable := TProgramSymbolTable.Create(Parent.Table, @FAddrGenerator);
-  FTable := FRootTable;
-  FCompileMsgs:=Parent.CompileMsgs;
+   // Create a local symbol table and connect it to the parent symboltable
+   FAddrGenerator := TAddrGeneratorRec.CreatePositive(Parent.Level + 1);
+   FRootTable := TProgramSymbolTable.Create(Parent.Table, @FAddrGenerator);
+   FTable := FRootTable;
+   FCompileMsgs:=Parent.CompileMsgs;
 
-  FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
+   FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
 
-  // Connect the procedure to the root TdwsProgram
-  FRoot := Parent.Root;
-  FBaseTypes := FRoot.FBaseTypes;
+   // Connect the procedure to the root TdwsProgram
+   FRoot := Parent.Root;
+   FBaseTypes := FRoot.FBaseTypes;
 end;
 
 destructor TdwsProcedure.Destroy;
@@ -2661,25 +2672,257 @@ begin
    FEvent.SetEvent;
 end;
 
-{ TNoPosExpr }
+// ------------------
+// ------------------ TProgramExpr ------------------
+// ------------------
 
-constructor TNoPosExpr.Create(Prog: TdwsProgram);
+// Create
+//
+constructor TProgramExpr.Create(Prog: TdwsProgram);
 begin
-  inherited Create;
-  FProg := Prog;
-  FTyp := nil;
+   inherited Create;
+   FProg:=Prog;
 end;
 
-procedure TNoPosExpr.Initialize;
+// Initialize
+//
+procedure TProgramExpr.Initialize;
 begin
+   // nothing here
+end;
+
+// IsConstant
+//
+function TProgramExpr.IsConstant : Boolean;
+begin
+   Result:=False;
+end;
+
+// Optimize
+//
+function TProgramExpr.Optimize(exec : TdwsExecution) : TProgramExpr;
+begin
+   Result:=Self;
 end;
 
 // TypeCheckNoPos
 //
-procedure TNoPosExpr.TypeCheckNoPos(const aPos : TScriptPos);
+procedure TProgramExpr.TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList);
 begin
-   // nothing
+   // nothing here
 end;
+
+// GetType
+//
+function TProgramExpr.GetType : TSymbol;
+begin
+   Result:=nil;
+end;
+
+// GetBaseType
+//
+function TProgramExpr.GetBaseType : TTypeSymbol;
+begin
+   Result:=nil;
+end;
+
+// EvalAsVariant
+//
+procedure TProgramExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+begin
+   Result:=Eval(exec);
+end;
+
+// EvalAsScriptObj
+//
+procedure TProgramExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+begin
+   Result:=IScriptObj(IUnknown(Eval(exec)));
+end;
+
+// AssignValue
+//
+procedure TProgramExpr.AssignValue(exec : TdwsExecution; const value : Variant);
+begin
+   raise EScriptError.CreateFmt('Cannot assign to %s', [ClassName]);
+end;
+
+// AssignValueAsInteger
+//
+procedure TProgramExpr.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
+begin
+   AssignValue(exec, value);
+end;
+
+// AssignValueAsBoolean
+//
+procedure TProgramExpr.AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean);
+begin
+   AssignValue(exec, value);
+end;
+
+// AssignValueAsFloat
+//
+procedure TProgramExpr.AssignValueAsFloat(exec : TdwsExecution; const value : Double);
+begin
+   AssignValue(exec, value);
+end;
+
+// AssignValueAsString
+//
+procedure TProgramExpr.AssignValueAsString(exec : TdwsExecution; const value: String);
+begin
+   AssignValue(exec, value);
+end;
+
+// EvalAsInteger
+//
+function TProgramExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   v : Variant;
+begin
+   v:=Eval(exec);
+   try
+      Result:=v;
+   except
+      // workaround for RTL bug that will sometimes report a failed cast to Int64
+      // as being a failed cast to Boolean
+      on E : EVariantTypeCastError do begin
+         raise EdwsVariantTypeCastError.Create(v, 'Integer');
+      end else raise;
+   end;
+end;
+
+// EvalAsBoolean
+//
+function TProgramExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   v : Variant;
+begin
+   v:=Eval(exec);
+   try
+      Result:=v;
+   except
+      // standardize RTL message
+      on E : EVariantTypeCastError do begin
+         raise EdwsVariantTypeCastError.Create(v, 'Boolean');
+      end else raise;
+   end;
+end;
+
+// EvalAsFloat
+//
+function TProgramExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+var
+   v : Variant;
+begin
+   v:=Eval(exec);
+   try
+      Result:=v;
+   except
+      // standardize RTL message
+      on E : EVariantTypeCastError do begin
+         raise EdwsVariantTypeCastError.Create(v, 'Float');
+      end else raise;
+   end;
+end;
+
+// EvalAsString
+//
+procedure TProgramExpr.EvalAsString(exec : TdwsExecution; var Result : String);
+var
+   v : Variant;
+begin
+   v:=Eval(exec);
+   try
+      Result:=String(v);
+   except
+      // standardize RTL message
+      on E : EVariantTypeCastError do begin
+         raise EdwsVariantTypeCastError.Create(v, 'String');
+      end else raise;
+   end;
+end;
+
+// EvalNoResult
+//
+procedure TProgramExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   Eval(exec);
+end;
+
+// RaiseScriptError
+//
+procedure TProgramExpr.RaiseScriptError(e : EScriptError);
+begin
+   e.Pos:=ScriptPos;
+   e.RawMessage:=e.Message;
+   e.Message:=e.Message+e.Pos.AsInfo;
+   raise e;
+end;
+
+// RaiseScriptError
+//
+procedure TProgramExpr.RaiseScriptError;
+var
+   exc : Exception;
+   e : EScriptError;
+begin
+   Assert(ExceptObject is Exception);
+   exc:=Exception(ExceptObject);
+   e:=EScriptError.Create(exc.Message);
+   e.RawClassName:=exc.ClassName;
+   RaiseScriptError(e);
+end;
+
+// RaiseScriptError
+//
+procedure TProgramExpr.RaiseScriptError(const msg : String);
+begin
+   RaiseScriptError(EScriptError.Create(msg));
+end;
+
+// RaiseScriptError
+//
+procedure TProgramExpr.RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String);
+begin
+   RaiseScriptError(exceptClass.Create(msg));
+end;
+
+// RaiseScriptError
+//
+procedure TProgramExpr.RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String;
+                                      const args : array of const);
+begin
+   RaiseScriptError(exceptClass.CreateFmt(msg, args));
+end;
+
+// RaiseUpperExceeded
+//
+procedure TProgramExpr.RaiseUpperExceeded(index : Integer);
+begin
+   RaiseScriptError(EScriptOutOfBounds.CreateFmt(RTE_ArrayUpperBoundExceeded, [index]));
+end;
+
+// RaiseLowerExceeded
+//
+procedure TProgramExpr.RaiseLowerExceeded(index : Integer);
+begin
+   RaiseScriptError(EScriptOutOfBounds.CreateFmt(RTE_ArrayLowerBoundExceeded, [index]));
+end;
+
+// ScriptLocation
+//
+function TProgramExpr.ScriptLocation : String;
+begin
+   if Prog is TdwsProcedure then
+      Result:=TdwsProcedure(Prog).Func.QualifiedName+ScriptPos.AsInfo
+   else Result:=ScriptPos.AsInfo;
+end;
+
+// ------------------
+// ------------------ TProgramExpr ------------------
+// ------------------
 
 function IsType(Typ: TSymbol; BType: TBaseTypeId): Boolean;
 begin
@@ -2729,18 +2972,15 @@ begin
    Result:=Assigned(Typ) and Typ.IsBaseTypeIDValue(typVariantID);
 end;
 
-// IsConstant
+// OptimizeToNoPosExpr
 //
-function TNoPosExpr.IsConstant : Boolean;
+function TNoPosExpr.OptimizeToNoPosExpr(exec : TdwsExecution) : TNoPosExpr;
+var
+   optimized : TProgramExpr;
 begin
-   Result:=False;
-end;
-
-// Optimize
-//
-function TNoPosExpr.Optimize(exec : TdwsExecution) : TNoPosExpr;
-begin
-   Result:=Self;
+   optimized:=Optimize(exec);
+   Assert(optimized is TNoPosExpr);
+   Result:=TNoPosExpr(optimized);
 end;
 
 // OptimizeIntegerConstantToFloatConstant
@@ -2758,75 +2998,6 @@ end;
 function TNoPosExpr.ScriptPos : TScriptPos;
 begin
    Result:=cNullPos;
-end;
-
-// ScriptLocation
-//
-function TNoPosExpr.ScriptLocation : String;
-begin
-   if Prog is TdwsProcedure then
-      Result:=TdwsProcedure(Prog).Func.QualifiedName+ScriptPos.AsInfo
-   else Result:=ScriptPos.AsInfo;
-end;
-
-// RaiseScriptError
-//
-procedure TNoPosExpr.RaiseScriptError(e : EScriptError);
-begin
-   e.Pos:=ScriptPos;
-   e.RawMessage:=e.Message;
-   e.Message:=e.Message+e.Pos.AsInfo;
-   raise e;
-end;
-
-// RaiseScriptError
-//
-procedure TNoPosExpr.RaiseScriptError;
-var
-   exc : Exception;
-   e : EScriptError;
-begin
-   Assert(ExceptObject is Exception);
-   exc:=Exception(ExceptObject);
-   e:=EScriptError.Create(exc.Message);
-   e.RawClassName:=exc.ClassName;
-   RaiseScriptError(e);
-end;
-
-// RaiseScriptError
-//
-procedure TNoPosExpr.RaiseScriptError(const msg : String);
-begin
-   RaiseScriptError(EScriptError.Create(msg));
-end;
-
-// RaiseScriptError
-//
-procedure TNoPosExpr.RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String);
-begin
-   RaiseScriptError(exceptClass.Create(msg));
-end;
-
-// RaiseScriptError
-//
-procedure TNoPosExpr.RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String;
-                                      const args : array of const);
-begin
-   RaiseScriptError(exceptClass.CreateFmt(msg, args));
-end;
-
-// RaiseUpperExceeded
-//
-procedure TNoPosExpr.RaiseUpperExceeded(index : Integer);
-begin
-   RaiseScriptError(EScriptOutOfBounds.CreateFmt(RTE_ArrayUpperBoundExceeded, [index]));
-end;
-
-// RaiseLowerExceeded
-//
-procedure TNoPosExpr.RaiseLowerExceeded(index : Integer);
-begin
-   RaiseScriptError(EScriptOutOfBounds.CreateFmt(RTE_ArrayLowerBoundExceeded, [index]));
 end;
 
 // CheckScriptObject
@@ -2862,155 +3033,11 @@ begin
    else Result:=nil;
 end;
 
-// EvalAsVariant
+// GetType
 //
-procedure TNoPosExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+function TNoPosExpr.GetType : TSymbol;
 begin
-   Result:=Eval(exec);
-end;
-
-// EvalAsScriptObj
-//
-procedure TNoPosExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
-begin
-   Result:=IScriptObj(IUnknown(Eval(exec)));
-end;
-
-// AssignValue
-//
-procedure TNoPosExpr.AssignValue(exec : TdwsExecution; const value : Variant);
-begin
-   raise EScriptError.CreateFmt('Cannot assign to %s', [ClassName]);
-end;
-
-// AssignValueAsInteger
-//
-procedure TNoPosExpr.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
-begin
-   AssignValue(exec, value);
-end;
-
-// AssignValueAsBoolean
-//
-procedure TNoPosExpr.AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean);
-begin
-   AssignValue(exec, value);
-end;
-
-// AssignValueAsFloat
-//
-procedure TNoPosExpr.AssignValueAsFloat(exec : TdwsExecution; const value : Double);
-begin
-   AssignValue(exec, value);
-end;
-
-// AssignValueAsString
-//
-procedure TNoPosExpr.AssignValueAsString(exec : TdwsExecution; const value: String);
-begin
-   AssignValue(exec, value);
-end;
-
-// EvalAsInteger
-//
-function TNoPosExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
-var
-   v : Variant;
-begin
-   v:=Eval(exec);
-   try
-      Result:=v;
-   except
-      // workaround for RTL bug that will sometimes report a failed cast to Int64
-      // as being a failed cast to Boolean
-      on E : EVariantTypeCastError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'Integer');
-      end else raise;
-   end;
-end;
-
-// EvalAsBoolean
-//
-function TNoPosExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
-var
-   v : Variant;
-begin
-   v:=Eval(exec);
-   try
-      Result:=v;
-   except
-      // standardize RTL message
-      on E : EVariantTypeCastError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'Boolean');
-      end else raise;
-   end;
-end;
-
-// EvalAsFloat
-//
-function TNoPosExpr.EvalAsFloat(exec : TdwsExecution) : Double;
-var
-   v : Variant;
-begin
-   v:=Eval(exec);
-   try
-      Result:=v;
-   except
-      // standardize RTL message
-      on E : EVariantTypeCastError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'Float');
-      end else raise;
-   end;
-end;
-
-// EvalAsString
-//
-procedure TNoPosExpr.EvalAsString(exec : TdwsExecution; var Result : String);
-var
-   v : Variant;
-begin
-   v:=Eval(exec);
-   try
-      Result:=String(v);
-   except
-      // standardize RTL message
-      on E : EVariantTypeCastError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'String');
-      end else raise;
-   end;
-end;
-
-// EvalNoResult
-//
-procedure TNoPosExpr.EvalNoResult(exec : TdwsExecution);
-begin
-   Eval(exec);
-end;
-
-// ------------------
-// ------------------ TExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
-begin
-   inherited Create(Prog);
-   FPos:=Pos;
-end;
-
-// TypeCheck
-//
-procedure TExpr.TypeCheck;
-begin
-   TypeCheckNoPos(Pos);
-end;
-
-// ScriptPos
-//
-function TExpr.ScriptPos : TScriptPos;
-begin
-   Result:=FPos;
+   Result:=FTyp;
 end;
 
 // ------------------
@@ -3027,23 +3054,9 @@ end;
 
 // TypeCheck
 //
-procedure TPosDataExpr.TypeCheck;
+procedure TPosDataExpr.TypeCheck(compileMsgs : TdwsCompileMessageList);
 begin
-   TypeCheckNoPos(Pos);
-end;
-
-// AddCompilerErrorFmt
-//
-procedure TPosDataExpr.AddCompilerErrorFmt(const fmtText: string; const Args: array of const);
-begin
-   Prog.CompileMsgs.AddCompilerErrorFmt(Pos, fmttext, Args);
-end;
-
-// AddCompilerStop
-//
-procedure TPosDataExpr.AddCompilerStop(const Text : String);
-begin
-   Prog.CompileMsgs.AddCompilerStop(Pos, Text);
+   TypeCheckNoPos(Pos, compileMsgs);
 end;
 
 // ScriptPos
@@ -3057,6 +3070,34 @@ end;
 // ------------------ TNoResultExpr ------------------
 // ------------------
 
+// ------------------
+// ------------------ TExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TNoResultExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
+begin
+   inherited Create(Prog);
+   FPos:=Pos;
+end;
+
+// TypeCheck
+//
+procedure TNoResultExpr.TypeCheck(compileMsgs : TdwsCompileMessageList);
+begin
+   TypeCheckNoPos(Pos, compileMsgs);
+end;
+
+// ScriptPos
+//
+function TNoResultExpr.ScriptPos : TScriptPos;
+begin
+   Result:=FPos;
+end;
+
+// Eval
+//
 function TNoResultExpr.Eval(exec : TdwsExecution) : Variant;
 begin
    EvalNoResult(exec);
@@ -3074,18 +3115,16 @@ end;
 //
 function TNoResultExpr.OptimizeToNoResultExpr(exec : TdwsExecution) : TNoResultExpr;
 var
-   optimized : TNoPosExpr;
+   optimized : TProgramExpr;
 begin
    optimized:=Optimize(exec);
-   if optimized is TNoResultExpr then
-      Result:=TNoResultExpr(optimized)
-   else begin
-      Result:=nil;
-      Assert(False);
-   end;
+   Assert(optimized is TNoResultExpr);
+   Result:=TNoResultExpr(optimized);
 end;
 
-{ TNullExpr }
+// ------------------
+// ------------------ TNullExpr ------------------
+// ------------------
 
 procedure TNullExpr.EvalNoResult(exec : TdwsExecution);
 begin
@@ -3110,18 +3149,18 @@ end;
 
 // AddStatement
 //
-procedure TBlockExprBase.AddStatement(expr : TExpr);
+procedure TBlockExprBase.AddStatement(expr : TNoResultExpr);
 begin
-   ReallocMem(FStatements, (FCount+1)*SizeOf(TExpr));
+   ReallocMem(FStatements, (FCount+1)*SizeOf(TNoResultExpr));
    FStatements[FCount]:=expr;
    Inc(FCount);
 end;
 
 // AddStatementFirst
 //
-procedure TBlockExprBase.AddStatementFirst(expr : TExpr);
+procedure TBlockExprBase.AddStatementFirst(expr : TNoResultExpr);
 begin
-   ReallocMem(FStatements, (FCount+1)*SizeOf(TExpr));
+   ReallocMem(FStatements, (FCount+1)*SizeOf(TNoResultExpr));
    Move(FStatements[0], FStatements[1], FCount);
    FStatements[0]:=expr;
    Inc(FCount);
@@ -3146,7 +3185,7 @@ end;
 procedure TBlockInitExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
-   expr : PExpr;
+   expr : PNoResultExpr;
 begin
    expr:=@FStatements[0];
    for i:=1 to FCount do begin
@@ -3256,7 +3295,7 @@ end;
 
 // TypeCheckNoPos
 //
-procedure TFuncExprBase.TypeCheckNoPos(const aPos : TScriptPos);
+procedure TFuncExprBase.TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList);
 var
    arg : TNoPosExpr;
    x, paramCount, nbParamsToCheck : Integer;
@@ -3266,7 +3305,7 @@ begin
 
    // Check number of arguments = number of parameters
    if FArgs.Count>paramCount then begin
-      AddCompilerErrorFmt(CPE_TooManyArguments, []);
+      compileMsgs.AddCompilerError(Pos, CPE_TooManyArguments);
       while FArgs.Count>paramCount do begin
          FArgs.ExprBase[FArgs.Count-1].Free;
          FArgs.Delete(FArgs.Count-1);
@@ -3279,7 +3318,7 @@ begin
          FArgs.Add(TConstExpr.CreateTyped(Prog, paramSymbol.Typ,
                                           TParamSymbolWithDefaultValue(paramSymbol).DefaultValue))
       else begin
-         AddCompilerErrorFmt(CPE_TooFewArguments, []);
+         compileMsgs.AddCompilerError(Pos, CPE_TooFewArguments);
          Break;
       end;
    end;
@@ -3302,17 +3341,17 @@ begin
       FArgs.ExprBase[x] := arg;
 
       if arg.Typ = nil then
-         AddCompilerErrorFmt(CPE_WrongArgumentType, [x, paramSymbol.Typ.Name]);
+         compileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType, [x, paramSymbol.Typ.Name]);
       if paramSymbol.InheritsFrom(TVarParamSymbol) then begin
          if arg is TDataExpr then begin
             if not TDataExpr(arg).IsWritable then
-               AddCompilerErrorFmt(CPE_ConstVarParam, [x, paramSymbol.Name]);
-         end else AddCompilerErrorFmt(CPE_ConstVarParam, [x, paramSymbol.Name]);
+               compileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
+         end else compileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
       end;
       if arg.Typ=nil then
-         AddCompilerErrorFmt(CPE_WrongArgumentType, [x, paramSymbol.Typ.Name])
+         compileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType, [x, paramSymbol.Typ.Name])
       else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
-         AddCompilerErrorFmt(CPE_WrongArgumentType_Long, [x, paramSymbol.Typ.Name, arg.Typ.Name]);
+         compileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long, [x, paramSymbol.Typ.Name, arg.Typ.Name]);
    end;
 end;
 
@@ -3335,7 +3374,7 @@ end;
 
 // Optimize
 //
-function TFuncExprBase.Optimize(exec : TdwsExecution) : TNoPosExpr;
+function TFuncExprBase.Optimize(exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
    if IsConstant then begin
@@ -3879,17 +3918,17 @@ begin
     TNoPosExpr(FList.List[x]).Initialize;
 end;
 
-procedure TNoPosExprList.TypeCheck(const pos : TScriptPos; ExpectedTyp: TSymbol);
+procedure TNoPosExprList.TypeCheck(const pos : TScriptPos; ExpectedTyp: TSymbol; compileMsgs : TdwsCompileMessageList);
 var
   x: Integer;
   expr : TNoPosExpr;
 begin
    for x := 0 to FList.Count - 1 do begin
       expr:=TNoPosExpr(FList.List[x]);
-      expr.TypeCheckNoPos(pos);
+      expr.TypeCheckNoPos(pos, compileMsgs);
       if not expr.Typ.IsCompatible(ExpectedTyp) then
-         expr.Prog.CompileMsgs.AddCompilerErrorFmt(pos, CPE_AssignIncompatibleTypes,
-                                                   [expr.Typ.Caption, ExpectedTyp.Caption]);
+         compileMsgs.AddCompilerErrorFmt(pos, CPE_AssignIncompatibleTypes,
+                                         [expr.Typ.Caption, ExpectedTyp.Caption]);
    end;
 end;
 
@@ -4056,9 +4095,9 @@ end;
 
 // TypeCheckNoPos
 //
-procedure TMethodExpr.TypeCheckNoPos(const aPos : TScriptPos);
+procedure TMethodExpr.TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList);
 begin
-   FBaseExpr.TypeCheckNoPos(aPos);
+   FBaseExpr.TypeCheckNoPos(aPos, compileMsgs);
    inherited;
 end;
 
@@ -5620,11 +5659,11 @@ end;
 
 // TypeCheckNoPos
 //
-procedure TConnectorCallExpr.TypeCheckNoPos(const aPos : TScriptPos);
+procedure TConnectorCallExpr.TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList);
 begin
    inherited;
    if FArgs.Count>64 then
-      AddCompilerErrorFmt(CPE_ConnectorTooManyArguments, [FArgs.Count]);
+      compileMsgs.AddCompilerErrorFmt(Pos, CPE_ConnectorTooManyArguments, [FArgs.Count]);
 end;
 
 function TConnectorCallExpr.AssignConnectorSym(ConnectorType: IConnectorType):
@@ -6832,7 +6871,7 @@ end;
 
 // Create
 //
-constructor TNoResultWrapperExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TNoPosExpr);
+constructor TNoResultWrapperExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TProgramExpr);
 begin
    inherited Create(Prog, Pos);
    FExpr := Expr;
@@ -6862,16 +6901,16 @@ end;
 
 // TypeCheckNoPos
 //
-procedure TNoResultWrapperExpr.TypeCheckNoPos(const aPos : TScriptPos);
+procedure TNoResultWrapperExpr.TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList);
 begin
-   Expr.TypeCheckNoPos(aPos);
+   Expr.TypeCheckNoPos(aPos, compileMsgs);
 end;
 
 // IsConstant
 //
 function TNoResultWrapperExpr.IsConstant : Boolean;
 begin
-   Result:=Expr.IsConstant;
+   Result:=FExpr.IsConstant;
 end;
 
 // ------------------

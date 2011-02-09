@@ -429,10 +429,10 @@ type
    // Record used for TFuncSymbol.Generate
    PParamRec = ^TParamRec;
    TParamRec = record
-     IsVarParam: Boolean;
-     IsConstParam: Boolean;
      ParamName: string;
      ParamType: string;
+     IsVarParam: Boolean;
+     IsConstParam: Boolean;
      HasDefaultValue: Boolean;
      DefaultValue: TData;
    end;
@@ -483,9 +483,7 @@ type
 
    end;
 
-   TFuncSymbolFlag = (fsfStateless,
-                      fsfHasPreConditions, fsfHasInheritedPreConditions,
-                      fsfHasPostConditions, fsfHasInheritedPostConditions);
+   TFuncSymbolFlag = (fsfStateless);
    TFuncSymbolFlags = set of TFuncSymbolFlag;
 
    // A script function / procedure: procedure X(param: Integer);
@@ -518,12 +516,12 @@ type
          destructor Destroy; override;
 
          constructor Generate(Table: TSymbolTable; const FuncName: string;
-                             const FuncParams: TParamArray; const FuncType: string);
+                              const FuncParams: TParamArray; const FuncType: string);
          function  IsCompatible(typSym: TSymbol): Boolean; override;
          procedure AddParam(param: TParamSymbol); virtual;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
-         procedure InitData(const Data: TData; Offset: Integer); override;
+         procedure InitData(const Data : TData; Offset : Integer); override;
          procedure AddCondition(cond : TConditionSymbol);
 
          function  ParamsDescription : String;
@@ -531,18 +529,18 @@ type
          procedure SetForwardedPos(const pos : TScriptPos);
          procedure ClearIsForwarded;
 
-         property Executable: IExecutable read FExecutable write FExecutable;
+         property Executable : IExecutable read FExecutable write FExecutable;
          property DeprecatedMessage : String read FDeprecatedMessage write FDeprecatedMessage;
          property IsDeprecated : Boolean read GetIsDeprecated write SetIsDeprecated;
          property IsStateless : Boolean read GetIsStateless write SetIsStateless;
          property IsForwarded : Boolean read GetIsForwarded;
-         property Kind: TFuncKind read FKind write FKind;
-         property Level: SmallInt read GetLevel;
+         property Kind : TFuncKind read FKind write FKind;
+         property Level : SmallInt read GetLevel;
          property InternalParams : TSymbolTable read FInternalParams;
-         property Params: TParamsSymbolTable read FParams;
-         property ParamSize: Integer read GetParamSize;
-         property Result: TDataSymbol read FResult;
-         property Typ: TSymbol read FTyp write SetType;
+         property Params : TParamsSymbolTable read FParams;
+         property ParamSize : Integer read GetParamSize;
+         property Result : TDataSymbol read FResult;
+         property Typ : TSymbol read FTyp write SetType;
          property Conditions : TConditionsSymbolTable read FConditions;
    end;
 
@@ -1213,6 +1211,10 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+const
+   cFuncKindToString : array [Low(TFuncKind)..High(TFuncKind)] of String = (
+      'function', 'procedure', 'constructor', 'destructor', 'method' );
+
 // ------------------
 // ------------------ TExprBaseListRec ------------------
 // ------------------
@@ -1591,88 +1593,86 @@ begin
   Params.AddSymbol(param);
 end;
 
-procedure TFuncSymbol.SetType;
+procedure TFuncSymbol.SetType(const Value: TSymbol);
 begin
-  FTyp := Value;
-  FResult := TDataSymbol.Create(SYS_RESULT, Value);
-  FInternalParams.AddSymbol(FResult);
+   FTyp:=Value;
+   Assert(FResult=nil);
+   FResult:=TDataSymbol.Create(SYS_RESULT, Value);
+   FInternalParams.AddSymbol(FResult);
 end;
 
 type TAddParamProc = procedure (param: TParamSymbol) of object;
 
-procedure GenerateParams(const Name: String; Table: TSymbolTable; FuncParams: TParamArray; AddProc: TAddParamProc);
+procedure GenerateParams(const Name: String; Table: TSymbolTable; const funcParams: TParamArray; AddProc: TAddParamProc);
 var
-  x: Integer;
-  typSym: TSymbol;
-  paramSym: TParamSymbol;
+   i : Integer;
+   typSym : TSymbol;
+   paramSym : TParamSymbol;
+   paramSymWithDefault : TParamSymbolWithDefaultValue;
+   paramRec : PParamRec;
 begin
-  for x := 0 to Length(FuncParams) - 1 do
-  begin
-    typSym := Table.FindSymbol(FuncParams[x].ParamType, cvMagic);
-    if not Assigned(typSym) then
-      raise Exception.CreateFmt(CPE_TypeForParamNotFound, [FuncParams[x].ParamType,
-        FuncParams[x].ParamName, Name]);
+   for i := 0 to Length(FuncParams) - 1 do begin
 
-    if FuncParams[x].HasDefaultValue then begin
+      paramRec:=@FuncParams[i];
+      typSym := Table.FindSymbol(paramRec.ParamType, cvMagic);
+      if not Assigned(typSym) then
+         raise Exception.CreateFmt(CPE_TypeForParamNotFound,
+                                   [paramRec.ParamType, paramRec.ParamName, Name]);
 
-       if FuncParams[x].IsVarParam then
-          raise Exception.Create(CPE_VarParamCantHaveDefaultValue);
-       if FuncParams[x].IsConstParam then
-          raise Exception.Create(CPE_ConstParamCantHaveDefaultValue);
+      if paramRec.HasDefaultValue then begin
 
-       paramSym := TParamSymbolWithDefaultValue.Create(FuncParams[x].ParamName, typSym);
-       TParamSymbolWithDefaultValue(paramSym).SetDefaultValue(FuncParams[x].DefaultValue,0);
+         if paramRec.IsVarParam then
+            raise Exception.Create(CPE_VarParamCantHaveDefaultValue);
+         if paramRec.IsConstParam then
+            raise Exception.Create(CPE_ConstParamCantHaveDefaultValue);
 
-    end else begin
+         paramSymWithDefault := TParamSymbolWithDefaultValue.Create(paramRec.ParamName, typSym);
+         paramSymWithDefault.SetDefaultValue(paramRec.DefaultValue, 0);
+         paramSym:=paramSymWithDefault;
 
-       if FuncParams[x].IsVarParam then
-          paramSym := TVarParamSymbol.Create(FuncParams[x].ParamName, typSym)
-       else if FuncParams[x].IsConstParam then
-          paramSym := TConstParamSymbol.Create(FuncParams[x].ParamName, typSym)
-       else
-          paramSym := TParamSymbol.Create(FuncParams[x].ParamName, typSym);
-          
-    end;
+      end else begin
 
-    AddProc(paramSym);
-  end;
+         if paramRec.IsVarParam then
+            paramSym := TVarParamSymbol.Create(paramRec.ParamName, typSym)
+         else if paramRec.IsConstParam then
+            paramSym := TConstParamSymbol.Create(paramRec.ParamName, typSym)
+         else paramSym := TParamSymbol.Create(paramRec.ParamName, typSym);
+
+      end;
+
+      AddProc(paramSym);
+
+   end;
 end;
 
+// GenerateParams
+//
 procedure TFuncSymbol.GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
 begin
-  dwsSymbols.GenerateParams(Name,Table,FuncParams,AddParam);
+   dwsSymbols.GenerateParams(Name,Table,FuncParams,AddParam);
 end;
 
-function TFuncSymbol.GetCaption: string;
+// GetCaption
+//
+function TFuncSymbol.GetCaption : string;
 var
-  i: Integer;
-  nam : String;
+   i : Integer;
+   nam : String;
 begin
-  if Name <> '' then
-    nam := Name
-  else
-    case Kind of
-      fkFunction    : nam := 'function ';
-      fkProcedure   : nam := 'procedure ';
-      fkConstructor : nam := 'constructor ';
-      fkDestructor  : nam := 'destructor ';
-      fkMethod      : nam := 'method ';
-    end;
+   if Name <> '' then
+      nam := Name
+   else nam := cFuncKindToString[Kind]+' ';
 
-  if Params.Count > 0 then
-  begin
-    Result := Params[0].Typ.Caption;
-    for i := 1 to Params.Count - 1 do
-      Result := Result + ', ' + Params[i].Typ.Caption;
-    Result := '(' + Result + ')';
-  end
-  else
-    Result := '';
+   if Params.Count > 0 then begin
+      Result := Params[0].Typ.Caption;
+      for i := 1 to Params.Count - 1 do
+         Result := Result + ', ' + Params[i].Typ.Caption;
+      Result := '(' + Result + ')';
+   end else Result := '';
 
-  if Typ <> nil then
-    Result := nam + Result + ': ' + Typ.Name
-  else
-    Result := nam + Result;
+   if Typ <> nil then
+      Result := nam + Result + ': ' + Typ.Name
+   else Result := nam + Result;
 end;
 
 // GetIsForwarded
@@ -1682,30 +1682,13 @@ begin
    Result:=Assigned(FForwardPosition);
 end;
 
+// GetDescription
+//
 function TFuncSymbol.GetDescription: string;
 begin
-   Result:=ParamsDescription;
-   case FKind of
-      fkFunction : begin
-         Result:='function '+Name+Result+': ';
-         if Typ <> nil then
-            Result:=Result+Typ.Name
-        else Result:=Result+'???';
-      end;
-      fkProcedure :
-         Result:='procedure '+Name+Result;
-      fkConstructor :
-         Result:='constructor '+Name+Result;
-      fkDestructor :
-         Result:='destructor '+Name+Result;
-      fkMethod : begin
-         Result:='method '+Name+Result;
-         if Typ<>nil then
-            Result:=Result+': '+Typ.Name;
-      end;
-   else
-      Assert(False)
-   end;
+   Result:=cFuncKindToString[Kind]+' '+Name+ParamsDescription;
+   if Typ<>nil then
+      Result:=Result+': '+Typ.Name;
 end;
 
 // Initialize
