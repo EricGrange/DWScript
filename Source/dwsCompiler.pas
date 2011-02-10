@@ -5857,13 +5857,13 @@ begin
       case token of
          ttASSIGN : begin
             if left.Typ is TClassOfSymbol then begin
-               Result := TAssignClassOfExpr.Create(FProg, pos, left, right);
+               Result:=TAssignClassOfExpr.Create(FProg, pos, left, right);
             end else if (right is TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
                if right is TFuncExpr then
                   TFuncExpr(right).SetResultAddr(nil);
                if right is TArrayConstantExpr then
-                  Result := TAssignArrayConstantExpr.Create(FProg, pos, left, TArrayConstantExpr(right))
-               else Result := TAssignDataExpr.Create(FProg, pos, left, right)
+                  Result:=TAssignArrayConstantExpr.Create(FProg, pos, left, TArrayConstantExpr(right))
+               else Result:=TAssignDataExpr.Create(FProg, pos, left, right)
             end else begin
                Result:=TAssignExpr.Create(FProg, pos, left, right);
             end;
@@ -6170,6 +6170,13 @@ begin
          Result := TConvFloatExpr.Create(FProg, argExpr);
          if not (argExpr.IsNumberValue or argExpr.IsVariantValue) then
             FMsgs.AddCompilerError(hotPos, CPE_NumericalExpected);
+
+      end else if typeSym = FProg.TypString then begin
+
+         // Cast String(...)
+         Result := TConvStringExpr.Create(FProg, argExpr);
+         if not (argExpr.IsStringValue or argExpr.IsVariantValue) then
+            FMsgs.AddCompilerError(hotPos, CPE_StringExpected);
 
       end else if typeSym = FProg.TypBoolean then begin
 

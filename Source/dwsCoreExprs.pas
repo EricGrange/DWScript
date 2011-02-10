@@ -621,6 +621,13 @@ type
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
+   // String(float)
+   TConvStringExpr = class (TConvExpr)
+     constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
+     function Eval(exec : TdwsExecution) : Variant; override;
+     procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
+   end;
+
    // Boolean(float)
    TConvBoolExpr = class (TConvExpr)
      constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
@@ -2637,6 +2644,33 @@ begin
    Result:=FExpr.EvalAsInteger(exec);
 end;
 
+{ TConvStringExpr }
+
+// Create
+//
+constructor TConvStringExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
+begin
+   inherited;
+   FTyp:=Prog.TypString;
+end;
+
+// Eval
+//
+function TConvStringExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   buf : String;
+begin
+   FExpr.EvalAsString(exec, buf);
+   Result:=buf;
+end;
+
+// EvalAsString
+//
+procedure TConvStringExpr.EvalAsString(exec : TdwsExecution; var Result : String);
+begin
+   FExpr.EvalAsString(exec, Result);
+end;
+
 { TConvBoolExpr }
 
 constructor TConvBoolExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
@@ -3455,9 +3489,21 @@ begin
 
       FRight.TypeCheckNoPos(Pos, compileMsgs);
 
-      // Automatic conversion from int to float values
-      if (FLeft.Typ = Prog.TypFloat) and (FRight.Typ = Prog.TypInteger) then
-         FRight := TConvFloatExpr.Create(Prog, FRight);
+      if FRight.IsVariantValue then begin
+         case FLeft.Typ.BaseTypeID of
+            typIntegerID :
+               FRight:=TConvIntegerExpr.Create(Prog, FRight);
+            typFloatID :
+               FRight:=TConvFloatExpr.Create(Prog, FRight);
+            typStringID :
+               FRight:=TConvStringExpr.Create(Prog, FRight);
+            typBooleanID :
+               FRight:=TConvBoolExpr.Create(Prog, FRight);
+         end;
+      end else if FLeft.IsFloatValue and FRight.IsIntegerValue then
+         FRight:=TConvFloatExpr.Create(Prog, FRight)
+      else if FLeft.IsStringValue and FRight.IsFloatValue then
+         FRight:=TConvIntegerExpr.Create(Prog, FRight);
 
       // Look if Types are compatible
       if not FLeft.Typ.IsCompatible(FRight.Typ) then
