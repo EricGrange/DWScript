@@ -576,8 +576,12 @@ begin
          end;
          dsDebugSuspended :
             Result:=[daCanResume, daCanEndDebug, daCanStep, daCanEvaluate];
+         dsDebugSuspending :
+            Result:=[];
          dsDebugDone :
             Result:=[daCanEvaluate, daCanEndDebug];
+         dsDebugResuming :
+            Result:=[];
       else
          Assert(False);
       end;
