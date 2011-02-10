@@ -61,6 +61,8 @@ type
          property Col : Integer read GetCol write SetCol;
 
          function SamePosAs(const aPos : TScriptPos) : Boolean;
+         function IsMainModule : Boolean;
+         function IsSourceFile(const name : String) : Boolean;
 
          procedure IncCol; inline;
          procedure NewLine; inline;
@@ -259,6 +261,20 @@ function TScriptPos.SamePosAs(const aPos : TScriptPos) : Boolean;
 begin
    Result:=    (FLineCol=aPos.FLineCol)
            and (SourceFile=aPos.SourceFile);
+end;
+
+// IsMainModule
+//
+function TScriptPos.IsMainModule : Boolean;
+begin
+   Result:=(SourceFile.SourceFile=MSG_MainModule);
+end;
+
+// IsSourceFile
+//
+function TScriptPos.IsSourceFile(const name : String) : Boolean;
+begin
+   Result:=(SourceFile<>nil) and (SourceFile.SourceFile=name);
 end;
 
 // IncCol
