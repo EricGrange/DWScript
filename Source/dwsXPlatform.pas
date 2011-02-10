@@ -21,8 +21,8 @@
 unit dwsXPlatform;
 
 //
-// This unit should concentrate all cross-platform aspects, croos-Delphi versions,
-// ifdefs and other conditionals
+// This unit should concentrate all non-UI cross-platform aspects,
+// cross-Delphi versions, ifdefs and other conditionals
 //
 // no ifdefs in the main code.
 
@@ -30,7 +30,7 @@ unit dwsXPlatform;
 
 interface
 
-uses Windows, Forms, Classes, SysUtils
+uses Windows, Classes, SysUtils
    {$IFNDEF VER200}, IOUtils{$ENDIF}
    ;
 
@@ -61,8 +61,6 @@ type
       {$ENDIF}
    end;
 
-procedure ProcessApplicationMessages(sleepMilliSeconds : Integer);
-
 function GetSystemMilliseconds : Cardinal;
 
 function AnsiCompareText(const S1, S2: string) : Integer;
@@ -75,15 +73,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-// ProcessApplicationMessages
-//
-procedure ProcessApplicationMessages(sleepMilliSeconds : Integer);
-begin
-   Application.ProcessMessages;
-   if sleepMilliSeconds>0 then
-      Sleep(sleepMilliSeconds);
-end;
 
 // GetSystemMilliseconds
 //

@@ -24,7 +24,7 @@ interface
 
 uses
    Classes, SysUtils, dwsExprs, dwsSymbols, dwsXPlatform, dwsCompiler, dwsErrors,
-   dwsUtils, Variants;
+   dwsUtils, Variants, dwsXPlatformUI;
 
 type
    TdwsDebugger = class;
@@ -991,7 +991,6 @@ end;
 procedure TdwsDebuggerWatches.Update;
 var
    i : Integer;
-   watch : TdwsDebuggerWatch;
 begin
    if Debugger.Execution=nil then begin
       ClearEvaluators;
@@ -1007,7 +1006,6 @@ end;
 procedure TdwsDebuggerWatches.ClearEvaluators;
 var
    i : Integer;
-   watch : TdwsDebuggerWatch;
 begin
    for i:=0 to Count-1 do
       Items[i].ClearEvaluator;

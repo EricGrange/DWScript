@@ -23,9 +23,9 @@ unit dwsComp;
 interface
 
 uses
-  Variants, Classes, SysUtils, TypInfo, dwsCompiler, dwsDebugger,
-  dwsExprs, dwsSymbols, dwsStack, dwsFunctions, dwsStrings, dwsFileSystem,
-  dwsLanguageExtension, dwsTokenizer, dwsUtils,
+  Variants, Classes, SysUtils, TypInfo, dwsCompiler, dwsExprs, dwsSymbols,
+  dwsStack, dwsFunctions, dwsStrings, dwsFileSystem, dwsLanguageExtension,
+  dwsTokenizer, dwsUtils,
   // Built-In functions
 {$IFNDEF DWS_NO_BUILTIN_FUNCTIONS}
   dwsMathFunctions, dwsStringFunctions, dwsTimeFunctions, dwsVariantFunctions,
