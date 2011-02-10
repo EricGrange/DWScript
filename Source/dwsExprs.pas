@@ -1840,7 +1840,8 @@ begin
       Status:=esrNone;
       FProg.FInitExpr.EvalNoResult(Self);
 
-      DoStep(FProg.FExpr);
+      if not (FProg.Expr is TBlockExprBase) then
+         DoStep(FProg.FExpr);
 
    except
       on e: EScriptError do begin
