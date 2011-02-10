@@ -921,10 +921,10 @@ begin
                   on E : Exception do begin
                      FreeAndNil(expr);
                      if compiler.FMsgs.Count>0 then
-                        E.Message:=compiler.FMsgs[0].AsInfo;
-                     raise;
+                        expr:=TConstStringExpr.Create(contextProgram,
+                                                      contextProgram.TypString,
+                                                      compiler.FMsgs.AsInfo);
                   end;
-
                end;
             finally
                FreeAndNil(compiler.FTok);
@@ -6225,8 +6225,7 @@ end;
 //
 function TdwsEvaluateExpr.ContextIsValid : Boolean;
 begin
-   Result:=   (FContextProcedure=nil)
-           or (FContextProcedure=(FExecution.ExecutionObject as TdwsProgramExecution).CurrentProg);
+   Result:=(FContextProcedure=(FExecution.ExecutionObject as TdwsProgramExecution).CurrentProg);
 end;
 
 // GetExecution
