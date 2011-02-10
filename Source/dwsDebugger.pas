@@ -24,7 +24,7 @@ interface
 
 uses
    Classes, SysUtils, dwsExprs, dwsSymbols, dwsXPlatform, dwsCompiler, dwsErrors,
-   dwsUtils;
+   dwsUtils, Variants;
 
 type
    TdwsDebugger = class;
@@ -113,6 +113,45 @@ type
          property Debugger : TdwsDebugger read FDebugger;
    end;
 
+   // TdwsDebuggerWatch
+   //
+   TdwsDebuggerWatch = class
+      private
+         FExpressionText : String;
+         FEvaluator : IdwsEvaluateExpr;
+         FValue : Variant;
+
+      protected
+
+      public
+         procedure Update(debugger : TdwsDebugger);
+         procedure ClearEvaluator;
+
+         property ExpressionText : String read FExpressionText write FExpressionText;
+         property Evaluator : IdwsEvaluateExpr read FEvaluator write FEvaluator;
+         property Value : Variant read FValue write FValue;
+   end;
+
+   // TdwsDebuggerWatches
+   //
+   TdwsDebuggerWatches = class(TSortedList<TdwsDebuggerWatch>)
+      private
+         FDebugger : TdwsDebugger;
+
+      protected
+         function Compare(const item1, item2 : TdwsDebuggerWatch) : Integer; override;
+
+      public
+         constructor Create(aDebugger : TdwsDebugger);
+
+         function Add(const exprText : String) : TdwsDebuggerWatch;
+
+         procedure Update;
+         procedure ClearEvaluators;
+
+         property Debugger : TdwsDebugger read FDebugger;
+   end;
+
    // TdwsDebuggerSuspendCondition
    //
    TdwsDebuggerSuspendCondition = class
@@ -160,8 +199,13 @@ type
    // TdwsDSCStepDetail
    //
    TdwsDSCStepDetail = class (TdwsDSCStep)
+      private
+         FSourceFileName : String;
+
       public
          function SuspendExecution : Boolean; override;
+
+         property SourceFileName : String read FSourceFileName write FSourceFileName;
    end;
 
    // TdwsDebugger
@@ -178,6 +222,7 @@ type
          FStepCondition : TdwsDebuggerSuspendCondition;
          FBreakpoints : TdwsDebuggerBreakpoints;
          FBreakpointsCondition : TdwsDSCBreakpoints;
+         FWatches : TdwsDebuggerWatches;
          FLastAutoProcessMessages : Cardinal;
 
          FParams : TVariantDynArray;
@@ -208,6 +253,7 @@ type
          procedure Resume;
 
          procedure StepDetailed;
+         procedure StepDetailedInSource(const sourceFileName : String);
 
          procedure ClearSuspendConditions;
 
@@ -217,6 +263,7 @@ type
          function AllowedActions : TdwsDebuggerActions;
 
          property Execution : IdwsProgramExecution read FExecution;
+         property Watches : TdwsDebuggerWatches read FWatches;
          property Breakpoints : TdwsDebuggerBreakpoints read FBreakpoints;
          property Params : TVariantDynArray read FParams write FParams;
          property BeginOptions : TdwsDebugBeginOptions read FBeginOptions write FBeginOptions;
@@ -417,7 +464,8 @@ begin
    inherited;
    FMode:=dmMainThread;
    FState:=dsIdle;
-   TdwsDebuggerBreakpoints.Create(Self);
+   FBreakpoints:=TdwsDebuggerBreakpoints.Create(Self);
+   FWatches:=TdwsDebuggerWatches.Create(Self);
 end;
 
 // Destroy
@@ -427,6 +475,7 @@ begin
    if daCanEndDebug in AllowedActions then
       EndDebug;
    ClearSuspendConditions;
+   FWatches.Free;
    FBreakpoints.Free;
    inherited;
 end;
@@ -509,9 +558,19 @@ end;
 //
 procedure TdwsDebugger.StepDetailed;
 begin
+   StepDetailedInSource('');
+end;
+
+// StepDetailedInSource
+//
+procedure TdwsDebugger.StepDetailedInSource(const sourceFileName : String);
+var
+   step : TdwsDSCStepDetail;
+begin
    Assert(daCanStep in AllowedActions, 'Suspend not allowed');
 
-   TdwsDSCStepDetail.Create(Self);
+   step:=TdwsDSCStepDetail.Create(Self);
+   step.SourceFileName:=sourceFileName;
    FState:=dsDebugResuming;
 end;
 
@@ -637,6 +696,7 @@ procedure TdwsDebugger.DoDebug(exec : TdwsExecution; expr : TExprBase);
 var
    ticks : Cardinal;
 begin
+   if expr is TBlockExprBase then Exit;
    FCurrentExpression:=expr;
    if Assigned(FOnDebug) then
       inherited;
@@ -693,7 +753,6 @@ constructor TdwsDebuggerBreakpoints.Create(aDebugger : TdwsDebugger);
 begin
    inherited Create;
    FDebugger:=aDebugger;
-   FDebugger.FBreakpoints:=Self;
    FLookupVar:=TdwsDebuggerBreakpoint.Create;
 end;
 
@@ -862,9 +921,96 @@ end;
 //
 function TdwsDSCStepDetail.SuspendExecution : Boolean;
 begin
-   Result:=True;
+   Result:=   (SourceFileName='')
+           or Debugger.CurrentExpression.ScriptPos.IsSourceFile(SourceFileName);
    Free;
 end;
 
+// ------------------
+// ------------------ TdwsDebuggerWatch ------------------
+// ------------------
+
+// Update
+//
+procedure TdwsDebuggerWatch.Update(debugger : TdwsDebugger);
+begin
+   if debugger.State<>dsDebugSuspended then begin
+      FValue:='';
+      Exit;
+   end;
+
+   if (Evaluator=nil) or (not Evaluator.ContextIsValid) then
+      Evaluator:=TdwsCompiler.Evaluate(debugger.Execution, ExpressionText);
+
+   try
+      Value:=Evaluator.Expression.Eval(Debugger.Execution.ExecutionObject);
+   except
+      on E: Exception do
+         Value:=E.Message+' ('+E.ClassName+')';
+   end;
+end;
+
+// ClearEvaluator
+//
+procedure TdwsDebuggerWatch.ClearEvaluator;
+begin
+   Evaluator:=nil;
+   VarClear(FValue);
+end;
+
+// ------------------
+// ------------------ TdwsDebuggerWatches ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsDebuggerWatches.Create(aDebugger : TdwsDebugger);
+begin
+   inherited Create;
+   FDebugger:=aDebugger;
+end;
+
+// Add
+//
+function TdwsDebuggerWatches.Add(const exprText : String) : TdwsDebuggerWatch;
+begin
+   Result:=TdwsDebuggerWatch.Create;
+   Result.ExpressionText:=exprText;
+   inherited Add(Result);
+end;
+
+// Compare
+//
+function TdwsDebuggerWatches.Compare(const item1, item2 : TdwsDebuggerWatch) : Integer;
+begin
+   Result:=CompareText(item1.ExpressionText, item2.ExpressionText);
+end;
+
+// Update
+//
+procedure TdwsDebuggerWatches.Update;
+var
+   i : Integer;
+   watch : TdwsDebuggerWatch;
+begin
+   if Debugger.Execution=nil then begin
+      ClearEvaluators;
+      Exit;
+   end;
+
+   for i:=0 to Count-1 do
+      Items[i].Update(Debugger);
+end;
+
+// ClearEvaluators
+//
+procedure TdwsDebuggerWatches.ClearEvaluators;
+var
+   i : Integer;
+   watch : TdwsDebuggerWatch;
+begin
+   for i:=0 to Count-1 do
+      Items[i].ClearEvaluator;
+end;
 
 end.

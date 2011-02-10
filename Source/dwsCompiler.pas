@@ -919,11 +919,10 @@ begin
                   end;
                except
                   on E : Exception do begin
-                     FreeAndNil(expr);
                      if compiler.FMsgs.Count>0 then
-                        expr:=TConstStringExpr.Create(contextProgram,
-                                                      contextProgram.TypString,
-                                                      compiler.FMsgs.AsInfo);
+                        expr:=TConstExpr.Create(contextProgram,
+                                                contextProgram.TypString,
+                                                compiler.FMsgs.AsInfo);
                   end;
                end;
             finally

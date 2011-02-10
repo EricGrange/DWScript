@@ -132,6 +132,7 @@ var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
    expr : IdwsEvaluateExpr;
+   buf : String;
 begin
    prog:=FCompiler.Compile('var i := 10;');
    try
@@ -155,12 +156,12 @@ begin
             expr:=nil;
          end;
 
+         expr:=TdwsCompiler.Evaluate(exec, 'i +* i');
          try
-            TdwsCompiler.Evaluate(exec, 'i +* i');
-            CheckTrue(False, 'bug');
-         except
-            on E: Exception do
-               CheckEquals('Syntax Error: Expression expected [line: 1, column: 4]', E.Message, 'i +* i');
+            expr.Expression.EvalAsString(exec.ExecutionObject, buf);
+            CheckEquals('Syntax Error: Expression expected [line: 1, column: 4]'#13#10, buf, 'i +* i');
+         finally
+            expr:=nil;
          end;
 
       finally
