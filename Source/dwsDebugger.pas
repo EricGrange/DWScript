@@ -24,7 +24,7 @@ interface
 
 uses
    Classes, SysUtils, dwsExprs, dwsSymbols, dwsXPlatform, dwsCompiler, dwsErrors,
-   dwsUtils, Variants, dwsXPlatformUI;
+   dwsUtils, Variants, dwsXPlatformUI, dwsStack;
 
 type
    TdwsDebugger = class;
@@ -113,23 +113,39 @@ type
          property Debugger : TdwsDebugger read FDebugger;
    end;
 
+   // TdwsDebuggerTempValueSymbol
+   //
+   TdwsDebuggerTempValueSymbol = class(TDataSymbol)
+      private
+         FData : TData;
+      public
+         constructor Create(const name : string; typ : TSymbol);
+         property Data : TData read FData;
+   end;
+
    // TdwsDebuggerWatch
    //
    TdwsDebuggerWatch = class
       private
          FExpressionText : String;
          FEvaluator : IdwsEvaluateExpr;
-         FValue : Variant;
+         FValueData : TdwsDebuggerTempValueSymbol;
+         FValueInfo : IInfo;
 
       protected
 
       public
+         destructor Destroy; override;
+
          procedure Update(debugger : TdwsDebugger);
          procedure ClearEvaluator;
 
+         function ToString : String; override;
+
          property ExpressionText : String read FExpressionText write FExpressionText;
          property Evaluator : IdwsEvaluateExpr read FEvaluator write FEvaluator;
-         property Value : Variant read FValue write FValue;
+         property ValueData : TdwsDebuggerTempValueSymbol read FValueData;
+         property ValueInfo : IInfo read FValueInfo;
    end;
 
    // TdwsDebuggerWatches
@@ -930,24 +946,52 @@ end;
 // ------------------ TdwsDebuggerWatch ------------------
 // ------------------
 
+// Destroy
+//
+destructor TdwsDebuggerWatch.Destroy;
+begin
+   ClearEvaluator;
+   inherited;
+end;
+
 // Update
 //
 procedure TdwsDebuggerWatch.Update(debugger : TdwsDebugger);
+var
+   expr : TTypedExpr;
+   exec : TdwsExecution;
 begin
    if debugger.State<>dsDebugSuspended then begin
-      FValue:='';
+      FValueInfo:=nil;
+      FreeAndNil(FValueData);
       Exit;
    end;
 
    if (Evaluator=nil) or (not Evaluator.ContextIsValid) then
       Evaluator:=TdwsCompiler.Evaluate(debugger.Execution, ExpressionText);
 
+   expr:=Evaluator.Expression;
+   FValueData:=TdwsDebuggerTempValueSymbol.Create(ExpressionText, expr.Typ);
+   exec:=debugger.Execution.ExecutionObject;
    try
-      Value:=Evaluator.Expression.Eval(Debugger.Execution.ExecutionObject);
+      if (FValueData.Typ<>nil) then begin
+         if (FValueData.Typ.Size>1) and (expr is TDataExpr) then begin
+            expr.Eval(exec);
+            CopyData(TDataExpr(expr).Data[exec], TDataExpr(expr).Addr[exec],
+                     FValueData.Data, 0, FValueData.Typ.Size);
+         end else if FValueData.Typ.Size=1 then begin
+            FValueData.Data[0]:=expr.Eval(exec);
+         end else expr.Eval(exec);
+      end else expr.Eval(exec);
    except
-      on E: Exception do
-         Value:=E.Message+' ('+E.ClassName+')';
+      on E: Exception do begin
+         FValueData.Free;
+         FValueData:=TdwsDebuggerTempValueSymbol.Create(ExpressionText,
+                           debugger.Execution.Prog.ProgramObject.TypString);
+         FValueData.Data[0]:=E.Message+' ('+E.ClassName+')';
+      end;
    end;
+   CreateInfoOnSymbol(FValueInfo, nil, FValueData.Typ, FValueData.Data, 0);
 end;
 
 // ClearEvaluator
@@ -955,7 +999,17 @@ end;
 procedure TdwsDebuggerWatch.ClearEvaluator;
 begin
    Evaluator:=nil;
-   VarClear(FValue);
+   FValueInfo:=nil;
+   FreeAndNil(FValueData);
+end;
+
+// ToString
+//
+function TdwsDebuggerWatch.ToString : String;
+begin
+   if FValueInfo=nil then
+      Result:='(empty)'
+   else Result:=FValueInfo.ValueAsString;
 end;
 
 // ------------------
@@ -1009,6 +1063,18 @@ var
 begin
    for i:=0 to Count-1 do
       Items[i].ClearEvaluator;
+end;
+
+// ------------------
+// ------------------ TdwsDebuggerTempValueSymbol ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsDebuggerTempValueSymbol.Create(const name : string; typ : TSymbol);
+begin
+   inherited;
+   SetLength(FData, Size);
 end;
 
 end.
