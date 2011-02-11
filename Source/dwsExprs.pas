@@ -1119,6 +1119,7 @@ type
       function GetData : TData;
       function GetExternalObject: TObject;
       function GetMember(const s: string): IInfo;
+      function GetMemberNames : TStrings;
       function GetMethod(const s: string): IInfo;
       function GetScriptObj: IScriptObj;
       function GetParameter(const s: string): IInfo;
@@ -1136,6 +1137,7 @@ type
       property Data: TData read GetData write SetData;
       property ExternalObject: TObject read GetExternalObject write SetExternalObject;
       property Member[const s: string]: IInfo read GetMember;
+      property MemberNames : TStrings read GetMemberNames;
       property Method[const s: string]: IInfo read GetMethod;
       property ScriptObj: IScriptObj read GetScriptObj;
       property Parameter[const s: string]: IInfo read GetParameter;
@@ -1288,6 +1290,10 @@ type
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
                           const Pos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
 
+procedure CreateInfoOnSymbol(var result : IInfo; programInfo : TProgramInfo; typeSym : TSymbol;
+                             const data : TData; offset : Integer);
+
+
 function RawByteStringToScriptString(const s : RawByteString) : String;
 function ScriptStringToRawByteString(const s : String) : RawByteString;
 
@@ -1325,6 +1331,7 @@ type
     function GetData : TData; virtual;
     function GetExternalObject: TObject; virtual;
     function GetMember(const s: string): IInfo; virtual;
+    function GetMemberNames : TStrings; virtual;
     function GetMethod(const s: string): IInfo; virtual;
     function GetScriptObj: IScriptObj; virtual;
     function GetParameter(const s: string): IInfo; virtual;
@@ -1372,41 +1379,51 @@ type
     FScriptObj: IScriptObj;
     function GetConstructor(const MethName: string; ExtObject: TObject): IInfo; override;
     function GetMethod(const s: string): IInfo; override;
+    function GetValueAsString : String; override;
     function GetScriptObj: IScriptObj; override;
     function GetInherited: IInfo; override;
   end;
 
   TInfoClassObj = class(TInfoClass)
+    FMembersCache : TStrings;
+    constructor Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol;
+                       const Data: TData; Offset: Integer;
+                       const DataMaster: IDataMaster = nil);
+    destructor Destroy; override;
     function GetMember(const s: string): IInfo; override;
-    constructor Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol; const Data:
-      TData; Offset: Integer; const DataMaster: IDataMaster = nil);
+    function GetMemberNames : TStrings; override;
   end;
+
+   TTempParam = class(TParamSymbol)
+      private
+         FData : TData;
+         FIsVarParam : Boolean;
+      public
+         constructor Create(paramSym : TSymbol);
+         property Data : TData read FData;
+         property IsVarParam : Boolean read FIsVarParam;
+   end;
 
   TInfoClassOf = class(TInfoClass)
   end;
 
   TInfoRecord = class(TInfoData)
+    FMembersCache : TStrings;
+    destructor Destroy; override;
     function GetMember(const s: string): IInfo; override;
+    function GetMemberNames : TStrings; override;
   end;
 
   TInfoStaticArray = class(TInfoData)
     function Element(const Indices: array of Integer): IInfo; override;
     function GetMember(const s: string): IInfo; override;
+    function GetValueAsString : String; override;
   end;
 
   TInfoDynamicArray = class(TInfoData)
     function Element(const Indices: array of Integer): IInfo; override;
     function GetMember(const s: string): IInfo; override;
-  end;
-
-  TTempParam = class(TParamSymbol)
-  private
-    FData: TData;
-    FIsVarParam: Boolean;
-  public
-    constructor Create(ParamSym: TSymbol);
-    property Data: TData read FData;
-    property IsVarParam: Boolean read FIsVarParam;
+    function GetValueAsString : String; override;
   end;
 
   TInfoFunc = class(TInfo)
@@ -1699,6 +1716,14 @@ begin
    else
       Assert(False);
    end;
+end;
+
+// CreateInfoOnSymbol
+//
+procedure CreateInfoOnSymbol(var result : IInfo; programInfo : TProgramInfo; typeSym : TSymbol;
+                             const data : TData; offset : Integer);
+begin
+   TInfo.SetChild(result, programInfo, typeSym, data, offset, nil);
 end;
 
 // ------------------
@@ -5009,6 +5034,13 @@ begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['Member', FTypeSym.Caption]);
 end;
 
+// GetMemberNames
+//
+function TInfo.GetMemberNames : TStrings;
+begin
+   Result:=nil;
+end;
+
 function TInfo.GetMethod(const s: string): IInfo;
 begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['Method', FTypeSym.Caption]);
@@ -5133,7 +5165,7 @@ begin
       FDataMaster.Read(FExec, FData);
    if Assigned(FTypeSym) and (FTypeSym.Size = 1) then
       Result := FData[FOffset]
-   else raise Exception.CreateFmt(RTE_CanNotReadComplexType, [FTypeSym.Caption]);
+   else Result:=FTypeSym.Name;//raise Exception.CreateFmt(RTE_CanNotReadComplexType, [FTypeSym.Caption]);
 end;
 
 // GetValueAsString
@@ -5242,6 +5274,17 @@ begin
   Result := FScriptObj;
 end;
 
+// GetValueAsString
+//
+function TInfoClass.GetValueAsString : String;
+begin
+   if FScriptObj=nil then
+      Result:='(nil)'
+   else if FScriptObj.Destroyed then
+      Result:='destroyed '+FScriptObj.ClassSym.Name
+   else Result:=FScriptObj.ClassSym.Name;
+end;
+
 { TInfoClassObj }
 
 constructor TInfoClassObj.Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol;
@@ -5252,6 +5295,12 @@ begin
     FScriptObj := IScriptObj(IUnknown(Data[Offset]))
   else
     FScriptObj := nil;
+end;
+
+destructor TInfoClassObj.Destroy;
+begin
+   FMembersCache.Free;
+   inherited;
 end;
 
 function TInfoClassObj.GetMember(const s: string): IInfo;
@@ -5270,6 +5319,37 @@ begin
   end
   else
     raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
+end;
+
+// GetMemberNames
+//
+function TInfoClassObj.GetMemberNames : TStrings;
+
+   procedure CollectMembers(members : TMembersSymbolTable);
+   var
+      i : Integer;
+      symTable : TSymbolTable;
+      sym : TSymbol;
+   begin
+      for i:=0 to members.ParentCount-1 do begin
+         symTable:=members.Parents[i];
+         if symTable is TMembersSymbolTable then
+            CollectMembers(TMembersSymbolTable(symTable));
+      end;
+      for i:=0 to members.Count-1 do begin
+         sym:=members.Symbols[i];
+         if sym is TFieldSymbol then
+            FMembersCache.AddObject(sym.Name, sym);
+      end;
+   end;
+
+begin
+   if FMembersCache=nil then
+      FMembersCache:=TStringList.Create
+   else FMembersCache.Clear;
+   if (FScriptObj<>nil) and (not FScriptObj.Destroyed) then
+      CollectMembers(FScriptObj.ClassSym.Members);
+   Result:=FMembersCache;
 end;
 
 { TTempParam }
@@ -5523,6 +5603,14 @@ end;
 
 { TInfoRecord }
 
+// Destroy
+//
+destructor TInfoRecord.Destroy;
+begin
+   FMembersCache.Free;
+   inherited;
+end;
+
 function TInfoRecord.GetMember(const s: string): IInfo;
 var
   sym: TSymbol;
@@ -5534,6 +5622,26 @@ begin
 
   SetChild(Result, FProgramInfo, sym.Typ, FData,
            FOffset + TMemberSymbol(sym).Offset, FDataMaster);
+end;
+
+// GetMemberNames
+//
+function TInfoRecord.GetMemberNames : TStrings;
+var
+   i : Integer;
+   symTable : TSymbolTable;
+   member : TSymbol;
+begin
+   if FMembersCache=nil then begin
+      FMembersCache:=TStringList.Create;
+      symTable:=TRecordSymbol(FTypeSym).Members;
+      for i:=0 to symTable.Count-1 do begin
+         member:=symTable[i];
+         if member is TMemberSymbol then
+            FMembersCache.AddObject(member.Name, member);
+      end;
+   end;
+   Result:=FMembersCache;
 end;
 
 { TInfoStaticArray }
@@ -5584,6 +5692,13 @@ begin
     raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
 end;
 
+// GetValueAsString
+//
+function TInfoStaticArray.GetValueAsString : String;
+begin
+   Result:=FTypeSym.Description;
+end;
+
 { TInfoDynamicArray }
 
 function TInfoDynamicArray.Element(const Indices: array of Integer): IInfo;
@@ -5630,6 +5745,13 @@ begin
     Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, l - 1)
   else
     raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
+end;
+
+// GetValueAsString
+//
+function TInfoDynamicArray.GetValueAsString : String;
+begin
+   Result:=FTypeSym.Description;
 end;
 
 { TConnectorExpr }
