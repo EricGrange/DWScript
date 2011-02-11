@@ -33,6 +33,11 @@ type
          procedure FuncEnumEval(Info: TProgramInfo);
          procedure FuncVarEval(Info: TProgramInfo);
          procedure FuncFloatEval(Info: TProgramInfo);
+         procedure FuncPointEval(Info: TProgramInfo);
+
+         procedure MethodGetIntEval(Info: TProgramInfo; ExtObject: TObject);
+         procedure MethodSetIntEval(Info: TProgramInfo; ExtObject: TObject);
+         procedure MethodGetArrayIntEval(Info: TProgramInfo; ExtObject: TObject);
 
          procedure FuncExceptionEval(Info: TProgramInfo);
 
@@ -60,6 +65,7 @@ type
          procedure AssignTest;
          procedure PredefinedArray;
          procedure PredefinedRecord;
+         procedure ClassPropertyInfo;
    end;
 
    EDelphiException = class (Exception)
@@ -96,6 +102,9 @@ type
    end;
 
    TdwsPropertyCracker = class (TdwsProperty)
+   end;
+
+   TdwsMethodCracker = class (TdwsMethod)
    end;
 
 // ------------------
@@ -238,6 +247,11 @@ begin
    param.Name:='b';
    param.DataType:='Float';
    param.DefaultValue:='0.5';
+
+   func:=FUnit.Functions.Add;
+   func.Name:='FuncPoint';
+   func.ResultType:='TPoint';
+   func.OnEval:=FuncPointEval;
 end;
 
 // DeclareTestClasses
@@ -246,19 +260,61 @@ procedure TdwsUnitTests.DeclareTestClasses;
 var
    cls : TdwsClass;
    meth : TdwsMethod;
+   fld : TdwsField;
    prop : TdwsProperty;
+   param : TdwsParameter;
 begin
    cls:=FUnit.Classes.Add;
    cls.Name:='TTestClass';
 
-   meth:=cls.Methods.Add as TdwsMethod;
+   fld:=cls.Fields.Add;
+   fld.Name:='FField';
+   fld.DataType:='Integer';
+
+   meth:=cls.Methods.Add;
    meth.Name:='GetMyProp';
    meth.ResultType:='Integer';
+   meth.OnEval:=MethodGetIntEval;
 
-   prop:=cls.Properties.Add as TdwsProperty;
+   meth:=cls.Methods.Add;
+   meth.Name:='SetMyProp';
+   param:=meth.Parameters.Add;
+   param.DataType:='Integer';
+   param.Name:='v';
+   meth.OnEval:=MethodSetIntEval;
+
+   meth:=cls.Methods.Add;
+   meth.Name:='GetArrayProp';
+   meth.ResultType:='Integer';
+   param:=meth.Parameters.Add;
+   param.DataType:='String';
+   param.Name:='v';
+   meth.OnEval:=MethodGetArrayIntEval;
+
+   prop:=cls.Properties.Add;
    prop.Name:='MyReadOnlyProp';
    prop.DataType:='Integer';
    prop.ReadAccess:='GetMyProp';
+
+   prop:=cls.Properties.Add;
+   prop.Name:='MyWriteOnlyProp';
+   prop.DataType:='Integer';
+   prop.WriteAccess:='SetMyProp';
+
+   prop:=cls.Properties.Add;
+   prop.Name:='MyReadWriteProp';
+   prop.DataType:='Integer';
+   prop.ReadAccess:='FField';
+   prop.WriteAccess:='FField';
+
+   prop:=cls.Properties.Add;
+   prop.Name:='ArrayProp';
+   prop.DataType:='Integer';
+   prop.ReadAccess:='GetArrayProp';
+   param:=prop.Parameters.Add;
+   param.DataType:='String';
+   param.Name:='v';
+
 end;
 
 // DeclareTestVars
@@ -374,6 +430,35 @@ begin
    Info.ResultAsFloat:=Info.ParamAsFloat[0]+Info.ValueAsFloat['b'];
 end;
 
+// FuncPointEval
+//
+procedure TdwsUnitTests.FuncPointEval(Info: TProgramInfo);
+begin
+   Info.Vars['Result'].Member['x'].Value:=12;
+   Info.Vars['Result'].Member['y'].Value:=24;
+end;
+
+// MethodGetIntEval
+//
+procedure TdwsUnitTests.MethodGetIntEval(Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=Info.ValueAsInteger['FField']*10;
+end;
+
+// MethodSetIntEval
+//
+procedure TdwsUnitTests.MethodSetIntEval(Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ValueAsInteger['FField']:=Info.ValueAsInteger['v'] div 10;
+end;
+
+// MethodGetArrayIntEval
+//
+procedure TdwsUnitTests.MethodGetArrayIntEval(Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=StrToInt(Info.ValueAsString['v'])*2;
+end;
+
 // FuncExceptionEval
 //
 procedure TdwsUnitTests.FuncExceptionEval(Info: TProgramInfo);
@@ -439,6 +524,15 @@ procedure TdwsUnitTests.DesignTimeDisplayValues;
       i:=cls.Properties.IndexOf(aName);
       Result:=TdwsPropertyCracker(cls.Properties.Items[i] as TdwsProperty);
    end;
+
+   function MethodByName(cls : TdwsClass; const aName : String) : TdwsMethodCracker;
+   var
+      i : Integer;
+   begin
+      i:=cls.Methods.IndexOf(aName);
+      Result:=TdwsMethodCracker(cls.Methods.Items[i] as TdwsMethod);
+   end;
+
 var
    cls : TdwsClassCracker;
 begin
@@ -452,6 +546,9 @@ begin
    cls:=ClassByName('TTestClass');
    CheckEquals('TTestClass (TObject)', cls.GetDisplayName);
    CheckEquals('property MyReadOnlyProp: Integer read GetMyProp;', PropertyByName(cls, 'MyReadOnlyProp').GetDisplayName);
+   CheckEquals('function GetMyProp : Integer;', MethodByName(cls, 'GetMyProp').GetDisplayName);
+   CheckEquals('procedure SetMyProp(v : Integer);', MethodByName(cls, 'SetMyProp').GetDisplayName);
+   CheckEquals('property ArrayProp[v : String]: Integer read GetArrayProp;', PropertyByName(cls, 'ArrayProp').GetDisplayName);
 end;
 
 // CompiledDescriptions
@@ -460,6 +557,7 @@ procedure TdwsUnitTests.CompiledDescriptions;
 var
    prog : IdwsProgram;
    sym : TSymbol;
+   symClass : TClassSymbol;
 begin
    prog:=FCompiler.Compile('');
 
@@ -481,9 +579,15 @@ begin
    sym:=prog.Table.FindSymbol('TAutoEnum', cvMagic);
    CheckEquals('(aeVal9, aeVal8, aeVal7, aeVal6, aeVal5, aeVal4, aeVal3, aeVal2, aeVal1)', sym.Description);
 
-   sym:=prog.Table.FindSymbol('TTestClass', cvMagic);
-   sym:=(sym as TClassSymbol).Members.FindLocal('MyReadOnlyProp');
+   symClass:=prog.Table.FindSymbol('TTestClass', cvMagic) as TClassSymbol;
+   sym:=symClass.Members.FindLocal('MyReadOnlyProp');
    CheckEquals('property MyReadOnlyProp: Integer read GetMyProp', sym.Description);
+   sym:=symClass.Members.FindLocal('GetMyProp');
+   CheckEquals('function GetMyProp(): Integer', sym.Description);
+   sym:=symClass.Members.FindLocal('SetMyProp');
+   CheckEquals('procedure SetMyProp(v: Integer)', sym.Description);
+   sym:=symClass.Members.FindLocal('ArrayProp');
+   CheckEquals('property ArrayProp[v: String]: Integer read GetArrayProp', sym.Description);
 end;
 
 // CompilationNormal
@@ -577,7 +681,7 @@ end;
 procedure TdwsUnitTests.CallFunc;
 var
    prog : IdwsProgram;
-   funcInfo : IInfo;
+   funcInfo, funcResult : IInfo;
    exec : IdwsProgramExecution;
 begin
    prog:=FCompiler.Compile( 'function Hello(name : String) : String;'
@@ -594,6 +698,16 @@ begin
 
       funcInfo:=exec.Info.Func['FuncOne'];
       CheckEquals('One', funcInfo.Call.Value, 'FuncOne call');
+
+      funcInfo:=exec.Info.Func['FuncPoint'];
+      funcResult:=funcInfo.Call;
+      CheckEquals('12,24', Format('%d,%d', [funcResult.Member['x'].ValueAsInteger,
+                                            funcResult.Member['y'].ValueAsInteger]),
+                  'FuncPoint call 1');
+      funcResult:=funcInfo.Call([]);
+      CheckEquals('12,24', Format('%d,%d', [funcResult.Member['x'].ValueAsInteger,
+                                            funcResult.Member['y'].ValueAsInteger]),
+                  'FuncPoint call 2');
 
       funcInfo:=exec.Info.Func['Hello'];
       CheckEquals('Hello world', funcInfo.Call(['world']).Value, 'Hello world');
@@ -737,6 +851,9 @@ begin
    exec:=prog.BeginNewExecution;
    try
       p:=exec.Info.Vars['p'];
+      CheckEquals('X,Y', p.FieldMemberNames.CommaText, 'Fields 1');
+      CheckEquals('X,Y', p.FieldMemberNames.CommaText, 'Fields 2');
+
       p.Member['x'].Value:=123;
       p.Member['y'].Value:=456;
       p:=nil;
@@ -744,6 +861,37 @@ begin
       exec.RunProgram(0);
 
       CheckEquals( '123, 456', exec.Result.ToString, 'Result');
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// ClassPropertyInfo
+//
+procedure TdwsUnitTests.ClassPropertyInfo;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   p, p2 : IInfo;
+begin
+   prog:=FCompiler.Compile( 'var o := TTestClass.Create;');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+      p:=exec.Info.Vars['o'];
+      p.Member['MyReadWriteProp'].Value:=123;
+      CheckEquals(123, p.Member['MyReadWriteProp'].Value, 'RW Prop');
+      CheckEquals(1230, p.Member['MyReadOnlyProp'].Value, 'RO Prop');
+      p.Member['MyWriteOnlyProp'].Value:=123;
+      CheckEquals(12, p.Member['FField'].Value, 'direct field');
+      CheckEquals('FField', p.FieldMemberNames.CommaText, 'MemberNames 1');
+      CheckEquals('FField', p.FieldMemberNames.CommaText, 'MemberNames 2');
+      p2:=p.Member['ArrayProp'];
+      p2.Parameter['v'].Value:='12';
+      CheckEquals(24, p2.ValueAsInteger, 'Array prop read');
    finally
       exec.EndProgram;
    end;

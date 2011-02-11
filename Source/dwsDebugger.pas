@@ -24,7 +24,7 @@ interface
 
 uses
    Classes, SysUtils, dwsExprs, dwsSymbols, dwsXPlatform, dwsCompiler, dwsErrors,
-   dwsUtils, Variants, dwsXPlatformUI, dwsStack;
+   dwsUtils, Variants, dwsXPlatformUI, dwsStack, dwsStrings;
 
 type
    TdwsDebugger = class;
@@ -73,19 +73,22 @@ type
                        dmThreadedSynchronize, // not supported (yet)
                        dmThreaded);           // not supported (yet)
 
-   TdwsDebugBeginOption = (dboBeginSuspended);
+   TdwsDebugBeginOption = (dboBeginSuspendedInMainModule,
+                           dboBeginSuspendedAnywhere);
    TdwsDebugBeginOptions = set of TdwsDebugBeginOption;
 
    // TdwsDebuggerBreakpoint
    //
    TdwsDebuggerBreakpoint = class
       private
+         FEnabled : Boolean;
          FLine : Integer;
          FSourceName : String;
 
       protected
 
       public
+         property Enabled : Boolean read FEnabled write FEnabled;
          property Line : Integer read FLine write FLine;
          property SourceName : String read FSourceName write FSourceName;
    end;
@@ -131,6 +134,7 @@ type
          FEvaluator : IdwsEvaluateExpr;
          FValueData : TdwsDebuggerTempValueSymbol;
          FValueInfo : IInfo;
+         FEvaluationError : Boolean;
 
       protected
 
@@ -140,12 +144,11 @@ type
          procedure Update(debugger : TdwsDebugger);
          procedure ClearEvaluator;
 
-         function ToString : String; override;
-
          property ExpressionText : String read FExpressionText write FExpressionText;
          property Evaluator : IdwsEvaluateExpr read FEvaluator write FEvaluator;
          property ValueData : TdwsDebuggerTempValueSymbol read FValueData;
          property ValueInfo : IInfo read FValueInfo;
+         property EvaluationError : Boolean read FEvaluationError;
    end;
 
    // TdwsDebuggerWatches
@@ -507,13 +510,19 @@ end;
 // BeginDebug
 //
 procedure TdwsDebugger.BeginDebug(exec : IdwsProgramExecution);
+var
+   step : TdwsDSCStepDetail;
 begin
    Assert(daCanBeginDebug in AllowedActions, 'BeginDebug not allowed');
    Assert(exec<>nil, 'Execution is nil');
 
    BreakpointsChanged;
-   if dboBeginSuspended in BeginOptions then
+   if dboBeginSuspendedAnywhere in BeginOptions then begin
       TdwsDSCStepDetail.Create(Self);
+   end else if dboBeginSuspendedInMainModule in BeginOptions then begin
+      step:=TdwsDSCStepDetail.Create(Self);
+      step.SourceFileName:=MSG_MainModule;
+   end;
 
    FExecution:=exec;
    case Mode of
@@ -886,9 +895,11 @@ begin
    FBitmap.Size:=0;
    for i:=FBreakpoints.Count-1 downto 0 do begin
       bp:=FBreakpoints[i];
-      if FBitmap.Size<=bp.Line then
-         FBitmap.Size:=bp.Line+1;
-      FBitmap.Bits[bp.Line]:=True;
+      if bp.Enabled then begin
+         if FBitmap.Size<=bp.Line then
+            FBitmap.Size:=bp.Line+1;
+         FBitmap.Bits[bp.Line]:=True;
+      end;
    end;
 end;
 
@@ -961,6 +972,7 @@ var
    expr : TTypedExpr;
    exec : TdwsExecution;
 begin
+   FEvaluationError:=False;
    if debugger.State<>dsDebugSuspended then begin
       FValueInfo:=nil;
       FreeAndNil(FValueData);
@@ -971,6 +983,12 @@ begin
       Evaluator:=TdwsCompiler.Evaluate(debugger.Execution, ExpressionText);
 
    expr:=Evaluator.Expression;
+   if expr.Typ=nil then begin
+      Evaluator:=TdwsCompiler.Evaluate(debugger.Execution, '''(not an expression)''');
+      expr:=Evaluator.Expression;
+      FEvaluationError:=True;
+   end else FEvaluationError:=(Evaluator.RootProgram.ProgramObject.CompileMsgs.Count>0);
+
    FValueData:=TdwsDebuggerTempValueSymbol.Create(ExpressionText, expr.Typ);
    exec:=debugger.Execution.ExecutionObject;
    try
@@ -985,6 +1003,7 @@ begin
       end else expr.Eval(exec);
    except
       on E: Exception do begin
+         FEvaluationError:=True;
          FValueData.Free;
          FValueData:=TdwsDebuggerTempValueSymbol.Create(ExpressionText,
                            debugger.Execution.Prog.ProgramObject.TypString);
@@ -998,18 +1017,10 @@ end;
 //
 procedure TdwsDebuggerWatch.ClearEvaluator;
 begin
+   FEvaluationError:=False;
    Evaluator:=nil;
    FValueInfo:=nil;
    FreeAndNil(FValueData);
-end;
-
-// ToString
-//
-function TdwsDebuggerWatch.ToString : String;
-begin
-   if FValueInfo=nil then
-      Result:='(empty)'
-   else Result:=FValueInfo.ValueAsString;
 end;
 
 // ------------------

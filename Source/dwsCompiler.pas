@@ -164,6 +164,7 @@ type
          FExecution : IdwsProgramExecution;
          FContextProcedure : TdwsProcedure;
          FExpression : TTypedExpr;
+         FEvaluationError : Boolean;
 
       protected
          function GetExecution : IdwsProgramExecution;
@@ -180,6 +181,7 @@ type
          property RootProgram : IdwsProgram read GetRootProgram;
          property ContextProcedure : TdwsProcedure read FContextProcedure;
          property Expression : TTypedExpr read FExpression;
+         property EvaluationError : Boolean read FEvaluationError;
    end;
 
    // TdwsCompiler
@@ -252,7 +254,6 @@ type
       function ReadExcept(TryExpr: TNoResultExpr): TExceptExpr;
       function ReadExit: TNoResultExpr;
       function ReadExpr: TTypedExpr;
-      function ReadTypedExpr : TTypedExpr;
       function ReadExprAdd: TTypedExpr;
       function ReadExprMult: TTypedExpr;
       function ReadExprIn(var left : TTypedExpr) : TTypedExpr;
@@ -290,11 +291,11 @@ type
       procedure ReadPostConditions(funcSymbol : TFuncSymbol; conditions : TSourcePostConditions;
                                    condsSymClass : TConditionSymbolClass);
       function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
-      function ReadPropertyDecl(ClassSym: TClassSymbol; aVisibility : TClassVisibility): TPropertySymbol;
-      function ReadPropertyExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TProgramExpr;
-      function ReadPropertyReadExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol): TTypedExpr;
+      function ReadPropertyDecl(ClassSym: TClassSymbol; aVisibility : TClassVisibility) : TPropertySymbol;
+      function ReadPropertyExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol; IsWrite: Boolean) : TProgramExpr;
+      function ReadPropertyReadExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol) : TTypedExpr;
       function ReadPropertyWriteExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol) : TProgramExpr;
-      function ReadRecord(const TypeName: string): TTypeSymbol;
+      function ReadRecord(const TypeName: string) : TTypeSymbol;
       function ReadRaise : TRaiseBaseExpr;
       function ReadRepeat : TNoResultExpr;
       function ReadRootStatement : TNoResultExpr;
@@ -311,9 +312,9 @@ type
       function ReadTypeCast(const namePos : TScriptPos; typeSym : TSymbol) : TTypedExpr;
       procedure ReadTypeDecl;
       procedure ReadUses;
-      function ReadVarDecl: TNoResultExpr;
+      function ReadVarDecl : TNoResultExpr;
       function ReadWhile : TNoResultExpr;
-      function ResolveUnitReferences(Units: TStrings): TInterfaceList;
+      function ResolveUnitReferences(Units: TStrings) : TInterfaceList;
 
    protected
       procedure EnterLoop(loopExpr : TNoResultExpr);
@@ -324,8 +325,8 @@ type
                              const Pos: TScriptPos; ForceStatic : Boolean): TFuncExpr;
 
       function CreateProgram(SystemTable: TSymbolTable; ResultType: TdwsResultType;
-                             const stackParams : TStackParameters) : TdwsMainProgram; virtual;
-      function CreateProcedure(Parent : TdwsProgram) : TdwsProcedure; virtual;
+                             const stackParams : TStackParameters) : TdwsMainProgram;
+      function CreateProcedure(Parent : TdwsProgram) : TdwsProcedure;
       function CreateAssign(const pos : TScriptPos; token : TTokenType; left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
 
    public
@@ -871,10 +872,12 @@ var
    resultObj : TdwsEvaluateExpr;
    contextProgram : TdwsProgram;
    config : TdwsConfiguration;
+   gotError : Boolean;
 begin
    { This will evaluate an expression by tokenizing it evaluating it in the
      Context provided. }
 
+   gotError:=False;
    expr:=nil;
    compiler:=Self.Create;
    try
@@ -919,6 +922,7 @@ begin
                   end;
                except
                   on E : Exception do begin
+                     gotError:=True;
                      if compiler.FMsgs.Count>0 then
                         expr:=TConstExpr.Create(contextProgram,
                                                 contextProgram.TypString,
@@ -948,6 +952,7 @@ begin
    if contextProgram is TdwsProcedure then
       resultObj.FContextProcedure:=TdwsProcedure(contextProgram);
    resultObj.FExpression:=expr;
+   resultObj.FEvaluationError:=gotError;
    Result:=resultObj;
 end;
 
@@ -988,7 +993,7 @@ begin
          typ := ReadType('');
          if names.Count = 1 then begin
             if FTok.TestDelete(ttEQ) or FTok.TestDelete(ttASSIGN) then
-               initExpr := ReadTypedExpr
+               initExpr := ReadExpr
          end;
 
       end else if FTok.TestDelete(ttEQ) or FTok.TestDelete(ttASSIGN) then begin
@@ -998,7 +1003,7 @@ begin
          //    var myVar := expr
          if names.Count <> 1 then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
-         initExpr := ReadTypedExpr;
+         initExpr := ReadExpr;
          typ := initExpr.Typ;
 
       end else begin
@@ -1088,7 +1093,7 @@ begin
       if not FTok.TestDelete(ttEQ) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
 
-      expr:=ReadTypedExpr;
+      expr:=ReadExpr;
       try
          expr.TypeCheckNoPos(FTok.HotPos, FMsgs);
          if not expr.IsConstant then
@@ -1648,7 +1653,7 @@ begin
       testStart:=FTok.PosPtr;
 
       msgExpr:=nil;
-      testExpr:=ReadTypedExpr;
+      testExpr:=ReadExpr;
       try
          if not testExpr.IsBooleanValue then
             FMsgs.AddCompilerError(hotPos, CPE_BooleanExpected);
@@ -1659,7 +1664,7 @@ begin
 
          testLength:=(NativeUInt(FTok.PosPtr)-NativeUInt(testStart)) div 2;
          if FTok.TestDelete(ttCOLON) then begin
-            msgExpr:=ReadTypedExpr;
+            msgExpr:=ReadExpr;
             if not msgExpr.IsStringValue then
                FMsgs.AddCompilerError(hotPos, CPE_StringExpected);
             if Optimize then
@@ -2143,19 +2148,25 @@ begin
             raise;
          end;
 
+      // Methods
       end else if sym.InheritsFrom(TMethodSymbol) then
 
          Result:=ReadStaticMethod(TMethodSymbol(sym), IsWrite)
 
       // Functions/Procedures
-
       else if sym.InheritsFrom(TFuncSymbol) then
+
          Result := ReadSymbol(ReadFunc(TFuncSymbol(sym), IsWrite), IsWrite)
+
       // Type casts
       else if sym.InheritsFrom(TTypeSymbol) then
+
          Result := ReadTypeCast(namePos, sym)
+
       else begin
+
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownType, [sym.Name]);
+
       end;
 
    except
@@ -2343,7 +2354,7 @@ begin
                                                          PropertySym.IndexValue));
 
                // Add right side of assignment
-               funcExpr.AddArg(ReadTypedExpr);
+               funcExpr.AddArg(ReadExpr);
             except
                funcExpr.Free;
                raise;
@@ -2402,7 +2413,7 @@ function TdwsCompiler.ReadSymbol(Expr: TProgramExpr; IsWrite: Boolean): TProgram
 
       // There is at one index expression
       repeat
-         indexExpr := ReadTypedExpr;
+         indexExpr := ReadExpr;
          baseType := baseExpr.BaseType;
 
          try
@@ -2565,7 +2576,7 @@ begin
           FMsgs.AddCompilerStop(FTok.HotPos,CPE_CantWriteToLeftSide);
         // Transform a := b into a(b)
         Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.WriteFunc);
-        Result.AddArg(ReadTypedExpr);
+        Result.AddArg(ReadExpr);
       end
       else if (Sym.Typ is TClassSymbol) or (Sym.Typ is TClassOfSymbol) then
       begin
@@ -2652,7 +2663,7 @@ begin
          if not FTok.TestDelete(ttASSIGN) then
            FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
 
-         fromExpr:=ReadTypedExpr;
+         fromExpr:=ReadExpr;
          if not fromExpr.IsIntegerValue then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
 
@@ -2665,7 +2676,7 @@ begin
             FMsgs.AddCompilerError(FTok.HotPos, CPE_ToOrDowntoExpected);
          end;
 
-         toExpr:=ReadTypedExpr;
+         toExpr:=ReadExpr;
          if not toExpr.IsIntegerValue then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
 
@@ -2675,7 +2686,7 @@ begin
          FTok.KillToken;
          FTok.Test(ttNone);
          stepPos:=FTok.HotPos;
-         stepExpr:=ReadTypedExpr;
+         stepExpr:=ReadExpr;
          if not stepExpr.IsIntegerValue then
             FMsgs.AddCompilerError(stepPos, CPE_IntegerExpected);
          if stepExpr.InheritsFrom(TConstIntExpr) and (TConstIntExpr(stepExpr).Value<=0) then
@@ -2756,7 +2767,7 @@ begin
    thenExpr:=nil;
    elseExpr:=nil;
    try
-      condExpr:=ReadTypedExpr;
+      condExpr:=ReadExpr;
       if not (condExpr.IsBooleanValue or condExpr.IsVariantValue) then
          FMsgs.AddCompilerError(hotPos, CPE_BooleanExpected);
 
@@ -2809,7 +2820,7 @@ begin
    try
       Result := TCaseExpr.Create(FProg, FTok.HotPos);
       try
-         Result.ValueExpr := ReadTypedExpr;
+         Result.ValueExpr := ReadExpr;
 
          if not FTok.TestDelete(ttOF) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_OfExpected);
@@ -2866,7 +2877,7 @@ begin
    repeat
 
       hotPos:=FTok.HotPos;
-      exprFrom := ReadTypedExpr;
+      exprFrom := ReadExpr;
 
       try
          if not Assigned(exprFrom) then
@@ -2874,7 +2885,7 @@ begin
 
          if FTok.TestDelete(ttDOTDOT) then begin
             // range condition e. g. 0..12
-            exprTo := ReadTypedExpr;
+            exprTo := ReadExpr;
             if not Assigned(exprTo) then begin
                exprTo.Free;
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
@@ -2903,7 +2914,7 @@ begin
    Result:=TWhileExpr.Create(FProg, FTok.HotPos);
    EnterLoop(Result);
    try
-      condExpr:=ReadTypedExpr;
+      condExpr:=ReadExpr;
       TWhileExpr(Result).CondExpr:=condExpr;
       if not (condExpr.IsBooleanValue or condExpr.IsVariantValue) then
          FMsgs.AddCompilerError(Result.ScriptPos, CPE_BooleanExpected);
@@ -2944,7 +2955,7 @@ begin
    EnterLoop(Result);
    try
       TRepeatExpr(Result).LoopExpr := ReadBlocks([ttUNTIL], tt);
-      condExpr:=ReadTypedExpr;
+      condExpr:=ReadExpr;
       TRepeatExpr(Result).CondExpr := condExpr;
       if not (condExpr.IsBooleanValue or condExpr.IsVariantValue) then
          FMsgs.AddCompilerError(Result.ScriptPos, CPE_BooleanExpected)
@@ -2972,7 +2983,7 @@ var
    right : TTypedExpr;
 begin
    pos := FTok.HotPos;
-   right := ReadTypedExpr;
+   right := ReadExpr;
    try
       if Left.InheritsFrom(TFuncExpr) and TFuncExpr(Left).IsWritable then begin
          Assert(False);
@@ -3086,7 +3097,7 @@ begin
          // At least one argument was found
          repeat
             argPos:=FTok.HotPos;
-            arg:=ReadTypedExpr;
+            arg:=ReadExpr;
             argSym:=AddArgProc(arg);
             if (argSym is TVarParamSymbol) and (arg is TVarExpr) then
                WarnForVarUsage(TVarExpr(arg), argPos);
@@ -3199,7 +3210,7 @@ begin
     begin
       // At least one argument was found
       repeat
-        TArrayConstantExpr(Result).AddElementExpr(ReadTypedExpr);
+        TArrayConstantExpr(Result).AddElementExpr(ReadExpr);
       until not FTok.TestDelete(ttCOMMA);
 
       if not FTok.TestDelete(ttARIGHT) then
@@ -3624,7 +3635,7 @@ begin
 
       if FTok.TestDelete(ttINDEX) then
       begin
-        indexExpr := ReadTypedExpr;
+        indexExpr := ReadExpr;
         if not (indexExpr is TConstExpr) then
           FMsgs.AddCompilerStop(FTok.HotPos, CPE_ConstantExpressionExpected);
         indexTyp := indexExpr.Typ;
@@ -3825,7 +3836,7 @@ begin
    if FIsExcept and (FTok.Test(ttSEMI) or FTok.Test(ttEND)) then
       Result:=TReraiseExpr.Create(FProg, FTok.HotPos)
    else begin
-      exceptExpr:=ReadTypedExpr;
+      exceptExpr:=ReadExpr;
       try
          exceptObjTyp:=exceptExpr.Typ;
          if not (    (exceptObjTyp is TClassSymbol)
@@ -4085,18 +4096,6 @@ begin
    end;
 end;
 
-// ReadTypedExpr
-//
-function TdwsCompiler.ReadTypedExpr : TTypedExpr;
-var
-   buf : TProgramExpr;
-begin
-   buf:=ReadExpr;
-   if not (buf is TTypedExpr) then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
-   Result:=TTypedExpr(buf);
-end;
-
 // ReadExprAdd
 //
 function TdwsCompiler.ReadExprAdd: TTypedExpr;
@@ -4300,7 +4299,7 @@ end;
 
 // ReadTerm
 //
-function TdwsCompiler.ReadTerm: TTypedExpr;
+function TdwsCompiler.ReadTerm : TTypedExpr;
 
    function ReadNilTerm : TTypedExpr;
    const
@@ -5121,7 +5120,7 @@ begin
   begin
     // A assignment of the form "connector.member := expr" was found
     // and is transformed into "connector.member(expr)"
-    Result := TConnectorWriteExpr.Create(FProg, FTok.HotPos,  Name, BaseExpr, ReadTypedExpr);
+    Result := TConnectorWriteExpr.Create(FProg, FTok.HotPos,  Name, BaseExpr, ReadExpr);
 
     if not TConnectorWriteExpr(Result).AssignConnectorSym(ConnectorType) then
     begin

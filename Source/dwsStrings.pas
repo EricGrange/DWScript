@@ -181,7 +181,7 @@ const
   CPE_LowerBoundBiggerThanUpperBound = 'Lower bound is bigger than upper bound!';
 
   // Assign
-  CPE_RightSideNeedsReturnType = 'Assignment''s right-side-argument has no returntype!';
+  CPE_RightSideNeedsReturnType = 'Assignment''s right-side-argument has no return type!';
   CPE_CantWriteToLeftSide = 'Can''t assign a value to the left-side argument!';
 
   // Function/Procedures
@@ -390,7 +390,7 @@ const
 
   RTE_InvalidInputDataSize = 'Input data of invalid size: %d instead of %d';
   RTE_InvalidNumberOfParams = 'Invalid number of parameters (%d instead of %d) to call function %s';
-  RTE_UseParameter = 'Use ''Parameter'' property to set paramter "%s" of Function "%s"';
+  RTE_UseParameter = 'Use ''Parameter'' property to set parameter "%s" of Function "%s"';
   RTE_NoParameterFound = 'No parameter "%s" found in function "%s"';
   RTE_IncorrectParameterIndex = 'Incorrect parameter index %d';
   RTE_NoIndexFound = 'No index parameter "%s" found for property "%s"';

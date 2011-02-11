@@ -31,6 +31,7 @@ type
          procedure ScriptVersion;
          procedure ExecuteParams;
          procedure CallFuncThatReturnsARecord;
+         procedure ConfigAssign;
    end;
 
 // ------------------------------------------------------------------
@@ -436,6 +437,18 @@ begin
    finally
       exec.EndProgram;
    end;
+end;
+
+// ConfigAssign
+//
+procedure TCornerCasesTests.ConfigAssign;
+var
+   mds : Integer;
+begin
+   mds:=FCompiler.Config.MaxDataSize;
+   FCompiler.Config:=FCompiler.Config;
+   CheckEquals(mds, FCompiler.Config.MaxDataSize);
+   FCompiler.Config.ResultType:=FCompiler.Config.ResultType;
 end;
 
 // ------------------------------------------------------------------

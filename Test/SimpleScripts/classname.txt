@@ -5,7 +5,9 @@ Ancestor: TMyClass
 TMyClass
 TMyClass
 TMyClass
+TMyClass
 I'm TChild
+TChild
 TChild
 TChild
 TChild

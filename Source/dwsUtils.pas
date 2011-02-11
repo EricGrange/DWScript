@@ -714,7 +714,7 @@ var
    i : Integer;
 begin
    if Find(anItem, Result) then begin
-      Move(FItems[Result+1], FItems[Result], FCount-Result-1);
+      Move(FItems[Result+1], FItems[Result], (FCount-Result-1)*SizeOf(T));
       SetLength(FItems, FCount-1);
       Dec(FCount);
    end else Result:=-1;

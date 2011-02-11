@@ -1119,7 +1119,7 @@ type
       function GetData : TData;
       function GetExternalObject: TObject;
       function GetMember(const s: string): IInfo;
-      function GetMemberNames : TStrings;
+      function GetFieldMemberNames : TStrings;
       function GetMethod(const s: string): IInfo;
       function GetScriptObj: IScriptObj;
       function GetParameter(const s: string): IInfo;
@@ -1137,7 +1137,7 @@ type
       property Data: TData read GetData write SetData;
       property ExternalObject: TObject read GetExternalObject write SetExternalObject;
       property Member[const s: string]: IInfo read GetMember;
-      property MemberNames : TStrings read GetMemberNames;
+      property FieldMemberNames : TStrings read GetFieldMemberNames;
       property Method[const s: string]: IInfo read GetMethod;
       property ScriptObj: IScriptObj read GetScriptObj;
       property Parameter[const s: string]: IInfo read GetParameter;
@@ -1331,7 +1331,7 @@ type
     function GetData : TData; virtual;
     function GetExternalObject: TObject; virtual;
     function GetMember(const s: string): IInfo; virtual;
-    function GetMemberNames : TStrings; virtual;
+    function GetFieldMemberNames : TStrings; virtual;
     function GetMethod(const s: string): IInfo; virtual;
     function GetScriptObj: IScriptObj; virtual;
     function GetParameter(const s: string): IInfo; virtual;
@@ -1391,7 +1391,7 @@ type
                        const DataMaster: IDataMaster = nil);
     destructor Destroy; override;
     function GetMember(const s: string): IInfo; override;
-    function GetMemberNames : TStrings; override;
+    function GetFieldMemberNames : TStrings; override;
   end;
 
    TTempParam = class(TParamSymbol)
@@ -1411,7 +1411,7 @@ type
     FMembersCache : TStrings;
     destructor Destroy; override;
     function GetMember(const s: string): IInfo; override;
-    function GetMemberNames : TStrings; override;
+    function GetFieldMemberNames : TStrings; override;
   end;
 
   TInfoStaticArray = class(TInfoData)
@@ -5034,9 +5034,9 @@ begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['Member', FTypeSym.Caption]);
 end;
 
-// GetMemberNames
+// GetFieldMemberNames
 //
-function TInfo.GetMemberNames : TStrings;
+function TInfo.GetFieldMemberNames : TStrings;
 begin
    Result:=nil;
 end;
@@ -5303,27 +5303,24 @@ begin
    inherited;
 end;
 
-function TInfoClassObj.GetMember(const s: string): IInfo;
+// GetMember
+//
+function TInfoClassObj.GetMember(const s : String) : IInfo;
 var
-  member: TSymbol;
+   member : TSymbol;
 begin
-  member := FScriptObj.ClassSym.Members.FindLocal(s);
+   member:=FScriptObj.ClassSym.Members.FindLocal(s);
 
-  if member is TFieldSymbol then
-    SetChild(Result, FProgramInfo, member.Typ, FScriptObj.Data,
-             TFieldSymbol(member).Offset)
-  else if member is TPropertySymbol then
-  begin
-    Result := TInfoProperty.Create(FProgramInfo,member.Typ,nil,0,
-      TPropertySymbol(member),FScriptObj);
-  end
-  else
-    raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
+   if member is TFieldSymbol then
+      SetChild(Result, FProgramInfo, member.Typ, FScriptObj.Data, TFieldSymbol(member).Offset)
+   else if member is TPropertySymbol then
+      Result:=TInfoProperty.Create(FProgramInfo, member.Typ, nil, 0, TPropertySymbol(member), FScriptObj)
+   else raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
 end;
 
-// GetMemberNames
+// GetFieldMemberNames
 //
-function TInfoClassObj.GetMemberNames : TStrings;
+function TInfoClassObj.GetFieldMemberNames : TStrings;
 
    procedure CollectMembers(members : TMembersSymbolTable);
    var
@@ -5476,91 +5473,87 @@ begin
    end;
 end;
 
+// Call
+//
 function TInfoFunc.Call(const Params: array of Variant): IInfo;
 var
-  x: Integer;
-  funcSym: TFuncSymbol;
-  dataSym: TDataSymbol;
-  funcExpr: TFuncExpr;
-  resultAddr: Integer;
-  resultData: TData;
+   x: Integer;
+   funcSym: TFuncSymbol;
+   dataSym: TDataSymbol;
+   funcExpr: TFuncExpr;
+   resultAddr: Integer;
+   resultData: TData;
 begin
-  resultData := nil;
-  funcSym := TFuncSymbol(FTypeSym);
+   resultData := nil;
+   funcSym := TFuncSymbol(FTypeSym);
 
-  if Length(Params) <> funcSym.Params.Count then
-    raise Exception.CreateFmt(RTE_InvalidNumberOfParams, [Length(Params),
-      funcSym.Params.Count, FTypeSym.Caption]);
+   if Length(Params) <> funcSym.Params.Count then
+      raise Exception.CreateFmt(RTE_InvalidNumberOfParams, [Length(Params),
+         funcSym.Params.Count, FTypeSym.Caption]);
 
-  // Create the TFuncExpr
-  funcExpr := GetFuncExpr(FExec.Prog, funcSym, FScriptObj, FClassSym, FForceStatic, FExec);
+   // Create the TFuncExpr
+   funcExpr := GetFuncExpr(FExec.Prog, funcSym, FScriptObj, FClassSym, FForceStatic, FExec);
 
-  FExec.ExternalObject:=FExternalObject;
+   FExec.ExternalObject:=FExternalObject;
 
-  try
-    // Add arguments to the expression
-    for x := Low(Params) to High(Params) do
-    begin
-      dataSym := TDataSymbol(FParams[x]);
+   try
+      // Add arguments to the expression
+      for x := Low(Params) to High(Params) do begin
+         dataSym := TDataSymbol(FParams[x]);
 
-      if dataSym.Size > 1 then
-        raise Exception.CreateFmt(RTE_UseParameter, [dataSym.Caption,
-          funcSym.Caption]);
+         if dataSym.Size > 1 then
+            raise Exception.CreateFmt(RTE_UseParameter,
+                                      [dataSym.Caption, funcSym.Caption]);
 
-      funcExpr.AddArg(TConstExpr.CreateTyped(FExec.Prog, dataSym.Typ, Params[x]));
-    end;
-    funcExpr.Initialize;
-    if Assigned(funcExpr.Typ) then
-    begin
-      if funcExpr.Typ.Size > 1 then
-      begin
-        // Allocate space on the stack to store the Result value
-        FExec.Stack.Push(funcExpr.Typ.Size);
-        try
-          // Result-space is just behind the temporary-params
-          funcExpr.SetResultAddr(FExec, FParamSize);
+         funcExpr.AddArg(TConstExpr.CreateTyped(FExec.Prog, dataSym.Typ, Params[x]));
+      end;
+      funcExpr.Initialize;
+      if Assigned(funcExpr.Typ) then begin
+         if funcExpr.Typ.Size > 1 then begin
+            // Allocate space on the stack to store the Result value
+            FExec.Stack.Push(funcExpr.Typ.Size);
+            try
+               // Result-space is just behind the temporary-params
+               funcExpr.SetResultAddr(FExec, FExec.Stack.StackPointer-FParamSize);
 
-          // Execute function.
-          // Result is stored on the stack
-          resultData := funcExpr.GetData(FExec);
-          resultAddr := funcExpr.GetAddr(FExec);
+               // Execute function.
+               // Result is stored on the stack
+               resultData := funcExpr.GetData(FExec);
+               resultAddr := funcExpr.GetAddr(FExec);
 
-          // Copy Result
-          for x := 0 to funcExpr.Typ.Size - 1 do
-            FResult[x] := resultData[resultAddr + x];
-        finally
-          FExec.Stack.Pop(funcExpr.Typ.Size);
-        end;
-      end
-      else
-        FResult[0] := funcExpr.Eval(FExec);
-
-      SetChild(Result, FProgramInfo, funcExpr.Typ, FResult, 0);
-    end
-    else begin
-      FExec.Status:=esrNone;
-      funcExpr.EvalNoResult(FExec);
-      Assert(FExec.Status=esrNone);
-    end;
-  finally
-    FExec.ExternalObject:=nil;
-    funcExpr.Free;
-  end;
+               // Copy Result
+               for x := 0 to funcExpr.Typ.Size - 1 do
+                  FResult[x] := resultData[resultAddr + x];
+            finally
+               FExec.Stack.Pop(funcExpr.Typ.Size);
+            end;
+         end else FResult[0] := funcExpr.Eval(FExec);
+         SetChild(Result, FProgramInfo, funcExpr.Typ, FResult, 0);
+      end else begin
+         FExec.Status:=esrNone;
+         funcExpr.EvalNoResult(FExec);
+         Assert(FExec.Status=esrNone);
+      end;
+   finally
+      FExec.ExternalObject:=nil;
+      funcExpr.Free;
+   end;
 end;
 
+// GetParameter
+//
 function TInfoFunc.GetParameter(const s: string): IInfo;
 var
-  tp: TTempParam;
+   tp: TTempParam;
 begin
-  if not FUsesTempParams then
-    InitTempParams;
+   if not FUsesTempParams then
+      InitTempParams;
 
-  tp := TTempParam(FTempParams.FindSymbol(s, cvMagic));
+   tp := TTempParam(FTempParams.FindSymbol(s, cvMagic));
 
-  if Assigned(tp) then
-    SetChild(Result, FProgramInfo, tp.Typ, tp.FData, 0)
-  else
-    raise Exception.CreateFmt(RTE_NoParameterFound, [s, FTypeSym.Caption]);
+   if Assigned(tp) then
+      SetChild(Result, FProgramInfo, tp.Typ, tp.FData, 0)
+   else raise Exception.CreateFmt(RTE_NoParameterFound, [s, FTypeSym.Caption]);
 end;
 
 procedure TInfoFunc.InitTempParams;
@@ -5624,9 +5617,9 @@ begin
            FOffset + TMemberSymbol(sym).Offset, FDataMaster);
 end;
 
-// GetMemberNames
+// GetFieldMemberNames
 //
-function TInfoRecord.GetMemberNames : TStrings;
+function TInfoRecord.GetFieldMemberNames : TStrings;
 var
    i : Integer;
    symTable : TSymbolTable;

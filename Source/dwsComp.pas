@@ -387,10 +387,12 @@ type
     property Visibility : TClassVisibility read FVisibility write FVisibility default cvPublic;
   end;
 
-  TdwsFields = class(TdwsCollection)
-  protected
-    class function GetSymbolClass : TdwsSymbolClass; override;
-  end;
+   TdwsFields = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+      public
+         function Add : TdwsField;
+   end;
 
   TdwsProperty = class(TdwsSymbol)
   private
@@ -424,10 +426,12 @@ type
     property IndexValue: Variant read FIndexValue write FIndexValue;
   end;
 
-  TdwsProperties = class(TdwsCollection)
-  protected
-    class function GetSymbolClass : TdwsSymbolClass; override;
-  end;
+   TdwsProperties = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+      public
+         function Add : TdwsProperty;
+   end;
 
   TdwsClassOperator = class(TdwsSymbol)
   private
@@ -476,10 +480,12 @@ type
     property ResultType: TDataType read FResultType write SetResultType;
   end;
 
-  TdwsMethods = class(TdwsCollection)
-  protected
-    class function GetSymbolClass : TdwsSymbolClass; override;
-  end;
+   TdwsMethods = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+      public
+         function Add : TdwsMethod;
+   end;
 
   TdwsConstructor = class(TdwsFunction)
   private
@@ -527,6 +533,7 @@ type
       public
          constructor Create(Collection: TCollection); override;
          destructor Destroy; override;
+
          procedure Assign(Source: TPersistent); override;
          function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
 
@@ -3346,6 +3353,13 @@ begin
   Result := TdwsField;
 end;
 
+// Add
+//
+function TdwsFields.Add : TdwsField;
+begin
+   Result:=TdwsField(inherited Add);
+end;
+
 { TdwsConstructors }
 
 class function TdwsConstructors.GetSymbolClass: TdwsSymbolClass;
@@ -3360,11 +3374,25 @@ begin
   Result := TdwsMethod;
 end;
 
+// Add
+//
+function TdwsMethods.Add : TdwsMethod;
+begin
+   Result:=TdwsMethod(inherited Add);
+end;
+
 { TdwsProperties }
 
 class function TdwsProperties.GetSymbolClass: TdwsSymbolClass;
 begin
   Result := TdwsProperty;
+end;
+
+// Add
+//
+function TdwsProperties.Add : TdwsProperty;
+begin
+   Result:=TdwsProperty(inherited Add);
 end;
 
 { TdwsClassOperators }
