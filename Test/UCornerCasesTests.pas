@@ -32,6 +32,7 @@ type
          procedure ExecuteParams;
          procedure CallFuncThatReturnsARecord;
          procedure ConfigAssign;
+         procedure DestructorCall;
    end;
 
 // ------------------------------------------------------------------
@@ -449,6 +450,31 @@ begin
    FCompiler.Config:=FCompiler.Config;
    CheckEquals(mds, FCompiler.Config.MaxDataSize);
    FCompiler.Config.ResultType:=FCompiler.Config.ResultType;
+end;
+
+// DestructorCall
+//
+procedure TCornerCasesTests.DestructorCall;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   info : IInfo;
+begin
+   prog:=FCompiler.Compile( 'type TScriptClass = class'#13#10
+                           +'constructor Create;'#13#10
+                           +'destructor Destroy; override;'#13#10
+                           +'end;'#13#10
+                           +'constructor TScriptClass.Create; begin Print(''create''); end;'#13#10
+                           +'destructor TScriptClass.Destroy; begin Print(''-destroy''); inherited; end;');
+
+   exec:=prog.BeginNewExecution;
+   try
+      info:=exec.Info.Vars['TScriptClass'].GetConstructor('Create', nil).Call;
+      info.Method['Free'].Call;
+      CheckEquals('create-destroy', exec.Result.ToString);
+   finally
+      exec.EndProgram;
+   end;
 end;
 
 // ------------------------------------------------------------------
