@@ -989,7 +989,7 @@ begin
       Evaluator:=TdwsCompiler.Evaluate(debugger.Execution, '''(not an expression)''');
       expr:=Evaluator.Expression;
       FEvaluationError:=dweeCompile;
-   end else if Evaluator.RootProgram.ProgramObject.CompileMsgs.Count>0 then
+   end else if Evaluator.EvaluationError then
       FEvaluationError:=dweeCompile;
 
    FValueData:=TdwsDebuggerTempValueSymbol.Create(ExpressionText, expr.Typ);

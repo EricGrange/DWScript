@@ -146,6 +146,7 @@ type
       function GetRootProgram : IdwsProgram;
       function GetContextProcedure : TdwsProcedure;
       function GetExpression : TTypedExpr;
+      function GetEvaluationError : Boolean;
 
       function ContextIsValid : Boolean;
 
@@ -153,6 +154,7 @@ type
       property RootProgram : IdwsProgram read GetRootProgram;
       property ContextProcedure : TdwsProcedure read GetContextProcedure;
       property Expression : TTypedExpr read GetExpression;
+      property EvaluationError : Boolean read GetEvaluationError;
    end;
 
    TdwsEvaluateOption = (eoRootContext);
@@ -171,6 +173,7 @@ type
          function GetRootProgram : IdwsProgram;
          function GetContextProcedure : TdwsProcedure;
          function GetExpression : TTypedExpr;
+         function GetEvaluationError : Boolean;
 
       public
          destructor Destroy; override;
@@ -6252,6 +6255,13 @@ end;
 function TdwsEvaluateExpr.GetExpression : TTypedExpr;
 begin
    Result:=FExpression;
+end;
+
+// GetEvaluationError
+//
+function TdwsEvaluateExpr.GetEvaluationError : Boolean;
+begin
+   Result:=FEvaluationError;
 end;
 
 end.
