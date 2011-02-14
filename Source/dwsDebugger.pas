@@ -126,6 +126,8 @@ type
          property Data : TData read FData;
    end;
 
+   TdwsDebuggerWatchEvaluationError = (dweeNone, dweeCompile, dweeEvaluation);
+
    // TdwsDebuggerWatch
    //
    TdwsDebuggerWatch = class
@@ -134,7 +136,7 @@ type
          FEvaluator : IdwsEvaluateExpr;
          FValueData : TdwsDebuggerTempValueSymbol;
          FValueInfo : IInfo;
-         FEvaluationError : Boolean;
+         FEvaluationError : TdwsDebuggerWatchEvaluationError;
 
       protected
 
@@ -148,7 +150,7 @@ type
          property Evaluator : IdwsEvaluateExpr read FEvaluator write FEvaluator;
          property ValueData : TdwsDebuggerTempValueSymbol read FValueData;
          property ValueInfo : IInfo read FValueInfo;
-         property EvaluationError : Boolean read FEvaluationError;
+         property EvaluationError : TdwsDebuggerWatchEvaluationError read FEvaluationError;
    end;
 
    // TdwsDebuggerWatches
@@ -972,7 +974,7 @@ var
    expr : TTypedExpr;
    exec : TdwsExecution;
 begin
-   FEvaluationError:=False;
+   FEvaluationError:=dweeNone;
    if debugger.State<>dsDebugSuspended then begin
       FValueInfo:=nil;
       FreeAndNil(FValueData);
@@ -986,8 +988,9 @@ begin
    if expr.Typ=nil then begin
       Evaluator:=TdwsCompiler.Evaluate(debugger.Execution, '''(not an expression)''');
       expr:=Evaluator.Expression;
-      FEvaluationError:=True;
-   end else FEvaluationError:=(Evaluator.RootProgram.ProgramObject.CompileMsgs.Count>0);
+      FEvaluationError:=dweeCompile;
+   end else if Evaluator.RootProgram.ProgramObject.CompileMsgs.Count>0 then
+      FEvaluationError:=dweeCompile;
 
    FValueData:=TdwsDebuggerTempValueSymbol.Create(ExpressionText, expr.Typ);
    exec:=debugger.Execution.ExecutionObject;
@@ -1003,7 +1006,7 @@ begin
       end else expr.Eval(exec);
    except
       on E: Exception do begin
-         FEvaluationError:=True;
+         FEvaluationError:=dweeEvaluation;
          FValueData.Free;
          FValueData:=TdwsDebuggerTempValueSymbol.Create(ExpressionText,
                            debugger.Execution.Prog.ProgramObject.TypString);
@@ -1017,7 +1020,7 @@ end;
 //
 procedure TdwsDebuggerWatch.ClearEvaluator;
 begin
-   FEvaluationError:=False;
+   FEvaluationError:=dweeNone;
    Evaluator:=nil;
    FValueInfo:=nil;
    FreeAndNil(FValueData);
