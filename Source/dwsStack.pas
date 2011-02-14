@@ -75,9 +75,9 @@ type
          procedure Push(Delta: Integer); inline;
          procedure Pop(Delta: Integer);
 
-         procedure WriteData(SourceAddr, DestAddr, Size: Integer; const sourceData: TData);
-         procedure ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);
-         procedure CopyData(SourceAddr, DestAddr, Size: Integer);
+         procedure WriteData(sourceAddr, destAddr, size: Integer; const sourceData: TData);
+         procedure ReadData(sourceAddr, destAddr, size: Integer; destData: TData);
+         procedure CopyData(sourceAddr, destAddr, size: Integer);
 
          procedure ClearData(addr, size : Integer); inline;
 
@@ -104,7 +104,7 @@ type
          procedure ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown);
 
          function  PointerToIntValue(addr : Integer) : PInt64;
-         function  PointerToFloatValue_BaseRelative(addr : Integer) : PDouble; inline;
+         function  PointerToFloatValue_BaseRelative(addr : Integer) : PDouble;//inline;
          function  PointerToInterfaceValue(addr : Integer) : PIUnknown;
 
          procedure IncIntValue_BaseRelative(destAddr : Integer; const value : Int64); inline;
@@ -191,6 +191,8 @@ begin
   end;
 end;
 
+// ClearData
+//
 procedure TStackMixIn.ClearData(addr, size : Integer);
 var
    p : PVariant;

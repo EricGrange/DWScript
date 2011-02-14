@@ -224,8 +224,11 @@ type
          function GetAsInteger(const x : Integer) : Int64;
          procedure SetAsInteger(const x : Integer; const value : Int64);
          function GetAsBoolean(const x : Integer) : Boolean;
+         procedure SetAsBoolean(const x : Integer; const value : Boolean);
          function GetAsFloat(const x : Integer) : Double;
+         procedure SetAsFloat(const x : Integer; const value : Double);
          function GetAsString(const x : Integer) : String;
+         procedure SetAsString(const x : Integer; const value : String);
          function GetAsDataString(const x : Integer) : RawByteString;
 
       public
@@ -236,9 +239,9 @@ type
          property Count : Integer read GetCount;
 
          property AsInteger[const x : Integer] : Int64 read GetAsInteger write SetAsInteger;
-         property AsBoolean[const x : Integer] : Boolean read GetAsBoolean;
-         property AsFloat[const x : Integer] : Double read GetAsFloat;
-         property AsString[const x : Integer] : String read GetAsString;
+         property AsBoolean[const x : Integer] : Boolean read GetAsBoolean write SetAsBoolean;
+         property AsFloat[const x : Integer] : Double read GetAsFloat write SetAsFloat;
+         property AsString[const x : Integer] : String read GetAsString write SetAsString;
          property AsDataString[const x : Integer] : RawByteString read GetAsDataString;
    end;
 
@@ -1300,6 +1303,13 @@ begin
    Result:=ExprBase[x].EvalAsBoolean(Exec);
 end;
 
+// SetAsBoolean
+//
+procedure TExprBaseListExec.SetAsBoolean(const x : Integer; const value : Boolean);
+begin
+   ExprBase[x].AssignValueAsBoolean(Exec, value);
+end;
+
 // GetAsFloat
 //
 function TExprBaseListExec.GetAsFloat(const x : Integer) : Double;
@@ -1307,11 +1317,25 @@ begin
    Result:=ExprBase[x].EvalAsFloat(Exec);
 end;
 
+// SetAsFloat
+//
+procedure TExprBaseListExec.SetAsFloat(const x : Integer; const value : Double);
+begin
+   ExprBase[x].AssignValueAsFloat(Exec, value);
+end;
+
 // GetAsString
 //
 function TExprBaseListExec.GetAsString(const x : Integer) : String;
 begin
    ExprBase[x].EvalAsString(Exec, Result);
+end;
+
+// SetAsString
+//
+procedure TExprBaseListExec.SetAsString(const x : Integer; const value : String);
+begin
+   ExprBase[x].AssignValueAsString(Exec, value);
 end;
 
 // GetAsDataString

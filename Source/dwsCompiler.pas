@@ -6054,9 +6054,7 @@ begin
                   argExpr:=nil;
                end;
                typFloatID : begin
-                  if argExpr is TFloatVarExpr then
-                     Result:=TSqrFloatVarExpr.Create(FProg, argExpr)
-                  else Result:=TSqrFloatExpr.Create(FProg, argExpr);
+                  Result:=TSqrFloatExpr.Create(FProg, argExpr);
                   argExpr:=nil;
                end;
             else
