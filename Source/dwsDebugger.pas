@@ -66,7 +66,7 @@ type
                         dsDebugDone);
 
    TdwsDebuggerAction = (daCanBeginDebug, daCanSuspend, daCanStep, daCanResume,
-                         daCanEndDebug, daCanEvaluate);
+                         daCanEndDebug, daCanEvaluate, daCanStepOut);
    TdwsDebuggerActions = set of TdwsDebuggerAction;
 
    TdwsDebuggerMode = (dmMainThread,
@@ -229,6 +229,42 @@ type
          property SourceFileName : String read FSourceFileName write FSourceFileName;
    end;
 
+   // TdwsDSCStepOver
+   //
+   TdwsDSCStepOver = class (TdwsDSCStepDetail)
+      private
+         FCallStackDepth : Integer;
+
+      public
+         function SuspendExecution : Boolean; override;
+
+         property CallStackDepth : Integer read FCallStackDepth write FCallStackDepth;
+   end;
+
+   // TdwsDSCStepOut
+   //
+   TdwsDSCStepOut = class (TdwsDSCStepDetail)
+      private
+         FCallStackDepth : Integer;
+
+      public
+         function SuspendExecution : Boolean; override;
+
+         property CallStackDepth : Integer read FCallStackDepth write FCallStackDepth;
+   end;
+
+   // TdwsDSCStepToLine
+   //
+   TdwsDSCStepToLine = class (TdwsDSCStepDetail)
+      private
+         FLine : Integer;
+
+      public
+         function SuspendExecution : Boolean; override;
+
+         property Line : Integer read FLine write FLine;
+   end;
+
    // TdwsDebugger
    //
    // Work in progres, compiles, but is NOT operational yet
@@ -275,6 +311,11 @@ type
 
          procedure StepDetailed;
          procedure StepDetailedInSource(const sourceFileName : String);
+         procedure StepOver;
+         procedure StepOverInSource(const sourceFileName : String);
+         procedure StepOut;
+         procedure StepOutInSource(const sourceFileName : String);
+         procedure StepToLine(line : Integer; const sourceFileName : String);
 
          procedure ClearSuspendConditions;
 
@@ -594,9 +635,65 @@ procedure TdwsDebugger.StepDetailedInSource(const sourceFileName : String);
 var
    step : TdwsDSCStepDetail;
 begin
-   Assert(daCanStep in AllowedActions, 'Suspend not allowed');
+   Assert(daCanStep in AllowedActions, 'Step not allowed');
 
    step:=TdwsDSCStepDetail.Create(Self);
+   step.SourceFileName:=sourceFileName;
+   FState:=dsDebugResuming;
+end;
+
+// StepOver
+//
+procedure TdwsDebugger.StepOver;
+begin
+   StepOverInSource('');
+end;
+
+// StepOverInSource
+//
+procedure TdwsDebugger.StepOverInSource(const sourceFileName : String);
+var
+   step : TdwsDSCStepOver;
+begin
+   Assert(daCanStep in AllowedActions, 'Step not allowed');
+
+   step:=TdwsDSCStepOver.Create(Self);
+   step.SourceFileName:=sourceFileName;
+   step.CallStackDepth:=Execution.ExecutionObject.CallStack.Count;
+   FState:=dsDebugResuming;
+end;
+
+// StepOut
+//
+procedure TdwsDebugger.StepOut;
+begin
+   StepOutInSource('');
+end;
+
+// StepOutInSource
+//
+procedure TdwsDebugger.StepOutInSource(const sourceFileName : String);
+var
+   step : TdwsDSCStepOut;
+begin
+   Assert(daCanStepOut in AllowedActions, 'StepOut not allowed');
+
+   step:=TdwsDSCStepOut.Create(Self);
+   step.SourceFileName:=sourceFileName;
+   step.CallStackDepth:=Execution.ExecutionObject.CallStack.Count;
+   FState:=dsDebugResuming;
+end;
+
+// StepToLine
+//
+procedure TdwsDebugger.StepToLine(line : Integer; const sourceFileName : String);
+var
+   step : TdwsDSCStepToLine;
+begin
+   Assert(daCanStep in AllowedActions, 'Step not allowed');
+
+   step:=TdwsDSCStepToLine.Create(Self);
+   step.Line:=line;
    step.SourceFileName:=sourceFileName;
    FState:=dsDebugResuming;
 end;
@@ -660,8 +757,11 @@ begin
             if Mode in [dmMainThread] then
                Include(Result, daCanEvaluate);
          end;
-         dsDebugSuspended :
+         dsDebugSuspended : begin
             Result:=[daCanResume, daCanEndDebug, daCanStep, daCanEvaluate];
+            if Execution.ExecutionObject.CallStack.Count>0 then
+               Include(Result, daCanStepOut);
+         end;
          dsDebugSuspending :
             Result:=[];
          dsDebugDone :
@@ -952,7 +1052,55 @@ function TdwsDSCStepDetail.SuspendExecution : Boolean;
 begin
    Result:=   (SourceFileName='')
            or Debugger.CurrentExpression.ScriptPos.IsSourceFile(SourceFileName);
-   Free;
+   if Result then
+      Free;
+end;
+
+// ------------------
+// ------------------ TdwsDSCStepOver ------------------
+// ------------------
+
+// SuspendExecution
+//
+function TdwsDSCStepOver.SuspendExecution : Boolean;
+begin
+   Result:=    (Debugger.Execution.ExecutionObject.CallStack.Count<=FCallStackDepth)
+           and (   (SourceFileName='')
+                or Debugger.CurrentExpression.ScriptPos.IsSourceFile(SourceFileName));
+   if Result then
+      Free;
+end;
+
+// ------------------
+// ------------------ TdwsDSCStepOut ------------------
+// ------------------
+
+// SuspendExecution
+//
+function TdwsDSCStepOut.SuspendExecution : Boolean;
+begin
+   Result:=    (Debugger.Execution.ExecutionObject.CallStack.Count<FCallStackDepth)
+           and (   (SourceFileName='')
+                or Debugger.CurrentExpression.ScriptPos.IsSourceFile(SourceFileName));
+   if Result then
+      Free;
+end;
+
+// ------------------
+// ------------------ TdwsDSCStepToLine ------------------
+// ------------------
+
+// SuspendExecution
+//
+function TdwsDSCStepToLine.SuspendExecution : Boolean;
+var
+   scriptPos : TScriptPos;
+begin
+   scriptPos:=Debugger.CurrentExpression.ScriptPos;
+   Result:=    (scriptPos.Line=Line)
+           and scriptPos.IsSourceFile(SourceFileName);
+   if Result then
+      Free;
 end;
 
 // ------------------
