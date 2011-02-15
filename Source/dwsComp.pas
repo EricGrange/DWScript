@@ -507,10 +507,12 @@ type
     property ResultType: string read GetResultType;
   end;
 
-  TdwsConstructors = class(TdwsCollection)
-  protected
-    class function GetSymbolClass : TdwsSymbolClass; override;
-  end;
+   TdwsConstructors = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+      public
+         function Add : TdwsConstructor;
+   end;
 
    // TdwsClass
    //
@@ -2275,8 +2277,6 @@ begin
 
          if Assigned(info.ScriptObj) then  begin
             FOnEval(info, info.ScriptObj.ExternalObject);
-            if methodSymbol.Kind=fkDestructor then
-               info.ScriptObj.ExternalObject:=nil;
          end else if isClassMethod then
             FOnEval(info, nil)
          else raise Exception.Create('Object not instantiated');
@@ -3365,6 +3365,13 @@ end;
 class function TdwsConstructors.GetSymbolClass: TdwsSymbolClass;
 begin
   Result := TdwsConstructor;
+end;
+
+// Add
+//
+function TdwsConstructors.Add : TdwsConstructor;
+begin
+   Result:=TdwsConstructor(inherited Add);
 end;
 
 { TdwsMethods }

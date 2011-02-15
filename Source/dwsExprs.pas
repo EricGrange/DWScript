@@ -1007,9 +1007,13 @@ type
    end;
 
    TDestructorStaticExpr = class(TMethodStaticExpr)
+      protected
+         function PostCall(exec : TdwsExecution): Variant; override;
    end;
 
    TDestructorVirtualExpr = class(TMethodVirtualExpr)
+      protected
+         function PostCall(exec : TdwsExecution): Variant; override;
    end;
 
    TUnaryOpExpr = class(TTypedExpr)
@@ -4160,9 +4164,14 @@ end;
 // PreCall
 //
 function TMethodStaticExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
+var
+   p : PIScriptObj;
 begin
-   FBaseExpr.EvalAsScriptObj(exec, exec.SelfScriptObject^);
-   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, exec.SelfScriptObject^);
+   p:=exec.SelfScriptObject;
+   FBaseExpr.EvalAsScriptObj(exec, p^);
+   if (p^<>nil) and p^.Destroyed then
+      RaiseObjectAlreadyDestroyed;
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, p^);
 
    Result:=FFunc;
 end;
@@ -4181,12 +4190,15 @@ end;
 // PreCall
 //
 function TMethodVirtualExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
+var
+   p : PIScriptObj;
 begin
    // Find virtual method
-   FBaseExpr.EvalAsScriptObj(exec, exec.SelfScriptObject^);
-   CheckScriptObject(exec.SelfScriptObject^);
-   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, exec.SelfScriptObject^);
-   Result:=FindVirtualMethod(exec.SelfScriptObject^.ClassSym);
+   p:=exec.SelfScriptObject;
+   FBaseExpr.EvalAsScriptObj(exec, p^);
+   CheckScriptObject(p^);
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, p^);
+   Result:=FindVirtualMethod(p^.ClassSym);
 end;
 
 // ------------------
@@ -4977,6 +4989,11 @@ end;
 //
 procedure TScriptObj.SetDestroyed(const val : Boolean);
 begin
+   if Assigned(FOnObjectDestroy) then begin
+      FOnObjectDestroy(FExternalObj);
+      FOnObjectDestroy:=nil;
+      FExternalObj:=nil;
+   end;
    FDestroyed:=True;
 end;
 
@@ -6806,7 +6823,9 @@ begin
   FSourceList[Index] := SourceItem;
 end;
 
-{ TMethodObjExpr }
+// ------------------
+// ------------------ TMethodObjExpr ------------------
+// ------------------
 
 constructor TMethodObjExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
   BaseExpr: TDataExpr);
@@ -6826,7 +6845,9 @@ begin
   Result := FBaseExpr.Data[exec];
 end;
 
-{ TConstructorStaticObjExpr }
+// ------------------
+// ------------------ TConstructorStaticObjExpr ------------------
+// ------------------
 
 constructor TConstructorStaticObjExpr.Create(Prog: TdwsProgram;
   const Pos: TScriptPos; Func: TMethodSymbol; BaseExpr: TDataExpr);
@@ -6840,7 +6861,9 @@ begin
    Result := exec.SelfScriptObject^;
 end;
 
-{ TConstructorVirtualObjExpr }
+// ------------------
+// ------------------ TConstructorVirtualObjExpr ------------------
+// ------------------
 
 constructor TConstructorVirtualObjExpr.Create(Prog: TdwsProgram;
   const Pos: TScriptPos; Func: TMethodSymbol; Base: TDataExpr);
@@ -6854,7 +6877,31 @@ begin
    Result := exec.SelfScriptObject^;
 end;
 
-{ TInfoProperty }
+// ------------------
+// ------------------ TDestructorStaticExpr ------------------
+// ------------------
+
+// PostCall
+//
+function TDestructorStaticExpr.PostCall(exec : TdwsExecution): Variant;
+begin
+   exec.SelfScriptObject^.Destroyed:=True;
+end;
+
+// ------------------
+// ------------------ TDestructorVirtualExpr ------------------
+// ------------------
+
+// PostCall
+//
+function TDestructorVirtualExpr.PostCall(exec : TdwsExecution): Variant;
+begin
+   exec.SelfScriptObject^.Destroyed:=True;
+end;
+
+// ------------------
+// ------------------ TInfoProperty ------------------
+// ------------------
 
 constructor TInfoProperty.Create(ProgramInfo: TProgramInfo;
   TypeSym: TSymbol; const Data: TData; Offset: Integer;

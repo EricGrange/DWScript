@@ -35,6 +35,10 @@ type
          procedure FuncFloatEval(Info: TProgramInfo);
          procedure FuncPointEval(Info: TProgramInfo);
 
+         procedure ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
+         procedure ClassCleanup(ExternalObject: TObject);
+         procedure ClassDestructor(Info: TProgramInfo; ExtObject: TObject);
+         procedure MethodPrintEval(Info: TProgramInfo; ExtObject: TObject);
          procedure MethodGetIntEval(Info: TProgramInfo; ExtObject: TObject);
          procedure MethodSetIntEval(Info: TProgramInfo; ExtObject: TObject);
          procedure MethodGetArrayIntEval(Info: TProgramInfo; ExtObject: TObject);
@@ -66,6 +70,8 @@ type
          procedure PredefinedArray;
          procedure PredefinedRecord;
          procedure ClassPropertyInfo;
+         procedure DestructorAndExternalObject;
+         procedure CustomDestructor;
    end;
 
    EDelphiException = class (Exception)
@@ -259,6 +265,7 @@ end;
 procedure TdwsUnitTests.DeclareTestClasses;
 var
    cls : TdwsClass;
+   cst : TdwsConstructor;
    meth : TdwsMethod;
    fld : TdwsField;
    prop : TdwsProperty;
@@ -266,6 +273,23 @@ var
 begin
    cls:=FUnit.Classes.Add;
    cls.Name:='TTestClass';
+   cls.OnCleanUp:=ClassCleanup;
+
+   cst:=cls.Constructors.Add;
+   cst.Name:='MyCreate';
+   param:=cst.Parameters.Add;
+   param.DataType:='String';
+   param.Name:='v';
+   cst.OnEval:=ClassConstructor;
+
+   meth:=cls.Methods.Add;
+   meth.Name:='MyDestroy';
+   meth.Kind:=mkDestructor;
+   meth.OnEval:=ClassDestructor;
+
+   meth:=cls.Methods.Add;
+   meth.Name:='Print';
+   meth.OnEval:=MethodPrintEval;
 
    fld:=cls.Fields.Add;
    fld.Name:='FField';
@@ -436,6 +460,34 @@ procedure TdwsUnitTests.FuncPointEval(Info: TProgramInfo);
 begin
    Info.Vars['Result'].Member['x'].Value:=12;
    Info.Vars['Result'].Member['y'].Value:=24;
+end;
+
+// ClassConstructor
+//
+procedure TdwsUnitTests.ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
+begin
+   FMagicVar:=Info.ParamAsString[0];
+end;
+
+// ClassCleanup
+//
+procedure TdwsUnitTests.ClassCleanup(ExternalObject: TObject);
+begin
+   FMagicVar:='cleaned up';
+end;
+
+// ClassDestructor
+//
+procedure TdwsUnitTests.ClassDestructor(Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.Execution.Result.AddString('my destructor'#13#10);
+end;
+
+// MethodPrintEval
+//
+procedure TdwsUnitTests.MethodPrintEval(Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.Execution.Result.AddString(FMagicVar+#13#10);
 end;
 
 // MethodGetIntEval
@@ -892,6 +944,58 @@ begin
       p2:=p.Member['ArrayProp'];
       p2.Parameter['v'].Value:='12';
       CheckEquals(24, p2.ValueAsInteger, 'Array prop read');
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// DestructorAndExternalObject
+//
+procedure TdwsUnitTests.DestructorAndExternalObject;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   FMagicVar:='';
+   prog:=FCompiler.Compile( 'var o := TTestClass.MyCreate(''hello'');'
+                           +'o.Print;'
+                           +'o.Free;'
+                           +'PrintLn(magicVar);'
+                           +'o.Print;');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+
+      CheckEquals( 'hello'#13#10'cleaned up'#13#10
+                  +'Runtime Error: Object already destroyed [line: 1, column: 74]'#13#10,
+                  exec.Result.ToString+exec.Msgs.AsInfo);
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// CustomDestructor
+//
+procedure TdwsUnitTests.CustomDestructor;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   FMagicVar:='';
+   prog:=FCompiler.Compile( 'var o := TTestClass.MyCreate(''hello'');'
+                           +'o.Print;'
+                           +'o.MyDestroy;'
+                           +'PrintLn(magicVar);'
+                           +'o.Print;');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+
+      CheckEquals( 'hello'#13#10'my destructor'#13#10'cleaned up'#13#10
+                  +'Runtime Error: Object already destroyed [line: 1, column: 79]'#13#10,
+                  exec.Result.ToString+exec.Msgs.AsInfo);
    finally
       exec.EndProgram;
    end;

@@ -89,7 +89,7 @@ type
          procedure WriteFloatValue_BaseRelative(DestAddr: Integer; const Value: Double); inline;
          procedure WriteStrValue(DestAddr: Integer; const Value: String); inline;
          procedure WriteBoolValue(DestAddr: Integer; const Value: Boolean); inline;
-         procedure WriteInterfaceValue(DestAddr: Integer; const intf: IUnknown); inline;
+         procedure WriteInterfaceValue(DestAddr: Integer; const intf: IUnknown);
 
          function  SetStrChar(DestAddr: Integer; index : Integer; c : Char) : Boolean;
 
