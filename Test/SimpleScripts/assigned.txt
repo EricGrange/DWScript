@@ -6,5 +6,5 @@ ProcVirtual
 not Assigned
 Object not instantiated [line: 37, column: 6]
 Proc
-Object not instantiated [line: 11, column: 12]
+Object not instantiated in TMyObj.Proc [line: 11, column: 12]
 Object not instantiated [line: 49, column: 6]

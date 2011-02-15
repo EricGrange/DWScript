@@ -127,7 +127,7 @@ var
 begin
    msgs:=TdwsCompileMessageList.Create;
    sourceFile:=TSourceFile.Create;
-   sourceFile.SourceCode:='@ @= %= ^ ^=';
+   sourceFile.Code:='@ @= %= ^ ^=';
    t:=TTokenizer.Create(sourceFile, msgs);
    try
       CheckTrue(t.TestDelete(ttAT), '@');

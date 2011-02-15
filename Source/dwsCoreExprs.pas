@@ -1968,8 +1968,8 @@ begin
 
    if Cardinal(index)>=Cardinal(FCount) then begin
       if index>=FCount then
-         RaiseUpperExceeded(index)
-      else RaiseLowerExceeded(index);
+         RaiseUpperExceeded(exec, index)
+      else RaiseLowerExceeded(exec, index);
    end;
    // Calculate the address
    Result := FBaseExpr.Addr[exec] + (index * FElementSize);
@@ -1992,9 +1992,9 @@ begin
 
    if Cardinal(index)>=Cardinal(len) then begin
       if index >= len then
-         RaiseUpperExceeded(index)
+         RaiseUpperExceeded(exec, index)
       else if index < 0 then
-         RaiseLowerExceeded(index);
+         RaiseLowerExceeded(exec, index);
    end;
    // Calculate the address
    Result := index;
@@ -2019,9 +2019,9 @@ begin
 
    if Cardinal(index)>=Cardinal(length) then begin
       if index >= length then
-         RaiseUpperExceeded(index)
+         RaiseUpperExceeded(exec, index)
       else if index < 0 then
-         RaiseLowerExceeded(index);
+         RaiseLowerExceeded(exec, index);
    end;
    // Calculate the address
    Result := baseAddr + (index * FElementSize);
@@ -2310,7 +2310,7 @@ var
    obj : IScriptObj;
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
-   CheckScriptObject(obj);
+   CheckScriptObject(exec, obj);
    Result:=obj.Data;
 end;
 
@@ -2326,7 +2326,7 @@ var
    obj : IScriptObj;
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
-   CheckScriptObject(obj);
+   CheckScriptObject(exec, obj);
    Result:=obj.DataOfAddr(FFieldAddr);
 end;
 
@@ -2337,7 +2337,7 @@ var
    obj : IScriptObj;
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
-   CheckScriptObject(obj);
+   CheckScriptObject(exec, obj);
    Result:=obj.DataOfAddrAsString(FFieldAddr);
 end;
 
@@ -2348,7 +2348,7 @@ var
    obj : IScriptObj;
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
-   CheckScriptObject(obj);
+   CheckScriptObject(exec, obj);
    Result:=obj.DataOfAddrAsInteger(FFieldAddr);
 end;
 
@@ -2359,7 +2359,7 @@ var
    obj : IScriptObj;
 begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
-   CheckScriptObject(obj);
+   CheckScriptObject(exec, obj);
    obj.DataOfAddrAsScriptObj(FFieldAddr, Result);
 end;
 
@@ -2453,9 +2453,9 @@ begin
    FLeft.EvalAsString(exec, buf);
    i:=FRight.EvalAsInteger(exec);
    if i>Length(buf) then
-      RaiseUpperExceeded(i)
+      RaiseUpperExceeded(exec, i)
    else if i<1 then
-      RaiseLowerExceeded(i);
+      RaiseLowerExceeded(exec, i);
    Result:=buf[i];
 end;
 
@@ -2538,8 +2538,8 @@ procedure TAsOpExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptOb
 
    procedure RaiseClassCastFailed;
    begin
-      RaiseScriptError(EClassCast.CreatePosFmt(FPos, RTE_ClassCastFailed,
-                                               [Result.ClassSym.Caption, FTyp.Caption]))
+      RaiseScriptError(exec, EClassCast.CreatePosFmt(FPos, RTE_ClassCastFailed,
+                                                     [Result.ClassSym.Caption, FTyp.Caption]))
    end;
 
 begin
@@ -2873,7 +2873,7 @@ begin
             Result:=Ord(s[1]);
       end;
    else
-      RaiseScriptError(EScriptError.Create(RTE_OrdinalExpected));
+      RaiseScriptError(exec, EScriptError.Create(RTE_OrdinalExpected));
    end;
 end;
 
@@ -4519,7 +4519,7 @@ function TForStepExpr.EvalStep(exec : TdwsExecution) : Int64;
 begin
    Result:=FStepExpr.EvalAsInteger(exec);
    if Result<=0 then
-      RaiseScriptError(EScriptError.CreateFmt(RTE_ForLoopStepShouldBeStrictlyPositive, [Result]));
+      RaiseScriptError(exec, EScriptError.CreateFmt(RTE_ForLoopStepShouldBeStrictlyPositive, [Result]));
 end;
 
 { TForUpwardExpr }
@@ -4839,8 +4839,7 @@ var
 begin
    info := (exec as TdwsProgramExecution).ProgramInfo;
    Result := IScriptObj(IUnknown(
-      info.Vars[SYS_EDELPHI].Method[SYS_TOBJECT_CREATE].Call([
-        ClassName, Message]).Value));
+      info.Vars[SYS_EDELPHI].Method[SYS_TOBJECT_CREATE].Call([ClassName, Message]).Value));
 end;
 
 // EnterExceptionBlock
@@ -4848,12 +4847,22 @@ end;
 function TExceptionExpr.EnterExceptionBlock(exec : TdwsExecution) : Variant;
 var
    mainException : Exception;
+   err : EScriptError;
+   msg : String;
 begin
    mainException:=System.ExceptObject as Exception;
 
    if mainException is EScriptException then begin
       // a raise-statement created an Exception object
       Result:=EScriptException(mainException).Value
+   end else if mainException is EScriptError then begin
+      msg:=mainException.Message;
+      err:=EScriptError(mainException);
+      if Length(err.ScriptCallStack)>0 then
+         msg:=msg+' in '+(err.ScriptCallStack[High(err.ScriptCallStack)] as TFuncExpr).FuncSym.QualifiedName;
+      if EScriptError(mainException).Pos.Defined then
+         msg:=msg+EScriptError(mainException).Pos.AsInfo;
+      Result:=CreateEDelphiObj(exec, mainException.ClassName, msg);
    end else begin
       // A Delphi exception. Transform it to a EDelphi-dws exception
       Result:=CreateEDelphiObj(exec, mainException.ClassName, mainException.Message);
@@ -5080,9 +5089,9 @@ begin
    FStringExpr.EvalAsString(exec, s);
    i:=FIndexExpr.EvalAsInteger(exec);
    if i>Length(s) then
-      RaiseUpperExceeded(i)
+      RaiseUpperExceeded(exec, i)
    else if i<1 then
-      RaiseLowerExceeded(i);
+      RaiseLowerExceeded(exec, i);
    FValueExpr.EvalAsString(exec, buf);
    s[i]:=buf[1];
    FStringExpr.AssignValue(exec, s);
@@ -5105,12 +5114,12 @@ var
 begin
    i:=FIndexExpr.EvalAsInteger(exec);
    if i<1 then
-      RaiseLowerExceeded(i)
+      RaiseLowerExceeded(exec, i)
    else begin
       FValueExpr.EvalAsString(exec, buf);
       c:=buf[1];
       if not TStrVarExpr(FStringExpr).SetChar(exec, i, c) then
-         RaiseUpperExceeded(i);
+         RaiseUpperExceeded(exec, i);
    end;
 end;
 

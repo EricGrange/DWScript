@@ -270,8 +270,6 @@ type
       procedure Stop;
       procedure EndProgram;
 
-      function GetCallStack : TExprBaseArray;
-
       property Prog : IdwsProgram read GetProg;
       property Info : TProgramInfo read GetInfo;
       property Result : TdwsResult read GetResult;
@@ -327,7 +325,7 @@ type
          FResult : TdwsResult;
          FFileSystem : IdwsFileSystem;
 
-         FMsgs : TdwsMessageList;
+         FMsgs : TdwsRuntimeMessageList;
 
       protected
          procedure ReleaseObjects;
@@ -336,7 +334,7 @@ type
          procedure ScriptObjDestroyed(scriptObj: TScriptObj);
          procedure DestroyScriptObj(const scriptObj: IScriptObj);
 
-         function GetMsgs : TdwsMessageList; override;
+         function GetMsgs : TdwsRuntimeMessageList; override;
 
          // for interface only, script exprs use direct properties
          function GetProg : IdwsProgram;
@@ -357,8 +355,7 @@ type
          procedure Stop;
          procedure EndProgram;
 
-         function GetCallStack : TExprBaseArray;
-         function CallStackToString(const callStack : TExprBaseArray) : String;
+         class function CallStackToString(const callStack : TExprBaseArray) : String; static;
          procedure RaiseAssertionFailed(const msg : String; const scriptPos : TScriptPos);
          procedure RaiseAssertionFailedFmt(const fmt : String; const args : array of const; const scriptPos : TScriptPos);
 
@@ -374,7 +371,6 @@ type
          property FileSystem : IdwsFileSystem read FFileSystem;
 
          property ObjectCount : Integer read FObjectCount;
-         property Msgs : TdwsMessageList read FMsgs;
    end;
 
    TdwsProgramBaseTypes = record
@@ -570,15 +566,15 @@ type
          procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
          procedure AssignValueAsString(exec : TdwsExecution; const value: String); override;
 
-         procedure RaiseScriptError(e : EScriptError); overload;
-         procedure RaiseScriptError; overload;
-         procedure RaiseScriptError(const msg : String); overload;
-         procedure RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String); overload;
-         procedure RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String;
+         procedure RaiseScriptError(exec : TdwsExecution; e : EScriptError); overload;
+         procedure RaiseScriptError(exec : TdwsExecution); overload;
+         procedure RaiseScriptError(exec : TdwsExecution; const msg : String); overload;
+         procedure RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass; const msg : String); overload;
+         procedure RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass; const msg : String;
                                     const args : array of const); overload;
 
-         procedure RaiseUpperExceeded(index : Integer);
-         procedure RaiseLowerExceeded(index : Integer);
+         procedure RaiseUpperExceeded(exec : TdwsExecution; index : Integer);
+         procedure RaiseLowerExceeded(exec : TdwsExecution; index : Integer);
 
          function ScriptLocation : String; override;
 
@@ -610,9 +606,9 @@ type
 
          function ScriptPos : TScriptPos; override;
 
-         procedure CheckScriptObject(const scriptObj : IScriptObj); inline;
-         procedure RaiseObjectNotInstantiated;
-         procedure RaiseObjectAlreadyDestroyed;
+         procedure CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj); inline;
+         procedure RaiseObjectNotInstantiated(exec : TdwsExecution);
+         procedure RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
 
          property Typ : TSymbol read FTyp write FTyp;
    end;
@@ -1742,7 +1738,7 @@ begin
 
    FProg:=aProgram;
    FProg._AddRef;
-   FMsgs:=TdwsMessageList.Create;
+   FMsgs:=TdwsRuntimeMessageList.Create;
 
    if aProgram.CompileMsgs.HasErrors then
       FProgramState:=psUndefined
@@ -1824,11 +1820,11 @@ begin
    if FProgramState<>psReadyToRun then begin
       case FProgramState of
          psRunning, psRunningStopped :
-            Msgs.AddError(RTE_ScriptAlreadyRunning);
+            Msgs.AddRuntimeError(RTE_ScriptAlreadyRunning);
          psUndefined :
-            Msgs.AddError(RTE_CantRunScript);
+            Msgs.AddRuntimeError(RTE_CantRunScript);
       else
-         Msgs.AddError(RTE_StateReadyToRunExpected);
+         Msgs.AddRuntimeError(RTE_StateReadyToRunExpected);
       end;
       Exit;
    end;
@@ -1874,11 +1870,11 @@ begin
 
    except
       on e: EScriptError do begin
-         FMsgs.AddError(e.Message);
+         FMsgs.AddRuntimeError(e.Pos, e.Message, e.ScriptCallStack);
          FProgramState:=psRunningStopped;
       end;
       on e: Exception do begin
-         FMsgs.AddError(e.Message+LastScriptError.ScriptPos.AsInfo);
+         FMsgs.AddRuntimeError(LastScriptError.ScriptPos, e.Message, LastScriptCallStack);
          FProgramState:=psRunningStopped;
       end;
    end;
@@ -1887,19 +1883,11 @@ end;
 // RunProgram
 //
 procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
-
-   function AppendCallStack(const msg : String; const callStack : TExprBaseArray) : String;
-   begin
-      if Length(callStack)>0 then
-         Result:=msg+#13#10+CallStackToString(callStack)
-      else Result:=msg;
-   end;
-
 var
    terminator : TTerminatorThread;
 begin
-   if FProgramState <> psRunning then begin
-      Msgs.AddError('Program state psRunning expected');
+   if FProgramState<>psRunning then begin
+      Msgs.AddRuntimeError('Program state psRunning expected');
       Exit;
    end;
 
@@ -1917,26 +1905,32 @@ begin
 
          if status<>esrNone then begin
             case status of
-               esrBreak : Msgs.AddError(RTE_InvalidBreak);
-               esrContinue : Msgs.AddError(RTE_InvalidContinue);
+               esrBreak : Msgs.AddRuntimeError(RTE_InvalidBreak);
+               esrContinue : Msgs.AddRuntimeError(RTE_InvalidContinue);
             end;
          end;
       except
          on e: EScriptStopped do
             Msgs.AddInfo(e.Message);
          on e: EScriptAssertionFailed do
-            Msgs.AddError(AppendCallStack(e.Message, e.ScriptCallStack));
+            Msgs.AddRuntimeError(e.Pos, Copy(e.Message, 1, LastDelimiter('[', e.Message)-2), e.ScriptCallStack);
          on e: EScriptException do
-            Msgs.AddError(AppendCallStack(e.Message+e.Pos.AsInfo, e.ScriptCallStack));
+            Msgs.AddRuntimeError(e.Pos, e.Message, e.ScriptCallStack);
          on e: EScriptError do
-            Msgs.AddError(AppendCallStack(e.Message, e.ScriptCallStack));
+            Msgs.AddRuntimeError(e.Pos, e.Message, e.ScriptCallStack);
+         on e: EStackException do
+            Msgs.AddRuntimeError(LastScriptError.ScriptPos,
+                                 e.Message,
+                                 LastScriptCallStack);
          on e: Exception do
-            if (LastScriptError is TFuncExpr) then
-               Msgs.AddError(AppendCallStack(e.Message+' in '+TFuncExpr(LastScriptError).FuncSym.QualifiedName
-                                             +LastScriptError.ScriptPos.AsInfo, LastScriptCallStack))
-            else if LastScriptError<>nil then
-               Msgs.AddError(AppendCallStack(e.Message+LastScriptError.ScriptLocation, LastScriptCallStack))
-            else Msgs.AddError(AppendCallStack(e.Message, LastScriptCallStack))
+            if LastScriptError<>nil then
+               if LastScriptError is TFuncExpr then
+                  Msgs.AddRuntimeError(LastScriptError.ScriptPos,
+                                       e.Message+' in '+TFuncExpr(LastScriptError).FuncSym.QualifiedName,
+                                       LastScriptCallStack)
+               else Msgs.AddRuntimeError(LastScriptError.ScriptPos, e.Message,
+                                         LastScriptCallStack)
+            else Msgs.AddRuntimeError(cNullPos, e.Message, LastScriptCallStack);
       end;
 
    finally
@@ -1985,44 +1979,18 @@ begin
       FProgramState:=psReadyToRun;
    except
       on e: EScriptError do
-         Msgs.AddError(e.Message);
+         Msgs.AddRuntimeError(e.Pos, e.Message, e.ScriptCallStack);
       on e: Exception do
-         if LastScriptError<>nil then
-            Msgs.AddError(e.Message+LastScriptError.ScriptPos.AsInfo)
-         else Msgs.AddError(e.Message);
+         Msgs.AddRuntimeError(e.Message);
    end;
 
-end;
-
-// GetCallStack
-//
-function TdwsProgramExecution.GetCallStack : TExprBaseArray;
-var
-   i : Integer;
-begin
-   SetLength(Result, CallStack.Count);
-   for i:=0 to CallStack.Count-1 do
-      Result[i]:=(TObject(CallStack.List[CallStack.Count-1-i]) as TExprBase);
 end;
 
 // CallStackToString
 //
-function TdwsProgramExecution.CallStackToString(const callStack : TExprBaseArray) : String;
-var
-   i : Integer;
-   buffer : TWriteOnlyBlockStream;
+class function TdwsProgramExecution.CallStackToString(const callStack : TExprBaseArray) : String;
 begin
-   buffer:=TWriteOnlyBlockStream.Create;
-   try
-      for i:=0 to High(callStack) do begin
-         if i>0 then
-            buffer.WriteString(#13#10);
-         buffer.WriteString(callStack[i].ScriptLocation);
-      end;
-      Result:=buffer.ToString;
-   finally
-      buffer.Free;
-   end;
+   Result:=TExprBase.CallStackToString(callStack);
 end;
 
 // RaiseAssertionFailed
@@ -2187,7 +2155,7 @@ begin
       end;
    except
       on e: Exception do
-         Msgs.AddError(e.Message);
+         Msgs.AddRuntimeError(e.Message);
    end;
 end;
 
@@ -2214,7 +2182,7 @@ end;
 
 // GetMsgs
 //
-function TdwsProgramExecution.GetMsgs : TdwsMessageList;
+function TdwsProgramExecution.GetMsgs : TdwsRuntimeMessageList;
 begin
    Result:=FMsgs;
 end;
@@ -2460,10 +2428,10 @@ var
    sf: TSourceFile;
 begin
    sf:=GetSourceFile(SourceFile);
-   if not Assigned(sf) or (sf.SourceCode <> SourceCode) then begin
+   if not Assigned(sf) or (sf.Code <> sourceCode) then begin
       Result:=TSourceFile.Create;
-      Result.SourceFile:=SourceFile;
-      Result.SourceCode:=SourceCode;
+      Result.Name:=sourceFile;
+      Result.Code:=sourceCode;
       FSourceFiles.Add(Result);
    end else Result:=sf;
 end;
@@ -2476,7 +2444,7 @@ var
 begin
    for i:=0 to FSourceFiles.Count-1 do begin
       Result:=TSourceFile(FSourceFiles.List[i]);
-      if Result.SourceFile=aSourceFile then Exit;
+      if Result.Name=aSourceFile then Exit;
    end;
    Result:=nil;
 end;
@@ -2883,17 +2851,17 @@ end;
 
 // RaiseScriptError
 //
-procedure TProgramExpr.RaiseScriptError(e : EScriptError);
+procedure TProgramExpr.RaiseScriptError(exec : TdwsExecution; e : EScriptError);
 begin
    e.Pos:=ScriptPos;
-   e.RawMessage:=e.Message;
-   e.Message:=e.Message+e.Pos.AsInfo;
+   e.Message:=e.Message;
+   e.ScriptCallStack:=exec.GetCallStack;
    raise e;
 end;
 
 // RaiseScriptError
 //
-procedure TProgramExpr.RaiseScriptError;
+procedure TProgramExpr.RaiseScriptError(exec : TdwsExecution);
 var
    exc : Exception;
    e : EScriptError;
@@ -2902,43 +2870,43 @@ begin
    exc:=Exception(ExceptObject);
    e:=EScriptError.Create(exc.Message);
    e.RawClassName:=exc.ClassName;
-   RaiseScriptError(e);
+   RaiseScriptError(exec, e);
 end;
 
 // RaiseScriptError
 //
-procedure TProgramExpr.RaiseScriptError(const msg : String);
+procedure TProgramExpr.RaiseScriptError(exec : TdwsExecution; const msg : String);
 begin
-   RaiseScriptError(EScriptError.Create(msg));
+   RaiseScriptError(exec, EScriptError, msg);
 end;
 
 // RaiseScriptError
 //
-procedure TProgramExpr.RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String);
+procedure TProgramExpr.RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass; const msg : String);
 begin
-   RaiseScriptError(exceptClass.Create(msg));
+   RaiseScriptError(exec, exceptClass.Create(msg));
 end;
 
 // RaiseScriptError
 //
-procedure TProgramExpr.RaiseScriptError(exceptClass : EScriptErrorClass; const msg : String;
-                                      const args : array of const);
+procedure TProgramExpr.RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass;
+                                        const msg : String; const args : array of const);
 begin
-   RaiseScriptError(exceptClass.CreateFmt(msg, args));
+   RaiseScriptError(exec, exceptClass.CreateFmt(msg, args));
 end;
 
 // RaiseUpperExceeded
 //
-procedure TProgramExpr.RaiseUpperExceeded(index : Integer);
+procedure TProgramExpr.RaiseUpperExceeded(exec : TdwsExecution; index : Integer);
 begin
-   RaiseScriptError(EScriptOutOfBounds.CreateFmt(RTE_ArrayUpperBoundExceeded, [index]));
+   RaiseScriptError(exec, EScriptOutOfBounds.CreateFmt(RTE_ArrayUpperBoundExceeded, [index]));
 end;
 
 // RaiseLowerExceeded
 //
-procedure TProgramExpr.RaiseLowerExceeded(index : Integer);
+procedure TProgramExpr.RaiseLowerExceeded(exec : TdwsExecution; index : Integer);
 begin
-   RaiseScriptError(EScriptOutOfBounds.CreateFmt(RTE_ArrayLowerBoundExceeded, [index]));
+   RaiseScriptError(exec, EScriptOutOfBounds.CreateFmt(RTE_ArrayLowerBoundExceeded, [index]));
 end;
 
 // ScriptLocation
@@ -3032,26 +3000,26 @@ end;
 
 // CheckScriptObject
 //
-procedure TTypedExpr.CheckScriptObject(const scriptObj : IScriptObj);
+procedure TTypedExpr.CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj);
 begin
    if scriptObj=nil then
-      RaiseObjectNotInstantiated
+      RaiseObjectNotInstantiated(exec)
    else if scriptObj.Destroyed then
-      RaiseObjectAlreadyDestroyed;
+      RaiseObjectAlreadyDestroyed(exec);
 end;
 
 // RaiseObjectNotInstantiated
 //
-procedure TTypedExpr.RaiseObjectNotInstantiated;
+procedure TTypedExpr.RaiseObjectNotInstantiated(exec : TdwsExecution);
 begin
-   RaiseScriptError(EScriptError.Create(RTE_ObjectNotInstantiated));
+   RaiseScriptError(exec, EScriptError, RTE_ObjectNotInstantiated);
 end;
 
 // RaiseObjectAlreadyDestroyed
 //
-procedure TTypedExpr.RaiseObjectAlreadyDestroyed;
+procedure TTypedExpr.RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
 begin
-   RaiseScriptError(EScriptError.Create(RTE_ObjectAlreadyDestroyed));
+   RaiseScriptError(exec, EScriptError, RTE_ObjectAlreadyDestroyed);
 end;
 
 // GetBaseType
@@ -3414,7 +3382,7 @@ begin
       except
          on E: EScriptError do begin
             FProg.CompileMsgs.AddCompilerErrorFmt(E.Pos, CPE_FunctionOptimizationFailed,
-                                                  [FuncSym.Name, E.RawClassName, E.RawMessage],
+                                                  [FuncSym.Name, E.RawClassName, E.Message],
                                                    TCompilerErrorMessage);
          end;
          on E: Exception do begin
@@ -3753,6 +3721,7 @@ end;
 function TFuncExpr.Eval(exec : TdwsExecution) : Variant;
 var
    oldBasePointer : Integer;
+   oldStatus : TExecutionStatusResult;
    func : TFuncSymbol;
 begin
    try
@@ -3763,6 +3732,7 @@ begin
 
          EvalPushExprs(exec);
 
+         oldStatus:=exec.Status;
          oldBasePointer:=exec.Stack.SwitchFrame(FLevel);
          exec.EnterRecursion(Self);
          try
@@ -3770,6 +3740,7 @@ begin
          finally
             exec.LeaveRecursion;
             exec.Stack.RestoreFrame(FLevel, oldBasePointer);
+            exec.Status:=oldStatus;
          end;
 
          Result:=PostCall(exec);
@@ -4170,7 +4141,7 @@ begin
    p:=exec.SelfScriptObject;
    FBaseExpr.EvalAsScriptObj(exec, p^);
    if (p^<>nil) and p^.Destroyed then
-      RaiseObjectAlreadyDestroyed;
+      RaiseObjectAlreadyDestroyed(exec);
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, p^);
 
    Result:=FFunc;
@@ -4196,7 +4167,7 @@ begin
    // Find virtual method
    p:=exec.SelfScriptObject;
    FBaseExpr.EvalAsScriptObj(exec, p^);
-   CheckScriptObject(p^);
+   CheckScriptObject(exec, p^);
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, p^);
    Result:=FindVirtualMethod(p^.ClassSym);
 end;
@@ -4215,7 +4186,7 @@ begin
       buf:=FBaseExpr.EvalAsInteger(exec)
    else begin
       FBaseExpr.EvalAsScriptObj(exec, exec.SelfScriptObject^);
-      CheckScriptObject(exec.SelfScriptObject^);
+      CheckScriptObject(exec, exec.SelfScriptObject^);
       buf:=Int64(exec.SelfScriptObject^.ClassSym);
       exec.SelfScriptObject^:=nil;
    end;
@@ -4237,7 +4208,7 @@ begin
    clsInt:=exec.Stack.ReadIntValue(exec.Stack.StackPointer+FSelfAddr);
    classSym:=TClassSymbol(clsInt);
    if classSym=nil then
-      RaiseScriptError(EScriptError.Create(RTE_ClassTypeIsNil));
+      RaiseScriptError(exec, RTE_ClassTypeIsNil);
 
    Result:=ClassSym.VMTMethod(TMethodSymbol(FFunc).VMTIndex);
 end;
@@ -4308,7 +4279,7 @@ begin
   Assert(classSym <> nil);
 
   if classSym.IsAbstract then
-    RaiseScriptError(RTE_InstanceOfAbstractClass);
+    RaiseScriptError(exec, RTE_InstanceOfAbstractClass);
 
   Result := FindVirtualMethod(classSym);
 
@@ -6456,7 +6427,7 @@ var
 begin
    for x := 0 to FPosList.Count - 1 do begin
       symPos := TSymbolPosition(FPosList[x]);
-      if (sourceFile<>'') and (symPos.ScriptPos.SourceFile.SourceFile<>sourceFile) then continue;
+      if (sourceFile<>'') and (symPos.ScriptPos.SourceFile.Name<>sourceFile) then continue;
       if (symPos.ScriptPos.Line = ALine) and (symPos.ScriptPos.Col = ACol) then begin
          Result := symPos.Symbol;
          Exit;    // found the symbol, stop searching
@@ -6804,7 +6775,7 @@ begin
   for x := 0 to FSourceList.Count - 1 do
   begin
     // if both names match, consider it a match
-    if CompareText(TScriptSourceItem(FSourceList[x]).SourceFile.SourceFile, SourceFileName) = 0 then
+    if CompareText(TScriptSourceItem(FSourceList[x]).SourceFile.Name, SourceFileName) = 0 then
     begin
       Result := x;
       Break;           // found match, stop searching

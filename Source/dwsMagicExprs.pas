@@ -161,7 +161,7 @@ begin
    try
       Result:=FOnEval(@execRec);
    except
-      RaiseScriptError;
+      RaiseScriptError(exec);
    end;
 end;
 
@@ -203,7 +203,7 @@ begin
       Result:=FOnEval(@execRec);
    except
       Result:=0;
-      RaiseScriptError;
+      RaiseScriptError(exec);
    end;
 end;
 
@@ -249,7 +249,7 @@ begin
    try
       FOnEval(@execRec, Result);
    except
-      RaiseScriptError;
+      RaiseScriptError(exec);
    end;
 end;
 
@@ -290,7 +290,7 @@ begin
    try
       FOnEval(@execRec, Result);
    except
-      RaiseScriptError;
+      RaiseScriptError(exec);
    end;
 end;
 
@@ -317,7 +317,7 @@ begin
    try
       FOnEval(@execRec);
    except
-      RaiseScriptError;
+      RaiseScriptError(exec);
    end;
 end;
 

@@ -33,8 +33,8 @@ type
    //
    TSourceFile = class
       public
-         SourceFile: String;
-         SourceCode: String;
+         Name : String;
+         Code : String;
    end;
 
    // TScriptPos
@@ -63,6 +63,7 @@ type
          function SamePosAs(const aPos : TScriptPos) : Boolean;
          function IsMainModule : Boolean;
          function IsSourceFile(const name : String) : Boolean;
+         function Defined : Boolean;
 
          procedure IncCol; inline;
          procedure NewLine; inline;
@@ -89,10 +90,6 @@ type
    // Messages without position
 
    TInfoMessage = class(TdwsMessage)
-      function AsInfo: String; override;
-   end;
-
-   TErrorMessage = class(TdwsMessage)
       function AsInfo: String; override;
    end;
 
@@ -132,24 +129,24 @@ type
          FMessageList: TTightList;
          FHasErrors : Boolean;
 
+      protected
          function GetMsg(Index: Integer): TdwsMessage;
          function GetMsgCount: Integer;
-         procedure AddMsg(aMessage: TdwsMessage);
 
       public
          destructor Destroy; override;
 
          procedure AddInfo(const Text: String);
-         procedure AddError(const Text: String);
          function LastMessagePos : TScriptPos;
 
+         procedure AddMsg(aMessage : TdwsMessage); virtual;
          procedure Clear;
 
          function AsInfo: String;
 
-         property Msgs[Index: Integer]: TdwsMessage read GetMsg; default;
-         property Count: Integer read GetMsgCount;
-         property HasErrors: Boolean read FHasErrors;
+         property Msgs[index : Integer] : TdwsMessage read GetMsg; default;
+         property Count : Integer read GetMsgCount;
+         property HasErrors : Boolean read FHasErrors write FHasErrors;
    end;
 
    // TdwsCompileMessageList
@@ -267,14 +264,21 @@ end;
 //
 function TScriptPos.IsMainModule : Boolean;
 begin
-   Result:=(SourceFile.SourceFile=MSG_MainModule);
+   Result:=(SourceFile.Name=MSG_MainModule);
 end;
 
 // IsSourceFile
 //
 function TScriptPos.IsSourceFile(const name : String) : Boolean;
 begin
-   Result:=(SourceFile<>nil) and (SourceFile.SourceFile=name);
+   Result:=(SourceFile<>nil) and (SourceFile.Name=name);
+end;
+
+// Defined
+//
+function TScriptPos.Defined : Boolean;
+begin
+   Result:=(SourceFile<>nil) and (FLineCol<>0);
 end;
 
 // IncCol
@@ -298,8 +302,8 @@ begin
    if SourceFile=nil then
       Result:=''
    else begin
-      if SourceFile.SourceFile<>MSG_MainModule then
-         Result:=Format(MSG_ScriptPosFile, [SourceFile.SourceFile])
+      if not IsMainModule then
+         Result:=Format(MSG_ScriptPosFile, [SourceFile.Name])
       else Result:='';
       if Col<>cNullPos.Col then begin
          if Result<>'' then
@@ -386,14 +390,6 @@ begin
    AddMsg(TInfoMessage.Create(Self, Text));
 end;
 
-// AddError
-//
-procedure TdwsMessageList.AddError(const Text: String);
-begin
-   AddMsg(TErrorMessage.Create(Self, Text));
-   FHasErrors:=True;
-end;
-
 // LastMessagePos
 //
 function TdwsMessageList.LastMessagePos : TScriptPos;
@@ -450,17 +446,6 @@ begin
 end;
 
 // ------------------
-// ------------------ TErrorMessage ------------------
-// ------------------
-
-// AsInfo
-//
-function TErrorMessage.AsInfo: String;
-begin
-   Result:=Format(MSG_RuntimeError, [Text]);
-end;
-
-// ------------------
 // ------------------ TScriptMessage ------------------
 // ------------------
 
@@ -484,7 +469,9 @@ end;
 //
 function TScriptMessage.AsInfo: String;
 begin
-   Result:=FText+Pos.AsInfo;
+   if Pos.Defined then
+      Result:=FText+Pos.AsInfo
+   else Result:=FText;
 end;
 
 // ------------------

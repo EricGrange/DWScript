@@ -131,13 +131,27 @@ type
 
    TLoopExitable = (leNotExitable, leBreak, leExit);
 
+   TdwsOptimizationMessageList = class(TdwsRuntimeMessageList)
+      private
+         FCompileMsgs : TdwsCompileMessageList;
+
+      public
+         procedure AddMsg(aMessage : TdwsMessage); override;
+
+   end;
+
    // holds execution context for optimizations during compilation
    TdwsCompilerExecution = class (TdwsExecution)
       private
          FCompiler : TdwsCompiler;
+         FOptimMsgs : TdwsOptimizationMessageList;
 
       protected
-         function GetMsgs : TdwsMessageList; override;
+         function GetMsgs : TdwsRuntimeMessageList; override;
+
+      public
+         constructor Create(const stackParams : TStackParameters; compiler : TdwsCompiler);
+         destructor Destroy; override;
    end;
 
    IdwsEvaluateExpr = interface
@@ -479,8 +493,7 @@ begin
    stackParams.MaxByteSize:=MaxInt;
    stackParams.MaxRecursionDepth:=MaxInt;
 
-   FExec:=TdwsCompilerExecution.Create(stackParams);
-   FExec.FCompiler:=Self;
+   FExec:=TdwsCompilerExecution.Create(stackParams, Self);
 end;
 
 // Destroy
@@ -911,8 +924,8 @@ begin
 
          sourceFile:=TSourceFile.Create;
          try
-            sourceFile.SourceCode:=anExpression;
-            sourceFile.SourceFile:=MSG_MainModule;
+            sourceFile.Code:=anExpression;
+            sourceFile.Name:=MSG_MainModule;
             compiler.FTok:=TTokenizer.Create(sourceFile, compiler.FMsgs);
             try
                try
@@ -4811,7 +4824,7 @@ begin
          if name='' then
             FMsgs.AddCompilerError(hotPos, CPE_IncludeItemExpected)
          else if SameText(name, 'FILE') then
-            value:=hotPos.SourceFile.SourceFile
+            value:=hotPos.SourceFile.Name
          else if SameText(name, 'LINE') then
             value:=IntToStr(hotPos.Line)
          else if SameText(name, 'DATE') then
@@ -6198,14 +6211,45 @@ begin
 end;
 
 // ------------------
+// ------------------ TdwsOptimizationMessageList ------------------
+// ------------------
+
+// AddMsg
+//
+procedure TdwsOptimizationMessageList.AddMsg(aMessage : TdwsMessage);
+begin
+   inherited;
+   FCompileMsgs.AddMsg(aMessage);
+   FCompileMsgs.HasErrors:=FCompileMsgs.HasErrors or HasErrors;
+end;
+
+// ------------------
 // ------------------ TdwsCompilerExecution ------------------
 // ------------------
 
+// Create
+//
+constructor TdwsCompilerExecution.Create(const stackParams : TStackParameters; compiler : TdwsCompiler);
+begin
+   inherited Create(stackParams);
+   FCompiler:=compiler;
+   FOptimMsgs:=TdwsOptimizationMessageList.Create;
+   FOptimMsgs.FCompileMsgs:=compiler.FMsgs;
+end;
+
+// Destroy
+//
+destructor TdwsCompilerExecution.Destroy;
+begin
+   inherited;
+   FOptimMsgs.Free;
+end;
+
 // GetMsgs
 //
-function TdwsCompilerExecution.GetMsgs : TdwsMessageList;
+function TdwsCompilerExecution.GetMsgs : TdwsRuntimeMessageList;
 begin
-   Result:=FCompiler.FMsgs;
+   Result:=FOptimMsgs;
 end;
 
 // ------------------

@@ -920,7 +920,7 @@ var
    i : Integer;
 begin
    FLookupVar.Line:=scriptPos.Line;
-   FLookupVar.SourceName:=scriptPos.SourceFile.SourceFile;
+   FLookupVar.SourceName:=scriptPos.SourceFile.Name;
    if Find(FLookupVar, i) then
       Result:=Items[i]
    else Result:=nil;

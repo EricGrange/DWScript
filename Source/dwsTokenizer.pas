@@ -620,7 +620,7 @@ var
 
 constructor TTokenizer.Create(sourceFile : TSourceFile; msgs : TdwsCompileMessageList);
 begin
-   FText := sourceFile.SourceCode + (cLineTerminator+#0);
+   FText := sourceFile.Code + (cLineTerminator+#0);
    FToken := nil;
    FMsgs := Msgs;
    FNextToken := nil;

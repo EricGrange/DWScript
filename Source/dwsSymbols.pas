@@ -60,6 +60,7 @@ type
    TTypeSymbol = class;
    TParamsSymbolTable = class;
    TConditionsSymbolTable = class;
+   TdwsRuntimeMessageList = class;
 
    // Interface for external debuggers
    IDebugger = interface
@@ -75,7 +76,7 @@ type
 
    IdwsExecution = interface
       ['{8F2D1D7E-9954-4391-B919-86EF1EE21C8C}']
-      function GetMsgs : TdwsMessageList;
+      function GetMsgs : TdwsRuntimeMessageList;
       function  GetDebugger : IDebugger;
       procedure SetDebugger(const aDebugger : IDebugger);
       function GetExecutionObject : TdwsExecution;
@@ -84,12 +85,33 @@ type
       function GetStack : TStack;
       function GetProgramState : TProgramState;
 
+      function GetCallStack : TExprBaseArray;
+
       property ProgramState : TProgramState read GetProgramState;
       property Stack : TStack read GetStack;
-      property Msgs : TdwsMessageList read GetMsgs;
+      property Msgs : TdwsRuntimeMessageList read GetMsgs;
       property Debugger : IDebugger read GetDebugger write SetDebugger;
       property ExecutionObject : TdwsExecution read GetExecutionObject;
       property UserObject : TObject read GetUserObject write SetUserObject;
+   end;
+
+   TRuntimeErrorMessage = class(TScriptMessage)
+      private
+         FCallStack : TExprBaseArray;
+
+      public
+         function AsInfo: String; override;
+
+         property CallStack : TExprBaseArray read FCallStack;
+   end;
+
+   // TdwsRuntimeMessageList
+   //
+   TdwsRuntimeMessageList = class (TdwsMessageList)
+      public
+         procedure AddRuntimeError(const Text: String); overload;
+         procedure AddRuntimeError(const scriptPos : TScriptPos; const Text: String;
+                                   const callStack : TExprBaseArray); overload;
    end;
 
    TExecutionStatusResult = (esrNone, esrExit, esrBreak, esrContinue);
@@ -121,7 +143,7 @@ type
          procedure StartDebug;
          procedure StopDebug;
 
-         function GetMsgs : TdwsMessageList; virtual; abstract;
+         function GetMsgs : TdwsRuntimeMessageList; virtual; abstract;
 
          function GetExecutionObject : TdwsExecution;
 
@@ -140,7 +162,8 @@ type
 
          procedure EnterRecursion(caller : TExprBase); inline;
          procedure LeaveRecursion; inline;
-         procedure RaiseMaxRecursionReached(caller : TExprBase);
+         procedure RaiseMaxRecursionReached;
+         function GetCallStack : TExprBaseArray;
 
          property Status : TExecutionStatusResult read FStatus write FStatus;
          property Stack : TStackMixIn read FStack;
@@ -148,7 +171,7 @@ type
          property SelfScriptObject : PIScriptObj read FSelfScriptObject write FSelfScriptObject;
          property SelfScriptClassSymbol : TClassSymbol read FSelfScriptClassSymbol write FSelfScriptClassSymbol;
 
-         procedure SetScriptError(const expr : TExprBase);
+         procedure SetScriptError(expr : TExprBase);
          procedure ClearScriptError;
 
          property LastScriptError : TExprBase read FLastScriptError;
@@ -160,7 +183,7 @@ type
          property Debugger : IDebugger read FDebugger write SetDebugger;
          property IsDebugging : Boolean read FIsDebugging;
 
-         property Msgs : TdwsMessageList read GetMsgs;
+         property Msgs : TdwsRuntimeMessageList read GetMsgs;
 
          // specifies an external object for IInfo constructors, temporary
          property ExternalObject : TObject read FExternalObject write FExternalObject;
@@ -187,6 +210,8 @@ type
 
       function ScriptPos : TScriptPos; virtual; abstract;
       function ScriptLocation : String; virtual; abstract;
+
+      class function CallStackToString(const callStack : TExprBaseArray) : String; static;
    end;
 
    // TExprBaseList
@@ -1170,7 +1195,6 @@ type
          FScriptPos : TScriptPos;
          FScriptCallStack : TExprBaseArray;
          FRawClassName : String;
-         FRawMessage : String;
 
       public
          constructor CreatePosFmt(const pos : TScriptPos; const Msg: string; const Args: array of const);
@@ -1178,7 +1202,6 @@ type
          property Pos : TScriptPos read FScriptPos write FScriptPos;
          property ScriptCallStack : TExprBaseArray read FScriptCallStack write FScriptCallStack;
          property RawClassName : String read FRawClassName write FRawClassName;
-         property RawMessage : String read FRawMessage write FRawMessage;
    end;
    EScriptErrorClass = class of EScriptError;
 
@@ -1214,9 +1237,35 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsExprs;
+
 const
    cFuncKindToString : array [Low(TFuncKind)..High(TFuncKind)] of String = (
       'function', 'procedure', 'constructor', 'destructor', 'method' );
+
+// ------------------
+// ------------------ TExprBase ------------------
+// ------------------
+
+// CallStackToString
+//
+class function TExprBase.CallStackToString(const callStack : TExprBaseArray) : String;
+var
+   i : Integer;
+   buffer : TWriteOnlyBlockStream;
+begin
+   buffer:=TWriteOnlyBlockStream.Create;
+   try
+      for i:=0 to High(callStack) do begin
+         if i>0 then
+            buffer.WriteString(#13#10);
+         buffer.WriteString(callStack[i].ScriptLocation);
+      end;
+      Result:=buffer.ToString;
+   finally
+      buffer.Free;
+   end;
+end;
 
 // ------------------
 // ------------------ TExprBaseListRec ------------------
@@ -3784,7 +3833,7 @@ procedure TdwsExecution.EnterRecursion(caller : TExprBase);
 begin
    FCallStack.Push(caller);
    if FCallStack.Count>=FStack.MaxRecursionDepth then
-      RaiseMaxRecursionReached(caller);
+      RaiseMaxRecursionReached;
 
    if IsDebugging then
       Debugger.EnterFunc(Self, caller);
@@ -3802,15 +3851,27 @@ end;
 
 // RaiseMaxRecursionReached
 //
-procedure TdwsExecution.RaiseMaxRecursionReached(caller : TExprBase);
+procedure TdwsExecution.RaiseMaxRecursionReached;
 begin
-   SetScriptError(caller);
+   SetScriptError(FCallStack.Peek);
+   FCallStack.Pop;
    raise EStackException.CreateFmt(RTE_MaximalRecursionExceeded, [FStack.MaxRecursionDepth]);
+end;
+
+// GetCallStack
+//
+function TdwsExecution.GetCallStack : TExprBaseArray;
+var
+   i : Integer;
+begin
+   SetLength(Result, CallStack.Count);
+   for i:=0 to CallStack.Count-1 do
+      Result[i]:=(TObject(CallStack.List[CallStack.Count-1-i]) as TExprBase);
 end;
 
 // SetScriptError
 //
-procedure TdwsExecution.SetScriptError(const expr : TExprBase);
+procedure TdwsExecution.SetScriptError(expr : TExprBase);
 var
    i : Integer;
 begin
@@ -3909,6 +3970,49 @@ begin
    FScriptPos:=pos;
    FCondition:=cond;
    FMessage:=msg;
+end;
+
+// ------------------
+// ------------------ TRuntimeErrorMessage ------------------
+// ------------------
+
+// AsInfo
+//
+function TRuntimeErrorMessage.AsInfo: String;
+begin
+   Result:=Text;
+   if Length(FCallStack)>0 then
+      Result:=Result+' in '+(FCallStack[High(FCallStack)] as TFuncExpr).FuncSym.QualifiedName;
+   if Pos.Defined then
+      Result:=Result+Pos.AsInfo;
+   if Length(FCallStack)>0 then begin
+      Result:=result+#13#10+TExprBase.CallStackToString(FCallStack);
+   end;
+   Result:=Format(MSG_RuntimeError, [Result]);
+end;
+
+// ------------------
+// ------------------ TdwsRuntimeMessageList ------------------
+// ------------------
+
+// AddRuntimeError
+//
+procedure TdwsRuntimeMessageList.AddRuntimeError(const Text: String);
+begin
+   AddRuntimeError(cNullPos, Text, nil);
+end;
+
+// AddRuntimeError
+//
+procedure TdwsRuntimeMessageList.AddRuntimeError(const scriptPos : TScriptPos;
+                     const Text: String; const callStack : TExprBaseArray);
+var
+   msg : TRuntimeErrorMessage;
+begin
+   msg:=TRuntimeErrorMessage.Create(Self, Text, scriptPos);
+   msg.FCallStack:=callStack;
+   AddMsg(msg);
+   HasErrors:=True;
 end;
 
 end.
