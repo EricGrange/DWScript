@@ -19,7 +19,7 @@ unit dwsUtils;
 
 interface
 
-uses Classes, SysUtils, Variants;
+uses Classes, SysUtils, Variants, SyncObjs;
 
 type
 
@@ -231,6 +231,7 @@ type
 
 var
    vCharStrings : array [0..127] of TStringList;
+   vUnifierLock : TCriticalSection;
 
 // CompareStrings
 //
@@ -252,12 +253,12 @@ begin
       i:=Ord(fromStr[1]);
       if i<=High(vCharStrings) then begin
          sl:=vCharStrings[i];
-         System.MonitorEnter(sl);
+         vUnifierLock.Enter;
          i:=sl.IndexOf(fromStr);
          if i<0 then
             i:=sl.Add(fromStr);
          toStr:=TStringListCracker(sl).FList[i].FString;
-         System.MonitorExit(sl);
+         vUnifierLock.Leave;
       end else toStr:=fromStr;
    end;
 end;
@@ -271,9 +272,9 @@ var
 begin
    for i:=Low(vCharStrings) to High(vCharStrings) do begin
       sl:=vCharStrings[i];
-      System.MonitorEnter(sl);
+      vUnifierLock.Enter;
       sl.Clear;
-      System.MonitorExit(sl);
+      vUnifierLock.Leave;
    end;
 end;
 
@@ -283,6 +284,7 @@ procedure InitializeStringsUnifier;
 var
    i : Integer;
 begin
+   vUnifierLock:=TCriticalSection.Create;
    for i:=Low(vCharStrings) to High(vCharStrings) do begin
       vCharStrings[i]:=TFastCompareStringList.Create;
       vCharStrings[i].Sorted:=True;
@@ -297,6 +299,7 @@ var
 begin
    for i:=Low(vCharStrings) to High(vCharStrings) do
       FreeAndNil(vCharStrings[i]);
+   FreeAndNil(vUnifierLock);
 end;
 
 // ------------------
