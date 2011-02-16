@@ -88,6 +88,8 @@ type
       protected
 
       public
+         constructor Create;
+
          property Enabled : Boolean read FEnabled write FEnabled;
          property Line : Integer read FLine write FLine;
          property SourceName : String read FSourceName write FSourceName;
@@ -869,6 +871,17 @@ begin
       inherited;
 end;
 
+// ------------------
+// ------------------ TdwsDebuggerBreakpoint ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsDebuggerBreakpoint.Create;
+begin
+   inherited;
+   FEnabled:=True;
+end;
 
 // ------------------
 // ------------------ TdwsDebuggerBreakpoints ------------------
