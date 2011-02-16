@@ -2647,6 +2647,9 @@ var
 begin
   FIsGenerating := True;
 
+  if DataType='' then
+    raise Exception.CreateFmt(UNT_DatatypeNotSpecified, [Name, ParentSym.Name]);
+
   propSym := TPropertySymbol.Create(Name, GetDataType(Table, DataType), Visibility);
   Result := PropSym;
 

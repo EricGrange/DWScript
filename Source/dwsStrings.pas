@@ -412,6 +412,7 @@ const
   UNT_SymbolGenerationError = '%s: "%s" -- %s';
 
   UNT_DatatypeUnknown = 'DataType "%s" not found';
+  UNT_DatatypeNotSpecified = 'DataType not specified for property "%s" of class "%s"';
   UNT_AutoInstantiateWithoutClass = 'AutoInstantiate is true but DataType "%s" isn''t a class';
 
   UNT_ClassAlreadyDefined = 'Class already defined';
