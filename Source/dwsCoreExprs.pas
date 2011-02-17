@@ -4982,22 +4982,30 @@ end;
 { TFinallyExpr }
 
 procedure TFinallyExpr.EvalNoResult(exec : TdwsExecution);
+var
+   oldStatus : TExecutionStatusResult;
 begin
    try
       exec.DoStep(FTryExpr);
       FTryExpr.EvalNoResult(exec);
    finally
-      if System.ExceptObject is Exception then begin
-         EnterExceptionBlock(exec);
-         try
+      oldStatus:=exec.Status;
+      try
+         exec.Status:=esrNone;
+         if System.ExceptObject is Exception then begin
+            EnterExceptionBlock(exec);
+            try
+               exec.DoStep(FHandlerExpr);
+               FHandlerExpr.EvalNoResult(exec);
+            finally
+               LeaveExceptionBlock(exec);
+            end;
+         end else begin
             exec.DoStep(FHandlerExpr);
             FHandlerExpr.EvalNoResult(exec);
-         finally
-            LeaveExceptionBlock(exec);
          end;
-      end else begin
-         exec.DoStep(FHandlerExpr);
-         FHandlerExpr.EvalNoResult(exec);
+      finally
+         exec.Status:=oldStatus;
       end;
    end;
 end;
