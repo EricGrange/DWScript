@@ -661,7 +661,7 @@ begin
 
    step:=TdwsDSCStepOver.Create(Self);
    step.SourceFileName:=sourceFileName;
-   step.CallStackDepth:=Execution.ExecutionObject.CallStack.Count;
+   step.CallStackDepth:=Execution.ExecutionObject.CallStackDepth;
    FState:=dsDebugResuming;
 end;
 
@@ -682,7 +682,7 @@ begin
 
    step:=TdwsDSCStepOut.Create(Self);
    step.SourceFileName:=sourceFileName;
-   step.CallStackDepth:=Execution.ExecutionObject.CallStack.Count;
+   step.CallStackDepth:=Execution.ExecutionObject.CallStackDepth;
    FState:=dsDebugResuming;
 end;
 
@@ -761,7 +761,7 @@ begin
          end;
          dsDebugSuspended : begin
             Result:=[daCanResume, daCanEndDebug, daCanStep, daCanEvaluate];
-            if Execution.ExecutionObject.CallStack.Count>0 then
+            if Execution.ExecutionObject.CallStackDepth>0 then
                Include(Result, daCanStepOut);
          end;
          dsDebugSuspending :
@@ -1077,7 +1077,7 @@ end;
 //
 function TdwsDSCStepOver.SuspendExecution : Boolean;
 begin
-   Result:=    (Debugger.Execution.ExecutionObject.CallStack.Count<=FCallStackDepth)
+   Result:=    (Debugger.Execution.ExecutionObject.CallStackDepth<=FCallStackDepth)
            and (   (SourceFileName='')
                 or Debugger.CurrentExpression.ScriptPos.IsSourceFile(SourceFileName));
    if Result then
@@ -1092,7 +1092,7 @@ end;
 //
 function TdwsDSCStepOut.SuspendExecution : Boolean;
 begin
-   Result:=    (Debugger.Execution.ExecutionObject.CallStack.Count<FCallStackDepth)
+   Result:=    (Debugger.Execution.ExecutionObject.CallStackDepth<FCallStackDepth)
            and (   (SourceFileName='')
                 or Debugger.CurrentExpression.ScriptPos.IsSourceFile(SourceFileName));
    if Result then

@@ -342,6 +342,11 @@ type
          function GetResult : TdwsResult;
          function GetObjectCount : Integer;
 
+         procedure EnterRecursion(caller : TExprBase);
+         procedure LeaveRecursion;
+         procedure RaiseMaxRecursionReached;
+         procedure SetCurrentProg(const val : TdwsProgram); inline;
+
       public
          constructor Create(aProgram : TdwsMainProgram; const stackParams : TStackParameters);
          destructor Destroy; override;
@@ -355,7 +360,10 @@ type
          procedure Stop;
          procedure EndProgram;
 
-         class function CallStackToString(const callStack : TExprBaseArray) : String; static;
+         function CallStackDepth : Integer; override;
+         function GetCallStack : TdwsExprLocationArray; override;
+
+         class function CallStackToString(const callStack : TdwsExprLocationArray) : String; static;
          procedure RaiseAssertionFailed(const msg : String; const scriptPos : TScriptPos);
          procedure RaiseAssertionFailedFmt(const fmt : String; const args : array of const; const scriptPos : TScriptPos);
 
@@ -363,7 +371,7 @@ type
          procedure ReleaseProgramInfo(info : TProgramInfo);
 
          property Prog : TdwsMainProgram read FProg;
-         property CurrentProg : TdwsProgram read FCurrentProg;
+         property CurrentProg : TdwsProgram read FCurrentProg write SetCurrentProg;
          property ProgramInfo : TProgramInfo read FProgramInfo;
 
          property Parameters : TData read FParameters;
@@ -537,9 +545,6 @@ type
 
    // Base class of all expressions attached to a program
    TProgramExpr = class(TExprBase)
-      private
-         FProg : TdwsProgram;
-
       protected
          function GetType : TSymbol; virtual;
          function GetBaseType : TTypeSymbol; virtual;
@@ -549,8 +554,8 @@ type
 
          procedure Initialize; virtual;
          function  IsConstant : Boolean; virtual;
-         function  Optimize(exec : TdwsExecution) : TProgramExpr; virtual;
-         procedure TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList); virtual;
+         function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; virtual;
+         procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); virtual;
 
          procedure EvalNoResult(exec : TdwsExecution); virtual;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -576,9 +581,8 @@ type
          procedure RaiseUpperExceeded(exec : TdwsExecution; index : Integer);
          procedure RaiseLowerExceeded(exec : TdwsExecution; index : Integer);
 
-         function ScriptLocation : String; override;
+         function ScriptLocation(prog : TObject) : String; override;
 
-         property Prog : TdwsProgram read FProg;
          property Typ : TSymbol read GetType;
          property BaseType : TTypeSymbol read GetBaseType;
    end;
@@ -601,8 +605,8 @@ type
          function IsStringValue : Boolean;
          function IsVariantValue : Boolean;
 
-         function OptimizeToNoPosExpr(exec : TdwsExecution) : TTypedExpr;
-         function OptimizeIntegerConstantToFloatConstant(exec : TdwsExecution) : TTypedExpr;
+         function OptimizeToNoPosExpr(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
+         function OptimizeIntegerConstantToFloatConstant(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
 
          function ScriptPos : TScriptPos; override;
 
@@ -623,10 +627,10 @@ type
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
 
-         procedure TypeCheck(compileMsgs : TdwsCompileMessageList);
+         procedure TypeCheck(prog : TdwsProgram);
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
-         function OptimizeToNoResultExpr(exec : TdwsExecution) : TNoResultExpr;
+         function OptimizeToNoResultExpr(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
 
          function ScriptPos : TScriptPos; override;
          property Pos : TScriptPos read FPos;
@@ -691,7 +695,7 @@ type
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TSymbol);
 
-         procedure TypeCheck(compileMsgs : TdwsCompileMessageList);
+         procedure TypeCheck(prog : TdwsProgram);
 
          function ScriptPos : TScriptPos; override;
 
@@ -708,10 +712,10 @@ type
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol);
          destructor Destroy; override;
          function AddArg(arg : TTypedExpr) : TSymbol; virtual; abstract;
-         procedure TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList); override;
+         procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); override;
          procedure Initialize; override;
          function GetArgs : TExprBaseList;
-         function Optimize(exec : TdwsExecution) : TProgramExpr; override;
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function IsConstant : Boolean; override;
          property FuncSym: TFuncSymbol read FFunc;
    end;
@@ -876,7 +880,7 @@ type
     destructor Destroy; override;
     function AssignConnectorSym(ConnectorType: IConnectorType): Boolean;
     function AddArg(ArgExpr: TTypedExpr) : TSymbol;
-    procedure TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList); override;
+    procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); override;
     function Eval(exec : TdwsExecution) : Variant; override;
     procedure Initialize; override;
     function IsWritable : Boolean; override;
@@ -911,7 +915,7 @@ type
     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const Name: string;
                        BaseExpr, ValueExpr: TTypedExpr);
     destructor Destroy; override;
-    function AssignConnectorSym(ConnectorType: IConnectorType): Boolean;
+    function AssignConnectorSym(Prog: TdwsProgram; ConnectorType: IConnectorType): Boolean;
     procedure EvalNoResult(exec : TdwsExecution); override;
     procedure Initialize; override;
   end;
@@ -927,7 +931,7 @@ type
                             BaseExpr: TDataExpr);
          destructor Destroy; override;
 
-         procedure TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList); override;
+         procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); override;
          procedure Initialize; override;
 
          property BaseExpr: TDataExpr read FBaseExpr;
@@ -1061,7 +1065,7 @@ type
 
          procedure Initialize; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList); override;
+         procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); override;
          function  IsConstant : Boolean; override;
 
          property Expr: TProgramExpr read FExpr write FExpr;
@@ -1103,7 +1107,7 @@ type
          procedure Delete(index : Integer);
 
          procedure Initialize;
-         procedure TypeCheck(const pos : TScriptPos; ExpectedTyp : TSymbol; compileMsgs : TdwsCompileMessageList);
+         procedure TypeCheck(Prog : TdwsProgram; const pos : TScriptPos; ExpectedTyp : TSymbol);
 
          property Expr[const x: Integer]: TTypedExpr read GetExpr write SetExpr; default;
          property Count : Integer read GetCount;
@@ -1738,11 +1742,15 @@ begin
 
    FProg:=aProgram;
    FProg._AddRef;
+
    FMsgs:=TdwsRuntimeMessageList.Create;
 
    if aProgram.CompileMsgs.HasErrors then
       FProgramState:=psUndefined
    else FProgramState:=psReadyToRun;
+
+   FCallStack.Push(nil);
+   FCallStack.Push(FProg);
 end;
 
 // Destroy
@@ -1988,7 +1996,7 @@ end;
 
 // CallStackToString
 //
-class function TdwsProgramExecution.CallStackToString(const callStack : TExprBaseArray) : String;
+class function TdwsProgramExecution.CallStackToString(const callStack : TdwsExprLocationArray) : String;
 begin
    Result:=TExprBase.CallStackToString(callStack);
 end;
@@ -2192,6 +2200,72 @@ end;
 function TdwsProgramExecution.GetProg : IdwsProgram;
 begin
    Result:=FProg;
+end;
+
+// EnterRecursion
+//
+procedure TdwsProgramExecution.EnterRecursion(caller : TExprBase);
+begin
+   FCallStack.Push(caller);
+   FCallStack.Push(FCurrentProg);
+   if FCallStack.Count div 2>FStack.MaxRecursionDepth then
+      RaiseMaxRecursionReached;
+
+   if IsDebugging then
+      Debugger.EnterFunc(Self, caller);
+end;
+
+// LeaveRecursion
+//
+procedure TdwsProgramExecution.LeaveRecursion;
+begin
+   if IsDebugging then
+      Debugger.LeaveFunc(Self, FCallStack.Peek);
+
+   FCallStack.Pop;
+   FCallStack.Pop;
+
+   if FCallStack.Count>0 then
+      FCurrentProg:=FCallStack.Peek
+   else FCurrentProg:=FProg;
+end;
+
+// SetCurrentProg
+//
+procedure TdwsProgramExecution.SetCurrentProg(const val : TdwsProgram);
+begin
+   FCurrentProg:=val;
+end;
+
+// RaiseMaxRecursionReached
+//
+procedure TdwsProgramExecution.RaiseMaxRecursionReached;
+begin
+   FCallStack.Pop;
+   SetScriptError(FCallStack.Peek);
+   FCallStack.Pop;
+   raise EStackException.CreateFmt(RTE_MaximalRecursionExceeded, [FStack.MaxRecursionDepth]);
+end;
+
+// CallStackDepth
+//
+function TdwsProgramExecution.CallStackDepth : Integer;
+begin
+   Result:=(FCallStack.Count-2) div 2;
+end;
+
+// GetCallStack
+//
+function TdwsProgramExecution.GetCallStack : TdwsExprLocationArray;
+var
+   i, n : Integer;
+begin
+   n:=CallStackDepth;
+   SetLength(Result, n);
+   for i:=0 to n-1 do begin
+      Result[n-1-i].Expr:=(TObject(FCallStack.List[i*2+2]) as TExprBase);
+      Result[n-1-i].Prog:=TObject(FCallStack.List[i*2+3]);
+   end;
 end;
 
 // ------------------
@@ -2544,12 +2618,10 @@ end;
 //
 procedure TdwsProcedure.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
 var
-   oldProg : TdwsProgram;
    stackSize : Integer;
    oldStatus : TExecutionStatusResult;
 begin
-   oldProg:=exec.CurrentProg;
-   exec.FCurrentProg:=Self;
+   exec.CurrentProg:=Self;
 
    // Allocate stack space for local variables
    stackSize:=FAddrGenerator.DataSize;
@@ -2576,7 +2648,6 @@ begin
 
       // Free stack space for local variables
       exec.Stack.Pop(stackSize);
-      exec.FCurrentProg:=oldProg;
    end;
 end;
 
@@ -2681,7 +2752,7 @@ end;
 constructor TProgramExpr.Create(Prog: TdwsProgram);
 begin
    inherited Create;
-   FProg:=Prog;
+//   FProg:=Prog;
 end;
 
 // Initialize
@@ -2700,14 +2771,14 @@ end;
 
 // Optimize
 //
-function TProgramExpr.Optimize(exec : TdwsExecution) : TProgramExpr;
+function TProgramExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
 end;
 
 // TypeCheckNoPos
 //
-procedure TProgramExpr.TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList);
+procedure TProgramExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
 begin
    // nothing here
 end;
@@ -2913,10 +2984,10 @@ end;
 
 // ScriptLocation
 //
-function TProgramExpr.ScriptLocation : String;
+function TProgramExpr.ScriptLocation(prog : TObject) : String;
 begin
-   if Prog is TdwsProcedure then
-      Result:=TdwsProcedure(Prog).Func.QualifiedName+ScriptPos.AsInfo
+   if prog is TdwsProcedure then
+      Result:=TdwsProcedure(prog).Func.QualifiedName+ScriptPos.AsInfo
    else Result:=ScriptPos.AsInfo;
 end;
 
@@ -2974,21 +3045,21 @@ end;
 
 // OptimizeToNoPosExpr
 //
-function TTypedExpr.OptimizeToNoPosExpr(exec : TdwsExecution) : TTypedExpr;
+function TTypedExpr.OptimizeToNoPosExpr(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
 var
    optimized : TProgramExpr;
 begin
-   optimized:=Optimize(exec);
+   optimized:=Optimize(prog, exec);
    Assert(optimized is TTypedExpr);
    Result:=TTypedExpr(optimized);
 end;
 
 // OptimizeIntegerConstantToFloatConstant
 //
-function TTypedExpr.OptimizeIntegerConstantToFloatConstant(exec : TdwsExecution) : TTypedExpr;
+function TTypedExpr.OptimizeIntegerConstantToFloatConstant(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
 begin
    if IsConstant and IsIntegerValue then begin
-      Result:=TConstFloatExpr.CreateUnified(FProg, nil, EvalAsFloat(exec));
+      Result:=TConstFloatExpr.CreateUnified(prog, nil, EvalAsFloat(exec));
       Free;
    end else Result:=Self;
 end;
@@ -3054,9 +3125,9 @@ end;
 
 // TypeCheck
 //
-procedure TPosDataExpr.TypeCheck(compileMsgs : TdwsCompileMessageList);
+procedure TPosDataExpr.TypeCheck(prog : TdwsProgram);
 begin
-   TypeCheckNoPos(Pos, compileMsgs);
+   TypeCheckNoPos(prog, Pos);
 end;
 
 // ScriptPos
@@ -3084,9 +3155,9 @@ end;
 
 // TypeCheck
 //
-procedure TNoResultExpr.TypeCheck(compileMsgs : TdwsCompileMessageList);
+procedure TNoResultExpr.TypeCheck(prog : TdwsProgram);
 begin
-   TypeCheckNoPos(Pos, compileMsgs);
+   TypeCheckNoPos(prog, Pos);
 end;
 
 // ScriptPos
@@ -3113,11 +3184,11 @@ end;
 
 // OptimizeToNoResultExpr
 //
-function TNoResultExpr.OptimizeToNoResultExpr(exec : TdwsExecution) : TNoResultExpr;
+function TNoResultExpr.OptimizeToNoResultExpr(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
 var
    optimized : TProgramExpr;
 begin
-   optimized:=Optimize(exec);
+   optimized:=Optimize(prog, exec);
    Assert(optimized is TNoResultExpr);
    Result:=TNoResultExpr(optimized);
 end;
@@ -3295,7 +3366,7 @@ end;
 
 // TypeCheckNoPos
 //
-procedure TFuncExprBase.TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList);
+procedure TFuncExprBase.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
 var
    arg : TTypedExpr;
    x, paramCount, nbParamsToCheck : Integer;
@@ -3305,7 +3376,7 @@ begin
 
    // Check number of arguments = number of parameters
    if FArgs.Count>paramCount then begin
-      compileMsgs.AddCompilerError(Pos, CPE_TooManyArguments);
+      prog.CompileMsgs.AddCompilerError(Pos, CPE_TooManyArguments);
       while FArgs.Count>paramCount do begin
          FArgs.ExprBase[FArgs.Count-1].Free;
          FArgs.Delete(FArgs.Count-1);
@@ -3318,7 +3389,7 @@ begin
          FArgs.Add(TConstExpr.CreateTyped(Prog, paramSymbol.Typ,
                                           TParamSymbolWithDefaultValue(paramSymbol).DefaultValue))
       else begin
-         compileMsgs.AddCompilerError(Pos, CPE_TooFewArguments);
+         prog.CompileMsgs.AddCompilerError(Pos, CPE_TooFewArguments);
          Break;
       end;
    end;
@@ -3332,26 +3403,26 @@ begin
       paramSymbol:=TParamSymbol(FFunc.Params[x]);
 
       if arg is TArrayConstantExpr then
-         TArrayConstantExpr(arg).Prepare(paramSymbol.Typ.Typ);
+         TArrayConstantExpr(arg).Prepare(Prog, paramSymbol.Typ.Typ);
 
       // Expand integer arguments to float if necessary
-      if (paramSymbol.Typ = FProg.TypFloat) and (arg.Typ = FProg.TypInteger) then
-         arg := TConvFloatExpr.Create(FProg, arg);
+      if (paramSymbol.Typ = Prog.TypFloat) and (arg.Typ = Prog.TypInteger) then
+         arg := TConvFloatExpr.Create(Prog, arg);
 
       FArgs.ExprBase[x] := arg;
 
       if arg.Typ = nil then
-         compileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType, [x, paramSymbol.Typ.Name]);
+         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType, [x, paramSymbol.Typ.Name]);
       if paramSymbol.InheritsFrom(TVarParamSymbol) then begin
          if arg is TDataExpr then begin
             if not TDataExpr(arg).IsWritable then
-               compileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
-         end else compileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
+               prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
+         end else prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
       end;
       if arg.Typ=nil then
-         compileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType, [x, paramSymbol.Typ.Name])
+         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType, [x, paramSymbol.Typ.Name])
       else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
-         compileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long, [x, paramSymbol.Typ.Name, arg.Typ.Name]);
+         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long, [x, paramSymbol.Typ.Name, arg.Typ.Name]);
    end;
 end;
 
@@ -3374,7 +3445,7 @@ end;
 
 // Optimize
 //
-function TFuncExprBase.Optimize(exec : TdwsExecution) : TProgramExpr;
+function TFuncExprBase.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
    if IsConstant then begin
@@ -3383,14 +3454,14 @@ begin
          Result:=TConstExpr.CreateTyped(Prog, Typ, Eval(exec));
       except
          on E: EScriptError do begin
-            FProg.CompileMsgs.AddCompilerErrorFmt(E.Pos, CPE_FunctionOptimizationFailed,
-                                                  [FuncSym.Name, E.RawClassName, E.Message],
-                                                   TCompilerErrorMessage);
+            Prog.CompileMsgs.AddCompilerErrorFmt(E.Pos, CPE_FunctionOptimizationFailed,
+                                                 [FuncSym.Name, E.RawClassName, E.Message],
+                                                  TCompilerErrorMessage);
          end;
          on E: Exception do begin
-            FProg.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_FunctionOptimizationFailed,
-                                                  [FuncSym.Name, E.ClassName, E.Message],
-                                                   TCompilerErrorMessage);
+            Prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_FunctionOptimizationFailed,
+                                                 [FuncSym.Name, E.ClassName, E.Message],
+                                                  TCompilerErrorMessage);
          end;
       end;
       if Result<>Self then
@@ -3734,11 +3805,11 @@ begin
          EvalPushExprs(exec);
 
          oldBasePointer:=exec.Stack.SwitchFrame(FLevel);
-         exec.EnterRecursion(Self);
+         TdwsProgramExecution(exec).EnterRecursion(Self);
          try
             ICallable(func.Executable).Call(TdwsProgramExecution(exec), func);
          finally
-            exec.LeaveRecursion;
+            TdwsProgramExecution(exec).LeaveRecursion;
             exec.Stack.RestoreFrame(FLevel, oldBasePointer);
          end;
 
@@ -3843,17 +3914,15 @@ begin
    AddPushExprs;
 end;
 
+// SetResultAddr
+//
 procedure TFuncExpr.SetResultAddr(exec : TdwsExecution; ResultAddr: Integer);
 begin
-  if ResultAddr = -1 then
-  begin
-    if (exec=nil) or (exec.ProgramState = psUndefined) then
-      FResultAddr := Prog.GetTempAddr(FTyp.Size)
-    else
-      FResultAddr := -1; // TFuncExpr.Create called from TInfoFunc.Call
-  end
-  else
-    FResultAddr := ResultAddr;
+   if ResultAddr=-1 then begin
+      if (exec=nil) or (exec.ProgramState = psUndefined) then
+         FResultAddr:=((exec as TdwsProgramExecution).CurrentProg as TdwsProgram).GetTempAddr(FTyp.Size)
+      else FResultAddr:=-1; // TFuncExpr.Create called from TInfoFunc.Call
+   end else FResultAddr:=ResultAddr;
 end;
 
 // IsWritable
@@ -3918,17 +3987,19 @@ begin
     TTypedExpr(FList.List[x]).Initialize;
 end;
 
-procedure TTypedExprList.TypeCheck(const pos : TScriptPos; ExpectedTyp: TSymbol; compileMsgs : TdwsCompileMessageList);
+// TypeCheck
+//
+procedure TTypedExprList.TypeCheck(prog : TdwsProgram; const pos : TScriptPos; ExpectedTyp: TSymbol);
 var
   x: Integer;
   expr : TTypedExpr;
 begin
    for x := 0 to FList.Count - 1 do begin
       expr:=TTypedExpr(FList.List[x]);
-      expr.TypeCheckNoPos(pos, compileMsgs);
+      expr.TypeCheckNoPos(prog, pos);
       if not expr.Typ.IsCompatible(ExpectedTyp) then
-         compileMsgs.AddCompilerErrorFmt(pos, CPE_AssignIncompatibleTypes,
-                                         [expr.Typ.Caption, ExpectedTyp.Caption]);
+         prog.CompileMsgs.AddCompilerErrorFmt(pos, CPE_AssignIncompatibleTypes,
+                                              [expr.Typ.Caption, ExpectedTyp.Caption]);
    end;
 end;
 
@@ -4095,9 +4166,9 @@ end;
 
 // TypeCheckNoPos
 //
-procedure TMethodExpr.TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList);
+procedure TMethodExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
 begin
-   FBaseExpr.TypeCheckNoPos(aPos, compileMsgs);
+   FBaseExpr.TypeCheckNoPos(prog, aPos);
    inherited;
 end;
 
@@ -5758,11 +5829,11 @@ end;
 
 // TypeCheckNoPos
 //
-procedure TConnectorCallExpr.TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList);
+procedure TConnectorCallExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
 begin
    inherited;
    if FArgs.Count>64 then
-      compileMsgs.AddCompilerErrorFmt(Pos, CPE_ConnectorTooManyArguments, [FArgs.Count]);
+      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConnectorTooManyArguments, [FArgs.Count]);
 end;
 
 function TConnectorCallExpr.AssignConnectorSym(ConnectorType: IConnectorType):
@@ -5935,14 +6006,12 @@ end;
 
 { TConnectorWriteExpr }
 
-function TConnectorWriteExpr.AssignConnectorSym(
-  ConnectorType: IConnectorType): Boolean;
+function TConnectorWriteExpr.AssignConnectorSym(Prog: TdwsProgram; ConnectorType: IConnectorType): Boolean;
 begin
-  FConnectorMember := ConnectorType.HasMember(FName, FTyp, True);
-  Result := Assigned(FConnectorMember);
-  if Result and not (Assigned(FTyp) and Assigned(FValueExpr.Typ) and
-    FTyp.IsCompatible(FValueExpr.Typ)) then
-    FProg.CompileMsgs.AddCompilerError(FPos, CPE_ConnectorTypeMismatch);
+   FConnectorMember := ConnectorType.HasMember(FName, FTyp, True);
+   Result := Assigned(FConnectorMember);
+   if Result and not (Assigned(FTyp) and Assigned(FValueExpr.Typ) and FTyp.IsCompatible(FValueExpr.Typ)) then
+      Prog.CompileMsgs.AddCompilerError(FPos, CPE_ConnectorTypeMismatch);
 end;
 
 constructor TConnectorWriteExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
@@ -6169,7 +6238,7 @@ begin
     TConstExpr.Create(FCaller.Prog, FCaller.Prog.TypVariant, FBaseValue),
     TConstExpr.Create(FCaller.Prog, FCaller.Prog.TypVariant, Data));
 
-  if writeExpr.AssignConnectorSym(TConnectorSymbol(FSym).ConnectorType) then
+  if writeExpr.AssignConnectorSym(TdwsProgramExecution(exec).Prog, TConnectorSymbol(FSym).ConnectorType) then
     writeExpr.EvalNoResult(exec)
   else
     raise Exception.Create(RTE_ConnectorWriteError);
@@ -7022,9 +7091,9 @@ end;
 
 // TypeCheckNoPos
 //
-procedure TNoResultWrapperExpr.TypeCheckNoPos(const aPos : TScriptPos; compileMsgs : TdwsCompileMessageList);
+procedure TNoResultWrapperExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
 begin
-   Expr.TypeCheckNoPos(aPos, compileMsgs);
+   Expr.TypeCheckNoPos(prog, aPos);
 end;
 
 // IsConstant

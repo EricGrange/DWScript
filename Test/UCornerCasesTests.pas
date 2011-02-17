@@ -329,7 +329,6 @@ begin
                +'Dummy [line: 1, column: 24]'#13#10
                +'Dummy [line: 1, column: 24]'#13#10
                +'Dummy [line: 1, column: 24]'#13#10
-               +'Dummy [line: 1, column: 24]'#13#10
                +' [line: 1, column: 36]'#13#10,
                exec.Msgs.AsInfo, 'stack max recursion');
 

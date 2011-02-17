@@ -152,6 +152,9 @@ type
       public
          constructor Create(const stackParams : TStackParameters; compiler : TdwsCompiler);
          destructor Destroy; override;
+
+         function GetCallStack : TdwsExprLocationArray; override;
+         function CallStackDepth : Integer; override;
    end;
 
    IdwsEvaluateExpr = interface
@@ -429,7 +432,7 @@ type
    end;
 
    TExceptionContext = class
-      CallStack : TExprBaseArray;
+      CallStack : TdwsExprLocationArray;
    end;
 
    TExceptionCreateMethod = class(TInternalMethod)
@@ -908,7 +911,7 @@ begin
       if (eoRootContext in options) then
          contextProgram:=exec.Prog.ProgramObject
       else begin
-         contextProgram:=(exec.ExecutionObject as TdwsProgramExecution).CurrentProg;
+         contextProgram:=TdwsProgram((exec.ExecutionObject as TdwsProgramExecution).CurrentProg);
          if contextProgram=nil then
             contextProgram:=exec.Prog.ProgramObject;
       end;
@@ -1111,7 +1114,7 @@ begin
 
       expr:=ReadExpr;
       try
-         expr.TypeCheckNoPos(FTok.HotPos, FMsgs);
+         expr.TypeCheckNoPos(FProg, FTok.HotPos);
          if not expr.IsConstant then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ConstantExpressionExpected);
 
@@ -1619,7 +1622,7 @@ begin
                end;
             end;
             if Optimize then
-               FProg.Expr:=FProg.Expr.Optimize(FExec) as TNoResultExpr;
+               FProg.Expr:=FProg.Expr.Optimize(FProg, FExec) as TNoResultExpr;
 
             if FTok.TestDelete(ttENSURE) then begin
                if funcSymbol is TMethodSymbol then
@@ -1674,7 +1677,7 @@ begin
          if not testExpr.IsBooleanValue then
             FMsgs.AddCompilerError(hotPos, CPE_BooleanExpected);
          if Optimize then
-            testExpr:=testExpr.OptimizeToNoPosExpr(FExec);
+            testExpr:=testExpr.OptimizeToNoPosExpr(FProg, FExec);
          if testExpr.IsConstant then
             FMsgs.AddCompilerWarning(hotPos, CPW_ConstantCondition);
 
@@ -1684,7 +1687,7 @@ begin
             if not msgExpr.IsStringValue then
                FMsgs.AddCompilerError(hotPos, CPE_StringExpected);
             if Optimize then
-               msgExpr:=msgExpr.OptimizeToNoPosExpr(FExec);
+               msgExpr:=msgExpr.OptimizeToNoPosExpr(FProg, FExec);
          end else begin
             SetString(msg, testStart, testLength);
             msg:=Trim(msg);
@@ -1780,7 +1783,7 @@ begin
       end;
 
       if Optimize then
-         Result:=blockExpr.OptimizeToNoResultExpr(FExec)
+         Result:=blockExpr.OptimizeToNoResultExpr(FProg, FExec)
       else Result:=blockExpr;
 
    except
@@ -1919,8 +1922,8 @@ begin
    if Assigned(Result) then begin
       try
          if Result is TNoResultExpr then
-            TNoResultExpr(Result).TypeCheck(FMsgs)
-         else Result.TypeCheckNoPos(FTok.HotPos, FMsgs);
+            TNoResultExpr(Result).TypeCheck(FProg)
+         else Result.TypeCheckNoPos(FProg, FTok.HotPos);
       except
          Result.Free;
          raise;
@@ -2815,7 +2818,7 @@ begin
 
    if Optimize then begin
       try
-         Result:=Result.OptimizeToNoResultExpr(FExec);
+         Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
       except
          Result.Free;
          raise;
@@ -2952,7 +2955,7 @@ begin
 
    if Optimize then begin
       try
-         Result:=Result.OptimizeToNoResultExpr(FExec);
+         Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
       except
          Result.Free;
          raise;
@@ -2985,7 +2988,7 @@ begin
 
    if Optimize then begin
       try
-         Result:=Result.OptimizeToNoResultExpr(FExec);
+         Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
       except
          Result.Free;
          raise;
@@ -3090,14 +3093,14 @@ begin
 
    try
       ReadFuncArgs(TFuncExprBase(Result).AddArg);
-      TFuncExprBase(Result).TypeCheck(FMsgs);
+      TFuncExprBase(Result).TypeCheck(FProg);
    except
       Result.Free;
       raise;
    end;
 
    if Optimize then
-      Result:=Result.OptimizeToNoPosExpr(FExec);
+      Result:=Result.OptimizeToNoPosExpr(FProg, FExec);
 end;
 
 // ReadFuncArgs
@@ -3226,14 +3229,14 @@ begin
     begin
       // At least one argument was found
       repeat
-        TArrayConstantExpr(Result).AddElementExpr(ReadExpr);
+        TArrayConstantExpr(Result).AddElementExpr(FProg, ReadExpr);
       until not FTok.TestDelete(ttCOMMA);
 
       if not FTok.TestDelete(ttARIGHT) then
         FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
     end;
     if Optimize then
-      Result := Result.Optimize(FExec) as TArrayConstantExpr;
+      Result := Result.Optimize(FProg, FExec) as TArrayConstantExpr;
   except
     Result.Free;
     raise;
@@ -4104,7 +4107,7 @@ begin
             r.Free;
             raise;
          end;
-         Result.TypeCheckNoPos(hotPos, FMsgs);
+         Result.TypeCheckNoPos(FProg, hotPos);
       until False;
    except
       Result.Free;
@@ -4165,9 +4168,9 @@ begin
             end;
          end;
 
-         Result.TypeCheckNoPos(hotPos, FMsgs);
+         Result.TypeCheckNoPos(FProg, hotPos);
          if Optimize then
-            Result:=Result.OptimizeToNoPosExpr(FExec);
+            Result:=Result.OptimizeToNoPosExpr(FProg, FExec);
       until False;
    except
       Result.Free;
@@ -4216,9 +4219,9 @@ begin
             raise;
          end;
 
-         Result.TypeCheckNoPos(hotPos, FMsgs);
+         Result.TypeCheckNoPos(FProg, hotPos);
          if Optimize then
-            Result:=Result.OptimizeToNoPosExpr(FExec);
+            Result:=Result.OptimizeToNoPosExpr(FProg, FExec);
       until False;
    except
       Result.Free;
@@ -4411,9 +4414,9 @@ begin
    end;
    Result:=negExprClass.Create(FProg, negTerm);
    try
-      Result.TypeCheckNoPos(FTok.HotPos, FMsgs);
+      Result.TypeCheckNoPos(FProg, FTok.HotPos);
       if Optimize then
-         Result:=Result.OptimizeToNoPosExpr(FExec);
+         Result:=Result.OptimizeToNoPosExpr(FProg, FExec);
    except
       Result.Free;
       raise;
@@ -5138,7 +5141,7 @@ begin
     // and is transformed into "connector.member(expr)"
     Result := TConnectorWriteExpr.Create(FProg, FTok.HotPos,  Name, BaseExpr, ReadExpr);
 
-    if not TConnectorWriteExpr(Result).AssignConnectorSym(ConnectorType) then
+    if not TConnectorWriteExpr(Result).AssignConnectorSym(FProg, ConnectorType) then
     begin
       Result.Free;
       FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
@@ -5913,9 +5916,9 @@ begin
          Assert(False);
       end;
 
-      Result.TypeCheck(FMsgs);
+      Result.TypeCheck(FProg);
       if Optimize then
-         Result:=Result.OptimizeToNoResultExpr(FExec);
+         Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
 
    end else begin
 
@@ -5971,7 +5974,7 @@ begin
    msgExpr:=nil;
    try
       if Assigned(argExpr) then
-         argExpr.TypeCheckNoPos(FTok.HotPos, FMsgs);
+         argExpr.TypeCheckNoPos(FProg, FTok.HotPos);
 
       if not Assigned(argTyp) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
@@ -6243,6 +6246,20 @@ destructor TdwsCompilerExecution.Destroy;
 begin
    inherited;
    FOptimMsgs.Free;
+end;
+
+// GetCallStack
+//
+function TdwsCompilerExecution.GetCallStack : TdwsExprLocationArray;
+begin
+   Result:=nil;
+end;
+
+// CallStackDepth
+//
+function TdwsCompilerExecution.CallStackDepth : Integer;
+begin
+   Result:=0;
 end;
 
 // GetMsgs
