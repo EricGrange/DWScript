@@ -64,6 +64,9 @@ type
    TdwsExprLocation = record
       Expr : TExprBase;
       Prog : TObject;
+      function Line : Integer; inline;
+      function SourceName : String; inline;
+      function Location : String;
    end;
    TdwsExprLocationArray = array of TdwsExprLocation;
 
@@ -1247,6 +1250,31 @@ uses dwsExprs;
 const
    cFuncKindToString : array [Low(TFuncKind)..High(TFuncKind)] of String = (
       'function', 'procedure', 'constructor', 'destructor', 'method' );
+
+// ------------------
+// ------------------ TdwsExprLocation ------------------
+// ------------------
+
+// Line
+//
+function TdwsExprLocation.Line : Integer;
+begin
+   Result:=Expr.ScriptPos.Line;
+end;
+
+// SourceName
+//
+function TdwsExprLocation.SourceName : String;
+begin
+   Result:=Expr.ScriptPos.SourceFile.Name;
+end;
+
+// Location
+//
+function TdwsExprLocation.Location : String;
+begin
+   Result:=Expr.ScriptLocation(Prog);
+end;
 
 // ------------------
 // ------------------ TExprBase ------------------
