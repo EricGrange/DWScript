@@ -4529,7 +4529,6 @@ var
    toValue: Int64;
    i : PInt64;
 begin
-   exec.Status:=esrNone;
    i:=FVarExpr.EvalAsPInteger(exec);
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
@@ -4542,7 +4541,8 @@ begin
                exec.Status:=esrNone;
                break;
             end;
-            esrContinue : exec.Status:=esrNone;
+            esrContinue :
+               exec.Status:=esrNone;
             esrExit : Exit;
          end;
       end;
@@ -4557,7 +4557,6 @@ var
    toValue: Int64;
    i : PInt64;
 begin
-   exec.Status:=esrNone;
    i:=FVarExpr.EvalAsPInteger(exec);
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
@@ -4570,7 +4569,8 @@ begin
                exec.Status:=esrNone;
                break;
             end;
-            esrContinue : exec.Status:=esrNone;
+            esrContinue :
+               exec.Status:=esrNone;
             esrExit : Exit;
          end;
       end;
@@ -4585,7 +4585,6 @@ var
    step, toValue: Int64;
    i : PInt64;
 begin
-   exec.Status:=esrNone;
    i:=FVarExpr.EvalAsPInteger(exec);
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
@@ -4599,7 +4598,8 @@ begin
                exec.Status:=esrNone;
                break;
             end;
-            esrContinue : exec.Status:=esrNone;
+            esrContinue :
+               exec.Status:=esrNone;
             esrExit : Exit;
          end;
       end;
@@ -4620,7 +4620,6 @@ var
    step, toValue: Int64;
    i : PInt64;
 begin
-   exec.Status:=esrNone;
    i:=FVarExpr.EvalAsPInteger(exec);
    i^:=FFromExpr.EvalAsInteger(exec);
    toValue:=FToExpr.EvalAsInteger(exec);
@@ -4634,7 +4633,8 @@ begin
                exec.Status:=esrNone;
                break;
             end;
-            esrContinue : exec.Status:=esrNone;
+            esrContinue :
+               exec.Status:=esrNone;
             esrExit : Exit;
          end;
       end;
@@ -4668,7 +4668,6 @@ end;
 //
 procedure TLoopExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   exec.Status:=esrNone;
    repeat
       exec.DoStep(FLoopExpr);
       FLoopExpr.EvalNoResult(exec);
@@ -4678,7 +4677,8 @@ begin
                exec.Status:=esrNone;
                Break;
             end;
-            esrContinue : exec.Status:=esrNone;
+            esrContinue :
+               exec.Status:=esrNone;
             esrExit : Exit;
          end;
       end;
@@ -4689,7 +4689,6 @@ end;
 
 procedure TWhileExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   exec.Status:=esrNone;
    while FCondExpr.EvalAsBoolean(exec) do begin
       exec.DoStep(FLoopExpr);
       FLoopExpr.EvalNoResult(exec);
@@ -4699,7 +4698,8 @@ begin
                exec.Status:=esrNone;
                Break;
             end;
-            esrContinue : exec.Status:=esrNone;
+            esrContinue :
+               exec.Status:=esrNone;
             esrExit : Exit;
          end;
       end;
@@ -4727,7 +4727,6 @@ end;
 
 procedure TRepeatExpr.EvalNoResult(exec : TdwsExecution);
 begin
-   exec.Status:=esrNone;
    repeat
       exec.DoStep(FLoopExpr);
       FLoopExpr.EvalNoResult(exec);
@@ -4737,7 +4736,8 @@ begin
                exec.Status:=esrNone;
                Break;
             end;
-            esrContinue : exec.Status:=esrNone;
+            esrContinue :
+               exec.Status:=esrNone;
             esrExit : Exit;
          end;
       end;

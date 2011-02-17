@@ -2546,6 +2546,7 @@ procedure TdwsProcedure.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
 var
    oldProg : TdwsProgram;
    stackSize : Integer;
+   oldStatus : TExecutionStatusResult;
 begin
    oldProg:=exec.CurrentProg;
    exec.FCurrentProg:=Self;
@@ -2555,6 +2556,7 @@ begin
    exec.Stack.Push(stackSize);
 
    // Run the procedure
+   oldStatus:=exec.Status;
    try
       exec.Status:=esrNone;
 
@@ -2566,12 +2568,12 @@ begin
       exec.DoStep(FExpr);
       FExpr.EvalNoResult(exec);
 
-      exec.Status:=esrNone;
-
       if FPostConditions<>nil then
          FPostConditions.EvalNoresult(exec);
 
    finally
+      exec.Status:=oldStatus;
+
       // Free stack space for local variables
       exec.Stack.Pop(stackSize);
       exec.FCurrentProg:=oldProg;
@@ -3721,7 +3723,6 @@ end;
 function TFuncExpr.Eval(exec : TdwsExecution) : Variant;
 var
    oldBasePointer : Integer;
-   oldStatus : TExecutionStatusResult;
    func : TFuncSymbol;
 begin
    try
@@ -3732,7 +3733,6 @@ begin
 
          EvalPushExprs(exec);
 
-         oldStatus:=exec.Status;
          oldBasePointer:=exec.Stack.SwitchFrame(FLevel);
          exec.EnterRecursion(Self);
          try
@@ -3740,7 +3740,6 @@ begin
          finally
             exec.LeaveRecursion;
             exec.Stack.RestoreFrame(FLevel, oldBasePointer);
-            exec.Status:=oldStatus;
          end;
 
          Result:=PostCall(exec);
@@ -5437,9 +5436,7 @@ begin
                SetChild(Result, FProgramInfo, funcExpr.Typ, FResult, 0);
             end else begin
                // Execute as procedure
-               FExec.Status:=esrNone;
                funcExpr.EvalNoResult(FExec);
-               Assert(FExec.Status=esrNone);
                Result := nil;
             end;
          finally
@@ -5518,9 +5515,7 @@ begin
          end else FResult[0] := funcExpr.Eval(FExec);
          SetChild(Result, FProgramInfo, funcExpr.Typ, FResult, 0);
       end else begin
-         FExec.Status:=esrNone;
          funcExpr.EvalNoResult(FExec);
-         Assert(FExec.Status=esrNone);
       end;
    finally
       FExec.ExternalObject:=nil;
@@ -6051,9 +6046,7 @@ begin
       else
       begin
         resultData := nil;
-        FExec.Status:=esrNone;
         expr.EvalNoResult(FExec);
-        Assert(FExec.Status=esrNone);
         Result := nil;
       end;
     end
@@ -6135,9 +6128,7 @@ begin
   try
     funcExpr.AddArg(TConstExpr.CreateTyped(FCaller.Prog, FSym.Typ, Data));
     funcExpr.AddPushExprs;
-    exec.Status:=esrNone;
     funcExpr.EvalNoResult(exec);
-    Assert(exec.Status=esrNone);
   finally
     funcExpr.Free;
   end;
@@ -6179,11 +6170,7 @@ begin
     TConstExpr.Create(FCaller.Prog, FCaller.Prog.TypVariant, Data));
 
   if writeExpr.AssignConnectorSym(TConnectorSymbol(FSym).ConnectorType) then
-  begin
-    exec.Status:=esrNone;
-    writeExpr.EvalNoResult(exec);
-    Assert(exec.Status=esrNone);
-  end
+    writeExpr.EvalNoResult(exec)
   else
     raise Exception.Create(RTE_ConnectorWriteError);
 end;
