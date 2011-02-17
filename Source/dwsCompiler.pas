@@ -3471,11 +3471,9 @@ var
    sym, typ : TSymbol;
    fieldSym : TFieldSymbol;
    names : TStringList;
-   fields : TList;
    posArray : TScriptPosArray;    // positions of items pulled from ReadNameList call
 begin
    names:=TStringList.Create;
-   fields:=TList.Create;
    try
       // Conditionally pass in dynamic array
       if coSymbolDictionary in FCompilerOptions then
@@ -3494,16 +3492,14 @@ begin
 
          // Create Internal Field
          fieldSym := TFieldSymbol.Create(Names[i], Typ, aVisibility);
-         Fields.Add(sym);
          classSymbol.AddField(fieldSym);
 
          // Enter Field symbol in dictionary
          if coSymbolDictionary in FCompilerOptions then
-            FSymbolDictionary.Add(sym, PosArray[i], [suDeclaration]);
+            FSymbolDictionary.Add(fieldSym, PosArray[i], [suDeclaration]);
       end;
    finally
       names.Free;
-      fields.Free;
    end;
 end;
 
