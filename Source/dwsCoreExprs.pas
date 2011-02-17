@@ -1230,10 +1230,12 @@ uses dwsStringFunctions;
 // ------------------ TVarExpr ------------------
 // ------------------
 
+// Create
+//
 constructor TVarExpr.Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
 begin
-  inherited Create(Prog, Typ);
-  FStackAddr := DataSym.StackAddr;
+   inherited Create(Prog, Typ);
+   FStackAddr:=DataSym.StackAddr;
 end;
 
 // CreateTyped
@@ -1256,6 +1258,8 @@ begin
    end;
 end;
 
+// Eval
+//
 function TVarExpr.Eval(exec : TdwsExecution) : Variant;
 begin
    exec.Stack.ReadValue(Addr[exec], Result);
@@ -1269,34 +1273,46 @@ begin
            and (ClassType=expr.ClassType);
 end;
 
+// GetAddr
+//
 function TVarExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-  Result := exec.Stack.BasePointer + FStackAddr;
+   Result:=exec.Stack.BasePointer+FStackAddr;
 end;
 
+// GetData
+//
 function TVarExpr.GetData(exec : TdwsExecution) : TData;
 begin
-  Result := exec.Stack.Data;
+   Result:=exec.Stack.Data;
 end;
 
+// AssignData
+//
 procedure TVarExpr.AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer);
 begin
-  exec.Stack.WriteData(SourceAddr, Addr[exec], Typ.Size, SourceData);
+   exec.Stack.WriteData(SourceAddr, Addr[exec], Typ.Size, SourceData);
 end;
 
+// AssignDataExpr
+//
 procedure TVarExpr.AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr);
 begin
-  exec.Stack.WriteData(DataExpr.Addr[exec], Addr[exec], Typ.Size, DataExpr.Data[exec]);
+   exec.Stack.WriteData(DataExpr.Addr[exec], Addr[exec], Typ.Size, DataExpr.Data[exec]);
 end;
 
+// AssignExpr
+//
 procedure TVarExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
 begin
-  exec.Stack.WriteValue(Addr[exec], Expr.Eval(exec));
+   exec.Stack.WriteValue(Addr[exec], Expr.Eval(exec));
 end;
 
+// AssignValue
+//
 procedure TVarExpr.AssignValue(exec : TdwsExecution; const Value: Variant);
 begin
-  exec.Stack.WriteValue(Addr[exec], Value);
+   exec.Stack.WriteValue(Addr[exec], Value);
 end;
 
 // AssignValueAsInteger
@@ -1458,9 +1474,11 @@ begin
    exec.Stack.WriteStrValue(exec.Stack.BasePointer + FStackAddr, value);
 end;
 
+// SetChar
+//
 function TStrVarExpr.SetChar(exec : TdwsExecution; index : Integer; c : Char) : Boolean;
 begin
-  Result:=exec.Stack.SetStrChar(exec.Stack.BasePointer + FStackAddr, index, c);
+   Result:=exec.Stack.SetStrChar(exec.Stack.BasePointer + FStackAddr, index, c);
 end;
 
 // EvalAsString
@@ -1527,83 +1545,121 @@ begin
    exec.Stack.ReadInterfaceValue(exec.Stack.BasePointer + FStackAddr, PUnknown(@Result)^);
 end;
 
-{ TVarParentExpr }
+// ------------------
+// ------------------ TVarParentExpr ------------------
+// ------------------
 
+// Create
+//
 constructor TVarParentExpr.Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
 begin
-  inherited;
-  FLevel := DataSym.Level;
+   inherited;
+   FLevel:=DataSym.Level;
 end;
 
+// GetAddr
+//
 function TVarParentExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-  Result := exec.Stack.GetSavedBp(FLevel) + FStackAddr;
+   Result:=exec.Stack.GetSavedBp(FLevel)+FStackAddr;
 end;
 
-{ TVarParamExpr }
+// ------------------
+// ------------------ TVarParamExpr ------------------
+// ------------------
 
+// GetAddr
+//
 function TVarParamExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-  Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.BasePointer + FStackAddr])).Addr;
+   Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.BasePointer + FStackAddr])).Addr;
 end;
 
+// GetData
+//
 function TVarParamExpr.GetData(exec : TdwsExecution) : TData;
 begin
-  Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.BasePointer + FStackAddr])).Data;
+   Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.BasePointer + FStackAddr])).Data;
 end;
 
+// AssignData
+//
 procedure TVarParamExpr.AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer);
 begin
-  CopyData(SourceData, SourceAddr, Data[exec], Addr[exec], Typ.Size);
+   CopyData(SourceData, SourceAddr, Data[exec], Addr[exec], Typ.Size);
 end;
 
+// AssignValue
+//
 procedure TVarParamExpr.AssignValue(exec : TdwsExecution; const Value: Variant);
 begin
-  VarCopy(Data[exec][Addr[exec]], Value);
+   VarCopy(Data[exec][Addr[exec]], Value);
 end;
 
+// AssignExpr
+//
 procedure TVarParamExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
 begin
-  VarCopy(Data[exec][Addr[exec]], Expr.Eval(exec));
+   VarCopy(Data[exec][Addr[exec]], Expr.Eval(exec));
 end;
 
+// AssignDataExpr
+//
 procedure TVarParamExpr.AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr);
 begin
-  CopyData(DataExpr.Data[exec], DataExpr.Addr[exec], Data[exec], Addr[exec], Typ.Size);
+   CopyData(DataExpr.Data[exec], DataExpr.Addr[exec], Data[exec], Addr[exec], Typ.Size);
 end;
 
+// Eval
+//
 function TVarParamExpr.Eval(exec : TdwsExecution) : Variant;
 begin
-  Result := Data[exec][Addr[exec]];
+   Result := Data[exec][Addr[exec]];
 end;
 
-{ TConstParamExpr }
+// ------------------
+// ------------------ TConstParamExpr ------------------
+// ------------------
 
+// IsWritable
+//
 function TConstParamExpr.IsWritable : Boolean;
 begin
    Result:=False;
 end;
 
-{ TVarParamParentExpr }
+// ------------------
+// ------------------ TVarParamParentExpr ------------------
+// ------------------
 
+// Create
+//
 constructor TVarParamParentExpr.Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
 begin
-  inherited;
-  FLevel := DataSym.Level;
+   inherited;
+   FLevel := DataSym.Level;
 end;
 
+// GetAddr
+//
 function TVarParamParentExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-  Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel) + FStackAddr])).Addr;
+   Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel) + FStackAddr])).Addr;
 end;
 
+// GetData
+//
 function TVarParamParentExpr.GetData(exec : TdwsExecution) : TData;
 begin
-  Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel) + FStackAddr])).Data;
+   Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel) + FStackAddr])).Data;
 end;
 
-{ TConstParamParentExpr }
+// ------------------
+// ------------------ TConstParamParentExpr ------------------
+// ------------------
 
+// IsWritable
+//
 function TConstParamParentExpr.IsWritable : Boolean;
 begin
    Result:=False;
@@ -1665,25 +1721,33 @@ begin
    inherited;
 end;
 
-{ TConstExpr }
+// ------------------
+// ------------------ TConstExpr ------------------
+// ------------------
 
+// Create
+//
 constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
 begin
-  inherited Create(Prog, Typ);
-  Assert(Typ.Size=1);
-  SetLength(FData, 1);
-  FData[0] := Value;
+   inherited Create(Prog, Typ);
+   Assert(Typ.Size=1);
+   SetLength(FData, 1);
+   FData[0] := Value;
 end;
 
+// Create
+//
 constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Data: TData);
 begin
-  inherited Create(Prog, Typ);
-  FData := Data;
+   inherited Create(Prog, Typ);
+   FData := Data;
 end;
 
+// Eval
+//
 function TConstExpr.Eval(exec : TdwsExecution) : Variant;
 begin
-  Result := FData[0];
+   Result := FData[0];
 end;
 
 // IsConstant
@@ -1918,29 +1982,37 @@ begin
    Result:=FValue;
 end;
 
-{ TArrayExpr }
+// ------------------
+// ------------------ TArrayExpr ------------------
+// ------------------
 
+// Create
+//
 constructor TArrayExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TTypedExpr);
 begin
-  inherited Create(Prog, Pos, BaseExpr.BaseType.Typ);
-  FBaseExpr := BaseExpr;
-  FIndexExpr := IndexExpr;
-  FElementSize := Typ.Size; // Necessary because of arrays of records!
-  FTyp:=FBaseExpr.Typ.Typ;
+   inherited Create(Prog, Pos, BaseExpr.BaseType.Typ);
+   FBaseExpr := BaseExpr;
+   FIndexExpr := IndexExpr;
+   FElementSize := Typ.Size; // Necessary because of arrays of records!
+   FTyp:=FBaseExpr.Typ.Typ;
 end;
 
+// Destroy
+//
 destructor TArrayExpr.Destroy;
 begin
-  FBaseExpr.Free;
-  FIndexExpr.Free;
-  inherited;
+   FBaseExpr.Free;
+   FIndexExpr.Free;
+   inherited;
 end;
 
+// Initialize
+//
 procedure TArrayExpr.Initialize;
 begin
-  FBaseExpr.Initialize;
-  FIndexExpr.Initialize;
-  inherited;
+   FBaseExpr.Initialize;
+   FIndexExpr.Initialize;
+   inherited;
 end;
 
 // IsWritable
@@ -1950,18 +2022,25 @@ begin
    Result:=FBaseExpr.IsWritable;
 end;
 
-{ TStaticArrayExpr }
+// ------------------
+// ------------------ TStaticArrayExpr ------------------
+// ------------------
 
-constructor TStaticArrayExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TTypedExpr; LowBound, HighBound: Integer);
+// Create
+//
+constructor TStaticArrayExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
+      BaseExpr: TDataExpr; IndexExpr: TTypedExpr; LowBound, HighBound: Integer);
 begin
    inherited Create(Prog, Pos, BaseExpr, IndexExpr);
    FLowBound:=LowBound;
    FCount:=HighBound-LowBound+1;
 end;
 
+// GetAddr
+//
 function TStaticArrayExpr.GetAddr(exec : TdwsExecution) : Integer;
 var
-  index: Integer;
+   index: Integer;
 begin
    // Get index
    index := FIndexExpr.EvalAsInteger(exec) - FLowBound;
@@ -1975,13 +2054,19 @@ begin
    Result := FBaseExpr.Addr[exec] + (index * FElementSize);
 end;
 
+// GetData
+//
 function TStaticArrayExpr.GetData(exec : TdwsExecution) : TData;
 begin
-  Result := FBaseExpr.Data[exec];
+   Result := FBaseExpr.Data[exec];
 end;
 
-{ TOpenArrayExpr }
+// ------------------
+// ------------------ TOpenArrayExpr ------------------
+// ------------------
 
+// GetAddr
+//
 function TOpenArrayExpr.GetAddr(exec : TdwsExecution) : Integer;
 var
    index, len: Integer;
@@ -2000,13 +2085,19 @@ begin
    Result := index;
 end;
 
+// GetData
+//
 function TOpenArrayExpr.GetData(exec : TdwsExecution) : TData;
 begin
   Result := FBaseExpr.Data[exec];
 end;
 
-{ TDynamicArrayExpr }
+// ------------------
+// ------------------ TDynamicArrayExpr ------------------
+// ------------------
 
+// GetAddr
+//
 function TDynamicArrayExpr.GetAddr(exec : TdwsExecution) : Integer;
 var
    index, length: Integer;
@@ -2027,25 +2118,35 @@ begin
    Result := baseAddr + (index * FElementSize);
 end;
 
+// GetData
+//
 function TDynamicArrayExpr.GetData(exec : TdwsExecution) : TData;
 begin
-  Result := exec.Stack.Data;
+   Result := exec.Stack.Data;
 end;
 
-{ TArrayConstantExpr }
+// ------------------
+// ------------------ TArrayConstantExpr ------------------
+// ------------------
 
+// Create
+//
 constructor TArrayConstantExpr.Create(Prog: TdwsProgram);
 begin
-  inherited Create(Prog, TStaticArraySymbol.Create('', Prog.TypNil, 0, -1));
+   inherited Create(Prog, TStaticArraySymbol.Create('', Prog.TypNil, 0, -1));
 end;
 
+// Destroy
+//
 destructor TArrayConstantExpr.Destroy;
 begin
-  FElementExprs.Clean;
-  FTyp.Free;
-  inherited;
+   FElementExprs.Clean;
+   FTyp.Free;
+   inherited;
 end;
 
+// AddElementExpr
+//
 procedure TArrayConstantExpr.AddElementExpr(ElementExpr: TTypedExpr);
 var
    arraySymbol : TStaticArraySymbol;
@@ -2068,6 +2169,8 @@ begin
    arraySymbol.AddElement;
 end;
 
+// Prepare
+//
 procedure TArrayConstantExpr.Prepare(ElementTyp : TSymbol);
 var
    x : Integer;
@@ -2087,6 +2190,8 @@ begin
    FArrayAddr := Prog.GetGlobalAddr(FElementExprs.Count * FTyp.Typ.Size + 1);
 end;
 
+// GetData
+//
 function TArrayConstantExpr.GetData(exec : TdwsExecution) : TData;
 begin
   Eval(exec);
@@ -2160,13 +2265,15 @@ begin
    Result.Initialize;
 end;
 
+// Initialize
+//
 procedure TArrayConstantExpr.Initialize;
 var
    i : Integer;
 begin
-  inherited;
-  for i:=0 to FElementExprs.Count-1 do
-     TTypedExpr(FElementExprs.List[i]).Initialize;
+   inherited;
+   for i:=0 to FElementExprs.Count-1 do
+      TTypedExpr(FElementExprs.List[i]).Initialize;
 end;
 
 // Optimize
@@ -2226,36 +2333,48 @@ begin
    end;
 end;
 
-{ TRecordExpr }
+// ------------------
+// ------------------ TRecordExpr ------------------
+// ------------------
 
+// Create
+//
 constructor TRecordExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-  BaseExpr: TDataExpr; MemberSymbol: TMemberSymbol);
+                               BaseExpr: TDataExpr; MemberSymbol: TMemberSymbol);
 begin
-  inherited Create(Prog, Pos, MemberSymbol.Typ);
-  FBaseExpr := BaseExpr;
-  FMemberOffset := MemberSymbol.Offset;
+   inherited Create(Prog, Pos, MemberSymbol.Typ);
+   FBaseExpr := BaseExpr;
+   FMemberOffset := MemberSymbol.Offset;
 end;
 
+// Destroy
+//
 destructor TRecordExpr.Destroy;
 begin
-  FBaseExpr.Free;
-  inherited;
+   FBaseExpr.Free;
+   inherited;
 end;
 
+// GetAddr
+//
 function TRecordExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-  Result := FBaseExpr.Addr[exec] + FMemberOffset;
+   Result := FBaseExpr.Addr[exec] + FMemberOffset;
 end;
 
+// GetData
+//
 function TRecordExpr.GetData(exec : TdwsExecution) : TData;
 begin
-  Result := FBaseExpr.Data[exec];
+   Result := FBaseExpr.Data[exec];
 end;
 
+// Initialize
+//
 procedure TRecordExpr.Initialize;
 begin
-  inherited;
-  FBaseExpr.Initialize;
+   inherited;
+   FBaseExpr.Initialize;
 end;
 
 // IsWritable
@@ -2265,46 +2384,64 @@ begin
    Result:=FBaseExpr.IsWritable;
 end;
 
-{ TInitDataExpr }
+// ------------------
+// ------------------ TInitDataExpr ------------------
+// ------------------
 
+// Create
+//
 constructor TInitDataExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TDataExpr);
 begin
-  inherited Create(Prog, Pos);
-  FExpr := Expr;
+   inherited Create(Prog, Pos);
+   FExpr := Expr;
 end;
 
+// Destroy
+//
 destructor TInitDataExpr.Destroy;
 begin
-  FExpr.Free;
-  inherited;
+   FExpr.Free;
+   inherited;
 end;
 
+// EvalNoResult
+//
 procedure TInitDataExpr.EvalNoResult(exec : TdwsExecution);
 begin
-  FExpr.Typ.InitData(FExpr.Data[exec], FExpr.Addr[exec]);
+   FExpr.Typ.InitData(FExpr.Data[exec], FExpr.Addr[exec]);
 end;
 
-{ TFieldExpr }
+// ------------------
+// ------------------ TFieldExpr ------------------
+// ------------------
 
+// Create
+//
 constructor TFieldExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TSymbol;
-  FieldSym: TFieldSymbol; ObjExpr: TDataExpr);
+                              FieldSym: TFieldSymbol; ObjExpr: TDataExpr);
 begin
-  inherited Create(Prog, Pos, Typ);
-  FObjectExpr := ObjExpr;
-  FFieldAddr := FieldSym.Offset;
+   inherited Create(Prog, Pos, Typ);
+   FObjectExpr := ObjExpr;
+   FFieldAddr := FieldSym.Offset;
 end;
 
+// Destroy
+//
 destructor TFieldExpr.Destroy;
 begin
-  FObjectExpr.Free;
-  inherited;
+   FObjectExpr.Free;
+   inherited;
 end;
 
+// GetAddr
+//
 function TFieldExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-  Result := FFieldAddr;
+   Result := FFieldAddr;
 end;
 
+// GetData
+//
 function TFieldExpr.GetData(exec : TdwsExecution) : TData;
 var
    obj : IScriptObj;
@@ -2314,6 +2451,8 @@ begin
    Result:=obj.Data;
 end;
 
+// Initialize
+//
 procedure TFieldExpr.Initialize;
 begin
    FObjectExpr.Initialize;
@@ -2408,30 +2547,42 @@ begin
    end;
 end;
 
-{ TArrayLengthExpr }
+// ------------------
+// ------------------ TArrayLengthExpr ------------------
+// ------------------
 
+// Create
+//
 constructor TArrayLengthExpr.Create(Prog: TdwsProgram; Expr: TDataExpr; Delta: Integer);
 begin
-  inherited Create(Prog, Expr);
-  FDelta := Delta;
+   inherited Create(Prog, Expr);
+   FDelta := Delta;
 end;
 
+// EvalAsInteger
+//
 function TArrayLengthExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
-  adr: Integer;
+   adr: Integer;
 begin
-  adr := TDataExpr(FExpr).Data[exec][TDataExpr(FExpr).Addr[exec]];
-  Result := TDataExpr(FExpr).Data[exec][adr - 1] + FDelta;
+   adr := TDataExpr(FExpr).Data[exec][TDataExpr(FExpr).Addr[exec]];
+   Result := TDataExpr(FExpr).Data[exec][adr - 1] + FDelta;
 end;
 
-{ TOpenArrayLengthExpr }
+// ------------------
+// ------------------ TOpenArrayLengthExpr ------------------
+// ------------------
 
+// EvalAsInteger
+//
 function TOpenArrayLengthExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-  Result := Length(TDataExpr(FExpr).Data[exec])+FDelta;
+   Result := Length(TDataExpr(FExpr).Data[exec])+FDelta;
 end;
 
-{ TStringArrayOpExpr }
+// ------------------
+// ------------------ TStringArrayOpExpr ------------------
+// ------------------
 
 // CreatePos
 //
@@ -2636,17 +2787,23 @@ begin
    FCaseConditions.Add(cond);
 end;
 
-{ TConvFloatExpr }
+// ------------------
+// ------------------ TConvFloatExpr ------------------
+// ------------------
 
+// Create
+//
 constructor TConvFloatExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
 begin
-  inherited;
-  FTyp := Prog.TypFloat;
+   inherited;
+   FTyp := Prog.TypFloat;
 end;
 
+// Eval
+//
 function TConvFloatExpr.Eval(exec : TdwsExecution) : Variant;
 begin
-  VarCast(Result, FExpr.Eval(exec), varDouble);
+   VarCast(Result, FExpr.Eval(exec), varDouble);
 end;
 
 // EvalAsFloat
@@ -2656,25 +2813,35 @@ begin
    Result:=FExpr.EvalAsFloat(exec);
 end;
 
-{ TConvIntegerExpr }
+// ------------------
+// ------------------ TConvIntegerExpr ------------------
+// ------------------
 
+// Create
+//
 constructor TConvIntegerExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
 begin
-  inherited;
-  FTyp := Prog.TypInteger;
+   inherited;
+   FTyp := Prog.TypInteger;
 end;
 
+// Eval
+//
 function TConvIntegerExpr.Eval(exec : TdwsExecution) : Variant;
 begin
    Result:=FExpr.EvalAsInteger(exec);
 end;
 
+// EvalAsInteger
+//
 function TConvIntegerExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
    Result:=FExpr.EvalAsInteger(exec);
 end;
 
-{ TConvStringExpr }
+// ------------------
+// ------------------ TConvStringExpr ------------------
+// ------------------
 
 // Create
 //
@@ -2701,14 +2868,20 @@ begin
    FExpr.EvalAsString(exec, Result);
 end;
 
-{ TConvBoolExpr }
+// ------------------
+// ------------------ TConvBoolExpr ------------------
+// ------------------
 
+// Create
+//
 constructor TConvBoolExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
 begin
-  inherited;
-  FTyp := Prog.TypBoolean;
+   inherited;
+   FTyp := Prog.TypBoolean;
 end;
 
+// Eval
+//
 function TConvBoolExpr.Eval(exec : TdwsExecution) : Variant;
 begin
    Result:=FExpr.EvalAsBoolean(exec);
@@ -2721,17 +2894,23 @@ begin
    Result:=FExpr.EvalAsBoolean(exec);
 end;
 
-{ TConvVariantExpr }
+// ------------------
+// ------------------ TConvVariantExpr ------------------
+// ------------------
 
+// Create
+//
 constructor TConvVariantExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
 begin
-  inherited;
-  FTyp := Prog.TypVariant;
+   inherited;
+   FTyp := Prog.TypVariant;
 end;
 
+// Eval
+//
 function TConvVariantExpr.Eval(exec : TdwsExecution) : Variant;
 begin
-  Result := FExpr.Eval(exec);
+   Result := FExpr.Eval(exec);
 end;
 
 // ------------------
@@ -4888,6 +5067,8 @@ begin
   FElseExpr.Free;
 end;
 
+// EvalNoResult
+//
 procedure TExceptExpr.EvalNoResult(exec : TdwsExecution);
 var
    x : Integer;
@@ -4979,8 +5160,12 @@ begin
    FDoExprs.Add(expr);
 end;
 
-{ TFinallyExpr }
+// ------------------
+// ------------------ TFinallyExpr ------------------
+// ------------------
 
+// EvalNoResult
+//
 procedure TFinallyExpr.EvalNoResult(exec : TdwsExecution);
 var
    oldStatus : TExecutionStatusResult;
@@ -5010,85 +5195,115 @@ begin
    end;
 end;
 
-{ TRaiseExpr }
+// ------------------
+// ------------------ TRaiseExpr ------------------
+// ------------------
 
-constructor TRaiseExpr.Create;
+// Create
+//
+constructor TRaiseExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; ExceptionExpr: TTypedExpr);
 begin
-  inherited Create(Prog, Pos);
-  FExceptionExpr := ExceptionExpr;
+   inherited Create(Prog, Pos);
+   FExceptionExpr:=ExceptionExpr;
 end;
 
+// Destroy
+//
 destructor TRaiseExpr.Destroy;
 begin
-  FExceptionExpr.Free;
-  inherited;
+   FExceptionExpr.Free;
+   inherited;
 end;
 
+// EvalNoResult
+//
 procedure TRaiseExpr.EvalNoResult(exec : TdwsExecution);
 var
    exceptVal : Variant;
    exceptMessage : String;
 begin
-  exceptVal:=FExceptionExpr.Eval(exec);
-  exceptMessage:=VarToStr(IScriptObj(IUnknown(exceptVal)).GetData[0]);
-  if exceptMessage<>'' then
-     raise EScriptException.Create(Format(RTE_UserDefinedException_Msg, [exceptMessage]),
-                                   exceptVal, FExceptionExpr.Typ, FPos)
-  else raise EScriptException.Create(RTE_UserDefinedException,
-                                     exceptVal, FExceptionExpr.Typ, FPos);
+   exceptVal:=FExceptionExpr.Eval(exec);
+   exceptMessage:=VarToStr(IScriptObj(IUnknown(exceptVal)).GetData[0]);
+   if exceptMessage<>'' then
+      raise EScriptException.Create(Format(RTE_UserDefinedException_Msg, [exceptMessage]),
+                                    exceptVal, FExceptionExpr.Typ, FPos)
+   else raise EScriptException.Create(RTE_UserDefinedException,
+                                      exceptVal, FExceptionExpr.Typ, FPos);
 end;
 
+// Initialize
+//
 procedure TRaiseExpr.Initialize;
 begin
-  FExceptionExpr.Initialize;
+   FExceptionExpr.Initialize;
 end;
 
-{ TReraiseExpr }
+// ------------------
+// ------------------ TReraiseExpr ------------------
+// ------------------
 
+// EvalNoResult
+//
 procedure TReraiseExpr.EvalNoResult(exec : TdwsExecution);
 begin
    raise EReraise.Create('');
 end;
 
-{ TExceptDoExpr }
+// ------------------
+// ------------------ TExceptDoExpr ------------------
+// ------------------
 
+// Destroy
+//
 destructor TExceptDoExpr.Destroy;
 begin
-  FDoBlockExpr.Free;
-  FExceptionVar.Free;
-  inherited;
+   FDoBlockExpr.Free;
+   FExceptionVar.Free;
+   inherited;
 end;
 
+// EvalNoResult
+//
 procedure TExceptDoExpr.EvalNoResult(exec : TdwsExecution);
 begin
    DoBlockExpr.EvalNoResult(exec);
 end;
 
+// Initialize
+//
 procedure TExceptDoExpr.Initialize;
 begin
-  FDoBlockExpr.Initialize;
-  FExceptionVar.Initialize(Prog.CompileMsgs);
+   FDoBlockExpr.Initialize;
+   FExceptionVar.Initialize(Prog.CompileMsgs);
 end;
 
-{ TStringArraySetExpr }
+// ------------------
+// ------------------ TStringArraySetExpr ------------------
+// ------------------
 
+// Create
+//
 constructor TStringArraySetExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-  StringExpr : TDataExpr; IndexExpr, ValueExpr: TTypedExpr);
+                     StringExpr : TDataExpr; IndexExpr, ValueExpr: TTypedExpr);
 begin
-  inherited Create(Prog,Pos);
-  FStringExpr := StringExpr;
-  FIndexExpr := IndexExpr;
-  FValueExpr := ValueExpr;
+   inherited Create(Prog,Pos);
+   FStringExpr:=StringExpr;
+   FIndexExpr:=IndexExpr;
+   FValueExpr:=ValueExpr;
 end;
 
+// Destroy
+//
 destructor TStringArraySetExpr.Destroy;
 begin
-  FStringExpr.Free;
-  FIndexExpr.Free;
-  FValueExpr.Free;
-  inherited;
+   FStringExpr.Free;
+   FIndexExpr.Free;
+   FValueExpr.Free;
+   inherited;
 end;
 
+// EvalNoResult
+//
 procedure TStringArraySetExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
@@ -5105,15 +5320,21 @@ begin
    FStringExpr.AssignValue(exec, s);
 end;
 
+// Initialize
+//
 procedure TStringArraySetExpr.Initialize;
 begin
-  FStringExpr.Initialize;
-  FIndexExpr.Initialize;
-  FValueExpr.Initialize;
+   FStringExpr.Initialize;
+   FIndexExpr.Initialize;
+   FValueExpr.Initialize;
 end;
 
-{ TVarStringArraySetExpr }
+// ------------------
+// ------------------ TVarStringArraySetExpr ------------------
+// ------------------
 
+// EvalNoResult
+//
 procedure TVarStringArraySetExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
