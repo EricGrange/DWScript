@@ -381,6 +381,7 @@ type
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          property Data: TData read FData;
    end;
+   TConstSymbolClass = class of TConstSymbol;
 
    // variable: var x: Integer;
    TDataSymbol = class (TValueSymbol)
@@ -838,6 +839,20 @@ type
          property Visibility : TClassVisibility read FVisibility write FVisibility;
    end;
 
+   // Const attached to a class
+   TClassConstSymbol = class(TConstSymbol)
+      protected
+         FClassSymbol : TClassSymbol;
+         FVisibility : TClassVisibility;
+
+      public
+         function QualifiedName : String; override;
+         function IsVisibleFor(const aVisibility : TClassVisibility) : Boolean; override;
+
+         property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
+         property Visibility : TClassVisibility read FVisibility write FVisibility;
+   end;
+
    // property X: Integer read FReadSym write FWriteSym;
    TPropertySymbol = class(TValueSymbol)
       private
@@ -946,6 +961,7 @@ type
          procedure AddMethod(methSym : TMethodSymbol);
          procedure AddProperty(Sym: TPropertySymbol);
          procedure AddOperator(Sym: TClassOperatorSymbol);
+         procedure AddConst(sym : TClassConstSymbol);
 
          procedure InheritFrom(ancestorClassSym : TClassSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
@@ -968,10 +984,10 @@ type
          property IsExplicitAbstract : Boolean read GetIsExplicitAbstract write SetIsExplicitAbstract;
          property IsAbstract : Boolean read GetIsAbstract;
          property IsSealed : Boolean read GetIsSealed write SetIsSealed;
-         property Members: TMembersSymbolTable read FMembers;
+         property Members : TMembersSymbolTable read FMembers;
          property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
-         property Parent: TClassSymbol read FParent;
-         property DefaultProperty: TPropertySymbol read FDefaultProperty write FDefaultProperty;
+         property Parent : TClassSymbol read FParent;
+         property DefaultProperty : TPropertySymbol read FDefaultProperty write FDefaultProperty;
    end;
 
    // nil "class"
@@ -1651,8 +1667,30 @@ begin
    Result:=(FVisibility>=aVisibility);
 end;
 
-{ TFuncSymbol }
+// ------------------
+// ------------------ TClassConstSymbol ------------------
+// ------------------
 
+// QualifiedName
+//
+function TClassConstSymbol.QualifiedName : String;
+begin
+   Result:=ClassSymbol.QualifiedName+'.'+Name;
+end;
+
+// IsVisibleFor
+//
+function TClassConstSymbol.IsVisibleFor(const aVisibility : TClassVisibility) : Boolean;
+begin
+   Result:=(FVisibility>=aVisibility);
+end;
+
+// ------------------
+// ------------------ TFuncSymbol ------------------
+// ------------------
+
+// Create
+//
 constructor TFuncSymbol.Create(const Name: string; FuncKind: TFuncKind;
                                FuncLevel: SmallInt);
 begin
@@ -2421,19 +2459,29 @@ begin
    end;
 end;
 
+// AddProperty
+//
 procedure TClassSymbol.AddProperty(Sym: TPropertySymbol);
 begin
-  FMembers.AddSymbol(Sym);
-  sym.FClassSymbol := Self;
+   sym.ClassSymbol:=Self;
+   FMembers.AddSymbol(Sym);
 end;
 
 // AddOperator
 //
 procedure TClassSymbol.AddOperator(sym: TClassOperatorSymbol);
 begin
-   sym.FClassSymbol:=Self;
+   sym.ClassSymbol:=Self;
    FMembers.AddSymbol(sym);
    FOperators.Add(sym);
+end;
+
+// AddConst
+//
+procedure TClassSymbol.AddConst(sym : TClassConstSymbol);
+begin
+   sym.ClassSymbol:=Self;
+   FMembers.AddSymbol(sym);
 end;
 
 procedure TClassSymbol.InitData(const Data: TData; Offset: Integer);

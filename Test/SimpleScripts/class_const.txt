@@ -1,0 +1,14 @@
+From Outside
+3
+3
+From class proc
+1
+2
+3
+From base
+1
+2
+3
+From child
+2
+3
