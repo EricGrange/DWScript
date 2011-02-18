@@ -1040,17 +1040,22 @@ begin
          CheckName(names[x]);
          sym := TDataSymbol.Create(names[x], typ);
          FProg.Table.AddSymbol(sym);
-         if coSymbolDictionary in FCompilerOptions then
-            FSymbolDictionary.Add(sym, posArray[x], [suDeclaration]);   // entry for variable
 
          varExpr:=GetVarExpr(sym);
          if Assigned(initExpr) then begin
 
             // Initialize with an expression
+
+            if coSymbolDictionary in FCompilerOptions then
+               FSymbolDictionary.Add(sym, posArray[x], [suDeclaration, suReference]);
+
             Result:=CreateAssign(pos, ttASSIGN, varExpr, initExpr);
             initExpr:=nil;
 
          end else begin
+
+            if coSymbolDictionary in FCompilerOptions then
+               FSymbolDictionary.Add(sym, posArray[x], [suDeclaration]);
 
             if sym.Typ is TArraySymbol then begin
 

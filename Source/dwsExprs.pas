@@ -138,29 +138,33 @@ type
     property Symbol: TSymbol read FSymbol;
   end;
 
-  { List all symbols in the script. Each symbol list contains a list of the
-    positions where it was used. }
-  TSymbolDictionary = class
-  protected
-    FSymbolList: TList;
-    function GetList(Index: Integer): TSymbolPositionList;
-    procedure SetList(Index: Integer; PosList: TSymbolPositionList);
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure Clear;  // clear the lists
-    procedure Add(Sym: TSymbol; const Pos: TScriptPos; UseTypes: TSymbolUsages=[suReference]);
-    procedure Remove(Sym: TSymbol); // remove references to the symbol
-    function FindSymbolAtPosition(ACol, ALine: Integer; const sourceFile : String): TSymbol; overload;
-    function FindSymbolPosList(Sym: TSymbol): TSymbolPositionList; overload;  // return list of symbol
-    function FindSymbolPosList(const SymName: string): TSymbolPositionList; overload;  // return list of symbol
-    function FindSymbolPosListOfType(const SymName: string; SymbolType: TSymbolClass): TSymbolPositionList; // return list of symbol given the desired type
-    function FindSymbolUsage(Symbol: TSymbol; SymbolUse: TSymbolUsage): TSymbolPosition; overload;
-    function FindSymbolUsage(const SymName: string; SymbolUse: TSymbolUsage): TSymbolPosition; overload;
-    function FindSymbolUsageOfType(const SymName: string; SymbolType: TSymbolClass; SymbolUse: TSymbolUsage): TSymbolPosition;
-    function Count: Integer;
-    property Items[Index: Integer]: TSymbolPositionList read GetList write SetList; default;
-  end;
+   { List all symbols in the script. Each symbol list contains a list of the
+     positions where it was used. }
+   TSymbolDictionary = class
+      protected
+         FSymbolList: TList;
+         function GetList(Index: Integer): TSymbolPositionList;
+         procedure SetList(Index: Integer; PosList: TSymbolPositionList);
+
+      public
+         constructor Create;
+         destructor Destroy; override;
+
+         procedure Clear;  // clear the lists
+         procedure Add(Sym: TSymbol; const Pos: TScriptPos; UseTypes: TSymbolUsages=[suReference]);
+         procedure Remove(Sym: TSymbol); // remove references to the symbol
+
+         function FindSymbolAtPosition(ACol, ALine: Integer; const sourceFile : String): TSymbol; overload;
+         function FindSymbolPosList(Sym: TSymbol): TSymbolPositionList; overload;  // return list of symbol
+         function FindSymbolPosList(const SymName: string): TSymbolPositionList; overload;  // return list of symbol
+         function FindSymbolPosListOfType(const SymName: string; SymbolType: TSymbolClass): TSymbolPositionList; // return list of symbol given the desired type
+         function FindSymbolUsage(Symbol: TSymbol; SymbolUse: TSymbolUsage): TSymbolPosition; overload;
+         function FindSymbolUsage(const SymName: string; SymbolUse: TSymbolUsage): TSymbolPosition; overload;
+         function FindSymbolUsageOfType(const SymName: string; SymbolType: TSymbolClass; SymbolUse: TSymbolUsage): TSymbolPosition;
+
+         function Count: Integer;
+         property Items[Index: Integer]: TSymbolPositionList read GetList write SetList; default;
+   end;
 
   // Context within the script. (A block of code) Can be nested
   TContext = class
