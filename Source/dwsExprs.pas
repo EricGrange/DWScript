@@ -100,43 +100,47 @@ type
     property MainScript: TScriptSourceItem read FMainScript;
   end;
 
-  { Describe how the symbol at the position is being used. suReference would be
-    a typical usage of the symbol. }
-  TSymbolUsage = (suForward, suDeclaration, suImplementation, suReference);
-  TSymbolUsages = set of TSymbolUsage;
+   { Describe how the symbol at the position is being used. suReference would be
+     a typical usage of the symbol. }
+   TSymbolUsage = (suForward, suDeclaration, suImplementation, suReference);
+   TSymbolUsages = set of TSymbolUsage;
 
-  TSymbolPosition = class
-  private
-    FOwnerList: TSymbolPositionList; // pointer back to owning list
-    FScriptPos: TScriptPos;     // location of symbol instance in script
-    FSymUsages: TSymbolUsages;  // how symbol is used at this location (mutiple uses possible, Functions are Delcared/Implemented at same spot)
-    function GetSymbol: TSymbol;// get symbol from parent
-  public
-    constructor Create(AOwningList: TSymbolPositionList; const AScriptPos: TScriptPos; AUsages: TSymbolUsages);
-    property Symbol: TSymbol read GetSymbol;     // get owner symbol
-    property ScriptPos: TScriptPos read FScriptPos;
-    property SymbolUsages: TSymbolUsages read FSymUsages write FSymUsages;
-  end;
+   TSymbolPosition = class
+      private
+         FScriptPos : TScriptPos;     // location of symbol instance in script
+         FSymUsages : TSymbolUsages;  // how symbol is used at this location (mutiple uses possible, Functions are Delcared/Implemented at same spot)
 
-  {Re-list every symbol (pointer to it) and every position it is in in the script }
-  TSymbolPositionList = class
-  private
-    FSymbol: TSymbol;       // pointer to the symbol
-    FPosList: TList;        // list of positions where symbol is declared and used
-    function GetPosition(Index: Integer): TSymbolPosition;
-    procedure SetPosition(Index: Integer; SymPos: TSymbolPosition);
-  protected
-    // Used by TSymbolDictionary. Not meaningful to make public (symbol is known).
-    function FindSymbolAtPosition(ACol, ALine: Integer; const sourceFile : String): TSymbol; overload;
-  public
-    constructor Create(ASymbol: TSymbol);
-    destructor Destroy; override;
-    procedure Add(const Pos: TScriptPos; const UseTypes: TSymbolUsages);
-    function FindUsage(SymbolUse: TSymbolUsage): TSymbolPosition;
-    function Count: Integer;
-    property Items[Index: Integer]: TSymbolPosition read GetPosition write SetPosition; default;
-    property Symbol: TSymbol read FSymbol;
-  end;
+      public
+         constructor Create(const AScriptPos: TScriptPos; const AUsages: TSymbolUsages);
+
+         property ScriptPos: TScriptPos read FScriptPos;
+         property SymbolUsages: TSymbolUsages read FSymUsages write FSymUsages;
+   end;
+
+   {Re-list every symbol (pointer to it) and every position it is in in the script }
+   TSymbolPositionList = class
+      private
+         FSymbol : TSymbol;            // pointer to the symbol
+         FPosList : TTightList;        // list of positions where symbol is declared and used
+
+      protected
+         function GetPosition(index : Integer) : TSymbolPosition; inline;
+
+         // Used by TSymbolDictionary. Not meaningful to make public (symbol is known).
+         function FindSymbolAtPosition(ACol, ALine: Integer; const sourceFile : String): TSymbol; overload;
+
+      public
+         constructor Create(ASymbol: TSymbol);
+         destructor Destroy; override;
+
+         procedure Add(const Pos: TScriptPos; const UseTypes: TSymbolUsages);
+         function FindUsage(const symbolUse : TSymbolUsage) : TSymbolPosition;
+
+         property Items[Index: Integer]: TSymbolPosition read GetPosition; default;
+         function Count : Integer; inline;
+
+         property Symbol: TSymbol read FSymbol;
+   end;
 
    TSymbolPositionListList = class(TSortedList<TSymbolPositionList>)
       protected
@@ -157,7 +161,7 @@ type
          destructor Destroy; override;
 
          procedure Clear;  // clear the lists
-         procedure Add(Sym: TSymbol; const Pos: TScriptPos; UseTypes: TSymbolUsages=[suReference]);
+         procedure Add(Sym: TSymbol; const Pos: TScriptPos; const useTypes: TSymbolUsages=[suReference]);
          procedure Remove(Sym: TSymbol); // remove references to the symbol
 
          function FindSymbolAtPosition(ACol, ALine: Integer; const sourceFile : String): TSymbol; overload;
@@ -6296,20 +6300,24 @@ begin
    inherited;
 end;
 
-procedure TSymbolDictionary.Add(Sym: TSymbol; const Pos: TScriptPos; UseTypes: TSymbolUsages);
+// Add
+//
+procedure TSymbolDictionary.Add(Sym: TSymbol; const Pos: TScriptPos; const useTypes: TSymbolUsages);
 var
    symPosList: TSymbolPositionList;
 begin
-   if not Assigned(Sym) then Exit;   // don't add a nil pointer
-   if Sym is TBaseSymbol then Exit;  // don't store references to base symbols
+   if sym=nil then Exit;   // don't add a nil pointer
+   if sym.IsBaseType then Exit;  // don't store references to base symbols
 
    { Check to see if symbol list already exists, if not create it }
-   symPosList := FindSymbolPosList(Sym);
-   if symPosList = nil then begin
-      symPosList := TSymbolPositionList.Create(Sym);
-      FSymbolList.Add(symPosList);      // add list for new symbol
+   symPosList:=FindSymbolPosList(Sym);
+   if symPosList=nil then begin
+      symPosList:=TSymbolPositionList.Create(Sym);
+      FSymbolList.Add(symPosList);
    end;
-   symPosList.Add(Pos, UseTypes);      // add the instance of the symbol to the position list
+
+   // add the instance of the symbol to the position list
+   symPosList.Add(Pos, UseTypes);
 end;
 
 // FindSymbolAtPosition
@@ -6453,76 +6461,80 @@ begin
     end;
 end;
 
-{ TSymbolPositionList }
+// ------------------
+// ------------------ TSymbolPositionList ------------------
+// ------------------
 
+// Create
+//
 constructor TSymbolPositionList.Create(ASymbol: TSymbol);
 begin
-  FSymbol := ASymbol;
-  FPosList := TList.Create;
+   FSymbol := ASymbol;
 end;
 
+// Destroy
+//
 destructor TSymbolPositionList.Destroy;
-var
-  x: Integer;
 begin
-  for x := 0 to FPosList.Count - 1 do
-    TSymbolPosition(FPosList[x]).Free;
-  FPosList.Free;
-  inherited;
+   FPosList.Clean;
+   inherited;
 end;
 
+// Add
+//
 procedure TSymbolPositionList.Add(const Pos: TScriptPos; const UseTypes: TSymbolUsages);
 var
-  SymPos: TSymbolPosition;
+   symPos: TSymbolPosition;
 begin
-  if (Pos.Line <= 0) or (Pos.SourceFile = nil) then EXIT; // don't add invalid entry
+   if (Pos.Line <= 0) or (Pos.SourceFile = nil) then exit;
 
-  SymPos := TSymbolPosition.Create(Self, Pos, UseTypes);
-  FPosList.Add(SymPos);              // add position information to the list
+   symPos := TSymbolPosition.Create(Pos, UseTypes);
+   FPosList.Add(symPos);
 end;
 
+// FindSymbolAtPosition
+//
 function TSymbolPositionList.FindSymbolAtPosition(ACol, ALine: Integer; const sourceFile : String): TSymbol;
 var
-   x : Integer;
+   i : Integer;
    symPos : TSymbolPosition;
 begin
-   for x := 0 to FPosList.Count - 1 do begin
-      symPos := TSymbolPosition(FPosList[x]);
-      if (sourceFile<>'') and (symPos.ScriptPos.SourceFile.Name<>sourceFile) then continue;
-      if (symPos.ScriptPos.Line = ALine) and (symPos.ScriptPos.Col = ACol) then begin
-         Result := symPos.Symbol;
-         Exit;    // found the symbol, stop searching
+   for i:=0 to FPosList.Count-1 do begin
+      symPos:=TSymbolPosition(FPosList.List[i]);
+      if     (symPos.ScriptPos.Line=ALine)
+         and (symPos.ScriptPos.Col=ACol)
+         and (symPos.ScriptPos.SourceFile.Name=sourceFile) then begin
+         Exit(FSymbol);
       end;
    end;
-   Result := nil; // default to not found
+   Result:=nil;
 end;
 
+// GetPosition
+//
 function TSymbolPositionList.GetPosition(Index: Integer): TSymbolPosition;
 begin
-  Result := TSymbolPosition(FPosList[Index]);
+   Result:=TSymbolPosition(FPosList.List[Index]);
 end;
 
+// Count
+//
 function TSymbolPositionList.Count: Integer;
 begin
-  Result := FPosList.Count;
+   Result:=FPosList.Count;
 end;
 
-procedure TSymbolPositionList.SetPosition(Index: Integer; SymPos: TSymbolPosition);
-begin
-  FPosList[Index] := SymPos;
-end;
-
-function TSymbolPositionList.FindUsage(SymbolUse: TSymbolUsage): TSymbolPosition;
+// FindUsage
+//
+function TSymbolPositionList.FindUsage(const symbolUse : TSymbolUsage) : TSymbolPosition;
 var
-  x: Integer;
+   i : Integer;
 begin
-  Result := nil;          // default to not found
-  for x := 0 to FPosList.Count - 1 do
-    if SymbolUse in TSymbolPosition(FPosList[x]).SymbolUsages then
-    begin
-      Result := TSymbolPosition(FPosList[x]);
-      Break;    // found the symbol, stop searching
-    end;
+   for i:=0 to Count-1 do begin
+      Result:=Items[i];
+      if SymbolUse in Result.SymbolUsages then Exit;
+   end;
+   Result:=nil;
 end;
 
 // ------------------
@@ -6544,22 +6556,17 @@ end;
 // ------------------ TSymbolPosition ------------------
 // ------------------
 
-constructor TSymbolPosition.Create(AOwningList: TSymbolPositionList; const AScriptPos: TScriptPos; AUsages: TSymbolUsages);
+// Create
+//
+constructor TSymbolPosition.Create(const AScriptPos: TScriptPos; const AUsages: TSymbolUsages);
 begin
-  FOwnerList := AOwningList;
-  FScriptPos := AScriptPos;
-  FSymUsages := AUsages;
+   FScriptPos := AScriptPos;
+   FSymUsages := AUsages;
 end;
 
-function TSymbolPosition.GetSymbol: TSymbol;
-begin
-  if Assigned(FOwnerList) then
-    Result := FOwnerList.Symbol
-  else
-    Result := nil;
-end;
-
-{ TContext }
+// ------------------
+// ------------------ TContext ------------------
+// ------------------
 
 constructor TContext.Create(AParent: TContext; const AStartPos: TScriptPos;
   AParentSymbol: TSymbol);

@@ -155,7 +155,8 @@ type
       public
          procedure AddCompilerInfo(const Text: String);
 
-         procedure AddCompilerHint(const Pos: TScriptPos; const Text: String);
+         procedure AddCompilerHint(const Pos: TScriptPos; const Text: String); overload;
+         procedure AddCompilerHintFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const); overload;
 
          procedure AddCompilerWarning(const Pos: TScriptPos; const Text: String);
          procedure AddCompilerWarningFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
@@ -534,6 +535,13 @@ end;
 procedure TdwsCompileMessageList.AddCompilerHint(const Pos: TScriptPos; const Text: String);
 begin
    AddMsg(THintMessage.Create(Self, Text, Pos));
+end;
+
+// AddCompilerHintFmt
+//
+procedure TdwsCompileMessageList.AddCompilerHintFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const);
+begin
+   AddCompilerHint(Pos, Format(textFormat, args));
 end;
 
 // AddCompilerWarning

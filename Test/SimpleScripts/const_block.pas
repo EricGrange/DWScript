@@ -6,6 +6,7 @@ var
    c : Integer;
    d : Integer;
 begin
+   c:=d;
 end;
 
 procedure Stuff2;
@@ -16,6 +17,7 @@ const
    a = 1;
    b = 2;
 begin
+   c:=d;
 end;
 
 procedure Stuff3;
@@ -23,6 +25,7 @@ var
    c : Integer;
    d : Integer;
 begin
+   c:=d;
 end;
 
 procedure Stuff4;

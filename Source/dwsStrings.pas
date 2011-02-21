@@ -215,6 +215,8 @@ const
 
   CPE_FunctionOptimizationFailed = 'Evaluation of "%s" failed: %s %s';
 
+  CPH_VariableDeclaredButNotUsed = 'Variable "%s" declared but not used';
+
   // TypeCheck
   CPE_BooleanExpected = 'Boolean expected';
   CPE_IntegerExpected = 'Integer expected';

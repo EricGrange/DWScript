@@ -244,6 +244,7 @@ type
       function CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
       procedure CompareFuncSymbols(A, B: TFuncSymbol; IsCheckingParameters: Boolean);
       function CurrentClass : TClassSymbol;
+      procedure HintUnusedSymbols;
 
       function OpenStreamForFile(const scriptName : String) : TStream;
       function GetScriptSource(const scriptName : String) : String;
@@ -1650,6 +1651,7 @@ begin
             if not FTok.TestDelete(ttEND) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndOfBlockExpected);
 
+            HintUnusedSymbols;
          finally
             if coContextMap in FCompilerOptions then
                FContextMap.CloseContext(FTok.CurrentPos);  // close with inside procedure end
@@ -1789,6 +1791,7 @@ begin
 
          until False;
 
+         HintUnusedSymbols;
       finally
          FProg.Table:=oldTable;
          if coContextMap in FCompilerOptions then
@@ -5130,6 +5133,30 @@ begin
    if (FProg is TdwsProcedure) and (TdwsProcedure(FProg).Func is TMethodSymbol) then
       Result:=TMethodSymbol(TdwsProcedure(FProg).Func).ClassSymbol
    else Result:=nil;
+end;
+
+// HintUnusedSymbols
+//
+procedure TdwsCompiler.HintUnusedSymbols;
+var
+   i : Integer;
+   sym : TSymbol;
+   symDecl : TSymbolPosition;
+   symDic : TSymbolDictionary;
+begin
+   if not (coSymbolDictionary in FCompilerOptions) then Exit;
+
+   symDic:=FMainProg.SymbolDictionary;
+   for i:=0 to FProg.Table.Count-1 do begin
+      sym:=FProg.Table[i];
+      if sym.ClassType=TDataSymbol then begin
+         if symDic.FindSymbolUsage(sym, suReference)=nil then begin
+            symDecl:=symDic.FindSymbolUsage(sym, suDeclaration);
+            if symDecl<>nil then
+               FMsgs.AddCompilerHintFmt(symDecl.ScriptPos, CPH_VariableDeclaredButNotUsed, [sym.Name]);
+         end;
+      end;
+   end;
 end;
 
 function TdwsCompiler.ReadConnectorSym(const Name: string;

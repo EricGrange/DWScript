@@ -346,6 +346,7 @@ type
          function BaseTypeID : TBaseTypeID; virtual;
          function IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean; virtual;
          function IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean; virtual;
+         function IsBaseType : Boolean; virtual;
 
          function QualifiedName : String; virtual;
 
@@ -695,11 +696,15 @@ type
       protected
          FDefault: Variant;
          FID : TBaseTypeID;
+
       public
          constructor Create(const Name: string; Id: TBaseTypeID; const Default: Variant);
+
          procedure InitData(const Data: TData; Offset: Integer); override;
          function IsCompatible(typSym: TSymbol): Boolean; override;
          function BaseTypeID : TBaseTypeID; override;
+         function IsBaseType : Boolean; override;
+
          property ID : TBaseTypeID read FID;
    end;
 
@@ -1521,6 +1526,13 @@ end;
 // IsBaseTypeIDArray
 //
 function TSymbol.IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean;
+begin
+   Result:=False;
+end;
+
+// IsBaseType
+//
+function TSymbol.IsBaseType : Boolean;
 begin
    Result:=False;
 end;
@@ -2836,6 +2848,13 @@ end;
 function TBaseSymbol.BaseTypeID : TBaseTypeID;
 begin
    Result:=ID;
+end;
+
+// IsBaseType
+//
+function TBaseSymbol.IsBaseType : Boolean;
+begin
+   Result:=True;
 end;
 
 { TConnectorSymbol }
