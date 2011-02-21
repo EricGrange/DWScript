@@ -105,7 +105,7 @@ type
 
    // TSortedList
    //
-   {: List that maintains its elements sorted }
+   {: List that maintains its elements sorted, subclasses must override Compare }
    TSortedList<T: class> = class
       private
          FItems : array of T;
@@ -149,6 +149,47 @@ type
          property Peek : T read GetPeek write SetPeek;
          property Items[const position : Integer] : T read GetItems write SetItems;
          property Count : Integer read FCount;
+   end;
+
+   TSimpleHashBucket<T> = record
+      HashCode : Integer;
+      Value : T;
+   end;
+   TSimpleHashBucketArray<T> = array of TSimpleHashBucket<T>;
+
+   {: Minimalistic open-addressing hash, subclasse must override SameItem and GetItemHashCode.
+      HashCodes *MUST *be non null }
+   TSimpleHash<T> = class
+      private
+         FBuckets : TSimpleHashBucketArray<T>;
+         FCount : Integer;
+         FGrowth : Integer;
+         FCapacity : Integer;
+
+      protected
+         procedure Grow;
+         function HashBucket(const hashCode : Integer) : Integer; inline;
+         function LinearFind(const item : T; var index : Integer) : Boolean;
+         function SameItem(const item1, item2 : T) : Boolean; virtual; abstract;
+         // hashCode must be non-null
+         function GetItemHashCode(const item1 : T) : Integer; virtual; abstract;
+
+      public
+         function Add(const anItem : T) : Boolean; // true if added
+         function Extract(const anItem : T) : Boolean; // true if extracted
+         function Contains(const anItem : T) : Boolean;
+         procedure Clear;
+
+         property Count : Integer read FCount;
+   end;
+
+   TSimpleObjectHash<T: Class> = class(TSimpleHash<T>)
+      protected
+         function SameItem(const item1, item2 : T) : Boolean; override;
+         function GetItemHashCode(const item1 : T) : Integer; override;
+
+      public
+         procedure Clean;
    end;
 
 const
@@ -1061,6 +1102,141 @@ begin
    FCapacity:=0;
    FreeMem(FList);
    FList:=nil;
+end;
+
+// ------------------
+// ------------------ TSimpleHash<T> ------------------
+// ------------------
+
+// Grow
+//
+procedure TSimpleHash<T>.Grow;
+var
+   i, j, n : Integer;
+   hashCode : Integer;
+   oldBuckets : TSimpleHashBucketArray<T>;
+begin
+   if FCapacity=0 then
+      FCapacity:=16
+   else FCapacity:=FCapacity*2;
+   FGrowth:=(FCapacity*3) div 4;
+
+   oldBuckets:=FBuckets;
+   FBuckets:=nil;
+   SetLength(FBuckets, FCapacity);
+
+   n:=FCapacity-1;
+   for i:=0 to High(oldBuckets) do begin
+      if oldBuckets[i].HashCode=0 then continue;
+      j:=HashBucket(oldBuckets[i].HashCode);
+      while FBuckets[j].HashCode<>0 do
+         j:=(j+1) and n;
+      FBuckets[j]:=oldBuckets[i];
+   end;
+end;
+
+// HashBucket
+//
+function TSimpleHash<T>.HashBucket(const hashCode : Integer) : Integer;
+begin
+   Result:=hashCode and (FCapacity-1); // capacity is a power of two
+end;
+
+// LinearFind
+//
+function TSimpleHash<T>.LinearFind(const item : T; var index : Integer) : Boolean;
+begin
+   repeat
+      if     (FBuckets[index].HashCode<>0)
+         and (not SameItem(item, FBuckets[index].Value)) then Exit;
+      index:=(index+1) and (FCapacity-1);
+   until False;
+end;
+
+// Add
+//
+function TSimpleHash<T>.Add(const anItem : T) : Boolean;
+var
+   i : Integer;
+   hashCode : Integer;
+begin
+   if FCount>=FGrowth then Grow;
+
+   hashCode:=GetItemHashCode(anItem);
+   i:=HashBucket(hashCode);
+   if LinearFind(anItem, i) then Exit(False);
+   FBuckets[i].HashCode:=hashCode;
+   FBuckets[i].Value:=anItem;
+   Inc(FCount);
+end;
+
+// Extract
+//
+function TSimpleHash<T>.Extract(const anItem : T) : Boolean;
+var
+   i : Integer;
+   hashCode : Integer;
+begin
+   hashCode:=GetItemHashCode(anItem);
+   i:=HashBucket(hashCode);
+   Result:=LinearFind(anItem, i);
+   if Result then begin
+      FBuckets[i].HashCode:=0;
+      Dec(FCount);
+   end;
+end;
+
+// Contains
+//
+function TSimpleHash<T>.Contains(const anItem : T) : Boolean;
+var
+   i : Integer;
+begin
+   i:=HashBucket(GetItemHashCode(anItem));
+   Result:=LinearFind(anItem, i);
+end;
+
+// Clear
+//
+procedure TSimpleHash<T>.Clear;
+begin
+   FCount:=0;
+   FCapacity:=0;
+   FGrowth:=0;
+   SetLength(FBuckets, 0);
+end;
+
+// ------------------
+// ------------------ TSimpleObjectHash<T> ------------------
+// ------------------
+
+// SameItem
+//
+function TSimpleObjectHash<T>.SameItem(const item1, item2 : T) : Boolean;
+begin
+   Result:=(item1=item2);
+end;
+
+// GetItemHashCode
+//
+function TSimpleObjectHash<T>.GetItemHashCode(const item1 : T) : Integer;
+var
+   p : NativeInt;
+begin
+   p:=PNativeInt(@item1)^; // workaround compiler issue
+   Result:=(p shr 4)+1;
+end;
+
+// Clean
+//
+procedure TSimpleObjectHash<T>.Clean;
+var
+   i : Integer;
+begin
+   for i:=0 to FCapacity-1 do
+      if FBuckets[i].HashCode<>0 then
+         FBuckets[i].Value.Free;
+   Clear;
 end;
 
 // ------------------------------------------------------------------
