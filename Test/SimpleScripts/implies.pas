@@ -4,6 +4,7 @@ var f = not t;
 function Oopsie : Boolean;
 begin
    PrintLn('Oops');
+   Result:=False;
 end;
 
 function Ookie : Boolean;

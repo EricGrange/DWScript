@@ -245,6 +245,7 @@ type
       procedure CompareFuncSymbols(A, B: TFuncSymbol; IsCheckingParameters: Boolean);
       function CurrentClass : TClassSymbol;
       procedure HintUnusedSymbols;
+      procedure HintUnusedResult(resultSymbol : TDataSymbol);
 
       function OpenStreamForFile(const scriptName : String) : TStream;
       function GetScriptSource(const scriptName : String) : String;
@@ -1652,6 +1653,7 @@ begin
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndOfBlockExpected);
 
             HintUnusedSymbols;
+            HintUnusedResult(proc.Func.Result);
          finally
             if coContextMap in FCompilerOptions then
                FContextMap.CloseContext(FTok.CurrentPos);  // close with inside procedure end
@@ -1747,10 +1749,10 @@ function TdwsCompiler.ReadBlocks(const endTokens: TTokenTypes; var finalToken: T
 var
    stmt : TNoResultExpr;
    oldTable : TSymbolTable;
-   x : Integer;
    token : TToken;
    closePos : TScriptPos; // Position at which the ending token was found (for context)
    blockExpr : TBlockExpr;
+   sym : TSymbol;
 begin
    // Read a block of instructions enclosed in "begin" and "end"
    blockExpr:=TBlockExpr.Create(FProg, FTok.HotPos);
@@ -1805,8 +1807,8 @@ begin
    except
       // Remove any symbols in the expression's table. Table will be freed.
       if coSymbolDictionary in FCompilerOptions then
-         for x:=0 to blockExpr.Table.Count - 1 do
-            FSymbolDictionary.Remove(blockExpr.Table[x]);
+         for sym in blockExpr.Table do
+            FSymbolDictionary.Remove(sym);
       blockExpr.Free;
       raise;
    end;
@@ -3972,7 +3974,7 @@ end;
 
 // ReadExit
 //
-function TdwsCompiler.ReadExit: TNoResultExpr;
+function TdwsCompiler.ReadExit : TNoResultExpr;
 var
    gotParenthesis : Boolean;
    leftExpr : TDataExpr;
@@ -3990,6 +3992,8 @@ begin
       proc:=TdwsProcedure(FProg);
       if proc.Func.Result=nil then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoResultRequired);
+      if coSymbolDictionary in FCompilerOptions then
+         FSymbolDictionary.Add(proc.Func.Result, exitPos, [suReference]);
       leftExpr:=TVarExpr.CreateTyped(FProg, proc.Func.Result.Typ, proc.Func.Result);
       try
          assignExpr:=ReadAssign(ttASSIGN, leftExpr);
@@ -5139,7 +5143,6 @@ end;
 //
 procedure TdwsCompiler.HintUnusedSymbols;
 var
-   i : Integer;
    sym : TSymbol;
    symDecl : TSymbolPosition;
    symDic : TSymbolDictionary;
@@ -5147,8 +5150,7 @@ begin
    if not (coSymbolDictionary in FCompilerOptions) then Exit;
 
    symDic:=FMainProg.SymbolDictionary;
-   for i:=0 to FProg.Table.Count-1 do begin
-      sym:=FProg.Table[i];
+   for sym in FProg.Table do begin
       if sym.ClassType=TDataSymbol then begin
          if symDic.FindSymbolUsage(sym, suReference)=nil then begin
             symDecl:=symDic.FindSymbolUsage(sym, suDeclaration);
@@ -5157,6 +5159,17 @@ begin
          end;
       end;
    end;
+end;
+
+// HintUnusedResult
+//
+procedure TdwsCompiler.HintUnusedResult(resultSymbol : TDataSymbol);
+begin
+   if resultSymbol=nil then Exit;
+   if not (coSymbolDictionary in FCompilerOptions) then Exit;
+
+   if FMainProg.SymbolDictionary.FindSymbolUsage(resultSymbol, suReference)=nil then
+      FMsgs.AddCompilerHint(FTok.HotPos, CPH_ResultNotUsed);
 end;
 
 function TdwsCompiler.ReadConnectorSym(const Name: string;
