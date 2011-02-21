@@ -1,0 +1,2 @@
+Hint: Variable "c" declared but not used [line: 6, column: 11]
+Hint: Variable "b" declared but not used [line: 3, column: 7]
