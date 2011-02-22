@@ -2804,32 +2804,30 @@ begin
     TClassSymbol(ParentSym).DefaultProperty := propSym;
 end;
 
+// GetDisplayName
+//
 function TdwsProperty.GetDisplayName: string;
-var
-  Params: string;
-  Index : String;
 begin
-  if FParameters.Count > 0 then
-    Params := '[' + FParameters.GetDisplayName + ']';
-  if IndexType <> '' then
-    Index := Format(' index %s',[ValueToString(IndexValue)]);
-  if (ReadAccess = '') and (WriteAccess = '') then
-    Result := Format('property %s%s: %s%s;', [Name, Params, DataType, Index])
-  else if (ReadAccess = '') and (WriteAccess <> '') then
-    Result := Format('property %s%s: %s%s write %s;', [Name, Params, DataType, Index, WriteAccess])
-  else if (ReadAccess <> '') and (WriteAccess = '') then
-    Result := Format('property %s%s: %s%s read %s;', [Name, Params, DataType, Index, ReadAccess])
-  else
-    Result := Format('property %s%s: %s%s read %s write %s;', [Name, Params, DataType, Index,
-      ReadAccess, WriteAccess]);
-  if IsDefault then
-    Result := Result + ' default;';
-   Result:=TClassSymbol.VisibilityToString(Visibility)+' '+Result;
+   Result:=TClassSymbol.VisibilityToString(Visibility)+' property '+Name;
+   if FParameters.Count>0 then
+      Result:=Result+'['+FParameters.GetDisplayName+']';
+   Result:=Result+': '+DataType;
+   if IndexType<>'' then
+      Result:=Result+' index '+ValueToString(IndexValue);
+   if ReadAccess<>'' then
+      Result:=Result+' read '+ReadAccess;
+   if WriteAccess<>'' then
+      Result:=Result+' write '+WriteAccess;
+   Result:=Result+';';
+   if IsDefault then
+      Result:=Result+' default;';
 end;
 
+// GetIsDefault
+//
 function TdwsProperty.GetIsDefault: Boolean;
 begin
-  Result := FIsDefault and (Parameters.Count > 0);
+   Result:=FIsDefault and (Parameters.Count>0);
 end;
 
 procedure TdwsProperty.SetIsDefault(Value: Boolean);
@@ -3233,18 +3231,19 @@ begin
   end;
 end;
 
+// GetDisplayName
+//
 function TdwsEnumeration.GetDisplayName: string;
 var
-  x: Integer;
+   i : Integer;
 begin
-  Result := Name + ' = (';
-  for x := 0 to FElements.Count - 1 do
-  begin
-    if x <> 0 then
-      Result := Result + ', ';
-    Result := Result + FElements.Items[x].Name;
-  end;
-  Result := Result + ')';
+   Result:=Name+' = (';
+   for i:=0 to FElements.Count-1 do begin
+      if i<>0 then
+         Result:=Result + ', ';
+      Result:=Result+TdwsElement(FElements.Items[i]).GetDisplayName;
+   end;
+   Result:=Result+');';
 end;
 
 { TdwsElement }

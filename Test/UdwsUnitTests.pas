@@ -117,6 +117,9 @@ type
    TdwsClassConstantCracker = class (TdwsClassConstant)
    end;
 
+   TdwsEnumerationCracker = class (TdwsEnumeration)
+   end;
+
 // ------------------
 // ------------------ TdwsUnitTests ------------------
 // ------------------
@@ -602,6 +605,14 @@ procedure TdwsUnitTests.DesignTimeDisplayValues;
       Result:=TdwsClassConstantCracker(cls.Constants.Items[i] as TdwsConstant);
    end;
 
+   function EnumByName(const aName : String) : TdwsEnumerationCracker;
+   var
+      i : Integer;
+   begin
+      i:=FUnit.Enumerations.IndexOf(aName);
+      Result:=TdwsEnumerationCracker(FUnit.Enumerations.Items[i] as TdwsEnumeration);
+   end;
+
 var
    cls : TdwsClassCracker;
 begin
@@ -612,12 +623,18 @@ begin
    CheckEquals('procedure FuncException;', FuncByName('FuncException').GetDisplayName);
    CheckEquals('function FuncInc(v : Integer) : Integer;', FuncByName('FuncInc').GetDisplayName);
 
+   CheckEquals('TMyEnum = (meOne = 1, meTen = 10);', EnumByName('TMyEnum').GetDisplayName);
+   CheckEquals('TAutoEnum = (aeVal9, aeVal8, aeVal7, aeVal6, aeVal5, aeVal4, aeVal3, aeVal2, aeVal1);',
+               EnumByName('TAutoEnum').GetDisplayName);
+
    cls:=ClassByName('TTestClass');
    CheckEquals('TTestClass (TObject)', cls.GetDisplayName);
    CheckEquals('public property MyReadOnlyProp: Integer read GetMyProp;', PropertyByName(cls, 'MyReadOnlyProp').GetDisplayName);
    CheckEquals('public function GetMyProp : Integer;', MethodByName(cls, 'GetMyProp').GetDisplayName);
    CheckEquals('public procedure SetMyProp(v : Integer);', MethodByName(cls, 'SetMyProp').GetDisplayName);
    CheckEquals('public property ArrayProp[v : String]: Integer read GetArrayProp;', PropertyByName(cls, 'ArrayProp').GetDisplayName);
+   CheckEquals('public property MyReadOnlyProp: Integer read GetMyProp;', PropertyByName(cls, 'MyReadOnlyProp').GetDisplayName);
+   CheckEquals('public property MyWriteOnlyProp: Integer write SetMyProp;', PropertyByName(cls, 'MyWriteOnlyProp').GetDisplayName);
    CheckEquals('public const cTest: String = ''My class const'';', ConstByName(cls, 'cTest').GetDisplayName);
 end;
 
