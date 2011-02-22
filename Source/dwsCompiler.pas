@@ -1026,10 +1026,16 @@ begin
          // inferred typing
          //    var myVar = expr
          //    var myVar := expr
-         if names.Count <> 1 then
+         if names.Count<>1 then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
-         initExpr := ReadExpr;
-         typ := initExpr.Typ;
+         initExpr:=ReadExpr;
+         typ:=initExpr.Typ;
+
+         if typ=nil then begin
+            FMsgs.AddCompilerError(pos, CPE_RightSideNeedsReturnType);
+            typ:=FProg.TypVariant; // keep going
+            FreeAndNil(initExpr);
+         end;
 
       end else begin
 
@@ -1040,7 +1046,7 @@ begin
 
       for x := 0 to names.Count - 1 do begin
          CheckName(names[x]);
-         sym := TDataSymbol.Create(names[x], typ);
+         sym:=TDataSymbol.Create(names[x], typ);
          FProg.Table.AddSymbol(sym);
 
          varExpr:=GetVarExpr(sym);
@@ -5999,8 +6005,10 @@ begin
 
    end else begin
 
-      FMsgs.AddCompilerStop(Pos, CPE_RightSideNeedsReturnType);
-      Result:=nil;
+      left.Free;
+      right.Free;
+      FMsgs.AddCompilerError(Pos, CPE_RightSideNeedsReturnType);
+      Result:=TNullExpr.Create(FProg, Pos);
 
    end;
 end;
