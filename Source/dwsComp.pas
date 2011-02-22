@@ -356,9 +356,12 @@ type
     property Value: Variant read FValue write FValue;
   end;
 
-  TdwsConstants = class(TdwsCollection)
-  protected
-    class function GetSymbolClass : TdwsSymbolClass; override;
+   TdwsConstants = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+
+      public
+         function Add : TdwsConstant;
   end;
 
   TdwsConstantsClass = class of TdwsConstants;
@@ -378,14 +381,18 @@ type
 
   TdwsForwardsClass = class of TdwsForwards;
 
-  TdwsField = class(TdwsVariable)
-  private
-    FVisibility : TClassVisibility;
-  public
-    constructor Create(Collection: TCollection); override;
-    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
-    property Visibility : TClassVisibility read FVisibility write FVisibility default cvPublic;
-  end;
+   TdwsField = class(TdwsVariable)
+      private
+         FVisibility : TClassVisibility;
+
+      protected
+         function GetDisplayName: string; override;
+
+      public
+         constructor Create(Collection: TCollection); override;
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+         property Visibility : TClassVisibility read FVisibility write FVisibility default cvPublic;
+   end;
 
    TdwsFields = class(TdwsCollection)
       protected
@@ -514,6 +521,27 @@ type
          function Add : TdwsConstructor;
    end;
 
+   TdwsClassConstant = class(TdwsConstant)
+      private
+         FVisibility : TClassVisibility;
+      protected
+         function GetDisplayName: string; override;
+      public
+         constructor Create(Collection: TCollection); override;
+         procedure Assign(Source: TPersistent); override;
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+      published
+         property Visibility : TClassVisibility read FVisibility write FVisibility default cvPublic;
+   end;
+
+   TdwsClassConstants = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+
+      public
+         function Add : TdwsClassConstant;
+  end;
+
    // TdwsClass
    //
    TdwsClass = class(TdwsSymbol)
@@ -525,6 +553,7 @@ type
          FOnObjectDestroy: TObjectDestroyEvent;
          FProperties: TdwsProperties;
          FOperators : TdwsClassOperators;
+         FConstants : TdwsClassConstants;
          FHelperObject : TObject;
          FIsSealed : Boolean;
          FIsAbstract : Boolean;
@@ -550,6 +579,7 @@ type
          property Fields: TdwsFields read FFields write FFields;
          property Methods: TdwsMethods read FMethods write FMethods;
          property Operators : TdwsClassOperators read FOperators write FOperators;
+         property Constants : TdwsClassConstants read FConstants write FConstants;
          property Properties: TdwsProperties read FProperties write FProperties;
          property OnCleanUp: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
    end;
@@ -1726,20 +1756,27 @@ begin
     FValue := TdwsConstant(Source).Value;
 end;
 
-function TdwsConstant.DoGenerate(Table: TSymbolTable;
-  ParentSym: TSymbol): TSymbol;
+// DoGenerate
+//
+function TdwsConstant.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol): TSymbol;
 begin
-  FIsGenerating := True;
-  CheckName(Table, Name);
+   FIsGenerating := True;
+   CheckName(Table, Name);
 
-  Result := TConstSymbol.Create(Name, GetDataType(Table, DataType), Value);
-
-  GetUnit.Table.AddSymbol(Result);
+   Result:=TConstSymbol.Create(Name, GetDataType(Table, DataType), Value);
+   GetUnit.Table.AddSymbol(Result);
 end;
 
+// GetDisplayName
+//
 function TdwsConstant.GetDisplayName: string;
+var
+   valAsString : String;
 begin
-  Result := Format('const %s: %s = %s', [Name, DataType, VarToStr(Value)]);
+   valAsString:=VarToStr(Value);
+   if SameText(DataType, 'String') then  // just for show
+      valAsString:=''''+valAsString+'''';
+   Result := Format('const %s: %s = %s;', [Name, DataType, valAsString]);
 end;
 
 { TdwsVariable }
@@ -2188,6 +2225,13 @@ begin
   Result := TFieldSymbol.Create(Name, GetDataType(Table, DataType), Visibility);
 end;
 
+// GetDisplayName
+//
+function TdwsField.GetDisplayName: string;
+begin
+   Result:=TClassSymbol.VisibilityToString(Visibility)+' '+inherited GetDisplayName;
+end;
+
 { TdwsMethod }
 
 function TdwsMethod.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil):
@@ -2238,7 +2282,8 @@ begin
       Assert(false); // if triggered, this func needs upgrade !
    end;
    if Deprecated<>'' then
-      Result:=Result+' deprecated;'
+      Result:=Result+' deprecated;';
+   Result:=TClassSymbol.VisibilityToString(Visibility)+' '+Result;
 end;
 
 procedure TdwsMethod.SetResultType(const Value: TDataType);
@@ -2371,7 +2416,7 @@ begin
   if Result <> '' then
     Result := '(' + Result + ')';
 
-  Result := Format('constructor %s%s;', [Name, Result]);
+  Result:=TClassSymbol.VisibilityToString(Visibility)+Format(' constructor %s%s;', [Name, Result]);
 end;
 
 function TdwsConstructor.GetResultType: string;
@@ -2380,20 +2425,69 @@ begin
   Result := '';
 end;
 
-{ TdwsClass }
+// ------------------
+// ------------------ TdwsClassConstant ------------------
+// ------------------
 
-procedure TdwsClass.Assign(Source: TPersistent);
+// Create
+//
+constructor TdwsClassConstant.Create(Collection: TCollection);
 begin
-  inherited;
-  if Source is TdwsClass then
-  begin
-    FAncestor := TdwsClass(Source).Ancestor;
-    FFields.Assign(TdwsClass(Source).Fields);
-    FMethods.Assign(TdwsClass(Source).Methods);
-    FProperties.Assign(TdwsClass(Source).Properties);
-  end;
+   inherited;
+   FVisibility:=cvPublic;
 end;
 
+// Assign
+//
+procedure TdwsClassConstant.Assign(Source: TPersistent);
+begin
+   inherited;
+   if Source is TdwsClassConstant then
+      FVisibility:=TdwsClassConstant(Source).Visibility;
+end;
+
+// DoGenerate
+//
+function TdwsClassConstant.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
+begin
+   FIsGenerating := True;
+   CheckName(Table, Name);
+
+   Result:=TClassConstSymbol.Create(Name, GetDataType(Table, DataType), Value);
+   TClassConstSymbol(Result).Visibility:=Visibility;
+end;
+
+// GetDisplayName
+//
+function TdwsClassConstant.GetDisplayName: string;
+begin
+   Result:=TClassSymbol.VisibilityToString(Visibility)+' '+inherited GetDisplayName;
+end;
+
+// ------------------
+// ------------------ TdwsClassConstants ------------------
+// ------------------
+
+// GetSymbolClass
+//
+class function TdwsClassConstants.GetSymbolClass : TdwsSymbolClass;
+begin
+   Result:=TdwsClassConstant;
+end;
+
+// Add
+//
+function TdwsClassConstants.Add : TdwsClassConstant;
+begin
+   Result:=TdwsClassConstant(inherited Add);
+end;
+
+// ------------------
+// ------------------ TdwsClass ------------------
+// ------------------
+
+// Create
+//
 constructor TdwsClass.Create(Collection: TCollection);
 begin
    inherited;
@@ -2402,8 +2496,11 @@ begin
    FMethods := TdwsMethods.Create(Self);
    FProperties := TdwsProperties.Create(Self);
    FOperators := TdwsClassOperators.Create(Self);
+   FConstants := TdwsClassConstants.Create(Self);
 end;
 
+// Destroy
+//
 destructor TdwsClass.Destroy;
 begin
    FFields.Free;
@@ -2411,8 +2508,24 @@ begin
    FMethods.Free;
    FProperties.Free;
    FOperators.Free;
+   FConstants.Free;
    FHelperObject.Free;
    inherited;
+end;
+
+// Assign
+//
+procedure TdwsClass.Assign(Source: TPersistent);
+begin
+   inherited;
+   if Source is TdwsClass then begin
+      FAncestor := TdwsClass(Source).Ancestor;
+      FFields.Assign(TdwsClass(Source).Fields);
+      FMethods.Assign(TdwsClass(Source).Methods);
+      FProperties.Assign(TdwsClass(Source).Properties);
+      FOperators.Assign(TdwsClass(Source).Operators);
+      FConstants.Assign(TdwsClass(Source).Constants);
+   end;
 end;
 
 // DoGenerate
@@ -2475,6 +2588,9 @@ begin
 
       for x := 0 to FOperators.Count - 1 do
          classSym.AddOperator(TClassOperatorSymbol(TdwsClassOperator(FOperators.Items[x]).Generate(Table, classSym)));
+
+      for x := 0 to FConstants.Count - 1 do
+         classSym.AddConst(TClassConstSymbol(TdwsConstant(FConstants.Items[x]).Generate(Table, classSym)));
 
    except
       if not classSym.IsForwarded then
@@ -2708,6 +2824,7 @@ begin
       ReadAccess, WriteAccess]);
   if IsDefault then
     Result := Result + ' default;';
+   Result:=TClassSymbol.VisibilityToString(Visibility)+' '+Result;
 end;
 
 function TdwsProperty.GetIsDefault: Boolean;
@@ -3298,6 +3415,13 @@ end;
 class function TdwsConstants.GetSymbolClass: TdwsSymbolClass;
 begin
   Result := TdwsConstant;
+end;
+
+// Add
+//
+function TdwsConstants.Add : TdwsConstant;
+begin
+   Result:=TdwsConstant(inherited Add);
 end;
 
 { TdwsClasses }

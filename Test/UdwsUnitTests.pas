@@ -98,6 +98,7 @@ const
       +'FuncVar(i, i); if i<>24 then PrintLn(''FuncVar i failed'');'#13#10
       +'if FuncFloat(10)<>10.5 then PrintLn(''FuncFloat def failed'');'#13#10
       +'if FuncFloat(5.1, 4.2)<>9.3 then PrintLn(''FuncFloat failed'');'#13#10
+      +'if TTestClass.cTest<>''My class const'' then PrintLn(''class const failed'');'#13#10
       ;
 
 type
@@ -111,6 +112,9 @@ type
    end;
 
    TdwsMethodCracker = class (TdwsMethod)
+   end;
+
+   TdwsClassConstantCracker = class (TdwsClassConstant)
    end;
 
 // ------------------
@@ -270,6 +274,7 @@ var
    fld : TdwsField;
    prop : TdwsProperty;
    param : TdwsParameter;
+   constant : TdwsConstant;
 begin
    cls:=FUnit.Classes.Add;
    cls.Name:='TTestClass';
@@ -339,6 +344,10 @@ begin
    param.DataType:='String';
    param.Name:='v';
 
+   constant:=cls.Constants.Add;
+   constant.Name:='cTest';
+   constant.DataType:='String';
+   constant.Value:='My class const';
 end;
 
 // DeclareTestVars
@@ -585,6 +594,14 @@ procedure TdwsUnitTests.DesignTimeDisplayValues;
       Result:=TdwsMethodCracker(cls.Methods.Items[i] as TdwsMethod);
    end;
 
+   function ConstByName(cls : TdwsClass; const aName : String) : TdwsClassConstantCracker;
+   var
+      i : Integer;
+   begin
+      i:=cls.Constants.IndexOf(aName);
+      Result:=TdwsClassConstantCracker(cls.Constants.Items[i] as TdwsConstant);
+   end;
+
 var
    cls : TdwsClassCracker;
 begin
@@ -597,10 +614,11 @@ begin
 
    cls:=ClassByName('TTestClass');
    CheckEquals('TTestClass (TObject)', cls.GetDisplayName);
-   CheckEquals('property MyReadOnlyProp: Integer read GetMyProp;', PropertyByName(cls, 'MyReadOnlyProp').GetDisplayName);
-   CheckEquals('function GetMyProp : Integer;', MethodByName(cls, 'GetMyProp').GetDisplayName);
-   CheckEquals('procedure SetMyProp(v : Integer);', MethodByName(cls, 'SetMyProp').GetDisplayName);
-   CheckEquals('property ArrayProp[v : String]: Integer read GetArrayProp;', PropertyByName(cls, 'ArrayProp').GetDisplayName);
+   CheckEquals('public property MyReadOnlyProp: Integer read GetMyProp;', PropertyByName(cls, 'MyReadOnlyProp').GetDisplayName);
+   CheckEquals('public function GetMyProp : Integer;', MethodByName(cls, 'GetMyProp').GetDisplayName);
+   CheckEquals('public procedure SetMyProp(v : Integer);', MethodByName(cls, 'SetMyProp').GetDisplayName);
+   CheckEquals('public property ArrayProp[v : String]: Integer read GetArrayProp;', PropertyByName(cls, 'ArrayProp').GetDisplayName);
+   CheckEquals('public const cTest: String = ''My class const'';', ConstByName(cls, 'cTest').GetDisplayName);
 end;
 
 // CompiledDescriptions

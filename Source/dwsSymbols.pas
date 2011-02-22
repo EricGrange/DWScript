@@ -983,6 +983,8 @@ type
          function FindClassOperatorStrict(tokenType : TTokenType; paramType : TSymbol; recursive : Boolean) : TClassOperatorSymbol;
          function FindClassOperator(tokenType : TTokenType; paramType : TSymbol) : TClassOperatorSymbol;
 
+         class function VisibilityToString(visibility : TClassVisibility) : String; static;
+
          property ClassOf: TClassOfSymbol read FClassOfSymbol;
          property ScriptInstanceSize : Integer read FScriptInstanceSize;
          property IsForwarded : Boolean read GetIsForwarded;
@@ -2719,6 +2721,16 @@ begin
    if Parent<>nil then
       Result:=Parent.FindClassOperator(tokenType, paramType)
    else Result:=nil;
+end;
+
+// VisibilityToString
+//
+class function TClassSymbol.VisibilityToString(visibility : TClassVisibility) : String;
+const
+   cVisibilityNames : array [TClassVisibility] of String = (
+      'magic', 'private', 'protected', 'public', 'published' );
+begin
+   Result:=cVisibilityNames[visibility];
 end;
 
 { TNilSymbol }
