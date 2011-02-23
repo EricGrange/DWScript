@@ -141,6 +141,7 @@ type
          FEvaluationError : TdwsDebuggerWatchEvaluationError;
 
       protected
+         procedure SetExpressionText(const val : String);
 
       public
          destructor Destroy; override;
@@ -148,7 +149,7 @@ type
          procedure Update(debugger : TdwsDebugger);
          procedure ClearEvaluator;
 
-         property ExpressionText : String read FExpressionText write FExpressionText;
+         property ExpressionText : String read FExpressionText write SetExpressionText;
          property Evaluator : IdwsEvaluateExpr read FEvaluator write FEvaluator;
          property ValueData : TdwsDebuggerTempValueSymbol read FValueData;
          property ValueInfo : IInfo read FValueInfo;
@@ -1185,6 +1186,16 @@ begin
    Evaluator:=nil;
    FValueInfo:=nil;
    FreeAndNil(FValueData);
+end;
+
+// SetExpressionText
+//
+procedure TdwsDebuggerWatch.SetExpressionText(const val : String);
+begin
+   if FExpressionText<>val then begin
+      FExpressionText:=val;
+      ClearEvaluator;
+   end;
 end;
 
 // ------------------
