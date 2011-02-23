@@ -4925,7 +4925,7 @@ end;
 function TRepeatExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
-   if FCondExpr.IsConstant and FCondExpr.EvalAsBoolean(exec) then begin
+   if FCondExpr.IsConstant and not FCondExpr.EvalAsBoolean(exec) then begin
       Result:=TLoopExpr.Create(Prog, Pos);
       TLoopExpr(Result).FLoopExpr:=FLoopExpr;
       FLoopExpr:=nil;
