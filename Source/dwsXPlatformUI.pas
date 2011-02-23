@@ -46,6 +46,7 @@ implementation
 //
 procedure ProcessApplicationMessages(sleepMilliSeconds : Integer);
 begin
+   Application.HandleMessage;
    Application.ProcessMessages;
    if sleepMilliSeconds>0 then
       Sleep(sleepMilliSeconds);
