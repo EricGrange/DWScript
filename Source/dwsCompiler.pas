@@ -828,7 +828,7 @@ begin
 
          if not FTok.TestDelete(ttSEMI) then begin
             if endTokens<>[] then begin
-               finalToken:=FTok.TestAny(endTokens);
+               finalToken:=FTok.TestDeleteAny(endTokens);
                if finalToken=ttNone then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
                Break;
