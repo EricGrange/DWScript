@@ -1,0 +1,6 @@
+3
+First nil
+Second 0
+Third 2
+Alpha nil
+Beta nil

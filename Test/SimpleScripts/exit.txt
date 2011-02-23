@@ -1,2 +1,6 @@
+Errors >>>>
+Warning: Unreachable code [line: 5, column: 4]
+Warning: Unreachable code [line: 20, column: 1]
+Result >>>>
 1
 2

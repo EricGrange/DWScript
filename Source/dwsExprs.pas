@@ -173,80 +173,91 @@ type
          function FindSymbolUsageOfType(const SymName: string; SymbolType: TSymbolClass; SymbolUse: TSymbolUsage): TSymbolPosition;
 
          function Count : Integer; inline;
-         property Items[Index: Integer]: TSymbolPositionList read GetList; default;
+         property Items[Index: Integer] : TSymbolPositionList read GetList; default;
    end;
 
-  // Context within the script. (A block of code) Can be nested
-  TContext = class
-  private
-    FParentContext: TContext;
-    FParentSymbol: TSymbol;     // a parent symbol would be a procedure/method, etc.
-    FSubContexts: TList;        // contexts that are inside of this one
-    FEndPos: TScriptPos;
-    FStartPos: TScriptPos;
-    FData: Pointer;             // pointer to some data element (for users)
-    FLocalTable: TSymbolTable;  // symbol table associated with the context (begin..end blocks, TProcedures, etc)
-  public
-    constructor Create(AParent: TContext; const AStartPos: TScriptPos; AParentSymbol: TSymbol);
-    destructor Destroy; override;
-    function IsPositionInContext(ACol, ALine: Integer; SourceFile: TSourceFile=nil): Boolean;
-    function HasParentSymbolOfClass(SymbolType: TSymbolClass; SearchParents: Boolean): Boolean;
-    property Parent: TContext read FParentContext;
-    property ParentSym: TSymbol read FParentSymbol;
-    property SubContexts: TList read FSubContexts;
-    property StartPos: TScriptPos read FStartPos;
-    property EndPos: TScriptPos read FEndPos;
-    property Data: Pointer read FData write FData;
-    property LocalTable: TSymbolTable read FLocalTable write FLocalTable;
-  end;
+   // Context within the script. (A block of code) Can be nested
+   TContext = class
+      private
+         FParentContext : TContext;
+         FParentSymbol : TSymbol;     // a parent symbol would be a procedure/method, etc.
+         FSubContexts : TList;        // contexts that are inside of this one
+         FEndPos : TScriptPos;
+         FStartPos : TScriptPos;
+         FData : Pointer;             // pointer to some data element (for users)
+         FLocalTable : TSymbolTable;  // symbol table associated with the context (begin..end blocks, TProcedures, etc)
 
-  // Map the various script contexts. (Code blocks)
-  TContextMap = class
-  private
-    FScriptContexts: TList;     // list of top-level contexts
-    FCurrentContext: TContext;  // current context (used when adding and leaving)
-  public
-    constructor Create;
-    destructor Destroy; override;
-    { Push a context on to the stack - procedures have a symbol context.
-      Standard Begin..end blocks do not have a ParentSymbol. }
-    procedure OpenContext(const AStartPos: TScriptPos; AParentSymbol: TSymbol);
-    { Pop a context off the stack }
-    procedure CloseContext(const AEndPos: TScriptPos);
-    function FindContext(AParentSymbol: TSymbol): TContext; overload;// return the first context group based on its parent
-    function FindContext(ACol, ALine: Integer; SourceFile: TSourceFile=nil): TContext; overload;
-    function FindContext(const ScriptPos: TScriptPos): TContext; overload;
-    property Contexts: TList read FScriptContexts;
-    property Current: TContext read FCurrentContext; 
-  end;
+      public
+         constructor Create(AParent: TContext; const AStartPos: TScriptPos; AParentSymbol: TSymbol);
+         destructor Destroy; override;
 
-  TProgramEvent = procedure (Prog: TdwsProgram) of object;
+         function IsPositionInContext(ACol, ALine: Integer; SourceFile: TSourceFile=nil): Boolean;
+         function HasParentSymbolOfClass(SymbolType: TSymbolClass; SearchParents: Boolean): Boolean;
 
-  TdwsResultType = class;
+         property Parent : TContext read FParentContext;
+         property ParentSym : TSymbol read FParentSymbol;
+         property SubContexts : TList read FSubContexts;
+         property StartPos : TScriptPos read FStartPos;
+         property EndPos : TScriptPos read FEndPos;
+         property Data : Pointer read FData write FData;
+         property LocalTable : TSymbolTable read FLocalTable write FLocalTable;
+   end;
 
-  TdwsResult = class
-  private
-    FResultType: TdwsResultType;
-  protected
-    constructor Create(ResultType: TdwsResultType); virtual;
-    procedure InitializeProgram(Prog: TdwsProgram); virtual;
-    procedure FinalizeProgram(Prog: TdwsProgram); virtual;
-    property ResultType: TdwsResultType read FResultType;
-  public
-    procedure AddString(const str : String); virtual;
-  end;
+   // Map the various script contexts. (Code blocks)
+   TContextMap = class
+      private
+         FScriptContexts : TList;     // list of top-level contexts
+         FCurrentContext : TContext;  // current context (used when adding and leaving)
 
-  TdwsResultType = class(TComponent)
-  private
-    FOnInitializeProgram: TProgramEvent;
-    FOnFinalizeProgram: TProgramEvent;
-  public
-    procedure AddResultSymbols(SymbolTable: TSymbolTable); virtual;
-    function CreateProgResult: TdwsResult; virtual;
-  published
-    property OnInitializeProgram: TProgramEvent read FOnInitializeProgram write FOnInitializeProgram;
-    property OnFinalizeProgram: TProgramEvent read FOnFinalizeProgram write FOnFinalizeProgram;
-  end;
+      public
+         constructor Create;
+         destructor Destroy; override;
+
+         { Push a context on to the stack - procedures have a symbol context.
+         Standard Begin..end blocks do not have a ParentSymbol. }
+         procedure OpenContext(const AStartPos : TScriptPos; AParentSymbol: TSymbol);
+         { Pop a context off the stack }
+         procedure CloseContext(const AEndPos : TScriptPos);
+
+         function FindContext(AParentSymbol : TSymbol) : TContext; overload;// return the first context group based on its parent
+         function FindContext(ACol, ALine : Integer; SourceFile : TSourceFile=nil): TContext; overload;
+         function FindContext(const ScriptPos : TScriptPos) : TContext; overload;
+
+         property Contexts : TList read FScriptContexts;
+         property Current : TContext read FCurrentContext;
+   end;
+
+   TProgramEvent = procedure (Prog: TdwsProgram) of object;
+
+   TdwsResultType = class;
+
+   TdwsResult = class
+      private
+         FResultType: TdwsResultType;
+
+      protected
+         constructor Create(ResultType: TdwsResultType); virtual;
+         procedure InitializeProgram(Prog: TdwsProgram); virtual;
+         procedure FinalizeProgram(Prog: TdwsProgram); virtual;
+         property ResultType: TdwsResultType read FResultType;
+
+      public
+         procedure AddString(const str : String); virtual;
+   end;
+
+   TdwsResultType = class(TComponent)
+      private
+         FOnInitializeProgram: TProgramEvent;
+         FOnFinalizeProgram: TProgramEvent;
+
+      public
+         procedure AddResultSymbols(SymbolTable: TSymbolTable); virtual;
+         function CreateProgResult: TdwsResult; virtual;
+
+      published
+         property OnInitializeProgram: TProgramEvent read FOnInitializeProgram write FOnInitializeProgram;
+         property OnFinalizeProgram: TProgramEvent read FOnFinalizeProgram write FOnFinalizeProgram;
+   end;
 
    // TTerminatorThread
    //
@@ -3153,10 +3164,6 @@ end;
 // ------------------ TNoResultExpr ------------------
 // ------------------
 
-// ------------------
-// ------------------ TExpr ------------------
-// ------------------
-
 // Create
 //
 constructor TNoResultExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
@@ -4965,9 +4972,10 @@ var
 begin
    if Assigned(FExecutionContext) then begin
       // we are released, so never do: Self as IScriptObj
-      FDestroyed:=True;
-      iso:=TScriptObjectWrapper.Create(Self);
-      ExecutionContext.DestroyScriptObj(iso);
+      if not FDestroyed then begin
+         iso:=TScriptObjectWrapper.Create(Self);
+         ExecutionContext.DestroyScriptObj(iso);
+      end;
       ExecutionContext.ScriptObjDestroyed(Self);
    end;
    inherited;

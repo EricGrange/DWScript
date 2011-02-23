@@ -280,6 +280,7 @@ const
   CPW_DeprecatedWithMessage = '"%s" has been deprecated: %s';
   CPW_InfiniteLoop = 'Infinite loop';
   CPW_ConstantCondition = 'Constant condition';
+  CPW_UnReachableCode = 'Unreachable code';
 
   CPE_NoResultTypeRequired = 'No result type required';
   CPE_ResultTypeExpected = 'Result type expected';

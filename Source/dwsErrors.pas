@@ -265,7 +265,7 @@ end;
 //
 function TScriptPos.IsMainModule : Boolean;
 begin
-   Result:=(SourceFile.Name=MSG_MainModule);
+   Result:=(SourceFile=nil) or (SourceFile.Name=MSG_MainModule);
 end;
 
 // IsSourceFile

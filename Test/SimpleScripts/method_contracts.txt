@@ -1,20 +1,20 @@
 TBase
 base 1
-Pre-condition failed in TBase.Check [line: 14, column: 1], i > 0
+Pre-condition failed in TBase.Check [line: 15, column: 4], i > 0
 base 7
 base 10
-Post-condition failed in TBase.Check [line: 18, column: 1], i < 10
+Post-condition failed in TBase.Check [line: 19, column: 4], i < 10
 TChild
 base 1
-Pre-condition failed in TBase.Check [line: 14, column: 1], i > 0
+Pre-condition failed in TBase.Check [line: 15, column: 4], i > 0
 base 7
 base 10
-Post-condition failed in TBase.Check [line: 18, column: 1], i < 10
+Post-condition failed in TBase.Check [line: 19, column: 4], i < 10
 TSubChild
 subchild 1
-Pre-condition failed in TSubChild.Check [line: 14, column: 1], i > 0
+Pre-condition failed in TSubChild.Check [line: 15, column: 4], i > 0
 subchild 4
 subchild 7
-Post-condition failed in TSubChild.Check [line: 25, column: 1], was 7
+Post-condition failed in TSubChild.Check [line: 26, column: 4], was 7
 subchild 10
-Post-condition failed in TSubChild.Check [line: 25, column: 1], was 10
+Post-condition failed in TSubChild.Check [line: 26, column: 4], was 10

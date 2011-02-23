@@ -321,7 +321,9 @@ type
       function ReadRaise : TRaiseBaseExpr;
       function ReadRepeat : TNoResultExpr;
       function ReadRootStatement : TNoResultExpr;
-      function ReadScript(const AName: string=''; ScriptType: TScriptSourceType=stMain): TBlockExpr;  // AName might be the name of an INCLUDEd script
+      function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TNoResultExpr;
+      // AName might be the name of an INCLUDEd script
+      function ReadScript(const AName: string=''; ScriptType: TScriptSourceType=stMain): TNoResultExpr;
       function ReadSpecialFunction(const namePos: TScriptPos; SpecialKind: TSpecialKeywordKind): TProgramExpr;
       function ReadStatement : TNoResultExpr;
       function ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TProgramExpr;
@@ -420,6 +422,7 @@ const
                                       ttTIMES_ASSIGN, ttDIVIDE_ASSIGN];
 
 type
+   TReachStatus = (rsReachable, rsUnReachable, rsUnReachableWarned);
 
    TObjectClassNameMethod = class(TInternalMethod)
       procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
@@ -795,13 +798,69 @@ begin
    Result:=(coOptimize in FCompilerOptions) and (not FMsgs.HasErrors);
 end;
 
-// ReadScript
+// ReadRootBlock
 //
-function TdwsCompiler.ReadScript(const AName: string; ScriptType: TScriptSourceType): TBlockExpr;
+function TdwsCompiler.ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TNoResultExpr;
 var
+   reach : TReachStatus;
    stmt : TNoResultExpr;
 begin
-   Result := TBlockExpr.Create(FProg, FTok.DefaultPos);
+   reach:=rsReachable;
+   Result:=TBlockExpr.Create(FProg, FTok.HotPos);
+   try
+      while FTok.HasTokens do begin
+         finalToken:=FTok.TestDeleteAny(endTokens);
+         if finalToken<>ttNone then Break;
+
+         if reach=rsUnReachable then begin
+            reach:=rsUnReachableWarned;
+            FMsgs.AddCompilerWarning(FTok.HotPos, CPW_UnReachableCode);
+         end;
+
+         stmt:=ReadRootStatement;
+         if Assigned(stmt) then begin
+            TBlockExpr(Result).AddStatement(Stmt);
+            if     (reach=rsReachable)
+               and (   (stmt is TFlowControlExpr)
+                    or (stmt is TRaiseExpr)) then
+               reach:=rsUnReachable;
+         end;
+
+         if not FTok.TestDelete(ttSEMI) then begin
+            if endTokens<>[] then begin
+               finalToken:=FTok.TestAny(endTokens);
+               if finalToken=ttNone then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+               Break;
+            end else begin
+               while FTok.HasTokens and FTok.Test(ttSWITCH) do begin
+                  ReadInstrSwitch(True);
+                  FTok.KillToken;
+               end;
+               if FTok.HasTokens then
+                  FMsgs.AddCompilerStop(FTok.CurrentPos, CPE_SemiExpected);
+            end;
+         end;
+      end;
+
+      if Optimize then
+         Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
+   except
+      Result.Free;
+      raise;
+   end;
+end;
+
+// ReadScript
+//
+function TdwsCompiler.ReadScript(const AName: string; ScriptType: TScriptSourceType): TNoResultExpr;
+var
+//   stmt : TNoResultExpr;
+   finalToken : TTokenType;
+begin
+   FMainProg.SourceList.Add(AName, FTok.HotPos.SourceFile, ScriptType);
+   Result:=ReadRootBlock([], finalToken);
+{   Result := TBlockExpr.Create(FProg, FTok.DefaultPos);
    try
       FMainProg.SourceList.Add(AName, FTok.HotPos.SourceFile, ScriptType);
       while FTok.HasTokens do begin
@@ -818,10 +877,10 @@ begin
                FMsgs.AddCompilerStop(FTok.CurrentPos, CPE_SemiExpected);
          end;
       end;
-  except
+   except
       Result.Free;
       raise;
-  end;
+   end; }
 end;
 
 // ReadRootStatement
@@ -1551,9 +1610,8 @@ procedure TdwsCompiler.ReadProcBody(funcSymbol : TFuncSymbol);
 var
    oldprog : TdwsProgram;
    proc : TdwsProcedure;
-   stmt : TNoResultExpr;
    assignExpr : TNoResultExpr;
-   sectionType : TTokenType;
+   sectionType, finalToken : TTokenType;
    constSym : TConstSymbol;
 begin
    // Stop if declaration was forwarded or external
@@ -1633,32 +1691,21 @@ begin
                else FMsgs.AddCompilerStop(FTok.HotPos, CPE_BeginExpected);
             end;
 
-            // Read Statements enclosed in "begin" and "end"
-            FProg.Expr := TBlockExpr.Create(FProg, FTok.HotPos);
-            while FTok.TestAny([ttEND, ttENSURE])=ttNone do begin
-               stmt := ReadRootStatement;
-               if Assigned(stmt) then
-                  TBlockExpr(FProg.Expr).AddStatement(Stmt);
-               if not FTok.TestDelete(ttSEMI) then begin
-                  if FTok.TestAny([ttEND, ttENSURE])=ttNone then
-                     FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
-                  Break;
-               end;
-            end;
-            if Optimize then
-               FProg.Expr:=FProg.Expr.Optimize(FProg, FExec) as TNoResultExpr;
+            FProg.Expr:=ReadRootBlock([ttEND, ttENSURE], finalToken);
 
-            if FTok.TestDelete(ttENSURE) then begin
+            if finalToken=ttENSURE then begin
                if funcSymbol is TMethodSymbol then
                   proc.PostConditions:=TSourceMethodPostConditions.Create(proc)
                else proc.PostConditions:=TSourcePostConditions.Create(proc);
                ReadPostConditions(funcSymbol, proc.PostConditions, TPostConditionSymbol);
+               if FTok.TestDelete(ttEND) then
+                  finalToken:=ttEND;
             end else if funcSymbol is TMethodSymbol then begin
                if TMethodSymbol(funcSymbol).HasConditions then
                   proc.PostConditions:=TSourceMethodPostConditions.Create(proc);
             end;
 
-            if not FTok.TestDelete(ttEND) then
+            if finalToken<>ttEND then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndOfBlockExpected);
 
             HintUnusedSymbols;
@@ -1694,8 +1741,9 @@ var
 begin
    repeat
 
-      hotPos:=FTok.HotPos;
       testStart:=FTok.PosPtr;
+      FTok.Test(ttNone);
+      hotPos:=FTok.HotPos;
 
       msgExpr:=nil;
       testExpr:=ReadExpr;
@@ -1762,8 +1810,10 @@ var
    closePos : TScriptPos; // Position at which the ending token was found (for context)
    blockExpr : TBlockExpr;
    sym : TSymbol;
+   reach : TReachStatus;
 begin
    // Read a block of instructions enclosed in "begin" and "end"
+   reach:=rsReachable;
    blockExpr:=TBlockExpr.Create(FProg, FTok.HotPos);
    try
       if coContextMap in FCompilerOptions then begin
@@ -1790,9 +1840,21 @@ begin
                Break;
             end;
 
-            stmt := ReadStatement;
-            if Assigned(stmt) then
+            if reach=rsUnReachable then begin
+               reach:=rsUnReachableWarned;
+               FMsgs.AddCompilerWarning(FTok.CurrentPos, CPW_UnReachableCode);
+            end;
+
+            stmt:=ReadStatement;
+
+            if Assigned(stmt) then begin
                blockExpr.AddStatement(stmt);
+
+               if     (reach=rsReachable)
+                  and (   (stmt is TFlowControlExpr)
+                       or (stmt is TRaiseExpr)) then
+                  reach:=rsUnReachable;
+            end;
 
             if not FTok.TestDelete(ttSEMI) then begin
                token:=FTok.GetToken;
@@ -2085,13 +2147,20 @@ begin
 
          // Unit prefix found
          if baseType.InheritsFrom(TUnitSymbol) then begin
+
             if not FTok.TestDelete(ttDOT) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotExpected);
             if not FTok.TestName then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
             namePos := FTok.HotPos;   // reuse token pos variable
             sym := TUnitSymbol(baseType).Table.FindLocal(FTok.GetToken.FString);
+
+            if not Assigned(sym) then
+               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownName,
+                                        [baseType.Name+'.'+FTok.GetToken.FString]);
+
             FTok.KillToken;
+
             // Already added symbol usage of the unit. Now add for the unit's specified symbol.
             if coSymbolDictionary in FCompilerOptions then
                FSymbolDictionary.Add(sym, namePos);
@@ -2110,12 +2179,14 @@ begin
       end;
 
       if sym.InheritsFrom(TByRefParamSymbol) then begin
+
          if sym.InheritsFrom(TVarParamSymbol) then
             Result := ReadSymbol(GetVarParamExpr(TVarParamSymbol(sym)), IsWrite)
          else if sym.InheritsFrom(TConstParamSymbol) then begin
             Result := ReadSymbol(GetConstParamExpr(TConstParamSymbol(sym)), IsWrite)
          end else Assert(False); // compiler bug
          Exit;
+
       end;
 
       if sym.InheritsFrom(TConstSymbol) then begin
@@ -2124,10 +2195,13 @@ begin
       end;
 
       if sym.InheritsFrom(TDataSymbol) then begin
+
          if sym.Typ is TFuncSymbol then
             Result := ReadFunc(TFuncSymbol(sym.Typ), IsWrite, GetVarExpr(TDataSymbol(sym)))
          else Result := ReadSymbol(GetVarExpr(TDataSymbol(sym)), IsWrite);
+
       end else if sym.InheritsFrom(TExternalVarSymbol) then
+
          Result := ReadSymbol(ReadExternalVar(TExternalVarSymbol(sym), IsWrite), IsWrite)
 
       // OOP related stuff

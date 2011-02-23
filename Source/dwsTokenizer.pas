@@ -779,11 +779,16 @@ begin
     Result := (FNextToken.FString <> '') and not (FToken.FTyp in cReservedNames);
 end;
 
+// HasTokens
+//
 function TTokenizer.HasTokens: Boolean;
 begin
-  if not Assigned(FToken) then
-    ReadToken;
-  Result := FToken <> nil;
+   if not Assigned(FToken) then begin
+      ReadToken;
+      if FToken<>nil then
+         FHotPos.LineCol:=FToken.FPos.LineCol;
+   end;
+   Result:=(FToken<>nil);
 end;
 
 function TTokenizer.ConsumeToken: TToken;

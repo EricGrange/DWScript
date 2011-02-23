@@ -1049,17 +1049,17 @@ type
    end;
 
    TFlowControlExpr = class(TNoResultExpr)
-   public
+      public
    end;
 
    TBreakExpr = class(TFlowControlExpr)
-   public
-     procedure EvalNoResult(exec : TdwsExecution); override;
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TExitExpr = class(TFlowControlExpr)
-   public
-     procedure EvalNoResult(exec : TdwsExecution); override;
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TExitValueExpr = class(TExitExpr)
@@ -1073,8 +1073,8 @@ type
    end;
 
    TContinueExpr = class(TFlowControlExpr)
-   public
-     procedure EvalNoResult(exec : TdwsExecution); override;
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TRaiseBaseExpr = class(TNoResultExpr)
@@ -1082,18 +1082,18 @@ type
 
    // raise TExceptionClass.Create;
    TRaiseExpr = class(TRaiseBaseExpr)
-   private
-     FExceptionExpr: TTypedExpr;
-   public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; ExceptionExpr: TTypedExpr);
-     destructor Destroy; override;
-     procedure EvalNoResult(exec : TdwsExecution); override;
-     procedure Initialize; override;
+      private
+         FExceptionExpr: TTypedExpr;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; ExceptionExpr: TTypedExpr);
+         destructor Destroy; override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         procedure Initialize; override;
    end;
 
    TReraiseExpr = class(TRaiseBaseExpr)
-   public
-     procedure EvalNoResult(exec : TdwsExecution); override;
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TExceptionExpr = class(TNoResultExpr)

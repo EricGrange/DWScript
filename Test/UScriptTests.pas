@@ -97,6 +97,7 @@ var
    source : TStringList;
    i : Integer;
    prog : IdwsProgram;
+   resultsFileName : String;
 begin
    source:=TStringList.Create;
    try
@@ -107,7 +108,7 @@ begin
 
          prog:=FCompiler.Compile(source.Text);
 
-         CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
+         CheckEquals(False, prog.Msgs.HasErrors, FTests[i]+#13#10+prog.Msgs.AsInfo);
 
       end;
 
@@ -137,7 +138,7 @@ begin
 
          prog:=FCompiler.Compile(source.Text);
 
-         CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
+         CheckEquals(False, prog.Msgs.HasErrors, FTests[i]+#13#10+prog.Msgs.AsInfo);
          try
             exec:=prog.Execute;
          except
