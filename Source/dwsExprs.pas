@@ -2236,12 +2236,10 @@ begin
    if IsDebugging then
       Debugger.LeaveFunc(Self, FCallStack.Peek);
 
-   FCallStack.Pop;
-   FCallStack.Pop;
+   FCurrentProg:=FCallStack.Peek;
 
-   if FCallStack.Count>0 then
-      FCurrentProg:=FCallStack.Peek
-   else FCurrentProg:=FProg;
+   FCallStack.Pop;
+   FCallStack.Pop;
 end;
 
 // SetCurrentProg
@@ -5352,9 +5350,11 @@ function TInfoClass.GetValueAsString : String;
 begin
    if FScriptObj=nil then
       Result:='(nil)'
-   else if FScriptObj.Destroyed then
-      Result:='destroyed '+FScriptObj.ClassSym.Name
-   else Result:=FScriptObj.ClassSym.Name;
+   else if FScriptObj.Destroyed then begin
+      if FScriptObj.ClassSym<>nil then
+         Result:='destroyed '+FScriptObj.ClassSym.Name
+      else Result:='destroyed object';
+   end else Result:=FScriptObj.ClassSym.Name;
 end;
 
 { TInfoClassObj }
