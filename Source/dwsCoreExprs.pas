@@ -1151,8 +1151,8 @@ type
 
    // try FTryExpr finally FHandlerExpr end;
    TFinallyExpr = class(TExceptionExpr)
-   public
-     procedure EvalNoResult(exec : TdwsExecution); override;
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TStringArraySetExpr = class(TNoResultExpr)

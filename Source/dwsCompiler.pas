@@ -273,7 +273,6 @@ type
       function ReadBlock: TNoResultExpr;
       function ReadBlocks(const endTokens: TTokenTypes; var finalToken: TTokenType): TNoResultExpr;
       function ReadEnumeration(const TypeName: string): TEnumerationSymbol;
-      function ReadExcept(TryExpr: TNoResultExpr): TExceptExpr;
       function ReadExit: TNoResultExpr;
       function ReadExpr: TTypedExpr;
       function ReadExprAdd: TTypedExpr;
@@ -330,7 +329,11 @@ type
       function ReadSymbol(Expr: TProgramExpr; IsWrite: Boolean = False): TProgramExpr;
       function ReadTerm : TTypedExpr;
       function ReadNegation : TTypedExpr;
-      function ReadTry: TExceptionExpr;
+
+      function ReadTry : TExceptionExpr;
+      function ReadFinally(tryExpr : TNoResultExpr) : TFinallyExpr;
+      function ReadExcept(tryExpr : TNoResultExpr) : TExceptExpr;
+
       function ReadType(const TypeName: string = ''): TTypeSymbol;
       function ReadTypeCast(const namePos : TScriptPos; typeSym : TSymbol) : TTypedExpr;
       procedure ReadTypeDecl;
@@ -3859,37 +3862,47 @@ begin
   end;
 end;
 
+// ReadTry
+//
 function TdwsCompiler.ReadTry: TExceptionExpr;
 var
    tryBlock : TNoResultExpr;
    tt : TTokenType;
    wasExcept : Boolean;
 begin
-   wasExcept := FIsExcept;
-   FIsExcept := False;
+   wasExcept:=FIsExcept;
+   FIsExcept:=False;
    try
-      tryBlock := ReadBlocks([ttFINALLY, ttEXCEPT], tt);
-      if tt = ttEXCEPT then begin
-         FIsExcept := True;
-         Result := ReadExcept(tryBlock);
-         // tryBlock is freed by ReadExcept in case of exception
+      tryBlock:=ReadBlocks([ttFINALLY, ttEXCEPT], tt);
+      if tt=ttEXCEPT then begin
+         FIsExcept:=True;
+         Result:=ReadExcept(tryBlock);
       end else begin
-         Result := TFinallyExpr.Create(FProg, FTok.HotPos);
-         TExceptionExpr(Result).TryExpr := tryBlock;
-         FFinallyExprs.Push(True);
-         try
-            try
-               TExceptionExpr(Result).HandlerExpr := ReadBlocks([ttEND], tt);
-            except
-               Result.Free;
-               raise;
-            end;
-         finally
-            FFinallyExprs.Pop;
-         end;
+         Result:=ReadFinally(tryBlock);
       end;
    finally
-      FIsExcept := wasExcept;
+      FIsExcept:=wasExcept;
+   end;
+end;
+
+// ReadFinally
+//
+function TdwsCompiler.ReadFinally(tryExpr : TNoResultExpr) : TFinallyExpr;
+var
+   tt : TTokenType;
+begin
+   Result:=TFinallyExpr.Create(FProg, tryExpr.Pos);
+   Result.TryExpr:=tryExpr;
+   try
+      FFinallyExprs.Push(True);
+      try
+         Result.HandlerExpr:=ReadBlocks([ttEND], tt);
+      finally
+         FFinallyExprs.Pop;
+      end;
+   except
+      Result.Free;
+      raise;
    end;
 end;
 
@@ -3924,7 +3937,7 @@ var
   varName: string;
   ClassSym: TSymbol;
 begin
-  Result := TExceptExpr.Create(FProg, FTok.HotPos);
+  Result := TExceptExpr.Create(FProg, TryExpr.Pos);
   try
     Result.TryExpr := TryExpr;
     if FTok.Test(ttON) then
