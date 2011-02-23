@@ -239,7 +239,7 @@ begin
                      msgs.AddCompilerError(TScriptPos.Create(basePos.SourceFile,
                                                              Integer(code.Objects[k-1]), 1),
                                            'asm '+errorLine);
-                  end else msgs.AddError(errorLine);
+                  end else msgs.AddCompilerError(basePos, errorLine);
                end;
                if errors.Count>0 then
                   Exit;
