@@ -2835,15 +2835,9 @@ begin
       end;
    end else begin
       case toTyp.BaseTypeID of
-         typIntegerID :
-            if expr.IsFloatValue then
-               Result:=TConvIntegerExpr.Create(Prog, expr);
          typFloatID :
             if expr.IsIntegerValue then
                Result:=TConvFloatExpr.Create(Prog, expr);
-//         typStringID :
-//            if expr.IsFloatValue then
-//               Result:=TConvIntegerExpr.Create(Prog, expr);
       end;
    end;
    // Look if Types are compatible
