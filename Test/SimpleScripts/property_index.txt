@@ -1,0 +1,8 @@
+Get 1
+Get 2
+Set 1 with hello
+Set 2 with world
+Get 1
+Get 2
+Set 1 with bye bye
+Set 2 with test script
