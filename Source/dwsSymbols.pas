@@ -325,19 +325,18 @@ type
          FName : String;
 
       protected
-         FSize : Integer;
          FTyp : TSymbol;
+         FSize : Integer;
+
          function GetCaption : String; virtual;
          function GetDescription : String; virtual;
-         function GetSourcePosition : TScriptPos; virtual;
-         procedure SetSourcePosition(const val : TScriptPos); virtual;
 
       public
-         constructor Create(const name : string; typ : TSymbol);
+         constructor Create(const aName : string; aType : TSymbol);
 
          procedure InitData(const data : TData; offset : Integer); virtual;
          procedure Initialize(const msgs : TdwsCompileMessageList); virtual;
-         function BaseType : TTypeSymbol; virtual;
+         function  BaseType : TTypeSymbol; virtual;
          procedure SetName(const newName : String);
 
          function IsCompatible(typSym : TSymbol) : Boolean; virtual;
@@ -345,7 +344,6 @@ type
 
          function BaseTypeID : TBaseTypeID; virtual;
          function IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean; virtual;
-         function IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean; virtual;
          function IsBaseType : Boolean; virtual;
 
          function QualifiedName : String; virtual;
@@ -357,7 +355,6 @@ type
          property Name : String read FName;
          property Typ : TSymbol read FTyp write FTyp;
          property Size : Integer read FSize;
-         property SourcePosition : TScriptPos read GetSourcePosition write SetSourcePosition;
    end;
 
    TSymbolClass = class of TSymbol;
@@ -537,7 +534,7 @@ type
          FFlags : TFuncSymbolFlags;
          FKind : TFuncKind;
 
-         procedure SetType(const Value: TSymbol); virtual;
+         procedure SetType(const Value: TSymbol);
          function GetCaption: string; override;
          function GetIsForwarded : Boolean;
          function GetDescription: string; override;
@@ -547,6 +544,8 @@ type
          procedure SetIsDeprecated(const val : Boolean);
          function GetIsStateless : Boolean; inline;
          procedure SetIsStateless(const val : Boolean);
+         function GetSourcePosition : TScriptPos; virtual;
+         procedure SetSourcePosition(const val : TScriptPos); virtual;
 
       public
          constructor Create(const Name: string; FuncKind: TFuncKind; FuncLevel: SmallInt);
@@ -579,6 +578,7 @@ type
          property Result : TDataSymbol read FResult;
          property Typ : TSymbol read FTyp write SetType;
          property Conditions : TConditionsSymbolTable read FConditions;
+         property SourcePosition : TScriptPos read GetSourcePosition write SetSourcePosition;
    end;
 
    TSourceFuncSymbol = class(TFuncSymbol)
@@ -759,7 +759,6 @@ type
    TArraySymbol = class(TTypeSymbol)
       public
          function IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean; override;
-         function IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean; override;
    end;
 
    // array of FTyp
@@ -861,23 +860,25 @@ type
    // property X: Integer read FReadSym write FWriteSym;
    TPropertySymbol = class(TValueSymbol)
       private
-         FClassSymbol: TClassSymbol;
-         FReadSym: TSymbol;
-         FWriteSym: TSymbol;
-         FArrayIndices: TSymbolTable;
-         FIndexSym: TSymbol;
+         FClassSymbol : TClassSymbol;
+         FReadSym : TSymbol;
+         FWriteSym : TSymbol;
+         FArrayIndices : TSymbolTable;
+         FIndexSym : TSymbol;
          FIndexValue: TData;
          FVisibility : TClassVisibility;
 
       protected
          function GetCaption: string; override;
          function GetDescription: string; override;
-         function GetIsDefault: Boolean; virtual;
-         procedure AddParam(Param: TParamSymbol);
+         function GetIsDefault: Boolean;
+         function GetArrayIndices : TSymbolTable;
+         procedure AddParam(Param : TParamSymbol);
 
       public
          constructor Create(const Name: string; Typ: TSymbol; aVisibility : TClassVisibility);
          destructor Destroy; override;
+
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
          procedure SetIndex(const Data: TData; Addr: Integer; Sym: TSymbol);
          function GetArrayIndicesDescription: string;
@@ -886,12 +887,12 @@ type
 
          property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
          property Visibility : TClassVisibility read FVisibility write FVisibility;
-         property ArrayIndices: TSymbolTable read FArrayIndices;
-         property ReadSym: TSymbol read FReadSym write FReadSym;
-         property WriteSym: TSymbol read FWriteSym write FWriteSym;
-         property IsDefault: Boolean read GetIsDefault;
-         property IndexValue: TData read FIndexValue;
-         property IndexSym: TSymbol read FIndexSym;
+         property ArrayIndices : TSymbolTable read GetArrayIndices;
+         property ReadSym : TSymbol read FReadSym write FReadSym;
+         property WriteSym : TSymbol read FWriteSym write FWriteSym;
+         property IsDefault : Boolean read GetIsDefault;
+         property IndexValue : TData read FIndexValue;
+         property IndexSym : TSymbol read FIndexSym;
    end;
 
    // class operator X (params) uses method;
@@ -1466,38 +1467,48 @@ end;
 // ------------------ TSymbol ------------------
 // ------------------
 
-constructor TSymbol.Create(const Name: string; Typ: TSymbol);
+// Create
+//
+constructor TSymbol.Create(const aName : String; aType : TSymbol);
 begin
-//  FName := Name;
-  UnifyAssignString(Name, FName);
-  FTyp := Typ;
-  if Assigned(FTyp) then
-    FSize := FTyp.FSize
-  else
-    FSize := 0;
+   UnifyAssignString(aName, FName);
+   FTyp:=aType;
+   if Assigned(aType) then
+      FSize:=aType.FSize
+   else FSize:=0;
 end;
 
-function TSymbol.GetCaption: string;
+// GetCaption
+//
+function TSymbol.GetCaption : String;
 begin
-  Result := FName;
+   Result:=FName;
 end;
 
-function TSymbol.GetDescription: string;
+// GetDescription
+//
+function TSymbol.GetDescription : String;
 begin
-  Result := Caption;
+   Result:=Caption;
 end;
 
+// InitData
+//
 procedure TSymbol.InitData(const Data: TData; Offset: Integer);
 begin
 end;
 
+// Initialize
+//
 procedure TSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
 end;
 
-function TSymbol.IsCompatible(typSym: TSymbol): Boolean;
+// IsCompatible
+//
+function TSymbol.IsCompatible(typSym : TSymbol) : Boolean;
 begin
-  Result := False;
+   Result:=False;
 end;
 
 // IsOfType
@@ -1523,13 +1534,6 @@ end;
 function TSymbol.IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean;
 begin
    Result:=(FSize=1) and (BaseTypeID=aBaseTypeID);
-end;
-
-// IsBaseTypeIDArray
-//
-function TSymbol.IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean;
-begin
-   Result:=False;
 end;
 
 // IsBaseType
@@ -1564,20 +1568,6 @@ procedure TSymbol.SetName(const newName : String);
 begin
    Assert(FName='');
    FName:=newName;
-end;
-
-// GetSourcePosition
-//
-function TSymbol.GetSourcePosition : TScriptPos;
-begin
-   Result:=cNullPos;
-end;
-
-// SetSourcePosition
-//
-procedure TSymbol.SetSourcePosition(const val : TScriptPos);
-begin
-   // ignore
 end;
 
 { TRecordSymbol }
@@ -1906,6 +1896,21 @@ begin
       Include(FFlags, fsfStateless)
    else Exclude(FFlags, fsfStateless);
 end;
+
+// GetSourcePosition
+//
+function TFuncSymbol.GetSourcePosition : TScriptPos;
+begin
+   Result:=cNullPos;
+end;
+
+// SetSourcePosition
+//
+procedure TFuncSymbol.SetSourcePosition(const val : TScriptPos);
+begin
+   // ignore
+end;
+
 
 function TFuncSymbol.IsCompatible(typSym: TSymbol): Boolean;
 var
@@ -2273,14 +2278,15 @@ begin
    FSourcePosition:=val;
 end;
 
-{ TPropertySymbol }
+// ------------------
+// ------------------ TPropertySymbol ------------------
+// ------------------
 
 // Create
 //
 constructor TPropertySymbol.Create(const Name: string; Typ: TSymbol; aVisibility : TClassVisibility);
 begin
    inherited Create(Name, Typ);
-   FArrayIndices:=TSymbolTable.Create;
    FIndexValue:=nil;
    FVisibility:=aVisibility;
 end;
@@ -2291,19 +2297,28 @@ begin
   inherited;
 end;
 
+// GetArrayIndices
+//
+function TPropertySymbol.GetArrayIndices : TSymbolTable;
+begin
+   if FArrayIndices=nil then
+      FArrayIndices:=TSymbolTable.Create;
+   Result:=FArrayIndices;
+end;
+
 procedure TPropertySymbol.AddParam(Param: TParamSymbol);
 begin
-  ArrayIndices.AddSymbol(Param);
+   ArrayIndices.AddSymbol(Param);
 end;
 
 procedure TPropertySymbol.GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
 begin
-  dwsSymbols.GenerateParams(Name,Table,FuncParams,AddParam);
+   dwsSymbols.GenerateParams(Name,Table,FuncParams,AddParam);
 end;
 
 function TPropertySymbol.GetCaption: string;
 begin
-  Result := GetDescription;
+   Result := GetDescription;
 end;
 
 function TPropertySymbol.GetArrayIndicesDescription: string;
@@ -2311,7 +2326,7 @@ var
    i, j : Integer;
    sym, nextSym : TSymbol;
 begin
-   if ArrayIndices.Count=0 then
+   if (FArrayIndices=nil) or (ArrayIndices.Count=0) then
       Result:=''
    else begin
       Result:='[';
@@ -2352,6 +2367,9 @@ function TPropertySymbol.GetDescription: string;
 begin
    Result := Format('property %s%s: %s', [Name, GetArrayIndicesDescription, Typ.Name]);
 
+   if Assigned(FIndexSym) then
+      Result:=Result+' index '+VarToStr(FIndexValue[0]);
+
    if Assigned(FReadSym) then
       Result := Result + ' read ' + FReadSym.Name;
 
@@ -2369,9 +2387,9 @@ end;
 
 procedure TPropertySymbol.SetIndex(const Data: TData; Addr: Integer; Sym: TSymbol);
 begin
-  FIndexSym := Sym;
-  SetLength(FIndexValue,FIndexSym.Size);
-  CopyData(Data, Addr, FIndexValue, 0, FIndexSym.Size);
+   FIndexSym := Sym;
+   SetLength(FIndexValue,FIndexSym.Size);
+   CopyData(Data, Addr, FIndexValue, 0, FIndexSym.Size);
 end;
 
 // ------------------
@@ -2886,12 +2904,12 @@ end;
 
 function TValueSymbol.GetCaption: string;
 begin
-  Result := Name + ': ' + FTyp.Caption;
+  Result := Name + ': ' + Typ.Caption;
 end;
 
 function TValueSymbol.GetDescription: string;
 begin
-  Result := Name + ': ' + FTyp.Description;
+  Result := Name + ': ' + Typ.Description;
 end;
 
 { TConstSymbol }
@@ -2946,8 +2964,8 @@ end;
 
 function TDataSymbol.GetDescription: string;
 begin
-  if Assigned(FTyp) then
-    Result := Name + ': ' + FTyp.Name
+  if Assigned(Typ) then
+    Result := Name + ': ' + Typ.Name
   else
     Result := Name;
 end;
@@ -3534,14 +3552,9 @@ begin
    Result:=False;
 end;
 
-// IsBaseTypeIDArray
-//
-function TArraySymbol.IsBaseTypeIDArray(aBaseTypeID : TBaseTypeID) : Boolean;
-begin
-   Result:=(BaseTypeID=aBaseTypeID);
-end;
-
-{ TDynamicArraySymbol }
+// ------------------
+// ------------------ TDynamicArraySymbol ------------------
+// ------------------
 
 constructor TDynamicArraySymbol.Create(const Name: string; Typ: TSymbol);
 begin
@@ -3551,7 +3564,7 @@ end;
 
 function TDynamicArraySymbol.GetCaption: string;
 begin
-  Result := 'array of ' + FTyp.Caption
+  Result := 'array of ' + Typ.Caption
 end;
 
 procedure TDynamicArraySymbol.InitData(const Data: TData; Offset: Integer);
@@ -3618,8 +3631,8 @@ end;
 function TStaticArraySymbol.GetCaption;
 begin
   Result := 'array [' + IntToStr(FLowBound) + '..' + IntToStr(FHighBound) + '] of ';
-  if Assigned(FTyp) then
-    Result := Result + FTyp.Caption
+  if Assigned(Typ) then
+    Result := Result + Typ.Caption
   else
     Result := Result + '<unknown>';
 end;

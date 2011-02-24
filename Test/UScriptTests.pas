@@ -97,7 +97,6 @@ var
    source : TStringList;
    i : Integer;
    prog : IdwsProgram;
-   resultsFileName : String;
 begin
    source:=TStringList.Create;
    try
