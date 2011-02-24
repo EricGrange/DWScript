@@ -3390,6 +3390,8 @@ var
    arg : TTypedExpr;
    x, paramCount, nbParamsToCheck : Integer;
    paramSymbol : TParamSymbol;
+   argTyp : TSymbol;
+   errorCount : Integer;
 begin
    paramCount := FFunc.Params.Count;
 
@@ -3424,13 +3426,16 @@ begin
       if arg is TArrayConstantExpr then
          TArrayConstantExpr(arg).Prepare(Prog, paramSymbol.Typ.Typ);
 
-      // Expand integer arguments to float if necessary
-      if (paramSymbol.Typ = Prog.TypFloat) and (arg.Typ = Prog.TypInteger) then
-         arg := TConvFloatExpr.Create(Prog, arg);
+      argTyp:=arg.Typ;
+      // Wrap-convert arguments if necessary and possible
+      if not paramSymbol.InheritsFrom(TVarParamSymbol) then begin
+         arg:=TConvExpr.WrapWithConvCast(prog, Pos, paramSymbol.Typ, arg, False);
+      end;
+      FArgs.ExprBase[x]:=arg;
 
-      FArgs.ExprBase[x] := arg;
+      errorCount:=prog.CompileMsgs.Count;
 
-      if arg.Typ = nil then
+      if argTyp=nil then
          prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType, [x, paramSymbol.Typ.Name]);
       if paramSymbol.InheritsFrom(TVarParamSymbol) then begin
          if arg is TDataExpr then begin
@@ -3438,10 +3443,19 @@ begin
                prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
          end else prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
       end;
-      if arg.Typ=nil then
+      if argTyp=nil then
          prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType, [x, paramSymbol.Typ.Name])
       else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
-         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long, [x, paramSymbol.Typ.Name, arg.Typ.Name]);
+         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long, [x, paramSymbol.Typ.Name, argTyp.Name]);
+
+      if (errorCount<>prog.CompileMsgs.Count) and (arg is TConvExpr) then begin
+         // unwrap conv expr, temporary workaround for multiple typechecks
+         // to be removed when typechecks get eliminated
+         FArgs.ExprBase[x]:=TConvExpr(arg).Expr;
+         TConvExpr(arg).Expr:=nil;
+         arg.Free;
+      end;
+
    end;
 end;
 

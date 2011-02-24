@@ -607,6 +607,10 @@ type
 
    // newType(x)
    TConvExpr = class(TUnaryOpExpr)
+      public
+         class function WrapWithConvCast(prog : TdwsProgram; const scriptPos : TScriptPos;
+                                         toTyp : TSymbol; expr : TTypedExpr;
+                                         reportError : Boolean) : TTypedExpr; static;
    end;
 
    // Float(x)
@@ -2788,6 +2792,66 @@ begin
 end;
 
 // ------------------
+// ------------------ TConvExpr ------------------
+// ------------------
+
+// WrapWithConvCast
+//
+class function TConvExpr.WrapWithConvCast(prog : TdwsProgram; const scriptPos : TScriptPos;
+                                          toTyp : TSymbol; expr : TTypedExpr;
+                                          reportError : Boolean) : TTypedExpr;
+
+   procedure ReportIncompatibleTypes;
+   var
+      cleft, cright: string;
+   begin
+      if not reportError then Exit;
+      if toTyp = nil then
+         cleft := SYS_VOID
+      else cleft := toTyp.Caption;
+      if expr.Typ = nil then
+         cright := SYS_VOID
+      else cright := expr.Typ.Caption;
+      prog.CompileMsgs.AddCompilerErrorFmt(scriptPos, CPE_AssignIncompatibleTypes, [cright, cleft]);
+   end;
+
+begin
+   Result:=expr;
+   if (toTyp=nil) or (expr.Typ=nil) then begin
+      ReportIncompatibleTypes;
+      Exit;
+   end;
+
+   if expr.IsVariantValue then begin
+      case toTyp.BaseTypeID of
+         typIntegerID :
+            Result:=TConvIntegerExpr.Create(Prog, expr);
+         typFloatID :
+            Result:=TConvFloatExpr.Create(Prog, expr);
+         typStringID :
+            Result:=TConvStringExpr.Create(Prog, expr);
+         typBooleanID :
+            Result:=TConvBoolExpr.Create(Prog, expr);
+      end;
+   end else begin
+      case toTyp.BaseTypeID of
+         typIntegerID :
+            if expr.IsFloatValue then
+               Result:=TConvIntegerExpr.Create(Prog, expr);
+         typFloatID :
+            if expr.IsIntegerValue then
+               Result:=TConvFloatExpr.Create(Prog, expr);
+//         typStringID :
+//            if expr.IsFloatValue then
+//               Result:=TConvIntegerExpr.Create(Prog, expr);
+      end;
+   end;
+   // Look if Types are compatible
+   if not toTyp.IsCompatible(Result.Typ) then
+      ReportIncompatibleTypes;
+end;
+
+// ------------------
 // ------------------ TConvFloatExpr ------------------
 // ------------------
 
@@ -3708,49 +3772,13 @@ end;
 // TypeCheckNoPos
 //
 procedure TAssignExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
-
-   procedure ReportIncompatibleTypes;
-   var
-      cleft, cright: string;
-   begin
-      if FLeft.Typ = nil then
-         cleft := SYS_VOID
-      else cleft := FLeft.Typ.Caption;
-      if FRight.Typ = nil then
-         cright := SYS_VOID
-      else cright := FRight.Typ.Caption;
-      prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes, [cright, cleft]);
-   end;
-
 begin
-   if (FRight.Typ = nil) or (FLeft.Typ = nil) then
-      ReportIncompatibleTypes
-   else begin
-      if FRight.InheritsFrom(TArrayConstantExpr) then
-         TArrayConstantExpr(FRight).Prepare(Prog, FLeft.Typ.Typ);
+   if FRight.InheritsFrom(TArrayConstantExpr) then
+      TArrayConstantExpr(FRight).Prepare(Prog, FLeft.Typ.Typ);
 
-      FRight.TypeCheckNoPos(Prog, Pos);
+   FRight.TypeCheckNoPos(Prog, Pos);
 
-      if FRight.IsVariantValue then begin
-         case FLeft.Typ.BaseTypeID of
-            typIntegerID :
-               FRight:=TConvIntegerExpr.Create(Prog, FRight);
-            typFloatID :
-               FRight:=TConvFloatExpr.Create(Prog, FRight);
-            typStringID :
-               FRight:=TConvStringExpr.Create(Prog, FRight);
-            typBooleanID :
-               FRight:=TConvBoolExpr.Create(Prog, FRight);
-         end;
-      end else if FLeft.IsFloatValue and FRight.IsIntegerValue then
-         FRight:=TConvFloatExpr.Create(Prog, FRight)
-      else if FLeft.IsStringValue and FRight.IsFloatValue then
-         FRight:=TConvIntegerExpr.Create(Prog, FRight);
-
-      // Look if Types are compatible
-      if not FLeft.Typ.IsCompatible(FRight.Typ) then
-         ReportIncompatibleTypes;
-   end;
+   FRight:=TConvExpr.WrapWithConvCast(prog, ScriptPos, FLeft.Typ, FRight, True);
 end;
 
 // Optimize
