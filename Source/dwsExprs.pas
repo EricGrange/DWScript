@@ -3391,18 +3391,23 @@ var
    x, paramCount, nbParamsToCheck : Integer;
    paramSymbol : TParamSymbol;
    argTyp : TSymbol;
-   errorCount : Integer;
+   errorCount, initialErrorCount : Integer;
+   tooManyArguments, tooFewArguments : Boolean;
 begin
    paramCount := FFunc.Params.Count;
 
+   initialErrorCount:=prog.CompileMsgs.Count;
+
    // Check number of arguments = number of parameters
    if FArgs.Count>paramCount then begin
-      prog.CompileMsgs.AddCompilerError(Pos, CPE_TooManyArguments);
+      tooManyArguments:=True;
       while FArgs.Count>paramCount do begin
          FArgs.ExprBase[FArgs.Count-1].Free;
          FArgs.Delete(FArgs.Count-1);
       end;
-   end;
+   end else tooManyArguments:=False;
+
+   tooFewArguments:=False;
    while FArgs.Count<paramCount do begin
       // Complete missing args by default values
       paramSymbol:=TParamSymbol(FFunc.Params[FArgs.Count]);
@@ -3410,7 +3415,7 @@ begin
          FArgs.Add(TConstExpr.CreateTyped(Prog, paramSymbol.Typ,
                                           TParamSymbolWithDefaultValue(paramSymbol).DefaultValue))
       else begin
-         prog.CompileMsgs.AddCompilerError(Pos, CPE_TooFewArguments);
+         tooFewArguments:=True;
          Break;
       end;
    end;
@@ -3456,6 +3461,13 @@ begin
          arg.Free;
       end;
 
+   end;
+
+   if initialErrorCount=prog.CompileMsgs.Count then begin
+      if tooManyArguments then
+         prog.CompileMsgs.AddCompilerError(Pos, CPE_TooManyArguments);
+      if tooFewArguments then
+         prog.CompileMsgs.AddCompilerError(Pos, CPE_TooFewArguments);
    end;
 end;
 
