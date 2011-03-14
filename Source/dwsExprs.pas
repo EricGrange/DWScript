@@ -1115,7 +1115,7 @@ type
 
    TBinaryOpExprClass = class of TBinaryOpExpr;
 
-   // A list of no pos expressions
+   // A list of typed expressions
    TTypedExprList = class
       protected
          FList : TTightList;
@@ -1130,9 +1130,6 @@ type
          function AddExpr(AExpr: TTypedExpr) : TSymbol;
          procedure Insert0(expr : TExprBase);
          procedure Delete(index : Integer);
-
-         procedure Initialize;
-         procedure TypeCheck(Prog : TdwsProgram; const pos : TScriptPos; ExpectedTyp : TSymbol);
 
          property Expr[const x: Integer]: TTypedExpr read GetExpr write SetExpr; default;
          property Count : Integer read GetCount;
@@ -4024,30 +4021,6 @@ begin
    Result:=FList.Count;
 end;
 
-procedure TTypedExprList.Initialize;
-var
-  x: Integer;
-begin
-  for x := 0 to FList.Count - 1 do
-    TTypedExpr(FList.List[x]).Initialize;
-end;
-
-// TypeCheck
-//
-procedure TTypedExprList.TypeCheck(prog : TdwsProgram; const pos : TScriptPos; ExpectedTyp: TSymbol);
-var
-  x: Integer;
-  expr : TTypedExpr;
-begin
-   for x := 0 to FList.Count - 1 do begin
-      expr:=TTypedExpr(FList.List[x]);
-      expr.TypeCheckNoPos(prog, pos);
-      if not expr.Typ.IsCompatible(ExpectedTyp) then
-         prog.CompileMsgs.AddCompilerErrorFmt(pos, CPE_AssignIncompatibleTypes,
-                                              [expr.Typ.Caption, ExpectedTyp.Caption]);
-   end;
-end;
-
 { TBinaryOpExpr }
 
 constructor TBinaryOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
@@ -4213,7 +4186,7 @@ end;
 //
 procedure TMethodExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
 begin
-   FBaseExpr.TypeCheckNoPos(prog, aPos);
+   FBaseExpr.TypeCheckNoPos(prog, Pos);
    inherited;
 end;
 
@@ -7156,7 +7129,7 @@ end;
 //
 procedure TNoResultWrapperExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
 begin
-   Expr.TypeCheckNoPos(prog, aPos);
+   Expr.TypeCheckNoPos(prog, Pos);
 end;
 
 // IsConstant

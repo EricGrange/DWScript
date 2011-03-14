@@ -2010,9 +2010,7 @@ begin
 
    if Assigned(Result) then begin
       try
-         if Result is TNoResultExpr then
-            TNoResultExpr(Result).TypeCheck(FProg)
-         else Result.TypeCheckNoPos(FProg, FTok.HotPos);
+         TNoResultExpr(Result).TypeCheck(FProg)
       except
          Result.Free;
          raise;
@@ -3001,6 +2999,7 @@ function TdwsCompiler.ReadCaseConditions(condList : TList; valueExpr : TTypedExp
 var
    hotPos : TScriptPos;
    exprFrom, exprTo : TTypedExpr;
+   condition : TCaseCondition;
 begin
    // Find a comma sparated list of case conditions  0, 1, 2..4: ;
    repeat
@@ -3019,11 +3018,13 @@ begin
                exprTo.Free;
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
             end;
-            condList.Add(TRangeCaseCondition.Create(hotPos, valueExpr, exprFrom, exprTo));
+            condition:=TRangeCaseCondition.Create(hotPos, valueExpr, exprFrom, exprTo);
          end else begin
             // compare condition e. g. 123:
-            condList.Add(TCompareCaseCondition.Create(hotPos, valueExpr, exprFrom));
+            condition:=TCompareCaseCondition.Create(hotPos, valueExpr, exprFrom);
          end;
+         condList.Add(condition);
+         condition.TypeCheck(FProg, valueExpr.Typ);
       except
          exprFrom.Free;
          raise;
@@ -3333,7 +3334,7 @@ end;
 
 function TdwsCompiler.ReadArrayConstant: TArrayConstantExpr;
 begin
-  Result := TArrayConstantExpr.Create(FProg);
+  Result := TArrayConstantExpr.Create(FProg, FTok.HotPos);
   try
     if not FTok.TestDelete(ttARIGHT) then
     begin

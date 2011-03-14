@@ -250,14 +250,14 @@ type
          property Value : String read FValue write FValue;
    end;
 
-   TArrayConstantExpr = class(TDataExpr)
+   TArrayConstantExpr = class(TPosDataExpr)
    protected
      FArrayAddr: Integer;
      FElementExprs: TTightList;
      function GetData(exec : TdwsExecution) : TData; override;
      function GetAddr(exec : TdwsExecution) : Integer; override;
    public
-     constructor Create(Prog: TdwsProgram);
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
      destructor Destroy; override;
      procedure AddElementExpr(Prog: TdwsProgram; ElementExpr: TTypedExpr);
      procedure Prepare(Prog: TdwsProgram; ElementTyp : TSymbol);
@@ -967,7 +967,6 @@ type
      destructor Destroy; override;
      procedure EvalNoResult(exec : TdwsExecution); override;
      procedure Initialize; override;
-     procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); override;
      procedure AddCaseCondition(cond : TCaseCondition);
      property ValueExpr: TTypedExpr read FValueExpr write FValueExpr;
      property ElseExpr: TNoResultExpr read FElseExpr write FElseExpr;
@@ -2135,9 +2134,9 @@ end;
 
 // Create
 //
-constructor TArrayConstantExpr.Create(Prog: TdwsProgram);
+constructor TArrayConstantExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
 begin
-   inherited Create(Prog, TStaticArraySymbol.Create('', Prog.TypNil, 0, -1));
+   inherited Create(Prog, Pos, TStaticArraySymbol.Create('', Prog.TypNil, 0, -1));
 end;
 
 // Destroy
@@ -2326,7 +2325,7 @@ begin
    end;
    for x:=0 to FElementExprs.Count - 1 do begin
       expr:=TTypedExpr(FElementExprs.List[x]);
-      expr.TypeCheckNoPos(Prog, aPos);
+      expr.TypeCheckNoPos(Prog, Pos);
       if (Typ.Typ=Prog.TypFloat) and (expr.Typ=Prog.TypInteger) then begin
          expr:=TConvFloatExpr.Create(Prog, expr);
          FElementExprs.List[x]:=expr;
@@ -4538,16 +4537,6 @@ begin
     TCaseCondition(FCaseConditions.List[x]).Initialize;
   if Assigned(FElseExpr) then
     FElseExpr.Initialize;
-end;
-
-// TypeCheckNoPos
-//
-procedure TCaseExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
-var
-  x: Integer;
-begin
-  for x := 0 to FCaseConditions.Count - 1 do
-    TCaseCondition(FCaseConditions.List[x]).TypeCheck(prog, FValueExpr.Typ);
 end;
 
 // AddCaseCondition
