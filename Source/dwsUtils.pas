@@ -19,7 +19,7 @@ unit dwsUtils;
 
 interface
 
-uses Classes, SysUtils, Variants, SyncObjs;
+uses Classes, SysUtils, Variants, SyncObjs, dwsXPlatform;
 
 type
 
