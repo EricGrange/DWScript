@@ -22,7 +22,7 @@ unit dwsTimeFunctions;
 
 interface
 
-uses Classes, SysUtils, dwsFunctions, dwsExprs, dwsSymbols;
+uses Classes, SysUtils, dwsFunctions, dwsExprs, dwsSymbols, dwsXPlatform;
 
 type
 
@@ -35,6 +35,10 @@ type
   end;
 
   TTimeFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+  end;
+
+  TUTCDateTimeFunc = class(TInternalMagicFloatFunction)
     procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
   end;
 
@@ -165,7 +169,7 @@ const // type constants
   cDateTime = 'Float';
   cBoolean = 'Boolean';
 
-  { TNowFunc }
+{ TNowFunc }
 
 procedure TNowFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
 begin
@@ -184,6 +188,13 @@ end;
 procedure TTimeFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
 begin
    Result:=Time;
+end;
+
+{ TUTCDateTimeFunc }
+
+procedure TUTCDateTimeFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+begin
+   Result:=UTCDateTime;
 end;
 
 { TDateTimeToStrFunc }
@@ -530,6 +541,8 @@ initialization
    RegisterInternalFloatFunction(TNowFunc, 'Now', []);
    RegisterInternalFloatFunction(TDateFunc, 'Date', []);
    RegisterInternalFloatFunction(TTimeFunc, 'Time', []);
+
+   RegisterInternalFloatFunction(TUTCDateTimeFunc, 'UTCDateTime', []);
 
    RegisterInternalStringFunction(TDateTimeToStrFunc, 'DateTimeToStr', ['dt', cDateTime]);
    RegisterInternalFloatFunction(TStrToDateTimeFunc, 'StrToDateTime', ['str', cString]);

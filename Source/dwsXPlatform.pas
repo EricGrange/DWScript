@@ -71,6 +71,7 @@ type
    end;
 
 function GetSystemMilliseconds : Cardinal;
+function UTCDateTime : TDateTime;
 
 function AnsiCompareText(const S1, S2: string) : Integer;
 function AnsiCompareStr(const S1, S2: string) : Integer;
@@ -88,6 +89,18 @@ implementation
 function GetSystemMilliseconds : Cardinal;
 begin
    Result:=GetTickCount;
+end;
+
+// UTCDateTime
+//
+function UTCDateTime : TDateTime;
+var
+   systemTime : TSystemTime;
+begin
+   GetSystemTime(systemTime);
+   with systemTime do
+      Result:= EncodeDate(wYear, wMonth, wDay)
+              +EncodeTime(wHour, wMinute, wSecond, wMilliseconds);
 end;
 
 // AnsiCompareText
