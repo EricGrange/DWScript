@@ -3018,10 +3018,10 @@ begin
                exprTo.Free;
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
             end;
-            condition:=TRangeCaseCondition.Create(hotPos, valueExpr, exprFrom, exprTo);
+            condition:=TRangeCaseCondition.Create(hotPos, exprFrom, exprTo);
          end else begin
             // compare condition e. g. 123:
-            condition:=TCompareCaseCondition.Create(hotPos, valueExpr, exprFrom);
+            condition:=TCompareCaseCondition.Create(hotPos, exprFrom);
          end;
          condList.Add(condition);
          condition.TypeCheck(FProg, valueExpr.Typ);

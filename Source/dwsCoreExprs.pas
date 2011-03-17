@@ -843,7 +843,6 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          procedure Initialize; override;
-         procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); override;
          function IsConstant : Boolean; override;
          procedure AddCaseCondition(cond : TCaseCondition);
    end;
@@ -915,46 +914,52 @@ type
 
    // Part of a case statement
    TCaseCondition = class
-   private
-     FOwnsTrueExpr: Boolean;
-     FTrueExpr: TNoResultExpr;
-     FValueExpr: TTypedExpr;
-     FPos : TScriptPos;
-   public
-     constructor Create(const aPos : TScriptPos; ValueExpr: TTypedExpr);
-     destructor Destroy; override;
-     procedure Initialize; virtual;
-     function IsTrue(exec : TdwsExecution; const Value: Variant): Boolean; virtual; abstract;
-     procedure TypeCheck(prog : TdwsProgram; Typ: TSymbol); virtual; abstract;
-     function IsConstant : Boolean; virtual; abstract;
-     property Pos : TScriptPos read FPos;
-     property TrueExpr: TNoResultExpr read FTrueExpr write FTrueExpr;
-     property OwnsTrueExpr: Boolean read FOwnsTrueExpr write FOwnsTrueExpr;
+      private
+         FOwnsTrueExpr : Boolean;
+         FTrueExpr : TNoResultExpr;
+         FPos : TScriptPos;
+
+      public
+         constructor Create(const aPos : TScriptPos);
+         destructor Destroy; override;
+
+         procedure Initialize; virtual;
+         function IsTrue(exec : TdwsExecution; const value: Variant) : Boolean; virtual; abstract;
+         procedure TypeCheck(prog : TdwsProgram; typ : TSymbol); virtual; abstract;
+         function IsConstant : Boolean; virtual; abstract;
+
+         property Pos : TScriptPos read FPos;
+         property TrueExpr: TNoResultExpr read FTrueExpr write FTrueExpr;
+         property OwnsTrueExpr: Boolean read FOwnsTrueExpr write FOwnsTrueExpr;
    end;
 
    TCompareCaseCondition = class(TCaseCondition)
-   private
-     FCompareExpr: TTypedExpr;
-   public
-     constructor Create(const aPos : TScriptPos; ValueExpr, CompareExpr: TTypedExpr);
-     destructor Destroy; override;
-     procedure Initialize; override;
-     function IsTrue(exec : TdwsExecution; const Value: Variant): Boolean; override;
-     procedure TypeCheck(prog : TdwsProgram; Typ: TSymbol); override;
-     function IsConstant : Boolean; override;
+      private
+         FCompareExpr: TTypedExpr;
+
+      public
+         constructor Create(const aPos : TScriptPos; compareExpr : TTypedExpr);
+         destructor Destroy; override;
+
+         procedure Initialize; override;
+         function IsTrue(exec : TdwsExecution; const value : Variant) : Boolean; override;
+         procedure TypeCheck(prog : TdwsProgram; typ : TSymbol); override;
+         function IsConstant : Boolean; override;
    end;
 
    TRangeCaseCondition = class(TCaseCondition)
-   private
-     FFromExpr: TTypedExpr;
-     FToExpr: TTypedExpr;
-   public
-     constructor Create(const aPos : TScriptPos; ValueExpr, FromExpr, ToExpr: TTypedExpr);
-     destructor Destroy; override;
-     procedure Initialize; override;
-     function IsTrue(exec : TdwsExecution; const Value: Variant): Boolean; override;
-     procedure TypeCheck(prog : TdwsProgram; Typ: TSymbol); override;
-     function IsConstant : Boolean; override;
+      private
+         FFromExpr: TTypedExpr;
+         FToExpr: TTypedExpr;
+
+      public
+         constructor Create(const aPos : TScriptPos; fromExpr, toExpr : TTypedExpr);
+         destructor Destroy; override;
+
+         procedure Initialize; override;
+         function IsTrue(exec : TdwsExecution; const Value: Variant): Boolean; override;
+         procedure TypeCheck(prog : TdwsProgram; typ : TSymbol); override;
+         function IsConstant : Boolean; override;
    end;
 
    // case FValueExpr of {CaseConditions} else FElseExpr end;
@@ -2760,16 +2765,6 @@ begin
       TCaseCondition(FCaseConditions.List[i]).Initialize;
 end;
 
-// TypeCheckNoPos
-//
-procedure TInOpExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
-var
-   i : Integer;
-begin
-   for i:=0 to FCaseConditions.Count-1 do
-      TCaseCondition(FCaseConditions.List[i]).TypeCheck(prog, FLeft.Typ);
-end;
-
 // IsConstant
 //
 function TInOpExpr.IsConstant : Boolean;
@@ -4546,61 +4541,78 @@ begin
    FCaseConditions.Add(cond);
 end;
 
-{ TCaseCondition }
+// ------------------
+// ------------------ TCaseCondition ------------------
+// ------------------
 
-constructor TCaseCondition.Create(const aPos : TScriptPos; ValueExpr: TTypedExpr);
+// Create
+//
+constructor TCaseCondition.Create(const aPos : TScriptPos);
 begin
    FPos:=aPos;
-   FValueExpr := ValueExpr;
 end;
 
+// Destroy
+//
 destructor TCaseCondition.Destroy;
 begin
-  if FOwnsTrueExpr then
-    FTrueExpr.Free;
-  inherited;
+   if FOwnsTrueExpr then
+      FTrueExpr.Free;
+   inherited;
 end;
 
+// Initialize
+//
 procedure TCaseCondition.Initialize;
 begin
    if FTrueExpr<>nil then
       FTrueExpr.Initialize;
 end;
 
-{ TCompareCaseCondition }
+// ------------------
+// ------------------ TCompareCaseCondition ------------------
+// ------------------
 
-constructor TCompareCaseCondition.Create(const aPos : TScriptPos;ValueExpr, CompareExpr: TTypedExpr);
+// Create
+//
+constructor TCompareCaseCondition.Create(const aPos : TScriptPos; compareExpr : TTypedExpr);
 begin
-  inherited Create(aPos, ValueExpr);
-  FCompareExpr := CompareExpr;
+   inherited Create(aPos);
+   FCompareExpr:=compareExpr;
 end;
 
+// Destroy
+//
 destructor TCompareCaseCondition.Destroy;
 begin
-  FCompareExpr.Free;
-  inherited;
+   FCompareExpr.Free;
+   inherited;
 end;
 
+// Initialize
+//
 procedure TCompareCaseCondition.Initialize;
 begin
-  inherited;
-  FCompareExpr.Initialize;
+   inherited;
+   FCompareExpr.Initialize;
 end;
 
-function TCompareCaseCondition.IsTrue(exec : TdwsExecution; const Value: Variant): Boolean;
+// IsTrue
+//
+function TCompareCaseCondition.IsTrue(exec : TdwsExecution; const value : Variant) : Boolean;
 begin
-  Result := FCompareExpr.Eval(exec) = Value;
+   Result:=(FCompareExpr.Eval(exec)=Value);
 end;
 
-procedure TCompareCaseCondition.TypeCheck(prog : TdwsProgram; Typ: TSymbol);
+// TypeCheck
+//
+procedure TCompareCaseCondition.TypeCheck(prog : TdwsProgram; typ : TSymbol);
 begin
-   if FValueExpr.IsFloatValue then
-      if FCompareExpr.IsIntegerValue then
-         FCompareExpr := TConvFloatExpr.Create(prog, FCompareExpr);
-
-   if not FCompareExpr.Typ.IsCompatible(FValueExpr.Typ) then
-      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
-                                           [FValueExpr.Typ.Caption, FCompareExpr.Typ.Caption]);
+   if not FCompareExpr.Typ.IsCompatible(typ) then
+      if not (    FCompareExpr.IsNumberValue
+              and (typ.IsOfType(prog.TypInteger) or typ.IsOfType(prog.TypFloat))) then
+         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
+                                              [typ.Caption, FCompareExpr.Typ.Caption]);
 end;
 
 // IsConstant
@@ -4610,53 +4622,61 @@ begin
    Result:=FCompareExpr.IsConstant;
 end;
 
-{ TRangeCaseCondition }
+// ------------------
+// ------------------ TRangeCaseCondition ------------------
+// ------------------
 
-constructor TRangeCaseCondition.Create(const aPos : TScriptPos; ValueExpr, FromExpr, ToExpr: TTypedExpr);
+// Create
+//
+constructor TRangeCaseCondition.Create(const aPos : TScriptPos; fromExpr, toExpr : TTypedExpr);
 begin
-  inherited Create(aPos, ValueExpr);
-  FFromExpr := FromExpr;
-  FToExpr := ToExpr;
+   inherited Create(aPos);
+   FFromExpr:=FromExpr;
+   FToExpr:=ToExpr;
 end;
 
+// Destroy
+//
 destructor TRangeCaseCondition.Destroy;
 begin
-  FFromExpr.Free;
-  FToExpr.Free;
-  inherited;
+   FFromExpr.Free;
+   FToExpr.Free;
+   inherited;
 end;
 
+// Initialize
+//
 procedure TRangeCaseCondition.Initialize;
 begin
-  inherited;
-  FFromExpr.Initialize;
-  FToExpr.Initialize;
+   inherited;
+   FFromExpr.Initialize;
+   FToExpr.Initialize;
 end;
 
-function TRangeCaseCondition.IsTrue(exec : TdwsExecution; const Value: Variant): Boolean;
+// IsTrue
+//
+function TRangeCaseCondition.IsTrue(exec : TdwsExecution; const value : Variant) : Boolean;
 begin
-  Result := (Value >= FFromExpr.Eval(exec)) and (Value <= FToExpr.Eval(exec));
+   Result := (Value >= FFromExpr.Eval(exec)) and (Value <= FToExpr.Eval(exec));
 end;
 
-procedure TRangeCaseCondition.TypeCheck(prog : TdwsProgram; Typ: TSymbol);
+// TypeCheck
+//
+procedure TRangeCaseCondition.TypeCheck(prog : TdwsProgram; typ : TSymbol);
 begin
-  if FValueExpr.IsFloatValue then
-  begin
-    // Convert integers to float if necessary
-    if FFromExpr.IsIntegerValue then
-      FFromExpr := TConvFloatExpr.Create(Prog, FFromExpr);
+   if not FFromExpr.Typ.IsCompatible(FToExpr.Typ) then begin
+      if not (FFromExpr.IsNumberValue and FToExpr.IsNumberValue) then begin
+         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_RangeIncompatibleTypes,
+                                              [FFromExpr.Typ.Caption, FToExpr.Typ.Caption]);
+         Exit;
+      end;
+   end;
 
-    if FToExpr.IsIntegerValue then
-      FToExpr := TConvFloatExpr.Create(Prog, FToExpr);
-  end;
-
-  if not FFromExpr.Typ.IsCompatible(FToExpr.Typ) then
-    prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_RangeIncompatibleTypes,
-                                         [FFromExpr.Typ.Caption, FToExpr.Typ.Caption]);
-
-  if not FValueExpr.Typ.IsCompatible(FFromExpr.Typ) then
-    prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
-                                         [FValueExpr.Typ.Caption, FFromExpr.Typ.Caption]);
+   if not typ.IsCompatible(FFromExpr.Typ) then
+      if not (    FFromExpr.IsNumberValue
+              and (typ.IsOfType(prog.TypInteger) or typ.IsOfType(prog.TypFloat))) then
+      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
+                                           [typ.Caption, FFromExpr.Typ.Caption]);
 end;
 
 // IsConstant
@@ -4666,7 +4686,9 @@ begin
    Result:=FFromExpr.IsConstant and FToExpr.IsConstant;
 end;
 
-{ TForExpr }
+// ------------------
+// ------------------ TForExpr ------------------
+// ------------------
 
 destructor TForExpr.Destroy;
 begin

@@ -1,4 +1,3 @@
-Syntax Error: Incompatible types: "Integer" and "Float" [line: 4, column: 3]
 Syntax Error: Incompatible types: "Integer" and "String" [line: 5, column: 3]
 Syntax Error: Incompatible types: "Integer" and "Boolean" [line: 6, column: 3]
 Syntax Error: Incompatible types: "Float" and "String" [line: 13, column: 3]
