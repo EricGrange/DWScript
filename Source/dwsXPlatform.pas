@@ -47,14 +47,14 @@ function GetDecimalSeparator : Char;
 procedure CollectFiles(const directory, fileMask : String; list : TStrings);
 
 type
-   {$IFDEF VER200}
-   // NativeUInt broken in D2009, and PNativeInt is missing
+   {$IF CompilerVersion<22.0}
+   // NativeUInt broken in D2009, and PNativeInt is missing in D2010
    // http://qc.embarcadero.com/wc/qcmain.aspx?d=71292
    NativeInt = Integer;
    PNativeInt = ^NativeInt;
    NativeUInt = Cardinal;
    PNativeUInt = ^NativeUInt;
-   {$ENDIF}
+   {$IFEND}
 
    TPath = class
       class function GetTempFileName : String; static;
