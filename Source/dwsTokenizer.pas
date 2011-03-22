@@ -95,9 +95,9 @@ type
      FOwnedTransitions : TTightList;
      FTransitions : array [0..127] of TTransition;
      destructor Destroy; override;
-     function FindTransition(c: char): TTransition;
-     procedure AddTransition(const chrs: TCharsType; o: TTransition);
-     procedure SetElse(o: TTransition);
+     function FindTransition(c : Char) : TTransition;
+     procedure AddTransition(const chrs : TCharsType; o : TTransition);
+     procedure SetElse(o : TTransition);
    end;
 
    TConvertAction = (caNone, caClear, caName, caHex, caInteger, caFloat, caChar,
@@ -129,51 +129,57 @@ type
    TSwitchHandler = function(const SwitchName: string): Boolean of object;
 
    TTokenizer = class
-   private
-     FTokenBuf : TTokenBuffer;
-     FDefaultPos: TScriptPos;
-     FHotPos: TScriptPos;
-     FMsgs: TdwsCompileMessageList;
-     FNextToken: TToken;
-     FPos: TScriptPos;
-     FPosPtr : PChar;
-     FStartState: TState;
-     FSwitchHandler: TSwitchHandler;
-     FText: string;
-     FToken: TToken;
+      private
+         FTokenBuf : TTokenBuffer;
+         FDefaultPos : TScriptPos;
+         FHotPos : TScriptPos;
+         FMsgs : TdwsCompileMessageList;
+         FNextToken : TToken;
+         FPos : TScriptPos;
+         FPosPtr : PChar;
+         FStartState : TState;
+         FSwitchHandler : TSwitchHandler;
+         FText : String;
+         FToken : TToken;
 
-     FTokenStore : array of TToken;
-     FTokenStoreCount : Integer;
+         FTokenStore : array of TToken;
+         FTokenStoreCount : Integer;
 
-     function AllocateToken : TToken;
-     procedure ReleaseToken(aToken : TToken);
+         function AllocateToken : TToken;
+         procedure ReleaseToken(aToken : TToken);
 
-     function ConsumeToken: TToken;
-     procedure ReadToken;
-     procedure ReadNextToken;
-     procedure AddCompilerStopFmtTokenBuffer(const formatString : String);
+         procedure HandleChar(var tokenBuf : TTokenBuffer; var result : TToken);
+         procedure HandleHexa(var tokenBuf : TTokenBuffer; var result : TToken);
+         procedure HandleInteger(var tokenBuf : TTokenBuffer; var result : TToken);
+         procedure HandleFloat(var tokenBuf : TTokenBuffer; var result : TToken);
 
-   public
-     constructor Create(sourceFile : TSourceFile; msgs : TdwsCompileMessageList);
-     destructor Destroy; override;
-     function GetToken: TToken; inline;
-     function HasTokens: Boolean;
-     procedure KillToken;
-     function NextTest(t: TTokenType): Boolean;
-     function Test(t: TTokenType): Boolean;
-     function TestAny(const t: TTokenTypes) : TTokenType;
-     function TestDelete(t: TTokenType): Boolean;
-     function TestDeleteAny(const t: TTokenTypes) : TTokenType;
-     function NextTestName: Boolean;
-     function TestName: Boolean;
-     function TestDeleteName: Boolean;
+         function ConsumeToken : TToken;
 
-     property PosPtr : PChar read FPosPtr;
-     property Text : string read FText;
-     property DefaultPos: TScriptPos read FDefaultPos;
-     property HotPos: TScriptPos read FHotPos;
-     property CurrentPos: TScriptPos read FPos;
-     property SwitchHandler: TSwitchHandler read FSwitchHandler write FSwitchHandler;
+         procedure ReadToken;
+         procedure ReadNextToken;
+         procedure AddCompilerStopFmtTokenBuffer(const formatString : String);
+
+      public
+         constructor Create(sourceFile : TSourceFile; msgs : TdwsCompileMessageList);
+         destructor Destroy; override;
+
+         function GetToken : TToken; inline;
+         function HasTokens : Boolean;
+         procedure KillToken;
+
+         function NextTest(t : TTokenType) : Boolean;
+         function Test(t : TTokenType) : Boolean;
+         function TestAny(const t : TTokenTypes) : TTokenType;
+         function TestDelete(t : TTokenType) : Boolean;
+         function TestDeleteAny(const t : TTokenTypes) : TTokenType;
+         function TestName : Boolean;
+
+         property PosPtr : PChar read FPosPtr;
+         property Text : string read FText;
+         property DefaultPos : TScriptPos read FDefaultPos;
+         property HotPos : TScriptPos read FHotPos;
+         property CurrentPos : TScriptPos read FPos;
+         property SwitchHandler : TSwitchHandler read FSwitchHandler write FSwitchHandler;
    end;
 
 const
@@ -499,6 +505,10 @@ begin
    end;
 end;
 
+// ------------------
+// ------------------ TTokenBuffer ------------------
+// ------------------
+
 // UpperMatchLen
 //
 function TTokenBuffer.UpperMatchLen(const str : String) : Boolean;
@@ -542,15 +552,21 @@ begin
    Result:=ttNAME;
 end;
 
-{ TState }
+// ------------------
+// ------------------ TState ------------------
+// ------------------
 
+// Destroy
+//
 destructor TState.Destroy;
 begin
    FOwnedTransitions.Clean;
    inherited Destroy;
 end;
 
-function TState.FindTransition(c : Char): TTransition;
+// FindTransition
+//
+function TState.FindTransition(c : Char) : TTransition;
 var
    oc : Integer;
 begin
@@ -560,7 +576,9 @@ begin
    else Result:=FTransitions[127];
 end;
 
-procedure TState.AddTransition(const chrs: TCharsType; o: TTransition);
+// AddTransition
+//
+procedure TState.AddTransition(const chrs : TCharsType; o : TTransition);
 var
    c : AnsiChar;
 begin
@@ -572,7 +590,9 @@ begin
    FOwnedTransitions.Add(o);
 end;
 
-procedure TState.SetElse(o: TTransition);
+// SetElse
+//
+procedure TState.SetElse(o : TTransition);
 var
    c : AnsiChar;
 begin
@@ -582,30 +602,40 @@ begin
   FOwnedTransitions.Add(o);
 end;
 
-{ TTransition }
+// ------------------
+// ------------------ TTransition ------------------
+// ------------------
 
+// Create
+//
 constructor TTransition.Create;
 begin
-  NextState := nstate;
-  Start := toStart in opts;
-  Final := toFinal in opts;
-  Action := actn;
+   NextState:=nstate;
+   Start:=toStart in opts;
+   Final:=toFinal in opts;
+   Action:=actn;
 end;
 
-{ TElseTransition }
+// ------------------
+// ------------------ TElseTransition ------------------
+// ------------------
 
+// Create
+//
 constructor TElseTransition.Create(actn: TConvertAction);
 begin
-  NextState := nil;
-  Start := false;
-  Action := actn;
+   NextState:=nil;
+   Start:=False;
+   Action:=actn;
 end;
 
-{ TErrorTransition }
+// ------------------
+// ------------------ TErrorTransition ------------------
+// ------------------
 
-constructor TErrorTransition.Create(const msg: string);
+constructor TErrorTransition.Create(const msg : String);
 begin
-  ErrorMessage := msg;
+   ErrorMessage:=msg;
 end;
 
 var
@@ -616,14 +646,16 @@ var
   sString0, sStringF, sAssign0: TState;
   sGreaterF, sSmallerF, sDotDot: TState;
 
-{ TTokenizer }
+// ------------------
+// ------------------ TTokenizer ------------------
+// ------------------
 
+// Create
+//
 constructor TTokenizer.Create(sourceFile : TSourceFile; msgs : TdwsCompileMessageList);
 begin
    FText := sourceFile.Code + (cLineTerminator+#0);
-   FToken := nil;
    FMsgs := Msgs;
-   FNextToken := nil;
    FDefaultPos := cNullPos;
    FDefaultPos.SourceFile := sourceFile;
    FHotPos := FDefaultPos;
@@ -637,6 +669,8 @@ begin
    SetLength(FTokenStore, 8);
 end;
 
+// Destroy
+//
 destructor TTokenizer.Destroy;
 begin
    if FToken<>nil then ReleaseToken(FToken);
@@ -650,23 +684,31 @@ begin
    inherited;
 end;
 
-procedure TTokenizer.ReadToken;
+// GetToken
+//
+function TTokenizer.GetToken : TToken;
 begin
-  KillToken;
-
-  if Assigned(FNextToken) then
-  begin
-    FToken := FNextToken;
-    FNextToken := nil;
-  end
-  else
-    FToken := ConsumeToken;
+   Result:=FToken;
 end;
 
+// ReadToken
+//
+procedure TTokenizer.ReadToken;
+begin
+   KillToken;
+
+   if Assigned(FNextToken) then begin
+      FToken:=FNextToken;
+      FNextToken:=nil;
+   end else FToken:=ConsumeToken;
+end;
+
+// ReadNextToken
+//
 procedure TTokenizer.ReadNextToken;
 begin
-  if not Assigned(FNextToken) then
-    FNextToken := ConsumeToken;
+   if not Assigned(FNextToken) then
+      FNextToken:=ConsumeToken;
 end;
 
 // AddCompilerStopFmtTokenBuffer
@@ -679,11 +721,8 @@ begin
    FMsgs.AddCompilerStopFmt(FPos, formatString, [buf]);
 end;
 
-function TTokenizer.GetToken: TToken;
-begin
-  Result := FToken;
-end;
-
+// Test
+//
 function TTokenizer.Test(t: TTokenType): Boolean;
 begin
    if not Assigned(FToken) then begin
@@ -712,6 +751,8 @@ begin
    else Result:=ttNone;
 end;
 
+// TestDelete
+//
 function TTokenizer.TestDelete(t: TTokenType): Boolean;
 begin
    if not Assigned(FToken) then begin
@@ -744,39 +785,27 @@ begin
    end else Result:=ttNone;
 end;
 
-function TTokenizer.NextTest(t: TTokenType): Boolean;
+// NextTest
+//
+function TTokenizer.NextTest(t : TTokenType) : Boolean;
 begin
-  Result := false;
-  ReadNextToken;
-  if Assigned(FNextToken) then
-    Result := (FNextToken.FTyp = t);
+   Result:=False;
+   ReadNextToken;
+   if Assigned(FNextToken) then
+      Result:=(FNextToken.FTyp=t);
 end;
 
-function TTokenizer.TestName: Boolean;
+// TestName
+//
+function TTokenizer.TestName : Boolean;
 begin
-  Result := false;
-  if not Assigned(FToken) then
-    ReadToken;
-  if Assigned(FToken) then
-  begin
-    Result := (FToken.FString <> '') and not (FToken.FTyp in cReservedNames);
-    FHotPos := FToken.FPos;
-  end;
-end;
-
-function TTokenizer.TestDeleteName: Boolean;
-begin
-  Result := TestName;
-  if Result then
-    KillToken;
-end;
-
-function TTokenizer.NextTestName: Boolean;
-begin
-  Result := false;
-  ReadNextToken;
-  if Assigned(FNextToken) then
-    Result := (FNextToken.FString <> '') and not (FToken.FTyp in cReservedNames);
+   Result:=False;
+   if not Assigned(FToken) then
+      ReadToken;
+   if Assigned(FToken) then begin
+      Result:=(FToken.FString<>'') and not (FToken.FTyp in cReservedNames);
+      FHotPos:=FToken.FPos;
+   end;
 end;
 
 // HasTokens
@@ -791,59 +820,80 @@ begin
    Result:=(FToken<>nil);
 end;
 
-function TTokenizer.ConsumeToken: TToken;
-
-   procedure HandleHexa(var tokenBuf : TTokenBuffer; var result : TToken);
-   begin
-      try
-         result.FInteger := tokenBuf.ToInt64;
-         result.FTyp := ttIntVal;
-      except
-         on e: Exception do
-            AddCompilerStopFmtTokenBuffer(TOK_InvalidHexConstant);
-      end;
+// HandleChar
+//
+procedure TTokenizer.HandleChar(var tokenBuf : TTokenBuffer; var result : TToken);
+var
+   tokenIntVal, n : Integer;
+begin
+   tokenIntVal:=FTokenBuf.ToInt64;
+   if Cardinal(tokenIntVal)>Cardinal($FFFF) then
+      AddCompilerStopFmtTokenBuffer(TOK_InvalidCharConstant)
+   else begin
+      n:=Length(result.FString)+1;
+      SetLength(result.FString, n);
+      result.FString[n]:=Char(tokenIntVal);
+      result.FTyp:=ttStrVal;
    end;
+end;
 
-   procedure HandleInteger(var tokenBuf : TTokenBuffer; var result : TToken);
-   begin
-      try
-         if tokenBuf.LastChar='.' then
-            Dec(tokenBuf.Len);
-         result.FInteger := tokenBuf.ToInt64;
-         result.FTyp := ttIntVal;
-      except
-         on e: Exception do
-            AddCompilerStopFmtTokenBuffer(TOK_InvalidIntegerConstant);
-      end;
+// HandleHexa
+//
+procedure TTokenizer.HandleHexa(var tokenBuf : TTokenBuffer; var result : TToken);
+begin
+   try
+      result.FInteger:=tokenBuf.ToInt64;
+      result.FTyp:=ttIntVal;
+   except
+      on e : Exception do
+         AddCompilerStopFmtTokenBuffer(TOK_InvalidHexConstant);
    end;
+end;
 
-   procedure HandleFloat(var tokenBuf : TTokenBuffer; var result : TToken);
-   begin
-      try
-         result.FFloat := tokenBuf.ToFloat;
-         result.FTyp := ttFloatVal;
-      except
-         on e: EConvertError do
-            AddCompilerStopFmtTokenBuffer(TOK_InvalidFloatConstant);
-      end;
+// HandleInteger
+//
+procedure TTokenizer.HandleInteger(var tokenBuf : TTokenBuffer; var result : TToken);
+begin
+   try
+      if tokenBuf.LastChar='.' then
+         Dec(tokenBuf.Len);
+      result.FInteger:=tokenBuf.ToInt64;
+      result.FTyp:=ttIntVal;
+   except
+      on e : Exception do
+         AddCompilerStopFmtTokenBuffer(TOK_InvalidIntegerConstant);
    end;
+end;
 
+// HandleFloat
+//
+procedure TTokenizer.HandleFloat(var tokenBuf : TTokenBuffer; var result : TToken);
+begin
+   try
+      result.FFloat:=tokenBuf.ToFloat;
+      result.FTyp:=ttFloatVal;
+   except
+      on e : EConvertError do
+         AddCompilerStopFmtTokenBuffer(TOK_InvalidFloatConstant);
+   end;
+end;
+
+// ConsumeToken
+//
+function TTokenizer.ConsumeToken : TToken;
 var
    state : TState;
    trns : TTransition;
    trnsClassType : TClass;
-   tokenIntVal : Integer;
-   n : Integer;
-   ch : char;
+   ch : Char;
 begin
    Result:=AllocateToken;
 
-   Result.FTyp:=ttNone;
-   Result.FPos:=cNullPos;
-   state := FStartState;
+   state:=FStartState;
    FTokenBuf.Len:=0;
 
    try
+
       // Look for the next token in FText
       while Assigned(state) do begin
 
@@ -864,9 +914,8 @@ begin
             Result.FPos:=FPos;
 
          // Add actual character to s
-         if trnsClassType=TConsumeTransition then begin
+         if trnsClassType=TConsumeTransition then
             FTokenBuf.AppendChar(ch);
-         end;
 
          // Proceed to the next character
          if (trnsClassType=TSeekTransition) or (trnsClassType=TConsumeTransition) then begin
@@ -879,38 +928,29 @@ begin
          // The characters in 's' have to be converted
          if trns.Action<>caNone then begin
             case trns.Action of
-               caClear: begin
+               caClear : begin
                   FTokenBuf.Len:=0;
                   Result.FPos:=DefaultPos;
                end;
 
                // Convert name to token
-               caName: begin
+               caName : begin
                   Result.FTyp:=FTokenBuf.ToType;
                   FTokenBuf.ToStr(Result.FString);
                end;
 
                // converts ASCII code to character (decimal or hex)
-               caChar, caCharHex: begin
-                  tokenIntVal:=FTokenBuf.ToInt64;
-                  if Cardinal(tokenIntVal)>Cardinal($FFFF) then
-                     AddCompilerStopFmtTokenBuffer(TOK_InvalidCharConstant)
-                  else begin
-                     n:=Length(Result.FString)+1;
-                     SetLength(Result.FString, n);
-                     Result.FString[n]:= Char(tokenIntVal);
-                     Result.FTyp:=ttStrVal;
-                  end;
-               end;
+               caChar, caCharHex :
+                  HandleChar(FTokenBuf, Result);
 
                // Concatenates the parts of a string constant
-               caString: begin
+               caString : begin
                   FTokenBuf.AppendToStr(Result.FString);
                   Result.FTyp:=ttStrVal;
                end;
 
                // Converts hexadecimal number to integer
-               caHex:
+               caHex :
                   HandleHexa(FTokenBuf, Result);
 
                // Converts integer constants
@@ -918,26 +958,26 @@ begin
                   HandleInteger(FTokenBuf, Result);
 
                // Converts Floating Point numbers
-               caFloat:
+               caFloat :
                   HandleFloat(FTokenBuf, Result);
 
-               caSwitch:
+               caSwitch :
                   if Assigned(FSwitchHandler) then begin
-                     FHotPos := Result.FPos;
+                     FHotPos:=Result.FPos;
 
                      // Ask parser if we should create a token or not
                      FTokenBuf.ToUpperStr(Result.FString);
                      if FSwitchHandler(Result.FString) then begin
-                        Result.FTyp := ttSWITCH;
+                        Result.FTyp:=ttSWITCH;
                      end else begin
-                        Result.FString :='';
-                        state := sStart;
+                        Result.FString:='';
+                        state:=sStart;
                         FTokenBuf.Len:=0;
                         Continue;
                      end;
                   end;
 
-               caDotDot: begin
+               caDotDot : begin
                   Result.FPos:=FPos;
                   Result.FPos.Col:=Result.FPos.Col-1;
                   Result.FTyp:=ttDOTDOT;
@@ -948,10 +988,11 @@ begin
 
          // If the token is complete then exit
          if trns.Final then begin
-            FStartState := trns.NextState;
+            FStartState:=trns.NextState;
             Exit;
-         end else state := trns.NextState;
+         end else state:=trns.NextState;
       end;
+
    except
       ReleaseToken(Result);
       raise;
@@ -959,25 +1000,16 @@ begin
 
    // Couldn't read a token (end of FText reached)
    ReleaseToken(Result);
-   Result := nil;
+   Result:=nil;
 end;
 
-const
-  OPS = ['+', '-', '*', '/', '=', '<', '>', '@', '%', '^'];
-  SPACE = [' ', #9, #13, #10, #0];
-  SPEC = ['(', ')', ',', ';', '[', ']', '}'];
-  STOP = SPEC + OPS + SPACE + [':', '.', '{'];
-  ANYCHAR = [#0..#255];
-  NAM = ['A'..'Z', 'a'..'z', '_'];
-  INT = ['0'..'9'];
-  HEX = INT + ['A'..'F', 'a'..'f'];
-  Start = ['''', '#', ':', '$', '.'] + NAM + INT + OPS;
-
+// KillToken
+//
 procedure TTokenizer.KillToken;
 begin
    if FToken<>nil then begin
       ReleaseToken(FToken);
-      FToken := nil;
+      FToken:=nil;
    end;
 end;
 
@@ -989,6 +1021,8 @@ begin
       Dec(FTokenStoreCount);
       Result:=FTokenStore[FTokenStoreCount];
    end else New(Result);
+   Result.FTyp:=ttNone;
+   Result.FPos:=cNullPos;
 end;
 
 // ReleaseToken
@@ -1001,6 +1035,17 @@ begin
       aToken.FString:='';
 end;
 
+const
+   cOPS = ['+', '-', '*', '/', '=', '<', '>', '@', '%', '^'];
+   cSPACE = [' ', #9, #13, #10, #0];
+   cSPEC = ['(', ')', ',', ';', '[', ']', '}'];
+   cSTOP = cSPEC + cOPS + cSPACE + [':', '.', '{'];
+   cANYCHAR = [#0..#255];
+   cNAM = ['A'..'Z', 'a'..'z', '_'];
+   cINT = ['0'..'9'];
+   cHEX = cINT + ['A'..'F', 'a'..'f'];
+   cStart = ['''', '#', ':', '$', '.'] + cNAM + cINT + cOPS;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1011,41 +1056,41 @@ initialization
 
    PrepareAlphaToTokenType;
 
-   sStart := TState.Create;
-   sComment := TState.Create;
-   sCommentF := TState.Create;
-   sSwitch := TState.Create;
-   sSwitchNameF := TState.Create;
-   sSlashComment0 := TState.Create;
-   sSlashComment := TState.Create;
-   sChar0 := TState.Create;
-   sCharF := TState.Create;
-   sCharHex := TState.Create;
-   sCharHexF := TState.Create;
-   sNameF := TState.Create;
-   sIntF := TState.Create;
-   sIntPoint := TState.Create;
-   sIntPointF := TState.Create;
-   sIntExp := TState.Create;
-   sIntExp0 := TState.Create;
-   sIntExpF := TState.Create;
-   sHex := TState.Create;
-   sHexF := TState.Create;
-   sString0 := TState.Create;
-   sStringF := TState.Create;
-   sAssign0 := TState.Create;
-   sGreaterF := TState.Create;
-   sSmallerF := TState.Create;
-   sDotDot := TState.Create;
+   sStart:=TState.Create;
+   sComment:=TState.Create;
+   sCommentF:=TState.Create;
+   sSwitch:=TState.Create;
+   sSwitchNameF:=TState.Create;
+   sSlashComment0:=TState.Create;
+   sSlashComment:=TState.Create;
+   sChar0:=TState.Create;
+   sCharF:=TState.Create;
+   sCharHex:=TState.Create;
+   sCharHexF:=TState.Create;
+   sNameF:=TState.Create;
+   sIntF:=TState.Create;
+   sIntPoint:=TState.Create;
+   sIntPointF:=TState.Create;
+   sIntExp:=TState.Create;
+   sIntExp0:=TState.Create;
+   sIntExpF:=TState.Create;
+   sHex:=TState.Create;
+   sHexF:=TState.Create;
+   sString0:=TState.Create;
+   sStringF:=TState.Create;
+   sAssign0:=TState.Create;
+   sGreaterF:=TState.Create;
+   sSmallerF:=TState.Create;
+   sDotDot:=TState.Create;
 
-   sStart.AddTransition(SPACE, TSeekTransition.Create(sStart, [], caNone));
-   sStart.AddTransition(NAM, TConsumeTransition.Create(sNameF, [toStart], caNone));
-   sStart.AddTransition(INT, TConsumeTransition.Create(sIntF, [toStart], caNone));
+   sStart.AddTransition(cSPACE, TSeekTransition.Create(sStart, [], caNone));
+   sStart.AddTransition(cNAM, TConsumeTransition.Create(sNameF, [toStart], caNone));
+   sStart.AddTransition(cINT, TConsumeTransition.Create(sIntF, [toStart], caNone));
    sStart.AddTransition([''''], TSeekTransition.Create(sString0, [toStart], caNone));
    sStart.AddTransition(['#'], TSeekTransition.Create(sChar0, [toStart], caNone));
    sStart.AddTransition([':', '+', '-', '*', '@', '%', '^'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
    sStart.AddTransition(['='], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
-   sStart.AddTransition(SPEC, TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
+   sStart.AddTransition(cSPEC, TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
    sStart.AddTransition(['/'], TConsumeTransition.Create(sSlashComment0, [toStart], caNone));
    sStart.AddTransition(['<'], TConsumeTransition.Create(sSmallerF, [toStart], caNone));
    sStart.AddTransition(['>'], TConsumeTransition.Create(sGreaterF, [toStart], caNone));
@@ -1061,11 +1106,11 @@ initialization
    sCommentF.AddTransition(['}'], TSeekTransition.Create(sStart, [], caClear));
    sCommentF.SetElse(TSeekTransition.Create(sCommentF, [], caNone));
 
-   sSwitch.AddTransition(NAM, TConsumeTransition.Create(sSwitchNameF, [toStart], caNone));
+   sSwitch.AddTransition(cNAM, TConsumeTransition.Create(sSwitchNameF, [toStart], caNone));
    sSwitch.SetElse(TErrorTransition.Create(TOK_NameOfSwitchExpected));
 
-   sSwitchNameF.AddTransition(NAM + INT, TConsumeTransition.Create(sSwitchNameF, [], caNone));
-   sSwitchNameF.AddTransition(STOP, TCheckTransition.Create(sStart, [toFinal], caSwitch));
+   sSwitchNameF.AddTransition(cNAM + cINT, TConsumeTransition.Create(sSwitchNameF, [], caNone));
+   sSwitchNameF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caSwitch));
    sSwitchNameF.SetElse(TErrorTransition.Create(TOK_InvalidChar));
 
    sSlashComment0.AddTransition(['/'], TSeekTransition.Create(sSlashComment, [], caNone));
@@ -1075,86 +1120,86 @@ initialization
    sSlashComment.AddTransition([#0, #10], TSeekTransition.Create(sStart, [], caClear));
    sSlashComment.SetElse(TSeekTransition.Create(sSlashComment, [], caNone));
 
-   sChar0.AddTransition(INT, TConsumeTransition.Create(sCharF, [], caNone));
+   sChar0.AddTransition(cINT, TConsumeTransition.Create(sCharF, [], caNone));
    sChar0.AddTransition(['$'], TConsumeTransition.Create(sCharHex, [], caNone));
    sChar0.SetElse(TErrorTransition.Create(TOK_NumberExpected));
 
-   sCharF.AddTransition(INT, TConsumeTransition.Create(sCharF, [], caNone));
+   sCharF.AddTransition(cINT, TConsumeTransition.Create(sCharF, [], caNone));
    sCharF.AddTransition([''''], TCheckTransition.Create(sStart, [], caChar));
    sCharF.AddTransition(['#'], TCheckTransition.Create(sStart, [], caChar));
-   sCharF.AddTransition(STOP, TCheckTransition.Create(sStart, [toFinal], caChar));
+   sCharF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caChar));
    sCharF.SetElse(TErrorTransition.Create(TOK_InvalidChar));
 
-   sCharHex.AddTransition(HEX, TConsumeTransition.Create(sCharHexF, [], caNone));
+   sCharHex.AddTransition(cHEX, TConsumeTransition.Create(sCharHexF, [], caNone));
    sCharHex.SetElse(TErrorTransition.Create(TOK_HexDigitExpected));
 
-   sCharHexF.AddTransition(HEX, TConsumeTransition.Create(sCharHexF, [], caNone));
+   sCharHexF.AddTransition(cHEX, TConsumeTransition.Create(sCharHexF, [], caNone));
    sCharHexF.AddTransition([''''], TCheckTransition.Create(sStart, [], caCharHex));
    sCharHexF.AddTransition(['#'], TCheckTransition.Create(sStart, [], caCharHex));
-   sCharHexF.AddTransition(STOP, TCheckTransition.Create(sStart, [toFinal], caCharHex));
+   sCharHexF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caCharHex));
    sCharHexF.SetElse(TErrorTransition.Create(TOK_HexDigitExpected));
 
-   sNameF.AddTransition(NAM + INT, TConsumeTransition.Create(sNameF, [], caNone));
-   sNameF.AddTransition(STOP, TCheckTransition.Create(sStart, [toFinal], caName));
+   sNameF.AddTransition(cNAM + cINT, TConsumeTransition.Create(sNameF, [], caNone));
+   sNameF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caName));
    sNameF.SetElse(TErrorTransition.Create(TOK_InvalidChar));
 
-   sIntF.AddTransition(INT, TConsumeTransition.Create(sIntF, [], caNone));
+   sIntF.AddTransition(cINT, TConsumeTransition.Create(sIntF, [], caNone));
    sIntF.AddTransition(['.'], TConsumeTransition.Create(sIntPoint, [], caNone));
    sIntF.AddTransition(['E', 'e'], TConsumeTransition.Create(sIntExp, [], caNone));
-   sIntF.AddTransition(STOP, TCheckTransition.Create(sStart, [toFinal], caInteger));
+   sIntF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caInteger));
    sIntF.SetElse(TErrorTransition.Create(TOK_NumberPointExponentExpected));
 
    sIntPoint.AddTransition(['.'], TCheckTransition.Create(sDotDot, [toFinal], caInteger));
-   sIntPoint.AddTransition(INT, TConsumeTransition.Create(sIntPointF, [], caNone));
+   sIntPoint.AddTransition(cINT, TConsumeTransition.Create(sIntPointF, [], caNone));
    sIntPoint.SetElse(TErrorTransition.Create(TOK_NumberExpected));
 
-   sIntPointF.AddTransition(INT, TConsumeTransition.Create(sIntPointF, [], caNone));
+   sIntPointF.AddTransition(cINT, TConsumeTransition.Create(sIntPointF, [], caNone));
    sIntPointF.AddTransition(['E', 'e'], TConsumeTransition.Create(sIntExp, [], caNone));
-   sIntPointF.AddTransition(STOP, TCheckTransition.Create(sStart, [toFinal], caFloat));
+   sIntPointF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caFloat));
    sIntPointF.SetElse(TErrorTransition.Create(TOK_NumberExponentExpected));
 
    sIntExp.AddTransition(['+', '-'], TConsumeTransition.Create(sIntExp0, [], caNone));
-   sIntExp.AddTransition(INT, TConsumeTransition.Create(sIntExpF, [], caNone));
+   sIntExp.AddTransition(cINT, TConsumeTransition.Create(sIntExpF, [], caNone));
    sIntExp.SetElse(TErrorTransition.Create(TOK_NumberSignExpected));
 
-   sIntExp0.AddTransition(INT, TConsumeTransition.Create(sIntExpF, [], caNone));
+   sIntExp0.AddTransition(cINT, TConsumeTransition.Create(sIntExpF, [], caNone));
    sIntExp0.SetElse(TErrorTransition.Create(TOK_NumberExpected));
 
-   sIntExpF.AddTransition(INT, TConsumeTransition.Create(sIntExpF, [], caNone));
-   sIntExpF.AddTransition(STOP, TCheckTransition.Create(sStart, [toFinal], caFloat));
+   sIntExpF.AddTransition(cINT, TConsumeTransition.Create(sIntExpF, [], caNone));
+   sIntExpF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caFloat));
    sIntExpF.SetElse(TErrorTransition.Create(TOK_NumberExpected));
 
-   sHex.AddTransition(HEX, TConsumeTransition.Create(sHexF, [], caNone));
+   sHex.AddTransition(cHEX, TConsumeTransition.Create(sHexF, [], caNone));
    sHex.SetElse(TErrorTransition.Create(TOK_HexDigitExpected));
 
-   sHexF.AddTransition(HEX, TConsumeTransition.Create(sHexF, [], caNone));
-   sHexF.AddTransition(STOP, TCheckTransition.Create(sStart, [toFinal], caHex));
+   sHexF.AddTransition(cHEX, TConsumeTransition.Create(sHexF, [], caNone));
+   sHexF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caHex));
    sHexF.SetElse(TErrorTransition.Create(TOK_HexDigitExpected));
 
-   sString0.AddTransition(ANYCHAR - ['''', #13, #10], TConsumeTransition.Create(sString0, [], caNone));
+   sString0.AddTransition(cANYCHAR - ['''', #13, #10], TConsumeTransition.Create(sString0, [], caNone));
    sString0.AddTransition([''''], TSeekTransition.Create(sStringF, [], caNone));
    sString0.SetElse(TErrorTransition.Create(TOK_StringTerminationError));
 
    sStringF.AddTransition([''''], TConsumeTransition.Create(sString0, [], caNone));
    sStringF.AddTransition(['#'], TCheckTransition.Create(sStart, [], caString));
-   sStringF.AddTransition(STOP, TCheckTransition.Create(sStart, [toFinal], caString));
+   sStringF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caString));
    sStringF.SetElse(TErrorTransition.Create(TOK_InvalidChar));
 
    sAssign0.AddTransition(['='], TConsumeTransition.Create(sStart, [toFinal], caName));
-   sAssign0.AddTransition(Start + STOP, TCheckTransition.Create(sStart, [toFinal], caName));
+   sAssign0.AddTransition(cStart + cSTOP, TCheckTransition.Create(sStart, [toFinal], caName));
    sAssign0.SetElse(TErrorTransition.Create(TOK_EqualityExpected));
 
    sGreaterF.AddTransition(['='], TConsumeTransition.Create(sStart, [toFinal], caName));
-   sGreaterF.AddTransition(Start + STOP, TCheckTransition.Create(sStart, [toFinal], caName));
+   sGreaterF.AddTransition(cStart + cSTOP, TCheckTransition.Create(sStart, [toFinal], caName));
    sGreaterF.SetElse(TErrorTransition.Create(TOK_EqualityExpected));
 
    sSmallerF.AddTransition(['='], TConsumeTransition.Create(sStart, [toFinal], caName));
    sSmallerF.AddTransition(['>'], TConsumeTransition.Create(sStart, [toFinal], caName));
-   sSmallerF.AddTransition(Start + STOP, TCheckTransition.Create(sStart, [toFinal], caName));
+   sSmallerF.AddTransition(cStart + cSTOP, TCheckTransition.Create(sStart, [toFinal], caName));
    sSmallerF.SetElse(TErrorTransition.Create(TOK_GreaterEqualityExpected));
 
    sDotDot.AddTransition(['.'], TConsumeTransition.Create(sStart, [toFinal], caDotDot));
-   sDotDot.AddTransition(NAM, TCheckTransition.Create(sStart, [toFinal], caName));
+   sDotDot.AddTransition(cNAM, TCheckTransition.Create(sStart, [toFinal], caName));
    sDotDot.SetElse(TErrorTransition.Create(TOK_DotExpected));
 
 finalization
