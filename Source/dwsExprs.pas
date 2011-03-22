@@ -580,7 +580,6 @@ type
          procedure Initialize; virtual;
          function  IsConstant : Boolean; virtual;
          function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; virtual;
-         procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); virtual;
 
          procedure EvalNoResult(exec : TdwsExecution); virtual;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -652,7 +651,6 @@ type
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
 
-         procedure TypeCheck(prog : TdwsProgram);
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
          function OptimizeToNoResultExpr(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
@@ -720,8 +718,6 @@ type
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TSymbol);
 
-         procedure TypeCheck(prog : TdwsProgram);
-
          function ScriptPos : TScriptPos; override;
 
          property Pos: TScriptPos read FPos;
@@ -737,7 +733,7 @@ type
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol);
          destructor Destroy; override;
          function AddArg(arg : TTypedExpr) : TSymbol; virtual; abstract;
-         procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); override;
+         procedure TypeCheckArgs(prog : TdwsProgram); virtual;
          procedure Initialize; override;
          function GetArgs : TExprBaseList;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
@@ -905,7 +901,7 @@ type
     destructor Destroy; override;
     function AssignConnectorSym(ConnectorType: IConnectorType): Boolean;
     function AddArg(ArgExpr: TTypedExpr) : TSymbol;
-    procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); override;
+    procedure TypeCheckArgs(prog : TdwsProgram);
     function Eval(exec : TdwsExecution) : Variant; override;
     procedure Initialize; override;
     function IsWritable : Boolean; override;
@@ -956,7 +952,6 @@ type
                             BaseExpr: TDataExpr);
          destructor Destroy; override;
 
-         procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); override;
          procedure Initialize; override;
 
          property BaseExpr: TDataExpr read FBaseExpr;
@@ -1090,7 +1085,6 @@ type
 
          procedure Initialize; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); override;
          function  IsConstant : Boolean; override;
 
          property Expr: TProgramExpr read FExpr write FExpr;
@@ -2807,13 +2801,6 @@ begin
    Result:=Self;
 end;
 
-// TypeCheckNoPos
-//
-procedure TProgramExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
-begin
-   // nothing here
-end;
-
 // GetType
 //
 function TProgramExpr.GetType : TSymbol;
@@ -3154,13 +3141,6 @@ begin
    FPos:=Pos;
 end;
 
-// TypeCheck
-//
-procedure TPosDataExpr.TypeCheck(prog : TdwsProgram);
-begin
-   TypeCheckNoPos(prog, Pos);
-end;
-
 // ScriptPos
 //
 function TPosDataExpr.ScriptPos : TScriptPos;
@@ -3178,13 +3158,6 @@ constructor TNoResultExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
 begin
    inherited Create(Prog);
    FPos:=Pos;
-end;
-
-// TypeCheck
-//
-procedure TNoResultExpr.TypeCheck(prog : TdwsProgram);
-begin
-   TypeCheckNoPos(prog, Pos);
 end;
 
 // ScriptPos
@@ -3391,9 +3364,9 @@ begin
    inherited;
 end;
 
-// TypeCheckNoPos
+// TypeCheckArgs
 //
-procedure TFuncExprBase.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
+procedure TFuncExprBase.TypeCheckArgs(prog : TdwsProgram);
 var
    arg : TTypedExpr;
    x, paramCount, nbParamsToCheck : Integer;
@@ -4190,14 +4163,6 @@ end;
 destructor TMethodExpr.Destroy;
 begin
    FBaseExpr.Free;
-   inherited;
-end;
-
-// TypeCheckNoPos
-//
-procedure TMethodExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
-begin
-   FBaseExpr.TypeCheckNoPos(prog, Pos);
    inherited;
 end;
 
@@ -5864,11 +5829,10 @@ begin
    Result:=nil;
 end;
 
-// TypeCheckNoPos
+// TypeCheckArgs
 //
-procedure TConnectorCallExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
+procedure TConnectorCallExpr.TypeCheckArgs(prog : TdwsProgram);
 begin
-   inherited;
    if FArgs.Count>64 then
       prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConnectorTooManyArguments, [FArgs.Count]);
 end;
@@ -7142,13 +7106,6 @@ end;
 procedure TNoResultWrapperExpr.EvalNoResult(exec : TdwsExecution);
 begin
    Expr.EvalNoResult(exec);
-end;
-
-// TypeCheckNoPos
-//
-procedure TNoResultWrapperExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
-begin
-   Expr.TypeCheckNoPos(prog, Pos);
 end;
 
 // IsConstant

@@ -261,7 +261,7 @@ type
      destructor Destroy; override;
      procedure AddElementExpr(Prog: TdwsProgram; ElementExpr: TTypedExpr);
      procedure Prepare(Prog: TdwsProgram; ElementTyp : TSymbol);
-     procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); override;
+     procedure TypeCheckElements(prog : TdwsProgram);
      function Eval(exec : TdwsExecution) : Variant; override;
      function EvalAsTData(exec : TdwsExecution) : TData;
      function EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArrayContainer;
@@ -679,7 +679,7 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          procedure Initialize; override;
-         procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); override;
+         procedure TypeCheckAssign(prog : TdwsProgram); virtual;
          function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function  OptimizeConstAssignment(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
    end;
@@ -719,7 +719,7 @@ type
    TAssignConstExpr = class (TAssignExpr)
       public
          procedure Initialize; override;
-         procedure TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos); override;
+         procedure TypeCheckAssign(prog : TdwsProgram); override;
    end;
 
    // left := const integer;
@@ -2317,26 +2317,25 @@ begin
    Result:=False;
 end;
 
-// TypeCheckNoPos
+// TypeCheckElements
 //
-procedure TArrayConstantExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
+procedure TArrayConstantExpr.TypeCheckElements(prog : TdwsProgram);
 var
-   x: Integer;
+   x : Integer;
    expr : TTypedExpr;
 begin
    if FElementExprs.Count=0 then begin
       (FTyp as TStaticArraySymbol).Typ:=Prog.TypVariant;
       Exit;
    end;
-   for x:=0 to FElementExprs.Count - 1 do begin
+   for x:=0 to FElementExprs.Count-1 do begin
       expr:=TTypedExpr(FElementExprs.List[x]);
-      expr.TypeCheckNoPos(Prog, Pos);
       if (Typ.Typ=Prog.TypFloat) and (expr.Typ=Prog.TypInteger) then begin
          expr:=TConvFloatExpr.Create(Prog, expr);
          FElementExprs.List[x]:=expr;
       end;
       if not expr.Typ.IsCompatible(Typ.Typ) then
-         prog.CompileMsgs.AddCompilerErrorFmt(aPos, CPE_AssignIncompatibleTypes,
+         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_AssignIncompatibleTypes,
                                               [expr.Typ.Caption, Typ.Typ.Caption]);
    end;
 end;
@@ -3737,6 +3736,7 @@ begin
   inherited Create(Prog, Pos);
   FLeft := Left;
   FRight := Right;
+  TypeCheckAssign(Prog);
 end;
 
 destructor TAssignExpr.Destroy;
@@ -3757,14 +3757,12 @@ begin
   FRight.Initialize;
 end;
 
-// TypeCheckNoPos
+// TypeCheckAssign
 //
-procedure TAssignExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
+procedure TAssignExpr.TypeCheckAssign(prog : TdwsProgram);
 begin
    if FRight.InheritsFrom(TArrayConstantExpr) then
       TArrayConstantExpr(FRight).Prepare(Prog, FLeft.Typ.Typ);
-
-   FRight.TypeCheckNoPos(Prog, Pos);
 
    FRight:=TConvExpr.WrapWithConvCast(prog, ScriptPos, FLeft.Typ, FRight, True);
 end;
@@ -3910,9 +3908,9 @@ end;
 // ------------------ TAssignConstExpr ------------------
 // ------------------
 
-// TypeCheckNoPos
+// TypeCheckAssign
 //
-procedure TAssignConstExpr.TypeCheckNoPos(prog : TdwsProgram; const aPos : TScriptPos);
+procedure TAssignConstExpr.TypeCheckAssign(prog : TdwsProgram);
 begin
    // nothing, checked during optimize
 end;

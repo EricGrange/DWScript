@@ -279,7 +279,7 @@ type
       function ReadExprMult: TTypedExpr;
       function ReadExprIn(var left : TTypedExpr) : TTypedExpr;
       function ReadExprInConditions(var left : TTypedExpr) : TInOpExpr;
-      function ReadExternalVar(Sym: TExternalVarSymbol; IsWrite: Boolean): TFuncExpr;
+      function ReadExternalVar(sym : TExternalVarSymbol; isWrite : Boolean) : TFuncExpr;
       function ReadField(Expr: TDataExpr; Sym: TFieldSymbol): TTypedExpr;
       function ReadFor: TForExpr;
       function ReadStaticMethod(methodSym: TMethodSymbol; IsWrite: Boolean): TFuncExpr;
@@ -487,6 +487,10 @@ begin
    end;
    Result:=siNone;
 end;
+
+// ------------------
+// ------------------ TdwsCompiler ------------------
+// ------------------
 
 // Create
 //
@@ -1194,7 +1198,6 @@ begin
 
       expr:=ReadExpr;
       try
-         expr.TypeCheckNoPos(FProg, FTok.HotPos);
          if not expr.IsConstant then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ConstantExpressionExpected);
 
@@ -2007,87 +2010,70 @@ begin
          Result := TNullExpr.Create(FProg, FTok.HotPos);
       end;
    end;
-
-   if Assigned(Result) then begin
-      try
-         TNoResultExpr(Result).TypeCheck(FProg)
-      except
-         Result.Free;
-         raise;
-      end;
-   end;
 end;
 
-function TdwsCompiler.ReadInherited(IsWrite: Boolean): TProgramExpr;
+// ReadInherited
+//
+function TdwsCompiler.ReadInherited(isWrite : Boolean) : TProgramExpr;
 var
-  name: string;
-  sym: TSymbol;
-  methSym: TMethodSymbol;
-  classSym, parentSym: TClassSymbol;
-  varExpr: TDataExpr;
+   name : string;
+   sym : TSymbol;
+   methSym : TMethodSymbol;
+   classSym, parentSym : TClassSymbol;
+   varExpr : TDataExpr;
+   methRefKind : TRefKind;
 begin
-  Result := nil;
-  if not ((FProg is TdwsProcedure) and (TdwsProcedure(FProg).Func is TMethodSymbol)) then
-    FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedOnlyInMethodsAllowed);
+   Result := nil;
+   if not ((FProg is TdwsProcedure) and (TdwsProcedure(FProg).Func is TMethodSymbol)) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedOnlyInMethodsAllowed);
 
-  methSym := TMethodSymbol(TdwsProcedure(FProg).Func);
-  classSym := methSym.ClassSymbol;
-  parentSym := ClassSym.Parent;
-  sym := nil;
+   methSym := TMethodSymbol(TdwsProcedure(FProg).Func);
+   classSym := methSym.ClassSymbol;
+   parentSym := ClassSym.Parent;
+   sym := nil;
 
-  if FTok.TestName then
-  begin
-    name := FTok.GetToken.FString;
-    FTok.KillToken;
+   if FTok.TestName then begin
+      name := FTok.GetToken.FString;
+      FTok.KillToken;
 
-    sym := ParentSym.Members.FindSymbol(name, cvPrivate);
-  end
-  else if not methSym.IsOverride then
-    FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedWithoutName)
-  else
-    sym := methSym.ParentMeth;
+      sym := ParentSym.Members.FindSymbol(name, cvPrivate);
+   end else if not methSym.IsOverride then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedWithoutName)
+   else sym := methSym.ParentMeth;
 
-  if Assigned(sym) then
-  begin
-    if sym is TMethodSymbol then
-    begin
-      if methSym.IsClassMethod then
-        varExpr := TConstExpr.CreateTyped(FProg, parentSym.ClassOf, Int64(parentSym))
-      else
-        varExpr := TVarExpr.CreateTyped(FProg, parentSym, methSym.SelfSym);
-      try
-        if methSym.IsClassMethod then
-          Result := GetMethodExpr(TMethodSymbol(sym),varExpr,rkClassOfRef,FTok.HotPos,True)
-        else
-          Result := GetMethodExpr(TMethodSymbol(sym),varExpr,rkObjRef,FTok.HotPos,True);
-      except
-        varExpr.Free;
-        raise;
-      end;
-      try
-        ReadFuncArgs(TFuncExpr(Result).AddArg);
-        if TMethodSymbol(sym).Kind = fkConstructor then
-          (Result as TMethodExpr).Typ := methSym.ClassSymbol.Parent;
-      except
-        Result.Free;
-        raise;
-      end;
-    end
-    else if sym is TPropertySymbol then
-    begin
-      varExpr := TVarExpr.CreateTyped(FProg, parentSym, methSym.SelfSym);
-      try
-        Result := ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
-      except
-        varExpr.Free;
-        raise;
-      end;
-    end
-    else
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedWithoutName);
-  end
-  else
-    FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_InheritedMethodNotFound, [Name]);
+   if Assigned(sym) then begin
+      if sym is TMethodSymbol then begin
+         if methSym.IsClassMethod then
+            varExpr := TConstExpr.CreateTyped(FProg, parentSym.ClassOf, Int64(parentSym))
+         else varExpr := TVarExpr.CreateTyped(FProg, parentSym, methSym.SelfSym);
+         try
+            if methSym.IsClassMethod then
+               methRefKind:=rkClassOfRef
+            else methRefKind:=rkObjRef;
+            Result:=GetMethodExpr(TMethodSymbol(sym), varExpr, methRefKind, FTok.HotPos, True);
+         except
+            varExpr.Free;
+            raise;
+         end;
+         try
+            ReadFuncArgs(TFuncExpr(Result).AddArg);
+            if TMethodSymbol(sym).Kind = fkConstructor then
+               (Result as TMethodExpr).Typ := methSym.ClassSymbol.Parent;
+            TFuncExpr(Result).TypeCheckArgs(FProg);
+         except
+            Result.Free;
+            raise;
+         end;
+      end else if sym is TPropertySymbol then begin
+         varExpr := TVarExpr.CreateTyped(FProg, parentSym, methSym.SelfSym);
+         try
+            Result := ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
+         except
+            varExpr.Free;
+            raise;
+         end;
+      end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedWithoutName);
+   end else FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_InheritedMethodNotFound, [Name]);
 end;
 
 // ReadName
@@ -2401,6 +2387,7 @@ begin
 
             if Assigned(PropertySym.IndexSym) then
                TFuncExpr(Result).AddArg(TConstExpr.CreateTyped(FProg,PropertySym.IndexSym,PropertySym.IndexValue));
+            TFuncExpr(Result).TypeCheckArgs(FProg);
          except
             Result.Free;
             raise;
@@ -2480,6 +2467,8 @@ begin
 
                // Add right side of assignment
                funcExpr.AddArg(ReadExpr);
+
+               funcExpr.TypeCheckArgs(FProg);
             except
                funcExpr.Free;
                raise;
@@ -2606,10 +2595,13 @@ begin
                      FSymbolDictionary.Add(member, symPos);
 
                   if member is TMethodSymbol then begin
+
                      if TMethodSymbol(member).IsClassMethod then
                         Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkClassOfRef, symPos, False)
                      else Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkObjRef, symPos, False);
                      ReadFuncArgs(TFuncExpr(Result).AddArg);
+                     TFuncExpr(Result).TypeCheckArgs(FProg);
+
                   end else if member is TFieldSymbol then
                      Result := TFieldExpr.Create(FProg, FTok.HotPos, member.Typ,
                                                  TFieldSymbol(member), TDataExpr(Result))
@@ -2629,6 +2621,7 @@ begin
 
                   // Class method
                   if member is TMethodSymbol then begin
+
                      case TMethodSymbol(member).Kind of
                         fkFunction, fkProcedure, fkMethod:
                            if not TMethodSymbol(member).IsClassMethod then
@@ -2639,6 +2632,8 @@ begin
                      Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result),
                                              rkClassOfRef, symPos, False);
                      ReadFuncArgs(TFuncExpr(Result).AddArg);
+                     TFuncExpr(Result).TypeCheckArgs(FProg);
+
                   // Static property
                   end else if member is TPropertySymbol then
                      Result := ReadPropertyExpr(TDataExpr(Result), TPropertySymbol(member), IsWrite)
@@ -2691,37 +2686,32 @@ begin
    end;
 end;
 
-function TdwsCompiler.ReadExternalVar;
+// ReadExternalVar
+//
+function TdwsCompiler.ReadExternalVar(sym : TExternalVarSymbol; isWrite : Boolean) : TFuncExpr;
 begin
-  Result := nil;
-  try
-    if IsWrite then
-    begin
-      if FTok.TestDelete(ttASSIGN) then
-      begin
-        if not Assigned(Sym.WriteFunc) then
-          FMsgs.AddCompilerStop(FTok.HotPos,CPE_CantWriteToLeftSide);
-        // Transform a := b into a(b)
-        Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.WriteFunc);
-        Result.AddArg(ReadExpr);
-      end
-      else if (Sym.Typ is TClassSymbol) or (Sym.Typ is TClassOfSymbol) then
-      begin
-        if not Assigned(Sym.ReadFunc) then
-          FMsgs.AddCompilerStop(FTok.HotPos,CPE_RightSideNeedsReturnType);
-        Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc)
-      end
-      else
-        FMsgs.AddCompilerStop(FTok.HotPos, CPE_AssignExpected);
-    end
-    else if Assigned(Sym.ReadFunc) then
-      Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc)
-    else
-      FMsgs.AddCompilerStop(FTok.HotPos,CPE_WriteOnlyProperty); // ??
-  except
-    Result.Free;
-    raise;
-  end;
+   Result := nil;
+   try
+      if IsWrite then begin
+         if FTok.TestDelete(ttASSIGN) then begin
+            if not Assigned(Sym.WriteFunc) then
+               FMsgs.AddCompilerStop(FTok.HotPos,CPE_CantWriteToLeftSide);
+            // Transform a := b into a(b)
+            Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.WriteFunc);
+            Result.AddArg(ReadExpr);
+         end else if (Sym.Typ is TClassSymbol) or (Sym.Typ is TClassOfSymbol) then begin
+            if not Assigned(Sym.ReadFunc) then
+               FMsgs.AddCompilerStop(FTok.HotPos,CPE_RightSideNeedsReturnType);
+            Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc)
+         end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_AssignExpected);
+      end else if Assigned(Sym.ReadFunc) then
+         Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc)
+      else FMsgs.AddCompilerStop(FTok.HotPos,CPE_WriteOnlyProperty); // ??
+      Result.TypeCheckArgs(FProg);
+   except
+      Result.Free;
+      raise;
+   end;
 end;
 
 // ReadFor
@@ -3147,6 +3137,8 @@ begin
 
    ReadFuncArgs(TFuncExpr(Result).AddArg);
    Result := (ReadSymbol(Result, IsWrite) as TFuncExpr);
+
+   Result.TypeCheckArgs(FProg);
 end;
 
 // ReadFunc
@@ -3204,7 +3196,7 @@ begin
 
    try
       ReadFuncArgs(TFuncExprBase(Result).AddArg);
-      TFuncExprBase(Result).TypeCheck(FProg);
+      TFuncExprBase(Result).TypeCheckArgs(FProg);
    except
       Result.Free;
       raise;
@@ -3332,26 +3324,28 @@ begin
    end;
 end;
 
+// ReadArrayConstant
+//
 function TdwsCompiler.ReadArrayConstant: TArrayConstantExpr;
 begin
-  Result := TArrayConstantExpr.Create(FProg, FTok.HotPos);
-  try
-    if not FTok.TestDelete(ttARIGHT) then
-    begin
-      // At least one argument was found
-      repeat
-        TArrayConstantExpr(Result).AddElementExpr(FProg, ReadExpr);
-      until not FTok.TestDelete(ttCOMMA);
+   Result:=TArrayConstantExpr.Create(FProg, FTok.HotPos);
+   try
+      if not FTok.TestDelete(ttARIGHT) then begin
+         // At least one argument was found
+         repeat
+            TArrayConstantExpr(Result).AddElementExpr(FProg, ReadExpr);
+         until not FTok.TestDelete(ttCOMMA);
 
-      if not FTok.TestDelete(ttARIGHT) then
-        FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-    end;
-    if Optimize then
-      Result := Result.Optimize(FProg, FExec) as TArrayConstantExpr;
-  except
-    Result.Free;
-    raise;
-  end;
+         if not FTok.TestDelete(ttARIGHT) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+      end;
+      Result.TypeCheckElements(FProg);
+      if Optimize then
+         Result:=Result.Optimize(FProg, FExec) as TArrayConstantExpr;
+   except
+      Result.Free;
+      raise;
+   end;
 end;
 
 procedure TdwsCompiler.ReadNameList(Names: TStrings);
@@ -4245,7 +4239,6 @@ begin
             r.Free;
             raise;
          end;
-         Result.TypeCheckNoPos(FProg, hotPos);
       until False;
    except
       Result.Free;
@@ -4306,7 +4299,6 @@ begin
             end;
          end;
 
-         Result.TypeCheckNoPos(FProg, hotPos);
          if Optimize then
             Result:=Result.OptimizeToNoPosExpr(FProg, FExec);
       until False;
@@ -4357,7 +4349,6 @@ begin
             raise;
          end;
 
-         Result.TypeCheckNoPos(FProg, hotPos);
          if Optimize then
             Result:=Result.OptimizeToNoPosExpr(FProg, FExec);
       until False;
@@ -4401,6 +4392,7 @@ begin
             setExpr:=nil;
             TFuncExpr(classOpExpr).AddArg(left);
             left:=nil;
+            TFuncExpr(classOpExpr).TypeCheckArgs(FProg);
          except
             classOpExpr.Free;
             raise;
@@ -4551,14 +4543,8 @@ begin
       negExprClass:=TNegExpr;
    end;
    Result:=negExprClass.Create(FProg, negTerm);
-   try
-      Result.TypeCheckNoPos(FProg, FTok.HotPos);
-      if Optimize then
-         Result:=Result.OptimizeToNoPosExpr(FProg, FExec);
-   except
-      Result.Free;
-      raise;
-   end;
+   if Optimize then
+      Result:=Result.OptimizeToNoPosExpr(FProg, FExec);
 end;
 
 // ReadConstValue
@@ -5269,16 +5255,17 @@ end;
 function TdwsCompiler.ReadConnectorSym(const Name: string;
   BaseExpr: TTypedExpr; const ConnectorType: IConnectorType; IsWrite: Boolean): TProgramExpr;
 
-  function TryConnectorCall: TConnectorCallExpr;
-  begin
-    // Try to read the call of a connector function
-    Result := TConnectorCallExpr.Create(FProg, FTok.HotPos, Name, BaseExpr,
-      IsWrite);
+   function TryConnectorCall : TConnectorCallExpr;
+   begin
+      // Try to read the call of a connector function
+      Result:=TConnectorCallExpr.Create(FProg, FTok.HotPos, Name, BaseExpr, IsWrite);
 
-    ReadFuncArgs(TConnectorCallExpr(Result).AddArg);
+      ReadFuncArgs(Result.AddArg);
 
-    if not TConnectorCallExpr(Result).AssignConnectorSym(ConnectorType) then
-      FreeAndNil(Result);
+      Result.TypeCheckArgs(FProg);
+
+      if not Result.AssignConnectorSym(ConnectorType) then
+         FreeAndNil(Result);
   end;
 
 begin
@@ -5341,22 +5328,26 @@ begin
   end;
 end;
 
+// ReadConnectorArray
+//
 function TdwsCompiler.ReadConnectorArray(const Name: String; BaseExpr: TTypedExpr;
             const ConnectorType: IConnectorType; IsWrite: Boolean): TConnectorCallExpr;
 begin
-  Result := TConnectorCallExpr.Create(FProg, FTok.HotPos, Name, BaseExpr, IsWrite, True);
-  try
-    ReadFuncArgs(Result.AddArg,ttALEFT,ttARIGHT);
+   Result:=TConnectorCallExpr.Create(FProg, FTok.HotPos, Name, BaseExpr, IsWrite, True);
+   try
+      ReadFuncArgs(Result.AddArg, ttALEFT, ttARIGHT);
 
-    if IsWrite and FTok.TestDelete(ttASSIGN) then
-      Result.AddArg(ReadExpr);
+      if IsWrite and FTok.TestDelete(ttASSIGN) then
+         Result.AddArg(ReadExpr);
 
-    if not Result.AssignConnectorSym(ConnectorType) then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorIndex, [ConnectorType.ConnectorCaption]);
-  except
-    Result.BaseExpr:=nil;
-    Result.Free;
-    raise;
+      Result.TypeCheckArgs(FProg);
+
+      if not Result.AssignConnectorSym(ConnectorType) then
+         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorIndex, [ConnectorType.ConnectorCaption]);
+   except
+      Result.BaseExpr:=nil;
+      Result.Free;
+      raise;
   end;
 end;
 
@@ -6065,6 +6056,7 @@ begin
                classOpExpr:=GetMethodExpr(classOpSymbol.UsesSym, left, rkObjRef, pos, False);
                try
                   TFuncExpr(classOpExpr).AddArg(right);
+                  TFuncExpr(classOpExpr).TypeCheckArgs(FProg);
                except
                   classOpExpr.Free;
                   raise;
@@ -6087,7 +6079,6 @@ begin
          Assert(False);
       end;
 
-      Result.TypeCheck(FProg);
       if Optimize then
          Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
 
@@ -6146,9 +6137,6 @@ begin
 
    msgExpr:=nil;
    try
-      if Assigned(argExpr) then
-         argExpr.TypeCheckNoPos(FProg, FTok.HotPos);
-
       if not Assigned(argTyp) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
 
