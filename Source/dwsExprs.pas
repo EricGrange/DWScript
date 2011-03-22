@@ -622,13 +622,6 @@ type
          function GetBaseType : TTypeSymbol; override;
 
       public
-         function IsBooleanValue : Boolean;
-         function IsIntegerValue : Boolean;
-         function IsFloatValue : Boolean;
-         function IsNumberValue : Boolean;
-         function IsStringValue : Boolean;
-         function IsVariantValue : Boolean;
-
          function OptimizeToNoPosExpr(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
          function OptimizeIntegerConstantToFloatConstant(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
 
@@ -646,7 +639,7 @@ type
    // base class of expressions that return no result
    TNoResultExpr = class(TProgramExpr)
       protected
-         FPos : TScriptPos;
+         FScriptPos : TScriptPos;
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
@@ -656,7 +649,6 @@ type
          function OptimizeToNoResultExpr(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
 
          function ScriptPos : TScriptPos; override;
-         property Pos : TScriptPos read FPos;
    end;
 
    // Does nothing! E. g.: "for x := 1 to 10 do {TNullExpr};"
@@ -1033,45 +1025,45 @@ type
 
    TDestructorVirtualExpr = class(TMethodVirtualExpr)
       protected
-         function PostCall(exec : TdwsExecution): Variant; override;
+         function PostCall(exec : TdwsExecution) : Variant; override;
    end;
 
    TUnaryOpExpr = class(TTypedExpr)
       protected
-         FExpr: TTypedExpr;
+         FExpr : TTypedExpr;
       public
-         constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr);
          destructor Destroy; override;
          procedure Initialize; override;
          function IsConstant : Boolean; override;
-         property Expr: TTypedExpr read FExpr write FExpr;
+         property Expr : TTypedExpr read FExpr write FExpr;
    end;
 
    // bool unary result
    TUnaryOpBoolExpr = class(TUnaryOpExpr)
       public
-         constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr);
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // int unary result
    TUnaryOpIntExpr = class(TUnaryOpExpr)
       public
-         constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr);
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // float unary result
    TUnaryOpFloatExpr = class(TUnaryOpExpr)
       public
-         constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr);
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // string unary result
    TUnaryOpStringExpr = class(TUnaryOpExpr)
       public
-         constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr);
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
@@ -3019,48 +3011,6 @@ begin
             and IsBaseTypeCompatible(TBaseSymbol(Typ.BaseType).Id, BType);
 end;
 
-// IsBooleanValue
-//
-function TTypedExpr.IsBooleanValue : Boolean;
-begin
-   Result:=Assigned(Typ) and Typ.IsBaseTypeIDValue(typBooleanID);
-end;
-
-// IsFloatValue
-//
-function TTypedExpr.IsFloatValue : Boolean;
-begin
-   Result:=Assigned(Typ) and Typ.IsBaseTypeIDValue(typFloatID);
-end;
-
-// IsIntegerValue
-//
-function TTypedExpr.IsIntegerValue : Boolean;
-begin
-   Result:=Assigned(Typ) and Typ.IsBaseTypeIDValue(typIntegerID);
-end;
-
-// IsNumberValue
-//
-function TTypedExpr.IsNumberValue : Boolean;
-begin
-   Result:=Assigned(Typ) and (Typ.BaseTypeID in [typFloatID, typIntegerID]);
-end;
-
-// IsStringValue
-//
-function TTypedExpr.IsStringValue : Boolean;
-begin
-   Result:=Assigned(Typ) and Typ.IsBaseTypeIDValue(typStringID);
-end;
-
-// IsVariantValue
-//
-function TTypedExpr.IsVariantValue : Boolean;
-begin
-   Result:=Assigned(Typ) and Typ.IsBaseTypeIDValue(typVariantID);
-end;
-
 // OptimizeToNoPosExpr
 //
 function TTypedExpr.OptimizeToNoPosExpr(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
@@ -3076,7 +3026,7 @@ end;
 //
 function TTypedExpr.OptimizeIntegerConstantToFloatConstant(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
 begin
-   if IsConstant and IsIntegerValue then begin
+   if IsConstant and Typ.IsIntegerValue then begin
       Result:=TConstFloatExpr.CreateUnified(prog, nil, EvalAsFloat(exec));
       Free;
    end else Result:=Self;
@@ -3157,14 +3107,14 @@ end;
 constructor TNoResultExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
 begin
    inherited Create(Prog);
-   FPos:=Pos;
+   FScriptPos:=Pos;
 end;
 
 // ScriptPos
 //
 function TNoResultExpr.ScriptPos : TScriptPos;
 begin
-   Result:=FPos;
+   Result:=FScriptPos;
 end;
 
 // Eval
@@ -4039,23 +3989,31 @@ begin
    Result:=FLeft.IsConstant and FRight.IsConstant;
 end;
 
-{ TUnaryOpExpr }
+// ------------------
+// ------------------ TUnaryOpExpr ------------------
+// ------------------
 
-constructor TUnaryOpExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
+// Create
+//
+constructor TUnaryOpExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
 begin
-  inherited Create(Prog);
-  FExpr := Expr;
+   inherited Create(Prog);
+   FExpr:=Expr;
 end;
 
+// Destroy
+//
 destructor TUnaryOpExpr.Destroy;
 begin
-  FExpr.Free;
-  inherited;
+   FExpr.Free;
+   inherited;
 end;
 
+// Initialize
+//
 procedure TUnaryOpExpr.Initialize;
 begin
-  FExpr.Initialize;
+   FExpr.Initialize;
 end;
 
 // IsConstant
@@ -4071,7 +4029,7 @@ end;
 
 // Create
 //
-constructor TUnaryOpBoolExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
+constructor TUnaryOpBoolExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
 begin
    inherited;
    Typ:=Prog.TypBoolean;
@@ -4090,7 +4048,7 @@ end;
 
 // Create
 //
-constructor TUnaryOpIntExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
+constructor TUnaryOpIntExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
 begin
    inherited;
    Typ:=Prog.TypInteger;
@@ -4109,7 +4067,7 @@ end;
 
 // Create
 //
-constructor TUnaryOpFloatExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
+constructor TUnaryOpFloatExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
 begin
    inherited;
    Typ:=Prog.TypFloat;
@@ -4128,7 +4086,7 @@ end;
 
 // Create
 //
-constructor TUnaryOpStringExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
+constructor TUnaryOpStringExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
 begin
    inherited;
    Typ:=Prog.TypString;
@@ -4321,7 +4279,9 @@ begin
    Result:=exec.SelfScriptObject^;
 end;
 
-{ TConstructorVirtualExpr }
+// ------------------
+// ------------------ TConstructorVirtualExpr ------------------
+// ------------------
 
 constructor TConstructorVirtualExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
    Func: TMethodSymbol; Base: TDataExpr);
@@ -6012,7 +5972,7 @@ begin
    FConnectorMember := ConnectorType.HasMember(FName, FTyp, True);
    Result := Assigned(FConnectorMember);
    if Result and not (Assigned(FTyp) and Assigned(FValueExpr.Typ) and FTyp.IsCompatible(FValueExpr.Typ)) then
-      Prog.CompileMsgs.AddCompilerError(FPos, CPE_ConnectorTypeMismatch);
+      Prog.CompileMsgs.AddCompilerError(FScriptPos, CPE_ConnectorTypeMismatch);
 end;
 
 constructor TConnectorWriteExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
@@ -6929,7 +6889,7 @@ end;
 
 // PostCall
 //
-function TDestructorStaticExpr.PostCall(exec : TdwsExecution): Variant;
+function TDestructorStaticExpr.PostCall(exec : TdwsExecution) : Variant;
 begin
    exec.SelfScriptObject^.Destroyed:=True;
 end;
@@ -6940,7 +6900,7 @@ end;
 
 // PostCall
 //
-function TDestructorVirtualExpr.PostCall(exec : TdwsExecution): Variant;
+function TDestructorVirtualExpr.PostCall(exec : TdwsExecution) : Variant;
 begin
    exec.SelfScriptObject^.Destroyed:=True;
 end;

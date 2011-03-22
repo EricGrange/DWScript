@@ -332,7 +332,7 @@ type
          function GetDescription : String; virtual;
 
       public
-         constructor Create(const aName : string; aType : TSymbol);
+         constructor Create(const aName : String; aType : TSymbol);
 
          procedure InitData(const data : TData; offset : Integer); virtual;
          procedure Initialize(const msgs : TdwsCompileMessageList); virtual;
@@ -345,6 +345,13 @@ type
          function BaseTypeID : TBaseTypeID; virtual;
          function IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean; virtual;
          function IsBaseType : Boolean; virtual;
+
+         function IsBooleanValue : Boolean;
+         function IsIntegerValue : Boolean;
+         function IsFloatValue : Boolean;
+         function IsNumberValue : Boolean;
+         function IsStringValue : Boolean;
+         function IsVariantValue : Boolean;
 
          function QualifiedName : String; virtual;
 
@@ -362,22 +369,23 @@ type
    // All Symbols containing a value
    TValueSymbol = class (TSymbol)
       protected
-         function GetCaption: string; override;
-         function GetDescription: string; override;
+         function GetCaption : String; override;
+         function GetDescription : String; override;
    end;
 
    // named constant: const x = 123;
    TConstSymbol = class (TValueSymbol)
       protected
-         FData: TData;
-         function GetCaption: string; override;
-         function GetDescription: string; override;
+         FData : TData;
+         function GetCaption : String; override;
+         function GetDescription : String; override;
 
       public
-         constructor Create(const Name: string; Typ: TSymbol; const Value: Variant); overload;
-         constructor Create(const Name: string; Typ: TSymbol; const Data: TData; Addr: Integer); overload;
+         constructor Create(const name : string; typ : TSymbol; const value : Variant); overload;
+         constructor Create(const name : string; typ : TSymbol; const data : TData; addr: Integer); overload;
+
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
-         property Data: TData read FData;
+         property Data : TData read FData;
    end;
    TConstSymbolClass = class of TConstSymbol;
 
@@ -386,7 +394,7 @@ type
       protected
          FStackAddr : Integer;
          FLevel : SmallInt;
-         function GetDescription: string; override;
+         function GetDescription : String; override;
       public
          procedure InitData(const Data: TData; Offset: Integer); override;
          property Level : SmallInt read FLevel write FLevel;
@@ -396,14 +404,14 @@ type
    // parameter: procedure P(x: Integer);
    TParamSymbol = class (TDataSymbol)
       protected
-         function GetDescription: string; override;
+         function GetDescription : String; override;
    end;
 
    TParamSymbolWithDefaultValue = class(TParamSymbol)
    private
      FDefaultValue : TData;
    protected
-     function GetDescription: string; override;
+     function GetDescription : String; override;
    public
      procedure SetDefaultValue(const Data: TData; Addr: Integer); overload;
      procedure SetDefaultValue(const Value: Variant); overload;
@@ -434,7 +442,7 @@ type
    // var parameter: procedure P(var x: Integer)
    TVarParamSymbol = class(TByRefParamSymbol)
    protected
-     function GetDescription: string; override;
+     function GetDescription : String; override;
    public
    end;
 
@@ -535,9 +543,9 @@ type
          FKind : TFuncKind;
 
          procedure SetType(const Value: TSymbol);
-         function GetCaption: string; override;
+         function GetCaption : String; override;
          function GetIsForwarded : Boolean;
-         function GetDescription: string; override;
+         function GetDescription : String; override;
          function GetLevel: SmallInt; inline;
          function GetParamSize : Integer; inline;
          function GetIsDeprecated : Boolean; inline;
@@ -634,7 +642,7 @@ type
          function GetIsAbstract : Boolean; inline;
          procedure SetIsAbstract(const val : Boolean); inline;
 
-         function GetDescription: string; override;
+         function GetDescription : String; override;
 
       public
          constructor Create(const Name: string; FuncKind: TFuncKind; aClassSym : TClassSymbol;
@@ -764,7 +772,7 @@ type
    // array of FTyp
    TDynamicArraySymbol = class(TArraySymbol)
    protected
-     function GetCaption: string; override;
+     function GetCaption : String; override;
    public
      constructor Create(const Name: string; Typ: TSymbol);
      procedure InitData(const Data: TData; Offset: Integer); override;
@@ -778,7 +786,7 @@ type
      FLowBound: Integer;
      FElementCount: Integer;
    protected
-     function GetCaption: string; override;
+     function GetCaption : String; override;
    public
      constructor Create(const Name: string; Typ: TSymbol; LowBound, HighBound: Integer);
      procedure InitData(const Data: TData; Offset: Integer); override;
@@ -814,8 +822,8 @@ type
    private
    protected
      FMembers: TSymbolTable;
-     function GetCaption: string; override;
-     function GetDescription: string; override;
+     function GetCaption : String; override;
+     function GetDescription : String; override;
    public
      constructor Create(const Name: string);
      destructor Destroy; override;
@@ -869,8 +877,8 @@ type
          FVisibility : TClassVisibility;
 
       protected
-         function GetCaption: string; override;
-         function GetDescription: string; override;
+         function GetCaption : String; override;
+         function GetDescription : String; override;
          function GetIsDefault: Boolean;
          function GetArrayIndices : TSymbolTable;
          procedure AddParam(Param : TParamSymbol);
@@ -903,8 +911,8 @@ type
          FUsesSym : TMethodSymbol;
 
       protected
-         function GetCaption: string; override;
-         function GetDescription: string; override;
+         function GetCaption : String; override;
+         function GetDescription : String; override;
 
       public
          constructor Create(tokenType : TTokenType);
@@ -918,7 +926,7 @@ type
    // type X = class of TMyClass;
    TClassOfSymbol = class(TTypeSymbol)
       protected
-         function GetCaption: string; override;
+         function GetCaption : String; override;
       public
          constructor Create(const Name: string; Typ: TClassSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
@@ -949,7 +957,7 @@ type
 
       protected
          function CreateMembersTable : TMembersSymbolTable; virtual;
-         function GetDescription: string; override;
+         function GetDescription : String; override;
          function GetIsForwarded : Boolean; inline;
          function GetIsExplicitAbstract : Boolean; inline;
          procedure SetIsExplicitAbstract(const val : Boolean); inline;
@@ -1001,7 +1009,7 @@ type
    // nil "class"
    TNilSymbol = class(TTypeSymbol)
    protected
-     function GetCaption: string; override;
+     function GetCaption : String; override;
    public
      constructor Create;
      function IsCompatible(typSym: TSymbol): Boolean; override;
@@ -1022,38 +1030,44 @@ type
 
    // Element of an enumeration type. E. g. "type DummyEnum = (Elem1, Elem2, Elem3);"
    TElementSymbol = class(TConstSymbol)
-   private
-     FIsUserDef: Boolean;
-     FUserDefValue: Integer;
-   protected
-     function GetDescription: string; override;
-   public
-     constructor Create(const Name: string; Typ: TSymbol; Value: Integer; IsUserDef: Boolean);
-     property IsUserDef: Boolean read FIsUserDef;
-     property UserDefValue: Integer read FUserDefValue;
+      private
+         FIsUserDef: Boolean;
+         FUserDefValue: Integer;
+
+      protected
+         function GetDescription : String; override;
+
+      public
+         constructor Create(const Name: string; Typ: TSymbol; Value: Integer; IsUserDef: Boolean);
+         property IsUserDef: Boolean read FIsUserDef;
+         property UserDefValue: Integer read FUserDefValue;
    end;
 
    // Enumeration type. E. g. "type myEnum = (One, Two, Three);"
    TEnumerationSymbol = class(TNameSymbol)
-   private
-     FElements: TSymbolTable;
-     FLowBound, FHighBound : Integer;
-   protected
-     function GetCaption: string; override;
-     function GetDescription: string; override;
-   public
-     constructor Create(const Name: string; BaseType: TTypeSymbol);
-     destructor Destroy; override;
-     procedure InitData(const Data: TData; Offset: Integer); override;
-     procedure AddElement(Element: TElementSymbol);
-     property Elements: TSymbolTable read FElements;
-     property LowBound : Integer read FLowBound write FLowBound;
-     property HighBound : Integer read FHighBound write FHighBound;
-     function ShortDescription : String;
+      private
+         FElements : TSymbolTable;
+         FLowBound, FHighBound : Integer;
+
+      protected
+         function GetCaption : String; override;
+         function GetDescription : String; override;
+
+      public
+         constructor Create(const name : String; baseType : TTypeSymbol);
+         destructor Destroy; override;
+
+         procedure InitData(const data : TData; offset : Integer); override;
+         procedure AddElement(element : TElementSymbol);
+
+         property Elements : TSymbolTable read FElements;
+         property LowBound : Integer read FLowBound write FLowBound;
+         property HighBound : Integer read FHighBound write FHighBound;
+         function ShortDescription : String;
    end;
 
    IObjectOwner = interface
-     procedure ReleaseObject;
+      procedure ReleaseObject;
    end;
 
    // A table of symbols connected to other symboltables (property Parents)
@@ -1543,6 +1557,48 @@ begin
    Result:=False;
 end;
 
+// IsBooleanValue
+//
+function TSymbol.IsBooleanValue : Boolean;
+begin
+   Result:=(Self<>nil) and IsBaseTypeIDValue(typBooleanID);
+end;
+
+// IsIntegerValue
+//
+function TSymbol.IsIntegerValue : Boolean;
+begin
+   Result:=(Self<>nil) and IsBaseTypeIDValue(typIntegerID);
+end;
+
+// IsFloatValue
+//
+function TSymbol.IsFloatValue : Boolean;
+begin
+   Result:=(Self<>nil) and IsBaseTypeIDValue(typFloatID);
+end;
+
+// IsNumberValue
+//
+function TSymbol.IsNumberValue : Boolean;
+begin
+   Result:=(Self<>nil) and (IsBaseTypeIDValue(typIntegerID) or IsBaseTypeIDValue(typFloatID));
+end;
+
+// IsStringValue
+//
+function TSymbol.IsStringValue : Boolean;
+begin
+   Result:=(Self<>nil) and IsBaseTypeIDValue(typStringID);
+end;
+
+// IsVariantValue
+//
+function TSymbol.IsVariantValue : Boolean;
+begin
+   Result:=(Self<>nil) and IsBaseTypeIDValue(typVariantID);
+end;
+
 // QualifiedName
 //
 function TSymbol.QualifiedName : String;
@@ -1570,31 +1626,39 @@ begin
    FName:=newName;
 end;
 
-{ TRecordSymbol }
+// ------------------
+// ------------------ TRecordSymbol ------------------
+// ------------------
 
+// Create
+//
 constructor TRecordSymbol.Create;
 begin
-  inherited Create(Name, nil);
-  FMembers := TSymbolTable.Create(nil);
+   inherited Create(Name, nil);
+   FMembers:=TSymbolTable.Create(nil);
 end;
 
+// Destroy
+//
 destructor TRecordSymbol.Destroy;
 begin
-  FMembers.Free;
-  inherited;
+   FMembers.Free;
+   inherited;
 end;
 
-procedure TRecordSymbol.AddMember(Member: TMemberSymbol);
+// AddMember
+//
+procedure TRecordSymbol.AddMember(member : TMemberSymbol);
 begin
-  Member.RecordSymbol := Self;
-  Member.Offset := FSize;
-  FSize := FSize + Member.Typ.Size;
-  FMembers.AddSymbol(Member);
+   Member.RecordSymbol:=Self;
+   Member.Offset:=FSize;
+   FSize:=FSize+Member.Typ.Size;
+   FMembers.AddSymbol(Member);
 end;
 
 // InitData
 //
-procedure TRecordSymbol.InitData(const Data: TData; Offset: Integer);
+procedure TRecordSymbol.InitData(const data: TData; Offset: Integer);
 var
    i : Integer;
    member : TMemberSymbol;
@@ -1605,20 +1669,25 @@ begin
    end;
 end;
 
-function TRecordSymbol.IsCompatible(typSym: TSymbol): Boolean;
+// IsCompatible
+//
+function TRecordSymbol.IsCompatible(typSym : TSymbol) : Boolean;
 var
-  x: Integer;
+   i : Integer;
+   otherRecordSym : TRecordSymbol;
 begin
-  typSym := typSym.BaseType;
-  Result := (typSym is TRecordSymbol) and (FMembers.Count =
-    TRecordSymbol(typSym).FMembers.Count);
+   typSym:=typSym.BaseType;
+   if not (typSym is TRecordSymbol) then
+      Exit(False);
 
-  x := 0;
-  while Result and (x < FMembers.Count) do
-  begin
-    Result := FMembers[x].Typ.IsCompatible(TRecordSymbol(TypSym).FMembers[x].Typ);
-    Inc(x);
-  end;
+   otherRecordSym:=TRecordSymbol(typSym);
+   if FMembers.Count<>otherRecordSym.FMembers.Count then
+      Exit(False);
+
+   for i:=0 to FMembers.Count-1 do
+      if not FMembers[i].Typ.IsCompatible(otherRecordSym.FMembers[i].Typ) then
+         Exit(False);
+   Result:=True;
 end;
 
 function TRecordSymbol.GetCaption: string;
@@ -2363,7 +2432,9 @@ begin
    Result:=(FVisibility>=aVisibility);
 end;
 
-function TPropertySymbol.GetDescription: string;
+// GetDescription
+//
+function TPropertySymbol.GetDescription : String;
 begin
    Result := Format('property %s%s: %s', [Name, GetArrayIndicesDescription, Typ.Name]);
 
@@ -3658,39 +3729,50 @@ begin
             and Typ.IsCompatible(TypSym.Typ);
 end;
 
-{ TElementSymbol }
+// ------------------
+// ------------------ TElementSymbol ------------------
+// ------------------
 
+// Create
+//
 constructor TElementSymbol.Create(const Name: string; Typ: TSymbol;
   Value: Integer; IsUserDef: Boolean);
 begin
-  inherited Create(Name, Typ, Value);
-  FIsUserDef := IsUserDef;
-  FUserDefValue := Value;
+   inherited Create(Name, Typ, Value);
+   FIsUserDef := IsUserDef;
+   FUserDefValue := Value;
 end;
 
+// GetDescription
+//
 function TElementSymbol.GetDescription: string;
 begin
-  if FIsUserDef then
-    Result := Name + ' = ' + IntToStr(Data[0])
-  else
-    Result := Name;  //inherited GetDescription; <= can cause stack overflow
+   if FIsUserDef then
+      Result:=Name+' = '+IntToStr(Data[0])
+   else Result:=Name;
 end;
 
-{ TEnumerationSymbol }
+// ------------------
+// ------------------ TEnumerationSymbol ------------------
+// ------------------
 
+// Create
+//
 constructor TEnumerationSymbol.Create(const Name: string; BaseType: TTypeSymbol);
 begin
-  inherited Create(Name, BaseType);
-  FElements := TUnSortedSymbolTable.Create;
-  FLowBound := MaxInt;
-  FHighBound := -MaxInt;
+   inherited Create(Name, BaseType);
+   FElements:=TUnSortedSymbolTable.Create;
+   FLowBound:=MaxInt;
+   FHighBound:=-MaxInt;
 end;
 
+// Destroy
+//
 destructor TEnumerationSymbol.Destroy;
 begin
-  FElements.Clear;
-  FElements.Free;
-  inherited;
+   FElements.Clear;
+   FElements.Free;
+   inherited;
 end;
 
 // InitData
@@ -3705,6 +3787,8 @@ begin
    Data[Offset]:=v;
 end;
 
+// AddElement
+//
 procedure TEnumerationSymbol.AddElement(Element: TElementSymbol);
 begin
    FElements.AddSymbol(Element);
@@ -3714,25 +3798,30 @@ begin
       FHighBound:=Element.UserDefValue;
 end;
 
+// GetCaption
+//
 function TEnumerationSymbol.GetCaption: string;
 begin
-  Result := Name;
+   Result:=Name;
 end;
 
+// GetDescription
+//
 function TEnumerationSymbol.GetDescription: string;
 var
-  x: Integer;
+   i : Integer;
 begin
-  Result := '(';
-  for x := 0 to FElements.Count - 1 do
-  begin
-    if x <> 0 then
-      Result := Result + ', ';
-    Result := Result + FElements[x].GetDescription;
-  end;
-  Result := Result + ')';
+   Result:='(';
+   for i:=0 to FElements.Count-1 do begin
+      if i<>0 then
+         Result:=Result+', ';
+      Result:=Result+FElements[i].GetDescription;
+   end;
+   Result:=Result+')';
 end;
 
+// ShortDescription
+//
 function TEnumerationSymbol.ShortDescription : String;
 begin
    case FElements.Count of

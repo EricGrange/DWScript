@@ -2815,7 +2815,7 @@ begin
       Exit;
    end;
 
-   if expr.IsVariantValue then begin
+   if expr.Typ.IsVariantValue then begin
       case toTyp.BaseTypeID of
          typIntegerID :
             Result:=TConvIntegerExpr.Create(Prog, expr);
@@ -2829,7 +2829,7 @@ begin
    end else begin
       case toTyp.BaseTypeID of
          typFloatID :
-            if expr.IsIntegerValue then
+            if expr.Typ.IsIntegerValue then
                Result:=TConvFloatExpr.Create(Prog, expr);
       end;
    end;
@@ -3022,7 +3022,7 @@ procedure TAssertExpr.EvalNoResult(exec : TdwsExecution);
          FMessage.EvalAsString(exec, msg);
          msg:=' : '+msg;
       end else msg:='';
-      (exec as TdwsProgramExecution).RaiseAssertionFailed(msg, FPos);
+      (exec as TdwsProgramExecution).RaiseAssertionFailed(msg, FScriptPos);
    end;
 
 begin
@@ -3045,7 +3045,7 @@ function TAssertExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgr
 begin
    Result:=Self;
    if FCond.IsConstant and (not FCond.EvalAsBoolean(exec)) then begin
-      Result:=TNullExpr.Create(Prog, Pos);
+      Result:=TNullExpr.Create(Prog, FScriptPos);
       Free;
    end;
 end;
@@ -3786,7 +3786,7 @@ begin
          if FRight.InheritsFrom(TAddIntExpr) then begin
             addIntExpr:=TAddIntExpr(FRight);
             if (addIntExpr.Left is TVarExpr) and (TVarExpr(addIntExpr.Left).SameVarAs(leftVarExpr)) then begin
-               Result:=TIncIntVarExpr.Create(Prog, Pos, FLeft, addIntExpr.Right);
+               Result:=TIncIntVarExpr.Create(Prog, FScriptPos, FLeft, addIntExpr.Right);
                FLeft:=nil;
                addIntExpr.Right:=nil;
                Free;
@@ -3794,7 +3794,7 @@ begin
          end else if FRight.InheritsFrom(TSubIntExpr) then begin
             subIntExpr:=TSubIntExpr(FRight);
             if (subIntExpr.Left is TVarExpr) and (TVarExpr(subIntExpr.Left).SameVarAs(leftVarExpr)) then begin
-               Result:=TDecIntVarExpr.Create(Prog, Pos, FLeft, subIntExpr.Right);
+               Result:=TDecIntVarExpr.Create(Prog, FScriptPos, FLeft, subIntExpr.Right);
                FLeft:=nil;
                subIntExpr.Right:=nil;
                Free;
@@ -3805,9 +3805,9 @@ begin
             addStrExpr:=TAddStrExpr(FRight);
             if (addStrExpr.Left is TVarExpr) and (TVarExpr(addStrExpr.Left).SameVarAs(leftVarExpr)) then begin
                if addStrExpr.Right.InheritsFrom(TConstStringExpr) then begin
-                  Result:=TAppendConstStringVarExpr.Create(Prog, Pos, FLeft, addStrExpr.Right);
+                  Result:=TAppendConstStringVarExpr.Create(Prog, FScriptPos, FLeft, addStrExpr.Right);
                end else begin
-                  Result:=TAppendStringVarExpr.Create(Prog, Pos, FLeft, addStrExpr.Right);
+                  Result:=TAppendStringVarExpr.Create(Prog, FScriptPos, FLeft, addStrExpr.Right);
                end;
                FLeft:=nil;
                addStrExpr.Right:=nil;
@@ -3825,13 +3825,19 @@ var
    stringBuf : String;
 begin
    Result:=Self;
-   if FRight.IsIntegerValue then begin
-      Result:=TAssignConstToIntegerVarExpr.CreateVal(prog, Pos, FLeft, FRight.EvalAsInteger(exec));
-   end else if FRight.IsFloatValue then begin
-      Result:=TAssignConstToFloatVarExpr.CreateVal(prog, Pos, FLeft, FRight.EvalAsFloat(exec));
-   end else if FRight.IsStringValue then begin
+   if FRight.Typ.IsIntegerValue then begin
+
+      Result:=TAssignConstToIntegerVarExpr.CreateVal(prog, FScriptPos, FLeft, FRight.EvalAsInteger(exec));
+
+   end else if FRight.Typ.IsFloatValue then begin
+
+      Result:=TAssignConstToFloatVarExpr.CreateVal(prog, FScriptPos, FLeft, FRight.EvalAsFloat(exec));
+
+   end else if FRight.Typ.IsStringValue then begin
+
       FRight.EvalAsString(exec, stringBuf);
-      Result:=TAssignConstToStringVarExpr.CreateVal(prog, Pos, FLeft, stringBuf);
+      Result:=TAssignConstToStringVarExpr.CreateVal(prog, FScriptPos, FLeft, stringBuf);
+
    end;
    if Result<>Self then begin
       FLeft:=nil;
@@ -4018,7 +4024,7 @@ function TPlusAssignIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) :
 begin
    Result:=Self;
    if FLeft is TIntVarExpr then begin
-      Result:=TIncIntVarExpr.Create(Prog, Pos, FLeft, FRight);
+      Result:=TIncIntVarExpr.Create(Prog, FScriptPos, FLeft, FRight);
       FLeft:=nil;
       FRight:=nil;
       Free;
@@ -4057,7 +4063,7 @@ function TPlusAssignStrExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) :
 begin
    Result:=Self;
    if FLeft is TStrVarExpr then begin
-      Result:=TAppendStringVarExpr.Create(Prog, Pos, FLeft, FRight);
+      Result:=TAppendStringVarExpr.Create(Prog, FScriptPos, FLeft, FRight);
       FLeft:=nil;
       FRight:=nil;
       Free;
@@ -4092,7 +4098,7 @@ function TMinusAssignIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) 
 begin
    Result:=Self;
    if FLeft is TIntVarExpr then begin
-      Result:=TDecIntVarExpr.Create(Prog, Pos, FLeft, FRight);
+      Result:=TDecIntVarExpr.Create(Prog, FScriptPos, FLeft, FRight);
       FLeft:=nil;
       FRight:=nil;
       Free;
@@ -4270,18 +4276,18 @@ begin
 
    if FTable.Count=0 then begin
       case FCount of
-         0 : Result:=TNullExpr.Create(Prog, Pos);
+         0 : Result:=TNullExpr.Create(Prog, FScriptPos);
          1 : begin
             Result:=FStatements[0];
             FreeMem(FStatements);
          end;
       else
          case FCount of
-            2 : Result:=TBlockExprNoTable2.Create(Prog, Pos);
-            3 : Result:=TBlockExprNoTable3.Create(Prog, Pos);
-            4 : Result:=TBlockExprNoTable4.Create(Prog, Pos);
+            2 : Result:=TBlockExprNoTable2.Create(Prog, FScriptPos);
+            3 : Result:=TBlockExprNoTable3.Create(Prog, FScriptPos);
+            4 : Result:=TBlockExprNoTable4.Create(Prog, FScriptPos);
          else
-            Result:=TBlockExprNoTable.Create(Prog, Pos);
+            Result:=TBlockExprNoTable.Create(Prog, FScriptPos);
          end;
          TBlockExprNoTable(Result).FStatements:=FStatements;
          TBlockExprNoTable(Result).FCount:=FCount;
@@ -4417,7 +4423,7 @@ begin
       if FCond.EvalAsBoolean(exec) then begin
          Result:=FThen;
          FThen:=nil;
-      end else Result:=TNullExpr.Create(Prog, Pos);
+      end else Result:=TNullExpr.Create(Prog, FScriptPos);
       Free;
    end;
 end;
@@ -4476,7 +4482,7 @@ begin
          FElse:=nil;
       end;
       if Result=nil then
-         Result:=TNullExpr.Create(Prog, Pos);
+         Result:=TNullExpr.Create(Prog, FScriptPos);
       Free;
    end;
 end;
@@ -4607,8 +4613,7 @@ end;
 procedure TCompareCaseCondition.TypeCheck(prog : TdwsProgram; typ : TSymbol);
 begin
    if not FCompareExpr.Typ.IsCompatible(typ) then
-      if not (    FCompareExpr.IsNumberValue
-              and (typ.IsOfType(prog.TypInteger) or typ.IsOfType(prog.TypFloat))) then
+      if not (FCompareExpr.Typ.IsNumberValue and typ.IsNumberValue) then
          prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
                                               [typ.Caption, FCompareExpr.Typ.Caption]);
 end;
@@ -4663,7 +4668,7 @@ end;
 procedure TRangeCaseCondition.TypeCheck(prog : TdwsProgram; typ : TSymbol);
 begin
    if not FFromExpr.Typ.IsCompatible(FToExpr.Typ) then begin
-      if not (FFromExpr.IsNumberValue and FToExpr.IsNumberValue) then begin
+      if not (FFromExpr.Typ.IsNumberValue and FToExpr.Typ.IsNumberValue) then begin
          prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_RangeIncompatibleTypes,
                                               [FFromExpr.Typ.Caption, FToExpr.Typ.Caption]);
          Exit;
@@ -4671,8 +4676,7 @@ begin
    end;
 
    if not typ.IsCompatible(FFromExpr.Typ) then
-      if not (    FFromExpr.IsNumberValue
-              and (typ.IsOfType(prog.TypInteger) or typ.IsOfType(prog.TypFloat))) then
+      if not (FFromExpr.Typ.IsNumberValue and typ.IsNumberValue) then
       prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
                                            [typ.Caption, FFromExpr.Typ.Caption]);
 end;
@@ -4919,9 +4923,9 @@ begin
    Result:=Self;
    if FCondExpr.IsConstant then begin
       if not FCondExpr.EvalAsBoolean(exec) then begin
-         Result:=TNullExpr.Create(Prog, Pos);
+         Result:=TNullExpr.Create(prog, FScriptPos);
       end else begin
-         Result:=TLoopExpr.Create(Prog, Pos);
+         Result:=TLoopExpr.Create(prog, FScriptPos);
          TLoopExpr(Result).FLoopExpr:=FLoopExpr;
          FLoopExpr:=nil;
       end;
@@ -4957,7 +4961,7 @@ function TRepeatExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgr
 begin
    Result:=Self;
    if FCondExpr.IsConstant and not FCondExpr.EvalAsBoolean(exec) then begin
-      Result:=TLoopExpr.Create(Prog, Pos);
+      Result:=TLoopExpr.Create(prog, FScriptPos);
       TLoopExpr(Result).FLoopExpr:=FLoopExpr;
       FLoopExpr:=nil;
       Free;
@@ -5253,9 +5257,9 @@ begin
    exceptMessage:=VarToStr(IScriptObj(IUnknown(exceptVal)).GetData[0]);
    if exceptMessage<>'' then
       raise EScriptException.Create(Format(RTE_UserDefinedException_Msg, [exceptMessage]),
-                                    exceptVal, FExceptionExpr.Typ, FPos)
+                                    exceptVal, FExceptionExpr.Typ, FScriptPos)
    else raise EScriptException.Create(RTE_UserDefinedException,
-                                      exceptVal, FExceptionExpr.Typ, FPos);
+                                      exceptVal, FExceptionExpr.Typ, FScriptPos);
 end;
 
 // Initialize
