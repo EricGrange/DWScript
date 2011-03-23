@@ -35,6 +35,7 @@ type
       typVariantID,
       typConnectorID,
       typClassID,
+      typFunctionID,
       typNoneID
    );
 
@@ -561,7 +562,8 @@ type
 
          constructor Generate(Table: TSymbolTable; const FuncName: string;
                               const FuncParams: TParamArray; const FuncType: string);
-         function  IsCompatible(typSym: TSymbol): Boolean; override;
+         function  BaseTypeID : TBaseTypeID; override;
+         function  IsCompatible(typSym : TSymbol) : Boolean; override;
          procedure AddParam(param: TParamSymbol); virtual;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
@@ -1805,6 +1807,13 @@ begin
   GenerateParams(Table, FuncParams);
 end;
 
+// BaseTypeID
+//
+function TFuncSymbol.BaseTypeID : TBaseTypeID;
+begin
+   Result:=typFunctionID;
+end;
+
 procedure TFuncSymbol.AddParam(param: TParamSymbol);
 begin
   Params.AddSymbol(param);
@@ -1980,26 +1989,33 @@ begin
    // ignore
 end;
 
-
-function TFuncSymbol.IsCompatible(typSym: TSymbol): Boolean;
+// IsCompatible
+//
+function TFuncSymbol.IsCompatible(typSym : TSymbol) : Boolean;
 var
-  funcSym : TFuncSymbol;
+   funcSym : TFuncSymbol;
+   i : Integer;
+   param, otherParam : TSymbol;
 begin
-  typSym := typSym.BaseType;
-  if typSym is TNilSymbol then
-    Result := True
-  else if Size <> typSym.Size then
-    Result := False
-  else begin
-    Result := False;
-    if not (typSym is TFuncSymbol) then
-      Exit;
-    funcSym := TFuncSymbol(typSym);
-    if (Kind <> funcSym.Kind) or (Params.Count <> funcSym.Params.Count) then
-      Exit;
-    // TODO : Compare Params
-    Result := True;
-  end;
+   typSym := typSym.BaseType;
+   if typSym is TNilSymbol then
+      Result := True
+   else begin
+      Result := False;
+      if not (typSym is TFuncSymbol) then
+         Exit;
+      funcSym := TFuncSymbol(typSym);
+      if (Kind <> funcSym.Kind) or (Params.Count <> funcSym.Params.Count) then
+         Exit;
+      if Typ <> funcSym.Typ then Exit;
+      for i:=0 to Params.Count-1 do begin
+         param:=Params[i];
+         otherParam:=funcSym.Params[i];
+         if param.ClassType<>otherParam.ClassType then Exit;
+         if param.Typ<>otherParam.Typ then Exit;
+      end;
+      Result := True;
+   end;
 end;
 
 procedure TFuncSymbol.InitData(const Data: TData; Offset: Integer);
@@ -2896,16 +2912,19 @@ const
 {(*}
   compatiblityMask: array[TBaseTypeID, TBaseTypeID] of Boolean =
   (
-   //int    flt    str    bool   var    conn   class   classof, none
-    (true,  false, false, false, true,  true,  false, false), // int
-    (false, true,  false, false, true,  true,  false, false), // flt
-    (false, false, true,  false, true,  true,  false, false), // str
-    (false, false, false, true,  true,  true,  false, false), // bool
-    (true,  true,  true,  true,  true,  true,  false, false), // var
-    (true,  true,  true,  true,  true,  true,  false, false), // conn
-    (false, false, false, false, false, false, true,  false), // class
-    (false, false, false, false, false, false, false, false)  // none
+   //int    flt    str    bool   var    conn   class  func   none
+    (true,  false, false, false, true,  true,  false, false, false), // int
+    (false, true,  false, false, true,  true,  false, false, false), // flt
+    (false, false, true,  false, true,  true,  false, false, false), // str
+    (false, false, false, true,  true,  true,  false, false, false), // bool
+    (true,  true,  true,  true,  true,  true,  false, false, false), // var
+    (true,  true,  true,  true,  true,  true,  false, false, false), // conn
+    (false, false, false, false, false, false, true,  false, false), // class
+    (false, false, false, false, false, false, false, true,  false), // func
+    (false, false, false, false, false, false, false, false, false)  // none
   );
+
+
 {*)}
 begin
   Result := compatiblityMask[AType, BType];

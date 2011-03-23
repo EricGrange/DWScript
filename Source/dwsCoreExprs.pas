@@ -674,7 +674,7 @@ type
          FRight: TTypedExpr;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TTypedExpr); virtual;
+         constructor Create(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr; right : TTypedExpr); virtual;
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -697,21 +697,29 @@ type
    protected
      FSize: Integer;
    public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TTypedExpr); override;
+     constructor Create(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr; right : TTypedExpr); override;
      procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
+   // left := right; (var, func)
+   TAssignFuncExpr = class(TAssignExpr)
+      public
+         procedure TypeCheckAssign(prog : TdwsProgram); override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // left := [constant array];
    TAssignArrayConstantExpr = class(TAssignDataExpr)
    public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TTypedExpr); override;
+     constructor Create(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr; right : TTypedExpr); override;
      procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // var left := const right;
    TAssignConstDataToVarExpr = class(TAssignDataExpr)
    public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TTypedExpr); override;
+     constructor Create(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr; right : TTypedExpr); override;
      procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
@@ -827,7 +835,7 @@ type
       private
          FAppendString : String;
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TTypedExpr); override;
+         constructor Create(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr; right : TTypedExpr); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
@@ -3729,9 +3737,11 @@ begin
    end else Result:=Self;
 end;
 
-{ TAssignExpr }
+// ------------------
+// ------------------ TAssignExpr ------------------
+// ------------------
 
-constructor TAssignExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TTypedExpr);
+constructor TAssignExpr.Create(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr; right : TTypedExpr);
 begin
   inherited Create(Prog, Pos);
   FLeft := Left;
@@ -3869,7 +3879,7 @@ end;
 
 { TAssignDataExpr }
 
-constructor TAssignDataExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TTypedExpr);
+constructor TAssignDataExpr.Create(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr; right : TTypedExpr);
 begin
   inherited Create(Prog, Pos, Left, Right);
   FSize := FLeft.Typ.Size;
@@ -3880,7 +3890,40 @@ begin
    FLeft.AssignDataExpr(exec, TDataExpr(FRight));
 end;
 
-{ TAssignArrayConstantExpr }
+// ------------------
+// ------------------ TAssignFuncExpr ------------------
+// ------------------
+
+// TypeCheckAssign
+//
+procedure TAssignFuncExpr.TypeCheckAssign(prog : TdwsProgram);
+begin
+   if not (FRight as TFuncExprBase).FuncSym.IsCompatible(FLeft.Typ) then
+      prog.CompileMsgs.AddCompilerError(ScriptPos, CPE_IncompatibleOperands);
+end;
+
+// EvalNoResult
+//
+procedure TAssignFuncExpr.EvalNoResult(exec : TdwsExecution);
+var
+   funcPtr : TFuncPointer;
+   funcExpr : TFuncExprBase;
+begin
+   funcExpr:=(FRight as TFuncExprBase);
+   funcPtr:=TFuncPointer.Create(exec, funcExpr);
+   FLeft.AssignValue(exec, IFuncPointer(funcPtr));
+end;
+
+// Optimize
+//
+function TAssignFuncExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   Result:=Self;
+end;
+
+// ------------------
+// ------------------ TAssignArrayConstantExpr ------------------
+// ------------------
 
 constructor TAssignArrayConstantExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
                                             Left : TDataExpr; Right: TTypedExpr);
@@ -3893,7 +3936,9 @@ begin
    FLeft.AssignData(exec, TArrayConstantExpr(FRight).EvalAsTData(exec), 0);
 end;
 
-{ TAssignConstDataToVarExpr }
+// ------------------
+// ------------------ TAssignConstDataToVarExpr ------------------
+// ------------------
 
 constructor TAssignConstDataToVarExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
                                              Left : TDataExpr; Right: TTypedExpr);
@@ -4202,7 +4247,7 @@ end;
 
 // Create
 //
-constructor TAppendConstStringVarExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; Right: TTypedExpr);
+constructor TAppendConstStringVarExpr.Create(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr; right : TTypedExpr);
 begin
    inherited Create(Prog, Pos, Left, Right);
    FAppendString:=(right as TConstStringExpr).FValue;

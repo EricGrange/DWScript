@@ -32,8 +32,13 @@ type
       protected
          function GetData(exec : TdwsExecution) : TData; override;
          function GetAddr(exec : TdwsExecution) : Integer; override;
+
       public
+         class function CreateMagicFuncExpr(prog : TdwsProgram;
+                           const pos : TScriptPos; magicFuncSym : TMagicFuncSymbol) : TMagicFuncExpr;
+
          function AddArg(Arg: TTypedExpr) : TSymbol; override;
+         function ExpectedArgType : TSymbol; override;
          function IsWritable : Boolean; override;
    end;
 
@@ -106,6 +111,25 @@ implementation
 // ------------------ TMagicFuncExpr ------------------
 // ------------------
 
+// CreateMagicFuncExpr
+//
+class function TMagicFuncExpr.CreateMagicFuncExpr(prog : TdwsProgram;
+         const pos : TScriptPos; magicFuncSym : TMagicFuncSymbol) : TMagicFuncExpr;
+var
+   internalFunc : TObject;
+begin
+   internalFunc:=magicFuncSym.InternalFunction;
+   if internalFunc.InheritsFrom(TInternalMagicIntFunction) then
+      Result:=TMagicIntFuncExpr.Create(prog, pos, magicFuncSym)
+   else if internalFunc.InheritsFrom(TInternalMagicFloatFunction) then
+      Result:=TMagicFloatFuncExpr.Create(prog, pos, magicFuncSym)
+   else if internalFunc.InheritsFrom(TInternalMagicStringFunction) then
+      Result:=TMagicStringFuncExpr.Create(prog, pos, magicFuncSym)
+   else if internalFunc.InheritsFrom(TInternalMagicProcedure) then
+      Result:=TMagicProcedureExpr.Create(prog, pos, magicFuncSym)
+   else Result:=TMagicVariantFuncExpr.Create(prog, pos, magicFuncSym);
+end;
+
 // AddArg
 //
 function TMagicFuncExpr.AddArg(arg: TTypedExpr) : TSymbol;
@@ -114,6 +138,15 @@ begin
       Result:=FFunc.Params[FArgs.Count];
    end else Result:=nil;
    FArgs.Add(arg);
+end;
+
+// ExpectedArgType
+//
+function TMagicFuncExpr.ExpectedArgType : TSymbol;
+begin
+   if FArgs.Count<FFunc.Params.Count then
+      Result:=FFunc.Params[FArgs.Count].Typ
+   else Result:=nil;
 end;
 
 // IsWritable

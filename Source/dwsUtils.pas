@@ -62,7 +62,7 @@ type
          function GetList : PPointerList; inline;
 
       public
-         FCount: Integer;     // exposed so it can be used for direct property access
+         FCount : Integer;     // exposed so it can be used for direct property access
 
          property List : PPointerList read GetList;
          property Count : Integer read FCount;

@@ -1,0 +1,9 @@
+TClassA StaticProc Alpha
+TClassA VirtualProc Alpha
+TClassB StaticProc Beta
+TClassB ClassProc
+TClassB StaticProc Beta
+TClassB VirtualProc overriden Beta
+TClassB ClassProc
+TClassB StaticProc Beta
+TClassB VirtualProc overriden Beta

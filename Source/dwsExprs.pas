@@ -719,18 +719,23 @@ type
    //
    TFuncExprBase = class(TPosDataExpr)
       protected
-         FArgs: TExprBaseListRec;
-         FFunc: TFuncSymbol;
+         FArgs : TExprBaseListRec;
+         FFunc : TFuncSymbol;
+
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol);
+         constructor Create(prog : TdwsProgram; const pos : TScriptPos; func : TFuncSymbol);
          destructor Destroy; override;
+
          function AddArg(arg : TTypedExpr) : TSymbol; virtual; abstract;
+         procedure ClearArgs;
+         function ExpectedArgType : TSymbol; virtual; abstract;
          procedure TypeCheckArgs(prog : TdwsProgram); virtual;
          procedure Initialize; override;
-         function GetArgs : TExprBaseList;
+         function GetArgs : TExprBaseList; inline;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function IsConstant : Boolean; override;
-         property FuncSym: TFuncSymbol read FFunc;
+
+         property FuncSym : TFuncSymbol read FFunc;
    end;
 
    TPushOperatorType = (potUnknown,
@@ -774,7 +779,7 @@ type
    PPushOperatorArray = ^TPushOperatorArray;
 
    // Function call: func(arg0, arg1, ...);
-   TFuncExpr = class (TFuncExprBase)
+   TFuncExpr = class(TFuncExprBase)
       private
          FPushExprs : PPushOperatorArray;
          FPushExprsCount : SmallInt;
@@ -789,11 +794,12 @@ type
          procedure EvalPushExprs(exec : TdwsExecution); inline;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol;
-                            exec : TdwsProgramExecution = nil);
+         constructor Create(prog : TdwsProgram; const pos : TScriptPos; func : TFuncSymbol);
          destructor Destroy; override;
 
          function AddArg(arg : TTypedExpr) : TSymbol; override;
+         function ExpectedArgType : TSymbol; override;
+
          function Eval(exec : TdwsExecution) : Variant; override;
          function GetData(exec : TdwsExecution) : TData; override;
          function GetAddr(exec : TdwsExecution) : Integer; override;
@@ -802,14 +808,62 @@ type
          function IsWritable : Boolean; override;
    end;
 
-  TMethodObjExpr = class(TPosDataExpr)
-  private
-    FBaseExpr : TDataExpr;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr);
-    function GetData(exec : TdwsExecution) : TData; override;
-    function GetAddr(exec : TdwsExecution) : Integer; override;
-  end;
+   IFuncPointer = interface
+      function GetFuncExpr : TFuncExprBase;
+   end;
+
+   // Encapsulates a function or method pointer
+   TFuncPointer = class(TInterfacedObject, IFuncPointer)
+      private
+         FFuncExpr : TFuncExprBase;
+
+      public
+         constructor Create(exec : TdwsExecution; funcExpr : TFuncExprBase);
+         destructor Destroy; override;
+
+         function GetFuncExpr : TFuncExprBase;
+   end;
+
+   // returns an IFuncPointer to the FuncExpr
+   TFuncRefExpr = class(TTypedExpr)
+      private
+         FFuncExpr : TFuncExprBase;
+
+      public
+         constructor Create(prog : TdwsProgram; funcExpr : TFuncExprBase);
+         destructor Destroy; override;
+
+         function Eval(exec : TdwsExecution) : Variant; override;
+
+         function Extract : TFuncExprBase; // also a destructor
+
+         property FuncExpr : TFuncExprBase read FFuncExpr write FFuncExpr;
+   end;
+
+   TFuncPtrExpr = class(TFuncExpr)
+      private
+         FCodeExpr : TDataExpr;
+
+      public
+         constructor Create(prog : TdwsProgram; const pos : TScriptPos; codeExpr : TDataExpr);
+         destructor Destroy; override;
+
+         function Eval(exec : TdwsExecution) : Variant; override;
+
+         function Extract : TDataExpr; // also a destructor
+
+         property CodeExpr : TDataExpr read FCodeExpr write FCodeExpr;
+   end;
+
+   TMethodObjExpr = class(TPosDataExpr)
+      private
+         FBaseExpr : TDataExpr;
+
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr);
+         function GetData(exec : TdwsExecution) : TData; override;
+         function GetAddr(exec : TdwsExecution) : Integer; override;
+   end;
 
    TSourceCondition = class (TInterfacedObject, IBooleanEvalable, IStringEvalable)
       private
@@ -1317,7 +1371,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsFunctions, dwsCoreExprs;
+uses dwsFunctions, dwsCoreExprs, dwsMagicExprs;
 
 type
    IDataMaster = interface
@@ -1675,10 +1729,11 @@ begin
    raise Exception.CreateFmt(RTE_OnlyVarSymbols, [sym.Caption]);
 end;
 
-// GetFuncExpr
+// CreateFuncExpr
 //
-function GetFuncExpr(Prog: TdwsProgram; FuncSym: TFuncSymbol; const scriptObj: IScriptObj;
-  ClassSym: TClassSymbol; ForceStatic: Boolean = False; exec : TdwsProgramExecution = nil): TFuncExpr;
+function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
+                        const scriptObj : IScriptObj; classSym : TClassSymbol;
+                        forceStatic : Boolean = False): TFuncExpr;
 begin
    if FuncSym is TMethodSymbol then begin
       if Assigned(scriptObj) then begin
@@ -1691,7 +1746,7 @@ begin
                                                       rkClassOfRef, cNullPos, ForceStatic)
       end;
    end else begin
-      Result := TFuncExpr.Create(Prog, cNullPos, funcSym, exec);
+      Result := TFuncExpr.Create(Prog, cNullPos, funcSym);
    end;
 end;
 
@@ -3314,6 +3369,13 @@ begin
    inherited;
 end;
 
+// ClearArgs
+//
+procedure TFuncExprBase.ClearArgs;
+begin
+   FArgs.Clean;
+end;
+
 // TypeCheckArgs
 //
 procedure TFuncExprBase.TypeCheckArgs(prog : TdwsProgram);
@@ -3325,7 +3387,7 @@ var
    errorCount, initialErrorCount : Integer;
    tooManyArguments, tooFewArguments : Boolean;
 begin
-   paramCount := FFunc.Params.Count;
+   paramCount:=FFunc.Params.Count;
 
    initialErrorCount:=prog.CompileMsgs.Count;
 
@@ -3725,8 +3787,9 @@ end;
 // ------------------ TFuncExpr ------------------
 // ------------------
 
-constructor TFuncExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol;
-                             exec : TdwsProgramExecution = nil);
+// Create
+//
+constructor TFuncExpr.Create(prog : TdwsProgram; const pos : TScriptPos; func : TFuncSymbol);
 begin
    inherited Create(Prog, Pos, Func);
    FLevel:=Prog.Level;
@@ -3749,6 +3812,15 @@ begin
       Result:=FFunc.Params[FArgs.Count]
    else Result:=nil;
    FArgs.Add(arg);
+end;
+
+// ExpectedArgType
+//
+function TFuncExpr.ExpectedArgType : TSymbol;
+begin
+   if FArgs.Count<FFunc.Params.Count then
+      Result:=FFunc.Params[FArgs.Count].Typ
+   else Result:=nil;
 end;
 
 // EvalPushExprs
@@ -3852,10 +3924,10 @@ begin
    else FPushExprsCount:=FArgs.Count;
    ReallocMem(FPushExprs, FPushExprsCount*SizeOf(TPushOperator));
 
-   for i := 0 to FArgs.Count - 1 do begin
+   for i:=0 to FArgs.Count-1 do begin
       pushOperator:=@FPushExprs[i];
-      arg := TTypedExpr(FArgs.ExprBase[i]);
-      param := TParamSymbol(FFunc.Params[i]);
+      arg:=TTypedExpr(FArgs.ExprBase[i]);
+      param:=TParamSymbol(FFunc.Params[i]);
       if param.InheritsFrom(TLazyParamSymbol) then
          pushOperator.InitPushLazy(param.StackAddr, arg)
       else if arg is TDataExpr then begin
@@ -3865,7 +3937,7 @@ begin
             else pushOperator.InitPushTempArray(param.StackAddr, arg);
          end else if param is TByRefParamSymbol then begin
             pushOperator.InitPushAddr(param.StackAddr, arg)
-         end else if param.Size > 1 then
+         end else if param.Size>1 then
             pushOperator.InitPushData(param.StackAddr, TDataExpr(arg), param)
          else pushOperator.InitPushResult(param.StackAddr, arg)
       end else begin
@@ -3908,7 +3980,173 @@ begin
    Result:=False;
 end;
 
-{ TTypedExprList }
+// ------------------
+// ------------------ TFuncPointer ------------------
+// ------------------
+
+// Create
+//
+constructor TFuncPointer.Create(exec : TdwsExecution; funcExpr : TFuncExprBase);
+var
+   prog : TdwsMainProgram;
+   baseExpr : TDataExpr;
+   scriptObj : IScriptObj;
+   classSym : TClassSymbol;
+   magicFuncSym : TMagicFuncSymbol;
+begin
+   prog:=(exec as TdwsProgramExecution).Prog;
+   if funcExpr is TMethodExpr then begin
+
+      baseExpr:=TMethodExpr(funcExpr).BaseExpr;
+      if baseExpr.Typ.BaseType is TClassOfSymbol then begin
+         classSym:=TClassSymbol(baseExpr.EvalAsInteger(exec));
+         FFuncExpr:=CreateFuncExpr(prog, funcExpr.FuncSym, nil, classSym);
+      end else begin
+         baseExpr.EvalAsScriptObj(exec, scriptObj);
+         FFuncExpr:=CreateFuncExpr(prog, funcExpr.FuncSym, scriptObj, scriptObj.ClassSym);
+      end;
+
+   end else if funcExpr is TMagicFuncExpr then begin
+
+      magicFuncSym:=funcExpr.FuncSym as TMagicFuncSymbol;
+      FFuncExpr:=TMagicFuncExpr.CreateMagicFuncExpr(prog, cNullPos, magicFuncSym);
+
+   end else begin
+
+      FFuncExpr:=CreateFuncExpr(prog, funcExpr.FuncSym, nil, nil);
+
+   end;
+end;
+
+// Destroy
+//
+destructor TFuncPointer.Destroy;
+begin
+   inherited;
+   FFuncExpr.Free;
+end;
+
+// GetFuncExpr
+//
+function TFuncPointer.GetFuncExpr : TFuncExprBase;
+begin
+   Result:=FFuncExpr;
+end;
+
+// ------------------
+// ------------------ TFuncRefExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TFuncRefExpr.Create(prog : TdwsProgram; funcExpr : TFuncExprBase);
+begin
+   inherited Create(prog);
+   FFuncExpr:=funcExpr;
+   Typ:=funcExpr.FuncSym;
+end;
+
+// Destroy
+//
+destructor TFuncRefExpr.Destroy;
+begin
+   inherited;
+   FFuncExpr.Free;
+end;
+
+// Extract
+//
+function TFuncRefExpr.Extract : TFuncExprBase;
+begin
+   Result:=FFuncExpr;
+   FFuncExpr:=nil;
+   Free;
+end;
+
+// Eval
+//
+function TFuncRefExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   funcPtr : TFuncPointer;
+begin
+   if FFuncExpr is TFuncPtrExpr then
+      Result:=TFuncPtrExpr(FFuncExpr).FCodeExpr.Eval(exec)
+   else begin
+      funcPtr:=TFuncPointer.Create(exec, FFuncExpr);
+      Result:=IFuncPointer(funcPtr);
+   end;
+end;
+
+// ------------------
+// ------------------ TFuncPtrExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TFuncPtrExpr.Create(prog : TdwsProgram; const pos : TScriptPos; codeExpr : TDataExpr);
+begin
+   inherited Create(prog, pos, (codeExpr.Typ as TFuncSymbol));
+   FCodeExpr:=codeExpr;
+end;
+
+// Destroy
+//
+destructor TFuncPtrExpr.Destroy;
+begin
+   inherited;
+   FCodeExpr.Free;
+end;
+
+// Extract
+//
+function TFuncPtrExpr.Extract : TDataExpr;
+begin
+   Result:=FCodeExpr;
+   FCodeExpr:=nil;
+   Free;
+end;
+
+// Eval
+//
+function TFuncPtrExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   funcExprBase : TFuncExprBase;
+   funcExpr : TFuncExpr;
+   oldArgs : TExprBaseListRec;
+   i : Integer;
+begin
+   funcExprBase:=IFuncPointer(IUnknown(FCodeExpr.Eval(exec))).GetFuncExpr;
+
+   if funcExprBase is TMagicFuncExpr then begin
+
+      oldArgs:=funcExprBase.FArgs;
+      funcExprBase.FArgs:=FArgs;
+
+   end else if funcExprBase is TFuncExpr then begin
+
+      funcExpr:=TFuncExpr(funcExprBase);
+
+      funcExpr.ClearArgs;
+      for i:=0 to FArgs.Count-1 do
+         funcExpr.AddArg(FArgs.ExprBase[i] as TTypedExpr);
+      funcExpr.AddPushExprs;
+
+   end;
+   try
+      Result:=funcExprBase.Eval(exec);
+   finally
+      if funcExprBase is TMagicFuncExpr then begin
+         funcExprBase.FArgs:=oldArgs;
+      end else if funcExprBase is TFuncExpr then begin
+         for i:=0 to FArgs.Count-1 do
+            funcExpr.FArgs.ExprBase[i]:=nil;
+      end;
+   end;
+end;
+
+// ------------------
+// ------------------ TTypedExprList ------------------
+// ------------------
 
 // Destroy
 //
@@ -5428,8 +5666,8 @@ begin
       FExec.Stack.Push(FParamSize);
       try
          // Create the TFuncExpr
-         funcExpr := GetFuncExpr(FExec.Prog, TFuncSymbol(FTypeSym), FScriptObj,
-                                 FClassSym, FForceStatic, FExec);
+         funcExpr := CreateFuncExpr(FExec.Prog, TFuncSymbol(FTypeSym), FScriptObj,
+                                    FClassSym, FForceStatic);
          FExec.ExternalObject:=FExternalObject;
          try
 
@@ -5506,7 +5744,7 @@ begin
          funcSym.Params.Count, FTypeSym.Caption]);
 
    // Create the TFuncExpr
-   funcExpr := GetFuncExpr(FExec.Prog, funcSym, FScriptObj, FClassSym, FForceStatic, FExec);
+   funcExpr := CreateFuncExpr(FExec.Prog, funcSym, FScriptObj, FClassSym, FForceStatic);
 
    FExec.ExternalObject:=FExternalObject;
 
@@ -6126,7 +6364,7 @@ var
 begin
    resultData := nil;
    // Read an external var
-   funcExpr := GetFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).ReadFunc, nil, nil);
+   funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).ReadFunc, nil, nil);
    try
       funcExpr.Initialize;
       if funcExpr.Typ.Size > 1 then begin // !! > 1 untested !!
@@ -6155,7 +6393,7 @@ procedure TExternalVarDataMaster.Write(exec : TdwsExecution; const Data: TData);
 var
    funcExpr : TFuncExpr;
 begin
-   funcExpr := GetFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).WriteFunc, nil, nil);
+   funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).WriteFunc, nil, nil);
    try
       funcExpr.AddArg(TConstExpr.CreateTyped(FCaller.Prog, FSym.Typ, Data));
       funcExpr.AddPushExprs;

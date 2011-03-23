@@ -1,0 +1,7 @@
+Hello World
+ByeBye world!
+Ho ho ho world
+Hello get
+Ho ho ho direct prop
+Hello old
+ByeBye new
