@@ -202,24 +202,32 @@ type
 
    // Base class for all Exprs
    TExprBase = class
-      function Eval(exec : TdwsExecution) : Variant; virtual; abstract;
-      function EvalAsInteger(exec : TdwsExecution) : Int64; virtual; abstract;
-      function EvalAsBoolean(exec : TdwsExecution) : Boolean; virtual; abstract;
-      function EvalAsFloat(exec : TdwsExecution) : Double; virtual; abstract;
-      procedure EvalAsString(exec : TdwsExecution; var Result : String); overload; virtual; abstract;
-      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); overload; virtual; abstract;
-      procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); virtual; abstract;
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; virtual;
+         function GetSubExprCount : Integer; virtual;
 
-      procedure AssignValue(exec : TdwsExecution; const value : Variant); virtual; abstract;
-      procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); virtual; abstract;
-      procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); virtual; abstract;
-      procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); virtual; abstract;
-      procedure AssignValueAsString(exec : TdwsExecution; const value : String); virtual; abstract;
+      public
+         function  Eval(exec : TdwsExecution) : Variant; virtual; abstract;
+         function  EvalAsInteger(exec : TdwsExecution) : Int64; virtual; abstract;
+         function  EvalAsBoolean(exec : TdwsExecution) : Boolean; virtual; abstract;
+         function  EvalAsFloat(exec : TdwsExecution) : Double; virtual; abstract;
+         procedure EvalAsString(exec : TdwsExecution; var Result : String); overload; virtual; abstract;
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); overload; virtual; abstract;
+         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); virtual; abstract;
 
-      function ScriptPos : TScriptPos; virtual; abstract;
-      function ScriptLocation(prog : TObject) : String; virtual; abstract;
+         procedure AssignValue(exec : TdwsExecution; const value : Variant); virtual; abstract;
+         procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); virtual; abstract;
+         procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); virtual; abstract;
+         procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); virtual; abstract;
+         procedure AssignValueAsString(exec : TdwsExecution; const value : String); virtual; abstract;
 
-      class function CallStackToString(const callStack : TdwsExprLocationArray) : String; static;
+         property SubExpr[i : Integer] : TExprBase read GetSubExpr;
+         property SubExprCount : Integer read GetSubExprCount;
+
+         function ScriptPos : TScriptPos; virtual; abstract;
+         function ScriptLocation(prog : TObject) : String; virtual; abstract;
+
+         class function CallStackToString(const callStack : TdwsExprLocationArray) : String; static;
    end;
 
    // TExprBaseList
@@ -1338,6 +1346,20 @@ begin
    finally
       buffer.Free;
    end;
+end;
+
+// GetSubExpr
+//
+function TExprBase.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=nil;
+end;
+
+// GetSubExprCount
+//
+function TExprBase.GetSubExprCount : Integer;
+begin
+   Result:=0;
 end;
 
 // ------------------

@@ -251,37 +251,48 @@ type
    end;
 
    TArrayConstantExpr = class(TPosDataExpr)
-   protected
-     FArrayAddr: Integer;
-     FElementExprs: TTightList;
-     function GetData(exec : TdwsExecution) : TData; override;
-     function GetAddr(exec : TdwsExecution) : Integer; override;
-   public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
-     destructor Destroy; override;
-     procedure AddElementExpr(Prog: TdwsProgram; ElementExpr: TTypedExpr);
-     procedure Prepare(Prog: TdwsProgram; ElementTyp : TSymbol);
-     procedure TypeCheckElements(prog : TdwsProgram);
-     function Eval(exec : TdwsExecution) : Variant; override;
-     function EvalAsTData(exec : TdwsExecution) : TData;
-     function EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArrayContainer;
-     procedure Initialize; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
-     function IsConstant : Boolean; override;
-     function IsWritable : Boolean; override;
+      protected
+         FArrayAddr : Integer;
+         FElementExprs : TTightList;
+
+         function GetData(exec : TdwsExecution) : TData; override;
+         function GetAddr(exec : TdwsExecution) : Integer; override;
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
+         destructor Destroy; override;
+
+         procedure AddElementExpr(Prog: TdwsProgram; ElementExpr: TTypedExpr);
+         procedure Prepare(Prog: TdwsProgram; ElementTyp : TSymbol);
+         procedure TypeCheckElements(prog : TdwsProgram);
+         function Eval(exec : TdwsExecution) : Variant; override;
+         function EvalAsTData(exec : TdwsExecution) : TData;
+         function EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArrayContainer;
+         procedure Initialize; override;
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+         function IsConstant : Boolean; override;
+         function IsWritable : Boolean; override;
    end;
 
    // Array expressions x[index]
    TArrayExpr = class(TPosDataExpr)
-   protected
-     FBaseExpr: TDataExpr;
-     FIndexExpr: TTypedExpr;
-     FElementSize: Integer;
-   public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TTypedExpr);
-     destructor Destroy; override;
-     procedure Initialize; override;
-     function IsWritable : Boolean; override;
+      protected
+         FBaseExpr: TDataExpr;
+         FIndexExpr: TTypedExpr;
+         FElementSize: Integer;
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TTypedExpr);
+         destructor Destroy; override;
+
+         procedure Initialize; override;
+         function IsWritable : Boolean; override;
    end;
 
    EScriptOutOfBounds = class (EScriptError);
@@ -295,7 +306,9 @@ type
      function GetAddr(exec : TdwsExecution) : Integer; override;
      function GetData(exec : TdwsExecution) : TData; override;
    public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TTypedExpr; LowBound, HighBound: Integer);
+     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos;
+                        BaseExpr: TDataExpr; IndexExpr: TTypedExpr;
+                        LowBound, HighBound: Integer);
    end;
 
    // Array expressions x[index] for open arrays
@@ -314,25 +327,36 @@ type
 
    // Record expression: record.member
    TRecordExpr = class(TPosDataExpr)
-   protected
-     FBaseExpr: TDataExpr;
-     FMemberOffset: Integer;
-     function GetAddr(exec : TdwsExecution) : Integer; override;
-     function GetData(exec : TdwsExecution) : TData; override;
-   public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; MemberSymbol: TMemberSymbol);
-     destructor Destroy; override;
-     procedure Initialize; override;
-     function IsWritable : Boolean; override;
+      protected
+         FBaseExpr : TDataExpr;
+         FMemberOffset : Integer;
+
+         function GetAddr(exec : TdwsExecution) : Integer; override;
+         function GetData(exec : TdwsExecution) : TData; override;
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; MemberSymbol: TMemberSymbol);
+         destructor Destroy; override;
+
+         procedure Initialize; override;
+         function IsWritable : Boolean; override;
    end;
 
    TInitDataExpr = class(TNoResultExpr)
-   protected
-     FExpr: TDataExpr;
-   public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TDataExpr);
-     destructor Destroy; override;
-     procedure EvalNoResult(exec : TdwsExecution); override;
+      protected
+         FExpr : TDataExpr;
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TDataExpr);
+         destructor Destroy; override;
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // Field expression: obj.Field
@@ -343,6 +367,9 @@ type
 
          function GetAddr(exec : TdwsExecution) : Integer; override;
          function GetData(exec : TdwsExecution) : TData; override;
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TSymbol;
@@ -659,9 +686,13 @@ type
          FCond : TTypedExpr;
          FMessage : TTypedExpr;
 
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; condExpr, msgExpr : TTypedExpr);
          destructor Destroy; override;
+
          procedure EvalNoResult(exec : TdwsExecution); override;
          procedure Initialize; override;
          function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
@@ -670,8 +701,11 @@ type
    // left := right;
    TAssignExpr = class(TNoResultExpr)
       protected
-         FLeft: TDataExpr;
-         FRight: TTypedExpr;
+         FLeft : TDataExpr;
+         FRight : TTypedExpr;
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
 
       public
          constructor Create(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr; right : TTypedExpr); virtual;
@@ -688,8 +722,8 @@ type
 
    // left := right; (class of)
    TAssignClassOfExpr = class(TAssignExpr)
-   public
-     procedure EvalNoResult(exec : TdwsExecution); override;
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // left := right;
@@ -843,11 +877,12 @@ type
    TInOpExpr = class(TTypedExpr)
       private
          FLeft : TTypedExpr;
-         FCaseConditions: TTightList;
+         FCaseConditions : TTightList;
 
       public
          constructor Create(Prog: TdwsProgram; Left : TTypedExpr);
          destructor Destroy; override;
+
          function Eval(exec : TdwsExecution) : Variant; override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          procedure Initialize; override;
@@ -894,6 +929,10 @@ type
          FCond : TTypedExpr;
          FThen : TNoResultExpr;
 
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
       public
          constructor Create(prog : TdwsProgram; const Pos : TScriptPos;
                             condExpr : TTypedExpr; thenExpr : TNoResultExpr);
@@ -908,6 +947,10 @@ type
    TIfThenElseExpr = class(TIfThenExpr)
       private
          FElse : TNoResultExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
 
       public
          constructor Create(prog : TdwsProgram; const Pos : TScriptPos;
@@ -943,7 +986,7 @@ type
 
    TCompareCaseCondition = class(TCaseCondition)
       private
-         FCompareExpr: TTypedExpr;
+         FCompareExpr : TTypedExpr;
 
       public
          constructor Create(const aPos : TScriptPos; compareExpr : TTypedExpr);
@@ -957,8 +1000,8 @@ type
 
    TRangeCaseCondition = class(TCaseCondition)
       private
-         FFromExpr: TTypedExpr;
-         FToExpr: TTypedExpr;
+         FFromExpr : TTypedExpr;
+         FToExpr : TTypedExpr;
 
       public
          constructor Create(const aPos : TScriptPos; fromExpr, toExpr : TTypedExpr);
@@ -972,17 +1015,18 @@ type
 
    // case FValueExpr of {CaseConditions} else FElseExpr end;
    TCaseExpr = class(TNoResultExpr)
-   private
-     FCaseConditions: TTightList;
-     FElseExpr: TNoResultExpr;
-     FValueExpr: TTypedExpr;
-   public
-     destructor Destroy; override;
-     procedure EvalNoResult(exec : TdwsExecution); override;
-     procedure Initialize; override;
-     procedure AddCaseCondition(cond : TCaseCondition);
-     property ValueExpr: TTypedExpr read FValueExpr write FValueExpr;
-     property ElseExpr: TNoResultExpr read FElseExpr write FElseExpr;
+      private
+         FCaseConditions: TTightList;
+         FElseExpr: TNoResultExpr;
+         FValueExpr: TTypedExpr;
+
+      public
+         destructor Destroy; override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         procedure Initialize; override;
+         procedure AddCaseCondition(cond : TCaseCondition);
+         property ValueExpr: TTypedExpr read FValueExpr write FValueExpr;
+         property ElseExpr: TNoResultExpr read FElseExpr write FElseExpr;
    end;
 
    // for FVarExpr := FFromExpr to FToExpr do FDoExpr;
@@ -992,6 +1036,10 @@ type
          FFromExpr : TTypedExpr;
          FToExpr : TTypedExpr;
          FVarExpr : TIntVarExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
 
       public
          destructor Destroy; override;
@@ -1018,7 +1066,12 @@ type
    // for FVarExpr := FFromExpr to FToExpr step FStepExpr do FDoExpr;
    TForStepExpr = class(TForExpr)
       private
-         FStepExpr: TTypedExpr;
+         FStepExpr : TTypedExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
       public
          destructor Destroy; override;
          procedure Initialize; override;
@@ -1038,30 +1091,38 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
+   // base class for while, repeat and infinite loops
    TLoopExpr = class(TNoResultExpr)
-   private
-     FCondExpr: TTypedExpr;
-     FLoopExpr: TNoResultExpr;
-   public
-     destructor Destroy; override;
-     procedure Initialize; override;
-     procedure EvalNoResult(exec : TdwsExecution); override;
-     property CondExpr: TTypedExpr read FCondExpr write FCondExpr;
-     property LoopExpr: TNoResultExpr read FLoopExpr write FLoopExpr;
+      private
+         FCondExpr : TTypedExpr;
+         FLoopExpr : TNoResultExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         destructor Destroy; override;
+
+         procedure Initialize; override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property CondExpr : TTypedExpr read FCondExpr write FCondExpr;
+         property LoopExpr : TNoResultExpr read FLoopExpr write FLoopExpr;
    end;
 
    // while FCondExpr do FLoopExpr
    TWhileExpr = class(TLoopExpr)
-   public
-     procedure EvalNoResult(exec : TdwsExecution); override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // repeat FLoopExpr while FCondExpr
    TRepeatExpr = class(TLoopExpr)
-   public
-     procedure EvalNoResult(exec : TdwsExecution); override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    TFlowControlExpr = class(TNoResultExpr)
@@ -1081,6 +1142,11 @@ type
    TExitValueExpr = class(TExitExpr)
       private
          FAssignExpr : TNoResultExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; assignExpr : TNoResultExpr);
          destructor Destroy; override;
@@ -1100,9 +1166,15 @@ type
    TRaiseExpr = class(TRaiseBaseExpr)
       private
          FExceptionExpr: TTypedExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; ExceptionExpr: TTypedExpr);
          destructor Destroy; override;
+
          procedure EvalNoResult(exec : TdwsExecution); override;
          procedure Initialize; override;
    end;
@@ -1123,6 +1195,9 @@ type
          function EnterExceptionBlock(exec : TdwsExecution) : Variant;
          procedure LeaveExceptionBlock(exec : TdwsExecution);
 
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
       public
          destructor Destroy; override;
          procedure Initialize; override;
@@ -1136,8 +1211,12 @@ type
    // try FTryExpr except {FDoExprs}; else FElseExpr end;
    TExceptExpr = class(TExceptionExpr)
       private
-         FDoExprs: TTightList;
-         FElseExpr: TNoResultExpr;
+         FDoExprs : TTightList;
+         FElseExpr : TNoResultExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
 
       public
          destructor Destroy; override;
@@ -1152,8 +1231,12 @@ type
    // try..except on FExceptionVar: FExceptionVar.Typ do FDoBlockExpr; ... end;
    TExceptDoExpr = class(TNoResultExpr)
       private
-         FExceptionVar: TDataSymbol;
-         FDoBlockExpr: TNoResultExpr;
+         FExceptionVar : TDataSymbol;
+         FDoBlockExpr : TNoResultExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
 
       public
          destructor Destroy; override;
@@ -1172,20 +1255,26 @@ type
    end;
 
    TStringArraySetExpr = class(TNoResultExpr)
-   private
-     FStringExpr: TDataExpr;
-     FIndexExpr: TTypedExpr;
-     FValueExpr: TTypedExpr;
-   public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; StringExpr : TDataExpr; IndexExpr, ValueExpr: TTypedExpr);
-     destructor Destroy; override;
-     procedure EvalNoResult(exec : TdwsExecution); override;
-     procedure Initialize; override;
+      private
+         FStringExpr: TDataExpr;
+         FIndexExpr: TTypedExpr;
+         FValueExpr: TTypedExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; StringExpr : TDataExpr; IndexExpr, ValueExpr: TTypedExpr);
+         destructor Destroy; override;
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         procedure Initialize; override;
    end;
 
    TVarStringArraySetExpr = class(TStringArraySetExpr)
-   public
-     procedure EvalNoResult(exec : TdwsExecution); override;
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    TSpecialUnaryBoolExpr = class(TUnaryOpExpr)
@@ -2038,6 +2127,25 @@ begin
    Result:=FBaseExpr.IsWritable;
 end;
 
+// GetSubExpr
+//
+function TArrayExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FBaseExpr;
+      1 : Result:=FIndexExpr;
+   else
+      Result:=nil;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TArrayExpr.GetSubExprCount : Integer;
+begin
+   Result:=2;
+end;
+
 // ------------------
 // ------------------ TStaticArrayExpr ------------------
 // ------------------
@@ -2221,6 +2329,20 @@ begin
    Result:=FArrayAddr+1;
 end;
 
+// GetSubExpr
+//
+function TArrayConstantExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=TExprBase(FElementExprs.List[i]);
+end;
+
+// GetSubExprCount
+//
+function TArrayConstantExpr.GetSubExprCount : Integer;
+begin
+   Result:=FElementExprs.Count;
+end;
+
 function TArrayConstantExpr.Eval(exec : TdwsExecution) : Variant;
 //var
 //  x: Integer;
@@ -2384,6 +2506,20 @@ begin
    Result := FBaseExpr.Data[exec];
 end;
 
+// GetSubExpr
+//
+function TRecordExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FBaseExpr;
+end;
+
+// GetSubExprCount
+//
+function TRecordExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
+end;
+
 // Initialize
 //
 procedure TRecordExpr.Initialize;
@@ -2426,6 +2562,20 @@ begin
    FExpr.Typ.InitData(FExpr.Data[exec], FExpr.Addr[exec]);
 end;
 
+// GetSubExpr
+//
+function TInitDataExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FExpr;
+end;
+
+// GetSubExprCount
+//
+function TInitDataExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
+end;
+
 // ------------------
 // ------------------ TFieldExpr ------------------
 // ------------------
@@ -2464,6 +2614,20 @@ begin
    FObjectExpr.EvalAsScriptObj(exec, obj);
    CheckScriptObject(exec, obj);
    Result:=obj.Data;
+end;
+
+// GetSubExpr
+//
+function TFieldExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FObjectExpr;
+end;
+
+// GetSubExprCount
+//
+function TFieldExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
 end;
 
 // Initialize
@@ -3056,6 +3220,25 @@ begin
       Result:=TNullExpr.Create(Prog, FScriptPos);
       Free;
    end;
+end;
+
+// GetSubExpr
+//
+function TAssertExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FCond;
+      1 : Result:=FMessage;
+   else
+      Result:=nil;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TAssertExpr.GetSubExprCount : Integer;
+begin
+   Result:=2;
 end;
 
 // ------------------
@@ -3855,6 +4038,25 @@ begin
    end;
 end;
 
+// GetSubExpr
+//
+function TAssignExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FLeft;
+      1 : Result:=FRight;
+   else
+      Result:=nil;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TAssignExpr.GetSubExprCount : Integer;
+begin
+   Result:=2;
+end;
+
 // ------------------
 // ------------------ TAssignClassOfExpr ------------------
 // ------------------
@@ -4479,6 +4681,25 @@ begin
    FThen.Initialize;
 end;
 
+// GetSubExpr
+//
+function TIfThenExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FCond;
+      1 : Result:=FThen;
+   else
+      Result:=nil;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TIfThenExpr.GetSubExprCount : Integer;
+begin
+   Result:=2;
+end;
+
 // ------------------
 // ------------------ TIfThenElseExpr ------------------
 // ------------------
@@ -4538,6 +4759,22 @@ procedure TIfThenElseExpr.Initialize;
 begin
    inherited;
    FElse.Initialize;
+end;
+
+// GetSubExpr
+//
+function TIfThenElseExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i=2 then
+      Result:=FElse
+   else Result:=inherited GetSubExpr(i);
+end;
+
+// GetSubExprCount
+//
+function TIfThenElseExpr.GetSubExprCount : Integer;
+begin
+   Result:=3;
 end;
 
 { TCaseExpr }
@@ -4754,6 +4991,27 @@ begin
   FDoExpr.Initialize;
 end;
 
+// GetSubExpr
+//
+function TForExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FVarExpr;
+      1 : Result:=FFromExpr;
+      2 : Result:=FToExpr;
+      3 : Result:=FDoExpr;
+   else
+      Result:=nil;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TForExpr.GetSubExprCount : Integer;
+begin
+   Result:=4;
+end;
+
 { TForStepExpr }
 
 destructor TForStepExpr.Destroy;
@@ -4775,6 +5033,22 @@ begin
    Result:=FStepExpr.EvalAsInteger(exec);
    if Result<=0 then
       RaiseScriptError(exec, EScriptError.CreateFmt(RTE_ForLoopStepShouldBeStrictlyPositive, [Result]));
+end;
+
+// GetSubExpr
+//
+function TForStepExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i=4 then
+      Result:=FStepExpr
+   else Result:=inherited GetSubExpr(i);
+end;
+
+// GetSubExprCount
+//
+function TForStepExpr.GetSubExprCount : Integer;
+begin
+   Result:=5;
 end;
 
 { TForUpwardExpr }
@@ -4940,6 +5214,25 @@ begin
    until False;
 end;
 
+// GetSubExpr
+//
+function TLoopExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FCondExpr;
+      1 : Result:=FLoopExpr;
+   else
+      Result:=nil;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TLoopExpr.GetSubExprCount : Integer;
+begin
+   Result:=2;
+end;
+
 { TWhileExpr }
 
 procedure TWhileExpr.EvalNoResult(exec : TdwsExecution);
@@ -5063,6 +5356,20 @@ begin
    exec.Status:=esrExit;
 end;
 
+// GetSubExpr
+//
+function TExitValueExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FAssignExpr;
+end;
+
+// GetSubExprCount
+//
+function TExitValueExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
+end;
+
 { TContinueExpr }
 
 procedure TContinueExpr.EvalNoResult(exec : TdwsExecution);
@@ -5132,6 +5439,25 @@ procedure TExceptionExpr.LeaveExceptionBlock(exec : TdwsExecution);
 begin
    exec.ExceptionObjectStack.Peek:=Unassigned;
    exec.ExceptionObjectStack.Pop;
+end;
+
+// GetSubExpr
+//
+function TExceptionExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FTryExpr;
+      1 : Result:=FHandlerExpr;
+   else
+      Result:=nil;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TExceptionExpr.GetSubExprCount : Integer;
+begin
+   Result:=2;
 end;
 
 { TExceptExpr }
@@ -5236,6 +5562,24 @@ begin
    FDoExprs.Add(expr);
 end;
 
+// GetSubExpr
+//
+function TExceptExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i<2 then
+      Result:=inherited GetSubExpr(i)
+   else if i<2+FDoExprs.Count then
+      Result:=TExprBase(FDoExprs.List[i-2])
+   else Result:=FElseExpr;
+end;
+
+// GetSubExprCount
+//
+function TExceptExpr.GetSubExprCount : Integer;
+begin
+   Result:=3+FDoExprs.Count;
+end;
+
 // ------------------
 // ------------------ TFinallyExpr ------------------
 // ------------------
@@ -5314,6 +5658,20 @@ begin
    FExceptionExpr.Initialize;
 end;
 
+// GetSubExpr
+//
+function TRaiseExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FExceptionExpr;
+end;
+
+// GetSubExprCount
+//
+function TRaiseExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
+end;
+
 // ------------------
 // ------------------ TReraiseExpr ------------------
 // ------------------
@@ -5350,6 +5708,20 @@ end;
 procedure TExceptDoExpr.Initialize;
 begin
    FDoBlockExpr.Initialize;
+end;
+
+// GetSubExpr
+//
+function TExceptDoExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FDoBlockExpr;
+end;
+
+// GetSubExprCount
+//
+function TExceptDoExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
 end;
 
 // ------------------
@@ -5402,6 +5774,26 @@ begin
    FStringExpr.Initialize;
    FIndexExpr.Initialize;
    FValueExpr.Initialize;
+end;
+
+// GetSubExpr
+//
+function TStringArraySetExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FStringExpr;
+      1 : Result:=FIndexExpr;
+      2 : Result:=FValueExpr;
+   else
+      Result:=nil;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TStringArraySetExpr.GetSubExprCount : Integer;
+begin
+   Result:=3;
 end;
 
 // ------------------

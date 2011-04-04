@@ -181,7 +181,7 @@ type
       private
          FParentContext : TContext;
          FParentSymbol : TSymbol;     // a parent symbol would be a procedure/method, etc.
-         FSubContexts : TList;        // contexts that are inside of this one
+         FSubContexts : TTightList;   // contexts that are inside of this one
          FEndPos : TScriptPos;
          FStartPos : TScriptPos;
          FData : Pointer;             // pointer to some data element (for users)
@@ -191,12 +191,12 @@ type
          constructor Create(AParent: TContext; const AStartPos: TScriptPos; AParentSymbol: TSymbol);
          destructor Destroy; override;
 
-         function IsPositionInContext(ACol, ALine: Integer; SourceFile: TSourceFile=nil): Boolean;
+         function IsPositionInContext(aCol, aLine : Integer; const sourceName : String) : Boolean;
          function HasParentSymbolOfClass(SymbolType: TSymbolClass; SearchParents: Boolean): Boolean;
 
          property Parent : TContext read FParentContext;
          property ParentSym : TSymbol read FParentSymbol;
-         property SubContexts : TList read FSubContexts;
+         property SubContexts : TTightList read FSubContexts;
          property StartPos : TScriptPos read FStartPos;
          property EndPos : TScriptPos read FEndPos;
          property Data : Pointer read FData write FData;
@@ -206,11 +206,10 @@ type
    // Map the various script contexts. (Code blocks)
    TContextMap = class
       private
-         FScriptContexts : TList;     // list of top-level contexts
+         FScriptContexts : TTightList;     // list of top-level contexts
          FCurrentContext : TContext;  // current context (used when adding and leaving)
 
       public
-         constructor Create;
          destructor Destroy; override;
 
          { Push a context on to the stack - procedures have a symbol context.
@@ -220,10 +219,11 @@ type
          procedure CloseContext(const AEndPos : TScriptPos);
 
          function FindContext(AParentSymbol : TSymbol) : TContext; overload;// return the first context group based on its parent
-         function FindContext(ACol, ALine : Integer; SourceFile : TSourceFile=nil): TContext; overload;
+         function FindContext(aCol, aLine : Integer; sourceFile : TSourceFile) : TContext; overload;
+         function FindContext(aCol, aLine : Integer; const sourceName : String) : TContext; overload;
          function FindContext(const ScriptPos : TScriptPos) : TContext; overload;
 
-         property Contexts : TList read FScriptContexts;
+         property Contexts : TTightList read FScriptContexts;
          property Current : TContext read FCurrentContext;
    end;
 
@@ -662,6 +662,9 @@ type
          FStatements : PNoResultExprList;
          FCount : Integer;
 
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
       public
          destructor Destroy; override;
 
@@ -721,6 +724,9 @@ type
       protected
          FArgs : TExprBaseListRec;
          FFunc : TFuncSymbol;
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
 
       public
          constructor Create(prog : TdwsProgram; const pos : TScriptPos; func : TFuncSymbol);
@@ -829,6 +835,10 @@ type
       private
          FFuncExpr : TFuncExprBase;
 
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
       public
          constructor Create(prog : TdwsProgram; funcExpr : TFuncExprBase);
          destructor Destroy; override;
@@ -843,6 +853,10 @@ type
    TFuncPtrExpr = class(TFuncExpr)
       private
          FCodeExpr : TDataExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
 
       public
          constructor Create(prog : TdwsProgram; const pos : TScriptPos; codeExpr : TDataExpr);
@@ -990,8 +1004,12 @@ type
    // Call of a method
    TMethodExpr = class abstract (TFuncExpr)
       private
-         FBaseExpr: TDataExpr;
-         FSelfAddr: Integer;
+         FBaseExpr : TDataExpr;
+         FSelfAddr : Integer;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
@@ -1085,6 +1103,10 @@ type
    TUnaryOpExpr = class(TTypedExpr)
       protected
          FExpr : TTypedExpr;
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
       public
          constructor Create(prog : TdwsProgram; expr : TTypedExpr);
          destructor Destroy; override;
@@ -1124,7 +1146,11 @@ type
    // wraps an expression with a result into a no-result one and discard the result
    TNoResultWrapperExpr = class(TNoResultExpr)
       protected
-         FExpr: TProgramExpr;
+         FExpr : TProgramExpr;
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TProgramExpr);
          destructor Destroy; override;
@@ -1141,6 +1167,10 @@ type
       protected
          FLeft : TTypedExpr;
          FRight : TTypedExpr;
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
       public
          constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); virtual;
          destructor Destroy; override;
@@ -3252,6 +3282,20 @@ begin
       FStatements[i].Initialize;
 end;
 
+// GetSubExpr
+//
+function TBlockExprBase.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FStatements[i];
+end;
+
+// GetSubExprCount
+//
+function TBlockExprBase.GetSubExprCount : Integer;
+begin
+   Result:=FCount;
+end;
+
 // ------------------
 // ------------------ TBlockInitExpr ------------------
 // ------------------
@@ -3520,6 +3564,20 @@ begin
          Exit(False);
 
    Result:=True;
+end;
+
+// GetSubExpr
+//
+function TFuncExprBase.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FArgs.ExprBase[i];
+end;
+
+// GetSubExprCount
+//
+function TFuncExprBase.GetSubExprCount : Integer;
+begin
+   Result:=FArgs.Count;
 end;
 
 // ------------------
@@ -4077,6 +4135,20 @@ begin
    end;
 end;
 
+// GetSubExpr
+//
+function TFuncRefExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FFuncExpr
+end;
+
+// GetSubExprCount
+//
+function TFuncRefExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
+end;
+
 // ------------------
 // ------------------ TFuncPtrExpr ------------------
 // ------------------
@@ -4121,8 +4193,15 @@ begin
 
       oldArgs:=funcExprBase.FArgs;
       funcExprBase.FArgs:=FArgs;
+      try
+         Result:=funcExprBase.Eval(exec);
+      finally
+         funcExprBase.FArgs:=oldArgs;
+      end;
 
-   end else if funcExprBase is TFuncExpr then begin
+   end else begin
+
+      Assert(funcExprBase is TFuncExpr);
 
       funcExpr:=TFuncExpr(funcExprBase);
 
@@ -4131,17 +4210,28 @@ begin
          funcExpr.AddArg(FArgs.ExprBase[i] as TTypedExpr);
       funcExpr.AddPushExprs;
 
-   end;
-   try
-      Result:=funcExprBase.Eval(exec);
-   finally
-      if funcExprBase is TMagicFuncExpr then begin
-         funcExprBase.FArgs:=oldArgs;
-      end else if funcExprBase is TFuncExpr then begin
+      try
+         Result:=funcExprBase.Eval(exec);
+      finally
          for i:=0 to FArgs.Count-1 do
             funcExpr.FArgs.ExprBase[i]:=nil;
       end;
+
    end;
+end;
+
+// GetSubExpr
+//
+function TFuncPtrExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FCodeExpr
+end;
+
+// GetSubExprCount
+//
+function TFuncPtrExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
 end;
 
 // ------------------
@@ -4227,6 +4317,25 @@ begin
    Result:=FLeft.IsConstant and FRight.IsConstant;
 end;
 
+// GetSubExpr
+//
+function TBinaryOpExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FLeft;
+      1 : Result:=FRight;
+   else
+      Result:=nil;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TBinaryOpExpr.GetSubExprCount : Integer;
+begin
+   Result:=2;
+end;
+
 // ------------------
 // ------------------ TUnaryOpExpr ------------------
 // ------------------
@@ -4259,6 +4368,20 @@ end;
 function TUnaryOpExpr.IsConstant : Boolean;
 begin
    Result:=FExpr.IsConstant;
+end;
+
+// GetSubExpr
+//
+function TUnaryOpExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FExpr;
+end;
+
+// GetSubExprCount
+//
+function TUnaryOpExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
 end;
 
 // ------------------
@@ -4368,6 +4491,24 @@ procedure TMethodExpr.Initialize;
 begin
    inherited;
    FBaseExpr.Initialize;
+end;
+
+// GetSubExpr
+//
+function TMethodExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FBaseExpr;
+   else
+      Result:=inherited GetSubExpr(i-1);
+   end;
+end;
+
+// GetSubExprCount
+//
+function TMethodExpr.GetSubExprCount : Integer;
+begin
+   Result:=FArgs.Count+1;
 end;
 
 // ------------------
@@ -6756,31 +6897,22 @@ end;
 // ------------------ TContext ------------------
 // ------------------
 
+// Create
+//
 constructor TContext.Create(AParent: TContext; const AStartPos: TScriptPos;
-  AParentSymbol: TSymbol);
+                            AParentSymbol: TSymbol);
 begin
-  FSubContexts := TList.Create;
-
-  { Initialize variables }
-  FParentContext := AParent;
-  FParentSymbol  := AParentSymbol;
-  FLocalTable    := nil;             // default to nil. Didn't pass in because uses didn't have access to that data when context is openned
-  // starting position
-  FStartPos := AStartPos;
-  // invalid end position
-  FEndPos.Line := 0;
-  FEndPos.Col  := 0;
-  FEndPos.SourceFile := nil;
+   FParentContext := AParent;
+   FParentSymbol  := AParentSymbol;
+   FStartPos := AStartPos;
 end;
 
+// Destroy
+//
 destructor TContext.Destroy;
-var
-  x: Integer;
 begin
-  for x := 0 to FSubContexts.Count - 1 do
-    TContext(FSubContexts[x]).Free;
-  FSubContexts.Free;
-  inherited;
+   FSubContexts.Clean;
+   inherited;
 end;
 
 function TContext.HasParentSymbolOfClass(SymbolType: TSymbolClass;
@@ -6798,31 +6930,141 @@ begin
       Result := Parent.HasParentSymbolOfClass(SymbolType, SearchParents);
 end;
 
-function TContext.IsPositionInContext(ACol, ALine: Integer; SourceFile: TSourceFile): Boolean;
+// IsPositionInContext
+//
+function TContext.IsPositionInContext(aCol, aLine : Integer; const sourceName : String) : Boolean;
 begin
-  // check if the position is in the same SourceFile
-  if Assigned(SourceFile) then  // if not assigned, don't check it
-    if SourceFile <> FStartPos.SourceFile then
-    begin
-      Result := False;
-      Exit;
-    end;
+   // check if the position is in the same SourceFile
+   if sourceName<>'' then begin // if empty, don't check it
+      if not SameText(sourceName, FStartPos.SourceFile.Name) then begin
+         Result:=False;
+         Exit;
+      end;
+   end;
 
-  // if inside a multi-line context
-  Result := (ALine > FStartPos.Line) and (ALine < FEndPos.Line);
-  if not Result then
-  begin
-    // if not, check for a one-line context (inside the context begin and end cols)
-    if FStartPos.Line = FEndPos.Line then
-      Result := (ALine = FStartPos.Line) and (ACol >= FStartPos.Col) and (ACol <= FEndPos.Col)
-    else  // not a single-line context
-      Result := ((ALine = FStartPos.Line) and (ACol >= FStartPos.Col)) or // on top line, inside start
-                ((ALine = FEndPos.Line) and (ACol <= FEndPos.Col));       // on bottom line, inside end
-  end;
+   // if inside a multi-line context
+   Result := (aLine > FStartPos.Line) and (aLine < FEndPos.Line);
+   if not Result then begin
+      // if not, check for a one-line context (inside the context begin and end cols)
+      if FStartPos.Line = FEndPos.Line then
+         Result:=    (aLine = FStartPos.Line)
+                 and (aCol >= FStartPos.Col)
+                 and (aCol <= FEndPos.Col)
+      else  // not a single-line context
+         Result :=    ((aLine = FStartPos.Line) and (aCol >= FStartPos.Col)) // on top line, inside start
+                   or ((aLine = FEndPos.Line) and (aCol <= FEndPos.Col));    // on bottom line, inside end
+   end;
 end;
 
-{ TContextMap }
+// ------------------
+// ------------------ TContextMap ------------------
+// ------------------
 
+// Destroy
+//
+destructor TContextMap.Destroy;
+begin
+   FScriptContexts.Clean;
+   inherited;
+end;
+
+// FindContext
+//
+function TContextMap.FindContext(aParentSymbol : TSymbol): TContext;
+var
+   x : Integer;
+begin
+   for x:=0 to FScriptContexts.Count-1 do begin
+      Result:=TContext(FScriptContexts.List[x]);
+      if Result.FParentSymbol=aParentSymbol then Exit;
+   end;
+   Result:=nil;
+end;
+
+// FindContext
+//
+function TContextMap.FindContext(aCol, aLine : Integer; sourceFile : TSourceFile) : TContext;
+begin
+   Result:=FindContext(aCol, aLine, sourceFile.Name);
+end;
+
+// FindContext
+//
+function TContextMap.FindContext(aCol, aLine : Integer; const sourceName : String) : TContext;
+var
+   returnContext : TContext;    // Gets set to the context found
+   hitEnd : Boolean;            // Followed branch to end, stop searching
+
+   function FoundContext(context : TContext) : Boolean;
+   var
+      x : Integer;
+      subContext : TContext;
+   begin
+      Result := False;
+      { Record that this context contains it and should be returned (provided it
+        doesn't go deeper) }
+      returnContext := context;
+      { Search sub-contexts }
+      for x := 0 to context.SubContexts.Count - 1 do begin
+         subContext:=TContext(context.SubContexts.List[x]);
+         if subContext.IsPositionInContext(aCol, aLine, sourceName) then
+            Result := FoundContext(subContext)
+      end;
+      { We got here because it was found. After all subContexts were checked,
+        it wasn't found so we've hit the end. }
+      if not Result then
+         hitEnd := True;
+   end;
+
+var
+   i : Integer;
+   context : TContext;
+begin
+   { If this position is not in the top level contexts then it won't be in
+     subcontexts. Use a recursive search to find the lowest context at which the
+     position can be found. }
+
+   returnContext := nil;
+   hitEnd        := False;
+   { Cycle all top level contexts. Burrow into each to find the lowest level that
+     matches the criteria. }
+   for i := 0 to FScriptContexts.Count - 1 do begin
+      if hitEnd then
+         Break;
+      { If in top-level context, burrow into subcontexts }
+      context:=TContext(FScriptContexts.List[i]);
+      if context.IsPositionInContext(aCol, aLine, sourceName) then
+         if not FoundContext(context) then
+            Break;
+   end;
+   Result := returnContext;
+end;
+
+// FindContext
+//
+function TContextMap.FindContext(const scriptPos : TScriptPos): TContext;
+begin
+   Result:=FindContext(scriptPos.Col, scriptPos.Line, scriptPos.SourceFile.Name);
+end;
+
+// OpenContext
+//
+procedure TContextMap.OpenContext(const AStartPos: TScriptPos; AParentSymbol: TSymbol);
+var
+   newContext: TContext;
+begin
+   { Uses a simple 'stack' concept. If currently in a context and a new context
+     is openned then the new context is a sub context of the current context. }
+   newContext := TContext.Create(FCurrentContext, AStartPos, AParentSymbol);  // new context is owned by the current context
+   { Add new context to the appropriate 'parent' context }
+   if FCurrentContext = nil then           // if top-level,
+      FScriptContexts.Add(newContext)      // Add to top-level contexts
+   else FCurrentContext.SubContexts.Add(newContext);
+   FCurrentContext := newContext;
+end;
+
+// CloseContext
+//
 procedure TContextMap.CloseContext(const AEndPos: TScriptPos);
 begin
   FCurrentContext.FEndPos := AEndPos;       // close the current context
@@ -6831,106 +7073,9 @@ begin
   FCurrentContext := FCurrentContext.Parent;
 end;
 
-constructor TContextMap.Create;
-begin
-  FScriptContexts := TList.Create;
-  FCurrentContext := nil;
-end;
-
-destructor TContextMap.Destroy;
-var
-  x: Integer;
-begin
-  for x := 0 to FScriptContexts.Count - 1 do
-    TContext(FScriptContexts[x]).Free;
-  FScriptContexts.Free;
-  inherited;
-end;
-
-function TContextMap.FindContext(AParentSymbol: TSymbol): TContext;
-var
-  x: Integer;
-begin
-  Result := nil;
-  for x := 0 to FScriptContexts.Count - 1 do
-  begin
-    if TContext(FScriptContexts[x]).FParentSymbol = AParentSymbol then
-    begin
-      Result := TContext(FScriptContexts[x]);
-      BREAK;
-    end;
-  end;
-end;
-
-function TContextMap.FindContext(ACol, ALine: Integer; SourceFile: TSourceFile): TContext;
-var
-  ReturnContext: TContext;    // Gets set to the context found
-  HitEnd: Boolean;            // Followed branch to end, stop searching
-
-    function FoundContext(Context: TContext): Boolean;
-    var
-      x: Integer;
-    begin
-      Result := False;
-      { Record that this context contains it and should be returned (provided it
-        doesn't go deeper) }
-      ReturnContext := Context;
-      { Search sub-contexts }
-      for x := 0 to Context.SubContexts.Count - 1 do
-      begin
-        if TContext(Context.SubContexts[x]).IsPositionInContext(ACol, ALine, SourceFile) then
-          Result := FoundContext(TContext(Context.SubContexts[x]))
-      end;
-      { We got here because it was found. After all subContexts were checked,
-        it wasn't found so we've hit the end. }
-      if not Result then
-        HitEnd := True;
-    end;
-
-var
-  i: Integer;
-begin
-  { If this position is not in the top level contexts then it won't be in
-    subcontexts. Use a recursive search to find the lowest context at which the
-    position can be found. }
-
-  ReturnContext := nil;
-  HitEnd        := False;
-  { Cycle all top level contexts. Burrow into each to find the lowest level that
-    matches the criteria. }
-  for i := 0 to FScriptContexts.Count - 1 do
-  begin
-    if HitEnd then
-      BREAK;
-    { If in top-level context, burrow into subcontexts }
-    if TContext(FScriptContexts[i]).IsPositionInContext(ACol, ALine, SourceFile) then
-      if not FoundContext(TContext(FScriptContexts[i])) then
-        Break;
-  end;
-  Result := ReturnContext;
-end;
-
-function TContextMap.FindContext(const ScriptPos: TScriptPos): TContext;
-begin
-  Result := FindContext(ScriptPos.Col, ScriptPos.Line, ScriptPos.SourceFile);
-end;
-
-procedure TContextMap.OpenContext(const AStartPos: TScriptPos; AParentSymbol: TSymbol);
-var
-  NewContext: TContext;
-begin
-  { Uses a simple 'stack' concept. If currently in a context and a new context
-    is openned then the new context is a sub context of the current context. }
-  NewContext := TContext.Create(FCurrentContext, AStartPos, AParentSymbol);  // new context is owned by the current context
-  { Add new context to the appropriate 'parent' context }
-  if FCurrentContext = nil then           // if top-level,
-    FScriptContexts.Add(NewContext)       // Add to top-level contexts
-  else
-    FCurrentContext.SubContexts.Add(NewContext);
-  FCurrentContext := NewContext;
-end;
-
-{ TScriptSourceItem }
+// ------------------
+// ------------------ TScriptSourceItem ------------------
+// ------------------
 
 constructor TScriptSourceItem.Create(const ANameReference: string; ASourceFile: TSourceFile;
   ASourceType: TScriptSourceType);
@@ -7311,6 +7456,20 @@ end;
 function TNoResultWrapperExpr.IsConstant : Boolean;
 begin
    Result:=FExpr.IsConstant;
+end;
+
+// GetSubExpr
+//
+function TNoResultWrapperExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FExpr;
+end;
+
+// GetSubExprCount
+//
+function TNoResultWrapperExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
 end;
 
 // ------------------
