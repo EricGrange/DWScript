@@ -1528,6 +1528,20 @@ begin
       Result.Free;
       raise;
    end;
+
+   if FTok.Test(ttBEGIN) then begin
+      // inline declaration
+      try
+         if coContextMap in FCompilerOptions then
+            FContextMap.OpenContext(FTok.HotPos, Result);
+         ReadProcBody(Result);
+         if not FTok.TestDelete(ttSEMI) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+      except
+         Result.Free;
+         raise;
+      end;
+   end;
 end;
 
 function TdwsCompiler.ReadMethodImpl(ClassSym: TClassSymbol;
@@ -1635,7 +1649,7 @@ begin
    end;
 
    if funcSymbol.Executable<>nil then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_MethodRedefined, [funcSymbol.Name]);
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_MethodRedefined, [funcSymbol.Name]);
 
    // Open context of full procedure body (may include a 'var' section)
    if coContextMap in FCompilerOptions then
@@ -3456,8 +3470,8 @@ end;
 //
 function TdwsCompiler.ReadClass(const TypeName: string): TClassSymbol;
 var
-   name: string;
-   sym, Typ: TSymbol;
+   name : String;
+   sym, typ : TSymbol;
    propSym : TPropertySymbol;
    constSym : TClassConstSymbol;
    defProp : Boolean;
