@@ -1538,11 +1538,14 @@ type
          FTempParamSize: Integer;
          FUsesTempParams: Boolean;
          FForceStatic: Boolean;
+
+         function CreateTempFuncExpr : TFuncExpr;
          procedure InitTempParams;
          function GetParameter(const s: string): IInfo; override;
          function GetExternalObject: TObject; override;
          procedure SetExternalObject(ExtObject: TObject); override;
          function GetInherited: IInfo; override;
+
       public
          constructor Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol;
                             const Data: TData; Offset: Integer;
@@ -5806,9 +5809,7 @@ begin
       // Simulate the params of the functions as local variables
       FExec.Stack.Push(FParamSize);
       try
-         // Create the TFuncExpr
-         funcExpr := CreateFuncExpr(FExec.Prog, TFuncSymbol(FTypeSym), FScriptObj,
-                                    FClassSym, FForceStatic);
+         funcExpr:=CreateTempFuncExpr;
          FExec.ExternalObject:=FExternalObject;
          try
 
@@ -5884,8 +5885,7 @@ begin
       raise Exception.CreateFmt(RTE_InvalidNumberOfParams, [Length(Params),
          funcSym.Params.Count, FTypeSym.Caption]);
 
-   // Create the TFuncExpr
-   funcExpr := CreateFuncExpr(FExec.Prog, funcSym, FScriptObj, FClassSym, FForceStatic);
+   funcExpr:=CreateTempFuncExpr;
 
    FExec.ExternalObject:=FExternalObject;
 
@@ -5987,6 +5987,19 @@ begin
       FData,FOffset,FDataMaster,FScriptObj,FClassSym.Parent,True)
   else
     result := inherited GetInherited;
+end;
+
+// CreateTempFuncExpr
+//
+function TInfoFunc.CreateTempFuncExpr : TFuncExpr;
+begin
+   if FData<>nil then begin
+      Result:=TFuncPtrExpr.Create(FExec.Prog, cNullPos,
+                                  TConstExpr.Create(FExec.Prog, TFuncSymbol(FTypeSym), FData[FOffset]));
+   end else begin
+      Result:=CreateFuncExpr(FExec.Prog, TFuncSymbol(FTypeSym), FScriptObj,
+                             FClassSym, FForceStatic);
+   end;
 end;
 
 { TInfoRecord }

@@ -72,6 +72,7 @@ type
          procedure ClassPropertyInfo;
          procedure DestructorAndExternalObject;
          procedure CustomDestructor;
+         procedure Delegates;
    end;
 
    EDelphiException = class (Exception)
@@ -1031,6 +1032,44 @@ begin
       CheckEquals( 'hello'#13#10'my destructor'#13#10'cleaned up'#13#10
                   +'Runtime Error: Object already destroyed [line: 1, column: 79]'#13#10,
                   exec.Result.ToString+exec.Msgs.AsInfo);
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// Delegates
+//
+procedure TdwsUnitTests.Delegates;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   func : IInfo;
+begin
+   FMagicVar:='';
+   prog:=FCompiler.Compile( 'type TFunc = function (i : Integer) : Integer;'
+                           +'var v1 : TFunc = FuncInc;'
+                           +'function MyFunc(i : Integer) : Integer; begin Result:=i+10; end;'
+                           +'var v2 : TFunc = MyFunc;'
+                           +'PrintLn(v1(1));'
+                           +'PrintLn(v2(1));');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+
+      CheckEquals( '2'#13#10'11'#13#10,
+                  exec.Result.ToString);
+
+      CheckEquals(124, exec.Info.Vars['v1'].Call([123]).Value, 'Call unit func direct');
+      CheckEquals(133, exec.Info.Vars['v2'].Call([123]).Value, 'Call source func direct');
+
+      func:=exec.Info.Vars['v1'];
+      func.Parameter['i'].Value:=456;
+      CheckEquals(457, func.Call.Value, 'Call unit func with params');
+
+      func:=exec.Info.Vars['v2'];
+      func.Parameter['i'].Value:=789;
+      CheckEquals(799, func.Call.Value, 'Call source func with params');
    finally
       exec.EndProgram;
    end;
