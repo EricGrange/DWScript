@@ -174,6 +174,8 @@ type
          function TestDeleteAny(const t : TTokenTypes) : TTokenType;
          function TestName : Boolean;
 
+         function TestDeleteNamePos(var aName : String; var aPos : TScriptPos) : Boolean; inline;
+
          property PosPtr : PChar read FPosPtr;
          property Text : string read FText;
          property DefaultPos : TScriptPos read FDefaultPos;
@@ -805,6 +807,20 @@ begin
    if Assigned(FToken) then begin
       Result:=(FToken.FString<>'') and not (FToken.FTyp in cReservedNames);
       FHotPos:=FToken.FPos;
+   end;
+end;
+
+// TestDeleteNamePos
+//
+function TTokenizer.TestDeleteNamePos(var aName : String; var aPos : TScriptPos) : Boolean;
+begin
+   if not TestName then
+      Result:=False
+   else begin
+      aName:=GetToken.FString;
+      aPos:=HotPos;
+      KillToken;
+      Result:=True;
    end;
 end;
 

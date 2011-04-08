@@ -189,6 +189,7 @@ const
   CPE_FunctionTypeExpected = 'Function type expected';
   CPE_IncompatibleParameterType = 'Type of parameter %d don''t match the declaration';
   CPE_InvalidResultType = 'Invalid type "%s" for function result';
+  CPE_NoResultTypeExpected = 'No result type expected';
 
   CPE_NameAlreadyExists = 'Name "%s" already exists';
   CPE_NameIsReserved = 'Name "%s" is reserved';

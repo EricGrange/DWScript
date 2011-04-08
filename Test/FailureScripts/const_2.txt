@@ -1,0 +1,3 @@
+Syntax Error: Can't assign a value to the left-side argument! [line: 3, column: 5]
+Syntax Error: Can't assign a value to the left-side argument! [line: 10, column: 5]
+Syntax Error: Constant expression expected [line: 15, column: 10]

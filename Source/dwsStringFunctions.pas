@@ -536,8 +536,13 @@ end;
 // DoEvalAsString
 //
 procedure TQuotedStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+var
+   quoteChar : String;
 begin
-   Result:=QuotedStr(args.AsString[0]);
+   quoteChar:=args.AsString[1];
+   if quoteChar='' then
+      Result:=AnsiQuotedStr(args.AsString[0], '''')
+   else Result:=AnsiQuotedStr(args.AsString[0], quoteChar[1]);
 end;
 
 { TCharAtFunc }
@@ -699,8 +704,7 @@ begin
          varRecs:=TVarRecArrayContainer.Create(TVarParamExpr(expr).Data[args.Exec])
    end;
    // current implementation, limitations may be relaxed later
-   if varRecs=nil then
-      raise EScriptError.Create('Constant expression or open array expected');
+   if varRecs=nil then raise EScriptError.Create('Constant expression or open array expected');
    try
       Result:=Format(args.AsString[0], varRecs.VarRecArray);
    finally
@@ -762,7 +766,7 @@ initialization
    RegisterInternalBoolFunction(TIsDelimiterFunc, 'IsDelimiter', ['delims', cString, 'str', cString, 'index', cInteger], True);
    RegisterInternalIntFunction(TLastDelimiterFunc, 'LastDelimiter', ['delims', cString, 'str', cString], True);
 
-   RegisterInternalStringFunction(TQuotedStrFunc, 'QuotedStr', ['str', cString], True);
+   RegisterInternalStringFunction(TQuotedStrFunc, 'QuotedStr', ['str', cString, 'quoteChar=', cString], True);
 
    RegisterInternalStringFunction(TCopyFunc, 'Copy', ['str', cString, 'index', cInteger, 'Len', cInteger], True);
 

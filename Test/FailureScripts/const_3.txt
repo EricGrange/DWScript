@@ -1,0 +1,1 @@
+Syntax Error: Invalid const type "TProc" [line: 7, column: 11]

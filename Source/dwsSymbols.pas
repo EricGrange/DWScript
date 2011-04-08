@@ -1845,8 +1845,10 @@ procedure TFuncSymbol.SetType(const Value: TSymbol);
 begin
    FTyp:=Value;
    Assert(FResult=nil);
-   FResult:=TDataSymbol.Create(SYS_RESULT, Value);
-   FInternalParams.AddSymbol(FResult);
+   if FTyp<>nil then begin
+      FResult:=TDataSymbol.Create(SYS_RESULT, Value);
+      FInternalParams.AddSymbol(FResult);
+   end;
 end;
 
 type TAddParamProc = procedure (param: TParamSymbol) of object;
