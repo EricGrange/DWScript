@@ -1,0 +1,4 @@
+Warning: Constructor invoked on instance outside of constructor [line: 22, column: 4]
+Warning: Constructor invoked on instance outside of constructor [line: 23, column: 4]
+Warning: Constructor invoked on instance outside of constructor [line: 28, column: 3]
+Warning: Constructor invoked on instance outside of constructor [line: 29, column: 3]

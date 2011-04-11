@@ -1813,6 +1813,8 @@ begin
                Result := TConstructorVirtualExpr.Create(prog, Pos, meth, Expr)
             else Result := TConstructorStaticExpr.Create(prog, Pos, meth, Expr);
          end else begin
+            if not ((prog is TdwsProcedure) and (TdwsProcedure(prog).Func.Kind=fkConstructor)) then
+               prog.CompileMsgs.AddCompilerWarning(Pos, CPE_UnexpectedConstructor);
             if not ForceStatic and meth.IsVirtual then
                Result := TConstructorVirtualObjExpr.Create(prog, Pos, meth, Expr)
             else Result := TConstructorStaticObjExpr.Create(prog, Pos, meth, Expr);

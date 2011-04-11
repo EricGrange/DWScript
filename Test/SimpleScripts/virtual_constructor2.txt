@@ -1,3 +1,7 @@
+Errors >>>>
+Warning: Constructor invoked on instance outside of constructor [line: 26, column: 7]
+Warning: Constructor invoked on instance outside of constructor [line: 31, column: 7]
+Result >>>>
 A
 A
 B
