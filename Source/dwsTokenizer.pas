@@ -646,6 +646,7 @@ var
   sNameF: TState;
   sIntF, sIntPoint, sIntPointF, sIntExp, sIntExp0, sIntExpF, sHex, sHexF: TState;
   sString0, sStringF, sAssign0: TState;
+  sString1, sStringF1 : TState;
   sGreaterF, sSmallerF, sDotDot: TState;
 
 // ------------------
@@ -1060,7 +1061,7 @@ const
    cNAM = ['A'..'Z', 'a'..'z', '_'];
    cINT = ['0'..'9'];
    cHEX = cINT + ['A'..'F', 'a'..'f'];
-   cStart = ['''', '#', ':', '$', '.'] + cNAM + cINT + cOPS;
+   cStart = ['''', '"', '#', ':', '$', '.'] + cNAM + cINT + cOPS;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1094,6 +1095,8 @@ initialization
    sHexF:=TState.Create;
    sString0:=TState.Create;
    sStringF:=TState.Create;
+   sString1:=TState.Create;
+   sStringF1:=TState.Create;
    sAssign0:=TState.Create;
    sGreaterF:=TState.Create;
    sSmallerF:=TState.Create;
@@ -1103,6 +1106,7 @@ initialization
    sStart.AddTransition(cNAM, TConsumeTransition.Create(sNameF, [toStart], caNone));
    sStart.AddTransition(cINT, TConsumeTransition.Create(sIntF, [toStart], caNone));
    sStart.AddTransition([''''], TSeekTransition.Create(sString0, [toStart], caNone));
+   sStart.AddTransition(['"'], TSeekTransition.Create(sString1, [toStart], caNone));
    sStart.AddTransition(['#'], TSeekTransition.Create(sChar0, [toStart], caNone));
    sStart.AddTransition([':', '+', '-', '*', '@', '%', '^'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
    sStart.AddTransition(['='], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
@@ -1141,7 +1145,7 @@ initialization
    sChar0.SetElse(TErrorTransition.Create(TOK_NumberExpected));
 
    sCharF.AddTransition(cINT, TConsumeTransition.Create(sCharF, [], caNone));
-   sCharF.AddTransition([''''], TCheckTransition.Create(sStart, [], caChar));
+   sCharF.AddTransition(['''', '"'], TCheckTransition.Create(sStart, [], caChar));
    sCharF.AddTransition(['#'], TCheckTransition.Create(sStart, [], caChar));
    sCharF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caChar));
    sCharF.SetElse(TErrorTransition.Create(TOK_InvalidChar));
@@ -1150,7 +1154,7 @@ initialization
    sCharHex.SetElse(TErrorTransition.Create(TOK_HexDigitExpected));
 
    sCharHexF.AddTransition(cHEX, TConsumeTransition.Create(sCharHexF, [], caNone));
-   sCharHexF.AddTransition([''''], TCheckTransition.Create(sStart, [], caCharHex));
+   sCharHexF.AddTransition(['''', '"'], TCheckTransition.Create(sStart, [], caCharHex));
    sCharHexF.AddTransition(['#'], TCheckTransition.Create(sStart, [], caCharHex));
    sCharHexF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caCharHex));
    sCharHexF.SetElse(TErrorTransition.Create(TOK_HexDigitExpected));
@@ -1201,6 +1205,15 @@ initialization
    sStringF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caString));
    sStringF.SetElse(TErrorTransition.Create(TOK_InvalidChar));
 
+   sString1.AddTransition(cANYCHAR - ['"', #13, #10], TConsumeTransition.Create(sString1, [], caNone));
+   sString1.AddTransition(['"'], TSeekTransition.Create(sStringF1, [], caNone));
+   sString1.SetElse(TErrorTransition.Create(TOK_StringTerminationError));
+
+   sStringF1.AddTransition(['"'], TConsumeTransition.Create(sString1, [], caNone));
+   sStringF1.AddTransition(['#'], TCheckTransition.Create(sStart, [], caString));
+   sStringF1.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caString));
+   sStringF1.SetElse(TErrorTransition.Create(TOK_InvalidChar));
+
    sAssign0.AddTransition(['='], TConsumeTransition.Create(sStart, [toFinal], caName));
    sAssign0.AddTransition(cStart + cSTOP, TCheckTransition.Create(sStart, [toFinal], caName));
    sAssign0.SetElse(TErrorTransition.Create(TOK_EqualityExpected));
@@ -1243,6 +1256,8 @@ finalization
    sHexF.Free;
    sString0.Free;
    sStringF.Free;
+   sString1.Free;
+   sStringF1.Free;
    sAssign0.Free;
    sGreaterF.Free;
    sSmallerF.Free;

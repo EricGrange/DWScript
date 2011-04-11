@@ -1,0 +1,10 @@
+Hello
+Hello
+Hello'World
+Hello"World
+Hello"World
+Hello'World
+A apos A quote
+ apos A quote A
+A apos A quote
+ apos A quote A
