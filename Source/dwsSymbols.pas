@@ -627,7 +627,8 @@ type
 
    TMethodKind = ( mkProcedure, mkFunction, mkConstructor, mkDestructor, mkMethod,
                    mkClassProcedure, mkClassFunction, mkClassMethod );
-   TMethodAttribute = (maVirtual, maOverride, maReintroduce, maAbstract, maOverlap, maClassMethod);
+   TMethodAttribute = (maVirtual, maOverride, maReintroduce, maAbstract,
+                       maOverlap, maClassMethod, maFinal);
    TMethodAttributes = set of TMethodAttribute;
 
    // A method of a script class: TMyClass = class procedure X(param: String); end;
@@ -651,6 +652,7 @@ type
          procedure SetIsVirtual(const val : Boolean);
          function GetIsAbstract : Boolean; inline;
          procedure SetIsAbstract(const val : Boolean); inline;
+         function GetIsFinal : Boolean; inline;
 
          function GetDescription : String; override;
 
@@ -665,6 +667,7 @@ type
 
          procedure SetOverride(meth: TMethodSymbol);
          procedure SetOverlap(meth: TMethodSymbol);
+         procedure SetFinal;
          procedure InitData(const Data: TData; Offset: Integer); override;
          function IsCompatible(typSym: TSymbol): Boolean; override;
          function QualifiedName : String; override;
@@ -676,6 +679,7 @@ type
          property IsAbstract : Boolean read GetIsAbstract write SetIsAbstract;
          property IsVirtual : Boolean read GetIsVirtual write SetIsVirtual;
          property IsOverride : Boolean read GetIsOverride;
+         property IsFinal : Boolean read GetIsFinal;
          property IsOverlap : Boolean read GetIsOverlap;
          property IsClassMethod: Boolean read GetIsClassMethod;
          property ParentMeth: TMethodSymbol read FParentMeth;
@@ -2297,6 +2301,20 @@ begin
    if val then
       Include(FAttributes, maAbstract)
    else Exclude(FAttributes, maAbstract);
+end;
+
+// GetIsFinal
+//
+function TMethodSymbol.GetIsFinal : Boolean;
+begin
+   Result:=maFinal in FAttributes;
+end;
+
+// SetFinal
+//
+procedure TMethodSymbol.SetFinal;
+begin
+   Include(FAttributes, maFinal);
 end;
 
 // GetDescription

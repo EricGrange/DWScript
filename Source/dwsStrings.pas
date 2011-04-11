@@ -114,6 +114,8 @@ const
   CPE_CantOverrideNotInherited = 'No method* "%s" found in class: "override" not applicable';
   CPE_CantOverrideNotVirtual = 'Inherited method "%s" isn''t virtual. "override" not applicable';
   CPE_CantOverrideWrongParameterList = 'Parameter list doesn''t match the inherited method';
+  CPE_CantFinalWithoutOverride = 'Can''t mark "final" without overriding';
+  CPE_CantOverrideFinal = 'Method "%s" marked as final. "override" not applicable';
   CPE_CantReintroduce = 'Method "%s" isn''t overlapping a virtual method';
   CPE_ReintroduceWarning = 'Method "%s" overlaps a virtual method';
   CPE_FieldRedefined = 'There is already a field with name "%s"';

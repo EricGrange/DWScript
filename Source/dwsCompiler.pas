@@ -1437,7 +1437,7 @@ function TdwsCompiler.ReadMethodDecl(classSym: TClassSymbol; funcKind: TFuncKind
 var
    name: string;
    meth: TSymbol;
-   isReintroduced: Boolean;
+   isReintroduced : Boolean;
    methPos: TScriptPos;
    qualifier : TTokenType;
 begin
@@ -1488,6 +1488,8 @@ begin
                else begin
                   if not ParamsCheck(TMethodSymbol(Result), TMethodSymbol(meth)) then
                      FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongParameterList);
+                  if TMethodSymbol(meth).IsFinal then
+                     FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CantOverrideFinal, [name]);
                   TMethodSymbol(Result).SetOverride(TMethodSymbol(meth));
                   isReintroduced := False;
                end;
@@ -1502,6 +1504,12 @@ begin
             end;
          end;
 
+         ReadSemiColon;
+      end;
+      if FTok.TestDelete(ttFINAL) then begin
+         if not Result.IsOverride then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_CantFinalWithoutOverride)
+         else TMethodSymbol(Result).SetFinal;
          ReadSemiColon;
       end;
       ReadDeprecated(Result);
