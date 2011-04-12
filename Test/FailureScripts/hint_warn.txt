@@ -1,0 +1,5 @@
+Syntax Error: String expected [line: 1, column: 8]
+Syntax Error: String expected [line: 2, column: 10]
+Syntax Error: ON/OFF expected [line: 4, column: 8]
+Syntax Error: ON/OFF expected [line: 5, column: 11]
+Syntax Error: String expected [line: 7, column: 8]

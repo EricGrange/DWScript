@@ -28,7 +28,8 @@ uses
   dwsMagicExprs, dwsRelExprs;
 
 type
-   TCompilerOption = (coOptimize, coSymbolDictionary, coContextMap, coAssertions);
+   TCompilerOption = (coOptimize, coSymbolDictionary, coContextMap, coAssertions,
+                      coHintsDisabled, coWarningsDisabled  );
    TCompilerOptions = set of TCompilerOption;
 
 const
@@ -128,7 +129,8 @@ type
                          siFilterLong, siFilterShort,
                          siDefine, siUndef,
                          siIfDef, siIfNDef, siIf, siEndIf, siElse,
-                         siHint, siWarning, siError, siFatal );
+                         siHint, siHints, siWarning, siWarnings,
+                         siError, siFatal );
 
    TLoopExitable = (leNotExitable, leBreak, leExit);
 
@@ -429,7 +431,7 @@ const
       SWI_INCLUDE_LONG, SWI_INCLUDE_SHORT, SWI_FILTER_LONG, SWI_FILTER_SHORT,
       SWI_DEFINE, SWI_UNDEF,
       SWI_IFDEF, SWI_IFNDEF, SWI_IF, SWI_ENDIF, SWI_ELSE,
-      SWI_HINT, SWI_WARNING, SWI_ERROR, SWI_FATAL
+      SWI_HINT, SWI_HINTS, SWI_WARNING, SWI_WARNINGS, SWI_ERROR, SWI_FATAL
       );
    cAssignmentTokens : TTokenTypes = [ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN,
                                       ttTIMES_ASSIGN, ttDIVIDE_ASSIGN];
@@ -712,6 +714,9 @@ begin
    // Create the TdwsProgram
    FMainProg:=CreateProgram(Conf.SystemTable, Conf.ResultType, stackParams);
    FMsgs:=FMainProg.CompileMsgs;
+   FMsgs.HintsDisabled:=(coHintsDisabled in Conf.CompilerOptions);
+   FMsgs.WarningsDisabled:=(coWarningsDisabled in Conf.CompilerOptions);
+
    FMainProg.Compiler:=Self;
    FMainProg.TimeoutMilliseconds:=Conf.TimeoutMilliseconds;
    FMainProg.RuntimeFileSystem:=Conf.RuntimeFileSystem;
@@ -4957,7 +4962,9 @@ begin
       siHint, siWarning, siError, siFatal : begin
 
          if not FTok.Test(ttStrVal) then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected)
+            if switch<>siFatal then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected)
+            else FMsgs.AddCompilerStop(FTok.HotPos, CPE_StringExpected)
          else begin
             case switch of
                siHint    : FMsgs.AddCompilerHint(switchPos, FTok.GetToken.FString);
@@ -4968,7 +4975,17 @@ begin
             FTok.KillToken;
          end;
 
-      end
+      end;
+      siHints, siWarnings : begin
+         if not FTok.TestDeleteNamePos(name, condPos) then
+            name:='';
+         conditionalTrue:=SameText(name, 'ON');
+         if conditionalTrue or SameText(name, 'OFF') then begin
+            if switch=siHints then
+               FMsgs.HintsDisabled:=not conditionalTrue
+            else FMsgs.WarningsDisabled:=not conditionalTrue;
+         end else FMsgs.AddCompilerError(FTok.HotPos, CPE_OnOffExpected);
+      end;
    else
       FMsgs.AddCompilerStopFmt(switchPos, CPE_CompilerSwitchUnknown, [Name]);
    end;

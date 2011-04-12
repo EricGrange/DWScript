@@ -152,6 +152,10 @@ type
    // TdwsCompileMessageList
    //
    TdwsCompileMessageList = class (TdwsMessageList)
+      private
+         FHintsDisabled : Boolean;
+         FWarningsDisabled : Boolean;
+
       public
          procedure AddCompilerInfo(const Text: String);
 
@@ -170,6 +174,9 @@ type
          procedure AddCompilerStop(const Pos: TScriptPos; const Text: String); overload;
          procedure AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const; messageClass : TScriptMessageClass); overload;
          procedure AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : String; const args: array of const); overload;
+
+         property HintsDisabled : Boolean read FHintsDisabled write FHintsDisabled;
+         property WarningsDisabled : Boolean read FWarningsDisabled write FWarningsDisabled;
    end;
 
    // The script initialization failed because a class needs one or more methods
@@ -534,7 +541,8 @@ end;
 //
 procedure TdwsCompileMessageList.AddCompilerHint(const Pos: TScriptPos; const Text: String);
 begin
-   AddMsg(THintMessage.Create(Self, Text, Pos));
+   if not HintsDisabled then
+      AddMsg(THintMessage.Create(Self, Text, Pos));
 end;
 
 // AddCompilerHintFmt
@@ -548,7 +556,8 @@ end;
 //
 procedure TdwsCompileMessageList.AddCompilerWarning(const Pos: TScriptPos; const Text: String);
 begin
-   AddMsg(TWarningMessage.Create(Self, Text, Pos));
+   if not WarningsDisabled then
+      AddMsg(TWarningMessage.Create(Self, Text, Pos));
 end;
 
 // AddCompilerWarningFmt

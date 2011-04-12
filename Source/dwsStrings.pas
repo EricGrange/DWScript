@@ -63,7 +63,9 @@ const
   SWI_ENDIF = 'ENDIF';
   SWI_ELSE = 'ELSE';
   SWI_HINT = 'HINT';
+  SWI_HINTS = 'HINTS';
   SWI_WARNING = 'WARNING';
+  SWI_WARNINGS = 'WARNINGS';
   SWI_ERROR = 'ERROR';
   SWI_FATAL = 'FATAL';
 
@@ -104,6 +106,7 @@ const
   CPE_EndExpected = 'END expected';
   CPE_AssignExpected = '":=" expected';
   CPE_ArrayBracketOrClassExpected = '"[" or class expected';
+  CPE_OnOffExpected = 'ON/OFF expected';
 
   // ReadName
   CPE_UnknownName = 'Unknown name "%s"';

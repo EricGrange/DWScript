@@ -1,0 +1,6 @@
+Errors >>>>
+Hint: Hello [line: 1, column: 3]
+Hint: World [line: 5, column: 3]
+Hint: ByeBye [line: 15, column: 3]
+Warning: World [line: 20, column: 3]
+Result >>>>
