@@ -1421,22 +1421,27 @@ end;
 function TdwsCompiler.ReadMethodDecl(classSym: TClassSymbol; funcKind: TFuncKind;
    aVisibility : TClassVisibility; isClassMethod: Boolean): TMethodSymbol;
 
-   function ParamsCheck(newMeth, oldMeth: TMethodSymbol): Boolean;
+   function OverrideParamsCheck(newMeth, oldMeth : TMethodSymbol) : Boolean;
    var
-      x: Integer;
+      i : Integer;
+      oldParam, newParam : TSymbol;
    begin
-      Result := False;
-      if newMeth.Params.Count = oldMeth.Params.Count then begin
-         for x := 0 to newMeth.Params.Count - 1 do
-            if not newMeth.Params[x].Typ.IsCompatible(oldMeth.Params[x].Typ) then
-               exit;
-         Result := True;
+      if newMeth.Params.Count<>oldMeth.Params.Count then
+         Exit(False);
+      for i:=0 to newMeth.Params.Count-1 do begin
+         newParam:=newMeth.Params[i];
+         oldParam:=oldMeth.Params[i];
+         if    (newParam.Typ<>oldParam.Typ)
+            or (not SameText(newParam.Name, oldParam.Name)) then
+            Exit(False);
       end;
+      Result:=True;
    end;
 
 var
-   name: string;
-   meth: TSymbol;
+   name : String;
+   sym : TSymbol;
+   meth : TMethodSymbol;
    isReintroduced : Boolean;
    methPos: TScriptPos;
    qualifier : TTokenType;
@@ -1446,22 +1451,26 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
    // Check if name is already used
-   meth := classSym.Members.FindSymbolFromClass(name, classSym);
-   if meth<>nil then begin
-      if meth is TMethodSymbol then begin
-         if TMethodSymbol(meth).ClassSymbol = classSym then
+   sym := classSym.Members.FindSymbolFromClass(name, classSym);
+   if sym<>nil then begin
+      if sym is TMethodSymbol then begin
+         meth:=TMethodSymbol(sym);
+         if meth.ClassSymbol = classSym then
          MemberSymbolWithNameAlreadyExists(meth);
-      end else MemberSymbolWithNameAlreadyExists(meth);
-   end;
+      end else begin
+         MemberSymbolWithNameAlreadyExists(sym);
+         meth:=nil;
+      end;
+   end else meth:=nil;
 
    // Read declaration of method implementation
    Result := TSourceMethodSymbol.Create(name, funcKind, classSym, aVisibility, isClassMethod);
    TSourceMethodSymbol(Result).DeclarationPos:=methPos;
 
    try
-      if meth is TMethodSymbol then begin
-         Result.SetOverlap(TMethodSymbol(meth));
-         isReintroduced := TMethodSymbol(meth).IsVirtual;
+      if meth<>nil then begin
+         Result.SetOverlap(meth);
+         isReintroduced := meth.IsVirtual;
       end else isReintroduced := False;
 
       ReadParams(Result);
@@ -1473,24 +1482,32 @@ begin
       if qualifier<>ttNone then begin
          case qualifier of
             ttVIRTUAL : begin
-               TMethodSymbol(Result).IsVirtual := True;
+               Result.IsVirtual := True;
                if FTok.Test(ttSEMI) and FTok.NextTest(ttABSTRACT) then begin
                   FTok.KillToken;
                   FTok.TestDelete(ttABSTRACT);
-                  TMethodSymbol(Result).IsAbstract := True;
+                  Result.IsAbstract := True;
                end;
             end;
             ttOVERRIDE : begin
-               if not Assigned(meth) or not (meth is TMethodSymbol) then
+               if meth=nil then
                   FMsgs.AddCompilerErrorFmt(methPos, CPE_CantOverrideNotInherited, [name])
-               else if not TMethodSymbol(meth).IsVirtual then
+               else if not meth.IsVirtual then
                   FMsgs.AddCompilerErrorFmt(methPos, CPE_CantOverrideNotVirtual, [name])
                else begin
-                  if not ParamsCheck(TMethodSymbol(Result), TMethodSymbol(meth)) then
-                     FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongParameterList);
-                  if TMethodSymbol(meth).IsFinal then
+                  if Result.Kind<>meth.Kind then
+                     FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CantOverrideWrongFuncKind,
+                                               [cFuncKindToString[meth.Kind],
+                                                cFuncKindToString[Result.Kind]])
+                  else if Result.IsClassMethod<>meth.IsClassMethod then
+                     FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongMethodType)
+                  else if (Result.Typ<>meth.Typ) then
+                     FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongResultType)
+                  else if not OverrideParamsCheck(Result, meth) then
+                     FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongParameterList)
+                  else if meth.IsFinal then
                      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CantOverrideFinal, [name]);
-                  TMethodSymbol(Result).SetOverride(TMethodSymbol(meth));
+                  Result.SetOverride(meth);
                   isReintroduced := False;
                end;
             end;
@@ -1506,12 +1523,14 @@ begin
 
          ReadSemiColon;
       end;
+
       if FTok.TestDelete(ttFINAL) then begin
          if not Result.IsOverride then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_CantFinalWithoutOverride)
-         else TMethodSymbol(Result).SetFinal;
+         else Result.SetIsFinal;
          ReadSemiColon;
       end;
+
       ReadDeprecated(Result);
 
       if isReintroduced then

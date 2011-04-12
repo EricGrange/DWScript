@@ -667,7 +667,7 @@ type
 
          procedure SetOverride(meth: TMethodSymbol);
          procedure SetOverlap(meth: TMethodSymbol);
-         procedure SetFinal;
+         procedure SetIsFinal;
          procedure InitData(const Data: TData; Offset: Integer); override;
          function IsCompatible(typSym: TSymbol): Boolean; override;
          function QualifiedName : String; override;
@@ -1287,6 +1287,10 @@ type
    EScriptAssertionFailed = class(EScriptException)
    end;
 
+const
+   cFuncKindToString : array [Low(TFuncKind)..High(TFuncKind)] of String = (
+      'function', 'procedure', 'constructor', 'destructor', 'method' );
+
 function IsBaseTypeCompatible(AType, BType: TBaseTypeID): Boolean;
 
 // ------------------------------------------------------------------
@@ -1298,10 +1302,6 @@ implementation
 // ------------------------------------------------------------------
 
 uses dwsExprs;
-
-const
-   cFuncKindToString : array [Low(TFuncKind)..High(TFuncKind)] of String = (
-      'function', 'procedure', 'constructor', 'destructor', 'method' );
 
 // ------------------
 // ------------------ TdwsExprLocation ------------------
@@ -2310,9 +2310,9 @@ begin
    Result:=maFinal in FAttributes;
 end;
 
-// SetFinal
+// SetIsFinal
 //
-procedure TMethodSymbol.SetFinal;
+procedure TMethodSymbol.SetIsFinal;
 begin
    Include(FAttributes, maFinal);
 end;
