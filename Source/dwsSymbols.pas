@@ -952,7 +952,7 @@ type
 
    TObjectDestroyEvent = procedure (ExternalObject: TObject) of object;
 
-   TClassSymbolFlag = (csfAbstract, csfExplicitAbstract, csfSealed);
+   TClassSymbolFlag = (csfAbstract, csfExplicitAbstract, csfSealed, csfStatic);
    TClassSymbolFlags = set of TClassSymbolFlag;
 
    // type X = class ... end;
@@ -978,6 +978,8 @@ type
          function GetIsAbstract : Boolean; inline;
          function GetIsSealed : Boolean; inline;
          procedure SetIsSealed(const val : Boolean); inline;
+         function GetIsStatic : Boolean; inline;
+         procedure SetIsStatic(const val : Boolean); inline;
 
          function AllocateVMTindex : Integer;
 
@@ -1014,6 +1016,7 @@ type
          property IsExplicitAbstract : Boolean read GetIsExplicitAbstract write SetIsExplicitAbstract;
          property IsAbstract : Boolean read GetIsAbstract;
          property IsSealed : Boolean read GetIsSealed write SetIsSealed;
+         property IsStatic : Boolean read GetIsStatic write SetIsStatic;
          property Members : TMembersSymbolTable read FMembers;
          property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
          property Parent : TClassSymbol read FParent;
@@ -2691,6 +2694,8 @@ begin
    FParent:=ancestorClassSym;
 
    FVirtualMethodTable:=ancestorClassSym.FVirtualMethodTable;
+
+   IsStatic:=IsStatic or ancestorClassSym.IsStatic;
 end;
 
 function TClassSymbol.IsCompatible(typSym: TSymbol): Boolean;
@@ -2801,6 +2806,22 @@ begin
    if val then
       Include(FFlags, csfSealed)
    else Exclude(FFlags, csfSealed);
+end;
+
+// GetIsStatic
+//
+function TClassSymbol.GetIsStatic : Boolean;
+begin
+   Result:=(csfStatic in FFlags);
+end;
+
+// SetIsStatic
+//
+procedure TClassSymbol.SetIsStatic(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, csfStatic)
+   else Exclude(FFlags, csfStatic);
 end;
 
 // AllocateVMTindex

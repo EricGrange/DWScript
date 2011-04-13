@@ -1791,8 +1791,15 @@ begin
    // Create the correct TExpr for a method symbol
    Result := nil;
 
-   if Expr.IsConstant and (Expr.Typ is TClassOfSymbol) and TClassOfSymbol(Expr.Typ).TypClassSymbol.IsAbstract then
-      prog.CompileMsgs.AddCompilerError(Pos, RTE_InstanceOfAbstractClass);
+   if (Expr.Typ is TClassOfSymbol) then begin
+      if Expr.IsConstant and TClassOfSymbol(Expr.Typ).TypClassSymbol.IsAbstract then begin
+         if meth.Kind=fkConstructor then
+            prog.CompileMsgs.AddCompilerError(Pos, RTE_InstanceOfAbstractClass)
+         else prog.CompileMsgs.AddCompilerError(Pos, CPE_AbstractClassUsage);
+      end;
+   end;
+   if (not meth.IsClassMethod) and meth.ClassSymbol.IsStatic then
+      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ClassIsStatic, [meth.ClassSymbol.Name]);
 
    // Return the right expression
    case meth.Kind of

@@ -1152,6 +1152,9 @@ begin
 
       end;
 
+      if (typ is TClassSymbol) and TClassSymbol(typ).IsStatic then
+         FMsgs.AddCompilerErrorFmt(pos, CPE_ClassIsStatic, [TClassSymbol(typ).Name]);
+
       for x := 0 to names.Count - 1 do begin
          CheckName(names[x]);
          sym:=TDataSymbol.Create(names[x], typ);
@@ -1467,6 +1470,9 @@ begin
          meth:=nil;
       end;
    end else meth:=nil;
+
+   if classSym.IsStatic and (not IsClassMethod) then
+      FMsgs.AddCompilerErrorFmt(methPos, CPE_ClassIsStatic, [classSym.Name]);
 
    // Read declaration of method implementation
    Result := TSourceMethodSymbol.Create(name, funcKind, classSym, aVisibility, isClassMethod);
@@ -3501,6 +3507,7 @@ var
    sym, typ : TSymbol;
    propSym : TPropertySymbol;
    constSym : TClassConstSymbol;
+   ancestorTyp : TClassSymbol;
    defProp : Boolean;
    isInSymbolTable: Boolean;
    visibility : TClassVisibility;
@@ -3536,6 +3543,8 @@ begin
       FProg.Table.AddSymbol(Result);   // auto-forward
    try
       try
+         if FTok.TestDelete(ttSTATIC) then
+            Result.IsStatic:=True;
          tt:=FTok.TestDeleteAny([ttABSTRACT, ttSEALED]);
          case tt of
             ttABSTRACT :
@@ -3546,6 +3555,7 @@ begin
 
          // inheritance
          if FTok.TestDelete(ttBLEFT) then begin
+
             if not FTok.TestName then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
@@ -3564,12 +3574,19 @@ begin
             if TClassSymbol(Typ).IsSealed then
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassIsSealed, [Typ.Name]);
 
-            Result.InheritFrom(TClassSymbol(Typ));
+            ancestorTyp:=TClassSymbol(typ);
 
             if not FTok.TestDelete(ttBRIGHT) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
 
-         end else Result.InheritFrom(FProg.TypObject);
+         end else ancestorTyp:=FProg.TypObject;
+
+         if     Result.IsStatic
+            and (ancestorTyp<>FProg.TypObject)
+            and (not ancestorTyp.IsStatic) then
+           FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassAncestorNotStatic, [ancestorTyp.Name]);
+
+         Result.InheritFrom(ancestorTyp);
 
          visibility:=cvPublished;
 

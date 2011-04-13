@@ -557,6 +557,7 @@ type
          FHelperObject : TObject;
          FIsSealed : Boolean;
          FIsAbstract : Boolean;
+         FIsStatic : Boolean;
 
       protected
          function GetDisplayName: string; override;
@@ -575,6 +576,7 @@ type
          property Ancestor: string read FAncestor write FAncestor;
          property IsSealed : Boolean read FIsSealed write FIsSealed;
          property IsAbstract : Boolean read FIsAbstract write FIsAbstract;
+         property IsStatic : Boolean read FIsStatic write FIsStatic;
          property Constructors: TdwsConstructors read FConstructors write FConstructors;
          property Fields: TdwsFields read FFields write FFields;
          property Methods: TdwsMethods read FMethods write FMethods;
@@ -2561,6 +2563,8 @@ begin
 
       if FAncestor = '' then
          FAncestor := SYS_TOBJECT;
+
+      classSym.IsStatic:=IsStatic;
 
       ancestorSym := TClassSymbol(GetUnit.GetSymbol(Table, FAncestor));
       if ancestorSym = nil then

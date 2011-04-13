@@ -133,6 +133,7 @@ const
   CPE_ImplInvalidClass = '"%s" is not a method of class "%s"';
   CPE_ImplAbstract = '"%s.%s" is declared abstract. No implementation allowed!';
   CPE_NonVirtualAbstract = 'abstract is only valid for virtual methods!';
+  CPE_AbstractClassUsage = 'Trying to use an abstract class!';
   CPE_ImplClassExpected = 'Declaration should start with CLASS!';
   CPE_ImplNotClassExpected = 'Declaration shouldn''t start with "class"!';
   CPE_InheritedOnlyInMethodsAllowed = 'Inherited only in methods allowed';
@@ -151,6 +152,8 @@ const
   CPE_ClassNotImplementedYet = 'Class "%s" not fully implemented.';
   CPE_ForwardNotImplemented = 'The function "%s" was forward declared but not implemented!';
   CPE_ClassIsSealed = 'Class "%s" is sealed, inheriting is not allowed!';
+  CPE_ClassIsStatic = 'Class "%s" is static, instantiation not allowed!';
+  CPE_ClassAncestorNotStatic = 'Class "%s" is not static, can''t inherit as static!';
   CPE_MethodOrPropertyExpected = 'Method or property declaration expected';
   CPE_OverloadableOperatorExpected = 'Overloadable operator expected';
   CPE_SingleParameterExpected = 'Single parameter expected';
