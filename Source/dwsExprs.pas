@@ -616,7 +616,7 @@ type
    // Base class of all typed expressions
    TTypedExpr = class(TProgramExpr)
       protected
-         FTyp : TSymbol;
+         FTyp : TTypeSymbol;
 
          function GetType : TSymbol; override;
          function GetBaseType : TTypeSymbol; override;
@@ -631,7 +631,7 @@ type
          procedure RaiseObjectNotInstantiated(exec : TdwsExecution);
          procedure RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
 
-         property Typ : TSymbol read FTyp write FTyp;
+         property Typ : TTypeSymbol read FTyp write FTyp;
    end;
 
    TTypedExprClass = class of TTypedExpr;
@@ -687,7 +687,7 @@ type
          function GetData(exec : TdwsExecution) : TData; virtual; abstract;
 
       public
-         constructor Create(Prog: TdwsProgram; Typ: TSymbol);
+         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol);
 
          procedure AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer); virtual;
          procedure AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr); virtual;
@@ -711,7 +711,7 @@ type
          FPos: TScriptPos;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TSymbol);
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TTypeSymbol);
 
          function ScriptPos : TScriptPos; override;
 
@@ -987,7 +987,7 @@ type
 
   TConnectorWriteExpr = class(TNoResultExpr)
   private
-    FTyp : TSymbol;
+    FTyp : TTypeSymbol;
     FBaseExpr: TTypedExpr;
     FValueExpr: TTypedExpr;
     FConnectorMember: IConnectorMember;
@@ -3182,7 +3182,7 @@ end;
 
 // Create
 //
-constructor TPosDataExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TSymbol);
+constructor TPosDataExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TTypeSymbol);
 begin
    inherited Create(Prog, Typ);
    FPos:=Pos;
@@ -3330,7 +3330,7 @@ end;
 // ------------------ TDataExpr ------------------
 // ------------------
 
-constructor TDataExpr.Create(Prog: TdwsProgram; Typ: TSymbol);
+constructor TDataExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol);
 begin
    inherited Create(Prog);
    FTyp := Typ;
@@ -3842,7 +3842,7 @@ end;
 //
 procedure TPushOperator.ExecuteInitResult(exec : TdwsExecution);
 begin
-   TSymbol(FArgExpr).InitData(exec.Stack.Data, exec.Stack.StackPointer+FStackAddr);
+   TTypeSymbol(FArgExpr).InitData(exec.Stack.Data, exec.Stack.StackPointer+FStackAddr);
 end;
 
 // ExecuteLazy
@@ -4842,9 +4842,9 @@ end;
 function TProgramInfo.GetTemp(const DataType: string): IInfo;
 var
   data: TData;
-  typSym: TSymbol;
+  typSym: TTypeSymbol;
 begin
-  typSym := FTable.FindSymbol(DataType, cvMagic);
+  typSym := FTable.FindTypeSymbol(DataType, cvMagic);
 
   if not Assigned(typSym) then
     raise Exception.CreateFmt(RTE_DatatypeNotFound, [DataType]);
@@ -5761,7 +5761,7 @@ begin
   inherited Create(ParamSym.Name, ParamSym.Typ);
   FIsVarParam := ParamSym is TVarParamSymbol;
   SetLength(FData, Size);
-  ParamSym.InitData(FData, 0);
+  ParamSym.Typ.InitData(FData, 0);
 end;
 
 { TInfoFunc }
@@ -6202,7 +6202,7 @@ function TConnectorCallExpr.AssignConnectorSym(ConnectorType: IConnectorType):
   Boolean;
 var
   x: Integer;
-  typSym: TSymbol;
+  typSym: TTypeSymbol;
   arg : TTypedExpr;
 begin
   // Prepare the parameter information array to query the connector symbol

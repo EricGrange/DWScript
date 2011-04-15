@@ -883,7 +883,7 @@ type
   TReadVarFunc = class(TAnonymousFunction)
   private
     FData: TData;
-    FTyp: TSymbol;
+    FTyp: TTypeSymbol;
   public
     constructor Create(FuncSym: TFuncSymbol);
     procedure Execute(info : TProgramInfo); override;
@@ -1699,7 +1699,7 @@ end;
 procedure TdwsUnit.ExposeInstanceToUnit(const AName, AClassType: string;
   AInstance: TObject);
 var
-  typSym: TSymbol;
+  typSym: TTypeSymbol;
   instFunc: TDynamicInstantiateFunc;
   externalVar: TExternalVarSymbol;
   funcSym: TFuncSymbol;
@@ -1710,7 +1710,7 @@ begin
   if Assigned(Table.FindLocal(AName)) then
     raise Exception.CreateFmt(UNT_NameAlreadyExists, [AName]);
 
-  typSym := Table.FindLocal(AClassType);
+  typSym := Table.FindTypeLocal(AClassType);
   // Get the type symbol of this variable
   if not (typSym is TTypeSymbol) then
     raise Exception.CreateFmt(UNT_DatatypeUnknown, [Name]);
@@ -3334,7 +3334,7 @@ end;
 function TdwsCustomInstance.DoGenerate(Table: TSymbolTable;
   ParentSym: TSymbol): TSymbol;
 var
-  typSym: TSymbol;
+  typSym: TTypeSymbol;
   instFunc: TInstantiateFunc;
   funcSym: TFuncSymbol;
 begin

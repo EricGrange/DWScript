@@ -1096,7 +1096,7 @@ var
    x : Integer;
    names : TStringList;
    sym : TDataSymbol;
-   typ : TSymbol;
+   typ : TTypeSymbol;
    pos : TScriptPos;
    posArray : TScriptPosArray;
    initData : TData;
@@ -1194,7 +1194,7 @@ begin
                else begin
                   initData := nil;
                   SetLength(initData, sym.Typ.Size);
-                  TDataSymbol(sym).initData(initData, 0);
+                  TDataSymbol(sym).Typ.InitData(initData, 0);
 
                   constExpr:=TConstExpr.CreateTyped(FProg, sym.Typ, initData);
                   assignExpr:=TAssignConstDataToVarExpr.Create(FProg, pos, varExpr, constExpr);
@@ -1217,7 +1217,7 @@ function TdwsCompiler.ReadConstDecl(constSymbolClass : TConstSymbolClass) : TCon
 var
    name : String;
    expr: TTypedExpr;
-   typ : TSymbol;
+   typ : TTypeSymbol;
    constPos : TScriptPos;
    sym : TSymbol;
 begin
@@ -1256,9 +1256,9 @@ begin
          end;
 
          if typ is TArraySymbol then begin
-            sym:=TStaticArraySymbol.Create('', typ, 0, TArraySymbol(typ).typ.Size-1);
-            FProg.Table.AddSymbol(sym);
-            Result:=constSymbolClass.Create(name, sym, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
+            typ:=TStaticArraySymbol.Create('', typ, 0, TArraySymbol(typ).typ.Size-1);
+            FProg.Table.AddSymbol(typ);
+            Result:=constSymbolClass.Create(name, typ, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
          end else if typ.Size>1 then
             Result:=constSymbolClass.Create(name, typ, TConstExpr(expr).Data[FExec], TConstExpr(expr).Addr[FExec])
          else Result:=constSymbolClass.Create(name, typ, expr.Eval(FExec));
@@ -3331,7 +3331,7 @@ function TdwsCompiler.ReadArray(const TypeName: String): TTypeSymbol;
 var
    x: Integer;
    min, max: TTypedExprList;
-   typ: TSymbol;
+   typ: TTypeSymbol;
    hotPos : TScriptPos;
 begin
    min := TTypedExprList.Create;
@@ -3696,7 +3696,8 @@ end;
 procedure TdwsCompiler.ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TClassVisibility);
 var
    i : Integer;
-   sym, typ : TSymbol;
+   sym : TSymbol;
+   typ : TTypeSymbol;
    fieldSym : TFieldSymbol;
    names : TStringList;
    posArray : TScriptPosArray;    // positions of items pulled from ReadNameList call
@@ -3826,11 +3827,12 @@ var
    x : Integer;
    name : String;
    sym : TSymbol;
+   typ : TTypeSymbol;
    arrayIndices : TSymbolTable;
    propPos : TScriptPos;
    accessPos : TScriptPos;  // Position where either a Read or Write symbol is found
    indexExpr : TTypedExpr;
-   indexTyp : TSymbol;
+   indexTyp : TTypeSymbol;
 begin
    // Read property name
    if not FTok.TestDeleteNamePos(name, propPos) then
@@ -3853,8 +3855,8 @@ begin
       if not FTok.TestDelete(ttCOLON) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
 
-      sym := ReadType('');
-      Result := TPropertySymbol.Create(name, sym, aVisibility);
+      typ := ReadType('');
+      Result := TPropertySymbol.Create(name, typ, aVisibility);
       try
          if coSymbolDictionary in FCompilerOptions then
             FSymbolDictionary.Add(Result, propPos, [suDeclaration]);
@@ -3952,7 +3954,7 @@ var
    x : Integer;
    names : TStringList;
    member : TMemberSymbol;
-   typ : TSymbol;
+   typ : TTypeSymbol;
    posArray : TScriptPosArray;
 begin
    Result := TRecordSymbol.Create(typeName);
@@ -4075,7 +4077,7 @@ var
    tt : TTokenType;
    doExpr : TExceptDoExpr;
    varName : String;
-   classSym : TSymbol;
+   classSym : TTypeSymbol;
 begin
    Result:=TExceptExpr.Create(FProg, TryExpr.ScriptPos);
    try
@@ -4656,7 +4658,7 @@ procedure TdwsCompiler.ReadArrayParams(ArrayIndices: TSymbolTable);
 var
   x: Integer;
   names: TStringList;
-  typSym: TSymbol;
+  typSym: TTypeSymbol;
   isVarParam, isConstParam: Boolean;
 begin
   if FTok.TestDelete(ttALEFT) then
@@ -4711,7 +4713,7 @@ procedure TdwsCompiler.ReadParams(Proc: TFuncSymbol; ParamsToDictionary: Boolean
 var
    i : Integer;
    names : TStringList;
-   typ : TSymbol;
+   typ : TTypeSymbol;
    lazyParam, varParam, constParam : Boolean;
    posArray : TScriptPosArray;
    sym : TParamSymbol;

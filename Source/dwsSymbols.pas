@@ -334,16 +334,15 @@ type
          FName : String;
 
       protected
-         FTyp : TSymbol;
+         FTyp : TTypeSymbol;
          FSize : Integer;
 
          function GetCaption : String; virtual;
          function GetDescription : String; virtual;
 
       public
-         constructor Create(const aName : String; aType : TSymbol);
+         constructor Create(const aName : String; aType : TTypeSymbol);
 
-         procedure InitData(const data : TData; offset : Integer); virtual;
          procedure Initialize(const msgs : TdwsCompileMessageList); virtual;
          function  BaseType : TTypeSymbol; virtual;
          procedure SetName(const newName : String);
@@ -369,7 +368,7 @@ type
          property Caption : String read GetCaption;
          property Description : String read GetDescription;
          property Name : String read FName;
-         property Typ : TSymbol read FTyp write FTyp;
+         property Typ : TTypeSymbol read FTyp write FTyp;
          property Size : Integer read FSize;
    end;
 
@@ -390,8 +389,8 @@ type
          function GetDescription : String; override;
 
       public
-         constructor Create(const name : string; typ : TSymbol; const value : Variant); overload;
-         constructor Create(const name : string; typ : TSymbol; const data : TData; addr: Integer); overload;
+         constructor Create(const name : string; typ : TTypeSymbol; const value : Variant); overload;
+         constructor Create(const name : string; typ : TTypeSymbol; const data : TData; addr: Integer); overload;
 
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          property Data : TData read FData;
@@ -405,7 +404,6 @@ type
          FLevel : SmallInt;
          function GetDescription : String; override;
       public
-         procedure InitData(const Data: TData; Offset: Integer); override;
          property Level : SmallInt read FLevel write FLevel;
          property StackAddr: Integer read FStackAddr write FStackAddr;
    end;
@@ -431,7 +429,7 @@ type
    TByRefParamSymbol = class(TParamSymbol)
    protected
    public
-     constructor Create(const Name: string; Typ: TSymbol);
+     constructor Create(const Name: string; Typ: TTypeSymbol);
    end;
 
    // lazy parameter: procedure P(lazy x: Integer)
@@ -471,8 +469,10 @@ type
 
    // Base class for all types
    TTypeSymbol = class(TSymbol)
-     function BaseType: TTypeSymbol; override;
-     function IsCompatible(typSym: TSymbol): Boolean; override;
+      public
+         procedure InitData(const data : TData; offset : Integer); virtual; abstract;
+         function BaseType: TTypeSymbol; override;
+         function IsCompatible(typSym: TSymbol): Boolean; override;
    end;
 
    TFuncKind = (fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod);
@@ -551,7 +551,7 @@ type
          FFlags : TFuncSymbolFlags;
          FKind : TFuncKind;
 
-         procedure SetType(const Value: TSymbol);
+         procedure SetType(const Value: TTypeSymbol);
          function GetCaption : String; override;
          function GetIsForwarded : Boolean;
          function GetDescription : String; override;
@@ -594,7 +594,7 @@ type
          property Params : TParamsSymbolTable read FParams;
          property ParamSize : Integer read GetParamSize;
          property Result : TDataSymbol read FResult;
-         property Typ : TSymbol read FTyp write SetType;
+         property Typ : TTypeSymbol read FTyp write SetType;
          property Conditions : TConditionsSymbolTable read FConditions;
          property SourcePosition : TScriptPos read GetSourcePosition write SetSourcePosition;
    end;
@@ -762,10 +762,11 @@ type
    IConnectorType = interface
      ['{8D534D1D-4C6B-11D5-8DCB-0000216D9E86}']
      function ConnectorCaption: string;
-     function HasMethod(const MethodName: string; const Params: TConnectorParamArray; var TypSym:
-       TSymbol): IConnectorCall;
-     function HasMember(const MemberName: string; var TypSym: TSymbol; IsWrite: Boolean): IConnectorMember;
-     function HasIndex(const PropName: string; const Params: TConnectorParamArray; var TypSym: TSymbol; IsWrite: Boolean): IConnectorCall;
+     function HasMethod(const MethodName: string; const Params: TConnectorParamArray;
+                        var TypSym: TTypeSymbol): IConnectorCall;
+     function HasMember(const MemberName: string; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
+     function HasIndex(const PropName: string; const Params: TConnectorParamArray;
+                       var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
    end;
 
    TConnectorSymbol = class(TBaseSymbol)
@@ -788,7 +789,7 @@ type
    protected
      function GetCaption : String; override;
    public
-     constructor Create(const Name: string; Typ: TSymbol);
+     constructor Create(const Name: string; Typ: TTypeSymbol);
      procedure InitData(const Data: TData; Offset: Integer); override;
      function IsCompatible(TypSym: TSymbol): Boolean; override;
    end;
@@ -802,7 +803,7 @@ type
    protected
      function GetCaption : String; override;
    public
-     constructor Create(const Name: string; Typ: TSymbol; LowBound, HighBound: Integer);
+     constructor Create(const Name: string; Typ: TTypeSymbol; LowBound, HighBound: Integer);
      procedure InitData(const Data: TData; Offset: Integer); override;
      function IsCompatible(TypSym: TSymbol): Boolean; override;
      function IsOfType(typSym : TSymbol) : Boolean; override;
@@ -814,7 +815,7 @@ type
 
    // static array whose bounds are contextual
    TOpenArraySymbol = class (TStaticArraySymbol)
-     constructor Create(const Name: string; Typ: TSymbol);
+     constructor Create(const Name: string; Typ: TTypeSymbol);
      function IsCompatible(TypSym: TSymbol): Boolean; override;
    end;
 
@@ -824,7 +825,6 @@ type
          FRecordSymbol: TRecordSymbol;
          FOffset: Integer;
       public
-         procedure InitData(const Data: TData; Offset: Integer); override;
          function QualifiedName : String; override;
 
          property Offset: Integer read FOffset write FOffset;
@@ -855,7 +855,7 @@ type
          FOffset: Integer;
 
       public
-         constructor Create(const Name: string; Typ: TSymbol; aVisibility : TClassVisibility);
+         constructor Create(const Name: string; Typ: TTypeSymbol; aVisibility : TClassVisibility);
 
          function QualifiedName : String; override;
          function IsVisibleFor(const aVisibility : TClassVisibility) : Boolean; override;
@@ -886,7 +886,7 @@ type
          FReadSym : TSymbol;
          FWriteSym : TSymbol;
          FArrayIndices : TSymbolTable;
-         FIndexSym : TSymbol;
+         FIndexSym : TTypeSymbol;
          FIndexValue: TData;
          FVisibility : TClassVisibility;
 
@@ -898,11 +898,11 @@ type
          procedure AddParam(Param : TParamSymbol);
 
       public
-         constructor Create(const Name: string; Typ: TSymbol; aVisibility : TClassVisibility);
+         constructor Create(const Name: string; Typ: TTypeSymbol; aVisibility : TClassVisibility);
          destructor Destroy; override;
 
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
-         procedure SetIndex(const Data: TData; Addr: Integer; Sym: TSymbol);
+         procedure SetIndex(const Data: TData; Addr: Integer; Sym: TTypeSymbol);
          function GetArrayIndicesDescription: string;
          function QualifiedName : String; override;
          function IsVisibleFor(const aVisibility : TClassVisibility) : Boolean; override;
@@ -914,7 +914,7 @@ type
          property WriteSym : TSymbol read FWriteSym write FWriteSym;
          property IsDefault : Boolean read GetIsDefault;
          property IndexValue : TData read FIndexValue;
-         property IndexSym : TSymbol read FIndexSym;
+         property IndexSym : TTypeSymbol read FIndexSym;
    end;
 
    // class operator X (params) uses method;
@@ -1029,20 +1029,25 @@ type
      function GetCaption : String; override;
    public
      constructor Create;
+     procedure InitData(const data : TData; offset : Integer); override;
      function IsCompatible(typSym: TSymbol): Boolean; override;
    end;
 
    // Invisible symbol for units (e. g. for TdwsUnit)
    TUnitSymbol = class sealed (TNameSymbol)
-   private
-     FIsTableOwner: Boolean;
-     FTable: TSymbolTable;
-     FInitialized: Boolean;
-   public
-     constructor Create(const Name: string; Table: TSymbolTable; IsTableOwner: Boolean = False);
-     destructor Destroy; override;
-     procedure Initialize(const msgs : TdwsCompileMessageList); override;
-     property Table: TSymbolTable read FTable write FTable;
+      private
+         FIsTableOwner: Boolean;
+         FTable: TSymbolTable;
+         FInitialized: Boolean;
+
+      public
+         constructor Create(const Name: string; Table: TSymbolTable; IsTableOwner: Boolean = False);
+         destructor Destroy; override;
+
+         procedure InitData(const data : TData; offset : Integer); override;
+         procedure Initialize(const msgs : TdwsCompileMessageList); override;
+
+         property Table: TSymbolTable read FTable write FTable;
    end;
 
    // Element of an enumeration type. E. g. "type DummyEnum = (Elem1, Elem2, Elem3);"
@@ -1055,7 +1060,7 @@ type
          function GetDescription : String; override;
 
       public
-         constructor Create(const Name: string; Typ: TSymbol; Value: Integer; IsUserDef: Boolean);
+         constructor Create(const Name: string; Typ: TTypeSymbol; Value: Integer; IsUserDef: Boolean);
          property IsUserDef: Boolean read FIsUserDef;
          property UserDefValue: Integer read FUserDefValue;
    end;
@@ -1118,11 +1123,14 @@ type
          procedure AddParent(Parent: TSymbolTable);
 
          function AddSymbol(Sym: TSymbol): Integer;
-         function FindLocal(const aName : String) : TSymbol; virtual;
+         function FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol; virtual;
+         function FindTypeLocal(const aName : String) : TTypeSymbol;
          function Remove(Sym: TSymbol): Integer;
          procedure Clear;
 
-         function FindSymbol(const aName : string; minVisibility : TClassVisibility) : TSymbol; virtual;
+         function FindSymbol(const aName : string; minVisibility : TClassVisibility;
+                             ofClass : TSymbolClass = nil) : TSymbol; virtual;
+         function FindTypeSymbol(const aName : string; minVisibility : TClassVisibility) : TTypeSymbol;
 
          function HasClass(const aClass : TSymbolClass) : Boolean;
 
@@ -1155,7 +1163,7 @@ type
 
       public
          procedure AddParent(parent : TMembersSymbolTable);
-         function FindSymbol(const aName : String; minVisibility : TClassVisibility) : TSymbol; override;
+         function FindSymbol(const aName : String; minVisibility : TClassVisibility; ofClass : TSymbolClass = nil) : TSymbol; override;
          function FindSymbolFromClass(const aName : String; fromClass : TClassSymbol) : TSymbol; reintroduce;
 
          property ClassSym : TClassSymbol read FClassSym write FClassSym;
@@ -1165,7 +1173,7 @@ type
    //
    TUnSortedSymbolTable = class (TSymbolTable)
       public
-         function FindLocal(const aName : String) : TSymbol; override;
+         function FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol; override;
    end;
 
    // TConditionsSymbolTable
@@ -1225,8 +1233,8 @@ type
    public
      constructor Create(Parent: TStaticSymbolTable; AddrGenerator: TAddrGenerator = nil);
      destructor Destroy; override;
-     function FindLocal(const Name: string): TSymbol; override;
-     function FindSymbol(const Name: string; minVisibility : TClassVisibility): TSymbol; override;
+     function FindLocal(const Name: string; ofClass : TSymbolClass = nil): TSymbol; override;
+     function FindSymbol(const Name: string; minVisibility : TClassVisibility; ofClass : TSymbolClass = nil): TSymbol; override;
      procedure Initialize(const msgs : TdwsCompileMessageList); override;
      property Parent: TStaticSymbolTable read FParent;
    end;
@@ -1277,7 +1285,7 @@ type
 
       public
          constructor Create(const Message: string; const ExceptionObj: IScriptObj; const Pos: TScriptPos); overload;
-         constructor Create(const Message: string; const Value: Variant; Typ: TSymbol; const Pos: TScriptPos); overload;
+         constructor Create(const Message: string; const Value: Variant; Typ: TTypeSymbol; const Pos: TScriptPos); overload;
 
          property ExceptionObj: Variant read FValue;
          property Value: Variant read FValue;
@@ -1514,7 +1522,7 @@ end;
 
 // Create
 //
-constructor TSymbol.Create(const aName : String; aType : TSymbol);
+constructor TSymbol.Create(const aName : String; aType : TTypeSymbol);
 begin
    UnifyAssignString(aName, FName);
    FTyp:=aType;
@@ -1535,12 +1543,6 @@ end;
 function TSymbol.GetDescription : String;
 begin
    Result:=Caption;
-end;
-
-// InitData
-//
-procedure TSymbol.InitData(const Data: TData; Offset: Integer);
-begin
 end;
 
 // Initialize
@@ -1696,7 +1698,7 @@ var
 begin
    for i:=0 to FMembers.Count-1 do begin
       member:=TMemberSymbol(FMembers[i]);
-      member.InitData(Data, offset+member.Offset);
+      member.Typ.InitData(Data, offset+member.Offset);
    end;
 end;
 
@@ -1751,7 +1753,7 @@ end;
 
 // Create
 //
-constructor TFieldSymbol.Create(const Name: string; Typ: TSymbol; aVisibility : TClassVisibility);
+constructor TFieldSymbol.Create(const Name: string; Typ: TTypeSymbol; aVisibility : TClassVisibility);
 begin
    inherited Create(Name, Typ);
    FVisibility:=aVisibility;
@@ -1819,13 +1821,13 @@ end;
 constructor TFuncSymbol.Generate(Table: TSymbolTable; const FuncName: string;
   const FuncParams: TParamArray; const FuncType: string);
 var
-  typSym: TSymbol;
+  typSym: TTypeSymbol;
 begin
   if FuncType <> '' then
   begin
     Self.Create(FuncName, fkFunction, 1);
     // Set function type
-    typSym := Table.FindSymbol(FuncType, cvMagic);
+    typSym := Table.FindTypeSymbol(FuncType, cvMagic);
     if not (Assigned(typSym) and (typSym.BaseType <> nil)) then
       raise Exception.CreateFmt(CPE_TypeIsUnknown, [FuncType]);
     Self.SetType(typSym);
@@ -1848,7 +1850,7 @@ begin
   Params.AddSymbol(param);
 end;
 
-procedure TFuncSymbol.SetType(const Value: TSymbol);
+procedure TFuncSymbol.SetType(const Value: TTypeSymbol);
 begin
    FTyp:=Value;
    Assert(FResult=nil);
@@ -1863,7 +1865,7 @@ type TAddParamProc = procedure (param: TParamSymbol) of object;
 procedure GenerateParams(const Name: String; Table: TSymbolTable; const funcParams: TParamArray; AddProc: TAddParamProc);
 var
    i : Integer;
-   typSym : TSymbol;
+   typSym : TTypeSymbol;
    paramSym : TParamSymbol;
    paramSymWithDefault : TParamSymbolWithDefaultValue;
    paramRec : PParamRec;
@@ -1871,7 +1873,7 @@ begin
    for i := 0 to Length(FuncParams) - 1 do begin
 
       paramRec:=@FuncParams[i];
-      typSym := Table.FindSymbol(paramRec.ParamType, cvMagic);
+      typSym := Table.FindTypeSymbol(paramRec.ParamType, cvMagic);
       if not Assigned(typSym) then
          raise Exception.CreateFmt(CPE_TypeForParamNotFound,
                                    [paramRec.ParamType, paramRec.ParamName, Name]);
@@ -2158,7 +2160,7 @@ constructor TMethodSymbol.Generate(Table: TSymbolTable; MethKind: TMethodKind;
   const Attributes: TMethodAttributes; const MethName: string; const MethParams: TParamArray;
   const MethType: string; Cls: TClassSymbol; aVisibility : TClassVisibility);
 var
-   typSym : TSymbol;
+   typSym : TTypeSymbol;
    meth : TSymbol;
 begin
    // Check if name is already used
@@ -2201,7 +2203,7 @@ begin
       if not (Kind in [fkFunction, fkMethod]) then
          raise Exception.Create(CPE_NoResultTypeRequired);
 
-      typSym := Table.FindSymbol(MethType, cvMagic);
+      typSym := Table.FindTypeSymbol(MethType, cvMagic);
       if not Assigned(typSym) then
          raise Exception.CreateFmt(CPE_TypeIsUnknown, [MethType]);
       SetType(typSym);
@@ -2414,7 +2416,7 @@ end;
 
 // Create
 //
-constructor TPropertySymbol.Create(const Name: string; Typ: TSymbol; aVisibility : TClassVisibility);
+constructor TPropertySymbol.Create(const Name: string; Typ: TTypeSymbol; aVisibility : TClassVisibility);
 begin
    inherited Create(Name, Typ);
    FIndexValue:=nil;
@@ -2517,7 +2519,7 @@ begin
   Result := ClassSymbol.DefaultProperty = Self;
 end;
 
-procedure TPropertySymbol.SetIndex(const Data: TData; Addr: Integer; Sym: TSymbol);
+procedure TPropertySymbol.SetIndex(const Data: TData; Addr: Integer; Sym: TTypeSymbol);
 begin
    FIndexSym := Sym;
    SetLength(FIndexValue,FIndexSym.Size);
@@ -2909,6 +2911,13 @@ begin
   FSize := 1;
 end;
 
+// InitData
+//
+procedure TNilSymbol.InitData(const data : TData; offset : Integer);
+begin
+   Assert(False);
+end;
+
 function TNilSymbol.GetCaption: string;
 begin
   Result := 'nil';
@@ -3067,14 +3076,14 @@ end;
 
 { TConstSymbol }
 
-constructor TConstSymbol.Create(const Name: string; Typ: TSymbol; const Value: Variant);
+constructor TConstSymbol.Create(const Name: string; Typ: TTypeSymbol; const Value: Variant);
 begin
   inherited Create(Name, Typ);
   SetLength(FData, 1);
   VarCopy(FData[0], Value);
 end;
 
-constructor TConstSymbol.Create(const Name: string; Typ: TSymbol; const Data: TData;
+constructor TConstSymbol.Create(const Name: string; Typ: TTypeSymbol; const Data: TData;
   Addr: Integer);
 begin
   inherited Create(Name, Typ);
@@ -3101,11 +3110,6 @@ end;
 
 { TMemberSymbol }
 
-procedure TMemberSymbol.InitData(const Data: TData; Offset: Integer);
-begin
-  Typ.InitData(Data, Offset);
-end;
-
 // QualifiedName
 //
 function TMemberSymbol.QualifiedName : String;
@@ -3121,11 +3125,6 @@ begin
     Result := Name + ': ' + Typ.Name
   else
     Result := Name;
-end;
-
-procedure TDataSymbol.InitData(const Data: TData; Offset: Integer);
-begin
-  Typ.InitData(Data, Offset);
 end;
 
 { TParamSymbol }
@@ -3167,7 +3166,7 @@ end;
 
 { TByRefParamSymbol }
 
-constructor TByRefParamSymbol.Create(const Name: string; Typ: TSymbol);
+constructor TByRefParamSymbol.Create(const Name: string; Typ: TTypeSymbol);
 begin
   inherited Create(Name, Typ);
   FSize := 1;
@@ -3227,7 +3226,7 @@ end;
 
 // FindLocal
 //
-function TSymbolTable.FindLocal(const aName : String) : TSymbol;
+function TSymbolTable.FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol;
 var
    n : Integer;
 begin
@@ -3241,6 +3240,15 @@ begin
    end else begin
       Result:=FindLocalUnSorted(aName);
    end;
+   if (Result<>nil) and (ofClass<>nil) and (not (Result is ofClass)) then
+      Result:=nil;
+end;
+
+// FindTypeLocal
+//
+function TSymbolTable.FindTypeLocal(const aName : String) : TTypeSymbol;
+begin
+   Result:=TTypeSymbol(FindLocal(aName, TTypeSymbol));
 end;
 
 // SortSymbols
@@ -3319,12 +3327,13 @@ end;
 
 // FindSymbol
 //
-function TSymbolTable.FindSymbol(const aName : String; minVisibility : TClassVisibility) : TSymbol;
+function TSymbolTable.FindSymbol(const aName : String; minVisibility : TClassVisibility;
+                                 ofClass : TSymbolClass = nil) : TSymbol;
 var
    i : Integer;
 begin
    // Find Symbol in the local List
-   Result:=FindLocal(aName);
+   Result:=FindLocal(aName, ofClass);
    if Assigned(Result) and Result.IsVisibleFor(minVisibility) then
       Exit;
    Result:=nil;
@@ -3332,9 +3341,16 @@ begin
    // Find Symbol in all parent lists
    i:=0;
    while not Assigned(Result) and (i<ParentCount) do begin
-      Result:=Parents[i].FindSymbol(aName, minVisibility);
+      Result:=Parents[i].FindSymbol(aName, minVisibility, ofClass);
       Inc(i);
    end;
+end;
+
+// FindTypeSymbol
+//
+function TSymbolTable.FindTypeSymbol(const aName : string; minVisibility : TClassVisibility) : TTypeSymbol;
+begin
+   Result:=TTypeSymbol(FindSymbol(aName, minVisibility, TTypeSymbol));
 end;
 
 // HasClass
@@ -3500,12 +3516,13 @@ end;
 
 // FindSymbol
 //
-function TMembersSymbolTable.FindSymbol(const aName : String; minVisibility : TClassVisibility) : TSymbol;
+function TMembersSymbolTable.FindSymbol(const aName : String; minVisibility : TClassVisibility;
+                                        ofClass : TSymbolClass = nil) : TSymbol;
 var
    i : Integer;
 begin
    // Find Symbol in the local List
-   Result:=FindLocal(aName);
+   Result:=FindLocal(aName, ofClass);
    if Assigned(Result) and Result.IsVisibleFor(minVisibility) then
       Exit;
    Result:=nil;
@@ -3515,7 +3532,7 @@ begin
       minVisibility:=cvProtected;
    i:=0;
    while not Assigned(Result) and (i<ParentCount) do begin
-      Result:=(Parents[i] as TMembersSymbolTable).FindSymbol(aName, minVisibility);
+      Result:=(Parents[i] as TMembersSymbolTable).FindSymbol(aName, minVisibility, ofClass);
       Inc(i);
    end;
 end;
@@ -3539,9 +3556,11 @@ end;
 
 // FindLocal
 //
-function TUnSortedSymbolTable.FindLocal(const aName : String) : TSymbol;
+function TUnSortedSymbolTable.FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol;
 begin
    Result:=FindLocalUnSorted(aName);
+   if (Result<>nil) and (ofClass<>nil) and (not (Result is ofClass)) then
+      Result:=nil;
 end;
 
 // ------------------
@@ -3650,6 +3669,13 @@ begin
   inherited;
 end;
 
+// InitData
+//
+procedure TUnitSymbol.InitData(const data : TData; offset : Integer);
+begin
+   // nothing
+end;
+
 procedure TUnitSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
   if not FInitialized then
@@ -3709,7 +3735,7 @@ end;
 // ------------------ TDynamicArraySymbol ------------------
 // ------------------
 
-constructor TDynamicArraySymbol.Create(const Name: string; Typ: TSymbol);
+constructor TDynamicArraySymbol.Create(const Name: string; Typ: TTypeSymbol);
 begin
   inherited Create(Name, Typ);
   FSize := 1;
@@ -3733,7 +3759,7 @@ end;
 
 { TStaticArraySymbol }
 
-constructor TStaticArraySymbol.Create(const Name: string; Typ: TSymbol; LowBound, HighBound: Integer);
+constructor TStaticArraySymbol.Create(const Name: string; Typ: TTypeSymbol; LowBound, HighBound: Integer);
 begin
   inherited Create(Name, Typ);
   FLowBound := LowBound;
@@ -3796,7 +3822,7 @@ end;
 
 // Create
 //
-constructor TOpenArraySymbol.Create(const Name: string; Typ: TSymbol);
+constructor TOpenArraySymbol.Create(const Name: string; Typ: TTypeSymbol);
 begin
    inherited Create(Name, Typ, 0, -1);
    FSize:=1;
@@ -3817,7 +3843,7 @@ end;
 
 // Create
 //
-constructor TElementSymbol.Create(const Name: string; Typ: TSymbol;
+constructor TElementSymbol.Create(const Name: string; Typ: TTypeSymbol;
   Value: Integer; IsUserDef: Boolean);
 begin
    inherited Create(Name, Typ, Value);
@@ -3995,18 +4021,19 @@ begin
   inherited;
 end;
 
-function TLinkedSymbolTable.FindLocal(const Name: string): TSymbol;
+function TLinkedSymbolTable.FindLocal(const Name: string; ofClass : TSymbolClass = nil): TSymbol;
 begin
-  Result := FParent.FindLocal(Name);
+  Result := FParent.FindLocal(Name, ofClass);
   if not Assigned(Result) then
-    Result := inherited FindLocal(Name);
+    Result := inherited FindLocal(Name, ofClass);
 end;
 
-function TLinkedSymbolTable.FindSymbol(const Name: string; minVisibility : TClassVisibility): TSymbol;
+function TLinkedSymbolTable.FindSymbol(const Name: string; minVisibility : TClassVisibility;
+                                       ofClass : TSymbolClass = nil): TSymbol;
 begin
-  Result := FParent.FindSymbol(Name, minVisibility);
+  Result := FParent.FindSymbol(Name, minVisibility, ofClass);
   if not Assigned(Result) then
-    Result := inherited FindSymbol(Name, minVisibility);
+    Result := inherited FindSymbol(Name, minVisibility, ofClass);
 end;
 
 procedure TLinkedSymbolTable.Initialize(const msgs : TdwsCompileMessageList);
@@ -4074,7 +4101,7 @@ end;
 // ------------------
 
 constructor EScriptException.Create(const Message: string; const Value: Variant;
-  Typ: TSymbol; const Pos: TScriptPos);
+  Typ: TTypeSymbol; const Pos: TScriptPos);
 begin
   inherited Create(Message);
   FValue := Value;

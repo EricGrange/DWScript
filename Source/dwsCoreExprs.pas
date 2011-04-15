@@ -44,8 +44,8 @@ type
          function GetData(exec : TdwsExecution) : TData; override;
 
       public
-         constructor Create(Prog: TdwsProgram; Typ: TSymbol; DataSym : TDataSymbol);
-         class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; DataSym : TDataSymbol) : TVarExpr;
+         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym : TDataSymbol);
+         class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym : TDataSymbol) : TVarExpr;
 
          procedure AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer); override;
          procedure AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr); override;
@@ -117,7 +117,7 @@ type
      FLevel: Integer;
      function GetAddr(exec : TdwsExecution) : Integer; override;
    public
-     constructor Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
+     constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym: TDataSymbol);
    end;
 
    // Encapsulates a lazy parameter
@@ -126,7 +126,7 @@ type
          FStackAddr : Integer;
          FLevel : Integer;
       public
-         constructor Create(Prog: TdwsProgram; aTyp : TSymbol; level, stackAddr : Integer);
+         constructor Create(Prog: TdwsProgram; aTyp : TTypeSymbol; level, stackAddr : Integer);
          function Eval(exec : TdwsExecution) : Variant; override;
          property StackAddr : Integer read FStackAddr write FStackAddr;
          property Level : Integer read FLevel write FLevel;
@@ -157,7 +157,7 @@ type
      function GetAddr(exec : TdwsExecution) : Integer; override;
      function GetData(exec : TdwsExecution) : TData; override;
    public
-     constructor Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
+     constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym: TDataSymbol);
    end;
 
    TConstParamParentExpr = class(TVarParamParentExpr)
@@ -171,16 +171,16 @@ type
      FData: TData;
      function GetData(exec : TdwsExecution) : TData; override;
    public
-     constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); overload;
-     constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Data: TData); overload;
+     constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); overload;
+     constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData); overload;
      function Eval(exec : TdwsExecution) : Variant; override;
      function IsConstant : Boolean; override;
      function IsWritable : Boolean; override;
 
-     class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant) : TConstExpr; overload; static;
-     class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Value: String) : TConstExpr; overload; static;
-     class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Data: TData) : TConstExpr; overload; static;
-     class function CreateTyped(Prog: TdwsProgram; Typ: TSymbol; constSymbol : TConstSymbol) : TConstExpr; overload; static;
+     class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant) : TConstExpr; overload; static;
+     class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: String) : TConstExpr; overload; static;
+     class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData) : TConstExpr; overload; static;
+     class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; constSymbol : TConstSymbol) : TConstExpr; overload; static;
    end;
 
    // TUnifiedConstList
@@ -201,8 +201,8 @@ type
       protected
          procedure DoNothing;
       public
-         constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); virtual;
-         class function CreateUnified(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant) : TUnifiedConstExpr;
+         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); virtual;
+         class function CreateUnified(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant) : TUnifiedConstExpr;
          destructor DestroyTrue;
    end;
 
@@ -212,7 +212,7 @@ type
       protected
          FValue : Boolean;
       public
-         constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
+         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
@@ -223,7 +223,7 @@ type
       private
          FValue : Int64;
       public
-         constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
+         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
          property Value : Int64 read FValue;
@@ -235,7 +235,7 @@ type
       private
          FValue : Double;
       public
-         constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
+         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
@@ -245,7 +245,7 @@ type
       private
          FValue : String;
       public
-         constructor Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant); override;
+         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
          procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
          property Value : String read FValue write FValue;
    end;
@@ -266,7 +266,7 @@ type
          destructor Destroy; override;
 
          procedure AddElementExpr(Prog: TdwsProgram; ElementExpr: TTypedExpr);
-         procedure Prepare(Prog: TdwsProgram; ElementTyp : TSymbol);
+         procedure Prepare(Prog: TdwsProgram; ElementTyp : TTypeSymbol);
          procedure TypeCheckElements(prog : TdwsProgram);
          function Eval(exec : TdwsExecution) : Variant; override;
          function EvalAsTData(exec : TdwsExecution) : TData;
@@ -372,7 +372,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TSymbol;
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TTypeSymbol;
                            FieldSym: TFieldSymbol; ObjExpr: TDataExpr);
          destructor Destroy; override;
 
@@ -1337,7 +1337,7 @@ uses dwsStringFunctions;
 
 // Create
 //
-constructor TVarExpr.Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
+constructor TVarExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym: TDataSymbol);
 begin
    inherited Create(Prog, Typ);
    FStackAddr:=DataSym.StackAddr;
@@ -1345,7 +1345,7 @@ end;
 
 // CreateTyped
 //
-class function TVarExpr.CreateTyped(Prog: TdwsProgram; Typ: TSymbol; DataSym : TDataSymbol) : TVarExpr;
+class function TVarExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym : TDataSymbol) : TVarExpr;
 begin
    case Typ.BaseTypeID of
       typIntegerID :
@@ -1656,7 +1656,7 @@ end;
 
 // Create
 //
-constructor TVarParentExpr.Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
+constructor TVarParentExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym: TDataSymbol);
 begin
    inherited;
    FLevel:=DataSym.Level;
@@ -1739,7 +1739,7 @@ end;
 
 // Create
 //
-constructor TVarParamParentExpr.Create(Prog: TdwsProgram; Typ: TSymbol; DataSym: TDataSymbol);
+constructor TVarParamParentExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym: TDataSymbol);
 begin
    inherited;
    FLevel := DataSym.Level;
@@ -1832,7 +1832,7 @@ end;
 
 // Create
 //
-constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
+constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
 begin
    inherited Create(Prog, Typ);
    Assert(Typ.Size=1);
@@ -1842,7 +1842,7 @@ end;
 
 // Create
 //
-constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Data: TData);
+constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData);
 begin
    inherited Create(Prog, Typ);
    FData := Data;
@@ -1871,7 +1871,7 @@ end;
 
 // CreateTyped
 //
-class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant) : TConstExpr;
+class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant) : TConstExpr;
 begin
    if Typ=Prog.TypString then
       Result:=TConstStringExpr.CreateUnified(Prog, Typ, Value)
@@ -1889,14 +1889,14 @@ end;
 
 // CreateTyped
 //
-class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Value: String) : TConstExpr;
+class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: String) : TConstExpr;
 begin
    Result:=CreateTyped(Prog, Typ, Variant(Value));
 end;
 
 // CreateTyped
 //
-class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TSymbol; const Data: TData) : TConstExpr;
+class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData) : TConstExpr;
 begin
    if Length(Data)=1 then
       Result:=TConstExpr.CreateTyped(Prog, Typ, Data[0])
@@ -1905,7 +1905,7 @@ end;
 
 // CreateTyped
 //
-class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TSymbol; constSymbol : TConstSymbol) : TConstExpr;
+class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; constSymbol : TConstSymbol) : TConstExpr;
 begin
    if constSymbol<>nil then
       Result:=CreateTyped(Prog, Typ, constSymbol.Data)
@@ -1925,14 +1925,14 @@ end;
 
 // Create
 //
-constructor TUnifiedConstExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
+constructor TUnifiedConstExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
 begin
    inherited Create(Prog, Typ, Value);
 end;
 
 // CreateUnified
 //
-class function TUnifiedConstExpr.CreateUnified(Prog: TdwsProgram; Typ: TSymbol;
+class function TUnifiedConstExpr.CreateUnified(Prog: TdwsProgram; Typ: TTypeSymbol;
                                                const Value: Variant) : TUnifiedConstExpr;
 const
    vmtDestroy = -4;
@@ -1979,7 +1979,7 @@ end;
 
 // Create
 //
-constructor TConstBooleanExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
+constructor TConstBooleanExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
 begin
    if Typ=nil then
       Typ:=Prog.TypBoolean;
@@ -2007,7 +2007,7 @@ end;
 
 // Create
 //
-constructor TConstIntExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
+constructor TConstIntExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
 begin
    if Typ=nil then
       Typ:=Prog.TypInteger;
@@ -2046,7 +2046,7 @@ end;
 
 // Create
 //
-constructor TConstFloatExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
+constructor TConstFloatExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
 begin
    if Typ=nil then
       Typ:=Prog.TypFloat;
@@ -2072,7 +2072,7 @@ end;
 
 // Create
 //
-constructor TConstStringExpr.Create(Prog: TdwsProgram; Typ: TSymbol; const Value: Variant);
+constructor TConstStringExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
 begin
    if Typ=nil then
       Typ:=Prog.TypString;
@@ -2295,7 +2295,7 @@ end;
 
 // Prepare
 //
-procedure TArrayConstantExpr.Prepare(Prog: TdwsProgram; ElementTyp : TSymbol);
+procedure TArrayConstantExpr.Prepare(Prog: TdwsProgram; ElementTyp : TTypeSymbol);
 var
    x : Integer;
    elemExpr : TTypedExpr;
@@ -2582,7 +2582,7 @@ end;
 
 // Create
 //
-constructor TFieldExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TSymbol;
+constructor TFieldExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TTypeSymbol;
                               FieldSym: TFieldSymbol; ObjExpr: TDataExpr);
 begin
    inherited Create(Prog, Pos, Typ);
@@ -2698,7 +2698,7 @@ end;
 
 // Create
 //
-constructor TLazyParamExpr.Create(Prog: TdwsProgram; aTyp : TSymbol; level, stackAddr : Integer);
+constructor TLazyParamExpr.Create(Prog: TdwsProgram; aTyp : TTypeSymbol; level, stackAddr : Integer);
 begin
    inherited Create(Prog);
    FTyp:=aTyp;

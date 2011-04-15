@@ -124,7 +124,7 @@ type
       private
          FData : TData;
       public
-         constructor Create(const name : string; typ : TSymbol);
+         constructor Create(const name : string; typ : TTypeSymbol);
          property Data : TData read FData;
    end;
 
@@ -1257,7 +1257,7 @@ end;
 
 // Create
 //
-constructor TdwsDebuggerTempValueSymbol.Create(const name : string; typ : TSymbol);
+constructor TdwsDebuggerTempValueSymbol.Create(const name : string; typ : TTypeSymbol);
 begin
    inherited;
    SetLength(FData, Size);
