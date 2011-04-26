@@ -44,8 +44,8 @@ type
          function GetData(exec : TdwsExecution) : TData; override;
 
       public
-         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym : TDataSymbol);
-         class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym : TDataSymbol) : TVarExpr;
+         constructor Create(prog: TdwsProgram; typ: TTypeSymbol; dataSym : TDataSymbol);
+         class function CreateTyped(prog: TdwsProgram; typ: TTypeSymbol; dataSym : TDataSymbol) : TVarExpr;
 
          procedure AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer); override;
          procedure AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr); override;
@@ -437,6 +437,11 @@ type
    end;
 
    TOrdIntExpr = class(TOrdExpr)
+   public
+     function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   end;
+
+   TOrdBoolExpr = class(TOrdExpr)
    public
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
@@ -1337,7 +1342,7 @@ uses dwsStringFunctions;
 
 // Create
 //
-constructor TVarExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym: TDataSymbol);
+constructor TVarExpr.Create(prog : TdwsProgram; typ : TTypeSymbol; dataSym : TDataSymbol);
 begin
    inherited Create(Prog, Typ);
    FStackAddr:=DataSym.StackAddr;
@@ -1345,22 +1350,19 @@ end;
 
 // CreateTyped
 //
-class function TVarExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym : TDataSymbol) : TVarExpr;
+class function TVarExpr.CreateTyped(prog : TdwsProgram; typ : TTypeSymbol; dataSym : TDataSymbol) : TVarExpr;
 begin
-   case Typ.BaseTypeID of
-      typIntegerID :
-         Result:=TIntVarExpr.Create(Prog, Typ, dataSym);
-      typFloatID :
-         Result:=TFloatVarExpr.Create(Prog, Typ, dataSym);
-      typStringID :
-         Result:=TStrVarExpr.Create(Prog, Typ, dataSym);
-      typBooleanID :
-         Result:=TBoolVarExpr.Create(Prog, Typ, dataSym);
-   else
-      if Typ is TClassSymbol then
-         Result:=TObjectVarExpr.Create(Prog, Typ, dataSym)
-      else Result:=TVarExpr.Create(Prog, Typ, dataSym);
-   end;
+   if typ.IsOfType(prog.TypInteger) then
+      Result:=TIntVarExpr.Create(prog, typ, dataSym)
+   else if typ.IsOfType(prog.TypFloat) then
+      Result:=TFloatVarExpr.Create(prog, typ, dataSym)
+   else if typ.IsOfType(prog.TypString) then
+      Result:=TStrVarExpr.Create(prog, typ, dataSym)
+   else if typ.IsOfType(prog.TypBoolean) then
+      Result:=TBoolVarExpr.Create(prog, typ, dataSym)
+   else if typ is TClassSymbol then
+      Result:=TObjectVarExpr.Create(prog, typ, dataSym)
+   else Result:=TVarExpr.Create(prog, typ, dataSym);
 end;
 
 // Eval
@@ -3305,6 +3307,15 @@ end;
 function TOrdIntExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
    Result:=FExpr.EvalAsInteger(exec);
+end;
+
+{ TOrdBoolExpr }
+
+// EvalAsInteger
+//
+function TOrdBoolExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result:=Ord(FExpr.EvalAsBoolean(exec));
 end;
 
 { TOrdStrExpr }

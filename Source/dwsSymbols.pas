@@ -889,7 +889,7 @@ type
          FOffset: Integer;
 
       public
-         constructor Create(const Name: string; Typ: TTypeSymbol; aVisibility : TClassVisibility);
+         constructor Create(const name : String; typ : TTypeSymbol; aVisibility : TClassVisibility);
 
          function QualifiedName : String; override;
          function IsVisibleFor(const aVisibility : TClassVisibility) : Boolean; override;
@@ -932,7 +932,7 @@ type
          procedure AddParam(Param : TParamSymbol);
 
       public
-         constructor Create(const Name: string; Typ: TTypeSymbol; aVisibility : TClassVisibility);
+         constructor Create(const name : String; typ : TTypeSymbol; aVisibility : TClassVisibility);
          destructor Destroy; override;
 
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
@@ -1018,7 +1018,7 @@ type
          function AllocateVMTindex : Integer;
 
       public
-         constructor Create(const Name: string);
+         constructor Create(const name : String);
          destructor Destroy; override;
 
          procedure AddField(Sym: TFieldSymbol);
@@ -1044,7 +1044,7 @@ type
 
          class function VisibilityToString(visibility : TClassVisibility) : String; static;
 
-         property ClassOf: TClassOfSymbol read FClassOfSymbol;
+         property ClassOf : TClassOfSymbol read FClassOfSymbol;
          property ScriptInstanceSize : Integer read FScriptInstanceSize;
          property IsForwarded : Boolean read GetIsForwarded;
          property IsExplicitAbstract : Boolean read GetIsExplicitAbstract write SetIsExplicitAbstract;
@@ -1052,19 +1052,21 @@ type
          property IsSealed : Boolean read GetIsSealed write SetIsSealed;
          property IsStatic : Boolean read GetIsStatic write SetIsStatic;
          property Members : TMembersSymbolTable read FMembers;
-         property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
+         property OnObjectDestroy : TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
          property Parent : TClassSymbol read FParent;
          property DefaultProperty : TPropertySymbol read FDefaultProperty write FDefaultProperty;
    end;
 
    // nil "class"
    TNilSymbol = class(TTypeSymbol)
-   protected
-     function GetCaption : String; override;
-   public
-     constructor Create;
-     procedure InitData(const data : TData; offset : Integer); override;
-     function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+      protected
+         function GetCaption : String; override;
+
+      public
+         constructor Create;
+
+         procedure InitData(const data : TData; offset : Integer); override;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    // Invisible symbol for units (e. g. for TdwsUnit)
@@ -1114,6 +1116,9 @@ type
          destructor Destroy; override;
 
          procedure InitData(const data : TData; offset : Integer); override;
+         function BaseType : TTypeSymbol; override;
+         function IsOfType(typSym : TTypeSymbol) : Boolean; override;
+
          procedure AddElement(element : TElementSymbol);
 
          property Elements : TSymbolTable read FElements;
@@ -2583,16 +2588,22 @@ begin
    Result:=GetCaption;
 end;
 
-{ TClassSymbol }
+// ------------------
+// ------------------ TClassSymbol ------------------
+// ------------------
 
-constructor TClassSymbol.Create;
+// Create
+//
+constructor TClassSymbol.Create(const name : String);
 begin
-   inherited Create(Name, nil);
-   FSize := 1;
-   FMembers := CreateMembersTable;
-   FClassOfSymbol := TClassOfSymbol.Create('class of ' + Name, Self);
+   inherited Create(name, nil);
+   FSize:=1;
+   FMembers:=CreateMembersTable;
+   FClassOfSymbol:=TClassOfSymbol.Create('class of '+Name, Self);
 end;
 
+// Destroy
+//
 destructor TClassSymbol.Destroy;
 begin
    if FForwardPosition<>nil then
@@ -4018,6 +4029,21 @@ begin
       v:=TElementSymbol(FElements[0]).FUserDefValue
    else v:=0;
    Data[Offset]:=v;
+end;
+
+// BaseType
+//
+function TEnumerationSymbol.BaseType : TTypeSymbol;
+begin
+   Result:=Typ;
+end;
+
+// IsOfType
+//
+function TEnumerationSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
+begin
+   Result:=   inherited IsOfType(typSym)
+           or BaseType.IsOfType(typSym);
 end;
 
 // AddElement

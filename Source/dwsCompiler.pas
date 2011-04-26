@@ -240,7 +240,7 @@ type
       function Optimize : Boolean;
 
       function CheckFuncParams(paramsA, paramsB : TSymbolTable; indexSym : TSymbol = nil;
-                               typSym : TSymbol = nil) : Boolean;
+                               typSym : TTypeSymbol = nil) : Boolean;
       procedure CheckName(const Name: string);
       function IdentifySpecialName(const name: string) : TSpecialKeywordKind;
       procedure CheckSpecialName(const name: string);
@@ -253,29 +253,29 @@ type
       function OpenStreamForFile(const scriptName : String) : TStream;
       function GetScriptSource(const scriptName : String) : String;
 
-      function GetVarExpr(dataSym: TDataSymbol): TVarExpr;
+      function GetVarExpr(dataSym : TDataSymbol): TVarExpr;
 
-      function GetLazyParamExpr(dataSym: TLazyParamSymbol): TLazyParamExpr;
-      function GetVarParamExpr(dataSym: TVarParamSymbol): TVarParamExpr;
-      function GetConstParamExpr(dataSym: TConstParamSymbol): TVarParamExpr;
+      function GetLazyParamExpr(dataSym : TLazyParamSymbol) : TLazyParamExpr;
+      function GetVarParamExpr(dataSym : TVarParamSymbol) : TVarParamExpr;
+      function GetConstParamExpr(dataSym : TConstParamSymbol) : TVarParamExpr;
 
       function ReadAssign(token : TTokenType; left : TDataExpr) : TNoResultExpr;
-      function ReadArray(const TypeName: string): TTypeSymbol;
-      function ReadArrayConstant: TArrayConstantExpr;
-      function ReadCase: TCaseExpr;
+      function ReadArray(const typeName : String) : TTypeSymbol;
+      function ReadArrayConstant : TArrayConstantExpr;
+      function ReadCase : TCaseExpr;
       function ReadCaseConditions(condList : TList; valueExpr : TTypedExpr) : Integer;
-      function ReadClassOf(const TypeName: string): TClassOfSymbol;
-      function ReadClass(const TypeName: string): TClassSymbol;
+      function ReadClassOf(const typeName : String) : TClassOfSymbol;
+      function ReadClass(const typeName : String) : TClassSymbol;
       procedure ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TClassVisibility);
-      function ReadConnectorSym(const Name: string; BaseExpr: TTypedExpr;
-                                const ConnectorType: IConnectorType; IsWrite: Boolean): TProgramExpr;
-      function ReadConnectorArray(const Name: String; BaseExpr: TTypedExpr;
-                                  const ConnectorType: IConnectorType; IsWrite: Boolean): TConnectorCallExpr;
+      function ReadConnectorSym(const name : String; baseExpr : TTypedExpr;
+                                const connectorType : IConnectorType; IsWrite: Boolean) : TProgramExpr;
+      function ReadConnectorArray(const name : String; baseExpr : TTypedExpr;
+                                  const connectorType : IConnectorType; IsWrite: Boolean) : TConnectorCallExpr;
       function ReadConstDecl(constSymbolClass : TConstSymbolClass) : TConstSymbol;
-      function ReadConstValue: TConstExpr;
-      function ReadBlock: TNoResultExpr;
-      function ReadBlocks(const endTokens: TTokenTypes; var finalToken: TTokenType): TNoResultExpr;
-      function ReadEnumeration(const TypeName: string): TEnumerationSymbol;
+      function ReadConstValue : TConstExpr;
+      function ReadBlock : TNoResultExpr;
+      function ReadBlocks(const endTokens : TTokenTypes; var finalToken : TTokenType) : TNoResultExpr;
+      function ReadEnumeration(const typeName : String) : TEnumerationSymbol;
       function ReadExit : TNoResultExpr;
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
       function ReadExprAdd(expecting : TTypeSymbol = nil) : TTypedExpr;
@@ -351,7 +351,7 @@ type
       function ReadExcept(tryExpr : TNoResultExpr) : TExceptExpr;
 
       function ReadType(const typeName : String = '') : TTypeSymbol;
-      function ReadTypeCast(const namePos : TScriptPos; typeSym : TSymbol) : TTypedExpr;
+      function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
       procedure ReadTypeDecl;
       procedure ReadUses;
       function ReadVarDecl : TNoResultExpr;
@@ -1275,7 +1275,7 @@ end;
 procedure TdwsCompiler.ReadTypeDecl;
 var
    name : String;
-   typNew, typOld : TSymbol;
+   typNew, typOld : TTypeSymbol;
    typePos : TScriptPos;
    oldSymPos : TSymbolPosition; // Mark *where* the old declaration was
 begin
@@ -1285,7 +1285,7 @@ begin
    if not FTok.TestDelete(ttEQ) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
 
-   typOld := FProg.Table.FindSymbol(name, cvMagic);
+   typOld := FProg.Table.FindTypeSymbol(name, cvMagic);
    oldSymPos := nil;
    if coSymbolDictionary in FCompilerOptions then begin
       if Assigned(typOld) then
@@ -2121,7 +2121,7 @@ end;
 //
 function TdwsCompiler.ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
 var
-   sym: TSymbol;
+   sym : TSymbol;
    nameToken : TToken;
    namePos : TScriptPos;
    varExpr : TDataExpr;
@@ -2305,7 +2305,7 @@ begin
       // Type casts
       else if sym.InheritsFrom(TTypeSymbol) then
 
-         Result := ReadTypeCast(namePos, sym)
+         Result := ReadTypeCast(namePos, TTypeSymbol(sym))
 
       else begin
 
@@ -2609,10 +2609,10 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
    end;
 
 var
-   name: string;
-   member: TSymbol;
-   defaultProperty: TPropertySymbol;
-   symPos: TScriptPos;
+   name : string;
+   member : TSymbol;
+   defaultProperty : TPropertySymbol;
+   symPos : TScriptPos;
    baseType : TTypeSymbol;
    dataExpr : TDataExpr;
 begin
@@ -2992,9 +2992,9 @@ end;
 function TdwsCompiler.ReadCase;
 var
    expr : TNoResultExpr;
-   condList: TList;
-   tt: TTokenType;
-   x: Integer;
+   condList : TList;
+   tt : TTokenType;
+   x : Integer;
 begin
    condList := TList.Create;
    try
@@ -3735,7 +3735,7 @@ end;
 //
 function TdwsCompiler.CheckFuncParams(paramsA, paramsB : TSymbolTable;
                                       indexSym : TSymbol = nil;
-                                      typSym : TSymbol = nil) : Boolean;
+                                      typSym : TTypeSymbol = nil) : Boolean;
 begin
    Result:=False;
 
@@ -6228,26 +6228,28 @@ function TdwsCompiler.ReadSpecialFunction(const namePos: TScriptPos; SpecialKind
    end;
 
 var
-   argExpr, msgExpr: TTypedExpr;
-   argTyp: TSymbol;
+   argExpr, msgExpr : TTypedExpr;
+   argTyp : TTypeSymbol;
 begin
    if not FTok.TestDelete(ttBLEFT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
 
    // Test for statements like "Low(Integer)"
    if FTok.Test(ttName) and FTok.NextTest(ttBRIGHT) then
-      argTyp := FProg.Table.FindSymbol(FTok.GetToken.FString, cvMagic)
-   else argTyp := nil;
+      argTyp:=FProg.Table.FindTypeSymbol(FTok.GetToken.FString, cvMagic)
+   else argTyp:=nil;
 
    if     Assigned(argTyp)
       and argTyp.InheritsFrom(TTypeSymbol)
       and not argTyp.InheritsFrom(TFuncSymbol) then begin
-      argExpr := nil;
+      argExpr:=nil;
       FTok.KillToken;
       FTok.KillToken;
    end else begin
-      argExpr := ReadExpr;
-      argTyp := argExpr.BaseType;
+      argExpr:=ReadExpr;
+      argTyp:=argExpr.Typ;
+      while argTyp is TAliasSymbol do
+         argTyp:=TAliasSymbol(argTyp).BaseType;
    end;
 
    msgExpr:=nil;
@@ -6292,7 +6294,7 @@ begin
                argExpr:=nil;
             end else if argTyp is TEnumerationSymbol then begin
                FreeAndNil(argExpr);
-               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TEnumerationSymbol(argTyp).HighBound)
+               Result:=TConstExpr.CreateTyped(FProg, argTyp, TEnumerationSymbol(argTyp).HighBound)
             end else if argTyp is TDynamicArraySymbol and Assigned(argExpr) then begin
                Result:=TArrayLengthExpr.Create(FProg, TDataExpr(argExpr), -1);
                argExpr:=nil;
@@ -6340,36 +6342,28 @@ begin
             else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
          end;
          skSqr : begin
-            case argTyp.BaseTypeID of
-               typIntegerID : begin
-                  Result:=TSqrIntExpr.Create(FProg, argExpr);
-                  argExpr:=nil;
-               end;
-               typFloatID : begin
-                  Result:=TSqrFloatExpr.Create(FProg, argExpr);
-                  argExpr:=nil;
-               end;
-            else
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_NumericalExpected);
-            end;
+            if argTyp=FProg.TypInteger then begin
+               Result:=TSqrIntExpr.Create(FProg, argExpr);
+               argExpr:=nil;
+            end else if argTyp=FProg.TypFloat then begin
+               Result:=TSqrFloatExpr.Create(FProg, argExpr);
+               argExpr:=nil;
+            end else FMsgs.AddCompilerError(FTok.HotPos, CPE_NumericalExpected);
          end;
          skOrd : begin
-            case argTyp.BaseTypeID of
-               typIntegerID, typBooleanID : begin
-                  Result:=TOrdIntExpr.Create(FProg, argExpr);
-                  argExpr:=nil;
-               end;
-               typStringID : begin
-                  Result:=TOrdStrExpr.Create(FProg, argExpr);
-                  argExpr:=nil;
-               end;
-               typVariantID : begin
-                  Result:=TOrdExpr.Create(FProg, argExpr);
-                  argExpr:=nil;
-               end
-            else
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
-            end;
+            if argTyp.IsOfType(FProg.TypInteger) then begin
+               Result:=TOrdIntExpr.Create(FProg, argExpr);
+               argExpr:=nil;
+            end else if argTyp=FProg.TypBoolean then begin
+               Result:=TOrdBoolExpr.Create(FProg, argExpr);
+               argExpr:=nil;
+            end else if argTyp=FProg.TypString then begin
+               Result:=TOrdStrExpr.Create(FProg, argExpr);
+               argExpr:=nil;
+            end else if argTyp=FProg.TypVariant then begin
+               Result:=TOrdExpr.Create(FProg, argExpr);
+               argExpr:=nil;
+            end else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
          end;
          skSizeOf : begin
              Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, argTyp.Size);
@@ -6431,7 +6425,7 @@ end;
 
 // ReadTypeCast
 //
-function TdwsCompiler.ReadTypeCast(const namePos : TScriptPos; typeSym : TSymbol) : TTypedExpr;
+function TdwsCompiler.ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
 var
    argExpr : TTypedExpr;
    hotPos : TScriptPos;
