@@ -347,8 +347,8 @@ type
          function  BaseType : TTypeSymbol; virtual;
          procedure SetName(const newName : String);
 
-         function IsCompatible(typSym : TSymbol) : Boolean; virtual;
-         function IsOfType(typSym : TSymbol) : Boolean; virtual;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; virtual;
+         function IsOfType(typSym : TTypeSymbol) : Boolean; virtual;
 
          function BaseTypeID : TBaseTypeID; virtual;
          function IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean; virtual;
@@ -403,6 +403,7 @@ type
          FStackAddr : Integer;
          FLevel : SmallInt;
          function GetDescription : String; override;
+
       public
          property Level : SmallInt read FLevel write FLevel;
          property StackAddr: Integer read FStackAddr write FStackAddr;
@@ -415,56 +416,58 @@ type
    end;
 
    TParamSymbolWithDefaultValue = class(TParamSymbol)
-   private
-     FDefaultValue : TData;
-   protected
-     function GetDescription : String; override;
-   public
-     procedure SetDefaultValue(const Data: TData; Addr: Integer); overload;
-     procedure SetDefaultValue(const Value: Variant); overload;
-     property DefaultValue : TData read FDefaultValue;
+      private
+         FDefaultValue : TData;
+
+      protected
+         function GetDescription : String; override;
+
+      public
+         procedure SetDefaultValue(const Data: TData; Addr: Integer); overload;
+         procedure SetDefaultValue(const Value: Variant); overload;
+
+         property DefaultValue : TData read FDefaultValue;
    end;
 
    // const/var parameter: procedure P(const/var x: Integer)
    TByRefParamSymbol = class(TParamSymbol)
-   protected
-   public
-     constructor Create(const Name: string; Typ: TTypeSymbol);
+      public
+         constructor Create(const Name: string; Typ: TTypeSymbol);
    end;
 
    // lazy parameter: procedure P(lazy x: Integer)
    TLazyParamSymbol = class(TParamSymbol)
       protected
          function GetDescription : String; override;
-      public
    end;
 
    // const parameter: procedure P(const x: Integer)
    TConstParamSymbol = class(TByRefParamSymbol)
-   protected
-     function GetDescription : string; override;
-   public
+      protected
+         function GetDescription : string; override;
    end;
 
    // var parameter: procedure P(var x: Integer)
    TVarParamSymbol = class(TByRefParamSymbol)
-   protected
-     function GetDescription : String; override;
-   public
+      protected
+         function GetDescription : String; override;
    end;
 
    // variable with functions for read/write: var x: integer; extern 'type' in 'selector';
    TExternalVarSymbol = class(TValueSymbol)
-   private
-     FReadFunc: TFuncSymbol;
-     FWriteFunc: TFuncSymbol;
-   protected
-     function GetReadFunc: TFuncSymbol; virtual;
-     function GetWriteFunc: TFuncSymbol; virtual;
-   public
-     destructor Destroy; override;
-     property ReadFunc: TFuncSymbol read GetReadFunc write FReadFunc;
-     property WriteFunc: TFuncSymbol read GetWriteFunc write FWriteFunc;
+      private
+         FReadFunc: TFuncSymbol;
+         FWriteFunc: TFuncSymbol;
+
+      protected
+         function GetReadFunc: TFuncSymbol; virtual;
+         function GetWriteFunc: TFuncSymbol; virtual;
+
+      public
+         destructor Destroy; override;
+
+         property ReadFunc: TFuncSymbol read GetReadFunc write FReadFunc;
+         property WriteFunc: TFuncSymbol read GetWriteFunc write FWriteFunc;
    end;
 
    // Base class for all types
@@ -472,7 +475,7 @@ type
       public
          procedure InitData(const data : TData; offset : Integer); virtual; abstract;
          function BaseType: TTypeSymbol; override;
-         function IsCompatible(typSym: TSymbol): Boolean; override;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    TFuncKind = (fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod);
@@ -480,12 +483,12 @@ type
    // Record used for TFuncSymbol.Generate
    PParamRec = ^TParamRec;
    TParamRec = record
-     ParamName: string;
-     ParamType: string;
-     IsVarParam: Boolean;
-     IsConstParam: Boolean;
-     HasDefaultValue: Boolean;
-     DefaultValue: TData;
+      ParamName : String;
+      ParamType : String;
+      IsVarParam : Boolean;
+      IsConstParam : Boolean;
+      HasDefaultValue : Boolean;
+      DefaultValue : TData;
    end;
    TParamArray = array of TParamRec;
 
@@ -571,7 +574,7 @@ type
          constructor Generate(Table: TSymbolTable; const FuncName: string;
                               const FuncParams: TParamArray; const FuncType: string);
          function  BaseTypeID : TBaseTypeID; override;
-         function  IsCompatible(typSym : TSymbol) : Boolean; override;
+         function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure AddParam(param: TParamSymbol); virtual;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
@@ -669,7 +672,7 @@ type
          procedure SetOverlap(meth: TMethodSymbol);
          procedure SetIsFinal;
          procedure InitData(const Data: TData; Offset: Integer); override;
-         function IsCompatible(typSym: TSymbol): Boolean; override;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function QualifiedName : String; override;
          function HasConditions : Boolean;
          function IsVisibleFor(const aVisibility : TClassVisibility) : Boolean; override;
@@ -709,8 +712,8 @@ type
      constructor Create(const Name: string; Typ: TTypeSymbol);
      function BaseType: TTypeSymbol; override;
      procedure InitData(const Data: TData; Offset: Integer); override;
-     function IsCompatible(typSym: TSymbol): Boolean; override;
-     function IsOfType(typSym : TSymbol) : Boolean; override;
+     function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+     function IsOfType(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    // integer/string/float/boolean/variant
@@ -723,7 +726,7 @@ type
          constructor Create(const Name: string; Id: TBaseTypeID; const Default: Variant);
 
          procedure InitData(const Data: TData; Offset: Integer); override;
-         function IsCompatible(typSym: TSymbol): Boolean; override;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function BaseTypeID : TBaseTypeID; override;
          function IsBaseType : Boolean; override;
 
@@ -754,7 +757,7 @@ type
 
    TConnectorParam = record
      IsVarParam: Boolean;
-     TypSym: TSymbol;
+     TypSym: TTypeSymbol;
    end;
 
    TConnectorParamArray = array of TConnectorParam;
@@ -791,7 +794,7 @@ type
    public
      constructor Create(const Name: string; Typ: TTypeSymbol);
      procedure InitData(const Data: TData; Offset: Integer); override;
-     function IsCompatible(TypSym: TSymbol): Boolean; override;
+     function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    // array [FLowBound..FHighBound] of FTyp
@@ -805,8 +808,8 @@ type
    public
      constructor Create(const Name: string; Typ: TTypeSymbol; LowBound, HighBound: Integer);
      procedure InitData(const Data: TData; Offset: Integer); override;
-     function IsCompatible(TypSym: TSymbol): Boolean; override;
-     function IsOfType(typSym : TSymbol) : Boolean; override;
+     function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+     function IsOfType(typSym : TTypeSymbol) : Boolean; override;
      procedure AddElement;
      property HighBound: Integer read FHighBound;
      property LowBound: Integer read FLowBound;
@@ -816,7 +819,7 @@ type
    // static array whose bounds are contextual
    TOpenArraySymbol = class (TStaticArraySymbol)
      constructor Create(const Name: string; Typ: TTypeSymbol);
-     function IsCompatible(TypSym: TSymbol): Boolean; override;
+     function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    // Member of a record
@@ -843,7 +846,7 @@ type
      destructor Destroy; override;
      procedure AddMember(Member: TMemberSymbol);
      procedure InitData(const Data: TData; Offset: Integer); override;
-     function IsCompatible(typSym: TSymbol): Boolean; override;
+     function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
      property Members: TSymbolTable read FMembers;
    end;
 
@@ -944,8 +947,8 @@ type
       public
          constructor Create(const Name: string; Typ: TClassSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
-         function IsCompatible(typSym: TSymbol): Boolean; override;
-         function IsOfType(typSym : TSymbol) : Boolean; override;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function IsOfType(typSym : TTypeSymbol) : Boolean; override;
          function BaseTypeID : TBaseTypeID; override;
          function TypClassSymbol : TClassSymbol; inline;
    end;
@@ -996,8 +999,8 @@ type
          procedure InheritFrom(ancestorClassSym : TClassSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
-         function  IsCompatible(typSym: TSymbol) : Boolean; override;
-         function  IsOfType(typSym : TSymbol) : Boolean; override;
+         function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function  IsOfType(typSym : TTypeSymbol) : Boolean; override;
          function  BaseTypeID : TBaseTypeID; override;
 
          function  VMTMethod(index : Integer) : TMethodSymbol;
@@ -1030,7 +1033,7 @@ type
    public
      constructor Create;
      procedure InitData(const data : TData; offset : Integer); override;
-     function IsCompatible(typSym: TSymbol): Boolean; override;
+     function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    // Invisible symbol for units (e. g. for TdwsUnit)
@@ -1553,14 +1556,14 @@ end;
 
 // IsCompatible
 //
-function TSymbol.IsCompatible(typSym : TSymbol) : Boolean;
+function TSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=False;
 end;
 
 // IsOfType
 //
-function TSymbol.IsOfType(typSym : TSymbol) : Boolean;
+function TSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=(Self=typSym);
 end;
@@ -1704,7 +1707,7 @@ end;
 
 // IsCompatible
 //
-function TRecordSymbol.IsCompatible(typSym : TSymbol) : Boolean;
+function TRecordSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 var
    i : Integer;
    otherRecordSym : TRecordSymbol;
@@ -2024,7 +2027,7 @@ end;
 
 // IsCompatible
 //
-function TFuncSymbol.IsCompatible(typSym : TSymbol) : Boolean;
+function TFuncSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 var
    funcSym : TFuncSymbol;
    i : Integer;
@@ -2340,7 +2343,7 @@ begin
     Data[Offset + 1] := nilIntf;
 end;
 
-function TMethodSymbol.IsCompatible(typSym: TSymbol): Boolean;
+function TMethodSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   Result := inherited IsCompatible(typSym);
 end;
@@ -2700,7 +2703,7 @@ begin
    IsStatic:=IsStatic or ancestorClassSym.IsStatic;
 end;
 
-function TClassSymbol.IsCompatible(typSym: TSymbol): Boolean;
+function TClassSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 var
   csym: TClassSymbol;
 begin
@@ -2725,7 +2728,7 @@ end;
 
 // IsOfType
 //
-function TClassSymbol.IsOfType(typSym : TSymbol) : Boolean;
+function TClassSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=(Self=typSym);
    if Result or (Self=nil) then Exit;
@@ -2923,7 +2926,7 @@ begin
   Result := 'nil';
 end;
 
-function TNilSymbol.IsCompatible(TypSym: TSymbol): Boolean;
+function TNilSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   typSym := typSym.BaseType;
   Result := (TypSym is TClassSymbol) or (TypSym is TNilSymbol);
@@ -2949,7 +2952,7 @@ begin
   Data[Offset] := Int64(0);
 end;
 
-function TClassOfSymbol.IsCompatible(typSym: TSymbol): Boolean;
+function TClassOfSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   typSym := typSym.BaseType;
   Result :=    (typSym is TNilSymbol)
@@ -2958,7 +2961,7 @@ end;
 
 // IsOfType
 //
-function TClassOfSymbol.IsOfType(typSym : TSymbol) : Boolean;
+function TClassOfSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    if typSym is TClassOfSymbol then
       Result:=Typ.IsOfType(typSym.Typ)
@@ -3017,7 +3020,7 @@ begin
   VarCopy(Data[Offset], FDefault);
 end;
 
-function TBaseSymbol.IsCompatible(typSym: TSymbol): Boolean;
+function TBaseSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    if typSym=nil then
       Exit(False)
@@ -3751,7 +3754,7 @@ begin
   Data[Offset] := Null; // ADR
 end;
 
-function TDynamicArraySymbol.IsCompatible(TypSym: TSymbol): Boolean;
+function TDynamicArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   Result :=     (TypSym is TDynamicArraySymbol)
             and (Typ.IsCompatible(TypSym.Typ) or (TypSym.Typ is TNilSymbol));
@@ -3779,7 +3782,7 @@ begin
   end;
 end;
 
-function TStaticArraySymbol.IsCompatible(TypSym: TSymbol): Boolean;
+function TStaticArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   TypSym := TypSym.BaseType;
   Result :=     (TypSym is TStaticArraySymbol)
@@ -3789,7 +3792,7 @@ end;
 
 // IsOfType
 //
-function TStaticArraySymbol.IsOfType(typSym : TSymbol) : Boolean;
+function TStaticArraySymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=inherited IsOfType(typSym);
    if not Result then begin
@@ -3830,7 +3833,7 @@ end;
 
 // IsCompatible
 //
-function TOpenArraySymbol.IsCompatible(TypSym: TSymbol): Boolean;
+function TOpenArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   TypSym := TypSym.BaseType;
   Result :=     (TypSym is TStaticArraySymbol)
@@ -4060,14 +4063,14 @@ begin
   BaseType.InitData(Data, Offset);
 end;
 
-function TAliasSymbol.IsCompatible(typSym: TSymbol): Boolean;
+function TAliasSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   Result := BaseType.IsCompatible(typSym);
 end;
 
 // IsOfType
 //
-function TAliasSymbol.IsOfType(typSym : TSymbol) : Boolean;
+function TAliasSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=BaseType.IsOfType(typSym);
 end;
@@ -4079,7 +4082,7 @@ begin
   Result := Self;
 end;
 
-function TTypeSymbol.IsCompatible(typSym: TSymbol): Boolean;
+function TTypeSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   Result := BaseType = typSym.BaseType;
 end;

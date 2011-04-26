@@ -38,7 +38,7 @@ type
                            const pos : TScriptPos; magicFuncSym : TMagicFuncSymbol) : TMagicFuncExpr;
 
          function AddArg(Arg: TTypedExpr) : TSymbol; override;
-         function ExpectedArgType : TSymbol; override;
+         function ExpectedArgType : TTypeSymbol; override;
          function IsWritable : Boolean; override;
    end;
 
@@ -142,7 +142,7 @@ end;
 
 // ExpectedArgType
 //
-function TMagicFuncExpr.ExpectedArgType : TSymbol;
+function TMagicFuncExpr.ExpectedArgType : TTypeSymbol;
 begin
    if FArgs.Count<FFunc.Params.Count then
       Result:=FFunc.Params[FArgs.Count].Typ

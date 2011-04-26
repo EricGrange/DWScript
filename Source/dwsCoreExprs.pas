@@ -976,7 +976,7 @@ type
 
          procedure Initialize; virtual;
          function IsTrue(exec : TdwsExecution; const value: Variant) : Boolean; virtual; abstract;
-         procedure TypeCheck(prog : TdwsProgram; typ : TSymbol); virtual; abstract;
+         procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); virtual; abstract;
          function IsConstant : Boolean; virtual; abstract;
 
          property Pos : TScriptPos read FPos;
@@ -994,7 +994,7 @@ type
 
          procedure Initialize; override;
          function IsTrue(exec : TdwsExecution; const value : Variant) : Boolean; override;
-         procedure TypeCheck(prog : TdwsProgram; typ : TSymbol); override;
+         procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
    end;
 
@@ -1009,7 +1009,7 @@ type
 
          procedure Initialize; override;
          function IsTrue(exec : TdwsExecution; const Value: Variant): Boolean; override;
-         procedure TypeCheck(prog : TdwsProgram; typ : TSymbol); override;
+         procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
    end;
 
@@ -1297,8 +1297,8 @@ type
 
    TRegisteredBinaryOperator = record
       ExprClass : TProgramExprClass;
-      LeftType : TSymbol;
-      RighType : TSymbol;
+      LeftType : TTypeSymbol;
+      RighType : TTypeSymbol;
    end;
 
    // lists of binary operators and their expression classes
@@ -1311,12 +1311,12 @@ type
          constructor Create(table : TSymbolTable);
 
          procedure RegisterOperator(aToken : TTokenType; aExprClass : TProgramExprClass;
-                                    aLeftType, aRightType : TSymbol);
+                                    aLeftType, aRightType : TTypeSymbol);
 
-         function ExprClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TProgramExprClass;
-         function BinaryOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TBinaryOpExprClass;
-         function AssignmentOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TAssignExprClass;
-         function RelOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TRelOpExprClass;
+         function ExprClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TProgramExprClass;
+         function BinaryOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TBinaryOpExprClass;
+         function AssignmentOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TAssignExprClass;
+         function RelOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TRelOpExprClass;
    end;
 
    EClassCast = class (EScriptError) end;
@@ -4892,7 +4892,7 @@ end;
 
 // TypeCheck
 //
-procedure TCompareCaseCondition.TypeCheck(prog : TdwsProgram; typ : TSymbol);
+procedure TCompareCaseCondition.TypeCheck(prog : TdwsProgram; typ : TTypeSymbol);
 begin
    if not FCompareExpr.Typ.IsCompatible(typ) then
       if not (FCompareExpr.Typ.IsNumberValue and typ.IsNumberValue) then
@@ -4947,7 +4947,7 @@ end;
 
 // TypeCheck
 //
-procedure TRangeCaseCondition.TypeCheck(prog : TdwsProgram; typ : TSymbol);
+procedure TRangeCaseCondition.TypeCheck(prog : TdwsProgram; typ : TTypeSymbol);
 begin
    if not FFromExpr.Typ.IsCompatible(FToExpr.Typ) then begin
       if not (FFromExpr.Typ.IsNumberValue and FToExpr.Typ.IsNumberValue) then begin
@@ -5475,7 +5475,7 @@ procedure TExceptExpr.EvalNoResult(exec : TdwsExecution);
 var
    x : Integer;
    obj : Variant;
-   objSym : TSymbol;
+   objSym : TTypeSymbol;
    doExpr : TExceptDoExpr;
    isCaught : Boolean;
    isReraise : Boolean;
@@ -6099,7 +6099,7 @@ end;
 // RegisterOperator
 //
 procedure TBinaryOperators.RegisterOperator(aToken : TTokenType; aExprClass : TProgramExprClass;
-                                            aLeftType, aRightType : TSymbol);
+                                            aLeftType, aRightType : TTypeSymbol);
 var
    n : Integer;
 begin
@@ -6114,7 +6114,7 @@ end;
 
 // ExprClassFor
 //
-function TBinaryOperators.ExprClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TProgramExprClass;
+function TBinaryOperators.ExprClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TProgramExprClass;
 var
    i : Integer;
 begin
@@ -6129,7 +6129,7 @@ end;
 
 // BinaryOperatorClassFor
 //
-function TBinaryOperators.BinaryOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TBinaryOpExprClass;
+function TBinaryOperators.BinaryOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TBinaryOpExprClass;
 var
    expr : TProgramExprClass;
 begin
@@ -6141,7 +6141,7 @@ end;
 
 // AssignmentOperatorClassFor
 //
-function TBinaryOperators.AssignmentOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TAssignExprClass;
+function TBinaryOperators.AssignmentOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TAssignExprClass;
 var
    expr : TProgramExprClass;
 begin
@@ -6153,7 +6153,7 @@ end;
 
 // RelOperatorClassFor
 //
-function TBinaryOperators.RelOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TSymbol) : TRelOpExprClass;
+function TBinaryOperators.RelOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TRelOpExprClass;
 var
    expr : TProgramExprClass;
 begin

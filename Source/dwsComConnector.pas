@@ -134,7 +134,7 @@ type
   TComVariantArraySymbol = class(TConnectorSymbol)
   public
     constructor Create(const Name: string; ConnectorType: IConnectorType; Typ: TTypeSymbol);
-    function IsCompatible(TypSym: TSymbol): Boolean; override;
+    function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
     procedure InitData(const Dat: TData; Offset: Integer); override;
   end;
 
@@ -795,7 +795,7 @@ end;
 
 { TComVariantArraySymbol }
 
-function TComVariantArraySymbol.IsCompatible(TypSym: TSymbol): Boolean;
+function TComVariantArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   // only accept comvariantarray or std-arrays or variants
   Result := (Self = TypSym) or

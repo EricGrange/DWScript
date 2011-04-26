@@ -119,7 +119,7 @@ type
   end;
 
    TAddArgFunction = function (argExpr: TTypedExpr) : TSymbol of object;
-   TExpectedArgTypeFunction = function : TSymbol of object;
+   TExpectedArgTypeFunction = function : TTypeSymbol of object;
 
    TSpecialKeywordKind = (skNone, skAssert, skAssigned, skHigh, skLength, skLow,
                           skOrd, skSizeOf, skDefined, skDeclared, skSqr);
@@ -277,19 +277,19 @@ type
       function ReadBlocks(const endTokens: TTokenTypes; var finalToken: TTokenType): TNoResultExpr;
       function ReadEnumeration(const TypeName: string): TEnumerationSymbol;
       function ReadExit : TNoResultExpr;
-      function ReadExpr(expecting : TSymbol = nil) : TTypedExpr;
-      function ReadExprAdd(expecting : TSymbol = nil) : TTypedExpr;
-      function ReadExprMult(expecting : TSymbol = nil) : TTypedExpr;
+      function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
+      function ReadExprAdd(expecting : TTypeSymbol = nil) : TTypedExpr;
+      function ReadExprMult(expecting : TTypeSymbol = nil) : TTypedExpr;
       function ReadExprIn(var left : TTypedExpr) : TTypedExpr;
       function ReadExprInConditions(var left : TTypedExpr) : TInOpExpr;
       function ReadExternalVar(sym : TExternalVarSymbol; isWrite : Boolean) : TFuncExpr;
       function ReadField(expr : TDataExpr; sym : TFieldSymbol) : TFieldExpr;
       function ReadFor: TForExpr;
       function ReadStaticMethod(methodSym : TMethodSymbol; isWrite : Boolean;
-                                expecting : TSymbol = nil) : TTypedExpr;
+                                expecting : TTypeSymbol = nil) : TTypedExpr;
       function ReadFunc(funcSym : TFuncSymbol; isWrite: Boolean;
-                        codeExpr : TDataExpr = nil; expecting : TSymbol = nil) : TTypedExpr;
-      function WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TSymbol = nil) : TTypedExpr;
+                        codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
+      function WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil) : TTypedExpr;
 
       procedure ReadFuncArgs(funcExpr : TFuncExprBase); overload;
       procedure ReadFuncArgs(const addArgProc : TAddArgFunction;
@@ -307,7 +307,7 @@ type
       function ReadMethodImpl(ClassSym: TClassSymbol; FuncKind: TFuncKind; IsClassMethod: Boolean): TMethodSymbol;
       procedure ReadDeprecated(funcSym : TFuncSymbol);
       procedure WarnDeprecated(funcSym : TFuncSymbol);
-      function ReadName(isWrite : Boolean = False; expecting : TSymbol = nil) : TProgramExpr;
+      function ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
       function ReadConstName(constSym : TConstSymbol; IsWrite: Boolean) : TProgramExpr;
       function ReadNameOld(IsWrite: Boolean): TTypedExpr;
       function ReadNameInherited(IsWrite: Boolean): TProgramExpr;
@@ -342,8 +342,8 @@ type
       function ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TProgramExpr;
       function ReadSwitch(const SwitchName: string): Boolean;
       function ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
-                          expecting : TSymbol = nil) : TProgramExpr;
-      function ReadTerm(expecting : TSymbol = nil) : TTypedExpr;
+                          expecting : TTypeSymbol = nil) : TProgramExpr;
+      function ReadTerm(expecting : TTypeSymbol = nil) : TTypedExpr;
       function ReadNegation : TTypedExpr;
 
       function ReadTry : TExceptionExpr;
@@ -2120,7 +2120,7 @@ end;
 
 // ReadName
 //
-function TdwsCompiler.ReadName(isWrite : Boolean = False; expecting : TSymbol = nil) : TProgramExpr;
+function TdwsCompiler.ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
 var
    sym: TSymbol;
    nameToken : TToken;
@@ -2131,7 +2131,7 @@ var
    convExpr : TConvClassExpr;
    progMeth : TMethodSymbol;
    baseType : TTypeSymbol;
-   castedExprTyp : TSymbol;
+   castedExprTyp : TTypeSymbol;
    sk : TSpecialKeywordKind;
 begin
    if (FSourcePostConditionsIndex<>0) and FTok.TestDelete(ttOLD) then
@@ -2555,7 +2555,7 @@ end;
 // ReadSymbol
 //
 function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
-                                 expecting : TSymbol = nil) : TProgramExpr;
+                                 expecting : TTypeSymbol = nil) : TProgramExpr;
 
    function GetDefaultProperty(cls: TClassSymbol): TPropertySymbol;
    begin
@@ -3181,7 +3181,7 @@ end;
 // ReadStaticMethod
 //
 function TdwsCompiler.ReadStaticMethod(methodSym : TMethodSymbol;
-               isWrite : Boolean; expecting : TSymbol = nil) : TTypedExpr;
+               isWrite : Boolean; expecting : TTypeSymbol = nil) : TTypedExpr;
 var
    progMeth: TMethodSymbol;
 begin
@@ -3207,7 +3207,7 @@ end;
 // ReadFunc
 //
 function TdwsCompiler.ReadFunc(funcSym : TFuncSymbol; isWrite : Boolean;
-                               codeExpr : TDataExpr = nil; expecting : TSymbol = nil) : TTypedExpr;
+                               codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
 var
    magicFuncSym : TMagicFuncSymbol;
 begin
@@ -3253,7 +3253,7 @@ end;
 
 // WrapUpFunctionRead
 //
-function TdwsCompiler.WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TSymbol = nil) : TTypedExpr;
+function TdwsCompiler.WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil) : TTypedExpr;
 begin
    Result:=funcExpr;
    try
@@ -3304,7 +3304,7 @@ var
    arg : TTypedExpr;
    argSym : TSymbol;
    argPos : TScriptPos;
-   expectedType : TSymbol;
+   expectedType : TTypeSymbol;
 begin
    if FTok.TestDelete(leftDelim) then begin
       if not FTok.TestDelete(rightDelim) then begin
@@ -4265,7 +4265,7 @@ end;
 
 // ReadExpr
 //
-function TdwsCompiler.ReadExpr(expecting : TSymbol = nil) : TTypedExpr;
+function TdwsCompiler.ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
 var
    r: TTypedExpr;
    tt: TTokenType;
@@ -4334,7 +4334,7 @@ end;
 
 // ReadExprAdd
 //
-function TdwsCompiler.ReadExprAdd(expecting : TSymbol = nil) : TTypedExpr;
+function TdwsCompiler.ReadExprAdd(expecting : TTypeSymbol = nil) : TTypedExpr;
 var
    right: TTypedExpr;
    tt: TTokenType;
@@ -4396,7 +4396,7 @@ end;
 
 // ReadExprMult
 //
-function TdwsCompiler.ReadExprMult(expecting : TSymbol = nil) : TTypedExpr;
+function TdwsCompiler.ReadExprMult(expecting : TTypeSymbol = nil) : TTypedExpr;
 var
    right: TTypedExpr;
    tt: TTokenType;
@@ -4534,7 +4534,7 @@ end;
 
 // ReadTerm
 //
-function TdwsCompiler.ReadTerm(expecting : TSymbol = nil) : TTypedExpr;
+function TdwsCompiler.ReadTerm(expecting : TTypeSymbol = nil) : TTypedExpr;
 
    function ReadNilTerm : TTypedExpr;
    const

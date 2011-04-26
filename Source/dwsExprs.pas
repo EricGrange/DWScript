@@ -734,7 +734,7 @@ type
 
          function AddArg(arg : TTypedExpr) : TSymbol; virtual; abstract;
          procedure ClearArgs;
-         function ExpectedArgType : TSymbol; virtual; abstract;
+         function ExpectedArgType : TTypeSymbol; virtual; abstract;
          procedure TypeCheckArgs(prog : TdwsProgram); virtual;
          procedure Initialize; override;
          function GetArgs : TExprBaseList; inline;
@@ -804,7 +804,7 @@ type
          destructor Destroy; override;
 
          function AddArg(arg : TTypedExpr) : TSymbol; override;
-         function ExpectedArgType : TSymbol; override;
+         function ExpectedArgType : TTypeSymbol; override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
          function GetData(exec : TdwsExecution) : TData; override;
@@ -3886,7 +3886,7 @@ end;
 
 // ExpectedArgType
 //
-function TFuncExpr.ExpectedArgType : TSymbol;
+function TFuncExpr.ExpectedArgType : TTypeSymbol;
 begin
    if FArgs.Count<FFunc.Params.Count then
       Result:=FFunc.Params[FArgs.Count].Typ
