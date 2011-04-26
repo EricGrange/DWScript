@@ -3102,12 +3102,6 @@ end;
 // ------------------ TProgramExpr ------------------
 // ------------------
 
-function IsType(Typ: TSymbol; BType: TBaseTypeId): Boolean;
-begin
-  Result := Assigned(Typ) and (Typ.BaseType is TBaseSymbol)
-            and IsBaseTypeCompatible(TBaseSymbol(Typ.BaseType).Id, BType);
-end;
-
 // OptimizeToNoPosExpr
 //
 function TTypedExpr.OptimizeToNoPosExpr(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;

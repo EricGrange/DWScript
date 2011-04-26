@@ -636,7 +636,7 @@ type
    TConvExpr = class(TUnaryOpExpr)
       public
          class function WrapWithConvCast(prog : TdwsProgram; const scriptPos : TScriptPos;
-                                         toTyp : TSymbol; expr : TTypedExpr;
+                                         toTyp : TTypeSymbol; expr : TTypedExpr;
                                          reportError : Boolean) : TTypedExpr; static;
    end;
 
@@ -2963,7 +2963,7 @@ end;
 // WrapWithConvCast
 //
 class function TConvExpr.WrapWithConvCast(prog : TdwsProgram; const scriptPos : TScriptPos;
-                                          toTyp : TSymbol; expr : TTypedExpr;
+                                          toTyp : TTypeSymbol; expr : TTypedExpr;
                                           reportError : Boolean) : TTypedExpr;
 
    procedure ReportIncompatibleTypes;

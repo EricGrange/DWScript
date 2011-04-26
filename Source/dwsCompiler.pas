@@ -1219,7 +1219,6 @@ var
    expr: TTypedExpr;
    typ : TTypeSymbol;
    constPos : TScriptPos;
-   sym : TSymbol;
 begin
    if not FTok.TestDeleteNamePos(name, constPos) then begin
 
@@ -5573,13 +5572,13 @@ var
    typString : TBaseSymbol;
 begin
    // Create base data types
-   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_BOOLEAN, typBooleanID, False));
-   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_FLOAT, typFloatID, VarAsType(0, varDouble)));
-   SystemTable.AddSymbol(TBaseSymbol.Create(SYS_INTEGER, typIntegerID, VarAsType(0, varInt64)));
-   typString:=TBaseSymbol.Create(SYS_STRING, typStringID, '');
+   SystemTable.AddSymbol(TBaseBooleanSymbol.Create);
+   SystemTable.AddSymbol(TBaseFloatSymbol.Create);
+   SystemTable.AddSymbol(TBaseIntegerSymbol.Create);
+   typString:=TBaseStringSymbol.Create;
    SystemTable.AddSymbol(typString);
 
-   varSym := TBaseSymbol.Create(SYS_VARIANT, typVariantID, Unassigned);
+   varSym:=TBaseVariantSymbol.Create;
    SystemTable.AddSymbol(varSym);
    SystemTable.AddSymbol(TConstSymbol.Create('Null', varSym, Null));
    SystemTable.AddSymbol(TConstSymbol.Create('Unassigned', varSym, Unassigned));
@@ -5587,10 +5586,10 @@ begin
    SystemTable.AddSymbol(TOpenArraySymbol.Create('array of const', varSym));
 
    // Create "root" class TObject
-   clsObject := TClassSymbol.Create(SYS_TOBJECT);
+   clsObject:=TClassSymbol.Create(SYS_TOBJECT);
    // Add constructor Create
-   meth := TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, clsObject, cvPublic, False);
-   meth.Executable := ICallable(TEmptyFunc.Create);
+   meth:=TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, clsObject, cvPublic, False);
+   meth.Executable:=ICallable(TEmptyFunc.Create);
    clsObject.AddMethod(meth);
    // Add destructor Destroy
    TObjectDestroyMethod.Create(mkDestructor, [maVirtual], SYS_TOBJECT_DESTROY,
