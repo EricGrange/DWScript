@@ -230,6 +230,7 @@ const
   CPE_FunctionOptimizationFailed = 'Evaluation of "%s" failed: %s %s';
 
   CPH_VariableDeclaredButNotUsed = 'Variable "%s" declared but not used';
+  CPH_VariableDeclaredButNotWrittenTo = 'Variable "%s" declared but never written to';
   CPH_ResultNotUsed = 'Result is never used';
 
   // TypeCheck

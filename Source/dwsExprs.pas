@@ -102,7 +102,8 @@ type
 
    { Describe how the symbol at the position is being used. suReference would be
      a typical usage of the symbol. }
-   TSymbolUsage = (suForward, suDeclaration, suImplementation, suReference);
+   TSymbolUsage = (suForward, suDeclaration, suImplementation, suReference,
+                   suRead, suWrite);
    TSymbolUsages = set of TSymbolUsage;
 
    TSymbolPosition = class
@@ -161,16 +162,20 @@ type
          destructor Destroy; override;
 
          procedure Clear;  // clear the lists
-         procedure Add(Sym: TSymbol; const Pos: TScriptPos; const useTypes: TSymbolUsages=[suReference]);
-         procedure Remove(Sym: TSymbol); // remove references to the symbol
+         procedure AddSymbol(sym : TSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages);
+         procedure AddSymbolReference(sym : TSymbol; const pos : TScriptPos; isWrite : Boolean);
+         procedure AddValueSymbol(sym : TValueSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages);
+         procedure AddTypeSymbol(sym : TTypeSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages = [suReference]);
+         procedure AddConstSymbol(sym : TConstSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages = [suReference]);
+         procedure Remove(sym : TSymbol); // remove references to the symbol
 
-         function FindSymbolAtPosition(ACol, ALine: Integer; const sourceFile : String): TSymbol; overload;
-         function FindSymbolPosList(Sym: TSymbol): TSymbolPositionList; overload;  // return list of symbol
-         function FindSymbolPosList(const SymName: string): TSymbolPositionList; overload;  // return list of symbol
-         function FindSymbolPosListOfType(const SymName: string; SymbolType: TSymbolClass): TSymbolPositionList; // return list of symbol given the desired type
-         function FindSymbolUsage(Symbol: TSymbol; SymbolUse: TSymbolUsage): TSymbolPosition; overload;
-         function FindSymbolUsage(const SymName: string; SymbolUse: TSymbolUsage): TSymbolPosition; overload;
-         function FindSymbolUsageOfType(const SymName: string; SymbolType: TSymbolClass; SymbolUse: TSymbolUsage): TSymbolPosition;
+         function FindSymbolAtPosition(aCol, aLine: Integer; const sourceFile : String): TSymbol; overload;
+         function FindSymbolPosList(sym: TSymbol): TSymbolPositionList; overload;  // return list of symbol
+         function FindSymbolPosList(const symName: String): TSymbolPositionList; overload;  // return list of symbol
+         function FindSymbolPosListOfType(const symName: String; symbolType: TSymbolClass): TSymbolPositionList; // return list of symbol given the desired type
+         function FindSymbolUsage(symbol: TSymbol; symbolUse: TSymbolUsage): TSymbolPosition; overload;
+         function FindSymbolUsage(const symName: String; symbolUse: TSymbolUsage): TSymbolPosition; overload;
+         function FindSymbolUsageOfType(const symName: String; symbolType: TSymbolClass; symbolUse: TSymbolUsage): TSymbolPosition;
 
          function Count : Integer; inline;
          property Items[Index: Integer] : TSymbolPositionList read GetList; default;
@@ -732,9 +737,9 @@ type
          constructor Create(prog : TdwsProgram; const pos : TScriptPos; func : TFuncSymbol);
          destructor Destroy; override;
 
-         function AddArg(arg : TTypedExpr) : TSymbol; virtual; abstract;
+         procedure AddArg(arg : TTypedExpr); virtual; abstract;
          procedure ClearArgs;
-         function ExpectedArgType : TTypeSymbol; virtual; abstract;
+         function ExpectedArg : TParamSymbol; virtual; abstract;
          procedure TypeCheckArgs(prog : TdwsProgram); virtual;
          procedure Initialize; override;
          function GetArgs : TExprBaseList; inline;
@@ -803,8 +808,8 @@ type
          constructor Create(prog : TdwsProgram; const pos : TScriptPos; func : TFuncSymbol);
          destructor Destroy; override;
 
-         function AddArg(arg : TTypedExpr) : TSymbol; override;
-         function ExpectedArgType : TTypeSymbol; override;
+         procedure AddArg(arg : TTypedExpr); override;
+         function ExpectedArg : TParamSymbol; override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
          function GetData(exec : TdwsExecution) : TData; override;
@@ -960,7 +965,7 @@ type
                        BaseExpr: TTypedExpr; IsWritable: Boolean = True; IsIndex: Boolean = False);
     destructor Destroy; override;
     function AssignConnectorSym(ConnectorType: IConnectorType): Boolean;
-    function AddArg(ArgExpr: TTypedExpr) : TSymbol;
+    procedure AddArg(expr : TTypedExpr);
     procedure TypeCheckArgs(prog : TdwsProgram);
     function Eval(exec : TdwsExecution) : Variant; override;
     procedure Initialize; override;
@@ -1189,6 +1194,7 @@ type
    TTypedExprList = class
       protected
          FList : TTightList;
+         FTable : TSymbolTable;
 
          function GetExpr(const x: Integer): TTypedExpr;
          procedure SetExpr(const x: Integer; const Value: TTypedExpr);
@@ -1197,12 +1203,16 @@ type
       public
          destructor Destroy; override;
 
-         function AddExpr(AExpr: TTypedExpr) : TSymbol;
+         procedure AddExpr(expr : TTypedExpr);
+         function  ExpectedArg : TParamSymbol;
+
          procedure Insert0(expr : TExprBase);
          procedure Delete(index : Integer);
+         procedure Clear; inline;
 
          property Expr[const x: Integer]: TTypedExpr read GetExpr write SetExpr; default;
          property Count : Integer read GetCount;
+         property Table : TSymbolTable read FTable write FTable;
    end;
 
    // Helper object for access to symbols
@@ -3870,20 +3880,17 @@ end;
 
 // AddArg
 //
-function TFuncExpr.AddArg(arg: TTypedExpr) : TSymbol;
+procedure TFuncExpr.AddArg(arg: TTypedExpr);
 begin
-   if FArgs.Count<FFunc.Params.Count then
-      Result:=FFunc.Params[FArgs.Count]
-   else Result:=nil;
    FArgs.Add(arg);
 end;
 
-// ExpectedArgType
+// ExpectedArg
 //
-function TFuncExpr.ExpectedArgType : TTypeSymbol;
+function TFuncExpr.ExpectedArg : TParamSymbol;
 begin
    if FArgs.Count<FFunc.Params.Count then
-      Result:=FFunc.Params[FArgs.Count].Typ
+      Result:=(FFunc.Params[FArgs.Count] as TParamSymbol)
    else Result:=nil;
 end;
 
@@ -4252,10 +4259,18 @@ begin
    inherited;
 end;
 
-function TTypedExprList.AddExpr(AExpr: TTypedExpr) : TSymbol;
+procedure TTypedExprList.AddExpr(expr : TTypedExpr);
 begin
-   FList.Add(AExpr);
-   Result:=nil;
+   FList.Add(expr);
+end;
+
+// ExpectedArg
+//
+function TTypedExprList.ExpectedArg : TParamSymbol;
+begin
+   if (FTable<>nil) and (FList.Count<FTable.Count) then
+      Result:=FTable[FList.Count] as TParamSymbol
+   else Result:=nil;
 end;
 
 // Insert0
@@ -4270,6 +4285,13 @@ end;
 procedure TTypedExprList.Delete(index : Integer);
 begin
    FList.Delete(index);
+end;
+
+// Clear
+//
+procedure TTypedExprList.Clear;
+begin
+   FList.Clear;
 end;
 
 function TTypedExprList.GetExpr(const x: Integer): TTypedExpr;
@@ -4289,7 +4311,9 @@ begin
    Result:=FList.Count;
 end;
 
-{ TBinaryOpExpr }
+// ------------------
+// ------------------ TBinaryOpExpr ------------------
+// ------------------
 
 constructor TBinaryOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
 begin
@@ -6178,10 +6202,11 @@ begin
   inherited;
 end;
 
-function TConnectorCallExpr.AddArg(ArgExpr: TTypedExpr) : TSymbol;
+// AddArg
+//
+procedure TConnectorCallExpr.AddArg(expr : TTypedExpr);
 begin
-   FArgs.Add(ArgExpr);
-   Result:=nil;
+   FArgs.Add(expr);
 end;
 
 // TypeCheckArgs
@@ -6645,9 +6670,9 @@ begin
    inherited;
 end;
 
-// Add
+// AddSymbol
 //
-procedure TSymbolDictionary.Add(Sym: TSymbol; const Pos: TScriptPos; const useTypes: TSymbolUsages);
+procedure TSymbolDictionary.AddSymbol(sym : TSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages);
 var
    symPosList: TSymbolPositionList;
 begin
@@ -6663,6 +6688,36 @@ begin
 
    // add the instance of the symbol to the position list
    symPosList.Add(Pos, UseTypes);
+end;
+
+// AddSymbolReference
+//
+procedure TSymbolDictionary.AddSymbolReference(sym : TSymbol; const pos : TScriptPos; isWrite : Boolean);
+begin
+   if isWrite then
+      AddSymbol(sym, pos, [suReference, suWrite])
+   else AddSymbol(sym, pos, [suReference, suRead]);
+end;
+
+// AddValueSymbol
+//
+procedure TSymbolDictionary.AddValueSymbol(sym : TValueSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages);
+begin
+   AddSymbol(sym, pos, useTypes);
+end;
+
+// AddTypeSymbol
+//
+procedure TSymbolDictionary.AddTypeSymbol(sym : TTypeSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages = [suReference]);
+begin
+   AddSymbol(sym, pos, useTypes);
+end;
+
+// AddConstSymbol
+//
+procedure TSymbolDictionary.AddConstSymbol(sym : TConstSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages = [suReference]);
+begin
+   AddSymbol(sym, pos, useTypes);
 end;
 
 // FindSymbolAtPosition
@@ -6875,9 +6930,11 @@ function TSymbolPositionList.FindUsage(const symbolUse : TSymbolUsage) : TSymbol
 var
    i : Integer;
 begin
-   for i:=0 to Count-1 do begin
-      Result:=Items[i];
-      if SymbolUse in Result.SymbolUsages then Exit;
+   if Self<>nil then begin
+      for i:=0 to Count-1 do begin
+         Result:=Items[i];
+         if SymbolUse in Result.SymbolUsages then Exit;
+      end;
    end;
    Result:=nil;
 end;

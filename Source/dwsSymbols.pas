@@ -940,6 +940,7 @@ type
          function GetArrayIndicesDescription: string;
          function QualifiedName : String; override;
          function IsVisibleFor(const aVisibility : TClassVisibility) : Boolean; override;
+         function HasArrayIndices : Boolean;
 
          property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
          property Visibility : TClassVisibility read FVisibility write FVisibility;
@@ -2518,6 +2519,13 @@ end;
 function TPropertySymbol.IsVisibleFor(const aVisibility : TClassVisibility) : Boolean;
 begin
    Result:=(FVisibility>=aVisibility);
+end;
+
+// HasArrayIndices
+//
+function TPropertySymbol.HasArrayIndices : Boolean;
+begin
+   Result:=Assigned(FArrayIndices) and (FArrayIndices.Count>0);
 end;
 
 // GetDescription

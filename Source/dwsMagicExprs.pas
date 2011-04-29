@@ -37,8 +37,8 @@ type
          class function CreateMagicFuncExpr(prog : TdwsProgram;
                            const pos : TScriptPos; magicFuncSym : TMagicFuncSymbol) : TMagicFuncExpr;
 
-         function AddArg(Arg: TTypedExpr) : TSymbol; override;
-         function ExpectedArgType : TTypeSymbol; override;
+         procedure AddArg(arg : TTypedExpr); override;
+         function ExpectedArg : TParamSymbol; override;
          function IsWritable : Boolean; override;
    end;
 
@@ -132,20 +132,17 @@ end;
 
 // AddArg
 //
-function TMagicFuncExpr.AddArg(arg: TTypedExpr) : TSymbol;
+procedure TMagicFuncExpr.AddArg(arg : TTypedExpr);
 begin
-   if FArgs.Count<FFunc.Params.Count then begin
-      Result:=FFunc.Params[FArgs.Count];
-   end else Result:=nil;
    FArgs.Add(arg);
 end;
 
-// ExpectedArgType
+// ExpectedArg
 //
-function TMagicFuncExpr.ExpectedArgType : TTypeSymbol;
+function TMagicFuncExpr.ExpectedArg : TParamSymbol;
 begin
    if FArgs.Count<FFunc.Params.Count then
-      Result:=FFunc.Params[FArgs.Count].Typ
+      Result:=(FFunc.Params[FArgs.Count] as TParamSymbol)
    else Result:=nil;
 end;
 

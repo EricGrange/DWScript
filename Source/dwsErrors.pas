@@ -541,7 +541,7 @@ end;
 //
 procedure TdwsCompileMessageList.AddCompilerHint(const Pos: TScriptPos; const Text: String);
 begin
-   if not HintsDisabled then
+   if not (HintsDisabled or HasErrors) then
       AddMsg(THintMessage.Create(Self, Text, Pos));
 end;
 
