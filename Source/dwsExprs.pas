@@ -3494,17 +3494,16 @@ begin
       errorCount:=prog.CompileMsgs.Count;
 
       if argTyp=nil then
-         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType, [x, paramSymbol.Typ.Name]);
+         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType, [x, paramSymbol.Typ.Name])
+      else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
+         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long, [x, paramSymbol.Typ.Name, argTyp.Name]);
+
       if paramSymbol.InheritsFrom(TVarParamSymbol) then begin
          if arg is TDataExpr then begin
             if not TDataExpr(arg).IsWritable then
                prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
          end else prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
       end;
-      if argTyp=nil then
-         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType, [x, paramSymbol.Typ.Name])
-      else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
-         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long, [x, paramSymbol.Typ.Name, argTyp.Name]);
 
       if (errorCount<>prog.CompileMsgs.Count) and (arg is TConvExpr) then begin
          // unwrap conv expr, temporary workaround for multiple typechecks

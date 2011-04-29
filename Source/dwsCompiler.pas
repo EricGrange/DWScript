@@ -3452,11 +3452,11 @@ end;
 
 procedure TdwsCompiler.ReadNameList(names : TStrings);
 begin
-  Names.Clear;
+  names.Clear;
   repeat
     if not FTok.TestName then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-    Names.Add(FTok.GetToken.FString);
+    names.Add(FTok.GetToken.FString);
     CheckSpecialName(FTok.GetToken.FString);
     FTok.KillToken;
   until not FTok.TestDelete(ttCOMMA);

@@ -377,17 +377,7 @@ end;
 // AddMsg
 //
 procedure TdwsMessageList.AddMsg(aMessage: TdwsMessage);
-var
-   i : Integer;
-   msg : TdwsMessage;
 begin
-   for i:=0 to FMessageList.Count-1 do begin
-      msg:=TdwsMessage(FMessageList.List[i]);
-      if msg.SameMessageAs(aMessage) then begin
-         aMessage.Free;
-         Exit;
-      end;
-   end;
    FMessageList.Add(aMessage);
 end;
 
