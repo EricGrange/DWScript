@@ -4,8 +4,8 @@ type
 var e : TEnum = enTwo;
 
 PrintLn('Ord: '+IntToStr(Ord(e)));
-PrintLn('High: '+IntToStr(High(e)));
-PrintLn('Low: '+IntToStr(Low(e)));
+PrintLn('High: '+IntToStr(Ord(High(e))));
+PrintLn('Low: '+IntToStr(Ord(Low(e))));
 
 Inc(e); // supported
 PrintLn(Ord(e));

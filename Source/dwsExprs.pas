@@ -735,7 +735,7 @@ type
          procedure Initialize(prog : TdwsProgram); virtual;
 
       public
-         constructor Create(prog : TdwsProgram; const pos : TScriptPos; func : TFuncSymbol);
+         constructor Create(prog : TdwsProgram; const pos : TScriptPos; aFunc : TFuncSymbol);
          destructor Destroy; override;
 
          procedure AddArg(arg : TTypedExpr); virtual; abstract;
@@ -1176,6 +1176,7 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
          function IsConstant : Boolean; override;
 
+         property Typ : TTypeSymbol read FTyp write FTyp;
          property Left : TTypedExpr read FLeft write FLeft;
          property Right : TTypedExpr read FRight write FRight;
    end;
@@ -3395,11 +3396,12 @@ end;
 
 // Create
 //
-constructor TFuncExprBase.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TFuncSymbol);
+constructor TFuncExprBase.Create(prog : TdwsProgram; const pos : TScriptPos; aFunc : TFuncSymbol);
 begin
    inherited Create(Prog, Pos, nil);
-   FFunc := Func;
-   FTyp := Func.Typ;
+   FFunc:=aFunc;
+   if Assigned(aFunc) then
+      FTyp:=aFunc.Typ;
 end;
 
 // Destroy
@@ -3546,7 +3548,7 @@ function TFuncExprBase.IsConstant : Boolean;
 var
    i : Integer;
 begin
-   if not FuncSym.IsStateless then Exit(False);
+   if (FuncSym<>nil) and (not FuncSym.IsStateless) then Exit(False);
 
    for i:=0 to FArgs.Count-1 do
       if not TTypedExpr(FArgs.ExprBase[i]).IsConstant then

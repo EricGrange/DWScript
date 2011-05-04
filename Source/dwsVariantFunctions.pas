@@ -22,7 +22,7 @@ unit dwsVariantFunctions;
 
 interface
 
-uses Classes, Variants, SysUtils, dwsFunctions, dwsExprs, dwsSymbols;
+uses Classes, Variants, SysUtils, dwsFunctions, dwsExprs, dwsSymbols, dwsUtils;
 
 type
   TVarClearFunc = class(TInternalFunction)
@@ -153,7 +153,7 @@ initialization
    RegisterInternalBoolFunction(TVarIsNullFunc, 'VarIsNull', ['v', cVariant]);
    RegisterInternalBoolFunction(TVarIsEmptyFunc, 'VarIsEmpty', ['v', cVariant]);
    RegisterInternalFunction(TVarTypeFunc, 'VarType', ['v', cVariant], 'TVarType');
-   RegisterInternalFunction(TVarAsTypeFunc, 'VarAsType', ['v', cVariant, 'VarType', cInteger], cVariant);
+   RegisterInternalFunction(TVarAsTypeFunc, 'VarAsType', ['v', cVariant, 'VarType', 'TVarType'], cVariant);
    RegisterInternalStringFunction(TVarToStrFunc, 'VarToStr', ['v', cVariant]);
 
 end.

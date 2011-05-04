@@ -122,7 +122,8 @@ type
    TExpectedArgFunction = function : TParamSymbol of object;
 
    TSpecialKeywordKind = (skNone, skAssert, skAssigned, skHigh, skLength, skLow,
-                          skOrd, skSizeOf, skDefined, skDeclared, skSqr);
+                          skOrd, skSizeOf, skDefined, skDeclared, skSqr,
+                          skInc, skDec, skSucc, skPred);
 
    TSwitchInstruction = (siNone,
                          siIncludeLong, siIncludeShort,
@@ -242,8 +243,8 @@ type
       function CheckFuncParams(paramsA, paramsB : TSymbolTable; indexSym : TSymbol = nil;
                                typSym : TTypeSymbol = nil) : Boolean;
       procedure CheckName(const Name: string);
-      function IdentifySpecialName(const name: string) : TSpecialKeywordKind;
-      procedure CheckSpecialName(const name: string);
+      function IdentifySpecialName(const name : String) : TSpecialKeywordKind;
+      procedure CheckSpecialName(const name : String);
       function CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
       procedure CompareFuncSymbols(a, b : TFuncSymbol; isCheckingParameters : Boolean);
       function CurrentClass : TClassSymbol;
@@ -338,8 +339,8 @@ type
       function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TNoResultExpr;
       procedure ReadSemiColon;
       // AName might be the name of an INCLUDEd script
-      function ReadScript(const AName: string=''; ScriptType: TScriptSourceType=stMain): TNoResultExpr;
-      function ReadSpecialFunction(const namePos: TScriptPos; SpecialKind: TSpecialKeywordKind): TProgramExpr;
+      function ReadScript(const aName : String=''; scriptType : TScriptSourceType=stMain) : TNoResultExpr;
+      function ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
       function ReadStatement : TNoResultExpr;
       function ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TProgramExpr;
       function ReadSwitch(const SwitchName: string): Boolean;
@@ -5163,12 +5164,12 @@ end;
 
 // IdentifySpecialName
 //
-function TdwsCompiler.IdentifySpecialName(const name: string) : TSpecialKeywordKind;
+function TdwsCompiler.IdentifySpecialName(const name : String) : TSpecialKeywordKind;
 var
    ch : Char;
 begin
    Result:=skNone;
-   if name='' then Exit;
+   if Length(name)<3 then Exit;
    ch:=name[1];
    if (ch>='A') and (ch<='Z') then
       ch:=Char(Word(ch) or $0020);
@@ -5177,24 +5178,30 @@ begin
          if SameText(name, 'assert') then Result:=skAssert
          else if SameText(name, 'assigned') then Result:=skAssigned;
       'd' :
-         if SameText(name, 'defined') then Result:=skDefined
+         if SameText(name, 'dec') then Result:=skDec
+         else if SameText(name, 'defined') then Result:=skDefined
          else if SameText(name, 'declared') then Result:=skDeclared;
       'h' :
          if SameText(name, 'high') then Result:=skHigh;
+      'i' :
+         if SameText(name, 'inc') then Result:=skInc;
       'l' :
          if SameText(name, 'low') then Result:=skLow
          else if SameText(name, 'length') then Result:=skLength;
       'o' :
          if SameText(name, 'ord') then Result:=skOrd;
+      'p' :
+         if SameText(name, 'pred') then Result:=skPred;
       's' :
          if SameText(name, 'sizeof') then Result:=skSizeOf
-         else if SameText(name, 'sqr') then Result:=skSqr;
+         else if SameText(name, 'sqr') then Result:=skSqr
+         else if SameText(name, 'succ') then Result:=skSucc;
    end;
 end;
 
 // CheckSpecialName
 //
-procedure TdwsCompiler.CheckSpecialName(const name: string);
+procedure TdwsCompiler.CheckSpecialName(const name : String);
 begin
    if IdentifySpecialName(name)<>skNone then
       FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameIsReserved, [Name]);
@@ -6217,7 +6224,7 @@ end;
 
 // ReadSpecialFunction
 //
-function TdwsCompiler.ReadSpecialFunction(const namePos: TScriptPos; SpecialKind: TSpecialKeywordKind) : TProgramExpr;
+function TdwsCompiler.ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
 
    function EvaluateDefined(argExpr : TTypedExpr) : Boolean;
    var
@@ -6236,8 +6243,9 @@ function TdwsCompiler.ReadSpecialFunction(const namePos: TScriptPos; SpecialKind
    end;
 
 var
-   argExpr, msgExpr : TTypedExpr;
+   argExpr, msgExpr, operandExpr : TTypedExpr;
    argTyp : TTypeSymbol;
+   argPos : TScriptPos;
 begin
    if not FTok.TestDelete(ttBLEFT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
@@ -6251,9 +6259,11 @@ begin
       and argTyp.InheritsFrom(TTypeSymbol)
       and not argTyp.InheritsFrom(TFuncSymbol) then begin
       argExpr:=nil;
+      argPos:=cNullPos;
       FTok.KillToken;
       FTok.KillToken;
    end else begin
+      argPos:=FTok.HotPos;
       argExpr:=ReadExpr;
       argTyp:=argExpr.Typ;
       while argTyp is TAliasSymbol do
@@ -6267,8 +6277,8 @@ begin
 
       Result := nil;
 
-      case SpecialKind of
-         skAssert: begin
+      case specialKind of
+         skAssert : begin
             if not argTyp.IsOfType(FProg.TypBoolean) then
                FMsgs.AddCompilerError(FTok.HotPos, CPE_BooleanExpected);
             if FTok.TestDelete(ttCOMMA) then begin
@@ -6286,7 +6296,7 @@ begin
             argExpr:=nil;
             msgExpr:=nil;
          end;
-         skAssigned: begin
+         skAssigned : begin
             if argTyp is TClassSymbol then
                Result:=TAssignedInstanceExpr.Create(FProg, argExpr)
             else if argTyp is TClassOfSymbol then
@@ -6294,7 +6304,7 @@ begin
             else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
             argExpr:=nil;
          end;
-         skHigh: begin
+         skHigh : begin
             if argTyp is TOpenArraySymbol then begin
                if argExpr=nil then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
@@ -6306,7 +6316,7 @@ begin
             end else if argTyp is TDynamicArraySymbol and Assigned(argExpr) then begin
                Result:=TArrayLengthExpr.Create(FProg, TDataExpr(argExpr), -1);
                argExpr:=nil;
-            end else if (argTyp = FProg.TypString) and Assigned(argExpr) then begin
+            end else if argTyp.IsOfType(FProg.TypString) and Assigned(argExpr) then begin
                Result:=TStringLengthExpr.Create(FProg, argExpr);
                argExpr:=nil;
             end else if argTyp is TStaticArraySymbol then begin
@@ -6317,7 +6327,31 @@ begin
                Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, High(Int64));
             end else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
          end;
-         skLength: begin
+         skInc, skDec, skSucc, skPred : begin
+            if     (specialKind in [skInc, skDec])
+               and not (   (argExpr is TDataExpr)
+                        and TDataExpr(argExpr).IsWritable) then
+               FMsgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [0, 'a'])
+            else if    argTyp.IsOfType(FProg.TypInteger)
+                    or (argTyp is TEnumerationSymbol) then begin
+               if specialKind in [skInc, skDec] then
+                  WarnForVarUsage(TVarExpr(argExpr), argPos);
+               if FTok.TestDelete(ttCOMMA) then begin
+                  operandExpr:=ReadExpr;
+                  if (operandExpr=nil) or (not operandExpr.IsOfType(FProg.TypInteger)) then
+                     FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
+               end else operandExpr:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, 1);
+               case specialKind of
+                  skInc : Result:=TIncVarFuncExpr.Create(FProg, FTok.HotPos, argExpr, operandExpr);
+                  skDec : Result:=TDecVarFuncExpr.Create(FProg, FTok.HotPos, argExpr, operandExpr);
+                  skSucc : Result:=TSuccFuncExpr.Create(FProg, FTok.HotPos, argExpr, operandExpr);
+                  skPred : Result:=TPredFuncExpr.Create(FProg, FTok.HotPos, argExpr, operandExpr);
+               else
+                  Assert(False);
+               end;
+            end else FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
+         end;
+         skLength : begin
             if argTyp is TOpenArraySymbol then begin
                if argExpr=nil then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
@@ -6335,7 +6369,7 @@ begin
                                                 TStaticArraySymbol(argTyp).ElementCount);
             end else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
          end;
-         skLow: begin
+         skLow : begin
                FreeAndNil(argExpr);
             if argTyp is TStaticArraySymbol then
                Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(argTyp).LowBound)
@@ -6359,7 +6393,7 @@ begin
             end else FMsgs.AddCompilerError(FTok.HotPos, CPE_NumericalExpected);
          end;
          skOrd : begin
-            if argTyp.IsOfType(FProg.TypInteger) then begin
+            if argTyp.IsOfType(FProg.TypInteger) or argTyp.InheritsFrom(TEnumerationSymbol) then begin
                Result:=TOrdIntExpr.Create(FProg, argExpr);
                argExpr:=nil;
             end else if argTyp=FProg.TypBoolean then begin

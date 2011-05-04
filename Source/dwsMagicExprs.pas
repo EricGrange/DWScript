@@ -22,7 +22,8 @@ unit dwsMagicExprs;
 
 interface
 
-uses Classes, SysUtils, dwsExprs, dwsSymbols, dwsStack, dwsErrors, dwsFunctions, dwsUtils;
+uses Classes, SysUtils, dwsExprs, dwsSymbols, dwsStack, dwsErrors, dwsFunctions,
+   dwsUtils, dwsCoreExprs;
 
 type
 
@@ -97,6 +98,38 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Eval(exec : TdwsExecution) : Variant; override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
+   end;
+
+   // Inc/Dec/Succ/Pred
+   TMagicIteratorFuncExpr = class(TMagicFuncExpr)
+      public
+         constructor Create(prog : TdwsProgram; const pos : TScriptPos;
+                            left, right : TTypedExpr);
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         function Eval(exec : TdwsExecution) : Variant; override;
+   end;
+
+   // result = Inc(left, right)
+   TIncVarFuncExpr = class(TMagicIteratorFuncExpr)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   end;
+   // result = Dec(left, right)
+   TDecVarFuncExpr = class(TMagicIteratorFuncExpr)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   end;
+   // result = Succ(left, right)
+   TSuccFuncExpr = class(TMagicIteratorFuncExpr)
+      public
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   end;
+   // result = Pred(left, right)
+   TPredFuncExpr = class(TMagicIteratorFuncExpr)
+      public
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
 // ------------------------------------------------------------------
@@ -356,6 +389,107 @@ end;
 function TMagicProcedureExpr.Eval(exec : TdwsExecution) : Variant;
 begin
    EvalNoResult(exec);
+end;
+
+// ------------------
+// ------------------ TMagicIteratorFuncExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TMagicIteratorFuncExpr.Create(prog : TdwsProgram; const pos : TScriptPos;
+                                          left, right : TTypedExpr);
+begin
+   inherited Create(prog, pos, nil);
+   FTyp:=left.Typ;
+   AddArg(left);
+   AddArg(right);
+end;
+
+// EvalNoResult
+//
+procedure TMagicIteratorFuncExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   EvalAsInteger(exec);
+end;
+
+// Eval
+//
+function TMagicIteratorFuncExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result:=EvalAsInteger(exec);
+end;
+
+// ------------------
+// ------------------ TIncVarFuncExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TIncVarFuncExpr.EvalNoResult(exec : TdwsExecution);
+var
+   left : TDataExpr;
+begin
+   left:=TDataExpr(FArgs.ExprBase[0]);
+   left.AssignValueAsInteger(exec, left.EvalAsInteger(exec)+FArgs.ExprBase[1].EvalAsInteger(exec));
+end;
+
+// EvalAsInteger
+//
+function TIncVarFuncExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   left : TDataExpr;
+begin
+   left:=TDataExpr(FArgs.ExprBase[0]);
+   Result:=left.EvalAsInteger(exec)+FArgs.ExprBase[1].EvalAsInteger(exec);
+   left.AssignValueAsInteger(exec, Result);
+end;
+
+// ------------------
+// ------------------ TDecVarFuncExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TDecVarFuncExpr.EvalNoResult(exec : TdwsExecution);
+var
+   left : TDataExpr;
+begin
+   left:=TDataExpr(FArgs.ExprBase[0]);
+   left.AssignValueAsInteger(exec, left.EvalAsInteger(exec)-FArgs.ExprBase[1].EvalAsInteger(exec));
+end;
+
+// EvalAsInteger
+//
+function TDecVarFuncExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   left : TDataExpr;
+begin
+   left:=TDataExpr(FArgs.ExprBase[0]);
+   Result:=left.EvalAsInteger(exec)-FArgs.ExprBase[1].EvalAsInteger(exec);
+   left.AssignValueAsInteger(exec, Result);
+end;
+
+// ------------------
+// ------------------ TSuccFuncExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TSuccFuncExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result:=FArgs.ExprBase[0].EvalAsInteger(exec)+FArgs.ExprBase[1].EvalAsInteger(exec);
+end;
+
+// ------------------
+// ------------------ TPredFuncExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TPredFuncExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result:=FArgs.ExprBase[0].EvalAsInteger(exec)-FArgs.ExprBase[1].EvalAsInteger(exec);
 end;
 
 end.

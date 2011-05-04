@@ -2428,7 +2428,7 @@ begin
          expr:=TConvFloatExpr.Create(Prog, expr);
          FElementExprs.List[x]:=expr;
       end;
-      if not expr.Typ.IsCompatible(Typ.Typ) then
+      if not Typ.Typ.IsCompatible(expr.Typ) then
          prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_AssignIncompatibleTypes,
                                               [expr.Typ.Caption, Typ.Typ.Caption]);
    end;
@@ -4751,7 +4751,9 @@ end;
 //
 function TCaseCondition.IsOfTypeNumber(prog : TdwsProgram; typ : TTypeSymbol) : Boolean;
 begin
-   Result:=typ.IsOfType(prog.TypInteger) or typ.IsOfType(prog.TypFloat);
+   Result:=   typ.IsOfType(prog.TypInteger) or typ.IsOfType(prog.TypFloat)
+           or typ.IsOfType(prog.TypVariant)
+           or (typ is TEnumerationSymbol);
 end;
 
 // ------------------

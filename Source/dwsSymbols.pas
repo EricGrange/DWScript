@@ -27,18 +27,6 @@ uses Windows, SysUtils, Variants, Classes, dwsStrings, dwsErrors,
 
 type
 
-   TBaseTypeID = (
-      typIntegerID,
-      typFloatID,
-      typStringID,
-      typBooleanID,
-      typVariantID,
-      typConnectorID,
-      typClassID,
-      typFunctionID,
-      typNoneID
-   );
-
    IScriptObj = interface;
    PIScriptObj = ^IScriptObj;
    TdwsExecution = class;
@@ -237,7 +225,7 @@ type
       private
          FList : TTightList;
 
-         function GetExprBase(const x : Integer): TExprBase;
+         function GetExprBase(const x : Integer) : TExprBase; inline;
          procedure SetExprBase(const x : Integer; expr : TExprBase);
 
       public
@@ -468,6 +456,7 @@ type
       public
          procedure InitData(const data : TData; offset : Integer); virtual; abstract;
          function BaseType : TTypeSymbol; override;
+         function UnAliasedType : TTypeSymbol; virtual;
          function IsOfType(typSym : TTypeSymbol) : Boolean; virtual;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; virtual;
    end;
@@ -665,7 +654,6 @@ type
          procedure SetOverlap(meth: TMethodSymbol);
          procedure SetIsFinal;
          procedure InitData(const data : TData; offset : Integer); override;
-         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function QualifiedName : String; override;
          function HasConditions : Boolean;
          function IsVisibleFor(const aVisibility : TClassVisibility) : Boolean; override;
@@ -703,6 +691,7 @@ type
    TAliasSymbol = class(TNameSymbol)
       public
          function BaseType : TTypeSymbol; override;
+         function UnAliasedType : TTypeSymbol; override;
          procedure InitData(const data : TData; offset : Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsOfType(typSym : TTypeSymbol) : Boolean; override;
@@ -710,10 +699,9 @@ type
 
    // integer/string/float/boolean/variant
    TBaseSymbol = class(TNameSymbol)
-      protected
-         FID : TBaseTypeID;
-
       public
+         constructor Create(const name : String);
+
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          class function IsBaseType : Boolean; override;
    end;
@@ -748,8 +736,9 @@ type
 
    TBaseVariantSymbol = class (TBaseSymbol)
       public
-         constructor Create;
+         constructor Create(const name : String = '');
 
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure InitData(const data : TData; offset : Integer); override;
    end;
 
@@ -792,16 +781,14 @@ type
                        var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
    end;
 
-   TConnectorSymbol = class(TBaseSymbol)
+   TConnectorSymbol = class(TBaseVariantSymbol)
       private
-         FConnectorType: IConnectorType;
+         FConnectorType : IConnectorType;
 
       public
          constructor Create(const name : String; const connectorType : IConnectorType);
 
-         procedure InitData(const Data: TData; Offset: Integer); override;
-
-         property ConnectorType: IConnectorType read FConnectorType write FConnectorType;
+         property ConnectorType : IConnectorType read FConnectorType write FConnectorType;
    end;
 
    TArraySymbol = class(TTypeSymbol)
@@ -1328,8 +1315,6 @@ type
 const
    cFuncKindToString : array [Low(TFuncKind)..High(TFuncKind)] of String = (
       'function', 'procedure', 'constructor', 'destructor', 'method' );
-
-function IsBaseTypeCompatible(AType, BType: TBaseTypeID): Boolean;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -2286,11 +2271,6 @@ begin
     Data[Offset + 1] := nilIntf;
 end;
 
-function TMethodSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
-begin
-  Result := inherited IsCompatible(typSym);
-end;
-
 // QualifiedName
 //
 function TMethodSymbol.QualifiedName : String;
@@ -2837,7 +2817,7 @@ begin
       for i:=0 to FOperators.Count-1 do begin
          Result:=TClassOperatorSymbol(FOperators.List[i]);
          if     (Result.TokenType=tokenType)
-            and paramType.IsCompatible(Result.Typ) then Exit;
+            and Result.Typ.IsCompatible(paramType) then Exit;
       end;
    end;
    if Parent<>nil then
@@ -2924,35 +2904,24 @@ begin
    Result:=TClassSymbol(Typ);
 end;
 
-function IsBaseTypeCompatible(AType, BType: TBaseTypeID): Boolean;
-begin
-   Result:=   (AType=BType)
-           or (AType in [typVariantID, typConnectorID])
-           or (BType in [typVariantID, typConnectorID]);
-end;
-
 // ------------------
 // ------------------ TBaseSymbol ------------------
 // ------------------
+
+// Create
+//
+constructor TBaseSymbol.Create(const name : String);
+begin
+   inherited Create(name, nil);
+   FSize:=1;
+end;
 
 // IsCompatible
 //
 function TBaseSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   if typSym=nil then
-      Exit(False)
-   else begin
-      typSym:=typSym.BaseType;
-      if typSym=nil then
-         Exit(False);
-      if typSym.InheritsFrom(TEnumerationSymbol) then begin
-         typSym:=TEnumerationSymbol(typSym).Typ.BaseType;
-         if typSym=nil then
-            Exit(False);
-      end;
-      Result:=    typSym.InheritsFrom(TBaseSymbol)
-              and IsBaseTypeCompatible(Self.FId, TBaseSymbol(typSym).FId);
-   end;
+   Result:=    (typSym<>nil)
+           and (UnAliasedType=typSym.UnAliasedType);
 end;
 
 // IsBaseType
@@ -2970,9 +2939,7 @@ end;
 //
 constructor TBaseIntegerSymbol.Create;
 begin
-   inherited Create(SYS_INTEGER, nil);
-   FID:=typIntegerID;
-   FSize:=1;
+   inherited Create(SYS_INTEGER);
 end;
 
 // InitData
@@ -2992,9 +2959,7 @@ end;
 //
 constructor TBaseFloatSymbol.Create;
 begin
-   inherited Create(SYS_FLOAT, nil);
-   FID:=typFloatID;
-   FSize:=1;
+   inherited Create(SYS_FLOAT);
 end;
 
 // InitData
@@ -3014,9 +2979,7 @@ end;
 //
 constructor TBaseStringSymbol.Create;
 begin
-   inherited Create(SYS_STRING, nil);
-   FID:=typStringID;
-   FSize:=1;
+   inherited Create(SYS_STRING);
 end;
 
 // InitData
@@ -3034,9 +2997,7 @@ end;
 //
 constructor TBaseBooleanSymbol.Create;
 begin
-   inherited Create(SYS_BOOLEAN, nil);
-   FID:=typBooleanID;
-   FSize:=1;
+   inherited Create(SYS_BOOLEAN);
 end;
 
 // InitData
@@ -3052,11 +3013,20 @@ end;
 
 // Create
 //
-constructor TBaseVariantSymbol.Create;
+constructor TBaseVariantSymbol.Create(const name : String = '');
 begin
-   inherited Create(SYS_VARIANT, nil);
-   FID:=typVariantID;
-   FSize:=1;
+   if name='' then
+      inherited Create(SYS_VARIANT)
+   else inherited Create(name);
+end;
+
+// IsCompatible
+//
+function TBaseVariantSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+begin
+   Result:=    (typSym<>nil)
+           and (   (typSym.UnAliasedType is TBaseSymbol)
+                or (typSym.UnAliasedType is TEnumerationSymbol));
 end;
 
 // InitData
@@ -3074,17 +3044,8 @@ end;
 //
 constructor TConnectorSymbol.Create(const name : String; const connectorType : IConnectorType);
 begin
-  inherited Create(Name, nil);
-  FID:=typConnectorID;
-  FConnectorType:=ConnectorType;
-  FSize:=1;
-end;
-
-// InitData
-//
-procedure TConnectorSymbol.InitData(const Data: TData; Offset: Integer);
-begin
-   VarClear(Data[Offset]);
+   inherited Create(name);
+   FConnectorType:=ConnectorType;
 end;
 
 // ------------------
@@ -4084,6 +4045,13 @@ begin
    Result:=Typ.BaseType;
 end;
 
+// UnAliasedType
+//
+function TAliasSymbol.UnAliasedType : TTypeSymbol;
+begin
+   Result:=Typ.UnAliasedType;
+end;
+
 // InitData
 //
 procedure TAliasSymbol.InitData(const data : TData; offset : Integer);
@@ -4116,6 +4084,13 @@ begin
    Result:=Self;
 end;
 
+// UnAliasedType
+//
+function TTypeSymbol.UnAliasedType : TTypeSymbol;
+begin
+   Result:=Self;
+end;
+
 // IsOfType
 //
 function TTypeSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
@@ -4127,7 +4102,7 @@ end;
 //
 function TTypeSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-  Result:=(BaseType=typSym.BaseType);
+  Result:=(BaseType.IsCompatible(typSym.BaseType));
 end;
 
 // ------------------

@@ -1,4 +1,4 @@
-Syntax Error: Argument 0 (a) cannot be passed as Var-parameter [line: 5, column: 1]
-Syntax Error: Argument 0 (a) cannot be passed as Var-parameter [line: 6, column: 1]
-Syntax Error: Argument 0 (a) cannot be passed as Var-parameter [line: 7, column: 1]
-Syntax Error: Argument 0 (a) cannot be passed as Var-parameter [line: 11, column: 4]
+Syntax Error: Argument 0 (a) cannot be passed as Var-parameter [line: 5, column: 5]
+Syntax Error: Argument 0 (a) cannot be passed as Var-parameter [line: 6, column: 5]
+Syntax Error: Argument 0 (a) cannot be passed as Var-parameter [line: 7, column: 5]
+Syntax Error: Argument 0 (a) cannot be passed as Var-parameter [line: 11, column: 8]

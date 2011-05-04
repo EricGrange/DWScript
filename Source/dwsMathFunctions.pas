@@ -26,22 +26,6 @@ uses Classes, Math, dwsFunctions, dwsExprs, dwsSymbols;
 
 type
 
-   TIncFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
-   end;
-
-   TDecFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
-   end;
-
-   TSuccFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
-   end;
-
-   TPredFunc = class(TInternalMagicIntFunction)
-      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
-   end;
-
    TOddFunc = class(TInternalMagicBoolFunction)
       function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
    end;
@@ -225,36 +209,6 @@ const // type constants
   cInteger = 'Integer';
   cString = 'String';
   cBoolean = 'Boolean';
-
-{ TIncFunc }
-
-function TIncFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
-begin
-   Result:=args.AsInteger[0]+args.AsInteger[1];
-   args.AsInteger[0]:=Result;
-end;
-
-{ TDecFunc }
-
-function TDecFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
-begin
-   Result:=args.AsInteger[0]-args.AsInteger[1];
-   args.AsInteger[0]:=Result;
-end;
-
-{ TSuccFunc }
-
-function TSuccFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
-begin
-   Result:=args.AsInteger[0]+args.AsInteger[1];
-end;
-
-{ TPredFunc }
-
-function TPredFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
-begin
-   Result:=args.AsInteger[0]-args.AsInteger[1];
-end;
 
 { TOddFunc }
 
@@ -560,10 +514,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   RegisterInternalIntFunction(TIncFunc, 'Inc', ['@a', cInteger, 'b=1', cInteger], True);
-   RegisterInternalIntFunction(TDecFunc, 'Dec', ['@a', cInteger, 'b=1', cInteger], True);
-   RegisterInternalIntFunction(TSuccFunc, 'Succ', ['a', cInteger, 'b=1', cInteger], True);
-   RegisterInternalIntFunction(TPredFunc, 'Pred', ['a', cInteger, 'b=1', cInteger], True);
    RegisterInternalBoolFunction(TOddFunc, 'Odd', ['i', cInteger], True);
 
    RegisterInternalFloatFunction(TSinFunc, 'Sin', ['a', cFloat], True);
