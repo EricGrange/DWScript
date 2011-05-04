@@ -271,7 +271,6 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
          function EvalAsTData(exec : TdwsExecution) : TData;
          function EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArrayContainer;
-         procedure Initialize; override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function IsConstant : Boolean; override;
          function IsWritable : Boolean; override;
@@ -291,7 +290,6 @@ type
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TTypedExpr);
          destructor Destroy; override;
 
-         procedure Initialize; override;
          function IsWritable : Boolean; override;
    end;
 
@@ -341,7 +339,6 @@ type
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; MemberSymbol: TMemberSymbol);
          destructor Destroy; override;
 
-         procedure Initialize; override;
          function IsWritable : Boolean; override;
    end;
 
@@ -375,8 +372,6 @@ type
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TTypeSymbol;
                            FieldSym: TFieldSymbol; ObjExpr: TDataExpr);
          destructor Destroy; override;
-
-         procedure Initialize; override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
@@ -699,7 +694,6 @@ type
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure Initialize; override;
          function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
@@ -717,7 +711,6 @@ type
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure Initialize; override;
          procedure TypeCheckAssign(prog : TdwsProgram); virtual;
          function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function  OptimizeConstAssignment(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
@@ -765,7 +758,6 @@ type
    // left := const right;
    TAssignConstExpr = class (TAssignExpr)
       public
-         procedure Initialize; override;
          procedure TypeCheckAssign(prog : TdwsProgram); override;
    end;
 
@@ -890,7 +882,6 @@ type
 
          function Eval(exec : TdwsExecution) : Variant; override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
-         procedure Initialize; override;
          function IsConstant : Boolean; override;
          procedure AddCaseCondition(cond : TCaseCondition);
    end;
@@ -945,7 +936,6 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
-         procedure Initialize; override;
    end;
 
    // if FCond then FThen else FElse
@@ -964,8 +954,6 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
-
-         procedure Initialize; override;
    end;
 
    // Part of a case statement
@@ -975,11 +963,12 @@ type
          FTrueExpr : TNoResultExpr;
          FPos : TScriptPos;
 
+         function IsOfTypeNumber(prog : TdwsProgram; typ : TTypeSymbol) : Boolean;
+
       public
          constructor Create(const aPos : TScriptPos);
          destructor Destroy; override;
 
-         procedure Initialize; virtual;
          function IsTrue(exec : TdwsExecution; const value: Variant) : Boolean; virtual; abstract;
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); virtual; abstract;
          function IsConstant : Boolean; virtual; abstract;
@@ -997,7 +986,6 @@ type
          constructor Create(const aPos : TScriptPos; compareExpr : TTypedExpr);
          destructor Destroy; override;
 
-         procedure Initialize; override;
          function IsTrue(exec : TdwsExecution; const value : Variant) : Boolean; override;
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
@@ -1012,7 +1000,6 @@ type
          constructor Create(const aPos : TScriptPos; fromExpr, toExpr : TTypedExpr);
          destructor Destroy; override;
 
-         procedure Initialize; override;
          function IsTrue(exec : TdwsExecution; const Value: Variant): Boolean; override;
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
@@ -1027,9 +1014,10 @@ type
 
       public
          destructor Destroy; override;
+
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure Initialize; override;
          procedure AddCaseCondition(cond : TCaseCondition);
+
          property ValueExpr: TTypedExpr read FValueExpr write FValueExpr;
          property ElseExpr: TNoResultExpr read FElseExpr write FElseExpr;
    end;
@@ -1048,7 +1036,6 @@ type
 
       public
          destructor Destroy; override;
-         procedure Initialize; override;
 
          property DoExpr: TNoResultExpr read FDoExpr write FDoExpr;
          property FromExpr: TTypedExpr read FFromExpr write FFromExpr;
@@ -1079,8 +1066,9 @@ type
 
       public
          destructor Destroy; override;
-         procedure Initialize; override;
+
          function EvalStep(exec : TdwsExecution) : Int64;
+
          property StepExpr : TTypedExpr read FStepExpr write FStepExpr;
    end;
 
@@ -1109,7 +1097,6 @@ type
       public
          destructor Destroy; override;
 
-         procedure Initialize; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          property CondExpr : TTypedExpr read FCondExpr write FCondExpr;
@@ -1155,7 +1142,7 @@ type
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; assignExpr : TNoResultExpr);
          destructor Destroy; override;
-         procedure Initialize; override;
+
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
@@ -1181,7 +1168,6 @@ type
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure Initialize; override;
    end;
 
    TReraiseExpr = class(TRaiseBaseExpr)
@@ -1205,7 +1191,6 @@ type
 
       public
          destructor Destroy; override;
-         procedure Initialize; override;
 
          property TryExpr : TNoResultExpr read FTryExpr write FTryExpr;
          property HandlerExpr : TNoResultExpr read FHandlerExpr write FHandlerExpr;
@@ -1227,7 +1212,6 @@ type
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure Initialize; override;
          procedure AddDoExpr(expr : TExceptDoExpr);
 
          property ElseExpr: TNoResultExpr read FElseExpr write FElseExpr;
@@ -1247,7 +1231,6 @@ type
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure Initialize; override;
 
          property DoBlockExpr: TNoResultExpr read FDoBlockExpr write FDoBlockExpr;
          property ExceptionVar: TDataSymbol read FExceptionVar write FExceptionVar;
@@ -1274,7 +1257,6 @@ type
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure Initialize; override;
    end;
 
    TVarStringArraySetExpr = class(TStringArraySetExpr)
@@ -2113,15 +2095,6 @@ begin
    inherited;
 end;
 
-// Initialize
-//
-procedure TArrayExpr.Initialize;
-begin
-   FBaseExpr.Initialize;
-   FIndexExpr.Initialize;
-   inherited;
-end;
-
 // IsWritable
 //
 function TArrayExpr.IsWritable : Boolean;
@@ -2405,17 +2378,6 @@ begin
    Result.Initialize;
 end;
 
-// Initialize
-//
-procedure TArrayConstantExpr.Initialize;
-var
-   i : Integer;
-begin
-   inherited;
-   for i:=0 to FElementExprs.Count-1 do
-      TTypedExpr(FElementExprs.List[i]).Initialize;
-end;
-
 // Optimize
 //
 function TArrayConstantExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
@@ -2522,14 +2484,6 @@ begin
    Result:=1;
 end;
 
-// Initialize
-//
-procedure TRecordExpr.Initialize;
-begin
-   inherited;
-   FBaseExpr.Initialize;
-end;
-
 // IsWritable
 //
 function TRecordExpr.IsWritable : Boolean;
@@ -2630,13 +2584,6 @@ end;
 function TFieldExpr.GetSubExprCount : Integer;
 begin
    Result:=1;
-end;
-
-// Initialize
-//
-procedure TFieldExpr.Initialize;
-begin
-   FObjectExpr.Initialize;
 end;
 
 // Eval
@@ -2927,17 +2874,6 @@ begin
    Result:=False;
 end;
 
-// Initialize
-//
-procedure TInOpExpr.Initialize;
-var
-   i : Integer;
-begin
-   FLeft.Initialize;
-   for i:=0 to FCaseConditions.Count-1 do
-      TCaseCondition(FCaseConditions.List[i]).Initialize;
-end;
-
 // IsConstant
 //
 function TInOpExpr.IsConstant : Boolean;
@@ -2989,23 +2925,19 @@ begin
       Exit;
    end;
 
-   if expr.Typ.IsVariantValue then begin
-      case toTyp.BaseTypeID of
-         typIntegerID :
-            Result:=TConvIntegerExpr.Create(Prog, expr);
-         typFloatID :
-            Result:=TConvFloatExpr.Create(Prog, expr);
-         typStringID :
-            Result:=TConvStringExpr.Create(Prog, expr);
-         typBooleanID :
-            Result:=TConvBoolExpr.Create(Prog, expr);
-      end;
+   if expr.IsOfType(prog.TypVariant) then begin
+      if toTyp.IsOfType(prog.TypInteger) then
+         Result:=TConvIntegerExpr.Create(prog, expr)
+      else if toTyp.IsOfType(prog.TypFloat) then
+         Result:=TConvFloatExpr.Create(prog, expr)
+      else if toTyp.IsOfType(prog.TypString) then
+         Result:=TConvStringExpr.Create(prog, expr)
+      else if toTyp.IsOfType(prog.TypBoolean) then
+         Result:=TConvBoolExpr.Create(prog, expr);
    end else begin
-      case toTyp.BaseTypeID of
-         typFloatID :
-            if expr.Typ.IsIntegerValue then
-               Result:=TConvFloatExpr.Create(Prog, expr);
-      end;
+      if toTyp.IsOfType(prog.TypFloat) then
+         if expr.IsOfType(prog.TypInteger) then
+            Result:=TConvFloatExpr.Create(prog, expr);
    end;
    // Look if Types are compatible
    if not toTyp.IsCompatible(Result.Typ) then
@@ -3202,15 +3134,6 @@ procedure TAssertExpr.EvalNoResult(exec : TdwsExecution);
 begin
    if not FCond.EvalAsBoolean(exec) then
       Triggered;
-end;
-
-// Initialize
-//
-procedure TAssertExpr.Initialize;
-begin
-   FCond.Initialize;
-   if FMessage<>nil then
-      FMessage.Initialize;
 end;
 
 // Optimize
@@ -3943,22 +3866,20 @@ begin
   TypeCheckAssign(Prog);
 end;
 
+// Destroy
+//
 destructor TAssignExpr.Destroy;
 begin
-  FLeft.Free;
-  FRight.Free;
-  inherited;
+   FLeft.Free;
+   FRight.Free;
+   inherited;
 end;
 
+// EvalNoResult
+//
 procedure TAssignExpr.EvalNoResult(exec : TdwsExecution);
 begin
    FLeft.AssignExpr(exec, FRight);
-end;
-
-procedure TAssignExpr.Initialize;
-begin
-  FLeft.Initialize;
-  FRight.Initialize;
 end;
 
 // TypeCheckAssign
@@ -4029,15 +3950,15 @@ var
    stringBuf : String;
 begin
    Result:=Self;
-   if FRight.Typ.IsIntegerValue then begin
+   if FRight.IsOfType(prog.TypInteger) then begin
 
       Result:=TAssignConstToIntegerVarExpr.CreateVal(prog, FScriptPos, FLeft, FRight.EvalAsInteger(exec));
 
-   end else if FRight.Typ.IsFloatValue then begin
+   end else if FRight.IsOfType(prog.TypFloat) then begin
 
       Result:=TAssignConstToFloatVarExpr.CreateVal(prog, FScriptPos, FLeft, FRight.EvalAsFloat(exec));
 
-   end else if FRight.Typ.IsStringValue then begin
+   end else if FRight.IsOfType(prog.TypString) then begin
 
       FRight.EvalAsString(exec, stringBuf);
       Result:=TAssignConstToStringVarExpr.CreateVal(prog, FScriptPos, FLeft, stringBuf);
@@ -4177,13 +4098,6 @@ end;
 procedure TAssignConstExpr.TypeCheckAssign(prog : TdwsProgram);
 begin
    // nothing, checked during optimize
-end;
-
-// Initialize
-//
-procedure TAssignConstExpr.Initialize;
-begin
-   FLeft.Initialize;
 end;
 
 // ------------------
@@ -4686,12 +4600,6 @@ begin
    end;
 end;
 
-procedure TIfThenExpr.Initialize;
-begin
-   FCond.Initialize;
-   FThen.Initialize;
-end;
-
 // GetSubExpr
 //
 function TIfThenExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -4764,14 +4672,6 @@ begin
    end;
 end;
 
-// Initialize
-//
-procedure TIfThenElseExpr.Initialize;
-begin
-   inherited;
-   FElse.Initialize;
-end;
-
 // GetSubExpr
 //
 function TIfThenElseExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -4820,17 +4720,6 @@ begin
    end;
 end;
 
-procedure TCaseExpr.Initialize;
-var
-  x: Integer;
-begin
-  FValueExpr.Initialize;
-  for x := 0 to FCaseConditions.Count - 1 do
-    TCaseCondition(FCaseConditions.List[x]).Initialize;
-  if Assigned(FElseExpr) then
-    FElseExpr.Initialize;
-end;
-
 // AddCaseCondition
 //
 procedure TCaseExpr.AddCaseCondition(cond : TCaseCondition);
@@ -4858,12 +4747,11 @@ begin
    inherited;
 end;
 
-// Initialize
+// IsOfTypeNumber
 //
-procedure TCaseCondition.Initialize;
+function TCaseCondition.IsOfTypeNumber(prog : TdwsProgram; typ : TTypeSymbol) : Boolean;
 begin
-   if FTrueExpr<>nil then
-      FTrueExpr.Initialize;
+   Result:=typ.IsOfType(prog.TypInteger) or typ.IsOfType(prog.TypFloat);
 end;
 
 // ------------------
@@ -4886,14 +4774,6 @@ begin
    inherited;
 end;
 
-// Initialize
-//
-procedure TCompareCaseCondition.Initialize;
-begin
-   inherited;
-   FCompareExpr.Initialize;
-end;
-
 // IsTrue
 //
 function TCompareCaseCondition.IsTrue(exec : TdwsExecution; const value : Variant) : Boolean;
@@ -4906,7 +4786,7 @@ end;
 procedure TCompareCaseCondition.TypeCheck(prog : TdwsProgram; typ : TTypeSymbol);
 begin
    if not FCompareExpr.Typ.IsCompatible(typ) then
-      if not (FCompareExpr.Typ.IsNumberValue and typ.IsNumberValue) then
+      if not (IsOfTypeNumber(prog, FCompareExpr.Typ) and IsOfTypeNumber(prog, typ)) then
          prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
                                               [typ.Caption, FCompareExpr.Typ.Caption]);
 end;
@@ -4940,15 +4820,6 @@ begin
    inherited;
 end;
 
-// Initialize
-//
-procedure TRangeCaseCondition.Initialize;
-begin
-   inherited;
-   FFromExpr.Initialize;
-   FToExpr.Initialize;
-end;
-
 // IsTrue
 //
 function TRangeCaseCondition.IsTrue(exec : TdwsExecution; const value : Variant) : Boolean;
@@ -4959,9 +4830,13 @@ end;
 // TypeCheck
 //
 procedure TRangeCaseCondition.TypeCheck(prog : TdwsProgram; typ : TTypeSymbol);
+var
+   fromIsNumber : Boolean;
 begin
+   fromIsNumber:=IsOfTypeNumber(prog, FFromExpr.Typ);
+
    if not FFromExpr.Typ.IsCompatible(FToExpr.Typ) then begin
-      if not (FFromExpr.Typ.IsNumberValue and FToExpr.Typ.IsNumberValue) then begin
+      if not (fromIsNumber and IsOfTypeNumber(prog, FToExpr.Typ)) then begin
          prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_RangeIncompatibleTypes,
                                               [FFromExpr.Typ.Caption, FToExpr.Typ.Caption]);
          Exit;
@@ -4969,9 +4844,9 @@ begin
    end;
 
    if not typ.IsCompatible(FFromExpr.Typ) then
-      if not (FFromExpr.Typ.IsNumberValue and typ.IsNumberValue) then
-      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
-                                           [typ.Caption, FFromExpr.Typ.Caption]);
+      if not (fromIsNumber and IsOfTypeNumber(prog, typ)) then
+         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
+                                              [typ.Caption, FFromExpr.Typ.Caption]);
 end;
 
 // IsConstant
@@ -4985,21 +4860,15 @@ end;
 // ------------------ TForExpr ------------------
 // ------------------
 
+// Destroy
+//
 destructor TForExpr.Destroy;
 begin
-  FDoExpr.Free;
-  FFromExpr.Free;
-  FToExpr.Free;
-  FVarExpr.Free;
-  inherited;
-end;
-
-procedure TForExpr.Initialize;
-begin
-  inherited;
-  FFromExpr.Initialize;
-  FToExpr.Initialize;
-  FDoExpr.Initialize;
+   FDoExpr.Free;
+   FFromExpr.Free;
+   FToExpr.Free;
+   FVarExpr.Free;
+   inherited;
 end;
 
 // GetSubExpr
@@ -5023,18 +4892,16 @@ begin
    Result:=4;
 end;
 
-{ TForStepExpr }
+// ------------------
+// ------------------ TForStepExpr ------------------
+// ------------------
 
+// Destroy
+//
 destructor TForStepExpr.Destroy;
 begin
    FStepExpr.Free;
    inherited;
-end;
-
-procedure TForStepExpr.Initialize;
-begin
-   inherited;
-   FStepExpr.Initialize;
 end;
 
 // EvalStep
@@ -5062,7 +4929,9 @@ begin
    Result:=5;
 end;
 
-{ TForUpwardExpr }
+// ------------------
+// ------------------ TForUpwardExpr ------------------
+// ------------------
 
 procedure TForUpwardExpr.EvalNoResult(exec : TdwsExecution);
 var
@@ -5090,7 +4959,9 @@ begin
    end;
 end;
 
-{ TForUpwardExpr }
+// ------------------
+// ------------------ TForDownwardExpr ------------------
+// ------------------
 
 procedure TForDownwardExpr.EvalNoResult(exec : TdwsExecution);
 var
@@ -5118,7 +4989,9 @@ begin
    end;
 end;
 
-{ TForUpwardStepExpr }
+// ------------------
+// ------------------ TForUpwardStepExpr ------------------
+// ------------------
 
 procedure TForUpwardStepExpr.EvalNoResult(exec : TdwsExecution);
 var
@@ -5153,7 +5026,9 @@ begin
    end;
 end;
 
-{ TForDownwardStepExpr }
+// ------------------
+// ------------------ TForDownwardStepExpr ------------------
+// ------------------
 
 procedure TForDownwardStepExpr.EvalNoResult(exec : TdwsExecution);
 var
@@ -5188,20 +5063,17 @@ begin
    end;
 end;
 
-{ TLoopExpr }
+// ------------------
+// ------------------ TLoopExpr ------------------
+// ------------------
 
+// Destroy
+//
 destructor TLoopExpr.Destroy;
 begin
-  FCondExpr.Free;
-  FLoopExpr.Free;
-  inherited;
-end;
-
-procedure TLoopExpr.Initialize;
-begin
-   if FCondExpr<>nil then
-      FCondExpr.Initialize;
-   FLoopExpr.Initialize;
+   FCondExpr.Free;
+   FLoopExpr.Free;
+   inherited;
 end;
 
 // EvalNoResult
@@ -5351,14 +5223,6 @@ begin
    inherited;
 end;
 
-// Initialize
-//
-procedure TExitValueExpr.Initialize;
-begin
-   inherited;
-   FAssignExpr.Initialize;
-end;
-
 // EvalNoResult
 //
 procedure TExitValueExpr.EvalNoResult(exec : TdwsExecution);
@@ -5395,13 +5259,6 @@ begin
   FTryExpr.Free;
   FHandlerExpr.Free;
   inherited;
-end;
-
-procedure TExceptionExpr.Initialize;
-begin
-  FTryExpr.Initialize;
-  if Assigned(FHandlerExpr) then
-    FHandlerExpr.Initialize;
 end;
 
 // CreateEDelphiObj
@@ -5555,17 +5412,6 @@ begin
    exec.ClearScriptError;
 end;
 
-procedure TExceptExpr.Initialize;
-var
-   i : Integer;
-begin
-   inherited;
-   for i:=0 to FDoExprs.Count-1 do
-      TExceptDoExpr(FDoExprs.List[i]).Initialize;
-   if Assigned(FElseExpr) then
-      FElseExpr.Initialize;
-end;
-
 // AddDoExpr
 //
 procedure TExceptExpr.AddDoExpr(expr : TExceptDoExpr);
@@ -5662,13 +5508,6 @@ begin
                                       exceptVal, FExceptionExpr.Typ, FScriptPos);
 end;
 
-// Initialize
-//
-procedure TRaiseExpr.Initialize;
-begin
-   FExceptionExpr.Initialize;
-end;
-
 // GetSubExpr
 //
 function TRaiseExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -5712,13 +5551,6 @@ end;
 procedure TExceptDoExpr.EvalNoResult(exec : TdwsExecution);
 begin
    DoBlockExpr.EvalNoResult(exec);
-end;
-
-// Initialize
-//
-procedure TExceptDoExpr.Initialize;
-begin
-   FDoBlockExpr.Initialize;
 end;
 
 // GetSubExpr
@@ -5776,15 +5608,6 @@ begin
    FValueExpr.EvalAsString(exec, buf);
    s[i]:=buf[1];
    FStringExpr.AssignValue(exec, s);
-end;
-
-// Initialize
-//
-procedure TStringArraySetExpr.Initialize;
-begin
-   FStringExpr.Initialize;
-   FIndexExpr.Initialize;
-   FValueExpr.Initialize;
 end;
 
 // GetSubExpr

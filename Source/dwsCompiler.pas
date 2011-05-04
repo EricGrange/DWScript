@@ -801,9 +801,6 @@ begin
 
          // Initialize symbol table
          FProg.Table.Initialize(FMsgs);
-
-         // Initialize the expressions
-         FProg.Expr.Initialize;
       finally
          Inc(FLineCount, FTok.CurrentPos.Line-2);
          FTok.Free;
@@ -1049,12 +1046,6 @@ begin
             try
                try
                   expr:=compiler.ReadExpr;
-                  try
-                     expr.Initialize;
-                  except
-                     FreeAndNil(expr);
-                     raise;
-                  end;
                except
                   on E : Exception do begin
                      gotError:=True;
@@ -1799,7 +1790,7 @@ begin
       msgExpr:=nil;
       testExpr:=ReadExpr(FProg.TypBoolean);
       try
-         if not testExpr.Typ.IsBooleanValue then
+         if not testExpr.IsOfType(FProg.TypBoolean) then
             FMsgs.AddCompilerError(hotPos, CPE_BooleanExpected);
          if Optimize then
             testExpr:=testExpr.OptimizeToNoPosExpr(FProg, FExec);
@@ -1809,7 +1800,7 @@ begin
          testLength:=(NativeUInt(FTok.PosPtr)-NativeUInt(testStart)) div 2;
          if FTok.TestDelete(ttCOLON) then begin
             msgExpr:=ReadExpr;
-            if not msgExpr.Typ.IsStringValue then
+            if not msgExpr.IsOfType(FProg.TypString) then
                FMsgs.AddCompilerError(hotPos, CPE_StringExpected);
             if Optimize then
                msgExpr:=msgExpr.OptimizeToNoPosExpr(FProg, FExec);
@@ -2437,7 +2428,6 @@ begin
             funcExpr.AddArg(TConstExpr.CreateTyped(FProg, propertySym.IndexSym,
                                                    propertySym.IndexValue));
          funcExpr.TypeCheckArgs(FProg);
-
       except
          Result.Free;
          raise;
@@ -2528,7 +2518,7 @@ begin
       end else begin
 
          if    FTok.Test(ttDOT)
-            or (FTok.Test(ttBLEFT) and (propertySym.BaseTypeID=typFunctionID))  then begin
+            or (FTok.Test(ttBLEFT) and (propertySym.BaseType is TFuncSymbol))  then begin
 
             Result:=ReadSymbol(ReadPropertyReadExpr(Expr, propertySym), True);
 
@@ -2727,7 +2717,7 @@ begin
                   else if baseType is TConnectorSymbol then
                      Result := ReadConnectorArray('', Result as TTypedExpr,
                                                   TConnectorSymbol(baseType).ConnectorType, IsWrite)
-                  else if dataExpr.Typ.IsStringValue then begin
+                  else if dataExpr.IsOfType(FProg.TypString) then begin
                      FTok.KillToken;
                      Result := ReadStringArray(dataExpr, IsWrite)
                   end else FMsgs.AddCompilerError(FTok.HotPos, CPE_ArrayExpected);
@@ -2798,7 +2788,7 @@ begin
       try
          if not (expr is TVarExpr) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_VariableExpected);
-         if not TVarExpr(expr).Typ.IsIntegerValue then
+         if not TVarExpr(expr).IsOfType(FProg.TypInteger) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
          if not (expr is TIntVarExpr) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_FORLoopMustBeLocalVariable);
@@ -2844,7 +2834,7 @@ begin
            FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
 
          fromExpr:=ReadExpr;
-         if not fromExpr.Typ.IsIntegerValue then
+         if not fromExpr.IsOfType(FProg.TypInteger) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
 
          if FTok.TestDelete(ttTO) then
@@ -2857,7 +2847,7 @@ begin
          end;
 
          toExpr:=ReadExpr;
-         if not toExpr.Typ.IsIntegerValue then
+         if not toExpr.IsOfType(FProg.TypInteger) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
 
       end;
@@ -2867,7 +2857,7 @@ begin
          FTok.Test(ttNone);
          stepPos:=FTok.HotPos;
          stepExpr:=ReadExpr;
-         if not stepExpr.Typ.IsIntegerValue then
+         if not stepExpr.IsOfType(FProg.TypInteger) then
             FMsgs.AddCompilerError(stepPos, CPE_IntegerExpected);
          if stepExpr.InheritsFrom(TConstIntExpr) and (TConstIntExpr(stepExpr).Value<=0) then
             FMsgs.AddCompilerErrorFmt(stepPos, RTE_ForLoopStepShouldBeStrictlyPositive,
@@ -2948,7 +2938,7 @@ begin
    elseExpr:=nil;
    try
       condExpr:=ReadExpr;
-      if not (condExpr.Typ.IsBooleanValue or condExpr.Typ.IsVariantValue) then
+      if not (condExpr.IsOfType(FProg.TypBoolean) or condExpr.IsOfType(FProg.TypVariant)) then
          FMsgs.AddCompilerError(hotPos, CPE_BooleanExpected);
 
       if not FTok.TestDelete(ttTHEN) then
@@ -3099,14 +3089,14 @@ begin
    try
       condExpr:=ReadExpr;
       TWhileExpr(Result).CondExpr:=condExpr;
-      if not (condExpr.Typ.IsBooleanValue or condExpr.Typ.IsVariantValue) then
+      if not (condExpr.IsOfType(FProg.TypBoolean) or condExpr.IsOfType(FProg.TypVariant)) then
          FMsgs.AddCompilerError(Result.ScriptPos, CPE_BooleanExpected);
 
       if not FTok.TestDelete(ttDO) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
 
       if    (not condExpr.IsConstant)
-         or (not condExpr.Typ.IsBooleanValue)
+         or (not condExpr.IsOfType(FProg.TypBoolean))
          or (not condExpr.EvalAsBoolean(FExec)) then
          MarkLoopExitable(leBreak);
 
@@ -3140,7 +3130,7 @@ begin
       TRepeatExpr(Result).LoopExpr := ReadBlocks([ttUNTIL], tt);
       condExpr:=ReadExpr;
       TRepeatExpr(Result).CondExpr := condExpr;
-      if not (condExpr.Typ.IsBooleanValue or condExpr.Typ.IsVariantValue) then
+      if not (condExpr.IsOfType(FProg.TypBoolean) or condExpr.IsOfType(FProg.TypVariant)) then
          FMsgs.AddCompilerError(Result.ScriptPos, CPE_BooleanExpected)
       else if (not condExpr.IsConstant) or condExpr.EvalAsBoolean(FExec) then
          MarkLoopExitable(leBreak);
@@ -3769,7 +3759,6 @@ begin
    Result:=CheckParams(paramsA, paramsB, False);
 end;
 
-
 // ReadClassOperatorDecl
 //
 function TdwsCompiler.ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
@@ -3811,7 +3800,7 @@ begin
       if tt=ttIN then begin
          if Result.UsesSym.Params[0].Typ<>Result.Typ then
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidParameterType, [Result.UsesSym.Name]);
-         if not Result.UsesSym.Result.Typ.IsBooleanValue then
+         if not Result.UsesSym.Result.Typ.IsOfType(FProg.TypBoolean) then
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidResultType, [Result.UsesSym.Result.Typ.Name]);
       end else begin
          if Result.UsesSym.Params[0].Typ<>Result.Typ then
@@ -4484,9 +4473,9 @@ begin
                                     rkObjRef, hotPos, False);
          try
             setExpr:=nil;
-            TFuncExpr(classOpExpr).AddArg(left);
+            classOpExpr.AddArg(left);
             left:=nil;
-            TFuncExpr(classOpExpr).TypeCheckArgs(FProg);
+            classOpExpr.TypeCheckArgs(FProg);
          except
             classOpExpr.Free;
             raise;
@@ -4558,12 +4547,12 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
    begin
       hotPos:=FTok.HotPos;
       operand:=ReadTerm;
-      if operand.Typ.IsBooleanValue then
+      if operand.IsOfType(FProg.TypBoolean) then
          Result:=TNotBoolExpr.Create(FProg, operand)
-      else if operand.Typ.IsIntegerValue then
+      else if operand.IsOfType(FProg.TypInteger) then
          Result:=TNotIntExpr.Create(FProg, operand)
       else begin
-         if not operand.Typ.IsVariantValue then
+         if not operand.IsOfType(FProg.TypVariant) then
             FMsgs.AddCompilerError(hotPos, CPE_BooleanOrIntegerExpected);
          Result:=TNotExpr.Create(FProg, operand);
       end;
@@ -4625,18 +4614,18 @@ end;
 
 // ReadNegation
 //
-function TdwsCompiler.ReadNegation: TTypedExpr;
+function TdwsCompiler.ReadNegation : TTypedExpr;
 var
    negExprClass : TNegExprClass;
    negTerm : TTypedExpr;
 begin
    negTerm:=ReadTerm;
-   if negTerm.Typ.IsIntegerValue then
+   if negTerm.IsOfType(FProg.TypInteger) then
       negExprClass:=TNegIntExpr
-   else if negTerm.Typ.IsFloatValue then
+   else if negTerm.IsOfType(FProg.TypFloat) then
       negExprClass:=TNegFloatExpr
    else begin
-      if not negTerm.Typ.IsVariantValue then
+      if not negTerm.IsOfType(FProg.TypVariant) then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_NumericalExpected);
       negExprClass:=TNegExpr;
    end;
@@ -4944,7 +4933,7 @@ begin
                   try
                      if not condExpr.IsConstant then
                         FMsgs.AddCompilerStop(condPos, CPE_ConstantExpressionExpected);
-                     if not condExpr.Typ.IsBooleanValue then
+                     if not condExpr.IsOfType(FProg.TypBoolean) then
                         FMsgs.AddCompilerStop(condPos, CPE_BooleanExpected);
 
                      conditionalTrue:=condExpr.EvalAsBoolean(FExec);
@@ -5504,7 +5493,7 @@ begin
    pos := FTok.HotPos;
    indexExpr := ReadExpr;
    try
-      if not (indexExpr.Typ.IsIntegerValue or indexExpr.Typ.IsVariantValue) then
+      if not (indexExpr.IsOfType(FProg.TypInteger) or indexExpr.IsOfType(FProg.TypVariant)) then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpressionExpected);
 
       if not FTok.TestDelete(ttARIGHT) then
@@ -6189,8 +6178,8 @@ begin
                   FMsgs.AddCompilerStop(pos, CPE_IncompatibleOperands);
                classOpExpr:=GetMethodExpr(classOpSymbol.UsesSym, left, rkObjRef, pos, False);
                try
-                  TFuncExpr(classOpExpr).AddArg(right);
-                  TFuncExpr(classOpExpr).TypeCheckArgs(FProg);
+                  classOpExpr.AddArg(right);
+                  classOpExpr.TypeCheckArgs(FProg);
                except
                   classOpExpr.Free;
                   raise;
@@ -6280,11 +6269,11 @@ begin
 
       case SpecialKind of
          skAssert: begin
-            if not argTyp.IsBooleanValue then
+            if not argTyp.IsOfType(FProg.TypBoolean) then
                FMsgs.AddCompilerError(FTok.HotPos, CPE_BooleanExpected);
             if FTok.TestDelete(ttCOMMA) then begin
                msgExpr:=ReadExpr;
-               if (msgExpr=nil) or (not msgExpr.Typ.IsStringValue) then
+               if (msgExpr=nil) or (not msgExpr.IsOfType(FProg.TypString)) then
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
             end;
             if coAssertions in FCompilerOptions then
@@ -6389,7 +6378,7 @@ begin
              FreeAndNil(argExpr);
          end;
          skDefined, skDeclared : begin
-            if not argExpr.Typ.IsStringValue then
+            if not argExpr.IsOfType(FProg.TypString) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_StringExpected);
             if FIsSwitch then begin
                if not argExpr.IsConstant then
@@ -6464,29 +6453,33 @@ begin
 
          // Cast Integer(...)
          Result := TConvIntegerExpr.Create(FProg, argExpr);
-         if not (   argExpr.Typ.IsNumberValue or argExpr.Typ.IsBooleanValue
-                 or (argExpr.Typ is TEnumerationSymbol) or argExpr.Typ.IsVariantValue) then
+         if not (   argExpr.IsOfType(FProg.TypInteger) or argExpr.IsOfType(FProg.TypFloat)
+                 or argExpr.IsOfType(FProg.TypBoolean)
+                 or (argExpr.Typ is TEnumerationSymbol) or argExpr.IsOfType(FProg.TypVariant)) then
             FMsgs.AddCompilerError(hotPos, CPE_IntegerCastInvalid);
 
       end else if typeSym = FProg.TypFloat then begin
 
          // Cast Float(...)
          Result := TConvFloatExpr.Create(FProg, argExpr);
-         if not (argExpr.Typ.IsNumberValue or argExpr.Typ.IsVariantValue) then
+         if not (   argExpr.IsOfType(FProg.TypInteger) or argExpr.IsOfType(FProg.TypFloat)
+                 or argExpr.IsOfType(FProg.TypVariant)) then
             FMsgs.AddCompilerError(hotPos, CPE_NumericalExpected);
 
       end else if typeSym = FProg.TypString then begin
 
          // Cast String(...)
          Result := TConvStringExpr.Create(FProg, argExpr);
-         if not (argExpr.Typ.IsStringValue or argExpr.Typ.IsVariantValue) then
+         if not (argExpr.IsOfType(FProg.TypString) or argExpr.IsOfType(FProg.TypVariant)) then
             FMsgs.AddCompilerError(hotPos, CPE_StringExpected);
 
       end else if typeSym = FProg.TypBoolean then begin
 
          // Cast Boolean(...)
          Result := TConvBoolExpr.Create(FProg, argExpr);
-         if not (argExpr.Typ.IsBooleanValue or argExpr.Typ.IsNumberValue or argExpr.Typ.IsVariantValue) then
+         if not (   argExpr.IsOfType(FProg.TypInteger) or argExpr.IsOfType(FProg.TypFloat)
+                 or argExpr.IsOfType(FProg.TypBoolean)
+                 or argExpr.IsOfType(FProg.TypVariant)) then
             FMsgs.AddCompilerError(hotPos, CPE_BooleanOrIntegerExpected);
 
       end else if typeSym = FProg.TypVariant then

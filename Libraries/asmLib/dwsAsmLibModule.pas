@@ -276,12 +276,11 @@ begin
    sym:=compiler.CurrentProg.Table.FindSymbol(symbolName, cvMagic);
    if not Assigned(sym) then Exit('');
 
-   case sym.BaseTypeID of
-      typIntegerID, typFloatID, typStringID : size:='QWORD';
-      typBooleanID : size:='WORD';
-   else
-      Exit('');
-   end;
+   if sym.IsIntegerValue or sym.IsFloatValue or sym.IsStringValue then
+      size:='QWORD'
+   else if sym.IsBooleanValue then
+      size:='WORD'
+   else Exit('');
 
    if sym is TConstSymbol then begin
 

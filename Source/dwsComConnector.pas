@@ -798,9 +798,9 @@ end;
 function TComVariantArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   // only accept comvariantarray or std-arrays or variants
-  Result := (Self = TypSym) or
-    (typSym.IsBaseType) and (typSym.BaseTypeID = TypVariantID) or
-    (typSym.IsBaseType) and Typ.IsCompatible(typSym.Typ);
+  Result :=    (Self = TypSym)
+            or (typSym.IsBaseType and (typSym.BaseType is TBaseVariantSymbol))
+            or (typSym.IsBaseType and Typ.IsCompatible(typSym.Typ));
 end;
 
 constructor TComVariantArraySymbol.Create(const Name: string;

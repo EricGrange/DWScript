@@ -582,7 +582,6 @@ type
       public
          constructor Create(Prog: TdwsProgram);
 
-         procedure Initialize; virtual;
          function  IsConstant : Boolean; virtual;
          function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; virtual;
 
@@ -636,6 +635,8 @@ type
          procedure RaiseObjectNotInstantiated(exec : TdwsExecution);
          procedure RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
 
+         function IsOfType(typSym : TTypeSymbol) : Boolean;
+
          property Typ : TTypeSymbol read FTyp write FTyp;
    end;
 
@@ -675,8 +676,6 @@ type
 
          procedure AddStatement(expr : TNoResultExpr);
          procedure AddStatementFirst(expr : TNoResultExpr);
-
-         procedure Initialize; override;
    end;
 
    // statement; statement; statement;
@@ -733,6 +732,8 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         procedure Initialize(prog : TdwsProgram); virtual;
+
       public
          constructor Create(prog : TdwsProgram; const pos : TScriptPos; func : TFuncSymbol);
          destructor Destroy; override;
@@ -741,7 +742,6 @@ type
          procedure ClearArgs;
          function ExpectedArg : TParamSymbol; virtual; abstract;
          procedure TypeCheckArgs(prog : TdwsProgram); virtual;
-         procedure Initialize; override;
          function GetArgs : TExprBaseList; inline;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function IsConstant : Boolean; override;
@@ -761,14 +761,14 @@ type
       FArgExpr: TTypedExpr;
       FTypeParamSym: TSymbol;  // TSymbol / TPushOperatorType union
 
-      procedure InitPushAddr(StackAddr: Integer; ArgExpr: TTypedExpr);
-      procedure InitPushTempAddr(StackAddr: Integer; ArgExpr: TTypedExpr);
-      procedure InitPushTempArrayAddr(StackAddr: Integer; ArgExpr: TTypedExpr);
-      procedure InitPushTempArray(StackAddr: Integer; ArgExpr: TTypedExpr);
-      procedure InitPushResult(StackAddr: Integer; ArgExpr: TTypedExpr);
-      procedure InitPushData(StackAddr: Integer; ArgExpr: TTypedExpr; ParamSym: TSymbol);
-      procedure InitPushInitResult(StackAddr: Integer; ArgExpr: TTypedExpr);
-      procedure InitPushLazy(StackAddr: Integer; ArgExpr: TTypedExpr);
+      procedure InitPushAddr(stackAddr: Integer; argExpr: TTypedExpr);
+      procedure InitPushTempAddr(stackAddr: Integer; argExpr: TTypedExpr);
+      procedure InitPushTempArrayAddr(stackAddr: Integer; argExpr: TTypedExpr);
+      procedure InitPushTempArray(stackAddr: Integer; argExpr: TTypedExpr);
+      procedure InitPushResult(prog : TdwsProgram; stackAddr: Integer; argExpr: TTypedExpr);
+      procedure InitPushData(stackAddr: Integer; argExpr: TTypedExpr; ParamSym: TSymbol);
+      procedure InitPushInitResult(stackAddr: Integer; argExpr: TTypedExpr);
+      procedure InitPushLazy(stackAddr: Integer; argExpr: TTypedExpr);
 
       procedure Execute(exec : TdwsExecution); inline;
 
@@ -801,7 +801,7 @@ type
          function PreCall(exec : TdwsExecution) : TFuncSymbol; virtual;
          function PostCall(exec : TdwsExecution) : Variant; virtual;
 
-         procedure AddPushExprs;
+         procedure AddPushExprs(prog : TdwsProgram);
          procedure EvalPushExprs(exec : TdwsExecution); inline;
 
       public
@@ -814,7 +814,7 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
          function GetData(exec : TdwsExecution) : TData; override;
          function GetAddr(exec : TdwsExecution) : Integer; override;
-         procedure Initialize; override;
+         procedure Initialize(prog : TdwsProgram); override;
          procedure SetResultAddr(exec : TdwsExecution; ResultAddr: Integer = -1);
          function IsWritable : Boolean; override;
    end;
@@ -894,7 +894,7 @@ type
          constructor Create(const pos : TScriptPos; aTest, aMsg : TTypedExpr);
          destructor Destroy; override;
 
-         procedure InitSymbol(Symbol: TSymbol);
+         procedure InitSymbol(symbol: TSymbol);
          procedure InitExpression(Expr: TExprBase);
 
          function EvalAsBoolean(exec : TdwsExecution) : Boolean;
@@ -968,7 +968,6 @@ type
     procedure AddArg(expr : TTypedExpr);
     procedure TypeCheckArgs(prog : TdwsProgram);
     function Eval(exec : TdwsExecution) : Variant; override;
-    procedure Initialize; override;
     function IsWritable : Boolean; override;
     property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
   end;
@@ -984,10 +983,9 @@ type
     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const Name: string;
                        BaseExpr: TTypedExpr);
     destructor Destroy; override;
-    function AssignConnectorSym(ConnectorType: IConnectorType): Boolean;
+    function AssignConnectorSym(ConnectorType : IConnectorType) : Boolean;
     function Eval(exec : TdwsExecution) : Variant; override;
-    procedure Initialize; override;
-    property BaseExpr: TTypedExpr write FBaseExpr;
+    property BaseExpr : TTypedExpr write FBaseExpr;
   end;
 
   TConnectorWriteExpr = class(TNoResultExpr)
@@ -1003,7 +1001,6 @@ type
     destructor Destroy; override;
     function AssignConnectorSym(Prog: TdwsProgram; ConnectorType: IConnectorType): Boolean;
     procedure EvalNoResult(exec : TdwsExecution); override;
-    procedure Initialize; override;
   end;
 
    // Call of a method
@@ -1020,8 +1017,6 @@ type
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
                             BaseExpr: TDataExpr);
          destructor Destroy; override;
-
-         procedure Initialize; override;
 
          property BaseExpr: TDataExpr read FBaseExpr;
    end;
@@ -1115,7 +1110,6 @@ type
       public
          constructor Create(prog : TdwsProgram; expr : TTypedExpr);
          destructor Destroy; override;
-         procedure Initialize; override;
          function IsConstant : Boolean; override;
          property Expr : TTypedExpr read FExpr write FExpr;
    end;
@@ -1160,7 +1154,6 @@ type
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TProgramExpr);
          destructor Destroy; override;
 
-         procedure Initialize; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
          function  IsConstant : Boolean; override;
 
@@ -1181,7 +1174,6 @@ type
          destructor Destroy; override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
-         procedure Initialize; override;
          function IsConstant : Boolean; override;
 
          property Left : TTypedExpr read FLeft write FLeft;
@@ -2777,8 +2769,6 @@ end;
 
 procedure TdwsProcedure.InitSymbol(Symbol: TSymbol);
 begin
-   FTable.Initialize(CompileMsgs);
-   FExpr.Initialize;
 end;
 
 procedure TdwsProcedure.InitExpression(Expr: TExprBase);
@@ -2877,13 +2867,6 @@ constructor TProgramExpr.Create(Prog: TdwsProgram);
 begin
    inherited Create;
 //   FProg:=Prog;
-end;
-
-// Initialize
-//
-procedure TProgramExpr.Initialize;
-begin
-   // nothing here
 end;
 
 // IsConstant
@@ -3127,7 +3110,7 @@ end;
 //
 function TTypedExpr.OptimizeIntegerConstantToFloatConstant(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
 begin
-   if IsConstant and Typ.IsIntegerValue then begin
+   if IsConstant and Typ.IsOfType(prog.TypInteger) then begin
       Result:=TConstFloatExpr.CreateUnified(prog, nil, EvalAsFloat(exec));
       Free;
    end else Result:=Self;
@@ -3162,6 +3145,14 @@ end;
 procedure TTypedExpr.RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
 begin
    RaiseScriptError(exec, EScriptError, RTE_ObjectAlreadyDestroyed);
+end;
+
+// IsOfType
+//
+function TTypedExpr.IsOfType(typSym : TTypeSymbol) : Boolean;
+begin
+   Result:=    (Self<>nil) and (Typ<>nil)
+           and (Typ.IsOfType(typSym));
 end;
 
 // GetBaseType
@@ -3286,16 +3277,6 @@ begin
    Move(FStatements[0], FStatements[1], FCount);
    FStatements[0]:=expr;
    Inc(FCount);
-end;
-
-// Initialize
-//
-procedure TBlockExprBase.Initialize;
-var
-   i : Integer;
-begin
-   for i:=0 to FCount-1 do
-      FStatements[i].Initialize;
 end;
 
 // GetSubExpr
@@ -3521,16 +3502,9 @@ begin
       if tooFewArguments then
          prog.CompileMsgs.AddCompilerError(Pos, CPE_TooFewArguments);
    end;
-end;
 
-// Initialize
-//
-procedure TFuncExprBase.Initialize;
-var
-   i : Integer;
-begin
-   for i:=0 to FArgs.Count-1 do
-      TTypedExpr(FArgs.ExprBase[i]).Initialize;
+   if not prog.CompileMsgs.HasErrors then
+      Initialize(prog);
 end;
 
 // GetArgs
@@ -3546,7 +3520,7 @@ function TFuncExprBase.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TPro
 begin
    Result:=Self;
    if IsConstant then begin
-      Initialize;
+      Initialize(prog);
       try
          Result:=TConstExpr.CreateTyped(Prog, Typ, Eval(exec));
       except
@@ -3595,6 +3569,14 @@ begin
    Result:=FArgs.Count;
 end;
 
+// Initialize
+//
+procedure TFuncExprBase.Initialize(prog : TdwsProgram);
+begin
+   if Assigned(FFunc) and Assigned(FFunc.Executable) then
+      FFunc.Executable.InitExpression(Self);
+end;
+
 // ------------------
 // ------------------ TPushOperator ------------------
 // ------------------
@@ -3637,24 +3619,22 @@ end;
 
 // InitPushResult
 //
-procedure TPushOperator.InitPushResult(StackAddr: Integer; ArgExpr: TTypedExpr);
+procedure TPushOperator.InitPushResult(prog : TdwsProgram; stackAddr : Integer; argExpr : TTypedExpr);
 var
-   typID : TBaseTypeID;
+   argTyp : TTypeSymbol;
 begin
-   if ArgExpr.Typ<>nil then
-      typID:=ArgExpr.Typ.BaseTypeID
-   else typID:=typNoneID;
-   case typID of
-      typIntegerID : FTypeParamSym:=TSymbol(potResultInteger);
-      typFloatID : FTypeParamSym:=TSymbol(potResultFloat);
-      typBooleanID : FTypeParamSym:=TSymbol(potResultBoolean);
-      typStringID :
-         if ArgExpr.InheritsFrom(TConstStringExpr) then
-            FTypeParamSym:=TSymbol(potResultConstString)
-         else FTypeParamSym:=TSymbol(potResultString);
-   else
-      FTypeParamSym:=TSymbol(potResult);
-   end;
+   argTyp:=argExpr.Typ;
+   if argTyp.IsOfType(prog.TypInteger) then
+      FTypeParamSym:=TSymbol(potResultInteger)
+   else if argTyp.IsOfType(prog.TypFloat) then
+      FTypeParamSym:=TSymbol(potResultFloat)
+   else if argTyp.IsOfType(prog.TypBoolean) then
+      FTypeParamSym:=TSymbol(potResultBoolean)
+   else if argTyp.IsOfType(prog.TypString) then
+      if ArgExpr.InheritsFrom(TConstStringExpr) then
+         FTypeParamSym:=TSymbol(potResultConstString)
+      else FTypeParamSym:=TSymbol(potResultString)
+   else FTypeParamSym:=TSymbol(potResult);
    FStackAddr:=StackAddr;
    FArgExpr:=ArgExpr;
 end;
@@ -4009,27 +3989,24 @@ begin
             pushOperator.InitPushAddr(param.StackAddr, arg)
          end else if param.Size>1 then
             pushOperator.InitPushData(param.StackAddr, TDataExpr(arg), param)
-         else pushOperator.InitPushResult(param.StackAddr, arg)
+         else pushOperator.InitPushResult(prog, param.StackAddr, arg)
       end else begin
          if param.InheritsFrom(TByRefParamSymbol) then
             pushOperator.InitPushTempAddr(param.StackAddr, arg)
-         else pushOperator.InitPushResult(param.StackAddr, arg);
+         else pushOperator.InitPushResult(prog, param.StackAddr, arg);
       end;
    end;
 
    if Assigned(FFunc.Result) then
       FPushExprs[FArgs.Count].InitPushInitResult(FFunc.Result.StackAddr, Self);
-
 end;
 
 // Initialize
 //
-procedure TFuncExpr.Initialize;
+procedure TFuncExpr.Initialize(prog : TdwsProgram);
 begin
    inherited;
-   if Assigned(FFunc.Executable) then
-      FFunc.Executable.InitExpression(Self);
-   AddPushExprs;
+   AddPushExprs(prog);
 end;
 
 // SetResultAddr
@@ -4220,7 +4197,7 @@ begin
       funcExpr.ClearArgs;
       for i:=0 to FArgs.Count-1 do
          funcExpr.AddArg(FArgs.ExprBase[i] as TTypedExpr);
-      funcExpr.AddPushExprs;
+      funcExpr.AddPushExprs((exec as TdwsProgramExecution).Prog);
 
       try
          Result:=funcExprBase.Eval(exec);
@@ -4333,12 +4310,6 @@ begin
    Assert(False);
 end;
 
-procedure TBinaryOpExpr.Initialize;
-begin
-  FLeft.Initialize;
-  FRight.Initialize;
-end;
-
 // IsConstant
 //
 function TBinaryOpExpr.IsConstant : Boolean;
@@ -4383,13 +4354,6 @@ destructor TUnaryOpExpr.Destroy;
 begin
    FExpr.Free;
    inherited;
-end;
-
-// Initialize
-//
-procedure TUnaryOpExpr.Initialize;
-begin
-   FExpr.Initialize;
 end;
 
 // IsConstant
@@ -4512,14 +4476,6 @@ destructor TMethodExpr.Destroy;
 begin
    FBaseExpr.Free;
    inherited;
-end;
-
-// Initialize
-//
-procedure TMethodExpr.Initialize;
-begin
-   inherited;
-   FBaseExpr.Initialize;
 end;
 
 // GetSubExpr
@@ -5847,7 +5803,7 @@ begin
                   funcExpr.AddArg(TConstExpr.CreateTyped(FExec.Prog, tp.Typ, tp.Data));
                end;
             end;
-            funcExpr.Initialize;
+            funcExpr.Initialize(FExec.Prog);
             if Assigned(funcExpr.Typ) then begin
                if funcExpr.Typ.Size > 1 then begin
                   // Allocate space on the stack to store the Result value
@@ -5926,7 +5882,7 @@ begin
 
          funcExpr.AddArg(TConstExpr.CreateTyped(FExec.Prog, dataSym.Typ, Params[x]));
       end;
-      funcExpr.Initialize;
+      funcExpr.Initialize(FExec.Prog);
       if Assigned(funcExpr.Typ) then begin
          if funcExpr.Typ.Size > 1 then begin
             // Allocate space on the stack to store the Result value
@@ -6318,16 +6274,6 @@ begin
   Result := FResultData;
 end;
 
-procedure TConnectorCallExpr.Initialize;
-var
-   i : Integer;
-begin
-	inherited;
-   FBaseExpr.Initialize;
-   for i:=0 to FArgs.Count-1 do
-      TTypedExpr(FArgs.List[0]).Initialize;
-end;
-
 // IsWritable
 //
 function TConnectorCallExpr.IsWritable : Boolean;
@@ -6376,12 +6322,6 @@ function TConnectorReadExpr.GetData(exec : TdwsExecution) : TData;
 begin
   Eval(exec);
   Result := FResultData;
-end;
-
-procedure TConnectorReadExpr.Initialize;
-begin
-  inherited;
-  FBaseExpr.Initialize;
 end;
 
 { TConnectorWriteExpr }
@@ -6437,13 +6377,6 @@ begin
     exec.SetScriptError(Self);
     raise;
   end;
-end;
-
-procedure TConnectorWriteExpr.Initialize;
-begin
-  inherited;
-  FBaseExpr.Initialize;
-  FValueExpr.Initialize;
 end;
 
 { TInfoConnector }
@@ -6547,7 +6480,7 @@ begin
    // Read an external var
    funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).ReadFunc, nil, nil);
    try
-      funcExpr.Initialize;
+      funcExpr.Initialize((exec as TdwsProgramExecution).Prog);
       if funcExpr.Typ.Size > 1 then begin // !! > 1 untested !!
          funcExpr.SetResultAddr(exec, FCaller.Stack.FrameSize);
          // Allocate space on the stack to store the Result value
@@ -6577,7 +6510,7 @@ begin
    funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).WriteFunc, nil, nil);
    try
       funcExpr.AddArg(TConstExpr.CreateTyped(FCaller.Prog, FSym.Typ, Data));
-      funcExpr.AddPushExprs;
+      funcExpr.AddPushExprs((exec as TdwsProgramExecution).Prog);
       funcExpr.EvalNoResult(exec);
    finally
       funcExpr.Free;
@@ -7509,13 +7442,6 @@ begin
    inherited;
 end;
 
-// Initialize
-//
-procedure TNoResultWrapperExpr.Initialize;
-begin
-   FExpr.Initialize;
-end;
-
 // EvalNoResult
 //
 procedure TNoResultWrapperExpr.EvalNoResult(exec : TdwsExecution);
@@ -7569,10 +7495,9 @@ end;
 
 // InitSymbol
 //
-procedure TSourceCondition.InitSymbol(Symbol: TSymbol);
+procedure TSourceCondition.InitSymbol(symbol: TSymbol);
 begin
-   FTest.Initialize;
-   FMsg.Initialize;
+
 end;
 
 // InitExpression

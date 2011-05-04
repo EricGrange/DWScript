@@ -289,7 +289,7 @@ type
    // All functions callable from the script implement this interface
    IExecutable = interface
       ['{8D534D18-4C6B-11D5-8DCB-0000216D9E86}']
-      procedure InitSymbol(Symbol: TSymbol);
+      procedure InitSymbol(symbol: TSymbol);
       procedure InitExpression(Expr: TExprBase);
    end;
 
@@ -347,16 +347,7 @@ type
          function  BaseType : TTypeSymbol; virtual;
          procedure SetName(const newName : String);
 
-         function BaseTypeID : TBaseTypeID; virtual;
-         function IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean; virtual;
          class function IsBaseType : Boolean; virtual;
-
-         function IsBooleanValue : Boolean;
-         function IsIntegerValue : Boolean;
-         function IsFloatValue : Boolean;
-         function IsNumberValue : Boolean;
-         function IsStringValue : Boolean;
-         function IsVariantValue : Boolean;
 
          function QualifiedName : String; virtual;
 
@@ -470,6 +461,8 @@ type
          property WriteFunc : TFuncSymbol read GetWriteFunc write FWriteFunc;
    end;
 
+   TTypeSymbolClass = class of TTypeSymbol;
+
    // Base class for all types
    TTypeSymbol = class(TSymbol)
       public
@@ -574,7 +567,6 @@ type
 
          constructor Generate(Table: TSymbolTable; const FuncName: string;
                               const FuncParams: TParamArray; const FuncType: string);
-         function  BaseTypeID : TBaseTypeID; override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure AddParam(param: TParamSymbol); virtual;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
@@ -723,7 +715,6 @@ type
 
       public
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         function BaseTypeID : TBaseTypeID; override;
          class function IsBaseType : Boolean; override;
    end;
 
@@ -814,8 +805,6 @@ type
    end;
 
    TArraySymbol = class(TTypeSymbol)
-      public
-         function IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean; override;
    end;
 
    // array of FTyp
@@ -981,7 +970,6 @@ type
          procedure InitData(const Data: TData; Offset: Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsOfType(typSym : TTypeSymbol) : Boolean; override;
-         function BaseTypeID : TBaseTypeID; override;
          function TypClassSymbol : TClassSymbol; inline;
    end;
 
@@ -1033,7 +1021,6 @@ type
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function  IsOfType(typSym : TTypeSymbol) : Boolean; override;
-         function  BaseTypeID : TBaseTypeID; override;
 
          function  VMTMethod(index : Integer) : TMethodSymbol;
 
@@ -1591,71 +1578,11 @@ procedure TSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
 end;
 
-// BaseTypeID
-//
-function TSymbol.BaseTypeID : TBaseTypeID;
-begin
-   if Typ<>nil then
-      Result:=Typ.BaseTypeID
-   else if (BaseType<>nil) and (BaseType<>Self) then
-      Result:=BaseType.BaseTypeID
-   else Result:=typNoneID;
-end;
-
-// IsBaseTypeIDValue
-//
-function TSymbol.IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean;
-begin
-   Result:=(FSize=1) and (BaseTypeID=aBaseTypeID);
-end;
-
 // IsBaseType
 //
 class function TSymbol.IsBaseType : Boolean;
 begin
    Result:=False;
-end;
-
-// IsBooleanValue
-//
-function TSymbol.IsBooleanValue : Boolean;
-begin
-   Result:=(Self<>nil) and IsBaseTypeIDValue(typBooleanID);
-end;
-
-// IsIntegerValue
-//
-function TSymbol.IsIntegerValue : Boolean;
-begin
-   Result:=(Self<>nil) and IsBaseTypeIDValue(typIntegerID);
-end;
-
-// IsFloatValue
-//
-function TSymbol.IsFloatValue : Boolean;
-begin
-   Result:=(Self<>nil) and IsBaseTypeIDValue(typFloatID);
-end;
-
-// IsNumberValue
-//
-function TSymbol.IsNumberValue : Boolean;
-begin
-   Result:=(Self<>nil) and (IsBaseTypeIDValue(typIntegerID) or IsBaseTypeIDValue(typFloatID));
-end;
-
-// IsStringValue
-//
-function TSymbol.IsStringValue : Boolean;
-begin
-   Result:=(Self<>nil) and IsBaseTypeIDValue(typStringID);
-end;
-
-// IsVariantValue
-//
-function TSymbol.IsVariantValue : Boolean;
-begin
-   Result:=(Self<>nil) and IsBaseTypeIDValue(typVariantID);
 end;
 
 // QualifiedName
@@ -1862,13 +1789,6 @@ begin
     Self.Create(FuncName, fkProcedure, 1);
 
   GenerateParams(Table, FuncParams);
-end;
-
-// BaseTypeID
-//
-function TFuncSymbol.BaseTypeID : TBaseTypeID;
-begin
-   Result:=typFunctionID;
 end;
 
 procedure TFuncSymbol.AddParam(param: TParamSymbol);
@@ -2773,13 +2693,6 @@ begin
    else Result:=False;
 end;
 
-// BaseTypeID
-//
-function TClassSymbol.BaseTypeID : TBaseTypeID;
-begin
-   Result:=typClassID;
-end;
-
 // VMTMethod
 //
 function TClassSymbol.VMTMethod(index : Integer) : TMethodSymbol;
@@ -3004,13 +2917,6 @@ begin
    else Result:=False;
 end;
 
-// BaseTypeID
-//
-function TClassOfSymbol.BaseTypeID : TBaseTypeID;
-begin
-   Result:=typClassID;
-end;
-
 // TypClassSymbol
 //
 function TClassOfSymbol.TypClassSymbol : TClassSymbol;
@@ -3019,26 +2925,10 @@ begin
 end;
 
 function IsBaseTypeCompatible(AType, BType: TBaseTypeID): Boolean;
-const
-{(*}
-  compatiblityMask: array[TBaseTypeID, TBaseTypeID] of Boolean =
-  (
-   //int    flt    str    bool   var    conn   class  func   none
-    (true,  false, false, false, true,  true,  false, false, false), // int
-    (false, true,  false, false, true,  true,  false, false, false), // flt
-    (false, false, true,  false, true,  true,  false, false, false), // str
-    (false, false, false, true,  true,  true,  false, false, false), // bool
-    (true,  true,  true,  true,  true,  true,  false, false, false), // var
-    (true,  true,  true,  true,  true,  true,  false, false, false), // conn
-    (false, false, false, false, false, false, true,  false, false), // class
-    (false, false, false, false, false, false, false, true,  false), // func
-    (false, false, false, false, false, false, false, false, false)  // none
-  );
-
-
-{*)}
 begin
-  Result := compatiblityMask[AType, BType];
+   Result:=   (AType=BType)
+           or (AType in [typVariantID, typConnectorID])
+           or (BType in [typVariantID, typConnectorID]);
 end;
 
 // ------------------
@@ -3063,13 +2953,6 @@ begin
       Result:=    typSym.InheritsFrom(TBaseSymbol)
               and IsBaseTypeCompatible(Self.FId, TBaseSymbol(typSym).FId);
    end;
-end;
-
-// BaseTypeID
-//
-function TBaseSymbol.BaseTypeID : TBaseTypeID;
-begin
-   Result:=FID;
 end;
 
 // IsBaseType
@@ -3289,7 +3172,7 @@ begin
 
    // Has a default parameter. Format display of param to show it.
    if Length(FDefaultValue) > 0 then begin
-      if Typ.BaseTypeID=typStringID then
+      if (Typ is TBaseStringSymbol) then
          Result := Result + ' = ''' + VarToStr(FDefaultValue[0]) + ''''  // put quotes around value
        else Result := Result + ' = ' + VarToStr(FDefaultValue[0]);
    end;
@@ -3862,17 +3745,6 @@ begin
       Inc(FDataSize, Size);
       Result:=-FDataSize;
    end;
-end;
-
-// ------------------
-// ------------------ TArraySymbol ------------------
-// ------------------
-
-// IsBaseTypeIDValue
-//
-function TArraySymbol.IsBaseTypeIDValue(aBaseTypeID : TBaseTypeID) : Boolean;
-begin
-   Result:=False;
 end;
 
 // ------------------
@@ -4467,6 +4339,3 @@ begin
 end;
 
 end.
-
-
-

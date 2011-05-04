@@ -289,14 +289,25 @@ end;
 //
 class function TdwsRTTIExposer.TypeKindToScriptType(const aType : TTypeKind) : String;
 begin
-   case TypeKindToScriptBaseType(aType) of
-      typIntegerID : Result:='Integer';
-      typFloatID :   Result:='Float';
-      typStringID :  Result:='String';
-      typBooleanID : Result:='Boolean';
-      typVariantID : Result:='Variant';
+   case aType of
+      tkInteger, tkInt64 :
+         Result:='Integer';
+      tkChar, tkString, tkUString, tkWChar, tkLString, tkWString :
+         Result:='String';
+      tkFloat :
+         Result:='Float';
+      tkVariant :
+         Result:='Variant';
+      tkSet, tkProcedure, tkPointer, tkDynArray, tkInterface, tkRecord, tkArray,
+         tkEnumeration, tkClassRef, tkClass, tkMethod : begin
+          Result:='Variant'; // todo, someday maybe...
+      end;
+      tkUnknown : begin
+          Result:='Variant'; // unsupported
+          Assert(False);
+      end;
    else
-      Result:='';
+      Result:='Variant';
       Assert(False);
    end;
 end;
