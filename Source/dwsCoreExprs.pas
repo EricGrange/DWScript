@@ -1393,8 +1393,11 @@ end;
 // AssignExpr
 //
 procedure TVarExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
+var
+   buf : Variant;
 begin
-   exec.Stack.WriteValue(Addr[exec], Expr.Eval(exec));
+   Expr.EvalAsVariant(exec, buf);
+   exec.Stack.WriteValue(Addr[exec], buf);
 end;
 
 // AssignValue
@@ -1689,7 +1692,7 @@ end;
 //
 procedure TVarParamExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
 begin
-   VarCopy(Data[exec][Addr[exec]], Expr.Eval(exec));
+   Expr.EvalAsVariant(exec, Data[exec][Addr[exec]]);
 end;
 
 // AssignDataExpr
@@ -2359,7 +2362,7 @@ begin
    SetLength(Result, FElementExprs.Count);
    for i:=0 to FElementExprs.Count-1 do begin
       expr:=TTypedExpr(FElementExprs.List[i]);
-      Result[i]:=expr.Eval(exec);
+      expr.EvalAsVariant(exec, Result[i]);
    end;
 end;
 
@@ -2369,11 +2372,13 @@ function TArrayConstantExpr.EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArr
 var
    i : Integer;
    expr : TTypedExpr;
+   buf : Variant;
 begin
    Result:=TVarRecArrayContainer.Create;
    for i:=0 to FElementExprs.Count-1 do begin
       expr:=TTypedExpr(FElementExprs.List[i]);
-      Result.Add(expr.Eval(exec));
+      expr.EvalAsVariant(exec, buf);
+      Result.Add(buf);
    end;
    Result.Initialize;
 end;
@@ -2669,7 +2674,7 @@ begin
    oldBasePointer:=exec.Stack.BasePointer;
    exec.Stack.BasePointer:=(lazyContext shr 32);//  stack.GetSavedBp(Level);
    try
-      Result:=lazyExpr.Eval(exec);
+      lazyExpr.EvalAsVariant(exec, Result);
    finally
       exec.Stack.BasePointer:=oldBasePointer;
    end;
@@ -2865,7 +2870,7 @@ var
    value : Variant;
    cc : TCaseCondition;
 begin
-   value:=FLeft.Eval(exec);
+   FLeft.EvalAsVariant(exec, value);
    for i:=0 to FCaseConditions.Count-1 do begin
       cc:=TCaseCondition(FCaseConditions.List[i]);
       if cc.IsTrue(exec, Value) then
@@ -2959,8 +2964,11 @@ end;
 // Eval
 //
 function TConvFloatExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   buf : Variant;
 begin
-   VarCast(Result, FExpr.Eval(exec), varDouble);
+   FExpr.EvalAsVariant(exec, buf);
+   VarCast(Result, buf, varDouble);
 end;
 
 // EvalAsFloat
@@ -3067,7 +3075,7 @@ end;
 //
 function TConvVariantExpr.Eval(exec : TdwsExecution) : Variant;
 begin
-   Result := FExpr.Eval(exec);
+   FExpr.EvalAsVariant(exec, Result);
 end;
 
 // ------------------
@@ -3203,7 +3211,7 @@ var
    s : String;
 begin
    Result:=0;
-   v:=FExpr.Eval(exec);
+   FExpr.EvalAsVariant(exec, v);
    case VarType(v) of
       varSmallInt, varInteger, varShortInt, varByte, varWord, varLongWord, varInt64, varUInt64 :
          Result:=v;
@@ -3301,7 +3309,8 @@ end;
 //
 function TNegExpr.Eval(exec : TdwsExecution) : Variant;
 begin
-  Result:=-FExpr.Eval(exec);
+   Expr.EvalAsVariant(exec, Result);
+   Result:=-Result;
 end;
 
 // ------------------
@@ -3353,8 +3362,12 @@ end;
 // Eval
 //
 function TAddExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   lv, rv : Variant;
 begin
-   Result:=FLeft.Eval(exec)+FRight.Eval(exec);
+   FLeft.EvalAsVariant(exec, lv);
+   FRight.EvalAsVariant(exec, rv);
+   Result:=lv+rv;
 end;
 
 // ------------------
@@ -3408,8 +3421,12 @@ end;
 // Eval
 //
 function TSubExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   lv, rv : Variant;
 begin
-   Result:=FLeft.Eval(exec)-FRight.Eval(exec);
+   FLeft.EvalAsVariant(exec, lv);
+   FRight.EvalAsVariant(exec, rv);
+   Result:=lv-rv;
 end;
 
 // ------------------
@@ -3448,8 +3465,12 @@ end;
 // Eval
 //
 function TMultExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   lv, rv : Variant;
 begin
-   Result:=FLeft.Eval(exec)*FRight.Eval(exec);
+   FLeft.EvalAsVariant(exec, lv);
+   FRight.EvalAsVariant(exec, rv);
+   Result:=lv*rv;
 end;
 
 // ------------------
@@ -3587,7 +3608,8 @@ end;
 //
 function TNotExpr.Eval(exec : TdwsExecution) : Variant;
 begin
-   Result:=not FExpr.Eval(exec);
+   FExpr.EvalAsVariant(exec, Result);
+   Result:=not Result;
 end;
 
 // ------------------
@@ -4175,8 +4197,12 @@ end;
 // EvalNoResult
 //
 procedure TPlusAssignExpr.EvalNoResult(exec : TdwsExecution);
+var
+   lv, rv : Variant;
 begin
-   FLeft.AssignValue(exec, FLeft.Eval(exec) + FRight.Eval(exec));
+   FLeft.EvalAsVariant(exec, lv);
+   FRight.EvalAsVariant(exec, rv);
+   FLeft.AssignValue(exec, lv+rv);
 end;
 
 // ------------------
@@ -4249,8 +4275,12 @@ end;
 // EvalNoResult
 //
 procedure TMinusAssignExpr.EvalNoResult(exec : TdwsExecution);
+var
+   lv, rv : Variant;
 begin
-   FLeft.AssignValue(exec, FLeft.Eval(exec) - FRight.Eval(exec));
+   FLeft.EvalAsVariant(exec, lv);
+   FRight.EvalAsVariant(exec, rv);
+   FLeft.AssignValue(exec, lv-rv);
 end;
 
 // ------------------
@@ -4295,8 +4325,12 @@ end;
 // EvalNoResult
 //
 procedure TMultAssignExpr.EvalNoResult(exec : TdwsExecution);
+var
+   lv, rv : Variant;
 begin
-   FLeft.AssignValue(exec, FLeft.Eval(exec) * FRight.Eval(exec));
+   FLeft.EvalAsVariant(exec, lv);
+   FRight.EvalAsVariant(exec, rv);
+   FLeft.AssignValue(exec, lv*rv);
 end;
 
 // ------------------
@@ -4698,16 +4732,18 @@ begin
   inherited;
 end;
 
+// EvalNoResult
+//
 procedure TCaseExpr.EvalNoResult(exec : TdwsExecution);
 var
-  x: Integer;
-  Value: Variant;
-  cc : TCaseCondition;
+   x : Integer;
+   value: Variant;
+   cc : TCaseCondition;
 begin
-   Value := FValueExpr.Eval(exec);
+   FValueExpr.EvalAsVariant(exec, value);
    for x := 0 to FCaseConditions.Count - 1 do begin
       cc:=TCaseCondition(FCaseConditions.List[x]);
-      if cc.IsTrue(exec, Value) then begin
+      if cc.IsTrue(exec, value) then begin
          exec.DoStep(cc.TrueExpr);
          cc.TrueExpr.EvalNoResult(exec);
          Exit;
@@ -4779,8 +4815,11 @@ end;
 // IsTrue
 //
 function TCompareCaseCondition.IsTrue(exec : TdwsExecution; const value : Variant) : Boolean;
+var
+   buf : Variant;
 begin
-   Result:=(FCompareExpr.Eval(exec)=Value);
+   FCompareExpr.EvalAsVariant(exec, buf);
+   Result:=(buf=Value);
 end;
 
 // TypeCheck
@@ -4825,8 +4864,14 @@ end;
 // IsTrue
 //
 function TRangeCaseCondition.IsTrue(exec : TdwsExecution; const value : Variant) : Boolean;
+var
+   v : Variant;
 begin
-   Result := (Value >= FFromExpr.Eval(exec)) and (Value <= FToExpr.Eval(exec));
+   FFromExpr.EvalAsVariant(exec, v);
+   if value>=v then begin
+      FToExpr.EvalAsVariant(exec, v);
+      Result:=(value<=v);
+   end else Result:=False;
 end;
 
 // TypeCheck
@@ -5501,7 +5546,7 @@ var
    exceptVal : Variant;
    exceptMessage : String;
 begin
-   exceptVal:=FExceptionExpr.Eval(exec);
+   FExceptionExpr.EvalAsVariant(exec, exceptVal);
    exceptMessage:=VarToStr(IScriptObj(IUnknown(exceptVal)).GetData[0]);
    if exceptMessage<>'' then
       raise EScriptException.Create(Format(RTE_UserDefinedException_Msg, [exceptMessage]),

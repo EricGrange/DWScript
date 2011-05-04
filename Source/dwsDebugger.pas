@@ -1159,13 +1159,13 @@ begin
    try
       if (FValueData.Typ<>nil) then begin
          if (FValueData.Typ.Size>1) and (expr is TDataExpr) then begin
-            expr.Eval(exec);
+            expr.EvalNoResult(exec);
             CopyData(TDataExpr(expr).Data[exec], TDataExpr(expr).Addr[exec],
                      FValueData.Data, 0, FValueData.Typ.Size);
          end else if FValueData.Typ.Size=1 then begin
-            FValueData.Data[0]:=expr.Eval(exec);
-         end else expr.Eval(exec);
-      end else expr.Eval(exec);
+            expr.EvalAsVariant(exec, FValueData.Data[0]);
+         end else expr.EvalNoResult(exec);
+      end else expr.EvalNoResult(exec);
    except
       on E: Exception do begin
          FEvaluationError:=dweeEvaluation;

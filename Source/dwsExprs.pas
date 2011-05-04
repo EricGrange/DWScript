@@ -3379,10 +3379,12 @@ begin
    AssignValue(exec, value);
 end;
 
+// AssignExpr
+//
 procedure TDataExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
 begin
-  Assert(IsWritable);
-  VarCopy(Data[exec][Addr[exec]], Expr.Eval(exec));
+   Assert(IsWritable);
+   Expr.EvalAsVariant(exec, Data[exec][Addr[exec]]);
 end;
 
 procedure TDataExpr.AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr);
@@ -3740,7 +3742,7 @@ var
    data : TData;
 begin
    SetLength(data, 1);
-   data[0]:=FArgExpr.Eval(exec);
+   FArgExpr.EvalAsVariant(exec, data[0]);
    vpd := TVarParamData.Create(data, 0);
    exec.Stack.WriteValue(exec.Stack.StackPointer + FStackAddr, vpd);
 end;
@@ -3772,8 +3774,11 @@ end;
 // ExecuteResult
 //
 procedure TPushOperator.ExecuteResult(exec : TdwsExecution);
+var
+   buf : Variant;
 begin
-   exec.Stack.WriteValue(exec.Stack.StackPointer + FStackAddr, FArgExpr.Eval(exec));
+   FArgExpr.EvalAsVariant(exec, buf);
+   exec.Stack.WriteValue(exec.Stack.StackPointer + FStackAddr, buf);
 end;
 
 // ExecuteResultBoolean
@@ -4119,7 +4124,7 @@ var
    funcPtr : TFuncPointer;
 begin
    if FFuncExpr is TFuncPtrExpr then
-      Result:=TFuncPtrExpr(FFuncExpr).FCodeExpr.Eval(exec)
+      TFuncPtrExpr(FFuncExpr).FCodeExpr.EvalAsVariant(exec, Result)
    else begin
       funcPtr:=TFuncPointer.Create(exec, FFuncExpr);
       Result:=IFuncPointer(funcPtr);
@@ -4177,15 +4182,17 @@ var
    funcExpr : TFuncExpr;
    oldArgs : TExprBaseListRec;
    i : Integer;
+   val : Variant;
 begin
-   funcExprBase:=IFuncPointer(IUnknown(FCodeExpr.Eval(exec))).GetFuncExpr;
+   FCodeExpr.EvalAsVariant(exec, val);
+   funcExprBase:=IFuncPointer(IUnknown(val)).GetFuncExpr;
 
    if funcExprBase is TMagicFuncExpr then begin
 
       oldArgs:=funcExprBase.FArgs;
       funcExprBase.FArgs:=FArgs;
       try
-         Result:=funcExprBase.Eval(exec);
+         funcExprBase.EvalAsVariant(exec, Result);
       finally
          funcExprBase.FArgs:=oldArgs;
       end;
@@ -4202,7 +4209,7 @@ begin
       funcExpr.AddPushExprs((exec as TdwsProgramExecution).Prog);
 
       try
-         Result:=funcExprBase.Eval(exec);
+         funcExprBase.EvalAsVariant(exec, Result);
       finally
          for i:=0 to FArgs.Count-1 do
             funcExpr.FArgs.ExprBase[i]:=nil;
@@ -5825,7 +5832,7 @@ begin
                   finally
                      FExec.Stack.Pop(funcExpr.Typ.Size);
                   end;
-               end else VarCopy(FResult[0], funcExpr.Eval(FExec));
+               end else funcExpr.EvalAsVariant(FExec, FResult[0]);
                SetChild(Result, FProgramInfo, funcExpr.Typ, FResult, 0);
             end else begin
                // Execute as procedure
@@ -5904,7 +5911,7 @@ begin
             finally
                FExec.Stack.Pop(funcExpr.Typ.Size);
             end;
-         end else FResult[0] := funcExpr.Eval(FExec);
+         end else funcExpr.EvalAsVariant(FExec, FResult[0]);
          SetChild(Result, FProgramInfo, funcExpr.Typ, FResult, 0);
       end else begin
          funcExpr.EvalNoResult(FExec);
@@ -6217,6 +6224,7 @@ var
   addrSource: Integer;
   x: Integer;
   arg : TTypedExpr;
+  buf : Variant;
 begin
   if exec.IsDebugging then
     exec.Debugger.EnterFunc(exec, Self);
@@ -6230,7 +6238,7 @@ begin
     begin
       arg:=TTypedExpr(FArgs.List[x]);
       if FConnectorParams[x].TypSym.Size = 1 then
-        VarCopy(FConnectorArgs[x][0], arg.Eval(exec))
+        arg.EvalAsVariant(exec, FConnectorArgs[x][0])
       else
       begin
         dataSource := TDataExpr(arg).Data[exec];
@@ -6244,8 +6252,10 @@ begin
       // The call itself
       if FBaseExpr is TDataExpr then
         FResultData := FConnectorCall.Call(TDataExpr(FBaseExpr).Data[exec][TDataExpr(FBaseExpr).Addr[exec]], FConnectorArgs)
-      else
-        FResultData := FConnectorCall.Call(FBaseExpr.Eval(exec), FConnectorArgs);
+      else begin
+        FBaseExpr.EvalAsVariant(exec, buf);
+        FResultData := FConnectorCall.Call(buf, FConnectorArgs);
+      end;
     except
       on e: EScriptException do
         raise;
@@ -6311,8 +6321,10 @@ begin
   try
     if FBaseExpr is TDataExpr then
       FResultData := FConnectorMember.Read(TDataExpr(FBaseExpr).Data[exec][TDataExpr(FBaseExpr).Addr[exec]])
-    else
-      FResultData := FConnectorMember.Read(FBaseExpr.Eval(exec));
+    else begin
+      FBaseExpr.EvalAsVariant(exec, Result);
+      FResultData := FConnectorMember.Read(Result);
+    end;
     Result := FResultData[0];
   except
     exec.SetScriptError(Self);
@@ -6361,7 +6373,7 @@ begin
   if FBaseExpr is TDataExpr then
     Base := @TDataExpr(FBaseExpr).Data[exec][TDataExpr(FBaseExpr).Addr[exec]]
   else begin
-    tmp := FBaseExpr.Eval(exec);
+    FBaseExpr.EvalAsVariant(exec, tmp);
     Base := @tmp;
   end;
 
@@ -6370,7 +6382,7 @@ begin
   else
   begin
     SetLength(dat, 1);
-    dat[0] := FValueExpr.Eval(exec);
+    FValueExpr.EvalAsVariant(exec, dat[0]);
   end;
 
   try
@@ -6424,7 +6436,7 @@ begin
       if Assigned(expr.Typ) then
       begin
         SetLength(resultData, 1);
-        resultData[0] := expr.Eval(FExec);
+        expr.EvalAsVariant(FExec, resultData[0]);
         TInfo.SetChild(Result, FProgramInfo, expr.Typ, resultData, 0);
       end
       else
@@ -6497,7 +6509,7 @@ begin
          finally
             FCaller.Stack.Pop(funcExpr.Typ.Size);
          end;
-      end else VarCopy(Data[0], funcExpr.Eval(exec));
+      end else funcExpr.EvalAsVariant(exec, Data[0]);
    finally
       funcExpr.Free;
    end;

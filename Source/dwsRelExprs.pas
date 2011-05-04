@@ -409,8 +409,12 @@ end;
 // EvalAsBoolean
 //
 function TRelEqualVariantExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   lv, rv : Variant;
 begin
-   Result:=(FLeft.Eval(exec)=FRight.Eval(exec));
+   FLeft.EvalAsVariant(exec, lv);
+   FRight.EvalAsVariant(exec, rv);
+   Result:=(lv=rv);
 end;
 
 // ------------------
@@ -420,8 +424,12 @@ end;
 // EvalAsBoolean
 //
 function TRelNotEqualVariantExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   lv, rv : Variant;
 begin
-   Result:=(FLeft.Eval(exec)<>FRight.Eval(exec));
+   FLeft.EvalAsVariant(exec, lv);
+   FRight.EvalAsVariant(exec, rv);
+   Result:=(lv<>rv);
 end;
 
 // ------------------
@@ -431,8 +439,12 @@ end;
 // EvalAsBoolean
 //
 function TRelLessVariantExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   lv, rv : Variant;
 begin
-   Result:=(FLeft.Eval(exec)<FRight.Eval(exec));
+   FLeft.EvalAsVariant(exec, lv);
+   FRight.EvalAsVariant(exec, rv);
+   Result:=(lv<rv);
 end;
 
 // ------------------
@@ -442,8 +454,12 @@ end;
 // EvalAsBoolean
 //
 function TRelLessEqualVariantExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   lv, rv : Variant;
 begin
-   Result:=(FLeft.Eval(exec)<=FRight.Eval(exec));
+   FLeft.EvalAsVariant(exec, lv);
+   FRight.EvalAsVariant(exec, rv);
+   Result:=(lv<=rv);
 end;
 
 // ------------------
@@ -453,8 +469,12 @@ end;
 // EvalAsBoolean
 //
 function TRelGreaterVariantExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   lv, rv : Variant;
 begin
-   Result:=(FLeft.Eval(exec)>FRight.Eval(exec));
+   FLeft.EvalAsVariant(exec, lv);
+   FRight.EvalAsVariant(exec, rv);
+   Result:=(lv>rv);
 end;
 
 // ------------------
@@ -464,8 +484,12 @@ end;
 // EvalAsBoolean
 //
 function TRelGreaterEqualVariantExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   lv, rv : Variant;
 begin
-   Result:=(FLeft.Eval(exec)>=FRight.Eval(exec));
+   FLeft.EvalAsVariant(exec, lv);
+   FRight.EvalAsVariant(exec, rv);
+   Result:=(lv>=rv);
 end;
 
 end.
