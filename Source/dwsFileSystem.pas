@@ -22,7 +22,7 @@ unit dwsFileSystem;
 
 interface
 
-uses Classes, SysUtils;
+uses Classes, SysUtils, dwsUtils;
 
 type
 
@@ -283,7 +283,7 @@ begin
    for i:=0 to FPaths.Count-1 do begin
       path:=FPaths[i];
       Result:=ExpandFileName(path+fileName);
-      if SameText(path, Copy(Result, 1, Length(path))) then Exit;
+      if UnicodeSameText(path, Copy(Result, 1, Length(path))) then Exit;
    end;
    raise EdwsFSInvalidFileName.Create(fileName);
 end;

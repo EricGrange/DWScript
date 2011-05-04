@@ -585,7 +585,7 @@ begin
           begin
             deps := IUnit(Pointer(Units.Objects[y])).GetDependencies;
             for z := 0 to deps.Count - 1 do
-              if SameText(deps[z], unitName) then
+              if UnicodeSameText(deps[z], unitName) then
                 Dec(refCount[y]);
           end;
 
@@ -1437,7 +1437,7 @@ function TdwsCompiler.ReadMethodDecl(classSym: TClassSymbol; funcKind: TFuncKind
          newParam:=newMeth.Params[i];
          oldParam:=oldMeth.Params[i];
          if    (newParam.Typ<>oldParam.Typ)
-            or (not SameText(newParam.Name, oldParam.Name)) then
+            or (not UnicodeSameText(newParam.Name, oldParam.Name)) then
             Exit(False);
       end;
       Result:=True;
@@ -5266,7 +5266,7 @@ begin
   Result := True;
   for x := 0 to A.Count - 1 do begin
     r := False;
-    if CheckNames and not SameText(A[x].Name, B[x].Name) then
+    if CheckNames and not UnicodeSameText(A[x].Name, B[x].Name) then
         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterName, [x, A[x].Name])
     else if not A[x].Typ.IsCompatible(B[x].Typ) then
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterType,
@@ -6109,7 +6109,7 @@ begin
       z := -1;
       while (y < FProg.Root.RootTable.Count) do
       begin
-        if (FProg.Root.RootTable[y] is TUnitSymbol) and SameText(FProg.Root.RootTable[y].Name,Names[x]) then
+        if (FProg.Root.RootTable[y] is TUnitSymbol) and UnicodeSameText(FProg.Root.RootTable[y].Name,Names[x]) then
         begin
           z := FProg.Root.RootTable.IndexOfParent(TUnitSymbol(FProg.Root.RootTable[y]).Table);
           if z >= u then // uses A,B,A,C => uses A,B,C

@@ -500,7 +500,7 @@ end;
 
 function TAnsiCompareTextFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 begin
-   Result:=dwsXPlatform.AnsiCompareText(args.AsString[0], args.AsString[1]);
+   Result:=UnicodeCompareText(args.AsString[0], args.AsString[1]);
 end;
 
 { TCompareStrFunc }

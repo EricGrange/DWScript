@@ -1111,7 +1111,7 @@ begin
   for x := 0 to Count - 1 do
   begin
     Result := Items[x];
-    if SameText(Result.Name,Name) then
+    if UnicodeSameText(Result.Name,Name) then
       Exit;
   end;
   Result := nil;
@@ -1155,7 +1155,7 @@ var
 begin
   Result := -1;
   for x := 0 to Self.Count - 1 do
-    if SameText(Name, Items[x].Name) then
+    if UnicodeSameText(Name, Items[x].Name) then
     begin
       Result := x;
       Break;
@@ -1776,7 +1776,7 @@ var
    valAsString : String;
 begin
    valAsString:=VarToStr(Value);
-   if SameText(DataType, 'String') then  // just for show
+   if SameText(DataType, SYS_STRING) then  // just for show
       valAsString:=''''+valAsString+'''';
    Result := Format('const %s: %s = %s;', [Name, DataType, valAsString]);
 end;
@@ -2141,7 +2141,7 @@ begin
 
       // Check wether parameter name is unique
       for j := i - 1 downto 0 do begin
-         if SameText(Result[j].ParamName, name) then
+         if UnicodeSameText(Result[j].ParamName, name) then
             raise Exception.CreateFmt(UNT_ParameterNameAlreadyExists, [name]);
       end;
 
@@ -3107,7 +3107,7 @@ end;
 procedure TdwsAbstractUnit.SetUnitName(const Value: string);
 begin
   if not (csDesigning in ComponentState) and Assigned(FScript)
-     and not SameText(Value,FUnitName) then
+     and not UnicodeSameText(Value, FUnitName) then
     raise Exception.Create(UNT_CantChangeUnitName)
   else
     FUnitName := Value;

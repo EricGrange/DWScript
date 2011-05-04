@@ -922,7 +922,7 @@ end;
 //
 function TdwsDebuggerBreakpoints.Compare(const item1, item2 : TdwsDebuggerBreakpoint) : Integer;
 begin
-   Result:=CompareText(item1.SourceName, item2.SourceName);
+   Result:=UnicodeCompareText(item1.SourceName, item2.SourceName);
    if Result=0 then
       Result:=item2.Line-item1.Line;
 end;
@@ -1223,7 +1223,7 @@ end;
 //
 function TdwsDebuggerWatches.Compare(const item1, item2 : TdwsDebuggerWatch) : Integer;
 begin
-   Result:=CompareText(item1.ExpressionText, item2.ExpressionText);
+   Result:=UnicodeCompareText(item1.ExpressionText, item2.ExpressionText);
 end;
 
 // Update

@@ -73,8 +73,9 @@ type
 function GetSystemMilliseconds : Cardinal;
 function UTCDateTime : TDateTime;
 
-function AnsiCompareText(const S1, S2: string) : Integer;
-function AnsiCompareStr(const S1, S2: string) : Integer;
+function AnsiCompareText(const S1, S2 : String) : Integer;
+function AnsiCompareStr(const S1, S2 : String) : Integer;
+function UnicodeComparePChars(p1 : PChar; n1 : Integer; p2 : PChar; n2 : Integer) : Integer;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -115,6 +116,13 @@ end;
 function AnsiCompareStr(const S1, S2: string) : Integer;
 begin
    Result:=SysUtils.AnsiCompareStr(S1, S2);
+end;
+
+// UnicodeComparePChars
+//
+function UnicodeComparePChars(p1 : PChar; n1 : Integer; p2 : PChar; n2 : Integer) : Integer;
+begin
+   Result:=CompareString(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n1, p2, n2)-CSTR_EQUAL;
 end;
 
 // SetDecimalSeparator

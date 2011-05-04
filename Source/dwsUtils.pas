@@ -240,6 +240,9 @@ procedure ChangeObjectClass(ref : TObject; newClass : TClass);
 procedure UnifyAssignString(const fromStr : String; var toStr : String);
 procedure TidyStringsUnifier;
 
+function UnicodeCompareText(const s1, s2 : String) : Integer;
+function UnicodeSameText(const s1, s2 : String) : Boolean;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -317,6 +320,72 @@ begin
       sl.Clear;
       vUnifierLock.Leave;
    end;
+end;
+
+// UnicodeCompareLen
+//
+function UnicodeCompareLen(p1, p2 : PChar; n : Integer) : Integer;
+var
+   i : Integer;
+   remaining : Integer;
+   c1, c2 : Integer;
+begin
+   for i:=1 to n do begin
+      c1:=Ord(p1^);
+      c2:=Ord(p2^);
+      if (c1<>c2) then begin
+         if (c1<=127) and (c2<=127) then begin
+            if c1 in [Ord('a')..Ord('z')] then
+               c1:=c1+Ord('A')-Ord('a');
+            if c2 in [Ord('a')..Ord('z')] then
+               c2:=c2+Ord('A')-Ord('a');
+            if c1<>c2 then begin
+               Result:=c1-c2;
+               Exit;
+            end;
+         end else begin
+            remaining:=n-i+1;
+            Result:=UnicodeComparePChars(p1, remaining, p2, remaining);
+            Exit;
+         end;
+      end;
+      Inc(p1);
+      Inc(p2);
+   end;
+   Result:=0;
+end;
+
+// UnicodeCompareText
+//
+function UnicodeCompareText(const s1, s2 : String) : Integer;
+var
+   n1, n2, dn : Integer;
+begin
+   if S1<>'' then begin
+      if S2<>'' then begin
+         n1:=Length(s1);
+         n2:=Length(s2);
+         dn:=n1-n2;
+         if dn<0 then begin
+            Result:=UnicodeCompareLen(PChar(NativeInt(s1)), PChar(NativeInt(s2)), n1);
+            if Result=0 then
+               Result:=-1;
+         end else begin
+            Result:=UnicodeCompareLen(PChar(NativeInt(S1)), PChar(NativeInt(s2)), n2);
+            if (Result=0) and (dn>0) then
+               Result:=1;
+         end;
+      end else Result:=1;
+   end else if S2<>'' then
+      Result:=-1
+   else Result:=0;
+end;
+
+// UnicodeSameText
+//
+function UnicodeSameText(const s1, s2 : String) : Boolean;
+begin
+   Result:=(UnicodeCompareText(s1, s2)=0);
 end;
 
 // InitializeStringsUnifier

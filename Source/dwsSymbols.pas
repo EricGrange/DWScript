@@ -3256,8 +3256,8 @@ begin
       p:=((i+j) shr 1);
       repeat
          pSym:=TSymbol(ptrList[p]);
-         while CompareText(TSymbol(ptrList[i]).Name, pSym.Name)<0 do Inc(i);
-         while CompareText(TSymbol(ptrList[j]).Name, pSym.Name)>0 do Dec(j);
+         while UnicodeCompareText(TSymbol(ptrList[i]).Name, pSym.Name)<0 do Inc(i);
+         while UnicodeCompareText(TSymbol(ptrList[j]).Name, pSym.Name)>0 do Dec(j);
          if i<=j then begin
             FSymbols.Exchange(i, j);
             if p=i then
@@ -3286,7 +3286,7 @@ begin
    ptrList:=FSymbols.List;
    while lo<=hi do begin
       mid:=(lo+hi) shr 1;
-      cmpResult:=CompareText(TSymbol(ptrList[mid]).Name, name);
+      cmpResult:=UnicodeCompareText(TSymbol(ptrList[mid]).Name, name);
       if cmpResult<0 then
          lo:=mid+1
       else begin
@@ -3307,7 +3307,7 @@ var
 begin
    ptrList:=FSymbols.List;
    for i:=FSymbols.Count-1 downto 0 do begin
-      if CompareText(TSymbol(ptrList[i]).Name, Name)=0 then
+      if UnicodeCompareText(TSymbol(ptrList[i]).Name, Name)=0 then
          Exit(TSymbol(ptrList[i]));
    end;
    Result:=nil;
@@ -3380,7 +3380,7 @@ begin
       n:=FSymbols.Count;
       ptrList:=FSymbols.List;
       while Result<n do begin
-         if CompareText(TSymbol(ptrList[Result]).Name, Sym.Name)>=0 then
+         if UnicodeCompareText(TSymbol(ptrList[Result]).Name, Sym.Name)>=0 then
             Break;
          Inc(Result);
       end;

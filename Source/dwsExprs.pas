@@ -6695,14 +6695,14 @@ end;
 
 // FindSymbolPosList
 //
-function TSymbolDictionary.FindSymbolPosList(const SymName: string): TSymbolPositionList;
+function TSymbolDictionary.FindSymbolPosList(const symName : String) : TSymbolPositionList;
 var
    i : Integer;
 begin
    for i:=0 to FSymbolList.Count-1 do begin
       // same name (not case-sensitive)
       Result:=FSymbolList[i];
-      if CompareText(Result.Symbol.Name, SymName)=0 then Exit;
+      if AnsiCompareText(Result.Symbol.Name, SymName)=0 then Exit;
    end;
    Result:=nil;
 end;
@@ -6788,7 +6788,7 @@ var
 begin
   Result := nil;
   for x := 0 to Self.Count - 1 do
-    if SameText(Self.Items[x].Symbol.Name, SymName) and (Self.Items[x].Symbol is SymbolType) then // same name (not case-sensitive)
+    if UnicodeSameText(Self.Items[x].Symbol.Name, SymName) and (Self.Items[x].Symbol is SymbolType) then // same name (not case-sensitive)
     begin
       Result := Self.Items[x];
       Break;
@@ -6943,7 +6943,7 @@ function TContext.IsPositionInContext(aCol, aLine : Integer; const sourceName : 
 begin
    // check if the position is in the same SourceFile
    if sourceName<>'' then begin // if empty, don't check it
-      if not SameText(sourceName, FStartPos.SourceFile.Name) then begin
+      if not UnicodeSameText(sourceName, FStartPos.SourceFile.Name) then begin
          Result:=False;
          Exit;
       end;
@@ -7200,7 +7200,7 @@ begin
   for x := 0 to FSourceList.Count - 1 do
   begin
     // if both names match, consider it a match
-    if CompareText(TScriptSourceItem(FSourceList[x]).SourceFile.Name, SourceFileName) = 0 then
+    if AnsiCompareText(TScriptSourceItem(FSourceList[x]).SourceFile.Name, SourceFileName) = 0 then
     begin
       Result := x;
       Break;           // found match, stop searching

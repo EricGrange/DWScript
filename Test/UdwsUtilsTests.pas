@@ -20,6 +20,8 @@ type
 
          procedure JSONTest;
          procedure ParseJSON;
+
+         procedure UnicodeCompareTextTest;
    end;
 
 // ------------------------------------------------------------------
@@ -206,6 +208,33 @@ begin
    finally
       sl.Free;
    end;
+end;
+
+// UnicodeCompareTextTest
+//
+procedure TdwsUtilsTests.UnicodeCompareTextTest;
+begin
+   CheckTrue(UnicodeCompareText('', '')=0, 'both empty');
+
+   CheckTrue(UnicodeCompareText('a', '')>0, 'a, empty');
+   CheckTrue(UnicodeCompareText('', 'a')<0, 'empty, a');
+   CheckTrue(UnicodeCompareText('é', '')>0, 'é, empty');
+   CheckTrue(UnicodeCompareText('', 'é')<0, 'empty, é');
+
+   CheckTrue(UnicodeCompareText('abc', 'abc')=0, 'abc, abc');
+   CheckTrue(UnicodeCompareText('abcd', 'abc')>0, 'abcd, abc');
+   CheckTrue(UnicodeCompareText('abc', 'abcd')<0, 'abc, abcd');
+   CheckTrue(UnicodeCompareText('abc', 'abd')<0, 'abc, abd');
+   CheckTrue(UnicodeCompareText('abd', 'abc')>0, 'abc, abd');
+
+   CheckTrue(UnicodeCompareText('abe', 'abé')<0, 'abe, abé');
+   CheckTrue(UnicodeCompareText('abé', 'abe')>0, 'abé, abe');
+   CheckTrue(UnicodeCompareText('abéa', 'abéz')<0, 'abéa, abéz');
+   CheckTrue(UnicodeCompareText('abéz', 'abéa')>0, 'abéz, abéa');
+
+   CheckTrue(UnicodeCompareText('abé', 'abÉ')=0, 'abé, abÉ');
+   CheckTrue(UnicodeCompareText('abéaa', 'abÉz')<0, 'abéaa, abÉz');
+   CheckTrue(UnicodeCompareText('abéz', 'abÉaa')>0, 'abéz, abÉaa');
 end;
 
 // ------------------------------------------------------------------

@@ -23,7 +23,8 @@ unit dwsTokenizer;
 interface
 
 uses
-  SysUtils, Classes, TypInfo, dwsErrors, dwsStrings, dwsXPlatform, dwsUtils;
+  SysUtils, Classes, TypInfo, dwsErrors, dwsStrings, dwsXPlatform, dwsUtils,
+  Character;
 
 type
 
@@ -573,9 +574,11 @@ var
    oc : Integer;
 begin
    oc:=Ord(c);
-   if oc<128 then
+   if oc<127 then
       Result:=FTransitions[oc]
-   else Result:=FTransitions[127];
+   else if Character.IsLetter(c) then
+      Result:=FTransitions[127]
+   else Result:=FTransitions[0];
 end;
 
 // AddTransition
@@ -1058,7 +1061,7 @@ const
    cSPEC = ['(', ')', ',', ';', '[', ']', '}'];
    cSTOP = cSPEC + cOPS + cSPACE + [':', '.', '{'];
    cANYCHAR = [#0..#255];
-   cNAM = ['A'..'Z', 'a'..'z', '_'];
+   cNAM = ['A'..'Z', 'a'..'z', '_', #127];
    cINT = ['0'..'9'];
    cHEX = cINT + ['A'..'F', 'a'..'f'];
    cStart = ['''', '"', '#', ':', '$', '.'] + cNAM + cINT + cOPS;
