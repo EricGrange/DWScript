@@ -576,7 +576,7 @@ begin
    oc:=Ord(c);
    if oc<127 then
       Result:=FTransitions[oc]
-   else if Character.IsLetter(c) then
+   else if Character.IsLetterOrDigit(c) then
       Result:=FTransitions[127]
    else Result:=FTransitions[0];
 end;

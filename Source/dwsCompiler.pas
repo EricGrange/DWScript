@@ -1211,7 +1211,7 @@ end;
 function TdwsCompiler.ReadConstDecl(constSymbolClass : TConstSymbolClass) : TConstSymbol;
 var
    name : String;
-   expr: TTypedExpr;
+   expr : TTypedExpr;
    typ : TTypeSymbol;
    constPos : TScriptPos;
    val : Variant;
