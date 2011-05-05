@@ -246,7 +246,8 @@ type
       function IdentifySpecialName(const name : String) : TSpecialKeywordKind;
       procedure CheckSpecialName(const name : String);
       function CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
-      procedure CompareFuncSymbols(a, b : TFuncSymbol; isCheckingParameters : Boolean);
+      procedure CompareFuncKinds(a, b : TFuncKind);
+      procedure CompareFuncSymbolParams(a, b : TFuncSymbol);
       function CurrentClass : TClassSymbol;
       procedure HintUnusedSymbols;
       procedure HintUnusedResult(resultSymbol : TDataSymbol);
@@ -305,7 +306,7 @@ type
       function ReadExprSwitch : TTypedExpr;
       function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
       function ReadMethodDecl(classSym : TClassSymbol; funcKind : TFuncKind;
-                              aVisibility : TClassVisibility; isClassMethod : Boolean) : TMethodSymbol;
+                              aVisibility : TClassVisibility; isClassMethod : Boolean) : TSourceMethodSymbol;
       function ReadMethodImpl(classSym : TClassSymbol; funcKind : TFuncKind;
                               isClassMethod : Boolean) : TMethodSymbol;
       procedure ReadDeprecated(funcSym : TFuncSymbol);
@@ -1382,8 +1383,10 @@ begin
          Result.Typ:=ReadFuncResultType(funcKind);
 
          if not isType then begin
-            if Assigned(forwardedSym) then
-               CompareFuncSymbols(forwardedSym, Result, True);
+            if Assigned(forwardedSym) then begin
+               CompareFuncKinds(forwardedSym.Kind, Result.Kind);
+               CompareFuncSymbolParams(forwardedSym, Result);
+            end;
 
             // forward declarations
             if not Assigned(forwardedSym) then begin
@@ -1428,7 +1431,7 @@ end;
 // ReadMethodDecl
 //
 function TdwsCompiler.ReadMethodDecl(classSym: TClassSymbol; funcKind: TFuncKind;
-   aVisibility : TClassVisibility; isClassMethod: Boolean): TMethodSymbol;
+   aVisibility : TClassVisibility; isClassMethod: Boolean): TSourceMethodSymbol;
 
    function OverrideParamsCheck(newMeth, oldMeth : TMethodSymbol) : Boolean;
    var
@@ -1477,7 +1480,7 @@ begin
 
    // Read declaration of method implementation
    Result := TSourceMethodSymbol.Create(name, funcKind, classSym, aVisibility, isClassMethod);
-   TSourceMethodSymbol(Result).DeclarationPos:=methPos;
+   Result.DeclarationPos:=methPos;
 
    try
       if meth<>nil then begin
@@ -1577,7 +1580,7 @@ function TdwsCompiler.ReadMethodImpl(classSym : TClassSymbol;
 var
    methName : String;
    sym : TSymbol;
-   meth : TMethodSymbol;
+   tmpMeth : TMethodSymbol;
    methPos : TScriptPos;
 begin
    if not (FTok.TestDelete(ttDOT) and FTok.TestName) then
@@ -1592,39 +1595,36 @@ begin
 
    if not (sym is TMethodSymbol) then
       FMsgs.AddCompilerStop(methPos, CPE_ImplNotAMethod);
-   meth:=TMethodSymbol(sym);
+   Result:=TMethodSymbol(sym);
 
-   if meth.ClassSymbol <> classSym then
+   if Result.ClassSymbol<>classSym then
       FMsgs.AddCompilerStopFmt(methPos, CPE_ImplInvalidClass, [methName, classSym.Name]);
 
-   if meth.IsAbstract then
+   if Result.IsAbstract then
       FMsgs.AddCompilerErrorFmt(methPos, CPE_ImplAbstract, [classSym.Name, methName]);
 
-   if meth.isClassMethod and not isClassMethod then
+   if Result.isClassMethod and not isClassMethod then
       FMsgs.AddCompilerStop(methPos, CPE_ImplClassExpected)
-   else if not meth.isClassMethod and isClassMethod then
+   else if not Result.isClassMethod and isClassMethod then
       FMsgs.AddCompilerStop(methPos, CPE_ImplNotClassExpected);
 
-   Result := TSourceMethodSymbol.Create(methName, funcKind, classSym,
-                                        TMethodSymbol(meth).Visibility, isClassMethod);
-   try
-      if not FTok.TestDelete(ttSEMI) then begin
-         ReadParams(Result, False);  // Don't store these params to Dictionary. They will become invalid when the method is freed.
+   CompareFuncKinds(Result.Kind, funcKind);
 
-         Result.Typ:=ReadFuncResultType(funcKind);
-
+   if not FTok.TestDelete(ttSEMI) then begin
+      tmpMeth:=TSourceMethodSymbol.Create(methName, funcKind, classSym,
+                                          TMethodSymbol(Result).Visibility, isClassMethod);
+      try
+         ReadParams(tmpMeth, False);  // Don't store these params to Dictionary. They will become invalid when the method is freed.
+         tmpMeth.Typ:=ReadFuncResultType(funcKind);
          ReadSemiColon;
-
-         CompareFuncSymbols(meth, Result, True);
-      end else begin
-         CompareFuncSymbols(meth, Result, False);
+         CompareFuncSymbolParams(Result, tmpMeth);
+      finally
+         tmpMeth.Free;
       end;
-   finally
-      Result.Free;
-      Result := meth;
-      if coSymbolDictionary in FCompilerOptions then
-         FSymbolDictionary.AddTypeSymbol(Result, methPos, [suImplementation]);
    end;
+
+   if coSymbolDictionary in FCompilerOptions then
+      FSymbolDictionary.AddTypeSymbol(Result, methPos, [suImplementation]);
 end;
 
 // ReadDeprecated
@@ -1946,7 +1946,9 @@ begin
    end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndOfBlockExpected);
 end;
 
-function TdwsCompiler.ReadInstr: TNoResultExpr;
+// ReadInstr
+//
+function TdwsCompiler.ReadInstr : TNoResultExpr;
 var
    token : TTokenType;
    locExpr : TProgramExpr;
@@ -2325,12 +2327,13 @@ end;
 // ReadConstName
 //
 function TdwsCompiler.ReadConstName(constSym : TConstSymbol; IsWrite: Boolean) : TProgramExpr;
+var
+   typ : TTypeSymbol;
 begin
-   if constSym.Typ.Typ is TArraySymbol then begin
-      Result := ReadSymbol(TConstExpr.CreateTyped(FProg, constSym.Typ.Typ, constSym), IsWrite)
-   end else begin
-      Result := ReadSymbol(TConstExpr.CreateTyped(FProg, constSym.Typ, constSym), IsWrite)
-   end;
+   typ:=constSym.Typ;
+   if typ.Typ is TArraySymbol then
+      typ:=typ.Typ;
+   Result := ReadSymbol(TConstExpr.CreateTyped(FProg, typ, constSym), IsWrite)
 end;
 
 // ReadNameOld
@@ -5288,13 +5291,12 @@ begin
   end;
 end;
 
-// CompareFuncSymbols
+// CompareFuncKinds
 //
-procedure TdwsCompiler.CompareFuncSymbols(a, b : TFuncSymbol;
-                                          isCheckingParameters : Boolean);
+procedure TdwsCompiler.CompareFuncKinds(a, b : TFuncKind);
 begin
-   if a.Kind<>b.Kind then begin
-      case a.Kind of
+   if a<>b then begin
+      case a of
          fkFunction : FMsgs.AddCompilerStop(FTok.HotPos, CPE_FunctionExpected);
          fkProcedure : FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcedureExpected);
          fkConstructor : FMsgs.AddCompilerStop(FTok.HotPos, CPE_ConstructorExpected);
@@ -5304,16 +5306,19 @@ begin
          Assert(False);
       end;
    end;
+end;
 
-   if isCheckingParameters then begin
-      if Assigned(a.Typ) and not a.Typ.IsCompatible(b.Typ) then
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadResultType, [a.Typ.Caption]);
+// CompareFuncSymbolParams
+//
+procedure TdwsCompiler.CompareFuncSymbolParams(a, b : TFuncSymbol);
+begin
+   if Assigned(a.Typ) and not a.Typ.IsCompatible(b.Typ) then
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadResultType, [a.Typ.Caption]);
 
-      if a.Params.Count<>b.Params.Count then
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadNumberOfParameters,
-                                   [a.Params.Count, b.Params.Count])
-      else CheckParams(a.Params, b.Params, True);
-   end;
+   if a.Params.Count<>b.Params.Count then
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadNumberOfParameters,
+                                [a.Params.Count, b.Params.Count])
+   else CheckParams(a.Params, b.Params, True);
 end;
 
 // CurrentClass

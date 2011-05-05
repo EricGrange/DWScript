@@ -567,7 +567,7 @@ type
          procedure InitSymbol(Symbol: TSymbol);
          procedure InitExpression(Expr: TExprBase);
 
-         property Func: TFuncSymbol read FFunc write FFunc;
+         property Func : TFuncSymbol read FFunc write FFunc;
 
          property PreConditions : TSourcePreConditions read FPreConditions write FPreConditions;
          property PostConditions : TSourcePostConditions read FPostConditions write FPostConditions;
