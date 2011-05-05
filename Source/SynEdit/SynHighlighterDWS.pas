@@ -51,7 +51,8 @@ uses
   SynEditTypes,
   SynEditHighlighter,
   SysUtils,
-  Classes;
+  Classes,
+  Character;
 
 type
   TtkTokenKind = (tkAsm, tkComment, tkIdentifier, tkKey, tkNull, tkNumber,
@@ -118,10 +119,12 @@ type
   protected
     function GetSampleSource: UnicodeString; override;
     function IsFilterStored: Boolean; override;
+
   public
     class function GetCapabilities: TSynHighlighterCapabilities; override;
     class function GetLanguageName: string; override;
     class function GetFriendlyLanguageName: UnicodeString; override;
+
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -135,6 +138,8 @@ type
     procedure Next; override;
     procedure ResetRange; override;
     procedure SetRange(Value: Pointer); override;
+    function IsIdentChar(AChar: WideChar): Boolean; override;
+
   published
     property AsmAttri: TSynHighlighterAttributes read fAsmAttri write fAsmAttri;
     property CommentAttri: TSynHighlighterAttributes read fCommentAttri
@@ -799,6 +804,19 @@ begin
   Result := fDefaultFilter <> SYNS_FilterPascal;
 end;
 
+// IsIdentChar
+//
+function TSynDWSSyn.IsIdentChar(AChar: WideChar): Boolean;
+begin
+   case AChar of
+      '_', '0'..'9', 'A'..'Z', 'a'..'z' :
+         Result:=True;
+      #$0080..#$FFFF :
+         Result:=TCharacter.IsLetterOrDigit(AChar);
+   else
+      Result:=False;
+   end;
+end;
 
 class function TSynDWSSyn.GetFriendlyLanguageName: UnicodeString;
 begin
