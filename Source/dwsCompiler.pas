@@ -3490,30 +3490,35 @@ function TdwsCompiler.ReadClassOf(const typeName : String) : TClassOfSymbol;
 var
    name : String;
    typ : TTypeSymbol;
+   classTyp : TClassSymbol;
 begin
    // Declaration of a class reference
    if not FTok.TestName then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-   name := FTok.GetToken.FString;
+
+   name:=FTok.GetToken.FString;
    FTok.KillToken;
 
-   typ := FProg.Table.FindTypeSymbol(name, cvMagic);
-   if not Assigned(typ) then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownClass, [name]);
-   if not (typ is TClassSymbol) then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NotAClass, [name]);
-
-   if typeName <> '' then begin
-      Result := TClassOfSymbol.Create(typeName, TClassSymbol(typ));
-      // Add reference of class type to Dictionary
+   typ:=FProg.Table.FindTypeSymbol(name, cvMagic);
+   if not (typ is TClassSymbol) then begin
+      if not Assigned(typ) then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnknownClass, [name])
+      else FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NotAClass, [name]);
+      classTyp:=FProg.TypObject; // keep compiling
+   end else begin
+      classTyp:=TClassSymbol(typ);
       if coSymbolDictionary in FCompilerOptions then
-         FSymbolDictionary.AddTypeSymbol(typ, FTok.HotPos);
-   end else Result := TClassSymbol(typ).ClassOf;
+         FSymbolDictionary.AddTypeSymbol(classTyp, FTok.HotPos);
+   end;
+
+   if typeName<>'' then
+      Result:=TClassOfSymbol.Create(typeName, classTyp)
+   else Result:=classTyp.ClassOf;
 end;
 
 // ReadClass
 //
-function TdwsCompiler.ReadClass(const TypeName: string): TClassSymbol;
+function TdwsCompiler.ReadClass(const typeName : String) : TClassSymbol;
 var
    name : String;
    sym, typ : TSymbol;
