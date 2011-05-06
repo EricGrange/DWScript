@@ -275,6 +275,7 @@ type
                                   const connectorType : IConnectorType; IsWrite: Boolean) : TConnectorCallExpr;
       function ReadConstDecl(constSymbolClass : TConstSymbolClass) : TConstSymbol;
       function ReadConstValue : TConstExpr;
+      function ReadConstRecord(symbol : TRecordSymbol) : TData;
       function ReadBlock : TNoResultExpr;
       function ReadBlocks(const endTokens : TTokenTypes; var finalToken : TTokenType) : TNoResultExpr;
       function ReadEnumeration(const typeName : String) : TEnumerationSymbol;
@@ -1216,6 +1217,7 @@ var
    typ : TTypeSymbol;
    constPos : TScriptPos;
    val : Variant;
+   recordData : TData;
 begin
    if not FTok.TestDeleteNamePos(name, constPos) then begin
 
@@ -1236,36 +1238,41 @@ begin
       if not FTok.TestDelete(ttEQ) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
 
-      expr:=ReadExpr;
-      try
-         if Assigned(typ) then begin
-            if not typ.IsCompatible(expr.typ) then
-               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_AssignIncompatibleTypes,
-                                         [expr.typ.Caption, typ.Caption]);
-         end else typ:=expr.typ;
+      if typ is TRecordSymbol then begin
+         recordData:=ReadConstRecord(TRecordSymbol(typ));
+         Result:=constSymbolClass.Create(name, typ, recordData, 0);
+      end else begin
+         expr:=ReadExpr;
+         try
+            if Assigned(typ) then begin
+               if not typ.IsCompatible(expr.typ) then
+                  FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_AssignIncompatibleTypes,
+                                            [expr.typ.Caption, typ.Caption]);
+            end else typ:=expr.typ;
 
-         if not expr.IsConstant then begin
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
-            // keep compiling
-            Result:=constSymbolClass.Create(name, typ, Null);
-            Exit;
+            if not expr.IsConstant then begin
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+               // keep compiling
+               Result:=constSymbolClass.Create(name, typ, Null);
+               Exit;
+            end;
+
+            if typ is TArraySymbol then begin
+               typ:=TStaticArraySymbol.Create('', typ, 0, TArraySymbol(typ).typ.Size-1);
+               FProg.Table.AddSymbol(typ);
+               Result:=constSymbolClass.Create(name, typ, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
+            end else if typ.Size>1 then
+               Result:=constSymbolClass.Create(name, typ, TConstExpr(expr).Data[FExec], TConstExpr(expr).Addr[FExec])
+            else begin
+               expr.EvalAsVariant(FExec, val);
+               Result:=constSymbolClass.Create(name, typ, val);
+            end;
+
+            if coSymbolDictionary in FCompilerOptions then
+               FSymbolDictionary.AddConstSymbol(Result, constPos, [suDeclaration]);
+         finally
+            expr.Free;
          end;
-
-         if typ is TArraySymbol then begin
-            typ:=TStaticArraySymbol.Create('', typ, 0, TArraySymbol(typ).typ.Size-1);
-            FProg.Table.AddSymbol(typ);
-            Result:=constSymbolClass.Create(name, typ, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
-         end else if typ.Size>1 then
-            Result:=constSymbolClass.Create(name, typ, TConstExpr(expr).Data[FExec], TConstExpr(expr).Addr[FExec])
-         else begin
-            expr.EvalAsVariant(FExec, val);
-            Result:=constSymbolClass.Create(name, typ, val);
-         end;
-
-         if coSymbolDictionary in FCompilerOptions then
-            FSymbolDictionary.AddConstSymbol(Result, constPos, [suDeclaration]);
-      finally
-         expr.Free;
       end;
    end;
 end;
@@ -4661,6 +4668,63 @@ begin
       end;
       FTok.KillToken;
    end;
+end;
+
+// ReadConstRecord
+//
+function TdwsCompiler.ReadConstRecord(symbol : TRecordSymbol) : TData;
+var
+   sym : TSymbol;
+   memberSym : TMemberSymbol;
+   memberSet : array of Boolean;
+   expr : TTypedExpr;
+   constExpr : TConstExpr;
+begin
+   if not FTok.TestDelete(ttBLEFT) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
+
+   SetLength(memberSet, symbol.Size);
+
+   SetLength(Result, symbol.Size);
+   symbol.InitData(Result, 0);
+
+   while not FTok.Test(ttBRIGHT) do begin
+      if not FTok.TestName then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+      sym:=symbol.Members.FindLocal(FTok.GetToken.FString);
+      if not (sym is TMemberSymbol) then begin
+         FMsgs.AddCompilerErrorFmt(FTok.GetToken.FPos, CPE_UnknownMember, [FTok.GetToken.FString]);
+         sym:=nil;
+      end;
+      memberSym:=TMemberSymbol(sym);
+      if memberSym<>nil then begin
+         if memberSet[memberSym.Offset] then
+            FMsgs.AddCompilerError(FTok.GetToken.FPos, CPE_FieldAlreadySet);
+         memberSet[memberSym.Offset]:=True;
+      end;
+      FTok.KillToken;
+      if not FTok.TestDelete(ttCOLON) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
+      expr:=ReadExpr;
+      try
+         if not (expr is TConstExpr) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected)
+         else if memberSym<>nil then begin
+            constExpr:=TConstExpr(expr);
+            if not constExpr.Typ.IsCompatible(memberSym.Typ) then
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidConstType, [constExpr.Typ.Caption])
+            else DWSCopyData(constExpr.Data[FExec], constExpr.Addr[FExec],
+                             result, memberSym.Offset, memberSym.Typ.Size);
+         end;
+      finally
+         expr.Free;
+      end;
+      if not FTok.TestDelete(ttSEMI) then
+         Break;
+   end;
+
+   if not FTok.TestDelete(ttBRIGHT) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
 end;
 
 procedure TdwsCompiler.ReadArrayParams(ArrayIndices: TSymbolTable);
