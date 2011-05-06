@@ -4701,6 +4701,8 @@ begin
          if memberSet[memberSym.Offset] then
             FMsgs.AddCompilerError(FTok.GetToken.FPos, CPE_FieldAlreadySet);
          memberSet[memberSym.Offset]:=True;
+         if coSymbolDictionary in FCompilerOptions then
+            FSymbolDictionary.AddSymbolReference(memberSym, FTok.GetToken.FPos, True);
       end;
       FTok.KillToken;
       if not FTok.TestDelete(ttCOLON) then
