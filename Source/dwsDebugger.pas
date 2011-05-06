@@ -1160,8 +1160,8 @@ begin
       if (FValueData.Typ<>nil) then begin
          if (FValueData.Typ.Size>1) and (expr is TDataExpr) then begin
             expr.EvalNoResult(exec);
-            CopyData(TDataExpr(expr).Data[exec], TDataExpr(expr).Addr[exec],
-                     FValueData.Data, 0, FValueData.Typ.Size);
+            DWSCopyData(TDataExpr(expr).Data[exec], TDataExpr(expr).Addr[exec],
+                        FValueData.Data, 0, FValueData.Typ.Size);
          end else if FValueData.Typ.Size=1 then begin
             expr.EvalAsVariant(exec, FValueData.Data[0]);
          end else expr.EvalNoResult(exec);

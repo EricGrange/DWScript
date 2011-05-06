@@ -1678,7 +1678,7 @@ end;
 //
 procedure TVarParamExpr.AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer);
 begin
-   CopyData(SourceData, SourceAddr, Data[exec], Addr[exec], Typ.Size);
+   DWSCopyData(SourceData, SourceAddr, Data[exec], Addr[exec], Typ.Size);
 end;
 
 // AssignValue
@@ -1699,7 +1699,7 @@ end;
 //
 procedure TVarParamExpr.AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr);
 begin
-   CopyData(DataExpr.Data[exec], DataExpr.Addr[exec], Data[exec], Addr[exec], Typ.Size);
+   DWSCopyData(DataExpr.Data[exec], DataExpr.Addr[exec], Data[exec], Addr[exec], Typ.Size);
 end;
 
 // Eval

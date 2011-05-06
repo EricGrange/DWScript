@@ -3342,7 +3342,7 @@ end;
 procedure TDataExpr.AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer);
 begin
   Assert(IsWritable);
-  CopyData(SourceData, SourceAddr, Data[exec], Addr[exec], Typ.Size);
+  DWSCopyData(SourceData, SourceAddr, Data[exec], Addr[exec], Typ.Size);
 end;
 
 procedure TDataExpr.AssignValue(exec : TdwsExecution; const Value: Variant);
@@ -3389,7 +3389,7 @@ end;
 
 procedure TDataExpr.AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr);
 begin
-  CopyData(DataExpr.Data[exec], DataExpr.Addr[exec], Data[exec], Addr[exec], Typ.Size);
+  DWSCopyData(DataExpr.Data[exec], DataExpr.Addr[exec], Data[exec], Addr[exec], Typ.Size);
 end;
 
 // ------------------
@@ -5541,7 +5541,7 @@ begin
     FDataMaster.Read(FExec, FData);
 
   SetLength(Result, FTypeSym.Size);
-  CopyData(FData, FOffset, Result, 0, FTypeSym.Size);
+  DWSCopyData(FData, FOffset, Result, 0, FTypeSym.Size);
 end;
 
 function TInfoData.GetValue: Variant;
@@ -5599,7 +5599,7 @@ procedure TInfoData.SetData(const Value: TData);
 begin
   if Length(Value) <> FTypeSym.Size then
     raise Exception.CreateFmt(RTE_InvalidInputDataSize, [Length(Value), FTypeSym.Size]);
-  CopyData(Value, 0, FData, FOffset, FTypeSym.Size);
+  DWSCopyData(Value, 0, FData, FOffset, FTypeSym.Size);
 
   if Assigned(FDataMaster) then
   begin
@@ -5828,7 +5828,7 @@ begin
                      resultAddr := funcExpr.GetAddr(FExec);
 
                      // Copy Result
-                     CopyData(resultData, resultAddr, FResult, 0, funcExpr.Typ.Size);
+                     DWSCopyData(resultData, resultAddr, FResult, 0, funcExpr.Typ.Size);
                   finally
                      FExec.Stack.Pop(funcExpr.Typ.Size);
                   end;
@@ -6244,7 +6244,7 @@ begin
         dataSource := TDataExpr(arg).Data[exec];
         addrSource := TDataExpr(arg).Addr[exec];
         dataDest := FConnectorArgs[x];
-        CopyData(dataSource, addrSource, dataDest, 0, FConnectorParams[x].TypSym.Size);
+        DWSCopyData(dataSource, addrSource, dataDest, 0, FConnectorParams[x].TypSym.Size);
       end;
     end;
 
@@ -6554,7 +6554,7 @@ begin
   if readExpr.AssignConnectorSym(TConnectorSymbol(FSym).ConnectorType) then
   begin
     dataSource := readExpr.GetData(exec);
-    CopyData(dataSource, 0, Data, 0, readExpr.Typ.Size);
+    DWSCopyData(dataSource, 0, Data, 0, readExpr.Typ.Size);
   end
   else
     raise Exception.Create(RTE_ConnectorReadError);

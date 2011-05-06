@@ -2456,7 +2456,7 @@ procedure TPropertySymbol.SetIndex(const Data: TData; Addr: Integer; Sym: TTypeS
 begin
    FIndexSym := Sym;
    SetLength(FIndexValue,FIndexSym.Size);
-   CopyData(Data, Addr, FIndexValue, 0, FIndexSym.Size);
+   DWSCopyData(Data, Addr, FIndexValue, 0, FIndexSym.Size);
 end;
 
 // ------------------
@@ -3076,7 +3076,7 @@ constructor TConstSymbol.Create(const Name: string; Typ: TTypeSymbol; const Data
 begin
   inherited Create(Name, Typ);
   SetLength(FData, Typ.Size);
-  CopyData(Data, Addr, FData, 0, Typ.Size);
+  DWSCopyData(Data, Addr, FData, 0, Typ.Size);
 end;
 
 function TConstSymbol.GetCaption: string;
@@ -3142,7 +3142,7 @@ end;
 procedure TParamSymbolWithDefaultValue.SetDefaultValue(const Data: TData; Addr: Integer);
 begin
   SetLength(FDefaultValue, Typ.Size);
-  CopyData(Data, Addr, FDefaultValue, 0, Typ.Size);
+  DWSCopyData(Data, Addr, FDefaultValue, 0, Typ.Size);
 end;
 
 procedure TParamSymbolWithDefaultValue.SetDefaultValue(const Value: Variant);

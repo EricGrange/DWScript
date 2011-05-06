@@ -127,7 +127,7 @@ type
 
    EStackException = class(Exception);
 
-procedure CopyData(const SourceData: TData; SourceAddr: Integer;
+procedure DWSCopyData(const SourceData: TData; SourceAddr: Integer;
                    DestData: TData; DestAddr: Integer; Size: Integer);
 
 // ------------------------------------------------------------------
@@ -138,10 +138,10 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-// CopyData
+// DWSCopyData
 //
-procedure CopyData(const SourceData: TData; SourceAddr: Integer;
-                   DestData: TData; DestAddr: Integer; Size: Integer);
+procedure DWSCopyData(const SourceData: TData; SourceAddr: Integer;
+                      DestData: TData; DestAddr: Integer; Size: Integer);
 begin
    while Size > 0 do begin
       VarCopy(DestData[DestAddr], SourceData[SourceAddr]);

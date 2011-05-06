@@ -3033,7 +3033,7 @@ end;
 
 procedure TReadVarFunc.SetValue(const Data: TData);
 begin
-  CopyData(Data, 0, FData, 0, FTyp.Size);
+  DWSCopyData(Data, 0, FData, 0, FTyp.Size);
 end;
 
 { TWriteVarFunc }
