@@ -415,19 +415,19 @@ type
    end;
 
    // lazy parameter: procedure P(lazy x: Integer)
-   TLazyParamSymbol = class(TParamSymbol)
+   TLazyParamSymbol = class sealed (TParamSymbol)
       protected
          function GetDescription : String; override;
    end;
 
    // const parameter: procedure P(const x: Integer)
-   TConstParamSymbol = class(TByRefParamSymbol)
+   TConstParamSymbol = class sealed (TByRefParamSymbol)
       protected
          function GetDescription : string; override;
    end;
 
    // var parameter: procedure P(var x: Integer)
-   TVarParamSymbol = class(TByRefParamSymbol)
+   TVarParamSymbol = class sealed (TByRefParamSymbol)
       protected
          function GetDescription : String; override;
    end;
@@ -1077,7 +1077,7 @@ type
    end;
 
    // Enumeration type. E. g. "type myEnum = (One, Two, Three);"
-   TEnumerationSymbol = class(TNameSymbol)
+   TEnumerationSymbol = class sealed (TNameSymbol)
       private
          FElements : TSymbolTable;
          FLowBound, FHighBound : Integer;
@@ -1114,8 +1114,8 @@ type
          FParents : TTightList;
          FSymbolsSorted : Boolean;
 
-         function GetParentCount: Integer;
-         function GetParents(Index: Integer): TSymbolTable;
+         function GetParentCount : Integer;
+         function GetParents(Index: Integer) : TSymbolTable;
 
       protected
          function GetSymbol(Index: Integer): TSymbol; inline;
@@ -1142,7 +1142,7 @@ type
          function Remove(Sym: TSymbol): Integer;
          procedure Clear;
 
-         function FindSymbol(const aName : string; minVisibility : TClassVisibility;
+         function FindSymbol(const aName : String; minVisibility : TClassVisibility;
                              ofClass : TSymbolClass = nil) : TSymbol; virtual;
          function FindTypeSymbol(const aName : string; minVisibility : TClassVisibility) : TTypeSymbol;
 
@@ -1150,11 +1150,11 @@ type
 
          procedure Initialize(const msgs : TdwsCompileMessageList); virtual;
 
-         property AddrGenerator: TAddrGenerator read FAddrGenerator;
-         property Count: Integer read GetCount;
-         property Symbols[x: Integer]: TSymbol read GetSymbol; default;
-         property ParentCount: Integer read GetParentCount;
-         property Parents[Index: Integer]: TSymbolTable read GetParents;
+         property AddrGenerator : TAddrGenerator read FAddrGenerator;
+         property Count : Integer read GetCount;
+         property Symbols[x : Integer] : TSymbol read GetSymbol; default;
+         property ParentCount : Integer read GetParentCount;
+         property Parents[Index : Integer] : TSymbolTable read GetParents;
 
          type
             TSymbolTableEnumerator = record
@@ -3322,15 +3322,16 @@ var
 begin
    // Find Symbol in the local List
    Result:=FindLocal(aName, ofClass);
-   if Assigned(Result) and Result.IsVisibleFor(minVisibility) then
-      Exit;
-   Result:=nil;
+   if Assigned(Result) then begin
+      if Result.IsVisibleFor(minVisibility) then
+         Exit
+      else Result:=nil;
+   end;
 
    // Find Symbol in all parent lists
-   i:=0;
-   while not Assigned(Result) and (i<ParentCount) do begin
+   for i:=0 to ParentCount-1 do begin
       Result:=Parents[i].FindSymbol(aName, minVisibility, ofClass);
-      Inc(i);
+      if Assigned(Result) then Break;
    end;
 end;
 

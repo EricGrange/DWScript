@@ -103,6 +103,25 @@ type
          property Count : Integer read FCount;
    end;
 
+   // TObjectList
+   //
+   {: A simple generic object list, owns objects }
+   TObjectList<T: class> = class
+      private
+         FItems : array of T;
+         FCount : Integer;
+      protected
+         function GetItem(index : Integer) : T;
+         procedure SetItem(index : Integer; const item : T);
+      public
+         destructor Destroy; override;
+         function Add(const anItem : T) : Integer;
+         procedure ExtractAll;
+         procedure Clear;
+         property Items[index : Integer] : T read GetItem write SetItem; default;
+         property Count : Integer read FCount;
+   end;
+
    // TSortedList
    //
    {: List that maintains its elements sorted, subclasses must override Compare }
@@ -756,6 +775,60 @@ end;
 procedure TTightList.RaiseIndexOutOfBounds;
 begin
    raise Exception.Create('List index out of bounds');
+end;
+
+// ------------------
+// ------------------ TObjectList<T> ------------------
+// ------------------
+
+// Destroy
+//
+destructor TObjectList<T>.Destroy;
+begin
+   Clear;
+   inherited;
+end;
+
+// GetItem
+//
+function TObjectList<T>.GetItem(index : Integer) : T;
+begin
+   Result:=FItems[index];
+end;
+
+// SetItem
+//
+procedure TObjectList<T>.SetItem(index : Integer; const item : T);
+begin
+   FItems[index]:=item;
+end;
+
+// Add
+//
+function TObjectList<T>.Add(const anItem : T) : Integer;
+begin
+   if Count=Length(FItems) then
+      SetLength(FItems, Count+8+(Count shr 4));
+   FItems[FCount]:=anItem;
+   Inc(FCount);
+end;
+
+// ExtractAll
+//
+procedure TObjectList<T>.ExtractAll;
+begin
+   FCount:=0;
+end;
+
+// Clear
+//
+procedure TObjectList<T>.Clear;
+var
+   i : Integer;
+begin
+   for i:=FCount-1 downto 0 do
+      FItems[i].Free;
+   FCount:=0;
 end;
 
 // ------------------

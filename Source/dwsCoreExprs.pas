@@ -383,34 +383,34 @@ type
       function IsWritable: Boolean; override;
    end;
 
-  // length of dynamic arrays
-  TArrayLengthExpr = class(TUnaryOpIntExpr)
-  private
-    FDelta: Integer;
-  public
-    constructor Create(Prog: TdwsProgram; Expr: TDataExpr; Delta: Integer);
-    function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-  end;
+   // length of dynamic arrays
+   TArrayLengthExpr = class(TUnaryOpIntExpr)
+      private
+         FDelta : Integer;
+      public
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         property Delta : Integer read FDelta write FDelta;
+   end;
 
-  // length of an open array
-  TOpenArrayLengthExpr = class(TArrayLengthExpr)
-  public
-    function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-  end;
+   // length of an open array
+   TOpenArrayLengthExpr = class(TArrayLengthExpr)
+      public
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   end;
 
    // left[right] string read access
-   TStringArrayOpExpr = class(TBinaryOpExpr)
+   TStringArrayOpExpr = class(TStringBinOpExpr)
       private
          FPos : TScriptPos;
       public
          constructor CreatePos(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TTypedExpr);
-         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
          function ScriptPos : TScriptPos; override;
    end;
 
    TStringLengthExpr = class(TUnaryOpIntExpr)
-   public
-     function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+      public
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
    TAssignedExpr = class(TUnaryOpBoolExpr)
@@ -447,10 +447,9 @@ type
    end;
 
    // obj is TMyClass
-   TIsOpExpr = class(TBinaryOpExpr)
-     constructor Create(Prog: TdwsProgram; Left, Right: TTypedExpr); override;
-     function Eval(exec : TdwsExecution) : Variant; override;
-     function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   TIsOpExpr = class(TBooleanBinOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
    // obj as TMyClass
@@ -465,57 +464,25 @@ type
    end;
 
    // obj left = obj right
-   TObjCmpExpr = class(TBinaryOpExpr)
+   TObjCmpExpr = class(TBooleanBinOpExpr)
       public
-         constructor Create(Prog: TdwsProgram; Left, Right: TTypedExpr); override;
-         function Eval(exec : TdwsExecution) : Variant; override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
    // -x
-   TNegExpr = class(TUnaryOpExpr)
-     constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
-     function Eval(exec : TdwsExecution) : Variant; override;
+   TNegVariantExpr = class(TUnaryOpVariantExpr)
+      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
-   TNegExprClass = class of TNegExpr;
-   TNegIntExpr = class (TNegExpr)
+   TNegIntExpr = class (TUnaryOpIntExpr)
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
-   TNegFloatExpr = class (TNegExpr)
+   TNegFloatExpr = class (TUnaryOpFloatExpr)
      function EvalAsFloat(exec : TdwsExecution) : Double; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
-   end;
-
-   TVariantBinOpExpr = class(TBinaryOpExpr)
-     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
-   end;
-   TIntegerBinOpExpr = class(TBinaryOpExpr)
-     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
-     function Eval(exec : TdwsExecution) : Variant; override;
-     function EvalAsFloat(exec : TdwsExecution) : Double; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
-   end;
-   TStringBinOpExpr = class(TBinaryOpExpr)
-     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
-     function Eval(exec : TdwsExecution) : Variant; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
-   end;
-   TFloatBinOpExpr = class(TBinaryOpExpr)
-     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
-     function Eval(exec : TdwsExecution) : Variant; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
-   end;
-   TBooleanBinOpExpr = class(TBinaryOpExpr)
-     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
-     function Eval(exec : TdwsExecution) : Variant; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // a + b
-   TAddExpr = class(TVariantBinOpExpr)
-      function Eval(exec : TdwsExecution) : Variant; override;
+   TAddVariantExpr = class(TVariantBinOpExpr)
+      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
    TAddStrExpr = class(TStringBinOpExpr)
       procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
@@ -529,8 +496,8 @@ type
    end;
 
    // a - b
-   TSubExpr = class(TVariantBinOpExpr)
-     function Eval(exec : TdwsExecution) : Variant; override;
+   TSubVariantExpr = class(TVariantBinOpExpr)
+      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
    TSubIntExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -541,17 +508,17 @@ type
    end;
 
    // a * b
-   TMultExpr = class(TVariantBinOpExpr)
-     function Eval(exec : TdwsExecution) : Variant; override;
+   TMultVariantExpr = class(TVariantBinOpExpr)
+      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
    TMultIntExpr = class(TIntegerBinOpExpr)
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
      function EvalAsFloat(exec : TdwsExecution) : Double; override;
-     function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TMultFloatExpr = class(TFloatBinOpExpr)
      function EvalAsFloat(exec : TdwsExecution) : Double; override;
-     function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // Sqr ( a )
@@ -577,20 +544,17 @@ type
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
-   // not a
-   TNotExpr = class(TUnaryOpExpr)
-      constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
-      function Eval(exec : TdwsExecution) : Variant; override;
-   end;
    // not bool a
-   TNotBoolExpr = class(TNotExpr)
-      function Eval(exec : TdwsExecution) : Variant; override;
+   TNotBoolExpr = class(TUnaryOpBoolExpr)
       function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
    // not int a
-   TNotIntExpr = class(TNotExpr)
-      function Eval(exec : TdwsExecution) : Variant; override;
+   TNotIntExpr = class(TUnaryOpIntExpr)
       function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   end;
+   // not variant a
+   TNotVariantExpr = class(TUnaryOpVariantExpr)
+      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
 
    // a and b
@@ -641,42 +605,32 @@ type
    end;
 
    // Float(x)
-   TConvFloatExpr = class (TConvExpr)
-     constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
-     function Eval(exec : TdwsExecution) : Variant; override;
+   TConvFloatExpr = class (TUnaryOpFloatExpr)
      function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
-   // Integer(float)
-   TConvIntegerExpr = class (TConvExpr)
-     constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
-     function Eval(exec : TdwsExecution) : Variant; override;
+   // Integer(x)
+   TConvIntegerExpr = class (TUnaryOpIntExpr)
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
-   // String(float)
-   TConvStringExpr = class (TConvExpr)
-     constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
-     function Eval(exec : TdwsExecution) : Variant; override;
+   // String(x)
+   TConvStringExpr = class (TUnaryOpStringExpr)
      procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
    end;
 
-   // Boolean(float)
-   TConvBoolExpr = class (TConvExpr)
-     constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
-     function Eval(exec : TdwsExecution) : Variant; override;
+   // Boolean(x)
+   TConvBoolExpr = class (TUnaryOpBoolExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
    // Variant(simple)
-   TConvVariantExpr = class (TConvExpr)
-     constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
-     function Eval(exec : TdwsExecution) : Variant; override;
+   TConvVariantExpr = class (TUnaryOpVariantExpr)
+      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
 
    // Class(x)
    TConvClassExpr = class (TConvExpr)
-     constructor Create(Prog: TdwsProgram; toTyp : TClassSymbol; Expr: TTypedExpr);
      function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
@@ -978,6 +932,8 @@ type
          property OwnsTrueExpr: Boolean read FOwnsTrueExpr write FOwnsTrueExpr;
    end;
 
+   TCaseConditions = TObjectList<TCaseCondition>;
+
    TCompareCaseCondition = class(TCaseCondition)
       private
          FCompareExpr : TTypedExpr;
@@ -1264,11 +1220,9 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
-   TSpecialUnaryBoolExpr = class(TUnaryOpExpr)
+   TSpecialUnaryBoolExpr = class(TUnaryOpBoolExpr)
       public
-         constructor Create(Prog: TdwsProgram; Expr: TTypedExpr);
          function IsConstant : Boolean; override;
-         function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    TDefinedExpr = class(TSpecialUnaryBoolExpr)
@@ -2684,14 +2638,6 @@ end;
 // ------------------ TArrayLengthExpr ------------------
 // ------------------
 
-// Create
-//
-constructor TArrayLengthExpr.Create(Prog: TdwsProgram; Expr: TDataExpr; Delta: Integer);
-begin
-   inherited Create(Prog, Expr);
-   FDelta := Delta;
-end;
-
 // EvalAsInteger
 //
 function TArrayLengthExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
@@ -2724,12 +2670,11 @@ constructor TStringArrayOpExpr.CreatePos(Prog: TdwsProgram; const Pos: TScriptPo
 begin
    inherited Create(Prog, Left, Right);
    FPos := Pos;
-   FTyp := Prog.TypString;
 end;
 
-// Eval
+// EvalAsString
 //
-function TStringArrayOpExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TStringArrayOpExpr.EvalAsString(exec : TdwsExecution; var Result : String);
 var
    i : Integer;
    buf : String;
@@ -2767,21 +2712,6 @@ end;
 // ------------------
 // ------------------ TIsOpExpr ------------------
 // ------------------
-
-// Create
-//
-constructor TIsOpExpr.Create(Prog: TdwsProgram; Left, Right: TTypedExpr);
-begin
-   inherited;
-   FTyp:=Prog.TypBoolean;
-end;
-
-// Eval
-//
-function TIsOpExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   Result:=EvalAsBoolean(exec);
-end;
 
 // EvalAsBoolean
 //
@@ -2953,24 +2883,6 @@ end;
 // ------------------ TConvFloatExpr ------------------
 // ------------------
 
-// Create
-//
-constructor TConvFloatExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
-begin
-   inherited;
-   FTyp := Prog.TypFloat;
-end;
-
-// Eval
-//
-function TConvFloatExpr.Eval(exec : TdwsExecution) : Variant;
-var
-   buf : Variant;
-begin
-   FExpr.EvalAsVariant(exec, buf);
-   VarCast(Result, buf, varDouble);
-end;
-
 // EvalAsFloat
 //
 function TConvFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
@@ -2981,21 +2893,6 @@ end;
 // ------------------
 // ------------------ TConvIntegerExpr ------------------
 // ------------------
-
-// Create
-//
-constructor TConvIntegerExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
-begin
-   inherited;
-   FTyp := Prog.TypInteger;
-end;
-
-// Eval
-//
-function TConvIntegerExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   Result:=FExpr.EvalAsInteger(exec);
-end;
 
 // EvalAsInteger
 //
@@ -3008,24 +2905,6 @@ end;
 // ------------------ TConvStringExpr ------------------
 // ------------------
 
-// Create
-//
-constructor TConvStringExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
-begin
-   inherited;
-   FTyp:=Prog.TypString;
-end;
-
-// Eval
-//
-function TConvStringExpr.Eval(exec : TdwsExecution) : Variant;
-var
-   buf : String;
-begin
-   FExpr.EvalAsString(exec, buf);
-   Result:=buf;
-end;
-
 // EvalAsString
 //
 procedure TConvStringExpr.EvalAsString(exec : TdwsExecution; var Result : String);
@@ -3036,21 +2915,6 @@ end;
 // ------------------
 // ------------------ TConvBoolExpr ------------------
 // ------------------
-
-// Create
-//
-constructor TConvBoolExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
-begin
-   inherited;
-   FTyp := Prog.TypBoolean;
-end;
-
-// Eval
-//
-function TConvBoolExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   Result:=FExpr.EvalAsBoolean(exec);
-end;
 
 // EvalAsBoolean
 //
@@ -3063,17 +2927,9 @@ end;
 // ------------------ TConvVariantExpr ------------------
 // ------------------
 
-// Create
+// EvalAsVariant
 //
-constructor TConvVariantExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
-begin
-   inherited;
-   FTyp := Prog.TypVariant;
-end;
-
-// Eval
-//
-function TConvVariantExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TConvVariantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
    FExpr.EvalAsVariant(exec, Result);
 end;
@@ -3081,14 +2937,6 @@ end;
 // ------------------
 // ------------------ TConvClassExpr ------------------
 // ------------------
-
-// Create
-//
-constructor TConvClassExpr.Create(Prog: TdwsProgram; toTyp : TClassSymbol; Expr: TTypedExpr);
-begin
-   inherited Create(Prog, Expr);
-   FTyp:=toTyp;
-end;
 
 // Eval
 //
@@ -3267,21 +3115,6 @@ end;
 // ------------------ TObjCmpExpr ------------------
 // ------------------
 
-// Create
-//
-constructor TObjCmpExpr.Create(Prog: TdwsProgram; Left, Right: TTypedExpr);
-begin
-   inherited;
-   FTyp:=Prog.TypBoolean;
-end;
-
-// Eval
-//
-function TObjCmpExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   Result:=EvalAsBoolean(exec);
-end;
-
 // EvalAsBoolean
 //
 function TObjCmpExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
@@ -3294,20 +3127,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TNegExpr ------------------
+// ------------------ TNegVariantExpr ------------------
 // ------------------
 
-// Create
+// EvalAsVariant
 //
-constructor TNegExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
-begin
-   inherited;
-   FTyp:=Expr.Typ;
-end;
-
-// Eval
-//
-function TNegExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TNegVariantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
    Expr.EvalAsVariant(exec, Result);
    Result:=-Result;
@@ -3324,16 +3149,6 @@ begin
    Result:=-FExpr.EvalAsInteger(exec);
 end;
 
-// Optimize
-//
-function TNegIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
-begin
-   if FExpr.IsConstant then begin
-      Result:=TConstIntExpr.CreateUnified(Prog, nil, -FExpr.EvalAsInteger(exec));
-      Free;
-   end else Result:=Self;
-end;
-
 // ------------------
 // ------------------ TNegFloatExpr ------------------
 // ------------------
@@ -3345,23 +3160,13 @@ begin
    Result:=-FExpr.EvalAsFloat(exec);
 end;
 
-// Optimize
-//
-function TNegFloatExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
-begin
-   if FExpr.IsConstant then begin
-      Result:=TConstFloatExpr.CreateUnified(Prog, nil, -FExpr.EvalAsFloat(exec));
-      Free;
-   end else Result:=Self;
-end;
-
 // ------------------
-// ------------------ TAddExpr ------------------
+// ------------------ TAddVariantExpr ------------------
 // ------------------
 
-// Eval
+// EvalAsVariant
 //
-function TAddExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TAddVariantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 var
    lv, rv : Variant;
 begin
@@ -3415,12 +3220,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TSubExpr ------------------
+// ------------------ TSubVariantExpr ------------------
 // ------------------
 
-// Eval
+// EvalAsVariant
 //
-function TSubExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TSubVariantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 var
    lv, rv : Variant;
 begin
@@ -3459,12 +3264,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TMultExpr ------------------
+// ------------------ TMultVariantExpr ------------------
 // ------------------
 
-// Eval
+// EvalAsVariant
 //
-function TMultExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TMultVariantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 var
    lv, rv : Variant;
 begin
@@ -3593,35 +3398,8 @@ begin
 end;
 
 // ------------------
-// ------------------ TNotExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TNotExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
-begin
-   inherited;
-   FTyp:=Expr.Typ;
-end;
-
-// Eval
-//
-function TNotExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   FExpr.EvalAsVariant(exec, Result);
-   Result:=not Result;
-end;
-
-// ------------------
 // ------------------ TNotBoolExpr ------------------
 // ------------------
-
-// Eval
-//
-function TNotBoolExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   Result:=EvalAsBoolean(exec);
-end;
 
 // EvalAsBoolean
 //
@@ -3634,18 +3412,23 @@ end;
 // ------------------ TNotIntExpr ------------------
 // ------------------
 
-// Eval
-//
-function TNotIntExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   Result:=EvalAsInteger(exec);
-end;
-
 // EvalAsInteger
 //
 function TNotIntExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
    Result:=not FExpr.EvalAsInteger(exec);
+end;
+
+// ------------------
+// ------------------ TNotVariantExpr ------------------
+// ------------------
+
+// EvalAsVariant
+//
+procedure TNotVariantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+begin
+   FExpr.EvalAsVariant(exec, Result);
+   Result:=not Result;
 end;
 
 { TIntAndExpr }
@@ -3721,159 +3504,6 @@ end;
 function TShrExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
    Result := FLeft.EvalAsInteger(exec) shr FRight.EvalAsInteger(exec);
-end;
-
-// ------------------
-// ------------------ TVariantBinOpExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TVariantBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
-begin
-   inherited;
-   FTyp:=Prog.TypVariant;
-end;
-
-// Optimize
-//
-function TVariantBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
-begin
-   if IsConstant then begin
-      Result:=TUnifiedConstExpr.CreateUnified(Prog, Prog.TypVariant, Eval(exec));
-      Free;
-   end else Result:=Self;
-end;
-
-// ------------------
-// ------------------ TIntegerBinOpExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TIntegerBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
-begin
-   inherited;
-   FTyp:=Prog.TypInteger;
-end;
-
-// Eval
-//
-function TIntegerBinOpExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   Result:=EvalAsInteger(exec);
-end;
-
-// EvalAsFloat
-//
-function TIntegerBinOpExpr.EvalAsFloat(exec : TdwsExecution) : Double;
-begin
-   Result:=EvalAsInteger(exec);
-end;
-
-// Optimize
-//
-function TIntegerBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
-begin
-   if IsConstant then begin
-      Result:=TConstIntExpr.CreateUnified(Prog, nil, EvalAsInteger(exec));
-      Free;
-   end else Result:=Self;
-end;
-
-// ------------------
-// ------------------ TStringBinOpExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TStringBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
-begin
-   inherited;
-   FTyp:=Prog.TypString;
-end;
-
-// Eval
-//
-function TStringBinOpExpr.Eval(exec : TdwsExecution) : Variant;
-var
-   buf : String;
-begin
-   EvalAsString(exec, buf);
-   Result:=buf;
-end;
-
-// Optimize
-//
-function TStringBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
-var
-   buf : String;
-begin
-   if IsConstant then begin
-      EvalAsString(exec, buf);
-      Result:=TConstStringExpr.CreateUnified(Prog, nil, buf);
-      Free;
-   end else Result:=Self;
-end;
-
-// ------------------
-// ------------------ TFloatBinOpExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TFloatBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
-begin
-   inherited;
-   FTyp:=Prog.TypFloat;
-end;
-
-// Eval
-//
-function TFloatBinOpExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   Result:=EvalAsFloat(exec);
-end;
-
-// Optimize
-//
-function TFloatBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
-begin
-   if IsConstant then begin
-      Result:=TConstFloatExpr.CreateUnified(Prog, nil, EvalAsFloat(exec));
-      Free;
-   end else begin
-      FLeft:=FLeft.OptimizeIntegerConstantToFloatConstant(prog, exec);
-      FRight:=FRight.OptimizeIntegerConstantToFloatConstant(prog, exec);
-      Result:=Self;
-   end;
-end;
-
-// ------------------
-// ------------------ TBooleanBinOpExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TBooleanBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
-begin
-   inherited;
-   FTyp:=Prog.TypBoolean;
-end;
-
-function TBooleanBinOpExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   Result:=EvalAsBoolean(exec);
-end;
-
-// Optimize
-//
-function TBooleanBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
-begin
-   if IsConstant then begin
-      Result:=TConstBooleanExpr.CreateUnified(Prog, nil, EvalAsBoolean(exec));
-      Free;
-   end else Result:=Self;
 end;
 
 // ------------------
@@ -5704,26 +5334,11 @@ end;
 // ------------------ TSpecialUnaryBoolExpr ------------------
 // ------------------
 
-// Create
-//
-constructor TSpecialUnaryBoolExpr.Create(Prog: TdwsProgram; Expr: TTypedExpr);
-begin
-   inherited;
-   FTyp:=Prog.TypBoolean;
-end;
-
 // IsConstant
 //
 function TSpecialUnaryBoolExpr.IsConstant : Boolean;
 begin
    Result:=False;
-end;
-
-// Eval
-//
-function TSpecialUnaryBoolExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   Result:=EvalAsBoolean(exec);
 end;
 
 // ------------------
@@ -5768,7 +5383,7 @@ begin
       Result:=symbolTable.FindSymbol(Copy(name, 1, p-1), cvMagic);
       if Result=nil then Exit;
       identifier:=Copy(name, p+1, MaxInt);
-      if Result.InheritsFrom(TUnitSymbol) then
+      if Result.ClassType=TUnitSymbol then
          Result:=FindSymbol(TUnitSymbol(Result).Table, identifier)
       else if Result.InheritsFrom(TClassSymbol) then
          Result:=FindSymbol(TClassSymbol(Result).Members, identifier)
@@ -5828,9 +5443,9 @@ begin
    RegisterOperator(ttPLUS,   TAddFloatExpr,    typFloat,    typFloat);
    RegisterOperator(ttPLUS,   TAddFloatExpr,    typFloat,    typVariant);
    RegisterOperator(ttPLUS,   TAddFloatExpr,    typVariant,  typFloat);
-   RegisterOperator(ttPLUS,   TAddExpr,         typInteger,  typVariant);
-   RegisterOperator(ttPLUS,   TAddExpr,         typVariant,  typInteger);
-   RegisterOperator(ttPLUS,   TAddExpr,         typVariant,  typVariant);
+   RegisterOperator(ttPLUS,   TAddVariantExpr,  typInteger,  typVariant);
+   RegisterOperator(ttPLUS,   TAddVariantExpr,  typVariant,  typInteger);
+   RegisterOperator(ttPLUS,   TAddVariantExpr,  typVariant,  typVariant);
 
    RegisterOperator(ttMINUS,  TSubIntExpr,      typInteger,  typInteger);
    RegisterOperator(ttMINUS,  TSubFloatExpr,    typInteger,  typFloat);
@@ -5838,9 +5453,9 @@ begin
    RegisterOperator(ttMINUS,  TSubFloatExpr,    typFloat,    typFloat);
    RegisterOperator(ttMINUS,  TSubFloatExpr,    typFloat,    typVariant);
    RegisterOperator(ttMINUS,  TSubFloatExpr,    typVariant,  typFloat);
-   RegisterOperator(ttMINUS,  TSubExpr,         typInteger,  typVariant);
-   RegisterOperator(ttMINUS,  TSubExpr,         typVariant,  typInteger);
-   RegisterOperator(ttMINUS,  TSubExpr,         typVariant,  typVariant);
+   RegisterOperator(ttMINUS,  TSubVariantExpr,  typInteger,  typVariant);
+   RegisterOperator(ttMINUS,  TSubVariantExpr,  typVariant,  typInteger);
+   RegisterOperator(ttMINUS,  TSubVariantExpr,  typVariant,  typVariant);
 
    RegisterOperator(ttTIMES,  TMultIntExpr,     typInteger,  typInteger);
    RegisterOperator(ttTIMES,  TMultFloatExpr,   typInteger,  typFloat);
@@ -5848,9 +5463,9 @@ begin
    RegisterOperator(ttTIMES,  TMultFloatExpr,   typFloat,    typFloat);
    RegisterOperator(ttTIMES,  TMultFloatExpr,   typFloat,    typVariant);
    RegisterOperator(ttTIMES,  TMultFloatExpr,   typVariant,  typFloat);
-   RegisterOperator(ttTIMES,  TMultExpr,        typInteger,  typVariant);
-   RegisterOperator(ttTIMES,  TMultExpr,        typVariant,  typInteger);
-   RegisterOperator(ttTIMES,  TMultExpr,        typVariant,  typVariant);
+   RegisterOperator(ttTIMES,  TMultVariantExpr, typInteger,  typVariant);
+   RegisterOperator(ttTIMES,  TMultVariantExpr, typVariant,  typInteger);
+   RegisterOperator(ttTIMES,  TMultVariantExpr, typVariant,  typVariant);
 
    RegisterOperator(ttDIVIDE, TDivideExpr,      typInteger,  typInteger);
    RegisterOperator(ttDIVIDE, TDivideExpr,      typInteger,  typFloat);

@@ -412,14 +412,14 @@ type
    end;
 
    TdwsProgramBaseTypes = record
-      FTypBoolean: TTypeSymbol;
-      FTypFloat: TTypeSymbol;
-      FTypInteger: TTypeSymbol;
-      FTypNil: TNilSymbol;
-      FTypObject: TClassSymbol;
-      FTypString: TTypeSymbol;
-      FTypVariant: TTypeSymbol;
-      FTypException: TClassSymbol;
+      FTypBoolean : TTypeSymbol;
+      FTypFloat : TTypeSymbol;
+      FTypInteger : TTypeSymbol;
+      FTypNil : TNilSymbol;
+      FTypObject : TClassSymbol;
+      FTypString : TTypeSymbol;
+      FTypVariant : TTypeSymbol;
+      FTypException : TClassSymbol;
    end;
 
    // A script executable program
@@ -1108,37 +1108,46 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; expr : TTypedExpr);
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr); virtual;
          destructor Destroy; override;
+
          function IsConstant : Boolean; override;
          property Expr : TTypedExpr read FExpr write FExpr;
    end;
+   TUnaryOpExprClass = class of TUnaryOpExpr;
 
    // bool unary result
    TUnaryOpBoolExpr = class(TUnaryOpExpr)
       public
-         constructor Create(prog : TdwsProgram; expr : TTypedExpr);
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // int unary result
    TUnaryOpIntExpr = class(TUnaryOpExpr)
       public
-         constructor Create(prog : TdwsProgram; expr : TTypedExpr);
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // float unary result
    TUnaryOpFloatExpr = class(TUnaryOpExpr)
       public
-         constructor Create(prog : TdwsProgram; expr : TTypedExpr);
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // string unary result
    TUnaryOpStringExpr = class(TUnaryOpExpr)
       public
-         constructor Create(prog : TdwsProgram; expr : TTypedExpr);
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
+         function Eval(exec : TdwsExecution) : Variant; override;
+   end;
+
+   // variant unary result
+   TUnaryOpVariantExpr = class(TUnaryOpExpr)
+      public
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
@@ -1182,6 +1191,33 @@ type
    end;
 
    TBinaryOpExprClass = class of TBinaryOpExpr;
+
+   TVariantBinOpExpr = class(TBinaryOpExpr)
+     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
+     function Eval(exec : TdwsExecution) : Variant; override;
+     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+   end;
+   TIntegerBinOpExpr = class(TBinaryOpExpr)
+     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
+     function Eval(exec : TdwsExecution) : Variant; override;
+     function EvalAsFloat(exec : TdwsExecution) : Double; override;
+     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+   end;
+   TStringBinOpExpr = class(TBinaryOpExpr)
+     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
+     function Eval(exec : TdwsExecution) : Variant; override;
+     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+   end;
+   TFloatBinOpExpr = class(TBinaryOpExpr)
+     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
+     function Eval(exec : TdwsExecution) : Variant; override;
+     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+   end;
+   TBooleanBinOpExpr = class(TBinaryOpExpr)
+     constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
+     function Eval(exec : TdwsExecution) : Variant; override;
+     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+   end;
 
    // A list of typed expressions
    TTypedExprList = class
@@ -3429,7 +3465,7 @@ var
    x, paramCount, nbParamsToCheck : Integer;
    paramSymbol : TParamSymbol;
    argTyp : TSymbol;
-   errorCount, initialErrorCount : Integer;
+   initialErrorCount : Integer;
    tooManyArguments, tooFewArguments : Boolean;
 begin
    paramCount:=FFunc.Params.Count;
@@ -3476,8 +3512,6 @@ begin
       end;
       FArgs.ExprBase[x]:=arg;
 
-      errorCount:=prog.CompileMsgs.Count;
-
       if argTyp=nil then
          prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType, [x, paramSymbol.Typ.Name])
       else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
@@ -3488,14 +3522,6 @@ begin
             if not TDataExpr(arg).IsWritable then
                prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
          end else prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
-      end;
-
-      if (errorCount<>prog.CompileMsgs.Count) and (arg is TConvExpr) then begin
-         // unwrap conv expr, temporary workaround for multiple typechecks
-         // to be removed when typechecks get eliminated
-         FArgs.ExprBase[x]:=TConvExpr(arg).Expr;
-         TConvExpr(arg).Expr:=nil;
-         arg.Free;
       end;
 
    end;
@@ -4346,6 +4372,166 @@ begin
 end;
 
 // ------------------
+// ------------------ TVariantBinOpExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TVariantBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
+begin
+   inherited;
+   FTyp:=Prog.TypVariant;
+end;
+
+// Eval
+//
+function TVariantBinOpExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   EvalAsVariant(exec, Result);
+end;
+
+// Optimize
+//
+function TVariantBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   if IsConstant then begin
+      Result:=TUnifiedConstExpr.CreateUnified(Prog, Prog.TypVariant, Eval(exec));
+      Free;
+   end else Result:=Self;
+end;
+
+// ------------------
+// ------------------ TIntegerBinOpExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TIntegerBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
+begin
+   inherited;
+   FTyp:=Prog.TypInteger;
+end;
+
+// Eval
+//
+function TIntegerBinOpExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result:=EvalAsInteger(exec);
+end;
+
+// EvalAsFloat
+//
+function TIntegerBinOpExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+begin
+   Result:=EvalAsInteger(exec);
+end;
+
+// Optimize
+//
+function TIntegerBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   if IsConstant then begin
+      Result:=TConstIntExpr.CreateUnified(Prog, nil, EvalAsInteger(exec));
+      Free;
+   end else Result:=Self;
+end;
+
+// ------------------
+// ------------------ TStringBinOpExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TStringBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
+begin
+   inherited;
+   FTyp:=Prog.TypString;
+end;
+
+// Eval
+//
+function TStringBinOpExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   buf : String;
+begin
+   EvalAsString(exec, buf);
+   Result:=buf;
+end;
+
+// Optimize
+//
+function TStringBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+var
+   buf : String;
+begin
+   if IsConstant then begin
+      EvalAsString(exec, buf);
+      Result:=TConstStringExpr.CreateUnified(Prog, nil, buf);
+      Free;
+   end else Result:=Self;
+end;
+
+// ------------------
+// ------------------ TFloatBinOpExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TFloatBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
+begin
+   inherited;
+   FTyp:=Prog.TypFloat;
+end;
+
+// Eval
+//
+function TFloatBinOpExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result:=EvalAsFloat(exec);
+end;
+
+// Optimize
+//
+function TFloatBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   if IsConstant then begin
+      Result:=TConstFloatExpr.CreateUnified(Prog, nil, EvalAsFloat(exec));
+      Free;
+   end else begin
+      FLeft:=FLeft.OptimizeIntegerConstantToFloatConstant(prog, exec);
+      FRight:=FRight.OptimizeIntegerConstantToFloatConstant(prog, exec);
+      Result:=Self;
+   end;
+end;
+
+// ------------------
+// ------------------ TBooleanBinOpExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TBooleanBinOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
+begin
+   inherited;
+   FTyp:=Prog.TypBoolean;
+end;
+
+function TBooleanBinOpExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result:=EvalAsBoolean(exec);
+end;
+
+// Optimize
+//
+function TBooleanBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   if IsConstant then begin
+      Result:=TConstBooleanExpr.CreateUnified(Prog, nil, EvalAsBoolean(exec));
+      Free;
+   end else Result:=Self;
+end;
+
+// ------------------
 // ------------------ TUnaryOpExpr ------------------
 // ------------------
 
@@ -4459,10 +4645,29 @@ end;
 //
 function TUnaryOpStringExpr.Eval(exec : TdwsExecution) : Variant;
 var
-   str : String;
+   buf : String;
 begin
-   EvalAsString(exec, str);
-   Result:=str;
+   EvalAsString(exec, buf);
+   Result:=buf;
+end;
+
+// ------------------
+// ------------------ TUnaryOpVariantExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TUnaryOpVariantExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
+begin
+   inherited;
+   Typ:=Prog.TypVariant;
+end;
+
+// Eval
+//
+function TUnaryOpVariantExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   EvalAsVariant(exec, Result);
 end;
 
 // ------------------
@@ -5225,7 +5430,7 @@ begin
   Result := TList.Create;                         // caller reponsible for freeing
   // Add all unit symbols to a list
   for i := 0 to root.Count - 1 do
-    if root.Symbols[i] is TUnitSymbol then        // if a unit symbol
+    if root.Symbols[i].ClassType=TUnitSymbol then        // if a unit symbol
       if Result.IndexOf(root.Symbols[i]) < 0 then // and not already in list (units may reuse others)
         Result.Add(root.Symbols[i]);
 end;

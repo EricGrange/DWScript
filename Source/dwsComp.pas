@@ -1552,7 +1552,7 @@ procedure TdwsUnit.ExposeClassToUnit(AClass, AAncestor: TClass;  ASearchProgram:
       begin
         for x := 0 to ASearchProgram.Table.Count - 1 do
         begin
-          if ASearchProgram.Table.Symbols[x] is TUnitSymbol then
+          if ASearchProgram.Table.Symbols[x].ClassType=TUnitSymbol then
             // unit has the type declared
             if TUnitSymbol(ASearchProgram.Table.Symbols[x]).Table.FindLocal(ATypeName) <> nil then
             begin
