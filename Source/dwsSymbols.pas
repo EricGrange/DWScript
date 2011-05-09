@@ -949,7 +949,7 @@ type
    end;
 
    // type X = class of TMyClass;
-   TClassOfSymbol = class(TTypeSymbol)
+   TClassOfSymbol = class sealed (TTypeSymbol)
       protected
          function GetCaption : String; override;
       public

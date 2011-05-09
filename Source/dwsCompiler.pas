@@ -302,7 +302,7 @@ type
 
       function ReadIf: TNoResultExpr;
       function ReadInherited(IsWrite: Boolean): TProgramExpr;
-      function ReadInstr: TNoResultExpr;
+      function ReadInstr : TNoResultExpr;
       function ReadInstrSwitch(semiPending : Boolean): TNoResultExpr;
       function ReadExprSwitch : TTypedExpr;
       function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
@@ -313,6 +313,7 @@ type
       procedure ReadDeprecated(funcSym : TFuncSymbol);
       procedure WarnDeprecated(funcSym : TFuncSymbol);
       function ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
+      function ReadClassSymbolName(baseType : TClassSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
       function ReadConstName(constSym : TConstSymbol; isWrite: Boolean) : TProgramExpr;
       function ReadNameOld(isWrite: Boolean): TTypedExpr;
       function ReadNameInherited(isWrite: Boolean): TProgramExpr;
@@ -2138,11 +2139,8 @@ var
    namePos : TScriptPos;
    varExpr : TDataExpr;
    fieldExpr : TFieldExpr;
-   constExpr : TTypedExpr;
-   convExpr : TConvClassExpr;
    progMeth : TMethodSymbol;
    baseType : TTypeSymbol;
-   castedExprTyp : TTypeSymbol;
    sk : TSpecialKeywordKind;
    symClassType : TClass;
 begin
@@ -2195,8 +2193,8 @@ begin
             sym := TUnitSymbol(baseType).Table.FindLocal(FTok.GetToken.FString);
 
             if not Assigned(sym) then
-               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownName,
-                                        [baseType.Name+'.'+FTok.GetToken.FString]);
+               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownNameDotName,
+                                        [baseType.Name, FTok.GetToken.FString]);
 
             FTok.KillToken;
 
@@ -2246,35 +2244,7 @@ begin
 
       else if baseType is TClassSymbol then begin
 
-         if FTok.TestDelete(ttBLEFT) then begin
-            // Cast
-            FTok.TestName;
-            namePos:=FTok.HotPos;
-            Result:=ReadExpr;
-            if not (Result is TTypedExpr) then
-               FMsgs.AddCompilerStopFmt(namePos, CPE_IncompatibleTypes,
-                                        ['void', baseType.Name]);
-            castedExprTyp:=TTypedExpr(Result).Typ;
-            if    (not (castedExprTyp is TClassSymbol))
-               or (
-                     (not TClassSymbol(castedExprTyp).IsOfType(baseType))
-                     and (not TClassSymbol(baseType).IsOfType(castedExprTyp))
-                  ) then
-               FMsgs.AddCompilerErrorFmt(namePos, CPE_IncompatibleTypes,
-                                         [castedExprTyp.Name, baseType.Name]);
-            if not (FTok.TestDelete(ttBRIGHT)) then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-            convExpr:=TConvClassExpr.Create(FProg, TTypedExpr(Result));
-            convExpr.Typ:=TClassSymbol(baseType);
-            Result:=nil; // protect ReadSymbol exception
-            Result:=ReadSymbol(convExpr, IsWrite, expecting);
-
-         end else begin
-
-            constExpr:=TConstExpr.CreateTyped(FProg, TClassSymbol(baseType).ClassOf, Int64(baseType));
-            Result:=ReadSymbol(constExpr, IsWrite, expecting);
-
-         end;
+         Result:=ReadClassSymbolName(TClassSymbol(baseType), isWrite, expecting);
 
       end else if sym.InheritsFrom(TFieldSymbol) then begin
 
@@ -2327,6 +2297,46 @@ begin
    except
       Result.Free;
       raise;
+   end;
+end;
+
+// ReadClassSymbolName
+//
+function TdwsCompiler.ReadClassSymbolName(baseType : TClassSymbol; isWrite : Boolean;
+                                          expecting : TTypeSymbol) : TProgramExpr;
+var
+   namePos : TScriptPos;
+   constExpr : TTypedExpr;
+   convExpr : TConvClassExpr;
+   castedExprTyp : TTypeSymbol;
+begin
+   if FTok.TestDelete(ttBLEFT) then begin
+      // Cast
+      FTok.TestName;
+      namePos:=FTok.HotPos;
+      Result:=ReadExpr;
+      if not (Result is TTypedExpr) then
+         FMsgs.AddCompilerStopFmt(namePos, CPE_IncompatibleTypes,
+                                  ['void', baseType.Name]);
+      castedExprTyp:=TTypedExpr(Result).Typ;
+      if    (not (castedExprTyp is TClassSymbol))
+         or (
+               (not TClassSymbol(castedExprTyp).IsOfType(baseType))
+               and (not TClassSymbol(baseType).IsOfType(castedExprTyp))
+            ) then
+         FMsgs.AddCompilerErrorFmt(namePos, CPE_IncompatibleTypes,
+                                   [castedExprTyp.Name, baseType.Name]);
+      if not (FTok.TestDelete(ttBRIGHT)) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+      convExpr:=TConvClassExpr.Create(FProg, TTypedExpr(Result));
+      convExpr.Typ:=TClassSymbol(baseType);
+      Result:=ReadSymbol(convExpr, IsWrite, expecting);
+
+   end else begin
+
+      constExpr:=TConstExpr.CreateTyped(FProg, TClassSymbol(baseType).ClassOf, Int64(baseType));
+      Result:=ReadSymbol(constExpr, IsWrite, expecting);
+
    end;
 end;
 
@@ -5246,37 +5256,36 @@ end;
 //
 function TdwsCompiler.IdentifySpecialName(const name : String) : TSpecialKeywordKind;
 var
-   ch : Char;
+   n : Integer;
 begin
-   Result:=skNone;
-   if Length(name)<3 then Exit;
-   ch:=name[1];
-   if (ch>='A') and (ch<='Z') then
-      ch:=Char(Word(ch) or $0020);
-   case ch of
-      'a' :
-         if SameText(name, 'assert') then Result:=skAssert
-         else if SameText(name, 'assigned') then Result:=skAssigned;
-      'd' :
-         if SameText(name, 'dec') then Result:=skDec
-         else if SameText(name, 'defined') then Result:=skDefined
-         else if SameText(name, 'declared') then Result:=skDeclared;
-      'h' :
-         if SameText(name, 'high') then Result:=skHigh;
-      'i' :
-         if SameText(name, 'inc') then Result:=skInc;
-      'l' :
-         if SameText(name, 'low') then Result:=skLow
-         else if SameText(name, 'length') then Result:=skLength;
-      'o' :
-         if SameText(name, 'ord') then Result:=skOrd;
-      'p' :
-         if SameText(name, 'pred') then Result:=skPred;
-      's' :
-         if SameText(name, 'sizeof') then Result:=skSizeOf
-         else if SameText(name, 'sqr') then Result:=skSqr
-         else if SameText(name, 'succ') then Result:=skSucc;
+   n:=Length(name);
+   case n of
+      3 : case name[1] of
+         'd', 'D' : if SameText(name, 'dec') then Exit(skDec);
+         'i', 'I' : if SameText(name, 'inc') then Exit(skInc);
+         'l', 'L' : if SameText(name, 'low') then Exit(skLow);
+         'o', 'O' : if SameText(name, 'ord') then Exit(skOrd);
+         's', 'S' : if SameText(name, 'sqr') then Exit(skSqr);
+      end;
+      4 : case name[1] of
+         'h', 'H' : if SameText(name, 'high') then Exit(skHigh);
+         'p', 'P' : if SameText(name, 'pred') then Exit(skPred);
+         's', 'S' : if SameText(name, 'succ') then Exit(skSucc);
+      end;
+      6 : case name[1] of
+         'a', 'A' : if SameText(name, 'assert') then Exit(skAssert);
+         'l', 'L' : if SameText(name, 'length') then Exit(skLength);
+         's', 'S' : if SameText(name, 'sizeof') then Exit(skSizeOf);
+      end;
+      7 : case name[1] of
+         'd', 'D' : if SameText(name, 'defined') then Exit(skDefined);
+      end;
+      8 : case name[1] of
+         'a', 'A' : if SameText(name, 'assigned') then Exit(skAssigned);
+         'd', 'D' : if SameText(name, 'declared') then Exit(skDeclared);
+      end;
    end;
+   Result:=skNone;
 end;
 
 // CheckSpecialName
@@ -5725,12 +5734,17 @@ begin
 
       case token of
          ttASSIGN : begin
-            if left.Typ is TClassOfSymbol then begin
+            if left.Typ=nil then begin
+               // error assumed to have already been reported
+               left.Free;
+               right.Free;
+               Result:=TNullExpr.Create(FProg, Pos);
+            end else if left.Typ.ClassType=TClassOfSymbol then begin
                Result:=TAssignClassOfExpr.Create(FProg, pos, left, right);
-            end else if (right is TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
-               if right is TFuncExpr then
+            end else if right.InheritsFrom(TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
+               if right.InheritsFrom(TFuncExpr) then
                   TFuncExpr(right).SetResultAddr(nil);
-               if right is TArrayConstantExpr then
+               if right.InheritsFrom(TArrayConstantExpr) then
                   Result:=TAssignArrayConstantExpr.Create(FProg, pos, left, TArrayConstantExpr(right))
                else Result:=TAssignDataExpr.Create(FProg, pos, left, right)
             end else if left.Typ is TFuncSymbol then begin

@@ -250,7 +250,7 @@ type
          property Value : String read FValue write FValue;
    end;
 
-   TArrayConstantExpr = class(TPosDataExpr)
+   TArrayConstantExpr = class sealed (TPosDataExpr)
       protected
          FArrayAddr : Integer;
          FElementExprs : TTightList;
@@ -3538,7 +3538,7 @@ end;
 //
 procedure TAssignExpr.TypeCheckAssign(prog : TdwsProgram);
 begin
-   if FRight.InheritsFrom(TArrayConstantExpr) then
+   if FRight.ClassType=TArrayConstantExpr then
       TArrayConstantExpr(FRight).Prepare(Prog, FLeft.Typ.Typ);
 
    FRight:=TConvExpr.WrapWithConvCast(prog, ScriptPos, FLeft.Typ, FRight, True);

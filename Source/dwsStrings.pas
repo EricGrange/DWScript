@@ -110,6 +110,7 @@ const
 
   // ReadName
   CPE_UnknownName = 'Unknown name "%s"';
+  CPE_UnknownNameDotName = 'Unknown name "%s.%s"';
   CPE_UnknownType = 'Unknown type "%s"';
   CPE_UnknownUnit = 'Unknown unit "%s"';
 
