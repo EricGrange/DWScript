@@ -126,7 +126,7 @@ type
                           skInc, skDec, skSucc, skPred);
 
    TSwitchInstruction = (siNone,
-                         siIncludeLong, siIncludeShort,
+                         siIncludeLong, siIncludeShort, siIncludeOnce,
                          siFilterLong, siFilterShort,
                          siDefine, siUndef,
                          siIfDef, siIfNDef, siIf, siEndIf, siElse,
@@ -434,7 +434,8 @@ implementation
 const
    cSwitchInstructions : array [TSwitchInstruction] of String = (
       '',
-      SWI_INCLUDE_LONG, SWI_INCLUDE_SHORT, SWI_FILTER_LONG, SWI_FILTER_SHORT,
+      SWI_INCLUDE_LONG, SWI_INCLUDE_SHORT, SWI_INCLUDE_ONCE,
+      SWI_FILTER_LONG, SWI_FILTER_SHORT,
       SWI_DEFINE, SWI_UNDEF,
       SWI_IFDEF, SWI_IFNDEF, SWI_IF, SWI_ENDIF, SWI_ELSE,
       SWI_HINT, SWI_HINTS, SWI_WARNING, SWI_WARNINGS, SWI_ERROR, SWI_FATAL
@@ -4944,7 +4945,7 @@ begin
    FTok.KillToken;
 
    case switch of
-      siIncludeLong, siIncludeShort, siFilterLong, siFilterShort : begin
+      siIncludeLong, siIncludeShort, siIncludeOnce, siFilterLong, siFilterShort : begin
 
          if semiPending then
             FMsgs.AddCompilerStop(switchPos, CPE_SemiExpected);
@@ -4954,35 +4955,37 @@ begin
          name := FTok.GetToken.FString;
          FTok.KillToken;
 
-         try
-            oldTok := FTok;
-            scriptSource := GetScriptSource(name);
-
-            if switch in [siFilterLong, siFilterShort] then begin
-               if Assigned(FFilter) then begin
-                  // Include file is processed by the filter
-                  sourceFile:=FMainProg.RegisterSourceFile(name, FFilter.Process(scriptSource, FMsgs));
-                  FTok := TTokenizer.Create(sourceFile, FMsgs)
-               end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoFilterAvailable);
-            end else begin
-               // Include file is included as-is
-               sourceFile:=FMainProg.RegisterSourceFile(name, scriptSource);
-               FTok := TTokenizer.Create(sourceFile, FMsgs);
-            end;
-
+         if (switch<>siIncludeOnce) or (FMainProg.GetSourceFile(name)=nil) then begin
             try
-               FTok.SwitchHandler := ReadSwitch;
-               Result := ReadScript(name, stInclude);
-            finally
-               Inc(FLineCount, FTok.CurrentPos.Line-2);
-               FTok.Free;
-               FTok := oldTok;
+               oldTok := FTok;
+               scriptSource := GetScriptSource(name);
+
+               if switch in [siFilterLong, siFilterShort] then begin
+                  if Assigned(FFilter) then begin
+                     // Include file is processed by the filter
+                     sourceFile:=FMainProg.RegisterSourceFile(name, FFilter.Process(scriptSource, FMsgs));
+                     FTok := TTokenizer.Create(sourceFile, FMsgs)
+                  end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoFilterAvailable);
+               end else begin
+                  // Include file is included as-is
+                  sourceFile:=FMainProg.RegisterSourceFile(name, scriptSource);
+                  FTok := TTokenizer.Create(sourceFile, FMsgs);
+               end;
+
+               try
+                  FTok.SwitchHandler := ReadSwitch;
+                  Result := ReadScript(name, stInclude);
+               finally
+                  Inc(FLineCount, FTok.CurrentPos.Line-2);
+                  FTok.Free;
+                  FTok := oldTok;
+               end;
+            except
+               on e: ECompileError do
+                  raise;
+               on e: Exception do
+                  FMsgs.AddCompilerStop(FTok.HotPos, e.Message);
             end;
-         except
-            on e: ECompileError do
-               raise;
-            on e: Exception do
-               FMsgs.AddCompilerStop(FTok.HotPos, e.Message);
          end;
 
       end;
