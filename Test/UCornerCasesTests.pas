@@ -3,7 +3,8 @@ unit UCornerCasesTests;
 interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants;
+   dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
+   dwsSymbols;
 
 type
 
@@ -33,6 +34,7 @@ type
          procedure CallFuncThatReturnsARecord;
          procedure ConfigAssign;
          procedure DestructorCall;
+         procedure SubExprTest;
    end;
 
 // ------------------------------------------------------------------
@@ -474,6 +476,81 @@ begin
    finally
       exec.EndProgram;
    end;
+end;
+
+// SubExprTest
+//
+procedure TCornerCasesTests.SubExprTest;
+
+   procedure SubExprTree(output : TStringBuilder; const expr : TExprBase; indent : Integer);
+   var
+      i : Integer;
+   begin
+      output.Append(StringOfChar(#9, indent));
+      if expr=nil then
+         output.Append('nil')
+      else output.Append(expr.ClassName);
+      output.AppendLine;
+      if expr<>nil then
+         for i:=0 to expr.SubExprCount-1 do
+            SubExprTree(output, expr.SubExpr[i], indent+1);
+   end;
+
+   function MakeSubExprTree(const expr : TExprBase) : String;
+   var
+      sb : TStringBuilder;
+   begin
+      sb:=TStringBuilder.Create;
+      try
+         SubExprTree(sb, expr, 0);
+         Result:=sb.ToString;
+      finally
+         sb.Free;
+      end;
+   end;
+
+var
+   prog : IdwsProgram;
+   testFuncSym : TSourceFuncSymbol;
+begin
+   prog:=FCompiler.Compile( 'function Test(a : Integer) : Integer;'#13#10
+                           +'begin'#13#10
+                           +'Result:=a+1;'#13#10
+                           +'end;'#13#10
+                           +'var s := "Hello";'#13#10
+                           +'Print(s);'#13#10
+                           +'if s<>"" then Print(Test(5));');
+
+
+   testFuncSym:=(prog.Table.FindSymbol('Test', cvMagic) as TSourceFuncSymbol);
+   CheckEquals(2, testFuncSym.SubExprCount, 'Test SubExprCount');
+   CheckEquals('TBlockInitExpr'#13#10,
+               MakeSubExprTree(testFuncSym.SubExpr[0]), 'Test InitExpr');
+   CheckEquals('TAssignExpr'#13#10
+                  +#9'TIntVarExpr'#13#10
+                  +#9'TAddIntExpr'#13#10
+                     +#9#9'TIntVarExpr'#13#10
+                     +#9#9'TConstIntExpr'#13#10,
+               MakeSubExprTree(testFuncSym.SubExpr[1]), 'Test Expr');
+
+   CheckEquals('TBlockInitExpr'#13#10,
+               MakeSubExprTree((prog as TdwsProgram).InitExpr), 'Main InitExpr');
+   CheckEquals('TBlockExprNoTable3'#13#10
+                  +#9'TAssignConstToStringVarExpr'#13#10
+                     +#9#9'TStrVarExpr'#13#10
+                     +#9#9'nil'#13#10
+                  +#9'TNoResultWrapperExpr'#13#10
+                     +#9#9'TFuncExpr'#13#10
+                        +#9#9#9'TStrVarExpr'#13#10
+                  +#9'TIfThenExpr'#13#10
+                     +#9#9'TRelNotEqualStringExpr'#13#10
+                        +#9#9#9'TStrVarExpr'#13#10
+                        +#9#9#9'TConstStringExpr'#13#10
+                     +#9#9'TNoResultWrapperExpr'#13#10
+                        +#9#9#9'TFuncExpr'#13#10
+                           +#9#9#9#9'TFuncExpr'#13#10
+                              +#9#9#9#9#9'TConstIntExpr'#13#10,
+               MakeSubExprTree((prog as TdwsProgram).Expr), 'Main Expr');
 end;
 
 // ------------------------------------------------------------------

@@ -550,6 +550,11 @@ type
          function GetSourcePosition : TScriptPos; virtual;
          procedure SetSourcePosition(const val : TScriptPos); virtual;
 
+         function GetSourceSubExpr(i : Integer) : TExprBase;
+         function GetSourceSubExprCount : Integer;
+         property SubExpr[i : Integer] : TExprBase read GetSourceSubExpr;
+         property SubExprCount : Integer read GetSourceSubExprCount;
+
       public
          constructor Create(const Name: string; FuncKind: TFuncKind; FuncLevel: SmallInt);
          destructor Destroy; override;
@@ -587,9 +592,14 @@ type
    TSourceFuncSymbol = class(TFuncSymbol)
       private
          FSourcePosition : TScriptPos;
+
       protected
          function GetSourcePosition : TScriptPos; override;
          procedure SetSourcePosition(const val : TScriptPos); override;
+
+      public
+         property SubExpr;
+         property SubExprCount;
    end;
 
    TMagicFuncDoEvalEvent = function(args : TExprBaseList) : Variant of object;
@@ -682,6 +692,9 @@ type
 
       public
          property DeclarationPos : TScriptPos read FDeclarationPos write FDeclarationPos;
+
+         property SubExpr;
+         property SubExprCount;
    end;
 
    TNameSymbol = class(TTypeSymbol)
@@ -1951,6 +1964,25 @@ end;
 procedure TFuncSymbol.SetSourcePosition(const val : TScriptPos);
 begin
    // ignore
+end;
+
+// GetSourceSubExpr
+//
+function TFuncSymbol.GetSourceSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=(FExecutable as TdwsProgram).InitExpr;
+      1 : Result:=(FExecutable as TdwsProgram).Expr;
+   else
+      Result:=nil;
+   end;
+end;
+
+// GetSourceSubExprCount
+//
+function TFuncSymbol.GetSourceSubExprCount : Integer;
+begin
+   Result:=2;
 end;
 
 // IsCompatible
