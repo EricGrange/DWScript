@@ -218,6 +218,8 @@ type
          class function CallStackToString(const callStack : TdwsExprLocationArray) : String; static;
    end;
 
+   TExprBaseClass = class of TExprBase;
+
    // TExprBaseList
    //
    PExprBaseListRec = ^TExprBaseListRec;
@@ -1152,6 +1154,7 @@ type
          function AddSymbol(Sym: TSymbol): Integer;
          function FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol; virtual;
          function FindTypeLocal(const aName : String) : TTypeSymbol;
+         function FindSymbolAtStackAddr(const stackAddr : Integer) : TDataSymbol;
          function Remove(Sym: TSymbol): Integer;
          procedure Clear;
 
@@ -3269,6 +3272,30 @@ end;
 function TSymbolTable.FindTypeLocal(const aName : String) : TTypeSymbol;
 begin
    Result:=TTypeSymbol(FindLocal(aName, TTypeSymbol));
+end;
+
+// FindSymbolAtStackAddr
+//
+function TSymbolTable.FindSymbolAtStackAddr(const stackAddr : Integer) : TDataSymbol;
+var
+   i : Integer;
+   sym : TSymbol;
+begin
+   for i:=0 to FSymbols.Count-1 do begin
+      sym:=FSymbols.List[i];
+      if sym.InheritsFrom(TDataSymbol) then begin
+         Result:=TDataSymbol(sym);
+         if Result.StackAddr=stackAddr then
+            Exit;
+      end;
+   end;
+
+   for i:=0 to ParentCount-1 do begin
+      Result:=Parents[i].FindSymbolAtStackAddr(stackAddr);
+      if Assigned(Result) then Break;
+   end;
+
+   Result:=nil;
 end;
 
 // SortSymbols

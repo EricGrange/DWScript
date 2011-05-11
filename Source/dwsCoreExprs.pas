@@ -664,6 +664,8 @@ type
          constructor Create(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr; right : TTypedExpr); virtual;
          destructor Destroy; override;
 
+         property Left : TDataExpr read FLeft;
+
          procedure EvalNoResult(exec : TdwsExecution); override;
          procedure TypeCheckAssign(prog : TdwsProgram); virtual;
          function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
