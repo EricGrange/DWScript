@@ -256,6 +256,8 @@ type
    EdwsJSONException = class (Exception);
    EdwsJSONParseError = class (EdwsJSONException);
 
+procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : String);
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -379,7 +381,6 @@ begin
    Result:=StrToFloat(buf, vJSONFormatSettings);
 end;
 
-
 // ParseJSONNumber
 //
 function ParseJSONNumber(initialChar : Char; const needChar : TdwsJSONNeedCharFunc;
@@ -409,6 +410,29 @@ begin
    bufPtr^:=#0;
    TextToFloat(PChar(@buf[0]), resultBuf, fvExtended, vJSONFormatSettings);
    Result:=resultBuf;
+end;
+
+// WriteJavaScriptString
+//
+procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : String);
+var
+   c : Char;
+begin
+   destStream.WriteString('"');
+   for c in str do begin
+      case c of
+         #0..#7, #9, #11, #12, #14..#31 :
+            destStream.WriteString(Format('\u%.04x', [Ord(c)]));
+         #8 : destStream.WriteString('\t');
+         #10 : destStream.WriteString('\n');
+         #13 : destStream.WriteString('\r');
+         '"' : destStream.WriteString('\"');
+         '\' : destStream.WriteString('\\');
+      else
+         destStream.WriteChar(c);
+      end;
+   end;
+   destStream.WriteChar('"');
 end;
 
 // ------------------
@@ -1260,25 +1284,9 @@ end;
 // WriteString
 //
 procedure TdwsJSONWriter.WriteString(const str : String);
-var
-   c : Char;
 begin
    BeforeWriteImmediate;
-   FStream.WriteString('"');
-   for c in str do begin
-      case c of
-         #0..#7, #9, #11, #12, #14..#31 :
-            FStream.WriteString(Format('\u%.04x', [Ord(c)]));
-         #8 : FStream.WriteString('\t');
-         #10 : FStream.WriteString('\n');
-         #13 : FStream.WriteString('\r');
-         '"' : FStream.WriteString('\"');
-         '\' : FStream.WriteString('\\');
-      else
-         FStream.WriteChar(c);
-      end;
-   end;
-   FStream.WriteChar('"');
+   WriteJavaScriptString(FStream, str);
    AfterWriteImmediate;
 end;
 
