@@ -215,6 +215,8 @@ type
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+
+         property Value : Boolean read FValue;
    end;
 
    // TConstIntExpr
@@ -237,6 +239,7 @@ type
       public
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
+         property Value : Double read FValue;
    end;
 
    // TConstStringExpr
@@ -665,6 +668,7 @@ type
          destructor Destroy; override;
 
          property Left : TDataExpr read FLeft;
+         property Right : TTypedExpr read FRight;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          procedure TypeCheckAssign(prog : TdwsProgram); virtual;
@@ -824,6 +828,7 @@ type
       public
          constructor Create(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr; right : TTypedExpr); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
+         property AppendString : String read FAppendString;
    end;
 
    // val in [case conditions list]
@@ -947,6 +952,8 @@ type
          function IsTrue(exec : TdwsExecution; const value : Variant) : Boolean; override;
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
+
+         property CompareExpr : TTypedExpr read FCompareExpr;
    end;
 
    TRangeCaseCondition = class(TCaseCondition)
@@ -961,6 +968,9 @@ type
          function IsTrue(exec : TdwsExecution; const Value: Variant): Boolean; override;
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
+
+         property FromExpr : TTypedExpr read FFromExpr;
+         property ToExpr : TTypedExpr read FToExpr;
    end;
 
    // case FValueExpr of {CaseConditions} else FElseExpr end;
@@ -976,6 +986,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
          procedure AddCaseCondition(cond : TCaseCondition);
 
+         property CaseConditions : TTightList read FCaseConditions;
          property ValueExpr: TTypedExpr read FValueExpr write FValueExpr;
          property ElseExpr: TNoResultExpr read FElseExpr write FElseExpr;
    end;

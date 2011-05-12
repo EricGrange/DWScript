@@ -742,11 +742,11 @@ type
          procedure ClearArgs;
          function ExpectedArg : TParamSymbol; virtual; abstract;
          procedure TypeCheckArgs(prog : TdwsProgram); virtual;
-         function GetArgs : TExprBaseList; inline;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function IsConstant : Boolean; override;
 
          property FuncSym : TFuncSymbol read FFunc;
+         property Args : TExprBaseListRec read FArgs;
    end;
 
    TPushOperatorType = (potUnknown,
@@ -3535,13 +3535,6 @@ begin
 
    if not prog.CompileMsgs.HasErrors then
       Initialize(prog);
-end;
-
-// GetArgs
-//
-function TFuncExprBase.GetArgs : TExprBaseList;
-begin
-   Result:=@FArgs;
 end;
 
 // Optimize
