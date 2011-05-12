@@ -1432,7 +1432,7 @@ end;
 
 // GetExprBase
 //
-function TExprBaseListRec.GetExprBase(const x: Integer): TExprBase;
+function TExprBaseListRec.GetExprBase(const x : Integer): TExprBase;
 begin
    Result:=TExprBase(FList.List[x]);
 end;
@@ -3292,7 +3292,7 @@ begin
 
    for i:=0 to ParentCount-1 do begin
       Result:=Parents[i].FindSymbolAtStackAddr(stackAddr);
-      if Assigned(Result) then Break;
+      if Assigned(Result) then Exit;
    end;
 
    Result:=nil;
