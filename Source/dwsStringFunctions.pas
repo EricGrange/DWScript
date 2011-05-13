@@ -129,8 +129,8 @@ type
     function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
   end;
 
-  TSetLengthFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
+  TSetLengthFunc = class(TInternalMagicProcedure)
+    procedure DoEvalProc(args : TExprBaseList); override;
   end;
 
   TTrimLeftFunc = class(TInternalMagicStringFunction)
@@ -563,23 +563,24 @@ end;
 
 { TSetLengthFunc }
 
-procedure TSetLengthFunc.Execute(info : TProgramInfo);
+// DoEvalProc
+//
+procedure TSetLengthFunc.DoEvalProc(args : TExprBaseList);
 var
    i, n : Integer;
    s : String;
 begin
-   //procedure SetLength(var S : String; NewLength : Integer);
-   s := Info.ValueAsString['S'];
+   s:=args.AsString[0];
 
    i:=Length(s)+1;
-   n:=Info.ValueAsInteger['NewLength'];
+   n:=args.AsInteger[1];
    SetLength(s, n);
    while i<=n do begin
       s[i]:=' ';
       Inc(i);
    end;
 
-   Info.ValueAsString['S'] := s;              // re-assign 'var' value
+   args.AsString[0]:=s;
 end;
 
 { TStringOfCharFunc }
