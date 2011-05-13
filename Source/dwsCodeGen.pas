@@ -84,8 +84,10 @@ type
    TdwsExprGenericCodeGen = class(TdwsExprCodeGen)
       private
          FTemplate : array of TVarRec;
+         FDependencies : array of String;
       public
-         constructor Create(const template : array of const);
+         constructor Create(const template : array of const); overload;
+         constructor Create(const template : array of const; const dependencies : array of String); overload;
 
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -341,6 +343,18 @@ begin
       FTemplate[i]:=template[i];
 end;
 
+// Create
+//
+constructor TdwsExprGenericCodeGen.Create(const template : array of const; const dependencies : array of String);
+var
+   i : Integer;
+begin
+   Create(template);
+   SetLength(FDependencies, Length(dependencies));
+   for i:=0 to High(dependencies) do
+      FDependencies[i]:=dependencies[i];
+end;
+
 // CodeGen
 //
 procedure TdwsExprGenericCodeGen.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
@@ -351,10 +365,6 @@ begin
       case FTemplate[i].VType of
          vtInteger :
             codeGen.Compile(expr.SubExpr[FTemplate[i].VInteger]);
-//         vtString :
-//            codeGen.Output.WriteString(String(FTemplate[i].VString^));
-//         vtAnsiString :
-//            codeGen.Output.WriteString(String(AnsiString(FTemplate[i].VAnsiString)));
          vtUnicodeString :
             codeGen.Output.WriteString(String(FTemplate[i].VUnicodeString));
          vtWideChar :
@@ -363,6 +373,8 @@ begin
          Assert(False);
       end;
    end;
+   for i:=0 to High(FDependencies) do
+      codeGen.Dependencies.Add(FDependencies[i]);
 end;
 
 end.

@@ -51,6 +51,10 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
+   TJSInitDataExpr = class (TdwsExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
    TJSAssignConstToIntegerVarExpr = class (TdwsExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -81,11 +85,25 @@ type
    TJSVarExpr = class (TdwsExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSVarParamExpr = class (TdwsExprCodeGen)
+   TJSVarParentExpr = class (TdwsExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSVarParamExpr = class (TJSVarExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
    TJSCaseExpr = class (TdwsExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
+   TJSConvIntegerExpr = class (TdwsExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
+   TJSIncVarFuncExpr = class (TdwsExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSDecVarFuncExpr = class (TdwsExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
@@ -113,11 +131,27 @@ type
       Name, Code : String;
    end;
 const
-   cJSRTLDependencies : array [0..1] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..9] of TJSRTLDependency = (
+      // codegen utility functions
+      (Name : '$CheckStep';
+       Code : 'function $CheckStep(s) { if (s<=0) throw "stepErr"; return s }'),
+      // RTL functions
+      (Name : 'Chr';
+       Code : 'function Chr(c) { return String.fromCharCode(c) }'),
+      (Name : 'IntToHex';
+       Code : 'function IntToHex(v,d) { var hex=v.toString(16).toUpperCase(); return "00000000".substr(0, 8-d-hex.length)+hex; }'),
       (Name : 'IntToStr';
-       Code : 'function IntToStr(i) { return i.toString() };'),
+       Code : 'function IntToStr(i) { return i.toString() }'),
+      (Name : 'Random';
+       Code : 'function Random(v) { var tmp=Math.floor($dwsRand*0x08088405+1); $dwsRand=tmp; return tmp*Math.pow(2, -32) }'),
       (Name : 'Round';
-       Code : 'function Round(v) { return Math.round(v) };')
+       Code : 'function Round(v) { return Math.round(v) }'),
+      (Name : 'SetLength';
+       Code : 'function SetLength(s,n) { if (s.value.length>n) s.value=s.value.substring(0,n); else while (s.value.length<n) s.value+=" "; }'),
+      (Name : 'SetRandSeed';
+       Code : 'function SetRandSeed(v) { $dwsRand = v }'),
+      (Name : 'Trunc';
+       Code : 'function Trunc(v) { return (v>=0)?Math.floor(v):Math.ceil(v) }')
    );
 
 // ------------------
@@ -145,6 +179,8 @@ begin
    RegisterCodeGen(TConstFloatExpr,       TJSConstFloatExpr.Create);
    RegisterCodeGen(TConstBooleanExpr,     TJSConstBooleanExpr.Create);
 
+   RegisterCodeGen(TInitDataExpr,         TJSInitDataExpr.Create);
+
    RegisterCodeGen(TAssignExpr,           TJSAssignExpr.Create);
 
    RegisterCodeGen(TAssignConstToIntegerVarExpr,   TJSAssignConstToIntegerVarExpr.Create);
@@ -152,45 +188,50 @@ begin
    RegisterCodeGen(TAssignConstToFloatVarExpr,     TJSAssignConstToFloatVarExpr.Create);
 
    RegisterCodeGen(TVarExpr,              TJSVarExpr.Create);
+   RegisterCodeGen(TVarParentExpr,        TJSVarParentExpr.Create);
    RegisterCodeGen(TIntVarExpr,           TJSVarExpr.Create);
    RegisterCodeGen(TFloatVarExpr,         TJSVarExpr.Create);
    RegisterCodeGen(TStrVarExpr,           TJSVarExpr.Create);
    RegisterCodeGen(TBoolVarExpr,          TJSVarExpr.Create);
    RegisterCodeGen(TObjectVarExpr,        TJSVarExpr.Create);
+   RegisterCodeGen(TConstParamExpr,       TJSVarExpr.Create);
    RegisterCodeGen(TVarParamExpr,         TJSVarParamExpr.Create);
 
-   RegisterCodeGen(TConvIntegerExpr,
-      TdwsExprGenericCodeGen.Create([0]));
+   RegisterCodeGen(TConvIntegerExpr,      TJSConvIntegerExpr.Create);
    RegisterCodeGen(TConvFloatExpr,
       TdwsExprGenericCodeGen.Create(['Math.round(', 0, ')']));
+   RegisterCodeGen(TConvBoolExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '?true:false)']));
+   RegisterCodeGen(TConvStringExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '.toString())']));
 
    RegisterCodeGen(TAddStrExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')+(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '+', 1, ')']));
 
    RegisterCodeGen(TAddIntExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')+(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '+', 1, ')']));
    RegisterCodeGen(TAddFloatExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')+(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '+', 1, ')']));
    RegisterCodeGen(TSubIntExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')-(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '-', 1, ')']));
    RegisterCodeGen(TSubFloatExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')-(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '-', 1, ')']));
    RegisterCodeGen(TMultIntExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')*(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '*', 1, ')']));
    RegisterCodeGen(TMultFloatExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')*(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '*', 1, ')']));
    RegisterCodeGen(TDivideExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')/(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '/', 1, ')']));
    RegisterCodeGen(TDivExpr,
-      TdwsExprGenericCodeGen.Create(['Math.floor((', 0, ')/(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['Math.floor(', 0, '/', 1, ')']));
    RegisterCodeGen(TModExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')%(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '%', 1, ')']));
    RegisterCodeGen(TSqrFloatExpr,
       TdwsExprGenericCodeGen.Create(['Math.pow(', 0, ',2)']));
    RegisterCodeGen(TNegIntExpr,
-      TdwsExprGenericCodeGen.Create(['-(', 0, ')']));
+      TdwsExprGenericCodeGen.Create(['(-', 0, ')']));
    RegisterCodeGen(TNegFloatExpr,
-      TdwsExprGenericCodeGen.Create(['-(', 0, ')']));
+      TdwsExprGenericCodeGen.Create(['(-', 0, ')']));
 
    RegisterCodeGen(TAppendStringVarExpr,
       TdwsExprGenericCodeGen.Create([0, '+=', 1, ';']));
@@ -214,71 +255,83 @@ begin
    RegisterCodeGen(TDecIntVarExpr,
       TdwsExprGenericCodeGen.Create([0, '-=', 1, ';']));
 
+   RegisterCodeGen(TIncVarFuncExpr,    TJSIncVarFuncExpr.Create);
+   RegisterCodeGen(TDecVarFuncExpr,    TJSDecVarFuncExpr.Create);
+   RegisterCodeGen(TSuccFuncExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '+', 1, ')']));
+   RegisterCodeGen(TPredFuncExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '-', 1, ')']));
+
    RegisterCodeGen(TShrExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')>>(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '>>', 1, ')']));
    RegisterCodeGen(TShlExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')<<(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '<<', 1, ')']));
    RegisterCodeGen(TIntAndExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')&(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '&', 1, ')']));
    RegisterCodeGen(TIntOrExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')|(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '|', 1, ')']));
    RegisterCodeGen(TIntXorExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')^(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '^', 1, ')']));
    RegisterCodeGen(TNotIntExpr,
-      TdwsExprGenericCodeGen.Create(['~(', 0, ')']));
+      TdwsExprGenericCodeGen.Create(['(~', 0, ')']));
 
    RegisterCodeGen(TBoolAndExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')&&(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '&&', 1, ')']));
    RegisterCodeGen(TBoolOrExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')||(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '||', 1, ')']));
    RegisterCodeGen(TBoolXorExpr,
-      TdwsExprGenericCodeGen.Create(['(!(', 0, ')!=!(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(!', 0, ' != !', 1, ')']));
+   RegisterCodeGen(TBoolImpliesExpr,
+      TdwsExprGenericCodeGen.Create(['(!', 0, ' || ', 1, ')']));
    RegisterCodeGen(TNotBoolExpr,
-      TdwsExprGenericCodeGen.Create(['!(', 0, ')']));
+      TdwsExprGenericCodeGen.Create(['(!', 0, ')']));
 
    RegisterCodeGen(TRelEqualBoolExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')==(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '==', 1, ')']));
    RegisterCodeGen(TRelNotEqualBoolExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')!=(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '!=', 1, ')']));
+
+   RegisterCodeGen(TObjCmpExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '==', 1, ')']));
 
    RegisterCodeGen(TRelEqualIntExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')==(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '==', 1, ')']));
    RegisterCodeGen(TRelNotEqualIntExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')!=(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '!=', 1, ')']));
    RegisterCodeGen(TRelGreaterEqualIntExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')>=(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '>=', 1, ')']));
    RegisterCodeGen(TRelLessEqualIntExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')<=(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '<=', 1, ')']));
    RegisterCodeGen(TRelGreaterIntExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')>(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '>', 1, ')']));
    RegisterCodeGen(TRelLessIntExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')<(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '<', 1, ')']));
 
    RegisterCodeGen(TRelEqualStringExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')==(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '==', 1, ')']));
    RegisterCodeGen(TRelNotEqualStringExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')!=(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '!=', 1, ')']));
    RegisterCodeGen(TRelGreaterEqualStringExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')>=(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '>=', 1, ')']));
    RegisterCodeGen(TRelLessEqualStringExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')<=(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '<=', 1, ')']));
    RegisterCodeGen(TRelGreaterStringExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')>(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '>', 1, ')']));
    RegisterCodeGen(TRelLessStringExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')<(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '<', 1, ')']));
 
    RegisterCodeGen(TRelEqualFloatExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')==(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '==', 1, ')']));
    RegisterCodeGen(TRelNotEqualFloatExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')!=(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '!=', 1, ')']));
    RegisterCodeGen(TRelGreaterEqualFloatExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')>=(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '>=', 1, ')']));
    RegisterCodeGen(TRelLessEqualFloatExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')<=(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '<=', 1, ')']));
    RegisterCodeGen(TRelGreaterFloatExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')>(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '>', 1, ')']));
    RegisterCodeGen(TRelLessFloatExpr,
-      TdwsExprGenericCodeGen.Create(['((', 0, ')<(', 1, '))']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '<', 1, ')']));
 
    RegisterCodeGen(TIfThenExpr,
       TdwsExprGenericCodeGen.Create(['if (', 0, ') {'#13#10, 1, #13#10'};'#13#10]));
@@ -291,6 +344,12 @@ begin
       TdwsExprGenericCodeGen.Create(['for (', 0, '=', 1, ';', 0, '<=', 2, ';', 0, '++) {'#13#10, 3, #13#10'};'#13#10]));
    RegisterCodeGen(TForDownwardExpr,
       TdwsExprGenericCodeGen.Create(['for (', 0, '=', 1, ';', 0, '>=', 2, ';', 0, '--) {'#13#10, 3, #13#10'};'#13#10]));
+//   RegisterCodeGen(TForUpwardStepExpr,
+//      TdwsExprGenericCodeGen.Create(['for (', 0, '=', 1, ';', 0, '<=', 2, ';', 0, '+=', 4, ') {'#13#10, 3, #13#10'};'#13#10],
+//                                    ['$CheckStep']));
+//   RegisterCodeGen(TForDownwardStepExpr,
+//      TdwsExprGenericCodeGen.Create(['for (', 0, '=', 1, ';', 0, '>=', 2, ';', 0, '-=', 4, ') {'#13#10, 3, #13#10'};'#13#10],
+//                                    ['$CheckStep']));
 
    RegisterCodeGen(TWhileExpr,
       TdwsExprGenericCodeGen.Create(['while (', 0, ') {', 1,'};']));
@@ -315,6 +374,15 @@ begin
       TdwsExprGenericCodeGen.Create(['(', 0, ').length']));
    RegisterCodeGen(TOpenArrayLengthExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, ').length']));
+   RegisterCodeGen(TVarStringArraySetExpr,
+      TdwsExprGenericCodeGen.Create(['{ var $i=', 1, '-1; ', 0, '=', 0, '.substring(0,$i)+', 2, '+', 0, '.substring($i+1); }']));
+
+   RegisterCodeGen(TOrdIntExpr,
+      TdwsExprGenericCodeGen.Create([0]));
+   RegisterCodeGen(TOrdBoolExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '?1:0)']));
+   RegisterCodeGen(TOrdStrExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, ').charCodeAt(0)']));
 
    RegisterCodeGen(TFuncExpr,             TJSFuncBaseExpr.Create);
    RegisterCodeGen(TMagicIntFuncExpr,     TJSMagicFuncExpr.Create);
@@ -364,8 +432,7 @@ begin
    Output.WriteString(') {'#13#10);
    resultTyp:=func.Typ;
    if resultTyp<>nil then begin
-      while resultTyp is TAliasSymbol do
-         resultTyp:=resultTyp.BaseType;
+      resultTyp:=resultTyp.UnAliasedType;
       Output.WriteString('var Result=');
       if resultTyp is TBaseIntegerSymbol then
          Output.WriteString('0')
@@ -405,7 +472,7 @@ begin
       for j:=Low(cJSRTLDependencies) to High(cJSRTLDependencies) do begin
          if cJSRTLDependencies[j].Name=Dependencies[i] then begin
             destStream.WriteString(cJSRTLDependencies[j].Code);
-            destStream.WriteString(#13#10);
+            destStream.WriteString(';'#13#10);
          end;
       end;
    end;
@@ -458,11 +525,44 @@ procedure TJSVarExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    varExpr : TVarExpr;
    sym : TDataSymbol;
+   funcSym : TFuncSymbol;
 begin
    varExpr:=TVarExpr(expr);
+   if (codeGen.Context is TdwsProcedure) then begin
+      funcSym:=TdwsProcedure(codeGen.Context).Func;
+      if (funcSym.Result<>nil) and (funcSym.Result.StackAddr=varExpr.StackAddr) then begin
+         codeGen.Output.WriteString('Result');
+         Exit;
+      end;
+   end;
    sym:=codeGen.FindSymbolAtStackAddr(varExpr.StackAddr);
    if sym=nil then
       raise ECodeGenUnsupportedSymbol.Create(IntToStr(varExpr.StackAddr));
+   codeGen.Output.WriteString(sym.Name);
+end;
+
+// ------------------
+// ------------------ TJSVarParentExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSVarParentExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   i : Integer;
+   e : TVarParentExpr;
+   sym : TDataSymbol;
+begin
+   e:=TVarParentExpr(expr);
+   sym:=nil;
+   if codeGen.LocalTable<>nil then begin
+      for i:=0 to codeGen.LocalTable.ParentCount-1 do begin
+         sym:=codeGen.LocalTable.Parents[i].FindSymbolAtStackAddr(e.StackAddr);
+         if sym<>nil then Break;
+      end;
+   end;
+   if sym=nil then
+      raise ECodeGenUnsupportedSymbol.Create(IntToStr(e.StackAddr));
    codeGen.Output.WriteString(sym.Name);
 end;
 
@@ -476,6 +576,49 @@ procedure TJSVarParamExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 begin
    inherited;
    codeGen.Output.WriteString('.value');
+end;
+
+// ------------------
+// ------------------ TJSInitDataExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSInitDataExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TInitDataExpr;
+   t : TTypeSymbol;
+   sas : TStaticArraySymbol;
+begin
+   e:=TInitDataExpr(expr);
+   t:=e.Expr.Typ;
+
+   codeGen.Compile(e.Expr);
+
+   if t is TStaticArraySymbol then begin
+
+      sas:=TStaticArraySymbol(t);
+
+      codeGen.Output.WriteString('=new Array('+IntToStr(sas.ElementCount)+');');
+
+      codeGen.Output.WriteString(' for (var i=0; i<');
+      codeGen.Output.WriteString(IntToStr(sas.ElementCount));
+      codeGen.Output.WriteString(';i++) ');
+      codeGen.Compile(e.Expr);
+      codeGen.Output.WriteString('[i]=');
+
+      t:=sas.Typ.UnAliasedType;
+      if t is TBaseIntegerSymbol then
+         codeGen.Output.WriteString('0')
+      else if t is TBaseFloatSymbol then
+         codeGen.Output.WriteString('0.0')
+      else if t is TBaseStringSymbol then
+         codeGen.Output.WriteString('0.0')
+      else raise ECodeGenUnsupportedSymbol.CreateFmt('InitData for array of %s', [t.ClassName]);
+
+      codeGen.Output.WriteString(';');
+
+   end else raise ECodeGenUnsupportedSymbol.CreateFmt('InitData for %s', [t.ClassName]);
 end;
 
 // ------------------
@@ -652,11 +795,14 @@ begin
       end;
 
       if gotVarParam then begin
-         codeGen.Output.WriteString('(function () {');
+         if funcSym.Typ<>nil then
+            raise ECodeGenUnsupportedSymbol.CreateFmt('function with var param(s): %s', [funcSym.QualifiedName]);
+
+         codeGen.Output.WriteString('{'#13#10);
          for i:=0 to e.Args.Count-1 do begin
             paramExpr:=e.Args.ExprBase[i];
             paramSymbol:=(e.FuncSym.Params[i] as TParamSymbol);
-            codeGen.Output.WriteString('var $param'+IntToStr(i)+'=');
+            codeGen.Output.WriteString('var $p'+IntToStr(i)+'=');
             if paramSymbol is TVarParamSymbol then begin
                codeGen.Output.WriteString('{value:');
                codeGen.Compile(paramExpr);
@@ -678,24 +824,24 @@ begin
             codeGen.Output.WriteChar(',');
          paramExpr:=e.Args.ExprBase[i];
          if gotVarParam then
-            codeGen.Output.WriteString('$param'+IntToStr(i))
+            codeGen.Output.WriteString('$p'+IntToStr(i))
          else codeGen.Compile(paramExpr);
       end;
       codeGen.Output.WriteString(')');
 
       if gotVarParam then begin
 
+         codeGen.Output.WriteString(';'#13#10);
          for i:=0 to e.Args.Count-1 do begin
             paramExpr:=e.Args.ExprBase[i];
             paramSymbol:=(e.FuncSym.Params[i] as TParamSymbol);
             if paramSymbol is TVarParamSymbol then begin
                codeGen.Compile(paramExpr);
-               codeGen.Output.WriteString('=$param'+IntToStr(i)+'.value;'#13#10);
+               codeGen.Output.WriteString('=$p'+IntToStr(i)+'.value;'#13#10);
             end;
-            codeGen.Output.WriteString(';'#13#10);
          end;
 
-         codeGen.Output.WriteString('}())');
+         codeGen.Output.WriteString('}');
       end;
 
    finally
@@ -751,7 +897,7 @@ begin
       end else raise ECodeGenUnknownExpression.Create(cond.ClassName);
       codeGen.Output.WriteString(') {'#13#10);
       codeGen.Compile(cond.TrueExpr);
-      codeGen.Output.WriteString(#13#10'break;'#13#10'}');
+      codeGen.Output.WriteString(#13#10'}');
    end;
    if e.ElseExpr<>nil then begin
       codeGen.Output.WriteString(' else {'#13#10);
@@ -773,6 +919,62 @@ begin
       and (TdwsProcedure(codeGen.Context).Func.Typ<>nil) then
       codeGen.Output.WriteString('return Result;')
    else codeGen.Output.WriteString('return;');
+end;
+
+// ------------------
+// ------------------ TJSIncVarFuncExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSIncVarFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TIncVarFuncExpr;
+   right : TExprBase;
+begin
+   e:=TIncVarFuncExpr(expr);
+   right:=e.Args[1];
+   if (right is TConstIntExpr) and (TConstIntExpr(right).Value=1) then begin
+      codeGen.Output.WriteString('++');
+      codeGen.Compile(e.Args[0]);
+   end else raise ECodeGenUnknownExpression.Create('IncVarFuncExpr with non 1 increment');
+end;
+
+// ------------------
+// ------------------ TJSDecVarFuncExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSDecVarFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TIncVarFuncExpr;
+   right : TExprBase;
+begin
+   e:=TIncVarFuncExpr(expr);
+   right:=e.Args[1];
+   if (right is TConstIntExpr) and (TConstIntExpr(right).Value=1) then begin
+      codeGen.Output.WriteString('--');
+      codeGen.Compile(e.Args[0]);
+   end else raise ECodeGenUnknownExpression.Create('DecVarFuncExpr with non 1 increment');
+end;
+
+// ------------------
+// ------------------ TJSConvIntegerExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSConvIntegerExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TConvIntegerExpr;
+begin
+   e:=TConvIntegerExpr(expr);
+   if e.Expr.Typ.UnAliasedType is TBaseBooleanSymbol then begin
+      codeGen.Output.WriteString('(');
+      codeGen.Compile(e.Expr);
+      codeGen.Output.WriteString('?1:0)');
+   end else codeGen.Compile(e.Expr);
 end;
 
 end.

@@ -200,8 +200,10 @@ begin
             if k>=0 then FCodeGen.Dependencies.Delete(k);
 
             jsCode:= 'var $testResult = [];'#13#10
-                    +'function Print(s) { $testResult.push(s); };'#13#10
-                    +'function PrintLn(s) { $testResult.push(s, "\r\n"); };'#13#10
+                    +'function Print(s) { if (s===true) $testResult.push("True"); '
+                                        +'else if (s===false) $testResult.push("False"); '
+                                        +'else $testResult.push(s); };'#13#10
+                    +'function PrintLn(s) { Print(s); $testResult.push("\r\n"); };'#13#10
                     +'try {'#13#10
                     +#13#10
                     +FCodeGen.CompiledOutput
