@@ -10,9 +10,9 @@ var f : Boolean = False or False;
 
 PrintLn(t and f);
 PrintLn(t or f);
-PrintLn(t xor f);
-PrintLn(t xor t);
-PrintLn(not t);
+PrintOut(t xor f);
+PrintOut(t xor t);
+PrintOut(not t);
 
 PrintLn(t and (f or t or f) and (t xor f) and not f);
 
