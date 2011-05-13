@@ -17,7 +17,7 @@ unit dwsCodeGen;
 
 interface
 
-uses Classes, SysUtils, dwsUtils, dwsSymbols, dwsExprs, dwsCoreExprs;
+uses Classes, SysUtils, dwsUtils, dwsSymbols, dwsExprs, dwsCoreExprs, dwsJSON;
 
    // experimental codegen support classes for DWScipt
 
@@ -45,6 +45,7 @@ type
          FDependencies : TStringList;
          FTempReg : TdwsRegisteredCodeGen;
          FLocalTable : TSymbolTable;
+         FContext : TdwsProgram;
 
       protected
 
@@ -57,11 +58,18 @@ type
          function FindSymbolAtStackAddr(stackAddr : Integer) : TDataSymbol;
 
          procedure Compile(expr : TExprBase); virtual;
+         procedure CompileSymbolTable(table : TSymbolTable); virtual;
+         procedure CompileEnumerationSymbol(enum : TEnumerationSymbol); virtual;
          procedure CompileFuncSymbol(func : TSourceFuncSymbol); virtual;
          procedure CompileProgram(const prog : IdwsProgram); virtual;
 
+         procedure CompileDependencies(destStream : TWriteOnlyBlockStream); virtual;
+
+         function CompiledOutput : String; virtual;
+
          procedure Clear; virtual;
 
+         property Context : TdwsProgram read FContext;
          property LocalTable : TSymbolTable read FLocalTable;
 
          property Output : TWriteOnlyBlockStream read FOutput;
@@ -81,6 +89,10 @@ type
 
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
+
+   ECodeGenException = class (Exception);
+   ECodeGenUnknownExpression = class (ECodeGenException);
+   ECodeGenUnsupportedSymbol = class (ECodeGenException);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -146,6 +158,7 @@ begin
    FTempReg.Free;
    FDependencies.Free;
    FOutput.Free;
+   FCodeGenList.Clean;
    FCodeGenList.Free;
 end;
 
@@ -196,8 +209,8 @@ procedure TdwsCodeGen.Compile(expr : TExprBase);
 
    procedure RaiseUnknown(expr : TExprBase);
    begin
-      raise Exception.CreateFmt('%s: unknown expression class %s',
-                                [ClassName, expr.ClassName]);
+      raise ECodeGenUnknownExpression.CreateFmt('%s: unknown expression class %s',
+                                                [ClassName, expr.ClassName]);
    end;
 
 var
@@ -217,20 +230,52 @@ begin
    FLocalTable:=oldTable;
 end;
 
+// CompileSymbolTable
+//
+procedure TdwsCodeGen.CompileSymbolTable(table : TSymbolTable);
+var
+   i : Integer;
+   sym : TSymbol;
+begin
+   for i:=0 to table.Count-1 do begin
+      sym:=table.Symbols[i];
+      if sym is TSourceFuncSymbol then
+         CompileFuncSymbol(TSourceFuncSymbol(sym))
+      else if sym is TEnumerationSymbol then
+         CompileEnumerationSymbol(TEnumerationSymbol(sym));
+   end;
+end;
+
+// CompileEnumerationSymbol
+//
+procedure TdwsCodeGen.CompileEnumerationSymbol(enum : TEnumerationSymbol);
+begin
+   // nothing
+end;
+
 // CompileFuncSymbol
 //
 procedure TdwsCodeGen.CompileFuncSymbol(func : TSourceFuncSymbol);
 var
    oldTable : TSymbolTable;
+   oldContext : TdwsProgram;
+   proc : TdwsProcedure;
 begin
-   oldTable:=FLocalTable;
-   FLocalTable:=(func.Executable as TdwsProcedure).Table;
+   proc:=(func.Executable as TdwsProcedure);
+   // nil executable means it's a function pointer type
+   if proc<>nil then begin
+      oldTable:=FLocalTable;
+      oldContext:=FContext;
+      FLocalTable:=proc.Table;
+      FContext:=proc;
 
-   Assert(func.SubExprCount=2);
-   Compile(func.SubExpr[0]);
-   Compile(func.SubExpr[1]);
+      Assert(func.SubExprCount=2);
+      Compile(func.SubExpr[0]);
+      Compile(func.SubExpr[1]);
 
-   FLocalTable:=oldTable;
+      FLocalTable:=oldTable;
+      FContext:=oldContext;
+   end;
 end;
 
 // CompileProgram
@@ -238,18 +283,46 @@ end;
 procedure TdwsCodeGen.CompileProgram(const prog : IdwsProgram);
 var
    p : TdwsProgram;
-var
    oldTable : TSymbolTable;
+   oldContext : TdwsProgram;
 begin
    p:=(prog as TdwsProgram);
 
    oldTable:=FLocalTable;
+   oldContext:=FContext;
    FLocalTable:=p.Table;
+   FContext:=p;
+
+   CompileSymbolTable(p.Table);
 
    Compile(p.InitExpr);
    Compile(p.Expr);
 
    FLocalTable:=oldTable;
+   FContext:=oldContext;
+end;
+
+// CompileDependencies
+//
+procedure TdwsCodeGen.CompileDependencies(destStream : TWriteOnlyBlockStream);
+begin
+   // nothing
+end;
+
+// CompiledOutput
+//
+function TdwsCodeGen.CompiledOutput : String;
+var
+   buf : TWriteOnlyBlockStream;
+begin
+   buf:=TWriteOnlyBlockStream.Create;
+   try
+      CompileDependencies(buf);
+      buf.WriteString(Output.ToString);
+      Result:=buf.ToString;
+   finally
+      buf.Free;
+   end;
 end;
 
 // ------------------
@@ -278,10 +351,10 @@ begin
       case FTemplate[i].VType of
          vtInteger :
             codeGen.Compile(expr.SubExpr[FTemplate[i].VInteger]);
-         vtString :
-            codeGen.Output.WriteString(String(FTemplate[i].VString^));
-         vtAnsiString :
-            codeGen.Output.WriteString(String(AnsiString(FTemplate[i].VAnsiString)));
+//         vtString :
+//            codeGen.Output.WriteString(String(FTemplate[i].VString^));
+//         vtAnsiString :
+//            codeGen.Output.WriteString(String(AnsiString(FTemplate[i].VAnsiString)));
          vtUnicodeString :
             codeGen.Output.WriteString(String(FTemplate[i].VUnicodeString));
          vtWideChar :
