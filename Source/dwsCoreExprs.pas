@@ -357,6 +357,8 @@ type
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property Expr : TDataExpr read FExpr;
    end;
 
    // Field expression: obj.Field
@@ -3494,7 +3496,7 @@ end;
 //
 function TBoolImpliesExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
-   Result:=(not FLeft.EvalAsBoolean(exec)) or FRight.EvalAsBoolean(exec);;
+   Result:=(not FLeft.EvalAsBoolean(exec)) or FRight.EvalAsBoolean(exec);
 end;
 
 // ------------------
