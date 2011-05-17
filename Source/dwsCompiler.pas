@@ -333,8 +333,11 @@ type
       function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
       function ReadPropertyDecl(classSym : TClassSymbol; aVisibility : TClassVisibility) : TPropertySymbol;
       function ReadPropertyExpr(var expr : TDataExpr; propertySym : TPropertySymbol; isWrite: Boolean) : TProgramExpr;
-      function ReadPropertyReadExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TTypedExpr;
+      function ReadPropertyReadExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TProgramExpr;
       function ReadPropertyWriteExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TProgramExpr;
+      function ReadPropertyArrayAccessor(var expr : TDataExpr; propertySym : TPropertySymbol;
+                                         typedExprList : TTypedExprList;
+                                         const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExpr;
       function ReadRecord(const typeName : String) : TRecordSymbol;
       function ReadRaise : TRaiseBaseExpr;
       function ReadRepeat : TNoResultExpr;
@@ -2013,7 +2016,7 @@ begin
       else if FTok.Test(ttBLEFT) or FTok.Test(ttINHERITED) or FTok.TestName then begin // !! TestName must be the last !!
          hotPos:=FTok.HotPos;
          if FTok.Test(ttBLEFT) then // (X as TY)
-            locExpr := ReadSymbol(ReadTerm)
+            locExpr := ReadSymbol(ReadTerm(True))
          else locExpr := ReadName(True);
          try
             token:=FTok.TestDeleteAny(cAssignmentTokens);
@@ -2412,11 +2415,11 @@ end;
 
 // ReadPropertyReadExpr
 //
-function TdwsCompiler.ReadPropertyReadExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TTypedExpr;
+function TdwsCompiler.ReadPropertyReadExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TProgramExpr;
 var
    sym : TSymbol;
    aPos : TScriptPos;
-   funcExpr : TFuncExpr;
+   typedExprList : TTypedExprList;
 begin
    Result := nil;
    aPos:=FTok.HotPos;
@@ -2438,24 +2441,17 @@ begin
 
    end else if sym is TMethodSymbol then begin
 
-      // ReadSym is a method
-      if Expr.Typ is TClassOfSymbol then
-         funcExpr := GetMethodExpr(TMethodSymbol(sym), expr, rkClassOfRef, aPos, False)
-      else funcExpr := GetMethodExpr(TMethodSymbol(sym), expr, rkObjRef, aPos, False);
-      Result:=funcExpr;
-
+      typedExprList:=TTypedExprList.Create;
       try
-         // Add array indices if any
-         if propertySym.HasArrayIndices then
-            ReadArguments(funcExpr.AddArg, ttALEFT, ttARIGHT, funcExpr.ExpectedArg);
+         if propertySym.HasArrayIndices then begin
+            typedExprList.Table:=propertySym.ArrayIndices;
+            ReadArguments(typedExprList.AddExpr, ttALEFT, ttARIGHT, typedExprList.ExpectedArg);
+         end;
 
-         if Assigned(propertySym.IndexSym) then
-            funcExpr.AddArg(TConstExpr.CreateTyped(FProg, propertySym.IndexSym,
-                                                   propertySym.IndexValue));
-         funcExpr.TypeCheckArgs(FProg);
-      except
-         Result.Free;
-         raise;
+         Result:=ReadPropertyArrayAccessor(expr, propertySym, typedExprList, aPos, False);
+
+      finally
+         typedExprList.Free;
       end;
 
    end else Assert(False);
@@ -2469,9 +2465,7 @@ var
    aPos : TScriptPos;
    fieldExpr : TFieldExpr;
    tokenType : TTokenType;
-   funcExpr : TFuncExpr;
    typedExprList : TTypedExprList;
-   i : Integer;
 begin
    Result := nil;
    aPos:=FTok.HotPos;
@@ -2510,42 +2504,29 @@ begin
             // WriteSym is a Method
             // Convert an assignment to a function call f := x  -->  f(x)
 
-            if Expr.Typ is TClassOfSymbol then begin
-               // Class properties
-               if not TMethodSymbol(sym).IsClassMethod then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticPropertyWriteExpected);
-               funcExpr := GetMethodExpr(TMethodSymbol(sym), Expr, rkClassOfRef, aPos, False);
-            end else funcExpr := GetMethodExpr(TMethodSymbol(sym), Expr, rkObjRef, aPos, False);
+            Result:=ReadPropertyArrayAccessor(expr, propertySym, typedExprList, aPos, True);
 
-            try
-               Expr := nil; // is part of Result
-
-               // Add array indices (if any)
-               for i:=0 to typedExprList.Count-1 do
-                  funcExpr.AddArg(typedExprList.Expr[i]);
-               typedExprList.Clear;
-
-               if Assigned(propertySym.IndexSym) then
-                  funcExpr.AddArg(TConstExpr.CreateTyped(FProg, propertySym.IndexSym,
-                                                         propertySym.IndexValue));
-
-               // Add right side of assignment
-               funcExpr.AddArg(ReadExpr);
-
-               funcExpr.TypeCheckArgs(FProg);
-            except
-               funcExpr.Free;
-               raise;
-            end;
-            Result:=funcExpr;
-         end;
+         end else Assert(False);
 
       end else begin
 
          if    FTok.Test(ttDOT)
             or (FTok.Test(ttBLEFT) and (propertySym.BaseType is TFuncSymbol))  then begin
 
-            Result:=ReadSymbol(ReadPropertyReadExpr(Expr, propertySym), True);
+            sym:=propertySym.ReadSym;
+
+            if sym is TMethodSymbol then begin
+
+               Result:=ReadPropertyArrayAccessor(expr, propertySym, typedExprList, aPos, False);
+
+            end else if sym is TFieldSymbol then begin
+
+               if expr.Typ is TClassSymbol then
+                  Result:=TReadOnlyFieldExpr.Create(FProg, FTok.HotPos, sym.Typ,
+                                                    TFieldSymbol(sym), expr)
+               else FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
+
+            end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_WriteOnlyProperty)
 
          end else begin
 
@@ -2560,6 +2541,48 @@ begin
 
    finally
       typedExprList.Free;
+   end;
+end;
+
+// ReadPropertyArrayAccessor
+//
+function TdwsCompiler.ReadPropertyArrayAccessor(var expr : TDataExpr; propertySym : TPropertySymbol;
+      typedExprList : TTypedExprList; const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExpr;
+var
+   i : Integer;
+   sym : TSymbol;
+begin
+   if isWrite then
+      sym:=propertySym.WriteSym
+   else sym:=propertySym.ReadSym;
+
+   if expr.Typ is TClassOfSymbol then begin
+      // Class properties
+      if not TMethodSymbol(sym).IsClassMethod then
+         FMsgs.AddCompilerStop(scriptPos, CPE_StaticPropertyWriteExpected);
+      Result:=GetMethodExpr(TMethodSymbol(sym), expr, rkClassOfRef, scriptPos, False);
+   end else Result:=GetMethodExpr(TMethodSymbol(sym), expr, rkObjRef, scriptPos, False);
+
+   try
+      expr := nil; // is part of Result
+
+      // Add array indices (if any)
+      for i:=0 to typedExprList.Count-1 do
+         Result.AddArg(typedExprList.Expr[i]);
+      typedExprList.Clear;
+
+      if Assigned(propertySym.IndexSym) then
+         Result.AddArg(TConstExpr.CreateTyped(FProg, propertySym.IndexSym,
+                                              propertySym.IndexValue));
+
+      // Add right side of assignment
+      if isWrite then
+         Result.AddArg(ReadExpr);
+
+      Result.TypeCheckArgs(FProg);
+   except
+      Result.Free;
+      raise;
    end;
 end;
 
@@ -4614,7 +4637,7 @@ begin
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
          end;
          if Result.Typ is TClassSymbol then
-            Result:=ReadSymbol(Result) as TTypedExpr;
+            Result:=ReadSymbol(Result, isWrite) as TTypedExpr;
       end;
       ttTRUE :
          Result:=ReadTrue;
