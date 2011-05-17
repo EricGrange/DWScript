@@ -17,7 +17,7 @@ begin
    PrintLn('Sub '+IntToStr(Field));
 end;
 
-procedure TSub.SetProp(x: Integer; v: String);
+procedure TSub.SetProp(v: String);
 begin
    PrintLn('SetProp '+IntToStr(Field)+': '+v);
 end;
