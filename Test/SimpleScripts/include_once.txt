@@ -3,5 +3,3 @@ Hello include!
 after
 Hello include!
 done
-loop
-Hello include once!
