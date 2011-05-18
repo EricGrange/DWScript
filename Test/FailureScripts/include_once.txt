@@ -1,0 +1,1 @@
+Warning: Filename case does not match: "include.INC" already included as "include.inc" [line: 2, column: 3]
