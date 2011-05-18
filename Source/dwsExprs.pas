@@ -2671,7 +2671,7 @@ var
 begin
    for i:=0 to FSourceFiles.Count-1 do begin
       Result:=TSourceFile(FSourceFiles.List[i]);
-      if Result.Name=aSourceFile then Exit;
+      if UnicodeSameText(Result.Name, aSourceFile) then Exit;
    end;
    Result:=nil;
 end;

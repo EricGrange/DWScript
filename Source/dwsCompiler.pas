@@ -4978,7 +4978,13 @@ begin
          name := FTok.GetToken.FString;
          FTok.KillToken;
 
-         if (switch<>siIncludeOnce) or (FMainProg.GetSourceFile(name)=nil) then begin
+         if (switch=siIncludeOnce) then begin
+            sourceFile:=FMainProg.GetSourceFile(name);
+            if (sourceFile<>nil) and (sourceFile.Name<>name) then
+               FMsgs.AddCompilerWarningFmt(switchPos, CPW_IncludeOnceWithDifferentCase,
+                                           [name, sourceFile.Name]);
+         end else sourceFile:=nil;
+         if sourceFile=nil then begin
             try
                oldTok := FTok;
                scriptSource := GetScriptSource(name);

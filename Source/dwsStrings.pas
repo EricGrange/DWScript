@@ -298,6 +298,7 @@ const
   CPW_InfiniteLoop = 'Infinite loop';
   CPW_ConstantCondition = 'Constant condition';
   CPW_UnReachableCode = 'Unreachable code';
+  CPW_IncludeOnceWithDifferentCase = 'Filename case does not match: "%s" already included as "%s"';
 
   CPE_NoResultTypeRequired = 'No result type required';
   CPE_ResultTypeExpected = 'Result type expected';
