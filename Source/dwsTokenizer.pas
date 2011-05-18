@@ -102,7 +102,7 @@ type
    end;
 
    TConvertAction = (caNone, caClear, caName, caHex, caInteger, caFloat, caChar,
-     caCharHex, caString, caSwitch, caDotDot);
+                     caCharHex, caString, caSwitch, caDotDot);
    TTransitionOptions = set of (toStart, toFinal);
 
    TTransition = class
@@ -576,9 +576,7 @@ begin
    oc:=Ord(c);
    if oc<127 then
       Result:=FTransitions[oc]
-   else if Character.IsLetterOrDigit(c) then
-      Result:=FTransitions[127]
-   else Result:=FTransitions[0];
+   else Result:=FTransitions[127];
 end;
 
 // AddTransition
