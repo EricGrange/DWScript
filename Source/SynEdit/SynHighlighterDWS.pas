@@ -28,7 +28,7 @@ replace them with the notice and other provisions required by the GPL.
 If you do not delete the provisions above, a recipient may use your version
 of this file under either the MPL or the GPL.
 
-$Id: SynHighlighterDWS.pas,v 1.2 2011/04/15 08:10:41 Egg Exp $
+$Id: SynHighlighterDWS.pas,v 1.3 2011/05/18 07:37:25 Egg Exp $
 
 You may retrieve the latest version of this file at the SynEdit home page,
 located at http://SynEdit.SourceForge.net
@@ -685,6 +685,10 @@ begin
                  SymbolProc;
             end;
           end;
+         #$0080..#$FFFF :
+            if TCharacter.IsLetterOrDigit(fLine[Run]) then
+               IdentProc
+            else UnknownProc;
         else
           UnknownProc;
       end;
