@@ -28,6 +28,8 @@ type
          procedure ExecutionOptimized;
 
          procedure SymbolDescriptions;
+
+         procedure CallAfterExec;
    end;
 
 // ------------------------------------------------------------------
@@ -171,6 +173,39 @@ begin
    finally
       expectedResult.Free;
       source.Free;
+   end;
+end;
+
+// CallAfterExec
+//
+procedure TdwsClassesTests.CallAfterExec;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   func : IInfo;
+begin
+   prog:=FCompiler.Compile( 'var s = TStrings.Create;'#13#10
+                           +'s.Add("Line 1");'#13#10
+                           +'s.Add("Line 2");'#13#10
+                           +'procedure MyProc;'#13#10
+                           +'begin'#13#10
+                           +'  Print(s.Count)'#13#10
+                           +'end;'#13#10
+                           +'Print(s.Text)');
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+
+      CheckEquals('Line 1'#13#10'Line 2'#13#10, exec.Result.ToString);
+
+      func:=exec.Info.Func['MyProc'];
+      func.Call([]);
+
+      CheckEquals('Line 1'#13#10'Line 2'#13#10'2', exec.Result.ToString);
+   finally
+      exec.EndProgram;
    end;
 end;
 

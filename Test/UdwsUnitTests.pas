@@ -932,7 +932,9 @@ var
    p : IInfo;
 begin
    prog:=FCompiler.Compile( 'var p : TPoint;'#13#10
-                           +'Print(Format(''%d, %d'', [p.X, p.Y]));');
+                           +'Print(Format(''%d, %d'', [p.X, p.Y]));'#13#10
+                           +'p.X:=p.Y; p.Y:=789;'#13#10
+                           );
 
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
 
@@ -949,6 +951,10 @@ begin
       exec.RunProgram(0);
 
       CheckEquals( '123, 456', exec.Result.ToString, 'Result');
+
+      p:=exec.Info.Vars['p'];
+      CheckEquals(456, p.Member['x'].Value, 'After exec Fields 1');
+      CheckEquals(789, p.Member['y'].Value, 'After exec Fields 2');
    finally
       exec.EndProgram;
    end;
