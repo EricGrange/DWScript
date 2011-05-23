@@ -188,6 +188,8 @@ type
          property UserObject : TObject read GetUserObject write SetUserObject;
    end;
 
+   TExprBaseEnumeratorProc = reference to procedure (parent, expr : TExprBase; var abort : Boolean);
+
    // Base class for all Exprs
    TExprBase = class
       protected
@@ -216,6 +218,9 @@ type
          function ScriptLocation(prog : TObject) : String; virtual; abstract;
 
          class function CallStackToString(const callStack : TdwsExprLocationArray) : String; static;
+
+         procedure RecursiveEnumerateSubExprs(const callback : TExprBaseEnumeratorProc);
+         function IndexOfSubExpr(expr : TExprBase) : Integer;
    end;
 
    TExprBaseClass = class of TExprBase;
@@ -1389,6 +1394,48 @@ begin
    finally
       buffer.Free;
    end;
+end;
+
+// RecursiveEnumerateSubExprs
+//
+procedure TExprBase.RecursiveEnumerateSubExprs(const callback : TExprBaseEnumeratorProc);
+var
+   i : Integer;
+   abort : Boolean;
+   base, expr : TExprBase;
+   stack : TSimpleStack<TExprBase>;
+begin
+   stack:=TSimpleStack<TExprBase>.Create;
+   try
+      abort:=False;
+      stack.Push(Self);
+      repeat
+         base:=stack.Peek;
+         stack.Pop;
+         for i:=0 to base.SubExprCount-1 do begin
+            expr:=base.SubExpr[i];
+            if expr<>nil then begin
+               stack.Push(expr);
+               callback(base, expr, abort);
+               if abort then Exit;
+            end;
+         end;
+      until stack.Count=0;
+   finally
+      stack.Free;
+   end;
+end;
+
+// IndexOfSubExpr
+//
+function TExprBase.IndexOfSubExpr(expr : TExprBase) : Integer;
+var
+   i : Integer;
+begin
+   for i:=0 to SubExprCount-1 do
+      if SubExpr[i]=expr then
+         Exit(i);
+   Result:=-1;
 end;
 
 // GetSubExpr
