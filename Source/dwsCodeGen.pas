@@ -46,8 +46,12 @@ type
          FTempReg : TdwsRegisteredCodeGen;
          FLocalTable : TSymbolTable;
          FContext : TdwsProgram;
+         FTableStack : TTightStack;
+         FContextStack : TTightStack;
 
       protected
+         procedure EnterContext(proc : TdwsProgram); virtual;
+         procedure LeaveContext; virtual;
 
       public
          constructor Create; virtual;
@@ -162,6 +166,8 @@ begin
    FOutput.Free;
    FCodeGenList.Clean;
    FCodeGenList.Free;
+   FTableStack.Free;
+   FContextStack.Free;
 end;
 
 // RegisterCodeGen
@@ -191,7 +197,16 @@ end;
 // FindSymbolAtStackAddr
 //
 function TdwsCodeGen.FindSymbolAtStackAddr(stackAddr : Integer) : TDataSymbol;
+var
+   funcSym : TFuncSymbol;
 begin
+   if (Context is TdwsProcedure) then begin
+      funcSym:=TdwsProcedure(Context).Func;
+      Result:=funcSym.Result;
+      if (Result<>nil) and (Result.StackAddr=stackAddr) then
+         Exit;
+   end;
+
    if FLocalTable=nil then Exit(nil);
    Result:=FLocalTable.FindSymbolAtStackAddr(stackAddr);
 end;
@@ -259,24 +274,18 @@ end;
 //
 procedure TdwsCodeGen.CompileFuncSymbol(func : TSourceFuncSymbol);
 var
-   oldTable : TSymbolTable;
-   oldContext : TdwsProgram;
    proc : TdwsProcedure;
 begin
    proc:=(func.Executable as TdwsProcedure);
    // nil executable means it's a function pointer type
    if proc<>nil then begin
-      oldTable:=FLocalTable;
-      oldContext:=FContext;
-      FLocalTable:=proc.Table;
-      FContext:=proc;
+      EnterContext(proc);
 
       Assert(func.SubExprCount=2);
       Compile(func.SubExpr[0]);
       Compile(func.SubExpr[1]);
 
-      FLocalTable:=oldTable;
-      FContext:=oldContext;
+      LeaveContext;
    end;
 end;
 
@@ -285,23 +294,18 @@ end;
 procedure TdwsCodeGen.CompileProgram(const prog : IdwsProgram);
 var
    p : TdwsProgram;
-   oldTable : TSymbolTable;
-   oldContext : TdwsProgram;
 begin
    p:=(prog as TdwsProgram);
 
-   oldTable:=FLocalTable;
-   oldContext:=FContext;
-   FLocalTable:=p.Table;
-   FContext:=p;
+   EnterContext(p);
+
+   Compile(p.InitExpr);
 
    CompileSymbolTable(p.Table);
 
-   Compile(p.InitExpr);
    Compile(p.Expr);
 
-   FLocalTable:=oldTable;
-   FContext:=oldContext;
+   LeaveContext;
 end;
 
 // CompileDependencies
@@ -325,6 +329,26 @@ begin
    finally
       buf.Free;
    end;
+end;
+
+// EnterContext
+//
+procedure TdwsCodeGen.EnterContext(proc : TdwsProgram);
+begin
+   FTableStack.Push(FLocalTable);
+   FContextStack.Push(FContext);
+   FLocalTable:=proc.Table;
+   FContext:=proc;
+end;
+
+// LeaveContext
+//
+procedure TdwsCodeGen.LeaveContext;
+begin
+   FLocalTable:=TSymbolTable(FTableStack.Peek);
+   FTableStack.Pop;
+   FContext:=TdwsProgram(FContextStack.Peek);
+   FContextStack.Pop;
 end;
 
 // ------------------
