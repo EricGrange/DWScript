@@ -116,6 +116,7 @@ type
       public
          destructor Destroy; override;
          function Add(const anItem : T) : Integer;
+         function IndexOf(const anItem : T) : Integer;
          procedure ExtractAll;
          procedure Clear;
          property Items[index : Integer] : T read GetItem write SetItem; default;
@@ -177,7 +178,7 @@ type
    TSimpleHashBucketArray<T> = array of TSimpleHashBucket<T>;
 
    {: Minimalistic open-addressing hash, subclasse must override SameItem and GetItemHashCode.
-      HashCodes *MUST *be non null }
+      HashCodes *MUST* be non null }
    TSimpleHash<T> = class
       private
          FBuckets : TSimpleHashBucketArray<T>;
@@ -811,6 +812,17 @@ begin
       SetLength(FItems, Count+8+(Count shr 4));
    FItems[FCount]:=anItem;
    Inc(FCount);
+end;
+
+// IndexOf
+//
+function TObjectList<T>.IndexOf(const anItem : T) : Integer;
+var
+   i : Integer;
+begin
+   for i:=0 to Count-1 do
+      if FItems[i]=anItem then Exit(i);
+   Result:=-1;
 end;
 
 // ExtractAll
