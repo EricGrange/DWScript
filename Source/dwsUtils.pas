@@ -1156,8 +1156,11 @@ begin
          newBlock[0]:=FCurrentBlock;
          PInteger(@newBlock[1])^:=count;
          Move(source^, newBlock[2], count);
-         if FFirstBlock=FCurrentBlock then
-            FFirstBlock:=newBlock;
+         if FFirstBlock=nil then
+            FFirstBlock:=newBlock
+         else FCurrentBlock[0]:=newBlock;
+         FCurrentBlock:=newBlock;
+         AllocateCurrentBlock;
          Exit;
       end;
    end;
