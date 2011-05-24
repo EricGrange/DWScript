@@ -1,0 +1,442 @@
+<!doctype html>
+	<head>
+		
+		<script type="text/javascript">
+			alert("new test" + '\n' + 'test');
+		</script>
+		<script type="text/javascript">
+			alert('test' + "\n" + 'test');
+		</script>
+	</head>
+	<body id="neworder">
+		<table id="client-layout" style="margin-top: 0.2em; width: 99%;">
+			<tr>
+				<td style="width: 100%;" valign="top">
+					<div id="orders" class="ui-widget" style="width: 100%;">
+						<div class="ui-widget-header" style="height: 2em; text-align: center;">
+							<span style="margin-left: 0.5em; margin-top: 0.2em; font-size: 1.7em; font-weight: bold; float: left;">Step 1.</span>
+							Select an order
+						</div>
+						<div class="ui-widget-content" style="text-align: center;">
+							<table id="orderlist" style="margin-top: 0.5em; height: 100%; width: 97%;">
+								<!-- filled via async req -->
+							</table>
+							<div id="orderlistnav"></div>
+							<button style="margin-top: 0.5em;" onclick="showNewOrder();">New Order</button>
+							<button onclick="$( '#orderlist' )[0].toggleToolbar();">Toggle search</button>
+							<button onclick="alert('delete?');">Delete order</button>
+						</div>
+					</div>
+				</td>
+			</tr>
+			<tr>
+				<td style="width: 100%;" valign="top">
+					<div id="clients" class="ui-widget" style="width: 100%; margin-top: 2em;">
+						<div class="ui-widget-header" style="height: 2em; text-align: center;">
+							<span style="margin-left: 0.5em; margin-top: 0.2em; font-size: 1.7em; font-weight: bold; float: left;">Step 2.</span>
+								Select client(s)
+							</div>
+						<div class="ui-widget-content" style="text-align: center;">
+							<!-- <input type="text" style="margin-top: 0.5em; width: 97%;" /> -->
+							<table id="clientlist" class="ui-widget-content" style="margin-top: 0.5em; width: 97%;">
+								<!-- filled via async req -->
+							</table>
+							<div id="clientlistnav"></div>
+							<button style="margin-top: 0.5em;" onclick="showNewClient();">New client</button>
+							<button onclick="$( '#clientlist' )[0].toggleToolbar();">Toggle search</button>
+							<button onclick="alert('delete?');">Delete client</button>
+						</div>
+					</div>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<div id="cc" class="ui-widget" style="margin-top: 2em; text-align: center; float: left; width: 100%;">
+						<div class="ui-widget-header" style="height: 2em; text-align: center;">
+							<span style="margin-left: 0.5em; margin-top: 0.2em; font-size: 1.7em; font-weight: bold; float: left;">Step 3.</span>
+								Click "Review &amp; Confirm" below to see order to be sent to your client(s).
+						</div>
+						<div class="ui-widget-content" style="padding: 0.5em;">
+							<button onclick="doReview();">Review &amp; Confirm</button>
+						</div>
+					</div>
+				</td>
+			</tr>
+		</table>
+		<!-- add order dialog -->
+		<div id="orderdlg">
+			<input id="idorder" type="hidden" />
+			<!-- order data -->
+			<div id="orderdata">
+				<table>
+					<tbody style="text-align: right;">
+						<tr>
+							<td>Description</td>
+							<td>
+								<input
+									id="orderdesc"
+									type="text"
+									style="width: 100%;"
+									/>
+							</td>
+							<td rowspan="2" style="text-align: center; width: 100px;">
+								<button onclick="addOrder();">Add</button>
+							</td>
+						</tr>
+						<tr>
+							<td>Order number</td>
+							<td>
+								<input
+									id="orderno"
+									type="text"
+									style="width: 100%;"
+									/>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div id="ordergrid">
+				<!-- products -->
+				<h3><a href="#">Step 1. Products</a></h3>
+				<div style="height: 400;">
+					<div class="ui-widget-content" style="border: 1px solid black; margin-bottom: 0.2em;">
+						<table style="100%; text-align: right;">
+							<tbody>
+								<tr>
+									<td>Description</td>
+									<td colspan="5">
+										<input
+											id="proddesc"
+											type="text"
+											style="width: 100%;"
+											/>
+									</td>
+									<td rowspan="2" style="width: 80; text-align: center;">
+										<button
+											style="text-align: center;"
+											onclick="addProduct();">
+											Add
+										</button>
+									</td>
+								</tr>
+								<tr>
+									<td>SKU</td>
+									<td>
+										<input
+											id="prodsku"
+											type="text"
+											style="width: 100%;"
+											/>
+										</td>
+									<td style="width: 100;">Quantity</td>
+									<td>
+										<input
+											id="prodqty"
+											type="text"
+											style="width: 100%;"
+											/>
+										</td>
+									<td style="width: 100;">Amount</td>
+									<td>
+										<input
+											id="prodprice"
+											type="text"
+											style="width: 100%;"
+											/>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<div style="overflow: auto; max-height: 300px;">
+						<table id="prodlist" class="ui-widget" style="border: 1px black solid; width: 100%;">
+							<thead class="ui-widget-header">
+								<tr>
+									<th style="width: 60;">Action</th>
+									<th>Description</th>
+									<th>SKU</th>
+									<th>Quantity</th>
+									<th style="width: 120; text-align: right;">Amount</th>
+								</tr>
+							</thead>
+							<tbody id="prodlistdata" class="ui-widget-content rowhigh">
+								<!-- to be filled -->
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<!-- shipping -->
+				<h3><a href="#">Step 2. Shipping</a></h3>
+				<div id="shipping" style="height: 400;">
+					<table style="width: 100%; text-align: right;">
+						<tbody>
+							<tr>
+								<td>Description</td>
+								<td colspan="3">
+									<input
+										id="shipdesc"
+										type="text"
+										style="width: 100%;"
+										/>
+								</td>
+								<td rowspan="2">
+									<button onclick="saveShipping();">Save shipping <br />information</button>
+								</td>
+							</tr>
+							<tr>
+								<td>SKU</td>
+								<td>
+									<input
+										id="shipsku"
+										type="text"
+										style="width: 100%;"
+										/>
+								</td>
+								<td>Amount</td>
+								<td>
+									<input
+										id="shipprice"
+										type="text"
+										style="width: 100%;"
+										/>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+				<!-- discounts -->
+				<h3><a href="#">Step 3. Discounts</a></h3>
+				<div style="height: 400;">
+					<div class="ui-widget-content" style="border: 1px solid black; margin-bottom: 0.2em;">
+						<table style="width: 100%; text-align: right;">
+							<tbody>
+								<tr>
+									<td>Description</td>
+									<td colspan="4">
+										<input
+											id="discdesc"
+											type="text"
+											style="width: 100%;"
+											/>
+									</td>
+									<td rowspan="2" style="width: 80; text-align: center;">
+										<button
+											style="text-align: center;"
+											onclick="addDiscount();"
+											>
+											Add
+										</button>
+									</td>
+								</tr>
+								<tr>
+									<td>SKU</td>
+									<td>
+										<input
+											id="discsku"
+											type="text"
+											style="width: 100%;"
+											/>
+										</td>
+									<td style="width: 100;">Amount</td>
+									<td>
+										<input
+											id="discprice"
+											type="text"
+											style="width: 100%;"
+											/>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<div style="overflow: auto; max-height: 300px;">
+						<table id="disclist" class="ui-widget" style="border: 1px black solid; width: 100%;">
+							<thead class="ui-widget-header">
+								<tr>
+									<th style="width: 60px;">Action</th>
+									<th>Description</th>
+									<th>SKU</th>
+									<th style="width: 120px; text-align: right;">Amount</th>
+								</tr>
+							</thead>
+							<tbody id="disclistdata" class="ui-widget-content rowhigh">
+								<!-- to be filled -->
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<!-- fees -->
+				<h3><a href="#">Step 4. Fees</a></h3>
+				<div style="height: 400;">
+					<div class="ui-widget-content" style="border: 1px solid black; margin-bottom: 0.2em;">
+						<table style="width: 100%; text-align: right;">
+							<tbody>
+								<tr>
+									<td>Description</td>
+									<td colspan="4">
+										<input
+											id="feedesc"
+											type="text"
+											style="width: 100%;"
+											/>
+									</td>
+									<td rowspan="2" style="width: 80; text-align: center;">
+										<button
+											style="text-align: center;"
+											onclick="addFee();"
+											>
+											Add
+										</button>
+									</td>
+								</tr>
+								<tr>
+									<td>SKU</td>
+									<td>
+										<input
+											id="feesku"
+											type="text"
+											style="width: 100%;"
+											/>
+										</td>
+									<td style="width: 100;">Amount</td>
+									<td>
+										<input
+											id="feeprice"
+											type="text"
+											style="width: 100%;"
+											/>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<div style="overflow: auto; max-height: 300px;">
+						<table id="feelist" class="ui-widget" style="border: 1px black solid; width: 100%;">
+							<thead class="ui-widget-header">
+								<tr>
+									<th style="width: 60;">Action</th>
+									<th>Description</th>
+									<th>SKU</th>
+									<th style="width: 120; text-align: right;">Amount</th>
+								</tr>
+							</thead>
+							<tbody id="feelistdata" class="ui-widget-content rowhigh">
+								<!-- to be filled -->
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="clientdlg">
+			<input id="idclient" type="hidden" />
+			<div id="client" style="height: 100%;">
+				<ul>
+					<li><a href="#client-1">1. Details</a></li>
+					<li><a href="#client-2">2. Contacts</a></li>
+				</ul>
+				<div id="client-1">
+					<table style="width: 100%;">
+						<tbody style="text-align: right;">
+							<tr>
+								<td style="width: 100;">Description</td>
+								<td>
+									<input
+										id="clientdesc"
+										type="text"
+										style="width: 100%"
+										/>
+								</td>
+								<td rowspan="2">
+									<button onclick="addClient();">
+										Add client
+									</button>
+								</td>
+							</tr>
+							<tr>
+								<td>Customer number</td>
+								<td  style="width: 100;">
+									<input
+										id="clientcustno"
+										type="text"
+										style="width: 100%"
+										/>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+				<div id="client-2">
+					<div class="ui-widget-content" style="border: 1px solid black; margin-bottom: 0.2em;">
+						<table style="width: 100%; text-align: right;">
+							<tbody>
+								<tr>
+									<td>First name</td>
+									<td>
+										<input
+											id="cfn"
+											type="text"
+											style="width: 100%;"
+											/>
+									</td>
+									<td>Last name</td>
+									<td>
+										<input
+											id="cln"
+											type="text"
+											style="width: 100%;"
+											/>
+									</td>
+									<td rowspan="2" style="width: 80; text-align: center;">
+										<button
+											style="text-align: center;"
+											onclick="addContact();"
+											>
+											Add
+										</button>
+									</td>
+								</tr>
+								<tr>
+									<td style="width: 100;">Nick name</td>
+									<td>
+										<input
+											id="cnn"
+											type="text"
+											style="width: 100%;"
+											/>
+									</td>
+									<td>E-mail</td>
+									<td>
+										<input
+											id="cem"
+											type="text"
+											style="width: 100%;"
+											/>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<div style="overflow: auto; max-height: 300px;">
+						<table id="contactlist" class="ui-widget" style="border: 1px black solid; width: 100%;">
+							<thead class="ui-widget-header">
+								<tr>
+									<th style="width: 60;">Action</th>
+									<th>First name</th>
+									<th>Last name</th>
+									<th>Nick name</th>
+									<th>E-mail</th>
+								</tr>
+							</thead>
+							<tbody class="ui-widget-content rowhigh">
+								<!-- to be filled -->
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="msgdlg"></div>
+	</body>
+</html>
