@@ -1029,6 +1029,7 @@ type
          procedure AddOperator(Sym: TClassOperatorSymbol);
          procedure AddConst(sym : TClassConstSymbol);
 
+         function  FieldAtOffset(offset : Integer) : TFieldSymbol;
          procedure InheritFrom(ancestorClassSym : TClassSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
@@ -2689,6 +2690,21 @@ procedure TClassSymbol.AddConst(sym : TClassConstSymbol);
 begin
    sym.ClassSymbol:=Self;
    FMembers.AddSymbol(sym);
+end;
+
+// FieldAtOffset
+//
+function TClassSymbol.FieldAtOffset(offset : Integer) : TFieldSymbol;
+var
+   i : Integer;
+begin
+   for i:=0 to Members.Count-1 do begin
+      Result:=TFieldSymbol(Members[i]);
+      if (Result.ClassType=TFieldSymbol) and (Result.Offset=offset) then Exit;
+   end;
+   if Parent<>nil then
+      Result:=Parent.FieldAtOffset(offset)
+   else Result:=nil;
 end;
 
 procedure TClassSymbol.InitData(const Data: TData; Offset: Integer);
