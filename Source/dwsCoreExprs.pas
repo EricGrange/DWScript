@@ -368,8 +368,8 @@ type
    // Field expression: obj.Field
    TFieldExpr = class(TPosDataExpr)
       protected
-         FObjectExpr: TDataExpr;
-         FFieldAddr: Integer;
+         FObjectExpr : TDataExpr;
+         FFieldAddr : Integer;
 
          function GetAddr(exec : TdwsExecution) : Integer; override;
          function GetData(exec : TdwsExecution) : TData; override;
@@ -386,6 +386,9 @@ type
          procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+
+         property ObjectExpr : TDataExpr read FObjectExpr;
+         property FieldAddr : Integer read FFieldAddr;
    end;
 
    TReadOnlyFieldExpr = class(TFieldExpr)
