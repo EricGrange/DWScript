@@ -65,6 +65,7 @@ type
          procedure CompileSymbolTable(table : TSymbolTable); virtual;
          procedure CompileEnumerationSymbol(enum : TEnumerationSymbol); virtual;
          procedure CompileFuncSymbol(func : TSourceFuncSymbol); virtual;
+         procedure CompileRecordSymbol(rec : TRecordSymbol); virtual;
          procedure CompileProgram(const prog : IdwsProgram); virtual;
 
          procedure CompileDependencies(destStream : TWriteOnlyBlockStream); virtual;
@@ -259,7 +260,9 @@ begin
       if sym is TSourceFuncSymbol then
          CompileFuncSymbol(TSourceFuncSymbol(sym))
       else if sym is TEnumerationSymbol then
-         CompileEnumerationSymbol(TEnumerationSymbol(sym));
+         CompileEnumerationSymbol(TEnumerationSymbol(sym))
+      else if sym is TRecordSymbol then
+         CompileRecordSymbol(TRecordSymbol(sym));
    end;
 end;
 
@@ -287,6 +290,13 @@ begin
 
       LeaveContext;
    end;
+end;
+
+// CompileRecordSymbol
+//
+procedure TdwsCodeGen.CompileRecordSymbol(rec : TRecordSymbol);
+begin
+   // nothing here
 end;
 
 // CompileProgram
