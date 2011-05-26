@@ -122,12 +122,12 @@ type
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
 
-   TFloorFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+   TFloorFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
    end;
 
-   TCeilFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+   TCeilFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
    end;
 
    TFracFunc = class(TInternalMagicFloatFunction)
@@ -373,14 +373,14 @@ end;
 
 { TFloorFunc }
 
-procedure TFloorFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+function TFloorFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 begin
    Result:=Floor(args.AsFloat[0]);
 end;
 
 { TCeilFunc }
 
-procedure TCeilFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+function TCeilFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 begin
    Result:=Ceil(args.AsFloat[0]);
 end;
@@ -540,8 +540,8 @@ initialization
    RegisterInternalFloatFunction(TSqrtFunc, 'Sqrt', ['v', cFloat], True);
    RegisterInternalFloatFunction(TIntFunc, 'Int', ['v', cFloat], True);
    RegisterInternalFloatFunction(TFracFunc, 'Frac', ['v', cFloat], True);
-   RegisterInternalFloatFunction(TFloorFunc, 'Floor', ['v', cFloat], True);
-   RegisterInternalFloatFunction(TCeilFunc, 'Ceil', ['v', cFloat], True);
+   RegisterInternalIntFunction(TFloorFunc, 'Floor', ['v', cFloat], True);
+   RegisterInternalIntFunction(TCeilFunc, 'Ceil', ['v', cFloat], True);
 
    RegisterInternalFunction(TTruncFunc, 'Trunc', ['v', cFloat], cInteger, True);
    RegisterInternalFunction(TRoundFunc, 'Round', ['v', cFloat], cInteger, True);
