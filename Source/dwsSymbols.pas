@@ -210,6 +210,7 @@ type
          procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); virtual; abstract;
          procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); virtual; abstract;
          procedure AssignValueAsString(exec : TdwsExecution; const value : String); virtual; abstract;
+         procedure AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj); virtual; abstract;
 
          property SubExpr[i : Integer] : TExprBase read GetSubExpr;
          property SubExprCount : Integer read GetSubExprCount;
@@ -863,18 +864,23 @@ type
 
    // record member1: Integer; member2: Integer end;
    TRecordSymbol = class(TTypeSymbol)
-   private
-   protected
-     FMembers: TSymbolTable;
-     function GetCaption : String; override;
-     function GetDescription : String; override;
-   public
-     constructor Create(const Name: string);
-     destructor Destroy; override;
-     procedure AddMember(Member: TMemberSymbol);
-     procedure InitData(const Data: TData; Offset: Integer); override;
-     function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-     property Members: TSymbolTable read FMembers;
+      private
+         FMembers : TSymbolTable;
+
+      protected
+         function GetCaption : String; override;
+         function GetDescription : String; override;
+
+      public
+         constructor Create(const Name: string);
+         destructor Destroy; override;
+
+         procedure AddMember(Member: TMemberSymbol);
+         function MemberAtOffset(offset : Integer) : TMemberSymbol;
+         procedure InitData(const Data: TData; Offset: Integer); override;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
+         property Members: TSymbolTable read FMembers;
    end;
 
    // Field of a script object
@@ -1110,6 +1116,7 @@ type
          constructor Create(const name : String; baseType : TTypeSymbol);
          destructor Destroy; override;
 
+         function DefaultValue : Integer;
          procedure InitData(const data : TData; offset : Integer); override;
          function BaseType : TTypeSymbol; override;
          function IsOfType(typSym : TTypeSymbol) : Boolean; override;
@@ -1688,6 +1695,19 @@ begin
    Member.Offset:=FSize;
    FSize:=FSize+Member.Typ.Size;
    FMembers.AddSymbol(Member);
+end;
+
+// MemberAtOffset
+//
+function TRecordSymbol.MemberAtOffset(offset : Integer) : TMemberSymbol;
+var
+   i : Integer;
+begin
+   for i:=0 to Members.Count-1 do begin
+      Result:=TMemberSymbol(Members[i]);
+      if Result.Offset=offset then Exit;
+   end;
+   Result:=nil;
 end;
 
 // InitData
@@ -3967,16 +3987,20 @@ begin
    inherited;
 end;
 
+// DefaultValue
+//
+function TEnumerationSymbol.DefaultValue : Integer;
+begin
+   if FElements.Count>0 then
+      Result:=TElementSymbol(FElements[0]).FUserDefValue
+   else Result:=0;
+end;
+
 // InitData
 //
 procedure TEnumerationSymbol.InitData(const Data: TData; Offset: Integer);
-var
-   v : Integer;
 begin
-   if FElements.Count>0 then
-      v:=TElementSymbol(FElements[0]).FUserDefValue
-   else v:=0;
-   Data[Offset]:=v;
+   Data[Offset]:=DefaultValue;
 end;
 
 // BaseType

@@ -50,11 +50,12 @@ type
          procedure AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer); override;
          procedure AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr); override;
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
-         procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
-         procedure AssignValueAsInteger(exec : TdwsExecution; const Value: Int64); override;
+         procedure AssignValue(exec : TdwsExecution; const value : Variant); override;
+         procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
          procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
-         procedure AssignValueAsFloat(exec : TdwsExecution; const Value: Double); override;
-         procedure AssignValueAsString(exec : TdwsExecution; const Value: String); override;
+         procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
+         procedure AssignValueAsString(exec : TdwsExecution; const value : String); override;
+         procedure AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj); override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
 
@@ -341,6 +342,9 @@ type
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; MemberSymbol: TMemberSymbol);
          destructor Destroy; override;
+
+         property BaseExpr : TDataExpr read FBaseExpr;
+         property MemberOffset : Integer read FMemberOffset;
 
          function IsWritable : Boolean; override;
    end;
@@ -751,6 +755,13 @@ type
          constructor CreateVal(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : String);
          procedure EvalNoResult(exec : TdwsExecution); override;
          property Right : String read FRight write FRight;
+   end;
+
+   // left := nil
+   TAssignNilToVarExpr = class(TAssignConstExpr)
+      public
+         constructor CreateVal(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr);
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // a := a op b
@@ -1402,6 +1413,13 @@ end;
 procedure TVarExpr.AssignValueAsString(exec : TdwsExecution; const Value: String);
 begin
    exec.Stack.WriteStrValue(Addr[exec], Value);
+end;
+
+// AssignValueAsScriptObj
+//
+procedure TVarExpr.AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj);
+begin
+   exec.Stack.WriteInterfaceValue(Addr[exec], value);
 end;
 
 // ------------------
@@ -3822,6 +3840,24 @@ end;
 procedure TAssignConstToStringVarExpr.EvalNoResult(exec : TdwsExecution);
 begin
    TVarExpr(FLeft).AssignValueAsString(exec, FRight);
+end;
+
+// ------------------
+// ------------------ TAssignNilToVarExpr ------------------
+// ------------------
+
+// CreateVal
+//
+constructor TAssignNilToVarExpr.CreateVal(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr);
+begin
+   inherited Create(prog, pos, left, nil);
+end;
+
+// EvalNoResult
+//
+procedure TAssignNilToVarExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   TVarExpr(FLeft).AssignValueAsScriptObj(exec, nil);
 end;
 
 // ------------------

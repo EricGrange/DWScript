@@ -598,6 +598,7 @@ type
          procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
          procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
          procedure AssignValueAsString(exec : TdwsExecution; const value: String); override;
+         procedure AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj); override;
 
          procedure RaiseScriptError(exec : TdwsExecution; e : EScriptError); overload;
          procedure RaiseScriptError(exec : TdwsExecution); overload;
@@ -701,6 +702,7 @@ type
          procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
          procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
          procedure AssignValueAsString(exec : TdwsExecution; const value: String); override;
+         procedure AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj); override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
          function IsWritable: Boolean; virtual;
@@ -2983,6 +2985,13 @@ begin
    AssignValue(exec, value);
 end;
 
+// AssignValueAsScriptObj
+//
+procedure TProgramExpr.AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj);
+begin
+   AssignValue(exec, value);
+end;
+
 // EvalAsInteger
 //
 function TProgramExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
@@ -3411,6 +3420,13 @@ end;
 // AssignValueAsString
 //
 procedure TDataExpr.AssignValueAsString(exec : TdwsExecution; const value: String);
+begin
+   AssignValue(exec, value);
+end;
+
+// AssignValueAsScriptObj
+//
+procedure TDataExpr.AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj);
 begin
    AssignValue(exec, value);
 end;
