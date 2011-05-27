@@ -67,5 +67,8 @@ var data : TData;
 ShuffleData(data);
 
 BubbleSort(data);
-PrintLn('Swaps: ' + IntToStr(swaps));
+Print('Swaps: ');
+if swaps>=150 then
+   PrintLn('>=1500')
+else PrintLn('<1500');
 ShowData(data);

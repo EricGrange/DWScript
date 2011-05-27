@@ -109,5 +109,8 @@ ShuffleData(data);
 //ShowData(data);
 
 QuickSortIterative(data);
-PrintLn('Swaps: ' + IntToStr(swaps));
+Print('Swaps: ');
+if swaps>=100 then
+   PrintLn('>=100')
+else PrintLn('<100');
 ShowData(data);
