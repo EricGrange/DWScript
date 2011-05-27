@@ -53,6 +53,10 @@ type
     function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
   end;
 
+  TBoolToStrFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+  end;
+
   TFloatToStrFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
@@ -276,10 +280,17 @@ begin
    Result:=StrToInt64('$'+args.AsString[0]);
 end;
 
+{ TBoolToStrFunc }
+
+procedure TBoolToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+const
+   cBoolToStr : array [False..True] of String = ( 'False', 'True' );
+begin
+   Result:=cBoolToStr[args.AsBoolean[0]];
+end;
+
 { TFloatToStrFunc }
 
-// DoEvalAsString
-//
 procedure TFloatToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
 begin
    Result:=FloatToStr(args.AsFloat[0]);
@@ -730,6 +741,8 @@ initialization
 
    RegisterInternalStringFunction(TIntToHexFunc, 'IntToHex', ['v', cInteger, 'digits', cInteger], True);
    RegisterInternalIntFunction(THexToIntFunc, 'HexToInt', ['hexa', cString], True);
+
+   RegisterInternalStringFunction(TBoolToStrFunc, 'BoolToStr', ['b', cBoolean], True);
 
    RegisterInternalStringFunction(TFloatToStrFunc, 'FloatToStr', ['f', cFloat], True);
    RegisterInternalFloatFunction(TStrToFloatFunc, 'StrToFloat', ['str', cString], True);
