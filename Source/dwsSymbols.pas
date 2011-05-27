@@ -1037,6 +1037,7 @@ type
          function  IsOfType(typSym : TTypeSymbol) : Boolean; override;
 
          function  VMTMethod(index : Integer) : TMethodSymbol;
+         function  VMTCount : Integer;
 
          procedure SetForwardedPos(const pos : TScriptPos);
          procedure ClearIsForwarded;
@@ -2797,6 +2798,13 @@ function TClassSymbol.VMTMethod(index : Integer) : TMethodSymbol;
 begin
    Assert(Cardinal(index)<Cardinal(Length(FVirtualMethodTable)));
    Result:=FVirtualMethodTable[index];
+end;
+
+// VMTCount
+//
+function TClassSymbol.VMTCount : Integer;
+begin
+   Result:=Length(FVirtualMethodTable);
 end;
 
 function TClassSymbol.GetDescription: string;
