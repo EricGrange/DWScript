@@ -1191,10 +1191,14 @@ begin
                   assignExpr:=TAssignConstToIntegerVarExpr.CreateVal(FProg, pos, varExpr, 0)
                else if varExpr.Typ=FProg.TypFloat then
                   assignExpr:=TAssignConstToFloatVarExpr.CreateVal(FProg, pos, varExpr, 0)
+               else if varExpr.Typ=FProg.TypBoolean then
+                  assignExpr:=TAssignConstToBoolVarExpr.CreateVal(FProg, pos, varExpr, False)
                else if varExpr.Typ=FProg.TypString then
                   assignExpr:=TAssignConstToStringVarExpr.CreateVal(FProg, pos, varExpr, '')
                else if varExpr.Typ.ClassType=TClassSymbol then
                   assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, pos, varExpr)
+               else if varExpr.Typ.ClassType=TClassOfSymbol then
+                  assignExpr:=TAssignNilClassToVarExpr.CreateVal(FProg, pos, varExpr)
                else begin
                   initData := nil;
                   SetLength(initData, sym.Typ.Size);

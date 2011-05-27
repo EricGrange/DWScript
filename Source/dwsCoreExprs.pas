@@ -114,11 +114,12 @@ type
    end;
 
    TVarParentExpr = class(TVarExpr)
-   protected
-     FLevel: Integer;
-     function GetAddr(exec : TdwsExecution) : Integer; override;
-   public
-     constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym: TDataSymbol);
+      protected
+         FLevel: Integer;
+         function GetAddr(exec : TdwsExecution) : Integer; override;
+      public
+         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym: TDataSymbol);
+         property Level : Integer read FLevel;
    end;
 
    // Encapsulates a lazy parameter
@@ -750,6 +751,16 @@ type
          property Right : Double read FRight write FRight;
    end;
 
+   // left := const bool;
+   TAssignConstToBoolVarExpr = class(TAssignConstExpr)
+      protected
+         FRight : Boolean;
+      public
+         constructor CreateVal(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Boolean);
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         property Right : Boolean read FRight write FRight;
+   end;
+
    // left := const string;
    TAssignConstToStringVarExpr = class(TAssignConstExpr)
       protected
@@ -760,10 +771,16 @@ type
          property Right : String read FRight write FRight;
    end;
 
-   // left := nil
+   // left := nil (instance)
    TAssignNilToVarExpr = class(TAssignConstExpr)
       public
          constructor CreateVal(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr);
+         procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
+   // left := nil (class)
+   TAssignNilClassToVarExpr = class(TAssignNilToVarExpr)
+      public
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
@@ -3646,10 +3663,21 @@ begin
 
       Result:=TAssignConstToFloatVarExpr.CreateVal(prog, FScriptPos, FLeft, FRight.EvalAsFloat(exec));
 
+   end else if FRight.IsOfType(prog.TypBoolean) then begin
+
+      Result:=TAssignConstToBoolVarExpr.CreateVal(prog, FScriptPos, FLeft, FRight.EvalAsBoolean(exec));
+
    end else if FRight.IsOfType(prog.TypString) then begin
 
       FRight.EvalAsString(exec, stringBuf);
       Result:=TAssignConstToStringVarExpr.CreateVal(prog, FScriptPos, FLeft, stringBuf);
+
+   end else if FRight.IsOfType(prog.TypNil) then begin
+
+      if FLeft.Typ.UnAliasedType.ClassType=TClassSymbol then
+         Result:=TAssignNilToVarExpr.CreateVal(prog, FScriptPos, FLeft)
+      else if FLeft.Typ.UnAliasedType.ClassType=TClassOfSymbol then
+         Result:=TAssignNilClassToVarExpr.CreateVal(prog, FScriptPos, FLeft);
 
    end;
    if Result<>Self then begin
@@ -3827,6 +3855,25 @@ begin
 end;
 
 // ------------------
+// ------------------ TAssignConstToBoolVarExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TAssignConstToBoolVarExpr.CreateVal(Prog: TdwsProgram; const Pos: TScriptPos; Left : TDataExpr; const rightValue : Boolean);
+begin
+   inherited Create(Prog, Pos, Left, nil);
+   FRight:=rightValue;
+end;
+
+// EvalNoResult
+//
+procedure TAssignConstToBoolVarExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   TVarExpr(FLeft).AssignValueAsBoolean(exec, FRight);
+end;
+
+// ------------------
 // ------------------ TAssignConstToStringVarExpr ------------------
 // ------------------
 
@@ -3861,6 +3908,17 @@ end;
 procedure TAssignNilToVarExpr.EvalNoResult(exec : TdwsExecution);
 begin
    TVarExpr(FLeft).AssignValueAsScriptObj(exec, nil);
+end;
+
+// ------------------
+// ------------------ TAssignNilClassToVarExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TAssignNilClassToVarExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   TVarExpr(FLeft).AssignValueAsInteger(exec, 0);
 end;
 
 // ------------------
