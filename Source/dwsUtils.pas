@@ -177,8 +177,8 @@ type
    end;
    TSimpleHashBucketArray<T> = array of TSimpleHashBucket<T>;
 
-   {: Minimalistic open-addressing hash, subclasse must override SameItem and GetItemHashCode.
-      HashCodes *MUST* be non null }
+   {: Minimalistic open-addressing hash, subclasses must override SameItem and GetItemHashCode.
+      HashCodes *MUST* be non zero }
    TSimpleHash<T> = class
       private
          FBuckets : TSimpleHashBucketArray<T>;
