@@ -48,6 +48,10 @@ type
          FContext : TdwsProgram;
          FTableStack : TTightStack;
          FContextStack : TTightStack;
+         FCompiledClasses : TTightList;
+         FIndent : Integer;
+         FIndentString : String;
+         FNeedIndent : Boolean;
 
       protected
          procedure EnterContext(proc : TdwsProgram); virtual;
@@ -59,16 +63,25 @@ type
 
          procedure RegisterCodeGen(expr : TExprBaseClass; codeGen : TdwsExprCodeGen);
          function FindCodeGen(expr : TExprBase) : TdwsExprCodeGen;
-         function FindSymbolAtStackAddr(stackAddr : Integer) : TDataSymbol;
+         function FindSymbolAtStackAddr(stackAddr, level : Integer) : TDataSymbol;
 
          procedure Compile(expr : TExprBase); virtual;
          procedure CompileSymbolTable(table : TSymbolTable); virtual;
          procedure CompileEnumerationSymbol(enum : TEnumerationSymbol); virtual;
          procedure CompileFuncSymbol(func : TSourceFuncSymbol); virtual;
          procedure CompileRecordSymbol(rec : TRecordSymbol); virtual;
+         procedure CompileClassSymbol(cls : TClassSymbol); virtual;
          procedure CompileProgram(const prog : IdwsProgram); virtual;
 
          procedure CompileDependencies(destStream : TWriteOnlyBlockStream); virtual;
+
+         procedure WriteIndent;
+         procedure Indent;
+         procedure UnIndent;
+
+         procedure WriteString(const s : String);
+         procedure WriteStringLn(const s : String);
+         procedure WriteLineEnd;
 
          function CompiledOutput : String; virtual;
 
@@ -89,10 +102,9 @@ type
    TdwsExprGenericCodeGen = class(TdwsExprCodeGen)
       private
          FTemplate : array of TVarRec;
-         FDependencies : array of String;
+         FStatement : Boolean;
       public
-         constructor Create(const template : array of const); overload;
-         constructor Create(const template : array of const; const dependencies : array of String); overload;
+         constructor Create(const template : array of const; statement : Boolean = False); overload;
 
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -169,6 +181,7 @@ begin
    FCodeGenList.Free;
    FTableStack.Free;
    FContextStack.Free;
+   FCompiledClasses.Free;
 end;
 
 // RegisterCodeGen
@@ -197,7 +210,7 @@ end;
 
 // FindSymbolAtStackAddr
 //
-function TdwsCodeGen.FindSymbolAtStackAddr(stackAddr : Integer) : TDataSymbol;
+function TdwsCodeGen.FindSymbolAtStackAddr(stackAddr, level : Integer) : TDataSymbol;
 var
    funcSym : TFuncSymbol;
 begin
@@ -209,16 +222,25 @@ begin
    end;
 
    if FLocalTable=nil then Exit(nil);
-   Result:=FLocalTable.FindSymbolAtStackAddr(stackAddr);
+   Result:=FLocalTable.FindSymbolAtStackAddr(stackAddr, level);
 end;
 
 // Clear
 //
 procedure TdwsCodeGen.Clear;
 begin
-   FLocalTable:=nil;
    FOutput.Clear;
    FDependencies.Clear;
+
+   FLocalTable:=nil;
+   FTableStack.Clear;
+   FContext:=nil;
+   FContextStack.Clear;
+   FCompiledClasses.Clear;
+
+   FIndent:=0;
+   FIndentString:='';
+   FNeedIndent:=False;
 end;
 
 // Compile
@@ -262,7 +284,11 @@ begin
       else if sym is TEnumerationSymbol then
          CompileEnumerationSymbol(TEnumerationSymbol(sym))
       else if sym is TRecordSymbol then
-         CompileRecordSymbol(TRecordSymbol(sym));
+         CompileRecordSymbol(TRecordSymbol(sym))
+      else if sym is TClassSymbol then begin
+         if FCompiledClasses.IndexOf(sym)<0 then
+            CompileClassSymbol(TClassSymbol(sym));
+      end;
    end;
 end;
 
@@ -299,6 +325,17 @@ begin
    // nothing here
 end;
 
+// CompileClassSymbol
+//
+procedure TdwsCodeGen.CompileClassSymbol(cls : TClassSymbol);
+begin
+   if FCompiledClasses.IndexOf(cls.Parent)<0 then begin
+      if cls.Parent.Name<>'TObject' then
+         CompileClassSymbol(cls.Parent);
+   end;
+   FCompiledClasses.Add(cls);
+end;
+
 // CompileProgram
 //
 procedure TdwsCodeGen.CompileProgram(const prog : IdwsProgram);
@@ -323,6 +360,58 @@ end;
 procedure TdwsCodeGen.CompileDependencies(destStream : TWriteOnlyBlockStream);
 begin
    // nothing
+end;
+
+// WriteIndent
+//
+procedure TdwsCodeGen.WriteIndent;
+begin
+   Output.WriteString(FIndentString);
+end;
+
+// Indent
+//
+procedure TdwsCodeGen.Indent;
+begin
+   Inc(FIndent, 3);
+   FIndentString:=StringOfChar(' ', FIndent);
+   FNeedIndent:=True;
+end;
+
+// UnIndent
+//
+procedure TdwsCodeGen.UnIndent;
+begin
+   Dec(FIndent, 3);
+   FIndentString:=StringOfChar(' ', FIndent);
+   FNeedIndent:=True;
+end;
+
+// WriteString
+//
+procedure TdwsCodeGen.WriteString(const s : String);
+begin
+   if FNeedIndent then begin
+      WriteIndent;
+      FNeedIndent:=False;
+   end;
+   Output.WriteString(s);
+end;
+
+// WriteStringLn
+//
+procedure TdwsCodeGen.WriteStringLn(const s : String);
+begin
+   WriteString(s);
+   WriteLineEnd;
+end;
+
+// WriteLineEnd
+//
+procedure TdwsCodeGen.WriteLineEnd;
+begin
+   Output.WriteString(#13#10);
+   FNeedIndent:=True;
 end;
 
 // CompiledOutput
@@ -367,26 +456,15 @@ end;
 
 // Create
 //
-constructor TdwsExprGenericCodeGen.Create(const template : array of const);
+constructor TdwsExprGenericCodeGen.Create(const template : array of const; statement : Boolean = False);
 var
    i : Integer;
 begin
    inherited Create;
+   FStatement:=statement;
    SetLength(FTemplate, Length(template));
    for i:=0 to High(template) do
       FTemplate[i]:=template[i];
-end;
-
-// Create
-//
-constructor TdwsExprGenericCodeGen.Create(const template : array of const; const dependencies : array of String);
-var
-   i : Integer;
-begin
-   Create(template);
-   SetLength(FDependencies, Length(dependencies));
-   for i:=0 to High(dependencies) do
-      FDependencies[i]:=dependencies[i];
 end;
 
 // CodeGen
@@ -394,21 +472,32 @@ end;
 procedure TdwsExprGenericCodeGen.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    i : Integer;
+   c : Char;
 begin
    for i:=0 to High(FTemplate) do begin
       case FTemplate[i].VType of
          vtInteger :
             codeGen.Compile(expr.SubExpr[FTemplate[i].VInteger]);
          vtUnicodeString :
-            codeGen.Output.WriteString(String(FTemplate[i].VUnicodeString));
-         vtWideChar :
-            codeGen.Output.WriteString(FTemplate[i].VWideChar);
+            codeGen.WriteString(String(FTemplate[i].VUnicodeString));
+         vtWideChar : begin
+            c:=FTemplate[i].VWideChar;
+            case c of
+               #9 : begin
+                  codeGen.WriteLineEnd;
+                  codeGen.Indent;
+               end;
+               #8 : codeGen.UnIndent;
+            else
+               codeGen.WriteString(FTemplate[i].VWideChar);
+            end;
+         end;
       else
          Assert(False);
       end;
    end;
-   for i:=0 to High(FDependencies) do
-      codeGen.Dependencies.Add(FDependencies[i]);
+   if FStatement then
+      codeGen.WriteLineEnd;
 end;
 
 end.
