@@ -12,5 +12,5 @@ five-based array
 7
 8
 9
-Lower bound exceeded! Index -5 [line: 33, column: 7]
+Lower bound exceeded! Index 0 [line: 33, column: 7]
 Upper bound exceeded! Index 10 [line: 40, column: 8]

@@ -1266,6 +1266,10 @@ type
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property StringExpr : TDataExpr read FStringExpr;
+         property IndexExpr : TTypedExpr read FIndexExpr;
+         property ValueExpr : TTypedExpr read FValueExpr;
    end;
 
    TVarStringArraySetExpr = class(TStringArraySetExpr)
@@ -2163,8 +2167,8 @@ begin
 
    if Cardinal(index)>=Cardinal(FCount) then begin
       if index>=FCount then
-         RaiseUpperExceeded(exec, index)
-      else RaiseLowerExceeded(exec, index);
+         RaiseUpperExceeded(exec, index+FLowBound)
+      else RaiseLowerExceeded(exec, index+FLowBound);
    end;
    // Calculate the address
    Result := FBaseExpr.Addr[exec] + (index * FElementSize);
