@@ -1187,7 +1187,7 @@ begin
             end else begin
 
                // Initialize with default value
-               if varExpr.Typ=FProg.TypInteger then
+               if (varExpr.Typ=FProg.TypInteger) or (varExpr.Typ is TEnumerationSymbol) then
                   assignExpr:=TAssignConstToIntegerVarExpr.CreateVal(FProg, pos, varExpr, 0)
                else if varExpr.Typ=FProg.TypFloat then
                   assignExpr:=TAssignConstToFloatVarExpr.CreateVal(FProg, pos, varExpr, 0)
