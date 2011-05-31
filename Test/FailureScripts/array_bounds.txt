@@ -1,0 +1,4 @@
+Syntax Error: Lower bound exceeded! Index -1 [line: 4, column: 6]
+Syntax Error: Upper bound exceeded! Index 5 [line: 5, column: 5]
+Syntax Error: Lower bound exceeded! Index 0 [line: 6, column: 4]
+Syntax Error: Upper bound exceeded! Index 10 [line: 7, column: 6]

@@ -1166,6 +1166,7 @@ type
          procedure AddParent(Parent: TSymbolTable);
 
          function AddSymbol(Sym: TSymbol): Integer;
+         function AddSymbolDirect(sym : TSymbol) : Integer;
          function FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol; virtual;
          function FindTypeLocal(const aName : String) : TTypeSymbol;
          function FindSymbolAtStackAddr(const stackAddr, level : Integer) : TDataSymbol;
@@ -3521,7 +3522,18 @@ begin
    Result := TSymbol(FSymbols.List[Index])
 end;
 
-function TSymbolTable.AddSymbol(Sym: TSymbol): Integer;
+function TSymbolTable.AddSymbol(sym : TSymbol) : Integer;
+begin
+   Result:=AddSymbolDirect(sym);
+   if (sym is TDataSymbol) and (FAddrGenerator <> nil) then begin
+      TDataSymbol(sym).Level := FAddrGenerator.Level;
+      TDataSymbol(sym).StackAddr := FAddrGenerator.GetStackAddr(sym.Size);
+   end;
+end;
+
+// AddSymbolDirect
+//
+function TSymbolTable.AddSymbolDirect(sym : TSymbol) : Integer;
 var
    n : Integer;
    ptrList : PPointerList;
@@ -3537,10 +3549,6 @@ begin
       end;
       FSymbols.Insert(Result, sym);
    end else Result:=FSymbols.Add(sym);
-   if (sym is TDataSymbol) and (FAddrGenerator <> nil) then begin
-      TDataSymbol(sym).Level := FAddrGenerator.Level;
-      TDataSymbol(sym).StackAddr := FAddrGenerator.GetStackAddr(sym.Size);
-   end;
 end;
 
 // Remove

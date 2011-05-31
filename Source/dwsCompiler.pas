@@ -2609,6 +2609,7 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
 
    function ReadArrayExpr(var baseExpr : TDataExpr) : TArrayExpr;
    var
+      idx : Int64;
       indexExpr : TTypedExpr;
       baseType : TTypeSymbol;
       arraySymbol : TStaticArraySymbol;
@@ -2632,7 +2633,14 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                   Result := TOpenArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
                end else begin
                   Result := TStaticArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
-                                                    arraySymbol.LowBound, arraySymbol.HighBound)
+                                                    arraySymbol.LowBound, arraySymbol.HighBound);
+                  if indexExpr.IsConstant then begin
+                     idx:=indexExpr.EvalAsInteger(FExec);
+                     if idx<arraySymbol.LowBound then
+                        FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayLowerBoundExceeded, [idx])
+                     else if idx>arraySymbol.HighBound then
+                        FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayUpperBoundExceeded, [idx]);
+                  end;
                end;
             end else if baseType is TDynamicArraySymbol then
                Result := TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)

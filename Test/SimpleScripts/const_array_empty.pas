@@ -1,6 +1,7 @@
 var arr := [];
+var i := 0;
 try
-   PrintLn(arr[0]);
+   PrintLn(arr[i]);
 except
    on E: Exception do
       PrintLn(E.Message);

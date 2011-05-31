@@ -296,6 +296,9 @@ type
          destructor Destroy; override;
 
          function IsWritable : Boolean; override;
+
+         property BaseExpr : TDataExpr read FBaseExpr;
+         property IndexExpr : TTypedExpr read FIndexExpr;
    end;
 
    EScriptOutOfBounds = class (EScriptError);
@@ -1209,14 +1212,18 @@ type
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
+         function GetDoExpr(i : Integer) : TExceptDoExpr;
 
       public
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
-         procedure AddDoExpr(expr : TExceptDoExpr);
 
-         property ElseExpr: TNoResultExpr read FElseExpr write FElseExpr;
+         procedure AddDoExpr(expr : TExceptDoExpr);
+         property DoExpr[i : Integer] : TExceptDoExpr read GetDoExpr;
+         function DoExprCount : Integer;
+
+         property ElseExpr : TNoResultExpr read FElseExpr write FElseExpr;
    end;
 
    // try..except on FExceptionVar: FExceptionVar.Typ do FDoBlockExpr; ... end;
@@ -5208,6 +5215,13 @@ begin
    FDoExprs.Add(expr);
 end;
 
+// DoExprCount
+//
+function TExceptExpr.DoExprCount : Integer;
+begin
+   Result:=FDoExprs.Count;
+end;
+
 // GetSubExpr
 //
 function TExceptExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -5224,6 +5238,13 @@ end;
 function TExceptExpr.GetSubExprCount : Integer;
 begin
    Result:=3+FDoExprs.Count;
+end;
+
+// GetDoExpr
+//
+function TExceptExpr.GetDoExpr(i : Integer) : TExceptDoExpr;
+begin
+   Result:=TExceptDoExpr(FDoExprs.List[i]);
 end;
 
 // ------------------
