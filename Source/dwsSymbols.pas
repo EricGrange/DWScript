@@ -528,7 +528,7 @@ type
 
    end;
 
-   TFuncSymbolFlag = (fsfStateless);
+   TFuncSymbolFlag = (fsfStateless, fsfExternal);
    TFuncSymbolFlags = set of TFuncSymbolFlag;
 
    // A script function / procedure: procedure X(param: Integer);
@@ -555,6 +555,8 @@ type
          procedure SetIsDeprecated(const val : Boolean);
          function GetIsStateless : Boolean; inline;
          procedure SetIsStateless(const val : Boolean);
+         function GetIsExternal : Boolean; inline;
+         procedure SetIsExternal(const val : Boolean);
          function GetSourcePosition : TScriptPos; virtual;
          procedure SetSourcePosition(const val : TScriptPos); virtual;
 
@@ -586,6 +588,7 @@ type
          property IsDeprecated : Boolean read GetIsDeprecated write SetIsDeprecated;
          property IsStateless : Boolean read GetIsStateless write SetIsStateless;
          property IsForwarded : Boolean read GetIsForwarded;
+         property IsExternal : Boolean read GetIsExternal write SetIsExternal;
          property Kind : TFuncKind read FKind write FKind;
          property Level : SmallInt read GetLevel;
          property InternalParams : TSymbolTable read FInternalParams;
@@ -1972,6 +1975,7 @@ end;
 procedure TFuncSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
    inherited;
+   if IsExternal then Exit;
    FInternalParams.Initialize(msgs);
    if Assigned(FExecutable) then
       FExecutable.InitSymbol(Self)
@@ -2023,6 +2027,22 @@ begin
    if val then
       Include(FFlags, fsfStateless)
    else Exclude(FFlags, fsfStateless);
+end;
+
+// GetIsExternal
+//
+function TFuncSymbol.GetIsExternal : Boolean;
+begin
+   Result:=(fsfExternal in FFlags);
+end;
+
+// SetIsExternal
+//
+procedure TFuncSymbol.SetIsExternal(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, fsfExternal)
+   else Exclude(FFlags, fsfExternal);
 end;
 
 // GetSourcePosition

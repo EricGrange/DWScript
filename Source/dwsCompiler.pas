@@ -1406,13 +1406,14 @@ begin
                CompareFuncSymbolParams(forwardedSym, Result);
             end;
 
-            // forward declarations
+            // forward & external declarations
             if not Assigned(forwardedSym) then begin
                if FTok.Test(ttSEMI) then begin
                   FTok.KillToken; // SEMI
-                  if FTok.Test(ttFORWARD) then begin
+                  if FTok.TestDelete(ttFORWARD) then begin
                      Result.SetForwardedPos(funcPos);
-                     FTok.TestDelete(ttFORWARD);
+                  end else if FTok.TestDelete(ttEXTERNAL) then begin
+                     Result.IsExternal:=True;
                   end;
                end;
             end else ReadSemiColon;
@@ -1681,7 +1682,7 @@ var
    constSym : TConstSymbol;
 begin
    // Stop if declaration was forwarded or external
-   if (funcSymbol.IsForwarded) then begin
+   if (funcSymbol.IsForwarded or funcSymbol.IsExternal) then begin
       // Closed context of procedure (was only a forward)
       if coContextMap in FCompilerOptions then
          FContextMap.CloseContext(FTok.HotPos);
