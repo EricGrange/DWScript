@@ -1130,6 +1130,7 @@ type
       public
          constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
          function Eval(exec : TdwsExecution) : Variant; override;
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // float unary result
@@ -1137,6 +1138,7 @@ type
       public
          constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
          function Eval(exec : TdwsExecution) : Variant; override;
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // string unary result
@@ -4619,6 +4621,16 @@ begin
    Result:=EvalAsInteger(exec);
 end;
 
+// Optimize
+//
+function TUnaryOpIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   if IsConstant then begin
+      Result:=TConstIntExpr.CreateUnified(Prog, nil, EvalAsInteger(exec));
+      Free;
+   end else Result:=Self;
+end;
+
 // ------------------
 // ------------------ TUnaryOpFloatExpr ------------------
 // ------------------
@@ -4636,6 +4648,16 @@ end;
 function TUnaryOpFloatExpr.Eval(exec : TdwsExecution) : Variant;
 begin
    Result:=EvalAsFloat(exec);
+end;
+
+// Optimize
+//
+function TUnaryOpFloatExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   if IsConstant then begin
+      Result:=TConstFloatExpr.CreateUnified(Prog, nil, EvalAsFloat(exec));
+      Free;
+   end else Result:=Self;
 end;
 
 // ------------------
