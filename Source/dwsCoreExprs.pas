@@ -305,16 +305,20 @@ type
 
    // Array expressions x[index] for static arrays
    TStaticArrayExpr = class(TArrayExpr)
-   private
-     FLowBound: Integer;
-     FCount: Integer;
-   protected
-     function GetAddr(exec : TdwsExecution) : Integer; override;
-     function GetData(exec : TdwsExecution) : TData; override;
-   public
-     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos;
-                        BaseExpr: TDataExpr; IndexExpr: TTypedExpr;
-                        LowBound, HighBound: Integer);
+      private
+         FLowBound : Integer;
+         FCount : Integer;
+
+      protected
+         function GetAddr(exec : TdwsExecution) : Integer; override;
+         function GetData(exec : TdwsExecution) : TData; override;
+
+      public
+         constructor Create(prog : TdwsProgram; const pos : TScriptPos;
+                            baseExpr : TDataExpr; indexExpr : TTypedExpr;
+                            lowBound, highBound : Integer);
+         function IsConstant : Boolean; override;
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // Array expressions x[index] for open arrays
@@ -665,6 +669,9 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+
+         property Cond : TTypedExpr read FCond;
+         property Message : TTypedExpr read FMessage;
    end;
 
    // left := right;
@@ -2148,12 +2155,34 @@ end;
 
 // Create
 //
-constructor TStaticArrayExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-      BaseExpr: TDataExpr; IndexExpr: TTypedExpr; LowBound, HighBound: Integer);
+constructor TStaticArrayExpr.Create(prog : TdwsProgram; const pos : TScriptPos;
+                                    baseExpr : TDataExpr; indexExpr : TTypedExpr;
+                                    lowBound, highBound : Integer);
 begin
    inherited Create(Prog, Pos, BaseExpr, IndexExpr);
    FLowBound:=LowBound;
    FCount:=HighBound-LowBound+1;
+end;
+
+// IsConstant
+//
+function TStaticArrayExpr.IsConstant : Boolean;
+begin
+   Result:=BaseExpr.IsConstant and IndexExpr.IsConstant;
+end;
+
+// Optimize
+//
+function TStaticArrayExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+var
+   v : Variant;
+begin
+   Result:=Self;
+   if IsConstant then begin
+      EvalAsVariant(exec, v);
+      Result:=TConstExpr.CreateTyped(prog, Typ, v);
+      Free;
+   end;
 end;
 
 // GetAddr

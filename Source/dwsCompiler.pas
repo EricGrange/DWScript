@@ -2783,6 +2783,8 @@ begin
                      FTok.KillToken;
                      Result := ReadStringArray(dataExpr, IsWrite)
                   end else FMsgs.AddCompilerError(FTok.HotPos, CPE_ArrayExpected);
+                  if Optimize then
+                     Result:=Result.Optimize(FProg, FExec);
                end;
             end;
          end else if FTok.Test(ttBLEFT) then begin
