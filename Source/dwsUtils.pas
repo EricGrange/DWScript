@@ -242,6 +242,8 @@ type
          function Write(const buffer; count: Longint): Longint; override;
          // must be strictly an utf16 string
          procedure WriteString(const utf16String : String);
+         procedure WriteSubString(const utf16String : String; startPos : Integer); overload;
+         procedure WriteSubString(const utf16String : String; startPos, length : Integer); overload;
          procedure WriteChar(utf16Char : Char);
          // assumes data is an utf16 string
          function ToString : String; override;
@@ -1207,6 +1209,30 @@ end;
 function TWriteOnlyBlockStream.GetSize: Int64;
 begin
    Result:=FTotalSize;
+end;
+
+// WriteSubString
+//
+procedure TWriteOnlyBlockStream.WriteSubString(const utf16String : String; startPos : Integer);
+begin
+   WriteSubString(utf16String, startPos, Length(utf16String)-startPos+1);
+end;
+
+// WriteSubString
+//
+procedure TWriteOnlyBlockStream.WriteSubString(const utf16String : String; startPos, length : Integer);
+var
+   p, n : Integer;
+begin
+   Assert(startPos>=1);
+   if length<=0 then Exit;
+   n:=System.Length(utf16String);
+   if startPos>n then Exit;
+   p:=startPos+length-1;
+   if p>n then p:=n;
+   length:=p-startPos+1;
+   if length>0 then
+      Write(utf16String[startPos], length*SizeOf(Char));
 end;
 
 // ------------------
