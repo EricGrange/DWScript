@@ -38,6 +38,9 @@ type
          function Compare(const item1, item2 : TdwsRegisteredCodeGen) : Integer; override;
    end;
 
+   TdwsCodeGenOption = (cgoNoRangeChecks, cgoNoCheckInstantiated, cgoNoCheckLoopStep);
+   TdwsCodeGenOptions = set of TdwsCodeGenOption;
+
    TdwsCodeGen = class
       private
          FCodeGenList : TdwsRegisteredCodeGenList;
@@ -48,14 +51,19 @@ type
          FContext : TdwsProgram;
          FTableStack : TTightStack;
          FContextStack : TTightStack;
+         FTempSymbolCounter : Integer;
          FCompiledClasses : TTightList;
          FIndent : Integer;
          FIndentString : String;
          FNeedIndent : Boolean;
+         FIndentSize : Integer;
+         FOptions : TdwsCodeGenOptions;
 
       protected
          procedure EnterContext(proc : TdwsProgram); virtual;
          procedure LeaveContext; virtual;
+
+         procedure RaiseUnknowExpression(expr : TExprBase);
 
       public
          constructor Create; virtual;
@@ -65,7 +73,9 @@ type
          function FindCodeGen(expr : TExprBase) : TdwsExprCodeGen;
          function FindSymbolAtStackAddr(stackAddr, level : Integer) : TDataSymbol;
 
-         procedure Compile(expr : TExprBase); virtual;
+         procedure Compile(expr : TExprBase);
+         procedure CompileNoWrap(expr : TTypedExpr);
+
          procedure CompileSymbolTable(table : TSymbolTable); virtual;
          procedure CompileEnumerationSymbol(enum : TEnumerationSymbol); virtual;
          procedure CompileFuncSymbol(func : TSourceFuncSymbol); virtual;
@@ -79,9 +89,13 @@ type
          procedure Indent;
          procedure UnIndent;
 
-         procedure WriteString(const s : String);
+         procedure WriteString(const s : String); overload;
+         procedure WriteString(const c : Char); overload;
          procedure WriteStringLn(const s : String);
          procedure WriteLineEnd;
+
+         function LocationString(e : TExprBase) : String;
+         function GetNewTempSymbol : String; virtual;
 
          function CompiledOutput : String; virtual;
 
@@ -90,23 +104,33 @@ type
          property Context : TdwsProgram read FContext;
          property LocalTable : TSymbolTable read FLocalTable;
 
+         property IndentSize : Integer read FIndentSize write FIndentSize;
+         property Options : TdwsCodeGenOptions read FOptions write FOptions;
+
          property Output : TWriteOnlyBlockStream read FOutput;
          property Dependencies : TStringList read FDependencies;
    end;
 
    TdwsExprCodeGen = class abstract
       public
-         procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); virtual; abstract;
+         procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); virtual;
+         procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); virtual;
    end;
 
    TdwsExprGenericCodeGen = class(TdwsExprCodeGen)
       private
          FTemplate : array of TVarRec;
          FStatement : Boolean;
+         FUnWrapable : Boolean;
+
+      protected
+         procedure DoCodeGen(codeGen : TdwsCodeGen; expr : TExprBase; start, stop : Integer);
+
       public
          constructor Create(const template : array of const; statement : Boolean = False); overload;
 
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+         procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
    end;
 
    ECodeGenException = class (Exception);
@@ -167,6 +191,7 @@ begin
    FDependencies.Sorted:=True;
    FDependencies.Duplicates:=dupIgnore;
    FTempReg:=TdwsRegisteredCodeGen.Create;
+   FIndentSize:=3;
 end;
 
 // Destroy
@@ -241,25 +266,21 @@ begin
    FIndent:=0;
    FIndentString:='';
    FNeedIndent:=False;
+
+   FTempSymbolCounter:=0;
 end;
 
 // Compile
 //
 procedure TdwsCodeGen.Compile(expr : TExprBase);
-
-   procedure RaiseUnknown(expr : TExprBase);
-   begin
-      raise ECodeGenUnknownExpression.CreateFmt('%s: unknown expression class %s',
-                                                [ClassName, expr.ClassName]);
-   end;
-
 var
    cg : TdwsExprCodeGen;
    oldTable : TSymbolTable;
 begin
+   if expr=nil then Exit;
    cg:=FindCodeGen(expr);
    if cg=nil then
-      RaiseUnknown(expr);
+      RaiseUnknowExpression(expr);
 
    oldTable:=FLocalTable;
    if expr is TBlockExpr then
@@ -268,6 +289,19 @@ begin
    cg.CodeGen(Self, expr);
 
    FLocalTable:=oldTable;
+end;
+
+// CompileNoWrap
+//
+procedure TdwsCodeGen.CompileNoWrap(expr : TTypedExpr);
+var
+   cg : TdwsExprCodeGen;
+begin
+   cg:=FindCodeGen(expr);
+   if cg=nil then
+      RaiseUnknowExpression(expr);
+
+   cg.CodeGenNoWrap(Self, expr)
 end;
 
 // CompileSymbolTable
@@ -330,7 +364,8 @@ end;
 procedure TdwsCodeGen.CompileClassSymbol(cls : TClassSymbol);
 begin
    if FCompiledClasses.IndexOf(cls.Parent)<0 then begin
-      if cls.Parent.Name<>'TObject' then
+      if     (cls.Parent.Name<>'TObject')
+         and (cls.Parent.Name<>'Exception') then
          CompileClassSymbol(cls.Parent);
    end;
    FCompiledClasses.Add(cls);
@@ -350,7 +385,8 @@ begin
 
    CompileSymbolTable(p.Table);
 
-   Compile(p.Expr);
+   if not (p.Expr is TNullExpr) then
+      Compile(p.Expr);
 
    LeaveContext;
 end;
@@ -373,8 +409,8 @@ end;
 //
 procedure TdwsCodeGen.Indent;
 begin
-   Inc(FIndent, 3);
-   FIndentString:=StringOfChar(' ', FIndent);
+   Inc(FIndent);
+   FIndentString:=StringOfChar(' ', FIndent*FIndentSize);
    FNeedIndent:=True;
 end;
 
@@ -382,8 +418,8 @@ end;
 //
 procedure TdwsCodeGen.UnIndent;
 begin
-   Dec(FIndent, 3);
-   FIndentString:=StringOfChar(' ', FIndent);
+   Dec(FIndent);
+   FIndentString:=StringOfChar(' ', FIndent*FIndentSize);
    FNeedIndent:=True;
 end;
 
@@ -396,6 +432,17 @@ begin
       FNeedIndent:=False;
    end;
    Output.WriteString(s);
+end;
+
+// WriteString
+//
+procedure TdwsCodeGen.WriteString(const c : Char);
+begin
+   if FNeedIndent then begin
+      WriteIndent;
+      FNeedIndent:=False;
+   end;
+   Output.WriteChar(c);
 end;
 
 // WriteStringLn
@@ -412,6 +459,23 @@ procedure TdwsCodeGen.WriteLineEnd;
 begin
    Output.WriteString(#13#10);
    FNeedIndent:=True;
+end;
+
+// LocationString
+//
+function TdwsCodeGen.LocationString(e : TExprBase) : String;
+begin
+   if Context is TdwsMainProgram then
+      Result:=e.ScriptPos.AsInfo
+   else Result:=' in '+e.ScriptLocation(Context);
+end;
+
+// GetNewTempSymbol
+//
+function TdwsCodeGen.GetNewTempSymbol : String;
+begin
+   Inc(FTempSymbolCounter);
+   Result:=IntToStr(FTempSymbolCounter);
 end;
 
 // CompiledOutput
@@ -450,6 +514,14 @@ begin
    FContextStack.Pop;
 end;
 
+// RaiseUnknowExpression
+//
+procedure TdwsCodeGen.RaiseUnknowExpression(expr : TExprBase);
+begin
+   raise ECodeGenUnknownExpression.CreateFmt('%s: unknown expression class %s%s',
+                                             [ClassName, expr.ClassName, expr.ScriptLocation(Context)]);
+end;
+
 // ------------------
 // ------------------ TdwsExprGenericCodeGen ------------------
 // ------------------
@@ -465,16 +537,37 @@ begin
    SetLength(FTemplate, Length(template));
    for i:=0 to High(template) do
       FTemplate[i]:=template[i];
+   if not FStatement then begin
+      i:=High(template);
+      FUnWrapable:=    (FTemplate[0].VType=vtWideChar) and (FTemplate[0].VWideChar='(')
+                   and (FTemplate[i].VType=vtWideChar) and (FTemplate[i].VWideChar=')');
+   end else FUnWrapable:=False;
 end;
 
 // CodeGen
 //
 procedure TdwsExprGenericCodeGen.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+begin
+   DoCodeGen(codeGen, expr, 0, High(FTemplate));
+end;
+
+// CodeGenNoWrap
+//
+procedure TdwsExprGenericCodeGen.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+begin
+   if FUnWrapable then
+      DoCodeGen(codeGen, expr, 1, High(FTemplate)-1)
+   else DoCodeGen(codeGen, expr, 0, High(FTemplate));
+end;
+
+// DoCodeGen
+//
+procedure TdwsExprGenericCodeGen.DoCodeGen(codeGen : TdwsCodeGen; expr : TExprBase; start, stop : Integer);
 var
    i : Integer;
    c : Char;
 begin
-   for i:=0 to High(FTemplate) do begin
+   for i:=start to stop do begin
       case FTemplate[i].VType of
          vtInteger :
             codeGen.Compile(expr.SubExpr[FTemplate[i].VInteger]);
@@ -498,6 +591,28 @@ begin
    end;
    if FStatement then
       codeGen.WriteLineEnd;
+end;
+
+// ------------------
+// ------------------ TdwsExprCodeGen ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TdwsExprCodeGen.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+begin
+   if expr is TTypedExpr then begin
+      codeGen.WriteString('(');
+      CodeGenNoWrap(codeGen, TTypedExpr(expr));
+      codeGen.WriteString(')');
+   end;
+end;
+
+// CodeGenNoWrap
+//
+procedure TdwsExprCodeGen.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+begin
+   Self.CodeGen(codeGen, expr);
 end;
 
 end.

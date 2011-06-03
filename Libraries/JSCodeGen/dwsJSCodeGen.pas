@@ -61,17 +61,22 @@ type
 
          procedure CompileDependencies(destStream : TWriteOnlyBlockStream); override;
 
+         function GetNewTempSymbol : String; override;
+
          procedure WriteJavaScriptString(const s : String);
+
+         class function MemberName(sym : TSymbol; cls : TClassSymbol) : String; static;
    end;
 
    TJSExprCodeGen = class (TdwsExprCodeGen)
       class function IsLocalVarParam(codeGen : TdwsCodeGen; sym : TDataSymbol) : Boolean; static;
-      class function MemberName(sym : TSymbol; cls : TClassSymbol) : String; static;
-      class function FieldName(field : TFieldSymbol) : String; static;
-      class function MethodName(meth : TMethodSymbol) : String; static;
+      class procedure WriteLocationString(codeGen : TdwsCodeGen; expr : TExprBase);
    end;
 
    TJSBlockInitExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSBlockExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
    TJSBlockExprNoTable = class (TJSExprCodeGen)
@@ -82,6 +87,9 @@ type
    end;
 
    TJSAssignExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSAssignDataExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
    TJSAssignClassOfExpr = class (TJSExprCodeGen)
@@ -107,6 +115,9 @@ type
    TJSAssignNilToVarExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
+   TJSAssignConstDataToVarExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
 
    TJSAppendConstStringVarExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
@@ -125,6 +136,9 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
    TJSConstBooleanExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSArrayConstantExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
@@ -147,6 +161,16 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
    TJSFieldExpr = class (TJSVarExpr)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
+   TJSStaticArrayExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSStringArrayOpExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSVarStringArraySetExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
@@ -215,6 +239,50 @@ type
       procedure CodeGenBeginParams(codeGen : TdwsCodeGen; expr : TFuncExprBase); override;
    end;
 
+   TJSExceptExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
+   TJSAssertExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
+   TJSForExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+      procedure WriteCompare(codeGen : TdwsCodeGen); virtual; abstract;
+      procedure WriteStep(codeGen : TdwsCodeGen); virtual; abstract;
+   end;
+   TJSForUpwardExpr = class (TJSForExpr)
+      procedure WriteCompare(codeGen : TdwsCodeGen); override;
+      procedure WriteStep(codeGen : TdwsCodeGen); override;
+   end;
+   TJSForDownwardExpr = class (TJSForExpr)
+      procedure WriteCompare(codeGen : TdwsCodeGen); override;
+      procedure WriteStep(codeGen : TdwsCodeGen); override;
+   end;
+   TJSForUpwardStepExpr = class (TJSForUpwardExpr)
+      procedure WriteStep(codeGen : TdwsCodeGen); override;
+   end;
+   TJSForDownwardStepExpr = class (TJSForDownwardExpr)
+      procedure WriteStep(codeGen : TdwsCodeGen); override;
+   end;
+
+   TJSSqrExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+      procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
+   end;
+
+   TJSOpExpr = class (TJSExprCodeGen)
+      class procedure WriteWrappedIfNeeded(codeGen : TdwsCodeGen; expr : TTypedExpr); static;
+   end;
+   TJSBinOpExpr = class (TJSOpExpr)
+      protected
+         FOp : String;
+      public
+         constructor Create(const op : String);
+         procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -232,14 +300,21 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..19] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..26] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
-       Code : 'function $CheckStep(s) { if (s<=0) throw "stepErr"; return s }'),
+       Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
+       Dependency : 'Exception' ),
       (Name : '$dwsRand';
        Code : 'var $dwsRand=0'),
-      (Name : '$NewInstance';
-       Code : 'function $NewInstance(c) { var i={ClassType:c}; c.$InitInstance(i); return i }'),
+      (Name : '$New';
+       Code : 'function $New(c) { var i={ClassType:c}; c.$Init(i); return i }'),
+      (Name : '$Check';
+       Code : 'function $Check(i,z) { if (i) return i; throw Exception.Create$1($New(Exception),"Object not instantiated"+z); }';
+       Dependency : 'Exception' ),
+      (Name : '$Assert';
+       Code : 'function $Assert(b,m,z) { if (!b) throw Exception.Create$1($New(EAssertionFailed),"Assertion failed"+z+((m=="")?"":" : ")+m); }';
+       Dependency : 'EAssertionFailed' ),
       (Name : '$Is';
        Code : 'function $Is(o,c) {'#13#10
                +#9'if (o===null) return false; var ct=o.ClassType;'#13#10
@@ -247,11 +322,33 @@ const
                +#9'return (ct)?true:false;'#13#10
                +'}'#13#10),
       (Name : '$Cast';
-       Code : 'function $Cast(o,c) { if ((o===null)||$Is(o,c)) return o; else return null; }'; // TODO: exception
-       Dependency : '$Is' ),
+       Code : 'function $Cast(o,c) { if (o===null) return o; else return $As(o,c); }';
+       Dependency : '$As' ),
       (Name : '$As';
-       Code : 'function $As(o,c) { if ((o!==null)&&$Is(o,c)) return o; else return null; }'; // TODO: exception
+       Code : 'function $As(o,c) { if ((o!==null)&&$Is(o,c)) return o; '#13#10
+               +'else throw Exception.Create$1($New(Exception),"Can''t cast instance of type \""+o.ClassType.$ClassName+"\" to class \""+c.$ClassName+"\""); }'; // TODO: exception
        Dependency : '$Is' ),
+      (Name : '$Idx';
+       Code : 'function $Idx(i,l,h,z) {'#13#10
+               +#9'if (i<l) throw Exception.Create$1($New(Exception),"Lower bound exceeded! Index "+i.toString()+z);'#13#10
+               +#9'if (i>h) throw Exception.Create$1($New(Exception),"Upper bound exceeded! Index "+i.toString()+z);'#13#10
+               +#9'return i-l;'#13#10
+               +'}';
+       Dependency : 'Exception' ),
+      (Name : '$SIdx';
+       Code : 'function $SIdx(s,i,z) {'#13#10
+               +#9'if (i<1) throw Exception.Create$1($New(Exception),"Lower bound exceeded! Index "+i.toString()+z);'#13#10
+               +#9'if (i>s.length) throw Exception.Create$1($New(Exception),"Upper bound exceeded! Index "+i.toString()+z);'#13#10
+               +#9'return s.charAt(i-1);'#13#10
+               +'}';
+       Dependency : 'Exception' ),
+      (Name : '$StrSet';
+       Code : 'function $StrSet(s,i,v,z) {'#13#10
+               +#9'if (i<1) throw Exception.Create$1($New(Exception),"Lower bound exceeded! Index "+i.toString()+z);'#13#10
+               +#9'if (i>s.length) throw Exception.Create$1($New(Exception),"Upper bound exceeded! Index "+i.toString()+z);'#13#10
+               +#9'return s.substring(0,i-1)+v+s.substring(i);'#13#10
+               +'}';
+       Dependency : 'Exception' ),
       // RTL functions
       (Name : 'BoolToStr';
        Code : 'function BoolToStr(b) { return b?"True":"False" }'),
@@ -285,9 +382,25 @@ const
                +#9'$ClassName:"TObject",'#13#10
                +#9'ClassName:function(Self){return Self.$ClassName},'#13#10
                +#9'ClassType:function(Self){return Self},'#13#10
-               +#9'$InitInstance:function () {},'#13#10
+               +#9'$Init:function () {},'#13#10
                +#9'Create:function (Self) { return Self; }'#13#10
-               +'}')
+               +'}';
+       Dependency : '$New'),
+      (Name : 'Exception';
+       Code : 'var Exception={'#13#10
+               +#9'$ClassName:"Exception",'#13#10
+               +#9'$Parent:TObject,'#13#10
+               +#9'$Init:function () { FMessage=""; },'#13#10
+               +#9'Create$1:function (Self,Msg) { Self.FMessage=Msg; return Self; }'#13#10
+               +'}';
+       Dependency : 'TObject'),
+      (Name : 'EAssertionFailed';
+       Code : 'var EAssertionFailed={'#13#10
+               +#9'$ClassName:"EAssertionFailed",'#13#10
+               +#9'$Parent:Exception,'#13#10
+               +#9'$Init:Exception.$Init,'#13#10
+               +'}';
+       Dependency : 'Exception')
    );
 
 // FindJSRTLDependency
@@ -320,8 +433,7 @@ begin
 
    RegisterCodeGen(TBlockInitExpr, TJSBlockInitExpr.Create);
 
-//   RegisterCodeGen(TBlockExpr,            TJSBlockExprNoTable.Create); // TODO
-
+   RegisterCodeGen(TBlockExpr,            TJSBlockExpr.Create);
    RegisterCodeGen(TBlockExprNoTable,     TJSBlockExprNoTable.Create);
    RegisterCodeGen(TBlockExprNoTable2,    TJSBlockExprNoTable.Create);
    RegisterCodeGen(TBlockExprNoTable3,    TJSBlockExprNoTable.Create);
@@ -335,11 +447,13 @@ begin
    RegisterCodeGen(TConstStringExpr,      TJSConstStringExpr.Create);
    RegisterCodeGen(TConstFloatExpr,       TJSConstFloatExpr.Create);
    RegisterCodeGen(TConstBooleanExpr,     TJSConstBooleanExpr.Create);
+   RegisterCodeGen(TArrayConstantExpr,    TJSArrayConstantExpr.Create);
 
    RegisterCodeGen(TInitDataExpr,         TJSInitDataExpr.Create);
 
    RegisterCodeGen(TAssignExpr,           TJSAssignExpr.Create);
    RegisterCodeGen(TAssignClassOfExpr,    TJSAssignClassOfExpr.Create);
+   RegisterCodeGen(TAssignDataExpr,       TJSAssignDataExpr.Create);
 
    RegisterCodeGen(TAssignConstToIntegerVarExpr,   TJSAssignConstToIntegerVarExpr.Create);
    RegisterCodeGen(TAssignConstToFloatVarExpr,     TJSAssignConstToFloatVarExpr.Create);
@@ -347,6 +461,9 @@ begin
    RegisterCodeGen(TAssignConstToStringVarExpr,    TJSAssignConstToStringVarExpr.Create);
    RegisterCodeGen(TAssignNilToVarExpr,            TJSAssignNilToVarExpr.Create);
    RegisterCodeGen(TAssignNilClassToVarExpr,       TJSAssignNilToVarExpr.Create);
+   RegisterCodeGen(TAssignConstDataToVarExpr,      TJSAssignConstDataToVarExpr.Create);
+
+   RegisterCodeGen(TAssignArrayConstantExpr, TdwsExprGenericCodeGen.Create([0, '=', 1, ';'], True));
 
    RegisterCodeGen(TVarExpr,              TJSVarExpr.Create);
    RegisterCodeGen(TVarParentExpr,        TJSVarParentExpr.Create);
@@ -374,33 +491,24 @@ begin
    RegisterCodeGen(TAsOpExpr,             TJSAsOpExpr.Create);
    RegisterCodeGen(TIsOpExpr,             TJSIsOpExpr.Create);
 
-   RegisterCodeGen(TAddStrExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '+', 1, ')']));
+   RegisterCodeGen(TAddStrExpr,           TJSBinOpExpr.Create('+'));
 
-   RegisterCodeGen(TAddIntExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '+', 1, ')']));
-   RegisterCodeGen(TAddFloatExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '+', 1, ')']));
-   RegisterCodeGen(TSubIntExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '-', 1, ')']));
-   RegisterCodeGen(TSubFloatExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '-', 1, ')']));
-   RegisterCodeGen(TMultIntExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '*', 1, ')']));
-   RegisterCodeGen(TMultFloatExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '*', 1, ')']));
-   RegisterCodeGen(TDivideExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '/', 1, ')']));
+   RegisterCodeGen(TAddIntExpr,           TJSBinOpExpr.Create('+'));
+   RegisterCodeGen(TAddFloatExpr,         TJSBinOpExpr.Create('+'));
+   RegisterCodeGen(TSubIntExpr,           TJSBinOpExpr.Create('-'));
+   RegisterCodeGen(TSubFloatExpr,         TJSBinOpExpr.Create('-'));
+   RegisterCodeGen(TMultIntExpr,          TJSBinOpExpr.Create('*'));
+   RegisterCodeGen(TMultFloatExpr,        TJSBinOpExpr.Create('*'));
+   RegisterCodeGen(TDivideExpr,           TJSBinOpExpr.Create('/'));
    RegisterCodeGen(TDivExpr,
       TdwsExprGenericCodeGen.Create(['Math.floor(', 0, '/', 1, ')']));
-   RegisterCodeGen(TModExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '%', 1, ')']));
-   RegisterCodeGen(TSqrFloatExpr,
-      TdwsExprGenericCodeGen.Create(['Math.pow(', 0, ',2)']));
+   RegisterCodeGen(TModExpr,              TJSBinOpExpr.Create('%'));
+   RegisterCodeGen(TSqrFloatExpr,      TJSSqrExpr.Create);
+   RegisterCodeGen(TSqrIntExpr,        TJSSqrExpr.Create);
    RegisterCodeGen(TNegIntExpr,
-      TdwsExprGenericCodeGen.Create(['(-', 0, ')']));
+      TdwsExprGenericCodeGen.Create(['(', '-', 0, ')']));
    RegisterCodeGen(TNegFloatExpr,
-      TdwsExprGenericCodeGen.Create(['(-', 0, ')']));
+      TdwsExprGenericCodeGen.Create(['(', '-', 0, ')']));
 
    RegisterCodeGen(TAppendStringVarExpr,
       TdwsExprGenericCodeGen.Create([0, '+=', 1, ';'], True));
@@ -446,7 +554,7 @@ begin
    RegisterCodeGen(TIntXorExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '^', 1, ')']));
    RegisterCodeGen(TNotIntExpr,
-      TdwsExprGenericCodeGen.Create(['(~', 0, ')']));
+      TdwsExprGenericCodeGen.Create(['(', '~', 0, ')']));
 
    RegisterCodeGen(TBoolAndExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '&&', 1, ')']));
@@ -457,7 +565,7 @@ begin
    RegisterCodeGen(TBoolImpliesExpr,
       TdwsExprGenericCodeGen.Create(['(!', 0, ' || ', 1, ')']));
    RegisterCodeGen(TNotBoolExpr,
-      TdwsExprGenericCodeGen.Create(['(!', 0, ')']));
+      TdwsExprGenericCodeGen.Create(['(', '!', 0, ')']));
 
    RegisterCodeGen(TAssignedInstanceExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '!==null)']));
@@ -516,22 +624,17 @@ begin
    RegisterCodeGen(TIfThenElseExpr,
       TdwsExprGenericCodeGen.Create(['if (', 0, ') {', #9, 1, #8, '} else {', #9, 2, #8, '};'], True));
 
-   RegisterCodeGen(TCaseExpr,    TJSCaseExpr.Create);
+   RegisterCodeGen(TCaseExpr,             TJSCaseExpr.Create);
 
-   RegisterCodeGen(TForUpwardExpr,
-      TdwsExprGenericCodeGen.Create(['for (', 0, '=', 1, ';', 0, '<=', 2, ';', 0, '++) {', #9, 3, #8, '};'], True));
-   RegisterCodeGen(TForDownwardExpr,
-      TdwsExprGenericCodeGen.Create(['for (', 0, '=', 1, ';', 0, '>=', 2, ';', 0, '--) {', #9, 3, #8, '};'], True));
-//   RegisterCodeGen(TForUpwardStepExpr,
-//      TdwsExprGenericCodeGen.Create(['for (', 0, '=', 1, ';', 0, '<=', 2, ';', 0, '+=', 4, ') {', #9, 3, #8, '};'], True));
-//   RegisterCodeGen(TForDownwardStepExpr,
-//      TdwsExprGenericCodeGen.Create(['for (', 0, '=', 1, ';', 0, '>=', 2, ';', 0, '-=', 4, ') {'#13#10, 3, #13#10'};'#13#10],
-//                                    ['$CheckStep']));
+   RegisterCodeGen(TForUpwardExpr,        TJSForUpwardExpr.Create);
+   RegisterCodeGen(TForDownwardExpr,      TJSForDownwardExpr.Create);
+   RegisterCodeGen(TForUpwardStepExpr,    TJSForUpwardStepExpr.Create);
+   RegisterCodeGen(TForDownwardStepExpr,  TJSForDownwardStepExpr.Create);
 
    RegisterCodeGen(TWhileExpr,
       TdwsExprGenericCodeGen.Create(['while (', 0, ') {', #9, 1, #8, '};'], True));
    RegisterCodeGen(TRepeatExpr,
-      TdwsExprGenericCodeGen.Create(['do {', #9, 1, #8, '} while (!(', 0, '));'], True));
+      TdwsExprGenericCodeGen.Create(['do {', #9, 1, #8, '} while (!', 0, ');'], True));
    RegisterCodeGen(TLoopExpr,
       TdwsExprGenericCodeGen.Create(['while (true) {', #9, 1, #8, '};'], True));
 
@@ -540,19 +643,20 @@ begin
    RegisterCodeGen(TExitValueExpr,        TdwsExprGenericCodeGen.Create(['return ', 0, ';'], True));
    RegisterCodeGen(TExitExpr,             TJSExitExpr.Create);
 
+   RegisterCodeGen(TRaiseExpr,            TdwsExprGenericCodeGen.Create(['throw ', 0, ';'], True));
+   RegisterCodeGen(TReRaiseExpr,          TdwsExprGenericCodeGen.Create(['throw $e;'], True));
+   RegisterCodeGen(TExceptExpr,           TJSExceptExpr.Create);
+
    RegisterCodeGen(TFinallyExpr,
       TdwsExprGenericCodeGen.Create(['try {', #9, 0, #8, '} finally {', #9, 1, #8, '};'], True));
 
-   RegisterCodeGen(TStaticArrayExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, ')[', 1, ']']));
-   RegisterCodeGen(TStringArrayOpExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, ').charAt((', 1, ')-1)']));
+   RegisterCodeGen(TStaticArrayExpr,         TJSStaticArrayExpr.Create);
+   RegisterCodeGen(TStringArrayOpExpr,       TJSStringArrayOpExpr.Create);
+   RegisterCodeGen(TVarStringArraySetExpr,   TJSVarStringArraySetExpr.Create);
    RegisterCodeGen(TStringLengthExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, ').length']));
    RegisterCodeGen(TOpenArrayLengthExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, ').length']));
-   RegisterCodeGen(TVarStringArraySetExpr,
-      TdwsExprGenericCodeGen.Create(['{ var $i=', 1, '-1; ', 0, '=', 0, '.substring(0,$i)+', 2, '+', 0, '.substring($i+1); }'], True));
 
    RegisterCodeGen(TOrdIntExpr,
       TdwsExprGenericCodeGen.Create([0]));
@@ -580,6 +684,8 @@ begin
 
    RegisterCodeGen(TFieldExpr,               TJSFieldExpr.Create);
    RegisterCodeGen(TReadOnlyFieldExpr,       TJSFieldExpr.Create);
+
+   RegisterCodeGen(TAssertExpr,              TJSAssertExpr.Create);
 end;
 
 // Destroy
@@ -692,17 +798,17 @@ begin
    WriteString(cls.Parent.Name);
    WriteStringLn(',');
 
-   Dependencies.Add('$NewInstance');
+   Dependencies.Add('$New');
 
-   WriteStringLn('$InitInstance:function (Self) {');
+   WriteStringLn('$Init:function (Self) {');
    Indent;
    WriteString(cls.Parent.Name);
-   WriteStringLn('.$InitInstance(Self);');
+   WriteStringLn('.$Init(Self);');
    for i:=0 to cls.Members.Count-1 do begin
       sym:=cls.Members[i];
       if sym is TFieldSymbol then begin
          WriteString('Self.');
-         WriteString(TJSExprCodeGen.FieldName(TFieldSymbol(sym)));
+         WriteString(MemberName(sym, cls));
          WriteString('=');
          WriteDefaultValue(sym.Typ, False);
          WriteStringLn(';');
@@ -723,32 +829,33 @@ begin
 
    for i:=0 to cls.VMTCount-1 do begin
       meth:=cls.VMTMethod(i);
+      if meth.Name='Destroy' then continue;
       if meth.ClassSymbol<>cls then begin
          WriteString(',');
-         WriteString(TJSExprCodeGen.MethodName(meth));
+         WriteString(MemberName(meth, meth.ClassSymbol));
          WriteString(':');
-         WriteString(meth.ClassSymbol.Name+'.'+TJSExprCodeGen.MethodName(meth));
+         WriteString(meth.ClassSymbol.Name+'.'+MemberName(meth, meth.ClassSymbol));
          WriteLineEnd;
       end;
       WriteString(',');
-      WriteString(TJSExprCodeGen.MethodName(meth));
+      WriteString(MemberName(meth, meth.ClassSymbol));
       WriteString('$v:');
       if meth.ClassSymbol=cls then begin
          if meth.Kind=fkConstructor then begin
             WriteString('function(Self){return Self.ClassType.');
-            WriteString(TJSExprCodeGen.MethodName(meth));
+            WriteString(MemberName(meth, meth.ClassSymbol));
             WriteStringLn('.apply(Self, arguments)}');
          end else if meth.IsClassMethod then begin
             WriteString('function(Self){return Self.');
-            WriteString(TJSExprCodeGen.MethodName(meth));
+            WriteString(MemberName(meth, meth.ClassSymbol));
             WriteStringLn('.apply(Self, arguments)}');
          end else begin
             WriteString('function(Self){return Self.ClassType.');
-            WriteString(TJSExprCodeGen.MethodName(meth));
+            WriteString(MemberName(meth, meth.ClassSymbol));
             WriteStringLn('.apply(Self.ClassType, arguments)}');
          end;
       end else begin
-         WriteString(meth.ClassSymbol.Name+'.'+TJSExprCodeGen.MethodName(meth)+'$v');
+         WriteString(meth.ClassSymbol.Name+'.'+MemberName(meth, meth.ClassSymbol)+'$v');
          WriteLineEnd;
       end;
    end;
@@ -761,11 +868,7 @@ end;
 //
 procedure TdwsJSCodeGen.CompileProgram(const prog : IdwsProgram);
 begin
-   WriteStringLn('function $dws() {');
-   Indent;
    inherited;
-   UnIndent;
-   WriteStringLn('}; $dws();');
 end;
 
 // CompileSymbolTable
@@ -796,8 +899,25 @@ end;
 procedure TdwsJSCodeGen.CompileDependencies(destStream : TWriteOnlyBlockStream);
 var
    processedDependencies : TStringList;
+
+   procedure InsertDependency(dep : PJSRTLDependency);
+   var
+      sub : PJSRTLDependency;
+   begin
+      if     (dep.Dependency<>'')
+         and (processedDependencies.IndexOf(dep.Dependency)<0) then begin
+         processedDependencies.Add(dep.Dependency);
+         sub:=FindJSRTLDependency(dep.Dependency);
+         if sub<>nil then
+            InsertDependency(sub);
+      end;
+      destStream.WriteString(dep.Code);
+      destStream.WriteString(';'#13#10);
+   end;
+
+var
    dependency : String;
-   jsRTL, jsSub : PJSRTLDependency;
+   jsRTL : PJSRTLDependency;
 begin
    processedDependencies:=TStringList.Create;
    processedDependencies.Sorted:=True;
@@ -805,23 +925,21 @@ begin
       while Dependencies.Count>0 do begin
          dependency:=Dependencies[Dependencies.Count-1];
          jsRTL:=FindJSRTLDependency(dependency);
-         if jsRTL<>nil then begin
-            if     (jsRTL.Dependency<>'')
-               and (processedDependencies.IndexOf(jsRTL.Dependency)<0) then begin
-               processedDependencies.Add(jsRTL.Dependency);
-               jsSub:=FindJSRTLDependency(jsRTL.Dependency);
-               destStream.WriteString(jsSub.Code);
-               destStream.WriteString(';'#13#10);
-            end;
-            processedDependencies.Add(dependency);
-            destStream.WriteString(jsRTL.Code);
-            destStream.WriteString(';'#13#10);
-         end;
+         processedDependencies.Add(dependency);
+         if jsRTL<>nil then
+            InsertDependency(jsRTL);
          Dependencies.Delete(Dependencies.Count-1);
       end;
    finally
       processedDependencies.Free;
    end;
+end;
+
+// GetNewTempSymbol
+//
+function TdwsJSCodeGen.GetNewTempSymbol : String;
+begin
+   Result:='$tmp'+inherited GetNewTempSymbol;
 end;
 
 // WriteJavaScriptString
@@ -835,6 +953,7 @@ end;
 //
 procedure TdwsJSCodeGen.CollectLocalVarParams(expr : TExprBase);
 begin
+   if expr=nil then Exit;
    expr.RecursiveEnumerateSubExprs(
       procedure (parent, expr : TExprBase; var abort : Boolean)
       var
@@ -971,6 +1090,7 @@ var
    i : Integer;
    recSym : TRecordSymbol;
    member : TMemberSymbol;
+   sas : TStaticArraySymbol;
 begin
    if typ is TBaseIntegerSymbol then
       WriteString(IntToStr(data[addr]))
@@ -984,6 +1104,15 @@ begin
       WriteString('null')
    end else if typ is TClassOfSymbol then begin
       WriteString(typ.Typ.Name)
+   end else if typ is TStaticArraySymbol then begin
+      sas:=TStaticArraySymbol(typ);
+      WriteString('[');
+      for i:=0 to sas.ElementCount-1 do begin
+         if i>0 then
+            WriteString(',');
+         WriteValue(sas.Typ, data, addr+i*sas.Typ.Size);
+      end;
+      WriteString(']');
    end else if typ is TRecordSymbol then begin
       recSym:=TRecordSymbol(typ);
       WriteString('{');
@@ -1070,7 +1199,7 @@ begin
    proc:=(meth.Executable as TdwsProcedure);
 
    WriteString(',');
-   WriteString(TJSExprCodeGen.MethodName(meth));
+   WriteString(MemberName(meth, meth.ClassSymbol));
 
    EnterContext(proc);
    try
@@ -1091,6 +1220,32 @@ begin
    finally
       LeaveContext;
    end;
+end;
+
+// MemberName
+//
+class function TdwsJSCodeGen.MemberName(sym : TSymbol; cls : TClassSymbol) : String;
+var
+   n : Integer;
+   match : TSymbol;
+begin
+   n:=0;
+   cls:=cls.Parent;
+   while cls<>nil do begin
+      match:=cls.Members.FindSymbol(sym.Name, cvMagic);
+      if match<>nil then begin
+         if     (sym.ClassType=match.ClassType)
+            and (sym is TMethodSymbol)
+            and (TMethodSymbol(sym).IsVirtual)
+            and (TMethodSymbol(sym).VMTIndex=TMethodSymbol(match).VMTIndex) then begin
+            // method override
+         end else Inc(n);
+      end;
+      cls:=cls.Parent;
+   end;
+   if n=0 then
+      Result:=sym.Name
+   else Result:=Format('%s$%d', [sym.Name, n]);
 end;
 
 // ------------------
@@ -1121,6 +1276,31 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSBlockExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSBlockExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   i : Integer;
+   block : TBlockExpr;
+begin
+   block:=TBlockExpr(expr);
+
+   codeGen.WriteString('var ');
+   codeGen.WriteString(codeGen.GetNewTempSymbol);
+   codeGen.WriteStringLn('=function (){');
+   codeGen.Indent;
+   codeGen.CompileSymbolTable(block.Table);
+   for i:=0 to block.SubExprCount-1 do begin
+      codeGen.Compile(block.SubExpr[i]);
+   end;
+   codeGen.UnIndent;
+   codeGen.WriteStringLn('}();');
+end;
+
+// ------------------
 // ------------------ TJSBlockExprNoTable ------------------
 // ------------------
 
@@ -1129,11 +1309,11 @@ end;
 procedure TJSBlockExprNoTable.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    i : Integer;
-   blockInit : TBlockInitExpr;
+   block : TBlockExprNoTable;
 begin
-   blockInit:=TBlockInitExpr(expr);
-   for i:=0 to blockInit.SubExprCount-1 do begin
-      codeGen.Compile(blockInit.SubExpr[i]);
+   block:=TBlockExprNoTable(expr);
+   for i:=0 to block.SubExprCount-1 do begin
+      codeGen.Compile(block.SubExpr[i]);
    end;
 end;
 
@@ -1169,7 +1349,7 @@ begin
    varExpr:=TVarExpr(expr);
    Result:=codeGen.FindSymbolAtStackAddr(varExpr.StackAddr, codeGen.Context.Level);
    if Result=nil then
-      raise ECodeGenUnsupportedSymbol.Create(IntToStr(varExpr.StackAddr));
+      raise ECodeGenUnsupportedSymbol.CreateFmt('Var not found at StackAddr %d', [varExpr.StackAddr]);
 end;
 
 // ------------------
@@ -1341,6 +1521,25 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSAssignConstDataToVarExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSAssignConstDataToVarExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TAssignConstDataToVarExpr;
+begin
+   e:=TAssignConstDataToVarExpr(expr);
+//   if e.Left.Typ is TRecordSymbol then begin
+      codeGen.Compile(e.Left);
+      codeGen.WriteString('=');
+      codeGen.Compile(e.Right);
+//   end else raise ECodeGenUnsupportedSymbol.CreateFmt('Unsupported %s on type %s', [e.ClassName, e.Left.Typ.ClassName]);
+   codeGen.WriteStringLn(';');
+end;
+
+// ------------------
 // ------------------ TJSAppendConstStringVarExpr ------------------
 // ------------------
 
@@ -1428,6 +1627,27 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSArrayConstantExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSArrayConstantExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TArrayConstantExpr;
+   i : Integer;
+begin
+   e:=TArrayConstantExpr(expr);
+   codeGen.WriteString('[');
+   for i:=0 to e.SubExprCount-1 do begin
+      if i>0 then
+         codeGen.WriteString(',');
+      codeGen.Compile(e.SubExpr[i]);
+   end;
+   codeGen.WriteString(']');
+end;
+
+// ------------------
 // ------------------ TJSAssignExpr ------------------
 // ------------------
 
@@ -1440,8 +1660,30 @@ begin
    // TODO: deep copy of records & static arrays
    e:=TAssignExpr(expr);
    codeGen.Compile(e.Left);
-   codeGen.Output.WriteChar('=');
-   codeGen.Compile(e.Right);
+   codeGen.WriteString('=');
+   codeGen.CompileNoWrap(e.Right);
+   codeGen.WriteStringLn(';');
+end;
+
+// ------------------
+// ------------------ TJSAssignDataExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSAssignDataExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TAssignDataExpr;
+begin
+   // TODO: deep copy of records & static arrays
+   e:=TAssignDataExpr(expr);
+   if e.Left.Typ is TStaticArraySymbol then begin
+      codeGen.Compile(e.Left);
+      codeGen.WriteString('=');
+      codeGen.CompileNoWrap(e.Right);
+      if not (e.Right is TArrayConstantExpr) then
+         codeGen.WriteString('.slice(0)');
+   end else raise ECodeGenUnsupportedSymbol.CreateFmt('Unsupported %s on type %s', [e.ClassName, e.Left.Typ.ClassName]);
    codeGen.WriteStringLn(';');
 end;
 
@@ -1458,8 +1700,8 @@ begin
    // TODO: deep copy of records & static arrays
    e:=TAssignClassOfExpr(expr);
    codeGen.Compile(e.Left);
-   codeGen.Output.WriteChar('=');
-   codeGen.Compile(e.Right);
+   codeGen.WriteString('=');
+   codeGen.CompileNoWrap(e.Right);
    if e.Right.Typ is TClassSymbol then
       codeGen.WriteStringLn('.ClassType');
    codeGen.WriteStringLn(';');
@@ -1476,7 +1718,7 @@ var
    e : TFuncExprBase;
    i : Integer;
    funcSym : TFuncSymbol;
-   paramExpr : TExprBase;
+   paramExpr : TTypedExpr;
    paramSymbol : TParamSymbol;
    readBack : TStringList;
 begin
@@ -1487,16 +1729,16 @@ begin
    readBack:=TStringList.Create;
    try
       if funcSym is TMethodSymbol then
-         codeGen.WriteString(TJSExprCodeGen.MethodName(TMethodSymbol(funcSym)))
+         codeGen.WriteString(TdwsJSCodeGen.MemberName(funcSym, TMethodSymbol(funcSym).ClassSymbol))
       else codeGen.WriteString(funcSym.Name);
       if FVirtualCall then
          codeGen.WriteString('$v');
-      codeGen.Output.WriteChar('(');
+      codeGen.WriteString('(');
       CodeGenBeginParams(codeGen, e);
       for i:=0 to e.Args.Count-1 do begin
          if i>0 then
-            codeGen.Output.WriteChar(',');
-         paramExpr:=e.Args.ExprBase[i];
+            codeGen.WriteString(',');
+         paramExpr:=e.Args.ExprBase[i] as TTypedExpr;
          paramSymbol:=funcSym.Params[i] as TParamSymbol;
          if (paramSymbol is TVarParamSymbol) then begin
             if paramExpr is TVarExpr then
@@ -1506,8 +1748,19 @@ begin
                codeGen.Compile(paramExpr);
                codeGen.WriteString('}');
             end;
-         end else begin
+         end else if paramSymbol is TByRefParamSymbol then begin
             codeGen.Compile(paramExpr);
+         end else if paramSymbol is TLazyParamSymbol then begin
+            raise ECodeGenUnsupportedSymbol.CreateFmt('Unsupported %s in %s',
+                                                      [paramSymbol.ClassName, e.ClassName]);
+         end else begin
+            if (paramSymbol.Typ is TRecordSymbol) or (paramSymbol.Typ is TArraySymbol) then begin
+               codeGen.WriteString('JSON.parse(JSON.stringify(');
+               codeGen.Compile(paramExpr);
+               codeGen.WriteString('))');
+            end else begin
+               codeGen.CompileNoWrap(paramExpr);
+            end;
          end;
       end;
       codeGen.WriteString(')');
@@ -1594,7 +1847,18 @@ var
    e : TMethodVirtualExpr;
 begin
    e:=TMethodVirtualExpr(expr);
-   codeGen.Compile(e.BaseExpr);
+
+   if cgoNoCheckInstantiated in codeGen.Options then begin
+      codeGen.Compile(e.BaseExpr);
+   end else begin
+      codeGen.Dependencies.Add('$Check');
+      codeGen.WriteString('$Check(');
+      codeGen.Compile(e.BaseExpr);
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+      codeGen.WriteString(')');
+   end;
+
    if e.FuncSym.Params.Count>0 then
       codeGen.WriteString(',');
 end;
@@ -1624,9 +1888,20 @@ var
    e : TClassMethodStaticExpr;
 begin
    e:=TClassMethodStaticExpr(expr);
-   codeGen.Compile(e.BaseExpr);
+
+   if cgoNoCheckInstantiated in codeGen.Options then begin
+      codeGen.Compile(e.BaseExpr);
+   end else begin
+      codeGen.Dependencies.Add('$Check');
+      codeGen.WriteString('$Check(');
+      codeGen.Compile(e.BaseExpr);
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+      codeGen.WriteString(')');
+   end;
    if e.BaseExpr.Typ is TClassSymbol then
       codeGen.WriteString('.ClassType');
+
    if e.FuncSym.Params.Count>0 then
       codeGen.WriteString(',');
 end;
@@ -1659,9 +1934,20 @@ var
    e : TClassMethodVirtualExpr;
 begin
    e:=TClassMethodVirtualExpr(expr);
-   codeGen.Compile(e.BaseExpr);
+
+   if cgoNoCheckInstantiated in codeGen.Options then begin
+      codeGen.Compile(e.BaseExpr);
+   end else begin
+      codeGen.Dependencies.Add('$Check');
+      codeGen.WriteString('$Check(');
+      codeGen.Compile(e.BaseExpr);
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+      codeGen.WriteString(')');
+   end;
    if e.BaseExpr.Typ is TClassSymbol then
       codeGen.WriteString('.ClassType');
+
    if e.FuncSym.Params.Count>0 then
       codeGen.WriteString(',');
 end;
@@ -1691,7 +1977,7 @@ var
    e : TConstructorStaticExpr;
 begin
    e:=TConstructorStaticExpr(expr);
-   codeGen.WriteString('$NewInstance(');
+   codeGen.WriteString('$New(');
    codeGen.WriteString(e.Typ.UnAliasedType.Name);
    codeGen.WriteString(')');
    if e.FuncSym.Params.Count>0 then
@@ -1726,7 +2012,7 @@ var
    e : TConstructorVirtualExpr;
 begin
    e:=TConstructorVirtualExpr(expr);
-   codeGen.WriteString('$NewInstance(');
+   codeGen.WriteString('$New(');
    codeGen.Compile(e.BaseExpr);
    if e.BaseExpr.Typ is TClassSymbol then
       codeGen.WriteString('.ClassType');
@@ -1937,44 +2223,11 @@ begin
    Result:=(TdwsJSCodeGen(codeGen).FLocalVarParams.IndexOf(sym)>=0);
 end;
 
-// MemberName
+// WriteLocationString
 //
-class function TJSExprCodeGen.MemberName(sym : TSymbol; cls : TClassSymbol) : String;
-var
-   n : Integer;
-   match : TSymbol;
+class procedure TJSExprCodeGen.WriteLocationString(codeGen : TdwsCodeGen; expr : TExprBase);
 begin
-   n:=0;
-   cls:=cls.Parent;
-   while cls<>nil do begin
-      match:=cls.Members.FindSymbol(sym.Name, cvMagic);
-      if match<>nil then begin
-         if     (sym.ClassType=match.ClassType)
-            and (sym is TMethodSymbol)
-            and (TMethodSymbol(sym).IsVirtual)
-            and (TMethodSymbol(sym).VMTIndex=TMethodSymbol(match).VMTIndex) then begin
-            // method override
-         end else Inc(n);
-      end;
-      cls:=cls.Parent;
-   end;
-   if n=0 then
-      Result:=sym.Name
-   else Result:=Format('%s$%d', [sym.Name, n]);
-end;
-
-// FieldName
-//
-class function TJSExprCodeGen.FieldName(field : TFieldSymbol) : String;
-begin
-   Result:=MemberName(field, field.ClassSymbol);
-end;
-
-// MethodName
-//
-class function TJSExprCodeGen.MethodName(meth : TMethodSymbol) : String;
-begin
-   Result:=MemberName(meth, meth.ClassSymbol);
+   WriteJavaScriptString(codeGen.Output, codeGen.LocationString(expr));
 end;
 
 // ------------------
@@ -2007,10 +2260,426 @@ var
    field : TFieldSymbol;
 begin
    e:=TFieldExpr(expr);
-   codeGen.Compile(e.ObjectExpr);
+
+   if cgoNoCheckInstantiated in codeGen.Options then begin
+      codeGen.Compile(e.ObjectExpr);
+   end else begin
+      codeGen.Dependencies.Add('$Check');
+      codeGen.WriteString('$Check(');
+      codeGen.Compile(e.ObjectExpr);
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+      codeGen.WriteString(')');
+   end;
+
    codeGen.WriteString('.');
    field:=(e.ObjectExpr.Typ as TClassSymbol).FieldAtOffset(e.FieldAddr);
-   codeGen.WriteString(FieldName(field));
+   codeGen.WriteString(TdwsJSCodeGen.MemberName(field, field.ClassSymbol));
+end;
+
+// ------------------
+// ------------------ TJSExceptExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSExceptExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TExceptExpr;
+   de : TExceptDoExpr;
+   i : Integer;
+begin
+   codeGen.Dependencies.Add('$Is');
+   codeGen.Dependencies.Add('Exception');
+
+   e:=TExceptExpr(expr);
+   codeGen.WriteStringLn('try {');
+   codeGen.Indent;
+   codeGen.Compile(e.TryExpr);
+   codeGen.UnIndent;
+   codeGen.WriteStringLn('} catch ($e) {');
+   codeGen.Indent;
+   if e.DoExprCount=0 then
+      codeGen.Compile(e.HandlerExpr)
+   else begin
+      for i:=0 to e.DoExprCount-1 do begin
+         de:=e.DoExpr[i];
+         if i>0 then
+            codeGen.WriteString('else ');
+         codeGen.WriteString('if ($Is($e,');
+         codeGen.WriteString(de.ExceptionVar.Typ.UnAliasedType.Name);
+         codeGen.WriteStringLn(')) {');
+         codeGen.Indent;
+
+         codeGen.WriteString('var ');
+         codeGen.WriteString(de.ExceptionVar.Name);
+         codeGen.WriteStringLn('=$e;');
+         codeGen.LocalTable.AddSymbolDirect(de.ExceptionVar);
+         try
+            codeGen.Compile(de.DoBlockExpr);
+         finally
+            codeGen.LocalTable.Remove(de.ExceptionVar);
+         end;
+
+         codeGen.UnIndent;
+         codeGen.WriteStringLn('}');
+      end;
+      if e.ElseExpr<>nil then begin
+         codeGen.WriteStringLn('else {');
+         codeGen.Indent;
+
+         codeGen.Compile(e.ElseExpr);
+
+         codeGen.UnIndent;
+         codeGen.WriteStringLn('}');
+      end;
+   end;
+   codeGen.UnIndent;
+   codeGen.WriteStringLn('}');
+end;
+
+// ------------------
+// ------------------ TJSStaticArrayExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSStaticArrayExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TStaticArrayExpr;
+   noRangeCheck : Boolean;
+   typ : TStaticArraySymbol;
+begin
+   e:=TStaticArrayExpr(expr);
+
+   noRangeCheck:=(cgoNoRangeChecks in codeGen.Options) or e.IndexExpr.IsConstant;
+   typ:=(e.BaseExpr.Typ as TStaticArraySymbol);
+
+   codeGen.Compile(e.BaseExpr);
+   codeGen.WriteString('[');
+
+   if noRangeCheck then begin
+
+      if typ.LowBound=0 then
+         codeGen.Compile(e.IndexExpr)
+      else begin
+         codeGen.WriteString('(');
+         codeGen.Compile(e.IndexExpr);
+         codeGen.WriteString(')-');
+         codeGen.WriteString(IntToStr(typ.LowBound));
+      end;
+
+   end else begin
+
+      codeGen.Dependencies.Add('$Idx');
+
+      codeGen.WriteString('$Idx(');
+      codeGen.Compile(e.IndexExpr);
+      codeGen.WriteString(',');
+      codeGen.WriteString(IntToStr(typ.LowBound));
+      codeGen.WriteString(',');
+      codeGen.WriteString(IntToStr(typ.HighBound));
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+      codeGen.WriteString(')');
+
+   end;
+
+   codeGen.WriteString(']');
+
+end;
+
+// ------------------
+// ------------------ TJSStringArrayOpExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSStringArrayOpExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TStringArrayOpExpr;
+   noRangeCheck : Boolean;
+begin
+   e:=TStringArrayOpExpr(expr);
+
+   noRangeCheck:=(cgoNoRangeChecks in codeGen.Options);
+
+   if noRangeCheck then begin
+
+      codeGen.Compile(e.Left);
+      codeGen.WriteString('.charAt((');
+      codeGen.Compile(e.Right);
+      codeGen.WriteString(')-1)');
+
+   end else begin
+
+      codeGen.Dependencies.Add('$SIdx');
+
+      codeGen.WriteString('$SIdx(');
+      codeGen.Compile(e.Left);
+      codeGen.WriteString(',');
+      codeGen.Compile(e.Right);
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+      codeGen.WriteString(')');
+
+   end;
+end;
+
+// ------------------
+// ------------------ TJSVarStringArraySetExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSVarStringArraySetExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TVarStringArraySetExpr;
+begin
+   e:=TVarStringArraySetExpr(expr);
+
+   codeGen.Dependencies.Add('$StrSet');
+
+   codeGen.Compile(e.StringExpr);
+   codeGen.WriteString('=$StrSet(');
+   codeGen.Compile(e.StringExpr);
+   codeGen.WriteString(',');
+   codeGen.Compile(e.IndexExpr);
+   codeGen.WriteString(',');
+   codeGen.Compile(e.ValueExpr);
+   if not (cgoNoRangeChecks in codeGen.Options) then begin
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+   end;
+   codeGen.WriteStringLn(');');
+end;
+
+// ------------------
+// ------------------ TJSAssertExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSAssertExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TAssertExpr;
+begin
+   e:=TAssertExpr(expr);
+
+   codeGen.Dependencies.Add('$Assert');
+
+   codeGen.WriteString('$Assert(');
+   codeGen.Compile(e.Cond);
+   codeGen.WriteString(',');
+   if e.Message<>nil then
+      codeGen.Compile(e.Message)
+   else codeGen.WriteString('""');
+   codeGen.WriteString(',');
+   WriteLocationString(codeGen, expr);
+   codeGen.WriteStringLn(');');
+end;
+
+// ------------------
+// ------------------ TJSForExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSForExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   tmpTo, tmpStep : String;
+   e : TForExpr;
+begin
+   e:=TForExpr(expr);
+
+   if not e.ToExpr.IsConstant then begin
+      tmpTo:=codeGen.GetNewTempSymbol;
+      codeGen.WriteString('var ');
+      codeGen.WriteString(tmpTo);
+      codeGen.WriteStringLn(';');
+   end else tmpTo:='';
+   if (e is TForStepExpr) and not (TForStepExpr(e).StepExpr.IsConstant) then begin
+      tmpStep:=codeGen.GetNewTempSymbol;
+      codeGen.WriteString('var ');
+      codeGen.WriteString(tmpStep);
+      codeGen.WriteStringLn(';');
+   end else tmpStep:='';
+
+   codeGen.WriteString('for(');
+   codeGen.Compile(e.VarExpr);
+   codeGen.WriteString('=');
+   codeGen.Compile(e.FromExpr);
+   if tmpTo<>'' then begin
+      codeGen.WriteString(',');
+      codeGen.WriteString(tmpTo);
+      codeGen.WriteString('=');
+      codeGen.Compile(e.ToExpr);
+   end;
+   if tmpStep<>'' then begin
+      codeGen.WriteString(',');
+      codeGen.WriteString(tmpStep);
+      if cgoNoCheckLoopStep in codeGen.Options then begin
+         codeGen.WriteString('=');
+         codeGen.Compile(TForStepExpr(e).StepExpr);
+      end else begin
+         codeGen.Dependencies.Add('$CheckStep');
+         codeGen.WriteString('=$CheckStep(');
+         codeGen.Compile(TForStepExpr(e).StepExpr);
+         codeGen.WriteString(',');
+         WriteLocationString(codeGen, e);
+         codeGen.WriteString(')');
+      end;
+   end;
+   codeGen.WriteString(';');
+   codeGen.Compile(e.VarExpr);
+   WriteCompare(codeGen);
+   if tmpTo<>'' then
+      codeGen.WriteString(tmpTo)
+   else codeGen.Compile(e.ToExpr);
+   codeGen.WriteString(';');
+   codeGen.Compile(e.VarExpr);
+   WriteStep(codeGen);
+   if tmpStep<>'' then
+      codeGen.WriteString(tmpStep)
+   else if e is TForStepExpr then begin
+      codeGen.Compile(TForStepExpr(e).StepExpr);
+   end;
+   codeGen.WriteStringLn(') {');
+   codeGen.Indent;
+   codeGen.Compile(e.DoExpr);
+   codeGen.UnIndent;
+   codeGen.WriteStringLn('}');
+end;
+
+// ------------------
+// ------------------ TJSForUpwardExpr ------------------
+// ------------------
+
+// WriteCompare
+//
+procedure TJSForUpwardExpr.WriteCompare(codeGen : TdwsCodeGen);
+begin
+   codeGen.WriteString('<=');
+end;
+
+// WriteStep
+//
+procedure TJSForUpwardExpr.WriteStep(codeGen : TdwsCodeGen);
+begin
+   codeGen.WriteString('++');
+end;
+
+// ------------------
+// ------------------ TJSForDownwardExpr ------------------
+// ------------------
+
+// WriteCompare
+//
+procedure TJSForDownwardExpr.WriteCompare(codeGen : TdwsCodeGen);
+begin
+   codeGen.WriteString('>=');
+end;
+
+// WriteStep
+//
+procedure TJSForDownwardExpr.WriteStep(codeGen : TdwsCodeGen);
+begin
+   codeGen.WriteString('--');
+end;
+
+// ------------------
+// ------------------ TJSForUpwardStepExpr ------------------
+// ------------------
+
+// WriteStep
+//
+procedure TJSForUpwardStepExpr.WriteStep(codeGen : TdwsCodeGen);
+begin
+   codeGen.WriteString('+=');
+end;
+
+// ------------------
+// ------------------ TJSForDownwardStepExpr ------------------
+// ------------------
+
+// WriteStep
+//
+procedure TJSForDownwardStepExpr.WriteStep(codeGen : TdwsCodeGen);
+begin
+   codeGen.WriteString('-=');
+end;
+
+// ------------------
+// ------------------ TJSSqrExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSSqrExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+begin
+   if not (expr.SubExpr[0] is TVarExpr) then
+      inherited
+   else CodeGenNoWrap(codeGen, expr as TTypedExpr);
+end;
+
+// CodeGenNoWrap
+//
+procedure TJSSqrExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+begin
+   expr:=expr.SubExpr[0] as TTypedExpr;
+   if expr is TVarExpr then begin
+      codeGen.Compile(expr);
+      codeGen.WriteString('*');
+      codeGen.Compile(expr);
+   end else begin
+      codeGen.WriteString('Math.pow(');
+      codeGen.Compile(expr);
+      codeGen.WriteString(',2)');
+   end;
+end;
+
+// ------------------
+// ------------------ TJSOpExpr ------------------
+// ------------------
+
+// WriteWrappedIfNeeded
+//
+class procedure TJSOpExpr.WriteWrappedIfNeeded(codeGen : TdwsCodeGen; expr : TTypedExpr);
+begin
+   if    (expr is TDataExpr)
+      or (expr is TConstExpr) then begin
+      codeGen.CompileNoWrap(expr);
+   end else begin
+      codeGen.Compile(expr);
+   end;
+end;
+
+// ------------------
+// ------------------ TJSBinOpExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TJSBinOpExpr.Create(const op : String);
+begin
+   inherited Create;
+   FOp:=op;
+end;
+
+// CodeGen
+//
+procedure TJSBinOpExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+var
+   e : TBinaryOpExpr;
+begin
+   e:=TBinaryOpExpr(expr);
+   if e.Left.ClassType=e.ClassType then
+      codeGen.CompileNoWrap(e.Left)
+   else WriteWrappedIfNeeded(codeGen, e.Left);
+   codeGen.WriteString(FOp);
+   if e.Right.ClassType=e.ClassType then
+      codeGen.CompileNoWrap(e.Right)
+   else WriteWrappedIfNeeded(codeGen, e.Right);
 end;
 
 end.
