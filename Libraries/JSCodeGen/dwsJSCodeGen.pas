@@ -904,6 +904,8 @@ var
    var
       sub : PJSRTLDependency;
    begin
+      if FlushedDependencies.IndexOf(dep.Name)>=0 then Exit;
+      
       if     (dep.Dependency<>'')
          and (processedDependencies.IndexOf(dep.Dependency)<0) then begin
          processedDependencies.Add(dep.Dependency);
@@ -913,6 +915,7 @@ var
       end;
       destStream.WriteString(dep.Code);
       destStream.WriteString(';'#13#10);
+      FlushedDependencies.Add(dep.Name);
    end;
 
 var
@@ -924,6 +927,8 @@ begin
    try
       while Dependencies.Count>0 do begin
          dependency:=Dependencies[Dependencies.Count-1];
+         if FlushedDependencies.IndexOf(dependency)>=0 then
+            continue;
          jsRTL:=FindJSRTLDependency(dependency);
          processedDependencies.Add(dependency);
          if jsRTL<>nil then

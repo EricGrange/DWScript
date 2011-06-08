@@ -46,6 +46,7 @@ type
          FCodeGenList : TdwsRegisteredCodeGenList;
          FOutput : TWriteOnlyBlockStream;
          FDependencies : TStringList;
+         FFlushedDependencies : TStringList;
          FTempReg : TdwsRegisteredCodeGen;
          FLocalTable : TSymbolTable;
          FContext : TdwsProgram;
@@ -97,7 +98,9 @@ type
          function LocationString(e : TExprBase) : String;
          function GetNewTempSymbol : String; virtual;
 
-         function CompiledOutput : String; virtual;
+         procedure WriteCompiledOutput(dest : TWriteOnlyBlockStream); virtual;
+         function CompiledOutput : String;
+         procedure FushDependencies;
 
          procedure Clear; virtual;
 
@@ -109,6 +112,7 @@ type
 
          property Output : TWriteOnlyBlockStream read FOutput;
          property Dependencies : TStringList read FDependencies;
+         property FlushedDependencies : TStringList read FFlushedDependencies;
    end;
 
    TdwsExprCodeGen = class abstract
@@ -190,6 +194,9 @@ begin
    FDependencies:=TStringList.Create;
    FDependencies.Sorted:=True;
    FDependencies.Duplicates:=dupIgnore;
+   FFlushedDependencies:=TStringList.Create;
+   FFlushedDependencies.Sorted:=True;
+   FFlushedDependencies.Duplicates:=dupIgnore;
    FTempReg:=TdwsRegisteredCodeGen.Create;
    FIndentSize:=3;
 end;
@@ -201,6 +208,7 @@ begin
    inherited;
    FTempReg.Free;
    FDependencies.Free;
+   FFlushedDependencies.Free;
    FOutput.Free;
    FCodeGenList.Clean;
    FCodeGenList.Free;
@@ -256,6 +264,7 @@ procedure TdwsCodeGen.Clear;
 begin
    FOutput.Clear;
    FDependencies.Clear;
+   FFlushedDependencies.Clear;
 
    FLocalTable:=nil;
    FTableStack.Clear;
@@ -478,6 +487,14 @@ begin
    Result:=IntToStr(FTempSymbolCounter);
 end;
 
+// WriteCompiledOutput
+//
+procedure TdwsCodeGen.WriteCompiledOutput(dest : TWriteOnlyBlockStream);
+begin
+   CompileDependencies(dest);
+   dest.WriteString(Output.ToString);
+end;
+
 // CompiledOutput
 //
 function TdwsCodeGen.CompiledOutput : String;
@@ -486,12 +503,19 @@ var
 begin
    buf:=TWriteOnlyBlockStream.Create;
    try
-      CompileDependencies(buf);
-      buf.WriteString(Output.ToString);
+      WriteCompiledOutput(buf);
       Result:=buf.ToString;
    finally
       buf.Free;
    end;
+end;
+
+// FushDependencies
+//
+procedure TdwsCodeGen.FushDependencies;
+begin
+   FFlushedDependencies.Assign(FDependencies);
+   FDependencies.Clear;
 end;
 
 // EnterContext
