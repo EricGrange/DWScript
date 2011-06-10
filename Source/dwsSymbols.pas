@@ -991,7 +991,8 @@ type
 
    TObjectDestroyEvent = procedure (ExternalObject: TObject) of object;
 
-   TClassSymbolFlag = (csfAbstract, csfExplicitAbstract, csfSealed, csfStatic);
+   TClassSymbolFlag = (csfAbstract, csfExplicitAbstract, csfSealed,
+                       csfStatic, csfExternal);
    TClassSymbolFlags = set of TClassSymbolFlag;
 
    // type X = class ... end;
@@ -1019,6 +1020,8 @@ type
          procedure SetIsSealed(const val : Boolean); inline;
          function GetIsStatic : Boolean; inline;
          procedure SetIsStatic(const val : Boolean); inline;
+         function GetIsExternal : Boolean; inline;
+         procedure SetIsExternal(const val : Boolean); inline;
 
          function AllocateVMTindex : Integer;
 
@@ -1052,11 +1055,14 @@ type
 
          property ClassOf : TClassOfSymbol read FClassOfSymbol;
          property ScriptInstanceSize : Integer read FScriptInstanceSize;
+
          property IsForwarded : Boolean read GetIsForwarded;
          property IsExplicitAbstract : Boolean read GetIsExplicitAbstract write SetIsExplicitAbstract;
          property IsAbstract : Boolean read GetIsAbstract;
          property IsSealed : Boolean read GetIsSealed write SetIsSealed;
          property IsStatic : Boolean read GetIsStatic write SetIsStatic;
+         property IsExternal : Boolean read GetIsExternal write SetIsExternal;
+
          property Members : TMembersSymbolTable read FMembers;
          property OnObjectDestroy : TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
          property Parent : TClassSymbol read FParent;
@@ -2755,7 +2761,7 @@ begin
          if not methSym.IsAbstract then begin
             if Assigned(methSym.FExecutable) then
                methSym.FExecutable.InitSymbol(FMembers[i])
-            else begin
+            else if not IsExternal then begin
                msgs.AddCompilerErrorFmt((methSym as TSourceMethodSymbol).DeclarationPos, CPE_MethodNotImplemented,
                                         [methSym.Name, methSym.ClassSymbol.Caption]);
             end;
@@ -2903,6 +2909,22 @@ begin
    if val then
       Include(FFlags, csfStatic)
    else Exclude(FFlags, csfStatic);
+end;
+
+// GetIsExternal
+//
+function TClassSymbol.GetIsExternal : Boolean;
+begin
+   Result:=(csfExternal in FFlags);
+end;
+
+// SetIsExternal
+//
+procedure TClassSymbol.SetIsExternal(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, csfExternal)
+   else Exclude(FFlags, csfExternal);
 end;
 
 // AllocateVMTindex

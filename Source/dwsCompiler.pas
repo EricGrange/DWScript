@@ -3614,6 +3614,8 @@ begin
             ttSEALED :
                Result.IsSealed:=True;
          end;
+         if FTok.TestDelete(ttEXTERNAL) then
+            Result.IsExternal:=True;
 
          // inheritance
          if FTok.TestDelete(ttBLEFT) then begin
