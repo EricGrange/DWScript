@@ -919,21 +919,22 @@ var
    end;
 
 var
+   i : Integer;
    dependency : String;
    jsRTL : PJSRTLDependency;
 begin
    processedDependencies:=TStringList.Create;
    processedDependencies.Sorted:=True;
    try
-      while Dependencies.Count>0 do begin
-         dependency:=Dependencies[Dependencies.Count-1];
+      for i:=Dependencies.Count-1 downto 0 do begin
+         dependency:=Dependencies[i];
          if FlushedDependencies.IndexOf(dependency)>=0 then
             continue;
          jsRTL:=FindJSRTLDependency(dependency);
          processedDependencies.Add(dependency);
          if jsRTL<>nil then
             InsertDependency(jsRTL);
-         Dependencies.Delete(Dependencies.Count-1);
+         Dependencies.Delete(i);
       end;
    finally
       processedDependencies.Free;
