@@ -83,8 +83,9 @@ type
          procedure CompileRecordSymbol(rec : TRecordSymbol); virtual;
          procedure CompileClassSymbol(cls : TClassSymbol); virtual;
          procedure CompileProgram(const prog : IdwsProgram); virtual;
+         procedure CompileProgramBody(expr : TNoResultExpr); virtual;
 
-         procedure CompileDependencies(destStream : TWriteOnlyBlockStream); virtual;
+         procedure CompileDependencies(destStream : TWriteOnlyBlockStream; const prog : IdwsProgram); virtual;
 
          procedure WriteIndent;
          procedure Indent;
@@ -98,8 +99,8 @@ type
          function LocationString(e : TExprBase) : String;
          function GetNewTempSymbol : String; virtual;
 
-         procedure WriteCompiledOutput(dest : TWriteOnlyBlockStream); virtual;
-         function CompiledOutput : String;
+         procedure WriteCompiledOutput(dest : TWriteOnlyBlockStream; const prog : IdwsProgram); virtual;
+         function CompiledOutput(const prog : IdwsProgram) : String;
          procedure FushDependencies;
 
          procedure Clear; virtual;
@@ -395,14 +396,21 @@ begin
    CompileSymbolTable(p.Table);
 
    if not (p.Expr is TNullExpr) then
-      Compile(p.Expr);
+      CompileProgramBody(p.Expr);
 
    LeaveContext;
 end;
 
+// CompileProgramBody
+//
+procedure TdwsCodeGen.CompileProgramBody(expr : TNoResultExpr);
+begin
+   Compile(expr);
+end;
+
 // CompileDependencies
 //
-procedure TdwsCodeGen.CompileDependencies(destStream : TWriteOnlyBlockStream);
+procedure TdwsCodeGen.CompileDependencies(destStream : TWriteOnlyBlockStream; const prog : IdwsProgram);
 begin
    // nothing
 end;
@@ -489,21 +497,21 @@ end;
 
 // WriteCompiledOutput
 //
-procedure TdwsCodeGen.WriteCompiledOutput(dest : TWriteOnlyBlockStream);
+procedure TdwsCodeGen.WriteCompiledOutput(dest : TWriteOnlyBlockStream; const prog : IdwsProgram);
 begin
-   CompileDependencies(dest);
+   CompileDependencies(dest, prog);
    dest.WriteString(Output.ToString);
 end;
 
 // CompiledOutput
 //
-function TdwsCodeGen.CompiledOutput : String;
+function TdwsCodeGen.CompiledOutput(const prog : IdwsProgram) : String;
 var
    buf : TWriteOnlyBlockStream;
 begin
    buf:=TWriteOnlyBlockStream.Create;
    try
-      WriteCompiledOutput(buf);
+      WriteCompiledOutput(buf, prog);
       Result:=buf.ToString;
    finally
       buf.Free;
@@ -542,7 +550,7 @@ end;
 //
 procedure TdwsCodeGen.RaiseUnknowExpression(expr : TExprBase);
 begin
-   raise ECodeGenUnknownExpression.CreateFmt('%s: unknown expression class %s%s',
+   raise ECodeGenUnknownExpression.CreateFmt('%s: unknown expression class %s:%s',
                                              [ClassName, expr.ClassName, expr.ScriptLocation(Context)]);
 end;
 

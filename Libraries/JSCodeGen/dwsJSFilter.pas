@@ -91,7 +91,7 @@ function TdwsJSFilter.Process(const tText : String; msgs : TdwsMessageList) : St
          Exit(prog.Msgs.AsInfo);
 
       FCodeGen.CompileProgram(prog);
-      Result:=FCodeGen.CompiledOutput;
+      Result:=FCodeGen.CompiledOutput(prog);
    end;
 
 var

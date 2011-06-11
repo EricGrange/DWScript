@@ -198,10 +198,8 @@ begin
          try
             FCodeGen.CompileProgram(prog);
 
-            k:=FCodeGen.Dependencies.IndexOf('Print');
-            if k>=0 then FCodeGen.Dependencies.Delete(k);
-            k:=FCodeGen.Dependencies.IndexOf('PrintLn');
-            if k>=0 then FCodeGen.Dependencies.Delete(k);
+            FCodeGen.FlushedDependencies.Add('Print');
+            FCodeGen.FlushedDependencies.Add('PrintLn');
 
             jsCode:= 'var $testResult = [];'#13#10
                     +'function Print(s) { if (s===true) $testResult.push("True"); '
@@ -210,7 +208,7 @@ begin
                     +'function PrintLn(s) { Print(s); $testResult.push("\r\n"); };'#13#10
                     +'try {'#13#10
                     +#13#10
-                    +FCodeGen.CompiledOutput
+                    +FCodeGen.CompiledOutput(prog)
                     +#13#10
                     +'} catch(e) {PrintLn("Errors >>>>\r\nRuntime Error: "+((e.ClassType)?e.FMessage:e.message)+"\r\nResult >>>>")};'#13#10
                     +'alert($testResult.join(""));';
