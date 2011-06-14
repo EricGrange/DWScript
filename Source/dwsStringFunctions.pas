@@ -23,7 +23,7 @@ unit dwsStringFunctions;
 interface
 
 uses Classes, SysUtils, Variants, StrUtils, dwsFunctions, dwsSymbols, dwsStrings,
-   dwsUtils, dwsExprs, dwsCoreExprs, dwsErrors, dwsXPlatform;
+   dwsUtils, dwsExprs, dwsCoreExprs, dwsErrors, dwsXPlatform, Math;
 
 type
 
@@ -292,8 +292,21 @@ end;
 { TFloatToStrFunc }
 
 procedure TFloatToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+var
+   p : Integer;
+   v, p10 : Double;
 begin
-   Result:=FloatToStr(args.AsFloat[0]);
+   p:=args.AsInteger[1];
+   if p=99 then
+      Result:=FloatToStr(args.AsFloat[0])
+   else begin
+      v:=args.AsFloat[0];
+      if p<0 then begin
+         p10:=Power(10, p);
+         v:=Round(v*p10)/p10;
+         Result:=Format('%.0f', [v]);
+      end else Result:=Format('%.*f', [p, v]);
+   end;
 end;
 
 { TStrToFloatFunc }
@@ -744,7 +757,7 @@ initialization
 
    RegisterInternalStringFunction(TBoolToStrFunc, 'BoolToStr', ['b', cBoolean], True);
 
-   RegisterInternalStringFunction(TFloatToStrFunc, 'FloatToStr', ['f', cFloat], True);
+   RegisterInternalStringFunction(TFloatToStrFunc, 'FloatToStr', ['f', cFloat, 'p=99', cInteger], True);
    RegisterInternalFloatFunction(TStrToFloatFunc, 'StrToFloat', ['str', cString], True);
    RegisterInternalFloatFunction(TStrToFloatDefFunc, 'StrToFloatDef', ['str', cString, 'def', cFloat], True);
    RegisterInternalFloatFunction(TStrToFloatDefFunc, 'VarToFloatDef', ['val', cVariant, 'def', cFloat], True);
