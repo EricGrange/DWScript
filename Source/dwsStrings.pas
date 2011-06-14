@@ -385,6 +385,8 @@ const
   RTE_PreConditionFailed = 'Pre-condition failed in %s%s, %s';
   RTE_PostConditionFailed = 'Post-condition failed in %s%s, %s';
 
+  RTE_UnHandledExternalCall = 'Unhandled call to external symbol "%s" from%s';
+
   // Connectors
   RTE_ConnectorCallFailed = 'Connector Call "%s" failed';
   RTE_ConnectorReadError = 'ConnectorRead error';

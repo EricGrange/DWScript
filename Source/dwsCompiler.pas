@@ -3295,6 +3295,8 @@ begin
    end;
 
    Result:=WrapUpFunctionRead(TFuncExprBase(Result), expecting);
+   if funcSym.IsExternal then
+      funcSym.Executable:=TExternalFuncHandler.Create;
 
    if Optimize then
       Result:=Result.OptimizeToNoPosExpr(FProg, FExec);

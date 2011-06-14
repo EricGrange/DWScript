@@ -724,6 +724,17 @@ type
          property Pos: TScriptPos read FPos;
    end;
 
+   // TExternalFuncHandler
+   //
+   TExternalFuncHandler = class(TInterfacedObject, ICallable, IExecutable)
+      public
+         procedure InitSymbol(symbol: TSymbol);
+         procedure InitExpression(Expr: TExprBase);
+         procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol);
+   end;
+
+   EdwsExternalFuncHandler = class (Exception);
+
    // TFuncExprBase
    //
    TFuncExprBase = class(TPosDataExpr)
@@ -7932,6 +7943,35 @@ begin
    inherited CreateFmt(CPE_AssignIncompatibleTypes,
                        [VarTypeAsText(VarType(v)), desiredType])
 
+end;
+
+// ------------------
+// ------------------ TExternalFuncHandler ------------------
+// ------------------
+
+// InitSymbol
+//
+procedure TExternalFuncHandler.InitSymbol(symbol: TSymbol);
+begin
+   // nothing
+end;
+
+// InitExpression
+//
+procedure TExternalFuncHandler.InitExpression(Expr: TExprBase);
+begin
+   // nothing
+end;
+
+// Call
+//
+procedure TExternalFuncHandler.Call(exec : TdwsProgramExecution; func : TFuncSymbol);
+var
+   locArray : TdwsExprLocationArray;
+begin
+   locArray:=exec.GetCallStack;
+   raise EdwsExternalFuncHandler.CreateFmt(RTE_UnHandledExternalCall,
+                                           [func.Name, locArray[High(locArray)].Location]);
 end;
 
 end.
