@@ -269,16 +269,17 @@ end;
 function TdwsAsmLanguageExtension.SymbolDefines(const symbolName : String; compiler : TdwsCompiler) : String;
 var
    offset : Integer;
-   sym : TSymbol;
+   sym, symTyp : TSymbol;
    dataSym : TDataSymbol;
    size, sign : String;
 begin
    sym:=compiler.CurrentProg.Table.FindSymbol(symbolName, cvMagic);
    if not Assigned(sym) then Exit('');
 
-   if sym.IsIntegerValue or sym.IsFloatValue or sym.IsStringValue then
+   symTyp:=sym.Typ.UnAliasedType;
+   if (symTyp is TBaseIntegerSymbol) or (symTyp is TBaseFloatSymbol) or (symTyp is TBaseStringSymbol) then
       size:='QWORD'
-   else if sym.IsBooleanValue then
+   else if symTyp is TBaseBooleanSymbol then
       size:='WORD'
    else Exit('');
 
