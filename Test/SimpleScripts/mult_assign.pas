@@ -7,13 +7,13 @@ PrintLn(i);
 i *= 10-i;
 PrintLn(i);
 
-var f := 1.5;
+var f := 0.5;
 
-f *= 2.2;
+f *= 2.5;
 PrintLn(f);
 f *= f;
 PrintLn(f);
-f *= 10+f;
+f *= 16+f;
 PrintLn(f);
 
 

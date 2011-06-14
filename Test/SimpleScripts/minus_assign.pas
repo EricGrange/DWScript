@@ -9,11 +9,11 @@ PrintLn(i);
 
 var f := 1.5;
 
-f -= 2.3;
+f -= 2.5;
 PrintLn(f);
 f -= f;
 PrintLn(f);
-f -= 10.4-f;
+f -= 16.5-f;
 PrintLn(f);
 
 
