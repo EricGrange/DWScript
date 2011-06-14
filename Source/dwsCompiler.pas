@@ -3576,27 +3576,28 @@ var
    tt : TTokenType;
 begin
    // Check for a forward declaration of this class
-   sym:=FProg.Table.FindSymbol(TypeName, cvMagic);
+   sym:=FProg.Table.FindSymbol(typeName, cvMagic);
    Result:=nil;
 
    if Assigned(sym) then begin
       if sym is TClassSymbol then begin
          if TClassSymbol(sym).IsForwarded then
             Result:=TClassSymbol(sym)
+         else FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassAlreadyDefined, [sym.Name]);
       end else begin
-         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [sym.Caption]);
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [sym.Name]);
       end;
    end;
 
    isInSymbolTable := Assigned(Result);
 
    if not Assigned(Result) then
-      Result := TClassSymbol.Create(TypeName);
+      Result:=TClassSymbol.Create(TypeName);
 
    // forwarded declaration
    if FTok.Test(ttSEMI) then begin
       if Result.IsForwarded then
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassForwardAlreadyExists);
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassForwardAlreadyExists, [sym.Name]);
       Result.SetForwardedPos(FTok.HotPos);
       Exit;
    end else Result.ClearIsForwarded;

@@ -149,7 +149,8 @@ const
   CPE_StaticPropertyWriteExpected = 'Write access of property should be a static method';
   CPE_UnknownClass = 'Class "%s" not found';
   CPE_NotAClass = '"%s" is not a class';
-  CPE_ClassForwardAlreadyExists = 'There is already a forward declaration of this class!';
+  CPE_ClassForwardAlreadyExists = 'There is already a forward declaration of the "%s" class!';
+  CPE_ClassAlreadyDefined = 'Class "%s" already defined!';
   CPE_FuncForwardAlreadyExists = 'There is already a forward declaration of this function!';
   CPE_ClassNotImplementedYet = 'Class "%s" not fully implemented.';
   CPE_ForwardNotImplemented = 'The function "%s" was forward declared but not implemented!';
