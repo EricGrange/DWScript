@@ -12,7 +12,7 @@ base 10
 Post-condition failed in TBase.Check [line: 19, column: 4], i < 10
 TSubChild
 subchild 1
-Pre-condition failed in TSubChild.Check [line: 15, column: 4], i > 0
+Pre-condition failed in TBase.Check [line: 15, column: 4], i > 0
 subchild 4
 subchild 7
 Post-condition failed in TSubChild.Check [line: 26, column: 4], was 7

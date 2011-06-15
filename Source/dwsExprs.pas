@@ -924,30 +924,37 @@ type
          FItems : TTightList;
          FAncestor : TSourceConditions;
 
+         function GetConditions(idx : Integer) : TSourceCondition;
+
       public
          constructor Create(aProg : TdwsProcedure);
          destructor Destroy; override;
 
          procedure AddCondition(condition : TSourceCondition);
 
-         procedure RaiseConditionFailed(exec : TdwsExecution; const scriptPos : TScriptPos;
+         procedure RaiseConditionFailed(exec : TdwsExecution; funcSym : TFuncSymbol;
+                                        const scriptPos : TScriptPos;
                                         const msg : IStringEvalable); virtual; abstract;
          function  Test(exec : TdwsExecution) : TSourceCondition;
          procedure EvalNoResult(exec : TdwsExecution); virtual;
 
          property Ancestor : TSourceConditions read FAncestor write FAncestor;
+         property Conditions[idx : Integer] : TSourceCondition read GetConditions; default;
+         property Count : Integer read FItems.FCount;
    end;
    TSourceConditionsClass = class of TSourceConditions;
 
    TSourcePreConditions = class (TSourceConditions)
       public
-         procedure RaiseConditionFailed(exec : TdwsExecution; const scriptPos : TScriptPos;
+         procedure RaiseConditionFailed(exec : TdwsExecution; funcSym : TFuncSymbol;
+                                        const scriptPos : TScriptPos;
                                         const msg : IStringEvalable); override;
    end;
 
    TSourcePostConditions = class (TSourceConditions)
       public
-         procedure RaiseConditionFailed(exec : TdwsExecution; const scriptPos : TScriptPos;
+         procedure RaiseConditionFailed(exec : TdwsExecution; funcSym : TFuncSymbol;
+                                        const scriptPos : TScriptPos;
                                         const msg : IStringEvalable); override;
    end;
 
@@ -4270,14 +4277,16 @@ end;
 //
 function TFuncPtrExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
-   Result:=FCodeExpr
+   if i=0 then
+      Result:=FCodeExpr
+   else Result:=inherited GetSubExpr(i-1);
 end;
 
 // GetSubExprCount
 //
 function TFuncPtrExpr.GetSubExprCount : Integer;
 begin
-   Result:=1;
+   Result:=1+inherited GetSubExprCount;
 end;
 
 // ------------------
@@ -7837,7 +7846,14 @@ var
 begin
    failed:=Test(exec);
    if failed<>nil then
-      RaiseConditionFailed(exec, failed.Pos, failed);
+      RaiseConditionFailed(exec, FProg.FFunc, failed.Pos, failed);
+end;
+
+// GetConditions
+//
+function TSourceConditions.GetConditions(idx : Integer) : TSourceCondition;
+begin
+   Result:=TSourceCondition(FItems.List[idx]);
 end;
 
 // ------------------
@@ -7847,13 +7863,13 @@ end;
 // RaiseConditionFailed
 //
 procedure TSourcePreConditions.RaiseConditionFailed(exec : TdwsExecution;
-                 const scriptPos : TScriptPos; const msg : IStringEvalable);
+   funcSym : TFuncSymbol; const scriptPos : TScriptPos; const msg : IStringEvalable);
 var
    msgStr : String;
 begin
    msg.EvalAsString(exec, msgStr);
    (exec as TdwsProgramExecution).RaiseAssertionFailedFmt(
-      RTE_PreConditionFailed, [FProg.Func.QualifiedName, scriptPos.AsInfo, msgStr], scriptPos);
+      RTE_PreConditionFailed, [funcSym.QualifiedName, scriptPos.AsInfo, msgStr], scriptPos);
 end;
 
 // ------------------
@@ -7863,13 +7879,13 @@ end;
 // RaiseConditionFailed
 //
 procedure TSourcePostConditions.RaiseConditionFailed(exec : TdwsExecution;
-                 const scriptPos : TScriptPos; const msg : IStringEvalable);
+   funcSym : TFuncSymbol; const scriptPos : TScriptPos; const msg : IStringEvalable);
 var
    msgStr : String;
 begin
    msg.EvalAsString(exec, msgStr);
    (exec as TdwsProgramExecution).RaiseAssertionFailedFmt(
-      RTE_PostConditionFailed, [FProg.Func.QualifiedName, scriptPos.AsInfo, msgStr], scriptPos);
+      RTE_PostConditionFailed, [funcSym.QualifiedName, scriptPos.AsInfo, msgStr], scriptPos);
 end;
 
 // ------------------
@@ -7900,7 +7916,7 @@ begin
    for i:=0 to conds.Count-1 do begin
       current:=TConditionSymbol(conds[i]);
       if (current.ClassType=TPreConditionSymbol) and not current.Condition.EvalAsBoolean(exec) then
-         RaiseConditionFailed(exec, current.ScriptPos, current.Message);
+         RaiseConditionFailed(exec, methSym, current.ScriptPos, current.Message);
    end;
 end;
 
@@ -7926,7 +7942,7 @@ begin
       for i:=0 to conds.Count-1 do begin
          current:=TConditionSymbol(conds[i]);
          if (current.ClassType=TPostConditionSymbol) and not current.Condition.EvalAsBoolean(exec) then
-            RaiseConditionFailed(exec, current.ScriptPos, current.Message);
+            RaiseConditionFailed(exec, methSym, current.ScriptPos, current.Message);
       end;
       methSym:=methSym.ParentMeth;
    end;
