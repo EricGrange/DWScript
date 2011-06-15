@@ -1199,6 +1199,8 @@ begin
                   assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, pos, varExpr)
                else if varExpr.Typ.ClassType=TClassOfSymbol then
                   assignExpr:=TAssignNilClassToVarExpr.CreateVal(FProg, pos, varExpr)
+               else if varExpr.Typ is TFuncSymbol then
+                  assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, pos, varExpr)
                else begin
                   initData := nil;
                   SetLength(initData, sym.Typ.Size);
@@ -2381,7 +2383,7 @@ begin
       expr:=TUnifiedConstExpr.CreateUnified(FProg, FProg.TypVariant, Unassigned);
    end else expr:=TTypedExpr(oldExpr);
 
-   sym:=TDataSymbol.Create('old '+IntToStr(FSourcePostConditionsIndex), expr.Typ);
+   sym:=TDataSymbol.Create('old$'+IntToStr(FSourcePostConditionsIndex), expr.Typ);
    Inc(FSourcePostConditionsIndex);
    FProg.Table.AddSymbol(sym);
    varExpr:=GetVarExpr(sym);
