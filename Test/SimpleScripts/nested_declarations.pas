@@ -24,7 +24,7 @@ begin
   var s: Float; // overrides previous declaration 
                 // of "s" (only inside this loop)
   s := Sqrt(x);
-  PrintLn(s);
+  PrintLn(FloatToStr(s, 3));
 end;
 
 for x := 0 to 10 do
