@@ -1424,6 +1424,7 @@ var
    base, expr : TExprBase;
    stack : TSimpleStack<TExprBase>;
 begin
+   if Self=nil then Exit;
    stack:=TSimpleStack<TExprBase>.Create;
    try
       abort:=False;
