@@ -880,6 +880,11 @@ type
          FLeft : TTypedExpr;
          FCaseConditions : TTightList;
 
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+         function GetCaseConditions(idx : Integer) : TCaseCondition;
+
       public
          constructor Create(Prog: TdwsProgram; Left : TTypedExpr);
          destructor Destroy; override;
@@ -888,6 +893,10 @@ type
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          function IsConstant : Boolean; override;
          procedure AddCaseCondition(cond : TCaseCondition);
+
+         property Left : TTypedExpr read FLeft;
+         property CaseConditions[idx : Integer] : TCaseCondition read GetCaseConditions; default;
+         property Count : Integer read FCaseConditions.FCount;
    end;
 
    // statement; statement; statement;
@@ -973,6 +982,9 @@ type
          constructor Create(const aPos : TScriptPos);
          destructor Destroy; override;
 
+         function GetSubExpr(i : Integer) : TExprBase; virtual; abstract;
+         function GetSubExprCount : Integer; virtual; abstract;
+
          function IsTrue(exec : TdwsExecution; const value: Variant) : Boolean; virtual; abstract;
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); virtual; abstract;
          function IsConstant : Boolean; virtual; abstract;
@@ -992,6 +1004,9 @@ type
          constructor Create(const aPos : TScriptPos; compareExpr : TTypedExpr);
          destructor Destroy; override;
 
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
          function IsTrue(exec : TdwsExecution; const value : Variant) : Boolean; override;
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
@@ -1008,6 +1023,9 @@ type
          constructor Create(const aPos : TScriptPos; fromExpr, toExpr : TTypedExpr);
          destructor Destroy; override;
 
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
          function IsTrue(exec : TdwsExecution; const Value: Variant): Boolean; override;
          procedure TypeCheck(prog : TdwsProgram; typ : TTypeSymbol); override;
          function IsConstant : Boolean; override;
@@ -1019,9 +1037,13 @@ type
    // case FValueExpr of {CaseConditions} else FElseExpr end;
    TCaseExpr = class(TNoResultExpr)
       private
-         FCaseConditions: TTightList;
-         FElseExpr: TNoResultExpr;
-         FValueExpr: TTypedExpr;
+         FCaseConditions : TTightList;
+         FElseExpr : TNoResultExpr;
+         FValueExpr : TTypedExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
 
       public
          destructor Destroy; override;
@@ -2922,6 +2944,45 @@ begin
    FCaseConditions.Add(cond);
 end;
 
+// GetSubExpr
+//
+function TInOpExpr.GetSubExpr(i : Integer) : TExprBase;
+var
+   j : Integer;
+   cond : TCaseCondition;
+begin
+   if i=0 then
+      Result:=FLeft
+   else begin
+      Dec(i);
+      for j:=0 to Count-1 do begin
+         cond:=CaseConditions[j];
+         if i<cond.GetSubExprCount then
+            Exit(cond.GetSubExpr(i));
+         Dec(i, cond.GetSubExprCount);
+      end;
+      Result:=nil;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TInOpExpr.GetSubExprCount : Integer;
+var
+   i : Integer;
+begin
+   Result:=1;
+   for i:=0 to Count-1 do
+      Inc(Result, CaseConditions[i].GetSubExprCount);
+end;
+
+// GetCaseConditions
+//
+function TInOpExpr.GetCaseConditions(idx : Integer) : TCaseCondition;
+begin
+   Result:=TCaseCondition(FCaseConditions.List[idx]);
+end;
+
 // ------------------
 // ------------------ TConvExpr ------------------
 // ------------------
@@ -4545,6 +4606,39 @@ begin
    FCaseConditions.Add(cond);
 end;
 
+// GetSubExpr
+//
+function TCaseExpr.GetSubExpr(i : Integer) : TExprBase;
+var
+   j : Integer;
+   cond : TCaseCondition;
+begin
+   case i of
+      0 : Result:=ValueExpr;
+      1 : Result:=ElseExpr;
+   else
+      Dec(i, 2);
+      for j:=0 to FCaseConditions.Count-1 do begin
+         cond:=TCaseCondition(FCaseConditions.List[j]);
+         if i<cond.GetSubExprCount then
+            Exit(cond.GetSubExpr(i));
+         Dec(i, cond.GetSubExprCount);
+      end;
+      Result:=nil;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TCaseExpr.GetSubExprCount : Integer;
+var
+   i : Integer;
+begin
+   Result:=2;
+   for i:=0 to FCaseConditions.Count-1 do
+      Inc(Result, TCaseCondition(FCaseConditions.List[i]).GetSubExprCount);
+end;
+
 // ------------------
 // ------------------ TCaseCondition ------------------
 // ------------------
@@ -4594,6 +4688,22 @@ begin
    inherited;
 end;
 
+// GetSubExpr
+//
+function TCompareCaseCondition.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i=0 then
+      Result:=FTrueExpr
+   else Result:=FCompareExpr;
+end;
+
+// GetSubExprCount
+//
+function TCompareCaseCondition.GetSubExprCount : Integer;
+begin
+   Result:=2;
+end;
+
 // IsTrue
 //
 function TCompareCaseCondition.IsTrue(exec : TdwsExecution; const value : Variant) : Boolean;
@@ -4641,6 +4751,26 @@ begin
    FFromExpr.Free;
    FToExpr.Free;
    inherited;
+end;
+
+// GetSubExpr
+//
+function TRangeCaseCondition.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FTrueExpr;
+      1 : Result:=FFromExpr;
+      2 : Result:=FToExpr;
+   else
+      Result:=nil;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TRangeCaseCondition.GetSubExprCount : Integer;
+begin
+   Result:=3;
 end;
 
 // IsTrue
@@ -5212,13 +5342,15 @@ begin
                end;
             end;
 
-            if (not isReraise) and (not isCaught) and Assigned(FElseExpr) then begin
-               try
-                  exec.DoStep(FElseExpr);
-                  FElseExpr.EvalNoResult(exec);
-               except
-                  on E : EReraise do isReraise := True;
-               end;
+            if (not isReraise) and (not isCaught) then begin
+               if Assigned(FElseExpr) then begin
+                  try
+                     exec.DoStep(FElseExpr);
+                     FElseExpr.EvalNoResult(exec);
+                  except
+                     on E : EReraise do isReraise := True;
+                  end;
+               end else isReraise:=True;
             end;
 
          end else begin
