@@ -3,7 +3,7 @@ for i:=1 to 10 do
    if i not in [2, 4, 6..8] then
       PrintLn(i);
 
-PrintLn(VarToStr(1 not in []));
+PrintLn(BoolToStr(1 not in []));
 
 if 'A' not in ['A'..'Z'] then
    PrintLn('A not in A..Z');
