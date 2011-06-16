@@ -573,6 +573,12 @@ type
          property PostConditions : TSourcePostConditions read FPostConditions write FPostConditions;
    end;
 
+   TdwsExceptionContext = class
+      CallStack : TdwsExprLocationArray;
+      constructor Create(const aCallStack : TdwsExprLocationArray);
+      procedure Skip(n : Integer);
+   end;
+
    // Base class of all expressions attached to a program
    TProgramExpr = class(TExprBase)
       protected
@@ -2194,6 +2200,7 @@ var
 begin
    fmtMsg:=Format(fmt, args);
    exceptObj:=IScriptObj(IUnknown(ProgramInfo.Vars[SYS_EASSERTIONFAILED].Method[SYS_TOBJECT_CREATE].Call([fmtMsg]).Value));
+   (exceptObj.ExternalObject as TdwsExceptionContext).Skip(1); // temporary constructor expression
    raise EScriptAssertionFailed.Create(fmtMsg, exceptObj, scriptPos)
 end;
 
@@ -2834,7 +2841,31 @@ procedure TdwsProcedure.InitExpression(Expr: TExprBase);
 begin
 end;
 
-{ TdwsResultType }
+// ------------------
+// ------------------ TdwsExceptionContext ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsExceptionContext.Create(const aCallStack : TdwsExprLocationArray);
+begin
+   CallStack:=aCallStack
+end;
+
+// Skip
+//
+procedure TdwsExceptionContext.Skip(n : Integer);
+var
+   i : Integer;
+begin
+   for i:=0 to High(CallStack)-n do
+      CallStack[i]:=CallStack[i+n];
+   SetLength(CallStack, Length(CallStack)-n);
+end;
+
+// ------------------
+// ------------------ TdwsResultType ------------------
+// ------------------
 
 procedure TdwsResultType.AddResultSymbols(SymbolTable: TSymbolTable);
 begin
@@ -2846,7 +2877,9 @@ begin
   Result := TdwsResult.Create(Self);
 end;
 
-{ TdwsResult }
+// ------------------
+// ------------------ TdwsResult ------------------
+// ------------------
 
 constructor TdwsResult.Create(ResultType: TdwsResultType);
 begin

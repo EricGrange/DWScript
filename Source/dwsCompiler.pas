@@ -465,10 +465,6 @@ type
       procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
    end;
 
-   TExceptionContext = class
-      CallStack : TdwsExprLocationArray;
-   end;
-
    TExceptionCreateMethod = class(TInternalMethod)
       procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
    end;
@@ -6472,12 +6468,11 @@ end;
 //
 procedure TExceptionCreateMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
 var
-   context : TExceptionContext;
+   context : TdwsExceptionContext;
 begin
    Info.ValueAsString[SYS_EXCEPTION_MESSAGE_FIELD]:=Info.ValueAsString['Msg'];
 
-   context:=TExceptionContext.Create;
-   context.CallStack:=info.Execution.GetCallStack;
+   context:=TdwsExceptionContext.Create(info.Execution.GetCallStack);
    ExternalObject:=context;
 end;
 
@@ -6500,9 +6495,9 @@ end;
 //
 procedure TExceptionStackTraceMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
 var
-   context : TExceptionContext;
+   context : TdwsExceptionContext;
 begin
-   context:=ExternalObject as TExceptionContext;
+   context:=ExternalObject as TdwsExceptionContext;
    Info.ResultAsString:=info.Execution.CallStackToString(context.CallStack);
 end;
 
