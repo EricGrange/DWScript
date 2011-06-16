@@ -152,6 +152,8 @@ begin
             on e: Exception do begin
                if Pos('TBaseVariantSymbol', e.Message)>0 then
                   Inc(ignored)
+               else if Pos('TOpenArrayExpr', e.Message)>0 then
+                  Inc(ignored)
                else diagnostic.Add(ExtractFileName(FTests[i])+': '+e.Message);
             end;
          end;
@@ -173,7 +175,7 @@ end;
 procedure TJSCodeGenTests.Execution;
 var
    source, expectedResult : TStringList;
-   i, k, ignored : Integer;
+   i, ignored : Integer;
    prog : IdwsProgram;
    resultsFileName : String;
    jscode : String;
@@ -237,6 +239,8 @@ begin
          except
             on e : Exception do begin
                if Pos('TBaseVariantSymbol', e.Message)>0 then
+                  Inc(ignored)
+               else if Pos('TOpenArrayExpr', e.Message)>0 then
                   Inc(ignored)
                else diagnostic.Add(ExtractFileName(FTests[i])+': '+e.Message);
             end;
