@@ -477,7 +477,7 @@ type
       procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
    end;
 
-   TDelphiExceptionCreateMethod = class(TInternalMethod)
+   TDelphiExceptionCreateMethod = class(TExceptionCreateMethod)
       procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
    end;
 
@@ -6509,7 +6509,8 @@ end;
 //
 procedure TDelphiExceptionCreateMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
 begin
-   Info.ValueAsString[SYS_EXCEPTION_MESSAGE_FIELD]:=Info.ValueAsString['Msg'];
+   inherited;
+//   Info.ValueAsString[SYS_EXCEPTION_MESSAGE_FIELD]:=Info.ValueAsString['Msg'];
    Info.ValueAsVariant[SYS_EDELPHI_EXCEPTIONCLASS_FIELD]:=Info.ValueAsVariant['Cls']
 end;
 

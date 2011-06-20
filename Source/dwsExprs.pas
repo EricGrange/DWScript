@@ -577,6 +577,7 @@ type
       CallStack : TdwsExprLocationArray;
       constructor Create(const aCallStack : TdwsExprLocationArray);
       procedure Skip(n : Integer);
+      procedure ReplaceTop(expr : TExprBase);
    end;
 
    // Base class of all expressions attached to a program
@@ -2861,6 +2862,13 @@ begin
    for i:=0 to High(CallStack)-n do
       CallStack[i]:=CallStack[i+n];
    SetLength(CallStack, Length(CallStack)-n);
+end;
+
+// ReplaceTop
+//
+procedure TdwsExceptionContext.ReplaceTop(expr : TExprBase);
+begin
+   CallStack[0].Expr:=expr;
 end;
 
 // ------------------

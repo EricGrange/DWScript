@@ -5229,6 +5229,7 @@ begin
    info := (exec as TdwsProgramExecution).ProgramInfo;
    Result := IScriptObj(IUnknown(
       info.Vars[SYS_EDELPHI].Method[SYS_TOBJECT_CREATE].Call([ClassName, Message]).Value));
+   (Result.ExternalObject as TdwsExceptionContext).ReplaceTop(exec.LastScriptError); // temporary constructor expression
 end;
 
 // EnterExceptionBlock
