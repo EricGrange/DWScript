@@ -1,9 +1,14 @@
+procedure PrintIt(v : Float);
+begin
+   PrintLn(FloatToStr(v, 8));
+end;
+
 var v = 1.5;
 
-PrintLn(Sinh(v));
-PrintLn(Cosh(v));
-PrintLn(Tanh(v));
-PrintLn(ArcCosh(v));
-PrintLn(ArcSinh(v));
-PrintLn(ArcTanh(v/2));
+PrintIt(Sinh(v));
+PrintIt(Cosh(v));
+PrintIt(Tanh(v));
+PrintIt(ArcCosh(v));
+PrintIt(ArcSinh(v));
+PrintIt(ArcTanh(v/2));
 
