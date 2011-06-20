@@ -74,6 +74,10 @@ type
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
 
+   TArcTan2Func = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+   end;
+
    TArcTanhFunc = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
@@ -292,6 +296,15 @@ end;
 procedure TArcTanFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
 begin
    Result:=ArcTan(args.AsFloat[0]);
+end;
+
+{ TArcTan2Func }
+
+// DoEvalAsFloat
+//
+procedure TArcTan2Func.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+begin
+   Result:=ArcTan2(args.AsFloat[0], args.AsFloat[1]);
 end;
 
 { TArcTanhFunc }
@@ -527,6 +540,7 @@ initialization
    RegisterInternalFloatFunction(TArcCosFunc, 'ArcCos', ['v', cFloat], True);
    RegisterInternalFloatFunction(TArcCoshFunc, 'ArcCosh', ['v', cFloat], True);
    RegisterInternalFloatFunction(TArcTanFunc, 'ArcTan', ['v', cFloat], True);
+   RegisterInternalFloatFunction(TArcTan2Func, 'ArcTan2', ['y', cFloat, 'x', cFloat], True);
    RegisterInternalFloatFunction(TArcTanhFunc, 'ArcTanh', ['v', cFloat], True);
    RegisterInternalFloatFunction(TCotanFunc, 'Cotan', ['a', cFloat], True);
    RegisterInternalFloatFunction(THypotFunc, 'Hypot', ['x', cFloat, 'y', cFloat], True);
