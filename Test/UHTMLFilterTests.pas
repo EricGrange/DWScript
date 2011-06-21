@@ -24,6 +24,8 @@ type
    published
       procedure TestHTMLScript;
       procedure TestPatterns;
+      procedure TestSpecialChars;
+      procedure TestNotClosed;
 
    end;
 
@@ -121,6 +123,42 @@ begin
    finally
       locFilter.Free;
    end;
+end;
+
+// TestSpecialChars
+//
+procedure THTMLFilterTests.TestSpecialChars;
+var
+   prog: IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile('hello'#10'world');
+   exec:=prog.Execute;
+   CheckEquals('hello'#10'world', exec.Result.ToString, '#10');
+
+   prog:=FCompiler.Compile('hello'#9'world');
+   exec:=prog.Execute;
+   CheckEquals('hello'#9'world', exec.Result.ToString, '#9');
+
+   prog:=FCompiler.Compile('''#13''');
+   exec:=prog.Execute;
+   CheckEquals('''#13''', exec.Result.ToString, 'apos');
+end;
+
+// TestNotClosed
+//
+procedure THTMLFilterTests.TestNotClosed;
+var
+   prog: IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile('<?pas Send(''hello'');');
+   exec:=prog.Execute;
+   CheckEquals('hello', exec.Result.ToString, 'hello prog');
+
+   prog:=FCompiler.Compile('<?pas var hello="world";?><?pas=hello');
+   exec:=prog.Execute;
+   CheckEquals('world', exec.Result.ToString, 'hello eval');
 end;
 
 // DoInclude

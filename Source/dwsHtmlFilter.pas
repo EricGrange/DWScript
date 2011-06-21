@@ -32,7 +32,7 @@ interface
 
 uses
   Variants, Classes, SysUtils, dwsComp, dwsExprs, dwsFunctions, dwsSymbols,
-  dwsErrors, dwsCompiler, dwsStrings, dwsStringResult, dwsUtils;
+  dwsErrors, dwsCompiler, dwsStrings, dwsStringResult, dwsUtils, StrUtils;
 
 type
 
@@ -106,34 +106,36 @@ function TdwsHtmlFilter.Process(const Text: String; Msgs: TdwsMessageList): Stri
       isQuoted: Boolean;
       i, lineCount: Integer;
    begin
-      dest.WriteString('''');
-      isQuoted := True;
-      lineCount := 0;
-      for i := start to stop do begin
+      if start>=stop then Exit;
+
+      dest.WriteString('Send(');
+      isQuoted:=False;
+      lineCount:=0;
+      for i:=start to stop do begin
          if isQuoted then begin
             case str[i] of
                '''': dest.WriteString('''''');
                #10: begin
                   dest.WriteString('''#10');
-                  isQuoted := False;
+                  isQuoted:=False;
                   Inc(lineCount);
                end;
                #13: begin
                   dest.WriteString('''#13');
-                  isQuoted := False;
+                  isQuoted:=False;
                end;
                #9: begin
                   dest.WriteString('''#9');
-                  isQuoted := False;
+                  isQuoted:=False;
                end;
             else
-               dest.WriteString(str[i]);
+               dest.WriteChar(str[i]);
             end
          end else begin
             case str[i] of
                '''': begin
                   dest.WriteString('''''''');
-                  isQuoted := True;
+                  isQuoted:=True;
                end;
                #10: begin
                   dest.WriteString('#10');
@@ -142,81 +144,63 @@ function TdwsHtmlFilter.Process(const Text: String; Msgs: TdwsMessageList): Stri
                #13: dest.WriteString('#13');
                #9: dest.WriteString('#9');
             else
-               dest.WriteString('''');
-               dest.WriteString(Str[i]);
-               isQuoted := True;
+               dest.WriteChar('''');
+               dest.WriteChar(str[i]);
+               isQuoted:=True;
             end;
          end;
       end;
 
       if isQuoted then
          dest.WriteString('''');
+      dest.WriteString(');');
 
       for i := 1 to lineCount do
          dest.WriteString(#13#10);
    end;
 
 var
-   state: (sNone, sSend);
-   index, patOpen, patClose, patEval: Integer;
-   htmlText, chunk, pattern: String;
-   builder : TWriteOnlyBlockStream;
+   p, start, stop : Integer;
+   isEval : Boolean;
+   input : String;
+   output : TWriteOnlyBlockStream;
 begin
    CheckPatterns;
 
-   // Initializations
-   htmlText := inherited Process(Text, Msgs);
-   patOpen := Length(FPatternOpen) - 1;
-   patClose := Length(FPatternClose) - 1;
-   patEval := Length(FPatternEval) + 1;
+   input:=inherited Process(Text, Msgs);
 
-   builder:=TWriteOnlyBlockStream.Create;
+   output:=TWriteOnlyBlockStream.Create;
    try
 
-      state := sNone;
-      pattern := FPatternOpen;
-
-      // Start conversion
+      stop:=1;
+      p:=1;
       repeat
-         index := AnsiPos(pattern, htmlText);
-         if index = 0 then
-            index := Length(htmlText) + 1;
-
-         case state of
-            sNone: begin
-               // Normal HTML code.
-               // Looking for <%
-               if index > 1 then begin
-                  builder.WriteString('Send(');
-                  StuffString(htmlText, 1, index-1, builder);
-                  builder.WriteString(');');
-               end;
-               Delete(htmlText, 1, index + patOpen);
-               pattern := FPatternClose;
-               state := sSend;
-            end;
-            sSend: begin
-               // Inside a <% %> tag
-               // Looking for %>
-               chunk := Copy(htmlText, 1, index - 1);
-               if Pos(FPatternEval, chunk) = 1 then begin
-                  builder.WriteString('Send(');
-                  builder.WriteString(Copy(chunk, patEval, Length(chunk)));
-                  builder.WriteString(');');
-               end else begin
-                  builder.WriteString( chunk );
-               end;
-               Delete(htmlText, 1, index + patClose);
-               pattern := FPatternOpen;
-               state := sNone;
-            end;
+         start:=PosEx(PatternOpen, input, p);
+         if start<=0 then begin
+            StuffString(input, p, Length(input), output);
+            Break;
+         end else StuffString(input, p, start-1, output);
+         start:=start+Length(FPatternOpen);
+         isEval:=CompareMem(@input[start], @FPatternEval[1], Length(FPatternEval));
+         if isEval then begin
+            output.WriteString('Send(');
+            start:=start+Length(FPatternEval);
          end;
-      until Length(htmlText) = 0;
+         stop:=PosEx(PatternClose, input, start);
+         if stop<=0 then
+            output.WriteSubString(input, start)
+         else begin
+            output.WriteSubString(input, start, stop-start);
+            p:=stop+Length(FPatternClose);
+         end;
+         if isEval then
+            output.WriteString(');');
+      until (stop<=0);
 
-      Result:=builder.ToString;
+      Result:=output.ToString;
 
    finally
-      builder.Free;
+      output.Free;
    end;
 end;
 
