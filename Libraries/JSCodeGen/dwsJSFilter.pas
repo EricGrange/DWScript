@@ -44,6 +44,8 @@ type
          constructor Create(AOwner: TComponent); override;
          destructor Destroy; override;
 
+         procedure CheckPatterns;
+
          function Process(const tText : String; msgs : TdwsMessageList) : String; override;
 
       published
@@ -52,7 +54,15 @@ type
          property PatternClose : String read FPatternClose write FPatternClose;
    end;
 
+   EJSFilterException = class (Exception) end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
 // ------------------
 // ------------------ TdwsJSFilter ------------------
@@ -74,6 +84,18 @@ destructor TdwsJSFilter.Destroy;
 begin
    inherited;
    FCodeGen.Free;
+end;
+
+// CheckPatterns
+//
+procedure TdwsJSFilter.CheckPatterns;
+begin
+   if FPatternOpen='' then
+      raise EJSFilterException.Create('PatternOpen must be defined');
+   if FPatternClose='' then
+      raise EJSFilterException.Create('PatternClose must be defined');
+   if FCompiler=nil then
+      raise EJSFilterException.Create('Compiler must be defined');
 end;
 
 // Process
@@ -99,11 +121,9 @@ var
    input : String;
    p, start, stop : Integer;
 begin
-   input:=inherited Process(tText, msgs);
+   CheckPatterns;
 
-   if FPatternOpen='' then raise Exception.Create('PatternOpen must be defined');
-   if FPatternClose='' then raise Exception.Create('PatternClose must be defined');
-   if FCompiler=nil then raise Exception.Create('Compiler must be defined');
+   input:=inherited Process(tText, msgs);
 
    output:=TWriteOnlyBlockStream.Create;
    try
