@@ -135,6 +135,8 @@ const
   CPE_ImplInvalidClass = '"%s" is not a method of class "%s"';
   CPE_ImplAbstract = '"%s.%s" is declared abstract. No implementation allowed!';
   CPE_NonVirtualAbstract = 'abstract is only valid for virtual methods!';
+  CPE_NonConstructorDefault = 'Only a constructor can be marked as default';
+  CPE_DefaultConstructorAlreadyDefined = 'Class "%s" already has "%s" as default constructor!';
   CPE_AbstractClassUsage = 'Trying to use an abstract class!';
   CPE_ImplClassExpected = 'Declaration should start with CLASS!';
   CPE_ImplNotClassExpected = 'Declaration shouldn''t start with "class"!';

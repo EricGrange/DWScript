@@ -1,0 +1,4 @@
+Root class 10
+Sub class 20
+TMyClass
+TSubClass

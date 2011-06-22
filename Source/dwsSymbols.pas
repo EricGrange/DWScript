@@ -634,7 +634,7 @@ type
    TMethodKind = ( mkProcedure, mkFunction, mkConstructor, mkDestructor, mkMethod,
                    mkClassProcedure, mkClassFunction, mkClassMethod );
    TMethodAttribute = (maVirtual, maOverride, maReintroduce, maAbstract,
-                       maOverlap, maClassMethod, maFinal);
+                       maOverlap, maClassMethod, maFinal, maDefault);
    TMethodAttributes = set of TMethodAttribute;
 
    // A method of a script class: TMyClass = class procedure X(param: String); end;
@@ -659,6 +659,8 @@ type
          function GetIsAbstract : Boolean; inline;
          procedure SetIsAbstract(const val : Boolean); inline;
          function GetIsFinal : Boolean; inline;
+         function GetIsDefault : Boolean; inline;
+         procedure SetIsDefault(const val : Boolean); inline;
 
          function GetDescription : String; override;
 
@@ -681,6 +683,7 @@ type
 
          property ClassSymbol : TClassSymbol read FClassSymbol;
          property VMTIndex : Integer read FVMTIndex;
+         property IsDefault : Boolean read GetIsDefault write SetIsDefault;
          property IsAbstract : Boolean read GetIsAbstract write SetIsAbstract;
          property IsVirtual : Boolean read GetIsVirtual write SetIsVirtual;
          property IsOverride : Boolean read GetIsOverride;
@@ -1050,6 +1053,8 @@ type
 
          function FindClassOperatorStrict(tokenType : TTokenType; paramType : TSymbol; recursive : Boolean) : TClassOperatorSymbol;
          function FindClassOperator(tokenType : TTokenType; paramType : TTypeSymbol) : TClassOperatorSymbol;
+
+         function FindDefaultConstructor(minVisibility : TClassVisibility) : TMethodSymbol;
 
          class function VisibilityToString(visibility : TClassVisibility) : String; static;
 
@@ -2378,6 +2383,22 @@ begin
    Result:=maFinal in FAttributes;
 end;
 
+// GetIsDefault
+//
+function TMethodSymbol.GetIsDefault : Boolean;
+begin
+   Result:=maDefault in FAttributes;
+end;
+
+// SetIsDefault
+//
+procedure TMethodSymbol.SetIsDefault(const val : Boolean);
+begin
+   if val then
+      Include(FAttributes, maDefault)
+   else Exclude(FAttributes, maDefault);
+end;
+
 // SetIsFinal
 //
 procedure TMethodSymbol.SetIsFinal;
@@ -2993,6 +3014,36 @@ begin
    if Parent<>nil then
       Result:=Parent.FindClassOperator(tokenType, paramType)
    else Result:=nil;
+end;
+
+// FindDefaultConstructor
+//
+function TClassSymbol.FindDefaultConstructor(minVisibility : TClassVisibility) : TMethodSymbol;
+var
+   i : Integer;
+   member : TSymbol;
+   createConstructor : TMethodSymbol;
+begin
+   createConstructor:=nil;
+   for i:=0 to FMembers.Count-1 do begin
+      member:=FMembers[i];
+      if member is TMethodSymbol then begin
+         Result:=TMethodSymbol(member);
+         if (Result.Visibility>=minVisibility) and (Result.Kind=fkConstructor) then begin
+            if Result.IsDefault then
+               Exit;
+            if UnicodeSameText(Result.Name, 'Create') then
+               createConstructor:=Result;
+         end;
+      end;
+   end;
+   if createConstructor<>nil then
+      Result:=createConstructor
+   else if Parent<>nil then begin
+      if minVisibility=cvPrivate then
+         minVisibility:=cvProtected;
+      Result:=Parent.FindDefaultConstructor(minVisibility);
+   end else Result:=nil;
 end;
 
 // VisibilityToString

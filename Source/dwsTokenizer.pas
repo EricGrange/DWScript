@@ -35,7 +35,7 @@ type
      ttPROCEDURE, ttFUNCTION, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttOPERATOR,
      ttCLASS, ttNIL, ttIS,
      ttAS, ttINDEX, ttOBJECT,
-     ttVIRTUAL, ttOVERRIDE, ttREINTRODUCE, ttINHERITED, ttFINAL,
+     ttVIRTUAL, ttOVERRIDE, ttREINTRODUCE, ttINHERITED, ttFINAL, ttNEW,
      ttABSTRACT, ttSEALED, ttSTATIC, ttDEPRECATED,
      ttEXTERNAL, ttFORWARD, ttIN,
      ttENSURE, ttREQUIRE, ttINVARIANTS, ttOLD,
@@ -193,7 +193,7 @@ const
      'PROCEDURE', 'FUNCTION', 'CONSTRUCTOR', 'DESTRUCTOR', 'METHOD', 'OPERATOR',
      'CLASS', 'NIL', 'IS',
      'AS', 'INDEX', 'OBJECT',
-     'VIRTUAL', 'OVERRIDE', 'REINTRODUCE', 'INHERITED', 'FINAL',
+     'VIRTUAL', 'OVERRIDE', 'REINTRODUCE', 'INHERITED', 'FINAL', 'NEW',
      'ABSTRACT', 'SEALED', 'STATIC', 'DEPRECATED',
      'EXTERNAL', 'FORWARD', 'IN',
      'ENSURE', 'REQUIRE', 'INVARIANTS', 'OLD',
@@ -460,7 +460,7 @@ end;
 // ToAlphaType
 //
 const
-   cAlphaTypeTokens : array [0..79] of TTokenType = (
+   cAlphaTypeTokens : array [0..80] of TTokenType = (
       ttAND, ttARRAY, ttABSTRACT, ttAS,
       ttBEGIN, ttBREAK,
       ttCONST, ttCLASS, ttCONSTRUCTOR, ttCASE, ttCDECL, ttCONTINUE,
@@ -470,7 +470,7 @@ const
       ttIF, ttIMPLIES, ttIN, ttINVARIANTS, ttIS, ttINHERITED, ttINDEX,
       ttLAZY,
       ttMETHOD, ttMOD,
-      ttNOT, ttNIL,
+      ttNEW, ttNOT, ttNIL,
       ttOBJECT, ttOF, ttOLD, ttON, ttOPERATOR, ttOR, ttOVERRIDE,
       ttPROCEDURE, ttPROPERTY, ttPASCAL, ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
       ttREPEAT, ttREQUIRE, ttRECORD, ttREAD, ttRAISE, ttREINTRODUCE, ttREGISTER,

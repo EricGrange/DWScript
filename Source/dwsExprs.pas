@@ -1045,7 +1045,9 @@ type
                             BaseExpr: TDataExpr);
          destructor Destroy; override;
 
-         property BaseExpr: TDataExpr read FBaseExpr;
+         function MethSym : TMethodSymbol; inline;
+
+         property BaseExpr : TDataExpr read FBaseExpr;
    end;
 
    // Call of static methods (not virtual)
@@ -4782,6 +4784,13 @@ destructor TMethodExpr.Destroy;
 begin
    FBaseExpr.Free;
    inherited;
+end;
+
+// MethSym
+//
+function TMethodExpr.MethSym : TMethodSymbol;
+begin
+   Result:=TMethodSymbol(FuncSym);
 end;
 
 // GetSubExpr

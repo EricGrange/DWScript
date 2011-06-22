@@ -320,6 +320,7 @@ type
       // Created overloaded ReadNameList to deal with script positions
       procedure ReadNameList(names : TStrings); overload;
       procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray); overload;
+      function  ReadNew(isWrite : Boolean) : TProgramExpr;
       procedure ReadArrayParams(ArrayIndices: TSymbolTable);
       // Don't want to add param symbols to dictionary when a method implementation (they get thrown away)
       procedure ReadParams(Proc: TFuncSymbol; ParamsToDictionary: Boolean=True);
@@ -1470,7 +1471,7 @@ function TdwsCompiler.ReadMethodDecl(classSym: TClassSymbol; funcKind: TFuncKind
 var
    name : String;
    sym : TSymbol;
-   meth : TMethodSymbol;
+   meth, defaultConstructor : TMethodSymbol;
    isReintroduced : Boolean;
    methPos: TScriptPos;
    qualifier : TTokenType;
@@ -1553,6 +1554,19 @@ begin
             end;
          end;
 
+         ReadSemiColon;
+      end;
+
+      if FTok.TestDelete(ttDEFAULT) then begin
+         if funcKind<>fkConstructor then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_NonConstructorDefault)
+         else begin
+            defaultConstructor:=classSym.FindDefaultConstructor(cvMagic);
+            if (defaultConstructor<>nil) and (defaultConstructor.ClassSymbol=classSym) then
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_DefaultConstructorAlreadyDefined,
+                                         [classSym.Name, defaultConstructor.Name])
+            else Result.IsDefault:=True;
+         end;
          ReadSemiColon;
       end;
 
@@ -2018,7 +2032,7 @@ begin
       // Try to read a function call, method call or an assignment
       if FTok.Test(ttSWITCH) then
          Result := ReadInstrSwitch(False)
-      else if FTok.Test(ttBLEFT) or FTok.Test(ttINHERITED) or FTok.TestName then begin // !! TestName must be the last !!
+      else if (FTok.TestAny([ttBLEFT, ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin // !! TestName must be the last !!
          hotPos:=FTok.HotPos;
          if FTok.Test(ttBLEFT) then // (X as TY)
             locExpr := ReadSymbol(ReadTerm(True))
@@ -2154,10 +2168,13 @@ var
    symClassType : TClass;
 begin
    if (FSourcePostConditionsIndex<>0) and FTok.TestDelete(ttOLD) then
-      Exit(ReadNameOld(IsWrite));
+      Exit(ReadNameOld(isWrite));
+
+   if FTok.TestDelete(ttNEW) then
+      Exit(ReadNew(isWrite));
 
    if FTok.TestDelete(ttINHERITED) then
-      Exit(ReadNameInherited(IsWrite));
+      Exit(ReadNameInherited(isWrite));
 
    // Get name
    if not FTok.TestName then
@@ -2330,7 +2347,7 @@ begin
       castedExprTyp:=TTypedExpr(Result).Typ;
       if    (not (castedExprTyp is TClassSymbol))
          or (
-               (not TClassSymbol(castedExprTyp).IsOfType(baseType))
+                   (not TClassSymbol(castedExprTyp).IsOfType(baseType))
                and (not TClassSymbol(baseType).IsOfType(castedExprTyp))
             ) then
          FMsgs.AddCompilerErrorFmt(namePos, CPE_IncompatibleTypes,
@@ -3510,6 +3527,52 @@ begin
     CheckSpecialName(FTok.GetToken.FString);
     FTok.KillToken;
   until not FTok.TestDelete(ttCOMMA);
+end;
+
+// ReadNew
+//
+function TdwsCompiler.ReadNew(isWrite : Boolean) : TProgramExpr;
+var
+   sym : TSymbol;
+   classSym : TClassSymbol;
+   methSym : TMethodSymbol;
+   nameToken : TToken;
+   namePos : TScriptPos;
+   varExpr : TDataExpr;
+begin
+   // Get name
+   if not FTok.TestName then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+
+   nameToken := FTok.GetToken;
+   namePos := FTok.HotPos;
+
+   sym:=FProg.Table.FindSymbol(nameToken.FString, cvPrivate, TClassSymbol);
+   FTok.KillToken;
+
+   if sym=nil then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ImplClassNameExpected);
+
+   classSym:=TClassSymbol(sym);
+   methSym:=classSym.FindDefaultConstructor(cvPrivate);
+
+   varExpr := TConstExpr.CreateTyped(FProg, classSym, Int64(classSym));
+   try
+      Result:=GetMethodExpr(methSym, varExpr, rkClassOfRef, FTok.HotPos, False);
+   except
+      varExpr.Free;
+      raise;
+   end;
+   try
+      ReadFuncArgs(TFuncExpr(Result));
+      (Result as TMethodExpr).Typ := classSym;
+      TFuncExpr(Result).TypeCheckArgs(FProg);
+   except
+      Result.Free;
+      raise;
+   end;
+
+   Result := ReadSymbol(Result, IsWrite);
 end;
 
 procedure TdwsCompiler.ReadNameList(names : TStrings; var posArray : TScriptPosArray);
@@ -6254,6 +6317,7 @@ begin
    // Add constructor Create
    meth:=TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, clsObject, cvPublic, False);
    meth.Executable:=ICallable(TEmptyFunc.Create);
+   meth.IsDefault:=True;
    clsObject.AddMethod(meth);
    // Add destructor Destroy
    TObjectDestroyMethod.Create(mkDestructor, [maVirtual], SYS_TOBJECT_DESTROY,
