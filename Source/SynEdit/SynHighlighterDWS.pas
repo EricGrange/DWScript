@@ -181,7 +181,7 @@ const
     'finally', 'for', 'forward', 'function', 'goto', 'helper', 'if',
     'implementation', 'implements', 'implies', 'in', 'inherited',
     'initialization', 'inline', 'interface', 'is', 'label', 'lazy', 'library',
-    'message', 'method', 'mod', 'name', 'near', 'nil', 'nodefault', 'not', 'object', 'of',
+    'message', 'method', 'mod', 'name', 'new', 'nil', 'nodefault', 'not', 'object', 'of',
     'on', 'operator', 'or', 'out', 'overload', 'override', 'package', 'packed',
     'pascal', 'platform', 'private', 'procedure', 'program', 'property',
     'protected', 'public', 'published', 'raise', 'record',
