@@ -3537,26 +3537,50 @@ var
    classSym : TClassSymbol;
    methSym : TMethodSymbol;
    nameToken : TToken;
-   namePos : TScriptPos;
+   hotPos : TScriptPos;
+   typedExpr : TTypedExpr;
    varExpr : TDataExpr;
 begin
-   // Get name
-   if not FTok.TestName then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+   varExpr:=nil;
+   classSym:=nil;
 
-   nameToken := FTok.GetToken;
-   namePos := FTok.HotPos;
+   if FTok.TestDelete(ttBLEFT) then begin
 
-   sym:=FProg.Table.FindSymbol(nameToken.FString, cvPrivate, TClassSymbol);
-   FTok.KillToken;
+      hotPos:=FTok.HotPos;
+      typedExpr:=ReadExpr;
+      if (typedExpr.Typ is TClassOfSymbol) and (typedExpr is TDataExpr) then begin
+         varExpr:=TDataExpr(typedExpr);
+         classSym:=TClassOfSymbol(typedExpr.Typ).TypClassSymbol;
+      end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
+      if not FTok.TestDelete(ttBRIGHT) then
+         FMsgs.AddCompilerStop(hotPos, CPE_BrackRightExpected);
 
-   if sym=nil then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ImplClassNameExpected);
+   end else begin
 
-   classSym:=TClassSymbol(sym);
+      // Get name
+      if not FTok.TestName then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ClassRefExpected);
+
+      nameToken := FTok.GetToken;
+      hotPos := FTok.HotPos;
+
+      sym:=FProg.Table.FindSymbol(nameToken.FString, cvPrivate);
+      FTok.KillToken;
+
+      if sym is TClassSymbol then begin
+         classSym:=TClassSymbol(sym);
+      end else if (sym is TDataSymbol) and (sym.Typ is TClassOfSymbol) then begin
+         classSym:=TClassOfSymbol(sym.Typ).TypClassSymbol;
+      end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_ClassRefExpected);
+
+      if sym is TClassSymbol then
+         varExpr:=TConstExpr.CreateTyped(FProg, classSym, Int64(classSym))
+      else varExpr:=TVarExpr.CreateTyped(FProg, classSym, TDataSymbol(sym));
+
+   end;
+
    methSym:=classSym.FindDefaultConstructor(cvPrivate);
 
-   varExpr := TConstExpr.CreateTyped(FProg, classSym, Int64(classSym));
    try
       Result:=GetMethodExpr(methSym, varExpr, rkClassOfRef, FTok.HotPos, False);
    except
@@ -4769,7 +4793,7 @@ begin
       negExprClass:=TNegVariantExpr;
    end;
    Result:=negExprClass.Create(FProg, negTerm);
-   if Optimize then
+   if Optimize or (negTerm is TConstExpr) then
       Result:=Result.OptimizeToNoPosExpr(FProg, FExec);
 end;
 
@@ -4957,13 +4981,15 @@ begin
                         if constParam then
                            FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstParamCantHaveDefaultValue);
 
-                        defaultExpr := ReadExpr;
+                        defaultExpr:=ReadExpr;
 
                         if not (defaultExpr is TConstExpr) then begin
                            FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
                            FreeAndNil(defaultExpr);
                         end;
 
+                        if defaultExpr=nil then
+                           Typ.IsCompatible(defaultExpr.Typ);
                         if not Typ.IsCompatible(defaultExpr.Typ) then begin
                            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleTypes,
                                                      [Typ.Caption,defaultExpr.Typ.Caption]);
