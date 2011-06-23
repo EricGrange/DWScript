@@ -1081,6 +1081,7 @@ type
          function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
    end;
 
+   // Call to a static constructor
    TConstructorStaticExpr = class(TMethodStaticExpr)
       protected
          function PostCall(exec : TdwsExecution) : Variant; override;
@@ -1091,6 +1092,7 @@ type
                             Base: TDataExpr);
    end;
 
+   // Call to a virtual constructor
    TConstructorVirtualExpr = class(TMethodVirtualExpr)
       private
          FExternalObject: TObject;
@@ -4942,7 +4944,7 @@ end;
 function TConstructorStaticExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
 begin
    // Create object
-   exec.SelfScriptObject^:=TScriptObj.Create(TClassSymbol(FTyp), exec as TdwsProgramExecution);
+   exec.SelfScriptObject^:=TScriptObj.Create(TClassSymbol(BaseExpr.EvalAsInteger(exec)), exec as TdwsProgramExecution);
    exec.SelfScriptObject^.ExternalObject:=exec.ExternalObject;
 
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, exec.SelfScriptObject^);
