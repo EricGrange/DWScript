@@ -104,6 +104,7 @@ type
          destructor Destroy; override;
          procedure AddUnit(const Un: IUnit);
          function Compile(const Text: string): IdwsProgram; virtual;
+         procedure RecompileInContext(const prog : IdwsProgram; const text : String); virtual;
          function RemoveUnit(const Un: IUnit): Boolean;
 
       published
@@ -1003,6 +1004,13 @@ begin
    end;
 
    Result := FCompiler.Compile(Text, FConfig);
+end;
+
+// RecompileInContext
+//
+procedure TDelphiWebScript.RecompileInContext(const prog : IdwsProgram; const text : String);
+begin
+   FCompiler.RecompileInContext(prog, text, FConfig);
 end;
 
 procedure TDelphiWebScript.AddUnit(const Un: IUnit);

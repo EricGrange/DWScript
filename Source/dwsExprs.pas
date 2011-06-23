@@ -445,6 +445,8 @@ type
          function GetGlobalAddr(DataSize: Integer): Integer;
          function GetTempAddr(DataSize: Integer = -1): Integer;
 
+         procedure ResetExprs;
+
          property Expr : TNoResultExpr read FExpr write FExpr;
          property InitExpr : TBlockInitExpr read FInitExpr;
          property Level : Integer read GetLevel;
@@ -2510,6 +2512,15 @@ end;
 function TdwsProgram.GetTempAddr(DataSize: Integer): Integer;
 begin
   Result := FAddrGenerator.GetStackAddr(DataSize);
+end;
+
+// ResetExprs
+//
+procedure TdwsProgram.ResetExprs;
+begin
+   FreeAndNil(FExpr);
+   FreeAndNil(FInitExpr);
+   FInitExpr:=TBlockInitExpr.Create(Self, cNullPos);
 end;
 
 // ------------------

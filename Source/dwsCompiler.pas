@@ -382,11 +382,15 @@ type
       function CreateProcedure(Parent : TdwsProgram) : TdwsProcedure;
       function CreateAssign(const pos : TScriptPos; token : TTokenType; left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
 
+      procedure SetupCompileOptions(conf : TdwsConfiguration);
+      procedure CleanupAfterCompile;
+
    public
       constructor Create;
       destructor Destroy; override;
 
       function Compile(const aCodeText : String; Conf: TdwsConfiguration) : IdwsProgram;
+      procedure RecompileInContext(context : IdwsProgram; const aCodeText : String; Conf: TdwsConfiguration);
 
       class function Evaluate(exec : IdwsProgramExecution; const anExpression : String;
                               options : TdwsEvaluateOptions = []) : IdwsEvaluateExpr;
@@ -676,6 +680,21 @@ begin
    FMsgs.AddCompilerErrorFmt(FTok.HotPos, msgFmt, [sym.Name])
 end;
 
+// SetupCompileOptions
+//
+procedure TdwsCompiler.SetupCompileOptions(conf : TdwsConfiguration);
+begin
+   FFilter := conf.Filter;
+   FConnectors := conf.Connectors;
+   FCompilerOptions := conf.CompilerOptions;
+   FOnInclude := conf.OnInclude;
+   FScriptPaths := conf.ScriptPaths;
+
+   if Conf.CompileFileSystem<>nil then
+      FCompileFileSystem := Conf.CompileFileSystem.AllocateFileSystem
+   else FCompileFileSystem := TdwsOSFileSystem.Create;
+end;
+
 // Compile
 //
 function TdwsCompiler.Compile(const aCodeText : String; Conf: TdwsConfiguration) : IdwsProgram;
@@ -690,21 +709,7 @@ var
    unitSymbol : TUnitSymbol;
    sourceFile : TSourceFile;
 begin
-   FIsExcept := False;
-   FFilter := Conf.Filter;
-   FConnectors := Conf.Connectors;
-   FCompilerOptions := Conf.CompilerOptions;
-   FOnInclude := Conf.OnInclude;
-   FScriptPaths := Conf.ScriptPaths;
-
-   if Conf.CompileFileSystem<>nil then
-      FCompileFileSystem := Conf.CompileFileSystem.AllocateFileSystem
-   else FCompileFileSystem := TdwsOSFileSystem.Create;
-
-   FLoopExprs.Clear;
-   FLoopExitable.Clear;
-   FConditionalDepth.Clear;
-   FFinallyExprs.Clear;
+   SetupCompileOptions(conf);
 
    stackParams.MaxByteSize:=Conf.MaxDataSize;
    if stackParams.MaxByteSize=0 then
@@ -721,6 +726,7 @@ begin
    // Create the TdwsProgram
    FMainProg:=CreateProgram(Conf.SystemTable, Conf.ResultType, stackParams);
    FMsgs:=FMainProg.CompileMsgs;
+
    FMsgs.HintsDisabled:=(coHintsDisabled in Conf.CompilerOptions);
    FMsgs.WarningsDisabled:=(coWarningsDisabled in Conf.CompilerOptions);
 
@@ -817,20 +823,98 @@ begin
          FMsgs.AddCompilerError(cNullPos, e.Message);
    end;
 
+   FMainProg.LineCount:=FLineCount;
+   FMainProg.Compiler:=nil;
+   Result:=FMainProg;
+
+   CleanupAfterCompile;
+end;
+
+// CleanupAfterCompile
+//
+procedure TdwsCompiler.CleanupAfterCompile;
+begin
+   FIsExcept:=False;
+
    FBinaryOperators:=nil;
 
    FMsgs:=nil;
 
    FCompileFileSystem:=nil;
 
-   FMainProg.LineCount:=FLineCount;
-   FMainProg.Compiler:=nil;
-
-   Result:=FMainProg;
    FProg:=nil;
    FMainProg:=nil;
    FContextMap:=nil;
    FSymbolDictionary:=nil;
+
+   FLoopExprs.Clear;
+   FLoopExitable.Clear;
+   FConditionalDepth.Clear;
+   FFinallyExprs.Clear;
+end;
+
+// RecompileInContext
+//
+procedure TdwsCompiler.RecompileInContext(context : IdwsProgram; const aCodeText : String; Conf: TdwsConfiguration);
+var
+   codeText : String;
+   sourceFile : TSourceFile;
+begin
+   SetupCompileOptions(conf);
+
+   FMainProg:=context as TdwsMainProgram;
+   FMainProg.Compiler:=Self;
+   FContextMap:=FMainProg.ContextMap;
+   FSymbolDictionary:=FMainProg.SymbolDictionary;
+
+   FMsgs:=FMainProg.CompileMsgs;
+   FMsgs.HintsDisabled:=(coHintsDisabled in Conf.CompilerOptions);
+   FMsgs.WarningsDisabled:=(coWarningsDisabled in Conf.CompilerOptions);
+
+   FProg:=FMainProg;
+
+   FBinaryOperators:=FMainProg.BinaryOperators as TBinaryOperators;
+
+   FLineCount:=0;
+   try
+      // Filter stuff
+      if Assigned(FFilter) then
+         codeText := FFilter.Process(aCodeText, FMsgs)
+      else codeText := aCodeText;
+
+      sourceFile:=FMainProg.SourceList.FindScriptSourceItem(MSG_MainModule).SourceFile;
+      sourceFile.Code:=codeText;
+
+      FMainProg.ResetExprs;
+
+      // Initialize tokenizer
+      FTok := TTokenizer.Create(sourceFile, FProg.CompileMsgs);
+      try
+         FTok.SwitchHandler := ReadSwitch;
+
+         // Start compilation
+         FProg.Expr := ReadScript('', stMain);
+
+         if FConditionalDepth.Count>0 then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_UnbalancedConditionalDirective);
+
+         // Initialize symbol table
+         FProg.Table.Initialize(FMsgs);
+      finally
+         Inc(FLineCount, FTok.CurrentPos.Line-2);
+         FTok.Free;
+      end;
+   except
+      on e: ECompileError do
+         ;
+      on e: Exception do
+         FMsgs.AddCompilerError(cNullPos, e.Message);
+   end;
+
+   FMainProg.LineCount:=FLineCount;
+   FMainProg.Compiler:=nil;
+
+   CleanupAfterCompile;
 end;
 
 // Optimize
