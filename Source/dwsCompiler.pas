@@ -3539,9 +3539,9 @@ var
    nameToken : TToken;
    hotPos : TScriptPos;
    typedExpr : TTypedExpr;
-   varExpr : TDataExpr;
+   baseExpr : TDataExpr;
 begin
-   varExpr:=nil;
+   baseExpr:=nil;
    classSym:=nil;
 
    if FTok.TestDelete(ttBLEFT) then begin
@@ -3549,7 +3549,7 @@ begin
       hotPos:=FTok.HotPos;
       typedExpr:=ReadExpr;
       if (typedExpr.Typ is TClassOfSymbol) and (typedExpr is TDataExpr) then begin
-         varExpr:=TDataExpr(typedExpr);
+         baseExpr:=TDataExpr(typedExpr);
          classSym:=TClassOfSymbol(typedExpr.Typ).TypClassSymbol;
       end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
       if not FTok.TestDelete(ttBRIGHT) then
@@ -3569,34 +3569,38 @@ begin
 
       if sym is TClassSymbol then begin
          classSym:=TClassSymbol(sym);
+         if coSymbolDictionary in FCompilerOptions then
+            FSymbolDictionary.AddTypeSymbol(classSym, hotPos);
       end else if (sym is TDataSymbol) and (sym.Typ is TClassOfSymbol) then begin
          classSym:=TClassOfSymbol(sym.Typ).TypClassSymbol;
-      end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_ClassRefExpected);
+         if coSymbolDictionary in FCompilerOptions then
+            FSymbolDictionary.AddSymbolReference(TDataSymbol(sym), hotPos, False);
+      end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
 
       if sym is TClassSymbol then
-         varExpr:=TConstExpr.CreateTyped(FProg, classSym, Int64(classSym))
-      else varExpr:=TVarExpr.CreateTyped(FProg, classSym, TDataSymbol(sym));
+         baseExpr:=TConstExpr.CreateTyped(FProg, classSym, Int64(classSym))
+      else baseExpr:=TVarExpr.CreateTyped(FProg, classSym, TDataSymbol(sym));
 
    end;
 
    methSym:=classSym.FindDefaultConstructor(cvPrivate);
 
    try
-      Result:=GetMethodExpr(methSym, varExpr, rkClassOfRef, FTok.HotPos, False);
+      Result:=GetMethodExpr(methSym, baseExpr, rkClassOfRef, FTok.HotPos, False);
    except
-      varExpr.Free;
+      baseExpr.Free;
       raise;
    end;
    try
       ReadFuncArgs(TFuncExpr(Result));
-      (Result as TMethodExpr).Typ := classSym;
+      (Result as TMethodExpr).Typ:=classSym;
       TFuncExpr(Result).TypeCheckArgs(FProg);
    except
       Result.Free;
       raise;
    end;
 
-   Result := ReadSymbol(Result, IsWrite);
+   Result:=ReadSymbol(Result, isWrite);
 end;
 
 procedure TdwsCompiler.ReadNameList(names : TStrings; var posArray : TScriptPosArray);
