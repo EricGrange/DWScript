@@ -76,6 +76,7 @@ begin
    FPatternOpen:='<%pas2js';
    FPatternClose:='%>';
    FCodeGen:=TdwsJSCodeGen.Create;
+   FCodeGen.MainBodyName:='';
 end;
 
 // Destroy
@@ -101,14 +102,17 @@ end;
 // Process
 //
 function TdwsJSFilter.Process(const tText : String; msgs : TdwsMessageList) : String;
+var
+   prog : IdwsProgram;
 
    function Convert(const dwsCode : String) : String;
-   var
-      prog : IdwsProgram;
    begin
       FCodeGen.Clear;
 
-      prog:=FCompiler.Compile(dwsCode);
+      if prog=nil then
+         prog:=FCompiler.Compile(dwsCode)
+      else FCompiler.RecompileInContext(prog, dwsCode);
+
       if prog.Msgs.HasErrors then
          Exit(prog.Msgs.AsInfo);
 

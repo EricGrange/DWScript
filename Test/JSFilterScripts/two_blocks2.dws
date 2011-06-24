@@ -1,0 +1,18 @@
+<script>
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+type TClass1 = class end;
+%>
+
+// bla bla
+
+<%pas2js
+type TClass2 = class(TClass1) end;
+PrintLn(TClass1.ClassName);
+PrintLn(TClass2.ClassName);
+%>
+
+</script>

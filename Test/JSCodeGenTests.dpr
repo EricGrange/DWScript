@@ -10,10 +10,12 @@ uses
   Forms,
   TestFrameWork,
   GUITestRunner,
-  ceflib, SysUtils,
+  ceflib,
+  SysUtils,
   UJSCodeGenTests in 'UJSCodeGenTests.pas',
   dwsJSCodeGen in '..\Libraries\JSCodeGen\dwsJSCodeGen.pas',
-  dwsJSFilter in '..\Libraries\JSCodeGen\dwsJSFilter.pas';
+  dwsJSFilter in '..\Libraries\JSCodeGen\dwsJSFilter.pas',
+  UJSFilterTests in 'UJSFilterTests.pas';
 
 {$R *.res}
 
