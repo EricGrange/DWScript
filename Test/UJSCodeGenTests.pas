@@ -61,6 +61,10 @@ begin
    CollectFiles(ExtractFilePath(ParamStr(0))+'Algorithms'+PathDelim, '*.pas', FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'SimpleScripts'+PathDelim, '*.pas', FTests);
 
+   CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsMath'+PathDelim, '*.pas', FTests);
+//   CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsString'+PathDelim, '*.pas', FTests);
+//   CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsTime'+PathDelim, '*.pas', FTests);
+
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.OnInclude:=DoInclude;
 
@@ -150,7 +154,7 @@ begin
             FCodeGen.CompileProgram(prog);
          except
             on e: Exception do begin
-               if Pos('TBaseVariantSymbol', e.Message)>0 then
+               if Pos('Variant', e.Message)>0 then
                   Inc(ignored)
                else if Pos('TOpenArrayExpr', e.Message)>0 then
                   Inc(ignored)
@@ -238,7 +242,7 @@ begin
                               +'> but got <'+output+'>');
          except
             on e : Exception do begin
-               if Pos('TBaseVariantSymbol', e.Message)>0 then
+               if Pos('Variant', e.Message)>0 then
                   Inc(ignored)
                else if Pos('TOpenArrayExpr', e.Message)>0 then
                   Inc(ignored)

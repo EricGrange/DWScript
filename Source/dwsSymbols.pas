@@ -4423,7 +4423,7 @@ end;
 procedure TdwsExecution.DoStep(expr : TExprBase);
 begin
    if ProgramState=psRunningStopped then
-      EScriptStopped.DoRaise;
+      EScriptStopped.DoRaise(Self, expr);
    if IsDebugging then
       Debugger.DoDebug(Self, expr);
 end;

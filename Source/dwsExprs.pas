@@ -1457,6 +1457,11 @@ type
          constructor Create(const v : Variant; const desiredType : String);
    end;
 
+   EScriptStopped = class (EScriptError)
+      public
+         class procedure DoRaise(exec : TdwsExecution; stoppedOn : TExprBase); static;
+   end;
+
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
                           const Pos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
 
@@ -2108,8 +2113,6 @@ begin
             end;
          end;
       except
-         on e: EScriptStopped do
-            Msgs.AddInfo(e.Message);
          on e: EScriptAssertionFailed do
             Msgs.AddRuntimeError(e.Pos, Copy(e.Message, 1, LastDelimiter('[', e.Message)-2), e.ScriptCallStack);
          on e: EScriptException do
@@ -8051,6 +8054,21 @@ begin
    locArray:=exec.GetCallStack;
    raise EdwsExternalFuncHandler.CreateFmt(RTE_UnHandledExternalCall,
                                            [func.Name, locArray[High(locArray)].Location]);
+end;
+
+// ------------------
+// ------------------ EScriptStopped ------------------
+// ------------------
+
+// DoRaise
+//
+class procedure EScriptStopped.DoRaise(exec : TdwsExecution; stoppedOn : TExprBase);
+var
+   e : EScriptStopped;
+begin
+   e:=EScriptStopped.CreatePosFmt(stoppedOn.ScriptPos, RTE_ScriptStopped, []);
+   e.ScriptCallStack:=exec.GetCallStack;
+   raise e;
 end;
 
 end.

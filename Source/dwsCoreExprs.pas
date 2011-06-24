@@ -5307,12 +5307,15 @@ var
    doExpr : TExceptDoExpr;
    isCaught : Boolean;
    isReraise : Boolean;
+   excObj : TObject;
 begin
    try
       exec.DoStep(FTryExpr);
       FTryExpr.EvalNoResult(exec);
    except
-      if not (System.ExceptObject is Exception) then raise;
+      excObj:=System.ExceptObject;
+      if    (excObj.ClassType=EScriptStopped)
+         or not (excObj is Exception) then raise;
 
       obj:=EnterExceptionBlock(exec);
       try
@@ -5323,7 +5326,7 @@ begin
          if FDoExprs.Count > 0 then begin
 
             isCaught := False;
-            objSym := IScriptObj(IUnknown(Obj)).ClassSym;
+            objSym := IScriptObj(IUnknown(obj)).ClassSym;
 
             for x := 0 to FDoExprs.Count - 1 do begin
                // Find a "on x: Class do ..." statement matching to this exception class
@@ -5422,6 +5425,7 @@ end;
 procedure TFinallyExpr.EvalNoResult(exec : TdwsExecution);
 var
    oldStatus : TExecutionStatusResult;
+   excObj : TObject;
 begin
    try
       exec.DoStep(FTryExpr);
@@ -5430,17 +5434,20 @@ begin
       oldStatus:=exec.Status;
       try
          exec.Status:=esrNone;
-         if System.ExceptObject is Exception then begin
-            EnterExceptionBlock(exec);
-            try
+         excObj:=System.ExceptObject;
+         if (excObj=nil) or (excObj.ClassType<>EScriptStopped) then begin
+            if excObj is Exception then begin
+               EnterExceptionBlock(exec);
+               try
+                  exec.DoStep(FHandlerExpr);
+                  FHandlerExpr.EvalNoResult(exec);
+               finally
+                  LeaveExceptionBlock(exec);
+               end;
+            end else begin
                exec.DoStep(FHandlerExpr);
                FHandlerExpr.EvalNoResult(exec);
-            finally
-               LeaveExceptionBlock(exec);
             end;
-         end else begin
-            exec.DoStep(FHandlerExpr);
-            FHandlerExpr.EvalNoResult(exec);
          end;
       finally
          exec.Status:=oldStatus;
