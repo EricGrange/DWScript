@@ -28,7 +28,7 @@ replace them with the notice and other provisions required by the GPL.
 If you do not delete the provisions above, a recipient may use your version
 of this file under either the MPL or the GPL.
 
-$Id: SynHighlighterDWS.pas,v 1.3 2011/05/18 07:37:25 Egg Exp $
+$Id: SynHighlighterDWS.pas,v 1.4 2011/06/23 09:41:45 Egg Exp $
 
 You may retrieve the latest version of this file at the SynEdit home page,
 located at http://SynEdit.SourceForge.net
