@@ -808,7 +808,7 @@ type
       procedure ExecuteInitResult(exec : TdwsExecution);
       procedure ExecuteLazy(exec : TdwsExecution);
    end;
-   TPushOperatorArray = packed array [0..0] of TPushOperator;
+   TPushOperatorArray = packed array [0..MaxInt shr 4] of TPushOperator;
    PPushOperatorArray = ^TPushOperatorArray;
 
    // Function call: func(arg0, arg1, ...);
