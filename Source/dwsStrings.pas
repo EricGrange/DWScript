@@ -370,6 +370,7 @@ const
   RTE_InstanceOfAbstractClass = 'Trying to create an instance of an abstract class';
   RTE_ArrayUpperBoundExceeded = 'Upper bound exceeded! Index %d';
   RTE_ArrayLowerBoundExceeded = 'Lower bound exceeded! Index %d';
+  RTE_ArrayLengthIncorrect = 'Array length is incorrect (%d)';
   RTE_ForLoopStepShouldBeStrictlyPositive = 'FOR loop STEP should be strictly positive: %d';
   RTE_InvalidBreak = 'break without for/while/repeat or case';
   RTE_InvalidContinue = 'continue without for/while/repeat or case';

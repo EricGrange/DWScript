@@ -1452,6 +1452,20 @@ type
          property PrevObject : TScriptObj read FPrevObject write FPrevObject;
    end;
 
+   TScriptDynamicArray = class(TScriptObj)
+      private
+         FTyp : TDynamicArraySymbol;
+         FLength : Integer;
+
+      protected
+
+      public
+         constructor Create(aTyp : TDynamicArraySymbol);
+
+         procedure SetLength(n : Integer);
+         function GetLength : Integer;
+   end;
+
    EdwsVariantTypeCastError = class(EVariantTypeCastError)
       public
          constructor Create(const v : Variant; const desiredType : String);
@@ -5693,7 +5707,43 @@ begin
   FExternalObj := Value;
 end;
 
-{ TInfo }
+// ------------------
+// ------------------ TScriptDynamicArray ------------------
+// ------------------
+
+// Create
+//
+constructor TScriptDynamicArray.Create(aTyp : TDynamicArraySymbol);
+begin
+   FTyp:=aTyp;
+
+   if executionContext<>nil then
+      executionContext.ScriptObjCreated(Self);
+end;
+
+// SetLength
+//
+procedure TScriptDynamicArray.SetLength(n : Integer);
+var
+   i, s : Integer;
+begin
+   s:=FTyp.Typ.Size;
+   System.SetLength(FData, n*s);
+   for i:=FLength to n-1 do
+      FTyp.Typ.InitData(FData, i*s);
+   FLength:=n;
+end;
+
+// GetLength
+//
+function TScriptDynamicArray.GetLength : Integer;
+begin
+   Result:=FLength;
+end;
+
+// ------------------
+// ------------------ TInfo ------------------
+// ------------------
 
 constructor TInfo.Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol;
   const Data: TData; Offset: Integer; const DataMaster: IDataMaster = nil);

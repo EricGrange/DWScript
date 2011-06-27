@@ -264,6 +264,7 @@ type
       function ReadAssign(token : TTokenType; left : TDataExpr) : TNoResultExpr;
       function ReadArray(const typeName : String) : TTypeSymbol;
       function ReadArrayConstant : TArrayConstantExpr;
+      function ReadArrayMethod(const name : String; baseExpr : TTypedExpr; isWrite : Boolean) : TProgramExpr;
       function ReadCase : TCaseExpr;
       function ReadCaseConditions(condList : TCaseConditions; valueExpr : TTypedExpr) : Integer;
       function ReadClassOf(const typeName : String) : TClassOfSymbol;
@@ -321,6 +322,7 @@ type
       procedure ReadNameList(names : TStrings); overload;
       procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray); overload;
       function  ReadNew(isWrite : Boolean) : TProgramExpr;
+      function  ReadNewArray(elementTyp : TTypeSymbol; isWrite : Boolean) : TProgramExpr;
       procedure ReadArrayParams(ArrayIndices: TSymbolTable);
       // Don't want to add param symbols to dictionary when a method implementation (they get thrown away)
       procedure ReadParams(Proc: TFuncSymbol; ParamsToDictionary: Boolean=True);
@@ -381,6 +383,10 @@ type
                              const stackParams : TStackParameters) : TdwsMainProgram;
       function CreateProcedure(Parent : TdwsProgram) : TdwsProcedure;
       function CreateAssign(const pos : TScriptPos; token : TTokenType; left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
+
+      function CreateArrayLow(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
+      function CreateArrayHigh(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
+      function CreateArrayLength(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
 
       procedure SetupCompileOptions(conf : TdwsConfiguration);
       procedure CleanupAfterCompile;
@@ -2854,10 +2860,17 @@ begin
 
                   end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticMethodExpected);
 
+               // Array symbol
+               end else if baseType is TArraySymbol then begin
+
+                  Result := ReadArrayMethod(name, Result as TTypedExpr, isWrite);
+
                // Connector symbol
                end else if baseType is TConnectorSymbol then begin
+
                   Result := ReadConnectorSym(Name, Result as TTypedExpr,
                                              TConnectorSymbol(baseType).ConnectorType, IsWrite)
+
                end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMemberExpected);
             end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
          end
@@ -3601,6 +3614,28 @@ begin
    end;
 end;
 
+// ReadArrayMethod
+//
+function TdwsCompiler.ReadArrayMethod(const name : String; baseExpr : TTypedExpr; isWrite : Boolean) : TProgramExpr;
+var
+   typ : TArraySymbol;
+begin
+   typ:=baseExpr.Typ as TArraySymbol;
+   if SameText(name, 'low') then begin
+      Result:=CreateArrayLow(baseExpr, typ);
+   end else if SameText(name, 'high') then begin
+      Result:=CreateArrayHigh(baseExpr, typ);
+   end else if SameText(name, 'length') then begin
+      Result:=CreateArrayLength(baseExpr, typ);
+   end else begin
+      baseExpr.Free;
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnknownName, [name]);
+      Result:=nil;
+   end;
+
+   FTok.KillToken;
+end;
+
 procedure TdwsCompiler.ReadNameList(names : TStrings);
 begin
   names.Clear;
@@ -3656,7 +3691,12 @@ begin
       sym:=FProg.Table.FindSymbol(nameToken.FString, cvPrivate);
       FTok.KillToken;
 
-      if sym is TClassSymbol then begin
+      if FTok.TestDelete(ttALEFT) then begin
+         if sym is TTypeSymbol then begin
+            Result:=ReadNewArray(TTypeSymbol(sym), isWrite);
+            Exit;
+         end else FMsgs.AddCompilerError(hotPos, CPE_TypeExpected);
+      end else if sym is TClassSymbol then begin
          classSym:=TClassSymbol(sym);
          if coSymbolDictionary in FCompilerOptions then
             FSymbolDictionary.AddTypeSymbol(classSym, hotPos);
@@ -3690,6 +3730,30 @@ begin
    end;
 
    Result:=ReadSymbol(Result, isWrite);
+end;
+
+// ReadNewArray
+//
+function TdwsCompiler.ReadNewArray(elementTyp : TTypeSymbol; isWrite : Boolean) : TProgramExpr;
+var
+   lengthExpr : TTypedExpr;
+   hotPos : TScriptPos;
+begin
+   hotPos:=FTok.HotPos;
+   lengthExpr:=ReadExpr;
+   try
+
+      if not (lengthExpr.IsOfType(FProg.TypInteger)) then
+         FMsgs.AddCompilerError(hotPos, CPE_IntegerExpressionExpected);
+
+      if not FTok.TestDelete(ttARIGHT) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
+
+      Result:=TNewArrayExpr.Create(FProg, hotPos, elementTyp, lengthExpr);
+   except
+      lengthExpr.Free;
+      raise;
+   end;
 end;
 
 procedure TdwsCompiler.ReadNameList(names : TStrings; var posArray : TScriptPosArray);
@@ -6048,6 +6112,56 @@ begin
    end;
 end;
 
+// CreateArrayLow
+//
+function TdwsCompiler.CreateArrayLow(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
+begin
+   if typ is TStaticArraySymbol then
+      Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(typ).LowBound)
+   else if typ is TDynamicArraySymbol then
+      Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, 0)
+   else Result:=nil;
+   baseExpr.Free;
+end;
+
+// CreateArrayHigh
+//
+function TdwsCompiler.CreateArrayHigh(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
+begin
+   if typ is TOpenArraySymbol then begin
+      if baseExpr=nil then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+      Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(baseExpr));
+      TOpenArrayLengthExpr(Result).Delta:=-1;
+   end else if typ is TDynamicArraySymbol then begin
+      if baseExpr=nil then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+      Result:=TArrayLengthExpr.Create(FProg, baseExpr);
+      TArrayLengthExpr(Result).Delta:=-1;
+   end else if typ is TStaticArraySymbol then begin
+      baseExpr.Free;
+      Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(typ).HighBound);
+   end else Result:=nil;
+end;
+
+// CreateArrayLength
+//
+function TdwsCompiler.CreateArrayLength(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
+begin
+   if typ is TOpenArraySymbol then begin
+      if baseExpr=nil then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+      Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(baseExpr));
+   end else if typ is TDynamicArraySymbol then begin
+      if baseExpr=nil then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+      Result:=TArrayLengthExpr.Create(FProg, baseExpr);
+   end else if typ is TStaticArraySymbol then begin
+      baseExpr.Free;
+      Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(typ).ElementCount);
+   end else Result:=nil;
+end;
+
 // ReadSpecialFunction
 //
 function TdwsCompiler.ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
@@ -6131,11 +6245,8 @@ begin
             argExpr:=nil;
          end;
          skHigh : begin
-            if argTyp is TOpenArraySymbol then begin
-               if argExpr=nil then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-               Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(argExpr));
-               TOpenArrayLengthExpr(Result).Delta:=-1;
+            if argTyp is TArraySymbol then begin
+               Result:=CreateArrayHigh(argExpr, TArraySymbol(argTyp));
                argExpr:=nil;
             end else if argTyp is TEnumerationSymbol then begin
                FreeAndNil(argExpr);
@@ -6147,13 +6258,13 @@ begin
             end else if argTyp.IsOfType(FProg.TypString) and Assigned(argExpr) then begin
                Result:=TStringLengthExpr.Create(FProg, argExpr);
                argExpr:=nil;
-            end else if argTyp is TStaticArraySymbol then begin
-               FreeAndNil(argExpr);
-               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(argTyp).HighBound);
             end else if argTyp=FProg.TypInteger then begin
                FreeAndNil(argExpr);
                Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, High(Int64));
-            end else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
+            end else begin
+               FreeAndNil(argExpr);
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
+            end;
          end;
          skInc, skDec, skSucc, skPred : begin
             if     (specialKind in [skInc, skDec])
@@ -6180,36 +6291,30 @@ begin
             end else FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
          end;
          skLength : begin
-            if argTyp is TOpenArraySymbol then begin
-               if argExpr=nil then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-               Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(argExpr));
-               argExpr:=nil;
-            end else if (argTyp is TDynamicArraySymbol) and Assigned(argExpr) then begin
-               Result:=TArrayLengthExpr.Create(FProg, TDataExpr(argExpr));
+            if argTyp is TArraySymbol then begin
+               Result:=CreateArrayLength(argExpr, TArraySymbol(argTyp));
                argExpr:=nil;
             end else if ((argTyp=FProg.TypString) or (argTyp=FProg.TypVariant)) and Assigned(argExpr) then begin
                Result:=TStringLengthExpr.Create(FProg, argExpr);
                argExpr:=nil;
-            end else if argTyp is TStaticArraySymbol then begin
-               FreeAndNil(argExpr);
-               Result := TConstExpr.CreateTyped(FProg, FProg.TypInteger,
-                                                TStaticArraySymbol(argTyp).ElementCount);
             end else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
          end;
          skLow : begin
+            if argTyp is TArraySymbol then begin
+               Result:=CreateArrayLow(argExpr, TArraySymbol(argTyp));
+               argExpr:=nil;
+            end else begin
                FreeAndNil(argExpr);
-            if argTyp is TStaticArraySymbol then
-               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(argTyp).LowBound)
-            else if argTyp is TEnumerationSymbol then
-               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TEnumerationSymbol(argTyp).LowBound)
-            else if argTyp=FProg.TypString then
-               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, 1)
-            else if (argTyp=FProg.TypInteger) then begin
-               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, Low(Int64))
-            end else if (argTyp is TDynamicArraySymbol) then
-               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, 0)
-            else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
+               if argTyp is TEnumerationSymbol then begin
+                  Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TEnumerationSymbol(argTyp).LowBound);
+               end else if argTyp=FProg.TypString then begin
+                  Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, 1);
+               end else if (argTyp=FProg.TypInteger) then begin
+                  Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, Low(Int64));
+               end else begin
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
+               end;
+            end;
          end;
          skSqr : begin
             if argTyp=FProg.TypInteger then begin

@@ -281,12 +281,29 @@ type
          function IsWritable : Boolean; override;
    end;
 
+   // new array[length]
+   TNewArrayExpr = class(TTypedExpr)
+      private
+         FLengthExpr : TTypedExpr;
+         FScriptPos : TScriptPos;
+
+      public
+         constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos;
+                            elementTyp : TTypeSymbol; lengthExpr : TTypedExpr);
+         destructor Destroy; override;
+
+         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+
+         property LengthExpr : TTypedExpr read FLengthExpr;
+   end;
+
    // Array expressions x[index]
    TArrayExpr = class(TPosDataExpr)
       protected
-         FBaseExpr: TDataExpr;
-         FIndexExpr: TTypedExpr;
-         FElementSize: Integer;
+         FBaseExpr : TDataExpr;
+         FIndexExpr : TTypedExpr;
+         FElementSize : Integer;
 
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
@@ -330,9 +347,9 @@ type
 
    // Array expressions: x[index0] for dynamic arrays
    TDynamicArrayExpr = class(TArrayExpr)
-   protected
-     function GetAddr(exec : TdwsExecution) : Integer; override;
-     function GetData(exec : TdwsExecution) : TData; override;
+      protected
+         function GetAddr(exec : TdwsExecution) : Integer; override;
+         function GetData(exec : TdwsExecution) : TData; override;
    end;
 
    // Record expression: record.member
@@ -1382,7 +1399,7 @@ begin
       Result:=TStrVarExpr.Create(prog, typ, dataSym)
    else if typ.IsOfType(prog.TypBoolean) then
       Result:=TBoolVarExpr.Create(prog, typ, dataSym)
-   else if typ is TClassSymbol then
+   else if (typ is TClassSymbol) or (typ is TDynamicArraySymbol) then
       Result:=TObjectVarExpr.Create(prog, typ, dataSym)
    else Result:=TVarExpr.Create(prog, typ, dataSym);
 end;
@@ -2122,6 +2139,54 @@ begin
 end;
 
 // ------------------
+// ------------------ TNewArrayExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TNewArrayExpr.Create(prog: TdwsProgram; const scriptPos: TScriptPos;
+                                 elementTyp : TTypeSymbol; lengthExpr : TTypedExpr);
+begin
+   inherited Create(prog);
+   FScriptPos:=scriptPos;
+   FTyp:=TDynamicArraySymbol.Create('', elementTyp);
+   FLengthExpr:=lengthExpr;
+end;
+
+// Destroy
+//
+destructor TNewArrayExpr.Destroy;
+begin
+   inherited;
+   FTyp.Free;
+end;
+
+// Eval
+//
+function TNewArrayExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   obj : IScriptObj;
+begin
+   EvalAsScriptObj(exec, obj);
+   Result:=obj;
+end;
+
+// EvalAsScriptObj
+//
+procedure TNewArrayExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+var
+   dyn : TScriptDynamicArray;
+   n : Int64;
+begin
+   n:=LengthExpr.EvalAsInteger(exec);
+   if n<0 then
+      RaiseScriptError(exec, EScriptOutOfBounds.CreatePosFmt(FScriptPos, RTE_ArrayLengthIncorrect, [n]));
+   dyn:=TScriptDynamicArray.Create(TDynamicArraySymbol(Typ));
+   dyn.SetLength(n);
+   Result:=dyn as IScriptObj;
+end;
+
+// ------------------
 // ------------------ TArrayExpr ------------------
 // ------------------
 
@@ -2271,29 +2336,32 @@ end;
 //
 function TDynamicArrayExpr.GetAddr(exec : TdwsExecution) : Integer;
 var
-   index, length: Integer;
-   baseAddr: Integer;
+   index, length : Integer;
+   base : IScriptObj;
 begin
-   baseAddr := FBaseExpr.EvalAsInteger(exec);
-   index := FIndexExpr.EvalAsInteger(exec);
+   FBaseExpr.EvalAsScriptObj(exec, base);
+   index:=FIndexExpr.EvalAsInteger(exec);
 
-   length := exec.Stack.Data[baseAddr - 1];
+   length:=(base as TScriptDynamicArray).GetLength;
 
    if Cardinal(index)>=Cardinal(length) then begin
-      if index >= length then
+      if index>=length then
          RaiseUpperExceeded(exec, index)
-      else if index < 0 then
+      else if index<0 then
          RaiseLowerExceeded(exec, index);
    end;
-   // Calculate the address
-   Result := baseAddr + (index * FElementSize);
+
+   Result:=index*FElementSize;
 end;
 
 // GetData
 //
 function TDynamicArrayExpr.GetData(exec : TdwsExecution) : TData;
+var
+   base : IScriptObj;
 begin
-   Result := exec.Stack.Data;
+   FBaseExpr.EvalAsScriptObj(exec, base);
+   Result:=base.Data;
 end;
 
 // ------------------
@@ -2757,10 +2825,12 @@ end;
 //
 function TArrayLengthExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
-   adr: Integer;
+   obj : IScriptObj;
 begin
-   adr := TDataExpr(FExpr).Data[exec][TDataExpr(FExpr).Addr[exec]];
-   Result := TDataExpr(FExpr).Data[exec][adr - 1] + FDelta;
+   FExpr.EvalAsScriptObj(exec, obj);
+   if obj<>nil then
+      Result:=(obj as TScriptDynamicArray).GetLength+FDelta
+   else Result:=FDelta;
 end;
 
 // ------------------
@@ -2771,7 +2841,7 @@ end;
 //
 function TOpenArrayLengthExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result := Length(TDataExpr(FExpr).Data[exec])+FDelta;
+   Result:=Length(TDataExpr(FExpr).Data[exec])+FDelta;
 end;
 
 // ------------------
@@ -3459,6 +3529,7 @@ begin
       if TVarExpr(FLeft).SameVarAs(TVarExpr(FRight)) then begin
          Result:=TSqrIntExpr.Create(Prog, FLeft);
          FLeft:=nil;
+         Free;
       end;
    end;
 end;

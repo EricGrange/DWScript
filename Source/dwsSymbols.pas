@@ -823,12 +823,12 @@ type
 
    // array of FTyp
    TDynamicArraySymbol = class(TArraySymbol)
-   protected
-     function GetCaption : String; override;
-   public
-     constructor Create(const Name: string; Typ: TTypeSymbol);
-     procedure InitData(const Data: TData; Offset: Integer); override;
-     function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+      protected
+         function GetCaption : String; override;
+      public
+         constructor Create(const Name: string; Typ: TTypeSymbol);
+         procedure InitData(const Data: TData; Offset: Integer); override;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    // array [FLowBound..FHighBound] of FTyp
@@ -2759,9 +2759,9 @@ end;
 
 procedure TClassSymbol.InitData(const Data: TData; Offset: Integer);
 const
-  nilIntf: IUnknown = nil;
+   cNilIntf : IUnknown = nil;
 begin
-  Data[Offset] := IUnknown(nilIntf);
+   Data[Offset]:=cNilIntf;
 end;
 
 // Initialize
@@ -3977,8 +3977,10 @@ begin
 end;
 
 procedure TDynamicArraySymbol.InitData(const Data: TData; Offset: Integer);
+const
+   cNilIntf : IUnknown = nil;
 begin
-  Data[Offset] := Null; // ADR
+   Data[Offset]:=cNilIntf;
 end;
 
 function TDynamicArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
