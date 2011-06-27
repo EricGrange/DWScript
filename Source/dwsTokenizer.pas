@@ -84,7 +84,7 @@ type
    TTokenRecord = record
      FTyp: TTokenType;
      FPos: TScriptPos;
-     FString: string;
+     FString: String;
      FFloat: Double;
      FInteger: Int64;
    end;
