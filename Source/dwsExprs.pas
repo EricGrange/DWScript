@@ -4970,9 +4970,15 @@ end;
 // PreCall
 //
 function TConstructorStaticExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
+var
+   classSym : TClassSymbol;
 begin
+   classSym:=TClassSymbol(BaseExpr.EvalAsInteger(exec));
+   if classSym=nil then
+      RaiseScriptError(exec, RTE_ClassTypeIsNil);
+
    // Create object
-   exec.SelfScriptObject^:=TScriptObj.Create(TClassSymbol(BaseExpr.EvalAsInteger(exec)), exec as TdwsProgramExecution);
+   exec.SelfScriptObject^:=TScriptObj.Create(classSym, exec as TdwsProgramExecution);
    exec.SelfScriptObject^.ExternalObject:=exec.ExternalObject;
 
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, exec.SelfScriptObject^);
