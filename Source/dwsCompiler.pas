@@ -3632,12 +3632,17 @@ begin
 
       hotPos:=FTok.HotPos;
       typedExpr:=ReadExpr;
-      if (typedExpr.Typ is TClassOfSymbol) and (typedExpr is TDataExpr) then begin
-         baseExpr:=TDataExpr(typedExpr);
-         classSym:=TClassOfSymbol(typedExpr.Typ).TypClassSymbol;
-      end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
-      if not FTok.TestDelete(ttBRIGHT) then
-         FMsgs.AddCompilerStop(hotPos, CPE_BrackRightExpected);
+      try
+         if (typedExpr.Typ is TClassOfSymbol) and (typedExpr is TDataExpr) then begin
+            baseExpr:=TDataExpr(typedExpr);
+            classSym:=TClassOfSymbol(typedExpr.Typ).TypClassSymbol;
+         end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
+         if not FTok.TestDelete(ttBRIGHT) then
+            FMsgs.AddCompilerStop(hotPos, CPE_BrackRightExpected);
+      except
+         typedExpr.Free;
+         raise;
+      end;
 
    end else begin
 
