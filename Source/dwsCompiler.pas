@@ -2726,6 +2726,7 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
       indexExpr : TTypedExpr;
       baseType : TTypeSymbol;
       arraySymbol : TStaticArraySymbol;
+      errCount : Integer;
    begin
       FTok.KillToken;
 
@@ -2733,6 +2734,8 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
 
       if FTok.TestDelete(ttARIGHT) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
+
+      errCount:=FMsgs.Count;
 
       // There is at one index expression
       repeat
@@ -2747,7 +2750,7 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                end else begin
                   Result := TStaticArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
                                                     arraySymbol.LowBound, arraySymbol.HighBound);
-                  if indexExpr.IsConstant then begin
+                  if indexExpr.IsConstant and (FMsgs.Count=errCount) then begin
                      idx:=indexExpr.EvalAsInteger(FExec);
                      if idx<arraySymbol.LowBound then
                         FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayLowerBoundExceeded, [idx])
