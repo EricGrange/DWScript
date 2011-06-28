@@ -1420,7 +1420,6 @@ type
    TScriptObj = class(TInterfacedObject, IScriptObj)
       private
          FClassSym : TClassSymbol;
-         FData : TData;
          FExternalObj : TObject;
          FDestroyed : Boolean;
          FExecutionContext : TdwsProgramExecution;
@@ -1428,6 +1427,8 @@ type
          FNextObject, FPrevObject : TScriptObj;
 
       protected
+         FData : TData;
+
          { IScriptObj }
          function GetClassSym: TClassSymbol;
          function GetData : TData;
@@ -1437,6 +1438,7 @@ type
          procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
          function GetDestroyed : Boolean;
          procedure SetDestroyed(const val : Boolean);
+         function GetInternalObject: TObject;
          function GetExternalObject: TObject;
          procedure SetExternalObject(Value: TObject);
 
@@ -1455,6 +1457,7 @@ type
    TScriptDynamicArray = class(TScriptObj)
       private
          FTyp : TDynamicArraySymbol;
+         FElementSize : Integer;
          FLength : Integer;
 
       protected
@@ -1463,7 +1466,14 @@ type
          constructor Create(aTyp : TDynamicArraySymbol);
 
          procedure SetLength(n : Integer);
-         function GetLength : Integer;
+         property GetLength : Integer read FLength;
+
+         procedure Delete(index, count : Integer);
+         procedure Swap(i1, i2 : Integer);
+
+         property Typ : TDynamicArraySymbol read FTyp;
+         property ElementSize : Integer read FElementSize;
+         property Data : TData read FData;
    end;
 
    EdwsVariantTypeCastError = class(EVariantTypeCastError)
@@ -1730,6 +1740,7 @@ type
          function DataOfAddrAsString(addr : Integer) : String;
          function DataOfAddrAsInteger(addr : Integer) : Int64;
          procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
+         function GetInternalObject: TObject;
          function GetExternalObject: TObject;
          procedure SetExternalObject(Value: TObject);
          function GetDestroyed : Boolean;
@@ -1784,6 +1795,13 @@ end;
 procedure TScriptObjectWrapper.DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
 begin
    FScriptObj.DataOfAddrAsScriptObj(addr, scriptObj);
+end;
+
+// GetInternalObject
+//
+function TScriptObjectWrapper.GetInternalObject: TObject;
+begin
+   Result:=FScriptObj;
 end;
 
 function TScriptObjectWrapper.GetExternalObject: TObject;
@@ -5708,6 +5726,13 @@ begin
    FDestroyed:=True;
 end;
 
+// GetInternalObject
+//
+function TScriptObj.GetInternalObject: TObject;
+begin
+   Result:=Self;
+end;
+
 procedure TScriptObj.SetExternalObject(Value: TObject);
 begin
   FExternalObj := Value;
@@ -5722,6 +5747,7 @@ end;
 constructor TScriptDynamicArray.Create(aTyp : TDynamicArraySymbol);
 begin
    FTyp:=aTyp;
+   FElementSize:=aTyp.Typ.Size;
 
    if executionContext<>nil then
       executionContext.ScriptObjCreated(Self);
@@ -5731,20 +5757,43 @@ end;
 //
 procedure TScriptDynamicArray.SetLength(n : Integer);
 var
-   i, s : Integer;
+   i : Integer;
 begin
-   s:=FTyp.Typ.Size;
-   System.SetLength(FData, n*s);
+   System.SetLength(FData, n*ElementSize);
    for i:=FLength to n-1 do
-      FTyp.Typ.InitData(FData, i*s);
+      FTyp.Typ.InitData(FData, i*ElementSize);
    FLength:=n;
 end;
 
-// GetLength
+// Delete
 //
-function TScriptDynamicArray.GetLength : Integer;
+procedure TScriptDynamicArray.Delete(index, count : Integer);
+var
+   i : Integer;
+   newFinal : Integer;
 begin
-   Result:=FLength;
+   Dec(FLength, count);
+   index:=index*ElementSize;
+   count:=count*ElementSize;
+   for i:=index to index+count-1 do
+      VarClear(FData[i]);
+   System.Move(FData[index+count], FData[index], count*SizeOf(Variant));
+   System.FillChar(FData[FLength*ElementSize], count*SizeOf(Variant), 0);
+   System.SetLength(FData, FLength*ElementSize);
+end;
+
+// Swap
+//
+procedure TScriptDynamicArray.Swap(i1, i2 : Integer);
+var
+   elem1, elem2 : PVarData;
+   buf : TVarData;
+begin
+   elem1:=PVarData(@FData[i1*ElementSize]);
+   elem2:=PVarData(@FData[i2*ElementSize]);
+   buf:=elem1^;
+   elem1^:=elem2^;
+   elem2^:=buf;
 end;
 
 // ------------------

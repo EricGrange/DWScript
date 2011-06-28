@@ -20,3 +20,9 @@ for i:=0 to Length(objs)-1 do
 
 for i:=Low(objs) to High(objs) do
    PrintLn(objs[i].Field);
+
+objs.Add(TMyObj.Create(10));
+objs.Delete(1, 2);
+
+for i:=Low(objs) to High(objs) do
+   PrintLn(objs[i].Field);

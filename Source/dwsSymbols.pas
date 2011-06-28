@@ -1302,6 +1302,7 @@ type
       ['{8D534D1E-4C6B-11D5-8DCB-0000216D9E86}']
       function GetClassSym: TClassSymbol;
       function GetData: TData;
+      function GetInternalObject: TObject;
       function GetExternalObject: TObject;
       procedure SetExternalObject(value: TObject);
       function GetDestroyed : Boolean;
@@ -1309,6 +1310,7 @@ type
 
       property ClassSym : TClassSymbol read GetClassSym;
       property Data : TData read GetData;
+      property InternalObject : TObject read GetInternalObject;
       property ExternalObject : TObject read GetExternalObject write SetExternalObject;
       property Destroyed : Boolean read GetDestroyed write SetDestroyed;
 
@@ -3977,10 +3979,8 @@ begin
 end;
 
 procedure TDynamicArraySymbol.InitData(const Data: TData; Offset: Integer);
-const
-   cNilIntf : IUnknown = nil;
 begin
-   Data[Offset]:=cNilIntf;
+   Data[Offset]:=IScriptObj(TScriptDynamicArray.Create(Self));
 end;
 
 function TDynamicArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;

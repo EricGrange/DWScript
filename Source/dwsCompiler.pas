@@ -264,7 +264,8 @@ type
       function ReadAssign(token : TTokenType; left : TDataExpr) : TNoResultExpr;
       function ReadArray(const typeName : String) : TTypeSymbol;
       function ReadArrayConstant : TArrayConstantExpr;
-      function ReadArrayMethod(const name : String; baseExpr : TTypedExpr; isWrite : Boolean) : TProgramExpr;
+      function ReadArrayMethod(const name : String; const namePos : TScriptPos;
+                               baseExpr : TTypedExpr; isWrite : Boolean) : TProgramExpr;
       function ReadCase : TCaseExpr;
       function ReadCaseConditions(condList : TCaseConditions; valueExpr : TTypedExpr) : Integer;
       function ReadClassOf(const typeName : String) : TClassOfSymbol;
@@ -298,6 +299,7 @@ type
       procedure ReadFuncArgs(funcExpr : TFuncExprBase); overload;
       procedure ReadArguments(const addArgProc : TAddArgProcedure;
                               leftDelim, rightDelim : TTokenType;
+                              var argPosArray : TScriptPosArray;
                               const expectedProc : TExpectedArgFunction = nil); overload;
       function ReadFuncResultType(funcKind : TFuncKind) : TTypeSymbol;
 
@@ -2155,6 +2157,8 @@ begin
                Result:=TConnectorWriteExpr(locExpr)
             else if locExpr is TStringArraySetExpr then
                Result:=TStringArraySetExpr(locExpr)
+            else if locExpr is TArrayPseudoMethodExpr then
+               Result:=TArrayPseudoMethodExpr(locExpr)
             else if locExpr is TConstExpr then begin
                FreeAndNil(locExpr);
                Result:=TNullExpr.Create(FProg, hotPos);
@@ -2532,6 +2536,7 @@ var
    sym : TSymbol;
    aPos : TScriptPos;
    typedExprList : TTypedExprList;
+   argPosArray : TScriptPosArray;
 begin
    Result := nil;
    aPos:=FTok.HotPos;
@@ -2557,7 +2562,7 @@ begin
       try
          if propertySym.HasArrayIndices then begin
             typedExprList.Table:=propertySym.ArrayIndices;
-            ReadArguments(typedExprList.AddExpr, ttALEFT, ttARIGHT, typedExprList.ExpectedArg);
+            ReadArguments(typedExprList.AddExpr, ttALEFT, ttARIGHT, argPosArray, typedExprList.ExpectedArg);
          end;
 
          Result:=ReadPropertyArrayAccessor(expr, propertySym, typedExprList, aPos, False);
@@ -2578,6 +2583,7 @@ var
    fieldExpr : TFieldExpr;
    tokenType : TTokenType;
    typedExprList : TTypedExprList;
+   argPosArray : TScriptPosArray;
 begin
    Result := nil;
    aPos:=FTok.HotPos;
@@ -2586,7 +2592,8 @@ begin
    try
       if propertySym.HasArrayIndices then begin
          typedExprList.Table:=propertySym.ArrayIndices;
-         ReadArguments(typedExprList.AddExpr, ttALEFT, ttARIGHT, typedExprList.ExpectedArg);
+         ReadArguments(typedExprList.AddExpr, ttALEFT, ttARIGHT,
+                       argPosArray, typedExprList.ExpectedArg);
       end;
 
       tokenType:=FTok.TestDeleteAny(cAssignmentTokens);
@@ -2748,9 +2755,9 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                         FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayUpperBoundExceeded, [idx]);
                   end;
                end;
-            end else if baseType is TDynamicArraySymbol then
-               Result := TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
-            else FMsgs.AddCompilerStop(FTok.HotPos, RTE_TooManyIndices);
+            end else if baseType is TDynamicArraySymbol then begin
+               Result:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr);
+            end else FMsgs.AddCompilerStop(FTok.HotPos, RTE_TooManyIndices);
          except
             indexExpr.Free;
             raise;
@@ -2863,7 +2870,7 @@ begin
                // Array symbol
                end else if baseType is TArraySymbol then begin
 
-                  Result := ReadArrayMethod(name, Result as TTypedExpr, isWrite);
+                  Result := ReadArrayMethod(name, symPos, Result as TTypedExpr, isWrite);
 
                // Connector symbol
                end else if baseType is TConnectorSymbol then begin
@@ -3454,20 +3461,24 @@ end;
 // ReadFuncArgs
 //
 procedure TdwsCompiler.ReadFuncArgs(funcExpr : TFuncExprBase);
+var
+   argPosArray : TScriptPosArray;
 begin
-   ReadArguments(funcExpr.AddArg, ttBLEFT, ttBRIGHT, funcExpr.ExpectedArg);
+   ReadArguments(funcExpr.AddArg, ttBLEFT, ttBRIGHT, argPosArray, funcExpr.ExpectedArg);
 end;
 
 // ReadArguments
 //
 procedure TdwsCompiler.ReadArguments(const addArgProc : TAddArgProcedure;
                                      leftDelim, rightDelim : TTokenType;
+                                     var argPosArray : TScriptPosArray;
                                      const expectedProc : TExpectedArgFunction = nil);
 var
    arg : TTypedExpr;
    argSym : TParamSymbol;
    argPos : TScriptPos;
    expectedType : TTypeSymbol;
+   n : Integer;
 begin
    if FTok.TestDelete(leftDelim) then begin
       if not FTok.TestDelete(rightDelim) then begin
@@ -3486,6 +3497,9 @@ begin
                arg:=ReadTerm(True, expectedType)
             else arg:=ReadExpr(expectedType);
             AddArgProc(arg);
+            n:=Length(argPosArray);
+            SetLength(argPosArray, n+1);
+            argPosArray[n]:=argPos;
 
             if (argSym is TVarParamSymbol) and (arg is TVarExpr) then
                WarnForVarUsage(TVarExpr(arg), argPos);
@@ -3616,24 +3630,87 @@ end;
 
 // ReadArrayMethod
 //
-function TdwsCompiler.ReadArrayMethod(const name : String; baseExpr : TTypedExpr; isWrite : Boolean) : TProgramExpr;
+function TdwsCompiler.ReadArrayMethod(const name : String; const namePos : TScriptPos;
+                                      baseExpr : TTypedExpr; isWrite : Boolean) : TProgramExpr;
 var
-   typ : TArraySymbol;
-begin
-   typ:=baseExpr.Typ as TArraySymbol;
-   if SameText(name, 'low') then begin
-      Result:=CreateArrayLow(baseExpr, typ);
-   end else if SameText(name, 'high') then begin
-      Result:=CreateArrayHigh(baseExpr, typ);
-   end else if SameText(name, 'length') then begin
-      Result:=CreateArrayLength(baseExpr, typ);
-   end else begin
-      baseExpr.Free;
-      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnknownName, [name]);
-      Result:=nil;
+   arraySym : TArraySymbol;
+   argList : TTypedExprList;
+   argPosArray : TScriptPosArray;
+
+   function CheckArguments(expectedMin, expectedMax : Integer) : Boolean;
+   begin
+      Result:=argList.Count in [expectedMin..expectedMax];
+      if not Result then begin
+         if expectedMax=0 then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_NoArgumentsExpected)
+         else if argList.Count>expectedMax then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_TooManyArguments)
+         else FMsgs.AddCompilerError(FTok.HotPos, CPE_TooFewArguments);
+      end;
    end;
 
-   FTok.KillToken;
+begin
+   Result:=nil;
+   argList:=TTypedExprList.Create;
+   try
+      ReadArguments(argList.AddExpr, ttBLEFT, ttBRIGHT, argPosArray);
+      try
+         arraySym:=baseExpr.Typ as TArraySymbol;
+         if SameText(name, 'low') then begin
+            CheckArguments(0, 0);
+            Result:=CreateArrayLow(baseExpr, arraySym);
+         end else if SameText(name, 'high') then begin
+            CheckArguments(0, 0);
+            Result:=CreateArrayHigh(baseExpr, arraySym);
+         end else if SameText(name, 'length') then begin
+            CheckArguments(0, 0);
+            Result:=CreateArrayLength(baseExpr, arraySym);
+         end else if SameText(name, 'add') then begin
+            if CheckArguments(1, 1) then begin
+               if not argList[0].Typ.IsOfType(arraySym.Typ) then
+                  FMsgs.AddCompilerErrorFmt(argPosArray[0], CPE_BadParameterType,
+                                            [0, arraySym.Typ.Name, argList[0].Typ.Name] );
+               Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, argList[0] as TDataExpr);
+               argList.Clear;
+            end else Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, nil);
+         end else if SameText(name, 'delete') then begin
+            if CheckArguments(1, 2) then begin
+               if not argList[0].Typ.IsOfType(FProg.TypInteger) then
+                  FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+               if argList.Count>1 then begin
+                  if not argList[1].Typ.IsOfType(FProg.TypInteger) then
+                     FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
+                  Result:=TArrayDeleteExpr.Create(FProg, namePos, baseExpr,
+                                                  argList[0], argList[1]);
+               end else Result:=TArrayDeleteExpr.Create(FProg, namePos, baseExpr,
+                                                        argList[0], nil);
+               argList.Clear;
+            end else Result:=TArrayDeleteExpr.Create(FProg, namePos, baseExpr, nil, nil);
+         end else if SameText(name, 'setlength') then begin
+            if CheckArguments(1, 1) then begin
+               if not argList[0].Typ.IsOfType(FProg.TypInteger) then
+                  FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+               Result:=TArraySetLengthExpr.Create(FProg, namePos, baseExpr, argList[0]);
+               argList.Clear;
+            end else Result:=TArraySetLengthExpr.Create(FProg, namePos, baseExpr, nil);
+         end else if SameText(name, 'swap') then begin
+            if CheckArguments(2, 2) then begin
+               if not argList[0].Typ.IsOfType(FProg.TypInteger) then
+                  FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+               if not argList[1].Typ.IsOfType(FProg.TypInteger) then
+                  FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
+               Result:=TArraySwapExpr.Create(FProg, namePos, baseExpr,
+                                             argList[0], argList[1]);
+               argList.Clear;
+            end else Result:=TArraySwapExpr.Create(FProg, namePos, baseExpr, nil, nil);
+         end else FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownName, [name]);
+      except
+         Result.Free;
+         raise;
+      end;
+   finally
+      argList.Free;
+   end;
 end;
 
 procedure TdwsCompiler.ReadNameList(names : TStrings);
@@ -5127,8 +5204,6 @@ begin
                   try
                      if (not constParam) and (typ is TOpenArraySymbol) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamMustBeConst);
-                     if (typ is TDynamicArraySymbol) then
-                        FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamElementsMustBeConst);
 
                      if FTok.TestDelete(ttEQ) then begin
                         if lazyParam then
@@ -5753,11 +5828,13 @@ function TdwsCompiler.ReadConnectorSym(const Name: string;
   BaseExpr: TTypedExpr; const ConnectorType: IConnectorType; IsWrite: Boolean): TProgramExpr;
 
    function TryConnectorCall : TConnectorCallExpr;
+   var
+      argPosArray : TScriptPosArray;
    begin
       // Try to read the call of a connector function
       Result:=TConnectorCallExpr.Create(FProg, FTok.HotPos, Name, BaseExpr, IsWrite);
 
-      ReadArguments(Result.AddArg, ttBLEFT, ttBRIGHT);
+      ReadArguments(Result.AddArg, ttBLEFT, ttBRIGHT, argPosArray);
 
       Result.TypeCheckArgs(FProg);
 
@@ -5829,10 +5906,12 @@ end;
 //
 function TdwsCompiler.ReadConnectorArray(const Name: String; BaseExpr: TTypedExpr;
             const ConnectorType: IConnectorType; IsWrite: Boolean): TConnectorCallExpr;
+var
+   argPosArray : TScriptPosArray;
 begin
    Result:=TConnectorCallExpr.Create(FProg, FTok.HotPos, Name, BaseExpr, IsWrite, True);
    try
-      ReadArguments(Result.AddArg, ttALEFT, ttARIGHT);
+      ReadArguments(Result.AddArg, ttALEFT, ttARIGHT, argPosArray);
 
       if IsWrite and FTok.TestDelete(ttASSIGN) then
          Result.AddArg(ReadExpr);
@@ -6554,7 +6633,7 @@ begin
                                  [], SYS_STRING, clsObject, cvPublic, SystemTable);
    SystemTable.AddSymbol(clsObject);
 
-   // Create "root" metaclass TObject
+   // Create "root" metaclass TClass
    clsMeta:=TClassOfSymbol.Create(SYS_TCLASS, clsObject);
    SystemTable.AddSymbol(clsMeta);
 
