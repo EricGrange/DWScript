@@ -1,4 +1,4 @@
-Incompatible types: Cannot assign "Dispatch" to "Integer"
-Incompatible types: Cannot assign "Dispatch" to "String"
-Incompatible types: Cannot assign "Dispatch" to "Float"
-Incompatible types: Cannot assign "Dispatch" to "Boolean"
+Couldn't cast variant from "Dispatch" to "Integer" (EVariantTypeCastError)
+Couldn't cast variant from "Dispatch" to "String" (EVariantTypeCastError)
+Couldn't cast variant from "Dispatch" to "Float" (EVariantTypeCastError)
+Couldn't cast variant from "Dispatch" to "Boolean" (EVariantTypeCastError)

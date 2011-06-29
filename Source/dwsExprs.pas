@@ -1478,7 +1478,7 @@ type
 
    EdwsVariantTypeCastError = class(EVariantTypeCastError)
       public
-         constructor Create(const v : Variant; const desiredType : String);
+         constructor Create(const v : Variant; const desiredType, errMessage : String);
    end;
 
    EScriptStopped = class (EScriptError)
@@ -3115,8 +3115,8 @@ begin
    except
       // workaround for RTL bug that will sometimes report a failed cast to Int64
       // as being a failed cast to Boolean
-      on E : EVariantTypeCastError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'Integer');
+      on E : EVariantError do begin
+         raise EdwsVariantTypeCastError.Create(v, 'Integer', E.ClassName);
       end else raise;
    end;
 end;
@@ -3132,8 +3132,8 @@ begin
       Result:=v;
    except
       // standardize RTL message
-      on E : EVariantTypeCastError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'Boolean');
+      on E : EVariantError do begin
+         raise EdwsVariantTypeCastError.Create(v, 'Boolean', E.ClassName);
       end else raise;
    end;
 end;
@@ -3149,8 +3149,8 @@ begin
       Result:=v;
    except
       // standardize RTL message
-      on E : EVariantTypeCastError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'Float');
+      on E : EVariantError do begin
+         raise EdwsVariantTypeCastError.Create(v, 'Float', E.ClassName);
       end else raise;
    end;
 end;
@@ -3166,8 +3166,8 @@ begin
       Result:=String(v);
    except
       // standardize RTL message
-      on E : EVariantTypeCastError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'String');
+      on E : EVariantError do begin
+         raise EdwsVariantTypeCastError.Create(v, 'String', E.ClassName);
       end else raise;
    end;
 end;
@@ -5770,7 +5770,6 @@ end;
 procedure TScriptDynamicArray.Delete(index, count : Integer);
 var
    i : Integer;
-   newFinal : Integer;
 begin
    Dec(FLength, count);
    index:=index*ElementSize;
@@ -8125,10 +8124,10 @@ end;
 
 // Create
 //
-constructor EdwsVariantTypeCastError.Create(const v : Variant; const desiredType : String);
+constructor EdwsVariantTypeCastError.Create(const v : Variant; const desiredType, errMessage : String);
 begin
-   inherited CreateFmt(CPE_AssignIncompatibleTypes,
-                       [VarTypeAsText(VarType(v)), desiredType])
+   inherited CreateFmt(RTE_VariantCastFailed,
+                       [VarTypeAsText(VarType(v)), desiredType, errMessage])
 
 end;
 
