@@ -195,8 +195,10 @@ const
 
   // Arrays
   CPE_ArrayBoundNotAConstant = 'Bound isn''t a constant expression';
-  CPE_ArrayBoundNotInteger = 'Bound isn''t of type integer';
-  CPE_LowerBoundBiggerThanUpperBound = 'Lower bound is bigger than upper bound!';
+  CPE_ArrayBoundNotOrdinal = 'Bound isn''t of an ordinal type';
+  CPE_LowerBoundGreaterThanUpperBound = 'Lower bound is greater than upper bound!';
+  CPE_ArrayBoundsOfDifferentTypes = 'Array bounds are of different types!';
+  CPE_ArrayIndexMismatch = 'Array index expected "%s" but got "%s"';
 
   // Assign
   CPE_RightSideNeedsReturnType = 'Assignment''s right-side-argument has no return type!';

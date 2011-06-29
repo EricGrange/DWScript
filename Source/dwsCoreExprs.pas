@@ -2252,7 +2252,7 @@ constructor TNewArrayExpr.Create(prog: TdwsProgram; const scriptPos: TScriptPos;
 begin
    inherited Create(prog);
    FScriptPos:=scriptPos;
-   FTyp:=TDynamicArraySymbol.Create('', elementTyp);
+   FTyp:=TDynamicArraySymbol.Create('', elementTyp, prog.TypInteger);
    FLengthExpr:=lengthExpr;
 end;
 
@@ -2521,7 +2521,8 @@ end;
 //
 constructor TArrayConstantExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
 begin
-   inherited Create(Prog, Pos, TStaticArraySymbol.Create('', Prog.TypNil, 0, -1));
+   inherited Create(prog, pos,
+      TStaticArraySymbol.Create('', prog.TypNil, prog.TypInteger, 0, -1));
 end;
 
 // Destroy

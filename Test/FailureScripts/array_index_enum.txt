@@ -1,0 +1,5 @@
+Syntax Error: Array index expected "TEnum" but got "Integer" [line: 7, column: 4]
+Syntax Error: Array index expected "TEnum" but got "String" [line: 8, column: 4]
+Syntax Error: Array index expected "TEnum" but got "Boolean" [line: 9, column: 4]
+Syntax Error: Array index expected "TEnum" but got "Integer" [line: 10, column: 4]
+Syntax Error: Array index expected "TEnum" but got "Integer" [line: 12, column: 4]

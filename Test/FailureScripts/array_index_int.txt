@@ -1,0 +1,4 @@
+Syntax Error: Array index expected "Integer" but got "String" [line: 7, column: 4]
+Syntax Error: Array index expected "Integer" but got "Boolean" [line: 8, column: 4]
+Syntax Error: Array index expected "Integer" but got "TEnum" [line: 10, column: 4]
+Syntax Error: Lower bound exceeded! Index 0 [line: 11, column: 18]

@@ -818,42 +818,56 @@ type
          property ConnectorType : IConnectorType read FConnectorType write FConnectorType;
    end;
 
-   TArraySymbol = class(TTypeSymbol)
+   TArraySymbol = class abstract(TTypeSymbol)
+      private
+         FIndexType : TTypeSymbol;
+
+      public
+         constructor Create(const name : String; elementType, indexType : TTypeSymbol);
+
+         property IndexType : TTypeSymbol read FIndexType write FIndexType;
    end;
 
    // array of FTyp
    TDynamicArraySymbol = class(TArraySymbol)
       protected
          function GetCaption : String; override;
+
       public
-         constructor Create(const Name: string; Typ: TTypeSymbol);
+         constructor Create(const name : String; elementType, indexType : TTypeSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    // array [FLowBound..FHighBound] of FTyp
    TStaticArraySymbol = class(TArraySymbol)
-   private
-     FHighBound: Integer;
-     FLowBound: Integer;
-     FElementCount: Integer;
-   protected
-     function GetCaption : String; override;
-   public
-     constructor Create(const Name: string; Typ: TTypeSymbol; LowBound, HighBound: Integer);
-     procedure InitData(const Data: TData; Offset: Integer); override;
-     function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-     function IsOfType(typSym : TTypeSymbol) : Boolean; override;
-     procedure AddElement;
-     property HighBound: Integer read FHighBound;
-     property LowBound: Integer read FLowBound;
-     property ElementCount: Integer read FElementCount;
+      private
+         FHighBound : Integer;
+         FLowBound : Integer;
+         FElementCount : Integer;
+
+      protected
+         function GetCaption : String; override;
+
+      public
+         constructor Create(const name : String; elementType, indexType : TTypeSymbol;
+                            lowBound, highBound : Integer);
+
+         procedure InitData(const Data: TData; Offset: Integer); override;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function IsOfType(typSym : TTypeSymbol) : Boolean; override;
+         procedure AddElement;
+
+         property HighBound : Integer read FHighBound;
+         property LowBound : Integer read FLowBound;
+         property ElementCount : Integer read FElementCount;
    end;
 
    // static array whose bounds are contextual
    TOpenArraySymbol = class (TStaticArraySymbol)
-     constructor Create(const Name: string; Typ: TTypeSymbol);
-     function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+      public
+         constructor Create(const name : String; elementType, indexType : TTypeSymbol);
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    // Member of a record
@@ -3964,20 +3978,38 @@ begin
 end;
 
 // ------------------
+// ------------------ TArraySymbol ------------------
+// ------------------
+
+// Create
+//
+constructor TArraySymbol.Create(const name : String; elementType, indexType : TTypeSymbol);
+begin
+   inherited Create(name, elementType);
+   FIndexType:=indexType;
+end;
+
+// ------------------
 // ------------------ TDynamicArraySymbol ------------------
 // ------------------
 
-constructor TDynamicArraySymbol.Create(const Name: string; Typ: TTypeSymbol);
+// Create
+//
+constructor TDynamicArraySymbol.Create(const name : String; elementType, indexType : TTypeSymbol);
 begin
-  inherited Create(Name, Typ);
-  FSize := 1;
+  inherited;
+  FSize:=1;
 end;
 
+// GetCaption
+//
 function TDynamicArraySymbol.GetCaption: string;
 begin
-  Result := 'array of ' + Typ.Caption
+   Result := 'array of '+Typ.Caption
 end;
 
+// InitData
+//
 procedure TDynamicArraySymbol.InitData(const Data: TData; Offset: Integer);
 begin
    Data[Offset]:=IScriptObj(TScriptDynamicArray.Create(Self));
@@ -3991,12 +4023,13 @@ end;
 
 { TStaticArraySymbol }
 
-constructor TStaticArraySymbol.Create(const Name: string; Typ: TTypeSymbol; LowBound, HighBound: Integer);
+constructor TStaticArraySymbol.Create(const name : String; elementType, indexType : TTypeSymbol;
+                                      lowBound, highBound : Integer);
 begin
-  inherited Create(Name, Typ);
-  FLowBound := LowBound;
-  FHighBound := HighBound;
-  FElementCount := HighBound - LowBound + 1;
+  inherited Create(name, elementType, indexType);
+  FLowBound := lowBound;
+  FHighBound := highBound;
+  FElementCount := highBound - lowBound + 1;
   FSize := FElementCount * Typ.Size;
 end;
 
@@ -4054,9 +4087,9 @@ end;
 
 // Create
 //
-constructor TOpenArraySymbol.Create(const Name: string; Typ: TTypeSymbol);
+constructor TOpenArraySymbol.Create(const name : String; elementType, indexType : TTypeSymbol);
 begin
-   inherited Create(Name, Typ, 0, -1);
+   inherited Create(name, elementType, indexType, 0, -1);
    FSize:=1;
 end;
 

@@ -1360,7 +1360,7 @@ begin
             end;
 
             if typ is TArraySymbol then begin
-               typ:=TStaticArraySymbol.Create('', typ, 0, TArraySymbol(typ).typ.Size-1);
+               typ:=TStaticArraySymbol.Create('', typ, FProg.TypInteger, 0, TArraySymbol(typ).typ.Size-1);
                FProg.Table.AddSymbol(typ);
                Result:=constSymbolClass.Create(name, typ, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
             end else if typ.Size>1 then
@@ -2724,9 +2724,10 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
    var
       idx : Int64;
       indexExpr : TTypedExpr;
-      baseType : TTypeSymbol;
+      baseType : TArraySymbol;
       arraySymbol : TStaticArraySymbol;
       errCount : Integer;
+      hotPos : TScriptPos;
    begin
       FTok.KillToken;
 
@@ -2739,15 +2740,25 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
 
       // There is at one index expression
       repeat
+         hotPos:=FTok.HotPos;
          indexExpr := ReadExpr;
-         baseType := baseExpr.BaseType;
+         baseType := baseExpr.BaseType as TArraySymbol;
 
          try
+            if not (   (indexExpr.Typ.UnAliasedType=baseType.IndexType.UnAliasedType)
+                    or indexExpr.Typ.IsOfType(FProg.TypVariant)) then
+               FMsgs.AddCompilerErrorFmt(hotPos, CPE_ArrayIndexMismatch,
+                                         [baseType.IndexType.Name, indexExpr.Typ.Name]);
+
             if baseType is TStaticArraySymbol then begin
+
                arraySymbol:=TStaticArraySymbol(baseType);
                if arraySymbol is TOpenArraySymbol then begin
+
                   Result := TOpenArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
+
                end else begin
+
                   Result := TStaticArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
                                                     arraySymbol.LowBound, arraySymbol.HighBound);
                   if indexExpr.IsConstant and (FMsgs.Count=errCount) then begin
@@ -2758,9 +2769,13 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                         FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayUpperBoundExceeded, [idx]);
                   end;
                end;
+
             end else if baseType is TDynamicArraySymbol then begin
+
                Result:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr);
+
             end else FMsgs.AddCompilerStop(FTok.HotPos, RTE_TooManyIndices);
+
          except
             indexExpr.Free;
             raise;
@@ -3517,10 +3532,22 @@ end;
 //
 function TdwsCompiler.ReadArray(const TypeName: String): TTypeSymbol;
 var
+   hotPos : TScriptPos;
+
+   procedure CheckBound(bound : TTypedExpr);
+   begin
+      if not bound.IsConstant then
+         FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotAConstant);
+      if not (   bound.Typ.IsOfType(FProg.TypInteger)
+              or (bound.Typ is TEnumerationSymbol)
+              or bound.Typ.IsOfType(FProg.TypBoolean)) then
+         FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotOrdinal);
+   end;
+
+var
    x: Integer;
    min, max: TTypedExprList;
    typ: TTypeSymbol;
-   hotPos : TScriptPos;
 begin
    min := TTypedExprList.Create;
    max := TTypedExprList.Create;
@@ -3533,11 +3560,7 @@ begin
             hotPos:=FTok.HotPos;
             min.Insert0(ReadExpr);
 
-            if not (min[0].IsConstant) then
-               FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotAConstant);
-
-            if not (min[0].Typ = FProg.TypInteger) then
-               FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotInteger);
+            CheckBound(min[0]);
 
             if not FTok.TestDelete(ttDOTDOT) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotDotExpected);
@@ -3546,14 +3569,17 @@ begin
             hotPos:=FTok.HotPos;
             max.Insert0(ReadExpr);
 
-            if not (max[0].IsConstant) then
-               FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotAConstant);
+            CheckBound(max[0]);
 
-            if not (max[0].Typ = FProg.TypInteger) then
-               FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotInteger);
+            if max[0].Typ<>min[0].Typ then
+               FMsgs.AddCompilerError(hotPos, CPE_ArrayBoundsOfDifferentTypes);
 
-            if max[0].EvalAsInteger(FExec) < min[0].EvalAsInteger(FExec) then
-               FMsgs.AddCompilerStop(hotPos, CPE_LowerBoundBiggerThanUpperBound);
+            if max[0].EvalAsInteger(FExec)<min[0].EvalAsInteger(FExec) then begin
+               FMsgs.AddCompilerError(hotPos, CPE_LowerBoundGreaterThanUpperBound);
+               // keep compiling
+               max[0].Free;
+               max[0]:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, min[0].EvalAsInteger(FExec));
+            end;
 
             if FTok.Test(ttARIGHT) then
                Break;
@@ -3568,7 +3594,7 @@ begin
 
       if FTok.TestDelete(ttCONST) then begin
 
-         Result := TOpenArraySymbol.Create(TypeName, FProg.TypVariant);
+         Result := TOpenArraySymbol.Create(TypeName, FProg.TypVariant, FProg.TypInteger);
 
       end else begin
 
@@ -3576,7 +3602,7 @@ begin
 
          if min.Count > 0 then begin
             // initialize innermost array
-            Result := TStaticArraySymbol.Create('', typ,
+            Result := TStaticArraySymbol.Create('', typ, min[0].Typ,
                                  min[0].EvalAsInteger(FExec),
                                  max[0].EvalAsInteger(FExec));
             try
@@ -3584,7 +3610,7 @@ begin
                Assert(FProg.Table is TProgramSymbolTable);
                for x := 1 to min.Count - 1 do begin
                   TProgramSymbolTable(FProg.Table).AddToDestructionList(Result);
-                  Result := TStaticArraySymbol.Create('', Result,
+                  Result := TStaticArraySymbol.Create('', Result, min[0].Typ,
                                  min[x].EvalAsInteger(FExec),
                                  max[x].EvalAsInteger(FExec));
                end;
@@ -3595,8 +3621,11 @@ begin
                Result.Free;
                raise;
             end;
+
          end else begin
-            Result := TDynamicArraySymbol.Create(TypeName, typ);
+
+            Result := TDynamicArraySymbol.Create(TypeName, typ, FProg.TypInteger);
+
          end;
 
       end;
@@ -6602,12 +6631,13 @@ var
    varSym : TBaseSymbol;
    fldSym : TFieldSymbol;
    propSym : TPropertySymbol;
-   typString : TBaseSymbol;
+   typInteger, typString : TBaseSymbol;
 begin
    // Create base data types
    SystemTable.AddSymbol(TBaseBooleanSymbol.Create);
    SystemTable.AddSymbol(TBaseFloatSymbol.Create);
-   SystemTable.AddSymbol(TBaseIntegerSymbol.Create);
+   typInteger:=TBaseIntegerSymbol.Create;
+   SystemTable.AddSymbol(typInteger);
    typString:=TBaseStringSymbol.Create;
    SystemTable.AddSymbol(typString);
 
@@ -6616,7 +6646,7 @@ begin
    SystemTable.AddSymbol(TConstSymbol.Create('Null', varSym, Null));
    SystemTable.AddSymbol(TConstSymbol.Create('Unassigned', varSym, Unassigned));
 
-   SystemTable.AddSymbol(TOpenArraySymbol.Create('array of const', varSym));
+   SystemTable.AddSymbol(TOpenArraySymbol.Create('array of const', varSym, typInteger));
 
    // Create "root" class TObject
    clsObject:=TClassSymbol.Create(SYS_TOBJECT);

@@ -2697,12 +2697,13 @@ begin
   FIsGenerating := True;
   CheckName(Table, Name);
   if (LowBound = 0) and (HighBound = -1) then
-    Result := TDynamicArraySymbol.Create(Name, GetDataType(Table, DataType))
+    Result := TDynamicArraySymbol.Create(Name, GetDataType(Table, DataType), GetDataType(Table, SYS_INTEGER))
   else
   begin
     if LowBound > HighBound then
       raise Exception.Create(UNT_InvalidArrayBounds);
-    Result := TStaticArraySymbol.Create(Name, GetDataType(Table, DataType), LowBound, HighBound);
+    Result := TStaticArraySymbol.Create(Name, GetDataType(Table, DataType), GetDataType(Table, SYS_INTEGER),
+                                        LowBound, HighBound);
   end;
   GetUnit.Table.AddSymbol(Result);
 end;
