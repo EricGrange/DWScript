@@ -5810,6 +5810,8 @@ begin
    else if i<1 then
       RaiseLowerExceeded(exec, i);
    FValueExpr.EvalAsString(exec, buf);
+   if Length(buf)<>1 then
+      RaiseScriptError(exec, EScriptError.CreateFmt(RTE_InvalidInputDataSize, [Length(buf), 1]));
    s[i]:=buf[1];
    FStringExpr.AssignValue(exec, s);
 end;
@@ -5851,6 +5853,8 @@ begin
       RaiseLowerExceeded(exec, i)
    else begin
       FValueExpr.EvalAsString(exec, buf);
+      if Length(buf)<>1 then
+         RaiseScriptError(exec, EScriptError.CreateFmt(RTE_InvalidInputDataSize, [Length(buf), 1]));
       c:=buf[1];
       if not TStrVarExpr(FStringExpr).SetChar(exec, i, c) then
          RaiseUpperExceeded(exec, i);

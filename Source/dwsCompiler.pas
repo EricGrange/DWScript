@@ -5996,6 +5996,7 @@ function TdwsCompiler.ReadStringArray(expr : TDataExpr; IsWrite: Boolean): TProg
 var
    indexExpr, valueExpr: TTypedExpr;
    pos: TScriptPos;
+   n : Integer;
 begin
    pos := FTok.HotPos;
    indexExpr := ReadExpr;
@@ -6008,6 +6009,11 @@ begin
 
       if FTok.TestDelete(ttASSIGN) and IsWrite then begin
          valueExpr:=ReadExpr;
+         if valueExpr is TConstStringExpr then begin
+            n:=Length(TConstStringExpr(valueExpr).Value);
+            if n<>1 then
+               FMsgs.AddCompilerErrorFmt(pos, RTE_InvalidInputDataSize, [n, 1]);
+         end;
          if Expr is TStrVarExpr then
             Result:=TVarStringArraySetExpr.Create(FProg, pos, expr, indexExpr, valueExpr)
          else Result := TStringArraySetExpr.Create(FProg, pos, expr, indexExpr, valueExpr);
