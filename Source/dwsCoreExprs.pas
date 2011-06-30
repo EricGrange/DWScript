@@ -346,6 +346,29 @@ type
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
    end;
 
+   // array[index]:=val for dynamic arrays
+   TDynamicArraySetExpr = class(TNoResultExpr)
+      private
+         FArrayExpr : TTypedExpr;
+         FIndexExpr : TTypedExpr;
+         FValueExpr : TTypedExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
+                            arrayExpr, indexExpr, valueExpr : TTypedExpr);
+         destructor Destroy; override;
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property ArrayExpr : TTypedExpr read FArrayExpr;
+         property IndexExpr : TTypedExpr read FIndexExpr;
+         property ValueExpr : TTypedExpr read FValueExpr;
+   end;
+
    // Record expression: record.member
    TRecordExpr = class(TPosDataExpr)
       protected
@@ -548,6 +571,26 @@ type
                             aBase, aIndex, aCount : TTypedExpr);
          destructor Destroy; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property IndexExpr : TTypedExpr read FIndexExpr;
+         property CountExpr : TTypedExpr read FCountExpr;
+   end;
+
+   // Shallow-copy of a subset of an array
+   TArrayCopyExpr = class(TArrayPseudoMethodExpr)
+      private
+         FIndexExpr : TTypedExpr;
+         FCountExpr : TTypedExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+                            aBase, aIndex, aCount : TTypedExpr);
+         destructor Destroy; override;
+         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
 
          property IndexExpr : TTypedExpr read FIndexExpr;
          property CountExpr : TTypedExpr read FCountExpr;
@@ -2511,6 +2554,82 @@ procedure TDynamicArrayExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
 begin
    Assert(IsWritable);
    Expr.EvalAsVariant(exec, EvalItem(exec)^);
+end;
+
+// ------------------
+// ------------------ TDynamicArraySetExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TDynamicArraySetExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos;
+                            arrayExpr, indexExpr, valueExpr : TTypedExpr);
+begin
+   inherited Create(prog, scriptPos);
+   FArrayExpr:=arrayExpr;
+   FIndexExpr:=indexExpr;
+   FValueExpr:=valueExpr;
+end;
+
+// Destroy
+//
+destructor TDynamicArraySetExpr.Destroy;
+begin
+   inherited;
+   FArrayExpr.Free;
+   FIndexExpr.Free;
+   FValueExpr.Free;
+end;
+
+// EvalNoResult
+//
+procedure TDynamicArraySetExpr.EvalNoResult(exec : TdwsExecution);
+var
+   dynArray : TScriptDynamicArray;
+   index : Integer;
+   base : IScriptObj;
+   dataExpr : TDataExpr;
+begin
+   FArrayExpr.EvalAsScriptObj(exec, base);
+   dynArray:=TScriptDynamicArray(base.InternalObject);
+   index:=IndexExpr.EvalAsInteger(exec);
+   if Cardinal(index)>=Cardinal(dynArray.GetLength) then begin
+      if index<0 then
+         RaiseLowerExceeded(exec, index)
+      else RaiseUpperExceeded(exec, index);
+   end;
+
+   if dynArray.ElementSize=1 then begin
+
+      ValueExpr.EvalAsVariant(exec, dynArray.Data[index]);
+
+   end else begin
+
+      dataExpr:=(ValueExpr as TDataExpr);
+      DWSCopyData(dataExpr.Data[exec], dataExpr.Addr[exec],
+                  dynArray.Data, index*dynArray.ElementSize,
+                  dynArray.ElementSize);
+
+   end;
+end;
+
+// GetSubExpr
+//
+function TDynamicArraySetExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FArrayExpr;
+      1 : Result:=FIndexExpr
+   else
+      Result:=FValueExpr;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TDynamicArraySetExpr.GetSubExprCount : Integer;
+begin
+   Result:=3;
 end;
 
 // ------------------
@@ -6451,6 +6570,71 @@ end;
 // GetSubExprCount
 //
 function TArrayDeleteExpr.GetSubExprCount : Integer;
+begin
+   Result:=3;
+end;
+
+// ------------------
+// ------------------ TArrayCopyExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TArrayCopyExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+                                  aBase, aIndex, aCount : TTypedExpr);
+begin
+   inherited Create(prog, scriptPos, aBase);
+   FIndexExpr:=aIndex;
+   FCountExpr:=aCount;
+end;
+
+// Destroy
+//
+destructor TArrayCopyExpr.Destroy;
+begin
+   inherited;
+   FIndexExpr.Free;
+   FCountExpr.Free;
+end;
+
+// EvalAsScriptObj
+//
+procedure TArrayCopyExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+var
+   base : IScriptObj;
+   dyn : TScriptDynamicArray;
+   index, count : Integer;
+begin
+   BaseExpr.EvalAsScriptObj(exec, base);
+   dyn:=TScriptDynamicArray(base.InternalObject);
+   if IndexExpr<>nil then
+      index:=IndexExpr.EvalAsInteger(exec)
+   else index:=0;
+   if CountExpr<>nil then
+      count:=CountExpr.EvalAsInteger(exec)
+   else count:=1;
+   BoundsCheck(exec, dyn, index);
+   if count<>0 then begin
+      BoundsCheck(exec, dyn, index+count-1);
+      dyn.Delete(index, count); //!!!!
+   end;
+end;
+
+// GetSubExpr
+//
+function TArrayCopyExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FBaseExpr;
+      1 : Result:=FIndexExpr;
+   else
+      Result:=FCountExpr;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TArrayCopyExpr.GetSubExprCount : Integer;
 begin
    Result:=3;
 end;

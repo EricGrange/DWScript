@@ -2155,6 +2155,8 @@ begin
                end;
             end else if locExpr is TConnectorWriteExpr then
                Result:=TConnectorWriteExpr(locExpr)
+            else if locExpr is TDynamicArraySetExpr then
+               Result:=TDynamicArraySetExpr(locExpr)
             else if locExpr is TStringArraySetExpr then
                Result:=TStringArraySetExpr(locExpr)
             else if locExpr is TArrayPseudoMethodExpr then
@@ -2720,10 +2722,11 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
       else Result := nil;
    end;
 
-   function ReadArrayExpr(var baseExpr : TDataExpr) : TArrayExpr;
+   function ReadArrayExpr(var baseExpr : TDataExpr) : TProgramExpr;
    var
       idx : Int64;
-      indexExpr : TTypedExpr;
+      indexExpr, valueExpr : TTypedExpr;
+      newBaseExpr : TDataExpr;
       baseType : TArraySymbol;
       arraySymbol : TStaticArraySymbol;
       errCount : Integer;
@@ -2731,7 +2734,7 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
    begin
       FTok.KillToken;
 
-      Result := nil;
+      newBaseExpr:=nil;
 
       if FTok.TestDelete(ttARIGHT) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
@@ -2755,11 +2758,11 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                arraySymbol:=TStaticArraySymbol(baseType);
                if arraySymbol is TOpenArraySymbol then begin
 
-                  Result := TOpenArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
+                  newBaseExpr := TOpenArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
 
                end else begin
 
-                  Result := TStaticArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+                  newBaseExpr := TStaticArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
                                                     arraySymbol.LowBound, arraySymbol.HighBound);
                   if indexExpr.IsConstant and (FMsgs.Count=errCount) then begin
                      idx:=indexExpr.EvalAsInteger(FExec);
@@ -2772,7 +2775,24 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
 
             end else if baseType is TDynamicArraySymbol then begin
 
-               Result:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr);
+               if FTok.Test(ttCOMMA) then
+                  newBaseExpr:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
+               else if FTok.TestDelete(ttARIGHT) then begin
+                  if FTok.TestDelete(ttASSIGN) then begin
+                     hotPos:=FTok.HotPos;
+                     valueExpr:=ReadExpr(baseType.Typ);
+                     try
+                        if not baseType.Typ.IsCompatible(valueExpr.Typ) then
+                           FMsgs.AddCompilerErrorFmt(hotPos, CPE_AssignIncompatibleTypes,
+                                                     [valueExpr.Typ.Name, baseType.Typ.Name]);
+                        Result:=TDynamicArraySetExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr);
+                     except
+                        valueExpr.Free;
+                        raise;
+                     end;
+                  end else Result:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr);
+                  Exit;
+               end;
 
             end else FMsgs.AddCompilerStop(FTok.HotPos, RTE_TooManyIndices);
 
@@ -2781,8 +2801,10 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
             raise;
          end;
 
-         baseExpr := Result;
+         baseExpr := newBaseExpr;
       until not FTok.TestDelete(ttCOMMA);
+
+      Result:=baseExpr;
 
       if not FTok.TestDelete(ttARIGHT) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
@@ -3735,6 +3757,19 @@ begin
                                              argList[0], argList[1]);
                argList.Clear;
             end else Result:=TArraySwapExpr.Create(FProg, namePos, baseExpr, nil, nil);
+         end else if SameText(name, 'copy') then begin
+            if CheckArguments(1, 2) then begin
+               if not argList[0].Typ.IsOfType(FProg.TypInteger) then
+                  FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+               if argList.Count>1 then begin
+                  if not argList[1].Typ.IsOfType(FProg.TypInteger) then
+                     FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
+                  Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr,
+                                                argList[0], argList[1]);
+               end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr,
+                                                      argList[0], nil);
+               argList.Clear;
+            end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr, nil, nil);
          end else FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownName, [name]);
       except
          Result.Free;
