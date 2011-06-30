@@ -38,7 +38,8 @@ type
          function Compare(const item1, item2 : TdwsRegisteredCodeGen) : Integer; override;
    end;
 
-   TdwsCodeGenOption = (cgoNoRangeChecks, cgoNoCheckInstantiated, cgoNoCheckLoopStep);
+   TdwsCodeGenOption = (cgoNoRangeChecks, cgoNoCheckInstantiated, cgoNoCheckLoopStep,
+                        cgoNoConditions);
    TdwsCodeGenOptions = set of TdwsCodeGenOption;
 
    TdwsCodeGen = class
@@ -48,10 +49,18 @@ type
          FDependencies : TStringList;
          FFlushedDependencies : TStringList;
          FTempReg : TdwsRegisteredCodeGen;
+
          FLocalTable : TSymbolTable;
-         FContext : TdwsProgram;
          FTableStack : TTightStack;
+
+         FContext : TdwsProgram;
          FContextStack : TTightStack;
+
+         FLocalVarSymbolMap : TStringList;
+         FLocalVarSymbolMapStack : TTightStack;
+
+         FSymbolMap : TStringList;
+
          FTempSymbolCounter : Integer;
          FCompiledClasses : TTightList;
          FIndent : Integer;
@@ -71,8 +80,9 @@ type
          destructor Destroy; override;
 
          procedure RegisterCodeGen(expr : TExprBaseClass; codeGen : TdwsExprCodeGen);
-         function FindCodeGen(expr : TExprBase) : TdwsExprCodeGen;
-         function FindSymbolAtStackAddr(stackAddr, level : Integer) : TDataSymbol;
+         function  FindCodeGen(expr : TExprBase) : TdwsExprCodeGen;
+         function  FindSymbolAtStackAddr(stackAddr, level : Integer) : TDataSymbol;
+         function  SymbolMappedName(sym : TSymbol) : String;
 
          procedure Compile(expr : TExprBase);
          procedure CompileNoWrap(expr : TTypedExpr);
@@ -80,6 +90,8 @@ type
          procedure CompileSymbolTable(table : TSymbolTable); virtual;
          procedure CompileEnumerationSymbol(enum : TEnumerationSymbol); virtual;
          procedure CompileFuncSymbol(func : TSourceFuncSymbol); virtual;
+         procedure CompileConditions(func : TFuncSymbol; conditions : TSourceConditions;
+                                     preConds : Boolean); virtual;
          procedure CompileRecordSymbol(rec : TRecordSymbol); virtual;
          procedure CompileClassSymbol(cls : TClassSymbol); virtual;
          procedure CompileProgram(const prog : IdwsProgram); virtual;
@@ -95,6 +107,8 @@ type
          procedure WriteString(const c : Char); overload;
          procedure WriteStringLn(const s : String);
          procedure WriteLineEnd;
+
+         procedure WriteSymbolName(sym : TSymbol);
 
          function LocationString(e : TExprBase) : String;
          function GetNewTempSymbol : String; virtual;
@@ -199,6 +213,7 @@ begin
    FFlushedDependencies.Sorted:=True;
    FFlushedDependencies.Duplicates:=dupIgnore;
    FTempReg:=TdwsRegisteredCodeGen.Create;
+   FSymbolMap:=TStringList.Create;
    FIndentSize:=3;
 end;
 
@@ -207,6 +222,7 @@ end;
 destructor TdwsCodeGen.Destroy;
 begin
    inherited;
+   FSymbolMap.Free;
    FTempReg.Free;
    FDependencies.Free;
    FFlushedDependencies.Free;
@@ -216,6 +232,7 @@ begin
    FTableStack.Free;
    FContextStack.Free;
    FCompiledClasses.Free;
+   FLocalVarSymbolMapStack.Free;
 end;
 
 // RegisterCodeGen
@@ -246,7 +263,9 @@ end;
 //
 function TdwsCodeGen.FindSymbolAtStackAddr(stackAddr, level : Integer) : TDataSymbol;
 var
+   i : Integer;
    funcSym : TFuncSymbol;
+   dataSym : TDataSymbol;
 begin
    if (Context is TdwsProcedure) then begin
       funcSym:=TdwsProcedure(Context).Func;
@@ -255,8 +274,28 @@ begin
          Exit;
    end;
 
+   for i:=0 to FLocalVarSymbolMap.Count-1 do begin
+      dataSym:=TDataSymbol(FLocalVarSymbolMap.Objects[i]);
+      if (dataSym.StackAddr=stackAddr) and (dataSym.Level=level) then begin
+         Result:=dataSym;
+         Exit;
+      end;
+   end;
+
    if FLocalTable=nil then Exit(nil);
    Result:=FLocalTable.FindSymbolAtStackAddr(stackAddr, level);
+end;
+
+// SymbolMappedName
+//
+function TdwsCodeGen.SymbolMappedName(sym : TSymbol) : String;
+var
+   i : Integer;
+begin
+   i:=FSymbolMap.IndexOfObject(sym);
+   if i>=0 then
+      Result:=FSymbolMap[i]
+   else Result:=sym.Name;
 end;
 
 // Clear
@@ -272,6 +311,7 @@ begin
    FContext:=nil;
    FContextStack.Clear;
    FCompiledClasses.Clear;
+   FSymbolMap.Clear;
 
    FIndent:=0;
    FIndentString:='';
@@ -292,13 +332,19 @@ begin
    if cg=nil then
       RaiseUnknowExpression(expr);
 
-   oldTable:=FLocalTable;
-   if expr is TBlockExpr then
+   if expr.InheritsFrom(TBlockExpr) then begin
+      FTableStack.Push(FLocalTable);
+      oldTable:=FLocalTable;
       FLocalTable:=TBlockExpr(expr).Table;
-
-   cg.CodeGen(Self, expr);
-
-   FLocalTable:=oldTable;
+      try
+         cg.CodeGen(Self, expr);
+      finally
+         FLocalTable:=oldTable;
+         FTableStack.Pop;
+      end;
+   end else begin
+      cg.CodeGen(Self, expr);
+   end;
 end;
 
 // CompileNoWrap
@@ -353,13 +399,28 @@ begin
    // nil executable means it's a function pointer type
    if proc<>nil then begin
       EnterContext(proc);
+      try
+         if not (cgoNoConditions in Options) then
+            CompileConditions(func, proc.PreConditions, True);
 
-      Assert(func.SubExprCount=2);
-      Compile(func.SubExpr[0]);
-      Compile(func.SubExpr[1]);
+         Assert(func.SubExprCount=2);
+         Compile(func.SubExpr[0]);
+         Compile(func.SubExpr[1]);
 
-      LeaveContext;
+         if not (cgoNoConditions in Options) then
+            CompileConditions(func, proc.PostConditions, False);
+      finally
+         LeaveContext;
+      end;
    end;
+end;
+
+// CompileConditions
+//
+procedure TdwsCodeGen.CompileConditions(func : TFuncSymbol; conditions : TSourceConditions;
+                                        preConds : Boolean);
+begin
+   // nothing
 end;
 
 // CompileRecordSymbol
@@ -390,15 +451,16 @@ begin
    p:=(prog as TdwsProgram);
 
    EnterContext(p);
+   try
+      Compile(p.InitExpr);
 
-   Compile(p.InitExpr);
+      CompileSymbolTable(p.Table);
 
-   CompileSymbolTable(p.Table);
-
-   if not (p.Expr is TNullExpr) then
-      CompileProgramBody(p.Expr);
-
-   LeaveContext;
+      if not (p.Expr is TNullExpr) then
+         CompileProgramBody(p.Expr);
+   finally
+      LeaveContext;
+   end;
 end;
 
 // CompileProgramBody
@@ -478,6 +540,13 @@ begin
    FNeedIndent:=True;
 end;
 
+// WriteSymbolName
+//
+procedure TdwsCodeGen.WriteSymbolName(sym : TSymbol);
+begin
+   WriteString(SymbolMappedName(sym));
+end;
+
 // LocationString
 //
 function TdwsCodeGen.LocationString(e : TExprBase) : String;
@@ -529,11 +598,48 @@ end;
 // EnterContext
 //
 procedure TdwsCodeGen.EnterContext(proc : TdwsProgram);
+var
+   i : Integer;
+   sym : TSymbol;
 begin
    FTableStack.Push(FLocalTable);
    FContextStack.Push(FContext);
    FLocalTable:=proc.Table;
    FContext:=proc;
+
+   FLocalVarSymbolMapStack.Push(FLocalVarSymbolMap);
+   FLocalVarSymbolMap:=TStringList.Create;
+   for i:=0 to FLocalTable.Count-1 do begin
+      sym:=FLocalTable.Symbols[i];
+      if sym is TDataSymbol then
+         FLocalVarSymbolMap.AddObject(sym.Name, sym);
+   end;
+   proc.Expr.RecursiveEnumerateSubExprs(
+      procedure (parent, expr : TExprBase; var abort : Boolean)
+      var
+         i, k, n : Integer;
+         sym : TSymbol;
+         locName : String;
+      begin
+         if not (expr is TBlockExpr) then Exit;
+         for i:=0 to TBlockExpr(expr).Table.Count-1 do begin
+            sym:=TBlockExpr(expr).Table.Symbols[i];
+            if sym is TDataSymbol then begin
+               if FLocalVarSymbolMap.IndexOf(sym.Name)>=0 then begin
+                  n:=1;
+                  repeat
+                     locName:=Format('%s_%d', [sym.Name, n]);
+                     k:=FLocalVarSymbolMap.IndexOf(locName);
+                     Inc(n);
+                  until k<0;
+                  FLocalVarSymbolMap.AddObject(locName, sym);
+                  FSymbolMap.AddObject(locName, sym);
+               end else begin
+                  FLocalVarSymbolMap.AddObject(sym.Name, sym);
+               end;
+            end;
+         end;
+      end);
 end;
 
 // LeaveContext
@@ -544,6 +650,10 @@ begin
    FTableStack.Pop;
    FContext:=TdwsProgram(FContextStack.Peek);
    FContextStack.Pop;
+
+   FLocalVarSymbolMap.Free;
+   FLocalVarSymbolMap:=TStringList(FLocalVarSymbolMapStack.Peek);
+   FLocalVarSymbolMapStack.Pop;
 end;
 
 // RaiseUnknowExpression
