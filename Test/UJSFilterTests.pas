@@ -27,11 +27,11 @@ type
          procedure TearDown; override;
 
          procedure DoJSAlert(Sender: TCustomChromium; const browser: ICefBrowser; const frame: ICefFrame;
-                             const message: ustring; out Result: TCefRetval);
+                             const message: ustring; out Result: Boolean);
          procedure DoConsoleMessage(Sender: TCustomChromium; const browser: ICefBrowser; message, source: ustring;
-                                    line: Integer; out Result: TCefRetval);
+                                    line: Integer; out Result: Boolean);
          procedure DoLoadEnd(Sender: TCustomChromium; const browser: ICefBrowser; const frame: ICefFrame;
-                             httpStatusCode: Integer; out Result: TCefRetval);
+                             httpStatusCode: Integer; out Result: Boolean);
          procedure DoInclude(const scriptName: string; var scriptSource: string);
 
          procedure BrowserLoadAndWait(const src : String);
@@ -109,25 +109,25 @@ end;
 // DoJSAlert
 //
 procedure TJSFilterTests.DoJSAlert(Sender: TCustomChromium; const browser: ICefBrowser; const frame: ICefFrame;
-                                   const message: ustring; out Result: TCefRetval);
+                                   const message: ustring; out Result: Boolean);
 begin
    FLastJSResult:=message;
-   Result:=RV_HANDLED;
+   Result:=True;
 end;
 
 // DoConsoleMessage
 //
 procedure TJSFilterTests.DoConsoleMessage(Sender: TCustomChromium; const browser: ICefBrowser; message, source: ustring;
-                                          line: Integer; out Result: TCefRetval);
+                                          line: Integer; out Result: Boolean);
 begin
    FConsole:=FConsole+Format('Line %d: ', [line])+message+#13#10;
-   Result:=RV_HANDLED;
+   Result:=True;
 end;
 
 // DoLoadEnd
 //
 procedure TJSFilterTests.DoLoadEnd(Sender: TCustomChromium; const browser: ICefBrowser; const frame: ICefFrame;
-                             httpStatusCode: Integer; out Result: TCefRetval);
+                             httpStatusCode: Integer; out Result: Boolean);
 begin
    FLoadEnded:=True;
 end;

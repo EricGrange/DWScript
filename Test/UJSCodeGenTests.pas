@@ -22,9 +22,9 @@ type
          procedure TearDown; override;
 
          procedure DoJSAlert(Sender: TCustomChromium; const browser: ICefBrowser; const frame: ICefFrame;
-                             const message: ustring; out Result: TCefRetval);
+                             const message: ustring; out Result: Boolean);
          procedure DoConsoleMessage(Sender: TCustomChromium; const browser: ICefBrowser; message, source: ustring;
-                                    line: Integer; out Result: TCefRetval);
+                                    line: Integer; out Result: Boolean);
          procedure DoInclude(const scriptName: string; var scriptSource: string);
 
          procedure Compilation;
@@ -97,19 +97,19 @@ end;
 // DoJSAlert
 //
 procedure TJSCodeGenTests.DoJSAlert(Sender: TCustomChromium; const browser: ICefBrowser; const frame: ICefFrame;
-                                    const message: ustring; out Result: TCefRetval);
+                                    const message: ustring; out Result: Boolean);
 begin
    FLastJSResult:=message;
-   Result:=RV_HANDLED;
+   Result:=True;
 end;
 
 // DoConsoleMessage
 //
 procedure TJSCodeGenTests.DoConsoleMessage(Sender: TCustomChromium; const browser: ICefBrowser; message, source: ustring;
-                                           line: Integer; out Result: TCefRetval);
+                                           line: Integer; out Result: Boolean);
 begin
    FConsole:=FConsole+Format('Line %d: ', [line])+message+#13#10;
-   Result:=RV_HANDLED;
+   Result:=True;
 end;
 
 // DoInclude
