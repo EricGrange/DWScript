@@ -3719,7 +3719,7 @@ begin
          end else if SameText(name, 'length') then begin
             CheckArguments(0, 0);
             Result:=CreateArrayLength(baseExpr, arraySym);
-         end else if SameText(name, 'add') then begin
+         end else if SameText(name, 'add') or SameText(name, 'push') then begin
             if CheckArguments(1, 1) then begin
                if not argList[0].Typ.IsOfType(arraySym.Typ) then
                   FMsgs.AddCompilerErrorFmt(argPosArray[0], CPE_BadParameterType,
@@ -3758,16 +3758,18 @@ begin
                argList.Clear;
             end else Result:=TArraySwapExpr.Create(FProg, namePos, baseExpr, nil, nil);
          end else if SameText(name, 'copy') then begin
-            if CheckArguments(1, 2) then begin
-               if not argList[0].Typ.IsOfType(FProg.TypInteger) then
-                  FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
-               if argList.Count>1 then begin
-                  if not argList[1].Typ.IsOfType(FProg.TypInteger) then
-                     FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
-                  Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr,
-                                                argList[0], argList[1]);
-               end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr,
-                                                      argList[0], nil);
+            if CheckArguments(0, 2) then begin
+               if argList.Count>0 then begin
+                  if not argList[0].Typ.IsOfType(FProg.TypInteger) then
+                     FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+                  if argList.Count>1 then begin
+                     if not argList[1].Typ.IsOfType(FProg.TypInteger) then
+                        FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
+                     Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr,
+                                                   argList[0], argList[1]);
+                  end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr,
+                                                         argList[0], nil);
+               end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr, nil, nil);
                argList.Clear;
             end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr, nil, nil);
          end else FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownName, [name]);

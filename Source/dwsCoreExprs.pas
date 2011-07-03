@@ -467,11 +467,24 @@ type
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
+   // TypedExpr for dynamic array
+   TArrayTypedExpr = class(TTypedExpr)
+      private
+         FScriptPos : TScriptPos;
+
+      protected
+         procedure BoundsCheck(exec : TdwsExecution; dynArray : TScriptDynamicArray; i : Integer);
+
+      public
+         constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos);
+
+         function ScriptPos : TScriptPos; override;
+   end;
+
    // new array[length]
-   TNewArrayExpr = class(TTypedExpr)
+   TNewArrayExpr = class(TArrayTypedExpr)
       private
          FLengthExpr : TTypedExpr;
-         FScriptPos : TScriptPos;
 
       public
          constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos;
@@ -577,8 +590,9 @@ type
    end;
 
    // Shallow-copy of a subset of an array
-   TArrayCopyExpr = class(TArrayPseudoMethodExpr)
+   TArrayCopyExpr = class(TArrayTypedExpr)
       private
+         FBaseExpr : TTypedExpr;
          FIndexExpr : TTypedExpr;
          FCountExpr : TTypedExpr;
 
@@ -590,8 +604,11 @@ type
          constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
                             aBase, aIndex, aCount : TTypedExpr);
          destructor Destroy; override;
+
+         function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
 
+         property BaseExpr : TTypedExpr read FBaseExpr;
          property IndexExpr : TTypedExpr read FIndexExpr;
          property CountExpr : TTypedExpr read FCountExpr;
    end;
@@ -889,6 +906,7 @@ type
    public
      constructor Create(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr; right : TTypedExpr); override;
      procedure EvalNoResult(exec : TdwsExecution); override;
+     procedure TypeCheckAssign(prog : TdwsProgram); override;
    end;
 
    // var left := const right;
@@ -2285,6 +2303,37 @@ begin
 end;
 
 // ------------------
+// ------------------ TArrayTypedExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TArrayTypedExpr.Create(prog: TdwsProgram; const scriptPos: TScriptPos);
+begin
+   inherited Create(prog);
+   FScriptPos:=scriptPos;
+end;
+
+// ScriptPos
+//
+function TArrayTypedExpr.ScriptPos : TScriptPos;
+begin
+   Result:=FScriptPos;
+end;
+
+// BoundsCheck
+//
+procedure TArrayTypedExpr.BoundsCheck(exec : TdwsExecution; dynArray : TScriptDynamicArray; i : Integer);
+begin
+   if Cardinal(i)>=Cardinal(dynArray.Length) then begin
+      if i>=dynArray.Length then
+         RaiseUpperExceeded(exec, i)
+      else if i<0 then
+         RaiseLowerExceeded(exec, i);
+   end;
+end;
+
+// ------------------
 // ------------------ TNewArrayExpr ------------------
 // ------------------
 
@@ -2293,8 +2342,7 @@ end;
 constructor TNewArrayExpr.Create(prog: TdwsProgram; const scriptPos: TScriptPos;
                                  elementTyp : TTypeSymbol; lengthExpr : TTypedExpr);
 begin
-   inherited Create(prog);
-   FScriptPos:=scriptPos;
+   inherited Create(prog, scriptPos);
    FTyp:=TDynamicArraySymbol.Create('', elementTyp, prog.TypInteger);
    FLengthExpr:=lengthExpr;
 end;
@@ -2305,6 +2353,7 @@ destructor TNewArrayExpr.Destroy;
 begin
    inherited;
    FTyp.Free;
+   FLengthExpr.Free;
 end;
 
 // Eval
@@ -2328,8 +2377,8 @@ begin
    if n<0 then
       RaiseScriptError(exec, EScriptOutOfBounds.CreatePosFmt(FScriptPos, RTE_ArrayLengthIncorrect, [n]));
    dyn:=TScriptDynamicArray.Create(TDynamicArraySymbol(Typ));
-   dyn.SetLength(n);
-   Result:=dyn as IScriptObj;
+   dyn.Length:=n;
+   Result:=dyn;
 end;
 
 // ------------------
@@ -2506,7 +2555,7 @@ var
 begin
    index:=IndexExpr.EvalAsInteger(exec);
 
-   if Cardinal(index)>=Cardinal(dynArray.GetLength) then begin
+   if Cardinal(index)>=Cardinal(dynArray.Length) then begin
       if index<0 then
          RaiseLowerExceeded(exec, index)
       else RaiseUpperExceeded(exec, index);
@@ -2593,7 +2642,7 @@ begin
    FArrayExpr.EvalAsScriptObj(exec, base);
    dynArray:=TScriptDynamicArray(base.InternalObject);
    index:=IndexExpr.EvalAsInteger(exec);
-   if Cardinal(index)>=Cardinal(dynArray.GetLength) then begin
+   if Cardinal(index)>=Cardinal(dynArray.Length) then begin
       if index<0 then
          RaiseLowerExceeded(exec, index)
       else RaiseUpperExceeded(exec, index);
@@ -3098,7 +3147,7 @@ var
 begin
    FExpr.EvalAsScriptObj(exec, obj);
    if obj<>nil then
-      Result:=TScriptDynamicArray(obj.InternalObject).GetLength+FDelta
+      Result:=TScriptDynamicArray(obj.InternalObject).Length+FDelta
    else Result:=FDelta;
 end;
 
@@ -4223,8 +4272,32 @@ begin
 end;
 
 procedure TAssignArrayConstantExpr.EvalNoResult(exec : TdwsExecution);
+var
+   obj : IScriptObj;
+   dyn : TScriptDynamicArray;
+   srcData : TData;
 begin
-   FLeft.AssignData(exec, TArrayConstantExpr(FRight).EvalAsTData(exec), 0);
+   srcData:=TArrayConstantExpr(FRight).EvalAsTData(exec);
+   if FLeft.Typ is TDynamicArraySymbol then begin
+      // to dynamic array
+      FLeft.EvalAsScriptObj(exec, obj);
+      dyn:=TScriptDynamicArray(obj.InternalObject);
+      dyn.RawCopy(srcData, 0, Length(srcData));
+   end else begin
+      // to static array
+      FLeft.AssignData(exec, srcData, 0);
+   end;
+end;
+
+// TypeCheckAssign
+//
+procedure TAssignArrayConstantExpr.TypeCheckAssign(prog : TdwsProgram);
+begin
+   if FLeft.Typ is TDynamicArraySymbol then begin
+      if not TDynamicArraySymbol(FLeft.Typ).Typ.IsOfType(TArraySymbol(FRight.Typ).Typ) then
+         prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
+                                              [Right.Typ.Name, Left.Typ.Name]);
+   end else inherited;
 end;
 
 // ------------------
@@ -6338,8 +6411,8 @@ end;
 //
 procedure TArrayPseudoMethodExpr.BoundsCheck(exec : TdwsExecution; dynArray : TScriptDynamicArray; i : Integer);
 begin
-   if Cardinal(i)>=Cardinal(dynArray.GetLength) then begin
-      if i>=dynArray.GetLength then
+   if Cardinal(i)>=Cardinal(dynArray.Length) then begin
+      if i>=dynArray.Length then
          RaiseUpperExceeded(exec, i)
       else if i<0 then
          RaiseLowerExceeded(exec, i);
@@ -6394,7 +6467,7 @@ begin
    n:=LengthExpr.EvalAsInteger(exec);
    if n<0 then
       RaiseScriptError(exec, EScriptOutOfBounds.CreatePosFmt(FScriptPos, RTE_ArrayLengthIncorrect, [n]));
-   (obj as TScriptDynamicArray).SetLength(n);
+   (obj as TScriptDynamicArray).Length:=n;
 end;
 
 // ------------------
@@ -6487,8 +6560,8 @@ var
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
    dyn:=TScriptDynamicArray(base.InternalObject);
-   n:=dyn.GetLength;
-   dyn.SetLength(n+1);
+   n:=dyn.Length;
+   dyn.Length:=n+1;
    if ItemExpr.Typ.Size>1 then begin
       DWSCopyData(ItemExpr.Data[exec], ItemExpr.Addr[exec],
                   dyn.Data, n*dyn.ElementSize, dyn.ElementSize);
@@ -6545,10 +6618,12 @@ begin
    BaseExpr.EvalAsScriptObj(exec, base);
    dyn:=TScriptDynamicArray(base.InternalObject);
    index:=IndexExpr.EvalAsInteger(exec);
+   BoundsCheck(exec, dyn, index);
    if CountExpr<>nil then begin
       count:=CountExpr.EvalAsInteger(exec);
+      if count<0 then
+         RaiseScriptError(exec, EScriptError.CreateFmt(RTE_PositiveCountExpected, [count]));
    end else count:=1;
-   BoundsCheck(exec, dyn, index);
    if count<>0 then begin
       BoundsCheck(exec, dyn, index+count-1);
       dyn.Delete(index, count);
@@ -6583,7 +6658,9 @@ end;
 constructor TArrayCopyExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
                                   aBase, aIndex, aCount : TTypedExpr);
 begin
-   inherited Create(prog, scriptPos, aBase);
+   inherited Create(prog, scriptPos);
+   FTyp:=aBase.Typ;
+   FBaseExpr:=aBase;
    FIndexExpr:=aIndex;
    FCountExpr:=aCount;
 end;
@@ -6593,8 +6670,19 @@ end;
 destructor TArrayCopyExpr.Destroy;
 begin
    inherited;
+   FBaseExpr.Free;
    FIndexExpr.Free;
    FCountExpr.Free;
+end;
+
+// Eval
+//
+function TArrayCopyExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   obj : IScriptObj;
+begin
+   EvalAsScriptObj(exec, obj);
+   Result:=obj;
 end;
 
 // EvalAsScriptObj
@@ -6602,22 +6690,26 @@ end;
 procedure TArrayCopyExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
 var
    base : IScriptObj;
-   dyn : TScriptDynamicArray;
+   dyn, newDyn : TScriptDynamicArray;
    index, count : Integer;
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
    dyn:=TScriptDynamicArray(base.InternalObject);
-   if IndexExpr<>nil then
-      index:=IndexExpr.EvalAsInteger(exec)
-   else index:=0;
-   if CountExpr<>nil then
-      count:=CountExpr.EvalAsInteger(exec)
-   else count:=1;
-   BoundsCheck(exec, dyn, index);
-   if count<>0 then begin
+   if IndexExpr<>nil then begin
+      index:=IndexExpr.EvalAsInteger(exec);
+      BoundsCheck(exec, dyn, index);
+   end else index:=0;
+   if CountExpr<>nil then begin
+      count:=CountExpr.EvalAsInteger(exec);
+      if count<0 then
+         RaiseScriptError(exec, EScriptError.CreateFmt(RTE_PositiveCountExpected, [count]));
       BoundsCheck(exec, dyn, index+count-1);
-      dyn.Delete(index, count); //!!!!
-   end;
+   end else count:=dyn.Length-index;
+
+   newDyn:=TScriptDynamicArray.Create(dyn.Typ);
+   if count>0 then
+      newDyn.Copy(dyn, index, count);
+   Result:=newDyn;
 end;
 
 // GetSubExpr

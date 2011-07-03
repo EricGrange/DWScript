@@ -1461,19 +1461,21 @@ type
          FLength : Integer;
 
       protected
+         procedure SetLength(n : Integer);
+         property GetLength : Integer read FLength;
 
       public
          constructor Create(aTyp : TDynamicArraySymbol);
 
-         procedure SetLength(n : Integer);
-         property GetLength : Integer read FLength;
-
          procedure Delete(index, count : Integer);
          procedure Swap(i1, i2 : Integer);
+         procedure Copy(src : TScriptDynamicArray; index, count : Integer);
+         procedure RawCopy(const src : TData; rawIndex, rawCount : Integer);
 
          property Typ : TDynamicArraySymbol read FTyp;
          property ElementSize : Integer read FElementSize;
          property Data : TData read FData;
+         property Length : Integer read FLength write SetLength;
    end;
 
    EdwsVariantTypeCastError = class(EVariantTypeCastError)
@@ -5793,6 +5795,25 @@ begin
    buf:=elem1^;
    elem1^:=elem2^;
    elem2^:=buf;
+end;
+
+// Copy
+//
+procedure TScriptDynamicArray.Copy(src : TScriptDynamicArray; index, count : Integer);
+begin
+   RawCopy(src.FData, index*ElementSize, count*ElementSize);
+end;
+
+// RawCopy
+//
+procedure TScriptDynamicArray.RawCopy(const src : TData; rawIndex, rawCount : Integer);
+var
+   i : Integer;
+begin
+   FLength:=rawCount div ElementSize;
+   System.SetLength(FData, rawCount);
+   for i:=rawIndex to rawIndex+rawCount-1 do
+      FData[i-rawIndex]:=src[i];
 end;
 
 // ------------------
