@@ -3691,6 +3691,12 @@ var
    argList : TTypedExprList;
    argPosArray : TScriptPosArray;
 
+   procedure CheckRestricted;
+   begin
+      if arraySym.ClassType<>TDynamicArraySymbol then
+         FMsgs.AddCompilerErrorFmt(namePos, CPE_ArrayMethodRestrictedToDynamicArrays, [name]);
+   end;
+
    function CheckArguments(expectedMin, expectedMax : Integer) : Boolean;
    begin
       Result:=argList.Count in [expectedMin..expectedMax];
@@ -3720,6 +3726,7 @@ begin
             CheckArguments(0, 0);
             Result:=CreateArrayLength(baseExpr, arraySym);
          end else if SameText(name, 'add') or SameText(name, 'push') then begin
+            CheckRestricted;
             if CheckArguments(1, 1) then begin
                if not argList[0].Typ.IsOfType(arraySym.Typ) then
                   FMsgs.AddCompilerErrorFmt(argPosArray[0], CPE_BadParameterType,
@@ -3728,6 +3735,7 @@ begin
                argList.Clear;
             end else Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, nil);
          end else if SameText(name, 'delete') then begin
+            CheckRestricted;
             if CheckArguments(1, 2) then begin
                if not argList[0].Typ.IsOfType(FProg.TypInteger) then
                   FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
@@ -3741,6 +3749,7 @@ begin
                argList.Clear;
             end else Result:=TArrayDeleteExpr.Create(FProg, namePos, baseExpr, nil, nil);
          end else if SameText(name, 'setlength') then begin
+            CheckRestricted;
             if CheckArguments(1, 1) then begin
                if not argList[0].Typ.IsOfType(FProg.TypInteger) then
                   FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
@@ -3748,6 +3757,7 @@ begin
                argList.Clear;
             end else Result:=TArraySetLengthExpr.Create(FProg, namePos, baseExpr, nil);
          end else if SameText(name, 'swap') then begin
+            CheckRestricted;
             if CheckArguments(2, 2) then begin
                if not argList[0].Typ.IsOfType(FProg.TypInteger) then
                   FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
@@ -3758,6 +3768,7 @@ begin
                argList.Clear;
             end else Result:=TArraySwapExpr.Create(FProg, namePos, baseExpr, nil, nil);
          end else if SameText(name, 'copy') then begin
+            CheckRestricted;
             if CheckArguments(0, 2) then begin
                if argList.Count>0 then begin
                   if not argList[0].Typ.IsOfType(FProg.TypInteger) then

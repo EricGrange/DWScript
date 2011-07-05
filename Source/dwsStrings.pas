@@ -199,6 +199,7 @@ const
   CPE_LowerBoundGreaterThanUpperBound = 'Lower bound is greater than upper bound!';
   CPE_ArrayBoundsOfDifferentTypes = 'Array bounds are of different types!';
   CPE_ArrayIndexMismatch = 'Array index expected "%s" but got "%s"';
+  CPE_ArrayMethodRestrictedToDynamicArrays = 'Array method "%s" is restricted to dynamic arrays';
 
   // Assign
   CPE_RightSideNeedsReturnType = 'Assignment''s right-side-argument has no return type!';
