@@ -6636,7 +6636,8 @@ begin
    SetLength(FConnectorParams, FArgs.Count);
    for x:=0 to FArgs.Count-1 do begin
       arg:=TTypedExpr(FArgs.List[x]);
-      FConnectorParams[x].IsVarParam:=(arg is TDataExpr) and TDataExpr(arg).IsWritable;
+      FConnectorParams[x].IsVarParam:=(arg is TDataExpr) and TDataExpr(arg).IsWritable
+                                      and not (arg.Typ is TArraySymbol);
       FConnectorParams[x].TypSym:=arg.Typ;
    end;
 
@@ -6683,6 +6684,7 @@ var
    arg : TTypedExpr;
    argTyp : TTypeSymbol;
    buf : Variant;
+   obj : IScriptObj;
 begin
    if exec.IsDebugging then
       exec.Debugger.EnterFunc(exec, Self);
@@ -6696,7 +6698,10 @@ begin
          arg:=TTypedExpr(FArgs.List[x]);
          argTyp:=FConnectorParams[x].TypSym;
          if argTyp.Size = 1 then begin
-            arg.EvalAsVariant(exec, FConnectorArgs[x][0]);
+            if argTyp is TDynamicArraySymbol then begin
+               arg.EvalAsScriptObj(exec, obj);
+               FConnectorArgs[x][0]:=VarArrayOf(TScriptDynamicArray(obj.InternalObject).Data);
+            end else arg.EvalAsVariant(exec, FConnectorArgs[x][0]);
          end else begin
             dataSource := TDataExpr(arg).Data[exec];
             addrSource := TDataExpr(arg).Addr[exec];

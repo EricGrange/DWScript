@@ -3,9 +3,14 @@
 
 var DispVar : ComVariant := DispCallProxy;
 
-Procedure Proc(Const AParams : Array Of Const);
+var args : array of variant := ['A', 'B'];
+
+PrintLn(DispVar.methodCall(args));
+
+Procedure Proc(Const AParams : Array Of Variant);
 Begin
- PrintLn(DispVar.methodCall(AParams));
+  PrintLn(DispVar.methodCall(AParams));
 End;
 
-Proc(['1', '2', '3']); 
+args:=['1', '2', '3'];
+Proc(args); 

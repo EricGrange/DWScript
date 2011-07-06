@@ -343,7 +343,8 @@ begin
       if typ.Size > 1 then
          Exit(False);
       if typ is TArraySymbol then
-         Exit(False);
+         if not (typ is TDynamicArraySymbol) then
+            Exit(False);
    end;
    Result:=True;
 end;
@@ -389,7 +390,10 @@ begin
       begin
         argPtr := @args[ArgCount - x - 1];
         argType := PVarData(PParams[x]).VType and varTypeMask;
-        case argType of
+        If PVarData(PParams[x]).VType And varArray <> 0 Then Begin
+          argPtr.vt     := VT_ARRAY Or argType;
+          argPtr.parray := PSafeArray(PVarData(PParams[x]).VArray);
+        End Else case argType of
           varInteger:
             begin
               argPtr.vt := VT_I4 or VT_BYREF;
