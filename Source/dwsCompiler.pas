@@ -3728,9 +3728,9 @@ begin
          end else if SameText(name, 'add') or SameText(name, 'push') then begin
             CheckRestricted;
             if CheckArguments(1, 1) then begin
-               if not argList[0].Typ.IsOfType(arraySym.Typ) then
+               if not arraySym.Typ.IsCompatible(argList[0].Typ) then
                   FMsgs.AddCompilerErrorFmt(argPosArray[0], CPE_BadParameterType,
-                                            [0, arraySym.Typ.Name, argList[0].Typ.Name] );
+                                            [0, arraySym.Typ.Caption, argList[0].Typ.Caption] );
                Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, argList[0] as TDataExpr);
                argList.Clear;
             end else Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, nil);
