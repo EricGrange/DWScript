@@ -208,6 +208,10 @@ type
          property EvaluationError : Boolean read FEvaluationError;
    end;
 
+   TdwsReadTypeContext = (tcDeclaration, tcVariable, tcConstant, tcMember,
+                          tcParameter, tcResult, tcOperand, tcExceptionClass,
+                          tcProperty);
+
    // TdwsCompiler
    //
    TdwsCompiler = class
@@ -262,7 +266,7 @@ type
       function GetConstParamExpr(dataSym : TConstParamSymbol) : TVarParamExpr;
 
       function ReadAssign(token : TTokenType; left : TDataExpr) : TNoResultExpr;
-      function ReadArray(const typeName : String) : TTypeSymbol;
+      function ReadArrayType(const typeName : String; typeContext : TdwsReadTypeContext) : TTypeSymbol;
       function ReadArrayConstant : TArrayConstantExpr;
       function ReadArrayMethod(const name : String; const namePos : TScriptPos;
                                baseExpr : TTypedExpr; isWrite : Boolean) : TProgramExpr;
@@ -364,7 +368,7 @@ type
       function ReadFinally(tryExpr : TNoResultExpr) : TFinallyExpr;
       function ReadExcept(tryExpr : TNoResultExpr) : TExceptExpr;
 
-      function ReadType(const typeName : String = '') : TTypeSymbol;
+      function ReadType(const typeName : String; typeContext : TdwsReadTypeContext) : TTypeSymbol;
       function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
       procedure ReadTypeDecl;
       procedure ReadUses;
@@ -1213,7 +1217,7 @@ begin
          //    var myVar : type
          //    var myVar : type = expr
          //    var myVar : type := expr
-         typ := ReadType('');
+         typ := ReadType('', tcVariable);
          if names.Count = 1 then begin
             if FTok.TestDelete(ttEQ) or FTok.TestDelete(ttASSIGN) then
                initExpr := ReadExpr(typ)
@@ -1331,7 +1335,7 @@ begin
       CheckName(name);
 
       if FTok.TestDelete(ttCOLON) then
-         typ:=ReadType('')
+         typ:=ReadType('', tcConstant)
       else typ:=nil;
 
       if typ is TFuncSymbol then
@@ -1401,7 +1405,7 @@ begin
          oldSymPos := FSymbolDictionary.FindSymbolUsage(typOld, suDeclaration);  // may be nil
    end;
 
-   typNew := ReadType(name);
+   typNew := ReadType(name, tcDeclaration);
 
    // Wrap whole type declarations in a context.
    if coContextMap in FCompilerOptions then
@@ -3492,7 +3496,7 @@ begin
    if FTok.TestDelete(ttCOLON) then begin
       if not (funcKind in [fkFunction, fkMethod]) then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_NoResultTypeExpected);
-      Result:=ReadType('');
+      Result:=ReadType('', tcResult);
    end else if funcKind=fkFunction then begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_FunctionTypeExpected);
    end;
@@ -3550,9 +3554,9 @@ begin
    end;
 end;
 
-// ReadArray
+// ReadArrayType
 //
-function TdwsCompiler.ReadArray(const TypeName: String): TTypeSymbol;
+function TdwsCompiler.ReadArrayType(const TypeName: String; typeContext : TdwsReadTypeContext): TTypeSymbol;
 var
    hotPos : TScriptPos;
 
@@ -3616,11 +3620,13 @@ begin
 
       if FTok.TestDelete(ttCONST) then begin
 
+         if not (typeContext in [tcDeclaration, tcParameter, tcOperand]) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_TypeExpected);
          Result := TOpenArraySymbol.Create(TypeName, FProg.TypVariant, FProg.TypInteger);
 
       end else begin
 
-         typ := ReadType('');
+         typ := ReadType('', typeContext);
 
          if min.Count > 0 then begin
             // initialize innermost array
@@ -4179,7 +4185,7 @@ begin
       if not FTok.TestDelete(ttCOLON) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
 
-      typ := ReadType('');
+      typ := ReadType('', tcMember);
       for i := 0 to Names.Count - 1 do begin
          // Check if name isn't already used
          sym := classSymbol.Members.FindLocal(Names[i]);
@@ -4243,7 +4249,7 @@ begin
 
    Result:=TClassOperatorSymbol.Create(tt);
    try
-      Result.Typ:=ReadType('');
+      Result.Typ:=ReadType('', tcOperand);
 
       if ClassSym.FindClassOperatorStrict(tt, Result.Typ, False)<>nil then
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassOperatorRedefined, [Result.Typ.Name]);
@@ -4321,7 +4327,7 @@ begin
       if not FTok.TestDelete(ttCOLON) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
 
-      typ := ReadType('');
+      typ := ReadType('', tcProperty);
       Result := TPropertySymbol.Create(name, typ, aVisibility);
       try
          if coSymbolDictionary in FCompilerOptions then
@@ -4439,7 +4445,7 @@ begin
             if not FTok.TestDelete(ttCOLON) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
 
-            typ := ReadType('');
+            typ := ReadType('', tcMember);
             for x := 0 to names.Count - 1 do begin
                if Result.Members.FindLocal(names[x]) <> nil then
                   FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [names[x]]);
@@ -4558,7 +4564,7 @@ begin
             if not FTok.TestDelete(ttCOLON) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
 
-            classSym:=ReadType('');
+            classSym:=ReadType('', tcExceptionClass);
             if not (classSym.BaseType is TClassSymbol) then
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassRefExpected);
 
@@ -4642,7 +4648,7 @@ end;
 
 // ReadType
 //
-function TdwsCompiler.ReadType(const typeName : String) : TTypeSymbol;
+function TdwsCompiler.ReadType(const typeName : String; typeContext : TdwsReadTypeContext) : TTypeSymbol;
 var
    tt : TTokenType;
    name : String;
@@ -4656,7 +4662,7 @@ begin
          Result:=ReadRecord(typeName);
 
       ttARRAY :
-         Result:=ReadArray(typeName);
+         Result:=ReadArrayType(typeName, typeContext);
 
       ttCLASS :
          if FTok.TestDelete(ttOF) then
@@ -5222,7 +5228,7 @@ begin
           FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected)
         else
         begin
-          typSym := ReadType('');
+          typSym := ReadType('', tcParameter);
           for x := 0 to names.Count - 1 do
           begin
             if isVarParam then
@@ -5280,7 +5286,7 @@ begin
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected)
                else begin
                   defaultExpr := nil;
-                  typ := ReadType('');
+                  typ := ReadType('', tcParameter);
                   try
                      if (not constParam) and (typ is TOpenArraySymbol) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamMustBeConst);
