@@ -273,9 +273,11 @@ type
          procedure AddElementExpr(Prog: TdwsProgram; ElementExpr: TTypedExpr);
          procedure Prepare(Prog: TdwsProgram; ElementTyp : TTypeSymbol);
          procedure TypeCheckElements(prog : TdwsProgram);
+
          function Eval(exec : TdwsExecution) : Variant; override;
          function EvalAsTData(exec : TdwsExecution) : TData;
          function EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArrayContainer;
+
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function IsConstant : Boolean; override;
          function IsWritable : Boolean; override;
@@ -4281,7 +4283,13 @@ begin
    if FLeft.Typ is TDynamicArraySymbol then begin
       // to dynamic array
       FLeft.EvalAsScriptObj(exec, obj);
-      dyn:=TScriptDynamicArray(obj.InternalObject);
+      if obj=nil then begin
+         // first init
+         dyn:=TScriptDynamicArray.Create(TDynamicArraySymbol(FLeft.Typ));
+         FLeft.AssignValueAsScriptObj(exec, dyn);
+      end else begin
+         dyn:=TScriptDynamicArray(obj.InternalObject);
+      end;
       dyn.RawCopy(srcData, 0, Length(srcData));
    end else begin
       // to static array
@@ -4292,11 +4300,15 @@ end;
 // TypeCheckAssign
 //
 procedure TAssignArrayConstantExpr.TypeCheckAssign(prog : TdwsProgram);
+var
+   leftItemTyp : TTypeSymbol;
 begin
    if FLeft.Typ is TDynamicArraySymbol then begin
-      if not TDynamicArraySymbol(FLeft.Typ).Typ.IsOfType(TArraySymbol(FRight.Typ).Typ) then
+      leftItemTyp:=TDynamicArraySymbol(FLeft.Typ).Typ;
+      if not (   leftItemTyp.IsOfType(TArraySymbol(FRight.Typ).Typ)
+              or leftItemTyp.IsOfType(prog.TypVariant)) then
          prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
-                                              [Right.Typ.Name, Left.Typ.Name]);
+                                              [Right.Typ.Caption, Left.Typ.Caption]);
    end else inherited;
 end;
 

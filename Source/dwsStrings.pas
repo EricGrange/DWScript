@@ -260,6 +260,8 @@ const
 
   // Connector
   CPE_ConnectorCall = 'Method "%s" not found in connector "%s"';
+  CPE_MethodConnectorParams = 'Method "%s" of connector "%s" does not accepts those parameters';
+  CPE_ConnectorParams = 'Connector "%s" does not accepts those parameters';
   CPE_ConnectorMember = 'Member "%s" readonly or not found in connector "%s"';
   CPE_ConnectorTypeMismatch = 'Type mismatch in connector';
   CPE_ConnectorIndex = 'No index access in connector "%s"';

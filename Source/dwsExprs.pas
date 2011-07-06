@@ -993,9 +993,8 @@ type
     constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const Name: string;
                        BaseExpr: TTypedExpr; IsWritable: Boolean = True; IsIndex: Boolean = False);
     destructor Destroy; override;
-    function AssignConnectorSym(ConnectorType: IConnectorType): Boolean;
+    function AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType) : Boolean;
     procedure AddArg(expr : TTypedExpr);
-    procedure TypeCheckArgs(prog : TdwsProgram);
     function Eval(exec : TdwsExecution) : Variant; override;
     function IsWritable : Boolean; override;
     property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
@@ -6622,111 +6621,120 @@ begin
    FArgs.Add(expr);
 end;
 
-// TypeCheckArgs
+// AssignConnectorSym
 //
-procedure TConnectorCallExpr.TypeCheckArgs(prog : TdwsProgram);
-begin
-   if FArgs.Count>64 then
-      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConnectorTooManyArguments, [FArgs.Count]);
-end;
-
-function TConnectorCallExpr.AssignConnectorSym(ConnectorType: IConnectorType):
-  Boolean;
+function TConnectorCallExpr.AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType): Boolean;
 var
-  x: Integer;
-  typSym: TTypeSymbol;
-  arg : TTypedExpr;
+   x : Integer;
+   typSym : TTypeSymbol;
+   arg : TTypedExpr;
 begin
   // Prepare the parameter information array to query the connector symbol
-  SetLength(FConnectorParams, FArgs.Count);
-  for x := 0 to FArgs.Count - 1 do
-  begin
-    arg:=TTypedExpr(FArgs.List[x]);
-    FConnectorParams[x].IsVarParam := (arg is TDataExpr) and TDataExpr(arg).IsWritable;
-    FConnectorParams[x].TypSym := arg.Typ;
-  end;
+   if FArgs.Count>64 then
+      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConnectorTooManyArguments, [FArgs.Count]);
 
-  // Ask the connector symbol if such a method exists
-  if FIsIndex then
-    FConnectorCall := ConnectorType.HasIndex(FName, FConnectorParams, typSym, FIsWritable)
-  else begin
-    FIsWritable := False;
-    FConnectorCall := ConnectorType.HasMethod(FName, FConnectorParams, typSym);
-  end;
+   SetLength(FConnectorParams, FArgs.Count);
+   for x:=0 to FArgs.Count-1 do begin
+      arg:=TTypedExpr(FArgs.List[x]);
+      FConnectorParams[x].IsVarParam:=(arg is TDataExpr) and TDataExpr(arg).IsWritable;
+      FConnectorParams[x].TypSym:=arg.Typ;
+   end;
 
-  Result := Assigned(FConnectorCall);
+   if not connectorType.AcceptsParams(FConnectorParams) then begin
+      if FName<>'' then begin
+         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_MethodConnectorParams,
+                                              [FName, connectorType.ConnectorCaption])
+      end else begin
+         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConnectorParams,
+                                              [connectorType.ConnectorCaption]);
+      end;
+   end;
 
-  // Prepare the arguments for the method call
-  if Result then
-  begin
-    SetLength(FConnectorArgs, FArgs.Count);
-    for x := 0 to FArgs.Count - 1 do
-      SetLength(FConnectorArgs[x], FConnectorParams[x].TypSym.Size);
+   // Ask the connector symbol if such a method exists
+   if FIsIndex then
+      FConnectorCall := ConnectorType.HasIndex(FName, FConnectorParams, typSym, FIsWritable)
+   else begin
+      FIsWritable := False;
+      FConnectorCall := ConnectorType.HasMethod(FName, FConnectorParams, typSym);
+   end;
 
-    FTyp := typSym;
-  end;
+   Result := Assigned(FConnectorCall);
+   if not Result then
+      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConnectorCall,
+                                          [FName, connectorType.ConnectorCaption]);
+
+   // Prepare the arguments for the method call
+   if Result then begin
+      SetLength(FConnectorArgs, FArgs.Count);
+      for x := 0 to FArgs.Count - 1 do
+         SetLength(FConnectorArgs[x], FConnectorParams[x].TypSym.Size);
+
+      FTyp := typSym;
+   end;
 end;
 
+// Eval
+//
 function TConnectorCallExpr.Eval(exec : TdwsExecution): Variant;
 var
-  dataSource, dataDest: TData;
-  addrSource: Integer;
-  x: Integer;
-  arg : TTypedExpr;
-  buf : Variant;
+   dataSource, dataDest : TData;
+   addrSource : Integer;
+   x : Integer;
+   arg : TTypedExpr;
+   argTyp : TTypeSymbol;
+   buf : Variant;
 begin
-  if exec.IsDebugging then
-    exec.Debugger.EnterFunc(exec, Self);
+   if exec.IsDebugging then
+      exec.Debugger.EnterFunc(exec, Self);
 
-  // Call function
-  try
-    dataSource := nil;
-    dataDest := nil;
+   // Call function
+   try
+      dataSource := nil;
+      dataDest := nil;
 
-    for x := 0 to Length(FConnectorArgs) - 1 do
-    begin
-      arg:=TTypedExpr(FArgs.List[x]);
-      if FConnectorParams[x].TypSym.Size = 1 then
-        arg.EvalAsVariant(exec, FConnectorArgs[x][0])
-      else
-      begin
-        dataSource := TDataExpr(arg).Data[exec];
-        addrSource := TDataExpr(arg).Addr[exec];
-        dataDest := FConnectorArgs[x];
-        DWSCopyData(dataSource, addrSource, dataDest, 0, FConnectorParams[x].TypSym.Size);
+      for x := 0 to Length(FConnectorArgs) - 1 do begin
+         arg:=TTypedExpr(FArgs.List[x]);
+         argTyp:=FConnectorParams[x].TypSym;
+         if argTyp.Size = 1 then begin
+            arg.EvalAsVariant(exec, FConnectorArgs[x][0]);
+         end else begin
+            dataSource := TDataExpr(arg).Data[exec];
+            addrSource := TDataExpr(arg).Addr[exec];
+            dataDest := FConnectorArgs[x];
+            DWSCopyData(dataSource, addrSource, dataDest, 0, argTyp.Size);
+         end;
       end;
-    end;
 
-    try
-      // The call itself
-      if FBaseExpr is TDataExpr then
-        FResultData := FConnectorCall.Call(TDataExpr(FBaseExpr).Data[exec][TDataExpr(FBaseExpr).Addr[exec]], FConnectorArgs)
-      else begin
-        FBaseExpr.EvalAsVariant(exec, buf);
-        FResultData := FConnectorCall.Call(buf, FConnectorArgs);
+      try
+         // The call itself
+         if FBaseExpr is TDataExpr then
+            FResultData := FConnectorCall.Call(TDataExpr(FBaseExpr).Data[exec][TDataExpr(FBaseExpr).Addr[exec]], FConnectorArgs)
+         else begin
+            FBaseExpr.EvalAsVariant(exec, buf);
+            FResultData := FConnectorCall.Call(buf, FConnectorArgs);
+         end;
+      except
+         on e: EScriptException do
+            raise;
+         on e: Exception do begin
+            exec.SetScriptError(Self);
+            raise;
+         end;
       end;
-    except
-      on e: EScriptException do
-        raise;
-      on e: Exception do begin
-        exec.SetScriptError(Self);
-        raise;
-      end;
-    end;
 
-    for x := 0 to Length(FConnectorArgs) - 1 do
-      if FConnectorParams[x].IsVarParam then
-        TDataExpr(FArgs.List[x]).AssignData(exec, FConnectorArgs[x], 0);
+      for x := 0 to Length(FConnectorArgs) - 1 do
+         if FConnectorParams[x].IsVarParam then
+            TDataExpr(FArgs.List[x]).AssignData(exec, FConnectorArgs[x], 0);
 
-  finally
-    if exec.IsDebugging then
-      exec.Debugger.LeaveFunc(exec, Self);
-  end;
+   finally
+      if exec.IsDebugging then
+         exec.Debugger.LeaveFunc(exec, Self);
+   end;
 
-  if Assigned(FResultData) then
-    Result := FResultData[0]
-  else
-    VarClear(Result);
+   if Assigned(FResultData) then
+      Result := FResultData[0]
+   else
+      VarClear(Result);
 end;
 
 function TConnectorCallExpr.GetData(exec : TdwsExecution) : TData;
@@ -6880,7 +6888,7 @@ begin
     for x := 0 to Length(Params) - 1 do
       expr.AddArg(TConstExpr.Create(FExec.Prog, FExec.Prog.TypVariant, Params[x]));
 
-    if expr.AssignConnectorSym(FConnectorType) then
+    if expr.AssignConnectorSym(FExec.Prog, FConnectorType) then
     begin
       if Assigned(expr.Typ) then
       begin

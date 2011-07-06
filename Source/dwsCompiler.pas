@@ -5922,10 +5922,10 @@ function TdwsCompiler.ReadConnectorSym(const Name: string;
 
       ReadArguments(Result.AddArg, ttBLEFT, ttBRIGHT, argPosArray);
 
-      Result.TypeCheckArgs(FProg);
-
-      if not Result.AssignConnectorSym(ConnectorType) then
+      if not Result.AssignConnectorSym(FProg, connectorType) then begin
+         Result.BaseExpr:=nil; // freed by caller
          FreeAndNil(Result);
+      end;
   end;
 
 begin
@@ -5936,10 +5936,8 @@ begin
   begin
     // Brackets -> always a function
     Result := TryConnectorCall;
-
-    if not Assigned(Result) then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorCall,
-                               [Name, ConnectorType.ConnectorCaption]);
+    if Result=nil then
+      Result:=TConstExpr.CreateTyped(FProg, FProg.TypVariant, Null); // keep compiling
   end
   else if not IsWrite then
   begin
@@ -6002,9 +6000,7 @@ begin
       if IsWrite and FTok.TestDelete(ttASSIGN) then
          Result.AddArg(ReadExpr);
 
-      Result.TypeCheckArgs(FProg);
-
-      if not Result.AssignConnectorSym(ConnectorType) then
+      if not Result.AssignConnectorSym(FProg, connectorType) then
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorIndex, [ConnectorType.ConnectorCaption]);
    except
       Result.BaseExpr:=nil;

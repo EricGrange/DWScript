@@ -97,6 +97,7 @@ type
   protected
     { IConnectorType }
     function ConnectorCaption: string;
+    function AcceptsParams(const params: TConnectorParamArray) : Boolean;
     function HasMethod(Const MethodName: string; const Params: TConnectorParamArray;
                        var TypSym: TTypeSymbol): IConnectorCall;
     function HasMember(Const MemberName: string; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
@@ -178,6 +179,7 @@ type
     function ReadHighBound(const Base: Variant; Args: TConnectorArgs): TData; overload;
     { IConnectorType }
     function ConnectorCaption: string;
+    function AcceptsParams(const params: TConnectorParamArray) : Boolean;
     function HasMethod(Const MethodName: string; const Params: TConnectorParamArray;
                        var TypSym: TTypeSymbol): IConnectorCall;
     function HasMember(Const MemberName: string; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
@@ -313,31 +315,13 @@ end;
 function TComConnectorType.HasIndex(Const PropName: string; const Params: TConnectorParamArray;
   var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
 var
-  x: Integer;
-  isValid: Boolean;
-  MethType: Cardinal;
+  methType: Cardinal;
 begin
-  isValid := True;
-  for x := 0 to Length(Params) - 1 do
-  begin
-    if Params[x].TypSym.Size > 1 then
-    begin
-      isValid := False;
-      Break;
-    end;
-  end;
-
-  TypSym := FTable.FindTypeSymbol('ComVariant', cvMagic);
-  if isValid then
-  begin
-    if IsWrite then
-      MethType := DISPATCH_PROPERTYPUT
-    else
-      MethType := DISPATCH_PROPERTYGET;
-    Result := TComConnectorCall.Create(PropName, Params, MethType);
-  end
-  else
-    Result := nil;
+   TypSym := FTable.FindTypeSymbol('ComVariant', cvMagic);
+   if IsWrite then
+      methType := DISPATCH_PROPERTYPUT
+   else methType := DISPATCH_PROPERTYGET;
+   Result := TComConnectorCall.Create(PropName, Params, methType);
 end;
 
 function TComConnectorType.HasMember(Const MemberName: string;
@@ -347,29 +331,28 @@ begin
   Result := TComConnectorMember.Create(MemberName);
 end;
 
+// AcceptsParams
+//
+function TComConnectorType.AcceptsParams(const params: TConnectorParamArray) : Boolean;
+var
+   x: Integer;
+   typ : TTypeSymbol;
+begin
+   for x := 0 to Length(Params) - 1 do begin
+      typ:=Params[x].TypSym;
+      if typ.Size > 1 then
+         Exit(False);
+      if typ is TArraySymbol then
+         Exit(False);
+   end;
+   Result:=True;
+end;
+
 function TComConnectorType.HasMethod(Const MethodName: string;
   const Params: TConnectorParamArray; var TypSym: TTypeSymbol): IConnectorCall;
-var
-  x: Integer;
-  isValid: Boolean;
 begin
-  isValid := True;
-  for x := 0 to Length(Params) - 1 do
-  begin
-    if Params[x].TypSym.Size > 1 then
-    begin
-      isValid := False;
-      Break;
-    end;
-  end;
-
   TypSym := FTable.FindTypeSymbol('ComVariant', cvMagic);
-  if isValid then
-  begin
-    Result := TComConnectorCall.Create(MethodName, Params);
-  end
-  else
-    Result := nil;
+  Result := TComConnectorCall.Create(MethodName, Params);
 end;
 
 const
@@ -702,32 +685,27 @@ begin
   end;
 end;
 
+// AcceptsParams
+//
+function TComVariantArrayType.AcceptsParams(const params: TConnectorParamArray) : Boolean;
+begin
+  Result:=    (Length(params) in [1, 2])
+          and FTable.FindTypeSymbol(SYS_INTEGER, cvMagic).IsCompatible(params[0].typSym);
+end;
+
 function TComVariantArrayType.HasMethod(Const methodName: string;
   const params: TConnectorParamArray; var typSym: TTypeSymbol): IConnectorCall;
 begin
-  if (Length(params) = 1) and
-    FTable.FindTypeSymbol(SYS_INTEGER, cvMagic).IsCompatible(params[0].typSym) then
-  begin
-    if SameText(methodName, 'length') then
-    begin
+   if SameText(methodName, 'length') then begin
       Result := IComVariantArrayLengthCall(Self);
       typSym := FTable.FindTypeSymbol(SYS_INTEGER, cvMagic);
-    end
-    else if SameText(methodName, 'low') then
-    begin
+   end else if SameText(methodName, 'low') then begin
       Result := IComVariantArrayLowBoundCall(Self);
       typSym := FTable.FindTypeSymbol(SYS_INTEGER, cvMagic);
-    end
-    else if SameText(methodName, 'high') then
-    begin
+   end else if SameText(methodName, 'high') then begin
       Result := IComVariantArrayHighBoundCall(Self);
       typSym := FTable.FindTypeSymbol(SYS_INTEGER, cvMagic);
-    end
-    else
-      Result := nil;
-  end
-  else
-    Result := nil;
+   end else Result := nil;
 end;
 
 function TComVariantArrayType.ReadHighBound(const Base: Variant): TData;
