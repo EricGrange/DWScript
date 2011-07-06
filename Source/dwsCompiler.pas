@@ -3475,8 +3475,11 @@ begin
          ReadFuncArgs(funcExpr);
          funcExpr.TypeCheckArgs(FProg);
       end else begin
-         if     (expecting is TFuncSymbol)
-            and funcExpr.funcSym.IsCompatible(expecting) then begin
+         if    (    (expecting is TNilSymbol)
+                and (funcExpr is TFuncPtrExpr)
+                and not FTok.Test(ttDOT))
+            or (    (expecting is TFuncSymbol)
+                and funcExpr.funcSym.IsCompatible(expecting)) then begin
             Result:=TFuncRefExpr.Create(FProg, funcExpr);
          end else begin
             funcExpr.TypeCheckArgs(FProg);
@@ -6213,7 +6216,7 @@ begin
                   Result:=TAssignArrayConstantExpr.Create(FProg, pos, left, TArrayConstantExpr(right))
                else Result:=TAssignDataExpr.Create(FProg, pos, left, right)
             end else if left.Typ is TFuncSymbol then begin
-               if right.Typ is TFuncSymbol then begin
+               if (right.Typ is TFuncSymbol) or (right.Typ is TNilSymbol) then begin
                   if right is TFuncRefExpr then begin
                      right:=TFuncRefExpr(right).Extract;
                      if right is TFuncPtrExpr then begin
@@ -6371,7 +6374,9 @@ begin
       FTok.KillToken;
    end else begin
       argPos:=FTok.HotPos;
-      argExpr:=ReadExpr;
+      if specialKind=skAssigned then
+         argExpr:=ReadExpr(FProg.TypNil)
+      else argExpr:=ReadExpr;
       argTyp:=argExpr.Typ;
       while argTyp is TAliasSymbol do
          argTyp:=TAliasSymbol(argTyp).BaseType;
@@ -6408,6 +6413,8 @@ begin
                Result:=TAssignedInstanceExpr.Create(FProg, argExpr)
             else if argTyp is TClassOfSymbol then
                Result:=TAssignedMetaClassExpr.Create(FProg, argExpr)
+            else if argTyp is TFuncSymbol then
+               Result:=TAssignedFuncPtrExpr.Create(FProg, argExpr)
             else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
             argExpr:=nil;
          end;

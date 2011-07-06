@@ -628,6 +628,11 @@ type
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
+   TAssignedFuncPtrExpr = class(TAssignedExpr)
+   public
+     function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
    TOrdExpr = class(TUnaryOpIntExpr)
    public
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -3589,6 +3594,20 @@ end;
 function TAssignedMetaClassExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
    Result:=(FExpr.EvalAsInteger(exec)<>0);
+end;
+
+// ------------------
+// ------------------ TAssignedFuncPtrExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TAssignedFuncPtrExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   v : Variant;
+begin
+   FExpr.EvalAsVariant(exec, v);
+   Result:=(IUnknown(v)<>nil);
 end;
 
 // ------------------

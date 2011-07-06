@@ -747,6 +747,8 @@ begin
       TdwsExprGenericCodeGen.Create(['(', 0, '!==null)']));
    RegisterCodeGen(TAssignedMetaClassExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '!==null)']));
+   RegisterCodeGen(TAssignedFuncPtrExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '!==null)']));
 
    RegisterCodeGen(TRelEqualBoolExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '==', 1, ')']));
