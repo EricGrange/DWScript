@@ -28,6 +28,8 @@ object MainForm: TMainForm
       ImageIndex = 2
       ExplicitLeft = 8
       ExplicitTop = 30
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object MESource: TMemo
         AlignWithMargins = True
         Left = 3
@@ -129,10 +131,7 @@ object MainForm: TMainForm
         ParentFont = False
         ScrollBars = ssBoth
         TabOrder = 0
-        ExplicitLeft = 0
-        ExplicitTop = 31
-        ExplicitWidth = 80
-        ExplicitHeight = 538
+        WantTabs = True
       end
       object Panel1: TPanel
         Left = 0
@@ -155,9 +154,6 @@ object MainForm: TMainForm
     end
     object TabSheet1: TTabSheet
       Caption = 'Chromium'
-      ExplicitTop = 25
-      ExplicitWidth = 522
-      ExplicitHeight = 490
       object Chromium: TChromium
         Left = 0
         Top = 0
@@ -166,16 +162,11 @@ object MainForm: TMainForm
         Align = alClient
         TabOrder = 0
         Options = [coAccelerated2dCanvasDisabled]
-        ExplicitWidth = 522
-        ExplicitHeight = 490
       end
     end
     object TabSheet2: TTabSheet
       Caption = 'Compiled Output'
       ImageIndex = 1
-      ExplicitTop = 25
-      ExplicitWidth = 522
-      ExplicitHeight = 490
       object MEOutput: TMemo
         Left = 0
         Top = 0
@@ -190,8 +181,6 @@ object MainForm: TMainForm
         ParentFont = False
         ScrollBars = ssBoth
         TabOrder = 0
-        ExplicitWidth = 522
-        ExplicitHeight = 490
       end
     end
   end

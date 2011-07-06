@@ -1,0 +1,1 @@
+Syntax Error: Argument 0 expects type "array of const" instead of "array of Variant" [line: 7, column: 1]

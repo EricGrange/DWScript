@@ -3642,9 +3642,11 @@ begin
       FArgs.ExprBase[x]:=arg;
 
       if argTyp=nil then
-         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType, [x, paramSymbol.Typ.Name])
+         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType,
+                                              [x, paramSymbol.Typ.Caption])
       else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
-         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long, [x, paramSymbol.Typ.Name, argTyp.Name]);
+         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long,
+                                              [x, paramSymbol.Typ.Caption, argTyp.Caption]);
 
       if paramSymbol.InheritsFrom(TVarParamSymbol) then begin
          if arg is TDataExpr then begin

@@ -865,6 +865,9 @@ type
 
    // static array whose bounds are contextual
    TOpenArraySymbol = class (TStaticArraySymbol)
+      protected
+         function GetCaption : String; override;
+
       public
          constructor Create(const name : String; elementType, indexType : TTypeSymbol);
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
@@ -4100,6 +4103,13 @@ begin
   TypSym := TypSym.BaseType;
   Result :=     (TypSym is TStaticArraySymbol)
             and Typ.IsCompatible(TypSym.Typ);
+end;
+
+// GetCaption
+//
+function TOpenArraySymbol.GetCaption : String;
+begin
+   Result:='array of const';
 end;
 
 // ------------------
