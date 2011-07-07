@@ -190,6 +190,9 @@ type
    TJSArrayDeleteExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
+   TJSArrayCopyExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
 
    TJSStaticArrayExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
@@ -357,6 +360,7 @@ implementation
 
 const
    cBoolToJSBool : array [False..True] of String = ('false', 'true');
+   cFormatSettings : TFormatSettings = ( DecimalSeparator : '.' );
 
 type
    TJSRTLDependency = record
@@ -364,7 +368,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..68] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..71] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -373,6 +377,14 @@ const
        Code : 'var $dwsRand=0'),
       (Name : '$New';
        Code : 'function $New(c) { var i={ClassType:c}; c.$Init(i); return i }'),
+      (Name : '$NewDyn';
+       Code : 'function $NewDyn(c,z) {'#13#10
+              +#9'if (c==null) throw Exception.Create$1($New(Exception),"ClassType is nil"+z);'#13#10
+              +#9'var i={ClassType:c};'#13#10
+              +#9'c.$Init(i);'#13#10
+              +#9'return i'#13#10
+              +'}';
+       Dependency : 'Exception' ),
       (Name : '$NewArray';
        Code : 'function $NewArray(n,d) { var r=new Array(n); for(var i=0;i<n;i++) r[i]=d(); return r }'),
       (Name : '$ArraySetLength';
@@ -382,9 +394,17 @@ const
               +#9'if (o>n) { a.splice(n, o-n); return }'#13#10
               +#9'for (;o<n;o++) a.push(d());'#13#10
               +'}'),
+      (Name : '$ArrayCopy';
+       Code : 'function $ArrayCopy(a,i,z) { return a.slice($Idx(i,0,a.length-1,z)) }';
+       Dependency : '$Idx' ),
+      (Name : '$ArrayCopyLen';
+       Code : 'function $ArrayCopyLen(a,i,l,z) {'#13#10
+              +#9'if (l<0) throw Exception.Create$1($New(Exception),"Positive count expected (got "+l.toString()+")"+z);'#13#10
+              +#9'return a.slice($Idx(i,0,a.length-1,z),$Idx(i+l-1,0,a.length-1,z)-i+1,z)'#13#10
+              +'}';
+       Dependency : '$Idx' ),
       (Name : '$Check';
-       Code : 'function $Check(i,z) { if (i) return i; throw Exception.Create$1($New(Exception),"Object not instantiated"+z); }';
-       Dependency : 'Exception' ),
+       Code : 'function $Check(i,z) { if (i) return i; throw Exception.Create$1($New(Exception),"Object not instantiated"+z); }'),
       (Name : '$Assert';
        Code : 'function $Assert(b,m,z) { if (!b) throw Exception.Create$1($New(EAssertionFailed),"Assertion failed"+z+((m=="")?"":" : ")+m); }';
        Dependency : 'EAssertionFailed' ),
@@ -834,6 +854,7 @@ begin
    RegisterCodeGen(TArraySetLengthExpr,      TJSArraySetLengthExpr.Create);
    RegisterCodeGen(TArrayAddExpr,            TJSArrayAddExpr.Create);
    RegisterCodeGen(TArrayDeleteExpr,         TJSArrayDeleteExpr.Create);
+   RegisterCodeGen(TArrayCopyExpr,           TJSArrayCopyExpr.Create);
 
    RegisterCodeGen(TStaticArrayExpr,         TJSStaticArrayExpr.Create);
    RegisterCodeGen(TDynamicArrayExpr,        TJSDynamicArrayExpr.Create);
@@ -1157,18 +1178,16 @@ var
    varSym : TDataSymbol;
 begin
    inherited;
-   if table<>Context.Table then begin
-      for i:=0 to table.Count-1 do begin
-         if table[i].ClassType=TDataSymbol then begin
-            varSym:=TDataSymbol(table[i]);
-            if FDeclaredLocalVars.IndexOf(varSym)<0 then begin
-               FDeclaredLocalVars.Add(varSym);
-               WriteString('var ');
-               WriteSymbolName(varSym);
-               WriteString('=');
-               WriteDefaultValue(varSym.Typ, TJSExprCodeGen.IsLocalVarParam(Self, varSym));
-               WriteStringLn(';');
-            end;
+   for i:=0 to table.Count-1 do begin
+      if table[i].ClassType=TDataSymbol then begin
+         varSym:=TDataSymbol(table[i]);
+         if FDeclaredLocalVars.IndexOf(varSym)<0 then begin
+            FDeclaredLocalVars.Add(varSym);
+            WriteString('var ');
+            WriteSymbolName(varSym);
+            WriteString('=');
+            WriteDefaultValue(varSym.Typ, TJSExprCodeGen.IsLocalVarParam(Self, varSym));
+            WriteStringLn(';');
          end;
       end;
    end;
@@ -1422,7 +1441,7 @@ begin
    if typ is TBaseIntegerSymbol then
       WriteString(IntToStr(data[addr]))
    else if typ is TBaseFloatSymbol then
-      WriteString(FloatToStr(data[addr]))
+      WriteString(FloatToStr(data[addr], cFormatSettings))
    else if typ is TBaseStringSymbol then
       WriteJavaScriptString(VarToStr(data[addr]))
    else if typ is TBaseBooleanSymbol then begin
@@ -1837,7 +1856,7 @@ begin
    e:=TAssignConstToFloatVarExpr(expr);
    codeGen.Compile(e.Left);
    codeGen.WriteString('=');
-   codeGen.WriteString(FloatToStr(e.Right));
+   codeGen.WriteString(FloatToStr(e.Right, cFormatSettings));
    codeGen.WriteStringLn(';');
 end;
 
@@ -1962,7 +1981,7 @@ var
    e : TConstFloatExpr;
 begin
    e:=TConstFloatExpr(expr);
-   codeGen.WriteString(FloatToStr(e.Value));
+   codeGen.WriteString(FloatToStr(e.Value, cFormatSettings));
 end;
 
 // ------------------
@@ -2427,8 +2446,16 @@ var
    e : TConstructorStaticExpr;
 begin
    e:=TConstructorStaticExpr(expr);
-   codeGen.WriteString('$New(');
-   codeGen.Compile(e.BaseExpr);
+   if e.BaseExpr is TConstExpr then begin
+      codeGen.WriteString('$New(');
+      codeGen.Compile(e.BaseExpr);
+   end else begin
+      codeGen.Dependencies.Add('$NewDyn');
+      codeGen.WriteString('$NewDyn(');
+      codeGen.Compile(e.BaseExpr);
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+   end;
    codeGen.WriteString(')');
    if e.FuncSym.Params.Count>0 then
       codeGen.WriteString(',');
@@ -2462,10 +2489,19 @@ var
    e : TConstructorVirtualExpr;
 begin
    e:=TConstructorVirtualExpr(expr);
-   codeGen.WriteString('$New(');
+   if e.BaseExpr is TConstExpr then begin
+      codeGen.WriteString('$New(');
+   end else begin
+      codeGen.Dependencies.Add('$NewDyn');
+      codeGen.WriteString('$NewDyn(');
+   end;
    codeGen.Compile(e.BaseExpr);
    if e.BaseExpr.Typ is TClassSymbol then
       codeGen.WriteString('.ClassType');
+   if not (e.BaseExpr is TConstExpr) then begin
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+   end;
    codeGen.WriteString(')');
    if e.FuncSym.Params.Count>0 then
       codeGen.WriteString(',');
@@ -3061,6 +3097,61 @@ begin
       codeGen.Compile(e.CountExpr)
    else codeGen.WriteString('1');
    codeGen.WriteStringLn(');');
+end;
+
+// ------------------
+// ------------------ TJSArrayCopyExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSArrayCopyExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TArrayCopyExpr;
+   rangeCheckFunc : String;
+   noRangeCheck : Boolean;
+begin
+   e:=TArrayCopyExpr(expr);
+
+   noRangeCheck:=(cgoNoRangeChecks in codeGen.Options) or (e.IndexExpr=nil);
+
+   if noRangeCheck then begin
+
+      codeGen.Compile(e.BaseExpr);
+      codeGen.WriteString('.slice(');
+      if e.IndexExpr=nil then
+         codeGen.WriteString('0')
+      else begin
+         codeGen.Compile(e.IndexExpr);
+         if e.CountExpr<>nil then begin
+            codeGen.WriteString(',');
+            codeGen.Compile(e.CountExpr)
+         end;
+      end;
+      codeGen.WriteString(')');
+
+   end else begin
+
+      if e.CountExpr=nil then
+         rangeCheckFunc:='$ArrayCopy'
+      else rangeCheckFunc:='$ArrayCopyLen';
+
+      codeGen.Dependencies.Add(rangeCheckFunc);
+
+      codeGen.WriteString(rangeCheckFunc);
+      codeGen.WriteString('(');
+      codeGen.Compile(e.BaseExpr);
+      codeGen.WriteString(',');
+      codeGen.Compile(e.IndexExpr);
+      if e.CountExpr<>nil then begin
+         codeGen.WriteString(',');
+         codeGen.Compile(e.CountExpr);
+      end;
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+      codeGen.WriteString(')');
+
+   end;
 end;
 
 // ------------------
