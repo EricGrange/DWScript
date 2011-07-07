@@ -24,7 +24,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
-  dwsComp, dwsExprs;
+  dwsComp, dwsExprs, dwsUtils;
 
 type
   TdwsSymbolsLib = class(TDataModule)
