@@ -1,2 +1,7 @@
 param index: 0, type: Array Variant (8204)
+    [0] OleStr
+    [1] OleStr
 param index: 0, type: Array Variant (8204)
+    [0] OleStr
+    [1] OleStr
+    [2] OleStr

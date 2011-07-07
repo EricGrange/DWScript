@@ -149,6 +149,22 @@ Const
 
  LineBreak : Array [Boolean] Of String = ('', sLineBreak);
 
+ //
+ Function _GetArrayInfo(Const AArray : Variant) : String;
+ Var
+
+ Index : Integer;
+
+ Begin
+
+ Result := '';
+
+ For Index := VarArrayLowBound(AArray, 1) To VarArrayHighBound(AArray, 1) Do
+  Result := Result + Format('%s    [%d] %s', [sLineBreak, Index, VarTypeAsText(TVarData(VarArrayGet(AArray, [Index])).VType)]);
+
+ End;
+ //
+
 Var
 
  Index : Integer;
@@ -157,7 +173,13 @@ Var
 Begin
 
  For Index := Low(AParams) To High(AParams) Do
- S := S + LineBreak[S <> ''] + Format('param index: %d, type: %s (%d)', [Index, VarTypeAsText(TVarData(FindVarData(AParams[Index])^).VType), TVarData(FindVarData(AParams[Index])^).VType]);
+ Begin
+
+  S := S + LineBreak[S <> ''] + Format('param index: %d, type: %s (%d)', [Index, VarTypeAsText(TVarData(FindVarData(AParams[Index])^).VType), TVarData(FindVarData(AParams[Index])^).VType]);
+  If TVarData(FindVarData(AParams[Index])^).VType And varArray <> 0 Then
+   S := S + _GetArrayInfo(AParams[Index]);
+
+ End;
 
  Result := S;
 
