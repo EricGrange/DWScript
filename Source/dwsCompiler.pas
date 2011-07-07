@@ -3819,6 +3819,7 @@ end;
 function TdwsCompiler.ReadNew(isWrite : Boolean) : TProgramExpr;
 var
    sym : TSymbol;
+   typSym : TTypeSymbol;
    classSym : TClassSymbol;
    methSym : TMethodSymbol;
    nameToken : TToken;
@@ -3859,7 +3860,10 @@ begin
 
       if FTok.TestDelete(ttALEFT) then begin
          if sym is TTypeSymbol then begin
-            Result:=ReadNewArray(TTypeSymbol(sym), isWrite);
+            typSym:=TTypeSymbol(sym);
+            if coSymbolDictionary in FCompilerOptions then
+               FSymbolDictionary.AddTypeSymbol(typSym, hotPos);
+            Result:=ReadNewArray(typSym, isWrite);
             Exit;
          end else FMsgs.AddCompilerError(hotPos, CPE_TypeExpected);
       end else if sym is TClassSymbol then begin
@@ -3873,7 +3877,7 @@ begin
       end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
 
       if sym is TClassSymbol then
-         baseExpr:=TConstExpr.CreateTyped(FProg, classSym, Int64(classSym))
+         baseExpr:=TConstExpr.CreateTyped(FProg, classSym.ClassOf, Int64(classSym))
       else baseExpr:=TVarExpr.CreateTyped(FProg, classSym, TDataSymbol(sym));
 
    end;
