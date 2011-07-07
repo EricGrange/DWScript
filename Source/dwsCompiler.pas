@@ -2702,7 +2702,7 @@ begin
 
       // Add right side of assignment
       if isWrite then
-         Result.AddArg(ReadExpr);
+         Result.AddArg(ReadExpr(propertySym.Typ));
 
       Result.TypeCheckArgs(FProg);
    except
