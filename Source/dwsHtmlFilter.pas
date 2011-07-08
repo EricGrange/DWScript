@@ -16,9 +16,10 @@
 {    January 1, 2001                                                   }
 {                                                                      }
 {    The Initial Developer of the Original Code is Matthias            }
-{    Ackermann. Portions created by Matthias Ackermann are             }
-{    Copyright (C) 2000 Matthias Ackermann, Switzerland. All           }
-{    Rights Reserved.                                                  }
+{    Ackermann. For other initial contributors, see contributors.txt   }
+{    Subsequent portions Copyright Creative IT.                        }
+{                                                                      }
+{    Current maintainer: Eric Grange                                   }
 {                                                                      }
 {    Contributor(s): Daniele Teti <d.teti@bittime.it>                  }
 {                                                                      }
