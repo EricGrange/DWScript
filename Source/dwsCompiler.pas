@@ -3481,6 +3481,8 @@ begin
             or (    (expecting is TFuncSymbol)
                 and funcExpr.funcSym.IsCompatible(expecting)) then begin
             Result:=TFuncRefExpr.Create(FProg, funcExpr);
+            if funcExpr.FuncSym.Level>1 then
+               FMsgs.AddCompilerError(funcExpr.Pos, CPE_LocalFunctionAsDelegate);
          end else begin
             funcExpr.TypeCheckArgs(FProg);
          end;
