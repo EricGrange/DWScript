@@ -107,7 +107,7 @@ var
 
    function Convert(const dwsCode : String) : String;
    begin
-      FCodeGen.Clear;
+      FCodeGen.Output.Clear;
 
       if prog=nil then
          prog:=FCompiler.Compile(dwsCode)
@@ -116,7 +116,10 @@ var
       if prog.Msgs.HasErrors then
          Exit(prog.Msgs.AsInfo);
 
-      FCodeGen.CompileProgram(prog);
+      if FCodeGen.Context=nil then
+         FCodeGen.BeginProgramSession(prog);
+
+      FCodeGen.CompileProgramInSession(prog);
       Result:=FCodeGen.CompiledOutput(prog);
    end;
 
@@ -129,29 +132,35 @@ begin
 
    input:=inherited Process(tText, msgs);
 
-   output:=TWriteOnlyBlockStream.Create;
+   FCodeGen.Clear;
    try
-      p:=1;
-      repeat
-         start:=PosEx(PatternOpen, input, p);
-         if start<=0 then begin
-            output.WriteSubString(input, p);
-            Break;
-         end else output.WriteSubString(input, p, start-p);
-         start:=start+Length(PatternOpen);
-         stop:=PosEx(PatternClose, input, start);
-         if stop<=0 then begin
-            output.WriteString(Convert(Copy(input, start, MaxInt)));
-            Break;
-         end else begin
-            output.WriteString(Convert(Copy(input, start, stop-start)));
-            p:=stop+Length(PatternClose);
-         end;
-      until False;
+      output:=TWriteOnlyBlockStream.Create;
+      try
+         p:=1;
+         repeat
+            start:=PosEx(PatternOpen, input, p);
+            if start<=0 then begin
+               output.WriteSubString(input, p);
+               Break;
+            end else output.WriteSubString(input, p, start-p);
+            start:=start+Length(PatternOpen);
+            stop:=PosEx(PatternClose, input, start);
+            if stop<=0 then begin
+               output.WriteString(Convert(Copy(input, start, MaxInt)));
+               Break;
+            end else begin
+               output.WriteString(Convert(Copy(input, start, stop-start)));
+               p:=stop+Length(PatternClose);
+            end;
+         until False;
 
-      Result:=output.ToString;
+         Result:=output.ToString;
+      finally
+         output.Free;
+      end;
    finally
-      output.Free;
+      if FCodeGen.Context<>nil then
+         FCodeGen.EndProgramSession;
    end;
 end;
 

@@ -1,1 +1,3 @@
-PrintLn(Format('%d / %d', [Low(Integer), High(Integer)]));
+var l := Low(Integer);
+var h := High(Integer);
+PrintLn(Format('%d / %d', [l, h]));

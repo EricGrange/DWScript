@@ -62,7 +62,7 @@ begin
    CollectFiles(ExtractFilePath(ParamStr(0))+'SimpleScripts'+PathDelim, '*.pas', FTests);
 
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsMath'+PathDelim, '*.pas', FTests);
-//   CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsString'+PathDelim, '*.pas', FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsString'+PathDelim, '*.pas', FTests);
 //   CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsTime'+PathDelim, '*.pas', FTests);
 
    FCompiler:=TDelphiWebScript.Create(nil);
@@ -158,6 +158,8 @@ begin
                   Inc(ignored)
                else if Pos('TOpenArrayExpr', e.Message)>0 then
                   Inc(ignored)
+               else if Pos('TDestructor', e.Message)>0 then
+                  Inc(ignored)
                else diagnostic.Add(ExtractFileName(FTests[i])+': '+e.Message);
             end;
          end;
@@ -232,10 +234,15 @@ begin
                        +'Result >>>>'#13#10
                        +FConsole+FLastJSResult;
             end;
-            resultsFileName:=ChangeFileExt(FTests[i], '.txt');
+            resultsFileName:=ChangeFileExt(FTests[i], '.jstxt');
             if FileExists(resultsFileName) then
                expectedResult.LoadFromFile(resultsFileName)
-            else expectedResult.Clear;
+            else begin
+               resultsFileName:=ChangeFileExt(FTests[i], '.txt');
+               if FileExists(resultsFileName) then
+                  expectedResult.LoadFromFile(resultsFileName)
+               else expectedResult.Clear;
+            end;
             if not (expectedResult.Text=output) then
                diagnostic.Add( ExtractFileName(FTests[i])
                               +': expected <'+expectedResult.Text
@@ -245,6 +252,8 @@ begin
                if Pos('Variant', e.Message)>0 then
                   Inc(ignored)
                else if Pos('TOpenArrayExpr', e.Message)>0 then
+                  Inc(ignored)
+               else if Pos('TDestructor', e.Message)>0 then
                   Inc(ignored)
                else diagnostic.Add(ExtractFileName(FTests[i])+': '+e.Message);
             end;

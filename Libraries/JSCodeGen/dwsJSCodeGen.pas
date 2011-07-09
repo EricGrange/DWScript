@@ -61,7 +61,6 @@ type
                                      preConds : Boolean); override;
          procedure CompileRecordSymbol(rec : TRecordSymbol); override;
          procedure CompileClassSymbol(cls : TClassSymbol); override;
-         procedure CompileProgram(const prog : IdwsProgram); override;
          procedure CompileProgramBody(expr : TNoResultExpr); override;
          procedure CompileSymbolTable(table : TSymbolTable); override;
 
@@ -368,7 +367,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..71] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..88] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -475,6 +474,10 @@ const
       // RTL functions
       (Name : 'Abs';
        Code : 'function Abs(b) { return Math.abs(v) }'),
+      (Name : 'AnsiLowerCase';
+       Code : 'function AnsiLowerCase(v) { return v.tLowerCase() }'),
+      (Name : 'AnsiUpperCase';
+       Code : 'function AnsiUpperCase(v) { return v.toUpperCase() }'),
       (Name : 'ArcCos';
        Code : 'function ArcCos(v) { return Math.acos(v) }'),
       (Name : 'ArcCosh';
@@ -493,6 +496,8 @@ const
        Code : 'function BoolToStr(b) { return b?"True":"False" }'),
       (Name : 'Ceil';
        Code : 'function Ceil(v) { return Math.ceil(v) }'),
+      (Name : 'CharAt';
+       Code : 'function CharAt(s,p) { return s.charAt(p-1) }'),
       (Name : 'Chr';
        Code : 'function Chr(c) { return String.fromCharCode(c) }'),
       (Name : 'Cos';
@@ -514,6 +519,8 @@ const
        Dependency : '!sprintf_js'),
       (Name : 'Frac';
        Code : 'function Frac(v) { return v-((v>0)?Math.floor(v):Math.ceil(v)) }'),
+      (Name : 'HexToInt';
+       Code : 'function HexToInt(v) { return parseInt(v,16) }'),
       (Name : 'Hypot';
        Code : 'function Hypot(x,y) { return Math.sqrt(x*x+y*y) }'),
       (Name : 'Int';
@@ -530,6 +537,8 @@ const
        Code : 'function Log2(x) { return Math.log(x)/Math.LN2 }'),
       (Name : 'LogN';
        Code : 'function LogN(n,x) { return Math.log(x)/Math.log(n) }'),
+      (Name : 'LowerCase';
+       Code : 'function LowerCase(v) { return v.toLowerCase() }'),
       (Name : 'Max';
        Code : 'function Max(a,b) { return (a>b)?a:b }'),
       (Name : 'MaxInt';
@@ -560,14 +569,40 @@ const
        Code : 'function Sin(v) { return Math.sin(v) }'),
       (Name : 'Sinh';
        Code : 'function Sinh(v) { return (v==0)?0:(0.5*(Math.exp(v)-Math.exp(-v))) }'),
+      (Name : 'StrAfter';
+       Code : 'function StrAfter(s,d) { if (!d) return ""; var p=s.indexOf(d); return (p<0)?"":s.substr(p+d.length) }'),
+      (Name : 'StrBefore';
+       Code : 'function StrBefore(s,d) { if (!d) return s; var p=s.indexOf(d); return (p<0)?s:s.substr(0, p) }'),
+      (Name : 'StringOfChar';
+       Code : 'function StringOfChar(c,n) { return stringRepeat(c?c.charAt(0):" ",n) }';
+       Dependency : '!stringRepeat_js'),
+      (Name : 'StringOfString';
+       Code : 'function StringOfString(s,n) { return stringRepeat(s,n) }';
+       Dependency : '!stringRepeat_js'),
+      (Name : 'StrToFloat';
+       Code : 'function StrToFloat(v) { return parseFloat(v) }'),
+      (Name : 'StrToFloatDef';
+       Code : 'function StrToFloatDef(v,d) { var r=parseFloat(v); return isNaN(r)?d:r }'),
+      (Name : 'StrToInt';
+       Code : 'function StrToInt(v) { return parseInt(v,10) }'),
+      (Name : 'StrToIntDef';
+       Code : 'function StrToIntDef(v,d) { var r=parseInt(v,10); return isNaN(r)?d:r }'),
       (Name : 'Sqrt';
        Code : 'function Sqrt(v) { return Math.sqrt(v) }'),
       (Name : 'Tan';
        Code : 'function Tan(v) { return Math.tan(v) }'),
       (Name : 'Tanh';
        Code : 'function Tanh(v) { return (v==0)?0:(Math.exp(v)-Math.exp(-v))/(Math.exp(v)+Math.exp(-v)) }'),
+      (Name : 'Trim';
+       Code : 'function Trim(s) { return s.replace(/^\s\s*/, "").replace(/\s\s*$/, "") }'),
+      (Name : 'TrimLeft';
+       Code : 'function TrimLeft(s) { return s.replace(/^\s\s*/, "") }'),
+      (Name : 'TrimRight';
+       Code : 'function TrimRight(s) { return s.replace(/\s\s*$/, "") }'),
       (Name : 'Trunc';
        Code : 'function Trunc(v) { return (v>=0)?Math.floor(v):Math.ceil(v) }'),
+      (Name : 'UpperCase';
+       Code : 'function UpperCase(v) { return v.toUpperCase() }'),
       // RTL classes
       (Name : 'TObject';
        Code : 'var TObject={'#13#10
@@ -1143,13 +1178,6 @@ begin
    WriteStringLn('};');
 end;
 
-// CompileProgram
-//
-procedure TdwsJSCodeGen.CompileProgram(const prog : IdwsProgram);
-begin
-   inherited;
-end;
-
 // CompileProgramBody
 //
 procedure TdwsJSCodeGen.CompileProgramBody(expr : TNoResultExpr);
@@ -1437,6 +1465,7 @@ var
    member : TMemberSymbol;
    sas : TStaticArraySymbol;
    clsSym : TClassSymbol;
+   intf : IUnknown;
 begin
    if typ is TBaseIntegerSymbol then
       WriteString(IntToStr(data[addr]))
@@ -1472,8 +1501,10 @@ begin
       end;
       WriteString('}');
    end else if typ is TClassSymbol then begin
-      clsSym:=TClassSymbol(Integer(data[addr]));
-      WriteString(clsSym.Name);
+      intf:=data[addr];
+      if intf=nil then
+         WriteString('null')
+      else raise ECodeGenUnsupportedSymbol.Create('Non nil class symbol');
    end else begin
       raise ECodeGenUnsupportedSymbol.CreateFmt('Value of type %s',
                                                 [typ.ClassName]);
@@ -2202,6 +2233,8 @@ begin
    FMagicCodeGens.Duplicates:=dupError;
 
    FMagicCodeGens.AddObject('Abs', TdwsExprGenericCodeGen.Create(['Math.abs(', 0, ')']));
+   FMagicCodeGens.AddObject('AnsiLowerCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toLowerCase()']));
+   FMagicCodeGens.AddObject('AnsiUpperCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toUpperCase()']));
    FMagicCodeGens.AddObject('ArcCos', TdwsExprGenericCodeGen.Create(['Math.acos(', 0, ')']));
    FMagicCodeGens.AddObject('ArcSin', TdwsExprGenericCodeGen.Create(['Math.asin(', 0, ')']));
    FMagicCodeGens.AddObject('ArcTan', TdwsExprGenericCodeGen.Create(['Math.atan(', 0, ')']));
@@ -2210,8 +2243,10 @@ begin
    FMagicCodeGens.AddObject('Cos', TdwsExprGenericCodeGen.Create(['Math.cos(', 0, ')']));
    FMagicCodeGens.AddObject('Exp', TdwsExprGenericCodeGen.Create(['Math.exp(', 0, ')']));
    FMagicCodeGens.AddObject('Floor', TdwsExprGenericCodeGen.Create(['Math.floor(', 0, ')']));
-   FMagicCodeGens.AddObject('IntToStr', TdwsExprGenericCodeGen.Create([0, '.toString()']));
+   FMagicCodeGens.AddObject('HexToInt', TdwsExprGenericCodeGen.Create(['parseInt(', 0, ',16)']));
+   FMagicCodeGens.AddObject('IntToStr', TdwsExprGenericCodeGen.Create(['(', 0, ').toString()']));
    FMagicCodeGens.AddObject('Ln', TdwsExprGenericCodeGen.Create(['Math.log(', 0, ')']));
+   FMagicCodeGens.AddObject('LowerCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toLowerCase()']));
    FMagicCodeGens.AddObject('MaxInt', TdwsExprGenericCodeGen.Create(['Math.max(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('MinInt', TdwsExprGenericCodeGen.Create(['Math.min(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('Pi', TdwsExprGenericCodeGen.Create(['Math.PI']));
@@ -2219,7 +2254,10 @@ begin
    FMagicCodeGens.AddObject('Round', TdwsExprGenericCodeGen.Create(['Math.round(', 0, ')']));
    FMagicCodeGens.AddObject('Sin', TdwsExprGenericCodeGen.Create(['Math.sin(', 0, ')']));
    FMagicCodeGens.AddObject('Sqrt', TdwsExprGenericCodeGen.Create(['Math.sqrt(', 0, ')']));
+   FMagicCodeGens.AddObject('StrToFloat', TdwsExprGenericCodeGen.Create(['parseFloat(', 0, ')']));
+   FMagicCodeGens.AddObject('StrToInt', TdwsExprGenericCodeGen.Create(['parseInt(', 0, ',10)']));
    FMagicCodeGens.AddObject('Tan', TdwsExprGenericCodeGen.Create(['Math.tan(', 0, ')']));
+   FMagicCodeGens.AddObject('UpperCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toUpperCase()']));
 end;
 
 // Destroy

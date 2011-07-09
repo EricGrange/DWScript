@@ -90,10 +90,10 @@ implementation
 constructor TdwsHtmlFilter.Create(AOwner: TComponent);
 begin
   inherited;
-  PrivateDependencies.Add('HTML');
+//  PrivateDependencies.Add('HTML');
   
-  FPatternOpen := '<%';
-  FPatternClose := '%>';
+  FPatternOpen := '<?pas';
+  FPatternClose := '?>';
   FPatternEval := '=';
 end;
 
@@ -109,7 +109,7 @@ function TdwsHtmlFilter.Process(const Text: String; Msgs: TdwsMessageList): Stri
    begin
       if start>=stop then Exit;
 
-      dest.WriteString('Send(');
+      dest.WriteString('Print(');
       isQuoted:=False;
       lineCount:=0;
       for i:=start to stop do begin
@@ -184,7 +184,7 @@ begin
          start:=start+Length(FPatternOpen);
          isEval:=CompareMem(@input[start], @FPatternEval[1], Length(FPatternEval));
          if isEval then begin
-            output.WriteString('Send(');
+            output.WriteString('Print(');
             start:=start+Length(FPatternEval);
          end;
          stop:=PosEx(PatternClose, input, start);

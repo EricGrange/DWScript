@@ -95,7 +95,11 @@ type
          procedure CompileRecordSymbol(rec : TRecordSymbol); virtual;
          procedure CompileClassSymbol(cls : TClassSymbol); virtual;
          procedure CompileProgram(const prog : IdwsProgram); virtual;
+         procedure CompileProgramInSession(const prog : IdwsProgram); virtual;
          procedure CompileProgramBody(expr : TNoResultExpr); virtual;
+
+         procedure BeginProgramSession(const prog : IdwsProgram); virtual;
+         procedure EndProgramSession; virtual;
 
          procedure CompileDependencies(destStream : TWriteOnlyBlockStream; const prog : IdwsProgram); virtual;
 
@@ -445,22 +449,46 @@ end;
 // CompileProgram
 //
 procedure TdwsCodeGen.CompileProgram(const prog : IdwsProgram);
+begin
+   BeginProgramSession(prog);
+   try
+      CompileProgramInSession(prog);
+   finally
+      EndProgramSession;
+   end;
+end;
+
+// CompileProgramInSession
+//
+procedure TdwsCodeGen.CompileProgramInSession(const prog : IdwsProgram);
 var
    p : TdwsProgram;
 begin
    p:=(prog as TdwsProgram);
 
+   Compile(p.InitExpr);
+
+   CompileSymbolTable(p.Table);
+
+   if not (p.Expr is TNullExpr) then
+      CompileProgramBody(p.Expr);
+end;
+
+// BeginProgramSession
+//
+procedure TdwsCodeGen.BeginProgramSession(const prog : IdwsProgram);
+var
+   p : TdwsProgram;
+begin
+   p:=(prog as TdwsProgram);
    EnterContext(p);
-   try
-      Compile(p.InitExpr);
+end;
 
-      CompileSymbolTable(p.Table);
-
-      if not (p.Expr is TNullExpr) then
-         CompileProgramBody(p.Expr);
-   finally
-      LeaveContext;
-   end;
+// EndProgramSession
+//
+procedure TdwsCodeGen.EndProgramSession;
+begin
+   LeaveContext;
 end;
 
 // CompileProgramBody
