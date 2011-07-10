@@ -499,7 +499,12 @@ const
       (Name : 'CharAt';
        Code : 'function CharAt(s,p) { return s.charAt(p-1) }'),
       (Name : 'Chr';
-       Code : 'function Chr(c) { return String.fromCharCode(c) }'),
+       Code : 'function Chr(c) {'#13#10
+              +#9'if (c<=0xFFFF)'#13#10
+                 +#9#9'return String.fromCharCode(c);'#13#10
+              +#9'c-=0x10000;'#13#10
+              +#9'return String.fromCharCode(0xD800+(c>>10))+String.fromCharCode(0xDC00+(c&0x3FF));'#13#10
+              +'}'),
       (Name : 'Cos';
        Code : 'function Cos(v) { return Math.cos(v) }'),
       (Name : 'Cosh';
@@ -1464,7 +1469,6 @@ var
    recSym : TRecordSymbol;
    member : TMemberSymbol;
    sas : TStaticArraySymbol;
-   clsSym : TClassSymbol;
    intf : IUnknown;
 begin
    if typ is TBaseIntegerSymbol then

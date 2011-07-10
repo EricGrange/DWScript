@@ -421,7 +421,7 @@ begin
    destStream.WriteString('"');
    for c in str do begin
       case c of
-         #0..#7, #9, #11, #12, #14..#31 :
+         #0..#7, #9, #11, #12, #14..#31, #255..#65535 :
             destStream.WriteString(Format('\u%.04x', [Ord(c)]));
          #8 : destStream.WriteString('\t');
          #10 : destStream.WriteString('\n');
