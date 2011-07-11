@@ -367,7 +367,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..92] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..94] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -569,6 +569,8 @@ const
       (Name : 'Random';
        Code : 'function Random() { var tmp=Math.floor($dwsRand*0x08088405+1)%4294967296; $dwsRand=tmp; return tmp*Math.pow(2, -32) }';
        Dependency : '$dwsRand'),
+      (Name : 'RightStr';
+       Code : 'function RightStr(s,n) { return s.substr(s.length-n) }'),
       (Name : 'Round';
        Code : 'function Round(v) { return Math.round(v) }'),
       (Name : 'SetLength';
@@ -600,6 +602,8 @@ const
        Code : 'function StrToIntDef(v,d) { var r=parseInt(v,10); return isNaN(r)?d:r }'),
       (Name : 'SubStr';
        Code : 'function SubStr(s,f) { return s.substr(f-1) }'),
+      (Name : 'SubString';
+       Code : 'function SubString(s,f,t) { return s.substr(f-1,t-2) }'),
       (Name : 'Sqrt';
        Code : 'function Sqrt(v) { return Math.sqrt(v) }'),
       (Name : 'Tan';
@@ -2271,6 +2275,7 @@ begin
    FMagicCodeGens.AddObject('StrToFloat', TdwsExprGenericCodeGen.Create(['parseFloat(', 0, ')']));
    FMagicCodeGens.AddObject('StrToInt', TdwsExprGenericCodeGen.Create(['parseInt(', 0, ',10)']));
    FMagicCodeGens.AddObject('SubStr', TdwsExprGenericCodeGen.Create(['(', 0, ').substr((', 1, ')-1)']));
+   FMagicCodeGens.AddObject('SubString', TdwsExprGenericCodeGen.Create(['(', 0, ').substr((', 1, ')-1,(', 2, ')-2)']));
    FMagicCodeGens.AddObject('Tan', TdwsExprGenericCodeGen.Create(['Math.tan(', 0, ')']));
    FMagicCodeGens.AddObject('UpperCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toUpperCase()']));
 end;
