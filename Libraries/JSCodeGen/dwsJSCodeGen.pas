@@ -367,7 +367,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..88] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..92] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -505,6 +505,8 @@ const
               +#9'c-=0x10000;'#13#10
               +#9'return String.fromCharCode(0xD800+(c>>10))+String.fromCharCode(0xDC00+(c&0x3FF));'#13#10
               +'}'),
+      (Name : 'Copy';
+       Code : 'function Copy(s,f,n) { return s.substr(f-1,n) }'),
       (Name : 'Cos';
        Code : 'function Cos(v) { return Math.cos(v) }'),
       (Name : 'Cosh';
@@ -536,6 +538,8 @@ const
        Code : 'function IntToStr(i) { return i.toString() }'),
       (Name : 'Ln';
        Code : 'function Ln(v) { return Math.log(v) }'),
+      (Name : 'LeftStr';
+       Code : 'function LeftStr(s,n) { return s.substr(0,n) }'),
       (Name : 'Log10';
        Code : 'function Log10(x) { return Math.log(x)/Math.LN10 }'),
       (Name : 'Log2';
@@ -558,6 +562,8 @@ const
        Code : 'function Pi() { return Math.PI }'),
       (Name : 'Power';
        Code : 'function Power(x,y) { return Math.pow(x,y) }'),
+      (Name : 'QuotedStr';
+       Code : 'function QuotedStr(s,q) { if (!q) q="''"; return q+s.replace(q, q+q)+q }'),
       (Name : 'RadToDeg';
        Code : 'function RadToDeg(v) { return v*(180/Math.PI) }'),
       (Name : 'Random';
@@ -592,6 +598,8 @@ const
        Code : 'function StrToInt(v) { return parseInt(v,10) }'),
       (Name : 'StrToIntDef';
        Code : 'function StrToIntDef(v,d) { var r=parseInt(v,10); return isNaN(r)?d:r }'),
+      (Name : 'SubStr';
+       Code : 'function SubStr(s,f) { return s.substr(f-1) }'),
       (Name : 'Sqrt';
        Code : 'function Sqrt(v) { return Math.sqrt(v) }'),
       (Name : 'Tan';
@@ -2245,10 +2253,12 @@ begin
    FMagicCodeGens.AddObject('ArcTan2', TdwsExprGenericCodeGen.Create(['Math.atan2(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('Ceil', TdwsExprGenericCodeGen.Create(['Math.ceil(', 0, ')']));
    FMagicCodeGens.AddObject('Cos', TdwsExprGenericCodeGen.Create(['Math.cos(', 0, ')']));
+   FMagicCodeGens.AddObject('Copy', TdwsExprGenericCodeGen.Create(['(', 0, ').substr((', 1, ')-1,', 2, ')']));
    FMagicCodeGens.AddObject('Exp', TdwsExprGenericCodeGen.Create(['Math.exp(', 0, ')']));
    FMagicCodeGens.AddObject('Floor', TdwsExprGenericCodeGen.Create(['Math.floor(', 0, ')']));
    FMagicCodeGens.AddObject('HexToInt', TdwsExprGenericCodeGen.Create(['parseInt(', 0, ',16)']));
    FMagicCodeGens.AddObject('IntToStr', TdwsExprGenericCodeGen.Create(['(', 0, ').toString()']));
+   FMagicCodeGens.AddObject('LeftStr', TdwsExprGenericCodeGen.Create(['(', 0, ').substr(0,', 1, ')']));
    FMagicCodeGens.AddObject('Ln', TdwsExprGenericCodeGen.Create(['Math.log(', 0, ')']));
    FMagicCodeGens.AddObject('LowerCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toLowerCase()']));
    FMagicCodeGens.AddObject('MaxInt', TdwsExprGenericCodeGen.Create(['Math.max(', 0, ',', 1, ')']));
@@ -2260,6 +2270,7 @@ begin
    FMagicCodeGens.AddObject('Sqrt', TdwsExprGenericCodeGen.Create(['Math.sqrt(', 0, ')']));
    FMagicCodeGens.AddObject('StrToFloat', TdwsExprGenericCodeGen.Create(['parseFloat(', 0, ')']));
    FMagicCodeGens.AddObject('StrToInt', TdwsExprGenericCodeGen.Create(['parseInt(', 0, ',10)']));
+   FMagicCodeGens.AddObject('SubStr', TdwsExprGenericCodeGen.Create(['(', 0, ').substr((', 1, ')-1)']));
    FMagicCodeGens.AddObject('Tan', TdwsExprGenericCodeGen.Create(['Math.tan(', 0, ')']));
    FMagicCodeGens.AddObject('UpperCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toUpperCase()']));
 end;
