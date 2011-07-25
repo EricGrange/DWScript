@@ -837,7 +837,7 @@ type
          function GetData(exec : TdwsExecution) : TData; override;
          function GetAddr(exec : TdwsExecution) : Integer; override;
          procedure Initialize(prog : TdwsProgram); override;
-         procedure SetResultAddr(exec : TdwsExecution; ResultAddr: Integer = -1);
+         procedure SetResultAddr(prog : TdwsProgram; exec : TdwsExecution; ResultAddr: Integer = -1);
          function IsWritable : Boolean; override;
    end;
 
@@ -4167,11 +4167,11 @@ end;
 
 // SetResultAddr
 //
-procedure TFuncExpr.SetResultAddr(exec : TdwsExecution; ResultAddr: Integer);
+procedure TFuncExpr.SetResultAddr(prog : TdwsProgram; exec : TdwsExecution; ResultAddr: Integer);
 begin
    if ResultAddr=-1 then begin
       if (exec=nil) or (exec.ProgramState = psUndefined) then
-         FResultAddr:=((exec as TdwsProgramExecution).CurrentProg as TdwsProgram).GetTempAddr(FTyp.Size)
+         FResultAddr:=prog.GetTempAddr(FTyp.Size)
       else FResultAddr:=-1; // TFuncExpr.Create called from TInfoFunc.Call
    end else FResultAddr:=ResultAddr;
 end;
@@ -6268,7 +6268,7 @@ begin
                   try
                      // Result-space is just behind the temporary-params
                      // (Calculated relative to the basepointer of the caller!)
-                     funcExpr.SetResultAddr(FExec, FExec.Stack.StackPointer-funcExpr.Typ.Size);
+                     funcExpr.SetResultAddr(FExec.CurrentProg, FExec, FExec.Stack.StackPointer-funcExpr.Typ.Size);
 
                      // Execute function.
                      // Result is stored on the stack
@@ -6346,7 +6346,7 @@ begin
             FExec.Stack.Push(funcExpr.Typ.Size);
             try
                // Result-space is just behind the temporary-params
-               funcExpr.SetResultAddr(FExec, FExec.Stack.StackPointer-FParamSize);
+               funcExpr.SetResultAddr(FExec.CurrentProg, FExec, FExec.Stack.StackPointer-FParamSize);
 
                // Execute function.
                // Result is stored on the stack
@@ -6951,14 +6951,16 @@ var
    resultData : TData;
    resultAddr : Integer;
    funcExpr : TFuncExpr;
+   prog : TdwsProgram;
 begin
    resultData := nil;
    // Read an external var
    funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).ReadFunc, nil, nil);
    try
-      funcExpr.Initialize((exec as TdwsProgramExecution).Prog);
+      prog:=(exec as TdwsProgramExecution).Prog;
+      funcExpr.Initialize(prog);
       if funcExpr.Typ.Size > 1 then begin // !! > 1 untested !!
-         funcExpr.SetResultAddr(exec, FCaller.Stack.FrameSize);
+         funcExpr.SetResultAddr(prog, exec, FCaller.Stack.FrameSize);
          // Allocate space on the stack to store the Result value
          FCaller.Stack.Push(funcExpr.Typ.Size);
          try

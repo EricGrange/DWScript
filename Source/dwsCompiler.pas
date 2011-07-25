@@ -2842,6 +2842,8 @@ begin
                   if coSymbolDictionary in FCompilerOptions then
                      FSymbolDictionary.AddSymbolReference(member, symPos, isWrite);
 
+                  if Result is TFuncExpr then
+                     TFuncExpr(Result).SetResultAddr(FProg, nil);
                   if Assigned(member) then
                      Result := TRecordExpr.Create(FProg, FTok.HotPos, TDataExpr(Result), TMemberSymbol(member))
                   else FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [Name]);
@@ -6217,7 +6219,7 @@ begin
                Result:=TAssignClassOfExpr.Create(FProg, pos, left, right);
             end else if right.InheritsFrom(TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
                if right.InheritsFrom(TFuncExpr) then
-                  TFuncExpr(right).SetResultAddr(nil);
+                  TFuncExpr(right).SetResultAddr(FProg, nil);
                if right.InheritsFrom(TArrayConstantExpr) then
                   Result:=TAssignArrayConstantExpr.Create(FProg, pos, left, TArrayConstantExpr(right))
                else Result:=TAssignDataExpr.Create(FProg, pos, left, right)
