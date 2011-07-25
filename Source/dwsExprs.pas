@@ -3743,7 +3743,7 @@ begin
    FArgExpr:=ArgExpr;
 end;
 
-// InitPushAddr
+// InitPushTempAddr
 //
 procedure TPushOperator.InitPushTempAddr(StackAddr: Integer; ArgExpr: TTypedExpr);
 begin
@@ -4142,7 +4142,9 @@ begin
                pushOperator.InitPushTempArrayAddr(param.StackAddr, arg)
             else pushOperator.InitPushTempArray(param.StackAddr, arg);
          end else if param is TByRefParamSymbol then begin
-            pushOperator.InitPushAddr(param.StackAddr, arg)
+            if arg is TFuncExprBase then
+               pushOperator.InitPushTempAddr(param.StackAddr, arg)
+            else pushOperator.InitPushAddr(param.StackAddr, arg);
          end else if param.Size>1 then
             pushOperator.InitPushData(param.StackAddr, TDataExpr(arg), param)
          else pushOperator.InitPushResult(prog, param.StackAddr, arg)
