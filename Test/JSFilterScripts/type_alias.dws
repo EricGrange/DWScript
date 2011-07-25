@@ -1,0 +1,37 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+type TColor = Integer;
+
+type
+   TMyClass = Class(TObject)
+      Private
+         FColor:TColor;
+      Protected
+         function getColor:TColor;
+         procedure setColor(Value:TColor);
+      Public
+         property Color:TColor read getColor write setColor;
+   End;
+
+function TMyClass.getColor:TColor;
+begin
+   Result:=FColor;
+end;
+
+procedure TMyClass.setColor(Value:TColor);
+begin
+   FColor:=Value;
+end;
+   
+var o := new TMyClass;   
+   
+o.Color:=1234;
+PrintLn(o.Color);
+o.Color:=o.Color*10;
+PrintLn(o.Color);
+%>
+
+</script>

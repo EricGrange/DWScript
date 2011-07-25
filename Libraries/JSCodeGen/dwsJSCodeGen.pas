@@ -1427,6 +1427,8 @@ var
    recSym : TRecordSymbol;
    member : TMemberSymbol;
 begin
+   typ:=typ.UnAliasedType;
+
    if box then
       WriteString('{value:');
    if typ is TBaseIntegerSymbol then
@@ -1483,6 +1485,8 @@ var
    sas : TStaticArraySymbol;
    intf : IUnknown;
 begin
+   typ:=typ.UnAliasedType;
+
    if typ is TBaseIntegerSymbol then
       WriteString(IntToStr(data[addr]))
    else if typ is TBaseFloatSymbol then
