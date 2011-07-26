@@ -367,7 +367,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..94] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..104] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -474,10 +474,15 @@ const
       // RTL functions
       (Name : 'Abs';
        Code : 'function Abs(b) { return Math.abs(v) }'),
+      (Name : 'AnsiCompareStr';
+       Code : 'function AnsiCompareStr(a,b) { return a.localeCompare(b) }'),
+      (Name : 'AnsiCompareText';
+       Code : 'function AnsiCompareText(a,b) { return AnsiCompareStr(a.toLocaleUpperCase(), b.toLocaleUpperCase()) }';
+       Dependency : 'AnsiCompareStr'),
       (Name : 'AnsiLowerCase';
-       Code : 'function AnsiLowerCase(v) { return v.tLowerCase() }'),
+       Code : 'function AnsiLowerCase(v) { return v.toLocaleLowerCase() }'),
       (Name : 'AnsiUpperCase';
-       Code : 'function AnsiUpperCase(v) { return v.toUpperCase() }'),
+       Code : 'function AnsiUpperCase(v) { return v.toLocaleUpperCase() }'),
       (Name : 'ArcCos';
        Code : 'function ArcCos(v) { return Math.acos(v) }'),
       (Name : 'ArcCosh';
@@ -505,6 +510,11 @@ const
               +#9'c-=0x10000;'#13#10
               +#9'return String.fromCharCode(0xD800+(c>>10))+String.fromCharCode(0xDC00+(c&0x3FF));'#13#10
               +'}'),
+      (Name : 'CompareStr';
+       Code : 'function CompareStr(a,b) { if (a<b) return -1; else return (a==b)?0:1 }'),
+      (Name : 'CompareText';
+       Code : 'function CompareText(a,b) { return CompareStr(a.toUpperCase(), b.toUpperCase()) }';
+       Dependency : 'CompareStr'),
       (Name : 'Copy';
        Code : 'function Copy(s,f,n) { return s.substr(f-1,n) }'),
       (Name : 'Cos';
@@ -515,6 +525,8 @@ const
        Code : 'function Cotan(v) { return 1/Math.tan(v) }'),
       (Name : 'DegToRad';
        Code : 'function DegToRad(v) { return v*(Math.PI/180) }'),
+      (Name : 'Delete';
+       Code : 'function Delete(s,i,n) { var v=s.value; if ((i<=0)||(i>v.length)||(n<=0)) return; s.value=v.substr(0,i-1)+v.substr(i+n-1); }'),
       (Name : 'Exp';
        Code : 'function Exp(v) { return Math.exp(v) }'),
       (Name : 'FloatToStr';
@@ -530,6 +542,9 @@ const
        Code : 'function HexToInt(v) { return parseInt(v,16) }'),
       (Name : 'Hypot';
        Code : 'function Hypot(x,y) { return Math.sqrt(x*x+y*y) }'),
+      (Name : 'Insert';
+       Code : 'function Insert(s,d,i) { var v=d.value; if (s=="") return; if (i<1) i=1; if (i>v.length) i=v.length+1;'
+               +'d.value=v.substr(0,i-1)+s+v.substr(i-1); }'),
       (Name : 'Int';
        Code : 'function Int(v) { return (v>0)?Math.floor(v):Math.ceil(v) }'),
       (Name : 'IntToHex';
@@ -560,6 +575,10 @@ const
        Code : 'function Now() { var d=new Date(); return d.getTime()/8.64e7+25569-d.getTimezoneOffset()/1440 }'),
       (Name : 'Pi';
        Code : 'function Pi() { return Math.PI }'),
+      (Name : 'Pos';
+       Code : 'function Pos(a,b) { return b.indexOf(a)+1 }'),
+      (Name : 'PosEx';
+       Code : 'function PosEx(a,b,o) { return b.indexOf(a,o-1)+1 }'),
       (Name : 'Power';
        Code : 'function Power(x,y) { return Math.pow(x,y) }'),
       (Name : 'QuotedStr';
@@ -569,10 +588,14 @@ const
       (Name : 'Random';
        Code : 'function Random() { var tmp=Math.floor($dwsRand*0x08088405+1)%4294967296; $dwsRand=tmp; return tmp*Math.pow(2, -32) }';
        Dependency : '$dwsRand'),
+      (Name : 'RevPos';
+       Code : 'function RevPos(a,b) { return (a=="")?0:(b.lastIndexOf(a)+1) }'),
       (Name : 'RightStr';
        Code : 'function RightStr(s,n) { return s.substr(s.length-n) }'),
       (Name : 'Round';
        Code : 'function Round(v) { return Math.round(v) }'),
+      (Name : 'SameText';
+       Code : 'function SameText(a,b) { return a.toUpperCase()==b.toUpperCase() }'),
       (Name : 'SetLength';
        Code : 'function SetLength(s,n) { if (s.value.length>n) s.value=s.value.substring(0,n); else while (s.value.length<n) s.value+=" "; }'),
       (Name : 'SetRandSeed';
@@ -932,6 +955,7 @@ begin
    RegisterCodeGen(TMagicIntFuncExpr,     TJSMagicFuncExpr.Create);
    RegisterCodeGen(TMagicStringFuncExpr,  TJSMagicFuncExpr.Create);
    RegisterCodeGen(TMagicFloatFuncExpr,   TJSMagicFuncExpr.Create);
+   RegisterCodeGen(TMagicBoolFuncExpr,    TJSMagicFuncExpr.Create);
    RegisterCodeGen(TMagicProcedureExpr,   TJSMagicFuncExpr.Create);
 
    RegisterCodeGen(TConstructorStaticExpr,      TJSConstructorStaticExpr.Create);
@@ -2253,8 +2277,8 @@ begin
    FMagicCodeGens.Duplicates:=dupError;
 
    FMagicCodeGens.AddObject('Abs', TdwsExprGenericCodeGen.Create(['Math.abs(', 0, ')']));
-   FMagicCodeGens.AddObject('AnsiLowerCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toLowerCase()']));
-   FMagicCodeGens.AddObject('AnsiUpperCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toUpperCase()']));
+   FMagicCodeGens.AddObject('AnsiLowerCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toLocaleLowerCase()']));
+   FMagicCodeGens.AddObject('AnsiUpperCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toLocaleUpperCase()']));
    FMagicCodeGens.AddObject('ArcCos', TdwsExprGenericCodeGen.Create(['Math.acos(', 0, ')']));
    FMagicCodeGens.AddObject('ArcSin', TdwsExprGenericCodeGen.Create(['Math.asin(', 0, ')']));
    FMagicCodeGens.AddObject('ArcTan', TdwsExprGenericCodeGen.Create(['Math.atan(', 0, ')']));
@@ -2272,6 +2296,8 @@ begin
    FMagicCodeGens.AddObject('MaxInt', TdwsExprGenericCodeGen.Create(['Math.max(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('MinInt', TdwsExprGenericCodeGen.Create(['Math.min(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('Pi', TdwsExprGenericCodeGen.Create(['Math.PI']));
+   FMagicCodeGens.AddObject('Pos', TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf(', 0, ')+1)']));
+   FMagicCodeGens.AddObject('PosEx', TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf(', 0, ',(', 2, ')-1)+1)']));
    FMagicCodeGens.AddObject('Power', TdwsExprGenericCodeGen.Create(['Math.pow(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('Round', TdwsExprGenericCodeGen.Create(['Math.round(', 0, ')']));
    FMagicCodeGens.AddObject('Sin', TdwsExprGenericCodeGen.Create(['Math.sin(', 0, ')']));
