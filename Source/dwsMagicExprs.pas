@@ -100,6 +100,18 @@ type
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
+   // TMagicBoolFuncExpr
+   //
+   TMagicBoolFuncExpr = class(TMagicFuncExpr)
+      private
+         FOnEval : TMagicFuncDoEvalAsBooleanEvent;
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         function Eval(exec : TdwsExecution) : Variant; override;
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
    // Inc/Dec/Succ/Pred
    TMagicIteratorFuncExpr = class(TMagicFuncExpr)
       public
@@ -158,6 +170,8 @@ begin
       Result:=TMagicFloatFuncExpr.Create(prog, pos, magicFuncSym)
    else if internalFunc.InheritsFrom(TInternalMagicStringFunction) then
       Result:=TMagicStringFuncExpr.Create(prog, pos, magicFuncSym)
+   else if internalFunc.InheritsFrom(TInternalMagicBoolFunction) then
+      Result:=TMagicBoolFuncExpr.Create(prog, pos, magicFuncSym)
    else if internalFunc.InheritsFrom(TInternalMagicProcedure) then
       Result:=TMagicProcedureExpr.Create(prog, pos, magicFuncSym)
    else Result:=TMagicVariantFuncExpr.Create(prog, pos, magicFuncSym);
@@ -353,6 +367,48 @@ begin
    try
       FOnEval(@execRec, Result);
    except
+      RaiseScriptError(exec);
+   end;
+end;
+
+// ------------------
+// ------------------ TMagicBoolFuncExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TMagicBoolFuncExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
+begin
+   inherited Create(Prog, Pos, Func);
+   FOnEval:=TInternalMagicBoolFunction(Func.InternalFunction).DoEvalAsBoolean;
+end;
+
+// EvalNoResult
+//
+procedure TMagicBoolFuncExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   EvalAsBoolean(exec);
+end;
+
+// Eval
+//
+function TMagicBoolFuncExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result:=EvalAsBoolean(exec);
+end;
+
+// EvalAsBoolean
+//
+function TMagicBoolFuncExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   execRec : TExprBaseListExec;
+begin
+   execRec.List:=@FArgs;
+   execRec.Exec:=exec;
+   try
+      Result:=FOnEval(@execRec);
+   except
+      Result:=False;
       RaiseScriptError(exec);
    end;
 end;
