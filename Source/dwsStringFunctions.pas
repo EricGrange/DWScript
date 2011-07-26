@@ -97,12 +97,12 @@ type
     procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
 
-  TDeleteFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
+  TDeleteFunc = class(TInternalMagicProcedure)
+    procedure DoEvalProc(args : TExprBaseList); override;
   end;
 
-  TInsertFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
+  TInsertFunc = class(TInternalMagicProcedure)
+    procedure DoEvalProc(args : TExprBaseList); override;
   end;
 
   TLowerCaseFunc = class(TInternalMagicStringFunction)
@@ -380,24 +380,28 @@ end;
 
 { TDeleteFunc }
 
-procedure TDeleteFunc.Execute(info : TProgramInfo);
+// DoEvalProc
+//
+procedure TDeleteFunc.DoEvalProc(args : TExprBaseList);
 var
-  s: string;
+   s : String;
 begin
-  s := Info.ValueAsString['S'];
-  Delete(s, Info.ValueAsInteger['Index'], Info.ValueAsInteger['Len']);
-  Info.ValueAsString['S'] := s;
+   s:=args.AsString[0];
+   Delete(s, args.AsInteger[1], args.AsInteger[2]);
+   args.AsString[0]:=s;
 end;
 
 { TInsertFunc }
 
-procedure TInsertFunc.Execute(info : TProgramInfo);
+// DoEvalProc
+//
+procedure TInsertFunc.DoEvalProc(args : TExprBaseList);
 var
-  s: string;
+   s : String;
 begin
-  s := Info.ValueAsString['S'];
-  Insert(Info.ValueAsString['src'], s, Info.ValueAsInteger['Index']);
-  Info.ValueAsString['S'] := s;
+   s:=args.AsString[1];
+   Insert(args.AsString[0], s, args.AsInteger[2]);
+   args.AsString[1]:=s;
 end;
 
 { TLowerCaseFunc }
