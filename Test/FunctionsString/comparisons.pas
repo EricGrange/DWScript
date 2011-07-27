@@ -1,9 +1,7 @@
 procedure PrintCmp(i : Integer);
 begin
-   if i<0 then
-      PrintLn('<0')
-   else if i>0 then
-      PrintLn('>0')
+   if i<>0 then
+      PrintLn('<>0')
    else PrintLn('=0');
 end;
 
