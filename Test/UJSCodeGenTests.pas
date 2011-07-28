@@ -35,7 +35,9 @@ type
          procedure CompilationNormal;
          procedure CompilationWithMapAndSymbols;
          procedure ExecutionNonOptimized;
+         procedure ExecutionNonOptimizedWithInlineMagics;
          procedure ExecutionOptimized;
+         procedure ExecutionOptimizedWithInlineMagics;
    end;
 
 // ------------------------------------------------------------------
@@ -167,8 +169,8 @@ begin
       end;
 
       CheckEquals(0, diagnostic.Count,
-                  Format('%d / %d tests passed'#13#10'%s',
-                         [FTests.Count-diagnostic.Count-ignored, FTests.Count-ignored,
+                  Format('%d / %d tests passed (%d ignored)'#13#10'%s',
+                         [FTests.Count-diagnostic.Count-ignored, FTests.Count-ignored, ignored,
                           diagnostic.Text]));
    finally
       diagnostic.Free;
@@ -262,8 +264,8 @@ begin
       end;
 
       CheckEquals(0, diagnostic.Count,
-                  Format('%d / %d tests passed'#13#10'%s',
-                         [FTests.Count-diagnostic.Count-ignored, FTests.Count-ignored,
+                  Format('%d / %d tests passed (%d ignored)'#13#10'%s',
+                         [FTests.Count-diagnostic.Count-ignored, FTests.Count-ignored, ignored,
                           diagnostic.Text]));
    finally
       diagnostic.Free;
@@ -277,6 +279,7 @@ end;
 procedure TJSCodeGenTests.CompilationNormal;
 begin
    FCompiler.Config.CompilerOptions:=[coOptimize];
+   FCodeGen.Options:=FCodeGen.Options-[cgoNoInlineMagics];
    Compilation;
 end;
 
@@ -285,6 +288,7 @@ end;
 procedure TJSCodeGenTests.CompilationWithMapAndSymbols;
 begin
    FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coSymbolDictionary, coContextMap];
+   FCodeGen.Options:=FCodeGen.Options+[cgoNoInlineMagics];
    Compilation;
 end;
 
@@ -293,6 +297,16 @@ end;
 procedure TJSCodeGenTests.ExecutionNonOptimized;
 begin
    FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions-[coOptimize];
+   FCodeGen.Options:=FCodeGen.Options+[cgoNoInlineMagics];
+   Execution;
+end;
+
+// ExecutionNonOptimizedWithInlineMagics
+//
+procedure TJSCodeGenTests.ExecutionNonOptimizedWithInlineMagics;
+begin
+   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions-[coOptimize];
+   FCodeGen.Options:=FCodeGen.Options-[cgoNoInlineMagics];
    Execution;
 end;
 
@@ -301,6 +315,16 @@ end;
 procedure TJSCodeGenTests.ExecutionOptimized;
 begin
    FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coOptimize];
+   FCodeGen.Options:=FCodeGen.Options+[cgoNoInlineMagics];
+   Execution;
+end;
+
+// ExecutionOptimizedWithInlineMagics
+//
+procedure TJSCodeGenTests.ExecutionOptimizedWithInlineMagics;
+begin
+   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coOptimize];
+   FCodeGen.Options:=FCodeGen.Options-[cgoNoInlineMagics];
    Execution;
 end;
 

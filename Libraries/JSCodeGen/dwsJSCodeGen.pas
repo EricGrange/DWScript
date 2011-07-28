@@ -367,7 +367,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..104] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..112] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -527,6 +527,10 @@ const
        Code : 'function DegToRad(v) { return v*(Math.PI/180) }'),
       (Name : 'Delete';
        Code : 'function Delete(s,i,n) { var v=s.value; if ((i<=0)||(i>v.length)||(n<=0)) return; s.value=v.substr(0,i-1)+v.substr(i+n-1); }'),
+      (Name : 'EncodeDate';
+       Code : 'function EncodeDate(y,m,d) { return (new Date(y,m,d)).getTime()/864e5+25569 }'),
+      (Name : 'Even';
+       Code : 'function Even(v) { return (v&1)==0 }'),
       (Name : 'Exp';
        Code : 'function Exp(v) { return Math.exp(v) }'),
       (Name : 'FloatToStr';
@@ -536,6 +540,9 @@ const
       (Name : 'Format';
        Code : 'function Format(f,a) { a.unshift(f); return sprintf.apply(null,a) }';
        Dependency : '!sprintf_js'),
+      (Name : 'FormatDateTime';
+       Code : 'function FormatDateTime(f,a) { return formatDateTime(f,new Date((a-25569)*864e5)) }';
+       Dependency : '!formatDateTime_js'),
       (Name : 'Frac';
        Code : 'function Frac(v) { return v-((v>0)?Math.floor(v):Math.ceil(v)) }'),
       (Name : 'HexToInt';
@@ -551,8 +558,12 @@ const
        Code : 'function IntToHex(v,d) { var hex=v.toString(16).toUpperCase(); return "00000000".substr(0, 8-d-hex.length)+hex }'),
       (Name : 'IntToStr';
        Code : 'function IntToStr(i) { return i.toString() }'),
+      (Name : 'IsDelimiter';
+       Code : 'function IsDelimiter(d,s,i) { if ((i<=0)||(i>s.length)) return false; else return d.indexOf(s.charAt(i-1))>=0; }'),
       (Name : 'Ln';
        Code : 'function Ln(v) { return Math.log(v) }'),
+      (Name : 'LastDelimiter';
+       Code : 'function LastDelimiter(d,s) { var r=-1,n=d.length,i,p; for (i=0;i<n;i++) { p=s.lastIndexOf(d.charAt(i)); if (p>r) r=p; } return r+1;}'),
       (Name : 'LeftStr';
        Code : 'function LeftStr(s,n) { return s.substr(0,n) }'),
       (Name : 'Log10';
@@ -573,6 +584,8 @@ const
        Code : 'function MinInt(a,b) { return (a<b)?a:b }'),
       (Name : 'Now';
        Code : 'function Now() { var d=new Date(); return d.getTime()/8.64e7+25569-d.getTimezoneOffset()/1440 }'),
+      (Name : 'Odd';
+       Code : 'function Odd(v) { return (v&1)==1 }'),
       (Name : 'Pi';
        Code : 'function Pi() { return Math.PI }'),
       (Name : 'Pos';
@@ -609,6 +622,10 @@ const
        Code : 'function StrAfter(s,d) { if (!d) return ""; var p=s.indexOf(d); return (p<0)?"":s.substr(p+d.length) }'),
       (Name : 'StrBefore';
        Code : 'function StrBefore(s,d) { if (!d) return s; var p=s.indexOf(d); return (p<0)?s:s.substr(0, p) }'),
+      (Name : 'StrBeginsWith';
+       Code : 'function StrBeginsWith(s,b) { return s.substr(0, b.length)==b }'),
+      (Name : 'StrEndsWith';
+       Code : 'function StrEndsWith(s,e) { return s.substr(s.length-e.length)==e }'),
       (Name : 'StringOfChar';
        Code : 'function StringOfChar(c,n) { return stringRepeat(c?c.charAt(0):" ",n) }';
        Dependency : '!stringRepeat_js'),
@@ -2332,7 +2349,9 @@ var
 begin
    e:=TMagicFuncExpr(expr);
    name:=e.FuncSym.QualifiedName;
-   i:=FMagicCodeGens.IndexOf(name);
+   if cgoNoInlineMagics in codeGen.Options then
+      i:=-1
+   else i:=FMagicCodeGens.IndexOf(name);
    if i>=0 then
       TdwsExprCodeGen(FMagicCodeGens.Objects[i]).CodeGen(codeGen, expr)
    else begin

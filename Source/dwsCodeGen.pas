@@ -39,7 +39,7 @@ type
    end;
 
    TdwsCodeGenOption = (cgoNoRangeChecks, cgoNoCheckInstantiated, cgoNoCheckLoopStep,
-                        cgoNoConditions);
+                        cgoNoConditions, cgoNoInlineMagics);
    TdwsCodeGenOptions = set of TdwsCodeGenOption;
 
    TdwsCodeGen = class
