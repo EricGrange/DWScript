@@ -18,7 +18,8 @@ unit dwsJSCodeGen;
 interface
 
 uses Classes, SysUtils, dwsUtils, dwsSymbols, dwsCodeGen, dwsCoreExprs,
-   dwsExprs, dwsRelExprs, dwsJSON, dwsMagicExprs, dwsStack, Variants, dwsStrings;
+   dwsExprs, dwsRelExprs, dwsJSON, dwsMagicExprs, dwsStack, Variants, dwsStrings,
+   dwsJSLibModule;
 
 type
 
@@ -86,6 +87,10 @@ type
    TJSBlockExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
+   TJSRAWBlockExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
    TJSExitExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -724,6 +729,8 @@ begin
    RegisterCodeGen(TBlockExprNoTable2,    TJSBlockExpr.Create);
    RegisterCodeGen(TBlockExprNoTable3,    TJSBlockExpr.Create);
    RegisterCodeGen(TBlockExprNoTable4,    TJSBlockExpr.Create);
+
+   RegisterCodeGen(TdwsJSBlockExpr,       TJSRAWBlockExpr.Create);
 
    RegisterCodeGen(TNullExpr,             TdwsExprGenericCodeGen.Create(['/* null */'], True));
    RegisterCodeGen(TNoResultWrapperExpr,  TdwsExprGenericCodeGen.Create([0, ';'], True));
@@ -1761,6 +1768,20 @@ begin
    for i:=0 to block.SubExprCount-1 do begin
       codeGen.Compile(block.SubExpr[i]);
    end;
+end;
+
+// ------------------
+// ------------------ TJSRAWBlockExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSRAWBlockExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TdwsJSBlockExpr;
+begin
+   e:=TdwsJSBlockExpr(expr);
+   codeGen.WriteString(e.Code);
 end;
 
 // ------------------

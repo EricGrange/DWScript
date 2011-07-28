@@ -1,0 +1,17 @@
+<script>
+
+<%pas2js
+
+procedure PrintLn(s : String);
+begin
+   asm
+      document.writeln(s);
+      document.writeln("<br />");
+   end;
+end;
+
+PrintLn('hello');
+PrintLn('world');
+%>
+
+</script>

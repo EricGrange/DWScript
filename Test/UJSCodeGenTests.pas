@@ -3,7 +3,7 @@ unit UJSCodeGenTests;
 interface
 
 uses Forms, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs, dwsUtils,
-   dwsXPlatform, dwsCodeGen, dwsJSCodeGen, cef, ceflib;
+   dwsXPlatform, dwsCodeGen, dwsJSCodeGen, cef, ceflib, dwsJSLibModule;
 
 type
 
@@ -12,6 +12,7 @@ type
          FTests : TStringList;
          FCompiler : TDelphiWebScript;
          FCodeGen : TdwsJSCodeGen;
+         FASMModule : TdwsJSLibModule;
          FChromium : TChromium;
          FChromiumForm : TForm;
          FLastJSResult : String;
@@ -72,6 +73,9 @@ begin
 
    FCodeGen:=TdwsJSCodeGen.Create;
 
+   FASMModule:=TdwsJSLibModule.Create(nil);
+   FASMModule.Script:=FCompiler;
+
    FChromiumForm:=TForm.Create(nil);
    FChromiumForm.Show;
 
@@ -88,6 +92,8 @@ procedure TJSCodeGenTests.TearDown;
 begin
    FChromium.Free;
    FChromiumForm.Free;
+
+   FASMModule.Free;
 
    FCodeGen.Free;
 

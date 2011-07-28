@@ -98,6 +98,7 @@ type
          procedure SetOnInclude(const Value: TIncludeEvent);
          procedure AddUnitSymbols(SymbolTable: TSymbolTable); override;
          procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+         procedure SetupExtensions;
 
       public
          constructor Create(AOwner: TComponent); override;
@@ -993,16 +994,22 @@ begin
   // the object inspector
 end;
 
-// Compile
+// SetupExtensions
 //
-function TDelphiWebScript.Compile(const Text: string): IdwsProgram;
+procedure TDelphiWebScript.SetupExtensions;
 begin
    if FExtensions.Count>0 then begin
       FCompiler.OnReadInstr:=FExtensions.ReadInstr;
    end else begin
       FCompiler.OnReadInstr:=nil;
    end;
+end;
 
+// Compile
+//
+function TDelphiWebScript.Compile(const Text: string): IdwsProgram;
+begin
+   SetupExtensions;
    Result := FCompiler.Compile(Text, FConfig);
 end;
 
@@ -1010,6 +1017,7 @@ end;
 //
 procedure TDelphiWebScript.RecompileInContext(const prog : IdwsProgram; const text : String);
 begin
+   SetupExtensions;
    FCompiler.RecompileInContext(prog, text, FConfig);
 end;
 

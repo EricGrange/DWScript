@@ -4,7 +4,7 @@ interface
 
 uses
   Forms, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-  dwsJSFilter, dwsHtmlFilter, dwsXPlatform, dwsUtils, cef, ceflib;
+  dwsJSFilter, dwsHtmlFilter, dwsXPlatform, dwsUtils, cef, ceflib, dwsJSLibModule;
 
 type
 
@@ -14,6 +14,7 @@ type
          FMainCompiler: TDelphiWebScript;
          FJSCompiler: TDelphiWebScript;
          FJSFilter: TdwsJSFilter;
+         FASMModule : TdwsJSLibModule;
          FHtmlFilter : TdwsHtmlFilter;
          FHtmlUnit : TdwsHtmlUnit;
          FChromium : TChromium;
@@ -81,6 +82,9 @@ begin
 
    FMainCompiler.Config.Filter := FHtmlFilter;
 
+   FASMModule:=TdwsJSLibModule.Create(nil);
+   FASMModule.Script:=FJSCompiler;
+
    FChromiumForm:=TForm.Create(nil);
    FChromiumForm.Show;
 
@@ -98,6 +102,7 @@ procedure TJSFilterTests.TearDown;
 begin
    FChromium.Free;
    FChromiumForm.Free;
+   FASMModule.Free;
    FJSFilter.Free;
    FHtmlFilter.Free;
    FMainCompiler.Free;
