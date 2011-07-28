@@ -925,7 +925,7 @@ begin
 
          // Handle Errors
          if trnsClassType=TErrorTransition then
-            FMsgs.AddCompilerStopFmt(FPos, '%s ("%s")', [TErrorTransition(trns).ErrorMessage, ch]);
+            FMsgs.AddCompilerStopFmt(FPos, '%s (found "%s")', [TErrorTransition(trns).ErrorMessage, ch]);
 
          // A new token begins
          if trns.Start and (Result.FPos.Line<=0) then

@@ -35,6 +35,7 @@ type
          procedure ConfigAssign;
          procedure DestructorCall;
          procedure SubExprTest;
+         procedure RecompileInContext;
    end;
 
 // ------------------------------------------------------------------
@@ -551,6 +552,27 @@ begin
                            +#9#9#9#9'TFuncExpr'#13#10
                               +#9#9#9#9#9'TConstIntExpr'#13#10,
                MakeSubExprTree((prog as TdwsProgram).Expr), 'Main Expr');
+end;
+
+// RecompileInContext
+//
+procedure TCornerCasesTests.RecompileInContext;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile('const hello = "world"; Print("hello");');
+
+   CheckEquals(0, prog.Msgs.Count, 'Compile: '+prog.Msgs.AsInfo);
+   exec:=prog.Execute;
+   CheckEquals('hello', exec.Result.ToString, 'Compile Result');
+
+   FCompiler.RecompileInContext(prog, 'Print(hello);');
+
+   CheckEquals(0, prog.Msgs.Count, 'Recompile: '+prog.Msgs.AsInfo);
+
+   exec:=prog.Execute;
+   CheckEquals('world', exec.Result.ToString, 'Recompile Result');
 end;
 
 // ------------------------------------------------------------------

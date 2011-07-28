@@ -1451,8 +1451,10 @@ var
 begin
    if not isType then begin
       // Find Symbol for Functionname
-      if not FTok.TestDeleteNamePos(name, funcPos) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+      if not FTok.TestDeleteNamePos(name, funcPos) then begin
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
+         name:='';
+      end;
       CheckSpecialName(name);
 
       sym := FProg.Table.FindSymbol(name, cvMagic);
@@ -1573,8 +1575,10 @@ var
    qualifier : TTokenType;
 begin
    // Find Symbol for Functionname
-   if not FTok.TestDeleteNamePos(name, methPos) then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+   if not FTok.TestDeleteNamePos(name, methPos) then begin
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
+      name:='';
+   end;
 
    // Check if name is already used
    sym := classSym.Members.FindSymbolFromClass(name, classSym);
