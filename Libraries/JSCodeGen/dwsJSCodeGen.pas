@@ -372,7 +372,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..113] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..114] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -561,6 +561,8 @@ const
                +'d.value=v.substr(0,i-1)+s+v.substr(i-1); }'),
       (Name : 'Int';
        Code : 'function Int(v) { return (v>0)?Math.floor(v):Math.ceil(v) }'),
+      (Name : 'IntToBin';
+       Code : 'function IntToBin(v,d) { var r=v.toString(2).toUpperCase(); while (r.length<d) r="0"+r; return r }'),
       (Name : 'IntToHex';
        Code : 'function IntToHex(v,d) { var hex=v.toString(16).toUpperCase(); return "00000000".substr(0, 8-d-hex.length)+hex }'),
       (Name : 'IntToStr';

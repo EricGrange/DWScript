@@ -224,7 +224,7 @@ var
    i : Integer;
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
-   resultsFileName : String;
+   resultsFileName, output : String;
 begin
    source:=TStringList.Create;
    expectedResult:=TStringList.Create;
@@ -238,11 +238,14 @@ begin
 
          CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
          exec:=prog.Execute;
+         output:=exec.Result.ToString;
+         if exec.Msgs.Count>0 then
+            output:=output+#13#10+'>>> Runtime Error: '+exec.Msgs.AsInfo;
          resultsFileName:=ChangeFileExt(FTests[i], '.txt');
          if FileExists(resultsFileName) then begin
             expectedResult.LoadFromFile(resultsFileName);
-            CheckEquals(expectedResult.Text, exec.Result.ToString, FTests[i]);
-         end else CheckEquals('', exec.Result.ToString, FTests[i]);
+            CheckEquals(expectedResult.Text, output, FTests[i]);
+         end else CheckEquals('', output, FTests[i]);
          CheckEquals('', exec.Msgs.AsInfo, FTests[i]);
 
       end;

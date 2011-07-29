@@ -53,6 +53,10 @@ type
     function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
   end;
 
+  TIntToBinFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+  end;
+
   TBoolToStrFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
@@ -278,6 +282,27 @@ end;
 function THexToIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 begin
    Result:=StrToInt64('$'+args.AsString[0]);
+end;
+
+{ TIntToBinFunc }
+
+// DoEvalAsString
+//
+procedure TIntToBinFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+var
+   v : Int64;
+   n : Integer;
+begin
+   v:=args.AsInteger[0];
+   n:=args.AsInteger[1];
+   Result:='';
+   while (v<>0) or (n>0) do begin
+      if (v and 1)=1 then
+         Result:='1'+Result
+      else Result:='0'+Result;
+      v:=v shr 1;
+      Dec(n);
+   end;
 end;
 
 { TBoolToStrFunc }
@@ -758,6 +783,7 @@ initialization
 
    RegisterInternalStringFunction(TIntToHexFunc, 'IntToHex', ['v', cInteger, 'digits', cInteger], True);
    RegisterInternalIntFunction(THexToIntFunc, 'HexToInt', ['hexa', cString], True);
+   RegisterInternalStringFunction(TIntToBinFunc, 'IntToBin', ['v', cInteger, 'digits', cInteger], True);
 
    RegisterInternalStringFunction(TBoolToStrFunc, 'BoolToStr', ['b', cBoolean], True);
 
