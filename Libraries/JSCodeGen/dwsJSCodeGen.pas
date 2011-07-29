@@ -372,7 +372,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..112] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..113] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -538,6 +538,8 @@ const
        Code : 'function Even(v) { return (v&1)==0 }'),
       (Name : 'Exp';
        Code : 'function Exp(v) { return Math.exp(v) }'),
+      (Name : 'Factorial';
+       Code : 'function Factorial(i) { var r=1; while (i>1) { r*=i; i--; } return r }'),
       (Name : 'FloatToStr';
        Code : 'function FloatToStr(i,p) { return (p==99)?i.toString():i.toFixed(p) }'),
       (Name : 'Floor';
