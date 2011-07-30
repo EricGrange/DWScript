@@ -2163,24 +2163,34 @@ end;
 procedure TJSAssignDataExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssignDataExpr;
+   lt : TTypeSymbol;
 begin
    // TODO: deep copy of records & static arrays
    e:=TAssignDataExpr(expr);
-   if e.Left.Typ is TStaticArraySymbol then begin
+   lt:=e.Left.Typ.UnAliasedType;
+   if lt is TStaticArraySymbol then begin
+
       codeGen.Compile(e.Left);
       codeGen.WriteString('=');
       codeGen.CompileNoWrap(e.Right);
       if not (e.Right is TArrayConstantExpr) then
          codeGen.WriteString('.slice(0)');
 
-   end else if e.Left.Typ is TRecordSymbol then begin
+   end else if lt is TRecordSymbol then begin
 
       codeGen.Compile(e.Left);
       codeGen.WriteString('=JSON.parse(JSON.stringify(');
       codeGen.CompileNoWrap(e.Right);
       codeGen.WriteString('))');
 
-   end else raise ECodeGenUnsupportedSymbol.CreateFmt('Unsupported %s on type %s', [e.ClassName, e.Left.Typ.ClassName]);
+   end else if lt is TDynamicArraySymbol then begin
+
+      codeGen.Compile(e.Left);
+      codeGen.WriteString('=');
+      codeGen.CompileNoWrap(e.Right);
+
+   end else raise ECodeGenUnsupportedSymbol.CreateFmt('Unsupported %s on type %s',
+                                                      [e.ClassName, e.Left.Typ.ClassName]);
    codeGen.WriteStringLn(';');
 end;
 
