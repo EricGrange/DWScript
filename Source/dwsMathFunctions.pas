@@ -174,6 +174,10 @@ type
       function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
    end;
 
+   TClampIntFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+   end;
+
    TPiFunc = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
@@ -486,6 +490,23 @@ begin
    Result:=Min(args.AsInteger[0], args.AsInteger[1]);
 end;
 
+{ TClampIntFunc }
+
+function TClampIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+var
+   r : Int64;
+begin
+   Result:=args.AsInteger[0];
+   r:=args.AsInteger[1];
+   if Result<r then
+      Result:=r
+   else begin
+      r:=args.AsInteger[2];
+      if Result>r then
+         Result:=r;
+   end;
+end;
+
 { TPiFunc }
 
 procedure TPiFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
@@ -587,6 +608,7 @@ initialization
 
    RegisterInternalIntFunction(TMaxIntFunc, 'MaxInt', ['v1', cInteger, 'v2', cInteger], True);
    RegisterInternalIntFunction(TMinIntFunc, 'MinInt', ['v1', cInteger, 'v2', cInteger], True);
+   RegisterInternalIntFunction(TClampIntFunc, 'ClampInt', ['v', cInteger, 'min', cInteger, 'max', cInteger], True);
 
    RegisterInternalFloatFunction(TPiFunc, 'Pi', [], True);
    RegisterInternalFloatFunction(TRandomFunc, 'Random', []);

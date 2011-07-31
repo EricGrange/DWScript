@@ -372,7 +372,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..114] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..115] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -515,6 +515,8 @@ const
               +#9'c-=0x10000;'#13#10
               +#9'return String.fromCharCode(0xD800+(c>>10))+String.fromCharCode(0xDC00+(c&0x3FF));'#13#10
               +'}'),
+      (Name : 'ClampInt';
+       Code : 'function ClampInt(v,mi,ma) { if (v<mi) return mi; else if (v>ma) return ma; else return v }'),
       (Name : 'CompareStr';
        Code : 'function CompareStr(a,b) { if (a<b) return -1; else return (a==b)?0:1 }'),
       (Name : 'CompareText';
