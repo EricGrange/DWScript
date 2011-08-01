@@ -1321,6 +1321,8 @@ var
    name : String;
    expr : TTypedExpr;
    typ : TTypeSymbol;
+   sas : TStaticArraySymbol;
+   detachTyp : Boolean;
    constPos : TScriptPos;
    val : Variant;
    recordData : TData;
@@ -1351,10 +1353,14 @@ begin
          expr:=ReadExpr;
          try
             if Assigned(typ) then begin
+               detachTyp:=False;
                if not typ.IsCompatible(expr.typ) then
                   FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_AssignIncompatibleTypes,
                                             [expr.typ.Caption, typ.Caption]);
-            end else typ:=expr.typ;
+            end else begin
+               typ:=expr.typ;
+               detachTyp:=(typ.Name='');
+            end;
 
             if not expr.IsConstant then begin
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
@@ -1364,9 +1370,9 @@ begin
             end;
 
             if typ is TArraySymbol then begin
-               typ:=TStaticArraySymbol.Create('', typ, FProg.TypInteger, 0, TArraySymbol(typ).typ.Size-1);
-               FProg.Table.AddSymbol(typ);
-               Result:=constSymbolClass.Create(name, typ, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
+               sas:=TStaticArraySymbol.Create('', typ, FProg.TypInteger, 0, TArraySymbol(typ).typ.Size-1);
+               FProg.Table.AddSymbol(sas);
+               Result:=constSymbolClass.Create(name, sas, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
             end else if typ.Size>1 then
                Result:=constSymbolClass.Create(name, typ, TConstExpr(expr).Data[FExec], TConstExpr(expr).Addr[FExec])
             else begin
@@ -1377,6 +1383,10 @@ begin
             if coSymbolDictionary in FCompilerOptions then
                FSymbolDictionary.AddConstSymbol(Result, constPos, [suDeclaration]);
          finally
+            if detachTyp then begin
+               FProg.Table.AddSymbol(typ);
+               expr.Typ:=nil;
+            end;
             expr.Free;
          end;
       end;
