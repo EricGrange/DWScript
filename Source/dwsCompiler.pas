@@ -295,7 +295,7 @@ type
       function ReadField(expr : TDataExpr; sym : TFieldSymbol) : TFieldExpr;
       function ReadFor: TForExpr;
       function ReadStaticMethod(methodSym : TMethodSymbol; isWrite : Boolean;
-                                expecting : TTypeSymbol = nil) : TTypedExpr;
+                                expecting : TTypeSymbol = nil) : TProgramExpr;
       function ReadFunc(funcSym : TFuncSymbol; isWrite: Boolean;
                         codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
       function WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil) : TTypedExpr;
@@ -3399,7 +3399,7 @@ end;
 // ReadStaticMethod
 //
 function TdwsCompiler.ReadStaticMethod(methodSym : TMethodSymbol;
-               isWrite : Boolean; expecting : TTypeSymbol = nil) : TTypedExpr;
+               isWrite : Boolean; expecting : TTypeSymbol = nil) : TProgramExpr;
 var
    progMeth: TMethodSymbol;
 begin
@@ -3419,7 +3419,7 @@ begin
 
    Result:=WrapUpFunctionRead(TFuncExpr(Result), expecting);
 
-   Result := (ReadSymbol(Result, IsWrite, expecting) as TFuncExpr);
+   Result:=ReadSymbol(Result, IsWrite, expecting);
 end;
 
 // ReadFunc
