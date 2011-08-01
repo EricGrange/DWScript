@@ -1,0 +1,2 @@
+kitten -> sitting = 3
+rosettacode -> raisethysword = 8

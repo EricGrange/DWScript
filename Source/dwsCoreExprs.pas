@@ -458,6 +458,7 @@ type
    TStringArrayOpExpr = class(TStringBinOpExpr)
       private
          FPos : TScriptPos;
+
       public
          constructor CreatePos(Prog: TdwsProgram; const Pos: TScriptPos; Left, Right: TTypedExpr);
          procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
@@ -483,20 +484,29 @@ type
          function ScriptPos : TScriptPos; override;
    end;
 
-   // new array[length]
+   // new array[length,...]
    TNewArrayExpr = class(TArrayTypedExpr)
       private
-         FLengthExpr : TTypedExpr;
+         FLengthExprs : TTightList;
+         FTyps : TTightList;
+
+         function GetLengthExpr(idx : Integer) : TTypedExpr; inline;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
 
       public
          constructor Create(prog: TdwsProgram; const scriptPos: TScriptPos;
-                            elementTyp : TTypeSymbol; lengthExpr : TTypedExpr);
+                            elementTyp : TTypeSymbol);
          destructor Destroy; override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
 
-         property LengthExpr : TTypedExpr read FLengthExpr;
+         procedure AddLengthExpr(expr : TTypedExpr; indexTyp : TTypeSymbol);
+         property LengthExpr[idx : Integer] : TTypedExpr read GetLengthExpr;
+         property LengthExprCount : Integer read FLengthExprs.FCount;
    end;
 
    // Pseudo-method for dynamic array
@@ -2347,11 +2357,11 @@ end;
 // Create
 //
 constructor TNewArrayExpr.Create(prog: TdwsProgram; const scriptPos: TScriptPos;
-                                 elementTyp : TTypeSymbol; lengthExpr : TTypedExpr);
+                                 elementTyp : TTypeSymbol);
 begin
    inherited Create(prog, scriptPos);
    FTyp:=TDynamicArraySymbol.Create('', elementTyp, prog.TypInteger);
-   FLengthExpr:=lengthExpr;
+   FTyps.Add(FTyp);
 end;
 
 // Destroy
@@ -2359,8 +2369,8 @@ end;
 destructor TNewArrayExpr.Destroy;
 begin
    inherited;
-   FTyp.Free;
-   FLengthExpr.Free;
+   FTyps.Clean;
+   FLengthExprs.Clean;
 end;
 
 // Eval
@@ -2376,16 +2386,58 @@ end;
 // EvalAsScriptObj
 //
 procedure TNewArrayExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
-var
-   dyn : TScriptDynamicArray;
-   n : Int64;
+
+   function CreateDimension(d : Integer) : TScriptDynamicArray;
+   var
+      i : Integer;
+      n : Int64;
+   begin
+      n:=LengthExpr[d].EvalAsInteger(exec);
+      if n<0 then
+         RaiseScriptError(exec, EScriptOutOfBounds.CreatePosFmt(FScriptPos, RTE_ArrayLengthIncorrectForDimension, [n, d]));
+      Result:=TScriptDynamicArray.Create(TDynamicArraySymbol(FTyps.List[d]));
+      Result.Length:=n;
+      Inc(d);
+      if d<LengthExprCount then begin
+         for i:=0 to n-1 do
+            Result.Data[i]:=IScriptObj(CreateDimension(d));
+      end;
+   end;
+
 begin
-   n:=LengthExpr.EvalAsInteger(exec);
-   if n<0 then
-      RaiseScriptError(exec, EScriptOutOfBounds.CreatePosFmt(FScriptPos, RTE_ArrayLengthIncorrect, [n]));
-   dyn:=TScriptDynamicArray.Create(TDynamicArraySymbol(Typ));
-   dyn.Length:=n;
-   Result:=dyn;
+   Result:=CreateDimension(0);
+end;
+
+// AddLengthExpr
+//
+procedure TNewArrayExpr.AddLengthExpr(expr : TTypedExpr; indexTyp : TTypeSymbol);
+begin
+   if FLengthExprs.Count>0 then begin
+      FTyp:=TDynamicArraySymbol.Create('', FTyp, indexTyp);
+      FTyps.Add(FTyp);
+   end;
+   FLengthExprs.Add(expr);
+end;
+
+// GetLengthExpr
+//
+function TNewArrayExpr.GetLengthExpr(idx : Integer) : TTypedExpr;
+begin
+   Result:=TTypedExpr(FLengthExprs.List[idx]);
+end;
+
+// GetSubExpr
+//
+function TNewArrayExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=TExprBase(FLengthExprs.List[i]);
+end;
+
+// GetSubExprCount
+//
+function TNewArrayExpr.GetSubExprCount : Integer;
+begin
+   Result:=FLengthExprs.Count;
 end;
 
 // ------------------

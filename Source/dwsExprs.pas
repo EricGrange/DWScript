@@ -1752,10 +1752,10 @@ type
 
 // Create
 //
-constructor TScriptObjectWrapper.Create(scriptObj: TScriptObj);
+constructor TScriptObjectWrapper.Create(scriptObj : TScriptObj);
 begin
    inherited Create;
-   FScriptObj := scriptObj;
+   FScriptObj:=scriptObj;
 end;
 
 // GetClassSym

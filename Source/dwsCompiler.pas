@@ -3916,22 +3916,26 @@ function TdwsCompiler.ReadNewArray(elementTyp : TTypeSymbol; isWrite : Boolean) 
 var
    lengthExpr : TTypedExpr;
    hotPos : TScriptPos;
+   newExpr : TNewArrayExpr;
 begin
-   hotPos:=FTok.HotPos;
-   lengthExpr:=ReadExpr;
+   newExpr:=TNewArrayExpr.Create(FProg, hotPos, elementTyp);
    try
-
-      if not (lengthExpr.IsOfType(FProg.TypInteger)) then
-         FMsgs.AddCompilerError(hotPos, CPE_IntegerExpressionExpected);
+      repeat
+         FTok.HasTokens;
+         hotPos:=FTok.HotPos;
+         lengthExpr:=ReadExpr;
+         newExpr.AddLengthExpr(lengthExpr, FProg.TypInteger);
+         if not (lengthExpr.IsOfType(FProg.TypInteger)) then
+            FMsgs.AddCompilerError(hotPos, CPE_IntegerExpressionExpected);
+      until not FTok.TestDelete(ttCOMMA);
 
       if not FTok.TestDelete(ttARIGHT) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
-
-      Result:=TNewArrayExpr.Create(FProg, hotPos, elementTyp, lengthExpr);
    except
-      lengthExpr.Free;
+      newExpr.Free;
       raise;
    end;
+   Result:=newExpr;
 end;
 
 procedure TdwsCompiler.ReadNameList(names : TStrings; var posArray : TScriptPosArray);

@@ -3143,16 +3143,26 @@ end;
 procedure TJSNewArrayExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TNewArrayExpr;
+   i : Integer;
 begin
    e:=TNewArrayExpr(expr);
 
    codeGen.Dependencies.Add('$NewArray');
 
+   for i:=0 to e.LengthExprCount-2 do begin
+      codeGen.WriteString('$NewArray(');
+      codeGen.Compile(e.LengthExpr[i]);
+      codeGen.WriteString(',function (){return ');
+   end;
+
    codeGen.WriteString('$NewArray(');
-   codeGen.Compile(e.LengthExpr);
+   codeGen.Compile(e.LengthExpr[e.LengthExprCount-1]);
    codeGen.WriteString(',function (){return ');
    (codeGen as TdwsJSCodeGen).WriteDefaultValue(e.Typ.Typ, False);
    codeGen.WriteString('})');
+
+   for i:=0 to e.LengthExprCount-2 do
+      codeGen.WriteString('})');
 end;
 
 // ------------------
