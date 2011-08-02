@@ -70,6 +70,8 @@ implementation
 //
 procedure TdwsFunctionsTestsBase.SetUp;
 begin
+   FormatSettings.DecimalSeparator:='.';
+
    FCompiler:=TDelphiWebScript.Create(nil);
 
    FTests:=TStringList.Create;
