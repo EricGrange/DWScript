@@ -5,6 +5,11 @@ var vfalse : Boolean = not vtrue;
 
 var v : Variant;
 
+v:=True;
+PrintLn(not v);
+v:=not v;
+PrintLn(not v);
+
 v:=cfalse;
 
 PrintLn(v or vtrue);
@@ -25,3 +30,4 @@ while v do
    repeat
       Exit;
    until v;
+   

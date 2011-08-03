@@ -26,3 +26,6 @@ PrintLn(vf-5);
 PrintLn(vi-vf);
 PrintLn(vf-vi);
 
+PrintLn(-vi);
+PrintLn(-vf);
+

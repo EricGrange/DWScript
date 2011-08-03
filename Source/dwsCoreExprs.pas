@@ -3215,9 +3215,7 @@ var
    obj : IScriptObj;
 begin
    FExpr.EvalAsScriptObj(exec, obj);
-   if obj<>nil then
-      Result:=TScriptDynamicArray(obj.InternalObject).Length+FDelta
-   else Result:=FDelta;
+   Result:=TScriptDynamicArray(obj.InternalObject).Length+FDelta
 end;
 
 // ------------------
@@ -3608,7 +3606,7 @@ end;
 function TAssertExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    Result:=Self;
-   if FCond.IsConstant and (not FCond.EvalAsBoolean(exec)) then begin
+   if FCond.IsConstant and FCond.EvalAsBoolean(exec) then begin
       Result:=TNullExpr.Create(Prog, FScriptPos);
       Free;
    end;

@@ -3,7 +3,7 @@ unit UScriptTests;
 interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs, dwsUtils,
-   dwsXPlatform;
+   dwsXPlatform, dwsSymbols;
 
 type
 
@@ -41,6 +41,11 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+procedure EmptyCallBack(parent, expr : TExprBase; var abort : Boolean);
+begin
+   // just used for detecting crashes in subexpr tree navigation
+end;
 
 // ------------------
 // ------------------ TScriptTests ------------------
@@ -108,6 +113,9 @@ begin
          prog:=FCompiler.Compile(source.Text);
 
          CheckEquals(False, prog.Msgs.HasErrors, FTests[i]+#13#10+prog.Msgs.AsInfo);
+
+         (prog as TdwsProgram).InitExpr.RecursiveEnumerateSubExprs(EmptyCallBack);
+         (prog as TdwsProgram).Expr.RecursiveEnumerateSubExprs(EmptyCallBack);
 
       end;
 
@@ -246,6 +254,9 @@ begin
             expectedError.LoadFromFile(expectedErrorsFileName);
             CheckEquals(expectedError.Text, prog.Msgs.AsInfo, FFailures[i]);
          end else Check(prog.Msgs.AsInfo<>'', FFailures[i]+': undetected error');
+
+         (prog as TdwsProgram).InitExpr.RecursiveEnumerateSubExprs(EmptyCallBack);
+         (prog as TdwsProgram).Expr.RecursiveEnumerateSubExprs(EmptyCallBack);
 
       end;
 

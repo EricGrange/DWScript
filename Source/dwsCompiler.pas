@@ -6593,7 +6593,8 @@ begin
          else
             Result:=TConstIntExpr.CreateUnified(FProg, nil, 0);
          end;
-      end;
+      end else if Optimize then
+         Result:=Result.Optimize(FProg, FExec);
 
       try
          if not FTok.TestDelete(ttBRIGHT) then

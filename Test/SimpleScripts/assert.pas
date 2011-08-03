@@ -1,5 +1,7 @@
 var v = True;
 
+Assert(1=1, 'should optimize itself away');
+
 Assert(v);
 try
    Assert(not v);
