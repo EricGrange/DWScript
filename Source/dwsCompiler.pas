@@ -2749,7 +2749,6 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
       arraySymbol : TStaticArraySymbol;
       errCount : Integer;
       hotPos : TScriptPos;
-      a : array of Integer;
    begin
       FTok.KillToken;
 
