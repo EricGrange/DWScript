@@ -6412,9 +6412,14 @@ begin
       FTok.KillToken;
    end else begin
       argPos:=FTok.HotPos;
-      if specialKind=skAssigned then
-         argExpr:=ReadExpr(FProg.TypNil)
-      else argExpr:=ReadExpr;
+      case specialKind of
+         skAssigned :
+            argExpr:=ReadExpr(FProg.TypNil);
+         skInc, skDec :
+            argExpr:=ReadTerm(True);
+      else
+         argExpr:=ReadExpr;
+      end;
       argTyp:=argExpr.Typ;
       while argTyp is TAliasSymbol do
          argTyp:=TAliasSymbol(argTyp).BaseType;
