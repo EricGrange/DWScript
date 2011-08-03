@@ -2801,15 +2801,16 @@ var
    x : Integer;
    elemExpr : TTypedExpr;
 begin
-   if (ElementTyp<>nil) and (FTyp.Typ <> ElementTyp) then begin
-      // need a compatibility check here maybe???
-      (FTyp as TStaticArraySymbol).Typ:=ElementTyp;
+   if (ElementTyp<>nil) and (FTyp.Typ<>ElementTyp) then begin
+      if     ElementTyp.IsCompatible(FTyp.Typ)
+          or (ElementTyp.IsOfType(Prog.TypFloat) and FTyp.Typ.IsOfType(Prog.TypInteger)) then
+         (FTyp as TStaticArraySymbol).Typ:=ElementTyp;
    end;
 
    for x := 0 to FElementExprs.Count - 1 do begin
       elemExpr:=FElementExprs.List[x];
       if elemExpr is TArrayConstantExpr then
-         TArrayConstantExpr(elemExpr).Prepare(Prog, FTyp.Typ.Typ);
+         TArrayConstantExpr(elemExpr).Prepare(Prog, FTyp.Typ);
    end;
 
    FArrayAddr := Prog.GetGlobalAddr(FElementExprs.Count * FTyp.Typ.Size + 1);

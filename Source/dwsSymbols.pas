@@ -4050,10 +4050,10 @@ end;
 
 function TStaticArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-  TypSym := TypSym.BaseType;
-  Result :=     (TypSym is TStaticArraySymbol)
-            and (ElementCount = TStaticArraySymbol(TypSym).ElementCount)
-            and Typ.IsCompatible(TypSym.Typ);
+  typSym := typSym.UnAliasedType;
+  Result :=     (typSym is TStaticArraySymbol)
+            and (ElementCount = TStaticArraySymbol(typSym).ElementCount)
+            and Typ.IsCompatible(typSym.Typ);
 end;
 
 // IsOfType
