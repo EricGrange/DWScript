@@ -1,0 +1,8 @@
+Syntax Error: Too many indices [line: 3, column: 5]
+Syntax Error: Too many indices [line: 4, column: 13]
+Syntax Error: Too many indices [line: 8, column: 5]
+Syntax Error: Too many indices [line: 9, column: 13]
+Syntax Error: Too many indices [line: 13, column: 8]
+Syntax Error: Too many indices [line: 13, column: 11]
+Syntax Error: Too many indices [line: 14, column: 16]
+Syntax Error: Too many indices [line: 14, column: 19]

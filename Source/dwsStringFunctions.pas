@@ -209,6 +209,10 @@ type
     procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
 
+  TReverseStringFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+  end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -740,6 +744,15 @@ begin
    else Result:=str;
 end;
 
+{ TReverseStringFunc }
+
+// DoEvalAsString
+//
+procedure TReverseStringFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+begin
+   Result:=ReverseString(args.AsString[0]);
+end;
+
 { TFormatFunc }
 
 // DoEvalAsString
@@ -841,5 +854,7 @@ initialization
 
    RegisterInternalStringFunction(TStrAfterFunc, 'StrAfter', ['str', cString, 'delimiter', cString], True);
    RegisterInternalStringFunction(TStrBeforeFunc, 'StrBefore', ['str', cString, 'delimiter', cString], True);
+
+   RegisterInternalStringFunction(TReverseStringFunc, 'ReverseString', ['str', cString], True);
 
 end.

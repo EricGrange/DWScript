@@ -517,6 +517,9 @@ type
       protected
          procedure BoundsCheck(exec : TdwsExecution; dynArray : TScriptDynamicArray; i : Integer);
 
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
       public
          constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
                             aBase : TTypedExpr);
@@ -561,6 +564,12 @@ type
 
          property Index1Expr : TTypedExpr read FIndex1Expr;
          property Index2Expr : TTypedExpr read FIndex2Expr;
+   end;
+
+   // Reverse a dynamic array
+   TArrayReverseExpr = class(TArrayPseudoMethodExpr)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // Add to a dynamic array
@@ -6502,6 +6511,20 @@ begin
    end;
 end;
 
+// GetSubExpr
+//
+function TArrayPseudoMethodExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FBaseExpr;
+end;
+
+// GetSubExprCount
+//
+function TArrayPseudoMethodExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
+end;
+
 // ------------------
 // ------------------ TArraySetLengthExpr ------------------
 // ------------------
@@ -6610,6 +6633,22 @@ end;
 function TArraySwapExpr.GetSubExprCount : Integer;
 begin
    Result:=3;
+end;
+
+// ------------------
+// ------------------ TArrayReverseExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TArrayReverseExpr.EvalNoResult(exec : TdwsExecution);
+var
+   base : IScriptObj;
+   dyn : TScriptDynamicArray;
+begin
+   BaseExpr.EvalAsScriptObj(exec, base);
+   dyn:=TScriptDynamicArray(base.InternalObject);
+   dyn.Reverse;
 end;
 
 // ------------------

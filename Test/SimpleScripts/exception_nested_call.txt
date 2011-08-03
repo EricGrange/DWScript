@@ -1,0 +1,4 @@
+Errors >>>>
+Runtime Error: User defined exception: Error message 2 [line: 8, column: 48]
+Result >>>>
+Exception1 caught

@@ -1468,6 +1468,7 @@ type
 
          procedure Delete(index, count : Integer);
          procedure Swap(i1, i2 : Integer);
+         procedure Reverse;
          procedure Copy(src : TScriptDynamicArray; index, count : Integer);
          procedure RawCopy(const src : TData; rawIndex, rawCount : Integer);
 
@@ -5798,6 +5799,18 @@ begin
    buf:=elem1^;
    elem1^:=elem2^;
    elem2^:=buf;
+end;
+
+// Reverse
+//
+procedure TScriptDynamicArray.Reverse;
+var
+   i : Integer;
+begin
+   if Length>1 then begin
+      for i:=0 to (Length div 2)-1 do
+         Swap(i, Length-i-1);
+   end;
 end;
 
 // Copy

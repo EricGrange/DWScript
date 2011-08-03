@@ -79,6 +79,8 @@ end;
 //
 procedure TAlgorithmsTests.SetUp;
 begin
+   FormatSettings.DecimalSeparator:='.';
+
    FTests:=TStringList.Create;
 
    CollectFiles(ExtractFilePath(ParamStr(0))+'Algorithms'+PathDelim, '*.pas', FTests);

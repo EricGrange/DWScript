@@ -197,6 +197,9 @@ type
    TJSArrayCopyExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
+   TJSArraySwapExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
 
    TJSStaticArrayExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
@@ -372,7 +375,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..115] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..118] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -405,6 +408,16 @@ const
        Code : 'function $ArrayCopyLen(a,i,l,z) {'#13#10
               +#9'if (l<0) throw Exception.Create$1($New(Exception),"Positive count expected (got "+l.toString()+")"+z);'#13#10
               +#9'return a.slice($Idx(i,0,a.length-1,z),$Idx(i+l-1,0,a.length-1,z)-i+1,z)'#13#10
+              +'}';
+       Dependency : '$Idx' ),
+      (Name : '$ArraySwap';
+       Code : 'function $ArraySwap(a,i1,i2) { var t=a[i1]; a[i1]=a[i2]; a[i2]=t }' ),
+      (Name : '$ArraySwapChk';
+       Code : 'function $ArraySwapChk(a,i1,i2,z) {'#13#10
+              +#9'var n=a.length-1;'#13#10
+              +#9'var t=a[$Idx(i1,0,n,z)];'#13#10
+              +#9'a[i1]=a[$Idx(i2,0,n,z)]'#13#10
+              +#9'a[i2]=t;'#13#10
               +'}';
        Dependency : '$Idx' ),
       (Name : '$Check';
@@ -612,6 +625,8 @@ const
       (Name : 'Random';
        Code : 'function Random() { var tmp=Math.floor($dwsRand*0x08088405+1)%4294967296; $dwsRand=tmp; return tmp*Math.pow(2, -32) }';
        Dependency : '$dwsRand'),
+      (Name : 'ReverseString';
+       Code : 'function ReverseString(s) { return s.split("").reverse().join("") }'),
       (Name : 'RevPos';
        Code : 'function RevPos(a,b) { return (a=="")?0:(b.lastIndexOf(a)+1) }'),
       (Name : 'RightStr';
@@ -960,6 +975,8 @@ begin
    RegisterCodeGen(TArrayAddExpr,            TJSArrayAddExpr.Create);
    RegisterCodeGen(TArrayDeleteExpr,         TJSArrayDeleteExpr.Create);
    RegisterCodeGen(TArrayCopyExpr,           TJSArrayCopyExpr.Create);
+   RegisterCodeGen(TArraySwapExpr,           TJSArraySwapExpr.Create);
+   RegisterCodeGen(TArrayReverseExpr,        TdwsExprGenericCodeGen.Create([0, '.reverse();'], True));
 
    RegisterCodeGen(TStaticArrayExpr,         TJSStaticArrayExpr.Create);
    RegisterCodeGen(TDynamicArrayExpr,        TJSDynamicArrayExpr.Create);
@@ -1392,6 +1409,7 @@ begin
          funcSym : TFuncSymbol;
          varSym : TDataSymbol;
          i : Integer;
+         right : TExprBase;
       begin
          if (expr is TVarExpr) and (parent is TFuncExprBase) then begin
             funcSym:=TFuncExprBase(parent).FuncSym;
@@ -1400,7 +1418,10 @@ begin
                Dec(i);
             if (funcSym=nil) or (i>=funcSym.Params.Count) then begin
                if (parent.ClassType=TDecVarFuncExpr) or (parent.ClassType=TIncVarFuncExpr) then begin
-                  varSym:=FindSymbolAtStackAddr(TVarExpr(expr).StackAddr, Context.Level);
+                  right:=TMagicIteratorFuncExpr(parent).Args[1];
+                  if (right is TConstIntExpr) and (TConstIntExpr(right).Value=1) then
+                     Exit // special case handled via ++ or --, no need to pass by ref
+                  else varSym:=FindSymbolAtStackAddr(TVarExpr(expr).StackAddr, Context.Level);
                end else begin
                   // else not supported yet
                   Exit;
@@ -1635,9 +1656,21 @@ var
    resultTyp : TTypeSymbol;
    proc : TdwsProcedure;
    resultIsBoxed : Boolean;
+   param : TParamSymbol;
+   i : Integer;
 begin
    proc:=(func.Executable as TdwsProcedure);
    if proc=nil then Exit;
+
+   for i:=0 to proc.Func.Params.Count-1 do begin
+      param:=proc.Func.Params[i] as TParamSymbol;
+      if (not (param is TByRefParamSymbol)) and TJSExprCodeGen.IsLocalVarParam(Self, param) then begin
+         WriteSymbolName(param);
+         WriteString('={value:');
+         WriteSymbolName(param);
+         WriteStringLn('};');
+      end;
+   end;
 
    resultTyp:=func.Typ;
    if resultTyp<>nil then begin
@@ -2893,10 +2926,10 @@ end;
 //
 procedure TJSDecVarFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
-   e : TIncVarFuncExpr;
+   e : TDecVarFuncExpr;
    right : TExprBase;
 begin
-   e:=TIncVarFuncExpr(expr);
+   e:=TDecVarFuncExpr(expr);
    right:=e.Args[1];
    if (right is TConstIntExpr) and (TConstIntExpr(right).Value=1) then begin
       codeGen.WriteString('--');
@@ -3306,6 +3339,43 @@ begin
       codeGen.WriteString(')');
 
    end;
+end;
+
+// ------------------
+// ------------------ TJSArraySwapExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSArraySwapExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TArraySwapExpr;
+   noRangeCheck : Boolean;
+begin
+   e:=TArraySwapExpr(expr);
+
+   noRangeCheck:=(cgoNoRangeChecks in codeGen.Options);
+
+   if noRangeCheck then begin
+      codeGen.Dependencies.Add('$ArraySwap');
+      codeGen.WriteString('$ArraySwap(');
+   end else begin
+      codeGen.Dependencies.Add('$ArraySwapChk');
+      codeGen.WriteString('$ArraySwapChk(');
+   end;
+
+   codeGen.Compile(e.BaseExpr);
+   codeGen.WriteString(',');
+   codeGen.Compile(e.Index1Expr);
+   codeGen.WriteString(',');
+   codeGen.Compile(e.Index2Expr);
+
+   if not noRangeCheck then begin
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+   end;
+
+   codeGen.WriteStringLn(');');
 end;
 
 // ------------------

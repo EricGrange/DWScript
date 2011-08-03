@@ -1350,10 +1350,10 @@ begin
          recordData:=ReadConstRecord(TRecordSymbol(typ));
          Result:=constSymbolClass.Create(name, typ, recordData, 0);
       end else begin
+         detachTyp:=False;
          expr:=ReadExpr;
          try
             if Assigned(typ) then begin
-               detachTyp:=False;
                if not typ.IsCompatible(expr.typ) then
                   FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_AssignIncompatibleTypes,
                                             [expr.typ.Caption, typ.Caption]);
@@ -2749,6 +2749,7 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
       arraySymbol : TStaticArraySymbol;
       errCount : Integer;
       hotPos : TScriptPos;
+      a : array of Integer;
    begin
       FTok.KillToken;
 
@@ -2763,7 +2764,13 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
       repeat
          hotPos:=FTok.HotPos;
          indexExpr := ReadExpr;
-         baseType := baseExpr.BaseType as TArraySymbol;
+         if not (baseExpr.BaseType is TArraySymbol) then begin
+            FMsgs.AddCompilerError(hotPos, RTE_TooManyIndices);
+            indexExpr.Free;
+            Continue;
+         end;
+
+         baseType := TArraySymbol(baseExpr.BaseType);
 
          try
             if not (   (indexExpr.Typ.UnAliasedType=baseType.IndexType.UnAliasedType)
@@ -2812,7 +2819,7 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                   Exit;
                end;
 
-            end else FMsgs.AddCompilerStop(FTok.HotPos, RTE_TooManyIndices);
+            end else Assert(False);
 
          except
             indexExpr.Free;
@@ -3810,6 +3817,10 @@ begin
                end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr, nil, nil);
                argList.Clear;
             end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr, nil, nil);
+         end else if SameText(name, 'reverse') then begin
+            CheckRestricted;
+            CheckArguments(0, 0);
+            Result:=TArrayReverseExpr.Create(FProg, namePos, baseExpr);
          end else FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownName, [name]);
       except
          Result.Free;
