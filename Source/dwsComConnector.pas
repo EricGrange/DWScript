@@ -524,6 +524,8 @@ begin
       paramData[x] := @Args[x][0];
 
    disp := Base;
+   if disp=nil then
+      raise EOleError.Create(CPE_NilConnectorCall);
 
    if not FIsInitialized then begin
       pMethodName := PWideChar(FMethodName);

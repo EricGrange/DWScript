@@ -3171,7 +3171,6 @@ end;
 procedure TProgramExpr.RaiseScriptError(exec : TdwsExecution; e : EScriptError);
 begin
    e.Pos:=ScriptPos;
-   e.Message:=e.Message;
    e.ScriptCallStack:=exec.GetCallStack;
    raise e;
 end;
