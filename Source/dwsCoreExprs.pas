@@ -1529,30 +1529,6 @@ type
          class function FindSymbol(symbolTable : TSymbolTable; const name : String) : TSymbol; static;
    end;
 
-   TRegisteredBinaryOperator = record
-      ExprClass : TProgramExprClass;
-      LeftType : TTypeSymbol;
-      RighType : TTypeSymbol;
-   end;
-
-   // lists of binary operators and their expression classes
-   // used for operator overloading
-   TBinaryOperators = class
-      private
-         FItems : array [TTokenType] of array of TRegisteredBinaryOperator;
-
-      public
-         constructor Create(table : TSymbolTable);
-
-         procedure RegisterOperator(aToken : TTokenType; aExprClass : TProgramExprClass;
-                                    aLeftType, aRightType : TTypeSymbol);
-
-         function ExprClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TProgramExprClass;
-         function BinaryOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TBinaryOpExprClass;
-         function AssignmentOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TAssignExprClass;
-         function RelOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TRelOpExprClass;
-   end;
-
    EClassCast = class (EScriptError) end;
 
 // ------------------------------------------------------------------
@@ -2336,7 +2312,6 @@ end;
 //
 constructor TArrayTypedExpr.Create(prog: TdwsProgram; const scriptPos: TScriptPos);
 begin
-   inherited Create(prog);
    FScriptPos:=scriptPos;
 end;
 
@@ -3178,7 +3153,6 @@ end;
 //
 constructor TLazyParamExpr.Create(Prog: TdwsProgram; aTyp : TTypeSymbol; level, stackAddr : Integer);
 begin
-   inherited Create(Prog);
    FTyp:=aTyp;
    FLevel:=level;
    FStackAddr:=stackAddr;
@@ -3341,7 +3315,6 @@ end;
 //
 constructor TInOpExpr.Create(Prog: TdwsProgram; Left: TTypedExpr);
 begin
-   inherited Create(Prog);
    FLeft:=Left;
    FTyp:=Prog.TypBoolean;
 end;
@@ -6205,276 +6178,6 @@ begin
          Result:=FindSymbol(TRecordSymbol(Result).Members, identifier)
       else Result:=nil;
    end;
-end;
-
-// ------------------
-// ------------------ TBinaryOperators ------------------
-// ------------------
-
-// Create
-//
-constructor TBinaryOperators.Create(table : TSymbolTable);
-var
-   typInteger : TTypeSymbol;
-   typFloat : TTypeSymbol;
-   typBoolean : TTypeSymbol;
-   typString : TTypeSymbol;
-   typVariant : TTypeSymbol;
-   typClassOf : TTypeSymbol;
-
-   procedure RegisterRelOp(aToken : TTokenType; intExpr, floatExpr, strExpr, varExpr : TTypedExprClass);
-   begin
-      RegisterOperator(aToken,   intExpr,    typInteger, typInteger);
-      RegisterOperator(aToken,   floatExpr,  typFloat,   typFloat);
-      RegisterOperator(aToken,   floatExpr,  typFloat,   typInteger);
-      RegisterOperator(aToken,   floatExpr,  typInteger, typFloat);
-      RegisterOperator(aToken,   strExpr,    typString,  typString);
-      RegisterOperator(aToken,   strExpr,    typString,  typVariant);
-      RegisterOperator(aToken,   strExpr,    typVariant, typString);
-      RegisterOperator(aToken,   varExpr,    typVariant, typVariant);
-      RegisterOperator(aToken,   varExpr,    typFloat,   typVariant);
-      RegisterOperator(aToken,   varExpr,    typInteger, typVariant);
-      RegisterOperator(aToken,   varExpr,    typVariant, typInteger);
-      RegisterOperator(aToken,   varExpr,    typVariant, typFloat);
-   end;
-
-begin
-   typInteger:=table.FindSymbol(SYS_INTEGER, cvMagic) as TTypeSymbol;
-   typFloat:=table.FindSymbol(SYS_FLOAT, cvMagic) as TTypeSymbol;
-   typBoolean:=table.FindSymbol(SYS_BOOLEAN, cvMagic) as TTypeSymbol;
-   typString:=table.FindSymbol(SYS_STRING, cvMagic) as TTypeSymbol;
-   typVariant:=table.FindSymbol(SYS_VARIANT, cvMagic) as TTypeSymbol;
-   typClassOf:=table.FindSymbol(SYS_TCLASS, cvMagic) as TTypeSymbol;
-
-   // computation operators
-
-   RegisterOperator(ttPLUS,   TAddIntExpr,      typInteger,  typInteger);
-   RegisterOperator(ttPLUS,   TAddStrExpr,      typString,   typString);
-   RegisterOperator(ttPLUS,   TAddStrExpr,      typString,   typVariant);
-   RegisterOperator(ttPLUS,   TAddStrExpr,      typVariant,  typString);
-   RegisterOperator(ttPLUS,   TAddFloatExpr,    typInteger,  typFloat);
-   RegisterOperator(ttPLUS,   TAddFloatExpr,    typFloat,    typInteger);
-   RegisterOperator(ttPLUS,   TAddFloatExpr,    typFloat,    typFloat);
-   RegisterOperator(ttPLUS,   TAddFloatExpr,    typFloat,    typVariant);
-   RegisterOperator(ttPLUS,   TAddFloatExpr,    typVariant,  typFloat);
-   RegisterOperator(ttPLUS,   TAddVariantExpr,  typInteger,  typVariant);
-   RegisterOperator(ttPLUS,   TAddVariantExpr,  typVariant,  typInteger);
-   RegisterOperator(ttPLUS,   TAddVariantExpr,  typVariant,  typVariant);
-
-   RegisterOperator(ttMINUS,  TSubIntExpr,      typInteger,  typInteger);
-   RegisterOperator(ttMINUS,  TSubFloatExpr,    typInteger,  typFloat);
-   RegisterOperator(ttMINUS,  TSubFloatExpr,    typFloat,    typInteger);
-   RegisterOperator(ttMINUS,  TSubFloatExpr,    typFloat,    typFloat);
-   RegisterOperator(ttMINUS,  TSubFloatExpr,    typFloat,    typVariant);
-   RegisterOperator(ttMINUS,  TSubFloatExpr,    typVariant,  typFloat);
-   RegisterOperator(ttMINUS,  TSubVariantExpr,  typInteger,  typVariant);
-   RegisterOperator(ttMINUS,  TSubVariantExpr,  typVariant,  typInteger);
-   RegisterOperator(ttMINUS,  TSubVariantExpr,  typVariant,  typVariant);
-
-   RegisterOperator(ttTIMES,  TMultIntExpr,     typInteger,  typInteger);
-   RegisterOperator(ttTIMES,  TMultFloatExpr,   typInteger,  typFloat);
-   RegisterOperator(ttTIMES,  TMultFloatExpr,   typFloat,    typInteger);
-   RegisterOperator(ttTIMES,  TMultFloatExpr,   typFloat,    typFloat);
-   RegisterOperator(ttTIMES,  TMultFloatExpr,   typFloat,    typVariant);
-   RegisterOperator(ttTIMES,  TMultFloatExpr,   typVariant,  typFloat);
-   RegisterOperator(ttTIMES,  TMultVariantExpr, typInteger,  typVariant);
-   RegisterOperator(ttTIMES,  TMultVariantExpr, typVariant,  typInteger);
-   RegisterOperator(ttTIMES,  TMultVariantExpr, typVariant,  typVariant);
-
-   RegisterOperator(ttDIVIDE, TDivideExpr,      typInteger,  typInteger);
-   RegisterOperator(ttDIVIDE, TDivideExpr,      typInteger,  typFloat);
-   RegisterOperator(ttDIVIDE, TDivideExpr,      typFloat,    typInteger);
-   RegisterOperator(ttDIVIDE, TDivideExpr,      typFloat,    typFloat);
-   RegisterOperator(ttDIVIDE, TDivideExpr,      typInteger,  typVariant);
-   RegisterOperator(ttDIVIDE, TDivideExpr,      typFloat,    typVariant);
-   RegisterOperator(ttDIVIDE, TDivideExpr,      typVariant,  typInteger);
-   RegisterOperator(ttDIVIDE, TDivideExpr,      typVariant,  typFloat);
-   RegisterOperator(ttDIVIDE, TDivideExpr,      typVariant,  typVariant);
-
-   RegisterOperator(ttDIV,    TDivExpr,         typInteger,  typInteger);
-   RegisterOperator(ttDIV,    TDivExpr,         typInteger,  typVariant);
-   RegisterOperator(ttDIV,    TDivExpr,         typVariant,  typInteger);
-   RegisterOperator(ttDIV,    TDivExpr,         typVariant,  typVariant);
-
-   RegisterOperator(ttMOD,    TModExpr,         typInteger,  typInteger);
-   RegisterOperator(ttMOD,    TModExpr,         typInteger,  typVariant);
-   RegisterOperator(ttMOD,    TModExpr,         typVariant,  typInteger);
-   RegisterOperator(ttMOD,    TModExpr,         typVariant,  typVariant);
-
-   RegisterOperator(ttOR,     TBoolOrExpr,      typBoolean,  typBoolean);
-   RegisterOperator(ttOR,     TBoolOrExpr,      typBoolean,  typVariant);
-   RegisterOperator(ttOR,     TBoolOrExpr,      typVariant,  typBoolean);
-   RegisterOperator(ttOR,     TIntOrExpr,       typInteger,  typInteger);
-   RegisterOperator(ttOR,     TIntOrExpr,       typInteger,  typVariant);
-   RegisterOperator(ttOR,     TIntOrExpr,       typVariant,  typInteger);
-   RegisterOperator(ttOR,     TIntOrExpr,       typVariant,  typVariant);
-
-   RegisterOperator(ttAND,    TBoolAndExpr,     typBoolean,  typBoolean);
-   RegisterOperator(ttAND,    TBoolAndExpr,     typBoolean,  typVariant);
-   RegisterOperator(ttAND,    TBoolAndExpr,     typVariant,  typBoolean);
-   RegisterOperator(ttAND,    TIntAndExpr,      typInteger,  typInteger);
-   RegisterOperator(ttAND,    TIntAndExpr,      typInteger,  typVariant);
-   RegisterOperator(ttAND,    TIntAndExpr,      typVariant,  typInteger);
-   RegisterOperator(ttAND,    TIntAndExpr,      typVariant,  typVariant);
-
-   RegisterOperator(ttXOR,    TBoolXorExpr,     typBoolean,  typBoolean);
-   RegisterOperator(ttXOR,    TBoolXorExpr,     typBoolean,  typVariant);
-   RegisterOperator(ttXOR,    TBoolXorExpr,     typVariant,  typBoolean);
-   RegisterOperator(ttXOR,    TIntXorExpr,      typInteger,  typInteger);
-   RegisterOperator(ttXOR,    TIntXorExpr,      typInteger,  typVariant);
-   RegisterOperator(ttXOR,    TIntXorExpr,      typVariant,  typInteger);
-   RegisterOperator(ttXOR,    TIntXorExpr,      typVariant,  typVariant);
-
-   RegisterOperator(ttIMPLIES,TBoolImpliesExpr, typBoolean,  typBoolean);
-   RegisterOperator(ttIMPLIES,TBoolImpliesExpr, typVariant,  typBoolean);
-   RegisterOperator(ttIMPLIES,TBoolImpliesExpr, typBoolean,  typVariant);
-   RegisterOperator(ttIMPLIES,TBoolImpliesExpr, typVariant,  typVariant);
-
-   RegisterOperator(ttSHL,    TShlExpr,         typInteger,  typInteger);
-   RegisterOperator(ttSHL,    TShlExpr,         typInteger,  typVariant);
-   RegisterOperator(ttSHL,    TShlExpr,         typVariant,  typInteger);
-   RegisterOperator(ttSHL,    TShlExpr,         typVariant,  typVariant);
-
-   RegisterOperator(ttSHR,    TShrExpr,         typInteger,  typInteger);
-   RegisterOperator(ttSHR,    TShrExpr,         typInteger,  typVariant);
-   RegisterOperator(ttSHR,    TShrExpr,         typVariant,  typInteger);
-   RegisterOperator(ttSHR,    TShrExpr,         typVariant,  typVariant);
-
-   // comparison operators
-
-   RegisterOperator(ttEQ,     TRelEqualBoolExpr,      typBoolean, typBoolean);
-   RegisterOperator(ttEQ,     TRelEqualBoolExpr,      typVariant, typBoolean);
-   RegisterOperator(ttEQ,     TRelEqualBoolExpr,      typBoolean, typVariant);
-
-   RegisterOperator(ttNOTEQ,  TRelNotEqualBoolExpr,   typBoolean, typBoolean);
-   RegisterOperator(ttNOTEQ,  TRelNotEqualBoolExpr,   typBoolean, typVariant);
-   RegisterOperator(ttNOTEQ,  TRelNotEqualBoolExpr,   typVariant, typBoolean);
-
-   RegisterRelOp(ttEQ,     TRelEqualIntExpr, TRelEqualFloatExpr, TRelEqualStringExpr, TRelEqualVariantExpr);
-   RegisterRelOp(ttNOTEQ,  TRelNotEqualIntExpr, TRelNotEqualFloatExpr, TRelNotEqualStringExpr, TRelNotEqualVariantExpr);
-   RegisterRelOp(ttLESS,   TRelLessIntExpr, TRelLessFloatExpr, TRelLessStringExpr, TRelLessVariantExpr);
-   RegisterRelOp(ttLESSEQ, TRelLessEqualIntExpr, TRelLessEqualFloatExpr, TRelLessEqualStringExpr, TRelLessEqualVariantExpr);
-   RegisterRelOp(ttGTR,    TRelGreaterIntExpr, TRelGreaterFloatExpr, TRelGreaterStringExpr, TRelGreaterVariantExpr);
-   RegisterRelOp(ttGTREQ,  TRelGreaterEqualIntExpr, TRelGreaterEqualFloatExpr, TRelGreaterEqualStringExpr, TRelGreaterEqualVariantExpr);
-
-   RegisterOperator(ttEQ,     TRelEqualStringExpr,    typClassOf, typClassOf);
-   RegisterOperator(ttNOTEQ,  TRelNotEqualStringExpr, typClassOf, typClassOf);
-
-   // combined assignment operator
-
-   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignIntExpr,     typInteger,    typInteger);
-   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignFloatExpr,   typFloat,      typFloat);
-   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignFloatExpr,   typFloat,      typInteger);
-   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignFloatExpr,   typInteger,    typFloat);
-   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignFloatExpr,   typFloat,      typVariant);
-   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignFloatExpr,   typVariant,    typFloat);
-   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignStrExpr,     typString,     typString);
-   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignStrExpr,     typString,     typVariant);
-   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignStrExpr,     typVariant,    typString);
-   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignExpr,        typVariant,    typVariant);
-   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignExpr,        typInteger,    typVariant);
-   RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignExpr,        typVariant,    typInteger);
-
-   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignIntExpr,    typInteger,    typInteger);
-   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignFloatExpr,  typFloat,      typFloat);
-   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignFloatExpr,  typFloat,      typInteger);
-   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignFloatExpr,  typInteger,    typFloat);
-   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignFloatExpr,  typFloat,      typVariant);
-   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignFloatExpr,  typVariant,    typFloat);
-   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignExpr,       typInteger,    typVariant);
-   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignExpr,       typVariant,    typVariant);
-   RegisterOperator(ttMINUS_ASSIGN, TMinusAssignExpr,       typVariant,    typInteger);
-
-   RegisterOperator(ttTIMES_ASSIGN, TMultAssignIntExpr,     typInteger,     typInteger);
-   RegisterOperator(ttTIMES_ASSIGN, TMultAssignFloatExpr,   typFloat,       typFloat);
-   RegisterOperator(ttTIMES_ASSIGN, TMultAssignFloatExpr,   typFloat,       typInteger);
-   RegisterOperator(ttTIMES_ASSIGN, TMultAssignFloatExpr,   typInteger,     typFloat);
-   RegisterOperator(ttTIMES_ASSIGN, TMultAssignFloatExpr,   typFloat,       typVariant);
-   RegisterOperator(ttTIMES_ASSIGN, TMultAssignFloatExpr,   typVariant,     typFloat);
-   RegisterOperator(ttTIMES_ASSIGN, TMultAssignExpr,        typInteger,     typVariant);
-   RegisterOperator(ttTIMES_ASSIGN, TMultAssignExpr,        typVariant,     typVariant);
-   RegisterOperator(ttTIMES_ASSIGN, TMultAssignExpr,        typVariant,     typInteger);
-
-   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typInteger,     typInteger);
-   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typInteger,     typFloat);
-   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typInteger,     typVariant);
-   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typFloat,       typFloat);
-   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typFloat,       typInteger);
-   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typFloat,       typVariant);
-   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typVariant,     typFloat);
-   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typVariant,     typVariant);
-   RegisterOperator(ttDIVIDE_ASSIGN, TDivideAssignExpr,     typVariant,     typInteger);
-end;
-
-// RegisterOperator
-//
-procedure TBinaryOperators.RegisterOperator(aToken : TTokenType; aExprClass : TProgramExprClass;
-                                            aLeftType, aRightType : TTypeSymbol);
-var
-   n : Integer;
-begin
-   n:=Length(FItems[aToken]);
-   SetLength(FItems[aToken], n+1);
-   with FItems[aToken][n] do begin
-      ExprClass:=aExprClass;
-      LeftType:=aLeftType;
-      RighType:=aRightType;
-   end;
-end;
-
-// ExprClassFor
-//
-function TBinaryOperators.ExprClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TProgramExprClass;
-var
-   i : Integer;
-begin
-   if (aLeftType<>nil) and (aRightType<>nil) then begin
-      for i:=0 to High(FItems[aToken]) do with FItems[aToken][i] do begin
-         if aLeftType.IsOfType(LeftType) and aRightType.IsOfType(RighType) then
-            Exit(ExprClass);
-      end;
-   end;
-   Result:=nil;
-end;
-
-// BinaryOperatorClassFor
-//
-function TBinaryOperators.BinaryOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TBinaryOpExprClass;
-var
-   expr : TProgramExprClass;
-begin
-   expr:=ExprClassFor(aToken, aLeftType, aRightType);
-   if (expr<>nil) and expr.InheritsFrom(TBinaryOpExpr) then
-      Result:=TBinaryOpExprClass(expr)
-   else Result:=nil;
-end;
-
-// AssignmentOperatorClassFor
-//
-function TBinaryOperators.AssignmentOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TAssignExprClass;
-var
-   expr : TProgramExprClass;
-begin
-   expr:=ExprClassFor(aToken, aLeftType, aRightType);
-   if (expr<>nil) and expr.InheritsFrom(TAssignExpr) then
-      Result:=TAssignExprClass(expr)
-   else Result:=nil;
-end;
-
-// RelOperatorClassFor
-//
-function TBinaryOperators.RelOperatorClassFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : TRelOpExprClass;
-var
-   expr : TProgramExprClass;
-begin
-   if (aLeftType=aRightType) and (aLeftType is TEnumerationSymbol) then begin
-      aLeftType:=aLeftType.Typ;
-      aRightType:=aRightType.Typ;
-   end;
-   expr:=ExprClassFor(aToken, aLeftType, aRightType);
-   if (expr<>nil) and expr.InheritsFrom(dwsRelExprs.TRelOpExpr) then
-      Result:=TRelOpExprClass(expr)
-   else Result:=nil;
 end;
 
 // ------------------

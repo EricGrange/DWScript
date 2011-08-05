@@ -147,7 +147,7 @@ end;
 
 initialization
 
-   RegisterInternalInitProc(@InitVariants);
+   RegisterInternalPreInitProc(@InitVariants);
 
    RegisterInternalFunction(TVarClearFunc, 'VarClear', ['@v', cVariant], '');
    RegisterInternalBoolFunction(TVarIsNullFunc, 'VarIsNull', ['v', cVariant]);

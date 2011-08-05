@@ -54,14 +54,6 @@ type
    PNoResultExprList = ^TNoResultExprList;
    PNoResultExpr = ^TNoResultExpr;
 
-  // Interface for units
-  IUnit = interface
-    ['{8D534D12-4C6B-11D5-8DCB-0000216D9E86}']
-    function GetUnitName: string;
-    function GetUnitTable(SystemTable, UnitSyms: TSymbolTable): TUnitSymbolTable;
-    function GetDependencies: TStrings;
-  end;
-
   TScriptSourceType = (stMain, stInclude{, stUnit}); // stUnit is left for the future
 
   // A specific ScriptSource entry. The text of the script contained in that unit.
@@ -433,13 +425,14 @@ type
          FRoot : TdwsMainProgram;
          FRootTable : TProgramSymbolTable;
          FTable : TSymbolTable;
+         FSystemTable : TSymbolTable;
          FBaseTypes : TdwsProgramBaseTypes;
 
       protected
          function GetLevel: Integer; inline;
 
       public
-         constructor Create(SystemTable: TSymbolTable);
+         constructor Create(systemTable : TSymbolTable);
          destructor Destroy; override;
 
          function GetGlobalAddr(DataSize: Integer): Integer;
@@ -454,8 +447,9 @@ type
          property Parent : TdwsProgram read FParent;
          property Root : TdwsMainProgram read FRoot write FRoot;
 
-         property RootTable: TProgramSymbolTable read FRootTable;
-         property Table: TSymbolTable read FTable write FTable;
+         property RootTable : TProgramSymbolTable read FRootTable;
+         property SystemTable : TSymbolTable read FSystemTable;
+         property Table : TSymbolTable read FTable write FTable;
 
          property TypBoolean: TTypeSymbol read FBaseTypes.FTypBoolean;
          property TypFloat: TTypeSymbol read FBaseTypes.FTypFloat;
@@ -486,7 +480,7 @@ type
          FContextMap : TContextMap;
          FSymbolDictionary : TSymbolDictionary;
 
-         FBinaryOperators : TObject;
+         FOperators : TObject;
          FConditionalDefines : TStringList;
          FSourceFiles : TTightList;
          FSourceList : TScriptSourceList;
@@ -536,7 +530,7 @@ type
          property UnifiedConstList : TSortedList<TExprBase> read FUnifiedConstList;
          property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
 
-         property BinaryOperators : TObject read FBinaryOperators write FBinaryOperators;
+         property Operators : TObject read FOperators write FOperators;
          property ConditionalDefines : TStringList read FConditionalDefines write SetConditionalDefines;
          property Compiler : TObject read FCompiler write FCompiler;
          property ContextMap : TContextMap read FContextMap;
@@ -589,8 +583,6 @@ type
          function GetBaseType : TTypeSymbol; virtual;
 
       public
-         constructor Create(Prog: TdwsProgram);
-
          function  IsConstant : Boolean; virtual;
          function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; virtual;
 
@@ -636,7 +628,7 @@ type
          function GetBaseType : TTypeSymbol; override;
 
       public
-         function OptimizeToNoPosExpr(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
+         function OptimizeToTypedExpr(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
          function OptimizeIntegerConstantToFloatConstant(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
 
          function ScriptPos : TScriptPos; override;
@@ -2507,7 +2499,8 @@ begin
    FAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
 
    // Initialize the system table
-   FRootTable := TProgramSymbolTable.Create(SystemTable, @FAddrGenerator);
+   FSystemTable := systemTable;
+   FRootTable := TProgramSymbolTable.Create(systemTable, @FAddrGenerator);
    FTable := FRootTable;
 
    FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
@@ -2611,7 +2604,7 @@ begin
 
    inherited;
 
-   FBinaryOperators.Free;
+   FOperators.Free;
    FContextMap.Free;
    FSymbolDictionary.Free;
    FConditionalDefines.Free;
@@ -3013,14 +3006,6 @@ end;
 // ------------------ TProgramExpr ------------------
 // ------------------
 
-// Create
-//
-constructor TProgramExpr.Create(Prog: TdwsProgram);
-begin
-   inherited Create;
-//   FProg:=Prog;
-end;
-
 // IsConstant
 //
 function TProgramExpr.IsConstant : Boolean;
@@ -3254,9 +3239,9 @@ end;
 // ------------------ TProgramExpr ------------------
 // ------------------
 
-// OptimizeToNoPosExpr
+// OptimizeToTypedExpr
 //
-function TTypedExpr.OptimizeToNoPosExpr(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
+function TTypedExpr.OptimizeToTypedExpr(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
 var
    optimized : TProgramExpr;
 begin
@@ -3357,7 +3342,6 @@ end;
 //
 constructor TNoResultExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
 begin
-   inherited Create(Prog);
    FScriptPos:=Pos;
 end;
 
@@ -3476,7 +3460,6 @@ end;
 
 constructor TDataExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol);
 begin
-   inherited Create(Prog);
    FTyp := Typ;
 end;
 
@@ -4247,7 +4230,6 @@ end;
 //
 constructor TFuncRefExpr.Create(prog : TdwsProgram; funcExpr : TFuncExprBase);
 begin
-   inherited Create(prog);
    FFuncExpr:=funcExpr;
    Typ:=funcExpr.FuncSym;
 end;
@@ -4456,7 +4438,6 @@ end;
 
 constructor TBinaryOpExpr.Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr);
 begin
-   inherited Create(Prog);
    FLeft := aLeft;
    FRight := aRight;
 end;
@@ -4667,7 +4648,6 @@ end;
 //
 constructor TUnaryOpExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
 begin
-   inherited Create(Prog);
    FExpr:=Expr;
 end;
 

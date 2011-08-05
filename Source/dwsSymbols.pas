@@ -402,6 +402,8 @@ type
          function GetDescription : String; override;
    end;
 
+   TParamSymbolMethod = procedure (param : TParamSymbol) of object;
+
    TParamSymbolWithDefaultValue = class(TParamSymbol)
       private
          FDefaultValue : TData;
@@ -458,6 +460,7 @@ type
    end;
 
    TTypeSymbolClass = class of TTypeSymbol;
+   TTypeSymbols = array of TTypeSymbol;
 
    // Base class for all types
    TTypeSymbol = class(TSymbol)
@@ -709,6 +712,26 @@ type
 
          property SubExpr;
          property SubExprCount;
+   end;
+
+   TOperatorSymbol = class(TSymbol)
+      private
+         FToken : TTokenType;
+         FParams : TTypeSymbols;
+         FUsesSym : TFuncSymbol;
+
+      protected
+         function GetCaption : String; override;
+
+      public
+         constructor Create(const aTokenType : TTokenType);
+         destructor Destroy; override;
+
+         procedure AddParam(p : TTypeSymbol);
+
+         property Token : TTokenType read FToken write FToken;
+         property Params : TTypeSymbols read FParams;
+         property UsesSym : TFuncSymbol read FUsesSym write FUsesSym;
    end;
 
    TNameSymbol = class(TTypeSymbol)
@@ -4614,6 +4637,51 @@ begin
    msg.FCallStack:=callStack;
    AddMsg(msg);
    HasErrors:=True;
+end;
+
+// ------------------
+// ------------------ TOperatorSymbol ------------------
+// ------------------
+
+// Create
+//
+constructor TOperatorSymbol.Create(const aTokenType : TTokenType);
+begin
+   inherited Create('operator '+cTokenStrings[aTokenType], nil);
+   FToken:=aTokenType;
+end;
+
+// Destroy
+//
+destructor TOperatorSymbol.Destroy;
+begin
+   inherited;
+end;
+
+// AddParam
+//
+procedure TOperatorSymbol.AddParam(p : TTypeSymbol);
+var
+   n : Integer;
+begin
+   n:=Length(FParams);
+   SetLength(FParams, n+1);
+   FParams[n]:=p;
+end;
+
+// GetCaption
+//
+function TOperatorSymbol.GetCaption : String;
+var
+   i : Integer;
+begin
+   Result:='operator '+cTokenStrings[Token]+' (';
+   for i:=0 to High(Params) do begin
+      if i>0 then
+         Result:=Result+', ';
+      Result:=Result+Params[i].Typ.Caption;
+   end;
+   Result:=Result+') : '+Typ.Caption+' uses '+FUsesSym.Name;
 end;
 
 end.

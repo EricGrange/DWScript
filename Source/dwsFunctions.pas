@@ -23,9 +23,18 @@ unit dwsFunctions;
 interface
 
 uses
-  Classes, SysUtils, dwsExprs, dwsSymbols, dwsStack, dwsStrings;
+  Classes, SysUtils, dwsExprs, dwsSymbols, dwsStack, dwsStrings, dwsTokenizer,
+  dwsOperators;
 
 type
+
+   // Interface for units
+   IUnit = interface
+      ['{8D534D12-4C6B-11D5-8DCB-0000216D9E86}']
+      function GetUnitName : String;
+      function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
+      function GetDependencies : TStrings;
+   end;
 
    TEmptyFunc = class(TInterfacedObject, ICallable)
       public
@@ -121,33 +130,41 @@ type
          procedure Execute(info : TProgramInfo; var ExternalObject: TObject); virtual; abstract;
    end;
 
-   TInternalInitProc = procedure (SystemTable, UnitSyms, UnitTable: TSymbolTable);
+   TInternalInitProc = procedure (systemTable, unitSyms, unitTable : TSymbolTable;
+                                  operators : TOperators);
 
-  TInternalUnit = class(TObject, IUnknown, IUnit)
-  private
-    FDependencies: TStrings;
-    FInitProcs: TList;
-    FRegisteredInternalFunctions: TList;
-    FStaticSymbols: Boolean;
-    FStaticTable: TStaticSymbolTable; // static symbols
-  protected
-    procedure SetStaticSymbols(const Value: Boolean);
-    function _AddRef: Integer; stdcall;
-    function _Release: Integer; stdcall;
-    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
-    function GetDependencies: TStrings;
-    function GetUnitName: string;
-    procedure InitUnitTable(SystemTable, UnitSyms, UnitTable: TSymbolTable);
-    function GetUnitTable(SystemTable, UnitSyms: TSymbolTable): TUnitSymbolTable;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure AddInternalFunction(rif: Pointer);
-    procedure AddInitProc(Proc: TInternalInitProc);
-    function InitStaticSymbols(SystemTable, UnitSyms: TSymbolTable): Boolean;
-    procedure ReleaseStaticSymbols;
-    property StaticTable: TStaticSymbolTable read FStaticTable;
-    property StaticSymbols: Boolean read FStaticSymbols write SetStaticSymbols;
+   TInternalUnit = class(TObject, IUnknown, IUnit)
+      private
+         FDependencies : TStrings;
+         FPreInitProcs : array of TInternalInitProc;
+         FPostInitProcs : array of TInternalInitProc;
+         FRegisteredInternalFunctions: TList;
+         FStaticSymbols: Boolean;
+         FStaticTable: TStaticSymbolTable; // static symbols
+
+      protected
+         procedure SetStaticSymbols(const Value: Boolean);
+         function _AddRef: Integer; stdcall;
+         function _Release: Integer; stdcall;
+         function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+         function GetDependencies: TStrings;
+         function GetUnitName: string;
+         procedure InitUnitTable(systemTable, unitSyms, unitTable : TSymbolTable; operators : TOperators);
+         function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
+
+      public
+         constructor Create;
+         destructor Destroy; override;
+
+         procedure AddInternalFunction(rif : Pointer);
+         procedure AddPreInitProc(proc : TInternalInitProc);
+         procedure AddPostInitProc(proc : TInternalInitProc);
+
+         function InitStaticSymbols(SystemTable, UnitSyms: TSymbolTable; operators : TOperators): Boolean;
+         procedure ReleaseStaticSymbols;
+
+         property StaticTable : TStaticSymbolTable read FStaticTable;
+         property StaticSymbols : Boolean read FStaticSymbols write SetStaticSymbols;
   end;
 
 procedure RegisterInternalFunction(InternalFunctionClass: TInternalFunctionClass;
@@ -164,7 +181,8 @@ procedure RegisterInternalStringFunction(InternalFunctionClass: TInternalMagicSt
 procedure RegisterInternalProcedure(InternalFunctionClass: TInternalFunctionClass;
       const FuncName: string; const FuncParams: array of string);
 
-procedure RegisterInternalInitProc(Proc: TInternalInitProc);
+procedure RegisterInternalPreInitProc(Proc: TInternalInitProc);
+procedure RegisterInternalPostInitProc(Proc: TInternalInitProc);
 
 function dwsInternalUnit : TInternalUnit;
 
@@ -188,9 +206,14 @@ begin
    Result:=vInternalUnit;
 end;
 
-procedure RegisterInternalInitProc(Proc: TInternalInitProc);
+procedure RegisterInternalPreInitProc(Proc: TInternalInitProc);
 begin
-   dwsInternalUnit.AddInitProc(Proc);
+   dwsInternalUnit.AddPreInitProc(Proc);
+end;
+
+procedure RegisterInternalPostInitProc(Proc: TInternalInitProc);
+begin
+   dwsInternalUnit.AddPostInitProc(Proc);
 end;
 
 type
@@ -567,11 +590,53 @@ begin
    end;
 end;
 
-{ TInternalUnit }
+// ------------------
+// ------------------ TInternalUnit ------------------
+// ------------------
 
-procedure TInternalUnit.AddInitProc(Proc: TInternalInitProc);
+constructor TInternalUnit.Create;
 begin
-  FInitProcs.Add(@Proc);
+   FDependencies := TStringList.Create;
+   FRegisteredInternalFunctions := TList.Create;
+   FStaticSymbols := False;
+   FStaticTable := nil;
+end;
+
+destructor TInternalUnit.Destroy;
+var
+  i: Integer;
+  rif: PRegisteredInternalFunction;
+begin
+   ReleaseStaticSymbols;
+   FDependencies.Free;
+   for i := 0 to FRegisteredInternalFunctions.Count - 1 do begin
+      rif := PRegisteredInternalFunction(FRegisteredInternalFunctions[i]);
+      Dispose(rif);
+   end;
+   FRegisteredInternalFunctions.Free;
+   inherited;
+end;
+
+// AddPreInitProc
+//
+procedure TInternalUnit.AddPreInitProc(proc : TInternalInitProc);
+var
+   n : Integer;
+begin
+   n:=Length(FPreInitProcs);
+   SetLength(FPreInitProcs, n+1);
+   FPreInitProcs[n]:=proc;
+end;
+
+// AddPostInitProc
+//
+procedure TInternalUnit.AddPostInitProc(proc : TInternalInitProc);
+var
+   n : Integer;
+begin
+   n:=Length(FPostInitProcs);
+   SetLength(FPostInitProcs, n+1);
+   FPostInitProcs[n]:=proc;
 end;
 
 procedure TInternalUnit.AddInternalFunction(rif: Pointer);
@@ -584,32 +649,6 @@ begin
   Result := -1;
 end;
 
-constructor TInternalUnit.Create;
-begin
-  FDependencies := TStringList.Create;
-  FRegisteredInternalFunctions := TList.Create;
-  FInitProcs := TList.Create;
-  FStaticSymbols := False;
-  FStaticTable := nil;
-end;
-
-destructor TInternalUnit.Destroy;
-var
-  i: Integer;
-  rif: PRegisteredInternalFunction;
-begin
-  ReleaseStaticSymbols;
-  FDependencies.Free;
-  for i := 0 to FRegisteredInternalFunctions.Count - 1 do
-  begin
-    rif := PRegisteredInternalFunction(FRegisteredInternalFunctions[i]);
-    Dispose(rif);
-  end;
-  FRegisteredInternalFunctions.Free;
-  FInitProcs.Free;
-  inherited;
-end;
-
 function TInternalUnit.GetDependencies: TStrings;
 begin
   Result := FDependencies;
@@ -620,31 +659,28 @@ begin
   Result := SYS_INTERNAL;
 end;
 
-function TInternalUnit.InitStaticSymbols(SystemTable, UnitSyms: TSymbolTable): Boolean;
+function TInternalUnit.InitStaticSymbols(SystemTable, UnitSyms: TSymbolTable; operators : TOperators): Boolean;
 var
-  staticParent: TStaticSymbolTable;
+   staticParent: TStaticSymbolTable;
 begin
-  if not Assigned(FStaticTable) then
-  begin
-    if SystemTable is TStaticSymbolTable then
-      staticParent := TStaticSymbolTable(SystemTable)
-    else if SystemTable is TLinkedSymbolTable then
-      staticParent := TLinkedSymbolTable(SystemTable).Parent
-    else
-      staticParent := nil;
+   if not Assigned(FStaticTable) then begin
+      if SystemTable is TStaticSymbolTable then
+         staticParent := TStaticSymbolTable(SystemTable)
+      else if SystemTable is TLinkedSymbolTable then
+         staticParent := TLinkedSymbolTable(SystemTable).Parent
+      else staticParent := nil;
 
-    if Assigned(staticParent) then
-    begin
-      FStaticTable := TStaticSymbolTable.Create(staticParent);
-      try
-        InitUnitTable(SystemTable, UnitSyms, FStaticTable);
-      except
-        ReleaseStaticSymbols;
-        raise;
+      if Assigned(staticParent) then begin
+         FStaticTable := TStaticSymbolTable.Create(staticParent);
+         try
+            InitUnitTable(SystemTable, UnitSyms, FStaticTable, operators);
+         except
+            ReleaseStaticSymbols;
+            raise;
+         end;
       end;
-    end;
-  end;
-  Result := Assigned(FStaticTable);
+   end;
+   Result := Assigned(FStaticTable);
 end;
 
 procedure TInternalUnit.ReleaseStaticSymbols;
@@ -659,15 +695,15 @@ begin
   end;
 end;
 
-function TInternalUnit.GetUnitTable(SystemTable, UnitSyms: TSymbolTable): TUnitSymbolTable;
+function TInternalUnit.GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
 begin
-  if StaticSymbols and InitStaticSymbols(SystemTable, UnitSyms) then
+  if StaticSymbols and InitStaticSymbols(SystemTable, UnitSyms, operators) then
     Result := TLinkedSymbolTable.Create(FStaticTable)
   else
   begin
     Result := TUnitSymbolTable.Create(SystemTable);
     try
-      InitUnitTable(SystemTable, UnitSyms, Result);
+      InitUnitTable(SystemTable, UnitSyms, Result, operators);
     except
       Result.Free;
       raise;
@@ -675,27 +711,28 @@ begin
   end;
 end;
 
-procedure TInternalUnit.InitUnitTable(SystemTable, UnitSyms, UnitTable: TSymbolTable);
+procedure TInternalUnit.InitUnitTable(systemTable, unitSyms, unitTable : TSymbolTable; operators : TOperators);
 var
-  i: Integer;
-  rif: PRegisteredInternalFunction;
+   i : Integer;
+   rif : PRegisteredInternalFunction;
 begin
-  for i := 0 to FInitProcs.Count - 1 do
-    TInternalInitProc(FInitProcs[i])(SystemTable, UnitSyms, UnitTable);
+   for i := 0 to High(FPreInitProcs) do
+      FPreInitProcs[i](SystemTable, UnitSyms, UnitTable, operators);
 
-  for i := 0 to FRegisteredInternalFunctions.Count - 1 do
-  begin
-    rif := PRegisteredInternalFunction(FRegisteredInternalFunctions[i]);
-    try
-      rif.InternalFunctionClass.Create(UnitTable, rif.FuncName, rif.FuncParams,
+   for i := 0 to FRegisteredInternalFunctions.Count - 1 do begin
+      rif := PRegisteredInternalFunction(FRegisteredInternalFunctions[i]);
+      try
+         rif.InternalFunctionClass.Create(UnitTable, rif.FuncName, rif.FuncParams,
                                        rif.FuncType, rif.StateLess);
-    except
-      on e: Exception do
-        raise
-          Exception.CreateFmt('AddInternalFunctions failed on %s'#13#10'%s',
-                              [rif.FuncName, e.Message]);
-    end;
-  end;
+      except
+         on e: Exception do
+            raise Exception.CreateFmt('AddInternalFunctions failed on %s'#13#10'%s',
+                                      [rif.FuncName, e.Message]);
+      end;
+   end;
+
+   for i := 0 to High(FPostInitProcs) do
+      FPostInitProcs[i](SystemTable, UnitSyms, UnitTable, operators);
 end;
 
 function TInternalUnit.QueryInterface(const IID: TGUID; out Obj): HResult;

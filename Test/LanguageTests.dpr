@@ -24,7 +24,9 @@ uses
   UTestDispatcher in 'UTestDispatcher.pas',
   UDebuggerTests in 'UDebuggerTests.pas',
   UdwsUtilsTests in 'UdwsUtilsTests.pas',
-  UMemoryTests in 'UMemoryTests.pas';
+  UMemoryTests in 'UMemoryTests.pas',
+  dwsMathComplexFunctions in '..\Source\dwsMathComplexFunctions.pas',
+  dwsOperators in '..\Source\dwsOperators.pas';
 
 {$R *.res}
 

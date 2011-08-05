@@ -4,7 +4,8 @@ interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsSymbols, dwsXPlatform, dwsUtils,
-   dwsMathFunctions, dwsTimeFunctions, dwsGlobalVarsFunctions, dwsVariantFunctions;
+   dwsMathFunctions, dwsTimeFunctions, dwsGlobalVarsFunctions, dwsVariantFunctions,
+   dwsMathComplexFunctions;
 
 type
 
@@ -30,6 +31,11 @@ type
    end;
 
    TdwsFuncFunctionsTestsMath = class (TdwsFunctionsTestsBase)
+      public
+         procedure SetUp; override;
+   end;
+
+   TdwsFuncFunctionsTestsMathComplex = class (TdwsFunctionsTestsBase)
       public
          procedure SetUp; override;
    end;
@@ -193,6 +199,18 @@ begin
 end;
 
 // ------------------
+// ------------------ TdwsFuncFunctionsTestsMathComplex ------------------
+// ------------------
+
+// SetUp
+//
+procedure TdwsFuncFunctionsTestsMathComplex.SetUp;
+begin
+   FFolder:='FunctionsMathComplex';
+   inherited;
+end;
+
+// ------------------
 // ------------------ TdwsFuncFunctionsTestsTime ------------------
 // ------------------
 
@@ -249,6 +267,7 @@ initialization
 // ------------------------------------------------------------------
 
    TestFramework.RegisterTest('FunctionsMath', TdwsFuncFunctionsTestsMath.Suite);
+   TestFramework.RegisterTest('FunctionsMathComplex', TdwsFuncFunctionsTestsMathComplex.Suite);
    TestFramework.RegisterTest('FunctionsTime', TdwsFuncFunctionsTestsTime.Suite);
    TestFramework.RegisterTest('FunctionsString', TdwsFuncFunctionsTestsString.Suite);
    TestFramework.RegisterTest('FunctionsVariant', TdwsFuncFunctionsTestsVariant.Suite);

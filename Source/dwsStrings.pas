@@ -192,6 +192,7 @@ const
   CPE_VarParameterExpected = 'Parameter %d - Var-parameter expected';
   CPE_ConstParameterExpected = 'Parameter %d - Const-parameter expected';
   CPE_ValueParameterExpected = 'Parameter %d - Value-parameter expected';
+  CPE_VarParameterForbidden = 'Parameter %d - Var-parameter forbidden';
 
   // Arrays
   CPE_ArrayBoundNotAConstant = 'Bound isn''t a constant expression';

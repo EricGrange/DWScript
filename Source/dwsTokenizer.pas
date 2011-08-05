@@ -47,6 +47,7 @@ type
      ttPLUS, ttMINUS,
      ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT,
      ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
+     ttLESSLESS, ttGTRGTR,
      ttSEMI, ttCOMMA, ttCOLON,
      ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
      ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN,
@@ -205,6 +206,7 @@ const
      '+', '-',
      '*', '/', '%', '^', '@',
      '=', '<>', '>', '>=', '<', '<=',
+     '<<', '>>',
      ';', ',', ':',
      ':=', '+=', '-=', '*=', '/=',
      '%=', '^=', '@=',
@@ -430,17 +432,18 @@ begin
      '<':
        if Len=1 then // '<'
          Result := ttLESS
-       else if Len=2 then
-         if Buffer[1] = '=' then // '<='
-            Result := ttLESSEQ
-         else if Buffer[1] = '>' then // '<>'
-            Result := ttNOTEQ;
+       else if Len=2 then case Buffer[1] of
+         '=' : Result := ttLESSEQ;     // '<='
+         '>' : Result := ttNOTEQ;      // '<>'
+         '<' : Result := ttLESSLESS;   // '<<'
+       end;
      '>':
        if Len=1 then // '>'
          Result := ttGTR
-       else if Len=2 then
-         if Buffer[1] = '=' then // '>='
-            Result := ttGTREQ;
+       else if Len=2 then case Buffer[1] of
+         '=' : Result := ttGTREQ;      // '>='
+         '>' : Result := ttGTRGTR;     // '>>'
+       end;
      ':':
        if Len=1 then // ':'
          Result := ttCOLON
@@ -1220,11 +1223,13 @@ initialization
    sAssign0.SetElse(TErrorTransition.Create(TOK_EqualityExpected));
 
    sGreaterF.AddTransition(['='], TConsumeTransition.Create(sStart, [toFinal], caName));
+   sGreaterF.AddTransition(['>'], TConsumeTransition.Create(sStart, [toFinal], caName));
    sGreaterF.AddTransition(cStart + cSTOP, TCheckTransition.Create(sStart, [toFinal], caName));
    sGreaterF.SetElse(TErrorTransition.Create(TOK_EqualityExpected));
 
    sSmallerF.AddTransition(['='], TConsumeTransition.Create(sStart, [toFinal], caName));
    sSmallerF.AddTransition(['>'], TConsumeTransition.Create(sStart, [toFinal], caName));
+   sSmallerF.AddTransition(['<'], TConsumeTransition.Create(sStart, [toFinal], caName));
    sSmallerF.AddTransition(cStart + cSTOP, TCheckTransition.Create(sStart, [toFinal], caName));
    sSmallerF.SetElse(TErrorTransition.Create(TOK_GreaterEqualityExpected));
 
