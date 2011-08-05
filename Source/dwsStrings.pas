@@ -257,7 +257,7 @@ const
   CPE_IntegerCastInvalid = 'Cannot cast this type to "Integer"';
   CPE_IncompatibleTypes = 'Incompatible types: "%s" and "%s"';
   CPE_AssignIncompatibleTypes = 'Incompatible types: Cannot assign "%s" to "%s"';
-  CPE_RangeIncompatibleTypes = 'Range start and range stop are of incompatible types: %s and %s';
+  CPE_RangeIncompatibleTypes = 'Range start and range stop are of incompatible types: "%s" and "%s"';
 
   CPE_LocalFunctionAsDelegate = 'Local procedure/function can''t be used as delegate';
 

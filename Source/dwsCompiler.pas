@@ -386,7 +386,9 @@ type
                            codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TFuncExprBase;
       function GetMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
                              const Pos: TScriptPos; ForceStatic : Boolean): TFuncExpr;
+
       procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol);
+      procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
 
       function CreateProgram(SystemTable: TSymbolTable; ResultType: TdwsResultType;
                              const stackParams : TStackParameters) : TdwsMainProgram;
@@ -739,6 +741,22 @@ begin
       msgFmt:=CPE_MethodRedefined
    else msgFmt:=CPE_NameAlreadyExists;
    FMsgs.AddCompilerErrorFmt(FTok.HotPos, msgFmt, [sym.Name])
+end;
+
+// IncompatibleTypes
+//
+procedure TdwsCompiler.IncompatibleTypes(const scriptPos : TScriptPos;
+                                         const fmt : String; typ1, typ2 : TTypeSymbol);
+var
+   caption1, caption2 : String;
+begin
+   if typ1=nil then
+      caption1:='void'
+   else caption1:=typ1.Caption;
+   if typ2=nil then
+      caption2:='void'
+   else caption2:=typ2.Caption;
+   FMsgs.AddCompilerErrorFmt(scriptPos, fmt, [caption1, caption2]);
 end;
 
 // SetupCompileOptions
@@ -1407,14 +1425,13 @@ begin
          try
             if Assigned(typ) then begin
                if not typ.IsCompatible(expr.typ) then
-                  FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_AssignIncompatibleTypes,
-                                            [expr.typ.Caption, typ.Caption]);
+                  IncompatibleTypes(FTok.HotPos, CPE_AssignIncompatibleTypes, expr.typ, typ);
             end else begin
                typ:=expr.typ;
                detachTyp:=(typ.Name='');
             end;
 
-            if not expr.IsConstant then begin
+            if (expr=nil) or (not expr.IsConstant) then begin
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
                // keep compiling
                Result:=constSymbolClass.Create(name, typ, Null);
@@ -3995,7 +4012,7 @@ begin
       FTok.KillToken;
 
       if FTok.TestDelete(ttALEFT) then begin
-         if sym is TTypeSymbol then begin
+         if sym.IsType then begin
             typSym:=TTypeSymbol(sym);
             if coSymbolDictionary in FCompilerOptions then
                FSymbolDictionary.AddTypeSymbol(typSym, hotPos);
@@ -4856,9 +4873,11 @@ begin
 
          if not Assigned(sym) then
             FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_TypeUnknown, [name])
-         else if not (sym is TTypeSymbol) then
-            FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_InvalidType, [name])
-         else Result:=TTypeSymbol(sym);
+         else if not sym.IsType then begin
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidType, [name]);
+            Result:=FProg.TypVariant; // keep compiling
+         end else Result:=TTypeSymbol(sym);
+
          // Create name symbol, e. g.: type a = integer;
          if typeName <> '' then
             Result:=TAliasSymbol.Create(typeName, Result);
@@ -5470,7 +5489,7 @@ begin
                            Typ.IsCompatible(defaultExpr.Typ);
                         if not Typ.IsCompatible(defaultExpr.Typ) then begin
                            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleTypes,
-                                                     [Typ.Caption,defaultExpr.Typ.Caption]);
+                                                     [Typ.Caption, defaultExpr.Typ.Caption]);
                            FreeAndNil(defaultExpr);
                         end;
                      end;

@@ -344,6 +344,7 @@ type
          procedure SetName(const newName : String);
 
          class function IsBaseType : Boolean; virtual;
+         function IsType : Boolean; virtual;
 
          function QualifiedName : String; virtual;
 
@@ -466,6 +467,7 @@ type
    TTypeSymbol = class(TSymbol)
       public
          procedure InitData(const data : TData; offset : Integer); virtual; abstract;
+         function IsType : Boolean; override;
          function BaseType : TTypeSymbol; override;
          function UnAliasedType : TTypeSymbol; virtual;
          function IsOfType(typSym : TTypeSymbol) : Boolean; virtual;
@@ -575,6 +577,7 @@ type
          constructor Generate(Table: TSymbolTable; const FuncName: string;
                               const FuncParams: TParamArray; const FuncType: string);
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function  IsType : Boolean; override;
          procedure AddParam(param: TParamSymbol); virtual;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
@@ -628,9 +631,13 @@ type
    TMagicFuncSymbol = class(TFuncSymbol)
       private
          FInternalFunction : TObject;
+
       public
          destructor Destroy; override;
+
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
+         function IsType : Boolean; override;
+
          property InternalFunction : TObject read FInternalFunction write FInternalFunction;
    end;
 
@@ -1701,6 +1708,13 @@ begin
    Result:=False;
 end;
 
+// IsType
+//
+function TSymbol.IsType : Boolean;
+begin
+   Result:=False;
+end;
+
 // QualifiedName
 //
 function TSymbol.QualifiedName : String;
@@ -2162,6 +2176,13 @@ begin
    end;
 end;
 
+// IsType
+//
+function TFuncSymbol.IsType : Boolean;
+begin
+   Result:=(FExecutable=nil);
+end;
+
 procedure TFuncSymbol.InitData(const Data: TData; Offset: Integer);
 const
   nilIntf: IUnknown = nil;
@@ -2234,6 +2255,13 @@ end;
 procedure TMagicFuncSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
    FInternalParams.Initialize(msgs);
+end;
+
+// IsType
+//
+function TMagicFuncSymbol.IsType : Boolean;
+begin
+   Result:=False;
 end;
 
 // Destroy
@@ -4429,6 +4457,13 @@ end;
 function TTypeSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
   Result:=(BaseType.IsCompatible(typSym.BaseType));
+end;
+
+// IsType
+//
+function TTypeSymbol.IsType : Boolean;
+begin
+   Result:=True;
 end;
 
 // ------------------
