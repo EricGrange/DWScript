@@ -462,6 +462,7 @@ const
   UNT_ReadAccessNotFound = 'ReadAccess "%s" not found';
   UNT_WriteAccessNotFound = 'WriteAccess "%s" not found';
   UNT_UsesAccessNotFound = 'UsesAccess "%s" not found';
+  UNT_IncorrectOperatorOverload = 'Incorrect operator overload (%s)';
 
   UNT_InvalidArrayBounds = 'LowBound is higher than HighBound';
 

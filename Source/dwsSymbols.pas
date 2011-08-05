@@ -2905,10 +2905,10 @@ end;
 //
 function TClassSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=(Self=typSym);
+   Result:=(Self=typSym.UnAliasedType);
    if Result or (Self=nil) then Exit;
    if Parent<>nil then
-      Result:=Parent.IsOfType(typSym)
+      Result:=Parent.IsOfType(typSym.UnAliasedType)
    else Result:=False;
 end;
 
@@ -3185,7 +3185,7 @@ end;
 function TClassOfSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    if typSym is TClassOfSymbol then
-      Result:=Typ.IsOfType(typSym.Typ)
+      Result:=Typ.IsOfType(typSym.Typ.UnAliasedType)
    else Result:=False;
 end;
 
@@ -4449,7 +4449,7 @@ end;
 //
 function TTypeSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=(Self=typSym);
+   Result:=(Self=typSym.UnAliasedType);
 end;
 
 // IsCompatible

@@ -10,6 +10,7 @@ uses
   Forms,
   TestFrameWork,
   GUITestRunner,
+  SysUtils,
   UScriptTests in 'UScriptTests.pas',
   UAlgorithmsTests in 'UAlgorithmsTests.pas',
   UdwsUnitTests in 'UdwsUnitTests.pas',
@@ -31,6 +32,7 @@ uses
 {$R *.res}
 
 begin
+   FormatSettings.DecimalSeparator:='.';
    ReportMemoryLeaksOnShutdown:=True;
    Application.Initialize;
    GUITestRunner.RunRegisteredTests;

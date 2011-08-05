@@ -322,15 +322,19 @@ end;
 function TOperators.OperatorFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator;
 var
    i : Integer;
+   p : PRegisteredOperator;
 begin
+   p:=nil;
    if (aLeftType<>nil) and (aRightType<>nil) then begin
       for i:=0 to High(FItems[aToken]) do begin
          Result:=@FItems[aToken][i];
-         if aLeftType.IsOfType(Result.LeftType) and aRightType.IsOfType(Result.RighType) then
-            Exit;
+         if (aLeftType=Result.LeftType) and (aRightType=Result.RighType) then
+            Exit
+         else if aLeftType.IsOfType(Result.LeftType) and aRightType.IsOfType(Result.RighType) then
+            p:=Result;
       end;
    end;
-   Result:=nil;
+   Result:=p;
 end;
 
 // GenerateTyped

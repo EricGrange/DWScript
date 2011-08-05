@@ -2105,7 +2105,7 @@ begin
          FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected)
       else begin
          sym:=FProg.Table.FindTypeSymbol(usesName, cvPublic);
-         if (sym=nil) or not (sym is TFuncSymbol) then
+         if (sym=nil) or sym.IsType or not (sym is TFuncSymbol) then
             FMsgs.AddCompilerError(usesPos, CPE_FunctionMethodExpected)
          else usesSym:=TFuncSymbol(sym);
       end;

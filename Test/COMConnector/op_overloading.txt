@@ -1,5 +1,8 @@
-param index: 0, type: Array Variant (8204)
-    [0] Int64
-    [1] OleStr
-    [2] Double
-    [3] Date
+Ole> param index: 0, type: ByRef Int64 (16404)
+param index: 1, type: ByRef Int64 (16404)
+param index: 2, type: ByRef Int64 (16404)
+param index: 3, type: ByRef Int64 (16404)
+param index: 4, type: ByRef Int64 (16404)
+Var> param index: 0, type: ByRef OleStr (16392)
+param index: 1, type: ByRef OleStr (16392)
+param index: 2, type: ByRef OleStr (16392)
