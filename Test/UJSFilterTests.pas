@@ -4,7 +4,8 @@ interface
 
 uses
   Forms, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-  dwsJSFilter, dwsHtmlFilter, dwsXPlatform, dwsUtils, cef, ceflib, dwsJSLibModule;
+  dwsJSFilter, dwsHtmlFilter, dwsXPlatform, dwsUtils, cef, ceflib, dwsJSLibModule,
+  StrUtils;
 
 type
 
@@ -178,10 +179,10 @@ begin
          sl.LoadFromFile(s);
          prog := FMainCompiler.Compile(sl.Text);
 
-         CheckEquals('', prog.Msgs.AsInfo, s);
+         CheckEquals(False, prog.Msgs.HasErrors, s);
          exec:=prog.Execute;
 
-         CheckEquals('', prog.Msgs.AsInfo, 'exec '+s);
+         CheckEquals('', exec.Msgs.AsInfo, 'exec '+s);
 
          FLastJSResult:='*no result*';
          FConsole:='';
@@ -192,9 +193,9 @@ begin
          if prog.Msgs.Count=0 then
             output:=FConsole+FLastJSResult
          else begin
-            output:= 'Errors >>>>'#13#10
-                    +prog.Msgs.AsInfo
-                    +'Result >>>>'#13#10
+            output:= 'Errors >>>>'#10
+                    +ReplaceStr(prog.Msgs.AsInfo, #13#10, #10)
+                    +'Result >>>>'#10
                     +FConsole+FLastJSResult;
          end;
 

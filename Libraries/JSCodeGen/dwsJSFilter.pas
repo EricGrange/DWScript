@@ -104,6 +104,7 @@ end;
 function TdwsJSFilter.Process(const tText : String; msgs : TdwsMessageList) : String;
 var
    prog : IdwsProgram;
+   lineColPos, lineOffset, colOffset : Integer;
 
    function Convert(const dwsCode : String) : String;
    begin
@@ -113,6 +114,8 @@ var
          prog:=FCompiler.Compile(dwsCode)
       else FCompiler.RecompileInContext(prog, dwsCode);
 
+
+      msgs.AddMsgs(prog.Msgs, lineOffset, colOffset);
       if prog.Msgs.HasErrors then
          Exit(prog.Msgs.AsInfo);
 
@@ -132,6 +135,10 @@ begin
 
    input:=inherited Process(tText, msgs);
 
+   lineColPos:=1;
+   lineOffset:=0;
+   colOffset:=0;
+
    FCodeGen.Clear;
    try
       output:=TWriteOnlyBlockStream.Create;
@@ -145,6 +152,17 @@ begin
             end else output.WriteSubString(input, p, start-p);
             start:=start+Length(PatternOpen);
             stop:=PosEx(PatternClose, input, start);
+            while lineColPos<start do begin
+               case input[lineColPos] of
+                  #10 : begin
+                     colOffset:=0;
+                     Inc(lineOffset);
+                  end;
+               else
+                  Inc(colOffset);
+               end;
+               Inc(lineColPos);
+            end;
             if stop<=0 then begin
                output.WriteString(Convert(Copy(input, start, MaxInt)));
                Break;

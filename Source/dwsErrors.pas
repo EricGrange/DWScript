@@ -82,7 +82,6 @@ type
       public
          constructor Create(Msgs: TdwsMessageList; const Text: String);
 
-         function SameMessageAs(aMsg : TdwsMessage) : Boolean; virtual;
          function AsInfo: String; virtual; abstract;
          property Text : String read FText;
    end;
@@ -100,7 +99,6 @@ type
    TScriptMessage = class(TdwsMessage)
       Pos: TScriptPos;
       constructor Create(Msgs: TdwsMessageList; const Text: String; const P: TScriptPos); overload;
-      function SameMessageAs(aMsg : TdwsMessage) : Boolean; override;
       function AsInfo: String; override;
    end;
 
@@ -126,7 +124,8 @@ type
    //
    TdwsMessageList = class
       private
-         FMessageList: TTightList;
+         FMessageList : TTightList;
+         FSourceFiles : TTightList;
          FHasErrors : Boolean;
 
       protected
@@ -140,6 +139,7 @@ type
          function LastMessagePos : TScriptPos;
 
          procedure AddMsg(aMessage : TdwsMessage); virtual;
+         procedure AddMsgs(src : TdwsMessageList; lineOffset, colOffset : Integer);
          procedure Clear;
 
          function AsInfo: String;
@@ -344,6 +344,7 @@ end;
 destructor TdwsMessageList.Destroy;
 begin
    FMessageList.Clean;
+   FSourceFiles.Clean;
    inherited;
 end;
 
@@ -352,6 +353,7 @@ end;
 procedure TdwsMessageList.Clear;
 begin
    FMessageList.Clean;
+   FSourceFiles.Clean;
    FHasErrors:=False;
 end;
 
@@ -374,6 +376,34 @@ end;
 procedure TdwsMessageList.AddMsg(aMessage: TdwsMessage);
 begin
    FMessageList.Add(aMessage);
+end;
+
+// AddMsgs
+//
+procedure TdwsMessageList.AddMsgs(src : TdwsMessageList; lineOffset, colOffset : Integer);
+var
+   i : Integer;
+   msg : TdwsMessage;
+   srcMsg : TScriptMessage;
+   sf : TSourceFile;
+begin
+   for i:=0 to src.Count-1 do begin
+      msg:=src.Msgs[i];
+      if msg is TScriptMessage then begin
+         srcMsg:=TScriptMessage(msg);
+         sf:=TSourceFile.Create;
+         sf.Name:=srcMsg.Pos.SourceFile.Name;
+         sf.Code:=srcMsg.Pos.SourceFile.Code;
+         FSourceFiles.Add(sf);
+         srcMsg.Pos.SourceFile:=sf;
+         if srcMsg.Pos.Line=1 then
+            srcMsg.Pos.Col:=srcMsg.Pos.Col+colOffset;
+         srcMsg.Pos.Line:=srcMsg.Pos.Line+lineOffset;
+      end;
+      AddMsg(msg);
+   end;
+   src.FMessageList.Clear;
+   src.FSourceFiles.Clear;
 end;
 
 // AddInfo
@@ -420,13 +450,6 @@ begin
    FText:=Text;
 end;
 
-// SameMessageAs
-//
-function TdwsMessage.SameMessageAs(aMsg : TdwsMessage) : Boolean;
-begin
-   Result:=(ClassType=aMsg.ClassType) and (FText=aMsg.FText);
-end;
-
 // ------------------
 // ------------------ TInfoMessage ------------------
 // ------------------
@@ -448,14 +471,6 @@ constructor TScriptMessage.Create(Msgs: TdwsMessageList; const Text: String; con
 begin
    inherited Create(Msgs, Text);
    Pos:=P;
-end;
-
-// SameMessageAs
-//
-function TScriptMessage.SameMessageAs(aMsg : TdwsMessage) : Boolean;
-begin
-   Result:=    inherited SameMessageAs(aMsg)
-           and (Pos.SamePosAs((aMsg as TScriptMessage).Pos));
 end;
 
 // AsInfo
