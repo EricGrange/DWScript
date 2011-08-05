@@ -1,0 +1,15 @@
+<script>
+
+<%pas2js
+procedure Dummy; deprecated;
+begin
+end;
+%>
+
+// bla bla
+
+<%pas2js Dummy;
+Dummy;
+%>
+
+</script>
