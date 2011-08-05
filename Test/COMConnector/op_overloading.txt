@@ -1,0 +1,5 @@
+param index: 0, type: Array Variant (8204)
+    [0] Int64
+    [1] OleStr
+    [2] Double
+    [3] Date
