@@ -5020,8 +5020,6 @@ begin
          Result:=FElse;
          FElse:=nil;
       end;
-      if Result=nil then
-         Result:=TNullExpr.Create(Prog, FScriptPos);
       Free;
    end;
 end;
