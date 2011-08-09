@@ -1007,7 +1007,8 @@ begin
 
    RegisterCodeGen(TConstructorStaticExpr,      TJSConstructorStaticExpr.Create);
    RegisterCodeGen(TConstructorVirtualExpr,     TJSConstructorVirtualExpr.Create);
-   RegisterCodeGen(TConstructorVirtualObjExpr,  TJSConstructorVirtualExpr.Create);
+   RegisterCodeGen(TConstructorVirtualObjExpr,  TJSMethodVirtualExpr.Create);
+   RegisterCodeGen(TConstructorStaticObjExpr,   TJSMethodStaticExpr.Create);
 
    RegisterCodeGen(TMethodStaticExpr,           TJSMethodStaticExpr.Create);
    RegisterCodeGen(TMethodVirtualExpr,          TJSMethodVirtualExpr.Create);
