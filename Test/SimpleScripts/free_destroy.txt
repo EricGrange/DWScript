@@ -1,0 +1,8 @@
+Create TFirstClass
+2nd Create TSecondClass
+Create TSecondClass
+Create TFirstClass
+Destroy TFirstClass
+2nd Destroy TSecondClass
+Destroy TFirstClass
+Destroy TSecondClass

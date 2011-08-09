@@ -695,7 +695,8 @@ const
                +#9'$Init:function () {},'#13#10
                +#9'Create:function (Self) { return Self; },'#13#10
                +#9'Destroy:function (Self) { },'#13#10
-               +#9'Free:function (Self) { if (Self!=null) Self.ClassType.Destroy(Self) }'#13#10
+               +#9'Destroy$v:function(Self){return Self.ClassType.Destroy.apply(Self.ClassType, arguments)},'#13#10
+               +#9'Free:function (Self) { if (Self!=null) Self.ClassType.Destroy$v(Self) }'#13#10
                +'}';
        Dependency : '$New'),
       (Name : 'Exception';
@@ -1203,6 +1204,7 @@ begin
    WriteStringLn(',');
 
    Dependencies.Add('$New');
+   Dependencies.Add('TObject');
 
    WriteStringLn('$Init:function (Self) {');
    Indent;
@@ -1233,7 +1235,7 @@ begin
 
    for i:=0 to cls.VMTCount-1 do begin
       meth:=cls.VMTMethod(i);
-      if meth.Name='Destroy' then continue;
+//      if meth.Name='Destroy' then continue;
       if meth.ClassSymbol<>cls then begin
          WriteString(',');
          WriteString(MemberName(meth, meth.ClassSymbol));
@@ -1757,7 +1759,8 @@ begin
    while cls<>nil do begin
       match:=cls.Members.FindSymbol(sym.Name, cvMagic);
       if match<>nil then begin
-         if     (sym.ClassType=match.ClassType)
+         if     (   (sym.ClassType=match.ClassType)
+                 or ((sym.ClassType=TSourceMethodSymbol) and (match.ClassType=TMethodSymbol)))
             and (sym is TMethodSymbol)
             and (TMethodSymbol(sym).IsVirtual)
             and (TMethodSymbol(sym).VMTIndex=TMethodSymbol(match).VMTIndex) then begin
