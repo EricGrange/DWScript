@@ -166,8 +166,8 @@ begin
                   Inc(ignored)
                else if Pos('TOpenArrayExpr', e.Message)>0 then
                   Inc(ignored)
-               else if Pos('TDestructor', e.Message)>0 then
-                  Inc(ignored)
+//               else if Pos('TDestructor', e.Message)>0 then
+//                  Inc(ignored)
                else diagnostic.Add(ExtractFileName(FTests[i])+': '+e.Message);
             end;
          end;
@@ -261,8 +261,8 @@ begin
                   Inc(ignored)
                else if Pos('TOpenArrayExpr', e.Message)>0 then
                   Inc(ignored)
-               else if Pos('TDestructor', e.Message)>0 then
-                  Inc(ignored)
+//               else if Pos('TDestructor', e.Message)>0 then
+//                  Inc(ignored)
                else diagnostic.Add(ExtractFileName(FTests[i])+': '+e.Message);
             end;
          end;

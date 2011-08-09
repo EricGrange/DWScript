@@ -693,7 +693,9 @@ const
                +#9'ClassName:function(Self){return Self.$ClassName},'#13#10
                +#9'ClassType:function(Self){return Self},'#13#10
                +#9'$Init:function () {},'#13#10
-               +#9'Create:function (Self) { return Self; }'#13#10
+               +#9'Create:function (Self) { return Self; },'#13#10
+               +#9'Destroy:function (Self) { },'#13#10
+               +#9'Free:function (Self) { if (Self!=null) Self.ClassType.Destroy(Self) }'#13#10
                +'}';
        Dependency : '$New'),
       (Name : 'Exception';
@@ -1009,6 +1011,9 @@ begin
    RegisterCodeGen(TConstructorVirtualExpr,     TJSConstructorVirtualExpr.Create);
    RegisterCodeGen(TConstructorVirtualObjExpr,  TJSMethodVirtualExpr.Create);
    RegisterCodeGen(TConstructorStaticObjExpr,   TJSMethodStaticExpr.Create);
+
+   RegisterCodeGen(TDestructorStaticExpr,       TJSMethodStaticExpr.Create);
+   RegisterCodeGen(TDestructorVirtualExpr,      TJSMethodVirtualExpr.Create);
 
    RegisterCodeGen(TMethodStaticExpr,           TJSMethodStaticExpr.Create);
    RegisterCodeGen(TMethodVirtualExpr,          TJSMethodVirtualExpr.Create);
