@@ -187,6 +187,8 @@ begin
          source.LoadFromFile(FTests[i]);
          prog:=FCompiler.Compile(source.Text);
 
+         if prog.Msgs.HasErrors then continue;
+
          expectedResult.LoadFromFile(ChangeFileExt(FTests[i], '.txt'));
          if Copy(expectedResult[0], 1, 5)='Swaps' then
             expectedResult.Delete(0); // variable part because of randomization
