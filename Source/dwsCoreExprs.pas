@@ -5728,6 +5728,8 @@ begin
       if EScriptError(mainException).Pos.Defined then
          msg:=msg+EScriptError(mainException).Pos.AsInfo;
       Result:=CreateEDelphiObj(exec, mainException.ClassName, msg);
+   end else if mainException is EScriptStackOverflow then begin
+      Result:=Null
    end else begin
       // A Delphi exception. Transform it to a EDelphi-dws exception
       Result:=CreateEDelphiObj(exec, mainException.ClassName, mainException.Message);

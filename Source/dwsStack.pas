@@ -125,7 +125,8 @@ type
          property MaxRecursionDepth : Integer read FParams.MaxRecursionDepth write FParams.MaxRecursionDepth;
    end;
 
-   EStackException = class(Exception);
+   EScriptStackException = class(Exception);
+   EScriptStackOverflow = class(EScriptStackException);
 
 procedure DWSCopyData(const SourceData: TData; SourceAddr: Integer;
                    DestData: TData; DestAddr: Integer; Size: Integer);
@@ -230,7 +231,7 @@ end;
 procedure TStackMixIn.GrowTo(desiredSize : Integer);
 begin
    if desiredSize > FMaxSize then
-      raise EStackException.CreateFmt(RTE_MaximalDatasizeExceeded, [FMaxSize]);
+      raise EScriptStackException.CreateFmt(RTE_MaximalDatasizeExceeded, [FMaxSize]);
    FSize := ((desiredSize) div FParams.ChunkSize + 1) * FParams.ChunkSize;
    if FSize > FMaxSize then
       FSize := FMaxSize;

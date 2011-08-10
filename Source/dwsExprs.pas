@@ -2145,7 +2145,7 @@ begin
             Msgs.AddRuntimeError(e.Pos, e.Message, e.ScriptCallStack);
          on e: EScriptError do
             Msgs.AddRuntimeError(e.Pos, e.Message, e.ScriptCallStack);
-         on e: EStackException do
+         on e: EScriptStackException do
             Msgs.AddRuntimeError(LastScriptError.ScriptPos,
                                  e.Message,
                                  LastScriptCallStack);
@@ -2462,7 +2462,7 @@ begin
    FCallStack.Pop;
    SetScriptError(FCallStack.Peek);
    FCallStack.Pop;
-   raise EStackException.CreateFmt(RTE_MaximalRecursionExceeded, [FStack.MaxRecursionDepth]);
+   raise EScriptStackOverflow.CreateFmt(RTE_MaximalRecursionExceeded, [FStack.MaxRecursionDepth]);
 end;
 
 // CallStackDepth
