@@ -34,7 +34,7 @@ type
 
    // TdwsSimpleDebugger
    //
-   TdwsSimpleDebugger = class (TComponent, IUnknown, IDebugger)
+   TdwsSimpleDebugger = class (TComponent, IDebugger)
       private
 
       protected
