@@ -2996,6 +2996,7 @@ var
    symPos : TScriptPos;
    baseType : TTypeSymbol;
    dataExpr : TDataExpr;
+   funcExpr : TFuncExpr;
 begin
    Result := Expr;
    try
@@ -3035,9 +3036,10 @@ begin
                   if member is TMethodSymbol then begin
 
                      if TMethodSymbol(member).IsClassMethod then
-                        Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkClassOfRef, symPos, False)
-                     else Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkObjRef, symPos, False);
-                     Result:=WrapUpFunctionRead(TFuncExpr(Result), expecting);
+                        funcExpr := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkClassOfRef, symPos, False)
+                     else funcExpr := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkObjRef, symPos, False);
+                     Result:=nil;
+                     Result:=WrapUpFunctionRead(funcExpr, expecting);
 
                   end else if member is TFieldSymbol then
 
@@ -3072,9 +3074,10 @@ begin
                         fkDestructor:
                            FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticMethodExpected);
                      end;
-                     Result := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result),
+                     funcExpr:=GetMethodExpr(TMethodSymbol(member), TDataExpr(Result),
                                              rkClassOfRef, symPos, False);
-                     Result:=WrapUpFunctionRead(TFuncExpr(Result), expecting);
+                     Result:=nil;
+                     Result:=WrapUpFunctionRead(funcExpr, expecting);
 
                   // Static property
                   end else if member is TPropertySymbol then
@@ -3627,9 +3630,9 @@ begin
                 and not FTok.Test(ttDOT))
             or (    (expecting is TFuncSymbol)
                 and funcExpr.funcSym.IsCompatible(expecting)) then begin
-            Result:=TFuncRefExpr.Create(FProg, funcExpr);
             if funcExpr.FuncSym.Level>1 then
                FMsgs.AddCompilerError(funcExpr.Pos, CPE_LocalFunctionAsDelegate);
+            Result:=TFuncRefExpr.Create(FProg, funcExpr);
          end else begin
             funcExpr.TypeCheckArgs(FProg);
          end;
@@ -4310,18 +4313,10 @@ begin
          if not FTok.TestDelete(ttEND) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
       except
-         on E : EClassIncompleteError do
-            ; // leave it handled
-         else begin
-            // if not ClassIncompleteError then free the class and re-raise error
-            if not isInSymbolTable then begin
-               if coSymbolDictionary in FCompilerOptions then
-                  FSymbolDictionary.Remove(Result);
-               Result.Free;
-            end;
-            raise;
-         end;
-      end; {except}
+         // Set Result to nil to prevent auto-forward removal then re-reraise
+         Result:=nil;
+         raise;
+      end;
    finally
       if not isInSymbolTable then
          FProg.Table.Remove(Result);  // auto-forward
@@ -4831,7 +4826,14 @@ begin
       ttCLASS :
          if FTok.TestDelete(ttOF) then
             Result:=ReadClassOf(typeName)
-         else Result:=ReadClass(typeName);
+         else begin
+            if typeContext=tcDeclaration then
+               Result:=ReadClass(typeName)
+            else begin
+               Result:=nil;
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_TypeExpected);
+            end;
+         end;
 
       ttBLEFT :
          Result:=ReadEnumeration(typeName);
