@@ -2150,6 +2150,14 @@ end;
 // IsCompatible
 //
 function TFuncSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+const
+   cCompatibleKinds : array [TFuncKind, TFuncKind] of Boolean =
+      //  fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod
+      ( (     True,      False,        False,         False,      True ),       // fkFunction
+        (     False,     True,         False,         False,      True ),       // fkProcedure
+        (     False,     False,        True,          False,      False),       // fkConstructor
+        (     False,     False,        False,         True,       False),       // fkDestructor
+        (     True,      True,         False,         False,      True )  );    // fkMethod
 var
    funcSym : TFuncSymbol;
    i : Integer;
@@ -2163,8 +2171,8 @@ begin
       if not (typSym is TFuncSymbol) then
          Exit;
       funcSym := TFuncSymbol(typSym);
-      if (Kind <> funcSym.Kind) or (Params.Count <> funcSym.Params.Count) then
-         Exit;
+      if Params.Count<>funcSym.Params.Count then Exit;
+      if not cCompatibleKinds[Kind, funcSym.Kind] then Exit;
       if Typ <> funcSym.Typ then Exit;
       for i:=0 to Params.Count-1 do begin
          param:=Params[i];
