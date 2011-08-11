@@ -169,9 +169,10 @@ procedure TAlgorithmsTests.ExecutionThreaded;
 const
    cRunsPerThread = 15;
    cThreadsPerScript = 3;
+   cMaxScriptsAtATime = 8;
 var
    source, expectedResult : TStringList;
-   i, j : Integer;
+   i, j, k : Integer;
    prog : IdwsProgram;
    threads : array of TThreadedRunner;
    runner : TThreadedRunner;
@@ -182,49 +183,66 @@ begin
    expectedResult:=TStringList.Create;
    try
 
-      SetLength(threads, FTests.Count*cThreadsPerScript);
-      for i:=0 to FTests.Count-1 do begin
-         source.LoadFromFile(FTests[i]);
-         prog:=FCompiler.Compile(source.Text);
+      SetLength(threads, cMaxScriptsAtATime*cThreadsPerScript);
 
-         if prog.Msgs.HasErrors then continue;
+      i:=0;
+      while i<FTests.Count do begin
 
-         expectedResult.LoadFromFile(ChangeFileExt(FTests[i], '.txt'));
-         if Copy(expectedResult[0], 1, 5)='Swaps' then
-            expectedResult.Delete(0); // variable part because of randomization
+         for k:=0 to cMaxScriptsAtATime-1 do begin
 
-         // prepare threads
-         for j:=0 to cThreadsPerScript-1 do begin
-            runner:=TThreadedRunner.Create(True);
-            runner.FreeOnTerminate:=False;
-            runner.Count:=cRunsPerThread;
-            runner.Script:=Format('%s [%d]', [ExtractFileName(FTests[i]), j]);
-            runner.Exec:=prog.CreateNewExecution;
-            runner.ExpectedResult:=expectedResult.Text;
-            threads[i*cThreadsPerScript+j]:=runner;
+            if i>=FTests.Count then begin
+               for j:=0 to cThreadsPerScript-1 do
+                  threads[k*cThreadsPerScript+j]:=nil;
+               continue;
+            end;
+
+            source.LoadFromFile(FTests[i]);
+            prog:=FCompiler.Compile(source.Text);
+
+            if prog.Msgs.HasErrors then continue;
+
+            expectedResult.LoadFromFile(ChangeFileExt(FTests[i], '.txt'));
+            if Copy(expectedResult[0], 1, 5)='Swaps' then
+               expectedResult.Delete(0); // variable part because of randomization
+
+            // prepare threads
+            for j:=0 to cThreadsPerScript-1 do begin
+               runner:=TThreadedRunner.Create(True);
+               runner.FreeOnTerminate:=False;
+               runner.Count:=cRunsPerThread;
+               runner.Script:=Format('%s [%d]', [ExtractFileName(FTests[i]), j]);
+               runner.Exec:=prog.CreateNewExecution;
+               runner.ExpectedResult:=expectedResult.Text;
+               threads[k*cThreadsPerScript+j]:=runner;
+            end;
+
+            // unleash threads
+            for j:=0 to cThreadsPerScript-1 do
+               threads[k*cThreadsPerScript+j].Start;
+
+            Inc(i);
+
          end;
 
-         // unleash threads
-         for j:=0 to cThreadsPerScript-1 do
-            threads[i*cThreadsPerScript+j].Start;
+         // wait for completion and check for failures
+         try
+            for k:=0 to High(threads) do begin
+               runner:=threads[k];
+               if runner<>nil then begin
+                  runner.WaitFor;
+                  CheckEquals(runner.ExpectedResult, runner.ActualResult, 'Thread failure for '+runner.Script);
+               end;
+            end;
+         finally
+            for k:=0 to High(threads) do
+               FreeAndNil(threads[k]);
+         end;
 
       end;
 
    finally
       source.Free;
       expectedResult.Free;
-   end;
-
-   // wait for completion and check for failures
-   try
-      for i:=0 to High(threads) do begin
-         runner:=threads[i];
-         runner.WaitFor;
-         CheckEquals(runner.ExpectedResult, runner.ActualResult, 'Thread failure for '+runner.Script);
-      end;
-   finally
-      for i:=0 to High(threads) do
-         threads[i].Free;
    end;
 end;
 
