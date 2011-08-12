@@ -380,7 +380,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..118] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..119] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -581,6 +581,8 @@ const
                +'d.value=v.substr(0,i-1)+s+v.substr(i-1); }'),
       (Name : 'Int';
        Code : 'function Int(v) { return (v>0)?Math.floor(v):Math.ceil(v) }'),
+      (Name : 'IntPower';
+       Code : 'function IntPower(x,y) { return Math.pow(x,y) }'),
       (Name : 'IntToBin';
        Code : 'function IntToBin(v,d) { var r=v.toString(2).toUpperCase(); while (r.length<d) r="0"+r; return r }'),
       (Name : 'IntToHex';
@@ -2422,6 +2424,7 @@ begin
    FMagicCodeGens.AddObject('Exp', TdwsExprGenericCodeGen.Create(['Math.exp(', 0, ')']));
    FMagicCodeGens.AddObject('Floor', TdwsExprGenericCodeGen.Create(['Math.floor(', 0, ')']));
    FMagicCodeGens.AddObject('HexToInt', TdwsExprGenericCodeGen.Create(['parseInt(', 0, ',16)']));
+   FMagicCodeGens.AddObject('IntPower', TdwsExprGenericCodeGen.Create(['Math.pow(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('IntToStr', TdwsExprGenericCodeGen.Create(['(', 0, ').toString()']));
    FMagicCodeGens.AddObject('LeftStr', TdwsExprGenericCodeGen.Create(['(', 0, ').substr(0,', 1, ')']));
    FMagicCodeGens.AddObject('Ln', TdwsExprGenericCodeGen.Create(['Math.log(', 0, ')']));

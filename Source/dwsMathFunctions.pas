@@ -122,6 +122,10 @@ type
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
 
+   TIntPowerFunc = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+   end;
+
    TSqrtFunc = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
@@ -448,6 +452,13 @@ begin
    Result:=Power(args.AsFloat[0], args.AsFloat[1]);
 end;
 
+{ TIntPowerFunc }
+
+procedure TIntPowerFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+begin
+   Result:=IntPower(args.AsFloat[0], args.AsInteger[1]);
+end;
+
 { TDegToRadFunc }
 
 procedure TDegToRadFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
@@ -591,6 +602,7 @@ initialization
    RegisterInternalFloatFunction(TLog10Func, 'Log10', ['v', cFloat], True);
    RegisterInternalFloatFunction(TLogNFunc, 'LogN', ['n', cFloat, 'x', cFloat], True);
    RegisterInternalFloatFunction(TPowerFunc, 'Power', ['base', cFloat, 'exponent', cFloat], True);
+   RegisterInternalFloatFunction(TIntPowerFunc, 'IntPower', ['base', cFloat, 'exponent', cInteger], True);
    RegisterInternalFloatFunction(TSqrtFunc, 'Sqrt', ['v', cFloat], True);
    RegisterInternalFloatFunction(TIntFunc, 'Int', ['v', cFloat], True);
    RegisterInternalFloatFunction(TFracFunc, 'Frac', ['v', cFloat], True);
