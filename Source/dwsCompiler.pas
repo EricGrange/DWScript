@@ -41,6 +41,7 @@ type
 
   TdwsCompiler = class;
   TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
+  TCompilerSectionChangedEvent = procedure (compiler : TdwsCompiler) of object;
 
   TdwsFilter = class;
 
@@ -212,6 +213,8 @@ type
                           tcParameter, tcResult, tcOperand, tcExceptionClass,
                           tcProperty);
 
+   TdwsReadSection = (rsMixed, rsHeader, rsInterface, rsImplementation);
+
    // TdwsCompiler
    //
    TdwsCompiler = class
@@ -239,8 +242,10 @@ type
       FIsSwitch : Boolean;
       FLineCount : Integer;
       FSourcePostConditionsIndex : Integer;
+      FReadSection : TdwsReadSection;
 
       FOnReadInstr : TCompilerReadInstrEvent;
+      FOnSectionChanged : TCompilerSectionChangedEvent;
 
       function Optimize : Boolean;
 
@@ -417,9 +422,11 @@ type
       procedure WarnForVarUsage(varExpr : TVarExpr; const pos : TScriptPos);
 
       property CurrentProg : TdwsProgram read FProg write FProg;
+      property ReadSection : TdwsReadSection read FReadSection write FReadSection;
       property Tokenizer : TTokenizer read FTok write FTok;
 
       property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
+      property OnSectionChanged : TCompilerSectionChangedEvent read FOnSectionChanged write FOnSectionChanged;
    end;
 
   TdwsDefaultResult = class(TdwsResult)
@@ -815,6 +822,7 @@ begin
    FMainProg.ConditionalDefines:=conf.Conditionals;
    FContextMap:=FMainProg.ContextMap;
    FSymbolDictionary:=FMainProg.SymbolDictionary;
+   FReadSection:=rsMixed;
 
    FProg:=FMainProg;
 
@@ -1134,6 +1142,19 @@ begin
       end;
       ttOPERATOR :
          ReadOperatorDecl;
+      ttINTERFACE, ttIMPLEMENTATION : begin
+         if    ((token=ttINTERFACE) and not (ReadSection in [rsMixed, rsHeader]))
+            or ((token=ttIMPLEMENTATION) and not (ReadSection in [rsInterface])) then
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPU_UnexpectedStatement,
+                                      [cTokenStrings[token]]);
+         if token=ttINTERFACE then
+            FReadSection:=rsInterface
+         else FReadSection:=rsImplementation;
+         if Assigned(FOnSectionChanged) then
+            FOnSectionChanged(Self);
+         if token=ttIMPLEMENTATION then
+            Result:=ReadBlocks([ttEND], token);
+      end;
    else
       Result:=ReadStatement;
    end;
@@ -5794,7 +5815,7 @@ begin
                if funcSym is TMethodSymbol then
                   value:=TMethodSymbol(funcSym).ClassSymbol.Name+'.'+funcSym.Name
                else value:=funcSym.Name;
-            end else value:='*Main*';
+            end else value:=MSG_MainFunction;
          end else FMsgs.AddCompilerErrorFmt(hotPos, CPE_IncludeItemUnknown, [name]);
 
          Result:=TConstStringExpr.CreateUnified(FProg, nil, value);

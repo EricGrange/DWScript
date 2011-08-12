@@ -30,6 +30,7 @@ type
          constructor Create; virtual;
 
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; virtual;
+         procedure SectionChanged(compiler : TdwsCompiler); virtual;
    end;
 
    // TdwsLanguageExtensionAggregator
@@ -49,7 +50,7 @@ type
          procedure Clear;
 
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; override;
-
+         procedure SectionChanged(compiler : TdwsCompiler); override;
    end;
 
 // ------------------------------------------------------------------
@@ -76,6 +77,13 @@ end;
 function TdwsLanguageExtension.ReadInstr(compiler : TdwsCompiler) : TNoResultExpr;
 begin
    Result:=nil;
+end;
+
+// SectionChanged
+//
+procedure TdwsLanguageExtension.SectionChanged(compiler : TdwsCompiler);
+begin
+   // nothing
 end;
 
 // ------------------
@@ -139,6 +147,19 @@ begin
       if Result<>nil then Exit;
    end;
    Result:=nil;
+end;
+
+// SectionChanged
+//
+procedure TdwsLanguageExtensionAggregator.SectionChanged(compiler : TdwsCompiler);
+var
+   i : Integer;
+   ext : TdwsLanguageExtension;
+begin
+   for i:=0 to FList.Count-1 do begin
+      ext:=TdwsLanguageExtension(FList.List[i]);
+      ext.SectionChanged(compiler);
+   end;
 end;
 
 end.

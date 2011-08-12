@@ -108,6 +108,7 @@ const
   CPE_AssignExpected = '":=" expected';
   CPE_ArrayBracketOrClassExpected = '"[" or class expected';
   CPE_OnOffExpected = 'ON/OFF expected';
+  CPU_UnexpectedStatement = 'Unexpected statement "%s"';
 
   // ReadName
   CPE_UnknownName = 'Unknown name "%s"';
@@ -355,6 +356,7 @@ const
   // Constants of TMsgs in dwsErrors.pas
   MSG_DatatypeMissing = 'Invalid type: %s!';
   MSG_MainModule = '*MainModule*';
+  MSG_MainFunction = '*Main*';
   MSG_Info = 'Info: %s';
   MSG_Error = 'Error: %s';
   MSG_ScriptPosLine = 'line: %d';
