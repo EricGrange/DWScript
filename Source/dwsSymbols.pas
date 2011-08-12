@@ -62,11 +62,11 @@ type
    // Interface for external debuggers
    IDebugger = interface
       ['{8D534D14-4C6B-11D5-8DCB-0000216D9E86}']
-      procedure StartDebug(exec: TdwsExecution);
-      procedure DoDebug(exec: TdwsExecution; expr: TExprBase);
-      procedure StopDebug(exec: TdwsExecution);
-      procedure EnterFunc(exec: TdwsExecution; funcExpr: TExprBase);
-      procedure LeaveFunc(exec: TdwsExecution; funcExpr: TExprBase);
+      procedure StartDebug(exec : TdwsExecution);
+      procedure DoDebug(exec : TdwsExecution; expr : TExprBase);
+      procedure StopDebug(exec : TdwsExecution);
+      procedure EnterFunc(exec : TdwsExecution; funcExpr : TExprBase);
+      procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase);
    end;
 
    TProgramState = (psUndefined, psReadyToRun, psRunning, psRunningStopped, psTerminated);
