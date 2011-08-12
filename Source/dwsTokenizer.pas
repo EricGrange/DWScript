@@ -39,13 +39,14 @@ type
      ttABSTRACT, ttSEALED, ttSTATIC, ttDEPRECATED,
      ttEXTERNAL, ttFORWARD, ttIN,
      ttENSURE, ttREQUIRE, ttINVARIANTS, ttOLD,
+     ttINTERFACE, ttIMPLEMENTATION,
      ttBEGIN, ttEND, ttBREAK, ttCONTINUE, ttEXIT,
      ttIF, ttTHEN, ttELSE, ttWHILE, ttREPEAT, ttUNTIL, ttFOR, ttTO, ttDOWNTO, ttDO,
      ttCASE,
      ttTRUE, ttFALSE,
      ttAND, ttOR, ttXOR, ttIMPLIES, ttDIV, ttMOD, ttNOT, ttSHL, ttSHR,
      ttPLUS, ttMINUS,
-     ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT,
+     ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttDOLLAR,
      ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
      ttLESSLESS, ttGTRGTR,
      ttSEMI, ttCOMMA, ttCOLON,
@@ -198,13 +199,14 @@ const
      'ABSTRACT', 'SEALED', 'STATIC', 'DEPRECATED',
      'EXTERNAL', 'FORWARD', 'IN',
      'ENSURE', 'REQUIRE', 'INVARIANTS', 'OLD',
+     'INTERFACE', 'IMPLEMENTATION',
      'BEGIN', 'END', 'BREAK', 'CONTINUE', 'EXIT',
      'IF', 'THEN', 'ELSE', 'WHILE', 'REPEAT', 'UNTIL', 'FOR', 'TO', 'DOWNTO', 'DO',
      'CASE',
      'TRUE', 'FALSE',
      'AND', 'OR', 'XOR', 'IMPLIES', 'DIV', 'MOD', 'NOT', 'SHL', 'SHR',
      '+', '-',
-     '*', '/', '%', '^', '@',
+     '*', '/', '%', '^', '@', '$',
      '=', '<>', '>', '>=', '<', '<=',
      '<<', '>>',
      ';', ',', ':',
@@ -455,6 +457,9 @@ begin
      '.':
        if Len=1 then
          Result := ttDOT;
+     '$':
+       if Len=1 then
+         Result := ttDOLLAR;
    else
       Result:=ToAlphaType;
    end;
@@ -463,14 +468,14 @@ end;
 // ToAlphaType
 //
 const
-   cAlphaTypeTokens : array [0..80] of TTokenType = (
+   cAlphaTypeTokens : array [0..82] of TTokenType = (
       ttAND, ttARRAY, ttABSTRACT, ttAS,
       ttBEGIN, ttBREAK,
       ttCONST, ttCLASS, ttCONSTRUCTOR, ttCASE, ttCDECL, ttCONTINUE,
       ttDO, ttDOWNTO, ttDIV, ttDEFAULT, ttDESTRUCTOR, ttDEPRECATED,
       ttEND, ttENSURE, ttELSE, ttEXCEPT, ttEXIT, ttEXTERNAL,
       ttFOR, ttFALSE, ttFINAL, ttFINALLY, ttFORWARD, ttFUNCTION,
-      ttIF, ttIMPLIES, ttIN, ttINVARIANTS, ttIS, ttINHERITED, ttINDEX,
+      ttIF, ttIMPLIES, ttIN, ttINVARIANTS, ttIS, ttINHERITED, ttINDEX, ttINTERFACE, ttIMPLEMENTATION,
       ttLAZY,
       ttMETHOD, ttMOD,
       ttNEW, ttNOT, ttNIL,
@@ -491,7 +496,7 @@ type
    TTokenAlphaLookups = array of TTokenAlphaLookup;
    PTokenAlphaLookups = ^TTokenAlphaLookups;
 var
-   vAlphaToTokenType : array [2..11] of array ['A'..'X'] of TTokenAlphaLookups;
+   vAlphaToTokenType : array [2..14] of array ['A'..'X'] of TTokenAlphaLookups;
 
 procedure PrepareAlphaToTokenType;
 var
@@ -501,7 +506,7 @@ begin
    for i:=Low(cAlphaTypeTokens) to High(cAlphaTypeTokens) do begin
       tokenName:=GetEnumName(TypeInfo(TTokenType), Integer(cAlphaTypeTokens[i]));
       len:=Length(tokenName)-2;
-      Assert(len<=11);
+      Assert(len<=14);
       n:=Length(vAlphaToTokenType[len][tokenName[3]]);
       SetLength(vAlphaToTokenType[len][tokenName[3]], n+1);
       with vAlphaToTokenType[len][tokenName[3]][n] do begin
@@ -1194,6 +1199,7 @@ initialization
    sIntExpF.SetElse(TErrorTransition.Create(TOK_NumberExpected));
 
    sHex.AddTransition(cHEX, TConsumeTransition.Create(sHexF, [], caNone));
+   sHex.AddTransition(['('], TCheckTransition.Create(sStart, [toFinal], caName));
    sHex.SetElse(TErrorTransition.Create(TOK_HexDigitExpected));
 
    sHexF.AddTransition(cHEX, TConsumeTransition.Create(sHexF, [], caNone));
