@@ -73,6 +73,11 @@ type
 
          function MemberName(sym : TSymbol; cls : TClassSymbol) : String;
 
+         // returns all the RTL support JS functions
+         class function All_RTL_JS : String;
+         // removes all RTL dependencies (use in combination with All_RTL_JS)
+         procedure IgnoreRTLDependencies;
+
          property MainBodyName : String read FMainBodyName write FMainBodyName;
    end;
 
@@ -1772,6 +1777,38 @@ begin
    Result:=SymbolMappedName(sym);
    if n>0 then
       Result:=Format('%s$%d', [Result, n]);
+end;
+
+// All_RTL_JS
+//
+class function TdwsJSCodeGen.All_RTL_JS : String;
+var
+   i : Integer;
+   wobs : TWriteOnlyBlockStream;
+begin
+   wobs:=TWriteOnlyBlockStream.Create;
+   try
+      for i:=Low(cJSRTLDependencies) to High(cJSRTLDependencies) do begin
+         wobs.WriteString(cJSRTLDependencies[i].Code);
+         wobs.WriteString(#13#10);
+      end;
+      Result:=wobs.ToString;
+   finally
+      wobs.Free;
+   end;
+end;
+
+// IgnoreRTLDependencies
+//
+procedure TdwsJSCodeGen.IgnoreRTLDependencies;
+var
+   i, k : Integer;
+begin
+   for i:=Low(cJSRTLDependencies) to High(cJSRTLDependencies) do begin
+      k:=Dependencies.IndexOf(cJSRTLDependencies[i].Name);
+      if k>=0 then
+         Dependencies.Delete(k);
+   end;
 end;
 
 // ------------------
