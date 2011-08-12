@@ -945,6 +945,7 @@ var
 begin
    for i:=0 to FCount-1 do
       FItems[i].Free;
+   Clear;
 end;
 
 // ------------------
