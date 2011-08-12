@@ -38,6 +38,7 @@ type
       private
 
       protected
+         FDebugger : IDebugger;
          FOnDebug : TOnDebugEvent;
          FOnStartDebug : TOnDebugStartStopEvent;
          FOnStopDebug : TOnDebugStartStopEvent;
@@ -51,7 +52,7 @@ type
          procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase); virtual;
 
       public
-
+         property Debugger : IDebugger read FDebugger write FDebugger;
 
       published
          property OnDebug : TOnDebugEvent read FOnDebug write FOnDebug;
@@ -289,11 +290,7 @@ type
          FBeginOptions : TdwsDebugBeginOptions;
 
       protected
-         procedure StartDebug(exec : TdwsExecution); override;
          procedure DoDebug(exec : TdwsExecution; expr : TExprBase); override;
-         procedure StopDebug(exec : TdwsExecution); override;
-         procedure EnterFunc(exec : TdwsExecution; funcExpr : TExprBase); override;
-         procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase); override;
 
          procedure StateChanged;
          procedure BreakpointsChanged;
@@ -399,7 +396,6 @@ end;
 //
 procedure TThreadedDebugger.Execute;
 begin
-   FExec.Debugger:=FMain;
    FMain.ExecuteDebug(FMain.StateChanged);
 end;
 
@@ -480,14 +476,18 @@ end;
 //
 procedure TdwsSimpleDebugger.DoDebug(exec: TdwsExecution; expr: TExprBase);
 begin
+   if Assigned(FDebugger) then
+      FDebugger.DoDebug(exec, expr);
    if Assigned(FOnDebug) then
-      FOnDebug(exec, Expr);
+      FOnDebug(exec, expr);
 end;
 
 // EnterFunc
 //
 procedure TdwsSimpleDebugger.EnterFunc(exec: TdwsExecution; funcExpr: TExprBase);
 begin
+   if Assigned(FDebugger) then
+      FDebugger.EnterFunc(exec, funcExpr);
    if Assigned(FOnEnterFunc) then
       if funcExpr is TFuncExprBase then
          FOnEnterFunc(exec, TFuncExprBase(funcExpr));
@@ -497,6 +497,8 @@ end;
 //
 procedure TdwsSimpleDebugger.LeaveFunc(exec: TdwsExecution; funcExpr: TExprBase);
 begin
+   if Assigned(FDebugger) then
+      FDebugger.LeaveFunc(exec, funcExpr);
    if Assigned(FOnLeaveFunc) then
       if funcExpr is TFuncExprBase then
          FOnLeaveFunc(exec, TFuncExprBase(funcExpr));
@@ -506,6 +508,8 @@ end;
 //
 procedure TdwsSimpleDebugger.StartDebug(exec: TdwsExecution);
 begin
+   if Assigned(FDebugger) then
+      FDebugger.StartDebug(exec);
    if Assigned(FOnStartDebug) then
       FOnStartDebug(exec);
 end;
@@ -514,6 +518,8 @@ end;
 //
 procedure TdwsSimpleDebugger.StopDebug(exec: TdwsExecution);
 begin
+   if Assigned(FDebugger) then
+      FDebugger.StopDebug(exec);
    if Assigned(FOnStopDebug) then
       FOnStopDebug(exec);
 end;
@@ -812,14 +818,6 @@ begin
    else Result:=cNullPos;
 end;
 
-// StartDebug
-//
-procedure TdwsDebugger.StartDebug(exec : TdwsExecution);
-begin
-   if Assigned(FOnStartDebug) then
-      inherited;
-end;
-
 // DoDebug
 //
 procedure TdwsDebugger.DoDebug(exec : TdwsExecution; expr : TExprBase);
@@ -828,8 +826,7 @@ var
 begin
    if expr is TBlockExprBase then Exit;
    FCurrentExpression:=expr;
-   if Assigned(FOnDebug) then
-      inherited;
+   inherited;
    if (FSuspendCondition<>nil) and (FSuspendCondition.SuspendExecution) then begin
       FState:=dsDebugSuspended;
       StateChanged;
@@ -846,30 +843,6 @@ begin
          ProcessApplicationMessages(0);
       end;
    end;
-end;
-
-// StopDebug
-//
-procedure TdwsDebugger.StopDebug(exec : TdwsExecution);
-begin
-   if Assigned(FOnStopDebug) then
-      inherited;
-end;
-
-// EnterFunc
-//
-procedure TdwsDebugger.EnterFunc(exec : TdwsExecution; funcExpr : TExprBase);
-begin
-   if Assigned(FOnEnterFunc) then
-      inherited;
-end;
-
-// LeaveFunc
-//
-procedure TdwsDebugger.LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase);
-begin
-   if Assigned(FOnLeaveFunc) then
-      inherited;
 end;
 
 // ------------------
