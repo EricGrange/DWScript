@@ -3939,7 +3939,8 @@ end;
 //
 function TSqrIntExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result:=Sqr(FExpr.EvalAsInteger(exec));
+   Result:=FExpr.EvalAsInteger(exec);
+   Result:=Result*Result;
 end;
 
 // ------------------
