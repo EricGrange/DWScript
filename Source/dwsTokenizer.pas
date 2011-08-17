@@ -549,7 +549,7 @@ var
    i : Integer;
    lookups : PTokenAlphaLookups;
 begin
-   if (Len<2) or (Len>11) then Exit(ttNAME);
+   if (Len<2) or (Len>14) then Exit(ttNAME);
    ch:=Buffer[0];
    case ch of
       'a'..'x' : lookups:=@vAlphaToTokenType[Len][Char(Word(ch) xor $0020)];
@@ -651,8 +651,10 @@ begin
 end;
 
 var
-  sStart, sSpace, sComment, sCommentF, sSlashComment, sSlashComment0: TState;
-  sSwitch, sSwitchNameF, sChar0, sCharF, sCharHex, sCharHexF: TState;
+  sStart, sSpace, sComment, sCommentF, sSlashComment, sSlashComment0 : TState;
+  sBracketLeft, sBlockCommentBracket, sBlockCommentBracket1 : TState;
+  sBlockCommentSlash, sBlockCommentSlash1 : TState;
+  sSwitch, sSwitchNameF, sChar0, sCharF, sCharHex, sCharHexF : TState;
   sNameF: TState;
   sIntF, sIntPoint, sIntPointF, sIntExp, sIntExp0, sIntExpF, sHex, sHexF: TState;
   sString0, sStringF, sAssign0: TState;
@@ -1090,6 +1092,11 @@ initialization
    sSwitchNameF:=TState.Create;
    sSlashComment0:=TState.Create;
    sSlashComment:=TState.Create;
+   sBracketLeft:=TState.Create;
+   sBlockCommentBracket:=TState.Create;
+   sBlockCommentBracket1:=TState.Create;
+   sBlockCommentSlash:=TState.Create;
+   sBlockCommentSlash1:=TState.Create;
    sChar0:=TState.Create;
    sCharF:=TState.Create;
    sCharHex:=TState.Create;
@@ -1120,7 +1127,8 @@ initialization
    sStart.AddTransition(['#'], TSeekTransition.Create(sChar0, [toStart], caNone));
    sStart.AddTransition([':', '+', '-', '*', '@', '%', '^'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
    sStart.AddTransition(['='], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
-   sStart.AddTransition(cSPEC, TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
+   sStart.AddTransition(cSPEC-['('], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
+   sStart.AddTransition(['('], TConsumeTransition.Create(sBracketLeft, [toStart], caNone));
    sStart.AddTransition(['/'], TConsumeTransition.Create(sSlashComment0, [toStart], caNone));
    sStart.AddTransition(['<'], TConsumeTransition.Create(sSmallerF, [toStart], caNone));
    sStart.AddTransition(['>'], TConsumeTransition.Create(sGreaterF, [toStart], caNone));
@@ -1145,10 +1153,26 @@ initialization
 
    sSlashComment0.AddTransition(['/'], TSeekTransition.Create(sSlashComment, [], caNone));
    sSlashComment0.AddTransition(['='], TConsumeTransition.Create(sStart, [toFinal], caName));
+   sSlashComment0.AddTransition(['*'], TConsumeTransition.Create(sBlockCommentSlash, [], caNone));
    sSlashComment0.SetElse(TCheckTransition.Create(sStart, [toFinal], caName));
 
    sSlashComment.AddTransition([#0, #10], TSeekTransition.Create(sStart, [], caClear));
    sSlashComment.SetElse(TSeekTransition.Create(sSlashComment, [], caNone));
+
+   sBracketLeft.AddTransition(['*'], TSeekTransition.Create(sBlockCommentBracket, [], caNone));
+   sBracketLeft.SetElse(TCheckTransition.Create(sStart, [toFinal], caName));
+
+   sBlockCommentBracket.AddTransition(['*'], TSeekTransition.Create(sBlockCommentBracket1, [], caNone));
+   sBlockCommentBracket.SetElse(TSeekTransition.Create(sBlockCommentBracket, [], caNone));
+
+   sBlockCommentBracket1.AddTransition([')'], TSeekTransition.Create(sStart, [], caClear));
+   sBlockCommentBracket1.SetElse(TSeekTransition.Create(sBlockCommentBracket, [], caNone));
+
+   sBlockCommentSlash.AddTransition(['*'], TSeekTransition.Create(sBlockCommentSlash1, [], caNone));
+   sBlockCommentSlash.SetElse(TSeekTransition.Create(sBlockCommentSlash, [], caNone));
+
+   sBlockCommentSlash1.AddTransition(['/'], TSeekTransition.Create(sStart, [], caClear));
+   sBlockCommentSlash1.SetElse(TSeekTransition.Create(sBlockCommentSlash, [], caNone));
 
    sChar0.AddTransition(cINT, TConsumeTransition.Create(sCharF, [], caNone));
    sChar0.AddTransition(['$'], TConsumeTransition.Create(sCharHex, [], caNone));
@@ -1253,6 +1277,11 @@ finalization
    sSwitchNameF.Free;
    sSlashComment0.Free;
    sSlashComment.Free;
+   sBracketLeft.Free;
+   sBlockCommentBracket.Free;
+   sBlockCommentBracket1.Free;
+   sBlockCommentSlash.Free;
+   sBlockCommentSlash1.Free;
    sChar0.Free;
    sCharF.Free;
    sCharHex.Free;

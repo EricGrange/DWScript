@@ -103,6 +103,27 @@ type
          property Count : Integer read FCount;
    end;
 
+
+   // TSimpleList<T>
+   //
+   {: A minimalistic generic list. }
+   TSimpleList<T> = class
+      private
+         FItems : array of T;
+         FCount : Integer;
+         FCapacity : Integer;
+      protected
+         procedure Grow;
+         function GetItems(const idx : Integer) : T; inline;
+         procedure SetItems(const idx : Integer; const value : T); inline;
+      public
+         procedure Add(const item : T);
+         procedure Extract(idx : Integer);
+         procedure Clear;
+         property Items[const position : Integer] : T read GetItems write SetItems; default;
+         property Count : Integer read FCount;
+   end;
+
    // TObjectList
    //
    {: A simple generic object list, owns objects }
@@ -1421,6 +1442,58 @@ begin
       if FBuckets[i].HashCode<>0 then
          FBuckets[i].Value.Free;
    Clear;
+end;
+
+// ------------------
+// ------------------ TSimpleList<T> ------------------
+// ------------------
+
+// Add
+//
+procedure TSimpleList<T>.Add(const item : T);
+begin
+   if FCount=FCapacity then Grow;
+   FItems[FCount]:=item;
+   Inc(FCount);
+end;
+
+// Extract
+//
+procedure TSimpleList<T>.Extract(idx : Integer);
+begin
+   Move(FItems[idx+1], FItems[idx], (FCount-idx-1)*SizeOf(T));
+   Dec(FCount);
+end;
+
+// Clear
+//
+procedure TSimpleList<T>.Clear;
+begin
+   SetLength(FItems, 0);
+   FCapacity:=0;
+   FCount:=0;
+end;
+
+// Grow
+//
+procedure TSimpleList<T>.Grow;
+begin
+   FCapacity:=FCapacity+8+(FCapacity shr 2);
+   SetLength(FItems, FCapacity);
+end;
+
+// GetItems
+//
+function TSimpleList<T>.GetItems(const idx : Integer) : T;
+begin
+   Result:=FItems[idx];
+end;
+
+// SetItems
+//
+procedure TSimpleList<T>.SetItems(const idx : Integer; const value : T);
+begin
+   FItems[idx]:=value;
 end;
 
 // ------------------------------------------------------------------

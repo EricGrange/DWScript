@@ -28,8 +28,8 @@ uses
   dwsMagicExprs, dwsRelExprs, dwsOperators;
 
 type
-   TCompilerOption = (coOptimize, coSymbolDictionary, coContextMap, coAssertions,
-                      coHintsDisabled, coWarningsDisabled  );
+   TCompilerOption = ( coOptimize, coSymbolDictionary, coContextMap, coAssertions,
+                       coHintsDisabled, coWarningsDisabled, coExplicitUnitUses );
    TCompilerOptions = set of TCompilerOption;
 
 const
@@ -61,7 +61,7 @@ type
     FStackChunkSize: Integer;
     FSystemTable: TSymbolTable;
     FTimeoutMilliseconds: Integer;
-    FUnits: TStrings;
+    FUnits : TIUnitList;
     FCompileFileSystem : TdwsCustomFileSystem;
     FRuntimeFileSystem : TdwsCustomFileSystem;
 
@@ -84,7 +84,7 @@ type
     property Connectors: TStrings read FConnectors write FConnectors;
     property OnInclude: TIncludeEvent read FOnInclude write FOnInclude;
     property SystemTable: TSymbolTable read FSystemTable write FSystemTable;
-    property Units: TStrings read FUnits write FUnits;
+    property Units : TIUnitList read FUnits;
 
   published
     property Filter: TdwsFilter read FFilter write SetFilter;
@@ -213,7 +213,7 @@ type
                           tcParameter, tcResult, tcOperand, tcExceptionClass,
                           tcProperty);
 
-   TdwsReadSection = (rsMixed, rsHeader, rsInterface, rsImplementation, rsInitialization);
+   TdwsReadSection = (rsMixed, rsHeader, rsInterface, rsImplementation, rsEnd);
 
    // TdwsCompiler
    //
@@ -231,6 +231,7 @@ type
       FFinallyExprs : TSimpleStack<Boolean>;
       FConditionalDepth : TSimpleStack<TSwitchInstruction>;
       FMsgs : TdwsCompileMessageList;
+      FConf : TdwsConfiguration;
 
       FConnectors : TStrings;
       FCompileFileSystem : IdwsFileSystem;
@@ -356,7 +357,7 @@ type
       function ReadRecord(const typeName : String) : TRecordSymbol;
       function ReadRaise : TRaiseBaseExpr;
       function ReadRepeat : TNoResultExpr;
-      function ReadRootStatement : TNoResultExpr;
+      function ReadRootStatement(var killSemi : Boolean) : TNoResultExpr;
       function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TNoResultExpr;
       procedure ReadSemiColon;
       // AName might be the name of an INCLUDEd script
@@ -380,7 +381,7 @@ type
       procedure ReadUses;
       function ReadVarDecl : TNoResultExpr;
       function ReadWhile : TNoResultExpr;
-      function ResolveUnitReferences(Units: TStrings) : TInterfaceList;
+      function ResolveUnitReferences(conf : TdwsConfiguration) : TIUnitList;
 
    protected
       procedure EnterLoop(loopExpr : TNoResultExpr);
@@ -411,12 +412,17 @@ type
       procedure SetupCompileOptions(conf : TdwsConfiguration);
       procedure CleanupAfterCompile;
 
+      procedure CheckFilterDependencies(confUnits : TIUnitList);
+      procedure HandleUnitDependencies(conf : TdwsConfiguration);
+      procedure HandleExplicitDependency(conf : TdwsConfiguration; const unitName : String;
+                                         fromUnits : TStrings);
+
    public
       constructor Create;
       destructor Destroy; override;
 
-      function Compile(const aCodeText : String; Conf: TdwsConfiguration) : IdwsProgram;
-      procedure RecompileInContext(context : IdwsProgram; const aCodeText : String; Conf: TdwsConfiguration);
+      function Compile(const aCodeText : String; aConf : TdwsConfiguration) : IdwsProgram;
+      procedure RecompileInContext(const context : IdwsProgram; const aCodeText : String; aConf : TdwsConfiguration);
 
       class function Evaluate(exec : IdwsProgramExecution; const anExpression : String;
                               options : TdwsEvaluateOptions = []) : IdwsEvaluateExpr;
@@ -578,30 +584,37 @@ begin
    inherited;
 end;
 
-function TdwsCompiler.ResolveUnitReferences(Units: TStrings): TInterfaceList;
+function TdwsCompiler.ResolveUnitReferences(conf : TdwsConfiguration): TIUnitList;
 var
-  x, y, z: Integer;
-  deps: TStrings;
-  refCount: array of Integer;
-  changed: Boolean;
-  unitName: string;
+   x, y, z : Integer;
+   expectedUnitCount : Integer;
+   deps: TStrings;
+   refCount : array of Integer;
+   changed : Boolean;
+   unitName: string;
+   curUnit : IUnit;
 begin
-  // initialize reference count vector
-  SetLength(refCount, Units.Count);
+   // initialize reference count vector
+   expectedUnitCount:=conf.Units.Count;
+   SetLength(refCount, expectedUnitCount);
 
-  // Calculate number of outgoing references
-  for x := 0 to Units.Count - 1 do
-  begin
-    deps := IUnit(Pointer(Units.Objects[x])).GetDependencies;
-    for y := 0 to deps.Count - 1 do
-    begin
-      if Units.IndexOf(deps[y]) < 0 then
-        FMsgs.AddCompilerStopFmt(cNullPos, CPE_UnitNotFound, [deps[y], Units[x]]);
-    end;
-    refCount[x] := deps.Count;
-  end;
+   // Calculate number of outgoing references
+   for x := 0 to conf.Units.Count-1 do begin
+      curUnit:=conf.Units[x];
+      if curUnit.ImplicitUse or not (coExplicitUnitUses in conf.CompilerOptions) then begin
+         deps := curUnit.GetDependencies;
+         for y := 0 to deps.Count - 1 do begin
+            if conf.Units.IndexOf(deps[y]) < 0 then
+               FMsgs.AddCompilerStopFmt(cNullPos, CPE_UnitNotFound, [deps[y], curUnit.GetUnitName]);
+         end;
+         refCount[x] := deps.Count;
+      end else begin
+         refCount[x] := -1;
+         Dec(expectedUnitCount);
+      end;
+   end;
 
-  Result := TInterfaceList.Create;
+  Result := TIUnitList.Create;
   try
 
     // Resolve references
@@ -609,17 +622,18 @@ begin
     while changed do
     begin
       changed := False;
-      for x := 0 to Units.Count - 1 do
+      for x := 0 to conf.Units.Count - 1 do begin
+        curUnit:=conf.Units[x];
         // Find unit that is not referencing other units
         if refCount[x] = 0 then
         begin
-          Result.Add(IUnit(Pointer(Units.Objects[x])));
+          Result.Add(curUnit);
 
           // Remove the references to this unit from all other units
-          unitName := Units[x];
-          for y := 0 to Units.Count - 1 do
+          unitName := curUnit.GetUnitName;
+          for y := 0 to conf.Units.Count - 1 do
           begin
-            deps := IUnit(Pointer(Units.Objects[y])).GetDependencies;
+            deps := conf.Units[y].GetDependencies;
             for z := 0 to deps.Count - 1 do
               if UnicodeSameText(deps[z], unitName) then
                 Dec(refCount[y]);
@@ -628,9 +642,10 @@ begin
           refCount[x] := -1;
           changed := True;
         end;
+      end;
     end;
 
-    if Result.Count <> Units.Count then
+    if Result.Count<>expectedUnitCount then
       FMsgs.AddCompilerStop(cNullPos, CPE_UnitCircularReference);
   except
     Result.Free;
@@ -772,6 +787,7 @@ end;
 //
 procedure TdwsCompiler.SetupCompileOptions(conf : TdwsConfiguration);
 begin
+   FConf := conf;
    FFilter := conf.Filter;
    FConnectors := conf.Connectors;
    FCompilerOptions := conf.CompilerOptions;
@@ -785,43 +801,37 @@ end;
 
 // Compile
 //
-function TdwsCompiler.Compile(const aCodeText : String; Conf: TdwsConfiguration) : IdwsProgram;
+function TdwsCompiler.Compile(const aCodeText : String; aConf : TdwsConfiguration) : IdwsProgram;
 var
-   x : Integer;
    stackParams : TStackParameters;
-   unitsResolved: TInterfaceList;
-   unitsTable: TSymbolTable;
-   unitTables: TList;
-   unitTable: TSymbolTable;
    codeText : String;
-   unitSymbol : TUnitSymbol;
    sourceFile : TSourceFile;
 begin
-   SetupCompileOptions(conf);
+   SetupCompileOptions(aConf);
 
-   stackParams.MaxByteSize:=Conf.MaxDataSize;
+   stackParams.MaxByteSize:=aConf.MaxDataSize;
    if stackParams.MaxByteSize=0 then
       stackParams.MaxByteSize:=MaxInt;
 
-   stackParams.ChunkSize:=Conf.StackChunkSize;
+   stackParams.ChunkSize:=aConf.StackChunkSize;
    if stackParams.ChunkSize<=0 then
       stackParams.ChunkSize:=1;
 
-   stackParams.MaxRecursionDepth:=Conf.MaxRecursionDepth;
+   stackParams.MaxRecursionDepth:=aConf.MaxRecursionDepth;
 
    FLineCount:=0;
 
    // Create the TdwsProgram
-   FMainProg:=CreateProgram(Conf.SystemTable, Conf.ResultType, stackParams);
+   FMainProg:=CreateProgram(aConf.SystemTable, aConf.ResultType, stackParams);
    FMsgs:=FMainProg.CompileMsgs;
 
-   FMsgs.HintsDisabled:=(coHintsDisabled in Conf.CompilerOptions);
-   FMsgs.WarningsDisabled:=(coWarningsDisabled in Conf.CompilerOptions);
+   FMsgs.HintsDisabled:=(coHintsDisabled in aConf.CompilerOptions);
+   FMsgs.WarningsDisabled:=(coWarningsDisabled in aConf.CompilerOptions);
 
    FMainProg.Compiler:=Self;
-   FMainProg.TimeoutMilliseconds:=Conf.TimeoutMilliseconds;
-   FMainProg.RuntimeFileSystem:=Conf.RuntimeFileSystem;
-   FMainProg.ConditionalDefines:=conf.Conditionals;
+   FMainProg.TimeoutMilliseconds:=aConf.TimeoutMilliseconds;
+   FMainProg.RuntimeFileSystem:=aConf.RuntimeFileSystem;
+   FMainProg.ConditionalDefines:=aConf.Conditionals;
    FContextMap:=FMainProg.ContextMap;
    FSymbolDictionary:=FMainProg.SymbolDictionary;
    FReadSection:=rsMixed;
@@ -833,54 +843,9 @@ begin
    FOperators.FunctionOperatorConstructor:=CreateOperatorFunction;
 
    try
-      // Check for missing units
-      if Assigned(FFilter) then begin
-         for x := 0 to FFilter.Dependencies.Count - 1 do begin
-            if Conf.Units.IndexOf(FFilter.Dependencies[x]) = -1 then
-               FMsgs.AddCompilerErrorFmt(cNullPos, CPE_FilterDependsOnUnit, [FFilter.ClassName, FFilter.Dependencies[x]]);
-         end;
-      end;
+      CheckFilterDependencies(aConf.Units);
 
-      // Handle unit dependencies
-      unitsResolved := ResolveUnitReferences(Conf.Units);
-      try
-         unitTables := TList.Create;
-         unitsTable := TSymbolTable.Create;
-         try
-            try
-               // Get the symboltables of the units
-               for x := 0 to unitsResolved.Count - 1 do begin
-                  unitTable := IUnit(unitsResolved[x]).GetUnitTable(Conf.SystemTable, unitsTable, FOperators);
-                  unitTables.Add(unitTable);
-                  unitsTable.AddSymbol(TUnitSymbol.Create(IUnit(unitsResolved[x]).GetUnitName, unitTable));
-               end;
-            except
-               on e: Exception do begin
-                  for x:=0 to unitTables.Count-1 do
-                     TObject(unitTables[x]).Free;
-                  raise;
-               end;
-            end;
-
-            // Add the units to the program-symboltable
-            for x := 0 to unitsTable.Count - 1 do begin
-               unitSymbol:=TUnitSymbol(unitsTable[x]);
-
-               FProg.Table.AddSymbol(TUnitSymbol.Create( unitSymbol.Name, unitSymbol.Table, True));
-               FProg.Table.AddParent(unitSymbol.Table);
-            end;
-
-            unitSymbol:=FProg.Table.FindSymbol(SYS_INTERNAL, cvMagic) as TUnitSymbol;
-            FProg.Table.AddSymbol(TUnitSymbol.Create( SYS_SYSTEM, unitSymbol.Table, False ));
-
-         finally
-            unitsTable.Free;
-            unitTables.Free;
-         end;
-
-      finally
-         unitsResolved.Free;
-      end;
+      HandleUnitDependencies(aConf);
 
       // Filter stuff
       if Assigned(FFilter) then
@@ -931,6 +896,7 @@ begin
    FMsgs:=nil;
 
    FCompileFileSystem:=nil;
+   FConf:=nil;
 
    FProg:=nil;
    FMainProg:=nil;
@@ -943,14 +909,137 @@ begin
    FFinallyExprs.Clear;
 end;
 
+// CheckFilterDependencies
+//
+procedure TdwsCompiler.CheckFilterDependencies(confUnits : TIUnitList);
+var
+   f : TdwsFilter;
+   dep : String;
+begin
+   // Check for missing units
+   f:=FFilter;
+   while Assigned(f) do begin
+      for dep in f.Dependencies do begin
+         if confUnits.IndexOf(dep)<0 then
+            FMsgs.AddCompilerErrorFmt(cNullPos, CPE_FilterDependsOnUnit,
+                                      [f.ClassName, dep]);
+      end;
+      f:=f.SubFilter;
+   end;
+end;
+
+// HandleUnitDependencies
+//
+procedure TdwsCompiler.HandleUnitDependencies(conf : TdwsConfiguration);
+var
+   i : Integer;
+   unitsResolved: TIUnitList;
+   unitsTable: TSymbolTable;
+   unitTables: TList;
+   unitTable: TSymbolTable;
+   unitSymbol : TUnitSymbol;
+begin
+   // Handle unit dependencies
+   unitsResolved := ResolveUnitReferences(conf);
+
+   unitTables := TList.Create;
+   unitsTable := TSymbolTable.Create;
+   try
+      try
+         // Get the symboltables of the units
+         for i := 0 to unitsResolved.Count - 1 do begin
+            unitTable := unitsResolved[i].GetUnitTable(conf.SystemTable, unitsTable, FOperators);
+            unitTables.Add(unitTable);
+            unitsTable.AddSymbol(TUnitSymbol.Create(unitsResolved[i].GetUnitName, unitTable));
+         end;
+      except
+         on e: Exception do begin
+            for i:=0 to unitTables.Count-1 do
+               TObject(unitTables[i]).Free;
+            raise;
+         end;
+      end;
+
+      // Add the units to the program-symboltable
+      for i := 0 to unitsTable.Count - 1 do begin
+         unitSymbol:=TUnitSymbol(unitsTable[i]);
+
+         FProg.Table.AddSymbol(TUnitSymbol.Create( unitSymbol.Name, unitSymbol.Table, True));
+         FProg.Table.AddParent(unitSymbol.Table);
+      end;
+
+      unitSymbol:=FProg.Table.FindSymbol(SYS_INTERNAL, cvMagic) as TUnitSymbol;
+      FProg.Table.AddSymbol(TUnitSymbol.Create( SYS_SYSTEM, unitSymbol.Table, False ));
+
+   finally
+      unitsTable.Free;
+      unitTables.Free;
+      unitsResolved.Free;
+   end;
+end;
+
+// HandleExplicitDependency
+//
+procedure TdwsCompiler.HandleExplicitDependency(conf : TdwsConfiguration; const unitName : String;
+                                                fromUnits : TStrings);
+var
+   i : Integer;
+   unitResolved : IUnit;
+   unitTable : TSymbolTable;
+   unitSymbol : TUnitSymbol;
+   dependencies : TStrings;
+begin
+   if fromUnits.IndexOf(unitName)>=0 then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitCircularReference);
+
+   i:=conf.Units.IndexOf(unitName);
+   if i<0 then begin
+      if fromUnits.Count=0 then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnknownUnit, [unitName])
+      else FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnitNotFound,
+                                     [unitName, fromUnits[fromUnits.Count-1]]);
+      Exit;
+   end;
+
+   if FProg.Table.FindLocal(unitName, TUnitSymbol)<>nil then begin
+      // ignore multiple requests (for now)
+      Exit;
+   end;
+
+   unitResolved:=conf.Units[i];
+
+   dependencies:=unitResolved.GetDependencies;
+   for i:=0 to dependencies.Count-1 do begin
+      fromUnits.Add(unitName);
+      try
+         HandleExplicitDependency(conf, dependencies[i], fromUnits);
+      finally
+         fromUnits.Delete(fromUnits.Count-1);
+      end;
+   end;
+
+   unitTable:=nil;
+   try
+      unitTable:=unitResolved.GetUnitTable(conf.SystemTable, nil, FOperators);
+   except
+      unitTable.Free;
+      raise;
+   end;
+
+   unitSymbol:=TUnitSymbol.Create(unitResolved.GetUnitName, unitTable, True);
+   FProg.Table.AddSymbol(unitSymbol);
+   FProg.Table.AddParent(unitSymbol.Table);
+end;
+
 // RecompileInContext
 //
-procedure TdwsCompiler.RecompileInContext(context : IdwsProgram; const aCodeText : String; Conf: TdwsConfiguration);
+procedure TdwsCompiler.RecompileInContext(const context : IdwsProgram;
+               const aCodeText : String; aConf : TdwsConfiguration);
 var
    codeText : String;
    sourceFile : TSourceFile;
 begin
-   SetupCompileOptions(conf);
+   SetupCompileOptions(aConf);
 
    FMainProg:=context as TdwsMainProgram;
    FMainProg.Compiler:=Self;
@@ -958,8 +1047,8 @@ begin
    FSymbolDictionary:=FMainProg.SymbolDictionary;
 
    FMsgs:=FMainProg.CompileMsgs;
-   FMsgs.HintsDisabled:=(coHintsDisabled in Conf.CompilerOptions);
-   FMsgs.WarningsDisabled:=(coWarningsDisabled in Conf.CompilerOptions);
+   FMsgs.HintsDisabled:=(coHintsDisabled in aConf.CompilerOptions);
+   FMsgs.WarningsDisabled:=(coWarningsDisabled in aConf.CompilerOptions);
 
    FProg:=FMainProg;
 
@@ -1020,6 +1109,7 @@ function TdwsCompiler.ReadRootBlock(const endTokens: TTokenTypes; var finalToken
 var
    reach : TReachStatus;
    stmt : TNoResultExpr;
+   killSemi : Boolean;
 begin
    reach:=rsReachable;
    Result:=TBlockExpr.Create(FProg, FTok.HotPos);
@@ -1033,16 +1123,19 @@ begin
             FMsgs.AddCompilerWarning(FTok.HotPos, CPW_UnReachableCode);
          end;
 
-         stmt:=ReadRootStatement;
+         stmt:=ReadRootStatement(killSemi);
          if Assigned(stmt) then begin
             TBlockExpr(Result).AddStatement(Stmt);
             if     (reach=rsReachable)
                and (   (stmt is TFlowControlExpr)
                     or (stmt is TRaiseExpr)) then
                reach:=rsUnReachable;
+         end else begin
+            if ReadSection=rsEnd then
+               Break;
          end;
 
-         if not FTok.TestDelete(ttSEMI) then begin
+         if killSemi and not FTok.TestDelete(ttSEMI) then begin
             if endTokens<>[] then begin
                finalToken:=FTok.TestDeleteAny(endTokens);
                if finalToken=ttNone then
@@ -1079,43 +1172,23 @@ end;
 //
 function TdwsCompiler.ReadScript(const AName: string; ScriptType: TScriptSourceType): TNoResultExpr;
 var
-//   stmt : TNoResultExpr;
    finalToken : TTokenType;
 begin
    FMainProg.SourceList.Add(AName, FTok.HotPos.SourceFile, ScriptType);
    Result:=ReadRootBlock([], finalToken);
-{   Result := TBlockExpr.Create(FProg, FTok.DefaultPos);
-   try
-      FMainProg.SourceList.Add(AName, FTok.HotPos.SourceFile, ScriptType);
-      while FTok.HasTokens do begin
-         Stmt := ReadRootStatement;
-         if Assigned(Stmt) then
-            TBlockExpr(Result).AddStatement(Stmt);
-
-         if not FTok.TestDelete(ttSEMI) then begin
-            while FTok.HasTokens and FTok.Test(ttSWITCH) do begin
-               ReadInstrSwitch(True);
-               FTok.KillToken;
-            end;
-            if FTok.HasTokens then
-               FMsgs.AddCompilerStop(FTok.CurrentPos, CPE_SemiExpected);
-         end;
-      end;
-   except
-      Result.Free;
-      raise;
-   end; }
 end;
 
 // ReadRootStatement
 //
-function TdwsCompiler.ReadRootStatement: TNoResultExpr;
+function TdwsCompiler.ReadRootStatement(var killSemi : Boolean) : TNoResultExpr;
 var
    token : TTokenType;
 begin
+   killSemi:=True;
    Result:=nil;
-   token:=FTok.TestDeleteAny([ttTYPE, ttPROCEDURE, ttFUNCTION, ttOPERATOR,
-                              ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttCLASS]);
+   token:=FTok.TestDeleteAny([ttTYPE, ttPROCEDURE, ttFUNCTION,
+                              ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttCLASS,
+                              ttINTERFACE, ttIMPLEMENTATION, ttEND]);
    case token of
       ttTYPE :
          ReadTypeDecl;
@@ -1142,22 +1215,35 @@ begin
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
          end;
       end;
-      ttOPERATOR :
-         ReadOperatorDecl;
       ttINTERFACE : begin
-         if not (ReadSection in [rsMixed, rsHeader]) then
-            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPU_UnexpectedStatement,
-                                      [cTokenStrings[token]]);
-         FReadSection:=rsInterface;
-         DoSectionChanged;
+         if (FProg.Table<>FProg.Root.Table) or not (ReadSection in [rsMixed, rsHeader]) then
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnexpectedSection,
+                                      [cTokenStrings[token]])
+         else begin
+            FReadSection:=rsInterface;
+            DoSectionChanged;
+         end;
+         killSemi:=False;
       end;
       ttIMPLEMENTATION : begin
-         if ReadSection<>rsInterface then
-            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPU_UnexpectedStatement,
-                                      [cTokenStrings[token]]);
-         FReadSection:=rsImplementation;
-         DoSectionChanged;
-         Result:=ReadBlocks([ttEND], token);
+         if (FProg.Table<>FProg.Root.Table) or (ReadSection<>rsInterface) then
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnexpectedSection,
+                                      [cTokenStrings[token]])
+         else begin
+            FReadSection:=rsImplementation;
+            DoSectionChanged;
+         end;
+         killSemi:=False;
+      end;
+      ttEND : begin
+         if (FProg.Table<>FProg.Root.Table) or (ReadSection<>rsImplementation) then
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnexpectedEnd,
+                                      [cTokenStrings[token]])
+         else begin
+            if not FTok.TestDelete(ttDOT) then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotExpected);
+            FReadSection:=rsEnd;
+         end;
       end;
    else
       Result:=ReadStatement;
@@ -1172,7 +1258,7 @@ var
    constSym : TConstSymbol;
 begin
    Result:=nil;
-   token:=Ftok.TestDeleteAny([ttVAR, ttCONST, ttUSES]);
+   token:=Ftok.TestDeleteAny([ttVAR, ttCONST, ttUSES, ttOPERATOR]);
    case token of
       ttVAR :
          Result:=ReadVarDecl;
@@ -1181,9 +1267,13 @@ begin
          FProg.Table.AddSymbol(constSym);
       end;
       ttUSES :
-         ReadUses
+         ReadUses;
+      ttOPERATOR :
+         ReadOperatorDecl;
    else
-      Result:=ReadBlock;
+      if (ReadSection<>rsMixed) and (FProg.Level=0) then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedStatement);
+      Result:=ReadBlock
    end;
 end;
 
@@ -1912,6 +2002,9 @@ begin
    if funcSymbol.Executable<>nil then
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_MethodRedefined, [funcSymbol.Name]);
 
+   if ReadSection=rsInterface then
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedImplementationInInterface);
+
    // Open context of full procedure body (may include a 'var' section)
    if coContextMap in FCompilerOptions then
       FContextMap.OpenContext(FTok.CurrentPos, funcSymbol);   // attach to symbol that it belongs to (perhaps a class)
@@ -2091,11 +2184,12 @@ function TdwsCompiler.ReadOperatorDecl : TOperatorSymbol;
 var
    tt : TTokenType;
    usesName : String;
-   usesPos : TScriptPos;
+   opPos, usesPos : TScriptPos;
    sym : TTypeSymbol;
    usesSym : TFuncSymbol;
    typ : TTypeSymbol;
 begin
+   opPos:=FTok.HotPos;
    tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttTIMES, ttDIVIDE, ttMOD, ttDIV,
                            ttOR, ttAND, ttXOR, ttIMPLIES, ttSHL, ttSHR,
                            ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
@@ -2149,13 +2243,13 @@ begin
          else if usesSym.Params.Count<>2 then
             FMsgs.AddCompilerErrorFmt(usesPos, CPE_BadNumberOfParameters, [2, usesSym.Params.Count])
          else if not usesSym.Params[0].Typ.IsOfType(Result.Params[0]) then
-            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterType, [0, Result.Params[0].Caption, usesSym.Params[0].Typ.Caption])
+            FMsgs.AddCompilerErrorFmt(usesPos, CPE_BadParameterType, [0, Result.Params[0].Caption, usesSym.Params[0].Typ.Caption])
          else if usesSym.Params[0] is TVarParamSymbol then
-            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_VarParameterForbidden, [0])
+            FMsgs.AddCompilerErrorFmt(usesPos, CPE_VarParameterForbidden, [0])
          else if not usesSym.Params[1].Typ.IsOfType(Result.Params[1]) then
-            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterType, [1, Result.Params[1].Caption, usesSym.Params[1].Typ.Caption])
+            FMsgs.AddCompilerErrorFmt(usesPos, CPE_BadParameterType, [1, Result.Params[1].Caption, usesSym.Params[1].Typ.Caption])
          else if usesSym.Params[1] is TVarParamSymbol then
-            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_VarParameterForbidden, [1])
+            FMsgs.AddCompilerErrorFmt(usesPos, CPE_VarParameterForbidden, [1])
          else Result.UsesSym:=usesSym;
       end;
    except
@@ -2165,7 +2259,10 @@ begin
 
    if (Result.Token<>ttNone) and (Result.UsesSym<>nil) then begin
       FProg.Table.AddSymbol(Result);
-      FOperators.RegisterOperator(Result);
+      if FProg.Table<>FProg.Root.RootTable then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_OverloadOnlyInGlobalScope)
+      else if not FOperators.RegisterOperator(Result) then
+         FMsgs.AddCompilerError(opPos, CPE_OverloadAlreadyExists);
    end else FreeAndNil(Result);
 end;
 
@@ -4432,7 +4529,8 @@ var
    usesPos : TScriptPos;
    sym : TTypeSymbol;
 begin
-   tt:=FTok.TestDeleteAny([ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN, ttIN]);
+   tt:=FTok.TestDeleteAny([ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN, ttIN,
+                           ttCARET_ASSIGN]);
    if tt=ttNone then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_OverloadableOperatorExpected);
 
@@ -6354,6 +6452,7 @@ var
    x, y, z, u : Integer;
    rt : TProgramSymbolTable;
    rSym : TSymbol;
+   fromUnits : TStringList;
 begin
    names:=TStringList.Create;
    try
@@ -6375,8 +6474,15 @@ begin
             end;
             Inc(y);
          end;
-         if z<0 then
-            FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownUnit, [names[x]]);
+         if z<0 then begin
+            fromUnits:=TStringList.Create;
+            try
+               fromUnits.CaseSensitive:=False;
+               HandleExplicitDependency(FConf, names[x], fromUnits);
+            finally
+               fromUnits.Free;
+            end;
+         end;
       end;
    finally
       names.Free;
@@ -6883,9 +6989,9 @@ begin
    FConnectors := TStringList.Create;
    FScriptPaths := TStringList.Create;
    FConditionals := TStringList.Create;
-   FUnits := TStringList.Create;
+   FUnits := TIUnitList.Create;
    InitSystemTable;
-   FUnits.AddObject(SYS_INTERNAL, Pointer(IUnit(dwsInternalUnit)));
+   FUnits.Add(dwsInternalUnit);
    FStackChunkSize := C_DefaultStackChunkSize;
    FDefaultResultType := TdwsDefaultResultType.Create(nil);
    FResultType := FDefaultResultType;

@@ -24,7 +24,7 @@ interface
 
 uses
   Classes, SysUtils, dwsExprs, dwsSymbols, dwsStack, dwsStrings, dwsTokenizer,
-  dwsOperators;
+  dwsOperators, dwsUtils;
 
 type
 
@@ -34,6 +34,12 @@ type
       function GetUnitName : String;
       function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
       function GetDependencies : TStrings;
+      function ImplicitUse : Boolean;
+   end;
+
+   TIUnitList = class(TSimpleList<IUnit>)
+      function IndexOf(const unitName : String) : Integer; overload;
+      function IndexOf(const aUnit : IUnit) : Integer; overload;
    end;
 
    TEmptyFunc = class(TInterfacedObject, ICallable)
@@ -151,6 +157,7 @@ type
          function GetUnitName: string;
          procedure InitUnitTable(systemTable, unitSyms, unitTable : TSymbolTable; operators : TOperators);
          function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
+         function ImplicitUse : Boolean;
 
       public
          constructor Create;
@@ -711,6 +718,13 @@ begin
   end;
 end;
 
+// ImplicitUse
+//
+function TInternalUnit.ImplicitUse : Boolean;
+begin
+   Result:=True;
+end;
+
 procedure TInternalUnit.InitUnitTable(systemTable, unitSyms, unitTable : TSymbolTable; operators : TOperators);
 var
    i : Integer;
@@ -751,6 +765,31 @@ begin
   if not FStaticSymbols then
     ReleaseStaticSymbols;
 end;
+
+// ------------------
+// ------------------ TIUnitList ------------------
+// ------------------
+
+// IndexOf (name)
+//
+function TIUnitList.IndexOf(const unitName : String) : Integer;
+begin
+   for Result:=0 to Count-1 do
+      if SameText(Items[Result].GetUnitName, unitName) then
+         Exit;
+   Result:=-1;
+end;
+
+// IndexOf (IUnit)
+//
+function TIUnitList.IndexOf(const aUnit : IUnit) : Integer;
+begin
+   for Result:=0 to Count-1 do
+      if Items[Result]=aUnit then
+         Exit;
+   Result:=-1;
+end;
+
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------

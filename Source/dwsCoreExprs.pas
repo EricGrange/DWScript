@@ -180,7 +180,6 @@ type
      function IsWritable : Boolean; override;
 
      class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant) : TConstExpr; overload; static;
-     class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: String) : TConstExpr; overload; static;
      class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData) : TConstExpr; overload; static;
      class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; constSymbol : TConstSymbol) : TConstExpr; overload; static;
    end;
@@ -2106,13 +2105,6 @@ end;
 
 // CreateTyped
 //
-class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: String) : TConstExpr;
-begin
-   Result:=CreateTyped(Prog, Typ, Variant(Value));
-end;
-
-// CreateTyped
-//
 class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData) : TConstExpr;
 begin
    if Length(Data)=1 then
@@ -2124,9 +2116,8 @@ end;
 //
 class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; constSymbol : TConstSymbol) : TConstExpr;
 begin
-   if constSymbol<>nil then
-      Result:=CreateTyped(Prog, Typ, constSymbol.Data)
-   else Result:=CreateTyped(Prog, Typ, Unassigned);
+   Assert(constSymbol<>nil);
+   Result:=CreateTyped(Prog, Typ, constSymbol.Data);
 end;
 
 // GetData

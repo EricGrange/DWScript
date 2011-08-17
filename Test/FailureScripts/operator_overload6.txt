@@ -1,0 +1,3 @@
+Syntax Error: Overloads can only be declared in the global scope [line: 8, column: 49]
+Syntax Error: Overloads can only be declared in the global scope [line: 14, column: 49]
+Syntax Error: An overload already exists for this operator and types [line: 18, column: 1]

@@ -61,6 +61,7 @@ type
     function GetUnitName: string;
     function GetDependencies: TStrings;
     function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
+    function ImplicitUse : Boolean;
   protected
     FUnitName: string;
     FDependencies: TStrings;
@@ -127,6 +128,8 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     function GetUnitName: string; virtual;
     function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable; virtual; abstract;
+    function ImplicitUse : Boolean;
+
     property Dependencies: TStrings read FDependencies write SetDependencies;
     {$WARNINGS OFF}
     property UnitName: string read GetUnitName write SetUnitName;
@@ -1077,21 +1080,27 @@ begin
    FCompiler.RecompileInContext(prog, text, FConfig);
 end;
 
+// AddUnit
+//
 procedure TDelphiWebScript.AddUnit(const Un: IUnit);
 begin
-  RemoveUnit(Un);
-  if Assigned(Un) then
-    FConfig.Units.AddObject(Un.GetUnitName, Pointer(Un));
+   RemoveUnit(Un);
+   if Assigned(Un) then
+      FConfig.Units.Add(Un);
 end;
 
+// RemoveUnit
+//
 function TDelphiWebScript.RemoveUnit(const Un: IUnit): Boolean;
 var
-  x: Integer;
+   i : Integer;
 begin
-  x := FConfig.Units.IndexOfObject(Pointer(Un));
-  if x >= 0 then
-    FConfig.Units.Delete(x);
-  Result := x >= 0;
+   i := FConfig.Units.IndexOf(Un);
+   if i >= 0 then begin
+      FConfig.Units[i]:=nil;
+      FConfig.Units.Extract(i);
+   end;
+   Result := i >= 0;
 end;
 
 procedure TDelphiWebScript.SetConfig(const Value: TdwsConfiguration);
@@ -3190,21 +3199,21 @@ begin
   FDependencies.Assign(Value);
 end;
 
+// SetScript
+//
 procedure TdwsAbstractUnit.SetScript(const Value: TDelphiWebScript);
 begin
-  if Assigned(FScript) then
-  begin
-    FScript.RemoveUnit(Self);
-    FScript.RemoveFreeNotification(Self);
-  end;
+   if Assigned(FScript) then begin
+      FScript.RemoveUnit(Self);
+      FScript.RemoveFreeNotification(Self);
+   end;
 
-  FScript := Value;
+   FScript := Value;
 
-  if Assigned(FScript) then
-  begin
-    FScript.AddUnit(Self);
-    FScript.FreeNotification(Self);
-  end;
+   if Assigned(FScript) then begin
+      FScript.AddUnit(Self);
+      FScript.FreeNotification(Self);
+   end;
 end;
 
 procedure TdwsAbstractUnit.SetUnitName(const Value: string);
@@ -3214,6 +3223,13 @@ begin
     raise Exception.Create(UNT_CantChangeUnitName)
   else
     FUnitName := Value;
+end;
+
+// ImplicitUse
+//
+function TdwsAbstractUnit.ImplicitUse : Boolean;
+begin
+   Result:=False;
 end;
 
 { TdwsEmptyUnit }
@@ -3263,6 +3279,13 @@ begin
     Result.Free;
     raise;
   end;
+end;
+
+// ImplicitUse
+//
+function TdwsEmptyUnit.ImplicitUse : Boolean;
+begin
+   Result:=True;
 end;
 
 { TdwsEmptyUnit }

@@ -28,7 +28,7 @@ replace them with the notice and other provisions required by the GPL.
 If you do not delete the provisions above, a recipient may use your version
 of this file under either the MPL or the GPL.
 
-$Id: SynHighlighterDWS.pas,v 1.4 2011/06/23 09:41:45 Egg Exp $
+$Id: SynHighlighterDWS.pas,v 1.5 2011/08/17 08:08:21 Egg Exp $
 
 You may retrieve the latest version of this file at the SynEdit home page,
 located at http://SynEdit.SourceForge.net
@@ -69,6 +69,7 @@ type
   private
     fAsmStart: Boolean;
     fRange: TRangeState;
+    fCommentClose : Char;
     fIdentFuncTable: array[0..388] of TIdentFuncTableFunc;
     fKeyWords : TStringList;
     fKeyWords_PropertyScoped : TStringList;
@@ -172,7 +173,7 @@ uses
 
 const
   // if the language is case-insensitive keywords *must* be in lowercase
-  KeyWords: array[0..104] of UnicodeString = (
+  KeyWords: array[0..105] of UnicodeString = (
     'absolute', 'abstract', 'and', 'array', 'as', 'asm', 'assembler',
     'automated', 'begin', 'case', 'cdecl', 'class', 'const', 'constructor',
     'contains', 'deprecated', 'destructor',
@@ -186,7 +187,7 @@ const
     'pascal', 'platform', 'private', 'procedure', 'program', 'property',
     'protected', 'public', 'published', 'raise', 'record',
     'register', 'reintroduce', 'repeat', 'requires', 'resourcestring',
-    'safecall', 'sealed', 'set', 'shl', 'shr', 'stdcall', 'string',
+    'safecall', 'sealed', 'set', 'shl', 'shr', 'stdcall', 'step', 'string',
     'stringresource', 'then', 'threadvar', 'to', 'try', 'type', 'unit', 'until',
     'uses', 'var', 'virtual', 'while', 'with', 'xor'
   );
@@ -540,7 +541,7 @@ begin
   else
     fTokenID := tkComment;
     repeat
-      if (fLine[Run] = '*') and (fLine[Run + 1] = ')') then begin
+      if (fLine[Run] = '*') and (fLine[Run + 1] = fCommentClose) then begin
         Inc(Run, 2);
         if fRange = rsAnsiAsm then
           fRange := rsAsm
@@ -565,6 +566,7 @@ begin
         else
           fRange := rsAnsi;
         fTokenID := tkComment;
+        fCommentClose := ')';
         if not IsLineEnd(Run) then
           AnsiProc;
       end;
@@ -589,15 +591,28 @@ end;
 procedure TSynDWSSyn.SlashProc;
 begin
   Inc(Run);
-  if (fLine[Run] = '/') then
-  begin
-    fTokenID := tkComment;
-    repeat
-      Inc(Run);
-    until IsLineEnd(Run);
-  end
+  case fLine[Run] of
+    '/': begin
+      fTokenID := tkComment;
+      repeat
+        Inc(Run);
+      until IsLineEnd(Run);
+    end;
+    '*':
+      begin
+        Inc(Run);
+        if fRange = rsAsm then
+          fRange := rsAnsiAsm
+        else
+          fRange := rsAnsi;
+        fTokenID := tkComment;
+        fCommentClose := '/';
+        if not IsLineEnd(Run) then
+          AnsiProc;
+      end;
   else
     fTokenID := tkSymbol;
+  end;
 end;
 
 procedure TSynDWSSyn.SpaceProc;

@@ -108,7 +108,10 @@ const
   CPE_AssignExpected = '":=" expected';
   CPE_ArrayBracketOrClassExpected = '"[" or class expected';
   CPE_OnOffExpected = 'ON/OFF expected';
-  CPU_UnexpectedStatement = 'Unexpected statement "%s"';
+  CPE_UnexpectedSection = 'Unexpected section declaration "%s"';
+  CPE_UnexpectedStatement = 'Unexpected statement';
+  CPE_UnexpectedImplementationInInterface = 'Unexpected implementation in interface section';
+  CPE_UnexpectedEnd = 'Unexpected END';
 
   // ReadName
   CPE_UnknownName = 'Unknown name "%s"';
@@ -163,6 +166,8 @@ const
   CPE_ClassAncestorNotStatic = 'Class "%s" is not static, can''t inherit as static!';
   CPE_MethodOrPropertyExpected = 'Method or property declaration expected';
   CPE_OverloadableOperatorExpected = 'Overloadable operator expected';
+  CPE_OverloadOnlyInGlobalScope = 'Overloads can only be declared in the global scope';
+  CPE_OverloadAlreadyExists = 'An overload already exists for this operator and types';
   CPE_SingleParameterExpected = 'Single parameter expected';
   CPE_UsesExpected = '"USES" expected';
   CPE_FieldMethodUnknown = 'Field/method "%s" not found!';

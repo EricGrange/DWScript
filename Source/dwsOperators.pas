@@ -47,7 +47,7 @@ type
       public
          constructor Create(table : TSymbolTable);
 
-         procedure RegisterOperator(sym : TOperatorSymbol); overload;
+         function RegisterOperator(sym : TOperatorSymbol) : Boolean; overload;
 
          procedure RegisterOperator(aToken : TTokenType; aExprClass : TBinaryOpExprClass;
                                     aLeftType, aRightType : TTypeSymbol); overload;
@@ -288,8 +288,9 @@ end;
 
 // RegisterOperator
 //
-procedure TOperators.RegisterOperator(sym : TOperatorSymbol);
+function TOperators.RegisterOperator(sym : TOperatorSymbol) : Boolean;
 begin
+   Result:=(OperatorFor(sym.Token, sym.Params[0], sym.Params[1])=nil);
    RegisterOperator(sym.Token, sym.UsesSym, sym.Params[0], sym.Params[1]);
 end;
 

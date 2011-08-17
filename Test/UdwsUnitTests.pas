@@ -75,6 +75,8 @@ type
          procedure CustomDestructor;
          procedure Delegates;
          procedure Operators;
+
+         procedure ExplclitUses;
    end;
 
    EDelphiException = class (Exception)
@@ -1122,6 +1124,33 @@ begin
                   exec.Result.ToString+exec.Msgs.AsInfo);
    finally
       exec.EndProgram;
+   end;
+end;
+
+// ExplclitUses
+//
+procedure TdwsUnitTests.ExplclitUses;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   FCompiler.Config.CompilerOptions:=FCompiler.Config.CompilerOptions+[coExplicitUnitUses];
+   try
+      prog:=FCompiler.Compile( 'var f := Func1;');
+
+      CheckEquals('Syntax Error: Unknown name "Func1" [line: 1, column: 10]'#13#10, prog.Msgs.AsInfo, 'Compile no uses');
+
+      prog:=FCompiler.Compile( 'uses Test;'#13#10
+                              +'var f := Func1;'#13#10
+                              +'PrintLn(f);');
+
+      CheckEquals('', prog.Msgs.AsInfo, 'Compile no uses');
+
+      exec:=prog.Execute;
+      CheckEquals( '1'#13#10, exec.Result.ToString+exec.Msgs.AsInfo);
+
+   finally
+      FCompiler.Config.CompilerOptions:=FCompiler.Config.CompilerOptions-[coExplicitUnitUses];
    end;
 end;
 
