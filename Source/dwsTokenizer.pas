@@ -475,7 +475,8 @@ const
       ttDO, ttDOWNTO, ttDIV, ttDEFAULT, ttDESTRUCTOR, ttDEPRECATED,
       ttEND, ttENSURE, ttELSE, ttEXCEPT, ttEXIT, ttEXTERNAL,
       ttFOR, ttFALSE, ttFINAL, ttFINALLY, ttFORWARD, ttFUNCTION,
-      ttIF, ttIMPLIES, ttIN, ttINVARIANTS, ttIS, ttINHERITED, ttINDEX, ttINTERFACE, ttIMPLEMENTATION,
+      ttIF, ttIMPLIES, ttIN, ttINVARIANTS, ttIS, ttINHERITED, ttINDEX,
+      ttINTERFACE, ttIMPLEMENTATION,
       ttLAZY,
       ttMETHOD, ttMOD,
       ttNEW, ttNOT, ttNIL,
@@ -1240,8 +1241,7 @@ initialization
    sSmallerF.SetElse(TErrorTransition.Create(TOK_GreaterEqualityExpected));
 
    sDotDot.AddTransition(['.'], TConsumeTransition.Create(sStart, [toFinal], caDotDot));
-   sDotDot.AddTransition(cNAM, TCheckTransition.Create(sStart, [toFinal], caName));
-   sDotDot.SetElse(TErrorTransition.Create(TOK_DotExpected));
+   sDotDot.SetElse(TCheckTransition.Create(sStart, [toFinal], caName));
 
 finalization
 

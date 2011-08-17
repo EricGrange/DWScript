@@ -1,0 +1,5 @@
+Syntax Error: "Hello" is not a method of class "TChild" [line: 11, column: 24]
+Syntax Error: "TBase.Hello" is declared "abstract", no implementation allowed [line: 11, column: 24]
+Syntax Error: Declaration shouldn't start with "class" [line: 11, column: 24]
+Syntax Error: Declaration should start with "class" [line: 15, column: 17]
+Syntax Error: Declaration should be "method" [line: 15, column: 27]

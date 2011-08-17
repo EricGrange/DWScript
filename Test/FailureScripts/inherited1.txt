@@ -1,0 +1,1 @@
+Syntax Error: "inherited" only allowed in methods [line: 3, column: 4]

@@ -148,15 +148,15 @@ type
     function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable; override;
     function CreateUnitTable(Parent: TSymbolTable; Typ: TSymbolTableType = sttDefault): TUnitSymbolTable; virtual;
     procedure SetStaticSymbols(const Value: Boolean); // static symbols
-    procedure InitUnitTable(SystemTable, UnitSyms: TSymbolTable; UnitTable: TUnitSymbolTable); virtual;
-    procedure AddUnitSymbols(Table: TSymbolTable); virtual; abstract;
+    procedure InitUnitTable(SystemTable, UnitSyms: TSymbolTable; operators : TOperators; UnitTable: TUnitSymbolTable); virtual;
+    procedure AddUnitSymbols(Table: TSymbolTable; operators : TOperators); virtual; abstract;
     property StaticSymbols: Boolean read FStaticSymbols write SetStaticSymbols;
     property StaticTable: TStaticSymbolTable read FStaticTable;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure BeforeDestruction; override;
-    function InitStaticSymbols(SystemTable: TSymbolTable; UnitSyms: TSymbolTable): Boolean;
+    function InitStaticSymbols(SystemTable: TSymbolTable; UnitSyms: TSymbolTable; operators : TOperators): Boolean;
     procedure ReleaseStaticSymbols;
   end;
 
@@ -474,33 +474,43 @@ type
     property Name : string read FName write FName;
   end;
 
-  TdwsTypeSymbols = class(TOwnedCollection)
-   public
-    constructor Create(AOwner: TPersistent);
+   TdwsTypeSymbols = class(TOwnedCollection)
+      public
+         constructor Create(AOwner: TPersistent);
+         function Add : TdwsTypeSymbol;
+   end;
+
+   TdwsOperator = class(TdwsSymbol)
+      private
+         FOperator: TTokenType;
+         FResultType: TDataType;
+         FParams : TdwsTypeSymbols;
+         FUsesAccess: string;
+
+      protected
+         function GetDisplayName: string; override;
+
+      public
+         constructor Create(Collection: TCollection); override;
+         destructor Destroy; override;
+         procedure Assign(Source: TPersistent); override;
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+
+      published
+         property ResultType : TDataType read FResultType write FResultType;
+         property Params : TdwsTypeSymbols read FParams write FParams;
+         property Operator : TTokenType read FOperator write FOperator;
+         property UsesAccess : string read FUsesAccess write FUsesAccess;
   end;
 
-  TdwsOperator = class(TdwsSymbol)
-  private
-    FOperator: TTokenType;
-    FResultType: TDataType;
-    FParams : TdwsTypeSymbols;
-    FUsesAccess: string;
-  protected
-    function GetDisplayName: string; override;
-  public
-    procedure Assign(Source: TPersistent); override;
-    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
-  published
-    property ResultType : TDataType read FResultType write FResultType;
-    property Params : TdwsTypeSymbols read FParams write FParams;
-    property Operator : TTokenType read FOperator write FOperator;
-    property UsesAccess : string read FUsesAccess write FUsesAccess;
-  end;
+   TdwsOperators = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+      public
+         function Add : TdwsOperator;
+   end;
 
-  TdwsOperators = class(TdwsCollection)
-  protected
-    class function GetSymbolClass : TdwsSymbolClass; override;
-  end;
+   TdwsOperatorsClass = class of TdwsOperators;
 
   TAssignExternalObjectEvent = procedure(Info: TProgramInfo; var ExtObject: TObject) of object;
   TMethodEvalEvent = procedure(Info: TProgramInfo; ExtObject: TObject) of object;
@@ -803,7 +813,7 @@ type
         FTable: TUnitSymbolTable;
 
       protected
-        FCollections: array[0..9] of TdwsCollection;
+        FCollections: array[0..10] of TdwsCollection;
 
         class function GetArraysClass: TdwsArraysClass; virtual;
         class function GetClassesClass: TdwsClassesClass; virtual;
@@ -815,6 +825,7 @@ type
         class function GetRecordsClass: TdwsRecordsClass; virtual;
         class function GetVariablesClass: TdwsVariablesClass; virtual;
         class function GetSynonymsClass: TdwsSynonymsClass; virtual;
+        class function GetOperatorsClass: TdwsOperatorsClass; virtual;
 
         procedure SetArrays(const Value: TdwsArrays);
         procedure SetClasses(const Value: TdwsClasses);
@@ -826,6 +837,7 @@ type
         procedure SetVariables(const Value: TdwsVariables);
         procedure SetInstances(const Value: TdwsInstances);
         procedure SetSynonyms(const Value: TdwsSynonyms);
+        procedure SetOperators(const Value: TdwsOperators);
 
         function StoreArrays : Boolean;
         function StoreClasses : Boolean;
@@ -840,9 +852,9 @@ type
 
       protected
         function GetSymbol(Table: TSymbolTable; const Name: string): TSymbol;
-        procedure AddCollectionSymbols(Collection: TdwsCollection; Table: TSymbolTable); virtual;
-        procedure AddUnitSymbols(Table: TSymbolTable); override;
-        procedure InitUnitTable(SystemTable, UnitSyms: TSymbolTable; UnitTable: TUnitSymbolTable); override;
+        procedure AddCollectionSymbols(Collection: TdwsCollection; Table: TSymbolTable; operators : TOperators); virtual;
+        procedure AddUnitSymbols(Table: TSymbolTable; operators : TOperators); override;
+        procedure InitUnitTable(SystemTable, UnitSyms: TSymbolTable; operators : TOperators; UnitTable: TUnitSymbolTable); override;
 
         // Method to support get/set property values for dynamicly registered classes
         procedure HandleDynamicCreate(Info: TProgramInfo; var ExtObject: TObject);
@@ -867,7 +879,7 @@ type
         property Forwards: TdwsForwards read FForwards write SetForwards stored False;
         property Functions: TdwsFunctions read FFunctions write SetFunctions stored StoreFunctions;
         property Instances: TdwsInstances read FInstances write SetInstances stored StoreInstances;
-        property Operators : TdwsOperators read FOperators write FOperators stored StoreOperators;
+        property Operators : TdwsOperators read FOperators write SetOperators stored StoreOperators;
         property Records: TdwsRecords read FRecords write SetRecords stored StoreRecords;
         property Synonyms: TdwsSynonyms read FSynonyms write SetSynonyms stored StoreSynonyms;
         property UnitName;
@@ -1224,68 +1236,33 @@ end;
 
 { TdwsUnit }
 
-procedure TdwsUnit.AddCollectionSymbols(Collection: TdwsCollection;
-  Table: TSymbolTable);
-var
-  y: Integer;
-  clsName : String;
-begin
-   // add all classes as forwards automatically if they aren't there already
-   for y:=0 to FClasses.Count-1 do begin
-      clsName:=FClasses.Items[y].Name;
-      if FForwards.IndexOf(clsName)<0 then
-         TdwsForward(Forwards.Add).Name:=clsName;
-   end;
-
-  for y := 0 to Collection.Count - 1 do
-  begin
-    if not TdwsSymbol(Collection.Items[y]).IsGenerating then
-    try
-      TdwsSymbol(Collection.Items[y]).Generate(Table);
-    except
-      on e: Exception do
-        raise EGenerationError.CreateFmt(UNT_UnitGenerationError, [UnitName,
-          e.Message]);
-    end;
-  end;
-end;
-
-procedure TdwsUnit.AddUnitSymbols(Table: TSymbolTable);
-var
-  x: Integer;
-begin
-  for x := Low(FCollections) to High(FCollections) do
-    FCollections[x].Reset;
-
-  for x := Low(FCollections) to High(FCollections) do
-    AddCollectionSymbols(FCollections[x], Table);
-end;
-
 constructor TdwsUnit.Create(AOwner: TComponent);
 begin
-  inherited;
-  FArrays := GetArraysClass.Create(Self);
-  FClasses := GetClassesClass.Create(Self);
-  FConstants := GetConstantsClass.Create(Self);
-  FEnumerations := GetEnumerationsClass.Create(Self);
-  FForwards := GetForwardsClass.Create(Self);
-  FFunctions := GetFunctionsClass.Create(Self);
-  FRecords := GetRecordsClass.Create(Self);
-  FVariables := GetVariablesClass.Create(Self);
-  FInstances := GetInstancesClass.Create(Self);
-  FSynonyms := GetSynonymsClass.Create(Self);
-  FCollections[0] := FForwards;
-  FCollections[1] := FEnumerations;
-  FCollections[2] := FArrays;
-  FCollections[3] := FRecords;
-  FCollections[4] := FClasses;
-  FCollections[5] := FSynonyms;
-  FCollections[6] := FFunctions;
-  FCollections[7] := FVariables;
-  FCollections[8] := FConstants;
-  FCollections[9] := FInstances;
+   inherited;
+   FArrays := GetArraysClass.Create(Self);
+   FClasses := GetClassesClass.Create(Self);
+   FConstants := GetConstantsClass.Create(Self);
+   FEnumerations := GetEnumerationsClass.Create(Self);
+   FForwards := GetForwardsClass.Create(Self);
+   FFunctions := GetFunctionsClass.Create(Self);
+   FRecords := GetRecordsClass.Create(Self);
+   FVariables := GetVariablesClass.Create(Self);
+   FInstances := GetInstancesClass.Create(Self);
+   FSynonyms := GetSynonymsClass.Create(Self);
+   FOperators := TdwsOperators.Create(Self);
 
-  FOperators := TdwsOperators.Create(Self);
+   FCollections[0] := FForwards;
+   FCollections[1] := FEnumerations;
+   FCollections[2] := FArrays;
+   FCollections[3] := FRecords;
+   FCollections[4] := FClasses;
+   FCollections[5] := FSynonyms;
+   FCollections[6] := FFunctions;
+   FCollections[7] := FVariables;
+   FCollections[8] := FConstants;
+   FCollections[9] := FInstances;
+   FCollections[10] := FOperators;
+
 end;
 
 destructor TdwsUnit.Destroy;
@@ -1302,6 +1279,46 @@ begin
   FSynonyms.Free;
   FOperators.Free;
   inherited;
+end;
+
+procedure TdwsUnit.AddCollectionSymbols(Collection: TdwsCollection;
+  Table: TSymbolTable; operators : TOperators);
+var
+  y: Integer;
+  clsName : String;
+  sym : TSymbol;
+begin
+   // add all classes as forwards automatically if they aren't there already
+   for y:=0 to FClasses.Count-1 do begin
+      clsName:=FClasses.Items[y].Name;
+      if FForwards.IndexOf(clsName)<0 then
+         TdwsForward(Forwards.Add).Name:=clsName;
+   end;
+
+  for y := 0 to Collection.Count - 1 do
+  begin
+    if not TdwsSymbol(Collection.Items[y]).IsGenerating then
+    try
+      sym:=TdwsSymbol(Collection.Items[y]).Generate(Table);
+      if sym is TOperatorSymbol then
+         operators.RegisterOperator(TOperatorSymbol(sym));
+    except
+      on e: Exception do
+        raise EGenerationError.CreateFmt(UNT_UnitGenerationError, [UnitName,
+          e.Message]);
+    end;
+  end;
+end;
+
+procedure TdwsUnit.AddUnitSymbols(Table: TSymbolTable; operators : TOperators);
+var
+  x: Integer;
+begin
+  for x := Low(FCollections) to High(FCollections) do
+    FCollections[x].Reset;
+
+  for x := Low(FCollections) to High(FCollections) do
+    AddCollectionSymbols(FCollections[x], Table, operators);
 end;
 
 procedure TdwsUnit.GetClassTypes(List: TStrings);
@@ -1479,9 +1496,23 @@ begin
   Result := TdwsSynonyms;
 end;
 
+// GetOperatorsClass
+//
+class function TdwsUnit.GetOperatorsClass: TdwsOperatorsClass;
+begin
+   Result:=TdwsOperators;
+end;
+
 procedure TdwsUnit.SetSynonyms(const Value: TdwsSynonyms);
 begin
   FSynonyms.Assign(Value);
+end;
+
+// SetOperators
+//
+procedure TdwsUnit.SetOperators(const Value: TdwsOperators);
+begin
+   FOperators.Assign(Value);
 end;
 
 // StoreArrays
@@ -1803,11 +1834,11 @@ begin
     raise Exception.CreateFmt(UNT_AutoInstantiateWithoutClass, [AClassType]);
 end;
 
-procedure TdwsUnit.InitUnitTable(SystemTable, UnitSyms: TSymbolTable; UnitTable: TUnitSymbolTable);
+procedure TdwsUnit.InitUnitTable(SystemTable, UnitSyms: TSymbolTable; operators : TOperators; UnitTable: TUnitSymbolTable);
 begin
   FTable := UnitTable;
   try
-    inherited InitUnitTable(SystemTable, UnitSyms, UnitTable);
+    inherited InitUnitTable(SystemTable, UnitSyms, operators, UnitTable);
   finally
     FTable := nil;
   end;
@@ -3674,13 +3705,13 @@ end;
 
 function TdwsAbstractStaticUnit.GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
 begin
-  if StaticSymbols and InitStaticSymbols(SystemTable, UnitSyms) then
+  if StaticSymbols and InitStaticSymbols(SystemTable, UnitSyms, operators) then
     Result := CreateUnitTable(FStaticTable, sttLinked) as TLinkedSymbolTable // typecheck
   else
   begin
     Result := CreateUnitTable(SystemTable); // sttDefault
     try
-      InitUnitTable(SystemTable, UnitSyms, Result);
+      InitUnitTable(SystemTable, UnitSyms, operators, Result);
     except
       Result.Free;
       raise;
@@ -3688,7 +3719,7 @@ begin
   end;
 end;
 
-function TdwsAbstractStaticUnit.InitStaticSymbols(SystemTable, UnitSyms: TSymbolTable): Boolean;
+function TdwsAbstractStaticUnit.InitStaticSymbols(SystemTable, UnitSyms: TSymbolTable; operators : TOperators): Boolean;
 var
   staticParent: TStaticSymbolTable;
 begin
@@ -3705,7 +3736,7 @@ begin
     begin
       FStaticTable := CreateUnitTable(staticParent, sttStatic) as TStaticSymbolTable;
       try
-        InitUnitTable(SystemTable, UnitSyms, FStaticTable);
+        InitUnitTable(SystemTable, UnitSyms, operators, FStaticTable);
       except
         ReleaseStaticSymbols;
         raise;
@@ -3715,7 +3746,8 @@ begin
   Result := Assigned(FStaticTable);
 end;
 
-procedure TdwsAbstractStaticUnit.InitUnitTable(SystemTable, UnitSyms: TSymbolTable; UnitTable: TUnitSymbolTable);
+procedure TdwsAbstractStaticUnit.InitUnitTable(SystemTable, UnitSyms: TSymbolTable;
+                                    operators : TOperators; UnitTable: TUnitSymbolTable);
 var
   x: Integer;
   sym: TSymbol;
@@ -3736,7 +3768,7 @@ begin
       TUnitSymbol(sym).Table));
   end;
 
-  AddUnitSymbols(UnitTable);
+  AddUnitSymbols(UnitTable, operators);
 end;
 
 procedure TdwsAbstractStaticUnit.ReleaseStaticSymbols;
@@ -3866,9 +3898,32 @@ begin
    inherited Create(AOwner, TdwsTypeSymbol);
 end;
 
+// Add
+//
+function TdwsTypeSymbols.Add : TdwsTypeSymbol;
+begin
+   Result:=TdwsTypeSymbol(inherited Add);
+end;
+
 // ------------------
 // ------------------ TdwsOperator ------------------
 // ------------------
+
+// Create
+//
+constructor TdwsOperator.Create(Collection: TCollection);
+begin
+   inherited;
+   FParams:=TdwsTypeSymbols.Create(Self);
+end;
+
+// Destroy
+//
+destructor TdwsOperator.Destroy;
+begin
+   FParams.Free;
+   inherited;
+end;
 
 // GetDisplayName
 //
@@ -3925,10 +3980,12 @@ begin
       typ:=Table.FindTypeSymbol(ResultType, cvMagic);
       if (typ=nil) or not typ.IsType then
          RaiseError;
+      op.Typ:=typ;
       sym:=Table.FindTypeSymbol(UsesAccess, cvMagic);
       if (sym=nil) or sym.IsType or not (sym is TFuncSymbol) then
          raise Exception.CreateFmt(UNT_UsesAccessNotFound, [UsesAccess]);
       op.UsesSym:=TFuncSymbol(sym);
+      Table.AddSymbol(op);
    except
       op.Free;
       raise;
@@ -3945,6 +4002,13 @@ end;
 class function TdwsOperators.GetSymbolClass : TdwsSymbolClass;
 begin
    Result:=TdwsOperator;
+end;
+
+// Add
+//
+function TdwsOperators.Add : TdwsOperator;
+begin
+   Result:=TdwsOperator(inherited Add);
 end;
 
 end.

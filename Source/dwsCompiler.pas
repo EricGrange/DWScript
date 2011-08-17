@@ -213,7 +213,7 @@ type
                           tcParameter, tcResult, tcOperand, tcExceptionClass,
                           tcProperty);
 
-   TdwsReadSection = (rsMixed, rsHeader, rsInterface, rsImplementation);
+   TdwsReadSection = (rsMixed, rsHeader, rsInterface, rsImplementation, rsInitialization);
 
    // TdwsCompiler
    //
@@ -405,6 +405,8 @@ type
       function CreateArrayLength(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
 
       function CreateOperatorFunction(funcSym : TFuncSymbol; left, right : TTypedExpr) : TTypedExpr;
+
+      procedure DoSectionChanged;
 
       procedure SetupCompileOptions(conf : TdwsConfiguration);
       procedure CleanupAfterCompile;
@@ -1142,18 +1144,20 @@ begin
       end;
       ttOPERATOR :
          ReadOperatorDecl;
-      ttINTERFACE, ttIMPLEMENTATION : begin
-         if    ((token=ttINTERFACE) and not (ReadSection in [rsMixed, rsHeader]))
-            or ((token=ttIMPLEMENTATION) and not (ReadSection in [rsInterface])) then
+      ttINTERFACE : begin
+         if not (ReadSection in [rsMixed, rsHeader]) then
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPU_UnexpectedStatement,
                                       [cTokenStrings[token]]);
-         if token=ttINTERFACE then
-            FReadSection:=rsInterface
-         else FReadSection:=rsImplementation;
-         if Assigned(FOnSectionChanged) then
-            FOnSectionChanged(Self);
-         if token=ttIMPLEMENTATION then
-            Result:=ReadBlocks([ttEND], token);
+         FReadSection:=rsInterface;
+         DoSectionChanged;
+      end;
+      ttIMPLEMENTATION : begin
+         if ReadSection<>rsInterface then
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPU_UnexpectedStatement,
+                                      [cTokenStrings[token]]);
+         FReadSection:=rsImplementation;
+         DoSectionChanged;
+         Result:=ReadBlocks([ttEND], token);
       end;
    else
       Result:=ReadStatement;
@@ -1828,16 +1832,20 @@ begin
       FMsgs.AddCompilerStop(methPos, CPE_ImplNotAMethod);
    Result:=TMethodSymbol(sym);
 
-   if Result.ClassSymbol<>classSym then
-      FMsgs.AddCompilerStopFmt(methPos, CPE_ImplInvalidClass, [methName, classSym.Name]);
+   if Result.ClassSymbol<>classSym then begin
+      FMsgs.AddCompilerErrorFmt(methPos, CPE_ImplInvalidClass, [methName, classSym.Name]);
+      classSym:=Result.ClassSymbol;
+   end;
 
    if Result.IsAbstract then
       FMsgs.AddCompilerErrorFmt(methPos, CPE_ImplAbstract, [classSym.Name, methName]);
 
-   if Result.isClassMethod and not isClassMethod then
-      FMsgs.AddCompilerStop(methPos, CPE_ImplClassExpected)
-   else if not Result.isClassMethod and isClassMethod then
-      FMsgs.AddCompilerStop(methPos, CPE_ImplNotClassExpected);
+   if Result.IsClassMethod<>isClassMethod then begin
+      if Result.IsClassMethod then
+         FMsgs.AddCompilerError(methPos, CPE_ImplClassExpected)
+      else FMsgs.AddCompilerError(methPos, CPE_ImplNotClassExpected);
+      isClassMethod:=Result.IsClassMethod;
+   end;
 
    CompareFuncKinds(Result.Kind, funcKind);
 
@@ -2091,7 +2099,7 @@ begin
    tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttTIMES, ttDIVIDE, ttMOD, ttDIV,
                            ttOR, ttAND, ttXOR, ttIMPLIES, ttSHL, ttSHR,
                            ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
-                           ttLESSLESS, ttGTRGTR]);
+                           ttLESSLESS, ttGTRGTR, ttCARET]);
    if tt=ttNone then
       FMsgs.AddCompilerError(FTok.HotPos, CPE_OverloadableOperatorExpected);
 
@@ -2157,7 +2165,7 @@ begin
 
    if (Result.Token<>ttNone) and (Result.UsesSym<>nil) then begin
       FProg.Table.AddSymbol(Result);
-      FOperators.RegisterOperator(tt, Result.UsesSym, Result.Params[0], Result.Params[1]);
+      FOperators.RegisterOperator(Result);
    end else FreeAndNil(Result);
 end;
 
@@ -2392,7 +2400,7 @@ var
 begin
    Result := nil;
    if not ((FProg is TdwsProcedure) and (TdwsProcedure(FProg).Func is TMethodSymbol)) then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedOnlyInMethodsAllowed);
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedOnlyAllowedInMethods);
 
    methSym := TMethodSymbol(TdwsProcedure(FProg).Func);
    classSym := methSym.ClassSymbol;
@@ -2402,7 +2410,6 @@ begin
    if FTok.TestName then begin
       name := FTok.GetToken.FString;
       FTok.KillToken;
-
       sym := ParentSym.Members.FindSymbol(name, cvPrivate);
    end else if not methSym.IsOverride then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedWithoutName)
@@ -2410,6 +2417,8 @@ begin
 
    if Assigned(sym) then begin
       if sym is TMethodSymbol then begin
+         if TMethodSymbol(sym).IsAbstract then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_AbstractMethodUsage);
          if methSym.IsClassMethod then
             varExpr := TConstExpr.CreateTyped(FProg, parentSym.ClassOf, Int64(parentSym))
          else varExpr := TVarExpr.CreateTyped(FProg, parentSym, methSym.SelfSym);
@@ -5070,7 +5079,7 @@ begin
    Result := ReadTerm(False, expecting);
    try
       repeat
-         tt:=FTok.TestDeleteAny([ttTIMES, ttDIVIDE, ttMOD, ttDIV]);
+         tt:=FTok.TestDeleteAny([ttTIMES, ttDIVIDE, ttMOD, ttDIV, ttCARET]);
          if tt=ttNone then Break;
 
          // Save position of the operator
@@ -5091,15 +5100,6 @@ begin
                   Result:=TBinaryOpExpr.Create(FProg, Result, right);
                   Result.Typ:=right.Typ;
                end else Result:=opExpr;
-//               exprClass:=FOperators.ExprClassFor(tt, Result.Typ, right.Typ);
-//               if (exprClass<>nil) and exprClass.InheritsFrom(TBinaryOpExpr) then begin
-//                  Result:=TBinaryOpExprClass(exprClass).Create(FProg, Result, right);
-//               end else begin
-//                  FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
-//                  // fake result to keep compiler going and report further issues
-//                  Result:=TBinaryOpExpr.Create(FProg, Result, right);
-//                  Result.Typ:=right.Typ;
-//               end;
             end;
 
          except
@@ -6350,42 +6350,44 @@ end;
 
 procedure TdwsCompiler.ReadUses;
 var
-  Names : TStringList;
-  x, y, z, u : Integer;
+   names : TStringList;
+   x, y, z, u : Integer;
+   rt : TProgramSymbolTable;
+   rSym : TSymbol;
 begin
-  Names := TStringList.Create;
-  try
-    ReadNameList(Names);
-    u := 0;
-    for x := 0 to Names.Count - 1 do
-    begin
-      y := 0;
-      z := -1;
-      while (y < FProg.Root.RootTable.Count) do
-      begin
-        if (FProg.Root.RootTable[y].ClassType=TUnitSymbol) and UnicodeSameText(FProg.Root.RootTable[y].Name,Names[x]) then
-        begin
-          z := FProg.Root.RootTable.IndexOfParent(TUnitSymbol(FProg.Root.RootTable[y]).Table);
-          if z >= u then // uses A,B,A,C => uses A,B,C
-          begin
-            FProg.Root.RootTable.MoveParent(z,u);
-            Inc(u);
-          end;
-          Break;
-        end;
-        Inc(y);
+   names:=TStringList.Create;
+   try
+      ReadNameList(names);
+      u:=0;
+      rt:=FProg.Root.RootTable;
+      for x:=0 to names.Count-1 do begin
+         y:=0;
+         z:=-1;
+         while (y<rt.Count) do begin
+            rSym:=rt[y];
+            if (rSym.ClassType=TUnitSymbol) and UnicodeSameText(rSym.Name,names[x]) then begin
+               z:=FProg.Root.RootTable.IndexOfParent(TUnitSymbol(rSym).Table);
+               if z>=u then begin // uses A,B,A,C => uses A,B,C
+                  FProg.Root.RootTable.MoveParent(z,u);
+                  Inc(u);
+               end;
+               Break;
+            end;
+            Inc(y);
+         end;
+         if z<0 then
+            FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownUnit, [names[x]]);
       end;
-      if z < 0 then
-        FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownUnit, [Names[x]]);
-    end;
-  finally
-    Names.Free;
-  end;
+   finally
+      names.Free;
+   end;
 end;
 
+// CreateProcedure
+//
 function TdwsCompiler.CreateProcedure(Parent : TdwsProgram): TdwsProcedure;
 begin
-  Result := TdwsProcedure.Create(Parent);
+   Result := TdwsProcedure.Create(Parent);
 end;
 
 // CreateAssign
@@ -6547,6 +6549,14 @@ begin
 
    if Optimize then
       Result:=Result.OptimizeToTypedExpr(FProg, FExec);
+end;
+
+// DoSectionChanged
+//
+procedure TdwsCompiler.DoSectionChanged;
+begin
+   if Assigned(FOnSectionChanged) then
+      FOnSectionChanged(Self);
 end;
 
 // ReadSpecialFunction

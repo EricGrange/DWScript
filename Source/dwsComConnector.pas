@@ -23,7 +23,8 @@ unit dwsComConnector;
 interface
 
 uses Windows, Variants, Classes, SysUtils, SysConst, dwsComp, dwsSymbols,
-   dwsExprs, dwsStrings, dwsFunctions, dwsStack, ComObj, ComConst, ActiveX, AxCtrls;
+   dwsExprs, dwsStrings, dwsFunctions, dwsStack, ComObj, ComConst, ActiveX,
+   AxCtrls, dwsOperators;
 
 const
   COM_ConnectorCaption = 'COM Connector 1.0';
@@ -37,7 +38,7 @@ type
     function GetUnit(const UnitName: string): IConnectorType;
   protected
     function GetUnitName: string; override;
-    procedure AddUnitSymbols(Table: TSymbolTable); override;
+    procedure AddUnitSymbols(Table: TSymbolTable; operators : TOperators); override;
   published
     property StaticSymbols;
   end;
@@ -224,7 +225,7 @@ begin
   Result := COM_UnitName;
 end;
 
-procedure TdwsComConnector.AddUnitSymbols(Table: TSymbolTable);
+procedure TdwsComConnector.AddUnitSymbols(Table: TSymbolTable; operators : TOperators);
 var
   v: Variant;
   VariantSym: TTypeSymbol;

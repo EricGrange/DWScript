@@ -47,6 +47,8 @@ type
       public
          constructor Create(table : TSymbolTable);
 
+         procedure RegisterOperator(sym : TOperatorSymbol); overload;
+
          procedure RegisterOperator(aToken : TTokenType; aExprClass : TBinaryOpExprClass;
                                     aLeftType, aRightType : TTypeSymbol); overload;
          procedure RegisterOperator(aToken : TTokenType; aExprClass : TAssignExprClass;
@@ -282,6 +284,13 @@ begin
       LeftType:=aLeftType;
       RighType:=aRightType;
    end;
+end;
+
+// RegisterOperator
+//
+procedure TOperators.RegisterOperator(sym : TOperatorSymbol);
+begin
+   RegisterOperator(sym.Token, sym.UsesSym, sym.Params[0], sym.Params[1]);
 end;
 
 // RegisterOperator

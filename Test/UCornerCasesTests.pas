@@ -130,7 +130,7 @@ var
 begin
    msgs:=TdwsCompileMessageList.Create;
    sourceFile:=TSourceFile.Create;
-   sourceFile.Code:='@ @= %= ^ ^=';
+   sourceFile.Code:='@ @= %= ^ ^= $(';
    t:=TTokenizer.Create(sourceFile, msgs);
    try
       CheckTrue(t.TestDelete(ttAT), '@');
@@ -138,6 +138,8 @@ begin
       CheckTrue(t.TestDelete(ttPERCENT_ASSIGN), '%=');
       CheckTrue(t.TestDelete(ttCARET), '^');
       CheckTrue(t.TestDelete(ttCARET_ASSIGN), '^=');
+      CheckTrue(t.TestDelete(ttDOLLAR), '$');
+      CheckTrue(t.TestDelete(ttBLEFT), '(');
 
       CheckTrue(t.TestAny([ttNAME])=ttNone, 'Any at end');
       CheckTrue(t.TestDeleteAny([ttNAME])=ttNone, 'DeleteAny at end');

@@ -23,6 +23,7 @@ type
          procedure DeclareTestVars;
          procedure DeclareTestArrays;
          procedure DeclareTestRecords;
+         procedure DeclareTestOperators;
 
          procedure Func1Eval(Info: TProgramInfo);
          procedure FuncOneEval(Info: TProgramInfo);
@@ -73,6 +74,7 @@ type
          procedure DestructorAndExternalObject;
          procedure CustomDestructor;
          procedure Delegates;
+         procedure Operators;
    end;
 
    EDelphiException = class (Exception)
@@ -141,6 +143,7 @@ begin
    DeclareTestVars;
    DeclareTestArrays;
    DeclareTestFuncs;
+   DeclareTestOperators;
 end;
 
 // TearDown
@@ -402,6 +405,22 @@ begin
    m:=r.Members.Add as TdwsMember;
    m.Name:='Y';
    m.DataType:='Integer';
+end;
+
+// DeclareTestOperators
+//
+procedure TdwsUnitTests.DeclareTestOperators;
+var
+   o : TdwsOperator;
+begin
+   o:=FUnit.Operators.Add;
+   o.Operator:=ttCARET;
+
+   o.Params.Add.Name:='Float';
+   o.Params.Add.Name:='Float';
+   o.ResultType:='Float';
+
+   o.UsesAccess:='FuncFloat';
 end;
 
 // Func1Eval
@@ -1076,6 +1095,31 @@ begin
       func:=exec.Info.Vars['v2'];
       func.Parameter['i'].Value:=789;
       CheckEquals(799, func.Call.Value, 'Call source func with params');
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// Operators
+//
+procedure TdwsUnitTests.Operators;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   FMagicVar:='';
+   prog:=FCompiler.Compile( 'var f := 1.0 ^ 2.5;'
+                           +'PrintLn(f);'
+                           +'PrintLn(f^(-1.5));');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+
+      CheckEquals( '3.5'#13#10'2'#13#10,
+                  exec.Result.ToString+exec.Msgs.AsInfo);
    finally
       exec.EndProgram;
    end;

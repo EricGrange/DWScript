@@ -1,0 +1,2 @@
+Syntax Error: Trying to call an abstract method [line: 20, column: 13]
+Syntax Error: Name expected after "inherited" [line: 25, column: 13]

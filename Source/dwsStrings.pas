@@ -134,20 +134,21 @@ const
   CPE_ImplClassNameExpected = 'Class name expected';
   CPE_ImplNotAMethod = 'Member is not a method';
   CPE_ImplInvalidClass = '"%s" is not a method of class "%s"';
-  CPE_ImplAbstract = '"%s.%s" is declared abstract. No implementation allowed!';
-  CPE_NonVirtualAbstract = 'abstract is only valid for virtual methods!';
+  CPE_ImplAbstract = '"%s.%s" is declared "abstract", no implementation allowed';
+  CPE_NonVirtualAbstract = '"abstract" is only valid for virtual methods';
   CPE_NonConstructorDefault = 'Only a constructor can be marked as default';
   CPE_DefaultConstructorAlreadyDefined = 'Class "%s" already has "%s" as default constructor!';
   CPE_AbstractClassUsage = 'Trying to use an abstract class!';
-  CPE_ImplClassExpected = 'Declaration should start with CLASS!';
-  CPE_ImplNotClassExpected = 'Declaration shouldn''t start with "class"!';
-  CPE_InheritedOnlyInMethodsAllowed = 'Inherited only in methods allowed';
-  CPE_InheritedWithoutName = 'Name expected after INHERITED!';
+  CPE_AbstractMethodUsage = 'Trying to call an abstract method';
+  CPE_ImplClassExpected = 'Declaration should start with "class"';
+  CPE_ImplNotClassExpected = 'Declaration shouldn''t start with "class"';
+  CPE_InheritedOnlyAllowedInMethods = '"inherited" only allowed in methods';
+  CPE_InheritedWithoutName = 'Name expected after "inherited"';
   CPE_InheritedMethodNotFound = 'Method "%s" not found in ancestor class';
   CPE_StaticMethodExpected = 'Class method or constructor expected';
   CPE_UnexpectedConstructor = 'Constructor invoked on instance outside of constructor';
-  CPE_WriteOnlyProperty = 'Can''t read a write only property!';
-  CPE_ReadOnlyProperty = 'Can''t set a value for a read-only property!';
+  CPE_WriteOnlyProperty = 'Can''t read a write only property';
+  CPE_ReadOnlyProperty = 'Can''t set a value for a read-only property';
   CPE_ObjectReferenceExpected = 'Object reference needed to read/write an object field';
   CPE_StaticPropertyWriteExpected = 'Write access of property should be a static method';
   CPE_UnknownClass = 'Class "%s" not found';
@@ -171,7 +172,7 @@ const
   CPE_FunctionOrValueExpected = 'Function or value expected';
   CPE_InvalidNumberOfArguments = 'Method "%s" has a wrong number of arguments';
   CPE_InvalidParameterType = 'Method "%s" has an incompatible parameter type';
-  CPE_ReadOrWriteExpected = 'Neither READ nor WRITE directive found';
+  CPE_ReadOrWriteExpected = 'Neither "read" nor "write" directive found';
   CPE_IncompatibleWriteSymbol = 'Field/method "%s" has an incompatible type';
   CPE_ClassNotCompletelyDefined = 'Class "%s" isn''t defined completely';
   CPE_MethodNotImplemented = 'Method "%s" of class "%s" not implemented';
@@ -181,11 +182,11 @@ const
   CPE_ParamsExpected = 'Parameters expected';
 
   // CompareFuncSymbols
-  CPE_FunctionExpected = 'Declaration should be FUNCTION!';
-  CPE_ProcedureExpected = 'Declaration should be PROCEDURE!';
-  CPE_MethodExpected = 'Declaration should be METHOD!';
-  CPE_ConstructorExpected = 'Declaration should be CONSTRUCTOR!';
-  CPE_DestructorExpected = 'Declaration should be DESTRUCTOR!';
+  CPE_FunctionExpected = 'Declaration should be "function"';
+  CPE_ProcedureExpected = 'Declaration should be "procedure"';
+  CPE_MethodExpected = 'Declaration should be "method"';
+  CPE_ConstructorExpected = 'Declaration should be "constructor"';
+  CPE_DestructorExpected = 'Declaration should be "destructor"';
   CPE_BadResultType = 'Result type should be "%s"';
   CPE_BadNumberOfParameters = 'Expected %d parameters (instead of %d)';
   CPE_BadParameterName = 'Parameter %d - Name "%s" expected';
@@ -351,7 +352,6 @@ const
   TOK_InvalidFloatConstant = 'Invalid floating point constant "%s"';
   TOK_GreaterThanExpected = '> expected';
   TOK_NameOfSwitchExpected = 'Name of compiler switch expected';
-  TOK_DotExpected = '"." expected';
 
   // Constants of TMsgs in dwsErrors.pas
   MSG_DatatypeMissing = 'Invalid type: %s!';
