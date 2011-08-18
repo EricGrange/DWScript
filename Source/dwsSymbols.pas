@@ -1148,7 +1148,8 @@ type
          procedure InitData(const data : TData; offset : Integer); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
-         property Table: TSymbolTable read FTable write FTable;
+         property Table : TSymbolTable read FTable write FTable;
+         property IsTableOwner : Boolean read FIsTableOwner write FIsTableOwner;
    end;
 
    // Element of an enumeration type. E. g. "type DummyEnum = (Elem1, Elem2, Elem3);"

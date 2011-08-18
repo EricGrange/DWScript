@@ -53,7 +53,7 @@ type
      ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
      ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN,
      ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCRIGHT,
-     ttDEFAULT, ttUSES,
+     ttDEFAULT, ttUSES, ttUNIT,
 
      // Tokens for compatibility to Delphi
      ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
@@ -213,7 +213,7 @@ const
      ':=', '+=', '-=', '*=', '/=',
      '%=', '^=', '@=',
      '(', ')', '[', ']', '}',
-     'DEFAULT', 'USES',
+     'DEFAULT', 'USES', 'UNIT',
      'PRIVATE', 'PROTECTED', 'PUBLIC', 'PUBLISHED',
      'REGISTER', 'PASCAL', 'CDECL', 'STDCALL', 'FASTCALL'
      );
@@ -468,7 +468,7 @@ end;
 // ToAlphaType
 //
 const
-   cAlphaTypeTokens : array [0..82] of TTokenType = (
+   cAlphaTypeTokens : array [0..83] of TTokenType = (
       ttAND, ttARRAY, ttABSTRACT, ttAS,
       ttBEGIN, ttBREAK,
       ttCONST, ttCLASS, ttCONSTRUCTOR, ttCASE, ttCDECL, ttCONTINUE,
@@ -485,7 +485,7 @@ const
       ttREPEAT, ttREQUIRE, ttRECORD, ttREAD, ttRAISE, ttREINTRODUCE, ttREGISTER,
       ttSEALED, ttSHL, ttSHR, ttSTATIC, ttSTDCALL,
       ttTHEN, ttTO, ttTRUE, ttTRY, ttTYPE,
-      ttUNTIL, ttUSES,
+      ttUNIT, ttUNTIL, ttUSES,
       ttVAR, ttVIRTUAL,
       ttWHILE, ttWRITE,
       ttXOR );

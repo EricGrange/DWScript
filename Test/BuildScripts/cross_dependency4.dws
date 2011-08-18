@@ -1,0 +1,8 @@
+uses CrossUnit1;
+
+PrintLn('First');
+
+var c1 : TClass1;
+c1:=TClass1.Create;
+c1.Stuff; 
+

@@ -38,6 +38,7 @@ const
 
 type
   TIncludeEvent = procedure(const scriptName: string; var scriptSource: string) of object;
+  TdwsOnNeedUnitEvent = function(const unitName : String; var unitSource : String) : IUnit of object;
 
   TdwsCompiler = class;
   TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
@@ -54,6 +55,8 @@ type
     FMaxDataSize: Integer;
     FMaxRecursionDepth : Integer;
     FOnInclude: TIncludeEvent;
+    FOnNeedUnit : TdwsOnNeedUnitEvent;
+
     FOwner: TComponent;
     FResultType: TdwsResultType;
     FScriptPaths: TStrings;
@@ -82,7 +85,6 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation);
 
     property Connectors: TStrings read FConnectors write FConnectors;
-    property OnInclude: TIncludeEvent read FOnInclude write FOnInclude;
     property SystemTable: TSymbolTable read FSystemTable write FSystemTable;
     property Units : TIUnitList read FUnits;
 
@@ -99,6 +101,8 @@ type
     property TimeoutMilliseconds: Integer read FTimeoutMilliseconds write FTimeoutMilliseconds default 0;
     property TimeOut : Integer write SetTimeOut;
     property StackChunkSize: Integer read FStackChunkSize write FStackChunkSize default C_DefaultStackChunkSize;
+    property OnInclude : TIncludeEvent read FOnInclude write FOnInclude;
+    property OnNeedUnit : TdwsOnNeedUnitEvent read FOnNeedUnit write FOnNeedUnit;
   end;
 
   TdwsFilter = class(TComponent)
@@ -213,7 +217,8 @@ type
                           tcParameter, tcResult, tcOperand, tcExceptionClass,
                           tcProperty);
 
-   TdwsReadSection = (rsMixed, rsHeader, rsInterface, rsImplementation, rsEnd);
+   TdwsUnitSection = (secMixed, secHeader, secInterface, secImplementation, secEnd);
+   TdwsRootStatementAction = (rsaNone, rsaNoSemiColon, rsaInterface, rsaImplementation, rsaEnd);
 
    // TdwsCompiler
    //
@@ -231,19 +236,23 @@ type
       FFinallyExprs : TSimpleStack<Boolean>;
       FConditionalDepth : TSimpleStack<TSwitchInstruction>;
       FMsgs : TdwsCompileMessageList;
-      FConf : TdwsConfiguration;
 
+      FExec : TdwsCompilerExecution;
       FConnectors : TStrings;
       FCompileFileSystem : IdwsFileSystem;
-      FExec : TdwsCompilerExecution;
       FOnInclude : TIncludeEvent;
+      FOnNeedUnit : TdwsOnNeedUnitEvent;
+      FUnits : TIUnitList;
+      FSystemTable : TSymbolTable;
       FScriptPaths : TStrings;
       FFilter : TdwsFilter;
       FIsExcept : Boolean;
       FIsSwitch : Boolean;
       FLineCount : Integer;
       FSourcePostConditionsIndex : Integer;
-      FReadSection : TdwsReadSection;
+      FUnitSection : TdwsUnitSection;
+      FTokenizerStack : TTightStack;
+      FUnitsFromStack : TSimpleStack<String>;
 
       FOnReadInstr : TCompilerReadInstrEvent;
       FOnSectionChanged : TCompilerSectionChangedEvent;
@@ -357,11 +366,10 @@ type
       function ReadRecord(const typeName : String) : TRecordSymbol;
       function ReadRaise : TRaiseBaseExpr;
       function ReadRepeat : TNoResultExpr;
-      function ReadRootStatement(var killSemi : Boolean) : TNoResultExpr;
-      function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TNoResultExpr;
+      function ReadRootStatement(var action : TdwsRootStatementAction) : TNoResultExpr;
+      function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TBlockExpr;
       procedure ReadSemiColon;
-      // AName might be the name of an INCLUDEd script
-      function ReadScript(const aName : String=''; scriptType : TScriptSourceType=stMain) : TNoResultExpr;
+      function ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TNoResultExpr;
       function ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
       function ReadStatement : TNoResultExpr;
       function ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TProgramExpr;
@@ -379,6 +387,7 @@ type
       function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
       procedure ReadTypeDecl;
       procedure ReadUses;
+      procedure ReadUnitHeader;
       function ReadVarDecl : TNoResultExpr;
       function ReadWhile : TNoResultExpr;
       function ResolveUnitReferences(conf : TdwsConfiguration) : TIUnitList;
@@ -409,13 +418,15 @@ type
 
       procedure DoSectionChanged;
 
+      function SwitchTokenizerToInclude(const sourceName, sourceCode : String) : TNoResultExpr;
+      procedure SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : String);
+
       procedure SetupCompileOptions(conf : TdwsConfiguration);
       procedure CleanupAfterCompile;
 
       procedure CheckFilterDependencies(confUnits : TIUnitList);
       procedure HandleUnitDependencies(conf : TdwsConfiguration);
-      procedure HandleExplicitDependency(conf : TdwsConfiguration; const unitName : String;
-                                         fromUnits : TStrings);
+      procedure HandleExplicitDependency(const unitName : String);
 
    public
       constructor Create;
@@ -430,7 +441,7 @@ type
       procedure WarnForVarUsage(varExpr : TVarExpr; const pos : TScriptPos);
 
       property CurrentProg : TdwsProgram read FProg write FProg;
-      property ReadSection : TdwsReadSection read FReadSection write FReadSection;
+      property UnitSection : TdwsUnitSection read FUnitSection write FUnitSection;
       property Tokenizer : TTokenizer read FTok write FTok;
 
       property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
@@ -563,6 +574,7 @@ begin
    FLoopExitable:=TSimpleStack<TLoopExitable>.Create;
    FConditionalDepth:=TSimpleStack<TSwitchInstruction>.Create;
    FFinallyExprs:=TSimpleStack<Boolean>.Create;
+   FUnitsFromStack:=TSimpleStack<String>.Create;
 
    stackParams.MaxLevel:=1;
    stackParams.ChunkSize:=512;
@@ -576,6 +588,9 @@ end;
 //
 destructor TdwsCompiler.Destroy;
 begin
+   FUnitsFromStack.Free;
+   FTokenizerStack.Clean;
+   FTokenizerStack.Free;
    FExec.Free;
    FFinallyExprs.Free;
    FConditionalDepth.Free;
@@ -787,16 +802,48 @@ end;
 //
 procedure TdwsCompiler.SetupCompileOptions(conf : TdwsConfiguration);
 begin
-   FConf := conf;
    FFilter := conf.Filter;
    FConnectors := conf.Connectors;
    FCompilerOptions := conf.CompilerOptions;
+   FUnits := TIUnitList.Create;
+   FUnits.AddUnits(conf.Units);
    FOnInclude := conf.OnInclude;
+   FOnNeedUnit := conf.OnNeedUnit;
    FScriptPaths := conf.ScriptPaths;
+   FSystemTable := conf.SystemTable;
 
    if Conf.CompileFileSystem<>nil then
       FCompileFileSystem := Conf.CompileFileSystem.AllocateFileSystem
    else FCompileFileSystem := TdwsOSFileSystem.Create;
+end;
+
+// CleanupAfterCompile
+//
+procedure TdwsCompiler.CleanupAfterCompile;
+begin
+   FIsExcept:=False;
+
+   FOperators:=nil;
+
+   FMsgs:=nil;
+
+   FCompileFileSystem:=nil;
+   FOnInclude:=nil;
+   FOnNeedUnit:=nil;
+   FUnits.Free;
+   FSystemTable:=nil;
+   FTokenizerStack.Clean;
+   FUnitsFromStack.Clear;
+
+   FProg:=nil;
+   FMainProg:=nil;
+   FContextMap:=nil;
+   FSymbolDictionary:=nil;
+
+   FLoopExprs.Clear;
+   FLoopExitable.Clear;
+   FConditionalDepth.Clear;
+   FFinallyExprs.Clear;
 end;
 
 // Compile
@@ -834,7 +881,7 @@ begin
    FMainProg.ConditionalDefines:=aConf.Conditionals;
    FContextMap:=FMainProg.ContextMap;
    FSymbolDictionary:=FMainProg.SymbolDictionary;
-   FReadSection:=rsMixed;
+   FUnitSection:=secMixed;
 
    FProg:=FMainProg;
 
@@ -854,23 +901,11 @@ begin
 
       sourceFile:=FMainProg.RegisterSourceFile(MSG_MainModule, codeText);
 
-      // Initialize tokenizer
-      FTok := TTokenizer.Create(sourceFile, FProg.CompileMsgs);
-      try
-         FTok.SwitchHandler := ReadSwitch;
+      // Start compilation
+      FProg.Expr := ReadScript(sourceFile, stMain);
 
-         // Start compilation
-         FProg.Expr := ReadScript('', stMain);
-
-         if FConditionalDepth.Count>0 then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_UnbalancedConditionalDirective);
-
-         // Initialize symbol table
-         FProg.Table.Initialize(FMsgs);
-      finally
-         Inc(FLineCount, FTok.CurrentPos.Line-2);
-         FTok.Free;
-      end;
+      // Initialize symbol table
+      FProg.Table.Initialize(FMsgs);
    except
       on e: ECompileError do
          ;
@@ -883,30 +918,6 @@ begin
    Result:=FMainProg;
 
    CleanupAfterCompile;
-end;
-
-// CleanupAfterCompile
-//
-procedure TdwsCompiler.CleanupAfterCompile;
-begin
-   FIsExcept:=False;
-
-   FOperators:=nil;
-
-   FMsgs:=nil;
-
-   FCompileFileSystem:=nil;
-   FConf:=nil;
-
-   FProg:=nil;
-   FMainProg:=nil;
-   FContextMap:=nil;
-   FSymbolDictionary:=nil;
-
-   FLoopExprs.Clear;
-   FLoopExitable.Clear;
-   FConditionalDepth.Clear;
-   FFinallyExprs.Clear;
 end;
 
 // CheckFilterDependencies
@@ -980,47 +991,65 @@ end;
 
 // HandleExplicitDependency
 //
-procedure TdwsCompiler.HandleExplicitDependency(conf : TdwsConfiguration; const unitName : String;
-                                                fromUnits : TStrings);
+procedure TdwsCompiler.HandleExplicitDependency(const unitName : String);
 var
    i : Integer;
    unitResolved : IUnit;
    unitTable : TSymbolTable;
    unitSymbol : TUnitSymbol;
    dependencies : TStrings;
+   unitSource : String;
+   srcUnit : TSourceUnit;
 begin
-   if fromUnits.IndexOf(unitName)>=0 then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitCircularReference);
-
-   i:=conf.Units.IndexOf(unitName);
-   if i<0 then begin
-      if fromUnits.Count=0 then
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnknownUnit, [unitName])
-      else FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnitNotFound,
-                                     [unitName, fromUnits[fromUnits.Count-1]]);
-      Exit;
-   end;
+   for i:=0 to FUnitsFromStack.Count-1 do
+      if SameText(FUnitsFromStack.Items[i], unitName) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitCircularReference);
 
    if FProg.Table.FindLocal(unitName, TUnitSymbol)<>nil then begin
       // ignore multiple requests (for now)
       Exit;
    end;
 
-   unitResolved:=conf.Units[i];
+   i:=FUnits.IndexOf(unitName);
+   if i<0 then begin
+      if Assigned(FOnNeedUnit) then begin
+         unitResolved:=FOnNeedUnit(unitName, unitSource);
+         if unitResolved<>nil then
+            FUnits.Add(unitResolved)
+         else if unitSource<>'' then begin
+            srcUnit:=TSourceUnit.Create(unitName, FSystemTable, FProg.Table);
+            unitResolved:=srcUnit;
+            FUnits.Add(unitResolved);
+            try
+               SwitchTokenizerToUnit(srcUnit, unitSource);
+            except
+               srcUnit.Symbol.IsTableOwner:=True;
+               raise;
+            end;
+         end;
+      end;
+      if unitResolved=nil then begin
+         if FUnitsFromStack.Count=0 then
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnknownUnit, [unitName])
+         else FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnitNotFound,
+                                        [unitName, FUnitsFromStack.Peek]);
+         Exit;
+      end;
+   end else unitResolved:=FUnits[i];
 
    dependencies:=unitResolved.GetDependencies;
    for i:=0 to dependencies.Count-1 do begin
-      fromUnits.Add(unitName);
+      FUnitsFromStack.Push(unitName);
       try
-         HandleExplicitDependency(conf, dependencies[i], fromUnits);
+         HandleExplicitDependency(dependencies[i]);
       finally
-         fromUnits.Delete(fromUnits.Count-1);
+         FUnitsFromStack.Pop;
       end;
    end;
 
    unitTable:=nil;
    try
-      unitTable:=unitResolved.GetUnitTable(conf.SystemTable, nil, FOperators);
+      unitTable:=unitResolved.GetUnitTable(FSystemTable, nil, FOperators);
    except
       unitTable.Free;
       raise;
@@ -1066,23 +1095,11 @@ begin
 
       FMainProg.ResetExprs;
 
-      // Initialize tokenizer
-      FTok := TTokenizer.Create(sourceFile, FProg.CompileMsgs);
-      try
-         FTok.SwitchHandler := ReadSwitch;
+      // Start compilation
+      FProg.Expr := ReadScript(sourceFile, stMain);
 
-         // Start compilation
-         FProg.Expr := ReadScript('', stMain);
-
-         if FConditionalDepth.Count>0 then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_UnbalancedConditionalDirective);
-
-         // Initialize symbol table
-         FProg.Table.Initialize(FMsgs);
-      finally
-         Inc(FLineCount, FTok.CurrentPos.Line-2);
-         FTok.Free;
-      end;
+      // Initialize symbol table
+      FProg.Table.Initialize(FMsgs);
    except
       on e: ECompileError do
          ;
@@ -1105,11 +1122,11 @@ end;
 
 // ReadRootBlock
 //
-function TdwsCompiler.ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TNoResultExpr;
+function TdwsCompiler.ReadRootBlock(const endTokens : TTokenTypes; var finalToken : TTokenType) : TBlockExpr;
 var
    reach : TReachStatus;
    stmt : TNoResultExpr;
-   killSemi : Boolean;
+   action : TdwsRootStatementAction;
 begin
    reach:=rsReachable;
    Result:=TBlockExpr.Create(FProg, FTok.HotPos);
@@ -1123,37 +1140,43 @@ begin
             FMsgs.AddCompilerWarning(FTok.HotPos, CPW_UnReachableCode);
          end;
 
-         stmt:=ReadRootStatement(killSemi);
+         stmt:=ReadRootStatement(action);
          if Assigned(stmt) then begin
-            TBlockExpr(Result).AddStatement(Stmt);
+            Result.AddStatement(Stmt);
             if     (reach=rsReachable)
                and (   (stmt is TFlowControlExpr)
                     or (stmt is TRaiseExpr)) then
                reach:=rsUnReachable;
-         end else begin
-            if ReadSection=rsEnd then
-               Break;
          end;
 
-         if killSemi and not FTok.TestDelete(ttSEMI) then begin
-            if endTokens<>[] then begin
-               finalToken:=FTok.TestDeleteAny(endTokens);
-               if finalToken=ttNone then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
-               Break;
-            end else begin
-               while FTok.HasTokens and FTok.Test(ttSWITCH) do begin
-                  ReadInstrSwitch(True);
-                  FTok.KillToken;
+         case action of
+            rsaNone : begin
+               if  not FTok.TestDelete(ttSEMI) then begin
+                  if endTokens<>[] then begin
+                     finalToken:=FTok.TestDeleteAny(endTokens);
+                     if finalToken=ttNone then
+                        FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+                     Break;
+                  end else begin
+                     while FTok.HasTokens and FTok.Test(ttSWITCH) do begin
+                        ReadInstrSwitch(True);
+                        FTok.KillToken;
+                     end;
+                     if FTok.HasTokens then
+                        FMsgs.AddCompilerStop(FTok.CurrentPos, CPE_SemiExpected);
+                  end;
                end;
-               if FTok.HasTokens then
-                  FMsgs.AddCompilerStop(FTok.CurrentPos, CPE_SemiExpected);
+            end;
+            rsaImplementation : begin
+               finalToken:=ttIMPLEMENTATION;
+               Exit;
+            end;
+            rsaEnd : begin
+               finalToken:=ttEND;
+               Exit;
             end;
          end;
       end;
-
-      if Optimize then
-         Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
    except
       Result.Free;
       raise;
@@ -1170,25 +1193,83 @@ end;
 
 // ReadScript
 //
-function TdwsCompiler.ReadScript(const AName: string; ScriptType: TScriptSourceType): TNoResultExpr;
+function TdwsCompiler.ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TNoResultExpr;
 var
    finalToken : TTokenType;
+   oldTok : TTokenizer;
+   oldSection : TdwsUnitSection;
+   unitBlock : TBlockExpr;
 begin
-   FMainProg.SourceList.Add(AName, FTok.HotPos.SourceFile, ScriptType);
-   Result:=ReadRootBlock([], finalToken);
+   oldTok:=FTok;
+   oldSection:=FUnitSection;
+   FTok:=TTokenizer.Create(sourceFile, FProg.CompileMsgs);
+   try
+      FTok.SwitchHandler:=ReadSwitch;
+
+      FMainProg.SourceList.Add(sourceFile.Name, sourceFile, scriptType);
+
+      if scriptType=stUnit then begin
+         FUnitSection:=secHeader;
+         ReadUnitHeader;
+      end;
+
+      Result:=ReadRootBlock([], finalToken);
+      if scriptType=stUnit then
+         FreeAndNil(Result);
+
+      if scriptType<>stInclude then
+         if FConditionalDepth.Count>0 then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_UnbalancedConditionalDirective);
+
+      if finalToken=ttIMPLEMENTATION then begin
+         FTokenizerStack.Push(FTok);
+         FTok:=nil;
+      end else begin
+         Inc(FLineCount, FTok.CurrentPos.Line-2);
+         FreeAndNil(FTok);
+      end;
+
+      if scriptType=stMain then begin
+         while FTokenizerStack.Count>0 do begin
+            FTok:=FTokenizerStack.Peek;
+            FUnitSection:=secImplementation;
+            FTokenizerStack.Pop;
+            try
+               FUnitsFromStack.Push(FTok.CurrentPos.SourceFile.Name);
+               try
+                  unitBlock:=ReadRootBlock([], finalToken);
+                  FreeAndNil(unitBlock);
+               finally
+                  FUnitsFromStack.Pop;
+               end;
+            finally
+               Inc(FLineCount, FTok.CurrentPos.Line-2);
+               FreeAndNil(FTok);
+            end;
+         end;
+      end;
+
+      if Result<>nil then
+         if Optimize then
+            Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
+   finally
+      FTok.Free;
+      FTok:=oldTok;
+      FUnitSection:=oldSection;
+   end;
 end;
 
 // ReadRootStatement
 //
-function TdwsCompiler.ReadRootStatement(var killSemi : Boolean) : TNoResultExpr;
+function TdwsCompiler.ReadRootStatement(var action : TdwsRootStatementAction) : TNoResultExpr;
 var
    token : TTokenType;
 begin
-   killSemi:=True;
+   action:=rsaNone;
    Result:=nil;
    token:=FTok.TestDeleteAny([ttTYPE, ttPROCEDURE, ttFUNCTION,
                               ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttCLASS,
-                              ttINTERFACE, ttIMPLEMENTATION, ttEND]);
+                              ttIMPLEMENTATION, ttEND]);
    case token of
       ttTYPE :
          ReadTypeDecl;
@@ -1215,34 +1296,26 @@ begin
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
          end;
       end;
-      ttINTERFACE : begin
-         if (FProg.Table<>FProg.Root.Table) or not (ReadSection in [rsMixed, rsHeader]) then
-            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnexpectedSection,
-                                      [cTokenStrings[token]])
-         else begin
-            FReadSection:=rsInterface;
-            DoSectionChanged;
-         end;
-         killSemi:=False;
-      end;
       ttIMPLEMENTATION : begin
-         if (FProg.Table<>FProg.Root.Table) or (ReadSection<>rsInterface) then
+         if (FProg.Table<>FProg.Root.Table) or (UnitSection<>secInterface) then begin
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnexpectedSection,
-                                      [cTokenStrings[token]])
-         else begin
-            FReadSection:=rsImplementation;
+                                      [cTokenStrings[token]]);
+            action:=rsaNoSemiColon;
+         end else begin
+            FUnitSection:=secImplementation;
             DoSectionChanged;
+            action:=rsaImplementation;
          end;
-         killSemi:=False;
       end;
       ttEND : begin
-         if (FProg.Table<>FProg.Root.Table) or (ReadSection<>rsImplementation) then
+         if (FProg.Table<>FProg.Root.Table) or (UnitSection<>secImplementation) then
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnexpectedEnd,
                                       [cTokenStrings[token]])
          else begin
-            if not FTok.TestDelete(ttDOT) then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotExpected);
-            FReadSection:=rsEnd;
+            if FTok.TestDelete(ttDOT) then begin
+               FUnitSection:=secEnd;
+               action:=rsaEnd;
+            end else FMsgs.AddCompilerError(FTok.HotPos, CPE_DotExpected);
          end;
       end;
    else
@@ -1271,7 +1344,7 @@ begin
       ttOPERATOR :
          ReadOperatorDecl;
    else
-      if (ReadSection<>rsMixed) and (FProg.Level=0) then
+      if (UnitSection<>secMixed) and (FProg.Level=0) then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedStatement);
       Result:=ReadBlock
    end;
@@ -1700,11 +1773,24 @@ begin
             // forward & external declarations
             if not Assigned(forwardedSym) then begin
                if FTok.Test(ttSEMI) then begin
-                  FTok.KillToken; // SEMI
-                  if FTok.TestDelete(ttFORWARD) then begin
+                  if UnitSection=secInterface then begin
+                     // default to forward in interface section
                      Result.SetForwardedPos(funcPos);
-                  end else if FTok.TestDelete(ttEXTERNAL) then begin
-                     Result.IsExternal:=True;
+                     if FTok.NextTest(ttFORWARD) then begin
+                        FMsgs.AddCompilerHint(FTok.HotPos, CPW_ForwardIsImplicit);
+                        FTok.KillToken; // SEMI
+                        FTok.TestDelete(ttFORWARD);
+                     end;
+                     if FTok.Test(ttSEMI) then
+                        if FTok.NextTest(ttDEPRECATED) then
+                           FTok.KillToken
+                  end else begin
+                     FTok.KillToken; // SEMI
+                     if FTok.TestDelete(ttFORWARD) then begin
+                        Result.SetForwardedPos(funcPos);
+                     end else if FTok.TestDelete(ttEXTERNAL) then begin
+                        Result.IsExternal:=True;
+                     end;
                   end;
                end;
             end else ReadSemiColon;
@@ -1965,7 +2051,8 @@ begin
          funcSym.DeprecatedMessage:=FTok.GetToken.FString;
          FTok.KillToken;
       end else funcSym.IsDeprecated:=True;
-      ReadSemiColon;
+      if UnitSection<>secInterface then
+         ReadSemiColon;
    end;
 end;
 
@@ -2002,7 +2089,7 @@ begin
    if funcSymbol.Executable<>nil then
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_MethodRedefined, [funcSymbol.Name]);
 
-   if ReadSection=rsInterface then
+   if UnitSection=secInterface then
       FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedImplementationInInterface);
 
    // Open context of full procedure body (may include a 'var' section)
@@ -2071,6 +2158,8 @@ begin
             end;
 
             FProg.Expr:=ReadRootBlock([ttEND, ttENSURE], finalToken);
+            if Optimize then
+               FProg.Expr:=FProg.Expr.OptimizeToNoResultExpr(FProg, FExec);
 
             if finalToken=ttENSURE then begin
                if funcSymbol is TMethodSymbol then
@@ -5680,7 +5769,6 @@ function TdwsCompiler.ReadInstrSwitch(semiPending : Boolean): TNoResultExpr;
 var
    switch : TSwitchInstruction;
    name, scriptSource : String;
-   oldTok : TTokenizer;
    i : Integer;
    conditionalTrue : Boolean;
    switchPos, condPos : TScriptPos;
@@ -5713,29 +5801,18 @@ begin
          end else sourceFile:=nil;
          if sourceFile=nil then begin
             try
-               oldTok := FTok;
                scriptSource := GetScriptSource(name);
 
                if switch in [siFilterLong, siFilterShort] then begin
                   if Assigned(FFilter) then begin
                      // Include file is processed by the filter
-                     sourceFile:=FMainProg.RegisterSourceFile(name, FFilter.Process(scriptSource, FMsgs));
-                     FTok := TTokenizer.Create(sourceFile, FMsgs)
+                     scriptSource:=FFilter.Process(scriptSource, FMsgs);
                   end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoFilterAvailable);
                end else begin
                   // Include file is included as-is
-                  sourceFile:=FMainProg.RegisterSourceFile(name, scriptSource);
-                  FTok := TTokenizer.Create(sourceFile, FMsgs);
                end;
 
-               try
-                  FTok.SwitchHandler := ReadSwitch;
-                  Result := ReadScript(name, stInclude);
-               finally
-                  Inc(FLineCount, FTok.CurrentPos.Line-2);
-                  FTok.Free;
-                  FTok := oldTok;
-               end;
+               Result:=SwitchTokenizerToInclude(name, scriptSource);
             except
                on e: ECompileError do
                   raise;
@@ -6446,13 +6523,14 @@ begin
    end;
 end;
 
+// ReadUses
+//
 procedure TdwsCompiler.ReadUses;
 var
    names : TStringList;
    x, y, z, u : Integer;
    rt : TProgramSymbolTable;
    rSym : TSymbol;
-   fromUnits : TStringList;
 begin
    names:=TStringList.Create;
    try
@@ -6474,19 +6552,33 @@ begin
             end;
             Inc(y);
          end;
-         if z<0 then begin
-            fromUnits:=TStringList.Create;
-            try
-               fromUnits.CaseSensitive:=False;
-               HandleExplicitDependency(FConf, names[x], fromUnits);
-            finally
-               fromUnits.Free;
-            end;
-         end;
+         if z<0 then
+            HandleExplicitDependency(names[x]);
       end;
    finally
       names.Free;
    end;
+end;
+
+// ReadUnitHeader
+//
+procedure TdwsCompiler.ReadUnitHeader;
+var
+   name : String;
+   namePos : TScriptPos;
+begin
+   if not FTok.TestDelete(ttUNIT) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitExpected);
+   if not FTok.TestDeleteNamePos(name, namePos) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+   if not SameText(name, namePos.SourceFile.Name) then
+      FMsgs.AddCompilerError(namePos, CPE_UnitNameDoesntMatch);
+   if not FTok.TestDelete(ttSEMI) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+   if FTok.TestDelete(ttINTERFACE) then
+      FUnitSection:=secInterface
+   else FUnitSection:=secMixed;
+   DoSectionChanged;
 end;
 
 // CreateProcedure
@@ -6663,6 +6755,32 @@ procedure TdwsCompiler.DoSectionChanged;
 begin
    if Assigned(FOnSectionChanged) then
       FOnSectionChanged(Self);
+end;
+
+// SwitchTokenizerToInclude
+//
+function TdwsCompiler.SwitchTokenizerToInclude(const sourceName, sourceCode : String) : TNoResultExpr;
+var
+   sourceFile : TSourceFile;
+begin
+   sourceFile:=FMainProg.RegisterSourceFile(sourceName, sourceCode);
+   Result:=ReadScript(sourceFile, stInclude);
+end;
+
+// SwitchTokenizerToUnit
+//
+procedure TdwsCompiler.SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : String);
+var
+   sourceFile : TSourceFile;
+begin
+   sourceFile:=FMainProg.RegisterSourceFile(srcUnit.GetUnitName, sourceCode);
+
+   FUnitsFromStack.Push(sourceFile.Name);
+   try
+      ReadScript(sourceFile, stUnit);
+   finally
+      FUnitsFromStack.Pop;
+   end;
 end;
 
 // ReadSpecialFunction

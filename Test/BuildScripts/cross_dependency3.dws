@@ -1,0 +1,7 @@
+uses CrossUnit2;
+
+PrintLn('Second');
+
+var c2 : TClass2;
+c2:=TClass2.Create;
+c2.Stuff; 

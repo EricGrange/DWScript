@@ -10,7 +10,6 @@ type
    TScriptTests = class (TTestCase)
       private
          FTests : TStringList;
-         FAlgos : TStringList;
          FFailures : TStringList;
          FCompiler : TDelphiWebScript;
 
@@ -58,12 +57,10 @@ begin
    SetDecimalSeparator('.');
 
    FTests:=TStringList.Create;
-   FAlgos:=TStringList.Create;
    FFailures:=TStringList.Create;
 
    CollectFiles(ExtractFilePath(ParamStr(0))+'SimpleScripts'+PathDelim, '*.pas', FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'FailureScripts'+PathDelim, '*.pas', FFailures);
-   CollectFiles(ExtractFilePath(ParamStr(0))+'Algorithms'+PathDelim, '*.pas', FAlgos);
 
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.OnInclude:=DoInclude;
@@ -76,7 +73,6 @@ begin
    FCompiler.Free;
 
    FTests.Free;
-   FAlgos.Free;
    FFailures.Free;
 end;
 

@@ -27,7 +27,8 @@ uses
   UdwsUtilsTests in 'UdwsUtilsTests.pas',
   UMemoryTests in 'UMemoryTests.pas',
   dwsMathComplexFunctions in '..\Source\dwsMathComplexFunctions.pas',
-  dwsOperators in '..\Source\dwsOperators.pas';
+  dwsOperators in '..\Source\dwsOperators.pas',
+  UBuildTests in 'UBuildTests.pas';
 
 {$R *.res}
 

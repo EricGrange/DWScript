@@ -40,6 +40,7 @@ type
    TIUnitList = class(TSimpleList<IUnit>)
       function IndexOf(const unitName : String) : Integer; overload;
       function IndexOf(const aUnit : IUnit) : Integer; overload;
+      procedure AddUnits(list : TIUnitList);
    end;
 
    TEmptyFunc = class(TInterfacedObject, ICallable)
@@ -172,7 +173,26 @@ type
 
          property StaticTable : TStaticSymbolTable read FStaticTable;
          property StaticSymbols : Boolean read FStaticSymbols write SetStaticSymbols;
-  end;
+   end;
+
+   TSourceUnit = class(TInterfacedObject, IUnit)
+      private
+         FDependencies : TStrings;
+         FSymbol : TUnitSymbol;
+
+      protected
+
+      public
+         constructor Create(const unitName : String; systemTable, unitSyms : TSymbolTable);
+         destructor Destroy; override;
+
+         function GetUnitName : String;
+         function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
+         function GetDependencies : TStrings;
+         function ImplicitUse : Boolean;
+
+         property Symbol : TUnitSymbol read FSymbol write FSymbol;
+   end;
 
 procedure RegisterInternalFunction(InternalFunctionClass: TInternalFunctionClass;
       const FuncName: string; const FuncParams: array of string;
@@ -780,6 +800,16 @@ begin
    Result:=-1;
 end;
 
+// AddUnits
+//
+procedure TIUnitList.AddUnits(list : TIUnitList);
+var
+   i : Integer;
+begin
+   for i:=0 to list.Count-1 do
+      Add(list[i]);
+end;
+
 // IndexOf (IUnit)
 //
 function TIUnitList.IndexOf(const aUnit : IUnit) : Integer;
@@ -790,6 +820,60 @@ begin
    Result:=-1;
 end;
 
+
+// ------------------
+// ------------------ TSourceUnit ------------------
+// ------------------
+
+// Create
+//
+constructor TSourceUnit.Create(const unitName : String; systemTable, unitSyms : TSymbolTable);
+begin
+   inherited Create;
+   FDependencies:=TStringList.Create;
+   FSymbol:=TUnitSymbol.Create(unitName, TUnitSymbolTable.Create, False);
+   unitSyms.AddSymbol(FSymbol);
+   FSymbol.Table.AddParent(systemTable);
+
+   FSymbol.Table.AddParent(TUnitSymbol(unitSyms.FindSymbol(SYS_INTERNAL, cvMagic, TUnitSymbol)).Table);
+   FSymbol.Table.AddParent(TUnitSymbol(unitSyms.FindSymbol(SYS_DEFAULT, cvMagic, TUnitSymbol)).Table);
+end;
+
+// Destroy
+//
+destructor TSourceUnit.Destroy;
+begin
+   FDependencies.Free;
+   inherited;
+end;
+
+// GetUnitName
+//
+function TSourceUnit.GetUnitName : String;
+begin
+   Result:=Symbol.Name;
+end;
+
+// GetUnitTable
+//
+function TSourceUnit.GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
+begin
+   Result:=(Symbol.Table as TUnitSymbolTable);
+end;
+
+// GetDependencies
+//
+function TSourceUnit.GetDependencies : TStrings;
+begin
+   Result:=FDependencies;
+end;
+
+// ImplicitUse
+//
+function TSourceUnit.ImplicitUse : Boolean;
+begin
+   Result:=False;
+end;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------

@@ -1,0 +1,13 @@
+uses CrossUnit2, CrossUnit1;
+
+PrintLn('First');
+
+var c1 : TClass1;
+c1:=TClass1.Create;
+c1.Stuff; 
+
+PrintLn('Second');
+
+var c2 : TClass2;
+c2:=TClass2.Create;
+c2.Stuff; 

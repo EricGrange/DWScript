@@ -93,10 +93,12 @@ type
 
       protected
          function GetOnInclude: TIncludeEvent;
+         procedure SetOnInclude(const Value: TIncludeEvent);
          function GetVersion: string;
          procedure SetVersion(const Value: string);
+         function GetOnNeedUnit : TdwsOnNeedUnitEvent;
+         procedure SetOnNeedUnit(const val : TdwsOnNeedUnitEvent);
          procedure SetConfig(const Value: TdwsConfiguration);
-         procedure SetOnInclude(const Value: TIncludeEvent);
          procedure AddUnitSymbols(SymbolTable: TSymbolTable); override;
          procedure Notification(AComponent: TComponent; Operation: TOperation); override;
          procedure SetupExtensions;
@@ -111,6 +113,7 @@ type
 
       published
          property Config: TdwsConfiguration read FConfig write SetConfig stored True;
+         property OnNeedUnit : TdwsOnNeedUnitEvent read GetOnNeedUnit write SetOnNeedUnit;
          property OnInclude: TIncludeEvent read GetOnInclude write SetOnInclude;
          property Version: string read GetVersion write SetVersion stored False;
    end;
@@ -1023,7 +1026,7 @@ end;
 constructor TDelphiWebScript.Create(AOwner: TComponent);
 begin
    inherited Create(AOwner);
-   FUnitName := 'Default';
+   FUnitName := SYS_DEFAULT;
    FCompiler := TdwsCompiler.Create;
    FConfig := TdwsConfiguration.Create(Self);
    AddUnit(Self);
@@ -1049,6 +1052,20 @@ procedure TDelphiWebScript.SetVersion(const Value: string);
 begin
   // This method is needed to make the IDE show the version in
   // the object inspector
+end;
+
+// GetOnNeedUnit
+//
+function TDelphiWebScript.GetOnNeedUnit : TdwsOnNeedUnitEvent;
+begin
+   Result:=Config.OnNeedUnit;
+end;
+
+// SetOnNeedUnit
+//
+procedure TDelphiWebScript.SetOnNeedUnit(const val : TdwsOnNeedUnitEvent);
+begin
+   Config.OnNeedUnit:=val;
 end;
 
 // SetupExtensions

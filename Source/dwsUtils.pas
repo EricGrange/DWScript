@@ -97,6 +97,7 @@ type
          procedure Pop; inline;
 
          procedure Clear; inline;
+         procedure Clean;
          procedure Free;
 
          property List : PPointerList read FList;
@@ -1297,6 +1298,16 @@ end;
 procedure TTightStack.Clear;
 begin
    FCount:=0;
+end;
+
+// Clean
+//
+procedure TTightStack.Clean;
+begin
+   while Count>0 do begin
+      TObject(Peek).Free;
+      Pop;
+   end;
 end;
 
 // Free
