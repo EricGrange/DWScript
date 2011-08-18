@@ -3631,6 +3631,9 @@ begin
                                               [x, paramSymbol.Typ.Caption, argTyp.Caption]);
 
       if paramSymbol.InheritsFrom(TVarParamSymbol) then begin
+         if not paramSymbol.Typ.IsOfType(arg.Typ) then
+            prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long,
+                                                 [x, paramSymbol.Typ.Caption, argTyp.Caption]);
          if arg is TDataExpr then begin
             if not TDataExpr(arg).IsWritable then
                prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
