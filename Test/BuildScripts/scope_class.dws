@@ -1,0 +1,9 @@
+uses ScopeBase, ScopeChild;
+
+TBase.Create.Hello;
+TBase.Create.Scope;
+
+TChild.Create.Hello;
+
+TBase.World;
+TChild.World;

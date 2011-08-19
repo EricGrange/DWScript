@@ -1307,11 +1307,13 @@ procedure TdwsJSCodeGen.CompileSymbolTable(table : TSymbolTable);
 var
    i : Integer;
    varSym : TDataSymbol;
+   sym : TSymbol;
 begin
    inherited;
    for i:=0 to table.Count-1 do begin
-      if table[i].ClassType=TDataSymbol then begin
-         varSym:=TDataSymbol(table[i]);
+      sym:=table[i];
+      if sym.ClassType=TDataSymbol then begin
+         varSym:=TDataSymbol(sym);
          if FDeclaredLocalVars.IndexOf(varSym)<0 then begin
             FDeclaredLocalVars.Add(varSym);
             WriteString('var ');

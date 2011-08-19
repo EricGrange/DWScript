@@ -3,7 +3,7 @@ unit UJSCodeGenTests;
 interface
 
 uses Forms, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs, dwsUtils,
-   dwsXPlatform, dwsCodeGen, dwsJSCodeGen, cef, ceflib, dwsJSLibModule;
+   dwsXPlatform, dwsCodeGen, dwsJSCodeGen, cef, ceflib, dwsJSLibModule, dwsFunctions;
 
 type
 
@@ -27,6 +27,9 @@ type
          procedure DoConsoleMessage(Sender: TCustomChromium; const browser: ICefBrowser; message, source: ustring;
                                     line: Integer; out Result: Boolean);
          procedure DoInclude(const scriptName: string; var scriptSource: string);
+         function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+
+         function GetExpectedResult(const fileName : String) : String;
 
          procedure Compilation;
          procedure Execution;
@@ -63,6 +66,7 @@ begin
 
    CollectFiles(ExtractFilePath(ParamStr(0))+'Algorithms'+PathDelim, '*.pas', FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'SimpleScripts'+PathDelim, '*.pas', FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'BuildScripts'+PathDelim, '*.dws', FTests);
 
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsMath'+PathDelim, '*.pas', FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsString'+PathDelim, '*.pas', FTests);
@@ -70,6 +74,7 @@ begin
 
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.OnInclude:=DoInclude;
+   FCompiler.OnNeedUnit:=DoNeedUnit;
 
    FCodeGen:=TdwsJSCodeGen.Create;
 
@@ -135,6 +140,25 @@ begin
    end;
 end;
 
+// DoNeedUnit
+//
+function TJSCodeGenTests.DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+var
+   sl : TStringList;
+   fName : String;
+begin
+   fName:='BuildScripts\' + unitName + '.pas';
+   if not FileExists(fName) then Exit(nil);
+   sl := TStringList.Create;
+   try
+      sl.LoadFromFile(fName);
+      unitSource := sl.Text;
+   finally
+      sl.Free;
+   end;
+   Result:=nil;
+end;
+
 // Compilation
 //
 procedure TJSCodeGenTests.Compilation;
@@ -155,7 +179,14 @@ begin
 
          prog:=FCompiler.Compile(source.Text);
 
-         CheckEquals(False, prog.Msgs.HasErrors, FTests[i]+#13#10+prog.Msgs.AsInfo);
+         if prog.Msgs.HasErrors then begin
+            CheckEquals(GetExpectedResult(FTests[i]),
+                         'Errors >>>>'#13#10
+                        +prog.Msgs.AsInfo,
+                        FTests[i]);
+            Inc(ignored);
+            continue;
+         end;
 
          FCodeGen.Clear;
          try
@@ -188,18 +219,16 @@ end;
 //
 procedure TJSCodeGenTests.Execution;
 var
-   source, expectedResult : TStringList;
+   source : TStringList;
    i, ignored : Integer;
    prog : IdwsProgram;
-   resultsFileName : String;
    jscode : String;
-   output : String;
+   output, expectedResult : String;
    diagnostic : TStringList;
 begin
    ignored:=0;
    diagnostic:=TStringList.Create;
    source:=TStringList.Create;
-   expectedResult:=TStringList.Create;
    try
 
       for i:=0 to FTests.Count-1 do begin
@@ -208,7 +237,14 @@ begin
 
          prog:=FCompiler.Compile(source.Text);
 
-         CheckEquals(False, prog.Msgs.HasErrors, FTests[i]+#13#10+prog.Msgs.AsInfo);
+         if prog.Msgs.HasErrors then begin
+            CheckEquals(GetExpectedResult(FTests[i]),
+                         'Errors >>>>'#13#10
+                        +prog.Msgs.AsInfo,
+                        FTests[i]);
+            Inc(ignored);
+            continue;
+         end;
 
          FCodeGen.Clear;
          try
@@ -242,18 +278,11 @@ begin
                        +'Result >>>>'#13#10
                        +FConsole+FLastJSResult;
             end;
-            resultsFileName:=ChangeFileExt(FTests[i], '.jstxt');
-            if FileExists(resultsFileName) then
-               expectedResult.LoadFromFile(resultsFileName)
-            else begin
-               resultsFileName:=ChangeFileExt(FTests[i], '.txt');
-               if FileExists(resultsFileName) then
-                  expectedResult.LoadFromFile(resultsFileName)
-               else expectedResult.Clear;
-            end;
-            if not (expectedResult.Text=output) then
+
+            expectedResult:=GetExpectedResult(FTests[i]);
+            if not (expectedResult=output) then
                diagnostic.Add( ExtractFileName(FTests[i])
-                              +': expected <'+expectedResult.Text
+                              +': expected <'+expectedResult
                               +'> but got <'+output+'>');
          except
             on e : Exception do begin
@@ -275,7 +304,6 @@ begin
                           diagnostic.Text]));
    finally
       diagnostic.Free;
-      expectedResult.Free;
       source.Free;
    end;
 end;
@@ -332,6 +360,30 @@ begin
    FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coOptimize];
    FCodeGen.Options:=FCodeGen.Options-[cgoNoInlineMagics];
    Execution;
+end;
+
+// GetExpectedResult
+//
+function TJSCodeGenTests.GetExpectedResult(const fileName : String) : String;
+var
+   expectedResult : TStringList;
+   resultsFileName : String;
+begin
+   expectedResult:=TStringList.Create;
+   try
+      resultsFileName:=ChangeFileExt(fileName, '.jstxt');
+      if FileExists(resultsFileName) then
+         expectedResult.LoadFromFile(resultsFileName)
+      else begin
+         resultsFileName:=ChangeFileExt(fileName, '.txt');
+         if FileExists(resultsFileName) then
+            expectedResult.LoadFromFile(resultsFileName)
+         else expectedResult.Clear;
+      end;
+      Result:=expectedResult.Text;
+   finally
+      expectedResult.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------

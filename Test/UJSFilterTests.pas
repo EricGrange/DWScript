@@ -5,7 +5,7 @@ interface
 uses
   Forms, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
   dwsJSFilter, dwsHtmlFilter, dwsXPlatform, dwsUtils, cef, ceflib, dwsJSLibModule,
-  StrUtils;
+  StrUtils, dwsFunctions;
 
 type
 
@@ -34,7 +34,9 @@ type
                                     line: Integer; out Result: Boolean);
          procedure DoLoadEnd(Sender: TCustomChromium; const browser: ICefBrowser; const frame: ICefFrame;
                              httpStatusCode: Integer; out Result: Boolean);
+
          procedure DoInclude(const scriptName: string; var scriptSource: string);
+         function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
 
          procedure BrowserLoadAndWait(const src : String);
 
@@ -67,6 +69,7 @@ begin
 
    FJSCompiler := TDelphiWebScript.Create(nil);
    FJSCompiler.OnInclude := DoInclude;
+   FJSCompiler.OnNeedUnit := DoNeedUnit;
 
    FJSFilter := TdwsJSFilter.Create(nil);
    FJSFilter.PatternOpen:='<%pas2js';
@@ -142,7 +145,7 @@ end;
 //
 procedure TJSFilterTests.DoInclude(const scriptName: string; var scriptSource: string);
 var
-   sl: TStringList;
+   sl : TStringList;
 begin
    sl := TStringList.Create;
    try
@@ -151,6 +154,22 @@ begin
    finally
       sl.Free;
    end;
+end;
+
+// DoNeedUnit
+//
+function TJSFilterTests.DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+var
+   sl : TStringList;
+begin
+   sl := TStringList.Create;
+   try
+      sl.LoadFromFile('JSFilterScripts\' + unitName + '.pas');
+      unitSource := sl.Text;
+   finally
+      sl.Free;
+   end;
+   Result:=nil;
 end;
 
 // BrowserLoadAndWait

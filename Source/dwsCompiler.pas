@@ -38,7 +38,7 @@ const
 
 type
   TIncludeEvent = procedure(const scriptName: string; var scriptSource: string) of object;
-  TdwsOnNeedUnitEvent = function(const unitName : String; var unitSource : String) : IUnit of object;
+  TdwsOnNeedUnitEvent = function(const unitName : String; var unitSource : String) : IdwsUnit of object;
 
   TdwsCompiler = class;
   TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
@@ -64,7 +64,7 @@ type
     FStackChunkSize: Integer;
     FSystemTable: TSymbolTable;
     FTimeoutMilliseconds: Integer;
-    FUnits : TIUnitList;
+    FUnits : TIdwsUnitList;
     FCompileFileSystem : TdwsCustomFileSystem;
     FRuntimeFileSystem : TdwsCustomFileSystem;
 
@@ -86,7 +86,7 @@ type
 
     property Connectors: TStrings read FConnectors write FConnectors;
     property SystemTable: TSymbolTable read FSystemTable write FSystemTable;
-    property Units : TIUnitList read FUnits;
+    property Units : TIdwsUnitList read FUnits;
 
   published
     property Filter: TdwsFilter read FFilter write SetFilter;
@@ -220,6 +220,21 @@ type
    TdwsUnitSection = (secMixed, secHeader, secInterface, secImplementation, secEnd);
    TdwsRootStatementAction = (rsaNone, rsaNoSemiColon, rsaInterface, rsaImplementation, rsaEnd);
 
+   TdwsCompilerUnitContext = record
+      Tokenizer : TTokenizer;
+      UnitSymbol : TUnitSymbol;
+      ConditionalDefines : TStringList;
+   end;
+
+   TdwsCompilerUnitContextStack = class(TSimpleStack<TdwsCompilerUnitContext>)
+      public
+         destructor Destroy; override;
+         procedure Clean;
+
+         procedure PushContext(compiler : TdwsCompiler);
+         procedure PopContext(compiler : TdwsCompiler);
+   end;
+
    // TdwsCompiler
    //
    TdwsCompiler = class
@@ -242,7 +257,7 @@ type
       FCompileFileSystem : IdwsFileSystem;
       FOnInclude : TIncludeEvent;
       FOnNeedUnit : TdwsOnNeedUnitEvent;
-      FUnits : TIUnitList;
+      FUnits : TIdwsUnitList;
       FSystemTable : TSymbolTable;
       FScriptPaths : TStrings;
       FFilter : TdwsFilter;
@@ -251,8 +266,9 @@ type
       FLineCount : Integer;
       FSourcePostConditionsIndex : Integer;
       FUnitSection : TdwsUnitSection;
-      FTokenizerStack : TTightStack;
+      FUnitContextStack : TdwsCompilerUnitContextStack;
       FUnitsFromStack : TSimpleStack<String>;
+      FUnitSymbol : TUnitSymbol;
 
       FOnReadInstr : TCompilerReadInstrEvent;
       FOnSectionChanged : TCompilerSectionChangedEvent;
@@ -390,7 +406,7 @@ type
       procedure ReadUnitHeader;
       function ReadVarDecl : TNoResultExpr;
       function ReadWhile : TNoResultExpr;
-      function ResolveUnitReferences(conf : TdwsConfiguration) : TIUnitList;
+      function ResolveUnitReferences(conf : TdwsConfiguration) : TIdwsUnitList;
 
    protected
       procedure EnterLoop(loopExpr : TNoResultExpr);
@@ -424,9 +440,9 @@ type
       procedure SetupCompileOptions(conf : TdwsConfiguration);
       procedure CleanupAfterCompile;
 
-      procedure CheckFilterDependencies(confUnits : TIUnitList);
+      procedure CheckFilterDependencies(confUnits : TIdwsUnitList);
       procedure HandleUnitDependencies(conf : TdwsConfiguration);
-      procedure HandleExplicitDependency(const unitName : String);
+      function  HandleExplicitDependency(const unitName : String) : TUnitSymbol;
 
    public
       constructor Create;
@@ -575,6 +591,7 @@ begin
    FConditionalDepth:=TSimpleStack<TSwitchInstruction>.Create;
    FFinallyExprs:=TSimpleStack<Boolean>.Create;
    FUnitsFromStack:=TSimpleStack<String>.Create;
+   FUnitContextStack:=TdwsCompilerUnitContextStack.Create;
 
    stackParams.MaxLevel:=1;
    stackParams.ChunkSize:=512;
@@ -589,8 +606,7 @@ end;
 destructor TdwsCompiler.Destroy;
 begin
    FUnitsFromStack.Free;
-   FTokenizerStack.Clean;
-   FTokenizerStack.Free;
+   FUnitContextStack.Free;
    FExec.Free;
    FFinallyExprs.Free;
    FConditionalDepth.Free;
@@ -599,7 +615,7 @@ begin
    inherited;
 end;
 
-function TdwsCompiler.ResolveUnitReferences(conf : TdwsConfiguration): TIUnitList;
+function TdwsCompiler.ResolveUnitReferences(conf : TdwsConfiguration): TIdwsUnitList;
 var
    x, y, z : Integer;
    expectedUnitCount : Integer;
@@ -607,7 +623,7 @@ var
    refCount : array of Integer;
    changed : Boolean;
    unitName: string;
-   curUnit : IUnit;
+   curUnit : IdwsUnit;
 begin
    // initialize reference count vector
    expectedUnitCount:=conf.Units.Count;
@@ -616,7 +632,7 @@ begin
    // Calculate number of outgoing references
    for x := 0 to conf.Units.Count-1 do begin
       curUnit:=conf.Units[x];
-      if curUnit.ImplicitUse or not (coExplicitUnitUses in conf.CompilerOptions) then begin
+      if (ufImplicitUse in curUnit.GetUnitFlags) or not (coExplicitUnitUses in conf.CompilerOptions) then begin
          deps := curUnit.GetDependencies;
          for y := 0 to deps.Count - 1 do begin
             if conf.Units.IndexOf(deps[y]) < 0 then
@@ -629,7 +645,7 @@ begin
       end;
    end;
 
-  Result := TIUnitList.Create;
+  Result := TIdwsUnitList.Create;
   try
 
     // Resolve references
@@ -805,7 +821,7 @@ begin
    FFilter := conf.Filter;
    FConnectors := conf.Connectors;
    FCompilerOptions := conf.CompilerOptions;
-   FUnits := TIUnitList.Create;
+   FUnits := TIdwsUnitList.Create;
    FUnits.AddUnits(conf.Units);
    FOnInclude := conf.OnInclude;
    FOnNeedUnit := conf.OnNeedUnit;
@@ -832,7 +848,7 @@ begin
    FOnNeedUnit:=nil;
    FUnits.Free;
    FSystemTable:=nil;
-   FTokenizerStack.Clean;
+   FUnitContextStack.Clean;
    FUnitsFromStack.Clear;
 
    FProg:=nil;
@@ -922,7 +938,7 @@ end;
 
 // CheckFilterDependencies
 //
-procedure TdwsCompiler.CheckFilterDependencies(confUnits : TIUnitList);
+procedure TdwsCompiler.CheckFilterDependencies(confUnits : TIdwsUnitList);
 var
    f : TdwsFilter;
    dep : String;
@@ -944,10 +960,10 @@ end;
 procedure TdwsCompiler.HandleUnitDependencies(conf : TdwsConfiguration);
 var
    i : Integer;
-   unitsResolved: TIUnitList;
+   unitsResolved: TIdwsUnitList;
    unitsTable: TSymbolTable;
    unitTables: TList;
-   unitTable: TSymbolTable;
+   unitTable : TUnitSymbolTable;
    unitSymbol : TUnitSymbol;
 begin
    // Handle unit dependencies
@@ -991,12 +1007,11 @@ end;
 
 // HandleExplicitDependency
 //
-procedure TdwsCompiler.HandleExplicitDependency(const unitName : String);
+function TdwsCompiler.HandleExplicitDependency(const unitName : String) : TUnitSymbol;
 var
    i : Integer;
-   unitResolved : IUnit;
-   unitTable : TSymbolTable;
-   unitSymbol : TUnitSymbol;
+   unitResolved : IdwsUnit;
+   unitTable : TUnitSymbolTable;
    dependencies : TStrings;
    unitSource : String;
    srcUnit : TSourceUnit;
@@ -1005,7 +1020,8 @@ begin
       if SameText(FUnitsFromStack.Items[i], unitName) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitCircularReference);
 
-   if FProg.Table.FindLocal(unitName, TUnitSymbol)<>nil then begin
+   Result:=TUnitSymbol(FProg.Table.FindLocal(unitName, TUnitSymbol));
+   if Result<>nil then begin
       // ignore multiple requests (for now)
       Exit;
    end;
@@ -1017,7 +1033,7 @@ begin
          if unitResolved<>nil then
             FUnits.Add(unitResolved)
          else if unitSource<>'' then begin
-            srcUnit:=TSourceUnit.Create(unitName, FSystemTable, FProg.Table);
+            srcUnit:=TSourceUnit.Create(unitName, FProg.Root.RootTable);
             unitResolved:=srcUnit;
             FUnits.Add(unitResolved);
             try
@@ -1055,9 +1071,10 @@ begin
       raise;
    end;
 
-   unitSymbol:=TUnitSymbol.Create(unitResolved.GetUnitName, unitTable, True);
-   FProg.Table.AddSymbol(unitSymbol);
-   FProg.Table.AddParent(unitSymbol.Table);
+   Result:=TUnitSymbol.Create(unitResolved.GetUnitName, unitTable,
+                              not (ufOwnsSymbolTable in unitResolved.GetUnitFlags));
+   FProg.Table.AddSymbol(Result);
+   FProg.Table.AddParent(Result.Table);
 end;
 
 // RecompileInContext
@@ -1199,6 +1216,9 @@ var
    oldTok : TTokenizer;
    oldSection : TdwsUnitSection;
    unitBlock : TBlockExpr;
+   implemTable : TUnitImplementationTable;
+   oldTable : TSymbolTable;
+   oldUnit : TUnitSymbol;
 begin
    oldTok:=FTok;
    oldSection:=FUnitSection;
@@ -1220,9 +1240,11 @@ begin
       if scriptType<>stInclude then
          if FConditionalDepth.Count>0 then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_UnbalancedConditionalDirective);
+      if FUnitSymbol<>nil then
+         FUnitSymbol.UnParentInterfaceTable;
 
       if finalToken=ttIMPLEMENTATION then begin
-         FTokenizerStack.Push(FTok);
+         FUnitContextStack.PushContext(Self);
          FTok:=nil;
       end else begin
          Inc(FLineCount, FTok.CurrentPos.Line-2);
@@ -1230,28 +1252,30 @@ begin
       end;
 
       if scriptType=stMain then begin
-         while FTokenizerStack.Count>0 do begin
-            FTok:=FTokenizerStack.Peek;
+         while FUnitContextStack.Count>0 do begin
+            oldUnit:=FUnitSymbol;
+            FUnitContextStack.PopContext(Self);
             FUnitSection:=secImplementation;
-            FTokenizerStack.Pop;
             try
-               FUnitsFromStack.Push(FTok.CurrentPos.SourceFile.Name);
+               implemTable:=TUnitImplementationTable.Create(FUnitSymbol);
+               oldTable:=FProg.Table;
+               FProg.Table:=implemTable;
                try
                   unitBlock:=ReadRootBlock([], finalToken);
                   FreeAndNil(unitBlock);
                finally
-                  FUnitsFromStack.Pop;
+                  FProg.Table:=oldTable;
                end;
             finally
                Inc(FLineCount, FTok.CurrentPos.Line-2);
                FreeAndNil(FTok);
+               FUnitSymbol:=oldUnit;
             end;
          end;
       end;
 
-      if Result<>nil then
-         if Optimize then
-            Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
+      if (Result<>nil) and Optimize then
+         Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
    finally
       FTok.Free;
       FTok:=oldTok;
@@ -1748,7 +1772,9 @@ begin
       if isClassMethod or (funcKind in [fkConstructor, fkDestructor, fkMethod]) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ImplClassNameExpected);
 
-      if (sym is TFuncSymbol) and TFuncSymbol(sym).IsForwarded then
+      if     (sym is TFuncSymbol)
+         and TFuncSymbol(sym).IsForwarded
+         and (FUnitSymbol.HasSymbol(sym) or FProg.Table.HasSymbol(sym)) then
          // There was already a (forward) declaration
          forwardedSym := TFuncSymbol(sym)
       else forwardedSym := nil;
@@ -2582,7 +2608,6 @@ var
    methSym : TMethodSymbol;
    classSym, parentSym : TClassSymbol;
    varExpr : TDataExpr;
-   methRefKind : TRefKind;
 begin
    Result := nil;
    if not ((FProg is TdwsProcedure) and (TdwsProcedure(FProg).Func is TMethodSymbol)) then
@@ -2605,14 +2630,9 @@ begin
       if sym is TMethodSymbol then begin
          if TMethodSymbol(sym).IsAbstract then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_AbstractMethodUsage);
-         if methSym.IsClassMethod then
-            varExpr := TConstExpr.CreateTyped(FProg, parentSym.ClassOf, Int64(parentSym))
-         else varExpr := TVarExpr.CreateTyped(FProg, parentSym, methSym.SelfSym);
+         varExpr := TVarExpr.CreateTyped(FProg, methSym.SelfSym.Typ, methSym.SelfSym);
          try
-            if methSym.IsClassMethod then
-               methRefKind:=rkClassOfRef
-            else methRefKind:=rkObjRef;
-            Result:=GetMethodExpr(TMethodSymbol(sym), varExpr, methRefKind, FTok.HotPos, True);
+            Result:=GetMethodExpr(TMethodSymbol(sym), varExpr, rkObjRef, FTok.HotPos, True);
          except
             varExpr.Free;
             raise;
@@ -3794,18 +3814,10 @@ var
    progMeth: TMethodSymbol;
 begin
    progMeth := TMethodSymbol(TdwsProcedure(FProg).Func);
-   if not progMeth.IsClassMethod then
-      Result := GetMethodExpr(methodSym,
-                              TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym),
-                              rkObjRef, FTok.HotPos, False)
-   else if (methodSym.Kind = fkConstructor) or (methodSym.IsClassMethod) then
-      Result := GetMethodExpr(methodSym,
-                              TConstExpr.CreateTyped(FProg, progMeth.ClassSymbol.ClassOf, Int64(progMeth.ClassSymbol)),
-                              rkClassOfRef, FTok.HotPos, True)
-   else begin
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticMethodExpected);
-      Exit(nil);
-   end;
+
+   Result := GetMethodExpr(methodSym,
+                           TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym),
+                           rkObjRef, FTok.HotPos, False);
 
    Result:=WrapUpFunctionRead(TFuncExpr(Result), expecting);
 
@@ -6529,31 +6541,43 @@ procedure TdwsCompiler.ReadUses;
 var
    names : TStringList;
    x, y, z, u : Integer;
-   rt : TProgramSymbolTable;
+   rt : TSymbolTable;
    rSym : TSymbol;
+   unitSymbol : TUnitSymbol;
 begin
    names:=TStringList.Create;
    try
       ReadNameList(names);
       u:=0;
-      rt:=FProg.Root.RootTable;
+      if FUnitSymbol<>nil then
+         if UnitSection=secImplementation then begin
+            rt:=FUnitSymbol.ImplementationTable;
+            u:=1;
+         end else rt:=FUnitSymbol.InterfaceTable
+      else rt:=FProg.Root.RootTable;
       for x:=0 to names.Count-1 do begin
          y:=0;
          z:=-1;
          while (y<rt.Count) do begin
             rSym:=rt[y];
             if (rSym.ClassType=TUnitSymbol) and UnicodeSameText(rSym.Name,names[x]) then begin
-               z:=FProg.Root.RootTable.IndexOfParent(TUnitSymbol(rSym).Table);
+               z:=rt.IndexOfParent(TUnitSymbol(rSym).Table);
                if z>=u then begin // uses A,B,A,C => uses A,B,C
-                  FProg.Root.RootTable.MoveParent(z,u);
-                  Inc(u);
+                  rt.MoveParent(z,u);
+//                  Inc(u);
                end;
                Break;
             end;
             Inc(y);
          end;
-         if z<0 then
-            HandleExplicitDependency(names[x]);
+         if z<0 then begin
+            unitSymbol:=HandleExplicitDependency(names[x]);
+            if unitSymbol<>nil then begin
+               z:=rt.IndexOfParent(unitSymbol.Table);
+               if z>u then
+                  rt.MoveParent(z, u);
+            end;
+         end;
       end;
    finally
       names.Free;
@@ -6772,14 +6796,22 @@ end;
 procedure TdwsCompiler.SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : String);
 var
    sourceFile : TSourceFile;
+   oldUnit : TUnitSymbol;
+   oldTable : TSymbolTable;
 begin
    sourceFile:=FMainProg.RegisterSourceFile(srcUnit.GetUnitName, sourceCode);
 
+   oldUnit:=FUnitSymbol;
+   FUnitSymbol:=srcUnit.Symbol;
+   oldTable:=FProg.Table;
+   FProg.Table:=FUnitSymbol.Table;
    FUnitsFromStack.Push(sourceFile.Name);
    try
       ReadScript(sourceFile, stUnit);
    finally
       FUnitsFromStack.Pop;
+      FUnitSymbol:=oldUnit;
+      FProg.Table:=oldTable;
    end;
 end;
 
@@ -7107,7 +7139,7 @@ begin
    FConnectors := TStringList.Create;
    FScriptPaths := TStringList.Create;
    FConditionals := TStringList.Create;
-   FUnits := TIUnitList.Create;
+   FUnits := TIdwsUnitList.Create;
    InitSystemTable;
    FUnits.Add(dwsInternalUnit);
    FStackChunkSize := C_DefaultStackChunkSize;
@@ -7703,6 +7735,50 @@ end;
 function TdwsEvaluateExpr.GetEvaluationError : Boolean;
 begin
    Result:=FEvaluationError;
+end;
+
+// ------------------
+// ------------------ TdwsCompilerUnitContextStack ------------------
+// ------------------
+
+// Destroy
+//
+destructor TdwsCompilerUnitContextStack.Destroy;
+begin
+   Clean;
+   inherited;
+end;
+
+// Clean
+//
+procedure TdwsCompilerUnitContextStack.Clean;
+begin
+   while Count>0 do begin
+      Peek.Tokenizer.Free;
+      Peek.ConditionalDefines.Free;
+      Pop;
+   end;
+end;
+
+// PushContext
+//
+procedure TdwsCompilerUnitContextStack.PushContext(compiler : TdwsCompiler);
+var
+   context : TdwsCompilerUnitContext;
+begin
+   context.Tokenizer:=compiler.FTok;
+   context.UnitSymbol:=compiler.FUnitSymbol;
+   context.ConditionalDefines:=nil;
+   Push(context);
+end;
+
+// PopContext
+//
+procedure TdwsCompilerUnitContextStack.PopContext(compiler : TdwsCompiler);
+begin
+   compiler.FTok:=Peek.Tokenizer;
+   compiler.FUnitSymbol:=Peek.UnitSymbol;
+   Pop;
 end;
 
 end.

@@ -1,0 +1,2 @@
+Scoped<Hello>ScopedB<
+Scoped<123>>

@@ -63,6 +63,7 @@ type
 
          FTempSymbolCounter : Integer;
          FCompiledClasses : TTightList;
+         FCompiledUnits : TTightList;
          FIndent : Integer;
          FIndentString : String;
          FNeedIndent : Boolean;
@@ -218,6 +219,8 @@ begin
    FFlushedDependencies.Duplicates:=dupIgnore;
    FTempReg:=TdwsRegisteredCodeGen.Create;
    FSymbolMap:=TStringList.Create;
+   FSymbolMap.Sorted:=True;
+   FSymbolMap.CaseSensitive:=True;
    FIndentSize:=3;
 end;
 
@@ -236,6 +239,7 @@ begin
    FTableStack.Free;
    FContextStack.Free;
    FCompiledClasses.Free;
+   FCompiledUnits.Free;
    FLocalVarSymbolMapStack.Free;
 end;
 
@@ -293,13 +297,30 @@ end;
 // SymbolMappedName
 //
 function TdwsCodeGen.SymbolMappedName(sym : TSymbol) : String;
+
+   function RegisterSymbol : String;
+   var
+      i, k : Integer;
+   begin
+      k:=1;
+      Result:=sym.Name;
+      exit;
+      repeat
+         i:=FSymbolMap.IndexOf(Result);
+         if i<0 then Break;
+         Result:=sym.Name+'_'+IntToStr(k);
+         Inc(k);
+      until False;
+      FSymbolMap.AddObject(Result, sym);
+   end;
+
 var
    i : Integer;
 begin
    i:=FSymbolMap.IndexOfObject(sym);
    if i>=0 then
       Result:=FSymbolMap[i]
-   else Result:=sym.Name;
+   else Result:=RegisterSymbol;
 end;
 
 // Clear
@@ -315,6 +336,7 @@ begin
    FContext:=nil;
    FContextStack.Clear;
    FCompiledClasses.Clear;
+   FCompiledUnits.Clear;
    FSymbolMap.Clear;
 
    FIndent:=0;
@@ -382,6 +404,11 @@ begin
       else if sym is TClassSymbol then begin
          if FCompiledClasses.IndexOf(sym)<0 then
             CompileClassSymbol(TClassSymbol(sym));
+      end else if sym is TUnitSymbol then begin
+         if FCompiledUnits.IndexOf(TUnitSymbol(sym).Table)<0 then begin
+            FCompiledUnits.Add(TUnitSymbol(sym).Table);
+            CompileSymbolTable(TUnitSymbol(sym).Table);
+         end;
       end;
    end;
 end;

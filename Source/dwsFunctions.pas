@@ -28,19 +28,22 @@ uses
 
 type
 
+   TIdwsUnitFlag = (ufImplicitUse, ufOwnsSymbolTable);
+   TIdwsUnitFlags = set of TIdwsUnitFlag;
+
    // Interface for units
-   IUnit = interface
+   IdwsUnit = interface
       ['{8D534D12-4C6B-11D5-8DCB-0000216D9E86}']
       function GetUnitName : String;
       function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
       function GetDependencies : TStrings;
-      function ImplicitUse : Boolean;
+      function GetUnitFlags : TIdwsUnitFlags;
    end;
 
-   TIUnitList = class(TSimpleList<IUnit>)
+   TIdwsUnitList = class(TSimpleList<IdwsUnit>)
       function IndexOf(const unitName : String) : Integer; overload;
-      function IndexOf(const aUnit : IUnit) : Integer; overload;
-      procedure AddUnits(list : TIUnitList);
+      function IndexOf(const aUnit : IdwsUnit) : Integer; overload;
+      procedure AddUnits(list : TIdwsUnitList);
    end;
 
    TEmptyFunc = class(TInterfacedObject, ICallable)
@@ -140,7 +143,7 @@ type
    TInternalInitProc = procedure (systemTable, unitSyms, unitTable : TSymbolTable;
                                   operators : TOperators);
 
-   TInternalUnit = class(TObject, IUnknown, IUnit)
+   TInternalUnit = class(TObject, IUnknown, IdwsUnit)
       private
          FDependencies : TStrings;
          FPreInitProcs : array of TInternalInitProc;
@@ -158,7 +161,7 @@ type
          function GetUnitName: string;
          procedure InitUnitTable(systemTable, unitSyms, unitTable : TSymbolTable; operators : TOperators);
          function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
-         function ImplicitUse : Boolean;
+         function GetUnitFlags : TIdwsUnitFlags;
 
       public
          constructor Create;
@@ -175,7 +178,7 @@ type
          property StaticSymbols : Boolean read FStaticSymbols write SetStaticSymbols;
    end;
 
-   TSourceUnit = class(TInterfacedObject, IUnit)
+   TSourceUnit = class(TInterfacedObject, IdwsUnit)
       private
          FDependencies : TStrings;
          FSymbol : TUnitSymbol;
@@ -183,13 +186,13 @@ type
       protected
 
       public
-         constructor Create(const unitName : String; systemTable, unitSyms : TSymbolTable);
+         constructor Create(const unitName : String; rootTable : TSymbolTable);
          destructor Destroy; override;
 
          function GetUnitName : String;
          function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
          function GetDependencies : TStrings;
-         function ImplicitUse : Boolean;
+         function GetUnitFlags : TIdwsUnitFlags;
 
          property Symbol : TUnitSymbol read FSymbol write FSymbol;
    end;
@@ -738,11 +741,11 @@ begin
   end;
 end;
 
-// ImplicitUse
+// GetUnitFlags
 //
-function TInternalUnit.ImplicitUse : Boolean;
+function TInternalUnit.GetUnitFlags : TIdwsUnitFlags;
 begin
-   Result:=True;
+   Result:=[ufImplicitUse];
 end;
 
 procedure TInternalUnit.InitUnitTable(systemTable, unitSyms, unitTable : TSymbolTable; operators : TOperators);
@@ -787,12 +790,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TIUnitList ------------------
+// ------------------ TIdwsUnitList ------------------
 // ------------------
 
 // IndexOf (name)
 //
-function TIUnitList.IndexOf(const unitName : String) : Integer;
+function TIdwsUnitList.IndexOf(const unitName : String) : Integer;
 begin
    for Result:=0 to Count-1 do
       if SameText(Items[Result].GetUnitName, unitName) then
@@ -802,7 +805,7 @@ end;
 
 // AddUnits
 //
-procedure TIUnitList.AddUnits(list : TIUnitList);
+procedure TIdwsUnitList.AddUnits(list : TIdwsUnitList);
 var
    i : Integer;
 begin
@@ -810,9 +813,9 @@ begin
       Add(list[i]);
 end;
 
-// IndexOf (IUnit)
+// IndexOf (IdwsUnit)
 //
-function TIUnitList.IndexOf(const aUnit : IUnit) : Integer;
+function TIdwsUnitList.IndexOf(const aUnit : IdwsUnit) : Integer;
 begin
    for Result:=0 to Count-1 do
       if Items[Result]=aUnit then
@@ -827,16 +830,27 @@ end;
 
 // Create
 //
-constructor TSourceUnit.Create(const unitName : String; systemTable, unitSyms : TSymbolTable);
+constructor TSourceUnit.Create(const unitName : String; rootTable : TSymbolTable);
+
+   procedure AddStandardUnit(const name : String);
+   var
+      stdUnit : TUnitSymbol;
+   begin
+      stdUnit:=TUnitSymbol(rootTable.FindSymbol(name, cvMagic, TUnitSymbol));
+      FSymbol.InterfaceTable.AddSymbol(TUnitSymbol.Create(name, stdUnit.Table, False));
+      FSymbol.InterfaceTable.AddParent(stdUnit.Table);
+   end;
+
 begin
    inherited Create;
    FDependencies:=TStringList.Create;
-   FSymbol:=TUnitSymbol.Create(unitName, TUnitSymbolTable.Create, False);
-   unitSyms.AddSymbol(FSymbol);
-   FSymbol.Table.AddParent(systemTable);
+   FSymbol:=TUnitSymbol.Create(unitName, TUnitSymbolTable.Create, True);
+   rootTable.AddSymbol(FSymbol);
 
-   FSymbol.Table.AddParent(TUnitSymbol(unitSyms.FindSymbol(SYS_INTERNAL, cvMagic, TUnitSymbol)).Table);
-   FSymbol.Table.AddParent(TUnitSymbol(unitSyms.FindSymbol(SYS_DEFAULT, cvMagic, TUnitSymbol)).Table);
+   FSymbol.CreateInterfaceTable;
+
+   AddStandardUnit(SYS_INTERNAL);
+   AddStandardUnit(SYS_DEFAULT);
 end;
 
 // Destroy
@@ -868,11 +882,11 @@ begin
    Result:=FDependencies;
 end;
 
-// ImplicitUse
+// GetUnitFlags
 //
-function TSourceUnit.ImplicitUse : Boolean;
+function TSourceUnit.GetUnitFlags : TIdwsUnitFlags;
 begin
-   Result:=False;
+   Result:=[ufOwnsSymbolTable];
 end;
 
 // ------------------------------------------------------------------

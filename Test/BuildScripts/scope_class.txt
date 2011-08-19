@@ -1,0 +1,6 @@
+Base TBase says Hello
+Base TChild says Hello
+Base TChild says World
+Child TChild says Hello
+Base TBase says World
+Child TChild says World

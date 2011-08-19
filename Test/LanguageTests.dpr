@@ -6,6 +6,7 @@ program LanguageTests;
 {$ENDIF}
 
 uses
+  //FastMM4,
   Classes,
   Forms,
   TestFrameWork,

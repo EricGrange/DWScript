@@ -1,5 +1,12 @@
 unit UBuildTests;
 
+//  Todo
+//      Scope implementation to main
+//      Scope implementation unit to unit
+//      SymbolTable for unit implementation
+//      Conditional define locality
+//      JS CodeGen of units code
+
 interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs, dwsUtils,
@@ -17,7 +24,7 @@ type
          procedure TearDown; override;
 
          procedure DoInclude(const scriptName : String; var scriptSource : String);
-         function DoNeedUnit(const unitName : String; var unitSource : String) : IUnit;
+         function DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
 
          procedure Compilation;
          procedure Execution;
@@ -92,7 +99,7 @@ end;
 
 // DoNeedUnit
 //
-function TBuildTests.DoNeedUnit(const unitName : String; var unitSource : String) : IUnit;
+function TBuildTests.DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
 begin
    Result:=nil;
    DoInclude(unitName+'.pas', unitSource);

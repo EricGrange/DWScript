@@ -1134,22 +1134,34 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
+   TUnitImplementationTable = class;
+   TUnitSymbolTable = class;
+
    // Invisible symbol for units (e. g. for TdwsUnit)
    TUnitSymbol = class sealed (TNameSymbol)
       private
-         FIsTableOwner: Boolean;
-         FTable: TSymbolTable;
-         FInitialized: Boolean;
+         FIsTableOwner : Boolean;
+         FTable : TUnitSymbolTable;
+         FInterfaceTable : TSymbolTable;
+         FImplementationTable : TUnitImplementationTable;
 
       public
-         constructor Create(const Name: string; Table: TSymbolTable; IsTableOwner: Boolean = False);
+         constructor Create(const Name: string; table: TUnitSymbolTable; isTableOwner: Boolean = False);
          destructor Destroy; override;
 
          procedure InitData(const data : TData; offset : Integer); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
-         property Table : TSymbolTable read FTable write FTable;
+         procedure CreateInterfaceTable;
+         procedure UnParentInterfaceTable;
+
+         function HasSymbol(sym : TSymbol) : Boolean;
+
+         property Table : TUnitSymbolTable read FTable write FTable;
          property IsTableOwner : Boolean read FIsTableOwner write FIsTableOwner;
+
+         property InterfaceTable : TSymbolTable read FInterfaceTable;
+         property ImplementationTable : TUnitImplementationTable read FImplementationTable;
    end;
 
    // Element of an enumeration type. E. g. "type DummyEnum = (Elem1, Elem2, Elem3);"
@@ -1241,6 +1253,7 @@ type
          function FindTypeSymbol(const aName : string; minVisibility : TClassVisibility) : TTypeSymbol;
 
          function HasClass(const aClass : TSymbolClass) : Boolean;
+         function HasSymbol(sym : TSymbol) : Boolean;
 
          procedure Initialize(const msgs : TdwsCompileMessageList); virtual;
 
@@ -1319,6 +1332,25 @@ type
          procedure BeforeDestruction; override;
 
          procedure AddObjectOwner(AOwner : IObjectOwner);
+   end;
+
+   // TUnitPrivateTable
+   //
+   TUnitPrivateTable = class(TSymbolTable)
+      private
+         FUnitSymbol : TUnitSymbol;
+
+      public
+         constructor Create(unitSymbol : TUnitSymbol);
+
+         property UnitSymbol : TUnitSymbol read FUnitSymbol;
+   end;
+
+   // TUnitImplementationTable
+   //
+   TUnitImplementationTable = class(TUnitPrivateTable)
+      public
+         constructor Create(unitSymbol : TUnitSymbol);
    end;
 
    TStaticSymbolTable = class (TUnitSymbolTable)
@@ -3682,6 +3714,13 @@ begin
    Result:=False;
 end;
 
+// HasSymbol
+//
+function TSymbolTable.HasSymbol(sym : TSymbol) : Boolean;
+begin
+   Result:=Assigned(Self) and (FSymbols.IndexOf(sym)>=0);
+end;
+
 // GetCount
 //
 function TSymbolTable.GetCount: Integer;
@@ -3953,7 +3992,34 @@ begin
    FObjects.Add(AOwner);
 end;
 
-{ TExternalVarSymbol }
+// ------------------
+// ------------------ TUnitPrivateTable ------------------
+// ------------------
+
+// Create
+//
+constructor TUnitPrivateTable.Create(unitSymbol : TUnitSymbol);
+begin
+   inherited Create(unitSymbol.Table, unitSymbol.Table.AddrGenerator);
+   FUnitSymbol:=unitSymbol;
+end;
+
+// ------------------
+// ------------------ TUnitImplementationTable ------------------
+// ------------------
+
+// Create
+//
+constructor TUnitImplementationTable.Create(unitSymbol : TUnitSymbol);
+begin
+   inherited create(unitSymbol);
+   unitSymbol.FImplementationTable:=Self;
+   AddParent(unitSymbol.InterfaceTable);
+end;
+
+// ------------------
+// ------------------ TExternalVarSymbol ------------------
+// ------------------
 
 destructor TExternalVarSymbol.Destroy;
 begin
@@ -3972,22 +4038,25 @@ begin
   Result := FWriteFunc;
 end;
 
-{ TUnitSymbol }
+// ------------------
+// ------------------ TUnitSymbol ------------------
+// ------------------
 
-constructor TUnitSymbol.Create(const Name: string; Table: TSymbolTable;
+constructor TUnitSymbol.Create(const Name: string; Table: TUnitSymbolTable;
   IsTableOwner: Boolean = False);
 begin
-  inherited Create(Name, nil);
-  FIsTableOwner := IsTableOwner;
-  FTable := Table;
-  FInitialized := False;
+   inherited Create(Name, nil);
+   FIsTableOwner := IsTableOwner;
+   FTable := Table;
 end;
 
 destructor TUnitSymbol.Destroy;
 begin
-  if FIsTableOwner then
-    FTable.Free;
-  inherited;
+   FInterfaceTable.Free;
+   FImplementationTable.Free;
+   if FIsTableOwner then
+      FTable.Free;
+   inherited;
 end;
 
 // InitData
@@ -3997,13 +4066,38 @@ begin
    // nothing
 end;
 
+// Initialize
+//
 procedure TUnitSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
-  if not FInitialized then
-  begin
-    FTable.Initialize(msgs);
-    FInitialized := True;
-  end;
+   if FIsTableOwner then
+      FTable.Initialize(msgs);
+end;
+
+// CreateInterfaceTable
+//
+procedure TUnitSymbol.CreateInterfaceTable;
+begin
+   Assert(not Assigned(FInterfaceTable));
+
+   FInterfaceTable:=TSymbolTable.Create;
+   Table.AddParent(FInterfaceTable);
+end;
+
+// UnParentInterfaceTable
+//
+procedure TUnitSymbol.UnParentInterfaceTable;
+begin
+   Table.RemoveParent(FInterfaceTable);
+end;
+
+// HasSymbol
+//
+function TUnitSymbol.HasSymbol(sym : TSymbol) : Boolean;
+begin
+   if Self=nil then
+      Result:=False
+   else Result:=Table.HasSymbol(sym) or ImplementationTable.HasSymbol(sym);
 end;
 
 // ------------------

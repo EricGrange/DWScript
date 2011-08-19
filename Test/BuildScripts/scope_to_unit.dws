@@ -1,0 +1,4 @@
+uses ScopePrint, ScopePrintB;
+
+Print('Hello');
+PrintLn(123);

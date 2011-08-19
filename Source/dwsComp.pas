@@ -56,12 +56,12 @@ type
          property Script : TDelphiWebScript read FScript write SetScript;
    end;
 
-  TdwsEmptyUnit = class(TComponent, IUnknown, IUnit)
+  TdwsEmptyUnit = class(TComponent, IUnknown, IdwsUnit)
   private
     function GetUnitName: string;
     function GetDependencies: TStrings;
     function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
-    function ImplicitUse : Boolean;
+    function GetUnitFlags : TIdwsUnitFlags;
   protected
     FUnitName: string;
     FDependencies: TStrings;
@@ -106,10 +106,10 @@ type
       public
          constructor Create(AOwner: TComponent); override;
          destructor Destroy; override;
-         procedure AddUnit(const Un: IUnit);
+         procedure AddUnit(const Un: IdwsUnit);
          function Compile(const Text: string): IdwsProgram; virtual;
          procedure RecompileInContext(const prog : IdwsProgram; const text : String); virtual;
-         function RemoveUnit(const Un: IUnit): Boolean;
+         function RemoveUnit(const Un: IdwsUnit): Boolean;
 
       published
          property Config: TdwsConfiguration read FConfig write SetConfig stored True;
@@ -118,7 +118,7 @@ type
          property Version: string read GetVersion write SetVersion stored False;
    end;
 
-  TdwsAbstractUnit = class(TComponent, IUnknown, IUnit)
+  TdwsAbstractUnit = class(TComponent, IUnknown, IdwsUnit)
   private
     FDependencies: TStrings;
     FScript: TDelphiWebScript;
@@ -131,7 +131,7 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     function GetUnitName: string; virtual;
     function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable; virtual; abstract;
-    function ImplicitUse : Boolean;
+    function GetUnitFlags : TIdwsUnitFlags;
 
     property Dependencies: TStrings read FDependencies write SetDependencies;
     {$WARNINGS OFF}
@@ -1099,7 +1099,7 @@ end;
 
 // AddUnit
 //
-procedure TDelphiWebScript.AddUnit(const Un: IUnit);
+procedure TDelphiWebScript.AddUnit(const Un: IdwsUnit);
 begin
    RemoveUnit(Un);
    if Assigned(Un) then
@@ -1108,7 +1108,7 @@ end;
 
 // RemoveUnit
 //
-function TDelphiWebScript.RemoveUnit(const Un: IUnit): Boolean;
+function TDelphiWebScript.RemoveUnit(const Un: IdwsUnit): Boolean;
 var
    i : Integer;
 begin
@@ -3242,11 +3242,11 @@ begin
     FUnitName := Value;
 end;
 
-// ImplicitUse
+// GetUnitFlags
 //
-function TdwsAbstractUnit.ImplicitUse : Boolean;
+function TdwsAbstractUnit.GetUnitFlags : TIdwsUnitFlags;
 begin
-   Result:=False;
+   Result:=[];
 end;
 
 { TdwsEmptyUnit }
@@ -3298,11 +3298,11 @@ begin
   end;
 end;
 
-// ImplicitUse
+// GetUnitFlags
 //
-function TdwsEmptyUnit.ImplicitUse : Boolean;
+function TdwsEmptyUnit.GetUnitFlags : TIdwsUnitFlags;
 begin
-   Result:=True;
+   Result:=[ufImplicitUse];
 end;
 
 { TdwsEmptyUnit }
