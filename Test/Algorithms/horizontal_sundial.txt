@@ -1,0 +1,20 @@
+latitude:          -4.95
+longitude:       -150.50
+legal meridian:  -150.00
+sine of latitude: -0.086
+diff longitude:   -0.500
+
+Hour, sun hour angle, dial hour line angle from 6am to 6pm
+HR= -6; HRA=-89.500; HLA= 84.225
+HR= -5; HRA=-74.500; HLA= 17.283
+HR= -4; HRA=-59.500; HLA=  8.334
+HR= -3; HRA=-44.500; HLA=  4.847
+HR= -2; HRA=-29.500; HLA=  2.795
+HR= -1; HRA=-14.500; HLA=  1.278
+HR=  0; HRA=  0.500; HLA= -0.043
+HR=  1; HRA= 15.500; HLA= -1.371
+HR=  2; HRA= 30.500; HLA= -2.910
+HR=  3; HRA= 45.500; HLA= -5.018
+HR=  4; HRA= 60.500; HLA= -8.671
+HR=  5; HRA= 75.500; HLA=-18.451
+HR=  6; HRA= 90.500; HLA=-95.775

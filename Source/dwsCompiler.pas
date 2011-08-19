@@ -298,7 +298,7 @@ type
 
       function ReadAssign(token : TTokenType; left : TDataExpr) : TNoResultExpr;
       function ReadArrayType(const typeName : String; typeContext : TdwsReadTypeContext) : TTypeSymbol;
-      function ReadArrayConstant : TArrayConstantExpr;
+      function ReadArrayConstant(expecting : TTypeSymbol = nil) : TArrayConstantExpr;
       function ReadArrayMethod(const name : String; const namePos : TScriptPos;
                                baseExpr : TTypedExpr; isWrite : Boolean) : TProgramExpr;
       function ReadCase : TCaseExpr;
@@ -4049,7 +4049,7 @@ end;
 
 // ReadArrayConstant
 //
-function TdwsCompiler.ReadArrayConstant: TArrayConstantExpr;
+function TdwsCompiler.ReadArrayConstant(expecting : TTypeSymbol = nil) : TArrayConstantExpr;
 begin
    Result:=TArrayConstantExpr.Create(FProg, FTok.HotPos);
    try
@@ -4061,8 +4061,13 @@ begin
 
          if not FTok.TestDelete(ttARIGHT) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
+      end else begin
+         // empty array
+         (Result.Typ as TStaticArraySymbol).Typ:=FProg.TypVariant;
       end;
-      Result.TypeCheckElements(FProg);
+
+      if not (expecting is TOpenArraySymbol) then
+         Result.TypeCheckElements(FProg);
       if Optimize then
          Result:=Result.Optimize(FProg, FExec) as TArrayConstantExpr;
    except
@@ -5452,7 +5457,7 @@ begin
       ttMINUS :
          Result:=ReadNegation;
       ttALEFT :
-         Result:=ReadArrayConstant;
+         Result:=ReadArrayConstant(expecting);
       ttNOT :
          Result:=ReadNotTerm;
       ttBLEFT : begin

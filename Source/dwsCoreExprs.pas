@@ -2913,10 +2913,6 @@ var
    x : Integer;
    expr : TTypedExpr;
 begin
-   if FElementExprs.Count=0 then begin
-      (FTyp as TStaticArraySymbol).Typ:=Prog.TypVariant;
-      Exit;
-   end;
    for x:=0 to FElementExprs.Count-1 do begin
       expr:=TTypedExpr(FElementExprs.List[x]);
       if (Typ.Typ=Prog.TypFloat) and (expr.Typ=Prog.TypInteger) then begin
