@@ -280,10 +280,11 @@ begin
             end;
 
             expectedResult:=GetExpectedResult(FTests[i]);
-            if not (expectedResult=output) then
+            if not (expectedResult=output) then begin
                diagnostic.Add( ExtractFileName(FTests[i])
                               +': expected <'+expectedResult
                               +'> but got <'+output+'>');
+            end;
          except
             on e : Exception do begin
                if Pos('Variant', e.Message)>0 then

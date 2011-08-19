@@ -496,7 +496,7 @@ const
                +'}'),
       // RTL functions
       (Name : 'Abs';
-       Code : 'function Abs(b) { return Math.abs(v) }'),
+       Code : 'function Abs(v) { return Math.abs(v) }'),
       (Name : 'AnsiCompareStr';
        Code : 'function AnsiCompareStr(a,b) { return a.localeCompare(b) }'),
       (Name : 'AnsiCompareText';
