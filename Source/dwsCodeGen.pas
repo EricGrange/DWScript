@@ -17,13 +17,52 @@ unit dwsCodeGen;
 
 interface
 
-uses Classes, SysUtils, dwsUtils, dwsSymbols, dwsExprs, dwsCoreExprs, dwsJSON;
+uses Classes, SysUtils, dwsUtils, dwsSymbols, dwsExprs, dwsCoreExprs, dwsJSON,
+   Generics.Collections;
 
    // experimental codegen support classes for DWScipt
 
 type
 
    TdwsExprCodeGen = class;
+
+   TdwsMappedSymbol = record
+      Symbol : TSymbol;
+      Name : String;
+   end;
+
+   TdwsMappedSymbolHash = class(TSimpleHash<TdwsMappedSymbol>)
+      protected
+         function SameItem(const item1, item2 : TdwsMappedSymbol) : Boolean; override;
+         function GetItemHashCode(const item1 : TdwsMappedSymbol) : Integer; override;
+   end;
+
+   TdwsCodeGenSymbolMap = class
+      private
+         FParent : TdwsCodeGenSymbolMap;
+         FSymbol : TSymbol;
+         FMap : TdwsMappedSymbolHash;
+         FNames : TStringList;
+         FLookup : TdwsMappedSymbol;
+
+      protected
+
+      public
+         constructor Create(aParent : TdwsCodeGenSymbolMap; aSymbol : TSymbol);
+         destructor Destroy; override;
+
+         function SymbolToName(symbol : TSymbol) : String;
+         function NameToSymbol(const name : String) : TSymbol;
+
+         procedure ReserveName(const name : String); inline;
+         procedure ReserveNames(const names : TStrings); inline;
+
+         function MapSymbol(symbol : TSymbol) : String;
+
+         property Parent : TdwsCodeGenSymbolMap read FParent;
+         property Symbol : TSymbol read FSymbol;
+
+   end;
 
    TdwsRegisteredCodeGen = class
       public
@@ -810,6 +849,117 @@ end;
 procedure TdwsExprCodeGen.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
 begin
    Self.CodeGen(codeGen, expr);
+end;
+
+// ------------------
+// ------------------ TdwsMappedSymbolHash ------------------
+// ------------------
+
+// SameItem
+//
+function TdwsMappedSymbolHash.SameItem(const item1, item2 : TdwsMappedSymbol) : Boolean;
+begin
+   Result:=(item1.Symbol=item2.Symbol);
+end;
+
+// GetItemHashCode
+//
+function TdwsMappedSymbolHash.GetItemHashCode(const item1 : TdwsMappedSymbol) : Integer;
+begin
+   Result:=NativeInt(item1.Symbol) shr 4;
+end;
+
+// ------------------
+// ------------------ TdwsCodeGenSymbolMap ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsCodeGenSymbolMap.Create(aParent : TdwsCodeGenSymbolMap; aSymbol : TSymbol);
+begin
+   inherited Create;
+   FMap:=TdwsMappedSymbolHash.Create;
+   FParent:=aParent;
+   FSymbol:=aSymbol;
+   FNames:=TStringList.Create;
+   FNames.Sorted:=True;
+   FNames.CaseSensitive:=False;
+   FNames.Duplicates:=dupError;
+end;
+
+// Destroy
+//
+destructor TdwsCodeGenSymbolMap.Destroy;
+begin
+   FMap.Free;
+   FNames.Free;
+   inherited;
+end;
+
+// SymbolToName
+//
+function TdwsCodeGenSymbolMap.SymbolToName(symbol : TSymbol) : String;
+begin
+   FLookup.Symbol:=symbol;
+   if FMap.Match(FLookup) then
+      Result:=FLookup.Name
+   else if Parent<>nil then
+      Result:=Parent.SymbolToName(symbol)
+   else Result:='';
+end;
+
+// NameToSymbol
+//
+function TdwsCodeGenSymbolMap.NameToSymbol(const name : String) : TSymbol;
+var
+   i : Integer;
+begin
+   i:=FNames.IndexOf(name);
+   if i>=0 then
+      Result:=TSymbol(FNames.Objects[i])
+   else if Parent<>nil then
+      Result:=Parent.NameToSymbol(name)
+   else Result:=nil;
+end;
+
+// ReserveName
+//
+procedure TdwsCodeGenSymbolMap.ReserveName(const name : String);
+begin
+   FNames.Add(name);
+end;
+
+// ReserveNames
+//
+procedure TdwsCodeGenSymbolMap.ReserveNames(const names : TStrings);
+begin
+   FNames.AddStrings(names);
+end;
+
+// MapSymbol
+//
+function TdwsCodeGenSymbolMap.MapSymbol(symbol : TSymbol) : String;
+
+   function NewName : String;
+   var
+      i : Integer;
+   begin
+      i:=0;
+      Result:=symbol.Name;
+      while NameToSymbol(Result)<>nil do begin
+         Inc(i);
+         Result:=Format('%s_%d', [symbol.Name, i]);
+      end;
+      FNames.AddObject(Result, symbol);
+      FLookup.Name:=Result;
+      FLookup.Symbol:=symbol;
+      FMap.Add(FLookup);
+   end;
+
+begin
+   Result:=SymbolToName(symbol);
+   if Result='' then
+      Result:=NewName;
 end;
 
 end.
