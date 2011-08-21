@@ -89,7 +89,10 @@ type
    TJSBlockInitExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSBlockExpr = class (TJSExprCodeGen)
+   TJSBlockExprBase = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSBlockExpr = class (TJSBlockExprBase)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
    TJSRAWBlockExpr = class (TJSExprCodeGen)
@@ -756,10 +759,10 @@ begin
    RegisterCodeGen(TBlockInitExpr, TJSBlockInitExpr.Create);
 
    RegisterCodeGen(TBlockExpr,            TJSBlockExpr.Create);
-   RegisterCodeGen(TBlockExprNoTable,     TJSBlockExpr.Create);
-   RegisterCodeGen(TBlockExprNoTable2,    TJSBlockExpr.Create);
-   RegisterCodeGen(TBlockExprNoTable3,    TJSBlockExpr.Create);
-   RegisterCodeGen(TBlockExprNoTable4,    TJSBlockExpr.Create);
+   RegisterCodeGen(TBlockExprNoTable,     TJSBlockExprBase.Create);
+   RegisterCodeGen(TBlockExprNoTable2,    TJSBlockExprBase.Create);
+   RegisterCodeGen(TBlockExprNoTable3,    TJSBlockExprBase.Create);
+   RegisterCodeGen(TBlockExprNoTable4,    TJSBlockExprBase.Create);
 
    RegisterCodeGen(TdwsJSBlockExpr,       TJSRAWBlockExpr.Create);
 
@@ -1849,6 +1852,21 @@ end;
 // CodeGen
 //
 procedure TJSBlockExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   block : TBlockExpr;
+begin
+   block:=TBlockExpr(expr);
+   codeGen.CompileSymbolTable(block.Table);
+   inherited;
+end;
+
+// ------------------
+// ------------------ TJSBlockExprBase ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSBlockExprBase.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    i : Integer;
    block : TBlockExprNoTable;
@@ -3844,13 +3862,15 @@ var
    e : TBinaryOpExpr;
 begin
    e:=TBinaryOpExpr(expr);
-   if e.Left.ClassType=e.ClassType then
-      codeGen.CompileNoWrap(e.Left)
-   else WriteWrappedIfNeeded(codeGen, e.Left);
+//   if e.Left.ClassType=e.ClassType then
+//      codeGen.CompileNoWrap(e.Left)
+//   else
+   WriteWrappedIfNeeded(codeGen, e.Left);
    codeGen.WriteString(FOp);
-   if e.Right.ClassType=e.ClassType then
-      codeGen.CompileNoWrap(e.Right)
-   else WriteWrappedIfNeeded(codeGen, e.Right);
+//   if e.Right.ClassType=e.ClassType then
+//      codeGen.CompileNoWrap(e.Right)
+//   else
+   WriteWrappedIfNeeded(codeGen, e.Right);
 end;
 
 // ------------------
