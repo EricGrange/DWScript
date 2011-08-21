@@ -28,11 +28,11 @@ type
          procedure SetUp; override;
          procedure TearDown; override;
 
-         procedure DoJSAlert(Sender: TCustomChromium; const browser: ICefBrowser; const frame: ICefFrame;
+         procedure DoJSAlert(Sender: TObject; const browser: ICefBrowser; const frame: ICefFrame;
                              const message: ustring; out Result: Boolean);
-         procedure DoConsoleMessage(Sender: TCustomChromium; const browser: ICefBrowser; message, source: ustring;
+         procedure DoConsoleMessage(Sender: TObject; const browser: ICefBrowser; message, source: ustring;
                                     line: Integer; out Result: Boolean);
-         procedure DoLoadEnd(Sender: TCustomChromium; const browser: ICefBrowser; const frame: ICefFrame;
+         procedure DoLoadEnd(Sender: TObject; const browser: ICefBrowser; const frame: ICefFrame;
                              httpStatusCode: Integer; out Result: Boolean);
 
          procedure DoInclude(const scriptName: string; var scriptSource: string);
@@ -117,7 +117,7 @@ end;
 
 // DoJSAlert
 //
-procedure TJSFilterTests.DoJSAlert(Sender: TCustomChromium; const browser: ICefBrowser; const frame: ICefFrame;
+procedure TJSFilterTests.DoJSAlert(Sender: TObject; const browser: ICefBrowser; const frame: ICefFrame;
                                    const message: ustring; out Result: Boolean);
 begin
    FLastJSResult:=message;
@@ -126,7 +126,7 @@ end;
 
 // DoConsoleMessage
 //
-procedure TJSFilterTests.DoConsoleMessage(Sender: TCustomChromium; const browser: ICefBrowser; message, source: ustring;
+procedure TJSFilterTests.DoConsoleMessage(Sender: TObject; const browser: ICefBrowser; message, source: ustring;
                                           line: Integer; out Result: Boolean);
 begin
    FConsole:=FConsole+Format('Line %d: ', [line])+message+#13#10;
@@ -135,7 +135,7 @@ end;
 
 // DoLoadEnd
 //
-procedure TJSFilterTests.DoLoadEnd(Sender: TCustomChromium; const browser: ICefBrowser; const frame: ICefFrame;
+procedure TJSFilterTests.DoLoadEnd(Sender: TObject; const browser: ICefBrowser; const frame: ICefFrame;
                              httpStatusCode: Integer; out Result: Boolean);
 begin
    FLoadEnded:=True;

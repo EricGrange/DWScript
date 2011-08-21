@@ -22,9 +22,9 @@ type
          procedure SetUp; override;
          procedure TearDown; override;
 
-         procedure DoJSAlert(Sender: TCustomChromium; const browser: ICefBrowser; const frame: ICefFrame;
+         procedure DoJSAlert(Sender: TObject; const browser: ICefBrowser; const frame: ICefFrame;
                              const message: ustring; out Result: Boolean);
-         procedure DoConsoleMessage(Sender: TCustomChromium; const browser: ICefBrowser; message, source: ustring;
+         procedure DoConsoleMessage(Sender: TObject; const browser: ICefBrowser; message, source: ustring;
                                     line: Integer; out Result: Boolean);
          procedure DoInclude(const scriptName: string; var scriptSource: string);
          function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
@@ -109,7 +109,7 @@ end;
 
 // DoJSAlert
 //
-procedure TJSCodeGenTests.DoJSAlert(Sender: TCustomChromium; const browser: ICefBrowser; const frame: ICefFrame;
+procedure TJSCodeGenTests.DoJSAlert(Sender: TObject; const browser: ICefBrowser; const frame: ICefFrame;
                                     const message: ustring; out Result: Boolean);
 begin
    FLastJSResult:=message;
@@ -118,7 +118,7 @@ end;
 
 // DoConsoleMessage
 //
-procedure TJSCodeGenTests.DoConsoleMessage(Sender: TCustomChromium; const browser: ICefBrowser; message, source: ustring;
+procedure TJSCodeGenTests.DoConsoleMessage(Sender: TObject; const browser: ICefBrowser; message, source: ustring;
                                            line: Integer; out Result: Boolean);
 begin
    FConsole:=FConsole+Format('Line %d: ', [line])+message+#13#10;
