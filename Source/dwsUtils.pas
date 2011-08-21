@@ -220,6 +220,7 @@ type
          function Add(const anItem : T) : Boolean; // true if added
          function Extract(const anItem : T) : Boolean; // true if extracted
          function Contains(const anItem : T) : Boolean;
+         function Match(var anItem : T) : Boolean;
          procedure Clear;
 
          property Count : Integer read FCount;
@@ -1410,6 +1411,18 @@ var
 begin
    i:=HashBucket(GetItemHashCode(anItem));
    Result:=LinearFind(anItem, i);
+end;
+
+// Match
+//
+function TSimpleHash<T>.Match(var anItem : T) : Boolean;
+var
+   i : Integer;
+begin
+   i:=HashBucket(GetItemHashCode(anItem));
+   Result:=LinearFind(anItem, i);
+   if Result then
+      anItem:=FBuckets[i].Value;
 end;
 
 // Clear
