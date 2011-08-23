@@ -49,6 +49,7 @@ type
    TParamsSymbolTable = class;
    TConditionsSymbolTable = class;
    TdwsRuntimeMessageList = class;
+   TUnitSymbol = class;
 
    TdwsExprLocation = record
       Expr : TExprBase;
@@ -533,6 +534,9 @@ type
 
    end;
 
+   TResultSymbol = class(TDataSymbol)
+   end;
+
    TFuncSymbolFlag = (fsfStateless, fsfExternal);
    TFuncSymbolFlags = set of TFuncSymbolFlag;
 
@@ -639,6 +643,11 @@ type
          function IsType : Boolean; override;
 
          property InternalFunction : TObject read FInternalFunction write FInternalFunction;
+   end;
+
+   // TSelfSymbol
+   //
+   TSelfSymbol = class(TDataSymbol)
    end;
 
    TMethodKind = ( mkProcedure, mkFunction, mkConstructor, mkDestructor, mkMethod,
@@ -1049,6 +1058,7 @@ type
    // type X = class ... end;
    TClassSymbol = class (TTypeSymbol)
       private
+         FUnitSymbol : TUnitSymbol;
          FClassOfSymbol : TClassOfSymbol;
          FFlags : TClassSymbolFlags;
          FForwardPosition : PScriptPos;
@@ -1077,7 +1087,7 @@ type
          function AllocateVMTindex : Integer;
 
       public
-         constructor Create(const name : String);
+         constructor Create(const name : String; aUnit : TUnitSymbol);
          destructor Destroy; override;
 
          procedure AddField(Sym: TFieldSymbol);
@@ -1116,6 +1126,7 @@ type
          property IsStatic : Boolean read GetIsStatic write SetIsStatic;
          property IsExternal : Boolean read GetIsExternal write SetIsExternal;
 
+         property UnitSymbol : TUnitSymbol read FUnitSymbol;
          property Members : TMembersSymbolTable read FMembers;
          property OnObjectDestroy : TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
          property Parent : TClassSymbol read FParent;
@@ -1145,6 +1156,8 @@ type
          FInterfaceTable : TSymbolTable;
          FImplementationTable : TUnitImplementationTable;
 
+         procedure SetIsTableOwner(val : Boolean);
+
       public
          constructor Create(const Name: string; table: TUnitSymbolTable; isTableOwner: Boolean = False);
          destructor Destroy; override;
@@ -1158,7 +1171,7 @@ type
          function HasSymbol(sym : TSymbol) : Boolean;
 
          property Table : TUnitSymbolTable read FTable write FTable;
-         property IsTableOwner : Boolean read FIsTableOwner write FIsTableOwner;
+         property IsTableOwner : Boolean read FIsTableOwner write SetIsTableOwner;
 
          property InterfaceTable : TSymbolTable read FInterfaceTable;
          property ImplementationTable : TUnitImplementationTable read FImplementationTable;
@@ -1326,12 +1339,15 @@ type
    TUnitSymbolTable = class (TSymbolTable)
       private
          FObjects: TInterfaceList;
+         FUnitSymbol : TUnitSymbol;
 
       public
          destructor Destroy; override;
          procedure BeforeDestruction; override;
 
          procedure AddObjectOwner(AOwner : IObjectOwner);
+
+         property UnitSymbol : TUnitSymbol read FUnitSymbol write FUnitSymbol;
    end;
 
    // TUnitPrivateTable
@@ -1977,7 +1993,7 @@ begin
    FTyp:=Value;
    Assert(FResult=nil);
    if FTyp<>nil then begin
-      FResult:=TDataSymbol.Create(SYS_RESULT, Value);
+      FResult:=TResultSymbol.Create(SYS_RESULT, Value);
       FInternalParams.AddSymbol(FResult);
    end;
 end;
@@ -2327,8 +2343,8 @@ begin
    FClassSymbol := aClassSym;
    if isClassMethod then begin
       Include(FAttributes, maClassMethod);
-      FSelfSym := TDataSymbol.Create(SYS_SELF, aClassSym.ClassOf);
-   end else FSelfSym := TDataSymbol.Create(SYS_SELF, aClassSym);
+      FSelfSym := TSelfSymbol.Create(SYS_SELF, aClassSym.ClassOf);
+   end else FSelfSym := TSelfSymbol.Create(SYS_SELF, aClassSym);
    FInternalParams.AddSymbol(FSelfSym);
    FSize := 2; // code + data
    FParams.AddParent(FClassSymbol.Members);
@@ -2767,9 +2783,10 @@ end;
 
 // Create
 //
-constructor TClassSymbol.Create(const name : String);
+constructor TClassSymbol.Create(const name : String; aUnit : TUnitSymbol);
 begin
    inherited Create(name, nil);
+   FUnitSymbol:=aUnit;
    FSize:=1;
    FMembers:=CreateMembersTable;
    FClassOfSymbol:=TClassOfSymbol.Create('class of '+Name, Self);
@@ -4046,8 +4063,8 @@ constructor TUnitSymbol.Create(const Name: string; Table: TUnitSymbolTable;
   IsTableOwner: Boolean = False);
 begin
    inherited Create(Name, nil);
-   FIsTableOwner := IsTableOwner;
    FTable := Table;
+   SetIsTableOwner(IsTableOwner);
 end;
 
 destructor TUnitSymbol.Destroy;
@@ -4072,6 +4089,8 @@ procedure TUnitSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
    if FIsTableOwner then
       FTable.Initialize(msgs);
+   if FImplementationTable<>nil then
+      FImplementationTable.Initialize(msgs);
 end;
 
 // CreateInterfaceTable
@@ -4098,6 +4117,17 @@ begin
    if Self=nil then
       Result:=False
    else Result:=Table.HasSymbol(sym) or ImplementationTable.HasSymbol(sym);
+end;
+
+// SetIsTableOwner
+//
+procedure TUnitSymbol.SetIsTableOwner(val : Boolean);
+begin
+   FIsTableOwner:=val;
+   if val then
+      FTable.UnitSymbol:=Self
+   else if FTable.UnitSymbol=Self then
+      FTable.UnitSymbol:=nil;
 end;
 
 // ------------------

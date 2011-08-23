@@ -18,7 +18,7 @@ unit dwsCodeGen;
 interface
 
 uses Classes, SysUtils, dwsUtils, dwsSymbols, dwsExprs, dwsCoreExprs, dwsJSON,
-   Generics.Collections;
+   dwsStrings;
 
    // experimental codegen support classes for DWScipt
 
@@ -37,6 +37,8 @@ type
          function GetItemHashCode(const item1 : TdwsMappedSymbol) : Integer; override;
    end;
 
+   TdwsCodeGenSymbolScope = (cgssGlobal, cgssClass);
+
    TdwsCodeGenSymbolMap = class
       private
          FParent : TdwsCodeGenSymbolMap;
@@ -44,24 +46,33 @@ type
          FMap : TdwsMappedSymbolHash;
          FNames : TStringList;
          FLookup : TdwsMappedSymbol;
-
-      protected
+         FReservedSymbol : TSymbol;
+         FPrefix : String;
 
       public
          constructor Create(aParent : TdwsCodeGenSymbolMap; aSymbol : TSymbol);
          destructor Destroy; override;
 
          function SymbolToName(symbol : TSymbol) : String;
-         function NameToSymbol(const name : String) : TSymbol;
+         function NameToSymbol(const name : String; scope : TdwsCodeGenSymbolScope) : TSymbol;
 
          procedure ReserveName(const name : String); inline;
-         procedure ReserveNames(const names : TStrings); inline;
 
-         function MapSymbol(symbol : TSymbol) : String;
+         function MapSymbol(symbol : TSymbol; scope : TdwsCodeGenSymbolScope) : String;
 
          property Parent : TdwsCodeGenSymbolMap read FParent;
+         property Prefix : String read FPrefix write FPrefix;
          property Symbol : TSymbol read FSymbol;
 
+   end;
+
+   TdwsCodeGenSymbolMaps = class(TObjectList<TdwsCodeGenSymbolMap>)
+      private
+
+      protected
+
+      public
+         function MapOf(symbol : TSymbol) : TdwsCodeGenSymbolMap;
    end;
 
    TdwsRegisteredCodeGen = class
@@ -98,7 +109,9 @@ type
          FLocalVarSymbolMap : TStringList;
          FLocalVarSymbolMapStack : TTightStack;
 
-         FSymbolMap : TStringList;
+         FSymbolMap : TdwsCodeGenSymbolMap;
+         FSymbolMaps : TdwsCodeGenSymbolMaps;
+         FMappedUnits : TTightList;
 
          FTempSymbolCounter : Integer;
          FCompiledClasses : TTightList;
@@ -113,7 +126,19 @@ type
          procedure EnterContext(proc : TdwsProgram); virtual;
          procedure LeaveContext; virtual;
 
+         procedure EnterScope(symbol : TSymbol);
+         procedure LeaveScope;
+         function  EnterClassScope(cls : TClassSymbol) : Integer;
+         procedure LeaveScopes(n : Integer);
+         function  IsScopeLevel(symbol : TSymbol) : Boolean;
+
          procedure RaiseUnknowExpression(expr : TExprBase);
+
+         procedure DoCompileClassSymbol(cls : TClassSymbol); virtual;
+         procedure DoCompileFuncSymbol(func : TSourceFuncSymbol); virtual;
+         procedure DoCompileUnitSymbol(un : TUnitSymbol); virtual;
+
+         procedure MapClassSymbol(clsSym : TClassSymbol);
 
       public
          constructor Create; virtual;
@@ -122,24 +147,30 @@ type
          procedure RegisterCodeGen(expr : TExprBaseClass; codeGen : TdwsExprCodeGen);
          function  FindCodeGen(expr : TExprBase) : TdwsExprCodeGen;
          function  FindSymbolAtStackAddr(stackAddr, level : Integer) : TDataSymbol;
-         function  SymbolMappedName(sym : TSymbol) : String;
+         function  SymbolMappedName(sym : TSymbol; scope : TdwsCodeGenSymbolScope) : String; virtual;
 
          procedure Compile(expr : TExprBase);
          procedure CompileNoWrap(expr : TTypedExpr);
 
          procedure CompileSymbolTable(table : TSymbolTable); virtual;
+         procedure CompileUnitSymbol(un : TUnitSymbol);
          procedure CompileEnumerationSymbol(enum : TEnumerationSymbol); virtual;
-         procedure CompileFuncSymbol(func : TSourceFuncSymbol); virtual;
+         procedure CompileFuncSymbol(func : TSourceFuncSymbol);
          procedure CompileConditions(func : TFuncSymbol; conditions : TSourceConditions;
                                      preConds : Boolean); virtual;
          procedure CompileRecordSymbol(rec : TRecordSymbol); virtual;
-         procedure CompileClassSymbol(cls : TClassSymbol); virtual;
+         procedure CompileClassSymbol(cls : TClassSymbol);
          procedure CompileProgram(const prog : IdwsProgram); virtual;
          procedure CompileProgramInSession(const prog : IdwsProgram); virtual;
          procedure CompileProgramBody(expr : TNoResultExpr); virtual;
 
          procedure BeginProgramSession(const prog : IdwsProgram); virtual;
          procedure EndProgramSession; virtual;
+
+         procedure ReserveSymbolNames; virtual;
+         procedure MapInternalSymbolNames(progTable, systemTable : TSymbolTable); virtual;
+         procedure MapPrioritySymbolNames(table : TSymbolTable); virtual;
+         procedure MapNormalSymbolNames(table : TSymbolTable); virtual;
 
          procedure CompileDependencies(destStream : TWriteOnlyBlockStream; const prog : IdwsProgram); virtual;
 
@@ -152,7 +183,7 @@ type
          procedure WriteStringLn(const s : String);
          procedure WriteLineEnd;
 
-         procedure WriteSymbolName(sym : TSymbol);
+         procedure WriteSymbolName(sym : TSymbol; scope : TdwsCodeGenSymbolScope = cgssGlobal);
 
          function LocationString(e : TExprBase) : String;
          function GetNewTempSymbol : String; virtual;
@@ -165,6 +196,7 @@ type
 
          property Context : TdwsProgram read FContext;
          property LocalTable : TSymbolTable read FLocalTable;
+         property SymbolMap : TdwsCodeGenSymbolMap read FSymbolMap;
 
          property IndentSize : Integer read FIndentSize write FIndentSize;
          property Options : TdwsCodeGenOptions read FOptions write FOptions;
@@ -257,18 +289,18 @@ begin
    FFlushedDependencies.Sorted:=True;
    FFlushedDependencies.Duplicates:=dupIgnore;
    FTempReg:=TdwsRegisteredCodeGen.Create;
-   FSymbolMap:=TStringList.Create;
-   FSymbolMap.Sorted:=True;
-   FSymbolMap.CaseSensitive:=True;
+   FSymbolMaps:=TdwsCodeGenSymbolMaps.Create;
    FIndentSize:=3;
+   EnterScope(nil);
 end;
 
 // Destroy
 //
 destructor TdwsCodeGen.Destroy;
 begin
-   inherited;
-   FSymbolMap.Free;
+   Clear;
+   FMappedUnits.Free;
+   FSymbolMaps.Free;
    FTempReg.Free;
    FDependencies.Free;
    FFlushedDependencies.Free;
@@ -280,6 +312,7 @@ begin
    FCompiledClasses.Free;
    FCompiledUnits.Free;
    FLocalVarSymbolMapStack.Free;
+   inherited;
 end;
 
 // RegisterCodeGen
@@ -335,31 +368,21 @@ end;
 
 // SymbolMappedName
 //
-function TdwsCodeGen.SymbolMappedName(sym : TSymbol) : String;
-
-   function RegisterSymbol : String;
-   var
-      i, k : Integer;
-   begin
-      k:=1;
-      Result:=sym.Name;
-      exit;
-      repeat
-         i:=FSymbolMap.IndexOf(Result);
-         if i<0 then Break;
-         Result:=sym.Name+'_'+IntToStr(k);
-         Inc(k);
-      until False;
-      FSymbolMap.AddObject(Result, sym);
-   end;
-
+function TdwsCodeGen.SymbolMappedName(sym : TSymbol; scope : TdwsCodeGenSymbolScope) : String;
 var
    i : Integer;
 begin
-   i:=FSymbolMap.IndexOfObject(sym);
-   if i>=0 then
-      Result:=FSymbolMap[i]
-   else Result:=RegisterSymbol;
+   if (sym is TMethodSymbol) then begin
+      while TMethodSymbol(sym).IsOverride do
+         sym:=TMethodSymbol(sym).ParentMeth;
+   end;
+   Result:=FSymbolMap.SymbolToName(sym);
+   if Result<>'' then Exit;
+   for i:=0 to FSymbolMaps.Count-1 do begin
+      Result:=FSymbolMaps[i].SymbolToName(sym);
+      if Result<>'' then Exit;
+   end;
+   Result:=FSymbolMap.MapSymbol(sym, scope);
 end;
 
 // Clear
@@ -376,7 +399,11 @@ begin
    FContextStack.Clear;
    FCompiledClasses.Clear;
    FCompiledUnits.Clear;
-   FSymbolMap.Clear;
+   FMappedUnits.Clear;
+
+   FSymbolMap:=nil;
+   FSymbolMaps.Clear;
+   EnterScope(nil);
 
    FIndent:=0;
    FIndentString:='';
@@ -429,11 +456,9 @@ end;
 //
 procedure TdwsCodeGen.CompileSymbolTable(table : TSymbolTable);
 var
-   i : Integer;
    sym : TSymbol;
 begin
-   for i:=0 to table.Count-1 do begin
-      sym:=table.Symbols[i];
+   for sym in table do begin
       if sym is TSourceFuncSymbol then
          CompileFuncSymbol(TSourceFuncSymbol(sym))
       else if sym is TEnumerationSymbol then
@@ -444,12 +469,29 @@ begin
          if FCompiledClasses.IndexOf(sym)<0 then
             CompileClassSymbol(TClassSymbol(sym));
       end else if sym is TUnitSymbol then begin
-         if FCompiledUnits.IndexOf(TUnitSymbol(sym).Table)<0 then begin
-            FCompiledUnits.Add(TUnitSymbol(sym).Table);
-            CompileSymbolTable(TUnitSymbol(sym).Table);
-         end;
+         CompileUnitSymbol(TUnitSymbol(sym));
       end;
    end;
+end;
+
+// CompileUnitSymbol
+//
+procedure TdwsCodeGen.CompileUnitSymbol(un : TUnitSymbol);
+begin
+   if FCompiledUnits.IndexOf(un)>=0 then Exit;
+   FCompiledUnits.Add(un);
+
+   EnterScope(un);
+   DoCompileUnitSymbol(un);
+   LeaveScope;
+end;
+
+// DoCompileUnitSymbol
+//
+procedure TdwsCodeGen.DoCompileUnitSymbol(un : TUnitSymbol);
+begin
+   CompileSymbolTable(un.Table);
+   CompileSymbolTable(un.ImplementationTable);
 end;
 
 // CompileEnumerationSymbol
@@ -465,24 +507,38 @@ procedure TdwsCodeGen.CompileFuncSymbol(func : TSourceFuncSymbol);
 var
    proc : TdwsProcedure;
 begin
-   proc:=(func.Executable as TdwsProcedure);
    // nil executable means it's a function pointer type
+   if not (func.Executable is TdwsProcedure) then Exit;
+   proc:=(func.Executable as TdwsProcedure);
    if proc<>nil then begin
+      EnterScope(func);
       EnterContext(proc);
       try
-         if not (cgoNoConditions in Options) then
-            CompileConditions(func, proc.PreConditions, True);
-
-         Assert(func.SubExprCount=2);
-         Compile(func.SubExpr[0]);
-         Compile(func.SubExpr[1]);
-
-         if not (cgoNoConditions in Options) then
-            CompileConditions(func, proc.PostConditions, False);
+         DoCompileFuncSymbol(func);
       finally
          LeaveContext;
+         LeaveScope;
       end;
    end;
+end;
+
+// DoCompileFuncSymbol
+//
+procedure TdwsCodeGen.DoCompileFuncSymbol(func : TSourceFuncSymbol);
+var
+   proc : TdwsProcedure;
+begin
+   proc:=(func.Executable as TdwsProcedure);
+
+   if not (cgoNoConditions in Options) then
+      CompileConditions(func, proc.PreConditions, True);
+
+   Assert(func.SubExprCount=2);
+   Compile(func.SubExpr[0]);
+   Compile(func.SubExpr[1]);
+
+   if not (cgoNoConditions in Options) then
+      CompileConditions(func, proc.PostConditions, False);
 end;
 
 // CompileConditions
@@ -504,6 +560,20 @@ end;
 //
 procedure TdwsCodeGen.CompileClassSymbol(cls : TClassSymbol);
 begin
+   if cls.IsExternal then Exit;
+
+   EnterScope(cls);
+   try
+      DoCompileClassSymbol(cls);
+   finally
+      LeaveScope;
+   end;
+end;
+
+// DoCompileClassSymbol
+//
+procedure TdwsCodeGen.DoCompileClassSymbol(cls : TClassSymbol);
+begin
    if FCompiledClasses.IndexOf(cls.Parent)<0 then begin
       if     (cls.Parent.Name<>'TObject')
          and (cls.Parent.Name<>'Exception') then
@@ -518,6 +588,10 @@ procedure TdwsCodeGen.CompileProgram(const prog : IdwsProgram);
 begin
    BeginProgramSession(prog);
    try
+      ReserveSymbolNames;
+      MapInternalSymbolNames(prog.Table, (prog as TdwsProgram).SystemTable);
+      MapPrioritySymbolNames(prog.Table);
+      MapNormalSymbolNames(prog.Table);
       CompileProgramInSession(prog);
    finally
       EndProgramSession;
@@ -555,6 +629,115 @@ end;
 procedure TdwsCodeGen.EndProgramSession;
 begin
    LeaveContext;
+end;
+
+// ReserveSymbolNames
+//
+procedure TdwsCodeGen.ReserveSymbolNames;
+begin
+   // nothing
+end;
+
+// MapClassSymbol
+//
+procedure TdwsCodeGen.MapClassSymbol(clsSym : TClassSymbol);
+var
+   sym : TSymbol;
+   n : Integer;
+begin
+   if FSymbolMaps.MapOf(clsSym)<>nil then Exit;
+
+   if clsSym.Parent<>nil then
+      MapClassSymbol(clsSym.Parent);
+
+   if (clsSym.UnitSymbol<>nil) and not IsScopeLevel(clsSym.UnitSymbol) then begin
+      EnterScope(clsSym.UnitSymbol);
+      SymbolMap.MapSymbol(clsSym, cgssGlobal);
+      LeaveScope;
+   end else SymbolMap.MapSymbol(clsSym, cgssGlobal);
+
+   n:=EnterClassScope(clsSym);
+   for sym in clsSym.Members do begin
+      SymbolMap.MapSymbol(sym, cgssClass);
+   end;
+   LeaveScopes(n);
+end;
+
+// MapInternalSymbolNames
+//
+procedure TdwsCodeGen.MapInternalSymbolNames(progTable, systemTable : TSymbolTable);
+
+   procedure MapSymbolTable(table : TSymbolTable);
+   var
+      i : Integer;
+      sym : TSymbol;
+   begin
+      for i:=0 to table.Count-1 do begin
+         sym:=table.Symbols[i];
+         if sym is TClassSymbol then begin
+            MapClassSymbol(TClassSymbol(sym));
+         end else if sym is TFuncSymbol then
+            SymbolMap.MapSymbol(sym, cgssGlobal)
+         else if sym is TDataSymbol then
+            SymbolMap.MapSymbol(sym, cgssGlobal);
+      end;
+   end;
+
+begin
+   MapSymbolTable(systemTable);
+   MapSymbolTable(TUnitSymbol(progTable.FindSymbol(SYS_INTERNAL, cvMagic, TUnitSymbol)).Table);
+   MapSymbolTable(TUnitSymbol(progTable.FindSymbol(SYS_DEFAULT, cvMagic, TUnitSymbol)).Table);
+end;
+
+// MapPrioritySymbolNames
+//
+procedure TdwsCodeGen.MapPrioritySymbolNames(table : TSymbolTable);
+var
+   sym : TSymbol;
+   unitSym : TUnitSymbol;
+begin
+   for sym in table do begin
+      if sym is TUnitSymbol then begin
+         unitSym:=TUnitSymbol(sym);
+         if unitSym.Table is TStaticSymbolTable then
+            MapPrioritySymbolNames(unitSym.Table);
+      end else if sym is TClassSymbol then begin
+         if TClassSymbol(sym).IsExternal then
+            MapClassSymbol(TClassSymbol(sym));
+      end else if sym is TFuncSymbol then begin
+         if TFuncSymbol(sym).IsExternal then
+            SymbolMap.MapSymbol(sym, cgssGlobal);
+      end;
+   end;
+end;
+
+// MapNormalSymbolNames
+//
+procedure TdwsCodeGen.MapNormalSymbolNames(table : TSymbolTable);
+var
+   sym : TSymbol;
+   unitSym : TUnitSymbol;
+begin
+   for sym in table do begin
+      if sym is TUnitSymbol then begin
+         unitSym:=TUnitSymbol(sym).Table.UnitSymbol;
+         if not (unitSym.Table is TStaticSymbolTable) then begin
+            if FMappedUnits.IndexOf(unitSym)<0 then begin
+               FMappedUnits.Add(unitSym);
+               EnterScope(unitSym);
+               MapNormalSymbolNames(unitSym.Table);
+               MapNormalSymbolNames(unitSym.ImplementationTable);
+               LeaveScope;
+            end;
+         end;
+      end else if sym is TClassSymbol then begin
+         MapClassSymbol(TClassSymbol(sym));
+      end else if sym is TFuncSymbol then begin
+         SymbolMap.MapSymbol(sym, cgssGlobal);
+      end else if sym is TDataSymbol then begin
+         SymbolMap.MapSymbol(sym, cgssGlobal);
+      end;
+   end;
 end;
 
 // CompileProgramBody
@@ -636,9 +819,9 @@ end;
 
 // WriteSymbolName
 //
-procedure TdwsCodeGen.WriteSymbolName(sym : TSymbol);
+procedure TdwsCodeGen.WriteSymbolName(sym : TSymbol; scope : TdwsCodeGenSymbolScope = cgssGlobal);
 begin
-   WriteString(SymbolMappedName(sym));
+   WriteString(SymbolMappedName(sym, scope));
 end;
 
 // LocationString
@@ -727,7 +910,7 @@ begin
                      Inc(n);
                   until k<0;
                   FLocalVarSymbolMap.AddObject(locName, sym);
-                  FSymbolMap.AddObject(locName, sym);
+                  //FSymbolMap.AddObject(locName, sym);
                end else begin
                   FLocalVarSymbolMap.AddObject(sym.Name, sym);
                end;
@@ -748,6 +931,77 @@ begin
    FLocalVarSymbolMap.Free;
    FLocalVarSymbolMap:=TStringList(FLocalVarSymbolMapStack.Peek);
    FLocalVarSymbolMapStack.Pop;
+end;
+
+// EnterScope
+//
+procedure TdwsCodeGen.EnterScope(symbol : TSymbol);
+var
+   map : TdwsCodeGenSymbolMap;
+begin
+   if symbol is TUnitSymbol then
+      symbol:=TUnitSymbol(symbol).Table.UnitSymbol;
+   map:=FSymbolMaps.MapOf(symbol);
+   if map=nil then begin
+      FSymbolMap:=TdwsCodeGenSymbolMap.Create(FSymbolMap, symbol);
+      FSymbolMaps.Add(FSymbolMap);
+   end else begin
+      Assert(map.Parent=nil);
+      map.FParent:=FSymbolMap;
+      FSymbolMap:=map;
+   end;
+end;
+
+// LeaveScope
+//
+procedure TdwsCodeGen.LeaveScope;
+var
+   i : Integer;
+   m : TdwsCodeGenSymbolMap;
+begin
+   Assert(FSymbolMap<>nil);
+   m:=FSymbolMap;
+   FSymbolMap:=m.Parent;
+   m.FParent:=nil;
+   if (m.Symbol=nil) or (m.Symbol is TFuncSymbol) then begin
+      i:=FSymbolMaps.IndexOf(m);
+      FSymbolMaps.Extract(i);
+      m.Free;
+   end;
+end;
+
+// EnterClassScope
+//
+function TdwsCodeGen.EnterClassScope(cls : TClassSymbol) : Integer;
+begin
+   if cls<>nil then begin
+      Result:=EnterClassScope(cls.Parent)+1;
+      EnterScope(cls);
+   end else Result:=0;
+end;
+
+// LeaveScopes
+//
+procedure TdwsCodeGen.LeaveScopes(n : Integer);
+begin
+   while n>0 do begin
+      LeaveScope;
+      Dec(n);
+   end;
+end;
+
+// IsScopeLevel
+//
+function TdwsCodeGen.IsScopeLevel(symbol : TSymbol) : Boolean;
+var
+   m : TdwsCodeGenSymbolMap;
+begin
+   m:=FSymbolMap;
+   while m<>nil do begin
+      if m.Symbol=symbol then Exit(True);
+      m:=m.Parent;
+   end;
+   Result:=False;
 end;
 
 // RaiseUnknowExpression
@@ -883,14 +1137,18 @@ begin
    FSymbol:=aSymbol;
    FNames:=TStringList.Create;
    FNames.Sorted:=True;
-   FNames.CaseSensitive:=False;
+   FNames.CaseSensitive:=True;
    FNames.Duplicates:=dupError;
+   FReservedSymbol:=TSymbol.Create('', nil);
+   if aSymbol is TUnitSymbol then
+      FPrefix:=aSymbol.Name+'_';
 end;
 
 // Destroy
 //
 destructor TdwsCodeGenSymbolMap.Destroy;
 begin
+   FReservedSymbol.Free;
    FMap.Free;
    FNames.Free;
    inherited;
@@ -910,45 +1168,44 @@ end;
 
 // NameToSymbol
 //
-function TdwsCodeGenSymbolMap.NameToSymbol(const name : String) : TSymbol;
+function TdwsCodeGenSymbolMap.NameToSymbol(const name : String; scope : TdwsCodeGenSymbolScope) : TSymbol;
 var
    i : Integer;
 begin
    i:=FNames.IndexOf(name);
    if i>=0 then
       Result:=TSymbol(FNames.Objects[i])
-   else if Parent<>nil then
-      Result:=Parent.NameToSymbol(name)
-   else Result:=nil;
+   else begin
+      Result:=nil;
+      case scope of
+         cgssGlobal : if Parent<>nil then
+            Result:=Parent.NameToSymbol(name, scope);
+         cgssClass : if (Parent<>nil) and (Parent.Symbol is TClassSymbol) then
+            Result:=Parent.NameToSymbol(name, scope);
+      end;
+   end;
 end;
 
 // ReserveName
 //
 procedure TdwsCodeGenSymbolMap.ReserveName(const name : String);
 begin
-   FNames.Add(name);
-end;
-
-// ReserveNames
-//
-procedure TdwsCodeGenSymbolMap.ReserveNames(const names : TStrings);
-begin
-   FNames.AddStrings(names);
+   FNames.AddObject(name, FReservedSymbol);
 end;
 
 // MapSymbol
 //
-function TdwsCodeGenSymbolMap.MapSymbol(symbol : TSymbol) : String;
+function TdwsCodeGenSymbolMap.MapSymbol(symbol : TSymbol; scope : TdwsCodeGenSymbolScope) : String;
 
    function NewName : String;
    var
       i : Integer;
    begin
       i:=0;
-      Result:=symbol.Name;
-      while NameToSymbol(Result)<>nil do begin
+      Result:=Prefix+symbol.Name;
+      while NameToSymbol(Result, scope)<>nil do begin
          Inc(i);
-         Result:=Format('%s_%d', [symbol.Name, i]);
+         Result:=Format('%s%s$%d', [Prefix, symbol.Name, i]);
       end;
       FNames.AddObject(Result, symbol);
       FLookup.Name:=Result;
@@ -960,6 +1217,23 @@ begin
    Result:=SymbolToName(symbol);
    if Result='' then
       Result:=NewName;
+end;
+
+// ------------------
+// ------------------ TdwsCodeGenSymbolMaps ------------------
+// ------------------
+
+// MapOf
+//
+function TdwsCodeGenSymbolMaps.MapOf(symbol : TSymbol) : TdwsCodeGenSymbolMap;
+var
+   i : Integer;
+begin
+   for i:=0 to Count-1 do begin
+      Result:=Items[i];
+      if Result.Symbol=symbol then Exit;
+   end;
+   Result:=nil;
 end;
 
 end.

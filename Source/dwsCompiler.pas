@@ -4399,7 +4399,7 @@ begin
    isInSymbolTable := Assigned(Result);
 
    if not Assigned(Result) then
-      Result:=TClassSymbol.Create(TypeName);
+      Result:=TClassSymbol.Create(TypeName, FUnitSymbol);
 
    // forwarded declaration
    if FTok.Test(ttSEMI) then begin
@@ -7206,7 +7206,7 @@ begin
    SystemTable.AddSymbol(TOpenArraySymbol.Create('array of const', varSym, typInteger));
 
    // Create "root" class TObject
-   clsObject:=TClassSymbol.Create(SYS_TOBJECT);
+   clsObject:=TClassSymbol.Create(SYS_TOBJECT, nil);
    // Add constructor Create
    meth:=TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, clsObject, cvPublic, False);
    meth.Executable:=ICallable(TEmptyFunc.Create);
@@ -7232,7 +7232,7 @@ begin
                                  [], SYS_TCLASS, clsObject, cvPublic, SystemTable);
 
    // Create class Exception
-   clsException := TClassSymbol.Create(SYS_EXCEPTION);
+   clsException := TClassSymbol.Create(SYS_EXCEPTION, nil);
    clsException.InheritFrom(clsObject);
    fldSym:=TFieldSymbol.Create(SYS_EXCEPTION_MESSAGE_FIELD, typString, cvProtected);
    clsException.AddField(fldSym);
@@ -7249,12 +7249,12 @@ begin
    SystemTable.AddSymbol(clsException);
 
    // Create class EAssertionFailed
-   clsAssertionFailed := TClassSymbol.Create(SYS_EASSERTIONFAILED);
+   clsAssertionFailed := TClassSymbol.Create(SYS_EASSERTIONFAILED, nil);
    clsAssertionFailed.InheritFrom(clsException);
    SystemTable.AddSymbol(clsAssertionFailed);
 
    // Create class EDelphi
-   clsDelphiException := TClassSymbol.Create(SYS_EDELPHI);
+   clsDelphiException := TClassSymbol.Create(SYS_EDELPHI, nil);
    clsDelphiException.InheritFrom(clsException);
    fldSym:=TFieldSymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS_FIELD, typString, cvProtected);
    clsDelphiException.AddField(fldSym);

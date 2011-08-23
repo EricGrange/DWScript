@@ -52,18 +52,23 @@ type
          procedure CompileFuncBody(func : TFuncSymbol);
          procedure CompileMethod(meth : TMethodSymbol);
 
+         procedure DoCompileClassSymbol(cls : TClassSymbol); override;
+         procedure DoCompileFuncSymbol(func : TSourceFuncSymbol); override;
+
       public
          constructor Create; override;
          destructor Destroy; override;
 
+         function  SymbolMappedName(sym : TSymbol; scope : TdwsCodeGenSymbolScope) : String; override;
+
          procedure CompileEnumerationSymbol(enum : TEnumerationSymbol); override;
-         procedure CompileFuncSymbol(func : TSourceFuncSymbol); override;
          procedure CompileConditions(func : TFuncSymbol; conditions : TSourceConditions;
                                      preConds : Boolean); override;
          procedure CompileRecordSymbol(rec : TRecordSymbol); override;
-         procedure CompileClassSymbol(cls : TClassSymbol); override;
          procedure CompileProgramBody(expr : TNoResultExpr); override;
          procedure CompileSymbolTable(table : TSymbolTable); override;
+
+         procedure ReserveSymbolNames; override;
 
          procedure CompileDependencies(destStream : TWriteOnlyBlockStream; const prog : IdwsProgram); override;
 
@@ -358,8 +363,9 @@ type
    TJSBinOpExpr = class (TJSOpExpr)
       protected
          FOp : String;
+         FAssociative : Boolean;
       public
-         constructor Create(const op : String);
+         constructor Create(const op : String; associative : Boolean);
          procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
    end;
 
@@ -704,7 +710,7 @@ const
                +#9'ClassType:function(Self){return Self},'#13#10
                +#9'$Init:function () {},'#13#10
                +#9'Create:function (Self) { return Self; },'#13#10
-               +#9'Destroy:function (Self) { },'#13#10
+               +#9'Destroy:function (Self) { for (prop in obj) { if (obj.hasOwnProperty(prop)) { delete obj.prop; } } },'#13#10
                +#9'Destroy$v:function(Self){return Self.ClassType.Destroy.apply(Self.ClassType, arguments)},'#13#10
                +#9'Free:function (Self) { if (Self!=null) Self.ClassType.Destroy$v(Self) }'#13#10
                +'}';
@@ -820,18 +826,18 @@ begin
    RegisterCodeGen(TAsOpExpr,             TJSAsOpExpr.Create);
    RegisterCodeGen(TIsOpExpr,             TJSIsOpExpr.Create);
 
-   RegisterCodeGen(TAddStrExpr,           TJSBinOpExpr.Create('+'));
+   RegisterCodeGen(TAddStrExpr,           TJSBinOpExpr.Create('+', True));
 
-   RegisterCodeGen(TAddIntExpr,           TJSBinOpExpr.Create('+'));
-   RegisterCodeGen(TAddFloatExpr,         TJSBinOpExpr.Create('+'));
-   RegisterCodeGen(TSubIntExpr,           TJSBinOpExpr.Create('-'));
-   RegisterCodeGen(TSubFloatExpr,         TJSBinOpExpr.Create('-'));
-   RegisterCodeGen(TMultIntExpr,          TJSBinOpExpr.Create('*'));
-   RegisterCodeGen(TMultFloatExpr,        TJSBinOpExpr.Create('*'));
-   RegisterCodeGen(TDivideExpr,           TJSBinOpExpr.Create('/'));
+   RegisterCodeGen(TAddIntExpr,           TJSBinOpExpr.Create('+', True));
+   RegisterCodeGen(TAddFloatExpr,         TJSBinOpExpr.Create('+', True));
+   RegisterCodeGen(TSubIntExpr,           TJSBinOpExpr.Create('-', False));
+   RegisterCodeGen(TSubFloatExpr,         TJSBinOpExpr.Create('-', False));
+   RegisterCodeGen(TMultIntExpr,          TJSBinOpExpr.Create('*', True));
+   RegisterCodeGen(TMultFloatExpr,        TJSBinOpExpr.Create('*', True));
+   RegisterCodeGen(TDivideExpr,           TJSBinOpExpr.Create('/', True));
    RegisterCodeGen(TDivExpr,
       TdwsExprGenericCodeGen.Create(['Math.floor(', 0, '/', 1, ')']));
-   RegisterCodeGen(TModExpr,              TJSBinOpExpr.Create('%'));
+   RegisterCodeGen(TModExpr,              TJSBinOpExpr.Create('%', True));
    RegisterCodeGen(TSqrFloatExpr,      TJSSqrExpr.Create);
    RegisterCodeGen(TSqrIntExpr,        TJSSqrExpr.Create);
    RegisterCodeGen(TNegIntExpr,
@@ -1064,6 +1070,18 @@ begin
    inherited;
 end;
 
+// SymbolMappedName
+//
+function TdwsJSCodeGen.SymbolMappedName(sym : TSymbol; scope : TdwsCodeGenSymbolScope) : String;
+var
+   ct : TClass;
+begin
+   ct:=sym.ClassType;
+   if (ct=TSelfSymbol) or (ct=TResultSymbol) then
+      Result:=sym.Name
+   else Result:=inherited SymbolMappedName(sym, scope);
+end;
+
 // CompileEnumerationSymbol
 //
 procedure TdwsJSCodeGen.CompileEnumerationSymbol(enum : TEnumerationSymbol);
@@ -1085,31 +1103,19 @@ end;
 
 // CompileFuncSymbol
 //
-procedure TdwsJSCodeGen.CompileFuncSymbol(func : TSourceFuncSymbol);
-var
-   proc : TdwsProcedure;
+procedure TdwsJSCodeGen.DoCompileFuncSymbol(func : TSourceFuncSymbol);
 begin
-   if not (func.Executable is TdwsProcedure) then Exit;
-   proc:=(func.Executable as TdwsProcedure);
+   WriteString('function ');
+   WriteSymbolName(func);
+   WriteString('(');
+   WriteFuncParams(func);
+   WriteStringLn(') {');
+   Indent;
 
-   EnterContext(proc);
-   try
+   CompileFuncBody(func);
 
-      WriteString('function ');
-      WriteSymbolName(func);
-      WriteString('(');
-      WriteFuncParams(func);
-      WriteStringLn(') {');
-      Indent;
-
-      CompileFuncBody(func);
-
-      UnIndent;
-      WriteStringLn('};');
-
-   finally
-      LeaveContext;
-   end;
+   UnIndent;
+   WriteStringLn('};');
 end;
 
 // CompileConditions
@@ -1189,16 +1195,14 @@ begin
 //   WriteStringLn('};');
 end;
 
-// CompileClassSymbol
+// DoCompileClassSymbol
 //
-procedure TdwsJSCodeGen.CompileClassSymbol(cls : TClassSymbol);
+procedure TdwsJSCodeGen.DoCompileClassSymbol(cls : TClassSymbol);
 var
    i : Integer;
    sym : TSymbol;
    meth : TMethodSymbol;
 begin
-   if cls.IsExternal then Exit;
-
    inherited;
 
    WriteString('var ');
@@ -1308,13 +1312,11 @@ end;
 //
 procedure TdwsJSCodeGen.CompileSymbolTable(table : TSymbolTable);
 var
-   i : Integer;
    varSym : TDataSymbol;
    sym : TSymbol;
 begin
    inherited;
-   for i:=0 to table.Count-1 do begin
-      sym:=table[i];
+   for sym in table do begin
       if sym.ClassType=TDataSymbol then begin
          varSym:=TDataSymbol(sym);
          if FDeclaredLocalVars.IndexOf(varSym)<0 then begin
@@ -1327,6 +1329,69 @@ begin
          end;
       end;
    end;
+end;
+
+// ReserveSymbolNames
+//
+procedure TdwsJSCodeGen.ReserveSymbolNames;
+const
+   cJSReservedWords : array [1..202] of String = (
+      // Main JS keywords
+      // from https://developer.mozilla.org/en/JavaScript/Reference/Reserved_Words
+      'break', 'case', 'catch', 'continue', 'debugger', 'default', 'delete',
+      'do', 'else', 'finally', 'for', 'function', 'if', 'in', 'instanceof',
+      'new', 'return', 'switch', 'this', 'throw', 'try', 'typeof', 'var',
+      'void', 'while', 'with',
+
+      'class', 'enum', 'export', 'extends', 'import', 'super',
+
+      'implements', 'interface', 'let', 'package', 'private', 'protected',
+      'public', 'static', 'yield',
+
+      'null', 'true', 'false',
+
+      // supplemental reservations for standard JS class names, instances, etc.
+      // from http://javascript.about.com/library/blclassobj.htm
+      'Anchor', 'anchors', 'Applet', 'applets', 'Area', 'Array', 'Body', 'Button',
+      'Checkbox', 'Date', 'Error', 'EvalError', 'FileUpload', 'Form',
+      'forms', 'frame', 'frames', 'Function', 'Hidden', 'History', 'history',
+      'Image', 'images', 'Link', 'links', 'location', 'Math', 'MimeType',
+      'mimetypes', 'navigator', 'Number', 'Object', 'Option', 'options',
+      'Password', 'Plugin', 'plugins', 'Radio', 'RangeError', 'ReferenceError',
+      'RegExp', 'Reset', 'screen', 'Script', 'Select', 'String', 'Style',
+      'StyleSheet', 'Submit', 'SyntaxError', 'Text', 'Textarea', 'TypeError',
+      'URIError', 'window',
+
+
+      // global properties and method names
+      // from http://javascript.about.com/library/blglobal.htm
+      'Infinity', 'NaN', 'undefined',
+      'decodeURI', 'decodeURIComponent', 'encodeURI', 'encodeURIComponent',
+      'eval', 'isFinite', 'isNaN', 'parseFloat', 'parseInt',
+      'closed', 'Components', 'content', 'controllers', 'crypto', 'defaultstatus',
+      'directories', 'document', 'innerHeight', 'innerWidth',
+      'length', 'locationbar', 'menubar', 'name',
+      'opener', 'outerHeight', 'outerWidth', 'pageXOffset', 'pageYOffset',
+      'parent', 'personalbar', 'pkcs11', 'prompter', 'screenX',
+      'screenY', 'scrollbars', 'scrollX', 'scrollY', 'self', 'statusbar',
+      'toolbar', 'top',
+      'alert', 'back', 'blur', 'captureevents', 'clearinterval', 'cleartimeout',
+      'close', 'confirm', 'dump', 'escape', 'focus', 'forward', 'getAttention',
+      'getSelection', 'home', 'moveBy', 'moveTo', 'open', 'print', 'prompt',
+      'releaseevents', 'resizeBy', 'resizeTo', 'scroll', 'scrollBy', 'scrollByLines',
+      'scrollByPages', 'scrollTo', 'setCursor', 'setinterval', 'settimeout',
+      'sizeToContents', 'stop', 'unescape', 'updateCommands',
+      'onabort', 'onblur', 'onchange', 'onclick', 'onclose', 'ondragdrop',
+      'onerror', 'onfocus', 'onkeydown', 'onkeypress', 'onkeyup', 'onload',
+      'onmousedown', 'onmousemove', 'onmouseout', 'onmouseover',
+      'onmouseup', 'onpaint', 'onreset', 'onresize', 'onscroll', 'onselect',
+      'onsubmit', 'onunload'
+   );
+var
+   i : Integer;
+begin
+   for i:=Low(cJSReservedWords) to High(cJSReservedWords) do
+      SymbolMap.ReserveName(cJSReservedWords[i]);
 end;
 
 // CompileDependencies
@@ -1762,28 +1827,29 @@ end;
 // MemberName
 //
 function TdwsJSCodeGen.MemberName(sym : TSymbol; cls : TClassSymbol) : String;
-var
-   n : Integer;
-   match : TSymbol;
+//var
+//   n : Integer;
+//   match : TSymbol;
 begin
-   n:=0;
-   cls:=cls.Parent;
-   while cls<>nil do begin
-      match:=cls.Members.FindSymbol(sym.Name, cvMagic);
-      if match<>nil then begin
-         if     (   (sym.ClassType=match.ClassType)
-                 or ((sym.ClassType=TSourceMethodSymbol) and (match.ClassType=TMethodSymbol)))
-            and (sym is TMethodSymbol)
-            and (TMethodSymbol(sym).IsVirtual)
-            and (TMethodSymbol(sym).VMTIndex=TMethodSymbol(match).VMTIndex) then begin
-            // method override
-         end else Inc(n);
-      end;
-      cls:=cls.Parent;
-   end;
-   Result:=SymbolMappedName(sym);
-   if n>0 then
-      Result:=Format('%s$%d', [Result, n]);
+   Result:=SymbolMappedName(sym, cgssClass);
+//   n:=0;
+//   cls:=cls.Parent;
+//   while cls<>nil do begin
+//      match:=cls.Members.FindSymbol(sym.Name, cvMagic);
+//      if match<>nil then begin
+//         if     (   (sym.ClassType=match.ClassType)
+//                 or ((sym.ClassType=TSourceMethodSymbol) and (match.ClassType=TMethodSymbol)))
+//            and (sym is TMethodSymbol)
+//            and (TMethodSymbol(sym).IsVirtual)
+//            and (TMethodSymbol(sym).VMTIndex=TMethodSymbol(match).VMTIndex) then begin
+//            // method override
+//         end else Inc(n);
+//      end;
+//      cls:=cls.Parent;
+//   end;
+//   Result:=SymbolMappedName(sym, False);
+//   if n>0 then
+//      Result:=Format('%s$%d', [Result, n]);
 end;
 
 // All_RTL_JS
@@ -2347,6 +2413,23 @@ end;
 // CodeGen
 //
 procedure TJSFuncBaseExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+
+   function NeedArrayCopy(paramExpr : TArrayConstantExpr) : Boolean;
+   var
+      i : Integer;
+      sub : TExprBase;
+   begin
+      for i:=0 to paramExpr.SubExprCount-1 do begin
+         sub:=paramExpr.SubExpr[i];
+         if sub is TConstExpr then continue;
+         if sub is TTypedExpr then begin
+            if TTypedExpr(sub).Typ.UnAliasedType is TBaseSymbol then continue;
+         end;
+         Exit(True);
+      end;
+      Result:=False;
+   end;
+
 var
    e : TFuncExprBase;
    i : Integer;
@@ -2384,10 +2467,18 @@ begin
             codeGen.Compile(paramExpr);
             codeGen.WriteString('}');
          end else begin
-            if (paramSymbol.Typ is TRecordSymbol) or (paramSymbol.Typ is TStaticArraySymbol) then begin
+            if paramSymbol.Typ is TRecordSymbol then begin
                codeGen.WriteString('JSON.parse(JSON.stringify(');
                codeGen.Compile(paramExpr);
                codeGen.WriteString('))');
+            end else if paramSymbol.Typ is TStaticArraySymbol then begin
+               if (paramExpr is TArrayConstantExpr) and not NeedArrayCopy(TArrayConstantExpr(paramExpr)) then begin
+                  codeGen.Compile(paramExpr);
+               end else begin
+                  codeGen.WriteString('JSON.parse(JSON.stringify(');
+                  codeGen.Compile(paramExpr);
+                  codeGen.WriteString('))');
+               end;
             end else begin
                codeGen.CompileNoWrap(paramExpr);
             end;
@@ -3849,10 +3940,11 @@ end;
 
 // Create
 //
-constructor TJSBinOpExpr.Create(const op : String);
+constructor TJSBinOpExpr.Create(const op : String; associative : Boolean);
 begin
    inherited Create;
    FOp:=op;
+   FAssociative:=associative;
 end;
 
 // CodeGen
@@ -3862,15 +3954,13 @@ var
    e : TBinaryOpExpr;
 begin
    e:=TBinaryOpExpr(expr);
-//   if e.Left.ClassType=e.ClassType then
-//      codeGen.CompileNoWrap(e.Left)
-//   else
-   WriteWrappedIfNeeded(codeGen, e.Left);
+   if FAssociative and (e.Left.ClassType=e.ClassType) then
+      codeGen.CompileNoWrap(e.Left)
+   else WriteWrappedIfNeeded(codeGen, e.Left);
    codeGen.WriteString(FOp);
-//   if e.Right.ClassType=e.ClassType then
-//      codeGen.CompileNoWrap(e.Right)
-//   else
-   WriteWrappedIfNeeded(codeGen, e.Right);
+   if FAssociative and (e.Right.ClassType=e.ClassType) then
+      codeGen.CompileNoWrap(e.Right)
+   else WriteWrappedIfNeeded(codeGen, e.Right);
 end;
 
 // ------------------

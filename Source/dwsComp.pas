@@ -2682,7 +2682,7 @@ begin
    end;
 
    if not Assigned(classSym) then
-      classSym := TClassSymbol.Create(Name);
+      classSym := TClassSymbol.Create(Name, nil);
 
    try
 
@@ -3115,7 +3115,7 @@ begin
    FIsGenerating := True;
    CheckName(Table, Name);
 
-   Result := TClassSymbol.Create(Name);
+   Result := TClassSymbol.Create(Name, nil);
    TClassSymbol(Result).SetForwardedPos(cNullPos);
    GetUnit.Table.AddSymbol(Result);
 end;

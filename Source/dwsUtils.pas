@@ -139,6 +139,7 @@ type
          destructor Destroy; override;
          function Add(const anItem : T) : Integer;
          function IndexOf(const anItem : T) : Integer;
+         function Extract(idx : Integer) : T;
          procedure ExtractAll;
          procedure Clear;
          property Items[index : Integer] : T read GetItem write SetItem; default;
@@ -850,6 +851,15 @@ begin
    Result:=-1;
 end;
 
+// Extract
+//
+function TObjectList<T>.Extract(idx : Integer) : T;
+begin
+   Result:=FItems[idx];
+   Move(FItems[idx+1], FItems[idx], SizeOf(T)*(Count-1-idx));
+   Dec(FCount);
+end;
+
 // ExtractAll
 //
 procedure TObjectList<T>.ExtractAll;
@@ -1364,8 +1374,10 @@ end;
 function TSimpleHash<T>.LinearFind(const item : T; var index : Integer) : Boolean;
 begin
    repeat
-      if     (FBuckets[index].HashCode<>0)
-         and (not SameItem(item, FBuckets[index].Value)) then Exit;
+      if FBuckets[index].HashCode=0 then
+         Exit(False);
+      if SameItem(item, FBuckets[index].Value) then
+         Exit(True);
       index:=(index+1) and (FCapacity-1);
    until False;
 end;
@@ -1409,6 +1421,7 @@ function TSimpleHash<T>.Contains(const anItem : T) : Boolean;
 var
    i : Integer;
 begin
+   if FCount=0 then Exit(False);
    i:=HashBucket(GetItemHashCode(anItem));
    Result:=LinearFind(anItem, i);
 end;
@@ -1419,6 +1432,7 @@ function TSimpleHash<T>.Match(var anItem : T) : Boolean;
 var
    i : Integer;
 begin
+   if FCount=0 then Exit(False);
    i:=HashBucket(GetItemHashCode(anItem));
    Result:=LinearFind(anItem, i);
    if Result then
