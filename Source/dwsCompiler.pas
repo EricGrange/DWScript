@@ -305,7 +305,8 @@ type
       function ReadCaseConditions(condList : TCaseConditions; valueExpr : TTypedExpr) : Integer;
       function ReadClassOf(const typeName : String) : TClassOfSymbol;
       function ReadClass(const typeName : String) : TClassSymbol;
-      procedure ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TClassVisibility);
+      procedure ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
+      function ReadInterface(const typeName : String) : TInterfaceSymbol;
       function ReadConnectorSym(const name : String; baseExpr : TTypedExpr;
                                 const connectorType : IConnectorType; IsWrite: Boolean) : TProgramExpr;
       function ReadConnectorArray(const name : String; baseExpr : TTypedExpr;
@@ -344,14 +345,16 @@ type
       function ReadInstrSwitch(semiPending : Boolean): TNoResultExpr;
       function ReadExprSwitch : TTypedExpr;
       function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
+      function ReadIntfMethodDecl(intfSym : TInterfaceSymbol; funcKind : TFuncKind) : TSourceMethodSymbol;
       function ReadMethodDecl(classSym : TClassSymbol; funcKind : TFuncKind;
-                              aVisibility : TClassVisibility; isClassMethod : Boolean) : TSourceMethodSymbol;
+                              aVisibility : TdwsVisibility; isClassMethod : Boolean) : TSourceMethodSymbol;
       function ReadMethodImpl(classSym : TClassSymbol; funcKind : TFuncKind;
                               isClassMethod : Boolean) : TMethodSymbol;
       procedure ReadDeprecated(funcSym : TFuncSymbol);
       procedure WarnDeprecated(funcSym : TFuncSymbol);
       function ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
       function ReadClassSymbolName(baseType : TClassSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
+      function ReadInterfaceSymbolName(baseType : TInterfaceSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
       function ReadConstName(constSym : TConstSymbol; isWrite: Boolean) : TProgramExpr;
       function ReadNameOld(isWrite: Boolean): TTypedExpr;
       function ReadNameInherited(isWrite: Boolean): TProgramExpr;
@@ -372,7 +375,7 @@ type
                                    condsSymClass : TConditionSymbolClass);
       function ReadOperatorDecl : TOperatorSymbol;
       function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
-      function ReadPropertyDecl(classSym : TClassSymbol; aVisibility : TClassVisibility) : TPropertySymbol;
+      function ReadPropertyDecl(structSym : TStructuredTypeSymbol; aVisibility : TdwsVisibility) : TPropertySymbol;
       function ReadPropertyExpr(var expr : TDataExpr; propertySym : TPropertySymbol; isWrite: Boolean) : TProgramExpr;
       function ReadPropertyReadExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TProgramExpr;
       function ReadPropertyWriteExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TProgramExpr;
@@ -1850,10 +1853,48 @@ begin
    end;
 end;
 
+// ReadIntfMethodDecl
+//
+function TdwsCompiler.ReadIntfMethodDecl(intfSym : TInterfaceSymbol; funcKind : TFuncKind) : TSourceMethodSymbol;
+var
+   name : String;
+   sym : TSymbol;
+   methPos : TScriptPos;
+begin
+   // Find Symbol for Functionname
+   if not FTok.TestDeleteNamePos(name, methPos) then begin
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
+      name:='';
+   end;
+
+   // Check if name is already used
+   sym:=intfSym.Members.FindSymbolFromScope(name, intfSym);
+   if sym<>nil then
+      MemberSymbolWithNameAlreadyExists(sym);
+
+   // Read declaration of method implementation
+   Result:=TSourceMethodSymbol.Create(name, funcKind, intfSym, cvPublished, False);
+   Result.DeclarationPos:=methPos;
+
+   try
+      ReadParams(Result.AddParam);
+
+      Result.Typ:=ReadFuncResultType(funcKind);
+      ReadSemiColon;
+
+      // Added as last step. OnExcept, won't need to be freed.
+      if coSymbolDictionary in FCompilerOptions then
+         FSymbolDictionary.AddTypeSymbol(Result, methPos, [suDeclaration]);
+   except
+      Result.Free;
+      raise;
+   end;
+end;
+
 // ReadMethodDecl
 //
 function TdwsCompiler.ReadMethodDecl(classSym: TClassSymbol; funcKind: TFuncKind;
-   aVisibility : TClassVisibility; isClassMethod: Boolean): TSourceMethodSymbol;
+   aVisibility : TdwsVisibility; isClassMethod: Boolean): TSourceMethodSymbol;
 
    function OverrideParamsCheck(newMeth, oldMeth : TMethodSymbol) : Boolean;
    var
@@ -1887,11 +1928,11 @@ begin
    end;
 
    // Check if name is already used
-   sym := classSym.Members.FindSymbolFromClass(name, classSym);
+   sym := classSym.Members.FindSymbolFromScope(name, classSym);
    if sym<>nil then begin
       if sym is TMethodSymbol then begin
          meth:=TMethodSymbol(sym);
-         if meth.ClassSymbol = classSym then
+         if meth.StructSymbol = classSym then
          MemberSymbolWithNameAlreadyExists(meth);
       end else begin
          MemberSymbolWithNameAlreadyExists(sym);
@@ -1968,7 +2009,7 @@ begin
             FMsgs.AddCompilerError(FTok.HotPos, CPE_NonConstructorDefault)
          else begin
             defaultConstructor:=classSym.FindDefaultConstructor(cvMagic);
-            if (defaultConstructor<>nil) and (defaultConstructor.ClassSymbol=classSym) then
+            if (defaultConstructor<>nil) and (defaultConstructor.StructSymbol=classSym) then
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_DefaultConstructorAlreadyDefined,
                                          [classSym.Name, defaultConstructor.Name])
             else Result.IsDefault:=True;
@@ -2034,9 +2075,9 @@ begin
       FMsgs.AddCompilerStop(methPos, CPE_ImplNotAMethod);
    Result:=TMethodSymbol(sym);
 
-   if Result.ClassSymbol<>classSym then begin
+   if Result.StructSymbol<>classSym then begin
       FMsgs.AddCompilerErrorFmt(methPos, CPE_ImplInvalidClass, [methName, classSym.Name]);
-      classSym:=Result.ClassSymbol;
+      classSym:=Result.StructSymbol as TClassSymbol;
    end;
 
    if Result.IsAbstract then
@@ -2614,7 +2655,7 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedOnlyAllowedInMethods);
 
    methSym := TMethodSymbol(TdwsProcedure(FProg).Func);
-   classSym := methSym.ClassSymbol;
+   classSym := methSym.StructSymbol as TClassSymbol;
    parentSym := ClassSym.Parent;
    sym := nil;
 
@@ -2640,7 +2681,7 @@ begin
          try
             ReadFuncArgs(TFuncExpr(Result));
             if TMethodSymbol(sym).Kind = fkConstructor then
-               (Result as TMethodExpr).Typ := methSym.ClassSymbol.Parent;
+               (Result as TMethodExpr).Typ := (methSym.StructSymbol as TClassSymbol).Parent;
             TFuncExpr(Result).TypeCheckArgs(FProg);
          except
             Result.Free;
@@ -2777,6 +2818,10 @@ begin
 
          Result:=ReadClassSymbolName(TClassSymbol(baseType), isWrite, expecting);
 
+      end else if baseType is TInterfaceSymbol then begin
+
+         Result:=ReadInterfaceSymbolName(TInterfaceSymbol(baseType), isWrite, expecting);
+
       end else if sym.InheritsFrom(TFieldSymbol) then begin
 
          progMeth := TMethodSymbol(TdwsProcedure(FProg).Func);
@@ -2853,22 +2898,32 @@ begin
       if    (not (castedExprTyp is TClassSymbol))
          or (
                    (not TClassSymbol(castedExprTyp).IsOfType(baseType))
-               and (not TClassSymbol(baseType).IsOfType(castedExprTyp))
+               and (not baseType.IsOfType(castedExprTyp))
             ) then
          FMsgs.AddCompilerErrorFmt(namePos, CPE_IncompatibleTypes,
                                    [castedExprTyp.Name, baseType.Name]);
       if not (FTok.TestDelete(ttBRIGHT)) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
       convExpr:=TConvClassExpr.Create(FProg, TTypedExpr(Result));
-      convExpr.Typ:=TClassSymbol(baseType);
+      convExpr.Typ:=baseType;
       Result:=ReadSymbol(convExpr, IsWrite, expecting);
 
    end else begin
 
-      constExpr:=TConstExpr.CreateTyped(FProg, TClassSymbol(baseType).ClassOf, Int64(baseType));
+      constExpr:=TConstExpr.CreateTyped(FProg, baseType.ClassOf, Int64(baseType));
       Result:=ReadSymbol(constExpr, IsWrite, expecting);
 
    end;
+end;
+
+// ReadInterfaceSymbolName
+//
+function TdwsCompiler.ReadInterfaceSymbolName(baseType : TInterfaceSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
+var
+   constExpr : TTypedExpr;
+begin
+   constExpr:=TConstExpr.CreateTyped(FProg, baseType, Int64(baseType));
+   Result:=ReadSymbol(constExpr, IsWrite, expecting);
 end;
 
 // ReadConstName
@@ -3256,15 +3311,15 @@ begin
 
                   if Result is TFuncExpr then
                      TFuncExpr(Result).SetResultAddr(FProg, nil);
-                  if Assigned(member) then
-                     Result := TRecordExpr.Create(FProg, FTok.HotPos, TDataExpr(Result), TMemberSymbol(member))
+                  if member is TFieldSymbol then
+                     Result := TRecordExpr.Create(FProg, FTok.HotPos, TDataExpr(Result), TFieldSymbol(member))
                   else FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [Name]);
                   Expr := nil;
 
                // Class
-               end else if baseType is TClassSymbol then begin
+               end else if baseType is TStructuredTypeSymbol then begin
 
-                  member:=TClassSymbol(baseType).Members.FindSymbolFromClass(Name, CurrentClass);
+                  member:=TStructuredTypeSymbol(baseType).Members.FindSymbolFromScope(Name, CurrentClass);
 
                   if coSymbolDictionary in FCompilerOptions then
                      FSymbolDictionary.AddSymbolReference(member, symPos, isWrite);
@@ -3296,7 +3351,7 @@ begin
                // Class Of
                end else if baseType is TClassOfSymbol then begin
 
-                  member := TClassSymbol(baseType.Typ).Members.FindSymbolFromClass(Name, CurrentClass);
+                  member := TClassSymbol(baseType.Typ).Members.FindSymbolFromScope(Name, CurrentClass);
                   if coSymbolDictionary in FCompilerOptions then
                      FSymbolDictionary.AddSymbolReference(member, FTok.HotPos, isWrite);
 
@@ -4373,14 +4428,19 @@ end;
 function TdwsCompiler.ReadClass(const typeName : String) : TClassSymbol;
 var
    name : String;
+   namePos : TScriptPos;
    sym, typ : TSymbol;
    propSym : TPropertySymbol;
    constSym : TClassConstSymbol;
    ancestorTyp : TClassSymbol;
+   intfTyp : TInterfaceSymbol;
+   interfaces : TList;
+   missingMethod : TMethodSymbol;
    defProp : Boolean;
    isInSymbolTable: Boolean;
-   visibility : TClassVisibility;
+   visibility : TdwsVisibility;
    tt : TTokenType;
+   i : Integer;
 begin
    // Check for a forward declaration of this class
    sym:=FProg.Table.FindSymbol(typeName, cvMagic);
@@ -4411,6 +4471,7 @@ begin
 
    if not isInSymbolTable then
       FProg.Table.AddSymbol(Result);   // auto-forward
+   interfaces:=TList.Create;
    try
       try
          if FTok.TestDelete(ttSTATIC) then
@@ -4428,15 +4489,12 @@ begin
          // inheritance
          if FTok.TestDelete(ttBLEFT) then begin
 
-            if not FTok.TestName then
+            if not FTok.TestDeleteNamePos(name, namePos) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-            Name := FTok.GetToken.FString;
-            FTok.KillToken;
-
-            Typ := FProg.Table.FindSymbol(Name, cvMagic);
+            Typ := FProg.Table.FindSymbol(name, cvMagic);
             if not (Typ is TClassSymbol) then begin
-               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NotAClass, [Name]);
+               FMsgs.AddCompilerErrorFmt(namePos, CPE_NotAClass, [name]);
                Typ:=FProg.TypObject;
             end;
 
@@ -4447,6 +4505,21 @@ begin
 
             if ancestorTyp.IsSealed then
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassIsSealed, [Typ.Name]);
+
+            while FTok.TestDelete(ttCOMMA) do begin
+
+               if not FTok.TestDeleteNamePos(name, namePos) then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+
+               intfTyp:=TInterfaceSymbol(FProg.Table.FindSymbol(name, cvMagic, TInterfaceSymbol));
+               if intfTyp=nil then
+                  FMsgs.AddCompilerErrorFmt(namePos, CPE_NotAnInterface, [name])
+               else begin
+                  if interfaces.IndexOf(intfTyp)>=0 then
+                     FMsgs.AddCompilerErrorFmt(namePos, CPE_InterfaceAlreadyImplemented, [name])
+                  else interfaces.Add(intfTyp);
+               end;
+            end;
 
             if not FTok.TestDelete(ttBRIGHT) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
@@ -4545,12 +4618,20 @@ begin
 
          if not FTok.TestDelete(ttEND) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
+
+         for i:=0 to interfaces.Count-1 do begin
+            intfTyp:=interfaces[i];
+            if not Result.AddInterface(intfTyp, cvPrivate, missingMethod) then
+               FMsgs.AddCompilerErrorFmt(namePos, CPE_MissingMethodForInterface, [missingMethod.Name, name]);
+         end;
+
       except
          // Set Result to nil to prevent auto-forward removal then re-reraise
          Result:=nil;
          raise;
       end;
    finally
+      interfaces.Free;
       if not isInSymbolTable then
          FProg.Table.Remove(Result);  // auto-forward
    end;
@@ -4558,7 +4639,7 @@ end;
 
 // ReadClassFields
 //
-procedure TdwsCompiler.ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TClassVisibility);
+procedure TdwsCompiler.ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
 var
    i : Integer;
    sym : TSymbol;
@@ -4595,6 +4676,91 @@ begin
    finally
       names.Free;
    end;
+end;
+
+// ReadInterface
+//
+function TdwsCompiler.ReadInterface(const typeName : String) : TInterfaceSymbol;
+var
+   sym : TSymbol;
+   ancestor : TInterfaceSymbol;
+   name : String;
+   namePos, hotPos : TScriptPos;
+   tt : TTokenType;
+   propSym : TPropertySymbol;
+   defProp : Boolean;
+begin
+   hotPos:=FTok.HotPos;
+   sym:=FProg.Table.FindSymbol(typeName, cvMagic);
+
+   if Assigned(sym) then begin
+      if sym is TInterfaceSymbol then
+         FMsgs.AddCompilerErrorFmt(hotPos, CPE_InterfaceAlreadyDefined, [sym.Name])
+      else FMsgs.AddCompilerErrorFmt(hotPos, CPE_NameAlreadyExists, [sym.Name]);
+   end;
+
+   Result:=TInterfaceSymbol.Create(typeName, FUnitSymbol);
+
+   try
+
+      if FTok.TestDelete(ttBLEFT) then begin
+         if not FTok.TestDeleteNamePos(name, namePos) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+         ancestor:=TInterfaceSymbol(FProg.Table.FindSymbol(name, cvMagic, TInterfaceSymbol));
+         if ancestor=nil then
+            FMsgs.AddCompilerErrorFmt(namePos, CPE_NotAnInterface, [Name])
+         else Result.InheritFrom(ancestor);
+         if not FTok.TestDelete(ttBRIGHT) then
+            FMsgs.AddCompilerStop(namePos, CPE_BrackRightExpected);
+      end;
+      if Result.Parent=nil then
+         Result.InheritFrom(FProg.TypInterface);
+
+      while not FTok.Test(ttEND) do begin
+
+         // Read methods and properties
+         tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttPROPERTY]);
+         case tt of
+            ttFUNCTION :
+               Result.AddMethod(ReadIntfMethodDecl(Result, fkFunction));
+            ttPROCEDURE :
+               Result.AddMethod(ReadIntfMethodDecl(Result, fkProcedure));
+            ttMETHOD :
+               Result.AddMethod(ReadIntfMethodDecl(Result, fkMethod));
+
+            ttPROPERTY : begin
+
+               propSym := ReadPropertyDecl(Result, cvPublished);
+               defProp := False;
+
+               // Array-Prop can be default
+               if propSym.HasArrayIndices then begin
+                  defProp := FTok.TestDelete(ttDEFAULT);
+                  if defProp then begin
+                     ReadSemiColon;
+                     if Assigned(Result.DefaultProperty) then
+                        FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_MultipleDefaultProperties, [Result.Name]);
+                  end;
+               end;
+               Result.AddProperty(propSym);
+               if defProp then
+                  Result.DefaultProperty := propSym;
+
+            end;
+         end;
+
+      end;
+
+      if not FTok.TestDelete(ttEND) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
+
+   except
+      Result.Free;
+      raise;
+   end;
+
+   if coSymbolDictionary in FCompilerOptions then
+      FSymbolDictionary.AddTypeSymbol(Result, hotPos, [suDeclaration]);
 end;
 
 // CheckFuncParams
@@ -4687,7 +4853,7 @@ end;
 
 // ReadPropertyDecl
 //
-function TdwsCompiler.ReadPropertyDecl(classSym : TClassSymbol; aVisibility : TClassVisibility) : TPropertySymbol;
+function TdwsCompiler.ReadPropertyDecl(structSym : TStructuredTypeSymbol; aVisibility : TdwsVisibility) : TPropertySymbol;
 var
    x : Integer;
    name : String;
@@ -4704,10 +4870,10 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
    // Check if property name is free
-   sym := ClassSym.Members.FindSymbolFromClass(name, CurrentClass);
+   sym := structSym.Members.FindSymbolFromScope(name, CurrentClass);
    if Assigned(sym) then begin
       if sym is TPropertySymbol then begin
-         if TPropertySymbol(sym).ClassSymbol = ClassSym then
+         if TPropertySymbol(sym).StructSymbol = structSym then
             MemberSymbolWithNameAlreadyExists(sym);
       end else MemberSymbolWithNameAlreadyExists(sym);
    end;
@@ -4740,7 +4906,7 @@ begin
             if not FTok.TestDeleteNamePos(name, accessPos) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-            sym := ClassSym.Members.FindSymbol(name, cvPrivate);
+            sym := structSym.Members.FindSymbol(name, cvPrivate);
 
             if not Assigned(sym) or (sym is TPropertySymbol) then begin
                { Register the error and break the compilation process }
@@ -4768,7 +4934,7 @@ begin
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
             // Check if symbol exists
-            sym := ClassSym.Members.FindSymbol(Name, cvPrivate);
+            sym := structSym.Members.FindSymbol(Name, cvPrivate);
 
             if not Assigned(sym) or (sym is TPropertySymbol) then begin
                { Register the error and break the compilation process }
@@ -4818,11 +4984,11 @@ function TdwsCompiler.ReadRecord(const typeName : String) : TRecordSymbol;
 var
    x : Integer;
    names : TStringList;
-   member : TMemberSymbol;
+   member : TFieldSymbol;
    typ : TTypeSymbol;
    posArray : TScriptPosArray;
 begin
-   Result := TRecordSymbol.Create(typeName);
+   Result := TRecordSymbol.Create(typeName, FUnitSymbol);
    try
       names := TStringList.Create;
       try
@@ -4843,8 +5009,8 @@ begin
                if Result.Members.FindLocal(names[x]) <> nil then
                   FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [names[x]]);
 
-               member := TMemberSymbol.Create(names[x], typ);
-               Result.AddMember(member);
+               member := TFieldSymbol.Create(names[x], typ, cvPublic);
+               Result.AddField(member);
 
                // Add member symbols and positions
                if coSymbolDictionary in FCompilerOptions then
@@ -5048,7 +5214,7 @@ var
    namePos : TScriptPos;
    sym : TSymbol;
 begin
-   tt:=FTok.TestDeleteAny([ttRECORD, ttARRAY, ttCLASS, ttBLEFT,
+   tt:=FTok.TestDeleteAny([ttRECORD, ttARRAY, ttCLASS, ttINTERFACE, ttBLEFT,
                            ttPROCEDURE, ttFUNCTION, ttMETHOD]);
    case tt of
       ttRECORD :
@@ -5067,6 +5233,14 @@ begin
                Result:=nil;
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_TypeExpected);
             end;
+         end;
+
+      ttINTERFACE :
+         if typeContext=tcDeclaration then
+            Result:=ReadInterface(typeName)
+         else begin
+            Result:=nil;
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_TypeExpected);
          end;
 
       ttBLEFT :
@@ -5153,7 +5327,7 @@ begin
       // Read operator
       repeat
          tt:=FTok.TestDeleteAny([ttEQ, ttNOTEQ, ttLESS, ttLESSEQ, ttGTR, ttGTREQ,
-                                 ttIS, ttAS]);
+                                 ttIS, ttAS, ttIMPLEMENTS]);
          if tt=ttNone then Break;
 
          hotPos := FTok.HotPos;
@@ -5162,22 +5336,59 @@ begin
          r:=ReadExprAdd;
          try
             case tt of
-               ttIS, ttAS : begin
+               ttIS : begin
                   if not (Result.Typ is TClassSymbol) then
-                     FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
-                  if not (r.Typ is TClassOfSymbol) then
+                     FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
+                  else if not (r.Typ is TClassOfSymbol) then
                      FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
-                  if tt=ttIS then
-                     Result:=TIsOpExpr.Create(FProg, Result, r)
-                  else Result:=TAsOpExpr.CreateAs(FProg, Result, r, hotPos);
+                  Result:=TIsOpExpr.Create(FProg, Result, r)
+               end;
+               ttAS : begin
+                  if Result.Typ is TInterfaceSymbol then begin
+                     if r.Typ is TInterfaceSymbol then begin
+                        Result:=TIntfAsIntfExpr.Create(FProg, hotPos, Result, TInterfaceSymbol(r.Typ));
+                     end else begin
+                        if not (r.Typ is TClassOfSymbol) then
+                           FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
+                        Result:=TIntfAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(r.Typ).Typ);
+                     end;
+                  end else begin
+                     if not (Result.Typ is TClassSymbol) then
+                        FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
+                     if r.Typ is TInterfaceSymbol then
+                        Result:=TObjAsIntfExpr.Create(FProg, hotPos, Result, TInterfaceSymbol(r.Typ))
+                     else begin
+                        if not (r.Typ is TClassOfSymbol) then
+                           FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
+                        Result:=TObjAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(r.Typ).Typ);
+                     end;
+                  end;
+                  r.Free;
+               end;
+               ttIMPLEMENTS : begin
+                  if not (r.Typ is TInterfaceSymbol) then
+                     FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
+                  if Result.Typ is TClassOfSymbol then
+                     Result:=TClassImplementsIntfOpExpr.Create(FProg, Result, r)
+                  else begin
+                     if not (Result.Typ is TClassSymbol) then
+                        FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
+                     Result:=TImplementsIntfOpExpr.Create(FProg, Result, r);
+                  end;
                end;
             else
-               if (Result.Typ is TClassSymbol) or (Result.Typ=FProg.TypNil) then begin
+               if    (Result.Typ is TClassSymbol)
+                  or (Result.Typ is TInterfaceSymbol)
+                  or (Result.Typ=FProg.TypNil) then begin
                   case tt of
                      ttEQ, ttNOTEQ: begin
-                        if not ((r.Typ is TClassSymbol) or (r.Typ=FProg.TypNil)) then
-                           FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
-                        Result:=TObjCmpExpr.Create(FProg, Result, r);
+                        if not ((r.Typ.ClassType=Result.Typ.ClassType) or (r.Typ=FProg.TypNil)) then
+                           if Result.Typ is TClassSymbol then
+                              FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
+                           else FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
+                        if Result.Typ is TClassSymbol then
+                           Result:=TObjCmpExpr.Create(FProg, Result, r)
+                        else Result:=TIntfCmpExpr.Create(FProg, Result, r);
                         if tt=ttNOTEQ then
                            Result:=TNotBoolExpr.Create(FProg, Result);
                      end;
@@ -5547,7 +5758,7 @@ end;
 function TdwsCompiler.ReadConstRecord(symbol : TRecordSymbol) : TData;
 var
    sym : TSymbol;
-   memberSym : TMemberSymbol;
+   memberSym : TFieldSymbol;
    memberSet : array of Boolean;
    expr : TTypedExpr;
    constExpr : TConstExpr;
@@ -5564,11 +5775,11 @@ begin
       if not FTok.TestName then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
       sym:=symbol.Members.FindLocal(FTok.GetToken.FString);
-      if not (sym is TMemberSymbol) then begin
+      if not (sym is TFieldSymbol) then begin
          FMsgs.AddCompilerErrorFmt(FTok.GetToken.FPos, CPE_UnknownMember, [FTok.GetToken.FString]);
          sym:=nil;
       end;
-      memberSym:=TMemberSymbol(sym);
+      memberSym:=TFieldSymbol(sym);
       if memberSym<>nil then begin
          if memberSet[memberSym.Offset] then
             FMsgs.AddCompilerError(FTok.GetToken.FPos, CPE_FieldAlreadySet);
@@ -6005,7 +6216,7 @@ begin
             if FProg is TdwsProcedure then begin
                funcSym:=TdwsProcedure(FProg).Func;
                if funcSym is TMethodSymbol then
-                  value:=TMethodSymbol(funcSym).ClassSymbol.Name+'.'+funcSym.Name
+                  value:=TMethodSymbol(funcSym).StructSymbol.Name+'.'+funcSym.Name
                else value:=funcSym.Name;
             end else value:=MSG_MainFunction;
          end else FMsgs.AddCompilerErrorFmt(hotPos, CPE_IncludeItemUnknown, [name]);
@@ -6261,7 +6472,7 @@ end;
 function TdwsCompiler.CurrentClass : TClassSymbol;
 begin
    if (FProg is TdwsProcedure) and (TdwsProcedure(FProg).Func is TMethodSymbol) then
-      Result:=TMethodSymbol(TdwsProcedure(FProg).Func).ClassSymbol
+      Result:=TMethodSymbol(TdwsProcedure(FProg).Func).StructSymbol as TClassSymbol
    else Result:=nil;
 end;
 
@@ -6625,6 +6836,8 @@ var
    classOpSymbol : TClassOperatorSymbol;
    classOpExpr : TFuncExpr;
    assignOpExpr : TAssignExpr;
+   classSymbol : TClassSymbol;
+   intfSymbol : TInterfaceSymbol;
 begin
    if Assigned(right.Typ) then begin
 
@@ -6637,6 +6850,15 @@ begin
                Result:=TNullExpr.Create(FProg, Pos);
             end else if left.Typ.ClassType=TClassOfSymbol then begin
                Result:=TAssignClassOfExpr.Create(FProg, pos, left, right);
+            end else if left.Typ.ClassType=TInterfaceSymbol then begin
+               if right.Typ is TClassSymbol then begin
+                  classSymbol:=TClassSymbol(right.Typ);
+                  intfSymbol:=TInterfaceSymbol(left.Typ);
+                  if not classSymbol.ImplementsInterface(intfSymbol) then
+                     FMsgs.AddCompilerErrorFmt(pos, RTE_ObjCastToIntfFailed,
+                                               [classSymbol.Name, intfSymbol.Name]);
+                  Result:=TAssignExpr.Create(FProg, pos, left, TObjAsIntfExpr.Create(FProg, pos, right, intfSymbol));
+               end else Result:=TAssignExpr.Create(FProg, pos, left, right);
             end else if right.InheritsFrom(TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
                if right.InheritsFrom(TFuncExpr) then
                   TFuncExpr(right).SetResultAddr(FProg, nil);
@@ -6665,7 +6887,7 @@ begin
                Result:=TAssignExpr.Create(FProg, pos, left, right);
             end;
          end;
-         ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN : begin
+         ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN, ttCARET_ASSIGN : begin
             if left.Typ is TClassSymbol then begin
 
                classOpSymbol:=(left.Typ as TClassSymbol).FindClassOperator(token, right.Typ);
@@ -7204,6 +7426,8 @@ begin
    SystemTable.AddSymbol(TConstSymbol.Create('Unassigned', varSym, Unassigned));
 
    SystemTable.AddSymbol(TOpenArraySymbol.Create('array of const', varSym, typInteger));
+
+   SystemTable.AddSymbol(TInterfaceSymbol.Create(SYS_IINTERFACE, nil));
 
    // Create "root" class TObject
    clsObject:=TClassSymbol.Create(SYS_TOBJECT, nil);

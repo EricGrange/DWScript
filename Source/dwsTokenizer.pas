@@ -33,8 +33,7 @@ type
      ttLAZY, ttVAR, ttCONST, ttTYPE, ttRECORD, ttARRAY, ttDOT, ttDOTDOT, ttOF,
      ttTRY, ttEXCEPT, ttRAISE, ttFINALLY, ttON, ttREAD, ttWRITE, ttPROPERTY,
      ttPROCEDURE, ttFUNCTION, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttOPERATOR,
-     ttCLASS, ttNIL, ttIS,
-     ttAS, ttINDEX, ttOBJECT,
+     ttCLASS, ttNIL, ttIS, ttAS, ttIMPLEMENTS, ttINDEX, ttOBJECT,
      ttVIRTUAL, ttOVERRIDE, ttREINTRODUCE, ttINHERITED, ttFINAL, ttNEW,
      ttABSTRACT, ttSEALED, ttSTATIC, ttDEPRECATED,
      ttEXTERNAL, ttFORWARD, ttIN,
@@ -193,8 +192,7 @@ const
      'LAZY', 'VAR', 'CONST', 'TYPE', 'RECORD', 'ARRAY', '.', '..', 'OF',
      'TRY', 'EXCEPT', 'RAISE', 'FINALLY', 'ON', 'READ', 'WRITE', 'PROPERTY',
      'PROCEDURE', 'FUNCTION', 'CONSTRUCTOR', 'DESTRUCTOR', 'METHOD', 'OPERATOR',
-     'CLASS', 'NIL', 'IS',
-     'AS', 'INDEX', 'OBJECT',
+     'CLASS', 'NIL', 'IS', 'AS', 'IMPLEMENTS', 'INDEX', 'OBJECT',
      'VIRTUAL', 'OVERRIDE', 'REINTRODUCE', 'INHERITED', 'FINAL', 'NEW',
      'ABSTRACT', 'SEALED', 'STATIC', 'DEPRECATED',
      'EXTERNAL', 'FORWARD', 'IN',
@@ -468,14 +466,14 @@ end;
 // ToAlphaType
 //
 const
-   cAlphaTypeTokens : array [0..83] of TTokenType = (
+   cAlphaTypeTokens : array [0..84] of TTokenType = (
       ttAND, ttARRAY, ttABSTRACT, ttAS,
       ttBEGIN, ttBREAK,
       ttCONST, ttCLASS, ttCONSTRUCTOR, ttCASE, ttCDECL, ttCONTINUE,
       ttDO, ttDOWNTO, ttDIV, ttDEFAULT, ttDESTRUCTOR, ttDEPRECATED,
       ttEND, ttENSURE, ttELSE, ttEXCEPT, ttEXIT, ttEXTERNAL,
       ttFOR, ttFALSE, ttFINAL, ttFINALLY, ttFORWARD, ttFUNCTION,
-      ttIF, ttIMPLIES, ttIN, ttINVARIANTS, ttIS, ttINHERITED, ttINDEX,
+      ttIF, ttIMPLIES, ttIMPLEMENTS, ttIN, ttINVARIANTS, ttIS, ttINHERITED, ttINDEX,
       ttINTERFACE, ttIMPLEMENTATION,
       ttLAZY,
       ttMETHOD, ttMOD,

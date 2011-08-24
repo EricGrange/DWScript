@@ -50,6 +50,7 @@ const
   SYS_EDELPHI = 'EDelphi';
   SYS_EDELPHI_EXCEPTIONCLASS = 'ExceptionClass';
   SYS_EDELPHI_EXCEPTIONCLASS_FIELD = 'FExceptionClass';
+  SYS_IINTERFACE = 'IInterface';
 
   // Compiler switches
   SWI_INCLUDE_LONG = 'INCLUDE';
@@ -187,6 +188,12 @@ const
   CPE_MultipleDefaultProperties = 'Class "%s" already has a default property';
   CPE_ParamsExpected = 'Parameters expected';
 
+  // Interface declaration
+  CPE_InterfaceAlreadyDefined = 'Interface "%s" already defined';
+  CPE_NotAnInterface = '"%s" is not an interface';
+  CPE_MissingMethodForInterface = 'Missing matching method "%s" for interface "%s"';
+  CPE_InterfaceAlreadyImplemented = 'Interface "%s" already implemented';
+
   // CompareFuncSymbols
   CPE_FunctionExpected = 'Declaration should be "function"';
   CPE_ProcedureExpected = 'Declaration should be "procedure"';
@@ -226,7 +233,7 @@ const
   CPE_TypeUnknown = 'Type "%s" not found';
   CPE_InvalidType = '%s is not a Type!';
   CPE_UnknownMember = 'There''s no member with name "%s"!';
-  CPE_NoMemberExpected = 'Neither a record nor an object!';
+  CPE_NoMemberExpected = 'No member expected';
   CPE_NoArrayExpected = 'Not an array!';
   CPE_NoMethodExpected = 'Not a method!';
   CPE_InvalidInstruction = 'Invalid Instruction - function or assignment expected';
@@ -260,6 +267,7 @@ const
   CPE_BooleanOrIntegerExpected = 'Boolean or integer operand expected';
   CPE_ObjectExpected = 'Object expected';
   CPE_ClassRefExpected = 'Class reference expected';
+  CPE_InterfaceExpected = 'Interface expected';
   CPE_ExceptionObjectExpected = 'Exception object expected';
 
   CPE_IntegerCastInvalid = 'Cannot cast this type to "Integer"';
@@ -399,6 +407,10 @@ const
   RTE_ClassCastFailed = 'Can''t cast instance of type "%s" to class "%s"';
   RTE_OrdinalExpected = 'Ordinal expected';
   RTE_VariantCastFailed = 'Couldn''t cast variant from "%s" to "%s" (%s)';
+
+  RTE_ObjCastToIntfFailed = 'Class "%s" does not implement interface "%s"';
+  RTE_IntfCastToObjFailed = 'Can''t cast interface of "%s" to class "%s"';
+  RTE_IntfCastToIntfFailed = 'Can''t cast interface of "%s" to interface "%s"';
 
   RTE_ObjectNotInstantiated = 'Object not instantiated';
   RTE_ObjectAlreadyDestroyed = 'Object already destroyed';

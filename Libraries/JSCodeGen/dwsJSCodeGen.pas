@@ -76,7 +76,7 @@ type
 
          procedure WriteJavaScriptString(const s : String);
 
-         function MemberName(sym : TSymbol; cls : TClassSymbol) : String;
+         function MemberName(sym : TSymbol; cls : TStructuredTypeSymbol) : String;
 
          // returns all the RTL support JS functions
          class function All_RTL_JS : String;
@@ -240,10 +240,26 @@ type
                                        const writeOperand : TProc); static;
    end;
 
-   TJSAsOpExpr = class (TJSExprCodeGen)
+   TJSObjAsClassExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
    TJSIsOpExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
+   TJSObjAsIntfExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSIntfAsClassExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSIntfAsIntfExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSTImplementsIntfOpExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSTClassImplementsIntfOpExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
@@ -286,6 +302,11 @@ type
    end;
    TJSMethodVirtualExpr = class (TJSFuncBaseExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+      procedure CodeGenBeginParams(codeGen : TdwsCodeGen; expr : TFuncExprBase); override;
+   end;
+
+   TJSMethodInterfaceExpr = class (TJSFuncBaseExpr)
+      procedure CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol); override;
       procedure CodeGenBeginParams(codeGen : TdwsCodeGen; expr : TFuncExprBase); override;
    end;
 
@@ -389,7 +410,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..119] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..124] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -457,7 +478,31 @@ const
        Dependency : '$As' ),
       (Name : '$As';
        Code : 'function $As(o,c) { if ((o!==null)&&$Is(o,c)) return o; '#13#10
-               +'else throw Exception.Create$1($New(Exception),"Can''t cast instance of type \""+o.ClassType.$ClassName+"\" to class \""+c.$ClassName+"\""); }'; // TODO: exception
+               +'else throw Exception.Create$1($New(Exception),"Can''t cast instance of type \""+o.ClassType.$ClassName+"\" to class \""+c.$ClassName+"\""); }';
+       Dependency : '$Is' ),
+      (Name : '$AsIntf';
+       Code : 'function $AsIntf(o,i) {'#13#10
+               +#9'if (o==null) return null;'#13#10
+               +#9'return {O:o, I:o.ClassType.$Intf[i]};'#13#10
+               +'};'#13#10),
+      (Name : '$Implements';
+       Code : 'function $Implements(o,i) {'#13#10
+               +#9'if (o==null) return false;'#13#10
+               +#9'var cti=o.ClassType.$Intf;'#13#10
+               +#9'return ((cti!=undefined)&&(cti[i]!=undefined));'#13#10
+               +'}'#13#10),
+      (Name : '$ClassImplements';
+       Code : 'function $ClassImplements(c,i) {'#13#10
+               +#9'if (c==null) return false;'#13#10
+               +#9'var cti=c.$Intf;'#13#10
+               +#9'return ((cti!=undefined)&&(cti[i]!=undefined));'#13#10
+               +'}'#13#10),
+      (Name : '$IntfAsClass';
+       Code : 'function $IntfAsClass(i,c) {'#13#10
+               +#9'if (i==null) return null;'#13#10
+               +#9'if ($Is(i.O,c)) return i.O;'#13#10
+               +#9'else throw Exception.Create$1($New(Exception),"Can''t cast interface of \""+i.O.ClassType.$ClassName+"\" to class \""+c.$ClassName+"\"");'#13#10
+               +'}'#13#10;
        Dependency : '$Is' ),
       (Name : '$Idx';
        Code : 'function $Idx(i,l,h,z) {'#13#10
@@ -502,6 +547,12 @@ const
                   +#9#9'arg.splice(0,0,li);'#13#10
                   +#9#9'return lf.apply(li,arg)'#13#10
                +#9'}'#13#10
+               +'}'),
+      (Name : '$Intf';
+       Code : 'function $Intf(i,n) {'#13#10
+               +#9'var arg=Array.prototype.slice.call(arguments);'#13#10
+               +#9'arg.splice(0,2,i.O);'#13#10
+               +#9'return i.I[n].apply(i.O, arg);'#13#10
                +'}'),
       // RTL functions
       (Name : 'Abs';
@@ -823,8 +874,16 @@ begin
       TdwsExprGenericCodeGen.Create(['(', 0, '.toString())']));
 
    RegisterCodeGen(TConvClassExpr,        TJSConvClassExpr.Create);
-   RegisterCodeGen(TAsOpExpr,             TJSAsOpExpr.Create);
+   RegisterCodeGen(TObjAsClassExpr,       TJSObjAsClassExpr.Create);
    RegisterCodeGen(TIsOpExpr,             TJSIsOpExpr.Create);
+
+   RegisterCodeGen(TObjAsIntfExpr,        TJSObjAsIntfExpr.Create);
+   RegisterCodeGen(TIntfAsClassExpr,      TJSIntfAsClassExpr.Create);
+   RegisterCodeGen(TIntfAsIntfExpr,       TJSIntfAsIntfExpr.Create);
+   RegisterCodeGen(TImplementsIntfOpExpr, TJSTImplementsIntfOpExpr.Create);
+   RegisterCodeGen(TClassImplementsIntfOpExpr, TJSTClassImplementsIntfOpExpr.Create);
+   RegisterCodeGen(TIntfCmpExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '===', 1, ')']));
 
    RegisterCodeGen(TAddStrExpr,           TJSBinOpExpr.Create('+', True));
 
@@ -1035,6 +1094,8 @@ begin
    RegisterCodeGen(TMethodStaticExpr,           TJSMethodStaticExpr.Create);
    RegisterCodeGen(TMethodVirtualExpr,          TJSMethodVirtualExpr.Create);
 
+   RegisterCodeGen(TMethodInterfaceExpr,        TJSMethodInterfaceExpr.Create);
+
    RegisterCodeGen(TClassMethodStaticExpr,      TJSClassMethodStaticExpr.Create);
    RegisterCodeGen(TClassMethodVirtualExpr,     TJSClassMethodVirtualExpr.Create);
 
@@ -1089,6 +1150,7 @@ var
    i : Integer;
    elem : TElementSymbol;
 begin
+   if enum.Elements.Count=0 then Exit;
    WriteString('/* ');
    WriteString(enum.QualifiedName);
    WriteStringLn('*/');
@@ -1202,6 +1264,7 @@ var
    i : Integer;
    sym : TSymbol;
    meth : TMethodSymbol;
+   vmtFirst : Boolean;
 begin
    inherited;
 
@@ -1250,42 +1313,72 @@ begin
    for i:=0 to cls.VMTCount-1 do begin
       meth:=cls.VMTMethod(i);
 //      if meth.Name='Destroy' then continue;
-      if meth.ClassSymbol<>cls then begin
+      if meth.StructSymbol<>cls then begin
          WriteString(',');
-         WriteString(MemberName(meth, meth.ClassSymbol));
+         WriteString(MemberName(meth, meth.StructSymbol));
          WriteString(':');
-         WriteSymbolName(meth.ClassSymbol);
+         WriteSymbolName(meth.StructSymbol);
          WriteString('.');
-         WriteString(MemberName(meth, meth.ClassSymbol));
+         WriteString(MemberName(meth, meth.StructSymbol));
          WriteLineEnd;
       end;
       WriteString(',');
-      WriteString(MemberName(meth, meth.ClassSymbol));
+      WriteString(MemberName(meth, meth.StructSymbol));
       WriteString('$v:');
-      if meth.ClassSymbol=cls then begin
+      if meth.StructSymbol=cls then begin
          if meth.Kind=fkConstructor then begin
             WriteString('function(Self){return Self.ClassType.');
-            WriteString(MemberName(meth, meth.ClassSymbol));
+            WriteString(MemberName(meth, meth.StructSymbol));
             WriteStringLn('.apply(Self, arguments)}');
          end else if meth.IsClassMethod then begin
             WriteString('function(Self){return Self.');
-            WriteString(MemberName(meth, meth.ClassSymbol));
+            WriteString(MemberName(meth, meth.StructSymbol));
             WriteStringLn('.apply(Self, arguments)}');
          end else begin
             WriteString('function(Self){return Self.ClassType.');
-            WriteString(MemberName(meth, meth.ClassSymbol));
+            WriteString(MemberName(meth, meth.StructSymbol));
             WriteStringLn('.apply(Self.ClassType, arguments)}');
          end;
       end else begin
-         WriteSymbolName(meth.ClassSymbol);
+         WriteSymbolName(meth.StructSymbol);
          WriteString('.');
-         WriteString(MemberName(meth, meth.ClassSymbol)+'$v');
+         WriteString(MemberName(meth, meth.StructSymbol)+'$v');
          WriteLineEnd;
       end;
    end;
 
    UnIndent;
    WriteStringLn('};');
+
+   if cls.Interfaces<>nil then begin
+      WriteSymbolName(cls);
+      WriteString('.$Intf={');
+      vmtFirst:=True;
+      WriteLineEnd;
+      Indent;
+      cls.Interfaces.Enumerate(
+         procedure (const item : TResolvedInterface)
+         var
+            i : Integer;
+         begin
+            if vmtFirst then
+               vmtFirst:=False
+            else Self.WriteString(',');
+            Self.WriteSymbolName(item.IntfSymbol);
+            Self.WriteString(':[');
+            for i:=0 to High(item.VMT) do begin
+               if i>0 then
+                  Self.WriteString(',');
+               WriteSymbolName(cls);
+               Self.WriteString('.');
+               Self.WriteSymbolName(item.VMT[i]);
+            end;
+            Self.WriteStringLn(']');
+         end);
+      UnIndent;
+      WriteString('};');
+      WriteLineEnd;
+   end;
 end;
 
 // CompileProgramBody
@@ -1585,7 +1678,7 @@ var
    i : Integer;
    sas : TStaticArraySymbol;
    recSym : TRecordSymbol;
-   member : TMemberSymbol;
+   member : TFieldSymbol;
 begin
    typ:=typ.UnAliasedType;
 
@@ -1604,6 +1697,8 @@ begin
    else if typ is TClassOfSymbol then
       WriteString('null')
    else if typ is TFuncSymbol then
+      WriteString('null')
+   else if typ is TInterfaceSymbol then
       WriteString('null')
    else if typ is TEnumerationSymbol then
       WriteString(IntToStr(TEnumerationSymbol(typ).DefaultValue))
@@ -1624,7 +1719,7 @@ begin
       for i:=0 to recSym.Members.Count-1 do begin
          if i>0 then
             WriteString(',');
-         member:=TMemberSymbol(recSym.Members[i]);
+         member:=(recSym.Members[i] as TFieldSymbol);
          WriteSymbolName(member);
          WriteString(':');
          WriteDefaultValue(member.Typ, False);
@@ -1641,7 +1736,7 @@ procedure TdwsJSCodeGen.WriteValue(typ : TTypeSymbol; const data : TData; addr :
 var
    i : Integer;
    recSym : TRecordSymbol;
-   member : TMemberSymbol;
+   member : TFieldSymbol;
    sas : TStaticArraySymbol;
    intf : IUnknown;
 begin
@@ -1674,7 +1769,7 @@ begin
       for i:=0 to recSym.Members.Count-1 do begin
          if i>0 then
             WriteString(',');
-         member:=TMemberSymbol(recSym.Members[i]);
+         member:=(recSym.Members[i] as TFieldSymbol);
          WriteSymbolName(member);
          WriteString(':');
          WriteValue(member.Typ, data, addr+member.Offset);
@@ -1685,6 +1780,11 @@ begin
       if intf=nil then
          WriteString('null')
       else raise ECodeGenUnsupportedSymbol.Create('Non nil class symbol');
+   end else if typ is TInterfaceSymbol then begin
+      intf:=data[addr];
+      if intf=nil then
+         WriteString('null')
+      else raise ECodeGenUnsupportedSymbol.Create('Non nil interface symbol');
    end else begin
       raise ECodeGenUnsupportedSymbol.CreateFmt('Value of type %s',
                                                 [typ.ClassName]);
@@ -1801,7 +1901,7 @@ begin
    proc:=(meth.Executable as TdwsProcedure);
 
    WriteString(',');
-   WriteString(MemberName(meth, meth.ClassSymbol));
+   WriteString(MemberName(meth, meth.StructSymbol));
 
    EnterContext(proc);
    try
@@ -1826,7 +1926,7 @@ end;
 
 // MemberName
 //
-function TdwsJSCodeGen.MemberName(sym : TSymbol; cls : TClassSymbol) : String;
+function TdwsJSCodeGen.MemberName(sym : TSymbol; cls : TStructuredTypeSymbol) : String;
 //var
 //   n : Integer;
 //   match : TSymbol;
@@ -2495,7 +2595,7 @@ end;
 procedure TJSFuncBaseExpr.CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol);
 begin
    if funcSym is TMethodSymbol then
-      codeGen.WriteString((codeGen as TdwsJSCodeGen).MemberName(funcSym, TMethodSymbol(funcSym).ClassSymbol))
+      codeGen.WriteString((codeGen as TdwsJSCodeGen).MemberName(funcSym, TMethodSymbol(funcSym).StructSymbol))
    else codeGen.WriteSymbolName(funcSym);
    if FVirtualCall then
       codeGen.WriteString('$v');
@@ -2602,11 +2702,11 @@ var
 begin
    e:=TMethodStaticExpr(expr);
 
-   if e.MethSym.ClassSymbol.IsExternal then begin
+   if e.MethSym.StructSymbol.IsExternal then begin
       codeGen.Compile(e.BaseExpr);
    end else begin
       codeGen.Dependencies.Add('TObject');
-      codeGen.WriteSymbolName((e.FuncSym as TMethodSymbol).ClassSymbol);
+      codeGen.WriteSymbolName((e.FuncSym as TMethodSymbol).StructSymbol);
    end;
 
    codeGen.WriteString('.');
@@ -2620,7 +2720,7 @@ var
    e : TMethodStaticExpr;
 begin
    e:=TMethodStaticExpr(expr);
-   if not e.MethSym.ClassSymbol.IsExternal then begin
+   if not e.MethSym.StructSymbol.IsExternal then begin
       codeGen.Compile(e.BaseExpr);
       if e.FuncSym.Params.Count>0 then
          codeGen.WriteString(',');
@@ -2670,6 +2770,37 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSMethodInterfaceExpr ------------------
+// ------------------
+
+// CodeGenFunctionName
+//
+procedure TJSMethodInterfaceExpr.CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol);
+begin
+   codeGen.Dependencies.Add('$Intf');
+
+   codeGen.WriteString('$Intf');
+end;
+
+// CodeGenBeginParams
+//
+procedure TJSMethodInterfaceExpr.CodeGenBeginParams(codeGen : TdwsCodeGen; expr : TFuncExprBase);
+var
+   e : TMethodInterfaceExpr;
+begin
+   e:=TMethodInterfaceExpr(expr);
+
+   codeGen.Compile(e.BaseExpr);
+   codeGen.WriteString(',');
+   codeGen.WriteString(IntToStr(e.MethSym.VMTIndex));
+
+   if e.FuncSym.Params.Count>0 then
+      codeGen.WriteString(',');
+
+   inherited;
+end;
+
+// ------------------
 // ------------------ TJSClassMethodStaticExpr ------------------
 // ------------------
 
@@ -2682,7 +2813,7 @@ begin
    codeGen.Dependencies.Add('TObject');
 
    e:=TClassMethodStaticExpr(expr);
-   codeGen.WriteSymbolName((e.FuncSym as TMethodSymbol).ClassSymbol);
+   codeGen.WriteSymbolName((e.FuncSym as TMethodSymbol).StructSymbol);
    codeGen.WriteString('.');
    inherited;
 end;
@@ -2771,7 +2902,7 @@ begin
    codeGen.Dependencies.Add('TObject');
 
    e:=TConstructorStaticExpr(expr);
-   codeGen.WriteSymbolName((e.FuncSym as TMethodSymbol).ClassSymbol);
+   codeGen.WriteSymbolName((e.FuncSym as TMethodSymbol).StructSymbol);
    codeGen.WriteString('.');
    inherited;
 end;
@@ -2900,12 +3031,12 @@ begin
       if methExpr is TMethodVirtualExpr then begin
          codeGen.Compile(methExpr.BaseExpr);
          codeGen.WriteString('.ClassType.');
-         codeGen.WriteString((codeGen as TdwsJSCodeGen).MemberName(methSym, methSym.ClassSymbol));
+         codeGen.WriteString((codeGen as TdwsJSCodeGen).MemberName(methSym, methSym.StructSymbol));
          codeGen.WriteString('$v');
       end else if methExpr is TMethodStaticExpr then begin
-         codeGen.WriteSymbolName(methSym.ClassSymbol);
+         codeGen.WriteSymbolName(methSym.StructSymbol);
          codeGen.WriteString('.');
-         codeGen.WriteString((codeGen as TdwsJSCodeGen).MemberName(methSym, methSym.ClassSymbol))
+         codeGen.WriteString((codeGen as TdwsJSCodeGen).MemberName(methSym, methSym.StructSymbol))
       end else begin
          raise ECodeGenUnknownExpression.CreateFmt('Unsupported AssignFuncExpr for %s', [methExpr.ClassName]);
       end;
@@ -3143,20 +3274,20 @@ begin
 end;
 
 // ------------------
-// ------------------ TJSAsOpExpr ------------------
+// ------------------ TJSObjAsClassExpr ------------------
 // ------------------
 
 // CodeGen
 //
-procedure TJSAsOpExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSObjAsClassExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
-   e : TAsOpExpr;
+   e : TObjAsClassExpr;
 begin
    codeGen.Dependencies.Add('$As');
 
-   e:=TAsOpExpr(expr);
+   e:=TObjAsClassExpr(expr);
    codeGen.WriteString('$As(');
-   codeGen.Compile(e.Left);
+   codeGen.Compile(e.Expr);
    codeGen.WriteString(',');
    codeGen.WriteSymbolName(e.Typ.UnAliasedType);
    codeGen.WriteString(')');
@@ -3180,6 +3311,107 @@ begin
    codeGen.WriteString(',');
    codeGen.WriteSymbolName(e.Right.Typ.UnAliasedType.Typ);
    codeGen.WriteString(')');
+end;
+
+// ------------------
+// ------------------ TJSObjAsIntfExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSObjAsIntfExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TObjAsIntfExpr;
+begin
+   codeGen.Dependencies.Add('$AsIntf');
+
+   e:=TObjAsIntfExpr(expr);
+   codeGen.WriteString('$AsIntf(');
+   codeGen.Compile(e.Expr);
+   codeGen.WriteString(',"');
+   codeGen.WriteString(e.Typ.UnAliasedType.Name);
+   codeGen.WriteString('")');
+end;
+
+// ------------------
+// ------------------ TJSIntfAsClassExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSIntfAsClassExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TIntfAsClassExpr;
+begin
+   codeGen.Dependencies.Add('$IntfAsClass');
+
+   e:=TIntfAsClassExpr(expr);
+   codeGen.WriteString('$IntfAsClass(');
+   codeGen.Compile(e.Expr);
+   codeGen.WriteString(',');
+   codeGen.WriteSymbolName(e.Typ.UnAliasedType);
+   codeGen.WriteString(')');
+end;
+
+// ------------------
+// ------------------ TJSIntfAsIntfExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSIntfAsIntfExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TIntfAsIntfExpr;
+begin
+   codeGen.Dependencies.Add('$AsIntf');
+   codeGen.Dependencies.Add('$IntfAsClass');
+
+   e:=TIntfAsIntfExpr(expr);
+   codeGen.WriteString('$AsIntf($IntfAsClass(');
+   codeGen.Compile(e.Expr);
+   codeGen.WriteString(',TObject),"');
+   codeGen.WriteString(e.Typ.UnAliasedType.Name);
+   codeGen.WriteString('")');
+end;
+
+// ------------------
+// ------------------ TJSTImplementsIntfOpExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSTImplementsIntfOpExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TImplementsIntfOpExpr;
+begin
+   codeGen.Dependencies.Add('$Implements');
+
+   e:=TImplementsIntfOpExpr(expr);
+   codeGen.WriteString('$Implements(');
+   codeGen.Compile(e.Left);
+   codeGen.WriteString(',"');
+   codeGen.WriteSymbolName(e.Right.Typ);
+   codeGen.WriteString('")');
+end;
+
+// ------------------
+// ------------------ TJSTClassImplementsIntfOpExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSTClassImplementsIntfOpExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TClassImplementsIntfOpExpr;
+begin
+   codeGen.Dependencies.Add('$ClassImplements');
+
+   e:=TClassImplementsIntfOpExpr(expr);
+   codeGen.WriteString('$ClassImplements(');
+   codeGen.Compile(e.Left);
+   codeGen.WriteString(',"');
+   codeGen.WriteSymbolName(e.Right.Typ);
+   codeGen.WriteString('")');
 end;
 
 // ------------------
@@ -3228,12 +3460,12 @@ end;
 procedure TJSRecordExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TRecordExpr;
-   member : TMemberSymbol;
+   member : TFieldSymbol;
 begin
    e:=TRecordExpr(expr);
    codeGen.Compile(e.BaseExpr);
    codeGen.WriteString('.');
-   member:=(e.BaseExpr.Typ as TRecordSymbol).MemberAtOffset(e.MemberOffset);
+   member:=(e.BaseExpr.Typ as TRecordSymbol).FieldAtOffset(e.MemberOffset);
    codeGen.WriteSymbolName(member);
 end;
 
@@ -3263,7 +3495,7 @@ begin
 
    codeGen.WriteString('.');
    field:=(e.ObjectExpr.Typ as TClassSymbol).FieldAtOffset(e.FieldAddr);
-   codeGen.WriteString((codeGen as TdwsJSCodeGen).MemberName(field, field.ClassSymbol));
+   codeGen.WriteString((codeGen as TdwsJSCodeGen).MemberName(field, field.StructSymbol));
 end;
 
 // ------------------

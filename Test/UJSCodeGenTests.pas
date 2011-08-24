@@ -67,6 +67,7 @@ begin
    CollectFiles(ExtractFilePath(ParamStr(0))+'Algorithms'+PathDelim, '*.pas', FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'SimpleScripts'+PathDelim, '*.pas', FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'BuildScripts'+PathDelim, '*.dws', FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'InterfacesPass'+PathDelim, '*.pas', FTests);
 
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsMath'+PathDelim, '*.pas', FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsString'+PathDelim, '*.pas', FTests);

@@ -134,7 +134,7 @@ type
          constructor Create(MethKind: TMethodKind; Attributes: TMethodAttributes;
                             const methName: string; const MethParams: array of string;
                             const MethType: string; Cls: TClassSymbol;
-                            aVisibility : TClassVisibility;
+                            aVisibility : TdwsVisibility;
                             Table: TSymbolTable);
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); override;
          procedure Execute(info : TProgramInfo; var ExternalObject: TObject); virtual; abstract;
@@ -518,7 +518,7 @@ end;
 constructor TInternalMethod.Create(MethKind: TMethodKind; Attributes: TMethodAttributes;
                    const methName: string; const MethParams: array of string;
                    const MethType: string; Cls: TClassSymbol;
-                   aVisibility : TClassVisibility;
+                   aVisibility : TdwsVisibility;
                    Table: TSymbolTable);
 var
   sym: TMethodSymbol;

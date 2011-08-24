@@ -73,9 +73,9 @@ var
 begin
    typFloat:=SystemTable.FindSymbol(SYS_FLOAT, cvMagic) as TBaseFloatSymbol;
 
-   typComplex:=TRecordSymbol.Create(SYS_COMPLEX);
-   typComplex.AddMember(TMemberSymbol.Create('Re', typFloat));
-   typComplex.AddMember(TMemberSymbol.Create('Im', typFloat));
+   typComplex:=TRecordSymbol.Create(SYS_COMPLEX, nil);
+   typComplex.AddField(TFieldSymbol.Create('Re', typFloat, cvPublic));
+   typComplex.AddField(TFieldSymbol.Create('Im', typFloat, cvPublic));
 
    systemTable.AddSymbol(typComplex);
 end;

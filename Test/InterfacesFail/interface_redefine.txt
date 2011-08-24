@@ -1,0 +1,2 @@
+Syntax Error: Interface "IMyIntf" already defined [line: 5, column: 16]
+Syntax Error: Name "IMyIntf" already exists [line: 5, column: 26]

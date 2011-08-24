@@ -1,0 +1,4 @@
+A
+---
+Destroy
+end

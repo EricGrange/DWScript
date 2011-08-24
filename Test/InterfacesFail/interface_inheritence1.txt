@@ -1,0 +1,1 @@
+Syntax Error: Class "TImpDescendent" does not implement interface "IBase" [line: 20, column: 6]

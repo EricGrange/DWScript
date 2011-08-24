@@ -383,7 +383,8 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; MemberSymbol: TMemberSymbol);
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr;
+                            fieldSymbol: TFieldSymbol);
          destructor Destroy; override;
 
          property BaseExpr : TDataExpr read FBaseExpr;
@@ -677,19 +678,61 @@ type
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
-   // obj as TMyClass
-   TAsOpExpr = class(TBinaryOpExpr)
+   // cast something as Typ
+   TAsCastExpr = class(TUnaryOpExpr)
       private
          FPos : TScriptPos;
 
       public
-         constructor CreateAs(Prog: TdwsProgram; Left, Right: TTypedExpr; const aPos : TScriptPos);
+         constructor Create(prog : TdwsProgram; const aPos : TScriptPos;
+                            expr : TTypedExpr; toTyp : TTypeSymbol); reintroduce;
          function Eval(exec : TdwsExecution) : Variant; override;
+   end;
+
+   // obj as TMyClass
+   TObjAsClassExpr = class(TAsCastExpr)
+      public
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
    end;
 
    // obj left = obj right
    TObjCmpExpr = class(TBooleanBinOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
+   // interface left = interface right
+   TIntfCmpExpr = class(TBooleanBinOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
+   // obj as Interface
+   TObjAsIntfExpr = class(TAsCastExpr)
+      public
+         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+   end;
+
+   // interface as Interface
+   TIntfAsIntfExpr = class(TAsCastExpr)
+      public
+         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+   end;
+
+   // interface as class
+   TIntfAsClassExpr = class(TAsCastExpr)
+      public
+         procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+   end;
+
+   // obj implements Interface
+   TImplementsIntfOpExpr = class(TBooleanBinOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
+   // class implements Interface
+   TClassImplementsIntfOpExpr = class(TBooleanBinOpExpr)
       public
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
@@ -2932,11 +2975,11 @@ end;
 // Create
 //
 constructor TRecordExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-                               BaseExpr: TDataExpr; MemberSymbol: TMemberSymbol);
+                               BaseExpr: TDataExpr; fieldSymbol: TFieldSymbol);
 begin
-   inherited Create(Prog, Pos, MemberSymbol.Typ);
+   inherited Create(Prog, Pos, fieldSymbol.Typ);
    FBaseExpr := BaseExpr;
-   FMemberOffset := MemberSymbol.Offset;
+   FMemberOffset := fieldSymbol.Offset;
 end;
 
 // Destroy
@@ -3255,31 +3298,36 @@ begin
 end;
 
 // ------------------
-// ------------------ TAsOpExpr ------------------
+// ------------------ TAsCastExpr ------------------
 // ------------------
 
-// CreateAs
+// Create
 //
-constructor TAsOpExpr.CreateAs(Prog: TdwsProgram; Left, Right: TTypedExpr; const aPos : TScriptPos);
+constructor TAsCastExpr.Create(prog : TdwsProgram; const aPos : TScriptPos;
+                               expr : TTypedExpr; toTyp : TTypeSymbol);
 begin
-   inherited Create(prog, left, right);
+   inherited Create(prog, expr);
    FPos:=aPos;
-   FTyp:=right.Typ.Typ;
+   FTyp:=toTyp;
 end;
 
 // Eval
 //
-function TAsOpExpr.Eval(exec : TdwsExecution) : Variant;
+function TAsCastExpr.Eval(exec : TdwsExecution) : Variant;
 var
-   scriptObj: IScriptObj;
+   scriptObj : IScriptObj;
 begin
    EvalAsScriptObj(exec, scriptObj);
    Result:=scriptObj;
 end;
 
+// ------------------
+// ------------------ TObjAsClassExpr ------------------
+// ------------------
+
 // EvalAsScriptObj
 //
-procedure TAsOpExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+procedure TObjAsClassExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
 
    procedure RaiseClassCastFailed;
    begin
@@ -3288,7 +3336,7 @@ procedure TAsOpExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptOb
    end;
 
 begin
-   FLeft.EvalAsScriptObj(exec, Result);
+   Expr.EvalAsScriptObj(exec, Result);
 
    if Assigned(Result) and not (FTyp.IsCompatible(Result.ClassSym)) then
       RaiseClassCastFailed;
@@ -3701,6 +3749,21 @@ end;
 // EvalAsBoolean
 //
 function TObjCmpExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   iLeft, iRight : IScriptObj;
+begin
+   FLeft.EvalAsScriptObj(exec, iLeft);
+   FRight.EvalAsScriptObj(exec, iRight);
+   Result:=(iLeft=iRight);
+end;
+
+// ------------------
+// ------------------ TIntfCmpExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TIntfCmpExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
    iLeft, iRight : IScriptObj;
 begin
@@ -6541,6 +6604,129 @@ end;
 function TArrayCopyExpr.GetSubExprCount : Integer;
 begin
    Result:=3;
+end;
+
+// ------------------
+// ------------------ TObjAsIntfExpr ------------------
+// ------------------
+
+// EvalAsScriptObj
+//
+procedure TObjAsIntfExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+
+   procedure RaiseIntfCastFailed;
+   begin
+      RaiseScriptError(exec, EClassCast.CreatePosFmt(FPos, RTE_ObjCastToIntfFailed,
+                                                     [Result.ClassSym.Caption, FTyp.Caption]))
+   end;
+
+var
+   intf : TScriptInterface;
+   resolved : TResolvedInterface;
+begin
+   Expr.EvalAsScriptObj(exec, Result);
+
+   if Assigned(Result) then begin
+      if not Result.ClassSym.ResolveInterface(TInterfaceSymbol(Typ), resolved) then
+         RaiseIntfCastFailed;
+      intf:=TScriptInterface.Create(Result, resolved);
+      Result:=intf;
+   end;
+end;
+
+// ------------------
+// ------------------ TIntfAsIntfExpr ------------------
+// ------------------
+
+// EvalAsScriptObj
+//
+procedure TIntfAsIntfExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+
+   procedure RaiseIntfCastFailed;
+   begin
+      RaiseScriptError(exec, EClassCast.CreatePosFmt(FPos, RTE_IntfCastToIntfFailed,
+                                                     [Result.ClassSym.Caption, FTyp.Caption]))
+   end;
+
+var
+   intf : TScriptInterface;
+   instance : IScriptObj;
+   resolved : TResolvedInterface;
+begin
+   Expr.EvalAsScriptObj(exec, Result);
+
+   if Assigned(Result) then begin
+      instance:=TScriptInterface(Result.InternalObject).Instance;
+      if not instance.ClassSym.ResolveInterface(TInterfaceSymbol(Typ), resolved) then
+         RaiseIntfCastFailed;
+      intf:=TScriptInterface.Create(instance, resolved);
+      Result:=intf;
+   end;
+end;
+
+// ------------------
+// ------------------ TIntfAsClassExpr ------------------
+// ------------------
+
+// EvalAsScriptObj
+//
+procedure TIntfAsClassExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
+
+   procedure RaiseIntfCastFailed;
+   begin
+      RaiseScriptError(exec, EClassCast.CreatePosFmt(FPos, RTE_IntfCastToObjFailed,
+                                                     [Result.ClassSym.Caption, FTyp.Caption]))
+   end;
+
+var
+   intf : TScriptInterface;
+begin
+   Expr.EvalAsScriptObj(exec, Result);
+
+   if Assigned(Result) then begin
+      intf:=TScriptInterface(Result.InternalObject);
+      Result:=intf.Instance;
+      if not Result.ClassSym.IsCompatible(FTyp) then
+         RaiseIntfCastFailed;
+   end;
+end;
+
+// ------------------
+// ------------------ TImplementsIntfOpExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TImplementsIntfOpExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   scriptObj : IScriptObj;
+   typIntf : TInterfaceSymbol;
+begin
+   Left.EvalAsScriptObj(exec, scriptObj);
+
+   if Assigned(scriptObj) then begin
+      typIntf:=TInterfaceSymbol(Right.EvalAsInteger(exec));
+      Result:=scriptObj.ClassSym.ImplementsInterface(typIntf);
+   end else Result:=False;
+end;
+
+// ------------------
+// ------------------ TClassImplementsIntfOpExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TClassImplementsIntfOpExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   classSym : TClassSymbol;
+   typIntf : TInterfaceSymbol;
+begin
+   classSym:=TClassSymbol(Left.EvalAsInteger(exec));
+
+   if Assigned(classSym) then begin
+      typIntf:=TInterfaceSymbol(Right.EvalAsInteger(exec));
+      Result:=classSym.ImplementsInterface(typIntf);
+   end else Result:=False;
 end;
 
 end.

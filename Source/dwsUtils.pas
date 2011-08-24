@@ -199,6 +199,7 @@ type
       Value : T;
    end;
    TSimpleHashBucketArray<T> = array of TSimpleHashBucket<T>;
+   TSimpleHashProc<T> = reference to procedure (const item : T);
 
    {: Minimalistic open-addressing hash, subclasses must override SameItem and GetItemHashCode.
       HashCodes *MUST* be non zero }
@@ -222,6 +223,7 @@ type
          function Extract(const anItem : T) : Boolean; // true if extracted
          function Contains(const anItem : T) : Boolean;
          function Match(var anItem : T) : Boolean;
+         procedure Enumerate(const callBack : TSimpleHashProc<T>);
          procedure Clear;
 
          property Count : Integer read FCount;
@@ -1437,6 +1439,17 @@ begin
    Result:=LinearFind(anItem, i);
    if Result then
       anItem:=FBuckets[i].Value;
+end;
+
+// Enumerate
+//
+procedure TSimpleHash<T>.Enumerate(const callBack : TSimpleHashProc<T>);
+var
+   i : Integer;
+begin
+   for i:=0 to High(FBuckets) do
+      if FBuckets[i].HashCode<>0 then
+         callBack(FBuckets[i].Value);
 end;
 
 // Clear

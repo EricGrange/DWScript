@@ -412,6 +412,7 @@ type
       FTypString : TTypeSymbol;
       FTypVariant : TTypeSymbol;
       FTypException : TClassSymbol;
+      FTypInterface : TInterfaceSymbol;
    end;
 
    // A script executable program
@@ -459,6 +460,7 @@ type
          property TypString: TTypeSymbol read FBaseTypes.FTypString;
          property TypVariant: TTypeSymbol read FBaseTypes.FTypVariant;
          property TypException: TClassSymbol read FBaseTypes.FTypException;
+         property TypInterface : TInterfaceSymbol read FBaseTypes.FTypInterface;
    end;
 
    // A script main executable program
@@ -1052,6 +1054,12 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
+   // Call of an interface methods
+   TMethodInterfaceExpr = class(TMethodStaticExpr)
+      protected
+         function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
+   end;
+
    // Call to a virtual method
    TMethodVirtualExpr = class(TMethodStaticExpr)
       protected
@@ -1470,6 +1478,25 @@ type
          property Length : Integer read FLength write SetLength;
    end;
 
+   TScriptInterface = class(TScriptObj)
+      private
+         FTyp : TInterfaceSymbol;
+         FInstance : IScriptObj;
+         FVMT : TMethodSymbolArray;
+
+      protected
+
+      public
+         constructor Create(const instance : IScriptObj;
+                            const resolvedInterface : TResolvedInterface;
+                            executionContext : TdwsProgramExecution = nil);
+         procedure BeforeDestruction; override;
+
+         property Typ : TInterfaceSymbol read FTyp;
+         property Instance : IScriptObj read FInstance;
+         property VMT : TMethodSymbolArray read FVMT write FVMT;
+   end;
+
    EdwsVariantTypeCastError = class(EVariantTypeCastError)
       public
          constructor Create(const v : Variant; const desiredType, errMessage : String);
@@ -1481,7 +1508,7 @@ type
    end;
 
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
-                          const Pos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
+                          const scriptPos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
 
 procedure CreateInfoOnSymbol(var result : IInfo; programInfo : TProgramInfo; typeSym : TSymbol;
                              const data : TData; offset : Integer);
@@ -1891,56 +1918,64 @@ end;
 // CreateMethodExpr
 //
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
-                          const Pos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
+                          const scriptPos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
 begin
    // Create the correct TExpr for a method symbol
    Result := nil;
 
-   if (Expr.Typ is TClassOfSymbol) then begin
-      if Expr.IsConstant and TClassOfSymbol(Expr.Typ).TypClassSymbol.IsAbstract then begin
-         if meth.Kind=fkConstructor then
-            prog.CompileMsgs.AddCompilerError(Pos, RTE_InstanceOfAbstractClass)
-         else prog.CompileMsgs.AddCompilerError(Pos, CPE_AbstractClassUsage);
-      end;
-   end;
-   if (not meth.IsClassMethod) and meth.ClassSymbol.IsStatic then
-      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ClassIsStatic, [meth.ClassSymbol.Name]);
+   if meth.StructSymbol is TInterfaceSymbol then begin
 
-   // Return the right expression
-   case meth.Kind of
-      fkFunction, fkProcedure, fkMethod:
-         if meth.IsClassMethod then begin
-            if not ForceStatic and meth.IsVirtual then
-               Result := TClassMethodVirtualExpr.Create(prog, Pos, meth, Expr)
-            else Result := TClassMethodStaticExpr.Create(prog, Pos, meth, Expr)
-         end else begin
-            Assert(RefKind = rkObjRef);
-            if not ForceStatic and meth.IsVirtual then
-               Result := TMethodVirtualExpr.Create(prog, Pos, meth, Expr)
-            else Result := TMethodStaticExpr.Create(prog, Pos, meth, Expr);
+      Result:=TMethodInterfaceExpr.Create(prog, scriptPos, meth, expr);
+
+   end else if meth.StructSymbol is TClassSymbol then begin
+
+      if (Expr.Typ is TClassOfSymbol) then begin
+         if Expr.IsConstant and TClassOfSymbol(Expr.Typ).TypClassSymbol.IsAbstract then begin
+            if meth.Kind=fkConstructor then
+               prog.CompileMsgs.AddCompilerError(scriptPos, RTE_InstanceOfAbstractClass)
+            else prog.CompileMsgs.AddCompilerError(scriptPos, CPE_AbstractClassUsage);
          end;
-      fkConstructor:
-         if RefKind = rkClassOfRef then begin
-            if not ForceStatic and meth.IsVirtual then
-               Result := TConstructorVirtualExpr.Create(prog, Pos, meth, Expr)
-            else Result := TConstructorStaticExpr.Create(prog, Pos, meth, Expr);
-         end else begin
-            if not ((prog is TdwsProcedure) and (TdwsProcedure(prog).Func.Kind=fkConstructor)) then
-               prog.CompileMsgs.AddCompilerWarning(Pos, CPE_UnexpectedConstructor);
-            if not ForceStatic and meth.IsVirtual then
-               Result := TConstructorVirtualObjExpr.Create(prog, Pos, meth, Expr)
-            else Result := TConstructorStaticObjExpr.Create(prog, Pos, meth, Expr);
-         end;
-      fkDestructor:
-         begin
-            Assert(RefKind = rkObjRef);
-            if not ForceStatic and meth.IsVirtual then
-               Result := TDestructorVirtualExpr.Create(prog, Pos, meth, Expr)
-            else Result := TDestructorStaticExpr.Create(prog, Pos, meth, Expr)
-         end;
-   else
-      Assert(False);
-   end;
+      end;
+      if (not meth.IsClassMethod) and meth.StructSymbol.IsStatic then
+         prog.CompileMsgs.AddCompilerErrorFmt(scriptPos, CPE_ClassIsStatic, [meth.StructSymbol.Name]);
+
+      // Return the right expression
+      case meth.Kind of
+         fkFunction, fkProcedure, fkMethod:
+            if meth.IsClassMethod then begin
+               if not ForceStatic and meth.IsVirtual then
+                  Result := TClassMethodVirtualExpr.Create(prog, scriptPos, meth, Expr)
+               else Result := TClassMethodStaticExpr.Create(prog, scriptPos, meth, Expr)
+            end else begin
+               Assert(RefKind = rkObjRef);
+               if not ForceStatic and meth.IsVirtual then
+                  Result := TMethodVirtualExpr.Create(prog, scriptPos, meth, Expr)
+               else Result := TMethodStaticExpr.Create(prog, scriptPos, meth, Expr);
+            end;
+         fkConstructor:
+            if RefKind = rkClassOfRef then begin
+               if not ForceStatic and meth.IsVirtual then
+                  Result := TConstructorVirtualExpr.Create(prog, scriptPos, meth, Expr)
+               else Result := TConstructorStaticExpr.Create(prog, scriptPos, meth, Expr);
+            end else begin
+               if not ((prog is TdwsProcedure) and (TdwsProcedure(prog).Func.Kind=fkConstructor)) then
+                  prog.CompileMsgs.AddCompilerWarning(scriptPos, CPE_UnexpectedConstructor);
+               if not ForceStatic and meth.IsVirtual then
+                  Result := TConstructorVirtualObjExpr.Create(prog, scriptPos, meth, Expr)
+               else Result := TConstructorStaticObjExpr.Create(prog, scriptPos, meth, Expr);
+            end;
+         fkDestructor:
+            begin
+               Assert(RefKind = rkObjRef);
+               if not ForceStatic and meth.IsVirtual then
+                  Result := TDestructorVirtualExpr.Create(prog, scriptPos, meth, Expr)
+               else Result := TDestructorStaticExpr.Create(prog, scriptPos, meth, Expr)
+            end;
+      else
+         Assert(False);
+      end;
+
+   end else Assert(False);
 end;
 
 // CreateInfoOnSymbol
@@ -2512,8 +2547,9 @@ begin
    FBaseTypes.FTypString := SystemTable.FindSymbol(SYS_STRING, cvMagic) as TTypeSymbol;
    FBaseTypes.FTypVariant := SystemTable.FindSymbol(SYS_VARIANT, cvMagic) as TTypeSymbol;
    FBaseTypes.FTypNil := TNilSymbol.Create;
-   FBaseTypes.FTypObject := TClassSymbol(SystemTable.FindSymbol(SYS_TOBJECT, cvMagic));
+   FBaseTypes.FTypObject := SystemTable.FindSymbol(SYS_TOBJECT, cvMagic) as TClassSymbol;
    FBaseTypes.FTypException := SystemTable.FindSymbol(SYS_EXCEPTION, cvMagic) as TClassSymbol;
+   FBaseTypes.FTypInterface := SystemTable.FindSymbol(SYS_IINTERFACE, cvMagic) as TInterfaceSymbol;
 end;
 
 // Destroy
@@ -4885,6 +4921,24 @@ begin
 end;
 
 // ------------------
+// ------------------ TMethodInterfaceExpr ------------------
+// ------------------
+
+// PreCall
+//
+function TMethodInterfaceExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
+var
+   scriptObj : IScriptObj;
+   intfObj : TScriptInterface;
+begin
+   FBaseExpr.EvalAsScriptObj(exec, scriptObj);
+   intfObj:=TScriptInterface(scriptObj.InternalObject);
+   exec.SelfScriptObject^:=intfObj.Instance;
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, intfObj.Instance);
+   Result:=intfObj.VMT[TMethodSymbol(FFunc).VMTIndex];
+end;
+
+// ------------------
 // ------------------ TMethodVirtualExpr ------------------
 // ------------------
 
@@ -5587,7 +5641,7 @@ end;
 constructor TScriptObj.Create(aClassSym : TClassSymbol; executionContext : TdwsProgramExecution);
 var
    i : Integer;
-   classSymIter : TClassSymbol;
+   classSymIter : TStructuredTypeSymbol;
    externalClass : TClassSymbol;
    fs : TFieldSymbol;
    member : TSymbol;
@@ -5736,9 +5790,6 @@ constructor TScriptDynamicArray.Create(aTyp : TDynamicArraySymbol);
 begin
    FTyp:=aTyp;
    FElementSize:=aTyp.Typ.Size;
-
-   if executionContext<>nil then
-      executionContext.ScriptObjCreated(Self);
 end;
 
 // SetLength
@@ -5812,6 +5863,35 @@ begin
    System.SetLength(FData, rawCount);
    for i:=rawIndex to rawIndex+rawCount-1 do
       FData[i-rawIndex]:=src[i];
+end;
+
+// ------------------
+// ------------------ TScriptInterface ------------------
+// ------------------
+
+// Create
+//
+constructor TScriptInterface.Create(const instance : IScriptObj;
+                                    const resolvedInterface : TResolvedInterface;
+                                    executionContext : TdwsProgramExecution = nil);
+begin
+   FInstance:=instance;
+   FTyp:=resolvedInterface.IntfSymbol;
+   FVMT:=resolvedInterface.VMT;
+
+   if executionContext<>nil then begin
+      executionContext.ScriptObjCreated(Self);
+      FExecutionContext:=executionContext;
+   end;
+end;
+
+// BeforeDestruction
+//
+procedure TScriptInterface.BeforeDestruction;
+begin
+   if Assigned(FExecutionContext) then
+      ExecutionContext.ScriptObjDestroyed(Self);
+   inherited;
 end;
 
 // ------------------
@@ -6454,11 +6534,11 @@ var
 begin
   sym := TRecordSymbol(FTypeSym).Members.FindLocal(s);
 
-  if not Assigned(sym) then
+  if not (sym is TFieldSymbol) then
     raise Exception.CreateFmt(RTE_NoRecordMemberFound, [s, FTypeSym.Caption]);
 
   SetChild(Result, FProgramInfo, sym.Typ, FData,
-           FOffset + TMemberSymbol(sym).Offset, FDataMaster);
+           FOffset + TFieldSymbol(sym).Offset, FDataMaster);
 end;
 
 // GetFieldMemberNames
@@ -6474,7 +6554,7 @@ begin
       symTable:=TRecordSymbol(FTypeSym).Members;
       for i:=0 to symTable.Count-1 do begin
          member:=symTable[i];
-         if member is TMemberSymbol then
+         if member is TFieldSymbol then
             FMembersCache.AddObject(member.Name, member);
       end;
    end;
@@ -7700,7 +7780,7 @@ constructor TMethodObjExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
   BaseExpr: TDataExpr);
 begin
   Assert(BaseExpr.Typ is TMethodSymbol);
-  inherited Create(Prog,Pos,TMethodSymbol(BaseExpr.Typ).ClassSymbol);
+  inherited Create(Prog,Pos,TMethodSymbol(BaseExpr.Typ).StructSymbol);
   FBaseExpr := BaseExpr;
 end;
 

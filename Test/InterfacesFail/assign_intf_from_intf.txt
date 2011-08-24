@@ -1,0 +1,2 @@
+Syntax Error: Class "TObject" does not implement interface "IMyInterface" [line: 16, column: 6]
+Syntax Error: Incompatible types: Cannot assign "IMyInterface" to "IOtherInterface" [line: 18, column: 11]

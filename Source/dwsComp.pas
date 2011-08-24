@@ -391,7 +391,7 @@ type
 
    TdwsField = class(TdwsVariable)
       private
-         FVisibility : TClassVisibility;
+         FVisibility : TdwsVisibility;
 
       protected
          function GetDisplayName: string; override;
@@ -399,7 +399,7 @@ type
       public
          constructor Create(Collection: TCollection); override;
          function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
-         property Visibility : TClassVisibility read FVisibility write FVisibility default cvPublic;
+         property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
    end;
 
    TdwsFields = class(TdwsCollection)
@@ -418,7 +418,7 @@ type
     FIsDefault: Boolean;
     FIndexType: TDataType;
     FIndexValue: Variant;
-    FVisibility : TClassVisibility;
+    FVisibility : TdwsVisibility;
   protected
     function GetDisplayName: string; override;
     function GetIsDefault: Boolean;
@@ -432,7 +432,7 @@ type
     function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
   published
     property DataType: TDataType read FDataType write FDataType;
-    property Visibility : TClassVisibility read FVisibility write FVisibility default cvPublic;
+    property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
     property ReadAccess: string read FReadAccess write FReadAccess;
     property WriteAccess: string read FWriteAccess write FWriteAccess;
     property Parameters: TdwsParameters read FParameters write SetParameters stored StoreParameters;
@@ -527,7 +527,7 @@ type
     FKind : TMethodKind;
     FOnEval : TMethodEvalEvent;
     FResultType : TDataType;
-    FVisibility : TClassVisibility;
+    FVisibility : TdwsVisibility;
     procedure SetResultType(const Value: TDataType);
   protected
     function GetDisplayName: string; override;
@@ -538,7 +538,7 @@ type
     function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
   published
     property Attributes: TMethodAttributes read FAttributes write FAttributes default [];
-    property Visibility : TClassVisibility read FVisibility write FVisibility default cvPublic;
+    property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
     property Kind: TMethodKind read FKind write FKind;
     property OnEval: TMethodEvalEvent read FOnEval write FOnEval;
     property ResultType: TDataType read FResultType write SetResultType;
@@ -555,7 +555,7 @@ type
   private
     FAttributes: TMethodAttributes;
     FOnAssignExternalObject: TAssignExternalObjectEvent;
-    FVisibility : TClassVisibility;
+    FVisibility : TdwsVisibility;
     function GetResultType: string;
   protected
     function GetDisplayName: string; override;
@@ -565,7 +565,7 @@ type
     procedure Assign(Source: TPersistent); override;
     function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
   published
-    property Visibility : TClassVisibility read FVisibility write FVisibility default cvPublic;
+    property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
     property Attributes: TMethodAttributes read FAttributes write FAttributes default [];
     property OnEval: TAssignExternalObjectEvent read FOnAssignExternalObject write FOnAssignExternalObject;
     property ResultType: string read GetResultType;
@@ -580,7 +580,7 @@ type
 
    TdwsClassConstant = class(TdwsConstant)
       private
-         FVisibility : TClassVisibility;
+         FVisibility : TdwsVisibility;
       protected
          function GetDisplayName: string; override;
       public
@@ -588,7 +588,7 @@ type
          procedure Assign(Source: TPersistent); override;
          function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
       published
-         property Visibility : TClassVisibility read FVisibility write FVisibility default cvPublic;
+         property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
    end;
 
    TdwsClassConstants = class(TdwsCollection)
@@ -2750,7 +2750,7 @@ function TdwsMember.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil):
 begin
   FIsGenerating := True;
   CheckName(TRecordSymbol(ParentSym).Members, Name);
-  Result := TMemberSymbol.Create(Name, GetDataType(Table, DataType));
+  Result := TFieldSymbol.Create(Name, GetDataType(Table, DataType), cvPublic);
 end;
 
 { TdwsRecord }
@@ -2781,10 +2781,10 @@ begin
   FIsGenerating := True;
   CheckName(Table, Name);
 
-  Result := TRecordSymbol.Create(Name);
+  Result := TRecordSymbol.Create(Name, nil);
   try
     for x := 0 to FMembers.Count - 1 do
-      TRecordSymbol(Result).AddMember(TMemberSymbol(TdwsMember(FMembers.Items[x]).Generate(Table, Result)));
+      TRecordSymbol(Result).AddField(TFieldSymbol(TdwsMember(FMembers.Items[x]).Generate(Table, Result)));
     GetUnit.Table.AddSymbol(Result);
   except
     Result.Free;

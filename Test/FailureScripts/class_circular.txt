@@ -1,0 +1,1 @@
+Syntax Error: Class "TClassA" not fully implemented. [line: 3, column: 22]

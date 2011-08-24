@@ -1,0 +1,4 @@
+A
+B
+Imp does not implement IBase
+A

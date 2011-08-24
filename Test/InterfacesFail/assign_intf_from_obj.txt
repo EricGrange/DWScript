@@ -1,0 +1,1 @@
+Syntax Error: Class "TImp" does not implement interface "IMyInterface" [line: 12, column: 6]

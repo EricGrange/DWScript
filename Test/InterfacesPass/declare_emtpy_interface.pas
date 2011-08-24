@@ -1,0 +1,3 @@
+type
+  IMyInterface = interface 
+  end;
