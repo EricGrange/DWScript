@@ -136,26 +136,21 @@ const
       +'c.NullValue;'#13#10
       ;
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
 begin
    FUnit.ExposeRTTI(TypeInfo(TSimpleClass));
 
    prog:=FCompiler.Compile(cSimpleClassTest);
-   try
-      CheckEquals('', prog.Msgs.AsInfo, 'Compile');
-      prog.Execute;
-      CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
-      CheckEquals('012653', exec.Result.ToString, 'Exec Result');
-   finally
-      prog.Free;
-   end;
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+   exec:=prog.Execute;
+   CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
+   CheckEquals('012653', exec.Result.ToString, 'Exec Result');
 
    prog:=FCompiler.Compile(cSimpleClassFailNullValueTest);
-   try
-      CheckNotEquals('', prog.Msgs.AsInfo, 'Compile');
-   finally
-      prog.Free;
-   end;
+
+   CheckNotEquals('', prog.Msgs.AsInfo, 'Compile');
 end;
 
 // SimpleEnumeration
@@ -163,25 +158,25 @@ end;
 procedure TRTTIExposeTests.SimpleEnumeration;
 const
    cSimpleEnumeration =
-       'Print(IntToStr(seZero));'#13#10
-      +'Print(IntToStr(seOne));'#13#10
-      +'Print(IntToStr(seTwo));'#13#10
+       'Print(IntToStr(Ord(seZero)));'#13#10
+      +'Print(IntToStr(Ord(seOne)));'#13#10
+      +'Print(IntToStr(Ord(seTwo)));'#13#10
       ;
 
 var
-   prog : TdwsProgram;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
 begin
    FUnit.ExposeRTTI(TypeInfo(TSimpleEnumeration));
 
    prog:=FCompiler.Compile(cSimpleEnumeration);
-   try
-      CheckEquals('', prog.Msgs.AsInfo, 'Compile');
-      prog.Execute;
-      CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
-      CheckEquals('012', exec.Result.ToString, 'Exec Result');
-   finally
-      prog.Free;
-   end;
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.Execute;
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
+   CheckEquals('012', exec.Result.ToString, 'Exec Result');
 end;
 
 // ------------------------------------------------------------------

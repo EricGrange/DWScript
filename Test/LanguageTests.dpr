@@ -1,12 +1,11 @@
 program LanguageTests;
 
 {$IFNDEF VER200}
-{$WEAKLINKRTTI ON}
+{.$WEAKLINKRTTI ON}
 {.$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
 {$ENDIF}
 
 uses
-  //FastMM4,
   Classes,
   Forms,
   TestFrameWork,
@@ -29,7 +28,8 @@ uses
   UMemoryTests in 'UMemoryTests.pas',
   dwsMathComplexFunctions in '..\Source\dwsMathComplexFunctions.pas',
   dwsOperators in '..\Source\dwsOperators.pas',
-  UBuildTests in 'UBuildTests.pas';
+  UBuildTests in 'UBuildTests.pas',
+  URTTIExposeTests in 'URTTIExposeTests.pas';
 
 {$R *.res}
 

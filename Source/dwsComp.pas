@@ -720,10 +720,12 @@ type
     property Elements: TdwsElements read FElements write FElements;
   end;
 
-  TdwsEnumerations = class(TdwsCollection)
-  protected
-    class function GetSymbolClass: TdwsSymbolClass; override;
-  end;
+   TdwsEnumerations = class(TdwsCollection)
+      protected
+         class function GetSymbolClass: TdwsSymbolClass; override;
+      public
+         function Add : TdwsEnumeration;
+   end;
 
   TdwsEnumerationsClass = class of TdwsEnumerations;
 
@@ -3554,6 +3556,13 @@ end;
 class function TdwsEnumerations.GetSymbolClass: TdwsSymbolClass;
 begin
   Result := TdwsEnumeration;
+end;
+
+// Add
+//
+function TdwsEnumerations.Add : TdwsEnumeration;
+begin
+   Result:=TdwsEnumeration(inherited Add);
 end;
 
 { TdwsConstants }

@@ -6,6 +6,17 @@ uses SysUtils, RTTI, TypInfo, dwsComp, dwsSymbols, dwsExprs;
 
 type
 
+   TBaseTypeID = (
+      typIntegerID,
+      typFloatID,
+      typStringID,
+      typBooleanID,
+      typVariantID,
+      typConnectorID,
+      typClassID,
+      typNoneID
+   );
+
    TdwsRTTIExposerOption = (
       eoExposeVirtual
       );
@@ -390,7 +401,7 @@ var
    helper : TdwsRTTIHelper;
    invoker : TdwsRTTIConstructorInvoker;
 begin
-   Result:=(scriptClass.Constructors.Add as TdwsConstructor);
+   Result:=scriptClass.Constructors.Add;
    Result.Name:=dwsPublished.NameOf(meth);
 
    if eoExposeVirtual in options then begin
@@ -416,7 +427,7 @@ var
    helper : TdwsRTTIHelper;
    invoker : TdwsRTTIMethodInvoker;
 begin
-   Result:=(scriptClass.Methods.Add as TdwsMethod);
+   Result:=scriptClass.Methods.Add;
    Result.Name:=dwsPublished.NameOf(meth);
    Result.ResultType:=RTTITypeToScriptType(meth.ReturnType);
 
@@ -445,7 +456,7 @@ var
    setterMethod, getterMethod : TdwsMethod;
    setterParam : TdwsParameter;
 begin
-   Result:=(scriptClass.Properties.Add as TdwsProperty);
+   Result:=scriptClass.Properties.Add;
    Result.Name:=dwsPublished.NameOf(prop);
    Result.DataType:=RTTITypeToScriptType(prop.PropertyType);
 
@@ -493,7 +504,7 @@ var
    enumName : String;
    element : TdwsElement;
 begin
-   Result:=(Enumerations.Add as TdwsEnumeration);
+   Result:=Enumerations.Add;
    Result.Name:=dwsPublished.NameOf(enum);
 
    for i:=enum.MinValue to enum.MaxValue do begin
