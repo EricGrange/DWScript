@@ -4619,10 +4619,14 @@ begin
          if not FTok.TestDelete(ttEND) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
 
-         for i:=0 to interfaces.Count-1 do begin
-            intfTyp:=interfaces[i];
-            if not Result.AddInterface(intfTyp, cvPrivate, missingMethod) then
-               FMsgs.AddCompilerErrorFmt(namePos, CPE_MissingMethodForInterface, [missingMethod.Name, name]);
+         if not FMsgs.HasErrors then begin
+            // resolve interface tables
+            for i:=0 to interfaces.Count-1 do begin
+               intfTyp:=interfaces[i];
+               if not Result.AddInterface(intfTyp, cvPrivate, missingMethod) then
+                  FMsgs.AddCompilerErrorFmt(namePos, CPE_MissingMethodForInterface, [missingMethod.Name, name]);
+            end;
+            Result.AddOverriddenInterfaces;
          end;
 
       except

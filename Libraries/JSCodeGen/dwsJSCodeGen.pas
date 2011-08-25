@@ -53,6 +53,7 @@ type
          procedure CompileMethod(meth : TMethodSymbol);
 
          procedure DoCompileClassSymbol(cls : TClassSymbol); override;
+         procedure DoCompileInterfaceTable(cls : TClassSymbol);
          procedure DoCompileFuncSymbol(func : TSourceFuncSymbol); override;
 
       public
@@ -1264,7 +1265,6 @@ var
    i : Integer;
    sym : TSymbol;
    meth : TMethodSymbol;
-   vmtFirst : Boolean;
 begin
    inherited;
 
@@ -1350,35 +1350,68 @@ begin
    UnIndent;
    WriteStringLn('};');
 
-   if cls.Interfaces<>nil then begin
-      WriteSymbolName(cls);
-      WriteString('.$Intf={');
-      vmtFirst:=True;
-      WriteLineEnd;
-      Indent;
-      cls.Interfaces.Enumerate(
-         procedure (const item : TResolvedInterface)
-         var
-            i : Integer;
-         begin
-            if vmtFirst then
-               vmtFirst:=False
-            else Self.WriteString(',');
-            Self.WriteSymbolName(item.IntfSymbol);
-            Self.WriteString(':[');
-            for i:=0 to High(item.VMT) do begin
-               if i>0 then
-                  Self.WriteString(',');
-               WriteSymbolName(cls);
-               Self.WriteString('.');
-               Self.WriteSymbolName(item.VMT[i]);
-            end;
-            Self.WriteStringLn(']');
-         end);
-      UnIndent;
-      WriteString('};');
-      WriteLineEnd;
+   DoCompileInterfaceTable(cls);
+end;
+
+// DoCompileInterfaceTable
+//
+procedure TdwsJSCodeGen.DoCompileInterfaceTable(cls : TClassSymbol);
+var
+   needIntfTable : Boolean;
+   iter : TClassSymbol;
+   writtenInterfaces : TList;
+begin
+   needIntfTable:=False;
+   iter:=cls;
+   while iter<>nil do begin
+      if iter.Interfaces<>nil then begin
+         needIntfTable:=True;
+         Break;
+      end;
+      iter:=iter.Parent;
    end;
+   if not needIntfTable then Exit;
+
+   WriteSymbolName(cls);
+   WriteString('.$Intf={');
+   WriteLineEnd;
+   Indent;
+
+   writtenInterfaces:=TList.Create;
+   try
+      iter:=cls;
+      while iter<>nil do begin
+         if iter.Interfaces<>nil then begin
+            iter.Interfaces.Enumerate(
+               procedure (const item : TResolvedInterface)
+               var
+                  i : Integer;
+               begin
+                  if writtenInterfaces.IndexOf(item.IntfSymbol)>=0 then Exit;
+                  if writtenInterfaces.Count>0 then
+                     Self.WriteString(',');
+                  writtenInterfaces.Add(item.IntfSymbol);
+                  Self.WriteSymbolName(item.IntfSymbol);
+                  Self.WriteString(':[');
+                  for i:=0 to High(item.VMT) do begin
+                     if i>0 then
+                        Self.WriteString(',');
+                     WriteSymbolName(iter);
+                     Self.WriteString('.');
+                     Self.WriteSymbolName(item.VMT[i]);
+                  end;
+                  Self.WriteStringLn(']');
+               end);
+         end;
+         iter:=iter.Parent;
+      end;
+   finally
+      writtenInterfaces.Free;
+   end;
+
+   UnIndent;
+   WriteString('};');
+   WriteLineEnd;
 end;
 
 // CompileProgramBody

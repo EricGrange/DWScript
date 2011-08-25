@@ -1235,7 +1235,9 @@ type
          procedure AddConst(sym : TClassConstSymbol);
 
          function AddInterface(intfSym : TInterfaceSymbol; visibility : TdwsVisibility;
-                                var missingMethod : TMethodSymbol) : Boolean; // True if added
+                               var missingMethod : TMethodSymbol) : Boolean; // True if added
+         function AddOverriddenInterface(const ancestorResolved : TResolvedInterface) : Boolean; // True if added
+         procedure AddOverriddenInterfaces;
          function ResolveInterface(intfSym : TInterfaceSymbol; var resolved : TResolvedInterface) : Boolean;
          function ImplementsInterface(intfSym : TInterfaceSymbol) : Boolean;
 
@@ -3124,6 +3126,53 @@ begin
    FInterfaces.Add(resolved);
    missingMethod:=nil;
    Result:=True;
+end;
+
+// AddOverriddenInterface
+//
+function TClassSymbol.AddOverriddenInterface(const ancestorResolved : TResolvedInterface) : Boolean;
+var
+   i : Integer;
+   newResolved : TResolvedInterface;
+   meth : TMethodSymbol;
+begin
+   Result:=False;
+   newResolved:=ancestorResolved;
+   if (FInterfaces<>nil) and FInterfaces.Contains(newResolved) then Exit;
+   SetLength(newResolved.VMT, Length(newResolved.VMT)); // make unique
+   for i:=0 to High(newResolved.VMT) do begin
+      meth:=newResolved.VMT[i];
+      if meth.IsVirtual then begin
+         if FVirtualMethodTable[meth.VMTIndex]<>meth then begin
+            newResolved.VMT[i]:=FVirtualMethodTable[meth.VMTIndex];
+            Result:=True;
+         end;
+      end;
+   end;
+   if Result then begin
+      if FInterfaces=nil then
+         FInterfaces:=TResolvedInterfaces.Create;
+      FInterfaces.Add(newResolved);
+   end;
+end;
+
+// AddOverriddenInterfaces
+//
+procedure TClassSymbol.AddOverriddenInterfaces;
+var
+   iter : TClassSymbol;
+begin
+   iter:=Parent;
+   while iter<>nil do begin
+      if iter.Interfaces<>nil then begin
+         iter.Interfaces.Enumerate(
+            procedure (const item : TResolvedInterface)
+            begin
+               Self.AddOverriddenInterface(item);
+            end);
+      end;
+      iter:=iter.Parent;
+   end;
 end;
 
 // ResolveInterface
