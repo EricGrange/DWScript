@@ -4751,6 +4751,8 @@ begin
                   Result.DefaultProperty := propSym;
 
             end;
+         else
+            Break;
          end;
 
       end;
