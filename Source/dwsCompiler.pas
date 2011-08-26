@@ -2000,7 +2000,8 @@ begin
                                                 cFuncKindToString[Result.Kind]])
                   else if Result.IsClassMethod<>meth.IsClassMethod then
                      FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongMethodType)
-                  else if (Result.Typ<>meth.Typ) then
+                  else if    ((Result.Typ=nil) and (meth.Typ<>nil))
+                          or ((Result.Typ<>nil) and not Result.Typ.IsOfType(meth.Typ)) then
                      FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongResultType)
                   else if not OverrideParamsCheck(Result, meth) then
                      FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongParameterList)

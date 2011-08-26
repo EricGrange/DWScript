@@ -950,6 +950,7 @@ type
       public
          constructor Create(const name : String; elementType, indexType : TTypeSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
+         function IsOfType(typSym : TTypeSymbol) : Boolean; override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
@@ -4521,10 +4522,20 @@ begin
    Data[Offset]:=IScriptObj(TScriptDynamicArray.Create(Self));
 end;
 
+// IsOfType
+//
+function TDynamicArraySymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
+begin
+   Result:=   (typSym=Self)
+           or ((typSym is TDynamicArraySymbol) and typSym.Typ.IsOfType(Typ));
+end;
+
+// IsCompatible
+//
 function TDynamicArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-  Result :=     (TypSym is TDynamicArraySymbol)
-            and (Typ.IsCompatible(TypSym.Typ) or (TypSym.Typ is TNilSymbol));
+  Result :=     (typSym is TDynamicArraySymbol)
+            and (Typ.IsCompatible(typSym.Typ) or (typSym.Typ is TNilSymbol));
 end;
 
 { TStaticArraySymbol }
