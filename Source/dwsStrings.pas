@@ -449,6 +449,7 @@ const
   RTE_NoMemberOfClass = '"%s" isn''t a member of class "%s"';
   RTE_NoClassNoMethod = '"%s" is not a class and has no method "%s"';
   RTE_MethodNotFoundInClass = 'Method "%s" not found in class "%s"';
+  RTE_FieldNotFoundInClass = 'Field "%s" not found in class "%s"';
 
   RTE_CanNotReadComplexType = 'To read a value of complex type "%s" use .Data!';
   RTE_CanNotSetValueForType = 'To write values of type "%s" use .Data!';
@@ -464,6 +465,7 @@ const
   RTE_NoRecordMemberFound = 'No member "%s" found in record "%s"';
   RTE_NoArray = '"%s" is not an array!';
   RTE_TooManyIndices = 'Too many indices';
+  RTE_TooFewIndices = 'Too few indices';
 
   // Compiler Strings
 

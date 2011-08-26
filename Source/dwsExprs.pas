@@ -1297,6 +1297,7 @@ type
       function GetValueAsString : String;
       function GetValueAsDataString : RawByteString;
       function GetValueAsInteger : Int64;
+      function GetValueAsBoolean : Boolean;
       function GetValueAsFloat : Double;
       function GetInherited: IInfo;
       procedure SetData(const Data: TData);
@@ -1315,6 +1316,7 @@ type
       property ValueAsString : String read GetValueAsString;
       property ValueAsDataString : RawByteString read GetValueAsDataString;
       property ValueAsInteger : Int64 read GetValueAsInteger;
+      property ValueAsBoolean : Boolean read GetValueAsBoolean;
       property ValueAsFloat : Double read GetValueAsFloat;
    end;
 
@@ -1561,6 +1563,7 @@ type
          function GetValueAsString : String; virtual;
          function GetValueAsDataString : RawByteString; virtual;
          function GetValueAsInteger : Int64; virtual;
+         function GetValueAsBoolean : Boolean; virtual;
          function GetValueAsFloat : Double; virtual;
          function GetInherited: IInfo; virtual;
          procedure SetData(const Value: TData); virtual;
@@ -1645,9 +1648,12 @@ type
    end;
 
    TInfoDynamicArray = class(TInfoData)
-      function Element(const Indices: array of Integer): IInfo; override;
-      function GetMember(const s: string): IInfo; override;
-      function GetValueAsString : String; override;
+      private
+         function SelfDynArray : TScriptDynamicArray;
+
+         function Element(const Indices: array of Integer): IInfo; override;
+         function GetMember(const s: string): IInfo; override;
+         function GetValueAsString : String; override;
    end;
 
    TInfoFunc = class(TInfo)
@@ -5996,6 +6002,13 @@ begin
    Result:=GetValue;
 end;
 
+// GetValueAsBoolean
+//
+function TInfo.GetValueAsBoolean : Boolean;
+begin
+   Result:=GetValue;
+end;
+
 // GetValueAsFloat
 //
 function TInfo.GetValueAsFloat : Double;
@@ -6616,52 +6629,72 @@ begin
    Result:=FTypeSym.Description;
 end;
 
-{ TInfoDynamicArray }
+// ------------------
+// ------------------ TInfoDynamicArray ------------------
+// ------------------
 
-function TInfoDynamicArray.Element(const Indices: array of Integer): IInfo;
+// SelfDynArray
+//
+function TInfoDynamicArray.SelfDynArray : TScriptDynamicArray;
 var
-  x: Integer;
-  elemTyp: TSymbol;
-  elemOff: Integer;
+   obj : IScriptObj;
 begin
-  elemTyp := FTypeSym;
-  elemOff := FOffset;
-  for x := 0 to Length(Indices) - 1 do
-  begin
-    if Assigned(elemTyp) and (elemTyp.BaseType is TDynamicArraySymbol) then
-      elemTyp := elemTyp.BaseType.Typ
-    else
-      raise Exception.Create(RTE_TooManyIndices);
-
-    elemOff := FData[elemOff];
-
-    if Indices[x] >= FData[elemOff - 1] then
-      raise Exception.CreateFmt(RTE_ArrayUpperBoundExceeded,[x]);
-
-    if Indices[x] < 0 then
-      raise Exception.CreateFmt(RTE_ArrayLowerBoundExceeded,[x]);
-
-    elemOff := elemOff + Indices[x] * elemTyp.Size;
-  end;
-
-  SetChild(Result, FProgramInfo, elemTyp, FData, elemOff, FDataMaster);
+   obj:=IScriptObj(IUnknown(FData[FOffset]));
+   if obj<>nil then
+      Result:=obj.InternalObject as TScriptDynamicArray
+   else Result:=nil;
 end;
 
+// Element
+//
+function TInfoDynamicArray.Element(const Indices: array of Integer): IInfo;
+var
+   x : Integer;
+   elemTyp : TSymbol;
+   elemOff : Integer;
+   dynArray : TScriptDynamicArray;
+begin
+   dynArray:=SelfDynArray;
+
+   elemTyp := FTypeSym;
+   elemOff := 0;
+   if Length(Indices)=0 then
+      raise Exception.Create(RTE_TooFewIndices);
+
+   for x := 0 to High(Indices) do begin
+      if Assigned(elemTyp) and (elemTyp.BaseType is TDynamicArraySymbol) then
+         elemTyp := elemTyp.BaseType.Typ
+      else raise Exception.Create(RTE_TooManyIndices);
+
+      if Indices[x]>=dynArray.Length then
+         raise Exception.CreateFmt(RTE_ArrayUpperBoundExceeded,[x]);
+
+      if Indices[x]<0 then
+         raise Exception.CreateFmt(RTE_ArrayLowerBoundExceeded,[x]);
+
+      elemOff := Indices[x] * SelfDynArray.ElementSize;
+
+      if x<High(Indices) then
+         dynArray := IScriptObj(IUnknown(dynArray.Data[elemOff])).InternalObject as TScriptDynamicArray;
+   end;
+
+   SetChild(Result, FProgramInfo, elemTyp, dynArray.Data, elemOff, FDataMaster);
+end;
+
+// GetMember
+//
 function TInfoDynamicArray.GetMember(const s: string): IInfo;
 var
-  l : Integer;
-  elemOff: Integer;
+   dynArray : TScriptDynamicArray;
 begin
-  elemOff := FData[FOffset];
-  l := FData[elemOff - 1];
-  if SameText('length', s) then
-    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, l)
-  else if SameText('low', s) then
-    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, 0)
-  else if SameText('high', s) then
-    Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, l - 1)
-  else
-    raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
+   dynArray:=SelfDynArray;
+   if SameText('length', s) then
+      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, dynArray.Length)
+   else if SameText('low', s) then
+      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, 0)
+   else if SameText('high', s) then
+      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, dynArray.Length - 1)
+   else raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
 end;
 
 // GetValueAsString
