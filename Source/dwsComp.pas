@@ -747,10 +747,14 @@ type
     property OnWriteVar: TWriteVarEvent read FOnWriteVar write FOnWriteVar;
   end;
 
-  TdwsInstances = class(TdwsCollection)
-  protected
-    class function GetSymbolClass : TdwsSymbolClass; override;
-  end;
+   TdwsInstance = class;
+
+   TdwsInstances = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+      public
+         function Add : TdwsInstance;
+   end;
 
   TdwsInstancesClass = class of TdwsInstances;
 
@@ -819,6 +823,7 @@ type
         FVariables: TdwsVariables;
         FOperators : TdwsOperators;
         FTable: TUnitSymbolTable;
+        FOnAfterInitUnitTable : TNotifyEvent;
 
       protected
         FCollections: array[0..10] of TdwsCollection;
@@ -893,6 +898,8 @@ type
         property UnitName;
         property Variables: TdwsVariables read FVariables write SetVariables stored StoreVariables;
         property StaticSymbols;
+
+        property OnAfterInitUnitTable : TNotifyEvent read FOnAfterInitUnitTable write FOnAfterInitUnitTable;
    end;
 
   TCustomInstantiateFunc = class(TAnonymousFunction, IObjectOwner)
@@ -1854,7 +1861,7 @@ begin
     instFunc.ClassSym := TClassSymbol(typSym);
     funcSym.Executable := ICallable(instFunc);
 
-    externalVar := TExternalVarSymbol.Create(Name, typSym);
+    externalVar := TExternalVarSymbol.Create(AName, typSym);
     externalVar.ReadFunc := funcSym;
     Table.AddSymbol(externalVar);
   end
@@ -1864,12 +1871,14 @@ end;
 
 procedure TdwsUnit.InitUnitTable(SystemTable, UnitSyms: TSymbolTable; operators : TOperators; UnitTable: TUnitSymbolTable);
 begin
-  FTable := UnitTable;
-  try
-    inherited InitUnitTable(SystemTable, UnitSyms, operators, UnitTable);
-  finally
-    FTable := nil;
-  end;
+   FTable := UnitTable;
+   try
+      inherited InitUnitTable(SystemTable, UnitSyms, operators, UnitTable);
+      if Assigned(FOnAfterInitUnitTable) then
+         FOnAfterInitUnitTable(Self);
+   finally
+      FTable := nil;
+   end;
 end;
 
 procedure TdwsUnit.HandleDynamicCreate(Info: TProgramInfo; var ExtObject: TObject);
@@ -3626,6 +3635,13 @@ end;
 class function TdwsInstances.GetSymbolClass: TdwsSymbolClass;
 begin
   Result := TdwsInstance;
+end;
+
+// Add
+//
+function TdwsInstances.Add : TdwsInstance;
+begin
+   Result:=TdwsInstance(inherited Add);
 end;
 
 { TdwsFields }

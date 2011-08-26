@@ -16,9 +16,12 @@ type
          procedure SetUp; override;
          procedure TearDown; override;
 
+         procedure ExposeInstancesAfterInitTable(Sender : TObject);
+
       published
          procedure SimpleClass;
          procedure SimpleEnumeration;
+         procedure ExposeInstances;
    end;
 
 // ------------------------------------------------------------------
@@ -55,6 +58,13 @@ type
    end;
 
    TSimpleEnumeration = (seZero, seOne, seTwo);
+
+   TTestInstance = class
+      private
+         FValue : String;
+      published
+         property Value : String read FValue;
+   end;
 
 // Create
 //
@@ -177,6 +187,55 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
    CheckEquals('012', exec.Result.ToString, 'Exec Result');
+end;
+
+var
+   i1, i2 : TTestInstance;
+
+// ExposeInstancesAfterInitTable
+//
+procedure TRTTIExposeTests.ExposeInstancesAfterInitTable(Sender : TObject);
+begin
+   FUnit.ExposeInstanceToUnit('instanceOne', 'TTestInstance', i1);
+   FUnit.ExposeInstanceToUnit('instanceTwo', 'TTestInstance', i2);
+end;
+
+// ExposeInstances
+//
+procedure TRTTIExposeTests.ExposeInstances;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   FUnit.ExposeRTTI(TypeInfo(TTestInstance), [eoNoFreeOnCleanup]);
+
+   FUnit.OnAfterInitUnitTable:=ExposeInstancesAfterInitTable;
+
+   i1:=TTestInstance.Create;
+   i2:=TTestInstance.Create;
+
+   try
+      i1.FValue:='Hello ';
+      i2.FValue:='World!';
+
+      prog:=FCompiler.Compile( 'Print(instanceOne.Value);'
+                              +'Print(instanceTwo.Value);');
+
+      CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+      exec:=prog.Execute;
+
+      CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
+      CheckEquals('Hello World!', exec.Result.ToString, 'Exec Result');
+
+   finally
+
+      FUnit.OnAfterInitUnitTable:=nil;
+
+      i1.Free;
+      i2.Free;
+
+   end;
 end;
 
 // ------------------------------------------------------------------

@@ -18,7 +18,7 @@ type
    );
 
    TdwsRTTIExposerOption = (
-      eoExposeVirtual
+      eoExposeVirtual, eoNoFreeOnCleanup
       );
 
    TdwsRTTIExposerOptions = set of TdwsRTTIExposerOption;
@@ -64,7 +64,7 @@ type
          procedure DoStandardCleanUp(externalObject: TObject);
 
       public
-         procedure ExposeRTTI(ATypeInfo : Pointer; const options : TdwsRTTIExposerOptions = []);
+         function ExposeRTTI(ATypeInfo : Pointer; const options : TdwsRTTIExposerOptions = []) : TdwsSymbol;
 
          class function TypeKindToScriptBaseType(const aType : TTypeKind) : TBaseTypeId; static;
          class function TypeKindToScriptType(const aType : TTypeKind) : String; static;
@@ -257,15 +257,15 @@ end;
 
 // ExposeRTTI
 //
-procedure TdwsRTTIExposer.ExposeRTTI(ATypeInfo : Pointer; const options : TdwsRTTIExposerOptions = []);
+function TdwsRTTIExposer.ExposeRTTI(ATypeInfo : Pointer; const options : TdwsRTTIExposerOptions = []) : TdwsSymbol;
 var
    typ : TRttiType;
 begin
    typ:=vRTTIContext.GetType(ATypeInfo);
    if typ is TRttiInstanceType then
-      ExposeRTTIClass(TRttiInstanceType(typ), options)
+      Result:=ExposeRTTIClass(TRttiInstanceType(typ), options)
    else if typ is TRttiEnumerationType then
-      ExposeRTTIEnumeration(TRttiEnumerationType(typ), options)
+      Result:=ExposeRTTIEnumeration(TRttiEnumerationType(typ), options)
    else raise Exception.CreateFmt('Expose unsupported for %s', [typ.ClassName]);
 end;
 
@@ -366,7 +366,8 @@ var
 begin
    Result:=Classes.Add;
    Result.Name:=dwsPublished.NameOf(cls);
-   Result.OnCleanUp:=DoStandardCleanUp;
+   if not (eoNoFreeOnCleanup in options) then
+      Result.OnCleanUp:=DoStandardCleanUp;
 
    helper:=TdwsRTTIHelper.Create(cls);
    Result.HelperObject:=helper;
