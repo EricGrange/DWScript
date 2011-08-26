@@ -174,6 +174,7 @@ const
   CPE_UsesExpected = '"USES" expected';
   CPE_FieldMethodUnknown = 'Field/method "%s" not found!';
   CPE_IncompatibleType = 'Field/method "%s" has an incompatible type';
+  CPE_IncompatibleParameters = 'Method "%s" has incompatible parameters';
   CPE_ProcedureMethodExpected = 'Procedure expected';
   CPE_FunctionMethodExpected = 'Function expected';
   CPE_FunctionOrValueExpected = 'Function or value expected';
@@ -185,7 +186,7 @@ const
   CPE_MethodNotImplemented = 'Method "%s" of class "%s" not implemented';
   CPE_CantWriteProperty = 'Can''t write properties of complex type (record, array)';
   CPE_CantUseCombinedAssignmentOnProperty = 'Can''t use combined assignment on property';
-  CPE_MultipleDefaultProperties = 'Class "%s" already has a default property';
+  CPE_MultipleDefaultProperties = '"%s" already has "%s" as default property';
   CPE_ParamsExpected = 'Parameters expected';
 
   // Interface declaration

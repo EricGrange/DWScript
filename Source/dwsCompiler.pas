@@ -1706,25 +1706,28 @@ begin
       FContextMap.OpenContext(typePos, typNew);
 
    try
-      try
-         // typOld = typNew if a forwarded class declaration was overwritten
-         if typOld <> typNew then begin
-            CheckName(name);
-            FProg.Table.AddSymbol(typNew);
-         end  else begin
-            // Handle overwriting forwards in Dictionary
-            // Original symbol was a forward. Update symbol entry
-            // If the type is in the SymbolDictionary (disabled dictionary would leave pointer nil),
-            if Assigned(oldSymPos) then              // update original position information
-               oldSymPos.SymbolUsages := [suForward]; // update old postion to reflect that the type was forwarded
-         end;
+      if typNew.Name<>'' then begin
+         try
+            // typOld = typNew if a forwarded class declaration was overwritten
+            if typOld <> typNew then begin
+               CheckName(name);
+               if typNew.Name<>'' then
+                  FProg.Table.AddSymbol(typNew);
+            end  else begin
+               // Handle overwriting forwards in Dictionary
+               // Original symbol was a forward. Update symbol entry
+               // If the type is in the SymbolDictionary (disabled dictionary would leave pointer nil),
+               if Assigned(oldSymPos) then              // update original position information
+                  oldSymPos.SymbolUsages := [suForward]; // update old postion to reflect that the type was forwarded
+            end;
 
-         // Add symbol position as being the type being declared (works for forwards too)
-         if coSymbolDictionary in FCompilerOptions then
-            FSymbolDictionary.AddTypeSymbol(typNew, typePos, [suDeclaration]);
-      except
-         typNew.Free;
-         raise;
+            // Add symbol position as being the type being declared (works for forwards too)
+            if coSymbolDictionary in FCompilerOptions then
+               FSymbolDictionary.AddTypeSymbol(typNew, typePos, [suDeclaration]);
+         except
+            typNew.Free;
+            raise;
+         end;
       end;
    finally
       if coContextMap in FCompilerOptions then
@@ -3176,14 +3179,14 @@ end;
 function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                                  expecting : TTypeSymbol = nil) : TProgramExpr;
 
-   function GetDefaultProperty(cls: TClassSymbol): TPropertySymbol;
+   function GetDefaultProperty(struct : TStructuredTypeSymbol) : TPropertySymbol;
    begin
-      while Assigned(cls) and not Assigned(cls.DefaultProperty) do
-         cls := cls.Parent;
+      while Assigned(struct) and not Assigned(struct.DefaultProperty) do
+         struct:=struct.Parent;
 
-      if Assigned(cls) then
-         Result := cls.DefaultProperty
-      else Result := nil;
+      if Assigned(struct) then
+         Result:=struct.DefaultProperty
+      else Result:=nil;
    end;
 
    function ReadArrayExpr(var baseExpr : TDataExpr) : TProgramExpr;
@@ -3399,11 +3402,11 @@ begin
          // Arrays
          else if FTok.Test(ttALEFT) then begin
             if Assigned(Result) then begin
-               if baseType is TClassSymbol then begin
+               if baseType is TStructuredTypeSymbol then begin
                   // array property
-                  DefaultProperty := GetDefaultProperty(TClassSymbol(baseType));
-                  if Assigned(DefaultProperty) then
-                     Result := ReadPropertyExpr(TDataExpr(Result), DefaultProperty, IsWrite)
+                  defaultProperty := GetDefaultProperty(TStructuredTypeSymbol(baseType));
+                  if Assigned(defaultProperty) then
+                     Result := ReadPropertyExpr(TDataExpr(Result), defaultProperty, IsWrite)
                   else FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NoDefaultProperty,
                                                 [TDataExpr(Result).Typ.Name]);
                end else begin
@@ -4073,9 +4076,8 @@ begin
                                  max[0].EvalAsInteger(FExec));
             try
                // add outer arrays
-               Assert(FProg.Table is TProgramSymbolTable);
                for x := 1 to min.Count - 1 do begin
-                  TProgramSymbolTable(FProg.Table).AddToDestructionList(Result);
+                  FProg.RootTable.AddToDestructionList(Result);
                   Result := TStaticArraySymbol.Create('', Result, min[0].Typ,
                                  min[x].EvalAsInteger(FExec),
                                  max[x].EvalAsInteger(FExec));
@@ -4436,7 +4438,6 @@ var
    intfTyp : TInterfaceSymbol;
    interfaces : TList;
    missingMethod : TMethodSymbol;
-   defProp : Boolean;
    isInSymbolTable: Boolean;
    visibility : TdwsVisibility;
    tt : TTokenType;
@@ -4454,12 +4455,14 @@ begin
       end else begin
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [sym.Name]);
       end;
+      if Result=nil then // make anonymous to keep compiling
+         Result:=TClassSymbol.Create('', FUnitSymbol);
    end;
 
    isInSymbolTable := Assigned(Result);
 
    if not Assigned(Result) then
-      Result:=TClassSymbol.Create(TypeName, FUnitSymbol);
+      Result:=TClassSymbol.Create(typeName, FUnitSymbol);
 
    // forwarded declaration
    if FTok.Test(ttSEMI) then begin
@@ -4575,20 +4578,7 @@ begin
                ttPROPERTY : begin
 
                   propSym := ReadPropertyDecl(Result, visibility);
-                  defProp := False;
-
-                  // Array-Prop can be default
-                  if propSym.HasArrayIndices then begin
-                     defProp := FTok.TestDelete(ttDEFAULT);
-                     if defProp then begin
-                        ReadSemiColon;
-                        if Assigned(Result.DefaultProperty) then
-                           FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_MultipleDefaultProperties, [Result.Name]);
-                     end;
-                  end;
                   Result.AddProperty(propSym);
-                  if defProp then
-                     Result.DefaultProperty := propSym;
 
                end;
                ttCONST : begin
@@ -4692,7 +4682,6 @@ var
    namePos, hotPos : TScriptPos;
    tt : TTokenType;
    propSym : TPropertySymbol;
-   defProp : Boolean;
 begin
    hotPos:=FTok.HotPos;
    sym:=FProg.Table.FindSymbol(typeName, cvMagic);
@@ -4701,9 +4690,9 @@ begin
       if sym is TInterfaceSymbol then
          FMsgs.AddCompilerErrorFmt(hotPos, CPE_InterfaceAlreadyDefined, [sym.Name])
       else FMsgs.AddCompilerErrorFmt(hotPos, CPE_NameAlreadyExists, [sym.Name]);
-   end;
-
-   Result:=TInterfaceSymbol.Create(typeName, FUnitSymbol);
+      // keep compiling, make it anonymous
+      Result:=TInterfaceSymbol.Create('', FUnitSymbol);
+   end else Result:=TInterfaceSymbol.Create(typeName, FUnitSymbol);
 
    try
 
@@ -4735,20 +4724,7 @@ begin
             ttPROPERTY : begin
 
                propSym := ReadPropertyDecl(Result, cvPublished);
-               defProp := False;
-
-               // Array-Prop can be default
-               if propSym.HasArrayIndices then begin
-                  defProp := FTok.TestDelete(ttDEFAULT);
-                  if defProp then begin
-                     ReadSemiColon;
-                     if Assigned(Result.DefaultProperty) then
-                        FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_MultipleDefaultProperties, [Result.Name]);
-                  end;
-               end;
                Result.AddProperty(propSym);
-               if defProp then
-                  Result.DefaultProperty := propSym;
 
             end;
          else
@@ -4919,14 +4895,15 @@ begin
                FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_FieldMethodUnknown, [name]);
             end;
 
-            if sym is TMethodSymbol then begin
-               if not CheckFuncParams(arrayIndices, TMethodSymbol(sym).Params, indexTyp) then
-                  FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncompatibleType, [name]);
-            end else if arrayIndices.Count > 0 then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_FunctionMethodExpected);
-
             if Result.Typ <> sym.Typ then
-               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncompatibleType, [name]);
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleType, [name])
+            else if sym is TMethodSymbol then begin
+               if not (TFuncSymbol(sym).Kind in [fkFunction, fkMethod]) then
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionMethodExpected)
+               else if not CheckFuncParams(arrayIndices, TMethodSymbol(sym).Params, indexTyp) then
+                  FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleParameters, [name]);
+            end else if arrayIndices.Count > 0 then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionMethodExpected);
 
             Result.ReadSym := sym;
             if coSymbolDictionary in FCompilerOptions then
@@ -4949,12 +4926,13 @@ begin
             end;
 
             if sym is TFuncSymbol then begin
-               if TFuncSymbol(sym).Kind <> fkProcedure then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcedureMethodExpected);
-               if not CheckFuncParams(arrayIndices, TFuncSymbol(sym).Params, indexTyp, Result.Typ) then
-                  FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncompatibleType, [name]);
+               if    (not (TFuncSymbol(sym).Kind in [fkProcedure, fkMethod]))
+                  or (TFuncSymbol(sym).Typ<>nil) then
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_ProcedureMethodExpected)
+               else if not CheckFuncParams(arrayIndices, TFuncSymbol(sym).Params, indexTyp, Result.Typ) then
+                  FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleParameters, [name]);
             end else if Result.Typ <> sym.Typ then
-               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncompatibleWriteSymbol, [Name]);
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleWriteSymbol, [Name]);
 
             Result.WriteSym := sym;
             if coSymbolDictionary in FCompilerOptions then
@@ -4970,6 +4948,17 @@ begin
          for x := 0 to arrayIndices.Count - 1 do
             Result.ArrayIndices.AddSymbol(arrayIndices[x]);
          arrayIndices.Clear;
+
+         // Array-Prop can be default
+         if Result.HasArrayIndices then begin
+            if FTok.TestDelete(ttDEFAULT) then begin
+               ReadSemiColon;
+               if structSym.DefaultProperty<>nil then
+                  FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_MultipleDefaultProperties,
+                                            [structSym.Name, structSym.DefaultProperty.Name])
+               else structSym.DefaultProperty:=Result;
+            end;
+         end;
 
       except
          // Remove reference to symbol (gets freed)
@@ -5311,10 +5300,8 @@ begin
    end;
 
    // Ensure that unnamed symbols will be freed
-   if Result.Name='' then begin
-      Assert(FProg.Table is TProgramSymbolTable);
-      TProgramSymbolTable(FProg.Table).AddToDestructionList(Result);
-   end;
+   if Result.Name='' then
+      FProg.RootTable.AddToDestructionList(Result);
 end;
 
 // ReadExpr

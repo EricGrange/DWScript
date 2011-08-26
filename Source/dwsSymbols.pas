@@ -1387,7 +1387,8 @@ type
          constructor Create(Parent: TSymbolTable = nil; AddrGenerator: TAddrGenerator = nil);
          destructor Destroy; override;
 
-         procedure AddToDestructionList(Sym: TSymbol);
+         procedure AddToDestructionList(sym : TSymbol);
+         procedure RemoveFromDestructionList(sym : TSymbol);
    end;
 
    // TUnitSymbolTable
@@ -4277,9 +4278,16 @@ end;
 
 // AddToDestructionList
 //
-procedure TProgramSymbolTable.AddToDestructionList(Sym: TSymbol);
+procedure TProgramSymbolTable.AddToDestructionList(sym : TSymbol);
 begin
    FDestructionList.Add(sym);
+end;
+
+// RemoveFromDestructionList
+//
+procedure TProgramSymbolTable.RemoveFromDestructionList(sym : TSymbol);
+begin
+   FDestructionList.Remove(sym);
 end;
 
 // ------------------
