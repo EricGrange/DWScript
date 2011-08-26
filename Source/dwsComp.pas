@@ -1084,9 +1084,11 @@ begin
    if FExtensions.Count>0 then begin
       FCompiler.OnReadInstr:=FExtensions.ReadInstr;
       FCompiler.OnSectionChanged:=FExtensions.SectionChanged;
+      FCompiler.OnReadScript:=FExtensions.ReadScript;
    end else begin
       FCompiler.OnReadInstr:=nil;
       FCompiler.OnSectionChanged:=nil;
+      FCompiler.OnReadScript:=nil;
    end;
 end;
 

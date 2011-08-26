@@ -43,6 +43,7 @@ type
   TdwsCompiler = class;
   TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
   TCompilerSectionChangedEvent = procedure (compiler : TdwsCompiler) of object;
+  TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile; scriptType : TScriptSourceType) of object;
 
   TdwsFilter = class;
 
@@ -239,7 +240,7 @@ type
    //
    TdwsCompiler = class
    private
-      FCompilerOptions : TCompilerOptions;
+      FOptions : TCompilerOptions;
       FTok : TTokenizer;
       FProg : TdwsProgram;
       FMainProg : TdwsMainProgram;
@@ -272,6 +273,7 @@ type
 
       FOnReadInstr : TCompilerReadInstrEvent;
       FOnSectionChanged : TCompilerSectionChangedEvent;
+      FOnReadScript : TCompilerReadScriptEvent;
 
       function Optimize : Boolean;
 
@@ -289,6 +291,7 @@ type
 
       function OpenStreamForFile(const scriptName : String) : TStream;
       function GetScriptSource(const scriptName : String) : String;
+      function GetIncludeScriptSource(const scriptName : String) : String;
 
       function GetVarExpr(dataSym : TDataSymbol): TVarExpr;
 
@@ -409,7 +412,7 @@ type
       procedure ReadUnitHeader;
       function ReadVarDecl : TNoResultExpr;
       function ReadWhile : TNoResultExpr;
-      function ResolveUnitReferences(conf : TdwsConfiguration) : TIdwsUnitList;
+      function ResolveUnitReferences : TIdwsUnitList;
 
    protected
       procedure EnterLoop(loopExpr : TNoResultExpr);
@@ -444,7 +447,7 @@ type
       procedure CleanupAfterCompile;
 
       procedure CheckFilterDependencies(confUnits : TIdwsUnitList);
-      procedure HandleUnitDependencies(conf : TdwsConfiguration);
+      procedure HandleUnitDependencies;
       function  HandleExplicitDependency(const unitName : String) : TUnitSymbol;
 
    public
@@ -460,11 +463,13 @@ type
       procedure WarnForVarUsage(varExpr : TVarExpr; const pos : TScriptPos);
 
       property CurrentProg : TdwsProgram read FProg write FProg;
+      property Options : TCompilerOptions read FOptions write FOptions;
       property UnitSection : TdwsUnitSection read FUnitSection write FUnitSection;
       property Tokenizer : TTokenizer read FTok write FTok;
 
       property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
       property OnSectionChanged : TCompilerSectionChangedEvent read FOnSectionChanged write FOnSectionChanged;
+      property OnReadScript : TCompilerReadScriptEvent read FOnReadScript write FOnReadScript;
    end;
 
   TdwsDefaultResult = class(TdwsResult)
@@ -618,7 +623,7 @@ begin
    inherited;
 end;
 
-function TdwsCompiler.ResolveUnitReferences(conf : TdwsConfiguration): TIdwsUnitList;
+function TdwsCompiler.ResolveUnitReferences : TIdwsUnitList;
 var
    x, y, z : Integer;
    expectedUnitCount : Integer;
@@ -629,16 +634,16 @@ var
    curUnit : IdwsUnit;
 begin
    // initialize reference count vector
-   expectedUnitCount:=conf.Units.Count;
+   expectedUnitCount:=FUnits.Count;
    SetLength(refCount, expectedUnitCount);
 
    // Calculate number of outgoing references
-   for x := 0 to conf.Units.Count-1 do begin
-      curUnit:=conf.Units[x];
-      if (ufImplicitUse in curUnit.GetUnitFlags) or not (coExplicitUnitUses in conf.CompilerOptions) then begin
+   for x := 0 to FUnits.Count-1 do begin
+      curUnit:=FUnits[x];
+      if (ufImplicitUse in curUnit.GetUnitFlags) or not (coExplicitUnitUses in FOptions) then begin
          deps := curUnit.GetDependencies;
          for y := 0 to deps.Count - 1 do begin
-            if conf.Units.IndexOf(deps[y]) < 0 then
+            if FUnits.IndexOf(deps[y]) < 0 then
                FMsgs.AddCompilerStopFmt(cNullPos, CPE_UnitNotFound, [deps[y], curUnit.GetUnitName]);
          end;
          refCount[x] := deps.Count;
@@ -656,8 +661,8 @@ begin
     while changed do
     begin
       changed := False;
-      for x := 0 to conf.Units.Count - 1 do begin
-        curUnit:=conf.Units[x];
+      for x := 0 to FUnits.Count - 1 do begin
+        curUnit:=FUnits[x];
         // Find unit that is not referencing other units
         if refCount[x] = 0 then
         begin
@@ -665,9 +670,9 @@ begin
 
           // Remove the references to this unit from all other units
           unitName := curUnit.GetUnitName;
-          for y := 0 to conf.Units.Count - 1 do
+          for y := 0 to FUnits.Count - 1 do
           begin
-            deps := conf.Units[y].GetDependencies;
+            deps := FUnits[y].GetDependencies;
             for z := 0 to deps.Count - 1 do
               if UnicodeSameText(deps[z], unitName) then
                 Dec(refCount[y]);
@@ -823,7 +828,7 @@ procedure TdwsCompiler.SetupCompileOptions(conf : TdwsConfiguration);
 begin
    FFilter := conf.Filter;
    FConnectors := conf.Connectors;
-   FCompilerOptions := conf.CompilerOptions;
+   FOptions := conf.CompilerOptions;
    FUnits := TIdwsUnitList.Create;
    FUnits.AddUnits(conf.Units);
    FOnInclude := conf.OnInclude;
@@ -911,8 +916,6 @@ begin
    try
       CheckFilterDependencies(aConf.Units);
 
-      HandleUnitDependencies(aConf);
-
       // Filter stuff
       if Assigned(FFilter) then
          codeText := FFilter.Process(aCodeText, FMsgs)
@@ -960,7 +963,7 @@ end;
 
 // HandleUnitDependencies
 //
-procedure TdwsCompiler.HandleUnitDependencies(conf : TdwsConfiguration);
+procedure TdwsCompiler.HandleUnitDependencies;
 var
    i : Integer;
    unitsResolved: TIdwsUnitList;
@@ -970,7 +973,7 @@ var
    unitSymbol : TUnitSymbol;
 begin
    // Handle unit dependencies
-   unitsResolved := ResolveUnitReferences(conf);
+   unitsResolved := ResolveUnitReferences;//(conf);
 
    unitTables := TList.Create;
    unitsTable := TSymbolTable.Create;
@@ -978,7 +981,7 @@ begin
       try
          // Get the symboltables of the units
          for i := 0 to unitsResolved.Count - 1 do begin
-            unitTable := unitsResolved[i].GetUnitTable(conf.SystemTable, unitsTable, FOperators);
+            unitTable := unitsResolved[i].GetUnitTable(FSystemTable, unitsTable, FOperators);
             unitTables.Add(unitTable);
             unitsTable.AddSymbol(TUnitSymbol.Create(unitsResolved[i].GetUnitName, unitTable));
          end;
@@ -1035,15 +1038,19 @@ begin
          unitResolved:=FOnNeedUnit(unitName, unitSource);
          if unitResolved<>nil then
             FUnits.Add(unitResolved)
-         else if unitSource<>'' then begin
-            srcUnit:=TSourceUnit.Create(unitName, FProg.Root.RootTable);
-            unitResolved:=srcUnit;
-            FUnits.Add(unitResolved);
-            try
-               SwitchTokenizerToUnit(srcUnit, unitSource);
-            except
-               srcUnit.Symbol.IsTableOwner:=True;
-               raise;
+         else begin
+            if unitSource='' then
+               unitSource:=GetScriptSource(unitName);
+            if unitSource<>'' then begin
+               srcUnit:=TSourceUnit.Create(unitName, FProg.Root.RootTable);
+               unitResolved:=srcUnit;
+               FUnits.Add(unitResolved);
+               try
+                  SwitchTokenizerToUnit(srcUnit, unitSource);
+               except
+                  srcUnit.Symbol.IsTableOwner:=True;
+                  raise;
+               end;
             end;
          end;
       end;
@@ -1114,9 +1121,11 @@ begin
       sourceFile.Code:=codeText;
 
       FMainProg.ResetExprs;
+      FUnitSymbol:=nil;
+      FUnitSection:=secMixed;
 
       // Start compilation
-      FProg.Expr := ReadScript(sourceFile, stMain);
+      FProg.Expr := ReadScript(sourceFile, stInclude);
 
       // Initialize symbol table
       FProg.Table.Initialize(FMsgs);
@@ -1137,7 +1146,7 @@ end;
 //
 function TdwsCompiler.Optimize : Boolean;
 begin
-   Result:=(coOptimize in FCompilerOptions) and (not FMsgs.HasErrors);
+   Result:=(coOptimize in FOptions) and (not FMsgs.HasErrors);
 end;
 
 // ReadRootBlock
@@ -1229,11 +1238,18 @@ begin
    try
       FTok.SwitchHandler:=ReadSwitch;
 
+      if Assigned(FOnReadScript) then
+         FOnReadScript(Self, sourceFile, scriptType);
+
       FMainProg.SourceList.Add(sourceFile.Name, sourceFile, scriptType);
 
-      if scriptType=stUnit then begin
-         FUnitSection:=secHeader;
-         ReadUnitHeader;
+      case scriptType of
+         stMain :
+            HandleUnitDependencies;
+         stUnit : begin
+            FUnitSection:=secHeader;
+            ReadUnitHeader;
+         end;
       end;
 
       Result:=ReadRootBlock([], finalToken);
@@ -1490,7 +1506,7 @@ begin
    initExpr := nil;
    try
       // Conditionally pass in dynamic array
-      if coSymbolDictionary in FCompilerOptions then
+      if coSymbolDictionary in FOptions then
          ReadNameList(names, posArray)     // use overloaded version
       else ReadNameList(names);
 
@@ -1544,7 +1560,7 @@ begin
 
             // Initialize with an expression
 
-            if coSymbolDictionary in FCompilerOptions then
+            if coSymbolDictionary in FOptions then
                FSymbolDictionary.AddValueSymbol(sym, posArray[x],
                                                [suDeclaration, suReference, suWrite]);
 
@@ -1553,7 +1569,7 @@ begin
 
          end else begin
 
-            if coSymbolDictionary in FCompilerOptions then
+            if coSymbolDictionary in FOptions then
                FSymbolDictionary.AddValueSymbol(sym, posArray[x], [suDeclaration]);
 
             if sym.Typ is TArraySymbol then begin
@@ -1664,7 +1680,7 @@ begin
                Result:=constSymbolClass.Create(name, typ, val);
             end;
 
-            if coSymbolDictionary in FCompilerOptions then
+            if coSymbolDictionary in FOptions then
                FSymbolDictionary.AddConstSymbol(Result, constPos, [suDeclaration]);
          finally
             if detachTyp then begin
@@ -1694,7 +1710,7 @@ begin
 
    typOld := FProg.Table.FindTypeSymbol(name, cvMagic);
    oldSymPos := nil;
-   if coSymbolDictionary in FCompilerOptions then begin
+   if coSymbolDictionary in FOptions then begin
       if Assigned(typOld) then
          oldSymPos := FSymbolDictionary.FindSymbolUsage(typOld, suDeclaration);  // may be nil
    end;
@@ -1702,7 +1718,7 @@ begin
    typNew := ReadType(name, tcDeclaration);
 
    // Wrap whole type declarations in a context.
-   if coContextMap in FCompilerOptions then
+   if coContextMap in FOptions then
       FContextMap.OpenContext(typePos, typNew);
 
    try
@@ -1722,7 +1738,7 @@ begin
             end;
 
             // Add symbol position as being the type being declared (works for forwards too)
-            if coSymbolDictionary in FCompilerOptions then
+            if coSymbolDictionary in FOptions then
                FSymbolDictionary.AddTypeSymbol(typNew, typePos, [suDeclaration]);
          except
             typNew.Free;
@@ -1730,7 +1746,7 @@ begin
          end;
       end;
    finally
-      if coContextMap in FCompilerOptions then
+      if coContextMap in FOptions then
          FContextMap.CloseContext(FTok.CurrentPos);
    end;
 end;
@@ -1757,7 +1773,7 @@ begin
       sym := FProg.Table.FindSymbol(name, cvMagic);
 
       // Open context for procedure declaration. Closed in ReadProcBody.
-      if coContextMap in FCompilerOptions then
+      if coContextMap in FOptions then
          FContextMap.OpenContext(funcPos, sym);
    end else begin
       sym := nil;
@@ -1768,7 +1784,7 @@ begin
    if sym is TClassSymbol then begin
 
       // Store reference to class in dictionary
-      if coSymbolDictionary in FCompilerOptions then
+      if coSymbolDictionary in FOptions then
          FSymbolDictionary.AddTypeSymbol(TClassSymbol(sym), funcPos, [suReference]);
       Result := ReadMethodImpl(TClassSymbol(sym), funcKind, isClassMethod);
 
@@ -1844,11 +1860,11 @@ begin
          end;
 
          // Procedure is both Declared and Implemented here
-         if coSymbolDictionary in FCompilerOptions then
+         if coSymbolDictionary in FOptions then
             FSymbolDictionary.AddTypeSymbol(Result, funcPos, [suDeclaration, suImplementation]);
       except
          // Remove reference to symbol (gets freed)
-         if coSymbolDictionary in FCompilerOptions then
+         if coSymbolDictionary in FOptions then
             FSymbolDictionary.Remove(Result);
          Result.Free;
          raise;
@@ -1886,7 +1902,7 @@ begin
       ReadSemiColon;
 
       // Added as last step. OnExcept, won't need to be freed.
-      if coSymbolDictionary in FCompilerOptions then
+      if coSymbolDictionary in FOptions then
          FSymbolDictionary.AddTypeSymbol(Result, methPos, [suDeclaration]);
    except
       Result.Free;
@@ -2033,7 +2049,7 @@ begin
          FMsgs.AddCompilerWarningFmt(methPos, CPE_ReintroduceWarning, [name]);
 
       // Added as last step. OnExcept, won't need to be freed.
-      if coSymbolDictionary in FCompilerOptions then
+      if coSymbolDictionary in FOptions then
          FSymbolDictionary.AddTypeSymbol(Result, methPos, [suDeclaration]);
    except
       Result.Free;
@@ -2043,7 +2059,7 @@ begin
    if FTok.Test(ttBEGIN) then begin
       // inline declaration
       try
-         if coContextMap in FCompilerOptions then
+         if coContextMap in FOptions then
             FContextMap.OpenContext(FTok.HotPos, Result);
          ReadProcBody(Result);
          ReadSemiColon;
@@ -2108,7 +2124,7 @@ begin
       end;
    end;
 
-   if coSymbolDictionary in FCompilerOptions then
+   if coSymbolDictionary in FOptions then
       FSymbolDictionary.AddTypeSymbol(Result, methPos, [suImplementation]);
 end;
 
@@ -2151,7 +2167,7 @@ begin
    // Stop if declaration was forwarded or external
    if (funcSymbol.IsForwarded or funcSymbol.IsExternal) then begin
       // Closed context of procedure (was only a forward)
-      if coContextMap in FCompilerOptions then
+      if coContextMap in FOptions then
          FContextMap.CloseContext(FTok.HotPos);
       Exit;
    end;
@@ -2163,7 +2179,7 @@ begin
       FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedImplementationInInterface);
 
    // Open context of full procedure body (may include a 'var' section)
-   if coContextMap in FCompilerOptions then
+   if coContextMap in FOptions then
       FContextMap.OpenContext(FTok.CurrentPos, funcSymbol);   // attach to symbol that it belongs to (perhaps a class)
 
    funcSymbol.SourcePosition:=FTok.HotPos;
@@ -2177,7 +2193,7 @@ begin
          FMainProg.Compiler := Self;
          TdwsProcedure(FProg).AssignTo(funcSymbol);
          // Set the current context's LocalTable to be the table of the new procedure
-         if coContextMap in FCompilerOptions then
+         if coContextMap in FOptions then
             FContextMap.Current.LocalTable := FProg.Table;
 
          if FTok.TestDelete(ttREQUIRE) then begin
@@ -2217,7 +2233,7 @@ begin
             until FTok.Test(ttBEGIN);
          end;
 
-         if coContextMap in FCompilerOptions then
+         if coContextMap in FOptions then
             FContextMap.OpenContext(FTok.CurrentPos, nil);
          try
             // Read procedure body
@@ -2249,7 +2265,7 @@ begin
             HintUnusedSymbols;
             HintUnusedResult(proc.Func.Result);
          finally
-            if coContextMap in FCompilerOptions then
+            if coContextMap in FOptions then
                FContextMap.CloseContext(FTok.CurrentPos);  // close with inside procedure end
          end;
       finally
@@ -2258,7 +2274,7 @@ begin
       end;
    finally
       // Closed procedure body and procedure implementation (from declaration to body)
-      if coContextMap in FCompilerOptions then begin
+      if coContextMap in FOptions then begin
          FContextMap.CloseContext(FTok.CurrentPos);  // closed begin..end body (may include 'var' section)
          FContextMap.CloseContext(FTok.CurrentPos);  // closed from declaration through implementation
       end;
@@ -2394,7 +2410,7 @@ begin
 
       // TODO: typecheck used function
       if usesSym<>nil then begin
-         if coSymbolDictionary in FCompilerOptions then
+         if coSymbolDictionary in FOptions then
             FSymbolDictionary.AddTypeSymbol(usesSym, usesPos);
 
          if usesSym.Typ<>Result.Typ then
@@ -2441,7 +2457,7 @@ begin
    reach:=rsReachable;
    blockExpr:=TBlockExpr.Create(FProg, FTok.HotPos);
    try
-      if coContextMap in FCompilerOptions then begin
+      if coContextMap in FOptions then begin
          FContextMap.OpenContext(FTok.CurrentPos, nil);
          closePos:=FTok.CurrentPos;     // default to close context where it opened (used on errors)
       end;
@@ -2450,7 +2466,7 @@ begin
       FProg.Table:=blockExpr.Table;
       try
          // Add local table to context for the new block
-         if coContextMap in FCompilerOptions then
+         if coContextMap in FOptions then
             FContextMap.Current.LocalTable:=FProg.Table;
 
          repeat
@@ -2492,7 +2508,7 @@ begin
          HintUnusedSymbols;
       finally
          FProg.Table:=oldTable;
-         if coContextMap in FCompilerOptions then
+         if coContextMap in FOptions then
             FContextMap.CloseContext(closePos);   // get to end of block
       end;
 
@@ -2502,7 +2518,7 @@ begin
 
    except
       // Remove any symbols in the expression's table. Table will be freed.
-      if coSymbolDictionary in FCompilerOptions then
+      if coSymbolDictionary in FOptions then
          for sym in blockExpr.Table do
             FSymbolDictionary.Remove(sym);
       blockExpr.Free;
@@ -2748,7 +2764,7 @@ begin
    FTok.KillToken;
 
    // Add the symbol usage to Dictionary
-   if coSymbolDictionary in FCompilerOptions then
+   if coSymbolDictionary in FOptions then
       FSymbolDictionary.AddSymbolReference(sym, namePos, isWrite);
 
    Result := nil;
@@ -2774,7 +2790,7 @@ begin
             FTok.KillToken;
 
             // Already added symbol usage of the unit. Now add for the unit's specified symbol.
-            if coSymbolDictionary in FCompilerOptions then
+            if coSymbolDictionary in FOptions then
                FSymbolDictionary.AddSymbolReference(sym, namePos, isWrite);
          end;
 
@@ -3309,7 +3325,7 @@ begin
                if baseType is TRecordSymbol then begin
 
                   member := TRecordSymbol(baseType).Members.FindLocal(Name);
-                  if coSymbolDictionary in FCompilerOptions then
+                  if coSymbolDictionary in FOptions then
                      FSymbolDictionary.AddSymbolReference(member, symPos, isWrite);
 
                   if Result is TFuncExpr then
@@ -3324,7 +3340,7 @@ begin
 
                   member:=TStructuredTypeSymbol(baseType).Members.FindSymbolFromScope(Name, CurrentClass);
 
-                  if coSymbolDictionary in FCompilerOptions then
+                  if coSymbolDictionary in FOptions then
                      FSymbolDictionary.AddSymbolReference(member, symPos, isWrite);
 
                   if member is TMethodSymbol then begin
@@ -3355,7 +3371,7 @@ begin
                end else if baseType is TClassOfSymbol then begin
 
                   member := TClassSymbol(baseType.Typ).Members.FindSymbolFromScope(Name, CurrentClass);
-                  if coSymbolDictionary in FCompilerOptions then
+                  if coSymbolDictionary in FOptions then
                      FSymbolDictionary.AddSymbolReference(member, FTok.HotPos, isWrite);
 
                   // Class method
@@ -3522,7 +3538,7 @@ begin
             if loopVarExpr.Typ<>enumSymbol then
                FMsgs.AddCompilerStop(enumPos, CPE_IncompatibleOperands);
 
-            if coSymbolDictionary in FCompilerOptions then
+            if coSymbolDictionary in FOptions then
                FSymbolDictionary.AddTypeSymbol(enumSymbol, enumPos);
 
             fromExpr:=TConstExpr.CreateTyped(FProg, loopVarExpr.Typ, enumSymbol.LowBound);
@@ -4307,18 +4323,18 @@ begin
       if FTok.TestDelete(ttALEFT) then begin
          if sym.IsType then begin
             typSym:=TTypeSymbol(sym);
-            if coSymbolDictionary in FCompilerOptions then
+            if coSymbolDictionary in FOptions then
                FSymbolDictionary.AddTypeSymbol(typSym, hotPos);
             Result:=ReadNewArray(typSym, isWrite);
             Exit;
          end else FMsgs.AddCompilerError(hotPos, CPE_TypeExpected);
       end else if sym is TClassSymbol then begin
          classSym:=TClassSymbol(sym);
-         if coSymbolDictionary in FCompilerOptions then
+         if coSymbolDictionary in FOptions then
             FSymbolDictionary.AddTypeSymbol(classSym, hotPos);
       end else if (sym is TDataSymbol) and (sym.Typ is TClassOfSymbol) then begin
          classSym:=TClassOfSymbol(sym.Typ).TypClassSymbol;
-         if coSymbolDictionary in FCompilerOptions then
+         if coSymbolDictionary in FOptions then
             FSymbolDictionary.AddSymbolReference(TDataSymbol(sym), hotPos, False);
       end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
 
@@ -4383,7 +4399,7 @@ begin
     if not FTok.TestName then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
     // Added HotPos positions to PosArray. Used for dictionary
-    if coSymbolDictionary in FCompilerOptions then
+    if coSymbolDictionary in FOptions then
     begin
       SetLength(PosArray, Length(PosArray)+1);  // grow the array as needed
       PosArray[High(PosArray)] := FTok.HotPos;
@@ -4416,7 +4432,7 @@ begin
       classTyp:=FProg.TypObject; // keep compiling
    end else begin
       classTyp:=TClassSymbol(typ);
-      if coSymbolDictionary in FCompilerOptions then
+      if coSymbolDictionary in FOptions then
          FSymbolDictionary.AddTypeSymbol(classTyp, FTok.HotPos);
    end;
 
@@ -4645,7 +4661,7 @@ begin
    names:=TStringList.Create;
    try
       // Conditionally pass in dynamic array
-      if coSymbolDictionary in FCompilerOptions then
+      if coSymbolDictionary in FOptions then
          ReadNameList(Names, PosArray)     // use overloaded version
       else ReadNameList(Names);
 
@@ -4664,7 +4680,7 @@ begin
          classSymbol.AddField(fieldSym);
 
          // Enter Field symbol in dictionary
-         if coSymbolDictionary in FCompilerOptions then
+         if coSymbolDictionary in FOptions then
             FSymbolDictionary.AddValueSymbol(fieldSym, PosArray[i], [suDeclaration]);
       end;
    finally
@@ -4741,7 +4757,7 @@ begin
       raise;
    end;
 
-   if coSymbolDictionary in FCompilerOptions then
+   if coSymbolDictionary in FOptions then
       FSymbolDictionary.AddTypeSymbol(Result, hotPos, [suDeclaration]);
 end;
 
@@ -4808,7 +4824,7 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcedureMethodExpected);
 
       Result.UsesSym:=TMethodSymbol(sym);
-      if coSymbolDictionary in FCompilerOptions then
+      if coSymbolDictionary in FOptions then
          FSymbolDictionary.AddTypeSymbol(sym, usesPos);
 
       if Result.UsesSym.Params.Count<>1 then
@@ -4826,7 +4842,7 @@ begin
       ReadSemiColon;
    except
       // Remove reference to symbol (gets freed)
-      if coSymbolDictionary in FCompilerOptions then
+      if coSymbolDictionary in FOptions then
          FSymbolDictionary.Remove(Result);
       Result.Free;
       raise;
@@ -4871,7 +4887,7 @@ begin
       typ := ReadType('', tcProperty);
       Result := TPropertySymbol.Create(name, typ, aVisibility);
       try
-         if coSymbolDictionary in FCompilerOptions then
+         if coSymbolDictionary in FOptions then
             FSymbolDictionary.AddValueSymbol(Result, propPos, [suDeclaration]);
 
          if FTok.TestDelete(ttINDEX) then begin
@@ -4906,7 +4922,7 @@ begin
                FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionMethodExpected);
 
             Result.ReadSym := sym;
-            if coSymbolDictionary in FCompilerOptions then
+            if coSymbolDictionary in FOptions then
                FSymbolDictionary.AddSymbol(sym, accessPos, [suReference, suRead])
          end;
 
@@ -4935,7 +4951,7 @@ begin
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleWriteSymbol, [Name]);
 
             Result.WriteSym := sym;
-            if coSymbolDictionary in FCompilerOptions then
+            if coSymbolDictionary in FOptions then
                FSymbolDictionary.AddSymbol(sym, accessPos, [suReference, suWrite]);
          end;
 
@@ -4962,7 +4978,7 @@ begin
 
       except
          // Remove reference to symbol (gets freed)
-         if coSymbolDictionary in FCompilerOptions then
+         if coSymbolDictionary in FOptions then
             FSymbolDictionary.Remove(Result);
          Result.Free;
          raise;
@@ -4992,7 +5008,7 @@ begin
             if FTok.Test(ttEND) then
                break;
 
-            if coSymbolDictionary in FCompilerOptions then
+            if coSymbolDictionary in FOptions then
                ReadNameList(names, posArray)     // use overloaded version
             else ReadNameList(names);
 
@@ -5008,7 +5024,7 @@ begin
                Result.AddField(member);
 
                // Add member symbols and positions
-               if coSymbolDictionary in FCompilerOptions then
+               if coSymbolDictionary in FOptions then
                   FSymbolDictionary.AddValueSymbol(member, posArray[x], [suDeclaration]);
             end;
 
@@ -5021,7 +5037,7 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
    except
       // Removed added record symbols. Destroying object
-      if coSymbolDictionary in FCompilerOptions then
+      if coSymbolDictionary in FOptions then
          FSymbolDictionary.Remove(Result);
       Result.Free;
       raise;
@@ -5179,7 +5195,7 @@ begin
       proc:=TdwsProcedure(FProg);
       if proc.Func.Result=nil then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoResultRequired);
-      if coSymbolDictionary in FCompilerOptions then
+      if coSymbolDictionary in FOptions then
          FSymbolDictionary.AddValueSymbol(proc.Func.Result, exitPos, [suReference, suWrite]);
       leftExpr:=TVarExpr.CreateTyped(FProg, proc.Func.Result.Typ, proc.Func.Result);
       try
@@ -5287,7 +5303,7 @@ begin
          if typeName <> '' then
             Result:=TAliasSymbol.Create(typeName, Result);
 
-         if coSymbolDictionary in FCompilerOptions then
+         if coSymbolDictionary in FOptions then
             FSymbolDictionary.AddTypeSymbol(Result, namePos);
 
       end else begin
@@ -5777,7 +5793,7 @@ begin
          if memberSet[memberSym.Offset] then
             FMsgs.AddCompilerError(FTok.GetToken.FPos, CPE_FieldAlreadySet);
          memberSet[memberSym.Offset]:=True;
-         if coSymbolDictionary in FCompilerOptions then
+         if coSymbolDictionary in FOptions then
             FSymbolDictionary.AddSymbolReference(memberSym, FTok.GetToken.FPos, True);
       end;
       FTok.KillToken;
@@ -5888,7 +5904,7 @@ begin
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantBeVarOrConst);
 
                // Conditionally pass in dynamic array
-               if ParamsToDictionary and (coSymbolDictionary in FCompilerOptions) then
+               if ParamsToDictionary and (coSymbolDictionary in FOptions) then
                   ReadNameList(names, posArray)     // use overloaded version
                else ReadNameList(names);
 
@@ -5945,7 +5961,7 @@ begin
                         addParamMeth(sym);
 
                         // Enter Field symbol in dictionary
-                        if ParamsToDictionary and (coSymbolDictionary in FCompilerOptions) then begin
+                        if ParamsToDictionary and (coSymbolDictionary in FOptions) then begin
                            FSymbolDictionary.AddValueSymbol(sym, posArray[i], [suDeclaration]);  // add variable symbol
                            FSymbolDictionary.AddTypeSymbol(typ, FTok.HotPos);  // add type symbol
                         end;
@@ -6022,7 +6038,7 @@ begin
          end else sourceFile:=nil;
          if sourceFile=nil then begin
             try
-               scriptSource := GetScriptSource(name);
+               scriptSource := GetIncludeScriptSource(name);
 
                if switch in [siFilterLong, siFilterShort] then begin
                   if Assigned(FFilter) then begin
@@ -6370,6 +6386,47 @@ begin
    Result:=nil;
 end;
 
+// GetScriptSource
+//
+function TdwsCompiler.GetScriptSource(const scriptName : String) : String;
+var
+   stream : TStream;
+   sl : TStringList;
+begin
+   stream:=OpenStreamForFile(scriptName);
+   sl:=TStringList.Create;
+   try
+      if stream=nil then
+         Result:=''
+      else begin
+         sl.LoadFromStream(stream);
+         if sl.Count>0 then
+            Result:=sl.Text
+         else Result:=' ';
+      end;
+   finally
+      sl.Free;
+      stream.Free;
+   end;
+end;
+
+// GetIncludeScriptSource
+//
+function TdwsCompiler.GetIncludeScriptSource(const scriptName : String) : String;
+begin
+   Result:='';
+
+   if Assigned(FOnInclude) then begin
+      FOnInclude(ScriptName, Result);
+      if Result<>'' then Exit;
+   end;
+
+   Result:=GetScriptSource(scriptName);
+   if Result='' then
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncludeFileNotFound,
+                               [scriptName], TCompilerErrorMessage)
+end;
+
 function TdwsCompiler.GetVarExpr(dataSym: TDataSymbol): TVarExpr;
 begin
    if FProg.Level = dataSym.Level then begin
@@ -6479,7 +6536,7 @@ var
    symDic : TSymbolDictionary;
    symPosList : TSymbolPositionList;
 begin
-   if not (coSymbolDictionary in FCompilerOptions) then Exit;
+   if not (coSymbolDictionary in FOptions) then Exit;
 
    symDic:=FMainProg.SymbolDictionary;
    for i:=0 to FProg.Table.Count-1 do begin
@@ -6502,7 +6559,7 @@ end;
 procedure TdwsCompiler.HintUnusedResult(resultSymbol : TDataSymbol);
 begin
    if resultSymbol=nil then Exit;
-   if not (coSymbolDictionary in FCompilerOptions) then Exit;
+   if not (coSymbolDictionary in FOptions) then Exit;
 
    if FMainProg.SymbolDictionary.FindSymbolUsage(resultSymbol, suReference)=nil then
       FMsgs.AddCompilerHint(FTok.HotPos, CPH_ResultNotUsed);
@@ -6607,39 +6664,6 @@ begin
   end;
 end;
 
-// GetScriptSource
-//
-function TdwsCompiler.GetScriptSource(const scriptName : String) : String;
-var
-   stream : TStream;
-   sl : TStringList;
-begin
-   Result:='';
-
-   if Assigned(FOnInclude) then begin
-      FOnInclude(ScriptName, Result);
-      if Result<>'' then Exit;
-   end;
-
-   stream:=OpenStreamForFile(scriptName);
-   try
-      if stream=nil then
-         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_IncludeFileNotFound,
-                                  [scriptName], TCompilerErrorMessage)
-      else begin
-         sl:=TStringList.Create;
-         try
-            sl.LoadFromStream(stream);
-            Result:=sl.Text;
-         finally
-            sl.Free;
-         end;
-      end;
-   finally
-      stream.Free;
-   end;
-end;
-
 function TdwsCompiler.ReadStringArray(expr : TDataExpr; IsWrite: Boolean): TProgramExpr;
 var
    indexExpr, valueExpr: TTypedExpr;
@@ -6730,7 +6754,7 @@ begin
          Result.AddElement(elemSym);
 
          // Add member symbol to Symbol Dictionary
-         if coSymbolDictionary in FCompilerOptions then
+         if coSymbolDictionary in FOptions then
             FSymbolDictionary.AddConstSymbol(elemSym, namePos, [suDeclaration]);
 
       until not FTok.TestDelete(ttCOMMA);
@@ -7106,7 +7130,7 @@ begin
                if (msgExpr=nil) or (not msgExpr.IsOfType(FProg.TypString)) then
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
             end;
-            if coAssertions in FCompilerOptions then
+            if coAssertions in FOptions then
                Result:=TAssertExpr.Create(FProg, namePos, argExpr, msgExpr)
             else begin
                Result:=TNullExpr.Create(FProg, namePos);

@@ -35,6 +35,7 @@ implementation
 type
 
    {$M+}
+   {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([vcPublic, vcPublished])}
    TSimpleClass = class
       private
          FValue : Integer;
