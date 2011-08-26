@@ -6221,7 +6221,7 @@ function TInfoClassObj.GetMember(const s : String) : IInfo;
 var
    member : TSymbol;
 begin
-   member:=FScriptObj.ClassSym.Members.FindLocal(s);
+   member:=FScriptObj.ClassSym.Members.FindSymbol(s, cvMagic);
 
    if member is TFieldSymbol then
       SetChild(Result, FProgramInfo, member.Typ, FScriptObj.Data, TFieldSymbol(member).Offset)
