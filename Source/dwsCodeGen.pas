@@ -111,6 +111,7 @@ type
 
          FSymbolMap : TdwsCodeGenSymbolMap;
          FSymbolMaps : TdwsCodeGenSymbolMaps;
+         FSymbolMapStack : TTightStack;
          FMappedUnits : TTightList;
 
          FTempSymbolCounter : Integer;
@@ -136,7 +137,7 @@ type
 
          procedure DoCompileClassSymbol(cls : TClassSymbol); virtual;
          procedure DoCompileFuncSymbol(func : TSourceFuncSymbol); virtual;
-         procedure DoCompileUnitSymbol(un : TUnitSymbol); virtual;
+         procedure DoCompileUnitSymbol(un : TUnitMainSymbol); virtual;
 
          procedure MapClassSymbol(clsSym : TClassSymbol);
 
@@ -153,7 +154,7 @@ type
          procedure CompileNoWrap(expr : TTypedExpr);
 
          procedure CompileSymbolTable(table : TSymbolTable); virtual;
-         procedure CompileUnitSymbol(un : TUnitSymbol);
+         procedure CompileUnitSymbol(un : TUnitMainSymbol);
          procedure CompileEnumerationSymbol(enum : TEnumerationSymbol); virtual;
          procedure CompileFuncSymbol(func : TSourceFuncSymbol);
          procedure CompileConditions(func : TFuncSymbol; conditions : TSourceConditions;
@@ -195,7 +196,7 @@ type
          procedure Clear; virtual;
 
          property Context : TdwsProgram read FContext;
-         property LocalTable : TSymbolTable read FLocalTable;
+         property LocalTable : TSymbolTable read FLocalTable write FLocalTable;
          property SymbolMap : TdwsCodeGenSymbolMap read FSymbolMap;
 
          property IndentSize : Integer read FIndentSize write FIndentSize;
@@ -299,6 +300,7 @@ end;
 destructor TdwsCodeGen.Destroy;
 begin
    Clear;
+   FSymbolMapStack.Free;
    FMappedUnits.Free;
    FSymbolMaps.Free;
    FTempReg.Free;
@@ -468,15 +470,13 @@ begin
       else if sym is TClassSymbol then begin
          if FCompiledClasses.IndexOf(sym)<0 then
             CompileClassSymbol(TClassSymbol(sym));
-      end else if sym is TUnitSymbol then begin
-         CompileUnitSymbol(TUnitSymbol(sym));
       end;
    end;
 end;
 
 // CompileUnitSymbol
 //
-procedure TdwsCodeGen.CompileUnitSymbol(un : TUnitSymbol);
+procedure TdwsCodeGen.CompileUnitSymbol(un : TUnitMainSymbol);
 begin
    if FCompiledUnits.IndexOf(un)>=0 then Exit;
    FCompiledUnits.Add(un);
@@ -488,10 +488,19 @@ end;
 
 // DoCompileUnitSymbol
 //
-procedure TdwsCodeGen.DoCompileUnitSymbol(un : TUnitSymbol);
+procedure TdwsCodeGen.DoCompileUnitSymbol(un : TUnitMainSymbol);
+var
+   oldTable : TSymbolTable;
 begin
    CompileSymbolTable(un.Table);
-   CompileSymbolTable(un.ImplementationTable);
+
+   oldTable:=FLocalTable;
+   FLocalTable:=un.ImplementationTable;
+   try
+      CompileSymbolTable(un.ImplementationTable);
+   finally
+      FLocalTable:=oldTable;
+   end;
 end;
 
 // CompileEnumerationSymbol
@@ -585,13 +594,23 @@ end;
 // CompileProgram
 //
 procedure TdwsCodeGen.CompileProgram(const prog : IdwsProgram);
+var
+   i : Integer;
+   p : TdwsProgram;
 begin
+   p:=prog as TdwsProgram;
+
    BeginProgramSession(prog);
    try
       ReserveSymbolNames;
       MapInternalSymbolNames(prog.Table, (prog as TdwsProgram).SystemTable);
+
+      for i:=0 to p.UnitMains.Count-1 do
+         MapPrioritySymbolNames(p.UnitMains[i].Table);
+
       MapPrioritySymbolNames(prog.Table);
       MapNormalSymbolNames(prog.Table);
+
       CompileProgramInSession(prog);
    finally
       EndProgramSession;
@@ -603,8 +622,12 @@ end;
 procedure TdwsCodeGen.CompileProgramInSession(const prog : IdwsProgram);
 var
    p : TdwsProgram;
+   i : Integer;
 begin
    p:=(prog as TdwsProgram);
+
+   for i:=0 to p.UnitMains.Count-1 do
+      CompileUnitSymbol(p.UnitMains[i]);
 
    Compile(p.InitExpr);
 
@@ -716,11 +739,11 @@ end;
 procedure TdwsCodeGen.MapNormalSymbolNames(table : TSymbolTable);
 var
    sym : TSymbol;
-   unitSym : TUnitSymbol;
+   unitSym : TUnitMainSymbol;
 begin
    for sym in table do begin
       if sym is TUnitSymbol then begin
-         unitSym:=TUnitSymbol(sym).Table.UnitSymbol;
+         unitSym:=TUnitSymbol(sym).Main;
          if not (unitSym.Table is TStaticSymbolTable) then begin
             if FMappedUnits.IndexOf(unitSym)<0 then begin
                FMappedUnits.Add(unitSym);
@@ -940,14 +963,14 @@ var
    map : TdwsCodeGenSymbolMap;
 begin
    if symbol is TUnitSymbol then
-      symbol:=TUnitSymbol(symbol).Table.UnitSymbol;
+      symbol:=TUnitSymbol(symbol).Main;
    map:=FSymbolMaps.MapOf(symbol);
    if map=nil then begin
       FSymbolMap:=TdwsCodeGenSymbolMap.Create(FSymbolMap, symbol);
       FSymbolMaps.Add(FSymbolMap);
    end else begin
-      Assert(map.Parent=nil);
       map.FParent:=FSymbolMap;
+//      FSymbolMapStack.Push(FSymbolMap);
       FSymbolMap:=map;
    end;
 end;
@@ -968,6 +991,10 @@ begin
       FSymbolMaps.Extract(i);
       m.Free;
    end;
+//   if (FSymbolMap=nil) and (FSymbolMapStack.Count>0) then begin
+//      FSymbolMap:=FSymbolMapStack.Peek;
+//      FSymbolMapStack.Pop;
+//   end;
 end;
 
 // EnterClassScope

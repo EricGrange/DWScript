@@ -144,6 +144,8 @@ begin
 
          end;
 
+         prog:=nil;
+
       end;
 
    finally

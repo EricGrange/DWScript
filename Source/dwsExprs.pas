@@ -427,6 +427,7 @@ type
          FRootTable : TProgramSymbolTable;
          FTable : TSymbolTable;
          FSystemTable : TSymbolTable;
+         FUnitMains : TUnitMainSymbols;
          FBaseTypes : TdwsProgramBaseTypes;
 
       protected
@@ -450,6 +451,7 @@ type
 
          property RootTable : TProgramSymbolTable read FRootTable;
          property SystemTable : TSymbolTable read FSystemTable;
+         property UnitMains : TUnitMainSymbols read FUnitMains;
          property Table : TSymbolTable read FTable write FTable;
 
          property TypBoolean: TTypeSymbol read FBaseTypes.FTypBoolean;
@@ -1619,6 +1621,7 @@ type
     destructor Destroy; override;
     function GetMember(const s: string): IInfo; override;
     function GetFieldMemberNames : TStrings; override;
+    function GetExternalObject: TObject; override;
   end;
 
    TTempParam = class(TParamSymbol)
@@ -1903,18 +1906,18 @@ end;
 // CreateFuncExpr
 //
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
-                        const scriptObj : IScriptObj; classSym : TClassSymbol;
+                        const scriptObj : IScriptObj; structSym : TStructuredTypeSymbol;
                         forceStatic : Boolean = False): TFuncExpr;
 begin
    if FuncSym is TMethodSymbol then begin
       if Assigned(scriptObj) then begin
          Result := CreateMethodExpr(Prog, TMethodSymbol(funcSym),
-                                    TConstExpr.Create(Prog, ClassSym, scriptObj),
-                                                      rkObjRef, cNullPos, ForceStatic)
+                                    TConstExpr.Create(Prog, structSym, scriptObj),
+                                    rkObjRef, cNullPos, ForceStatic)
       end else begin
          Result := CreateMethodExpr(Prog, TMethodSymbol(funcSym),
-                                    TConstExpr.Create(Prog, ClassSym.ClassOf, Int64(ClassSym)),
-                                                      rkClassOfRef, cNullPos, ForceStatic)
+                                    TConstExpr.Create(Prog, (structSym as TClassSymbol).ClassOf, Int64(structSym)),
+                                    rkClassOfRef, cNullPos, ForceStatic)
       end;
    end else begin
       Result := TFuncExpr.Create(Prog, cNullPos, funcSym);
@@ -2544,6 +2547,8 @@ begin
    FRootTable := TProgramSymbolTable.Create(systemTable, @FAddrGenerator);
    FTable := FRootTable;
 
+   FUnitMains:=TUnitMainSymbols.Create;
+
    FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
 
    // Initialize shortcuts to often used symbols
@@ -2565,6 +2570,7 @@ begin
    FExpr.Free;
    FInitExpr.Free;
    FRootTable.Free;
+   FUnitMains.Free;
    FBaseTypes.FTypNil.Free;
    FCompileMsgs.Free;
 
@@ -2855,16 +2861,17 @@ begin
    FParent := Parent;
 
    // Create a local symbol table and connect it to the parent symboltable
-   FAddrGenerator := TAddrGeneratorRec.CreatePositive(Parent.Level + 1);
-   FRootTable := TProgramSymbolTable.Create(Parent.Table, @FAddrGenerator);
-   FTable := FRootTable;
+   FAddrGenerator:=TAddrGeneratorRec.CreatePositive(Parent.Level + 1);
+   FRootTable:=TProgramSymbolTable.Create(Parent.Table, @FAddrGenerator);
+   FTable:=FRootTable;
    FCompileMsgs:=Parent.CompileMsgs;
+   FUnitMains:=Parent.UnitMains;
 
    FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
 
    // Connect the procedure to the root TdwsProgram
-   FRoot := Parent.Root;
-   FBaseTypes := FRoot.FBaseTypes;
+   FRoot:=Parent.Root;
+   FBaseTypes:=FRoot.FBaseTypes;
 end;
 
 destructor TdwsProcedure.Destroy;
@@ -4226,17 +4233,23 @@ var
    scriptObj : IScriptObj;
    classSym : TClassSymbol;
    magicFuncSym : TMagicFuncSymbol;
+   baseTyp : TTypeSymbol;
 begin
    prog:=(exec as TdwsProgramExecution).Prog;
    if funcExpr is TMethodExpr then begin
 
       baseExpr:=TMethodExpr(funcExpr).BaseExpr;
-      if baseExpr.Typ.BaseType is TClassOfSymbol then begin
+      baseTyp:=baseExpr.Typ.UnAliasedType;
+      if baseTyp is TClassOfSymbol then begin
          classSym:=TClassSymbol(baseExpr.EvalAsInteger(exec));
          FFuncExpr:=CreateFuncExpr(prog, funcExpr.FuncSym, nil, classSym);
       end else begin
          baseExpr.EvalAsScriptObj(exec, scriptObj);
-         FFuncExpr:=CreateFuncExpr(prog, funcExpr.FuncSym, scriptObj, scriptObj.ClassSym);
+         if baseTyp is TInterfaceSymbol then begin
+            FFuncExpr:=CreateFuncExpr(prog, funcExpr.FuncSym, scriptObj, (scriptObj.InternalObject as TScriptInterface).Typ);
+         end else begin
+            FFuncExpr:=CreateFuncExpr(prog, funcExpr.FuncSym, scriptObj, scriptObj.ClassSym);
+         end;
       end;
 
    end else if funcExpr is TMagicFuncExpr then begin
@@ -6272,6 +6285,15 @@ begin
    if (FScriptObj<>nil) and (not FScriptObj.Destroyed) then
       CollectMembers(FScriptObj.ClassSym.Members);
    Result:=FMembersCache;
+end;
+
+// GetExternalObject
+//
+function TInfoClassObj.GetExternalObject: TObject;
+begin
+   if (FScriptObj<>nil) and (not FScriptObj.Destroyed) then
+      Result:=FScriptObj.ExternalObject
+   else Result:=nil;
 end;
 
 { TTempParam }

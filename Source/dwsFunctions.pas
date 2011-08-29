@@ -35,7 +35,8 @@ type
    IdwsUnit = interface
       ['{8D534D12-4C6B-11D5-8DCB-0000216D9E86}']
       function GetUnitName : String;
-      function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
+      function GetUnitTable(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                            operators : TOperators) : TUnitSymbolTable;
       function GetDependencies : TStrings;
       function GetUnitFlags : TIdwsUnitFlags;
    end;
@@ -140,8 +141,8 @@ type
          procedure Execute(info : TProgramInfo; var ExternalObject: TObject); virtual; abstract;
    end;
 
-   TInternalInitProc = procedure (systemTable, unitSyms, unitTable : TSymbolTable;
-                                  operators : TOperators);
+   TInternalInitProc = procedure (systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                                  unitTable : TSymbolTable; operators : TOperators);
 
    TInternalUnit = class(TObject, IUnknown, IdwsUnit)
       private
@@ -159,8 +160,10 @@ type
          function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
          function GetDependencies: TStrings;
          function GetUnitName: string;
-         procedure InitUnitTable(systemTable, unitSyms, unitTable : TSymbolTable; operators : TOperators);
-         function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
+         procedure InitUnitTable(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                                 unitTable : TSymbolTable; operators : TOperators);
+         function GetUnitTable(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                               operators : TOperators) : TUnitSymbolTable;
          function GetUnitFlags : TIdwsUnitFlags;
 
       public
@@ -171,7 +174,8 @@ type
          procedure AddPreInitProc(proc : TInternalInitProc);
          procedure AddPostInitProc(proc : TInternalInitProc);
 
-         function InitStaticSymbols(SystemTable, UnitSyms: TSymbolTable; operators : TOperators): Boolean;
+         function InitStaticSymbols(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                                    operators : TOperators) : Boolean;
          procedure ReleaseStaticSymbols;
 
          property StaticTable : TStaticSymbolTable read FStaticTable;
@@ -181,20 +185,22 @@ type
    TSourceUnit = class(TInterfacedObject, IdwsUnit)
       private
          FDependencies : TStrings;
-         FSymbol : TUnitSymbol;
+         FSymbol : TUnitMainSymbol;
 
       protected
 
       public
-         constructor Create(const unitName : String; rootTable : TSymbolTable);
+         constructor Create(const unitName : String; rootTable : TSymbolTable;
+                            unitSyms : TUnitMainSymbols);
          destructor Destroy; override;
 
          function GetUnitName : String;
-         function GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
+         function GetUnitTable(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                               operators : TOperators) : TUnitSymbolTable;
          function GetDependencies : TStrings;
          function GetUnitFlags : TIdwsUnitFlags;
 
-         property Symbol : TUnitSymbol read FSymbol write FSymbol;
+         property Symbol : TUnitMainSymbol read FSymbol write FSymbol;
    end;
 
 procedure RegisterInternalFunction(InternalFunctionClass: TInternalFunctionClass;
@@ -689,7 +695,8 @@ begin
   Result := SYS_INTERNAL;
 end;
 
-function TInternalUnit.InitStaticSymbols(SystemTable, UnitSyms: TSymbolTable; operators : TOperators): Boolean;
+function TInternalUnit.InitStaticSymbols(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                                         operators : TOperators) : Boolean;
 var
    staticParent: TStaticSymbolTable;
 begin
@@ -725,7 +732,8 @@ begin
   end;
 end;
 
-function TInternalUnit.GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
+function TInternalUnit.GetUnitTable(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                                    operators : TOperators) : TUnitSymbolTable;
 begin
   if StaticSymbols and InitStaticSymbols(SystemTable, UnitSyms, operators) then
     Result := TLinkedSymbolTable.Create(FStaticTable)
@@ -748,7 +756,8 @@ begin
    Result:=[ufImplicitUse];
 end;
 
-procedure TInternalUnit.InitUnitTable(systemTable, unitSyms, unitTable : TSymbolTable; operators : TOperators);
+procedure TInternalUnit.InitUnitTable(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                                      unitTable : TSymbolTable; operators : TOperators);
 var
    i : Integer;
    rif : PRegisteredInternalFunction;
@@ -830,27 +839,18 @@ end;
 
 // Create
 //
-constructor TSourceUnit.Create(const unitName : String; rootTable : TSymbolTable);
-
-   procedure AddStandardUnit(const name : String);
-   var
-      stdUnit : TUnitSymbol;
-   begin
-      stdUnit:=TUnitSymbol(rootTable.FindSymbol(name, cvMagic, TUnitSymbol));
-      FSymbol.InterfaceTable.AddSymbol(TUnitSymbol.Create(name, stdUnit.Table, False));
-      FSymbol.InterfaceTable.AddParent(stdUnit.Table);
-   end;
-
+constructor TSourceUnit.Create(const unitName : String; rootTable : TSymbolTable;
+                               unitSyms : TUnitMainSymbols);
 begin
    inherited Create;
    FDependencies:=TStringList.Create;
-   FSymbol:=TUnitSymbol.Create(unitName, TUnitSymbolTable.Create, True);
-   rootTable.AddSymbol(FSymbol);
+   FSymbol:=TUnitMainSymbol.Create(unitName, TUnitSymbolTable.Create(nil, rootTable.AddrGenerator), unitSyms);
+   FSymbol.ReferenceInSymbolTable(rootTable);
 
    FSymbol.CreateInterfaceTable;
 
-   AddStandardUnit(SYS_INTERNAL);
-   AddStandardUnit(SYS_DEFAULT);
+   unitSyms.Find(SYS_INTERNAL).ReferenceInSymbolTable(FSymbol.InterfaceTable);
+   unitSyms.Find(SYS_DEFAULT).ReferenceInSymbolTable(FSymbol.InterfaceTable);
 end;
 
 // Destroy
@@ -870,7 +870,8 @@ end;
 
 // GetUnitTable
 //
-function TSourceUnit.GetUnitTable(systemTable, unitSyms : TSymbolTable; operators : TOperators) : TUnitSymbolTable;
+function TSourceUnit.GetUnitTable(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                                  operators : TOperators) : TUnitSymbolTable;
 begin
    Result:=(Symbol.Table as TUnitSymbolTable);
 end;

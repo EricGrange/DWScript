@@ -223,7 +223,7 @@ type
 
    TdwsCompilerUnitContext = record
       Tokenizer : TTokenizer;
-      UnitSymbol : TUnitSymbol;
+      UnitSymbol : TUnitMainSymbol;
       ConditionalDefines : TStringList;
    end;
 
@@ -269,7 +269,7 @@ type
       FUnitSection : TdwsUnitSection;
       FUnitContextStack : TdwsCompilerUnitContextStack;
       FUnitsFromStack : TSimpleStack<String>;
-      FUnitSymbol : TUnitSymbol;
+      FUnitSymbol : TUnitMainSymbol;
 
       FOnReadInstr : TCompilerReadInstrEvent;
       FOnSectionChanged : TCompilerSectionChangedEvent;
@@ -924,10 +924,11 @@ begin
       sourceFile:=FMainProg.RegisterSourceFile(MSG_MainModule, codeText);
 
       // Start compilation
-      FProg.Expr := ReadScript(sourceFile, stMain);
+      FProg.Expr:=ReadScript(sourceFile, stMain);
 
       // Initialize symbol table
       FProg.Table.Initialize(FMsgs);
+      FProg.UnitMains.Initialize(FMsgs);
    except
       on e: ECompileError do
          ;
@@ -967,46 +968,18 @@ procedure TdwsCompiler.HandleUnitDependencies;
 var
    i : Integer;
    unitsResolved: TIdwsUnitList;
-   unitsTable: TSymbolTable;
-   unitTables: TList;
    unitTable : TUnitSymbolTable;
-   unitSymbol : TUnitSymbol;
+   unitSymbol : TUnitMainSymbol;
 begin
-   // Handle unit dependencies
-   unitsResolved := ResolveUnitReferences;//(conf);
-
-   unitTables := TList.Create;
-   unitsTable := TSymbolTable.Create;
+   unitsResolved:=ResolveUnitReferences;
    try
-      try
-         // Get the symboltables of the units
-         for i := 0 to unitsResolved.Count - 1 do begin
-            unitTable := unitsResolved[i].GetUnitTable(FSystemTable, unitsTable, FOperators);
-            unitTables.Add(unitTable);
-            unitsTable.AddSymbol(TUnitSymbol.Create(unitsResolved[i].GetUnitName, unitTable));
-         end;
-      except
-         on e: Exception do begin
-            for i:=0 to unitTables.Count-1 do
-               TObject(unitTables[i]).Free;
-            raise;
-         end;
+      // Get the symboltables of the units
+      for i:=0 to unitsResolved.Count-1 do begin
+         unitTable:=unitsResolved[i].GetUnitTable(FSystemTable, FProg.UnitMains, FOperators);
+         unitSymbol:=TUnitMainSymbol.Create(unitsResolved[i].GetUnitName, unitTable, FProg.UnitMains);
+         unitSymbol.ReferenceInSymbolTable(FProg.Table);
       end;
-
-      // Add the units to the program-symboltable
-      for i := 0 to unitsTable.Count - 1 do begin
-         unitSymbol:=TUnitSymbol(unitsTable[i]);
-
-         FProg.Table.AddSymbol(TUnitSymbol.Create( unitSymbol.Name, unitSymbol.Table, True));
-         FProg.Table.AddParent(unitSymbol.Table);
-      end;
-
-      unitSymbol:=FProg.Table.FindSymbol(SYS_INTERNAL, cvMagic) as TUnitSymbol;
-      FProg.Table.AddSymbol(TUnitSymbol.Create( SYS_SYSTEM, unitSymbol.Table, False ));
-
    finally
-      unitsTable.Free;
-      unitTables.Free;
       unitsResolved.Free;
    end;
 end;
@@ -1018,6 +991,7 @@ var
    i : Integer;
    unitResolved : IdwsUnit;
    unitTable : TUnitSymbolTable;
+   unitMain : TUnitMainSymbol;
    dependencies : TStrings;
    unitSource : String;
    srcUnit : TSourceUnit;
@@ -1026,7 +1000,7 @@ begin
       if SameText(FUnitsFromStack.Items[i], unitName) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitCircularReference);
 
-   Result:=TUnitSymbol(FProg.Table.FindLocal(unitName, TUnitSymbol));
+   Result:=TUnitSymbol(FProg.Table.FindSymbol(unitName, cvMagic, TUnitSymbol));
    if Result<>nil then begin
       // ignore multiple requests (for now)
       Exit;
@@ -1042,15 +1016,10 @@ begin
             if unitSource='' then
                unitSource:=GetScriptSource(unitName);
             if unitSource<>'' then begin
-               srcUnit:=TSourceUnit.Create(unitName, FProg.Root.RootTable);
+               srcUnit:=TSourceUnit.Create(unitName, FProg.Root.RootTable, FProg.UnitMains);
                unitResolved:=srcUnit;
                FUnits.Add(unitResolved);
-               try
-                  SwitchTokenizerToUnit(srcUnit, unitSource);
-               except
-                  srcUnit.Symbol.IsTableOwner:=True;
-                  raise;
-               end;
+               SwitchTokenizerToUnit(srcUnit, unitSource);
             end;
          end;
       end;
@@ -1073,18 +1042,19 @@ begin
       end;
    end;
 
-   unitTable:=nil;
-   try
-      unitTable:=unitResolved.GetUnitTable(FSystemTable, nil, FOperators);
-   except
-      unitTable.Free;
-      raise;
+   unitMain:=FProg.UnitMains.Find(unitName);
+   if unitMain=nil then begin
+      unitTable:=nil;
+      try
+         unitTable:=unitResolved.GetUnitTable(FSystemTable, FProg.UnitMains, FOperators);
+         unitMain:=TUnitMainSymbol.Create(unitName, unitTable, FProg.UnitMains);
+      except
+         unitTable.Free;
+         raise;
+      end;
    end;
 
-   Result:=TUnitSymbol.Create(unitResolved.GetUnitName, unitTable,
-                              not (ufOwnsSymbolTable in unitResolved.GetUnitFlags));
-   FProg.Table.AddSymbol(Result);
-   FProg.Table.AddParent(Result.Table);
+   Result:=unitMain.ReferenceInSymbolTable(FProg.Table);
 end;
 
 // RecompileInContext
@@ -1230,7 +1200,7 @@ var
    unitBlock : TBlockExpr;
    implemTable : TUnitImplementationTable;
    oldTable : TSymbolTable;
-   oldUnit : TUnitSymbol;
+   oldUnit : TUnitMainSymbol;
 begin
    oldTok:=FTok;
    oldSection:=FUnitSection;
@@ -1281,7 +1251,9 @@ begin
                FProg.Table:=implemTable;
                try
                   unitBlock:=ReadRootBlock([], finalToken);
-                  FreeAndNil(unitBlock);
+                  if unitBlock.SubExprCount>0 then
+                     FProg.InitExpr.AddStatement(unitBlock)
+                  else FreeAndNil(unitBlock);
                finally
                   FProg.Table:=oldTable;
                end;
@@ -1925,7 +1897,7 @@ function TdwsCompiler.ReadMethodDecl(classSym: TClassSymbol; funcKind: TFuncKind
       for i:=0 to newMeth.Params.Count-1 do begin
          newParam:=newMeth.Params[i];
          oldParam:=oldMeth.Params[i];
-         if    (newParam.Typ<>oldParam.Typ)
+         if    (not newParam.Typ.IsOfType(oldParam.Typ))
             or (not UnicodeSameText(newParam.Name, oldParam.Name)) then
             Exit(False);
       end;
@@ -6794,7 +6766,7 @@ begin
          z:=-1;
          while (y<rt.Count) do begin
             rSym:=rt[y];
-            if (rSym.ClassType=TUnitSymbol) and UnicodeSameText(rSym.Name,names[x]) then begin
+            if (rSym.ClassType=TUnitSymbol) and UnicodeSameText(rSym.Name, names[x]) then begin
                z:=rt.IndexOfParent(TUnitSymbol(rSym).Table);
                if z>=u then begin // uses A,B,A,C => uses A,B,C
                   rt.MoveParent(z,u);
@@ -7041,7 +7013,7 @@ end;
 procedure TdwsCompiler.SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : String);
 var
    sourceFile : TSourceFile;
-   oldUnit : TUnitSymbol;
+   oldUnit : TUnitMainSymbol;
    oldTable : TSymbolTable;
 begin
    sourceFile:=FMainProg.RegisterSourceFile(srcUnit.GetUnitName, sourceCode);

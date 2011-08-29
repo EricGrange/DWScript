@@ -1,0 +1,12 @@
+uses ImplemVarDummy;
+
+var dummy := 20;
+
+PrintLn(dummy);
+PrintLn(GetDummy);
+PrintLn(dummy);
+
+dummy:=0;
+
+PrintLn(GetDummy);
+PrintLn(dummy);

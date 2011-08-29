@@ -66,7 +66,8 @@ end;
 
 // RegisterComplexType
 //
-procedure RegisterComplexType(systemTable, unitSyms, unitTable : TSymbolTable; operators : TOperators);
+procedure RegisterComplexType(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                              unitTable : TSymbolTable; operators : TOperators);
 var
    typComplex : TRecordSymbol;
    typFloat : TBaseFloatSymbol;
@@ -82,7 +83,8 @@ end;
 
 // RegisterComplexOperators
 //
-procedure RegisterComplexOperators(systemTable, unitSyms, unitTable : TSymbolTable; operators : TOperators);
+procedure RegisterComplexOperators(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                                   unitTable : TSymbolTable; operators : TOperators);
 var
    typComplex : TRecordSymbol;
 begin

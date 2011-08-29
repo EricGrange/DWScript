@@ -62,7 +62,7 @@ procedure TJSFilterTests.SetUp;
 begin
    FTests := TStringList.Create;
 
-   CollectFiles(ExtractFilePath(ParamStr(0)) + 'JSFilterScripts' + PathDelim, '*.dws', FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0)) + 'JSFilterScripts' + PathDelim, '**.dws', FTests);
 
    FMainCompiler := TDelphiWebScript.Create(nil);
    FMainCompiler.OnInclude := DoInclude;

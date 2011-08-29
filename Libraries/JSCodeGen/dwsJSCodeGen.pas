@@ -1666,10 +1666,14 @@ var
 begin
    for i:=0 to initExpr.SubExprCount-1 do begin
       curExpr:=initExpr.SubExpr[i];
-      Assert((curExpr is TAssignExpr) or (curExpr is TInitDataExpr));
-      expr:=curExpr.SubExpr[0] as TVarExpr;
-      varSym:=FindSymbolAtStackAddr(expr.StackAddr, Context.Level);
-      FDeclaredLocalVars.Add(varSym);
+      if curExpr is TBlockExprBase then begin
+         CollectInitExprLocalVars(TBlockExprBase(curExpr));
+      end else begin
+         Assert((curExpr is TAssignExpr) or (curExpr is TInitDataExpr));
+         expr:=curExpr.SubExpr[0] as TVarExpr;
+         varSym:=FindSymbolAtStackAddr(expr.StackAddr, Context.Level);
+         FDeclaredLocalVars.Add(varSym);
+      end;
    end;
 end;
 
@@ -2026,21 +2030,33 @@ end;
 procedure TJSBlockInitExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    i : Integer;
-   blockInit : TBlockInitExpr;
+   blockInit : TBlockExprBase;
    initExpr : TExprBase;
    sym : TDataSymbol;
+   oldTable : TSymbolTable;
 begin
-   blockInit:=TBlockInitExpr(expr);
+   blockInit:=TBlockExprBase(expr);
    for i:=0 to blockInit.SubExprCount-1 do begin
       initExpr:=blockInit.SubExpr[i];
-      codeGen.WriteString('var ');
-      Assert(initExpr.SubExprCount>=1);
-      sym:=TJSVarExpr.CodeGenSymbol(codeGen, initExpr.SubExpr[0] as TVarExpr);
-      if IsLocalVarParam(codeGen, sym) then begin
-         codeGen.WriteSymbolName(sym);
-         codeGen.WriteString('=new Object();');
+      if initExpr is TBlockExprBase then begin
+         oldTable:=codeGen.LocalTable;
+         if initExpr is TBlockExpr then
+            codeGen.LocalTable:=TBlockExpr(initExpr).Table;
+         try
+            Self.CodeGen(codeGen, initExpr);
+         finally
+            codeGen.LocalTable:=oldTable;
+         end;
+      end else begin
+         codeGen.WriteString('var ');
+         Assert(initExpr.SubExprCount>=1);
+         sym:=TJSVarExpr.CodeGenSymbol(codeGen, initExpr.SubExpr[0] as TVarExpr);
+         if IsLocalVarParam(codeGen, sym) then begin
+            codeGen.WriteSymbolName(sym);
+            codeGen.WriteString('=new Object();');
+         end;
+         codeGen.Compile(blockInit.SubExpr[i]);
       end;
-      codeGen.Compile(blockInit.SubExpr[i]);
    end;
 end;
 
