@@ -96,12 +96,12 @@ const
   stConstant = 3;
   stField = 4;
   stFunction = 5;
-  stMember = 6;
-  stParam = 7;
-  stProperty = 8;
-  stRecord = 9;
-  stUnit = 10;
-  stVariable = 11;
+  stParam = 6;
+  stProperty = 7;
+  stRecord = 8;
+  stUnit = 9;
+  stVariable = 10;
+  stInterface = 11;
 
 procedure Register;
 begin
@@ -209,12 +209,10 @@ begin
 
     if sym is TUnitSymbol then
       table := TUnitSymbol(sym).Table
-    else if sym is TClassSymbol then
+    else if sym is TStructuredTypeSymbol then
       table := TClassSymbol(sym).Members
     else if sym is TFuncSymbol then
-      table := TFuncSymbol(sym).Params
-    else if sym is TRecordSymbol then
-      table := TRecordSymbol(sym).Members;
+      table := TFuncSymbol(sym).Params;
   end;
 
   ExtObject := TSymbols.Create(sym);
@@ -297,8 +295,6 @@ begin
     Info.ResultAsInteger := stField
   else if sym is TFuncSymbol then
     Info.ResultAsInteger := stFunction
-  else if sym is TMemberSymbol then
-    Info.ResultAsInteger := stMember
   else if sym is TParamSymbol then
     Info.ResultAsInteger := stParam
   else if sym is TPropertySymbol then
@@ -309,6 +305,8 @@ begin
     Info.ResultAsInteger := stUnit
   else if sym is TDataSymbol then
     Info.ResultAsInteger := stVariable
+  else if sym is TInterfaceSymbol then
+    Info.ResultAsInteger := stInterface
   else
     Info.ResultAsInteger := stUnknown;
 end;

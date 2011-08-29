@@ -167,32 +167,32 @@ object dwsSymbolsLib: TdwsSymbolsLib
             IsUserDef = True
           end
           item
-            Name = 'stMember'
+            Name = 'stParam'
             UserDefValue = 6
             IsUserDef = True
           end
           item
-            Name = 'stParam'
+            Name = 'stProperty'
             UserDefValue = 7
             IsUserDef = True
           end
           item
-            Name = 'stProperty'
+            Name = 'stRecord'
             UserDefValue = 8
             IsUserDef = True
           end
           item
-            Name = 'stRecord'
+            Name = 'stUnit'
             UserDefValue = 9
             IsUserDef = True
           end
           item
-            Name = 'stUnit'
+            Name = 'stVariable'
             UserDefValue = 10
             IsUserDef = True
           end
           item
-            Name = 'stVariable'
+            Name = 'stInterface'
             UserDefValue = 11
             IsUserDef = True
           end>
