@@ -1287,7 +1287,17 @@ begin
                               ttIMPLEMENTATION, ttEND]);
    case token of
       ttTYPE :
-         ReadTypeDecl;
+         if UnitSection in [secInterface, secImplementation] then begin
+            repeat
+               ReadTypeDecl;
+               if not FTok.TestDelete(ttSEMI) then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+               token:=FTok.TestAny([ttINTERFACE, ttIMPLEMENTATION,
+                                    ttVAR, ttCONST, ttEND,
+                                    ttFUNCTION, ttPROCEDURE, ttMETHOD]);
+            until (not FTok.HasTokens) or (token<>ttNone) or (not FTok.NextTest(ttEQ));
+            action:=rsaNoSemiColon;
+         end else ReadTypeDecl;
       ttPROCEDURE :
          ReadProcBody(ReadProcDecl(fkProcedure));
       ttFUNCTION :

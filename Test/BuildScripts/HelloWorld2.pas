@@ -2,6 +2,11 @@ unit HelloWorld2;
 
 interface
 
+type
+   TMyClass1 = class end;
+   TMyClass2 = class end;
+   TMyAlias = Integer;
+
 procedure PrintHelloWorld2a; forward;
 
 procedure PrintHelloWorld2b;
