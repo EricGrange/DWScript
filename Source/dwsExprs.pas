@@ -1622,6 +1622,7 @@ type
     function GetMember(const s: string): IInfo; override;
     function GetFieldMemberNames : TStrings; override;
     function GetExternalObject: TObject; override;
+    procedure SetExternalObject(ExtObject: TObject); override;
   end;
 
    TTempParam = class(TParamSymbol)
@@ -6294,6 +6295,15 @@ begin
    if (FScriptObj<>nil) and (not FScriptObj.Destroyed) then
       Result:=FScriptObj.ExternalObject
    else Result:=nil;
+end;
+
+// SetExternalObject
+//
+procedure TInfoClassObj.SetExternalObject(ExtObject: TObject);
+begin
+   Assert(FScriptObj<>nil);
+   Assert(not FScriptObj.Destroyed);
+   FScriptObj.ExternalObject:=ExtObject;
 end;
 
 { TTempParam }
