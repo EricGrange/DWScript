@@ -308,7 +308,6 @@ type
 
    TJSMethodInterfaceExpr = class (TJSFuncBaseExpr)
       procedure CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol); override;
-      procedure CodeGenBeginParams(codeGen : TdwsCodeGen; expr : TFuncExprBase); override;
    end;
 
    TJSClassMethodStaticExpr = class (TJSFuncBaseExpr)
@@ -411,7 +410,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..124] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..123] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -484,7 +483,15 @@ const
       (Name : '$AsIntf';
        Code : 'function $AsIntf(o,i) {'#13#10
                +#9'if (o==null) return null;'#13#10
-               +#9'return {O:o, I:o.ClassType.$Intf[i]};'#13#10
+               +#9'var r = o.ClassType.$Intf[i].map(function (e) {'#13#10
+                  +#9#9'return function () {'#13#10
+                     +#9#9#9'var arg=Array.prototype.slice.call(arguments);'#13#10
+                     +#9#9#9'arg.splice(0,0,o);'#13#10
+                     +#9#9#9'return e.apply(o, arg);'#13#10
+                  +#9#9'}'#13#10
+               +#9'});'#13#10
+               +#9'r.O = o;'#13#10
+               +#9'return r;'#13#10
                +'};'#13#10),
       (Name : '$Implements';
        Code : 'function $Implements(o,i) {'#13#10
@@ -548,12 +555,6 @@ const
                   +#9#9'arg.splice(0,0,li);'#13#10
                   +#9#9'return lf.apply(li,arg)'#13#10
                +#9'}'#13#10
-               +'}'),
-      (Name : '$Intf';
-       Code : 'function $Intf(i,n) {'#13#10
-               +#9'var arg=Array.prototype.slice.call(arguments);'#13#10
-               +#9'arg.splice(0,2,i.O);'#13#10
-               +#9'return i.I[n].apply(i.O, arg);'#13#10
                +'}'),
       // RTL functions
       (Name : 'Abs';
@@ -762,9 +763,9 @@ const
                +#9'ClassType:function(Self){return Self},'#13#10
                +#9'$Init:function () {},'#13#10
                +#9'Create:function (Self) { return Self; },'#13#10
-               +#9'Destroy:function (Self) { for (prop in obj) { if (obj.hasOwnProperty(prop)) { delete obj.prop; } } },'#13#10
-               +#9'Destroy$v:function(Self){return Self.ClassType.Destroy.apply(Self.ClassType, arguments)},'#13#10
-               +#9'Free:function (Self) { if (Self!=null) Self.ClassType.Destroy$v(Self) }'#13#10
+               +#9'Destroy:function (Self) { for (prop in Self) { if (Self.hasOwnProperty(prop)) { delete Self.prop; } } },'#13#10
+               +#9'Destroy$v:function(Self) { return Self.ClassType.Destroy(Self) },'#13#10
+               +#9'Free:function (Self) { if (Self!=null) Self.ClassType.Destroy(Self) }'#13#10
                +'}';
        Dependency : '$New'),
       (Name : 'Exception';
@@ -1328,17 +1329,15 @@ begin
       if meth.StructSymbol=cls then begin
          if meth.Kind=fkConstructor then begin
             WriteString('function(Self){return Self.ClassType.');
-            WriteString(MemberName(meth, meth.StructSymbol));
-            WriteStringLn('.apply(Self, arguments)}');
          end else if meth.IsClassMethod then begin
             WriteString('function(Self){return Self.');
-            WriteString(MemberName(meth, meth.StructSymbol));
-            WriteStringLn('.apply(Self, arguments)}');
          end else begin
             WriteString('function(Self){return Self.ClassType.');
-            WriteString(MemberName(meth, meth.StructSymbol));
-            WriteStringLn('.apply(Self.ClassType, arguments)}');
          end;
+         WriteString(MemberName(meth, meth.StructSymbol));
+         if meth.Params.Count=0 then
+            WriteStringLn('(Self)}')
+         else WriteStringLn('.apply(Self.ClassType, arguments)}');
       end else begin
          WriteSymbolName(meth.StructSymbol);
          WriteString('.');
@@ -2825,28 +2824,15 @@ end;
 // CodeGenFunctionName
 //
 procedure TJSMethodInterfaceExpr.CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol);
-begin
-   codeGen.Dependencies.Add('$Intf');
-
-   codeGen.WriteString('$Intf');
-end;
-
-// CodeGenBeginParams
-//
-procedure TJSMethodInterfaceExpr.CodeGenBeginParams(codeGen : TdwsCodeGen; expr : TFuncExprBase);
 var
    e : TMethodInterfaceExpr;
 begin
    e:=TMethodInterfaceExpr(expr);
 
    codeGen.Compile(e.BaseExpr);
-   codeGen.WriteString(',');
+   codeGen.WriteString('[');
    codeGen.WriteString(IntToStr(e.MethSym.VMTIndex));
-
-   if e.FuncSym.Params.Count>0 then
-      codeGen.WriteString(',');
-
-   inherited;
+   codeGen.WriteString(']');
 end;
 
 // ------------------
