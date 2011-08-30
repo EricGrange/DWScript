@@ -1,0 +1,9 @@
+123
+False
+True
+789
+Hello
+321
+123
+False
+True

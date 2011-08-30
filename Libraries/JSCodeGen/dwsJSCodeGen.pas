@@ -1241,22 +1241,53 @@ end;
 // CompileRecordSymbol
 //
 procedure TdwsJSCodeGen.CompileRecordSymbol(rec : TRecordSymbol);
-//var
-//   i : Integer;
-//   member : TMemberSymbol;
+var
+   i : Integer;
+   sym : TSymbol;
+   field : TFieldSymbol;
+   firstField : Boolean;
 begin
-//   WriteString('function $init');
-//   WriteString(rec.Name);
-//   WriteStringLn('(r) {');
-//   for i:=0 to rec.Members.Count-1 do begin
-//      member:=rec.Members[i] as TMemberSymbol;
-//      WriteString('r.');
-//      WriteString(member.Name);
-//      WriteString('=');
-//      WriteDefaultValue(member.Typ, False);
-//      WriteStringLn(';');
-//   end;
-//   WriteStringLn('};');
+   WriteString('function Copy$');
+   WriteSymbolName(rec);
+   WriteStringLn('(s) {');
+   Indent;
+   WriteStringLn('return {');
+   Indent;
+   firstField:=True;
+   for i:=0 to rec.Members.Count-1 do begin
+      sym:=rec.Members[i];
+      if sym is TFieldSymbol then begin
+         field:=TFieldSymbol(sym);
+         if firstField then
+            firstField:=False
+         else WriteString(',');
+         WriteSymbolName(field);
+         WriteString(':');
+         if    (field.Typ is TBaseSymbol)
+            or (field.Typ is TClassSymbol)
+            or (field.Typ is TInterfaceSymbol)
+            or (field.Typ is TFuncSymbol)
+            or (field.Typ is TDynamicArraySymbol) then begin
+            WriteString('s.');
+            WriteSymbolName(field)
+         end else if field.Typ is TRecordSymbol then begin
+            WriteString('Copy$');
+            WriteSymbolName(field.Typ);
+            WriteString('(s.');
+            WriteSymbolName(field);
+            WriteString(')');
+         end else if field.Typ is TStaticArraySymbol then begin
+            WriteString('s.');
+            WriteSymbolName(field);
+            WriteString('.slice(0)');
+         end else raise ECodeGenUnsupportedSymbol.CreateFmt('Copy record field type %s', [field.Typ.ClassName]);
+         WriteStringLn('');
+      end;
+   end;
+   UnIndent;
+   WriteStringLn('}');
+   UnIndent;
+   WriteStringLn('};');
 end;
 
 // DoCompileClassSymbol
@@ -1816,6 +1847,11 @@ begin
       if intf=nil then
          WriteString('null')
       else raise ECodeGenUnsupportedSymbol.Create('Non nil class symbol');
+   end else if typ is TDynamicArraySymbol then begin
+      intf:=data[addr];
+      if (IScriptObj(intf).InternalObject as TScriptDynamicArray).Length=0 then
+         WriteString('[]')
+      else raise ECodeGenUnsupportedSymbol.Create('Non empty dynamic array symbol');
    end else if typ is TInterfaceSymbol then begin
       intf:=data[addr];
       if intf=nil then
@@ -2496,9 +2532,11 @@ begin
    end else if lt is TRecordSymbol then begin
 
       codeGen.Compile(e.Left);
-      codeGen.WriteString('=JSON.parse(JSON.stringify(');
+      codeGen.WriteString('=Copy$');
+      codeGen.WriteSymbolName(lt);
+      codeGen.WriteString('(');
       codeGen.CompileNoWrap(e.Right);
-      codeGen.WriteString('))');
+      codeGen.WriteString(')');
 
    end else if lt is TDynamicArraySymbol then begin
 
@@ -2616,16 +2654,17 @@ begin
             codeGen.WriteString('}');
          end else begin
             if paramSymbol.Typ is TRecordSymbol then begin
-               codeGen.WriteString('JSON.parse(JSON.stringify(');
-               codeGen.Compile(paramExpr);
-               codeGen.WriteString('))');
+               codeGen.WriteString('Copy$');
+               codeGen.WriteSymbolName(paramSymbol.Typ);
+               codeGen.WriteString('(');
+               codeGen.CompileNoWrap(paramExpr);
+               codeGen.WriteString(')');
             end else if paramSymbol.Typ is TStaticArraySymbol then begin
                if (paramExpr is TArrayConstantExpr) and not NeedArrayCopy(TArrayConstantExpr(paramExpr)) then begin
                   codeGen.Compile(paramExpr);
                end else begin
-                  codeGen.WriteString('JSON.parse(JSON.stringify(');
                   codeGen.Compile(paramExpr);
-                  codeGen.WriteString('))');
+                  codeGen.WriteString('.slice(0)');
                end;
             end else begin
                codeGen.CompileNoWrap(paramExpr);
