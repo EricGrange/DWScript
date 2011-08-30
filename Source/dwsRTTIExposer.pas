@@ -14,8 +14,9 @@
 {    Current maintainer: Eric Grange                                   }
 {                                                                      }
 {**********************************************************************}
-{$I dws.inc}
 unit dwsRTTIExposer;
+
+{$I dws.inc}
 
 interface
 
@@ -40,6 +41,8 @@ type
 
    TdwsRTTIExposerOptions = set of TdwsRTTIExposerOption;
 
+   {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([vcPublic, vcPublished])}
+
    // TdwsPublished
    //
    dwsPublished = class (TCustomAttribute)
@@ -56,6 +59,8 @@ type
    //
    dwsNotPublished = class (TCustomAttribute)
    end;
+
+   {$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
 
    // TdwsRTTIExposer
    //
