@@ -925,6 +925,8 @@ begin
 
       // Start compilation
       FProg.Expr:=ReadScript(sourceFile, stMain);
+      if FProg.Expr=nil then
+         FProg.Expr:=TNullExpr.Create(FProg, cNullPos);
 
       // Initialize symbol table
       FProg.Table.Initialize(FMsgs);
@@ -1208,10 +1210,15 @@ begin
    try
       FTok.SwitchHandler:=ReadSwitch;
 
+      FMainProg.SourceList.Add(sourceFile.Name, sourceFile, scriptType);
+
+      if (scriptType=stMain) and FTOk.Test(ttUNIT) then begin
+         scriptType:=stUnit;
+         Result:=nil;
+      end;
+
       if Assigned(FOnReadScript) then
          FOnReadScript(Self, sourceFile, scriptType);
-
-      FMainProg.SourceList.Add(sourceFile.Name, sourceFile, scriptType);
 
       case scriptType of
          stMain :
@@ -6812,7 +6819,7 @@ begin
    if not FTok.TestDeleteNamePos(name, namePos) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
    if not SameText(name, namePos.SourceFile.Name) then
-      FMsgs.AddCompilerError(namePos, CPE_UnitNameDoesntMatch);
+      FMsgs.AddCompilerWarning(namePos, CPE_UnitNameDoesntMatch);
    if not FTok.TestDelete(ttSEMI) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
    if FTok.TestDelete(ttINTERFACE) then
