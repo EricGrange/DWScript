@@ -403,7 +403,7 @@ type
 
       function ReadTry : TExceptionExpr;
       function ReadFinally(tryExpr : TNoResultExpr) : TFinallyExpr;
-      function ReadExcept(tryExpr : TNoResultExpr) : TExceptExpr;
+      function ReadExcept(tryExpr : TNoResultExpr; var finalToken : TTokenType) : TExceptExpr;
 
       function ReadType(const typeName : String; typeContext : TdwsReadTypeContext) : TTypeSymbol;
       function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
@@ -5048,7 +5048,9 @@ begin
       tryBlock:=ReadBlocks([ttFINALLY, ttEXCEPT], tt);
       if tt=ttEXCEPT then begin
          FIsExcept:=True;
-         Result:=ReadExcept(tryBlock);
+         Result:=ReadExcept(tryBlock, tt);
+         if tt=ttFINALLY then
+            Result:=ReadFinally(Result);
       end else begin
          Result:=ReadFinally(tryBlock);
       end;
@@ -5078,35 +5080,10 @@ begin
    end;
 end;
 
-// ReadRaise
-//
-function TdwsCompiler.ReadRaise : TRaiseBaseExpr;
-var
-   exceptExpr : TTypedExpr;
-   exceptObjTyp : TSymbol;
-begin
-   if FIsExcept and (FTok.Test(ttSEMI) or FTok.Test(ttEND)) then
-      Result:=TReraiseExpr.Create(FProg, FTok.HotPos)
-   else begin
-      exceptExpr:=ReadExpr;
-      try
-         exceptObjTyp:=exceptExpr.Typ;
-         if not (    (exceptObjTyp is TClassSymbol)
-                 and TClassSymbol(exceptObjTyp).IsOfType(FProg.TypException)) then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_ExceptionObjectExpected);
-         Result:=TRaiseExpr.Create(FProg, FTok.HotPos, exceptExpr);
-      except
-         exceptExpr.Free;
-         raise;
-      end;
-   end;
-end;
-
 // ReadExcept
 //
-function TdwsCompiler.ReadExcept(tryExpr : TNoResultExpr) : TExceptExpr;
+function TdwsCompiler.ReadExcept(tryExpr : TNoResultExpr; var finalToken : TTokenType) : TExceptExpr;
 var
-   tt : TTokenType;
    doExpr : TExceptDoExpr;
    varName : String;
    classSym : TTypeSymbol;
@@ -5148,20 +5125,47 @@ begin
 
             Result.AddDoExpr(DoExpr);
 
-            if not FTok.Test(ttEND) then
+            if FTok.TestAny([ttEND, ttELSE])=ttNone then
                ReadSemiColon;
          end;
 
          if FTok.TestDelete(ttELSE) then
-            Result.ElseExpr:=ReadBlocks([ttEND], tt)
-         else if not FTok.TestDelete(ttEND) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
+            Result.ElseExpr:=ReadBlocks([ttEND, ttFINALLY], finalToken)
+         else begin
+            finalToken:=FTok.TestDeleteAny([ttEND, ttFINALLY]);
+            if finalToken=ttNone then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
+         end;
       end else begin
-         Result.HandlerExpr:=ReadBlocks([ttEND], tt);
+         Result.HandlerExpr:=ReadBlocks([ttEND, ttFINALLY], finalToken);
       end;
    except
       Result.Free;
       raise;
+   end;
+end;
+
+// ReadRaise
+//
+function TdwsCompiler.ReadRaise : TRaiseBaseExpr;
+var
+   exceptExpr : TTypedExpr;
+   exceptObjTyp : TSymbol;
+begin
+   if FIsExcept and (FTok.Test(ttSEMI) or FTok.Test(ttEND)) then
+      Result:=TReraiseExpr.Create(FProg, FTok.HotPos)
+   else begin
+      exceptExpr:=ReadExpr;
+      try
+         exceptObjTyp:=exceptExpr.Typ;
+         if not (    (exceptObjTyp is TClassSymbol)
+                 and TClassSymbol(exceptObjTyp).IsOfType(FProg.TypException)) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ExceptionObjectExpected);
+         Result:=TRaiseExpr.Create(FProg, FTok.HotPos, exceptExpr);
+      except
+         exceptExpr.Free;
+         raise;
+      end;
    end;
 end;
 
