@@ -392,6 +392,7 @@ type
       function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TBlockExpr;
       procedure ReadSemiColon;
       function ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TNoResultExpr;
+      procedure ReadScriptImplementations;
       function ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
       function ReadStatement : TNoResultExpr;
       function ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TProgramExpr;
@@ -1196,13 +1197,11 @@ end;
 //
 function TdwsCompiler.ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TNoResultExpr;
 var
-   finalToken : TTokenType;
    oldTok : TTokenizer;
    oldSection : TdwsUnitSection;
+   finalToken : TTokenType;
    unitBlock : TBlockExpr;
-   implemTable : TUnitImplementationTable;
-   oldTable : TSymbolTable;
-   oldUnit : TUnitMainSymbol;
+   readingMain : Boolean;
 begin
    oldTok:=FTok;
    oldSection:=FUnitSection;
@@ -1212,10 +1211,9 @@ begin
 
       FMainProg.SourceList.Add(sourceFile.Name, sourceFile, scriptType);
 
-      if (scriptType=stMain) and FTOk.Test(ttUNIT) then begin
+      readingMain:=(scriptType=stMain);
+      if (scriptType=stMain) and FTOk.Test(ttUNIT) then
          scriptType:=stUnit;
-         Result:=nil;
-      end;
 
       if Assigned(FOnReadScript) then
          FOnReadScript(Self, sourceFile, scriptType);
@@ -1230,8 +1228,11 @@ begin
       end;
 
       Result:=ReadRootBlock([], finalToken);
-      if scriptType=stUnit then
-         FreeAndNil(Result);
+
+      if scriptType=stUnit then begin
+         FProg.InitExpr.AddStatement(Result);
+         Result:=nil;
+      end;
 
       if scriptType<>stInclude then
          if FConditionalDepth.Count>0 then
@@ -1240,37 +1241,19 @@ begin
          FUnitSymbol.UnParentInterfaceTable;
 
       if finalToken=ttIMPLEMENTATION then begin
-         FUnitContextStack.PushContext(Self);
+         if readingMain then begin
+            unitBlock:=ReadRootBlock([], finalToken);
+            FProg.InitExpr.AddStatement(unitBlock);
+            FTok.Free;
+         end else FUnitContextStack.PushContext(Self);
          FTok:=nil;
       end else begin
          Inc(FLineCount, FTok.CurrentPos.Line-2);
          FreeAndNil(FTok);
       end;
 
-      if scriptType=stMain then begin
-         while FUnitContextStack.Count>0 do begin
-            oldUnit:=FUnitSymbol;
-            FUnitContextStack.PopContext(Self);
-            FUnitSection:=secImplementation;
-            try
-               implemTable:=TUnitImplementationTable.Create(FUnitSymbol);
-               oldTable:=FProg.Table;
-               FProg.Table:=implemTable;
-               try
-                  unitBlock:=ReadRootBlock([], finalToken);
-                  if unitBlock.SubExprCount>0 then
-                     FProg.InitExpr.AddStatement(unitBlock)
-                  else FreeAndNil(unitBlock);
-               finally
-                  FProg.Table:=oldTable;
-               end;
-            finally
-               Inc(FLineCount, FTok.CurrentPos.Line-2);
-               FreeAndNil(FTok);
-               FUnitSymbol:=oldUnit;
-            end;
-         end;
-      end;
+      if scriptType=stMain then
+         ReadScriptImplementations;
 
       if (Result<>nil) and Optimize then
          Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
@@ -1278,6 +1261,40 @@ begin
       FTok.Free;
       FTok:=oldTok;
       FUnitSection:=oldSection;
+   end;
+end;
+
+// ReadScriptImplementations
+//
+procedure TdwsCompiler.ReadScriptImplementations;
+var
+   finalToken : TTokenType;
+   unitBlock : TBlockExpr;
+   implemTable : TUnitImplementationTable;
+   oldTable : TSymbolTable;
+   oldUnit : TUnitMainSymbol;
+begin
+   while FUnitContextStack.Count>0 do begin
+      oldUnit:=FUnitSymbol;
+      FUnitContextStack.PopContext(Self);
+      FUnitSection:=secImplementation;
+      try
+         implemTable:=TUnitImplementationTable.Create(FUnitSymbol);
+         oldTable:=FProg.Table;
+         FProg.Table:=implemTable;
+         try
+            unitBlock:=ReadRootBlock([], finalToken);
+            if unitBlock.SubExprCount>0 then
+               FProg.InitExpr.AddStatement(unitBlock)
+            else FreeAndNil(unitBlock);
+         finally
+            FProg.Table:=oldTable;
+         end;
+      finally
+         Inc(FLineCount, FTok.CurrentPos.Line-2);
+         FreeAndNil(FTok);
+         FUnitSymbol:=oldUnit;
+      end;
    end;
 end;
 

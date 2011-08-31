@@ -1,0 +1,21 @@
+Unit TestUnit;
+
+Interface
+
+Type
+
+ IIntf = Interface
+ Procedure Proc;
+ End;
+
+ TObj = Class(TObject, IIntf)
+ Procedure Proc;
+ End;
+
+Implementation
+
+Procedure TObj.Proc;
+Begin
+End;
+
+End.
