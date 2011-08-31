@@ -1344,7 +1344,6 @@ begin
 
    for i:=0 to cls.VMTCount-1 do begin
       meth:=cls.VMTMethod(i);
-//      if meth.Name='Destroy' then continue;
       if meth.StructSymbol<>cls then begin
          WriteString(',');
          WriteString(MemberName(meth, meth.StructSymbol));
