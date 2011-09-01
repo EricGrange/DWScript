@@ -3897,7 +3897,7 @@ end;
 procedure TSymbolTable.Initialize(const msgs : TdwsCompileMessageList);
 var
    i : Integer;
-   ptrList : PPointerList;
+   ptrList : PPointerTightList;
 begin
    ptrList:=FSymbols.List;
    for i:=0 to FSymbols.Count-1 do
@@ -3961,7 +3961,7 @@ procedure TSymbolTable.SortSymbols(minIndex, maxIndex : Integer);
 var
   i, j, p : Integer;
   pSym : TSymbol;
-  ptrList : PPointerList;
+  ptrList : PPointerTightList;
 begin
    if (maxIndex<=minIndex) then
       Exit;
@@ -3995,7 +3995,7 @@ end;
 function TSymbolTable.FindLocalSorted(const name: string): TSymbol;
 var
    lo, hi, mid, cmpResult: Integer;
-   ptrList : PPointerList;
+   ptrList : PPointerTightList;
 begin
    lo:=0;
    hi:=FSymbols.Count-1;
@@ -4019,7 +4019,7 @@ end;
 function TSymbolTable.FindLocalUnSorted(const name: string) : TSymbol;
 var
    i : Integer;
-   ptrList : PPointerList;
+   ptrList : PPointerTightList;
 begin
    ptrList:=FSymbols.List;
    for i:=FSymbols.Count-1 downto 0 do begin
@@ -4063,7 +4063,7 @@ end;
 function TSymbolTable.HasClass(const aClass : TSymbolClass) : Boolean;
 var
    i : Integer;
-   ptrList : PPointerList;
+   ptrList : PPointerTightList;
 begin
    ptrList:=FSymbols.List;
    for i:=FSymbols.Count-1 downto 0 do begin
@@ -4108,7 +4108,7 @@ end;
 function TSymbolTable.AddSymbolDirect(sym : TSymbol) : Integer;
 var
    n : Integer;
-   ptrList : PPointerList;
+   ptrList : PPointerTightList;
 begin
    if FSymbolsSorted then begin
       Result:=0;

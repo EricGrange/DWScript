@@ -237,7 +237,8 @@ type
          class function GetSymbolClass : TdwsSymbolClass; override;
          function GetDisplayName: string;
       public
-         function Add : TdwsGlobal;
+         function Add : TdwsGlobal; overload;
+         function Add(const name, typName : String) : TdwsGlobal; overload;
    end;
 
   TdwsVariablesClass = class of TdwsVariables;
@@ -961,7 +962,7 @@ type
   public
     constructor Create(FuncSym: TFuncSymbol);
     procedure Execute(info : TProgramInfo); override;
-    procedure SetValue(const Data: TData);
+    procedure SetValue(const data : TData; offset : Integer);
   end;
 
   TWriteVarFunc = class(TAnonymousFunction)
@@ -1961,6 +1962,15 @@ begin
    Result:=TdwsGlobal(inherited Add);
 end;
 
+// Add
+//
+function TdwsVariables.Add(const name, typName : String) : TdwsGlobal;
+begin
+   Result:=Add;
+   Result.Name:=name;
+   Result.DataType:=typName;
+end;
+
 class function TdwsVariables.GetSymbolClass: TdwsSymbolClass;
 begin
   Result := TdwsGlobal;
@@ -1971,69 +1981,64 @@ end;
 function TdwsGlobal.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil):
   TSymbol;
 var
-  typSym: TTypeSymbol;
-  readEventFunc: TReadVarEventFunc;
-  writeEventFunc: TWriteVarEventFunc;
-  readFunc: TReadVarFunc;
-  funcSym: TFuncSymbol;
+   typSym: TTypeSymbol;
+   readEventFunc: TReadVarEventFunc;
+   writeEventFunc: TWriteVarEventFunc;
+   readFunc: TReadVarFunc;
+   funcSym: TFuncSymbol;
 begin
-  FIsGenerating := True;
-  CheckName(Table, Name);
+   FIsGenerating := True;
+   CheckName(Table, Name);
 
-  // Get the type symbol of this variable
-  typSym := GetDataType(Table, DataType);
-  if typSym is TArraySymbol then
-    raise EHandledGenerationError.CreateFmt('Globals of array type not supported: %s in %s', [Name, FUnit.Name]);
-  if typSym is TRecordSymbol then
-    raise EHandledGenerationError.CreateFmt('Globals of record type not supported: %s in %s', [Name, FUnit.Name]);
+   // Get the type symbol of this variable
+   typSym := GetDataType(Table, DataType);
+   if typSym is TArraySymbol then
+      raise EHandledGenerationError.CreateFmt('Globals of array type not supported: %s in %s', [Name, FUnit.Name]);
+   if typSym is TRecordSymbol then
+      raise EHandledGenerationError.CreateFmt('Globals of record type not supported: %s in %s', [Name, FUnit.Name]);
 
-  if (Assigned(FOnReadVar) or Assigned(FOnWriteVar)) then
-  begin
-    Result := TExternalVarSymbol.Create(Name, typSym);
+   if (Assigned(FOnReadVar) or Assigned(FOnWriteVar)) then begin
+      Result := TExternalVarSymbol.Create(Name, typSym);
 
-    if Assigned(FOnReadVar) then
-    begin
+      if Assigned(FOnReadVar) then begin
+         funcSym := TFuncSymbol.Create('', fkFunction, 1);
+         funcSym.Typ := typSym;
+
+         readEventFunc := TReadVarEventFunc.Create(funcSym);
+         readEventFunc.OnReadVar := FOnReadVar;
+
+         funcSym.Executable := ICallable(readEventFunc);
+
+         TExternalVarSymbol(Result).ReadFunc := funcSym;
+      end;
+
+      if Assigned(FOnWriteVar) then begin
+         funcSym := TFuncSymbol.Create('', fkProcedure, 1);
+         funcSym.AddParam(TParamSymbol.Create('Value', typSym));
+
+         writeEventFunc := TWriteVarEventFunc.Create(funcSym);
+         writeEventFunc.OnWriteVar := FOnWriteVar;
+
+         funcSym.Executable := ICallable(writeEventFunc);
+
+         TExternalVarSymbol(Result).WriteFunc := funcSym;
+      end;
+   end else begin
+      Result := TExternalVarSymbol.Create(Name, typSym);
+
       funcSym := TFuncSymbol.Create('', fkFunction, 1);
       funcSym.Typ := typSym;
 
-      readEventFunc := TReadVarEventFunc.Create(funcSym);
-      readEventFunc.OnReadVar := FOnReadVar;
-
-      funcSym.Executable := ICallable(readEventFunc);
-
+      readFunc := TReadVarFunc.Create(funcSym);
       TExternalVarSymbol(Result).ReadFunc := funcSym;
-    end;
 
-    if Assigned(FOnWriteVar) then
-    begin
       funcSym := TFuncSymbol.Create('', fkProcedure, 1);
       funcSym.AddParam(TParamSymbol.Create('Value', typSym));
-
-      writeEventFunc := TWriteVarEventFunc.Create(funcSym);
-      writeEventFunc.OnWriteVar := FOnWriteVar;
-
-      funcSym.Executable := ICallable(writeEventFunc);
-
+      TWriteVarFunc.Create(funcSym, readFunc);
       TExternalVarSymbol(Result).WriteFunc := funcSym;
-    end;
-  end
-  else
-  begin
-    Result := TExternalVarSymbol.Create(Name, typSym);
+   end;
 
-    funcSym := TFuncSymbol.Create('', fkFunction, 1);
-    funcSym.Typ := typSym;
-
-    readFunc := TReadVarFunc.Create(funcSym);
-    TExternalVarSymbol(Result).ReadFunc := funcSym;
-
-    funcSym := TFuncSymbol.Create('', fkProcedure, 1);
-    funcSym.AddParam(TParamSymbol.Create('Value', typSym));
-    TWriteVarFunc.Create(funcSym, readFunc);
-    TExternalVarSymbol(Result).WriteFunc := funcSym;
-  end;
-
-  GetUnit.Table.AddSymbol(Result);
+   GetUnit.Table.AddSymbol(Result);
 end;
 
 procedure TdwsGlobal.Assign(Source: TPersistent);
@@ -3176,9 +3181,9 @@ begin
   Info.Data[SYS_RESULT] := FData;
 end;
 
-procedure TReadVarFunc.SetValue(const Data: TData);
+procedure TReadVarFunc.SetValue(const data : TData; offset : Integer);
 begin
-  DWSCopyData(Data, 0, FData, 0, FTyp.Size);
+   DWSCopyData(data, offset, FData, 0, FTyp.Size);
 end;
 
 { TWriteVarFunc }
@@ -3191,7 +3196,7 @@ end;
 
 procedure TWriteVarFunc.Execute(info : TProgramInfo);
 begin
-  FReadVarFunc.SetValue(Info.Data['Value']);
+  FReadVarFunc.SetValue(info.Execution.Stack.Data, info.Execution.Stack.StackPointer-1);
 end;
 
 { TdwsComponent }

@@ -2189,8 +2189,12 @@ const
    vmtDestroy = -4;
 var
    i : Integer;
-   p : Pointer;
+   p : Cardinal;
+   {$IFDEF VER230}
+   n : NativeUInt;
+   {$ELSE}
    n : Cardinal;
+   {$ENDIF}
    added : Boolean;
 begin
    Result:=Self.Create(Prog, Typ, Value);
@@ -2202,12 +2206,20 @@ begin
       Exit;
    end;
 
-   p:=@TUnifiedConstExpr.DoNothing;
-   if PPointer(NativeInt(Self)+vmtDestroy)^<>p then begin
+   p:=Cardinal(@TUnifiedConstExpr.DoNothing);
+   {$IFDEF WIN32}
+   if PCardinal(NativeInt(Self)+vmtDestroy)^<>p then begin
       WriteProcessMemory(GetCurrentProcess,
                          Pointer(NativeInt(Self)+vmtDestroy),
                          @p, SizeOf(Pointer), n);
    end;
+   {$ELSE}
+   if PCardinal(NativeInt(Self)+vmtDestroy-4)^<>p then begin
+      WriteProcessMemory(GetCurrentProcess,
+                         Pointer(NativeInt(Self)+vmtDestroy-4),
+                         @p, SizeOf(Cardinal), n);
+   end;
+  {$ENDIF}
 end;
 
 // DoNothing
@@ -2286,8 +2298,13 @@ function TConstIntExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
    Result:=FValue;
 {$else}
+   {$IFDEF WIN64}
+begin
+   Result:=FValue;
+   {$ELSE}
 asm
    fild  qword [eax + OFFSET FValue]
+   {$ENDIF}
 {$endif}
 end;
 
@@ -2312,8 +2329,13 @@ function TConstFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
    Result:=FValue;
 {$else}
+   {$IFDEF WIN64}
+begin
+   Result:=FValue;
+{$ELSE}
 asm
    fld qword [eax].FValue
+   {$ENDIF}
 {$endif}
 end;
 
@@ -4005,10 +4027,17 @@ begin
    Result:=Sqr(FExpr.EvalAsFloat(exec));
 {$else}
 asm
+   {$IFDEF WIN64}
+   mov   rcx, [rcx].FExpr
+   mov   rax, [rcx]
+   call  [rax+VMTOFFSET EvalAsFloat]
+   mulsd xmm0, xmm0
+   {$ELSE}
    mov   eax, [eax].FExpr
    mov   ecx, [eax]
    call  [ecx+VMTOFFSET EvalAsFloat]
    fmul  st(0), st(0)
+   {$ENDIF}
 {$endif}
 end;
 

@@ -36,7 +36,10 @@
 {$T-} // typed addr off - otherwise you'll get problems with ComSupport
       // <<.CreateResFmt(@SNoMethod, [Names]);>>
 
-{.$DEFINE PUREPASCAL}
+{$IFNDEF WIN32}
+  {$DEFINE PUREPASCAL}
+{$ENDIF}
+
 {.$DEFINE UNICODE_IDENTIFIERS}
 
 

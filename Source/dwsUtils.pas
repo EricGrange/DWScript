@@ -54,17 +54,19 @@ type
       If the list holds only 1 item, no dynamic memory is allocated
       (the list pointer is used).
       Make sure to Clear or Clean in the destructor of the Owner. }
+   TTightListArray = array [0..MaxInt shr 4] of Pointer;
+   PPointerTightList = ^TTightListArray;
    TTightList = record
       private
-         FList : PPointerList;
+         FList : PPointerTightList;
 
          procedure RaiseIndexOutOfBounds;
-         function GetList : PPointerList; inline;
+         function GetList : PPointerTightList; inline;
 
       public
          FCount : Integer;     // exposed so it can be used for direct property access
 
-         property List : PPointerList read GetList;
+         property List : PPointerTightList read GetList;
          property Count : Integer read FCount;
 
          procedure Free; // to posture as a regular TList
@@ -85,7 +87,7 @@ type
    {: Embeddable stack functionality }
    TTightStack = record
       private
-         FList : PPointerList;
+         FList : PPointerTightList;
          FCount : Integer;
          FCapacity : Integer;
 
@@ -100,7 +102,7 @@ type
          procedure Clean;
          procedure Free;
 
-         property List : PPointerList read FList;
+         property List : PPointerTightList read FList;
          property Count : Integer read FCount;
    end;
 
@@ -314,7 +316,11 @@ end;
 type
    TStringListCracker = class (TStrings)
       private
-         FList: PStringItemList;
+         {$IF CompilerVersion>16}
+         FList: TStringItemList;
+         {$ELSE}
+         FList : PStringItemList;
+         {$IFEND}
    end;
 
    TFastCompareStringList = class (TStringList)
@@ -629,7 +635,7 @@ end;
 
 // GetList
 //
-function TTightList.GetList : PPointerList;
+function TTightList.GetList : PPointerTightList;
 begin
    if Count=1 then
       Result:=@FList
@@ -739,7 +745,7 @@ end;
 procedure TTightList.Insert(index : Integer; item : Pointer);
 var
    i : Integer;
-   locList : PPointerList;
+   locList : PPointerTightList;
 begin
    if Cardinal(index)>Cardinal(FCount) then
       RaiseIndexOutOfBounds

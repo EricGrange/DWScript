@@ -50,7 +50,7 @@ type
 
    TVariantDynArray = array of Variant;
 
-   TNoResultExprList = array[0..MaxListSize - 1] of TNoResultExpr;
+   TNoResultExprList = array[0..MaxInt shr 4] of TNoResultExpr;
    PNoResultExprList = ^TNoResultExprList;
    PNoResultExpr = ^TNoResultExpr;
 
@@ -731,7 +731,7 @@ type
 
    // TExternalFuncHandler
    //
-   TExternalFuncHandler = class(TInterfacedObject, ICallable, IExecutable)
+   TExternalFuncHandler = class(TInterfacedObject, IUnknown, ICallable, IExecutable)
       public
          procedure InitSymbol(symbol: TSymbol);
          procedure InitExpression(Expr: TExprBase);
@@ -804,7 +804,7 @@ type
       procedure ExecuteInitResult(exec : TdwsExecution);
       procedure ExecuteLazy(exec : TdwsExecution);
    end;
-   TPushOperatorArray = packed array [0..MaxInt shr 4] of TPushOperator;
+   TPushOperatorArray = packed array [0..MaxInt shr 5] of TPushOperator;
    PPushOperatorArray = ^TPushOperatorArray;
 
    // Function call: func(arg0, arg1, ...);
@@ -842,7 +842,7 @@ type
    end;
 
    // Encapsulates a function or method pointer
-   TFuncPointer = class(TInterfacedObject, IFuncPointer)
+   TFuncPointer = class(TInterfacedObject, IUnknown, IFuncPointer)
       private
          FFuncExpr : TFuncExprBase;
 
@@ -1760,7 +1760,7 @@ type
 
 // wrapper to interact with an released script object
 type
-   TScriptObjectWrapper = class (TInterfacedObject, IScriptObj)
+   TScriptObjectWrapper = class (TInterfacedObject, IUnknown, IScriptObj)
       private
          FScriptObj : TScriptObj;
       protected
@@ -2297,7 +2297,9 @@ begin
       FProgInfoPool:=nil;
    end;
    Result.FuncSym:=funcSym;
-   Result.FTable:=funcSym.Params;
+   if funcSym<>nil then
+      Result.FTable:=funcSym.Params
+   else Result.FTable:=FProg.Table;
 end;
 
 // ReleaseProgramInfo
@@ -2436,7 +2438,9 @@ end;
 //
 function TdwsProgramExecution.GetInfo : TProgramInfo;
 begin
-   Result:=ProgramInfo;
+   if ProgramInfo<>nil then
+      Result:=ProgramInfo
+   else Result:=AcquireProgramInfo(nil);
 end;
 
 // GetResult
@@ -3879,7 +3883,7 @@ end;
 
 type
 
-  TVarParamData = class (TInterfacedObject, IVarParamData)
+  TVarParamData = class (TInterfacedObject, IUnknown, IVarParamData)
   private
     FData: TData;
     FAddr: Integer;
@@ -6922,18 +6926,14 @@ end;
 
 function TConnectorReadExpr.Eval(exec : TdwsExecution): Variant;
 begin
-  try
-    if FBaseExpr is TDataExpr then
-      FResultData := FConnectorMember.Read(TDataExpr(FBaseExpr).Data[exec][TDataExpr(FBaseExpr).Addr[exec]])
-    else begin
+   try
       FBaseExpr.EvalAsVariant(exec, Result);
       FResultData := FConnectorMember.Read(Result);
-    end;
-    Result := FResultData[0];
-  except
-    exec.SetScriptError(Self);
-    raise;
-  end;
+      Result := FResultData[0];
+   except
+      exec.SetScriptError(Self);
+      raise;
+   end;
 end;
 
 function TConnectorReadExpr.GetData(exec : TdwsExecution) : TData;
@@ -6981,13 +6981,13 @@ begin
     Base := @tmp;
   end;
 
-  if FValueExpr is TDataExpr then
-    dat := TDataExpr(FValueExpr).GetData(exec)
-  else
-  begin
+//  if FValueExpr is TDataExpr then
+//    dat := TDataExpr(FValueExpr).GetData(exec)
+//  else
+//  begin
     SetLength(dat, 1);
     FValueExpr.EvalAsVariant(exec, dat[0]);
-  end;
+//  end;
 
   try
     FConnectorMember.Write(Base^, dat);
@@ -7097,27 +7097,29 @@ var
 begin
    resultData := nil;
    // Read an external var
-   funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).ReadFunc, nil, nil);
-   try
-      prog:=(exec as TdwsProgramExecution).Prog;
-      funcExpr.Initialize(prog);
-      if funcExpr.Typ.Size > 1 then begin // !! > 1 untested !!
-         funcExpr.SetResultAddr(prog, exec, FCaller.Stack.FrameSize);
-         // Allocate space on the stack to store the Result value
-         FCaller.Stack.Push(funcExpr.Typ.Size);
-         try
-            // Execute function.
-            resultData := funcExpr.GetData(exec);
-            resultAddr := funcExpr.GetAddr(exec);
-            // Copy Result
-            for x := 0 to funcExpr.Typ.Size - 1 do
-               Data[x] := resultData[resultAddr + x];
-         finally
-            FCaller.Stack.Pop(funcExpr.Typ.Size);
-         end;
-      end else funcExpr.EvalAsVariant(exec, Data[0]);
-   finally
-      funcExpr.Free;
+   if TExternalVarSymbol(FSym).ReadFunc<>nil then begin
+      funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).ReadFunc, nil, nil);
+      try
+         prog:=(exec as TdwsProgramExecution).Prog;
+         funcExpr.Initialize(prog);
+         if funcExpr.Typ.Size > 1 then begin // !! > 1 untested !!
+            funcExpr.SetResultAddr(prog, exec, FCaller.Stack.FrameSize);
+            // Allocate space on the stack to store the Result value
+            FCaller.Stack.Push(funcExpr.Typ.Size);
+            try
+               // Execute function.
+               resultData := funcExpr.GetData(exec);
+               resultAddr := funcExpr.GetAddr(exec);
+               // Copy Result
+               for x := 0 to funcExpr.Typ.Size - 1 do
+                  Data[x] := resultData[resultAddr + x];
+            finally
+               FCaller.Stack.Pop(funcExpr.Typ.Size);
+            end;
+         end else funcExpr.EvalAsVariant(exec, Data[0]);
+      finally
+         funcExpr.Free;
+      end;
    end;
 end;
 
@@ -7127,13 +7129,15 @@ procedure TExternalVarDataMaster.Write(exec : TdwsExecution; const Data: TData);
 var
    funcExpr : TFuncExpr;
 begin
-   funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).WriteFunc, nil, nil);
-   try
-      funcExpr.AddArg(TConstExpr.CreateTyped(FCaller.Prog, FSym.Typ, Data));
-      funcExpr.AddPushExprs((exec as TdwsProgramExecution).Prog);
-      funcExpr.EvalNoResult(exec);
-   finally
-      funcExpr.Free;
+   if TExternalVarSymbol(FSym).WriteFunc<>nil then begin
+      funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).WriteFunc, nil, nil);
+      try
+         funcExpr.AddArg(TConstExpr.CreateTyped(FCaller.Prog, FSym.Typ, Data));
+         funcExpr.AddPushExprs((exec as TdwsProgramExecution).Prog);
+         funcExpr.EvalNoResult(exec);
+      finally
+         funcExpr.Free;
+      end;
    end;
 end;
 
@@ -8178,7 +8182,7 @@ end;
 function TSourceConditions.Test(exec : TdwsExecution) : TSourceCondition;
 var
    i : Integer;
-   ptrList : PPointerList;
+   ptrList : PPointerTightList;
 begin
    ptrList:=FItems.List;
    for i:=0 to FItems.Count-1 do begin

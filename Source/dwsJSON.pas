@@ -91,7 +91,7 @@ type
       Name : String;
       Value : TdwsJSONValue;
    end;
-   TdwsJSONPairArray = array [0..MaxInt shr 4] of TdwsJSONPair;
+   TdwsJSONPairArray = array [0..MaxInt shr 5] of TdwsJSONPair;
    PdwsJSONPairArray = ^TdwsJSONPairArray;
 
    // TdwsJSONObject

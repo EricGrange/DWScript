@@ -99,7 +99,7 @@ type
   end;
 
   PStringItemList = ^TStringItemList;
-  TStringItemList = array[0..MaxListSize] of TStringItem;
+  TStringItemList = array[0..MaxInt shr 5] of TStringItem;
   TStringListSortCompare = function(List: TdwsStringList; Index1, Index2: Integer): Integer;
 
   TdwsStringList = class(TdwsStrings)
@@ -735,17 +735,17 @@ end;
 
 procedure TdwsStringList.ExchangeItems(Index1, Index2: Integer);
 var
-  Temp: Integer;
+  Temp: Pointer;
   Item1, Item2: PStringItem;
 begin
   Item1 := @FList^[Index1];
   Item2 := @FList^[Index2];
-  Temp := Integer(Item1^.FString);
-  Integer(Item1^.FString) := Integer(Item2^.FString);
-  Integer(Item2^.FString) := Temp;
-  Temp := Integer(Item1^.FObject);
-  Integer(Item1^.FObject) := Integer(Item2^.FObject);
-  Integer(Item2^.FObject) := Temp;
+  Temp := Pointer(Item1^.FString);
+  Pointer(Item1^.FString) := Pointer(Item2^.FString);
+  Pointer(Item2^.FString) := Temp;
+  Temp := Pointer(Item1^.FObject);
+  Pointer(Item1^.FObject) := Pointer(Item2^.FObject);
+  Pointer(Item2^.FObject) := Temp;
 end;
 
 function TdwsStringList.Find(const S: string; var Index: Integer): Boolean;

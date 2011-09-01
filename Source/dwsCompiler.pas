@@ -2834,13 +2834,14 @@ begin
             else Result:=ReadFunc(TFuncSymbol(sym.Typ), IsWrite, GetVarExpr(TDataSymbol(sym)), expecting)
          else Result:=ReadSymbol(GetVarExpr(TDataSymbol(sym)), IsWrite, expecting);
 
-      end else if sym.InheritsFrom(TExternalVarSymbol) then
+      end else if sym.InheritsFrom(TExternalVarSymbol) then begin
 
-         Result := ReadSymbol(ReadExternalVar(TExternalVarSymbol(sym), IsWrite), IsWrite, expecting)
+         Result := ReadSymbol(ReadExternalVar(TExternalVarSymbol(sym), IsWrite), IsWrite, expecting);
+         Result := ReadSymbol(Result, IsWrite, expecting);
 
       // OOP related stuff
 
-      else if baseType is TClassSymbol then begin
+      end else if baseType is TClassSymbol then begin
 
          Result:=ReadClassSymbolName(TClassSymbol(baseType), isWrite, expecting);
 
@@ -3467,7 +3468,7 @@ function TdwsCompiler.ReadExternalVar(sym : TExternalVarSymbol; isWrite : Boolea
 begin
    Result := nil;
    try
-      if IsWrite then begin
+      if IsWrite and not FTok.Test(ttDOT) then begin
          if FTok.TestDelete(ttASSIGN) then begin
             if not Assigned(Sym.WriteFunc) then
                FMsgs.AddCompilerStop(FTok.HotPos,CPE_CantWriteToLeftSide);
