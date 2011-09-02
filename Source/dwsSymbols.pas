@@ -17,8 +17,9 @@
 {    Current maintainer: Eric Grange                                   }
 {                                                                      }
 {**********************************************************************}
-{$I dws.inc}
 unit dwsSymbols;
+
+{$I dws.inc}
 
 interface
 

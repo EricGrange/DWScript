@@ -13,8 +13,9 @@
 {    Current maintainer: Eric Grange                                   }
 {                                                                      }
 {**********************************************************************}
-{$I dws.inc}
 unit dwsLanguageExtension;
+
+{$I dws.inc}
 
 interface
 

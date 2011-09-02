@@ -14,8 +14,9 @@
 {    Current maintainer: Eric Grange                                   }
 {                                                                      }
 {**********************************************************************}
-{$I dws.inc}
 unit dwsMathComplexFunctions;
+
+{$I dws.inc}
 
 interface
 

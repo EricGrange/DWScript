@@ -17,8 +17,9 @@
 {    Current maintainer: Eric Grange                                   }
 {                                                                      }
 {**********************************************************************}
-{$I dws.inc}
 unit dwsCoreExprs;
+
+{$I dws.inc}
 
 interface
 
@@ -1797,17 +1798,17 @@ end;
 type
    TdwsExecutionCracker = class(TdwsExecution);
 function TFloatVarExpr.EvalAsFloat(exec : TdwsExecution) : Double;
-{$ifdef PUREPASCAL}
-begin
-   Result:=exec.Stack.PointerToFloatValue_BaseRelative(FStackAddr)^;
-{$else}
+{$if Defined(WIN32_ASM)}
 asm
    lea   ecx, [edx].TdwsExecutionCracker.FStack
    mov   edx, [eax].FStackAddr
    mov   eax, ecx
    call  TStackMixIn.PointerToFloatValue_BaseRelative;
    fld   qword [eax]
-{$endif}
+{$else}
+begin
+   Result:=exec.Stack.PointerToFloatValue_BaseRelative(FStackAddr)^;
+{$ifend}
 end;
 
 // ------------------
@@ -2281,31 +2282,26 @@ end;
 // EvalAsInteger
 //
 function TConstIntExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
-{$ifdef PUREPASCAL}
-begin
-   Result:=FValue;
-{$else}
+{$if Defined(WIN32_ASM)}
 asm
    mov   edx, [eax + OFFSET FValue + 4]
    mov   eax, [eax + OFFSET FValue]
-{$endif}
+{$else}
+begin
+   Result:=FValue;
+{$ifend}
 end;
 
 // EvalAsFloat
 //
 function TConstIntExpr.EvalAsFloat(exec : TdwsExecution) : Double;
-{$ifdef PUREPASCAL}
-begin
-   Result:=FValue;
-{$else}
-   {$IFDEF WIN64}
-begin
-   Result:=FValue;
-   {$ELSE}
+{$if Defined(WIN32_ASM)}
 asm
    fild  qword [eax + OFFSET FValue]
-   {$ENDIF}
-{$endif}
+{$else}
+begin
+   Result:=FValue;
+{$ifend}
 end;
 
 // ------------------
@@ -2325,18 +2321,13 @@ end;
 // EvalAsFloat
 //
 function TConstFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
-{$ifdef PUREPASCAL}
-begin
-   Result:=FValue;
-{$else}
-   {$IFDEF WIN64}
-begin
-   Result:=FValue;
-{$ELSE}
+{$if Defined(WIN32_ASM)}
 asm
    fld qword [eax].FValue
-   {$ENDIF}
-{$endif}
+{$else}
+begin
+   Result:=FValue;
+{$ifend}
 end;
 
 // ------------------
@@ -3499,7 +3490,9 @@ begin
       Exit;
    end;
 
-   if expr.IsOfType(prog.TypVariant) then begin
+   if expr.Typ=toTyp then Exit;
+
+   if expr.Typ.UnAliasedType is TBaseVariantSymbol then begin
       if toTyp.IsOfType(prog.TypInteger) then
          Result:=TConvIntegerExpr.Create(prog, expr)
       else if toTyp.IsOfType(prog.TypFloat) then
@@ -4022,23 +4015,16 @@ end;
 // EvalAsFloat
 //
 function TSqrFloatExpr.EvalAsFloat(exec : TdwsExecution) : Double;
-{$ifdef PUREPASCAL}
-begin
-   Result:=Sqr(FExpr.EvalAsFloat(exec));
-{$else}
+{$if Defined(WIN32_ASM)}
 asm
-   {$IFDEF WIN64}
-   mov   rcx, [rcx].FExpr
-   mov   rax, [rcx]
-   call  [rax+VMTOFFSET EvalAsFloat]
-   mulsd xmm0, xmm0
-   {$ELSE}
    mov   eax, [eax].FExpr
    mov   ecx, [eax]
    call  [ecx+VMTOFFSET EvalAsFloat]
    fmul  st(0), st(0)
-   {$ENDIF}
-{$endif}
+{$else}
+begin
+   Result:=Sqr(FExpr.EvalAsFloat(exec));
+{$ifend}
 end;
 
 // ------------------

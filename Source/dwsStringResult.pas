@@ -23,10 +23,9 @@
 {    Contributor(s): Daniele Teti <d.teti@bittime.it>                  }
 {                                                                      }
 {**********************************************************************}
+unit dwsStringResult;
 
 {$I dws.inc}
-
-unit dwsStringResult;
 
 interface
 

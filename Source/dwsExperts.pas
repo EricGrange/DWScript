@@ -17,9 +17,10 @@
 {    Current maintainer: Eric Grange                                   }
 {                                                                      }
 {**********************************************************************}
-{$I dws.inc}
 // Design-Time only, do NOT include this unit in runtime packages.
 unit dwsExperts;
+
+{$I dws.inc}
 
 interface
 

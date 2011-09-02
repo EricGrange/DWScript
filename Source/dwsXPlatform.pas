@@ -17,8 +17,9 @@
 {    Current maintainer: Eric Grange                                   }
 {                                                                      }
 {**********************************************************************}
-{$I dws.inc}
 unit dwsXPlatform;
+
+{$I dws.inc}
 
 //
 // This unit should concentrate all non-UI cross-platform aspects,

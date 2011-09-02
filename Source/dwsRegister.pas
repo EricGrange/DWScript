@@ -17,8 +17,9 @@
 {    Current maintainer: Eric Grange                                   }
 {                                                                      }
 {**********************************************************************}
-{$I dws.inc}
 unit dwsRegister;
+
+{$I dws.inc}
 
 interface
 
@@ -41,6 +42,7 @@ begin
                      [
                      TDelphiWebScript,
                      TdwsComConnector,
+                     TdwsRttiConnector,
                      TdwsSimpleDebugger,
                      TdwsDebugger,
                      TdwsUnit,

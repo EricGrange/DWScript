@@ -32,8 +32,9 @@
    Be aware DWS will require special care to run in a multi-threaded
    environment.
 }
-{$I dws.inc}
 unit dwsGlobalVarsFunctions;
+
+{$I dws.inc}
 
 interface
 
