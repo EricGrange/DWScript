@@ -316,11 +316,11 @@ end;
 type
    TStringListCracker = class (TStrings)
       private
-         {$IF VER230}
+         {$IFDEF VER230}
          FList: TStringItemList;
          {$ELSE}
          FList : PStringItemList;
-         {$IFEND}
+         {$ENDIF}
    end;
 
    TFastCompareStringList = class (TStringList)
