@@ -316,7 +316,7 @@ end;
 type
    TStringListCracker = class (TStrings)
       private
-         {$IF CompilerVersion>16}
+         {$IF VER230}
          FList: TStringItemList;
          {$ELSE}
          FList : PStringItemList;
