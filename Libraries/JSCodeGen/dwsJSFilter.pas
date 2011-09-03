@@ -14,10 +14,9 @@
 {    Current maintainer: Eric Grange                                   }
 {                                                                      }
 {**********************************************************************}
+unit dwsJSFilter;
 
 {$I dws.inc}
-
-unit dwsJSFilter;
 
 interface
 
