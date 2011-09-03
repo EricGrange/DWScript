@@ -8,9 +8,6 @@ object dwsSymbolsLib: TdwsSymbolsLib
     Classes = <
       item
         Name = 'TSymbols'
-        IsSealed = False
-        IsAbstract = False
-        IsStatic = False
         Constructors = <
           item
             Name = 'CreateMain'
@@ -122,7 +119,6 @@ object dwsSymbolsLib: TdwsSymbolsLib
             Kind = mkFunction
           end>
         Operators = <>
-        Constants = <>
         Properties = <>
       end>
     Dependencies.Strings = (
