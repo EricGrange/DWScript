@@ -161,6 +161,7 @@ type
                                      preConds : Boolean); virtual;
          procedure CompileRecordSymbol(rec : TRecordSymbol); virtual;
          procedure CompileClassSymbol(cls : TClassSymbol);
+         procedure BeforeCompileProgram(table, systemTable : TSymbolTable; unitSyms : TUnitMainSymbols);
          procedure CompileProgram(const prog : IdwsProgram); virtual;
          procedure CompileProgramInSession(const prog : IdwsProgram); virtual;
          procedure CompileProgramBody(expr : TNoResultExpr); virtual;
@@ -579,6 +580,22 @@ begin
    end;
 end;
 
+// BeforeCompileProgram
+//
+procedure TdwsCodeGen.BeforeCompileProgram(table, systemTable : TSymbolTable; unitSyms : TUnitMainSymbols);
+var
+   i : Integer;
+begin
+   ReserveSymbolNames;
+   MapInternalSymbolNames(table, systemTable);
+
+   for i:=0 to unitSyms.Count-1 do
+      MapPrioritySymbolNames(unitSyms[i].Table);
+
+   MapPrioritySymbolNames(table);
+   MapNormalSymbolNames(table);
+end;
+
 // DoCompileClassSymbol
 //
 procedure TdwsCodeGen.DoCompileClassSymbol(cls : TClassSymbol);
@@ -602,14 +619,7 @@ begin
 
    BeginProgramSession(prog);
    try
-      ReserveSymbolNames;
-      MapInternalSymbolNames(prog.Table, (prog as TdwsProgram).SystemTable);
-
-      for i:=0 to p.UnitMains.Count-1 do
-         MapPrioritySymbolNames(p.UnitMains[i].Table);
-
-      MapPrioritySymbolNames(prog.Table);
-      MapNormalSymbolNames(prog.Table);
+      BeforeCompileProgram(prog.Table, p.SystemTable, p.UnitMains);
 
       CompileProgramInSession(prog);
    finally
@@ -706,10 +716,16 @@ procedure TdwsCodeGen.MapInternalSymbolNames(progTable, systemTable : TSymbolTab
       end;
    end;
 
+var
+   u : TUnitSymbol;
 begin
    MapSymbolTable(systemTable);
-   MapSymbolTable(TUnitSymbol(progTable.FindSymbol(SYS_INTERNAL, cvMagic, TUnitSymbol)).Table);
-   MapSymbolTable(TUnitSymbol(progTable.FindSymbol(SYS_DEFAULT, cvMagic, TUnitSymbol)).Table);
+   u:=TUnitSymbol(progTable.FindSymbol(SYS_INTERNAL, cvMagic, TUnitSymbol));
+   if u<>nil then
+      MapSymbolTable(u.Table);
+   u:=TUnitSymbol(progTable.FindSymbol(SYS_DEFAULT, cvMagic, TUnitSymbol));
+   if u<>nil then
+      MapSymbolTable(u.Table);
 end;
 
 // MapPrioritySymbolNames

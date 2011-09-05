@@ -465,6 +465,7 @@ type
       procedure WarnForVarUsage(varExpr : TVarExpr; const pos : TScriptPos);
 
       property CurrentProg : TdwsProgram read FProg write FProg;
+      property Msgs : TdwsCompileMessageList read FMsgs;
       property Options : TCompilerOptions read FOptions write FOptions;
       property UnitSection : TdwsUnitSection read FUnitSection write FUnitSection;
       property Tokenizer : TTokenizer read FTok write FTok;

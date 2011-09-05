@@ -118,8 +118,10 @@ var
       if prog.Msgs.HasErrors then
          Exit(prog.Msgs.AsInfo);
 
-      if FCodeGen.Context=nil then
+      if FCodeGen.Context=nil then begin
          FCodeGen.BeginProgramSession(prog);
+         FCodeGen.BeforeCompileProgram(prog.Table, (prog as TdwsProgram).SystemTable, (prog as TdwsProgram).UnitMains);
+      end;
 
       FCodeGen.CompileProgramInSession(prog);
       Result:=FCodeGen.CompiledOutput(prog);

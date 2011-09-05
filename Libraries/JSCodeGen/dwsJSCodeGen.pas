@@ -1974,6 +1974,7 @@ begin
    WriteString(',');
    WriteString(MemberName(meth, meth.StructSymbol));
 
+   EnterScope(meth);
    EnterContext(proc);
    try
 
@@ -1992,6 +1993,7 @@ begin
 
    finally
       LeaveContext;
+      LeaveScope;
    end;
 end;
 
@@ -2135,9 +2137,16 @@ end;
 procedure TJSRAWBlockExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TdwsJSBlockExpr;
+   i : Integer;
+   jsCode : String;
 begin
    e:=TdwsJSBlockExpr(expr);
-   codeGen.WriteString(e.Code);
+   jsCode:=e.Code;
+
+   for i:=e.SymbolsCount-1 downto 0 do
+      Insert(codeGen.SymbolMappedName(e.Symbols[i], cgssGlobal), jsCode, e.SymbolOffsets[i]);
+
+   codeGen.WriteString(jsCode);
 end;
 
 // ------------------
