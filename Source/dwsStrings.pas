@@ -288,6 +288,8 @@ const
   CPE_ConnectorTypeMismatch = 'Type mismatch in connector';
   CPE_ConnectorIndex = 'No index access in connector "%s"';
   CPE_ConnectorTooManyArguments = 'Too many arguments for connector call (%d)';
+  CPE_ConnectorCantBeSpecialized = 'Connector "%s" can''t be specialized';
+  CPE_ConnectorInvalidSpecifier = 'Connector "%s" specialization to "%s" failed';
 
   // Others
   CPE_ConstantExpressionExpected = 'Constant expression expected';

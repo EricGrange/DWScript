@@ -930,6 +930,8 @@ type
       public
          constructor Create(const name : String; const connectorType : IConnectorType);
 
+         function Specialize(table : TSymbolTable; const qualifier : String) : TConnectorSymbol; virtual;
+
          property ConnectorType : IConnectorType read FConnectorType write FConnectorType;
    end;
 
@@ -3749,6 +3751,13 @@ constructor TConnectorSymbol.Create(const name : String; const connectorType : I
 begin
    inherited Create(name);
    FConnectorType:=ConnectorType;
+end;
+
+// Specialize
+//
+function TConnectorSymbol.Specialize(table : TSymbolTable; const qualifier : String) : TConnectorSymbol;
+begin
+   Result:=Self;
 end;
 
 // ------------------

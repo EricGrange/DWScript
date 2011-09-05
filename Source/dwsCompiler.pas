@@ -3418,8 +3418,13 @@ begin
                // Connector symbol
                end else if baseType is TConnectorSymbol then begin
 
-                  Result := ReadConnectorSym(Name, Result as TTypedExpr,
-                                             TConnectorSymbol(baseType).ConnectorType, IsWrite)
+                  try
+                     Result := ReadConnectorSym(Name, Result as TTypedExpr,
+                                                TConnectorSymbol(baseType).ConnectorType, IsWrite)
+                  except
+                     Result:=nil;
+                     raise;
+                  end;
 
                end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMemberExpected);
             end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
@@ -5234,7 +5239,7 @@ end;
 function TdwsCompiler.ReadType(const typeName : String; typeContext : TdwsReadTypeContext) : TTypeSymbol;
 var
    tt : TTokenType;
-   name : String;
+   name, connectorQualifier : String;
    namePos : TScriptPos;
    sym : TSymbol;
 begin
@@ -5310,6 +5315,31 @@ begin
          else if not sym.IsType then begin
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidType, [name]);
             Result:=FProg.TypVariant; // keep compiling
+         end else if sym is TConnectorSymbol then begin
+            connectorQualifier:='';
+            if FTok.TestDelete(ttLESS) then begin
+               repeat
+                  if not FTok.TestDeleteNamePos(name, namePos) then
+                     FMsgs.AddCompilerStop(namePos, CPE_NameExpected);
+                  connectorQualifier:=connectorQualifier+name;
+                  if FTok.TestDelete(ttGTR) then
+                     Break;
+                  if not FTok.TestDelete(ttDOT) then
+                     FMsgs.AddCompilerStop(namePos, CPE_DotExpected);
+                  connectorQualifier:=connectorQualifier+'.';
+               until False;
+            end;
+            if connectorQualifier='' then
+               Result:=TTypeSymbol(sym)
+            else begin
+               Result:=TConnectorSymbol(sym).Specialize(FProg.Table, connectorQualifier);
+               if Result=sym then
+                  FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConnectorCantBeSpecialized, [sym.Name])
+               else if Result=nil then begin
+                  FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConnectorInvalidSpecifier, [sym.Name, connectorQualifier]);
+                  Result:=TTypeSymbol(sym);
+               end;
+            end;
          end else Result:=TTypeSymbol(sym);
 
          // Create name symbol, e. g.: type a = integer;
