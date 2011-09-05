@@ -24,6 +24,7 @@ Recent Contributors (in alphabetical order):
 
 - Kazantsev, Alexey (Russia)
 - Krystian Bigaj
+- Steffn Binas
 - Teti, Daniele (Italy)
 
 This is the list of initial contributors (in alphabetical order):
