@@ -1395,9 +1395,13 @@ begin
       ttOPERATOR :
          ReadOperatorDecl;
    else
-      if (UnitSection<>secMixed) and (FProg.Level=0) then
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedStatement);
-      Result:=ReadBlock
+      if FTok.Test(ttSWITCH) then
+         Result:=ReadInstrSwitch(False)
+      else begin
+         if (UnitSection<>secMixed) and (FProg.Level=0) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedStatement);
+         Result:=ReadBlock
+      end;
    end;
 end;
 
@@ -2603,9 +2607,7 @@ begin
          Result := ReadRaise;
    else
       // Try to read a function call, method call or an assignment
-      if FTok.Test(ttSWITCH) then
-         Result := ReadInstrSwitch(False)
-      else if (FTok.TestAny([ttBLEFT, ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin // !! TestName must be the last !!
+      if (FTok.TestAny([ttBLEFT, ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin // !! TestName must be the last !!
          hotPos:=FTok.HotPos;
          if FTok.Test(ttBLEFT) then // (X as TY)
             locExpr := ReadSymbol(ReadTerm(True))
