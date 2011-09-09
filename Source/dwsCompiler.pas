@@ -4572,75 +4572,77 @@ begin
          visibility:=cvPublished;
 
          // standard class definition
-         while not FTok.Test(ttEND) do begin
+         if not FTok.Test(ttSEMI) then begin
+            while not FTok.Test(ttEND) do begin
 
-            // Read methods and properties
-            tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD,
-                                    ttCONSTRUCTOR, ttDESTRUCTOR,
-                                    ttCLASS, ttPROPERTY, ttCONST,
-                                    ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED]);
-            case tt of
+               // Read methods and properties
+               tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD,
+                                       ttCONSTRUCTOR, ttDESTRUCTOR,
+                                       ttCLASS, ttPROPERTY, ttCONST,
+                                       ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED]);
+               case tt of
 
-               ttFUNCTION :
-                  Result.AddMethod(ReadMethodDecl(Result, fkFunction, visibility, False));
-               ttPROCEDURE :
-                  Result.AddMethod(ReadMethodDecl(Result, fkProcedure, visibility, False));
-               ttMETHOD :
-                  Result.AddMethod(ReadMethodDecl(Result, fkMethod, visibility, False));
-               ttCONSTRUCTOR :
-                  Result.AddMethod(ReadMethodDecl(Result, fkConstructor, visibility, False));
-               ttDESTRUCTOR :
-                  Result.AddMethod(ReadMethodDecl(Result, fkDestructor, visibility, False));
-               ttCLASS : begin
+                  ttFUNCTION :
+                     Result.AddMethod(ReadMethodDecl(Result, fkFunction, visibility, False));
+                  ttPROCEDURE :
+                     Result.AddMethod(ReadMethodDecl(Result, fkProcedure, visibility, False));
+                  ttMETHOD :
+                     Result.AddMethod(ReadMethodDecl(Result, fkMethod, visibility, False));
+                  ttCONSTRUCTOR :
+                     Result.AddMethod(ReadMethodDecl(Result, fkConstructor, visibility, False));
+                  ttDESTRUCTOR :
+                     Result.AddMethod(ReadMethodDecl(Result, fkDestructor, visibility, False));
+                  ttCLASS : begin
 
-                  tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttOPERATOR]);
-                  case tt of
-                     ttPROCEDURE :
-                        Result.AddMethod(ReadMethodDecl(Result, fkProcedure, visibility, True));
-                     ttFUNCTION :
-                        Result.AddMethod(ReadMethodDecl(Result, fkFunction, visibility, True));
-                     ttMETHOD :
-                        Result.AddMethod(ReadMethodDecl(Result, fkMethod, visibility, True));
-                     ttOPERATOR :
-                        Result.AddOperator(ReadClassOperatorDecl(Result));
-                  else
-                     FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
+                     tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttOPERATOR]);
+                     case tt of
+                        ttPROCEDURE :
+                           Result.AddMethod(ReadMethodDecl(Result, fkProcedure, visibility, True));
+                        ttFUNCTION :
+                           Result.AddMethod(ReadMethodDecl(Result, fkFunction, visibility, True));
+                        ttMETHOD :
+                           Result.AddMethod(ReadMethodDecl(Result, fkMethod, visibility, True));
+                        ttOPERATOR :
+                           Result.AddOperator(ReadClassOperatorDecl(Result));
+                     else
+                        FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
+                     end;
+
                   end;
+                  ttPROPERTY : begin
+
+                     propSym := ReadPropertyDecl(Result, visibility);
+                     Result.AddProperty(propSym);
+
+                  end;
+                  ttCONST : begin
+
+                     constSym:=ReadConstDecl(TClassConstSymbol) as TClassConstSymbol;
+                     constSym.Visibility:=visibility;
+                     Result.AddConst(constSym);
+                     ReadSemiColon;
+
+                  end;
+                  ttPRIVATE : visibility:=cvPrivate;
+                  ttPROTECTED : visibility:=cvProtected;
+                  ttPUBLIC : visibility:=cvPublic;
+                  ttPUBLISHED : visibility:=cvPublished;
+
+               else
+
+                  if FTok.TestName then begin
+                     ReadClassFields(Result, visibility);
+                     if not (FTok.TestDelete(ttSEMI) or FTok.Test(ttEND)) then
+                        Break;
+                  end else Break;
 
                end;
-               ttPROPERTY : begin
 
-                  propSym := ReadPropertyDecl(Result, visibility);
-                  Result.AddProperty(propSym);
+            end; // while
 
-               end;
-               ttCONST : begin
-
-                  constSym:=ReadConstDecl(TClassConstSymbol) as TClassConstSymbol;
-                  constSym.Visibility:=visibility;
-                  Result.AddConst(constSym);
-                  ReadSemiColon;
-
-               end;
-               ttPRIVATE : visibility:=cvPrivate;
-               ttPROTECTED : visibility:=cvProtected;
-               ttPUBLIC : visibility:=cvPublic;
-               ttPUBLISHED : visibility:=cvPublished;
-
-            else
-
-               if FTok.TestName then begin
-                  ReadClassFields(Result, visibility);
-                  if not (FTok.TestDelete(ttSEMI) or FTok.Test(ttEND)) then
-                     Break;
-               end else Break;
-
-            end;
-
-         end; // while
-
-         if not FTok.TestDelete(ttEND) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
+            if not FTok.TestDelete(ttEND) then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
+         end;
 
          if not FMsgs.HasErrors then begin
             // resolve interface tables

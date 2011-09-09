@@ -3,9 +3,8 @@ Demo: Exception handling.
 }
 
 type
-  MyException = class(Exception)
-  end;
-
+  MyException = class(Exception);
+  
 type
   OtherException = class(Exception)
   end;
