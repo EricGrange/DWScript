@@ -10,6 +10,14 @@ begin
    end;
 end;
 
+procedure PrintLn2(this : String);
+begin
+   asm
+      @PrintLn(@this);
+   end;
+end;
+
+
 PrintLn('hello');
 PrintLn('world');
 %>

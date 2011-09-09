@@ -6464,7 +6464,7 @@ begin
             raise Exception.CreateFmt(RTE_UseParameter,
                                       [dataSym.Caption, funcSym.Caption]);
 
-         funcExpr.AddArg(TConstExpr.CreateTyped(FExec.Prog, dataSym.Typ, Params[x]));
+         funcExpr.AddArg(TConstExpr.Create(FExec.Prog, dataSym.Typ, Params[x]));
       end;
       funcExpr.Initialize(FExec.Prog);
       if Assigned(funcExpr.Typ) then begin
