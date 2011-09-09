@@ -1,1 +1,1 @@
-Syntax Error: There's no member with name "Field"! [line: 16, column: 3]
+Syntax Error: Member symbol "Field" is not visible from this scope [line: 16, column: 3]

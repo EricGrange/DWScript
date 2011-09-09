@@ -121,6 +121,7 @@ const
   CPE_UnknownNameDotName = 'Unknown name "%s.%s"';
   CPE_UnknownType = 'Unknown type "%s"';
   CPE_UnknownUnit = 'Unknown unit "%s"';
+  CPE_MemberSymbolNotVisible = 'Member symbol "%s" is not visible from this scope';
 
   // Class declaration errors
   CPE_CantOverrideNotInherited = 'No method* "%s" found in class: "override" not applicable';

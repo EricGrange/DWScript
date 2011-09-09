@@ -1,1 +1,1 @@
-Syntax Error: Unknown name "cPrivate" [line: 13, column: 12]
+Syntax Error: Member symbol "cPrivate" is not visible from this scope [line: 13, column: 12]

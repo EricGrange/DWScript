@@ -1,0 +1,3 @@
+Syntax Error: Member symbol "FHidden" is not visible from this scope [line: 12, column: 4]
+Syntax Error: Member symbol "FHidden" is not visible from this scope [line: 18, column: 3]
+Syntax Error: Member symbol "FHidden" is not visible from this scope [line: 22, column: 11]

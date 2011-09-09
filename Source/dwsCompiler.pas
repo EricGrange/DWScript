@@ -286,7 +286,8 @@ type
       function CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
       procedure CompareFuncKinds(a, b : TFuncKind);
       procedure CompareFuncSymbolParams(a, b : TFuncSymbol);
-      function CurrentClass : TClassSymbol;
+      function  CurrentStruct : TStructuredTypeSymbol;
+      function  FindStructMember(typ : TStructuredTypeSymbol; const name : String) : TSymbol;
       procedure HintUnusedSymbols;
       procedure HintUnusedResult(resultSymbol : TDataSymbol);
 
@@ -520,8 +521,12 @@ const
       SWI_IFDEF, SWI_IFNDEF, SWI_IF, SWI_ENDIF, SWI_ELSE,
       SWI_HINT, SWI_HINTS, SWI_WARNING, SWI_WARNINGS, SWI_ERROR, SWI_FATAL
       );
+
    cAssignmentTokens : TTokenTypes = [ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN,
                                       ttTIMES_ASSIGN, ttDIVIDE_ASSIGN];
+
+   cTokenToVisibility : array [ttPRIVATE..ttPUBLISHED] of TdwsVisibility = (
+      cvPrivate, cvProtected, cvPublic, cvPublished );
 
 type
    TReachStatus = (rsReachable, rsUnReachable, rsUnReachableWarned);
@@ -2767,10 +2772,13 @@ begin
    end;
 
    // Find name in symboltable
-   sym := FProg.Table.FindSymbol(nameToken.FString, cvPrivate);
-
-   if not Assigned(sym) then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownName, [nameToken.FString]);
+   sym:=FProg.Table.FindSymbol(nameToken.FString, cvPrivate);
+   if not Assigned(sym) then begin
+      sym:=FProg.Table.FindSymbol(nameToken.FString, cvMagic);
+      if sym=nil then
+         FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownName, [nameToken.FString])
+      else FMsgs.AddCompilerErrorFmt(namePos, CPE_MemberSymbolNotVisible, [nameToken.FString]);
+   end;
 
    FTok.KillToken;
 
@@ -3336,22 +3344,21 @@ begin
                // Record
                if baseType is TRecordSymbol then begin
 
-                  member := TRecordSymbol(baseType).Members.FindLocal(Name);
+                  member:=FindStructMember(TRecordSymbol(baseType), name);
                   if coSymbolDictionary in FOptions then
                      FSymbolDictionary.AddSymbolReference(member, symPos, isWrite);
 
                   if Result is TFuncExpr then
                      TFuncExpr(Result).SetResultAddr(FProg, nil);
-                  if member is TFieldSymbol then
-                     Result := TRecordExpr.Create(FProg, FTok.HotPos, TDataExpr(Result), TFieldSymbol(member))
-                  else FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [Name]);
+                  if member is TFieldSymbol then begin
+                     Result := TRecordExpr.Create(FProg, FTok.HotPos, TDataExpr(Result), TFieldSymbol(member));
+                  end else FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [Name]);
                   Expr := nil;
 
                // Class
                end else if baseType is TStructuredTypeSymbol then begin
 
-                  member:=TStructuredTypeSymbol(baseType).Members.FindSymbolFromScope(Name, CurrentClass);
-
+                  member:=FindStructMember(TStructuredTypeSymbol(baseType), name);
                   if coSymbolDictionary in FOptions then
                      FSymbolDictionary.AddSymbolReference(member, symPos, isWrite);
 
@@ -3382,7 +3389,7 @@ begin
                // Class Of
                end else if baseType is TClassOfSymbol then begin
 
-                  member := TClassSymbol(baseType.Typ).Members.FindSymbolFromScope(Name, CurrentClass);
+                  member := TClassSymbol(baseType.Typ).Members.FindSymbolFromScope(Name, CurrentStruct);
                   if coSymbolDictionary in FOptions then
                      FSymbolDictionary.AddSymbolReference(member, FTok.HotPos, isWrite);
 
@@ -4623,10 +4630,9 @@ begin
                      ReadSemiColon;
 
                   end;
-                  ttPRIVATE : visibility:=cvPrivate;
-                  ttPROTECTED : visibility:=cvProtected;
-                  ttPUBLIC : visibility:=cvPublic;
-                  ttPUBLISHED : visibility:=cvPublished;
+
+                  ttPRIVATE..ttPUBLISHED :
+                     visibility:=cTokenToVisibility[tt];
 
                else
 
@@ -4887,7 +4893,7 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
    // Check if property name is free
-   sym := structSym.Members.FindSymbolFromScope(name, CurrentClass);
+   sym := structSym.Members.FindSymbolFromScope(name, CurrentStruct);
    if Assigned(sym) then begin
       if sym is TPropertySymbol then begin
          if TPropertySymbol(sym).StructSymbol = structSym then
@@ -5017,37 +5023,49 @@ var
    member : TFieldSymbol;
    typ : TTypeSymbol;
    posArray : TScriptPosArray;
+   visibility : TdwsVisibility;
+   tt : TTokenType;
 begin
    Result := TRecordSymbol.Create(typeName, FUnitSymbol);
    try
       names := TStringList.Create;
       try
+         visibility:=cvPublic;
+
          repeat
 
-            if FTok.Test(ttEND) then
-               break;
+            tt:=FTok.TestDeleteAny([ttPRIVATE, ttPUBLIC, ttPUBLISHED]);
+            case tt of
+               ttPRIVATE..ttPUBLISHED :
+                  visibility:=cTokenToVisibility[tt];
+            else
+               if FTok.Test(ttEND) then
+                  Break;
 
-            if coSymbolDictionary in FOptions then
-               ReadNameList(names, posArray)     // use overloaded version
-            else ReadNameList(names);
-
-            if not FTok.TestDelete(ttCOLON) then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
-
-            typ := ReadType('', tcMember);
-            for x := 0 to names.Count - 1 do begin
-               if Result.Members.FindLocal(names[x]) <> nil then
-                  FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [names[x]]);
-
-               member := TFieldSymbol.Create(names[x], typ, cvPublic);
-               Result.AddField(member);
-
-               // Add member symbols and positions
                if coSymbolDictionary in FOptions then
-                  FSymbolDictionary.AddValueSymbol(member, posArray[x], [suDeclaration]);
-            end;
+                  ReadNameList(names, posArray)     // use overloaded version
+               else ReadNameList(names);
 
-         until not FTok.TestDelete(ttSEMI) or FTok.Test(ttEND);
+               if not FTok.TestDelete(ttCOLON) then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
+
+               typ := ReadType('', tcMember);
+               for x := 0 to names.Count - 1 do begin
+                  if Result.Members.FindLocal(names[x]) <> nil then
+                     FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [names[x]]);
+
+                  member := TFieldSymbol.Create(names[x], typ, visibility);
+                  Result.AddField(member);
+
+                  // Add member symbols and positions
+                  if coSymbolDictionary in FOptions then
+                     FSymbolDictionary.AddValueSymbol(member, posArray[x], [suDeclaration]);
+               end;
+
+               if not FTok.TestDelete(ttSEMI) then
+                  Break;
+            end;
+         until not FTok.HasTokens;
       finally
          names.Free;
       end;
@@ -5838,6 +5856,8 @@ begin
       end;
       memberSym:=TFieldSymbol(sym);
       if memberSym<>nil then begin
+         if memberSym.Visibility<cvPublic then
+            FMsgs.AddCompilerErrorFmt(FTok.GetToken.FPos, CPE_MemberSymbolNotVisible, [FTok.GetToken.FString]);
          if memberSet[memberSym.Offset] then
             FMsgs.AddCompilerError(FTok.GetToken.FPos, CPE_FieldAlreadySet);
          memberSet[memberSym.Offset]:=True;
@@ -6565,13 +6585,25 @@ begin
    else CheckParams(a.Params, b.Params, True);
 end;
 
-// CurrentClass
+// CurrentStruct
 //
-function TdwsCompiler.CurrentClass : TClassSymbol;
+function TdwsCompiler.CurrentStruct : TStructuredTypeSymbol;
 begin
    if (FProg is TdwsProcedure) and (TdwsProcedure(FProg).Func is TMethodSymbol) then
-      Result:=TMethodSymbol(TdwsProcedure(FProg).Func).StructSymbol as TClassSymbol
+      Result:=TMethodSymbol(TdwsProcedure(FProg).Func).StructSymbol
    else Result:=nil;
+end;
+
+// FindStructMember
+//
+function TdwsCompiler.FindStructMember(typ : TStructuredTypeSymbol; const name : String) : TSymbol;
+begin
+   Result:=typ.Members.FindSymbolFromScope(name, CurrentStruct);
+   if Result=nil then begin
+      Result:=typ.Members.FindSymbol(name, cvMagic);
+      if Result<>nil then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_MemberSymbolNotVisible, [name]);
+   end;
 end;
 
 // HintUnusedSymbols

@@ -1,1 +1,2 @@
-Syntax Error: Unknown name "Field" [line: 16, column: 4]
+Syntax Error: Member symbol "Field" is not visible from this scope [line: 16, column: 4]
+Syntax Error: Member symbol "Field" is not visible from this scope [line: 20, column: 3]
