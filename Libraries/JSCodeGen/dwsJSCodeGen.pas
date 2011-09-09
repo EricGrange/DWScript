@@ -1019,9 +1019,9 @@ begin
 
 
    RegisterCodeGen(TIfThenExpr,
-      TdwsExprGenericCodeGen.Create(['if (', 0, ') {', #9, 1, #8, '};'], True));
+      TdwsExprGenericCodeGen.Create(['if ', '(', 0, ')', ' {', #9, 1, #8, '};'], True));
    RegisterCodeGen(TIfThenElseExpr,
-      TdwsExprGenericCodeGen.Create(['if (', 0, ') {', #9, 1, #8, '} else {', #9, 2, #8, '};'], True));
+      TdwsExprGenericCodeGen.Create(['if ', '(', 0, ')', ' {', #9, 1, #8, '} else {', #9, 2, #8, '};'], True));
 
    RegisterCodeGen(TInOpExpr,             TJSInOpExpr.Create);
    RegisterCodeGen(TCaseExpr,             TJSCaseExpr.Create);
@@ -1032,7 +1032,7 @@ begin
    RegisterCodeGen(TForDownwardStepExpr,  TJSForDownwardStepExpr.Create);
 
    RegisterCodeGen(TWhileExpr,
-      TdwsExprGenericCodeGen.Create(['while (', 0, ') {', #9, 1, #8, '};'], True));
+      TdwsExprGenericCodeGen.Create(['while ', '(', 0, ')', ' {', #9, 1, #8, '};'], True));
    RegisterCodeGen(TRepeatExpr,
       TdwsExprGenericCodeGen.Create(['do {', #9, 1, #8, '} while (!', 0, ');'], True));
    RegisterCodeGen(TLoopExpr,

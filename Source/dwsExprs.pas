@@ -6454,7 +6454,6 @@ begin
    funcExpr:=CreateTempFuncExpr;
 
    FExec.ExternalObject:=FExternalObject;
-
    try
       // Add arguments to the expression
       for x := Low(Params) to High(Params) do begin

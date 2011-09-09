@@ -612,7 +612,6 @@ end;
 //
 procedure TdwsCodeGen.CompileProgram(const prog : IdwsProgram);
 var
-   i : Integer;
    p : TdwsProgram;
 begin
    p:=prog as TdwsProgram;
@@ -1099,11 +1098,20 @@ procedure TdwsExprGenericCodeGen.DoCodeGen(codeGen : TdwsCodeGen; expr : TExprBa
 var
    i : Integer;
    c : Char;
+   item : TExprBase;
 begin
    for i:=start to stop do begin
       case FTemplate[i].VType of
-         vtInteger :
-            codeGen.Compile(expr.SubExpr[FTemplate[i].VInteger]);
+         vtInteger : begin
+            item:=expr.SubExpr[FTemplate[i].VInteger];
+            if     (i>start) and (FTemplate[i-1].VType=vtWideChar) and (FTemplate[i-1].VWideChar='(')
+               and (i<stop) and (FTemplate[i+1].VType=vtWideChar) and (FTemplate[i+1].VWideChar=')')
+               and (item is TTypedExpr) then begin
+               codeGen.CompileNoWrap(TTypedExpr(item));
+            end else begin
+               codeGen.Compile(item);
+            end;
+         end;
          vtUnicodeString :
             codeGen.WriteString(String(FTemplate[i].VUnicodeString));
          vtWideChar : begin
@@ -1115,7 +1123,7 @@ begin
                end;
                #8 : codeGen.UnIndent;
             else
-               codeGen.WriteString(FTemplate[i].VWideChar);
+               codeGen.WriteString(c);
             end;
          end;
       else
