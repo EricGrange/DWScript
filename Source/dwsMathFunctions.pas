@@ -91,10 +91,6 @@ type
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
 
-   TAbsFunc = class(TInternalMagicFloatFunction)
-      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
-   end;
-
    TFactorialFunc = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
@@ -339,13 +335,6 @@ end;
 procedure THypotFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
 begin
    Result:=Hypot(args.AsFloat[0], args.AsFloat[1]);
-end;
-
-{ TAbsFunc }
-
-procedure TAbsFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
-begin
-   Result:=Abs(args.AsFloat[0]);
 end;
 
 { TFactorialFunc }
@@ -595,7 +584,6 @@ initialization
    RegisterInternalFloatFunction(TArcTanhFunc, 'ArcTanh', ['v', cFloat], True);
    RegisterInternalFloatFunction(TCotanFunc, 'Cotan', ['a', cFloat], True);
    RegisterInternalFloatFunction(THypotFunc, 'Hypot', ['x', cFloat, 'y', cFloat], True);
-   RegisterInternalFloatFunction(TAbsFunc, 'Abs', ['v', cFloat], True);
    RegisterInternalFloatFunction(TFactorialFunc, 'Factorial', ['v', cInteger], True);
    RegisterInternalFloatFunction(TExpFunc, 'Exp', ['v', cFloat], True);
    RegisterInternalFloatFunction(TLnFunc, 'Ln', ['v', cFloat], True);

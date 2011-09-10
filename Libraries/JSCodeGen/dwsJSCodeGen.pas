@@ -410,7 +410,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..123] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..122] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -557,8 +557,6 @@ const
                +#9'}'#13#10
                +'}'),
       // RTL functions
-      (Name : 'Abs';
-       Code : 'function Abs(v) { return Math.abs(v) }'),
       (Name : 'AnsiCompareStr';
        Code : 'function AnsiCompareStr(a,b) { return a.localeCompare(b) }'),
       (Name : 'AnsiCompareText';
@@ -938,6 +936,13 @@ begin
       TdwsExprGenericCodeGen.Create(['(', 0, '+', 1, ')']));
    RegisterCodeGen(TPredFuncExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '-', 1, ')']));
+
+   RegisterCodeGen(TAbsIntExpr,
+      TdwsExprGenericCodeGen.Create(['Math.abs', '(', 0, ')']));
+   RegisterCodeGen(TAbsFloatExpr,
+      TdwsExprGenericCodeGen.Create(['Math.abs', '(', 0, ')']));
+   RegisterCodeGen(TAbsVariantExpr,
+      TdwsExprGenericCodeGen.Create(['Math.abs', '(', 0, ')']));
 
    RegisterCodeGen(TShrExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '>>', 1, ')']));
@@ -2717,7 +2722,6 @@ begin
    FMagicCodeGens.Sorted:=True;
    FMagicCodeGens.Duplicates:=dupError;
 
-   FMagicCodeGens.AddObject('Abs', TdwsExprGenericCodeGen.Create(['Math.abs(', 0, ')']));
    FMagicCodeGens.AddObject('AnsiLowerCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toLocaleLowerCase()']));
    FMagicCodeGens.AddObject('AnsiUpperCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toLocaleUpperCase()']));
    FMagicCodeGens.AddObject('ArcCos', TdwsExprGenericCodeGen.Create(['Math.acos(', 0, ')']));

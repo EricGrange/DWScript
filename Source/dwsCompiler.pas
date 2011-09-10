@@ -128,7 +128,8 @@ type
    TAddArgProcedure = procedure (argExpr : TTypedExpr) of object;
    TExpectedArgFunction = function : TParamSymbol of object;
 
-   TSpecialKeywordKind = (skNone, skAssert, skAssigned, skHigh, skLength, skLow,
+   TSpecialKeywordKind = (skNone, skAbs, skAssert, skAssigned,
+                          skHigh, skLength, skLow,
                           skOrd, skSizeOf, skDefined, skDeclared, skSqr,
                           skInc, skDec, skSucc, skPred);
 
@@ -6402,6 +6403,7 @@ begin
    n:=Length(name);
    case n of
       3 : case name[1] of
+         'a', 'A' : if SameText(name, 'abs') then Exit(skAbs);
          'd', 'D' : if SameText(name, 'dec') then Exit(skDec);
          'i', 'I' : if SameText(name, 'inc') then Exit(skInc);
          'l', 'L' : if SameText(name, 'low') then Exit(skLow);
@@ -7202,6 +7204,15 @@ begin
       Result := nil;
 
       case specialKind of
+         skAbs : begin
+            if argTyp.IsOfType(FProg.TypInteger) then
+               Result:=TAbsIntExpr.Create(FProg, argExpr)
+            else if argTyp.IsOfType(FProg.TypFloat) then
+               Result:=TAbsFloatExpr.Create(FProg, argExpr)
+            else if argTyp.IsOfType(FProg.TypVariant) then
+               Result:=TAbsVariantExpr.Create(FProg, argExpr)
+            else FMsgs.AddCompilerError(argPos, CPE_NumericalExpected);
+         end;
          skAssert : begin
             if not argTyp.IsOfType(FProg.TypBoolean) then
                FMsgs.AddCompilerError(FTok.HotPos, CPE_BooleanExpected);
