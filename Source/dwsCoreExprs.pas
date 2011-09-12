@@ -137,15 +137,18 @@ type
 
    // Encapsulates a var parameter
    TVarParamExpr = class(TVarExpr)
-   protected
-     function GetAddr(exec : TdwsExecution) : Integer; override;
-     function GetData(exec : TdwsExecution) : TData; override;
-   public
-     procedure AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer); override;
-     procedure AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr); override;
-     procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
-     procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
-     function  Eval(exec : TdwsExecution) : Variant; override;
+      protected
+         function GetAddr(exec : TdwsExecution) : Integer; override;
+         function GetData(exec : TdwsExecution) : TData; override;
+
+      public
+         constructor CreateFromVarExpr(expr : TVarExpr);
+
+         procedure AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer); override;
+         procedure AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr); override;
+         procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
+         procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
+         function  Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    TConstParamExpr = class(TVarParamExpr)
@@ -1946,6 +1949,14 @@ end;
 // ------------------ TVarParamExpr ------------------
 // ------------------
 
+// CreateFromVarExpr
+//
+constructor TVarParamExpr.CreateFromVarExpr(expr : TVarExpr);
+begin
+   FTyp:=expr.Typ;
+   FStackAddr:=expr.FStackAddr;
+end;
+
 // GetAddr
 //
 function TVarParamExpr.GetAddr(exec : TdwsExecution) : Integer;
@@ -2108,9 +2119,13 @@ end;
 constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
 begin
    inherited Create(Prog, Typ);
-   Assert(Typ.Size=1);
-   SetLength(FData, 1);
-   FData[0] := Value;
+   SetLength(FData, Typ.Size);
+   case Typ.Size of
+      0 : ;
+      1 : FData[0] := Value;
+   else
+      Assert(False);
+   end;
 end;
 
 // Create

@@ -241,6 +241,7 @@ type
          procedure Clean;
 
          function Add(expr : TExprBase) : Integer; inline;
+         procedure Insert(idx : Integer;expr : TExprBase); inline;
          procedure Delete(index : Integer);
 
          property ExprBase[const x : Integer] : TExprBase read GetExprBase write SetExprBase; default;
@@ -1035,6 +1036,9 @@ type
          function FieldAtOffset(offset : Integer) : TFieldSymbol; virtual;
          function DuckTypedMatchingMethod(methSym : TMethodSymbol; visibility : TdwsVisibility) : TMethodSymbol; virtual;
 
+         function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; virtual;
+         function AllowVirtualMembers : Boolean; virtual;
+
          property IsStatic : Boolean read GetIsStatic;
          property IsExternal : Boolean read GetIsExternal;
 
@@ -1261,7 +1265,8 @@ type
          function FindClassOperatorStrict(tokenType : TTokenType; paramType : TSymbol; recursive : Boolean) : TClassOperatorSymbol;
          function FindClassOperator(tokenType : TTokenType; paramType : TTypeSymbol) : TClassOperatorSymbol;
 
-         function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol;
+         function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; override;
+         function AllowVirtualMembers : Boolean; override;
 
          class function VisibilityToString(visibility : TdwsVisibility) : String; static;
 
@@ -1686,6 +1691,13 @@ begin
    Result:=FList.Add(expr);
 end;
 
+// Insert
+//
+procedure TExprBaseListRec.Insert(idx : Integer;expr : TExprBase);
+begin
+   FList.Insert(0, expr);
+end;
+
 // Delete
 //
 procedure TExprBaseListRec.Delete(index : Integer);
@@ -1995,6 +2007,20 @@ begin
    else Result:=nil;
 end;
 
+// FindDefaultConstructor
+//
+function TStructuredTypeSymbol.FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol;
+begin
+   Result:=nil;
+end;
+
+// AllowVirtualMembers
+//
+function TStructuredTypeSymbol.AllowVirtualMembers : Boolean;
+begin
+   Result:=False;
+end;
+
 // GetIsStatic
 //
 function TStructuredTypeSymbol.GetIsStatic : Boolean;
@@ -2040,36 +2066,19 @@ end;
 // IsCompatible
 //
 function TRecordSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
-var
-   i : Integer;
-   otherRecordSym : TRecordSymbol;
 begin
-   typSym:=typSym.BaseType;
+   typSym:=typSym.UnAliasedType.BaseType;
    if not (typSym is TRecordSymbol) then
       Exit(False);
+   if Self=typSym then
+      Exit(True);
 
-   otherRecordSym:=TRecordSymbol(typSym);
-   if FMembers.Count<>otherRecordSym.FMembers.Count then
-      Exit(False);
-
-   for i:=0 to FMembers.Count-1 do
-      if not FMembers[i].Typ.IsCompatible(otherRecordSym.FMembers[i].Typ) then
-         Exit(False);
-   Result:=True;
+   Result:=False;
 end;
 
 function TRecordSymbol.GetCaption: string;
-var
-  x: Integer;
 begin
-  Result := 'record';
-  if FMembers.Count > 0 then
-  begin
-    Result := Result + ' ' + FMembers[0].Typ.Caption;
-    for x := 1 to FMembers.Count - 1 do
-      Result := Result + ', ' + FMembers[x].Typ.Caption;
-  end;
-  Result := Result + ' end';
+  Result := 'record '+Name;
 end;
 
 function TRecordSymbol.GetDescription: string;
@@ -2616,9 +2625,18 @@ begin
    FStructSymbol := aStructSymbol;
    if isClassMethod then begin
       Include(FAttributes, maClassMethod);
-      FSelfSym:=TSelfSymbol.Create(SYS_SELF, (aStructSymbol as TClassSymbol).ClassOf);
-   end else FSelfSym:= TSelfSymbol.Create(SYS_SELF, aStructSymbol);
-   FInternalParams.AddSymbol(FSelfSym);
+      if aStructSymbol is TRecordSymbol then
+         FSelfSym:=nil
+      else FSelfSym:=TSelfSymbol.Create(SYS_SELF, (aStructSymbol as TClassSymbol).ClassOf);
+   end else begin
+      if aStructSymbol is TRecordSymbol then
+         FSelfSym:=TVarParamSymbol.Create(SYS_SELF, aStructSymbol)
+      else FSelfSym:=TSelfSymbol.Create(SYS_SELF, aStructSymbol);
+   end;
+   if FSelfSym<>nil then
+      if aStructSymbol is TRecordSymbol then
+         Params.AddSymbol(FSelfSym)
+      else InternalParams.AddSymbol(FSelfSym);
    FSize:=2; // code + data
    FParams.AddParent(FStructSymbol.Members);
    FVisibility:=aVisibility;
@@ -3521,6 +3539,13 @@ begin
          minVisibility:=cvProtected;
       Result:=Parent.FindDefaultConstructor(minVisibility);
    end else Result:=nil;
+end;
+
+// AllowVirtualMembers
+//
+function TClassSymbol.AllowVirtualMembers : Boolean;
+begin
+   Result:=True;
 end;
 
 // VisibilityToString

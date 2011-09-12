@@ -1048,6 +1048,10 @@ type
          property BaseExpr : TDataExpr read FBaseExpr;
    end;
 
+   // Call of a record method
+   TRecordMethodExpr = class (TFuncExpr)
+   end;
+
    // Call of static methods (not virtual)
    TMethodStaticExpr = class(TMethodExpr)
       protected
@@ -1928,7 +1932,7 @@ end;
 
 // CreateMethodExpr
 //
-function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
+function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; expr: TDataExpr; RefKind: TRefKind;
                           const scriptPos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
 begin
    // Create the correct TExpr for a method symbol
@@ -1940,8 +1944,8 @@ begin
 
    end else if meth.StructSymbol is TClassSymbol then begin
 
-      if (Expr.Typ is TClassOfSymbol) then begin
-         if Expr.IsConstant and TClassOfSymbol(Expr.Typ).TypClassSymbol.IsAbstract then begin
+      if (expr.Typ is TClassOfSymbol) then begin
+         if expr.IsConstant and TClassOfSymbol(expr.Typ).TypClassSymbol.IsAbstract then begin
             if meth.Kind=fkConstructor then
                prog.CompileMsgs.AddCompilerError(scriptPos, RTE_InstanceOfAbstractClass)
             else prog.CompileMsgs.AddCompilerError(scriptPos, CPE_AbstractClassUsage);
@@ -1955,35 +1959,49 @@ begin
          fkFunction, fkProcedure, fkMethod:
             if meth.IsClassMethod then begin
                if not ForceStatic and meth.IsVirtual then
-                  Result := TClassMethodVirtualExpr.Create(prog, scriptPos, meth, Expr)
-               else Result := TClassMethodStaticExpr.Create(prog, scriptPos, meth, Expr)
+                  Result := TClassMethodVirtualExpr.Create(prog, scriptPos, meth, expr)
+               else Result := TClassMethodStaticExpr.Create(prog, scriptPos, meth, expr)
             end else begin
                Assert(RefKind = rkObjRef);
                if not ForceStatic and meth.IsVirtual then
-                  Result := TMethodVirtualExpr.Create(prog, scriptPos, meth, Expr)
-               else Result := TMethodStaticExpr.Create(prog, scriptPos, meth, Expr);
+                  Result := TMethodVirtualExpr.Create(prog, scriptPos, meth, expr)
+               else Result := TMethodStaticExpr.Create(prog, scriptPos, meth, expr);
             end;
          fkConstructor:
             if RefKind = rkClassOfRef then begin
                if not ForceStatic and meth.IsVirtual then
-                  Result := TConstructorVirtualExpr.Create(prog, scriptPos, meth, Expr)
-               else Result := TConstructorStaticExpr.Create(prog, scriptPos, meth, Expr);
+                  Result := TConstructorVirtualExpr.Create(prog, scriptPos, meth, expr)
+               else Result := TConstructorStaticExpr.Create(prog, scriptPos, meth, expr);
             end else begin
                if not ((prog is TdwsProcedure) and (TdwsProcedure(prog).Func.Kind=fkConstructor)) then
                   prog.CompileMsgs.AddCompilerWarning(scriptPos, CPE_UnexpectedConstructor);
                if not ForceStatic and meth.IsVirtual then
-                  Result := TConstructorVirtualObjExpr.Create(prog, scriptPos, meth, Expr)
-               else Result := TConstructorStaticObjExpr.Create(prog, scriptPos, meth, Expr);
+                  Result := TConstructorVirtualObjExpr.Create(prog, scriptPos, meth, expr)
+               else Result := TConstructorStaticObjExpr.Create(prog, scriptPos, meth, expr);
             end;
          fkDestructor:
             begin
                Assert(RefKind = rkObjRef);
                if not ForceStatic and meth.IsVirtual then
-                  Result := TDestructorVirtualExpr.Create(prog, scriptPos, meth, Expr)
-               else Result := TDestructorStaticExpr.Create(prog, scriptPos, meth, Expr)
+                  Result := TDestructorVirtualExpr.Create(prog, scriptPos, meth, expr)
+               else Result := TDestructorStaticExpr.Create(prog, scriptPos, meth, expr)
             end;
       else
          Assert(False);
+      end;
+
+   end else if meth.StructSymbol is TRecordSymbol then begin
+
+      if meth.IsClassMethod then begin
+
+         Result:=TFuncExpr.Create(prog, scriptPos, meth);
+         expr.Free;
+
+      end else begin
+
+         Result:=TRecordMethodExpr.Create(prog, scriptPos, meth);
+         Result.AddArg(expr);
+
       end;
 
    end else Assert(False);

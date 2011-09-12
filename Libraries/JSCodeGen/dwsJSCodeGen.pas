@@ -51,6 +51,7 @@ type
          procedure WriteFuncParams(func : TFuncSymbol);
          procedure CompileFuncBody(func : TFuncSymbol);
          procedure CompileMethod(meth : TMethodSymbol);
+         procedure CompileRecordMethod(meth : TMethodSymbol);
 
          procedure DoCompileClassSymbol(cls : TClassSymbol); override;
          procedure DoCompileInterfaceTable(cls : TClassSymbol);
@@ -295,6 +296,9 @@ type
          constructor Create;
          destructor Destroy; override;
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
+   TJSRecordMethodExpr = class (TJSFuncBaseExpr)
    end;
 
    TJSMethodStaticExpr = class (TJSFuncBaseExpr)
@@ -1084,6 +1088,8 @@ begin
 
    RegisterCodeGen(TFuncExpr,             TJSFuncBaseExpr.Create);
 
+   RegisterCodeGen(TRecordMethodExpr,     TJSRecordMethodExpr.Create);
+
    RegisterCodeGen(TMagicIntFuncExpr,     TJSMagicFuncExpr.Create);
    RegisterCodeGen(TMagicStringFuncExpr,  TJSMagicFuncExpr.Create);
    RegisterCodeGen(TMagicFloatFuncExpr,   TJSMagicFuncExpr.Create);
@@ -1252,6 +1258,8 @@ var
    field : TFieldSymbol;
    firstField : Boolean;
 begin
+   // compile record copier
+
    WriteString('function Copy$');
    WriteSymbolName(rec);
    WriteStringLn('(s) {');
@@ -1293,6 +1301,14 @@ begin
    WriteStringLn('}');
    UnIndent;
    WriteStringLn('};');
+
+   // compile methods
+
+   for i:=0 to rec.Members.Count-1 do begin
+      sym:=rec.Members[i];
+      if sym is TMethodSymbol then
+         CompileRecordMethod(TMethodSymbol(sym));
+   end;
 end;
 
 // DoCompileClassSymbol
@@ -1747,6 +1763,7 @@ end;
 procedure TdwsJSCodeGen.WriteDefaultValue(typ : TTypeSymbol; box : Boolean);
 var
    i : Integer;
+   comma : Boolean;
    sas : TStaticArraySymbol;
    recSym : TRecordSymbol;
    member : TFieldSymbol;
@@ -1787,10 +1804,13 @@ begin
    end else if typ is TRecordSymbol then begin
       recSym:=TRecordSymbol(typ);
       WriteString('{');
+      comma:=False;
       for i:=0 to recSym.Members.Count-1 do begin
-         if i>0 then
-            WriteString(',');
-         member:=(recSym.Members[i] as TFieldSymbol);
+         if not (recSym.Members[i] is TFieldSymbol) then continue;
+         if comma then
+            WriteString(',')
+         else comma:=True;
+         member:=TFieldSymbol(recSym.Members[i]);
          WriteSymbolName(member);
          WriteString(':');
          WriteDefaultValue(member.Typ, False);
@@ -1810,6 +1830,7 @@ var
    member : TFieldSymbol;
    sas : TStaticArraySymbol;
    intf : IUnknown;
+   comma : Boolean;
 begin
    typ:=typ.UnAliasedType;
 
@@ -1837,10 +1858,13 @@ begin
    end else if typ is TRecordSymbol then begin
       recSym:=TRecordSymbol(typ);
       WriteString('{');
+      comma:=False;
       for i:=0 to recSym.Members.Count-1 do begin
-         if i>0 then
-            WriteString(',');
-         member:=(recSym.Members[i] as TFieldSymbol);
+         if not (recSym.Members[i] is TFieldSymbol) then continue;
+         if comma then
+            WriteString(',')
+         else comma:=True;
+         member:=TFieldSymbol(recSym.Members[i]);
          WriteSymbolName(member);
          WriteString(':');
          WriteValue(member.Typ, data, addr+member.Offset);
@@ -1897,7 +1921,7 @@ var
    i : Integer;
    needComma : Boolean;
 begin
-   if func is TMethodSymbol then begin
+   if (func is TMethodSymbol) and not (TMethodSymbol(func).StructSymbol is TRecordSymbol) then begin
       WriteString('Self');
       needComma:=True;
    end else needComma:=False;
@@ -1984,6 +2008,41 @@ begin
    try
 
       WriteString(':function(');
+      WriteFuncParams(meth);
+      WriteStringLn(') {');
+      Indent;
+
+      CompileFuncBody(meth);
+
+      if meth.Kind=fkConstructor then
+         WriteStringLn('return Self');
+
+      UnIndent;
+      WriteStringLn('}');
+
+   finally
+      LeaveContext;
+      LeaveScope;
+   end;
+end;
+
+// CompileRecordMethod
+//
+procedure TdwsJSCodeGen.CompileRecordMethod(meth : TMethodSymbol);
+var
+   proc : TdwsProcedure;
+begin
+   if not (meth.Executable is TdwsProcedure) then Exit;
+   proc:=(meth.Executable as TdwsProcedure);
+
+   WriteString('function ');
+   WriteSymbolName(meth);
+
+   EnterScope(meth);
+   EnterContext(proc);
+   try
+
+      WriteString('(');
       WriteFuncParams(meth);
       WriteStringLn(') {');
       Indent;
@@ -2094,7 +2153,7 @@ begin
          sym:=TJSVarExpr.CodeGenSymbol(codeGen, initExpr.SubExpr[0] as TVarExpr);
          if IsLocalVarParam(codeGen, sym) then begin
             codeGen.WriteSymbolName(sym);
-            codeGen.WriteString('=new Object();');
+            codeGen.WriteString('={};');
          end;
          codeGen.Compile(blockInit.SubExpr[i]);
       end;
