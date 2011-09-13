@@ -4543,10 +4543,12 @@ begin
             if not FTok.TestDeleteNamePos(name, namePos) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-            Typ := FProg.Table.FindSymbol(name, cvMagic);
-            if not (Typ is TClassSymbol) then begin
-               FMsgs.AddCompilerErrorFmt(namePos, CPE_NotAClass, [name]);
-               Typ:=FProg.TypObject;
+            typ := FProg.Table.FindSymbol(name, cvMagic);
+            if not (typ is TClassSymbol) then begin
+               if typ is TInterfaceSymbol then
+                  interfaces.Add(typ)
+               else FMsgs.AddCompilerErrorFmt(namePos, CPE_NotAClass, [name]);
+               typ:=FProg.TypObject;
             end;
 
             ancestorTyp:=TClassSymbol(typ);
@@ -4555,7 +4557,7 @@ begin
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassNotImplementedYet, [Name]);
 
             if ancestorTyp.IsSealed then
-               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassIsSealed, [Typ.Name]);
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassIsSealed, [typ.Name]);
 
             while FTok.TestDelete(ttCOMMA) do begin
 
@@ -7251,7 +7253,7 @@ begin
             msgExpr:=nil;
          end;
          skAssigned : begin
-            if argTyp is TClassSymbol then
+            if (argTyp is TClassSymbol) or (argTyp is TInterfaceSymbol) then
                Result:=TAssignedInstanceExpr.Create(FProg, argExpr)
             else if argTyp is TClassOfSymbol then
                Result:=TAssignedMetaClassExpr.Create(FProg, argExpr)
