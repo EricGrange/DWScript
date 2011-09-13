@@ -11,6 +11,8 @@ type
    
 procedure HelloFunc(v : String);
 
+function parseInt(v : Variant) : Integer; external;
+
 implementation
 
 procedure HelloFunc(v : String);

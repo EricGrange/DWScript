@@ -57,6 +57,7 @@ type
          function NameToSymbol(const name : String; scope : TdwsCodeGenSymbolScope) : TSymbol;
 
          procedure ReserveName(const name : String); inline;
+         procedure ReserveExternalName(sym : TSymbol); inline;
 
          function MapSymbol(symbol : TSymbol; scope : TdwsCodeGenSymbolScope) : String;
 
@@ -375,9 +376,16 @@ function TdwsCodeGen.SymbolMappedName(sym : TSymbol; scope : TdwsCodeGenSymbolSc
 var
    i : Integer;
 begin
-   if (sym is TMethodSymbol) then begin
-      while TMethodSymbol(sym).IsOverride do
-         sym:=TMethodSymbol(sym).ParentMeth;
+   if sym is TFuncSymbol then begin
+      if TFuncSymbol(sym).IsExternal then
+         Exit(sym.Name);
+      if (sym is TMethodSymbol) then begin
+         while TMethodSymbol(sym).IsOverride do
+            sym:=TMethodSymbol(sym).ParentMeth;
+      end;
+   end else if sym is TClassSymbol then begin
+      if TClassSymbol(sym).IsExternal then
+         Exit(sym.Name);
    end;
    Result:=FSymbolMap.SymbolToName(sym);
    if Result<>'' then Exit;
@@ -740,11 +748,12 @@ begin
          if unitSym.Table is TStaticSymbolTable then
             MapPrioritySymbolNames(unitSym.Table);
       end else if sym is TClassSymbol then begin
-         if TClassSymbol(sym).IsExternal then
-            MapClassSymbol(TClassSymbol(sym));
+         if TClassSymbol(sym).IsExternal then begin
+            SymbolMap.ReserveExternalName(sym);
+         end;
       end else if sym is TFuncSymbol then begin
          if TFuncSymbol(sym).IsExternal then
-            SymbolMap.MapSymbol(sym, cgssGlobal);
+            SymbolMap.ReserveExternalName(sym);
       end;
    end;
 end;
@@ -1242,6 +1251,22 @@ end;
 procedure TdwsCodeGenSymbolMap.ReserveName(const name : String);
 begin
    FNames.AddObject(name, FReservedSymbol);
+end;
+
+// ReserveExternalName
+//
+procedure TdwsCodeGenSymbolMap.ReserveExternalName(sym : TSymbol);
+var
+   i : Integer;
+begin
+   i:=FNames.IndexOf(sym.Name);
+   if i<0 then
+      FNames.AddObject(sym.Name, sym)
+   else begin
+      if (FNames.Objects[i]<>FReservedSymbol) and (FNames.Objects[i]<>sym) then
+         raise ECodeGenException.CreateFmt('External symbol "%s" already defined', [sym.Name]);
+      FNames.Objects[i]:=sym;
+   end;
 end;
 
 // MapSymbol

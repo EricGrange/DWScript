@@ -414,7 +414,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..122] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..123] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -461,6 +461,8 @@ const
        Dependency : '$Idx' ),
       (Name : '$Check';
        Code : 'function $Check(i,z) { if (i) return i; throw Exception.Create$1($New(Exception),"Object not instantiated"+z); }'),
+      (Name : '$CheckIntf';
+       Code : 'function $CheckIntf(i,z) { if (i) return i; throw Exception.Create$1($New(Exception),"Interface is nil"+z); }'),
       (Name : '$Assert';
        Code : 'function $Assert(b,m,z) { if (!b) throw Exception.Create$1($New(EAssertionFailed),"Assertion failed"+z+((m=="")?"":" : ")+m); }';
        Dependency : 'EAssertionFailed' ),
@@ -2939,7 +2941,17 @@ var
 begin
    e:=TMethodInterfaceExpr(expr);
 
-   codeGen.Compile(e.BaseExpr);
+   if cgoNoCheckInstantiated in codeGen.Options then begin
+      codeGen.Compile(e.BaseExpr);
+   end else begin
+      codeGen.Dependencies.Add('$CheckIntf');
+      codeGen.WriteString('$CheckIntf(');
+      codeGen.Compile(e.BaseExpr);
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+      codeGen.WriteString(')');
+   end;
+
    codeGen.WriteString('[');
    codeGen.WriteString(IntToStr(e.MethSym.VMTIndex));
    codeGen.WriteString(']');
@@ -3172,13 +3184,20 @@ begin
       codeGen.Dependencies.Add('$Event');
       codeGen.WriteString('$Event(');
       codeGen.Compile(methExpr.BaseExpr);
-      codeGen.WriteString(',');
       if methExpr is TMethodVirtualExpr then begin
+         codeGen.WriteString(',');
          codeGen.Compile(methExpr.BaseExpr);
          codeGen.WriteString('.ClassType.');
          codeGen.WriteString((codeGen as TdwsJSCodeGen).MemberName(methSym, methSym.StructSymbol));
          codeGen.WriteString('$v');
+      end else if methExpr is TMethodInterfaceExpr then begin
+         codeGen.WriteString('.O,');
+         codeGen.Compile(methExpr.BaseExpr);
+         codeGen.WriteString('[');
+         codeGen.WriteString(IntToStr(methSym.VMTIndex));
+         codeGen.WriteString(']');
       end else if methExpr is TMethodStaticExpr then begin
+         codeGen.WriteString(',');
          codeGen.WriteSymbolName(methSym.StructSymbol);
          codeGen.WriteString('.');
          codeGen.WriteString((codeGen as TdwsJSCodeGen).MemberName(methSym, methSym.StructSymbol))

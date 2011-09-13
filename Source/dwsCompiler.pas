@@ -1838,6 +1838,10 @@ begin
                         FMsgs.AddCompilerHint(FTok.HotPos, CPW_ForwardIsImplicit);
                         FTok.KillToken; // SEMI
                         FTok.TestDelete(ttFORWARD);
+                     end else if FTok.NextTest(ttEXTERNAL) then begin
+                        FTok.KillToken; // SEMI
+                        FTok.TestDelete(ttEXTERNAL);
+                        Result.IsExternal:=True;
                      end;
                      if FTok.Test(ttSEMI) then
                         if FTok.NextTest(ttDEPRECATED) then

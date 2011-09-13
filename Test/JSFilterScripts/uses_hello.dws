@@ -12,6 +12,8 @@ HelloFunc("world");
 var t := TTest.Create("test");
 t.Print;
 
+PrintLn(1+parseInt("2"));
+
 %>
 
 </script>
