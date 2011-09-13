@@ -641,6 +641,8 @@ type
          procedure CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj); inline;
          procedure RaiseObjectNotInstantiated(exec : TdwsExecution);
          procedure RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
+         procedure CheckInterface(exec : TdwsExecution; const scriptObj : IScriptObj); inline;
+         procedure RaiseInterfaceIsNil(exec : TdwsExecution);
 
          function IsOfType(typSym : TTypeSymbol) : Boolean;
 
@@ -3363,6 +3365,21 @@ begin
    RaiseScriptError(exec, EScriptError, RTE_ObjectAlreadyDestroyed);
 end;
 
+// CheckInterface
+//
+procedure TTypedExpr.CheckInterface(exec : TdwsExecution; const scriptObj : IScriptObj);
+begin
+   if scriptObj=nil then
+      RaiseInterfaceIsNil(exec)
+end;
+
+// RaiseInterfaceIsNil
+//
+procedure TTypedExpr.RaiseInterfaceIsNil(exec : TdwsExecution);
+begin
+   RaiseScriptError(exec, EScriptError, RTE_IntfIsNil);
+end;
+
 // IsOfType
 //
 function TTypedExpr.IsOfType(typSym : TTypeSymbol) : Boolean;
@@ -4979,6 +4996,7 @@ var
    intfObj : TScriptInterface;
 begin
    FBaseExpr.EvalAsScriptObj(exec, scriptObj);
+   CheckInterface(exec, scriptObj);
    intfObj:=TScriptInterface(scriptObj.InternalObject);
    exec.SelfScriptObject^:=intfObj.Instance;
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, intfObj.Instance);

@@ -416,6 +416,7 @@ const
   RTE_ObjCastToIntfFailed = 'Class "%s" does not implement interface "%s"';
   RTE_IntfCastToObjFailed = 'Can''t cast interface of "%s" to class "%s"';
   RTE_IntfCastToIntfFailed = 'Can''t cast interface of "%s" to interface "%s"';
+  RTE_IntfIsNil = 'Interface is nil';
 
   RTE_ObjectNotInstantiated = 'Object not instantiated';
   RTE_ObjectAlreadyDestroyed = 'Object already destroyed';
