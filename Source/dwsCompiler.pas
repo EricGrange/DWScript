@@ -5103,6 +5103,9 @@ begin
 
       if not FTok.TestDelete(ttEND) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
+      if Result.Size=0 then
+         FMsgs.AddCompilerError(FTok.HotPos, RTE_NoRecordFields);
+
    except
       // Removed added record symbols. Destroying object
       if coSymbolDictionary in FOptions then

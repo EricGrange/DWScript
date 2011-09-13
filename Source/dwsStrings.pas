@@ -470,6 +470,7 @@ const
   RTE_NoArray = '"%s" is not an array!';
   RTE_TooManyIndices = 'Too many indices';
   RTE_TooFewIndices = 'Too few indices';
+  RTE_NoRecordFields = 'Record has no field members';
 
   // Compiler Strings
 
