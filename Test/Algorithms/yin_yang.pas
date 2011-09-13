@@ -16,7 +16,7 @@ type
          Pix := new Integer[aScale*12+1, aScale*12+1];
       end;
 
-      method Print;
+      method DoPrint;
       begin
          var i, j : Integer;
          for i:=0 to Pix.High do begin
@@ -74,9 +74,9 @@ type
 
 var sq := new TSquareBoard(2);
 sq.YinYang;
-sq.Print;
+sq.DoPrint;
 
 sq := new TSquareBoard(1);
 sq.YinYang;
-sq.Print;
+sq.DoPrint;
 

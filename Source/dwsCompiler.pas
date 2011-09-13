@@ -353,8 +353,8 @@ type
       function ReadExprSwitch : TTypedExpr;
       function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
       function ReadIntfMethodDecl(intfSym : TInterfaceSymbol; funcKind : TFuncKind) : TSourceMethodSymbol;
-      function ReadMethodDecl(structSym : TStructuredTypeSymbol; funcKind : TFuncKind;
-                              aVisibility : TdwsVisibility; isClassMethod : Boolean) : TSourceMethodSymbol;
+      procedure ReadMethodDecl(structSym : TStructuredTypeSymbol; funcKind : TFuncKind;
+                               aVisibility : TdwsVisibility; isClassMethod : Boolean);
       function ReadMethodImpl(structSym : TStructuredTypeSymbol; funcKind : TFuncKind;
                               isClassMethod : Boolean) : TMethodSymbol;
       procedure ReadDeprecated(funcSym : TFuncSymbol);
@@ -1922,8 +1922,8 @@ end;
 
 // ReadMethodDecl
 //
-function TdwsCompiler.ReadMethodDecl(structSym : TStructuredTypeSymbol; funcKind: TFuncKind;
-   aVisibility : TdwsVisibility; isClassMethod: Boolean): TSourceMethodSymbol;
+procedure TdwsCompiler.ReadMethodDecl(structSym : TStructuredTypeSymbol; funcKind: TFuncKind;
+                                      aVisibility : TdwsVisibility; isClassMethod: Boolean);
 
    function OverrideParamsCheck(newMeth, oldMeth : TMethodSymbol) : Boolean;
    var
@@ -1949,6 +1949,7 @@ var
    isReintroduced : Boolean;
    methPos: TScriptPos;
    qualifier : TTokenType;
+   funcResult : TSourceMethodSymbol;
 begin
    // Find Symbol for Functionname
    if not FTok.TestDeleteNamePos(name, methPos) then begin
@@ -1973,18 +1974,18 @@ begin
       FMsgs.AddCompilerErrorFmt(methPos, CPE_ClassIsStatic, [structSym.Name]);
 
    // Read declaration of method implementation
-   Result := TSourceMethodSymbol.Create(name, funcKind, structSym, aVisibility, isClassMethod);
-   Result.DeclarationPos:=methPos;
-
+   funcResult:=TSourceMethodSymbol.Create(name, funcKind, structSym, aVisibility, isClassMethod);
+   funcResult.DeclarationPos:=methPos;
    try
+
       if meth<>nil then begin
-         Result.SetOverlap(meth);
-         isReintroduced := meth.IsVirtual;
-      end else isReintroduced := False;
+         funcResult.SetOverlap(meth);
+         isReintroduced:=meth.IsVirtual;
+      end else isReintroduced:=False;
 
-      ReadParams(Result.AddParam);
+      ReadParams(funcResult.AddParam);
 
-      Result.Typ:=ReadFuncResultType(funcKind);
+      funcResult.Typ:=ReadFuncResultType(funcKind);
       ReadSemiColon;
 
       if structSym.AllowVirtualMembers then begin
@@ -1992,11 +1993,11 @@ begin
          if qualifier<>ttNone then begin
             case qualifier of
                ttVIRTUAL : begin
-                  Result.IsVirtual := True;
+                  funcResult.IsVirtual := True;
                   if FTok.Test(ttSEMI) and FTok.NextTest(ttABSTRACT) then begin
                      FTok.KillToken;
                      FTok.TestDelete(ttABSTRACT);
-                     Result.IsAbstract := True;
+                     funcResult.IsAbstract := True;
                   end;
                end;
                ttOVERRIDE : begin
@@ -2005,20 +2006,20 @@ begin
                   else if not meth.IsVirtual then
                      FMsgs.AddCompilerErrorFmt(methPos, CPE_CantOverrideNotVirtual, [name])
                   else begin
-                     if Result.Kind<>meth.Kind then
+                     if funcResult.Kind<>meth.Kind then
                         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CantOverrideWrongFuncKind,
                                                   [cFuncKindToString[meth.Kind],
-                                                   cFuncKindToString[Result.Kind]])
-                     else if Result.IsClassMethod<>meth.IsClassMethod then
+                                                   cFuncKindToString[funcResult.Kind]])
+                     else if funcResult.IsClassMethod<>meth.IsClassMethod then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongMethodType)
-                     else if    ((Result.Typ=nil) and (meth.Typ<>nil))
-                             or ((Result.Typ<>nil) and not Result.Typ.IsOfType(meth.Typ)) then
+                     else if    ((funcResult.Typ=nil) and (meth.Typ<>nil))
+                             or ((funcResult.Typ<>nil) and not funcResult.Typ.IsOfType(meth.Typ)) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongResultType)
-                     else if not OverrideParamsCheck(Result, meth) then
+                     else if not OverrideParamsCheck(funcResult, meth) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongParameterList)
                      else if meth.IsFinal then
                         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CantOverrideFinal, [name]);
-                     Result.SetOverride(meth);
+                     funcResult.SetOverride(meth);
                      isReintroduced := False;
                   end;
                end;
@@ -2044,44 +2045,38 @@ begin
             if (defaultConstructor<>nil) and (defaultConstructor.StructSymbol=structSym) then
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_DefaultConstructorAlreadyDefined,
                                          [structSym.Name, defaultConstructor.Name])
-            else Result.IsDefault:=True;
+            else funcResult.IsDefault:=True;
          end;
          ReadSemiColon;
       end;
 
       if structSym.AllowVirtualMembers then begin
          if FTok.TestDelete(ttFINAL) then begin
-            if not Result.IsOverride then
+            if not funcResult.IsOverride then
                FMsgs.AddCompilerError(FTok.HotPos, CPE_CantFinalWithoutOverride)
-            else Result.SetIsFinal;
+            else funcResult.SetIsFinal;
             ReadSemiColon;
          end;
       end;
 
-      ReadDeprecated(Result);
+      ReadDeprecated(funcResult);
 
       if isReintroduced then
          FMsgs.AddCompilerWarningFmt(methPos, CPE_ReintroduceWarning, [name]);
 
-      // Added as last step. OnExcept, won't need to be freed.
       if coSymbolDictionary in FOptions then
-         FSymbolDictionary.AddTypeSymbol(Result, methPos, [suDeclaration]);
-   except
-      Result.Free;
-      raise;
+         FSymbolDictionary.AddTypeSymbol(funcResult, methPos, [suDeclaration]);
+
+   finally
+      structSym.AddMethod(funcResult);
    end;
 
    if FTok.Test(ttBEGIN) then begin
       // inline declaration
-      try
-         if coContextMap in FOptions then
-            FContextMap.OpenContext(FTok.HotPos, Result);
-         ReadProcBody(Result);
-         ReadSemiColon;
-      except
-         Result.Free;
-         raise;
-      end;
+      if coContextMap in FOptions then
+         FContextMap.OpenContext(FTok.HotPos, funcResult);
+      ReadProcBody(funcResult);
+      ReadSemiColon;
    end;
 end;
 
@@ -4600,14 +4595,14 @@ begin
                case tt of
 
                   ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR :
-                     Result.AddMethod(ReadMethodDecl(Result, cTokenToFuncKind[tt], visibility, False));
+                     ReadMethodDecl(Result, cTokenToFuncKind[tt], visibility, False);
 
                   ttCLASS : begin
 
                      tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttOPERATOR]);
                      case tt of
                         ttPROCEDURE, ttFUNCTION, ttMETHOD :
-                           Result.AddMethod(ReadMethodDecl(Result, cTokenToFuncKind[tt], visibility, True));
+                           ReadMethodDecl(Result, cTokenToFuncKind[tt], visibility, True);
                         ttOPERATOR :
                            Result.AddOperator(ReadClassOperatorDecl(Result));
                      else
@@ -4649,15 +4644,13 @@ begin
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
          end;
 
-         if not FMsgs.HasErrors then begin
-            // resolve interface tables
-            for i:=0 to interfaces.Count-1 do begin
-               intfTyp:=interfaces[i];
-               if not Result.AddInterface(intfTyp, cvPrivate, missingMethod) then
-                  FMsgs.AddCompilerErrorFmt(namePos, CPE_MissingMethodForInterface, [missingMethod.Name, name]);
-            end;
-            Result.AddOverriddenInterfaces;
+         // resolve interface tables
+         for i:=0 to interfaces.Count-1 do begin
+            intfTyp:=interfaces[i];
+            if not Result.AddInterface(intfTyp, cvPrivate, missingMethod) then
+               FMsgs.AddCompilerErrorFmt(namePos, CPE_MissingMethodForInterface, [missingMethod.Name, name]);
          end;
+         Result.AddOverriddenInterfaces;
 
       except
          // Set Result to nil to prevent auto-forward removal then re-reraise
@@ -5058,12 +5051,12 @@ begin
                   Result.AddProperty(propSym);
                end;
                ttFUNCTION, ttPROCEDURE, ttMETHOD :
-                  Result.AddMethod(ReadMethodDecl(Result, cTokenToFuncKind[tt], visibility, False));
+                  ReadMethodDecl(Result, cTokenToFuncKind[tt], visibility, False);
                ttCLASS : begin
                   tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD]);
                   case tt of
                      ttPROCEDURE, ttFUNCTION, ttMETHOD :
-                        Result.AddMethod(ReadMethodDecl(Result, cTokenToFuncKind[tt], visibility, True));
+                        ReadMethodDecl(Result, cTokenToFuncKind[tt], visibility, True);
                   else
                      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
                   end;

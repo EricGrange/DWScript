@@ -3215,17 +3215,25 @@ end;
 procedure TClassSymbol.AddOverriddenInterfaces;
 var
    iter : TClassSymbol;
+   loopProtection : TList;
 begin
    iter:=Parent;
-   while iter<>nil do begin
-      if iter.Interfaces<>nil then begin
-         iter.Interfaces.Enumerate(
-            procedure (const item : TResolvedInterface)
-            begin
-               Self.AddOverriddenInterface(item);
-            end);
+   loopProtection:=TList.Create;
+   try
+      while iter<>nil do begin
+         if loopProtection.IndexOf(iter)>0 then Break;
+         loopProtection.Add(iter);
+         if iter.Interfaces<>nil then begin
+            iter.Interfaces.Enumerate(
+               procedure (const item : TResolvedInterface)
+               begin
+                  Self.AddOverriddenInterface(item);
+               end);
+         end;
+         iter:=iter.Parent;
       end;
-      iter:=iter.Parent;
+   finally
+      loopProtection.Free;
    end;
 end;
 
