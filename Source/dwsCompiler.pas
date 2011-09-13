@@ -2434,11 +2434,11 @@ begin
             FMsgs.AddCompilerErrorFmt(usesPos, CPE_BadNumberOfParameters, [2, usesSym.Params.Count])
          else if not usesSym.Params[0].Typ.IsOfType(Result.Params[0]) then
             FMsgs.AddCompilerErrorFmt(usesPos, CPE_BadParameterType, [0, Result.Params[0].Caption, usesSym.Params[0].Typ.Caption])
-         else if usesSym.Params[0] is TVarParamSymbol then
+         else if usesSym.Params[0].ClassType=TVarParamSymbol then
             FMsgs.AddCompilerErrorFmt(usesPos, CPE_VarParameterForbidden, [0])
          else if not usesSym.Params[1].Typ.IsOfType(Result.Params[1]) then
             FMsgs.AddCompilerErrorFmt(usesPos, CPE_BadParameterType, [1, Result.Params[1].Caption, usesSym.Params[1].Typ.Caption])
-         else if usesSym.Params[1] is TVarParamSymbol then
+         else if usesSym.Params[1].ClassType=TVarParamSymbol then
             FMsgs.AddCompilerErrorFmt(usesPos, CPE_VarParameterForbidden, [1])
          else Result.UsesSym:=usesSym;
       end;
@@ -2875,7 +2875,7 @@ begin
       end else if sym.InheritsFrom(TPropertySymbol) then begin
 
          progMeth := TMethodSymbol(TdwsProcedure(FProg).Func);
-         if progMeth.SelfSym is TVarParamSymbol then
+         if progMeth.SelfSym.ClassType=TVarParamSymbol then
             varExpr:=GetVarParamExpr(progMeth.SelfSym as TVarParamSymbol)
          else varExpr:=GetVarExpr(progMeth.SelfSym);
          try
@@ -6568,9 +6568,9 @@ begin
     else if not A[x].Typ.IsCompatible(B[x].Typ) then
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterType,
                                 [x, A[x].Typ.Caption, B[x].Typ.Caption])
-    else if (A[x] is TVarParamSymbol) and not (B[x] is TVarParamSymbol) then
+    else if (A[x].ClassType=TVarParamSymbol) and not (B[x].ClassType=TVarParamSymbol) then
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_VarParameterExpected, [x, A[x].Name])
-    else if not (A[x] is TVarParamSymbol) and (B[x] is TVarParamSymbol) then
+    else if not (A[x].ClassType=TVarParamSymbol) and (B[x].ClassType=TVarParamSymbol) then
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ValueParameterExpected, [x, A[x].Name])
     else if (A[x] is TConstParamSymbol) and not (B[x] is TConstParamSymbol) then
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConstParameterExpected, [x, A[x].Name])

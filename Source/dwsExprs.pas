@@ -3708,7 +3708,11 @@ begin
             prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long,
                                                  [x, paramSymbol.Typ.Caption, argTyp.Caption]);
          if arg is TDataExpr then begin
-            if not TDataExpr(arg).IsWritable then
+            // Record methods ignore the IsWritable constraints, as in Delphi
+            if     (not TDataExpr(arg).IsWritable)
+               and (   (x>0)
+                    or (not (FuncSym is TMethodSymbol))
+                    or (not (TMethodSymbol(FuncSym).StructSymbol is TRecordSymbol))) then
                prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
          end else prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
       end;
@@ -5207,7 +5211,7 @@ function TProgramInfo.GetVars(const str : string): IInfo;
       if sym.Level=pin.FLevel then
          basePointer:=exec.Stack.BasePointer
       else basePointer:=exec.Stack.GetSavedBp(pin.Level);
-      if sym is TVarParamSymbol then begin
+      if sym.ClassType=TVarParamSymbol then begin
          GetVarParamVars(sym, basePointer, Result);
       end else begin
          TInfo.SetChild(Result, pin, sym.Typ, exec.Stack.Data,
@@ -6334,7 +6338,7 @@ end;
 constructor TTempParam.Create(ParamSym: TSymbol);
 begin
   inherited Create(ParamSym.Name, ParamSym.Typ);
-  FIsVarParam := ParamSym is TVarParamSymbol;
+  FIsVarParam := (ParamSym.ClassType=TVarParamSymbol);
   SetLength(FData, Size);
   ParamSym.Typ.InitData(FData, 0);
 end;
