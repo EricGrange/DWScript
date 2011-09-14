@@ -3,7 +3,7 @@ unit URTTIExposeTests;
 interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsRTTIExposer, TypInfo;
+   dwsTokenizer, dwsRTTIExposer, TypInfo, Types;
 
 type
 
@@ -21,6 +21,7 @@ type
       published
          procedure SimpleClass;
          procedure SimpleEnumeration;
+         procedure SimpleRecord;
          procedure ExposeInstances;
    end;
 
@@ -35,7 +36,7 @@ implementation
 type
 
    {$M+}
-   {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([vcPublic, vcPublished])}
+   {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([vcPublic, vcPublished])  FIELDS([vcPublic, vcPublished])}
    TSimpleClass = class
       private
          FValue : Integer;
@@ -66,6 +67,42 @@ type
       published
          property Value : String read FValue;
    end;
+
+   [dwsPublished('TRect')]
+   TMyRect = record
+      Left, Top, Right, Bottom : Integer;
+   end;
+
+   TRectFuncs = class
+      class function RectWidth(const r : TMyRect) : Integer; static;
+      class function UnitRect : TMyRect; static;
+      class procedure InflateRect(var r : TMyRect); static;
+   end;
+
+// RectWidth
+//
+class function TRectFuncs.RectWidth(const r : TMyRect) : Integer;
+begin
+   Result:=r.Right-r.Left;
+end;
+
+// UnitRect
+//
+class function TRectFuncs.UnitRect : TMyRect;
+begin
+   Result.Left:=0;
+   Result.Top:=0;
+   Result.Right:=1;
+   Result.Bottom:=1;
+end;
+
+// InflateRect
+//
+class procedure TRectFuncs.InflateRect(var r : TMyRect);
+begin
+   Dec(r.Left); Dec(r.Top);
+   Inc(r.Right); Inc(r.Bottom);
+end;
 
 // Create
 //
@@ -188,6 +225,37 @@ begin
 
    CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
    CheckEquals('012', exec.Result.ToString, 'Exec Result');
+end;
+
+// SimpleRecord
+//
+procedure TRTTIExposeTests.SimpleRecord;
+const
+   cSimpleRecord =
+       'var r : TRect := (Left: 1; Top: 2; Right: 3; Bottom: 4);'#13#10
+      +'Print(Format("%d, %d, %d, %d", [r.Left, r.Top, r.Right, r.Bottom]));'#13#10
+      +'Print(", "+IntToStr(TRectFuncs.RectWidth(r)));'#13#10
+      +'r := TRectFuncs.UnitRect;'#13#10
+      +'Print(Format(", %d, %d, %d, %d", [r.Left, r.Top, r.Right, r.Bottom]));'#13#10
+      +'TRectFuncs.InflateRect(r);'#13#10
+      +'Print(Format(", %d, %d, %d, %d", [r.Left, r.Top, r.Right, r.Bottom]));'#13#10
+      ;
+
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   FUnit.ExposeRTTI(TypeInfo(TMyRect));
+   FUnit.ExposeRTTI(TypeInfo(TRectFuncs));
+
+   prog:=FCompiler.Compile(cSimpleRecord);
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.Execute;
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
+   CheckEquals('1, 2, 3, 4, 2, 0, 0, 1, 1, -1, -1, 2, 2', exec.Result.ToString, 'Exec Result');
 end;
 
 var
