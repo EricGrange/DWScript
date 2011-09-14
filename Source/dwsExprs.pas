@@ -3620,7 +3620,6 @@ end;
 //
 procedure TDataExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
 begin
-   Assert(IsWritable);
    Expr.EvalAsVariant(exec, Data[exec][Addr[exec]]);
 end;
 

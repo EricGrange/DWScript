@@ -331,7 +331,7 @@ type
       function ReadExprInConditions(var left : TTypedExpr) : TInOpExpr;
       function ReadExternalVar(sym : TExternalVarSymbol; isWrite : Boolean) : TFuncExpr;
       function ReadField(const scriptPos : TScriptPos; progMeth : TMethodSymbol;
-                         fieldSym : TFieldSymbol; varExpr : TDataExpr) : TTypedExpr;
+                         fieldSym : TFieldSymbol; varExpr : TDataExpr) : TDataExpr;
       function ReadFor: TForExpr;
       function ReadStaticMethod(methodSym : TMethodSymbol; isWrite : Boolean;
                                 expecting : TTypeSymbol = nil) : TProgramExpr;
@@ -1530,8 +1530,13 @@ begin
          //    var myVar : type := expr
          typ := ReadType('', tcVariable);
          if names.Count = 1 then begin
-            if FTok.TestDelete(ttEQ) or FTok.TestDelete(ttASSIGN) then
-               initExpr := ReadExpr(typ)
+            if FTok.TestDelete(ttEQ) or FTok.TestDelete(ttASSIGN) then begin
+               if (typ is TRecordSymbol) and FTok.Test(ttBLEFT) then begin
+                  initExpr:=TConstExpr.Create(FProg, typ, ReadConstRecord(TRecordSymbol(typ)));
+               end else begin
+                  initExpr := ReadExpr(typ)
+               end;
+            end;
          end;
 
       end else if FTok.TestDelete(ttEQ) or FTok.TestDelete(ttASSIGN) then begin
@@ -3028,7 +3033,7 @@ end;
 // ReadField
 //
 function TdwsCompiler.ReadField(const scriptPos : TScriptPos; progMeth : TMethodSymbol;
-                                fieldSym : TFieldSymbol; varExpr : TDataExpr) : TTypedExpr;
+                                fieldSym : TFieldSymbol; varExpr : TDataExpr) : TDataExpr;
 begin
    try
       if fieldSym.StructSymbol is TRecordSymbol then begin
@@ -3104,7 +3109,7 @@ function TdwsCompiler.ReadPropertyWriteExpr(var expr : TDataExpr; propertySym : 
 var
    sym : TSymbol;
    aPos : TScriptPos;
-   fieldExpr : TFieldExpr;
+   fieldExpr : TDataExpr;
    tokenType : TTokenType;
    typedExprList : TTypedExprList;
    argPosArray : TScriptPosArray;
@@ -3139,8 +3144,9 @@ begin
             // WriteSym is a Field
             if Expr.Typ is TClassOfSymbol then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
-            fieldExpr := TFieldExpr.Create(FProg, FTok.HotPos, sym.Typ, TFieldSymbol(sym), expr);
-            Result := ReadAssign(ttASSIGN, fieldExpr);
+//            fieldExpr:=TFieldExpr.Create(FProg, FTok.HotPos, sym.Typ, TFieldSymbol(sym), expr);
+            fieldExpr:=ReadField(aPos, nil, TFieldSymbol(sym), expr);
+            Result:=ReadAssign(ttASSIGN, fieldExpr);
 
          end else if sym is TMethodSymbol then begin
 

@@ -655,38 +655,48 @@ type
          function Add : TdwsClass;
    end;
 
-  TdwsClassesClass = class of TdwsClasses;
+   TdwsClassesClass = class of TdwsClasses;
 
-  TdwsMember = class(TdwsVariable)
-  public
-    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
-      override;
+   TdwsMember = class(TdwsVariable)
+      private
+         FVisibility : TdwsVisibility;
+      public
+         constructor Create(Collection: TCollection); override;
+         procedure Assign(Source: TPersistent); override;
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+      published
+         property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
+   end;
+
+   TdwsMembers = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+      public
+         function Add : TdwsMember; inline;
+   end;
+
+   TdwsRecord = class(TdwsSymbol)
+      private
+         FMembers : TdwsMembers;
+         FProperties : TdwsProperties;
+      protected
+         function GetDisplayName: string; override;
+      public
+         constructor Create(Collection: TCollection); override;
+         destructor Destroy; override;
+         procedure Assign(Source: TPersistent); override;
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+      published
+         property Members : TdwsMembers read FMembers write FMembers;
+         property Properties : TdwsProperties read FProperties write FProperties;
   end;
 
-  TdwsMembers = class(TdwsCollection)
-  protected
-    class function GetSymbolClass : TdwsSymbolClass; override;
-  end;
-
-  TdwsRecord = class(TdwsSymbol)
-  private
-    FMembers: TdwsMembers;
-  protected
-    function GetDisplayName: string; override;
-  public
-    constructor Create(Collection: TCollection); override;
-    destructor Destroy; override;
-    procedure Assign(Source: TPersistent); override;
-    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
-      override;
-  published
-    property Members: TdwsMembers read FMembers write FMembers;
-  end;
-
-  TdwsRecords = class(TdwsCollection)
-  protected
-    class function GetSymbolClass: TdwsSymbolClass; override;
-  end;
+   TdwsRecords = class(TdwsCollection)
+      protected
+         class function GetSymbolClass: TdwsSymbolClass; override;
+      public
+         function Add : TdwsRecord; inline;
+   end;
 
   TdwsRecordsClass = class of TdwsRecords;
 
@@ -706,10 +716,12 @@ type
     property IsUserDef: Boolean read FIsUserDef write SetIsUserDef;
   end;
 
-  TdwsElements = class(TdwsCollection)
-  protected
-    class function GetSymbolClass : TdwsSymbolClass; override;
-  end;
+   TdwsElements = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+      public
+         function Add : TdwsElement; inline;
+   end;
 
   TdwsEnumeration = class(TdwsSymbol)
   private
@@ -2767,51 +2779,74 @@ end;
 
 { TdwsMember }
 
+// Create
+//
+constructor TdwsMember.Create(Collection: TCollection);
+begin
+   inherited;
+   FVisibility:=cvPublic;
+end;
+
 function TdwsMember.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil):
   TSymbol;
 begin
   FIsGenerating := True;
   CheckName(TRecordSymbol(ParentSym).Members, Name);
-  Result := TFieldSymbol.Create(Name, GetDataType(Table, DataType), cvPublic);
+  Result := TFieldSymbol.Create(Name, GetDataType(Table, DataType), Visibility);
+end;
+
+// Assign
+//
+procedure TdwsMember.Assign(Source: TPersistent);
+begin
+   inherited;
+   if Source is TdwsMember then
+      FVisibility := TdwsMember(Source).Visibility;
 end;
 
 { TdwsRecord }
 
-procedure TdwsRecord.Assign(Source: TPersistent);
-begin
-  inherited;
-  if Source is TdwsRecord then
-    FMembers.Assign(TdwsRecord(Source).Members);
-end;
-
 constructor TdwsRecord.Create;
 begin
-  inherited;
-  FMembers := TdwsMembers.Create(Self);
+   inherited;
+   FMembers:=TdwsMembers.Create(Self);
+   FProperties:=TdwsProperties.Create(Self);
 end;
 
 destructor TdwsRecord.Destroy;
 begin
-  FMembers.Free;
-  inherited;
+   FProperties.Free;
+   FMembers.Free;
+   inherited;
+end;
+
+procedure TdwsRecord.Assign(Source: TPersistent);
+begin
+   inherited;
+   if Source is TdwsRecord then begin
+      FMembers.Assign(TdwsRecord(Source).Members);
+      FProperties.Assign(TdwsRecord(Source).Properties);
+   end;
 end;
 
 function TdwsRecord.DoGenerate;
 var
-  x: Integer;
+   x : Integer;
 begin
-  FIsGenerating := True;
-  CheckName(Table, Name);
+   FIsGenerating := True;
+   CheckName(Table, Name);
 
-  Result := TRecordSymbol.Create(Name, nil);
-  try
-    for x := 0 to FMembers.Count - 1 do
-      TRecordSymbol(Result).AddField(TFieldSymbol(TdwsMember(FMembers.Items[x]).Generate(Table, Result)));
-    GetUnit.Table.AddSymbol(Result);
-  except
-    Result.Free;
-    raise;
-  end;
+   Result := TRecordSymbol.Create(Name, nil);
+   try
+      for x := 0 to FMembers.Count - 1 do
+         TRecordSymbol(Result).AddField(TFieldSymbol(TdwsMember(FMembers.Items[x]).Generate(Table, Result)));
+      for x := 0 to FProperties.Count - 1 do
+         TRecordSymbol(Result).AddProperty(TPropertySymbol(TdwsProperty(FProperties.Items[x]).Generate(Table, Result)));
+      GetUnit.Table.AddSymbol(Result);
+   except
+      Result.Free;
+      raise;
+   end;
 end;
 
 function TdwsRecord.GetDisplayName: string;
@@ -3625,6 +3660,13 @@ begin
   Result := TdwsRecord;
 end;
 
+// Add
+//
+function TdwsRecords.Add : TdwsRecord;
+begin
+   Result:=TdwsRecord(inherited Add);
+end;
+
 { TdwsParameters }
 
 class function TdwsParameters.GetSymbolClass: TdwsSymbolClass;
@@ -3723,11 +3765,25 @@ begin
   Result := TdwsMember;
 end;
 
+// Add
+//
+function TdwsMembers.Add : TdwsMember;
+begin
+   Result:=TdwsMember(inherited Add);
+end;
+
 { TdwsElements }
 
 class function TdwsElements.GetSymbolClass: TdwsSymbolClass;
 begin
   Result := TdwsElement;
+end;
+
+// Add
+//
+function TdwsElements.Add : TdwsElement;
+begin
+   Result:=TdwsElement(inherited Add);
 end;
 
 { TdwsSynonyms }
