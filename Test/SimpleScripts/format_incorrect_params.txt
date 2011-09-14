@@ -1,0 +1,4 @@
+Format '%d' invalid or incompatible with argument [line: 7, column: 12]
+Format '%d' invalid or incompatible with argument [line: 14, column: 12]
+Format '%d' invalid or incompatible with argument [line: 21, column: 12]
+Format '%d' invalid or incompatible with argument [line: 28, column: 12]

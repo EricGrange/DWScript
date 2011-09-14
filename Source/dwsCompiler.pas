@@ -4170,8 +4170,9 @@ begin
          (Result.Typ as TStaticArraySymbol).Typ:=FProg.TypVariant;
       end;
 
-      if not (expecting is TOpenArraySymbol) then
-         Result.TypeCheckElements(FProg);
+      if expecting is TOpenArraySymbol then
+         (Result.Typ as TStaticArraySymbol).Typ:=FProg.TypVariant
+      else Result.TypeCheckElements(FProg);
       if Optimize then
          Result:=Result.Optimize(FProg, FExec) as TArrayConstantExpr;
    except
