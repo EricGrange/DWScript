@@ -198,7 +198,8 @@ begin
          sl.LoadFromFile(s);
          prog := FMainCompiler.Compile(sl.Text);
 
-         CheckEquals(False, prog.Msgs.HasErrors, s);
+         if prog.Msgs.HasErrors then
+            CheckEquals('', prog.Msgs.AsInfo, 'compile '+s);
          exec:=prog.Execute;
 
          CheckEquals('', exec.Msgs.AsInfo, 'exec '+s);

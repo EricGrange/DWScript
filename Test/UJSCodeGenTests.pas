@@ -42,6 +42,7 @@ type
          procedure ExecutionNonOptimizedWithInlineMagics;
          procedure ExecutionOptimized;
          procedure ExecutionOptimizedWithInlineMagics;
+         procedure ExecutionOptimizedAndObfuscated;
    end;
 
 // ------------------------------------------------------------------
@@ -194,12 +195,8 @@ begin
             FCodeGen.CompileProgram(prog);
          except
             on e: Exception do begin
-               if Pos('Variant', e.Message)>0 then
+               if Pos('TOpenArrayExpr', e.Message)>0 then
                   Inc(ignored)
-               else if Pos('TOpenArrayExpr', e.Message)>0 then
-                  Inc(ignored)
-//               else if Pos('TDestructor', e.Message)>0 then
-//                  Inc(ignored)
                else diagnostic.Add(ExtractFileName(FTests[i])+': '+e.Message);
             end;
          end;
@@ -288,12 +285,8 @@ begin
             end;
          except
             on e : Exception do begin
-               if Pos('Variant', e.Message)>0 then
+               if Pos('TOpenArrayExpr', e.Message)>0 then
                   Inc(ignored)
-               else if Pos('TOpenArrayExpr', e.Message)>0 then
-                  Inc(ignored)
-//               else if Pos('TDestructor', e.Message)>0 then
-//                  Inc(ignored)
                else diagnostic.Add(ExtractFileName(FTests[i])+': '+e.Message);
             end;
          end;
@@ -362,6 +355,19 @@ begin
    FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coOptimize];
    FCodeGen.Options:=FCodeGen.Options-[cgoNoInlineMagics];
    Execution;
+end;
+
+// ExecutionOptimizedAndObfuscated
+//
+procedure TJSCodeGenTests.ExecutionOptimizedAndObfuscated;
+begin
+   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coOptimize];
+   FCodeGen.Options:=FCodeGen.Options+[cgoObfuscate];
+   try
+      Execution;
+   finally
+      FCodeGen.Options:=FCodeGen.Options-[cgoObfuscate];
+   end;
 end;
 
 // GetExpectedResult
