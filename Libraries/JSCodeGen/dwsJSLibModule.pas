@@ -21,7 +21,7 @@ interface
 
 uses Windows, Classes, SysUtils, dwsLanguageExtension, dwsComp, dwsCompiler,
    dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs, dwsStack,
-   dwsStrings, dwsXPlatform, StrUtils, dwsUtils;
+   dwsStrings, dwsXPlatform, StrUtils, dwsUtils, dwsOperators;
 
 type
 
@@ -49,6 +49,7 @@ type
          FSymbolMarker : TTokenType;
 
       public
+         function CreateBaseVariantSymbol(table : TSymbolTable) : TBaseVariantSymbol; override;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; override;
 
          property SymbolMarker : TTokenType read FSymbolMarker write FSymbolMarker;
@@ -79,6 +80,54 @@ type
 
          property Code : String read FCode write FCode;
    end;
+
+   TdwsJSConnectorType = class(TInterfacedObject, IUnknown, IConnectorType)
+      private
+         FTable : TSymbolTable;
+
+      protected
+         function ConnectorCaption : String;
+         function AcceptsParams(const params : TConnectorParamArray) : Boolean;
+         function HasMethod(const methodName : String; const params : TConnectorParamArray;
+                            var typSym : TTypeSymbol) : IConnectorCall;
+         function HasMember(const memberName : String; var typSym : TTypeSymbol;
+                            isWrite : Boolean) : IConnectorMember;
+         function HasIndex(const propName : String; const params : TConnectorParamArray;
+                           var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
+
+      public
+         constructor Create(table : TSymbolTable);
+   end;
+
+   TdwsJSConnectorCall = class(TInterfacedObject, IUnknown, IConnectorCall)
+      private
+         FMethodName : String;
+
+      protected
+         function Call(const base : Variant; args : TConnectorArgs) : TData;
+
+      public
+         constructor Create(const methodName : String);
+
+         property CallMethodName : String read FMethodName write FMethodName;
+   end;
+
+   TdwsJSIndexCall = class(TdwsJSConnectorCall);
+
+   TdwsJSConnectorMember = class(TInterfacedObject, IUnknown, IConnectorMember)
+      protected
+         FMemberName : String;
+
+         function Read(const base : Variant) : TData;
+         procedure Write(const base : Variant; const data : TData);
+
+      public
+         constructor Create(const memberName : String);
+
+         property MemberName : String read FMemberName write FMemberName;
+   end;
+
+   TJSConnectorSymbol = class(TConnectorSymbol);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -210,6 +259,14 @@ begin
       compiler.Msgs.AddCompilerErrorFmt(tok.HotPos, 'Incomplete asm block%s', [tok.HotPos.AsInfo]);
 end;
 
+// CreateBaseVariantSymbol
+//
+function TdwsJSLanguageExtension.CreateBaseVariantSymbol(table : TSymbolTable) : TBaseVariantSymbol;
+begin
+   Result:=TJSConnectorSymbol.Create(SYS_VARIANT, TdwsJSConnectorType.Create(table));
+   table.AddSymbol(Result);
+end;
+
 // ------------------
 // ------------------ TdwsJSBlockExpr ------------------
 // ------------------
@@ -260,6 +317,104 @@ end;
 function TdwsJSBlockExpr.GetSymbolOffset(idx : Integer) : Integer;
 begin
    Result:=FSymbolOffsets[idx];
+end;
+
+// ------------------
+// ------------------ TdwsJSConnectorType ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsJSConnectorType.Create(table : TSymbolTable);
+begin
+   inherited Create;
+   FTable:=table;
+end;
+
+// ConnectorCaption
+//
+function TdwsJSConnectorType.ConnectorCaption : String;
+begin
+   Result:='JS Connector 1.0';
+end;
+
+// AcceptsParams
+//
+function TdwsJSConnectorType.AcceptsParams(const params : TConnectorParamArray) : Boolean;
+begin
+   Result:=True;
+end;
+
+// HasMethod
+//
+function TdwsJSConnectorType.HasMethod(const methodName : String; const params : TConnectorParamArray;
+                                       var typSym : TTypeSymbol) : IConnectorCall;
+begin
+   typSym:=FTable.FindTypeSymbol(SYS_VARIANT, cvMagic);
+   Result:=TdwsJSConnectorCall.Create(methodName);
+end;
+
+// HasMember
+//
+function TdwsJSConnectorType.HasMember(const memberName : String; var typSym : TTypeSymbol;
+                                       isWrite : Boolean) : IConnectorMember;
+begin
+   typSym:=FTable.FindTypeSymbol(SYS_VARIANT, cvMagic);
+   Result:=TdwsJSConnectorMember.Create(memberName);
+end;
+
+// HasIndex
+//
+function TdwsJSConnectorType.HasIndex(const propName : String; const params : TConnectorParamArray;
+                                      var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
+begin
+   typSym:=FTable.FindTypeSymbol(SYS_VARIANT, cvMagic);
+   Result:=TdwsJSIndexCall.Create(propName);
+end;
+
+// ------------------
+// ------------------ TdwsJSConnectorCall ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsJSConnectorCall.Create(const methodName : String);
+begin
+   inherited Create;
+   FMethodName:=methodName;
+end;
+
+// Call
+//
+function TdwsJSConnectorCall.Call(const base : Variant; args : TConnectorArgs) : TData;
+begin
+   Assert('Not executable');
+end;
+
+// ------------------
+// ------------------ TdwsJSConnectorMember ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsJSConnectorMember.Create(const memberName : String);
+begin
+   inherited Create;
+   FMemberName:=memberName;
+end;
+
+// Read
+//
+function TdwsJSConnectorMember.Read(const base : Variant) : TData;
+begin
+   Assert('Not executable');
+end;
+
+// Write
+//
+procedure TdwsJSConnectorMember.Write(const base : Variant; const data : TData);
+begin
+   Assert('Not executable');
 end;
 
 end.

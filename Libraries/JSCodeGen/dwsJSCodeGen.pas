@@ -19,13 +19,18 @@ interface
 
 uses Classes, SysUtils, dwsUtils, dwsSymbols, dwsCodeGen, dwsCoreExprs,
    dwsExprs, dwsRelExprs, dwsJSON, dwsMagicExprs, dwsStack, Variants, dwsStrings,
-   dwsJSLibModule;
+   dwsJSLibModule, dwsJSMin, Generics.Defaults;
 
 type
 
    TDataSymbolList = class(TObjectList<TDataSymbol>)
       public
          destructor Destroy; override;
+   end;
+
+   TdwsCodeGenSymbolMapJSObfuscating = class (TdwsCodeGenSymbolMap)
+      protected
+         function DoNeedUniqueName(symbol : TSymbol; tryCount : Integer; canObfuscate : Boolean) : String; override;
    end;
 
    TdwsJSCodeGen = class (TdwsCodeGen)
@@ -39,6 +44,8 @@ type
       protected
          procedure CollectLocalVarParams(expr : TExprBase);
          procedure CollectInitExprLocalVars(initExpr : TBlockExprBase);
+
+         function CreateSymbolMap(parentMap : TdwsCodeGenSymbolMap; symbol : TSymbol) : TdwsCodeGenSymbolMap; override;
 
          procedure EnterContext(proc : TdwsProgram); override;
          procedure LeaveContext; override;
@@ -79,6 +86,8 @@ type
          procedure WriteJavaScriptString(const s : String);
 
          function MemberName(sym : TSymbol; cls : TStructuredTypeSymbol) : String;
+
+         procedure WriteCompiledOutput(dest : TWriteOnlyBlockStream; const prog : IdwsProgram); override;
 
          // returns all the RTL support JS functions
          class function All_RTL_JS : String;
@@ -273,6 +282,10 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
+   TJSOrdExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
    TJSIncVarFuncExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -330,6 +343,17 @@ type
    TJSConstructorVirtualExpr = class (TJSFuncBaseExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
       procedure CodeGenBeginParams(codeGen : TdwsCodeGen; expr : TFuncExprBase); override;
+   end;
+
+   TJSConnectorCallExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
+   TJSConnectorReadExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSConnectorWriteExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
    TJSFuncPtrExpr = class (TJSFuncBaseExpr)
@@ -414,7 +438,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..123] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..127] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -475,7 +499,8 @@ const
        Code : 'function $Dec(v,i) { v.value-=i; return v.value }'),
       (Name : '$Is';
        Code : 'function $Is(o,c) {'#13#10
-               +#9'if (o===null) return false; var ct=o.ClassType;'#13#10
+               +#9'if (o===null) return false;'#13#10
+               +#9'var ct=o.ClassType;'#13#10
                +#9'while ((ct)&&(ct!==c)) ct=ct.$Parent;'#13#10
                +#9'return (ct)?true:false;'#13#10
                +'}'#13#10),
@@ -562,6 +587,18 @@ const
                   +#9#9'return lf.apply(li,arg)'#13#10
                +#9'}'#13#10
                +'}'),
+      (Name : '$OrdS';
+       Code : 'function $OrdS(s) { return (s.length>0)?s.charCodeAt(0):0 }'),
+      (Name : '$Ord';
+       Code : 'function $Ord(s,z) {'#13#10
+               +#9'switch (Object.prototype.toString.call(s)) {'#13#10
+                  +#9#9'case "[object Number]": return parseInt(s);'#13#10
+                  +#9#9'case "[object Boolean]": return s?1:0;'#13#10
+                  +#9#9'case "[object String]": return (s.length>0)?s.charCodeAt(0):0;'#13#10
+               +#9'}'#13#10
+               +#9'throw Exception.Create$1($New(Exception),"Not an ordinal! "+z);'#13#10
+               +'}';
+       Dependency : 'Exception' ),
       // RTL functions
       (Name : 'AnsiCompareStr';
        Code : 'function AnsiCompareStr(a,b) { return a.localeCompare(b) }'),
@@ -759,6 +796,18 @@ const
        Code : 'function Trunc(v) { return (v>=0)?Math.floor(v):Math.ceil(v) }'),
       (Name : 'UpperCase';
        Code : 'function UpperCase(v) { return v.toUpperCase() }'),
+      (Name : 'VarToStr';
+       Code : 'function VarToStr(v) { return (typeof v === "undefined")?"":v.toString() }'),
+      (Name : 'VarType';
+       Code : 'function VarType(v) {'#13#10
+               +#9'switch (Object.prototype.toString.call(v)) {'#13#10
+                  +#9#9'case "[object Undefined]": return 0;'#13#10 // varEmpty
+                  +#9#9'case "[object String]": return 0x100;'#13#10 // varString
+                  +#9#9'case "[object Number]": return (parseInt(v)==v)?3:5;'#13#10 // varInteger/VarDouble
+                  +#9#9'case "[object Boolean]": return 0xB;'#13#10 // varBoolean
+                  +#9#9'default : return 0xC;'#13#10 // varVariant
+               +#9'}'#13#10
+               +'}'),
       // RTL classes
       (Name : 'TObject';
        Code : 'var TObject={'#13#10
@@ -801,6 +850,60 @@ begin
    end;
    Result:=nil;
 end;
+
+const
+   cJSReservedWords : array [1..202] of String = (
+      // Main JS keywords
+      // from https://developer.mozilla.org/en/JavaScript/Reference/Reserved_Words
+      'break', 'case', 'catch', 'continue', 'debugger', 'default', 'delete',
+      'do', 'else', 'finally', 'for', 'function', 'if', 'in', 'instanceof',
+      'new', 'return', 'switch', 'this', 'throw', 'try', 'typeof', 'var',
+      'void', 'while', 'with',
+
+      'class', 'enum', 'export', 'extends', 'import', 'super',
+
+      'implements', 'interface', 'let', 'package', 'private', 'protected',
+      'public', 'static', 'yield',
+
+      'null', 'true', 'false',
+
+      // supplemental reservations for standard JS class names, instances, etc.
+      // from http://javascript.about.com/library/blclassobj.htm
+      'Anchor', 'anchors', 'Applet', 'applets', 'Area', 'Array', 'Body', 'Button',
+      'Checkbox', 'Date', 'Error', 'EvalError', 'FileUpload', 'Form',
+      'forms', 'frame', 'frames', 'Function', 'Hidden', 'History', 'history',
+      'Image', 'images', 'Link', 'links', 'location', 'Math', 'MimeType',
+      'mimetypes', 'navigator', 'Number', 'Object', 'Option', 'options',
+      'Password', 'Plugin', 'plugins', 'Radio', 'RangeError', 'ReferenceError',
+      'RegExp', 'Reset', 'screen', 'Script', 'Select', 'String', 'Style',
+      'StyleSheet', 'Submit', 'SyntaxError', 'Text', 'Textarea', 'TypeError',
+      'URIError', 'window',
+
+
+      // global properties and method names
+      // from http://javascript.about.com/library/blglobal.htm
+      'Infinity', 'NaN', 'undefined',
+      'decodeURI', 'decodeURIComponent', 'encodeURI', 'encodeURIComponent',
+      'eval', 'isFinite', 'isNaN', 'parseFloat', 'parseInt',
+      'closed', 'Components', 'content', 'controllers', 'crypto', 'defaultstatus',
+      'directories', 'document', 'innerHeight', 'innerWidth',
+      'length', 'locationbar', 'menubar', 'name',
+      'opener', 'outerHeight', 'outerWidth', 'pageXOffset', 'pageYOffset',
+      'parent', 'personalbar', 'pkcs11', 'prompter', 'screenX',
+      'screenY', 'scrollbars', 'scrollX', 'scrollY', 'self', 'statusbar',
+      'toolbar', 'top',
+      'alert', 'back', 'blur', 'captureevents', 'clearinterval', 'cleartimeout',
+      'close', 'confirm', 'dump', 'escape', 'focus', 'forward', 'getAttention',
+      'getSelection', 'home', 'moveBy', 'moveTo', 'open', 'print', 'prompt',
+      'releaseevents', 'resizeBy', 'resizeTo', 'scroll', 'scrollBy', 'scrollByLines',
+      'scrollByPages', 'scrollTo', 'setCursor', 'setinterval', 'settimeout',
+      'sizeToContents', 'stop', 'unescape', 'updateCommands',
+      'onabort', 'onblur', 'onchange', 'onclick', 'onclose', 'ondragdrop',
+      'onerror', 'onfocus', 'onkeydown', 'onkeypress', 'onkeyup', 'onload',
+      'onmousedown', 'onmousemove', 'onmouseout', 'onmouseover',
+      'onmouseup', 'onpaint', 'onreset', 'onresize', 'onscroll', 'onselect',
+      'onsubmit', 'onunload'
+   );
 
 // ------------------
 // ------------------ TdwsJSCodeGen ------------------
@@ -873,11 +976,13 @@ begin
 
    RegisterCodeGen(TConvIntegerExpr,      TJSConvIntegerExpr.Create);
    RegisterCodeGen(TConvFloatExpr,
-      TdwsExprGenericCodeGen.Create(['Math.round(', 0, ')']));
+      TdwsExprGenericCodeGen.Create(['Number', '(', 0, ')']));
    RegisterCodeGen(TConvBoolExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '?true:false)']));
    RegisterCodeGen(TConvStringExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '.toString())']));
+
+   RegisterCodeGen(TOrdExpr,              TJSOrdExpr.Create);
 
    RegisterCodeGen(TConvClassExpr,        TJSConvClassExpr.Create);
    RegisterCodeGen(TObjAsClassExpr,       TJSObjAsClassExpr.Create);
@@ -895,20 +1000,22 @@ begin
 
    RegisterCodeGen(TAddIntExpr,           TJSBinOpExpr.Create('+', True));
    RegisterCodeGen(TAddFloatExpr,         TJSBinOpExpr.Create('+', True));
+   RegisterCodeGen(TAddVariantExpr,       TJSBinOpExpr.Create('+', True));
    RegisterCodeGen(TSubIntExpr,           TJSBinOpExpr.Create('-', False));
    RegisterCodeGen(TSubFloatExpr,         TJSBinOpExpr.Create('-', False));
+   RegisterCodeGen(TSubVariantExpr,       TJSBinOpExpr.Create('-', False));
    RegisterCodeGen(TMultIntExpr,          TJSBinOpExpr.Create('*', True));
    RegisterCodeGen(TMultFloatExpr,        TJSBinOpExpr.Create('*', True));
+   RegisterCodeGen(TMultVariantExpr,      TJSBinOpExpr.Create('*', True));
    RegisterCodeGen(TDivideExpr,           TJSBinOpExpr.Create('/', True));
    RegisterCodeGen(TDivExpr,
       TdwsExprGenericCodeGen.Create(['Math.floor(', 0, '/', 1, ')']));
    RegisterCodeGen(TModExpr,              TJSBinOpExpr.Create('%', True));
-   RegisterCodeGen(TSqrFloatExpr,      TJSSqrExpr.Create);
-   RegisterCodeGen(TSqrIntExpr,        TJSSqrExpr.Create);
-   RegisterCodeGen(TNegIntExpr,
-      TdwsExprGenericCodeGen.Create(['(', '-', 0, ')']));
-   RegisterCodeGen(TNegFloatExpr,
-      TdwsExprGenericCodeGen.Create(['(', '-', 0, ')']));
+   RegisterCodeGen(TSqrFloatExpr,         TJSSqrExpr.Create);
+   RegisterCodeGen(TSqrIntExpr,           TJSSqrExpr.Create);
+   RegisterCodeGen(TNegIntExpr,           TdwsExprGenericCodeGen.Create(['(', '-', 0, ')']));
+   RegisterCodeGen(TNegFloatExpr,         TdwsExprGenericCodeGen.Create(['(', '-', 0, ')']));
+   RegisterCodeGen(TNegVariantExpr,       TdwsExprGenericCodeGen.Create(['(', '-', 0, ')']));
 
    RegisterCodeGen(TAppendStringVarExpr,
       TdwsExprGenericCodeGen.Create([0, '+=', 1, ';'], True));
@@ -920,13 +1027,19 @@ begin
       TdwsExprGenericCodeGen.Create([0, '+=', 1, ';'], True));
    RegisterCodeGen(TPlusAssignStrExpr,
       TdwsExprGenericCodeGen.Create([0, '+=', 1, ';'], True));
+   RegisterCodeGen(TPlusAssignExpr,
+      TdwsExprGenericCodeGen.Create([0, '+=', 1, ';'], True));
    RegisterCodeGen(TMinusAssignIntExpr,
       TdwsExprGenericCodeGen.Create([0, '-=', 1, ';'], True));
    RegisterCodeGen(TMinusAssignFloatExpr,
       TdwsExprGenericCodeGen.Create([0, '-=', 1, ';'], True));
+   RegisterCodeGen(TMinusAssignExpr,
+      TdwsExprGenericCodeGen.Create([0, '-=', 1, ';'], True));
    RegisterCodeGen(TMultAssignIntExpr,
       TdwsExprGenericCodeGen.Create([0, '*=', 1, ';'], True));
    RegisterCodeGen(TMultAssignFloatExpr,
+      TdwsExprGenericCodeGen.Create([0, '*=', 1, ';'], True));
+   RegisterCodeGen(TMultAssignExpr,
       TdwsExprGenericCodeGen.Create([0, '*=', 1, ';'], True));
    RegisterCodeGen(TDivideAssignExpr,
       TdwsExprGenericCodeGen.Create([0, '/=', 1, ';'], True));
@@ -972,6 +1085,8 @@ begin
    RegisterCodeGen(TBoolImpliesExpr,
       TdwsExprGenericCodeGen.Create(['(!', 0, ' || ', 1, ')']));
    RegisterCodeGen(TNotBoolExpr,
+      TdwsExprGenericCodeGen.Create(['(', '!', 0, ')']));
+   RegisterCodeGen(TNotVariantExpr,
       TdwsExprGenericCodeGen.Create(['(', '!', 0, ')']));
 
    RegisterCodeGen(TAssignedInstanceExpr,
@@ -1028,6 +1143,18 @@ begin
    RegisterCodeGen(TRelLessFloatExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '<', 1, ')']));
 
+   RegisterCodeGen(TRelEqualVariantExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '==', 1, ')']));
+   RegisterCodeGen(TRelNotEqualVariantExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '!=', 1, ')']));
+   RegisterCodeGen(TRelGreaterEqualVariantExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '>=', 1, ')']));
+   RegisterCodeGen(TRelLessEqualVariantExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '<=', 1, ')']));
+   RegisterCodeGen(TRelGreaterVariantExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '>', 1, ')']));
+   RegisterCodeGen(TRelLessVariantExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '<', 1, ')']));
 
    RegisterCodeGen(TIfThenExpr,
       TdwsExprGenericCodeGen.Create(['if ', '(', 0, ')', ' {', #9, 1, #8, '};'], True));
@@ -1076,17 +1203,17 @@ begin
    RegisterCodeGen(TVarStringArraySetExpr,   TJSVarStringArraySetExpr.Create);
 
    RegisterCodeGen(TStringLengthExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, ').length']));
+      TdwsExprGenericCodeGen.Create(['(', 0, ')', '.length']));
    RegisterCodeGen(TArrayLengthExpr,         TJSArrayLengthExpr.Create);
    RegisterCodeGen(TOpenArrayLengthExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, ').length']));
+      TdwsExprGenericCodeGen.Create(['(', 0, ')', '.length']));
 
    RegisterCodeGen(TOrdIntExpr,
       TdwsExprGenericCodeGen.Create([0]));
    RegisterCodeGen(TOrdBoolExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '?1:0)']));
    RegisterCodeGen(TOrdStrExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, ').charCodeAt(0)']));
+      TdwsExprGenericCodeGen.Create(['$OrdS', '(', 0, ')'], False, '$OrdS'));
 
    RegisterCodeGen(TFuncExpr,             TJSFuncBaseExpr.Create);
 
@@ -1113,6 +1240,10 @@ begin
 
    RegisterCodeGen(TClassMethodStaticExpr,      TJSClassMethodStaticExpr.Create);
    RegisterCodeGen(TClassMethodVirtualExpr,     TJSClassMethodVirtualExpr.Create);
+
+   RegisterCodeGen(TConnectorCallExpr,          TJSConnectorCallExpr.Create);
+   RegisterCodeGen(TConnectorReadExpr,          TJSConnectorReadExpr.Create);
+   RegisterCodeGen(TConnectorWriteExpr,         TJSConnectorWriteExpr.Create);
 
    RegisterCodeGen(TFuncPtrExpr,                TJSFuncPtrExpr.Create);
    RegisterCodeGen(TFuncRefExpr,                TJSFuncRefExpr.Create);
@@ -1512,59 +1643,6 @@ end;
 // ReserveSymbolNames
 //
 procedure TdwsJSCodeGen.ReserveSymbolNames;
-const
-   cJSReservedWords : array [1..202] of String = (
-      // Main JS keywords
-      // from https://developer.mozilla.org/en/JavaScript/Reference/Reserved_Words
-      'break', 'case', 'catch', 'continue', 'debugger', 'default', 'delete',
-      'do', 'else', 'finally', 'for', 'function', 'if', 'in', 'instanceof',
-      'new', 'return', 'switch', 'this', 'throw', 'try', 'typeof', 'var',
-      'void', 'while', 'with',
-
-      'class', 'enum', 'export', 'extends', 'import', 'super',
-
-      'implements', 'interface', 'let', 'package', 'private', 'protected',
-      'public', 'static', 'yield',
-
-      'null', 'true', 'false',
-
-      // supplemental reservations for standard JS class names, instances, etc.
-      // from http://javascript.about.com/library/blclassobj.htm
-      'Anchor', 'anchors', 'Applet', 'applets', 'Area', 'Array', 'Body', 'Button',
-      'Checkbox', 'Date', 'Error', 'EvalError', 'FileUpload', 'Form',
-      'forms', 'frame', 'frames', 'Function', 'Hidden', 'History', 'history',
-      'Image', 'images', 'Link', 'links', 'location', 'Math', 'MimeType',
-      'mimetypes', 'navigator', 'Number', 'Object', 'Option', 'options',
-      'Password', 'Plugin', 'plugins', 'Radio', 'RangeError', 'ReferenceError',
-      'RegExp', 'Reset', 'screen', 'Script', 'Select', 'String', 'Style',
-      'StyleSheet', 'Submit', 'SyntaxError', 'Text', 'Textarea', 'TypeError',
-      'URIError', 'window',
-
-
-      // global properties and method names
-      // from http://javascript.about.com/library/blglobal.htm
-      'Infinity', 'NaN', 'undefined',
-      'decodeURI', 'decodeURIComponent', 'encodeURI', 'encodeURIComponent',
-      'eval', 'isFinite', 'isNaN', 'parseFloat', 'parseInt',
-      'closed', 'Components', 'content', 'controllers', 'crypto', 'defaultstatus',
-      'directories', 'document', 'innerHeight', 'innerWidth',
-      'length', 'locationbar', 'menubar', 'name',
-      'opener', 'outerHeight', 'outerWidth', 'pageXOffset', 'pageYOffset',
-      'parent', 'personalbar', 'pkcs11', 'prompter', 'screenX',
-      'screenY', 'scrollbars', 'scrollX', 'scrollY', 'self', 'statusbar',
-      'toolbar', 'top',
-      'alert', 'back', 'blur', 'captureevents', 'clearinterval', 'cleartimeout',
-      'close', 'confirm', 'dump', 'escape', 'focus', 'forward', 'getAttention',
-      'getSelection', 'home', 'moveBy', 'moveTo', 'open', 'print', 'prompt',
-      'releaseevents', 'resizeBy', 'resizeTo', 'scroll', 'scrollBy', 'scrollByLines',
-      'scrollByPages', 'scrollTo', 'setCursor', 'setinterval', 'settimeout',
-      'sizeToContents', 'stop', 'unescape', 'updateCommands',
-      'onabort', 'onblur', 'onchange', 'onclick', 'onclose', 'ondragdrop',
-      'onerror', 'onfocus', 'onkeydown', 'onkeypress', 'onkeyup', 'onload',
-      'onmousedown', 'onmousemove', 'onmouseout', 'onmouseover',
-      'onmouseup', 'onpaint', 'onreset', 'onresize', 'onscroll', 'onselect',
-      'onsubmit', 'onunload'
-   );
 var
    i : Integer;
 begin
@@ -1729,6 +1807,15 @@ begin
    end;
 end;
 
+// CreateSymbolMap
+//
+function TdwsJSCodeGen.CreateSymbolMap(parentMap : TdwsCodeGenSymbolMap; symbol : TSymbol) : TdwsCodeGenSymbolMap;
+begin
+   if cgoObfuscate in Options then
+      Result:=TdwsCodeGenSymbolMapJSObfuscating.Create(parentMap, symbol)
+   else Result:=TdwsCodeGenSymbolMap.Create(parentMap, symbol);
+end;
+
 // EnterContext
 //
 procedure TdwsJSCodeGen.EnterContext(proc : TdwsProgram);
@@ -1782,6 +1869,8 @@ begin
       WriteString('""')
    else if typ is TBaseBooleanSymbol then
       WriteString(cBoolToJSBool[false])
+   else if typ is TBaseVariantSymbol then
+      WriteString('undefined')
    else if typ is TClassSymbol then
       WriteString('null')
    else if typ is TClassOfSymbol then
@@ -1844,6 +1933,22 @@ begin
       WriteJavaScriptString(VarToStr(data[addr]))
    else if typ is TBaseBooleanSymbol then begin
       WriteString(cBoolToJSBool[Boolean(data[addr])])
+   end else if typ is TBaseVariantSymbol then begin
+      case VarType(data[addr]) of
+         varEmpty :
+            WriteString('undefined');
+         varInteger, varSmallint, varShortInt, varInt64, varByte, varWord, varUInt64 :
+            WriteString(IntToStr(data[addr]));
+         varSingle, varDouble, varCurrency :
+            WriteString(FloatToStr(data[addr], cFormatSettings));
+         varString, varUString, varOleStr :
+            WriteJavaScriptString(VarToStr(data[addr]));
+         varBoolean :
+            WriteString(cBoolToJSBool[Boolean(data[addr])])
+      else
+         raise ECodeGenUnsupportedSymbol.CreateFmt('Value of type %s (VarType = %d)',
+                                                   [typ.ClassName, VarType(data[addr])]);
+      end;
    end else if typ is TNilSymbol then begin
       WriteString('null')
    end else if typ is TClassOfSymbol then begin
@@ -2089,6 +2194,23 @@ begin
 //   Result:=SymbolMappedName(sym, False);
 //   if n>0 then
 //      Result:=Format('%s$%d', [Result, n]);
+end;
+
+// WriteCompiledOutput
+//
+procedure TdwsJSCodeGen.WriteCompiledOutput(dest : TWriteOnlyBlockStream; const prog : IdwsProgram);
+var
+   buf : TWriteOnlyBlockStream;
+begin
+   if cgoOptimizeForSize in Options then begin
+      buf:=TWriteOnlyBlockStream.Create;
+      try
+         inherited WriteCompiledOutput(buf, prog);
+         JavaScriptMinify(buf.ToString, dest);
+      finally
+         buf.Free;
+      end;
+   end else inherited WriteCompiledOutput(dest, prog);
 end;
 
 // All_RTL_JS
@@ -2783,38 +2905,38 @@ begin
    FMagicCodeGens.Sorted:=True;
    FMagicCodeGens.Duplicates:=dupError;
 
-   FMagicCodeGens.AddObject('AnsiLowerCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toLocaleLowerCase()']));
-   FMagicCodeGens.AddObject('AnsiUpperCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toLocaleUpperCase()']));
-   FMagicCodeGens.AddObject('ArcCos', TdwsExprGenericCodeGen.Create(['Math.acos(', 0, ')']));
-   FMagicCodeGens.AddObject('ArcSin', TdwsExprGenericCodeGen.Create(['Math.asin(', 0, ')']));
-   FMagicCodeGens.AddObject('ArcTan', TdwsExprGenericCodeGen.Create(['Math.atan(', 0, ')']));
-   FMagicCodeGens.AddObject('ArcTan2', TdwsExprGenericCodeGen.Create(['Math.atan2(', 0, ',', 1, ')']));
-   FMagicCodeGens.AddObject('Ceil', TdwsExprGenericCodeGen.Create(['Math.ceil(', 0, ')']));
-   FMagicCodeGens.AddObject('Cos', TdwsExprGenericCodeGen.Create(['Math.cos(', 0, ')']));
+   FMagicCodeGens.AddObject('AnsiLowerCase', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toLocaleLowerCase()']));
+   FMagicCodeGens.AddObject('AnsiUpperCase', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toLocaleUpperCase()']));
+   FMagicCodeGens.AddObject('ArcCos', TdwsExprGenericCodeGen.Create(['Math.acos', '(', 0, ')']));
+   FMagicCodeGens.AddObject('ArcSin', TdwsExprGenericCodeGen.Create(['Math.asin', '(', 0, ')']));
+   FMagicCodeGens.AddObject('ArcTan', TdwsExprGenericCodeGen.Create(['Math.atan', '(', 0, ')']));
+   FMagicCodeGens.AddObject('ArcTan2', TdwsExprGenericCodeGen.Create(['Math.atan2', '(', 0, ',', 1, ')']));
+   FMagicCodeGens.AddObject('Ceil', TdwsExprGenericCodeGen.Create(['Math.ceil', '(', 0, ')']));
+   FMagicCodeGens.AddObject('Cos', TdwsExprGenericCodeGen.Create(['Math.cos', '(', 0, ')']));
    FMagicCodeGens.AddObject('Copy', TdwsExprGenericCodeGen.Create(['(', 0, ').substr((', 1, ')-1,', 2, ')']));
    FMagicCodeGens.AddObject('Exp', TdwsExprGenericCodeGen.Create(['Math.exp(', 0, ')']));
    FMagicCodeGens.AddObject('Floor', TdwsExprGenericCodeGen.Create(['Math.floor(', 0, ')']));
    FMagicCodeGens.AddObject('HexToInt', TdwsExprGenericCodeGen.Create(['parseInt(', 0, ',16)']));
    FMagicCodeGens.AddObject('IntPower', TdwsExprGenericCodeGen.Create(['Math.pow(', 0, ',', 1, ')']));
-   FMagicCodeGens.AddObject('IntToStr', TdwsExprGenericCodeGen.Create(['(', 0, ').toString()']));
-   FMagicCodeGens.AddObject('LeftStr', TdwsExprGenericCodeGen.Create(['(', 0, ').substr(0,', 1, ')']));
-   FMagicCodeGens.AddObject('Ln', TdwsExprGenericCodeGen.Create(['Math.log(', 0, ')']));
-   FMagicCodeGens.AddObject('LowerCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toLowerCase()']));
-   FMagicCodeGens.AddObject('MaxInt', TdwsExprGenericCodeGen.Create(['Math.max(', 0, ',', 1, ')']));
-   FMagicCodeGens.AddObject('MinInt', TdwsExprGenericCodeGen.Create(['Math.min(', 0, ',', 1, ')']));
+   FMagicCodeGens.AddObject('IntToStr', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toString()']));
+   FMagicCodeGens.AddObject('LeftStr', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(0,', 1, ')']));
+   FMagicCodeGens.AddObject('Ln', TdwsExprGenericCodeGen.Create(['Math.log', '(', 0, ')']));
+   FMagicCodeGens.AddObject('LowerCase', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toLowerCase()']));
+   FMagicCodeGens.AddObject('MaxInt', TdwsExprGenericCodeGen.Create(['Math.max','(', 0, ',', 1, ')']));
+   FMagicCodeGens.AddObject('MinInt', TdwsExprGenericCodeGen.Create(['Math.min', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('Pi', TdwsExprGenericCodeGen.Create(['Math.PI']));
-   FMagicCodeGens.AddObject('Pos', TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf(', 0, ')+1)']));
-   FMagicCodeGens.AddObject('PosEx', TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf(', 0, ',(', 2, ')-1)+1)']));
-   FMagicCodeGens.AddObject('Power', TdwsExprGenericCodeGen.Create(['Math.pow(', 0, ',', 1, ')']));
-   FMagicCodeGens.AddObject('Round', TdwsExprGenericCodeGen.Create(['Math.round(', 0, ')']));
-   FMagicCodeGens.AddObject('Sin', TdwsExprGenericCodeGen.Create(['Math.sin(', 0, ')']));
-   FMagicCodeGens.AddObject('Sqrt', TdwsExprGenericCodeGen.Create(['Math.sqrt(', 0, ')']));
-   FMagicCodeGens.AddObject('StrToFloat', TdwsExprGenericCodeGen.Create(['parseFloat(', 0, ')']));
-   FMagicCodeGens.AddObject('StrToInt', TdwsExprGenericCodeGen.Create(['parseInt(', 0, ',10)']));
-   FMagicCodeGens.AddObject('SubStr', TdwsExprGenericCodeGen.Create(['(', 0, ').substr((', 1, ')-1)']));
-   FMagicCodeGens.AddObject('SubString', TdwsExprGenericCodeGen.Create(['(', 0, ').substr((', 1, ')-1,(', 2, ')-2)']));
-   FMagicCodeGens.AddObject('Tan', TdwsExprGenericCodeGen.Create(['Math.tan(', 0, ')']));
-   FMagicCodeGens.AddObject('UpperCase', TdwsExprGenericCodeGen.Create(['(', 0, ').toUpperCase()']));
+   FMagicCodeGens.AddObject('Pos', TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf', '(', 0, ')+1)']));
+   FMagicCodeGens.AddObject('PosEx', TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf', '(', 0, ',', '(', 2, ')', '-1)+1)']));
+   FMagicCodeGens.AddObject('Power', TdwsExprGenericCodeGen.Create(['Math.pow', '(', 0, ',', 1, ')']));
+   FMagicCodeGens.AddObject('Round', TdwsExprGenericCodeGen.Create(['Math.round', '(', 0, ')']));
+   FMagicCodeGens.AddObject('Sin', TdwsExprGenericCodeGen.Create(['Math.sin', '(', 0, ')']));
+   FMagicCodeGens.AddObject('Sqrt', TdwsExprGenericCodeGen.Create(['Math.sqrt', '(', 0, ')']));
+   FMagicCodeGens.AddObject('StrToFloat', TdwsExprGenericCodeGen.Create(['parseFloat', '(', 0, ')']));
+   FMagicCodeGens.AddObject('StrToInt', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',10)']));
+   FMagicCodeGens.AddObject('SubStr', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(', '(', 1, ')', '-1)']));
+   FMagicCodeGens.AddObject('SubString', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(', '(', 1, ')', '-1,', '(', 2, ')', '-2)']));
+   FMagicCodeGens.AddObject('Tan', TdwsExprGenericCodeGen.Create(['Math.tan', '(', 0, ')']));
+   FMagicCodeGens.AddObject('UpperCase', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toUpperCase()']));
 end;
 
 // Destroy
@@ -3133,6 +3255,74 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSConnectorCallExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSConnectorCallExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TConnectorCallExpr;
+   jsCall : TdwsJSConnectorCall;
+   i : Integer;
+begin
+   e:=TConnectorCallExpr(Expr);
+   jsCall:=(e.ConnectorCall as TdwsJSConnectorCall);
+
+   codeGen.Compile(e.BaseExpr);
+   codeGen.WriteString('.');
+   codeGen.WriteString(jsCall.CallMethodName);
+   codeGen.WriteString('(');
+   for i:=1 to e.SubExprCount-1 do begin
+      if i>1 then
+         codeGen.WriteString(',');
+      codeGen.Compile(e.SubExpr[i]);
+   end;
+   codeGen.WriteString(')');
+end;
+
+// ------------------
+// ------------------ TJSConnectorReadExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSConnectorReadExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TConnectorReadExpr;
+   jsMember : TdwsJSConnectorMember;
+begin
+   e:=TConnectorReadExpr(Expr);
+   jsMember:=(e.ConnectorMember as TdwsJSConnectorMember);
+
+   codeGen.Compile(e.BaseExpr);
+   codeGen.WriteString('.');
+   codeGen.WriteString(jsMember.MemberName);
+end;
+
+// ------------------
+// ------------------ TJSConnectorWriteExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSConnectorWriteExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TConnectorWriteExpr;
+   jsMember : TdwsJSConnectorMember;
+begin
+   e:=TConnectorWriteExpr(Expr);
+   jsMember:=(e.ConnectorMember as TdwsJSConnectorMember);
+
+   codeGen.Compile(e.BaseExpr);
+   codeGen.WriteString('.');
+   codeGen.WriteString(jsMember.MemberName);
+   codeGen.WriteString('=');
+   codeGen.Compile(e.ValueExpr);
+   codegen.WriteStringLn(';');
+end;
+
+// ------------------
 // ------------------ TJSFuncPtrExpr ------------------
 // ------------------
 
@@ -3418,6 +3608,31 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSOrdExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSOrdExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TOrdExpr;
+   typ : TTypeSymbol;
+begin
+   e:=TOrdExpr(expr);
+   typ:=e.Expr.Typ.UnAliasedType;
+   if typ is TBaseIntegerSymbol then
+      codeGen.Compile(e.Expr)
+   else begin
+      codeGen.Dependencies.Add('$Ord');
+      codeGen.WriteString('$Ord(');
+      codeGen.Compile(e.Expr);
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+      codeGen.WriteString(')');
+   end;
+end;
+
+// ------------------
 // ------------------ TJSConvClassExpr ------------------
 // ------------------
 
@@ -3493,7 +3708,7 @@ begin
    codeGen.WriteString('$AsIntf(');
    codeGen.Compile(e.Expr);
    codeGen.WriteString(',"');
-   codeGen.WriteString(e.Typ.UnAliasedType.Name);
+   codeGen.WriteSymbolName(e.Typ.UnAliasedType);
    codeGen.WriteString('")');
 end;
 
@@ -3534,7 +3749,7 @@ begin
    codeGen.WriteString('$AsIntf($IntfAsClass(');
    codeGen.Compile(e.Expr);
    codeGen.WriteString(',TObject),"');
-   codeGen.WriteString(e.Typ.UnAliasedType.Name);
+   codeGen.WriteSymbolName(e.Typ.UnAliasedType);
    codeGen.WriteString('")');
 end;
 
@@ -3612,7 +3827,9 @@ end;
 //
 class procedure TJSExprCodeGen.WriteLocationString(codeGen : TdwsCodeGen; expr : TExprBase);
 begin
-   WriteJavaScriptString(codeGen.Output, codeGen.LocationString(expr));
+   if cgoNoSourceLocations in codeGen.Options then
+      codeGen.WriteString('""')
+   else WriteJavaScriptString(codeGen.Output, codeGen.LocationString(expr));
 end;
 
 // ------------------
@@ -3696,13 +3913,14 @@ begin
          codeGen.WriteStringLn(')) {');
          codeGen.Indent;
 
-         codeGen.WriteString('var ');
-         codeGen.WriteSymbolName(de.ExceptionVar);
-         codeGen.WriteStringLn('=$e;');
          codeGen.LocalTable.AddSymbolDirect(de.ExceptionVar);
          try
+            codeGen.WriteString('var ');
+            codeGen.WriteSymbolName(de.ExceptionVar);
+            codeGen.WriteStringLn('=$e;');
             codeGen.Compile(de.DoBlockExpr);
          finally
+            codeGen.SymbolMap.ForgetSymbol(de.ExceptionVar);
             codeGen.LocalTable.Remove(de.ExceptionVar);
          end;
 
@@ -4394,6 +4612,52 @@ begin
    codeGen.WriteString('($ConditionalDefines.indexOf(');
    codeGen.Compile(e.Expr);
    codeGen.WriteString(')!=-1)');
+end;
+
+// ------------------
+// ------------------ TdwsCodeGenSymbolMapJSObfuscating ------------------
+// ------------------
+
+// DoNeedUniqueName
+//
+function TdwsCodeGenSymbolMapJSObfuscating.DoNeedUniqueName(symbol : TSymbol; tryCount : Integer; canObfuscate : Boolean) : String;
+
+   function IntToSkewedBase62(i : Cardinal) : String;
+   var
+      m : Cardinal;
+   begin
+      m:=i mod 52;
+      i:=i div 52;
+      if m<26 then
+         Result:=Char(Ord('A')+m)
+      else Result:=Char(Ord('a')+m-26);
+      while i>0 do begin
+         m:=i mod 62;
+         i:=i div 62;
+         case m of
+            0..9 : Result:=Result+Char(Ord('0')+m);
+            10..35 : Result:=Result+Char(Ord('A')+m-10);
+         else
+            Result:=Result+Char(Ord('a')+m-36);
+         end;
+      end;
+   end;
+
+var
+   h : Integer;
+begin
+   if not canObfuscate then
+      Exit(inherited DoNeedUniqueName(symbol, tryCount, canObfuscate));
+   h:=Random(MaxInt);
+//   if symbol.Name<>'' then
+//      h:=BobJenkinsHash(symbol.Name[1], Length(symbol.Name)*SizeOf(Char), tryCount);
+   case tryCount of
+      0..2 : h:=h and $1F;
+      3..7 : h:=h and $FF;
+      8..12 : h:=h and $FFF;
+      13..20 : h:=h and $FFFF;
+   end;
+   Result:=Prefix+IntToSkewedBase62(h);
 end;
 
 end.
