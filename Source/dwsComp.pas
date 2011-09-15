@@ -1099,10 +1099,12 @@ end;
 procedure TDelphiWebScript.SetupExtensions;
 begin
    if FExtensions.Count>0 then begin
+      FCompiler.OnCreateBaseVariantSymbol:=FExtensions.CreateBaseVariantSymbol;
       FCompiler.OnReadInstr:=FExtensions.ReadInstr;
       FCompiler.OnSectionChanged:=FExtensions.SectionChanged;
       FCompiler.OnReadScript:=FExtensions.ReadScript;
    end else begin
+      FCompiler.OnCreateBaseVariantSymbol:=nil;
       FCompiler.OnReadInstr:=nil;
       FCompiler.OnSectionChanged:=nil;
       FCompiler.OnReadScript:=nil;

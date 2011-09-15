@@ -19,7 +19,7 @@ unit dwsLanguageExtension;
 
 interface
 
-uses Classes, dwsCompiler, dwsExprs, dwsErrors;
+uses Classes, dwsCompiler, dwsExprs, dwsErrors, dwsSymbols, dwsStrings;
 
 type
 
@@ -30,6 +30,7 @@ type
       public
          constructor Create; virtual;
 
+         function CreateBaseVariantSymbol(table : TSymbolTable) : TBaseVariantSymbol; virtual;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; virtual;
          procedure SectionChanged(compiler : TdwsCompiler); virtual;
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
@@ -52,6 +53,7 @@ type
          function Count : Integer;
          procedure Clear;
 
+         function CreateBaseVariantSymbol(table : TSymbolTable) : TBaseVariantSymbol; override;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; override;
          procedure SectionChanged(compiler : TdwsCompiler); override;
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
@@ -75,6 +77,14 @@ implementation
 constructor TdwsLanguageExtension.Create;
 begin
    inherited;
+end;
+
+// CreateBaseVariantSymbol
+//
+function TdwsLanguageExtension.CreateBaseVariantSymbol(table : TSymbolTable) : TBaseVariantSymbol;
+begin
+   Result:=TBaseVariantSymbol.Create;
+   table.AddSymbol(Result);
 end;
 
 // ReadInstr
@@ -145,6 +155,21 @@ end;
 procedure TdwsLanguageExtensionAggregator.Clear;
 begin
    FList.Clear;
+end;
+
+// CreateBaseVariantSymbol
+//
+function TdwsLanguageExtensionAggregator.CreateBaseVariantSymbol(table : TSymbolTable) : TBaseVariantSymbol;
+var
+   i : Integer;
+   ext : TdwsLanguageExtension;
+begin
+   for i:=0 to FList.Count-1 do begin
+      ext:=TdwsLanguageExtension(FList.List[i]);
+      Result:=ext.CreateBaseVariantSymbol(table);
+      if Result<>nil then Exit;
+   end;
+   Result:=nil;
 end;
 
 // ReadInstr

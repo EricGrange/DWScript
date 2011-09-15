@@ -42,6 +42,7 @@ type
   TdwsOnNeedUnitEvent = function(const unitName : String; var unitSource : String) : IdwsUnit of object;
 
   TdwsCompiler = class;
+  TCompilerCreateBaseVariantSymbol = function (table : TSymbolTable) : TBaseVariantSymbol of object;
   TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
   TCompilerSectionChangedEvent = procedure (compiler : TdwsCompiler) of object;
   TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile; scriptType : TScriptSourceType) of object;
@@ -58,6 +59,7 @@ type
     FMaxRecursionDepth : Integer;
     FOnInclude: TIncludeEvent;
     FOnNeedUnit : TdwsOnNeedUnitEvent;
+    FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
 
     FOwner: TComponent;
     FResultType: TdwsResultType;
@@ -79,6 +81,7 @@ type
     procedure SetRuntimeFileSystem(const val : TdwsCustomFileSystem);
     procedure SetScriptPaths(const values : TStrings);
     procedure SetConditionals(const val : TStringList);
+    function GetSystemTable : TSymbolTable;
 
   public
     constructor Create(Owner: TComponent);
@@ -86,8 +89,8 @@ type
     procedure Assign(Source: TPersistent); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation);
 
-    property Connectors: TStrings read FConnectors write FConnectors;
-    property SystemTable: TSymbolTable read FSystemTable write FSystemTable;
+    property Connectors : TStrings read FConnectors write FConnectors;
+    property SystemTable : TSymbolTable read GetSystemTable;
     property Units : TIdwsUnitList read FUnits;
 
   published
@@ -273,6 +276,7 @@ type
       FUnitsFromStack : TSimpleStack<String>;
       FUnitSymbol : TUnitMainSymbol;
 
+      FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
       FOnReadInstr : TCompilerReadInstrEvent;
       FOnSectionChanged : TCompilerSectionChangedEvent;
       FOnReadScript : TCompilerReadScriptEvent;
@@ -474,6 +478,7 @@ type
       property UnitSection : TdwsUnitSection read FUnitSection write FUnitSection;
       property Tokenizer : TTokenizer read FTok write FTok;
 
+      property OnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol read FOnCreateBaseVariantSymbol write FOnCreateBaseVariantSymbol;
       property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
       property OnSectionChanged : TCompilerSectionChangedEvent read FOnSectionChanged write FOnSectionChanged;
       property OnReadScript : TCompilerReadScriptEvent read FOnReadScript write FOnReadScript;
@@ -847,6 +852,8 @@ begin
    FOnInclude := conf.OnInclude;
    FOnNeedUnit := conf.OnNeedUnit;
    FScriptPaths := conf.ScriptPaths;
+
+   conf.FOnCreateBaseVariantSymbol:=FOnCreateBaseVariantSymbol;
    FSystemTable := conf.SystemTable;
 
    if Conf.CompileFileSystem<>nil then
@@ -7503,7 +7510,6 @@ begin
    FScriptPaths := TStringList.Create;
    FConditionals := TStringList.Create;
    FUnits := TIdwsUnitList.Create;
-   InitSystemTable;
    FUnits.Add(dwsInternalUnit);
    FStackChunkSize := C_DefaultStackChunkSize;
    FDefaultResultType := TdwsDefaultResultType.Create(nil);
@@ -7556,12 +7562,13 @@ begin
    typString:=TBaseStringSymbol.Create;
    SystemTable.AddSymbol(typString);
 
-   varSym:=TBaseVariantSymbol.Create;
-   SystemTable.AddSymbol(varSym);
-   SystemTable.AddSymbol(TConstSymbol.Create('Null', varSym, Null));
-   SystemTable.AddSymbol(TConstSymbol.Create('Unassigned', varSym, Unassigned));
+   varSym:=TBaseVariantSymbol(SystemTable.FindLocal(SYS_VARIANT, TBaseVariantSymbol));
+   if varSym<>nil then begin
+      SystemTable.AddSymbol(TConstSymbol.Create('Null', varSym, Null));
+      SystemTable.AddSymbol(TConstSymbol.Create('Unassigned', varSym, Unassigned));
 
-   SystemTable.AddSymbol(TOpenArraySymbol.Create('array of const', varSym, typInteger));
+      SystemTable.AddSymbol(TOpenArraySymbol.Create('array of const', varSym, typInteger));
+   end;
 
    SystemTable.AddSymbol(TInterfaceSymbol.Create(SYS_IINTERFACE, nil));
 
@@ -7631,7 +7638,8 @@ begin
    TExceptObjFunc.Create(SystemTable, 'ExceptObject', [], SYS_EXCEPTION, False);
 
    // Runtime parameters
-   TParamFunc.Create(SystemTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, False);
+   if varSym<>nil then
+      TParamFunc.Create(SystemTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, False);
    TParamStrFunc.Create(SystemTable, 'ParamStr', ['Index', SYS_INTEGER], SYS_STRING, False);
    TParamCountFunc.Create(SystemTable, 'ParamCount', [], SYS_INTEGER, False);
 end;
@@ -7724,6 +7732,19 @@ end;
 procedure TdwsConfiguration.SetConditionals(const val : TStringList);
 begin
    FConditionals.Assign(val);
+end;
+
+// GetSystemTable
+//
+function TdwsConfiguration.GetSystemTable : TSymbolTable;
+begin
+   if FSystemTable.Count=0 then begin
+      if Assigned(FOnCreateBaseVariantSymbol) then
+         FOnCreateBaseVariantSymbol(FSystemTable)
+      else FSystemTable.AddSymbol(TBaseVariantSymbol.Create);
+      InitSystemTable;
+   end;
+   Result:=FSystemTable;
 end;
 
 // ------------------
