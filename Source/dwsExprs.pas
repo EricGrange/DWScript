@@ -975,60 +975,87 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
-  TConnectorCallExpr = class(TPosDataExpr)
-  protected
-    FArgs: TTightList;
-    FBaseExpr: TTypedExpr;
-    FConnectorArgs: TConnectorArgs;
-    FConnectorCall: IConnectorCall;
-    FConnectorParams: TConnectorParamArray;
-    FIsInstruction: Boolean;
-    FIsWritable: Boolean;
-    FIsIndex: Boolean;
-    FName: string;
-    FResultData: TData;
-    function GetData(exec : TdwsExecution) : TData; override;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const Name: string;
-                       BaseExpr: TTypedExpr; IsWritable: Boolean = True; IsIndex: Boolean = False);
-    destructor Destroy; override;
-    function AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType) : Boolean;
-    procedure AddArg(expr : TTypedExpr);
-    function Eval(exec : TdwsExecution) : Variant; override;
-    function IsWritable : Boolean; override;
-    property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
+   TConnectorCallExpr = class(TPosDataExpr)
+      private
+         FArgs: TTightList;
+         FBaseExpr: TTypedExpr;
+         FConnectorArgs: TConnectorArgs;
+         FConnectorCall: IConnectorCall;
+         FConnectorParams: TConnectorParamArray;
+         FIsInstruction: Boolean;
+         FIsWritable: Boolean;
+         FIsIndex: Boolean;
+         FName: string;
+         FResultData: TData;
+
+      protected
+         function GetData(exec : TdwsExecution) : TData; override;
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const Name: string;
+                            BaseExpr: TTypedExpr; IsWritable: Boolean = True; IsIndex: Boolean = False);
+         destructor Destroy; override;
+
+         function AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType) : Boolean;
+         procedure AddArg(expr : TTypedExpr);
+         function Eval(exec : TdwsExecution) : Variant; override;
+         function IsWritable : Boolean; override;
+
+         property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
+         property ConnectorCall : IConnectorCall read FConnectorCall write FConnectorCall;
+   end;
+
+   TConnectorReadExpr = class(TPosDataExpr)
+      private
+         FBaseExpr: TTypedExpr;
+         FConnectorMember: IConnectorMember;
+         FName: string;
+         FResultData: TData;
+
+      protected
+         function GetData(exec : TdwsExecution) : TData; override;
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const Name: string;
+                            BaseExpr: TTypedExpr);
+         destructor Destroy; override;
+
+         function AssignConnectorSym(ConnectorType : IConnectorType) : Boolean;
+         function Eval(exec : TdwsExecution) : Variant; override;
+
+         property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
+
+         property ConnectorMember : IConnectorMember read FConnectorMember write FConnectorMember;
   end;
 
-  TConnectorReadExpr = class(TPosDataExpr)
-  protected
-    FBaseExpr: TTypedExpr;
-    FConnectorMember: IConnectorMember;
-    FName: string;
-    FResultData: TData;
-    function GetData(exec : TdwsExecution) : TData; override;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const Name: string;
-                       BaseExpr: TTypedExpr);
-    destructor Destroy; override;
-    function AssignConnectorSym(ConnectorType : IConnectorType) : Boolean;
-    function Eval(exec : TdwsExecution) : Variant; override;
-    property BaseExpr : TTypedExpr write FBaseExpr;
-  end;
+   TConnectorWriteExpr = class(TNoResultExpr)
+      private
+         FTyp : TTypeSymbol;
+         FBaseExpr: TTypedExpr;
+         FValueExpr: TTypedExpr;
+         FConnectorMember: IConnectorMember;
+         FName: string;
 
-  TConnectorWriteExpr = class(TNoResultExpr)
-  private
-    FTyp : TTypeSymbol;
-    FBaseExpr: TTypedExpr;
-    FValueExpr: TTypedExpr;
-    FConnectorMember: IConnectorMember;
-    FName: string;
-  public
-    constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const Name: string;
-                       BaseExpr, ValueExpr: TTypedExpr);
-    destructor Destroy; override;
-    function AssignConnectorSym(Prog: TdwsProgram; ConnectorType: IConnectorType): Boolean;
-    procedure EvalNoResult(exec : TdwsExecution); override;
-  end;
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const Name: string;
+                            BaseExpr, ValueExpr: TTypedExpr);
+         destructor Destroy; override;
+
+         function AssignConnectorSym(Prog: TdwsProgram; ConnectorType: IConnectorType): Boolean;
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property ConnectorMember : IConnectorMember read FConnectorMember write FConnectorMember;
+         property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
+         property ValueExpr : TTypedExpr read FValueExpr write FValueExpr;
+   end;
 
    // Call of a method
    TMethodExpr = class abstract (TFuncExpr)
@@ -6933,11 +6960,27 @@ begin
   Result := FResultData;
 end;
 
+// GetSubExpr
+//
+function TConnectorCallExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i=0 then
+      Result:=BaseExpr
+   else Result:=TExprBase(FArgs.List[i-1]);
+end;
+
 // IsWritable
 //
 function TConnectorCallExpr.IsWritable : Boolean;
 begin
    Result:=FIsWritable;
+end;
+
+// GetSubExprCount
+//
+function TConnectorCallExpr.GetSubExprCount : Integer;
+begin
+   Result:=FArgs.Count+1;
 end;
 
 { TConnectorReadExpr }
@@ -6979,6 +7022,20 @@ function TConnectorReadExpr.GetData(exec : TdwsExecution) : TData;
 begin
   Eval(exec);
   Result := FResultData;
+end;
+
+// GetSubExpr
+//
+function TConnectorReadExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FBaseExpr
+end;
+
+// GetSubExprCount
+//
+function TConnectorReadExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
 end;
 
 { TConnectorWriteExpr }
@@ -7034,6 +7091,22 @@ begin
     exec.SetScriptError(Self);
     raise;
   end;
+end;
+
+// GetSubExpr
+//
+function TConnectorWriteExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i=0 then
+      Result:=FBaseExpr
+   else Result:=FValueExpr;
+end;
+
+// GetSubExprCount
+//
+function TConnectorWriteExpr.GetSubExprCount : Integer;
+begin
+   Result:=2;
 end;
 
 { TInfoConnector }
