@@ -1,0 +1,20 @@
+<script>
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+function GetDoc() { return document };
+
+<%pas2js
+
+function GetDoc : Variant; external;
+
+var v := GetDoc;
+
+v.writeln("hello writeln!<br />");
+v.dummy := "whatever";
+
+v.write(v.dummy+"<br />");
+
+%>
+
+</script>
