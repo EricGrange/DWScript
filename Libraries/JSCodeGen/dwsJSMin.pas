@@ -56,8 +56,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses UStringIterator;
-
 // JavaScriptMinify
 //
 function JavaScriptMinify(const src : String) : String;
@@ -79,7 +77,7 @@ procedure JavaScriptMinify(const src : String; output : TWriteOnlyBlockStream);
 const
    EOF = #0;
 var
-   iter : TStringIterator;
+   iter : PChar;
    theA, theB : Char;
    outputPos : Integer;
    outputBuf : String;
@@ -94,7 +92,8 @@ var
 
    function Get : Char;
    begin
-      Result:=iter.CollectChar;
+      Result:=iter^;
+      Inc(iter);
       case Result of
          EOF, #10, ' '..#255 : Exit;
          #13  : Result:=#10
@@ -113,7 +112,7 @@ var
    begin
       Result:=get();
       if Result<>'/' then Exit;
-      case iter.CurrentChar of
+      case iter^ of
          '/' : repeat
                   Result:=get();
                until Result<=#10;
@@ -121,7 +120,7 @@ var
             get();
             while True do begin
                case get() of
-                  '*' : if iter.CurrentChar='/' then begin
+                  '*' : if iter^='/' then begin
                      get();
                      Break;
                   end;
@@ -183,8 +182,9 @@ var
 
 
 begin
-   iter:=StringIterator(src);
-   SetLength(outputBuf, iter.Length+1);
+   if src='' then Exit;
+   iter:=PChar(src);
+   SetLength(outputBuf, Length(src)+1);
    outputPos:=1;
 
    theA:=#10;
