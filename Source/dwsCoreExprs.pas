@@ -328,9 +328,11 @@ type
 
    // Array expressions x[index] for open arrays
    TOpenArrayExpr = class(TArrayExpr)
-   protected
-     function GetAddr(exec : TdwsExecution) : Integer; override;
-     function GetData(exec : TdwsExecution) : TData; override;
+      protected
+         function GetAddr(exec : TdwsExecution) : Integer; override;
+         function GetData(exec : TdwsExecution) : TData; override;
+      public
+         function IsWritable : Boolean; override;
    end;
 
    // Array expressions: x[index0] for dynamic arrays
@@ -2639,6 +2641,13 @@ end;
 function TOpenArrayExpr.GetData(exec : TdwsExecution) : TData;
 begin
   Result := FBaseExpr.Data[exec];
+end;
+
+// IsWritable
+//
+function TOpenArrayExpr.IsWritable : Boolean;
+begin
+   Result:=False;
 end;
 
 // ------------------
