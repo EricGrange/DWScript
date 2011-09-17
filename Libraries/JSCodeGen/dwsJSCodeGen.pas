@@ -438,7 +438,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..127] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..130] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -734,6 +734,15 @@ const
        Code : 'function RadToDeg(v) { return v*(180/Math.PI) }'),
       (Name : 'Random';
        Code : 'function Random() { var tmp=Math.floor($dwsRand*0x08088405+1)%4294967296; $dwsRand=tmp; return tmp*Math.pow(2, -32) }';
+       Dependency : '$dwsRand'),
+      (Name : 'RandomInt';
+       Code : 'function RandomInt(i) { return Math.floor(Random()*i) }';
+       Dependency : 'Random()'),
+      (Name : 'Randomize';
+       Code : 'function Randomize() { $dwsRand=Math.round(Math.random*(1<<31)) }';
+       Dependency : '$dwsRand'),
+      (Name : 'RandSeed';
+       Code : 'function RandSeed() { return $dwsRand }';
        Dependency : '$dwsRand'),
       (Name : 'ReverseString';
        Code : 'function ReverseString(s) { return s.split("").reverse().join("") }'),
