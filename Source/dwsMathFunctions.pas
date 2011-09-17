@@ -525,8 +525,13 @@ end;
 { TRandomIntFunc }
 
 function TRandomIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+var
+   i : Int64;
 begin
-   Result:=Random(args.AsInteger[0]);
+   i:=args.AsInteger[0];
+   if i<High(Integer) then
+      Result:=Random(i)
+   else Result:=Round(i*Random);
 end;
 
 { TRandomizeFunc }
