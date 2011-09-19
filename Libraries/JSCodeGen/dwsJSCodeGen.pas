@@ -3396,6 +3396,8 @@ begin
          codeGen.WriteString(IntToStr(methSym.VMTIndex));
          codeGen.WriteString(']');
       end else if methExpr is TMethodStaticExpr then begin
+         if methSym.IsClassMethod and (methExpr.BaseExpr.Typ.UnAliasedType is TClassSymbol) then
+            codeGen.WriteString('.ClassType');
          codeGen.WriteString(',');
          codeGen.WriteSymbolName(methSym.StructSymbol);
          codeGen.WriteString('.');

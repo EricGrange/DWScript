@@ -1,0 +1,4 @@
+Hello TMyClass
+Bye bye TMyChild
+Hello TMyClass
+Bye bye TMyChild
