@@ -6398,7 +6398,7 @@ begin
    FClassSym := ClassSym;
    FParams := TFuncSymbol(FTypeSym).Params;
    FParamSize := TFuncSymbol(FTypeSym).ParamSize;
-   FTempParams := TSymbolTable.Create;
+   FTempParams := TUnsortedSymbolTable.Create;
    FForceStatic := ForceStatic;
 
    if Assigned(TFuncSymbol(FTypeSym).Typ) then
