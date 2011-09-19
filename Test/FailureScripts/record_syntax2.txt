@@ -1,0 +1,4 @@
+Syntax Error: Name "field" already exists [line: 3, column: 22]
+Syntax Error: Colon ":" expected [line: 4, column: 10]
+Syntax Error: Name "field" already exists [line: 5, column: 15]
+Syntax Error: END expected [line: 5, column: 21]

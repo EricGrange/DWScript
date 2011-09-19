@@ -5088,19 +5088,20 @@ begin
                else ReadNameList(names);
 
                if not FTok.TestDelete(ttCOLON) then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_ColonExpected)
+               else begin
+                  typ := ReadType('', tcMember);
+                  for x := 0 to names.Count - 1 do begin
+                     if Result.Members.FindLocal(names[x]) <> nil then
+                        FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [names[x]]);
 
-               typ := ReadType('', tcMember);
-               for x := 0 to names.Count - 1 do begin
-                  if Result.Members.FindLocal(names[x]) <> nil then
-                     FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [names[x]]);
+                     member := TFieldSymbol.Create(names[x], typ, visibility);
+                     Result.AddField(member);
 
-                  member := TFieldSymbol.Create(names[x], typ, visibility);
-                  Result.AddField(member);
-
-                  // Add member symbols and positions
-                  if coSymbolDictionary in FOptions then
-                     FSymbolDictionary.AddValueSymbol(member, posArray[x], [suDeclaration]);
+                     // Add member symbols and positions
+                     if coSymbolDictionary in FOptions then
+                        FSymbolDictionary.AddValueSymbol(member, posArray[x], [suDeclaration]);
+                  end;
                end;
 
                if not FTok.TestDelete(ttSEMI) then

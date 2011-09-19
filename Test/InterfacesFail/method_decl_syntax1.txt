@@ -1,0 +1,2 @@
+Syntax Error: There is already a method with name "Hello" [line: 3, column: 17]
+Syntax Error: Name expected [line: 4, column: 17]
