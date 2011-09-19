@@ -1764,8 +1764,13 @@ begin
          if (expr is TVarExpr) and (parent is TFuncExprBase) then begin
             funcSym:=TFuncExprBase(parent).FuncSym;
             i:=parent.IndexOfSubExpr(expr);
-            if (i>0) and (parent is TConstructorStaticExpr) then
+            if parent is TFuncPtrExpr then begin
+               if i=0 then
+                  Exit
+               else Dec(i);
+            end else if (i>0) and (parent is TConstructorStaticExpr) then begin
                Dec(i);
+            end;
             if (funcSym=nil) or (i>=funcSym.Params.Count) then begin
                if (parent.ClassType=TDecVarFuncExpr) or (parent.ClassType=TIncVarFuncExpr) then begin
                   right:=TMagicIteratorFuncExpr(parent).Args[1];
@@ -1779,6 +1784,8 @@ begin
             end else begin
                if funcSym.Params[i] is TVarParamSymbol then begin
                   varSym:=FindSymbolAtStackAddr(TVarExpr(expr).StackAddr, Context.Level);
+//                  varSym:=FindSymbolAtStackAddr(TVarParamSymbol(funcSym.Params[i]).StackAddr
+//                                                +funcSym.ParamSize, Context.Level);
                end else Exit;
             end;
          end else if (expr is TExitExpr) then begin
