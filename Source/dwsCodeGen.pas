@@ -711,8 +711,15 @@ begin
    end else SymbolMap.MapSymbol(structSym, cgssGlobal, canObfuscate);
 
    n:=EnterStructScope(structSym);
-   for sym in structSym.Members do begin
-      SymbolMap.MapSymbol(sym, cgssClass, canObfuscate);
+   if structSym is TRecordSymbol then begin
+      for sym in structSym.Members do begin
+         if (sym is TMethodSymbol) and (TMethodSymbol(sym).IsClassMethod) then
+            SymbolMap.MapSymbol(sym, cgssGlobal, canObfuscate)
+         else SymbolMap.MapSymbol(sym, cgssClass, canObfuscate);
+      end;
+   end else begin
+      for sym in structSym.Members do
+         SymbolMap.MapSymbol(sym, cgssClass, canObfuscate);
    end;
    LeaveScopes(n);
 end;
