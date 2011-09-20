@@ -449,7 +449,12 @@ type
    TArrayLengthExpr = class(TUnaryOpIntExpr)
       private
          FDelta : Integer;
+         FCapture : Boolean;
+
       public
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr; captureExpr : Boolean);
+         destructor Destroy; override;
+
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          property Delta : Integer read FDelta write FDelta;
    end;
@@ -458,6 +463,7 @@ type
    TOpenArrayLengthExpr = class(TArrayLengthExpr)
       public
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+
    end;
 
    // left[right] string read access
@@ -3261,6 +3267,23 @@ end;
 // ------------------
 // ------------------ TArrayLengthExpr ------------------
 // ------------------
+
+// Create
+//
+constructor TArrayLengthExpr.Create(prog : TdwsProgram; expr : TTypedExpr; captureExpr : Boolean);
+begin
+   inherited Create(prog, expr);
+   FCapture:=captureExpr;
+end;
+
+// Destroy
+//
+destructor TArrayLengthExpr.Destroy;
+begin
+   if not FCapture then
+      Expr:=nil;
+   inherited;
+end;
 
 // EvalAsInteger
 //

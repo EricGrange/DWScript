@@ -336,7 +336,14 @@ type
       function ReadExternalVar(sym : TExternalVarSymbol; isWrite : Boolean) : TFuncExpr;
       function ReadField(const scriptPos : TScriptPos; progMeth : TMethodSymbol;
                          fieldSym : TFieldSymbol; varExpr : TDataExpr) : TDataExpr;
-      function ReadFor: TForExpr;
+
+      function ReadFor : TForExpr;
+      function ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
+      function ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
+      function ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
+                           iterVarExpr : TIntVarExpr; fromExpr, toExpr : TTypedExpr;
+                           loopFirstStatement : TNoResultExpr) : TForExpr;
+
       function ReadStaticMethod(methodSym : TMethodSymbol; isWrite : Boolean;
                                 expecting : TTypeSymbol = nil) : TProgramExpr;
       function ReadFunc(funcSym : TFuncSymbol; isWrite: Boolean;
@@ -442,9 +449,10 @@ type
       function CreateProcedure(Parent : TdwsProgram) : TdwsProcedure;
       function CreateAssign(const pos : TScriptPos; token : TTokenType; left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
 
-      function CreateArrayLow(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
-      function CreateArrayHigh(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
+      function CreateArrayLow(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
+      function CreateArrayHigh(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
       function CreateArrayLength(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
+      function CreateArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TArrayExpr;
 
       function CreateOperatorFunction(funcSym : TFuncSymbol; left, right : TTypedExpr) : TTypedExpr;
 
@@ -2914,8 +2922,15 @@ begin
 
          Result := ReadSymbol(ReadFunc(TFuncSymbol(sym), IsWrite, nil, expecting), IsWrite, expecting)
 
-      // Type casts
-      else if sym.InheritsFrom(TTypeSymbol) then
+      // Enumeration type cast or type symbol
+      else if sym.InheritsFrom(TEnumerationSymbol) then begin
+
+         if FTok.Test(ttBLEFT) then
+            Result:=ReadTypeCast(namePos, TTypeSymbol(sym))
+         else Result:=TTypeSymbolExpr.Create(namePos, TTypeSymbol(sym));
+
+      // generic type casts
+      end else if sym.InheritsFrom(TTypeSymbol) then
 
          Result := ReadTypeCast(namePos, TTypeSymbol(sym))
 
@@ -3536,11 +3551,265 @@ end;
 
 // ReadFor
 //
+function TdwsCompiler.ReadFor : TForExpr;
+var
+   forPos : TScriptPos;
+   expr : TProgramExpr;
+   loopVarExpr : TVarExpr;
+begin
+   forPos:=FTok.HotPos;
+
+   expr:=ReadName(True);
+
+   if not (expr is TVarExpr) then begin
+      expr.Free;
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_VariableExpected);
+   end;
+
+   loopVarExpr:=TVarExpr(expr);
+
+   WarnForVarUsage(loopVarExpr, FTok.HotPos);
+
+   case FTok.TestDeleteAny([ttASSIGN, ttIN]) of
+      ttASSIGN :
+         Result:=ReadForTo(forPos, loopVarExpr);
+      ttIN :
+         Result:=ReadForIn(forPos, loopVarExpr);
+   else
+      expr.Free;
+      Result:=nil;
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_AssignExpected);
+   end;
+end;
+
+// ReadForTo
+//
+function TdwsCompiler.ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
+var
+   iterVarExpr : TIntVarExpr;
+   fromExpr, toExpr : TTypedExpr;
+   forExprClass : TForExprClass;
+begin
+   fromExpr:=nil;
+   toExpr:=nil;
+   try
+      if not loopVarExpr.IsOfType(FProg.TypInteger) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
+      if not (loopVarExpr is TIntVarExpr) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_FORLoopMustBeLocalVariable);
+
+      iterVarExpr:=TIntVarExpr(loopVarExpr);
+
+      fromExpr:=ReadExpr;
+      if not fromExpr.IsOfType(FProg.TypInteger) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
+
+      if FTok.TestDelete(ttTO) then
+         forExprClass:=TForUpwardExpr
+      else if FTok.TestDelete(ttDOWNTO) then
+         forExprClass:=TForDownwardExpr
+      else begin
+         forExprClass:=nil;
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_ToOrDowntoExpected);
+      end;
+
+      toExpr:=ReadExpr;
+      if not toExpr.IsOfType(FProg.TypInteger) then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
+   except
+      fromExpr.Free;
+      toExpr.Free;
+      loopVarExpr.Free;
+      raise;
+   end;
+
+   Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
+                       fromExpr, toExpr, nil);
+end;
+
+// ReadForIn
+//
+function TdwsCompiler.ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
+var
+   iterVarExpr : TIntVarExpr;
+   iterVarSym : TDataSymbol;
+   initIterVarExpr : TAssignConstToIntegerVarExpr;
+   inExpr : TProgramExpr;
+   inTypedExpr : TTypedExpr;
+   fromExpr, toExpr : TTypedExpr;
+   forExprClass : TForExprClass;
+   arraySymbol : TArraySymbol;
+   enumSymbol : TTypeSymbol;
+   inPos : TScriptPos;
+   readArrayItemExpr : TAssignExpr;
+begin
+   forExprClass:=TForUpwardExpr;
+
+   inPos:=FTok.HotPos;
+
+   inExpr:=ReadName;
+
+   readArrayItemExpr:=nil;
+
+   if inExpr is TTypedExpr then begin
+
+      inTypedExpr:=TTypedExpr(inExpr);
+
+      if inTypedExpr.Typ is TArraySymbol then begin
+
+         arraySymbol:=TArraySymbol(inExpr.Typ);
+
+         // create anonymous iter variables & it's initialization expression
+         iterVarSym:=TDataSymbol.Create('', arraySymbol.IndexType);
+         FProg.Table.AddSymbol(iterVarSym);
+         iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
+         initIterVarExpr:=TAssignConstToIntegerVarExpr.CreateVal(FProg, inPos, iterVarExpr, 0);
+         FProg.InitExpr.AddStatement(initIterVarExpr);
+
+         fromExpr:=CreateArrayLow(inTypedExpr, arraySymbol, False);
+         toExpr:=CreateArrayHigh(inTypedExpr, arraySymbol, False);
+
+         iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
+         readArrayItemExpr:=TAssignExpr.Create(FProg, FTok.HotPos, loopVarExpr,
+                                               CreateArrayExpr(FTok.HotPos, (inExpr as TDataExpr), iterVarExpr));
+
+         iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
+
+      end else begin
+
+         iterVarExpr:=nil;
+         fromExpr:=nil;
+         toExpr:=nil;
+         inExpr.Free;
+         FMsgs.AddCompilerStop(inPos, CPE_ArrayExpected);
+
+      end;
+
+   end else begin
+
+      enumSymbol:=nil;
+      if inExpr is TTypeSymbolExpr then begin
+         if inExpr.Typ.InheritsFrom(TEnumerationSymbol) then
+            enumSymbol:=TEnumerationSymbol(inExpr.Typ)
+         else if inExpr.Typ.IsOfType(FProg.TypBoolean) then
+            enumSymbol:=FProg.TypBoolean
+      end;
+      if enumSymbol=nil then begin
+         FMsgs.AddCompilerError(inPos, CPE_EnumerationExpected);
+         enumSymbol:=FProg.TypBoolean;
+      end;
+
+      inExpr.Free;
+
+      if not loopVarExpr.Typ.IsOfType(enumSymbol) then
+         FMsgs.AddCompilerStop(inPos, CPE_IncompatibleOperands);
+
+      if coSymbolDictionary in FOptions then
+         FSymbolDictionary.AddTypeSymbol(enumSymbol, inPos);
+
+      if enumSymbol is TEnumerationSymbol then begin
+         fromExpr:=TConstExpr.CreateTyped(FProg, loopVarExpr.Typ, TEnumerationSymbol(enumSymbol).LowBound);
+         toExpr:=TConstExpr.CreateTyped(FProg, loopVarExpr.Typ, TEnumerationSymbol(enumSymbol).HighBound);
+      end else begin
+         fromExpr:=TConstExpr.CreateTyped(FProg, loopVarExpr.Typ, 0);
+         toExpr:=TConstExpr.CreateTyped(FProg, loopVarExpr.Typ, 1);
+      end;
+
+      iterVarExpr:=(loopVarExpr as TIntVarExpr);
+
+   end;
+
+   Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
+                       fromExpr, toExpr, readArrayItemExpr);
+end;
+
+// ReadForStep
+//
+function TdwsCompiler.ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
+                           iterVarExpr : TIntVarExpr; fromExpr, toExpr : TTypedExpr;
+                           loopFirstStatement : TNoResultExpr) : TForExpr;
+var
+   stepExpr : TTypedExpr;
+   stepPos : TScriptPos;
+   iterBlockExpr : TBlockExpr;
+begin
+   try
+      if FTok.Test(ttNAME) and SameText(FTok.GetToken.FString, 'step') then begin
+         FTok.KillToken;
+         FTok.Test(ttNone);
+         stepPos:=FTok.HotPos;
+         stepExpr:=ReadExpr;
+         if not stepExpr.IsOfType(FProg.TypInteger) then
+            FMsgs.AddCompilerError(stepPos, CPE_IntegerExpected);
+         if stepExpr.InheritsFrom(TConstIntExpr) and (TConstIntExpr(stepExpr).Value<=0) then
+            FMsgs.AddCompilerErrorFmt(stepPos, RTE_ForLoopStepShouldBeStrictlyPositive,
+                                      [TConstIntExpr(stepExpr).Value]);
+         if forExprClass=TForUpwardExpr then
+            forExprClass:=TForUpwardStepExpr
+         else forExprClass:=TForDownwardStepExpr;
+      end else stepExpr:=nil;
+
+      iterBlockExpr:=nil;
+      Result:=forExprClass.Create(FProg, forPos);
+      EnterLoop(Result);
+      try
+         MarkLoopExitable(leBreak);
+         Result.VarExpr:=iterVarExpr;
+         iterVarExpr:=nil;
+
+         Result.FromExpr:=fromExpr;
+         fromExpr:=nil;
+
+         Result.ToExpr:=toExpr;
+         toExpr:=nil;
+
+         if stepExpr<>nil then begin
+            TForStepExpr(Result).StepExpr:=stepExpr;
+            stepExpr:=nil;
+         end;
+
+         if not FTok.TestDelete(ttDO) then
+           FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
+
+         if loopFirstStatement<>nil then begin
+            iterBlockExpr:=TBlockExpr.Create(FProg, FTok.HotPos);
+            iterBlockExpr.AddStatement(loopFirstStatement);
+            loopFirstStatement:=nil;
+            iterBlockExpr.AddStatement(ReadBlock);
+            Result.DoExpr:=iterBlockExpr;
+            iterBlockExpr:=nil;
+         end else begin
+            Result.DoExpr:=ReadBlock;
+         end;
+
+      except
+         iterBlockExpr.Free;
+         stepExpr.Free;
+         Result.Free;
+         raise;
+      end;
+      LeaveLoop;
+   except
+      iterVarExpr.Free;
+      fromExpr.Free;
+      toExpr.Free;
+      loopFirstStatement.Free;
+      raise;
+   end;
+end;
+
+
+{
 function TdwsCompiler.ReadFor: TForExpr;
 var
    expr : TProgramExpr;
-   loopVarExpr : TIntVarExpr;
+   loopVarExpr, iterVarExpr : TIntVarExpr;
+   iterVarSym : TDataSymbol;
+   arraySymbol : TArraySymbol;
    fromExpr, toExpr, stepExpr : TTypedExpr;
+   inExpr : TTypedExpr;
+   arrayExpr : TDataExpr;
+   iterBlockExpr : TBlockExpr;
    sym : TSymbol;
    forPos, enumPos, stepPos : TScriptPos;
    enumSymbol : TEnumerationSymbol;
@@ -3551,13 +3820,12 @@ begin
    fromExpr:=nil;
    toExpr:=nil;
    stepExpr:=nil;
+   arrayExpr:=nil;
    try
       forPos:=FTok.HotPos;
 
       expr:=ReadName(True);
       try
-         if not (expr is TVarExpr) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_VariableExpected);
          if not TVarExpr(expr).IsOfType(FProg.TypInteger) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
          if not (expr is TIntVarExpr) then
@@ -3573,6 +3841,21 @@ begin
       if FTok.TestDelete(ttIN) then begin
 
          forExprClass:=TForUpwardExpr;
+
+         inExpr:=ReadTerm;
+         if inExpr.Typ is TArraySymbol then begin
+
+            arrayExpr:=(inExpr as TDataExpr);
+
+            arraySymbol:=TArraySymbol(inExpr.Typ);
+            iterVarSym:=TDataSymbol.Create('', arraySymbol.IndexType);
+            FProg.Table.AddSymbol(iterVarSym);
+            iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
+
+            fromExpr:=CreateArrayLow(inExpr, arraySymbol, False);
+            toExpr:=CreateArrayHigh(inExpr, arraySymbol, False);
+
+         end;
 
          if not FTok.TestName then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
@@ -3620,6 +3903,8 @@ begin
          if not toExpr.IsOfType(FProg.TypInteger) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
 
+         iterVarExpr:=loopVarExpr;
+
       end;
 
       if FTok.Test(ttNAME) and SameText(FTok.GetToken.FString, 'step') then begin
@@ -3641,7 +3926,7 @@ begin
       EnterLoop(Result);
       try
          MarkLoopExitable(leBreak);
-         Result.VarExpr:=loopVarExpr;
+         Result.VarExpr:=iterVarExpr;
          loopVarExpr:=nil;
 
          Result.FromExpr:=fromExpr;
@@ -3658,7 +3943,15 @@ begin
          if not FTok.TestDelete(ttDO) then
            FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
 
-         Result.DoExpr:=ReadBlock;
+         if iterVarExpr<>nil then begin
+            iterBlockExpr:=TBlockExpr.Create(FProg, FTok.HotPos);
+            iterBlockExpr.AddStatement(TAssignExpr.Create(FProg, FTok.HotPos, loopVarExpr,
+                                                          CreateArrayExpr(FTok.HotPos, arrayExpr, iterVarExpr)));
+            iterBlockExpr.AddStatement(ReadBlock);
+         end else begin
+            Result.DoExpr:=ReadBlock;
+         end;
+
       except
          Result.Free;
          raise;
@@ -3670,7 +3963,7 @@ begin
       toExpr.Free;
       stepExpr.Free;
    end;
-end;
+end; }
 
 // WarnForVarUsage
 //
@@ -4238,10 +4531,10 @@ begin
          arraySym:=baseExpr.Typ as TArraySymbol;
          if SameText(name, 'low') then begin
             CheckArguments(0, 0);
-            Result:=CreateArrayLow(baseExpr, arraySym);
+            Result:=CreateArrayLow(baseExpr, arraySym, True);
          end else if SameText(name, 'high') then begin
             CheckArguments(0, 0);
-            Result:=CreateArrayHigh(baseExpr, arraySym);
+            Result:=CreateArrayHigh(baseExpr, arraySym, True);
          end else if SameText(name, 'length') then begin
             CheckArguments(0, 0);
             Result:=CreateArrayLength(baseExpr, arraySym);
@@ -7076,34 +7369,38 @@ end;
 
 // CreateArrayLow
 //
-function TdwsCompiler.CreateArrayLow(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
+function TdwsCompiler.CreateArrayLow(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
 begin
    if typ is TStaticArraySymbol then
       Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(typ).LowBound)
    else if typ is TDynamicArraySymbol then
       Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, 0)
    else Result:=nil;
-   baseExpr.Free;
+   if captureBase then
+      baseExpr.Free;
 end;
 
 // CreateArrayHigh
 //
-function TdwsCompiler.CreateArrayHigh(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
+function TdwsCompiler.CreateArrayHigh(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
 begin
    if typ is TOpenArraySymbol then begin
       if baseExpr=nil then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-      Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(baseExpr));
+      Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(baseExpr), captureBase);
       TOpenArrayLengthExpr(Result).Delta:=-1;
    end else if typ is TDynamicArraySymbol then begin
       if baseExpr=nil then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-      Result:=TArrayLengthExpr.Create(FProg, baseExpr);
+      Result:=TArrayLengthExpr.Create(FProg, baseExpr, captureBase);
       TArrayLengthExpr(Result).Delta:=-1;
-   end else if typ is TStaticArraySymbol then begin
-      baseExpr.Free;
-      Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(typ).HighBound);
-   end else Result:=nil;
+   end else begin
+      if captureBase then
+         baseExpr.Free;
+      if typ is TStaticArraySymbol then begin
+         Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(typ).HighBound);
+      end else Result:=nil;
+   end;
 end;
 
 // CreateArrayLength
@@ -7113,14 +7410,39 @@ begin
    if typ is TOpenArraySymbol then begin
       if baseExpr=nil then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-      Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(baseExpr));
+      Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(baseExpr), True);
    end else if typ is TDynamicArraySymbol then begin
       if baseExpr=nil then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-      Result:=TArrayLengthExpr.Create(FProg, baseExpr);
+      Result:=TArrayLengthExpr.Create(FProg, baseExpr, True);
    end else if typ is TStaticArraySymbol then begin
       baseExpr.Free;
       Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(typ).ElementCount);
+   end else Result:=nil;
+end;
+
+// CreateArrayExpr
+//
+function TdwsCompiler.CreateArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TArrayExpr;
+var
+   baseType : TArraySymbol;
+begin
+   baseType:=baseExpr.Typ as TArraySymbol;
+
+   if baseType is TStaticArraySymbol then begin
+
+      if baseType is TOpenArraySymbol then
+         Result:=TOpenArrayExpr.Create(FProg, scriptPos, baseExpr, indexExpr)
+      else begin
+         Result:=TStaticArrayExpr.Create(FProg, scriptPos, baseExpr, indexExpr,
+                                         TStaticArraySymbol(baseType).LowBound,
+                                         TStaticArraySymbol(baseType).HighBound);
+      end;
+
+   end else if baseType is TDynamicArraySymbol then begin
+
+      Result:=TDynamicArrayExpr.Create(FProg, scriptPos, baseExpr, indexExpr);
+
    end else Result:=nil;
 end;
 
@@ -7287,13 +7609,13 @@ begin
          end;
          skHigh : begin
             if argTyp is TArraySymbol then begin
-               Result:=CreateArrayHigh(argExpr, TArraySymbol(argTyp));
+               Result:=CreateArrayHigh(argExpr, TArraySymbol(argTyp), True);
                argExpr:=nil;
             end else if argTyp is TEnumerationSymbol then begin
                FreeAndNil(argExpr);
                Result:=TConstExpr.CreateTyped(FProg, argTyp, TEnumerationSymbol(argTyp).HighBound)
             end else if argTyp is TDynamicArraySymbol and Assigned(argExpr) then begin
-               Result:=TArrayLengthExpr.Create(FProg, TDataExpr(argExpr));
+               Result:=TArrayLengthExpr.Create(FProg, TDataExpr(argExpr), True);
                TArrayLengthExpr(Result).Delta:=-1;
                argExpr:=nil;
             end else if argTyp.IsOfType(FProg.TypString) and Assigned(argExpr) then begin
@@ -7342,7 +7664,7 @@ begin
          end;
          skLow : begin
             if argTyp is TArraySymbol then begin
-               Result:=CreateArrayLow(argExpr, TArraySymbol(argTyp));
+               Result:=CreateArrayLow(argExpr, TArraySymbol(argTyp), True);
                argExpr:=nil;
             end else begin
                FreeAndNil(argExpr);
@@ -7447,8 +7769,14 @@ var
    argExpr : TTypedExpr;
    hotPos : TScriptPos;
 begin
-   if not FTok.TestDelete(ttBLEFT) then
+   if not FTok.TestDelete(ttBLEFT) then begin
+
+      if (typeSym is TEnumerationSymbol) then begin
+         Exit(TConstExpr.Create(FProg, typeSym, Null));
+      end;
+
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
+   end;
 
    hotPos:=FTok.CurrentPos;
    argExpr:=ReadExpr;

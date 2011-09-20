@@ -584,7 +584,7 @@ type
    // Base class of all expressions attached to a program
    TProgramExpr = class(TExprBase)
       protected
-         function GetType : TSymbol; virtual;
+         function GetType : TTypeSymbol; virtual;
          function GetBaseType : TTypeSymbol; virtual;
 
       public
@@ -618,7 +618,7 @@ type
 
          function ScriptLocation(prog : TObject) : String; override;
 
-         property Typ : TSymbol read GetType;
+         property Typ : TTypeSymbol read GetType;
          property BaseType : TTypeSymbol read GetBaseType;
    end;
 
@@ -629,7 +629,7 @@ type
       protected
          FTyp : TTypeSymbol;
 
-         function GetType : TSymbol; override;
+         function GetType : TTypeSymbol; override;
          function GetBaseType : TTypeSymbol; override;
 
       public
@@ -669,6 +669,23 @@ type
    // Does nothing! E. g.: "for x := 1 to 10 do {TNullExpr};"
    TNullExpr = class(TNoResultExpr)
       procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
+   // Expr that hosts a type symbol reference
+   TTypeSymbolExpr = class(TProgramExpr)
+      protected
+         FTyp : TTypeSymbol;
+         FPos : TScriptPos;
+
+         function GetType : TTypeSymbol; override;
+
+      public
+         constructor Create(const scriptPos : TScriptPos; const aType : TTypeSymbol);
+
+         function Eval(exec : TdwsExecution) : Variant; override;
+         function ScriptPos : TScriptPos; override;
+
+         property Typ : TTypeSymbol read FTyp write FTyp;
    end;
 
    // statement; statement; statement;
@@ -3124,7 +3141,7 @@ end;
 
 // GetType
 //
-function TProgramExpr.GetType : TSymbol;
+function TProgramExpr.GetType : TTypeSymbol;
 begin
    Result:=nil;
 end;
@@ -3426,7 +3443,7 @@ end;
 
 // GetType
 //
-function TTypedExpr.GetType : TSymbol;
+function TTypedExpr.GetType : TTypeSymbol;
 begin
    Result:=FTyp;
 end;
@@ -8468,6 +8485,40 @@ begin
    e:=EScriptStopped.CreatePosFmt(stoppedOn.ScriptPos, RTE_ScriptStopped, []);
    e.ScriptCallStack:=exec.GetCallStack;
    raise e;
+end;
+
+// ------------------
+// ------------------ TTypeSymbolExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TTypeSymbolExpr.Create(const scriptPos : TScriptPos; const aType : TTypeSymbol);
+begin
+   inherited Create;
+   FTyp:=aType;
+   FPos:=scriptPos;
+end;
+
+// Eval
+//
+function TTypeSymbolExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Assert(False); // not intended for execution
+end;
+
+// ScriptPos
+//
+function TTypeSymbolExpr.ScriptPos : TScriptPos;
+begin
+   Result:=FPos;
+end;
+
+// GetType
+//
+function TTypeSymbolExpr.GetType : TTypeSymbol;
+begin
+   Result:=FTyp;
 end;
 
 end.

@@ -1363,9 +1363,12 @@ end;
 //
 function TdwsCodeGenSymbolMap.DoNeedUniqueName(symbol : TSymbol; tryCount : Integer; canObfuscate : Boolean) : String;
 begin
+   if symbol.Name='' then
+      Result:='a$'
+   else Result:=symbol.Name;
    if tryCount=0 then
-      Result:=Prefix+symbol.Name
-   else Result:=Format('%s%s$%d', [Prefix, symbol.Name, tryCount]);
+      Result:=Prefix+Result
+   else Result:=Format('%s%s$%d', [Prefix, Result, tryCount]);
 end;
 
 // ------------------
