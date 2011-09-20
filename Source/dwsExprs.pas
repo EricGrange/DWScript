@@ -874,13 +874,15 @@ type
    end;
 
    // returns an IFuncPointer to the FuncExpr
-   TFuncRefExpr = class(TTypedExpr)
+   TFuncRefExpr = class(TDataExpr)
       private
          FFuncExpr : TFuncExprBase;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
+
+         function GetData(exec : TdwsExecution) : TData; override;
 
       public
          constructor Create(prog : TdwsProgram; funcExpr : TFuncExprBase);
@@ -1311,6 +1313,7 @@ type
       protected
          FList : TTightList;
          FTable : TSymbolTable;
+         FDefaultExpected : TParamSymbol;
 
          function GetExpr(const x: Integer): TTypedExpr;
          procedure SetExpr(const x: Integer; const Value: TTypedExpr);
@@ -1329,6 +1332,7 @@ type
          property Expr[const x: Integer]: TTypedExpr read GetExpr write SetExpr; default;
          property Count : Integer read GetCount;
          property Table : TSymbolTable read FTable write FTable;
+         property DefaultExpected : TParamSymbol read FDefaultExpected write FDefaultExpected;
    end;
 
    // Helper object for access to symbols
@@ -4423,6 +4427,14 @@ begin
    Result:=1;
 end;
 
+// GetData
+//
+function TFuncRefExpr.GetData(exec : TdwsExecution) : TData;
+begin
+   SetLength(Result, 1);
+   EvalAsVariant(exec, Result[0]);
+end;
+
 // ------------------
 // ------------------ TFuncPtrExpr ------------------
 // ------------------
@@ -4456,6 +4468,7 @@ end;
 //
 function TFuncPtrExpr.Eval(exec : TdwsExecution) : Variant;
 var
+   funcPointer : IFuncPointer;
    funcExprBase : TFuncExprBase;
    funcExpr : TFuncExpr;
    oldArgs : TExprBaseListRec;
@@ -4463,7 +4476,10 @@ var
    val : Variant;
 begin
    FCodeExpr.EvalAsVariant(exec, val);
-   funcExprBase:=IFuncPointer(IUnknown(val)).GetFuncExpr;
+   funcPointer:=IFuncPointer(IUnknown(val));
+   if funcPointer=nil then
+      RaiseScriptError(exec, EScriptError, RTE_FuncPointerIsNil);
+   funcExprBase:=funcPointer.GetFuncExpr;
 
    if funcExprBase is TMagicFuncExpr then begin
 
@@ -4521,6 +4537,7 @@ end;
 destructor TTypedExprList.Destroy;
 begin
    FList.Clean;
+   FDefaultExpected.Free;
    inherited;
 end;
 
@@ -4535,7 +4552,7 @@ function TTypedExprList.ExpectedArg : TParamSymbol;
 begin
    if (FTable<>nil) and (FList.Count<FTable.Count) then
       Result:=FTable[FList.Count] as TParamSymbol
-   else Result:=nil;
+   else Result:=FDefaultExpected;
 end;
 
 // Insert0

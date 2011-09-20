@@ -1,3 +1,4 @@
+Function pointer is nil [line: 17, column: 5]
 Proc1
 Proc2
 Proc1

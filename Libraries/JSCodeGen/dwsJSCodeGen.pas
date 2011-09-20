@@ -438,7 +438,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..130] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..131] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -487,6 +487,8 @@ const
        Code : 'function $Check(i,z) { if (i) return i; throw Exception.Create$1($New(Exception),"Object not instantiated"+z); }'),
       (Name : '$CheckIntf';
        Code : 'function $CheckIntf(i,z) { if (i) return i; throw Exception.Create$1($New(Exception),"Interface is nil"+z); }'),
+      (Name : '$CheckFunc';
+       Code : 'function $CheckFunc(i,z) { if (i) return i; throw Exception.Create$1($New(Exception),"Function pointer is nil"+z); }'),
       (Name : '$Assert';
        Code : 'function $Assert(b,m,z) { if (!b) throw Exception.Create$1($New(EAssertionFailed),"Assertion failed"+z+((m=="")?"":" : ")+m); }';
        Dependency : 'EAssertionFailed' ),
@@ -2750,7 +2752,8 @@ begin
       codeGen.CompileNoWrap(e.Right);
       codeGen.WriteString(')');
 
-   end else if lt is TDynamicArraySymbol then begin
+   end else if    (lt is TDynamicArraySymbol)
+               or (lt is TFuncSymbol) then begin
 
       codeGen.Compile(e.Left);
       codeGen.WriteString('=');
@@ -3356,7 +3359,17 @@ var
    e : TFuncPtrExpr;
 begin
    e:=TFuncPtrExpr(expr);
-   codeGen.Compile(e.CodeExpr);
+
+   if cgoNoCheckInstantiated in codeGen.Options then begin
+      codeGen.Compile(e.CodeExpr);
+   end else begin
+      codeGen.Dependencies.Add('$CheckFunc');
+      codeGen.WriteString('$CheckFunc(');
+      codeGen.Compile(e.CodeExpr);
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+      codeGen.WriteString(')');
+   end;
 end;
 
 // ------------------

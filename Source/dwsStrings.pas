@@ -422,6 +422,8 @@ const
   RTE_ObjectAlreadyDestroyed = 'Object already destroyed';
   RTE_ClassTypeIsNil = 'ClassType is nil';
 
+  RTE_FuncPointerIsNil = 'Function pointer is nil';
+
   RTE_ScriptException = 'Script exception: %s';
   RTE_UserDefinedException = 'User defined exception';
   RTE_UserDefinedException_Msg = 'User defined exception: %s';

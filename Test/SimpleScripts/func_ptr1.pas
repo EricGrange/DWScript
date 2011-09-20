@@ -13,6 +13,13 @@ end;
 
 var p, pp : TMyProc;
 
+try
+   p;
+except
+   on E: Exception do
+      PrintLn(E.Message)
+end;
+
 p:=Proc1;
 pp:=p;
 p;

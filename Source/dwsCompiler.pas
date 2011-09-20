@@ -3561,6 +3561,8 @@ begin
 
    expr:=ReadName(True);
 
+   if expr is TFuncPtrExpr then
+      expr:=TFuncPtrExpr(expr).Extract;
    if not (expr is TVarExpr) then begin
       expr.Free;
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_VariableExpected);
@@ -4526,9 +4528,14 @@ begin
    Result:=nil;
    argList:=TTypedExprList.Create;
    try
-      ReadArguments(argList.AddExpr, ttBLEFT, ttBRIGHT, argPosArray);
+      arraySym:=baseExpr.Typ as TArraySymbol;
+
+      if SameText(name, 'add') or SameText(name, 'push') then
+         argList.DefaultExpected:=TParamSymbol.Create('', arraySym.Typ);
+
+      ReadArguments(argList.AddExpr, ttBLEFT, ttBRIGHT, argPosArray, argList.ExpectedArg);
+
       try
-         arraySym:=baseExpr.Typ as TArraySymbol;
          if SameText(name, 'low') then begin
             CheckArguments(0, 0);
             Result:=CreateArrayLow(baseExpr, arraySym, True);
