@@ -2642,36 +2642,41 @@ begin
                      WarnForVarUsage(TVarExpr(locExpr), hotPos);
                   Result := ReadAssign(token, TDataExpr(locExpr));
                end;
-            end else if locExpr is TAssignExpr then
-               Result:=TAssignExpr(locExpr)
-            else if    (locExpr is TFuncExprBase)
-                    or (locExpr is TConnectorCallExpr) then begin
-               Result:=TNoResultWrapperExpr.Create(FProg, (locExpr as  TPosDataExpr).Pos, locExpr);
-               if locExpr.IsConstant then begin
-                  if not FMsgs.LastMessagePos.SamePosAs(hotPos) then   // avoid hint on calls with issues
-                     FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
-               end;
-            end else if locExpr is TConnectorWriteExpr then
-               Result:=TConnectorWriteExpr(locExpr)
-            else if locExpr is TDynamicArraySetExpr then
-               Result:=TDynamicArraySetExpr(locExpr)
-            else if locExpr is TStringArraySetExpr then
-               Result:=TStringArraySetExpr(locExpr)
-            else if locExpr is TArrayPseudoMethodExpr then
-               Result:=TArrayPseudoMethodExpr(locExpr)
-            else if locExpr is TConstExpr then begin
-               FreeAndNil(locExpr);
-               Result:=TNullExpr.Create(FProg, hotPos);
-               FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
-            end else if locExpr is TNullExpr then begin
-               Result:=TNullExpr(locExpr);
-               locExpr:=nil;
-            end else if locExpr is TAssertExpr then begin
-               Result:=TAssertExpr(locExpr);
-               locExpr:=nil;
             end else begin
-               Result:=nil;
-               FMsgs.AddCompilerStop(hotPos, CPE_InvalidInstruction)
+                if (locExpr is TDataExpr) and (locExpr.Typ is TFuncSymbol) then
+                     locExpr:=ReadFunc(TFuncSymbol(locExpr.Typ), False, locExpr as TDataExpr);
+
+               if locExpr is TAssignExpr then
+                  Result:=TAssignExpr(locExpr)
+               else if    (locExpr is TFuncExprBase)
+                       or (locExpr is TConnectorCallExpr) then begin
+                  Result:=TNoResultWrapperExpr.Create(FProg, (locExpr as  TPosDataExpr).Pos, locExpr);
+                  if locExpr.IsConstant then begin
+                     if not FMsgs.LastMessagePos.SamePosAs(hotPos) then   // avoid hint on calls with issues
+                        FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
+                  end;
+               end else if locExpr is TConnectorWriteExpr then
+                  Result:=TConnectorWriteExpr(locExpr)
+               else if locExpr is TDynamicArraySetExpr then
+                  Result:=TDynamicArraySetExpr(locExpr)
+               else if locExpr is TStringArraySetExpr then
+                  Result:=TStringArraySetExpr(locExpr)
+               else if locExpr is TArrayPseudoMethodExpr then
+                  Result:=TArrayPseudoMethodExpr(locExpr)
+               else if locExpr is TConstExpr then begin
+                  FreeAndNil(locExpr);
+                  Result:=TNullExpr.Create(FProg, hotPos);
+                  FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
+               end else if locExpr is TNullExpr then begin
+                  Result:=TNullExpr(locExpr);
+                  locExpr:=nil;
+               end else if locExpr is TAssertExpr then begin
+                  Result:=TAssertExpr(locExpr);
+                  locExpr:=nil;
+               end else begin
+                  Result:=nil;
+                  FMsgs.AddCompilerStop(hotPos, CPE_InvalidInstruction)
+               end;
             end;
          except
             locExpr.Free;
@@ -2849,7 +2854,10 @@ begin
       if sym.InheritsFrom(TDataSymbol) then begin
 
          if sym.Typ is TFuncSymbol then
-            if FTok.Test(ttASSIGN) then
+            if     FTok.Test(ttASSIGN)
+               or  (    (expecting<>nil)
+                    and TDataSymbol(sym).Typ.IsOfType(expecting)
+                    and not FTok.Test(ttBLEFT)) then
                Result:=GetVarExpr(TDataSymbol(sym))
             else Result:=ReadFunc(TFuncSymbol(sym.Typ), IsWrite, GetVarExpr(TDataSymbol(sym)), expecting)
          else Result:=ReadSymbol(GetVarExpr(TDataSymbol(sym)), IsWrite, expecting);

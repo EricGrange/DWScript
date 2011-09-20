@@ -3744,9 +3744,8 @@ begin
                                               [x, paramSymbol.Typ.Caption])
       else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
          prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long,
-                                              [x, paramSymbol.Typ.Caption, argTyp.Caption]);
-
-      if paramSymbol.InheritsFrom(TVarParamSymbol) then begin
+                                              [x, paramSymbol.Typ.Caption, argTyp.Caption])
+      else if paramSymbol.InheritsFrom(TVarParamSymbol) then begin
          if not paramSymbol.Typ.IsOfType(arg.Typ) then
             prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long,
                                                  [x, paramSymbol.Typ.Caption, argTyp.Caption]);
