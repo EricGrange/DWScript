@@ -1,4 +1,4 @@
-function StrAddVar1(AString : String; AVar : OleVariant) : String;
+function StrAddVar1(AString : String; AVar : ComVariant) : String;
 Begin
 
  Result := 'Ole> '+ AString + Variant(AVar);
@@ -12,7 +12,7 @@ Begin
 
 End;
 
-operator << (string, OleVariant) : string uses StrAddVar1;
+operator << (string, ComVariant) : string uses StrAddVar1;
 operator << (string, Variant) : string uses StrAddVar2;
 
 var s := '';

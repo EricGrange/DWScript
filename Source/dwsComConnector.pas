@@ -237,7 +237,7 @@ begin
   // Datatype of com-objects
   ComVariantSym := TConnectorSymbol.Create('ComVariant', TComConnectorType.Create(Table));
   Table.AddSymbol(ComVariantSym);
-  Table.AddSymbol(TAliasSymbol.Create('OleVariant',ComVariantSym));
+  Table.AddSymbol(TAliasSymbol.Create('OleVariant', ComVariantSym));
 
   // Optional parameter for dispatch interfaces with unnamed arguments
   v := 0;

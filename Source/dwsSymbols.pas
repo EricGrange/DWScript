@@ -931,6 +931,7 @@ type
       public
          constructor Create(const name : String; const connectorType : IConnectorType);
 
+         function IsOfType(typSym : TTypeSymbol) : Boolean; override;
          function Specialize(table : TSymbolTable; const qualifier : String) : TConnectorSymbol; virtual;
 
          property ConnectorType : IConnectorType read FConnectorType write FConnectorType;
@@ -3784,6 +3785,14 @@ constructor TConnectorSymbol.Create(const name : String; const connectorType : I
 begin
    inherited Create(name);
    FConnectorType:=ConnectorType;
+end;
+
+// IsOfType
+//
+function TConnectorSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
+begin
+   Result:=   (inherited IsOfType(typSym))
+           or (typSym is TBaseVariantSymbol);
 end;
 
 // Specialize
