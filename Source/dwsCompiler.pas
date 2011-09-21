@@ -7833,6 +7833,9 @@ begin
 
       else FMsgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
 
+      if Optimize then
+         Result:=Result.OptimizeToTypedExpr(FProg, FExec);
+
   except
     argExpr.Free;
     raise;

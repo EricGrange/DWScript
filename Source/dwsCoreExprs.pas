@@ -269,10 +269,15 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         function GetElement(idx : Integer) : TTypedExpr; inline;
+         function GetElementCount : Integer; inline;
+
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
          destructor Destroy; override;
 
+         property Elements[idx : Integer] : TTypedExpr read GetElement;
+         property ElementCount : Integer read GetElementCount;
          procedure AddElementExpr(Prog: TdwsProgram; ElementExpr: TTypedExpr);
          procedure Prepare(Prog: TdwsProgram; ElementTyp : TTypeSymbol);
          procedure TypeCheckElements(prog : TdwsProgram);
@@ -452,7 +457,7 @@ type
          FCapture : Boolean;
 
       public
-         constructor Create(prog : TdwsProgram; expr : TTypedExpr; captureExpr : Boolean);
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr; captureExpr : Boolean); reintroduce;
          destructor Destroy; override;
 
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -2910,6 +2915,20 @@ begin
    Result:=FElementExprs.Count;
 end;
 
+// GetElement
+//
+function TArrayConstantExpr.GetElement(idx : Integer) : TTypedExpr;
+begin
+   Result:=TTypedExpr(FElementExprs.List[idx]);
+end;
+
+// GetElementCount
+//
+function TArrayConstantExpr.GetElementCount : Integer;
+begin
+   Result:=FElementExprs.Count;
+end;
+
 function TArrayConstantExpr.Eval(exec : TdwsExecution) : Variant;
 //var
 //  x: Integer;
@@ -3562,9 +3581,13 @@ begin
       else if toTyp.IsOfType(prog.TypBoolean) then
          Result:=TConvBoolExpr.Create(prog, expr);
    end else begin
-      if toTyp.IsOfType(prog.TypFloat) then
-         if expr.IsOfType(prog.TypInteger) then
-            Result:=TConvFloatExpr.Create(prog, expr);
+      if     toTyp.IsOfType(prog.TypFloat)
+         and expr.IsOfType(prog.TypInteger) then begin
+         if expr is TConstIntExpr then begin
+            Result:=TConstFloatExpr.CreateTyped(prog, prog.TypFloat, TConstIntExpr(expr).Value);
+            expr.Free;
+         end else Result:=TConvFloatExpr.Create(prog, expr);
+      end;
    end;
    // Look if Types are compatible
    if not toTyp.IsCompatible(Result.Typ) then

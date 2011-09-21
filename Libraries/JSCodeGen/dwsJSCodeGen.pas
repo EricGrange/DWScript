@@ -162,19 +162,22 @@ type
    TJSConstExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSConstIntExpr = class (TJSExprCodeGen)
+   TJSConstStringExpr = class (TJSConstExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSConstStringExpr = class (TJSExprCodeGen)
+   TJSConstNumExpr = class (TJSConstExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSConstFloatExpr = class (TJSExprCodeGen)
+   TJSConstIntExpr = class (TJSConstNumExpr)
+      procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
+   end;
+   TJSConstFloatExpr = class (TJSConstNumExpr)
+      procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
+   end;
+   TJSConstBooleanExpr = class (TJSConstExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSConstBooleanExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
-   end;
-   TJSArrayConstantExpr = class (TJSExprCodeGen)
+   TJSArrayConstantExpr = class (TJSConstExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
@@ -413,8 +416,23 @@ type
       protected
          FOp : String;
          FAssociative : Boolean;
+         procedure WriteOp(codeGen : TdwsCodeGen; rightExpr : TTypedExpr); virtual;
       public
          constructor Create(const op : String; associative : Boolean);
+         procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
+   end;
+
+   TJSAddOpExpr = class(TJSBinOpExpr)
+      protected
+         procedure WriteOp(codeGen : TdwsCodeGen; rightExpr : TTypedExpr); override;
+      public
+         constructor Create;
+   end;
+
+   TJSSubOpExpr = class(TJSBinOpExpr)
+      protected
+      public
+         constructor Create;
          procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
    end;
 
@@ -1009,12 +1027,12 @@ begin
 
    RegisterCodeGen(TAddStrExpr,           TJSBinOpExpr.Create('+', True));
 
-   RegisterCodeGen(TAddIntExpr,           TJSBinOpExpr.Create('+', True));
-   RegisterCodeGen(TAddFloatExpr,         TJSBinOpExpr.Create('+', True));
-   RegisterCodeGen(TAddVariantExpr,       TJSBinOpExpr.Create('+', True));
-   RegisterCodeGen(TSubIntExpr,           TJSBinOpExpr.Create('-', False));
-   RegisterCodeGen(TSubFloatExpr,         TJSBinOpExpr.Create('-', False));
-   RegisterCodeGen(TSubVariantExpr,       TJSBinOpExpr.Create('-', False));
+   RegisterCodeGen(TAddIntExpr,           TJSAddOpExpr.Create);
+   RegisterCodeGen(TAddFloatExpr,         TJSAddOpExpr.Create);
+   RegisterCodeGen(TAddVariantExpr,       TJSAddOpExpr.Create);
+   RegisterCodeGen(TSubIntExpr,           TJSSubOpExpr.Create);
+   RegisterCodeGen(TSubFloatExpr,         TJSSubOpExpr.Create);
+   RegisterCodeGen(TSubVariantExpr,       TJSSubOpExpr.Create);
    RegisterCodeGen(TMultIntExpr,          TJSBinOpExpr.Create('*', True));
    RegisterCodeGen(TMultFloatExpr,        TJSBinOpExpr.Create('*', True));
    RegisterCodeGen(TMultVariantExpr,      TJSBinOpExpr.Create('*', True));
@@ -2627,20 +2645,6 @@ begin
 end;
 
 // ------------------
-// ------------------ TJSConstIntExpr ------------------
-// ------------------
-
-// CodeGen
-//
-procedure TJSConstIntExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
-var
-   e : TConstIntExpr;
-begin
-   e:=TConstIntExpr(expr);
-   codeGen.WriteString(IntToStr(e.Value));
-end;
-
-// ------------------
 // ------------------ TJSConstStringExpr ------------------
 // ------------------
 
@@ -2655,12 +2659,44 @@ begin
 end;
 
 // ------------------
-// ------------------ TJSConstFloatExpr ------------------
+// ------------------ TJSConstNumExpr ------------------
 // ------------------
 
 // CodeGen
 //
-procedure TJSConstFloatExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSConstNumExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TConstExpr;
+begin
+   e:=TConstExpr(expr);
+   if e.Eval(nil)<0 then begin
+      codeGen.WriteString('(');
+      CodeGenNoWrap(codeGen, e);
+      codeGen.WriteString(')');
+   end else CodeGenNoWrap(codeGen, e);
+end;
+
+// ------------------
+// ------------------ TJSConstIntExpr ------------------
+// ------------------
+
+// CodeGenNoWrap
+//
+procedure TJSConstIntExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+var
+   e : TConstIntExpr;
+begin
+   e:=TConstIntExpr(expr);
+   codeGen.WriteString(IntToStr(e.Value));
+end;
+
+// ------------------
+// ------------------ TJSConstFloatExpr ------------------
+// ------------------
+
+// CodeGenNoWrap
+//
+procedure TJSConstFloatExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
 var
    e : TConstFloatExpr;
 begin
@@ -2695,10 +2731,10 @@ var
 begin
    e:=TArrayConstantExpr(expr);
    codeGen.WriteString('[');
-   for i:=0 to e.SubExprCount-1 do begin
+   for i:=0 to e.ElementCount-1 do begin
       if i>0 then
          codeGen.WriteString(',');
-      codeGen.Compile(e.SubExpr[i]);
+      codeGen.CompileNoWrap(e.Elements[i]);
    end;
    codeGen.WriteString(']');
 end;
@@ -4022,7 +4058,8 @@ begin
    codeGen.WriteString('.length');
 
    if e.Delta<>0 then begin
-      codeGen.WriteString('+');
+      if e.Delta>0 then
+         codeGen.WriteString('+');
       codeGen.WriteString(IntToStr(e.Delta));
       codeGen.WriteString(')');
    end;
@@ -4433,23 +4470,23 @@ begin
    codeGen.WriteString('for(');
    codeGen.Compile(e.VarExpr);
    codeGen.WriteString('=');
-   codeGen.Compile(e.FromExpr);
+   codeGen.CompileNoWrap(e.FromExpr);
    if tmpTo<>'' then begin
       codeGen.WriteString(',');
       codeGen.WriteString(tmpTo);
       codeGen.WriteString('=');
-      codeGen.Compile(e.ToExpr);
+      codeGen.CompileNoWrap(e.ToExpr);
    end;
    if tmpStep<>'' then begin
       codeGen.WriteString(',');
       codeGen.WriteString(tmpStep);
       if cgoNoCheckLoopStep in codeGen.Options then begin
          codeGen.WriteString('=');
-         codeGen.Compile(TForStepExpr(e).StepExpr);
+         codeGen.CompileNoWrap(TForStepExpr(e).StepExpr);
       end else begin
          codeGen.Dependencies.Add('$CheckStep');
          codeGen.WriteString('=$CheckStep(');
-         codeGen.Compile(TForStepExpr(e).StepExpr);
+         codeGen.CompileNoWrap(TForStepExpr(e).StepExpr);
          codeGen.WriteString(',');
          WriteLocationString(codeGen, e);
          codeGen.WriteString(')');
@@ -4602,10 +4639,64 @@ begin
    if FAssociative and (e.Left.ClassType=e.ClassType) then
       codeGen.CompileNoWrap(e.Left)
    else WriteWrappedIfNeeded(codeGen, e.Left);
-   codeGen.WriteString(FOp);
+   WriteOp(codeGen, e.Right);
    if FAssociative and (e.Right.ClassType=e.ClassType) then
       codeGen.CompileNoWrap(e.Right)
    else WriteWrappedIfNeeded(codeGen, e.Right);
+end;
+
+// WriteOp
+//
+procedure TJSBinOpExpr.WriteOp(codeGen : TdwsCodeGen; rightExpr : TTypedExpr);
+begin
+   codeGen.WriteString(FOp);
+end;
+
+// ------------------
+// ------------------ TJSAddOpExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TJSAddOpExpr.Create;
+begin
+   inherited Create('+', True);
+end;
+
+// WriteOp
+//
+procedure TJSAddOpExpr.WriteOp(codeGen : TdwsCodeGen; rightExpr : TTypedExpr);
+begin
+   if (rightExpr is TConstExpr) and (rightExpr.Eval(nil)<0) then begin
+      // right operand will write a minus
+   end else codeGen.WriteString(FOp);
+end;
+
+// ------------------
+// ------------------ TJSSubOpExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TJSSubOpExpr.Create;
+begin
+   inherited Create('-', True);
+end;
+
+// CodeGenNoWrap
+//
+procedure TJSSubOpExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+var
+   e : TBinaryOpExpr;
+begin
+   e:=TBinaryOpExpr(expr);
+   if (e.Left.ClassType=e.ClassType) then
+      codeGen.CompileNoWrap(e.Left)
+   else WriteWrappedIfNeeded(codeGen, e.Left);
+   WriteOp(codeGen, e.Right);
+   if (e.Right is TConstExpr) and (e.Right.Eval(nil)<0) then begin
+      codeGen.Compile(e.Right)
+   end else WriteWrappedIfNeeded(codeGen, e.Right);
 end;
 
 // ------------------
