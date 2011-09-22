@@ -275,6 +275,7 @@ type
       FUnitContextStack : TdwsCompilerUnitContextStack;
       FUnitsFromStack : TSimpleStack<String>;
       FUnitSymbol : TUnitMainSymbol;
+      FAnyFuncSymbol : TAnyFuncSymbol;
 
       FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
       FOnReadInstr : TCompilerReadInstrEvent;
@@ -626,6 +627,7 @@ begin
    FFinallyExprs:=TSimpleStack<Boolean>.Create;
    FUnitsFromStack:=TSimpleStack<String>.Create;
    FUnitContextStack:=TdwsCompilerUnitContextStack.Create;
+   FAnyFuncSymbol:=TAnyFuncSymbol.Create('', fkFunction, 0);
 
    stackParams.MaxLevel:=1;
    stackParams.ChunkSize:=512;
@@ -639,6 +641,7 @@ end;
 //
 destructor TdwsCompiler.Destroy;
 begin
+   FAnyFuncSymbol.Free;
    FUnitsFromStack.Free;
    FUnitContextStack.Free;
    FExec.Free;
@@ -6087,7 +6090,7 @@ var
    tt : TTokenType;
    nameExpr : TProgramExpr;
 begin
-   tt:=FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT,
+   tt:=FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
                      ttTRUE, ttFALSE, ttNIL, ttSWITCH]);
    if not (tt in [ttNone, ttSWITCH]) then
       FTok.KillToken;
@@ -6109,6 +6112,14 @@ begin
          end;
          if Result.Typ is TClassSymbol then
             Result:=ReadSymbol(Result, isWrite) as TTypedExpr;
+      end;
+      ttAT : begin
+         FTok.KillToken;
+         if expecting=nil then
+            expecting:=FAnyFuncSymbol
+         else if not (expecting is TFuncSymbol) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedAt);
+         Result:=ReadTerm(isWrite, expecting);
       end;
       ttTRUE :
          Result:=ReadTrue;

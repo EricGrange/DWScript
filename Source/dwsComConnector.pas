@@ -342,11 +342,13 @@ var
 begin
    for x := 0 to Length(Params) - 1 do begin
       typ:=Params[x].TypSym;
-      if typ.Size > 1 then
+      if (typ=nil) or (typ.Size>1) then
          Exit(False);
       if typ is TArraySymbol then
          if not (typ is TDynamicArraySymbol) then
             Exit(False);
+      if typ is TFuncSymbol then
+         Exit(False);
    end;
    Result:=True;
 end;

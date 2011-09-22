@@ -90,6 +90,7 @@ const
   CPE_ArrayBracketRightExpected = '"]" expected';
   CPE_ArrayBracketLeftExpected = '"[" expected';
   CPE_AtExpected = '"@" expected';
+  CPE_UnexpectedAt = 'unexpected "@"';
   CPE_CurlyRightExpected = '"}" expected';
   CPE_ColonExpected = 'Colon ":" expected';
   CPE_DotExpected = 'Dot "." expected';

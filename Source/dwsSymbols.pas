@@ -684,6 +684,11 @@ type
          property SourcePosition : TScriptPos read GetSourcePosition write SetSourcePosition;
    end;
 
+   TAnyFuncSymbol = class(TFuncSymbol)
+      public
+         function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+   end;
+
    TSourceFuncSymbol = class(TFuncSymbol)
       private
          FSourcePosition : TScriptPos;
@@ -2496,7 +2501,7 @@ var
    param, otherParam : TSymbol;
 begin
    typSym := typSym.BaseType;
-   if typSym is TNilSymbol then
+   if (typSym.ClassType=TNilSymbol) or (typSym.ClassType=TAnyFuncSymbol) then
       Result := True
    else begin
       Result := False;
@@ -5347,6 +5352,17 @@ var
 begin
    for i:=0 to Count-1 do
       Items[i].Initialize(msgs);
+end;
+
+// ------------------
+// ------------------ TAnyFuncSymbol ------------------
+// ------------------
+
+// IsCompatible
+//
+function TAnyFuncSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+begin
+   Result:=(typSym is TFuncSymbol);
 end;
 
 end.

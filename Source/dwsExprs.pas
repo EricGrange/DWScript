@@ -6871,7 +6871,7 @@ end;
 function TConnectorCallExpr.AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType): Boolean;
 var
    x : Integer;
-   typSym : TTypeSymbol;
+   typSym, paramTyp : TTypeSymbol;
    arg : TTypedExpr;
 begin
   // Prepare the parameter information array to query the connector symbol
@@ -6912,9 +6912,11 @@ begin
    // Prepare the arguments for the method call
    if Result then begin
       SetLength(FConnectorArgs, FArgs.Count);
-      for x := 0 to FArgs.Count - 1 do
-         SetLength(FConnectorArgs[x], FConnectorParams[x].TypSym.Size);
-
+      for x:=0 to FArgs.Count-1 do begin
+         paramTyp:=FConnectorParams[x].TypSym;
+         if paramTyp<>nil then
+            SetLength(FConnectorArgs[x], paramTyp.Size);
+      end;
       FTyp := typSym;
    end;
 end;
