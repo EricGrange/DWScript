@@ -47,6 +47,8 @@ type
 
          function Process(const tText : String; msgs : TdwsMessageList) : String; override;
 
+         property CodeGen : TdwsJSCodeGen read FCodeGen;
+
       published
          property Compiler : TDelphiWebScript read FCompiler write SetCompiler;
          property PatternOpen : String read FPatternOpen write FPatternOpen;
