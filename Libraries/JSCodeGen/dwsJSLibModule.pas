@@ -10,6 +10,7 @@
 {    or implied. See the License for the specific language             }
 {    governing rights and limitations under the License.               }
 {                                                                      }
+{    Copyright Creative IT.                                            }
 {    Current maintainer: Eric Grange                                   }
 {                                                                      }
 {**********************************************************************}
@@ -19,7 +20,7 @@ unit dwsJSLibModule;
 
 interface
 
-uses Windows, Classes, SysUtils, dwsLanguageExtension, dwsComp, dwsCompiler,
+uses Classes, SysUtils, dwsLanguageExtension, dwsComp, dwsCompiler,
    dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs, dwsStack,
    dwsStrings, dwsXPlatform, StrUtils, dwsUtils, dwsOperators;
 

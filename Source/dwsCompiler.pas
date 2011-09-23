@@ -26,7 +26,7 @@ interface
 uses
   Variants, Classes, SysUtils, dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors,
   dwsStrings, dwsFunctions, dwsStack, dwsCoreExprs, dwsFileSystem, dwsUtils,
-  dwsMagicExprs, dwsRelExprs, dwsOperators;
+  dwsMagicExprs, dwsRelExprs, dwsOperators, dwsPascalTokenizer;
 
 type
    TCompilerOption = ( coOptimize, coSymbolDictionary, coContextMap, coAssertions,
@@ -246,6 +246,7 @@ type
    TdwsCompiler = class
    private
       FOptions : TCompilerOptions;
+      FTokRules : TTokenizerRules;
       FTok : TTokenizer;
       FProg : TdwsProgram;
       FMainProg : TdwsMainProgram;
@@ -485,6 +486,7 @@ type
       property Msgs : TdwsCompileMessageList read FMsgs;
       property Options : TCompilerOptions read FOptions write FOptions;
       property UnitSection : TdwsUnitSection read FUnitSection write FUnitSection;
+      property TokenizerRules : TTokenizerRules read FTokRules;
       property Tokenizer : TTokenizer read FTok write FTok;
 
       property OnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol read FOnCreateBaseVariantSymbol write FOnCreateBaseVariantSymbol;
@@ -621,6 +623,9 @@ var
    stackParams : TStackParameters;
 begin
    inherited;
+
+   FTokRules:=TPascalTokenizerStateRules.Create;
+
    FLoopExprs:=TSimpleStack<TNoResultExpr>.Create;
    FLoopExitable:=TSimpleStack<TLoopExitable>.Create;
    FConditionalDepth:=TSimpleStack<TSwitchInstruction>.Create;
@@ -649,6 +654,7 @@ begin
    FConditionalDepth.Free;
    FLoopExitable.Free;
    FLoopExprs.Free;
+   FTokRules.Free;
    inherited;
 end;
 
@@ -1235,7 +1241,7 @@ var
 begin
    oldTok:=FTok;
    oldSection:=FUnitSection;
-   FTok:=TTokenizer.Create(sourceFile, FProg.CompileMsgs);
+   FTok:=FTokRules.CreateTokenizer(sourceFile, FProg.CompileMsgs);
    try
       FTok.SwitchHandler:=ReadSwitch;
 
@@ -1472,7 +1478,7 @@ begin
          try
             sourceFile.Code:=anExpression;
             sourceFile.Name:=MSG_MainModule;
-            compiler.FTok:=TTokenizer.Create(sourceFile, compiler.FMsgs);
+            compiler.FTok:=compiler.FTokRules.CreateTokenizer(sourceFile, compiler.FMsgs);
             try
                try
                   expr:=compiler.ReadExpr;

@@ -4,7 +4,7 @@ interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
-   dwsSymbols;
+   dwsSymbols, dwsPascalTokenizer;
 
 type
 
@@ -124,6 +124,7 @@ end;
 //
 procedure TCornerCasesTests.TokenizerSpecials;
 var
+   rules : TPascalTokenizerStateRules;
    t : TTokenizer;
    msgs : TdwsCompileMessageList;
    sourceFile : TSourceFile;
@@ -131,7 +132,8 @@ begin
    msgs:=TdwsCompileMessageList.Create;
    sourceFile:=TSourceFile.Create;
    sourceFile.Code:='@ @= %= ^ ^= $(';
-   t:=TTokenizer.Create(sourceFile, msgs);
+   rules:=TPascalTokenizerStateRules.Create;
+   t:=rules.CreateTokenizer(sourceFile, msgs);
    try
       CheckTrue(t.TestDelete(ttAT), '@');
       CheckTrue(t.TestDelete(ttAT_ASSIGN), '@=');
@@ -148,6 +150,7 @@ begin
       sourceFile.Free;
       t.Free;
       msgs.Free;
+      rules.Free;
    end;
 end;
 
