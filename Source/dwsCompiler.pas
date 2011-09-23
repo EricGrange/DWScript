@@ -4347,6 +4347,10 @@ begin
             if argSym is TVarParamSymbol then
                arg:=ReadTerm(True, expectedType)
             else arg:=ReadExpr(expectedType);
+
+            if Optimize then
+               arg:=arg.OptimizeToTypedExpr(FProg, FExec);
+
             AddArgProc(arg);
             n:=Length(argPosArray);
             SetLength(argPosArray, n+1);

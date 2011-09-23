@@ -1023,6 +1023,7 @@ type
          function IsWritable : Boolean; override;
 
          property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
+         property IsIndex : Boolean read FIsIndex write FIsIndex;
          property ConnectorCall : IConnectorCall read FConnectorCall write FConnectorCall;
    end;
 

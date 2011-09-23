@@ -3325,15 +3325,21 @@ begin
    jsCall:=(e.ConnectorCall as TdwsJSConnectorCall);
 
    codeGen.Compile(e.BaseExpr);
-   codeGen.WriteString('.');
-   codeGen.WriteString(jsCall.CallMethodName);
-   codeGen.WriteString('(');
+   if e.IsIndex then
+      codeGen.WriteString('[')
+   else begin
+      codeGen.WriteString('.');
+      codeGen.WriteString(jsCall.CallMethodName);
+      codeGen.WriteString('(');
+   end;
    for i:=1 to e.SubExprCount-1 do begin
       if i>1 then
          codeGen.WriteString(',');
       codeGen.Compile(e.SubExpr[i]);
    end;
-   codeGen.WriteString(')');
+   if e.IsIndex then
+      codeGen.WriteString(']')
+   else codeGen.WriteString(')');
 end;
 
 // ------------------
