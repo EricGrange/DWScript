@@ -1014,6 +1014,8 @@ type
          property StructSymbol : TStructuredTypeSymbol read FStructSymbol write FStructSymbol;
    end;
 
+   TStructuredTypeMetaSymbol = class;
+
    // class, record, interface
    TStructuredTypeSymbol = class(TTypeSymbol)
       private
@@ -1021,8 +1023,10 @@ type
          FDefaultProperty : TPropertySymbol;
          FMembers : TMembersSymbolTable;
          FParent : TStructuredTypeSymbol;
+         FMetaSymbol : TStructuredTypeMetaSymbol;
 
       protected
+
          function CreateMembersTable : TMembersSymbolTable; virtual;
 
          function GetIsStatic : Boolean; virtual;
@@ -1049,9 +1053,16 @@ type
          property IsExternal : Boolean read GetIsExternal;
 
          property Parent : TStructuredTypeSymbol read FParent;
+         property MetaSymbol : TStructuredTypeMetaSymbol read FMetaSymbol;
          property UnitSymbol : TUnitMainSymbol read FUnitSymbol;
          property Members : TMembersSymbolTable read FMembers;
          property DefaultProperty : TPropertySymbol read FDefaultProperty write FDefaultProperty;
+   end;
+
+   // class of, record of
+   TStructuredTypeMetaSymbol = class(TTypeSymbol)
+      public
+         procedure InitData(const Data: TData; Offset: Integer); override;
    end;
 
    // Field of a script object
@@ -1079,6 +1090,8 @@ type
          function GetDescription : String; override;
 
       public
+         constructor Create(const name : String; aUnit : TUnitMainSymbol);
+
          procedure AddField(fieldSym : TFieldSymbol); override;
 
          procedure InitData(const data : TData; offset : Integer); override;
@@ -1183,12 +1196,13 @@ type
    end;
 
    // type X = class of TMyClass;
-   TClassOfSymbol = class sealed (TTypeSymbol)
+   TClassOfSymbol = class sealed (TStructuredTypeMetaSymbol)
       protected
          function GetCaption : String; override;
+
       public
-         constructor Create(const Name: string; Typ: TClassSymbol);
-         procedure InitData(const Data: TData; Offset: Integer); override;
+         constructor Create(const name : String; typ : TClassSymbol);
+
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsOfType(typSym : TTypeSymbol) : Boolean; override;
          function TypClassSymbol : TClassSymbol; inline;
@@ -1215,7 +1229,6 @@ type
    // type X = class ... end;
    TClassSymbol = class (TStructuredTypeSymbol)
       private
-         FClassOfSymbol : TClassOfSymbol;
          FFlags : TClassSymbolFlags;
          FForwardPosition : PScriptPos;
          FOperators : TTightList;
@@ -1225,6 +1238,7 @@ type
          FInterfaces : TResolvedInterfaces;
 
       protected
+         function GetClassOf : TClassOfSymbol; inline;
          function GetDescription : String; override;
          function GetIsForwarded : Boolean; inline;
          function GetIsExplicitAbstract : Boolean; inline;
@@ -1277,7 +1291,7 @@ type
          class function VisibilityToString(visibility : TdwsVisibility) : String; static;
 
          function Parent : TClassSymbol; inline;
-         property ClassOf : TClassOfSymbol read FClassOfSymbol;
+         property ClassOf : TClassOfSymbol read GetClassOF;
          property ScriptInstanceSize : Integer read FScriptInstanceSize;
          property Interfaces : TResolvedInterfaces read FInterfaces;
 
@@ -1918,6 +1932,7 @@ end;
 //
 destructor TStructuredTypeSymbol.Destroy;
 begin
+   FMetaSymbol.Free;
    FMembers.Free;
    inherited;
 end;
@@ -2042,8 +2057,27 @@ begin
 end;
 
 // ------------------
+// ------------------ TStructuredTypeMetaSymbol ------------------
+// ------------------
+
+// InitData
+//
+procedure TStructuredTypeMetaSymbol.InitData(const Data: TData; Offset: Integer);
+begin
+   Data[Offset] := Int64(0);
+end;
+
+// ------------------
 // ------------------ TRecordSymbol ------------------
 // ------------------
+
+// Create
+//
+constructor TRecordSymbol.Create(const name : String; aUnit : TUnitMainSymbol);
+begin
+   inherited Create(name, aUnit);
+   FMetaSymbol:=TStructuredTypeMetaSymbol.Create('meta of '+name, Self);
+end;
 
 // AddField
 //
@@ -2082,14 +2116,18 @@ begin
    Result:=False;
 end;
 
-function TRecordSymbol.GetCaption: string;
+// GetCaption
+//
+function TRecordSymbol.GetCaption : String;
 begin
-  Result := 'record '+Name;
+   Result:='record '+Name;
 end;
 
-function TRecordSymbol.GetDescription: string;
+// GetDescription
+//
+function TRecordSymbol.GetDescription : String;
 var
-   x: Integer;
+   x : Integer;
 begin
    Result:=Name+' = record'#13#10;
    for x:=0 to FMembers.Count-1 do
@@ -3090,7 +3128,7 @@ constructor TClassSymbol.Create(const name : String; aUnit : TUnitMainSymbol);
 begin
    inherited;
    FSize:=1;
-   FClassOfSymbol:=TClassOfSymbol.Create('class of '+Name, Self);
+   FMetaSymbol:=TClassOfSymbol.Create('class of '+Name, Self);
 end;
 
 // Destroy
@@ -3100,7 +3138,6 @@ begin
    if FForwardPosition<>nil then
       Dispose(FForwardPosition);
    FOperators.Free;
-   FClassOfSymbol.Free;
    FInterfaces.Free;
    inherited;
 end;
@@ -3579,6 +3616,13 @@ begin
    Result:=TClassSymbol(FParent);
 end;
 
+// GetClassOf
+//
+function TClassSymbol.GetClassOf : TClassOfSymbol;
+begin
+   Result:=TClassOfSymbol(FMetaSymbol);
+end;
+
 { TNilSymbol }
 
 constructor TNilSymbol.Create;
@@ -3618,11 +3662,6 @@ begin
     Result := 'class of ' + Typ.Name
   else
     Result := 'class of ???';
-end;
-
-procedure TClassOfSymbol.InitData(const Data: TData; Offset: Integer);
-begin
-  Data[Offset] := Int64(0);
 end;
 
 function TClassOfSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;

@@ -11,6 +11,8 @@ type
          function GetIdx(i : Integer) : String;
          
       public
+         Field : Integer;
+      
          property Shown : String read FHidden write SetHidden;
          property Idx[i : Integer] : String read GetIdx; default;
    
@@ -19,6 +21,7 @@ type
          class function NewOne(s : String) : TTest;
          begin
             Result.FHidden:=s;
+            Result.Field:=123;
          end;
     end;
 
@@ -42,3 +45,4 @@ PrintLn(t[456]);
 
 t:=TTest.NewOne('New one');
 t.SayHello;
+PrintLn(t.Field);

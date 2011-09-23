@@ -3004,7 +3004,7 @@ function TdwsCompiler.ReadRecordSymbolName(baseType : TRecordSymbol; isWrite : B
 var
    constExpr : TTypedExpr;
 begin
-   constExpr:=TConstExpr.CreateTyped(FProg, baseType, Int64(baseType));
+   constExpr:=TConstExpr.CreateTyped(FProg, baseType.MetaSymbol, Int64(baseType));
    Result:=ReadSymbol(constExpr, IsWrite, expecting);
 end;
 
@@ -3431,10 +3431,10 @@ begin
 
                   end else FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [Name]);
 
-               // Class Of
-               end else if baseType is TClassOfSymbol then begin
+               // Meta (Class Of, Record Of)
+               end else if baseType is TStructuredTypeMetaSymbol then begin
 
-                  member := TClassSymbol(baseType.Typ).Members.FindSymbolFromScope(Name, CurrentStruct);
+                  member := TStructuredTypeSymbol(baseType.Typ).Members.FindSymbolFromScope(Name, CurrentStruct);
                   if coSymbolDictionary in FOptions then
                      FSymbolDictionary.AddSymbolReference(member, FTok.HotPos, isWrite);
 
