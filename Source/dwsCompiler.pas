@@ -2956,7 +2956,7 @@ function TdwsCompiler.ReadClassSymbolName(baseType : TClassSymbol; isWrite : Boo
 var
    namePos : TScriptPos;
    constExpr : TTypedExpr;
-   convExpr : TConvClassExpr;
+   convInstanceExpr : TObjAsClassExpr;
    castedExprTyp : TTypeSymbol;
 begin
    if FTok.TestDelete(ttBLEFT) then begin
@@ -2977,9 +2977,8 @@ begin
                                    [castedExprTyp.Name, baseType.Name]);
       if not (FTok.TestDelete(ttBRIGHT)) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-      convExpr:=TConvClassExpr.Create(FProg, TTypedExpr(Result));
-      convExpr.Typ:=baseType;
-      Result:=ReadSymbol(convExpr, IsWrite, expecting);
+      convInstanceExpr:=TObjAsClassExpr.Create(FProg, namePos, TTypedExpr(Result), baseType);
+      Result:=ReadSymbol(convInstanceExpr, IsWrite, expecting);
 
    end else begin
 
@@ -5621,9 +5620,7 @@ begin
                            FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
                         Result:=TIntfAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(r.Typ).Typ);
                      end;
-                  end else begin
-                     if not (Result.Typ is TClassSymbol) then
-                        FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
+                  end else if Result.Typ is TClassSymbol then begin
                      if r.Typ is TInterfaceSymbol then
                         Result:=TObjAsIntfExpr.Create(FProg, hotPos, Result, TInterfaceSymbol(r.Typ))
                      else begin
@@ -5631,6 +5628,12 @@ begin
                            FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
                         Result:=TObjAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(r.Typ).Typ);
                      end;
+                  end else begin
+                     if not (Result.Typ is TClassOfSymbol) then
+                        FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
+                     else if not (r.Typ is TClassOfSymbol) then
+                        FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
+                     Result:=TClassAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(r.Typ));
                   end;
                   r.Free;
                end;
@@ -7626,9 +7629,10 @@ var
 begin
    if not FTok.TestDelete(ttBLEFT) then begin
 
-      if (typeSym is TEnumerationSymbol) then begin
-         Exit(TConstExpr.Create(FProg, typeSym, Null));
-      end;
+      if (typeSym is TEnumerationSymbol) then
+         Exit(TConstExpr.CreateTyped(FProg, typeSym, Null))
+      else if typeSym is TClassOfSymbol then
+         Exit(TConstExpr.CreateTyped(FProg, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol)));
 
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
    end;
@@ -7679,7 +7683,16 @@ begin
          // Cast Variant(...)
          Result := TConvVariantExpr.Create(FProg, argExpr)
 
-      else FMsgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
+      else if typeSym is TClassOfSymbol then begin
+
+         // Cast Class(...)
+         if argExpr.Typ is TClassSymbol then
+            Result:=TObjAsClassExpr.Create(FProg, hotPos, argExpr, typeSym)
+         else if argExpr.Typ is TClassOfSymbol then
+            Result:=TClassAsClassExpr.Create(FProg, hotPos, argExpr, typeSym)
+         else FMsgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
+
+      end else FMsgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
 
       if Optimize then
          Result:=Result.OptimizeToTypedExpr(FProg, FExec);

@@ -706,8 +706,20 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
+   // class as TMyClass
+   TClassAsClassExpr = class(TAsCastExpr)
+      protected
+         procedure RaiseMetaClassCastFailed(exec : TdwsExecution; classSym : TClassSymbol);
+
+      public
+         function Eval(exec : TdwsExecution) : Variant; override;
+   end;
+
    // obj as TMyClass
    TObjAsClassExpr = class(TAsCastExpr)
+      protected
+         procedure RaiseInstanceClassCastFailed(exec : TdwsExecution; classSym : TClassSymbol);
+
       public
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
    end;
@@ -912,11 +924,6 @@ type
    // Variant(simple)
    TConvVariantExpr = class (TUnaryOpVariantExpr)
       procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
-   end;
-
-   // Class(x)
-   TConvClassExpr = class (TConvExpr)
-     function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // Assert(condition, message);
@@ -3414,24 +3421,52 @@ begin
 end;
 
 // ------------------
+// ------------------ TClassAsClassExpr ------------------
+// ------------------
+
+// RaiseMetaClassCastFailed
+//
+procedure TClassAsClassExpr.RaiseMetaClassCastFailed(exec : TdwsExecution; classSym : TClassSymbol);
+begin
+   RaiseScriptError(exec, EClassCast.CreatePosFmt(FPos, RTE_MetaClassCastFailed,
+                                                  [classSym.Caption, FTyp.Name]))
+end;
+
+// Eval
+//
+function TClassAsClassExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   ref : TClassSymbol;
+begin
+   ref:=TClassSymbol(Expr.EvalAsInteger(exec));
+   Result:=Int64(ref);
+
+   if ref<>nil then begin
+      if not FTyp.IsCompatible(ref.ClassOf) then
+         RaiseMetaClassCastFailed(exec, ref);
+   end;
+end;
+
+// ------------------
 // ------------------ TObjAsClassExpr ------------------
 // ------------------
+
+// RaiseInstanceClassCastFailed
+//
+procedure TObjAsClassExpr.RaiseInstanceClassCastFailed(exec : TdwsExecution; classSym : TClassSymbol);
+begin
+   RaiseScriptError(exec, EClassCast.CreatePosFmt(FPos, RTE_ClassInstanceCastFailed,
+                                                  [classSym.Caption, FTyp.Caption]))
+end;
 
 // EvalAsScriptObj
 //
 procedure TObjAsClassExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
-
-   procedure RaiseClassCastFailed;
-   begin
-      RaiseScriptError(exec, EClassCast.CreatePosFmt(FPos, RTE_ClassCastFailed,
-                                                     [Result.ClassSym.Caption, FTyp.Caption]))
-   end;
-
 begin
    Expr.EvalAsScriptObj(exec, Result);
 
    if Assigned(Result) and not (FTyp.IsCompatible(Result.ClassSym)) then
-      RaiseClassCastFailed;
+      RaiseInstanceClassCastFailed(exec, Result.ClassSym);
 end;
 
 // ------------------
@@ -3647,22 +3682,6 @@ end;
 procedure TConvVariantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
    FExpr.EvalAsVariant(exec, Result);
-end;
-
-// ------------------
-// ------------------ TConvClassExpr ------------------
-// ------------------
-
-// Eval
-//
-function TConvClassExpr.Eval(exec : TdwsExecution) : Variant;
-var
-   obj : IScriptObj;
-begin
-   FExpr.EvalAsScriptObj(exec, obj);
-   if (obj<>nil) and (not obj.ClassSym.IsOfType(Typ)) then
-      raise EClassCast.CreateFmt(RTE_ClassCastFailed, [obj.ClassSym.Name, Typ.Name]);
-   Result:=obj;
 end;
 
 // ------------------

@@ -410,7 +410,8 @@ const
   RTE_ForLoopStepShouldBeStrictlyPositive = 'FOR loop STEP should be strictly positive: %d';
   RTE_InvalidBreak = 'break without for/while/repeat or case';
   RTE_InvalidContinue = 'continue without for/while/repeat or case';
-  RTE_ClassCastFailed = 'Can''t cast instance of type "%s" to class "%s"';
+  RTE_ClassInstanceCastFailed = 'Can''t cast instance of type "%s" to class "%s"';
+  RTE_MetaClassCastFailed = 'Can''t cast "%s" to class "%s"';
   RTE_OrdinalExpected = 'Ordinal expected';
   RTE_VariantCastFailed = 'Couldn''t cast variant from "%s" to "%s" (%s)';
 
