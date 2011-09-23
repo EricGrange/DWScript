@@ -277,7 +277,7 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
-   TJSConvClassExpr = class (TJSExprCodeGen)
+   TJSClassAsClassExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
@@ -456,7 +456,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..131] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..132] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -517,20 +517,30 @@ const
        Code : 'function $Inc(v,i) { v.value+=i; return v.value }'),
       (Name : '$Dec';
        Code : 'function $Dec(v,i) { v.value-=i; return v.value }'),
+      (Name : '$Inh';
+       Code : 'function $Inh(s,c) {'#13#10
+               +#9'if (s===null) return false;'#13#10
+               +#9'while ((s)&&(s!==c)) s=s.$Parent;'#13#10
+               +#9'return (s)?true:false;'#13#10
+               +'}'#13#10 ),
       (Name : '$Is';
        Code : 'function $Is(o,c) {'#13#10
                +#9'if (o===null) return false;'#13#10
-               +#9'var ct=o.ClassType;'#13#10
-               +#9'while ((ct)&&(ct!==c)) ct=ct.$Parent;'#13#10
-               +#9'return (ct)?true:false;'#13#10
-               +'}'#13#10),
-      (Name : '$Cast';
-       Code : 'function $Cast(o,c) { if (o===null) return o; else return $As(o,c); }';
-       Dependency : '$As' ),
+               +#9'return $Inh(o.ClassType,c);'#13#10
+               +'}'#13#10;
+       Dependency : '$Inh' ),
       (Name : '$As';
-       Code : 'function $As(o,c) { if ((o!==null)&&$Is(o,c)) return o; '#13#10
-               +'else throw Exception.Create$1($New(Exception),"Can''t cast instance of type \""+o.ClassType.$ClassName+"\" to class \""+c.$ClassName+"\""); }';
+       Code : 'function $As(o,c) {'#13#10
+               +#9'if ((o!==null)&&$Is(o,c)) return o;'#13#10
+               +#9'throw Exception.Create$1($New(Exception),"Can''t cast instance of type \""+o.ClassType.$ClassName+"\" to class \""+c.$ClassName+"\"");'#13#10
+               +'}';
        Dependency : '$Is' ),
+      (Name : '$AsClass';
+       Code : 'function $AsClass(s,c) {'#13#10
+               +#9'if ((s===null)||$Inh(s,c)) return s;'#13#10
+               +#9'throw Exception.Create$1($New(Exception),"Can''t cast class \""+s.$ClassName+"\" to class \""+c.$ClassName+"\"");'#13#10
+               +'}';
+       Dependency : '$Inh' ),
       (Name : '$AsIntf';
        Code : 'function $AsIntf(o,i) {'#13#10
                +#9'if (o==null) return null;'#13#10
@@ -841,14 +851,13 @@ const
       (Name : 'TObject';
        Code : 'var TObject={'#13#10
                +#9'$ClassName:"TObject",'#13#10
-               +#9'ClassName:function(Self){return Self.$ClassName},'#13#10
-               +#9'ClassType:function(Self){return Self},'#13#10
                +#9'$Init:function () {},'#13#10
                +#9'Create:function (Self) { return Self; },'#13#10
                +#9'Destroy:function (Self) { for (prop in Self) { if (Self.hasOwnProperty(prop)) { delete Self.prop; } } },'#13#10
                +#9'Destroy$v:function(Self) { return Self.ClassType.Destroy(Self) },'#13#10
                +#9'Free:function (Self) { if (Self!=null) Self.ClassType.Destroy(Self) }'#13#10
-               +'}';
+               +'}'#13#10
+               +'TObject.ClassType=TObject;';
        Dependency : '$New'),
       (Name : 'Exception';
        Code : 'var Exception={'#13#10
@@ -1013,7 +1022,7 @@ begin
 
    RegisterCodeGen(TOrdExpr,              TJSOrdExpr.Create);
 
-   RegisterCodeGen(TConvClassExpr,        TJSConvClassExpr.Create);
+   RegisterCodeGen(TClassAsClassExpr,     TJSClassAsClassExpr.Create);
    RegisterCodeGen(TObjAsClassExpr,       TJSObjAsClassExpr.Create);
    RegisterCodeGen(TIsOpExpr,             TJSIsOpExpr.Create);
 
@@ -1988,7 +1997,7 @@ begin
    end else if typ is TNilSymbol then begin
       WriteString('null')
    end else if typ is TClassOfSymbol then begin
-      WriteSymbolName(typ.Typ)
+      WriteSymbolName(TClassOfSymbol(typ).TypClassSymbol);
    end else if typ is TStaticArraySymbol then begin
       sas:=TStaticArraySymbol(typ);
       WriteString('[');
@@ -3141,12 +3150,51 @@ end;
 // CodeGen
 //
 procedure TJSClassMethodStaticExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+
+   procedure CompileShortCutToClassType(e : TClassMethodStaticExpr);
+   begin
+      if e.BaseExpr.Typ is TClassSymbol then begin
+
+         if cgoNoCheckInstantiated in codeGen.Options then begin
+            codeGen.Compile(e.BaseExpr);
+         end else begin
+            codeGen.Dependencies.Add('$Check');
+            codeGen.WriteString('$Check(');
+            codeGen.Compile(e.BaseExpr);
+            codeGen.WriteString(',');
+            WriteLocationString(codeGen, expr);
+            codeGen.WriteString(')');
+         end;
+
+         codeGen.WriteString('.ClassType');
+
+      end else begin
+
+         codeGen.Compile(e.BaseExpr);
+
+      end;
+   end;
+
 var
    e : TClassMethodStaticExpr;
 begin
    codeGen.Dependencies.Add('TObject');
 
    e:=TClassMethodStaticExpr(expr);
+
+   if TMethodSymbol(e.FuncSym).StructSymbol.Name='TObject' then begin
+      // shortcut codegen for some basic TObject methods
+      if e.FuncSym.Name='ClassType' then begin
+         CompileShortCutToClassType(e);
+         Exit;
+      end;
+      if e.FuncSym.Name='ClassName' then begin
+         CompileShortCutToClassType(e);
+         codeGen.WriteString('.$ClassName');
+         Exit;
+      end;
+   end;
+
    codeGen.WriteSymbolName((e.FuncSym as TMethodSymbol).StructSymbol);
    codeGen.WriteString('.');
    inherited;
@@ -3706,22 +3754,22 @@ begin
 end;
 
 // ------------------
-// ------------------ TJSConvClassExpr ------------------
+// ------------------ TJSClassAsClassExpr ------------------
 // ------------------
 
 // CodeGen
 //
-procedure TJSConvClassExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSClassAsClassExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
-   e : TConvClassExpr;
+   e : TClassAsClassExpr;
 begin
-   codeGen.Dependencies.Add('$Cast');
+   codeGen.Dependencies.Add('$AsClass');
 
-   e:=TConvClassExpr(expr);
-   codeGen.WriteString('$Cast(');
+   e:=TClassAsClassExpr(expr);
+   codeGen.WriteString('$AsClass(');
    codeGen.Compile(e.Expr);
    codeGen.WriteString(',');
-   codeGen.WriteSymbolName(e.Typ.UnAliasedType);
+   codeGen.WriteSymbolName(TClassOfSymbol(e.Typ).TypClassSymbol.UnAliasedType);
    codeGen.WriteString(')');
 end;
 
