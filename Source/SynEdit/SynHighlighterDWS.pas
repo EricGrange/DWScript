@@ -173,14 +173,14 @@ uses
 
 const
   // if the language is case-insensitive keywords *must* be in lowercase
-  KeyWords: array[0..105] of UnicodeString = (
+  KeyWords: array[0..106] of UnicodeString = (
     'absolute', 'abstract', 'and', 'array', 'as', 'asm', 'assembler',
     'automated', 'begin', 'case', 'cdecl', 'class', 'const', 'constructor',
     'contains', 'deprecated', 'destructor',
     'div', 'do', 'downto', 'dynamic', 'else', 'end', 'except',
     'export', 'exports', 'external', 'far', 'file', 'final', 'finalization',
     'finally', 'for', 'forward', 'function', 'goto', 'helper', 'if',
-    'implementation', 'implements', 'implies', 'in', 'inherited',
+    'implementation', 'implements', 'implies', 'in', 'index', 'inherited',
     'initialization', 'inline', 'interface', 'is', 'label', 'lazy', 'library',
     'message', 'method', 'mod', 'name', 'new', 'nil', 'nodefault', 'not', 'object', 'of',
     'on', 'operator', 'or', 'out', 'overload', 'override', 'package', 'packed',
@@ -307,31 +307,52 @@ begin
   fCaseSensitive := False;
 
   fAsmAttri := TSynHighlighterAttributes.Create(SYNS_AttrAssembler, SYNS_FriendlyAttrAssembler);
+  fAsmAttri.Foreground:=RGB(128, 0, 0);
   AddAttribute(fAsmAttri);
+
   fCommentAttri := TSynHighlighterAttributes.Create(SYNS_AttrComment, SYNS_FriendlyAttrComment);
+  fCommentAttri.Foreground:=RGB(96, 96, 96);
   fCommentAttri.Style:= [fsItalic];
   AddAttribute(fCommentAttri);
+
   fDirecAttri := TSynHighlighterAttributes.Create(SYNS_AttrPreprocessor, SYNS_FriendlyAttrPreprocessor);
+  fDirecAttri.Foreground := RGB(96, 96, 96);
+  fDirecAttri.Background := RGB(238, 238, 238);
   fDirecAttri.Style:= [fsItalic];
   AddAttribute(fDirecAttri);
+
   fIdentifierAttri := TSynHighlighterAttributes.Create(SYNS_AttrIdentifier, SYNS_FriendlyAttrIdentifier);
   AddAttribute(fIdentifierAttri);
+
   fKeyAttri := TSynHighlighterAttributes.Create(SYNS_AttrReservedWord, SYNS_FriendlyAttrReservedWord);
-  fKeyAttri.Style:= [fsBold];
+  fKeyAttri.Style := [fsBold];
   AddAttribute(fKeyAttri);
+
   fNumberAttri := TSynHighlighterAttributes.Create(SYNS_AttrNumber, SYNS_FriendlyAttrNumber);
+  fNumberAttri.Foreground := clBlue;
   AddAttribute(fNumberAttri);
+
   fFloatAttri := TSynHighlighterAttributes.Create(SYNS_AttrFloat, SYNS_FriendlyAttrFloat);
+  fFloatAttri.Foreground := clBlue;
   AddAttribute(fFloatAttri);
+
   fHexAttri := TSynHighlighterAttributes.Create(SYNS_AttrHexadecimal, SYNS_FriendlyAttrHexadecimal);
+  fHexAttri.Foreground := clBlue;
   AddAttribute(fHexAttri);
+
   fSpaceAttri := TSynHighlighterAttributes.Create(SYNS_AttrSpace, SYNS_FriendlyAttrSpace);
   AddAttribute(fSpaceAttri);
+
   fStringAttri := TSynHighlighterAttributes.Create(SYNS_AttrString, SYNS_FriendlyAttrString);
+  fStringAttri.Foreground := clGreen;
   AddAttribute(fStringAttri);
+
   fCharAttri := TSynHighlighterAttributes.Create(SYNS_AttrCharacter, SYNS_FriendlyAttrCharacter);
+  fCharAttri.Foreground := clGreen;
   AddAttribute(fCharAttri);
+
   fSymbolAttri := TSynHighlighterAttributes.Create(SYNS_AttrSymbol, SYNS_FriendlyAttrSymbol);
+  fSymbolAttri.Foreground := clNavy;
   AddAttribute(fSymbolAttri);
   SetAttributesOnChange(DefHighlightChange);
 
