@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<ProjectConfig>
+	<EditorPages>
+		<EditorPage name="ExampleScript">
+			<FileName>ExampleScript.dws</FileName>
+		</EditorPage>
+		<EditorPage name="ExampleUnit">
+			<FileName>ExampleUnit.pas</FileName>
+		</EditorPage>
+		<EditorPage name="ExampleIncludeFile">
+			<FileName>ExampleIncludeFile.inc</FileName>
+		</EditorPage>
+		<ActivePageIndex>0</ActivePageIndex>
+	</EditorPages>
+	<Breakpoints>
+		<Breakpoint>
+			<SourceName>*MainModule*</SourceName>
+			<LineNum>33</LineNum>
+			<Enabled>true</Enabled>
+		</Breakpoint>
+	</Breakpoints>
+	<Watches>
+		<Watch>
+			<Expression>I*3</Expression>
+		</Watch>
+	</Watches>
+</ProjectConfig>

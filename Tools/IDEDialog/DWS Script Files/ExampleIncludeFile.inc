@@ -1,0 +1,2 @@
+const
+  ExampleValue = 56;

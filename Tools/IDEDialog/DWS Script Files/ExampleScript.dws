@@ -1,0 +1,54 @@
+uses
+  ExampleUnit;
+
+{$I 'ExampleIncludeFile.inc'}
+
+procedure DemonstrationOf_Raise;
+const
+  Value = 5;
+begin
+  // Change the constant above to see the use of raising
+  // an exception error which halts execution ..
+  If Value <> 5 then
+    Raise Exception.Create( 'The value is incorrect' );
+end;
+    
+procedure DemonstrationOf_Assert;
+const
+  Value = 5;
+begin
+  // Change the constant above to see the use of Assert
+  // in verifying values are as demanded ..
+  Assert( Value = 5 );
+end;
+
+
+procedure DemonstrationOf_ExampleUnit;  
+var
+  I : integer;
+begin
+  // This function is in the used unit 'ExampleUnit' declared
+  // above in 'uses'.
+  I := ExampleUnit.ExampleUnitFunc;
+  If I <> 101 then
+    Raise Exception.Create( 'The value is incorrect' );
+end;
+
+
+procedure DemonstrationOf_ExampleIncludeFile;
+begin
+  // This constant (56) is declared in the include file 
+  // 'ExampleIncludeFile' declared above
+  Assert( ExampleValue = 56 );
+end;
+
+
+
+
+begin
+  DemonstrationOf_Raise;
+  DemonstrationOf_Assert;
+  DemonstrationOf_ExampleUnit;
+  DemonstrationOf_ExampleIncludeFile;
+  //ShowMessage( 'The demonstration completed successfully' );
+end;
