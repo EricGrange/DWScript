@@ -3761,13 +3761,17 @@ begin
       end;
       FArgs.ExprBase[x]:=arg;
 
-      if argTyp=nil then
+      if argTyp=nil then begin
          prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType,
-                                              [x, paramSymbol.Typ.Caption])
-      else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
+                                              [x, paramSymbol.Typ.Caption]);
+         continue;
+      end;
+      if not paramSymbol.Typ.IsCompatible(arg.Typ) then begin
          prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long,
-                                              [x, paramSymbol.Typ.Caption, argTyp.Caption])
-      else if paramSymbol.InheritsFrom(TVarParamSymbol) then begin
+                                              [x, paramSymbol.Typ.Caption, argTyp.Caption]);
+         continue;
+      end;
+      if paramSymbol.InheritsFrom(TVarParamSymbol) then begin
          if not paramSymbol.Typ.IsOfType(arg.Typ) then
             prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long,
                                                  [x, paramSymbol.Typ.Caption, argTyp.Caption]);
@@ -4885,7 +4889,7 @@ end;
 function TUnaryOpIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    if IsConstant then begin
-      Result:=TConstIntExpr.CreateUnified(Prog, nil, EvalAsInteger(exec));
+      Result:=TConstIntExpr.CreateUnified(Prog, Typ, EvalAsInteger(exec));
       Free;
    end else Result:=Self;
 end;

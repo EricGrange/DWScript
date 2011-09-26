@@ -115,8 +115,8 @@ type
 
       published
          property Config: TdwsConfiguration read FConfig write SetConfig stored True;
-         property OnNeedUnit : TdwsOnNeedUnitEvent read GetOnNeedUnit write SetOnNeedUnit;
-         property OnInclude: TIncludeEvent read GetOnInclude write SetOnInclude;
+         property OnNeedUnit : TdwsOnNeedUnitEvent read GetOnNeedUnit write SetOnNeedUnit stored False;
+         property OnInclude: TIncludeEvent read GetOnInclude write SetOnInclude stored False;
          property Version: string read GetVersion write SetVersion stored False;
    end;
 

@@ -17,3 +17,5 @@ o:=TObject(e);
 m:=TMyObject(m);
 m:=TMyObject(o);
 m:=TMyObject(e);  // !!
+
+m:=TMyObject(m;

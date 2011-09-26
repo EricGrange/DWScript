@@ -1,2 +1,2 @@
-Syntax Error: Class "TForwardClass" not fully implemented. [line: 8, column: 23]
+Syntax Error: Class "TForwardClass" isn't defined completely [line: 8, column: 23]
 Syntax Error: Class "TForwardClass" isn't defined completely [line: 2, column: 25]

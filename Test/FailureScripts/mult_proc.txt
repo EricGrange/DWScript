@@ -1,0 +1,1 @@
+Syntax Error: Incompatible operands [line: 5, column: 13]

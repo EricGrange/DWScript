@@ -1,0 +1,2 @@
+Syntax Error: Class "TClassA" isn't defined completely [line: 3, column: 9]
+Syntax Error: Class method or constructor expected [line: 3, column: 17]

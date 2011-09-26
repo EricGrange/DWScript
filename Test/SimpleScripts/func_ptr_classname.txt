@@ -1,0 +1,6 @@
+TObject
+TClassA
+TClassB
+TObject
+TClassA
+TClassB

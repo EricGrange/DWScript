@@ -4,7 +4,7 @@ type TWeekdays = (Monday, Tuesday, Wednesday,
 
 var weekDay: TWeekdays;
 
-weekDay := Wednesday;
+weekDay := TWeekdays.Wednesday;
 
 case weekDay of
   Monday: PrintLn('Monday');
@@ -13,7 +13,7 @@ case weekDay of
   Thursday: PrintLn('Thursday');
   Friday: PrintLn('Friday');
   Saturday: PrintLn('Saturday');
-  Sunday: PrintLn('Sunday');
+  TWeekdays.Sunday: PrintLn('Sunday');
 end;
 
 PrintLn(Integer(Saturday));

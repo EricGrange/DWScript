@@ -1,0 +1,4 @@
+Syntax Error: Cannot cast this type to "Integer" [line: 7, column: 12]
+Syntax Error: Cannot cast this type to "Integer" [line: 9, column: 12]
+Syntax Error: Unknown name "TMyEnum.meBug" [line: 11, column: 12]
+Syntax Error: Name expected [line: 13, column: 12]
