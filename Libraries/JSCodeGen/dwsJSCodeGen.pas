@@ -457,7 +457,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..132] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..133] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -766,6 +766,17 @@ const
       (Name : 'Random';
        Code : 'function Random() { var tmp=Math.floor($dwsRand*0x08088405+1)%4294967296; $dwsRand=tmp; return tmp*Math.pow(2, -32) }';
        Dependency : '$dwsRand'),
+      (Name : 'RandG';
+       Code : 'function RandG(m, s) {'#13#10
+              +#9'var u, r, n;'#13#10
+              +#9'do {'#13#10
+                  +#9#9'u=2*Random()-1;'#13#10
+                  +#9#9'r=2*Random()-1;'#13#10
+                  +#9#9'n=u*u+r*r;'#13#10
+              +#9'} while (n<1);'#13#10
+              +#9'return m+Math.sqrt(-2*Math.log(n)/n)*u*s;'#13#10
+              +'}';
+       Dependency : 'Random'),
       (Name : 'RandomInt';
        Code : 'function RandomInt(i) { return Math.floor(Random()*i) }';
        Dependency : 'Random()'),
@@ -852,13 +863,14 @@ const
       (Name : 'TObject';
        Code : 'var TObject={'#13#10
                +#9'$ClassName:"TObject",'#13#10
+               +#9'ClassName:function (Self) { return Self.$ClassName },'#13#10
+               +#9'ClassType:function (Self) { return Self },'#13#10
                +#9'$Init:function () {},'#13#10
                +#9'Create:function (Self) { return Self; },'#13#10
                +#9'Destroy:function (Self) { for (prop in Self) { if (Self.hasOwnProperty(prop)) { delete Self.prop; } } },'#13#10
                +#9'Destroy$v:function(Self) { return Self.ClassType.Destroy(Self) },'#13#10
                +#9'Free:function (Self) { if (Self!=null) Self.ClassType.Destroy(Self) }'#13#10
-               +'}'#13#10
-               +'TObject.ClassType=TObject;';
+               +'}';
        Dependency : '$New'),
       (Name : 'Exception';
        Code : 'var Exception={'#13#10
@@ -3151,50 +3163,12 @@ end;
 // CodeGen
 //
 procedure TJSClassMethodStaticExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
-
-   procedure CompileShortCutToClassType(e : TClassMethodStaticExpr);
-   begin
-      if e.BaseExpr.Typ is TClassSymbol then begin
-
-         if cgoNoCheckInstantiated in codeGen.Options then begin
-            codeGen.Compile(e.BaseExpr);
-         end else begin
-            codeGen.Dependencies.Add('$Check');
-            codeGen.WriteString('$Check(');
-            codeGen.Compile(e.BaseExpr);
-            codeGen.WriteString(',');
-            WriteLocationString(codeGen, expr);
-            codeGen.WriteString(')');
-         end;
-
-         codeGen.WriteString('.ClassType');
-
-      end else begin
-
-         codeGen.Compile(e.BaseExpr);
-
-      end;
-   end;
-
 var
    e : TClassMethodStaticExpr;
 begin
    codeGen.Dependencies.Add('TObject');
 
    e:=TClassMethodStaticExpr(expr);
-
-   if TMethodSymbol(e.FuncSym).StructSymbol.Name='TObject' then begin
-      // shortcut codegen for some basic TObject methods
-      if e.FuncSym.Name='ClassType' then begin
-         CompileShortCutToClassType(e);
-         Exit;
-      end;
-      if e.FuncSym.Name='ClassName' then begin
-         CompileShortCutToClassType(e);
-         codeGen.WriteString('.$ClassName');
-         Exit;
-      end;
-   end;
 
    codeGen.WriteSymbolName((e.FuncSym as TMethodSymbol).StructSymbol);
    codeGen.WriteString('.');
