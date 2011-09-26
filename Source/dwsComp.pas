@@ -46,6 +46,7 @@ type
       protected
          function CreateExtension : TdwsLanguageExtension; virtual; abstract;
          procedure SetScript(const val : TDelphiWebScript);
+
          procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
          property Extension : TdwsLanguageExtension read FExtension write FExtension;
@@ -54,6 +55,7 @@ type
          constructor Create(AOwner: TComponent); override;
          destructor Destroy; override;
 
+      published
          property Script : TDelphiWebScript read FScript write SetScript;
    end;
 

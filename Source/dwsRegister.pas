@@ -32,13 +32,13 @@ implementation
 uses
   Classes, Controls, dwsComp, dwsComConnector, dwsDebugger, dwsGlobalVarsFunctions,
   dwsVCLGUIFunctions, dwsHtmlFilter, dwsClasses, dwsClassesLibModule,
-  dwsFileSystem, dwsSymbolsLibModule;
+  dwsFileSystem, dwsSymbolsLibModule, dwsJSFilter, dwsJSLibModule, dwsRTTIConnector;
 
 procedure Register;
 begin
   RegisterClass(TdwsComConnector);
 
-  RegisterComponents('dws',
+  RegisterComponents('DWScript',
                      [
                      TDelphiWebScript,
                      TdwsComConnector,
@@ -47,10 +47,14 @@ begin
                      TdwsDebugger,
                      TdwsUnit,
                      TdwsHtmlFilter,
+                     TdwsJSFilter,
+                     TdwsJSLibModule,
+                     TdwsSymbolsLib,
                      TdwsGlobalVarsFunctions,
                      TdwsGUIFunctions,
                      TdwsRestrictedFileSystem,
-                     TdwsNoFileSystem
+                     TdwsNoFileSystem,
+                     TdwsClassesLib
                      ]);
 end;
 

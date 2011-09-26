@@ -8,6 +8,9 @@ object dwsClassesLib: TdwsClassesLib
     Classes = <
       item
         Name = 'TList'
+        IsSealed = False
+        IsAbstract = False
+        IsStatic = False
         Constructors = <
           item
             Name = 'Create'
@@ -150,6 +153,7 @@ object dwsClassesLib: TdwsClassesLib
             Operator = ttIN
             UsesAccess = 'Contains'
           end>
+        Constants = <>
         Properties = <
           item
             Name = 'Items'
@@ -167,6 +171,9 @@ object dwsClassesLib: TdwsClassesLib
       end
       item
         Name = 'TStrings'
+        IsSealed = False
+        IsAbstract = False
+        IsStatic = False
         Constructors = <
           item
             Name = 'Create'
@@ -548,6 +555,7 @@ object dwsClassesLib: TdwsClassesLib
             Operator = ttIN
             UsesAccess = 'Contains'
           end>
+        Constants = <>
         Properties = <
           item
             Name = 'Text'
@@ -624,6 +632,9 @@ object dwsClassesLib: TdwsClassesLib
       item
         Name = 'TStringList'
         Ancestor = 'TStrings'
+        IsSealed = False
+        IsAbstract = False
+        IsStatic = False
         Constructors = <>
         Fields = <>
         Methods = <
@@ -700,6 +711,7 @@ object dwsClassesLib: TdwsClassesLib
             Kind = mkProcedure
           end>
         Operators = <>
+        Constants = <>
         Properties = <
           item
             Name = 'Duplicates'
@@ -725,6 +737,9 @@ object dwsClassesLib: TdwsClassesLib
       end
       item
         Name = 'THashtable'
+        IsSealed = False
+        IsAbstract = False
+        IsStatic = False
         Constructors = <>
         Fields = <>
         Methods = <
@@ -746,11 +761,15 @@ object dwsClassesLib: TdwsClassesLib
             Kind = mkProcedure
           end>
         Operators = <>
+        Constants = <>
         Properties = <>
       end
       item
         Name = 'TIntegerHashtable'
         Ancestor = 'THashtable'
+        IsSealed = False
+        IsAbstract = False
+        IsStatic = False
         Constructors = <
           item
             Name = 'Create'
@@ -822,11 +841,15 @@ object dwsClassesLib: TdwsClassesLib
             Operator = ttIN
             UsesAccess = 'HasKey'
           end>
+        Constants = <>
         Properties = <>
       end
       item
         Name = 'TStringHashtable'
         Ancestor = 'THashtable'
+        IsSealed = False
+        IsAbstract = False
+        IsStatic = False
         Constructors = <
           item
             Name = 'Create'
@@ -898,10 +921,14 @@ object dwsClassesLib: TdwsClassesLib
             Operator = ttIN
             UsesAccess = 'HasKey'
           end>
+        Constants = <>
         Properties = <>
       end
       item
         Name = 'TStack'
+        IsSealed = False
+        IsAbstract = False
+        IsStatic = False
         Constructors = <
           item
             Name = 'Create'
@@ -945,10 +972,14 @@ object dwsClassesLib: TdwsClassesLib
             Kind = mkFunction
           end>
         Operators = <>
+        Constants = <>
         Properties = <>
       end
       item
         Name = 'TQueue'
+        IsSealed = False
+        IsAbstract = False
+        IsStatic = False
         Constructors = <
           item
             Name = 'Create'
@@ -992,10 +1023,14 @@ object dwsClassesLib: TdwsClassesLib
             Kind = mkFunction
           end>
         Operators = <>
+        Constants = <>
         Properties = <>
       end
       item
         Name = 'TStringBuilder'
+        IsSealed = False
+        IsAbstract = False
+        IsStatic = False
         Constructors = <
           item
             Name = 'Create'
@@ -1037,6 +1072,7 @@ object dwsClassesLib: TdwsClassesLib
             Operator = ttPLUS_ASSIGN
             UsesAccess = 'Append'
           end>
+        Constants = <>
         Properties = <>
         OnCleanUp = dwsUnitClassesTStringBuilderCleanUp
       end>

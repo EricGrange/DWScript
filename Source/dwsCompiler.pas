@@ -124,8 +124,9 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     function Process(const Text: string; Msgs: TdwsMessageList): string; virtual;
-    property SubFilter: TdwsFilter read FSubFilter write SetSubFilter;
     property Dependencies: TStrings read GetDependencies;
+  published
+    property SubFilter: TdwsFilter read FSubFilter write SetSubFilter;
   end;
 
    TAddArgProcedure = procedure (argExpr : TTypedExpr) of object;
@@ -7960,13 +7961,13 @@ procedure TdwsConfiguration.Notification(AComponent: TComponent; Operation: TOpe
 begin
    if (Operation=opRemove) then begin
       if AComponent=Filter then
-         Filter:=nil
+         FFilter:=nil
       else if AComponent=ResultType then
-         ResultType:=nil
+         FResultType:=nil
       else if AComponent=CompileFileSystem then
-         CompileFileSystem:=nil
+         FCompileFileSystem:=nil
       else if AComponent=RuntimeFileSystem then
-         RuntimeFileSystem:=nil;
+         FRuntimeFileSystem:=nil;
    end;
 end;
 

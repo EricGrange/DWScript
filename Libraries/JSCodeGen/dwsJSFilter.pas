@@ -20,7 +20,7 @@ unit dwsJSFilter;
 
 interface
 
-uses Classes, dwsComp, dwsCompiler, dwsErrors, dwsJSCodeGen, dwsUtils,
+uses Classes, dwsComp, dwsCompiler, dwsErrors, dwsJSCodeGen, dwsCodeGen, dwsUtils,
    dwsExprs, StrUtils, SysUtils;
 
 type
@@ -36,6 +36,8 @@ type
 
       protected
          procedure SetCompiler(const val : TDelphiWebScript);
+         function GetCodeGenOptions : TdwsCodeGenOptions;
+         procedure SetCodeGenOptions(const val : TdwsCodeGenOptions);
 
          procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
@@ -51,6 +53,7 @@ type
 
       published
          property Compiler : TDelphiWebScript read FCompiler write SetCompiler;
+         property CodeGenOptions : TdwsCodeGenOptions read GetCodeGenOptions write SetCodeGenOptions default [];
          property PatternOpen : String read FPatternOpen write FPatternOpen;
          property PatternClose : String read FPatternClose write FPatternClose;
    end;
@@ -84,8 +87,8 @@ end;
 //
 destructor TdwsJSFilter.Destroy;
 begin
-   inherited;
    FCodeGen.Free;
+   inherited;
 end;
 
 // CheckPatterns
@@ -196,10 +199,25 @@ begin
       FCompiler.FreeNotification(Self);
 end;
 
+// GetCodeGenOptions
+//
+function TdwsJSFilter.GetCodeGenOptions : TdwsCodeGenOptions;
+begin
+   Result:=FCodeGen.Options;
+end;
+
+// SetCodeGenOptions
+//
+procedure TdwsJSFilter.SetCodeGenOptions(const val : TdwsCodeGenOptions);
+begin
+   FCodeGen.Options:=val;
+end;
+
 // Notification
 //
 procedure TdwsJSFilter.Notification(AComponent: TComponent; Operation: TOperation);
 begin
+  inherited;
    if (Operation=opRemove) and (AComponent=FCompiler) then
       FCompiler:=nil;
 end;

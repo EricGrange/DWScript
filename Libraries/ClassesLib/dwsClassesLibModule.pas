@@ -185,16 +185,9 @@ type
     property Script: TDelphiWebScript read FScript write SetScript;
   end;
 
-procedure Register;
-
 implementation
 
 {$R *.DFM}
-
-procedure Register;
-begin
-  RegisterComponents('dws', [TdwsClassesLib]);
-end;
 
 { TdwsLib }
 
