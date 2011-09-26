@@ -35,7 +35,6 @@ uses
   dwsUtils, dwsSymbols,
   Dialogs, StdCtrls,
   ExtCtrls,
-  SHFolder,
   SynEditTypes,
   SynEditHighlighter,
   SynHighlighterPas,
@@ -427,7 +426,7 @@ procedure DwsIDE_ShowModal( AScript : TDelphiWebScript );
 var
   Frm : TDwsIdeForm;
 begin
-  Frm := TDwsIdeForm.Create( nil );
+  Frm := TDwsIdeForm.Create( Application );
   try
     Frm.Script := AScript;
     Frm.ShowModal;
@@ -1184,15 +1183,17 @@ end;
 
 procedure TDwsIdeForm.dwsDebugger1StateChanged(Sender: TObject);
 
+  procedure UpdateDebugWindows;
+  begin
+    DwsIdeLocalVariablesFrame.Redraw;
+    DwsIdeCallStackFrame.Redraw;
+    DwsIdeWatchesFrame.Redraw;
+  end;
 
-
-//var
-//  S : string;
 begin
   Case dwsDebugger1.State of
    dsIdle :
      begin
-     //S := 'dsIdle';
      end;
    dsDebugRun :
      begin
@@ -1201,29 +1202,22 @@ begin
      end;
    dsDebugSuspending :
      begin
-     //S := 'dsDebugSuspending';
      end;
    dsDebugSuspended :
      begin
      AddStatusMessage( 'Paused' );
      GotoScriptPos( dwsDebugger1.CurrentScriptPos );
-     DwsIdeLocalVariablesFrame.Redraw;
-     DwsIdeCallStackFrame.Redraw;
-     DwsIdeWatchesFrame.Redraw;
+     UpdateDebugWindows;
      end;
    dsDebugResuming :
      begin
-     //S := 'dsDebugResuming';
      end;
    dsDebugDone :
      begin
      ClearCurrentLine;
-     //S := 'dsDebugDone';
+     UpdateDebugWindows;
      end
-  else
-   //S := '????'
   End;
-  //ShowMessage( S );
 end;
 
 
@@ -1654,6 +1648,8 @@ var
 begin
   If not FileExists( AProjectFileName) then
     raise EDwsIde.CreateFmt( 'Project file does not exist (%s)', [AProjectFileName]);
+
+  EditorCloseAllPages;
 
   FProjectFileName := AProjectFileName;
 
