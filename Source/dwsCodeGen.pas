@@ -1282,6 +1282,7 @@ var
    i : Integer;
    iter : TdwsCodeGenSymbolMap;
    skip : Boolean;
+   rootMap : TdwsCodeGenSymbolMap;
 begin
    i:=FNames.IndexOf(name);
    if i>=0 then
@@ -1291,8 +1292,17 @@ begin
       case scope of
          cgssGlobal : if Parent<>nil then
             Result:=Parent.NameToSymbol(name, scope);
-         cgssClass : if (Parent<>nil) and (Parent.Symbol is TClassSymbol) then
-            Result:=Parent.NameToSymbol(name, scope);
+         cgssClass : begin
+            if (Parent<>nil) and (Parent.Symbol is TClassSymbol) then
+               Result:=Parent.NameToSymbol(name, scope)
+            else if Parent<>nil then begin
+               // check for root reserved names
+               rootMap:=Parent;
+               while rootMap.Parent<>nil do
+                  rootMap:=rootMap.Parent;
+               Result:=rootMap.NameToSymbol(name, cgssLocal);
+            end;
+         end;
       end;
       if (Result=nil) and (scope=cgssGlobal) then begin
          for i:=0 to Maps.Count-1 do begin

@@ -229,12 +229,19 @@ begin
                sym:=table.FindSymbol(name, cvMagic);
                if sym=nil then
                   compiler.Msgs.AddCompilerStopFmt(hotPos, CPE_UnknownName, [name]);
+
+               blockExpr.RegisterSymbol(sym, Length(jsCode)+1);
+
+               if sym is TDataSymbol then
+                  sym:=sym.Typ;
                if sym is TStructuredTypeSymbol then
                   table:=TStructuredTypeSymbol(sym).Members;
 
-            until not tok.TestDelete(ttDOT);
+               if not tok.TestDelete(ttDOT) then Break;
 
-            blockExpr.RegisterSymbol(sym, Length(jsCode)+1);
+               jsCode:=jsCode+'.';
+
+            until False;
 
          end;
 
