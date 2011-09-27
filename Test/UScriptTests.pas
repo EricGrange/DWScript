@@ -59,7 +59,7 @@ begin
    FTests:=TStringList.Create;
    FFailures:=TStringList.Create;
 
-   CollectFiles(ExtractFilePath(ParamStr(0))+'SimpleScripts'+PathDelim, '*.pas', FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'SimpleScripts'+PathDelim, 'array_index_of_func_ptr*.pas', FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'InterfacesPass'+PathDelim, '*.pas', FTests);
 
    CollectFiles(ExtractFilePath(ParamStr(0))+'FailureScripts'+PathDelim, '*.pas', FFailures);

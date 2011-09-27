@@ -859,6 +859,7 @@ type
 
    IFuncPointer = interface
       function GetFuncExpr : TFuncExprBase;
+      function SameFunc(const v : Variant) : Boolean;
    end;
 
    // Encapsulates a function or method pointer
@@ -871,6 +872,7 @@ type
          destructor Destroy; override;
 
          function GetFuncExpr : TFuncExprBase;
+         function SameFunc(const v : Variant) : Boolean;
    end;
 
    // returns an IFuncPointer to the FuncExpr
@@ -1533,6 +1535,7 @@ type
          procedure RawCopy(const src : TData; rawIndex, rawCount : Integer);
          function IndexOf(const item : TData; addr, fromIndex : Integer) : Integer; overload;
          function IndexOf(const item : Variant; fromIndex : Integer) : Integer; overload;
+         function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer; overload;
 
          property Typ : TDynamicArraySymbol read FTyp;
          property ElementSize : Integer read FElementSize;
@@ -4377,6 +4380,25 @@ begin
    Result:=FFuncExpr;
 end;
 
+// SameFunc
+//
+function TFuncPointer.SameFunc(const v : Variant) : Boolean;
+var
+   ptr : IFuncPointer;
+   expr : TFuncExprBase;
+   c1, c2 : TConstExpr;
+begin
+   ptr:=IFuncPointer(IUnknown(v));
+   expr:=ptr.GetFuncExpr;
+   Result:=    (expr.ClassType=FFuncExpr.ClassType)
+           and (expr.FuncSym=FFuncExpr.FuncSym);
+   if Result and (FFuncExpr is TMethodExpr) then begin
+      c1:=TMethodExpr(FFuncExpr).BaseExpr as TConstExpr;
+      c2:=TMethodExpr(expr).BaseExpr as TConstExpr;
+      Result:=c1.SameValueAs(c2);
+   end;
+end;
+
 // ------------------
 // ------------------ TFuncRefExpr ------------------
 // ------------------
@@ -6017,6 +6039,20 @@ begin
    Assert(ElementSize=1);
    for i:=fromIndex to Length-1 do
       if DWSSameVariant(FData[i], item) then
+         Exit(i);
+   Result:=-1;
+end;
+
+// IndexOfFuncPtr
+//
+function TScriptDynamicArray.IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer;
+var
+   i : Integer;
+   itemFunc : IFuncPointer;
+begin
+   itemFunc:=IFuncPointer(IUnknown(item));
+   for i:=fromIndex to Length-1 do
+      if itemFunc.SameFunc(FData[i]) then
          Exit(i);
    Result:=-1;
 end;

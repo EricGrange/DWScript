@@ -182,6 +182,7 @@ type
      function Eval(exec : TdwsExecution) : Variant; override;
      function IsConstant : Boolean; override;
      function IsWritable : Boolean; override;
+     function SameValueAs(otherConst : TConstExpr) : Boolean;
 
      class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant) : TConstExpr; overload; static;
      class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData) : TConstExpr; overload; static;
@@ -2199,6 +2200,14 @@ end;
 function TConstExpr.IsWritable : Boolean;
 begin
    Result:=False;
+end;
+
+// SameValueAs
+//
+function TConstExpr.SameValueAs(otherConst : TConstExpr) : Boolean;
+begin
+   Result:=   (Length(FData)=Length(otherConst.FData))
+           and DWSSameData(FData, otherConst.FData, 0, 0, Length(FData));
 end;
 
 // CreateTyped
@@ -6832,6 +6841,8 @@ begin
       Result:=dyn.IndexOf(TDataExpr(FItemExpr).Data[exec],
                           TDataExpr(FItemExpr).Addr[exec],
                           fromIndex)
+   else if FItemExpr.Typ is TFuncSymbol then
+      Result:=dyn.IndexOfFuncPtr(FItemExpr.Eval(exec), fromIndex)
    else Result:=dyn.IndexOf(FItemExpr.Eval(exec), fromIndex);
 end;
 

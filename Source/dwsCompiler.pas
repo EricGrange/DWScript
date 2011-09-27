@@ -4358,6 +4358,7 @@ var
    arraySym : TArraySymbol;
    argList : TTypedExprList;
    argPosArray : TScriptPosArray;
+   argSymTable : TUnSortedSymbolTable;
 
    procedure CheckRestricted;
    begin
@@ -4379,12 +4380,18 @@ var
 
 begin
    Result:=nil;
+   argSymTable:=nil;
    argList:=TTypedExprList.Create;
    try
       arraySym:=baseExpr.Typ as TArraySymbol;
 
       if SameText(name, 'add') or SameText(name, 'push') then
-         argList.DefaultExpected:=TParamSymbol.Create('', arraySym.Typ);
+         argList.DefaultExpected:=TParamSymbol.Create('', arraySym.Typ)
+      else if SameText(name, 'indexof') then begin
+         argSymTable:=TUnSortedSymbolTable.Create;
+         argSymTable.AddSymbol(TParamSymbol.Create('', arraySym.Typ));
+         argList.Table:=argSymTable;
+      end;
 
       ReadArguments(argList.AddExpr, ttBLEFT, ttBRIGHT, argPosArray, argList.ExpectedArg);
 
@@ -4481,6 +4488,7 @@ begin
          raise;
       end;
    finally
+      argSymTable.Free;
       argList.Free;
    end;
 end;
