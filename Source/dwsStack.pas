@@ -129,8 +129,10 @@ type
    EScriptStackException = class(Exception);
    EScriptStackOverflow = class(EScriptStackException);
 
-procedure DWSCopyData(const SourceData: TData; SourceAddr: Integer;
-                   DestData: TData; DestAddr: Integer; Size: Integer);
+procedure DWSCopyData(const sourceData : TData; sourceAddr : Integer;
+                      destData : TData; destAddr : Integer; size : Integer);
+function DWSSameData(const data1, data2 : TData; offset1, offset2, size : Integer) : Boolean;
+function DWSSameVariant(const v1, v2 : Variant) : Boolean;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -142,16 +144,56 @@ implementation
 
 // DWSCopyData
 //
-procedure DWSCopyData(const SourceData: TData; SourceAddr: Integer;
-                      DestData: TData; DestAddr: Integer; Size: Integer);
+procedure DWSCopyData(const sourceData: TData; sourceAddr: Integer;
+                      destData: TData; destAddr: Integer; size: Integer);
 begin
-   while Size > 0 do begin
-      VarCopy(DestData[DestAddr], SourceData[SourceAddr]);
-      Inc(SourceAddr);
-      Inc(DestAddr);
-      Dec(Size);
+   while size > 0 do begin
+      VarCopy(destData[destAddr], sourceData[sourceAddr]);
+      Inc(sourceAddr);
+      Inc(destAddr);
+      Dec(size);
    end;
 end;
+
+// DWSSameData
+//
+function DWSSameData(const data1, data2 : TData; offset1, offset2, size : Integer) : Boolean;
+var
+   i : Integer;
+begin
+   for i:=0 to size-1 do
+      if not DWSSameVariant(data1[offset1+i], data2[offset2+i]) then
+         Exit(False);
+   Result:=True;
+end;
+
+// DWSSameVariant
+//
+function DWSSameVariant(const v1, v2 : Variant) : Boolean;
+var
+   vt : Integer;
+begin
+   vt:=TVarData(v1).VType;
+   if vt<>TVarData(v2).VType then
+      Result:=False
+   else begin
+      case vt of
+         varInt64 :
+            Result:=TVarData(v1).VInt64=TVarData(v2).VInt64;
+         varBoolean :
+            Result:=TVarData(v1).VBoolean=TVarData(v2).VBoolean;
+         varDouble :
+            Result:=TVarData(v1).VDouble=TVarData(v2).VDouble;
+         varUString :
+            Result:=String(TVarData(v1).VUString)=String(TVarData(v2).VUString);
+         varUnknown :
+            Result:=TVarData(v1).VUnknown=TVarData(v2).VUnknown;
+      else
+         Result:=(v1=v2);
+      end;
+   end;
+end;
+
 
 // ------------------
 // ------------------ TStackMixIn ------------------

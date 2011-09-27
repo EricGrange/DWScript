@@ -17,3 +17,4 @@ objs.Add(1.5);
 objs.Add(False);
 objs.Add(ints);
 objs.Add(nil);
+objs.Add(PrintLn('bug'));

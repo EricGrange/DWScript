@@ -207,6 +207,7 @@ const
   CPE_BadNumberOfParameters = 'Expected %d parameters (instead of %d)';
   CPE_BadParameterName = 'Parameter %d - Name "%s" expected';
   CPE_BadParameterType = 'Parameter %d - Type "%s" expected (instead of "%s")';
+  CPE_IncompatibleParameterTypes = 'Incompatible parameter types - "%s" expected (instead of "%s")';
   CPE_VarParameterExpected = 'Parameter %d - Var-parameter expected';
   CPE_ConstParameterExpected = 'Parameter %d - Const-parameter expected';
   CPE_ValueParameterExpected = 'Parameter %d - Value-parameter expected';

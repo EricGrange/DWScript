@@ -651,6 +651,30 @@ type
          property CountExpr : TTypedExpr read FCountExpr;
    end;
 
+   // Find element in a dynamic array (shallow comparison)
+   TArrayIndexOfExpr = class(TArrayTypedExpr)
+      private
+         FBaseExpr : TTypedExpr;
+         FItemExpr : TTypedExpr;
+         FFromIndexExpr : TTypedExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
+                            aBase, aItem, aFromIndex : TTypedExpr);
+         destructor Destroy; override;
+
+         function  Eval(exec : TdwsExecution) : Variant; override;
+         function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
+
+         property BaseExpr : TTypedExpr read FBaseExpr;
+         property ItemExpr : TTypedExpr read FItemExpr;
+         property FromIndexExpr : TTypedExpr read FFromIndexExpr;
+   end;
+
    TAssignedExpr = class(TUnaryOpBoolExpr)
    end;
 
@@ -6756,6 +6780,78 @@ end;
 function TArrayCopyExpr.GetSubExprCount : Integer;
 begin
    Result:=3;
+end;
+
+// ------------------
+// ------------------ TArrayIndexOfExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TArrayIndexOfExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos;
+                                     aBase, aItem, aFromIndex : TTypedExpr);
+begin
+   inherited Create(prog, scriptPos);
+   FBaseExpr:=aBase;
+   FItemExpr:=aItem;
+   FFromIndexExpr:=aFromIndex;
+   Typ:=prog.TypInteger;
+end;
+
+// Destroy
+//
+destructor TArrayIndexOfExpr.Destroy;
+begin
+   inherited;
+   FBaseExpr.Free;
+   FItemExpr.Free;
+   FFromIndexExpr.Free;
+end;
+
+// Eval
+//
+function TArrayIndexOfExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result:=EvalAsInteger(exec);
+end;
+
+// EvalAsInteger
+//
+function TArrayIndexOfExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   base : IScriptObj;
+   dyn : TScriptDynamicArray;
+   fromIndex : Integer;
+begin
+   BaseExpr.EvalAsScriptObj(exec, base);
+   dyn:=TScriptDynamicArray(base.InternalObject);
+   if FFromIndexExpr<>nil then
+      fromIndex:=FFromIndexExpr.EvalAsInteger(exec)
+   else fromIndex:=0;
+   if dyn.ElementSize>1 then
+      Result:=dyn.IndexOf(TDataExpr(FItemExpr).Data[exec],
+                          TDataExpr(FItemExpr).Addr[exec],
+                          fromIndex)
+   else Result:=dyn.IndexOf(FItemExpr.Eval(exec), fromIndex);
+end;
+
+// GetSubExpr
+//
+function TArrayIndexOfExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FBaseExpr;
+      1 : Result:=FItemExpr;
+   else
+      Result:=FFromIndexExpr;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TArrayIndexOfExpr.GetSubExprCount : Integer;
+begin
+   Result:=3
 end;
 
 // ------------------

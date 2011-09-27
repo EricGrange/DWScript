@@ -4429,19 +4429,19 @@ begin
          end else if SameText(name, 'add') or SameText(name, 'push') then begin
             CheckRestricted;
             if CheckArguments(1, 1) then begin
-               if not arraySym.Typ.IsCompatible(argList[0].Typ) then
-                  FMsgs.AddCompilerErrorFmt(argPosArray[0], CPE_BadParameterType,
-                                            [0, arraySym.Typ.Caption, argList[0].Typ.Caption] );
+               if (argList[0].Typ=nil) or not arraySym.Typ.IsCompatible(argList[0].Typ) then
+                  IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+                                    arraySym.Typ, argList[0].Typ);
                Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, argList[0] as TDataExpr);
                argList.Clear;
             end else Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, nil);
          end else if SameText(name, 'delete') then begin
             CheckRestricted;
             if CheckArguments(1, 2) then begin
-               if not argList[0].Typ.IsOfType(FProg.TypInteger) then
+               if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
                   FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
                if argList.Count>1 then begin
-                  if not argList[1].Typ.IsOfType(FProg.TypInteger) then
+                  if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
                      FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
                   Result:=TArrayDeleteExpr.Create(FProg, namePos, baseExpr,
                                                   argList[0], argList[1]);
@@ -4449,10 +4449,25 @@ begin
                                                         argList[0], nil);
                argList.Clear;
             end else Result:=TArrayDeleteExpr.Create(FProg, namePos, baseExpr, nil, nil);
+         end else if SameText(name, 'indexof') then begin
+            CheckRestricted;
+            if CheckArguments(1, 2) then begin
+               if (argList[0].Typ=nil) or not arraySym.Typ.IsCompatible(argList[0].Typ) then
+                  IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+                                    arraySym.Typ, argList[0].Typ);
+               if argList.Count>1 then begin
+                  if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
+                     FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+                  Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr,
+                                                   argList[0] as TDataExpr, argList[1]);
+               end else Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr,
+                                                         argList[0] as TDataExpr, nil);
+               argList.Clear;
+            end else Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr, nil, nil);
          end else if SameText(name, 'setlength') then begin
             CheckRestricted;
             if CheckArguments(1, 1) then begin
-               if not argList[0].Typ.IsOfType(FProg.TypInteger) then
+               if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
                   FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
                Result:=TArraySetLengthExpr.Create(FProg, namePos, baseExpr, argList[0]);
                argList.Clear;
@@ -4460,9 +4475,9 @@ begin
          end else if SameText(name, 'swap') then begin
             CheckRestricted;
             if CheckArguments(2, 2) then begin
-               if not argList[0].Typ.IsOfType(FProg.TypInteger) then
+               if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
                   FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
-               if not argList[1].Typ.IsOfType(FProg.TypInteger) then
+               if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
                   FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
                Result:=TArraySwapExpr.Create(FProg, namePos, baseExpr,
                                              argList[0], argList[1]);
@@ -4472,10 +4487,10 @@ begin
             CheckRestricted;
             if CheckArguments(0, 2) then begin
                if argList.Count>0 then begin
-                  if not argList[0].Typ.IsOfType(FProg.TypInteger) then
+                  if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
                      FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
                   if argList.Count>1 then begin
-                     if not argList[1].Typ.IsOfType(FProg.TypInteger) then
+                     if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
                         FMsgs.AddCompilerError(argPosArray[1], CPE_IntegerExpressionExpected);
                      Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr,
                                                    argList[0], argList[1]);
@@ -4555,13 +4570,16 @@ begin
       FTok.KillToken;
 
       if FTok.TestDelete(ttALEFT) then begin
-         if sym.IsType then begin
+         if Assigned(sym) and sym.IsType then begin
             typSym:=TTypeSymbol(sym);
             if coSymbolDictionary in FOptions then
                FSymbolDictionary.AddTypeSymbol(typSym, hotPos);
             Result:=ReadNewArray(typSym, isWrite);
-            Exit;
-         end else FMsgs.AddCompilerError(hotPos, CPE_TypeExpected);
+         end else begin
+            FMsgs.AddCompilerError(hotPos, CPE_TypeExpected);
+            Result:=ReadNewArray(FProg.TypVariant, isWrite);
+         end;
+         Exit;
       end else if sym is TClassSymbol then begin
          classSym:=TClassSymbol(sym);
          if coSymbolDictionary in FOptions then
@@ -5851,6 +5869,7 @@ function TdwsCompiler.ReadExprIn(var left : TTypedExpr) : TTypedExpr;
 var
    hotPos : TScriptPos;
    setExpr : TTypedExpr;
+   elementType : TTypeSymbol;
    classOpSymbol : TClassOperatorSymbol;
    classOpExpr : TFuncExpr;
 begin
@@ -5865,26 +5884,42 @@ begin
       setExpr:=ReadExpr;
       try
 
-         if (setExpr.Typ=nil) or not (setExpr.Typ is TClassSymbol) then
-            FMsgs.AddCompilerStop(hotPos, CPE_ArrayBracketOrClassExpected);
          if not (setExpr is TDataExpr) then
             FMsgs.AddCompilerStop(hotPos, CPE_ObjectExpected);
 
-         classOpSymbol:=(setExpr.Typ as TClassSymbol).FindClassOperator(ttIN, left.Typ);
-         if classOpSymbol=nil then
-            FMsgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands);
-         classOpExpr:=GetMethodExpr(classOpSymbol.UsesSym, (setExpr as TDataExpr),
-                                    rkObjRef, hotPos, False);
-         try
-            setExpr:=nil;
-            classOpExpr.AddArg(left);
-            left:=nil;
-            classOpExpr.TypeCheckArgs(FProg);
-         except
-            classOpExpr.Free;
-            raise;
+         if setExpr.Typ is TDynamicArraySymbol then begin
+
+            elementType:=TDynamicArraySymbol(setExpr.Typ).Typ;
+            if (left.Typ=nil) or not left.Typ.IsOfType(elementType) then
+               IncompatibleTypes(hotPos, CPE_IncompatibleTypes,
+                                 left.Typ, elementType);
+
+            Result:=TArrayIndexOfExpr.Create(FProg, hotPos, setExpr, left, nil);
+            Result:=TRelGreaterEqualIntExpr.Create(FProg, Result,
+                                                   TConstExpr.CreateTyped(FProg, FProg.TypInteger, 0));
+
+         end else begin
+
+            if (setExpr.Typ=nil) or not (setExpr.Typ is TClassSymbol) then
+               FMsgs.AddCompilerStop(hotPos, CPE_ArrayBracketOrClassExpected);
+
+            classOpSymbol:=(setExpr.Typ as TClassSymbol).FindClassOperator(ttIN, left.Typ);
+            if classOpSymbol=nil then
+               FMsgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands);
+            classOpExpr:=GetMethodExpr(classOpSymbol.UsesSym, (setExpr as TDataExpr),
+                                       rkObjRef, hotPos, False);
+            try
+               setExpr:=nil;
+               classOpExpr.AddArg(left);
+               left:=nil;
+               classOpExpr.TypeCheckArgs(FProg);
+            except
+               classOpExpr.Free;
+               raise;
+            end;
+            Result:=classOpExpr;
+
          end;
-         Result:=classOpExpr;
 
       except
          setExpr.Free;

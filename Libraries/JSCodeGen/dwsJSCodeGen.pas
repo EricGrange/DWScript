@@ -222,6 +222,9 @@ type
    TJSArrayDeleteExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
+   TJSArrayIndexOfExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
    TJSArrayCopyExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -457,7 +460,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..133] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..134] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -602,6 +605,13 @@ const
                +#9'return s.charAt(i-1);'#13#10
                +'}';
        Dependency : 'Exception' ),
+      (Name : '$IndexOfRecord';
+       Code : 'function $IndexOfRecord(a,i,f) {'#13#10
+               +#9'var ij = JSON.stringify(i);'#13#10
+               +#9'for (var k=f,n=a.length;k<n;k++)'#13#10
+               +#9#9'if (JSON.stringify(a[k])==ij) return k;'#13#10
+               +#9'return -1'#13#10
+               +'}'),
       (Name : '$StrSet';
        Code : 'function $StrSet(s,i,v,z) {'#13#10
                +#9'if (i<1) throw Exception.Create$1($New(Exception),"Lower bound exceeded! Index "+i.toString()+z);'#13#10
@@ -1243,6 +1253,7 @@ begin
    RegisterCodeGen(TArraySetLengthExpr,      TJSArraySetLengthExpr.Create);
    RegisterCodeGen(TArrayAddExpr,            TJSArrayAddExpr.Create);
    RegisterCodeGen(TArrayDeleteExpr,         TJSArrayDeleteExpr.Create);
+   RegisterCodeGen(TArrayIndexOfExpr,        TJSArrayIndexOfExpr.Create);
    RegisterCodeGen(TArrayCopyExpr,           TJSArrayCopyExpr.Create);
    RegisterCodeGen(TArraySwapExpr,           TJSArraySwapExpr.Create);
    RegisterCodeGen(TArrayReverseExpr,        TdwsExprGenericCodeGen.Create([0, '.reverse();'], True));
@@ -4155,6 +4166,47 @@ begin
       codeGen.Compile(e.CountExpr)
    else codeGen.WriteString('1');
    codeGen.WriteStringLn(');');
+end;
+
+// ------------------
+// ------------------ TJSArrayIndexOfExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSArrayIndexOfExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TArrayIndexOfExpr;
+begin
+   e:=TArrayIndexOfExpr(expr);
+
+   if    (e.ItemExpr.Typ is TRecordSymbol)
+      or (e.ItemExpr.Typ is TStaticArraySymbol) then begin
+
+      codeGen.Dependencies.Add('$IndexOfRecord');
+
+      codeGen.WriteString('$IndexOfRecord(');
+      codeGen.Compile(e.BaseExpr);
+      codeGen.WriteString(',');
+      codeGen.CompileNoWrap(e.ItemExpr);
+      codeGen.WriteString(',');
+      if e.FromIndexExpr<>nil then
+         codeGen.CompileNoWrap(e.FromIndexExpr)
+      else codeGen.WriteString('0');
+      codeGen.WriteString(')');
+
+   end else begin
+
+      codeGen.Compile(e.BaseExpr);
+      codeGen.WriteString('.indexOf(');
+      codeGen.CompileNoWrap(e.ItemExpr);
+      if e.FromIndexExpr<>nil then begin
+         codeGen.WriteString(',');
+         codeGen.CompileNoWrap(e.FromIndexExpr);
+      end;
+      codeGen.WriteString(')');
+
+   end;
 end;
 
 // ------------------

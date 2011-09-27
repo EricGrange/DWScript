@@ -1531,6 +1531,8 @@ type
          procedure Reverse;
          procedure Copy(src : TScriptDynamicArray; index, count : Integer);
          procedure RawCopy(const src : TData; rawIndex, rawCount : Integer);
+         function IndexOf(const item : TData; addr, fromIndex : Integer) : Integer; overload;
+         function IndexOf(const item : Variant; fromIndex : Integer) : Integer; overload;
 
          property Typ : TDynamicArraySymbol read FTyp;
          property ElementSize : Integer read FElementSize;
@@ -5992,6 +5994,31 @@ begin
    System.SetLength(FData, rawCount);
    for i:=rawIndex to rawIndex+rawCount-1 do
       FData[i-rawIndex]:=src[i];
+end;
+
+// IndexOf
+//
+function TScriptDynamicArray.IndexOf(const item : TData; addr, fromIndex : Integer) : Integer;
+var
+   i : Integer;
+begin
+   for i:=fromIndex to Length-1 do
+      if DWSSameData(FData, item, i*ElementSize, addr, ElementSize) then
+         Exit(i);
+   Result:=-1;
+end;
+
+// IndexOf
+//
+function TScriptDynamicArray.IndexOf(const item : Variant; fromIndex : Integer) : Integer;
+var
+   i : Integer;
+begin
+   Assert(ElementSize=1);
+   for i:=fromIndex to Length-1 do
+      if DWSSameVariant(FData[i], item) then
+         Exit(i);
+   Result:=-1;
 end;
 
 // ------------------
