@@ -1,0 +1,1 @@
+Syntax Error: Array expected [line: 3, column: 7]

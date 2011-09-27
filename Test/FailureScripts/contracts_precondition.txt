@@ -1,0 +1,4 @@
+Warning: Constant condition [line: 7, column: 10]
+Syntax Error: Preconditions must be defined in the root method only. [line: 14, column: 7]
+Warning: Constant condition [line: 15, column: 11]
+Warning: Constant condition [line: 19, column: 11]

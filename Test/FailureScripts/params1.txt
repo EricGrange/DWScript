@@ -1,0 +1,7 @@
+Syntax Error: open array parameter must be const [line: 1, column: 31]
+Syntax Error: lazy parameter can't have a default value [line: 3, column: 35]
+Syntax Error: var parameter can't have a default value [line: 4, column: 34]
+Syntax Error: const parameter can't have a default value [line: 5, column: 36]
+Syntax Error: Constant expression expected [line: 7, column: 36]
+Syntax Error: Incompatible types: "Integer" and "Float" [line: 11, column: 33]
+Syntax Error: ")" expected. [line: 13, column: 22]

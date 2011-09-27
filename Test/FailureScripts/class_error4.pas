@@ -1,0 +1,1 @@
+type TTest = class(TObject, Integer

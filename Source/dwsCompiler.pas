@@ -245,256 +245,256 @@ type
    // TdwsCompiler
    //
    TdwsCompiler = class
-   private
-      FOptions : TCompilerOptions;
-      FTokRules : TTokenizerRules;
-      FTok : TTokenizer;
-      FProg : TdwsProgram;
-      FMainProg : TdwsMainProgram;
-      FContextMap : TContextMap;
-      FSymbolDictionary : TSymbolDictionary;
-      FOperators : TOperators;
-      FLoopExprs : TSimpleStack<TNoResultExpr>;
-      FLoopExitable : TSimpleStack<TLoopExitable>;
-      FFinallyExprs : TSimpleStack<Boolean>;
-      FConditionalDepth : TSimpleStack<TSwitchInstruction>;
-      FMsgs : TdwsCompileMessageList;
+      private
+         FOptions : TCompilerOptions;
+         FTokRules : TTokenizerRules;
+         FTok : TTokenizer;
+         FProg : TdwsProgram;
+         FMainProg : TdwsMainProgram;
+         FContextMap : TContextMap;
+         FSymbolDictionary : TSymbolDictionary;
+         FOperators : TOperators;
+         FLoopExprs : TSimpleStack<TNoResultExpr>;
+         FLoopExitable : TSimpleStack<TLoopExitable>;
+         FFinallyExprs : TSimpleStack<Boolean>;
+         FConditionalDepth : TSimpleStack<TSwitchInstruction>;
+         FMsgs : TdwsCompileMessageList;
 
-      FExec : TdwsCompilerExecution;
-      FConnectors : TStrings;
-      FCompileFileSystem : IdwsFileSystem;
-      FOnInclude : TIncludeEvent;
-      FOnNeedUnit : TdwsOnNeedUnitEvent;
-      FUnits : TIdwsUnitList;
-      FSystemTable : TSymbolTable;
-      FScriptPaths : TStrings;
-      FFilter : TdwsFilter;
-      FIsExcept : Boolean;
-      FIsSwitch : Boolean;
-      FLineCount : Integer;
-      FSourcePostConditionsIndex : Integer;
-      FUnitSection : TdwsUnitSection;
-      FUnitContextStack : TdwsCompilerUnitContextStack;
-      FUnitsFromStack : TSimpleStack<String>;
-      FUnitSymbol : TUnitMainSymbol;
-      FAnyFuncSymbol : TAnyFuncSymbol;
+         FExec : TdwsCompilerExecution;
+         FConnectors : TStrings;
+         FCompileFileSystem : IdwsFileSystem;
+         FOnInclude : TIncludeEvent;
+         FOnNeedUnit : TdwsOnNeedUnitEvent;
+         FUnits : TIdwsUnitList;
+         FSystemTable : TSymbolTable;
+         FScriptPaths : TStrings;
+         FFilter : TdwsFilter;
+         FIsExcept : Boolean;
+         FIsSwitch : Boolean;
+         FLineCount : Integer;
+         FSourcePostConditionsIndex : Integer;
+         FUnitSection : TdwsUnitSection;
+         FUnitContextStack : TdwsCompilerUnitContextStack;
+         FUnitsFromStack : TSimpleStack<String>;
+         FUnitSymbol : TUnitMainSymbol;
+         FAnyFuncSymbol : TAnyFuncSymbol;
 
-      FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
-      FOnReadInstr : TCompilerReadInstrEvent;
-      FOnSectionChanged : TCompilerSectionChangedEvent;
-      FOnReadScript : TCompilerReadScriptEvent;
+         FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
+         FOnReadInstr : TCompilerReadInstrEvent;
+         FOnSectionChanged : TCompilerSectionChangedEvent;
+         FOnReadScript : TCompilerReadScriptEvent;
 
-      function Optimize : Boolean;
+         function Optimize : Boolean;
 
-      function CheckFuncParams(paramsA, paramsB : TSymbolTable; indexSym : TSymbol = nil;
+         function CheckFuncParams(paramsA, paramsB : TSymbolTable; indexSym : TSymbol = nil;
                                typSym : TTypeSymbol = nil) : Boolean;
-      procedure CheckName(const Name: string);
-      function IdentifySpecialName(const name : String) : TSpecialKeywordKind;
-      procedure CheckSpecialName(const name : String);
-      function CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
-      procedure CompareFuncKinds(a, b : TFuncKind);
-      procedure CompareFuncSymbolParams(a, b : TFuncSymbol);
-      function  CurrentStruct : TStructuredTypeSymbol;
-      function  FindStructMember(typ : TStructuredTypeSymbol; const name : String) : TSymbol;
-      procedure HintUnusedSymbols;
-      procedure HintUnusedResult(resultSymbol : TDataSymbol);
+         procedure CheckName(const Name: string);
+         function IdentifySpecialName(const name : String) : TSpecialKeywordKind;
+         procedure CheckSpecialName(const name : String);
+         function CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
+         procedure CompareFuncKinds(a, b : TFuncKind);
+         procedure CompareFuncSymbolParams(a, b : TFuncSymbol);
+         function  CurrentStruct : TStructuredTypeSymbol;
+         function  FindStructMember(typ : TStructuredTypeSymbol; const name : String) : TSymbol;
+         procedure HintUnusedSymbols;
+         procedure HintUnusedResult(resultSymbol : TDataSymbol);
 
-      function OpenStreamForFile(const scriptName : String) : TStream;
-      function GetScriptSource(const scriptName : String) : String;
-      function GetIncludeScriptSource(const scriptName : String) : String;
+         function OpenStreamForFile(const scriptName : String) : TStream;
+         function GetScriptSource(const scriptName : String) : String;
+         function GetIncludeScriptSource(const scriptName : String) : String;
 
-      function GetVarExpr(dataSym : TDataSymbol): TVarExpr;
+         function GetVarExpr(dataSym : TDataSymbol): TVarExpr;
 
-      function GetLazyParamExpr(dataSym : TLazyParamSymbol) : TLazyParamExpr;
-      function GetVarParamExpr(dataSym : TVarParamSymbol) : TVarParamExpr;
-      function GetConstParamExpr(dataSym : TConstParamSymbol) : TVarParamExpr;
+         function GetLazyParamExpr(dataSym : TLazyParamSymbol) : TLazyParamExpr;
+         function GetVarParamExpr(dataSym : TVarParamSymbol) : TVarParamExpr;
+         function GetConstParamExpr(dataSym : TConstParamSymbol) : TVarParamExpr;
 
-      function ReadAssign(token : TTokenType; left : TDataExpr) : TNoResultExpr;
-      function ReadArrayType(const typeName : String; typeContext : TdwsReadTypeContext) : TTypeSymbol;
-      function ReadArrayConstant(expecting : TTypeSymbol = nil) : TArrayConstantExpr;
-      function ReadArrayMethod(const name : String; const namePos : TScriptPos;
+         function ReadAssign(token : TTokenType; left : TDataExpr) : TNoResultExpr;
+         function ReadArrayType(const typeName : String; typeContext : TdwsReadTypeContext) : TTypeSymbol;
+         function ReadArrayConstant(expecting : TTypeSymbol = nil) : TArrayConstantExpr;
+         function ReadArrayMethod(const name : String; const namePos : TScriptPos;
                                baseExpr : TTypedExpr; isWrite : Boolean) : TProgramExpr;
-      function ReadCase : TCaseExpr;
-      function ReadCaseConditions(condList : TCaseConditions; valueExpr : TTypedExpr) : Integer;
-      function ReadClassOf(const typeName : String) : TClassOfSymbol;
-      function ReadClass(const typeName : String) : TClassSymbol;
-      procedure ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
-      function ReadInterface(const typeName : String) : TInterfaceSymbol;
-      function ReadConnectorSym(const name : String; baseExpr : TTypedExpr;
+         function ReadCase : TCaseExpr;
+         function ReadCaseConditions(condList : TCaseConditions; valueExpr : TTypedExpr) : Integer;
+         function ReadClassOf(const typeName : String) : TClassOfSymbol;
+         function ReadClass(const typeName : String) : TClassSymbol;
+         procedure ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
+         function ReadInterface(const typeName : String) : TInterfaceSymbol;
+         function ReadConnectorSym(const name : String; baseExpr : TTypedExpr;
                                 const connectorType : IConnectorType; IsWrite: Boolean) : TProgramExpr;
-      function ReadConnectorArray(const name : String; baseExpr : TTypedExpr;
+         function ReadConnectorArray(const name : String; baseExpr : TTypedExpr;
                                   const connectorType : IConnectorType; IsWrite: Boolean) : TConnectorCallExpr;
-      function ReadConstDecl(constSymbolClass : TConstSymbolClass) : TConstSymbol;
-      function ReadConstValue : TConstExpr;
-      function ReadConstRecord(symbol : TRecordSymbol) : TData;
-      function ReadBlock : TNoResultExpr;
-      function ReadBlocks(const endTokens : TTokenTypes; var finalToken : TTokenType) : TNoResultExpr;
-      function ReadEnumeration(const typeName : String) : TEnumerationSymbol;
-      function ReadExit : TNoResultExpr;
-      function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
-      function ReadExprAdd(expecting : TTypeSymbol = nil; leftExpr : TTypedExpr = nil) : TTypedExpr;
-      function ReadExprMult(expecting : TTypeSymbol = nil) : TTypedExpr;
-      function ReadExprIn(var left : TTypedExpr) : TTypedExpr;
-      function ReadExprInConditions(var left : TTypedExpr) : TInOpExpr;
-      function ReadExternalVar(sym : TExternalVarSymbol; isWrite : Boolean) : TFuncExpr;
-      function ReadField(const scriptPos : TScriptPos; progMeth : TMethodSymbol;
+         function ReadConstDecl(constSymbolClass : TConstSymbolClass) : TConstSymbol;
+         function ReadConstValue : TConstExpr;
+         function ReadConstRecord(symbol : TRecordSymbol) : TData;
+         function ReadBlock : TNoResultExpr;
+         function ReadBlocks(const endTokens : TTokenTypes; var finalToken : TTokenType) : TNoResultExpr;
+         function ReadEnumeration(const typeName : String) : TEnumerationSymbol;
+         function ReadExit : TNoResultExpr;
+         function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
+         function ReadExprAdd(expecting : TTypeSymbol = nil; leftExpr : TTypedExpr = nil) : TTypedExpr;
+         function ReadExprMult(expecting : TTypeSymbol = nil) : TTypedExpr;
+         function ReadExprIn(var left : TTypedExpr) : TTypedExpr;
+         function ReadExprInConditions(var left : TTypedExpr) : TInOpExpr;
+         function ReadExternalVar(sym : TExternalVarSymbol; isWrite : Boolean) : TFuncExpr;
+         function ReadField(const scriptPos : TScriptPos; progMeth : TMethodSymbol;
                          fieldSym : TFieldSymbol; varExpr : TDataExpr) : TDataExpr;
 
-      function ReadFor : TForExpr;
-      function ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
-      function ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
-      function ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
+         function ReadFor : TForExpr;
+         function ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
+         function ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
+         function ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
                            iterVarExpr : TIntVarExpr; fromExpr, toExpr : TTypedExpr;
                            loopFirstStatement : TNoResultExpr) : TForExpr;
 
-      function ReadStaticMethod(methodSym : TMethodSymbol; isWrite : Boolean;
+         function ReadStaticMethod(methodSym : TMethodSymbol; isWrite : Boolean;
                                 expecting : TTypeSymbol = nil) : TProgramExpr;
-      function ReadFunc(funcSym : TFuncSymbol; isWrite: Boolean;
+         function ReadFunc(funcSym : TFuncSymbol; isWrite: Boolean;
                         codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
-      function WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil) : TTypedExpr;
+         function WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil) : TTypedExpr;
 
-      procedure ReadFuncArgs(funcExpr : TFuncExprBase); overload;
-      procedure ReadArguments(const addArgProc : TAddArgProcedure;
+         procedure ReadFuncArgs(funcExpr : TFuncExprBase); overload;
+         procedure ReadArguments(const addArgProc : TAddArgProcedure;
                               leftDelim, rightDelim : TTokenType;
                               var argPosArray : TScriptPosArray;
                               const expectedProc : TExpectedArgFunction = nil); overload;
-      function ReadFuncResultType(funcKind : TFuncKind) : TTypeSymbol;
+         function ReadFuncResultType(funcKind : TFuncKind) : TTypeSymbol;
 
-      function ReadIf: TNoResultExpr;
-      function ReadInherited(IsWrite: Boolean): TProgramExpr;
-      function ReadInstr : TNoResultExpr;
-      function ReadInstrSwitch(semiPending : Boolean): TNoResultExpr;
-      function ReadExprSwitch : TTypedExpr;
-      function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
-      function ReadIntfMethodDecl(intfSym : TInterfaceSymbol; funcKind : TFuncKind) : TSourceMethodSymbol;
-      procedure ReadMethodDecl(structSym : TStructuredTypeSymbol; funcKind : TFuncKind;
+         function ReadIf: TNoResultExpr;
+         function ReadInherited(IsWrite: Boolean): TProgramExpr;
+         function ReadInstr : TNoResultExpr;
+         function ReadInstrSwitch(semiPending : Boolean): TNoResultExpr;
+         function ReadExprSwitch : TTypedExpr;
+         function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
+         function ReadIntfMethodDecl(intfSym : TInterfaceSymbol; funcKind : TFuncKind) : TSourceMethodSymbol;
+         procedure ReadMethodDecl(structSym : TStructuredTypeSymbol; funcKind : TFuncKind;
                                aVisibility : TdwsVisibility; isClassMethod : Boolean);
-      function ReadMethodImpl(structSym : TStructuredTypeSymbol; funcKind : TFuncKind;
+         function ReadMethodImpl(structSym : TStructuredTypeSymbol; funcKind : TFuncKind;
                               isClassMethod : Boolean) : TMethodSymbol;
-      procedure ReadDeprecated(funcSym : TFuncSymbol);
-      procedure WarnDeprecated(funcSym : TFuncSymbol);
-      function ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
-      function ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol) : TProgramExpr;
-      function ReadClassSymbolName(baseType : TClassSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
-      function ReadInterfaceSymbolName(baseType : TInterfaceSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
-      function ReadRecordSymbolName(baseType : TRecordSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
-      function ReadConstName(constSym : TConstSymbol; isWrite: Boolean) : TProgramExpr;
-      function ReadNameOld(isWrite: Boolean): TTypedExpr;
-      function ReadNameInherited(isWrite: Boolean): TProgramExpr;
-      // Created overloaded ReadNameList to deal with script positions
-      procedure ReadNameList(names : TStrings); overload;
-      procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray); overload;
-      function  ReadNew(isWrite : Boolean) : TProgramExpr;
-      function  ReadNewArray(elementTyp : TTypeSymbol; isWrite : Boolean) : TProgramExpr;
-      procedure ReadArrayParams(ArrayIndices: TSymbolTable);
-      // Don't want to add param symbols to dictionary when a method implementation (they get thrown away)
-      procedure ReadParams(const addParamMeth : TParamSymbolMethod; paramsToDictionary : Boolean = True);
-      function ReadProcDecl(funcKind : TFuncKind; isClassMethod : Boolean = False;
+         procedure ReadDeprecated(funcSym : TFuncSymbol);
+         procedure WarnDeprecated(funcSym : TFuncSymbol);
+         function ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
+         function ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol) : TProgramExpr;
+         function ReadClassSymbolName(baseType : TClassSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
+         function ReadInterfaceSymbolName(baseType : TInterfaceSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
+         function ReadRecordSymbolName(baseType : TRecordSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
+         function ReadConstName(constSym : TConstSymbol; isWrite: Boolean) : TProgramExpr;
+         function ReadNameOld(isWrite: Boolean): TTypedExpr;
+         function ReadNameInherited(isWrite: Boolean): TProgramExpr;
+         // Created overloaded ReadNameList to deal with script positions
+         procedure ReadNameList(names : TStrings); overload;
+         procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray); overload;
+         function  ReadNew(isWrite : Boolean) : TProgramExpr;
+         function  ReadNewArray(elementTyp : TTypeSymbol; isWrite : Boolean) : TProgramExpr;
+         procedure ReadArrayParams(ArrayIndices: TSymbolTable);
+         // Don't want to add param symbols to dictionary when a method implementation (they get thrown away)
+         procedure ReadParams(const addParamMeth : TParamSymbolMethod; paramsToDictionary : Boolean = True);
+         function ReadProcDecl(funcKind : TFuncKind; isClassMethod : Boolean = False;
                             isType : Boolean = False) : TFuncSymbol;
-      procedure ReadProcBody(funcSymbol : TFuncSymbol);
-      procedure ReadConditions(funcSymbol : TFuncSymbol; conditions : TSourceConditions;
+         procedure ReadProcBody(funcSymbol : TFuncSymbol);
+         procedure ReadConditions(funcSymbol : TFuncSymbol; conditions : TSourceConditions;
                                condsSymClass : TConditionSymbolClass);
-      procedure ReadPostConditions(funcSymbol : TFuncSymbol; conditions : TSourcePostConditions;
+         procedure ReadPostConditions(funcSymbol : TFuncSymbol; conditions : TSourcePostConditions;
                                    condsSymClass : TConditionSymbolClass);
-      function ReadOperatorDecl : TOperatorSymbol;
-      function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
-      function ReadPropertyDecl(structSym : TStructuredTypeSymbol; aVisibility : TdwsVisibility) : TPropertySymbol;
-      function ReadPropertyExpr(var expr : TDataExpr; propertySym : TPropertySymbol; isWrite: Boolean) : TProgramExpr;
-      function ReadPropertyReadExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TProgramExpr;
-      function ReadPropertyWriteExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TProgramExpr;
-      function ReadPropertyArrayAccessor(var expr : TDataExpr; propertySym : TPropertySymbol;
+         function ReadOperatorDecl : TOperatorSymbol;
+         function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
+         function ReadPropertyDecl(structSym : TStructuredTypeSymbol; aVisibility : TdwsVisibility) : TPropertySymbol;
+         function ReadPropertyExpr(var expr : TDataExpr; propertySym : TPropertySymbol; isWrite: Boolean) : TProgramExpr;
+         function ReadPropertyReadExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TProgramExpr;
+         function ReadPropertyWriteExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TProgramExpr;
+         function ReadPropertyArrayAccessor(var expr : TDataExpr; propertySym : TPropertySymbol;
                                          typedExprList : TTypedExprList;
                                          const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExpr;
-      function ReadRecord(const typeName : String) : TRecordSymbol;
-      function ReadRaise : TRaiseBaseExpr;
-      function ReadRepeat : TNoResultExpr;
-      function ReadRootStatement(var action : TdwsRootStatementAction) : TNoResultExpr;
-      function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TBlockExpr;
-      procedure ReadSemiColon;
-      function ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TNoResultExpr;
-      procedure ReadScriptImplementations;
-      function ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
-      function ReadStatement : TNoResultExpr;
-      function ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TProgramExpr;
-      function ReadSwitch(const SwitchName: string): Boolean;
-      function ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
+         function ReadRecord(const typeName : String) : TRecordSymbol;
+         function ReadRaise : TRaiseBaseExpr;
+         function ReadRepeat : TNoResultExpr;
+         function ReadRootStatement(var action : TdwsRootStatementAction) : TNoResultExpr;
+         function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TBlockExpr;
+         procedure ReadSemiColon;
+         function ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TNoResultExpr;
+         procedure ReadScriptImplementations;
+         function ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
+         function ReadStatement : TNoResultExpr;
+         function ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TProgramExpr;
+         function ReadSwitch(const SwitchName: string): Boolean;
+         function ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                           expecting : TTypeSymbol = nil) : TProgramExpr;
-      function ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TTypedExpr;
-      function ReadNegation : TTypedExpr;
+         function ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TTypedExpr;
+         function ReadNegation : TTypedExpr;
 
-      function ReadTry : TExceptionExpr;
-      function ReadFinally(tryExpr : TNoResultExpr) : TFinallyExpr;
-      function ReadExcept(tryExpr : TNoResultExpr; var finalToken : TTokenType) : TExceptExpr;
+         function ReadTry : TExceptionExpr;
+         function ReadFinally(tryExpr : TNoResultExpr) : TFinallyExpr;
+         function ReadExcept(tryExpr : TNoResultExpr; var finalToken : TTokenType) : TExceptExpr;
 
-      function ReadType(const typeName : String; typeContext : TdwsReadTypeContext) : TTypeSymbol;
-      function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
-      procedure ReadTypeDecl;
-      procedure ReadUses;
-      procedure ReadUnitHeader;
-      function ReadVarDecl : TNoResultExpr;
-      function ReadWhile : TNoResultExpr;
-      function ResolveUnitReferences : TIdwsUnitList;
+         function ReadType(const typeName : String; typeContext : TdwsReadTypeContext) : TTypeSymbol;
+         function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
+         procedure ReadTypeDecl;
+         procedure ReadUses;
+         procedure ReadUnitHeader;
+         function ReadVarDecl : TNoResultExpr;
+         function ReadWhile : TNoResultExpr;
+         function ResolveUnitReferences : TIdwsUnitList;
 
-   protected
-      procedure EnterLoop(loopExpr : TNoResultExpr);
-      procedure MarkLoopExitable(level : TLoopExitable);
-      procedure LeaveLoop;
+         protected
+         procedure EnterLoop(loopExpr : TNoResultExpr);
+         procedure MarkLoopExitable(level : TLoopExitable);
+         procedure LeaveLoop;
 
-      function GetFuncExpr(funcSym : TFuncSymbol; isWrite : Boolean;
+         function GetFuncExpr(funcSym : TFuncSymbol; isWrite : Boolean;
                            codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TFuncExprBase;
-      function GetMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
+         function GetMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
                              const Pos: TScriptPos; ForceStatic : Boolean): TFuncExpr;
 
-      procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol);
-      procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
+         procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol);
+         procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
 
-      function CreateProgram(SystemTable: TSymbolTable; ResultType: TdwsResultType;
+         function CreateProgram(SystemTable: TSymbolTable; ResultType: TdwsResultType;
                              const stackParams : TStackParameters) : TdwsMainProgram;
-      function CreateProcedure(Parent : TdwsProgram) : TdwsProcedure;
-      function CreateAssign(const pos : TScriptPos; token : TTokenType; left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
+         function CreateProcedure(Parent : TdwsProgram) : TdwsProcedure;
+         function CreateAssign(const pos : TScriptPos; token : TTokenType; left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
 
-      function CreateArrayLow(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
-      function CreateArrayHigh(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
-      function CreateArrayLength(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
-      function CreateArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TArrayExpr;
+         function CreateArrayLow(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
+         function CreateArrayHigh(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
+         function CreateArrayLength(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
+         function CreateArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TArrayExpr;
 
-      function CreateOperatorFunction(funcSym : TFuncSymbol; left, right : TTypedExpr) : TTypedExpr;
+         function CreateOperatorFunction(funcSym : TFuncSymbol; left, right : TTypedExpr) : TTypedExpr;
 
-      procedure DoSectionChanged;
+         procedure DoSectionChanged;
 
-      function SwitchTokenizerToInclude(const sourceName, sourceCode : String) : TNoResultExpr;
-      procedure SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : String);
+         function SwitchTokenizerToInclude(const sourceName, sourceCode : String) : TNoResultExpr;
+         procedure SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : String);
 
-      procedure SetupCompileOptions(conf : TdwsConfiguration);
-      procedure CleanupAfterCompile;
+         procedure SetupCompileOptions(conf : TdwsConfiguration);
+         procedure CleanupAfterCompile;
 
-      procedure CheckFilterDependencies(confUnits : TIdwsUnitList);
-      procedure HandleUnitDependencies;
-      function  HandleExplicitDependency(const unitName : String) : TUnitSymbol;
+         procedure CheckFilterDependencies(confUnits : TIdwsUnitList);
+         procedure HandleUnitDependencies;
+         function  HandleExplicitDependency(const unitName : String) : TUnitSymbol;
 
-   public
-      constructor Create;
-      destructor Destroy; override;
+      public
+         constructor Create;
+         destructor Destroy; override;
 
-      function Compile(const aCodeText : String; aConf : TdwsConfiguration) : IdwsProgram;
-      procedure RecompileInContext(const context : IdwsProgram; const aCodeText : String; aConf : TdwsConfiguration);
+         function Compile(const aCodeText : String; aConf : TdwsConfiguration) : IdwsProgram;
+         procedure RecompileInContext(const context : IdwsProgram; const aCodeText : String; aConf : TdwsConfiguration);
 
-      class function Evaluate(exec : IdwsProgramExecution; const anExpression : String;
+         class function Evaluate(exec : IdwsProgramExecution; const anExpression : String;
                               options : TdwsEvaluateOptions = []) : IdwsEvaluateExpr;
 
-      procedure WarnForVarUsage(varExpr : TVarExpr; const pos : TScriptPos);
+         procedure WarnForVarUsage(varExpr : TVarExpr; const pos : TScriptPos);
 
-      property CurrentProg : TdwsProgram read FProg write FProg;
-      property Msgs : TdwsCompileMessageList read FMsgs;
-      property Options : TCompilerOptions read FOptions write FOptions;
-      property UnitSection : TdwsUnitSection read FUnitSection write FUnitSection;
-      property TokenizerRules : TTokenizerRules read FTokRules;
-      property Tokenizer : TTokenizer read FTok write FTok;
+         property CurrentProg : TdwsProgram read FProg write FProg;
+         property Msgs : TdwsCompileMessageList read FMsgs;
+         property Options : TCompilerOptions read FOptions write FOptions;
+         property UnitSection : TdwsUnitSection read FUnitSection write FUnitSection;
+         property TokenizerRules : TTokenizerRules read FTokRules;
+         property Tokenizer : TTokenizer read FTok write FTok;
 
-      property OnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol read FOnCreateBaseVariantSymbol write FOnCreateBaseVariantSymbol;
-      property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
-      property OnSectionChanged : TCompilerSectionChangedEvent read FOnSectionChanged write FOnSectionChanged;
-      property OnReadScript : TCompilerReadScriptEvent read FOnReadScript write FOnReadScript;
+         property OnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol read FOnCreateBaseVariantSymbol write FOnCreateBaseVariantSymbol;
+         property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
+         property OnSectionChanged : TCompilerSectionChangedEvent read FOnSectionChanged write FOnSectionChanged;
+         property OnReadScript : TCompilerReadScriptEvent read FOnReadScript write FOnReadScript;
    end;
 
   TdwsDefaultResult = class(TdwsResult)
@@ -837,9 +837,10 @@ begin
       msgFmt:=CPE_FieldRedefined
    else if sym is TPropertySymbol then
       msgFmt:=CPE_PropertyRedefined
-   else if sym is TMethodSymbol then
+   else begin
+      Assert(sym is TMethodSymbol);
       msgFmt:=CPE_MethodRedefined
-   else msgFmt:=CPE_NameAlreadyExists;
+   end;
    FMsgs.AddCompilerErrorFmt(FTok.HotPos, msgFmt, [sym.Name])
 end;
 
@@ -1714,9 +1715,8 @@ begin
                sas:=TStaticArraySymbol.Create('', typ, FProg.TypInteger, 0, TArraySymbol(typ).typ.Size-1);
                FProg.Table.AddSymbol(sas);
                Result:=constSymbolClass.Create(name, sas, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
-            end else if typ.Size>1 then
-               Result:=constSymbolClass.Create(name, typ, TConstExpr(expr).Data[FExec], TConstExpr(expr).Addr[FExec])
-            else begin
+            end else begin
+               Assert(typ.Size=1);
                expr.EvalAsVariant(FExec, val);
                Result:=constSymbolClass.Create(name, typ, val);
             end;
@@ -1764,27 +1764,22 @@ begin
 
    try
       if typNew.Name<>'' then begin
-         try
-            // typOld = typNew if a forwarded class declaration was overwritten
-            if typOld <> typNew then begin
-               CheckName(name);
-               if typNew.Name<>'' then
-                  FProg.Table.AddSymbol(typNew);
-            end  else begin
-               // Handle overwriting forwards in Dictionary
-               // Original symbol was a forward. Update symbol entry
-               // If the type is in the SymbolDictionary (disabled dictionary would leave pointer nil),
-               if Assigned(oldSymPos) then              // update original position information
-                  oldSymPos.SymbolUsages := [suForward]; // update old postion to reflect that the type was forwarded
-            end;
-
-            // Add symbol position as being the type being declared (works for forwards too)
-            if coSymbolDictionary in FOptions then
-               FSymbolDictionary.AddTypeSymbol(typNew, typePos, [suDeclaration]);
-         except
-            typNew.Free;
-            raise;
+         // typOld = typNew if a forwarded class declaration was overwritten
+         if typOld <> typNew then begin
+            CheckName(name);
+            if typNew.Name<>'' then
+               FProg.Table.AddSymbol(typNew);
+         end  else begin
+            // Handle overwriting forwards in Dictionary
+            // Original symbol was a forward. Update symbol entry
+            // If the type is in the SymbolDictionary (disabled dictionary would leave pointer nil),
+            if Assigned(oldSymPos) then              // update original position information
+               oldSymPos.SymbolUsages := [suForward]; // update old postion to reflect that the type was forwarded
          end;
+
+         // Add symbol position as being the type being declared (works for forwards too)
+         if coSymbolDictionary in FOptions then
+            FSymbolDictionary.AddTypeSymbol(typNew, typePos, [suDeclaration]);
       end;
    finally
       if coContextMap in FOptions then
@@ -2106,7 +2101,7 @@ begin
       structSym.AddMethod(funcResult);
    end;
 
-   if FTok.Test(ttBEGIN) then begin
+   if FTok.TestAny([ttBEGIN, ttREQUIRE])<>ttNone then begin
       // inline declaration
       if coContextMap in FOptions then
          FContextMap.OpenContext(FTok.HotPos, funcResult);
@@ -3649,7 +3644,7 @@ begin
       else if FTok.TestDelete(ttDOWNTO) then
          forExprClass:=TForDownwardExpr
       else begin
-         forExprClass:=nil;
+         forExprClass:=TForUpwardExpr;
          FMsgs.AddCompilerError(FTok.HotPos, CPE_ToOrDowntoExpected);
       end;
 
@@ -3717,6 +3712,7 @@ begin
 
       end else begin
 
+         loopVarExpr.Free;
          iterVarExpr:=nil;
          fromExpr:=nil;
          toExpr:=nil;
@@ -3730,9 +3726,7 @@ begin
       enumSymbol:=nil;
       if inExpr is TTypeSymbolExpr then begin
          if inExpr.Typ.InheritsFrom(TEnumerationSymbol) then
-            enumSymbol:=TEnumerationSymbol(inExpr.Typ)
-         else if inExpr.Typ.IsOfType(FProg.TypBoolean) then
-            enumSymbol:=FProg.TypBoolean
+            enumSymbol:=TEnumerationSymbol(inExpr.Typ);
       end;
       if enumSymbol=nil then begin
          FMsgs.AddCompilerError(inPos, CPE_EnumerationExpected);
@@ -3741,8 +3735,10 @@ begin
 
       inExpr.Free;
 
-      if not loopVarExpr.Typ.IsOfType(enumSymbol) then
-         FMsgs.AddCompilerStop(inPos, CPE_IncompatibleOperands);
+      if not loopVarExpr.Typ.IsOfType(enumSymbol) then begin
+         FMsgs.AddCompilerError(inPos, CPE_IncompatibleOperands);
+         enumSymbol:=nil;
+      end;
 
       if coSymbolDictionary in FOptions then
          FSymbolDictionary.AddTypeSymbol(enumSymbol, inPos);
@@ -3903,14 +3899,8 @@ begin
       raise;
    end;
 
-   if Optimize then begin
-      try
-         Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
-      except
-         Result.Free;
-         raise;
-      end;
-   end;
+   if Optimize then
+      Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
 end;
 
 // ReadCase
@@ -3982,21 +3972,15 @@ begin
       exprFrom := ReadExpr;
 
       try
-         if not Assigned(exprFrom) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
-
          if FTok.TestDelete(ttDOTDOT) then begin
             // range condition e. g. 0..12
-            exprTo := ReadExpr;
-            if not Assigned(exprTo) then begin
-               exprTo.Free;
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
-            end;
+            exprTo:=ReadExpr;
             condition:=TRangeCaseCondition.Create(hotPos, exprFrom, exprTo);
          end else begin
             // compare condition e. g. 123:
             condition:=TCompareCaseCondition.Create(hotPos, exprFrom);
          end;
+         exprFrom:=nil;
          condList.Add(condition);
          condition.TypeCheck(FProg, valueExpr.Typ);
       except
@@ -4038,14 +4022,8 @@ begin
    end;
    LeaveLoop;
 
-   if Optimize then begin
-      try
-         Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
-      except
-         Result.Free;
-         raise;
-      end;
-   end;
+   if Optimize then
+      Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
 end;
 
 // ReadRepeat
@@ -4071,14 +4049,8 @@ begin
    end;
    LeaveLoop;
 
-   if Optimize then begin
-      try
-         Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
-      except
-         Result.Free;
-         raise;
-      end;
-   end;
+   if Optimize then
+      Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
 end;
 
 // ReadAssign
@@ -6271,11 +6243,7 @@ begin
                         if not (defaultExpr is TConstExpr) then begin
                            FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
                            FreeAndNil(defaultExpr);
-                        end;
-
-                        if defaultExpr=nil then
-                           Typ.IsCompatible(defaultExpr.Typ);
-                        if not Typ.IsCompatible(defaultExpr.Typ) then begin
+                        end else if not Typ.IsCompatible(defaultExpr.Typ) then begin
                            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleTypes,
                                                      [Typ.Caption, defaultExpr.Typ.Caption]);
                            FreeAndNil(defaultExpr);

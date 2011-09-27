@@ -1,0 +1,2 @@
+Syntax Error: "Integer" is not an interface [line: 1, column: 29]
+Syntax Error: ")" expected. [line: 1, column: 29]

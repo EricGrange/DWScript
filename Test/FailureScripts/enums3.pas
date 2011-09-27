@@ -1,0 +1,1 @@
+type TEnum = (en1;

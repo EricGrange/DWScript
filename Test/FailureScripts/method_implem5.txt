@@ -1,0 +1,1 @@
+Syntax Error: Function type expected [line: 5, column: 22]

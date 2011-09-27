@@ -1,0 +1,2 @@
+Syntax Error: Object reference needed to read/write an object field [line: 9, column: 12]
+Syntax Error: Object reference needed to read/write an object field [line: 10, column: 12]

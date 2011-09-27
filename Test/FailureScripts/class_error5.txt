@@ -1,0 +1,2 @@
+Syntax Error: Interface "IInterface" already implemented [line: 1, column: 41]
+Syntax Error: END expected [line: 1, column: 51]
