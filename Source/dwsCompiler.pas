@@ -6027,7 +6027,7 @@ begin
       ttSWITCH :
          Result:=ReadExprSwitch;
    else
-      if FTok.Test(ttINHERITED) or FTok.TestName  then begin
+      if (FTok.TestAny([ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin
          // Variable or Function
          nameExpr:=ReadName(isWrite, expecting);
          if (nameExpr<>nil) and not (nameExpr is TTypedExpr) then begin

@@ -31,7 +31,7 @@ type
 
    TTokenType =
      (ttNone, ttStrVal, ttIntVal, ttFloatVal, ttNAME, ttSWITCH,
-     ttLAZY, ttVAR, ttCONST, ttTYPE, ttRECORD, ttARRAY, ttDOT, ttDOTDOT, ttOF,
+     ttLAZY, ttVAR, ttCONST, ttTYPE, ttRECORD, ttARRAY, ttSET, ttDOT, ttDOTDOT, ttOF,
      ttTRY, ttEXCEPT, ttRAISE, ttFINALLY, ttON, ttREAD, ttWRITE, ttPROPERTY,
      ttFUNCTION, ttPROCEDURE, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttOPERATOR,
      ttCLASS, ttNIL, ttIS, ttAS, ttIMPLEMENTS, ttINDEX, ttOBJECT,
@@ -208,7 +208,7 @@ type
 const
    cTokenStrings : array [TTokenType] of String = (
      '', 'StrVal', 'IntVal', 'FloatVal', 'NAME', 'SWITCH',
-     'LAZY', 'VAR', 'CONST', 'TYPE', 'RECORD', 'ARRAY', '.', '..', 'OF',
+     'LAZY', 'VAR', 'CONST', 'TYPE', 'RECORD', 'ARRAY', 'SET', '.', '..', 'OF',
      'TRY', 'EXCEPT', 'RAISE', 'FINALLY', 'ON', 'READ', 'WRITE', 'PROPERTY',
      'FUNCTION', 'PROCEDURE', 'CONSTRUCTOR', 'DESTRUCTOR', 'METHOD', 'OPERATOR',
      'CLASS', 'NIL', 'IS', 'AS', 'IMPLEMENTS', 'INDEX', 'OBJECT',
@@ -244,11 +244,25 @@ implementation
 // ------------------------------------------------------------------
 
 const cReservedNames : TTokenTypes = [
-   ttStrVal, ttSWITCH, ttSEMI, ttDIVIDE, ttTIMES, ttPLUS, ttMINUS, ttAT, ttSEMI,
-   ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttEQ, ttLESS, ttLESSEQ, ttNOTEQ, ttGTR,
-   ttGTREQ, ttCOLON,
+   ttStrVal, ttIntVal, ttFloatVal, ttDOT, ttDOTDOT,
+
+   ttPLUS, ttMINUS,
+   ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttDOLLAR,
+   ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
+   ttLESSLESS, ttGTRGTR,
+   ttSEMI, ttCOMMA, ttCOLON,
    ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
-   ttCOMMA, ttCRIGHT, ttDOT ];
+   ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN,
+   ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCRIGHT,
+
+   ttAND, ttARRAY, ttAS, ttBEGIN, ttCASE, ttCLASS, ttCONST, ttCONSTRUCTOR,
+   ttDESTRUCTOR, ttDIV, ttDO, ttDOWNTO, ttELSE, ttEND, ttEXCEPT, ttEXIT,
+   ttFALSE, ttFINALLY, ttFOR, ttFUNCTION, ttIF, ttIMPLEMENTATION, ttIMPLIES,
+   ttIN, ttINHERITED, ttINTERFACE, ttIS, ttMOD, ttNEW, ttNIL, ttNOT, ttOBJECT,
+   ttOF, ttOPERATOR, ttOR, ttPROCEDURE, ttPROPERTY, ttRAISE, ttRECORD,
+   ttREINTRODUCE, ttREPEAT, ttSET, ttSHL, ttSHR, ttTHEN, ttTO, ttTRUE, ttTRY,
+   ttTYPE, ttUNIT, ttUNTIL, ttUSES, ttVAR, ttWHILE, ttXOR
+   ];
 
 const
    cFormatSettings : TFormatSettings = ( DecimalSeparator : '.' );

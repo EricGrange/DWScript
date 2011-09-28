@@ -1,2 +1,2 @@
 Syntax Error: Integer expected [line: 4, column: 20]
-Syntax Error: Unknown name "do" [line: 6, column: 20]
+Syntax Error: Expression expected [line: 6, column: 20]
