@@ -1781,7 +1781,7 @@ begin
   FEditor.Align := alClient;
   FEditor.BorderStyle := bsNone;
 
-  FEditor.Font.Name := 'Lucida sans typewriter';
+  FEditor.Font.Name := 'Courier New';
   FEditor.Font.Size := 10;
 
   FEditor.Highlighter := AOwner.SynEditHighlighter;
