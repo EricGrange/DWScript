@@ -21,9 +21,12 @@
 {**********************************************************************}
 unit UDwsIdeForm;
 
+{$WARN SYMBOL_PLATFORM OFF}
+
 interface
 
 uses
+  Types,
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   UDwsIdeDefs,
   dwsExprs,
@@ -35,9 +38,9 @@ uses
   dwsUtils, dwsSymbols,
   Dialogs, StdCtrls,
   ExtCtrls,
-  SynEditTypes,
   SynEditHighlighter,
-  SynHighlighterPas,
+  SynHighlighterDWS,
+  SynEditTypes,
   UDwsIdeConfig,
   Diagnostics,
   SynEdit,
@@ -49,10 +52,10 @@ uses
   ImgList, UDwsIdeLocalVariablesFrame, UDwsIdeWatchesFrame, UDwsIdeCallStackFrame;
 
 type
-  EDwsIde = class( Exception );
+  EDwsIde      = class( Exception );
 
-  TDwsIdeForm = class;
-  TEditorPage          = class;
+  TDwsIdeForm  = class;
+  TEditorPage  = class;
 
   TBreakpointStatus = (bpsNone, bpsBreakpoint, bpsBreakpointDisabled );
 
@@ -120,10 +123,9 @@ type
 
   end;
 
-
+  TEditorHighlighterClass = class of TSynCustomHighlighter;
 
   TDwsIdeForm = class(TForm, IDwsIde)
-    SynEditHighlighter: TSynPasSyn;
     ActionList1: TActionList;
     actOpenFile: TAction;
     pcEditor: TRzPageControl;
@@ -255,6 +257,7 @@ type
     procedure actProgramResetUpdate(Sender: TObject);
     procedure actViewSymbolsExecute(Sender: TObject);
     procedure actViewSymbolsUpdate(Sender: TObject);
+    constructor Create( AOwner : TComponent; AEditorHighlighterClass : TEditorHighlighterClass = nil ); reintroduce;
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -267,6 +270,8 @@ type
     FProgram : IdwsProgram;
 
     FScriptFolder: string;
+
+    FEditorHighlighterClass : TEditorHighlighterClass;
 
     procedure EditorPageAddNew( const AFileName : string; ALoadfile : boolean  );
     function  ProjectSourceScript : string;
@@ -345,7 +350,7 @@ type
   end;
 
 
-procedure DwsIDE_ShowModal( AScript : TDelphiWebScript );
+procedure DwsIDE_ShowModal( AScript : TDelphiWebScript; AEditorHighlighterClass : TEditorHighlighterClass = nil );
 
 implementation
 
@@ -353,6 +358,7 @@ implementation
 
 uses
   Registry,
+  SynHighlighterPas,
   ShlObj;
 
 
@@ -422,11 +428,11 @@ end;
 
 
 
-procedure DwsIDE_ShowModal( AScript : TDelphiWebScript );
+procedure DwsIDE_ShowModal( AScript : TDelphiWebScript; AEditorHighlighterClass : TEditorHighlighterClass = nil );
 var
   Frm : TDwsIdeForm;
 begin
-  Frm := TDwsIdeForm.Create( Application );
+  Frm := TDwsIdeForm.Create( Application, AEditorHighlighterClass );
   try
     Frm.Script := AScript;
     Frm.ShowModal;
@@ -623,6 +629,13 @@ begin
     end;
 end;
 
+
+constructor TDwsIdeForm.Create(AOwner: TComponent; AEditorHighlighterClass : TEditorHighlighterClass = nil);
+begin
+  inherited Create( AOwner );
+
+  FEditorHighlighterClass := AEditorHighlighterClass
+end;
 
 procedure TDwsIdeForm.actBuildExecute(Sender: TObject);
 begin
@@ -1728,26 +1741,29 @@ function TDwsIdeForm.GetExecutableLines( const AUnitName : string ) : TLineNumbe
 
 var
   I : integer;
-  Pos : TSymbolPosition;
+  Breakpointables : TdwsBreakpointableLines;
+  Lines : Tbits;
 begin
+  SetLength( Result, 0 );
+
   Compile( False );
   if not IsCompiled then
     Exit;
 
-  if FProgram.SymbolDictionary.Count = 0 then
-    raise EDwsIde.Create( 'No symbols in symbol dictionary' );
+  Breakpointables := TdwsBreakpointableLines.Create( FProgram );
+  try
+    I := Breakpointables.IndexOfSource( AUnitName );
+    if I >= 0 then
+      begin
+      Lines := Breakpointables.SourceLines[I];
+      For I := 1 to Lines.Size-1 do
+        if Lines[I] then
+          AppendLineNum( I );
+      end;
+  finally
+    Breakpointables.Free;
+  end;
 
-  For I := 0 to FProgram.SymbolDictionary.Count-1 do
-    begin
-    Pos := FProgram.SymbolDictionary.FindSymbolPosList(
-      FProgram.SymbolDictionary[I].Symbol ).FindUsage( suReference);
-    if Pos <> nil then
-      If (AUnitName = sMainModule) and Pos.ScriptPos.IsMainModule then
-        AppendLineNum( Pos.ScriptPos.Line )
-       else
-        if Pos.ScriptPos.IsSourceFile( AUnitName ) then
-           AppendLineNum( Pos.ScriptPos.Line );
-    end;
 
 end;
 
@@ -1784,7 +1800,9 @@ begin
   FEditor.Font.Name := 'Courier New';
   FEditor.Font.Size := 10;
 
-  FEditor.Highlighter := AOwner.SynEditHighlighter;
+  If Assigned( AOwner.FEditorHighlighterClass ) then
+    FEditor.Highlighter := AOwner.FEditorHighlighterClass.Create( Self );
+
   FEditor.Options := [eoAutoIndent, eoKeepCaretX, eoScrollByOneLess, eoSmartTabs, eoTabsToSpaces, eoTrimTrailingSpaces];
   FEditor.OnSpecialLineColors := SynEditorSpecialLineColors;
   FEditor.OnGutterClick := SynEditorGutterClick;

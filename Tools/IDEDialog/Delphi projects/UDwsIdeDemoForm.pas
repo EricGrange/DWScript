@@ -47,11 +47,12 @@ implementation
 
 {$R *.dfm}
 uses
+  SynHighlighterDWS,
   UDwsIdeForm;
 
 procedure TDwsIdeDemoForm.Button1Click(Sender: TObject);
 begin
-  DwsIDE_ShowModal( DelphiWebScript1 );
+  DwsIDE_ShowModal( DelphiWebScript1, TSynDWSSyn );
 end;
 
 function TDwsIdeDemoForm.DelphiWebScript1NeedUnit(const unitName: string;

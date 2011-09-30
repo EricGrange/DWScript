@@ -2,7 +2,7 @@ object DwsIdeDemoForm: TDwsIdeDemoForm
   Left = 0
   Top = 0
   Caption = 'DwsIdeDemoForm'
-  ClientHeight = 109
+  ClientHeight = 192
   ClientWidth = 281
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
