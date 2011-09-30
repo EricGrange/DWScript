@@ -2283,6 +2283,8 @@ begin
                else FMsgs.AddCompilerStop(FTok.HotPos, CPE_BeginExpected);
             end;
 
+            proc.SetBeginPos(FTok.HotPos);
+
             FProg.Expr:=ReadRootBlock([ttEND, ttENSURE], finalToken);
             if Optimize then
                FProg.Expr:=FProg.Expr.OptimizeToNoResultExpr(FProg, FExec);

@@ -568,6 +568,8 @@ type
          procedure InitSymbol(Symbol: TSymbol);
          procedure InitExpression(Expr: TExprBase);
 
+         procedure SetBeginPos(const scriptPos : TScriptPos);
+
          property Func : TFuncSymbol read FFunc write FFunc;
 
          property PreConditions : TSourcePreConditions read FPreConditions write FPreConditions;
@@ -2992,6 +2994,7 @@ begin
       if FPreConditions<>nil then
          FPreConditions.EvalNoresult(exec);
 
+      exec.DoStep(FInitExpr);
       FInitExpr.EvalNoResult(exec);
 
       exec.DoStep(FExpr);
@@ -3014,6 +3017,13 @@ end;
 
 procedure TdwsProcedure.InitExpression(Expr: TExprBase);
 begin
+end;
+
+// SetBeginPos
+//
+procedure TdwsProcedure.SetBeginPos(const scriptPos : TScriptPos);
+begin
+   FInitExpr.FScriptPos:=scriptPos;
 end;
 
 // ------------------
