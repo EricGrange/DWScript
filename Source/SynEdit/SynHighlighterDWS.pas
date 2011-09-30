@@ -28,7 +28,7 @@ replace them with the notice and other provisions required by the GPL.
 If you do not delete the provisions above, a recipient may use your version
 of this file under either the MPL or the GPL.
 
-$Id: SynHighlighterDWS.pas,v 1.6 2011/08/18 14:14:27 Egg Exp $
+$Id: SynHighlighterDWS.pas,v 1.12 2011/09/27 06:23:05 Egg Exp $
 
 You may retrieve the latest version of this file at the SynEdit home page,
 located at http://SynEdit.SourceForge.net
@@ -173,22 +173,22 @@ uses
 
 const
   // if the language is case-insensitive keywords *must* be in lowercase
-  KeyWords: array[0..106] of UnicodeString = (
-    'absolute', 'abstract', 'and', 'array', 'as', 'asm', 'assembler',
-    'automated', 'begin', 'case', 'cdecl', 'class', 'const', 'constructor',
+  KeyWords: array[0..102] of UnicodeString = (
+    'absolute', 'abstract', 'and', 'array', 'as', 'asm',
+    'begin', 'case', 'cdecl', 'class', 'const', 'constructor',
     'contains', 'deprecated', 'destructor',
-    'div', 'do', 'downto', 'dynamic', 'else', 'end', 'except',
+    'div', 'do', 'downto', 'dynamic', 'else', 'end', 'ensure', 'except',
     'export', 'exports', 'external', 'far', 'file', 'final', 'finalization',
     'finally', 'for', 'forward', 'function', 'goto', 'helper', 'if',
     'implementation', 'implements', 'implies', 'in', 'index', 'inherited',
     'initialization', 'inline', 'interface', 'is', 'label', 'lazy', 'library',
     'message', 'method', 'mod', 'name', 'new', 'nil', 'nodefault', 'not', 'object', 'of',
-    'on', 'operator', 'or', 'out', 'overload', 'override', 'package', 'packed',
+    'old', 'on', 'operator', 'or', 'out', 'overload', 'override', 'package', 'packed',
     'pascal', 'platform', 'private', 'procedure', 'program', 'property',
     'protected', 'public', 'published', 'raise', 'record',
-    'register', 'reintroduce', 'repeat', 'requires', 'resourcestring',
-    'safecall', 'sealed', 'set', 'shl', 'shr', 'stdcall', 'step', 'string',
-    'stringresource', 'then', 'threadvar', 'to', 'try', 'type', 'unit', 'until',
+    'register', 'reintroduce', 'repeat', 'require', 'resourcestring',
+    'sealed', 'set', 'shl', 'shr', 'step', 'string',
+    'then', 'to', 'try', 'type', 'unit', 'until',
     'uses', 'var', 'virtual', 'while', 'with', 'xor'
   );
   KeyWords_PropertyScoped: array [0..4] of UnicodeString = (
