@@ -339,8 +339,40 @@ type
          property Mode : TdwsDebuggerMode read FMode write FMode default dmMainThread;
 
          property OnStateChanged : TNotifyEvent read FOnStateChanged write FOnStateChanged;
-  end;
+   end;
 
+   TdwsBreakpointableLines = class
+      private
+         FSources : TStringList;
+
+         FProcessedProgs : TObjectsLookup;
+         FLastSourceFile : TSourceFile;
+         FLastBreakpointLines : TBits;
+
+      protected
+         function GetLines(i : Integer) : TBits; inline;
+         function GetSourceName(i : Integer) : String; inline;
+
+         procedure RegisterScriptPos(const scriptPos : TScriptPos);
+
+         procedure ProcessProg(const prog : TdwsProgram);
+         procedure ProcessFuncSymbol(const funcSymbol : TFuncSymbol);
+         procedure ProcessUnitSymbol(const unitSymbol : TUnitMainSymbol);
+         procedure ProcessSymbolTable(table : TSymbolTable);
+         procedure ProcessSymbol(sym : TSymbol);
+
+      public
+         constructor Create(const prog : IdwsProgram);
+         destructor Destroy; override;
+
+         property SourceName[i : Integer] : String read GetSourceName;
+         property SourceLines[i : Integer] : TBits read GetLines;
+
+         function Count : Integer; inline;
+
+         function IndexOfSource(const name : String) : Integer; inline;
+
+   end;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -825,7 +857,9 @@ procedure TdwsDebugger.DoDebug(exec : TdwsExecution; expr : TExprBase);
 var
    ticks : Cardinal;
 begin
-   if expr is TBlockExprBase then Exit;
+   if expr is TBlockExprBase then begin
+      if (expr.ClassType<>TBlockInitExpr) or (expr.SubExprCount=0) then Exit;
+   end;
    FCurrentExpression:=expr;
    inherited;
    if (FSuspendCondition<>nil) and (FSuspendCondition.SuspendExecution) then begin
@@ -1235,6 +1269,164 @@ constructor TdwsDebuggerTempValueSymbol.Create(const name : string; typ : TTypeS
 begin
    inherited;
    SetLength(FData, Size);
+end;
+
+// ------------------
+// ------------------ TdwsBreakpointableLines ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsBreakpointableLines.Create(const prog : IdwsProgram);
+var
+   i : Integer;
+   p : TdwsProgram;
+   mp : TdwsMainProgram;
+begin
+   FSources:=TStringList.Create;
+   FSources.CaseSensitive:=True;
+   FSources.Sorted:=True;
+   FSources.Duplicates:=dupError;
+   FSources.OwnsObjects:=True;
+
+   FProcessedProgs:=TObjectsLookup.Create;
+
+   p:=(prog as TdwsProgram);
+   ProcessProg(p);
+
+   if p is TdwsMainProgram then begin
+      mp:=TdwsMainProgram(p);
+      for i:=0 to mp.UnitMains.Count-1 do
+         ProcessUnitSymbol(mp.UnitMains[i]);
+   end;
+end;
+
+// Destroy
+//
+destructor TdwsBreakpointableLines.Destroy;
+begin
+   FProcessedProgs.Free;
+   FSources.Free;
+end;
+
+// SourceCount
+//
+function TdwsBreakpointableLines.Count : Integer;
+begin
+   Result:=FSources.Count;
+end;
+
+// IndexOfSource
+//
+function TdwsBreakpointableLines.IndexOfSource(const name : String) : Integer;
+begin
+   Result:=FSources.IndexOf(name);
+end;
+
+// GetSource
+//
+function TdwsBreakpointableLines.GetLines(i : Integer) : TBits;
+begin
+   Result:=TBits(FSources.Objects[i]);
+end;
+
+// GetSourceName
+//
+function TdwsBreakpointableLines.GetSourceName(i : Integer) : String;
+begin
+   Result:=FSources[i];
+end;
+
+// RegisterScriptPos
+//
+procedure TdwsBreakpointableLines.RegisterScriptPos(const scriptPos : TScriptPos);
+
+   function CountLines(const src : String) : Integer;
+   var
+      i : Integer;
+      p : PChar;
+   begin
+      Result:=1;
+      p:=PChar(src);
+      for i:=0 to Length(src)-1 do
+         if p[i]=#10 then
+            Inc(Result);
+   end;
+
+var
+   i : Integer;
+begin
+   if scriptPos.SourceFile=nil then Exit;
+   if scriptPos.SourceFile<>FLastSourceFile then begin
+      i:=FSources.IndexOf(scriptPos.SourceFile.Name);
+      if i<0 then begin
+         FLastBreakpointLines:=TBits.Create;
+         FSources.AddObject(scriptPos.SourceFile.Name, FLastBreakpointLines);
+         FLastBreakpointLines.Size:=CountLines(scriptPos.SourceFile.Code)+1;
+      end else FLastBreakpointLines:=SourceLines[i];
+   end;
+   i:=scriptPos.Line;
+   Assert(i<FLastBreakpointLines.Size);
+   FLastBreakpointLines[i]:=True;
+end;
+
+// ProcessProg
+//
+procedure TdwsBreakpointableLines.ProcessProg(const prog : TdwsProgram);
+begin
+   if FProcessedProgs.IndexOf(prog)>=0 then Exit;
+   FProcessedProgs.Add(prog);
+
+   ProcessSymbolTable(prog.Table);
+
+   if (prog.InitExpr.ScriptPos.SourceFile<>nil) and (prog.InitExpr.SubExprCount>0) then
+      RegisterScriptPos(prog.InitExpr.ScriptPos);
+
+   prog.Expr.RecursiveEnumerateSubExprs(
+      procedure (parent, expr : TExprBase; var abort : Boolean)
+      begin
+         if expr is TBlockExprBase then Exit;
+         RegisterScriptPos(expr.ScriptPos);
+      end);
+end;
+
+// ProcessFuncSymbol
+//
+procedure TdwsBreakpointableLines.ProcessFuncSymbol(const funcSymbol : TFuncSymbol);
+var
+   exec : IExecutable;
+begin
+   exec:=funcSymbol.Executable;
+   if exec is TdwsProcedure then
+      ProcessProg(exec as TdwsProcedure);
+end;
+
+// ProcessUnitSymbol
+//
+procedure TdwsBreakpointableLines.ProcessUnitSymbol(const unitSymbol : TUnitMainSymbol);
+begin
+   ProcessSymbolTable(unitSymbol.InterfaceTable);
+   ProcessSymbolTable(unitSymbol.ImplementationTable);
+end;
+
+// ProcessSymbolTable
+//
+procedure TdwsBreakpointableLines.ProcessSymbolTable(table : TSymbolTable);
+var
+   sym : TSymbol;
+begin
+   for sym in table do
+      ProcessSymbol(sym);
+end;
+
+// ProcessSymbol
+//
+procedure TdwsBreakpointableLines.ProcessSymbol(sym : TSymbol);
+begin
+   if sym is TFuncSymbol then
+      ProcessFuncSymbol(TFuncSymbol(sym))
+   else if sym is TStructuredTypeSymbol then
+      ProcessSymbolTable(TStructuredTypeSymbol(sym).Members);
 end;
 
 end.

@@ -32,6 +32,8 @@ type
          procedure EvaluateSimpleTest;
          procedure EvaluateOutsideOfExec;
          procedure EvaluateContextTest;
+
+         procedure ExecutableLines;
    end;
 
 // ------------------------------------------------------------------
@@ -230,6 +232,58 @@ begin
    finally
       prog:=nil;
    end;
+end;
+
+// ExecutableLines
+//
+procedure TDebuggerTests.ExecutableLines;
+var
+   prog : IdwsProgram;
+   breakpointables : TdwsBreakpointableLines;
+
+   function ReportBreakpointables : String;
+   var
+      i, j : Integer;
+      lines : TBits;
+   begin
+      Result:='';
+      for i:=0 to breakpointables.Count-1 do begin
+         if i>0 then
+            Result:=Result+#13#10;
+         Result:=Result+breakpointables.SourceName[i]+': ';
+         lines:=breakpointables.SourceLines[i];
+         for j:=0 to lines.Size-1 do
+            if lines[j] then
+               Result:=Result+IntToStr(j)+',';
+      end;
+   end;
+
+begin
+   prog:=FCompiler.Compile( 'var i := 1;'#13#10
+                           +'procedure Test;'#13#10
+                           +'var i := 2;'#13#10
+                           +'begin'#13#10
+                              +'PrintLn(i);'#13#10
+                           +'end;'#13#10
+                           +'Test;');
+   CheckEquals('2'#13#10, prog.Execute.Result.ToString, 'Result 1');
+
+   breakpointables:=TdwsBreakpointableLines.Create(prog);
+   CheckEquals('*MainModule*: 1,4,5,7,', ReportBreakpointables, 'Case 1');
+   breakpointables.Free;
+
+   prog:=FCompiler.Compile( 'var i := 1;'#13#10
+                           +'procedure Test;'#13#10
+                           +'var i := 2;'#13#10
+                           +'begin'#13#10
+                              +'PrintLn(i);'#13#10
+                           +'end;'#13#10
+                           +'i:=i+1;');
+   CheckEquals('', prog.Execute.Result.ToString, 'Result 2');
+
+   breakpointables:=TdwsBreakpointableLines.Create(prog);
+   CheckEquals('*MainModule*: 1,4,5,7,', ReportBreakpointables, 'Case 2');
+   breakpointables.Free;
 end;
 
 // ------------------------------------------------------------------
