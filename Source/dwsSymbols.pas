@@ -1026,7 +1026,6 @@ type
          FMetaSymbol : TStructuredTypeMetaSymbol;
 
       protected
-
          function CreateMembersTable : TMembersSymbolTable; virtual;
 
          function GetIsStatic : Boolean; virtual;
@@ -1365,8 +1364,6 @@ type
    TUnitSymbol = class abstract (TNameSymbol)
       private
          FMain : TUnitMainSymbol;
-
-      protected
 
       public
          constructor Create(mainSymbol : TUnitMainSymbol);

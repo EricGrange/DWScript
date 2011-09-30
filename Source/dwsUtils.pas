@@ -241,6 +241,11 @@ type
          procedure Clean;
    end;
 
+   TObjectsLookup = class (TSortedList<TObject>)
+      protected
+         function Compare(const item1, item2 : TObject) : Integer; override;
+   end;
+
 const
    cWriteOnlyBlockStreamBlockSize = $2000 - 2*SizeOf(Pointer);
 
@@ -1552,6 +1557,17 @@ end;
 procedure TSimpleList<T>.SetItems(const idx : Integer; const value : T);
 begin
    FItems[idx]:=value;
+end;
+
+// ------------------
+// ------------------ TObjectsLookup ------------------
+// ------------------
+
+// Compare
+//
+function TObjectsLookup.Compare(const item1, item2 : TObject) : Integer;
+begin
+   Result:=(NativeInt(item1)-NativeInt(item2)) shr 31;
 end;
 
 // ------------------------------------------------------------------
