@@ -1,0 +1,4 @@
+Syntax Error: Name "ord" is reserved [line: 2, column: 7]
+Syntax Error: Name "high" is reserved [line: 4, column: 4]
+Syntax Error: Name "low" is reserved [line: 6, column: 5]
+Syntax Error: Name "Length" is reserved [line: 8, column: 11]

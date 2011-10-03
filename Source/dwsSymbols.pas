@@ -1340,7 +1340,7 @@ type
          FImplementationTable : TUnitImplementationTable;
 
       public
-         constructor Create(const Name: string; table: TUnitSymbolTable;
+         constructor Create(const name : String; table : TUnitSymbolTable;
                             unitSyms : TUnitMainSymbols);
          destructor Destroy; override;
 

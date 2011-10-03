@@ -513,7 +513,7 @@ type
          function GetProgramObject : TdwsProgram;
 
       public
-         constructor Create(SystemTable: TSymbolTable; ResultType: TdwsResultType;
+         constructor Create(systemTable : TStaticSymbolTable; resultType : TdwsResultType;
                             const stackParameters : TStackParameters);
          destructor Destroy; override;
 
@@ -2629,8 +2629,6 @@ begin
    FRootTable := TProgramSymbolTable.Create(systemTable, @FAddrGenerator);
    FTable := FRootTable;
 
-   FUnitMains:=TUnitMainSymbols.Create;
-
    FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
 
    // Initialize shortcuts to often used symbols
@@ -2689,10 +2687,13 @@ end;
 
 // Create
 //
-constructor TdwsMainProgram.Create(SystemTable: TSymbolTable; ResultType: TdwsResultType;
-                            const stackParameters : TStackParameters);
+constructor TdwsMainProgram.Create(systemTable : TStaticSymbolTable; resultType : TdwsResultType;
+                                   const stackParameters : TStackParameters);
+var
+   systemUnitTable : TLinkedSymbolTable;
+   systemUnit : TUnitMainSymbol;
 begin
-   inherited Create(SystemTable);
+   inherited Create(systemTable);
 
    FResultType:=ResultType;
 
@@ -2715,6 +2716,12 @@ begin
    FSourceList:=TScriptSourceList.Create;
 
    FUnifiedConstList:=TUnifiedConstList.Create;
+
+   FUnitMains:=TUnitMainSymbols.Create;
+
+   systemUnitTable:=TLinkedSymbolTable.Create(systemTable);
+   systemUnit:=TUnitMainSymbol.Create(SYS_SYSTEM, systemUnitTable, FUnitMains);
+   systemUnit.ReferenceInSymbolTable(FRootTable);
 
    FRoot:=Self;
 end;

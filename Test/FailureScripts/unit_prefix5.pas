@@ -1,0 +1,2 @@
+type TMyClass = System.;
+   

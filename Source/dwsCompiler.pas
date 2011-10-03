@@ -66,7 +66,7 @@ type
     FScriptPaths: TStrings;
     FConditionals: TStringList;
     FStackChunkSize: Integer;
-    FSystemTable: TSymbolTable;
+    FSystemTable : TStaticSymbolTable;
     FTimeoutMilliseconds: Integer;
     FUnits : TIdwsUnitList;
     FCompileFileSystem : TdwsCustomFileSystem;
@@ -81,7 +81,7 @@ type
     procedure SetRuntimeFileSystem(const val : TdwsCustomFileSystem);
     procedure SetScriptPaths(const values : TStrings);
     procedure SetConditionals(const val : TStringList);
-    function GetSystemTable : TSymbolTable;
+    function GetSystemTable : TStaticSymbolTable;
 
   public
     constructor Create(Owner: TComponent);
@@ -90,7 +90,7 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation);
 
     property Connectors : TStrings read FConnectors write FConnectors;
-    property SystemTable : TSymbolTable read GetSystemTable;
+    property SystemTable : TStaticSymbolTable read GetSystemTable;
     property Units : TIdwsUnitList read FUnits;
 
   published
@@ -288,7 +288,7 @@ type
 
          function CheckFuncParams(paramsA, paramsB : TSymbolTable; indexSym : TSymbol = nil;
                                typSym : TTypeSymbol = nil) : Boolean;
-         procedure CheckName(const Name: string);
+         procedure CheckName(const name : String);
          function IdentifySpecialName(const name : String) : TSpecialKeywordKind;
          procedure CheckSpecialName(const name : String);
          function CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
@@ -381,9 +381,7 @@ type
          function ReadConstName(constSym : TConstSymbol; isWrite: Boolean) : TProgramExpr;
          function ReadNameOld(isWrite: Boolean): TTypedExpr;
          function ReadNameInherited(isWrite: Boolean): TProgramExpr;
-         // Created overloaded ReadNameList to deal with script positions
-         procedure ReadNameList(names : TStrings); overload;
-         procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray); overload;
+         procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray);
          function  ReadNew(isWrite : Boolean) : TProgramExpr;
          function  ReadNewArray(elementTyp : TTypeSymbol; isWrite : Boolean) : TProgramExpr;
          procedure ReadArrayParams(ArrayIndices: TSymbolTable);
@@ -448,8 +446,8 @@ type
          procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol);
          procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
 
-         function CreateProgram(SystemTable: TSymbolTable; ResultType: TdwsResultType;
-                             const stackParams : TStackParameters) : TdwsMainProgram;
+         function CreateProgram(systemTable : TStaticSymbolTable; resultType : TdwsResultType;
+                                const stackParams : TStackParameters) : TdwsMainProgram;
          function CreateProcedure(Parent : TdwsProgram) : TdwsProcedure;
          function CreateAssign(const pos : TScriptPos; token : TTokenType; left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
 
@@ -1542,10 +1540,7 @@ begin
    names := TStringList.Create;
    initExpr := nil;
    try
-      // Conditionally pass in dynamic array
-      if coSymbolDictionary in FOptions then
-         ReadNameList(names, posArray)     // use overloaded version
-      else ReadNameList(names);
+      ReadNameList(names, posArray);
 
       pos := FTok.HotPos;
 
@@ -1592,7 +1587,7 @@ begin
       if (typ is TClassSymbol) and TClassSymbol(typ).IsStatic then
          FMsgs.AddCompilerErrorFmt(pos, CPE_ClassIsStatic, [TClassSymbol(typ).Name]);
 
-      for x := 0 to names.Count - 1 do begin
+      for x:=0 to names.Count-1 do begin
          CheckName(names[x]);
          sym:=TDataSymbol.Create(names[x], typ);
          FProg.Table.AddSymbol(sym);
@@ -1678,6 +1673,7 @@ begin
    end else begin
 
       CheckName(name);
+      CheckSpecialName(name);
 
       if FTok.TestDelete(ttCOLON) then
          typ:=ReadType('', tcConstant)
@@ -1767,6 +1763,7 @@ begin
          // typOld = typNew if a forwarded class declaration was overwritten
          if typOld <> typNew then begin
             CheckName(name);
+            CheckSpecialName(name);
             if typNew.Name<>'' then
                FProg.Table.AddSymbol(typNew);
          end  else begin
@@ -4495,16 +4492,22 @@ begin
    end;
 end;
 
-procedure TdwsCompiler.ReadNameList(names : TStrings);
+// ReadNameList
+//
+procedure TdwsCompiler.ReadNameList(names : TStrings; var posArray : TScriptPosArray);
 begin
-  names.Clear;
-  repeat
-    if not FTok.TestName then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-    names.Add(FTok.GetToken.FString);
-    CheckSpecialName(FTok.GetToken.FString);
-    FTok.KillToken;
-  until not FTok.TestDelete(ttCOMMA);
+   names.Clear;
+   repeat
+      if not FTok.TestName then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+      if coSymbolDictionary in FOptions then begin
+         SetLength(PosArray, Length(PosArray)+1);
+         PosArray[High(PosArray)] := FTok.HotPos;
+      end;
+      names.Add(FTok.GetToken.FString);
+      CheckSpecialName(FTok.GetToken.FString);
+      FTok.KillToken;
+   until not FTok.TestDelete(ttCOMMA);
 end;
 
 // ReadNew
@@ -4624,23 +4627,6 @@ begin
       raise;
    end;
    Result:=newExpr;
-end;
-
-procedure TdwsCompiler.ReadNameList(names : TStrings; var posArray : TScriptPosArray);
-begin
-  Names.Clear;
-  repeat
-    if not FTok.TestName then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-    // Added HotPos positions to PosArray. Used for dictionary
-    if coSymbolDictionary in FOptions then
-    begin
-      SetLength(PosArray, Length(PosArray)+1);  // grow the array as needed
-      PosArray[High(PosArray)] := FTok.HotPos;
-    end;
-    Names.Add(FTok.GetToken.FString);
-    FTok.KillToken;
-  until not FTok.TestDelete(ttCOMMA);
 end;
 
 // ReadClassOf
@@ -4884,10 +4870,7 @@ var
 begin
    names:=TStringList.Create;
    try
-      // Conditionally pass in dynamic array
-      if coSymbolDictionary in FOptions then
-         ReadNameList(Names, PosArray)     // use overloaded version
-      else ReadNameList(Names);
+      ReadNameList(names, posArray);
 
       if not FTok.TestDelete(ttCOLON) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
@@ -5268,9 +5251,7 @@ begin
                if FTok.Test(ttEND) then
                   Break;
 
-               if coSymbolDictionary in FOptions then
-                  ReadNameList(names, posArray)     // use overloaded version
-               else ReadNameList(names);
+               ReadNameList(names, posArray);
 
                if not FTok.TestDelete(ttCOLON) then
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_ColonExpected)
@@ -5498,7 +5479,7 @@ var
    sym : TSymbol;
 begin
    tt:=FTok.TestDeleteAny([ttRECORD, ttARRAY, ttCLASS, ttINTERFACE, ttBLEFT,
-                           ttPROCEDURE, ttFUNCTION, ttMETHOD]);
+                           ttPROCEDURE, ttFUNCTION]);
    case tt of
       ttRECORD :
          Result:=ReadRecord(typeName);
@@ -5529,18 +5510,8 @@ begin
       ttBLEFT :
          Result:=ReadEnumeration(typeName);
 
-      ttPROCEDURE : begin
-         Result:=ReadProcDecl(fkProcedure, False, True);
-         Result.SetName(typeName);
-      end;
-
-      ttFUNCTION : begin
-         Result:=ReadProcDecl(fkFunction, False, True);
-         Result.SetName(typeName);
-      end;
-
-      ttMETHOD : begin
-         Result:=ReadProcDecl(fkMethod, False, True);
+      ttPROCEDURE, ttFUNCTION : begin
+         Result:=ReadProcDecl(cTokenToFuncKind[tt], False, True);
          Result.SetName(typeName);
       end;
 
@@ -6153,10 +6124,11 @@ end;
 
 procedure TdwsCompiler.ReadArrayParams(ArrayIndices: TSymbolTable);
 var
-  x: Integer;
-  names: TStringList;
-  typSym: TTypeSymbol;
-  isVarParam, isConstParam: Boolean;
+  x : Integer;
+  names : TStringList;
+  typSym : TTypeSymbol;
+  isVarParam, isConstParam : Boolean;
+  posArray : TScriptPosArray;
 begin
    if FTok.TestDelete(ttARIGHT) then
      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ParamsExpected);
@@ -6171,7 +6143,7 @@ begin
             isConstParam := FTok.TestDelete(ttCONST)
          else isConstParam := False;
 
-         ReadNameList(names);
+         ReadNameList(names, posArray);
 
          if not FTok.TestDelete(ttCOLON) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected)
@@ -6222,10 +6194,7 @@ begin
                if lazyParam and (varParam or constParam) then
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantBeVarOrConst);
 
-               // Conditionally pass in dynamic array
-               if ParamsToDictionary and (coSymbolDictionary in FOptions) then
-                  ReadNameList(names, posArray)     // use overloaded version
-               else ReadNameList(names);
+               ReadNameList(names, posArray);
 
                if not FTok.TestDelete(ttCOLON) then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected)
@@ -6628,18 +6597,17 @@ end;
 
 // Checks if a name already exists in the Symboltable
 
-procedure TdwsCompiler.CheckName(const Name: string);
+procedure TdwsCompiler.CheckName(const name : String);
 var
-   sym: TSymbol;
+   sym : TSymbol;
 begin
-   sym := FProg.Table.FindLocal(Name);
+   sym:=FProg.Table.FindLocal(name);
 
    if not Assigned(sym) and (FProg is TdwsProcedure) then
-      sym := TdwsProcedure(FProg).Func.Params.FindLocal(Name);
+      sym:=TdwsProcedure(FProg).Func.Params.FindLocal(name);
 
    if Assigned(sym) then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [Name])
-   else CheckSpecialName(Name);
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [name]);
 end;
 
 // IdentifySpecialName
@@ -6684,7 +6652,7 @@ end;
 procedure TdwsCompiler.CheckSpecialName(const name : String);
 begin
    if IdentifySpecialName(name)<>skNone then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameIsReserved, [Name]);
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameIsReserved, [Name]);
 end;
 
 // OpenStreamForFile
@@ -7026,7 +6994,7 @@ end;
 
 // CreateProgram
 //
-function TdwsCompiler.CreateProgram(SystemTable: TSymbolTable; ResultType: TdwsResultType;
+function TdwsCompiler.CreateProgram(systemTable : TStaticSymbolTable; resultType : TdwsResultType;
                                     const stackParams : TStackParameters) : TdwsMainProgram;
 begin
    Result:=TdwsMainProgram.Create(SystemTable, ResultType, stackParams);
@@ -7105,10 +7073,11 @@ var
    rt : TSymbolTable;
    rSym : TSymbol;
    unitSymbol : TUnitSymbol;
+   posArray : TScriptPosArray;
 begin
    names:=TStringList.Create;
    try
-      ReadNameList(names);
+      ReadNameList(names, posArray);
       u:=0;
       if FUnitSymbol<>nil then
          if UnitSection=secImplementation then begin
@@ -7996,7 +7965,7 @@ end;
 
 // GetSystemTable
 //
-function TdwsConfiguration.GetSystemTable : TSymbolTable;
+function TdwsConfiguration.GetSystemTable : TStaticSymbolTable;
 begin
    if FSystemTable.Count=0 then begin
       if Assigned(FOnCreateBaseVariantSymbol) then
