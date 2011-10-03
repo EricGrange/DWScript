@@ -1358,7 +1358,8 @@ var
 begin
    if scriptPos.SourceFile=nil then Exit;
    if scriptPos.SourceFile<>FLastSourceFile then begin
-      i:=FSources.IndexOf(scriptPos.SourceFile.Name);
+      FLastSourceFile:=scriptPos.SourceFile;
+      i:=FSources.IndexOf(FLastSourceFile.Name);
       if i<0 then begin
          FLastBreakpointLines:=TBits.Create;
          FSources.AddObject(scriptPos.SourceFile.Name, FLastBreakpointLines);
@@ -1381,6 +1382,8 @@ begin
 
    if (prog.InitExpr.ScriptPos.SourceFile<>nil) and (prog.InitExpr.SubExprCount>0) then
       RegisterScriptPos(prog.InitExpr.ScriptPos);
+
+   RegisterScriptPos(prog.Expr.ScriptPos);
 
    prog.Expr.RecursiveEnumerateSubExprs(
       procedure (parent, expr : TExprBase; var abort : Boolean)
@@ -1406,6 +1409,7 @@ end;
 procedure TdwsBreakpointableLines.ProcessUnitSymbol(const unitSymbol : TUnitMainSymbol);
 begin
    ProcessSymbolTable(unitSymbol.InterfaceTable);
+   ProcessSymbolTable(unitSymbol.Table);
    ProcessSymbolTable(unitSymbol.ImplementationTable);
 end;
 
