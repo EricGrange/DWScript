@@ -288,6 +288,10 @@ type
          procedure StoreData(destStream : TStream); overload;
    end;
 
+   TFastCompareStringList = class (TStringList)
+      function CompareStrings(const S1, S2: string): Integer; override;
+   end;
+
 {: Changes the class of an object (by altering the VMT pointer).<p>
    Only checks IntanceSize.
    Use only if you understand fully what the above means. }
@@ -327,10 +331,6 @@ type
          {$ELSE}
          FList : PStringItemList;
          {$ENDIF}
-   end;
-
-   TFastCompareStringList = class (TStringList)
-      function CompareStrings(const S1, S2: string): Integer; override;
    end;
 
 var
