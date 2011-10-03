@@ -5116,15 +5116,17 @@ begin
             FSymbolDictionary.AddValueSymbol(Result, propPos, [suDeclaration]);
 
          if FTok.TestDelete(ttINDEX) then begin
-            indexExpr := ReadExpr;
-            if not (indexExpr is TConstExpr) then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_ConstantExpressionExpected);
-            indexTyp := indexExpr.Typ;
-            Result.SetIndex(TConstExpr(indexExpr).Data[FExec],
-                            TConstExpr(indexExpr).Addr[FExec], indexTyp);
-         end else indexTyp := nil;
+            indexExpr:=ReadExpr;
+            indexTyp:=indexExpr.Typ;
+            if not (indexExpr is TConstExpr) then begin
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+               indexExpr.Free;
+            end else begin
+               Result.SetIndex(TConstExpr(indexExpr).Data[FExec],
+                               TConstExpr(indexExpr).Addr[FExec], indexTyp);
+            end;
+         end else indexTyp:=nil;
 
-         // Generates a suggestion of how to fix it for class completion
          if FTok.TestDelete(ttREAD) then begin
             if not FTok.TestDeleteNamePos(name, accessPos) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
@@ -5132,19 +5134,16 @@ begin
             sym := structSym.Members.FindSymbol(name, cvPrivate);
 
             if not Assigned(sym) or (sym is TPropertySymbol) then begin
-               { Register the error and break the compilation process }
-               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_FieldMethodUnknown, [name]);
-            end;
 
-            if Result.Typ <> sym.Typ then
+               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_FieldMethodUnknown, [name]);
+
+            end else if Result.Typ<>sym.Typ then
 
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleType, [name])
 
             else if sym is TMethodSymbol then begin
 
-               if not (TFuncSymbol(sym).Kind in [fkFunction, fkMethod]) then
-                  FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionMethodExpected)
-               else if not CheckFuncParams(arrayIndices, TMethodSymbol(sym).Params, indexTyp) then
+               if not CheckFuncParams(arrayIndices, TMethodSymbol(sym).Params, indexTyp) then
                   FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleParameters, [name]);
 
             end else if arrayIndices.Count>baseArrayIndices then begin
@@ -5158,7 +5157,6 @@ begin
                FSymbolDictionary.AddSymbol(sym, accessPos, [suReference, suRead])
          end;
 
-         // Generates a suggestion of how to fix it for class completion
          if FTok.TestDelete(ttWRITE) then begin
             // Read name
             if not FTok.TestDeleteNamePos(name, accessPos) then
@@ -5168,12 +5166,10 @@ begin
             sym := structSym.Members.FindSymbol(Name, cvPrivate);
 
             if not Assigned(sym) or (sym is TPropertySymbol) then begin
-               { Register the error and break the compilation process }
-               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_FieldMethodUnknown, [name]);
-               raise EClassPropertyIncompleteError.Create('');
-            end;
 
-            if sym is TMethodSymbol then begin
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_FieldMethodUnknown, [name]);
+
+            end else if sym is TMethodSymbol then begin
 
                if    (not (TFuncSymbol(sym).Kind in [fkProcedure, fkMethod]))
                   or (TFuncSymbol(sym).Typ<>nil) then
@@ -5193,7 +5189,7 @@ begin
          end;
 
          if (Result.ReadSym = nil) and (Result.WriteSym = nil) then
-            FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ReadOrWriteExpected, [name]);
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ReadOrWriteExpected, [name]);
 
          ReadSemiColon;
 
