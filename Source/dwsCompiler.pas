@@ -6235,6 +6235,8 @@ begin
                   try
                      if (not constParam) and (typ is TOpenArraySymbol) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamMustBeConst);
+                     if lazyParam and (typ is TFuncSymbol) then
+                        FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantBeFunctionPointer);
 
                      if FTok.TestDelete(ttEQ) then begin
                         if lazyParam then
@@ -6745,11 +6747,9 @@ end;
 
 function TdwsCompiler.GetVarExpr(dataSym: TDataSymbol): TVarExpr;
 begin
-   if FProg.Level = dataSym.Level then begin
-      Result:=TVarExpr.CreateTyped(FProg, dataSym.Typ, dataSym);
-   end else begin
-      Result:=TVarParentExpr.Create(FProg, dataSym.Typ, dataSym)
-   end;
+   if FProg.Level=dataSym.Level then
+      Result:=TVarExpr.CreateTyped(FProg, dataSym.Typ, dataSym)
+   else Result:=TVarParentExpr.Create(FProg, dataSym.Typ, dataSym)
 end;
 
 // GetLazyParamExpr

@@ -128,6 +128,7 @@ type
       private
          FStackAddr : Integer;
          FLevel : Integer;
+
       public
          constructor Create(Prog: TdwsProgram; aTyp : TTypeSymbol; level, stackAddr : Integer);
          function Eval(exec : TdwsExecution) : Variant; override;

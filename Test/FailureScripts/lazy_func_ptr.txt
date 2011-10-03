@@ -1,0 +1,2 @@
+Syntax Error: Lazy parameter can't be a function pointer [line: 3, column: 28]
+Syntax Error: Invalid Instruction - function or assignment expected [line: 5, column: 2]
