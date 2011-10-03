@@ -345,6 +345,7 @@ type
       private
          FSources : TStringList;
 
+         // Valid only during construction
          FProcessedProgs : TObjectsLookup;
          FLastSourceFile : TSourceFile;
          FLastBreakpointLines : TBits;
@@ -371,6 +372,8 @@ type
          function Count : Integer; inline;
 
          function IndexOfSource(const name : String) : Integer; inline;
+
+         function IsExecutable(sourceName : String; line : Integer) : Boolean;
 
    end;
 
@@ -1283,7 +1286,7 @@ var
    p : TdwsProgram;
    mp : TdwsMainProgram;
 begin
-   FSources:=TStringList.Create;
+   FSources:=TFastCompareStringList.Create;
    FSources.CaseSensitive:=True;
    FSources.Sorted:=True;
    FSources.Duplicates:=dupError;
@@ -1321,6 +1324,20 @@ end;
 function TdwsBreakpointableLines.IndexOfSource(const name : String) : Integer;
 begin
    Result:=FSources.IndexOf(name);
+end;
+
+// IsExecutable
+//
+function TdwsBreakpointableLines.IsExecutable(sourceName : String; line : Integer) : Boolean;
+var
+   i : Integer;
+   bits : TBits;
+begin
+   i:=FSources.IndexOf(sourceName);
+   if i>=0 then begin
+      bits:=TBits(FSources.Objects[i]);
+      Result:=(Cardinal(line)<Cardinal(bits.Size)) and bits[line];
+   end else Result:=False;
 end;
 
 // GetSource
