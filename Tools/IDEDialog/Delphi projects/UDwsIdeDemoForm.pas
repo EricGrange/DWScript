@@ -40,6 +40,7 @@ type
     { Public declarations }
   end;
 
+
 var
   DwsIdeDemoForm: TDwsIdeDemoForm;
 
@@ -50,9 +51,16 @@ uses
   SynHighlighterDWS,
   UDwsIdeForm;
 
+const
+  IdeOptions : TDwsIdeOptions = (
+    EditorHighlighterClass : TSynDWSSyn;
+    EditorFontName         : 'Lucida sans typewriter';
+    EditorFontSize         : 10
+    );
+
 procedure TDwsIdeDemoForm.Button1Click(Sender: TObject);
 begin
-  DwsIDE_ShowModal( DelphiWebScript1, TSynDWSSyn );
+  DwsIDE_ShowModal( DelphiWebScript1, IdeOptions );
 end;
 
 function TDwsIdeDemoForm.DelphiWebScript1NeedUnit(const unitName: string;

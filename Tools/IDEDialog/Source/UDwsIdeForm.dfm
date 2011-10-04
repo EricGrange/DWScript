@@ -84,16 +84,11 @@ object DwsIdeForm: TDwsIdeForm
       Height = 240
       Align = alTop
       TabOrder = 0
-      ExplicitLeft = 5
-      ExplicitTop = 5
-      ExplicitWidth = 251
       inherited ListView1: TListView
         Width = 251
-        ExplicitWidth = 251
       end
       inherited Panel1: TPanel
         Width = 251
-        ExplicitWidth = 251
       end
     end
     inline DwsIdeWatchesFrame: TDwsIdeWatchesFrame
@@ -103,21 +98,14 @@ object DwsIdeForm: TDwsIdeForm
       Height = 224
       Align = alTop
       TabOrder = 1
-      ExplicitLeft = 5
-      ExplicitTop = 245
-      ExplicitWidth = 251
-      ExplicitHeight = 224
       inherited lvWatches: TListView
         Width = 251
         Height = 207
         ReadOnly = True
         RowSelect = True
-        ExplicitWidth = 251
-        ExplicitHeight = 207
       end
       inherited Panel1: TPanel
         Width = 251
-        ExplicitWidth = 251
       end
     end
     inline DwsIdeCallStackFrame: TDwsIdeCallStackFrame
@@ -127,19 +115,12 @@ object DwsIdeForm: TDwsIdeForm
       Height = 296
       Align = alTop
       TabOrder = 2
-      ExplicitLeft = 5
-      ExplicitTop = 469
-      ExplicitWidth = 251
-      ExplicitHeight = 296
       inherited memCallStack: TMemo
         Width = 251
         Height = 279
-        ExplicitWidth = 251
-        ExplicitHeight = 279
       end
       inherited Panel1: TPanel
         Width = 251
-        ExplicitWidth = 251
       end
     end
   end
@@ -474,7 +455,7 @@ object DwsIdeForm: TDwsIdeForm
     Left = 176
     Top = 256
     Bitmap = {
-      494C010116008000C00110001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C010116008000C40110001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000006000000001002000000000000060
       0000000000000000000000000000000000000000000000000000000000000000
       00000000000000000000000000000000000003220BA70E5721F7000B03870000

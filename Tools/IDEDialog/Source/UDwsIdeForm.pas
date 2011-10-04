@@ -125,6 +125,13 @@ type
 
   TEditorHighlighterClass = class of TSynCustomHighlighter;
 
+  TDwsIdeOptions = record
+    EditorHighlighterClass : TEditorHighlighterClass;
+    EditorFontName         : string;
+    EditorFontSize         : integer;
+  end;
+
+
   TDwsIdeForm = class(TForm, IDwsIde)
     ActionList1: TActionList;
     actOpenFile: TAction;
@@ -257,7 +264,7 @@ type
     procedure actProgramResetUpdate(Sender: TObject);
     procedure actViewSymbolsExecute(Sender: TObject);
     procedure actViewSymbolsUpdate(Sender: TObject);
-    constructor Create( AOwner : TComponent; AEditorHighlighterClass : TEditorHighlighterClass = nil ); reintroduce;
+    constructor Create( AOwner : TComponent; const AOptions : TDwsIdeOptions ); reintroduce;
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -271,7 +278,7 @@ type
 
     FScriptFolder: string;
 
-    FEditorHighlighterClass : TEditorHighlighterClass;
+    FOptions : TDwsIdeOptions;
 
     procedure EditorPageAddNew( const AFileName : string; ALoadfile : boolean  );
     function  ProjectSourceScript : string;
@@ -350,7 +357,7 @@ type
   end;
 
 
-procedure DwsIDE_ShowModal( AScript : TDelphiWebScript; AEditorHighlighterClass : TEditorHighlighterClass = nil );
+procedure DwsIDE_ShowModal( AScript : TDelphiWebScript; const AOptions : TDwsIdeOptions );
 
 implementation
 
@@ -428,11 +435,11 @@ end;
 
 
 
-procedure DwsIDE_ShowModal( AScript : TDelphiWebScript; AEditorHighlighterClass : TEditorHighlighterClass = nil );
+procedure DwsIDE_ShowModal( AScript : TDelphiWebScript; const AOptions : TDwsIdeOptions );
 var
   Frm : TDwsIdeForm;
 begin
-  Frm := TDwsIdeForm.Create( Application, AEditorHighlighterClass );
+  Frm := TDwsIdeForm.Create( Application, AOptions );
   try
     Frm.Script := AScript;
     Frm.ShowModal;
@@ -630,11 +637,11 @@ begin
 end;
 
 
-constructor TDwsIdeForm.Create(AOwner: TComponent; AEditorHighlighterClass : TEditorHighlighterClass = nil);
+constructor TDwsIdeForm.Create(AOwner: TComponent; const AOptions : TDwsIdeOptions );
 begin
   inherited Create( AOwner );
 
-  FEditorHighlighterClass := AEditorHighlighterClass
+  FOptions := AOptions;
 end;
 
 procedure TDwsIdeForm.actBuildExecute(Sender: TObject);
@@ -1800,8 +1807,13 @@ begin
   FEditor.Font.Name := 'Courier New';
   FEditor.Font.Size := 10;
 
-  If Assigned( AOwner.FEditorHighlighterClass ) then
-    FEditor.Highlighter := AOwner.FEditorHighlighterClass.Create( Self );
+  If Assigned( AOwner.FOptions.EditorHighlighterClass ) then
+    FEditor.Highlighter := AOwner.FOptions.EditorHighlighterClass.Create( Self );
+  If AOwner.FOptions.EditorFontName <> '' then
+    begin
+    FEditor.Font.Name := AOwner.FOptions.EditorFontName;
+    FEditor.Font.Size := AOwner.FOptions.EditorFontSize;
+    end;
 
   FEditor.Options := [eoAutoIndent, eoKeepCaretX, eoScrollByOneLess, eoSmartTabs, eoTabsToSpaces, eoTrimTrailingSpaces];
   FEditor.OnSpecialLineColors := SynEditorSpecialLineColors;

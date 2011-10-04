@@ -173,7 +173,7 @@ uses
 
 const
   // if the language is case-insensitive keywords *must* be in lowercase
-  KeyWords: array[0..102] of UnicodeString = (
+  KeyWords: array[0..103] of UnicodeString = (
     'absolute', 'abstract', 'and', 'array', 'as', 'asm',
     'begin', 'case', 'cdecl', 'class', 'const', 'constructor',
     'contains', 'deprecated', 'destructor',
@@ -189,7 +189,7 @@ const
     'register', 'reintroduce', 'repeat', 'require', 'resourcestring',
     'sealed', 'set', 'shl', 'shr', 'step', 'string',
     'then', 'to', 'try', 'type', 'unit', 'until',
-    'uses', 'var', 'virtual', 'while', 'with', 'xor'
+    'uses', 'var', 'virtual', 'while', 'with', 'xor', 'if'
   );
   KeyWords_PropertyScoped: array [0..4] of UnicodeString = (
    'default', 'index', 'read', 'stored', 'write'
@@ -311,13 +311,12 @@ begin
   AddAttribute(fAsmAttri);
 
   fCommentAttri := TSynHighlighterAttributes.Create(SYNS_AttrComment, SYNS_FriendlyAttrComment);
-  fCommentAttri.Foreground:=RGB(96, 96, 96);
+  fCommentAttri.Foreground:=clGreen;
   fCommentAttri.Style:= [fsItalic];
   AddAttribute(fCommentAttri);
 
   fDirecAttri := TSynHighlighterAttributes.Create(SYNS_AttrPreprocessor, SYNS_FriendlyAttrPreprocessor);
-  fDirecAttri.Foreground := RGB(96, 96, 96);
-  fDirecAttri.Background := RGB(238, 238, 238);
+  fDirecAttri.Foreground := TColor($808000);
   fDirecAttri.Style:= [fsItalic];
   AddAttribute(fDirecAttri);
 
@@ -344,11 +343,11 @@ begin
   AddAttribute(fSpaceAttri);
 
   fStringAttri := TSynHighlighterAttributes.Create(SYNS_AttrString, SYNS_FriendlyAttrString);
-  fStringAttri.Foreground := clGreen;
+  fStringAttri.Foreground := clBlue;
   AddAttribute(fStringAttri);
 
   fCharAttri := TSynHighlighterAttributes.Create(SYNS_AttrCharacter, SYNS_FriendlyAttrCharacter);
-  fCharAttri.Foreground := clGreen;
+  fCharAttri.Foreground := clBlue;
   AddAttribute(fCharAttri);
 
   fSymbolAttri := TSynHighlighterAttributes.Create(SYNS_AttrSymbol, SYNS_FriendlyAttrSymbol);
