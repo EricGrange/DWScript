@@ -1,0 +1,2 @@
+Syntax Error: Argument 0 expects type "Integer" instead of "String" [line: 10, column: 10]
+Syntax Error: Write access of property should be a static method [line: 11, column: 10]

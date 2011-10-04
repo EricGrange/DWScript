@@ -1009,16 +1009,22 @@ type
   EGenerationError = class(Exception);
   EHandledGenerationError = class(Exception);
 
-function ValueToString(const Value : Variant) : String;
+// ValueToString
+//
+function ValueToString(const value : Variant) : String;
 begin
-  case VarType(Value) of
-    varEmpty : Result := 'Unassigned';
-    varNull : Result := 'Null';
-    varString, varUString, varOleStr, varStrArg : Result := Format('''%s''', [VarToStr(Value)]);
-    varDate : Result := Format('DateTime(%f)', [TVarData(Value).VDate]);
-  else
-    Result := VarToStr(Value);
-  end;
+   case VarType(value) of
+      varEmpty :
+         Result := 'Unassigned';
+      varNull :
+         Result := 'Null';
+      varString, varUString, varOleStr, varStrArg :
+         Result := Format('''%s''', [VarToStr(value)]);
+      varDate :
+         Result := Format('DateTime(%f)', [TVarData(value).VDate]);
+   else
+      Result := VarToStr(value);
+   end;
 end;
 
 function GetExternalObjForID(Info: TProgramInfo; const AVarName: string): TObject;

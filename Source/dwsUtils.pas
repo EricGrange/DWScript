@@ -292,6 +292,8 @@ type
       function CompareStrings(const S1, S2: string): Integer; override;
    end;
 
+   ETightListOutOfBound = class(Exception);
+
 {: Changes the class of an object (by altering the VMT pointer).<p>
    Only checks IntanceSize.
    Use only if you understand fully what the above means. }
@@ -815,7 +817,7 @@ end;
 //
 procedure TTightList.RaiseIndexOutOfBounds;
 begin
-   raise Exception.Create('List index out of bounds');
+   raise ETightListOutOfBound.Create('List index out of bounds');
 end;
 
 // ------------------

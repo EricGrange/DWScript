@@ -1721,6 +1721,8 @@ type
          function Element(const Indices: array of Integer): IInfo; override;
          function GetMember(const s: string): IInfo; override;
          function GetValueAsString : String; override;
+         function GetData : TData; override;
+         procedure SetData(const Value: TData); override;
    end;
 
    TInfoFunc = class(TInfo)
@@ -6922,6 +6924,27 @@ end;
 function TInfoDynamicArray.GetValueAsString : String;
 begin
    Result:=FTypeSym.Description;
+end;
+
+// GetData
+//
+function TInfoDynamicArray.GetData : TData;
+var
+   dynArray : TScriptDynamicArray;
+begin
+   dynArray:=SelfDynArray;
+   Result:=dynArray.FData;
+end;
+
+// SetData
+//
+procedure TInfoDynamicArray.SetData(const Value: TData);
+var
+   dynArray : TScriptDynamicArray;
+begin
+   dynArray:=SelfDynArray;
+   dynArray.FData:=value;
+   dynArray.FLength:=Length(value) div dynArray.ElementSize;
 end;
 
 { TConnectorExpr }

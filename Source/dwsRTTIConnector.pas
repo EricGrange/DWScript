@@ -483,6 +483,7 @@ end;
 function TRTTIConnectorSymbol.Specialize(table : TSymbolTable; const qualifier : String) : TConnectorSymbol;
 var
    t : TRttiType;
+   qualifiedName : String;
 begin
    if qualifier<>'' then begin
       t:=vRTTIContext.FindType(qualifier);
@@ -490,7 +491,12 @@ begin
          Exit(nil);
    end else t:=nil;
 
-   Result:=TRTTIConnectorSymbol.Create(name+'<'+qualifier+'>', TdwsRTTIConnectorType.Create(table, t));
+   qualifiedName:=name+'<'+qualifier+'>';
+   Result:=TRTTIConnectorSymbol(table.FindSymbol(qualifiedName, cvMagic, TRTTIConnectorSymbol));
+   if Result=nil then begin
+      Result:=TRTTIConnectorSymbol.Create(qualifiedName, TdwsRTTIConnectorType.Create(table, t));
+      table.AddSymbol(Result);
+   end;
 end;
 
 // IsCompatible

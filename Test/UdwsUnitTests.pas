@@ -3,7 +3,7 @@ unit UdwsUnitTests;
 interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsSymbols, dwsUtils;
+   dwsTokenizer, dwsSymbols, dwsUtils, dwsStack;
 
 type
 
@@ -70,8 +70,10 @@ type
          procedure AssignTest;
          procedure PredefinedArray;
          procedure PredefinedRecord;
+         procedure DynamicArray;
          procedure ClassPropertyInfo;
          procedure DestructorAndExternalObject;
+         procedure ExternalObject;
          procedure CustomDestructor;
          procedure Delegates;
          procedure Operators;
@@ -501,6 +503,7 @@ end;
 procedure TdwsUnitTests.ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
 begin
    FMagicVar:=Info.ParamAsString[0];
+   ExtObject:=TObject.Create;
 end;
 
 // ClassCleanup
@@ -508,6 +511,7 @@ end;
 procedure TdwsUnitTests.ClassCleanup(ExternalObject: TObject);
 begin
    FMagicVar:='cleaned up';
+   ExternalObject.Free;
 end;
 
 // ClassDestructor
@@ -981,6 +985,56 @@ begin
    end;
 end;
 
+// DynamicArray
+//
+procedure TdwsUnitTests.DynamicArray;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   astr : IInfo;
+   data : TData;
+   myData : TData;
+begin
+   prog:=FCompiler.Compile( 'var astr : array of String;'#13#10
+                           +'astr.Add("hello");'#13#10
+                           +'astr.Add("world");'#13#10
+                           +'procedure MyTest; begin Print(astr.Length); Print(astr[0]); end;'#13#10
+                           );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+
+      astr:=exec.Info.Vars['astr'];
+
+      CheckEquals('array of String', astr.ValueAsString, 'as string');
+
+      CheckEquals(0, astr.Member['low'].ValueAsInteger, 'low');
+      CheckEquals(1, astr.Member['high'].ValueAsInteger, 'high');
+      CheckEquals(2, astr.Member['length'].ValueAsInteger, 'length');
+
+      CheckEquals('hello', astr.Element([0]).ValueAsString, 'item 0');
+      CheckEquals('world', astr.Element([1]).ValueAsString, 'item 1');
+
+      data:=astr.Data;
+      CheckEquals(2, Length(data), 'data length');
+      CheckEquals('hello', data[0], 'data 0');
+      CheckEquals('world', data[1], 'data 1');
+
+      SetLength(myData, 1);
+      myData[0]:='byebye';
+      astr.Data:=myData;
+
+      exec.Info.Func['MyTest'].Call;
+
+      CheckEquals('1byebye', exec.Result.ToString, 'after setdata');
+   finally
+      exec.EndProgram;
+   end;
+end;
+
 // ClassPropertyInfo
 //
 procedure TdwsUnitTests.ClassPropertyInfo;
@@ -995,18 +1049,31 @@ begin
 
    exec:=prog.BeginNewExecution;
    try
-      exec.RunProgram(0);
       p:=exec.Info.Vars['o'];
+      CheckEquals('(nil)', p.ValueAsString, 'ClassInfo before run');
+
+      exec.RunProgram(0);
+
+      p:=exec.Info.Vars['o'];
+      CheckEquals('TTestClass', p.ValueAsString, 'ClassInfo after init');
+
+      CheckTrue(p.ExternalObject=nil, 'External object');
+
       p.Member['MyReadWriteProp'].Value:=123;
       CheckEquals(123, p.Member['MyReadWriteProp'].Value, 'RW Prop');
       CheckEquals(1230, p.Member['MyReadOnlyProp'].Value, 'RO Prop');
+
       p.Member['MyWriteOnlyProp'].Value:=123;
       CheckEquals(12, p.Member['FField'].Value, 'direct field');
       CheckEquals('FField', p.FieldMemberNames.CommaText, 'MemberNames 1');
       CheckEquals('FField', p.FieldMemberNames.CommaText, 'MemberNames 2');
+
       p2:=p.Member['ArrayProp'];
       p2.Parameter['v'].Value:='12';
       CheckEquals(24, p2.ValueAsInteger, 'Array prop read');
+
+      p.Method['Free'].Call;
+      CheckEquals('destroyed TTestClass', p.ValueAsString, 'ClassInfo after destroy');
    finally
       exec.EndProgram;
    end;
@@ -1033,6 +1100,31 @@ begin
       CheckEquals( 'hello'#13#10'cleaned up'#13#10
                   +'Runtime Error: Object already destroyed [line: 1, column: 74]'#13#10,
                   exec.Result.ToString+exec.Msgs.AsInfo);
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// ExternalObject
+//
+procedure TdwsUnitTests.ExternalObject;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   p : IInfo;
+begin
+   FMagicVar:='';
+   prog:=FCompiler.Compile( 'var o := TTestClass.MyCreate(''hello'');');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+
+      p:=exec.Info.Vars['o'];
+      CheckEquals('TObject', p.ExternalObject.ClassName, 'External object');
+      p.ExternalObject.Free;
+      p.ExternalObject:=nil;
+      CheckTrue(p.ExternalObject=nil, 'External object cleared');
    finally
       exec.EndProgram;
    end;

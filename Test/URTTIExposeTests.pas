@@ -3,14 +3,18 @@ unit URTTIExposeTests;
 interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsRTTIExposer, TypInfo, Types;
+   dwsTokenizer, dwsRTTIExposer, dwsRTTIConnector, TypInfo, Types;
 
 type
 
    TRTTIExposeTests = class (TTestCase)
       private
          FCompiler : TDelphiWebScript;
+         FRTTIConnector : TdwsRTTIConnector;
          FUnit : TdwsUnit;
+
+      protected
+         procedure DoGetSimpleClassInstance(Info: TProgramInfo);
 
       public
          procedure SetUp; override;
@@ -23,18 +27,13 @@ type
          procedure SimpleEnumeration;
          procedure SimpleRecord;
          procedure ExposeInstances;
+
+         procedure ConnectSimpleClass;
+         procedure ConnectSimpleClassTyped;
+         procedure ConnectTypeCheckFail;
    end;
 
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-implementation
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-
 type
-
    {$M+}
    {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([vcPublic, vcPublished])  FIELDS([vcPublic, vcPublished])}
    TSimpleClass = class
@@ -78,6 +77,14 @@ type
       class function UnitRect : TMyRect; static;
       class procedure InflateRect(var r : TMyRect); static;
    end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
 // RectWidth
 //
@@ -146,19 +153,39 @@ end;
 // SetUp
 //
 procedure TRTTIExposeTests.SetUp;
+var
+   func : TdwsFunction;
 begin
    FCompiler:=TDelphiWebScript.Create(nil);
+
+   FRTTIConnector:=TdwsRTTIConnector.Create(nil);
+   FRTTIConnector.Script:=FCompiler;
+
    FUnit:=TdwsUnit.Create(nil);
    FUnit.UnitName:='Test';
    FUnit.Script:=FCompiler;
+   FUnit.Dependencies.Add(RTTI_UnitName);
+
+   func:=FUnit.Functions.Add;
+   func.Name:='GetSimpleInstance';
+   func.ResultType:='RTTIVariant';
+   func.OnEval:=DoGetSimpleClassInstance;
 end;
 
 // TearDown
 //
 procedure TRTTIExposeTests.TearDown;
 begin
+   FRTTIConnector.Free;
    FUnit.Free;
    FCompiler.Free;
+end;
+
+// DoGetSimpleClassInstance
+//
+procedure TRTTIExposeTests.DoGetSimpleClassInstance(Info: TProgramInfo);
+begin
+   Info.ResultAsVariant:=TdwsRTTIVariant.FromObject(TSimpleClass.Create(123));
 end;
 
 // SimpleClass
@@ -305,6 +332,72 @@ begin
       i2.Free;
 
    end;
+end;
+
+// ConnectSimpleClass
+//
+procedure TRTTIExposeTests.ConnectSimpleClass;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile('var v : RTTIVariant = GetSimpleInstance;'#13#10
+                           +'PrintLn(v.Value);'#13#10
+                           +'v.IncValue();'#13#10
+                           +'PrintLn(v.Value);'#13#10
+                           +'v.Value:=456;'#13#10
+                           +'PrintLn(v.Value);'#13#10
+                           +'v.Free();'#13#10
+                           );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.Execute;
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
+   CheckEquals('123'#13#10'124'#13#10'456'#13#10, exec.Result.ToString, 'Exec Result');
+end;
+
+// ConnectSimpleClassTyped
+//
+procedure TRTTIExposeTests.ConnectSimpleClassTyped;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile('var v : RTTIVariant<URTTIExposeTests.TSimpleClass> = GetSimpleInstance;'#13#10
+                           +'PrintLn(v.Value);'#13#10
+                           +'v.IncValue();'#13#10
+                           +'PrintLn(v.Value);'#13#10
+                           +'v.Value:=456;'#13#10
+                           +'PrintLn(v.Value);'#13#10
+                           +'v.Free();'#13#10
+                           );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.Execute;
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
+   CheckEquals('123'#13#10'124'#13#10'456'#13#10, exec.Result.ToString, 'Exec Result');
+end;
+
+// ConnectTypeCheckFail
+//
+procedure TRTTIExposeTests.ConnectTypeCheckFail;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile('var v : RTTIVariant<URTTIExposeTests.TBug>;');
+
+   CheckEquals('Syntax Error: Connector "RttiVariant" specialization to "URTTIExposeTests.TBug" failed [line: 1, column: 42]'#13#10,
+               prog.Msgs.AsInfo, 'Specialize');
+
+   prog:=FCompiler.Compile('var v : RTTIVariant<URTTIExposeTests.TSimpleClass>;'#13#10
+                           +'PrintLn(v.Bug);'#13#10);
+
+   CheckEquals('Syntax Error: Member "Bug" readonly or not found in connector "RttiVariant <URTTIExposeTests.TSimpleClass>" [line: 2, column: 14]'#13#10,
+               prog.Msgs.AsInfo, 'Member');
 end;
 
 // ------------------------------------------------------------------

@@ -3207,14 +3207,14 @@ begin
             fieldExpr:=ReadField(aPos, nil, TFieldSymbol(sym), expr);
             Result:=ReadAssign(ttASSIGN, fieldExpr);
 
-         end else if sym is TMethodSymbol then begin
+         end else begin
 
             // WriteSym is a Method
             // Convert an assignment to a function call f := x  -->  f(x)
-
+            Assert(sym is TMethodSymbol);
             Result:=ReadPropertyArrayAccessor(expr, propertySym, typedExprList, aPos, True);
 
-         end else Assert(False);
+         end;
 
       end else begin
 

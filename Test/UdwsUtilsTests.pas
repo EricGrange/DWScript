@@ -10,7 +10,10 @@ type
       private
          FTightList : TTightList;
 
-      public
+      protected
+         procedure TightListOutOfBoundsDelete;
+         procedure TightListOutOfBoundsInsert;
+         procedure TightListOutOfBoundsMove;
 
       published
 
@@ -22,6 +25,8 @@ type
          procedure ParseJSON;
 
          procedure UnicodeCompareTextTest;
+
+         procedure VarRecArrayTest;
    end;
 
 // ------------------------------------------------------------------
@@ -101,11 +106,36 @@ begin
    CheckEquals(AnsiString('123456789'), bs);
 end;
 
+// TightListOutOfBoundsDelete
+//
+procedure TdwsUtilsTests.TightListOutOfBoundsDelete;
+begin
+   FTightList.Delete(-1);
+end;
+
+// TightListOutOfBoundsInsert
+//
+procedure TdwsUtilsTests.TightListOutOfBoundsInsert;
+begin
+   FTightList.Insert(999, nil);
+end;
+
+// TightListOutOfBoundsMove
+//
+procedure TdwsUtilsTests.TightListOutOfBoundsMove;
+begin
+   FTightList.Insert(1, nil);
+end;
+
 // TightListTest
 //
 procedure TdwsUtilsTests.TightListTest;
 begin
    CheckEquals(-1, FTightList.IndexOf(nil), 'empty search');
+
+   CheckException(TightListOutOfBoundsDelete, ETightListOutOfBound, 'OutOfBounds Delete');
+   CheckException(TightListOutOfBoundsInsert, ETightListOutOfBound, 'OutOfBounds Insert');
+   CheckException(TightListOutOfBoundsMove, ETightListOutOfBound, 'OutOfBounds Move');
 
    FTightList.Add(Self);
    CheckEquals(-1, FTightList.IndexOf(nil), 'single search nil');
@@ -235,6 +265,29 @@ begin
    CheckTrue(UnicodeCompareText('abé', 'abÉ')=0, 'abé, abÉ');
    CheckTrue(UnicodeCompareText('abéaa', 'abÉz')<0, 'abéaa, abÉz');
    CheckTrue(UnicodeCompareText('abéz', 'abÉaa')>0, 'abéz, abÉaa');
+end;
+
+// VarRecArrayTest
+//
+procedure TdwsUtilsTests.VarRecArrayTest;
+var
+   v : TVarRecArrayContainer;
+begin
+   v:=TVarRecArrayContainer.Create;
+   try
+      v.Add(True);
+      v.Add(False);
+
+      CheckEquals(2, Length(v.VarRecArray));
+
+      CheckEquals(vtBoolean, v.VarRecArray[0].VType, 'type 0');
+      CheckEquals(True, v.VarRecArray[0].VBoolean, 'value 0');
+
+      CheckEquals(vtBoolean, v.VarRecArray[1].VType, 'type 1');
+      CheckEquals(False, v.VarRecArray[1].VBoolean, 'value 1');
+   finally
+      v.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------
