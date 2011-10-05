@@ -1,0 +1,1 @@
+Syntax Error: Class "TTest" has no default property [line: 6, column: 22]

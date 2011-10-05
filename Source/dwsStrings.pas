@@ -240,6 +240,7 @@ const
   CPE_NoMemberExpected = 'No member expected';
   CPE_NoArrayExpected = 'Not an array!';
   CPE_NoMethodExpected = 'Not a method!';
+  CPE_NoIndicesExpectedForOpenArray = 'No indices expected for open array';
   CPE_InvalidInstruction = 'Invalid Instruction - function or assignment expected';
   CPE_ConstantInstruction = 'Constant Instruction - has no effect';
   CPE_EndOfBlockExpected = 'End of block expected';

@@ -1,0 +1,2 @@
+Syntax Error: No indices expected for open array [line: 1, column: 41]
+Syntax Error: ".." expected [line: 5, column: 17]
