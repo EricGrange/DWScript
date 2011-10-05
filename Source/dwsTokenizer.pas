@@ -135,7 +135,7 @@ type
 
    TTokenizerRules = class
       private
-         FStates : TSimpleList<TState>;
+         FStates : TObjectList<TState>;
 
       protected
          function CreateState : TState;
@@ -1093,17 +1093,13 @@ end;
 //
 constructor TTokenizerRules.Create;
 begin
-   FStates:=TSimpleList<TState>.Create;
+   FStates:=TObjectList<TState>.Create;
 end;
 
 // Destroy
 //
 destructor TTokenizerRules.Destroy;
-var
-   i : Integer;
 begin
-   for i:=0 to FStates.Count-1 do
-      FStates[i].Free;
    FStates.Free;
 end;
 
