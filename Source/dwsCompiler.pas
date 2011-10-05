@@ -495,34 +495,6 @@ type
          property OnReadScript : TCompilerReadScriptEvent read FOnReadScript write FOnReadScript;
    end;
 
-  TdwsDefaultResult = class(TdwsResult)
-  private
-    FTextBuilder: TWriteOnlyBlockStream;
-    function GetText: String; inline;
-  public
-    constructor Create(resultType : TdwsResultType); override;
-    destructor Destroy; override;
-    procedure AddString(const str : String); override;
-    function ToString : String; override;
-    property Text: String read GetText;
-  end;
-
-  TdwsDefaultResultType = class(TdwsResultType)
-  public
-    procedure AddResultSymbols(SymbolTable: TSymbolTable); override;
-    function CreateProgResult: TdwsResult; override;
-  end;
-
-  TPrintFunction = class(TInternalFunction)
-  public
-    procedure Execute(info : TProgramInfo); override;
-  end;
-
-  TPrintLnFunction = class(TInternalFunction)
-  public
-    procedure Execute(info : TProgramInfo); override;
-  end;
-
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -3341,10 +3313,11 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
          baseType := TArraySymbol(baseExpr.BaseType);
 
          try
-            if not (   (indexExpr.Typ.UnAliasedType=baseType.IndexType.UnAliasedType)
-                    or indexExpr.Typ.IsOfType(FProg.TypVariant)) then
-               FMsgs.AddCompilerErrorFmt(hotPos, CPE_ArrayIndexMismatch,
-                                         [baseType.IndexType.Name, indexExpr.Typ.Name]);
+            if    (indexExpr.Typ=nil)
+               or not (   (indexExpr.Typ.UnAliasedType=baseType.IndexType.UnAliasedType)
+                       or indexExpr.Typ.IsOfType(FProg.TypVariant)) then
+               IncompatibleTypes(hotPos, CPE_ArrayIndexMismatch,
+                                 baseType.IndexType, indexExpr.Typ);
 
             if baseType is TStaticArraySymbol then begin
 
@@ -3366,7 +3339,8 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                   end;
                end;
 
-            end else if baseType is TDynamicArraySymbol then begin
+            end else begin
+               Assert(baseType is TDynamicArraySymbol);
 
                if FTok.Test(ttCOMMA) then
                   newBaseExpr:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
@@ -3374,22 +3348,17 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                   if FTok.TestDelete(ttASSIGN) then begin
                      hotPos:=FTok.HotPos;
                      valueExpr:=ReadExpr(baseType.Typ);
-                     try
-                        if not baseType.Typ.IsCompatible(valueExpr.Typ) then
-                           FMsgs.AddCompilerErrorFmt(hotPos, CPE_AssignIncompatibleTypes,
-                                                     [valueExpr.Typ.Name, baseType.Typ.Name]);
-                        Result:=TDynamicArraySetExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr);
-                     except
-                        valueExpr.Free;
-                        raise;
-                     end;
+                     if not baseType.Typ.IsCompatible(valueExpr.Typ) then
+                        IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
+                                          valueExpr.Typ, baseType.Typ);
+                     Result:=TDynamicArraySetExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr);
                   end else begin
                      Result:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr);
                   end;
                   Exit;
                end;
 
-            end else Assert(False);
+            end;
 
          except
             indexExpr.Free;
@@ -4216,23 +4185,27 @@ function TdwsCompiler.ReadArrayType(const TypeName: String; typeContext : TdwsRe
 var
    hotPos : TScriptPos;
 
-   procedure CheckBound(bound : TTypedExpr);
+   function CheckBound(bound : TTypedExpr) : Boolean;
    begin
-      if not bound.IsConstant then
-         FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotAConstant);
+      Result:=False;
       if not (   bound.Typ.IsOfType(FProg.TypInteger)
-              or (bound.Typ is TEnumerationSymbol)
-              or bound.Typ.IsOfType(FProg.TypBoolean)) then
-         FMsgs.AddCompilerStop(hotPos, CPE_ArrayBoundNotOrdinal);
+                   or (bound.Typ is TEnumerationSymbol)
+               or bound.Typ.IsOfType(FProg.TypBoolean)) then
+         FMsgs.AddCompilerError(hotPos, CPE_ArrayBoundNotOrdinal)
+      else if not bound.IsConstant then
+         FMsgs.AddCompilerError(hotPos, CPE_ArrayBoundNotAConstant)
+      else Result:=True;
    end;
 
 var
-   x: Integer;
-   min, max: TTypedExprList;
-   typ: TTypeSymbol;
+   x : Integer;
+   min, max : TTypedExprList;
+   typ : TTypeSymbol;
+   boundsOk : Boolean;
 begin
-   min := TTypedExprList.Create;
-   max := TTypedExprList.Create;
+   boundsOk:=True;
+   min:=TTypedExprList.Create;
+   max:=TTypedExprList.Create;
    try
 
       if FTok.TestDelete(ttALEFT) then begin
@@ -4242,7 +4215,7 @@ begin
             hotPos:=FTok.HotPos;
             min.Insert0(ReadExpr);
 
-            CheckBound(min[0]);
+            boundsOk:=boundsOK and CheckBound(min[0]);
 
             if not FTok.TestDelete(ttDOTDOT) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotDotExpected);
@@ -4251,12 +4224,12 @@ begin
             hotPos:=FTok.HotPos;
             max.Insert0(ReadExpr);
 
-            CheckBound(max[0]);
+            boundsOk:=boundsOK and CheckBound(max[0]);
 
             if max[0].Typ<>min[0].Typ then
                FMsgs.AddCompilerError(hotPos, CPE_ArrayBoundsOfDifferentTypes);
 
-            if max[0].EvalAsInteger(FExec)<min[0].EvalAsInteger(FExec) then begin
+            if boundsOk and (max[0].EvalAsInteger(FExec)<min[0].EvalAsInteger(FExec)) then begin
                FMsgs.AddCompilerError(hotPos, CPE_LowerBoundGreaterThanUpperBound);
                // keep compiling
                max[0].Free;
@@ -4278,20 +4251,23 @@ begin
 
          if not (typeContext in [tcDeclaration, tcParameter, tcOperand]) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_TypeExpected);
+         if min.Count>0 then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_NoIndicesExpectedForOpenArray);
+
          Result := TOpenArraySymbol.Create(TypeName, FProg.TypVariant, FProg.TypInteger);
 
       end else begin
 
-         typ := ReadType('', typeContext);
+         typ:=ReadType('', typeContext);
 
-         if min.Count > 0 then begin
+         if boundsOk and (min.Count>0) then begin
             // initialize innermost array
-            Result := TStaticArraySymbol.Create('', typ, min[0].Typ,
-                                 min[0].EvalAsInteger(FExec),
-                                 max[0].EvalAsInteger(FExec));
+            Result:=TStaticArraySymbol.Create('', typ, min[0].Typ,
+                                                min[0].EvalAsInteger(FExec),
+                                                max[0].EvalAsInteger(FExec));
             try
                // add outer arrays
-               for x := 1 to min.Count - 1 do begin
+               for x:=1 to min.Count - 1 do begin
                   FProg.RootTable.AddToDestructionList(Result);
                   Result := TStaticArraySymbol.Create('', Result, min[0].Typ,
                                  min[x].EvalAsInteger(FExec),
@@ -8168,78 +8144,6 @@ begin
 
   if Assigned(FSubFilter) then
     FSubFilter.FreeNotification(Self);
-end;
-
-
-{ TdwsDefaultResult }
-
-// Create
-//
-constructor TdwsDefaultResult.Create(resultType: TdwsResultType);
-begin
-   inherited;
-   FTextBuilder:=TWriteOnlyBlockStream.Create;
-end;
-
-// Destroy
-//
-destructor TdwsDefaultResult.Destroy;
-begin
-   inherited;
-   FTextBuilder.Free;
-end;
-
-// AddString
-//
-procedure TdwsDefaultResult.AddString(const str : String);
-begin
-   FTextBuilder.WriteString(str);
-end;
-
-// ToString
-//
-function TdwsDefaultResult.ToString : String;
-begin
-   Result:=GetText;
-end;
-
-// GetText
-//
-function TdwsDefaultResult.GetText : String;
-begin
-   Result:=FTextBuilder.ToString;
-end;
-
-{ TdwsDefaultResultType }
-
-function TdwsDefaultResultType.CreateProgResult: TdwsResult;
-begin
-  Result := TdwsDefaultResult.Create(Self);
-end;
-
-procedure TdwsDefaultResultType.AddResultSymbols(SymbolTable: TSymbolTable);
-begin
-  inherited;
-  TPrintFunction.Create(SymbolTable, 'Print', ['v', 'Variant'], '', False);
-  TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['v', 'Variant'], '', False);
-end;
-
-{ TPrintFunction }
-
-procedure TPrintFunction.Execute(info : TProgramInfo);
-begin
-   info.Execution.Result.AddString(info.ValueAsString['v']);
-end;
-
-{ TPrintLnFunction }
-
-procedure TPrintLnFunction.Execute(info : TProgramInfo);
-var
-   result : TdwsResult;
-begin
-   result:=info.Execution.Result;
-   result.AddString(Info.ValueAsString['v']);
-   result.AddString(#13#10);
 end;
 
 // ------------------

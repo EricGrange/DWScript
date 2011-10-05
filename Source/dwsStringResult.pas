@@ -41,6 +41,7 @@ type
     constructor Create(resultType : TdwsResultType); override;
     destructor Destroy; override;
     procedure AddString(const Str: string); override;
+    procedure Clear; override;
     procedure SetStr(const Str: string);
     function ReadLn: string;
     function ReadChar: string;
@@ -132,6 +133,13 @@ begin
   FStrBuilder.WriteString(Str);
   if Assigned(TdwsStringResultType(ResultType).OnAddString) then
     TdwsStringResultType(ResultType).OnAddString(Self, Str)
+end;
+
+// Clear
+//
+procedure TdwsStringResult.Clear;
+begin
+   FStrBuilder.Clear;
 end;
 
 procedure TdwsStringResult.SetStr(const Str: string);

@@ -240,7 +240,24 @@ type
          property ResultType: TdwsResultType read FResultType;
 
       public
-         procedure AddString(const str : String); virtual;
+         procedure AddString(const str : String); virtual; abstract;
+         procedure Clear; virtual; abstract;
+   end;
+
+   TdwsDefaultResult = class(TdwsResult)
+      private
+         FTextBuilder : TWriteOnlyBlockStream;
+         function GetText : String; inline;
+
+      public
+         constructor Create(resultType : TdwsResultType); override;
+         destructor Destroy; override;
+
+         procedure AddString(const str : String); override;
+         procedure Clear; override;
+         function ToString : String; override;
+
+         property Text: String read GetText;
    end;
 
    TdwsResultType = class(TComponent)
@@ -255,6 +272,12 @@ type
       published
          property OnInitializeProgram: TProgramEvent read FOnInitializeProgram write FOnInitializeProgram;
          property OnFinalizeProgram: TProgramEvent read FOnFinalizeProgram write FOnFinalizeProgram;
+   end;
+
+   TdwsDefaultResultType = class(TdwsResultType)
+      public
+         procedure AddResultSymbols(SymbolTable: TSymbolTable); override;
+         function CreateProgResult: TdwsResult; override;
    end;
 
    // TTerminatorThread
@@ -1821,6 +1844,16 @@ type
          procedure Write(exec : TdwsExecution; const Data: TData); override;
    end;
 
+   TPrintFunction = class(TInternalFunction)
+      public
+         procedure Execute(info : TProgramInfo); override;
+   end;
+
+   TPrintLnFunction = class(TInternalFunction)
+      public
+         procedure Execute(info : TProgramInfo); override;
+   end;
+
 { TScriptObjectWrapper }
 
 // wrapper to interact with an released script object
@@ -3075,7 +3108,7 @@ end;
 
 function TdwsResultType.CreateProgResult: TdwsResult;
 begin
-  Result := TdwsResult.Create(Self);
+  Result := TdwsDefaultResult.Create(Self);
 end;
 
 // ------------------
@@ -3093,17 +3126,96 @@ begin
     FResultType.FOnFinalizeProgram(Prog);
 end;
 
-// AddString
-//
-procedure TdwsResult.AddString(const str : String);
-begin
-   // ignore by default
-end;
-
 procedure TdwsResult.InitializeProgram(Prog: TdwsProgram);
 begin
   if Assigned(FResultType.FOnInitializeProgram) then
     FResultType.FOnInitializeProgram(Prog);
+end;
+
+// ------------------
+// ------------------ TdwsDefaultResultType ------------------
+// ------------------
+
+function TdwsDefaultResultType.CreateProgResult: TdwsResult;
+begin
+  Result := TdwsDefaultResult.Create(Self);
+end;
+
+procedure TdwsDefaultResultType.AddResultSymbols(SymbolTable: TSymbolTable);
+begin
+  inherited;
+  TPrintFunction.Create(SymbolTable, 'Print', ['v', 'Variant'], '', False);
+  TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['v', 'Variant'], '', False);
+end;
+
+// ------------------
+// ------------------ TPrintFunction ------------------
+// ------------------
+
+procedure TPrintFunction.Execute(info : TProgramInfo);
+begin
+   info.Execution.Result.AddString(info.ValueAsString['v']);
+end;
+
+// ------------------
+// ------------------ TPrintLnFunction ------------------
+// ------------------
+
+procedure TPrintLnFunction.Execute(info : TProgramInfo);
+var
+   result : TdwsResult;
+begin
+   result:=info.Execution.Result;
+   result.AddString(Info.ValueAsString['v']);
+   result.AddString(#13#10);
+end;
+
+// ------------------
+// ------------------ TdwsDefaultResult ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsDefaultResult.Create(resultType: TdwsResultType);
+begin
+   inherited;
+   FTextBuilder:=TWriteOnlyBlockStream.Create;
+end;
+
+// Destroy
+//
+destructor TdwsDefaultResult.Destroy;
+begin
+   inherited;
+   FTextBuilder.Free;
+end;
+
+// AddString
+//
+procedure TdwsDefaultResult.AddString(const str : String);
+begin
+   FTextBuilder.WriteString(str);
+end;
+
+// Clear
+//
+procedure TdwsDefaultResult.Clear;
+begin
+   FTextBuilder.Clear;
+end;
+
+// ToString
+//
+function TdwsDefaultResult.ToString : String;
+begin
+   Result:=GetText;
+end;
+
+// GetText
+//
+function TdwsDefaultResult.GetText : String;
+begin
+   Result:=FTextBuilder.ToString;
 end;
 
 { TTerminatorThread }
