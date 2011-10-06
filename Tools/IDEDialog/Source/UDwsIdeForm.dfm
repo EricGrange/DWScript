@@ -12,9 +12,11 @@ object DwsIdeForm: TDwsIdeForm
   Font.Style = []
   Menu = MainMenu
   OldCreateOrder = False
+  Position = poDesigned
   ShowHint = True
   OnCloseQuery = FormCloseQuery
   OnDestroy = FormDestroy
+  OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
   object Splitter1: TSplitter

@@ -269,6 +269,7 @@ type
     procedure actViewSymbolsExecute(Sender: TObject);
     procedure actViewSymbolsUpdate(Sender: TObject);
     constructor Create( AOwner : TComponent; const AOptions : TDwsIdeOptions ); reintroduce;
+    procedure FormShow(Sender: TObject);
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -283,6 +284,8 @@ type
     FScriptFolder: string;
 
     FOptions : TDwsIdeOptions;
+
+    FIDEFormRect : TRect;
 
     procedure EditorPageAddNew( const AFileName : string; ALoadfile : boolean  );
     function  ProjectSourceScript : string;
@@ -339,6 +342,13 @@ type
                 write SetScriptFolder;
     procedure ListSymbols;
 
+    procedure LoadSettings(
+           var AProjectFileName : string;
+           var AIDEFormRect     : TRect );
+    procedure SaveSettings(
+         const AProjectFileName : string;
+         const AIDEFormRect     : TRect );
+var
 
   PUBLIC
     // IDwsIde
@@ -402,37 +412,6 @@ end;
 
 
 
-procedure SaveWorkingProjectFileNameToRegistry( AFileName : string );
-var
-  Reg : TRegistry;
-begin
-  Reg := TRegistry.Create;
-  try
-    Reg.RootKey := HKEY_CURRENT_USER;
-
-    if Reg.OpenKey('SOFTWARE\DwsIde\', TRUE) then
-      Reg.WriteString('WorkingProjectFileName', AFileName);
-
-  finally
-    Reg.Free;
-  end;
-end;
-
-
-function LoadWorkingProjectFileNameFromRegistry : string;
-var
-  Reg : TRegistry;
-begin
-  Result := '';
-  Reg := TRegistry.Create;
-  try
-    Reg.RootKey := HKEY_CURRENT_USER;
-    if Reg.OpenKey('SOFTWARE\DwsIde\', False) then
-      Result := Reg.ReadString( 'WorkingProjectFileName');
-  finally
-    Reg.Free;
-  end;
-end;
 
 
 
@@ -887,7 +866,7 @@ end;
 
 procedure TDwsIdeForm.AfterConstruction;
 var
-  S : string;
+  sProjectFileName : string;
 begin
   inherited;
 
@@ -902,14 +881,16 @@ begin
   if not DirectoryExists( ScriptFolder ) then
     Raise Exception.Create( 'For this IDE demonstration, please place a copy of the ''DWS Script Files'' folder from project source on to your desktop.' );
 
-  S := LoadWorkingProjectFileNameFromRegistry;
-  if FileExists(S) then
-    LoadProjectFile( S )
+  FIDEFormRect := BoundsRect;
+  LoadSettings( sProjectFileName, FIDEFormRect );
+
+  if FileExists(sProjectFileName) then
+    LoadProjectFile( sProjectFileName )
    else
      begin
-     S := ScriptFolder + '\ExampleScript.dwsproj';
-     if FileExists(S) then
-       LoadProjectFile( S )
+     sProjectFileName := ScriptFolder + '\ExampleScript.dwsproj';
+     if FileExists(sProjectFileName) then
+       LoadProjectFile( sProjectFileName )
       else
       actFileNewProjectExecute( nil );
      end;
@@ -917,8 +898,9 @@ end;
 
 procedure TDwsIdeForm.BeforeDestruction;
 begin
-  if ProjectFileName <> '' then
-    SaveWorkingProjectFileNameToRegistry( ProjectFileName );
+  SaveSettings(
+    ProjectFileName,
+    BoundsRect );
 
   inherited;
 
@@ -1300,6 +1282,11 @@ procedure TDwsIdeForm.FormDestroy(Sender: TObject);
 begin
   dwsDebugger1.Breakpoints.Clean;
   dwsDebugger1.Watches.Clean;
+end;
+
+procedure TDwsIdeForm.FormShow(Sender: TObject);
+begin
+  BoundsRect := FIDEFormRect;
 end;
 
 function TDwsIdeForm.GetEditorCurrentPageIndex: integer;
@@ -1778,6 +1765,59 @@ begin
 
 
 end;
+
+
+
+procedure TDwsIdeForm.SaveSettings(
+      const AProjectFileName : string;
+      const AIDEFormRect     : TRect );
+var
+  Reg : TRegistry;
+begin
+  Reg := TRegistry.Create;
+  try
+    Reg.RootKey := HKEY_CURRENT_USER;
+
+    if Reg.OpenKey('SOFTWARE\DwsIde\', TRUE) then
+      begin
+      Reg.WriteString('WorkingProjectFileName', AProjectFileName);
+      Reg.WriteInteger( 'IDEFormRect_Left', AIDEFormRect.Left);
+      Reg.WriteInteger( 'IDEFormRect_Top', AIDEFormRect.Top);
+      Reg.WriteInteger( 'IDEFormRect_Right', AIDEFormRect.Right);
+      Reg.WriteInteger( 'IDEFormRect_Bottom', AIDEFormRect.Bottom);
+      end;
+
+  finally
+    Reg.Free;
+  end;
+end;
+
+
+procedure TDwsIdeForm.LoadSettings(
+           var AProjectFileName : string;
+           var AIDEFormRect     : TRect );
+var
+  Reg : TRegistry;
+begin
+  AProjectFileName := '';
+
+  Reg := TRegistry.Create;
+  try
+    Reg.RootKey := HKEY_CURRENT_USER;
+    if Reg.OpenKey('SOFTWARE\DwsIde\', False) then
+      begin
+      AProjectFileName    := Reg.ReadString( 'WorkingProjectFileName');
+      AIDEFormRect.Left   := Reg.ReadInteger( 'IDEFormRect_Left');
+      AIDEFormRect.Top    := Reg.ReadInteger( 'IDEFormRect_Top');
+      AIDEFormRect.Right  := Reg.ReadInteger( 'IDEFormRect_Right');
+      AIDEFormRect.Bottom := Reg.ReadInteger( 'IDEFormRect_Bottom');
+      end;
+  finally
+    Reg.Free;
+  end;
+end;
+
+
 
 
 
