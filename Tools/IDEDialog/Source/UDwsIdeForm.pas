@@ -41,6 +41,7 @@ uses
   SynEditHighlighter,
   SynHighlighterDWS,
   SynEditTypes,
+  SynEditKeyCmds,
   UDwsIdeConfig,
   Diagnostics,
   SynEdit,
@@ -75,10 +76,13 @@ type
     procedure PaintGutterGlyphs(ACanvas: TCanvas; AClip: TRect;
                       FirstLine, LastLine: integer);
     procedure SetCurrentLine(ALine: integer);
+    procedure SynEditorClick(Sender: TObject);
     procedure SynEditorSpecialLineColors(Sender: TObject;
                  Line: Integer; var Special: Boolean; var FG, BG: TColor);
     procedure SynEditorGutterClick(Sender: TObject; Button: TMouseButton; X, Y,
       Line: Integer; Mark: TSynEditMark);
+    procedure SynEditorCommandProcessed(Sender: TObject;
+      var Command: TSynEditorCommand; var AChar: Char; Data: Pointer);
     function GetIsReadOnly: boolean;
     procedure SetIsReadOnly(const Value: boolean);
     function GetIsProjectSourcefile: boolean;
@@ -405,8 +409,10 @@ begin
   Reg := TRegistry.Create;
   try
     Reg.RootKey := HKEY_CURRENT_USER;
+
     if Reg.OpenKey('SOFTWARE\DwsIde\', TRUE) then
       Reg.WriteString('WorkingProjectFileName', AFileName);
+
   finally
     Reg.Free;
   end;
@@ -533,10 +539,10 @@ end;
 
 
 
-{ TGutterMarkDrawPlugin }
+{ TEditorPageSynEditPlugin }
 
 type
-  TDebugSupportPlugin = class(TSynEditPlugin)
+  TEditorPageSynEditPlugin = class(TSynEditPlugin)
   protected
     FPage : TEditorPage;
     procedure AfterPaint(ACanvas: TCanvas; const AClip: TRect;
@@ -547,19 +553,19 @@ type
     constructor Create(APage : TEditorPage);
   end;
 
-constructor TDebugSupportPlugin.Create(APage : TEditorPage);
+constructor TEditorPageSynEditPlugin.Create(APage : TEditorPage);
 begin
   inherited Create( APage.Editor);
   FPage := APage;
 end;
 
-procedure TDebugSupportPlugin.AfterPaint(ACanvas: TCanvas; const AClip: TRect;
+procedure TEditorPageSynEditPlugin.AfterPaint(ACanvas: TCanvas; const AClip: TRect;
   FirstLine, LastLine: integer);
 begin
   FPage.PaintGutterGlyphs(ACanvas, AClip, FirstLine, LastLine);
 end;
 
-procedure TDebugSupportPlugin.LinesInserted(FirstLine, Count: integer);
+procedure TEditorPageSynEditPlugin.LinesInserted(FirstLine, Count: integer);
 var
   I, iLineCount : integer;
 begin
@@ -580,10 +586,9 @@ begin
 
   // Redraw the gutter for updated icons.
   FPage.Editor.InvalidateGutter;
-
 end;
 
-procedure TDebugSupportPlugin.LinesDeleted(FirstLine, Count: integer);
+procedure TEditorPageSynEditPlugin.LinesDeleted(FirstLine, Count: integer);
 var
   I : integer;
 begin
@@ -1783,6 +1788,39 @@ constructor TEditorPage.Create(
                     AOwner    : TDwsIdeForm;
               const AFileName : string;
                     ALoadFile : boolean);
+
+  procedure InitEditor;
+  begin
+    FEditor := TSynEdit.Create( Self );
+    FEditor.OnChange := DoOnEditorChange;
+    FEditor.Parent   := Self;
+    FEditor.Align    := alClient;
+    FEditor.BorderStyle := bsNone;
+    FEditor.Gutter.Width := 50;
+
+    If Assigned( AOwner.FOptions.EditorHighlighterClass ) then
+      FEditor.Highlighter := AOwner.FOptions.EditorHighlighterClass.Create( Self );
+    If AOwner.FOptions.EditorFontName <> '' then
+      begin
+      FEditor.Font.Name := AOwner.FOptions.EditorFontName;
+      FEditor.Font.Size := AOwner.FOptions.EditorFontSize;
+      end
+     else
+      begin
+      FEditor.Font.Name := 'Courier New';
+      FEditor.Font.Size := 10;
+      end;
+
+    FEditor.Options := [eoAutoIndent, eoKeepCaretX, eoScrollByOneLess, eoSmartTabs, eoTabsToSpaces, eoTrimTrailingSpaces];
+    FEditor.OnSpecialLineColors := SynEditorSpecialLineColors;
+    FEditor.OnGutterClick := SynEditorGutterClick;
+    FEditor.OnCommandProcessed := SynEditorCommandProcessed;
+    FEditor.OnClick := SynEditorClick;
+
+    TEditorPageSynEditPlugin.Create(Self);
+
+  end;
+
 begin
   inherited Create( AOwner );
 
@@ -1798,26 +1836,7 @@ begin
 
   AOwner.pcEditor.ActivePage := Self;
 
-  FEditor := TSynEdit.Create( Self );
-  FEditor.OnChange := DoOnEditorChange;
-  FEditor.Parent := Self;
-  FEditor.Align := alClient;
-  FEditor.BorderStyle := bsNone;
-
-  FEditor.Font.Name := 'Courier New';
-  FEditor.Font.Size := 10;
-
-  If Assigned( AOwner.FOptions.EditorHighlighterClass ) then
-    FEditor.Highlighter := AOwner.FOptions.EditorHighlighterClass.Create( Self );
-  If AOwner.FOptions.EditorFontName <> '' then
-    begin
-    FEditor.Font.Name := AOwner.FOptions.EditorFontName;
-    FEditor.Font.Size := AOwner.FOptions.EditorFontSize;
-    end;
-
-  FEditor.Options := [eoAutoIndent, eoKeepCaretX, eoScrollByOneLess, eoSmartTabs, eoTabsToSpaces, eoTrimTrailingSpaces];
-  FEditor.OnSpecialLineColors := SynEditorSpecialLineColors;
-  FEditor.OnGutterClick := SynEditorGutterClick;
+  InitEditor;
 
   if ALoadFile and FileExists( AFileName ) then
     begin
@@ -1827,8 +1846,6 @@ begin
     end;
 
   FEditor.Modified := False;
-
-  TDebugSupportPlugin.Create(Self);
 
 end;
 
@@ -1961,17 +1978,62 @@ end;
 procedure TEditorPage.PaintGutterGlyphs(ACanvas: TCanvas; AClip: TRect;
   FirstLine, LastLine: integer);
 var
-  LH, X, Y: integer;
+  iLineHeight, iGutterWidth : integer;
+
+  procedure DrawRuler( ALine, X, Y : integer );
+  var
+    S : string;
+    R : TRect;
+    I : integer;
+  begin
+  if (ALine = 1) or (ALine = Editor.CaretY) or (ALine mod 10 = 0) then
+    begin
+    S := IntToStr( ALine );
+    R := Rect( X,Y, iGutterWidth-2, Y + iLineHeight );
+    DrawText(
+      ACanvas.Handle,
+      S,
+      Length(S),
+      R,
+      DT_RIGHT );
+    end
+   else
+     begin
+     if ALine mod 5 = 0 then
+       I := 5
+      else
+       I := 2;
+     Inc( Y, iLineHeight div 2 );
+     ACanvas.MoveTo( iGutterWidth-I, Y);
+     ACanvas.LineTo( iGutterWidth, Y);
+     end;
+  end;
+
+var
+  X, Y: integer;
   ImgIndex: integer;
+  R : TRect;
 begin
+  iLineHeight := Editor.LineHeight;
+  iGutterWidth := Editor.Gutter.Width;
+
+  // Ruler background
+  ACanvas.Brush.Color := Lighten( clBtnFace, 6 );
+  R := Rect( 24, 0, iGutterWidth, Editor.Height );
+  ACanvas.FillRect( R );
+
+  // Ruler cosmetics..
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.Font.Color := clGray;
+  ACanvas.Pen.Color := clGray;
+
   FirstLine := Editor.RowToLine(FirstLine);
   LastLine := Editor.RowToLine(LastLine);
-  X := 14;
-  LH := Editor.LineHeight;
+  X := 4;
   while FirstLine <= LastLine do
   begin
-    Y := (LH - FForm.SmallImages.Height) div 2
-         + LH * (Editor.LineToRow(FirstLine) - Editor.TopLine);
+    Y := (iLineHeight - FForm.SmallImages.Height) div 2
+         + iLineHeight * (Editor.LineToRow(FirstLine) - Editor.TopLine);
 
     If FirstLine = FCurrentLine then
       begin
@@ -2001,6 +2063,9 @@ begin
 
     if ImgIndex >= 0 then
       FForm.SmallImages.Draw(ACanvas, X, Y, ImgIndex);
+
+    DrawRuler( FirstLine, X, Y );
+
     Inc(FirstLine);
   end;
 end;
@@ -2094,6 +2159,20 @@ begin
     Result := '*MainModule*'
    else
     result := JustFileName( FileName );
+end;
+
+procedure TEditorPage.SynEditorClick(Sender: TObject);
+begin
+  TSynEdit( Sender).InvalidateGutter;
+end;
+
+procedure TEditorPage.SynEditorCommandProcessed(Sender: TObject;
+  var Command: TSynEditorCommand; var AChar: Char; Data: Pointer);
+begin
+  Case Command of
+    ecUp, ecDown :
+      TSynEdit( Sender).InvalidateGutter;
+  End;
 end;
 
 procedure TEditorPage.SynEditorGutterClick(Sender: TObject;

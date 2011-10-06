@@ -24,7 +24,7 @@ unit UDwsIdeDefs;
 interface
 
 uses
-  dwsDebugger;
+  Windows, Graphics, dwsDebugger;
 
 type
 
@@ -37,6 +37,8 @@ type
 
 function DebuggerEvaluate( ADebugger : TDwsDebugger; const AExpression : string) : String;
 
+function Lighten( AColor: TColor; AFactor: Byte): TColor;
+// Lightens a color by this amount
 
 implementation
 
@@ -67,6 +69,27 @@ begin
          Result:=E.Message;
    end;
 end;
+
+
+
+function Lighten( AColor: TColor; AFactor: Byte): TColor;
+// Lightens a color by this amount
+var
+  R, G, B: Byte;
+begin
+  AColor := ColorToRGB( AColor );
+
+  R := GetRValue(AColor);
+  G := GetGValue(AColor);
+  B := GetBValue(AColor);
+
+  Inc( R, AFactor );
+  Inc( G, AFactor );
+  Inc( B, AFactor );
+
+  Result := RGB(R, G, B);
+end;
+
 
 
 end.
