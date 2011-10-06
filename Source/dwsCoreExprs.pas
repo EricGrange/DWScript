@@ -31,10 +31,12 @@ type
    TCaseCondition = class;
 
    IVarParamData = interface
-      function GetData: TData;
-      function GetAddr: Integer;
-      property Data: TData read GetData;
-      property Addr: Integer read GetAddr;
+      function GetData : TData;
+      function GetAddr : Integer;
+      function Eval : PVariant;
+
+      property Data : TData read GetData;
+      property Addr : Integer read GetAddr;
    end;
 
    TVarExpr = class (TDataExpr)
@@ -145,8 +147,12 @@ type
       public
          constructor CreateFromVarExpr(expr : TVarExpr);
 
-         procedure AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer); override;
-         procedure AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr); override;
+         function GetVarParamDataAsPointer(exec : TdwsExecution) : Pointer; inline;
+         procedure GetVarParamData(exec : TdwsExecution; var result : IVarParamData);
+         function GetVarParamEval(exec : TdwsExecution) : PVariant; inline;
+
+         procedure AssignData(exec : TdwsExecution; const sourceData : TData; sourceAddr : Integer); override;
+         procedure AssignDataExpr(exec : TdwsExecution; dataExpr: TDataExpr); override;
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
          procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
          function  Eval(exec : TdwsExecution) : Variant; override;
@@ -329,8 +335,12 @@ type
          constructor Create(prog : TdwsProgram; const pos : TScriptPos;
                             baseExpr : TDataExpr; indexExpr : TTypedExpr;
                             lowBound, highBound : Integer);
+
          function IsConstant : Boolean; override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+
+         procedure AssignExpr(exec : TdwsExecution; expr : TTypedExpr); override;
+         function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // Array expressions x[index] for open arrays
@@ -399,6 +409,8 @@ type
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr;
                             fieldSymbol: TFieldSymbol);
          destructor Destroy; override;
+
+         function Eval(exec : TdwsExecution) : Variant; override;
 
          property BaseExpr : TDataExpr read FBaseExpr;
          property MemberOffset : Integer read FMemberOffset;
@@ -2003,53 +2015,81 @@ begin
    FStackAddr:=expr.FStackAddr;
 end;
 
+// GetVarParamDataPointer
+//
+function TVarParamExpr.GetVarParamDataAsPointer(exec : TdwsExecution) : Pointer;
+var
+   varData : PVarData;
+begin
+   varData:=@exec.Stack.Data[exec.Stack.BasePointer+FStackAddr];
+   Assert(varData.VType=varUnknown);
+   Result:=varData.VUnknown
+end;
+
+// GetVarParamData
+//
+procedure TVarParamExpr.GetVarParamData(exec : TdwsExecution; var result : IVarParamData);
+begin
+   result:=IVarParamData(GetVarParamDataAsPointer(exec));
+end;
+
+// GetVarParamEval
+//
+function TVarParamExpr.GetVarParamEval(exec : TdwsExecution) : PVariant;
+begin
+   Result:=IVarParamData(GetVarParamDataAsPointer(exec)).Eval;
+end;
+
 // GetAddr
 //
 function TVarParamExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-   Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.BasePointer + FStackAddr])).Addr;
+   Result:=IVarParamData(GetVarParamDataAsPointer(exec)).Addr;
 end;
 
 // GetData
 //
 function TVarParamExpr.GetData(exec : TdwsExecution) : TData;
 begin
-   Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.BasePointer + FStackAddr])).Data;
+   Result:=IVarParamData(GetVarParamDataAsPointer(exec)).Data;
 end;
 
 // AssignData
 //
-procedure TVarParamExpr.AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer);
+procedure TVarParamExpr.AssignData(exec : TdwsExecution; const sourceData : TData; sourceAddr : Integer);
 begin
-   DWSCopyData(SourceData, SourceAddr, Data[exec], Addr[exec], Typ.Size);
+   DWSCopyData(sourceData, sourceAddr, Data[exec], Addr[exec], Typ.Size);
 end;
 
 // AssignValue
 //
-procedure TVarParamExpr.AssignValue(exec : TdwsExecution; const Value: Variant);
+procedure TVarParamExpr.AssignValue(exec : TdwsExecution; const value : Variant);
 begin
-   VarCopy(Data[exec][Addr[exec]], Value);
+   VarCopy(Data[exec][Addr[exec]], value);
 end;
 
 // AssignExpr
 //
-procedure TVarParamExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
+procedure TVarParamExpr.AssignExpr(exec : TdwsExecution; expr : TTypedExpr);
+var
+   v : PVariant;
 begin
-   Expr.EvalAsVariant(exec, Data[exec][Addr[exec]]);
+   v:=GetVarParamEval(exec);
+   Expr.EvalAsVariant(exec, v^);
 end;
 
 // AssignDataExpr
 //
-procedure TVarParamExpr.AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr);
+procedure TVarParamExpr.AssignDataExpr(exec : TdwsExecution; dataExpr: TDataExpr);
 begin
-   DWSCopyData(DataExpr.Data[exec], DataExpr.Addr[exec], Data[exec], Addr[exec], Typ.Size);
+   DWSCopyData(dataExpr.Data[exec], dataExpr.Addr[exec], Data[exec], Addr[exec], Typ.Size);
 end;
 
 // Eval
 //
 function TVarParamExpr.Eval(exec : TdwsExecution) : Variant;
 begin
-   Result := Data[exec][Addr[exec]];
+   Result:=GetVarParamEval(exec)^;
 end;
 
 // ------------------
@@ -2639,14 +2679,28 @@ begin
    end;
 end;
 
+// AssignExpr
+//
+procedure TStaticArrayExpr.AssignExpr(exec : TdwsExecution; expr : TTypedExpr);
+begin
+   expr.EvalAsVariant(exec, FBaseExpr.Data[exec][GetAddr(exec)]);
+end;
+
+// Eval
+//
+function TStaticArrayExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result:=FBaseExpr.Data[exec][GetAddr(exec)];
+end;
+
 // GetAddr
 //
 function TStaticArrayExpr.GetAddr(exec : TdwsExecution) : Integer;
 var
-   index: Integer;
+   index : Integer;
 begin
    // Get index
-   index := FIndexExpr.EvalAsInteger(exec) - FLowBound;
+   index:=FIndexExpr.EvalAsInteger(exec)-FLowBound;
 
    if Cardinal(index)>=Cardinal(FCount) then begin
       if index>=FCount then
@@ -2654,14 +2708,14 @@ begin
       else RaiseLowerExceeded(exec, index+FLowBound);
    end;
    // Calculate the address
-   Result := FBaseExpr.Addr[exec] + (index * FElementSize);
+   Result:=FBaseExpr.Addr[exec]+(index*FElementSize);
 end;
 
 // GetData
 //
 function TStaticArrayExpr.GetData(exec : TdwsExecution) : TData;
 begin
-   Result := FBaseExpr.Data[exec];
+   Result:=FBaseExpr.Data[exec];
 end;
 
 // ------------------
@@ -3106,18 +3160,25 @@ begin
    inherited;
 end;
 
+// Eval
+//
+function TRecordExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result:=FBaseExpr.Data[exec][FBaseExpr.Addr[exec]+FMemberOffset];
+end;
+
 // GetAddr
 //
 function TRecordExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-   Result := FBaseExpr.Addr[exec] + FMemberOffset;
+   Result:=FBaseExpr.Addr[exec]+FMemberOffset;
 end;
 
 // GetData
 //
 function TRecordExpr.GetData(exec : TdwsExecution) : TData;
 begin
-   Result := FBaseExpr.Data[exec];
+   Result:=FBaseExpr.Data[exec];
 end;
 
 // GetSubExpr
