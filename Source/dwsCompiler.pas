@@ -1458,11 +1458,13 @@ begin
                except
                   on E : Exception do begin
                      gotError:=True;
-                     if compiler.FMsgs.Count>0 then
-                        expr:=TConstExpr.Create(contextProgram,
-                                                contextProgram.TypString,
-                                                compiler.FMsgs.AsInfo);
                   end;
+               end;
+               if compiler.FMsgs.HasErrors then begin
+                  gotError:=True;
+                  expr:=TConstExpr.Create(contextProgram,
+                                          contextProgram.TypString,
+                                          compiler.FMsgs.AsInfo);
                end;
             finally
                FreeAndNil(compiler.FTok);
