@@ -1569,7 +1569,11 @@ end;
 //
 function TObjectsLookup.Compare(const item1, item2 : TObject) : Integer;
 begin
-   Result:=(NativeInt(item1)-NativeInt(item2)) shr 31;
+   if NativeUInt(item1)<NativeUInt(item2) then
+      Result:=-1
+   else if NativeUInt(item1)=NativeUInt(item2) then
+      Result:=0
+   else Result:=-1;
 end;
 
 // ------------------------------------------------------------------
@@ -1587,6 +1591,7 @@ finalization
    FinalizeStringsUnifier;
 
 end.
+
 
 
 
