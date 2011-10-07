@@ -4,7 +4,7 @@ interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
-   dwsSymbols, dwsPascalTokenizer;
+   dwsSymbols, dwsPascalTokenizer, dwsStrings;
 
 type
 
@@ -36,6 +36,7 @@ type
          procedure DestructorCall;
          procedure SubExprTest;
          procedure RecompileInContext;
+         procedure ScriptPos;
    end;
 
 // ------------------------------------------------------------------
@@ -578,6 +579,31 @@ begin
 
    exec:=prog.Execute;
    CheckEquals('world', exec.Result.ToString, 'Recompile Result');
+end;
+
+// ScriptPos
+//
+procedure TCornerCasesTests.ScriptPos;
+var
+   p : TScriptPos;
+begin
+   p:=TScriptPos.Create(nil, 1, 2);
+
+   CheckFalse(p.IsSourceFile('test'));
+   CheckEquals('', p.AsInfo);
+
+   CheckEquals(1, p.Line);
+   CheckEquals(2, p.Col);
+
+   p.IncCol;
+
+   CheckEquals(1, p.Line);
+   CheckEquals(3, p.Col);
+
+   p.NewLine;
+
+   CheckEquals(2, p.Line);
+   CheckEquals(1, p.Col);
 end;
 
 // ------------------------------------------------------------------

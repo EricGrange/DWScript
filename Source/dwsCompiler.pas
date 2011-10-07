@@ -321,9 +321,9 @@ type
          procedure ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
          function ReadInterface(const typeName : String) : TInterfaceSymbol;
          function ReadConnectorSym(const name : String; baseExpr : TTypedExpr;
-                                const connectorType : IConnectorType; IsWrite: Boolean) : TProgramExpr;
+                                   const connectorType : IConnectorType; isWrite: Boolean) : TProgramExpr;
          function ReadConnectorArray(const name : String; baseExpr : TTypedExpr;
-                                  const connectorType : IConnectorType; IsWrite: Boolean) : TConnectorCallExpr;
+                                     const connectorType : IConnectorType; isWrite: Boolean) : TConnectorCallExpr;
          function ReadConstDecl(constSymbolClass : TConstSymbolClass) : TConstSymbol;
          function ReadConstValue : TConstExpr;
          function ReadConstRecord(symbol : TRecordSymbol) : TData;
@@ -6839,8 +6839,10 @@ begin
       FMsgs.AddCompilerHint(FTok.HotPos, CPH_ResultNotUsed);
 end;
 
-function TdwsCompiler.ReadConnectorSym(const Name: string;
-  BaseExpr: TTypedExpr; const ConnectorType: IConnectorType; IsWrite: Boolean): TProgramExpr;
+// ReadConnectorSym
+//
+function TdwsCompiler.ReadConnectorSym(const name : String; baseExpr : TTypedExpr;
+            const connectorType : IConnectorType; isWrite : Boolean): TProgramExpr;
 
    function TryConnectorCall : TConnectorCallExpr;
    var
@@ -6858,61 +6860,57 @@ function TdwsCompiler.ReadConnectorSym(const Name: string;
   end;
 
 begin
-  if FTok.Test(ttALEFT) then begin
-    Result := ReadConnectorArray(Name,BaseExpr,ConnectorType,IsWrite);
-  end
-  else if FTok.Test(ttBLEFT) then
-  begin
-    // Brackets -> always a function
-    Result := TryConnectorCall;
-    if Result=nil then
-      Result:=TConstExpr.CreateTyped(FProg, FProg.TypVariant, Null); // keep compiling
-  end
-  else if not IsWrite then
-  begin
-    // The assignment ":=" was already read.
-    Result := TConnectorReadExpr.Create(FProg, FTok.HotPos, Name, BaseExpr);
+   if FTok.Test(ttALEFT) then begin
 
-    if not TConnectorReadExpr(Result).AssignConnectorSym(ConnectorType) then
-    begin
-      Result.Free;
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
-                               [Name, ConnectorType.ConnectorCaption]);
-    end;
-  end
-  else if FTok.TestDelete(ttASSIGN) then
-  begin
-    // A assignment of the form "connector.member := expr" was found
-    // and is transformed into "connector.member(expr)"
-    Result := TConnectorWriteExpr.Create(FProg, FTok.HotPos,  Name, BaseExpr, ReadExpr);
+      Result:=ReadConnectorArray(name, baseExpr, connectorType, isWrite);
 
-    if not TConnectorWriteExpr(Result).AssignConnectorSym(FProg, ConnectorType) then
-    begin
-      Result.Free;
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
-                               [Name, ConnectorType.ConnectorCaption]);
-    end;
-  end
-  else
-  begin
-    // It's possible that we should read a connector member or
-    // call a connector function without arguments.
-    Result := TConnectorReadExpr.Create(FProg, FTok.HotPos, Name, BaseExpr);
+   end else if FTok.Test(ttBLEFT) then begin
 
-    if not TConnectorReadExpr(Result).AssignConnectorSym(ConnectorType) then
-    begin
-      // Don't destroy BaseExpr!
-      TConnectorReadExpr(Result).BaseExpr := nil;
-      Result.Free;
+      Result:=TryConnectorCall;
+      if Result=nil then
+         Result:=TConstExpr.CreateTyped(FProg, FProg.TypVariant, Null); // keep compiling
 
-      // Try to read a connector call
-      Result := TryConnectorCall;
-    end;
+   end else if not isWrite then begin
 
-    if not Assigned(Result) then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
-                               [Name, ConnectorType.ConnectorCaption]);
-  end;
+      Result:=TConnectorReadExpr.Create(FProg, FTok.HotPos, name, baseExpr);
+
+      if not TConnectorReadExpr(Result).AssignConnectorSym(connectorType) then begin
+         Result.Free;
+         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
+                                  [name, connectorType.ConnectorCaption]);
+      end;
+
+   end else if FTok.TestDelete(ttASSIGN) then begin
+
+      // An assignment of the form "connector.member := expr" was found
+      // and is transformed into "connector.member(expr)"
+      Result:=TConnectorWriteExpr.Create(FProg, FTok.HotPos, name, baseExpr, ReadExpr);
+
+      if not TConnectorWriteExpr(Result).AssignConnectorSym(FProg, connectorType) then begin
+         Result.Free;
+         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
+                                  [name, connectorType.ConnectorCaption]);
+      end;
+
+   end else begin
+
+      // It's possible that we should read a connector member or
+      // call a connector function without arguments.
+      Result:=TConnectorReadExpr.Create(FProg, FTok.HotPos, name, baseExpr);
+
+      if not TConnectorReadExpr(Result).AssignConnectorSym(connectorType) then begin
+         // Don't destroy BaseExpr!
+         TConnectorReadExpr(Result).baseExpr:=nil;
+         Result.Free;
+
+         // Try to read a connector call
+         Result:=TryConnectorCall;
+      end;
+
+      if not Assigned(Result) then
+         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
+                                  [name, connectorType.ConnectorCaption]);
+   end;
 end;
 
 // ReadConnectorArray

@@ -3,7 +3,8 @@ unit URTTIExposeTests;
 interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsRTTIExposer, dwsRTTIConnector, TypInfo, Types;
+   dwsTokenizer, dwsRTTIExposer, dwsRTTIConnector, TypInfo, Types,
+   Forms, StdCtrls;
 
 type
 
@@ -31,6 +32,7 @@ type
          procedure ConnectSimpleClass;
          procedure ConnectSimpleClassTyped;
          procedure ConnectTypeCheckFail;
+         procedure ConnectFormCreateComponent;
    end;
 
 type
@@ -398,6 +400,48 @@ begin
 
    CheckEquals('Syntax Error: Member "Bug" readonly or not found in connector "RttiVariant <URTTIExposeTests.TSimpleClass>" [line: 2, column: 14]'#13#10,
                prog.Msgs.AsInfo, 'Member');
+end;
+
+// ConnectFormCreateComponent
+//
+procedure TRTTIExposeTests.ConnectFormCreateComponent;
+var
+   form : TForm;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   RegisterClass(TLabel);
+
+   Application.CreateForm(TForm, form);
+   try
+      form.Name:='ConnectorTestForm';
+
+      prog:=FCompiler.Compile( 'var f := ConnectForm("ConnectorTestForm");'#13#10
+                              +'Print(f.Name);'#13#10
+                              +'f.Name := "Hello";'#13#10
+                              +'var lbl := CreateComponent(f, "StdCtrls.TLabel");'#13#10
+                              +'lbl.Caption := "World";'#13#10
+                              +'CreateComponent(f, "TLabel").Caption := "Label2";'#13#10
+                              );
+
+      CheckEquals('', prog.Msgs.AsInfo, 'compile');
+
+      exec:=prog.Execute(0);
+
+      CheckEquals('ConnectorTestForm', exec.Result.ToString, 'result');
+
+      CheckEquals('Hello', form.Name, 'form renamed');
+
+      CheckEquals(2, form.ComponentCount, 'form component count');
+
+      CheckEquals('TLabel', form.Components[0].ClassName, 'form component[0]');
+      CheckEquals('TLabel', form.Components[1].ClassName, 'form component[1]');
+
+      CheckEquals('World', TLabel(form.Components[0]).Caption, 'label 1 caption');
+      CheckEquals('Label2', TLabel(form.Components[1]).Caption, 'label 2 caption');
+   finally
+      form.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------

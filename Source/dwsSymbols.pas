@@ -2374,25 +2374,25 @@ end;
 
 // GetCaption
 //
-function TFuncSymbol.GetCaption : string;
+function TFuncSymbol.GetCaption : String;
 var
    i : Integer;
    nam : String;
 begin
    if Name <> '' then
-      nam := Name
-   else nam := cFuncKindToString[Kind]+' ';
+      nam:=Name
+   else nam:=cFuncKindToString[Kind]+' ';
 
-   if Params.Count > 0 then begin
-      Result := Params[0].Typ.Caption;
-      for i := 1 to Params.Count - 1 do
-         Result := Result + ', ' + Params[i].Typ.Caption;
-      Result := '(' + Result + ')';
-   end else Result := '';
+   if Params.Count>0 then begin
+      Result:=Params[0].Typ.Caption;
+      for i:=1 to Params.Count - 1 do
+         Result:=Result+', '+Params[i].Typ.Caption;
+      Result:='('+Result+')';
+   end else Result:='';
 
-   if Typ <> nil then
-      Result := nam + Result + ': ' + Typ.Name
-   else Result := nam + Result;
+   if Typ<>nil then
+      Result:=nam+Result+': '+Typ.Name
+   else Result:=nam+Result;
 end;
 
 // GetIsForwarded

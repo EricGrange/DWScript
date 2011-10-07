@@ -7345,18 +7345,20 @@ begin
   inherited;
 end;
 
+// EvalNoResult
+//
 procedure TConnectorWriteExpr.EvalNoResult(exec : TdwsExecution);
 var
-  dat: TData;
-  tmp: Variant;
-  Base: pVariant;
+   dat : TData;
+   tmp : Variant;
+   base : PVariant;
 begin
-  if FBaseExpr is TDataExpr then
-    Base := @TDataExpr(FBaseExpr).Data[exec][TDataExpr(FBaseExpr).Addr[exec]]
-  else begin
-    FBaseExpr.EvalAsVariant(exec, tmp);
-    Base := @tmp;
-  end;
+   if (FBaseExpr is TVarExpr) or (FBaseExpr.Typ.Size>1) then
+      base:=@TDataExpr(FBaseExpr).Data[exec][TDataExpr(FBaseExpr).Addr[exec]]
+   else begin
+      FBaseExpr.EvalAsVariant(exec, tmp);
+      base:=@tmp;
+   end;
 
 //  if FValueExpr is TDataExpr then
 //    dat := TDataExpr(FValueExpr).GetData(exec)
@@ -7366,12 +7368,12 @@ begin
     FValueExpr.EvalAsVariant(exec, dat[0]);
 //  end;
 
-  try
-    FConnectorMember.Write(Base^, dat);
-  except
-    exec.SetScriptError(Self);
-    raise;
-  end;
+   try
+      FConnectorMember.Write(base^, dat);
+   except
+      exec.SetScriptError(Self);
+      raise;
+   end;
 end;
 
 // GetSubExpr

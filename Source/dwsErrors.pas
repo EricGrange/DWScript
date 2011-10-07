@@ -225,7 +225,7 @@ implementation
 constructor TScriptPos.Create(aSourceFile : TSourceFile; aLine, aCol : Integer);
 begin
    SourceFile:=aSourceFile;
-   Line:=(aCol shr 20)+aLine;
+   FLineCol:=(aCol shl 20)+aLine;
 end;
 
 // GetLine
@@ -478,9 +478,7 @@ end;
 //
 function TScriptMessage.AsInfo: String;
 begin
-   if Pos.Defined then
-      Result:=FText+Pos.AsInfo
-   else Result:=FText;
+   Result:=FText+Pos.AsInfo
 end;
 
 // ------------------
