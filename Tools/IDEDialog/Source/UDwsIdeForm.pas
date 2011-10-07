@@ -238,6 +238,10 @@ type
     actEditorDelete: TEditDelete;
     Delete1: TMenuItem;
     Delete2: TMenuItem;
+    actRunProcedureAtCursor: TAction;
+    RunProcedureAtCursor1: TMenuItem;
+    RunProcedureAtCursor2: TMenuItem;
+    N9: TMenuItem;
     procedure EditorChange(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure actOpenFileExecute(Sender: TObject);
@@ -300,6 +304,8 @@ type
     procedure actEditorPasteUpdate(Sender: TObject);
     procedure actEditorDeleteExecute(Sender: TObject);
     procedure actEditorDeleteUpdate(Sender: TObject);
+    procedure actRunProcedureAtCursorExecute(Sender: TObject);
+    procedure actRunProcedureAtCursorUpdate(Sender: TObject);
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -378,7 +384,8 @@ type
     procedure SaveSettings(
          const AProjectFileName : string;
          const AIDEFormRect     : TRect );
-var
+
+    procedure RunProcedureByName( const AName : string );
 
   PUBLIC
     // IDwsIde
@@ -1028,6 +1035,58 @@ begin
   dwsDebugger1.EndDebug;
 end;
 
+procedure TDwsIdeForm.RunProcedureByName(const AName: string);
+var
+  Exec : IdwsProgramExecution;
+  FunctionInfo : IInfo;
+  Stopwatch : TStopwatch;
+begin
+  If not IsCompiled then
+    Compile( False );
+  if not IsCompiled then
+    Exit;
+
+  Exec := FProgram.BeginNewExecution;
+  try
+    FunctionInfo := Exec.Info.Func[ AName ];
+    if FunctionInfo = nil then
+      raise Exception.CreateFmt('Cannot locate procedure "%s"', [AName] );
+
+    AddStatusMessage( 'Running' );
+    Application.ProcessMessages;
+
+    try
+      Stopwatch := TStopwatch.Create;
+      Stopwatch.Start;
+      try
+        FunctionInfo.Call;
+      finally
+        Stopwatch.Stop;
+        Exec.EndProgram;
+      end;
+    except
+      On E:Exception do
+        ShowMessage( E.Message );
+    end;
+
+    if Exec.Msgs.Count > 0 then
+      begin
+      AddStatusMessage( 'Errors' );
+      ShowMessage(Exec.Msgs.AsInfo)
+      end
+     else
+      If Stopwatch.Elapsed.TotalSeconds < 1.0 then
+        AddStatusMessage( Format( 'Completed in %0.3f ms', [Stopwatch.Elapsed.TotalMilliseconds] ))
+       else
+        AddStatusMessage( Format( 'Completed in %0.3f s', [Stopwatch.Elapsed.TotalSeconds] ));
+  finally
+    Exec := nil;
+  end;
+
+
+end;
+
+
 procedure TDwsIdeForm.actProgramResetExecute(Sender: TObject);
 begin
   ResetProgram;
@@ -1083,6 +1142,20 @@ begin
 end;
 
 
+
+procedure TDwsIdeForm.actRunProcedureAtCursorExecute(Sender: TObject);
+var
+  S : string;
+begin
+  S := CurrentEditor.SelText;
+  RunProcedureByName( S );
+end;
+
+procedure TDwsIdeForm.actRunProcedureAtCursorUpdate(Sender: TObject);
+begin
+  With Sender as TAction do
+    Enabled := HasEditorPage and (CurrentEditor.SelLength <> 0)
+end;
 
 procedure TDwsIdeForm.actRunUnitTestsUpdate(Sender: TObject);
 begin
@@ -1377,6 +1450,7 @@ procedure TDwsIdeForm.FormDestroy(Sender: TObject);
 begin
   dwsDebugger1.Breakpoints.Clean;
   dwsDebugger1.Watches.Clean;
+  FProgram := nil;
 end;
 
 procedure TDwsIdeForm.FormShow(Sender: TObject);
@@ -1760,6 +1834,8 @@ begin
 
   FProjectFileName := AProjectFileName;
 
+  FProgram := nil;
+
   XMLDocument := LoadXMLDocument( AProjectFileName );
   Data := XMLDocument.GetDocBinding('ProjectConfig',TXMLProjectConfigType) as IXMLProjectConfigType;
   for I := 0 to Data.EditorPages.EditorPage.Count-1 do
@@ -1773,6 +1849,9 @@ begin
 
   LoadBreakpoints( Data );
   LoadWatches( Data );
+
+  ClearExecutableLines;
+
 
 end;
 
@@ -2364,6 +2443,6 @@ begin
 
 end;
 
-
+{$Message 'Add editor action images'}
 
 end.

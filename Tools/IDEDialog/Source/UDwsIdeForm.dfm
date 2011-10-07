@@ -324,6 +324,14 @@ object DwsIdeForm: TDwsIdeForm
       OnExecute = actEditorDeleteExecute
       OnUpdate = actEditorDeleteUpdate
     end
+    object actRunProcedureAtCursor: TAction
+      Category = 'Run'
+      Caption = 'Run Procedure At Cursor'
+      Hint = 'Runs the procedure at the cursor'
+      ShortCut = 16504
+      OnExecute = actRunProcedureAtCursorExecute
+      OnUpdate = actRunProcedureAtCursorUpdate
+    end
   end
   object EditorPageTabContextMenu: TPopupMenu
     Images = SmallImages
@@ -487,6 +495,9 @@ object DwsIdeForm: TDwsIdeForm
       object Run2: TMenuItem
         Action = actRun
       end
+      object RunProcedureAtCursor1: TMenuItem
+        Action = actRunProcedureAtCursor
+      end
       object actRunWithoutDebugging1: TMenuItem
         Action = actRunWithoutDebugging
       end
@@ -515,7 +526,7 @@ object DwsIdeForm: TDwsIdeForm
     Left = 176
     Top = 256
     Bitmap = {
-      494C01011A008000E00110001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C01011A008000E40110001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000007000000001002000000000000070
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -1525,6 +1536,12 @@ object DwsIdeForm: TDwsIdeForm
     Images = SmallImages
     Left = 176
     Top = 144
+    object RunProcedureAtCursor2: TMenuItem
+      Action = actRunProcedureAtCursor
+    end
+    object N9: TMenuItem
+      Caption = '-'
+    end
     object Cut1: TMenuItem
       Action = actEditorCut
     end
