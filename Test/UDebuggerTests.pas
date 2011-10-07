@@ -4,7 +4,7 @@ interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
    dwsComConnector, Variants, ActiveX, ComObj, dwsXPlatform, dwsUtils,
-   dwsSymbols, dwsDebugger;
+   dwsSymbols, dwsDebugger, dwsStrings;
 
 type
 
@@ -34,6 +34,8 @@ type
          procedure EvaluateContextTest;
 
          procedure ExecutableLines;
+
+         procedure AttachToScript;
    end;
 
 // ------------------------------------------------------------------
@@ -284,6 +286,49 @@ begin
    breakpointables:=TdwsBreakpointableLines.Create(prog);
    CheckEquals('*MainModule*: 1,4,5,7,', ReportBreakpointables, 'Case 2');
    breakpointables.Free;
+end;
+
+// AttachToScript
+//
+procedure TDebuggerTests.AttachToScript;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'var i : Integer;'#13#10
+                           +'procedure Test;'#13#10
+                           +'begin'#13#10
+                              +'Print(Inc(i));'#13#10
+                           +'end;'#13#10
+                           +'Test;');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'compile');
+
+   exec:=prog.BeginNewExecution;
+
+   exec.RunProgram(0);
+   try
+      CheckEquals('1', exec.Result.ToString, 'run');
+
+      FDebugger.AttachDebug(exec);
+
+      CheckEquals('1', FDebugger.EvaluateAsString('i'), 'eval after attach');
+
+      exec.Info.Func['Test'].Call;
+
+      CheckEquals('2', FDebugger.EvaluateAsString('i'), 'eval after call');
+      CheckEquals('12', exec.Result.ToString, 'result after call');
+
+      FDebugger.DetachDebug;
+
+      CheckEquals(DBG_NotDebugging, FDebugger.EvaluateAsString('i'), 'eval after detach');
+
+      exec.Info.Func['Test'].Call;
+
+      CheckEquals('123', exec.Result.ToString, 'result after re-call');
+   finally
+      exec.EndProgram;
+   end;
 end;
 
 // ------------------------------------------------------------------

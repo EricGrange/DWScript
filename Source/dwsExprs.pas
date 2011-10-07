@@ -2792,6 +2792,8 @@ function TdwsMainProgram.CreateNewExecution : IdwsProgramExecution;
 var
    exec : TdwsProgramExecution;
 begin
+   if CompileMsgs.HasErrors then
+      raise EScriptException.Create(RTE_CantRunScript);
    exec:=TdwsProgramExecution.Create(Self, FStackParameters);
    exec.UserObject:=DefaultUserObject;
    FExecutionsLock.Enter;

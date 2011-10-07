@@ -304,8 +304,11 @@ type
          constructor Create(AOwner: TComponent); override;
          destructor Destroy; override;
 
-         procedure BeginDebug(exec : IdwsProgramExecution);
+         procedure BeginDebug(const exec : IdwsProgramExecution);
          procedure EndDebug;
+
+         procedure AttachDebug(const exec : IdwsProgramExecution);
+         procedure DetachDebug;
 
          procedure Suspend;
          procedure Resume;
@@ -597,7 +600,7 @@ end;
 
 // BeginDebug
 //
-procedure TdwsDebugger.BeginDebug(exec : IdwsProgramExecution);
+procedure TdwsDebugger.BeginDebug(const exec : IdwsProgramExecution);
 var
    step : TdwsDSCStepDetail;
 begin
@@ -641,6 +644,38 @@ begin
 
    while FState<>dsDebugDone do
       ProcessApplicationMessages(25);
+
+   FCurrentExpression:=nil;
+   FExecution:=nil;
+   FState:=dsIdle;
+
+   StateChanged;
+end;
+
+// AttachDebug
+//
+procedure TdwsDebugger.AttachDebug(const exec : IdwsProgramExecution);
+begin
+   Assert(daCanBeginDebug in AllowedActions, 'AttachDebug not allowed');
+   Assert(FExecution=nil, 'Already debugging');
+   Assert(exec<>nil, 'Execution is nil');
+
+   BreakpointsChanged;
+
+   FExecution:=exec;
+
+   FState:=dsDebugRun;
+
+   StateChanged;
+end;
+
+// DetachDebug
+//
+procedure TdwsDebugger.DetachDebug;
+begin
+   Assert(daCanEndDebug in AllowedActions, 'EndDebug not allowed');
+
+   ClearSuspendConditions;
 
    FCurrentExpression:=nil;
    FExecution:=nil;
@@ -767,7 +802,9 @@ function TdwsDebugger.Evaluate(const expression : String) : IdwsEvaluateExpr;
 begin
    Assert(daCanEvaluate in AllowedActions, 'Evaluate not allowed');
 
-   Result:=TdwsCompiler.Evaluate(FExecution, expression);
+   if FExecution<>nil then
+      Result:=TdwsCompiler.Evaluate(FExecution, expression)
+   else Result:=nil;
 end;
 
 // EvaluateAsString
@@ -776,10 +813,12 @@ function TdwsDebugger.EvaluateAsString(const expression : String) : String;
 var
    expr : IdwsEvaluateExpr;
 begin
+   if FExecution=nil then
+      Exit(DBG_NotDebugging);
    try
       expr:=Evaluate(expression);
       try
-         Result:='(no result)';
+         Result:=DBG_NoResult;
          expr.Expression.EvalAsString(FExecution.ExecutionObject, Result);
       finally
          expr:=nil;

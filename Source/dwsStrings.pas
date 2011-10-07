@@ -510,6 +510,11 @@ const
   ADP_ChainIsFormingLoop = 'Adapter chain is forming a loop!';
   ADP_IncompatibleAdapters = 'Incompatible Adapters: %s -> %s';
 
+  // Debugger strings
+
+  DBG_NotDebugging = '(not debugging)';
+  DBG_NoResult = '(no result)';
+
 implementation
 
 end.
