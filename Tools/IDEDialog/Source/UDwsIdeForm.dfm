@@ -285,7 +285,7 @@ object DwsIdeForm: TDwsIdeForm
       OnUpdate = actViewSymbolsUpdate
     end
     object actEditorSelectAll: TEditSelectAll
-      Category = 'Editor'
+      Category = 'Edit'
       Caption = 'Select &All'
       Hint = 'Select All|Selects the entire document'
       ShortCut = 16449
@@ -293,7 +293,7 @@ object DwsIdeForm: TDwsIdeForm
       OnUpdate = actEditorSelectAllUpdate
     end
     object actEditorCopyToClipboard: TEditCopy
-      Category = 'Editor'
+      Category = 'Edit'
       Caption = '&Copy'
       Hint = 'Copy|Copies the selection and puts it on the Clipboard'
       ShortCut = 16451
@@ -301,7 +301,7 @@ object DwsIdeForm: TDwsIdeForm
       OnUpdate = actEditorCopyToClipboardUpdate
     end
     object actEditorCut: TEditCut
-      Category = 'Editor'
+      Category = 'Edit'
       Caption = 'Cu&t'
       Hint = 'Cut|Cuts the selection and puts it on the Clipboard'
       ShortCut = 16472
@@ -309,12 +309,20 @@ object DwsIdeForm: TDwsIdeForm
       OnUpdate = actEditorCutUpdate
     end
     object actEditorPaste: TEditPaste
-      Category = 'Editor'
+      Category = 'Edit'
       Caption = '&Paste'
       Hint = 'Paste|Inserts Clipboard contents'
       ShortCut = 16470
       OnExecute = actEditorPasteExecute
       OnUpdate = actEditorPasteUpdate
+    end
+    object actEditorDelete: TEditDelete
+      Category = 'Edit'
+      Caption = '&Delete'
+      Hint = 'Delete|Erases the selection'
+      ShortCut = 16430
+      OnExecute = actEditorDeleteExecute
+      OnUpdate = actEditorDeleteUpdate
     end
   end
   object EditorPageTabContextMenu: TPopupMenu
@@ -437,6 +445,24 @@ object DwsIdeForm: TDwsIdeForm
     end
     object Edit1: TMenuItem
       Caption = 'Edit'
+      object Cut2: TMenuItem
+        Action = actEditorCut
+      end
+      object Copy2: TMenuItem
+        Action = actEditorCopyToClipboard
+      end
+      object Paste2: TMenuItem
+        Action = actEditorPaste
+      end
+      object Delete1: TMenuItem
+        Action = actEditorDelete
+      end
+      object SelectAll2: TMenuItem
+        Action = actEditorSelectAll
+      end
+      object N8: TMenuItem
+        Caption = '-'
+      end
       object ReadOnly2: TMenuItem
         Action = actToggleReadOnly
       end
@@ -489,7 +515,7 @@ object DwsIdeForm: TDwsIdeForm
     Left = 176
     Top = 256
     Bitmap = {
-      494C010119008000DC0110001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C01011A008000E00110001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000007000000001002000000000000070
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -1389,11 +1415,11 @@ object DwsIdeForm: TDwsIdeForm
       2AB9505050ED525353F1525252F0505050EF4E4E4EEE4B4B4BED4A4A4AED4646
       46ED383838BD000000000000000000000000424D3E000000000000003E000000
       2800000040000000700000000100010000000000800300000000000000000000
-      000000000000000000000000FFFFFF00FFFF000000000000FC00000000000000
-      8000000000000000000000000000000000000000000000000000000000000000
-      0001000000000000000300000000000000030000000000000003000000000000
-      00030000000000000FC300000000000000030000000000008007000000000000
-      F87F000000000000FFFF00000000000000000000FFFFFFFF00000000FFFFF9FF
+      000000000000000000000000FFFFFF00FFFFFFFF00000000FC00FFFF00000000
+      8000EFFD000000000000C7FF000000000000C3FB000000000000E3F700000000
+      0001F1E7000000000003F8CF000000000003FC1F000000000003FE3F00000000
+      0003FC1F000000000FC3F8CF000000000003E1E7000000008007C3F300000000
+      F87FC7FD00000000FFFFFFFF0000000000000000FFFFFFFF00000000FFFFF9FF
       00000000FE00F6CF00000000FE00F6B700000000FE00F6B7000000008000F8B7
       000000008000FE8F000000008000FE3F000000008000FF7F000000008001FE3F
       000000008003FEBF000000008007FC9F00000000807FFDDF0000000080FFFDDF
@@ -1499,17 +1525,20 @@ object DwsIdeForm: TDwsIdeForm
     Images = SmallImages
     Left = 176
     Top = 144
-    object SelectAll1: TMenuItem
-      Action = actEditorSelectAll
-    end
     object Cut1: TMenuItem
       Action = actEditorCut
+    end
+    object Copy1: TMenuItem
+      Action = actEditorCopyToClipboard
     end
     object Paste1: TMenuItem
       Action = actEditorPaste
     end
-    object Copy1: TMenuItem
-      Action = actEditorCopyToClipboard
+    object Delete2: TMenuItem
+      Action = actEditorDelete
+    end
+    object SelectAll1: TMenuItem
+      Action = actEditorSelectAll
     end
     object N6: TMenuItem
       Caption = '-'

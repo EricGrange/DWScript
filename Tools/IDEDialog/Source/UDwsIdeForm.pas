@@ -230,6 +230,14 @@ type
     Cut1: TMenuItem;
     actEditorPaste: TEditPaste;
     Paste1: TMenuItem;
+    N8: TMenuItem;
+    Cut2: TMenuItem;
+    Copy2: TMenuItem;
+    Paste2: TMenuItem;
+    SelectAll2: TMenuItem;
+    actEditorDelete: TEditDelete;
+    Delete1: TMenuItem;
+    Delete2: TMenuItem;
     procedure EditorChange(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure actOpenFileExecute(Sender: TObject);
@@ -290,6 +298,8 @@ type
     procedure actEditorCutUpdate(Sender: TObject);
     procedure actEditorPasteExecute(Sender: TObject);
     procedure actEditorPasteUpdate(Sender: TObject);
+    procedure actEditorDeleteExecute(Sender: TObject);
+    procedure actEditorDeleteUpdate(Sender: TObject);
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -512,7 +522,7 @@ begin
   Result := False;
   Case TaskMessageDlg( 'Confirm', AStr, mtError, [mbYes, mbNo, mbCancel], 0 ) of
     idYes : Result := True;
-    idNo : Result := True;
+    idNo  : Exit;
    else
      Abort;
   end;
@@ -722,6 +732,17 @@ begin
 end;
 
 procedure TDwsIdeForm.actEditorCutUpdate(Sender: TObject);
+begin
+  With Sender as TAction do
+    Enabled := HasEditorPage;
+end;
+
+procedure TDwsIdeForm.actEditorDeleteExecute(Sender: TObject);
+begin
+  CurrentEditor.ClearSelection;
+end;
+
+procedure TDwsIdeForm.actEditorDeleteUpdate(Sender: TObject);
 begin
   With Sender as TAction do
     Enabled := HasEditorPage;
