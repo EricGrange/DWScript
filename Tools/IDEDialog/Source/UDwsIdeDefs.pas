@@ -24,7 +24,11 @@ unit UDwsIdeDefs;
 interface
 
 uses
-  Windows, Graphics, dwsDebugger;
+  Windows,
+  Graphics,
+  dwsDebugger,
+  SynEditHighlighter,
+  SynHighlighterDWS;
 
 type
 
@@ -34,6 +38,23 @@ type
     function  DwsIde_GetDebugger : TdwsDebugger;
     // -------------------------------------------------------------------------
   end;
+
+  TEditorHighlighterClass = class of TSynCustomHighlighter;
+
+  TDwsIdeOptions = record
+    EditorHighlighterClass : TEditorHighlighterClass;
+    EditorFontName         : string;
+    EditorFontSize         : integer;
+  end;
+
+
+const
+  IdeOptions_Style1 : TDwsIdeOptions = (
+    EditorHighlighterClass : TSynDWSSyn;
+    EditorFontName         : 'Lucida sans typewriter';
+    EditorFontSize         : 10
+    );
+
 
 function DebuggerEvaluate( ADebugger : TDwsDebugger; const AExpression : string) : String;
 

@@ -50,7 +50,8 @@ uses
   XMLIntf,
   XMLDoc,
   RzTabs, Menus, ToolWin, ActnCtrls,
-  ImgList, UDwsIdeLocalVariablesFrame, UDwsIdeWatchesFrame, UDwsIdeCallStackFrame;
+  ImgList, UDwsIdeLocalVariablesFrame, UDwsIdeWatchesFrame, UDwsIdeCallStackFrame,
+  StdActns;
 
 type
   EDwsIde      = class( Exception );
@@ -125,14 +126,6 @@ type
 
     procedure ShowExecutableLines;
 
-  end;
-
-  TEditorHighlighterClass = class of TSynCustomHighlighter;
-
-  TDwsIdeOptions = record
-    EditorHighlighterClass : TEditorHighlighterClass;
-    EditorFontName         : string;
-    EditorFontSize         : integer;
   end;
 
 
@@ -218,6 +211,25 @@ type
     DwsIdeCallStackFrame: TDwsIdeCallStackFrame;
     actViewSymbols: TAction;
     ViewSymbols1: TMenuItem;
+    EditorPagePopupMenu: TPopupMenu;
+    MenuItem1: TMenuItem;
+    MenuItem2: TMenuItem;
+    MenuItem3: TMenuItem;
+    MenuItem4: TMenuItem;
+    MenuItem5: TMenuItem;
+    MenuItem6: TMenuItem;
+    MenuItem7: TMenuItem;
+    MenuItem8: TMenuItem;
+    MenuItem9: TMenuItem;
+    N6: TMenuItem;
+    Copy1: TMenuItem;
+    actEditorSelectAll: TEditSelectAll;
+    actEditorCopyToClipboard: TEditCopy;
+    SelectAll1: TMenuItem;
+    actEditorCut: TEditCut;
+    Cut1: TMenuItem;
+    actEditorPaste: TEditPaste;
+    Paste1: TMenuItem;
     procedure EditorChange(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure actOpenFileExecute(Sender: TObject);
@@ -270,6 +282,14 @@ type
     procedure actViewSymbolsUpdate(Sender: TObject);
     constructor Create( AOwner : TComponent; const AOptions : TDwsIdeOptions ); reintroduce;
     procedure FormShow(Sender: TObject);
+    procedure actEditorCopyToClipboardExecute(Sender: TObject);
+    procedure actEditorCopyToClipboardUpdate(Sender: TObject);
+    procedure actEditorSelectAllExecute(Sender: TObject);
+    procedure actEditorSelectAllUpdate(Sender: TObject);
+    procedure actEditorCutExecute(Sender: TObject);
+    procedure actEditorCutUpdate(Sender: TObject);
+    procedure actEditorPasteExecute(Sender: TObject);
+    procedure actEditorPasteUpdate(Sender: TObject);
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -371,7 +391,8 @@ var
   end;
 
 
-procedure DwsIDE_ShowModal( AScript : TDelphiWebScript; const AOptions : TDwsIdeOptions );
+procedure DwsIDE_ShowModal( AScript : TDelphiWebScript ); overload;
+procedure DwsIDE_ShowModal( AScript : TDelphiWebScript; const AOptions : TDwsIdeOptions ); overload;
 
 implementation
 
@@ -418,6 +439,12 @@ end;
 
 
 
+
+
+procedure DwsIDE_ShowModal( AScript : TDelphiWebScript );
+begin
+  DwsIDE_ShowModal( AScript, IdeOptions_Style1 );
+end;
 
 
 procedure DwsIDE_ShowModal( AScript : TDelphiWebScript; const AOptions : TDwsIdeOptions );
@@ -483,10 +510,12 @@ end;
 function ConfirmDlgYesNoAbort(const AStr: string): boolean;
 begin
   Result := False;
-  If TaskMessageDlg( 'Confirm', AStr, mtError, [mbYes, mbNo, mbCancel], 0 ) = idYes then
-    Result := True
+  Case TaskMessageDlg( 'Confirm', AStr, mtError, [mbYes, mbNo, mbCancel], 0 ) of
+    idYes : Result := True;
+    idNo : Result := True;
    else
      Abort;
+  end;
 end;
 
 
@@ -675,6 +704,51 @@ begin
 end;
 
 
+
+procedure TDwsIdeForm.actEditorCopyToClipboardExecute(Sender: TObject);
+begin
+  CurrentEditor.CopyToClipboard;
+end;
+
+procedure TDwsIdeForm.actEditorCopyToClipboardUpdate(Sender: TObject);
+begin
+  With Sender as TAction do
+    Enabled := HasEditorPage;
+end;
+
+procedure TDwsIdeForm.actEditorCutExecute(Sender: TObject);
+begin
+  CurrentEditor.CutToClipboard;
+end;
+
+procedure TDwsIdeForm.actEditorCutUpdate(Sender: TObject);
+begin
+  With Sender as TAction do
+    Enabled := HasEditorPage;
+end;
+
+procedure TDwsIdeForm.actEditorPasteExecute(Sender: TObject);
+begin
+  CurrentEditor.PasteFromClipboard;
+end;
+
+procedure TDwsIdeForm.actEditorPasteUpdate(Sender: TObject);
+begin
+  With Sender as TAction do
+    Enabled := HasEditorPage;
+end;
+
+procedure TDwsIdeForm.actEditorSelectAllExecute(Sender: TObject);
+begin
+  CurrentEditor.SelectAll;
+  {$Message 'need self-contained editor page with own actions'}
+end;
+
+procedure TDwsIdeForm.actEditorSelectAllUpdate(Sender: TObject);
+begin
+  With Sender as TAction do
+    Enabled := HasEditorPage;
+end;
 
 procedure TDwsIdeForm.actExitExecute(Sender: TObject);
 begin
@@ -1837,6 +1911,7 @@ constructor TEditorPage.Create(
     FEditor.Align    := alClient;
     FEditor.BorderStyle := bsNone;
     FEditor.Gutter.Width := 50;
+    FEditor.PopupMenu := AOwner.EditorPagePopupMenu;
 
     If Assigned( AOwner.FOptions.EditorHighlighterClass ) then
       FEditor.Highlighter := AOwner.FOptions.EditorHighlighterClass.Create( Self );
@@ -1870,7 +1945,7 @@ begin
 
   FileName := AFileName;
 
-  PopupMenu := AOwner.EditorPageTabContextMenu;
+  //PopupMenu := AOwner.EditorPageTabContextMenu;
 
   PageControl := AOwner.pcEditor;
 

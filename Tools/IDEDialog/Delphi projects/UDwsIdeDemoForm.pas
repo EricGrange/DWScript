@@ -49,18 +49,15 @@ implementation
 {$R *.dfm}
 uses
   SynHighlighterDWS,
+  UDwsIdeDefs,
   UDwsIdeForm;
 
-const
-  IdeOptions : TDwsIdeOptions = (
-    EditorHighlighterClass : TSynDWSSyn;
-    EditorFontName         : 'Lucida sans typewriter';
-    EditorFontSize         : 10
-    );
 
 procedure TDwsIdeDemoForm.Button1Click(Sender: TObject);
 begin
-  DwsIDE_ShowModal( DelphiWebScript1, IdeOptions );
+  // This opens the IDE - note that there is an overloaded version which includes
+  // some IDE options such as highlighter, font etc.
+  DwsIDE_ShowModal( DelphiWebScript1 );
 end;
 
 function TDwsIdeDemoForm.DelphiWebScript1NeedUnit(const unitName: string;
