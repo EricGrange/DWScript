@@ -292,6 +292,10 @@ type
       function CompareStrings(const S1, S2: string): Integer; override;
    end;
 
+   TFastCompareTextList = class (TStringList)
+      function CompareStrings(const S1, S2: string): Integer; override;
+   end;
+
    ETightListOutOfBound = class(Exception);
 
 {: Changes the class of an object (by altering the VMT pointer).<p>
@@ -304,6 +308,8 @@ procedure TidyStringsUnifier;
 
 function UnicodeCompareText(const s1, s2 : String) : Integer;
 function UnicodeSameText(const s1, s2 : String) : Boolean;
+
+function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -447,7 +453,7 @@ end;
 //
 function UnicodeSameText(const s1, s2 : String) : Boolean;
 begin
-   Result:=(UnicodeCompareText(s1, s2)=0);
+   Result:=(Length(s1)=Length(s2)) and (UnicodeCompareText(s1, s2)=0)
 end;
 
 // InitializeStringsUnifier
@@ -472,6 +478,30 @@ begin
    for i:=Low(vCharStrings) to High(vCharStrings) do
       FreeAndNil(vCharStrings[i]);
    FreeAndNil(vUnifierLock);
+end;
+
+// StrIBeginsWith
+//
+function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
+var
+   n1, n2 : Integer;
+begin
+   n1:=Length(aStr);
+   n2:=Length(aBegin);
+   if (n2>n1) or (n2=0) then
+      Result:=False
+   else Result:=(UnicodeCompareLen(PChar(aStr), PChar(aBegin), n2)=0);
+end;
+
+// ------------------
+// ------------------ TFastCompareTextList ------------------
+// ------------------
+
+// CompareStrings
+//
+function TFastCompareTextList.CompareStrings(const S1, S2: string): Integer;
+begin
+   Result:=UnicodeCompareText(s1, s2);
 end;
 
 // ------------------

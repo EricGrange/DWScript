@@ -377,31 +377,31 @@ type
          function GetCount : Integer; inline;
 
          procedure SortSymbols(minIndex, maxIndex : Integer);
-         function FindLocalSorted(const name: string) : TSymbol;
-         function FindLocalUnSorted(const name: string) : TSymbol;
+         function FindLocalSorted(const name : String) : TSymbol;
+         function FindLocalUnSorted(const name : String) : TSymbol;
 
       public
          constructor Create(Parent: TSymbolTable = nil; AddrGenerator: TAddrGenerator = nil);
          destructor Destroy; override;
 
-         procedure InsertParent(Index: Integer; Parent: TSymbolTable); virtual;
-         function RemoveParent(Parent: TSymbolTable): Integer; virtual;
-         function IndexOfParent(Parent: TSymbolTable): Integer;
-         procedure MoveParent(CurIndex, NewIndex: Integer);
+         procedure InsertParent(index : Integer; parent : TSymbolTable); virtual;
+         function RemoveParent(parent : TSymbolTable) : Integer; virtual;
+         function IndexOfParent(parent : TSymbolTable) : Integer;
+         procedure MoveParent(curIndex, newIndex : Integer);
          procedure ClearParents;
-         procedure AddParent(Parent: TSymbolTable);
+         procedure AddParent(parent : TSymbolTable);
 
-         function AddSymbol(Sym: TSymbol): Integer;
+         function AddSymbol(sym : TSymbol): Integer;
          function AddSymbolDirect(sym : TSymbol) : Integer;
          function FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol; virtual;
          function FindTypeLocal(const aName : String) : TTypeSymbol;
          function FindSymbolAtStackAddr(const stackAddr, level : Integer) : TDataSymbol;
-         function Remove(Sym: TSymbol): Integer;
+         function Remove(sym : TSymbol): Integer;
          procedure Clear;
 
          function FindSymbol(const aName : String; minVisibility : TdwsVisibility;
                              ofClass : TSymbolClass = nil) : TSymbol; virtual;
-         function FindTypeSymbol(const aName : string; minVisibility : TdwsVisibility) : TTypeSymbol;
+         function FindTypeSymbol(const aName : String; minVisibility : TdwsVisibility) : TTypeSymbol;
 
          function HasClass(const aClass : TSymbolClass) : Boolean;
          function HasSymbol(sym : TSymbol) : Boolean;
@@ -649,17 +649,17 @@ type
          property SubExprCount : Integer read GetSourceSubExprCount;
 
       public
-         constructor Create(const Name: string; FuncKind: TFuncKind; FuncLevel: SmallInt);
+         constructor Create(const name : String; funcKind : TFuncKind; funcLevel : SmallInt);
          destructor Destroy; override;
 
-         constructor Generate(Table: TSymbolTable; const FuncName: string;
-                              const FuncParams: TParamArray; const FuncType: string);
+         constructor Generate(table : TSymbolTable; const funcName : string;
+                              const funcParams : TParamArray; const funcType : string);
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function  IsType : Boolean; override;
          procedure AddParam(param: TParamSymbol); virtual;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
-         procedure InitData(const Data : TData; Offset : Integer); override;
+         procedure InitData(const data : TData; offset : Integer); override;
          procedure AddCondition(cond : TConditionSymbol);
 
          function  ParamsDescription : String;
@@ -1063,8 +1063,7 @@ type
       public
          procedure InitData(const Data: TData; Offset: Integer); override;
    end;
-
-   // Field of a script object
+                                   // Field of a script object
    TFieldSymbol = class(TValueSymbol)
       protected
          FStructSymbol : TStructuredTypeSymbol;
@@ -1483,18 +1482,24 @@ type
          constructor Create(unitMainSymbol : TUnitMainSymbol);
    end;
 
+   // TStaticSymbolTable
+   //
    TStaticSymbolTable = class (TUnitSymbolTable)
-   private
-     FRefCount: Integer;
-     FInitialized: Boolean;
-   public
-     constructor Create(Parent: TStaticSymbolTable = nil; Reference: Boolean = True);
-     destructor Destroy; override;
-     procedure Initialize(const msgs : TdwsCompileMessageList); override;
-     procedure InsertParent(Index: Integer; Parent: TSymbolTable); override;
-     function RemoveParent(Parent: TSymbolTable): Integer; override;
-     procedure _AddRef;
-     procedure _Release;
+      private
+         FRefCount : Integer;
+         FInitialized : Boolean;
+         FStaticParent : TStaticSymbolTable;
+
+      public
+         constructor Create(parent : TStaticSymbolTable = nil; reference : Boolean = True);
+         destructor Destroy; override;
+
+         procedure Initialize(const msgs : TdwsCompileMessageList); override;
+         procedure InsertParent(Index: Integer; Parent: TSymbolTable); override;
+         function RemoveParent(Parent: TSymbolTable): Integer; override;
+
+         procedure _AddRef;
+         procedure _Release;
    end;
 
    TLinkedSymbolTable = class (TUnitSymbolTable)
@@ -2265,17 +2270,19 @@ end;
 
 // Create
 //
-constructor TFuncSymbol.Create(const Name: string; FuncKind: TFuncKind;
-                               FuncLevel: SmallInt);
+constructor TFuncSymbol.Create(const name : String; funcKind : TFuncKind;
+                               funcLevel : SmallInt);
 begin
-   inherited Create(Name, nil);
-   FKind := FuncKind;
-   FAddrGenerator := TAddrGeneratorRec.CreateNegative(FuncLevel);
-   FInternalParams := TUnSortedSymbolTable.Create(nil, @FAddrGenerator);
-   FParams := TParamsSymbolTable.Create(FInternalParams, @FAddrGenerator);
-   FSize := 1;
+   inherited Create(name, nil);
+   FKind:=funcKind;
+   FAddrGenerator:=TAddrGeneratorRec.CreateNegative(funcLevel);
+   FInternalParams:=TUnSortedSymbolTable.Create(nil, @FAddrGenerator);
+   FParams:= TParamsSymbolTable.Create(FInternalParams, @FAddrGenerator);
+   FSize:=1;
 end;
 
+// Destroy
+//
 destructor TFuncSymbol.Destroy;
 begin
    if FForwardPosition<>nil then
@@ -2286,32 +2293,37 @@ begin
    inherited;
 end;
 
-constructor TFuncSymbol.Generate(Table: TSymbolTable; const FuncName: string;
-  const FuncParams: TParamArray; const FuncType: string);
+// Generate
+//
+constructor TFuncSymbol.Generate(table : TSymbolTable; const funcName : String;
+                                 const funcParams : TParamArray; const funcType : String);
 var
-  typSym: TTypeSymbol;
+   typSym : TTypeSymbol;
 begin
-  if FuncType <> '' then
-  begin
-    Self.Create(FuncName, fkFunction, 1);
-    // Set function type
-    typSym := Table.FindTypeSymbol(FuncType, cvMagic);
-    if not (Assigned(typSym) and (typSym.BaseType <> nil)) then
-      raise Exception.CreateFmt(CPE_TypeIsUnknown, [FuncType]);
-    Self.SetType(typSym);
-  end
-  else
-    Self.Create(FuncName, fkProcedure, 1);
+   if funcType<>'' then begin
+      Self.Create(funcName, fkFunction, 1);
+      // Set function type
+      typSym:=table.FindTypeSymbol(funcType, cvMagic);
+      if (typSym=nil) or (typSym.BaseType=nil) then
+         raise Exception.CreateFmt(CPE_TypeIsUnknown, [funcType]);
+      Self.SetType(typSym);
+   end else begin
+      Self.Create(funcName, fkProcedure, 1);
+   end;
 
-  GenerateParams(Table, FuncParams);
+   GenerateParams(table, funcParams);
 end;
 
-procedure TFuncSymbol.AddParam(param: TParamSymbol);
+// AddParam
+//
+procedure TFuncSymbol.AddParam(param : TParamSymbol);
 begin
-  Params.AddSymbol(param);
+   Params.AddSymbol(param);
 end;
 
-procedure TFuncSymbol.SetType(const Value: TTypeSymbol);
+// SetType
+//
+procedure TFuncSymbol.SetType(const value : TTypeSymbol);
 begin
    FTyp:=Value;
    Assert(FResult=nil);
@@ -2323,7 +2335,10 @@ end;
 
 type TAddParamProc = procedure (param: TParamSymbol) of object;
 
-procedure GenerateParams(const Name: String; Table: TSymbolTable; const funcParams: TParamArray; AddProc: TAddParamProc);
+// GenerateParams
+//
+procedure GenerateParams(const name : String; table : TSymbolTable;
+                         const funcParams : TParamArray; addProc : TAddParamProc);
 var
    i : Integer;
    typSym : TTypeSymbol;
@@ -2331,10 +2346,13 @@ var
    paramSymWithDefault : TParamSymbolWithDefaultValue;
    paramRec : PParamRec;
 begin
-   for i := 0 to Length(FuncParams) - 1 do begin
+   typSym:=nil;
+
+   for i:=0 to High(FuncParams) do begin
 
       paramRec:=@FuncParams[i];
-      typSym := Table.FindTypeSymbol(paramRec.ParamType, cvMagic);
+      if (typSym=nil) or not UnicodeSameText(typSym.Name, paramRec.ParamType) then
+         typSym:=Table.FindTypeSymbol(paramRec.ParamType, cvMagic);
       if not Assigned(typSym) then
          raise Exception.CreateFmt(CPE_TypeForParamNotFound,
                                    [paramRec.ParamType, paramRec.ParamName, Name]);
@@ -2346,17 +2364,17 @@ begin
          if paramRec.IsConstParam then
             raise Exception.Create(CPE_ConstParamCantHaveDefaultValue);
 
-         paramSymWithDefault := TParamSymbolWithDefaultValue.Create(paramRec.ParamName, typSym);
+         paramSymWithDefault:=TParamSymbolWithDefaultValue.Create(paramRec.ParamName, typSym);
          paramSymWithDefault.SetDefaultValue(paramRec.DefaultValue, 0);
          paramSym:=paramSymWithDefault;
 
       end else begin
 
          if paramRec.IsVarParam then
-            paramSym := TVarParamSymbol.Create(paramRec.ParamName, typSym)
+            paramSym:=TVarParamSymbol.Create(paramRec.ParamName, typSym)
          else if paramRec.IsConstParam then
-            paramSym := TConstParamSymbol.Create(paramRec.ParamName, typSym)
-         else paramSym := TParamSymbol.Create(paramRec.ParamName, typSym);
+            paramSym:=TConstParamSymbol.Create(paramRec.ParamName, typSym)
+         else paramSym:=TParamSymbol.Create(paramRec.ParamName, typSym);
 
       end;
 
@@ -2367,9 +2385,9 @@ end;
 
 // GenerateParams
 //
-procedure TFuncSymbol.GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
+procedure TFuncSymbol.GenerateParams(table : TSymbolTable; const funcParams : TParamArray);
 begin
-   dwsSymbols.GenerateParams(Name,Table,FuncParams,AddParam);
+   dwsSymbols.GenerateParams(name, table, funcParams, addParam);
 end;
 
 // GetCaption
@@ -4013,7 +4031,7 @@ begin
    end else begin
       Result:=FindLocalUnSorted(aName);
    end;
-   if (Result<>nil) and (ofClass<>nil) and (not (Result is ofClass)) then
+   if (Result<>nil) and (ofClass<>nil) and (not Result.InheritsFrom(ofClass)) then
       Result:=nil;
 end;
 
@@ -4085,7 +4103,7 @@ end;
 
 // FindLocalSorted
 //
-function TSymbolTable.FindLocalSorted(const name: string): TSymbol;
+function TSymbolTable.FindLocalSorted(const name : String) : TSymbol;
 var
    lo, hi, mid, cmpResult: Integer;
    ptrList : PPointerTightList;
@@ -4146,7 +4164,7 @@ end;
 
 // FindTypeSymbol
 //
-function TSymbolTable.FindTypeSymbol(const aName : string; minVisibility : TdwsVisibility) : TTypeSymbol;
+function TSymbolTable.FindTypeSymbol(const aName : String; minVisibility : TdwsVisibility) : TTypeSymbol;
 begin
    Result:=TTypeSymbol(FindSymbol(aName, minVisibility, TTypeSymbol));
 end;
@@ -4175,18 +4193,20 @@ end;
 
 // GetCount
 //
-function TSymbolTable.GetCount: Integer;
+function TSymbolTable.GetCount : Integer;
 begin
-   Result := FSymbols.Count
+   Result:=FSymbols.Count
 end;
 
 // GetSymbol
 //
-function TSymbolTable.GetSymbol(Index: Integer): TSymbol;
+function TSymbolTable.GetSymbol(index : Integer) : TSymbol;
 begin
-   Result := TSymbol(FSymbols.List[Index])
+   Result:=TSymbol(FSymbols.List[Index]);
 end;
 
+// AddSymbol
+//
 function TSymbolTable.AddSymbol(sym : TSymbol) : Integer;
 begin
    Result:=AddSymbolDirect(sym);
@@ -4912,71 +4932,89 @@ begin
    Result:='('+Result+')';
 end;
 
-{ TStaticSymbolTable }
+// ------------------
+// ------------------ TStaticSymbolTable ------------------
+// ------------------
 
-constructor TStaticSymbolTable.Create(Parent: TStaticSymbolTable; Reference: Boolean);
+// Create
+//
+constructor TStaticSymbolTable.Create(parent : TStaticSymbolTable; reference : Boolean);
 begin
-  inherited Create(Parent);
-  FInitialized := False;
-  FRefCount := 0;
-  if Reference then
-    _AddRef;
+   inherited Create(parent);
+   FStaticParent:=parent;
+   if parent<>nil then
+      parent._AddRef;
+   FInitialized:=False;
+   FRefCount:=0;
+   if Reference then
+      _AddRef;
 end;
 
-procedure TStaticSymbolTable._AddRef;
-begin
-  InterlockedIncrement(FRefCount);
-end;
-
-procedure TStaticSymbolTable._Release;
-begin
-  if InterlockedDecrement(FRefCount) = 0 then
-    Free;
-end;
-
-procedure TStaticSymbolTable.InsertParent(Index: Integer; Parent: TSymbolTable);
-var
-  staticSymbols: TStaticSymbolTable;
-begin
-  // accept only static parents
-  if Parent is TLinkedSymbolTable then
-    staticSymbols := TLinkedSymbolTable(Parent).Parent
-  else if Parent is TStaticSymbolTable then
-    staticSymbols := TStaticSymbolTable(Parent)
-  else
-    staticSymbols := nil;
-
-  if Assigned(StaticSymbols) then
-  begin
-    staticSymbols._AddRef;
-    inherited InsertParent(Index, staticSymbols);
-  end
-  else
-    raise Exception.Create(CPE_NoStaticSymbols);
-end;
-
-function TStaticSymbolTable.RemoveParent(Parent: TSymbolTable): Integer;
-begin
-  Result := inherited RemoveParent(Parent);
-  (Parent as TStaticSymbolTable)._Release;
-end;
-
+// Destroy
+//
 destructor TStaticSymbolTable.Destroy;
 begin
-  Assert(FRefCount = 0);
-  inherited;
+   if FStaticParent<>nil then
+      FStaticParent._Release;
+   Assert(FRefCount=0);
+   inherited;
 end;
 
+// _AddRef
+//
+procedure TStaticSymbolTable._AddRef;
+begin
+   InterlockedIncrement(FRefCount);
+end;
+
+// _Release
+//
+procedure TStaticSymbolTable._Release;
+begin
+   if InterlockedDecrement(FRefCount)=0 then
+      Free;
+end;
+
+// InsertParent
+//
+procedure TStaticSymbolTable.InsertParent(index : Integer; parent : TSymbolTable);
+var
+   staticSymbols : TStaticSymbolTable;
+begin
+   // accept only static parents
+   if Parent is TLinkedSymbolTable then
+      staticSymbols:=TLinkedSymbolTable(parent).Parent
+   else if Parent is TStaticSymbolTable then
+      staticSymbols:=TStaticSymbolTable(parent)
+   else staticSymbols:=nil;
+
+   if Assigned(StaticSymbols) then begin
+      staticSymbols._AddRef;
+      inherited InsertParent(index, staticSymbols);
+   end else raise Exception.Create(CPE_NoStaticSymbols);
+end;
+
+// RemoveParent
+//
+function TStaticSymbolTable.RemoveParent(parent : TSymbolTable) : Integer;
+begin
+   Result:=inherited RemoveParent(parent);
+   (parent as TStaticSymbolTable)._Release;
+end;
+
+// Initialize
+//
 procedure TStaticSymbolTable.Initialize(const msgs : TdwsCompileMessageList);
 begin
-  if not FInitialized then
-  begin
-    inherited;
-    FInitialized := True;
-  end;
+   if not FInitialized then begin
+      inherited;
+      FInitialized:=True;
+   end;
 end;
 
-{ TLinkedSymbolTable }
+// ------------------
+// ------------------ TLinkedSymbolTable ------------------
+// ------------------
 
 constructor TLinkedSymbolTable.Create(Parent: TStaticSymbolTable;
   AddrGenerator: TAddrGenerator);

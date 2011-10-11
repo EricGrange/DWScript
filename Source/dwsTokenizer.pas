@@ -80,6 +80,8 @@ type
       function ToFloat : Double;
       function ToType : TTokenType;
       function ToAlphaType : TTokenType;
+
+      class function StringToTokenType(const str : String) : TTokenType; static;
    end;
 
    TToken = ^TTokenRecord;
@@ -593,6 +595,23 @@ begin
          Exit(lookups^[i].Token);
    end;
    Result:=ttNAME;
+end;
+
+// StringToTokenType
+//
+class function TTokenBuffer.StringToTokenType(const str : String) : TTokenType;
+var
+   c : Char;
+   buffer : TTokenBuffer;
+begin
+   if str='' then Exit(ttNone);
+
+   buffer.Capacity:=0;
+   buffer.Len:=0;
+   for c in str do
+      buffer.AppendChar(c);
+
+   Result:=buffer.ToType;
 end;
 
 // ------------------

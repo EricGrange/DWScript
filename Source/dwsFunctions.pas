@@ -74,18 +74,21 @@ type
 
    TInternalFunction = class(TFunctionPrototype, IUnknown, ICallable)
       public
-         constructor Create(Table: TSymbolTable; const FuncName: string;
-                            const FuncParams: array of string; const FuncType: string;
-                            const isStateLess : Boolean = False); virtual;
-         procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); override;
+         constructor Create(table : TSymbolTable; const funcName : String;
+                            const params : TParamArray; const funcType : String;
+                            const isStateLess : Boolean = False); overload; virtual;
+         constructor Create(table : TSymbolTable; const funcName : String;
+                            const params : array of string; const funcType : String;
+                            const isStateLess : Boolean = False); overload;
+         procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); override;
          procedure Execute(info : TProgramInfo); virtual; abstract;
    end;
    TInternalFunctionClass = class of TInternalFunction;
 
    TInternalMagicFunction = class(TInternalFunction)
       public
-         constructor Create(Table: TSymbolTable; const FuncName: string;
-                            const FuncParams: array of string; const FuncType: string;
+         constructor Create(table: TSymbolTable; const funcName: string;
+                            const params : TParamArray; const funcType: string;
                             const isStateLess : Boolean = False); override;
          function DoEval(args : TExprBaseList) : Variant; virtual; abstract;
    end;
@@ -133,13 +136,13 @@ type
 
    TInternalMethod = class(TFunctionPrototype, IUnknown, ICallable)
       public
-         constructor Create(MethKind: TMethodKind; Attributes: TMethodAttributes;
-                            const methName: string; const MethParams: array of string;
-                            const MethType: string; Cls: TClassSymbol;
+         constructor Create(methKind : TMethodKind; attributes : TMethodAttributes;
+                            const methName : String; const methParams : array of string;
+                            const methType : String; cls : TClassSymbol;
                             aVisibility : TdwsVisibility;
-                            Table: TSymbolTable);
-         procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); override;
-         procedure Execute(info : TProgramInfo; var ExternalObject: TObject); virtual; abstract;
+                            table : TSymbolTable);
+         procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); override;
+         procedure Execute(info : TProgramInfo; var externalObject : TObject); virtual; abstract;
    end;
 
    TInternalInitProc = procedure (systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
@@ -253,11 +256,63 @@ begin
    dwsInternalUnit.AddPostInitProc(Proc);
 end;
 
+// ConvertFuncParams
+//
+function ConvertFuncParams(const funcParams : array of string) : TParamArray;
+
+   procedure ParamSpecifier(c : Char; paramRec : PParamRec);
+   begin
+      paramRec.IsVarParam:=(c='@');
+      paramRec.IsConstParam:=(c='&');
+      paramRec.ParamName:=Copy(paramRec.ParamName, 2, MaxInt)
+   end;
+
+   procedure ParamDefaultValue(p : Integer; paramRec : PParamRec);
+   begin
+      SetLength(paramRec.DefaultValue, 1);
+      paramRec.DefaultValue[0]:=Trim(Copy(paramRec.ParamName, p+1, MaxInt));
+      paramRec.HasDefaultValue:=True;
+      paramRec.ParamName:=Trim(Copy(paramRec.ParamName, 1, p-1));
+   end;
+
+var
+   x, p : Integer;
+   c : Char;
+   paramRec : PParamRec;
+begin
+   SetLength(Result, Length(funcParams) div 2);
+   x:=0;
+   while x<Length(funcParams)-1 do begin
+      paramRec:=@Result[x div 2];
+
+      paramRec.ParamName:=funcParams[x];
+      c:=#0;
+      if paramRec.ParamName<>'' then
+         c:=paramRec.ParamName[1];
+
+      case c of
+         '@','&':
+            ParamSpecifier(c, paramRec);
+      else
+         paramRec.IsVarParam:=False;
+         paramRec.IsConstParam:=False;
+      end;
+
+      p:=Pos('=', paramRec.ParamName);
+      if p>0 then
+         ParamDefaultValue(p, paramRec);
+
+      paramRec.ParamType:=funcParams[x+1];
+
+      Inc(x, 2);
+   end;
+end;
+
 type
    TRegisteredInternalFunction = record
       InternalFunctionClass : TInternalFunctionClass;
       FuncName : String;
-      FuncParams : array of String;
+      FuncParams : TParamArray;
       FuncType : String;
       StateLess : Boolean;
    end;
@@ -271,18 +326,13 @@ procedure RegisterInternalFunction(InternalFunctionClass: TInternalFunctionClass
                                    const FuncType: string;
                                    const isStateLess : Boolean = False);
 var
-   i : Integer;
    rif : PRegisteredInternalFunction;
 begin
    New(rif);
    rif.InternalFunctionClass := InternalFunctionClass;
    rif.FuncName := FuncName;
    rif.StateLess:=isStateLess;
-
-   SetLength(rif.FuncParams, Length(FuncParams));
-
-   for i := 0 to Length(FuncParams) - 1 do
-      rif.FuncParams[i] := FuncParams[i];
+   rif.FuncParams:=ConvertFuncParams(FuncParams);
    rif.FuncType := FuncType;
 
    dwsInternalUnit.AddInternalFunction(rif);
@@ -328,58 +378,6 @@ begin
    RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, '', False);
 end;
 
-// ConvertFuncParams
-//
-procedure ConvertFuncParams(var Params: TParamArray; const FuncParams: array of string);
-
-   procedure ParamSpecifier(c : Char; paramRec : PParamRec);
-   begin
-      paramRec.IsVarParam:=(c='@');
-      paramRec.IsConstParam:=(c='&');
-      paramRec.ParamName:=Copy(paramRec.ParamName, 2, MaxInt)
-   end;
-
-   procedure ParamDefaultValue(p : Integer; paramRec : PParamRec);
-   begin
-      SetLength(paramRec.DefaultValue, 1);
-      paramRec.DefaultValue[0]:=Trim(Copy(paramRec.ParamName, p+1, MaxInt));
-      paramRec.HasDefaultValue:=True;
-      paramRec.ParamName:=Trim(Copy(paramRec.ParamName, 1, p-1));
-   end;
-
-var
-   x, p : Integer;
-   c : Char;
-   paramRec : PParamRec;
-begin
-   SetLength(Params, Length(FuncParams) div 2);
-   x:=0;
-   while x<Length(FuncParams)-1 do begin
-      paramRec:=@Params[x div 2];
-
-      paramRec.ParamName:=FuncParams[x];
-      c:=#0;
-      if paramRec.ParamName<>'' then
-         c:=paramRec.ParamName[1];
-
-      case c of
-         '@','&':
-            ParamSpecifier(c, paramRec);
-      else
-         paramRec.IsVarParam:=False;
-         paramRec.IsConstParam:=False;
-      end;
-
-      p:=Pos('=', paramRec.ParamName);
-      if p>0 then
-         ParamDefaultValue(p, paramRec);
-
-      paramRec.ParamType:=FuncParams[x+1];
-
-      Inc(x, 2);
-   end;
-end;
-
 { TEmptyFunc }
 
 procedure TEmptyFunc.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
@@ -404,28 +402,36 @@ procedure TFunctionPrototype.InitExpression(Expr: TExprBase);
 begin
 end;
 
-{ TInternalFunction }
+// ------------------
+// ------------------ TInternalFunction ------------------
+// ------------------
 
-constructor TInternalFunction.Create(Table: TSymbolTable;
-  const FuncName: string; const FuncParams: array of string; const FuncType: string;
-  const isStateLess : Boolean = False);
+constructor TInternalFunction.Create(table : TSymbolTable; const funcName : String;
+                                     const params : TParamArray; const funcType : String;
+                                     const isStateLess : Boolean = False);
 var
    sym: TFuncSymbol;
-   params: TParamArray;
 begin
-   ConvertFuncParams(Params, FuncParams);
-
-   sym := TFuncSymbol.Generate(Table, FuncName, Params, FuncType);
-   sym.Params.AddParent(Table);
-   sym.Executable := ICallable(Self);
+   sym:=TFuncSymbol.Generate(table, funcName, params, funcType);
+   sym.Params.AddParent(table);
+   sym.Executable:=ICallable(Self);
    sym.IsStateless:=isStateLess;
    FFuncSymbol:=sym;
-   Table.AddSymbol(sym);
+   table.AddSymbol(sym);
+end;
+
+// Create
+//
+constructor TInternalFunction.Create(table: TSymbolTable; const funcName : String;
+                                     const params : array of string; const funcType : String;
+                                     const isStateLess : Boolean = False);
+begin
+   Create(table, funcName, ConvertFuncParams(params), funcType, isStateLess);
 end;
 
 // Call
 //
-procedure TInternalFunction.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
+procedure TInternalFunction.Call(exec : TdwsProgramExecution; func : TFuncSymbol);
 var
    info : TProgramInfo;
 begin
@@ -443,20 +449,17 @@ end;
 
 // Create
 //
-constructor TInternalMagicFunction.Create(Table: TSymbolTable;
-  const FuncName: string; const FuncParams: array of string; const FuncType: string;
-  const isStateLess : Boolean = False);
+constructor TInternalMagicFunction.Create(table : TSymbolTable;
+      const funcName : String; const params : TParamArray; const funcType : String;
+      const isStateLess : Boolean = False);
 var
-  sym: TMagicFuncSymbol;
-  Params: TParamArray;
+  sym : TMagicFuncSymbol;
 begin
-  ConvertFuncParams(Params, FuncParams);
-
-  sym := TMagicFuncSymbol.Generate(Table, FuncName, Params, FuncType);
-  sym.Params.AddParent(Table);
+  sym:=TMagicFuncSymbol.Generate(table, funcName, params, funcType);
+  sym.params.AddParent(table);
   sym.InternalFunction:=Self;
   sym.IsStateless:=isStateLess;
-  Table.AddSymbol(sym);
+  table.AddSymbol(sym);
 end;
 
 // ------------------
@@ -520,26 +523,30 @@ begin
    Result:=buf;
 end;
 
-{ TInternalMethod }
+// ------------------
+// ------------------ TInternalMethod ------------------
+// ------------------
 
-constructor TInternalMethod.Create(MethKind: TMethodKind; Attributes: TMethodAttributes;
-                   const methName: string; const MethParams: array of string;
-                   const MethType: string; Cls: TClassSymbol;
-                   aVisibility : TdwsVisibility;
-                   Table: TSymbolTable);
+// Create
+//
+constructor TInternalMethod.Create(methKind: TMethodKind; attributes: TMethodAttributes;
+                                   const methName: string; const methParams: array of string;
+                                   const methType: string; cls: TClassSymbol;
+                                   aVisibility : TdwsVisibility;
+                                   table: TSymbolTable);
 var
-  sym: TMethodSymbol;
-  Params: TParamArray;
+   sym : TMethodSymbol;
+   params : TParamArray;
 begin
-  ConvertFuncParams(Params, MethParams);
+   params:=ConvertFuncParams(methParams);
 
-  sym := TMethodSymbol.Generate(Table, MethKind, Attributes, methName, Params,
-                                MethType, Cls, aVisibility);
-  sym.Params.AddParent(Table);
-  sym.Executable := ICallable(Self);
+   sym:=TMethodSymbol.Generate(table, methKind, attributes, methName, Params,
+                                 methType, cls, aVisibility);
+   sym.Params.AddParent(table);
+   sym.Executable := ICallable(Self);
 
-  // Add method to its class
-  Cls.AddMethod(sym);
+   // Add method to its class
+   cls.AddMethod(sym);
 end;
 
 procedure TInternalMethod.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
@@ -770,7 +777,7 @@ begin
       rif := PRegisteredInternalFunction(FRegisteredInternalFunctions[i]);
       try
          rif.InternalFunctionClass.Create(UnitTable, rif.FuncName, rif.FuncParams,
-                                       rif.FuncType, rif.StateLess);
+                                          rif.FuncType, rif.StateLess);
       except
          on e: Exception do
             raise Exception.CreateFmt('AddInternalFunctions failed on %s'#13#10'%s',

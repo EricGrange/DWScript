@@ -37,6 +37,7 @@ type
          procedure SubExprTest;
          procedure RecompileInContext;
          procedure ScriptPos;
+         procedure MonkeyTest;
    end;
 
 // ------------------------------------------------------------------
@@ -604,6 +605,29 @@ begin
 
    CheckEquals(2, p.Line);
    CheckEquals(1, p.Col);
+end;
+
+// MonkeyTest
+//
+procedure TCornerCasesTests.MonkeyTest;
+var
+   i, n : Integer;
+   s : String;
+   prog : IdwsProgram;
+   tt : TTokenType;
+begin
+   RandSeed:=0;
+
+   for i:=1 to 2000 do begin
+      n:=Random(10)+2;
+      s:='';
+      while n>0 do begin
+         tt:=TTokenType(Random(Ord(High(TTokenType))+1));
+         s:=s+cTokenStrings[tt]+' ';
+         Dec(n);
+      end;
+      prog:=FCompiler.Compile(s);
+   end;
 end;
 
 // ------------------------------------------------------------------

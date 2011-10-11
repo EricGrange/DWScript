@@ -105,10 +105,10 @@ type
          FSymUsages : TSymbolUsages;  // how symbol is used at this location (mutiple uses possible, Functions are Delcared/Implemented at same spot)
 
       public
-         constructor Create(const AScriptPos: TScriptPos; const AUsages: TSymbolUsages);
+         constructor Create(const aScriptPos : TScriptPos; const aUsages : TSymbolUsages);
 
-         property ScriptPos: TScriptPos read FScriptPos;
-         property SymbolUsages: TSymbolUsages read FSymUsages write FSymUsages;
+         property ScriptPos : TScriptPos read FScriptPos;
+         property SymbolUsages : TSymbolUsages read FSymUsages write FSymUsages;
    end;
 
    {Re-list every symbol (pointer to it) and every position it is in in the script }
@@ -121,13 +121,13 @@ type
          function GetPosition(index : Integer) : TSymbolPosition; inline;
 
          // Used by TSymbolDictionary. Not meaningful to make public (symbol is known).
-         function FindSymbolAtPosition(ACol, ALine: Integer; const sourceFile : String): TSymbol; overload;
+         function FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : String) : TSymbol; overload;
 
       public
          constructor Create(ASymbol: TSymbol);
          destructor Destroy; override;
 
-         procedure Add(const Pos: TScriptPos; const UseTypes: TSymbolUsages);
+         procedure Add(const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
          function FindUsage(const symbolUse : TSymbolUsage) : TSymbolPosition;
 
          property Items[Index: Integer]: TSymbolPosition read GetPosition; default;
@@ -335,6 +335,7 @@ type
       function GetSymbolDictionary : TSymbolDictionary;
       function GetContextMap : TContextMap;
       function GetSourceList : TScriptSourceList;
+      function GetUnitMains : TUnitMainSymbols;
       function GetProgramObject : TdwsProgram;
 
       function CreateNewExecution : IdwsProgramExecution;
@@ -352,6 +353,7 @@ type
       property SymbolDictionary : TSymbolDictionary read GetSymbolDictionary;
       property ContextMap : TContextMap read GetContextMap;
       property SourceList : TScriptSourceList read GetSourceList;
+      property UnitMains : TUnitMainSymbols read GetUnitMains;
       property ProgramObject : TdwsProgram read GetProgramObject;
       property LineCount : Integer read GetLineCount;
    end;
@@ -456,6 +458,7 @@ type
 
       protected
          function GetLevel: Integer; inline;
+         function GetUnitMains : TUnitMainSymbols;
 
       public
          constructor Create(systemTable : TSymbolTable);
@@ -583,7 +586,7 @@ type
          FPostConditions : TSourcePostConditions;
 
       public
-         constructor Create(Parent: TdwsProgram);
+         constructor Create(aParent : TdwsProgram);
          destructor Destroy; override;
 
          procedure AssignTo(sym: TFuncSymbol);
@@ -2698,6 +2701,13 @@ begin
   Result := FAddrGenerator.Level;
 end;
 
+// GetUnitMains
+//
+function TdwsProgram.GetUnitMains : TUnitMainSymbols;
+begin
+   Result:=FUnitMains;
+end;
+
 function TdwsProgram.GetGlobalAddr(DataSize: Integer): Integer;
 begin
   Result := FRoot.FGlobalAddrGenerator.GetStackAddr(DataSize);
@@ -2983,14 +2993,15 @@ end;
 
 // Create
 //
-constructor TdwsProcedure.Create(Parent: TdwsProgram);
+constructor TdwsProcedure.Create(aParent : TdwsProgram);
 begin
-   FParent := Parent;
+   FParent:=aParent;
 
    // Create a local symbol table and connect it to the parent symboltable
    FAddrGenerator:=TAddrGeneratorRec.CreatePositive(Parent.Level + 1);
    FRootTable:=TProgramSymbolTable.Create(Parent.Table, @FAddrGenerator);
    FTable:=FRootTable;
+   FSystemTable:=Parent.SystemTable;
    FCompileMsgs:=Parent.CompileMsgs;
    FUnitMains:=Parent.UnitMains;
 
@@ -3139,16 +3150,20 @@ end;
 // ------------------ TdwsDefaultResultType ------------------
 // ------------------
 
+// CreateProgResult
+//
 function TdwsDefaultResultType.CreateProgResult: TdwsResult;
 begin
-  Result := TdwsDefaultResult.Create(Self);
+   Result:=TdwsDefaultResult.Create(Self);
 end;
 
+// AddResultSymbols
+//
 procedure TdwsDefaultResultType.AddResultSymbols(SymbolTable: TSymbolTable);
 begin
-  inherited;
-  TPrintFunction.Create(SymbolTable, 'Print', ['v', 'Variant'], '', False);
-  TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['v', 'Variant'], '', False);
+   inherited;
+   TPrintFunction.Create(SymbolTable, 'Print',  ['v', 'Variant'], '', False);
+   TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['v', 'Variant'], '', False);
 end;
 
 // ------------------
@@ -7833,19 +7848,19 @@ end;
 
 // Add
 //
-procedure TSymbolPositionList.Add(const Pos: TScriptPos; const UseTypes: TSymbolUsages);
+procedure TSymbolPositionList.Add(const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
 var
-   symPos: TSymbolPosition;
+   symPos : TSymbolPosition;
 begin
-   if (Pos.Line <= 0) or (Pos.SourceFile = nil) then exit;
+   if (scriptPos.Line<=0) or (scriptPos.SourceFile=nil) then Exit;
 
-   symPos := TSymbolPosition.Create(Pos, UseTypes);
+   symPos:=TSymbolPosition.Create(scriptPos, useTypes);
    FPosList.Add(symPos);
 end;
 
 // FindSymbolAtPosition
 //
-function TSymbolPositionList.FindSymbolAtPosition(ACol, ALine: Integer; const sourceFile : String): TSymbol;
+function TSymbolPositionList.FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : String): TSymbol;
 var
    i : Integer;
    symPos : TSymbolPosition;

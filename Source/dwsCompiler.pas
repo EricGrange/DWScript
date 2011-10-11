@@ -1716,11 +1716,14 @@ begin
    if not FTok.TestDeleteNamePos(name, typePos) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
+   if FProg.SystemTable.FindLocal(name)<>nil then
+      FMsgs.AddCompilerErrorFmt(typePos, CPE_NameIsReserved, [name]);
+
    if not FTok.TestDelete(ttEQ) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
 
-   typOld := FProg.Table.FindTypeSymbol(name, cvMagic);
-   oldSymPos := nil;
+   typOld:=FProg.Table.FindTypeSymbol(name, cvMagic);
+   oldSymPos:=nil;
    if coSymbolDictionary in FOptions then begin
       if Assigned(typOld) then
          oldSymPos := FSymbolDictionary.FindSymbolUsage(typOld, suDeclaration);  // may be nil
@@ -6585,7 +6588,7 @@ begin
       sym:=TdwsProcedure(FProg).Func.Params.FindLocal(name);
 
    if Assigned(sym) then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NameAlreadyExists, [name]);
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [name]);
 end;
 
 // IdentifySpecialName
