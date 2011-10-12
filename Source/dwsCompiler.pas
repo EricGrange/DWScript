@@ -5820,9 +5820,17 @@ begin
          if setExpr.Typ is TDynamicArraySymbol then begin
 
             elementType:=TDynamicArraySymbol(setExpr.Typ).Typ;
-            if (left.Typ=nil) or not left.Typ.IsOfType(elementType) then
-               IncompatibleTypes(hotPos, CPE_IncompatibleTypes,
-                                 left.Typ, elementType);
+            if (left.Typ=nil) or not left.Typ.IsOfType(elementType) then begin
+               // attempt cast & typecheck harder
+               if (left is TFuncExpr) and (TFuncExpr(left).Args.Count=0) then begin
+                  if left is TFuncPtrExpr then
+                     left:=TFuncPtrExpr(left).Extract
+                  else left:=TFuncRefExpr.Create(FProg, TFuncExpr(left));
+               end;
+               if (left.Typ=nil) or not left.Typ.IsCompatible(elementType) then
+                  IncompatibleTypes(hotPos, CPE_IncompatibleTypes,
+                                    left.Typ, elementType);
+            end;
 
             Result:=TArrayIndexOfExpr.Create(FProg, hotPos, setExpr, left, nil);
             Result:=TRelGreaterEqualIntExpr.Create(FProg, Result,
