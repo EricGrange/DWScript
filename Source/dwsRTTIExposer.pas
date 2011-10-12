@@ -368,10 +368,8 @@ begin
    helper:=TdwsRTTIHelper.Create(cls);
    Result.HelperObject:=helper;
 
-   scriptConstructor:=(Result.Constructors.Add as TdwsConstructor);
-   scriptConstructor.OnEval:=helper.DoStandardCreate;
-
    for meth in cls.GetMethods do begin
+      if meth.Parent.Name='TObject' then continue;
       if ShouldExpose(meth) then begin
          case meth.MethodKind of
             TypInfo.mkProcedure, TypInfo.mkFunction, TypInfo.mkClassProcedure, TypInfo.mkClassFunction :
@@ -380,6 +378,11 @@ begin
                ExposeRTTIConstructor(meth, Result, options);
          end;
       end;
+   end;
+   if Result.Constructors.IndexOf('Create')<0 then begin
+      scriptConstructor:=(Result.Constructors.Add as TdwsConstructor);
+      scriptConstructor.OnEval:=helper.DoStandardCreate;
+      scriptConstructor.Name:='Create';
    end;
 
    for prop in cls.GetProperties do begin
