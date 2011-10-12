@@ -4193,9 +4193,10 @@ var
    function CheckBound(bound : TTypedExpr) : Boolean;
    begin
       Result:=False;
-      if not (   bound.Typ.IsOfType(FProg.TypInteger)
-                   or (bound.Typ is TEnumerationSymbol)
-               or bound.Typ.IsOfType(FProg.TypBoolean)) then
+      if    (bound.typ=nil)
+         or not (   bound.Typ.IsOfType(FProg.TypInteger)
+                 or (bound.Typ is TEnumerationSymbol)
+                 or bound.Typ.IsOfType(FProg.TypBoolean)) then
          FMsgs.AddCompilerError(hotPos, CPE_ArrayBoundNotOrdinal)
       else if not bound.IsConstant then
          FMsgs.AddCompilerError(hotPos, CPE_ArrayBoundNotAConstant)
