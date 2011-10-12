@@ -25,7 +25,7 @@ uses Classes, SysUtils, RTTI, TypInfo, dwsComp, dwsSymbols, dwsExprs, dwsStrings
 type
 
    TdwsRTTIExposerOption = (
-      eoExposeVirtual, eoNoFreeOnCleanup
+      eoExposeVirtual, eoNoFreeOnCleanup, eoExposePublic
       );
 
    TdwsRTTIExposerOptions = set of TdwsRTTIExposerOption;
@@ -334,12 +334,14 @@ end;
 // ExposeRTTIClass
 //
 function TdwsRTTIExposer.ExposeRTTIClass(cls : TRttiInstanceType; const options : TdwsRTTIExposerOptions) : TdwsClass;
+var
+   exposableVisibilities : set of TMemberVisibility;
 
    function ShouldExpose(item : TRttiMember) : Boolean;
    var
       attrib : TCustomAttribute;
    begin
-      Result:=(item.Visibility=mvPublished);
+      Result:=(item.Visibility in exposableVisibilities);
       for attrib in item.GetAttributes do begin
          if attrib.ClassType=dwsPublished then
             Result:=True
@@ -354,6 +356,10 @@ var
    helper : TdwsRTTIHelper;
    scriptConstructor : TdwsConstructor;
 begin
+   if eoExposePublic in options then
+      exposableVisibilities:=[mvPublic, mvPublished]
+   else exposableVisibilities:=[mvPublished];
+
    Result:=Classes.Add;
    Result.Name:=dwsPublished.NameOf(cls);
    if not (eoNoFreeOnCleanup in options) then
