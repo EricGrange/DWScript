@@ -6573,7 +6573,7 @@ begin
    n:=LengthExpr.EvalAsInteger(exec);
    if n<0 then
       RaiseScriptError(exec, EScriptOutOfBounds.CreatePosFmt(FScriptPos, RTE_ArrayLengthIncorrect, [n]));
-   (obj as TScriptDynamicArray).Length:=n;
+   (obj.InternalObject as TScriptDynamicArray).Length:=n;
 end;
 
 // ------------------
