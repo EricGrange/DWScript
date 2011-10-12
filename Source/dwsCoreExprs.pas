@@ -4555,7 +4555,7 @@ end;
 //
 procedure TAssignFuncExpr.TypeCheckAssign(prog : TdwsProgram);
 begin
-   if not (FRight as TFuncExprBase).FuncSym.IsCompatible(FLeft.Typ) then
+   if not FLeft.Typ.IsCompatible((FRight as TFuncExprBase).FuncSym) then
       prog.CompileMsgs.AddCompilerError(ScriptPos, CPE_IncompatibleOperands);
 end;
 

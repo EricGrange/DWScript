@@ -747,10 +747,13 @@ end;
 // GetFuncExpr
 //
 function TdwsCompiler.GetFuncExpr(funcSym : TFuncSymbol; isWrite : Boolean;
-                               codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TFuncExprBase;
+                                  codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TFuncExprBase;
 var
    magicFuncSym : TMagicFuncSymbol;
 begin
+   if (codeExpr=nil) and funcSym.IsType then
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionMethodExpected);
+
    if funcSym.InheritsFrom(TMethodSymbol) and not (TMethodSymbol(funcSym).IsClassMethod) then begin
 
       if codeExpr=nil then begin
@@ -2185,6 +2188,9 @@ begin
          FContextMap.CloseContext(FTok.HotPos);
       Exit;
    end;
+
+   if funcSymbol.IsType then
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_CantImplementAFunctionType);
 
    if funcSymbol.Executable<>nil then
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_MethodRedefined, [funcSymbol.Name]);
@@ -4094,7 +4100,7 @@ begin
                 and (funcExpr is TFuncPtrExpr)
                 and not FTok.Test(ttDOT))
             or (    (expecting is TFuncSymbol)
-                and funcExpr.funcSym.IsCompatible(expecting)) then begin
+                and expecting.IsCompatible(funcExpr.funcSym)) then begin
             if funcExpr.FuncSym.Level>1 then
                FMsgs.AddCompilerError(funcExpr.Pos, CPE_LocalFunctionAsDelegate);
             Result:=TFuncRefExpr.Create(FProg, funcExpr);
@@ -5495,6 +5501,7 @@ begin
       ttPROCEDURE, ttFUNCTION : begin
          Result:=ReadProcDecl(cTokenToFuncKind[tt], False, True);
          Result.SetName(typeName);
+         (Result as TFuncSymbol).SetIsType;
       end;
 
    else
@@ -5828,7 +5835,7 @@ begin
                      left:=TFuncPtrExpr(left).Extract
                   else left:=TFuncRefExpr.Create(FProg, TFuncExpr(left));
                end;
-               if (left.Typ=nil) or not left.Typ.IsCompatible(elementType) then
+               if (left.Typ=nil) or not elementType.IsCompatible(left.Typ) then
                   IncompatibleTypes(hotPos, CPE_IncompatibleTypes,
                                     left.Typ, elementType);
             end;
@@ -5945,6 +5952,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
 var
    tt : TTokenType;
    nameExpr : TProgramExpr;
+   hotPos : TScriptPos;
 begin
    tt:=FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
                      ttTRUE, ttFALSE, ttNIL, ttSWITCH]);
@@ -5971,11 +5979,14 @@ begin
       end;
       ttAT : begin
          FTok.KillToken;
+         hotPos:=FTok.HotPos;
          if expecting=nil then
             expecting:=FAnyFuncSymbol
          else if not (expecting is TFuncSymbol) then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedAt);
+            FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt);
          Result:=ReadTerm(isWrite, expecting);
+         if Result is TConstExpr then
+            FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt);
       end;
       ttTRUE :
          Result:=ReadTrue;

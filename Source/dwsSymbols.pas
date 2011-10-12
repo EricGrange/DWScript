@@ -611,7 +611,7 @@ type
    TResultSymbol = class(TDataSymbol)
    end;
 
-   TFuncSymbolFlag = (fsfStateless, fsfExternal);
+   TFuncSymbolFlag = (fsfStateless, fsfExternal, fsfType);
    TFuncSymbolFlags = set of TFuncSymbolFlag;
 
    // A script function / procedure: procedure X(param: Integer);
@@ -656,6 +656,7 @@ type
                               const funcParams : TParamArray; const funcType : string);
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function  IsType : Boolean; override;
+         procedure SetIsType;
          procedure AddParam(param: TParamSymbol); virtual;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
@@ -2553,24 +2554,26 @@ var
    i : Integer;
    param, otherParam : TSymbol;
 begin
-   typSym := typSym.BaseType;
+   typSym:=typSym.BaseType;
    if (typSym.ClassType=TNilSymbol) or (typSym.ClassType=TAnyFuncSymbol) then
-      Result := True
+      Result:=True
+   else if typSym.IsType and not IsType then
+      Result:=False
    else begin
-      Result := False;
+      Result:=False;
       if not (typSym is TFuncSymbol) then
          Exit;
-      funcSym := TFuncSymbol(typSym);
+      funcSym:=TFuncSymbol(typSym);
       if Params.Count<>funcSym.Params.Count then Exit;
       if not cCompatibleKinds[Kind, funcSym.Kind] then Exit;
-      if Typ <> funcSym.Typ then Exit;
+      if Typ<>funcSym.Typ then Exit;
       for i:=0 to Params.Count-1 do begin
          param:=Params[i];
          otherParam:=funcSym.Params[i];
          if param.ClassType<>otherParam.ClassType then Exit;
          if param.Typ<>otherParam.Typ then Exit;
       end;
-      Result := True;
+      Result:=True;
    end;
 end;
 
@@ -2578,7 +2581,14 @@ end;
 //
 function TFuncSymbol.IsType : Boolean;
 begin
-   Result:=(FExecutable=nil) and (not IsForwarded);
+   Result:=(fsfType in FFlags);
+end;
+
+// SetIsType
+//
+procedure TFuncSymbol.SetIsType;
+begin
+   Include(FFlags, fsfType);
 end;
 
 procedure TFuncSymbol.InitData(const Data: TData; Offset: Integer);
