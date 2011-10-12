@@ -4561,6 +4561,8 @@ var
    c1, c2 : TConstExpr;
 begin
    ptr:=IFuncPointer(IUnknown(v));
+   if ptr=nil then
+      Exit(FFuncExpr=nil);
    expr:=ptr.GetFuncExpr;
    Result:=    (expr.ClassType=FFuncExpr.ClassType)
            and (expr.FuncSym=FFuncExpr.FuncSym);
@@ -6221,11 +6223,20 @@ function TScriptDynamicArray.IndexOfFuncPtr(const item : Variant; fromIndex : In
 var
    i : Integer;
    itemFunc : IFuncPointer;
+   p : PVarData;
 begin
    itemFunc:=IFuncPointer(IUnknown(item));
-   for i:=fromIndex to Length-1 do
-      if itemFunc.SameFunc(FData[i]) then
-         Exit(i);
+   if itemFunc=nil then begin
+      for i:=fromIndex to Length-1 do begin
+         p:=@FData[i];
+         if (p.VType=varUnknown) and (p.VUnknown=nil) then
+            Exit(i);
+      end;
+   end else begin
+      for i:=fromIndex to Length-1 do
+         if itemFunc.SameFunc(FData[i]) then
+            Exit(i);
+   end;
    Result:=-1;
 end;
 
