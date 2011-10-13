@@ -997,6 +997,7 @@ begin
    RegisterCodeGen(TNoResultWrapperExpr,  TdwsExprGenericCodeGen.Create([0, ';'], True));
 
    RegisterCodeGen(TConstExpr,            TJSConstExpr.Create);
+   RegisterCodeGen(TUnifiedConstExpr,     TJSConstExpr.Create);
    RegisterCodeGen(TConstIntExpr,         TJSConstIntExpr.Create);
    RegisterCodeGen(TConstStringExpr,      TJSConstStringExpr.Create);
    RegisterCodeGen(TConstFloatExpr,       TJSConstFloatExpr.Create);

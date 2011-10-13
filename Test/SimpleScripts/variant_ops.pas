@@ -29,3 +29,6 @@ PrintLn(vf-vi);
 PrintLn(-vi);
 PrintLn(-vf);
 
+const v1 : Variant = 5;
+
+PrintLn(2*v1);

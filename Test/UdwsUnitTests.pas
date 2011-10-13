@@ -127,6 +127,9 @@ type
    TdwsEnumerationCracker = class (TdwsEnumeration)
    end;
 
+   TdwsOperatorCracker = class (TdwsOperator)
+   end;
+
 // ------------------
 // ------------------ TdwsUnitTests ------------------
 // ------------------
@@ -662,6 +665,8 @@ begin
    CheckEquals('public property MyReadOnlyProp: Integer read GetMyProp;', PropertyByName(cls, 'MyReadOnlyProp').GetDisplayName);
    CheckEquals('public property MyWriteOnlyProp: Integer write SetMyProp;', PropertyByName(cls, 'MyWriteOnlyProp').GetDisplayName);
    CheckEquals('public const cTest: String = ''My class const'';', ConstByName(cls, 'cTest').GetDisplayName);
+
+   CheckEquals('operator ^ (Float, Float) : Float uses FuncFloat', TdwsOperatorCracker(FUnit.Operators.Items[0]).GetDisplayName);
 end;
 
 // CompiledDescriptions

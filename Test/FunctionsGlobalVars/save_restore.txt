@@ -1,7 +1,13 @@
 hello world
 123
+2.5
+True
+
+
 
 
 hello world
 123
+2.5
+True
 Invalid file tag

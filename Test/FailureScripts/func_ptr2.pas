@@ -1,0 +1,4 @@
+type
+   TMyProc = procedure;
+
+TMyProc();

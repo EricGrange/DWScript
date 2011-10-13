@@ -19,7 +19,9 @@ type
 
          procedure StackIntegerTest;
          procedure WriteOnlyBlockStreamTest;
+         procedure WOBSBigFirstTest;
          procedure TightListTest;
+         procedure LookupTest;
 
          procedure JSONTest;
          procedure ParseJSON;
@@ -106,6 +108,34 @@ begin
    CheckEquals(AnsiString('123456789'), bs);
 end;
 
+// WOBSBigFirstTest
+//
+procedure TdwsUtilsTests.WOBSBigFirstTest;
+var
+   buffer : TWriteOnlyBlockStream;
+   i : Integer;
+   bw, br : TBytes;
+begin
+   buffer:=TWriteOnlyBlockStream.Create;
+
+   SetLength(bw, cWriteOnlyBlockStreamBlockSize*2);
+   for i:=0 to High(bw) do
+      bw[i]:=Byte(i and 255);
+
+   buffer.Write(bw[0], Length(bw));
+
+   CheckEquals(Length(bw), buffer.Size, 'size');
+
+   SetLength(br, buffer.Size);
+   buffer.StoreData(br[0]);
+
+   for i:=0 to High(br) do
+      if br[i]<>bw[i] then
+         CheckEquals(bw[i], br[i], IntToStr(i));
+
+   buffer.Free;
+end;
+
 // TightListOutOfBoundsDelete
 //
 procedure TdwsUtilsTests.TightListOutOfBoundsDelete;
@@ -167,6 +197,29 @@ begin
    CheckEquals(1, FTightList.IndexOf(Self), 'three search Self');
 
    FTightList.Clear
+end;
+
+// LookupTest
+//
+procedure TdwsUtilsTests.LookupTest;
+var
+   lookup : TObjectsLookup;
+   obj : TObject;
+begin
+   lookup:=TObjectsLookup.Create;
+   try
+      CheckFalse(lookup.IndexOf(nil)>=0, 'empty');
+      lookup.Add(nil);
+      CheckTrue(lookup.IndexOf(nil)>=0, 'nil');
+      obj:=TObject.Create;
+      CheckFalse(lookup.IndexOf(obj)>=0, 'obj');
+      lookup.Add(obj);
+      CheckTrue(lookup.IndexOf(nil)>=0, 'nil bis');
+      CheckTrue(lookup.IndexOf(obj)>=0, 'obj bis');
+      lookup.Clean;
+   finally
+      lookup.Free;
+   end;
 end;
 
 // JSONTest

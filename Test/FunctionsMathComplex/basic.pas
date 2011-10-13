@@ -21,3 +21,5 @@ PrintLn(ComplexToStr(c));
 c := c + c;
 
 PrintLn(ComplexToStr(c));
+
+PrintLn(ComplexToStr(Complex(1, 0)));

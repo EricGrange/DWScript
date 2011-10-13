@@ -26,9 +26,6 @@ interface
 uses Classes, Variants, SysUtils, TypInfo, dwsSymbols, dwsErrors, dwsUtils,
    dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsTokenizer;
 
-const
-   C_DefaultStackChunkSize = 4096;
-
 type
    TRelOps = (roEqual, roUnEqual, roLess, roLessEqual, roMore, roMoreEqual);
 
@@ -4829,12 +4826,9 @@ end;
 //
 function TBinaryOpExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
-   case i of
-      0 : Result:=FLeft;
-      1 : Result:=FRight;
-   else
-      Result:=nil;
-   end;
+   if i=0 then
+      Result:=FLeft
+   else Result:=FRight;
 end;
 
 // GetSubExprCount

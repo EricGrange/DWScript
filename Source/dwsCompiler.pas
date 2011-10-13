@@ -36,6 +36,7 @@ type
 const
    cDefaultCompilerOptions = [coOptimize, coAssertions];
    cDefaultMaxRecursionDepth = 1024;
+   cDefaultStackChunkSize = 4096;  // 64 kB in 32bit
 
 type
   TIncludeEvent = procedure(const scriptName: string; var scriptSource: string) of object;
@@ -105,7 +106,7 @@ type
     property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write SetRuntimeFileSystem;
     property TimeoutMilliseconds: Integer read FTimeoutMilliseconds write FTimeoutMilliseconds default 0;
     property TimeOut : Integer write SetTimeOut;
-    property StackChunkSize: Integer read FStackChunkSize write FStackChunkSize default C_DefaultStackChunkSize;
+    property StackChunkSize: Integer read FStackChunkSize write FStackChunkSize default cDefaultStackChunkSize;
     property OnInclude : TIncludeEvent read FOnInclude write FOnInclude;
     property OnNeedUnit : TdwsOnNeedUnitEvent read FOnNeedUnit write FOnNeedUnit;
   end;
@@ -754,7 +755,7 @@ begin
    if (codeExpr=nil) and funcSym.IsType then
       FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionMethodExpected);
 
-   if funcSym.InheritsFrom(TMethodSymbol) and not (TMethodSymbol(funcSym).IsClassMethod) then begin
+(*   if funcSym.InheritsFrom(TMethodSymbol) and not (TMethodSymbol(funcSym).IsClassMethod) then begin
 
       if codeExpr=nil then begin
 
@@ -771,7 +772,8 @@ begin
 
       end;
 
-   end else if codeExpr=nil then begin
+   end else*)
+   if codeExpr=nil then begin
 
       if funcSym.InheritsFrom(TMagicFuncSymbol) then begin
 
@@ -894,12 +896,11 @@ begin
    SetupCompileOptions(aConf);
 
    stackParams.MaxByteSize:=aConf.MaxDataSize;
-   if stackParams.MaxByteSize=0 then
+   if stackParams.MaxByteSize<=0 then
       stackParams.MaxByteSize:=MaxInt;
 
    stackParams.ChunkSize:=aConf.StackChunkSize;
-   if stackParams.ChunkSize<=0 then
-      stackParams.ChunkSize:=1;
+   Assert(stackParams.ChunkSize>0);
 
    stackParams.MaxRecursionDepth:=aConf.MaxRecursionDepth;
 
@@ -2189,9 +2190,6 @@ begin
       Exit;
    end;
 
-   if funcSymbol.IsType then
-      FMsgs.AddCompilerError(FTok.HotPos, CPE_CantImplementAFunctionType);
-
    if funcSymbol.Executable<>nil then
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_MethodRedefined, [funcSymbol.Name]);
 
@@ -2752,6 +2750,7 @@ var
    namePos : TScriptPos;
    varExpr : TDataExpr;
    fieldExpr : TTypedExpr;
+   propExpr : TProgramExpr;
    progMeth : TMethodSymbol;
    baseType : TTypeSymbol;
    sk : TSpecialKeywordKind;
@@ -2891,7 +2890,9 @@ begin
             varExpr:=GetVarParamExpr(progMeth.SelfSym as TVarParamSymbol)
          else varExpr:=GetVarExpr(progMeth.SelfSym);
          try
-            Result := ReadSymbol(ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite), IsWrite, expecting);
+            propExpr:=ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
+            varExpr:=nil;
+            Result:=ReadSymbol(propExpr, IsWrite, expecting);
          except
             varExpr.Free;
             raise;
@@ -2976,9 +2977,6 @@ begin
       namePos:=FTok.HotPos;
       Result:=ReadExpr;
       try
-         if not (Result is TTypedExpr) then
-            FMsgs.AddCompilerStopFmt(namePos, CPE_IncompatibleTypes,
-                                     ['void', baseType.Name]);
          castedExprTyp:=TTypedExpr(Result).Typ;
          if    (not (castedExprTyp is TClassSymbol))
             or (
@@ -5403,16 +5401,11 @@ begin
       Result:=TReraiseExpr.Create(FProg, FTok.HotPos)
    else begin
       exceptExpr:=ReadExpr;
-      try
-         exceptObjTyp:=exceptExpr.Typ;
-         if not (    (exceptObjTyp is TClassSymbol)
-                 and TClassSymbol(exceptObjTyp).IsOfType(FProg.TypException)) then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_ExceptionObjectExpected);
-         Result:=TRaiseExpr.Create(FProg, FTok.HotPos, exceptExpr);
-      except
-         exceptExpr.Free;
-         raise;
-      end;
+      exceptObjTyp:=exceptExpr.Typ;
+      if not (    (exceptObjTyp is TClassSymbol)
+              and TClassSymbol(exceptObjTyp).IsOfType(FProg.TypException)) then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_ExceptionObjectExpected);
+      Result:=TRaiseExpr.Create(FProg, FTok.HotPos, exceptExpr);
    end;
 end;
 
@@ -5581,7 +5574,8 @@ end;
 //
 function TdwsCompiler.ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
 var
-   r : TTypedExpr;
+   right : TTypedExpr;
+   rightTyp : TTypeSymbol;
    tt : TTokenType;
    hotPos : TScriptPos;
    opExpr : TTypedExpr;
@@ -5599,51 +5593,54 @@ begin
          hotPos := FTok.HotPos;
 
          // Read right argument
-         r:=ReadExprAdd;
+         right:=ReadExprAdd;
+         rightTyp:=right.Typ;
          try
             case tt of
                ttIS : begin
                   if not (Result.Typ is TClassSymbol) then
                      FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
-                  else if not (r.Typ is TClassOfSymbol) then
+                  else if not (rightTyp is TClassOfSymbol) then
                      FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
-                  Result:=TIsOpExpr.Create(FProg, Result, r)
+                  Result:=TIsOpExpr.Create(FProg, Result, right)
                end;
                ttAS : begin
                   if Result.Typ is TInterfaceSymbol then begin
-                     if r.Typ is TInterfaceSymbol then begin
-                        Result:=TIntfAsIntfExpr.Create(FProg, hotPos, Result, TInterfaceSymbol(r.Typ));
+                     if rightTyp is TInterfaceSymbol then begin
+                        Result:=TIntfAsIntfExpr.Create(FProg, hotPos, Result, TInterfaceSymbol(rightTyp));
                      end else begin
-                        if not (r.Typ is TClassOfSymbol) then
+                        if not (rightTyp is TClassOfSymbol) then begin
                            FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
-                        Result:=TIntfAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(r.Typ).Typ);
+                           rightTyp:=FProg.TypObject.ClassOf;
+                        end;
+                        Result:=TIntfAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(rightTyp).Typ);
                      end;
                   end else if Result.Typ is TClassSymbol then begin
-                     if r.Typ is TInterfaceSymbol then
-                        Result:=TObjAsIntfExpr.Create(FProg, hotPos, Result, TInterfaceSymbol(r.Typ))
+                     if rightTyp is TInterfaceSymbol then
+                        Result:=TObjAsIntfExpr.Create(FProg, hotPos, Result, TInterfaceSymbol(rightTyp))
                      else begin
-                        if not (r.Typ is TClassOfSymbol) then
+                        if not (rightTyp is TClassOfSymbol) then
                            FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
-                        Result:=TObjAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(r.Typ).Typ);
+                        Result:=TObjAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(rightTyp).Typ);
                      end;
                   end else begin
                      if not (Result.Typ is TClassOfSymbol) then
                         FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
-                     else if not (r.Typ is TClassOfSymbol) then
+                     else if not (rightTyp is TClassOfSymbol) then
                         FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
-                     Result:=TClassAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(r.Typ));
+                     Result:=TClassAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(rightTyp));
                   end;
-                  r.Free;
+                  right.Free;
                end;
                ttIMPLEMENTS : begin
-                  if not (r.Typ is TInterfaceSymbol) then
+                  if not (rightTyp is TInterfaceSymbol) then
                      FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
                   if Result.Typ is TClassOfSymbol then
-                     Result:=TClassImplementsIntfOpExpr.Create(FProg, Result, r)
+                     Result:=TClassImplementsIntfOpExpr.Create(FProg, Result, right)
                   else begin
                      if not (Result.Typ is TClassSymbol) then
                         FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
-                     Result:=TImplementsIntfOpExpr.Create(FProg, Result, r);
+                     Result:=TImplementsIntfOpExpr.Create(FProg, Result, right);
                   end;
                end;
             else
@@ -5652,31 +5649,31 @@ begin
                   or (Result.Typ=FProg.TypNil) then begin
                   case tt of
                      ttEQ, ttNOTEQ: begin
-                        if not ((r.Typ.ClassType=Result.Typ.ClassType) or (r.Typ=FProg.TypNil)) then
+                        if not ((rightTyp.ClassType=Result.Typ.ClassType) or (rightTyp=FProg.TypNil)) then
                            if Result.Typ is TClassSymbol then
                               FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
                            else FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
                         if Result.Typ is TClassSymbol then
-                           Result:=TObjCmpExpr.Create(FProg, Result, r)
-                        else Result:=TIntfCmpExpr.Create(FProg, Result, r);
+                           Result:=TObjCmpExpr.Create(FProg, Result, right)
+                        else Result:=TIntfCmpExpr.Create(FProg, Result, right);
                         if tt=ttNOTEQ then
                            Result:=TNotBoolExpr.Create(FProg, Result);
                      end;
                   else
                      FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
-                     Result:=TRelOpExpr.Create(FProg, Result, r); // keep going
+                     Result:=TRelOpExpr.Create(FProg, Result, right); // keep going
                   end;
                end else begin
-                  opExpr:=FOperators.GenerateTyped(FProg, hotPos, tt, Result, r);
+                  opExpr:=FOperators.GenerateTyped(FProg, hotPos, tt, Result, right);
                   if opExpr=nil then begin
                      FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                      // keep going
-                     Result:=TRelOpExpr.Create(FProg, Result, r);
+                     Result:=TRelOpExpr.Create(FProg, Result, right);
                   end else Result:=opExpr;
                end;
             end;
          except
-            r.Free;
+            right.Free;
             raise;
          end;
       until False;
@@ -5822,10 +5819,15 @@ begin
       setExpr:=ReadExpr;
       try
 
-         if not (setExpr is TDataExpr) then
-            FMsgs.AddCompilerStop(hotPos, CPE_ObjectExpected);
+         if not (setExpr is TDataExpr) then begin
 
-         if setExpr.Typ is TDynamicArraySymbol then begin
+            FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
+            // keep compiling
+            left.Free;
+            setExpr.Free;
+            Result:=TConstExpr.CreateTyped(FProg, FProg.TypBoolean, False);
+
+         end else if setExpr.Typ is TDynamicArraySymbol then begin
 
             elementType:=TDynamicArraySymbol(setExpr.Typ).Typ;
             if (left.Typ=nil) or not left.Typ.IsOfType(elementType) then begin
@@ -7739,7 +7741,7 @@ begin
    FConditionals := TStringList.Create;
    FUnits := TIdwsUnitList.Create;
    FUnits.Add(dwsInternalUnit);
-   FStackChunkSize := C_DefaultStackChunkSize;
+   FStackChunkSize := cDefaultStackChunkSize;
    FDefaultResultType := TdwsDefaultResultType.Create(nil);
    FResultType := FDefaultResultType;
    FCompilerOptions := cDefaultCompilerOptions;

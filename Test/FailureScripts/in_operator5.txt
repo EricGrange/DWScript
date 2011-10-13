@@ -1,0 +1,2 @@
+Syntax Error: Object expected [line: 2, column: 6]
+Syntax Error: Object expected [line: 3, column: 17]

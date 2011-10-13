@@ -4,7 +4,7 @@ interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
-   dwsSymbols, dwsPascalTokenizer, dwsStrings;
+   dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsStack;
 
 type
 
@@ -38,6 +38,7 @@ type
          procedure RecompileInContext;
          procedure ScriptPos;
          procedure MonkeyTest;
+         procedure SameVariantTest;
    end;
 
 // ------------------------------------------------------------------
@@ -628,6 +629,30 @@ begin
       end;
       prog:=FCompiler.Compile(s);
    end;
+end;
+
+// SameVariantTest
+//
+procedure TCornerCasesTests.SameVariantTest;
+var
+   v : Variant;
+begin
+   CheckFalse(DWSSameVariant('hello', 123), '"hello" 123');
+
+   CheckFalse(DWSSameVariant('123', 123), '"123" 123');
+   CheckFalse(DWSSameVariant(123, '123'), '123 "123"');
+
+   CheckFalse(DWSSameVariant(True, False), 'True False');
+   CheckFalse(DWSSameVariant(False, True), 'False True');
+   CheckTrue(DWSSameVariant(True, True), 'True True');
+   CheckTrue(DWSSameVariant(False, False), 'True True');
+
+   v:=1.5;
+   CheckTrue(DWSSameVariant(v, v), 'v v');
+
+   v:=Null;
+   CheckTrue(DWSSameVariant(v, Null), 'Null Null');
+   CheckFalse(DWSSameVariant(v, 1), 'Null 1');
 end;
 
 // ------------------------------------------------------------------

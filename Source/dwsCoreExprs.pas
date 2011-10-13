@@ -2628,12 +2628,9 @@ end;
 //
 function TArrayExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
-   case i of
-      0 : Result:=FBaseExpr;
-      1 : Result:=FIndexExpr;
-   else
-      Result:=nil;
-   end;
+   if i=0 then
+      Result:=FBaseExpr
+   else Result:=FIndexExpr;
 end;
 
 // GetSubExprCount
@@ -3836,12 +3833,9 @@ end;
 //
 function TAssertExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
-   case i of
-      0 : Result:=FCond;
-      1 : Result:=FMessage;
-   else
-      Result:=nil;
-   end;
+   if i=0 then
+      Result:=FCond
+   else Result:=FMessage;
 end;
 
 // GetSubExprCount
@@ -4497,12 +4491,9 @@ end;
 //
 function TAssignExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
-   case i of
-      0 : Result:=FLeft;
-      1 : Result:=FRight;
-   else
-      Result:=nil;
-   end;
+   if i=0 then
+      Result:=FLeft
+   else Result:=FRight;
 end;
 
 // GetSubExprCount
@@ -5256,12 +5247,9 @@ end;
 //
 function TIfThenExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
-   case i of
-      0 : Result:=FCond;
-      1 : Result:=FThen;
-   else
-      Result:=nil;
-   end;
+   if i=0 then
+      Result:=FCond
+   else Result:=FThen;
 end;
 
 // GetSubExprCount
@@ -5533,9 +5521,8 @@ begin
    case i of
       0 : Result:=FTrueExpr;
       1 : Result:=FFromExpr;
-      2 : Result:=FToExpr;
    else
-      Result:=nil;
+      Result:=FToExpr;
    end;
 end;
 
@@ -5611,9 +5598,8 @@ begin
       0 : Result:=FVarExpr;
       1 : Result:=FFromExpr;
       2 : Result:=FToExpr;
-      3 : Result:=FDoExpr;
    else
-      Result:=nil;
+      Result:=FDoExpr;
    end;
 end;
 
@@ -5833,12 +5819,9 @@ end;
 //
 function TLoopExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
-   case i of
-      0 : Result:=FCondExpr;
-      1 : Result:=FLoopExpr;
-   else
-      Result:=nil;
-   end;
+   if i=0 then
+      Result:=FCondExpr
+   else Result:=FLoopExpr;
 end;
 
 // GetSubExprCount
@@ -6048,12 +6031,9 @@ end;
 //
 function TExceptionExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
-   case i of
-      0 : Result:=FTryExpr;
-      1 : Result:=FHandlerExpr;
-   else
-      Result:=nil;
-   end;
+   if i=0 then
+      Result:=FTryExpr
+   else Result:=FHandlerExpr;
 end;
 
 // GetSubExprCount
@@ -6377,9 +6357,8 @@ begin
    case i of
       0 : Result:=FStringExpr;
       1 : Result:=FIndexExpr;
-      2 : Result:=FValueExpr;
    else
-      Result:=nil;
+      Result:=FValueExpr;
    end;
 end;
 
