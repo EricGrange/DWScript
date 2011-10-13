@@ -25,7 +25,7 @@ interface
 
 uses Windows, Variants, Classes, SysUtils, SysConst, dwsComp, dwsSymbols,
    dwsExprs, dwsStrings, dwsFunctions, dwsStack, ComObj, ComConst, ActiveX,
-   AxCtrls, dwsOperators;
+   AxCtrls, dwsOperators, dwsUtils;
 
 const
   COM_ConnectorCaption = 'COM Connector 1.0';
@@ -109,7 +109,7 @@ type
     constructor Create(Table: TSymbolTable);
   end;
 
-  TComConnectorCall = class(TInterfacedObject, IUnknown, IConnectorCall)
+  TComConnectorCall = class(TInterfacedSelfObject, IUnknown, IConnectorCall)
   private
     FDispId: TDispId;
     FIsInitialized: Boolean;
@@ -122,7 +122,7 @@ type
       MethodType: Cardinal = DISPATCH_METHOD);
   end;
 
-  TComConnectorMember = class(TInterfacedObject, IUnknown, IConnectorMember)
+  TComConnectorMember = class(TInterfacedSelfObject, IUnknown, IConnectorMember)
   protected
     FDispId: TDispId;
     FIsInitialized: Boolean;
@@ -160,7 +160,7 @@ type
   IComVariantArrayLowBoundCall = interface(IConnectorCall)
   end;
 
-  TComVariantArrayType = class(TInterfacedObject, IUnknown, IConnectorType,
+  TComVariantArrayType = class(TInterfacedSelfObject, IUnknown, IConnectorType,
       IComVariantArrayReadIndex, IComVariantArrayWriteIndex,
       IComVariantArrayLength, IComVariantArrayDimCount,
       IComVariantArrayHighBound, IComVariantArrayLowBound,

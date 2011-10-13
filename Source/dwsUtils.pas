@@ -24,6 +24,19 @@ uses Classes, SysUtils, Variants, SyncObjs, dwsXPlatform;
 
 type
 
+   // IGetSelf
+   //
+   IGetSelf = interface
+      function GetSelf : TObject;
+   end;
+
+   // TInterfacedSelfObject
+   //
+   TInterfacedSelfObject = class(TInterfacedObject, IGetSelf)
+      protected
+         function GetSelf : TObject;
+   end;
+
    // TVarRecArrayContainer
    //
    TVarRecArrayContainer = class
@@ -1602,6 +1615,17 @@ begin
    else if NativeUInt(item1)=NativeUInt(item2) then
       Result:=0
    else Result:=-1;
+end;
+
+// ------------------
+// ------------------ TInterfacedSelfObject ------------------
+// ------------------
+
+// GetSelf
+//
+function TInterfacedSelfObject.GetSelf : TObject;
+begin
+   Result:=Self;
 end;
 
 // ------------------------------------------------------------------

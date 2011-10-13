@@ -439,7 +439,7 @@ type
    end;
 
    // A script executable program
-   TdwsProgram = class (TInterfacedObject)
+   TdwsProgram = class (TInterfacedSelfObject)
       private
          FExpr : TNoResultExpr;
          FInitExpr : TBlockInitExpr;
@@ -776,7 +776,7 @@ type
 
    // TExternalFuncHandler
    //
-   TExternalFuncHandler = class(TInterfacedObject, IUnknown, ICallable, IExecutable)
+   TExternalFuncHandler = class(TInterfacedSelfObject, IUnknown, ICallable, IExecutable)
       public
          procedure InitSymbol(symbol: TSymbol);
          procedure InitExpression(Expr: TExprBase);
@@ -952,7 +952,7 @@ type
          function GetAddr(exec : TdwsExecution) : Integer; override;
    end;
 
-   TSourceCondition = class (TInterfacedObject, IBooleanEvalable, IStringEvalable)
+   TSourceCondition = class (TInterfacedSelfObject, IBooleanEvalable, IStringEvalable)
       private
          FPos : TScriptPos;
          FTest : TTypedExpr;

@@ -21,7 +21,8 @@ unit dwsRTTIConnector;
 interface
 
 uses Windows, Forms, Variants, Classes, SysUtils, SysConst, dwsComp, dwsSymbols,
-   dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsOperators, TypInfo, RTTI;
+   dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsOperators, TypInfo, RTTI,
+   dwsUtils;
 
 const
    RTTI_ConnectorCaption = 'RTTI Connector 1.0';
@@ -105,7 +106,7 @@ type
 
    TdwsRTTIMethodType = (mtMethod, mtPropertyGet, mtPropertySet);
 
-   TdwsRTTIConnectorCall = class(TInterfacedObject, IUnknown, IConnectorCall)
+   TdwsRTTIConnectorCall = class(TInterfacedSelfObject, IUnknown, IConnectorCall)
       private
          FMethodName : String;
          FMethodType : TdwsRTTIMethodType;
@@ -118,7 +119,7 @@ type
                             methodType : TdwsRTTIMethodType);
    end;
 
-   TdwsRTTIConnectorMember = class(TInterfacedObject, IUnknown, IConnectorMember)
+   TdwsRTTIConnectorMember = class(TInterfacedSelfObject, IUnknown, IConnectorMember)
       protected
          FMemberName : String;
 

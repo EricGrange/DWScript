@@ -534,11 +534,14 @@ end;
 //
 procedure TdwsCodeGen.CompileFuncSymbol(func : TSourceFuncSymbol);
 var
+   execSelf : TObject;
    proc : TdwsProcedure;
 begin
    // nil executable means it's a function pointer type
-   if not (func.Executable is TdwsProcedure) then Exit;
-   proc:=(func.Executable as TdwsProcedure);
+   if func.Executable=nil then Exit;
+   execSelf:=func.Executable.GetSelf;
+   if not (execSelf is TdwsProcedure) then Exit;
+   proc:=TdwsProcedure(execSelf);
    if proc<>nil then begin
       EnterScope(func);
       EnterContext(proc);
@@ -557,7 +560,7 @@ procedure TdwsCodeGen.DoCompileFuncSymbol(func : TSourceFuncSymbol);
 var
    proc : TdwsProcedure;
 begin
-   proc:=(func.Executable as TdwsProcedure);
+   proc:=(func.Executable.GetSelf as TdwsProcedure);
 
    if not (cgoNoConditions in Options) then
       CompileConditions(func, proc.PreConditions, True);
@@ -633,7 +636,7 @@ procedure TdwsCodeGen.CompileProgram(const prog : IdwsProgram);
 var
    p : TdwsProgram;
 begin
-   p:=prog as TdwsProgram;
+   p:=prog.ProgramObject;
 
    BeginProgramSession(prog);
    try
@@ -652,7 +655,7 @@ var
    p : TdwsProgram;
    i : Integer;
 begin
-   p:=(prog as TdwsProgram);
+   p:=prog.ProgramObject;
 
    for i:=0 to p.UnitMains.Count-1 do
       CompileUnitSymbol(p.UnitMains[i]);
@@ -674,7 +677,7 @@ begin
    if FSymbolMap=nil then
       EnterScope(nil);
 
-   p:=(prog as TdwsProgram);
+   p:=prog.ProgramObject;
    EnterContext(p);
 end;
 
@@ -806,8 +809,9 @@ begin
          SymbolMap.MapSymbol(sym, cgssGlobal, True);
       end else if sym is TFuncSymbol then begin
          SymbolMap.MapSymbol(sym, cgssGlobal, True);
-         if (TFuncSymbol(sym).Executable is TdwsProcedure) then
-            MapNormalSymbolNames((TFuncSymbol(sym).Executable as TdwsProcedure).Table);
+         if     (TFuncSymbol(sym).Executable<>nil)
+            and (TFuncSymbol(sym).Executable.GetSelf is TdwsProcedure) then
+            MapNormalSymbolNames((TFuncSymbol(sym).Executable.GetSelf as TdwsProcedure).Table);
       end else if sym is TDataSymbol then begin
          SymbolMap.MapSymbol(sym, cgssGlobal, True);
       end;

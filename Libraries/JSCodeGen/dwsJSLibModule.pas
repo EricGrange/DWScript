@@ -100,7 +100,7 @@ type
          constructor Create(table : TSymbolTable);
    end;
 
-   TdwsJSConnectorCall = class(TInterfacedObject, IUnknown, IConnectorCall)
+   TdwsJSConnectorCall = class(TInterfacedSelfObject, IUnknown, IConnectorCall)
       private
          FMethodName : String;
 
@@ -115,7 +115,7 @@ type
 
    TdwsJSIndexCall = class(TdwsJSConnectorCall);
 
-   TdwsJSConnectorMember = class(TInterfacedObject, IUnknown, IConnectorMember)
+   TdwsJSConnectorMember = class(TInterfacedSelfObject, IUnknown, IConnectorMember)
       protected
          FMemberName : String;
 

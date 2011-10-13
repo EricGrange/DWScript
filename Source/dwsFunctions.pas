@@ -48,14 +48,14 @@ type
       procedure AddUnits(list : TIdwsUnitList);
    end;
 
-   TEmptyFunc = class(TInterfacedObject, ICallable)
+   TEmptyFunc = class(TInterfacedSelfObject, ICallable)
       public
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol);
          procedure InitSymbol(Symbol: TSymbol);
          procedure InitExpression(Expr: TExprBase);
    end;
 
-   TFunctionPrototype = class(TInterfacedObject)
+   TFunctionPrototype = class(TInterfacedSelfObject)
       private
          FFuncSymbol : TFuncSymbol;
       public

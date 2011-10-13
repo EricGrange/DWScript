@@ -285,7 +285,7 @@ type
    end;
 
    // All functions callable from the script implement this interface
-   IExecutable = interface
+   IExecutable = interface (IGetSelf)
       ['{8D534D18-4C6B-11D5-8DCB-0000216D9E86}']
       procedure InitSymbol(symbol: TSymbol);
       procedure InitExpression(Expr: TExprBase);
@@ -901,12 +901,12 @@ type
 
    TConnectorArgs = array of TData;
 
-   IConnectorCall = interface
+   IConnectorCall = interface (IGetSelf)
       ['{8D534D1B-4C6B-11D5-8DCB-0000216D9E86}']
       function Call(const Base: Variant; Args: TConnectorArgs): TData;
    end;
 
-   IConnectorMember = interface
+   IConnectorMember = interface (IGetSelf)
       ['{8D534D1C-4C6B-11D5-8DCB-0000216D9E86}']
       function Read(const Base: Variant): TData;
       procedure Write(const Base: Variant; const Data: TData);
@@ -2522,20 +2522,20 @@ end;
 // GetSourceSubExpr
 //
 function TFuncSymbol.GetSourceSubExpr(i : Integer) : TExprBase;
+var
+   prog : TdwsProgram;
 begin
-   case i of
-      0 : Result:=(FExecutable as TdwsProgram).InitExpr;
-      1 : Result:=(FExecutable as TdwsProgram).Expr;
-   else
-      Result:=nil;
-   end;
+   prog:=(FExecutable.GetSelf as TdwsProgram);
+   if i=0 then
+      Result:=prog.InitExpr
+   else Result:=prog.Expr;
 end;
 
 // GetSourceSubExprCount
 //
 function TFuncSymbol.GetSourceSubExprCount : Integer;
 begin
-   Result:=2;
+   Result:=Ord(FExecutable<>nil)*2;
 end;
 
 // IsCompatible

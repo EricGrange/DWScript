@@ -282,44 +282,48 @@ type
          function Add : TdwsParameter;
    end;
 
-  TdwsFunction = class;
+   TFuncEvalEvent = procedure(info : TProgramInfo) of object;
+   TInitSymbolEvent = procedure(sender : TObject; symbol : TSymbol) of object;
+   TInitExprEvent = procedure(sender : TObject; expr : TExprBase) of object;
 
-  TFuncEvalEvent = procedure(Info: TProgramInfo) of object;
-  TInitSymbolEvent = procedure(Sender: TObject; Symbol: TSymbol) of object;
-  TInitExprEvent = procedure(Sender: TObject; Expr: TExprBase) of object;
+   TdwsFunction = class(TdwsSymbol, IUnknown, ICallable)
+      private
+         FOnEval: TFuncEvalEvent;
+         FFuncType: TDataType;
+         FParameters: TdwsParameters;
+         FOnInitSymbol: TInitSymbolEvent;
+         FOnInitExpr: TInitExprEvent;
+         FDeprecated : String;
 
-  TdwsFunction = class(TdwsSymbol, IUnknown, ICallable)
-  private
-    FOnEval: TFuncEvalEvent;
-    FFuncType: TDataType;
-    FParameters: TdwsParameters;
-    FOnInitSymbol: TInitSymbolEvent;
-    FOnInitExpr: TInitExprEvent;
-    FDeprecated : String;
-  protected
-    function _AddRef: Integer; stdcall;
-    function _Release: Integer; stdcall;
-    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
-  protected
-    function GetDisplayName: string; override;
-    procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); virtual;
-    procedure SetParameters(const Value: TdwsParameters);
-    function StoreParameters : Boolean;
-  public
-    constructor Create(Collection: TCollection); override;
-    destructor Destroy; override;
-    procedure Assign(Source: TPersistent); override;
-    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
-    function GetParameters(Table: TSymbolTable): TParamArray;
-    procedure InitSymbol(Symbol: TSymbol);
-    procedure InitExpression(Expr: TExprBase);
-  published
-    property Parameters: TdwsParameters read FParameters write SetParameters stored StoreParameters;
-    property ResultType: TDataType read FFuncType write FFuncType;
-    property OnEval: TFuncEvalEvent read FOnEval write FOnEval;
-    property OnInitSymbol: TInitSymbolEvent read FOnInitSymbol write FOnInitSymbol;
-    property OnInitExpr: TInitExprEvent read FOnInitExpr write FOnInitExpr;
-    property Deprecated : String read FDeprecated write FDeprecated;
+      protected
+         function _AddRef: Integer; stdcall;
+         function _Release: Integer; stdcall;
+         function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+
+      protected
+         function GetDisplayName: string; override;
+         procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); virtual;
+         procedure SetParameters(const Value: TdwsParameters);
+         function StoreParameters : Boolean;
+         function GetSelf : TObject;
+
+      public
+         constructor Create(Collection: TCollection); override;
+         destructor Destroy; override;
+         procedure Assign(Source: TPersistent); override;
+
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+         function GetParameters(Table: TSymbolTable): TParamArray;
+         procedure InitSymbol(Symbol: TSymbol);
+         procedure InitExpression(Expr: TExprBase);
+
+      published
+         property Parameters: TdwsParameters read FParameters write SetParameters stored StoreParameters;
+         property ResultType: TDataType read FFuncType write FFuncType;
+         property OnEval: TFuncEvalEvent read FOnEval write FOnEval;
+         property OnInitSymbol: TInitSymbolEvent read FOnInitSymbol write FOnInitSymbol;
+         property OnInitExpr: TInitExprEvent read FOnInitExpr write FOnInitExpr;
+         property Deprecated : String read FDeprecated write FDeprecated;
   end;
 
    TdwsFunctions = class(TdwsCollection)
@@ -2258,6 +2262,13 @@ end;
 function TdwsFunction.StoreParameters : Boolean;
 begin
    Result:=(FParameters.Count>0);
+end;
+
+// GetSelf
+//
+function TdwsFunction.GetSelf : TObject;
+begin
+   Result:=Self;
 end;
 
 function TdwsFunction._AddRef: Integer;

@@ -1333,7 +1333,7 @@ begin
 
    FProcessedProgs:=TObjectsLookup.Create;
 
-   p:=(prog as TdwsProgram);
+   p:=prog.ProgramObject;
    ProcessProg(p);
 
    if p is TdwsMainProgram then begin
@@ -1453,11 +1453,13 @@ end;
 //
 procedure TdwsBreakpointableLines.ProcessFuncSymbol(const funcSymbol : TFuncSymbol);
 var
-   exec : IExecutable;
+   execSelf : TObject;
 begin
-   exec:=funcSymbol.Executable;
-   if exec is TdwsProcedure then
-      ProcessProg(exec as TdwsProcedure);
+   if funcSymbol.Executable<>nil then begin
+      execSelf:=funcSymbol.Executable.GetSelf;
+      if execSelf is TdwsProcedure then
+         ProcessProg(TdwsProcedure(execSelf));
+   end;
 end;
 
 // ProcessUnitSymbol

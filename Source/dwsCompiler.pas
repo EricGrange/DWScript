@@ -1083,7 +1083,7 @@ var
 begin
    SetupCompileOptions(aConf);
 
-   FMainProg:=context as TdwsMainProgram;
+   FMainProg:=context.ProgramObject as TdwsMainProgram;
    FMainProg.Compiler:=Self;
    FContextMap:=FMainProg.ContextMap;
    FSymbolDictionary:=FMainProg.SymbolDictionary;
@@ -2686,7 +2686,7 @@ end;
 //
 function TdwsCompiler.ReadInherited(isWrite : Boolean) : TProgramExpr;
 var
-   name : string;
+   name : String;
    sym : TSymbol;
    methSym : TMethodSymbol;
    classSym, parentSym : TClassSymbol;

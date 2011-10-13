@@ -3389,7 +3389,7 @@ var
    jsMember : TdwsJSConnectorMember;
 begin
    e:=TConnectorReadExpr(Expr);
-   jsMember:=(e.ConnectorMember as TdwsJSConnectorMember);
+   jsMember:=(e.ConnectorMember.GetSelf as TdwsJSConnectorMember);
 
    codeGen.Compile(e.BaseExpr);
    codeGen.WriteString('.');
@@ -3408,7 +3408,7 @@ var
    jsMember : TdwsJSConnectorMember;
 begin
    e:=TConnectorWriteExpr(Expr);
-   jsMember:=(e.ConnectorMember as TdwsJSConnectorMember);
+   jsMember:=(e.ConnectorMember.GetSelf as TdwsJSConnectorMember);
 
    codeGen.Compile(e.BaseExpr);
    codeGen.WriteString('.');
