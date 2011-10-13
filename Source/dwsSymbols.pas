@@ -474,8 +474,6 @@ type
 
    // parameter: procedure P(x: Integer);
    TParamSymbol = class (TDataSymbol)
-      protected
-         function GetDescription : String; override;
    end;
 
    TParamSymbolMethod = procedure (param : TParamSymbol) of object;
@@ -488,8 +486,8 @@ type
          function GetDescription : String; override;
 
       public
-         procedure SetDefaultValue(const Data: TData; Addr: Integer); overload;
-         procedure SetDefaultValue(const Value: Variant); overload;
+         constructor Create(const aName : String; aType : TTypeSymbol;
+                            const data : TData; addr : Integer);
 
          property DefaultValue : TData read FDefaultValue;
    end;
@@ -2365,8 +2363,8 @@ begin
          if paramRec.IsConstParam then
             raise Exception.Create(CPE_ConstParamCantHaveDefaultValue);
 
-         paramSymWithDefault:=TParamSymbolWithDefaultValue.Create(paramRec.ParamName, typSym);
-         paramSymWithDefault.SetDefaultValue(paramRec.DefaultValue, 0);
+         paramSymWithDefault:=TParamSymbolWithDefaultValue.Create(paramRec.ParamName, typSym,
+                                                                  paramRec.DefaultValue, 0);
          paramSym:=paramSymWithDefault;
 
       end else begin
@@ -3919,27 +3917,30 @@ procedure TConstSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
 end;
 
-{ TDataSymbol }
+// ------------------
+// ------------------ TDataSymbol ------------------
+// ------------------
 
 function TDataSymbol.GetDescription: string;
 begin
-  if Assigned(Typ) then
-    Result := Name + ': ' + Typ.Name
-  else
-    Result := Name;
+   if Assigned(Typ) then
+      Result:=Name+': '+Typ.Name
+  else Result:=Name+': ???';
 end;
 
-{ TParamSymbol }
+// ------------------
+// ------------------ TParamSymbolWithDefaultValue ------------------
+// ------------------
 
-function TParamSymbol.GetDescription: string;
+// Create
+//
+constructor TParamSymbolWithDefaultValue.Create(const aName : String; aType : TTypeSymbol;
+                                                const data : TData; addr : Integer);
 begin
-  if Typ <> nil then
-    Result := Name + ': ' + Typ.Name
-  else
-    Result := Name + ': ???';
+   inherited Create(aName, aType);
+   SetLength(FDefaultValue, Typ.Size);
+   DWSCopyData(data, addr, FDefaultValue, 0, Typ.Size);
 end;
-
-{ TParamSymbol }
 
 function TParamSymbolWithDefaultValue.GetDescription: string;
 begin
@@ -3953,20 +3954,9 @@ begin
    end;
 end;
 
-procedure TParamSymbolWithDefaultValue.SetDefaultValue(const Data: TData; Addr: Integer);
-begin
-  SetLength(FDefaultValue, Typ.Size);
-  DWSCopyData(Data, Addr, FDefaultValue, 0, Typ.Size);
-end;
-
-procedure TParamSymbolWithDefaultValue.SetDefaultValue(const Value: Variant);
-begin
-  Assert(Typ.Size = 1);
-  SetLength(FDefaultValue, 1);
-  VarCopy(FDefaultValue[0], Value);
-end;
-
-{ TByRefParamSymbol }
+// ------------------
+// ------------------ TByRefParamSymbol ------------------
+// ------------------
 
 constructor TByRefParamSymbol.Create(const Name: string; Typ: TTypeSymbol);
 begin

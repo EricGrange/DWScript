@@ -354,11 +354,11 @@ type
                         codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
          function WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil) : TTypedExpr;
 
-         procedure ReadFuncArgs(funcExpr : TFuncExprBase); overload;
+         procedure ReadFuncArgs(funcExpr : TFuncExprBase);
          procedure ReadArguments(const addArgProc : TAddArgProcedure;
-                              leftDelim, rightDelim : TTokenType;
-                              var argPosArray : TScriptPosArray;
-                              const expectedProc : TExpectedArgFunction = nil); overload;
+                                 leftDelim, rightDelim : TTokenType;
+                                 var argPosArray : TScriptPosArray;
+                                 const expectedProc : TExpectedArgFunction = nil);
          function ReadFuncResultType(funcKind : TFuncKind) : TTypeSymbol;
 
          function ReadIf: TNoResultExpr;
@@ -6185,14 +6185,14 @@ begin
    if FTok.TestDelete(ttBLEFT) then begin
       if not FTok.TestDelete(ttBRIGHT) then begin
          // At least one argument was found
-         names := TStringList.Create;
+         names:=TStringList.Create;
          try
             repeat
-               lazyParam := FTok.TestDelete(ttLAZY);
-               varParam := FTok.TestDelete(ttVAR);
+               lazyParam:=FTok.TestDelete(ttLAZY);
+               varParam:=FTok.TestDelete(ttVAR);
                if not varParam then
-                  constParam := FTok.TestDelete(ttCONST)
-               else constParam := False;
+                  constParam:=FTok.TestDelete(ttCONST)
+               else constParam:=False;
 
                if lazyParam and (varParam or constParam) then
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantBeVarOrConst);
@@ -6202,8 +6202,8 @@ begin
                if not FTok.TestDelete(ttCOLON) then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected)
                else begin
-                  defaultExpr := nil;
-                  typ := ReadType('', tcParameter);
+                  defaultExpr:=nil;
+                  typ:=ReadType('', tcParameter);
                   try
                      if (not constParam) and (typ is TOpenArraySymbol) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamMustBeConst);
@@ -6220,15 +6220,21 @@ begin
 
                         defaultExpr:=ReadExpr;
 
-                        if not (defaultExpr is TConstExpr) then begin
+                        if (not defaultExpr.IsConstant) or (defaultExpr.Typ=nil) then begin
                            FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
                            FreeAndNil(defaultExpr);
                         end else if not Typ.IsCompatible(defaultExpr.Typ) then begin
-                           FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleTypes,
-                                                     [Typ.Caption, defaultExpr.Typ.Caption]);
-                           FreeAndNil(defaultExpr);
+                           if Typ.IsOfType(FProg.TypFloat) and defaultExpr.Typ.IsOfType(FProg.TypInteger) then
+                              defaultExpr:=TConvFloatExpr.Create(FProg, defaultExpr)
+                           else begin
+                              IncompatibleTypes(FTok.HotPos, CPE_IncompatibleTypes, Typ, defaultExpr.Typ);
+                              FreeAndNil(defaultExpr);
+                           end;
                         end;
                      end;
+
+                     if (defaultExpr<>nil) and not (defaultExpr is TConstExpr) then
+                        defaultExpr:=defaultExpr.OptimizeToTypedExpr(Fprog, FExec);
 
                      for i:=0 to names.Count-1 do begin
                         if lazyParam then begin
@@ -6239,9 +6245,9 @@ begin
                            sym := TConstParamSymbol.Create(names[i], Typ)
                         end else begin
                            if Assigned(defaultExpr) then begin
-                              sym := TParamSymbolWithDefaultValue.Create(names[i], Typ);
-                              TParamSymbolWithDefaultValue(sym).SetDefaultValue(TConstExpr(defaultExpr).Data[FExec],
-                                                                                TConstExpr(defaultExpr).Addr[FExec]);
+                              sym := TParamSymbolWithDefaultValue.Create(names[i], Typ,
+                                       (defaultExpr as TConstExpr).Data[FExec],
+                                       (defaultExpr as TConstExpr).Addr[FExec]);
                            end else begin
                               sym := TParamSymbol.Create(names[i], Typ);
                            end;
