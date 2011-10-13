@@ -19,7 +19,6 @@ uses
   UdwsClassesTests in 'UdwsClassesTests.pas',
   dwsClasses in '..\Libraries\ClassesLib\dwsClasses.pas',
   dwsClassesLibModule in '..\Libraries\ClassesLib\dwsClassesLibModule.pas' {dwsClassesLib: TDataModule},
-  dwsHashtables in '..\Libraries\ClassesLib\dwsHashtables.pas',
   UdwsFunctionsTests in 'UdwsFunctionsTests.pas',
   UCOMConnectorTests in 'UCOMConnectorTests.pas',
   UTestDispatcher in 'UTestDispatcher.pas',
@@ -28,7 +27,8 @@ uses
   UMemoryTests in 'UMemoryTests.pas',
   dwsMathComplexFunctions in '..\Source\dwsMathComplexFunctions.pas',
   UBuildTests in 'UBuildTests.pas',
-  URTTIExposeTests in 'URTTIExposeTests.pas';
+  URTTIExposeTests in 'URTTIExposeTests.pas',
+  USourceUtilsTests in 'USourceUtilsTests.pas';
 
 {$R *.res}
 
