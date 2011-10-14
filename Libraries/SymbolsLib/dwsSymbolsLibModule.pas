@@ -60,8 +60,6 @@ type
     property Script: TDelphiWebScript read FScript write SetScript;
   end;
 
-procedure Register;
-
 var
   dwsSymbolsLib: TdwsSymbolsLib;
 
@@ -103,11 +101,6 @@ const
   stUnit = 9;
   stVariable = 10;
   stInterface = 11;
-
-procedure Register;
-begin
-  RegisterComponents('dws', [TdwsSymbolsLib]);
-end;
 
 { TSymbols }
 
