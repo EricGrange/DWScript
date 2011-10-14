@@ -52,6 +52,10 @@ type
       function PartialToken : String;
    end;
 
+   TSimpleSymbolList = class;
+
+   TProcAddToList = procedure (aList : TSimpleSymbolList) of object;
+
    TSimpleSymbolList = class(TSimpleList<TSymbol>)
       protected
          function ScopeStruct(symbol : TSymbol) : TStructuredTypeSymbol;
@@ -62,9 +66,10 @@ type
          procedure AddSymbolTable(table : TSymbolTable);
          procedure AddDirectSymbolTable(table : TSymbolTable);
 
-         procedure AddMembers(struc : TStructuredTypeSymbol; from : TSymbol);
-         procedure AddMetaMembers(struc : TStructuredTypeSymbol; from : TSymbol); overload;
-         procedure AddMetaMembers(struc : TStructuredTypeMetaSymbol; from : TSymbol); overload;
+         procedure AddMembers(struc : TStructuredTypeSymbol; from : TSymbol;
+                              const addToList : TProcAddToList = nil);
+         procedure AddMetaMembers(struc : TStructuredTypeSymbol; from : TSymbol;
+                                  const addToList : TProcAddToList = nil);
    end;
 
    TdwsSuggestions = class (TInterfacedObject, IdwsSuggestions)
@@ -74,6 +79,7 @@ type
          FSourceFile : TSourceFile;
          FList : TSimpleSymbolList;
          FListLookup : TObjectsLookup;
+         FNamesLookup : TStringList;
          FPartialToken : String;
          FPreviousSymbol : TSymbol;
          FPreviousTokenString : String;
@@ -127,6 +133,8 @@ begin
    FSourceFile:=sourcePos.SourceFile;
    FList:=TSimpleSymbolList.Create;
    FListLookup:=TObjectsLookup.Create;
+   FNamesLookup:=TFastCompareStringList.Create;
+   FNamesLookup.Sorted:=True;
 
    AnalyzeLocalTokens;
 
@@ -135,6 +143,7 @@ begin
    AddUnitSuggestions;
    AddGlobalSuggestions;
 
+   FNamesLookup.Clear;
    FListLookup.Clear;
 end;
 
@@ -142,6 +151,7 @@ end;
 //
 destructor TdwsSuggestions.Destroy;
 begin
+   FNamesLookup.Free;
    FListLookup.Free;
    FList.Free;
    inherited;
@@ -156,6 +166,8 @@ var
 
    procedure MoveToTokenStart;
    begin
+      if p>Length(codeLine)+1 then
+         p:=Length(codeLine)+1;
       while p>1 do begin
          case codeLine[p-1] of
             '0'..'9', 'A'..'Z', 'a'..'z', '_', #127..#$FFFF : begin
@@ -235,10 +247,14 @@ begin
          end;
          if FSymbolClassFilter<>nil then begin
             if not ((sym is FSymbolClassFilter) or (sym.Typ is FSymbolClassFilter)) then continue;
-         end;
+         end else if sym is TOpenArraySymbol then
+            continue;
          if FListLookup.IndexOf(sym)<0 then begin
-            tmp.AddObject(sym.Name, sym);
             FListLookup.Add(sym);
+            if FNamesLookup.IndexOf(sym.Name)<0 then begin
+               tmp.AddObject(sym.Name, sym);
+               FNamesLookup.Add(sym.Name);
+            end;
          end;
       end;
       tmp.Sort;
@@ -275,22 +291,46 @@ begin
    try
       if FPreviousSymbol<>nil then begin
 
-         if FPreviousSymbol.Typ is TStructuredTypeSymbol then begin
-            list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol.Typ), FContextSymbol);
+         if FPreviousSymbol is TStructuredTypeMetaSymbol then begin
+
+            // nothing
+
          end else if FPreviousSymbol is TStructuredTypeSymbol then begin
+
             if FPreviousToken in [ttPROCEDURE, ttFUNCTION, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR]  then begin
                FSymbolClassFilter:=TFuncSymbol;
                list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol), FContextSymbol);
             end else list.AddMetaMembers(TStructuredTypeSymbol(FPreviousSymbol), FContextSymbol);
-         end else if FPreviousSymbol is TStructuredTypeMetaSymbol then begin
-            list.AddMetaMembers(TStructuredTypeMetaSymbol(FPreviousSymbol), FContextSymbol);
+
+         end else if     (FPreviousSymbol is TMethodSymbol)
+                     and (TMethodSymbol(FPreviousSymbol).Kind=fkConstructor) then begin
+
+            list.AddMembers(TMethodSymbol(FPreviousSymbol).StructSymbol, FContextSymbol);
+
+         end else if FPreviousSymbol.Typ is TStructuredTypeSymbol then begin
+
+            if     (FContextSymbol is TMethodSymbol)
+               and (TMethodSymbol(FContextSymbol).StructSymbol=FPreviousSymbol.Typ) then
+               list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol.Typ), FContextSymbol, AddToList)
+            else list.AddMembers(TStructuredTypeSymbol(FPreviousSymbol.Typ), FContextSymbol);
+
+         end else if FPreviousSymbol.Typ is TStructuredTypeMetaSymbol then begin
+
+            list.AddMetaMembers(TStructuredTypeMetaSymbol(FPreviousSymbol.Typ).StructSymbol, FContextSymbol);
+
+         end else if FPreviousSymbol is TUnitSymbol then begin
+
+            list.AddSymbolTable(TUnitSymbol(FPreviousSymbol).Main.Table);
+
          end else if FPreviousSymbol is TArraySymbol then begin
+
             if FPreviousSymbol is TDynamicArraySymbol then begin
                // todo
             end else begin
                // todo
             end;
-         end;
+
+         end else FPreviousSymbol:=nil;
 
       end;
       if FPreviousToken=ttNEW then
@@ -329,8 +369,8 @@ begin
             if funcSym is TMethodSymbol then begin
                methSym:=TMethodSymbol(funcSym);
                if methSym.IsClassMethod then
-                  list.AddMetaMembers(methSym.StructSymbol, methSym.StructSymbol)
-               else list.AddMembers(methSym.StructSymbol, methSym.StructSymbol);
+                  list.AddMetaMembers(methSym.StructSymbol, methSym.StructSymbol, AddToList)
+               else list.AddMembers(methSym.StructSymbol, methSym.StructSymbol, AddToList);
             end;
         end;
 
@@ -561,6 +601,8 @@ procedure TSimpleSymbolList.AddSymbolTable(table : TSymbolTable);
 var
    sym : TSymbol;
 begin
+   if table is TLinkedSymbolTable then
+      table:=TLinkedSymbolTable(table).Parent;
    for sym in table do begin
       if sym is TUnitSymbol then continue;
       Add(sym);
@@ -581,20 +623,30 @@ end;
 
 // AddMembers
 //
-procedure TSimpleSymbolList.AddMembers(struc : TStructuredTypeSymbol; from : TSymbol);
+procedure TSimpleSymbolList.AddMembers(struc : TStructuredTypeSymbol; from : TSymbol;
+                                       const addToList : TProcAddToList = nil);
 var
    sym : TSymbol;
    scope : TStructuredTypeSymbol;
    visibility : TdwsVisibility;
+   first : Boolean;
 begin
    scope:=ScopeStruct(from);
    visibility:=ScopeVisiblity(scope, struc);
+   first:=True;
 
    repeat
       for sym in struc.Members do begin
          if sym is TClassOperatorSymbol then continue;
          if not sym.IsVisibleFor(visibility) then continue;
          Add(sym);
+      end;
+      if first then begin
+         first:=False;
+         if Assigned(addToList) then begin
+            addToList(Self);
+            Clear;
+         end;
       end;
       if visibility=cvPrivate then
          visibility:=cvProtected;
@@ -604,15 +656,18 @@ end;
 
 // AddMetaMembers
 //
-procedure TSimpleSymbolList.AddMetaMembers(struc : TStructuredTypeSymbol; from : TSymbol);
+procedure TSimpleSymbolList.AddMetaMembers(struc : TStructuredTypeSymbol; from : TSymbol;
+                                           const addToList : TProcAddToList = nil);
 var
    sym : TSymbol;
    methSym : TMethodSymbol;
    scope : TStructuredTypeSymbol;
    visibility : TdwsVisibility;
+   first : Boolean;
 begin
    scope:=ScopeStruct(from);
    visibility:=ScopeVisiblity(scope, struc);
+   first:=True;
 
    repeat
       for sym in struc.Members do begin
@@ -625,17 +680,17 @@ begin
             Add(sym);
          end;
       end;
+      if first then begin
+         first:=False;
+         if Assigned(addToList) then begin
+            addToList(Self);
+            Clear;
+         end;
+      end;
       if visibility=cvPrivate then
          visibility:=cvProtected;
       struc:=struc.Parent;
    until struc=nil;
-end;
-
-// AddMetaMembers
-//
-procedure TSimpleSymbolList.AddMetaMembers(struc : TStructuredTypeMetaSymbol; from : TSymbol);
-begin
-   AddMetaMembers(struc.Typ as TStructuredTypeSymbol, from);
 end;
 
 end.

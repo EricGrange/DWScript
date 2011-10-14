@@ -19,6 +19,9 @@ type
       published
          procedure BasicSuggestTest;
          procedure ObjectCreateTest;
+         procedure ObjectSelfTest;
+         procedure UnitDotTest;
+         procedure MetaClassTest;
    end;
 
 // ------------------------------------------------------------------
@@ -131,6 +134,99 @@ begin
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
    CheckEquals(1, sugg.Count, 'new TObject 7');
    CheckEquals('TObject', sugg.Code[0], 'new TObject 7,0');
+end;
+
+// ObjectSelfTest
+//
+procedure TSourceUtilsTests.ObjectSelfTest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile( 'type TMyClass = class constructor Create; procedure Test; end;'#13#10
+                           +'procedure TMyClass.Test;begin'#13#10
+                           +'Self.Create');
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 3, 9);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(1, sugg.Count, 'Create 9');
+   CheckEquals('Create', sugg.Code[0], 'Create 9,0');
+   CheckEquals('TMyClass', (sugg.Symbols[0] as TMethodSymbol).StructSymbol.Name, 'Create 9,0 struct');
+
+   prog:=FCompiler.Compile( 'type TMyClass = Class(TObject) Field : TMyClass; procedure first; procedure second; procedure third; End; '
+                           +'procedure TMyClass.first; begin '#13#10
+                           +'Self.Field.');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 12);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckTrue(sugg.Count>=9, 'Self 12');
+   CheckEquals('Field', sugg.Code[0], 'Self 12,0');
+   CheckEquals('first', sugg.Code[1], 'Self 12,1');
+   CheckEquals('second', sugg.Code[2], 'Self 12,2');
+   CheckEquals('third', sugg.Code[3], 'Self 12,3');
+   CheckEquals('ClassName', sugg.Code[4], 'Self 12,4');
+   CheckEquals('ClassType', sugg.Code[5], 'Self 12,5');
+   CheckEquals('Create', sugg.Code[6], 'Self 12,6');
+end;
+
+// UnitDotTest
+//
+procedure TSourceUtilsTests.UnitDotTest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile('Internal.PrintL');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 11);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckTrue(sugg.Count>2, 'column 11');
+   CheckEquals('Pi', sugg.Code[0], 'sugg 11, 0');
+   CheckEquals('Pos', sugg.Code[1], 'sugg 11, 1');
+
+   scriptPos.Col:=12;
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(0, sugg.Count, 'column 12');
+
+   prog:=FCompiler.Compile('System.TObject');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 8);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckTrue(sugg.Count>10, 'column 8');
+   CheckEquals('Boolean', sugg.Code[0], 'sugg 8, 0');
+   CheckEquals('EAssertionFailed', sugg.Code[1], 'sugg 8, 1');
+
+   scriptPos.Col:=9;
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(3, sugg.Count, 'column 12');
+   CheckEquals('TClass', sugg.Code[0], 'sugg 12, 0');
+   CheckEquals('TComplex', sugg.Code[1], 'sugg 12, 1');
+   CheckEquals('TObject', sugg.Code[2], 'sugg 12, 2');
+end;
+
+// MetaClassTest
+//
+procedure TSourceUtilsTests.MetaClassTest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile('TClass.');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 8);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckTrue(sugg.Count=0, 'TClass.');
+
+   prog:=FCompiler.Compile('var v : TClass;'#13#10'v.');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckTrue(sugg.Count=3, 'v.');
+   CheckEquals('ClassName', sugg.Code[0], 'v. 0');
+   CheckEquals('ClassType', sugg.Code[1], 'v. 1');
+   CheckEquals('Create', sugg.Code[2], 'v. 2');
 end;
 
 // ------------------------------------------------------------------

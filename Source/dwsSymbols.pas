@@ -1060,7 +1060,11 @@ type
    // class of, record of
    TStructuredTypeMetaSymbol = class(TTypeSymbol)
       public
+         constructor Create(const name : String; typ : TStructuredTypeSymbol);
+
          procedure InitData(const Data: TData; Offset: Integer); override;
+
+         function StructSymbol : TStructuredTypeSymbol; inline;
    end;
                                    // Field of a script object
    TFieldSymbol = class(TValueSymbol)
@@ -2061,11 +2065,25 @@ end;
 // ------------------ TStructuredTypeMetaSymbol ------------------
 // ------------------
 
+// Create
+//
+constructor TStructuredTypeMetaSymbol.Create(const name : String; typ : TStructuredTypeSymbol);
+begin
+   inherited Create(name, typ);
+end;
+
 // InitData
 //
 procedure TStructuredTypeMetaSymbol.InitData(const Data: TData; Offset: Integer);
 begin
    Data[Offset] := Int64(0);
+end;
+
+// StructSymbol
+//
+function TStructuredTypeMetaSymbol.StructSymbol : TStructuredTypeSymbol;
+begin
+   Result:=TStructuredTypeSymbol(Typ);
 end;
 
 // ------------------
