@@ -628,7 +628,13 @@ type
          FIsStatic : Boolean;
 
       protected
-         function GetDisplayName: string; override;
+         function GetDisplayName : String; override;
+         function StoreConstructors : Boolean;
+         function StoreFields : Boolean;
+         function StoreMethods : Boolean;
+         function StoreOperators : Boolean;
+         function StoreConstants : Boolean;
+         function StoreProperties : Boolean;
 
       public
          constructor Create(Collection: TCollection); override;
@@ -641,17 +647,17 @@ type
          property HelperObject : TObject read FHelperObject write FHelperObject;
 
       published
-         property Ancestor: string read FAncestor write FAncestor;
-         property IsSealed : Boolean read FIsSealed write FIsSealed;
-         property IsAbstract : Boolean read FIsAbstract write FIsAbstract;
-         property IsStatic : Boolean read FIsStatic write FIsStatic;
-         property Constructors: TdwsConstructors read FConstructors write FConstructors;
-         property Fields: TdwsFields read FFields write FFields;
-         property Methods: TdwsMethods read FMethods write FMethods;
-         property Operators : TdwsClassOperators read FOperators write FOperators;
-         property Constants : TdwsClassConstants read FConstants write FConstants;
-         property Properties: TdwsProperties read FProperties write FProperties;
-         property OnCleanUp: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
+         property Ancestor : string read FAncestor write FAncestor;
+         property IsSealed : Boolean read FIsSealed write FIsSealed default False;
+         property IsAbstract : Boolean read FIsAbstract write FIsAbstract default False;
+         property IsStatic : Boolean read FIsStatic write FIsStatic default False;
+         property Constructors : TdwsConstructors read FConstructors write FConstructors stored StoreConstructors;
+         property Fields : TdwsFields read FFields write FFields stored StoreFields;
+         property Methods : TdwsMethods read FMethods write FMethods stored StoreMethods;
+         property Operators : TdwsClassOperators read FOperators write FOperators stored StoreOperators;
+         property Constants : TdwsClassConstants read FConstants write FConstants stored StoreConstants;
+         property Properties: TdwsProperties read FProperties write FProperties stored StoreProperties;
+         property OnCleanUp : TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
    end;
 
    TdwsClasses = class(TdwsCollection)
@@ -2796,6 +2802,48 @@ begin
     Result := Name + ' (' + Ancestor + ')'
   else
     Result := Name + ' (TObject)';
+end;
+
+// StoreConstructors
+//
+function TdwsClass.StoreConstructors : Boolean;
+begin
+   Result:=(Constructors.Count>0);
+end;
+
+// StoreFields
+//
+function TdwsClass.StoreFields : Boolean;
+begin
+   Result:=(Fields.Count>0);
+end;
+
+// StoreMethods
+//
+function TdwsClass.StoreMethods : Boolean;
+begin
+   Result:=(Methods.Count>0);
+end;
+
+// StoreOperators
+//
+function TdwsClass.StoreOperators : Boolean;
+begin
+   Result:=(Operators.Count>0);
+end;
+
+// StoreConstants
+//
+function TdwsClass.StoreConstants : Boolean;
+begin
+   Result:=(Constants.Count>0);
+end;
+
+// StoreProperties
+//
+function TdwsClass.StoreProperties : Boolean;
+begin
+   Result:=(Properties.Count>0);
 end;
 
 { TdwsMember }

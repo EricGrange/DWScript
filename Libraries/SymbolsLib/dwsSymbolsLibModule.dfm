@@ -2,8 +2,8 @@ object dwsSymbolsLib: TdwsSymbolsLib
   OldCreateOrder = False
   Left = 285
   Top = 161
-  Height = 198
-  Width = 193
+  Height = 164
+  Width = 177
   object dwsUnit1: TdwsUnit
     Classes = <
       item
@@ -31,7 +31,6 @@ object dwsSymbolsLib: TdwsSymbolsLib
               end>
             OnEval = dwsUnit1ClassesTSymbolsConstructorsCreateUidEval
           end>
-        Fields = <>
         Methods = <
           item
             Name = 'Destroy'
@@ -118,8 +117,6 @@ object dwsSymbolsLib: TdwsSymbolsLib
             OnEval = dwsUnit1ClassesTSymbolsMethodsLocateEval
             Kind = mkFunction
           end>
-        Operators = <>
-        Properties = <>
       end>
     Dependencies.Strings = (
       'Classes')
@@ -195,7 +192,7 @@ object dwsSymbolsLib: TdwsSymbolsLib
       end>
     UnitName = 'Symbols'
     StaticSymbols = False
-    Left = 60
-    Top = 40
+    Left = 52
+    Top = 24
   end
 end

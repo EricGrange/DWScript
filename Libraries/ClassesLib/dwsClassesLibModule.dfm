@@ -8,15 +8,11 @@ object dwsClassesLib: TdwsClassesLib
     Classes = <
       item
         Name = 'TList'
-        IsSealed = False
-        IsAbstract = False
-        IsStatic = False
         Constructors = <
           item
             Name = 'Create'
             OnEval = dwsUnitClassesTListConstructorsCreateEval
           end>
-        Fields = <>
         Methods = <
           item
             Name = 'Destroy'
@@ -153,7 +149,6 @@ object dwsClassesLib: TdwsClassesLib
             Operator = ttIN
             UsesAccess = 'Contains'
           end>
-        Constants = <>
         Properties = <
           item
             Name = 'Items'
@@ -171,15 +166,11 @@ object dwsClassesLib: TdwsClassesLib
       end
       item
         Name = 'TStrings'
-        IsSealed = False
-        IsAbstract = False
-        IsStatic = False
         Constructors = <
           item
             Name = 'Create'
             OnEval = dwsUnitClassesTStringsConstructorsCreateEval
           end>
-        Fields = <>
         Methods = <
           item
             Name = 'Destroy'
@@ -555,7 +546,6 @@ object dwsClassesLib: TdwsClassesLib
             Operator = ttIN
             UsesAccess = 'Contains'
           end>
-        Constants = <>
         Properties = <
           item
             Name = 'Text'
@@ -632,11 +622,6 @@ object dwsClassesLib: TdwsClassesLib
       item
         Name = 'TStringList'
         Ancestor = 'TStrings'
-        IsSealed = False
-        IsAbstract = False
-        IsStatic = False
-        Constructors = <>
-        Fields = <>
         Methods = <
           item
             Name = 'Sort'
@@ -710,8 +695,6 @@ object dwsClassesLib: TdwsClassesLib
             OnEval = dwsUnitClassesTStringListMethodsSetCaseSensitiveEval
             Kind = mkProcedure
           end>
-        Operators = <>
-        Constants = <>
         Properties = <
           item
             Name = 'Duplicates'
@@ -737,11 +720,6 @@ object dwsClassesLib: TdwsClassesLib
       end
       item
         Name = 'THashtable'
-        IsSealed = False
-        IsAbstract = False
-        IsStatic = False
-        Constructors = <>
-        Fields = <>
         Methods = <
           item
             Name = 'Size'
@@ -760,22 +738,15 @@ object dwsClassesLib: TdwsClassesLib
             OnEval = dwsUnitClassesTHashtableMethodsClearEval
             Kind = mkProcedure
           end>
-        Operators = <>
-        Constants = <>
-        Properties = <>
       end
       item
         Name = 'TIntegerHashtable'
         Ancestor = 'THashtable'
-        IsSealed = False
-        IsAbstract = False
-        IsStatic = False
         Constructors = <
           item
             Name = 'Create'
             OnEval = dwsUnitClassesTIntegerHashtableConstructorsCreateEval
           end>
-        Fields = <>
         Methods = <
           item
             Name = 'Destroy'
@@ -841,21 +812,15 @@ object dwsClassesLib: TdwsClassesLib
             Operator = ttIN
             UsesAccess = 'HasKey'
           end>
-        Constants = <>
-        Properties = <>
       end
       item
         Name = 'TStringHashtable'
         Ancestor = 'THashtable'
-        IsSealed = False
-        IsAbstract = False
-        IsStatic = False
         Constructors = <
           item
             Name = 'Create'
             OnEval = dwsUnitClassesTStringHashtableConstructorsCreateEval
           end>
-        Fields = <>
         Methods = <
           item
             Name = 'Destroy'
@@ -921,20 +886,14 @@ object dwsClassesLib: TdwsClassesLib
             Operator = ttIN
             UsesAccess = 'HasKey'
           end>
-        Constants = <>
-        Properties = <>
       end
       item
         Name = 'TStack'
-        IsSealed = False
-        IsAbstract = False
-        IsStatic = False
         Constructors = <
           item
             Name = 'Create'
             OnEval = dwsUnitClassesTStackConstructorsCreateEval
           end>
-        Fields = <>
         Methods = <
           item
             Name = 'Destroy'
@@ -971,21 +930,14 @@ object dwsClassesLib: TdwsClassesLib
             OnEval = dwsUnitClassesTStackMethodsCountEval
             Kind = mkFunction
           end>
-        Operators = <>
-        Constants = <>
-        Properties = <>
       end
       item
         Name = 'TQueue'
-        IsSealed = False
-        IsAbstract = False
-        IsStatic = False
         Constructors = <
           item
             Name = 'Create'
             OnEval = dwsUnitClassesTQueueConstructorsCreateEval
           end>
-        Fields = <>
         Methods = <
           item
             Name = 'Destroy'
@@ -1022,21 +974,14 @@ object dwsClassesLib: TdwsClassesLib
             OnEval = dwsUnitClassesTQueueMethodsCountEval
             Kind = mkFunction
           end>
-        Operators = <>
-        Constants = <>
-        Properties = <>
       end
       item
         Name = 'TStringBuilder'
-        IsSealed = False
-        IsAbstract = False
-        IsStatic = False
         Constructors = <
           item
             Name = 'Create'
             OnEval = dwsUnitClassesTStringBuilderConstructorsCreateEval
           end>
-        Fields = <>
         Methods = <
           item
             Name = 'Append'
@@ -1072,8 +1017,6 @@ object dwsClassesLib: TdwsClassesLib
             Operator = ttPLUS_ASSIGN
             UsesAccess = 'Append'
           end>
-        Constants = <>
-        Properties = <>
         OnCleanUp = dwsUnitClassesTStringBuilderCleanUp
       end>
     Constants = <
@@ -1094,7 +1037,7 @@ object dwsClassesLib: TdwsClassesLib
       end>
     UnitName = 'Classes'
     StaticSymbols = False
-    Left = 20
-    Top = 8
+    Left = 44
+    Top = 24
   end
 end
