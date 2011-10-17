@@ -29,7 +29,8 @@ package dwsLib;
 requires
   designide,
   vcl,
-  rtl;
+  rtl,
+  dwsLibRuntime;
 
 contains
   dwsRegister in '..\source\dwsRegister.pas',

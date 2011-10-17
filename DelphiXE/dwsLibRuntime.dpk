@@ -1,4 +1,4 @@
-package dwsRuntime;
+package dwsLibRuntime;
 
 {$R *.res}
 {$ALIGN 8}
@@ -23,10 +23,10 @@ package dwsRuntime;
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
 {$DESCRIPTION 'DelphiWebScript Runtime'}
-{$IMPLICITBUILD ON}
+{$DESIGNONLY}
+{$IMPLICITBUILD OFF}
 
 requires
-  designide,
   vcl,
   rtl;
 
