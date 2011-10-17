@@ -23,6 +23,7 @@ package dwsLibRuntime;
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
 {$DESCRIPTION 'DelphiWebScript Runtime'}
+{$RUNONLY}
 {$IMPLICITBUILD OFF}
 
 requires
