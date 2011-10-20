@@ -857,6 +857,7 @@ type
          constructor Create;
 
          procedure InitData(const data : TData; offset : Integer); override;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    TBaseFloatSymbol = class (TBaseSymbol)
@@ -3773,6 +3774,17 @@ const
    cZero64 : Int64 = 0;
 begin
    data[offset]:=cZero64;
+end;
+
+// IsCompatible
+//
+function TBaseIntegerSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+begin
+   if typSym<>nil then begin
+      Result:=   (UnAliasedType=typSym.UnAliasedType)
+              or (    (typSym.ClassType=TEnumerationSymbol)
+                  and  IsCompatible(typSym.Typ));
+   end else Result:=False;
 end;
 
 // ------------------

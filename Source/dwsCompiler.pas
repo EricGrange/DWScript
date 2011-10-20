@@ -1881,9 +1881,6 @@ begin
          if coSymbolDictionary in FOptions then
             FSymbolDictionary.AddTypeSymbol(Result, funcPos, [suDeclaration, suImplementation]);
       except
-         // Remove reference to symbol (gets freed)
-         if coSymbolDictionary in FOptions then
-            FSymbolDictionary.Remove(Result);
          Result.Free;
          raise;
       end;
@@ -7029,26 +7026,26 @@ begin
 
          // Member has a user defined value
          if FTok.TestDelete(ttEQ) then begin
-            constExpr := ReadExpr;
+            constExpr:=ReadExpr;
 
-            if not (constExpr is TConstExpr) then begin
+            if not constExpr.IsConstant then begin
                FreeAndNil(constExpr);
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
-            end else if not(constExpr.Typ = FProg.TypInteger) then begin
+            end else if not FProg.TypInteger.IsCompatible(constExpr.Typ) then begin
                FreeAndNil(constExpr);
                FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpressionExpected);
             end;
 
             if Assigned(constExpr) then begin
-               enumInt := constExpr.EvalAsInteger(FExec);
+               enumInt:=constExpr.EvalAsInteger(FExec);
                constExpr.Free;
             end;
 
-            isUserDef := True;
-         end else isUserDef := False;
+            isUserDef:=True;
+         end else isUserDef:=False;
 
          // Create member symbol
-         elemSym := TElementSymbol.Create(name, Result, enumInt, isUserDef);
+         elemSym:=TElementSymbol.Create(name, Result, enumInt, isUserDef);
 
          Inc(enumInt);
 
