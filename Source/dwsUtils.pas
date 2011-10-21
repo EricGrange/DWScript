@@ -32,7 +32,7 @@ type
 
    // TInterfacedSelfObject
    //
-   TInterfacedSelfObject = class(TInterfacedObject, IGetSelf)
+   TInterfacedSelfObject = class (TInterfacedObject, IGetSelf)
       protected
          function GetSelf : TObject;
    end;
@@ -43,7 +43,7 @@ type
       private
          FIntegers : array of Int64;
          FFloats : array of Extended;
-         FStrings : array of String;
+         FStrings : array of UnicodeString;
 
          function AddVarRec : PVarRec;
 
@@ -57,7 +57,7 @@ type
          procedure AddBoolean(const b : Boolean);
          procedure AddInteger(const i : Int64);
          procedure AddFloat(const f : Double);
-         procedure AddString(const s : String);
+         procedure AddString(const s : UnicodeString);
 
          procedure Initialize;
    end;
@@ -287,13 +287,13 @@ type
          function Seek(Offset: Longint; Origin: Word): Longint; override;
          function Read(var Buffer; Count: Longint): Longint; override;
          function Write(const buffer; count: Longint): Longint; override;
-         // must be strictly an utf16 string
-         procedure WriteString(const utf16String : String);
-         procedure WriteSubString(const utf16String : String; startPos : Integer); overload;
-         procedure WriteSubString(const utf16String : String; startPos, length : Integer); overload;
+         // must be strictly an utf16 UnicodeString
+         procedure WriteString(const utf16String : UnicodeString);
+         procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
+         procedure WriteSubString(const utf16String : UnicodeString; startPos, length : Integer); overload;
          procedure WriteChar(utf16Char : Char);
-         // assumes data is an utf16 string
-         function ToString : String; override;
+         // assumes data is an utf16 UnicodeString
+         function ToString : UnicodeString; override;
 
          procedure Clear;
 
@@ -302,11 +302,11 @@ type
    end;
 
    TFastCompareStringList = class (TStringList)
-      function CompareStrings(const S1, S2: string): Integer; override;
+      function CompareStrings(const S1, S2: UnicodeString): Integer; override;
    end;
 
    TFastCompareTextList = class (TStringList)
-      function CompareStrings(const S1, S2: string): Integer; override;
+      function CompareStrings(const S1, S2: UnicodeString): Integer; override;
    end;
 
    ETightListOutOfBound = class(Exception);
@@ -316,13 +316,13 @@ type
    Use only if you understand fully what the above means. }
 procedure ChangeObjectClass(ref : TObject; newClass : TClass);
 
-procedure UnifyAssignString(const fromStr : String; var toStr : String);
+procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString);
 procedure TidyStringsUnifier;
 
-function UnicodeCompareText(const s1, s2 : String) : Integer;
-function UnicodeSameText(const s1, s2 : String) : Boolean;
+function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
+function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
 
-function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
+function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -341,7 +341,7 @@ begin
 end;
 
 // ------------------
-// ------------------ String Unifier ------------------
+// ------------------ UnicodeString Unifier ------------------
 // ------------------
 
 type
@@ -360,14 +360,14 @@ var
 
 // CompareStrings
 //
-function TFastCompareStringList.CompareStrings(const S1, S2: string): Integer;
+function TFastCompareStringList.CompareStrings(const S1, S2: UnicodeString): Integer;
 begin
    Result:=CompareStr(S1, S2);
 end;
 
 // UnifyAssignString
 //
-procedure UnifyAssignString(const fromStr : String; var toStr : String);
+procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString);
 var
    i : Integer;
    sl : TStringList;
@@ -438,7 +438,7 @@ end;
 
 // UnicodeCompareText
 //
-function UnicodeCompareText(const s1, s2 : String) : Integer;
+function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
 var
    n1, n2, dn : Integer;
 begin
@@ -464,7 +464,7 @@ end;
 
 // UnicodeSameText
 //
-function UnicodeSameText(const s1, s2 : String) : Boolean;
+function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
 begin
    Result:=(Length(s1)=Length(s2)) and (UnicodeCompareText(s1, s2)=0)
 end;
@@ -495,7 +495,7 @@ end;
 
 // StrIBeginsWith
 //
-function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
+function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 var
    n1, n2 : Integer;
 begin
@@ -512,7 +512,7 @@ end;
 
 // CompareStrings
 //
-function TFastCompareTextList.CompareStrings(const S1, S2: string): Integer;
+function TFastCompareTextList.CompareStrings(const S1, S2: UnicodeString): Integer;
 begin
    Result:=UnicodeCompareText(s1, s2);
 end;
@@ -613,7 +613,7 @@ end;
 
 // AddString
 //
-procedure TVarRecArrayContainer.AddString(const s : String);
+procedure TVarRecArrayContainer.AddString(const s : UnicodeString);
 var
    n : Integer;
 begin
@@ -1265,7 +1265,7 @@ end;
 
 // WriteString
 //
-procedure TWriteOnlyBlockStream.WriteString(const utf16String : String);
+procedure TWriteOnlyBlockStream.WriteString(const utf16String : UnicodeString);
 var
    stringCracker : NativeInt;
 begin
@@ -1284,7 +1284,7 @@ end;
 
 // ToString
 //
-function TWriteOnlyBlockStream.ToString : String;
+function TWriteOnlyBlockStream.ToString : UnicodeString;
 begin
    if FTotalSize>0 then begin
 
@@ -1304,14 +1304,14 @@ end;
 
 // WriteSubString
 //
-procedure TWriteOnlyBlockStream.WriteSubString(const utf16String : String; startPos : Integer);
+procedure TWriteOnlyBlockStream.WriteSubString(const utf16String : UnicodeString; startPos : Integer);
 begin
    WriteSubString(utf16String, startPos, Length(utf16String)-startPos+1);
 end;
 
 // WriteSubString
 //
-procedure TWriteOnlyBlockStream.WriteSubString(const utf16String : String; startPos, length : Integer);
+procedure TWriteOnlyBlockStream.WriteSubString(const utf16String : UnicodeString; startPos, length : Integer);
 var
    p, n : Integer;
 begin

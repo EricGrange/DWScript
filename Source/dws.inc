@@ -36,8 +36,12 @@
 {$T-} // typed addr off - otherwise you'll get problems with ComSupport
       // <<.CreateResFmt(@SNoMethod, [Names]);>>
 
-{$IFNDEF VER200}  // D2009
-{$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
+{$IFNDEF FPC}
+   {$IFNDEF VER200}  // D2009
+      {$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
+   {$ENDIF}
+{$ELSE}
+   {$MODE DELPHI}
 {$ENDIF}
 
 {.$DEFINE PUREPASCAL}

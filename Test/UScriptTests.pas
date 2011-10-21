@@ -2,7 +2,7 @@ unit UScriptTests;
 
 interface
 
-uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs, dwsUtils,
+uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsUtils,
    dwsXPlatform, dwsSymbols;
 
 type
@@ -273,6 +273,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   TestFramework.RegisterTest('ScriptTests', TScriptTests.Suite);
+   RegisterTest('ScriptTests', TScriptTests);
 
 end.

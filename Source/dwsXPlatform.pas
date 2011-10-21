@@ -29,6 +29,10 @@ unit dwsXPlatform;
 
 {$WARN SYMBOL_PLATFORM OFF}
 
+{$IFDEF FPC}
+   {$DEFINE VER200}
+{$ENDIF}
+
 interface
 
 uses Windows, Classes, SysUtils
@@ -36,7 +40,7 @@ uses Windows, Classes, SysUtils
    ;
 
 const
-{$IFDEF LINUX}
+{$IFDEF UNIX}
    cLineTerminator  = #10;
 {$ELSE}
    cLineTerminator  = #13#10;
@@ -45,9 +49,10 @@ const
 procedure SetDecimalSeparator(c : Char);
 function GetDecimalSeparator : Char;
 
-procedure CollectFiles(const directory, fileMask : String; list : TStrings);
+procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings);
 
 type
+   {$IFNDEF FPC}
    {$IF CompilerVersion<22.0}
    // NativeUInt broken in D2009, and PNativeInt is missing in D2010
    // http://qc.embarcadero.com/wc/qcmain.aspx?d=71292
@@ -56,6 +61,13 @@ type
    NativeUInt = Cardinal;
    PNativeUInt = ^NativeUInt;
    {$IFEND}
+   {$ENDIF}
+
+   {$IFDEF FPC}
+   TBytes = array of Byte;
+
+   RawByteString = String;
+   {$ENDIF}
 
    TPath = class
       class function GetTempFileName : String; static;
@@ -66,8 +78,10 @@ type
    end;
 
    TdwsThread = class (TThread)
+      {$IFNDEF FPC}
       {$IFDEF VER200}
       procedure Start;
+      {$ENDIF}
       {$ENDIF}
    end;
 
@@ -122,6 +136,8 @@ end;
 // UnicodeComparePChars
 //
 function UnicodeComparePChars(p1 : PChar; n1 : Integer; p2 : PChar; n2 : Integer) : Integer;
+const
+   CSTR_EQUAL = 2;
 begin
    Result:=CompareString(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n1, p2, n2)-CSTR_EQUAL;
 end;
@@ -130,27 +146,35 @@ end;
 //
 procedure SetDecimalSeparator(c : Char);
 begin
-   {$IF CompilerVersion >= 22.0}
-   FormatSettings.DecimalSeparator:=c;
+   {$IFDEF FPC}
+      FormatSettings.DecimalSeparator:=c;
    {$ELSE}
-   DecimalSeparator:=c;
-   {$IFEND}
+      {$IF CompilerVersion >= 22.0}
+      FormatSettings.DecimalSeparator:=c;
+      {$ELSE}
+      DecimalSeparator:=c;
+      {$IFEND}
+   {$ENDIF}
 end;
 
 // GetDecimalSeparator
 //
 function GetDecimalSeparator : Char;
 begin
-   {$IF CompilerVersion >= 22.0}
-   Result:=FormatSettings.DecimalSeparator;
+   {$IFDEF FPC}
+      Result:=FormatSettings.DecimalSeparator;
    {$ELSE}
-   Result:=DecimalSeparator;
-   {$IFEND}
+      {$IF CompilerVersion >= 22.0}
+      Result:=FormatSettings.DecimalSeparator;
+      {$ELSE}
+      Result:=DecimalSeparator;
+      {$IFEND}
+   {$ENDIF}
 end;
 
 // CollectFiles
 //
-procedure CollectFiles(const directory, fileMask : String; list : TStrings);
+procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings);
 var
    searchRec : TSearchRec;
    found : Integer;
@@ -164,7 +188,6 @@ begin
    end;
    FindClose(searchRec);
 end;
-
 
 // ------------------
 // ------------------ TPath ------------------
@@ -219,6 +242,7 @@ end;
 // ------------------ TdwsThread ------------------
 // ------------------
 
+{$IFNDEF FPC}
 {$IFDEF VER200}
 
 // Start
@@ -228,6 +252,7 @@ begin
    Resume;
 end;
 
+{$ENDIF}
 {$ENDIF}
 
 end.
