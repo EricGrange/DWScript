@@ -15,6 +15,7 @@ object DwsIdeForm: TDwsIdeForm
   Position = poDesigned
   ShowHint = True
   OnCloseQuery = FormCloseQuery
+  OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
   PixelsPerInch = 96
@@ -86,11 +87,16 @@ object DwsIdeForm: TDwsIdeForm
       Height = 240
       Align = alTop
       TabOrder = 0
+      ExplicitLeft = 5
+      ExplicitTop = 5
+      ExplicitWidth = 251
       inherited ListView1: TListView
         Width = 251
+        ExplicitWidth = 251
       end
       inherited Panel1: TPanel
         Width = 251
+        ExplicitWidth = 251
       end
     end
     inline DwsIdeWatchesFrame: TDwsIdeWatchesFrame
@@ -100,14 +106,21 @@ object DwsIdeForm: TDwsIdeForm
       Height = 224
       Align = alTop
       TabOrder = 1
+      ExplicitLeft = 5
+      ExplicitTop = 245
+      ExplicitWidth = 251
+      ExplicitHeight = 224
       inherited lvWatches: TListView
         Width = 251
         Height = 207
         ReadOnly = True
         RowSelect = True
+        ExplicitWidth = 251
+        ExplicitHeight = 207
       end
       inherited Panel1: TPanel
         Width = 251
+        ExplicitWidth = 251
       end
     end
     inline DwsIdeCallStackFrame: TDwsIdeCallStackFrame
@@ -117,17 +130,25 @@ object DwsIdeForm: TDwsIdeForm
       Height = 296
       Align = alTop
       TabOrder = 2
+      ExplicitLeft = 5
+      ExplicitTop = 469
+      ExplicitWidth = 251
+      ExplicitHeight = 296
       inherited memCallStack: TMemo
         Width = 251
         Height = 279
+        ExplicitWidth = 251
+        ExplicitHeight = 279
       end
       inherited Panel1: TPanel
         Width = 251
+        ExplicitWidth = 251
       end
     end
   end
   object ActionList1: TActionList
     Images = SmallImages
+    OnExecute = ActionList1Execute
     Left = 176
     Top = 200
     object actOpenFile: TAction
@@ -332,6 +353,12 @@ object DwsIdeForm: TDwsIdeForm
       OnExecute = actRunProcedureAtCursorExecute
       OnUpdate = actRunProcedureAtCursorUpdate
     end
+    object actCodeProposalInvoke: TAction
+      Category = 'Project'
+      Caption = 'Code Proposal'
+      ShortCut = 16416
+      OnExecute = actCodeProposalInvokeExecute
+    end
   end
   object EditorPageTabContextMenu: TPopupMenu
     Images = SmallImages
@@ -526,7 +553,7 @@ object DwsIdeForm: TDwsIdeForm
     Left = 176
     Top = 256
     Bitmap = {
-      494C01011A008000E40110001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C01011A008000F00110001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000007000000001002000000000000070
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -1586,6 +1613,9 @@ object DwsIdeForm: TDwsIdeForm
     end
     object MenuItem9: TMenuItem
       Action = actToggleReadOnly
+    end
+    object Suggest1: TMenuItem
+      Action = actCodeProposalInvoke
     end
   end
 end

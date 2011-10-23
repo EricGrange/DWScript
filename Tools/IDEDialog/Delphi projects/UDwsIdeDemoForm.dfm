@@ -23,9 +23,11 @@ object DwsIdeDemoForm: TDwsIdeDemoForm
     OnClick = Button1Click
   end
   object DelphiWebScript1: TDelphiWebScript
+    Config.CompilerOptions = [coOptimize, coSymbolDictionary, coContextMap, coAssertions]
     Config.ScriptPaths.Strings = (
       'c:\scratch')
     Config.OnNeedUnit = DelphiWebScript1NeedUnit
+    OnNeedUnit = DelphiWebScript1NeedUnit
     Left = 168
     Top = 32
   end

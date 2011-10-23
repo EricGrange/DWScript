@@ -28,6 +28,7 @@ uses
   Graphics,
   dwsDebugger,
   SynEditHighlighter,
+  dwsSuggestions,
   SynHighlighterDWS;
 
 type
@@ -55,11 +56,34 @@ const
     EditorFontSize         : 10
     );
 
+  SuggestionCategoryNames : array[TdwsSuggestionCategory] of string = (
+    'Unknown',
+    'Unit',
+    'Type',
+    'Class',
+    'Record',
+    'Interface',
+    'Delegate',
+    'Function',
+    'Procedure',
+    'Method',
+    'Constructor',
+    'Destructor',
+    'Property',
+    'Enum',
+    'Element',
+    'Parameter',
+    'Variable',
+    'Const' );
+
 
 function DebuggerEvaluate( ADebugger : TDwsDebugger; const AExpression : string) : String;
 
 function Lighten( AColor: TColor; AFactor: Byte): TColor;
 // Lightens a color by this amount
+
+function BeginsWith( const ABeginsStr, AStr : string; AMatchCase : boolean = False ) : boolean;
+// Returns TRUE if AStr begins with ABeginsStr
 
 implementation
 
@@ -110,6 +134,33 @@ begin
 
   Result := RGB(R, G, B);
 end;
+
+
+
+function BeginsWith( const ABeginsStr, AStr : string; AMatchCase : boolean = False ) : boolean;
+// Returns TRUE if AStr begins with ABeginsStr
+var
+  I : integer;
+begin
+  Result := False;
+  If ABeginsStr = '' then
+    Exit;
+
+  if AMatchCase then
+    begin
+    for I := 1 to Length( ABeginsStr ) do
+      If ABeginsStr[I] <> AStr[I] then
+        Exit;
+    end
+   else
+    for I := 1 to Length( ABeginsStr ) do
+      If UpCase(ABeginsStr[I]) <> UpCase(AStr[I]) then
+        Exit;
+
+  Result := True;
+
+end;
+
 
 
 
