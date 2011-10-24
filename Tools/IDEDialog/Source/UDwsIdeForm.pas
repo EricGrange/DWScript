@@ -56,7 +56,7 @@ uses
 
 
 const
-  WM_Suggest = 1024;
+  WM_CodeSuggest = 1024;
 
 type
   EDwsIde      = class( Exception );
@@ -315,9 +315,8 @@ type
     procedure actRunProcedureAtCursorExecute(Sender: TObject);
     procedure actRunProcedureAtCursorUpdate(Sender: TObject);
     procedure FormCreate(Sender: TObject);
-    procedure WMSuggest( var AMessage : TMessage ); message WM_Suggest;
+    procedure WMCodeSuggest( var AMessage : TMessage ); message WM_CodeSuggest;
     procedure actCodeProposalInvokeExecute(Sender: TObject);
-    procedure ActionList1Execute(Action: TBasicAction; var Handled: Boolean);
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -337,8 +336,8 @@ type
 
     FCodeProposalForm : TDwsIdeCodeProposalForm;
 
-    procedure CodePropose;
-    procedure DoOnCodeProposalFormSelectItem( const AItemText : string );
+    procedure CodeSuggest( ACodeSuggestionMode : TCodeSuggestionMode);
+    procedure DoOnCodeSuggestionFormSelectItem( const AItemText : string );
     procedure EditorPageAddNew( const AFileName : string; ALoadfile : boolean  );
     function  ProjectSourceScript : string;
     function  EditorPageCount : integer;
@@ -741,7 +740,7 @@ end;
 
 procedure TDwsIdeForm.actCodeProposalInvokeExecute(Sender: TObject);
 begin
-  CodePropose;
+  CodeSuggest( csCodeProposal );
 end;
 
 procedure TDwsIdeForm.actEditorCopyToClipboardExecute(Sender: TObject);
@@ -881,12 +880,6 @@ procedure TDwsIdeForm.actFileSaveUpdate(Sender: TObject);
 begin
   With Sender as TAction do
     Enabled := HasEditorPage and CurrentEditor.Modified;
-end;
-
-procedure TDwsIdeForm.ActionList1Execute(Action: TBasicAction;
-  var Handled: Boolean);
-begin
-  CodePropose;
 end;
 
 procedure TDwsIdeForm.actSaveProjectAsExecute(Sender: TObject);
@@ -1318,7 +1311,7 @@ begin
     EditorCurrentPageIndex := Tag;
 end;
 
-procedure TDwsIdeForm.DoOnCodeProposalFormSelectItem(const AItemText: string);
+procedure TDwsIdeForm.DoOnCodeSuggestionFormSelectItem(const AItemText: string);
 var
   S : string;
 begin
@@ -1487,7 +1480,7 @@ end;
 procedure TDwsIdeForm.FormCreate(Sender: TObject);
 begin
   FCodeProposalForm := TDwsIdeCodeProposalForm.Create( Self );
-  FCodeProposalForm.OnSelectItem := DoOnCodeProposalFormSelectItem;
+  FCodeProposalForm.OnSelectItem := DoOnCodeSuggestionFormSelectItem;
 end;
 
 procedure TDwsIdeForm.FormDestroy(Sender: TObject);
@@ -1693,9 +1686,9 @@ begin
   UpdateFormCaption;
 end;
 
-procedure TDwsIdeForm.WMSuggest(var AMessage: TMessage);
+procedure TDwsIdeForm.WMCodeSuggest(var AMessage: TMessage);
 begin
-  CodePropose;
+  CodeSuggest( csAutoComplete );
 end;
 
 procedure TDwsIdeForm.SetProjectSourceFileName(const Value: string);
@@ -1722,12 +1715,10 @@ begin
     EditorPage(I).ShowExecutableLines;
 end;
 
-procedure TDwsIdeForm.CodePropose;
+procedure TDwsIdeForm.CodeSuggest( ACodeSuggestionMode : TCodeSuggestionMode );
 var
   Suggestions   : IDwsSuggestions;
   ScriptPos     : TScriptPos;
-  I             : integer;
-  List          : TStringList;
   Script        : TDelphiWebScript;
   ScriptProgram : IdwsProgram;
 begin
@@ -1753,23 +1744,7 @@ begin
     ScriptPos := TScriptPos.Create( ScriptProgram.SourceList[0].SourceFile, CurrentEditor.CaretY, CurrentEditor.CaretX );
     Suggestions := TdwsSuggestions.Create( ScriptProgram, ScriptPos );
 
-    List        := TStringList.Create;
-    try
-      for I := 0 to Suggestions.Count-1 do
-         List.Add( Suggestions.Caption[I] + '    [' + SuggestionCategoryNames[Suggestions.Category[I]] + ']' );
-//         List.Add( SuggestionCategoryNames[Suggestions.Category[I]] + '----' + Suggestions.Caption[I] );
-//         List.Add( Suggestions.Caption[I] + ',cat=' + SuggestionCategoryNames[Suggestions.Category[I]] + ',Code=' + Suggestions.Code[I] );
-         //List.Add( Suggestions.Caption[I] );
-
-      FCodeProposalForm.ProposalList.Assign( List );
-
-      {$Message 'Take Suggestions into proposal form for easier processing'}
-
-      //FCodeProposalForm.ProposalList.CommaText := 'One,Two,Three,Only';
-      FCodeProposalForm.Show;
-    finally
-      List.Free;
-    end;
+    FCodeProposalForm.Open( ACodeSuggestionMode, Suggestions );
 
   finally
     Script.Free;
@@ -2503,7 +2478,7 @@ begin
 //  Exit;
 
   if Key = VK_OEM_PERIOD then
-    PostMessage( FForm.Handle, WM_Suggest,  0, 0 );
+    PostMessage( FForm.Handle, WM_CodeSuggest,  0, 0 );
 end;
 
 procedure TEditorPage.SynEditorCommandProcessed(Sender: TObject;

@@ -13,7 +13,6 @@ object DwsIdeCodeProposalForm: TDwsIdeCodeProposalForm
   Font.Style = []
   KeyPreview = True
   OldCreateOrder = False
-  OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnKeyDown = FormKeyDown
   OnShow = FormShow
@@ -27,6 +26,7 @@ object DwsIdeCodeProposalForm: TDwsIdeCodeProposalForm
     Align = alClient
     ItemHeight = 13
     TabOrder = 0
+    TabWidth = 40
     OnMouseUp = ListBox1MouseUp
   end
 end
