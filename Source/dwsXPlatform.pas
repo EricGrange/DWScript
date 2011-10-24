@@ -70,11 +70,11 @@ type
    {$ENDIF}
 
    TPath = class
-      class function GetTempFileName : String; static;
+      class function GetTempFileName : UnicodeString; static;
    end;
 
    TFile = class
-      class function ReadAllBytes(const filename : String) : TBytes; static;
+      class function ReadAllBytes(const filename : UnicodeString) : TBytes; static;
    end;
 
    TdwsThread = class (TThread)
@@ -88,8 +88,8 @@ type
 function GetSystemMilliseconds : Cardinal;
 function UTCDateTime : TDateTime;
 
-function AnsiCompareText(const S1, S2 : String) : Integer;
-function AnsiCompareStr(const S1, S2 : String) : Integer;
+function AnsiCompareText(const S1, S2 : UnicodeString) : Integer;
+function AnsiCompareStr(const S1, S2 : UnicodeString) : Integer;
 function UnicodeComparePChars(p1 : PChar; n1 : Integer; p2 : PChar; n2 : Integer) : Integer;
 
 // ------------------------------------------------------------------
@@ -121,14 +121,14 @@ end;
 
 // AnsiCompareText
 //
-function AnsiCompareText(const S1, S2: string) : Integer;
+function AnsiCompareText(const S1, S2: UnicodeString) : Integer;
 begin
    Result:=SysUtils.AnsiCompareText(S1, S2);
 end;
 
 // AnsiCompareStr
 //
-function AnsiCompareStr(const S1, S2: string) : Integer;
+function AnsiCompareStr(const S1, S2: UnicodeString) : Integer;
 begin
    Result:=SysUtils.AnsiCompareStr(S1, S2);
 end;
@@ -195,7 +195,7 @@ end;
 
 // GetTempFileName
 //
-class function TPath.GetTempFileName : String;
+class function TPath.GetTempFileName : UnicodeString;
 {$IFDEF VER200} // Delphi 2009
 var
    tempPath, tempFileName : array [0..MAX_PATH] of Char; // Buf sizes are MAX_PATH+1
@@ -217,7 +217,7 @@ end;
 
 // ReadAllBytes
 //
-class function TFile.ReadAllBytes(const filename : String) : TBytes;
+class function TFile.ReadAllBytes(const filename : UnicodeString) : TBytes;
 {$IFDEF VER200} // Delphi 2009
 var
    fileStream : TFileStream;

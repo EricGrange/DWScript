@@ -82,31 +82,31 @@ type
   end;
 
 {: Directly write a global var.<p> }
-function WriteGlobalVar(const aName: String; const aValue: Variant) : Boolean;
+function WriteGlobalVar(const aName: UnicodeString; const aValue: Variant) : Boolean;
 {: Directly read a global var.<p> }
-function ReadGlobalVar(const aName: String): Variant;
+function ReadGlobalVar(const aName: UnicodeString): Variant;
 {: Directly read a global var, using a default value if variable does not exists.<p> }
-function ReadGlobalVarDef(const aName: String; const aDefault: Variant): Variant;
+function ReadGlobalVarDef(const aName: UnicodeString; const aDefault: Variant): Variant;
 {: Delete specified global var if it exists. }
-function DeleteGlobalVar(const aName : String) : Boolean;
+function DeleteGlobalVar(const aName : UnicodeString) : Boolean;
 {: Resets all global vars.<p> }
 procedure CleanupGlobalVars;
 
-{: Save current global vars and their values to a string. }
+{: Save current global vars and their values to a UnicodeString. }
 function SaveGlobalVarsToString : RawByteString;
 {: Load global vars and their values to a file. }
 procedure LoadGlobalVarsFromString(const srcString : RawByteString);
 {: Save current global vars and their values to a file. }
-procedure SaveGlobalVarsToFile(const destFileName : String);
+procedure SaveGlobalVarsToFile(const destFileName : UnicodeString);
 {: Load global vars and their values to a file. }
-procedure LoadGlobalVarsFromFile(const srcFileName : String);
+procedure LoadGlobalVarsFromFile(const srcFileName : UnicodeString);
 {: Save current global vars and their values to a file. }
 procedure SaveGlobalVarsToStream(destStream : TStream);
 {: Load global vars and their values to a file. }
 procedure LoadGlobalVarsFromStream(srcStream : TStream);
 
 {: CommaText of the names of all global vars. }
-function GlobalVarsNamesCommaText : String;
+function GlobalVarsNamesCommaText : UnicodeString;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -119,7 +119,7 @@ implementation
 var
    vGlobalVarsCS : TRTLCriticalSection;
    vGlobalVars : TStringList;
-   vGlobalVarsNamesCache : String;
+   vGlobalVarsNamesCache : UnicodeString;
 
 const // type constants to make sure strings get reused by the compiler
    cFloat = 'Float';
@@ -135,13 +135,13 @@ type
    TGlobalVar = class(TObject)
       Value: Variant;
 
-      procedure WriteToFiler(writer: TWriter; const Name : String);
-      procedure ReadFromFiler(reader: TReader; var Name : String);
+      procedure WriteToFiler(writer: TWriter; const Name : UnicodeString);
+      procedure ReadFromFiler(reader: TReader; var Name : UnicodeString);
    end;
 
 // WriteGlobalVar
 //
-function WriteGlobalVar(const aName : string; const aValue : Variant) : Boolean;
+function WriteGlobalVar(const aName : UnicodeString; const aValue : Variant) : Boolean;
 var
    gv : TGlobalVar;
    i : Integer;
@@ -168,7 +168,7 @@ end;
 
 // ReadGlobalVar
 //
-function ReadGlobalVar(const aName : String) : Variant;
+function ReadGlobalVar(const aName : UnicodeString) : Variant;
 begin
    // Result (empty) is our default value when calling...
    Result:=ReadGlobalVarDef(aName, Result);
@@ -176,7 +176,7 @@ end;
 
 // ReadGlobalVarDef
 //
-function ReadGlobalVarDef(const aName : String; const aDefault : Variant) : Variant;
+function ReadGlobalVarDef(const aName : UnicodeString; const aDefault : Variant) : Variant;
 var
    i : Integer;
 begin
@@ -193,7 +193,7 @@ end;
 
 // DeleteGlobalVar
 //
-function DeleteGlobalVar(const aName : String) : Boolean;
+function DeleteGlobalVar(const aName : UnicodeString) : Boolean;
 var
    i : Integer;
 begin
@@ -265,7 +265,7 @@ begin
    end;
 end;
 
-procedure SaveGlobalVarsToFile(const destFileName : String);
+procedure SaveGlobalVarsToFile(const destFileName : UnicodeString);
 var
    fs : TFileStream;
 begin
@@ -277,7 +277,7 @@ begin
    end;
 end;
 
-procedure LoadGlobalVarsFromFile(const srcFileName : String);
+procedure LoadGlobalVarsFromFile(const srcFileName : UnicodeString);
 var
    fs : TFileStream;
 begin
@@ -324,7 +324,7 @@ procedure LoadGlobalVarsFromStream(srcStream : TStream);
 var
    reader : TReader;
    fileTag : AnsiString;
-   name : string;
+   name : UnicodeString;
    gv : TGlobalVar;
 begin
    reader:=TReader.Create(srcStream, 16384);
@@ -360,7 +360,7 @@ end;
 
 // GlobalVarsNamesCommaText
 //
-function GlobalVarsNamesCommaText : String;
+function GlobalVarsNamesCommaText : UnicodeString;
 begin
    EnterCriticalSection(vGlobalVarsCS);
    try
@@ -386,7 +386,7 @@ begin
       varInt64 :
          writer.WriteInteger(PVarData(@value).VUInt64);
       varUString :
-         writer.WriteString(String(PVarData(@value).VUString));
+         writer.WriteString(UnicodeString(PVarData(@value).VUString));
       varDouble :
          writer.WriteFloat(PVarData(@value).VDouble);
       varBoolean :
@@ -454,7 +454,7 @@ begin
       vaCurrency: TVarData(Result).VCurrency := ReadCurrency;
       vaDate: TVarData(Result).VDate := ReadDate;
       vaString, vaLString, vaUTF8String:
-         Result := String(ReadString);
+         Result := UnicodeString(ReadString);
       vaWString: Result := ReadWideString;
       vaFalse, vaTrue:
          TVarData(Result).VBoolean := (ReadValue = vaTrue);
@@ -466,13 +466,13 @@ end;
 
 { TGlobalVar }
 
-procedure TGlobalVar.WriteToFiler(writer: TWriter; const Name : String);
+procedure TGlobalVar.WriteToFiler(writer: TWriter; const Name : UnicodeString);
 begin
    writer.WriteString(Name);
    dwsGlobalVarsFunctions.WriteVariant(writer, Value);
 end;
 
-procedure TGlobalVar.ReadFromFiler(reader: TReader; var Name : String);
+procedure TGlobalVar.ReadFromFiler(reader: TReader; var Name : UnicodeString);
 begin
    Name:=reader.ReadString;
    Value:=dwsGlobalVarsFunctions.ReadVariant(reader);

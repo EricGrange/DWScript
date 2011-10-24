@@ -44,7 +44,7 @@ type
   end;
 
   TDateTimeToStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
   TStrToDateTimeFunc = class(TInternalMagicFloatFunction)
@@ -56,7 +56,7 @@ type
   end;
 
   TDateToStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
   TStrToDateFunc = class(TInternalMagicFloatFunction)
@@ -68,7 +68,7 @@ type
   end;
 
   TTimeToStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
   TStrToTimeFunc = class(TInternalMagicFloatFunction)
@@ -80,11 +80,11 @@ type
   end;
 
   TDateToISO8601Func = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
   TDateTimeToISO8601Func = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
   TDayOfWeekFunc = class(TInternalMagicIntFunction)
@@ -96,7 +96,7 @@ type
   end;
 
   TFormatDateTimeFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
   TIsLeapYearFunc = class(TInternalMagicBoolFunction)
@@ -210,7 +210,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TDateTimeToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TDateTimeToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=DateTimeToStr(args.AsFloat[0]);
 end;
@@ -233,7 +233,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TDateToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TDateToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=DateToStr(args.AsFloat[0]);
 end;
@@ -256,7 +256,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TTimeToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TTimeToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=TimeToStr(args.AsFloat[0]);
 end;
@@ -277,14 +277,14 @@ end;
 
 { TDateToISO8601Func }
 
-procedure TDateToISO8601Func.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TDateToISO8601Func.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=FormatDateTime('yyyy-mm-dd', args.AsFloat[0]);
 end;
 
 { TDateTimeToISO8601Func }
 
-procedure TDateTimeToISO8601Func.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TDateTimeToISO8601Func.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
    dt : TDateTime;
 begin
@@ -310,7 +310,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TFormatDateTimeFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TFormatDateTimeFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=FormatDateTime(args.AsString[0], args.AsFloat[1]);
 end;

@@ -38,18 +38,18 @@ type
 
    IdwsSuggestions = interface
       ['{09CA8BF2-AF3F-4B5A-B188-4B2FF574AC34}']
-      function GetCode(i : Integer) : String;
+      function GetCode(i : Integer) : UnicodeString;
       function GetCategory(i : Integer) : TdwsSuggestionCategory;
-      function GetCaption(i : Integer) : String;
+      function GetCaption(i : Integer) : UnicodeString;
       function GetSymbols(i : Integer) : TSymbol;
 
-      property Code[i : Integer] : String read GetCode;
+      property Code[i : Integer] : UnicodeString read GetCode;
       property Category[i : Integer] : TdwsSuggestionCategory read GetCategory;
-      property Caption[i : Integer] : String read GetCaption;
+      property Caption[i : Integer] : UnicodeString read GetCaption;
       property Symbols[i : Integer] : TSymbol read GetSymbols;
       function Count : Integer;
 
-      function PartialToken : String;
+      function PartialToken : UnicodeString;
    end;
 
    TSimpleSymbolList = class;
@@ -80,22 +80,22 @@ type
          FList : TSimpleSymbolList;
          FListLookup : TObjectsLookup;
          FNamesLookup : TStringList;
-         FPartialToken : String;
+         FPartialToken : UnicodeString;
          FPreviousSymbol : TSymbol;
-         FPreviousTokenString : String;
+         FPreviousTokenString : UnicodeString;
          FPreviousToken : TTokenType;
          FLocalContext : TContext;
          FContextSymbol : TSymbol;
          FSymbolClassFilter : TSymbolClass;
 
       protected
-         function GetCode(i : Integer) : String;
+         function GetCode(i : Integer) : UnicodeString;
          function GetCategory(i : Integer) : TdwsSuggestionCategory;
-         function GetCaption(i : Integer) : String;
+         function GetCaption(i : Integer) : UnicodeString;
          function GetSymbols(i : Integer) : TSymbol;
          function Count : Integer;
 
-         function PartialToken : String;
+         function PartialToken : UnicodeString;
 
          procedure AnalyzeLocalTokens;
 
@@ -161,7 +161,7 @@ end;
 //
 procedure TdwsSuggestions.AnalyzeLocalTokens;
 var
-   codeLine : String;
+   codeLine : UnicodeString;
    p, p2 : Integer;
 
    procedure MoveToTokenStart;
@@ -438,7 +438,7 @@ end;
 
 // GetCode
 //
-function TdwsSuggestions.GetCode(i : Integer) : String;
+function TdwsSuggestions.GetCode(i : Integer) : UnicodeString;
 begin
    Result:=FList[i].Name;
 end;
@@ -500,9 +500,9 @@ end;
 
 // GetCaption
 //
-function TdwsSuggestions.GetCaption(i : Integer) : String;
+function TdwsSuggestions.GetCaption(i : Integer) : UnicodeString;
 
-   function SafeSymbolName(symbol : TSymbol) : String;
+   function SafeSymbolName(symbol : TSymbol) : UnicodeString;
    begin
       if symbol<>nil then
          Result:=symbol.Name
@@ -562,7 +562,7 @@ end;
 
 // PartialToken
 //
-function TdwsSuggestions.PartialToken : String;
+function TdwsSuggestions.PartialToken : UnicodeString;
 begin
    Result:=FPartialToken;
 end;

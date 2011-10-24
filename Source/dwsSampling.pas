@@ -27,14 +27,14 @@ type
 
    TdwsSample = class
       private
-         FSourceName : String;
-         FFuncName : String;
+         FSourceName : UnicodeString;
+         FFuncName : UnicodeString;
          FLine : Integer;
          FCount : Integer;
 
       public
-         property SourceName : String read FSourceName write FSourceName;
-         property FuncName : String read FFuncName write FFuncName;
+         property SourceName : UnicodeString read FSourceName write FSourceName;
+         property FuncName : UnicodeString read FFuncName write FFuncName;
          property Line : Integer read FLine write FLine;
          property Count : Integer read FCount write FCount;
    end;
@@ -56,7 +56,7 @@ type
          procedure Clear;
 
          procedure ToJSON(writer : TdwsJSONWriter);
-         function ToString : String; override;
+         function ToString : UnicodeString; override;
    end;
 
    // TdwsSamplingDebugger
@@ -182,7 +182,7 @@ end;
 //
 procedure TdwsSamplings.ToJSON(writer : TdwsJSONWriter);
 
-   procedure BeginFunc(const func : String);
+   procedure BeginFunc(const func : UnicodeString);
    begin
       writer.BeginObject;
       writer.WriteName('Func');
@@ -193,8 +193,8 @@ procedure TdwsSamplings.ToJSON(writer : TdwsJSONWriter);
 var
    i : Integer;
    sorter : TdwsSamplingsSorter;
-   sourceFile : String;
-   func : String;
+   sourceFile : UnicodeString;
+   func : UnicodeString;
    sample : TdwsSample;
 begin
    writer.BeginArray;
@@ -247,7 +247,7 @@ end;
 
 // ToString
 //
-function TdwsSamplings.ToString : String;
+function TdwsSamplings.ToString : UnicodeString;
 var
    wobs : TWriteOnlyBlockStream;
    wr : TdwsJSONWriter;

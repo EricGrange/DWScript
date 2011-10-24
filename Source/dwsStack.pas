@@ -88,7 +88,7 @@ type
          procedure WriteIntValue_BaseRelative(DestAddr: Integer; const pValue: PInt64); overload; inline;
          procedure WriteFloatValue(DestAddr: Integer; const Value: Double); inline;
          procedure WriteFloatValue_BaseRelative(DestAddr: Integer; const Value: Double); inline;
-         procedure WriteStrValue(DestAddr: Integer; const Value: String); inline;
+         procedure WriteStrValue(DestAddr: Integer; const Value: UnicodeString); inline;
          procedure WriteBoolValue(DestAddr: Integer; const Value: Boolean); inline;
          procedure WriteInterfaceValue(DestAddr: Integer; const intf: IUnknown);
 
@@ -100,7 +100,7 @@ type
          function  ReadIntAsFloatValue_BaseRelative(SourceAddr: Integer) : Double; inline;
          function  ReadFloatValue(SourceAddr: Integer) : Double; inline;
          function  ReadFloatValue_BaseRelative(SourceAddr: Integer) : Double; inline;
-         procedure ReadStrValue(SourceAddr: Integer; var Result : String);
+         procedure ReadStrValue(SourceAddr: Integer; var Result : UnicodeString);
          function  ReadBoolValue(SourceAddr: Integer): Boolean;
          procedure ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown);
 
@@ -109,7 +109,7 @@ type
          function  PointerToInterfaceValue(addr : Integer) : PIUnknown;
 
          procedure IncIntValue_BaseRelative(destAddr : Integer; const value : Int64); inline;
-         procedure AppendStringValue_BaseRelative(destAddr : Integer; const value : String);
+         procedure AppendStringValue_BaseRelative(destAddr : Integer; const value : UnicodeString);
 
          procedure PushBp(Level, Bp: Integer); inline;
          function  GetSavedBp(Level: Integer): Integer; inline;
@@ -185,7 +185,7 @@ begin
          varDouble :
             Result:=TVarData(v1).VDouble=TVarData(v2).VDouble;
          varUString :
-            Result:=String(TVarData(v1).VUString)=String(TVarData(v2).VUString);
+            Result:=UnicodeString(TVarData(v1).VUString)=UnicodeString(TVarData(v2).VUString);
          varUnknown :
             Result:=TVarData(v1).VUnknown=TVarData(v2).VUnknown;
       else
@@ -440,13 +440,13 @@ end;
 
 // ReadStrValue
 //
-procedure TStackMixIn.ReadStrValue(SourceAddr: Integer; var Result : String);
+procedure TStackMixIn.ReadStrValue(SourceAddr: Integer; var Result : UnicodeString);
 var
    varData : PVarData;
 begin
    varData:=@Data[SourceAddr];
    if varData.VType=varUString then
-      Result:=String(varData.VUString)
+      Result:=UnicodeString(varData.VUString)
    else Result:=PVariant(varData)^;
 end;
 
@@ -520,7 +520,7 @@ end;
 
 // AppendStringValue_BaseRelative
 //
-procedure TStackMixIn.AppendStringValue_BaseRelative(destAddr : Integer; const value : String);
+procedure TStackMixIn.AppendStringValue_BaseRelative(destAddr : Integer; const value : UnicodeString);
 
    procedure Fallback(varData : PVarData);
    begin
@@ -532,7 +532,7 @@ var
 begin
    varData:=@FBaseData[destAddr];
    if varData.VType=varUString then
-      String(varData.VUString):=String(varData.VUString)+value
+      UnicodeString(varData.VUString):=UnicodeString(varData.VUString)+value
    else Fallback(varData);
 end;
 
@@ -617,13 +617,13 @@ end;
 
 // WriteStrValue
 //
-procedure TStackMixIn.WriteStrValue(DestAddr: Integer; const Value: String);
+procedure TStackMixIn.WriteStrValue(DestAddr: Integer; const Value: UnicodeString);
 var
    varData : PVarData;
 begin
    varData:=@Data[DestAddr];
    if varData.VType=varUString then
-      String(varData.VUString):=Value
+      UnicodeString(varData.VUString):=Value
    else PVariant(varData)^:=Value;
 end;
 
@@ -659,9 +659,9 @@ var
 begin
    varData:=@Data[DestAddr];
    if varData.VType=varUString then
-      if index>Length(String(varData.VUString)) then
+      if index>Length(UnicodeString(varData.VUString)) then
          Exit(False)
-      else String(varData.VUString)[index]:=c
+      else UnicodeString(varData.VUString)[index]:=c
    else PVariant(varData)^[index]:=c;
    Result:=True;
 end;
