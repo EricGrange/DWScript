@@ -4,7 +4,7 @@ interface
 
 uses
   Forms, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-  dwsJSFilter, dwsHtmlFilter, dwsXPlatform, dwsUtils, cef, ceflib, dwsJSLibModule,
+  dwsJSFilter, dwsHtmlFilter, dwsXPlatform, dwsUtils, cefvcl, ceflib, dwsJSLibModule,
   StrUtils, dwsFunctions;
 
 type

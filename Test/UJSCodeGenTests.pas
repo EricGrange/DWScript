@@ -3,7 +3,7 @@ unit UJSCodeGenTests;
 interface
 
 uses Forms, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs, dwsUtils,
-   dwsXPlatform, dwsCodeGen, dwsJSCodeGen, cef, ceflib, dwsJSLibModule, dwsFunctions;
+   dwsXPlatform, dwsCodeGen, dwsJSCodeGen, cefvcl, ceflib, dwsJSLibModule, dwsFunctions;
 
 type
 
