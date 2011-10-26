@@ -27,6 +27,6 @@ object DwsIdeCodeProposalForm: TDwsIdeCodeProposalForm
     ItemHeight = 13
     TabOrder = 0
     TabWidth = 40
-    OnMouseUp = ListBox1MouseUp
+    OnDblClick = ListBox1DblClick
   end
 end

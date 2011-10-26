@@ -1318,6 +1318,7 @@ begin
   S := CurrentEditor.LineText;
   Insert( AItemText, S, CurrentEditor.CaretX );
   CurrentEditor.Linetext := S;
+  CurrentEditor.CaretX := CurrentEditor.CaretX + Length( AItemText );
   CurrentEditor.Modified := true;
 end;
 
@@ -1744,7 +1745,10 @@ begin
     ScriptPos := TScriptPos.Create( ScriptProgram.SourceList[0].SourceFile, CurrentEditor.CaretY, CurrentEditor.CaretX );
     Suggestions := TdwsSuggestions.Create( ScriptProgram, ScriptPos );
 
-    FCodeProposalForm.Open( ACodeSuggestionMode, Suggestions );
+    FCodeProposalForm.Open(
+      CurrentEditor.ClientToScreen( CurrentEditor.RowColumnToPixels( CurrentEditor.DisplayXY )),
+      ACodeSuggestionMode,
+      Suggestions );
 
   finally
     Script.Free;
@@ -2094,6 +2098,7 @@ constructor TEditorPage.Create(
     FEditor.BorderStyle := bsNone;
     FEditor.Gutter.Width := 50;
     FEditor.PopupMenu := AOwner.EditorPagePopupMenu;
+    FEditor.WantTabs  := True;
 
     If Assigned( AOwner.FOptions.EditorHighlighterClass ) then
       FEditor.Highlighter := AOwner.FOptions.EditorHighlighterClass.Create( Self );

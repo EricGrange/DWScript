@@ -18,8 +18,7 @@ type
     procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FormDestroy(Sender: TObject);
-    procedure ListBox1MouseUp(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
+    procedure ListBox1DblClick(Sender: TObject);
   private
     { Private declarations }
     FSearchString : string;
@@ -36,7 +35,7 @@ type
                read FOnSelectItem
                write FOnSelectItem;
 
-    procedure Open( ACodeSuggestionMode: TCodeSuggestionMode; ASuggestions : IDwsSuggestions );
+    procedure Open( const APoint : TPoint; ACodeSuggestionMode: TCodeSuggestionMode; ASuggestions : IDwsSuggestions );
   end;
 
 
@@ -74,7 +73,7 @@ procedure TDwsIdeCodeProposalForm.PerformFilter;
   begin
     case FCodeSuggestionMode of
       csAutoComplete : //e.g. invoked by '.'
-        Result := FSuggestions.Code[AIndex];
+        Result := FSuggestions.Caption[AIndex];
 
       csCodeProposal :
         Result := SuggestionCategoryNames[FSuggestions.Category[AIndex]] + #9 + FSuggestions.Caption[AIndex];
@@ -126,7 +125,12 @@ begin
       PerformFilter;
       end;
 
-    vk_Up, vk_Down, vk_Home, vk_End :
+    vk_Up,
+    vk_Down,
+    vk_Prior,
+    vk_Next,
+    vk_Home,
+    vk_End :
       begin end;
 
     vk_Return :
@@ -150,16 +154,20 @@ begin
   PerformFilter;
 end;
 
-procedure TDwsIdeCodeProposalForm.ListBox1MouseUp(Sender: TObject;
-  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TDwsIdeCodeProposalForm.ListBox1DblClick(Sender: TObject);
 begin
-//  DoOnSelectItem;
+  DoOnSelectItem;
 end;
 
-
-procedure TDwsIdeCodeProposalForm.Open(ACodeSuggestionMode: TCodeSuggestionMode;
+procedure TDwsIdeCodeProposalForm.Open(const APoint : TPoint; ACodeSuggestionMode: TCodeSuggestionMode;
   ASuggestions: IDwsSuggestions);
 begin
+  Left := APoint.X;
+  if APoint.Y + Height > Screen.Height then
+    Top := APoint.Y - Height - 20
+   else
+     Top := APoint.Y + 20;
+
   FSuggestions := ASuggestions;
   FCodeSuggestionMode := ACodeSuggestionMode;
   Show;
