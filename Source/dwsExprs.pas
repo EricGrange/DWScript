@@ -536,7 +536,8 @@ type
          function GetProgramObject : TdwsProgram;
 
       public
-         constructor Create(systemTable : TStaticSymbolTable; resultType : TdwsResultType;
+         constructor Create(systemTable : TStaticSymbolTable;
+                            resultType : TdwsResultType;
                             const stackParameters : TStackParameters);
          destructor Destroy; override;
 
@@ -2730,11 +2731,12 @@ end;
 
 // Create
 //
-constructor TdwsMainProgram.Create(systemTable : TStaticSymbolTable; resultType : TdwsResultType;
+constructor TdwsMainProgram.Create(systemTable : TStaticSymbolTable;
+                                   resultType : TdwsResultType;
                                    const stackParameters : TStackParameters);
 var
-   systemUnitTable : TLinkedSymbolTable;
-   systemUnit : TUnitMainSymbol;
+   systemUnitTable, internalUnitTable : TLinkedSymbolTable;
+   systemUnit, internalUnit : TUnitMainSymbol;
 begin
    inherited Create(systemTable);
 

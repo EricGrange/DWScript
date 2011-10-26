@@ -447,7 +447,8 @@ type
          procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol);
          procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : UnicodeString; typ1, typ2 : TTypeSymbol);
 
-         function CreateProgram(systemTable : TStaticSymbolTable; resultType : TdwsResultType;
+         function CreateProgram(systemTable : TStaticSymbolTable;
+                                resultType : TdwsResultType;
                                 const stackParams : TStackParameters) : TdwsMainProgram;
          function CreateProcedure(Parent : TdwsProgram) : TdwsProcedure;
          function CreateAssign(const pos : TScriptPos; token : TTokenType; left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
@@ -991,8 +992,8 @@ begin
    try
       // Get the symboltables of the units
       for i:=0 to unitsResolved.Count-1 do begin
-         unitTable:=unitsResolved[i].GetUnitTable(FSystemTable, FProg.UnitMains, FOperators);
-         unitSymbol:=TUnitMainSymbol.Create(unitsResolved[i].GetUnitName, unitTable, FProg.UnitMains);
+         unitTable:=unitsResolved[i].GetUnitTable(FSystemTable, FMainProg.UnitMains, FOperators);
+         unitSymbol:=TUnitMainSymbol.Create(unitsResolved[i].GetUnitName, unitTable, FMainProg.UnitMains);
          unitSymbol.ReferenceInSymbolTable(FProg.Table);
       end;
    finally
@@ -1225,8 +1226,10 @@ begin
       FMainProg.SourceList.Add(sourceFile.Name, sourceFile, scriptType);
 
       readingMain:=(scriptType=stMain);
-      if (scriptType=stMain) and FTOk.Test(ttUNIT) then
+      if (scriptType=stMain) and FTOk.Test(ttUNIT) then begin
+         HandleUnitDependencies;
          scriptType:=stUnit;
+      end;
 
       if Assigned(FOnReadScript) then
          FOnReadScript(Self, sourceFile, scriptType);
@@ -6998,10 +7001,11 @@ end;
 
 // CreateProgram
 //
-function TdwsCompiler.CreateProgram(systemTable : TStaticSymbolTable; resultType : TdwsResultType;
+function TdwsCompiler.CreateProgram(systemTable : TStaticSymbolTable;
+                                    resultType : TdwsResultType;
                                     const stackParams : TStackParameters) : TdwsMainProgram;
 begin
-   Result:=TdwsMainProgram.Create(SystemTable, ResultType, stackParams);
+   Result:=TdwsMainProgram.Create(systemTable, resultType, stackParams);
 end;
 
 // ReadEnumeration
