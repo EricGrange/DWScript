@@ -228,13 +228,12 @@ type
 
    TdwsResult = class
       private
-         FResultType: TdwsResultType;
+         FResultType : TdwsResultType;
 
       protected
-         constructor Create(ResultType: TdwsResultType); virtual;
-         procedure InitializeProgram(Prog: TdwsProgram); virtual;
-         procedure FinalizeProgram(Prog: TdwsProgram); virtual;
-         property ResultType: TdwsResultType read FResultType;
+         constructor Create(resultType : TdwsResultType); virtual;
+
+         property ResultType : TdwsResultType read FResultType;
 
       public
          procedure AddString(const str : UnicodeString); virtual; abstract;
@@ -2238,9 +2237,6 @@ begin
       FResult.Free;
       FResult:=FProg.FResultType.CreateProgResult;
 
-      // Result
-      FResult.InitializeProgram(FProg);
-
       // Debugger
       StartDebug;
 
@@ -2350,9 +2346,6 @@ begin
 
       // Object Cycles
       ReleaseObjects;
-
-      // Result
-      FResult.FinalizeProgram(FProg);
 
       // Debugger
       StopDebug;
@@ -2735,8 +2728,8 @@ constructor TdwsMainProgram.Create(systemTable : TStaticSymbolTable;
                                    resultType : TdwsResultType;
                                    const stackParameters : TStackParameters);
 var
-   systemUnitTable, internalUnitTable : TLinkedSymbolTable;
-   systemUnit, internalUnit : TUnitMainSymbol;
+   systemUnitTable : TLinkedSymbolTable;
+   systemUnit : TUnitMainSymbol;
 begin
    inherited Create(systemTable);
 
@@ -3131,18 +3124,6 @@ end;
 constructor TdwsResult.Create(ResultType: TdwsResultType);
 begin
   FResultType := ResultType;
-end;
-
-procedure TdwsResult.FinalizeProgram(Prog: TdwsProgram);
-begin
-  if Assigned(FResultType.FOnFinalizeProgram) then
-    FResultType.FOnFinalizeProgram(Prog);
-end;
-
-procedure TdwsResult.InitializeProgram(Prog: TdwsProgram);
-begin
-  if Assigned(FResultType.FOnInitializeProgram) then
-    FResultType.FOnInitializeProgram(Prog);
 end;
 
 // ------------------
