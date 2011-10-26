@@ -52,6 +52,8 @@ type
 
 implementation
 
+uses dwsOperators;
+
 const // type constants
   cFloat = 'Float';
   cInteger = 'Integer';
@@ -117,7 +119,8 @@ end;
 
 { InitVariants }
 
-procedure InitVariants(SystemTable, UnitSyms, UnitTable : TSymbolTable);
+procedure InitVariants(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                       unitTable : TSymbolTable; operators : TOperators);
 type
    TVarTypeRec = packed record n : UnicodeString; v : Word; end;
 const
@@ -148,7 +151,7 @@ end;
 
 initialization
 
-   RegisterInternalPreInitProc(@InitVariants);
+   RegisterInternalPreInitProc(InitVariants);
 
    RegisterInternalFunction(TVarClearFunc, 'VarClear', ['@v', cVariant], '');
    RegisterInternalBoolFunction(TVarIsNullFunc, 'VarIsNull', ['v', cVariant]);
