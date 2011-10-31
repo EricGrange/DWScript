@@ -52,7 +52,7 @@ type
 const
   IdeOptions_Style1 : TDwsIdeOptions = (
     EditorHighlighterClass : TSynDWSSyn;
-    EditorFontName         : 'Lucida sans typewriter';
+    EditorFontName         : 'Courier New';
     EditorFontSize         : 10
     );
 
