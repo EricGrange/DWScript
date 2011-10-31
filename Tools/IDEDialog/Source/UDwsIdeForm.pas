@@ -28,6 +28,7 @@ interface
 uses
   Types,
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Themes, UxTheme,
   UDwsIdeDefs,
   dwsExprs,
   dwsComp,
@@ -70,11 +71,14 @@ type
 
   TLineNumbers = array of integer;
 
-  TEditorPage = class( TTabSheet )
+  TEditorPage = class( TWinControl )
   private
     FEditor : TSynEdit;
     FForm   : TDwsIdeForm;
     FExecutableLines : TExecutableLines;
+    FTabLeft : Integer;
+    FTabWidth : Integer;
+    FCloseButtonRect : TRect;
 
     function  GetFilename: string;
     procedure SetFileName(const Value: string);
@@ -138,7 +142,6 @@ type
   TDwsIdeForm = class(TForm, IDwsIde)
     ActionList1: TActionList;
     actOpenFile: TAction;
-    pcEditor: TPageControl;
     pnlEditor: TPanel;
     actClosePage: TAction;
     EditorPageTabContextMenu: TPopupMenu;
@@ -250,11 +253,12 @@ type
     N9: TMenuItem;
     Suggest1: TMenuItem;
     actCodeProposalInvoke: TAction;
+    pnlPageControl: TPanel;
+    imgTabs: TImage;
     procedure EditorChange(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure actOpenFileExecute(Sender: TObject);
     procedure actClosePageExecute(Sender: TObject);
-    procedure pcEditorTabClick(Sender: TObject);
     procedure pcEditorMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure actCloseAllOtherPagesExecute(Sender: TObject);
@@ -317,6 +321,10 @@ type
     procedure FormCreate(Sender: TObject);
     procedure WMCodeSuggest( var AMessage : TMessage ); message WM_CodeSuggest;
     procedure actCodeProposalInvokeExecute(Sender: TObject);
+    procedure pnlPageControlResize(Sender: TObject);
+    procedure imgTabsMouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
+    procedure imgTabsMouseLeave(Sender: TObject);
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -336,6 +344,11 @@ type
 
     FCodeProposalForm : TDwsIdeCodeProposalForm;
 
+    FActivePageIndex : Integer;
+    FHoveredPageIndex : Integer;
+    FHoveredCloseButton : Boolean;
+    FPages : TObjectList<TEditorPage>;
+
     procedure CodeSuggest( ACodeSuggestionMode : TCodeSuggestionMode);
     procedure DoOnCodeSuggestionFormSelectItem( const AItemText : string );
     procedure EditorPageAddNew( const AFileName : string; ALoadfile : boolean  );
@@ -349,7 +362,6 @@ type
     function  HasProject : boolean;
     function  NameToEditorPageIndex( const AName : string ) : integer;
 
-    function  GetEditorCurrentPageIndex: integer;
     procedure SetEditorCurrentPageIndex(const Value: integer);
     procedure SetProjectFileName(const Value: string);
     procedure GotoScriptPos(AScriptPos: TScriptPos);
@@ -358,7 +370,7 @@ type
     procedure SetScript(const Value: TDelphiWebScript);
     procedure SetScriptFolder(const Value: string);
     property  EditorCurrentPageIndex : integer
-                read GetEditorCurrentPageIndex
+                read FActivePageIndex
                 write SetEditorCurrentPageIndex;
     function  CurrentEditor : TSynEdit;
     function  HasEditorPage : boolean;
@@ -401,6 +413,9 @@ type
          const AIDEFormRect     : TRect );
 
     procedure RunProcedureByName( const AName : string );
+
+    procedure RefreshTabs;
+    function IndexOfTab(x : Integer) : Integer;
 
   PUBLIC
     // IDwsIde
@@ -1107,6 +1122,172 @@ begin
 
 end;
 
+// RefreshTabs
+//
+procedure TDwsIdeForm.RefreshTabs;
+const
+   cMargin = 4;
+   cSlantMargin = 10;
+   cCloseButtonSize = 12;
+
+   function ColorLerp(col1, col2 : TColor; f : Single) : TColor;
+   var
+      invF : Single;
+   begin
+      if f<0 then f:=0;
+      if f>1 then f:=1;
+      invF:=1-f;
+
+      col1:=ColorToRGB(col1);
+      col2:=ColorToRGB(col2);
+
+      Result:=RGB(Trunc(GetRValue(col1)*invF+GetRValue(col2)*f),
+                  Trunc(GetGValue(col1)*invF+GetGValue(col2)*f),
+                  Trunc(GetBValue(col1)*invF+GetBValue(col2)*f));
+   end;
+
+   procedure GradVertical(Canvas:TCanvas; Rect:TRect; FromColor, ToColor:TColor) ;
+   var
+      mx, Y : integer;
+      invHeight : Single;
+      cnt : Integer;
+   begin
+      canvas.Brush.Style:=bsSolid;
+
+      if Rect.Bottom>Rect.Top then
+         invHeight:=1/(Rect.Bottom-Rect.Top)
+      else invHeight:=1;
+
+      mx:=Rect.Right-cSlantMargin;
+      cnt := 0;
+      for Y := Rect.Top to Rect.Bottom-1 do begin
+
+         Canvas.Brush.Color := ColorLerp(FromColor, ToColor, cnt*invHeight);
+
+         Rect.Right:=mx+cnt;
+         Rect.Top:=Y;
+         Rect.Bottom:=Y+1;
+
+         Canvas.FillRect(Rect);
+
+         Inc(cnt) ;
+      end;
+   end;
+
+   procedure RenderTab(canvas : TCanvas; page : TEditorPage;
+                       active, hovered, hoveredClose : Boolean);
+   var
+      tabRect : TRect;
+      r : TRect;
+      txt : String;
+      closeBtnDrawState : Cardinal;
+      closeBtnDrawDetails : TThemedElementDetails;
+   begin
+      tabRect:=Rect(page.FTabLeft, canvas.ClipRect.Top,
+                    page.FTabLeft+page.FTabWidth, canvas.ClipRect.Bottom);
+
+      if active then
+         if hovered then
+            GradVertical(canvas, tabRect, clWindow, clWindow)
+         else GradVertical(canvas, tabRect, clWindow, clWindow)
+      else begin
+         if hovered then
+            GradVertical(canvas, tabRect, clWindow, clBtnFace)
+         else GradVertical(canvas, tabRect, clWindow, ColorLerp(clBtnFace, clBtnShadow, 0.5));
+      end;
+
+      canvas.Brush.Style:=bsClear;
+
+      {$Message 'support custom tab icons depending on content' }
+      SmallImages.Draw(canvas, tabRect.Left+cMargin,
+                       (tabRect.Bottom-tabRect.Top-SmallImages.Height) div 2, 6, True);
+
+      txt:=page.Caption;
+      r:=tabRect;
+      r.Left:=r.Left+cMargin+SmallImages.Width+cMargin;
+      canvas.TextRect(r, txt, [tfLeft, tfVerticalCenter, tfSingleLine, tfNoPrefix, tfEndEllipsis]);
+
+      if not UseThemes then begin
+         Windows.DrawFrameControl(canvas.Handle, page.FCloseButtonRect,
+                                  DFC_CAPTION, DFCS_CAPTIONCLOSE+DFCS_FLAT);
+      end else begin
+         if hovered and hoveredClose then
+             closeBtnDrawDetails:=ThemeServices.GetElementDetails(twSmallCloseButtonHot)
+         else closeBtnDrawDetails:=ThemeServices.GetElementDetails(twSmallCloseButtonDisabled);
+         ThemeServices.DrawElement(canvas.Handle, closeBtnDrawDetails, page.FCloseButtonRect);
+      end;
+
+      canvas.Pen.Color:=clBtnShadow;
+      if active then begin
+         canvas.MoveTo(0, tabRect.Bottom-1);
+         canvas.LineTo(tabRect.Left, tabRect.Bottom-1);
+      end else begin
+         canvas.MoveTo(tabRect.Left, tabRect.Bottom);
+      end;
+      canvas.LineTo(tabRect.Left, tabRect.Top);
+      canvas.LineTo(tabRect.Right-cSlantMargin, tabRect.Top);
+      canvas.LineTo(tabRect.Right-cSlantMargin+tabRect.Bottom-tabRect.Top, tabRect.Bottom);
+      if active then begin
+         canvas.MoveTo(tabRect.Right-cSlantMargin+tabRect.Bottom-tabRect.Top, tabRect.Bottom-1);
+         canvas.LineTo(canvas.ClipRect.Right, tabRect.Bottom-1);
+      end;
+   end;
+
+var
+   bmp : TBitmap;
+   canvas : TCanvas;
+   i, x : Integer;
+   page : TEditorPage;
+begin
+   bmp:=imgTabs.Picture.Bitmap;
+   canvas:=bmp.Canvas;
+   canvas.Brush.Style:=bsSolid;
+   canvas.Font:=Self.Font;
+
+   x:=0;
+   // compute tab positions
+   for i:=0 to FPages.Count-1 do begin
+      page:=FPages[i];
+      page.FTabLeft:=x;
+      page.FTabWidth:=  cMargin + SmallImages.Width
+                      + cMargin + canvas.TextWidth(page.Caption)
+                      + cMargin + cCloseButtonSize + 2*cMargin + cSlantMargin;
+      page.FCloseButtonRect:=Rect(0, 0, cCloseButtonSize, cCloseButtonSize);
+      x:=x+page.FTabWidth;
+      OffsetRect(page.FCloseButtonRect, x-cCloseButtonSize-cMargin-cSlantMargin,
+                 1+(bmp.Height-cCloseButtonSize) div 2);
+   end;
+
+   canvas.Brush.Color:=clBtnFace;
+   canvas.FillRect(canvas.ClipRect);
+
+   // render tabs (right to left for slant overlap)
+   for i:=FPages.Count-1 downto 0 do begin
+      if i=FActivePageIndex then continue;
+      page:=FPages[i];
+      RenderTab(canvas, page, False, i=FHoveredPageIndex, FHoveredCloseButton);
+   end;
+   if FActivePageIndex>=0 then begin
+      page:=FPages[FActivePageIndex];
+      RenderTab(canvas, page, True, FActivePageIndex=FHoveredPageIndex, FHoveredCloseButton);
+   end;
+end;
+
+// IndexOfTab
+//
+function TDwsIdeForm.IndexOfTab(x : Integer) : Integer;
+var
+   i : Integer;
+   page : TEditorPage;
+begin
+   for i:=0 to FPages.Count-1 do begin
+      page:=FPages[i];
+      if (x>=page.FTabLeft) and (x<page.FTabLeft+page.FTabWidth) then
+         Exit(i);
+   end;
+   Result:=-1;
+end;
+
 
 procedure TDwsIdeForm.actProgramResetExecute(Sender: TObject);
 begin
@@ -1236,12 +1417,9 @@ end;
 
 procedure TDwsIdeForm.EditorPageAddNew(const AFileName: string; ALoadFile : boolean );
 begin
-  TEditorPage.Create( Self, AFileName, ALoadFile );
+   FPages.Add( TEditorPage.Create( Self, AFileName, ALoadFile ) );
+   SetEditorCurrentPageIndex(FPages.Count-1);
 end;
-
-
-
-
 
 procedure TDwsIdeForm.ListSymbols;
 var
@@ -1295,7 +1473,7 @@ end;
 
 function TDwsIdeForm.CurrentEditorPage: TEditorPage;
 begin
-  Result := EditorPage( GetEditorCurrentPageIndex );
+  Result := EditorPage( FActivePageIndex );
 end;
 
 function TDwsIdeForm.ProjectSourceScript: string;
@@ -1479,9 +1657,24 @@ end;
 
 
 procedure TDwsIdeForm.FormCreate(Sender: TObject);
+var
+   bmp : TBitmap;
 begin
   FCodeProposalForm := TDwsIdeCodeProposalForm.Create( Self );
   FCodeProposalForm.OnSelectItem := DoOnCodeSuggestionFormSelectItem;
+
+  bmp:=TBitmap.Create;
+  try
+     bmp.Height:=imgTabs.Height;
+     bmp.Width:=imgTabs.Width;
+     imgTabs.Picture.Bitmap:=bmp;
+  finally
+     bmp.Free;
+  end;
+
+  FPages:=TObjectList<TEditorPage>.Create;
+  FActivePageIndex:=-1;
+  FHoveredPageIndex:=-1;
 end;
 
 procedure TDwsIdeForm.FormDestroy(Sender: TObject);
@@ -1490,16 +1683,12 @@ begin
   dwsDebugger1.Breakpoints.Clean;
   dwsDebugger1.Watches.Clean;
   FProgram := nil;
+  FPages.Free;
 end;
 
 procedure TDwsIdeForm.FormShow(Sender: TObject);
 begin
   BoundsRect := FIDEFormRect;
-end;
-
-function TDwsIdeForm.GetEditorCurrentPageIndex: integer;
-begin
-  Result := pcEditor.ActivePageIndex;
 end;
 
 function TDwsIdeForm.GetProjectSourceFileName: string;
@@ -1523,6 +1712,41 @@ begin
   Result := (ProjectFileName <> '') and ((ProjectSourceFileIndex <> -1) or FileExists( ProjectSourceFileName ));
 end;
 
+procedure TDwsIdeForm.imgTabsMouseLeave(Sender: TObject);
+begin
+   if FHoveredPageIndex>=0 then begin
+      FHoveredPageIndex:=-1;
+      RefreshTabs;
+   end;
+end;
+
+procedure TDwsIdeForm.imgTabsMouseMove(Sender: TObject; Shift: TShiftState; X,
+  Y: Integer);
+var
+   newHover : Integer;
+   newHoverCloseButton, needRefresh : Boolean;
+begin
+   needRefresh:=False;
+   newHover:=IndexOfTab(x);
+   if newHover<>FHoveredPageIndex then begin
+      FHoveredPageIndex:=newHover;
+      needRefresh:=True;
+      Application.CancelHint;
+      if newHover>=0 then
+         imgTabs.Hint:=FPages[newHover].Hint
+      else imgTabs.Hint:='';
+   end;
+   if newHover>=0 then begin
+      newHoverCloseButton:=PtInRect(FPages[newHover].FCloseButtonRect, Point(X, Y));
+      if newHoverCloseButton<>FHoveredCloseButton then begin
+         FHoveredCloseButton:=newHoverCloseButton;
+         needRefresh:=True;
+      end;
+   end;
+   if needRefresh then
+      RefreshTabs;
+end;
+
 function TDwsIdeForm.IsCompiled: boolean;
 begin
   Result := Assigned( FProgram );
@@ -1530,21 +1754,6 @@ end;
 
 procedure TDwsIdeForm.pcEditorMouseDown(Sender: TObject;
   Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-   tabIndex : Integer;
-begin
-   FpcEditorLastMouseButton := Button;
-   FpcEditorLastMouseXY     := Point( X, Y );
-
-   tabIndex:=pcEditor.IndexOfTabAt(X, Y);
-   if (tabIndex>=0) then begin
-      if (pcEditor.ActivePageIndex<>tabIndex) then
-         pcEditor.ActivePageIndex:=tabIndex;
-      pcEditorTabClick(Sender);
-   end;
-end;
-
-procedure TDwsIdeForm.pcEditorTabClick(Sender: TObject);
 
   procedure AddPageList;
   var
@@ -1569,13 +1778,32 @@ procedure TDwsIdeForm.pcEditorTabClick(Sender: TObject);
 
 var
   P : TPoint;
+  tabIndex : Integer;
 begin
+   FpcEditorLastMouseButton := Button;
+   FpcEditorLastMouseXY     := Point( X, Y );
+
+   tabIndex:=IndexOfTab(X);
+   if (tabIndex>=0) then begin
+      SetEditorCurrentPageIndex(tabIndex);
+      if PtInRect(FPages[tabIndex].FCloseButtonRect, FpcEditorLastMouseXY) then begin
+         EditorPageClose(tabIndex);
+         Exit;
+      end;
+   end;
+
   If FpcEditorLastMouseButton = mbRight then
     begin
     AddPageList;
-    P := pcEditor.ClientToScreen( FpcEditorLastMouseXY );
+    P := imgTabs.ClientToScreen( FpcEditorLastMouseXY );
     EditorPageTabContextMenu.Popup( P.X, P.Y );
     end;
+end;
+
+procedure TDwsIdeForm.pnlPageControlResize(Sender: TObject);
+begin
+   imgTabs.Picture.Bitmap.Width:=imgTabs.Width;
+   RefreshTabs;
 end;
 
 function TDwsIdeForm.ProjectSourceFileIndex: integer;
@@ -1620,12 +1848,31 @@ begin
 end;
 
 procedure TDwsIdeForm.SetEditorCurrentPageIndex(const Value: integer);
+var
+   page : TEditorPage;
 begin
-  if (Value >= 0) and (Value < pcEditor.PageCount) then
+   if Value=FActivePageIndex then Exit;
+
+   LockWindowUpdate(pnlPageControl.Handle);
+
+   if FActivePageIndex>=0 then begin
+    page := EditorPage( Value );
+    page.Visible:=False;
+    page.Parent:=nil;
+   end;
+
+  if (Value >= 0) and (Value < FPages.Count) then
     begin
-    pcEditor.ActivePageIndex := Value;
-    EditorPage( Value ).Editor.Repaint;
+    FActivePageIndex:=Value;
+    RefreshTabs;
+    page := EditorPage( Value );
+    page.Align:=alClient;
+    page.Parent:=pnlPageControl;
+    page.Visible:=True;
+    page.Editor.Repaint;
     end;
+
+   LockWindowUpdate(0);
 end;
 
 procedure TDwsIdeForm.SetProjectFileName(const Value: string);
@@ -1708,7 +1955,7 @@ begin
   if I >= 0 then
     begin
     EditorPage( I ).FileName := Value;
-    pcEditor.Pages[I].Caption := ChangeFileExt( ExtractFileName( Value ), '' ) + ' *' ;
+    FPages[i].Caption := ChangeFileExt( ExtractFileName( Value ), '' ) + ' *' ;
     end;
 
 
@@ -1783,22 +2030,24 @@ begin
 
   Page.SaveIfModified( True );
 
-  if Page.TabIndex > 0 then
-    EditorCurrentPageIndex := Page.TabIndex - 1
-   else
-    If pcEditor.PageCount > 0 then
+  if EditorCurrentPageIndex>0 then
+     EditorCurrentPageIndex:=EditorCurrentPageIndex-1
+  else
+    If FPages.Count > 0 then
       EditorCurrentPageIndex := 0;
-  Page.Free;
+
+  FPages.Extract(AIndex).Free;
+  RefreshTabs;
 end;
 
 function TDwsIdeForm.EditorPageCount: integer;
 begin
-  Result := pcEditor.PageCount;
+  Result := FPages.Count;
 end;
 
 function TDwsIdeForm.EditorPage(AIndex: integer) : TEditorPage;
 begin
-  Result := TEditorPage( pcEditor.Pages[AIndex] );
+  Result := FPages[AIndex];
 end;
 
 
@@ -2150,10 +2399,6 @@ begin
   FileName := AFileName;
 
   //PopupMenu := AOwner.EditorPageTabContextMenu;
-
-  PageControl := AOwner.pcEditor;
-
-  AOwner.pcEditor.ActivePage := Self;
 
   InitEditor;
 
