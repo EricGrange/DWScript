@@ -1,6 +1,6 @@
 object DwsIdeForm: TDwsIdeForm
-  Left = 0
-  Top = 0
+  Left = 81
+  Top = 21
   Caption = 'Dws Ide'
   ClientHeight = 867
   ClientWidth = 901
@@ -35,19 +35,15 @@ object DwsIdeForm: TDwsIdeForm
     BevelOuter = bvNone
     BorderWidth = 5
     TabOrder = 0
-    object pcEditor: TRzPageControl
+    object pcEditor: TPageControl
       Left = 5
       Top = 5
       Width = 627
       Height = 838
       Align = alClient
-      ShowShadow = False
-      TabHints = True
+      PopupMenu = EditorPageTabContextMenu
       TabOrder = 0
       OnMouseDown = pcEditorMouseDown
-      OnTabClick = pcEditorTabClick
-      ExplicitLeft = 4
-      FixedDimension = 0
     end
     object StatusBar: TStatusBar
       Left = 5

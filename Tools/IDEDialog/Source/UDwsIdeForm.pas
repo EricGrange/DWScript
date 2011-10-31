@@ -50,7 +50,7 @@ uses
   XMLIntf,
   XMLDoc,
   UDwsIdeCodeProposalForm,
-  RzTabs, Menus, ToolWin, ActnCtrls,
+  Menus, ToolWin, ActnCtrls,
   ImgList, UDwsIdeLocalVariablesFrame, UDwsIdeWatchesFrame, UDwsIdeCallStackFrame,
   StdActns;
 
@@ -70,7 +70,7 @@ type
 
   TLineNumbers = array of integer;
 
-  TEditorPage = class( TRzTabSheet )
+  TEditorPage = class( TTabSheet )
   private
     FEditor : TSynEdit;
     FForm   : TDwsIdeForm;
@@ -138,7 +138,7 @@ type
   TDwsIdeForm = class(TForm, IDwsIde)
     ActionList1: TActionList;
     actOpenFile: TAction;
-    pcEditor: TRzPageControl;
+    pcEditor: TPageControl;
     pnlEditor: TPanel;
     actClosePage: TAction;
     EditorPageTabContextMenu: TPopupMenu;
@@ -1528,12 +1528,20 @@ begin
   Result := Assigned( FProgram );
 end;
 
-
 procedure TDwsIdeForm.pcEditorMouseDown(Sender: TObject;
   Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+   tabIndex : Integer;
 begin
-  FpcEditorLastMouseButton := Button;
-  FpcEditorLastMouseXY     := Point( X, Y );
+   FpcEditorLastMouseButton := Button;
+   FpcEditorLastMouseXY     := Point( X, Y );
+
+   tabIndex:=pcEditor.IndexOfTabAt(X, Y);
+   if (tabIndex>=0) then begin
+      if (pcEditor.ActivePageIndex<>tabIndex) then
+         pcEditor.ActivePageIndex:=tabIndex;
+      pcEditorTabClick(Sender);
+   end;
 end;
 
 procedure TDwsIdeForm.pcEditorTabClick(Sender: TObject);
