@@ -240,10 +240,10 @@ begin
    c:=args.AsInteger[0];
    case c of
       0..$FFFF :
-         Result:=Char(c);
+         Result:=WideChar(c);
       $10000..$10FFFF : begin
          c:=c-$10000;
-         Result:=Char($D800+(c shr 10))+Char($DC00+(c and $3FF));
+         Result:=WideChar($D800+(c shr 10))+WideChar($DC00+(c and $3FF));
       end;
    else
       raise EChrConvertError.CreateFmt('Invalid codepoint: %d', [c]);
@@ -500,7 +500,7 @@ function TRevPosFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
          startPos:=Length(stringSearched);
       for i:=startPos-Length(stringToFind)+1 downto 1 do begin
          if stringSearched[i]=stringToFind[1] then begin
-            if CompareMem(@stringSearched[i], @stringToFind[1], Length(stringToFind)*SizeOf(Char)) then begin
+            if CompareMem(@stringSearched[i], @stringToFind[1], Length(stringToFind)*SizeOf(WideChar)) then begin
                Result:=i;
                Exit;
             end;
@@ -671,7 +671,7 @@ procedure TStringOfStringFunc.DoEvalAsString(args : TExprBaseList; var Result : 
       SetLength(Result, count);
       while count>0 do begin
          Dec(count, ls);
-         Move(str[1], Result[count+1], ls*SizeOf(Char));
+         Move(str[1], Result[count+1], ls*SizeOf(WideChar));
       end;
    end;
 
@@ -690,8 +690,8 @@ begin
    if Length(str)<Length(beginStr) then
       Result:=False
    else begin
-      Result:=CompareMem(PChar(str), PChar(beginStr),
-                         Length(beginStr)*SizeOf(Char));
+      Result:=CompareMem(PWideChar(Pointer(str)), PWideChar(Pointer(beginStr)),
+                         Length(beginStr)*SizeOf(WideChar));
    end;
 end;
 
@@ -706,8 +706,8 @@ begin
    if Length(str)<Length(endStr) then
       Result:=False
    else begin
-      Result:=CompareMem(@str[Length(str)-Length(endStr)+1], PChar(endStr),
-                         Length(endStr)*SizeOf(Char));
+      Result:=CompareMem(@str[Length(str)-Length(endStr)+1], PWideChar(Pointer(endStr)),
+                         Length(endStr)*SizeOf(WideChar));
    end;
 end;
 

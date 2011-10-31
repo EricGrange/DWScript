@@ -46,8 +46,8 @@ const
    cLineTerminator  = #13#10;
 {$ENDIF}
 
-procedure SetDecimalSeparator(c : Char);
-function GetDecimalSeparator : Char;
+procedure SetDecimalSeparator(c : WideChar);
+function GetDecimalSeparator : WideChar;
 
 procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings);
 
@@ -90,7 +90,7 @@ function UTCDateTime : TDateTime;
 
 function AnsiCompareText(const S1, S2 : UnicodeString) : Integer;
 function AnsiCompareStr(const S1, S2 : UnicodeString) : Integer;
-function UnicodeComparePChars(p1 : PChar; n1 : Integer; p2 : PChar; n2 : Integer) : Integer;
+function UnicodeComparePChars(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 : Integer) : Integer;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -135,7 +135,7 @@ end;
 
 // UnicodeComparePChars
 //
-function UnicodeComparePChars(p1 : PChar; n1 : Integer; p2 : PChar; n2 : Integer) : Integer;
+function UnicodeComparePChars(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 : Integer) : Integer;
 const
    CSTR_EQUAL = 2;
 begin
@@ -144,7 +144,7 @@ end;
 
 // SetDecimalSeparator
 //
-procedure SetDecimalSeparator(c : Char);
+procedure SetDecimalSeparator(c : WideChar);
 begin
    {$IFDEF FPC}
       FormatSettings.DecimalSeparator:=c;
@@ -159,7 +159,7 @@ end;
 
 // GetDecimalSeparator
 //
-function GetDecimalSeparator : Char;
+function GetDecimalSeparator : WideChar;
 begin
    {$IFDEF FPC}
       Result:=FormatSettings.DecimalSeparator;
@@ -198,7 +198,7 @@ end;
 class function TPath.GetTempFileName : UnicodeString;
 {$IFDEF VER200} // Delphi 2009
 var
-   tempPath, tempFileName : array [0..MAX_PATH] of Char; // Buf sizes are MAX_PATH+1
+   tempPath, tempFileName : array [0..MAX_PATH] of WideChar; // Buf sizes are MAX_PATH+1
 begin
    if Windows.GetTempPath(MAX_PATH, @tempPath[0])=0 then
       tempPath:='.'; // Current directory

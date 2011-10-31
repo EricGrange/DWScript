@@ -92,7 +92,7 @@ type
          procedure WriteBoolValue(DestAddr: Integer; const Value: Boolean); inline;
          procedure WriteInterfaceValue(DestAddr: Integer; const intf: IUnknown);
 
-         function  SetStrChar(DestAddr: Integer; index : Integer; c : Char) : Boolean;
+         function  SetStrChar(DestAddr: Integer; index : Integer; c : WideChar) : Boolean;
 
          procedure ReadValue(sourceAddr : Integer; var result : Variant); inline;
          function  ReadIntValue(SourceAddr: Integer): Int64; inline;
@@ -653,7 +653,7 @@ end;
 
 // SetStrChar
 //
-function TStackMixIn.SetStrChar(DestAddr: Integer; index : Integer; c : Char) : Boolean;
+function TStackMixIn.SetStrChar(DestAddr: Integer; index : Integer; c : WideChar) : Boolean;
 var
    varData : PVarData;
 begin

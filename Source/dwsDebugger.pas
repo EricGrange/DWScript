@@ -1400,10 +1400,10 @@ procedure TdwsBreakpointableLines.RegisterScriptPos(const scriptPos : TScriptPos
    function CountLines(const src : UnicodeString) : Integer;
    var
       i : Integer;
-      p : PChar;
+      p : PWideChar;
    begin
       Result:=1;
-      p:=PChar(src);
+      p:=PWideChar(src);
       for i:=0 to Length(src)-1 do
          if p[i]=#10 then
             Inc(Result);

@@ -95,7 +95,7 @@ type
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
          procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
          procedure AssignValueAsString(exec : TdwsExecution; const Value: UnicodeString); override;
-         function  SetChar(exec : TdwsExecution; index : Integer; c : Char) : Boolean;
+         function  SetChar(exec : TdwsExecution; index : Integer; c : WideChar) : Boolean;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
          procedure Append(exec : TdwsExecution; const value : UnicodeString);
    end;
@@ -1915,7 +1915,7 @@ end;
 
 // SetChar
 //
-function TStrVarExpr.SetChar(exec : TdwsExecution; index : Integer; c : Char) : Boolean;
+function TStrVarExpr.SetChar(exec : TdwsExecution; index : Integer; c : WideChar) : Boolean;
 begin
    Result:=exec.Stack.SetStrChar(exec.Stack.BasePointer + FStackAddr, index, c);
 end;
@@ -6378,7 +6378,7 @@ end;
 procedure TVarStringArraySetExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
-   c : Char;
+   c : WideChar;
    buf : UnicodeString;
 begin
    i:=FIndexExpr.EvalAsInteger(exec);

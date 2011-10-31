@@ -1429,7 +1429,7 @@ type
 
          function GetValueAsString(const s: UnicodeString): UnicodeString;
          procedure SetValueAsString(const s: UnicodeString; const Value: UnicodeString);
-         function GetValueAsChar(const s: UnicodeString): Char;
+         function GetValueAsChar(const s: UnicodeString): WideChar;
          function GetValueAsDataString(const s: UnicodeString): RawByteString;
          procedure SetValueAsDataString(const s: UnicodeString; const Value: RawByteString);
          function GetValueAsInteger(const s: UnicodeString): Int64;
@@ -1480,7 +1480,7 @@ type
          property Vars[const s: UnicodeString]: IInfo read GetVars;
 
          property ValueAsVariant[const s : UnicodeString] : Variant read GetValueAsVariant write SetValueAsVariant;
-         property ValueAsChar[const s : UnicodeString] : Char read GetValueAsChar;
+         property ValueAsChar[const s : UnicodeString] : WideChar read GetValueAsChar;
          property ValueAsString[const s : UnicodeString] : UnicodeString read GetValueAsString write SetValueAsString;
          property ValueAsDataString[const s : UnicodeString] : RawByteString read GetValueAsDataString write SetValueAsDataString;
          property ValueAsInteger[const s : UnicodeString] : Int64 read GetValueAsInteger write SetValueAsInteger;
@@ -1961,13 +1961,13 @@ end;
 function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString;
 var
    i, n : Integer;
-   pSrc : PChar;
+   pSrc : PWideChar;
    pDest : PByteArray;
 begin
    if s='' then Exit('');
    n:=Length(s);
    SetLength(Result, n);
-   pSrc:=PChar(NativeUInt(s));
+   pSrc:=PWideChar(Pointer(s));
    pDest:=PByteArray(NativeUInt(Result));
    for i:=0 to n-1 do
       pDest[i]:=PByte(@pSrc[i])^;
@@ -5582,7 +5582,7 @@ end;
 
 // GetValueAsChar
 //
-function TProgramInfo.GetValueAsChar(const s: UnicodeString): Char;
+function TProgramInfo.GetValueAsChar(const s: UnicodeString): WideChar;
 var
    buf : UnicodeString;
 begin

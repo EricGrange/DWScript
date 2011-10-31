@@ -260,7 +260,7 @@ end;
 //
 function ConvertFuncParams(const funcParams : array of UnicodeString) : TParamArray;
 
-   procedure ParamSpecifier(c : Char; paramRec : PParamRec);
+   procedure ParamSpecifier(c : WideChar; paramRec : PParamRec);
    begin
       paramRec.IsVarParam:=(c='@');
       paramRec.IsConstParam:=(c='&');
@@ -277,7 +277,7 @@ function ConvertFuncParams(const funcParams : array of UnicodeString) : TParamAr
 
 var
    x, p : Integer;
-   c : Char;
+   c : WideChar;
    paramRec : PParamRec;
 begin
    SetLength(Result, Length(funcParams) div 2);

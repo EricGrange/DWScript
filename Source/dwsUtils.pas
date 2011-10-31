@@ -291,7 +291,7 @@ type
          procedure WriteString(const utf16String : UnicodeString);
          procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos, length : Integer); overload;
-         procedure WriteChar(utf16Char : Char);
+         procedure WriteChar(utf16Char : WideChar);
          // assumes data is an utf16 UnicodeString
          function ToString : UnicodeString; override;
 
@@ -405,7 +405,7 @@ end;
 
 // UnicodeCompareLen
 //
-function UnicodeCompareLen(p1, p2 : PChar; n : Integer) : Integer;
+function UnicodeCompareLen(p1, p2 : PWideChar; n : Integer) : Integer;
 var
    i : Integer;
    remaining : Integer;
@@ -448,11 +448,11 @@ begin
          n2:=Length(s2);
          dn:=n1-n2;
          if dn<0 then begin
-            Result:=UnicodeCompareLen(PChar(NativeInt(s1)), PChar(NativeInt(s2)), n1);
+            Result:=UnicodeCompareLen(PWideChar(NativeInt(s1)), PWideChar(NativeInt(s2)), n1);
             if Result=0 then
                Result:=-1;
          end else begin
-            Result:=UnicodeCompareLen(PChar(NativeInt(S1)), PChar(NativeInt(s2)), n2);
+            Result:=UnicodeCompareLen(PWideChar(NativeInt(S1)), PWideChar(NativeInt(s2)), n2);
             if (Result=0) and (dn>0) then
                Result:=1;
          end;
@@ -503,7 +503,7 @@ begin
    n2:=Length(aBegin);
    if (n2>n1) or (n2=0) then
       Result:=False
-   else Result:=(UnicodeCompareLen(PChar(aStr), PChar(aBegin), n2)=0);
+   else Result:=(UnicodeCompareLen(PWideChar(aStr), PWideChar(aBegin), n2)=0);
 end;
 
 // ------------------
@@ -1271,15 +1271,15 @@ var
 begin
    if utf16String<>'' then begin
       stringCracker:=NativeInt(utf16String);
-      Write(Pointer(stringCracker)^, PInteger(stringCracker-SizeOf(Integer))^*SizeOf(Char));
+      Write(Pointer(stringCracker)^, PInteger(stringCracker-SizeOf(Integer))^*SizeOf(WideChar));
    end;
 end;
 
 // WriteChar
 //
-procedure TWriteOnlyBlockStream.WriteChar(utf16Char : Char);
+procedure TWriteOnlyBlockStream.WriteChar(utf16Char : WideChar);
 begin
-   Write(utf16Char, SizeOf(Char));
+   Write(utf16Char, SizeOf(WideChar));
 end;
 
 // ToString
@@ -1323,7 +1323,7 @@ begin
    if p>n then p:=n;
    length:=p-startPos+1;
    if length>0 then
-      Write(utf16String[startPos], length*SizeOf(Char));
+      Write(utf16String[startPos], length*SizeOf(WideChar));
 end;
 
 // ------------------

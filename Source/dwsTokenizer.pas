@@ -66,15 +66,15 @@ type
    TTokenBuffer = record
       Len : Integer;
       Capacity : Integer;
-      Buffer : array of Char;
-      procedure AppendChar(c : Char);
+      Buffer : array of WideChar;
+      procedure AppendChar(c : WideChar);
       procedure Grow;
-      function LastChar : Char;
+      function LastChar : WideChar;
       function ToStr : UnicodeString; overload; inline;
       procedure ToStr(var result : UnicodeString); overload;
       procedure AppendToStr(var result : UnicodeString);
       procedure ToUpperStr(var result : UnicodeString); overload;
-      function UpperFirstChar : Char;
+      function UpperFirstChar : WideChar;
       function UpperMatchLen(const str : UnicodeString) : Boolean;
       function ToInt64 : Int64;
       function ToFloat : Double;
@@ -100,7 +100,7 @@ type
      FOwnedTransitions : TTightList;
      FTransitions : array [0..127] of TTransition;
      destructor Destroy; override;
-     function FindTransition(c : Char) : TTransition;
+     function FindTransition(c : WideChar) : TTransition;
      procedure AddTransition(const chrs : TCharsType; o : TTransition);
      procedure SetElse(o : TTransition);
    end;
@@ -127,9 +127,9 @@ type
    end;
 
    TCheckTransition = class(TTransition);
-   TSeekTransition = class(TCheckTransition); // Transition, next char
+   TSeekTransition = class(TCheckTransition); // Transition, next WideChar
    TConsumeTransition = class(TSeekTransition);
-   // Transition, consume char, next char
+   // Transition, consume WideChar, next WideChar
 
    TSwitchHandler = function(const SwitchName: UnicodeString): Boolean of object;
 
@@ -158,7 +158,7 @@ type
          FMsgs : TdwsCompileMessageList;
          FNextToken : TToken;
          FPos : TScriptPos;
-         FPosPtr : PChar;
+         FPosPtr : PWideChar;
          FRules : TTokenizerRules;
          FStartState : TState;
          FSwitchHandler : TSwitchHandler;
@@ -199,7 +199,7 @@ type
 
          function TestDeleteNamePos(var aName : UnicodeString; var aPos : TScriptPos) : Boolean; inline;
 
-         property PosPtr : PChar read FPosPtr;
+         property PosPtr : PWideChar read FPosPtr;
          property Text : UnicodeString read FText;
          property DefaultPos : TScriptPos read FDefaultPos;
          property HotPos : TScriptPos read FHotPos;
@@ -271,7 +271,7 @@ const
 
 // AppendChar
 //
-procedure TTokenBuffer.AppendChar(c : Char);
+procedure TTokenBuffer.AppendChar(c : WideChar);
 begin
    if Len>=Capacity then Grow;
    Buffer[Len]:=c;
@@ -290,7 +290,7 @@ end;
 
 // LastChar
 //
-function TTokenBuffer.LastChar : Char;
+function TTokenBuffer.LastChar : WideChar;
 begin
    if Len>0 then
       Result:=Buffer[Len-1]
@@ -312,7 +312,7 @@ begin
       result:=''
    else begin
       SetLength(result, Len);
-      Move(Buffer[0], Pointer(NativeInt(result))^, Len*SizeOf(Char));
+      Move(Buffer[0], Pointer(NativeInt(result))^, Len*SizeOf(WideChar));
    end;
 end;
 
@@ -325,7 +325,7 @@ begin
    if Len>0 then begin
       n:=Length(result);
       SetLength(result, n+Len);
-      Move(Buffer[0], PChar(NativeInt(result))[n], Len*SizeOf(Char));
+      Move(Buffer[0], PWideChar(NativeInt(result))[n], Len*SizeOf(WideChar));
    end;
 end;
 
@@ -334,18 +334,18 @@ end;
 procedure TTokenBuffer.ToUpperStr(var result : UnicodeString);
 var
    i : Integer;
-   ch : Char;
-   pResult : PChar;
+   ch : WideChar;
+   pResult : PWideChar;
 begin
    if Len=0 then
       result:=''
    else begin
       SetLength(result, Len);
-      pResult:=PChar(result);
+      pResult:=PWideChar(result);
       for i:=0 to Len-1 do begin
          ch:=Buffer[i];
          case ch of
-            'a'..'z' : pResult[i]:=Char(Word(ch) xor $0020)
+            'a'..'z' : pResult[i]:=WideChar(Word(ch) xor $0020)
          else
             pResult[i]:=ch;
          end;
@@ -355,14 +355,14 @@ end;
 
 // UpperFirstChar
 //
-function TTokenBuffer.UpperFirstChar : Char;
+function TTokenBuffer.UpperFirstChar : WideChar;
 begin
    if Len=0 then
       Result:=#0
    else begin
       Result:=Buffer[0];
       case Result of
-         'a'..'z' : Result:=Char(Word(Result) xor $0020)
+         'a'..'z' : Result:=WideChar(Word(Result) xor $0020)
       end;
    end;
 end;
@@ -403,7 +403,7 @@ var
    buf : Extended;
 begin
    AppendChar(#0);
-   if not TextToFloat(PChar(@Buffer[0]), buf, fvExtended, cFormatSettings) then
+   if not TextToFloat(PWideChar(@Buffer[0]), buf, fvExtended, cFormatSettings) then
       raise EConvertError.Create('');
    Result:=buf;
 end;
@@ -559,14 +559,14 @@ end;
 function TTokenBuffer.UpperMatchLen(const str : UnicodeString) : Boolean;
 var
    i : Integer;
-   p : PChar;
-   ch : Char;
+   p : PWideChar;
+   ch : WideChar;
 begin
-   p:=PChar(Pointer(str));
+   p:=PWideChar(Pointer(str));
    for i:=1 to Len-1 do begin
       ch:=Buffer[i];
       case ch of
-         'a'..'z' : if Char(Word(ch) xor $0020)<>p[i] then Exit(False);
+         'a'..'z' : if WideChar(Word(ch) xor $0020)<>p[i] then Exit(False);
       else
          if ch<>p[i] then Exit(False);
       end;
@@ -578,14 +578,14 @@ end;
 //
 function TTokenBuffer.ToAlphaType : TTokenType;
 var
-   ch : Char;
+   ch : WideChar;
    i : Integer;
    lookups : PTokenAlphaLookups;
 begin
    if (Len<2) or (Len>14) then Exit(ttNAME);
    ch:=Buffer[0];
    case ch of
-      'a'..'x' : lookups:=@vAlphaToTokenType[Len][Char(Word(ch) xor $0020)];
+      'a'..'x' : lookups:=@vAlphaToTokenType[Len][WideChar(Word(ch) xor $0020)];
       'A'..'X' : lookups:=@vAlphaToTokenType[Len][ch];
    else
       Exit(ttNAME);
@@ -601,7 +601,7 @@ end;
 //
 class function TTokenBuffer.StringToTokenType(const str : UnicodeString) : TTokenType;
 var
-   c : Char;
+   c : WideChar;
    buffer : TTokenBuffer;
 begin
    if str='' then Exit(ttNone);
@@ -628,7 +628,7 @@ end;
 
 // FindTransition
 //
-function TState.FindTransition(c : Char) : TTransition;
+function TState.FindTransition(c : WideChar) : TTransition;
 var
    oc : Integer;
 begin
@@ -714,7 +714,7 @@ begin
    FDefaultPos.SourceFile := sourceFile;
    FHotPos := FDefaultPos;
    FPos := FDefaultPos;
-   FPosPtr := PChar(FText);
+   FPosPtr := PWideChar(FText);
    FPos.Line := 1;
    FPos.Col := 1;
    FTokenBuf.Grow;
@@ -901,7 +901,7 @@ begin
    else begin
       n:=Length(result.FString)+1;
       SetLength(result.FString, n);
-      result.FString[n]:=Char(tokenIntVal);
+      result.FString[n]:=WideChar(tokenIntVal);
       result.FTyp:=ttStrVal;
    end;
 end;
@@ -954,7 +954,7 @@ var
    state : TState;
    trns : TTransition;
    trnsClassType : TClass;
-   ch : Char;
+   ch : WideChar;
 begin
    Result:=AllocateToken;
 
