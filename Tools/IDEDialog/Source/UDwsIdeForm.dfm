@@ -1,8 +1,8 @@
 object DwsIdeForm: TDwsIdeForm
-  Left = 234
-  Top = 85
+  Left = 281
+  Top = 84
   Caption = 'Dws Ide'
-  ClientHeight = 867
+  ClientHeight = 771
   ClientWidth = 901
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -23,21 +23,38 @@ object DwsIdeForm: TDwsIdeForm
   object Splitter1: TSplitter
     Left = 637
     Top = 0
-    Height = 867
+    Height = 771
     Align = alRight
+    ExplicitHeight = 867
   end
   object pnlEditor: TPanel
     Left = 0
     Top = 0
     Width = 637
-    Height = 867
+    Height = 771
     Align = alClient
     BevelOuter = bvNone
     BorderWidth = 5
+    DoubleBuffered = True
+    ParentBackground = False
+    ParentDoubleBuffered = False
     TabOrder = 0
+    ExplicitHeight = 867
+    object imgTabs: TImage
+      Left = 5
+      Top = 5
+      Width = 627
+      Height = 22
+      Align = alTop
+      OnMouseDown = pcEditorMouseDown
+      OnMouseLeave = imgTabsMouseLeave
+      OnMouseMove = imgTabsMouseMove
+      ExplicitLeft = 2
+      ExplicitTop = 0
+    end
     object StatusBar: TStatusBar
       Left = 5
-      Top = 843
+      Top = 747
       Width = 627
       Height = 19
       Panels = <
@@ -56,42 +73,32 @@ object DwsIdeForm: TDwsIdeForm
         item
           Width = 50
         end>
+      ExplicitTop = 843
     end
     object pnlPageControl: TPanel
       Left = 5
-      Top = 5
+      Top = 27
       Width = 627
-      Height = 838
+      Height = 720
       Align = alClient
       BevelOuter = bvNone
-      DoubleBuffered = True
-      ParentDoubleBuffered = False
+      ParentBackground = False
       TabOrder = 1
       OnResize = pnlPageControlResize
-      ExplicitLeft = 4
-      ExplicitTop = -1
-      object imgTabs: TImage
-        Left = 0
-        Top = 0
-        Width = 627
-        Height = 22
-        Align = alTop
-        OnMouseDown = pcEditorMouseDown
-        OnMouseLeave = imgTabsMouseLeave
-        OnMouseMove = imgTabsMouseMove
-        ExplicitLeft = 2
-      end
+      ExplicitTop = 48
+      ExplicitHeight = 795
     end
   end
   object Panel2: TPanel
     Left = 640
     Top = 0
     Width = 261
-    Height = 867
+    Height = 771
     Align = alRight
     BevelOuter = bvNone
     BorderWidth = 5
     TabOrder = 1
+    ExplicitHeight = 867
     inline DwsIdeLocalVariablesFrame: TDwsIdeLocalVariablesFrame
       Left = 5
       Top = 5
@@ -564,7 +571,7 @@ object DwsIdeForm: TDwsIdeForm
     Left = 176
     Top = 256
     Bitmap = {
-      494C01011A008000040210001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C01011A008000080210001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000007000000001002000000000000070
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000

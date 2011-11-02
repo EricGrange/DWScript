@@ -78,7 +78,9 @@ type
     FExecutableLines : TExecutableLines;
     FTabLeft : Integer;
     FTabWidth : Integer;
-    FCloseButtonRect : TRect;
+
+    function TabRight : Integer;
+    function CloseButtonRect : TRect;
 
     function  GetFilename: string;
     procedure SetFileName(const Value: string);
@@ -346,7 +348,11 @@ type
 
     FActivePageIndex : Integer;
     FHoveredPageIndex : Integer;
+    FBasePageIndex : Integer;
     FHoveredCloseButton : Boolean;
+    FHoveredLeftArrow, FHoveredRightArrow : Boolean;
+    FLeftArrowActive, FRightArrowActive : Boolean;
+    FTabArrowLeft, FTabArrowRight : TRect;
     FPages : TObjectList<TEditorPage>;
 
     procedure CodeSuggest( ACodeSuggestionMode : TCodeSuggestionMode);
@@ -415,6 +421,7 @@ type
     procedure RunProcedureByName( const AName : string );
 
     procedure RefreshTabs;
+    procedure RefreshTabArrows;
     function IndexOfTab(x : Integer) : Integer;
 
   PUBLIC
@@ -1124,11 +1131,12 @@ end;
 
 // RefreshTabs
 //
-procedure TDwsIdeForm.RefreshTabs;
 const
    cMargin = 4;
    cSlantMargin = 10;
    cCloseButtonSize = 12;
+   cArrowButtonSize = 15;
+procedure TDwsIdeForm.RefreshTabs;
 
    function ColorLerp(col1, col2 : TColor; f : Single) : TColor;
    var
@@ -1185,6 +1193,8 @@ const
    begin
       tabRect:=Rect(page.FTabLeft, canvas.ClipRect.Top,
                     page.FTabLeft+page.FTabWidth, canvas.ClipRect.Bottom);
+      if    (tabRect.Right<canvas.ClipRect.Left)
+         or (tabRect.Left>canvas.ClipRect.Right) then Exit;
 
       if active then
          if hovered then
@@ -1208,13 +1218,13 @@ const
       canvas.TextRect(r, txt, [tfLeft, tfVerticalCenter, tfSingleLine, tfNoPrefix, tfEndEllipsis]);
 
       if not UseThemes then begin
-         Windows.DrawFrameControl(canvas.Handle, page.FCloseButtonRect,
+         Windows.DrawFrameControl(canvas.Handle, page.CloseButtonRect,
                                   DFC_CAPTION, DFCS_CAPTIONCLOSE+DFCS_FLAT);
       end else begin
          if hovered and hoveredClose then
              closeBtnDrawDetails:=ThemeServices.GetElementDetails(twSmallCloseButtonHot)
          else closeBtnDrawDetails:=ThemeServices.GetElementDetails(twSmallCloseButtonDisabled);
-         ThemeServices.DrawElement(canvas.Handle, closeBtnDrawDetails, page.FCloseButtonRect);
+         ThemeServices.DrawElement(canvas.Handle, closeBtnDrawDetails, page.CloseButtonRect);
       end;
 
       canvas.Pen.Color:=clBtnShadow;
@@ -1237,6 +1247,7 @@ var
    bmp : TBitmap;
    canvas : TCanvas;
    i, x : Integer;
+   availableWidth : Integer;
    page : TEditorPage;
 begin
    bmp:=imgTabs.Picture.Bitmap;
@@ -1244,22 +1255,45 @@ begin
    canvas.Brush.Style:=bsSolid;
    canvas.Font:=Self.Font;
 
-   x:=0;
-   // compute tab positions
+   canvas.Brush.Color:=clBtnFace;
+   canvas.FillRect(canvas.ClipRect);
+
+   if FPages.Count=0 then Exit;
+
+   if FActivePageIndex<0 then
+      FActivePageIndex:=0;
+
+   // compute tab width
    for i:=0 to FPages.Count-1 do begin
       page:=FPages[i];
-      page.FTabLeft:=x;
       page.FTabWidth:=  cMargin + SmallImages.Width
                       + cMargin + canvas.TextWidth(page.Caption)
                       + cMargin + cCloseButtonSize + 2*cMargin + cSlantMargin;
-      page.FCloseButtonRect:=Rect(0, 0, cCloseButtonSize, cCloseButtonSize);
-      x:=x+page.FTabWidth;
-      OffsetRect(page.FCloseButtonRect, x-cCloseButtonSize-cMargin-cSlantMargin,
-                 1+(bmp.Height-cCloseButtonSize) div 2);
    end;
 
-   canvas.Brush.Color:=clBtnFace;
-   canvas.FillRect(canvas.ClipRect);
+   if FBasePageIndex>=FPages.Count then
+      FBasePageIndex:=FPages.Count-1;
+
+   availableWidth:=bmp.Width-2*cArrowButtonSize;
+
+   while True do begin
+      x:=0;
+      // compute tab positions
+      for i:=FBasePageIndex to FPages.Count-1 do begin
+         page:=FPages[i];
+         page.FTabLeft:=x;
+         x:=x+page.FTabWidth;
+      end;
+      x:=0;
+      for i:=FBasePageIndex-1 downto 0 do begin
+         page:=FPages[i];
+         x:=x-page.FTabWidth;
+         page.FTabLeft:=x;
+      end;
+      if    (FBasePageIndex=FActivePageIndex)
+         or (FPages[FBasePageIndex].TabRight<=availableWidth) then Break;
+      Inc(FBasePageIndex);
+   end;
 
    // render tabs (right to left for slant overlap)
    for i:=FPages.Count-1 downto 0 do begin
@@ -1271,6 +1305,59 @@ begin
       page:=FPages[FActivePageIndex];
       RenderTab(canvas, page, True, FActivePageIndex=FHoveredPageIndex, FHoveredCloseButton);
    end;
+
+   RefreshTabArrows;
+end;
+
+// RefreshTabArrows
+//
+procedure TDwsIdeForm.RefreshTabArrows;
+var
+   dc : THandle;
+   sbElement : TThemedScrollBar;
+begin
+   if FPages.Count<=1 then Exit;
+
+   FLeftArrowActive:=(FBasePageIndex>0);
+   FRightArrowActive:=    (FBasePageIndex<FPages.Count-1)
+                      and (FPages[FPages.Count-1].TabRight>imgTabs.Width-2*cArrowButtonSize);
+
+   if not (FLeftArrowActive or FRightArrowActive) then Exit;
+
+   dc:=imgTabs.Picture.Bitmap.Canvas.Handle;
+
+   FTabArrowLeft.Top:=(imgTabs.Height-cArrowButtonSize) div 2;
+   FTabArrowLeft.Bottom:=FTabArrowLeft.Top+cArrowButtonSize;
+   FTabArrowLeft.Left:=imgTabs.Width-2*cArrowButtonSize;
+   FTabArrowLeft.Right:=imgTabs.Width-cArrowButtonSize;
+   FTabArrowRight:=FTabArrowLeft;
+   OffsetRect(FTabArrowRight, cArrowButtonSize, 0);
+
+   if not UseThemes then begin
+      Windows.DrawFrameControl(dc, FTabArrowLeft, DFC_SCROLL,
+                                DFCS_SCROLLLEFT+DFCS_FLAT
+                               +Ord(not FLeftArrowActive)*DFCS_INACTIVE
+                               +Ord(FHoveredLeftArrow)*DFCS_HOT);
+      Windows.DrawFrameControl(dc, FTabArrowRight, DFC_SCROLL,
+                                DFCS_SCROLLRIGHT+DFCS_FLAT
+                               +Ord(not FRightArrowActive)*DFCS_INACTIVE
+                               +Ord(FHoveredRightArrow)*DFCS_HOT);
+   end else begin
+      if FLeftArrowActive then
+         if FHoveredLeftArrow then
+            sbElement:=tsArrowBtnLeftHot
+         else sbElement:=tsArrowBtnLeftNormal
+      else sbElement:=tsArrowBtnLeftDisabled;
+      ThemeServices.DrawElement(dc, ThemeServices.GetElementDetails(sbElement), FTabArrowLeft);
+      if FRightArrowActive then
+         if FHoveredRightArrow then
+            sbElement:=tsArrowBtnRightHot
+         else sbElement:=tsArrowBtnRightNormal
+      else sbElement:=tsArrowBtnRightDisabled;
+      ThemeServices.DrawElement(dc, ThemeServices.GetElementDetails(sbElement), FTabArrowRight);
+   end;
+
+   imgTabs.Invalidate;
 end;
 
 // IndexOfTab
@@ -1280,10 +1367,12 @@ var
    i : Integer;
    page : TEditorPage;
 begin
-   for i:=0 to FPages.Count-1 do begin
-      page:=FPages[i];
-      if (x>=page.FTabLeft) and (x<page.FTabLeft+page.FTabWidth) then
-         Exit(i);
+   if x<imgTabs.Width-cArrowButtonSize*2 then begin
+      for i:=FBasePageIndex to FPages.Count-1 do begin
+         page:=FPages[i];
+         if (x>=page.FTabLeft) and (x<page.FTabLeft+page.FTabWidth) then
+            Exit(i);
+      end;
    end;
    Result:=-1;
 end;
@@ -1724,7 +1813,8 @@ procedure TDwsIdeForm.imgTabsMouseMove(Sender: TObject; Shift: TShiftState; X,
   Y: Integer);
 var
    newHover : Integer;
-   newHoverCloseButton, needRefresh : Boolean;
+   newHoverCloseButton, needRefresh, needRefreshArrows : Boolean;
+   newHoverArrow : Boolean;
 begin
    needRefresh:=False;
    newHover:=IndexOfTab(x);
@@ -1737,14 +1827,29 @@ begin
       else imgTabs.Hint:='';
    end;
    if newHover>=0 then begin
-      newHoverCloseButton:=PtInRect(FPages[newHover].FCloseButtonRect, Point(X, Y));
+      newHoverCloseButton:=PtInRect(FPages[newHover].CloseButtonRect, Point(X, Y));
       if newHoverCloseButton<>FHoveredCloseButton then begin
          FHoveredCloseButton:=newHoverCloseButton;
          needRefresh:=True;
       end;
    end;
+
+   needRefreshArrows:=False;
+   newHoverArrow:=FLeftArrowActive and PtInRect(FTabArrowLeft, Point(X, Y));
+   if newHoverArrow<>FHoveredLeftArrow then begin
+      FHoveredLeftArrow:=newHoverArrow;
+      needRefreshArrows:=True;
+   end;
+   newHoverArrow:=FRightArrowActive and PtInRect(FTabArrowRight, Point(X, Y));
+   if newHoverArrow<>FHoveredRightArrow then begin
+      FHoveredRightArrow:=newHoverArrow;
+      needRefreshArrows:=True;
+   end;
+
    if needRefresh then
-      RefreshTabs;
+      RefreshTabs
+   else if needRefreshArrows then
+      RefreshTabArrows;
 end;
 
 function TDwsIdeForm.IsCompiled: boolean;
@@ -1786,7 +1891,7 @@ begin
    tabIndex:=IndexOfTab(X);
    if (tabIndex>=0) then begin
       SetEditorCurrentPageIndex(tabIndex);
-      if PtInRect(FPages[tabIndex].FCloseButtonRect, FpcEditorLastMouseXY) then begin
+      if PtInRect(FPages[tabIndex].CloseButtonRect, FpcEditorLastMouseXY) then begin
          EditorPageClose(tabIndex);
          Exit;
       end;
@@ -1798,6 +1903,15 @@ begin
     P := imgTabs.ClientToScreen( FpcEditorLastMouseXY );
     EditorPageTabContextMenu.Popup( P.X, P.Y );
     end;
+
+  if FHoveredLeftArrow then begin
+     Dec(FBasePageIndex);
+     RefreshTabs;
+  end;
+  if FHoveredRightArrow then begin
+     Inc(FBasePageIndex);
+     RefreshTabs;
+  end;
 end;
 
 procedure TDwsIdeForm.pnlPageControlResize(Sender: TObject);
@@ -2239,12 +2353,6 @@ begin
     Result := sD + sF + IntToStr(I) + sE;
     end;
 end;
-
-
-
-
-
-
 
 function TDwsIdeForm.GetExecutableLines( const AUnitName : string ) : TLineNumbers;
 // Returns the executable line numbers for this unit.
@@ -2799,6 +2907,23 @@ begin
     SavetoFile( False );
     end;
 
+end;
+
+// TabRight
+//
+function TEditorPage.TabRight : Integer;
+begin
+   Result:=FTabLeft+FTabWidth;
+end;
+
+// CloseButtonRect
+//
+function TEditorPage.CloseButtonRect : TRect;
+begin
+   Result.Right:=FTabLeft+FTabWidth-cMargin-cSlantMargin;
+   Result.Left:=Result.Right-cCloseButtonSize;
+   Result.Top:=1+(FForm.imgTabs.Height-cCloseButtonSize) div 2;
+   Result.Bottom:=Result.Top+cCloseButtonSize;
 end;
 
 {$Message 'Add editor action images'}
