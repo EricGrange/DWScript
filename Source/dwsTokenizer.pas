@@ -97,12 +97,16 @@ type
    TTransition = class;
 
    TState = class
-     FOwnedTransitions : TTightList;
-     FTransitions : array [0..127] of TTransition;
-     destructor Destroy; override;
-     function FindTransition(c : WideChar) : TTransition;
-     procedure AddTransition(const chrs : TCharsType; o : TTransition);
-     procedure SetElse(o : TTransition);
+      private
+         FOwnedTransitions : TTightList;
+         FTransitions : array [0..127] of TTransition;
+
+      public
+         destructor Destroy; override;
+
+         function FindTransition(c : WideChar) : TTransition;
+         procedure AddTransition(const chrs : TCharsType; o : TTransition);
+         procedure SetElse(o : TTransition);
    end;
 
    TConvertAction = (caNone, caClear, caName, caHex, caInteger, caFloat, caChar,
@@ -110,20 +114,26 @@ type
    TTransitionOptions = set of (toStart, toFinal);
 
    TTransition = class
-     NextState: TState;
-     Start: Boolean; // Marks the begin of a Token
-     Final: Boolean; // Marks the end of a Token
-     Action: TConvertAction;
-     constructor Create(nstate: TState; opts: TTransitionOptions; actn: TConvertAction);
+      private
+         NextState : TState;
+         Start : Boolean; // Marks the begin of a Token
+         Final : Boolean; // Marks the end of a Token
+         Action : TConvertAction;
+
+      public
+         constructor Create(nstate: TState; opts: TTransitionOptions; actn: TConvertAction);
    end;
 
    TElseTransition = class(TTransition)
-     constructor Create(actn: TConvertAction);
+     constructor Create(actn : TConvertAction);
    end;
 
    TErrorTransition = class(TTransition)
-     ErrorMessage: UnicodeString;
-     constructor Create(const msg: UnicodeString);
+      private
+         ErrorMessage : UnicodeString;
+
+      public
+         constructor Create(const msg : UnicodeString);
    end;
 
    TCheckTransition = class(TTransition);

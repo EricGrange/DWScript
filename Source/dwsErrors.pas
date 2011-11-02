@@ -98,9 +98,14 @@ type
    // TScriptMessage
    //
    TScriptMessage = class(TdwsMessage)
-      Pos: TScriptPos;
-      constructor Create(Msgs: TdwsMessageList; const Text: UnicodeString; const P: TScriptPos); overload;
-      function AsInfo: UnicodeString; override;
+      private
+         FPos : TScriptPos;
+
+      public
+         constructor Create(msgs: TdwsMessageList; const text : UnicodeString; const p : TScriptPos); overload;
+         function AsInfo : UnicodeString; override;
+
+         property Pos : TScriptPos read FPos write FPos;
    end;
 
    TScriptMessageClass = class of TScriptMessage;
@@ -396,7 +401,7 @@ begin
          sf.Name:=srcMsg.Pos.SourceFile.Name;
          sf.Code:=srcMsg.Pos.SourceFile.Code;
          FSourceFiles.Add(sf);
-         srcMsg.Pos.SourceFile:=sf;
+         srcMsg.FPos.SourceFile:=sf;
          if srcMsg.Pos.Line=1 then
             srcMsg.Pos.Col:=srcMsg.Pos.Col+colOffset;
          srcMsg.Pos.Line:=srcMsg.Pos.Line+lineOffset;

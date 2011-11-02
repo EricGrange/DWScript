@@ -38,10 +38,13 @@ type
     property Size: Integer read FSize;
   end;
 
-  TStringHashItem = class(THashItem)
-    Key: string;
-    function HashCode: Integer; override;
-    function Equals(Item: THashItem): Boolean; override;
+   TStringHashItem = class(THashItem)
+      private
+         Key : string;
+
+      public
+         function HashCode : Integer; override;
+         function Equals(Item : THashItem): Boolean; override;
   end;
 
   TStringHashTable = class(THashTable)
@@ -56,10 +59,13 @@ type
     function RemoveKey(const Key: string): ValueType;
   end;
 
-  TIntegerHashItem = class(THashItem)
-    Key: Integer;
-    function HashCode: Integer; override;
-    function Equals(Item: THashItem): Boolean; override;
+   TIntegerHashItem = class(THashItem)
+      private
+         Key: Integer;
+
+      public
+         function HashCode: Integer; override;
+         function Equals(Item: THashItem): Boolean; override;
   end;
 
   TIntegerHashTable = class(THashTable)

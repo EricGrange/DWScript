@@ -43,8 +43,8 @@ type
    end;
 
    TIdwsUnitList = class(TSimpleList<IdwsUnit>)
-      function IndexOf(const unitName : UnicodeString) : Integer; overload;
-      function IndexOf(const aUnit : IdwsUnit) : Integer; overload;
+      function IndexOfName(const unitName : UnicodeString) : Integer;
+      function IndexOf(const aUnit : IdwsUnit) : Integer;
       procedure AddUnits(list : TIdwsUnitList);
    end;
 
@@ -811,7 +811,7 @@ end;
 
 // IndexOf (name)
 //
-function TIdwsUnitList.IndexOf(const unitName : UnicodeString) : Integer;
+function TIdwsUnitList.IndexOfName(const unitName : UnicodeString) : Integer;
 begin
    for Result:=0 to Count-1 do
       if SameText(Items[Result].GetUnitName, unitName) then
