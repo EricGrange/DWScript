@@ -90,39 +90,45 @@ type
          constructor Create(table: TSymbolTable; const funcName: UnicodeString;
                             const params : TParamArray; const funcType: UnicodeString;
                             const isStateLess : Boolean = False); override;
-         function DoEval(args : TExprBaseList) : Variant; virtual; abstract;
    end;
 
    TInternalMagicProcedure = class(TInternalMagicFunction)
       public
-         function DoEval(args : TExprBaseList) : Variant; override;
          procedure DoEvalProc(args : TExprBaseList); virtual; abstract;
    end;
 
+   TInternalMagicDataFunction = class(TInternalMagicFunction)
+      public
+         procedure DoEval(args : TExprBaseList; var result : TDataPtr); virtual; abstract;
+   end;
+   TInternalMagicDataFunctionClass = class of TInternalMagicDataFunction;
+
+   TInternalMagicVariantFunction = class(TInternalMagicFunction)
+      public
+         function DoEvalAsVariant(args : TExprBaseList) : Variant; virtual; abstract;
+   end;
+   TInternalMagicVariantFunctionClass = class of TInternalMagicVariantFunction;
+
    TInternalMagicIntFunction = class(TInternalMagicFunction)
       public
-         function DoEval(args : TExprBaseList) : Variant; override;
          function DoEvalAsInteger(args : TExprBaseList) : Int64; virtual; abstract;
    end;
    TInternalMagicIntFunctionClass = class of TInternalMagicIntFunction;
 
    TInternalMagicBoolFunction = class(TInternalMagicFunction)
       public
-         function DoEval(args : TExprBaseList) : Variant; override;
          function DoEvalAsBoolean(args : TExprBaseList) : Boolean; virtual; abstract;
    end;
    TInternalMagicBoolFunctionClass = class of TInternalMagicBoolFunction;
 
    TInternalMagicFloatFunction = class(TInternalMagicFunction)
       public
-         function DoEval(args : TExprBaseList) : Variant; override;
          procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); virtual; abstract;
    end;
    TInternalMagicFloatFunctionClass = class of TInternalMagicFloatFunction;
 
    TInternalMagicStringFunction = class(TInternalMagicFunction)
       public
-         function DoEval(args : TExprBaseList) : Variant; override;
          procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); virtual; abstract;
    end;
    TInternalMagicStringFunctionClass = class of TInternalMagicStringFunction;
@@ -460,67 +466,6 @@ begin
   sym.InternalFunction:=Self;
   sym.IsStateless:=isStateLess;
   table.AddSymbol(sym);
-end;
-
-// ------------------
-// ------------------ TInternalMagicProcedure ------------------
-// ------------------
-
-// DoEval
-//
-function TInternalMagicProcedure.DoEval(args : TExprBaseList) : Variant;
-begin
-   DoEvalProc(args);
-end;
-
-// ------------------
-// ------------------ TInternalMagicIntFunction ------------------
-// ------------------
-
-// DoEval
-//
-function TInternalMagicIntFunction.DoEval(args : TExprBaseList) : Variant;
-begin
-   Result:=DoEvalAsInteger(args);
-end;
-
-// ------------------
-// ------------------ TInternalMagicBoolFunction ------------------
-// ------------------
-
-// DoEval
-//
-function TInternalMagicBoolFunction.DoEval(args : TExprBaseList) : Variant;
-begin
-   Result:=DoEvalAsBoolean(args);
-end;
-
-// ------------------
-// ------------------ TInternalMagicFloatFunction ------------------
-// ------------------
-
-// DoEval
-//
-function TInternalMagicFloatFunction.DoEval(args : TExprBaseList) : Variant;
-var
-   buf : Double;
-begin
-   DoEvalAsFloat(args, buf);
-   Result:=buf;
-end;
-
-// ------------------
-// ------------------ TInternalMagicStringFunction ------------------
-// ------------------
-
-// DoEval
-//
-function TInternalMagicStringFunction.DoEval(args : TExprBaseList) : Variant;
-var
-   buf : UnicodeString;
-begin
-   DoEvalAsString(args, buf);
-   Result:=buf;
 end;
 
 // ------------------

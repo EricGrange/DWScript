@@ -1639,6 +1639,7 @@ function TdwsCompiler.ReadConstDecl(constSymbolClass : TConstSymbolClass) : TCon
 var
    name : UnicodeString;
    expr : TTypedExpr;
+   dataExpr : TDataExpr;
    typ : TTypeSymbol;
    sas : TStaticArraySymbol;
    detachTyp : Boolean;
@@ -1684,7 +1685,7 @@ begin
             if (expr=nil) or (not expr.IsConstant) then begin
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
                // keep compiling
-               Result:=constSymbolClass.Create(name, typ, Null);
+               Result:=constSymbolClass.Create(name, typ);
                Exit;
             end;
 
@@ -1693,9 +1694,20 @@ begin
                FProg.Table.AddSymbol(sas);
                Result:=constSymbolClass.Create(name, sas, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
             end else begin
-               Assert(typ.Size=1);
-               expr.EvalAsVariant(FExec, val);
-               Result:=constSymbolClass.Create(name, typ, val);
+               if typ.Size=1 then begin
+                  expr.EvalAsVariant(FExec, val);
+                  Result:=constSymbolClass.Create(name, typ, val);
+               end else begin
+                  dataExpr:=(expr as TDataExpr);
+                  FExec.Stack.Push(FProg.DataSize);
+                  try
+                     Result:=constSymbolClass.Create(name, typ,
+                                                     dataExpr.Data[FExec],
+                                                     dataExpr.Addr[FExec]);
+                  finally
+                     FExec.Stack.Pop(FProg.DataSize);
+                  end;
+               end;
             end;
 
             if coSymbolDictionary in FOptions then

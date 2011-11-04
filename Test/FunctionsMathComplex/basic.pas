@@ -10,7 +10,6 @@ c := Complex(1, -2);
 PrintLn(ComplexToStr(c));
 
 c:=ComplexAdd(c, Complex(4, 8));
-//c := c + Complex(4, 8);
 
 PrintLn(ComplexToStr(c));
 
@@ -19,6 +18,10 @@ c := c + c2;
 PrintLn(ComplexToStr(c));
 
 c := c + c;
+
+PrintLn(ComplexToStr(c));
+
+c := c - c2;
 
 PrintLn(ComplexToStr(c));
 

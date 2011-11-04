@@ -21,25 +21,34 @@ unit dwsMathComplexFunctions;
 interface
 
 uses dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators, dwsStack,
-   dwsTokenizer, SysUtils;
+   dwsTokenizer, SysUtils, dwsUtils;
 
 type
-   TComplexBinOpExpr = class(TInternalFunction)
+   TComplexMakeExpr = class(TInternalMagicDataFunction)
+      public
+         procedure DoEval(args : TExprBaseList; var result : TDataPtr); override;
    end;
 
-   TComplexMakeExpr = class(TComplexBinOpExpr)
+   TComplexToStrExpr = class(TInternalMagicStringFunction)
       public
-         procedure Execute(info : TProgramInfo); override;
+         procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
    end;
 
-   TComplexToStrExpr = class(TComplexBinOpExpr)
-      public
-         procedure Execute(info : TProgramInfo); override;
-   end;
+   TComplexBinOpExpr = class(TInternalMagicDataFunction);
 
    TComplexAddOpExpr = class(TComplexBinOpExpr)
       public
-         procedure Execute(info : TProgramInfo); override;
+         procedure DoEval(args : TExprBaseList; var result : TDataPtr); override;
+   end;
+
+   TComplexSubOpExpr = class(TComplexBinOpExpr)
+      public
+         procedure DoEval(args : TExprBaseList; var result : TDataPtr); override;
+   end;
+
+   TComplexMultOpExpr = class(TComplexBinOpExpr)
+      public
+         procedure DoEval(args : TExprBaseList; var result : TDataPtr); override;
    end;
 
 const
@@ -92,59 +101,92 @@ begin
    typComplex:=systemTable.FindTypeSymbol(SYS_COMPLEX, cvMagic) as TRecordSymbol;
 
    operators.RegisterOperator(ttPLUS, unitTable.FindSymbol('ComplexAdd', cvMagic) as TFuncSymbol, typComplex, typComplex);
+   operators.RegisterOperator(ttMINUS, unitTable.FindSymbol('ComplexSub', cvMagic) as TFuncSymbol, typComplex, typComplex);
+   operators.RegisterOperator(ttTIMES, unitTable.FindSymbol('ComplexMult', cvMagic) as TFuncSymbol, typComplex, typComplex);
 end;
 
 // ------------------
 // ------------------ TComplexMakeExpr ------------------
 // ------------------
 
-// Execute
+// DoEval
 //
-procedure TComplexMakeExpr.Execute(info : TProgramInfo);
-var
-   result : IInfo;
+procedure TComplexMakeExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
 begin
-   result:=info.ResultVars;
-   result.Member['Re'].Value:=info.ParamAsFloat[0];
-   result.Member['Im'].Value:=info.ParamAsFloat[1];
+   result[0]:=args.AsFloat[0];
+   result[1]:=args.AsFloat[1];
 end;
 
 // ------------------
 // ------------------ TComplexToStrExpr ------------------
 // ------------------
 
-// Execute
+// DoEvalAsString
 //
-procedure TComplexToStrExpr.Execute(info : TProgramInfo);
+procedure TComplexToStrExpr.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
-   c : IInfo;
+   cmplxData : TDataPtr;
    r, i : Double;
 begin
-   c:=info.Vars['c'];
-   r:=c.Member['Re'].ValueAsFloat;
-   i:=c.Member['Im'].ValueAsFloat;
+   cmplxData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
+   r:=cmplxData[0];
+   i:=cmplxData[1];
    if i>0 then
-      info.ResultAsString:=Format('%f + %fi', [r, i])
+      Result:=Format('%f + %fi', [r, i])
    else if i<0 then
-      info.ResultAsString:=Format('%f - %fi', [r, Abs(i)])
-   else info.ResultAsString:=Format('%f', [r]);
+      Result:=Format('%f - %fi', [r, Abs(i)])
+   else Result:=Format('%f', [r]);
 end;
 
 // ------------------
 // ------------------ TComplexAddOpExpr ------------------
 // ------------------
 
-// Execute
+// DoEval
 //
-procedure TComplexAddOpExpr.Execute(info : TProgramInfo);
+procedure TComplexAddOpExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
 var
-   result, left, right : IInfo;
+   leftData, rightData : TDataPtr;
 begin
-   result:=info.ResultVars;
-   left:=info.Vars['left'];
-   right:=info.Vars['right'];
-   result.Member['Re'].Value:=left.Member['Re'].ValueAsFloat+right.Member['Re'].ValueAsFloat;
-   result.Member['Im'].Value:=left.Member['Im'].ValueAsFloat+right.Member['Im'].ValueAsFloat;
+   leftData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
+   rightData:=TDataExpr(args.ExprBase[1]).DataPtr[args.Exec];
+
+   result[0]:=leftData[0]+rightData[0];
+   result[1]:=leftData[1]+rightData[1];
+end;
+
+// ------------------
+// ------------------ TComplexSubOpExpr ------------------
+// ------------------
+
+// DoEval
+//
+procedure TComplexSubOpExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
+var
+   leftData, rightData : TDataPtr;
+begin
+   leftData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
+   rightData:=TDataExpr(args.ExprBase[1]).DataPtr[args.Exec];
+
+   result[0]:=leftData[0]-rightData[0];
+   result[1]:=leftData[1]-rightData[1];
+end;
+
+// ------------------
+// ------------------ TComplexMultOpExpr ------------------
+// ------------------
+
+// DoEval
+//
+procedure TComplexMultOpExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
+var
+   leftData, rightData : TDataPtr;
+begin
+   leftData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
+   rightData:=TDataExpr(args.ExprBase[1]).DataPtr[args.Exec];
+
+   result[0]:=leftData[0]*rightData[0]-leftData[1]*rightData[1];
+   result[1]:=leftData[1]*rightData[0]+leftData[0]*rightData[1];
 end;
 
 // ------------------------------------------------------------------
@@ -158,9 +200,11 @@ initialization
    dwsInternalUnit.AddPreInitProc(RegisterComplexType);
    dwsInternalUnit.AddPostInitProc(RegisterComplexOperators);
 
-   RegisterInternalFunction(TComplexMakeExpr, 'Complex', ['real', SYS_FLOAT, 'imaginary', SYS_FLOAT], SYS_COMPLEX);
-   RegisterInternalFunction(TComplexToStrExpr, 'ComplexToStr', ['c', SYS_COMPLEX], SYS_STRING);
+   RegisterInternalFunction(TComplexMakeExpr, 'Complex', ['real', SYS_FLOAT, 'imaginary', SYS_FLOAT], SYS_COMPLEX, True);
+   RegisterInternalStringFunction(TComplexToStrExpr, 'ComplexToStr', ['c', SYS_COMPLEX], True);
 
-   RegisterInternalFunction(TComplexAddOpExpr, 'ComplexAdd', ['left', SYS_COMPLEX, 'right', SYS_COMPLEX], SYS_COMPLEX);
+   RegisterInternalFunction(TComplexAddOpExpr, 'ComplexAdd', ['left', SYS_COMPLEX, 'right', SYS_COMPLEX], SYS_COMPLEX, True);
+   RegisterInternalFunction(TComplexSubOpExpr, 'ComplexSub', ['left', SYS_COMPLEX, 'right', SYS_COMPLEX], SYS_COMPLEX, True);
+   RegisterInternalFunction(TComplexMultOpExpr, 'ComplexMult', ['left', SYS_COMPLEX, 'right', SYS_COMPLEX], SYS_COMPLEX, True);
 
 end.

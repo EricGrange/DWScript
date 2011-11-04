@@ -65,6 +65,21 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
+   // TMagicDataFuncExpr
+   //
+   TMagicDataFuncExpr = class(TMagicFuncExpr)
+      private
+         FOnEval : TMagicFuncDoEvalDataEvent;
+
+      protected
+         function GetData(exec : TdwsExecution) : TData; override;
+
+      public
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
+         procedure EvalNoResult(exec : TdwsExecution); override;
+         function Eval(exec : TdwsExecution) : Variant; override;
+   end;
+
    // TMagicIntFuncExpr
    //
    TMagicIntFuncExpr = class(TMagicFuncExpr)
@@ -175,7 +190,10 @@ begin
       Result:=TMagicBoolFuncExpr.Create(prog, pos, magicFuncSym)
    else if internalFunc.InheritsFrom(TInternalMagicProcedure) then
       Result:=TMagicProcedureExpr.Create(prog, pos, magicFuncSym)
-   else Result:=TMagicVariantFuncExpr.Create(prog, pos, magicFuncSym);
+   else if internalFunc.InheritsFrom(TInternalMagicDataFunction) then begin
+      Result:=TMagicDataFuncExpr.Create(prog, pos, magicFuncSym);
+      Result.SetResultAddr(prog, nil);
+   end else Result:=TMagicVariantFuncExpr.Create(prog, pos, magicFuncSym);
 end;
 
 // AddArg
@@ -205,7 +223,6 @@ end;
 //
 function TMagicFuncExpr.GetData(exec : TdwsExecution) : TData;
 begin
-   exec.Stack.Data[exec.Stack.BasePointer]:=Eval(exec);
    Result:=exec.Stack.Data;
 end;
 
@@ -213,7 +230,7 @@ end;
 //
 function TMagicFuncExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-   Result:=exec.Stack.BasePointer;
+   Result:=exec.Stack.BasePointer+FResultAddr;
 end;
 
 // ------------------
@@ -225,7 +242,7 @@ end;
 constructor TMagicVariantFuncExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
 begin
    inherited Create(Prog, Pos, Func);
-   FOnEval:=TInternalMagicFunction(Func.InternalFunction).DoEval;
+   FOnEval:=TInternalMagicVariantFunction(Func.InternalFunction).DoEvalAsVariant;
 end;
 
 // Eval
@@ -238,6 +255,50 @@ begin
    execRec.Exec:=exec;
    try
       Result:=FOnEval(@execRec);
+   except
+      RaiseScriptError(exec);
+   end;
+end;
+
+// ------------------
+// ------------------ TMagicDataFuncExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TMagicDataFuncExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMagicFuncSymbol);
+begin
+   inherited Create(Prog, Pos, Func);
+   FOnEval:=TInternalMagicDataFunction(Func.InternalFunction).DoEval;
+end;
+
+// EvalNoResult
+//
+procedure TMagicDataFuncExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   GetData(exec);
+end;
+
+// Eval
+//
+function TMagicDataFuncExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result:=Data[exec][Addr[exec]];
+end;
+
+// GetData
+//
+function TMagicDataFuncExpr.GetData(exec : TdwsExecution) : TData;
+var
+   execRec : TExprBaseListExec;
+   dataPtr : TDataPtr;
+begin
+   execRec.List:=@FArgs;
+   execRec.Exec:=exec;
+   try
+      Result:=exec.Stack.Data;
+      dataPtr:=TDataPtr.Create(exec.Stack.Data, exec.Stack.BasePointer+FResultAddr);
+      FOnEval(@execRec, dataPtr);
    except
       RaiseScriptError(exec);
    end;

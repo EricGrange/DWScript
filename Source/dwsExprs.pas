@@ -453,8 +453,9 @@ type
          FBaseTypes : TdwsProgramBaseTypes;
 
       protected
-         function GetLevel: Integer; inline;
+         function GetLevel : Integer; inline;
          function GetUnitMains : TUnitMainSymbols;
+         function GetAddrGeneratorDataSize : Integer; inline;
 
       public
          constructor Create(systemTable : TSymbolTable);
@@ -471,6 +472,7 @@ type
          property CompileMsgs : TdwsCompileMessageList read FCompileMsgs write FCompileMsgs;
          property Parent : TdwsProgram read FParent;
          property Root : TdwsMainProgram read FRoot write FRoot;
+         property DataSize : Integer read GetAddrGeneratorDataSize;
 
          property RootTable : TProgramSymbolTable read FRootTable;
          property SystemTable : TSymbolTable read FSystemTable;
@@ -745,6 +747,7 @@ type
       protected
          function GetAddr(exec : TdwsExecution) : Integer; virtual;
          function GetData(exec : TdwsExecution) : TData; virtual; abstract;
+         function GetDataPtr(exec : TdwsExecution) : TDataPtr; virtual;
 
       public
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol);
@@ -764,6 +767,8 @@ type
 
          property Addr[exec : TdwsExecution] : Integer read GetAddr;
          property Data[exec : TdwsExecution] : TData read GetData;
+
+         property DataPtr[exec : TdwsExecution] : TDataPtr read GetDataPtr;
    end;
 
    // Encapsulates data
@@ -796,6 +801,7 @@ type
       protected
          FArgs : TExprBaseListRec;
          FFunc : TFuncSymbol;
+         FResultAddr : Integer;
 
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
@@ -812,6 +818,8 @@ type
          procedure TypeCheckArgs(prog : TdwsProgram); virtual;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function IsConstant : Boolean; override;
+
+         procedure SetResultAddr(prog : TdwsProgram; exec : TdwsExecution; ResultAddr: Integer = -1);
 
          property FuncSym : TFuncSymbol read FFunc;
          property Args : TExprBaseListRec read FArgs;
@@ -864,7 +872,6 @@ type
          FPushExprs : PPushOperatorArray;
          FPushExprsCount : SmallInt;
          FLevel : SmallInt;
-         FResultAddr : Integer;
 
       protected
          function PreCall(exec : TdwsExecution) : TFuncSymbol; virtual;
@@ -884,7 +891,6 @@ type
          function GetData(exec : TdwsExecution) : TData; override;
          function GetAddr(exec : TdwsExecution) : Integer; override;
          procedure Initialize(prog : TdwsProgram); override;
-         procedure SetResultAddr(prog : TdwsProgram; exec : TdwsExecution; ResultAddr: Integer = -1);
          function IsWritable : Boolean; override;
    end;
 
@@ -2235,7 +2241,7 @@ begin
       FProgramInfo.Execution := Self;
 
       // allocate global stack space
-      Stack.Push(FProg.FGlobalAddrGenerator.DataSize + FProg.FAddrGenerator.DataSize);
+      Stack.Push(FProg.FGlobalAddrGenerator.DataSize + FProg.DataSize);
       Stack.PushBp(0, Stack.BasePointer);
 
       // Initialize Result
@@ -2704,6 +2710,13 @@ begin
    Result:=FUnitMains;
 end;
 
+// GetAddrGeneratorDataSize
+//
+function TdwsProgram.GetAddrGeneratorDataSize : Integer;
+begin
+   Result:=FAddrGenerator.DataSize;
+end;
+
 function TdwsProgram.GetGlobalAddr(DataSize: Integer): Integer;
 begin
   Result := FRoot.FGlobalAddrGenerator.GetStackAddr(DataSize);
@@ -3036,7 +3049,7 @@ begin
    exec.CurrentProg:=Self;
 
    // Allocate stack space for local variables
-   stackSize:=FAddrGenerator.DataSize;
+   stackSize:=DataSize;
    exec.Stack.Push(stackSize);
 
    // Run the procedure
@@ -3815,7 +3828,14 @@ end;
 
 procedure TDataExpr.AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr);
 begin
-  DWSCopyData(DataExpr.Data[exec], DataExpr.Addr[exec], Data[exec], Addr[exec], Typ.Size);
+   DWSCopyData(DataExpr.Data[exec], DataExpr.Addr[exec], Data[exec], Addr[exec], Typ.Size);
+end;
+
+// GetDataPtr
+//
+function TDataExpr.GetDataPtr(exec : TdwsExecution) : TDataPtr;
+begin
+   Result:=TDataPtr.Create(Data[exec], Addr[exec]);
 end;
 
 // ------------------
@@ -3947,7 +3967,17 @@ begin
    if IsConstant then begin
       Initialize(prog);
       try
-         Result:=TConstExpr.CreateTyped(Prog, Typ, Eval(exec));
+         if (Typ=nil) or (Typ.Size<=1) then
+            Result:=TConstExpr.CreateTyped(prog, typ, Eval(exec))
+         else begin
+            exec.Stack.Push(typ.Size);
+            try
+               Eval(exec);
+               Result:=TConstExpr.CreateTyped(prog, typ, exec.Stack.Data);
+            finally
+               exec.Stack.Pop(typ.Size);
+            end;
+         end;
       except
          on E: EScriptError do begin
             Prog.CompileMsgs.AddCompilerErrorFmt(E.Pos, CPE_FunctionOptimizationFailed,
@@ -3978,6 +4008,17 @@ begin
          Exit(False);
 
    Result:=True;
+end;
+
+// SetResultAddr
+//
+procedure TFuncExprBase.SetResultAddr(prog : TdwsProgram; exec : TdwsExecution; ResultAddr: Integer = -1);
+begin
+   if ResultAddr=-1 then begin
+      if (exec=nil) or (exec.ProgramState = psUndefined) then
+         FResultAddr:=prog.GetTempAddr(FTyp.Size)
+      else FResultAddr:=-1; // TFuncExpr.Create called from TInfoFunc.Call
+   end else FResultAddr:=ResultAddr;
 end;
 
 // GetSubExpr
@@ -4458,17 +4499,6 @@ procedure TFuncExpr.Initialize(prog : TdwsProgram);
 begin
    inherited;
    AddPushExprs(prog);
-end;
-
-// SetResultAddr
-//
-procedure TFuncExpr.SetResultAddr(prog : TdwsProgram; exec : TdwsExecution; ResultAddr: Integer);
-begin
-   if ResultAddr=-1 then begin
-      if (exec=nil) or (exec.ProgramState = psUndefined) then
-         FResultAddr:=prog.GetTempAddr(FTyp.Size)
-      else FResultAddr:=-1; // TFuncExpr.Create called from TInfoFunc.Call
-   end else FResultAddr:=ResultAddr;
 end;
 
 // IsWritable

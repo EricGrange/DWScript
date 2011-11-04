@@ -703,6 +703,7 @@ type
 
    TMagicFuncDoEvalEvent = function(args : TExprBaseList) : Variant of object;
    TMagicProcedureDoEvalEvent = procedure(args : TExprBaseList) of object;
+   TMagicFuncDoEvalDataEvent = procedure(args : TExprBaseList; var result : TDataPtr) of object;
    TMagicFuncDoEvalAsIntegerEvent = function(args : TExprBaseList) : Int64 of object;
    TMagicFuncDoEvalAsBooleanEvent = function(args : TExprBaseList) : Boolean of object;
    TMagicFuncDoEvalAsFloatEvent = procedure(args : TExprBaseList; var Result : Double) of object;

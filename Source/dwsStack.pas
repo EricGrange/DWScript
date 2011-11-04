@@ -33,6 +33,20 @@ type
    PDataArray = ^TDataArray;
    PIUnknown = ^IUnknown;
 
+   TDataPtr = record
+      private
+         FAddr : Integer;
+         FData : TData;
+
+         function GetData(addr : Integer) : Variant; inline;
+         procedure SetData(addr : Integer; const value : Variant); inline;
+
+      public
+         class function Create(const aData : TData; anAddr : Integer) : TDataPtr; static; inline;
+
+         property Data[addr : Integer] : Variant read GetData write SetData; default;
+   end;
+
    TStackParameters = record
       MaxLevel : Integer;
       ChunkSize : Integer;
@@ -194,6 +208,31 @@ begin
    end;
 end;
 
+// ------------------
+// ------------------ TDataPtr ------------------
+// ------------------
+
+// Create
+//
+class function TDataPtr.Create(const aData : TData; anAddr : Integer) : TDataPtr;
+begin
+   Result.FData:=aData;
+   Result.FAddr:=anAddr;
+end;
+
+// GetData
+//
+function TDataPtr.GetData(addr : Integer) : Variant;
+begin
+   Result:=FData[FAddr+addr];
+end;
+
+// SetData
+//
+procedure TDataPtr.SetData(addr : Integer; const value : Variant);
+begin
+   FData[FAddr+addr]:=value;
+end;
 
 // ------------------
 // ------------------ TStackMixIn ------------------
