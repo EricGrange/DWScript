@@ -370,6 +370,7 @@ begin
 
    for meth in cls.GetMethods do begin
       if meth.Parent.Name='TObject' then continue;
+      if not meth.HasExtendedInfo then continue;
       if ShouldExpose(meth) then begin
          case meth.MethodKind of
             TypInfo.mkProcedure, TypInfo.mkFunction, TypInfo.mkClassProcedure, TypInfo.mkClassFunction :
