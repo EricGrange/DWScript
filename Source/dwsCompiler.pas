@@ -1535,7 +1535,7 @@ begin
          if names.Count = 1 then begin
             if FTok.TestDelete(ttEQ) or FTok.TestDelete(ttASSIGN) then begin
                if (typ is TRecordSymbol) and FTok.Test(ttBLEFT) then begin
-                  initExpr:=TConstExpr.Create(FProg, typ, ReadConstRecord(TRecordSymbol(typ)));
+                  initExpr:=TConstExpr.Create(FProg, typ, ReadConstRecord(TRecordSymbol(typ)), 0);
                end else begin
                   initExpr := ReadExpr(typ)
                end;
@@ -2965,7 +2965,7 @@ begin
          elemValue:=0;
       end else elemValue:=TElementSymbol(elem).UserDefValue;
 
-      Result:=TConstExpr.CreateTyped(FProg, enumSym, elemValue);
+      Result:=TConstExpr.CreateTypedValue(FProg, enumSym, elemValue);
 
    end else Result:=TTypeSymbolExpr.Create(enumPos, enumSym);
 end;
@@ -3008,7 +3008,7 @@ begin
 
    end else begin
 
-      constExpr:=TConstExpr.CreateTyped(FProg, baseType.ClassOf, Int64(baseType));
+      constExpr:=TConstExpr.CreateTypedValue(FProg, baseType.ClassOf, Int64(baseType));
       Result:=ReadSymbol(constExpr, IsWrite, expecting);
 
    end;
@@ -3020,7 +3020,7 @@ function TdwsCompiler.ReadInterfaceSymbolName(baseType : TInterfaceSymbol; isWri
 var
    constExpr : TTypedExpr;
 begin
-   constExpr:=TConstExpr.CreateTyped(FProg, baseType, Int64(baseType));
+   constExpr:=TConstExpr.CreateTypedValue(FProg, baseType, Int64(baseType));
    Result:=ReadSymbol(constExpr, IsWrite, expecting);
 end;
 
@@ -3030,7 +3030,7 @@ function TdwsCompiler.ReadRecordSymbolName(baseType : TRecordSymbol; isWrite : B
 var
    constExpr : TTypedExpr;
 begin
-   constExpr:=TConstExpr.CreateTyped(FProg, baseType.MetaSymbol, Int64(baseType));
+   constExpr:=TConstExpr.CreateTypedValue(FProg, baseType.MetaSymbol, Int64(baseType));
    Result:=ReadSymbol(constExpr, IsWrite, expecting);
 end;
 
@@ -3733,11 +3733,11 @@ begin
          FSymbolDictionary.AddTypeSymbol(enumSymbol, inPos);
 
       if enumSymbol is TEnumerationSymbol then begin
-         fromExpr:=TConstExpr.CreateTyped(FProg, loopVarExpr.Typ, TEnumerationSymbol(enumSymbol).LowBound);
-         toExpr:=TConstExpr.CreateTyped(FProg, loopVarExpr.Typ, TEnumerationSymbol(enumSymbol).HighBound);
+         fromExpr:=TConstExpr.CreateTypedValue(FProg, loopVarExpr.Typ, TEnumerationSymbol(enumSymbol).LowBound);
+         toExpr:=TConstExpr.CreateTypedValue(FProg, loopVarExpr.Typ, TEnumerationSymbol(enumSymbol).HighBound);
       end else begin
-         fromExpr:=TConstExpr.CreateTyped(FProg, loopVarExpr.Typ, 0);
-         toExpr:=TConstExpr.CreateTyped(FProg, loopVarExpr.Typ, 1);
+         fromExpr:=TConstExpr.CreateTypedValue(FProg, loopVarExpr.Typ, 0);
+         toExpr:=TConstExpr.CreateTypedValue(FProg, loopVarExpr.Typ, 1);
       end;
 
       iterVarExpr:=(loopVarExpr as TIntVarExpr);
@@ -4255,7 +4255,7 @@ begin
                FMsgs.AddCompilerError(hotPos, CPE_LowerBoundGreaterThanUpperBound);
                // keep compiling
                max[0].Free;
-               max[0]:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, min[0].EvalAsInteger(FExec));
+               max[0]:=TConstExpr.CreateTypedValue(FProg, FProg.TypInteger, min[0].EvalAsInteger(FExec));
             end;
 
             if FTok.Test(ttARIGHT) then
@@ -4574,7 +4574,7 @@ begin
       end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
 
       if sym is TClassSymbol then
-         baseExpr:=TConstExpr.CreateTyped(FProg, classSym.ClassOf, Int64(classSym))
+         baseExpr:=TConstExpr.CreateTypedValue(FProg, classSym.ClassOf, Int64(classSym))
       else baseExpr:=TVarExpr.CreateTyped(FProg, classSym, TDataSymbol(sym));
 
    end;
@@ -5837,7 +5837,7 @@ begin
             // keep compiling
             left.Free;
             setExpr.Free;
-            Result:=TConstExpr.CreateTyped(FProg, FProg.TypBoolean, False);
+            Result:=TConstExpr.CreateTypedValue(FProg, FProg.TypBoolean, False);
 
          end else if setExpr.Typ is TDynamicArraySymbol then begin
 
@@ -5856,7 +5856,7 @@ begin
 
             Result:=TArrayIndexOfExpr.Create(FProg, hotPos, setExpr, left, nil);
             Result:=TRelGreaterEqualIntExpr.Create(FProg, Result,
-                                                   TConstExpr.CreateTyped(FProg, FProg.TypInteger, 0));
+                                                   TConstExpr.CreateTypedValue(FProg, FProg.TypInteger, 0));
 
          end else begin
 
@@ -5927,7 +5927,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
    const
       cNilIntf : IUnknown = nil;
    begin
-      Result:=TConstExpr.CreateTyped(FProg, FProg.TypNil, cNilIntf);
+      Result:=TConstExpr.CreateTypedValue(FProg, FProg.TypNil, cNilIntf);
    end;
 
    function ReadNotTerm : TUnaryOpExpr;
@@ -6911,7 +6911,7 @@ begin
 
       Result:=TryConnectorCall;
       if Result=nil then
-         Result:=TConstExpr.CreateTyped(FProg, FProg.TypVariant, Null); // keep compiling
+         Result:=TConstExpr.CreateTypedValue(FProg, FProg.TypVariant, Null); // keep compiling
 
    end else if not isWrite then begin
 
@@ -7270,9 +7270,9 @@ end;
 function TdwsCompiler.CreateArrayLow(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
 begin
    if typ is TStaticArraySymbol then
-      Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(typ).LowBound)
+      Result:=TConstExpr.CreateTypedValue(FProg, FProg.TypInteger, TStaticArraySymbol(typ).LowBound)
    else if typ is TDynamicArraySymbol then
-      Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, 0)
+      Result:=TConstExpr.CreateTypedValue(FProg, FProg.TypInteger, 0)
    else Result:=nil;
    if captureBase then
       baseExpr.Free;
@@ -7296,7 +7296,7 @@ begin
       if captureBase then
          baseExpr.Free;
       if typ is TStaticArraySymbol then begin
-         Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(typ).HighBound);
+         Result:=TConstExpr.CreateTypedValue(FProg, FProg.TypInteger, TStaticArraySymbol(typ).HighBound);
       end else Result:=nil;
    end;
 end;
@@ -7315,7 +7315,7 @@ begin
       Result:=TArrayLengthExpr.Create(FProg, baseExpr, True);
    end else if typ is TStaticArraySymbol then begin
       baseExpr.Free;
-      Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TStaticArraySymbol(typ).ElementCount);
+      Result:=TConstExpr.CreateTypedValue(FProg, FProg.TypInteger, TStaticArraySymbol(typ).ElementCount);
    end else Result:=nil;
 end;
 
@@ -7511,7 +7511,7 @@ begin
                argExpr:=nil;
             end else if argTyp is TEnumerationSymbol then begin
                FreeAndNil(argExpr);
-               Result:=TConstExpr.CreateTyped(FProg, argTyp, TEnumerationSymbol(argTyp).HighBound)
+               Result:=TConstExpr.CreateTypedValue(FProg, argTyp, TEnumerationSymbol(argTyp).HighBound)
             end else if argTyp is TDynamicArraySymbol and Assigned(argExpr) then begin
                Result:=TArrayLengthExpr.Create(FProg, TDataExpr(argExpr), True);
                TArrayLengthExpr(Result).Delta:=-1;
@@ -7521,7 +7521,7 @@ begin
                argExpr:=nil;
             end else if argTyp=FProg.TypInteger then begin
                FreeAndNil(argExpr);
-               Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, High(Int64));
+               Result:=TConstExpr.CreateTypedValue(FProg, FProg.TypInteger, High(Int64));
             end else begin
                FreeAndNil(argExpr);
                FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
@@ -7540,7 +7540,7 @@ begin
                   operandExpr:=ReadExpr;
                   if (operandExpr=nil) or (not operandExpr.IsOfType(FProg.TypInteger)) then
                      FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
-               end else operandExpr:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, 1);
+               end else operandExpr:=TConstExpr.CreateTypedValue(FProg, FProg.TypInteger, 1);
                case specialKind of
                   skInc : Result:=TIncVarFuncExpr.Create(FProg, FTok.HotPos, argExpr, operandExpr);
                   skDec : Result:=TDecVarFuncExpr.Create(FProg, FTok.HotPos, argExpr, operandExpr);
@@ -7567,11 +7567,11 @@ begin
             end else begin
                FreeAndNil(argExpr);
                if argTyp is TEnumerationSymbol then begin
-                  Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, TEnumerationSymbol(argTyp).LowBound);
+                  Result:=TConstExpr.CreateTypedValue(FProg, FProg.TypInteger, TEnumerationSymbol(argTyp).LowBound);
                end else if argTyp=FProg.TypString then begin
-                  Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, 1);
+                  Result:=TConstExpr.CreateTypedValue(FProg, FProg.TypInteger, 1);
                end else if (argTyp=FProg.TypInteger) then begin
-                  Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, Low(Int64));
+                  Result:=TConstExpr.CreateTypedValue(FProg, FProg.TypInteger, Low(Int64));
                end else begin
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
                end;
@@ -7602,7 +7602,7 @@ begin
             end else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
          end;
          skSizeOf : begin
-             Result:=TConstExpr.CreateTyped(FProg, FProg.TypInteger, argTyp.Size);
+             Result:=TConstExpr.CreateTypedValue(FProg, FProg.TypInteger, argTyp.Size);
              FreeAndNil(argExpr);
          end;
          skDefined, skDeclared : begin
@@ -7670,9 +7670,9 @@ begin
    if not FTok.TestDelete(ttBLEFT) then begin
 
       if (typeSym is TEnumerationSymbol) then
-         Exit(TConstExpr.CreateTyped(FProg, typeSym, Null))
+         Exit(TConstExpr.CreateTypedValue(FProg, typeSym, Null))
       else if typeSym is TClassOfSymbol then
-         Exit(TConstExpr.CreateTyped(FProg, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol)));
+         Exit(TConstExpr.CreateTypedValue(FProg, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol)));
 
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
    end;

@@ -185,14 +185,14 @@ type
      function GetData(exec : TdwsExecution) : TData; override;
    public
      constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); overload;
-     constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData); overload;
+     constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer); overload;
      function Eval(exec : TdwsExecution) : Variant; override;
      function IsConstant : Boolean; override;
      function IsWritable : Boolean; override;
      function SameValueAs(otherConst : TConstExpr) : Boolean;
 
-     class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant) : TConstExpr; overload; static;
-     class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData) : TConstExpr; overload; static;
+     class function CreateTypedValue(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant) : TConstExpr; overload; static;
+     class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer = 0) : TConstExpr; overload; static;
      class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; constSymbol : TConstSymbol) : TConstExpr; overload; static;
    end;
 
@@ -2216,10 +2216,11 @@ end;
 
 // Create
 //
-constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData);
+constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer);
 begin
    inherited Create(Prog, Typ);
-   FData := Data;
+   SetLength(FData, Typ.Size);
+   DWSCopyData(Data, addr, FData, 0, Typ.Size);
 end;
 
 // Eval
@@ -2253,7 +2254,7 @@ end;
 
 // CreateTyped
 //
-class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant) : TConstExpr;
+class function TConstExpr.CreateTypedValue(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant) : TConstExpr;
 begin
    if Typ=Prog.TypString then
       Result:=TConstStringExpr.CreateUnified(Prog, Typ, Value)
@@ -2271,11 +2272,11 @@ end;
 
 // CreateTyped
 //
-class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData) : TConstExpr;
+class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer = 0) : TConstExpr;
 begin
    if Length(Data)=1 then
-      Result:=TConstExpr.CreateTyped(Prog, Typ, Data[0])
-   else Result:=TConstExpr.Create(Prog, Typ, Data);
+      Result:=TConstExpr.CreateTypedValue(Prog, Typ, Data[addr])
+   else Result:=TConstExpr.Create(Prog, Typ, Data, addr);
 end;
 
 // CreateTyped
@@ -2671,7 +2672,7 @@ begin
    Result:=Self;
    if IsConstant then begin
       EvalAsVariant(exec, v);
-      Result:=TConstExpr.CreateTyped(prog, Typ, v);
+      Result:=TConstExpr.CreateTypedValue(prog, Typ, v);
       Free;
    end;
 end;
@@ -3711,7 +3712,7 @@ begin
       if     toTyp.IsOfType(prog.TypFloat)
          and expr.IsOfType(prog.TypInteger) then begin
          if expr is TConstIntExpr then begin
-            Result:=TConstFloatExpr.CreateTyped(prog, prog.TypFloat, TConstIntExpr(expr).Value);
+            Result:=TConstFloatExpr.CreateTypedValue(prog, prog.TypFloat, TConstIntExpr(expr).Value);
             expr.Free;
          end else Result:=TConvFloatExpr.Create(prog, expr);
       end;
