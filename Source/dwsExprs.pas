@@ -3968,7 +3968,7 @@ begin
       Initialize(prog);
       try
          if (Typ=nil) or (Typ.Size<=1) then
-            Result:=TConstExpr.CreateTypedValue(prog, typ, Eval(exec))
+            Result:=TConstExpr.CreateTypedVariantValue(prog, typ, Eval(exec))
          else begin
             exec.Stack.Push(prog.DataSize);
             try
