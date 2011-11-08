@@ -3008,7 +3008,7 @@ begin
 
    end else begin
 
-      constExpr:=TConstExpr.CreateIntegerValue(FProg, baseType.ClassOf, Int64(baseType));
+      constExpr:=TConstExpr.CreateTypedVariantValue(FProg, baseType.ClassOf, Int64(baseType));
       Result:=ReadSymbol(constExpr, IsWrite, expecting);
 
    end;
@@ -3020,7 +3020,7 @@ function TdwsCompiler.ReadInterfaceSymbolName(baseType : TInterfaceSymbol; isWri
 var
    constExpr : TTypedExpr;
 begin
-   constExpr:=TConstExpr.CreateIntegerValue(FProg, baseType, Int64(baseType));
+   constExpr:=TConstExpr.CreateTypedVariantValue(FProg, baseType, Int64(baseType));
    Result:=ReadSymbol(constExpr, IsWrite, expecting);
 end;
 
@@ -3030,7 +3030,7 @@ function TdwsCompiler.ReadRecordSymbolName(baseType : TRecordSymbol; isWrite : B
 var
    constExpr : TTypedExpr;
 begin
-   constExpr:=TConstExpr.CreateIntegerValue(FProg, baseType.MetaSymbol, Int64(baseType));
+   constExpr:=TConstExpr.CreateTypedVariantValue(FProg, baseType.MetaSymbol, Int64(baseType));
    Result:=ReadSymbol(constExpr, IsWrite, expecting);
 end;
 
@@ -4574,7 +4574,7 @@ begin
       end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
 
       if sym is TClassSymbol then
-         baseExpr:=TConstExpr.CreateIntegerValue(FProg, classSym.ClassOf, Int64(classSym))
+         baseExpr:=TConstExpr.CreateTypedVariantValue(FProg, classSym.ClassOf, Int64(classSym))
       else baseExpr:=TVarExpr.CreateTyped(FProg, classSym, TDataSymbol(sym));
 
    end;
@@ -7672,7 +7672,7 @@ begin
       if (typeSym is TEnumerationSymbol) then
          Exit(TConstExpr.CreateTypedVariantValue(FProg, typeSym, Null))
       else if typeSym is TClassOfSymbol then
-         Exit(TConstExpr.CreateIntegerValue(FProg, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol)));
+         Exit(TConstExpr.CreateTypedVariantValue(FProg, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol)));
 
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
    end;

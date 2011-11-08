@@ -2306,7 +2306,7 @@ end;
 //
 class function TConstExpr.CreateIntegerValue(prog : TdwsProgram; const value : Int64) : TConstExpr;
 begin
-   Result:=CreateIntegerValue(prog, prog.TypInteger, value);
+   Result:=TConstIntExpr.CreateUnified(prog, Prog.TypInteger, value);
 end;
 
 // CreateIntegerValue
