@@ -109,7 +109,8 @@ type
          procedure SetElse(o : TTransition);
    end;
 
-   TConvertAction = (caNone, caClear, caName, caHex, caInteger, caFloat, caChar,
+   TConvertAction = (caNone, caClear, caName, caNameEscaped,
+                     caHex, caInteger, caFloat, caChar,
                      caCharHex, caString, caSwitch, caDotDot);
    TTransitionOptions = set of (toStart, toFinal);
 
@@ -1015,6 +1016,12 @@ begin
                // Convert name to token
                caName : begin
                   Result.FTyp:=FTokenBuf.ToType;
+                  FTokenBuf.ToStr(Result.FString);
+               end;
+
+               // Convert escaped name to token
+               caNameEscaped : begin
+                  Result.FTyp:=ttNAME;
                   FTokenBuf.ToStr(Result.FString);
                end;
 

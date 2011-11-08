@@ -29,7 +29,7 @@ type
          sBracketLeft, sBlockCommentBracket, sBlockCommentBracket1 : TState;
          sBlockCommentSlash, sBlockCommentSlash1 : TState;
          sSwitch, sSwitchNameF, sChar0, sCharF, sCharHex, sCharHexF : TState;
-         sNameF: TState;
+         sNameF, sNameEscapedF, sNameEscapedS: TState;
          sIntF, sIntPoint, sIntPointF, sIntExp, sIntExp0, sIntExpF, sHex, sHexF: TState;
          sString0, sStringF, sAssign0: TState;
          sString1, sStringF1 : TState;
@@ -89,6 +89,8 @@ begin
    sCharHex:=CreateState;
    sCharHexF:=CreateState;
    sNameF:=CreateState;
+   sNameEscapedS:=CreateState;
+   sNameEscapedF:=CreateState;
    sIntF:=CreateState;
    sIntPoint:=CreateState;
    sIntPointF:=CreateState;
@@ -108,6 +110,7 @@ begin
 
    sStart.AddTransition(cSPACE, TSeekTransition.Create(sStart, [], caNone));
    sStart.AddTransition(cNAM, TConsumeTransition.Create(sNameF, [toStart], caNone));
+   sStart.AddTransition(['&'], TSeekTransition.Create(sNameEscapedS, [toStart], caNone));
    sStart.AddTransition(cINT, TConsumeTransition.Create(sIntF, [toStart], caNone));
    sStart.AddTransition([''''], TSeekTransition.Create(sString0, [toStart], caNone));
    sStart.AddTransition(['"'], TSeekTransition.Create(sString1, [toStart], caNone));
@@ -183,6 +186,13 @@ begin
    sNameF.AddTransition(cNAM + cINT, TConsumeTransition.Create(sNameF, [], caNone));
    sNameF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caName));
    sNameF.SetElse(TErrorTransition.Create(TOK_InvalidChar));
+
+   sNameEscapedS.AddTransition(cNAM, TConsumeTransition.Create(sNameEscapedF, [toStart], caNone));
+   sNameEscapedS.SetElse(TErrorTransition.Create(TOK_InvalidChar));
+
+   sNameEscapedF.AddTransition(cNAM+cINT, TConsumeTransition.Create(sNameEscapedF, [], caNone));
+   sNameEscapedF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caNameEscaped));
+   sNameEscapedF.SetElse(TErrorTransition.Create(TOK_InvalidChar));
 
    sIntF.AddTransition(cINT, TConsumeTransition.Create(sIntF, [], caNone));
    sIntF.AddTransition(['.'], TConsumeTransition.Create(sIntPoint, [], caNone));
