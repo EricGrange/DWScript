@@ -25,6 +25,7 @@ interface
 
 uses
   Windows,
+  Themes,
   Graphics,
   dwsDebugger,
   SynEditHighlighter,
@@ -84,6 +85,12 @@ function Lighten( AColor: TColor; AFactor: Byte): TColor;
 
 function BeginsWith( const ABeginsStr, AStr : string; AMatchCase : boolean = False ) : boolean;
 // Returns TRUE if AStr begins with ABeginsStr
+
+{$IFDEF VER230} // Delphi XE2
+  function IDEStyleServices: TCustomStyleServices;
+{$ELSE}
+  function IDEStyleServices: TThemeServices;
+{$ENDIF}
 
 implementation
 
@@ -160,6 +167,22 @@ begin
   Result := True;
 
 end;
+
+
+
+{$IFDEF VER230} // Delphi XE2
+  function IDEStyleServices: TCustomStyleServices;
+  begin
+    Result := StyleServices;
+  end;
+{$ELSE}
+  function IDEStyleServices: TThemeServices;
+  begin
+    Result := ThemeServices;
+  end;
+{$ENDIF}
+
+
 
 
 

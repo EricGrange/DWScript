@@ -1188,7 +1188,6 @@ procedure TDwsIdeForm.RefreshTabs;
       tabRect : TRect;
       r : TRect;
       txt : String;
-      closeBtnDrawState : Cardinal;
       closeBtnDrawDetails : TThemedElementDetails;
    begin
       tabRect:=Rect(page.FTabLeft, canvas.ClipRect.Top,
@@ -1222,9 +1221,9 @@ procedure TDwsIdeForm.RefreshTabs;
                                   DFC_CAPTION, DFCS_CAPTIONCLOSE+DFCS_FLAT);
       end else begin
          if hovered and hoveredClose then
-             closeBtnDrawDetails:=ThemeServices.GetElementDetails(twSmallCloseButtonHot)
-         else closeBtnDrawDetails:=ThemeServices.GetElementDetails(twSmallCloseButtonDisabled);
-         ThemeServices.DrawElement(canvas.Handle, closeBtnDrawDetails, page.CloseButtonRect);
+             closeBtnDrawDetails:=IDEStyleServices.GetElementDetails(twSmallCloseButtonHot)
+         else closeBtnDrawDetails:=IDEStyleServices.GetElementDetails(twSmallCloseButtonDisabled);
+         IDEStyleServices.DrawElement(canvas.Handle, closeBtnDrawDetails, page.CloseButtonRect);
       end;
 
       canvas.Pen.Color:=clBtnShadow;
@@ -1348,13 +1347,13 @@ begin
             sbElement:=tsArrowBtnLeftHot
          else sbElement:=tsArrowBtnLeftNormal
       else sbElement:=tsArrowBtnLeftDisabled;
-      ThemeServices.DrawElement(dc, ThemeServices.GetElementDetails(sbElement), FTabArrowLeft);
+      IDEStyleServices.DrawElement(dc, IDEStyleServices.GetElementDetails(sbElement), FTabArrowLeft);
       if FRightArrowActive then
          if FHoveredRightArrow then
             sbElement:=tsArrowBtnRightHot
          else sbElement:=tsArrowBtnRightNormal
       else sbElement:=tsArrowBtnRightDisabled;
-      ThemeServices.DrawElement(dc, ThemeServices.GetElementDetails(sbElement), FTabArrowRight);
+      IDEStyleServices.DrawElement(dc, IDEStyleServices.GetElementDetails(sbElement), FTabArrowRight);
    end;
 
    imgTabs.Invalidate;
