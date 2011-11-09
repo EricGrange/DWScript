@@ -23,7 +23,7 @@ unit dwsComp;
 
 interface
 
-uses
+uses  Windows,
   Variants, Classes, SysUtils, TypInfo, dwsCompiler, dwsExprs, dwsSymbols,
   dwsStack, dwsFunctions, dwsStrings, dwsFileSystem, dwsLanguageExtension,
   dwsTokenizer, dwsUtils, dwsOperators,
@@ -286,45 +286,78 @@ type
    TInitSymbolEvent = procedure(sender : TObject; symbol : TSymbol) of object;
    TInitExprEvent = procedure(sender : TObject; expr : TExprBase) of object;
 
-   TdwsFunction = class(TdwsSymbol, IUnknown, ICallable)
+   TdwsCallable = class(TInterfacedSelfObject, IExecutable, ICallable)
       private
-         FOnEval: TFuncEvalEvent;
-         FFuncType: TDataType;
-         FParameters: TdwsParameters;
-         FOnInitSymbol: TInitSymbolEvent;
-         FOnInitExpr: TInitExprEvent;
-         FDeprecated : UnicodeString;
+         FOwner : TObject;
+         FOnInitSymbol : TInitSymbolEvent;
+         FOnInitExpr : TInitExprEvent;
 
       protected
-         function _AddRef: Integer; stdcall;
-         function _Release: Integer; stdcall;
-         function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+         procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); virtual; abstract;
+         procedure InitSymbol(symbol : TSymbol);
+         procedure InitExpression(expr : TExprBase);
+
+      public
+         constructor Create(owner : TObject);
+
+         property OnInitSymbol : TInitSymbolEvent read FOnInitSymbol write FOnInitSymbol;
+         property OnInitExpr : TInitExprEvent read FOnInitExpr write FOnInitExpr;
+   end;
+
+   TdwsFunctionCallable = class(TdwsCallable)
+      private
+         FOnEval : TFuncEvalEvent;
+
+      protected
+         procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); override;
+
+      public
+         property OnEval : TFuncEvalEvent read FOnEval write FOnEval;
+   end;
+
+   TdwsFunctionSymbol = class(TdwsSymbol)
+      private
+         FFuncType : TDataType;
+         FParameters : TdwsParameters;
+         FDeprecated : UnicodeString;
+         FCallable : TdwsCallable;
 
       protected
          function GetDisplayName: UnicodeString; override;
-         procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); virtual;
          procedure SetParameters(const Value: TdwsParameters);
+         function GetOnInitExpr : TInitExprEvent;
+         procedure SetOnInitExpr(const val : TInitExprEvent);
+         function GetOnInitSymbol : TInitSymbolEvent;
+         procedure SetOnInitSymbol(const val : TInitSymbolEvent);
          function StoreParameters : Boolean;
-         function GetSelf : TObject;
 
       public
-         constructor Create(Collection: TCollection); override;
+         constructor Create(collection : TCollection); override;
          destructor Destroy; override;
          procedure Assign(Source: TPersistent); override;
 
          function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
          function GetParameters(Table: TSymbolTable): TParamArray;
-         procedure InitSymbol(Symbol: TSymbol);
-         procedure InitExpression(Expr: TExprBase);
 
       published
-         property Parameters: TdwsParameters read FParameters write SetParameters stored StoreParameters;
-         property ResultType: TDataType read FFuncType write FFuncType;
-         property OnEval: TFuncEvalEvent read FOnEval write FOnEval;
-         property OnInitSymbol: TInitSymbolEvent read FOnInitSymbol write FOnInitSymbol;
-         property OnInitExpr: TInitExprEvent read FOnInitExpr write FOnInitExpr;
+         property Parameters : TdwsParameters read FParameters write SetParameters stored StoreParameters;
+         property ResultType : TDataType read FFuncType write FFuncType;
+         property OnInitSymbol : TInitSymbolEvent read GetOnInitSymbol write SetOnInitSymbol;
+         property OnInitExpr : TInitExprEvent read GetOnInitExpr write SetOnInitExpr;
          property Deprecated : UnicodeString read FDeprecated write FDeprecated;
-  end;
+   end;
+
+   TdwsFunction = class(TdwsFunctionSymbol)
+      protected
+         function GetOnEval : TFuncEvalEvent;
+         procedure SetOnEval(const val : TFuncEvalEvent);
+
+      public
+         constructor Create(collection : TCollection); override;
+
+      published
+         property OnEval : TFuncEvalEvent read GetOnEval write SetOnEval;
+   end;
 
    TdwsFunctions = class(TdwsCollection)
       protected
@@ -529,31 +562,46 @@ type
 
    TdwsOperatorsClass = class of TdwsOperators;
 
-  TAssignExternalObjectEvent = procedure(Info: TProgramInfo; var ExtObject: TObject) of object;
-  TMethodEvalEvent = procedure(Info: TProgramInfo; ExtObject: TObject) of object;
+   TAssignExternalObjectEvent = procedure(Info: TProgramInfo; var ExtObject: TObject) of object;
+   TMethodEvalEvent = procedure(Info: TProgramInfo; ExtObject: TObject) of object;
 
-  TdwsMethod = class(TdwsFunction)
-  private
-    FAttributes : TMethodAttributes;
-    FKind : TMethodKind;
-    FOnEval : TMethodEvalEvent;
-    FResultType : TDataType;
-    FVisibility : TdwsVisibility;
-    procedure SetResultType(const Value: TDataType);
-  protected
-    function GetDisplayName: UnicodeString; override;
-    procedure Call(Caller: TdwsProgramExecution; Func: TFuncSymbol); override;
-  public
-    constructor Create(Collection: TCollection); override;
-    procedure Assign(Source: TPersistent); override;
-    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
-  published
-    property Attributes: TMethodAttributes read FAttributes write FAttributes default [];
-    property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
-    property Kind: TMethodKind read FKind write FKind;
-    property OnEval: TMethodEvalEvent read FOnEval write FOnEval;
-    property ResultType: TDataType read FResultType write SetResultType;
-  end;
+   TdwsMethodCallable = class(TdwsCallable)
+      private
+         FOnEval : TMethodEvalEvent;
+
+      protected
+         procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); override;
+
+      public
+         property OnEval : TMethodEvalEvent read FOnEval write FOnEval;
+   end;
+
+   TdwsMethod = class(TdwsFunctionSymbol)
+      private
+         FAttributes : TMethodAttributes;
+         FKind : TMethodKind;
+         FResultType : TDataType;
+         FVisibility : TdwsVisibility;
+
+      protected
+         function GetDisplayName: UnicodeString; override;
+         function GetOnEval : TMethodEvalEvent;
+         procedure SetOnEval(const val : TMethodEvalEvent);
+         procedure SetResultType(const Value: TDataType);
+
+      public
+         constructor Create(collection : TCollection); override;
+
+         procedure Assign(Source: TPersistent); override;
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+
+      published
+         property Attributes: TMethodAttributes read FAttributes write FAttributes default [];
+         property OnEval : TMethodEvalEvent read GetOnEval write SetOnEval;
+         property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
+         property Kind: TMethodKind read FKind write FKind;
+         property ResultType: TDataType read FResultType write SetResultType;
+   end;
 
    TdwsMethods = class(TdwsCollection)
       protected
@@ -562,25 +610,40 @@ type
          function Add : TdwsMethod;
    end;
 
-  TdwsConstructor = class(TdwsFunction)
-  private
-    FAttributes: TMethodAttributes;
-    FOnAssignExternalObject: TAssignExternalObjectEvent;
-    FVisibility : TdwsVisibility;
-    function GetResultType: UnicodeString;
-  protected
-    function GetDisplayName: UnicodeString; override;
-    procedure Call(Caller: TdwsProgramExecution; Func: TFuncSymbol); override;
-  public
-    constructor Create(Collection: TCollection); override;
-    procedure Assign(Source: TPersistent); override;
-    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
-  published
-    property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
-    property Attributes: TMethodAttributes read FAttributes write FAttributes default [];
-    property OnEval: TAssignExternalObjectEvent read FOnAssignExternalObject write FOnAssignExternalObject;
-    property ResultType: UnicodeString read GetResultType;
-  end;
+   TdwsConstructorCallable = class(TdwsCallable)
+      private
+         FOnEval : TAssignExternalObjectEvent;
+
+      protected
+         procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); override;
+
+      public
+         property OnEval : TAssignExternalObjectEvent read FOnEval write FOnEval;
+   end;
+
+   TdwsConstructor = class(TdwsFunctionSymbol)
+      private
+         FAttributes: TMethodAttributes;
+         FVisibility : TdwsVisibility;
+
+      protected
+         function GetResultType: UnicodeString;
+         function GetDisplayName: UnicodeString; override;
+         function GetOnEval : TAssignExternalObjectEvent;
+         procedure SetOnEval(const val : TAssignExternalObjectEvent);
+
+      public
+         constructor Create(Collection: TCollection); override;
+
+         procedure Assign(Source: TPersistent); override;
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+
+      published
+         property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
+         property OnEval : TAssignExternalObjectEvent read GetOnEval write SetOnEval;
+         property Attributes: TMethodAttributes read FAttributes write FAttributes default [];
+         property ResultType: UnicodeString read GetResultType;
+   end;
 
    TdwsConstructors = class(TdwsCollection)
       protected
@@ -2228,23 +2291,43 @@ begin
    end;
 end;
 
-{ TdwsFunction }
+// ------------------
+// ------------------ TdwsCallable ------------------
+// ------------------
 
-constructor TdwsFunction.Create;
+// Create
+//
+constructor TdwsCallable.Create(owner : TObject);
 begin
-  inherited;
-  FParameters := TdwsParameters.Create(Self);
+   FOwner:=owner;
+   _AddRef;
 end;
 
-destructor TdwsFunction.Destroy;
+// InitSymbol
+//
+procedure TdwsCallable.InitSymbol(symbol : TSymbol);
 begin
-  FParameters.Free;
-  inherited;
+   if Assigned(FOnInitSymbol) then
+      FOnInitSymbol(FOwner, symbol);
 end;
 
-procedure TdwsFunction.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
+// InitExpression
+//
+procedure TdwsCallable.InitExpression(expr : TExprBase);
+begin
+   if Assigned(FOnInitExpr) then
+      FOnInitExpr(FOwner, expr);
+end;
+
+// ------------------
+// ------------------ TdwsFunctionCallable ------------------
+// ------------------
+
+// Call
+//
+procedure TdwsFunctionCallable.Call(exec : TdwsProgramExecution; func : TFuncSymbol);
 var
-   info: TProgramInfo;
+   info : TProgramInfo;
 begin
    if Assigned(FOnEval) then begin
       info:=exec.AcquireProgramInfo(Func);
@@ -2256,61 +2339,93 @@ begin
    end;
 end;
 
+// ------------------
+// ------------------ TdwsFunctionSymbol ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsFunctionSymbol.Create;
+begin
+   inherited;
+   FParameters:=TdwsParameters.Create(Self);
+end;
+
+// Destroy
+//
+destructor TdwsFunctionSymbol.Destroy;
+begin
+   FCallable._Release;
+   FCallable:=nil;
+   FParameters.Free;
+   inherited;
+end;
+
 // SetParameters
 //
-procedure TdwsFunction.SetParameters(const Value: TdwsParameters);
+procedure TdwsFunctionSymbol.SetParameters(const Value: TdwsParameters);
 begin
-  FParameters.Assign(Value);
+   FParameters.Assign(Value);
+end;
+
+// GetOnInitExpr
+//
+function TdwsFunctionSymbol.GetOnInitExpr : TInitExprEvent;
+begin
+   Result:=FCallable.OnInitExpr;
+end;
+
+// SetOnInitExpr
+//
+procedure TdwsFunctionSymbol.SetOnInitExpr(const val : TInitExprEvent);
+begin
+   FCallable.OnInitExpr:=val;
+end;
+
+// GetOnInitSymbol
+//
+function TdwsFunctionSymbol.GetOnInitSymbol : TInitSymbolEvent;
+begin
+   Result:=FCallable.OnInitSymbol;
+end;
+
+// SetOnInitSymbol
+//
+procedure TdwsFunctionSymbol.SetOnInitSymbol(const val : TInitSymbolEvent);
+begin
+   FCallable.OnInitSymbol:=val;
 end;
 
 // StoreParameters
 //
-function TdwsFunction.StoreParameters : Boolean;
+function TdwsFunctionSymbol.StoreParameters : Boolean;
 begin
    Result:=(FParameters.Count>0);
 end;
 
-// GetSelf
+// DoGenerate
 //
-function TdwsFunction.GetSelf : TObject;
+function TdwsFunctionSymbol.DoGenerate(table : TSymbolTable; parentSym : TSymbol = nil) : TSymbol;
+var
+   funcSym : TFuncSymbol;
 begin
-   Result:=Self;
-end;
+   FIsGenerating:=True;
+   CheckName(Table, Name);
+   if ResultType<>'' then
+      GetDataType(Table, ResultType);
 
-function TdwsFunction._AddRef: Integer;
-begin
-  Result := -1;
-end;
+   funcSym:=TFuncSymbol.Generate(table, Name, GetParameters(table), ResultType);
+   try
+      funcSym.Params.AddParent(table);
 
-function TdwsFunction._Release: Integer;
-begin
-  Result := -1;
-end;
-
-function TdwsFunction.QueryInterface(const IID: TGUID; out Obj): HResult;
-begin
-  Result := 0;
-end;
-
-function TdwsFunction.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
-begin
-  FIsGenerating := True;
-  CheckName(Table, Name);
-  if ResultType <> '' then
-    GetDataType(Table, ResultType);
-
-  Result := TFuncSymbol.Generate(Table, Name, GetParameters(Table), ResultType);
-  try
-    TFuncSymbol(Result).Params.AddParent(Table);
-
-    // Connect TdwsFunction to TFuncSymbol
-    TFuncSymbol(Result).Executable := ICallable(Self);
-    TFuncSymbol(Result).DeprecatedMessage:=Deprecated;
-    GetUnit.Table.AddSymbol(Result);
-  except
-    Result.Free;
-    raise;
-  end;
+      funcSym.Executable:=FCallable;
+      funcSym.DeprecatedMessage:=Deprecated;
+      GetUnit.Table.AddSymbol(funcSym);
+   except
+      funcSym.Free;
+      raise;
+   end;
+   Result:=funcSym;
 end;
 
 // GetParameters
@@ -2356,14 +2471,14 @@ begin
 end;
 
 
-function TdwsFunction.GetParameters(Table: TSymbolTable): TParamArray;
+function TdwsFunctionSymbol.GetParameters(Table: TSymbolTable): TParamArray;
 begin
   Result := dwsComp.GetParameters(Self,Parameters,Table);
 end;
 
 // GetDisplayName
 //
-function TdwsFunction.GetDisplayName: UnicodeString;
+function TdwsFunctionSymbol.GetDisplayName: UnicodeString;
 begin
    Result:=Parameters.GetDisplayName;
    if Result<>'' then
@@ -2375,29 +2490,45 @@ begin
       Result:=Result+' deprecated;'
 end;
 
-procedure TdwsFunction.InitSymbol(Symbol: TSymbol);
-begin
-  if Assigned(FOnInitSymbol) then
-    FOnInitSymbol(Self,Symbol);
-end;
-
-procedure TdwsFunction.InitExpression(Expr: TExprBase);
-begin
-  if Assigned(FOnInitExpr) then
-    FOnInitExpr(Self,Expr);
-end;
-
-procedure TdwsFunction.Assign(Source: TPersistent);
+procedure TdwsFunctionSymbol.Assign(Source: TPersistent);
 begin
   inherited;
-  if Source is TdwsFunction then
+  if Source is TdwsFunctionSymbol then
   begin
-    FFuncType := TdwsFunction(Source).ResultType;
-    FParameters.Assign(TdwsFunction(Source).Parameters);
+    FFuncType := TdwsFunctionSymbol(Source).ResultType;
+    FParameters.Assign(TdwsFunctionSymbol(Source).Parameters);
   end;
 end;
 
-{ TdwsField }
+// ------------------
+// ------------------ TdwsFunction ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsFunction.Create;
+begin
+   inherited;
+   FCallable:=TdwsFunctionCallable.Create(Self);
+end;
+
+// GetOnEval
+//
+function TdwsFunction.GetOnEval : TFuncEvalEvent;
+begin
+   Result:=TdwsFunctionCallable(FCallable).OnEval;
+end;
+
+// SetOnEval
+//
+procedure TdwsFunction.SetOnEval(const val : TFuncEvalEvent);
+begin
+   TdwsFunctionCallable(FCallable).OnEval:=val;
+end;
+
+// ------------------
+// ------------------ TdwsField ------------------
+// ------------------
 
 // Create
 //
@@ -2422,28 +2553,77 @@ begin
    Result:=TClassSymbol.VisibilityToString(Visibility)+' '+inherited GetDisplayName;
 end;
 
-{ TdwsMethod }
+// ------------------
+// ------------------ TdwsMethodCallable ------------------
+// ------------------
 
-function TdwsMethod.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil):
-  TSymbol;
+// Call
+//
+procedure TdwsMethodCallable.Call(exec : TdwsProgramExecution; func : TFuncSymbol);
+var
+   info : TProgramInfo;
+   isClassMethod : Boolean;
+   methodSymbol : TMethodSymbol;
 begin
-  FIsGenerating := True;
-  CheckName(TClassSymbol(ParentSym).Members, Name);
+   if Assigned(FOnEval) then begin
+      info:=exec.AcquireProgramInfo(func);
+      try
+         methodSymbol:=(Func as TMethodSymbol);
 
-  if ResultType <> '' then
-    GetUnit.GetSymbol(Table, ResultType);
+         isClassMethod:=methodSymbol.IsClassMethod;
+         if not isClassMethod then
+            info.PrepareScriptObj;
 
-  Result := TMethodSymbol.Generate(Table, Kind, Attributes, Name,
-    GetParameters(Table), ResultType, TClassSymbol(ParentSym), Visibility);
-  try
-    TFuncSymbol(Result).Params.AddParent(Table);
-    TFuncSymbol(Result).DeprecatedMessage:=Deprecated;
+         if Assigned(info.ScriptObj) then  begin
+            FOnEval(info, info.ScriptObj.ExternalObject);
+         end else if isClassMethod then
+            FOnEval(info, nil)
+         else raise Exception.Create('Object not instantiated');
+      finally
+         exec.ReleaseProgramInfo(info);
+      end;
+   end;
+end;
 
-    TMethodSymbol(Result).Executable := ICallable(Self);
-  except
-    Result.Free;
-    raise;
-  end;
+// ------------------
+// ------------------ TdwsMethod ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsMethod.Create(Collection: TCollection);
+begin
+   inherited;
+   FVisibility:=cvPublic;
+   FCallable:=TdwsMethodCallable.Create(Self);
+end;
+
+// DoGenerate
+//
+function TdwsMethod.DoGenerate(table : TSymbolTable; parentSym : TSymbol = nil) : TSymbol;
+var
+   methSymbol : TMethodSymbol;
+begin
+   FIsGenerating := True;
+   CheckName(TClassSymbol(parentSym).Members, Name);
+
+   if ResultType <> '' then
+      GetUnit.GetSymbol(table, ResultType);
+
+   methSymbol:=TMethodSymbol.Generate(table, Kind, Attributes, Name,
+                                      GetParameters(table), ResultType,
+                                      TClassSymbol(parentSym), Visibility);
+   try
+      methSymbol.Params.AddParent(table);
+      methSymbol.DeprecatedMessage:=Deprecated;
+
+      methSymbol.Executable:=FCallable;
+   except
+      methSymbol.Free;
+      raise;
+   end;
+
+   Result:=methSymbol;
 end;
 
 // GetDisplayName
@@ -2476,6 +2656,20 @@ begin
    Result:=TClassSymbol.VisibilityToString(Visibility)+' '+Result;
 end;
 
+// GetOnEval
+//
+function TdwsMethod.GetOnEval : TMethodEvalEvent;
+begin
+   Result:=TdwsMethodCallable(FCallable).OnEval;
+end;
+
+// SetOnEval
+//
+procedure TdwsMethod.SetOnEval(const val : TMethodEvalEvent);
+begin
+   TdwsMethodCallable(FCallable).OnEval:=val;
+end;
+
 procedure TdwsMethod.SetResultType(const Value: TDataType);
 begin
   FResultType := Value;
@@ -2495,40 +2689,6 @@ begin
     end;
 end;
 
-procedure TdwsMethod.Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
-var
-  info : TProgramInfo;
-  isClassMethod : Boolean;
-  methodSymbol : TMethodSymbol;
-begin
-   if Assigned(FOnEval) then begin
-      info:=Caller.AcquireProgramInfo(func);
-      try
-         methodSymbol:=(Func as TMethodSymbol);
-
-         isClassMethod:=methodSymbol.IsClassMethod;
-         if not isClassMethod then
-            info.PrepareScriptObj;
-
-         if Assigned(info.ScriptObj) then  begin
-            FOnEval(info, info.ScriptObj.ExternalObject);
-         end else if isClassMethod then
-            FOnEval(info, nil)
-         else raise Exception.Create('Object not instantiated');
-      finally
-         Caller.ReleaseProgramInfo(info);
-      end;
-   end;
-end;
-
-// Create
-//
-constructor TdwsMethod.Create(Collection: TCollection);
-begin
-   inherited;
-   FVisibility:=cvPublic;
-end;
-
 procedure TdwsMethod.Assign(Source: TPersistent);
 begin
   inherited;
@@ -2541,7 +2701,48 @@ begin
   end;
 end;
 
-{ TdwsConstructor }
+// ------------------
+// ------------------ TdwsConstructorCallable ------------------
+// ------------------
+
+// Call
+//
+procedure TdwsConstructorCallable.Call(exec : TdwsProgramExecution; func : TFuncSymbol);
+var
+   info : TProgramInfo;
+   extObj : TObject;
+begin
+   info:=exec.AcquireProgramInfo(Func);
+   try
+      info.PrepareScriptObj;
+
+      if Assigned(FOnEval) then begin
+         if Assigned(info.ScriptObj) then begin
+            extObj:=info.ScriptObj.ExternalObject; // may assigned by Info.GetConstructor()
+            FOnEval(info, extObj);
+            info.ScriptObj.ExternalObject:=extObj;
+         end;
+      end;
+   finally
+      exec.ReleaseProgramInfo(info);
+   end;
+end;
+
+// ------------------
+// ------------------ TdwsConstructor ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsConstructor.Create(collection : TCollection);
+begin
+   inherited;
+   // Name the first constructor "Create" by default
+   if Collection.Count = 1 then
+      FName := 'Create';
+   FVisibility:=cvPublic;
+   FCallable:=TdwsConstructorCallable.Create(Self);
+end;
 
 procedure TdwsConstructor.Assign(Source: TPersistent);
 begin
@@ -2552,51 +2753,25 @@ begin
   end;
 end;
 
-procedure TdwsConstructor.Call(Caller: TdwsProgramExecution; Func: TFuncSymbol);
+// DoGenerate
+//
+function TdwsConstructor.DoGenerate(table : TSymbolTable; parentSym : TSymbol) : TSymbol;
 var
-   info: TProgramInfo;
-   extObj: TObject;
+   methSymbol : TMethodSymbol;
 begin
-   info := Caller.AcquireProgramInfo(Func);
+   FIsGenerating := True;
+   CheckName(TClassSymbol(ParentSym).Members, Name);
+
+   methSymbol := TMethodSymbol.Generate(Table, mkConstructor, Attributes, Name,
+                                        GetParameters(Table), '', TClassSymbol(ParentSym), Visibility);
    try
-      info.PrepareScriptObj;
-
-      if Assigned(FOnAssignExternalObject) then begin
-         if Assigned(info.ScriptObj) then begin
-            extObj := info.ScriptObj.ExternalObject; // may assigned by Info.GetConstructor()
-            FOnAssignExternalObject(info, extObj);
-            info.ScriptObj.ExternalObject := extObj;
-         end;
-      end;
-   finally
-      Caller.ReleaseProgramInfo(info);
+      methSymbol.Params.AddParent(Table);
+      methSymbol.Executable := FCallable;
+   except
+      methSymbol.Free;
+      raise;
    end;
-end;
-
-constructor TdwsConstructor.Create(Collection: TCollection);
-begin
-  inherited;
-  // Name the first constructor "Create" by default
-  if Collection.Count = 1 then
-    FName := 'Create';
-  FVisibility:=cvPublic;
-end;
-
-function TdwsConstructor.DoGenerate(Table: TSymbolTable;
-  ParentSym: TSymbol): TSymbol;
-begin
-  FIsGenerating := True;
-  CheckName(TClassSymbol(ParentSym).Members, Name);
-
-  Result := TMethodSymbol.Generate(Table, mkConstructor, Attributes, Name,
-    GetParameters(Table), '', TClassSymbol(ParentSym), Visibility);
-  try
-    TFuncSymbol(Result).Params.AddParent(Table);
-    TMethodSymbol(Result).Executable := ICallable(Self);
-  except
-    Result.Free;
-    raise;
-  end;
+   Result:=methSymbol;
 end;
 
 function TdwsConstructor.GetDisplayName: UnicodeString;
@@ -2607,6 +2782,20 @@ begin
     Result := '(' + Result + ')';
 
   Result:=TClassSymbol.VisibilityToString(Visibility)+Format(' constructor %s%s;', [Name, Result]);
+end;
+
+// GetOnEval
+//
+function TdwsConstructor.GetOnEval : TAssignExternalObjectEvent;
+begin
+   Result:=TdwsConstructorCallable(FCallable).OnEval;
+end;
+
+// SetOnEval
+//
+procedure TdwsConstructor.SetOnEval(const val : TAssignExternalObjectEvent);
+begin
+   TdwsConstructorCallable(FCallable).OnEval:=val;
 end;
 
 function TdwsConstructor.GetResultType: UnicodeString;
