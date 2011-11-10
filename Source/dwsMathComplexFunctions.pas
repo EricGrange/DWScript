@@ -72,18 +72,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-type
-   TComplexProgram = class helper for TdwsProgram
-      function TypComplex : TRecordSymbol;
-   end;
-
-// TypComplex
-//
-function TComplexProgram.TypComplex : TRecordSymbol;
-begin
-   Result:=SystemTable.FindTypeSymbol(SYS_COMPLEX, cvMagic) as TRecordSymbol;
-end;
-
 // RegisterComplexType
 //
 procedure RegisterComplexType(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
