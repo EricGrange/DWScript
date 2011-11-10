@@ -1,4 +1,4 @@
-package dwsLib2009;
+package dwsLib;
 
 {$R *.res}
 {$ALIGN 8}

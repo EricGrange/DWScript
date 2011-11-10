@@ -1,6 +1,7 @@
-package dwsLibXE;
+package dwsLib;
 
 {$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
 {$BOOLEVAL OFF}
@@ -16,21 +17,24 @@ package dwsLibXE;
 {$RANGECHECKS OFF}
 {$REFERENCEINFO OFF}
 {$SAFEDIVIDE OFF}
-{$STACKFRAMES OFF}
+{$STACKFRAMES ON}
 {$TYPEDADDRESS OFF}
 {$VARSTRINGCHECKS ON}
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'DelphiWebScript'}
 {$DESIGNONLY}
 {$IMPLICITBUILD ON}
+{$LIBSUFFIX 'XE2'}
 
 requires
   designide,
   vcl,
   rtl,
-  dwsLibRuntimeXE;
+  dwsLibRuntime;
 
 contains
   dwsRegister in '..\source\dwsRegister.pas',
