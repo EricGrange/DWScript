@@ -181,9 +181,15 @@ type
          FStartPos : TScriptPos;
          FData : Pointer;             // pointer to some data element (for users)
          FLocalTable : TSymbolTable;  // symbol table associated with the context (begin..end blocks, TProcedures, etc)
+         FToken : TTokenType;         // token associated with opening the context
+
+      protected
+         function GetCount : Integer; inline;
+         function GetSubCountext(index : Integer) : TContext; inline;
 
       public
-         constructor Create(AParent: TContext; const AStartPos: TScriptPos; AParentSymbol: TSymbol);
+         constructor Create(aParent : TContext; const aStartPos : TScriptPos;
+                            aParentSymbol : TSymbol; aToken : TTokenType);
          destructor Destroy; override;
 
          function IsPositionInContext(aCol, aLine : Integer; const sourceName : UnicodeString) : Boolean;
@@ -191,7 +197,12 @@ type
 
          property Parent : TContext read FParentContext;
          property ParentSym : TSymbol read FParentSymbol;
+         property Token : TTokenType read FToken;
+
          property SubContexts : TTightList read FSubContexts;
+         property SubContext[index : Integer] : TContext read GetSubCountext;
+         property Count : Integer read GetCount;
+
          property StartPos : TScriptPos read FStartPos;
          property EndPos : TScriptPos read FEndPos;
          property Data : Pointer read FData write FData;
@@ -209,7 +220,7 @@ type
 
          { Push a context on to the stack - procedures have a symbol context.
          Standard Begin..end blocks do not have a ParentSymbol. }
-         procedure OpenContext(const AStartPos : TScriptPos; AParentSymbol: TSymbol);
+         procedure OpenContext(const startPos : TScriptPos; parentSymbol : TSymbol; token : TTokenType);
          { Pop a context off the stack }
          procedure CloseContext(const AEndPos : TScriptPos);
 
@@ -217,6 +228,7 @@ type
          function FindContext(aCol, aLine : Integer; sourceFile : TSourceFile) : TContext; overload;
          function FindContext(aCol, aLine : Integer; const sourceName : UnicodeString) : TContext; overload;
          function FindContext(const ScriptPos : TScriptPos) : TContext; overload;
+         function FindContextByToken(aToken : TTokenType) : TContext;
 
          property Contexts : TTightList read FScriptContexts;
          property Current : TContext read FCurrentContext;
@@ -7961,12 +7973,13 @@ end;
 
 // Create
 //
-constructor TContext.Create(AParent: TContext; const AStartPos: TScriptPos;
-                            AParentSymbol: TSymbol);
+constructor TContext.Create(aParent : TContext; const aStartPos : TScriptPos;
+                            aParentSymbol : TSymbol; aToken : TTokenType);
 begin
    FParentContext := AParent;
    FParentSymbol  := AParentSymbol;
    FStartPos := AStartPos;
+   FToken := aToken;
 end;
 
 // Destroy
@@ -8018,6 +8031,20 @@ begin
    end;
 end;
 
+// GetCount
+//
+function TContext.GetCount : Integer;
+begin
+   Result:=FSubContexts.Count;
+end;
+
+// GetSubCountext
+//
+function TContext.GetSubCountext(index : Integer) : TContext;
+begin
+   Result:=TContext(FSubContexts.List[index]);
+end;
+
 // ------------------
 // ------------------ TContextMap ------------------
 // ------------------
@@ -8039,6 +8066,19 @@ begin
    for x:=0 to FScriptContexts.Count-1 do begin
       Result:=TContext(FScriptContexts.List[x]);
       if Result.FParentSymbol=aParentSymbol then Exit;
+   end;
+   Result:=nil;
+end;
+
+// FindContextByToken
+//
+function TContextMap.FindContextByToken(aToken : TTokenType) : TContext;
+var
+   x : Integer;
+begin
+   for x:=0 to FScriptContexts.Count-1 do begin
+      Result:=TContext(FScriptContexts.List[x]);
+      if Result.Token=aToken then Exit;
    end;
    Result:=nil;
 end;
@@ -8111,18 +8151,19 @@ end;
 
 // OpenContext
 //
-procedure TContextMap.OpenContext(const AStartPos: TScriptPos; AParentSymbol: TSymbol);
+procedure TContextMap.OpenContext(const startPos : TScriptPos; parentSymbol : TSymbol; token : TTokenType);
 var
    newContext: TContext;
 begin
-   { Uses a simple 'stack' concept. If currently in a context and a new context
-     is openned then the new context is a sub context of the current context. }
-   newContext := TContext.Create(FCurrentContext, AStartPos, AParentSymbol);  // new context is owned by the current context
-   { Add new context to the appropriate 'parent' context }
-   if FCurrentContext = nil then           // if top-level,
+   // Uses a simple 'stack' concept. If currently in a context and a new context
+   // is opened then the new context is a sub context of the current context.
+   // new context is owned by the current context
+   newContext:=TContext.Create(FCurrentContext, startPos, parentSymbol, token);
+   // Add new context to the appropriate 'parent' context
+   if FCurrentContext=nil then           // if top-level,
       FScriptContexts.Add(newContext)      // Add to top-level contexts
    else FCurrentContext.SubContexts.Add(newContext);
-   FCurrentContext := newContext;
+   FCurrentContext:=newContext;
 end;
 
 // CloseContext

@@ -388,7 +388,7 @@ type
          procedure ReadArrayParams(ArrayIndices: TSymbolTable);
          // Don't want to add param symbols to dictionary when a method implementation (they get thrown away)
          procedure ReadParams(const addParamMeth : TParamSymbolMethod; paramsToDictionary : Boolean = True);
-         function ReadProcDecl(funcKind : TFuncKind; isClassMethod : Boolean = False;
+         function ReadProcDecl(funcToken : TTokenType; isClassMethod : Boolean = False;
                             isType : Boolean = False) : TFuncSymbol;
          procedure ReadProcBody(funcSymbol : TFuncSymbol);
          procedure ReadConditions(funcSymbol : TFuncSymbol; conditions : TSourceConditions;
@@ -1339,12 +1339,12 @@ begin
             action:=rsaNoSemiColon;
          end else ReadTypeDecl;
       ttPROCEDURE, ttFUNCTION, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD :
-         ReadProcBody(ReadProcDecl(cTokenToFuncKind[token]));
+         ReadProcBody(ReadProcDecl(token));
       ttCLASS : begin
          token:=FTok.TestDeleteAny([ttPROCEDURE, ttFUNCTION, ttMETHOD]);
          case token of
             ttPROCEDURE, ttFUNCTION, ttMETHOD :
-               ReadProcBody(ReadProcDecl(cTokenToFuncKind[token], True));
+               ReadProcBody(ReadProcDecl(token, True));
          else
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
          end;
@@ -1355,6 +1355,10 @@ begin
                                       [cTokenStrings[token]]);
             action:=rsaNoSemiColon;
          end else begin
+            if coContextMap in FOptions then begin
+               FContextMap.CloseContext(FTok.HotPos);
+               FContextMap.OpenContext(FTok.HotPos, nil, ttIMPLEMENTATION);
+            end;
             FUnitSection:=secImplementation;
             DoSectionChanged;
             action:=rsaImplementation;
@@ -1752,7 +1756,7 @@ begin
 
    // Wrap whole type declarations in a context.
    if coContextMap in FOptions then
-      FContextMap.OpenContext(typePos, typNew);
+      FContextMap.OpenContext(typePos, typNew, ttNAME);
 
    try
       if typNew.Name<>'' then begin
@@ -1782,15 +1786,17 @@ end;
 
 // ReadProcDecl
 //
-function TdwsCompiler.ReadProcDecl(funcKind : TFuncKind;
+function TdwsCompiler.ReadProcDecl(funcToken : TTokenType;
               isClassMethod : Boolean = False; isType : Boolean = False) : TFuncSymbol;
 var
+   funcKind : TFuncKind;
    name : UnicodeString;
    sym : TSymbol;
    funcPos : TScriptPos;
    forwardedSym : TFuncSymbol;
    forwardedSymPos : TSymbolPosition;
 begin
+   funcKind:=cTokenToFuncKind[funcToken];
    if not isType then begin
       // Find Symbol for Functionname
       if not FTok.TestDeleteNamePos(name, funcPos) then begin
@@ -1803,7 +1809,7 @@ begin
 
       // Open context for procedure declaration. Closed in ReadProcBody.
       if coContextMap in FOptions then
-         FContextMap.OpenContext(funcPos, sym);
+         FContextMap.OpenContext(funcPos, sym, funcToken);
    end else begin
       sym := nil;
       name := '';
@@ -1970,6 +1976,7 @@ var
    methPos: TScriptPos;
    qualifier : TTokenType;
    funcResult : TSourceMethodSymbol;
+   bodyToken : TTokenType;
 begin
    // Find Symbol for Functionname
    if not FTok.TestDeleteNamePos(name, methPos) then begin
@@ -2091,10 +2098,11 @@ begin
       structSym.AddMethod(funcResult);
    end;
 
-   if FTok.TestAny([ttBEGIN, ttREQUIRE])<>ttNone then begin
+   bodyToken:=FTok.TestAny([ttBEGIN, ttREQUIRE]);
+   if bodyToken<>ttNone then begin
       // inline declaration
       if coContextMap in FOptions then
-         FContextMap.OpenContext(FTok.HotPos, funcResult);
+         FContextMap.OpenContext(FTok.HotPos, funcResult, bodyToken);
       ReadProcBody(funcResult);
       ReadSemiColon;
    end;
@@ -2210,7 +2218,7 @@ begin
 
    // Open context of full procedure body (may include a 'var' section)
    if coContextMap in FOptions then
-      FContextMap.OpenContext(FTok.CurrentPos, funcSymbol);   // attach to symbol that it belongs to (perhaps a class)
+      FContextMap.OpenContext(FTok.CurrentPos, funcSymbol, ttBEGIN);   // attach to symbol that it belongs to (perhaps a class)
 
    funcSymbol.SourcePosition:=FTok.HotPos;
 
@@ -2264,7 +2272,7 @@ begin
          end;
 
          if coContextMap in FOptions then
-            FContextMap.OpenContext(FTok.CurrentPos, nil);
+            FContextMap.OpenContext(FTok.CurrentPos, nil, ttBEGIN);
          try
             // Read procedure body
             if not FTok.TestDelete(ttBEGIN) then begin
@@ -2324,6 +2332,7 @@ var
    testLength : Integer;
    msg : UnicodeString;
    srcCond : TSourceCondition;
+   endToken : TTokenType;
 begin
    repeat
 
@@ -2367,8 +2376,9 @@ begin
          raise;
       end;
 
-   until FTok.TestAny([ttVAR, ttCONST, ttBEGIN, ttEND, ttENSURE, ttREQUIRE,
-                       ttFUNCTION, ttPROCEDURE, ttTYPE])<>ttNone;
+      endToken:=FTok.TestAny([ttVAR, ttCONST, ttBEGIN, ttEND, ttENSURE, ttREQUIRE,
+                              ttFUNCTION, ttPROCEDURE, ttTYPE])
+   until endToken<>ttNone;
 end;
 
 // ReadPostConditions
@@ -2475,7 +2485,7 @@ end;
 
 // ReadBlocks
 //
-function TdwsCompiler.ReadBlocks(const endTokens: TTokenTypes; var finalToken: TTokenType): TNoResultExpr;
+function TdwsCompiler.ReadBlocks(const endTokens : TTokenTypes; var finalToken : TTokenType) : TNoResultExpr;
 var
    stmt : TNoResultExpr;
    oldTable : TSymbolTable;
@@ -2490,7 +2500,7 @@ begin
    blockExpr:=TBlockExpr.Create(FProg, FTok.HotPos);
    try
       if coContextMap in FOptions then begin
-         FContextMap.OpenContext(FTok.CurrentPos, nil);
+         FContextMap.OpenContext(FTok.CurrentPos, nil, ttBEGIN);
          closePos:=FTok.CurrentPos;     // default to close context where it opened (used on errors)
       end;
 
@@ -5504,7 +5514,7 @@ begin
          Result:=ReadEnumeration(typeName);
 
       ttPROCEDURE, ttFUNCTION : begin
-         Result:=ReadProcDecl(cTokenToFuncKind[tt], False, True);
+         Result:=ReadProcDecl(tt, False, True);
          Result.SetName(typeName);
          (Result as TFuncSymbol).SetIsType;
       end;
@@ -7097,7 +7107,14 @@ var
 begin
    names:=TStringList.Create;
    try
+      if coContextMap in FOptions then
+         FContextMap.OpenContext(FTok.HotPos, nil, ttUSES);
+
       ReadNameList(names, posArray);
+
+      if coContextMap in FOptions then
+         FContextMap.CloseContext(FTok.HotPos);
+
       u:=0;
       if FUnitSymbol<>nil then
          if UnitSection=secImplementation then begin
@@ -7149,9 +7166,11 @@ begin
       FMsgs.AddCompilerWarning(namePos, CPE_UnitNameDoesntMatch);
    if not FTok.TestDelete(ttSEMI) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
-   if FTok.TestDelete(ttINTERFACE) then
-      FUnitSection:=secInterface
-   else FUnitSection:=secMixed;
+   if FTok.TestDelete(ttINTERFACE) then begin
+      FUnitSection:=secInterface;
+      if coContextMap in FOptions then
+         FContextMap.OpenContext(FTok.HotPos, nil, ttINTERFACE);
+   end else FUnitSection:=secMixed;
    DoSectionChanged;
 end;
 

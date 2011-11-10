@@ -39,6 +39,7 @@ type
          procedure ScriptPos;
          procedure MonkeyTest;
          procedure SameVariantTest;
+         procedure SectionContextMaps;
    end;
 
 // ------------------------------------------------------------------
@@ -653,6 +654,36 @@ begin
    v:=Null;
    CheckTrue(DWSSameVariant(v, Null), 'Null Null');
    CheckFalse(DWSSameVariant(v, 1), 'Null 1');
+end;
+
+// SectionContextMaps
+//
+procedure TCornerCasesTests.SectionContextMaps;
+var
+   prog : IdwsProgram;
+   context : TContext;
+begin
+   FCompiler.Config.CompilerOptions:=[coContextMap];
+   prog:=FCompiler.Compile( 'unit dummy;'#13#10
+                           +'interface;'#13#10
+                           +'uses Internal;'#13#10
+                           +'implementation;'#13#10);
+   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions;
+
+   context:=prog.ContextMap.FindContextByToken(ttINTERFACE);
+   CheckEquals(' [line: 2, column: 1]', context.StartPos.AsInfo, 'intf start');
+   CheckEquals(' [line: 4, column: 1]', context.EndPos.AsInfo, 'intf end');
+   CheckEquals(1, context.Count, 'intf sub count');
+
+   context:=context.SubContext[0];
+   CheckEquals(Ord(ttUSES), Ord(context.Token), 'uses token');
+   CheckEquals(' [line: 3, column: 1]', context.StartPos.AsInfo, 'uses start');
+   CheckEquals(' [line: 3, column: 14]', context.EndPos.AsInfo, 'uses end');
+
+   context:=prog.ContextMap.FindContextByToken(ttIMPLEMENTATION);
+   CheckEquals(' [line: 4, column: 1]', context.StartPos.AsInfo, 'implem start');
+   CheckEquals('', context.EndPos.AsInfo, 'implem end');
+   CheckEquals(0, context.Count, 'implem sub count');
 end;
 
 // ------------------------------------------------------------------
