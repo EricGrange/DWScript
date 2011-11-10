@@ -1,0 +1,229 @@
+{**********************************************************************}
+{                                                                      }
+{    "The contents of this file are subject to the Mozilla Public      }
+{    License Version 1.1 (the "License"); you may not use this         }
+{    file except in compliance with the License. You may obtain        }
+{    a copy of the License at http://www.mozilla.org/MPL/              }
+{                                                                      }
+{    Software distributed under the License is distributed on an       }
+{    "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express       }
+{    or implied. See the License for the specific language             }
+{    governing rights and limitations under the License.               }
+{                                                                      }
+{    Copyright Creative IT.                                            }
+{    Current maintainer: Eric Grange                                   }
+{                                                                      }
+{**********************************************************************}
+unit dwsMath3DFunctions;
+
+{$I dws.inc}
+
+interface
+
+uses Classes, dwsFunctions, dwsExprs, dwsSymbols, dwsStack, dwsOperators,
+   dwsStrings, dwsTokenizer, SysUtils, dwsUtils;
+
+type
+   TVectorMakeExpr = class(TInternalMagicDataFunction)
+      public
+         procedure DoEval(args : TExprBaseList; var result : TDataPtr); override;
+   end;
+
+   TVectorToStrExpr = class(TInternalMagicStringFunction)
+      public
+         procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
+   end;
+
+   TVectorOpExpr = class(TInternalMagicDataFunction);
+
+   TVectorAddOpExpr = class(TVectorOpExpr)
+      public
+         procedure DoEval(args : TExprBaseList; var result : TDataPtr); override;
+   end;
+
+   TVectorSubOpExpr = class(TVectorOpExpr)
+      public
+         procedure DoEval(args : TExprBaseList; var result : TDataPtr); override;
+   end;
+
+   TVectorCrossProductOpExpr = class(TVectorOpExpr)
+      public
+         procedure DoEval(args : TExprBaseList; var result : TDataPtr); override;
+   end;
+
+   TVectorDotProductOpExpr = class(TInternalMagicFloatFunction)
+      public
+         procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+   end;
+
+const
+   SYS_VECTOR = 'TVector';
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// RegisterMath3DTypes
+//
+procedure RegisterMath3DTypes(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                              unitTable : TSymbolTable; operators : TOperators);
+var
+   typVector : TRecordSymbol;
+   typFloat : TBaseFloatSymbol;
+begin
+   typFloat:=SystemTable.FindSymbol(SYS_FLOAT, cvMagic) as TBaseFloatSymbol;
+
+   typVector:=TRecordSymbol.Create(SYS_VECTOR, nil);
+   typVector.AddField(TFieldSymbol.Create('X', typFloat, cvPublic));
+   typVector.AddField(TFieldSymbol.Create('Y', typFloat, cvPublic));
+   typVector.AddField(TFieldSymbol.Create('Z', typFloat, cvPublic));
+   typVector.AddField(TFieldSymbol.Create('W', typFloat, cvPublic));
+
+   systemTable.AddSymbol(typVector);
+end;
+
+// RegisterMath3DOperators
+//
+procedure RegisterMath3DOperators(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+                                   unitTable : TSymbolTable; operators : TOperators);
+var
+   typVector : TRecordSymbol;
+begin
+   typVector:=systemTable.FindTypeSymbol(SYS_VECTOR, cvMagic) as TRecordSymbol;
+
+   operators.RegisterOperator(ttPLUS, unitTable.FindSymbol('VectorAdd', cvMagic) as TFuncSymbol, typVector, typVector);
+   operators.RegisterOperator(ttMINUS, unitTable.FindSymbol('VectorSub', cvMagic) as TFuncSymbol, typVector, typVector);
+   operators.RegisterOperator(ttCARET, unitTable.FindSymbol('VectorCrossProduct', cvMagic) as TFuncSymbol, typVector, typVector);
+   operators.RegisterOperator(ttTIMES, unitTable.FindSymbol('VectorDotProduct', cvMagic) as TFuncSymbol, typVector, typVector);
+end;
+
+// ------------------
+// ------------------ TVectorMakeExpr ------------------
+// ------------------
+
+// DoEval
+//
+procedure TVectorMakeExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
+begin
+   result[0]:=args.AsFloat[0];
+   result[1]:=args.AsFloat[1];
+   result[2]:=args.AsFloat[2];
+   result[3]:=args.AsFloat[3];
+end;
+
+// ------------------
+// ------------------ TVectorToStrExpr ------------------
+// ------------------
+
+// DoEvalAsString
+//
+procedure TVectorToStrExpr.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
+var
+   vectorData : TDataPtr;
+begin
+   vectorData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
+   Result:=Format('[%f %f %f %f]',
+                  [Double(vectorData[0]), Double(vectorData[1]),
+                   Double(vectorData[2]), Double(vectorData[3])]);
+end;
+
+// ------------------
+// ------------------ TVectorAddOpExpr ------------------
+// ------------------
+
+// DoEval
+//
+procedure TVectorAddOpExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
+var
+   leftData, rightData : TDataPtr;
+begin
+   leftData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
+   rightData:=TDataExpr(args.ExprBase[1]).DataPtr[args.Exec];
+
+   result[0]:=leftData[0]+rightData[0];
+   result[1]:=leftData[1]+rightData[1];
+   result[2]:=leftData[2]+rightData[2];
+   result[3]:=leftData[3]+rightData[3];
+end;
+
+// ------------------
+// ------------------ TVectorSubOpExpr ------------------
+// ------------------
+
+// DoEval
+//
+procedure TVectorSubOpExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
+var
+   leftData, rightData : TDataPtr;
+begin
+   leftData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
+   rightData:=TDataExpr(args.ExprBase[1]).DataPtr[args.Exec];
+
+   result[0]:=leftData[0]-rightData[0];
+   result[1]:=leftData[1]-rightData[1];
+   result[2]:=leftData[2]-rightData[2];
+   result[3]:=leftData[3]-rightData[3];
+end;
+
+// ------------------
+// ------------------ TVectorCrossProductOpExpr ------------------
+// ------------------
+
+// DoEval
+//
+procedure TVectorCrossProductOpExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
+var
+   leftData, rightData : TDataPtr;
+begin
+   leftData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
+   rightData:=TDataExpr(args.ExprBase[1]).DataPtr[args.Exec];
+
+   result[0]:=leftData[1]*rightData[2]-leftData[2]*rightData[1];
+   result[1]:=leftData[0]*rightData[2]-leftData[2]*rightData[0];
+   result[2]:=leftData[0]*rightData[1]-leftData[1]*rightData[0];
+   result[3]:=0;
+end;
+
+// ------------------
+// ------------------ TVectorDotProductOpExpr ------------------
+// ------------------
+
+// DoEvalAsFloat
+//
+procedure TVectorDotProductOpExpr.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+var
+   leftData, rightData : TDataPtr;
+begin
+   leftData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
+   rightData:=TDataExpr(args.ExprBase[1]).DataPtr[args.Exec];
+
+   Result:= leftData[0]*rightData[0]
+           +leftData[1]*rightData[1]
+           +leftData[2]*rightData[2]
+           +leftData[3]*rightData[3];
+end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   dwsInternalUnit.AddPreInitProc(RegisterMath3DTypes);
+   dwsInternalUnit.AddPostInitProc(RegisterMath3DOperators);
+
+   RegisterInternalFunction(TVectorMakeExpr, 'Vector', ['x', SYS_FLOAT, 'y', SYS_FLOAT, 'z', SYS_FLOAT, 'w', SYS_FLOAT], SYS_VECTOR, True);
+   RegisterInternalStringFunction(TVectorToStrExpr, 'VectorToStr', ['c', SYS_VECTOR], True);
+
+   RegisterInternalFunction(TVectorAddOpExpr,  'VectorAdd',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], SYS_VECTOR, True);
+   RegisterInternalFunction(TVectorSubOpExpr,  'VectorSub',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], SYS_VECTOR, True);
+   RegisterInternalFunction(TVectorCrossProductOpExpr,  'VectorCrossProduct',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], SYS_VECTOR, True);
+   RegisterInternalFloatFunction(TVectorDotProductOpExpr,  'VectorDot',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], True);
+
+end.
