@@ -1,4 +1,4 @@
-package dwsLibRuntime;
+package dwsLibRuntimeXE;
 
 {$R *.res}
 {$ALIGN 8}

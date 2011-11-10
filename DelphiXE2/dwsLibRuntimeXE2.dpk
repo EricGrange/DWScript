@@ -1,6 +1,7 @@
-package dwsLib;
+package dwsLibRuntimeXE;
 
 {$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
 {$BOOLEVAL OFF}
@@ -16,24 +17,23 @@ package dwsLib;
 {$RANGECHECKS OFF}
 {$REFERENCEINFO OFF}
 {$SAFEDIVIDE OFF}
-{$STACKFRAMES OFF}
+{$STACKFRAMES ON}
 {$TYPEDADDRESS OFF}
 {$VARSTRINGCHECKS ON}
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
-{$DESCRIPTION 'DelphiWebScript'}
-{$DESIGNONLY}
-{$IMPLICITBUILD ON}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'DelphiWebScript Runtime'}
+{$RUNONLY}
+{$IMPLICITBUILD OFF}
 
 requires
-  designide,
   vcl,
   rtl;
 
 contains
-  dwsRegister in '..\source\dwsRegister.pas',
-  dwsExperts in '..\source\dwsExperts.pas',
   dwsComConnector in '..\Source\dwsComConnector.pas',
   dwsStrings in '..\Source\dwsStrings.pas',
   dwsSymbols in '..\Source\dwsSymbols.pas',
@@ -64,6 +64,16 @@ contains
   dwsStringResult in '..\source\dwsStringResult.pas',
   dwsClassesLibModule in '..\Libraries\ClassesLib\dwsClassesLibModule.pas' {dwsClassesLib: TDataModule},
   dwsAsmLibModule in '..\Libraries\asmLib\dwsAsmLibModule.pas',
-  dwsSymbolsLibModule in '..\Libraries\SymbolsLib\dwsSymbolsLibModule.pas' {dwsSymbolsLib: TDataModule};
+  dwsSymbolsLibModule in '..\Libraries\SymbolsLib\dwsSymbolsLibModule.pas' {dwsSymbolsLib: TDataModule},
+  dwsCodeGen in '..\Source\dwsCodeGen.pas',
+  dwsJSON in '..\Source\dwsJSON.pas',
+  dwsOperators in '..\Source\dwsOperators.pas',
+  dwsPascalTokenizer in '..\Source\dwsPascalTokenizer.pas',
+  dwsRTTIConnector in '..\Source\dwsRTTIConnector.pas',
+  dwsXPlatformUI in '..\Source\dwsXPlatformUI.pas',
+  dwsJSCodeGen in '..\Libraries\JSCodeGen\dwsJSCodeGen.pas',
+  dwsJSFilter in '..\Libraries\JSCodeGen\dwsJSFilter.pas',
+  dwsJSLibModule in '..\Libraries\JSCodeGen\dwsJSLibModule.pas',
+  dwsJSMin in '..\Libraries\JSCodeGen\dwsJSMin.pas';
 
 end.
