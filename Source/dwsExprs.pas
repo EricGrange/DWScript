@@ -460,7 +460,7 @@ type
          FRoot : TdwsMainProgram;
          FRootTable : TProgramSymbolTable;
          FTable : TSymbolTable;
-         FSystemTable : TSymbolTable;
+         FSystemTable : TSystemSymbolTable;
          FUnitMains : TUnitMainSymbols;
          FBaseTypes : TdwsProgramBaseTypes;
 
@@ -470,7 +470,7 @@ type
          function GetAddrGeneratorDataSize : Integer; inline;
 
       public
-         constructor Create(systemTable : TSymbolTable);
+         constructor Create(systemTable : TSystemSymbolTable);
          destructor Destroy; override;
 
          function GetGlobalAddr(DataSize: Integer): Integer;
@@ -487,7 +487,7 @@ type
          property DataSize : Integer read GetAddrGeneratorDataSize;
 
          property RootTable : TProgramSymbolTable read FRootTable;
-         property SystemTable : TSymbolTable read FSystemTable;
+         property SystemTable : TSystemSymbolTable read FSystemTable;
          property UnitMains : TUnitMainSymbols read FUnitMains;
          property Table : TSymbolTable read FTable write FTable;
 
@@ -549,7 +549,7 @@ type
          function GetProgramObject : TdwsProgram;
 
       public
-         constructor Create(systemTable : TStaticSymbolTable;
+         constructor Create(systemTable : TSystemSymbolTable;
                             resultType : TdwsResultType;
                             const stackParameters : TStackParameters);
          destructor Destroy; override;
@@ -2671,7 +2671,7 @@ end;
 
 // Create
 //
-constructor TdwsProgram.Create(SystemTable: TSymbolTable);
+constructor TdwsProgram.Create(SystemTable: TSystemSymbolTable);
 begin
    FCompileMsgs := TdwsCompileMessageList.Create;
 
@@ -2685,15 +2685,15 @@ begin
    FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
 
    // Initialize shortcuts to often used symbols
-   FBaseTypes.FTypBoolean := SystemTable.FindSymbol(SYS_BOOLEAN, cvMagic) as TTypeSymbol;
-   FBaseTypes.FTypFloat := SystemTable.FindSymbol(SYS_FLOAT, cvMagic) as TTypeSymbol;
-   FBaseTypes.FTypInteger := SystemTable.FindSymbol(SYS_INTEGER, cvMagic) as TTypeSymbol;
-   FBaseTypes.FTypString := SystemTable.FindSymbol(SYS_STRING, cvMagic) as TTypeSymbol;
-   FBaseTypes.FTypVariant := SystemTable.FindSymbol(SYS_VARIANT, cvMagic) as TTypeSymbol;
+   FBaseTypes.FTypBoolean := SystemTable.TypBoolean;
+   FBaseTypes.FTypFloat := SystemTable.TypFloat;
+   FBaseTypes.FTypInteger := SystemTable.TypInteger;
+   FBaseTypes.FTypString := SystemTable.TypString;
+   FBaseTypes.FTypVariant := SystemTable.TypVariant;
    FBaseTypes.FTypNil := TNilSymbol.Create;
-   FBaseTypes.FTypObject := SystemTable.FindSymbol(SYS_TOBJECT, cvMagic) as TClassSymbol;
-   FBaseTypes.FTypException := SystemTable.FindSymbol(SYS_EXCEPTION, cvMagic) as TClassSymbol;
-   FBaseTypes.FTypInterface := SystemTable.FindSymbol(SYS_IINTERFACE, cvMagic) as TInterfaceSymbol;
+   FBaseTypes.FTypObject := SystemTable.TypObject;
+   FBaseTypes.FTypException := SystemTable.TypException;
+   FBaseTypes.FTypInterface := SystemTable.TypInterface;
 end;
 
 // Destroy
@@ -2754,7 +2754,7 @@ end;
 
 // Create
 //
-constructor TdwsMainProgram.Create(systemTable : TStaticSymbolTable;
+constructor TdwsMainProgram.Create(systemTable : TSystemSymbolTable;
                                    resultType : TdwsResultType;
                                    const stackParameters : TStackParameters);
 var

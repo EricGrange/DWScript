@@ -50,7 +50,7 @@ type
          FSymbolMarker : TTokenType;
 
       public
-         function CreateBaseVariantSymbol(table : TSymbolTable) : TBaseVariantSymbol; override;
+         function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; override;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; override;
 
          property SymbolMarker : TTokenType read FSymbolMarker write FSymbolMarker;
@@ -269,10 +269,11 @@ end;
 
 // CreateBaseVariantSymbol
 //
-function TdwsJSLanguageExtension.CreateBaseVariantSymbol(table : TSymbolTable) : TBaseVariantSymbol;
+function TdwsJSLanguageExtension.CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol;
 begin
    Result:=TJSConnectorSymbol.Create(SYS_VARIANT, TdwsJSConnectorType.Create(table));
    table.AddSymbol(Result);
+   table.TypVariant:=Result;
 end;
 
 // ------------------

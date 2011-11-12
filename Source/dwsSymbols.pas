@@ -701,29 +701,6 @@ type
          property SubExprCount;
    end;
 
-   TMagicFuncDoEvalEvent = function(args : TExprBaseList) : Variant of object;
-   TMagicProcedureDoEvalEvent = procedure(args : TExprBaseList) of object;
-   TMagicFuncDoEvalDataEvent = procedure(args : TExprBaseList; var result : TDataPtr) of object;
-   TMagicFuncDoEvalAsIntegerEvent = function(args : TExprBaseList) : Int64 of object;
-   TMagicFuncDoEvalAsBooleanEvent = function(args : TExprBaseList) : Boolean of object;
-   TMagicFuncDoEvalAsFloatEvent = procedure(args : TExprBaseList; var Result : Double) of object;
-   TMagicFuncDoEvalAsStringEvent = procedure(args : TExprBaseList; var Result : UnicodeString) of object;
-
-   // TMagicFuncSymbol
-   //
-   TMagicFuncSymbol = class(TFuncSymbol)
-      private
-         FInternalFunction : TObject;
-
-      public
-         destructor Destroy; override;
-
-         procedure Initialize(const msgs : TdwsCompileMessageList); override;
-         function IsType : Boolean; override;
-
-         property InternalFunction : TObject read FInternalFunction write FInternalFunction;
-   end;
-
    // TSelfSymbol
    //
    TSelfSymbol = class(TDataSymbol)
@@ -809,6 +786,44 @@ type
 
          property SubExpr;
          property SubExprCount;
+   end;
+
+   TMagicFuncDoEvalEvent = function(args : TExprBaseList) : Variant of object;
+   TMagicProcedureDoEvalEvent = procedure(args : TExprBaseList) of object;
+   TMagicFuncDoEvalDataEvent = procedure(args : TExprBaseList; var result : TDataPtr) of object;
+   TMagicFuncDoEvalAsIntegerEvent = function(args : TExprBaseList) : Int64 of object;
+   TMagicFuncDoEvalAsBooleanEvent = function(args : TExprBaseList) : Boolean of object;
+   TMagicFuncDoEvalAsFloatEvent = procedure(args : TExprBaseList; var Result : Double) of object;
+   TMagicFuncDoEvalAsStringEvent = procedure(args : TExprBaseList; var Result : UnicodeString) of object;
+
+   // TMagicFuncSymbol
+   //
+   TMagicFuncSymbol = class(TFuncSymbol)
+      private
+         FInternalFunction : TObject;
+
+      public
+         destructor Destroy; override;
+
+         procedure Initialize(const msgs : TdwsCompileMessageList); override;
+         function IsType : Boolean; override;
+
+         property InternalFunction : TObject read FInternalFunction write FInternalFunction;
+   end;
+
+   // TMagicMethodSymbol
+   //
+   TMagicMethodSymbol = class(TMethodSymbol)
+      private
+         FInternalFunction : TObject;
+
+      public
+         destructor Destroy; override;
+
+         procedure Initialize(const msgs : TdwsCompileMessageList); override;
+         function IsType : Boolean; override;
+
+         property InternalFunction : TObject read FInternalFunction write FInternalFunction;
    end;
 
    TOperatorSymbol = class(TSymbol)
@@ -1505,6 +1520,35 @@ type
 
          procedure _AddRef;
          procedure _Release;
+   end;
+
+   // TSystemSymbolTable
+   //
+   TSystemSymbolTable = class (TStaticSymbolTable)
+      private
+         FTypInteger : TBaseIntegerSymbol;
+         FTypBoolean : TBaseBooleanSymbol;
+         FTypFloat : TBaseFloatSymbol;
+         FTypString : TBaseStringSymbol;
+         FTypVariant : TBaseVariantSymbol;
+         FTypObject : TClassSymbol;
+         FTypClass : TClassOfSymbol;
+         FTypException : TClassSymbol;
+         FTypInterface : TInterfaceSymbol;
+
+      public
+         property TypInteger : TBaseIntegerSymbol read FTypInteger write FTypInteger;
+         property TypBoolean : TBaseBooleanSymbol read FTypBoolean write FTypBoolean;
+         property TypFloat : TBaseFloatSymbol read FTypFloat write FTypFloat;
+         property TypString : TBaseStringSymbol read FTypString write FTypString;
+         property TypVariant : TBaseVariantSymbol read FTypVariant write FTypVariant;
+
+         property TypObject : TClassSymbol read FTypObject write FTypObject;
+         property TypClass : TClassOfSymbol read FTypClass write FTypClass;
+
+         property TypException : TClassSymbol read FTypException write FTypException;
+
+         property TypInterface : TInterfaceSymbol read FTypInterface write FTypInterface;
    end;
 
    TLinkedSymbolTable = class (TUnitSymbolTable)
@@ -2693,6 +2737,30 @@ end;
 // Destroy
 //
 destructor TMagicFuncSymbol.Destroy;
+begin
+   FreeAndNil(FInternalFunction);
+   inherited;
+end;
+
+// ------------------
+// ------------------ TMagicMethodSymbol ------------------
+// ------------------
+
+procedure TMagicMethodSymbol.Initialize(const msgs : TdwsCompileMessageList);
+begin
+   FInternalParams.Initialize(msgs);
+end;
+
+// IsType
+//
+function TMagicMethodSymbol.IsType : Boolean;
+begin
+   Result:=False;
+end;
+
+// Destroy
+//
+destructor TMagicMethodSymbol.Destroy;
 begin
    FreeAndNil(FInternalFunction);
    inherited;

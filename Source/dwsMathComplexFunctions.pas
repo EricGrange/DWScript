@@ -74,24 +74,21 @@ implementation
 
 // RegisterComplexType
 //
-procedure RegisterComplexType(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+procedure RegisterComplexType(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                               unitTable : TSymbolTable; operators : TOperators);
 var
    typComplex : TRecordSymbol;
-   typFloat : TBaseFloatSymbol;
 begin
-   typFloat:=SystemTable.FindSymbol(SYS_FLOAT, cvMagic) as TBaseFloatSymbol;
-
    typComplex:=TRecordSymbol.Create(SYS_COMPLEX, nil);
-   typComplex.AddField(TFieldSymbol.Create('Re', typFloat, cvPublic));
-   typComplex.AddField(TFieldSymbol.Create('Im', typFloat, cvPublic));
+   typComplex.AddField(TFieldSymbol.Create('Re', systemTable.TypFloat, cvPublic));
+   typComplex.AddField(TFieldSymbol.Create('Im', systemTable.TypFloat, cvPublic));
 
    systemTable.AddSymbol(typComplex);
 end;
 
 // RegisterComplexOperators
 //
-procedure RegisterComplexOperators(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+procedure RegisterComplexOperators(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                    unitTable : TSymbolTable; operators : TOperators);
 var
    typComplex : TRecordSymbol;

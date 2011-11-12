@@ -69,26 +69,28 @@ implementation
 
 // RegisterMath3DTypes
 //
-procedure RegisterMath3DTypes(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+procedure RegisterMath3DTypes(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                               unitTable : TSymbolTable; operators : TOperators);
 var
    typVector : TRecordSymbol;
-   typFloat : TBaseFloatSymbol;
+//   methSym : TMagicMethodSymbol;
 begin
-   typFloat:=SystemTable.FindSymbol(SYS_FLOAT, cvMagic) as TBaseFloatSymbol;
-
    typVector:=TRecordSymbol.Create(SYS_VECTOR, nil);
-   typVector.AddField(TFieldSymbol.Create('X', typFloat, cvPublic));
-   typVector.AddField(TFieldSymbol.Create('Y', typFloat, cvPublic));
-   typVector.AddField(TFieldSymbol.Create('Z', typFloat, cvPublic));
-   typVector.AddField(TFieldSymbol.Create('W', typFloat, cvPublic));
+   typVector.AddField(TFieldSymbol.Create('X', systemTable.TypFloat, cvPublic));
+   typVector.AddField(TFieldSymbol.Create('Y', systemTable.TypFloat, cvPublic));
+   typVector.AddField(TFieldSymbol.Create('Z', systemTable.TypFloat, cvPublic));
+   typVector.AddField(TFieldSymbol.Create('W', systemTable.TypFloat, cvPublic));
+
+(*   methSym:=TMagicMethodSymbol.Create('AsString', fkFunction, typVector, cvPublic, False);
+   typVector.AddMethod(methSym);
+   methSym.Typ:= *)
 
    systemTable.AddSymbol(typVector);
 end;
 
 // RegisterMath3DOperators
 //
-procedure RegisterMath3DOperators(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+procedure RegisterMath3DOperators(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                    unitTable : TSymbolTable; operators : TOperators);
 var
    typVector : TRecordSymbol;

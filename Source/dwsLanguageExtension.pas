@@ -30,7 +30,7 @@ type
       public
          constructor Create; virtual;
 
-         function CreateBaseVariantSymbol(table : TSymbolTable) : TBaseVariantSymbol; virtual;
+         function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; virtual;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; virtual;
          procedure SectionChanged(compiler : TdwsCompiler); virtual;
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
@@ -53,7 +53,7 @@ type
          function Count : Integer;
          procedure Clear;
 
-         function CreateBaseVariantSymbol(table : TSymbolTable) : TBaseVariantSymbol; override;
+         function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; override;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; override;
          procedure SectionChanged(compiler : TdwsCompiler); override;
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
@@ -81,10 +81,11 @@ end;
 
 // CreateBaseVariantSymbol
 //
-function TdwsLanguageExtension.CreateBaseVariantSymbol(table : TSymbolTable) : TBaseVariantSymbol;
+function TdwsLanguageExtension.CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol;
 begin
    Result:=TBaseVariantSymbol.Create;
    table.AddSymbol(Result);
+   table.TypVariant:=Result;
 end;
 
 // ReadInstr
@@ -159,7 +160,7 @@ end;
 
 // CreateBaseVariantSymbol
 //
-function TdwsLanguageExtensionAggregator.CreateBaseVariantSymbol(table : TSymbolTable) : TBaseVariantSymbol;
+function TdwsLanguageExtensionAggregator.CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol;
 var
    i : Integer;
    ext : TdwsLanguageExtension;

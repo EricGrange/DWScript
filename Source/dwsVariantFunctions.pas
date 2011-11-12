@@ -119,7 +119,7 @@ end;
 
 { InitVariants }
 
-procedure InitVariants(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+procedure InitVariants(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                        unitTable : TSymbolTable; operators : TOperators);
 type
    TVarTypeRec = packed record n : UnicodeString; v : Word; end;
@@ -140,10 +140,9 @@ const
       (n:'ByRef'; v:varByRef) );
 var
    i : Integer;
-   T, E : TTypeSymbol;
+   E : TTypeSymbol;
 begin
-   T := SystemTable.FindSymbol('Integer', cvMagic) as TTypeSymbol;
-   E := TEnumerationSymbol.Create('TVarType', T);
+   E := TEnumerationSymbol.Create('TVarType', systemTable.TypInteger);
    UnitTable.AddSymbol(E);
    for i:=Low(cVarTypes) to High(cVarTypes) do
       UnitTable.AddSymbol(TElementSymbol.Create('var'+cVarTypes[i].n, E, cVarTypes[i].v, True));

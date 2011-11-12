@@ -46,7 +46,7 @@ type
          function OperatorFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator;
 
       public
-         constructor Create(table : TSymbolTable);
+         constructor Create(systemTable : TSystemSymbolTable; table : TSymbolTable);
 
          function RegisterOperator(sym : TOperatorSymbol) : Boolean; overload;
 
@@ -82,7 +82,7 @@ uses dwsRelExprs;
 
 // Create
 //
-constructor TOperators.Create(table : TSymbolTable);
+constructor TOperators.Create(systemTable : TSystemSymbolTable; table : TSymbolTable);
 var
    typInteger : TTypeSymbol;
    typFloat : TTypeSymbol;
@@ -108,12 +108,12 @@ var
    end;
 
 begin
-   typInteger:=table.FindSymbol(SYS_INTEGER, cvMagic) as TTypeSymbol;
-   typFloat:=table.FindSymbol(SYS_FLOAT, cvMagic) as TTypeSymbol;
-   typBoolean:=table.FindSymbol(SYS_BOOLEAN, cvMagic) as TTypeSymbol;
-   typString:=table.FindSymbol(SYS_STRING, cvMagic) as TTypeSymbol;
-   typVariant:=table.FindSymbol(SYS_VARIANT, cvMagic) as TTypeSymbol;
-   typClassOf:=table.FindSymbol(SYS_TCLASS, cvMagic) as TTypeSymbol;
+   typInteger:=systemTable.TypInteger;
+   typFloat:=systemTable.TypFloat;
+   typBoolean:=systemTable.TypBoolean;
+   typString:=systemTable.TypString;
+   typVariant:=systemTable.TypVariant;
+   typClassOf:=systemTable.TypClass;
 
    // computation operators
 

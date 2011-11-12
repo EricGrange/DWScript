@@ -43,7 +43,7 @@ type
   TdwsOnNeedUnitEvent = function(const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit of object;
 
   TdwsCompiler = class;
-  TCompilerCreateBaseVariantSymbol = function (table : TSymbolTable) : TBaseVariantSymbol of object;
+  TCompilerCreateBaseVariantSymbol = function (table : TSystemSymbolTable) : TBaseVariantSymbol of object;
   TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
   TCompilerSectionChangedEvent = procedure (compiler : TdwsCompiler) of object;
   TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile; scriptType : TScriptSourceType) of object;
@@ -67,7 +67,7 @@ type
     FScriptPaths: TStrings;
     FConditionals: TStringList;
     FStackChunkSize: Integer;
-    FSystemTable : TStaticSymbolTable;
+    FSystemTable : TSystemSymbolTable;
     FTimeoutMilliseconds: Integer;
     FUnits : TIdwsUnitList;
     FCompileFileSystem : TdwsCustomFileSystem;
@@ -82,7 +82,7 @@ type
     procedure SetRuntimeFileSystem(const val : TdwsCustomFileSystem);
     procedure SetScriptPaths(const values : TStrings);
     procedure SetConditionals(const val : TStringList);
-    function GetSystemTable : TStaticSymbolTable;
+    function GetSystemTable : TSystemSymbolTable;
 
   public
     constructor Create(Owner: TComponent);
@@ -91,7 +91,7 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation);
 
     property Connectors : TStrings read FConnectors write FConnectors;
-    property SystemTable : TStaticSymbolTable read GetSystemTable;
+    property SystemTable : TSystemSymbolTable read GetSystemTable;
     property Units : TIdwsUnitList read FUnits;
 
   published
@@ -267,7 +267,7 @@ type
          FOnInclude : TIncludeEvent;
          FOnNeedUnit : TdwsOnNeedUnitEvent;
          FUnits : TIdwsUnitList;
-         FSystemTable : TSymbolTable;
+         FSystemTable : TSystemSymbolTable;
          FScriptPaths : TStrings;
          FFilter : TdwsFilter;
          FIsExcept : Boolean;
@@ -447,7 +447,7 @@ type
          procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol);
          procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : UnicodeString; typ1, typ2 : TTypeSymbol);
 
-         function CreateProgram(systemTable : TStaticSymbolTable;
+         function CreateProgram(systemTable : TSystemSymbolTable;
                                 resultType : TdwsResultType;
                                 const stackParams : TStackParameters) : TdwsMainProgram;
          function CreateProcedure(Parent : TdwsProgram) : TdwsProcedure;
@@ -924,7 +924,7 @@ begin
 
    FProg:=FMainProg;
 
-   FOperators:=TOperators.Create(FProg.Table);
+   FOperators:=TOperators.Create(FProg.SystemTable, FProg.Table);
    FMainProg.Operators:=FOperators;
    FOperators.FunctionOperatorConstructor:=CreateOperatorFunction;
 
@@ -7023,7 +7023,7 @@ end;
 
 // CreateProgram
 //
-function TdwsCompiler.CreateProgram(systemTable : TStaticSymbolTable;
+function TdwsCompiler.CreateProgram(systemTable : TSystemSymbolTable;
                                     resultType : TdwsResultType;
                                     const stackParams : TStackParameters) : TdwsMainProgram;
 begin
@@ -7773,7 +7773,7 @@ constructor TdwsConfiguration.Create(owner : TComponent);
 begin
    inherited Create;
    FOwner := Owner;
-   FSystemTable := TStaticSymbolTable.Create;
+   FSystemTable := TSystemSymbolTable.Create;
    FConnectors := TStringList.Create;
    FScriptPaths := TStringList.Create;
    FConditionals := TStringList.Create;
@@ -7812,88 +7812,92 @@ begin
     inherited;
 end;
 
+// InitSystemTable
+//
 procedure TdwsConfiguration.InitSystemTable;
 var
-   clsObject, clsException, clsDelphiException, clsAssertionFailed : TClassSymbol;
-   clsMeta : TClassOfSymbol;
+   clsDelphiException, clsAssertionFailed : TClassSymbol;
    meth : TMethodSymbol;
-   varSym : TBaseSymbol;
    fldSym : TFieldSymbol;
    propSym : TPropertySymbol;
-   typInteger, typString : TBaseSymbol;
 begin
    // Create base data types
-   SystemTable.AddSymbol(TBaseBooleanSymbol.Create);
-   SystemTable.AddSymbol(TBaseFloatSymbol.Create);
-   typInteger:=TBaseIntegerSymbol.Create;
-   SystemTable.AddSymbol(typInteger);
-   typString:=TBaseStringSymbol.Create;
-   SystemTable.AddSymbol(typString);
+   SystemTable.TypBoolean:=TBaseBooleanSymbol.Create;
+   SystemTable.AddSymbol(SystemTable.TypBoolean);
 
-   varSym:=TBaseVariantSymbol(SystemTable.FindLocal(SYS_VARIANT, TBaseVariantSymbol));
-   if varSym<>nil then begin
-      SystemTable.AddSymbol(TConstSymbol.Create('Null', varSym, Null));
-      SystemTable.AddSymbol(TConstSymbol.Create('Unassigned', varSym, Unassigned));
+   SystemTable.TypFloat:=TBaseFloatSymbol.Create;
+   SystemTable.AddSymbol(SystemTable.TypFloat);
 
-      SystemTable.AddSymbol(TOpenArraySymbol.Create('array of const', varSym, typInteger));
+   SystemTable.TypInteger:=TBaseIntegerSymbol.Create;
+   SystemTable.AddSymbol(SystemTable.TypInteger);
+
+   SystemTable.TypString:=TBaseStringSymbol.Create;
+   SystemTable.AddSymbol(SystemTable.TypString);
+
+   if SystemTable.TypVariant<>nil then begin
+      SystemTable.AddSymbol(TConstSymbol.Create('Null', SystemTable.TypVariant, Null));
+      SystemTable.AddSymbol(TConstSymbol.Create('Unassigned', SystemTable.TypVariant, Unassigned));
+
+      SystemTable.AddSymbol(TOpenArraySymbol.Create('array of const', SystemTable.TypVariant, SystemTable.TypInteger));
    end;
 
-   SystemTable.AddSymbol(TInterfaceSymbol.Create(SYS_IINTERFACE, nil));
+   SystemTable.TypInterface:=TInterfaceSymbol.Create(SYS_IINTERFACE, nil);
+   SystemTable.AddSymbol(SystemTable.TypInterface);
 
    // Create "root" class TObject
-   clsObject:=TClassSymbol.Create(SYS_TOBJECT, nil);
+   SystemTable.TypObject:=TClassSymbol.Create(SYS_TOBJECT, nil);
+   SystemTable.AddSymbol(SystemTable.TypObject);
    // Add constructor Create
-   meth:=TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, clsObject, cvPublic, False);
+   meth:=TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, SystemTable.TypObject, cvPublic, False);
    meth.Executable:=ICallable(TEmptyFunc.Create);
    meth.IsDefault:=True;
-   clsObject.AddMethod(meth);
+   SystemTable.TypObject.AddMethod(meth);
    // Add destructor Destroy
    TObjectDestroyMethod.Create(mkDestructor, [maVirtual], SYS_TOBJECT_DESTROY,
-                               [], '', clsObject, cvPublic, SystemTable);
+                               [], '', SystemTable.TypObject, cvPublic, SystemTable);
    // Add procedure Free
    TObjectFreeMethod.Create(mkProcedure, [], SYS_TOBJECT_FREE,
-                            [], '', clsObject, cvPublic, SystemTable);
+                            [], '', SystemTable.TypObject, cvPublic, SystemTable);
    // Add ClassName method
    TObjectClassNameMethod.Create(mkClassFunction, [], SYS_TOBJECT_CLASSNAME,
-                                 [], SYS_STRING, clsObject, cvPublic, SystemTable);
-   SystemTable.AddSymbol(clsObject);
+                                 [], SYS_STRING, SystemTable.TypObject, cvPublic, SystemTable);
 
    // Create "root" metaclass TClass
-   clsMeta:=TClassOfSymbol.Create(SYS_TCLASS, clsObject);
-   SystemTable.AddSymbol(clsMeta);
+   SystemTable.TypClass:=TClassOfSymbol.Create(SYS_TCLASS, SystemTable.TypObject);
+   SystemTable.AddSymbol(SystemTable.TypClass);
 
    // Add ClassType method
    TObjectClassTypeMethod.Create(mkClassFunction, [], SYS_TOBJECT_CLASSTYPE,
-                                 [], SYS_TCLASS, clsObject, cvPublic, SystemTable);
+                                 [], SYS_TCLASS, SystemTable.TypObject, cvPublic, SystemTable);
 
    // Create class Exception
-   clsException := TClassSymbol.Create(SYS_EXCEPTION, nil);
-   clsException.InheritFrom(clsObject);
-   fldSym:=TFieldSymbol.Create(SYS_EXCEPTION_MESSAGE_FIELD, typString, cvProtected);
-   clsException.AddField(fldSym);
-   propSym:=TPropertySymbol.Create(SYS_EXCEPTION_MESSAGE, typString, cvPublic);
+   SystemTable.TypException := TClassSymbol.Create(SYS_EXCEPTION, nil);
+   SystemTable.TypException.InheritFrom(SystemTable.TypObject);
+   fldSym:=TFieldSymbol.Create(SYS_EXCEPTION_MESSAGE_FIELD, SystemTable.TypString, cvProtected);
+   SystemTable.TypException.AddField(fldSym);
+   propSym:=TPropertySymbol.Create(SYS_EXCEPTION_MESSAGE, SystemTable.TypString, cvPublic);
    propSym.ReadSym:=fldSym;
    propSym.WriteSym:=fldSym;
-   clsException.AddProperty(propSym);
+   SystemTable.TypException.AddProperty(propSym);
    TExceptionCreateMethod.Create(mkConstructor, [], SYS_TOBJECT_CREATE,
-                                 ['Msg', SYS_STRING], '', clsException, cvPublic, SystemTable);
+                                 ['Msg', SYS_STRING], '', SystemTable.TypException, cvPublic, SystemTable);
    TExceptionDestroyMethod.Create(mkDestructor, [maOverride], SYS_TOBJECT_DESTROY,
-                                 [], '', clsException, cvPublic, SystemTable);
+                                 [], '', SystemTable.TypException, cvPublic, SystemTable);
    TExceptionStackTraceMethod.Create(mkFunction, [], SYS_EXCEPTION_STACKTRACE,
-                                 [], SYS_STRING, clsException, cvPublic, SystemTable);
-   SystemTable.AddSymbol(clsException);
+                                 [], SYS_STRING, SystemTable.TypException, cvPublic, SystemTable);
+   SystemTable.AddSymbol(SystemTable.TypException);
 
    // Create class EAssertionFailed
    clsAssertionFailed := TClassSymbol.Create(SYS_EASSERTIONFAILED, nil);
-   clsAssertionFailed.InheritFrom(clsException);
+   clsAssertionFailed.InheritFrom(SystemTable.TypException);
    SystemTable.AddSymbol(clsAssertionFailed);
 
    // Create class EDelphi
    clsDelphiException := TClassSymbol.Create(SYS_EDELPHI, nil);
-   clsDelphiException.InheritFrom(clsException);
-   fldSym:=TFieldSymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS_FIELD, typString, cvProtected);
+   clsDelphiException.InheritFrom(SystemTable.TypException);
+   fldSym:=TFieldSymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS_FIELD, SystemTable.TypString, cvProtected);
    clsDelphiException.AddField(fldSym);
-   propSym:=TPropertySymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS, typString, cvPublic);
+   propSym:=TPropertySymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS, SystemTable.TypString, cvPublic);
    propSym.ReadSym:=fldSym;
    propSym.WriteSym:=fldSym;
    clsDelphiException.AddProperty(propSym);
@@ -7906,7 +7910,7 @@ begin
    TExceptObjFunc.Create(SystemTable, 'ExceptObject', [], SYS_EXCEPTION, False);
 
    // Runtime parameters
-   if varSym<>nil then
+   if SystemTable.TypVariant<>nil then
       TParamFunc.Create(SystemTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, False);
    TParamStrFunc.Create(SystemTable, 'ParamStr', ['Index', SYS_INTEGER], SYS_STRING, False);
    TParamCountFunc.Create(SystemTable, 'ParamCount', [], SYS_INTEGER, False);
@@ -8004,12 +8008,15 @@ end;
 
 // GetSystemTable
 //
-function TdwsConfiguration.GetSystemTable : TStaticSymbolTable;
+function TdwsConfiguration.GetSystemTable : TSystemSymbolTable;
 begin
    if FSystemTable.Count=0 then begin
       if Assigned(FOnCreateBaseVariantSymbol) then
          FOnCreateBaseVariantSymbol(FSystemTable)
-      else FSystemTable.AddSymbol(TBaseVariantSymbol.Create);
+      else begin
+         FSystemTable.TypVariant:=TBaseVariantSymbol.Create;
+         FSystemTable.AddSymbol(FSystemTable.TypVariant);
+      end;
       InitSystemTable;
    end;
    Result:=FSystemTable;

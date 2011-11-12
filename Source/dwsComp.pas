@@ -63,7 +63,7 @@ type
   private
     function GetUnitName: UnicodeString;
     function GetDependencies: TStrings;
-      function GetUnitTable(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+      function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                             operators : TOperators) : TUnitSymbolTable;
     function GetUnitFlags : TIdwsUnitFlags;
   protected
@@ -134,7 +134,7 @@ type
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     function GetUnitName: UnicodeString; virtual;
-      function GetUnitTable(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+      function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                             operators : TOperators) : TUnitSymbolTable; virtual; abstract;
     function GetUnitFlags : TIdwsUnitFlags;
 
@@ -156,19 +156,21 @@ type
     FStaticSymbols: Boolean;
     FStaticTable: TStaticSymbolTable;
   protected
-      function GetUnitTable(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+      function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                             operators : TOperators) : TUnitSymbolTable; override;
     function CreateUnitTable(Parent: TSymbolTable; Typ: TSymbolTableType = sttDefault): TUnitSymbolTable; virtual;
     procedure SetStaticSymbols(const Value: Boolean); // static symbols
-    procedure InitUnitTable(SystemTable : TSymbolTable; unitSyms : TUnitMainSymbols; operators : TOperators; UnitTable: TUnitSymbolTable); virtual;
+    procedure InitUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
+                            operators : TOperators; UnitTable: TUnitSymbolTable); virtual;
     procedure AddUnitSymbols(Table: TSymbolTable; operators : TOperators); virtual; abstract;
-    property StaticSymbols: Boolean read FStaticSymbols write SetStaticSymbols;
-    property StaticTable: TStaticSymbolTable read FStaticTable;
+    property StaticSymbols : Boolean read FStaticSymbols write SetStaticSymbols;
+    property StaticTable : TStaticSymbolTable read FStaticTable;
+
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure BeforeDestruction; override;
-    function InitStaticSymbols(SystemTable: TSymbolTable; unitSyms : TUnitMainSymbols; operators : TOperators): Boolean;
+    function InitStaticSymbols(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols; operators : TOperators): Boolean;
     procedure ReleaseStaticSymbols;
   end;
 
@@ -959,7 +961,8 @@ type
         function GetSymbol(Table: TSymbolTable; const Name: UnicodeString): TSymbol;
         procedure AddCollectionSymbols(Collection: TdwsCollection; Table: TSymbolTable; operators : TOperators); virtual;
         procedure AddUnitSymbols(Table: TSymbolTable; operators : TOperators); override;
-        procedure InitUnitTable(SystemTable : TSymbolTable; unitSyms : TUnitMainSymbols; operators : TOperators; UnitTable: TUnitSymbolTable); override;
+        procedure InitUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
+                                operators : TOperators; UnitTable: TUnitSymbolTable); override;
 
         // Method to support get/set property values for dynamicly registered classes
         procedure HandleDynamicCreate(Info: TProgramInfo; var ExtObject: TObject);
@@ -1971,7 +1974,7 @@ begin
     raise Exception.CreateFmt(UNT_AutoInstantiateWithoutClass, [AClassType]);
 end;
 
-procedure TdwsUnit.InitUnitTable(SystemTable : TSymbolTable; unitSyms : TUnitMainSymbols; operators : TOperators; UnitTable: TUnitSymbolTable);
+procedure TdwsUnit.InitUnitTable(SystemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols; operators : TOperators; UnitTable: TUnitSymbolTable);
 begin
    FTable := UnitTable;
    try
@@ -3588,7 +3591,7 @@ begin
   Result := FUnitName;
 end;
 
-function TdwsEmptyUnit.GetUnitTable(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+function TdwsEmptyUnit.GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                     operators : TOperators) : TUnitSymbolTable;
 var
    x : Integer;
@@ -4091,7 +4094,7 @@ begin
   inherited;
 end;
 
-function TdwsAbstractStaticUnit.GetUnitTable(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+function TdwsAbstractStaticUnit.GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                              operators : TOperators) : TUnitSymbolTable;
 begin
    if StaticSymbols and InitStaticSymbols(SystemTable, UnitSyms, operators) then
@@ -4107,20 +4110,15 @@ begin
    end;
 end;
 
-function TdwsAbstractStaticUnit.InitStaticSymbols(SystemTable : TSymbolTable;
+function TdwsAbstractStaticUnit.InitStaticSymbols(systemTable : TSystemSymbolTable;
                unitSyms : TUnitMainSymbols; operators : TOperators): Boolean;
 var
   staticParent: TStaticSymbolTable;
 begin
   if not Assigned(FStaticTable) then
   begin
-    if SystemTable is TStaticSymbolTable then
-      staticParent := TStaticSymbolTable(SystemTable)
-    else if SystemTable is TLinkedSymbolTable then
-      staticParent := TLinkedSymbolTable(SystemTable).Parent
-    else
-      staticParent := nil;
-      
+    staticParent := (SystemTable as TStaticSymbolTable);
+
     if Assigned(staticParent) then
     begin
       FStaticTable := CreateUnitTable(staticParent, sttStatic) as TStaticSymbolTable;
@@ -4135,7 +4133,7 @@ begin
   Result := Assigned(FStaticTable);
 end;
 
-procedure TdwsAbstractStaticUnit.InitUnitTable(systemTable : TSymbolTable; unitSyms : TUnitMainSymbols;
+procedure TdwsAbstractStaticUnit.InitUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                     operators : TOperators; unitTable: TUnitSymbolTable);
 var
    x : Integer;
