@@ -6130,7 +6130,7 @@ begin
          else if memberSym<>nil then begin
             constExpr:=TConstExpr(expr);
             if constExpr.Typ.IsOfType(FProg.TypInteger) and memberSym.Typ.IsOfType(FProg.TypFloat) then
-               Result[memberSym.Offset]:=constExpr.EvalAsInteger(FExec)
+               Result[memberSym.Offset]:=constExpr.EvalAsFloat(FExec)
             else if not constExpr.Typ.IsCompatible(memberSym.Typ) then
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidConstType, [constExpr.Typ.Caption])
             else DWSCopyData(constExpr.Data[FExec], constExpr.Addr[FExec],
