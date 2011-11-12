@@ -5,7 +5,7 @@ interface
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsSymbols, dwsXPlatform, dwsUtils,
    dwsMathFunctions, dwsTimeFunctions, dwsGlobalVarsFunctions, dwsVariantFunctions,
-   dwsMathComplexFunctions;
+   dwsMathComplexFunctions, dwsMath3DFunctions;
 
 type
 
@@ -36,6 +36,11 @@ type
    end;
 
    TdwsFuncFunctionsTestsMathComplex = class (TdwsFunctionsTestsBase)
+      public
+         procedure SetUp; override;
+   end;
+
+   TdwsFuncFunctionsTestsMath3D = class (TdwsFunctionsTestsBase)
       public
          procedure SetUp; override;
    end;
@@ -211,6 +216,18 @@ begin
 end;
 
 // ------------------
+// ------------------ TdwsFuncFunctionsTestsMath3D ------------------
+// ------------------
+
+// SetUp
+//
+procedure TdwsFuncFunctionsTestsMath3D.SetUp;
+begin
+   FFolder:='FunctionsMath3D';
+   inherited;
+end;
+
+// ------------------
 // ------------------ TdwsFuncFunctionsTestsTime ------------------
 // ------------------
 
@@ -268,6 +285,7 @@ initialization
 
    TestFramework.RegisterTest('FunctionsMath', TdwsFuncFunctionsTestsMath.Suite);
    TestFramework.RegisterTest('FunctionsMathComplex', TdwsFuncFunctionsTestsMathComplex.Suite);
+   TestFramework.RegisterTest('FunctionsMath3D', TdwsFuncFunctionsTestsMath3D.Suite);
    TestFramework.RegisterTest('FunctionsTime', TdwsFuncFunctionsTestsTime.Suite);
    TestFramework.RegisterTest('FunctionsString', TdwsFuncFunctionsTestsString.Suite);
    TestFramework.RegisterTest('FunctionsVariant', TdwsFuncFunctionsTestsVariant.Suite);
