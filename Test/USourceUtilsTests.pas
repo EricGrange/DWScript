@@ -200,10 +200,11 @@ begin
 
    scriptPos.Col:=9;
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
-   CheckEquals(3, sugg.Count, 'column 12');
-   CheckEquals('TClass', sugg.Code[0], 'sugg 12, 0');
-   CheckEquals('TComplex', sugg.Code[1], 'sugg 12, 1');
-   CheckEquals('TObject', sugg.Code[2], 'sugg 12, 2');
+   CheckEquals(4, sugg.Count, 'column 9');
+   CheckEquals('TClass', sugg.Code[0], 'sugg 9, 0');
+   CheckEquals('TComplex', sugg.Code[1], 'sugg 9, 1');
+   CheckEquals('TObject', sugg.Code[2], 'sugg 9, 2');
+   CheckEquals('TVector', sugg.Code[3], 'sugg 9, 3');
 end;
 
 // MetaClassTest

@@ -1,16 +1,16 @@
 const cShades = '.:!*oe&#%@';
 
-type TVector = array [0..2] of Float;
+type TVector3 = array [0..2] of Float;
 
-var light : TVector = [-50.0, 30, 50];
+var light : TVector3 = [-50.0, 30, 50];
  
-procedure Normalize(var v : TVector);
+procedure Normalize(var v : TVector3);
 begin
    var len := Sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
    v[0] /= len; v[1] /= len; v[2] /= len;
 end;
  
-function Dot(x, y : TVector) : Float;
+function Dot(x, y : TVector3) : Float;
 begin
    var d :=x[0]*y[0] + x[1]*y[1] + x[2]*y[2];
    if d<0 then 
@@ -43,7 +43,7 @@ var
    i, j, intensity : Integer;
    b : Float;
    x, y, zb1, zb2, zs1, zs2 : Float;
-   vec : TVector;
+   vec : TVector3;
 begin
    for i:=Trunc(big.cy-big.r) to Trunc(big.cy+big.r)+1 do begin
       y := i + 0.5;
