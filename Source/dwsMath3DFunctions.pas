@@ -139,15 +139,15 @@ end;
 //
 procedure TVectorAddOpExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
 var
-   leftData, rightData : TDataPtr;
+   leftData, rightData : PVarDataArray;
 begin
-   leftData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
-   rightData:=TDataExpr(args.ExprBase[1]).DataPtr[args.Exec];
+   leftData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec].AsPVarDataArray;
+   rightData:=TDataExpr(args.ExprBase[1]).DataPtr[args.Exec].AsPVarDataArray;
 
-   result[0]:=leftData[0]+rightData[0];
-   result[1]:=leftData[1]+rightData[1];
-   result[2]:=leftData[2]+rightData[2];
-   result[3]:=leftData[3]+rightData[3];
+   result[0]:=leftData[0].VDouble+rightData[0].VDouble;
+   result[1]:=leftData[1].VDouble+rightData[1].VDouble;
+   result[2]:=leftData[2].VDouble+rightData[2].VDouble;
+   result[3]:=leftData[3].VDouble+rightData[3].VDouble;
 end;
 
 // ------------------
@@ -203,8 +203,7 @@ begin
 
    Result:= leftData[0]*rightData[0]
            +leftData[1]*rightData[1]
-           +leftData[2]*rightData[2]
-           +leftData[3]*rightData[3];
+           +leftData[2]*rightData[2];
 end;
 
 // ------------------------------------------------------------------

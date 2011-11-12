@@ -29,8 +29,10 @@ type
 
    TData = array of Variant;
    PData = ^TData;
-   TDataArray = array [0..0] of Variant;
+   TDataArray = array [0..MaxInt shr 5] of Variant;
    PDataArray = ^TDataArray;
+   TVarDataArray = array [0..MaxInt shr 5] of TVarData;
+   PVarDataArray = ^TVarDataArray;
    PIUnknown = ^IUnknown;
 
    TDataPtr = record
@@ -45,6 +47,7 @@ type
          class function Create(const aData : TData; anAddr : Integer) : TDataPtr; static; inline;
 
          property Data[addr : Integer] : Variant read GetData write SetData; default;
+         function AsPVarDataArray : PVarDataArray; inline;
    end;
 
    TStackParameters = record
@@ -232,6 +235,13 @@ end;
 procedure TDataPtr.SetData(addr : Integer; const value : Variant);
 begin
    FData[FAddr+addr]:=value;
+end;
+
+// AsPVarDataArray
+//
+function TDataPtr.AsPVarDataArray : PVarDataArray;
+begin
+   Result:=@FData[FAddr];
 end;
 
 // ------------------
