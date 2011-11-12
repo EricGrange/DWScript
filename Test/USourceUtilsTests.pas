@@ -22,6 +22,7 @@ type
          procedure ObjectSelfTest;
          procedure UnitDotTest;
          procedure MetaClassTest;
+         procedure EmptyOptimizedLocalTable;
    end;
 
 // ------------------------------------------------------------------
@@ -227,6 +228,25 @@ begin
    CheckEquals('ClassName', sugg.Code[0], 'v. 0');
    CheckEquals('ClassType', sugg.Code[1], 'v. 1');
    CheckEquals('Create', sugg.Code[2], 'v. 2');
+end;
+
+// EmptyOptimizedLocalTable
+//
+procedure TSourceUtilsTests.EmptyOptimizedLocalTable;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   FCompiler.Config.CompilerOptions:=FCompiler.Config.CompilerOptions+[coOptimize];
+
+   prog:=FCompiler.Compile('procedure Dummy;'#13#10'begin begin'#13#10#13#10'end end'#13#10);
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 3);
+
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+
+   FCompiler.Config.CompilerOptions:=FCompiler.Config.CompilerOptions+[];
 end;
 
 // ------------------------------------------------------------------
