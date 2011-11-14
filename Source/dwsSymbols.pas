@@ -40,16 +40,8 @@ type
    TStructuredTypeSymbol = class;
    TMethodSymbol = class;
    TFieldSymbol = class;
-   TRecordSymbol = class;
-   TParamSymbol = class;
-   TVarParamSymbol = class;
-   TSymbolTable = class;
-   TStaticSymbolTable = class;
    TTypeSymbol = class;
-   TParamsSymbolTable = class;
-   TConditionsSymbolTable = class;
    TdwsRuntimeMessageList = class;
-   TUnitMainSymbol = class;
 
    TdwsExprLocation = record
       Expr : TExprBase;
@@ -113,81 +105,6 @@ type
    end;
 
    TExecutionStatusResult = (esrNone, esrExit, esrBreak, esrContinue);
-
-   // TdwsExecution
-   //
-   TdwsExecution = class abstract (TInterfacedObject, IdwsExecution)
-      protected
-         FStack : TStackMixIn;
-         FStatus : TExecutionStatusResult;
-         FCallStack : TTightStack; // expr + prog duples
-         FSelfScriptObject : PIScriptObj;
-         FSelfScriptClassSymbol : TClassSymbol;
-         FLastScriptError : TExprBase;
-         FLastScriptCallStack : TdwsExprLocationArray;
-         FExceptionObjectStack : TSimpleStack<Variant>;
-
-         FDebugger : IDebugger;
-         FIsDebugging : Boolean;
-
-         FContextTable : TSymbolTable;
-         FExternalObject : TObject;
-         FUserObject : TObject;
-
-      protected
-         FProgramState : TProgramState;
-
-         function  GetDebugger : IDebugger;
-         procedure SetDebugger(const aDebugger : IDebugger);
-         procedure StartDebug;
-         procedure StopDebug;
-
-         function GetMsgs : TdwsRuntimeMessageList; virtual; abstract;
-
-         function GetExecutionObject : TdwsExecution;
-
-         function GetUserObject : TObject; virtual;
-         procedure SetUserObject(const value : TObject); virtual;
-
-         function GetStack : TStack;
-
-         function GetProgramState : TProgramState;
-
-      public
-         constructor Create(const stackParams : TStackParameters);
-         destructor Destroy; override;
-
-         procedure DoStep(expr : TExprBase); inline;
-
-         property Status : TExecutionStatusResult read FStatus write FStatus;
-         property Stack : TStackMixIn read FStack;
-         property SelfScriptObject : PIScriptObj read FSelfScriptObject write FSelfScriptObject;
-         property SelfScriptClassSymbol : TClassSymbol read FSelfScriptClassSymbol write FSelfScriptClassSymbol;
-
-         procedure SetScriptError(expr : TExprBase);
-         procedure ClearScriptError;
-
-         function GetCallStack : TdwsExprLocationArray; virtual; abstract;
-         function CallStackDepth : Integer; virtual; abstract;
-
-         property LastScriptError : TExprBase read FLastScriptError;
-         property LastScriptCallStack : TdwsExprLocationArray read FLastScriptCallStack;
-         property ExceptionObjectStack : TSimpleStack<Variant> read FExceptionObjectStack;
-
-         property ProgramState : TProgramState read FProgramState;
-
-         property ContextTable : TSymbolTable read FContextTable write FContextTable;
-         property Debugger : IDebugger read FDebugger write SetDebugger;
-         property IsDebugging : Boolean read FIsDebugging;
-
-         property Msgs : TdwsRuntimeMessageList read GetMsgs;
-
-         // specifies an external object for IInfo constructors, temporary
-         property ExternalObject : TObject read FExternalObject write FExternalObject;
-
-         // user object, to attach to an execution
-         property UserObject : TObject read GetUserObject write SetUserObject;
-   end;
 
    TExprBaseEnumeratorProc = reference to procedure (parent, expr : TExprBase; var abort : Boolean);
 
@@ -432,6 +349,16 @@ type
    TUnSortedSymbolTable = class (TSymbolTable)
       public
          function FindLocal(const aName : UnicodeString; ofClass : TSymbolClass = nil) : TSymbol; override;
+   end;
+
+   // TConditionsSymbolTable
+   //
+   TConditionsSymbolTable = class (TUnSortedSymbolTable)
+   end;
+
+   // TParamsSymbolTable
+   //
+   TParamsSymbolTable = class (TUnSortedSymbolTable)
    end;
 
    // All Symbols containing a value
@@ -905,6 +832,106 @@ type
          procedure InitData(const data : TData; offset : Integer); override;
    end;
 
+   TUnitMainSymbol = class;
+
+   // list of unit main symbols (one per prog)
+   TUnitMainSymbols = class(TObjectList<TUnitMainSymbol>)
+      private
+
+      protected
+
+      public
+         procedure Initialize(const msgs : TdwsCompileMessageList);
+
+         function Find(const unitName : UnicodeString) : TUnitMainSymbol;
+   end;
+
+   IObjectOwner = interface
+      procedure ReleaseObject;
+   end;
+
+   // TUnitSymbolTable
+   //
+   TUnitSymbolTable = class (TSymbolTable)
+      private
+         FObjects: TInterfaceList;
+         FUnitSymbol : TUnitMainSymbol;
+
+      public
+         destructor Destroy; override;
+         procedure BeforeDestruction; override;
+
+         procedure AddObjectOwner(const AOwner : IObjectOwner);
+
+         property UnitSymbol : TUnitMainSymbol read FUnitSymbol write FUnitSymbol;
+   end;
+
+   // TUnitPrivateTable
+   //
+   TUnitPrivateTable = class(TSymbolTable)
+      private
+         FUnitMainSymbol : TUnitMainSymbol;
+
+      public
+         constructor Create(unitMainSymbol : TUnitMainSymbol);
+
+         property UnitMainSymbol : TUnitMainSymbol read FUnitMainSymbol;
+   end;
+
+   // TUnitImplementationTable
+   //
+   TUnitImplementationTable = class(TUnitPrivateTable)
+      public
+         constructor Create(unitMainSymbol : TUnitMainSymbol);
+   end;
+
+   TUnitSymbol = class;
+
+   // Invisible symbol for units (e. g. for TdwsUnit)
+   TUnitMainSymbol = class sealed (TNameSymbol)
+      private
+         FTable : TUnitSymbolTable;
+         FInterfaceTable : TSymbolTable;
+         FImplementationTable : TUnitImplementationTable;
+
+      public
+         constructor Create(const name : UnicodeString; table : TUnitSymbolTable;
+                            unitSyms : TUnitMainSymbols);
+         destructor Destroy; override;
+
+         procedure InitData(const data : TData; offset : Integer); override;
+         procedure Initialize(const msgs : TdwsCompileMessageList); override;
+
+         procedure CreateInterfaceTable;
+         procedure UnParentInterfaceTable;
+
+         function ReferenceInSymbolTable(aTable : TSymbolTable) : TUnitSymbol;
+
+         function HasSymbol(sym : TSymbol) : Boolean;
+
+         property Table : TUnitSymbolTable read FTable;
+
+         property InterfaceTable : TSymbolTable read FInterfaceTable;
+         property ImplementationTable : TUnitImplementationTable read FImplementationTable;
+   end;
+
+   // Front end for units, serves for explicit unit resolution "unitName.symbolName"
+   TUnitSymbol = class abstract (TNameSymbol)
+      private
+         FMain : TUnitMainSymbol;
+
+      public
+         constructor Create(mainSymbol : TUnitMainSymbol);
+
+         procedure InitData(const data : TData; offset : Integer); override;
+
+         property Main : TUnitMainSymbol read FMain;
+
+         function Table : TUnitSymbolTable; inline;
+         function InterfaceTable : TSymbolTable; inline;
+         function ImplementationTable : TUnitImplementationTable; inline;
+   end;
+
    IConnectorType = interface;
 
    IConnector = interface
@@ -1335,67 +1362,6 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
-   TUnitImplementationTable = class;
-   TUnitSymbolTable = class;
-   TUnitSymbol = class;
-
-   // list of unit main symbols (one per prog)
-   TUnitMainSymbols = class(TObjectList<TUnitMainSymbol>)
-      private
-
-      protected
-
-      public
-         procedure Initialize(const msgs : TdwsCompileMessageList);
-
-         function Find(const unitName : UnicodeString) : TUnitMainSymbol;
-   end;
-
-   // Invisible symbol for units (e. g. for TdwsUnit)
-   TUnitMainSymbol = class sealed (TNameSymbol)
-      private
-         FTable : TUnitSymbolTable;
-         FInterfaceTable : TSymbolTable;
-         FImplementationTable : TUnitImplementationTable;
-
-      public
-         constructor Create(const name : UnicodeString; table : TUnitSymbolTable;
-                            unitSyms : TUnitMainSymbols);
-         destructor Destroy; override;
-
-         procedure InitData(const data : TData; offset : Integer); override;
-         procedure Initialize(const msgs : TdwsCompileMessageList); override;
-
-         procedure CreateInterfaceTable;
-         procedure UnParentInterfaceTable;
-
-         function ReferenceInSymbolTable(aTable : TSymbolTable) : TUnitSymbol;
-
-         function HasSymbol(sym : TSymbol) : Boolean;
-
-         property Table : TUnitSymbolTable read FTable;
-
-         property InterfaceTable : TSymbolTable read FInterfaceTable;
-         property ImplementationTable : TUnitImplementationTable read FImplementationTable;
-   end;
-
-   // Front end for units, serves for explicit unit resolution "unitName.symbolName"
-   TUnitSymbol = class abstract (TNameSymbol)
-      private
-         FMain : TUnitMainSymbol;
-
-      public
-         constructor Create(mainSymbol : TUnitMainSymbol);
-
-         procedure InitData(const data : TData; offset : Integer); override;
-
-         property Main : TUnitMainSymbol read FMain;
-
-         function Table : TUnitSymbolTable; inline;
-         function InterfaceTable : TSymbolTable; inline;
-         function ImplementationTable : TUnitImplementationTable; inline;
-   end;
-
    // Element of an enumeration type. E. g. "type DummyEnum = (Elem1, Elem2, Elem3);"
    TElementSymbol = class(TConstSymbol)
       private
@@ -1436,70 +1402,6 @@ type
          property LowBound : Integer read FLowBound write FLowBound;
          property HighBound : Integer read FHighBound write FHighBound;
          function ShortDescription : UnicodeString;
-   end;
-
-   IObjectOwner = interface
-      procedure ReleaseObject;
-   end;
-
-   // TConditionsSymbolTable
-   //
-   TConditionsSymbolTable = class (TUnSortedSymbolTable)
-   end;
-
-   // TParamsSymbolTable
-   //
-   TParamsSymbolTable = class (TUnSortedSymbolTable)
-   end;
-
-   // TProgramSymbolTable
-   //
-   TProgramSymbolTable = class (TSymbolTable)
-      private
-         FSystemTable : TStaticSymbolTable;
-         FDestructionList: TTightList;
-
-      public
-         constructor Create(Parent: TSymbolTable = nil; AddrGenerator: TAddrGenerator = nil);
-         destructor Destroy; override;
-
-         procedure AddToDestructionList(sym : TSymbol);
-         procedure RemoveFromDestructionList(sym : TSymbol);
-   end;
-
-   // TUnitSymbolTable
-   //
-   TUnitSymbolTable = class (TSymbolTable)
-      private
-         FObjects: TInterfaceList;
-         FUnitSymbol : TUnitMainSymbol;
-
-      public
-         destructor Destroy; override;
-         procedure BeforeDestruction; override;
-
-         procedure AddObjectOwner(AOwner : IObjectOwner);
-
-         property UnitSymbol : TUnitMainSymbol read FUnitSymbol write FUnitSymbol;
-   end;
-
-   // TUnitPrivateTable
-   //
-   TUnitPrivateTable = class(TSymbolTable)
-      private
-         FUnitMainSymbol : TUnitMainSymbol;
-
-      public
-         constructor Create(unitMainSymbol : TUnitMainSymbol);
-
-         property UnitMainSymbol : TUnitMainSymbol read FUnitMainSymbol;
-   end;
-
-   // TUnitImplementationTable
-   //
-   TUnitImplementationTable = class(TUnitPrivateTable)
-      public
-         constructor Create(unitMainSymbol : TUnitMainSymbol);
    end;
 
    // TStaticSymbolTable
@@ -1563,6 +1465,98 @@ type
      property Parent: TStaticSymbolTable read FParent;
    end;
 
+   // TProgramSymbolTable
+   //
+   TProgramSymbolTable = class (TSymbolTable)
+      private
+         FSystemTable : TStaticSymbolTable;
+         FDestructionList: TTightList;
+
+      public
+         constructor Create(Parent: TSymbolTable = nil; AddrGenerator: TAddrGenerator = nil);
+         destructor Destroy; override;
+
+         procedure AddToDestructionList(sym : TSymbol);
+         procedure RemoveFromDestructionList(sym : TSymbol);
+   end;
+
+   // TdwsExecution
+   //
+   TdwsExecution = class abstract (TInterfacedObject, IdwsExecution)
+      protected
+         FStack : TStackMixIn;
+         FStatus : TExecutionStatusResult;
+         FCallStack : TTightStack; // expr + prog duples
+         FSelfScriptObject : PIScriptObj;
+         FSelfScriptClassSymbol : TClassSymbol;
+         FLastScriptError : TExprBase;
+         FLastScriptCallStack : TdwsExprLocationArray;
+         FExceptionObjectStack : TSimpleStack<Variant>;
+
+         FDebugger : IDebugger;
+         FIsDebugging : Boolean;
+
+         FContextTable : TSymbolTable;
+         FExternalObject : TObject;
+         FUserObject : TObject;
+
+      protected
+         FProgramState : TProgramState;
+
+         function  GetDebugger : IDebugger;
+         procedure SetDebugger(const aDebugger : IDebugger);
+         procedure StartDebug;
+         procedure StopDebug;
+
+         function GetMsgs : TdwsRuntimeMessageList; virtual; abstract;
+
+         function GetExecutionObject : TdwsExecution;
+
+         function GetUserObject : TObject; virtual;
+         procedure SetUserObject(const value : TObject); virtual;
+
+         function GetStack : TStack;
+
+         function GetProgramState : TProgramState;
+
+      public
+         constructor Create(const stackParams : TStackParameters);
+         destructor Destroy; override;
+
+         procedure DoStep(expr : TExprBase); inline;
+
+         property Status : TExecutionStatusResult read FStatus write FStatus;
+         property Stack : TStackMixIn read FStack;
+         property SelfScriptObject : PIScriptObj read FSelfScriptObject write FSelfScriptObject;
+         property SelfScriptClassSymbol : TClassSymbol read FSelfScriptClassSymbol write FSelfScriptClassSymbol;
+
+         procedure SetScriptError(expr : TExprBase);
+         procedure ClearScriptError;
+
+         function GetCallStack : TdwsExprLocationArray; virtual; abstract;
+         function CallStackDepth : Integer; virtual; abstract;
+
+         property LastScriptError : TExprBase read FLastScriptError;
+         property LastScriptCallStack : TdwsExprLocationArray read FLastScriptCallStack;
+         property ExceptionObjectStack : TSimpleStack<Variant> read FExceptionObjectStack;
+
+         property ProgramState : TProgramState read FProgramState;
+
+         property ContextTable : TSymbolTable read FContextTable write FContextTable;
+         property Debugger : IDebugger read FDebugger write SetDebugger;
+         property IsDebugging : Boolean read FIsDebugging;
+
+         property Msgs : TdwsRuntimeMessageList read GetMsgs;
+
+         // specifies an external object for IInfo constructors, temporary
+         property ExternalObject : TObject read FExternalObject write FExternalObject;
+
+         // user object, to attach to an execution
+         property UserObject : TObject read GetUserObject write SetUserObject;
+   end;
+
+   // IScriptObj
+   //
    IScriptObj = interface
       ['{8D534D1E-4C6B-11D5-8DCB-0000216D9E86}']
       function GetClassSym: TClassSymbol;
@@ -4563,7 +4557,7 @@ end;
 
 // AddObjectOwner
 //
-procedure TUnitSymbolTable.AddObjectOwner(AOwner : IObjectOwner);
+procedure TUnitSymbolTable.AddObjectOwner(const AOwner : IObjectOwner);
 begin
    if not Assigned(FObjects) then
       FObjects := TInterfaceList.Create;
