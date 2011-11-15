@@ -23,7 +23,8 @@ unit dwsVariantFunctions;
 
 interface
 
-uses Classes, Variants, SysUtils, dwsFunctions, dwsExprs, dwsSymbols, dwsUtils;
+uses Classes, Variants, SysUtils, dwsFunctions, dwsExprs, dwsSymbols, dwsUtils,
+   dwsMagicExprs;
 
 type
   TVarClearFunc = class(TInternalFunction)

@@ -26,6 +26,7 @@ uses
   UdwsUtilsTests in 'UdwsUtilsTests.pas',
   UMemoryTests in 'UMemoryTests.pas',
   dwsMathComplexFunctions in '..\Source\dwsMathComplexFunctions.pas',
+  dwsMath3DFunctions in '..\Source\dwsMath3DFunctions.pas',
   UBuildTests in 'UBuildTests.pas',
   URTTIExposeTests in 'URTTIExposeTests.pas',
   USourceUtilsTests in 'USourceUtilsTests.pas';

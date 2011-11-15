@@ -89,7 +89,7 @@ type
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
-   TStrVarExpr = class (TVarExpr)
+   TStrVarExpr = class sealed (TVarExpr)
       protected
       public
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
@@ -832,7 +832,7 @@ type
    TAddStrExpr = class(TStringBinOpExpr)
       procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
    end;
-   TAddIntExpr = class(TIntegerBinOpExpr)
+   TAddIntExpr = class sealed (TIntegerBinOpExpr)
       function EvalAsInteger(exec : TdwsExecution) : Int64; override;
       function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
@@ -844,7 +844,7 @@ type
    TSubVariantExpr = class(TVariantBinOpExpr)
       procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
-   TSubIntExpr = class(TIntegerBinOpExpr)
+   TSubIntExpr = class sealed (TIntegerBinOpExpr)
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
      function EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
@@ -4444,7 +4444,7 @@ begin
    if FLeft.InheritsFrom(TVarExpr) then begin
       leftVarExpr:=TVarExpr(FLeft);
       if leftVarExpr.ClassType=TIntVarExpr then begin
-         if FRight.InheritsFrom(TAddIntExpr) then begin
+         if FRight.ClassType=TAddIntExpr then begin
             addIntExpr:=TAddIntExpr(FRight);
             if (addIntExpr.Left is TVarExpr) and (TVarExpr(addIntExpr.Left).SameVarAs(leftVarExpr)) then begin
                Result:=TIncIntVarExpr.Create(Prog, FScriptPos, FLeft, addIntExpr.Right);
@@ -4452,7 +4452,7 @@ begin
                addIntExpr.Right:=nil;
                Free;
             end;
-         end else if FRight.InheritsFrom(TSubIntExpr) then begin
+         end else if FRight.ClassType=TSubIntExpr then begin
             subIntExpr:=TSubIntExpr(FRight);
             if (subIntExpr.Left is TVarExpr) and (TVarExpr(subIntExpr.Left).SameVarAs(leftVarExpr)) then begin
                Result:=TDecIntVarExpr.Create(Prog, FScriptPos, FLeft, subIntExpr.Right);

@@ -39,77 +39,78 @@ const
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit
 
 type
-  TIncludeEvent = procedure(const scriptName: UnicodeString; var scriptSource: UnicodeString) of object;
-  TdwsOnNeedUnitEvent = function(const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit of object;
+   TIncludeEvent = procedure(const scriptName: UnicodeString; var scriptSource: UnicodeString) of object;
+   TdwsOnNeedUnitEvent = function(const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit of object;
 
-  TdwsCompiler = class;
-  TCompilerCreateBaseVariantSymbol = function (table : TSystemSymbolTable) : TBaseVariantSymbol of object;
-  TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
-  TCompilerSectionChangedEvent = procedure (compiler : TdwsCompiler) of object;
-  TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile; scriptType : TScriptSourceType) of object;
+   TdwsCompiler = class;
+   TCompilerCreateBaseVariantSymbol = function (table : TSystemSymbolTable) : TBaseVariantSymbol of object;
+   TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
+   TCompilerSectionChangedEvent = procedure (compiler : TdwsCompiler) of object;
+   TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile; scriptType : TScriptSourceType) of object;
 
-  TdwsFilter = class;
+   TdwsFilter = class;
 
-  TdwsConfiguration = class(TPersistent)
-  private
-    FCompilerOptions: TCompilerOptions;
-    FConnectors: TStrings;
-    FDefaultResultType: TdwsResultType;
-    FFilter: TdwsFilter;
-    FMaxDataSize: Integer;
-    FMaxRecursionDepth : Integer;
-    FOnInclude: TIncludeEvent;
-    FOnNeedUnit : TdwsOnNeedUnitEvent;
-    FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
+   TdwsConfiguration = class(TPersistent)
+      private
+         FCompilerOptions : TCompilerOptions;
+         FConnectors : TStrings;
+         FDefaultResultType : TdwsResultType;
+         FFilter : TdwsFilter;
+         FMaxDataSize : Integer;
+         FMaxRecursionDepth : Integer;
+         FOnInclude : TIncludeEvent;
+         FOnNeedUnit : TdwsOnNeedUnitEvent;
+         FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
+         FOwner : TComponent;
+         FResultType : TdwsResultType;
+         FScriptPaths : TStrings;
+         FConditionals : TStringList;
+         FStackChunkSize : Integer;
+         FSystemTable : ISystemSymbolTable;
+         FTimeoutMilliseconds: Integer;
+         FUnits : TIdwsUnitList;
+         FCompileFileSystem : TdwsCustomFileSystem;
+         FRuntimeFileSystem : TdwsCustomFileSystem;
 
-    FOwner: TComponent;
-    FResultType: TdwsResultType;
-    FScriptPaths: TStrings;
-    FConditionals: TStringList;
-    FStackChunkSize: Integer;
-    FSystemTable : TSystemSymbolTable;
-    FTimeoutMilliseconds: Integer;
-    FUnits : TIdwsUnitList;
-    FCompileFileSystem : TdwsCustomFileSystem;
-    FRuntimeFileSystem : TdwsCustomFileSystem;
+      protected
+         procedure InitSystemTable;
+         procedure SetResultType(const Value : TdwsResultType);
+         procedure SetFilter(const Value : TdwsFilter);
+         procedure SetTimeOut(const val : Integer);
+         procedure SetCompileFileSystem(const val : TdwsCustomFileSystem);
+         procedure SetRuntimeFileSystem(const val : TdwsCustomFileSystem);
+         procedure SetScriptPaths(const values : TStrings);
+         procedure SetConditionals(const val : TStringList);
+         function  GetSystemTable : ISystemSymbolTable;
 
-  protected
-    procedure InitSystemTable;
-    procedure SetResultType(const Value: TdwsResultType);
-    procedure SetFilter(const Value: TdwsFilter);
-    procedure SetTimeOut(const val : Integer);
-    procedure SetCompileFileSystem(const val : TdwsCustomFileSystem);
-    procedure SetRuntimeFileSystem(const val : TdwsCustomFileSystem);
-    procedure SetScriptPaths(const values : TStrings);
-    procedure SetConditionals(const val : TStringList);
-    function GetSystemTable : TSystemSymbolTable;
+      public
+         constructor Create(Owner: TComponent);
+         destructor Destroy; override;
+         procedure Assign(Source: TPersistent); override;
+         procedure Notification(AComponent: TComponent; Operation: TOperation);
 
-  public
-    constructor Create(Owner: TComponent);
-    destructor Destroy; override;
-    procedure Assign(Source: TPersistent); override;
-    procedure Notification(AComponent: TComponent; Operation: TOperation);
+         procedure DetachSystemTable;
 
-    property Connectors : TStrings read FConnectors write FConnectors;
-    property SystemTable : TSystemSymbolTable read GetSystemTable;
-    property Units : TIdwsUnitList read FUnits;
+         property Connectors : TStrings read FConnectors write FConnectors;
+         property SystemTable : ISystemSymbolTable read GetSystemTable;
+         property Units : TIdwsUnitList read FUnits;
 
-  published
-    property Filter: TdwsFilter read FFilter write SetFilter;
-    property ResultType: TdwsResultType read FResultType write SetResultType;
-    property CompilerOptions: TCompilerOptions read FCompilerOptions write FCompilerOptions default cDefaultCompilerOptions;
-    property MaxDataSize: Integer read FMaxDataSize write FMaxDataSize default 0;
-    property MaxRecursionDepth : Integer read FMaxRecursionDepth write FMaxRecursionDepth default cDefaultMaxRecursionDepth;
-    property Conditionals : TStringList read FConditionals write SetConditionals;
-    property ScriptPaths: TStrings read FScriptPaths write SetScriptPaths;
-    property CompileFileSystem : TdwsCustomFileSystem read FCompileFileSystem write SetCompileFileSystem;
-    property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write SetRuntimeFileSystem;
-    property TimeoutMilliseconds: Integer read FTimeoutMilliseconds write FTimeoutMilliseconds default 0;
-    property TimeOut : Integer write SetTimeOut;
-    property StackChunkSize: Integer read FStackChunkSize write FStackChunkSize default cDefaultStackChunkSize;
-    property OnInclude : TIncludeEvent read FOnInclude write FOnInclude;
-    property OnNeedUnit : TdwsOnNeedUnitEvent read FOnNeedUnit write FOnNeedUnit;
-  end;
+      published
+         property Filter : TdwsFilter read FFilter write SetFilter;
+         property ResultType : TdwsResultType read FResultType write SetResultType;
+         property CompilerOptions : TCompilerOptions read FCompilerOptions write FCompilerOptions default cDefaultCompilerOptions;
+         property MaxDataSize : Integer read FMaxDataSize write FMaxDataSize default 0;
+         property MaxRecursionDepth : Integer read FMaxRecursionDepth write FMaxRecursionDepth default cDefaultMaxRecursionDepth;
+         property Conditionals : TStringList read FConditionals write SetConditionals;
+         property ScriptPaths : TStrings read FScriptPaths write SetScriptPaths;
+         property CompileFileSystem : TdwsCustomFileSystem read FCompileFileSystem write SetCompileFileSystem;
+         property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write SetRuntimeFileSystem;
+         property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds default 0;
+         property TimeOut : Integer write SetTimeOut;
+         property StackChunkSize : Integer read FStackChunkSize write FStackChunkSize default cDefaultStackChunkSize;
+         property OnInclude : TIncludeEvent read FOnInclude write FOnInclude;
+         property OnNeedUnit : TdwsOnNeedUnitEvent read FOnNeedUnit write FOnNeedUnit;
+   end;
 
   TdwsFilter = class(TComponent)
   private
@@ -447,7 +448,7 @@ type
          procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol);
          procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : UnicodeString; typ1, typ2 : TTypeSymbol);
 
-         function CreateProgram(systemTable : TSystemSymbolTable;
+         function CreateProgram(const systemTable : ISystemSymbolTable;
                                 resultType : TdwsResultType;
                                 const stackParams : TStackParameters) : TdwsMainProgram;
          function CreateProcedure(Parent : TdwsProgram) : TdwsProcedure;
@@ -850,7 +851,9 @@ begin
    FScriptPaths := conf.ScriptPaths;
 
    conf.FOnCreateBaseVariantSymbol:=FOnCreateBaseVariantSymbol;
-   FSystemTable := conf.SystemTable;
+   if Assigned(FOnCreateBaseVariantSymbol) then
+      conf.DetachSystemTable;
+   FSystemTable := conf.SystemTable.SymbolTable;
 
    if Conf.CompileFileSystem<>nil then
       FCompileFileSystem := Conf.CompileFileSystem.AllocateFileSystem
@@ -924,7 +927,7 @@ begin
 
    FProg:=FMainProg;
 
-   FOperators:=TOperators.Create(FProg.SystemTable, FProg.Table);
+   FOperators:=TOperators.Create(FSystemTable, FProg.Table);
    FMainProg.Operators:=FOperators;
    FOperators.FunctionOperatorConstructor:=CreateOperatorFunction;
 
@@ -1739,7 +1742,7 @@ begin
    if not FTok.TestDeleteNamePos(name, typePos) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-   if FProg.SystemTable.FindLocal(name)<>nil then
+   if FSystemTable.FindLocal(name)<>nil then
       FMsgs.AddCompilerErrorFmt(typePos, CPE_NameIsReserved, [name]);
 
    if not FTok.TestDelete(ttEQ) then
@@ -4183,7 +4186,7 @@ begin
                expectedType:=argSym.Typ
             else expectedType:=nil;
 
-            if argSym is TVarParamSymbol then
+            if (argSym<>nil) and (argSym.ClassType=TVarParamSymbol) then
                arg:=ReadTerm(True, expectedType)
             else arg:=ReadExpr(expectedType);
 
@@ -4201,7 +4204,7 @@ begin
             SetLength(argPosArray, n+1);
             argPosArray[n]:=argPos;
 
-            if (argSym is TVarParamSymbol) and (arg is TVarExpr) then
+            if (argSym<>nil) and (argSym.ClassType=TVarParamSymbol) and (arg is TVarExpr) then
                WarnForVarUsage(TVarExpr(arg), argPos);
          until not FTok.TestDelete(ttCOMMA);
          if not FTok.TestDelete(rightDelim) then
@@ -7023,7 +7026,7 @@ end;
 
 // CreateProgram
 //
-function TdwsCompiler.CreateProgram(systemTable : TSystemSymbolTable;
+function TdwsCompiler.CreateProgram(const systemTable : ISystemSymbolTable;
                                     resultType : TdwsResultType;
                                     const stackParams : TStackParameters) : TdwsMainProgram;
 begin
@@ -7773,7 +7776,6 @@ constructor TdwsConfiguration.Create(owner : TComponent);
 begin
    inherited Create;
    FOwner := Owner;
-   FSystemTable := TSystemSymbolTable.Create;
    FConnectors := TStringList.Create;
    FScriptPaths := TStringList.Create;
    FConditionals := TStringList.Create;
@@ -7789,7 +7791,7 @@ end;
 destructor TdwsConfiguration.Destroy;
 begin
    inherited;
-   (FSystemTable as TStaticSymbolTable)._Release;
+   FSystemTable:=nil;
    FConnectors.Free;
    FScriptPaths.Free;
    FConditionals.Free;
@@ -7820,100 +7822,109 @@ var
    meth : TMethodSymbol;
    fldSym : TFieldSymbol;
    propSym : TPropertySymbol;
+   sysTable : TSystemSymbolTable;
 begin
+   sysTable:=TSystemSymbolTable.Create(nil);
+   FSystemTable:=sysTable;
+
    // Create base data types
-   SystemTable.TypBoolean:=TBaseBooleanSymbol.Create;
-   SystemTable.AddSymbol(SystemTable.TypBoolean);
+   sysTable.TypBoolean:=TBaseBooleanSymbol.Create;
+   sysTable.AddSymbol(sysTable.TypBoolean);
 
-   SystemTable.TypFloat:=TBaseFloatSymbol.Create;
-   SystemTable.AddSymbol(SystemTable.TypFloat);
+   sysTable.TypFloat:=TBaseFloatSymbol.Create;
+   sysTable.AddSymbol(sysTable.TypFloat);
 
-   SystemTable.TypInteger:=TBaseIntegerSymbol.Create;
-   SystemTable.AddSymbol(SystemTable.TypInteger);
+   sysTable.TypInteger:=TBaseIntegerSymbol.Create;
+   sysTable.AddSymbol(sysTable.TypInteger);
 
-   SystemTable.TypString:=TBaseStringSymbol.Create;
-   SystemTable.AddSymbol(SystemTable.TypString);
+   sysTable.TypString:=TBaseStringSymbol.Create;
+   sysTable.AddSymbol(sysTable.TypString);
 
-   if SystemTable.TypVariant<>nil then begin
-      SystemTable.AddSymbol(TConstSymbol.Create('Null', SystemTable.TypVariant, Null));
-      SystemTable.AddSymbol(TConstSymbol.Create('Unassigned', SystemTable.TypVariant, Unassigned));
-
-      SystemTable.AddSymbol(TOpenArraySymbol.Create('array of const', SystemTable.TypVariant, SystemTable.TypInteger));
+   if Assigned(FOnCreateBaseVariantSymbol) then
+      FOnCreateBaseVariantSymbol(sysTable)
+   else begin
+      sysTable.TypVariant:=TBaseVariantSymbol.Create;
+      sysTable.AddSymbol(sysTable.TypVariant);
+   end;
+   if sysTable.TypVariant<>nil then begin
+      sysTable.AddSymbol(TConstSymbol.Create('Null', sysTable.TypVariant, Null));
+      sysTable.AddSymbol(TConstSymbol.Create('Unassigned', sysTable.TypVariant, Unassigned));
+      sysTable.AddSymbol(TOpenArraySymbol.Create('array of const', sysTable.TypVariant, sysTable.TypInteger));
    end;
 
-   SystemTable.TypInterface:=TInterfaceSymbol.Create(SYS_IINTERFACE, nil);
-   SystemTable.AddSymbol(SystemTable.TypInterface);
+   sysTable.TypInterface:=TInterfaceSymbol.Create(SYS_IINTERFACE, nil);
+   sysTable.AddSymbol(sysTable.TypInterface);
 
    // Create "root" class TObject
-   SystemTable.TypObject:=TClassSymbol.Create(SYS_TOBJECT, nil);
-   SystemTable.AddSymbol(SystemTable.TypObject);
+   sysTable.TypObject:=TClassSymbol.Create(SYS_TOBJECT, nil);
+   sysTable.AddSymbol(sysTable.TypObject);
    // Add constructor Create
-   meth:=TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, SystemTable.TypObject, cvPublic, False);
+   meth:=TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, sysTable.TypObject, cvPublic, False);
    meth.Executable:=ICallable(TEmptyFunc.Create);
    meth.IsDefault:=True;
-   SystemTable.TypObject.AddMethod(meth);
+   sysTable.TypObject.AddMethod(meth);
    // Add destructor Destroy
    TObjectDestroyMethod.Create(mkDestructor, [maVirtual], SYS_TOBJECT_DESTROY,
-                               [], '', SystemTable.TypObject, cvPublic, SystemTable);
+                               [], '', sysTable.TypObject, cvPublic, sysTable);
    // Add procedure Free
    TObjectFreeMethod.Create(mkProcedure, [], SYS_TOBJECT_FREE,
-                            [], '', SystemTable.TypObject, cvPublic, SystemTable);
+                            [], '', sysTable.TypObject, cvPublic, sysTable);
    // Add ClassName method
    TObjectClassNameMethod.Create(mkClassFunction, [], SYS_TOBJECT_CLASSNAME,
-                                 [], SYS_STRING, SystemTable.TypObject, cvPublic, SystemTable);
+                                 [], SYS_STRING, sysTable.TypObject, cvPublic, sysTable);
 
    // Create "root" metaclass TClass
-   SystemTable.TypClass:=TClassOfSymbol.Create(SYS_TCLASS, SystemTable.TypObject);
-   SystemTable.AddSymbol(SystemTable.TypClass);
+   sysTable.TypClass:=TClassOfSymbol.Create(SYS_TCLASS, sysTable.TypObject);
+   sysTable.AddSymbol(sysTable.TypClass);
 
    // Add ClassType method
    TObjectClassTypeMethod.Create(mkClassFunction, [], SYS_TOBJECT_CLASSTYPE,
-                                 [], SYS_TCLASS, SystemTable.TypObject, cvPublic, SystemTable);
+                                 [], SYS_TCLASS, sysTable.TypObject, cvPublic, sysTable);
 
    // Create class Exception
-   SystemTable.TypException := TClassSymbol.Create(SYS_EXCEPTION, nil);
-   SystemTable.TypException.InheritFrom(SystemTable.TypObject);
-   fldSym:=TFieldSymbol.Create(SYS_EXCEPTION_MESSAGE_FIELD, SystemTable.TypString, cvProtected);
-   SystemTable.TypException.AddField(fldSym);
-   propSym:=TPropertySymbol.Create(SYS_EXCEPTION_MESSAGE, SystemTable.TypString, cvPublic);
+   sysTable.TypException := TClassSymbol.Create(SYS_EXCEPTION, nil);
+   sysTable.TypException.InheritFrom(sysTable.TypObject);
+   fldSym:=TFieldSymbol.Create(SYS_EXCEPTION_MESSAGE_FIELD, sysTable.TypString, cvProtected);
+   sysTable.TypException.AddField(fldSym);
+   propSym:=TPropertySymbol.Create(SYS_EXCEPTION_MESSAGE, sysTable.TypString, cvPublic);
    propSym.ReadSym:=fldSym;
    propSym.WriteSym:=fldSym;
-   SystemTable.TypException.AddProperty(propSym);
+   sysTable.TypException.AddProperty(propSym);
    TExceptionCreateMethod.Create(mkConstructor, [], SYS_TOBJECT_CREATE,
-                                 ['Msg', SYS_STRING], '', SystemTable.TypException, cvPublic, SystemTable);
+                                 ['Msg', SYS_STRING], '', sysTable.TypException, cvPublic, sysTable);
    TExceptionDestroyMethod.Create(mkDestructor, [maOverride], SYS_TOBJECT_DESTROY,
-                                 [], '', SystemTable.TypException, cvPublic, SystemTable);
+                                 [], '', sysTable.TypException, cvPublic, sysTable);
    TExceptionStackTraceMethod.Create(mkFunction, [], SYS_EXCEPTION_STACKTRACE,
-                                 [], SYS_STRING, SystemTable.TypException, cvPublic, SystemTable);
-   SystemTable.AddSymbol(SystemTable.TypException);
+                                 [], SYS_STRING, sysTable.TypException, cvPublic, sysTable);
+   sysTable.AddSymbol(sysTable.TypException);
 
    // Create class EAssertionFailed
    clsAssertionFailed := TClassSymbol.Create(SYS_EASSERTIONFAILED, nil);
-   clsAssertionFailed.InheritFrom(SystemTable.TypException);
-   SystemTable.AddSymbol(clsAssertionFailed);
+   clsAssertionFailed.InheritFrom(sysTable.TypException);
+   sysTable.AddSymbol(clsAssertionFailed);
 
    // Create class EDelphi
    clsDelphiException := TClassSymbol.Create(SYS_EDELPHI, nil);
-   clsDelphiException.InheritFrom(SystemTable.TypException);
-   fldSym:=TFieldSymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS_FIELD, SystemTable.TypString, cvProtected);
+   clsDelphiException.InheritFrom(sysTable.TypException);
+   fldSym:=TFieldSymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS_FIELD, sysTable.TypString, cvProtected);
    clsDelphiException.AddField(fldSym);
-   propSym:=TPropertySymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS, SystemTable.TypString, cvPublic);
+   propSym:=TPropertySymbol.Create(SYS_EDELPHI_EXCEPTIONCLASS, sysTable.TypString, cvPublic);
    propSym.ReadSym:=fldSym;
    propSym.WriteSym:=fldSym;
    clsDelphiException.AddProperty(propSym);
    TDelphiExceptionCreateMethod.Create(mkConstructor, [], SYS_TOBJECT_CREATE,
                                        ['Cls', SYS_STRING, 'Msg', SYS_STRING], '',
-                                       clsDelphiException, cvPublic, SystemTable);
-   SystemTable.AddSymbol(clsDelphiException);
+                                       clsDelphiException, cvPublic, sysTable);
+   sysTable.AddSymbol(clsDelphiException);
 
    // ExceptObj function
-   TExceptObjFunc.Create(SystemTable, 'ExceptObject', [], SYS_EXCEPTION, False);
+   TExceptObjFunc.Create(sysTable, 'ExceptObject', [], SYS_EXCEPTION, False);
 
    // Runtime parameters
-   if SystemTable.TypVariant<>nil then
-      TParamFunc.Create(SystemTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, False);
-   TParamStrFunc.Create(SystemTable, 'ParamStr', ['Index', SYS_INTEGER], SYS_STRING, False);
-   TParamCountFunc.Create(SystemTable, 'ParamCount', [], SYS_INTEGER, False);
+   if sysTable.TypVariant<>nil then
+      TParamFunc.Create(sysTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, False);
+   TParamStrFunc.Create(sysTable, 'ParamStr', ['Index', SYS_INTEGER], SYS_STRING, False);
+   TParamCountFunc.Create(sysTable, 'ParamCount', [], SYS_INTEGER, False);
 end;
 
 // SetFilter
@@ -7992,6 +8003,13 @@ begin
    end;
 end;
 
+// DetachSystemTable
+//
+procedure TdwsConfiguration.DetachSystemTable;
+begin
+   FSystemTable:=nil;
+end;
+
 // SetScriptPaths
 //
 procedure TdwsConfiguration.SetScriptPaths(const values : TStrings);
@@ -8008,17 +8026,10 @@ end;
 
 // GetSystemTable
 //
-function TdwsConfiguration.GetSystemTable : TSystemSymbolTable;
+function TdwsConfiguration.GetSystemTable : ISystemSymbolTable;
 begin
-   if FSystemTable.Count=0 then begin
-      if Assigned(FOnCreateBaseVariantSymbol) then
-         FOnCreateBaseVariantSymbol(FSystemTable)
-      else begin
-         FSystemTable.TypVariant:=TBaseVariantSymbol.Create;
-         FSystemTable.AddSymbol(FSystemTable.TypVariant);
-      end;
+   if FSystemTable=nil then
       InitSystemTable;
-   end;
    Result:=FSystemTable;
 end;
 

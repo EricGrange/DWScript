@@ -23,7 +23,7 @@ unit dwsMathFunctions;
 
 interface
 
-uses Classes, Math, dwsFunctions, dwsExprs, dwsSymbols;
+uses Classes, Math, dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs;
 
 type
 

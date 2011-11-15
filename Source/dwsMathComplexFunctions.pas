@@ -21,7 +21,7 @@ unit dwsMathComplexFunctions;
 interface
 
 uses dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators, dwsStack,
-   dwsTokenizer, SysUtils, dwsUtils;
+   dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs;
 
 type
    TComplexMakeExpr = class(TInternalMagicDataFunction)

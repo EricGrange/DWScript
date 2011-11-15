@@ -460,7 +460,7 @@ type
          FRoot : TdwsMainProgram;
          FRootTable : TProgramSymbolTable;
          FTable : TSymbolTable;
-         FSystemTable : TSystemSymbolTable;
+         FSystemTable : ISystemSymbolTable;
          FUnitMains : TUnitMainSymbols;
          FBaseTypes : TdwsProgramBaseTypes;
 
@@ -470,7 +470,7 @@ type
          function GetAddrGeneratorDataSize : Integer; inline;
 
       public
-         constructor Create(systemTable : TSystemSymbolTable);
+         constructor Create(const systemTable : ISystemSymbolTable);
          destructor Destroy; override;
 
          function GetGlobalAddr(DataSize: Integer): Integer;
@@ -487,7 +487,7 @@ type
          property DataSize : Integer read GetAddrGeneratorDataSize;
 
          property RootTable : TProgramSymbolTable read FRootTable;
-         property SystemTable : TSystemSymbolTable read FSystemTable;
+         property SystemTable : ISystemSymbolTable read FSystemTable;
          property UnitMains : TUnitMainSymbols read FUnitMains;
          property Table : TSymbolTable read FTable write FTable;
 
@@ -549,7 +549,7 @@ type
          function GetProgramObject : TdwsProgram;
 
       public
-         constructor Create(systemTable : TSystemSymbolTable;
+         constructor Create(const systemTable : ISystemSymbolTable;
                             resultType : TdwsResultType;
                             const stackParameters : TStackParameters);
          destructor Destroy; override;
@@ -2671,7 +2671,9 @@ end;
 
 // Create
 //
-constructor TdwsProgram.Create(SystemTable: TSystemSymbolTable);
+constructor TdwsProgram.Create(const systemTable : ISystemSymbolTable);
+var
+   sysTable : TSystemSymbolTable;
 begin
    FCompileMsgs := TdwsCompileMessageList.Create;
 
@@ -2679,21 +2681,22 @@ begin
 
    // Initialize the system table
    FSystemTable := systemTable;
-   FRootTable := TProgramSymbolTable.Create(systemTable, @FAddrGenerator);
+   FRootTable := TProgramSymbolTable.Create(systemTable.SymbolTable, @FAddrGenerator);
    FTable := FRootTable;
 
    FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
 
    // Initialize shortcuts to often used symbols
-   FBaseTypes.FTypBoolean := SystemTable.TypBoolean;
-   FBaseTypes.FTypFloat := SystemTable.TypFloat;
-   FBaseTypes.FTypInteger := SystemTable.TypInteger;
-   FBaseTypes.FTypString := SystemTable.TypString;
-   FBaseTypes.FTypVariant := SystemTable.TypVariant;
+   sysTable:=FSystemTable.SymbolTable;
+   FBaseTypes.FTypBoolean := sysTable.TypBoolean;
+   FBaseTypes.FTypFloat := sysTable.TypFloat;
+   FBaseTypes.FTypInteger := sysTable.TypInteger;
+   FBaseTypes.FTypString := sysTable.TypString;
+   FBaseTypes.FTypVariant := sysTable.TypVariant;
    FBaseTypes.FTypNil := TNilSymbol.Create;
-   FBaseTypes.FTypObject := SystemTable.TypObject;
-   FBaseTypes.FTypException := SystemTable.TypException;
-   FBaseTypes.FTypInterface := SystemTable.TypInterface;
+   FBaseTypes.FTypObject := sysTable.TypObject;
+   FBaseTypes.FTypException := sysTable.TypException;
+   FBaseTypes.FTypInterface := sysTable.TypInterface;
 end;
 
 // Destroy
@@ -2754,7 +2757,7 @@ end;
 
 // Create
 //
-constructor TdwsMainProgram.Create(systemTable : TSystemSymbolTable;
+constructor TdwsMainProgram.Create(const systemTable : ISystemSymbolTable;
                                    resultType : TdwsResultType;
                                    const stackParameters : TStackParameters);
 var
@@ -2787,7 +2790,7 @@ begin
 
    FUnitMains:=TUnitMainSymbols.Create;
 
-   systemUnitTable:=TLinkedSymbolTable.Create(systemTable);
+   systemUnitTable:=TLinkedSymbolTable.Create(systemTable.SymbolTable);
    systemUnit:=TUnitMainSymbol.Create(SYS_SYSTEM, systemUnitTable, FUnitMains);
    systemUnit.ReferenceInSymbolTable(FRootTable);
 
@@ -3929,7 +3932,7 @@ begin
 
       argTyp:=arg.Typ;
       // Wrap-convert arguments if necessary and possible
-      if not paramSymbol.InheritsFrom(TVarParamSymbol) then begin
+      if paramSymbol.ClassType<>TVarParamSymbol then begin
          arg:=TConvExpr.WrapWithConvCast(prog, Pos, paramSymbol.Typ, arg, False);
       end;
       FArgs.ExprBase[x]:=arg;
@@ -3944,7 +3947,7 @@ begin
                                               [x, paramSymbol.Typ.Caption, argTyp.Caption]);
          continue;
       end;
-      if paramSymbol.InheritsFrom(TVarParamSymbol) then begin
+      if paramSymbol.ClassType=TVarParamSymbol then begin
          if not paramSymbol.Typ.IsOfType(arg.Typ) then
             prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long,
                                                  [x, paramSymbol.Typ.Caption, argTyp.Caption]);

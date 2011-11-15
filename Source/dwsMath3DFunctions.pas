@@ -21,7 +21,7 @@ unit dwsMath3DFunctions;
 interface
 
 uses Classes, dwsFunctions, dwsExprs, dwsSymbols, dwsStack, dwsOperators,
-   dwsStrings, dwsTokenizer, SysUtils, dwsUtils;
+   dwsStrings, dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs;
 
 type
    TVectorMakeExpr = class(TInternalMagicDataFunction)

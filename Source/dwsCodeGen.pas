@@ -640,7 +640,7 @@ begin
 
    BeginProgramSession(prog);
    try
-      BeforeCompileProgram(prog.Table, p.SystemTable, p.UnitMains);
+      BeforeCompileProgram(prog.Table, p.SystemTable.SymbolTable, p.UnitMains);
 
       CompileProgramInSession(prog);
    finally
