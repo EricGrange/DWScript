@@ -284,6 +284,7 @@ type
 
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
          FOnReadInstr : TCompilerReadInstrEvent;
+         FOnReadInstrSwitch : TCompilerReadInstrEvent;
          FOnSectionChanged : TCompilerSectionChangedEvent;
          FOnReadScript : TCompilerReadScriptEvent;
 
@@ -497,6 +498,7 @@ type
 
          property OnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol read FOnCreateBaseVariantSymbol write FOnCreateBaseVariantSymbol;
          property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
+         property OnReadInstrSwitch : TCompilerReadInstrEvent read FOnReadInstrSwitch write FOnReadInstrSwitch;
          property OnSectionChanged : TCompilerSectionChangedEvent read FOnSectionChanged write FOnSectionChanged;
          property OnReadScript : TCompilerReadScriptEvent read FOnReadScript write FOnReadScript;
    end;
@@ -6325,7 +6327,7 @@ end;
 
 // ReadInstrSwitch
 //
-function TdwsCompiler.ReadInstrSwitch(semiPending : Boolean): TNoResultExpr;
+function TdwsCompiler.ReadInstrSwitch(semiPending : Boolean) : TNoResultExpr;
 var
    switch : TSwitchInstruction;
    name, scriptSource : UnicodeString;
@@ -6335,7 +6337,10 @@ var
    condExpr : TTypedExpr;
    sourceFile : TSourceFile;
 begin
-   Result := nil;
+   if Assigned(FOnReadInstrSwitch) then begin
+      Result:=FOnReadInstrSwitch(Self);
+      if Result<>nil then Exit;
+   end else Result:=nil;
 
    switchPos:=FTok.HotPos;
 

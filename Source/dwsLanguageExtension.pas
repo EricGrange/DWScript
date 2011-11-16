@@ -32,6 +32,7 @@ type
 
          function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; virtual;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; virtual;
+         function ReadInstrSwitch(compiler : TdwsCompiler) : TNoResultExpr; virtual;
          procedure SectionChanged(compiler : TdwsCompiler); virtual;
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                               scriptType : TScriptSourceType); virtual;
@@ -55,6 +56,7 @@ type
 
          function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; override;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; override;
+         function ReadInstrSwitch(compiler : TdwsCompiler) : TNoResultExpr; override;
          procedure SectionChanged(compiler : TdwsCompiler); override;
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                               scriptType : TScriptSourceType); override;
@@ -91,6 +93,13 @@ end;
 // ReadInstr
 //
 function TdwsLanguageExtension.ReadInstr(compiler : TdwsCompiler) : TNoResultExpr;
+begin
+   Result:=nil;
+end;
+
+// ReadInstrSwitch
+//
+function TdwsLanguageExtension.ReadInstrSwitch(compiler : TdwsCompiler) : TNoResultExpr;
 begin
    Result:=nil;
 end;
@@ -183,6 +192,21 @@ begin
    for i:=0 to FList.Count-1 do begin
       ext:=TdwsLanguageExtension(FList.List[i]);
       Result:=ext.ReadInstr(compiler);
+      if Result<>nil then Exit;
+   end;
+   Result:=nil;
+end;
+
+// ReadInstrSwitch
+//
+function TdwsLanguageExtensionAggregator.ReadInstrSwitch(compiler : TdwsCompiler) : TNoResultExpr;
+var
+   i : Integer;
+   ext : TdwsLanguageExtension;
+begin
+   for i:=0 to FList.Count-1 do begin
+      ext:=TdwsLanguageExtension(FList.List[i]);
+      Result:=ext.ReadInstrSwitch(compiler);
       if Result<>nil then Exit;
    end;
    Result:=nil;
