@@ -36,7 +36,7 @@ uses
   dwsDebugger,
   dwsErrors,
   dwsFunctions,
-  dwsUtils, dwsSymbols,
+  dwsUtils, dwsSymbols, dwsUnitSymbols,
   Dialogs, StdCtrls,
   ExtCtrls,
   SynEditHighlighter,
