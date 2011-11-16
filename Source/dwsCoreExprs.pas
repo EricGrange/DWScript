@@ -206,15 +206,6 @@ type
          class function CreateBooleanValue(prog : TdwsProgram; const value : Boolean) : TConstExpr; overload; static;
    end;
 
-   // TUnifiedConstList
-   //
-   TUnifiedConstList = class (TSortedList<TExprBase>)
-      protected
-         function Compare(const item1, item2 : TExprBase) : Integer; override;
-      public
-         destructor Destroy; override;
-   end;
-
    TUnifiedConstExprClass = class of TUnifiedConstExpr;
 
    // TUnifiedConstExpr
@@ -274,6 +265,29 @@ type
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
          procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
          property Value : UnicodeString read FValue write FValue;
+   end;
+
+   TStandardIntegersConstIntExprArray = array [-1..2] of TUnifiedConstExpr;
+
+   // TUnifiedConstList
+   //
+   TUnifiedConstList = class (TSortedList<TExprBase>)
+      private
+         FEmptyString : TUnifiedConstExpr;
+         FIntegers : TStandardIntegersConstIntExprArray;
+         FZeroFloat : TUnifiedConstExpr;
+
+      protected
+         function Compare(const item1, item2 : TExprBase) : Integer; override;
+
+      public
+         destructor Destroy; override;
+
+         procedure Precharge(prog : TdwsMainProgram; systemTable : TSystemSymbolTable);
+
+         property EmptyString : TUnifiedConstExpr read FEmptyString;
+         property Integers : TStandardIntegersConstIntExprArray read FIntegers;
+         property ZeroFloat : TUnifiedConstExpr read FZeroFloat;
    end;
 
    TArrayConstantExpr = class sealed (TPosDataExpr)
@@ -2154,6 +2168,17 @@ end;
 // ------------------ TUnifiedConstList<TExprBase> ------------------
 // ------------------
 
+// Destroy
+//
+destructor TUnifiedConstList.Destroy;
+var
+   i : Integer;
+begin
+   for i:=0 to Count-1 do
+      TUnifiedConstExpr(Items[i]).DestroyTrue;
+   inherited;
+end;
+
 // Compare
 //
 function TUnifiedConstList.Compare(const item1, item2 : TExprBase) : Integer;
@@ -2195,15 +2220,20 @@ begin
    else Result:=-1;
 end;
 
-// Destroy
+// Precharge
 //
-destructor TUnifiedConstList.Destroy;
+procedure TUnifiedConstList.Precharge(prog : TdwsMainProgram; systemTable : TSystemSymbolTable);
+const
+   cEmptyString : UnicodeString = '';
+   cZeroFloat : Double = 0;
 var
    i : Integer;
 begin
-   for i:=0 to Count-1 do
-      TUnifiedConstExpr(Items[i]).DestroyTrue;
-   inherited;
+   inherited Create;
+   FEmptyString:=TConstStringExpr.CreateUnified(prog, systemTable.TypString, cEmptyString);
+   for i:=Low(FIntegers) to High(FIntegers) do
+      FIntegers[i]:=TConstIntExpr.CreateUnified(prog, systemTable.TypInteger, Int64(i));
+   FZeroFloat:=TConstFloatExpr.CreateUnified(prog, systemTable.TypFloat, cZeroFloat);
 end;
 
 // ------------------

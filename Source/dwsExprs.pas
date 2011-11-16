@@ -2785,7 +2785,10 @@ begin
 
    FSourceList:=TScriptSourceList.Create;
 
+   FRoot:=Self;
+
    FUnifiedConstList:=TUnifiedConstList.Create;
+   TUnifiedConstList(FUnifiedConstList).Precharge(Self, systemTable.SymbolTable);
 
    FUnitMains:=TUnitMainSymbols.Create;
 

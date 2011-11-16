@@ -6076,17 +6076,30 @@ end;
 function TdwsCompiler.ReadConstValue: TConstExpr;
 var
    tt : TTokenType;
+   unifiedList : TUnifiedConstList;
+   token : TToken;
 begin
    Result:=nil;
+   unifiedList:=TUnifiedConstList(FMainProg.UnifiedConstList);
    tt:=FTok.TestAny([ttStrVal, ttIntVal, ttFloatVal]);
    if tt<>ttNone then begin
+      token:=FTok.GetToken;
       case tt of
          ttIntVal :
-            Result:=TConstIntExpr.CreateUnified(FProg, nil, FTok.GetToken.FInteger);
-         ttFloatVal:
-            Result:=TConstFloatExpr.CreateUnified(FProg, nil, FTok.GetToken.FFloat);
-         ttStrVal:
-            Result:=TConstStringExpr.CreateUnified(FProg, nil, FTok.GetToken.FString);
+            case token.FInteger of
+               -1..2 :
+                  Result:=unifiedList.Integers[token.FInteger];
+            else
+               Result:=TConstIntExpr.CreateUnified(FProg, nil, token.FInteger);
+            end;
+         ttFloatVal :
+            if FTok.GetToken.FFloat=0 then
+               Result:=unifiedList.ZeroFloat
+            else Result:=TConstFloatExpr.CreateUnified(FProg, nil, token.FFloat);
+         ttStrVal :
+            if token.FString='' then
+               Result:=unifiedList.EmptyString
+            else Result:=TConstStringExpr.CreateUnified(FProg, nil, token.FString);
       end;
       FTok.KillToken;
    end;
