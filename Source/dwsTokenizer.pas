@@ -99,12 +99,12 @@ type
    TState = class
       private
          FOwnedTransitions : TTightList;
-         FTransitions : array [0..127] of TTransition;
+         FTransitions : array [#0..#127] of TTransition;
 
       public
          destructor Destroy; override;
 
-         function FindTransition(c : WideChar) : TTransition;
+         function FindTransition(c : WideChar) : TTransition; inline;
          procedure AddTransition(const chrs : TCharsType; o : TTransition);
          procedure SetElse(o : TTransition);
    end;
@@ -149,6 +149,7 @@ type
    TTokenizerRules = class
       private
          FStates : TObjectList<TState>;
+         FEOFTransition : TErrorTransition;
 
       protected
          function CreateState : TState;
@@ -157,6 +158,8 @@ type
       public
          constructor Create; virtual;
          destructor Destroy; override;
+
+         procedure PrepareStates;
 
          function CreateTokenizer(sourceFile : TSourceFile; msgs : TdwsCompileMessageList) : TTokenizer;
    end;
@@ -323,7 +326,7 @@ begin
       result:=''
    else begin
       SetLength(result, Len);
-      Move(Buffer[0], Pointer(NativeInt(result))^, Len*SizeOf(WideChar));
+      Move(Buffer[0], Pointer(result)^, Len*SizeOf(WideChar));
    end;
 end;
 
@@ -336,7 +339,7 @@ begin
    if Len>0 then begin
       n:=Length(result);
       SetLength(result, n+Len);
-      Move(Buffer[0], PWideChar(NativeInt(result))[n], Len*SizeOf(WideChar));
+      Move(Buffer[0], PWideChar(Pointer(result))[n], Len*SizeOf(WideChar));
    end;
 end;
 
@@ -640,13 +643,10 @@ end;
 // FindTransition
 //
 function TState.FindTransition(c : WideChar) : TTransition;
-var
-   oc : Integer;
 begin
-   oc:=Ord(c);
-   if oc<127 then
-      Result:=FTransitions[oc]
-   else Result:=FTransitions[127];
+   if c<#127 then
+      Result:=FTransitions[c]
+   else Result:=FTransitions[#127];
 end;
 
 // AddTransition
@@ -657,8 +657,8 @@ var
 begin
    for c:=#0 to #127 do
       if c in chrs then begin
-         if FTransitions[Ord(c)]=nil then
-            FTransitions[Ord(c)]:=o;
+         if FTransitions[c]=nil then
+            FTransitions[c]:=o;
       end;
    FOwnedTransitions.Add(o);
 end;
@@ -670,8 +670,8 @@ var
    c : AnsiChar;
 begin
    for c:=#0 to #127 do
-      if FTransitions[Ord(c)]=nil then
-        FTransitions[Ord(c)]:=o;
+      if FTransitions[c]=nil then
+        FTransitions[c]:=o;
   FOwnedTransitions.Add(o);
 end;
 
@@ -961,11 +961,86 @@ end;
 // ConsumeToken
 //
 function TTokenizer.ConsumeToken : TToken;
+
+   procedure DoErrorTransition(trns : TErrorTransition; ch : WideChar);
+   begin
+      if trns.ErrorMessage<>'' then
+         FMsgs.AddCompilerStopFmt(FPos, '%s (found "%s")', [trns.ErrorMessage, ch]);
+   end;
+
+   function DoAction(action : TConvertAction; resultToken : TToken; var state : TState) : Boolean;
+   begin
+      case action of
+         caClear : begin
+            FTokenBuf.Len:=0;
+            resultToken.FPos:=DefaultPos;
+         end;
+
+         // Convert name to token
+         caName : begin
+            resultToken.FTyp:=FTokenBuf.ToType;
+            FTokenBuf.ToStr(resultToken.FString);
+         end;
+
+         // Convert escaped name to token
+         caNameEscaped : begin
+            resultToken.FTyp:=ttNAME;
+            FTokenBuf.ToStr(resultToken.FString);
+         end;
+
+         // converts ASCII code to character (decimal or hex)
+         caChar, caCharHex :
+            HandleChar(FTokenBuf, resultToken);
+
+         // Concatenates the parts of a UnicodeString constant
+         caString : begin
+            FTokenBuf.AppendToStr(resultToken.FString);
+            resultToken.FTyp:=ttStrVal;
+         end;
+
+         // Converts hexadecimal number to integer
+         caHex :
+            HandleHexa(FTokenBuf, resultToken);
+
+         // Converts integer constants
+         caInteger :
+            HandleInteger(FTokenBuf, resultToken);
+
+         // Converts Floating Point numbers
+         caFloat :
+            HandleFloat(FTokenBuf, resultToken);
+
+         caSwitch :
+            if Assigned(FSwitchHandler) then begin
+               FHotPos:=resultToken.FPos;
+
+               // Ask parser if we should create a token or not
+               FTokenBuf.ToUpperStr(resultToken.FString);
+               if FSwitchHandler(resultToken.FString) then begin
+                  resultToken.FTyp:=ttSWITCH;
+               end else begin
+                  resultToken.FString:='';
+                  state:=FRules.StartState;
+                  FTokenBuf.Len:=0;
+                  Exit(True);
+               end;
+            end;
+
+         caDotDot : begin
+            resultToken.FPos:=FPos;
+            resultToken.FPos.Col:=resultToken.FPos.Col-1;
+            resultToken.FTyp:=ttDOTDOT;
+         end;
+      end;
+      FTokenBuf.Len:=0;
+      Result:=False;
+   end;
+
 var
    state : TState;
    trns : TTransition;
    trnsClassType : TClass;
-   ch : WideChar;
+   pch : PWideChar;
 begin
    Result:=AllocateToken;
 
@@ -974,20 +1049,21 @@ begin
 
    try
 
+      // Next character
+      pch:=FPosPtr;
+
       // Look for the next token in FText
       while Assigned(state) do begin
 
-         // Next character
-         ch:=FPosPtr^;
-         if ch=#0 then Break;
-
          // Find next state
-         trns:=state.FindTransition(ch);
+         trns:=state.FindTransition(pch^);
          trnsClassType:=trns.ClassType;
 
          // Handle Errors
-         if trnsClassType=TErrorTransition then
-            FMsgs.AddCompilerStopFmt(FPos, '%s (found "%s")', [TErrorTransition(trns).ErrorMessage, ch]);
+         if trnsClassType=TErrorTransition then begin
+            DoErrorTransition(TErrorTransition(trns), pch^);
+            Break;
+         end;
 
          // A new token begins
          if trns.Start and (Result.FPos.Line<=0) then
@@ -995,81 +1071,21 @@ begin
 
          // Add actual character to s
          if trnsClassType=TConsumeTransition then
-            FTokenBuf.AppendChar(ch);
+            FTokenBuf.AppendChar(pch^);
 
          // Proceed to the next character
          if (trnsClassType=TSeekTransition) or (trnsClassType=TConsumeTransition) then begin
             Inc(FPosPtr);
-            if ch=#10 then
+            if pch^=#10 then
                FPos.NewLine
             else FPos.IncCol;
+            Inc(pch);
          end;
 
          // The characters in 's' have to be converted
          if trns.Action<>caNone then begin
-            case trns.Action of
-               caClear : begin
-                  FTokenBuf.Len:=0;
-                  Result.FPos:=DefaultPos;
-               end;
-
-               // Convert name to token
-               caName : begin
-                  Result.FTyp:=FTokenBuf.ToType;
-                  FTokenBuf.ToStr(Result.FString);
-               end;
-
-               // Convert escaped name to token
-               caNameEscaped : begin
-                  Result.FTyp:=ttNAME;
-                  FTokenBuf.ToStr(Result.FString);
-               end;
-
-               // converts ASCII code to character (decimal or hex)
-               caChar, caCharHex :
-                  HandleChar(FTokenBuf, Result);
-
-               // Concatenates the parts of a UnicodeString constant
-               caString : begin
-                  FTokenBuf.AppendToStr(Result.FString);
-                  Result.FTyp:=ttStrVal;
-               end;
-
-               // Converts hexadecimal number to integer
-               caHex :
-                  HandleHexa(FTokenBuf, Result);
-
-               // Converts integer constants
-               caInteger :
-                  HandleInteger(FTokenBuf, Result);
-
-               // Converts Floating Point numbers
-               caFloat :
-                  HandleFloat(FTokenBuf, Result);
-
-               caSwitch :
-                  if Assigned(FSwitchHandler) then begin
-                     FHotPos:=Result.FPos;
-
-                     // Ask parser if we should create a token or not
-                     FTokenBuf.ToUpperStr(Result.FString);
-                     if FSwitchHandler(Result.FString) then begin
-                        Result.FTyp:=ttSWITCH;
-                     end else begin
-                        Result.FString:='';
-                        state:=FRules.StartState;
-                        FTokenBuf.Len:=0;
-                        Continue;
-                     end;
-                  end;
-
-               caDotDot : begin
-                  Result.FPos:=FPos;
-                  Result.FPos.Col:=Result.FPos.Col-1;
-                  Result.FTyp:=ttDOTDOT;
-               end;
-            end;
-            FTokenBuf.Len:=0;
+            if DoAction(trns.Action, Result, state) then
+               continue;
          end;
 
          // If the token is complete then exit
@@ -1137,6 +1153,18 @@ end;
 destructor TTokenizerRules.Destroy;
 begin
    FStates.Free;
+   FEOFTransition.Free;
+end;
+
+// PrepareStates
+//
+procedure TTokenizerRules.PrepareStates;
+var
+   i : Integer;
+begin
+   FEOFTransition:=TErrorTransition.Create('');
+   for i:=0 to FStates.Count-1 do
+      FStates[i].FTransitions[#0]:=FEOFTransition;
 end;
 
 // CreateState

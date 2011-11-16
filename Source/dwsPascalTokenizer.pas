@@ -146,7 +146,7 @@ begin
    sSlashComment0.AddTransition(['*'], TConsumeTransition.Create(sBlockCommentSlash, [], caNone));
    sSlashComment0.SetElse(TCheckTransition.Create(sStart, [toFinal], caName));
 
-   sSlashComment.AddTransition([#0, #10], TSeekTransition.Create(sStart, [], caClear));
+   sSlashComment.AddTransition([#10], TSeekTransition.Create(sStart, [], caClear));
    sSlashComment.SetElse(TSeekTransition.Create(sSlashComment, [], caNone));
 
    sBracketLeft.AddTransition(['*'], TSeekTransition.Create(sBlockCommentBracket, [], caNone));
@@ -263,6 +263,8 @@ begin
 
    sDotDot.AddTransition(['.'], TConsumeTransition.Create(sStart, [toFinal], caDotDot));
    sDotDot.SetElse(TCheckTransition.Create(sStart, [toFinal], caName));
+
+   PrepareStates;
 end;
 
 // StartState
