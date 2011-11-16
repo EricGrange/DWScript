@@ -21,7 +21,7 @@ unit dwsMath3DFunctions;
 interface
 
 uses Classes, dwsFunctions, dwsExprs, dwsSymbols, dwsStack, dwsOperators,
-   dwsStrings, dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs;
+   dwsStrings, dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs, dwsUnitSymbols;
 
 type
    TVectorMakeExpr = class(TInternalMagicDataFunction)
@@ -70,7 +70,7 @@ implementation
 // RegisterMath3DTypes
 //
 procedure RegisterMath3DTypes(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
-                              unitTable : TSymbolTable; operators : TOperators);
+                              unitTable : TSymbolTable);
 var
    typVector : TRecordSymbol;
 //   methSym : TMagicMethodSymbol;
@@ -90,8 +90,8 @@ end;
 
 // RegisterMath3DOperators
 //
-procedure RegisterMath3DOperators(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
-                                   unitTable : TSymbolTable; operators : TOperators);
+procedure RegisterMath3DOperators(systemTable : TSystemSymbolTable;
+                                  unitTable : TSymbolTable; operators : TOperators);
 var
    typVector : TRecordSymbol;
 begin
@@ -216,8 +216,8 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   dwsInternalUnit.AddPreInitProc(RegisterMath3DTypes);
-   dwsInternalUnit.AddPostInitProc(RegisterMath3DOperators);
+   dwsInternalUnit.AddSymbolsRegistrationProc(RegisterMath3DTypes);
+   dwsInternalUnit.AddOperatorsRegistrationProc(RegisterMath3DOperators);
 
    RegisterInternalFunction(TVectorMakeExpr, 'Vector', ['x', SYS_FLOAT, 'y', SYS_FLOAT, 'z', SYS_FLOAT, 'w', SYS_FLOAT], SYS_VECTOR, True);
    RegisterInternalStringFunction(TVectorToStrExpr, 'VectorToStr', ['c', SYS_VECTOR], True);

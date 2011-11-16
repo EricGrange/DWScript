@@ -19,7 +19,8 @@ unit dwsSuggestions;
 
 interface
 
-uses Classes, SysUtils, dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsTokenizer;
+uses Classes, SysUtils, dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsTokenizer,
+   dwsUnitSymbols;
 
 type
 

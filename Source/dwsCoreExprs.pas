@@ -24,7 +24,7 @@ unit dwsCoreExprs;
 interface
 
 uses Windows, Classes, Variants, SysUtils, dwsSymbols, dwsErrors, dwsStrings,
-   dwsStack, dwsExprs, dwsUtils, dwsTokenizer, dwsRelExprs;
+   dwsStack, dwsExprs, dwsUtils, dwsTokenizer, dwsRelExprs, dwsUnitSymbols;
 
 type
 

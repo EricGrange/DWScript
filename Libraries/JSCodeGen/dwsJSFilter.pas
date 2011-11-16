@@ -125,7 +125,8 @@ var
 
       if FCodeGen.Context=nil then begin
          FCodeGen.BeginProgramSession(prog);
-         FCodeGen.BeforeCompileProgram(prog.Table, (prog as TdwsProgram).SystemTable, (prog as TdwsProgram).UnitMains);
+         FCodeGen.BeforeCompileProgram(prog.Table, (prog.ProgramObject as TdwsMainProgram).SystemTable.SymbolTable,
+                                       (prog as TdwsProgram).UnitMains);
       end;
 
       FCodeGen.CompileProgramInSession(prog);

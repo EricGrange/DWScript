@@ -22,7 +22,7 @@ interface
 
 uses Classes, SysUtils, dwsLanguageExtension, dwsComp, dwsCompiler,
    dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs, dwsStack,
-   dwsStrings, dwsXPlatform, StrUtils, dwsUtils, dwsOperators;
+   dwsStrings, dwsXPlatform, StrUtils, dwsUtils, dwsOperators, dwsUnitSymbols;
 
 type
 

@@ -21,7 +21,7 @@ unit dwsMathComplexFunctions;
 interface
 
 uses dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators, dwsStack,
-   dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs;
+   dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs, dwsUnitSymbols;
 
 type
    TComplexMakeExpr = class(TInternalMagicDataFunction)
@@ -75,7 +75,7 @@ implementation
 // RegisterComplexType
 //
 procedure RegisterComplexType(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
-                              unitTable : TSymbolTable; operators : TOperators);
+                              unitTable : TSymbolTable);
 var
    typComplex : TRecordSymbol;
 begin
@@ -88,7 +88,7 @@ end;
 
 // RegisterComplexOperators
 //
-procedure RegisterComplexOperators(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
+procedure RegisterComplexOperators(systemTable : TSystemSymbolTable;
                                    unitTable : TSymbolTable; operators : TOperators);
 var
    typComplex : TRecordSymbol;
@@ -228,8 +228,8 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   dwsInternalUnit.AddPreInitProc(RegisterComplexType);
-   dwsInternalUnit.AddPostInitProc(RegisterComplexOperators);
+   dwsInternalUnit.AddSymbolsRegistrationProc(RegisterComplexType);
+   dwsInternalUnit.AddOperatorsRegistrationProc(RegisterComplexOperators);
 
    RegisterInternalFunction(TComplexMakeExpr, 'Complex', ['real', SYS_FLOAT, 'imaginary', SYS_FLOAT], SYS_COMPLEX, True);
    RegisterInternalStringFunction(TComplexToStrExpr, 'ComplexToStr', ['c', SYS_COMPLEX], True);

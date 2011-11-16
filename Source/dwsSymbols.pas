@@ -23,8 +23,8 @@ unit dwsSymbols;
 
 interface
 
-uses Windows, SysUtils, Variants, Classes, dwsStrings, dwsErrors,
-   dwsUtils, dwsTokenizer, dwsStack;
+uses SysUtils, Variants, Classes, dwsStrings, dwsErrors, dwsUtils,
+   dwsTokenizer, dwsStack;
 
 type
 
@@ -305,7 +305,7 @@ type
          function RemoveParent(parent : TSymbolTable) : Integer; virtual;
          function IndexOfParent(parent : TSymbolTable) : Integer;
          procedure MoveParent(curIndex, newIndex : Integer);
-         procedure ClearParents;
+         procedure ClearParents; virtual;
          procedure AddParent(parent : TSymbolTable);
 
          function AddSymbol(sym : TSymbol): Integer;
@@ -794,106 +794,6 @@ type
          procedure InitData(const data : TData; offset : Integer); override;
    end;
 
-   TUnitMainSymbol = class;
-
-   // list of unit main symbols (one per prog)
-   TUnitMainSymbols = class(TObjectList<TUnitMainSymbol>)
-      private
-
-      protected
-
-      public
-         procedure Initialize(const msgs : TdwsCompileMessageList);
-
-         function Find(const unitName : UnicodeString) : TUnitMainSymbol;
-   end;
-
-   IObjectOwner = interface
-      procedure ReleaseObject;
-   end;
-
-   // TUnitSymbolTable
-   //
-   TUnitSymbolTable = class (TSymbolTable)
-      private
-         FObjects : TInterfaceList;
-         FUnitSymbol : TUnitMainSymbol;
-
-      public
-         destructor Destroy; override;
-
-         procedure AddObjectOwner(const AOwner : IObjectOwner);
-         procedure ClearObjectOwners;
-
-         property UnitSymbol : TUnitMainSymbol read FUnitSymbol write FUnitSymbol;
-   end;
-
-   // TUnitPrivateTable
-   //
-   TUnitPrivateTable = class(TSymbolTable)
-      private
-         FUnitMainSymbol : TUnitMainSymbol;
-
-      public
-         constructor Create(unitMainSymbol : TUnitMainSymbol);
-
-         property UnitMainSymbol : TUnitMainSymbol read FUnitMainSymbol;
-   end;
-
-   // TUnitImplementationTable
-   //
-   TUnitImplementationTable = class(TUnitPrivateTable)
-      public
-         constructor Create(unitMainSymbol : TUnitMainSymbol);
-   end;
-
-   TUnitSymbol = class;
-
-   // Invisible symbol for units (e. g. for TdwsUnit)
-   TUnitMainSymbol = class sealed (TNameSymbol)
-      private
-         FTable : TUnitSymbolTable;
-         FInterfaceTable : TSymbolTable;
-         FImplementationTable : TUnitImplementationTable;
-
-      public
-         constructor Create(const name : UnicodeString; table : TUnitSymbolTable;
-                            unitSyms : TUnitMainSymbols);
-         destructor Destroy; override;
-
-         procedure InitData(const data : TData; offset : Integer); override;
-         procedure Initialize(const msgs : TdwsCompileMessageList); override;
-
-         procedure CreateInterfaceTable;
-         procedure UnParentInterfaceTable;
-
-         function ReferenceInSymbolTable(aTable : TSymbolTable) : TUnitSymbol;
-
-         function HasSymbol(sym : TSymbol) : Boolean;
-
-         property Table : TUnitSymbolTable read FTable;
-
-         property InterfaceTable : TSymbolTable read FInterfaceTable;
-         property ImplementationTable : TUnitImplementationTable read FImplementationTable;
-   end;
-
-   // Front end for units, serves for explicit unit resolution "unitName.symbolName"
-   TUnitSymbol = class abstract (TNameSymbol)
-      private
-         FMain : TUnitMainSymbol;
-
-      public
-         constructor Create(mainSymbol : TUnitMainSymbol);
-
-         procedure InitData(const data : TData; offset : Integer); override;
-
-         property Main : TUnitMainSymbol read FMain;
-
-         function Table : TUnitSymbolTable; inline;
-         function InterfaceTable : TSymbolTable; inline;
-         function ImplementationTable : TUnitImplementationTable; inline;
-   end;
-
    IConnectorType = interface;
 
    IConnector = interface
@@ -1024,7 +924,7 @@ type
    // class, record, interface
    TStructuredTypeSymbol = class(TTypeSymbol)
       private
-         FUnitSymbol : TUnitMainSymbol;
+         FUnitSymbol : TSymbol;
          FDefaultProperty : TPropertySymbol;
          FMembers : TMembersSymbolTable;
          FParent : TStructuredTypeSymbol;
@@ -1040,7 +940,7 @@ type
          function IsParentCompatible(typSym : TStructuredTypeSymbol) : Boolean;
 
       public
-         constructor Create(const name : UnicodeString; aUnit : TUnitMainSymbol);
+         constructor Create(const name : UnicodeString; aUnit : TSymbol);
          destructor Destroy; override;
 
          procedure AddField(fieldSym : TFieldSymbol); virtual;
@@ -1058,7 +958,7 @@ type
 
          property Parent : TStructuredTypeSymbol read FParent;
          property MetaSymbol : TStructuredTypeMetaSymbol read FMetaSymbol;
-         property UnitSymbol : TUnitMainSymbol read FUnitSymbol;
+         property UnitSymbol : TSymbol read FUnitSymbol;
          property Members : TMembersSymbolTable read FMembers;
          property DefaultProperty : TPropertySymbol read FDefaultProperty write FDefaultProperty;
    end;
@@ -1097,7 +997,7 @@ type
          function GetDescription : UnicodeString; override;
 
       public
-         constructor Create(const name : UnicodeString; aUnit : TUnitMainSymbol);
+         constructor Create(const name : UnicodeString; aUnit : TSymbol);
 
          procedure AddField(fieldSym : TFieldSymbol); override;
 
@@ -1115,7 +1015,7 @@ type
          function GetDescription : UnicodeString; override;
 
       public
-         constructor Create(const name : UnicodeString; aUnit : TUnitMainSymbol);
+         constructor Create(const name : UnicodeString; aUnit : TSymbol);
 
          procedure InheritFrom(ancestor : TInterfaceSymbol);
 
@@ -1261,7 +1161,7 @@ type
          function AllocateVMTindex : Integer;
 
       public
-         constructor Create(const name : UnicodeString; aUnit : TUnitMainSymbol);
+         constructor Create(const name : UnicodeString; aUnit : TSymbol);
          destructor Destroy; override;
 
          procedure AddField(fieldSym : TFieldSymbol); override;
@@ -1364,107 +1264,6 @@ type
          property LowBound : Integer read FLowBound write FLowBound;
          property HighBound : Integer read FHighBound write FHighBound;
          function ShortDescription : UnicodeString;
-   end;
-
-   TStaticSymbolTable = class;
-
-   IStaticSymbolTable = interface
-      function SymbolTable : TStaticSymbolTable;
-   end;
-
-   // TStaticSymbolTable
-   //
-   TStaticSymbolTable = class (TUnitSymbolTable, IStaticSymbolTable)
-      private
-         FRefCount : Integer;
-         FInitialized : Boolean;
-         FStaticParent : IStaticSymbolTable;
-
-      protected
-         function SymbolTable : TStaticSymbolTable;
-
-      public
-         constructor Create(const parent : IStaticSymbolTable);
-         destructor Destroy; override;
-
-         procedure Initialize(const msgs : TdwsCompileMessageList); override;
-         procedure InsertParent(Index: Integer; Parent: TSymbolTable); override;
-         function  RemoveParent(Parent: TSymbolTable): Integer; override;
-
-         function QueryInterface(const IID : TGUID; out Obj) : HResult; stdcall;
-         function _AddRef : Integer; stdcall;
-         function _Release : Integer; stdcall;
-   end;
-
-   TSystemSymbolTable = class;
-
-   ISystemSymbolTable = interface(IStaticSymbolTable)
-      function SymbolTable : TSystemSymbolTable;
-   end;
-
-   // TSystemSymbolTable
-   //
-   TSystemSymbolTable = class (TStaticSymbolTable, ISystemSymbolTable)
-      private
-         FTypInteger : TBaseIntegerSymbol;
-         FTypBoolean : TBaseBooleanSymbol;
-         FTypFloat : TBaseFloatSymbol;
-         FTypString : TBaseStringSymbol;
-         FTypVariant : TBaseVariantSymbol;
-         FTypObject : TClassSymbol;
-         FTypClass : TClassOfSymbol;
-         FTypException : TClassSymbol;
-         FTypInterface : TInterfaceSymbol;
-
-      protected
-         function SymbolTable : TSystemSymbolTable;
-
-      public
-         property TypInteger : TBaseIntegerSymbol read FTypInteger write FTypInteger;
-         property TypBoolean : TBaseBooleanSymbol read FTypBoolean write FTypBoolean;
-         property TypFloat : TBaseFloatSymbol read FTypFloat write FTypFloat;
-         property TypString : TBaseStringSymbol read FTypString write FTypString;
-         property TypVariant : TBaseVariantSymbol read FTypVariant write FTypVariant;
-
-         property TypObject : TClassSymbol read FTypObject write FTypObject;
-         property TypClass : TClassOfSymbol read FTypClass write FTypClass;
-
-         property TypException : TClassSymbol read FTypException write FTypException;
-
-         property TypInterface : TInterfaceSymbol read FTypInterface write FTypInterface;
-   end;
-
-   // TLinkedSymbolTable
-   //
-   TLinkedSymbolTable = class (TUnitSymbolTable)
-      private
-         FParent : IStaticSymbolTable;
-         FParentSymbolTable : TStaticSymbolTable;
-
-      public
-         constructor Create(const parent : IStaticSymbolTable);
-
-         function FindLocal(const Name: UnicodeString; ofClass : TSymbolClass = nil) : TSymbol; override;
-         function FindSymbol(const Name: UnicodeString; minVisibility : TdwsVisibility; ofClass : TSymbolClass = nil) : TSymbol; override;
-         procedure Initialize(const msgs : TdwsCompileMessageList); override;
-
-         property Parent : IStaticSymbolTable read FParent;
-         property ParentSymbolTable : TStaticSymbolTable read FParentSymbolTable;
-   end;
-
-   // TProgramSymbolTable
-   //
-   TProgramSymbolTable = class (TSymbolTable)
-      private
-         FSystemTable : ISystemSymbolTable;
-         FDestructionList: TTightList;
-
-      public
-         constructor Create(parent : TSymbolTable = nil; addrGenerator : TAddrGenerator = nil);
-         destructor Destroy; override;
-
-         procedure AddToDestructionList(sym : TSymbol);
-         procedure RemoveFromDestructionList(sym : TSymbol);
    end;
 
    // TdwsExecution
@@ -1953,7 +1752,7 @@ end;
 
 // Create
 //
-constructor TStructuredTypeSymbol.Create(const name : UnicodeString; aUnit : TUnitMainSymbol);
+constructor TStructuredTypeSymbol.Create(const name : UnicodeString; aUnit : TSymbol);
 begin
    inherited Create(name, nil);
    FUnitSymbol:=aUnit;
@@ -2119,7 +1918,7 @@ end;
 
 // Create
 //
-constructor TRecordSymbol.Create(const name : UnicodeString; aUnit : TUnitMainSymbol);
+constructor TRecordSymbol.Create(const name : UnicodeString; aUnit : TSymbol);
 begin
    inherited Create(name, aUnit);
    FMetaSymbol:=TStructuredTypeMetaSymbol.Create('meta of '+name, Self);
@@ -2187,7 +1986,7 @@ end;
 
 // Create
 //
-constructor TInterfaceSymbol.Create(const name : UnicodeString; aUnit : TUnitMainSymbol);
+constructor TInterfaceSymbol.Create(const name : UnicodeString; aUnit : TSymbol);
 begin
    inherited;
    FSize:=1;
@@ -3168,7 +2967,7 @@ end;
 
 // Create
 //
-constructor TClassSymbol.Create(const name : UnicodeString; aUnit : TUnitMainSymbol);
+constructor TClassSymbol.Create(const name : UnicodeString; aUnit : TSymbol);
 begin
    inherited;
    FSize:=1;
@@ -4302,15 +4101,14 @@ end;
 //
 function TSymbolTable.RemoveParent(Parent: TSymbolTable): Integer;
 begin
-   Result := FParents.Remove(Parent);
+   Result:=FParents.Remove(Parent);
 end;
 
 // ClearParents
 //
 procedure TSymbolTable.ClearParents;
 begin
-   while FParents.Count > 0 do
-      RemoveParent(FParents.List[0]);
+   FParents.Clear;
 end;
 
 // GetParentCount
@@ -4430,147 +4228,6 @@ begin
 end;
 
 // ------------------
-// ------------------ TProgramSymbolTable ------------------
-// ------------------
-
-// Create
-//
-constructor TProgramSymbolTable.Create(parent : TSymbolTable = nil; addrGenerator: TAddrGenerator = nil);
-begin
-   inherited;
-   if Parent is TSystemSymbolTable then begin
-      FSystemTable:=(Parent as TSystemSymbolTable);
-   end;
-end;
-
-// Destroy
-//
-destructor TProgramSymbolTable.Destroy;
-begin
-   inherited;
-   FDestructionList.Clean;
-   FSystemTable:=nil;
-end;
-
-// AddToDestructionList
-//
-procedure TProgramSymbolTable.AddToDestructionList(sym : TSymbol);
-begin
-   FDestructionList.Add(sym);
-end;
-
-// RemoveFromDestructionList
-//
-procedure TProgramSymbolTable.RemoveFromDestructionList(sym : TSymbol);
-begin
-   FDestructionList.Remove(sym);
-end;
-
-// ------------------
-// ------------------ TUnitSymbolTable ------------------
-// ------------------
-
-// Destroy
-//
-destructor TUnitSymbolTable.Destroy;
-begin
-   ClearObjectOwners;
-   inherited;
-   FObjects.Free;
-end;
-
-// AddObjectOwner
-//
-procedure TUnitSymbolTable.AddObjectOwner(const AOwner : IObjectOwner);
-begin
-   if not Assigned(FObjects) then
-      FObjects := TInterfaceList.Create;
-   FObjects.Add(AOwner);
-end;
-
-// ClearObjectOwners
-//
-procedure TUnitSymbolTable.ClearObjectOwners;
-var
-   n : Integer;
-   objOwner : IObjectOwner;
-begin
-   if Assigned(FObjects) then begin
-      while FObjects.Count>0 do begin
-         n:=FObjects.Count-1;
-         objOwner:=IObjectOwner(FObjects[n]);
-         FObjects.Delete(n);
-         objOwner.ReleaseObject;
-      end;
-   end;
-end;
-
-// ------------------
-// ------------------ TUnitSymbol ------------------
-// ------------------
-
-// Create
-//
-constructor TUnitSymbol.Create(mainSymbol : TUnitMainSymbol);
-begin
-   inherited Create(mainSymbol.Name, nil);
-   FMain:=mainSymbol;
-end;
-
-// InitData
-//
-procedure TUnitSymbol.InitData(const data : TData; offset : Integer);
-begin
-   // nothing
-end;
-
-// Table
-//
-function TUnitSymbol.Table : TUnitSymbolTable;
-begin
-   Result:=Main.Table;
-end;
-
-// InterfaceTable
-//
-function TUnitSymbol.InterfaceTable : TSymbolTable;
-begin
-   Result:=Main.InterfaceTable;
-end;
-
-// ImplementationTable
-//
-function TUnitSymbol.ImplementationTable : TUnitImplementationTable;
-begin
-   Result:=Main.ImplementationTable;
-end;
-
-// ------------------
-// ------------------ TUnitPrivateTable ------------------
-// ------------------
-
-// Create
-//
-constructor TUnitPrivateTable.Create(unitMainSymbol : TUnitMainSymbol);
-begin
-   inherited Create(unitMainSymbol.Table, unitMainSymbol.Table.AddrGenerator);
-   FUnitMainSymbol:=unitMainSymbol;
-end;
-
-// ------------------
-// ------------------ TUnitImplementationTable ------------------
-// ------------------
-
-// Create
-//
-constructor TUnitImplementationTable.Create(unitMainSymbol : TUnitMainSymbol);
-begin
-   inherited Create(unitMainSymbol);
-   unitMainSymbol.FImplementationTable:=Self;
-   AddParent(unitMainSymbol.InterfaceTable);
-end;
-
-// ------------------
 // ------------------ TExternalVarSymbol ------------------
 // ------------------
 
@@ -4589,81 +4246,6 @@ end;
 function TExternalVarSymbol.GetWriteFunc: TFuncSymbol;
 begin
   Result := FWriteFunc;
-end;
-
-// ------------------
-// ------------------ TUnitMainSymbol ------------------
-// ------------------
-
-// Create
-//
-constructor TUnitMainSymbol.Create(const name : UnicodeString; table : TUnitSymbolTable;
-                                   unitSyms : TUnitMainSymbols);
-begin
-   inherited Create(Name, nil);
-   FTable:=Table;
-   unitSyms.Add(Self);
-end;
-
-// Destroy
-//
-destructor TUnitMainSymbol.Destroy;
-begin
-   FInterfaceTable.Free;
-   FImplementationTable.Free;
-   FTable.Free;
-   inherited;
-end;
-
-// InitData
-//
-procedure TUnitMainSymbol.InitData(const data : TData; offset : Integer);
-begin
-   // nothing
-end;
-
-// Initialize
-//
-procedure TUnitMainSymbol.Initialize(const msgs : TdwsCompileMessageList);
-begin
-   FTable.Initialize(msgs);
-   if FImplementationTable<>nil then
-      FImplementationTable.Initialize(msgs);
-end;
-
-// CreateInterfaceTable
-//
-procedure TUnitMainSymbol.CreateInterfaceTable;
-begin
-   Assert(not Assigned(FInterfaceTable));
-
-   FInterfaceTable:=TSymbolTable.Create;
-   Table.AddParent(FInterfaceTable);
-end;
-
-// UnParentInterfaceTable
-//
-procedure TUnitMainSymbol.UnParentInterfaceTable;
-begin
-   Table.RemoveParent(FInterfaceTable);
-end;
-
-// HasSymbol
-//
-function TUnitMainSymbol.HasSymbol(sym : TSymbol) : Boolean;
-begin
-   if Self=nil then
-      Result:=False
-   else Result:=Table.HasSymbol(sym) or ImplementationTable.HasSymbol(sym);
-end;
-
-// ReferenceInSymbolTable
-//
-function TUnitMainSymbol.ReferenceInSymbolTable(aTable : TSymbolTable) : TUnitSymbol;
-begin
-   Result:=TUnitSymbol.Create(Self);
-   aTable.AddSymbol(Result);
-   aTable.AddParent(Table);
 end;
 
 // ------------------
@@ -4964,134 +4546,6 @@ begin
       Result:=FElements[0].Name+',...';
    end;
    Result:='('+Result+')';
-end;
-
-// ------------------
-// ------------------ TStaticSymbolTable ------------------
-// ------------------
-
-// Create
-//
-constructor TStaticSymbolTable.Create(const parent : IStaticSymbolTable);
-begin
-   if parent<>nil then
-      inherited Create(parent.SymbolTable)
-   else begin
-      inherited Create(nil);
-      FStaticParent:=parent;
-   end;
-end;
-
-// Destroy
-//
-destructor TStaticSymbolTable.Destroy;
-begin
-   Assert(FRefCount=0);
-   FStaticParent:=nil;
-   inherited;
-end;
-
-// _AddRef
-//
-function TStaticSymbolTable._AddRef : Integer;
-begin
-   Result:=InterlockedIncrement(FRefCount);
-end;
-
-// _Release
-//
-function TStaticSymbolTable._Release : Integer;
-begin
-   Result:=InterlockedDecrement(FRefCount);
-   if Result=0 then
-      Destroy;
-end;
-
-// InsertParent
-//
-procedure TStaticSymbolTable.InsertParent(index : Integer; parent : TSymbolTable);
-var
-   staticSymbols : TStaticSymbolTable;
-begin
-   // accept only static parents
-   if parent is TLinkedSymbolTable then
-      staticSymbols:=TLinkedSymbolTable(parent).Parent.SymbolTable
-   else if parent is TStaticSymbolTable then
-      staticSymbols:=TStaticSymbolTable(parent)
-   else staticSymbols:=nil;
-
-   if Assigned(staticSymbols) then begin
-      staticSymbols._AddRef;
-      inherited InsertParent(index, staticSymbols);
-   end else raise Exception.Create(CPE_NoStaticSymbols);
-end;
-
-// RemoveParent
-//
-function TStaticSymbolTable.RemoveParent(parent : TSymbolTable) : Integer;
-begin
-   Result:=inherited RemoveParent(parent);
-   (parent as TStaticSymbolTable)._Release;
-end;
-
-// QueryInterface
-//
-function TStaticSymbolTable.QueryInterface(const IID : TGUID; out Obj) : HResult;
-begin
-   if GetInterface(IID, Obj) then
-      Result:=0
-   else Result:=E_NOINTERFACE;
-end;
-
-// Initialize
-//
-procedure TStaticSymbolTable.Initialize(const msgs : TdwsCompileMessageList);
-begin
-   if not FInitialized then begin
-      inherited;
-      FInitialized:=True;
-   end;
-end;
-
-// SymbolTable
-//
-function TStaticSymbolTable.SymbolTable : TStaticSymbolTable;
-begin
-   Result:=Self;
-end;
-
-// ------------------
-// ------------------ TLinkedSymbolTable ------------------
-// ------------------
-
-// Create
-//
-constructor TLinkedSymbolTable.Create(const parent : IStaticSymbolTable);
-begin
-   inherited Create(nil, nil);
-   FParent:=parent;
-   FParentSymbolTable:=parent.SymbolTable;
-end;
-
-function TLinkedSymbolTable.FindLocal(const Name: UnicodeString; ofClass : TSymbolClass = nil): TSymbol;
-begin
-   Result:=FParentSymbolTable.FindLocal(Name, ofClass);
-   if not Assigned(Result) then
-      Result:=inherited FindLocal(Name, ofClass);
-end;
-
-function TLinkedSymbolTable.FindSymbol(const Name: UnicodeString; minVisibility : TdwsVisibility;
-                                       ofClass : TSymbolClass = nil): TSymbol;
-begin
-  Result := FParentSymbolTable.FindSymbol(Name, minVisibility, ofClass);
-  if not Assigned(Result) then
-    Result := inherited FindSymbol(Name, minVisibility, ofClass);
-end;
-
-procedure TLinkedSymbolTable.Initialize(const msgs : TdwsCompileMessageList);
-begin
-  FParentSymbolTable.Initialize(msgs);
-  inherited;
 end;
 
 // ------------------
@@ -5444,34 +4898,6 @@ begin
 end;
 
 // ------------------
-// ------------------ TUnitMainSymbols ------------------
-// ------------------
-
-// Find
-//
-function TUnitMainSymbols.Find(const unitName : UnicodeString) : TUnitMainSymbol;
-var
-   i : Integer;
-begin
-   for i:=0 to Count-1 do begin
-      Result:=Items[i];
-      if SameText(Result.Name, unitName) then
-         Exit(Result);
-   end;
-   Result:=nil;
-end;
-
-// Initialize
-//
-procedure TUnitMainSymbols.Initialize(const msgs : TdwsCompileMessageList);
-var
-   i : Integer;
-begin
-   for i:=0 to Count-1 do
-      Items[i].Initialize(msgs);
-end;
-
-// ------------------
 // ------------------ TAnyFuncSymbol ------------------
 // ------------------
 
@@ -5480,17 +4906,6 @@ end;
 function TAnyFuncSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=(typSym is TFuncSymbol);
-end;
-
-// ------------------
-// ------------------ TSystemSymbolTable ------------------
-// ------------------
-
-// SymbolTable
-//
-function TSystemSymbolTable.SymbolTable : TSystemSymbolTable;
-begin
-   Result:=Self;
 end;
 
 end.

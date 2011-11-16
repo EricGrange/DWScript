@@ -18,7 +18,7 @@ unit dwsCodeGen;
 interface
 
 uses Classes, SysUtils, dwsUtils, dwsSymbols, dwsExprs, dwsCoreExprs, dwsJSON,
-   dwsStrings;
+   dwsStrings, dwsUnitSymbols;
 
    // experimental codegen support classes for DWScipt
 
@@ -634,7 +634,7 @@ end;
 //
 procedure TdwsCodeGen.CompileProgram(const prog : IdwsProgram);
 var
-   p : TdwsProgram;
+   p : TdwsMainProgram;
 begin
    p:=prog.ProgramObject;
 

@@ -26,7 +26,8 @@ interface
 uses
   Variants, Classes, SysUtils, dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors,
   dwsStrings, dwsFunctions, dwsStack, dwsCoreExprs, dwsFileSystem, dwsUtils,
-  dwsMagicExprs, dwsRelExprs, dwsOperators, dwsPascalTokenizer;
+  dwsMagicExprs, dwsRelExprs, dwsOperators, dwsPascalTokenizer, dwsSystemOperators,
+  dwsUnitSymbols;
 
 type
    TCompilerOption = ( coOptimize, coSymbolDictionary, coContextMap, coAssertions,
@@ -451,15 +452,17 @@ type
          function CreateProgram(const systemTable : ISystemSymbolTable;
                                 resultType : TdwsResultType;
                                 const stackParams : TStackParameters) : TdwsMainProgram;
-         function CreateProcedure(Parent : TdwsProgram) : TdwsProcedure;
-         function CreateAssign(const pos : TScriptPos; token : TTokenType; left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
+         function CreateAssign(const scriptPos : TScriptPos; token : TTokenType;
+                               left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
 
          function CreateArrayLow(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
          function CreateArrayHigh(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
          function CreateArrayLength(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
          function CreateArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TArrayExpr;
 
-         function CreateOperatorFunction(funcSym : TFuncSymbol; left, right : TTypedExpr) : TTypedExpr;
+         function CreateTypedOperatorExpr(token : TTokenType; aLeft, aRight : TTypedExpr) : TTypedExpr;
+         function CreateAssignOperatorExpr(token : TTokenType; const scriptPos : TScriptPos;
+                                           aLeft, aRight : TTypedExpr) : TAssignExpr;
 
          procedure DoSectionChanged;
 
@@ -853,7 +856,6 @@ begin
    conf.FOnCreateBaseVariantSymbol:=FOnCreateBaseVariantSymbol;
    if Assigned(FOnCreateBaseVariantSymbol) then
       conf.DetachSystemTable;
-   FSystemTable := conf.SystemTable.SymbolTable;
 
    if Conf.CompileFileSystem<>nil then
       FCompileFileSystem := Conf.CompileFileSystem.AllocateFileSystem
@@ -912,6 +914,7 @@ begin
 
    // Create the TdwsProgram
    FMainProg:=CreateProgram(aConf.SystemTable, aConf.ResultType, stackParams);
+   FSystemTable:=FMainProg.SystemTable.SymbolTable;
    FMsgs:=FMainProg.CompileMsgs;
 
    FMsgs.HintsDisabled:=(coHintsDisabled in aConf.CompilerOptions);
@@ -927,9 +930,8 @@ begin
 
    FProg:=FMainProg;
 
-   FOperators:=TOperators.Create(FSystemTable, FProg.Table);
+   FOperators:=TSystemOperators.Create(FSystemTable, FProg.Table);
    FMainProg.Operators:=FOperators;
-   FOperators.FunctionOperatorConstructor:=CreateOperatorFunction;
 
    try
       CheckFilterDependencies(aConf.Units);
@@ -987,7 +989,7 @@ end;
 procedure TdwsCompiler.HandleUnitDependencies;
 var
    i : Integer;
-   unitsResolved: TIdwsUnitList;
+   unitsResolved : TIdwsUnitList;
    unitTable : TUnitSymbolTable;
    unitSymbol : TUnitMainSymbol;
 begin
@@ -1089,6 +1091,7 @@ begin
 
    FMainProg:=context.ProgramObject as TdwsMainProgram;
    FMainProg.Compiler:=Self;
+   FSystemTable:=FMainProg.SystemTable.SymbolTable;
    FContextMap:=FMainProg.ContextMap;
    FSymbolDictionary:=FMainProg.SymbolDictionary;
 
@@ -2228,7 +2231,7 @@ begin
    try
       // Function Body
       oldprog:=FProg;
-      proc:=CreateProcedure(FProg);
+      proc:=TdwsProcedure.Create(FProg);
       FProg:=proc;
       try
          FMainProg.Compiler := Self;
@@ -5689,7 +5692,7 @@ begin
                      Result:=TRelOpExpr.Create(FProg, Result, right); // keep going
                   end;
                end else begin
-                  opExpr:=FOperators.GenerateTyped(FProg, hotPos, tt, Result, right);
+                  opExpr:=CreateTypedOperatorExpr(tt, Result, right);
                   if opExpr=nil then begin
                      FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                      // keep going
@@ -5750,7 +5753,7 @@ begin
                if (Result.Typ=nil) or (right.Typ=nil) then
                   FMsgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands)
                else begin
-                  opExpr:=FOperators.GenerateTyped(FProg, hotPos, tt, Result, right);
+                  opExpr:=CreateTypedOperatorExpr(tt, Result, right);
                   if opExpr=nil then begin
                      FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                      // fake result to keep compiler going and report further issues
@@ -5800,7 +5803,7 @@ begin
             if (Result.Typ=nil) or (right.Typ=nil) then
                FMsgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands)
             else begin
-               opExpr:=FOperators.GenerateTyped(FProg, hotPos, tt, Result, right);
+               opExpr:=CreateTypedOperatorExpr(tt, Result, right);
                if opExpr=nil then begin
                   FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                   // fake result to keep compiler going and report further issues
@@ -7177,16 +7180,9 @@ begin
    DoSectionChanged;
 end;
 
-// CreateProcedure
-//
-function TdwsCompiler.CreateProcedure(Parent : TdwsProgram): TdwsProcedure;
-begin
-   Result := TdwsProcedure.Create(Parent);
-end;
-
 // CreateAssign
 //
-function TdwsCompiler.CreateAssign(const pos : TScriptPos; token : TTokenType;
+function TdwsCompiler.CreateAssign(const scriptPos : TScriptPos; token : TTokenType;
                                    left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
 var
    classOpSymbol : TClassOperatorSymbol;
@@ -7203,44 +7199,44 @@ begin
                // error assumed to have already been reported
                left.Free;
                right.Free;
-               Result:=TNullExpr.Create(FProg, Pos);
+               Result:=TNullExpr.Create(FProg, scriptPos);
             end else if left.Typ.ClassType=TClassOfSymbol then begin
-               Result:=TAssignClassOfExpr.Create(FProg, pos, left, right);
+               Result:=TAssignClassOfExpr.Create(FProg, scriptPos, left, right);
             end else if left.Typ.ClassType=TInterfaceSymbol then begin
                if right.Typ is TClassSymbol then begin
                   classSymbol:=TClassSymbol(right.Typ);
                   intfSymbol:=TInterfaceSymbol(left.Typ);
                   if not classSymbol.ImplementsInterface(intfSymbol) then
-                     FMsgs.AddCompilerErrorFmt(pos, RTE_ObjCastToIntfFailed,
+                     FMsgs.AddCompilerErrorFmt(scriptPos, RTE_ObjCastToIntfFailed,
                                                [classSymbol.Name, intfSymbol.Name]);
-                  Result:=TAssignExpr.Create(FProg, pos, left, TObjAsIntfExpr.Create(FProg, pos, right, intfSymbol));
-               end else Result:=TAssignExpr.Create(FProg, pos, left, right);
+                  Result:=TAssignExpr.Create(FProg, scriptPos, left, TObjAsIntfExpr.Create(FProg, scriptPos, right, intfSymbol));
+               end else Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
             end else if right.InheritsFrom(TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
                if right.InheritsFrom(TFuncExpr) then
                   TFuncExpr(right).SetResultAddr(FProg, nil);
                if right.InheritsFrom(TArrayConstantExpr) then
-                  Result:=TAssignArrayConstantExpr.Create(FProg, pos, left, TArrayConstantExpr(right))
-               else Result:=TAssignDataExpr.Create(FProg, pos, left, right)
+                  Result:=TAssignArrayConstantExpr.Create(FProg, scriptPos, left, TArrayConstantExpr(right))
+               else Result:=TAssignDataExpr.Create(FProg, scriptPos, left, right)
             end else if left.Typ is TFuncSymbol then begin
                if (right.Typ is TFuncSymbol) or (right.Typ is TNilSymbol) then begin
                   if right is TFuncRefExpr then begin
                      right:=TFuncRefExpr(right).Extract;
                      if right is TFuncPtrExpr then begin
                         right:=TFuncPtrExpr(right).Extract;
-                        Result:=TAssignExpr.Create(FProg, pos, left, right);
+                        Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
                      end else begin
                         Assert(right is TFuncExprBase);
-                        Result:=TAssignFuncExpr.Create(FProg, pos, left, right);
+                        Result:=TAssignFuncExpr.Create(FProg, scriptPos, left, right);
                      end;
                   end else begin
-                     Result:=TAssignExpr.Create(FProg, pos, left, right);
+                     Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
                   end;
                end else begin
-                  FMsgs.AddCompilerError(pos, CPE_IncompatibleOperands);
-                  Result:=TAssignExpr.Create(FProg, pos, left, right); // keep going
+                  FMsgs.AddCompilerError(scriptPos, CPE_IncompatibleOperands);
+                  Result:=TAssignExpr.Create(FProg, scriptPos, left, right); // keep going
                end;
             end else begin
-               Result:=TAssignExpr.Create(FProg, pos, left, right);
+               Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
             end;
          end;
          ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN, ttCARET_ASSIGN : begin
@@ -7248,8 +7244,8 @@ begin
 
                classOpSymbol:=(left.Typ as TClassSymbol).FindClassOperator(token, right.Typ);
                if classOpSymbol=nil then
-                  FMsgs.AddCompilerStop(pos, CPE_IncompatibleOperands);
-               classOpExpr:=GetMethodExpr(classOpSymbol.UsesSym, left, rkObjRef, pos, False);
+                  FMsgs.AddCompilerStop(scriptPos, CPE_IncompatibleOperands);
+               classOpExpr:=GetMethodExpr(classOpSymbol.UsesSym, left, rkObjRef, scriptPos, False);
                try
                   classOpExpr.AddArg(right);
                   classOpExpr.TypeCheckArgs(FProg);
@@ -7257,14 +7253,14 @@ begin
                   classOpExpr.Free;
                   raise;
                end;
-               Result:=TNoResultWrapperExpr.Create(FProg, pos, classOpExpr);
+               Result:=TNoResultWrapperExpr.Create(FProg, scriptPos, classOpExpr);
 
             end else begin
 
-               assignOpExpr:=FOperators.GenerateAssign(Fprog, pos, token, left, right);
+               assignOpExpr:=CreateAssignOperatorExpr(token, scriptPos, left, right);
                if assignOpExpr=nil then begin
-                  FMsgs.AddCompilerError(pos, CPE_IncompatibleOperands);
-                  Result:=TAssignExpr.Create(FProg, pos, left, right);
+                  FMsgs.AddCompilerError(scriptPos, CPE_IncompatibleOperands);
+                  Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
                end else Result:=assignOpExpr;
 
             end;
@@ -7281,8 +7277,8 @@ begin
 
       left.Free;
       right.Free;
-      FMsgs.AddCompilerError(Pos, CPE_RightSideNeedsReturnType);
-      Result:=TNullExpr.Create(FProg, Pos);
+      FMsgs.AddCompilerError(scriptPos, CPE_RightSideNeedsReturnType);
+      Result:=TNullExpr.Create(FProg, scriptPos);
 
    end;
 end;
@@ -7366,23 +7362,45 @@ begin
    end else Result:=nil;
 end;
 
-// CreateOperatorFunction
+// CreateTypedOperatorExpr
 //
-function TdwsCompiler.CreateOperatorFunction(funcSym : TFuncSymbol; left, right : TTypedExpr) : TTypedExpr;
+function TdwsCompiler.CreateTypedOperatorExpr(token : TTokenType; aLeft, aRight : TTypedExpr) : TTypedExpr;
 var
+   op : PRegisteredOperator;
    funcExpr : TFuncExprBase;
 begin
-   funcExpr:=GetFuncExpr(funcSym, False);
-   funcExpr.AddArg(left);
-   funcExpr.AddArg(right);
-   funcExpr.TypeCheckArgs(FProg);
-   Result:=funcExpr;
+   Result:=nil;
+   if (aLeft=nil) or (aRight=nil) then Exit;
+   op:=FOperators.OperatorFor(token, aLeft.Typ, aRight.Typ);
+   if op<>nil then begin
+      if op.BinExprClass<>nil then
+         Result:=op.BinExprClass.Create(FProg, aLeft, aRight)
+      else if op.FuncSym<>nil then begin
+         funcExpr:=GetFuncExpr(op.FuncSym, False);
+         funcExpr.AddArg(aLeft);
+         funcExpr.AddArg(aRight);
+         funcExpr.TypeCheckArgs(FProg);
+         if Optimize then
+            Result:=funcExpr.OptimizeToTypedExpr(FProg, FExec)
+         else Result:=funcExpr;
+      end;
+   end;
+end;
 
-//   if Result.InheritsFrom(TFuncExpr) then
-//      TFuncExpr(right).SetResultAddr(FProg, nil);
-
-   if Optimize then
-      Result:=Result.OptimizeToTypedExpr(FProg, FExec);
+// CreateAssignOperatorExpr
+//
+function TdwsCompiler.CreateAssignOperatorExpr(token : TTokenType; const scriptPos : TScriptPos;
+                                               aLeft, aRight : TTypedExpr) : TAssignExpr;
+var
+   op : PRegisteredOperator;
+begin
+   Result:=nil;
+   if (aLeft=nil) or (aRight=nil) then Exit;
+   op:=FOperators.OperatorFor(token, aLeft.Typ, aRight.Typ);
+   if op<>nil then begin
+      if op.AssignExprClass<>nil then
+         Result:=op.AssignExprClass.Create(FProg, scriptPos, aLeft as TDataExpr, aRight);
+   end;
 end;
 
 // DoSectionChanged

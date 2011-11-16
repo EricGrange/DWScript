@@ -26,7 +26,7 @@ interface
 uses  Windows,
   Variants, Classes, SysUtils, TypInfo, dwsCompiler, dwsExprs, dwsSymbols,
   dwsStack, dwsFunctions, dwsStrings, dwsFileSystem, dwsLanguageExtension,
-  dwsTokenizer, dwsUtils, dwsOperators,
+  dwsTokenizer, dwsUtils, dwsOperators, dwsUnitSymbols,
   // Built-In functions
 {$IFNDEF DWS_NO_BUILTIN_FUNCTIONS}
   dwsMathFunctions, dwsStringFunctions, dwsTimeFunctions, dwsVariantFunctions,

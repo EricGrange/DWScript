@@ -24,7 +24,7 @@ unit dwsExprs;
 interface
 
 uses Classes, Variants, SysUtils, TypInfo, dwsSymbols, dwsErrors, dwsUtils,
-   dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsTokenizer;
+   dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsTokenizer, dwsUnitSymbols;
 
 type
    TRelOps = (roEqual, roUnEqual, roLess, roLessEqual, roMore, roMoreEqual);
@@ -344,7 +344,7 @@ type
       function GetContextMap : TContextMap;
       function GetSourceList : TScriptSourceList;
       function GetUnitMains : TUnitMainSymbols;
-      function GetProgramObject : TdwsProgram;
+      function GetProgramObject : TdwsMainProgram;
 
       function CreateNewExecution : IdwsProgramExecution;
       function BeginNewExecution : IdwsProgramExecution;
@@ -362,7 +362,7 @@ type
       property ContextMap : TContextMap read GetContextMap;
       property SourceList : TScriptSourceList read GetSourceList;
       property UnitMains : TUnitMainSymbols read GetUnitMains;
-      property ProgramObject : TdwsProgram read GetProgramObject;
+      property ProgramObject : TdwsMainProgram read GetProgramObject;
       property LineCount : Integer read GetLineCount;
    end;
 
@@ -460,7 +460,6 @@ type
          FRoot : TdwsMainProgram;
          FRootTable : TProgramSymbolTable;
          FTable : TSymbolTable;
-         FSystemTable : ISystemSymbolTable;
          FUnitMains : TUnitMainSymbols;
          FBaseTypes : TdwsProgramBaseTypes;
 
@@ -487,7 +486,6 @@ type
          property DataSize : Integer read GetAddrGeneratorDataSize;
 
          property RootTable : TProgramSymbolTable read FRootTable;
-         property SystemTable : ISystemSymbolTable read FSystemTable;
          property UnitMains : TUnitMainSymbols read FUnitMains;
          property Table : TSymbolTable read FTable write FTable;
 
@@ -521,6 +519,7 @@ type
          FContextMap : TContextMap;
          FSymbolDictionary : TSymbolDictionary;
 
+         FSystemTable : ISystemSymbolTable;
          FOperators : TObject;
          FConditionalDefines : TStringList;
          FSourceFiles : TTightList;
@@ -546,7 +545,7 @@ type
          procedure SetTimeoutMilliseconds(const val : Integer);
          function GetSymbolDictionary : TSymbolDictionary;
          function GetContextMap : TContextMap;
-         function GetProgramObject : TdwsProgram;
+         function GetProgramObject : TdwsMainProgram;
 
       public
          constructor Create(const systemTable : ISystemSymbolTable;
@@ -572,6 +571,7 @@ type
          property UnifiedConstList : TSortedList<TExprBase> read FUnifiedConstList;
          property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
 
+         property SystemTable : ISystemSymbolTable read FSystemTable;
          property Operators : TObject read FOperators write FOperators;
          property ConditionalDefines : TStringList read FConditionalDefines write SetConditionalDefines;
          property Compiler : TObject read FCompiler write FCompiler;
@@ -2680,14 +2680,13 @@ begin
    FAddrGenerator := TAddrGeneratorRec.CreatePositive(0);
 
    // Initialize the system table
-   FSystemTable := systemTable;
    FRootTable := TProgramSymbolTable.Create(systemTable.SymbolTable, @FAddrGenerator);
    FTable := FRootTable;
 
    FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
 
    // Initialize shortcuts to often used symbols
-   sysTable:=FSystemTable.SymbolTable;
+   sysTable:=systemTable.SymbolTable;
    FBaseTypes.FTypBoolean := sysTable.TypBoolean;
    FBaseTypes.FTypFloat := sysTable.TypFloat;
    FBaseTypes.FTypInteger := sysTable.TypInteger;
@@ -2790,6 +2789,7 @@ begin
 
    FUnitMains:=TUnitMainSymbols.Create;
 
+   FSystemTable := systemTable;
    systemUnitTable:=TLinkedSymbolTable.Create(systemTable.SymbolTable);
    systemUnit:=TUnitMainSymbol.Create(SYS_SYSTEM, systemUnitTable, FUnitMains);
    systemUnit.ReferenceInSymbolTable(FRootTable);
@@ -2928,7 +2928,7 @@ end;
 
 // GetProgramObject
 //
-function TdwsMainProgram.GetProgramObject : TdwsProgram;
+function TdwsMainProgram.GetProgramObject : TdwsMainProgram;
 begin
    Result:=Self;
 end;
@@ -3026,7 +3026,7 @@ begin
    FAddrGenerator:=TAddrGeneratorRec.CreatePositive(Parent.Level + 1);
    FRootTable:=TProgramSymbolTable.Create(Parent.Table, @FAddrGenerator);
    FTable:=FRootTable;
-   FSystemTable:=Parent.SystemTable;
+//   FSystemTable:=Parent.SystemTable;
    FCompileMsgs:=Parent.CompileMsgs;
    FUnitMains:=Parent.UnitMains;
 

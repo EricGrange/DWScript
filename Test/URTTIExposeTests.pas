@@ -33,6 +33,8 @@ type
          procedure ConnectSimpleClassTyped;
          procedure ConnectTypeCheckFail;
          procedure ConnectFormCreateComponent;
+
+         procedure ExposeGeneric;
    end;
 
 type
@@ -78,6 +80,17 @@ type
       class function RectWidth(const r : TMyRect) : Integer; static;
       class function UnitRect : TMyRect; static;
       class procedure InflateRect(var r : TMyRect); static;
+   end;
+
+   TGenericWrapper<T> = class
+      private
+         FField : T;
+      public
+         property Field : T read FField write FField;
+   end;
+
+   TWrappedObject = class(TGenericWrapper<TObject>)
+      procedure Stuff(obj : TGenericWrapper<Integer>);
    end;
 
 // ------------------------------------------------------------------
@@ -146,6 +159,13 @@ end;
 procedure TSimpleClass.DecValue;
 begin
    Dec(FValue);
+end;
+
+// Stuff
+//
+procedure TWrappedObject.Stuff(obj : TGenericWrapper<Integer>);
+begin
+   //
 end;
 
 // ------------------
@@ -442,6 +462,13 @@ begin
    finally
       form.Free;
    end;
+end;
+
+// ExposeGeneric
+//
+procedure TRTTIExposeTests.ExposeGeneric;
+begin
+   FUnit.ExposeRTTI(TypeInfo(TWrappedObject), [eoExposePublic]);
 end;
 
 // ------------------------------------------------------------------
