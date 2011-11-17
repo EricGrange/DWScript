@@ -25,7 +25,8 @@ interface
 
 uses
    Classes, SysUtils, dwsExprs, dwsSymbols, dwsXPlatform, dwsCompiler, dwsErrors,
-   dwsUtils, Variants, dwsXPlatformUI, dwsStack, dwsStrings, dwsUnitSymbols;
+   dwsUtils, Variants, dwsXPlatformUI, dwsStack, dwsStrings, dwsUnitSymbols,
+   dwsInfo;
 
 type
    TdwsDebugger = class;
