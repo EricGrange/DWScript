@@ -735,11 +735,8 @@ type
          property UsesSym : TFuncSymbol read FUsesSym write FUsesSym;
    end;
 
-   TNameSymbol = class(TTypeSymbol)
-   end;
-
    // type x = TMyType;
-   TAliasSymbol = class(TNameSymbol)
+   TAliasSymbol = class(TTypeSymbol)
       public
          function BaseType : TTypeSymbol; override;
          function UnAliasedType : TTypeSymbol; override;
@@ -749,7 +746,7 @@ type
    end;
 
    // integer/UnicodeString/float/boolean/variant
-   TBaseSymbol = class(TNameSymbol)
+   TBaseSymbol = class(TTypeSymbol)
       public
          constructor Create(const name : UnicodeString);
 
@@ -1240,7 +1237,7 @@ type
    end;
 
    // Enumeration type. E. g. "type myEnum = (One, Two, Three);"
-   TEnumerationSymbol = class sealed (TNameSymbol)
+   TEnumerationSymbol = class sealed (TTypeSymbol)
       private
          FElements : TSymbolTable;
          FLowBound, FHighBound : Integer;

@@ -736,6 +736,8 @@ procedure TdwsCodeGen.MapInternalSymbolNames(progTable, systemTable : TSymbolTab
       i : Integer;
       sym : TSymbol;
    begin
+      if table is TLinkedSymbolTable then
+         table:=TLinkedSymbolTable(table).ParentSymbolTable;
       for i:=0 to table.Count-1 do begin
          sym:=table.Symbols[i];
          if (sym is TClassSymbol) or (sym is TRecordSymbol) then begin

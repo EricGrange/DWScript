@@ -85,7 +85,7 @@ type
    TUnitSymbol = class;
 
    // Invisible symbol for units (e. g. for TdwsUnit)
-   TUnitMainSymbol = class sealed (TNameSymbol)
+   TUnitMainSymbol = class sealed (TSymbol)
       private
          FTable : TUnitSymbolTable;
          FInterfaceTable : TSymbolTable;
@@ -96,7 +96,6 @@ type
                             unitSyms : TUnitMainSymbols);
          destructor Destroy; override;
 
-         procedure InitData(const data : TData; offset : Integer); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
          procedure CreateInterfaceTable;
@@ -113,7 +112,7 @@ type
    end;
 
    // Front end for units, serves for explicit unit resolution "unitName.symbolName"
-   TUnitSymbol = class abstract (TNameSymbol)
+   TUnitSymbol = class abstract (TTypeSymbol)
       private
          FMain : TUnitMainSymbol;
 
@@ -270,8 +269,7 @@ var
    staticTable : TStaticSymbolTable;
 begin
    // accept only static parents
-   if not (parent is TStaticSymbolTable) then
-      raise Exception.Create(CPE_NoStaticSymbols);
+   Assert((parent is TStaticSymbolTable), CPE_NoStaticSymbols);
 
    staticTable:=TStaticSymbolTable(parent);
    staticTable._AddRef;
@@ -379,13 +377,6 @@ begin
    FImplementationTable.Free;
    FTable.Free;
    inherited;
-end;
-
-// InitData
-//
-procedure TUnitMainSymbol.InitData(const data : TData; offset : Integer);
-begin
-   // nothing
 end;
 
 // Initialize
