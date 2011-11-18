@@ -6146,9 +6146,15 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
       expr:=ReadExpr;
       try
-         if not (expr is TConstExpr) then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected)
-         else if memberSym<>nil then begin
+         if not (expr is TConstExpr) then begin
+            if expr.IsConstant then
+               expr:=expr.OptimizeToTypedExpr(FProg, FExec)
+            else begin
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+               FreeAndNil(expr);
+            end;
+         end;
+         if (expr<>nil) and (memberSym<>nil) then begin
             constExpr:=TConstExpr(expr);
             if constExpr.Typ.IsOfType(FProg.TypInteger) and memberSym.Typ.IsOfType(FProg.TypFloat) then
                Result[memberSym.Offset]:=constExpr.EvalAsFloat(FExec)
