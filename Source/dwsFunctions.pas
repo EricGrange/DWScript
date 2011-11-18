@@ -110,6 +110,9 @@ type
    TOperatorsRegistrationProc = procedure (systemTable : TSystemSymbolTable; unitTable : TSymbolTable;
                                            operators : TOperators);
 
+   TInternalAbsHandler = function (FProg : TdwsProgram; argExpr : TTypedExpr) : TProgramExpr;
+   TInternalSqrHandler = function (FProg : TdwsProgram; argExpr : TTypedExpr) : TProgramExpr;
+
    TInternalUnit = class(TObject, IdwsUnit)
       private
          FDependencies : TStrings;
@@ -119,6 +122,7 @@ type
          FStaticSymbols : Boolean;
          FStaticTable : IStaticSymbolTable; // static symbols
          FStaticSystemTable : TSystemSymbolTable;
+         FAbsHandlers : array of TInternalAbsHandler;
 
       protected
          procedure SetStaticSymbols(const Value: Boolean);
@@ -144,6 +148,9 @@ type
          procedure AddInternalFunction(rif : Pointer);
          procedure AddSymbolsRegistrationProc(proc : TSymbolsRegistrationProc);
          procedure AddOperatorsRegistrationProc(proc : TOperatorsRegistrationProc);
+
+         procedure AddAbsHandler(const handler : TInternalAbsHandler);
+         function HandleAbs(prog : TdwsProgram; argExpr : TTypedExpr) : TProgramExpr;
 
          procedure InitStaticSymbols(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                      operators : TOperators);
@@ -549,6 +556,30 @@ begin
    n:=Length(FOperatorsRegistrationProcs);
    SetLength(FOperatorsRegistrationProcs, n+1);
    FOperatorsRegistrationProcs[n]:=proc;
+end;
+
+// AddAbsHandler
+//
+procedure TInternalUnit.AddAbsHandler(const handler : TInternalAbsHandler);
+var
+   n : Integer;
+begin
+   n:=Length(FAbsHandlers);
+   SetLength(FAbsHandlers, n+1);
+   FAbsHandlers[n]:=handler;
+end;
+
+// HandleAbs
+//
+function TInternalUnit.HandleAbs(prog : TdwsProgram; argExpr : TTypedExpr) : TProgramExpr;
+var
+   i : Integer;
+begin
+   Result:=nil;
+   for i:=0 to High(FAbsHandlers) do begin
+      Result:=FAbsHandlers[i](prog, argExpr);
+      if Result<>nil then Break;
+   end;
 end;
 
 // AddInternalFunction

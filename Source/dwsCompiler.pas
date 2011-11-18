@@ -7540,7 +7540,11 @@ begin
                Result:=TAbsFloatExpr.Create(FProg, argExpr)
             else if argTyp.IsOfType(FProg.TypVariant) then
                Result:=TAbsVariantExpr.Create(FProg, argExpr)
-            else FMsgs.AddCompilerError(argPos, CPE_NumericalExpected);
+            else begin
+               Result:=dwsInternalUnit.HandleAbs(FProg, argExpr);
+               if Result=nil then
+                  FMsgs.AddCompilerError(argPos, CPE_NumericalExpected);
+            end;
          end;
          skAssert : begin
             if not argTyp.IsOfType(FProg.TypBoolean) then
