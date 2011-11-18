@@ -172,24 +172,24 @@ uses
   SynEditStrConst;
 
 const
-  // if the language is case-insensitive keywords *must* be in lowercase
-  KeyWords: array[0..103] of UnicodeString = (
-    'absolute', 'abstract', 'and', 'array', 'as', 'asm',
-    'begin', 'case', 'cdecl', 'class', 'const', 'constructor',
-    'contains', 'deprecated', 'destructor',
-    'div', 'do', 'downto', 'dynamic', 'else', 'end', 'ensure', 'except',
-    'export', 'exports', 'external', 'far', 'file', 'final', 'finalization',
-    'finally', 'for', 'forward', 'function', 'goto', 'helper', 'if',
-    'implementation', 'implements', 'implies', 'in', 'index', 'inherited',
-    'initialization', 'inline', 'interface', 'is', 'label', 'lazy', 'library',
-    'message', 'method', 'mod', 'name', 'new', 'nil', 'nodefault', 'not', 'object', 'of',
-    'old', 'on', 'operator', 'or', 'out', 'overload', 'override', 'package', 'packed',
-    'pascal', 'platform', 'private', 'procedure', 'program', 'property',
-    'protected', 'public', 'published', 'raise', 'record',
-    'register', 'reintroduce', 'repeat', 'require', 'resourcestring',
-    'sealed', 'set', 'shl', 'shr', 'step', 'string',
-    'then', 'to', 'try', 'type', 'unit', 'until',
-    'uses', 'var', 'virtual', 'while', 'with', 'xor', 'if'
+   // if the language is case-insensitive keywords *must* be in lowercase
+   cKeyWords: array[1..107] of UnicodeString = (
+      'absolute', 'abstract', 'and', 'array', 'as', 'asm',
+      'begin', 'break', 'case', 'cdecl', 'class', 'const', 'constructor',
+      'contains', 'continue', 'deprecated', 'destructor',
+      'div', 'do', 'downto', 'dynamic', 'else', 'end', 'ensure', 'except', 'exit',
+      'export', 'exports', 'external', 'far', 'file', 'final', 'finalization',
+      'finally', 'for', 'forward', 'function', 'goto', 'helper', 'if',
+      'implementation', 'implements', 'implies', 'in', 'index', 'inherited',
+      'initialization', 'inline', 'interface', 'is', 'label', 'lazy', 'library',
+      'message', 'method', 'mod', 'name', 'new', 'nil', 'nodefault', 'not', 'object', 'of',
+      'old', 'on', 'operator', 'or', 'out', 'overload', 'override', 'package', 'packed',
+      'pascal', 'platform', 'private', 'procedure', 'program', 'property',
+      'protected', 'public', 'published', 'raise', 'record',
+      'register', 'reintroduce', 'repeat', 'require', 'resourcestring',
+      'sealed', 'set', 'shl', 'shr', 'step', 'string',
+      'then', 'to', 'try', 'type', 'unit', 'until',
+      'uses', 'var', 'virtual', 'while', 'with', 'xor', 'if'
   );
   KeyWords_PropertyScoped: array [0..4] of UnicodeString = (
    'default', 'index', 'read', 'stored', 'write'
@@ -226,9 +226,9 @@ procedure TSynDWSSyn.InitIdent;
 var
   i: Integer;
 begin
-   for i:=0 to High(KeyWords) do begin
-      fIdentFuncTable[HashKey(@KeyWords[i][1])]:=KeyWordFunc;
-      fKeyWords.Add(KeyWords[i]);
+   for i:=Low(cKeyWords) to High(cKeyWords) do begin
+      fIdentFuncTable[HashKey(@cKeyWords[i][1])]:=KeyWordFunc;
+      fKeyWords.Add(cKeyWords[i]);
    end;
 
    for i:=0 to High(KeyWords_PropertyScoped) do begin
