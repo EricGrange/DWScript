@@ -167,6 +167,10 @@ type
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
 
+   TClampFunc = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+   end;
+
    TMaxIntFunc = class(TInternalMagicIntFunction)
       function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
    end;
@@ -309,8 +313,6 @@ end;
 
 { TArcTan2Func }
 
-// DoEvalAsFloat
-//
 procedure TArcTan2Func.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
 begin
    Result:=ArcTan2(args.AsFloat[0], args.AsFloat[1]);
@@ -477,6 +479,23 @@ begin
    Result:=Min(args.AsFloat[0], args.AsFloat[1]);
 end;
 
+{ TClampFunc }
+
+procedure TClampFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+var
+   r : Double;
+begin
+   Result:=args.AsFloat[0];
+   r:=args.AsFloat[1];
+   if Result<r then
+      Result:=r
+   else begin
+      r:=args.AsFloat[2];
+      if Result>r then
+         Result:=r;
+   end;
+end;
+
 { TMaxIntFunc }
 
 function TMaxIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
@@ -611,6 +630,7 @@ initialization
 
    RegisterInternalFloatFunction(TMaxFunc, 'Max', ['v1', cFloat, 'v2', cFloat], True);
    RegisterInternalFloatFunction(TMinFunc, 'Min', ['v1', cFloat, 'v2', cFloat], True);
+   RegisterInternalFloatFunction(TClampFunc, 'Clamp', ['v', cFloat, 'min', cFloat, 'max', cFloat], True);
 
    RegisterInternalIntFunction(TMaxIntFunc, 'MaxInt', ['v1', cInteger, 'v2', cInteger], True);
    RegisterInternalIntFunction(TMinIntFunc, 'MinInt', ['v1', cInteger, 'v2', cInteger], True);
