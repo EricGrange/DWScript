@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, ExtCtrls, StdCtrls, dwsComp, dwsExprs, dwsFunctions, dwsSymbols;
+  Dialogs, ExtCtrls, StdCtrls, dwsComp, dwsExprs, dwsFunctions, dwsSymbols, dwsMagicExprs;
 
 type
   TMainForm = class(TForm)
