@@ -21,7 +21,7 @@ unit dwsMathComplexFunctions;
 interface
 
 uses dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators, dwsStack,
-   dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs, dwsUnitSymbols;
+   dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs, dwsUnitSymbols, dwsCoreExprs;
 
 type
    TComplexMakeExpr = class(TInternalMagicDataFunction)
@@ -32,6 +32,10 @@ type
    TComplexToStrExpr = class(TInternalMagicStringFunction)
       public
          procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
+   end;
+
+   TAbsComplexExpr = class(TUnaryOpFloatExpr)
+      function  EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
    TComplexOpExpr = class(TInternalMagicDataFunction);
@@ -101,6 +105,18 @@ begin
    operators.RegisterOperator(ttDIVIDE, unitTable.FindSymbol('ComplexDiv', cvMagic) as TFuncSymbol, typComplex, typComplex);
 end;
 
+// HandleComplexAbs
+//
+function HandleComplexAbs(prog : TdwsProgram; argExpr : TTypedExpr) : TProgramExpr;
+var
+   typComplex : TRecordSymbol;
+begin
+   typComplex:=prog.Root.SystemTable.SymbolTable.FindTypeSymbol(SYS_COMPLEX, cvMagic) as TRecordSymbol;
+   if argExpr.Typ.IsOfType(typComplex) then
+      Result:=TAbsComplexExpr.Create(prog, argExpr)
+   else Result:=nil;
+end;
+
 // ------------------
 // ------------------ TComplexMakeExpr ------------------
 // ------------------
@@ -132,6 +148,20 @@ begin
    else if i<0 then
       Result:=Format('%f - %fi', [r, Abs(i)])
    else Result:=Format('%f', [r]);
+end;
+
+// ------------------
+// ------------------ TAbsComplexExpr ------------------
+// ------------------
+
+// EvalAsFloat
+//
+function TAbsComplexExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+var
+   cmplxData : TDataPtr;
+begin
+   cmplxData:=TDataExpr(Expr).DataPtr[exec];
+   Result:=Sqrt(Sqr(cmplxData[0])+Sqr(cmplxData[1]));
 end;
 
 // ------------------
@@ -230,6 +260,7 @@ initialization
 
    dwsInternalUnit.AddSymbolsRegistrationProc(RegisterComplexType);
    dwsInternalUnit.AddOperatorsRegistrationProc(RegisterComplexOperators);
+   dwsInternalUnit.AddAbsHandler(HandleComplexAbs);
 
    RegisterInternalFunction(TComplexMakeExpr, 'Complex', ['real', SYS_FLOAT, 'imaginary', SYS_FLOAT], SYS_COMPLEX, True);
    RegisterInternalStringFunction(TComplexToStrExpr, 'ComplexToStr', ['c', SYS_COMPLEX], True);
