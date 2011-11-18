@@ -56,6 +56,11 @@ type
          procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
 
+   TVectorNormalizeExpr = class(TInternalMagicDataFunction)
+      public
+         procedure DoEval(args : TExprBaseList; var result : TDataPtr); override;
+   end;
+
 const
    SYS_VECTOR = 'TVector';
 
@@ -66,6 +71,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+const cZero : Double = 0;
 
 // RegisterMath3DTypes
 //
@@ -187,7 +194,7 @@ begin
    result[0]:=leftData[1]*rightData[2]-leftData[2]*rightData[1];
    result[1]:=leftData[0]*rightData[2]-leftData[2]*rightData[0];
    result[2]:=leftData[0]*rightData[1]-leftData[1]*rightData[0];
-   result[3]:=0;
+   result[3]:=cZero;
 end;
 
 // ------------------
@@ -208,6 +215,29 @@ begin
            +leftData[2]*rightData[2];
 end;
 
+// ------------------
+// ------------------ TVectorNormalizeExpr ------------------
+// ------------------
+
+// DoEval
+//
+procedure TVectorNormalizeExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
+var
+   n, invN : Double;
+   v : TDataPtr;
+begin
+   v:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
+
+   n:=Sqr(v[0])+Sqr(v[1])+Sqr(v[2]);
+   if n>0 then
+      invN:=1/Sqrt(n)
+   else invN:=cZero;
+   Result[0]:=v[0]*invN;
+   Result[1]:=v[1]*invN;
+   Result[2]:=v[2]*invN;
+   Result[3]:=cZero;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -225,6 +255,7 @@ initialization
    RegisterInternalFunction(TVectorAddOpExpr,  'VectorAdd',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], SYS_VECTOR, True);
    RegisterInternalFunction(TVectorSubOpExpr,  'VectorSub',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], SYS_VECTOR, True);
    RegisterInternalFunction(TVectorCrossProductOpExpr,  'VectorCrossProduct',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], SYS_VECTOR, True);
-   RegisterInternalFloatFunction(TVectorDotProductOpExpr,  'VectorDot',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], True);
+   RegisterInternalFloatFunction(TVectorDotProductOpExpr,  'VectorDotProduct',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], True);
+   RegisterInternalFunction(TVectorNormalizeExpr,  'VectorNormalize',  ['v', SYS_VECTOR], SYS_VECTOR, True);
 
 end.
