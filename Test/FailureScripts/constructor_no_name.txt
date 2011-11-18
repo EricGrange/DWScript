@@ -1,0 +1,2 @@
+Syntax Error: Name expected [line: 3, column: 19]
+Syntax Error: Method "" of class "TMyClass" not implemented [line: 3, column: 19]

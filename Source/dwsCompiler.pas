@@ -1988,7 +1988,8 @@ var
 begin
    // Find Symbol for Functionname
    if not FTok.TestDeleteNamePos(name, methPos) then begin
-      FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
+      methPos:=FTok.HotPos;
+      FMsgs.AddCompilerError(methPos, CPE_NameExpected);
       name:='';
    end;
 
