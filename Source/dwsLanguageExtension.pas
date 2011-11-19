@@ -33,6 +33,7 @@ type
          function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; virtual;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; virtual;
          function ReadInstrSwitch(compiler : TdwsCompiler) : TNoResultExpr; virtual;
+         function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; virtual;
          procedure SectionChanged(compiler : TdwsCompiler); virtual;
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                               scriptType : TScriptSourceType); virtual;
@@ -57,6 +58,7 @@ type
          function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; override;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; override;
          function ReadInstrSwitch(compiler : TdwsCompiler) : TNoResultExpr; override;
+         function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; override;
          procedure SectionChanged(compiler : TdwsCompiler); override;
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                               scriptType : TScriptSourceType); override;
@@ -100,6 +102,13 @@ end;
 // ReadInstrSwitch
 //
 function TdwsLanguageExtension.ReadInstrSwitch(compiler : TdwsCompiler) : TNoResultExpr;
+begin
+   Result:=nil;
+end;
+
+// FindUnknownName
+//
+function TdwsLanguageExtension.FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol;
 begin
    Result:=nil;
 end;
@@ -210,6 +219,22 @@ begin
       if Result<>nil then Exit;
    end;
    Result:=nil;
+end;
+
+// FindUnknownName
+//
+function TdwsLanguageExtensionAggregator.FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol;
+var
+   i : Integer;
+   ext : TdwsLanguageExtension;
+begin
+   for i:=0 to FList.Count-1 do begin
+      ext:=TdwsLanguageExtension(FList.List[i]);
+      Result:=ext.FindUnknownName(compiler, name);
+      if Result<>nil then Exit;
+   end;
+   Result:=nil;
+
 end;
 
 // SectionChanged

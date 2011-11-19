@@ -114,6 +114,7 @@ type
          function Compile(const Text: UnicodeString): IdwsProgram; virtual;
          procedure RecompileInContext(const prog : IdwsProgram; const text : UnicodeString); virtual;
          function RemoveUnit(const Un: IdwsUnit): Boolean;
+         property Extensions : TdwsLanguageExtensionAggregator read FExtensions;
 
       published
          property Config: TdwsConfiguration read FConfig write SetConfig stored True;
@@ -1187,12 +1188,14 @@ begin
       FCompiler.OnCreateBaseVariantSymbol:=FExtensions.CreateBaseVariantSymbol;
       FCompiler.OnReadInstr:=FExtensions.ReadInstr;
       FCompiler.OnReadInstrSwitch:=FExtensions.ReadInstrSwitch;
+      FCompiler.OnFindUnknownName:=FExtensions.FindUnknownName;
       FCompiler.OnSectionChanged:=FExtensions.SectionChanged;
       FCompiler.OnReadScript:=FExtensions.ReadScript;
    end else begin
       FCompiler.OnCreateBaseVariantSymbol:=nil;
       FCompiler.OnReadInstr:=nil;
       FCompiler.OnReadInstrSwitch:=nil;
+      FCompiler.OnFindUnknownName:=nil;
       FCompiler.OnSectionChanged:=nil;
       FCompiler.OnReadScript:=nil;
    end;

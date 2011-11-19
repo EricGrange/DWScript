@@ -46,6 +46,7 @@ type
    TdwsCompiler = class;
    TCompilerCreateBaseVariantSymbol = function (table : TSystemSymbolTable) : TBaseVariantSymbol of object;
    TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
+   TCompilerFindUnknownNameEvent = function (compiler : TdwsCompiler; const name : String) : TSymbol of object;
    TCompilerSectionChangedEvent = procedure (compiler : TdwsCompiler) of object;
    TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile; scriptType : TScriptSourceType) of object;
 
@@ -285,6 +286,7 @@ type
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
          FOnReadInstr : TCompilerReadInstrEvent;
          FOnReadInstrSwitch : TCompilerReadInstrEvent;
+         FOnFindUnknownName : TCompilerFindUnknownNameEvent;
          FOnSectionChanged : TCompilerSectionChangedEvent;
          FOnReadScript : TCompilerReadScriptEvent;
 
@@ -499,6 +501,7 @@ type
          property OnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol read FOnCreateBaseVariantSymbol write FOnCreateBaseVariantSymbol;
          property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
          property OnReadInstrSwitch : TCompilerReadInstrEvent read FOnReadInstrSwitch write FOnReadInstrSwitch;
+         property OnFindUnknownName : TCompilerFindUnknownNameEvent read FOnFindUnknownName write FOnFindUnknownName;
          property OnSectionChanged : TCompilerSectionChangedEvent read FOnSectionChanged write FOnSectionChanged;
          property OnReadScript : TCompilerReadScriptEvent read FOnReadScript write FOnReadScript;
    end;
@@ -2813,10 +2816,14 @@ begin
    // Find name in symboltable
    sym:=FProg.Table.FindSymbol(nameToken.FString, cvPrivate);
    if not Assigned(sym) then begin
-      sym:=FProg.Table.FindSymbol(nameToken.FString, cvMagic);
-      if sym=nil then
-         FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownName, [nameToken.FString])
-      else FMsgs.AddCompilerErrorFmt(namePos, CPE_MemberSymbolNotVisible, [nameToken.FString]);
+      if Assigned(FOnFindUnknownName) then
+         sym:=FOnFindUnknownName(Self, nameToken.FString);
+      if sym=nil then begin
+         sym:=FProg.Table.FindSymbol(nameToken.FString, cvMagic);
+         if sym=nil then
+            FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownName, [nameToken.FString])
+         else FMsgs.AddCompilerErrorFmt(namePos, CPE_MemberSymbolNotVisible, [nameToken.FString]);
+      end;
    end;
 
    FTok.KillToken;

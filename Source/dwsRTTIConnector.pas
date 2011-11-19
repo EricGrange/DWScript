@@ -22,7 +22,7 @@ interface
 
 uses Windows, Forms, Variants, Classes, SysUtils, SysConst, dwsComp, dwsSymbols,
    dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsOperators, TypInfo, RTTI,
-   dwsUtils;
+   dwsUtils, dwsLanguageExtension, dwsCompiler;
 
 const
    RTTI_ConnectorCaption = 'RTTI Connector 1.0';
@@ -61,6 +61,33 @@ type
       public
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function Specialize(table : TSymbolTable; const qualifier : String) : TConnectorSymbol; override;
+   end;
+
+   TRTTIEnvironment = class(TdwsLanguageExtension)
+      private
+         FEnvironment : TValue;
+         FRttiType : TRttiType;
+
+      protected
+         procedure SetEnvironment(const val : TValue);
+
+      public
+         function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; override;
+
+         property Environment : TValue read FEnvironment write SetEnvironment;
+   end;
+
+   TRTTIEnvironmentFieldCallable = class(TInterfacedSelfObject, IExecutable, ICallable)
+      private
+         FEnvironment : TRTTIEnvironment;
+         FField : TRttiField;
+
+      public
+         constructor Create(environment : TRTTIEnvironment; rttiField : TRttiField);
+
+         procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol);
+         procedure InitSymbol(symbol : TSymbol);
+         procedure InitExpression(expr : TExprBase);
    end;
 
    EdwsRTTIException = class(Exception) end;
@@ -516,6 +543,88 @@ begin
       if (st is TRttiInstanceType) and (tt is TRttiInstanceType) then
          Result:=TRttiInstanceType(tt).MetaclassType.InheritsFrom(TRttiInstanceType(st).MetaclassType);
    end;
+end;
+
+// ------------------
+// ------------------ TRTTIEnvironment ------------------
+// ------------------
+
+// FindUnknownName
+//
+function TRTTIEnvironment.FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol;
+var
+   rttiField : TRttiField;
+   rttiSymbol : TRTTIConnectorSymbol;
+   funcSymbol : TFuncSymbol;
+   table : TSymbolTable;
+begin
+   Result:=nil;
+   if FRttiType=nil then exit;
+
+   rttiSymbol:=TRTTIConnectorSymbol(compiler.CurrentProg.Table.FindSymbol(SYS_RTTIVARIANT, cvMagic, TRTTIConnectorSymbol));
+   if rttiSymbol=nil then Exit;
+
+   rttiField:=FRttiType.GetField(name);
+   if rttiField<>nil then begin
+      table:=compiler.CurrentProg.Root.Table;
+      funcSymbol:=TFuncSymbol.Create(name, fkFunction, 0);
+      funcSymbol.Typ:=rttiSymbol.Specialize(table, rttiField.FieldType.QualifiedName);
+      funcSymbol.Executable:=TRTTIEnvironmentFieldCallable.Create(Self, rttiField);
+      table.AddSymbol(funcSymbol);
+      Result:=funcSymbol;
+   end;
+end;
+
+// SetEnvironment
+//
+procedure TRTTIEnvironment.SetEnvironment(const val : TValue);
+begin
+   FEnvironment:=val;
+   if val.IsEmpty then
+      FRttiType:=nil
+   else FRttiType:=vRTTIContext.GetType(val.TypeInfo);
+end;
+
+// ------------------
+// ------------------ TRTTIEnvironmentFieldCallable ------------------
+// ------------------
+
+// Create
+//
+constructor TRTTIEnvironmentFieldCallable.Create(environment : TRTTIEnvironment; rttiField : TRttiField);
+begin
+   FEnvironment:=environment;
+   FField:=rttiField;
+end;
+
+// Call
+//
+procedure TRTTIEnvironmentFieldCallable.Call(exec : TdwsProgramExecution; func : TFuncSymbol);
+var
+   info : TProgramInfo;
+   result : Variant;
+begin
+   info:=exec.AcquireProgramInfo(func);
+   try
+      ValueToVariant(FField.GetValue(FEnvironment.FEnvironment.AsObject), result);
+      info.ResultAsVariant:=result;
+   finally
+      exec.ReleaseProgramInfo(info);
+   end;
+end;
+
+// InitSymbol
+//
+procedure TRTTIEnvironmentFieldCallable.InitSymbol(symbol : TSymbol);
+begin
+   // nothing
+end;
+
+// InitExpression
+//
+procedure TRTTIEnvironmentFieldCallable.InitExpression(expr : TExprBase);
+begin
+   // nothing
 end;
 
 end.

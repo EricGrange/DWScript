@@ -204,8 +204,8 @@ type
    // All functions callable from the script implement this interface
    IExecutable = interface (IGetSelf)
       ['{8D534D18-4C6B-11D5-8DCB-0000216D9E86}']
-      procedure InitSymbol(symbol: TSymbol);
-      procedure InitExpression(Expr: TExprBase);
+      procedure InitSymbol(symbol : TSymbol);
+      procedure InitExpression(expr : TExprBase);
    end;
 
    IBooleanEvalable = interface (IExecutable)
