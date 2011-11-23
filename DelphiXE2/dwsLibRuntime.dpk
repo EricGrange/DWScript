@@ -48,6 +48,7 @@ contains
   dwsDebugger in '..\Source\dwsDebugger.pas',
   dwsErrors in '..\Source\dwsErrors.pas',
   dwsExprs in '..\Source\dwsExprs.pas',
+  dwsInfo in '..\Source\dwsInfo.pas',
   dwsFunctions in '..\Source\dwsFunctions.pas',
   dwsGlobalVarsFunctions in '..\Source\dwsGlobalVarsFunctions.pas',
   dwsMathFunctions in '..\Source\dwsMathFunctions.pas',
