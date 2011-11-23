@@ -3715,7 +3715,7 @@ begin
       end;
       if not paramSymbol.Typ.IsCompatible(arg.Typ) then begin
          prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long,
-                                              [x, paramSymbol.Typ.Caption, argTyp.Caption]);
+                                              [x, paramSymbol.Typ.Caption, arg.Typ.Caption]);
          continue;
       end;
       if paramSymbol.ClassType=TVarParamSymbol then begin

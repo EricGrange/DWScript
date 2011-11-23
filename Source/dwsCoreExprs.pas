@@ -3762,6 +3762,8 @@ class function TConvExpr.WrapWithConvCast(prog : TdwsProgram; const scriptPos : 
       prog.CompileMsgs.AddCompilerErrorFmt(scriptPos, CPE_AssignIncompatibleTypes, [cright, cleft]);
    end;
 
+var
+   arrayConst : TArrayConstantExpr;
 begin
    Result:=expr;
    if (toTyp=nil) or (expr.Typ=nil) then begin
@@ -3772,9 +3774,13 @@ begin
    if expr.Typ=toTyp then Exit;
 
    if expr.ClassType=TArrayConstantExpr then begin
-      if (toTyp is TDynamicArraySymbol) and (toTyp.Typ=expr.Typ.Typ) then
-         Result:=TConvStaticArrayToDynamicExpr.Create(prog, TArrayConstantExpr(expr),
-                                                      TDynamicArraySymbol(toTyp))
+      arrayConst:=TArrayConstantExpr(expr);
+      if toTyp is TDynamicArraySymbol then begin
+         if    (toTyp.Typ=expr.Typ.Typ)
+            or ((arrayConst.ElementCount=0) and (arrayConst.Typ.Typ.IsOfType(prog.TypVariant)))  then
+            Result:=TConvStaticArrayToDynamicExpr.Create(prog, arrayConst,
+                                                         TDynamicArraySymbol(toTyp))
+      end;
    end else if expr.Typ.UnAliasedType is TBaseVariantSymbol then begin
       if toTyp.IsOfType(prog.TypInteger) then
          Result:=TConvIntegerExpr.Create(prog, expr)
