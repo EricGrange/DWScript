@@ -1,5 +1,7 @@
 program LanguageTests;
 
+{$SetPEFlags $0001}
+
 {$IFNDEF VER200}
 {.$WEAKLINKRTTI ON}
 {$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}

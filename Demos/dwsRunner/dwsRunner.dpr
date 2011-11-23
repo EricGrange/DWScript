@@ -1,5 +1,7 @@
 program dwsRunner;
 
+{$SetPEFlags $0001}
+
 {$IFNDEF VER200} // delphi 2009
 {$WEAKLINKRTTI ON}
 {$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
