@@ -1043,6 +1043,8 @@ begin
       TdwsExprGenericCodeGen.Create(['(', 0, '?true:false)']));
    RegisterCodeGen(TConvStringExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '.toString())']));
+   RegisterCodeGen(TConvStaticArrayToDynamicExpr,
+      TdwsExprGenericCodeGen.Create([0, '.slice()']));
 
    RegisterCodeGen(TOrdExpr,              TJSOrdExpr.Create);
 
@@ -1148,6 +1150,13 @@ begin
       TdwsExprGenericCodeGen.Create(['(!', 0, ' || ', 1, ')']));
    RegisterCodeGen(TNotBoolExpr,
       TdwsExprGenericCodeGen.Create(['(', '!', 0, ')']));
+
+   RegisterCodeGen(TVariantAndExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '&', 1, ')']));
+   RegisterCodeGen(TVariantOrExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '|', 1, ')']));
+   RegisterCodeGen(TVariantXorExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '^', 1, ')']));
    RegisterCodeGen(TNotVariantExpr,
       TdwsExprGenericCodeGen.Create(['(', '!', 0, ')']));
 
