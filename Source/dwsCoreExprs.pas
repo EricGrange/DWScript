@@ -3026,7 +3026,7 @@ end;
 //
 procedure TArrayConstantExpr.Prepare(Prog: TdwsProgram; ElementTyp : TTypeSymbol);
 var
-   x : Integer;
+   x, n : Integer;
    elemExpr : TTypedExpr;
 begin
    if (ElementTyp<>nil) and (FTyp.Typ<>ElementTyp) then begin
@@ -3041,7 +3041,10 @@ begin
          TArrayConstantExpr(elemExpr).Prepare(Prog, FTyp.Typ);
    end;
 
-   FArrayAddr := Prog.GetGlobalAddr(FElementExprs.Count * FTyp.Typ.Size + 1);
+   if FTyp.Typ<>nil then
+      n:=FElementExprs.Count * FTyp.Typ.Size
+   else n:=0;
+   FArrayAddr := Prog.GetGlobalAddr(n + 1);
 end;
 
 // GetData
@@ -3189,15 +3192,19 @@ var
    x : Integer;
    expr : TTypedExpr;
 begin
-   for x:=0 to FElementExprs.Count-1 do begin
-      expr:=TTypedExpr(FElementExprs.List[x]);
-      if (Typ.Typ=Prog.TypFloat) and (expr.Typ=Prog.TypInteger) then begin
-         expr:=TConvFloatExpr.Create(Prog, expr);
-         FElementExprs.List[x]:=expr;
+   if Typ.Typ=nil then
+      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_InvalidConstType, [SYS_VOID])
+   else begin
+      for x:=0 to FElementExprs.Count-1 do begin
+         expr:=TTypedExpr(FElementExprs.List[x]);
+         if (Typ.Typ=Prog.TypFloat) and (expr.Typ=Prog.TypInteger) then begin
+            expr:=TConvFloatExpr.Create(Prog, expr);
+            FElementExprs.List[x]:=expr;
+         end;
+         if not Typ.Typ.IsCompatible(expr.Typ) then
+            prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_AssignIncompatibleTypes,
+                                                 [expr.Typ.Caption, Typ.Typ.Caption]);
       end;
-      if not Typ.Typ.IsCompatible(expr.Typ) then
-         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_AssignIncompatibleTypes,
-                                              [expr.Typ.Caption, Typ.Typ.Caption]);
    end;
 end;
 

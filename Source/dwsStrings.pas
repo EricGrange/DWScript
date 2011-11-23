@@ -30,7 +30,7 @@ const
   SYS_STRING = 'String';
   SYS_BOOLEAN = 'Boolean';
   SYS_VARIANT = 'Variant';
-  SYS_VOID = 'Void';
+  SYS_VOID = 'void';
   SYS_RESULT = 'Result';
   SYS_SELF = 'Self';
   SYS_INTERNAL = 'Internal';

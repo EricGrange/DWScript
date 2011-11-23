@@ -833,16 +833,8 @@ end;
 //
 procedure TdwsCompiler.IncompatibleTypes(const scriptPos : TScriptPos;
                                          const fmt : UnicodeString; typ1, typ2 : TTypeSymbol);
-var
-   caption1, caption2 : UnicodeString;
 begin
-   if typ1=nil then
-      caption1:='void'
-   else caption1:=typ1.Caption;
-   if typ2=nil then
-      caption2:='void'
-   else caption2:=typ2.Caption;
-   FMsgs.AddCompilerErrorFmt(scriptPos, fmt, [caption1, caption2]);
+   FMsgs.AddCompilerErrorFmt(scriptPos, fmt, [typ1.Caption, typ2.Caption]);
 end;
 
 // SetupCompileOptions

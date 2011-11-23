@@ -252,6 +252,7 @@ type
          FTyp : TTypeSymbol;
          FSize : Integer;
 
+         function SafeGetCaption : UnicodeString;
          function GetCaption : UnicodeString; virtual;
          function GetDescription : UnicodeString; virtual;
 
@@ -269,7 +270,7 @@ type
 
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; virtual;
 
-         property Caption : UnicodeString read GetCaption;
+         property Caption : UnicodeString read SafeGetCaption;
          property Description : UnicodeString read GetDescription;
          property Name : UnicodeString read FName;
          property Typ : TTypeSymbol read FTyp write FTyp;
@@ -847,6 +848,9 @@ type
    TArraySymbol = class abstract(TTypeSymbol)
       private
          FIndexType : TTypeSymbol;
+
+      protected
+         function ElementSize : Integer;
 
       public
          constructor Create(const name : UnicodeString; elementType, indexType : TTypeSymbol);
@@ -1741,6 +1745,15 @@ procedure TSymbol.SetName(const newName : UnicodeString);
 begin
    Assert(FName='');
    FName:=newName;
+end;
+
+// SafeGetCaption
+//
+function TSymbol.SafeGetCaption : UnicodeString;
+begin
+   if Self=nil then
+      Result:=SYS_VOID
+   else Result:=GetCaption;
 end;
 
 // ------------------
@@ -4292,6 +4305,15 @@ begin
    FIndexType:=indexType;
 end;
 
+// ElementSize
+//
+function TArraySymbol.ElementSize : Integer;
+begin
+   if Typ<>nil then
+      Result:=Typ.Size
+   else Result:=0;
+end;
+
 // ------------------
 // ------------------ TDynamicArraySymbol ------------------
 // ------------------
@@ -4334,16 +4356,20 @@ begin
             and (Typ.IsCompatible(typSym.Typ) or (typSym.Typ is TNilSymbol));
 end;
 
-{ TStaticArraySymbol }
+// ------------------
+// ------------------ TStaticArraySymbol ------------------
+// ------------------
 
+// Create
+//
 constructor TStaticArraySymbol.Create(const name : UnicodeString; elementType, indexType : TTypeSymbol;
                                       lowBound, highBound : Integer);
 begin
-  inherited Create(name, elementType, indexType);
-  FLowBound := lowBound;
-  FHighBound := highBound;
-  FElementCount := highBound - lowBound + 1;
-  FSize := FElementCount * Typ.Size;
+   inherited Create(name, elementType, indexType);
+   FLowBound := lowBound;
+   FHighBound := highBound;
+   FElementCount := highBound - lowBound + 1;
+   FSize := FElementCount * ElementSize;
 end;
 
 procedure TStaticArraySymbol.InitData(const Data: TData; Offset: Integer);
@@ -4382,16 +4408,15 @@ procedure TStaticArraySymbol.AddElement;
 begin
    Inc(FHighBound);
    Inc(FElementCount);
-   FSize := FElementCount * Typ.Size;
+   FSize:=FElementCount*ElementSize;
 end;
 
+// GetCaption
+//
 function TStaticArraySymbol.GetCaption;
 begin
-  Result := 'array [' + IntToStr(FLowBound) + '..' + IntToStr(FHighBound) + '] of ';
-  if Assigned(Typ) then
-    Result := Result + Typ.Caption
-  else
-    Result := Result + '<unknown>';
+   Result:= 'array ['+IntToStr(FLowBound)+'..'+IntToStr(FHighBound)
+           +'] of '+Typ.Caption;
 end;
 
 // ------------------
