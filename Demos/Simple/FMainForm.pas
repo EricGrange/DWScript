@@ -38,9 +38,11 @@ implementation
 {$R *.dfm}
 
 procedure TMainForm.MILoadClick(Sender: TObject);
+var break : TProc;
 begin
    OpenDialog.FileName:=FFileName;
    if OpenDialog.Execute then begin
+      break;
       FFileName:=OpenDialog.FileName;
       MESourceCode.Lines.LoadFromFile(FFileName);
       Caption:='Simple - '+FFileName;

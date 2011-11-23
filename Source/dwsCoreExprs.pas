@@ -346,7 +346,7 @@ type
    EScriptOutOfBounds = class (EScriptError);
 
    // Array expressions x[index] for static arrays
-   TStaticArrayExpr = class(TArrayExpr)
+   TStaticArrayExpr = class (TArrayExpr)
       private
          FLowBound : Integer;
          FCount : Integer;
@@ -986,6 +986,12 @@ type
    // Variant(simple)
    TConvVariantExpr = class (TUnaryOpVariantExpr)
       procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+   end;
+
+   // Static Array to Dynamic Array
+   TConvStaticArrayToDynamicExpr = class (TUnaryOpExpr)
+      constructor Create(prog : TdwsProgram; expr : TArrayConstantExpr; toTyp : TDynamicArraySymbol); reintroduce;
+      function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // Assert(condition, message);
@@ -3758,7 +3764,11 @@ begin
 
    if expr.Typ=toTyp then Exit;
 
-   if expr.Typ.UnAliasedType is TBaseVariantSymbol then begin
+   if expr.ClassType=TArrayConstantExpr then begin
+      if (toTyp is TDynamicArraySymbol) and (toTyp.Typ=expr.Typ.Typ) then
+         Result:=TConvStaticArrayToDynamicExpr.Create(prog, TArrayConstantExpr(expr),
+                                                      TDynamicArraySymbol(toTyp))
+   end else if expr.Typ.UnAliasedType is TBaseVariantSymbol then begin
       if toTyp.IsOfType(prog.TypInteger) then
          Result:=TConvIntegerExpr.Create(prog, expr)
       else if toTyp.IsOfType(prog.TypFloat) then
@@ -3834,6 +3844,34 @@ end;
 procedure TConvVariantExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
    FExpr.EvalAsVariant(exec, Result);
+end;
+
+// ------------------
+// ------------------ TConvStaticArrayToDynamicExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TConvStaticArrayToDynamicExpr.Create(prog : TdwsProgram; expr : TArrayConstantExpr;
+                                                 toTyp : TDynamicArraySymbol);
+begin
+   inherited Create(prog, expr);
+   Typ:=toTyp;
+end;
+
+// Eval
+//
+function TConvStaticArrayToDynamicExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   arr : TArrayConstantExpr;
+   dynArray : TScriptDynamicArray;
+begin
+   arr:=TArrayConstantExpr(Expr);
+
+   dynArray:=TScriptDynamicArray.Create(TDynamicArraySymbol(Typ));
+   dynArray.Data:=arr.EvalAsTData(exec);
+
+   Result:=IUnknown(IScriptObj(dynArray));
 end;
 
 // ------------------
