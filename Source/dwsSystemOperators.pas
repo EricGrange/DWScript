@@ -140,7 +140,7 @@ begin
    RegisterOperator(ttOR,     TIntOrExpr,       typInteger,  typInteger);
    RegisterOperator(ttOR,     TIntOrExpr,       typInteger,  typVariant);
    RegisterOperator(ttOR,     TIntOrExpr,       typVariant,  typInteger);
-   RegisterOperator(ttOR,     TIntOrExpr,       typVariant,  typVariant);
+   RegisterOperator(ttOR,     TVariantOrExpr,   typVariant,  typVariant);
 
    RegisterOperator(ttAND,    TBoolAndExpr,     typBoolean,  typBoolean);
    RegisterOperator(ttAND,    TBoolAndExpr,     typBoolean,  typVariant);
@@ -148,7 +148,7 @@ begin
    RegisterOperator(ttAND,    TIntAndExpr,      typInteger,  typInteger);
    RegisterOperator(ttAND,    TIntAndExpr,      typInteger,  typVariant);
    RegisterOperator(ttAND,    TIntAndExpr,      typVariant,  typInteger);
-   RegisterOperator(ttAND,    TIntAndExpr,      typVariant,  typVariant);
+   RegisterOperator(ttAND,    TVariantAndExpr,  typVariant,  typVariant);
 
    RegisterOperator(ttXOR,    TBoolXorExpr,     typBoolean,  typBoolean);
    RegisterOperator(ttXOR,    TBoolXorExpr,     typBoolean,  typVariant);
@@ -156,7 +156,7 @@ begin
    RegisterOperator(ttXOR,    TIntXorExpr,      typInteger,  typInteger);
    RegisterOperator(ttXOR,    TIntXorExpr,      typInteger,  typVariant);
    RegisterOperator(ttXOR,    TIntXorExpr,      typVariant,  typInteger);
-   RegisterOperator(ttXOR,    TIntXorExpr,      typVariant,  typVariant);
+   RegisterOperator(ttXOR,    TVariantXorExpr,  typVariant,  typVariant);
 
    RegisterOperator(ttIMPLIES,TBoolImpliesExpr, typBoolean,  typBoolean);
    RegisterOperator(ttIMPLIES,TBoolImpliesExpr, typVariant,  typBoolean);

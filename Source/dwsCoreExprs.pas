@@ -923,6 +923,9 @@ type
    TBoolAndExpr = class(TBooleanBinOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
+   TVariantAndExpr = class(TVariantBinOpExpr)
+     function Eval(exec : TdwsExecution) : Variant; override;
+   end;
 
    // a or b
    TIntOrExpr = class(TIntegerBinOpExpr)
@@ -931,6 +934,9 @@ type
    TBoolOrExpr = class(TBooleanBinOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
+   TVariantOrExpr = class(TVariantBinOpExpr)
+     function Eval(exec : TdwsExecution) : Variant; override;
+   end;
 
    // a xor b
    TIntXorExpr = class(TIntegerBinOpExpr)
@@ -938,6 +944,9 @@ type
    end;
    TBoolXorExpr = class(TBooleanBinOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+   TVariantXorExpr = class(TVariantBinOpExpr)
+     function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // a implies b
@@ -4410,6 +4419,13 @@ begin
    Result := Left.EvalAsBoolean(exec) and Right.EvalAsBoolean(exec);
 end;
 
+{ TVariantAndExpr }
+
+function TVariantAndExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result:=Left.Eval(exec) and Right.Eval(exec);
+end;
+
 { TIntOrExpr }
 
 function TIntOrExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
@@ -4424,6 +4440,13 @@ begin
    Result := Left.EvalAsBoolean(exec) or Right.EvalAsBoolean(exec);
 end;
 
+{ TVariantOrExpr }
+
+function TVariantOrExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result := Left.Eval(exec) or Right.Eval(exec);
+end;
+
 { TIntXorExpr }
 
 function TIntXorExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
@@ -4436,6 +4459,13 @@ end;
 function TBoolXorExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
    Result := FLeft.EvalAsBoolean(exec) xor FRight.EvalAsBoolean(exec);
+end;
+
+{ TVariantXorExpr }
+
+function TVariantXorExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Result := FLeft.Eval(exec) xor FRight.Eval(exec);
 end;
 
 // ------------------
