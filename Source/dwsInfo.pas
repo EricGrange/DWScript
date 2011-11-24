@@ -797,7 +797,7 @@ begin
             for x := 0 to FTempParams.Count - 1 do begin
                tp := TTempParam(FTempParams[x]);
                if tp.IsVarParam then begin
-                  funcExpr.AddArg(TVarExpr.Create(FExec.Prog, tp.Typ, tp));
+                  funcExpr.AddArg(TVarExpr.Create(FExec.Prog, tp));
                end else begin
                   funcExpr.AddArg(TConstExpr.CreateTyped(FExec.Prog, tp.Typ, tp.Data));
                end;

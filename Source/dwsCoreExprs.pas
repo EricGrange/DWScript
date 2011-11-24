@@ -47,8 +47,8 @@ type
          function GetData(exec : TdwsExecution) : TData; override;
 
       public
-         constructor Create(prog: TdwsProgram; typ: TTypeSymbol; dataSym : TDataSymbol);
-         class function CreateTyped(prog: TdwsProgram; typ: TTypeSymbol; dataSym : TDataSymbol) : TVarExpr;
+         constructor Create(prog : TdwsProgram; dataSym : TDataSymbol);
+         class function CreateTyped(prog: TdwsProgram; dataSym : TDataSymbol) : TVarExpr;
 
          procedure AssignData(exec : TdwsExecution; const SourceData: TData; SourceAddr: Integer); override;
          procedure AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr); override;
@@ -76,7 +76,7 @@ type
          procedure AssignValueAsPInteger(exec : TdwsExecution; const pValue: PInt64);
          procedure IncValue(exec : TdwsExecution; const value: Int64);
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
-         function EvalAsFloat(exec : TdwsExecution) : Double; override;
+         function  EvalAsFloat(exec : TdwsExecution) : Double; override;
          function  EvalAsPInteger(exec : TdwsExecution) : PInt64; inline;
    end;
 
@@ -121,7 +121,7 @@ type
          FLevel: Integer;
          function GetAddr(exec : TdwsExecution) : Integer; override;
       public
-         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym: TDataSymbol);
+         constructor Create(prog : TdwsProgram; dataSym : TDataSymbol);
          property Level : Integer read FLevel;
    end;
 
@@ -170,7 +170,7 @@ type
      function GetAddr(exec : TdwsExecution) : Integer; override;
      function GetData(exec : TdwsExecution) : TData; override;
    public
-     constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym: TDataSymbol);
+     constructor Create(prog : TdwsProgram; dataSym : TDataSymbol);
    end;
 
    TConstParamParentExpr = class(TVarParamParentExpr)
@@ -1703,27 +1703,30 @@ uses dwsStringFunctions;
 
 // Create
 //
-constructor TVarExpr.Create(prog : TdwsProgram; typ : TTypeSymbol; dataSym : TDataSymbol);
+constructor TVarExpr.Create(prog : TdwsProgram; dataSym : TDataSymbol);
 begin
-   inherited Create(Prog, Typ);
-   FStackAddr:=DataSym.StackAddr;
+   inherited Create(prog, dataSym.Typ);
+   FStackAddr:=dataSym.StackAddr;
 end;
 
 // CreateTyped
 //
-class function TVarExpr.CreateTyped(prog : TdwsProgram; typ : TTypeSymbol; dataSym : TDataSymbol) : TVarExpr;
+class function TVarExpr.CreateTyped(prog : TdwsProgram; dataSym : TDataSymbol) : TVarExpr;
+var
+   typ : TTypeSymbol;
 begin
+   typ:=dataSym.Typ;
    if typ.IsOfType(prog.TypInteger) then
-      Result:=TIntVarExpr.Create(prog, typ, dataSym)
+      Result:=TIntVarExpr.Create(prog, dataSym)
    else if typ.IsOfType(prog.TypFloat) then
-      Result:=TFloatVarExpr.Create(prog, typ, dataSym)
+      Result:=TFloatVarExpr.Create(prog, dataSym)
    else if typ.IsOfType(prog.TypString) then
-      Result:=TStrVarExpr.Create(prog, typ, dataSym)
+      Result:=TStrVarExpr.Create(prog, dataSym)
    else if typ.IsOfType(prog.TypBoolean) then
-      Result:=TBoolVarExpr.Create(prog, typ, dataSym)
+      Result:=TBoolVarExpr.Create(prog, dataSym)
    else if (typ is TClassSymbol) or (typ is TDynamicArraySymbol) then
-      Result:=TObjectVarExpr.Create(prog, typ, dataSym)
-   else Result:=TVarExpr.Create(prog, typ, dataSym);
+      Result:=TObjectVarExpr.Create(prog, dataSym)
+   else Result:=TVarExpr.Create(prog, dataSym);
 end;
 
 // Eval
@@ -2029,10 +2032,10 @@ end;
 
 // Create
 //
-constructor TVarParentExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym: TDataSymbol);
+constructor TVarParentExpr.Create(prog : TdwsProgram; dataSym : TDataSymbol);
 begin
    inherited;
-   FLevel:=DataSym.Level;
+   FLevel:=dataSym.Level;
 end;
 
 // GetAddr
@@ -2148,7 +2151,7 @@ end;
 
 // Create
 //
-constructor TVarParamParentExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; DataSym: TDataSymbol);
+constructor TVarParamParentExpr.Create(prog : TdwsProgram; dataSym : TDataSymbol);
 begin
    inherited;
    FLevel := DataSym.Level;

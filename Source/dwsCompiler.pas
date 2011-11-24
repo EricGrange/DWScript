@@ -2749,7 +2749,7 @@ begin
       if sym is TMethodSymbol then begin
          if TMethodSymbol(sym).IsAbstract then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_AbstractMethodUsage);
-         varExpr := TVarExpr.CreateTyped(FProg, methSym.SelfSym.Typ, methSym.SelfSym);
+         varExpr := TVarExpr.CreateTyped(FProg, methSym.SelfSym);
          try
             Result:=GetMethodExpr(TMethodSymbol(sym), varExpr, rkObjRef, FTok.HotPos, True);
          except
@@ -2766,7 +2766,7 @@ begin
             raise;
          end;
       end else if sym is TPropertySymbol then begin
-         varExpr := TVarExpr.CreateTyped(FProg, parentSym, methSym.SelfSym);
+         varExpr := TVarExpr.CreateTyped(FProg, methSym.SelfSym);
          try
             Result := ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
          except
@@ -4097,7 +4097,7 @@ begin
    progMeth := TMethodSymbol(TdwsProcedure(FProg).Func);
 
    Result := GetMethodExpr(methodSym,
-                           TVarExpr.CreateTyped(FProg, progMeth.SelfSym.Typ, progMeth.SelfSym),
+                           TVarExpr.CreateTyped(FProg, progMeth.SelfSym),
                            rkObjRef, FTok.HotPos, False);
 
    Result:=WrapUpFunctionRead(TFuncExpr(Result), expecting);
@@ -4603,7 +4603,7 @@ begin
 
       if sym is TClassSymbol then
          baseExpr:=TConstExpr.CreateTypedVariantValue(FProg, classSym.ClassOf, Int64(classSym))
-      else baseExpr:=TVarExpr.CreateTyped(FProg, classSym, TDataSymbol(sym));
+      else baseExpr:=TVarExpr.CreateTyped(FProg, TDataSymbol(sym));
 
    end;
 
@@ -5471,7 +5471,7 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoResultRequired);
       if coSymbolDictionary in FOptions then
          FSymbolDictionary.AddValueSymbol(proc.Func.Result, exitPos, [suReference, suWrite]);
-      leftExpr:=TVarExpr.CreateTyped(FProg, proc.Func.Result.Typ, proc.Func.Result);
+      leftExpr:=TVarExpr.CreateTyped(FProg, proc.Func.Result);
       try
          assignExpr:=ReadAssign(ttASSIGN, leftExpr);
          try
@@ -6787,8 +6787,8 @@ end;
 function TdwsCompiler.GetVarExpr(dataSym: TDataSymbol): TVarExpr;
 begin
    if FProg.Level=dataSym.Level then
-      Result:=TVarExpr.CreateTyped(FProg, dataSym.Typ, dataSym)
-   else Result:=TVarParentExpr.Create(FProg, dataSym.Typ, dataSym)
+      Result:=TVarExpr.CreateTyped(FProg, dataSym)
+   else Result:=TVarParentExpr.Create(FProg, dataSym)
 end;
 
 // GetLazyParamExpr
@@ -6803,8 +6803,8 @@ end;
 function TdwsCompiler.GetVarParamExpr(dataSym: TVarParamSymbol): TVarParamExpr;
 begin
   if FProg.Level=dataSym.Level then
-      Result:=TVarParamExpr.Create(FProg, dataSym.Typ, dataSym)
-  else Result:=TVarParamParentExpr.Create(FProg, dataSym.Typ, dataSym)
+      Result:=TVarParamExpr.Create(FProg, dataSym)
+  else Result:=TVarParamParentExpr.Create(FProg, dataSym)
 end;
 
 // GetConstParamExpr
@@ -6812,8 +6812,8 @@ end;
 function TdwsCompiler.GetConstParamExpr(dataSym: TConstParamSymbol): TVarParamExpr;
 begin
    if FProg.Level = dataSym.Level then
-      Result := TConstParamExpr.Create(FProg, dataSym.Typ, dataSym)
-   else Result := TConstParamParentExpr.Create(FProg, dataSym.Typ, dataSym);
+      Result := TConstParamExpr.Create(FProg, dataSym)
+   else Result := TConstParamParentExpr.Create(FProg, dataSym);
 end;
 
 function TdwsCompiler.CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
