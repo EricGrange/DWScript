@@ -2406,6 +2406,7 @@ var
    i : Integer;
    param, otherParam : TSymbol;
 begin
+   if typSym=nil then Exit(False);
    typSym:=typSym.BaseType;
    if (typSym.ClassType=TNilSymbol) or (typSym.ClassType=TAnyFuncSymbol) then
       Result:=True
