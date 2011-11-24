@@ -2121,6 +2121,7 @@ var
    sym : TSymbol;
    tmpMeth : TMethodSymbol;
    methPos : TScriptPos;
+   declaredMethod : Boolean;
 begin
    if not (FTok.TestDelete(ttDOT) and FTok.TestName) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
@@ -2132,13 +2133,14 @@ begin
 
    sym := structSym.Members.FindSymbol(methName, cvPrivate);
 
-   if not (sym is TMethodSymbol) then
-      FMsgs.AddCompilerStop(methPos, CPE_ImplNotAMethod);
-   Result:=TMethodSymbol(sym);
-
-   if Result.StructSymbol<>structSym then begin
+   declaredMethod:=(sym is TMethodSymbol) and (TMethodSymbol(sym).StructSymbol=structSym);
+   if declaredMethod then
+      Result:=TMethodSymbol(sym)
+   else begin
+      // keep compiling
       FMsgs.AddCompilerErrorFmt(methPos, CPE_ImplInvalidClass, [methName, structSym.Name]);
-      structSym:=Result.StructSymbol;
+      Result:=TSourceMethodSymbol.Create(methName, funcKind, structSym, cvPublic, isClassMethod);
+      structSym.AddMethod(Result);
    end;
 
    if Result.IsAbstract then
@@ -2154,15 +2156,22 @@ begin
    CompareFuncKinds(Result.Kind, funcKind);
 
    if not FTok.TestDelete(ttSEMI) then begin
-      tmpMeth:=TSourceMethodSymbol.Create(methName, funcKind, structSym,
-                                          TMethodSymbol(Result).Visibility, isClassMethod);
-      try
-         ReadParams(tmpMeth.AddParam, False);  // Don't store these params to Dictionary. They will become invalid when the method is freed.
-         tmpMeth.Typ:=ReadFuncResultType(funcKind);
+      if declaredMethod then begin
+         tmpMeth:=TSourceMethodSymbol.Create(methName, funcKind, structSym,
+                                             TMethodSymbol(Result).Visibility, isClassMethod);
+         try
+            ReadParams(tmpMeth.AddParam, False);  // Don't store these params to Dictionary. They will become invalid when the method is freed.
+            tmpMeth.Typ:=ReadFuncResultType(funcKind);
+            ReadSemiColon;
+            CompareFuncSymbolParams(Result, tmpMeth);
+         finally
+            tmpMeth.Free;
+         end;
+      end else begin
+         // keep compiling on method that wasn't declared in class
+         ReadParams(Result.AddParam, True);
+         Result.Typ:=ReadFuncResultType(funcKind);
          ReadSemiColon;
-         CompareFuncSymbolParams(Result, tmpMeth);
-      finally
-         tmpMeth.Free;
       end;
    end;
 
@@ -2724,13 +2733,14 @@ begin
 
    methSym := TMethodSymbol(TdwsProcedure(FProg).Func);
    classSym := methSym.StructSymbol as TClassSymbol;
-   parentSym := ClassSym.Parent;
+   parentSym := classSym.Parent;
    sym := nil;
 
    if FTok.TestName then begin
       name := FTok.GetToken.FString;
       FTok.KillToken;
-      sym := ParentSym.Members.FindSymbol(name, cvPrivate);
+      if parentSym<>nil then
+         sym := parentSym.Members.FindSymbol(name, cvPrivate);
    end else if not methSym.IsOverride then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedWithoutName)
    else sym := methSym.ParentMeth;

@@ -1,0 +1,5 @@
+Syntax Error: "Create" is not a method of class "TMY" [line: 4, column: 17]
+Syntax Error: "Destroy" is not a method of class "TMY" [line: 9, column: 17]
+Syntax Error: "Stuff" is not a method of class "TMY" [line: 14, column: 12]
+Syntax Error: "Func" is not a method of class "TMY" [line: 18, column: 20]
+Syntax Error: Method "Func" not found in ancestor class [line: 20, column: 22]
