@@ -46,6 +46,7 @@ type
    TdwsCompiler = class;
    TCompilerCreateBaseVariantSymbol = function (table : TSystemSymbolTable) : TBaseVariantSymbol of object;
    TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
+   TCompilerReadInstrSwitchEvent = function (compiler : TdwsCompiler) : Boolean of object;
    TCompilerFindUnknownNameEvent = function (compiler : TdwsCompiler; const name : String) : TSymbol of object;
    TCompilerSectionChangedEvent = procedure (compiler : TdwsCompiler) of object;
    TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile; scriptType : TScriptSourceType) of object;
@@ -234,7 +235,6 @@ type
    TdwsCompilerUnitContext = record
       Tokenizer : TTokenizer;
       UnitSymbol : TUnitMainSymbol;
-      ConditionalDefines : TStringList;
    end;
 
    TdwsCompilerUnitContextStack = class(TSimpleStack<TdwsCompilerUnitContext>)
@@ -261,7 +261,6 @@ type
          FLoopExprs : TSimpleStack<TNoResultExpr>;
          FLoopExitable : TSimpleStack<TLoopExitable>;
          FFinallyExprs : TSimpleStack<Boolean>;
-         FConditionalDepth : TSimpleStack<TSwitchInstruction>;
          FMsgs : TdwsCompileMessageList;
 
          FExec : TdwsCompilerExecution;
@@ -285,7 +284,7 @@ type
 
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
          FOnReadInstr : TCompilerReadInstrEvent;
-         FOnReadInstrSwitch : TCompilerReadInstrEvent;
+         FOnReadInstrSwitch : TCompilerReadInstrSwitchEvent;
          FOnFindUnknownName : TCompilerFindUnknownNameEvent;
          FOnSectionChanged : TCompilerSectionChangedEvent;
          FOnReadScript : TCompilerReadScriptEvent;
@@ -369,8 +368,6 @@ type
          function ReadIf: TNoResultExpr;
          function ReadInherited(IsWrite: Boolean): TProgramExpr;
          function ReadInstr : TNoResultExpr;
-         function ReadInstrSwitch(semiPending : Boolean): TNoResultExpr;
-         function ReadExprSwitch : TTypedExpr;
          function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
          function ReadIntfMethodDecl(intfSym : TInterfaceSymbol; funcKind : TFuncKind) : TSourceMethodSymbol;
          procedure ReadMethodDecl(structSym : TStructuredTypeSymbol; funcKind : TFuncKind;
@@ -420,7 +417,11 @@ type
          function ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
          function ReadStatement : TNoResultExpr;
          function ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TProgramExpr;
-         function ReadSwitch(const SwitchName: UnicodeString): Boolean;
+
+         function ReadSwitch(const switchName : UnicodeString) : Boolean;
+         function ReadInstrSwitch(const switchName : UnicodeString) : Boolean;
+         function ReadExprSwitch : TTypedExpr;
+
          function ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                           expecting : TTypeSymbol = nil) : TProgramExpr;
          function ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TTypedExpr;
@@ -469,7 +470,6 @@ type
 
          procedure DoSectionChanged;
 
-         function SwitchTokenizerToInclude(const sourceName, sourceCode : UnicodeString) : TNoResultExpr;
          procedure SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : UnicodeString);
 
          procedure SetupCompileOptions(conf : TdwsConfiguration);
@@ -500,7 +500,7 @@ type
 
          property OnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol read FOnCreateBaseVariantSymbol write FOnCreateBaseVariantSymbol;
          property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
-         property OnReadInstrSwitch : TCompilerReadInstrEvent read FOnReadInstrSwitch write FOnReadInstrSwitch;
+         property OnReadInstrSwitch : TCompilerReadInstrSwitchEvent read FOnReadInstrSwitch write FOnReadInstrSwitch;
          property OnFindUnknownName : TCompilerFindUnknownNameEvent read FOnFindUnknownName write FOnFindUnknownName;
          property OnSectionChanged : TCompilerSectionChangedEvent read FOnSectionChanged write FOnSectionChanged;
          property OnReadScript : TCompilerReadScriptEvent read FOnReadScript write FOnReadScript;
@@ -611,7 +611,6 @@ begin
 
    FLoopExprs:=TSimpleStack<TNoResultExpr>.Create;
    FLoopExitable:=TSimpleStack<TLoopExitable>.Create;
-   FConditionalDepth:=TSimpleStack<TSwitchInstruction>.Create;
    FFinallyExprs:=TSimpleStack<Boolean>.Create;
    FUnitsFromStack:=TSimpleStack<UnicodeString>.Create;
    FUnitContextStack:=TdwsCompilerUnitContextStack.Create;
@@ -634,7 +633,6 @@ begin
    FUnitContextStack.Free;
    FExec.Free;
    FFinallyExprs.Free;
-   FConditionalDepth.Free;
    FLoopExitable.Free;
    FLoopExprs.Free;
    FTokRules.Free;
@@ -884,7 +882,6 @@ begin
 
    FLoopExprs.Clear;
    FLoopExitable.Clear;
-   FConditionalDepth.Clear;
    FFinallyExprs.Clear;
 end;
 
@@ -920,7 +917,7 @@ begin
    FMainProg.Compiler:=Self;
    FMainProg.TimeoutMilliseconds:=aConf.TimeoutMilliseconds;
    FMainProg.RuntimeFileSystem:=aConf.RuntimeFileSystem;
-   FMainProg.ConditionalDefines:=aConf.Conditionals;
+   FMainProg.ConditionalDefines.Value.Assign(aConf.Conditionals);
    FContextMap:=FMainProg.ContextMap;
    FSymbolDictionary:=FMainProg.SymbolDictionary;
    FUnitSection:=secMixed;
@@ -1115,7 +1112,7 @@ begin
       FUnitSection:=secMixed;
 
       // Start compilation
-      FProg.Expr := ReadScript(sourceFile, stInclude);
+      FProg.Expr := ReadScript(sourceFile, stMain);
 
       // Initialize symbol table
       FProg.Table.Initialize(FMsgs);
@@ -1178,7 +1175,7 @@ begin
                      Break;
                   end else begin
                      while FTok.HasTokens and FTok.Test(ttSWITCH) do begin
-                        ReadInstrSwitch(True);
+                        ReadInstrSwitch(FTok.GetToken.FString);
                         FTok.KillToken;
                      end;
                      if FTok.HasTokens then
@@ -1222,9 +1219,14 @@ var
 begin
    oldTok:=FTok;
    oldSection:=FUnitSection;
-   FTok:=FTokRules.CreateTokenizer(sourceFile, FProg.CompileMsgs);
+   FTok:=FTokRules.CreateTokenizer(FProg.CompileMsgs);
    try
+      FTok.BeginSourceFile(sourceFile);
       FTok.SwitchHandler:=ReadSwitch;
+      FTok.SwitchProcessor:=ReadInstrSwitch;
+      if scriptType=stMain then
+         FTok.ConditionalDefines:=FMainProg.ConditionalDefines
+      else FTok.ConditionalDefines:=TAutoStore<TStrings>.Create(TStringList.Create);
 
       FMainProg.SourceList.Add(sourceFile.Name, sourceFile, scriptType);
 
@@ -1253,9 +1255,8 @@ begin
          Result:=nil;
       end;
 
-      if scriptType<>stInclude then
-         if FConditionalDepth.Count>0 then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_UnbalancedConditionalDirective);
+      if FTok.ConditionalDepth.Count>0 then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_UnbalancedConditionalDirective);
       if FUnitSymbol<>nil then
          FUnitSymbol.UnParentInterfaceTable;
 
@@ -1327,7 +1328,7 @@ begin
    Result:=nil;
    token:=FTok.TestDeleteAny([ttTYPE, ttPROCEDURE, ttFUNCTION,
                               ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttCLASS,
-                              ttIMPLEMENTATION, ttEND]);
+                              ttUSES, ttIMPLEMENTATION, ttEND]);
    case token of
       ttTYPE :
          if UnitSection in [secInterface, secImplementation] then begin
@@ -1338,7 +1339,7 @@ begin
                token:=FTok.TestAny([ttINTERFACE, ttIMPLEMENTATION,
                                     ttVAR, ttCONST, ttEND,
                                     ttFUNCTION, ttPROCEDURE, ttMETHOD]);
-            until (not FTok.HasTokens) or (token<>ttNone) or (not FTok.NextTest(ttEQ));
+            until (not FTok.HasTokens) or (token<>ttNone);
             action:=rsaNoSemiColon;
          end else ReadTypeDecl;
       ttPROCEDURE, ttFUNCTION, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD :
@@ -1352,6 +1353,8 @@ begin
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
          end;
       end;
+      ttUSES :
+         ReadUses;
       ttIMPLEMENTATION : begin
          if (FProg.Table<>FProg.Root.Table) or (UnitSection<>secInterface) then begin
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnexpectedSection,
@@ -1391,7 +1394,7 @@ var
    constSym : TConstSymbol;
 begin
    Result:=nil;
-   token:=Ftok.TestDeleteAny([ttVAR, ttCONST, ttUSES, ttOPERATOR]);
+   token:=FTok.TestDeleteAny([ttVAR, ttCONST, ttOPERATOR]);
    case token of
       ttVAR :
          Result:=ReadVarDecl;
@@ -1399,13 +1402,11 @@ begin
          constSym:=ReadConstDecl(TConstSymbol);
          FProg.Table.AddSymbol(constSym);
       end;
-      ttUSES :
-         ReadUses;
       ttOPERATOR :
          ReadOperatorDecl;
    else
       if FTok.Test(ttSWITCH) then
-         Result:=ReadInstrSwitch(False)
+         ReadInstrSwitch(FTok.GetToken.FString)
       else begin
          if (UnitSection<>secMixed) and (FProg.Level=0) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedStatement);
@@ -1465,8 +1466,9 @@ begin
          try
             sourceFile.Code:=anExpression;
             sourceFile.Name:=MSG_MainModule;
-            compiler.FTok:=compiler.FTokRules.CreateTokenizer(sourceFile, compiler.FMsgs);
+            compiler.FTok:=compiler.FTokRules.CreateTokenizer(compiler.FMsgs);
             try
+               compiler.FTok.BeginSourceFile(sourceFile);
                try
                   expr:=compiler.ReadExpr;
                except
@@ -1481,6 +1483,7 @@ begin
                                           compiler.FMsgs.AsInfo);
                end;
             finally
+               compiler.FTok.EndSourceFile;
                FreeAndNil(compiler.FTok);
             end;
          finally
@@ -1856,34 +1859,30 @@ begin
                CompareFuncSymbolParams(forwardedSym, Result);
             end;
 
+            ReadSemiColon;
+
             // forward & external declarations
             if not Assigned(forwardedSym) then begin
-               if FTok.Test(ttSEMI) then begin
-                  if UnitSection=secInterface then begin
-                     // default to forward in interface section
+               if UnitSection=secInterface then begin
+                  // default to forward in interface section
+                  Result.SetForwardedPos(funcPos);
+                  if FTok.TestDelete(ttFORWARD) then begin
+                     FMsgs.AddCompilerHint(FTok.HotPos, CPW_ForwardIsImplicit);
+                     ReadSemiColon;
+                  end else if FTok.TestDelete(ttEXTERNAL) then begin
+                     Result.IsExternal:=True;
+                     ReadSemiColon;
+                  end;
+               end else begin
+                  if FTok.TestDelete(ttFORWARD) then begin
                      Result.SetForwardedPos(funcPos);
-                     if FTok.NextTest(ttFORWARD) then begin
-                        FMsgs.AddCompilerHint(FTok.HotPos, CPW_ForwardIsImplicit);
-                        FTok.KillToken; // SEMI
-                        FTok.TestDelete(ttFORWARD);
-                     end else if FTok.NextTest(ttEXTERNAL) then begin
-                        FTok.KillToken; // SEMI
-                        FTok.TestDelete(ttEXTERNAL);
-                        Result.IsExternal:=True;
-                     end;
-                     if FTok.Test(ttSEMI) then
-                        if FTok.NextTest(ttDEPRECATED) then
-                           FTok.KillToken
-                  end else begin
-                     FTok.KillToken; // SEMI
-                     if FTok.TestDelete(ttFORWARD) then begin
-                        Result.SetForwardedPos(funcPos);
-                     end else if FTok.TestDelete(ttEXTERNAL) then begin
-                        Result.IsExternal:=True;
-                     end;
+                     ReadSemiColon;
+                  end else if FTok.TestDelete(ttEXTERNAL) then begin
+                     Result.IsExternal:=True;
+                     ReadSemiColon;
                   end;
                end;
-            end else ReadSemiColon;
+            end;
 
             ReadDeprecated(Result);
 
@@ -1899,6 +1898,9 @@ begin
                Result := forwardedSym;
                Result.ClearIsForwarded;
             end else FProg.Table.AddSymbol(Result);
+
+            if Result.IsForwarded then
+               FTok.SimulateToken(ttSEMI);
          end;
 
          // Procedure is both Declared and Implemented here
@@ -2025,10 +2027,10 @@ begin
             case qualifier of
                ttVIRTUAL : begin
                   funcResult.IsVirtual := True;
-                  if FTok.Test(ttSEMI) and FTok.NextTest(ttABSTRACT) then begin
-                     FTok.KillToken;
-                     FTok.TestDelete(ttABSTRACT);
+                  ReadSemiColon;
+                  if FTok.TestDelete(ttABSTRACT) then begin
                      funcResult.IsAbstract := True;
+                     ReadSemiColon;
                   end;
                end;
                ttOVERRIDE : begin
@@ -2053,18 +2055,19 @@ begin
                      funcResult.SetOverride(meth);
                      isReintroduced := False;
                   end;
+                  ReadSemiColon;
                end;
                ttREINTRODUCE : begin
                   if not isReintroduced then
                      FMsgs.AddCompilerErrorFmt(methPos, CPE_CantReintroduce, [name]);
                   isReintroduced := False;
+                  ReadSemiColon;
                end;
                ttABSTRACT : begin
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_NonVirtualAbstract);
+                  ReadSemiColon;
                end;
             end;
-
-            ReadSemiColon;
          end;
       end;
 
@@ -2531,7 +2534,7 @@ begin
 
             if FTok.GetToken.FTyp in EndTokens then begin
                finalToken:=FTok.GetToken.FTyp;
-               closePos:=FTok.GetToken.FPos;    // get start position of ending token
+               closePos:=FTok.GetToken.FScriptPos;    // get start position of ending token
                FTok.KillToken;
                Break;
             end;
@@ -2894,7 +2897,7 @@ begin
             else Result:=ReadFunc(TFuncSymbol(sym.Typ), IsWrite, GetVarExpr(TDataSymbol(sym)), expecting)
          else Result:=ReadSymbol(GetVarExpr(TDataSymbol(sym)), IsWrite, expecting);
 
-      end else if sym.InheritsFrom(TExternalVarSymbol) then begin
+      end else if sym.ClassType=TExternalVarSymbol then begin
 
          Result := ReadSymbol(ReadExternalVar(TExternalVarSymbol(sym), IsWrite), IsWrite, expecting);
          Result := ReadSymbol(Result, IsWrite, expecting);
@@ -2995,7 +2998,7 @@ begin
 
       Result:=TConstExpr.CreateIntegerValue(FProg, enumSym, elemValue);
 
-   end else Result:=TTypeSymbolExpr.Create(enumPos, enumSym);
+   end else Result:=TTypeReferenceExpr.Create(enumSym, enumPos);
 end;
 
 // ReadClassSymbolName
@@ -3741,7 +3744,7 @@ begin
    end else begin
 
       enumSymbol:=nil;
-      if inExpr is TTypeSymbolExpr then begin
+      if inExpr is TTypeReferenceExpr then begin
          if inExpr.Typ.InheritsFrom(TEnumerationSymbol) then
             enumSymbol:=TEnumerationSymbol(inExpr.Typ);
       end;
@@ -6138,18 +6141,18 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
       sym:=symbol.Members.FindLocal(FTok.GetToken.FString);
       if not (sym is TFieldSymbol) then begin
-         FMsgs.AddCompilerErrorFmt(FTok.GetToken.FPos, CPE_UnknownMember, [FTok.GetToken.FString]);
+         FMsgs.AddCompilerErrorFmt(FTok.GetToken.FScriptPos, CPE_UnknownMember, [FTok.GetToken.FString]);
          sym:=nil;
       end;
       memberSym:=TFieldSymbol(sym);
       if memberSym<>nil then begin
          if memberSym.Visibility<cvPublic then
-            FMsgs.AddCompilerErrorFmt(FTok.GetToken.FPos, CPE_MemberSymbolNotVisible, [FTok.GetToken.FString]);
+            FMsgs.AddCompilerErrorFmt(FTok.GetToken.FScriptPos, CPE_MemberSymbolNotVisible, [FTok.GetToken.FString]);
          if memberSet[memberSym.Offset] then
-            FMsgs.AddCompilerError(FTok.GetToken.FPos, CPE_FieldAlreadySet);
+            FMsgs.AddCompilerError(FTok.GetToken.FScriptPos, CPE_FieldAlreadySet);
          memberSet[memberSym.Offset]:=True;
          if coSymbolDictionary in FOptions then
-            FSymbolDictionary.AddSymbolReference(memberSym, FTok.GetToken.FPos, True);
+            FSymbolDictionary.AddSymbolReference(memberSym, FTok.GetToken.FScriptPos, True);
       end;
       FTok.KillToken;
       if not FTok.TestDelete(ttCOLON) then
@@ -6356,7 +6359,7 @@ end;
 
 // ReadInstrSwitch
 //
-function TdwsCompiler.ReadInstrSwitch(semiPending : Boolean) : TNoResultExpr;
+function TdwsCompiler.ReadInstrSwitch(const switchName : UnicodeString) : Boolean;
 var
    switch : TSwitchInstruction;
    name, scriptSource : UnicodeString;
@@ -6366,21 +6369,19 @@ var
    condExpr : TTypedExpr;
    sourceFile : TSourceFile;
 begin
+   Result:=True;
    if Assigned(FOnReadInstrSwitch) then begin
-      Result:=FOnReadInstrSwitch(Self);
-      if Result<>nil then Exit;
-   end else Result:=nil;
+      if FOnReadInstrSwitch(Self) then
+         Exit;
+   end;
 
    switchPos:=FTok.HotPos;
 
-   switch:=StringToSwitchInstruction(FTok.GetToken.FString);
+   switch:=StringToSwitchInstruction(switchName);
    FTok.KillToken;
 
    case switch of
       siIncludeLong, siIncludeShort, siIncludeOnce, siFilterLong, siFilterShort : begin
-
-         if semiPending then
-            FMsgs.AddCompilerStop(switchPos, CPE_SemiExpected);
 
          if not FTok.Test(ttStrVal) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_IncludeFileExpected);
@@ -6406,7 +6407,15 @@ begin
                   // Include file is included as-is
                end;
 
-               Result:=SwitchTokenizerToInclude(name, scriptSource);
+               if not FTok.TestDelete(ttCRIGHT) then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_CurlyRightExpected);
+
+               sourceFile:=FMainProg.RegisterSourceFile(name, scriptSource);
+               FTok.BeginSourceFile(sourceFile);
+
+               FTok.SimulateToken(ttSEMI);
+
+               Exit;
             except
                on e: ECompileError do
                   raise;
@@ -6421,7 +6430,7 @@ begin
          if not FTok.Test(ttNAME) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-         FMainProg.ConditionalDefines.Add(FTok.GetToken.FString);
+         FTok.ConditionalDefines.Value.Add(FTok.GetToken.FString);
          FTok.KillToken;
 
       end;
@@ -6430,9 +6439,9 @@ begin
          if not FTok.Test(ttNAME) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-         i:=FMainProg.ConditionalDefines.IndexOf(FTok.GetToken.FString);
+         i:=FTok.ConditionalDefines.Value.IndexOf(FTok.GetToken.FString);
          if i>=0 then
-            FMainProg.ConditionalDefines.Delete(i);
+            FTok.ConditionalDefines.Value.Delete(i);
          FTok.KillToken;
 
       end;
@@ -6442,7 +6451,7 @@ begin
             siIfDef, siIfNDef : begin
                if not FTok.Test(ttNAME) then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-               conditionalTrue:=    (FMainProg.ConditionalDefines.IndexOf(FTok.GetToken.FString)>=0)
+               conditionalTrue:=    (FTok.ConditionalDefines.Value.IndexOf(FTok.GetToken.FString)>=0)
                                 xor (switch = siIfNDef);
                FTok.KillToken;
             end;
@@ -6471,10 +6480,10 @@ begin
          end;
 
          if conditionalTrue then
-            FConditionalDepth.Push(switch)
+            FTok.ConditionalDepth.Push(tcIf)
          else begin
             if ReadUntilEndOrElseSwitch(True) then
-               FConditionalDepth.Push(siElse);
+               FTok.ConditionalDepth.Push(tcElse);
             if not FTok.HasTokens then
                FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective);
          end;
@@ -6482,12 +6491,12 @@ begin
       end;
       siElse : begin
 
-         if FConditionalDepth.Count=0 then
+         if FTok.ConditionalDepth.Count=0 then
             FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective);
-         if FConditionalDepth.Peek=siElse then
+         if FTok.ConditionalDepth.Peek=tcElse then
             FMsgs.AddCompilerStop(switchPos, CPE_UnfinishedConditionalDirective);
 
-         FConditionalDepth.Pop;
+         FTok.ConditionalDepth.Pop;
          ReadUntilEndOrElseSwitch(False);
          if not FTok.HasTokens then
             FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective);
@@ -6495,9 +6504,9 @@ begin
       end;
       siEndIf : begin
 
-         if FConditionalDepth.Count=0 then
+         if FTok.ConditionalDepth.Count=0 then
             FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective)
-         else FConditionalDepth.Pop;
+         else FTok.ConditionalDepth.Pop;
 
       end;
       siHint, siWarning, siError, siFatal : begin
@@ -6614,6 +6623,8 @@ begin
    innerDepth:=0;
    Result:=False;
 
+   FTok.SwitchProcessor:=nil;
+
    while FTok.HasTokens do begin
 
       // kill everything up to next switch
@@ -6664,6 +6675,8 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_CurlyRightExpected);
 
    end;
+
+   FTok.SwitchProcessor:=ReadInstrSwitch;
 end;
 
 // Checks if a name already exists in the Symboltable
@@ -7445,16 +7458,6 @@ begin
       FOnSectionChanged(Self);
 end;
 
-// SwitchTokenizerToInclude
-//
-function TdwsCompiler.SwitchTokenizerToInclude(const sourceName, sourceCode : UnicodeString) : TNoResultExpr;
-var
-   sourceFile : TSourceFile;
-begin
-   sourceFile:=FMainProg.RegisterSourceFile(sourceName, sourceCode);
-   Result:=ReadScript(sourceFile, stInclude);
-end;
-
 // SwitchTokenizerToUnit
 //
 procedure TdwsCompiler.SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : UnicodeString);
@@ -7488,7 +7491,7 @@ function TdwsCompiler.ReadSpecialFunction(const namePos : TScriptPos; specialKin
       name : UnicodeString;
    begin
       argExpr.EvalAsString(FExec, name);
-      Result:=(FMainProg.ConditionalDefines.IndexOf(name)>=0);
+      Result:=(FTok.ConditionalDefines.Value.IndexOf(name)>=0);
    end;
 
    function EvaluateDeclared(argExpr : TTypedExpr) : Boolean;
@@ -7507,32 +7510,16 @@ begin
    if not FTok.TestDelete(ttBLEFT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
 
-   // Test for statements like "Low(Integer)"
-   if FTok.Test(ttName) and FTok.NextTest(ttBRIGHT) then
-      argTyp:=FProg.Table.FindTypeSymbol(FTok.GetToken.FString, cvMagic)
-   else argTyp:=nil;
-
-   if     Assigned(argTyp)
-      and argTyp.InheritsFrom(TTypeSymbol)
-      and not argTyp.InheritsFrom(TFuncSymbol) then begin
-      argExpr:=nil;
-      argPos:=cNullPos;
-      FTok.KillToken;
-      FTok.KillToken;
-   end else begin
-      argPos:=FTok.HotPos;
-      case specialKind of
-         skAssigned :
-            argExpr:=ReadExpr(FProg.TypNil);
-         skInc, skDec :
-            argExpr:=ReadTerm(True);
-      else
-         argExpr:=ReadExpr;
-      end;
-      argTyp:=argExpr.Typ;
-      while argTyp is TAliasSymbol do
-         argTyp:=TAliasSymbol(argTyp).BaseType;
+   argPos:=FTok.HotPos;
+   case specialKind of
+      skAssigned, skHigh :
+         argExpr:=ReadExpr(FProg.TypNil);
+      skInc, skDec :
+         argExpr:=ReadTerm(True);
+   else
+      argExpr:=ReadExpr;
    end;
+   argTyp:=argExpr.Typ.UnAliasedType;
 
    msgExpr:=nil;
    try
@@ -7747,10 +7734,9 @@ var
 begin
    if not FTok.TestDelete(ttBLEFT) then begin
 
-      if (typeSym is TEnumerationSymbol) then
-         Exit(TConstExpr.CreateTypedVariantValue(FProg, typeSym, Null))
-      else if typeSym is TClassOfSymbol then
-         Exit(TConstExpr.CreateTypedVariantValue(FProg, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol)));
+      if typeSym.ClassType=TClassOfSymbol then
+         Exit(TConstExpr.Create(FProg, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol)))
+      else Exit(TTypeReferenceExpr.Create(typeSym, namePos));
 
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
    end;
@@ -8411,7 +8397,6 @@ procedure TdwsCompilerUnitContextStack.Clean;
 begin
    while Count>0 do begin
       Peek.Tokenizer.Free;
-      Peek.ConditionalDefines.Free;
       Pop;
    end;
 end;
@@ -8424,7 +8409,6 @@ var
 begin
    context.Tokenizer:=compiler.FTok;
    context.UnitSymbol:=compiler.FUnitSymbol;
-   context.ConditionalDefines:=nil;
    Push(context);
 end;
 

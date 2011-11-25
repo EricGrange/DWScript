@@ -1,5 +1,5 @@
 Errors >>>>
-Hint: "forward" is implicit here [line: 12, column: 28, file: HelloWorld2]
+Hint: "forward" is implicit here [line: 12, column: 30, file: HelloWorld2]
 Result >>>>
 Hello World2a!
 Hello World2b!

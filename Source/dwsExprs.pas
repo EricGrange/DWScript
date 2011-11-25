@@ -52,7 +52,7 @@ type
    PNoResultExprList = ^TNoResultExprList;
    PNoResultExpr = ^TNoResultExpr;
 
-   TScriptSourceType = (stMain, stInclude, stUnit);
+   TScriptSourceType = (stMain, stUnit);
 
   // A specific ScriptSource entry. The text of the script contained in that unit.
   TScriptSourceItem = class
@@ -333,7 +333,7 @@ type
    IdwsProgram = interface
       ['{AD513983-F033-44AF-9F2B-9CFFF94B9BB3}']
       function GetMsgs : TdwsMessageList;
-      function GetConditionalDefines : TStringList;
+      function GetConditionalDefines : IAutoStrings;
       function GetLineCount : Integer;
       function GetTable : TSymbolTable;
       function GetTimeoutMilliseconds : Integer;
@@ -354,7 +354,7 @@ type
 
       property Table : TSymbolTable read GetTable;
       property Msgs : TdwsMessageList read GetMsgs;
-      property ConditionalDefines : TStringList read GetConditionalDefines;
+      property ConditionalDefines : IAutoStrings read GetConditionalDefines;
       property TimeoutMilliseconds : Integer read GetTimeoutMilliseconds write SetTimeoutMilliseconds;
       property DefaultUserObject : TObject read GetDefaultUserObject write SetDefaultUserObject;
 
@@ -521,15 +521,14 @@ type
 
          FSystemTable : ISystemSymbolTable;
          FOperators : TObject;
-         FConditionalDefines : TStringList;
+         FConditionalDefines : IAutoStrings;
          FSourceFiles : TTightList;
          FSourceList : TScriptSourceList;
          FLineCount : Integer;
          FCompiler : TObject;
 
       protected
-         procedure SetConditionalDefines(const val : TStringList);
-         function GetConditionalDefines : TStringList;
+         function GetConditionalDefines : IAutoStrings;
          function GetDefaultUserObject : TObject;
          procedure SetDefaultUserObject(const val : TObject);
 
@@ -573,7 +572,7 @@ type
 
          property SystemTable : ISystemSymbolTable read FSystemTable;
          property Operators : TObject read FOperators write FOperators;
-         property ConditionalDefines : TStringList read FConditionalDefines write SetConditionalDefines;
+         property ConditionalDefines : IAutoStrings read FConditionalDefines;
          property Compiler : TObject read FCompiler write FCompiler;
          property ContextMap : TContextMap read FContextMap;
          property SymbolDictionary: TSymbolDictionary read FSymbolDictionary;
@@ -695,6 +694,18 @@ type
 
    TTypedExprClass = class of TTypedExpr;
 
+   // hosts a type reference
+   TTypeReferenceExpr = class(TTypedExpr)
+      private
+         FPos : TScriptPos;
+
+      public
+         constructor Create(aTyp : TTypeSymbol; const scriptPos : TScriptPos);
+
+         function  Eval(exec : TdwsExecution) : Variant; override;
+         function ScriptPos : TScriptPos; override;
+  end;
+
    // base class of expressions that return no result
    TNoResultExpr = class(TProgramExpr)
       protected
@@ -713,23 +724,6 @@ type
    // Does nothing! E. g.: "for x := 1 to 10 do {TNullExpr};"
    TNullExpr = class(TNoResultExpr)
       procedure EvalNoResult(exec : TdwsExecution); override;
-   end;
-
-   // Expr that hosts a type symbol reference
-   TTypeSymbolExpr = class(TProgramExpr)
-      protected
-         FTyp : TTypeSymbol;
-         FPos : TScriptPos;
-
-         function GetType : TTypeSymbol; override;
-
-      public
-         constructor Create(const scriptPos : TScriptPos; const aType : TTypeSymbol);
-
-         function Eval(exec : TdwsExecution) : Variant; override;
-         function ScriptPos : TScriptPos; override;
-
-         property Typ : TTypeSymbol read FTyp write FTyp;
    end;
 
    // statement; statement; statement;
@@ -2530,6 +2524,7 @@ constructor TdwsMainProgram.Create(const systemTable : ISystemSymbolTable;
 var
    systemUnitTable : TLinkedSymbolTable;
    systemUnit : TUnitMainSymbol;
+   sl : TStringList;
 begin
    inherited Create(systemTable);
 
@@ -2546,10 +2541,11 @@ begin
 
    FSymbolDictionary:=TSymbolDictionary.Create;
 
-   FConditionalDefines:=TStringList.Create;
-   FConditionalDefines.Sorted:=True;
-   FConditionalDefines.CaseSensitive:=False;
-   FConditionalDefines.Duplicates:=dupIgnore;
+   sl:=TStringList.Create;
+   sl.Sorted:=True;
+   sl.CaseSensitive:=False;
+   sl.Duplicates:=dupIgnore;
+   FConditionalDefines:=TAutoStore<TStrings>.Create(sl);
 
    FSourceList:=TScriptSourceList.Create;
 
@@ -2586,7 +2582,6 @@ begin
    FOperators.Free;
    FContextMap.Free;
    FSymbolDictionary.Free;
-   FConditionalDefines.Free;
    FUnifiedConstList.Free;
    FSourceFiles.Clean;
    FSourceList.Free;
@@ -2746,20 +2741,6 @@ begin
    Result:=FLineCount;
 end;
 
-// GetConditionalDefines
-//
-function TdwsMainProgram.GetConditionalDefines : TStringList;
-begin
-   Result:=FConditionalDefines;
-end;
-
-// SetConditionalDefines
-//
-procedure TdwsMainProgram.SetConditionalDefines(const val : TStringList);
-begin
-   FConditionalDefines.Assign(val);
-end;
-
 // GetDefaultUserObject
 //
 function TdwsMainProgram.GetDefaultUserObject : TObject;
@@ -2781,6 +2762,13 @@ begin
    Result:=level+1;
    if Result>FStackParameters.MaxLevel then
       FStackParameters.MaxLevel:=Result;
+end;
+
+// GetConditionalDefines
+//
+function TdwsMainProgram.GetConditionalDefines : IAutoStrings;
+begin
+   Result:=FConditionalDefines;
 end;
 
 // ------------------
@@ -3389,6 +3377,33 @@ end;
 function TTypedExpr.GetType : TTypeSymbol;
 begin
    Result:=FTyp;
+end;
+
+// ------------------
+// ------------------ TTypeReferenceExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TTypeReferenceExpr.Create(aTyp : TTypeSymbol; const scriptPos : TScriptPos);
+begin
+   inherited Create;
+   Typ:=aTyp;
+   FPos:=scriptPos;
+end;
+
+// Eval
+//
+function TTypeReferenceExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Assert(False);
+end;
+
+// ScriptPos
+//
+function TTypeReferenceExpr.ScriptPos : TScriptPos;
+begin
+   Result:=FPos;
 end;
 
 // ------------------
@@ -7435,40 +7450,6 @@ begin
    e:=EScriptStopped.CreatePosFmt(stoppedOn.ScriptPos, RTE_ScriptStopped, []);
    e.ScriptCallStack:=exec.GetCallStack;
    raise e;
-end;
-
-// ------------------
-// ------------------ TTypeSymbolExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TTypeSymbolExpr.Create(const scriptPos : TScriptPos; const aType : TTypeSymbol);
-begin
-   inherited Create;
-   FTyp:=aType;
-   FPos:=scriptPos;
-end;
-
-// Eval
-//
-function TTypeSymbolExpr.Eval(exec : TdwsExecution) : Variant;
-begin
-   Assert(False); // not intended for execution
-end;
-
-// ScriptPos
-//
-function TTypeSymbolExpr.ScriptPos : TScriptPos;
-begin
-   Result:=FPos;
-end;
-
-// GetType
-//
-function TTypeSymbolExpr.GetType : TTypeSymbol;
-begin
-   Result:=FTyp;
 end;
 
 end.

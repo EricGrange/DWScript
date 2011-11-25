@@ -6560,7 +6560,7 @@ var
    name : UnicodeString;
 begin
    Expr.EvalAsString(exec, name);
-   Result:=((exec as TdwsProgramExecution).Prog.ConditionalDefines.IndexOf(name)>=0);
+   Result:=((exec as TdwsProgramExecution).Prog.ConditionalDefines.Value.IndexOf(name)>=0);
 end;
 
 // ------------------

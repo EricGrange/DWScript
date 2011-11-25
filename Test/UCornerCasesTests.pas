@@ -137,8 +137,10 @@ begin
    sourceFile:=TSourceFile.Create;
    sourceFile.Code:='@ @= %= ^ ^= $(';
    rules:=TPascalTokenizerStateRules.Create;
-   t:=rules.CreateTokenizer(sourceFile, msgs);
+   t:=rules.CreateTokenizer(msgs);
    try
+      t.BeginSourceFile(sourceFile);
+
       CheckTrue(t.TestDelete(ttAT), '@');
       CheckTrue(t.TestDelete(ttAT_ASSIGN), '@=');
       CheckTrue(t.TestDelete(ttPERCENT_ASSIGN), '%=');
@@ -150,6 +152,7 @@ begin
       CheckTrue(t.TestAny([ttNAME])=ttNone, 'Any at end');
       CheckTrue(t.TestDeleteAny([ttNAME])=ttNone, 'DeleteAny at end');
 
+      t.EndSourceFile;
    finally
       sourceFile.Free;
       t.Free;
@@ -216,6 +219,12 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'include via event');
    exec:=prog.Execute;
    CheckEquals('hello', exec.Result.ToString, 'exec include via event');
+
+   prog:=FCompiler.Compile('{$include ''test.dummy''}print(" world");');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'include via event followup');
+   exec:=prog.Execute;
+   CheckEquals('hello world', exec.Result.ToString, 'exec include via event followup');
 end;
 
 // IncludeViaFile
@@ -261,6 +270,11 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'include via file');
    exec:=prog.Execute;
    CheckEquals('world', exec.Result.ToString, 'exec include via file');
+
+   prog:=FCompiler.Compile('{$include ''test.dummy''}print(" happy");');
+   CheckEquals('', prog.Msgs.AsInfo, 'include via file followup');
+   exec:=prog.Execute;
+   CheckEquals('world happy', exec.Result.ToString, 'exec include via file followup');
 
    FCompiler.Config.ScriptPaths.Clear;
    DeleteFile(tempFile);

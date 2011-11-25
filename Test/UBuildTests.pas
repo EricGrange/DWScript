@@ -1,12 +1,5 @@
 unit UBuildTests;
 
-//  Todo
-//      Scope implementation to main
-//      Scope implementation unit to unit
-//      SymbolTable for unit implementation
-//      Conditional define locality
-//      JS CodeGen of units code
-
 interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs, dwsUtils,
@@ -62,7 +55,7 @@ begin
 
    FTests:=TStringList.Create;
 
-   CollectFiles(ExtractFilePath(ParamStr(0))+'BuildScripts'+PathDelim, '*.dws', FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'BuildScripts'+PathDelim, 'simple2*.dws', FTests);
 
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.OnInclude:=DoInclude;

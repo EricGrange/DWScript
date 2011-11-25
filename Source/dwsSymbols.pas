@@ -445,7 +445,7 @@ type
    end;
 
    // variable with functions for read/write: var x: integer; extern 'type' in 'selector';
-   TExternalVarSymbol = class(TValueSymbol)
+   TExternalVarSymbol = class sealed (TValueSymbol)
       private
          FReadFunc : TFuncSymbol;
          FWriteFunc : TFuncSymbol;
@@ -467,7 +467,7 @@ type
    // Base class for all types
    TTypeSymbol = class(TSymbol)
       public
-         procedure InitData(const data : TData; offset : Integer); virtual; abstract;
+         procedure InitData(const data : TData; offset : Integer); virtual;
          function IsType : Boolean; override;
          function BaseType : TTypeSymbol; override;
          function UnAliasedType : TTypeSymbol; virtual;
@@ -1007,7 +1007,7 @@ type
    end;
 
    // interface
-   TInterfaceSymbol = class(TStructuredTypeSymbol)
+   TInterfaceSymbol = class (TStructuredTypeSymbol)
       private
          FMethodCount : Integer;
 
@@ -1221,7 +1221,6 @@ type
       public
          constructor Create;
 
-         procedure InitData(const data : TData; offset : Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
@@ -3485,13 +3484,6 @@ begin
   FSize := 1;
 end;
 
-// InitData
-//
-procedure TNilSymbol.InitData(const data : TData; offset : Integer);
-begin
-   Assert(False);
-end;
-
 function TNilSymbol.GetCaption: UnicodeString;
 begin
   Result := 'nil';
@@ -4647,6 +4639,13 @@ end;
 function TTypeSymbol.IsType : Boolean;
 begin
    Result:=True;
+end;
+
+// InitData
+//
+procedure TTypeSymbol.InitData(const data : TData; offset : Integer);
+begin
+   Assert(False);
 end;
 
 // ------------------

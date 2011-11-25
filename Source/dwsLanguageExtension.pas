@@ -32,7 +32,7 @@ type
 
          function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; virtual;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; virtual;
-         function ReadInstrSwitch(compiler : TdwsCompiler) : TNoResultExpr; virtual;
+         function ReadInstrSwitch(compiler : TdwsCompiler) : Boolean; virtual;
          function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; virtual;
          procedure SectionChanged(compiler : TdwsCompiler); virtual;
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
@@ -57,7 +57,7 @@ type
 
          function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; override;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; override;
-         function ReadInstrSwitch(compiler : TdwsCompiler) : TNoResultExpr; override;
+         function ReadInstrSwitch(compiler : TdwsCompiler) : Boolean; override;
          function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; override;
          procedure SectionChanged(compiler : TdwsCompiler); override;
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
@@ -101,9 +101,9 @@ end;
 
 // ReadInstrSwitch
 //
-function TdwsLanguageExtension.ReadInstrSwitch(compiler : TdwsCompiler) : TNoResultExpr;
+function TdwsLanguageExtension.ReadInstrSwitch(compiler : TdwsCompiler) : Boolean;
 begin
-   Result:=nil;
+   Result:=False;
 end;
 
 // FindUnknownName
@@ -208,17 +208,17 @@ end;
 
 // ReadInstrSwitch
 //
-function TdwsLanguageExtensionAggregator.ReadInstrSwitch(compiler : TdwsCompiler) : TNoResultExpr;
+function TdwsLanguageExtensionAggregator.ReadInstrSwitch(compiler : TdwsCompiler) : Boolean;
 var
    i : Integer;
    ext : TdwsLanguageExtension;
 begin
    for i:=0 to FList.Count-1 do begin
       ext:=TdwsLanguageExtension(FList.List[i]);
-      Result:=ext.ReadInstrSwitch(compiler);
-      if Result<>nil then Exit;
+      if ext.ReadInstrSwitch(compiler) then
+         Exit(True);
    end;
-   Result:=nil;
+   Result:=False;
 end;
 
 // FindUnknownName

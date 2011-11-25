@@ -37,6 +37,27 @@ type
          function GetSelf : TObject;
    end;
 
+   // IAutoStore
+   //
+   IAutoStore<T: class> = interface
+      function GetValue : T;
+      property Value : T read GetValue;
+   end;
+
+   // TAutoStore
+   //
+   TAutoStore<T: class> = class(TInterfacedSelfObject, IAutoStore<T>)
+      private
+         FValue : T;
+      protected
+         function GetValue : T;
+      public
+         constructor Create(value : T);
+         destructor Destroy; override;
+   end;
+
+   IAutoStrings = IAutoStore<TStrings>;
+
    // TVarRecArrayContainer
    //
    TVarRecArrayContainer = class
@@ -1626,6 +1647,31 @@ end;
 function TInterfacedSelfObject.GetSelf : TObject;
 begin
    Result:=Self;
+end;
+
+// ------------------
+// ------------------ TAutoStore<T> ------------------
+// ------------------
+
+// GetValue
+//
+function TAutoStore<T>.GetValue : T;
+begin
+   Result:=FValue;
+end;
+
+// Create
+//
+constructor TAutoStore<T>.Create(value : T);
+begin
+   FValue:=value;
+end;
+
+// Destroy
+//
+destructor TAutoStore<T>.Destroy;
+begin
+   FValue.Free;
 end;
 
 // ------------------------------------------------------------------

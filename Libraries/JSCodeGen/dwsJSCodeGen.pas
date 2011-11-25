@@ -1787,7 +1787,7 @@ begin
             InsertDependency(jsRTL)
          else if dependency='$ConditionalDefines' then begin
             destStream.WriteString('var $ConditionalDefines=');
-            WriteStringArray(destStream, (prog as TdwsProgram).Root.ConditionalDefines);
+            WriteStringArray(destStream, (prog as TdwsProgram).Root.ConditionalDefines.Value);
             destStream.WriteString(';'#13#10);
          end;
          Dependencies.Delete(i);

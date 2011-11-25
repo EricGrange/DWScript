@@ -55,6 +55,8 @@ type
       public
          SourceFile : TSourceFile;
 
+         const cLineMask = $FFFFF;
+
          constructor Create(aSourceFile : TSourceFile; aLine, aCol : Integer);
 
          property LineCol : Cardinal read FLineCol write FLineCol;
@@ -237,7 +239,7 @@ end;
 //
 function TScriptPos.GetLine : Integer;
 begin
-   Result:=FLineCol and $FFFFF;
+   Result:=FLineCol and cLineMask;
 end;
 
 // SetLine
@@ -258,7 +260,7 @@ end;
 //
 procedure TScriptPos.SetCol(const aCol : Integer);
 begin
-   FLineCol:=(FLineCol and $FFFFF) or (Cardinal(aCol) shl 20);
+   FLineCol:=(FLineCol and cLineMask) or (Cardinal(aCol) shl 20);
 end;
 
 // SamePosAs
@@ -301,7 +303,7 @@ end;
 //
 procedure TScriptPos.NewLine;
 begin
-   FLineCol:=(FLineCol and $FFFFF)+$100001;
+   FLineCol:=(FLineCol and cLineMask)+$100001;
 end;
 
 // AsInfo
