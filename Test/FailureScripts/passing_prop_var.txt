@@ -1,4 +1,4 @@
-Syntax Error: Integer expected [line: 17, column: 6]
+Syntax Error: Integer expected [line: 17, column: 5]
 Syntax Error: Argument 0 (a) cannot be passed as Var-parameter [line: 19, column: 5]
 Syntax Error: Invalid Instruction - function or assignment expected [line: 20, column: 7]
 Syntax Error: Argument 0 (a) cannot be passed as Var-parameter [line: 20, column: 5]

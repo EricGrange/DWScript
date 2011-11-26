@@ -420,7 +420,7 @@ type
 
          function ReadSwitch(const switchName : UnicodeString) : Boolean;
          function ReadInstrSwitch(const switchName : UnicodeString) : Boolean;
-         function ReadExprSwitch : TTypedExpr;
+         function ReadExprSwitch(const switchPos : TScriptPos) : Boolean;
 
          function ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                           expecting : TTypeSymbol = nil) : TProgramExpr;
@@ -433,7 +433,8 @@ type
 
          function ReadType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
          function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
-         procedure ReadTypeDecl;
+         procedure ReadTypeDeclBlock;
+         function  ReadTypeDecl(firstInBlock : Boolean) : Boolean;
          procedure ReadUses;
          procedure ReadUnitHeader;
          function ReadVarDecl : TNoResultExpr;
@@ -489,7 +490,7 @@ type
          class function Evaluate(exec : IdwsProgramExecution; const anExpression : UnicodeString;
                               options : TdwsEvaluateOptions = []) : IdwsEvaluateExpr;
 
-         procedure WarnForVarUsage(varExpr : TVarExpr; const pos : TScriptPos);
+         procedure WarnForVarUsage(varExpr : TVarExpr; const scriptPos : TScriptPos);
 
          property CurrentProg : TdwsProgram read FProg write FProg;
          property Msgs : TdwsCompileMessageList read FMsgs;
@@ -1332,16 +1333,9 @@ begin
    case token of
       ttTYPE :
          if UnitSection in [secInterface, secImplementation] then begin
-            repeat
-               ReadTypeDecl;
-               if not FTok.TestDelete(ttSEMI) then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
-               token:=FTok.TestAny([ttINTERFACE, ttIMPLEMENTATION,
-                                    ttVAR, ttCONST, ttEND,
-                                    ttFUNCTION, ttPROCEDURE, ttMETHOD]);
-            until (not FTok.HasTokens) or (token<>ttNone);
-            action:=rsaNoSemiColon;
-         end else ReadTypeDecl;
+            ReadTypeDeclBlock;
+            action:=rsaNoSemiColon
+         end else ReadTypeDecl(True);
       ttPROCEDURE, ttFUNCTION, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD :
          ReadProcBody(ReadProcDecl(token));
       ttCLASS : begin
@@ -1733,23 +1727,49 @@ begin
    end;
 end;
 
+// ReadTypeDeclBlock
+//
+procedure TdwsCompiler.ReadTypeDeclBlock;
+var
+   token : TTokenType;
+   firstType : Boolean;
+begin
+   firstType:=True;
+   repeat
+      if not ReadTypeDecl(firstType) then Break;
+      firstType:=False;
+      if not FTok.TestDelete(ttSEMI) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+      token:=FTok.TestAny([ttINTERFACE, ttIMPLEMENTATION,
+                           ttVAR, ttCONST, ttEND,
+                           ttFUNCTION, ttPROCEDURE, ttMETHOD]);
+   until (not FTok.HasTokens) or (token<>ttNone);
+end;
+
 // ReadTypeDecl
 //
-procedure TdwsCompiler.ReadTypeDecl;
+function TdwsCompiler.ReadTypeDecl(firstInBlock : Boolean) : Boolean;
 var
    name : UnicodeString;
    typNew, typOld : TTypeSymbol;
    typePos : TScriptPos;
    oldSymPos : TSymbolPosition; // Mark *where* the old declaration was
 begin
+   Result:=True;
    if not FTok.TestDeleteNamePos(name, typePos) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
+   if not FTok.TestDelete(ttEQ) then begin
+      if firstInBlock then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected)
+      else begin
+         FTok.SimulateNameToken(typePos, name);
+         Exit(False);
+      end;
+   end;
+
    if FSystemTable.FindLocal(name)<>nil then
       FMsgs.AddCompilerErrorFmt(typePos, CPE_NameIsReserved, [name]);
-
-   if not FTok.TestDelete(ttEQ) then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
 
    typOld:=FProg.Table.FindTypeSymbol(name, cvMagic);
    oldSymPos:=nil;
@@ -1899,7 +1919,7 @@ begin
                Result.ClearIsForwarded;
             end else FProg.Table.AddSymbol(Result);
 
-            if Result.IsForwarded then
+            if Result.IsForwarded or Result.IsExternal then
                FTok.SimulateToken(ttSEMI);
          end;
 
@@ -2191,8 +2211,7 @@ begin
          funcSym.DeprecatedMessage:=FTok.GetToken.FString;
          FTok.KillToken;
       end else funcSym.IsDeprecated:=True;
-      if UnitSection<>secInterface then
-         ReadSemiColon;
+      ReadSemiColon;
    end;
 end;
 
@@ -3706,7 +3725,7 @@ begin
 
    readArrayItemExpr:=nil;
 
-   if inExpr is TTypedExpr then begin
+   if (inExpr is TTypedExpr) and not (inExpr is TTypeReferenceExpr) then begin
 
       inTypedExpr:=TTypedExpr(inExpr);
 
@@ -3856,7 +3875,7 @@ end;
 
 // WarnForVarUsage
 //
-procedure TdwsCompiler.WarnForVarUsage(varExpr : TVarExpr; const pos : TScriptPos);
+procedure TdwsCompiler.WarnForVarUsage(varExpr : TVarExpr; const scriptPos : TScriptPos);
 var
    i : Integer;
    loopExpr : TNoResultExpr;
@@ -3867,7 +3886,7 @@ begin
       if loopExpr.InheritsFrom(TForExpr) then begin
          currVarExpr:=TForExpr(loopExpr).VarExpr;
          if currVarExpr.SameVarAs(varExpr) then begin
-            FMsgs.AddCompilerWarning(pos, CPE_AssignementToFORLoopVariable);
+            FMsgs.AddCompilerWarning(scriptPos, CPE_AssignementToFORLoopVariable);
             Break;
          end;
       end;
@@ -6000,8 +6019,8 @@ var
    hotPos : TScriptPos;
 begin
    tt:=FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
-                     ttTRUE, ttFALSE, ttNIL, ttSWITCH]);
-   if not (tt in [ttNone, ttSWITCH]) then
+                     ttTRUE, ttFALSE, ttNIL]);
+   if tt<>ttNone then
       FTok.KillToken;
    case tt of
       ttPLUS :
@@ -6039,8 +6058,6 @@ begin
          Result:=ReadFalse;
       ttNIL :
          Result:=ReadNilTerm;
-      ttSWITCH :
-         Result:=ReadExprSwitch;
    else
       if (FTok.TestAny([ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin
          // Variable or Function
@@ -6383,45 +6400,63 @@ begin
    case switch of
       siIncludeLong, siIncludeShort, siIncludeOnce, siFilterLong, siFilterShort : begin
 
-         if not FTok.Test(ttStrVal) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_IncludeFileExpected);
-         name := FTok.GetToken.FString;
-         FTok.KillToken;
+         if FTok.Test(ttPERCENT) and (switch in [siIncludeShort, siIncludeLong]) then begin
 
-         if (switch=siIncludeOnce) then begin
-            sourceFile:=FMainProg.GetSourceFile(name);
-            if (sourceFile<>nil) and (sourceFile.Name<>name) then
-               FMsgs.AddCompilerWarningFmt(switchPos, CPW_IncludeOnceWithDifferentCase,
-                                           [name, sourceFile.Name]);
-         end else sourceFile:=nil;
-         if sourceFile=nil then begin
-            try
-               scriptSource := GetIncludeScriptSource(name);
+            Result:=ReadExprSwitch(switchPos);
+            Exit;
 
-               if switch in [siFilterLong, siFilterShort] then begin
-                  if Assigned(FFilter) then begin
-                     // Include file is processed by the filter
-                     scriptSource:=FFilter.Process(scriptSource, FMsgs);
-                  end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoFilterAvailable);
-               end else begin
-                  // Include file is included as-is
-               end;
+         end else if not FTok.Test(ttStrVal) then begin
 
-               if not FTok.TestDelete(ttCRIGHT) then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_CurlyRightExpected);
-
-               sourceFile:=FMainProg.RegisterSourceFile(name, scriptSource);
-               FTok.BeginSourceFile(sourceFile);
-
-               FTok.SimulateToken(ttSEMI);
-
-               Exit;
-            except
-               on e: ECompileError do
-                  raise;
-               on e: Exception do
-                  FMsgs.AddCompilerStop(FTok.HotPos, e.Message);
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_IncludeFileExpected);
+            // skip in attempt to recover from error
+            Result:=False;
+            while not FTok.Test(ttCRIGHT) do begin
+               if not FTok.HasTokens then
+                  Exit;
+               FTok.KillToken;
             end;
+
+         end else begin
+
+            name:=FTok.GetToken.FString;
+            FTok.KillToken;
+
+            if (switch=siIncludeOnce) then begin
+               sourceFile:=FMainProg.GetSourceFile(name);
+               if (sourceFile<>nil) and (sourceFile.Name<>name) then
+                  FMsgs.AddCompilerWarningFmt(switchPos, CPW_IncludeOnceWithDifferentCase,
+                                              [name, sourceFile.Name]);
+            end else sourceFile:=nil;
+            if sourceFile=nil then begin
+               try
+                  scriptSource := GetIncludeScriptSource(name);
+
+                  if switch in [siFilterLong, siFilterShort] then begin
+                     if Assigned(FFilter) then begin
+                        // Include file is processed by the filter
+                        scriptSource:=FFilter.Process(scriptSource, FMsgs);
+                     end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoFilterAvailable);
+                  end else begin
+                     // Include file is included as-is
+                  end;
+
+                  if not FTok.TestDelete(ttCRIGHT) then
+                     FMsgs.AddCompilerStop(FTok.HotPos, CPE_CurlyRightExpected);
+
+                  sourceFile:=FMainProg.RegisterSourceFile(name, scriptSource);
+                  FTok.BeginSourceFile(sourceFile);
+
+                  FTok.SimulateToken(ttSEMI);
+
+                  Exit;
+               except
+                  on e: ECompileError do
+                     raise;
+                  on e: Exception do
+                     FMsgs.AddCompilerStop(FTok.HotPos, e.Message);
+               end;
+            end;
+
          end;
 
       end;
@@ -6549,61 +6584,47 @@ end;
 
 // ReadExprSwitch
 //
-function TdwsCompiler.ReadExprSwitch : TTypedExpr;
+function TdwsCompiler.ReadExprSwitch(const switchPos : TScriptPos) : Boolean;
 var
-   switch : TSwitchInstruction;
    name, value : UnicodeString;
    hotPos : TScriptPos;
    funcSym : TFuncSymbol;
 begin
-   Result:=nil;
-
+   Result:=False;
    hotPos:=FTok.HotPos;
 
-   switch:=StringToSwitchInstruction(FTok.GetToken.FString);
-   FTok.KillToken;
-
-   case switch of
-      siIncludeLong, siIncludeShort : begin
-
-         name:='';
-         hotPos:=FTok.HotPos;
-         if FTok.TestDelete(ttPERCENT) then begin
-            if FTok.TestAny([ttNAME, ttFUNCTION])<>ttNone then begin
-               name:=FTok.GetToken.FString;
-               FTok.KillToken;
-               if not FTok.TestDelete(ttPERCENT) then
-                  name:='';
-            end;
-         end;
-         value:='';
-         if name='' then
-            FMsgs.AddCompilerError(hotPos, CPE_IncludeItemExpected)
-         else if SameText(name, 'FILE') then
-            value:=hotPos.SourceFile.Name
-         else if SameText(name, 'LINE') then
-            value:=IntToStr(hotPos.Line)
-         else if SameText(name, 'DATE') then
-            value:=FormatDateTime('yyyy-mm-dd', Date)
-         else if SameText(name, 'TIME') then
-            value:=FormatDateTime('hh:nn:ss', Time)
-         else if SameText(name, 'FUNCTION') then begin
-            if FProg is TdwsProcedure then begin
-               funcSym:=TdwsProcedure(FProg).Func;
-               if funcSym is TMethodSymbol then
-                  value:=TMethodSymbol(funcSym).StructSymbol.Name+'.'+funcSym.Name
-               else value:=funcSym.Name;
-            end else value:=MSG_MainFunction;
-         end else FMsgs.AddCompilerErrorFmt(hotPos, CPE_IncludeItemUnknown, [name]);
-
-         Result:=TConstStringExpr.CreateUnified(FProg, nil, value);
+   hotPos:=FTok.HotPos;
+   if FTok.TestDelete(ttPERCENT) then begin
+      if FTok.TestAny([ttNAME, ttFUNCTION])<>ttNone then begin
+         name:=FTok.GetToken.FString;
+         FTok.KillToken;
+         if not FTok.TestDelete(ttPERCENT) then
+            name:='';
       end;
-   else
-      FMsgs.AddCompilerStopFmt(hotPos, CPE_CompilerSwitchUnknown, [Name]);
    end;
+   if name='' then
+      FMsgs.AddCompilerError(hotPos, CPE_IncludeItemExpected)
+   else if SameText(name, 'FILE') then
+      value:=hotPos.SourceFile.Name
+   else if SameText(name, 'LINE') then
+      value:=IntToStr(hotPos.Line)
+   else if SameText(name, 'DATE') then
+      value:=FormatDateTime('yyyy-mm-dd', Date)
+   else if SameText(name, 'TIME') then
+      value:=FormatDateTime('hh:nn:ss', Time)
+   else if SameText(name, 'FUNCTION') then begin
+      if FProg is TdwsProcedure then begin
+         funcSym:=TdwsProcedure(FProg).Func;
+         if funcSym is TMethodSymbol then
+            value:=TMethodSymbol(funcSym).StructSymbol.Name+'.'+funcSym.Name
+         else value:=funcSym.Name;
+      end else value:=MSG_MainFunction;
+   end else FMsgs.AddCompilerErrorFmt(hotPos, CPE_IncludeItemUnknown, [name]);
 
    if not FTok.TestDelete(ttCRIGHT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_CurlyRightExpected);
+
+   FTok.SimulateStringToken(switchPos, value);
 end;
 
 // ReadUntilEndOrElseSwitch
@@ -7510,6 +7531,7 @@ begin
    if not FTok.TestDelete(ttBLEFT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
 
+   FTok.HasTokens;  // get token in buffer for correct argPos below
    argPos:=FTok.HotPos;
    case specialKind of
       skAssigned, skHigh :
@@ -7519,12 +7541,14 @@ begin
    else
       argExpr:=ReadExpr;
    end;
-   argTyp:=argExpr.Typ.UnAliasedType;
+   argTyp:=argExpr.Typ;
+   if argTyp<>nil then
+      argTyp:=argTyp.UnAliasedType;
 
    msgExpr:=nil;
    try
       if not Assigned(argTyp) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
+         FMsgs.AddCompilerStop(argPos, CPE_InvalidOperands);
 
       Result := nil;
 
@@ -7544,11 +7568,13 @@ begin
          end;
          skAssert : begin
             if not argTyp.IsOfType(FProg.TypBoolean) then
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_BooleanExpected);
+               FMsgs.AddCompilerError(argPos, CPE_BooleanExpected);
             if FTok.TestDelete(ttCOMMA) then begin
+               FTok.HasTokens;
+               argPos:=FTok.HotPos;
                msgExpr:=ReadExpr;
                if (msgExpr=nil) or (not msgExpr.IsOfType(FProg.TypString)) then
-                  FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
+                  FMsgs.AddCompilerError(argPos, CPE_StringExpected);
             end;
             if coAssertions in FOptions then
                Result:=TAssertExpr.Create(FProg, namePos, argExpr, msgExpr)
@@ -7567,7 +7593,7 @@ begin
                Result:=TAssignedMetaClassExpr.Create(FProg, argExpr)
             else if argTyp is TFuncSymbol then
                Result:=TAssignedFuncPtrExpr.Create(FProg, argExpr)
-            else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
+            else FMsgs.AddCompilerError(argPos, CPE_InvalidOperands);
             argExpr:=nil;
          end;
          skHigh : begin
@@ -7589,7 +7615,7 @@ begin
                Result:=TConstExpr.CreateIntegerValue(FProg, High(Int64));
             end else begin
                FreeAndNil(argExpr);
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
+               FMsgs.AddCompilerError(argPos, CPE_InvalidOperands);
             end;
          end;
          skInc, skDec, skSucc, skPred : begin
@@ -7607,14 +7633,14 @@ begin
                      FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
                end else operandExpr:=TConstExpr.CreateIntegerValue(FProg, 1);
                case specialKind of
-                  skInc : Result:=TIncVarFuncExpr.Create(FProg, FTok.HotPos, argExpr, operandExpr);
-                  skDec : Result:=TDecVarFuncExpr.Create(FProg, FTok.HotPos, argExpr, operandExpr);
-                  skSucc : Result:=TSuccFuncExpr.Create(FProg, FTok.HotPos, argExpr, operandExpr);
-                  skPred : Result:=TPredFuncExpr.Create(FProg, FTok.HotPos, argExpr, operandExpr);
+                  skInc : Result:=TIncVarFuncExpr.Create(FProg, argPos, argExpr, operandExpr);
+                  skDec : Result:=TDecVarFuncExpr.Create(FProg, argPos, argExpr, operandExpr);
+                  skSucc : Result:=TSuccFuncExpr.Create(FProg, argPos, argExpr, operandExpr);
+                  skPred : Result:=TPredFuncExpr.Create(FProg, argPos, argExpr, operandExpr);
                else
                   Assert(False);
                end;
-            end else FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
+            end else FMsgs.AddCompilerError(argPos, CPE_IntegerExpected);
          end;
          skLength : begin
             if argTyp is TArraySymbol then begin
@@ -7623,7 +7649,7 @@ begin
             end else if ((argTyp=FProg.TypString) or (argTyp=FProg.TypVariant)) and Assigned(argExpr) then begin
                Result:=TStringLengthExpr.Create(FProg, argExpr);
                argExpr:=nil;
-            end else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
+            end else FMsgs.AddCompilerError(argPos, CPE_InvalidOperands);
          end;
          skLow : begin
             if argTyp is TArraySymbol then begin
@@ -7638,7 +7664,7 @@ begin
                end else if (argTyp=FProg.TypInteger) then begin
                   Result:=TConstExpr.CreateIntegerValue(FProg, Low(Int64));
                end else begin
-                  FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
+                  FMsgs.AddCompilerError(argPos, CPE_InvalidOperands);
                end;
             end;
          end;
@@ -7649,7 +7675,7 @@ begin
             end else if argTyp=FProg.TypFloat then begin
                Result:=TSqrFloatExpr.Create(FProg, argExpr);
                argExpr:=nil;
-            end else FMsgs.AddCompilerError(FTok.HotPos, CPE_NumericalExpected);
+            end else FMsgs.AddCompilerError(argPos, CPE_NumericalExpected);
          end;
          skOrd : begin
             if argTyp.IsOfType(FProg.TypInteger) or argTyp.InheritsFrom(TEnumerationSymbol) then begin
@@ -7664,7 +7690,7 @@ begin
             end else if argTyp=FProg.TypVariant then begin
                Result:=TOrdExpr.Create(FProg, argExpr);
                argExpr:=nil;
-            end else FMsgs.AddCompilerError(FTok.HotPos, CPE_InvalidOperands);
+            end else FMsgs.AddCompilerError(argPos, CPE_InvalidOperands);
          end;
          skSizeOf : begin
              Result:=TConstExpr.CreateIntegerValue(FProg, argTyp.Size);
@@ -7672,10 +7698,10 @@ begin
          end;
          skDefined, skDeclared : begin
             if not argExpr.IsOfType(FProg.TypString) then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_StringExpected);
+               FMsgs.AddCompilerStop(argPos, CPE_StringExpected);
             if FIsSwitch then begin
                if not argExpr.IsConstant then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_ConstantExpressionExpected);
+                  FMsgs.AddCompilerStop(argPos, CPE_ConstantExpressionExpected);
                try
                   case SpecialKind of
                      skDefined :

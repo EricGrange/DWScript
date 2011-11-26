@@ -226,6 +226,8 @@ type
          function TestDeleteNamePos(var aName : UnicodeString; var aPos : TScriptPos) : Boolean; inline;
 
          procedure SimulateToken(t : TTokenType);
+         procedure SimulateStringToken(const scriptPos : TScriptPos; const str : String);
+         procedure SimulateNameToken(const scriptPos : TScriptPos; const name : String);
 
          property PosPtr : PWideChar read FSource.FPosPtr;
          property Text : UnicodeString read FSource.FText;
@@ -939,6 +941,24 @@ begin
    FToken.FTyp:=t;
 end;
 
+// SimulateStringToken
+//
+procedure TTokenizer.SimulateStringToken(const scriptPos : TScriptPos; const str : String);
+begin
+   SimulateToken(ttStrVal);
+   FToken.FString:=str;
+   FToken.FScriptPos:=scriptPos;
+end;
+
+// SimulateNameToken
+//
+procedure TTokenizer.SimulateNameToken(const scriptPos : TScriptPos; const name : String);
+begin
+   SimulateToken(ttNAME);
+   FToken.FString:=name;
+   FToken.FScriptPos:=scriptPos;
+end;
+
 // HasTokens
 //
 function TTokenizer.HasTokens: Boolean;
@@ -1073,7 +1093,8 @@ procedure TTokenizer.ConsumeToken;
                   if FSwitchHandler(FToken.FString) then begin
                      FToken.FTyp:=ttSWITCH;
                   end else begin
-                     FToken.FString:='';
+                     if FToken=nil then
+                        AllocateToken;
                      FTokenBuf.Len:=0;
                      Exit(True);
                   end;
@@ -1163,6 +1184,7 @@ begin
       if trns.Action<>caNone then begin
          if DoAction(trns.Action) then begin
             state:=FRules.StartState;
+            pch:=PosPtr;
             continue;
          end;
       end;

@@ -1,5 +1,7 @@
-function Test({$ifdef TEST}{$endif}s : String);
-
+procedure Test({$ifdef TEST}{$endif}s : String);
+begin
+   PrintLn(s);
+end;
 
 {$DEFINE TEST}
 type
@@ -9,4 +11,4 @@ type
   {$ENDIF}
   end;
   
-PrintLn(TDummy.ClassName);
+Test(TDummy.ClassName);
