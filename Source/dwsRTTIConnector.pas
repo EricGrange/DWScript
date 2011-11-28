@@ -44,7 +44,7 @@ type
          property StaticSymbols;
    end;
 
-   TdwsRTTIVariant = class(TInterfacedObject, IUnknown)
+   TdwsRTTIVariant = class(TInterfacedSelfObject)
       private
          FInstance : Pointer;
          FRTTIType : TRTTIType;
@@ -173,7 +173,7 @@ begin
       tkVariant :
          result:=v.AsVariant;
       tkClass :
-         result:=IUnknown(TdwsRTTIVariant.From(v.AsObject, vRTTIContext.GetType(v.TypeInfo)));
+         result:=TdwsRTTIVariant.From(v.AsObject, vRTTIContext.GetType(v.TypeInfo));
    else
       result:=Null;
    end;
@@ -391,7 +391,9 @@ begin
       else paramData[i]:=TValue.FromVariant(args[i]);
    end;
 
-   resultValue:=meth.Invoke(TObject(instance.FInstance), paramData);
+   if meth.IsClassMethod then
+      resultValue:=meth.Invoke(TObject(instance.FInstance).ClassType, paramData)
+   else resultValue:=meth.Invoke(TObject(instance.FInstance), paramData);
 
    SetLength(Result, 1);
 

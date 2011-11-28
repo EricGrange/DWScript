@@ -32,7 +32,7 @@ type
 
    // TInterfacedSelfObject
    //
-   TInterfacedSelfObject = class (TInterfacedObject, IGetSelf)
+   TInterfacedSelfObject = class (TInterfacedObject, IUnknown, IGetSelf)
       protected
          function GetSelf : TObject;
    end;

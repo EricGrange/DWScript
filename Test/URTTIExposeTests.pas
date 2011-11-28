@@ -33,6 +33,7 @@ type
          procedure ConnectSimpleClassTyped;
          procedure ConnectTypeCheckFail;
          procedure ConnectFormCreateComponent;
+         procedure ConnectClassMethod;
 
          procedure EnvironmentTest;
 
@@ -472,6 +473,33 @@ begin
    end;
 end;
 
+// ConnectClassMethod
+//
+procedure TRTTIExposeTests.ConnectClassMethod;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   obj : TTestInstance;
+begin
+   prog:=FCompiler.Compile('var obj: RttiVariant; Print(obj.ClassName());');
+
+   obj:=TTestInstance.Create;
+   try
+      exec:=prog.BeginNewExecution;
+      try
+         exec.Info.ValueAsVariant['obj']:=TdwsRTTIVariant.FromObject(obj);
+         exec.RunProgram(0);
+         CheckEquals(obj.ClassName, exec.Result.ToString, 'exec');
+         CheckFalse(exec.Msgs.HasErrors, exec.Msgs.AsInfo);
+      finally
+         exec.EndProgram;
+         exec:=nil;
+      end;
+   finally
+      obj.Free;
+   end;
+end;
+
 // EnvironmentTest
 //
 procedure TRTTIExposeTests.EnvironmentTest;
@@ -490,7 +518,8 @@ begin
       FCompiler.Extensions.Add(enviro);
       try
          prog:=FCompiler.Compile( 'PrintLn(FieldOne.Value);'#13#10
-                                 +'PrintLn(FieldTwo);');
+                                 +'PrintLn(FieldTwo);'#13#10
+                                 +'PrintLn(FieldOne.ClassName());'#13#10);
          try
             CheckEquals('', prog.Msgs.AsInfo, 'compile');
 
@@ -498,7 +527,7 @@ begin
 
             CheckEquals('', exec.Msgs.AsInfo, 'exec');
 
-            CheckEquals('123'#13#10'Hello'#13#10, exec.Result.ToString, 'result');
+            CheckEquals('123'#13#10'Hello'#13#10'TSimpleClass'#13#10, exec.Result.ToString, 'result');
          finally
             prog:=nil;
          end;
