@@ -1175,10 +1175,6 @@ begin
                         FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
                      Break;
                   end else begin
-                     while FTok.HasTokens and FTok.Test(ttSWITCH) do begin
-                        ReadInstrSwitch(FTok.GetToken.FString);
-                        FTok.KillToken;
-                     end;
                      if FTok.HasTokens then
                         FMsgs.AddCompilerStop(FTok.CurrentPos, CPE_SemiExpected);
                   end;
@@ -1399,13 +1395,9 @@ begin
       ttOPERATOR :
          ReadOperatorDecl;
    else
-      if FTok.Test(ttSWITCH) then
-         ReadInstrSwitch(FTok.GetToken.FString)
-      else begin
-         if (UnitSection<>secMixed) and (FProg.Level=0) then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedStatement);
-         Result:=ReadBlock
-      end;
+      if (UnitSection<>secMixed) and (FProg.Level=0) then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedStatement);
+      Result:=ReadBlock
    end;
 end;
 
@@ -1732,12 +1724,10 @@ end;
 procedure TdwsCompiler.ReadTypeDeclBlock;
 var
    token : TTokenType;
-   firstType : Boolean;
 begin
-   firstType:=True;
+   token:=ttTYPE;
    repeat
-      if not ReadTypeDecl(firstType) then Break;
-      firstType:=False;
+      if not ReadTypeDecl(token=ttTYPE) then Break;
       if not FTok.TestDelete(ttSEMI) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
       token:=FTok.TestAny([ttINTERFACE, ttIMPLEMENTATION,
@@ -2065,8 +2055,7 @@ begin
                                                    cFuncKindToString[funcResult.Kind]])
                      else if funcResult.IsClassMethod<>meth.IsClassMethod then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongMethodType)
-                     else if    ((funcResult.Typ=nil) and (meth.Typ<>nil))
-                             or ((funcResult.Typ<>nil) and not funcResult.Typ.IsOfType(meth.Typ)) then
+                     else if not funcResult.Typ.IsOfType(meth.Typ) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongResultType)
                      else if not OverrideParamsCheck(funcResult, meth) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongParameterList)

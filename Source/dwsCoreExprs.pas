@@ -3788,7 +3788,7 @@ begin
    if expr.ClassType=TArrayConstantExpr then begin
       arrayConst:=TArrayConstantExpr(expr);
       if toTyp is TDynamicArraySymbol then begin
-         if    (toTyp.Typ=expr.Typ.Typ)
+         if    (toTyp.Typ.IsOfType(expr.Typ.Typ))
             or ((arrayConst.ElementCount=0) and (arrayConst.Typ.Typ.IsOfType(prog.TypVariant)))  then
             Result:=TConvStaticArrayToDynamicExpr.Create(prog, arrayConst,
                                                          TDynamicArraySymbol(toTyp))

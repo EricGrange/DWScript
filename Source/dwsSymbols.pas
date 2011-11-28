@@ -466,12 +466,15 @@ type
 
    // Base class for all types
    TTypeSymbol = class(TSymbol)
+      protected
+         function DoIsOfType(typSym : TTypeSymbol) : Boolean; virtual;
+
       public
          procedure InitData(const data : TData; offset : Integer); virtual;
          function IsType : Boolean; override;
          function BaseType : TTypeSymbol; override;
          function UnAliasedType : TTypeSymbol; virtual;
-         function IsOfType(typSym : TTypeSymbol) : Boolean; virtual;
+         function IsOfType(typSym : TTypeSymbol) : Boolean;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; virtual;
    end;
 
@@ -573,6 +576,8 @@ type
          function GetSourceSubExprCount : Integer;
          property SubExpr[i : Integer] : TExprBase read GetSourceSubExpr;
          property SubExprCount : Integer read GetSourceSubExprCount;
+
+         function  DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
       public
          constructor Create(const name : UnicodeString; funcKind : TFuncKind; funcLevel : SmallInt);
@@ -738,12 +743,14 @@ type
 
    // type x = TMyType;
    TAliasSymbol = class(TTypeSymbol)
+      protected
+         function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+
       public
          function BaseType : TTypeSymbol; override;
          function UnAliasedType : TTypeSymbol; override;
          procedure InitData(const data : TData; offset : Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         function IsOfType(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    // integer/UnicodeString/float/boolean/variant
@@ -836,10 +843,12 @@ type
       private
          FConnectorType : IConnectorType;
 
+      protected
+         function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+
       public
          constructor Create(const name : UnicodeString; const connectorType : IConnectorType);
 
-         function IsOfType(typSym : TTypeSymbol) : Boolean; override;
          function Specialize(table : TSymbolTable; const qualifier : UnicodeString) : TConnectorSymbol; virtual;
 
          property ConnectorType : IConnectorType read FConnectorType write FConnectorType;
@@ -862,11 +871,11 @@ type
    TDynamicArraySymbol = class(TArraySymbol)
       protected
          function GetCaption : UnicodeString; override;
+         function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
       public
          constructor Create(const name : UnicodeString; elementType, indexType : TTypeSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
-         function IsOfType(typSym : TTypeSymbol) : Boolean; override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
@@ -879,6 +888,7 @@ type
 
       protected
          function GetCaption : UnicodeString; override;
+         function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
       public
          constructor Create(const name : UnicodeString; elementType, indexType : TTypeSymbol;
@@ -886,7 +896,6 @@ type
 
          procedure InitData(const Data: TData; Offset: Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         function IsOfType(typSym : TTypeSymbol) : Boolean; override;
          procedure AddElement;
 
          property HighBound : Integer read FHighBound;
@@ -1014,6 +1023,7 @@ type
       protected
          function GetCaption : UnicodeString; override;
          function GetDescription : UnicodeString; override;
+         function  DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
       public
          constructor Create(const name : UnicodeString; aUnit : TSymbol);
@@ -1024,7 +1034,6 @@ type
 
          procedure InitData(const Data: TData; Offset: Integer); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         function  IsOfType(typSym : TTypeSymbol) : Boolean; override;
 
          function Parent : TInterfaceSymbol; inline;
          property MethodCount : Integer read FMethodCount;
@@ -1107,12 +1116,12 @@ type
    TClassOfSymbol = class sealed (TStructuredTypeMetaSymbol)
       protected
          function GetCaption : UnicodeString; override;
+         function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
       public
          constructor Create(const name : UnicodeString; typ : TClassSymbol);
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         function IsOfType(typSym : TTypeSymbol) : Boolean; override;
          function TypClassSymbol : TClassSymbol; inline;
    end;
 
@@ -1161,6 +1170,8 @@ type
 
          function AllocateVMTindex : Integer;
 
+         function  DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+
       public
          constructor Create(const name : UnicodeString; aUnit : TSymbol);
          destructor Destroy; override;
@@ -1182,7 +1193,6 @@ type
          procedure InitData(const Data: TData; Offset: Integer); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         function  IsOfType(typSym : TTypeSymbol) : Boolean; override;
 
          function  VMTMethod(index : Integer) : TMethodSymbol;
          function  VMTCount : Integer;
@@ -1248,6 +1258,7 @@ type
       protected
          function GetCaption : UnicodeString; override;
          function GetDescription : UnicodeString; override;
+         function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
       public
          constructor Create(const name : UnicodeString; baseType : TTypeSymbol);
@@ -1256,7 +1267,6 @@ type
          function DefaultValue : Integer;
          procedure InitData(const data : TData; offset : Integer); override;
          function BaseType : TTypeSymbol; override;
-         function IsOfType(typSym : TTypeSymbol) : Boolean; override;
 
          procedure AddElement(element : TElementSymbol);
 
@@ -2055,9 +2065,9 @@ begin
    else Result:=False;
 end;
 
-// IsOfType
+// DoIsOfType
 //
-function TInterfaceSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
+function TInterfaceSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    typSym:=typSym.UnAliasedType;
    if typSym is TInterfaceSymbol then
@@ -2261,7 +2271,9 @@ begin
    end else Result:='';
 
    if Typ<>nil then
-      Result:=nam+Result+': '+Typ.Name
+      if Typ.Name<>'' then
+         Result:=nam+Result+': '+Typ.Name
+      else Result:=nam+Result+': '+Typ.Caption
    else Result:=nam+Result;
 end;
 
@@ -2427,6 +2439,35 @@ begin
       end;
       Result:=True;
    end;
+end;
+
+// DoIsOfType
+//
+function TFuncSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
+var
+   i : Integer;
+   funcSym : TFuncSymbol;
+begin
+   Result:=    (typSym<>nil)
+           and (typSym is TFuncSymbol);
+   if not Result then Exit;
+
+   funcSym:=TFuncSymbol(typSym);
+   Result:=    (Kind=funcSym.Kind)
+           and (Params.Count=funcSym.Params.Count);
+   if not Result then Exit;
+
+   if Typ=nil then begin
+      if funcSym.Typ<>nil then
+         Exit(False)
+   end else if not Typ.IsCompatible(funcSym.Typ) then
+      Exit(False);
+
+   for i:=0 to Params.Count-1 do begin
+      if not Params[i].Typ.DoIsOfType(funcSym.Params[i].Typ) then
+         Exit(False);
+   end;
+   Result:=True;
 end;
 
 // IsType
@@ -3229,14 +3270,14 @@ begin
    else Result:=False;
 end;
 
-// IsOfType
+// DoIsOfType
 //
-function TClassSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
+function TClassSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=(Self=typSym.UnAliasedType);
    if Result or (Self=nil) then Exit;
    if Parent<>nil then
-      Result:=Parent.IsOfType(typSym.UnAliasedType)
+      Result:=Parent.DoIsOfType(typSym.UnAliasedType)
    else Result:=False;
 end;
 
@@ -3402,7 +3443,7 @@ begin
       for i:=0 to FOperators.Count-1 do begin
          Result:=TClassOperatorSymbol(FOperators.List[i]);
          if     (Result.TokenType=tokenType)
-            and paramType.IsOfType(Result.Typ) then Exit;
+            and paramType.DoIsOfType(Result.Typ) then Exit;
       end;
       for i:=0 to FOperators.Count-1 do begin
          Result:=TClassOperatorSymbol(FOperators.List[i]);
@@ -3517,12 +3558,12 @@ begin
             or ((typSym is TClassOfSymbol) and Typ.IsCompatible(typSym.Typ));
 end;
 
-// IsOfType
+// DoIsOfType
 //
-function TClassOfSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
+function TClassOfSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    if typSym is TClassOfSymbol then
-      Result:=Typ.IsOfType(typSym.Typ.UnAliasedType)
+      Result:=Typ.DoIsOfType(typSym.Typ.UnAliasedType)
    else Result:=False;
 end;
 
@@ -3688,11 +3729,11 @@ begin
    FConnectorType:=ConnectorType;
 end;
 
-// IsOfType
+// DoIsOfType
 //
-function TConnectorSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
+function TConnectorSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=   (inherited IsOfType(typSym))
+   Result:=   (inherited DoIsOfType(typSym))
            or (typSym is TBaseVariantSymbol);
 end;
 
@@ -4212,7 +4253,7 @@ begin
       Result:=FindSymbol(aName, cvPublic)
    else if scopeSym=StructSymbol then
       Result:=FindSymbol(aName, cvPrivate)
-   else if scopeSym.IsOfType(StructSymbol) then
+   else if scopeSym.DoIsOfType(StructSymbol) then
       Result:=FindSymbol(aName, cvProtected)
    else Result:=FindSymbol(aName, cvPublic);
 end;
@@ -4333,12 +4374,12 @@ begin
    Data[Offset]:=IScriptObj(TScriptDynamicArray.Create(Self));
 end;
 
-// IsOfType
+// DoIsOfType
 //
-function TDynamicArraySymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
+function TDynamicArraySymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=   (typSym=Self)
-           or ((typSym is TDynamicArraySymbol) and typSym.Typ.IsOfType(Typ));
+           or ((typSym is TDynamicArraySymbol) and typSym.Typ.DoIsOfType(Typ));
 end;
 
 // IsCompatible
@@ -4384,11 +4425,11 @@ begin
             and Typ.IsCompatible(typSym.Typ);
 end;
 
-// IsOfType
+// DoIsOfType
 //
-function TStaticArraySymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
+function TStaticArraySymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=inherited IsOfType(typSym);
+   Result:=inherited DoIsOfType(typSym);
    if not Result then begin
       if (typSym is TOpenArraySymbol) then
          Result:=(ElementCount=0) or (Typ.IsCompatible(TypSym.Typ));
@@ -4509,12 +4550,12 @@ begin
    Result:=Typ;
 end;
 
-// IsOfType
+// DoIsOfType
 //
-function TEnumerationSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
+function TEnumerationSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=   inherited IsOfType(typSym)
-           or BaseType.IsOfType(typSym);
+   Result:=   inherited DoIsOfType(typSym)
+           or BaseType.DoIsOfType(typSym);
 end;
 
 // AddElement
@@ -4595,11 +4636,11 @@ begin
    Result:=Typ.IsCompatible(typSym);
 end;
 
-// IsOfType
+// DoIsOfType
 //
-function TAliasSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
+function TAliasSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=Typ.IsOfType(typSym);
+   Result:=Typ.DoIsOfType(typSym);
 end;
 
 // ------------------
@@ -4623,6 +4664,15 @@ end;
 // IsOfType
 //
 function TTypeSymbol.IsOfType(typSym : TTypeSymbol) : Boolean;
+begin
+   if Self=nil then
+      Result:=(typSym=nil)
+   else Result:=(typSym<>nil) and DoIsOfType(typSym);
+end;
+
+// DoIsOfType
+//
+function TTypeSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=(Self=typSym.UnAliasedType);
 end;
