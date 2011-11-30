@@ -109,17 +109,19 @@ type
     constructor Create(Table: TSymbolTable);
   end;
 
-  TComConnectorCall = class(TInterfacedSelfObject, IUnknown, IConnectorCall)
-  private
-    FDispId: TDispId;
-    FIsInitialized: Boolean;
-    FMethodName: WideString;
-    FMethodType: Cardinal;
-  protected
-    function Call(Const Base: Variant; Args: TConnectorArgs): TData;
-  public
-    constructor Create(const MethodName: UnicodeString; const Params: TConnectorParamArray;
-      MethodType: Cardinal = DISPATCH_METHOD);
+   TComConnectorCall = class(TInterfacedSelfObject, IUnknown, IConnectorCall)
+      private
+         FDispId: TDispId;
+         FIsInitialized: Boolean;
+         FMethodName: WideString;
+         FMethodType: Cardinal;
+
+      protected
+         function Call(Const Base: Variant; Args: TConnectorArgs): TData;
+
+      public
+         constructor Create(const MethodName: UnicodeString; const Params: TConnectorParamArray;
+                            MethodType: Cardinal = DISPATCH_METHOD);
   end;
 
   TComConnectorMember = class(TInterfacedSelfObject, IUnknown, IConnectorMember)

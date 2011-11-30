@@ -100,6 +100,9 @@ type
       public
          FieldOne : TSimpleClass;
          FieldTwo : String;
+         FieldBool : Boolean;
+         FieldFloat : Double;
+         FieldInteger : Integer;
    end;
 
 // ------------------------------------------------------------------
@@ -512,6 +515,9 @@ begin
    obj:=TTestEnvironment.Create;
    obj.FieldOne:=TSimpleClass.Create(123);
    obj.FieldTwo:='Hello';
+   obj.FieldBool:=True;
+   obj.FieldFloat:=3.14;
+   obj.FieldInteger:=314;
    try
       enviro:=TRTTIEnvironment.Create;
       enviro.Environment:=obj;
@@ -519,7 +525,11 @@ begin
       try
          prog:=FCompiler.Compile( 'PrintLn(FieldOne.Value);'#13#10
                                  +'PrintLn(FieldTwo);'#13#10
-                                 +'PrintLn(FieldOne.ClassName());'#13#10);
+                                 +'PrintLn(FieldTwo[1]);'#13#10
+                                 +'PrintLn(FieldOne.ClassName());'#13#10
+                                 +'PrintLn(FieldBool);'#13#10
+                                 +'PrintLn(FieldFloat);'#13#10
+                                 +'PrintLn(FieldInteger*2);'#13#10);
          try
             CheckEquals('', prog.Msgs.AsInfo, 'compile');
 
@@ -527,7 +537,11 @@ begin
 
             CheckEquals('', exec.Msgs.AsInfo, 'exec');
 
-            CheckEquals('123'#13#10'Hello'#13#10'TSimpleClass'#13#10, exec.Result.ToString, 'result');
+            CheckEquals( '123'#13#10'Hello'#13#10'H'#13#10'TSimpleClass'#13#10
+                        +'True'#13#10
+                        +'3.14'#13#10
+                        +'628'#13#10
+                        , exec.Result.ToString, 'result');
          finally
             prog:=nil;
          end;

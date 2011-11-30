@@ -164,7 +164,7 @@ type
          procedure SetStaticSymbols(const Value: Boolean); // static symbols
          procedure InitUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                  operators : TOperators; UnitTable: TUnitSymbolTable); virtual;
-         procedure AddUnitSymbols(Table: TSymbolTable; operators : TOperators); virtual; abstract;
+         procedure AddUnitSymbols(table : TSymbolTable; operators : TOperators); virtual; abstract;
          property StaticSymbols : Boolean read FStaticSymbols write SetStaticSymbols;
          property StaticTable : IStaticSymbolTable read FStaticTable;
 

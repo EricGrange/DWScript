@@ -6121,7 +6121,7 @@ end;
 //
 function TConnectorCallExpr.AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType): Boolean;
 var
-   x : Integer;
+   i : Integer;
    typSym, paramTyp : TTypeSymbol;
    arg : TTypedExpr;
 begin
@@ -6130,11 +6130,11 @@ begin
       prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConnectorTooManyArguments, [FArgs.Count]);
 
    SetLength(FConnectorParams, FArgs.Count);
-   for x:=0 to FArgs.Count-1 do begin
-      arg:=TTypedExpr(FArgs.List[x]);
-      FConnectorParams[x].IsVarParam:=(arg is TDataExpr) and TDataExpr(arg).IsWritable
+   for i:=0 to FArgs.Count-1 do begin
+      arg:=TTypedExpr(FArgs.List[i]);
+      FConnectorParams[i].IsVarParam:=(arg is TDataExpr) and TDataExpr(arg).IsWritable
                                       and not (arg.Typ is TArraySymbol);
-      FConnectorParams[x].TypSym:=arg.Typ;
+      FConnectorParams[i].TypSym:=arg.Typ;
    end;
 
    if not connectorType.AcceptsParams(FConnectorParams) then begin
@@ -6156,19 +6156,18 @@ begin
    end;
 
    Result := Assigned(FConnectorCall);
-   if not Result then
-      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConnectorCall,
-                                          [FName, connectorType.ConnectorCaption]);
-
-   // Prepare the arguments for the method call
    if Result then begin
+      // Prepare the arguments for the method call
       SetLength(FConnectorArgs, FArgs.Count);
-      for x:=0 to FArgs.Count-1 do begin
-         paramTyp:=FConnectorParams[x].TypSym;
+      for i:=0 to FArgs.Count-1 do begin
+         paramTyp:=FConnectorParams[i].TypSym;
          if paramTyp<>nil then
-            SetLength(FConnectorArgs[x], paramTyp.Size);
+            SetLength(FConnectorArgs[i], paramTyp.Size);
       end;
-      FTyp := typSym;
+      FTyp:=typSym;
+   end else begin
+      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConnectorCall,
+                                           [FName, connectorType.ConnectorCaption])
    end;
 end;
 
