@@ -812,13 +812,13 @@ type
 
    IConnectorCall = interface (IGetSelf)
       ['{8D534D1B-4C6B-11D5-8DCB-0000216D9E86}']
-      function Call(const Base: Variant; Args: TConnectorArgs): TData;
+      function Call(const base : Variant; args : TConnectorArgs) : TData;
    end;
 
    IConnectorMember = interface (IGetSelf)
       ['{8D534D1C-4C6B-11D5-8DCB-0000216D9E86}']
-      function Read(const Base: Variant): TData;
-      procedure Write(const Base: Variant; const Data: TData);
+      function Read(const base : Variant) : TData;
+      procedure Write(const base : Variant; const data : TData);
    end;
 
    TConnectorParam = record
@@ -949,6 +949,8 @@ type
          procedure DoInheritFrom(ancestor : TStructuredTypeSymbol);
          function IsParentCompatible(typSym : TStructuredTypeSymbol) : Boolean;
 
+         procedure CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
+
       public
          constructor Create(const name : UnicodeString; aUnit : TSymbol);
          destructor Destroy; override;
@@ -1010,6 +1012,7 @@ type
          constructor Create(const name : UnicodeString; aUnit : TSymbol);
 
          procedure AddField(fieldSym : TFieldSymbol); override;
+         procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
          procedure InitData(const data : TData; offset : Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
@@ -1810,6 +1813,28 @@ begin
    Result:=False;
 end;
 
+// CheckMethodsImplemented
+//
+procedure TStructuredTypeSymbol.CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
+var
+   i : Integer;
+   methSym : TMethodSymbol;
+begin
+   for i:=0 to FMembers.Count-1 do begin
+      if FMembers[i] is TMethodSymbol then begin
+         methSym:=TMethodSymbol(FMembers[i]);
+         if not methSym.IsAbstract then begin
+            if Assigned(methSym.FExecutable) then
+               methSym.FExecutable.InitSymbol(FMembers[i])
+            else if not IsExternal then begin
+               msgs.AddCompilerErrorFmt((methSym as TSourceMethodSymbol).DeclarationPos, CPE_MethodNotImplemented,
+                                        [methSym.Name, methSym.StructSymbol.Caption]);
+            end;
+         end;
+      end;
+   end;
+end;
+
 // CreateMembersTable
 //
 function TStructuredTypeSymbol.CreateMembersTable : TMembersSymbolTable;
@@ -1950,6 +1975,13 @@ begin
    inherited;
    fieldSym.FOffset:=FSize;
    FSize:=FSize+fieldSym.Typ.Size;
+end;
+
+// Initialize
+//
+procedure TRecordSymbol.Initialize(const msgs : TdwsCompileMessageList);
+begin
+   CheckMethodsImplemented(msgs);
 end;
 
 // InitData
@@ -3218,9 +3250,6 @@ end;
 // Initialize
 //
 procedure TClassSymbol.Initialize(const msgs : TdwsCompileMessageList);
-var
-   i : Integer;
-   methSym : TMethodSymbol;
 begin
    // Check validity of the class declaration
    if IsForwarded then begin
@@ -3228,19 +3257,7 @@ begin
       Exit;
    end;
 
-   for i := 0 to FMembers.Count-1 do begin
-      if FMembers[i] is TMethodSymbol then begin
-         methSym:=TMethodSymbol(FMembers[i]);
-         if not methSym.IsAbstract then begin
-            if Assigned(methSym.FExecutable) then
-               methSym.FExecutable.InitSymbol(FMembers[i])
-            else if not IsExternal then begin
-               msgs.AddCompilerErrorFmt((methSym as TSourceMethodSymbol).DeclarationPos, CPE_MethodNotImplemented,
-                                        [methSym.Name, methSym.StructSymbol.Caption]);
-            end;
-         end;
-      end;
-   end;
+   CheckMethodsImplemented(msgs);
 end;
 
 // InheritFrom

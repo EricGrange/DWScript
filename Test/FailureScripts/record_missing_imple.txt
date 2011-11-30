@@ -1,0 +1,3 @@
+Syntax Error: "Field" is not a method of class "TMyRec" [line: 8, column: 18]
+Syntax Error: Method "Test" of class "record TMyRec" not implemented [line: 4, column: 17]
+Syntax Error: Method "Dummy" of class "record TMyRec" not implemented [line: 5, column: 16]
