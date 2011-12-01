@@ -158,7 +158,7 @@ type
 
          procedure RegisterCodeGen(expr : TExprBaseClass; codeGen : TdwsExprCodeGen);
          function  FindCodeGen(expr : TExprBase) : TdwsExprCodeGen;
-         function  FindSymbolAtStackAddr(stackAddr, level : Integer) : TDataSymbol;
+         function  FindSymbolAtStackAddr(stackAddr, level : Integer) : TDataSymbol; deprecated;
          function  SymbolMappedName(sym : TSymbol; scope : TdwsCodeGenSymbolScope) : String; virtual;
 
          procedure Compile(expr : TExprBase);

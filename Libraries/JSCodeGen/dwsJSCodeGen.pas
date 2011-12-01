@@ -1839,16 +1839,14 @@ begin
                   right:=TMagicIteratorFuncExpr(parent).Args[1];
                   if (right is TConstIntExpr) and (TConstIntExpr(right).Value=1) then
                      Exit // special case handled via ++ or --, no need to pass by ref
-                  else varSym:=FindSymbolAtStackAddr(TVarExpr(expr).StackAddr, Context.Level);
+                  else varSym:=TVarExpr(expr).DataSym; // FindSymbolAtStackAddr(TVarExpr(expr).StackAddr, Context.Level);
                end else begin
                   // else not supported yet
                   Exit;
                end;
             end else begin
                if funcSym.Params[i] is TVarParamSymbol then begin
-                  varSym:=FindSymbolAtStackAddr(TVarExpr(expr).StackAddr, Context.Level);
-//                  varSym:=FindSymbolAtStackAddr(TVarParamSymbol(funcSym.Params[i]).StackAddr
-//                                                +funcSym.ParamSize, Context.Level);
+                  varSym:=TVarExpr(expr).DataSym; // FindSymbolAtStackAddr(TVarExpr(expr).StackAddr, Context.Level);
                end else Exit;
             end;
          end else if (expr is TExitExpr) then begin
@@ -1880,7 +1878,7 @@ begin
       end else begin
          Assert((curExpr is TAssignExpr) or (curExpr is TInitDataExpr));
          expr:=curExpr.SubExpr[0] as TVarExpr;
-         varSym:=FindSymbolAtStackAddr(expr.StackAddr, Context.Level);
+         varSym:=expr.DataSym; // FindSymbolAtStackAddr(expr.StackAddr, Context.Level);
          FDeclaredLocalVars.Add(varSym);
       end;
    end;
@@ -2446,7 +2444,7 @@ var
    varExpr : TVarExpr;
 begin
    varExpr:=TVarExpr(expr);
-   Result:=codeGen.FindSymbolAtStackAddr(varExpr.StackAddr, codeGen.Context.Level);
+   Result:=varExpr.DataSym; // codeGen.FindSymbolAtStackAddr(varExpr.StackAddr, codeGen.Context.Level);
    if Result=nil then
       raise ECodeGenUnsupportedSymbol.CreateFmt('Var not found at StackAddr %d', [varExpr.StackAddr]);
 end;
@@ -2509,8 +2507,13 @@ end;
 // CodeGen
 //
 procedure TJSLazyParamExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   sym : TDataSymbol;
 begin
-   inherited;
+   sym:=TLazyParamExpr(expr).DataSym;
+   codeGen.WriteSymbolName(sym);
+   if IsLocalVarParam(codeGen, sym) then
+      codeGen.WriteString('.value');
    codeGen.WriteString('()');
 end;
 

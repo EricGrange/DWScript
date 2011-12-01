@@ -42,6 +42,7 @@ type
    TVarExpr = class (TDataExpr)
       protected
          FStackAddr : Integer;
+         FDataSym : TDataSymbol;
 
          function GetAddr(exec : TdwsExecution) : Integer; override;
          function GetData(exec : TdwsExecution) : TData; override;
@@ -65,6 +66,7 @@ type
          function SameVarAs(expr : TVarExpr) : Boolean;
 
          property StackAddr : Integer read FStackAddr;
+         property DataSym : TDataSymbol read FDataSym write FDataSym;
    end;
 
    TIntVarExpr = class (TVarExpr)
@@ -128,12 +130,15 @@ type
    // Encapsulates a lazy parameter
    TLazyParamExpr = class(TTypedExpr)
       private
+         FDataSym : TLazyParamSymbol;
          FStackAddr : Integer;
          FLevel : Integer;
 
       public
-         constructor Create(Prog: TdwsProgram; aTyp : TTypeSymbol; level, stackAddr : Integer);
+         constructor Create(Prog: TdwsProgram; dataSym : TLazyParamSymbol);
          function Eval(exec : TdwsExecution) : Variant; override;
+
+         property DataSym : TLazyParamSymbol read FDataSym write FDataSym;
          property StackAddr : Integer read FStackAddr write FStackAddr;
          property Level : Integer read FLevel write FLevel;
    end;
@@ -1707,6 +1712,7 @@ constructor TVarExpr.Create(prog : TdwsProgram; dataSym : TDataSymbol);
 begin
    inherited Create(prog, dataSym.Typ);
    FStackAddr:=dataSym.StackAddr;
+   FDataSym:=dataSym;
 end;
 
 // CreateTyped
@@ -2055,6 +2061,7 @@ constructor TVarParamExpr.CreateFromVarExpr(expr : TVarExpr);
 begin
    FTyp:=expr.Typ;
    FStackAddr:=expr.FStackAddr;
+   FDataSym:=expr.DataSym;
 end;
 
 // GetVarParamDataPointer
@@ -3440,11 +3447,12 @@ end;
 
 // Create
 //
-constructor TLazyParamExpr.Create(Prog: TdwsProgram; aTyp : TTypeSymbol; level, stackAddr : Integer);
+constructor TLazyParamExpr.Create(Prog: TdwsProgram; dataSym : TLazyParamSymbol);
 begin
-   FTyp:=aTyp;
-   FLevel:=level;
-   FStackAddr:=stackAddr;
+   FDataSym:=dataSym;
+   FTyp:=dataSym.Typ;
+   FLevel:=dataSym.Level;
+   FStackAddr:=dataSym.StackAddr;
 end;
 
 // Eval

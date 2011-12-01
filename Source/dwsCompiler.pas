@@ -6818,7 +6818,7 @@ end;
 //
 function TdwsCompiler.GetLazyParamExpr(dataSym: TLazyParamSymbol): TLazyParamExpr;
 begin
-   Result:=TLazyParamExpr.Create(FProg, dataSym.Typ, dataSym.Level, dataSym.StackAddr);
+   Result:=TLazyParamExpr.Create(FProg, dataSym);
 end;
 
 // GetVarParamExpr
