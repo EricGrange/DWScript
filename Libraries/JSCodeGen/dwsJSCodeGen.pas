@@ -460,7 +460,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..137] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..139] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -739,9 +739,25 @@ const
        Code : 'function IntToStr(i) { return i.toString() }'),
       (Name : 'IsDelimiter';
        Code : 'function IsDelimiter(d,s,i) { if ((i<=0)||(i>s.length)) return false; else return d.indexOf(s.charAt(i-1))>=0; }'),
+      (Name : 'IsPrime';
+       Code : 'function IsPrime(n) { if (n<=3) { return (n>=2) } else return ((n&1)&&(LeastFactor(n)==n)) }';
+       Dependency : 'LeastFactor' ),
       (Name : 'Lcm';
        Code : 'function Lcm(a, b) { var g=Gcd(a,b); return (g!=0)?(Math.floor(a/g)*b):0 }';
        Dependency : 'Gcd' ),
+      (Name : 'LeastFactor';
+       Code : 'function LeastFactor(n) {'#13#10
+               +#9'if (n<=1) return (n==1)?1:0;'#13#10
+               +#9'if (!(n&1)) return 2;'#13#10
+               +#9'if (!(n%3)) return 3;'#13#10
+               +#9'var lim=Math.sqrt(n);'#13#10
+               +#9'for (var i=5; i<=lim; i+=4) {'#13#10
+                  +#9#9'if (!(n%i)) return i;'#13#10
+                  +#9#9'i+=2;'#13#10
+                  +#9#9'if (!(n%i)) return i;'#13#10
+               +#9'}'#13#10
+               +'return n'#13#10
+               +'}'),
       (Name : 'Ln';
        Code : 'function Ln(v) { return Math.log(v) }'),
       (Name : 'LastDelimiter';

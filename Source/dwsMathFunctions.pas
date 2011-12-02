@@ -195,6 +195,14 @@ type
       function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
    end;
 
+   TIsPrimeFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
+   end;
+
+   TLeastFactorFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+   end;
+
    TRandomFunc = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
@@ -260,6 +268,43 @@ begin
       Result:=(a div g)*b
    else Result:=0;
 end;
+
+// LeastFactor
+//
+function LeastFactor(const n : Int64) : Int64;
+var
+   i, lim : Int64;
+begin
+   if n<=1 then begin
+      if n=1 then
+         Result:=1
+      else Result:=0
+   end else if (n and 1)=0 then
+      Result:=2
+   else if (n mod 3)=0 then
+      Result:=3
+   else begin
+      lim:=Round(Sqrt(n));
+      i:=5;
+      while i<=lim do begin
+         if (n mod i)=0 then Exit(i);
+         Inc(i, 2);
+         if (n mod i)=0 then Exit(i);
+         Inc(i, 4);
+      end;
+      Result:=n;
+   end;
+end;
+
+// IsPrime
+//
+function IsPrime(const n : Int64) : Boolean;
+begin
+   if n<=3 then
+      Result:=(n>=2)
+   else Result:=((n and 1)<>0) and (LeastFactor(n)=n);
+end;
+
 
 { TOddFunc }
 
@@ -582,6 +627,20 @@ begin
    Result:=Lcm(args.AsInteger[0], args.AsInteger[1]);
 end;
 
+{ TIsPrimeFunc }
+
+function TIsPrimeFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
+begin
+   Result:=IsPrime(args.AsInteger[0]);
+end;
+
+{ TLeastFactorFunc }
+
+function TLeastFactorFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+begin
+   Result:=LeastFactor(args.AsInteger[0]);
+end;
+
 { TRandomFunc }
 
 procedure TRandomFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
@@ -688,6 +747,8 @@ initialization
 
    RegisterInternalIntFunction(TGcdFunc, 'Gcd', ['a', cInteger, 'b', cInteger], True);
    RegisterInternalIntFunction(TLcmFunc, 'Lcm', ['a', cInteger, 'b', cInteger], True);
+   RegisterInternalBoolFunction(TIsPrimeFunc, 'IsPrime', ['n', cInteger], True);
+   RegisterInternalIntFunction(TLeastFactorFunc, 'LeastFactor', ['n', cInteger], True);
 
    RegisterInternalFloatFunction(TRandomFunc, 'Random', []);
    RegisterInternalIntFunction(TRandomIntFunc, 'RandomInt', ['range', cInteger]);
