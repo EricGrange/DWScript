@@ -187,6 +187,14 @@ type
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
 
+   TGcdFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+   end;
+
+   TLcmFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+   end;
+
    TRandomFunc = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
@@ -226,6 +234,32 @@ const // type constants
   cInteger = 'Integer';
   cString = 'String';
   cBoolean = 'Boolean';
+
+// Gcd
+//
+function Gcd(a, b : Int64) : Int64;
+var
+   r : Int64;
+begin
+   while b<>0 do begin
+      r:=a mod b;
+      a:=b;
+      b:=r;
+   end;
+   Result:=a;
+end;
+
+// Lcm
+//
+function Lcm(const a, b : Int64) : Int64;
+var
+   g : Int64;
+begin
+   g:=Gcd(a, b);
+   if g<>0 then
+      Result:=(a div g)*b
+   else Result:=0;
+end;
 
 { TOddFunc }
 
@@ -534,6 +568,20 @@ begin
    Result:=PI;
 end;
 
+{ TGcdFunc }
+
+function TGcdFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+begin
+   Result:=Gcd(args.AsInteger[0], args.AsInteger[1]);
+end;
+
+{ TLcmFunc }
+
+function TLcmFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+begin
+   Result:=Lcm(args.AsInteger[0], args.AsInteger[1]);
+end;
+
 { TRandomFunc }
 
 procedure TRandomFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
@@ -637,6 +685,10 @@ initialization
    RegisterInternalIntFunction(TClampIntFunc, 'ClampInt', ['v', cInteger, 'min', cInteger, 'max', cInteger], True);
 
    RegisterInternalFloatFunction(TPiFunc, 'Pi', [], True);
+
+   RegisterInternalIntFunction(TGcdFunc, 'Gcd', ['a', cInteger, 'b', cInteger], True);
+   RegisterInternalIntFunction(TLcmFunc, 'Lcm', ['a', cInteger, 'b', cInteger], True);
+
    RegisterInternalFloatFunction(TRandomFunc, 'Random', []);
    RegisterInternalIntFunction(TRandomIntFunc, 'RandomInt', ['range', cInteger]);
    RegisterInternalFunction(TRandomizeFunc, 'Randomize', [], '');

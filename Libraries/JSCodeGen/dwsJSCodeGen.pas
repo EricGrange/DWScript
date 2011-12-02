@@ -460,7 +460,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..134] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..137] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -677,6 +677,8 @@ const
               +#9'c-=0x10000;'#13#10
               +#9'return String.fromCharCode(0xD800+(c>>10))+String.fromCharCode(0xDC00+(c&0x3FF));'#13#10
               +'}'),
+      (Name : 'Clamp';
+       Code : 'function Clamp(v,mi,ma) { if (v<mi) return mi; else if (v>ma) return ma; else return v }'),
       (Name : 'ClampInt';
        Code : 'function ClampInt(v,mi,ma) { if (v<mi) return mi; else if (v>ma) return ma; else return v }'),
       (Name : 'CompareStr';
@@ -716,6 +718,8 @@ const
        Dependency : '!formatDateTime_js'),
       (Name : 'Frac';
        Code : 'function Frac(v) { return v-((v>0)?Math.floor(v):Math.ceil(v)) }'),
+      (Name : 'Gcd';
+       Code : 'function Gcd(a, b) { var r; while (b!=0) { r=a%b; a=b; b=r; } return a }'),
       (Name : 'HexToInt';
        Code : 'function HexToInt(v) { return parseInt(v,16) }'),
       (Name : 'Hypot';
@@ -735,6 +739,9 @@ const
        Code : 'function IntToStr(i) { return i.toString() }'),
       (Name : 'IsDelimiter';
        Code : 'function IsDelimiter(d,s,i) { if ((i<=0)||(i>s.length)) return false; else return d.indexOf(s.charAt(i-1))>=0; }'),
+      (Name : 'Lcm';
+       Code : 'function Lcm(a, b) { var g=Gcd(a,b); return (g!=0)?(Math.floor(a/g)*b):0 }';
+       Dependency : 'Gcd' ),
       (Name : 'Ln';
        Code : 'function Ln(v) { return Math.log(v) }'),
       (Name : 'LastDelimiter';
