@@ -120,11 +120,14 @@ type
       function AsInfo: UnicodeString; override;
    end;
 
-   TCompilerErrorMessage = class(TScriptMessage)
+   TErrorMessage = class(TScriptMessage)
+   end;
+
+   TCompilerErrorMessage = class(TErrorMessage)
       function AsInfo: UnicodeString; override;
    end;
 
-   TSyntaxErrorMessage = class(TScriptMessage)
+   TSyntaxErrorMessage = class(TErrorMessage)
       function AsInfo: UnicodeString; override;
    end;
 

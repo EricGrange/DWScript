@@ -85,7 +85,7 @@ type
       property UserObject : TObject read GetUserObject write SetUserObject;
    end;
 
-   TRuntimeErrorMessage = class(TScriptMessage)
+   TRuntimeErrorMessage = class(TErrorMessage)
       private
          FCallStack : TdwsExprLocationArray;
 
