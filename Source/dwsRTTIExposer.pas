@@ -75,6 +75,9 @@ type
          function ExposeRTTIRecord(rec : TRttiRecordType;
                                    const options : TdwsRTTIExposerOptions) : TdwsRecord;
 
+         function ExposeRTTIInterface(intf : TRttiInterfaceType;
+                                      const options : TdwsRTTIExposerOptions) : TdwsInterface;
+
          procedure DoStandardCleanUp(externalObject: TObject);
 
       public
@@ -286,6 +289,8 @@ begin
       Result:=ExposeRTTIEnumeration(TRttiEnumerationType(typ), options)
    else if typ is TRttiRecordType then
       Result:=ExposeRTTIRecord(TRttiRecordType(typ), options)
+   else if typ is TRttiInterfaceType then
+      Result:=ExposeRTTIInterface(TRttiInterfaceType(typ), options)
    else raise Exception.CreateFmt('Expose unsupported for %s', [typ.ClassName]);
 end;
 
@@ -544,6 +549,17 @@ begin
       member.DataType:=RTTITypeToScriptType(field.FieldType);
       member.Visibility:=RTTIVisibilityToVisibility(field.Visibility);
    end;
+end;
+
+// ExposeRTTIInterface
+//
+function TdwsRTTIExposer.ExposeRTTIInterface(intf : TRttiInterfaceType;
+                                      const options : TdwsRTTIExposerOptions) : TdwsInterface;
+begin
+   Result:=Interfaces.Add;
+   Result.Name:=dwsPublished.NameOf(intf);
+
+   // todo
 end;
 
 // DoStandardCleanUp

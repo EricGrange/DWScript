@@ -27,6 +27,7 @@ type
          procedure SimpleClass;
          procedure SimpleEnumeration;
          procedure SimpleRecord;
+         procedure SimpleInterface;
          procedure ExposeInstances;
 
          procedure ConnectSimpleClass;
@@ -105,6 +106,17 @@ type
          FieldInteger : Integer;
    end;
 
+   ISimpleInterface = interface
+      ['{4AF21B43-EE4E-4B24-836F-06DF97685315}']
+      function GetHello : String;
+      property Hello : String read GetHello;
+   end;
+
+   TSimpleInterface = class(TInterfacedObject, ISimpleInterface)
+      public
+         function GetHello : String;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -178,6 +190,17 @@ end;
 procedure TWrappedObject.Stuff(obj : TGenericWrapper<Integer>);
 begin
    //
+end;
+
+// ------------------
+// ------------------ TSimpleInterface ------------------
+// ------------------
+
+// GetHello
+//
+function TSimpleInterface.GetHello : String;
+begin
+   Result:='Hello World';
 end;
 
 // ------------------
@@ -315,8 +338,36 @@ begin
 
    exec:=prog.Execute;
 
-   CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
+   CheckEquals('', exec.Msgs.AsInfo, 'Exec Msgs');
    CheckEquals('1, 2, 3, 4, 2, 0, 0, 1, 1, -1, -1, 2, 2', exec.Result.ToString, 'Exec Result');
+end;
+
+// SimpleInterface
+//
+procedure TRTTIExposeTests.SimpleInterface;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+{   FUnit.ExposeRTTI(TypeInfo(ISimpleInterface));
+
+   prog:=FCompiler.Compile( 'var i : ISimpleInterface'#13#10
+                           +'PrintLn(i.Hello);'#13#10
+                           +'Print(i.GetHello);');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.Info.Vars['i'].Value:=IUnknown(nil);
+
+      exec.RunProgram(0);
+
+      CheckEquals('', exec.Msgs.AsInfo, 'Exec Msgs');
+      CheckEquals('1, 2, 3, 4, 2, 0, 0, 1, 1, -1, -1, 2, 2', exec.Result.ToString, 'Exec Result');
+   finally
+      exec.EndProgram;
+   end; }
 end;
 
 var
