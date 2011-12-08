@@ -1258,6 +1258,9 @@ begin
          FUnitSymbol.UnParentInterfaceTable;
 
       if finalToken=ttIMPLEMENTATION then begin
+         if coSymbolDictionary in Options then
+            if FUnitSymbol<>nil then
+               FSymbolDictionary.AddSymbol(FUnitSymbol, FTok.HotPos, [suImplementation]);
          if readingMain then begin
             unitBlock:=ReadRootBlock([], finalToken);
             FProg.InitExpr.AddStatement(unitBlock);
@@ -7208,6 +7211,10 @@ begin
                   rt.MoveParent(z, u);
             end;
          end;
+         if coSymbolDictionary in Options then begin
+            rSym:=FProg.UnitMains.Find(names[x]);
+            FSymbolDictionary.AddSymbol(rSym, posArray[x], [suReference]);
+         end;
       end;
    finally
       names.Free;
@@ -7225,6 +7232,9 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitExpected);
    if not FTok.TestDeleteNamePos(name, namePos) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+   if coSymbolDictionary in Options then
+      if FUnitSymbol<>nil then
+         FSymbolDictionary.AddSymbol(FUnitSymbol, namePos, [suDeclaration]);
    if not SameText(name, namePos.SourceFile.Name) then
       FMsgs.AddCompilerWarning(namePos, CPE_UnitNameDoesntMatch);
    if not FTok.TestDelete(ttSEMI) then
