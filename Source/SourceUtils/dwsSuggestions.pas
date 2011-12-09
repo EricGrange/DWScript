@@ -20,7 +20,7 @@ unit dwsSuggestions;
 interface
 
 uses Classes, SysUtils, dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsTokenizer,
-   dwsUnitSymbols;
+   dwsUnitSymbols, dwsPascalTokenizer;
 
 type
 
@@ -53,6 +53,10 @@ type
       function PartialToken : UnicodeString;
    end;
 
+   // Pseudo-symbol for suggestion purposes
+   TReservedWordSymbol = class(TSymbol)
+   end;
+
    TSimpleSymbolList = class;
 
    TProcAddToList = procedure (aList : TSimpleSymbolList) of object;
@@ -79,6 +83,7 @@ type
          FSourcePos : TScriptPos;
          FSourceFile : TSourceFile;
          FList : TSimpleSymbolList;
+         FCleanupList : TTightList;
          FListLookup : TObjectsLookup;
          FNamesLookup : TStringList;
          FPartialToken : UnicodeString;
@@ -103,6 +108,7 @@ type
          procedure AddToList(aList : TSimpleSymbolList);
          function IsContextSymbol(sym : TSymbol) : Boolean;
 
+         procedure AddReservedWords;
          procedure AddImmediateSuggestions;
          procedure AddContextSuggestions;
          procedure AddUnitSuggestions;
@@ -144,6 +150,8 @@ begin
    AddUnitSuggestions;
    AddGlobalSuggestions;
 
+   AddReservedWords;
+
    FNamesLookup.Clear;
    FListLookup.Clear;
 end;
@@ -155,6 +163,7 @@ begin
    FNamesLookup.Free;
    FListLookup.Free;
    FList.Free;
+   FCleanupList.Clean;
    inherited;
 end;
 
@@ -281,13 +290,50 @@ begin
    Result:=False;
 end;
 
+// AddReservedWords
+//
+procedure TdwsSuggestions.AddReservedWords;
+
+   function IsAlpha(const s : String) : Boolean;
+   var
+      i : Integer;
+   begin
+      for i:=1 to Length(s) do begin
+         case s[i] of
+            'a'..'z', 'A'..'Z' : ;
+         else
+            exit(False);
+         end;
+      end;
+      Result:=True;
+   end;
+
+var
+   t : TTokenType;
+   rws : TReservedWordSymbol;
+   list : TSimpleSymbolList;
+begin
+   list:=TSimpleSymbolList.Create;
+   try
+      for t in cPascalReservedNames do begin
+         if IsAlpha(cTokenStrings[t]) then begin
+            rws:=TReservedWordSymbol.Create(LowerCase(cTokenStrings[t]), nil);
+            list.Add(rws);
+            FCleanupList.Add(rws);
+         end;
+      end;
+      AddToList(list);
+   finally
+      list.Free;
+   end;
+end;
+
 // AddImmediateSuggestions
 //
 procedure TdwsSuggestions.AddImmediateSuggestions;
 var
    list : TSimpleSymbolList;
 begin
-
    list:=TSimpleSymbolList.Create;
    try
       if FPreviousSymbol<>nil then begin
