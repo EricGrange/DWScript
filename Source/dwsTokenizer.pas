@@ -150,6 +150,7 @@ type
       private
          FStates : TObjectList<TState>;
          FEOFTransition : TErrorTransition;
+         FReservedNames : TTokenTypes;
 
       protected
          function CreateState : TState;
@@ -162,6 +163,8 @@ type
          procedure PrepareStates;
 
          function CreateTokenizer(msgs : TdwsCompileMessageList) : TTokenizer;
+
+         property ReservedNames : TTokenTypes read FReservedNames write FReservedNames;
    end;
 
    TTokenizerSourceInfo = record
@@ -279,29 +282,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-const cReservedNames : TTokenTypes = [
-   ttStrVal, ttIntVal, ttFloatVal, ttDOT, ttDOTDOT,
-
-   ttPLUS, ttMINUS,
-   ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttDOLLAR,
-   ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
-   ttLESSLESS, ttGTRGTR,
-   ttSEMI, ttCOMMA, ttCOLON,
-   ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
-   ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN,
-   ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCRIGHT,
-
-   ttAND, ttARRAY, ttAS, ttBEGIN, ttBREAK,
-   ttCASE, ttCLASS, ttCONST, ttCONSTRUCTOR, ttCONTINUE,
-   ttDESTRUCTOR, ttDIV, ttDO, ttDOWNTO,
-   ttELSE, ttEND, ttEXCEPT, ttEXIT,
-   ttFALSE, ttFINALLY, ttFOR, ttFUNCTION, ttIF, ttIMPLEMENTATION, ttIMPLIES,
-   ttIN, ttINHERITED, ttINTERFACE, ttIS, ttMOD, ttNEW, ttNIL, ttNOT, ttOBJECT,
-   ttOF, ttOPERATOR, ttOR, ttPROCEDURE, ttPROPERTY, ttRAISE, ttRECORD,
-   ttREINTRODUCE, ttREPEAT, ttSET, ttSHL, ttSHR, ttTHEN, ttTRUE, ttTRY,
-   ttTYPE, ttUNIT, ttUNTIL, ttUSES, ttVAR, ttWHILE, ttXOR
-   ];
 
 const
    cFormatSettings : TFormatSettings = ( DecimalSeparator : '.' );
@@ -912,7 +892,7 @@ begin
    if not Assigned(FToken) then
       ReadToken;
    if Assigned(FToken) then begin
-      Result:=(FToken.FString<>'') and not (FToken.FTyp in cReservedNames);
+      Result:=(FToken.FString<>'') and not (FToken.FTyp in FRules.ReservedNames);
       FSource.FHotPos:=FToken.FScriptPos;
    end;
 end;

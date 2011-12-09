@@ -43,6 +43,30 @@ type
 
    end;
 
+const
+   cPascalReservedNames : TTokenTypes = [
+      ttStrVal, ttIntVal, ttFloatVal, ttDOT, ttDOTDOT,
+
+      ttPLUS, ttMINUS,
+      ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttDOLLAR,
+      ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
+      ttLESSLESS, ttGTRGTR,
+      ttSEMI, ttCOMMA, ttCOLON,
+      ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
+      ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN,
+      ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCRIGHT,
+
+      ttAND, ttARRAY, ttAS, ttBEGIN, ttBREAK,
+      ttCASE, ttCLASS, ttCONST, ttCONSTRUCTOR, ttCONTINUE,
+      ttDESTRUCTOR, ttDIV, ttDO, ttDOWNTO,
+      ttELSE, ttEND, ttEXCEPT, ttEXIT,
+      ttFALSE, ttFINALLY, ttFOR, ttFUNCTION, ttIF, ttIMPLEMENTATION, ttIMPLIES,
+      ttIN, ttINHERITED, ttINTERFACE, ttIS, ttMOD, ttNEW, ttNIL, ttNOT, ttOBJECT,
+      ttOF, ttOPERATOR, ttOR, ttPROCEDURE, ttPROPERTY, ttRAISE, ttRECORD,
+      ttREINTRODUCE, ttREPEAT, ttSET, ttSHL, ttSHR, ttTHEN, ttTRUE, ttTRY,
+      ttTYPE, ttUNIT, ttUNTIL, ttUSES, ttVAR, ttWHILE, ttXOR
+      ];
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -71,6 +95,8 @@ const
 constructor TPascalTokenizerStateRules.Create;
 begin
    inherited;
+
+   ReservedNames:=cPascalReservedNames;
 
    sStart:=CreateState;
    sComment:=CreateState;
