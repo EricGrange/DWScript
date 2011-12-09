@@ -47,7 +47,7 @@ type
    TCompilerCreateBaseVariantSymbol = function (table : TSystemSymbolTable) : TBaseVariantSymbol of object;
    TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
    TCompilerReadInstrSwitchEvent = function (compiler : TdwsCompiler) : Boolean of object;
-   TCompilerFindUnknownNameEvent = function (compiler : TdwsCompiler; const name : String) : TSymbol of object;
+   TCompilerFindUnknownNameEvent = function (compiler : TdwsCompiler; const name : UnicodeString) : TSymbol of object;
    TCompilerSectionChangedEvent = procedure (compiler : TdwsCompiler) of object;
    TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile; scriptType : TScriptSourceType) of object;
 
@@ -6374,9 +6374,10 @@ var
    name, scriptSource : UnicodeString;
    i : Integer;
    conditionalTrue : Boolean;
-   switchPos, condPos : TScriptPos;
+   switchPos, condPos, fileNamePos : TScriptPos;
    condExpr : TTypedExpr;
    sourceFile : TSourceFile;
+   includeSymbol : TIncludeSymbol;
 begin
    Result:=True;
    if Assigned(FOnReadInstrSwitch) then begin
@@ -6412,6 +6413,14 @@ begin
 
             name:=FTok.GetToken.FString;
             FTok.KillToken;
+
+            if coSymbolDictionary in Options then begin
+               includeSymbol:=TIncludeSymbol.Create(name);
+               FProg.Table.AddSymbol(includeSymbol);
+               fileNamePos:=FTok.HotPos;
+               fileNamePos.IncCol; // skip quote
+               FSymbolDictionary.AddSymbol(includeSymbol, fileNamePos, [suReference]);
+            end;
 
             if (switch=siIncludeOnce) then begin
                sourceFile:=FMainProg.GetSourceFile(name);

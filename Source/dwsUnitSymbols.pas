@@ -84,8 +84,13 @@ type
 
    TUnitSymbol = class;
 
+   // Invisible symbol for source code
+   TSourceSymbol = class (TSymbol)
+      public
+   end;
+
    // Invisible symbol for units (e. g. for TdwsUnit)
-   TUnitMainSymbol = class sealed (TSymbol)
+   TUnitMainSymbol = class sealed (TSourceSymbol)
       private
          FTable : TUnitSymbolTable;
          FInterfaceTable : TSymbolTable;
@@ -109,6 +114,12 @@ type
 
          property InterfaceTable : TSymbolTable read FInterfaceTable;
          property ImplementationTable : TUnitImplementationTable read FImplementationTable;
+   end;
+
+   // Invisible symbol for included source code
+   TIncludeSymbol = class (TSourceSymbol)
+      public
+         constructor Create(const fileName : String);
    end;
 
    // Front end for units, serves for explicit unit resolution "unitName.symbolName"
@@ -421,6 +432,17 @@ begin
    Result:=TUnitSymbol.Create(Self);
    aTable.AddSymbol(Result);
    aTable.AddParent(Table);
+end;
+
+// ------------------
+// ------------------ TIncludeSymbol ------------------
+// ------------------
+
+// Create
+//
+constructor TIncludeSymbol.Create(const fileName : String);
+begin
+   inherited Create('$i '+fileName, nil);
 end;
 
 // ------------------

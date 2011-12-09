@@ -226,8 +226,8 @@ type
          function TestDeleteNamePos(var aName : UnicodeString; var aPos : TScriptPos) : Boolean; inline;
 
          procedure SimulateToken(t : TTokenType);
-         procedure SimulateStringToken(const scriptPos : TScriptPos; const str : String);
-         procedure SimulateNameToken(const scriptPos : TScriptPos; const name : String);
+         procedure SimulateStringToken(const scriptPos : TScriptPos; const str : UnicodeString);
+         procedure SimulateNameToken(const scriptPos : TScriptPos; const name : UnicodeString);
 
          property PosPtr : PWideChar read FSource.FPosPtr;
          property Text : UnicodeString read FSource.FText;
@@ -943,7 +943,7 @@ end;
 
 // SimulateStringToken
 //
-procedure TTokenizer.SimulateStringToken(const scriptPos : TScriptPos; const str : String);
+procedure TTokenizer.SimulateStringToken(const scriptPos : TScriptPos; const str : UnicodeString);
 begin
    SimulateToken(ttStrVal);
    FToken.FString:=str;
@@ -952,7 +952,7 @@ end;
 
 // SimulateNameToken
 //
-procedure TTokenizer.SimulateNameToken(const scriptPos : TScriptPos; const name : String);
+procedure TTokenizer.SimulateNameToken(const scriptPos : TScriptPos; const name : UnicodeString);
 begin
    SimulateToken(ttNAME);
    FToken.FString:=name;
