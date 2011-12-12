@@ -1609,7 +1609,8 @@ type
 
    EdwsVariantTypeCastError = class(EVariantTypeCastError)
       public
-         constructor Create(const v : Variant; const desiredType, errMessage : UnicodeString);
+         constructor Create(const v : Variant; const desiredType : UnicodeString;
+                            originalException : Exception);
    end;
 
    EScriptStopped = class (EScriptError)
@@ -3153,7 +3154,7 @@ begin
       // workaround for RTL bug that will sometimes report a failed cast to Int64
       // as being a failed cast to Boolean
       on E : EVariantError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'Integer', E.ClassName);
+         raise EdwsVariantTypeCastError.Create(v, 'Integer', E);
       end else raise;
    end;
 end;
@@ -3170,7 +3171,7 @@ begin
    except
       // standardize RTL message
       on E : EVariantError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'Boolean', E.ClassName);
+         raise EdwsVariantTypeCastError.Create(v, 'Boolean', E);
       end else raise;
    end;
 end;
@@ -3187,7 +3188,7 @@ begin
    except
       // standardize RTL message
       on E : EVariantError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'Float', E.ClassName);
+         raise EdwsVariantTypeCastError.Create(v, 'Float', E);
       end else raise;
    end;
 end;
@@ -3204,7 +3205,7 @@ begin
    except
       // standardize RTL message
       on E : EVariantError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'String', E.ClassName);
+         raise EdwsVariantTypeCastError.Create(v, 'String', E);
       end else raise;
    end;
 end;
@@ -7400,10 +7401,11 @@ end;
 
 // Create
 //
-constructor EdwsVariantTypeCastError.Create(const v : Variant; const desiredType, errMessage : UnicodeString);
+constructor EdwsVariantTypeCastError.Create(const v : Variant;
+      const desiredType : UnicodeString; originalException : Exception);
 begin
    inherited CreateFmt(RTE_VariantCastFailed,
-                       [VarTypeAsText(VarType(v)), desiredType, errMessage])
+                       [VarTypeAsText(VarType(v)), desiredType, originalException.ClassName])
 
 end;
 
