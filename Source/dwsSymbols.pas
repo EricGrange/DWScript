@@ -1299,6 +1299,8 @@ type
          FExternalObject : TObject;
          FUserObject : TObject;
 
+         FRandSeed : UInt64;
+
       protected
          FProgramState : TProgramState;
 
@@ -1313,6 +1315,7 @@ type
 
          function GetUserObject : TObject; virtual;
          procedure SetUserObject(const value : TObject); virtual;
+         procedure SetRandSeed(const val : UInt64);
 
          function GetStack : TStack;
 
@@ -1335,6 +1338,8 @@ type
          function GetCallStack : TdwsExprLocationArray; virtual; abstract;
          function CallStackDepth : Integer; virtual; abstract;
 
+         function Random : Double;
+
          property LastScriptError : TExprBase read FLastScriptError;
          property LastScriptCallStack : TdwsExprLocationArray read FLastScriptCallStack;
          property ExceptionObjectStack : TSimpleStack<Variant> read FExceptionObjectStack;
@@ -1346,6 +1351,9 @@ type
          property IsDebugging : Boolean read FIsDebugging;
 
          property Msgs : TdwsRuntimeMessageList read GetMsgs;
+
+         // per-execution randseed
+         property RandSeed : UInt64 read FRandSeed write SetRandSeed;
 
          // specifies an external object for IInfo constructors, temporary
          property ExternalObject : TObject read FExternalObject write FExternalObject;
@@ -1430,6 +1438,9 @@ implementation
 // ------------------------------------------------------------------
 
 uses dwsExprs;
+
+const
+   cDefaultRandSeed : UInt64 = 88172645463325252;
 
 // ------------------
 // ------------------ TdwsExprLocation ------------------
@@ -4758,6 +4769,7 @@ begin
    FStack.Initialize(stackParams);
    FStack.Reset;
    FExceptionObjectStack:=TSimpleStack<Variant>.Create;
+   FRandSeed:=cDefaultRandSeed;
 end;
 
 // Destroy
@@ -4864,6 +4876,31 @@ end;
 function TdwsExecution.GetExecutionObject : TdwsExecution;
 begin
    Result:=Self;
+end;
+
+// Random
+//
+function TdwsExecution.Random : Double;
+// Marsaglia, George (July 2003). "Xorshift RNGs". Journal of Statistical Software Vol. 8 (Issue  14).
+const
+   cScale : Double = (2.0 / $10000 / $10000 / $10000 / $10000);  // 2^-63
+var
+   buf : Uint64;
+begin
+   buf:=FRandSeed xor (FRandSeed shl 13);
+   buf:=buf xor (buf shr 17);
+   buf:=buf xor (buf shl 5);
+   FRandSeed:=buf;
+   Result:=(buf shr 1)*cScale;
+end;
+
+// SetRandSeed
+//
+procedure TdwsExecution.SetRandSeed(const val : UInt64);
+begin
+   if val=0 then
+      FRandSeed:=cDefaultRandSeed
+   else FRandSeed:=val;
 end;
 
 // ------------------

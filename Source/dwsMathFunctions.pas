@@ -23,7 +23,7 @@ unit dwsMathFunctions;
 
 interface
 
-uses Classes, Math, dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs;
+uses Classes, Math, dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsXPlatform;
 
 type
 
@@ -304,7 +304,6 @@ begin
       Result:=(n>=2)
    else Result:=((n and 1)<>0) and (LeastFactor(n)=n);
 end;
-
 
 { TOddFunc }
 
@@ -645,49 +644,53 @@ end;
 
 procedure TRandomFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
 begin
-   Result:=Random;
+   Result:=args.Exec.Random;
 end;
 
 { TRandomIntFunc }
 
 function TRandomIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
-var
-   i : Int64;
 begin
-   i:=args.AsInteger[0];
-   if i<High(Integer) then
-      Result:=Random(i)
-   else Result:=Round(i*Random);
+   Result:=Trunc(args.Exec.Random*args.AsInteger[0]);
 end;
 
 { TRandomizeFunc }
 
-// DoEvalProc
-//
 procedure TRandomizeFunc.DoEvalProc(args : TExprBaseList);
+var
+   x : UInt64;
 begin
-   Randomize;
+   x:=GetSystemMilliseconds;
+   args.Exec.RandSeed:=(x shl 25) xor x;
 end;
 
 { TRandGFunc }
 
 procedure TRandGFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+var
+   x, y, n : Double;
 begin
-   Result:=RandG(args.AsFloat[0], args.AsFloat[1]);
+   // Marsaglia-Bray
+   repeat
+      x:=2*args.Exec.Random-1;
+      y:=2*args.Exec.Random-1;
+      n:=sqr(x)+sqr(y);
+   until n<1;
+   Result:=Sqrt(-2*Ln(n)/n)*x*args.AsFloat[1]+args.AsFloat[0];
 end;
 
 { TRandSeedFunc }
 
 function TRandSeedFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
 begin
-   Result:=RandSeed;
+   Result:=Int64(args.Exec.RandSeed);
 end;
 
 { TSetRandSeedFunc }
 
 procedure TSetRandSeedFunc.DoEvalProc(args : TExprBaseList);
 begin
-   RandSeed:=args.AsInteger[0];
+   args.Exec.RandSeed:=args.AsInteger[0];
 end;
 
 // ------------------------------------------------------------------
