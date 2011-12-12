@@ -4769,7 +4769,7 @@ begin
    FStack.Initialize(stackParams);
    FStack.Reset;
    FExceptionObjectStack:=TSimpleStack<Variant>.Create;
-   FRandSeed:=cDefaultRandSeed;
+   FRandSeed:=cDefaultRandSeed and System.Random($7FFFFFFF);
 end;
 
 // Destroy
