@@ -77,6 +77,9 @@ type
                                   const addToList : TProcAddToList = nil);
    end;
 
+   TdwsSuggestionsOption = (soNoReservedWords);
+   TdwsSuggestionsOptions = set of TdwsSuggestionsOption;
+
    TdwsSuggestions = class (TInterfacedObject, IdwsSuggestions)
       private
          FProg : IdwsProgram;
@@ -115,7 +118,8 @@ type
          procedure AddGlobalSuggestions;
 
       public
-         constructor Create(const prog : IdwsProgram; const sourcePos : TScriptPos);
+         constructor Create(const prog : IdwsProgram; const sourcePos : TScriptPos;
+                            const options : TdwsSuggestionsOptions = []);
          destructor Destroy; override;
    end;
 
@@ -133,7 +137,8 @@ implementation
 
 // Create
 //
-constructor TdwsSuggestions.Create(const prog : IdwsProgram; const sourcePos : TScriptPos);
+constructor TdwsSuggestions.Create(const prog : IdwsProgram; const sourcePos : TScriptPos;
+                                   const options : TdwsSuggestionsOptions = []);
 begin
    FProg:=prog;
    FSourcePos:=sourcePos;
@@ -150,7 +155,8 @@ begin
    AddUnitSuggestions;
    AddGlobalSuggestions;
 
-   AddReservedWords;
+   if not (soNoReservedWords in options) then
+      AddReservedWords;
 
    FNamesLookup.Clear;
    FListLookup.Clear;

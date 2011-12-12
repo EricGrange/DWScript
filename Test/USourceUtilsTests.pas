@@ -78,10 +78,12 @@ begin
 
    scriptPos.Col:=3;
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
-   CheckEquals(3, sugg.Count, 'column 3');
-   CheckEquals('printit', sugg.Code[0], 'sugg 3, 0');
-   CheckEquals('Print', sugg.Code[1], 'sugg 3, 1');
-   CheckEquals('PrintLn', sugg.Code[2], 'sugg 3, 2');
+   CheckEquals(5, sugg.Count, 'column 5');
+   CheckEquals('printit', sugg.Code[0], 'sugg 5, 0');
+   CheckEquals('Print', sugg.Code[1], 'sugg 5, 1');
+   CheckEquals('PrintLn', sugg.Code[2], 'sugg 5, 2');
+   CheckEquals('procedure', sugg.Code[3], 'sugg 5, 2');
+   CheckEquals('property', sugg.Code[4], 'sugg 5, 2');
 
    scriptPos.Col:=7;
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
@@ -101,7 +103,7 @@ var
 begin
    prog:=FCompiler.Compile(cBase+'TObject.Create');
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 10);
-   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
    CheckEquals(3, sugg.Count, 'TObject.Create 10');
    CheckEquals('ClassName', sugg.Code[0], 'TObject.Create 10,0');
    CheckEquals('ClassType', sugg.Code[1], 'TObject.Create 10,1');
@@ -187,7 +189,7 @@ begin
    CheckEquals('Pos', sugg.Code[1], 'sugg 11, 1');
 
    scriptPos.Col:=12;
-   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
    CheckEquals(0, sugg.Count, 'column 12');
 
    prog:=FCompiler.Compile('System.TObject');
@@ -199,7 +201,7 @@ begin
    CheckEquals('EAssertionFailed', sugg.Code[1], 'sugg 8, 1');
 
    scriptPos.Col:=9;
-   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
    CheckEquals(4, sugg.Count, 'column 9');
    CheckEquals('TClass', sugg.Code[0], 'sugg 9, 0');
    CheckEquals('TComplex', sugg.Code[1], 'sugg 9, 1');
@@ -218,13 +220,13 @@ begin
    prog:=FCompiler.Compile('TClass.');
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 1, 8);
-   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
    CheckTrue(sugg.Count=0, 'TClass.');
 
    prog:=FCompiler.Compile('var v : TClass;'#13#10'v.');
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
-   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
    CheckTrue(sugg.Count=3, 'v.');
    CheckEquals('ClassName', sugg.Code[0], 'v. 0');
    CheckEquals('ClassType', sugg.Code[1], 'v. 1');
