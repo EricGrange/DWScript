@@ -254,12 +254,16 @@ type
 
    // result = Inc(left, right)
    TIncVarFuncExpr = class(TMagicIteratorFuncExpr)
+      protected
+         function DoInc(exec : TdwsExecution) : PVarData;
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
    // result = Dec(left, right)
    TDecVarFuncExpr = class(TMagicIteratorFuncExpr)
+      protected
+         function DoDec(exec : TdwsExecution) : PVarData;
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -757,50 +761,60 @@ end;
 // ------------------ TIncVarFuncExpr ------------------
 // ------------------
 
-// EvalNoResult
+// DoInc
 //
-procedure TIncVarFuncExpr.EvalNoResult(exec : TdwsExecution);
+function TIncVarFuncExpr.DoInc(exec : TdwsExecution) : PVarData;
 var
    left : TDataExpr;
 begin
    left:=TDataExpr(FArgs.ExprBase[0]);
-   left.AssignValueAsInteger(exec, left.EvalAsInteger(exec)+FArgs.ExprBase[1].EvalAsInteger(exec));
+   Result:=@left.Data[exec][left.Addr[exec]];
+   Assert(Result.VType=varInt64);
+   Inc(Result.VInt64, FArgs.ExprBase[1].EvalAsInteger(exec));
+end;
+
+// EvalNoResult
+//
+procedure TIncVarFuncExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   DoInc(exec);
 end;
 
 // EvalAsInteger
 //
 function TIncVarFuncExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
-var
-   left : TDataExpr;
 begin
-   left:=TDataExpr(FArgs.ExprBase[0]);
-   Result:=left.EvalAsInteger(exec)+FArgs.ExprBase[1].EvalAsInteger(exec);
-   left.AssignValueAsInteger(exec, Result);
+   Result:=DoInc(exec).VInt64;
 end;
 
 // ------------------
 // ------------------ TDecVarFuncExpr ------------------
 // ------------------
 
-// EvalNoResult
+// DoDec
 //
-procedure TDecVarFuncExpr.EvalNoResult(exec : TdwsExecution);
+function TDecVarFuncExpr.DoDec(exec : TdwsExecution) : PVarData;
 var
    left : TDataExpr;
 begin
    left:=TDataExpr(FArgs.ExprBase[0]);
-   left.AssignValueAsInteger(exec, left.EvalAsInteger(exec)-FArgs.ExprBase[1].EvalAsInteger(exec));
+   Result:=@left.Data[exec][left.Addr[exec]];
+   Assert(Result.VType=varInt64);
+   Dec(Result.VInt64, FArgs.ExprBase[1].EvalAsInteger(exec));
+end;
+
+// EvalNoResult
+//
+procedure TDecVarFuncExpr.EvalNoResult(exec : TdwsExecution);
+begin
+   DoDec(exec);
 end;
 
 // EvalAsInteger
 //
 function TDecVarFuncExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
-var
-   left : TDataExpr;
 begin
-   left:=TDataExpr(FArgs.ExprBase[0]);
-   Result:=left.EvalAsInteger(exec)-FArgs.ExprBase[1].EvalAsInteger(exec);
-   left.AssignValueAsInteger(exec, Result);
+   Result:=DoDec(exec).VInt64;
 end;
 
 // ------------------
