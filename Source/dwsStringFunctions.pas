@@ -182,6 +182,10 @@ type
     function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
   end;
 
+  TFindDelimiterFunc = class(TInternalMagicIntFunction)
+    function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+  end;
+
   TQuotedStrFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
@@ -589,6 +593,13 @@ begin
    Result:=LastDelimiter(args.AsString[0], args.AsString[1]);
 end;
 
+{ TFindDelimiterFunc }
+
+function TFindDelimiterFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+begin
+   Result:=FindDelimiter(args.AsString[0], args.AsString[1], args.AsInteger[2]);
+end;
+
 { TQuotedStrFunc }
 
 // DoEvalAsString
@@ -836,6 +847,7 @@ initialization
 
    RegisterInternalBoolFunction(TIsDelimiterFunc, 'IsDelimiter', ['delims', cString, 'str', cString, 'index', cInteger], True);
    RegisterInternalIntFunction(TLastDelimiterFunc, 'LastDelimiter', ['delims', cString, 'str', cString], True);
+   RegisterInternalIntFunction(TFindDelimiterFunc, 'FindDelimiter', ['delims', cString, 'str', cString, 'startIndex=1', cInteger], True);
 
    RegisterInternalStringFunction(TQuotedStrFunc, 'QuotedStr', ['str', cString, 'quoteChar=', cString], True);
 

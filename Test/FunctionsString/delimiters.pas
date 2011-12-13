@@ -8,3 +8,8 @@ i:=LastDelimiter(',:', 'a:b;c:d');
 PrintLn(i);
 i:=LastDelimiter(',', 'a:b;c:d');
 PrintLn(i);
+
+i:=FindDelimiter(',:', 'a:b;c:d');
+PrintLn(i);
+i:=FindDelimiter(':,', 'a:b;c:d', 3);
+PrintLn(i);
