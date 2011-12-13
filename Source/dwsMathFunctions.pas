@@ -661,7 +661,7 @@ var
    x : UInt64;
 begin
    x:=GetSystemMilliseconds;
-   args.Exec.RandSeed:=(x shl 25) xor x;
+   args.Exec.RandSeed:=(x shl 40) xor x;
 end;
 
 { TRandGFunc }

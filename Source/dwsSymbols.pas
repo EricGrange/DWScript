@@ -4769,7 +4769,7 @@ begin
    FStack.Initialize(stackParams);
    FStack.Reset;
    FExceptionObjectStack:=TSimpleStack<Variant>.Create;
-   FRandSeed:=cDefaultRandSeed and System.Random($7FFFFFFF);
+   FRandSeed:=cDefaultRandSeed xor (UInt64(System.Random($7FFFFFFF)) shl 15);
 end;
 
 // Destroy
@@ -4887,9 +4887,13 @@ const
 var
    buf : Uint64;
 begin
-   buf:=FRandSeed xor (FRandSeed shl 13);
-   buf:=buf xor (buf shr 17);
-   buf:=buf xor (buf shl 5);
+   if FRandSeed=0 then
+      buf:=cDefaultRandSeed
+   else begin
+      buf:=FRandSeed xor (FRandSeed shl 13);
+      buf:=buf xor (buf shr 17);
+      buf:=buf xor (buf shl 5);
+   end;
    FRandSeed:=buf;
    Result:=(buf shr 1)*cScale;
 end;
