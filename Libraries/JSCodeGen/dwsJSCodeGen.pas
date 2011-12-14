@@ -460,7 +460,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..140] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..138] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -517,10 +517,6 @@ const
       (Name : '$CondFailed';
        Code : 'function $CondFailed(z,m) { throw Exception.Create$1($New(EAssertionFailed),z+m); }';
        Dependency : 'EAssertionFailed' ),
-      (Name : '$Inc';
-       Code : 'function $Inc(v,i) { v.value+=i; return v.value }'),
-      (Name : '$Dec';
-       Code : 'function $Dec(v,i) { v.value-=i; return v.value }'),
       (Name : '$Inh';
        Code : 'function $Inh(s,c) {'#13#10
                +#9'if (s===null) return false;'#13#10
@@ -3691,19 +3687,19 @@ end;
 procedure TJSIncVarFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TIncVarFuncExpr;
-   right : TExprBase;
+   left, right : TExprBase;
 begin
    e:=TIncVarFuncExpr(expr);
+   left:=e.Args[0];
    right:=e.Args[1];
    if (right is TConstIntExpr) and (TConstIntExpr(right).Value=1) then begin
       codeGen.WriteString('++');
-      codeGen.Compile(e.Args[0]);
+      codeGen.Compile(left);
    end else begin
-      codeGen.Dependencies.Add('$Inc');
-      codeGen.WriteString('$Inc(');
-      TJSVarExpr.CodeGenName(codeGen, TVarExpr(e.Args[0]));
-      codeGen.WriteString(',');
-      codeGen.Compile(e.Args[1]);
+      codeGen.WriteString('(');
+      codeGen.Compile(left);
+      codeGen.WriteString('+=');
+      codeGen.Compile(right);
       codeGen.WriteString(')');
    end;
 end;
@@ -3717,19 +3713,19 @@ end;
 procedure TJSDecVarFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TDecVarFuncExpr;
-   right : TExprBase;
+   left, right : TExprBase;
 begin
    e:=TDecVarFuncExpr(expr);
+   left:=e.Args[0];
    right:=e.Args[1];
    if (right is TConstIntExpr) and (TConstIntExpr(right).Value=1) then begin
       codeGen.WriteString('--');
-      codeGen.Compile(e.Args[0]);
+      codeGen.Compile(left);
    end else begin
-      codeGen.Dependencies.Add('$Dec');
-      codeGen.WriteString('$Dec(');
-      TJSVarExpr.CodeGenName(codeGen, TVarExpr(e.Args[0]));
-      codeGen.WriteString(',');
-      codeGen.Compile(e.Args[1]);
+      codeGen.WriteString('(');
+      codeGen.Compile(left);
+      codeGen.WriteString('-=');
+      codeGen.Compile(right);
       codeGen.WriteString(')');
    end;
 end;
