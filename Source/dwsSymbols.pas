@@ -636,7 +636,7 @@ type
 
    // TSelfSymbol
    //
-   TSelfSymbol = class(TDataSymbol)
+   TSelfSymbol = class sealed (TDataSymbol)
    end;
 
    TMethodKind = ( mkProcedure, mkFunction, mkConstructor, mkDestructor, mkMethod,

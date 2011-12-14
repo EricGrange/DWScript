@@ -1,2 +1,2 @@
-Syntax Error: Argument 0 expects type "String" instead of "Float" [line: 5, column: 1]
-Syntax Error: Argument 0 expects type "String" instead of "Float" [line: 7, column: 1]
+Syntax Error: Argument 0 expects type "String" instead of "Float" [line: 5, column: 5]
+Syntax Error: Argument 0 expects type "String" instead of "Float" [line: 7, column: 5]

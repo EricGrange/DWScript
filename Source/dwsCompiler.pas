@@ -358,7 +358,7 @@ type
                         codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
          function WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil) : TTypedExpr;
 
-         procedure ReadFuncArgs(funcExpr : TFuncExprBase);
+         procedure ReadFuncArgs(funcExpr : TFuncExprBase; var argPosArray : TScriptPosArray);
          procedure ReadArguments(const addArgProc : TAddArgProcedure;
                                  leftDelim, rightDelim : TTokenType;
                                  var argPosArray : TScriptPosArray;
@@ -2740,6 +2740,7 @@ var
    methSym : TMethodSymbol;
    classSym, parentSym : TClassSymbol;
    varExpr : TDataExpr;
+   argPosArray : TScriptPosArray;
 begin
    Result := nil;
    if not ((FProg is TdwsProcedure) and (TdwsProcedure(FProg).Func is TMethodSymbol)) then
@@ -2771,10 +2772,10 @@ begin
             raise;
          end;
          try
-            ReadFuncArgs(TFuncExpr(Result));
+            ReadFuncArgs(TFuncExpr(Result), argPosArray);
             if TMethodSymbol(sym).Kind = fkConstructor then
                (Result as TMethodExpr).Typ := (methSym.StructSymbol as TClassSymbol).Parent;
-            TFuncExpr(Result).TypeCheckArgs(FProg);
+            TFuncExpr(Result).TypeCheckArgs(FProg, argPosArray);
          except
             Result.Free;
             raise;
@@ -3322,7 +3323,7 @@ begin
       if isWrite then
          Result.AddArg(ReadExpr(propertySym.Typ));
 
-      Result.TypeCheckArgs(FProg);
+      Result.TypeCheckArgs(FProg, nil);
    except
       Result.Free;
       raise;
@@ -3606,7 +3607,7 @@ begin
       end else if Assigned(Sym.ReadFunc) then
          Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc)
       else FMsgs.AddCompilerStop(FTok.HotPos,CPE_WriteOnlyProperty); // ??
-      Result.TypeCheckArgs(FProg);
+      Result.TypeCheckArgs(FProg, nil);
    except
       Result.Free;
       raise;
@@ -4141,12 +4142,14 @@ end;
 // WrapUpFunctionRead
 //
 function TdwsCompiler.WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil) : TTypedExpr;
+var
+   argPosArray : TScriptPosArray;
 begin
    Result:=funcExpr;
    try
       if FTok.Test(ttBLEFT) then begin
-         ReadFuncArgs(funcExpr);
-         funcExpr.TypeCheckArgs(FProg);
+         ReadFuncArgs(funcExpr, argPosArray);
+         funcExpr.TypeCheckArgs(FProg, argPosArray);
       end else begin
          if    (    (expecting is TNilSymbol)
                 and (funcExpr is TFuncPtrExpr)
@@ -4157,7 +4160,7 @@ begin
                FMsgs.AddCompilerError(funcExpr.Pos, CPE_LocalFunctionAsDelegate);
             Result:=TFuncRefExpr.Create(FProg, funcExpr);
          end else begin
-            funcExpr.TypeCheckArgs(FProg);
+            funcExpr.TypeCheckArgs(FProg, nil);
          end;
       end;
    except
@@ -4182,9 +4185,7 @@ end;
 
 // ReadFuncArgs
 //
-procedure TdwsCompiler.ReadFuncArgs(funcExpr : TFuncExprBase);
-var
-   argPosArray : TScriptPosArray;
+procedure TdwsCompiler.ReadFuncArgs(funcExpr : TFuncExprBase; var argPosArray : TScriptPosArray);
 begin
    ReadArguments(funcExpr.AddArg, ttBLEFT, ttBRIGHT, argPosArray, funcExpr.ExpectedArg);
 end;
@@ -4562,6 +4563,7 @@ var
    hotPos : TScriptPos;
    typedExpr : TTypedExpr;
    baseExpr : TDataExpr;
+   argPosArray : TScriptPosArray;
 begin
    baseExpr:=nil;
    classSym:=nil;
@@ -4630,9 +4632,9 @@ begin
       raise;
    end;
    try
-      ReadFuncArgs(TFuncExpr(Result));
+      ReadFuncArgs(TFuncExpr(Result), argPosArray);
       (Result as TMethodExpr).Typ:=classSym;
-      TFuncExpr(Result).TypeCheckArgs(FProg);
+      TFuncExpr(Result).TypeCheckArgs(FProg, argPosArray);
    except
       Result.Free;
       raise;
@@ -5861,6 +5863,7 @@ var
    elementType : TTypeSymbol;
    classOpSymbol : TClassOperatorSymbol;
    classOpExpr : TFuncExpr;
+   argPosArray : TScriptPosArray;
 begin
    hotPos:=FTok.HotPos;
 
@@ -5914,7 +5917,7 @@ begin
                setExpr:=nil;
                classOpExpr.AddArg(left);
                left:=nil;
-               classOpExpr.TypeCheckArgs(FProg);
+               classOpExpr.TypeCheckArgs(FProg, argPosArray);
             except
                classOpExpr.Free;
                raise;
@@ -7324,7 +7327,7 @@ begin
                classOpExpr:=GetMethodExpr(classOpSymbol.UsesSym, left, rkObjRef, scriptPos, False);
                try
                   classOpExpr.AddArg(right);
-                  classOpExpr.TypeCheckArgs(FProg);
+                  classOpExpr.TypeCheckArgs(FProg, nil);
                except
                   classOpExpr.Free;
                   raise;
@@ -7455,7 +7458,7 @@ begin
          funcExpr:=GetFuncExpr(op.FuncSym, False);
          funcExpr.AddArg(aLeft);
          funcExpr.AddArg(aRight);
-         funcExpr.TypeCheckArgs(FProg);
+         funcExpr.TypeCheckArgs(FProg, nil);
          if Optimize then
             Result:=funcExpr.OptimizeToTypedExpr(FProg, FExec)
          else Result:=funcExpr;

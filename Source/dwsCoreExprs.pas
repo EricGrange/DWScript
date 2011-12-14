@@ -113,9 +113,13 @@ type
    end;
 
    TObjectVarExpr = class (TVarExpr)
-      protected
       public
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+   end;
+
+   TSelfVarExpr = class (TVarExpr)
+      public
+         function IsWritable : Boolean; override;
    end;
 
    TVarParentExpr = class(TVarExpr)
@@ -1730,6 +1734,8 @@ begin
       Result:=TStrVarExpr.Create(prog, dataSym)
    else if typ.IsOfType(prog.TypBoolean) then
       Result:=TBoolVarExpr.Create(prog, dataSym)
+   else if dataSym.ClassType=TSelfSymbol then
+      Result:=TSelfVarExpr.Create(prog, dataSym)
    else if (typ is TClassSymbol) or (typ is TDynamicArraySymbol) then
       Result:=TObjectVarExpr.Create(prog, dataSym)
    else Result:=TVarExpr.Create(prog, dataSym);
@@ -2030,6 +2036,17 @@ type
    PUnknown = ^IUnknown;
 begin
    exec.Stack.ReadInterfaceValue(exec.Stack.BasePointer + FStackAddr, PUnknown(@Result)^);
+end;
+
+// ------------------
+// ------------------ TSelfVarExpr ------------------
+// ------------------
+
+// IsWritable
+//
+function TSelfVarExpr.IsWritable : Boolean;
+begin
+   Result:=False;
 end;
 
 // ------------------

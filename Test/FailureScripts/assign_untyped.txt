@@ -1,4 +1,4 @@
 Syntax Error: Assignment's right-side-argument has no return type! [line: 5, column: 7]
 Syntax Error: Assignment's right-side-argument has no return type! [line: 9, column: 2]
 Syntax Error: Can't assign a value to the left-side argument! [line: 10, column: 6]
-Syntax Error: Argument 0 expects type "Variant" [line: 12, column: 1]
+Syntax Error: Argument 0 expects type "Variant" [line: 12, column: 9]

@@ -821,7 +821,7 @@ type
          procedure AddArg(arg : TTypedExpr); virtual; abstract;
          procedure ClearArgs;
          function ExpectedArg : TParamSymbol; virtual; abstract;
-         procedure TypeCheckArgs(prog : TdwsProgram); virtual;
+         procedure TypeCheckArgs(prog : TdwsProgram; const argPosArray : TScriptPosArray);
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function IsConstant : Boolean; override;
 
@@ -3671,7 +3671,7 @@ end;
 
 // TypeCheckArgs
 //
-procedure TFuncExprBase.TypeCheckArgs(prog : TdwsProgram);
+procedure TFuncExprBase.TypeCheckArgs(prog : TdwsProgram; const argPosArray : TScriptPosArray);
 var
    arg : TTypedExpr;
    x, paramCount, nbParamsToCheck : Integer;
@@ -3679,6 +3679,7 @@ var
    argTyp : TSymbol;
    initialErrorCount : Integer;
    tooManyArguments, tooFewArguments : Boolean;
+   argPos : TScriptPos;
 begin
    paramCount:=FFunc.Params.Count;
 
@@ -3713,6 +3714,9 @@ begin
    for x:=0 to nbParamsToCheck-1 do begin
       arg:=TTypedExpr(FArgs.ExprBase[x]);
       paramSymbol:=TParamSymbol(FFunc.Params[x]);
+      if x<Length(argPosArray) then
+         argPos:=argPosArray[x]
+      else argPos:=Self.Pos;
 
       if arg is TArrayConstantExpr then
          TArrayConstantExpr(arg).Prepare(Prog, paramSymbol.Typ.Typ);
@@ -3720,23 +3724,23 @@ begin
       argTyp:=arg.Typ;
       // Wrap-convert arguments if necessary and possible
       if paramSymbol.ClassType<>TVarParamSymbol then begin
-         arg:=TConvExpr.WrapWithConvCast(prog, Pos, paramSymbol.Typ, arg, False);
+         arg:=TConvExpr.WrapWithConvCast(prog, argPos, paramSymbol.Typ, arg, False);
       end;
       FArgs.ExprBase[x]:=arg;
 
       if argTyp=nil then begin
-         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType,
+         prog.CompileMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType,
                                               [x, paramSymbol.Typ.Caption]);
          continue;
       end;
       if not paramSymbol.Typ.IsCompatible(arg.Typ) then begin
-         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long,
+         prog.CompileMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType_Long,
                                               [x, paramSymbol.Typ.Caption, arg.Typ.Caption]);
          continue;
       end;
       if paramSymbol.ClassType=TVarParamSymbol then begin
          if not paramSymbol.Typ.IsOfType(arg.Typ) then
-            prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_WrongArgumentType_Long,
+            prog.CompileMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType_Long,
                                                  [x, paramSymbol.Typ.Caption, argTyp.Caption]);
          if arg is TDataExpr then begin
             // Record methods ignore the IsWritable constraints, as in Delphi
@@ -3744,8 +3748,8 @@ begin
                and (   (x>0)
                     or (not (FuncSym is TMethodSymbol))
                     or (not (TMethodSymbol(FuncSym).StructSymbol is TRecordSymbol))) then
-               prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
-         end else prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConstVarParam, [x, paramSymbol.Name]);
+               prog.CompileMsgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [x, paramSymbol.Name]);
+         end else prog.CompileMsgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [x, paramSymbol.Name]);
       end;
 
    end;
