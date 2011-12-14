@@ -460,7 +460,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..139] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..140] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -718,6 +718,8 @@ const
        Dependency : '!formatDateTime_js'),
       (Name : 'Frac';
        Code : 'function Frac(v) { return v-((v>0)?Math.floor(v):Math.ceil(v)) }'),
+      (Name : 'FindDelimiter';
+       Code : 'function FindDelimiter(d,s,x) { var n=d.length,r=ns=s.length,i,p; for (i=0;i<n;i++) { p=s.indexOf(d.charAt(i),x-1); if (p>=0&&p<r) r=p; } return (r==ns)?-1:r+1; }'),
       (Name : 'Gcd';
        Code : 'function Gcd(a, b) { var r; while (b!=0) { r=a%b; a=b; b=r; } return a }'),
       (Name : 'HexToInt';
