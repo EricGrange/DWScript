@@ -1043,6 +1043,7 @@ begin
    RegisterCodeGen(TAssignArrayConstantExpr, TdwsExprGenericCodeGen.Create([0, '=', 1, ';'], True));
 
    RegisterCodeGen(TVarExpr,              TJSVarExpr.Create);
+   RegisterCodeGen(TSelfVarExpr,          TJSVarExpr.Create);
    RegisterCodeGen(TVarParentExpr,        TJSVarParentExpr.Create);
    RegisterCodeGen(TVarParamExpr,         TJSVarParamExpr.Create);
    RegisterCodeGen(TVarParamParentExpr,   TJSVarParamParentExpr.Create);
