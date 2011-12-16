@@ -1,0 +1,6 @@
+Syntax Error: Argument 0 expects type "Integer" instead of "TMyObj" [line: 21, column: 9]
+Syntax Error: Argument 0 (v) cannot be passed as Var-parameter [line: 23, column: 9]
+Syntax Error: Invalid Instruction - function or assignment expected [line: 24, column: 11]
+Syntax Error: Argument 0 (v) cannot be passed as Var-parameter [line: 24, column: 9]
+Syntax Error: Invalid Instruction - function or assignment expected [line: 25, column: 11]
+Syntax Error: Argument 0 (v) cannot be passed as Var-parameter [line: 25, column: 9]

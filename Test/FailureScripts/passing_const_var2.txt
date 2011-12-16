@@ -1,0 +1,4 @@
+Syntax Error: Argument 0 (v) cannot be passed as Var-parameter [line: 10, column: 9]
+Syntax Error: Argument 0 (v) cannot be passed as Var-parameter [line: 11, column: 9]
+Syntax Error: Argument 0 (v) cannot be passed as Var-parameter [line: 12, column: 9]
+Syntax Error: Argument 0 (v) cannot be passed as Var-parameter [line: 16, column: 12]
