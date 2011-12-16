@@ -52,7 +52,7 @@ type
    PNoResultExprList = ^TNoResultExprList;
    PNoResultExpr = ^TNoResultExpr;
 
-   TScriptSourceType = (stMain, stUnit);
+   TScriptSourceType = (stMain, stUnit, stRecompile);
 
   // A specific ScriptSource entry. The text of the script contained in that unit.
   TScriptSourceItem = class

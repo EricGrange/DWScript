@@ -1,0 +1,10 @@
+uses Dotted.Abc, Dotted, Dotted.Hello.World;
+
+PrintLn(Abc);
+PrintLn(Dotted.Abc.Abc);
+
+DoDotted;
+Dotted.DoDotted;
+
+PrintLn('>'+HelloWorld);
+PrintLn(Dotted.Hello.World.HelloWorld+'!');

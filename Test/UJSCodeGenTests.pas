@@ -262,7 +262,6 @@ begin
                     +#13#10
                     +'} catch(e) {$testResult.splice(0,0,"Errors >>>>\r\nRuntime Error: "+((e.ClassType)?e.FMessage:e.message)+"\r\nResult >>>>\r\n")};'#13#10
                     +'alert($testResult.join(""));';
-
             FLastJSResult:='*no result*';
             FConsole:='';
             FChromium.Browser.MainFrame.ExecuteJavaScript(jsCode, 'about:blank', 0);

@@ -119,20 +119,26 @@ type
    // Invisible symbol for included source code
    TIncludeSymbol = class (TSourceSymbol)
       public
-         constructor Create(const fileName : String);
+         constructor Create(const fileName : UnicodeString);
    end;
 
    // Front end for units, serves for explicit unit resolution "unitName.symbolName"
-   TUnitSymbol = class abstract (TTypeSymbol)
+   TUnitSymbol = class sealed (TTypeSymbol)
       private
          FMain : TUnitMainSymbol;
+         FNameSpace : TFastCompareTextList;
 
       public
-         constructor Create(mainSymbol : TUnitMainSymbol);
+         constructor Create(mainSymbol : TUnitMainSymbol; const name : UnicodeString);
+         destructor Destroy; override;
 
          procedure InitData(const data : TData; offset : Integer); override;
 
-         property Main : TUnitMainSymbol read FMain;
+         procedure RegisterNameSpaceUnit(unitSymbol : TUnitSymbol);
+         function  FindNameSpaceUnit(const name : UnicodeString) : TUnitSymbol;
+         function  PossibleNameSpace(const name : UnicodeString) : Boolean;
+
+         property Main : TUnitMainSymbol read FMain write FMain;
 
          function Table : TUnitSymbolTable; inline;
          function InterfaceTable : TSymbolTable; inline;
@@ -428,9 +434,33 @@ end;
 // ReferenceInSymbolTable
 //
 function TUnitMainSymbol.ReferenceInSymbolTable(aTable : TSymbolTable) : TUnitSymbol;
+var
+   p : Integer;
+   nameSpace : TUnitSymbol;
+   part : String;
 begin
-   Result:=TUnitSymbol.Create(Self);
-   aTable.AddSymbol(Result);
+   p:=Pos('.', Name);
+   if p>0 then
+      part:=Copy(Name, 1, p-1)
+   else part:=Name;
+
+   nameSpace:=TUnitSymbol(aTable.FindLocal(part, TUnitSymbol));
+   if nameSpace=nil then begin
+      nameSpace:=TUnitSymbol.Create(nil, part);
+      aTable.AddSymbol(nameSpace);
+   end;
+
+   if p>0 then begin
+      Result:=TUnitSymbol.Create(Self, Name);
+      aTable.AddSymbol(Result);
+      nameSpace.RegisterNameSpaceUnit(Result);
+   end else begin
+      Result:=nameSpace;
+      if not ((nameSpace.Main=nil) or (nameSpace.Main=Self)) then
+         Assert((nameSpace.Main=nil) or (nameSpace.Main=Self));
+      nameSpace.Main:=Self;
+   end;
+
    aTable.AddParent(Table);
 end;
 
@@ -440,7 +470,7 @@ end;
 
 // Create
 //
-constructor TIncludeSymbol.Create(const fileName : String);
+constructor TIncludeSymbol.Create(const fileName : UnicodeString);
 begin
    inherited Create('$i '+fileName, nil);
 end;
@@ -515,10 +545,18 @@ end;
 
 // Create
 //
-constructor TUnitSymbol.Create(mainSymbol : TUnitMainSymbol);
+constructor TUnitSymbol.Create(mainSymbol : TUnitMainSymbol; const name : UnicodeString);
 begin
-   inherited Create(mainSymbol.Name, nil);
+   inherited Create(name, nil);
    FMain:=mainSymbol;
+end;
+
+// Destroy
+//
+destructor TUnitSymbol.Destroy;
+begin
+   inherited;
+   FNameSpace.Free;
 end;
 
 // InitData
@@ -528,25 +566,74 @@ begin
    // nothing
 end;
 
+// RegisterNameSpaceUnit
+//
+procedure TUnitSymbol.RegisterNameSpaceUnit(unitSymbol : TUnitSymbol);
+begin
+   if FNameSpace=nil then begin
+      FNameSpace:=TFastCompareTextList.Create;
+      FNameSpace.Sorted:=True;
+   end;
+   FNameSpace.AddObject(unitSymbol.Name, unitSymbol);
+end;
+
+// FindNameSpaceUnit
+//
+function TUnitSymbol.FindNameSpaceUnit(const name : UnicodeString) : TUnitSymbol;
+var
+   i : Integer;
+begin
+   Result:=nil;
+   if (Main<>nil) and UnicodeSameText(name, Self.Name) then
+      Result:=Self
+   else if FNameSpace<>nil then begin
+      i:=FNameSpace.IndexOf(name);
+      if i>=0 then
+         Result:=TUnitSymbol(FNameSpace.Objects[i]);
+   end;
+end;
+
+// PossibleNameSpace
+//
+function TUnitSymbol.PossibleNameSpace(const name : UnicodeString) : Boolean;
+var
+   i : Integer;
+   candidate : String;
+begin
+   if FNameSpace=nil then Exit(False);
+   if FNameSpace.Find(name, i) then Exit(True);
+   if Cardinal(i)>=Cardinal(FNameSpace.Count) then Exit(False);
+   candidate:=FNameSpace[i];
+   Result:=    (Length(candidate)>Length(name))
+           and (StrIBeginsWith(candidate, name))
+           and (candidate[Length(name)+1]='.');
+end;
+
 // Table
 //
 function TUnitSymbol.Table : TUnitSymbolTable;
 begin
-   Result:=Main.Table;
+   if Main<>nil then
+      Result:=Main.Table
+   else Result:=nil;
 end;
 
 // InterfaceTable
 //
 function TUnitSymbol.InterfaceTable : TSymbolTable;
 begin
-   Result:=Main.InterfaceTable;
+   if Main<>nil then
+      Result:=Main.InterfaceTable
+   else Result:=nil;
 end;
 
 // ImplementationTable
 //
 function TUnitSymbol.ImplementationTable : TUnitImplementationTable;
 begin
-   Result:=Main.ImplementationTable;
+   if Main<>nil then
+      Result:=Main.ImplementationTable
+   else Result:=nil;
 end;
 
 // ------------------

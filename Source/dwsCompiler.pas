@@ -384,7 +384,8 @@ type
          function ReadConstName(constSym : TConstSymbol; isWrite: Boolean) : TProgramExpr;
          function ReadNameOld(isWrite: Boolean): TTypedExpr;
          function ReadNameInherited(isWrite: Boolean): TProgramExpr;
-         procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray);
+         procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray;
+                                allowDots : Boolean = False);
          function  ReadNew(isWrite : Boolean) : TProgramExpr;
          function  ReadNewArray(elementTyp : TTypeSymbol; isWrite : Boolean) : TProgramExpr;
          procedure ReadArrayParams(ArrayIndices: TSymbolTable);
@@ -1018,7 +1019,7 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitCircularReference);
 
    Result:=TUnitSymbol(FProg.Table.FindSymbol(unitName, cvMagic, TUnitSymbol));
-   if Result<>nil then begin
+   if (Result<>nil) and (Result.Main<>nil) then begin
       // ignore multiple requests (for now)
       Exit;
    end;
@@ -1113,7 +1114,7 @@ begin
       FUnitSection:=secMixed;
 
       // Start compilation
-      FProg.Expr := ReadScript(sourceFile, stMain);
+      FProg.Expr := ReadScript(sourceFile, stRecompile);
 
       // Initialize symbol table
       FProg.Table.Initialize(FMsgs);
@@ -2795,6 +2796,29 @@ end;
 // ReadName
 //
 function TdwsCompiler.ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
+
+   function ResolveUnitNameSpace(unitPrefix : TUnitSymbol) : TUnitSymbol;
+   var
+      dottedName, nextDottedName : String;
+   begin
+      if not FTok.Test(ttDOT) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotExpected);
+
+      dottedName:=unitPrefix.Name;
+      while FTok.TestDelete(ttDOT) do begin
+         if not FTok.TestName then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+         nextDottedName:=dottedName+'.'+FTok.GetToken.FString;
+         if not unitPrefix.PossibleNameSpace(nextDottedName) then Break;
+         dottedName:=nextDottedName;
+         FTok.KillToken;
+      end;
+
+      Result:=unitPrefix.FindNameSpaceUnit(dottedName);
+      if Result=nil then
+         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownName, [dottedName]);
+   end;
+
 var
    sym : TSymbol;
    nameToken : TToken;
@@ -2855,13 +2879,11 @@ begin
 
       if baseType<>nil then begin
 
-         // Unit prefix found
+         // Namespace prefix found
          if baseType.ClassType=TUnitSymbol then begin
 
-            if not FTok.TestDelete(ttDOT) then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotExpected);
-            if not FTok.TestName then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+            baseType:=ResolveUnitNameSpace(TUnitSymbol(baseType));
+
             namePos := FTok.HotPos;   // reuse token pos variable
             sym := TUnitSymbol(baseType).Table.FindLocal(FTok.GetToken.FString);
 
@@ -2874,6 +2896,7 @@ begin
             // Already added symbol usage of the unit. Now add for the unit's specified symbol.
             if coSymbolDictionary in FOptions then
                FSymbolDictionary.AddSymbolReference(sym, namePos, isWrite);
+
          end;
 
       end;
@@ -4535,7 +4558,8 @@ end;
 
 // ReadNameList
 //
-procedure TdwsCompiler.ReadNameList(names : TStrings; var posArray : TScriptPosArray);
+procedure TdwsCompiler.ReadNameList(names : TStrings; var posArray : TScriptPosArray;
+                                    allowDots : Boolean = False);
 begin
    names.Clear;
    repeat
@@ -4548,6 +4572,13 @@ begin
       names.Add(FTok.GetToken.FString);
       CheckSpecialName(FTok.GetToken.FString);
       FTok.KillToken;
+
+      while allowDots and FTok.TestDelete(ttDOT) do begin
+         if not FTok.TestName then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+         names[names.Count-1]:=names[names.Count-1]+'.'+FTok.GetToken.FString;
+         FTok.KillToken;
+      end;
    until not FTok.TestDelete(ttCOMMA);
 end;
 
@@ -7188,7 +7219,7 @@ begin
       if coContextMap in FOptions then
          FContextMap.OpenContext(FTok.HotPos, nil, ttUSES);
 
-      ReadNameList(names, posArray);
+      ReadNameList(names, posArray, True);
 
       if coContextMap in FOptions then
          FContextMap.CloseContext(FTok.HotPos);
@@ -7205,7 +7236,9 @@ begin
          z:=-1;
          while (y<rt.Count) do begin
             rSym:=rt[y];
-            if (rSym.ClassType=TUnitSymbol) and UnicodeSameText(rSym.Name, names[x]) then begin
+            if     (rSym.ClassType=TUnitSymbol)
+               and (TUnitSymbol(rSym).Main<>nil)
+               and UnicodeSameText(rSym.Name, names[x]) then begin
                z:=rt.IndexOfParent(TUnitSymbol(rSym).Table);
                if z>=u then begin // uses A,B,A,C => uses A,B,C
                   rt.MoveParent(z,u);
@@ -7237,18 +7270,27 @@ end;
 //
 procedure TdwsCompiler.ReadUnitHeader;
 var
-   name : UnicodeString;
-   namePos : TScriptPos;
+   name, part : UnicodeString;
+   namePos, partPos : TScriptPos;
 begin
    if not FTok.TestDelete(ttUNIT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitExpected);
+
    if not FTok.TestDeleteNamePos(name, namePos) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+
+   while FTok.TestDelete(ttDOT) do begin
+      if not FTok.TestDeleteNamePos(part, partPos) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+      name:=name+'.'+part;
+   end;
+
    if coSymbolDictionary in Options then
       if FUnitSymbol<>nil then
          FSymbolDictionary.AddSymbol(FUnitSymbol, namePos, [suDeclaration]);
    if not SameText(name, namePos.SourceFile.Name) then
       FMsgs.AddCompilerWarning(namePos, CPE_UnitNameDoesntMatch);
+
    if not FTok.TestDelete(ttSEMI) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
    if FTok.TestDelete(ttINTERFACE) then begin
