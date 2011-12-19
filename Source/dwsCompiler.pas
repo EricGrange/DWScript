@@ -50,6 +50,7 @@ type
    TCompilerFindUnknownNameEvent = function (compiler : TdwsCompiler; const name : UnicodeString) : TSymbol of object;
    TCompilerSectionChangedEvent = procedure (compiler : TdwsCompiler) of object;
    TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile; scriptType : TScriptSourceType) of object;
+   TCompilerGetDefaultEnvironmentEvent = function : IdwsEnvironment of object;
 
    TdwsFilter = class;
 
@@ -288,6 +289,7 @@ type
          FOnFindUnknownName : TCompilerFindUnknownNameEvent;
          FOnSectionChanged : TCompilerSectionChangedEvent;
          FOnReadScript : TCompilerReadScriptEvent;
+         FOnGetDefaultEnvironment : TCompilerGetDefaultEnvironmentEvent;
 
          function Optimize : Boolean;
 
@@ -506,6 +508,7 @@ type
          property OnFindUnknownName : TCompilerFindUnknownNameEvent read FOnFindUnknownName write FOnFindUnknownName;
          property OnSectionChanged : TCompilerSectionChangedEvent read FOnSectionChanged write FOnSectionChanged;
          property OnReadScript : TCompilerReadScriptEvent read FOnReadScript write FOnReadScript;
+         property OnGetDefaultEnvironment : TCompilerGetDefaultEnvironmentEvent read FOnGetDefaultEnvironment write FOnGetDefaultEnvironment;
    end;
 
 // ------------------------------------------------------------------
@@ -947,6 +950,11 @@ begin
       // Initialize symbol table
       FProg.Table.Initialize(FMsgs);
       FProg.UnitMains.Initialize(FMsgs);
+
+      // setup environment
+      if Assigned(FOnGetDefaultEnvironment) then
+         FMainProg.DefaultEnvironment:=FOnGetDefaultEnvironment;
+
    except
       on e: ECompileError do
          ;
@@ -6230,39 +6238,42 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
 end;
 
+// ReadArrayParams
+//
 procedure TdwsCompiler.ReadArrayParams(ArrayIndices: TSymbolTable);
 var
-  x : Integer;
-  names : TStringList;
-  typSym : TTypeSymbol;
-  isVarParam, isConstParam : Boolean;
-  posArray : TScriptPosArray;
+   i : Integer;
+   names : TStringList;
+   typSym : TTypeSymbol;
+   isVarParam, isConstParam : Boolean;
+   posArray : TScriptPosArray;
 begin
-   if FTok.TestDelete(ttARIGHT) then
-     FMsgs.AddCompilerStop(FTok.HotPos, CPE_ParamsExpected);
+   if FTok.TestDelete(ttARIGHT) then begin
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_ParamsExpected);
+      Exit;
+   end;
 
    // At least one argument was found
-   names := TStringList.Create;
+   names:=TStringList.Create;
    try
       repeat
-         isVarParam := FTok.TestDelete(ttVAR);
-
+         isVarParam:=FTok.TestDelete(ttVAR);
          if not isVarParam then
-            isConstParam := FTok.TestDelete(ttCONST)
-         else isConstParam := False;
+            isConstParam:=FTok.TestDelete(ttCONST)
+         else isConstParam:= False;
 
          ReadNameList(names, posArray);
 
          if not FTok.TestDelete(ttCOLON) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected)
          else begin
-            typSym := ReadType('', tcParameter);
-            for x := 0 to names.Count - 1 do begin
+            typSym:=ReadType('', tcParameter);
+            for i:=0 to names.Count-1 do begin
                if isVarParam then
-                  ArrayIndices.AddSymbol(TVarParamSymbol.Create(names[x], typSym))
+                  ArrayIndices.AddSymbol(TVarParamSymbol.Create(names[i], typSym))
                else if isConstParam then
-                  ArrayIndices.AddSymbol(TConstParamSymbol.Create(names[x], typSym))
-               else ArrayIndices.AddSymbol(TParamSymbol.Create(names[x], typSym));
+                  ArrayIndices.AddSymbol(TConstParamSymbol.Create(names[i], typSym))
+               else ArrayIndices.AddSymbol(TParamSymbol.Create(names[i], typSym));
             end;
          end;
       until not FTok.TestDelete(ttSEMI);

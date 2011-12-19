@@ -1197,7 +1197,7 @@ end;
 
 function TDelphiWebScript.GetVersion: UnicodeString;
 begin
-  Result := '2.2';
+  Result := '2.3';
 end;
 
 procedure TDelphiWebScript.SetVersion(const Value: UnicodeString);
@@ -1231,6 +1231,7 @@ begin
       FCompiler.OnFindUnknownName:=FExtensions.FindUnknownName;
       FCompiler.OnSectionChanged:=FExtensions.SectionChanged;
       FCompiler.OnReadScript:=FExtensions.ReadScript;
+      FCompiler.OnGetDefaultEnvironment:=FExtensions.DefaultEnvironment;
    end else begin
       FCompiler.OnCreateBaseVariantSymbol:=nil;
       FCompiler.OnReadInstr:=nil;
@@ -1238,6 +1239,7 @@ begin
       FCompiler.OnFindUnknownName:=nil;
       FCompiler.OnSectionChanged:=nil;
       FCompiler.OnReadScript:=nil;
+      FCompiler.OnGetDefaultEnvironment:=nil;
    end;
 end;
 

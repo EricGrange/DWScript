@@ -37,6 +37,7 @@ type
          procedure SectionChanged(compiler : TdwsCompiler); virtual;
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                               scriptType : TScriptSourceType); virtual;
+         procedure GetDefaultEnvironment(var enviro : IdwsEnvironment); virtual;
    end;
 
    // TdwsLanguageExtensionAggregator
@@ -62,6 +63,8 @@ type
          procedure SectionChanged(compiler : TdwsCompiler); override;
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                               scriptType : TScriptSourceType); override;
+         procedure GetDefaultEnvironment(var enviro : IdwsEnvironment); override;
+         function DefaultEnvironment : IdwsEnvironment;
    end;
 
 // ------------------------------------------------------------------
@@ -124,6 +127,13 @@ end;
 //
 procedure TdwsLanguageExtension.ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                                            scriptType : TScriptSourceType);
+begin
+   // nothing
+end;
+
+// GetDefaultEnvironment
+//
+procedure TdwsLanguageExtension.GetDefaultEnvironment(var enviro : IdwsEnvironment);
 begin
    // nothing
 end;
@@ -262,6 +272,27 @@ begin
       ext:=TdwsLanguageExtension(FList.List[i]);
       ext.ReadScript(compiler, sourceFile, scriptType);
    end;
+end;
+
+// GetDefaultEnvironment
+//
+procedure TdwsLanguageExtensionAggregator.GetDefaultEnvironment(var enviro : IdwsEnvironment);
+var
+   i : Integer;
+   ext : TdwsLanguageExtension;
+begin
+   for i:=0 to FList.Count-1 do begin
+      ext:=TdwsLanguageExtension(FList.List[i]);
+      ext.GetDefaultEnvironment(enviro);
+   end;
+end;
+
+// DefaultEnvironment
+//
+function TdwsLanguageExtensionAggregator.DefaultEnvironment : IdwsEnvironment;
+begin
+   Result:=nil;
+   GetDefaultEnvironment(Result);
 end;
 
 end.

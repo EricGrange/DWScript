@@ -66,20 +66,35 @@ type
    TRTTIEnvironmentOption = (eoAllowFieldWrite);
    TRTTIEnvironmentOptions = set of TRTTIEnvironmentOption;
 
+   // can be attached to an execution by way of UserObject
    TRTTIEnvironment = class(TdwsLanguageExtension)
       private
-         FEnvironment : TValue;
+         FDefaultEnvironment : TValue;
          FRttiType : TRttiType;
          FOptions : TRTTIEnvironmentOptions;
 
       protected
-         procedure SetEnvironment(const val : TValue);
+         procedure SetDefaultEnvironment(const val : TValue);
 
       public
          function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; override;
+         procedure GetDefaultEnvironment(var enviro : IdwsEnvironment); override;
 
-         property Environment : TValue read FEnvironment write SetEnvironment;
+         property DefaultEnvironment : TValue read FDefaultEnvironment write SetDefaultEnvironment;
+
          property Options : TRTTIEnvironmentOptions read FOptions write FOptions;
+   end;
+
+   TRTTIRuntimeEnvironment = class (TInterfacedSelfObject, IdwsEnvironment)
+      private
+         FValue : TValue;
+
+      public
+         constructor Create(const value : TValue);
+
+         class function Instance(exec : TdwsProgramExecution) : Pointer; static;
+
+         property Value : TValue read FValue write FValue;
    end;
 
    TRTTIEnvironmentCallable = class(TInterfacedSelfObject, IExecutable, ICallable)
@@ -382,6 +397,7 @@ var
    connSym : TRTTIConnectorSymbol;
    rttiProp : TRttiProperty;
    rttiField : TRttiField;
+   rttiMeth : TRttiMethod;
    rttiType : TRttiType;
 begin
    connSym:=TRTTIConnectorSymbol(FTable.FindSymbol(SYS_RTTIVARIANT, cvMagic, TRTTIConnectorSymbol));
@@ -394,7 +410,13 @@ begin
          rttiField:=FRttiType.GetField(memberName);
          if rttiField<>nil then
             rttiType:=rttiField.FieldType
-         else Exit(nil);
+         else begin
+            rttiMeth:=FRttiType.GetMethod(memberName);
+            if (rttiMeth<>nil) and (Length(rttiMeth.GetParameters)=0) then begin
+               rttiType:=rttiMeth.ReturnType;
+               if rttiType=nil then Exit;
+            end else Exit;
+         end
       end;
       typSym:=RTTITypeToTypeSymbol(rttiType, FTable, connSym)
    end else typSym:=connSym;
@@ -513,6 +535,7 @@ var
    instance : TdwsRTTIVariant;
    field : TRttiField;
    prop : TRttiProperty;
+   meth : TRttiMethod;
 begin
    instance:=IUnknown(base) as TdwsRTTIVariant;
    SetLength(Result, 1);
@@ -528,8 +551,13 @@ begin
                                               [instance.FRTTIType.Name, FMemberName]);
          ValueToVariant(prop.GetValue(instance.FInstance), Result[0])
       end else begin
-         raise EdwsRTTIException.CreateFmt('"%s" does not have member "%s" exposed via RTTI',
-                                           [instance.FRTTIType.Name, FMemberName]);
+         meth:=instance.FRTTIType.GetMethod(FMemberName);
+         if (meth<>nil) and (meth.ReturnType<>nil) and (Length(meth.GetParameters)=0) then begin
+            if meth.IsClassMethod then
+               ValueToVariant(meth.Invoke(TObject(instance.FInstance).ClassType, []), Result[0])
+            else ValueToVariant(meth.Invoke(instance.FInstance, []), Result[0])
+         end else raise EdwsRTTIException.CreateFmt('"%s" does not have member "%s" exposed via RTTI',
+                                                    [instance.FRTTIType.Name, FMemberName]);
       end;
    end;
 end;
@@ -702,11 +730,19 @@ begin
    end;
 end;
 
-// SetEnvironment
+// GetDefaultEnvironment
 //
-procedure TRTTIEnvironment.SetEnvironment(const val : TValue);
+procedure TRTTIEnvironment.GetDefaultEnvironment(var enviro : IdwsEnvironment);
 begin
-   FEnvironment:=val;
+   Assert(enviro=nil);
+   enviro:=TRTTIRuntimeEnvironment.Create(FDefaultEnvironment);
+end;
+
+// SetDefaultEnvironment
+//
+procedure TRTTIEnvironment.SetDefaultEnvironment(const val : TValue);
+begin
+   FDefaultEnvironment:=val;
    if val.IsEmpty then
       FRttiType:=nil
    else FRttiType:=vRTTIContext.GetType(val.TypeInfo);
@@ -762,7 +798,7 @@ var
 begin
    info:=exec.AcquireProgramInfo(func);
    try
-      ValueToVariant(FField.GetValue(FEnvironment.FEnvironment.AsObject), result);
+      ValueToVariant(FField.GetValue(TRTTIRuntimeEnvironment.Instance(exec)), result);
       info.ResultAsVariant:=result;
    finally
       exec.ReleaseProgramInfo(info);
@@ -781,7 +817,8 @@ var
 begin
    info:=exec.AcquireProgramInfo(func);
    try
-      FField.SetValue(FEnvironment.FEnvironment.AsObject, TValue.FromVariant(info.ParamAsVariant[0]));
+      FField.SetValue(TRTTIRuntimeEnvironment.Instance(exec),
+                      TValue.FromVariant(info.ParamAsVariant[0]));
    finally
       exec.ReleaseProgramInfo(info);
    end;
@@ -812,7 +849,7 @@ var
 begin
    info:=exec.AcquireProgramInfo(func);
    try
-      ValueToVariant(FProp.GetValue(FEnvironment.FEnvironment.AsObject), result);
+      ValueToVariant(FProp.GetValue(TRTTIRuntimeEnvironment.Instance(exec)), result);
       info.ResultAsVariant:=result;
    finally
       exec.ReleaseProgramInfo(info);
@@ -831,10 +868,30 @@ var
 begin
    info:=exec.AcquireProgramInfo(func);
    try
-      FProp.SetValue(FEnvironment.FEnvironment.AsObject, TValue.FromVariant(info.ParamAsVariant[0]));
+      FProp.SetValue(TRTTIRuntimeEnvironment.Instance(exec),
+                     TValue.FromVariant(info.ParamAsVariant[0]));
    finally
       exec.ReleaseProgramInfo(info);
    end;
+end;
+
+// ------------------
+// ------------------ TRTTIRuntimeEnvironment ------------------
+// ------------------
+
+// Create
+//
+constructor TRTTIRuntimeEnvironment.Create(const value : TValue);
+begin
+   inherited Create;
+   FValue:=value;
+end;
+
+// Instance
+//
+class function TRTTIRuntimeEnvironment.Instance(exec : TdwsProgramExecution) : Pointer;
+begin
+   Result:=(exec.Environment.GetSelf as TRTTIRuntimeEnvironment).Value.AsObject;
 end;
 
 end.

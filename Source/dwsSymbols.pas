@@ -64,7 +64,7 @@ type
 
    TProgramState = (psUndefined, psReadyToRun, psRunning, psRunningStopped, psTerminated);
 
-   IdwsExecution = interface
+   IdwsExecution = interface (IGetSelf)
       ['{8F2D1D7E-9954-4391-B919-86EF1EE21C8C}']
       function GetMsgs : TdwsRuntimeMessageList;
       function  GetDebugger : IDebugger;

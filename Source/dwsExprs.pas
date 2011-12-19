@@ -306,6 +306,11 @@ type
          destructor Destroy; override;
    end;
 
+   // Attached and owned by its program execution
+   IdwsEnvironment = interface (IGetSelf)
+      ['{CCAA438D-76F4-49C2-A3A2-82445BC2976A}']
+   end;
+
    TProgramInfo = class;
 
    IdwsProgramExecution = interface (IdwsExecution)
@@ -314,6 +319,8 @@ type
       function GetResult : TdwsResult;
       function GetObjectCount : Integer;
       function GetProg : IdwsProgram;
+      function GetEnvironment : IdwsEnvironment;
+      procedure SetEnvironment(const env : IdwsEnvironment);
 
       procedure Execute(aTimeoutMilliSeconds : Integer = 0); overload;
       procedure ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0); overload;
@@ -328,6 +335,7 @@ type
       property Info : TProgramInfo read GetInfo;
       property Result : TdwsResult read GetResult;
       property ObjectCount : Integer read GetObjectCount;
+      property Environment : IdwsEnvironment read GetEnvironment write SetEnvironment;
    end;
 
    IdwsProgram = interface
@@ -380,6 +388,7 @@ type
          FParameters : TData;
          FResult : TdwsResult;
          FFileSystem : IdwsFileSystem;
+         FEnvironment : IdwsEnvironment;
 
          FMsgs : TdwsRuntimeMessageList;
 
@@ -391,6 +400,8 @@ type
          procedure DestroyScriptObj(const scriptObj: IScriptObj);
 
          function GetMsgs : TdwsRuntimeMessageList; override;
+         function GetEnvironment : IdwsEnvironment;
+         procedure SetEnvironment(const val : IdwsEnvironment);
 
          // for interface only, script exprs use direct properties
          function GetProg : IdwsProgram;
@@ -433,6 +444,7 @@ type
          property Parameters : TData read FParameters;
          property Result : TdwsResult read FResult;
          property FileSystem : IdwsFileSystem read FFileSystem;
+         property Environment : IdwsEnvironment read GetEnvironment write SetEnvironment;
 
          property ObjectCount : Integer read FObjectCount;
    end;
@@ -527,6 +539,8 @@ type
          FLineCount : Integer;
          FCompiler : TObject;
 
+         FDefaultEnvironment : IdwsEnvironment;
+
       protected
          function GetConditionalDefines : IAutoStrings;
          function GetDefaultUserObject : TObject;
@@ -579,6 +593,7 @@ type
          property SourceList : TScriptSourceList read FSourceList;
          property LineCount : Integer read FLineCount write FLineCount;
 
+         property DefaultEnvironment : IdwsEnvironment read FDefaultEnvironment write FDefaultEnvironment;
          property DefaultUserObject : TObject read FDefaultUserObject write FDefaultUserObject;
    end;
 
@@ -1935,6 +1950,7 @@ begin
    FProgInfoPool.Free;
    FResult.Free;
    FMsgs.Free;
+   FEnvironment:=nil;
 
    FProg._Release;
    inherited;
@@ -2357,6 +2373,20 @@ begin
    Result:=FMsgs;
 end;
 
+// GetEnvironment
+//
+function TdwsProgramExecution.GetEnvironment : IdwsEnvironment;
+begin
+   Result:=FEnvironment;
+end;
+
+// SetEnvironment
+//
+procedure TdwsProgramExecution.SetEnvironment(const val : IdwsEnvironment);
+begin
+   FEnvironment:=val;
+end;
+
 // GetProg
 //
 function TdwsProgramExecution.GetProg : IdwsProgram;
@@ -2598,6 +2628,7 @@ begin
       raise EScriptException.Create(RTE_CantRunScript);
    exec:=TdwsProgramExecution.Create(Self, FStackParameters);
    exec.UserObject:=DefaultUserObject;
+   exec.Environment:=DefaultEnvironment;
    FExecutionsLock.Enter;
    try
       FExecutions.Add(exec);
