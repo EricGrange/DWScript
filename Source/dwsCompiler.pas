@@ -8125,13 +8125,15 @@ procedure TdwsConfiguration.Notification(AComponent: TComponent; Operation: TOpe
 begin
    if (Operation=opRemove) then begin
       if AComponent=Filter then
-         FFilter:=nil
+         Filter:=nil
       else if AComponent=ResultType then
-         FResultType:=nil
-      else if AComponent=CompileFileSystem then
-         FCompileFileSystem:=nil
-      else if AComponent=RuntimeFileSystem then
-         FRuntimeFileSystem:=nil;
+         ResultType:=nil
+      else begin
+         if AComponent=CompileFileSystem then
+            CompileFileSystem:=nil;
+         if AComponent=RuntimeFileSystem then
+            RuntimeFileSystem:=nil;
+      end;
    end;
 end;
 
