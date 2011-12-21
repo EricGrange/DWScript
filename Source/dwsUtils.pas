@@ -24,6 +24,14 @@ uses Classes, SysUtils, Variants, SyncObjs, dwsXPlatform;
 
 type
 
+   // see http://delphitools.info/2011/11/30/fixing-tcriticalsection/
+   {$HINTS OFF}
+   TFixedCriticalSection = class(TCriticalSection)
+      private
+         FDummy : array [0..95] of Byte;
+   end;
+   {$HINTS ON}
+
    // IGetSelf
    //
    IGetSelf = interface
@@ -141,6 +149,33 @@ type
          property Count : Integer read FCount;
    end;
 
+   TSimpleCallbackStatus = (csContinue, csAbort);
+
+   TSimpleCallback<T> = reference to function (var item : T) : TSimpleCallbackStatus;
+
+   // TSimpleQueue
+   //
+   {: A minimalistic generic FIFO queue. }
+   TSimpleQueue<T> = class
+      private
+         { Private Declarations }
+         FItems : array of T;
+         FHead, FTail, FCount : Integer;
+         procedure SetCapacity(newCapacity : Integer);
+
+		protected
+         { Protected Declarations }
+         class var vDefault_T : T;
+
+      public
+         { Public Declarations }
+         procedure EnQueue(const value : T);
+         procedure DeQueue;
+         function Peek : T; inline;
+         procedure Clear;
+         procedure Enumerate(const callback : TSimpleCallback<T>);
+         property Count : Integer read FCount;
+   end;
 
    // TSimpleList<T>
    //
@@ -158,6 +193,7 @@ type
          procedure Add(const item : T);
          procedure Extract(idx : Integer);
          procedure Clear;
+         procedure Enumerate(const callback : TSimpleCallback<T>);
          property Items[const position : Integer] : T read GetItems write SetItems; default;
          property Count : Integer read FCount;
    end;
@@ -198,10 +234,12 @@ type
       public
          function Add(const anItem : T) : Integer;
          function AddOrFind(const anItem : T; var added : Boolean) : Integer;
-         function Extract(const anItem : T) : Integer;
+         function Extract(const anItem : T) : Integer; overload;
+         function Extract(index : Integer) : T; overload;
          function IndexOf(const anItem : T) : Integer;
          procedure Clear;
          procedure Clean;
+         procedure Enumerate(const callback : TSimpleCallback<T>);
          property Items[index : Integer] : T read GetItem; default;
          property Count : Integer read FCount;
    end;
@@ -377,7 +415,7 @@ type
 
 var
    vCharStrings : array [0..127] of TStringList;
-   vUnifierLock : TCriticalSection;
+   vUnifierLock : TFixedCriticalSection;
 
 // CompareStrings
 //
@@ -496,7 +534,7 @@ procedure InitializeStringsUnifier;
 var
    i : Integer;
 begin
-   vUnifierLock:=TCriticalSection.Create;
+   vUnifierLock:=TFixedCriticalSection.Create;
    for i:=Low(vCharStrings) to High(vCharStrings) do begin
       vCharStrings[i]:=TFastCompareStringList.Create;
       vCharStrings[i].Sorted:=True;
@@ -1027,11 +1065,19 @@ function TSortedList<T>.Extract(const anItem : T) : Integer;
 var
    i : Integer;
 begin
-   if Find(anItem, Result) then begin
-      Move(FItems[Result+1], FItems[Result], (FCount-Result-1)*SizeOf(T));
-      SetLength(FItems, FCount-1);
-      Dec(FCount);
-   end else Result:=-1;
+   if Find(anItem, Result) then
+      Extract(Result)
+   else Result:=-1;
+end;
+
+// Extract
+//
+function TSortedList<T>.Extract(index : Integer) : T;
+begin
+   Result:=FItems[index];
+   Move(FItems[index+1], FItems[index], (FCount-index-1)*SizeOf(T));
+   SetLength(FItems, FCount-1);
+   Dec(FCount);
 end;
 
 // IndexOf
@@ -1059,6 +1105,17 @@ begin
    for i:=0 to FCount-1 do
       FItems[i].Free;
    Clear;
+end;
+
+// Enumerate
+//
+procedure TSortedList<T>.Enumerate(const callback : TSimpleCallback<T>);
+var
+   i : Integer;
+begin
+   for i:=0 to Count-1 do
+      if callback(FItems[i])=csAbort then
+         Break;
 end;
 
 // ------------------
@@ -1572,6 +1629,93 @@ begin
 end;
 
 // ------------------
+// ------------------ TSimpleQueue<T> ------------------
+// ------------------
+
+// EnQueue
+//
+procedure TSimpleQueue<T>.EnQueue(const value : T);
+var
+   n : Integer;
+begin
+   n:=Length(FItems);
+   if Count=n then begin
+      n:=n*2+8;
+      SetCapacity(n);
+   end;
+   FItems[FHead]:=Value;
+   FHead:=(FHead+1) mod n;
+   Inc(FCount);
+end;
+
+// DeQueue
+//
+procedure TSimpleQueue<T>.DeQueue;
+begin
+   Assert(FCount>0);
+   FItems[FTail]:=vDefault_T;
+   FTail:=(FTail+1) mod Length(FItems);
+   Dec(FCount);
+end;
+
+// Peek
+//
+function TSimpleQueue<T>.Peek : T;
+begin
+   Result:=FItems[FTail];
+end;
+
+// Clear
+//
+procedure TSimpleQueue<T>.Clear;
+begin
+   SetLength(FItems, 0);
+   FHead:=0;
+   FTail:=0;
+   FCount:=0;
+end;
+
+// Enumerate
+//
+procedure TSimpleQueue<T>.Enumerate(const callback : TSimpleCallback<T>);
+var
+   i, n : Integer;
+begin
+   n:=Length(FItems);
+   for i:=0 to Count-1 do begin
+      if callback(FItems[(FTail+i) mod n])=csAbort then
+         Break;
+   end;
+end;
+
+// SetCapacity
+//
+procedure TSimpleQueue<T>.SetCapacity(newCapacity : Integer);
+var
+   tailCount, offset, i : Integer;
+begin
+   offset:=newCapacity-Length(FItems);
+   if offset=0 then Exit;
+
+   // If head <= tail, then part of the queue wraps around
+   // the end of the array; don't introduce a gap in the queue.
+   if (FHead<FTail) or ((FHead=FTail) and (Count>0)) then
+      tailCount:=Length(FItems)-FTail
+   else tailCount:=0;
+
+   if offset>0 then
+      SetLength(FItems, newCapacity);
+   if tailCount>0 then begin
+      System.Move(FItems[FTail], FItems[FTail+offset], tailCount*SizeOf(T));
+      if offset>0 then
+         System.FillChar(FItems[FTail], offset*SizeOf(T), 0);
+      Inc(FTail, offset);
+   end;
+   if offset<0 then
+      SetLength(FItems, newCapacity);
+end;
+
+// ------------------
 // ------------------ TSimpleList<T> ------------------
 // ------------------
 
@@ -1604,6 +1748,17 @@ begin
    SetLength(FItems, 0);
    FCapacity:=0;
    FCount:=0;
+end;
+
+// Enumerate
+//
+procedure TSimpleList<T>.Enumerate(const callback : TSimpleCallback<T>);
+var
+   i : Integer;
+begin
+   for i:=0 to Count-1 do
+      if callBack(FItems[i])=csAbort then
+         Break;
 end;
 
 // Grow
