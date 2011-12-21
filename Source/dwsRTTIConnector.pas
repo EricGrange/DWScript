@@ -75,12 +75,16 @@ type
 
       protected
          procedure SetDefaultEnvironment(const val : TValue);
+         procedure SetRttiType(const val : TRttiType);
 
       public
          function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; override;
          procedure GetDefaultEnvironment(var enviro : IdwsEnvironment); override;
 
+         procedure SetForClass(cls : TClass);
+
          property DefaultEnvironment : TValue read FDefaultEnvironment write SetDefaultEnvironment;
+         property RttiType : TRttiType read FRttiType write SetRttiType;
 
          property Options : TRTTIEnvironmentOptions read FOptions write FOptions;
    end;
@@ -157,6 +161,7 @@ implementation
 
 var
    vRTTIContext : TRttiContext;
+   vEmptyTValue : TValue;
 
 type
 
@@ -738,6 +743,13 @@ begin
    enviro:=TRTTIRuntimeEnvironment.Create(FDefaultEnvironment);
 end;
 
+// SetForClass
+//
+procedure TRTTIEnvironment.SetForClass(cls : TClass);
+begin
+   RttiType:=vRTTIContext.GetType(cls.ClassInfo);
+end;
+
 // SetDefaultEnvironment
 //
 procedure TRTTIEnvironment.SetDefaultEnvironment(const val : TValue);
@@ -746,6 +758,15 @@ begin
    if val.IsEmpty then
       FRttiType:=nil
    else FRttiType:=vRTTIContext.GetType(val.TypeInfo);
+end;
+
+// SetRttiType
+//
+procedure TRTTIEnvironment.SetRttiType(const val : TRttiType);
+begin
+   if FRttiType=val then Exit;
+   FRttiType:=val;
+   FDefaultEnvironment:=vEmptyTValue;
 end;
 
 // ------------------
@@ -883,8 +904,8 @@ end;
 //
 constructor TRTTIRuntimeEnvironment.Create(const value : TValue);
 begin
-   inherited Create;
    FValue:=value;
+//   inherited Create;
 end;
 
 // Instance
