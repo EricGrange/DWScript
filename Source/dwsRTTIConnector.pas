@@ -904,8 +904,8 @@ end;
 //
 constructor TRTTIRuntimeEnvironment.Create(const value : TValue);
 begin
+   inherited Create;
    FValue:=value;
-//   inherited Create;
 end;
 
 // Instance
