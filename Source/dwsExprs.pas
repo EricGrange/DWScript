@@ -39,6 +39,7 @@ type
    TdwsMainProgram = class;
    IdwsProgram = interface;
    TdwsProgramExecution = class;
+   IdwsProgramExecution = interface;
    TSymbolPositionList = class;
    TFuncExprBase = class;
    TScriptObj = class;
@@ -288,22 +289,40 @@ type
          function CreateProgResult: TdwsResult; override;
    end;
 
-   // TTerminatorThread
+   TdwsGuardedExecution = class
+      Exec : IdwsProgramExecution;
+      TimeOutAt : TDateTime;
+   end;
+
+   TdwsGuardedExecutionList = class(TSortedList<TdwsGuardedExecution>)
+      protected
+         function Compare(const item1, item2 : TdwsGuardedExecution) : Integer; override;
+   end;
+
+   // TdwsGuardianThread
    //
    // Stops the script after given time (Timeout)
-   TTerminatorThread = class(TThread)
+   TdwsGuardianThread = class(TThread)
       private
-         FExecutionContext : TdwsProgramExecution;
          FEvent : TEvent;
-         FMillisecondsToLive : Integer;
+         FExecutions : TdwsGuardedExecutionList;
+         FExecutionsLock : TFixedCriticalSection;
 
       protected
          procedure Execute; override;
-         procedure DoTerminate; override;
+
+         class var vThreadLock : Integer;
+         class var vThread : TdwsGuardianThread;
 
       public
-         constructor Create(anExecutionContext : TdwsProgramExecution; aMilliSecToLive : Integer);
+         constructor Create;
          destructor Destroy; override;
+
+         class procedure Initialize; static;
+         class procedure Finalize; static;
+
+         class procedure GuardExecution(const exec : IdwsProgramExecution; aMilliSecToLive : Integer); static;
+         class procedure ForgetExecution(const exec : IdwsProgramExecution); static;
    end;
 
    // Attached and owned by its program execution
@@ -2069,8 +2088,6 @@ end;
 // RunProgram
 //
 procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
-var
-   terminator : TTerminatorThread;
 begin
    if FProgramState<>psRunning then begin
       Msgs.AddRuntimeError('Program state psRunning expected');
@@ -2080,8 +2097,7 @@ begin
    if aTimeoutMilliSeconds=0 then
       aTimeOutMilliseconds:=FProg.TimeoutMilliseconds;
    if aTimeoutMilliSeconds>0 then
-      terminator:=TTerminatorThread.Create(Self, aTimeoutMilliSeconds)
-   else terminator:=nil;
+      TdwsGuardianThread.GuardExecution(Self, aTimeoutMilliSeconds);
 
    try
       Status:=esrNone;
@@ -2118,8 +2134,8 @@ begin
       end;
 
    finally
-      if Assigned(terminator) then
-         terminator.Terminate;
+      if aTimeoutMilliSeconds>0 then
+         TdwsGuardianThread.ForgetExecution(Self);
    end;
 
    ClearScriptError;
@@ -3040,48 +3056,155 @@ begin
    Result:=FTextBuilder.ToString;
 end;
 
-{ TTerminatorThread }
+// ------------------
+// ------------------ TdwsGuardedExecutionList ------------------
+// ------------------
+
+// Compare
+//
+function TdwsGuardedExecutionList.Compare(const item1, item2 : TdwsGuardedExecution) : Integer;
+begin
+   if item1.TimeOutAt<item2.TimeOutAt then
+      Result:=1
+   else if item1.TimeOutAt>item2.TimeOutAt then
+      Result:=-1
+   else Result:=0;
+end;
+
+// ------------------
+// ------------------ TdwsGuardianThread ------------------
+// ------------------
 
 // Create
 //
-constructor TTerminatorThread.Create(anExecutionContext : TdwsProgramExecution; aMilliSecToLive : Integer);
+constructor TdwsGuardianThread.Create;
 begin
-   FExecutionContext:=anExecutionContext;
    FEvent:=TEvent.Create(nil, False, False, '');
-   FMillisecondsToLive:=aMilliSecToLive;
-   FreeOnTerminate:=True;
-   inherited Create(False);
+   FExecutionsLock:=TFixedCriticalSection.Create;
+   FExecutions:=TdwsGuardedExecutionList.Create;
+   FreeOnTerminate:=False;
+
+   inherited Create(True);
+
    Priority:=tpTimeCritical;
 end;
 
 // Destroy
 //
-destructor TTerminatorThread.Destroy;
+destructor TdwsGuardianThread.Destroy;
 begin
+   FExecutions.Clear;
+   FExecutions.Free;
    FEvent.Free;
+   FExecutionsLock.Free;
    inherited;
+end;
+
+// Initialize
+//
+class procedure TdwsGuardianThread.Initialize;
+begin
+   vThread:=TdwsGuardianThread.Create;
+   vThread.Start;
+end;
+
+// Finalize
+//
+class procedure TdwsGuardianThread.Finalize;
+begin
+   if vThread<>nil then begin
+      vThread.Terminate;
+      vThread.FEvent.SetEvent;
+      vThread.WaitFor;
+      vThread.Destroy;
+      vThread:=nil;
+   end;
+end;
+
+// GuardExecution
+//
+class procedure TdwsGuardianThread.GuardExecution(const exec : IdwsProgramExecution; aMilliSecToLive : Integer);
+var
+   thread : TdwsGuardianThread;
+   item : TdwsGuardedExecution;
+begin
+   thread:=vThread;
+   item:=TdwsGuardedExecution.Create;
+   item.Exec:=exec;
+   item.TimeOutAt:=Now+aMilliSecToLive*(1/(86400*1000));
+   thread.FExecutionsLock.Enter;
+   try
+      thread.FExecutions.Add(item);
+      thread.FEvent.SetEvent;
+   finally
+      thread.FExecutionsLock.Leave;
+   end;
+end;
+
+// ForgetExecution
+//
+class procedure TdwsGuardianThread.ForgetExecution(const exec : IdwsProgramExecution);
+var
+   thread : TdwsGuardianThread;
+begin
+   thread:=vThread;
+   thread.FExecutionsLock.Enter;
+   try
+      thread.FExecutions.Enumerate(function (var item : TdwsGuardedExecution) : TSimpleCallbackStatus
+                                   begin
+                                      if item.Exec=exec then begin
+                                         item.Exec:=nil;
+                                         Result:=csAbort;
+                                      end else Result:=csContinue;
+                                   end);
+   finally
+      thread.FExecutionsLock.Leave;
+   end;
 end;
 
 // Execute
 //
-procedure TTerminatorThread.Execute;
+procedure TdwsGuardianThread.Execute;
+var
+   currentTime : TDateTime;
+   item : TdwsGuardedExecution;
+   n, millisecs : Integer;
 begin
-   FEvent.WaitFor(FMillisecondsToLive);
+   while not Terminated do begin
 
-   if (not Terminated) and Assigned(FExecutionContext) then
-      FExecutionContext.Stop;
+      currentTime:=Now;
+      item:=nil;
 
-   // Wait until TdwsProgram terminates the thread
-   while not Terminated do
-      FEvent.WaitFor(1000);
-end;
+      FExecutionsLock.Enter;
+      try
+         while FExecutions.Count>0 do begin
+            n:=FExecutions.Count;
+            item:=FExecutions[n-1];
+            if item.Exec=nil then begin
+               FExecutions.Extract(n-1);
+               FreeAndNil(item);
+            end else begin
+               if item.TimeOutAt<=currentTime then begin
+                  item.Exec.Stop;
+                  FExecutions.Extract(n-1);
+                  FreeAndNil(item);
+               end else Break;
+            end;
+         end;
+      finally
+         FExecutionsLock.Leave;
+      end;
 
-// DoTerminate
-//
-procedure TTerminatorThread.DoTerminate;
-begin
-   inherited;
-   FEvent.SetEvent;
+      if item=nil then
+         FEvent.WaitFor(INFINITE)
+      else begin
+         millisecs:=Round((item.TimeOutAt-currentTime)*(86400*1000));
+         if millisecs<0 then
+            millisecs:=0;
+         FEvent.WaitFor(millisecs);
+      end;
+
+   end;
 end;
 
 // ------------------
@@ -7487,6 +7610,20 @@ begin
    e.ScriptCallStack:=exec.GetCallStack;
    raise e;
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+   TdwsGuardianThread.Initialize;
+
+finalization
+
+   TdwsGuardianThread.Finalize;
 
 end.
 
