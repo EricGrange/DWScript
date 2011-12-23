@@ -1,0 +1,29 @@
+<html>
+<head>
+<title>Request Info</title>
+</head>
+<body>
+<h2>Request Info</h2>
+<table border="1">
+<tr><th>Name</th><th>Value</th></tr>
+<%
+procedure WriteValue(name, value : String);
+begin
+   Print('<tr><td>');
+   Print(name);
+   Print('</td><td>');
+   if value="" then
+      Print('&nbsp;')
+   else Print(value);
+   PrintLn('</td></tr>');
+end;
+
+WriteValue('RemoteIP', Request.RemoteIP);
+WriteValue('Method', Request.Method);
+WriteValue('PathInfo', Request.PathInfo);
+WriteValue('QueryFields', Request.QueryFields.CommaText);
+WriteValue('CookieFields', Request.CookieFields.CommaText);
+%>
+</table>
+</body>
+</html>
