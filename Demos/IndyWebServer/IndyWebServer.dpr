@@ -19,7 +19,7 @@ var
   LHandle: THandle;
   LServer: TIdHTTPWebBrokerBridge;
 begin
-  Writeln(Format('Starting HTTP Server or port %d', [APort]));
+  Writeln(Format('Starting HTTP Server on port %d', [APort]));
   LServer := TIdHTTPWebBrokerBridge.Create(nil);
   try
     LServer.DefaultPort := APort;
