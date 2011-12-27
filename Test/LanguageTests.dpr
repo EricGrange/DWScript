@@ -10,6 +10,7 @@ program LanguageTests;
 uses
   Classes,
   Forms,
+  Windows,
   TestFrameWork,
   GUITestRunner,
   SysUtils,
@@ -36,6 +37,7 @@ uses
 {$R *.res}
 
 begin
+   SetProcessAffinityMask(GetCurrentProcessId, Cardinal(-1));
    FormatSettings.DecimalSeparator:='.';
    ReportMemoryLeaksOnShutdown:=True;
    Application.Initialize;
