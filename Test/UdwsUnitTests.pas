@@ -35,6 +35,7 @@ type
          procedure FuncVarEval(Info: TProgramInfo);
          procedure FuncFloatEval(Info: TProgramInfo);
          procedure FuncPointEval(Info: TProgramInfo);
+         procedure FuncClassNameEval(Info: TProgramInfo);
 
          procedure ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
          procedure ClassCleanup(ExternalObject: TObject);
@@ -276,6 +277,15 @@ begin
    func.Name:='FuncPoint';
    func.ResultType:='TPoint';
    func.OnEval:=FuncPointEval;
+
+   func:=FUnit.Functions.Add;
+   func.Name:='FuncClassName';
+   func.ResultType:='String';
+   param:=func.Parameters.Add;
+   param.Name:='obj';
+   param.DataType:='TObject';
+   param.DefaultValue:=IUnknown(nil);
+   func.OnEval:=FuncClassNameEval;
 end;
 
 // DeclareTestClasses
@@ -501,6 +511,18 @@ begin
    Info.Vars['Result'].Member['y'].Value:=24;
 end;
 
+// FuncClassNameEval
+//
+procedure TdwsUnitTests.FuncClassNameEval(Info: TProgramInfo);
+var
+   o : IInfo;
+begin
+   o:=Info.Vars['obj'];
+   if o.ScriptObj=nil then
+      Info.ResultAsString:=''
+   else Info.ResultAsString:=o.ScriptObj.ClassSym.Name;
+end;
+
 // ClassConstructor
 //
 procedure TdwsUnitTests.ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
@@ -696,6 +718,9 @@ begin
    sym:=prog.Table.FindSymbol('FuncIncN', cvMagic);
    CheckEquals('function FuncIncN(v: Integer; n: Integer = 1): Integer', sym.Description);
    CheckEquals('FuncIncN(Integer, Integer): Integer', sym.Caption);
+   sym:=prog.Table.FindSymbol('FuncClassName', cvMagic);
+   CheckEquals('function FuncClassName(obj: TObject = nil): String', sym.Description);
+   CheckEquals('FuncClassName(TObject): String', sym.Caption);
 
    sym:=prog.Table.FindSymbol('TAutoEnum', cvMagic);
    CheckEquals('(aeVal9, aeVal8, aeVal7, aeVal6, aeVal5, aeVal4, aeVal3, aeVal2, aeVal1)', sym.Description);

@@ -3855,7 +3855,9 @@ begin
    if Length(FDefaultValue) > 0 then begin
       if (Typ is TBaseStringSymbol) then
          Result := Result + ' = ''' + VarToStr(FDefaultValue[0]) + ''''  // put quotes around value
-       else Result := Result + ' = ' + VarToStr(FDefaultValue[0]);
+      else if VarType(FDefaultValue[0])=varUnknown then
+         Result := Result + ' = nil'
+      else Result := Result + ' = ' + VarToStr(FDefaultValue[0]);
    end;
 end;
 
