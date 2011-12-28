@@ -579,8 +579,18 @@ class procedure TdwsRTTIInvoker.AssignIInfoFromValue(const info : IInfo; const v
                                                      asType : TRttiType);
 begin
    case asType.TypeKind of
+      tkInteger, tkInt64 :
+         info.Value:=value.AsInt64;
+      tkFloat :
+         info.Value:=value.AsType<Double>;
+      tkChar, tkString, tkUString, tkWChar, tkLString, tkWString :
+         info.Value:=value.AsString;
       tkRecord :
          AssignRecordFromValue(info, value, asType);
+      tkEnumeration :
+         if asType.Handle=TypeInfo(Boolean) then
+            info.Value:=value.AsBoolean
+         else info.Value:=value.AsInt64;
    else
       info.Value:=value.AsVariant;
    end;
@@ -624,7 +634,12 @@ begin
          Result:=TValue.From<Variant>(info.Value);
       tkRecord :
          Result:=ValueFromRecord(asType, info);
+      tkEnumeration :
+         if asType.Handle=TypeInfo(Boolean) then
+            Result:=info.ValueAsBoolean
+         else Result:=info.ValueAsInteger;
    else
+      Result:=ValueFromIInfo(asType, info);
       Result:=TValue.Empty;
       Assert(False);
    end;

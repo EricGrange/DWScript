@@ -63,6 +63,7 @@ type
          procedure NullValue;
 
          procedure Multiply(m : Integer);
+         function InverseBoolean(b : Boolean) : Boolean;
 
          property Value : Integer read FValue write FValue;
    end;
@@ -179,6 +180,13 @@ begin
    FValue:=FValue*m;
 end;
 
+// InverseBoolean
+//
+function TSimpleClass.InverseBoolean(b : Boolean) : Boolean;
+begin
+   Result:=not b;
+end;
+
 // DecValue
 //
 procedure TSimpleClass.DecValue;
@@ -261,6 +269,8 @@ const
       +'Print(IntToStr(c.Value));'#13#10
       +'c.DecValue;'#13#10
       +'Print(IntToStr(c.Value));'#13#10
+      +'Print(c.InverseBoolean(True));'#13#10
+      +'Print(c.InverseBoolean(c.InverseBoolean(False)));'#13#10
       +'c := TSimpleClass.CreateValued(3);'#13#10
       +'Print(IntToStr(c.Value));'#13#10
       ;
@@ -279,7 +289,7 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
    exec:=prog.Execute;
    CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
-   CheckEquals('012653', exec.Result.ToString, 'Exec Result');
+   CheckEquals('01265FalseFalse3', exec.Result.ToString, 'Exec Result');
 
    prog:=FCompiler.Compile(cSimpleClassFailNullValueTest);
 
