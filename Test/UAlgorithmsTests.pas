@@ -84,7 +84,7 @@ end;
 //
 procedure TAlgorithmsTests.SetUp;
 begin
-   FormatSettings.DecimalSeparator:='.';
+   SetDecimalSeparator('.');
 
    FTests:=TStringList.Create;
 
