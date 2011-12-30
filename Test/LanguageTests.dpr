@@ -14,6 +14,7 @@ uses
   TestFrameWork,
   GUITestRunner,
   SysUtils,
+  dwsXPlatform,
   UScriptTests in 'UScriptTests.pas',
   UAlgorithmsTests in 'UAlgorithmsTests.pas',
   UdwsUnitTests in 'UdwsUnitTests.pas',
@@ -38,7 +39,7 @@ uses
 
 begin
    SetProcessAffinityMask(GetCurrentProcessId, Cardinal(-1));
-   FormatSettings.DecimalSeparator:='.';
+   SetDecimalSeparator('.');
    ReportMemoryLeaksOnShutdown:=True;
    Application.Initialize;
    GUITestRunner.RunRegisteredTests;

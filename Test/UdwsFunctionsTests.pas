@@ -81,7 +81,7 @@ implementation
 //
 procedure TdwsFunctionsTestsBase.SetUp;
 begin
-   FormatSettings.DecimalSeparator:='.';
+   SetDecimalSeparator('.');
 
    FCompiler:=TDelphiWebScript.Create(nil);
 
