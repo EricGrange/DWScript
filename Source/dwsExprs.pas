@@ -6368,7 +6368,7 @@ begin
 
       try
          // The call itself
-         if (FBaseExpr is TDataExpr) and (Typ=nil) or (Typ.Size>1) then
+         if (FBaseExpr is TDataExpr) and (FBaseExpr.Typ.Size>1)  then
             FResultData := FConnectorCall.Call(TDataExpr(FBaseExpr).Data[exec][TDataExpr(FBaseExpr).Addr[exec]], FConnectorArgs)
          else begin
             FBaseExpr.EvalAsVariant(exec, buf);
