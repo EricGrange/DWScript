@@ -27,7 +27,7 @@ type
          procedure SimpleClass;
          procedure SimpleEnumeration;
          procedure SimpleRecord;
-         procedure SimpleInterface;
+         //procedure SimpleInterface;
          procedure ExposeInstances;
 
          procedure ConnectSimpleClass;
@@ -38,13 +38,14 @@ type
 
          procedure EnvironmentTest;
          procedure EnvironmentTest2;
+         procedure EnvironmentWriteTest;
 
          procedure ExposeGeneric;
    end;
 
 type
    {$M+}
-   {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([vcPublic, vcPublished])  FIELDS([vcPublic, vcPublished])}
+   {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([vcPublic, vcPublished]) FIELDS([vcPublic, vcPublished])}
    TSimpleClass = class
       private
          FValue : Integer;
@@ -99,13 +100,8 @@ type
       procedure Stuff(obj : TGenericWrapper<Integer>);
    end;
 
-   TTestEnvironment = class
-      public
-         FieldOne : TSimpleClass;
-         FieldTwo : String;
-         FieldBool : Boolean;
-         FieldFloat : Double;
-         FieldInteger : Integer;
+   TSimpleRecord = record
+      Alpha : Integer;
    end;
 
    ISimpleInterface = interface
@@ -117,6 +113,16 @@ type
    TSimpleInterface = class(TInterfacedObject, ISimpleInterface)
       public
          function GetHello : String;
+   end;
+
+   TTestEnvironment = class
+      public
+         FieldOne : TSimpleClass;
+         FieldTwo : String;
+         FieldBool : Boolean;
+         FieldFloat : Double;
+         FieldInteger : Integer;
+         FieldRec : TSimpleRecord;
    end;
 
 // ------------------------------------------------------------------
@@ -355,12 +361,13 @@ end;
 
 // SimpleInterface
 //
+{
 procedure TRTTIExposeTests.SimpleInterface;
-//var
-//   prog : IdwsProgram;
-//   exec : IdwsProgramExecution;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
 begin
-{   FUnit.ExposeRTTI(TypeInfo(ISimpleInterface));
+   FUnit.ExposeRTTI(TypeInfo(ISimpleInterface));
 
    prog:=FCompiler.Compile( 'var i : ISimpleInterface'#13#10
                            +'PrintLn(i.Hello);'#13#10
@@ -378,8 +385,8 @@ begin
       CheckEquals('1, 2, 3, 4, 2, 0, 0, 1, 1, -1, -1, 2, 2', exec.Result.ToString, 'Exec Result');
    finally
       exec.EndProgram;
-   end; }
-end;
+   end;
+end;   }
 
 var
    i1, i2 : TTestInstance;
@@ -580,6 +587,7 @@ begin
    obj.FieldBool:=True;
    obj.FieldFloat:=3.14;
    obj.FieldInteger:=314;
+   obj.FieldRec.Alpha:=100;
    try
       enviro:=TRTTIEnvironment.Create;
       enviro.DefaultEnvironment:=obj;
@@ -596,7 +604,9 @@ begin
                                  +'PrintLn(FieldOne.ClassName());'#13#10
                                  +'PrintLn(FieldBool);'#13#10
                                  +'PrintLn(FieldFloat);'#13#10
-                                 +'PrintLn(FieldInteger*2);'#13#10);
+                                 +'PrintLn(FieldInteger*2);'#13#10
+                                 +'PrintLn(FieldRec.Alpha);'#13#10
+                                 );
          try
             CheckEquals('', prog.Msgs.AsInfo, 'compile');
 
@@ -609,6 +619,7 @@ begin
                         +'True'#13#10
                         +'3.14'#13#10
                         +'628'#13#10
+                        +'100'#13#10
                         , exec.Result.ToString, 'result');
          finally
             prog:=nil;
@@ -678,6 +689,70 @@ begin
       obj1.Free;
       obj2.FieldOne.Free;
       obj2.Free;
+   end;
+end;
+
+// EnvironmentWriteTest
+//
+procedure TRTTIExposeTests.EnvironmentWriteTest;
+var
+   obj : TTestEnvironment;
+   enviro : TRTTIEnvironment;
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   obj:=TTestEnvironment.Create;
+   obj.FieldOne:=TSimpleClass.Create(123);
+   obj.FieldTwo:='Hello';
+   obj.FieldBool:=True;
+   obj.FieldFloat:=3.14;
+   obj.FieldInteger:=314;
+   obj.FieldRec.Alpha:=100;
+   try
+      enviro:=TRTTIEnvironment.Create;
+      enviro.Options:=[eoAllowFieldWrite];
+      enviro.DefaultEnvironment:=obj;
+      FCompiler.Extensions.Add(enviro);
+      try
+         prog:=FCompiler.Compile( 'FieldOne.Value:=111;'#13#10
+                                 +'FieldTwo:="World";'#13#10
+                                 +'FieldBool:=False;'#13#10
+                                 +'FieldFloat:=4.5;'#13#10
+                                 +'FieldInteger:=222;'#13#10
+                                 +'var r:=FieldRec;'#13#10
+                                 +'r.Alpha:=2*r.Alpha;'#13#10
+                                 +'FieldRec:=r;'#13#10
+                                 +'PrintLn(FieldOne.Value);'#13#10
+                                 +'PrintLn(FieldTwo);'#13#10
+                                 +'PrintLn(FieldBool);'#13#10
+                                 +'PrintLn(FieldFloat);'#13#10
+                                 +'PrintLn(FieldInteger);'#13#10
+                                 +'PrintLn(FieldRec.Alpha);'#13#10
+                                 );
+         try
+            CheckEquals('', prog.Msgs.AsInfo, 'compile');
+
+            exec:=prog.Execute(0);
+
+            CheckEquals('', exec.Msgs.AsInfo, 'exec');
+
+            CheckEquals( '111'#13#10
+                        +'World'#13#10
+                        +'False'#13#10
+                        +'4.5'#13#10
+                        +'222'#13#10
+                        +'200'#13#10
+                        , exec.Result.ToString, 'result');
+         finally
+            prog:=nil;
+         end;
+      finally
+         FCompiler.Extensions.Remove(enviro);
+         enviro.Free;
+      end;
+   finally
+      obj.FieldOne.Free;
+      obj.Free;
    end;
 end;
 

@@ -46,15 +46,20 @@ type
 
    TdwsRTTIVariant = class(TInterfacedSelfObject)
       private
-         FInstance : Pointer;
-         FRTTIType : TRTTIType;
+         FValue : TValue;
+         FType : TRttiType;
 
       public
-         class function From(anInstance : Pointer; rttyType : TRTTIType) : IUnknown;
          class function FromObject(obj : TObject) : IUnknown;
+         class function FromValue(const v : TValue) : IUnknown;
 
-         property Instance : Pointer read FInstance;
-         property RTTIType : TRTTIType read FRTTIType;
+         property RTTIType : TRttiType read FType;
+         function TypeKind : TTypeKind; inline;
+
+         function AsObject : TObject; inline;
+         property AsValue : TValue read FValue;
+
+         function InstancePointer : Pointer;
    end;
 
    TRTTIConnectorSymbol = class (TConnectorSymbol)
@@ -235,11 +240,20 @@ begin
          result:=v.AsType<Double>;
       tkVariant :
          result:=v.AsVariant;
-      tkClass :
-         result:=TdwsRTTIVariant.From(v.AsObject, vRTTIContext.GetType(v.TypeInfo));
+      tkClass, tkRecord :
+         result:=TdwsRTTIVariant.FromValue(v);
    else
       result:=Null;
    end;
+end;
+
+// VariantToValue
+//
+procedure VariantToValue(const v : Variant; var result : TValue);
+begin
+   if (VarType(v)=varUnknown) and (IUnknown(v) is TdwsRTTIVariant) then
+      Result:=(IUnknown(v) as TdwsRTTIVariant).AsValue
+   else Result:=TValue.FromVariant(v)
 end;
 
 // RTTITypeToTypeSymbol
@@ -339,9 +353,9 @@ var
    compType : TRttiType;
 begin
    parent:=IUnknown(Info.ParamAsVariant[0]) as TdwsRTTIVariant;
-   if parent.RTTIType.TypeKind<>tkClass then
+   if parent.TypeKind<>tkClass then
       raise EdwsRTTIException.Create('Class expected as parent');
-   obj:=TObject(parent.Instance);
+   obj:=parent.AsObject;
    if not (obj is TComponent) then
       raise EdwsRTTIException.Create('TComponent instance expected as parent');
 
@@ -496,15 +510,15 @@ var
    resultValue : TValue;
 begin
    instance:=IUnknown(base) as TdwsRTTIVariant;
-   meth:=instance.FRTTIType.GetMethod(FMethodName);
+   meth:=instance.RTTIType.GetMethod(FMethodName);
    if meth=nil then
       raise EdwsRTTIException.CreateFmt('"%s" does not have a method "%s" exposed via RTTI',
-                                        [instance.FRTTIType.Name, FMethodName]);
+                                        [instance.RTTIType.Name, FMethodName]);
 
    methParams:=meth.GetParameters;
    if Length(methParams)<>Length(args) then
       raise EdwsRTTIException.CreateFmt('Method "%s.%s" expects %d params, got %d',
-                                        [instance.FRTTIType.Name, FMethodName,
+                                        [instance.RTTIType.Name, FMethodName,
                                          Length(methParams), Length(args)]);
 
    SetLength(paramData, Length(args));
@@ -515,8 +529,8 @@ begin
    end;
 
    if meth.IsClassMethod then
-      resultValue:=meth.Invoke(TObject(instance.FInstance).ClassType, paramData)
-   else resultValue:=meth.Invoke(TObject(instance.FInstance), paramData);
+      resultValue:=meth.Invoke(instance.AsObject.ClassType, paramData)
+   else resultValue:=meth.Invoke(instance.AsObject, paramData);
 
    SetLength(Result, 1);
 
@@ -553,24 +567,24 @@ begin
    instance:=IUnknown(base) as TdwsRTTIVariant;
    SetLength(Result, 1);
 
-   field:=instance.FRTTIType.GetField(FMemberName);
+   field:=instance.RTTIType.GetField(FMemberName);
    if field<>nil then
-      ValueToVariant(field.GetValue(instance.FInstance), Result[0])
+      ValueToVariant(field.GetValue(instance.InstancePointer), Result[0])
    else begin
-      prop:=instance.FRTTIType.GetProperty(FMemberName);
+      prop:=instance.RTTIType.GetProperty(FMemberName);
       if prop<>nil then begin
          if not prop.IsReadable then
             raise EdwsRTTIException.CreateFmt('"%s.%s" is not readable',
-                                              [instance.FRTTIType.Name, FMemberName]);
-         ValueToVariant(prop.GetValue(instance.FInstance), Result[0])
+                                              [instance.RTTIType.Name, FMemberName]);
+         ValueToVariant(prop.GetValue(instance.InstancePointer), Result[0])
       end else begin
-         meth:=instance.FRTTIType.GetMethod(FMemberName);
+         meth:=instance.RTTIType.GetMethod(FMemberName);
          if (meth<>nil) and (meth.ReturnType<>nil) and (Length(meth.GetParameters)=0) then begin
             if meth.IsClassMethod then
-               ValueToVariant(meth.Invoke(TObject(instance.FInstance).ClassType, []), Result[0])
-            else ValueToVariant(meth.Invoke(instance.FInstance, []), Result[0])
+               ValueToVariant(meth.Invoke(TObject(instance.InstancePointer).ClassType, []), Result[0])
+            else ValueToVariant(meth.Invoke(TObject(instance.InstancePointer), []), Result[0])
          end else raise EdwsRTTIException.CreateFmt('"%s" does not have member "%s" exposed via RTTI',
-                                                    [instance.FRTTIType.Name, FMemberName]);
+                                                    [instance.RTTIType.Name, FMemberName]);
       end;
    end;
 end;
@@ -593,26 +607,26 @@ begin
       varUnknown : begin
          intf:=IUnknown(data[0]);
          if intf is TdwsRTTIVariant then
-            v:=TValue.From<TObject>((intf as TdwsRTTIVariant).Instance)
+            v:=TValue.From<TObject>((intf as TdwsRTTIVariant).AsObject)
          else raise EdwsRTTIException.Create('Unsupported Rtti write of this datatype');
       end;
    else
       v:=TValue.FromVariant(data[0]);
    end;
 
-   field:=instance.FRTTIType.GetField(FMemberName);
+   field:=instance.RTTIType.GetField(FMemberName);
    if field<>nil then
-      field.SetValue(instance.FInstance, v)
+      field.SetValue(instance.InstancePointer, v)
    else begin
-      prop:=instance.FRTTIType.GetProperty(FMemberName);
+      prop:=instance.RTTIType.GetProperty(FMemberName);
       if prop<>nil then begin
          if not prop.IsWritable then
             raise EdwsRTTIException.CreateFmt('"%s.%s" is not writable',
-                                              [instance.FRTTIType.Name, FMemberName]);
-         prop.SetValue(instance.FInstance, v);
+                                              [instance.RTTIType.Name, FMemberName]);
+         prop.SetValue(instance.InstancePointer, v);
       end else begin
          raise EdwsRTTIException.CreateFmt('"%s" does not have member "%s" exposed via RTTI',
-                                           [instance.FRTTIType.Name, FMemberName]);
+                                           [instance.RTTIType.Name, FMemberName]);
       end;
    end;
 end;
@@ -621,23 +635,49 @@ end;
 // ------------------ TdwsRTTIVariant ------------------
 // ------------------
 
-// From
-//
-class function TdwsRTTIVariant.From(anInstance : Pointer; rttyType : TRTTIType) : IUnknown;
-var
-   o : TdwsRTTIVariant;
-begin
-   o:=TdwsRTTIVariant.Create;
-   o.FInstance:=anInstance;
-   o.FRTTIType:=rttyType;
-   Result:=o;
-end;
-
 // FromObject
 //
 class function TdwsRTTIVariant.FromObject(obj : TObject) : IUnknown;
 begin
-   Result:=TdwsRTTIVariant.From(obj, vRTTIContext.GetType(obj.ClassType.ClassInfo));
+   Result:=TdwsRTTIVariant.FromValue(obj);
+end;
+
+// FromValue
+//
+class function TdwsRTTIVariant.FromValue(const v : TValue) : IUnknown;
+var
+   o : TdwsRTTIVariant;
+begin
+   o:=TdwsRTTIVariant.Create;
+   o.FValue:=v;
+   o.FType:=vRTTIContext.GetType(v.TypeInfo);
+   Result:=o;
+end;
+
+// TypeKind
+//
+function TdwsRTTIVariant.TypeKind : TTypeKind;
+begin
+   Result:=FValue.Kind;
+end;
+
+// AsObject
+//
+function TdwsRTTIVariant.AsObject : TObject;
+begin
+   Result:=FValue.AsObject;
+end;
+
+// InstancePointer
+//
+function TdwsRTTIVariant.InstancePointer : Pointer;
+begin
+   case TypeKind of
+      tkRecord :
+         Result:=FValue.GetReferenceToRawData;
+   else
+      Result:=FValue.AsObject;
+   end;
 end;
 
 // ------------------
@@ -717,6 +757,9 @@ begin
          funcSymbol:=TFuncSymbol.Create(name, fkProcedure, 0);
          funcSymbol.AddParam(TParamSymbol.Create('v', externalSymbol.Typ));
          funcSymbol.Executable:=TRTTIEnvironmentFieldWrite.Create(Self, rttiField);
+         externalSymbol.WriteFunc:=funcSymbol;
+         table.AddSymbol(externalSymbol);
+         Exit(externalSymbol);
       end else begin
          table.AddSymbol(funcSymbol);
          Exit(funcSymbol);
@@ -824,10 +867,14 @@ procedure TRTTIEnvironmentFieldRead.Call(exec : TdwsProgramExecution; func : TFu
 var
    info : TProgramInfo;
    result : Variant;
+   p : Pointer;
+   v : TValue;
 begin
    info:=exec.AcquireProgramInfo(func);
    try
-      ValueToVariant(FField.GetValue(TRTTIRuntimeEnvironment.Instance(exec)), result);
+      p:=TRTTIRuntimeEnvironment.Instance(exec);
+      v:=FField.GetValue(p);
+      ValueToVariant(v, result);
       info.ResultAsVariant:=result;
    finally
       exec.ReleaseProgramInfo(info);
@@ -843,11 +890,14 @@ end;
 procedure TRTTIEnvironmentFieldWrite.Call(exec : TdwsProgramExecution; func : TFuncSymbol);
 var
    info : TProgramInfo;
+   v : Variant;
+   value : TValue;
 begin
    info:=exec.AcquireProgramInfo(func);
    try
-      FField.SetValue(TRTTIRuntimeEnvironment.Instance(exec),
-                      TValue.FromVariant(info.ParamAsVariant[0]));
+      v:=info.ParamAsVariant[0];
+      VariantToValue(v, value);
+      FField.SetValue(TRTTIRuntimeEnvironment.Instance(exec), value);
    finally
       exec.ReleaseProgramInfo(info);
    end;
@@ -919,8 +969,13 @@ end;
 // Instance
 //
 class function TRTTIRuntimeEnvironment.Instance(exec : TdwsProgramExecution) : Pointer;
+var
+   v : TValue;
 begin
-   Result:=(exec.Environment.GetSelf as TRTTIRuntimeEnvironment).Value.AsObject;
+   v:=(exec.Environment.GetSelf as TRTTIRuntimeEnvironment).Value;
+   if v.IsObject then
+      Result:=v.AsObject
+   else Result:=v.GetReferenceToRawData;
 end;
 
 end.
