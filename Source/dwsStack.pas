@@ -159,6 +159,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+{$R-}
+
 // DWSCopyData
 //
 procedure DWSCopyData(const sourceData: TData; sourceAddr: Integer;
