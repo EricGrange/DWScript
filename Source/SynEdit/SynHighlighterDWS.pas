@@ -28,7 +28,7 @@ replace them with the notice and other provisions required by the GPL.
 If you do not delete the provisions above, a recipient may use your version
 of this file under either the MPL or the GPL.
 
-$Id: SynHighlighterDWS.pas,v 1.17 2011/12/02 11:14:36 Egg Exp $
+$Id: SynHighlighterDWS.pas,v 1.11 2011/12/28 09:24:20 Egg Exp $
 
 You may retrieve the latest version of this file at the SynEdit home page,
 located at http://SynEdit.SourceForge.net
@@ -65,14 +65,19 @@ type
   TIdentFuncTableFunc = function : TtkTokenKind of object;
 
 type
+   TAnsiStringList = class(TStringList)
+     function CompareStrings(const S1, S2: string): Integer; override;
+   end;
+
+type
   TSynDWSSyn = class(TSynCustomHighlighter)
   private
     fAsmStart: Boolean;
     fRange: TRangeState;
     fCommentClose : Char;
     fIdentFuncTable: array[0..388] of TIdentFuncTableFunc;
-    fKeyWords : TStringList;
-    fKeyWords_PropertyScoped : TStringList;
+    fKeyWords : TAnsiStringList;
+    fKeyWords_PropertyScoped : TAnsiStringList;
     fTokenID: TtkTokenKind;
     fStringAttri: TSynHighlighterAttributes;
     fCharAttri: TSynHighlighterAttributes;
@@ -191,18 +196,27 @@ const
       'then', 'to', 'try', 'type', 'unit', 'until',
       'uses', 'var', 'virtual', 'while', 'with', 'xor', 'if'
   );
-  KeyWords_PropertyScoped: array [0..4] of UnicodeString = (
-   'default', 'index', 'read', 'stored', 'write'
+  cKeyWords_PropertyScoped: array [0..4] of UnicodeString = (
+      'default', 'index', 'read', 'stored', 'write'
   );
 
+function TAnsiStringList.CompareStrings(const S1, S2: string): Integer;
+begin
+   Result:=CompareText(S1, S2);
+end;
 
 {$Q-}
 function TSynDWSSyn.HashKey(Str: PWideChar): Cardinal;
+var
+  c : Word;
 begin
   Result := 0;
   while IsIdentChar(Str^) do
   begin
-    Result := Result * 812 + Ord(Str^) * 76;
+    c := Ord(Str^);
+    Result := Result * 812 + c * 76;
+    if c in [Ord('A')..Ord('Z')] then
+      Result := Result + (Ord('a') - Ord('A')) * 76;
     inc(Str);
   end;
   Result := Result mod 389;
@@ -231,9 +245,9 @@ begin
       fKeyWords.Add(cKeyWords[i]);
    end;
 
-   for i:=0 to High(KeyWords_PropertyScoped) do begin
-      fIdentFuncTable[HashKey(@KeyWords_PropertyScoped[i][1])]:=FuncPropertyScoped;
-      fKeyWords_PropertyScoped.Add(KeyWords_PropertyScoped[i]);
+   for i:=0 to High(cKeyWords_PropertyScoped) do begin
+      fIdentFuncTable[HashKey(@cKeyWords_PropertyScoped[i][1])]:=FuncPropertyScoped;
+      fKeyWords_PropertyScoped.Add(cKeyWords_PropertyScoped[i]);
    end;
 
    for i := Low(fIdentFuncTable) to High(fIdentFuncTable) do
@@ -246,7 +260,6 @@ begin
    fIdentFuncTable[HashKey('property')] := FuncProperty;
 
    fKeyWords.Sorted:=True;
-
 end;
 
 function TSynDWSSyn.AltFunc: TtkTokenKind;
@@ -304,7 +317,7 @@ end;
 constructor TSynDWSSyn.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  fCaseSensitive := False;
+  fCaseSensitive := True; // bypass automatic lowercase, we handle it here
 
   fAsmAttri := TSynHighlighterAttributes.Create(SYNS_AttrAssembler, SYNS_FriendlyAttrAssembler);
   fAsmAttri.Foreground:=RGB(128, 0, 0);
@@ -355,13 +368,13 @@ begin
   AddAttribute(fSymbolAttri);
   SetAttributesOnChange(DefHighlightChange);
 
-  fKeyWords:=TStringList.Create;
-  fKeyWords_PropertyScoped:=TStringList.Create;
+  fKeyWords:=TAnsiStringList.Create;
+  fKeyWords_PropertyScoped:=TAnsiStringList.Create;
 
   InitIdent;
   fRange := rsUnknown;
   fAsmStart := False;
-  fDefaultFilter := SYNS_FilterPascal;
+  fDefaultFilter := SYNS_FilterDWS;
 end;
 
 // Destroy
