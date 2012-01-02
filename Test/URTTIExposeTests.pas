@@ -590,6 +590,7 @@ begin
                                  +'PrintLn(FieldOne.Value);'#13#10
                                  +'FieldOne.IncValue;'#13#10
                                  +'PrintLn(FieldOne.Value);'#13#10
+                                 +'PrintLn(FieldOne.InverseBoolean(True));'#13#10
                                  +'PrintLn(FieldTwo);'#13#10
                                  +'PrintLn(FieldTwo[1]);'#13#10
                                  +'PrintLn(FieldOne.ClassName());'#13#10
@@ -603,7 +604,7 @@ begin
 
             CheckEquals('', exec.Msgs.AsInfo, 'exec');
 
-            CheckEquals( '123'#13#10'124'#13#10'125'#13#10
+            CheckEquals( '123'#13#10'124'#13#10'125'#13#10'False'#13#10
                         +'Hello'#13#10'H'#13#10'TSimpleClass'#13#10
                         +'True'#13#10
                         +'3.14'#13#10

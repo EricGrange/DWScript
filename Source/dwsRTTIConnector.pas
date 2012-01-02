@@ -200,6 +200,7 @@ type
 
       protected
          function Call(const base : Variant; args : TConnectorArgs) : TData;
+         function NeedDirectReference : Boolean;
 
       public
          constructor Create(const methodName : String; const params : TConnectorParamArray;
@@ -520,6 +521,13 @@ begin
    SetLength(Result, 1);
 
    ValueToVariant(resultValue, Result[0]);
+end;
+
+// NeedDirectReference
+//
+function TdwsRTTIConnectorCall.NeedDirectReference : Boolean;
+begin
+   Result:=False;
 end;
 
 // ------------------

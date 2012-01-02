@@ -106,6 +106,7 @@ type
 
       protected
          function Call(const base : Variant; args : TConnectorArgs) : TData;
+         function NeedDirectReference : Boolean;
 
       public
          constructor Create(const methodName : String);
@@ -398,6 +399,13 @@ end;
 function TdwsJSConnectorCall.Call(const base : Variant; args : TConnectorArgs) : TData;
 begin
    Assert('Not executable');
+end;
+
+// NeedDirectReference
+//
+function TdwsJSConnectorCall.NeedDirectReference : Boolean;
+begin
+   Result:=False;
 end;
 
 // ------------------

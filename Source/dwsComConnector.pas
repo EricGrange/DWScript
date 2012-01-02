@@ -118,6 +118,7 @@ type
 
       protected
          function Call(Const Base: Variant; Args: TConnectorArgs): TData;
+         function NeedDirectReference : Boolean;
 
       public
          constructor Create(const MethodName: UnicodeString; const Params: TConnectorParamArray;
@@ -138,7 +139,7 @@ type
 
   TComVariantArraySymbol = class(TConnectorSymbol)
   public
-    constructor Create(const Name: UnicodeString; ConnectorType: IConnectorType; Typ: TTypeSymbol);
+    constructor Create(const Name: UnicodeString; const ConnectorType: IConnectorType; Typ: TTypeSymbol);
     function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
     procedure InitData(const Dat: TData; Offset: Integer); override;
   end;
@@ -181,6 +182,7 @@ type
     function ReadLength(const Base: Variant; Args: TConnectorArgs): TData; overload;
     function ReadLowBound(const Base: Variant; Args: TConnectorArgs): TData; overload;
     function ReadHighBound(const Base: Variant; Args: TConnectorArgs): TData; overload;
+    function NeedDirectReference : Boolean;
     { IConnectorType }
     function ConnectorCaption: UnicodeString;
     function AcceptsParams(const params: TConnectorParamArray) : Boolean;
@@ -545,6 +547,13 @@ begin
    DwsOleCheck(DispatchInvoke(disp, FMethodType, Length(Args), 0, @FDispId, @paramData, @Result[0]));
 end;
 
+// NeedDirectReference
+//
+function TComConnectorCall.NeedDirectReference : Boolean;
+begin
+   Result:=False;
+end;
+
 constructor TComConnectorCall.Create(const MethodName: UnicodeString;
                      const Params: TConnectorParamArray; MethodType: Cardinal);
 begin
@@ -726,6 +735,13 @@ begin
   Result[0] := VarArrayHighBound(Base, 1);
 end;
 
+// NeedDirectReference
+//
+function TComVariantArrayType.NeedDirectReference : Boolean;
+begin
+   Result:=True;
+end;
+
 function TComVariantArrayType.ReadLength(const Base: Variant): TData;
 begin
   SetLength(Result, 1);
@@ -794,7 +810,7 @@ begin
 end;
 
 constructor TComVariantArraySymbol.Create(const Name: UnicodeString;
-  ConnectorType: IConnectorType; Typ: TTypeSymbol);
+  const ConnectorType: IConnectorType; Typ: TTypeSymbol);
 begin
   inherited Create(Name, ConnectorType);
   Self.Typ := Typ;
