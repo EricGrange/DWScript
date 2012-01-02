@@ -404,7 +404,8 @@ type
    TParamSymbol = class (TDataSymbol)
    end;
 
-   TParamSymbolMethod = procedure (param : TParamSymbol) of object;
+   THasParamSymbolMethod = function (param : TParamSymbol) : Boolean of object;
+   TAddParamSymbolMethod = procedure (param : TParamSymbol) of object;
 
    TParamSymbolWithDefaultValue = class(TParamSymbol)
       private
@@ -588,7 +589,8 @@ type
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function  IsType : Boolean; override;
          procedure SetIsType;
-         procedure AddParam(param: TParamSymbol); virtual;
+         procedure AddParam(param : TParamSymbol);
+         function  HasParam(param : TParamSymbol) : Boolean;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          procedure InitData(const data : TData; offset : Integer); override;
@@ -2227,6 +2229,13 @@ begin
    Params.AddSymbol(param);
 end;
 
+// HasParam
+//
+function TFuncSymbol.HasParam(param : TParamSymbol) : Boolean;
+begin
+   Result:=(Params.FindLocal(param.Name)<>nil);
+end;
+
 // SetType
 //
 procedure TFuncSymbol.SetType(const value : TTypeSymbol);
@@ -2239,12 +2248,10 @@ begin
    end;
 end;
 
-type TAddParamProc = procedure (param: TParamSymbol) of object;
-
 // GenerateParams
 //
 procedure GenerateParams(const name : UnicodeString; table : TSymbolTable;
-                         const funcParams : TParamArray; addProc : TAddParamProc);
+                         const funcParams : TParamArray; const addProc : TAddParamSymbolMethod);
 var
    i : Integer;
    typSym : TTypeSymbol;
@@ -2284,7 +2291,7 @@ begin
 
       end;
 
-      AddProc(paramSym);
+      addProc(paramSym);
 
    end;
 end;
@@ -2924,6 +2931,8 @@ begin
    Result:=FArrayIndices;
 end;
 
+// AddParam
+//
 procedure TPropertySymbol.AddParam(Param: TParamSymbol);
 begin
    ArrayIndices.AddSymbol(Param);
@@ -2931,7 +2940,7 @@ end;
 
 procedure TPropertySymbol.GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
 begin
-   dwsSymbols.GenerateParams(Name,Table,FuncParams,AddParam);
+   dwsSymbols.GenerateParams(Name, Table, FuncParams, AddParam);
 end;
 
 function TPropertySymbol.GetCaption: UnicodeString;

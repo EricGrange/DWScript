@@ -392,7 +392,9 @@ type
          function  ReadNewArray(elementTyp : TTypeSymbol; isWrite : Boolean) : TProgramExpr;
          procedure ReadArrayParams(ArrayIndices: TSymbolTable);
          // Don't want to add param symbols to dictionary when a method implementation (they get thrown away)
-         procedure ReadParams(const addParamMeth : TParamSymbolMethod; paramsToDictionary : Boolean = True);
+         procedure ReadParams(const hasParamMeth : THasParamSymbolMethod;
+                              const addParamMeth : TAddParamSymbolMethod;
+                              paramsToDictionary : Boolean = True);
          function ReadProcDecl(funcToken : TTokenType; isClassMethod : Boolean = False;
                             isType : Boolean = False) : TFuncSymbol;
          procedure ReadProcBody(funcSymbol : TFuncSymbol);
@@ -1871,7 +1873,8 @@ begin
          Result := TSourceFuncSymbol.Create('', funcKind, -1)
       else Result := TSourceFuncSymbol.Create(name, funcKind, FMainProg.NextStackLevel(FProg.Level));
       try
-         ReadParams(Result.AddParam, forwardedSym=nil);  // Don't add params to dictionary when function is forwarded. It is already declared.
+         // Don't add params to dictionary when function is forwarded. It is already declared.
+         ReadParams(Result.HasParam, Result.AddParam, forwardedSym=nil);
 
          Result.Typ:=ReadFuncResultType(funcKind);
 
@@ -1959,7 +1962,7 @@ begin
    Result.DeclarationPos:=methPos;
 
    try
-      ReadParams(Result.AddParam);
+      ReadParams(Result.HasParam, Result.AddParam);
 
       Result.Typ:=ReadFuncResultType(funcKind);
       ReadSemiColon;
@@ -2038,7 +2041,7 @@ begin
          isReintroduced:=meth.IsVirtual;
       end else isReintroduced:=False;
 
-      ReadParams(funcResult.AddParam);
+      ReadParams(funcResult.HasParam, funcResult.AddParam);
 
       funcResult.Typ:=ReadFuncResultType(funcKind);
       ReadSemiColon;
@@ -2184,7 +2187,8 @@ begin
          tmpMeth:=TSourceMethodSymbol.Create(methName, funcKind, structSym,
                                              TMethodSymbol(Result).Visibility, isClassMethod);
          try
-            ReadParams(tmpMeth.AddParam, False);  // Don't store these params to Dictionary. They will become invalid when the method is freed.
+            // Don't store these params to Dictionary. They will become invalid when the method is freed.
+            ReadParams(tmpMeth.HasParam, tmpMeth.AddParam, False);
             tmpMeth.Typ:=ReadFuncResultType(funcKind);
             ReadSemiColon;
             CompareFuncSymbolParams(Result, tmpMeth);
@@ -2193,7 +2197,7 @@ begin
          end;
       end else begin
          // keep compiling on method that wasn't declared in class
-         ReadParams(Result.AddParam, True);
+         ReadParams(Result.HasParam, Result.AddParam, True);
          Result.Typ:=ReadFuncResultType(funcKind);
          ReadSemiColon;
       end;
@@ -4573,10 +4577,10 @@ begin
    repeat
       if not FTok.TestName then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-      if coSymbolDictionary in FOptions then begin
-         SetLength(PosArray, Length(PosArray)+1);
-         PosArray[High(PosArray)] := FTok.HotPos;
-      end;
+
+      SetLength(PosArray, Length(PosArray)+1);
+      PosArray[High(PosArray)]:=FTok.HotPos;
+
       names.Add(FTok.GetToken.FString);
       CheckSpecialName(FTok.GetToken.FString);
       FTok.KillToken;
@@ -6288,7 +6292,9 @@ end;
 
 // ReadParams
 //
-procedure TdwsCompiler.ReadParams(const addParamMeth : TParamSymbolMethod; paramsToDictionary : Boolean = True);
+procedure TdwsCompiler.ReadParams(const hasParamMeth : THasParamSymbolMethod;
+                                  const addParamMeth : TAddParamSymbolMethod;
+                                  paramsToDictionary : Boolean = True);
 var
    i : Integer;
    names : TStringList;
@@ -6297,6 +6303,7 @@ var
    posArray : TScriptPosArray;
    sym : TParamSymbol;
    defaultExpr : TTypedExpr;
+   curName : String;
 begin
    if FTok.TestDelete(ttBLEFT) then begin
       if not FTok.TestDelete(ttBRIGHT) then begin
@@ -6353,22 +6360,26 @@ begin
                         defaultExpr:=defaultExpr.OptimizeToTypedExpr(Fprog, FExec);
 
                      for i:=0 to names.Count-1 do begin
+                        curName:=names[i];
+
                         if lazyParam then begin
-                           sym := TLazyParamSymbol.Create(names[i], Typ)
+                           sym := TLazyParamSymbol.Create(curName, Typ)
                         end else if varParam then begin
-                           sym := TVarParamSymbol.Create(names[i], Typ)
+                           sym := TVarParamSymbol.Create(curName, Typ)
                         end else if constParam then begin
-                           sym := TConstParamSymbol.Create(names[i], Typ)
+                           sym := TConstParamSymbol.Create(curName, Typ)
                         end else begin
                            if Assigned(defaultExpr) then begin
-                              sym := TParamSymbolWithDefaultValue.Create(names[i], Typ,
+                              sym := TParamSymbolWithDefaultValue.Create(curName, Typ,
                                        (defaultExpr as TConstExpr).Data[FExec],
                                        (defaultExpr as TConstExpr).Addr[FExec]);
                            end else begin
-                              sym := TParamSymbol.Create(names[i], Typ);
+                              sym := TParamSymbol.Create(curName, Typ);
                            end;
                         end;
 
+                        if hasParamMeth(sym) then
+                           FMsgs.AddCompilerErrorFmt(posArray[i], CPE_NameAlreadyExists, [curName]);
                         addParamMeth(sym);
 
                         // Enter Field symbol in dictionary
