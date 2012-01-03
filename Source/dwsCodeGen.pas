@@ -47,7 +47,7 @@ type
          FSymbol : TSymbol;
          FHash : TdwsMappedSymbolHash;
          FMaps : TdwsCodeGenSymbolMaps;
-         FNames : TStringList;
+         FNames : TFastCompareStringList;
          FLookup : TdwsMappedSymbol;
          FReservedSymbol : TSymbol;
          FPrefix : String;
@@ -736,15 +736,17 @@ procedure TdwsCodeGen.MapInternalSymbolNames(progTable, systemTable : TSymbolTab
       i : Integer;
       sym : TSymbol;
    begin
-      if table is TLinkedSymbolTable then
+      if table.ClassType=TLinkedSymbolTable then
          table:=TLinkedSymbolTable(table).ParentSymbolTable;
       for i:=0 to table.Count-1 do begin
          sym:=table.Symbols[i];
-         if (sym is TClassSymbol) or (sym is TRecordSymbol) then begin
-            MapStructuredSymbol(TStructuredTypeSymbol(sym), False);
-         end else if sym is TInterfaceSymbol then
-            SymbolMap.MapSymbol(sym, cgssGlobal, False)
-         else if sym is TFuncSymbol then
+         if sym is TStructuredTypeSymbol then begin
+            if (sym is TClassSymbol) or (sym is TRecordSymbol) then begin
+               MapStructuredSymbol(TStructuredTypeSymbol(sym), False);
+            end else if sym is TInterfaceSymbol then
+               SymbolMap.MapSymbol(sym, cgssGlobal, False)
+            else Assert(False);
+         end else if sym is TFuncSymbol then
             SymbolMap.MapSymbol(sym, cgssGlobal, False)
          else if sym is TDataSymbol then
             SymbolMap.MapSymbol(sym, cgssGlobal, False);
@@ -1226,7 +1228,8 @@ end;
 //
 function TdwsMappedSymbolHash.GetItemHashCode(const item1 : TdwsMappedSymbol) : Integer;
 begin
-   Result:=NativeInt(item1.Symbol) shr 4;
+   Result:=NativeInt(item1.Symbol);
+   Result:=(Result shr 4) xor (Result shr 9);
 end;
 
 // ------------------
@@ -1241,9 +1244,8 @@ begin
    FHash:=TdwsMappedSymbolHash.Create;
    FParent:=aParent;
    FSymbol:=aSymbol;
-   FNames:=TStringList.Create;
+   FNames:=TFastCompareStringList.Create;
    FNames.Sorted:=True;
-   FNames.CaseSensitive:=True;
    FNames.Duplicates:=dupError;
    FReservedSymbol:=TSymbol.Create('', nil);
    if aSymbol is TUnitSymbol then
@@ -1386,7 +1388,9 @@ begin
       else Result:=Format('a$%d', [tryCount]);
    end else begin;
       if tryCount=0 then
-         Result:=Prefix+symbol.Name
+         if Prefix='' then
+            Result:=symbol.Name
+         else Result:=Prefix+symbol.Name
       else Result:=Format('%s%s$%d', [Prefix, symbol.Name, tryCount]);
    end;
 end;
