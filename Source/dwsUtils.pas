@@ -413,9 +413,14 @@ type
          {$ENDIF}
    end;
 
+   TUnifierStringList = class (TFastCompareStringList)
+      FLock : TFixedCriticalSection;
+      constructor Create;
+      destructor Destroy; override;
+   end;
+
 var
-   vCharStrings : array [0..127] of TStringList;
-   vUnifierLock : TFixedCriticalSection;
+   vCharStrings : array [0..127] of TUnifierStringList;
 
 // CompareStrings
 //
@@ -424,26 +429,60 @@ begin
    Result:=CompareStr(S1, S2);
 end;
 
+// TUnifierStringList.Create
+//
+constructor TUnifierStringList.Create;
+begin
+   inherited;
+   FLock:=TFixedCriticalSection.Create;
+   Sorted:=True;
+   Duplicates:=dupIgnore;
+end;
+
+// Destroy
+//
+destructor TUnifierStringList.Destroy;
+begin
+   inherited;
+   FLock.Destroy;
+end;
+
+// InitializeStringsUnifier
+//
+procedure InitializeStringsUnifier;
+var
+   i : Integer;
+begin
+   for i:=Low(vCharStrings) to High(vCharStrings) do
+      vCharStrings[i]:=TUnifierStringList.Create;
+end;
+
+// FinalizeStringsUnifier
+//
+procedure FinalizeStringsUnifier;
+var
+   i : Integer;
+begin
+   for i:=Low(vCharStrings) to High(vCharStrings) do
+      FreeAndNil(vCharStrings[i]);
+end;
+
 // UnifyAssignString
 //
 procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString);
 var
    i : Integer;
-   sl : TStringList;
+   sl : TUnifierStringList;
 begin
    if fromStr='' then
       toStr:=''
    else begin
-      i:=Ord(fromStr[1]);
-      if i<=High(vCharStrings) then begin
-         sl:=vCharStrings[i];
-         vUnifierLock.Enter;
-         i:=sl.IndexOf(fromStr);
-         if i<0 then
-            i:=sl.Add(fromStr);
-         toStr:=TStringListCracker(sl).FList[i].FString;
-         vUnifierLock.Leave;
-      end else toStr:=fromStr;
+      i:=Ord(fromStr[1]) and High(vCharStrings);
+      sl:=vCharStrings[i];
+      sl.FLock.Enter;
+      i:=sl.AddObject(fromStr, nil);
+      toStr:=TStringListCracker(sl).FList[i].FString;
+      sl.FLock.Leave;
    end;
 end;
 
@@ -452,13 +491,13 @@ end;
 procedure TidyStringsUnifier;
 var
    i : Integer;
-   sl : TStringList;
+   sl : TUnifierStringList;
 begin
    for i:=Low(vCharStrings) to High(vCharStrings) do begin
       sl:=vCharStrings[i];
-      vUnifierLock.Enter;
+      sl.FLock.Enter;
       sl.Clear;
-      vUnifierLock.Leave;
+      sl.FLock.Leave;
    end;
 end;
 
@@ -526,30 +565,6 @@ end;
 function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
 begin
    Result:=(Length(s1)=Length(s2)) and (UnicodeCompareText(s1, s2)=0)
-end;
-
-// InitializeStringsUnifier
-//
-procedure InitializeStringsUnifier;
-var
-   i : Integer;
-begin
-   vUnifierLock:=TFixedCriticalSection.Create;
-   for i:=Low(vCharStrings) to High(vCharStrings) do begin
-      vCharStrings[i]:=TFastCompareStringList.Create;
-      vCharStrings[i].Sorted:=True;
-   end;
-end;
-
-// FinalizeStringsUnifier
-//
-procedure FinalizeStringsUnifier;
-var
-   i : Integer;
-begin
-   for i:=Low(vCharStrings) to High(vCharStrings) do
-      FreeAndNil(vCharStrings[i]);
-   FreeAndNil(vUnifierLock);
 end;
 
 // StrIBeginsWith

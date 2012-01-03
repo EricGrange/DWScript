@@ -245,7 +245,7 @@ type
    //
    // Named item in the script
    TSymbol = class
-      strict private
+      private
          FName : UnicodeString;
 
       protected
@@ -367,6 +367,9 @@ type
       protected
          function GetCaption : UnicodeString; override;
          function GetDescription : UnicodeString; override;
+
+      public
+         constructor Create(const aName : UnicodeString; aType : TTypeSymbol);
    end;
 
    // named constant: const x = 123;
@@ -1705,7 +1708,7 @@ end;
 //
 constructor TSymbol.Create(const aName : UnicodeString; aType : TTypeSymbol);
 begin
-   UnifyAssignString(aName, FName);
+   FName:=aName;
    FTyp:=aType;
    if Assigned(aType) then
       FSize:=aType.FSize
@@ -3785,6 +3788,15 @@ end;
 // ------------------
 // ------------------ TValueSymbol ------------------
 // ------------------
+
+// Create
+//
+constructor TValueSymbol.Create(const aName : UnicodeString; aType : TTypeSymbol);
+begin
+   UnifyAssignString(aName, FName);
+   FTyp:=aType;
+   FSize:=aType.Size;
+end;
 
 function TValueSymbol.GetCaption: UnicodeString;
 begin
