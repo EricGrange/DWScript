@@ -177,7 +177,7 @@ type
 
    // TLinkedSymbolTable
    //
-   TLinkedSymbolTable = class (TUnitSymbolTable)
+   TLinkedSymbolTable = class sealed (TUnitSymbolTable)
       private
          FParent : IStaticSymbolTable;
          FParentSymbolTable : TStaticSymbolTable;
