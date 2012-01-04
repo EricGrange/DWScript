@@ -320,7 +320,7 @@ type
          function ReadArrayType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
          function ReadArrayConstant(expecting : TTypeSymbol = nil) : TArrayConstantExpr;
          function ReadArrayMethod(const name : UnicodeString; const namePos : TScriptPos;
-                               baseExpr : TTypedExpr; isWrite : Boolean) : TProgramExpr;
+                                  baseExpr : TTypedExpr; isWrite : Boolean) : TProgramExpr;
          function ReadCase : TCaseExpr;
          function ReadCaseConditions(condList : TCaseConditions; valueExpr : TTypedExpr) : Integer;
          function ReadClassOf(const typeName : UnicodeString) : TClassOfSymbol;
@@ -351,11 +351,11 @@ type
          function ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
          function ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
          function ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
-                           iterVarExpr : TIntVarExpr; fromExpr, toExpr : TTypedExpr;
-                           loopFirstStatement : TNoResultExpr) : TForExpr;
+                              iterVarExpr : TIntVarExpr; fromExpr, toExpr : TTypedExpr;
+                              loopFirstStatement : TNoResultExpr) : TForExpr;
 
          function ReadStaticMethod(methodSym : TMethodSymbol; isWrite : Boolean;
-                                expecting : TTypeSymbol = nil) : TProgramExpr;
+                                   expecting : TTypeSymbol = nil) : TProgramExpr;
          function ReadFunc(funcSym : TFuncSymbol; isWrite: Boolean;
                         codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
          function WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil) : TTypedExpr;
@@ -379,17 +379,17 @@ type
          procedure ReadDeprecated(funcSym : TFuncSymbol);
          procedure WarnDeprecated(funcSym : TFuncSymbol);
          function ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
-         function ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol) : TProgramExpr;
+         function ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol) : TTypedExpr;
          function ReadClassSymbolName(baseType : TClassSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadInterfaceSymbolName(baseType : TInterfaceSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadRecordSymbolName(baseType : TRecordSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadConstName(constSym : TConstSymbol; isWrite: Boolean) : TProgramExpr;
-         function ReadNameOld(isWrite: Boolean): TTypedExpr;
-         function ReadNameInherited(isWrite: Boolean): TProgramExpr;
+         function ReadNameOld(isWrite : Boolean) : TTypedExpr;
+         function ReadNameInherited(isWrite : Boolean) : TProgramExpr;
          procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray;
                                 allowDots : Boolean = False);
          function  ReadNew(isWrite : Boolean) : TProgramExpr;
-         function  ReadNewArray(elementTyp : TTypeSymbol; isWrite : Boolean) : TProgramExpr;
+         function  ReadNewArray(elementTyp : TTypeSymbol; isWrite : Boolean) : TNewArrayExpr;
          procedure ReadArrayParams(ArrayIndices: TSymbolTable);
          // Don't want to add param symbols to dictionary when a method implementation (they get thrown away)
          procedure ReadParams(const hasParamMeth : THasParamSymbolMethod;
@@ -406,7 +406,7 @@ type
          function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
          function ReadPropertyDecl(structSym : TStructuredTypeSymbol; aVisibility : TdwsVisibility) : TPropertySymbol;
          function ReadPropertyExpr(var expr : TDataExpr; propertySym : TPropertySymbol; isWrite: Boolean) : TProgramExpr;
-         function ReadPropertyReadExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TProgramExpr;
+         function ReadPropertyReadExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TTypedExpr;
          function ReadPropertyWriteExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TProgramExpr;
          function ReadPropertyArrayAccessor(var expr : TDataExpr; propertySym : TPropertySymbol;
                                          typedExprList : TTypedExprList;
@@ -421,14 +421,14 @@ type
          procedure ReadScriptImplementations;
          function ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
          function ReadStatement : TNoResultExpr;
-         function ReadStringArray(Expr: TDataExpr; IsWrite: Boolean): TProgramExpr;
+         function ReadStringArray(expr : TDataExpr; isWrite : Boolean) : TProgramExpr;
 
          function ReadSwitch(const switchName : UnicodeString) : Boolean;
          function ReadInstrSwitch(const switchName : UnicodeString) : Boolean;
          function ReadExprSwitch(const switchPos : TScriptPos) : Boolean;
 
          function ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
-                          expecting : TTypeSymbol = nil) : TProgramExpr;
+                             expecting : TTypeSymbol = nil) : TProgramExpr;
          function ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TTypedExpr;
          function ReadNegation : TTypedExpr;
 
@@ -438,6 +438,7 @@ type
 
          function ReadType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
          function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
+
          procedure ReadTypeDeclBlock;
          function  ReadTypeDecl(firstInBlock : Boolean) : Boolean;
          procedure ReadUses;
@@ -446,7 +447,7 @@ type
          function ReadWhile : TNoResultExpr;
          function ResolveUnitReferences : TIdwsUnitList;
 
-         protected
+      protected
          procedure EnterLoop(loopExpr : TNoResultExpr);
          procedure MarkLoopExitable(level : TLoopExitable);
          procedure LeaveLoop;
@@ -3022,7 +3023,7 @@ end;
 
 // ReadEnumerationSymbolName
 //
-function TdwsCompiler.ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol) : TProgramExpr;
+function TdwsCompiler.ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol) : TTypedExpr;
 var
    name : UnicodeString;
    elemPos : TScriptPos;
@@ -3192,7 +3193,7 @@ end;
 
 // ReadPropertyReadExpr
 //
-function TdwsCompiler.ReadPropertyReadExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TProgramExpr;
+function TdwsCompiler.ReadPropertyReadExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TTypedExpr;
 var
    sym : TSymbol;
    aPos : TScriptPos;
@@ -4688,7 +4689,7 @@ end;
 
 // ReadNewArray
 //
-function TdwsCompiler.ReadNewArray(elementTyp : TTypeSymbol; isWrite : Boolean) : TProgramExpr;
+function TdwsCompiler.ReadNewArray(elementTyp : TTypeSymbol; isWrite : Boolean) : TNewArrayExpr;
 var
    lengthExpr : TTypedExpr;
    hotPos : TScriptPos;

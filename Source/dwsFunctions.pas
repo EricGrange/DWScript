@@ -110,8 +110,8 @@ type
    TOperatorsRegistrationProc = procedure (systemTable : TSystemSymbolTable; unitTable : TSymbolTable;
                                            operators : TOperators);
 
-   TInternalAbsHandler = function (FProg : TdwsProgram; argExpr : TTypedExpr) : TProgramExpr;
-   TInternalSqrHandler = function (FProg : TdwsProgram; argExpr : TTypedExpr) : TProgramExpr;
+   TInternalAbsHandler = function (FProg : TdwsProgram; argExpr : TTypedExpr) : TTypedExpr;
+   TInternalSqrHandler = function (FProg : TdwsProgram; argExpr : TTypedExpr) : TTypedExpr;
 
    TInternalUnit = class(TObject, IdwsUnit)
       private
@@ -150,7 +150,7 @@ type
          procedure AddOperatorsRegistrationProc(proc : TOperatorsRegistrationProc);
 
          procedure AddAbsHandler(const handler : TInternalAbsHandler);
-         function HandleAbs(prog : TdwsProgram; argExpr : TTypedExpr) : TProgramExpr;
+         function HandleAbs(prog : TdwsProgram; argExpr : TTypedExpr) : TTypedExpr;
 
          procedure InitStaticSymbols(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                      operators : TOperators);
@@ -571,7 +571,7 @@ end;
 
 // HandleAbs
 //
-function TInternalUnit.HandleAbs(prog : TdwsProgram; argExpr : TTypedExpr) : TProgramExpr;
+function TInternalUnit.HandleAbs(prog : TdwsProgram; argExpr : TTypedExpr) : TTypedExpr;
 var
    i : Integer;
 begin

@@ -107,7 +107,7 @@ end;
 
 // HandleComplexAbs
 //
-function HandleComplexAbs(prog : TdwsProgram; argExpr : TTypedExpr) : TProgramExpr;
+function HandleComplexAbs(prog : TdwsProgram; argExpr : TTypedExpr) : TTypedExpr;
 var
    typComplex : TRecordSymbol;
 begin
