@@ -810,7 +810,7 @@ const
        Dependency : 'Random'),
       (Name : 'RandomInt';
        Code : 'function RandomInt(i) { return Math.floor(Random()*i) }';
-       Dependency : 'Random()'),
+       Dependency : 'Random'),
       (Name : 'Randomize';
        Code : 'function Randomize() { $dwsRand=Math.round(Math.random*(1<<31)) }';
        Dependency : '$dwsRand'),
@@ -1850,6 +1850,10 @@ begin
             funcSym:=TFuncExprBase(parent).FuncSym;
             i:=parent.IndexOfSubExpr(expr);
             if parent is TFuncPtrExpr then begin
+               if i=0 then
+                  Exit
+               else Dec(i);
+            end else if parent is TMethodExpr then begin
                if i=0 then
                   Exit
                else Dec(i);
