@@ -3611,40 +3611,97 @@ end;
 //
 procedure TJSCaseExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
-   i : Integer;
+   i, j : Integer;
    e : TCaseExpr;
    cond : TCaseCondition;
+   compCond, compCondOther : TCompareCaseCondition;
+   mark : array of Boolean;
    tmp : String;
+   valType : TTypeSymbol;
+   switchable : Boolean;
 begin
    e:=TCaseExpr(expr);
-   tmp:=codeGen.GetNewTempSymbol;
-   codeGen.WriteString('{var ');
-   codeGen.WriteString(tmp);
-   codeGen.WriteString('=');
-   codeGen.Compile(e.ValueExpr);
-   codeGen.WriteStringLn(';');
-   codeGen.Indent;
+
+   valType:=e.ValueExpr.Typ.UnAliasedType;
+   switchable:=   (valType is TBaseBooleanSymbol)
+               or (valType is TBaseIntegerSymbol)
+               or (valType is TBaseStringSymbol)
+               or (valType is TEnumerationSymbol);
+
    for i:=0 to e.CaseConditions.Count-1 do begin
-      if i>0 then
-         codeGen.WriteString(' else ');
-      codeGen.WriteString('if (');
+      if not switchable then break;
       cond:=TCaseCondition(e.CaseConditions.List[i]);
-      CodeGenCondition(codeGen, cond, procedure begin codeGen.WriteString(tmp) end);
+      switchable:=    (cond is TCompareCaseCondition)
+                  and (TCompareCaseCondition(cond).CompareExpr is TConstExpr);
+   end;
+
+   if switchable then begin
+
+      SetLength(mark, e.CaseConditions.Count);
+      codeGen.WriteString('switch (');
+      codeGen.Compile(e.ValueExpr);
       codeGen.WriteStringLn(') {');
       codeGen.Indent;
-      codeGen.Compile(cond.TrueExpr);
-      codeGen.UnIndent;
-      codeGen.WriteStringLn('}');
-   end;
-   if e.ElseExpr<>nil then begin
-      codeGen.WriteStringLn(' else {');
-      codeGen.Indent;
-      codeGen.Compile(e.ElseExpr);
+      for i:=0 to e.CaseConditions.Count-1 do begin
+         if mark[i] then continue;
+         compCond:=TCompareCaseCondition(e.CaseConditions.List[i]);
+         codeGen.WriteString('case ');
+         for j:=i to e.CaseConditions.Count-1 do begin
+            compCondOther:=TCompareCaseCondition(e.CaseConditions.List[j]);
+            if compCond.TrueExpr=compCondOther.TrueExpr then begin
+               if j>i then
+                  codeGen.WriteString(', ');
+               codeGen.Compile(compCond.CompareExpr);
+               mark[j]:=True;
+            end;
+         end;
+         codeGen.WriteStringLn(' :');
+         codeGen.Indent;
+         codeGen.Compile(compCond.TrueExpr);
+         codeGen.WriteStringLn('break;');
+         codeGen.UnIndent;
+      end;
+      if e.ElseExpr<>nil then begin
+         codeGen.WriteStringLn('default :');
+         codeGen.Indent;
+         codeGen.Compile(e.ElseExpr);
+         codeGen.UnIndent;
+      end;
       codeGen.UnIndent;
       codeGen.WriteStringLn('};');
+
+   end else begin
+
+      tmp:=codeGen.GetNewTempSymbol;
+      codeGen.WriteString('{var ');
+      codeGen.WriteString(tmp);
+      codeGen.WriteString('=');
+      codeGen.Compile(e.ValueExpr);
+      codeGen.WriteStringLn(';');
+      codeGen.Indent;
+      for i:=0 to e.CaseConditions.Count-1 do begin
+         if i>0 then
+            codeGen.WriteString(' else ');
+         codeGen.WriteString('if (');
+         cond:=TCaseCondition(e.CaseConditions.List[i]);
+         CodeGenCondition(codeGen, cond, procedure begin codeGen.WriteString(tmp) end);
+         codeGen.WriteStringLn(') {');
+         codeGen.Indent;
+         codeGen.Compile(cond.TrueExpr);
+         codeGen.UnIndent;
+         codeGen.WriteStringLn('}');
+      end;
+      if e.ElseExpr<>nil then begin
+         codeGen.WriteStringLn(' else {');
+         codeGen.Indent;
+         codeGen.Compile(e.ElseExpr);
+         codeGen.UnIndent;
+         codeGen.WriteStringLn('};');
+      end;
+      codeGen.UnIndent;
+      codeGen.WriteStringLn('};');
+
    end;
-   codeGen.UnIndent;
-   codeGen.WriteStringLn('};');
 end;
 
 // CodeGenCondition
