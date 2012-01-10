@@ -675,9 +675,9 @@ const
               +#9'return String.fromCharCode(0xD800+(c>>10))+String.fromCharCode(0xDC00+(c&0x3FF));'#13#10
               +'}'),
       (Name : 'Clamp';
-       Code : 'function Clamp(v,mi,ma) { if (v<mi) return mi; else if (v>ma) return ma; else return v }'),
+       Code : 'function Clamp(v,mi,ma) { return v<mi ? mi : v>ma ? ma : v }'),
       (Name : 'ClampInt';
-       Code : 'function ClampInt(v,mi,ma) { if (v<mi) return mi; else if (v>ma) return ma; else return v }'),
+       Code : 'function ClampInt(v,mi,ma) { return v<mi ? mi : v>ma ? ma : v }'),
       (Name : 'CompareStr';
        Code : 'function CompareStr(a,b) { if (a<b) return -1; else return (a==b)?0:1 }'),
       (Name : 'CompareText';
