@@ -252,6 +252,7 @@ const
   CPE_WrongArgumentType_Long = 'Argument %d expects type "%s" instead of "%s"';
   CPE_NoDefaultProperty = 'Class "%s" has no default property';
   CPE_ConstVarParam = 'Argument %d (%s) cannot be passed as Var-parameter';
+  CPE_OnlyVariablesAsVarParam = 'Only a variable can be be passed as Var-parameter';
 
   CPE_InvalidOperands = 'Invalid Operands';
   CPE_IncompatibleOperands = 'Incompatible operands';

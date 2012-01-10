@@ -846,8 +846,6 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
-         procedure Initialize(prog : TdwsProgram); virtual;
-
       public
          constructor Create(prog : TdwsProgram; const pos : TScriptPos; aFunc : TFuncSymbol);
          destructor Destroy; override;
@@ -855,9 +853,10 @@ type
          procedure AddArg(arg : TTypedExpr); virtual; abstract;
          procedure ClearArgs;
          function ExpectedArg : TParamSymbol; virtual; abstract;
-         procedure TypeCheckArgs(prog : TdwsProgram; const argPosArray : TScriptPosArray);
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function IsConstant : Boolean; override;
+
+         procedure Initialize(prog : TdwsProgram); virtual;
 
          procedure SetResultAddr(prog : TdwsProgram; exec : TdwsExecution; ResultAddr: Integer = -1);
 
@@ -3821,102 +3820,6 @@ end;
 procedure TFuncExprBase.ClearArgs;
 begin
    FArgs.Clean;
-end;
-
-// TypeCheckArgs
-//
-procedure TFuncExprBase.TypeCheckArgs(prog : TdwsProgram; const argPosArray : TScriptPosArray);
-var
-   arg : TTypedExpr;
-   x, paramCount, nbParamsToCheck : Integer;
-   paramSymbol : TParamSymbol;
-   argTyp : TSymbol;
-   initialErrorCount : Integer;
-   tooManyArguments, tooFewArguments : Boolean;
-   argPos : TScriptPos;
-begin
-   paramCount:=FFunc.Params.Count;
-
-   initialErrorCount:=prog.CompileMsgs.Count;
-
-   // Check number of arguments = number of parameters
-   if FArgs.Count>paramCount then begin
-      tooManyArguments:=True;
-      while FArgs.Count>paramCount do begin
-         FArgs.ExprBase[FArgs.Count-1].Free;
-         FArgs.Delete(FArgs.Count-1);
-      end;
-   end else tooManyArguments:=False;
-
-   tooFewArguments:=False;
-   while FArgs.Count<paramCount do begin
-      // Complete missing args by default values
-      paramSymbol:=TParamSymbol(FFunc.Params[FArgs.Count]);
-      if paramSymbol is TParamSymbolWithDefaultValue then
-         FArgs.Add(TConstExpr.CreateTyped(Prog, paramSymbol.Typ,
-                                          TParamSymbolWithDefaultValue(paramSymbol).DefaultValue))
-      else begin
-         tooFewArguments:=True;
-         Break;
-      end;
-   end;
-
-   if paramCount<FArgs.Count then
-      nbParamsToCheck:=paramCount
-   else nbParamsToCheck:=FArgs.Count;
-
-   for x:=0 to nbParamsToCheck-1 do begin
-      arg:=TTypedExpr(FArgs.ExprBase[x]);
-      paramSymbol:=TParamSymbol(FFunc.Params[x]);
-      if x<Length(argPosArray) then
-         argPos:=argPosArray[x]
-      else argPos:=Self.Pos;
-
-      if arg is TArrayConstantExpr then
-         TArrayConstantExpr(arg).Prepare(Prog, paramSymbol.Typ.Typ);
-
-      argTyp:=arg.Typ;
-      // Wrap-convert arguments if necessary and possible
-      if paramSymbol.ClassType<>TVarParamSymbol then begin
-         arg:=TConvExpr.WrapWithConvCast(prog, argPos, paramSymbol.Typ, arg, False);
-      end;
-      FArgs.ExprBase[x]:=arg;
-
-      if argTyp=nil then begin
-         prog.CompileMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType,
-                                              [x, paramSymbol.Typ.Caption]);
-         continue;
-      end;
-      if not paramSymbol.Typ.IsCompatible(arg.Typ) then begin
-         prog.CompileMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType_Long,
-                                              [x, paramSymbol.Typ.Caption, arg.Typ.Caption]);
-         continue;
-      end;
-      if paramSymbol.ClassType=TVarParamSymbol then begin
-         if not paramSymbol.Typ.IsOfType(arg.Typ) then
-            prog.CompileMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType_Long,
-                                                 [x, paramSymbol.Typ.Caption, argTyp.Caption]);
-         if arg is TDataExpr then begin
-            // Record methods ignore the IsWritable constraints, as in Delphi
-            if     (not TDataExpr(arg).IsWritable)
-               and (   (x>0)
-                    or (not (FuncSym is TMethodSymbol))
-                    or (not (TMethodSymbol(FuncSym).StructSymbol is TRecordSymbol))) then
-               prog.CompileMsgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [x, paramSymbol.Name]);
-         end else prog.CompileMsgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [x, paramSymbol.Name]);
-      end;
-
-   end;
-
-   if initialErrorCount=prog.CompileMsgs.Count then begin
-      if tooManyArguments then
-         prog.CompileMsgs.AddCompilerError(Pos, CPE_TooManyArguments);
-      if tooFewArguments then
-         prog.CompileMsgs.AddCompilerError(Pos, CPE_TooFewArguments);
-   end;
-
-   if not prog.CompileMsgs.HasErrors then
-      Initialize(prog);
 end;
 
 // Optimize

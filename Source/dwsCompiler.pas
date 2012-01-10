@@ -31,7 +31,8 @@ uses
 
 type
    TCompilerOption = ( coOptimize, coSymbolDictionary, coContextMap, coAssertions,
-                       coHintsDisabled, coWarningsDisabled, coExplicitUnitUses );
+                       coHintsDisabled, coWarningsDisabled, coExplicitUnitUses,
+                       coVariablesAsVarOnly );
    TCompilerOptions = set of TCompilerOption;
 
 const
@@ -361,6 +362,7 @@ type
          function WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil) : TTypedExpr;
 
          procedure ReadFuncArgs(funcExpr : TFuncExprBase; var argPosArray : TScriptPosArray);
+         procedure TypeCheckArgs(funcExpr : TFuncExprBase; const argPosArray : TScriptPosArray);
          procedure ReadArguments(const addArgProc : TAddArgProcedure;
                                  leftDelim, rightDelim : TTokenType;
                                  var argPosArray : TScriptPosArray;
@@ -2789,7 +2791,7 @@ begin
             ReadFuncArgs(TFuncExpr(Result), argPosArray);
             if TMethodSymbol(sym).Kind = fkConstructor then
                (Result as TMethodExpr).Typ := (methSym.StructSymbol as TClassSymbol).Parent;
-            TFuncExpr(Result).TypeCheckArgs(FProg, argPosArray);
+            TypeCheckArgs(TFuncExpr(Result), argPosArray);
          except
             Result.Free;
             raise;
@@ -3359,7 +3361,7 @@ begin
       if isWrite then
          Result.AddArg(ReadExpr(propertySym.Typ));
 
-      Result.TypeCheckArgs(FProg, nil);
+      TypeCheckArgs(Result, nil);
    except
       Result.Free;
       raise;
@@ -3643,7 +3645,7 @@ begin
       end else if Assigned(Sym.ReadFunc) then
          Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc)
       else FMsgs.AddCompilerStop(FTok.HotPos,CPE_WriteOnlyProperty); // ??
-      Result.TypeCheckArgs(FProg, nil);
+      TypeCheckArgs(Result, nil);
    except
       Result.Free;
       raise;
@@ -4185,7 +4187,7 @@ begin
    try
       if FTok.Test(ttBLEFT) then begin
          ReadFuncArgs(funcExpr, argPosArray);
-         funcExpr.TypeCheckArgs(FProg, argPosArray);
+         TypeCheckArgs(funcExpr, argPosArray);
       end else begin
          if    (    (expecting is TNilSymbol)
                 and (funcExpr is TFuncPtrExpr)
@@ -4196,7 +4198,7 @@ begin
                FMsgs.AddCompilerError(funcExpr.Pos, CPE_LocalFunctionAsDelegate);
             Result:=TFuncRefExpr.Create(FProg, funcExpr);
          end else begin
-            funcExpr.TypeCheckArgs(FProg, nil);
+            TypeCheckArgs(funcExpr, nil);
          end;
       end;
    except
@@ -4224,6 +4226,112 @@ end;
 procedure TdwsCompiler.ReadFuncArgs(funcExpr : TFuncExprBase; var argPosArray : TScriptPosArray);
 begin
    ReadArguments(funcExpr.AddArg, ttBLEFT, ttBRIGHT, argPosArray, funcExpr.ExpectedArg);
+end;
+
+// TypeCheckArgs
+//
+procedure TdwsCompiler.TypeCheckArgs(funcExpr : TFuncExprBase; const argPosArray : TScriptPosArray);
+var
+   arg : TTypedExpr;
+   x, paramCount, nbParamsToCheck : Integer;
+   funcSym : TFuncSymbol;
+   paramSymbol : TParamSymbol;
+   argTyp : TSymbol;
+   initialErrorCount : Integer;
+   tooManyArguments, tooFewArguments : Boolean;
+   argPos : TScriptPos;
+begin
+   funcSym:=funcExpr.FuncSym;
+   paramCount:=funcSym.Params.Count;
+
+   initialErrorCount:=FMsgs.Count;
+
+   // Check number of arguments = number of parameters
+   if funcExpr.Args.Count>paramCount then begin
+      tooManyArguments:=True;
+      while funcExpr.Args.Count>paramCount do begin
+         funcExpr.Args.ExprBase[funcExpr.Args.Count-1].Free;
+         funcExpr.Args.Delete(funcExpr.Args.Count-1);
+      end;
+   end else tooManyArguments:=False;
+
+   tooFewArguments:=False;
+   while funcExpr.Args.Count<paramCount do begin
+      // Complete missing args by default values
+      paramSymbol:=TParamSymbol(funcSym.Params[funcExpr.Args.Count]);
+      if paramSymbol is TParamSymbolWithDefaultValue then
+         funcExpr.Args.Add(TConstExpr.CreateTyped(FProg, paramSymbol.Typ,
+                                          TParamSymbolWithDefaultValue(paramSymbol).DefaultValue))
+      else begin
+         tooFewArguments:=True;
+         Break;
+      end;
+   end;
+
+   if paramCount<funcExpr.Args.Count then
+      nbParamsToCheck:=paramCount
+   else nbParamsToCheck:=funcExpr.Args.Count;
+
+   for x:=0 to nbParamsToCheck-1 do begin
+      arg:=TTypedExpr(funcExpr.Args.ExprBase[x]);
+      paramSymbol:=TParamSymbol(funcSym.Params[x]);
+      if x<Length(argPosArray) then
+         argPos:=argPosArray[x]
+      else argPos:=funcExpr.Pos;
+
+      if arg is TArrayConstantExpr then
+         TArrayConstantExpr(arg).Prepare(FProg, paramSymbol.Typ.Typ);
+
+      argTyp:=arg.Typ;
+      // Wrap-convert arguments if necessary and possible
+      if paramSymbol.ClassType<>TVarParamSymbol then begin
+         arg:=TConvExpr.WrapWithConvCast(FProg, argPos, paramSymbol.Typ, arg, False);
+      end;
+      funcExpr.Args.ExprBase[x]:=arg;
+
+      if argTyp=nil then begin
+         FMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType,
+                                               [x, paramSymbol.Typ.Caption]);
+         continue;
+      end;
+      if not paramSymbol.Typ.IsCompatible(arg.Typ) then begin
+         FMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType_Long,
+                                               [x, paramSymbol.Typ.Caption, arg.Typ.Caption]);
+         continue;
+      end;
+      if paramSymbol.ClassType=TVarParamSymbol then begin
+         if not paramSymbol.Typ.IsOfType(arg.Typ) then
+            FMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType_Long,
+                                                  [x, paramSymbol.Typ.Caption, argTyp.Caption]);
+         if arg is TDataExpr then begin
+            if     (coVariablesAsVarOnly in Options)
+               and (not (arg is TVarExpr))
+               and (   (x>0)
+                    or (not (funcSym is TMethodSymbol))
+                    or (not (TMethodSymbol(funcSym).StructSymbol is TRecordSymbol))
+                    or TMethodSymbol(funcSym).IsClassMethod
+                    ) then
+               FMsgs.AddCompilerError(argPos, CPE_OnlyVariablesAsVarParam)
+            // Record methods ignore the IsWritable constraints, as in Delphi
+            else if     (not TDataExpr(arg).IsWritable)
+                    and (   (x>0)
+                         or (not (funcSym is TMethodSymbol))
+                         or (not (TMethodSymbol(funcSym).StructSymbol is TRecordSymbol))) then
+               FMsgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [x, paramSymbol.Name]);
+         end else FMsgs.AddCompilerErrorFmt(argPos, CPE_ConstVarParam, [x, paramSymbol.Name]);
+      end;
+
+   end;
+
+   if initialErrorCount=FMsgs.Count then begin
+      if tooManyArguments then
+         FMsgs.AddCompilerError(funcExpr.Pos, CPE_TooManyArguments);
+      if tooFewArguments then
+         FMsgs.AddCompilerError(funcExpr.Pos, CPE_TooFewArguments);
+   end;
+
+   if not FMsgs.HasErrors then
+      funcExpr.Initialize(FProg);
 end;
 
 // ReadArguments
@@ -4678,7 +4786,7 @@ begin
    try
       ReadFuncArgs(TFuncExpr(Result), argPosArray);
       (Result as TMethodExpr).Typ:=classSym;
-      TFuncExpr(Result).TypeCheckArgs(FProg, argPosArray);
+      TypeCheckArgs(TFuncExpr(Result), argPosArray);
    except
       Result.Free;
       raise;
@@ -5961,7 +6069,7 @@ begin
                setExpr:=nil;
                classOpExpr.AddArg(left);
                left:=nil;
-               classOpExpr.TypeCheckArgs(FProg, argPosArray);
+               TypeCheckArgs(classOpExpr, argPosArray);
             except
                classOpExpr.Free;
                raise;
@@ -7392,7 +7500,7 @@ begin
                classOpExpr:=GetMethodExpr(classOpSymbol.UsesSym, left, rkObjRef, scriptPos, False);
                try
                   classOpExpr.AddArg(right);
-                  classOpExpr.TypeCheckArgs(FProg, nil);
+                  TypeCheckArgs(classOpExpr, nil);
                except
                   classOpExpr.Free;
                   raise;
@@ -7523,7 +7631,7 @@ begin
          funcExpr:=GetFuncExpr(op.FuncSym, False);
          funcExpr.AddArg(aLeft);
          funcExpr.AddArg(aRight);
-         funcExpr.TypeCheckArgs(FProg, nil);
+         TypeCheckArgs(funcExpr, nil);
          if Optimize then
             Result:=funcExpr.OptimizeToTypedExpr(FProg, FExec)
          else Result:=funcExpr;

@@ -8,6 +8,11 @@ Type
   Begin
      Result:='Hello '+Field;
   End;
+  
+  procedure SetExclamation;
+  begin
+     Field:=Field+'!';
+  end;
  
  End;
  
@@ -17,3 +22,6 @@ Begin
 End;
 
 PrintLn(GetRec.GetName);
+var r:=GetRec;
+r.SetExclamation;
+PrintLn(r.GetName);
