@@ -484,7 +484,7 @@ const
        Code : 'function $ArraySetLength(a,n,d) {'#13#10
               +#9'var o=a.length;'#13#10
               +#9'if (o==n) return;'#13#10
-              +#9'if (o>n) { a.splice(n, o-n); return }'#13#10
+              +#9'if (o>n) { a.length=n; return };'#13#10
               +#9'for (;o<n;o++) a.push(d());'#13#10
               +'}'),
       (Name : '$ArrayCopy';
@@ -4240,15 +4240,24 @@ var
 begin
    e:=TArraySetLengthExpr(expr);
 
-   codeGen.Dependencies.Add('$ArraySetLength');
+   if (e.LengthExpr is TConstIntExpr) and (TConstIntExpr(e.LengthExpr).Value=0) then begin
 
-   codeGen.WriteString('$ArraySetLength(');
-   codeGen.Compile(e.BaseExpr);
-   codeGen.WriteString(',');
-   codeGen.Compile(e.LengthExpr);
-   codeGen.WriteString(',function (){return ');
-   (codeGen as TdwsJSCodeGen).WriteDefaultValue(e.BaseExpr.Typ.Typ, False);
-   codeGen.WriteStringLn('});');
+      codeGen.Compile(e.BaseExpr);
+      codeGen.WriteStringLn('.length=0;');
+
+   end else begin
+
+      codeGen.Dependencies.Add('$ArraySetLength');
+
+      codeGen.WriteString('$ArraySetLength(');
+      codeGen.Compile(e.BaseExpr);
+      codeGen.WriteString(',');
+      codeGen.Compile(e.LengthExpr);
+      codeGen.WriteString(',function (){return ');
+      (codeGen as TdwsJSCodeGen).WriteDefaultValue(e.BaseExpr.Typ.Typ, False);
+      codeGen.WriteStringLn('});');
+
+   end;
 end;
 
 // ------------------
