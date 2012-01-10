@@ -4635,6 +4635,10 @@ begin
                Result:=TArraySetLengthExpr.Create(FProg, namePos, baseExpr, argList[0]);
                argList.Clear;
             end else Result:=TArraySetLengthExpr.Create(FProg, namePos, baseExpr, nil);
+         end else if SameText(name, 'clear') then begin
+            CheckRestricted;
+            CheckArguments(0, 0);
+            Result:=TArraySetLengthExpr.Create(FProg, namePos, baseExpr, TConstIntExpr.CreateIntegerValue(FProg, 0));
          end else if SameText(name, 'swap') then begin
             CheckRestricted;
             if CheckArguments(2, 2) then begin
