@@ -2019,16 +2019,13 @@ begin
    end;
 
    // Check if name is already used
-   sym := structSym.Members.FindSymbolFromScope(name, structSym);
-   if sym<>nil then begin
-      if sym is TMethodSymbol then begin
-         meth:=TMethodSymbol(sym);
-         if meth.StructSymbol = structSym then
-         MemberSymbolWithNameAlreadyExists(meth);
-      end else begin
+   sym:=structSym.Members.FindSymbolFromScope(name, structSym);
+   if (sym<>nil) then begin
+      if sym is TMethodSymbol then
+         meth:=TMethodSymbol(sym)
+      else meth:=nil;
+      if structSym.Members.HasSymbol(sym) then
          MemberSymbolWithNameAlreadyExists(sym);
-         meth:=nil;
-      end;
    end else meth:=nil;
 
    if structSym.IsStatic and (not IsClassMethod) then
