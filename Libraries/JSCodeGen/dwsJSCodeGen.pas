@@ -319,6 +319,7 @@ type
    end;
 
    TJSRecordMethodExpr = class (TJSFuncBaseExpr)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
    TJSMethodStaticExpr = class (TJSFuncBaseExpr)
@@ -2246,6 +2247,10 @@ begin
    proc:=(meth.Executable as TdwsProcedure);
 
    WriteString('function ');
+   if not meth.IsClassMethod then begin
+      WriteSymbolName(meth.StructSymbol);
+      WriteString('$');
+   end;
    WriteSymbolName(meth);
 
    EnterScope(meth);
@@ -3097,6 +3102,28 @@ begin
       codeGen.Dependencies.Add(name);
       inherited;
    end;
+end;
+
+// ------------------
+// ------------------ TJSRecordMethodExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSRecordMethodExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TRecordMethodExpr;
+   methSym : TMethodSymbol;
+begin
+   e:=TRecordMethodExpr(expr);
+
+   methSym:=(e.FuncSym as TMethodSymbol);
+   if not methSym.IsClassMethod then begin
+      codeGen.WriteSymbolName(methSym.StructSymbol);
+      codeGen.WriteString('$');
+   end;
+
+   inherited;
 end;
 
 // ------------------
