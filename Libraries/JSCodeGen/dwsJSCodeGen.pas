@@ -862,7 +862,7 @@ const
       (Name : 'SubStr';
        Code : 'function SubStr(s,f) { return s.substr(f-1) }'),
       (Name : 'SubString';
-       Code : 'function SubString(s,f,t) { return s.substr(f-1,t-2) }'),
+       Code : 'function SubString(s,f,t) { return s.substr(f-1, t-2) }'),
       (Name : 'Sqrt';
        Code : 'function Sqrt(v) { return Math.sqrt(v) }'),
       (Name : 'Tan';
@@ -894,29 +894,29 @@ const
       // RTL classes
       (Name : 'TObject';
        Code : 'var TObject={'#13#10
-               +#9'$ClassName:"TObject",'#13#10
-               +#9'ClassName:function (Self) { return Self.$ClassName },'#13#10
-               +#9'ClassType:function (Self) { return Self },'#13#10
-               +#9'$Init:function () {},'#13#10
-               +#9'Create:function (Self) { return Self; },'#13#10
-               +#9'Destroy:function (Self) { for (prop in Self) { if (Self.hasOwnProperty(prop)) { delete Self.prop; } } },'#13#10
-               +#9'Destroy$v:function(Self) { return Self.ClassType.Destroy(Self) },'#13#10
-               +#9'Free:function (Self) { if (Self!=null) Self.ClassType.Destroy(Self) }'#13#10
+               +#9'$ClassName: "TObject",'#13#10
+               +#9'ClassName: function (Self) { return Self.$ClassName },'#13#10
+               +#9'ClassType: function (Self) { return Self },'#13#10
+               +#9'$Init: function () {},'#13#10
+               +#9'Create: function (Self) { return Self; },'#13#10
+               +#9'Destroy: function (Self) { for (prop in Self) { if (Self.hasOwnProperty(prop)) delete Self.prop; } },'#13#10
+               +#9'Destroy$v: function(Self) { return Self.ClassType.Destroy(Self) },'#13#10
+               +#9'Free: function (Self) { if (Self!=null) Self.ClassType.Destroy(Self) }'#13#10
                +'}';
        Dependency : '$New'),
       (Name : 'Exception';
        Code : 'var Exception={'#13#10
-               +#9'$ClassName:"Exception",'#13#10
-               +#9'$Parent:TObject,'#13#10
-               +#9'$Init:function () { FMessage=""; },'#13#10
-               +#9'Create$1:function (Self,Msg) { Self.FMessage=Msg; return Self; }'#13#10
+               +#9'$ClassName: "Exception",'#13#10
+               +#9'$Parent: TObject,'#13#10
+               +#9'$Init: function () { FMessage=""; },'#13#10
+               +#9'Create$1: function (Self,Msg) { Self.FMessage=Msg; return Self; }'#13#10
                +'}';
        Dependency : 'TObject'),
       (Name : 'EAssertionFailed';
        Code : 'var EAssertionFailed={'#13#10
-               +#9'$ClassName:"EAssertionFailed",'#13#10
-               +#9'$Parent:Exception,'#13#10
-               +#9'$Init:Exception.$Init,'#13#10
+               +#9'$ClassName: "EAssertionFailed",'#13#10
+               +#9'$Parent: Exception,'#13#10
+               +#9'$Init: Exception.$Init'#13#10
                +'}';
        Dependency : 'Exception')
    );
@@ -3419,27 +3419,38 @@ procedure TJSConnectorCallExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TConnectorCallExpr;
    jsCall : TdwsJSConnectorCall;
-   i : Integer;
+   isWrite : Boolean;
+   i, n : Integer;
 begin
    e:=TConnectorCallExpr(Expr);
    jsCall:=(e.ConnectorCall as TdwsJSConnectorCall);
 
+   n:=e.SubExprCount-1;
+   isWrite:=False;
+
    codeGen.Compile(e.BaseExpr);
-   if e.IsIndex then
-      codeGen.WriteString('[')
-   else begin
+   if e.IsIndex then begin
+      codeGen.WriteString('[');
+      isWrite:=(jsCall as TdwsJSIndexCall).IsWrite;
+      if isWrite then
+         Dec(n);
+   end else begin
       codeGen.WriteString('.');
       codeGen.WriteString(jsCall.CallMethodName);
       codeGen.WriteString('(');
    end;
-   for i:=1 to e.SubExprCount-1 do begin
+   for i:=1 to n do begin
       if i>1 then
          codeGen.WriteString(',');
       codeGen.Compile(e.SubExpr[i]);
    end;
-   if e.IsIndex then
-      codeGen.WriteString(']')
-   else codeGen.WriteString(')');
+   if e.IsIndex then begin
+      codeGen.WriteString(']');
+      if isWrite then begin
+         codeGen.WriteString('=');
+         codeGen.Compile(e.SubExpr[n+1]);
+      end;
+   end else codeGen.WriteString(')');
 end;
 
 // ------------------

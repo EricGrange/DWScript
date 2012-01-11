@@ -114,7 +114,15 @@ type
          property CallMethodName : String read FMethodName write FMethodName;
    end;
 
-   TdwsJSIndexCall = class(TdwsJSConnectorCall);
+   TdwsJSIndexCall = class(TdwsJSConnectorCall)
+      private
+         FIsWrite : Boolean;
+
+      public
+         constructor Create(const methodName : String; isWrite : Boolean);
+
+         property IsWrite : Boolean read FIsWrite write FIsWrite;
+   end;
 
    TdwsJSConnectorMember = class(TInterfacedSelfObject, IUnknown, IConnectorMember)
       protected
@@ -379,7 +387,7 @@ function TdwsJSConnectorType.HasIndex(const propName : String; const params : TC
                                       var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
 begin
    typSym:=FTable.FindTypeSymbol(SYS_VARIANT, cvMagic);
-   Result:=TdwsJSIndexCall.Create(propName);
+   Result:=TdwsJSIndexCall.Create(propName, isWrite);
 end;
 
 // ------------------
@@ -406,6 +414,18 @@ end;
 function TdwsJSConnectorCall.NeedDirectReference : Boolean;
 begin
    Result:=False;
+end;
+
+// ------------------
+// ------------------ TdwsJSIndexCall ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsJSIndexCall.Create(const methodName : String; isWrite : Boolean);
+begin
+   inherited Create(methodName);
+   Self.IsWrite:=isWrite;
 end;
 
 // ------------------
