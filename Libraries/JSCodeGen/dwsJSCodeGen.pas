@@ -122,38 +122,39 @@ type
 
    TJSAssignExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+      procedure CodeGenRight(codeGen : TdwsCodeGen; expr : TExprBase); virtual;
    end;
-   TJSAssignDataExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   TJSAssignDataExpr = class (TJSAssignExpr)
+      procedure CodeGenRight(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSAssignClassOfExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   TJSAssignClassOfExpr = class (TJSAssignExpr)
+      procedure CodeGenRight(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSAssignFuncExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   TJSAssignFuncExpr = class (TJSAssignExpr)
+      procedure CodeGenRight(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
    TJSInitDataExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
-   TJSAssignConstToIntegerVarExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   TJSAssignConstToIntegerVarExpr = class (TJSAssignExpr)
+      procedure CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSAssignConstToFloatVarExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   TJSAssignConstToFloatVarExpr = class (TJSAssignExpr)
+      procedure CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSAssignConstToBoolVarExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   TJSAssignConstToBoolVarExpr = class (TJSAssignExpr)
+      procedure CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSAssignConstToStringVarExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   TJSAssignConstToStringVarExpr = class (TJSAssignExpr)
+      procedure CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSAssignNilToVarExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   TJSAssignNilToVarExpr = class (TJSAssignExpr)
+      procedure CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSAssignConstDataToVarExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   TJSAssignConstDataToVarExpr = class (TJSAssignExpr)
+      procedure CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase); override;
    end;
 
    TJSAppendConstStringVarExpr = class (TJSExprCodeGen)
@@ -2148,16 +2149,36 @@ end;
 // CompileFuncBody
 //
 procedure TdwsJSCodeGen.CompileFuncBody(func : TFuncSymbol);
+
+   function ResultIsNotUsedInExpr(anExpr : TExprBase) : Boolean;
+   var
+      foundIt : Boolean;
+   begin
+      foundIt:=False;
+      anExpr.RecursiveEnumerateSubExprs(
+         procedure (parent, expr : TExprBase; var abort : Boolean)
+         begin
+            abort:=    (expr is TVarExpr)
+                   and (TVarExpr(expr).DataSym is TResultSymbol);
+            if abort then
+               foundIt:=True;
+         end);
+      Result:=not foundIt;
+   end;
+
 var
    resultTyp : TTypeSymbol;
    proc : TdwsProcedure;
    resultIsBoxed : Boolean;
    param : TParamSymbol;
    i : Integer;
+   cg : TdwsExprCodeGen;
+   assignExpr : TAssignExpr;
 begin
    proc:=(func.Executable as TdwsProcedure);
    if proc=nil then Exit;
 
+   // box params that the function will pass as var
    for i:=0 to proc.Func.Params.Count-1 do begin
       param:=proc.Func.Params[i] as TParamSymbol;
       if (not (param is TByRefParamSymbol)) and TJSExprCodeGen.IsLocalVarParam(Self, param) then begin
@@ -2172,6 +2193,30 @@ begin
    if resultTyp<>nil then begin
       resultIsBoxed:=TJSExprCodeGen.IsLocalVarParam(Self, func.Result);
       resultTyp:=resultTyp.UnAliasedType;
+
+      // optimize to a straight "return" statement for trivial functions
+      if     (not resultIsBoxed) and (proc.Table.Count=0)
+         and ((proc.InitExpr=nil) or (proc.InitExpr.SubExprCount=0))
+         and (proc.Expr is TAssignExpr) then begin
+
+         assignExpr:=TAssignExpr(proc.Expr);
+
+         if     (assignExpr.Left is TVarExpr)
+            and (TVarExpr(assignExpr.Left).DataSym is TResultSymbol) then begin
+
+            cg:=FindCodeGen(assignExpr);
+            if (cg is TJSAssignExpr) and ResultIsNotUsedInExpr(assignExpr.Right) then begin
+
+               WriteString('return ');
+               TJSAssignExpr(cg).CodeGenRight(Self, assignExpr);
+               Exit;
+
+            end
+
+         end;
+
+      end;
+
       WriteString('var Result=');
       WriteDefaultValue(resultTyp, resultIsBoxed);
       WriteStringLn(';');
@@ -2592,102 +2637,88 @@ end;
 // ------------------ TJSAssignConstToIntegerVarExpr ------------------
 // ------------------
 
-// CodeGen
+// CodeGenRight
 //
-procedure TJSAssignConstToIntegerVarExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSAssignConstToIntegerVarExpr.CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssignConstToIntegerVarExpr;
 begin
    e:=TAssignConstToIntegerVarExpr(expr);
-   codeGen.Compile(e.Left);
-   codeGen.WriteString('=');
-   codeGen.WriteString(IntToStr(e.Right));
-   codeGen.WriteStringLn(';');
+   CodeGenRight.WriteString(IntToStr(e.Right));
+   CodeGenRight.WriteStringLn(';');
 end;
 
 // ------------------
 // ------------------ TJSAssignConstToStringVarExpr ------------------
 // ------------------
 
-// CodeGen
+// CodeGenRight
 //
-procedure TJSAssignConstToStringVarExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSAssignConstToStringVarExpr.CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssignConstToStringVarExpr;
 begin
    e:=TAssignConstToStringVarExpr(expr);
-   codeGen.Compile(e.Left);
-   codeGen.WriteString('=');
-   WriteJavaScriptString(codeGen.Output, e.Right);
-   codeGen.WriteStringLn(';');
+   WriteJavaScriptString(CodeGenRight.Output, e.Right);
+   CodeGenRight.WriteStringLn(';');
 end;
 
 // ------------------
 // ------------------ TJSAssignConstToFloatVarExpr ------------------
 // ------------------
 
-// CodeGen
+// CodeGenRight
 //
-procedure TJSAssignConstToFloatVarExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSAssignConstToFloatVarExpr.CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssignConstToFloatVarExpr;
 begin
    e:=TAssignConstToFloatVarExpr(expr);
-   codeGen.Compile(e.Left);
-   codeGen.WriteString('=');
-   codeGen.WriteString(FloatToStr(e.Right, cFormatSettings));
-   codeGen.WriteStringLn(';');
+   CodeGenRight.WriteString(FloatToStr(e.Right, cFormatSettings));
+   CodeGenRight.WriteStringLn(';');
 end;
 
 // ------------------
 // ------------------ TJSAssignConstToBoolVarExpr ------------------
 // ------------------
 
-// CodeGen
+// CodeGenRight
 //
-procedure TJSAssignConstToBoolVarExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSAssignConstToBoolVarExpr.CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssignConstToBoolVarExpr;
 begin
    e:=TAssignConstToBoolVarExpr(expr);
-   codeGen.Compile(e.Left);
-   codeGen.WriteString('=');
-   codeGen.WriteString(cBoolToJSBool[e.Right]);
-   codeGen.WriteStringLn(';');
+   CodeGenRight.WriteString(cBoolToJSBool[e.Right]);
+   CodeGenRight.WriteStringLn(';');
 end;
 
 // ------------------
 // ------------------ TJSAssignNilToVarExpr ------------------
 // ------------------
 
-// CodeGen
+// CodeGenRight
 //
-procedure TJSAssignNilToVarExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
-var
-   e : TAssignNilToVarExpr;
+procedure TJSAssignNilToVarExpr.CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase);
 begin
-   e:=TAssignNilToVarExpr(expr);
-   codeGen.Compile(e.Left);
-   codeGen.WriteStringLn('=null;');
+   CodeGenRight.WriteStringLn('null;');
 end;
 
 // ------------------
 // ------------------ TJSAssignConstDataToVarExpr ------------------
 // ------------------
 
-// CodeGen
+// CodeGenRight
 //
-procedure TJSAssignConstDataToVarExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSAssignConstDataToVarExpr.CodeGenRight(CodeGenRight : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssignConstDataToVarExpr;
 begin
    e:=TAssignConstDataToVarExpr(expr);
 //   if e.Left.Typ is TRecordSymbol then begin
-      codeGen.Compile(e.Left);
-      codeGen.WriteString('=');
-      codeGen.Compile(e.Right);
+      CodeGenRight.Compile(e.Right);
 //   end else raise ECodeGenUnsupportedSymbol.CreateFmt('Unsupported %s on type %s', [e.ClassName, e.Left.Typ.ClassName]);
-   codeGen.WriteStringLn(';');
+   CodeGenRight.WriteStringLn(';');
 end;
 
 // ------------------
@@ -2826,10 +2857,19 @@ procedure TJSAssignExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssignExpr;
 begin
-   // TODO: deep copy of records & static arrays
    e:=TAssignExpr(expr);
    codeGen.Compile(e.Left);
    codeGen.WriteString('=');
+   CodeGenRight(codeGen, expr);
+end;
+
+// CodeGenRight
+//
+procedure TJSAssignExpr.CodeGenRight(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TAssignExpr;
+begin
+   e:=TAssignExpr(expr);
    codeGen.CompileNoWrap(e.Right);
    codeGen.WriteStringLn(';');
 end;
@@ -2838,9 +2878,9 @@ end;
 // ------------------ TJSAssignDataExpr ------------------
 // ------------------
 
-// CodeGen
+// CodeGenRight
 //
-procedure TJSAssignDataExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSAssignDataExpr.CodeGenRight(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssignDataExpr;
    lt : TTypeSymbol;
@@ -2850,16 +2890,13 @@ begin
    lt:=e.Left.Typ.UnAliasedType;
    if lt is TStaticArraySymbol then begin
 
-      codeGen.Compile(e.Left);
-      codeGen.WriteString('=');
       codeGen.CompileNoWrap(e.Right);
       if not (e.Right is TArrayConstantExpr) then
          codeGen.WriteString('.slice(0)');
 
    end else if lt is TRecordSymbol then begin
 
-      codeGen.Compile(e.Left);
-      codeGen.WriteString('=Copy$');
+      codeGen.WriteString('Copy$');
       codeGen.WriteSymbolName(lt);
       codeGen.WriteString('(');
       codeGen.CompileNoWrap(e.Right);
@@ -2868,8 +2905,6 @@ begin
    end else if    (lt is TDynamicArraySymbol)
                or (lt is TFuncSymbol) then begin
 
-      codeGen.Compile(e.Left);
-      codeGen.WriteString('=');
       codeGen.CompileNoWrap(e.Right);
 
    end else raise ECodeGenUnsupportedSymbol.CreateFmt('Unsupported %s on type %s',
@@ -2881,16 +2916,14 @@ end;
 // ------------------ TJSAssignClassOfExpr ------------------
 // ------------------
 
-// CodeGen
+// CodeGenRight
 //
-procedure TJSAssignClassOfExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSAssignClassOfExpr.CodeGenRight(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssignClassOfExpr;
 begin
    // TODO: deep copy of records & static arrays
    e:=TAssignClassOfExpr(expr);
-   codeGen.Compile(e.Left);
-   codeGen.WriteString('=');
    codeGen.CompileNoWrap(e.Right);
    if e.Right.Typ is TClassSymbol then
       codeGen.WriteStringLn('.ClassType');
@@ -2901,17 +2934,14 @@ end;
 // ------------------ TJSAssignFuncExpr ------------------
 // ------------------
 
-// CodeGen
+// CodeGenRight
 //
-procedure TJSAssignFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSAssignFuncExpr.CodeGenRight(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssignFuncExpr;
    funcExpr : TFuncExprBase;
 begin
    e:=TAssignFuncExpr(expr);
-
-   codeGen.Compile(e.Left);
-   codeGen.WriteString('=');
 
    funcExpr:=(e.Right as TFuncExprBase);
 
