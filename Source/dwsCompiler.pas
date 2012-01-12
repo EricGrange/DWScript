@@ -4624,6 +4624,18 @@ begin
                                                          argList[0] as TDataExpr, nil);
                argList.Clear;
             end else Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr, nil, nil);
+         end else if SameText(name, 'insert') then begin
+            CheckRestricted;
+            if CheckArguments(2, 2) then begin
+               if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
+                  FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+               if (argList[1].Typ=nil) or not arraySym.Typ.IsCompatible(argList[1].Typ) then
+                  IncompatibleTypes(argPosArray[1], CPE_IncompatibleParameterTypes,
+                                    arraySym.Typ, argList[1].Typ);
+               Result:=TArrayInsertExpr.Create(FProg, namePos, baseExpr,
+                                               argList[0], argList[1] as TDataExpr);
+               argList.Clear;
+            end else Result:=TArrayDeleteExpr.Create(FProg, namePos, baseExpr, nil, nil);
          end else if SameText(name, 'setlength') then begin
             CheckRestricted;
             if CheckArguments(1, 1) then begin
@@ -6052,7 +6064,7 @@ begin
                                     left.Typ, elementType);
             end;
 
-            Result:=TArrayIndexOfExpr.Create(FProg, hotPos, setExpr, left, nil);
+            Result:=TArrayIndexOfExpr.Create(FProg, hotPos, setExpr, left as TDataExpr, nil);
             Result:=TRelGreaterEqualIntExpr.Create(FProg, Result,
                                                    TConstExpr.CreateIntegerValue(FProg, 0));
 

@@ -71,6 +71,8 @@ type
 
          function  SymbolMappedName(sym : TSymbol; scope : TdwsCodeGenSymbolScope) : String; override;
 
+         procedure CompileValue(expr : TTypedExpr); override;
+
          procedure CompileEnumerationSymbol(enum : TEnumerationSymbol); override;
          procedure CompileConditions(func : TFuncSymbol; conditions : TSourceConditions;
                                      preConds : Boolean); override;
@@ -224,6 +226,9 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
    TJSArrayIndexOfExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+   TJSArrayInsertExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
    TJSArrayCopyExpr = class (TJSExprCodeGen)
@@ -462,7 +467,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..138] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..139] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -481,6 +486,11 @@ const
        Dependency : 'Exception' ),
       (Name : '$NewArray';
        Code : 'function $NewArray(n,d) { var r=new Array(n); for(var i=0;i<n;i++) r[i]=d(); return r }'),
+      (Name : '$ArrayInsert';
+       Code : 'function $ArrayInsert(a,i,v,z) {'#13#10
+              +#9'if (i==a.length) a.push(v); else a.splice($Idx(i,0,a.length-1,z),0,v)'#13#10
+              +'}';
+       Dependency : '$Idx' ),
       (Name : '$ArraySetLength';
        Code : 'function $ArraySetLength(a,n,d) {'#13#10
               +#9'var o=a.length;'#13#10
@@ -1288,6 +1298,7 @@ begin
    RegisterCodeGen(TArrayAddExpr,            TJSArrayAddExpr.Create);
    RegisterCodeGen(TArrayDeleteExpr,         TJSArrayDeleteExpr.Create);
    RegisterCodeGen(TArrayIndexOfExpr,        TJSArrayIndexOfExpr.Create);
+   RegisterCodeGen(TArrayInsertExpr,         TJSArrayInsertExpr.Create);
    RegisterCodeGen(TArrayCopyExpr,           TJSArrayCopyExpr.Create);
    RegisterCodeGen(TArraySwapExpr,           TJSArraySwapExpr.Create);
    RegisterCodeGen(TArrayReverseExpr,        TdwsExprGenericCodeGen.Create([0, '.reverse();'], True));
@@ -1383,6 +1394,57 @@ begin
    if (ct=TSelfSymbol) or (ct=TResultSymbol) then
       Result:=sym.Name
    else Result:=inherited SymbolMappedName(sym, scope);
+end;
+
+// CompileValue
+//
+procedure TdwsJSCodeGen.CompileValue(expr : TTypedExpr);
+
+   function NeedArrayCopy(paramExpr : TArrayConstantExpr) : Boolean;
+   var
+      i : Integer;
+      sub : TExprBase;
+   begin
+      for i:=0 to paramExpr.SubExprCount-1 do begin
+         sub:=paramExpr.SubExpr[i];
+         if sub is TConstExpr then continue;
+         if sub is TTypedExpr then begin
+            if TTypedExpr(sub).Typ.UnAliasedType is TBaseSymbol then continue;
+         end;
+         Exit(True);
+      end;
+      Result:=False;
+   end;
+
+var
+   exprTypClass : TClass;
+begin
+   exprTypClass:=expr.Typ.ClassType;
+
+   if not (expr is TFuncExprBase) then begin
+
+      if exprTypClass=TRecordSymbol then begin
+
+         WriteString('Copy$');
+         WriteSymbolName(expr.Typ);
+         WriteString('(');
+         CompileNoWrap(expr);
+         WriteString(')');
+         Exit;
+
+      end else if (exprTypClass=TStaticArraySymbol) or (exprTypClass=TOpenArraySymbol) then begin
+
+         CompileNoWrap(expr);
+         if    (not (expr is TArrayConstantExpr))
+            or NeedArrayCopy(TArrayConstantExpr(expr)) then
+            WriteString('.slice(0)');
+         Exit;
+
+      end;
+
+   end;
+
+   CompileNoWrap(expr);
 end;
 
 // CompileEnumerationSymbol
@@ -2883,32 +2945,11 @@ end;
 procedure TJSAssignDataExpr.CodeGenRight(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TAssignDataExpr;
-   lt : TTypeSymbol;
 begin
    // TODO: deep copy of records & static arrays
    e:=TAssignDataExpr(expr);
-   lt:=e.Left.Typ.UnAliasedType;
-   if lt is TStaticArraySymbol then begin
 
-      codeGen.CompileNoWrap(e.Right);
-      if not (e.Right is TArrayConstantExpr) then
-         codeGen.WriteString('.slice(0)');
-
-   end else if lt is TRecordSymbol then begin
-
-      codeGen.WriteString('Copy$');
-      codeGen.WriteSymbolName(lt);
-      codeGen.WriteString('(');
-      codeGen.CompileNoWrap(e.Right);
-      codeGen.WriteString(')');
-
-   end else if    (lt is TDynamicArraySymbol)
-               or (lt is TFuncSymbol) then begin
-
-      codeGen.CompileNoWrap(e.Right);
-
-   end else raise ECodeGenUnsupportedSymbol.CreateFmt('Unsupported %s on type %s',
-                                                      [e.ClassName, e.Left.Typ.ClassName]);
+   codeGen.CompileValue(e.Right);
    codeGen.WriteStringLn(';');
 end;
 
@@ -2957,23 +2998,6 @@ end;
 // CodeGen
 //
 procedure TJSFuncBaseExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
-
-   function NeedArrayCopy(paramExpr : TArrayConstantExpr) : Boolean;
-   var
-      i : Integer;
-      sub : TExprBase;
-   begin
-      for i:=0 to paramExpr.SubExprCount-1 do begin
-         sub:=paramExpr.SubExpr[i];
-         if sub is TConstExpr then continue;
-         if sub is TTypedExpr then begin
-            if TTypedExpr(sub).Typ.UnAliasedType is TBaseSymbol then continue;
-         end;
-         Exit(True);
-      end;
-      Result:=False;
-   end;
-
 var
    e : TFuncExprBase;
    i : Integer;
@@ -3011,22 +3035,7 @@ begin
             codeGen.Compile(paramExpr);
             codeGen.WriteString('}');
          end else begin
-            if paramSymbol.Typ is TRecordSymbol then begin
-               codeGen.WriteString('Copy$');
-               codeGen.WriteSymbolName(paramSymbol.Typ);
-               codeGen.WriteString('(');
-               codeGen.CompileNoWrap(paramExpr);
-               codeGen.WriteString(')');
-            end else if paramSymbol.Typ is TStaticArraySymbol then begin
-               if (paramExpr is TArrayConstantExpr) and not NeedArrayCopy(TArrayConstantExpr(paramExpr)) then begin
-                  codeGen.Compile(paramExpr);
-               end else begin
-                  codeGen.Compile(paramExpr);
-                  codeGen.WriteString('.slice(0)');
-               end;
-            end else begin
-               codeGen.CompileNoWrap(paramExpr);
-            end;
+            codeGen.CompileValue(paramExpr);
          end;
       end;
       codeGen.WriteString(')');
@@ -4315,7 +4324,7 @@ begin
 
    codeGen.Compile(e.BaseExpr);
    codeGen.WriteString('.push(');
-   codeGen.Compile(e.ItemExpr);
+   codeGen.CompileValue(e.ItemExpr);
    codeGen.WriteStringLn(');');
 end;
 
@@ -4378,6 +4387,49 @@ begin
          codeGen.CompileNoWrap(e.FromIndexExpr);
       end;
       codeGen.WriteString(')');
+
+   end;
+end;
+
+// ------------------
+// ------------------ TJSArrayInsertExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSArrayInsertExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TArrayInsertExpr;
+   noRangeCheck : Boolean;
+begin
+   e:=TArrayInsertExpr(expr);
+
+   noRangeCheck:=   (cgoNoRangeChecks in codeGen.Options)
+                 or (    (e.IndexExpr is TConstIntExpr)
+                     and (TConstIntExpr(e.IndexExpr).Value=0));
+
+   if noRangeCheck then begin
+
+      codeGen.Compile(e.BaseExpr);
+      codeGen.WriteString('.splice(');
+      codeGen.Compile(e.IndexExpr);
+      codeGen.WriteString(',0,');
+      codeGen.CompileValue(e.ItemExpr);
+      codeGen.WriteStringLn(');');
+
+   end else begin
+
+      codeGen.Dependencies.Add('$ArrayInsert');
+
+      codeGen.WriteString('$ArrayInsert(');
+      codeGen.Compile(e.BaseExpr);
+      codeGen.WriteString(',');
+      codeGen.Compile(e.IndexExpr);
+      codeGen.WriteString(',');
+      codeGen.CompileValue(e.ItemExpr);
+      codeGen.WriteString(',');
+      WriteLocationString(codeGen, expr);
+      codeGen.WriteStringLn(');');
 
    end;
 end;

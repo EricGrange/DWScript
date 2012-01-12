@@ -654,7 +654,7 @@ type
          property ItemExpr : TDataExpr read FItemExpr;
    end;
 
-   // Swap two elements of a dynamic array
+   // Delete one or N elements of a dynamic array
    TArrayDeleteExpr = class(TArrayPseudoMethodExpr)
       private
          FIndexExpr : TTypedExpr;
@@ -702,7 +702,7 @@ type
    TArrayIndexOfExpr = class(TArrayTypedExpr)
       private
          FBaseExpr : TTypedExpr;
-         FItemExpr : TTypedExpr;
+         FItemExpr : TDataExpr;
          FFromIndexExpr : TTypedExpr;
 
       protected
@@ -711,15 +711,35 @@ type
 
       public
          constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
-                            aBase, aItem, aFromIndex : TTypedExpr);
+                            aBase : TTypedExpr; aItem : TDataExpr; aFromIndex : TTypedExpr);
          destructor Destroy; override;
 
          function  Eval(exec : TdwsExecution) : Variant; override;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
 
          property BaseExpr : TTypedExpr read FBaseExpr;
-         property ItemExpr : TTypedExpr read FItemExpr;
+         property ItemExpr : TDataExpr read FItemExpr;
          property FromIndexExpr : TTypedExpr read FFromIndexExpr;
+   end;
+
+   // Insert an elemet at a given index of a dynamic array
+   TArrayInsertExpr = class(TArrayPseudoMethodExpr)
+      private
+         FIndexExpr : TTypedExpr;
+         FItemExpr : TDataExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+                            aBase, aIndex : TTypedExpr; aItem : TDataExpr);
+         destructor Destroy; override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property IndexExpr : TTypedExpr read FIndexExpr;
+         property ItemExpr : TDataExpr read FItemExpr;
    end;
 
    TAssignedExpr = class(TUnaryOpBoolExpr)
@@ -7008,7 +7028,7 @@ end;
 // Create
 //
 constructor TArrayIndexOfExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos;
-                                     aBase, aItem, aFromIndex : TTypedExpr);
+                                     aBase : TTypedExpr; aItem : TDataExpr; aFromIndex : TTypedExpr);
 begin
    inherited Create(prog, scriptPos);
    FBaseExpr:=aBase;
@@ -7073,6 +7093,75 @@ end;
 function TArrayIndexOfExpr.GetSubExprCount : Integer;
 begin
    Result:=3
+end;
+
+// ------------------
+// ------------------ TArrayInsertExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TArrayInsertExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+                                    aBase, aIndex : TTypedExpr; aItem : TDataExpr);
+begin
+   inherited Create(prog, scriptPos, aBase);
+   FIndexExpr:=aIndex;
+   FItemExpr:=aItem;
+end;
+
+// Destroy
+//
+destructor TArrayInsertExpr.Destroy;
+begin
+   inherited;
+   FIndexExpr.Free;
+   FItemExpr.Free;
+end;
+
+// EvalNoResult
+//
+procedure TArrayInsertExpr.EvalNoResult(exec : TdwsExecution);
+var
+   base : IScriptObj;
+   dyn : TScriptDynamicArray;
+   n, index : Integer;
+begin
+   BaseExpr.EvalAsScriptObj(exec, base);
+   dyn:=TScriptDynamicArray(base.InternalObject);
+
+   n:=dyn.Length;
+
+   index:=IndexExpr.EvalAsInteger(exec);
+   if index=n then
+      dyn.Length:=n+1
+   else begin
+      BoundsCheck(exec, dyn, index);
+      dyn.Insert(index);
+   end;
+
+   if ItemExpr.Typ.Size>1 then begin
+      DWSCopyData(ItemExpr.Data[exec], ItemExpr.Addr[exec],
+                  dyn.Data, index*dyn.ElementSize, dyn.ElementSize);
+   end else ItemExpr.EvalAsVariant(exec, dyn.Data[index]);
+end;
+
+// GetSubExpr
+//
+function TArrayInsertExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FBaseExpr;
+      1 : Result:=FIndexExpr;
+   else
+      Result:=FItemExpr;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TArrayInsertExpr.GetSubExprCount : Integer;
+begin
+   Result:=3;
 end;
 
 // ------------------

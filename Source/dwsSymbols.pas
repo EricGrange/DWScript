@@ -886,7 +886,7 @@ type
    end;
 
    // array [FLowBound..FHighBound] of FTyp
-   TStaticArraySymbol = class(TArraySymbol)
+   TStaticArraySymbol = class (TArraySymbol)
       private
          FHighBound : Integer;
          FLowBound : Integer;
@@ -1009,7 +1009,7 @@ type
    end;
 
    // record member1: Integer; member2: Integer end;
-   TRecordSymbol = class(TStructuredTypeSymbol)
+   TRecordSymbol = class sealed (TStructuredTypeSymbol)
       protected
          function GetCaption : UnicodeString; override;
          function GetDescription : UnicodeString; override;

@@ -1607,6 +1607,7 @@ type
          constructor Create(aTyp : TDynamicArraySymbol);
 
          procedure Delete(index, count : Integer);
+         procedure Insert(index : Integer);
          procedure Swap(i1, i2 : Integer);
          procedure Reverse;
          procedure Copy(src : TScriptDynamicArray; index, count : Integer);
@@ -6012,6 +6013,17 @@ procedure TScriptDynamicArray.SetData(const data : TData);
 begin
    FData:=data;
    FLength:=System.Length(data) div ElementSize;
+end;
+
+// Insert
+//
+procedure TScriptDynamicArray.Insert(index : Integer);
+begin
+   Inc(FLength);
+   System.SetLength(FData, FLength*ElementSize);
+   Move(FData[index*ElementSize], FData[(index+1)*ElementSize], (FLength-index)*ElementSize*SizeOf(Variant));
+   FillChar(FData[index*ElementSize], ElementSize*SizeOf(Variant), 0);
+   FTyp.Typ.InitData(FData, index*ElementSize);
 end;
 
 // Delete

@@ -163,6 +163,7 @@ type
 
          procedure Compile(expr : TExprBase);
          procedure CompileNoWrap(expr : TTypedExpr);
+         procedure CompileValue(expr : TTypedExpr); virtual;
 
          procedure CompileSymbolTable(table : TSymbolTable); virtual;
          procedure CompileUnitSymbol(un : TUnitMainSymbol);
@@ -472,6 +473,13 @@ begin
       RaiseUnknowExpression(expr);
 
    cg.CodeGenNoWrap(Self, expr)
+end;
+
+// CompileValue
+//
+procedure TdwsCodeGen.CompileValue(expr : TTypedExpr);
+begin
+   Compile(expr);
 end;
 
 // CompileSymbolTable
