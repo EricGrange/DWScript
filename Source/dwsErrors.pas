@@ -71,6 +71,8 @@ type
          procedure IncCol; inline;
          procedure NewLine; inline;
 
+         function IsBeforeOrEqual(const aPos : TScriptPos) : Boolean;
+
          function AsInfo : UnicodeString;
    end;
    TScriptPosArray = array of TScriptPos; // dynamic array that can hold ScriptPos settings (needed for ReadNameList)
@@ -307,6 +309,15 @@ end;
 procedure TScriptPos.NewLine;
 begin
    FLineCol:=(FLineCol and cLineMask)+$100001;
+end;
+
+// IsBeforeOrEqual
+//
+function TScriptPos.IsBeforeOrEqual(const aPos : TScriptPos) : Boolean;
+begin
+   Result:=    (SourceFile=aPos.SourceFile)
+           and (   (Line<aPos.Line)
+                or ((Line=aPos.Line) and (Col<=aPos.Col)));
 end;
 
 // AsInfo

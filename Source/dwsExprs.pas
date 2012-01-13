@@ -126,9 +126,10 @@ type
          destructor Destroy; override;
 
          procedure Add(const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
+         procedure Delete(index : Integer);
          function FindUsage(const symbolUse : TSymbolUsage) : TSymbolPosition;
 
-         property Items[Index: Integer]: TSymbolPosition read GetPosition; default;
+         property Items[index : Integer] : TSymbolPosition read GetPosition; default;
          function Count : Integer; inline;
 
          property Symbol: TSymbol read FSymbol;
@@ -198,6 +199,8 @@ type
          function IsPositionInContext(aCol, aLine : Integer; const sourceName : UnicodeString) : Boolean;
          function HasParentSymbolOfClass(SymbolType: TSymbolClass; SearchParents: Boolean): Boolean;
 
+         function FindContext(parentSymbol : TSymbol) : TContext;
+
          property Parent : TContext read FParentContext;
          property ParentSym : TSymbol read FParentSymbol;
          property Token : TTokenType read FToken;
@@ -232,6 +235,8 @@ type
          function FindContext(aCol, aLine : Integer; const sourceName : UnicodeString) : TContext; overload;
          function FindContext(const ScriptPos : TScriptPos) : TContext; overload;
          function FindContextByToken(aToken : TTokenType) : TContext;
+
+         function RootContext : TContext;
 
          property Contexts : TTightList read FScriptContexts;
          property Current : TContext read FCurrentContext;
@@ -6629,8 +6634,22 @@ end;
 // RemoveInRange
 //
 procedure TSymbolDictionary.RemoveInRange(const startPos, endPos : TScriptPos);
+var
+   i, j : Integer;
+   list : TSymbolPositionList;
+   symPos : TSymbolPosition;
 begin
+   if startPos.SourceFile<>endPos.SourceFile then Exit;
 
+   for i:=0 to FSymbolList.Count-1 do begin
+      list:=FSymbolList[i];
+      for j:=list.Count-1 downto 0 do begin
+         symPos:=list[j];
+         if     startPos.IsBeforeOrEqual(symPos.ScriptPos)
+            and symPos.ScriptPos.IsBeforeOrEqual(endPos) then
+            list.Delete(j);
+      end;
+   end;
 end;
 
 // Clear
@@ -6642,14 +6661,14 @@ end;
 
 // FindSymbolUsage
 //
-function TSymbolDictionary.FindSymbolUsage(Symbol: TSymbol; SymbolUse: TSymbolUsage): TSymbolPosition;
+function TSymbolDictionary.FindSymbolUsage(symbol : TSymbol; symbolUse : TSymbolUsage) : TSymbolPosition;
 var
-   list: TSymbolPositionList;
+   list : TSymbolPositionList;
 begin
-   Result := nil;
-   list := FindSymbolPosList(Symbol);
+   list:=FindSymbolPosList(Symbol);
    if Assigned(list) then
-      Result := list.FindUsage(SymbolUse);
+      Result:=list.FindUsage(SymbolUse)
+   else Result:=nil;
 end;
 
 function TSymbolDictionary.FindSymbolUsage(const SymName: UnicodeString;
@@ -6717,6 +6736,14 @@ begin
 
    symPos:=TSymbolPosition.Create(scriptPos, useTypes);
    FPosList.Add(symPos);
+end;
+
+// Delete
+//
+procedure TSymbolPositionList.Delete(index : Integer);
+begin
+   Items[index].Free;
+   FPosList.Delete(index);
 end;
 
 // FindSymbolAtPosition
@@ -6831,6 +6858,20 @@ begin
       Result := Parent.HasParentSymbolOfClass(SymbolType, SearchParents);
 end;
 
+// FindContext
+//
+function TContext.FindContext(parentSymbol : TSymbol) : TContext;
+var
+   i : Integer;
+begin
+   if FParentSymbol=parentSymbol then Exit(Self);
+   for i:=0 to Count-1 do begin
+      Result:=SubContext[i].FindContext(parentSymbol);
+      if Result<>nil then Exit;
+   end;
+   Result:=nil;
+end;
+
 // IsPositionInContext
 //
 function TContext.IsPositionInContext(aCol, aLine : Integer; const sourceName : UnicodeString) : Boolean;
@@ -6907,6 +6948,16 @@ begin
       if Result.Token=aToken then Exit;
    end;
    Result:=nil;
+end;
+
+// RootContext
+//
+function TContextMap.RootContext : TContext;
+begin
+   Result:=FCurrentContext;
+   if Result<>nil then
+      while Result.Parent<>nil do
+         Result:=Result.Parent;
 end;
 
 // FindContext

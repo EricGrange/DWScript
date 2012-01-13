@@ -3599,11 +3599,15 @@ begin
             if Assigned(Result) then begin
                if baseType is TStructuredTypeSymbol then begin
                   // array property
-                  defaultProperty := GetDefaultProperty(TStructuredTypeSymbol(baseType));
-                  if Assigned(defaultProperty) then
-                     Result := ReadPropertyExpr(TDataExpr(Result), defaultProperty, IsWrite)
-                  else FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NoDefaultProperty,
-                                                [TDataExpr(Result).Typ.Name]);
+                  defaultProperty:=GetDefaultProperty(TStructuredTypeSymbol(baseType));
+                  if Assigned(defaultProperty) then begin
+                     if coSymbolDictionary in Options then
+                        SymbolDictionary.AddSymbolReference(defaultProperty, FTok.HotPos, isWrite);
+                     Result:=ReadPropertyExpr(TDataExpr(Result), defaultProperty, IsWrite)
+                  end else begin
+                     FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NoDefaultProperty,
+                                              [TDataExpr(Result).Typ.Name]);
+                  end;
                end else begin
                   // Type "array"
                   dataExpr:=(Result as TDataExpr);

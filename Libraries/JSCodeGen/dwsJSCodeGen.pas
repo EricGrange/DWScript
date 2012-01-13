@@ -61,6 +61,7 @@ type
          procedure CompileMethod(meth : TMethodSymbol);
          procedure CompileRecordMethod(meth : TMethodSymbol);
 
+         procedure DoCompileRecordSymbol(rec : TRecordSymbol); override;
          procedure DoCompileClassSymbol(cls : TClassSymbol); override;
          procedure DoCompileInterfaceTable(cls : TClassSymbol);
          procedure DoCompileFuncSymbol(func : TSourceFuncSymbol); override;
@@ -76,7 +77,6 @@ type
          procedure CompileEnumerationSymbol(enum : TEnumerationSymbol); override;
          procedure CompileConditions(func : TFuncSymbol; conditions : TSourceConditions;
                                      preConds : Boolean); override;
-         procedure CompileRecordSymbol(rec : TRecordSymbol); override;
          procedure CompileProgramBody(expr : TNoResultExpr); override;
          procedure CompileSymbolTable(table : TSymbolTable); override;
 
@@ -467,7 +467,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..139] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..143] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -632,8 +632,37 @@ const
                +#9'var li=i,lf=f;'#13#10
                +#9'return function(){'#13#10
                   +#9#9'var arg=Array.prototype.slice.call(arguments);'#13#10
-                  +#9#9'arg.splice(0,0,li);'#13#10
+                  +#9#9'arg.unshift(li);'#13#10
+//                  +#9#9'arg.splice(0,0,li);'#13#10
                   +#9#9'return lf.apply(li,arg)'#13#10
+               +#9'}'#13#10
+               +'}'),
+      (Name : '$Event0';
+       Code : 'function $Event0(i,f) {'#13#10
+               +#9'var li=i,lf=f;'#13#10
+               +#9'return function() {'#13#10
+                  +#9#9'return lf.call(li,li)'#13#10
+               +#9'}'#13#10
+               +'}'),
+      (Name : '$Event1';
+       Code : 'function $Event1(i,f) {'#13#10
+               +#9'var li=i,lf=f;'#13#10
+               +#9'return function(a) {'#13#10
+                  +#9#9'return lf.call(li,li,a)'#13#10
+               +#9'}'#13#10
+               +'}'),
+      (Name : '$Event2';
+       Code : 'function $Event2(i,f) {'#13#10
+               +#9'var li=i,lf=f;'#13#10
+               +#9'return function(a,b) {'#13#10
+                  +#9#9'return lf.call(li,li,a,b)'#13#10
+               +#9'}'#13#10
+               +'}'),
+      (Name : '$Event3';
+       Code : 'function $Event3(i,f) {'#13#10
+               +#9'var li=i,lf=f;'#13#10
+               +#9'return function(a,b,c) {'#13#10
+                  +#9#9'return lf.call(li,li,a,b,c)'#13#10
                +#9'}'#13#10
                +'}'),
       (Name : '$OrdS';
@@ -1543,9 +1572,9 @@ begin
       CompileInheritedConditions;
 end;
 
-// CompileRecordSymbol
+// DoCompileRecordSymbol
 //
-procedure TdwsJSCodeGen.CompileRecordSymbol(rec : TRecordSymbol);
+procedure TdwsJSCodeGen.DoCompileRecordSymbol(rec : TRecordSymbol);
 var
    i : Integer;
    sym : TSymbol;
@@ -1639,11 +1668,13 @@ begin
    for i:=0 to cls.Members.Count-1 do begin
       sym:=cls.Members[i];
       if sym is TFieldSymbol then begin
-         WriteString('Self.');
-         WriteString(MemberName(sym, cls));
-         WriteString('=');
-         WriteDefaultValue(sym.Typ, False);
-         WriteStringLn(';');
+         if (TFieldSymbol(sym).Visibility=cvPublished) or SmartLink(sym) then begin
+            WriteString('Self.');
+            WriteString(MemberName(sym, cls));
+            WriteString('=');
+            WriteDefaultValue(sym.Typ, False);
+            WriteStringLn(';');
+         end;
       end;
    end;
    UnIndent;
@@ -3597,14 +3628,25 @@ class procedure TJSFuncRefExpr.DoCodeGen(codeGen : TdwsCodeGen; funcExpr : TFunc
 var
    methExpr : TMethodExpr;
    methSym : TMethodSymbol;
+   eventFunc : String;
 begin
    if funcExpr is TMethodExpr then begin
 
       methExpr:=TMethodExpr(funcExpr);
       methSym:=TMethodSymbol(methExpr.funcSym);
 
-      codeGen.Dependencies.Add('$Event');
-      codeGen.WriteString('$Event(');
+      case methSym.Params.Count of
+         0 : eventFunc:='$Event0';
+         1 : eventFunc:='$Event1';
+         2 : eventFunc:='$Event2';
+         3 : eventFunc:='$Event3';
+      else
+         eventFunc:='$Event';
+      end;
+      codeGen.Dependencies.Add(eventFunc);
+      codeGen.WriteString(eventFunc);
+      codeGen.WriteString('(');
+
       codeGen.Compile(methExpr.BaseExpr);
       if methExpr is TMethodVirtualExpr then begin
          codeGen.WriteString(',');

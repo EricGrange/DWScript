@@ -113,7 +113,7 @@ type
          FTableStack : TTightStack;
 
          FSymbolDictionary : TSymbolDictionary;
-         FContextMap : TContextMap;
+         FContextMapRoot : TContext;
 
          FContext : TdwsProgram;
          FContextStack : TTightStack;
@@ -150,8 +150,11 @@ type
          procedure RaiseUnknowExpression(expr : TExprBase);
 
          function  SmartLink(symbol : TSymbol) : Boolean; virtual;
-         procedure SmartLinkFilterProperties(structSymbol : TStructuredTypeSymbol); virtual;
 
+         procedure SmartLinkFilterSymbolTable(table : TSymbolTable; var changed : Boolean); virtual;
+         procedure SmartLinkFilterStructSymbol(structSymbol : TStructuredTypeSymbol; var changed : Boolean); virtual;
+
+         procedure DoCompileRecordSymbol(rec : TRecordSymbol); virtual;
          procedure DoCompileClassSymbol(cls : TClassSymbol); virtual;
          procedure DoCompileFuncSymbol(func : TSourceFuncSymbol); virtual;
          procedure DoCompileUnitSymbol(un : TUnitMainSymbol); virtual;
@@ -177,7 +180,7 @@ type
          procedure CompileFuncSymbol(func : TSourceFuncSymbol);
          procedure CompileConditions(func : TFuncSymbol; conditions : TSourceConditions;
                                      preConds : Boolean); virtual;
-         procedure CompileRecordSymbol(rec : TRecordSymbol); virtual;
+         procedure CompileRecordSymbol(rec : TRecordSymbol);
          procedure CompileClassSymbol(cls : TClassSymbol);
          procedure BeforeCompileProgram(table, systemTable : TSymbolTable; unitSyms : TUnitMainSymbols);
          procedure CompileProgram(const prog : IdwsProgram); virtual;
@@ -600,15 +603,25 @@ end;
 // CompileRecordSymbol
 //
 procedure TdwsCodeGen.CompileRecordSymbol(rec : TRecordSymbol);
+var
+   changed : Boolean;
 begin
-   // nothing here
+   if rec.IsExternal then Exit;
+
+   SmartLinkFilterStructSymbol(rec, changed);
+
+   DoCompileRecordSymbol(rec);
 end;
 
 // CompileClassSymbol
 //
 procedure TdwsCodeGen.CompileClassSymbol(cls : TClassSymbol);
+var
+   changed : Boolean;
 begin
    if cls.IsExternal then Exit;
+
+   SmartLinkFilterStructSymbol(cls, changed);
 
    EnterScope(cls);
    try
@@ -623,15 +636,33 @@ end;
 procedure TdwsCodeGen.BeforeCompileProgram(table, systemTable : TSymbolTable; unitSyms : TUnitMainSymbols);
 var
    i : Integer;
+   changed : Boolean;
 begin
    ReserveSymbolNames;
    MapInternalSymbolNames(table, systemTable);
+
+   if FSymbolDictionary<>nil then begin
+      repeat
+         changed:=False;
+         for i:=0 to unitSyms.Count-1 do begin
+            SmartLinkFilterSymbolTable(unitSyms[i].Table, changed);
+            SmartLinkFilterSymbolTable(unitSyms[i].ImplementationTable, changed);
+         end;
+      until not changed;
+   end;
 
    for i:=0 to unitSyms.Count-1 do
       MapPrioritySymbolNames(unitSyms[i].Table);
 
    MapPrioritySymbolNames(table);
    MapNormalSymbolNames(table);
+end;
+
+// DoCompileRecordSymbol
+//
+procedure TdwsCodeGen.DoCompileRecordSymbol(rec : TRecordSymbol);
+begin
+   // nothing by default
 end;
 
 // DoCompileClassSymbol
@@ -656,7 +687,7 @@ begin
 
    if (cgoSmartLink in Options) and (prog.SymbolDictionary.Count>0) then begin
       FSymbolDictionary:=prog.SymbolDictionary;
-      FContextMap:=prog.ContextMap;
+      FContextMapRoot:=prog.ContextMap.RootContext;
    end;
    BeginProgramSession(prog);
    try
@@ -666,7 +697,7 @@ begin
    finally
       EndProgramSession;
       FSymbolDictionary:=nil;
-      FContextMap:=nil;
+      FContextMapRoot:=nil;
    end;
 end;
 
@@ -1132,30 +1163,118 @@ end;
 // SmartLink
 //
 function TdwsCodeGen.SmartLink(symbol : TSymbol): Boolean;
+
+   function IsReferenced(symbol : TSymbol) : Boolean;
+   var
+      list : TSymbolPositionList;
+   begin
+      list:=FSymbolDictionary.FindSymbolPosList(symbol);
+      Result:=(list<>nil) and (list.FindUsage(suReference)<>nil);
+   end;
+
 begin
-   if FSymbolDictionary<>nil then begin
-      Result:=(FSymbolDictionary.FindSymbolUsage(symbol, suReference)<>nil);
-   end else Result:=True;
+   Result:=(FSymbolDictionary=nil) or IsReferenced(symbol);
 end;
 
-// SmartLinkFilterProperties
+// SmartLinkFilterSymbolTable
 //
-procedure TdwsCodeGen.SmartLinkFilterProperties(structSymbol : TStructuredTypeSymbol);
+procedure TdwsCodeGen.SmartLinkFilterSymbolTable(table : TSymbolTable; var changed : Boolean);
+
+   procedure RemoveReferencesInContextMap(symbol : TSymbol);
+   var
+      context : TContext;
+   begin
+      if FContextMapRoot=nil then Exit;
+      context:=FContextMapRoot.FindContext(symbol);
+      if context=nil then Exit;
+
+      FSymbolDictionary.RemoveInRange(context.StartPos, context.EndPos);
+   end;
+
+var
+   sym : TSymbol;
+   localChanged : Boolean;
+   funcSym : TFuncSymbol;
+begin
+   if FSymbolDictionary=nil then Exit;
+   exit;
+   repeat
+      localChanged:=False;
+      for sym in table do begin
+         if sym is TStructuredTypeSymbol then begin
+
+            SmartLinkFilterStructSymbol(TStructuredTypeSymbol(sym), localChanged);
+
+         end else if sym is TFuncSymbol then begin
+
+            funcSym:=TFuncSymbol(sym);
+            if funcSym.IsExternal then continue;
+            if not SmartLink(funcSym) then begin
+               if FSymbolDictionary.FindSymbolPosList(funcSym)<>nil then begin
+                  RemoveReferencesInContextMap(funcSym);
+                  FSymbolDictionary.Remove(funcSym);
+                  localChanged:=True;
+               end;
+            end;
+
+         end;
+      end;
+      changed:=changed or localChanged;
+   until not localChanged;
+end;
+
+// SmartLinkFilterStructSymbol
+//
+procedure TdwsCodeGen.SmartLinkFilterStructSymbol(structSymbol : TStructuredTypeSymbol; var changed : Boolean);
+
+   procedure RemoveReferencesInContextMap(symbol : TSymbol);
+   var
+      context : TContext;
+   begin
+      if FContextMapRoot=nil then Exit;
+      context:=FContextMapRoot.FindContext(symbol);
+      if context=nil then Exit;
+
+      FSymbolDictionary.RemoveInRange(context.StartPos, context.EndPos);
+   end;
+
 var
    member : TSymbol;
+   method : TMethodSymbol;
    prop : TPropertySymbol;
-   context : TContext;
+   field : TFieldSymbol;
+   localChanged : Boolean;
 begin
    if FSymbolDictionary=nil then Exit;
 
-   for member in structSymbol.Members do begin
-      if not (member is TPropertySymbol) then continue;
-      prop:=TPropertySymbol(member);
-      if SmartLink(prop) then continue;
-      context:=FContextMap.FindContext(prop);
-      if context=nil then Break;
-//      FSymbolDictionary.
-   end;
+   repeat
+      localChanged:=False;
+      for member in structSymbol.Members do begin
+
+         if member is TPropertySymbol then begin
+
+            prop:=TPropertySymbol(member);
+            if prop.Visibility=cvPublished then continue;
+
+         end else if member is TMethodSymbol then begin
+
+            method:=TMethodSymbol(member);
+            if    method.IsVirtual or method.IsInterfaced
+               or (method.Kind=fkConstructor) then continue;
+
+         end else continue;
+
+         if not SmartLink(member) then begin
+            if FSymbolDictionary.FindSymbolPosList(member)<>nil then begin
+               RemoveReferencesInContextMap(member);
+               FSymbolDictionary.Remove(member);
+               localChanged:=True;
+            end;
+         end;
+
+      end;
+      changed:=changed or localChanged;
+   until not localChanged;
 end;
 
 // ------------------
