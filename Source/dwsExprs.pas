@@ -158,7 +158,9 @@ type
          procedure AddValueSymbol(sym : TValueSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages);
          procedure AddTypeSymbol(sym : TTypeSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages = [suReference]);
          procedure AddConstSymbol(sym : TConstSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages = [suReference]);
+
          procedure Remove(sym : TSymbol); // remove references to the symbol
+         procedure RemoveInRange(const startPos, endPos : TScriptPos);
 
          function FindSymbolAtPosition(aCol, aLine: Integer; const sourceFile : UnicodeString): TSymbol; overload;
          function FindSymbolPosList(sym: TSymbol): TSymbolPositionList; overload;  // return list of symbol
@@ -6597,8 +6599,8 @@ end;
 
 procedure TSymbolDictionary.Remove(Sym: TSymbol);
 var
-   idx, x: Integer;
-   symList: TSymbolPositionList;
+   idx, x : Integer;
+   symList : TSymbolPositionList;
 begin
    // TFuncSymbol - remove params
    if Sym is TFuncSymbol then begin
@@ -6608,14 +6610,10 @@ begin
    end else if Sym is TPropertySymbol then begin
       for x := 0 to TPropertySymbol(Sym).ArrayIndices.Count - 1 do
          Remove(TPropertySymbol(Sym).ArrayIndices[x]);
-   // TClassSymbol - remove members (methods, fields, properties)
-   end else if Sym is TClassSymbol then begin
-      for x := 0 to TClassSymbol(Sym).Members.Count - 1 do
-         Remove(TClassSymbol(Sym).Members[x]);
-   // TRecordSymbol - remove members
-   end else if Sym is TRecordSymbol then begin
-      for x := 0 to TRecordSymbol(Sym).Members.Count - 1 do
-         Remove(TRecordSymbol(Sym).Members[x]);
+   // TStructuredTypeSymbol - remove members (methods, fields, properties)
+   end else if Sym is TStructuredTypeSymbol then begin
+      for x := 0 to TStructuredTypeSymbol(Sym).Members.Count - 1 do
+         Remove(TStructuredTypeSymbol(Sym).Members[x]);
    end;
 
    // basic entry to remove
@@ -6626,6 +6624,13 @@ begin
       Assert(idx>=0);
       SymList.Free;
    end;
+end;
+
+// RemoveInRange
+//
+procedure TSymbolDictionary.RemoveInRange(const startPos, endPos : TScriptPos);
+begin
+
 end;
 
 // Clear

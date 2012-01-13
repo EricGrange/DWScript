@@ -370,7 +370,7 @@ type
          function ReadFuncResultType(funcKind : TFuncKind) : TTypeSymbol;
 
          function ReadIf: TNoResultExpr;
-         function ReadInherited(IsWrite: Boolean): TProgramExpr;
+         function ReadInherited(isWrite : Boolean) : TProgramExpr;
          function ReadInstr : TNoResultExpr;
          function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
          function ReadIntfMethodDecl(intfSym : TInterfaceSymbol; funcKind : TFuncKind) : TSourceMethodSymbol;
@@ -2775,6 +2775,10 @@ begin
    else sym := methSym.ParentMeth;
 
    if Assigned(sym) then begin
+
+      if coSymbolDictionary in FOptions then
+         FSymbolDictionary.AddSymbolReference(sym, FTok.HotPos, isWrite);
+
       if sym is TMethodSymbol then begin
          if TMethodSymbol(sym).IsAbstract then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_AbstractMethodUsage);
@@ -5276,14 +5280,16 @@ var
    sym : TSymbol;
    typ : TTypeSymbol;
    arrayIndices : TSymbolTable;
-   propPos : TScriptPos;
+   propStartPos, propNamePos : TScriptPos;
    accessPos : TScriptPos;  // Position where either a Read or Write symbol is found
    indexExpr : TTypedExpr;
    indexTyp : TTypeSymbol;
    baseArrayIndices : Integer;
 begin
+   propStartPos:=FTok.HotPos;
+
    // Read property name
-   if not FTok.TestDeleteNamePos(name, propPos) then
+   if not FTok.TestDeleteNamePos(name, propNamePos) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
    // Check if property name is free
@@ -5311,7 +5317,7 @@ begin
       Result := TPropertySymbol.Create(name, typ, aVisibility);
       try
          if coSymbolDictionary in FOptions then
-            FSymbolDictionary.AddValueSymbol(Result, propPos, [suDeclaration]);
+            FSymbolDictionary.AddValueSymbol(Result, propNamePos, [suDeclaration]);
 
          if FTok.TestDelete(ttINDEX) then begin
             indexExpr:=ReadExpr;
@@ -5407,6 +5413,11 @@ begin
             end;
          end;
 
+         // register context only if we're sure the property symbol will survive
+         if coContextMap in FOptions then begin
+            FContextMap.OpenContext(propStartPos, result, ttPROPERTY);
+            FContextMap.CloseContext(FTok.CurrentPos);
+         end;
       except
          // Remove reference to symbol (gets freed)
          if coSymbolDictionary in FOptions then

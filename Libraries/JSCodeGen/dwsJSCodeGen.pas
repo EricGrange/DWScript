@@ -1455,6 +1455,9 @@ var
    elem : TElementSymbol;
 begin
    if enum.Elements.Count=0 then Exit;
+
+   if not SmartLink(enum) then Exit;
+
    WriteString('/* ');
    WriteString(enum.QualifiedName);
    WriteStringLn('*/');
@@ -1550,6 +1553,8 @@ var
    firstField : Boolean;
 begin
    // compile record copier
+
+   if not SmartLink(rec) then Exit;
 
    WriteString('function Copy$');
    WriteSymbolName(rec);
@@ -2318,6 +2323,10 @@ begin
    if not (meth.Executable is TdwsProcedure) then Exit;
    proc:=(meth.Executable as TdwsProcedure);
 
+   if not (meth.IsVirtual or meth.IsInterfaced) then
+      if meth.Kind in [fkProcedure, fkFunction, fkMethod] then
+         if not SmartLink(meth) then Exit;
+
    WriteString(',');
    WriteString(MemberName(meth, meth.StructSymbol));
 
@@ -2352,6 +2361,8 @@ var
 begin
    if not (meth.Executable is TdwsProcedure) then Exit;
    proc:=(meth.Executable as TdwsProcedure);
+
+   if not SmartLink(meth) then Exit;
 
    WriteString('function ');
    if not meth.IsClassMethod then begin

@@ -98,7 +98,7 @@ type
 
    TdwsCodeGenOption = (cgoNoRangeChecks, cgoNoCheckInstantiated, cgoNoCheckLoopStep,
                         cgoNoConditions, cgoNoInlineMagics, cgoObfuscate, cgoNoSourceLocations,
-                        cgoOptimizeForSize);
+                        cgoOptimizeForSize, cgoSmartLink);
    TdwsCodeGenOptions = set of TdwsCodeGenOption;
 
    TdwsCodeGen = class
@@ -111,6 +111,9 @@ type
 
          FLocalTable : TSymbolTable;
          FTableStack : TTightStack;
+
+         FSymbolDictionary : TSymbolDictionary;
+         FContextMap : TContextMap;
 
          FContext : TdwsProgram;
          FContextStack : TTightStack;
@@ -145,6 +148,9 @@ type
          function  IsScopeLevel(symbol : TSymbol) : Boolean;
 
          procedure RaiseUnknowExpression(expr : TExprBase);
+
+         function  SmartLink(symbol : TSymbol) : Boolean; virtual;
+         procedure SmartLinkFilterProperties(structSymbol : TStructuredTypeSymbol); virtual;
 
          procedure DoCompileClassSymbol(cls : TClassSymbol); virtual;
          procedure DoCompileFuncSymbol(func : TSourceFuncSymbol); virtual;
@@ -549,16 +555,18 @@ begin
    if func.Executable=nil then Exit;
    execSelf:=func.Executable.GetSelf;
    if not (execSelf is TdwsProcedure) then Exit;
+
+   if not SmartLink(func) then Exit;
+
    proc:=TdwsProcedure(execSelf);
-   if proc<>nil then begin
-      EnterScope(func);
-      EnterContext(proc);
-      try
-         DoCompileFuncSymbol(func);
-      finally
-         LeaveContext;
-         LeaveScope;
-      end;
+
+   EnterScope(func);
+   EnterContext(proc);
+   try
+      DoCompileFuncSymbol(func);
+   finally
+      LeaveContext;
+      LeaveScope;
    end;
 end;
 
@@ -646,6 +654,10 @@ var
 begin
    p:=prog.ProgramObject;
 
+   if (cgoSmartLink in Options) and (prog.SymbolDictionary.Count>0) then begin
+      FSymbolDictionary:=prog.SymbolDictionary;
+      FContextMap:=prog.ContextMap;
+   end;
    BeginProgramSession(prog);
    try
       BeforeCompileProgram(prog.Table, p.SystemTable.SymbolTable, p.UnitMains);
@@ -653,6 +665,8 @@ begin
       CompileProgramInSession(prog);
    finally
       EndProgramSession;
+      FSymbolDictionary:=nil;
+      FContextMap:=nil;
    end;
 end;
 
@@ -1113,6 +1127,35 @@ procedure TdwsCodeGen.RaiseUnknowExpression(expr : TExprBase);
 begin
    raise ECodeGenUnknownExpression.CreateFmt('%s: unknown expression class %s:%s',
                                              [ClassName, expr.ClassName, expr.ScriptLocation(Context)]);
+end;
+
+// SmartLink
+//
+function TdwsCodeGen.SmartLink(symbol : TSymbol): Boolean;
+begin
+   if FSymbolDictionary<>nil then begin
+      Result:=(FSymbolDictionary.FindSymbolUsage(symbol, suReference)<>nil);
+   end else Result:=True;
+end;
+
+// SmartLinkFilterProperties
+//
+procedure TdwsCodeGen.SmartLinkFilterProperties(structSymbol : TStructuredTypeSymbol);
+var
+   member : TSymbol;
+   prop : TPropertySymbol;
+   context : TContext;
+begin
+   if FSymbolDictionary=nil then Exit;
+
+   for member in structSymbol.Members do begin
+      if not (member is TPropertySymbol) then continue;
+      prop:=TPropertySymbol(member);
+      if SmartLink(prop) then continue;
+      context:=FContextMap.FindContext(prop);
+      if context=nil then Break;
+//      FSymbolDictionary.
+   end;
 end;
 
 // ------------------

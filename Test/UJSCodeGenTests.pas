@@ -42,7 +42,9 @@ type
          procedure ExecutionNonOptimizedWithInlineMagics;
          procedure ExecutionOptimized;
          procedure ExecutionOptimizedWithInlineMagics;
+         procedure ExecutionOptimizedAndSmartLinked;
          procedure ExecutionOptimizedAndObfuscated;
+         procedure ExecutionOptimizedObfuscatedSmartLinked;
    end;
 
 // ------------------------------------------------------------------
@@ -52,6 +54,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+const
+   cCompilerOptions = cDefaultCompilerOptions + [coSymbolDictionary, coContextMap];
 
 // ------------------
 // ------------------ TJSCodeGenTests ------------------
@@ -312,7 +317,7 @@ end;
 //
 procedure TJSCodeGenTests.CompilationNormal;
 begin
-   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coVariablesAsVarOnly];
+   FCompiler.Config.CompilerOptions:=cCompilerOptions+[coVariablesAsVarOnly];
    FCodeGen.Options:=FCodeGen.Options-[cgoNoInlineMagics];
    Compilation;
 end;
@@ -321,7 +326,7 @@ end;
 //
 procedure TJSCodeGenTests.CompilationWithMapAndSymbols;
 begin
-   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coSymbolDictionary, coContextMap, coVariablesAsVarOnly];
+   FCompiler.Config.CompilerOptions:=cCompilerOptions+[coSymbolDictionary, coContextMap, coVariablesAsVarOnly];
    FCodeGen.Options:=FCodeGen.Options+[cgoNoInlineMagics];
    Compilation;
 end;
@@ -330,7 +335,7 @@ end;
 //
 procedure TJSCodeGenTests.ExecutionNonOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions-[coOptimize]+[coVariablesAsVarOnly];
+   FCompiler.Config.CompilerOptions:=cCompilerOptions-[coOptimize]+[coVariablesAsVarOnly];
    FCodeGen.Options:=FCodeGen.Options+[cgoNoInlineMagics];
    Execution;
 end;
@@ -339,7 +344,7 @@ end;
 //
 procedure TJSCodeGenTests.ExecutionNonOptimizedWithInlineMagics;
 begin
-   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions-[coOptimize]+[coVariablesAsVarOnly];
+   FCompiler.Config.CompilerOptions:=cCompilerOptions-[coOptimize]+[coVariablesAsVarOnly];
    FCodeGen.Options:=FCodeGen.Options-[cgoNoInlineMagics];
    Execution;
 end;
@@ -348,7 +353,7 @@ end;
 //
 procedure TJSCodeGenTests.ExecutionOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coOptimize, coVariablesAsVarOnly];
+   FCompiler.Config.CompilerOptions:=cCompilerOptions+[coOptimize, coVariablesAsVarOnly];
    FCodeGen.Options:=FCodeGen.Options+[cgoNoInlineMagics];
    Execution;
 end;
@@ -357,8 +362,17 @@ end;
 //
 procedure TJSCodeGenTests.ExecutionOptimizedWithInlineMagics;
 begin
-   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coOptimize, coVariablesAsVarOnly];
+   FCompiler.Config.CompilerOptions:=cCompilerOptions+[coOptimize, coVariablesAsVarOnly];
    FCodeGen.Options:=FCodeGen.Options-[cgoNoInlineMagics];
+   Execution;
+end;
+
+// ExecutionOptimizedAndSmartLinked
+//
+procedure TJSCodeGenTests.ExecutionOptimizedAndSmartLinked;
+begin
+   FCompiler.Config.CompilerOptions:=cCompilerOptions+[coOptimize, coVariablesAsVarOnly, coSymbolDictionary];
+   FCodeGen.Options:=FCodeGen.Options-[cgoNoInlineMagics]+[cgoSmartLink];
    Execution;
 end;
 
@@ -366,12 +380,25 @@ end;
 //
 procedure TJSCodeGenTests.ExecutionOptimizedAndObfuscated;
 begin
-   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coOptimize, coVariablesAsVarOnly];
+   FCompiler.Config.CompilerOptions:=cCompilerOptions+[coOptimize, coVariablesAsVarOnly];
    FCodeGen.Options:=FCodeGen.Options+[cgoObfuscate];
    try
       Execution;
    finally
       FCodeGen.Options:=FCodeGen.Options-[cgoObfuscate];
+   end;
+end;
+
+// ExecutionOptimizedObfuscatedSmartLinked
+//
+procedure TJSCodeGenTests.ExecutionOptimizedObfuscatedSmartLinked;
+begin
+   FCompiler.Config.CompilerOptions:=cCompilerOptions+[coOptimize, coVariablesAsVarOnly, coSymbolDictionary];
+   FCodeGen.Options:=FCodeGen.Options+[cgoObfuscate, cgoSmartLink];
+   try
+      Execution;
+   finally
+      FCodeGen.Options:=FCodeGen.Options-[cgoObfuscate, cgoSmartLink];
    end;
 end;
 

@@ -646,8 +646,8 @@ type
 
    TMethodKind = ( mkProcedure, mkFunction, mkConstructor, mkDestructor, mkMethod,
                    mkClassProcedure, mkClassFunction, mkClassMethod );
-   TMethodAttribute = (maVirtual, maOverride, maReintroduce, maAbstract,
-                       maOverlap, maClassMethod, maFinal, maDefault);
+   TMethodAttribute = ( maVirtual, maOverride, maReintroduce, maAbstract,
+                        maOverlap, maClassMethod, maFinal, maDefault, maInterfaced );
    TMethodAttributes = set of TMethodAttribute;
 
    // A method of a script class: TMyClass = class procedure X(param: UnicodeString); end;
@@ -672,6 +672,8 @@ type
          function GetIsAbstract : Boolean; inline;
          procedure SetIsAbstract(const val : Boolean); inline;
          function GetIsFinal : Boolean; inline;
+         function GetIsInterfaced : Boolean; inline;
+         procedure SetIsInterfaced(const val : Boolean); inline;
          function GetIsDefault : Boolean; inline;
          procedure SetIsDefault(const val : Boolean); inline;
 
@@ -700,6 +702,7 @@ type
          property IsAbstract : Boolean read GetIsAbstract write SetIsAbstract;
          property IsVirtual : Boolean read GetIsVirtual write SetIsVirtual;
          property IsOverride : Boolean read GetIsOverride;
+         property IsInterfaced : Boolean read GetIsInterfaced write SetIsInterfaced;
          property IsFinal : Boolean read GetIsFinal;
          property IsOverlap : Boolean read GetIsOverlap;
          property IsClassMethod : Boolean read GetIsClassMethod;
@@ -2797,6 +2800,22 @@ begin
    Result:=maFinal in FAttributes;
 end;
 
+// GetIsInterfaced
+//
+function TMethodSymbol.GetIsInterfaced : Boolean;
+begin
+   Result:=maInterfaced in FAttributes;
+end;
+
+// SetIsInterfaced
+//
+procedure TMethodSymbol.SetIsInterfaced(const val : Boolean);
+begin
+   if val then
+      Include(FAttributes, maInterfaced)
+   else Exclude(FAttributes, maInterfaced);
+end;
+
 // GetIsDefault
 //
 function TMethodSymbol.GetIsDefault : Boolean;
@@ -3162,7 +3181,10 @@ begin
             if match=nil then begin
                missingMethod:=lookup;
                Exit(False);
-            end else resolved.VMT[lookup.VMTIndex]:=match;
+            end else begin
+               resolved.VMT[lookup.VMTIndex]:=match;
+               match.IsInterfaced:=True;
+            end;
          end;
       end;
       iter:=iter.Parent;

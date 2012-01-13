@@ -1,0 +1,5 @@
+Errors >>>>
+Hint: Variable "d" declared but never written to [line: 7, column: 4]
+Hint: Variable "d" declared but never written to [line: 15, column: 4]
+Hint: Variable "d" declared but never written to [line: 26, column: 4]
+Result >>>>
