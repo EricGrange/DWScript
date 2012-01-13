@@ -503,6 +503,7 @@ type
          property CurrentProg : TdwsProgram read FProg write FProg;
          property Msgs : TdwsCompileMessageList read FMsgs;
          property Options : TCompilerOptions read FOptions write FOptions;
+         property SymbolDictionary : TSymbolDictionary read FSymbolDictionary;
          property UnitSection : TdwsUnitSection read FUnitSection write FUnitSection;
          property TokenizerRules : TTokenizerRules read FTokRules;
          property Tokenizer : TTokenizer read FTok write FTok;
@@ -4823,7 +4824,7 @@ var
    hotPos : TScriptPos;
    newExpr : TNewArrayExpr;
 begin
-   newExpr:=TNewArrayExpr.Create(FProg, hotPos, elementTyp);
+   newExpr:=TNewArrayExpr.Create(FProg, FTok.HotPos, elementTyp);
    try
       repeat
          FTok.HasTokens;

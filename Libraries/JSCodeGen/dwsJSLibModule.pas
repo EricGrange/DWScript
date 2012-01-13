@@ -237,7 +237,9 @@ begin
 
                sym:=table.FindSymbol(name, cvMagic);
                if sym=nil then
-                  compiler.Msgs.AddCompilerStopFmt(hotPos, CPE_UnknownName, [name]);
+                  compiler.Msgs.AddCompilerStopFmt(hotPos, CPE_UnknownName, [name])
+               else if coSymbolDictionary in compiler.Options then
+                  compiler.SymbolDictionary.AddSymbolReference(sym, hotPos, False);
 
                blockExpr.RegisterSymbol(sym, Length(jsCode)+1);
 
