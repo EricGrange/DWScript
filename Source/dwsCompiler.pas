@@ -345,7 +345,7 @@ type
          function ReadExprIn(var left : TTypedExpr) : TTypedExpr;
          function ReadExprInConditions(var left : TTypedExpr) : TInOpExpr;
          function ReadExternalVar(sym : TExternalVarSymbol; isWrite : Boolean) : TFuncExpr;
-         function ReadField(const scriptPos : TScriptPos; progMeth : TMethodSymbol;
+         function ReadField(const scriptPos : TScriptPos; selfSym : TDataSymbol;
                          fieldSym : TFieldSymbol; varExpr : TDataExpr) : TDataExpr;
 
          function ReadFor : TForExpr;
@@ -1749,7 +1749,7 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
       token:=FTok.TestAny([ttINTERFACE, ttIMPLEMENTATION,
                            ttVAR, ttCONST, ttEND,
-                           ttFUNCTION, ttPROCEDURE, ttMETHOD]);
+                           ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR]);
    until (not FTok.HasTokens) or (token<>ttNone);
 end;
 
@@ -2269,7 +2269,7 @@ begin
       FProg:=proc;
       try
          FMainProg.Compiler := Self;
-         TdwsProcedure(FProg).AssignTo(funcSymbol);
+         proc.AssignTo(funcSymbol);
          // Set the current context's LocalTable to be the table of the new procedure
          if coContextMap in FOptions then
             FContextMap.Current.LocalTable := FProg.Table;
@@ -2839,6 +2839,7 @@ var
    fieldExpr : TTypedExpr;
    propExpr : TProgramExpr;
    progMeth : TMethodSymbol;
+   selfSym : TDataSymbol;
    baseType : TTypeSymbol;
    sk : TSpecialKeywordKind;
    symClassType : TClass;
@@ -2965,11 +2966,17 @@ begin
 
       end else if sym.InheritsFrom(TFieldSymbol) then begin
 
-         progMeth:=TMethodSymbol(TdwsProcedure(FProg).Func);
-         if progMeth.IsClassMethod then
+         if TdwsProcedure(FProg).Func is TMethodSymbol then begin
+            progMeth:=TMethodSymbol(TdwsProcedure(FProg).Func);
+            selfSym:=progMeth.SelfSym;
+         end else begin
+            selfSym:=TDataSymbol(FProg.Table.FindSymbol(SYS_SELF, cvMagic, TDataSymbol));
+         end;
+
+         if (selfSym=nil) or (selfSym.Typ is TStructuredTypeMetaSymbol) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
 
-         fieldExpr:=ReadField(namePos, progMeth, TFieldSymbol(sym), nil);
+         fieldExpr:=ReadField(namePos, selfSym, TFieldSymbol(sym), nil);
 
          Result:=ReadSymbol(fieldExpr, IsWrite, expecting);
 
@@ -3168,16 +3175,16 @@ end;
 
 // ReadField
 //
-function TdwsCompiler.ReadField(const scriptPos : TScriptPos; progMeth : TMethodSymbol;
+function TdwsCompiler.ReadField(const scriptPos : TScriptPos; selfSym : TDataSymbol;
                                 fieldSym : TFieldSymbol; varExpr : TDataExpr) : TDataExpr;
 begin
    if fieldSym.StructSymbol is TRecordSymbol then begin
       if varExpr=nil then
-         varExpr:=GetVarParamExpr(progMeth.SelfSym as TVarParamSymbol);
+         varExpr:=GetVarParamExpr(selfSym as TVarParamSymbol);
       Result:=TRecordExpr.Create(FProg, scriptPos, varExpr, fieldSym)
    end else begin
       if varExpr=nil then
-         varExpr:=GetVarExpr(progMeth.SelfSym);
+         varExpr:=GetVarExpr(selfSym);
       Result:=TFieldExpr.Create(FProg, FTok.HotPos, fieldSym.Typ, fieldSym, varExpr);
    end;
 end;
