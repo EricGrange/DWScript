@@ -960,7 +960,7 @@ type
    end;
 
    // returns an IFuncPointer to the FuncExpr
-   TFuncRefExpr = class(TDataExpr)
+   TAnonymousFuncRefExpr = class(TDataExpr)
       private
          FFuncExpr : TFuncExprBase;
 
@@ -979,6 +979,9 @@ type
          function Extract : TFuncExprBase; // also a destructor
 
          property FuncExpr : TFuncExprBase read FFuncExpr write FFuncExpr;
+   end;
+
+   TFuncRefExpr = class (TAnonymousFuncRefExpr)
    end;
 
    TFuncPtrExpr = class(TFuncExpr)
@@ -4460,12 +4463,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TFuncRefExpr ------------------
+// ------------------ TAnonymousFuncRefExpr ------------------
 // ------------------
 
 // Create
 //
-constructor TFuncRefExpr.Create(prog : TdwsProgram; funcExpr : TFuncExprBase);
+constructor TAnonymousFuncRefExpr.Create(prog : TdwsProgram; funcExpr : TFuncExprBase);
 begin
    FFuncExpr:=funcExpr;
    Typ:=funcExpr.FuncSym;
@@ -4473,7 +4476,7 @@ end;
 
 // Destroy
 //
-destructor TFuncRefExpr.Destroy;
+destructor TAnonymousFuncRefExpr.Destroy;
 begin
    inherited;
    FFuncExpr.Free;
@@ -4481,7 +4484,7 @@ end;
 
 // Extract
 //
-function TFuncRefExpr.Extract : TFuncExprBase;
+function TAnonymousFuncRefExpr.Extract : TFuncExprBase;
 begin
    Result:=FFuncExpr;
    FFuncExpr:=nil;
@@ -4490,7 +4493,7 @@ end;
 
 // Eval
 //
-function TFuncRefExpr.Eval(exec : TdwsExecution) : Variant;
+function TAnonymousFuncRefExpr.Eval(exec : TdwsExecution) : Variant;
 var
    funcPtr : TFuncPointer;
 begin
@@ -4504,21 +4507,21 @@ end;
 
 // GetSubExpr
 //
-function TFuncRefExpr.GetSubExpr(i : Integer) : TExprBase;
+function TAnonymousFuncRefExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
    Result:=FFuncExpr
 end;
 
 // GetSubExprCount
 //
-function TFuncRefExpr.GetSubExprCount : Integer;
+function TAnonymousFuncRefExpr.GetSubExprCount : Integer;
 begin
    Result:=1;
 end;
 
 // GetData
 //
-function TFuncRefExpr.GetData(exec : TdwsExecution) : TData;
+function TAnonymousFuncRefExpr.GetData(exec : TdwsExecution) : TData;
 begin
    SetLength(Result, 1);
    EvalAsVariant(exec, Result[0]);

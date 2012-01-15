@@ -379,6 +379,9 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
       class procedure DoCodeGen(codeGen : TdwsCodeGen; funcExpr : TFuncExprBase); static;
    end;
+   TJSAnonymousFuncRefExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
 
    TJSExceptExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
@@ -1383,6 +1386,7 @@ begin
 
    RegisterCodeGen(TFuncPtrExpr,                TJSFuncPtrExpr.Create);
    RegisterCodeGen(TFuncRefExpr,                TJSFuncRefExpr.Create);
+   RegisterCodeGen(TAnonymousFuncRefExpr,       TJSAnonymousFuncRefExpr.Create);
 
    RegisterCodeGen(TFieldExpr,                  TJSFieldExpr.Create);
    RegisterCodeGen(TReadOnlyFieldExpr,          TJSFieldExpr.Create);
@@ -1504,7 +1508,8 @@ end;
 procedure TdwsJSCodeGen.DoCompileFuncSymbol(func : TSourceFuncSymbol);
 begin
    WriteString('function ');
-   WriteSymbolName(func);
+   if func.Name<>'' then
+      WriteSymbolName(func);
    WriteString('(');
    WriteFuncParams(func);
    WriteStringLn(') {');
@@ -3680,6 +3685,20 @@ begin
          codeGen.Dependencies.Add(funcExpr.FuncSym.QualifiedName);
 
    end;
+end;
+
+// ------------------
+// ------------------ TJSAnonymousFuncRefExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSAnonymousFuncRefExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TAnonymousFuncRefExpr;
+begin
+   e:=TAnonymousFuncRefExpr(expr);
+   codeGen.CompileFuncSymbol(e.FuncExpr.FuncSym as TSourceFuncSymbol);
 end;
 
 // ------------------

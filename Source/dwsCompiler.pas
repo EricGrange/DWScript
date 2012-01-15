@@ -408,7 +408,7 @@ type
                               const addParamMeth : TAddParamSymbolMethod;
                               paramsToDictionary : Boolean = True);
          function ReadProcDecl(funcToken : TTokenType; isClassMethod : Boolean = False;
-                            isType : Boolean = False) : TFuncSymbol;
+                               isType : Boolean = False; isAnonymous : Boolean = False) : TFuncSymbol;
          procedure ReadProcBody(funcSymbol : TFuncSymbol);
          procedure ReadConditions(funcSymbol : TFuncSymbol; conditions : TSourceConditions;
                                condsSymClass : TConditionSymbolClass);
@@ -1831,7 +1831,8 @@ end;
 // ReadProcDecl
 //
 function TdwsCompiler.ReadProcDecl(funcToken : TTokenType;
-              isClassMethod : Boolean = False; isType : Boolean = False) : TFuncSymbol;
+              isClassMethod : Boolean = False; isType : Boolean = False;
+              isAnonymous : Boolean = False) : TFuncSymbol;
 var
    funcKind : TFuncKind;
    name : UnicodeString;
@@ -1843,20 +1844,25 @@ begin
    funcKind:=cTokenToFuncKind[funcToken];
    if not isType then begin
       // Find Symbol for Functionname
-      if not FTok.TestDeleteNamePos(name, funcPos) then begin
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
+      if isAnonymous then begin
          name:='';
-      end;
-      CheckSpecialName(name);
+         sym:=nil;
+      end else begin
+         if not FTok.TestDeleteNamePos(name, funcPos) then begin
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
+            name:='';
+         end;
+         CheckSpecialName(name);
 
-      sym := FProg.Table.FindSymbol(name, cvMagic);
+         sym:=FProg.Table.FindSymbol(name, cvMagic);
+      end;
 
       // Open context for procedure declaration. Closed in ReadProcBody.
       if coContextMap in FOptions then
          FContextMap.OpenContext(funcPos, sym, funcToken);
    end else begin
-      sym := nil;
-      name := '';
+      sym:=nil;
+      name:='';
    end;
 
    // name is the name of class -> Method
@@ -1892,54 +1898,58 @@ begin
 
          Result.Typ:=ReadFuncResultType(funcKind);
 
-         if not isType then begin
-            if Assigned(forwardedSym) then begin
-               CompareFuncKinds(forwardedSym.Kind, Result.Kind);
-               CompareFuncSymbolParams(forwardedSym, Result);
-            end;
+         if not isAnonymous then begin
+                
+            if not isType then begin
+               if Assigned(forwardedSym) then begin
+                  CompareFuncKinds(forwardedSym.Kind, Result.Kind);
+                  CompareFuncSymbolParams(forwardedSym, Result);
+               end;
 
-            ReadSemiColon;
+               ReadSemiColon;
 
-            // forward & external declarations
-            if not Assigned(forwardedSym) then begin
-               if UnitSection=secInterface then begin
-                  // default to forward in interface section
-                  Result.SetForwardedPos(funcPos);
-                  if FTok.TestDelete(ttFORWARD) then begin
-                     FMsgs.AddCompilerHint(FTok.HotPos, CPW_ForwardIsImplicit);
-                     ReadSemiColon;
-                  end else if FTok.TestDelete(ttEXTERNAL) then begin
-                     Result.IsExternal:=True;
-                     ReadSemiColon;
-                  end;
-               end else begin
-                  if FTok.TestDelete(ttFORWARD) then begin
+               // forward & external declarations
+               if not Assigned(forwardedSym) then begin
+                  if UnitSection=secInterface then begin
+                     // default to forward in interface section
                      Result.SetForwardedPos(funcPos);
-                     ReadSemiColon;
-                  end else if FTok.TestDelete(ttEXTERNAL) then begin
-                     Result.IsExternal:=True;
-                     ReadSemiColon;
+                     if FTok.TestDelete(ttFORWARD) then begin
+                        FMsgs.AddCompilerHint(FTok.HotPos, CPW_ForwardIsImplicit);
+                        ReadSemiColon;
+                     end else if FTok.TestDelete(ttEXTERNAL) then begin
+                        Result.IsExternal:=True;
+                        ReadSemiColon;
+                     end;
+                  end else begin
+                     if FTok.TestDelete(ttFORWARD) then begin
+                        Result.SetForwardedPos(funcPos);
+                        ReadSemiColon;
+                     end else if FTok.TestDelete(ttEXTERNAL) then begin
+                        Result.IsExternal:=True;
+                        ReadSemiColon;
+                     end;
                   end;
                end;
+
+               ReadDeprecated(Result);
+
+               if Assigned(forwardedSym) then begin
+                  // Get forwarded position in script. If compiled without symbols it will just return from empty list (could optimize here to prevent the push/pop of call stack
+                  forwardedSymPos := FSymbolDictionary.FindSymbolUsage(forwardedSym, suDeclaration);  // may be nil
+                  // Adapt dictionary entry to reflect that it was a forward
+                  // If the record is in the SymbolDictionary (disabled dictionary would leave pointer nil)
+                  if Assigned(forwardedSymPos) then
+                     forwardedSymPos.SymbolUsages := [suForward];  // update old postion to reflect that the type was forwarded
+
+                  Result.Free;
+                  Result := forwardedSym;
+                  Result.ClearIsForwarded;
+               end else FProg.Table.AddSymbol(Result);
+
+               if Result.IsForwarded or Result.IsExternal then
+                  FTok.SimulateToken(ttSEMI);
             end;
-
-            ReadDeprecated(Result);
-
-            if Assigned(forwardedSym) then begin
-               // Get forwarded position in script. If compiled without symbols it will just return from empty list (could optimize here to prevent the push/pop of call stack
-               forwardedSymPos := FSymbolDictionary.FindSymbolUsage(forwardedSym, suDeclaration);  // may be nil
-               // Adapt dictionary entry to reflect that it was a forward
-               // If the record is in the SymbolDictionary (disabled dictionary would leave pointer nil)
-               if Assigned(forwardedSymPos) then
-                  forwardedSymPos.SymbolUsages := [suForward];  // update old postion to reflect that the type was forwarded
-
-               Result.Free;
-               Result := forwardedSym;
-               Result.ClearIsForwarded;
-            end else FProg.Table.AddSymbol(Result);
-
-            if Result.IsForwarded or Result.IsExternal then
-               FTok.SimulateToken(ttSEMI);
+            
          end;
 
          // Procedure is both Declared and Implemented here
@@ -6206,13 +6216,22 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       Result:=TConstExpr.Create(FProg, expecting, Null);
    end;
 
+   function ReadAnonymousMethod(funcType : TTokenType) : TAnonymousFuncRefExpr;
+   var
+      funcSym : TFuncSymbol;
+   begin
+      funcSym:=ReadProcDecl(funcType, False, False, True);
+      ReadProcBody(funcSym);
+      Result:=TAnonymousFuncRefExpr.Create(FProg, GetFuncExpr(funcSym, False, nil, expecting));
+   end;
+
 var
    tt : TTokenType;
    nameExpr : TProgramExpr;
    hotPos : TScriptPos;
 begin
    tt:=FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
-                     ttTRUE, ttFALSE, ttNIL]);
+                     ttTRUE, ttFALSE, ttNIL, ttFUNCTION, ttPROCEDURE]);
    if tt<>ttNone then
       FTok.KillToken;
    case tt of
@@ -6251,6 +6270,11 @@ begin
          Result:=ReadFalse;
       ttNIL :
          Result:=ReadNilTerm;
+      ttPROCEDURE, ttFUNCTION : begin
+         if not (coAllowClosures in Options) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_LocalFunctionAsDelegate);
+         Result:=ReadAnonymousMethod(tt)
+      end;
    else
       if (FTok.TestAny([ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin
          // Variable or Function
