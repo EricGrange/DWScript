@@ -68,6 +68,7 @@ begin
    FMainCompiler.OnInclude := DoInclude;
 
    FJSCompiler := TDelphiWebScript.Create(nil);
+   FJSCompiler.Config.CompilerOptions:=FJSCompiler.Config.CompilerOptions+[coVariablesAsVarOnly, coAllowClosures];
    FJSCompiler.OnInclude := DoInclude;
    FJSCompiler.OnNeedUnit := DoNeedUnit;
 

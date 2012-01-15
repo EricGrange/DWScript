@@ -30,9 +30,19 @@ uses
   dwsUnitSymbols;
 
 type
-   TCompilerOption = ( coOptimize, coSymbolDictionary, coContextMap, coAssertions,
-                       coHintsDisabled, coWarningsDisabled, coExplicitUnitUses,
-                       coVariablesAsVarOnly );
+   TCompilerOption = (
+      coOptimize,          // enable compiler optimizations
+      coSymbolDictionary,  // fillup symbol dictionary
+      coContextMap,        // fillup context map
+      coAssertions,        // compile asserions (if absent, ignores assertions)
+      coHintsDisabled,     // don't generate hints messages
+      coWarningsDisabled,  // don't generate warnings messages
+      coExplicitUnitUses,  // unit dependencies must be explicit via a "uses" clause
+      coVariablesAsVarOnly,// only variable can be passed as "var" parameters
+                           // (for CodeGen that does not support passing record fields or array elements)
+      coAllowClosures      // allow closures, ie. capture of local procedures as function pointers
+                           // (not suppported yet by script engine, may be supported by CodeGen)
+      );
    TCompilerOptions = set of TCompilerOption;
 
 const
@@ -4207,7 +4217,7 @@ begin
                 and not FTok.Test(ttDOT))
             or (    (expecting is TFuncSymbol)
                 and expecting.IsCompatible(funcExpr.funcSym)) then begin
-            if funcExpr.FuncSym.Level>1 then
+            if (funcExpr.FuncSym.Level>1) and not (coAllowClosures in Options) then
                FMsgs.AddCompilerError(funcExpr.Pos, CPE_LocalFunctionAsDelegate);
             Result:=TFuncRefExpr.Create(FProg, funcExpr);
          end else begin
