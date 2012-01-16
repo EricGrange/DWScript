@@ -1831,8 +1831,12 @@ begin
             FDeclaredLocalVars.Add(varSym);
             WriteString('var ');
             WriteSymbolName(varSym);
-            WriteString('=');
-            WriteDefaultValue(varSym.Typ, TJSExprCodeGen.IsLocalVarParam(Self, varSym));
+            if varSym.Typ.ClassType=TBaseVariantSymbol then begin
+               // undefined is JS default for unassigned var
+            end else begin
+               WriteString('=');
+               WriteDefaultValue(varSym.Typ, TJSExprCodeGen.IsLocalVarParam(Self, varSym));
+            end;
             WriteStringLn(';');
          end;
       end;
@@ -3516,6 +3520,10 @@ begin
 
    codeGen.Compile(e.BaseExpr);
    if e.IsIndex then begin
+      if jsCall.CallMethodName<>'' then begin
+         codeGen.WriteString('.');
+         codeGen.WriteString(jsCall.CallMethodName);
+      end;
       codeGen.WriteString('[');
       isWrite:=(jsCall as TdwsJSIndexCall).IsWrite;
       if isWrite then
