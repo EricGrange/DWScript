@@ -498,9 +498,10 @@ var
    sym : TSymbol;
 begin
    for sym in table do begin
-      if sym is TSourceFuncSymbol then
-         CompileFuncSymbol(TSourceFuncSymbol(sym))
-      else if sym is TEnumerationSymbol then
+      if sym is TSourceFuncSymbol then begin
+         if sym.Name<>'' then
+            CompileFuncSymbol(TSourceFuncSymbol(sym))
+      end else if sym is TEnumerationSymbol then
          CompileEnumerationSymbol(TEnumerationSymbol(sym))
       else if sym is TRecordSymbol then
          CompileRecordSymbol(TRecordSymbol(sym))

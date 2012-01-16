@@ -6221,6 +6221,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       funcSym : TFuncSymbol;
    begin
       funcSym:=ReadProcDecl(funcType, False, False, True);
+      FProg.Table.AddSymbol(funcSym);
       ReadProcBody(funcSym);
       Result:=TAnonymousFuncRefExpr.Create(FProg, GetFuncExpr(funcSym, False, nil, expecting));
    end;
