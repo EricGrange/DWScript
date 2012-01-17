@@ -261,6 +261,8 @@ const
 
   CPH_VariableDeclaredButNotUsed = 'Variable "%s" declared but not used';
   CPH_VariableDeclaredButNotWrittenTo = 'Variable "%s" declared but never written to';
+  CPH_PrivateFieldDeclaredButNotUsed = 'Private field "%s" declared but never used';
+  CPH_PrivateMethodDeclaredButNotUsed = 'Private method "%s" declared but never used';
   CPH_ResultNotUsed = 'Result is never used';
 
   // TypeCheck

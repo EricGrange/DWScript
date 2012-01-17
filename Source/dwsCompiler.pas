@@ -314,7 +314,9 @@ type
          procedure CompareFuncSymbolParams(a, b : TFuncSymbol);
          function  CurrentStruct : TStructuredTypeSymbol;
          function  FindStructMember(typ : TStructuredTypeSymbol; const name : UnicodeString) : TSymbol;
+
          procedure HintUnusedSymbols;
+         procedure HintUnusedPrivateSymbols;
          procedure HintUnusedResult(resultSymbol : TDataSymbol);
 
          function OpenStreamForFile(const scriptName : UnicodeString) : TStream;
@@ -962,6 +964,8 @@ begin
       FProg.Expr:=ReadScript(sourceFile, stMain);
       if FProg.Expr=nil then
          FProg.Expr:=TNullExpr.Create(FProg, cNullPos);
+
+      HintUnusedPrivateSymbols;
 
       // Initialize symbol table
       FProg.Table.Initialize(FMsgs);
@@ -7168,17 +7172,16 @@ end;
 //
 procedure TdwsCompiler.HintUnusedSymbols;
 var
-   i : Integer;
    sym : TSymbol;
    symDecl : TSymbolPosition;
    symDic : TSymbolDictionary;
    symPosList : TSymbolPositionList;
 begin
-   if not (coSymbolDictionary in FOptions) then Exit;
+   if not (coSymbolDictionary in Options) then Exit;
+   if coHintsDisabled in Options then Exit;
 
    symDic:=FMainProg.SymbolDictionary;
-   for i:=0 to FProg.Table.Count-1 do begin
-      sym:=FProg.Table[i];
+   for sym in FProg.Table do begin
       if sym.ClassType=TDataSymbol then begin
          symPosList:=symDic.FindSymbolPosList(sym);
          symDecl:=symPosList.FindUsage(suDeclaration);
@@ -7192,12 +7195,66 @@ begin
    end;
 end;
 
+// HintUnusedPrivateSymbols
+//
+procedure TdwsCompiler.HintUnusedPrivateSymbols;
+
+   procedure HintIfUnused(sym : TSymbol; const msg : String);
+   var
+      symPos : TSymbolPosition;
+   begin
+      if FSymbolDictionary.FindSymbolUsage(sym, suReference)=nil then begin
+         symPos:=FSymbolDictionary.FindSymbolUsage(sym, suDeclaration);
+         if symPos<>nil then
+            FMsgs.AddCompilerHintFmt(symPos.ScriptPos, msg, [sym.Name]);
+      end;
+   end;
+
+   procedure DoHintUnusedPrivateSymbols(table : TSymbolTable);
+   var
+      sym : TSymbol;
+      fieldSym : TFieldSymbol;
+      methSym : TMethodSymbol;
+   begin
+      for sym in table do begin
+         if sym is TStructuredTypeSymbol then
+            DoHintUnusedPrivateSymbols(TStructuredTypeSymbol(sym).Members)
+         else if sym is TFieldSymbol then begin
+            fieldSym:=TFieldSymbol(sym);
+            if fieldSym.Visibility=cvPrivate then
+               HintIfUnused(fieldSym, CPH_PrivateFieldDeclaredButNotUsed);
+         end else if sym is TMethodSymbol then begin
+            methSym:=TMethodSymbol(sym);
+            if methSym.Visibility=cvPrivate then
+               HintIfUnused(methSym, CPH_PrivateMethodDeclaredButNotUsed);
+         end;
+      end;
+   end;
+
+var
+   i : Integer;
+   ums : TUnitMainSymbol;
+begin
+   if coHintsDisabled in Options then Exit;
+   if not (coSymbolDictionary in Options) then Exit;
+
+   DoHintUnusedPrivateSymbols(FProg.Table);
+   for i:=0 to FProg.UnitMains.Count-1 do begin
+      ums:=FProg.UnitMains[i];
+      if ums.Name=SYS_SYSTEM then Continue;
+      if ums.Name=SYS_INTERNAL then Continue;
+      DoHintUnusedPrivateSymbols(ums.Table);
+      DoHintUnusedPrivateSymbols(ums.ImplementationTable);
+   end;
+end;
+
 // HintUnusedResult
 //
 procedure TdwsCompiler.HintUnusedResult(resultSymbol : TDataSymbol);
 begin
    if resultSymbol=nil then Exit;
    if not (coSymbolDictionary in FOptions) then Exit;
+   if coHintsDisabled in Options then Exit;
 
    if FMainProg.SymbolDictionary.FindSymbolUsage(resultSymbol, suReference)=nil then
       FMsgs.AddCompilerHint(FTok.HotPos, CPH_ResultNotUsed);
