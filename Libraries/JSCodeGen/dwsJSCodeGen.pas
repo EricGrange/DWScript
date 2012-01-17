@@ -1518,7 +1518,9 @@ begin
    CompileFuncBody(func);
 
    UnIndent;
-   WriteStringLn('};');
+   if func.Name<>'' then
+      WriteStringLn('};')
+   else WriteString('}');
 end;
 
 // CompileConditions

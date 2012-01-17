@@ -1,0 +1,42 @@
+<script>
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+<%pas2js
+type TEvent = procedure (msg : String);
+
+type 
+   TMyClass = class
+      FEvent : TEvent;
+      procedure SetEvent(evt : TEvent);
+      begin
+         FEvent:=evt;
+      end;
+      property Event : TEvent write SetEvent;
+      procedure Invoke(s : String);
+      begin
+         FEvent(s);
+      end;
+   end;
+   
+type 
+   TTestClass = class
+      Field : String;
+      procedure Bind(mc : TMyClass);
+      begin
+         mc.Event:=procedure (msg : String) begin Print(Field); PrintLn(msg); end;
+      end;
+   end;
+   
+var o := new TMyClass;
+
+o.Event := procedure (msg : String) begin PrintLn('hello '+msg); end;
+o.Invoke('world');
+
+var b := new TTestClass;
+b.Field:='byebye';   
+b.Bind(o);
+
+o.Invoke(' World');
+  
+%>
+</script>
