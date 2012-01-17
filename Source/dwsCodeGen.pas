@@ -1243,7 +1243,6 @@ var
    member : TSymbol;
    method : TMethodSymbol;
    prop : TPropertySymbol;
-   field : TFieldSymbol;
    localChanged : Boolean;
 begin
    if FSymbolDictionary=nil then Exit;
