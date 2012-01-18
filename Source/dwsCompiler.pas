@@ -5922,10 +5922,14 @@ begin
                               FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
                            else FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
                         if Result.Typ is TClassSymbol then
-                           Result:=TObjCmpExpr.Create(FProg, Result, right)
-                        else Result:=TIntfCmpExpr.Create(FProg, Result, right);
-                        if tt=ttNOTEQ then
-                           Result:=TNotBoolExpr.Create(FProg, Result);
+                           if tt=ttNOTEQ then
+                              Result:=TObjCmpNotEqualExpr.Create(FProg, Result, right)
+                           else Result:=TObjCmpEqualExpr.Create(FProg, Result, right)
+                        else begin
+                           Result:=TIntfCmpExpr.Create(FProg, Result, right);
+                           if tt=ttNOTEQ then
+                              Result:=TNotBoolExpr.Create(FProg, Result);
+                        end;
                      end;
                   else
                      FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);

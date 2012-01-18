@@ -816,7 +816,13 @@ type
    end;
 
    // obj left = obj right
-   TObjCmpExpr = class(TBooleanBinOpExpr)
+   TObjCmpEqualExpr = class(TBooleanBinOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
+   // obj left <> obj right
+   TObjCmpNotEqualExpr = class(TBooleanBinOpExpr)
       public
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
@@ -4117,18 +4123,33 @@ begin
 end;
 
 // ------------------
-// ------------------ TObjCmpExpr ------------------
+// ------------------ TObjCmpEqualExpr ------------------
 // ------------------
 
 // EvalAsBoolean
 //
-function TObjCmpExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+function TObjCmpEqualExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
    iLeft, iRight : IScriptObj;
 begin
    FLeft.EvalAsScriptObj(exec, iLeft);
    FRight.EvalAsScriptObj(exec, iRight);
    Result:=(iLeft=iRight);
+end;
+
+// ------------------
+// ------------------ TObjCmpNotEqualExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TObjCmpNotEqualExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   iLeft, iRight : IScriptObj;
+begin
+   FLeft.EvalAsScriptObj(exec, iLeft);
+   FRight.EvalAsScriptObj(exec, iRight);
+   Result:=(iLeft<>iRight);
 end;
 
 // ------------------
@@ -4320,14 +4341,15 @@ end;
 //
 function TMultIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
-   Result:=Self;
    if (FLeft is TVarExpr) and (FRight is TVarExpr) then begin
       if TVarExpr(FLeft).SameVarAs(TVarExpr(FRight)) then begin
          Result:=TSqrIntExpr.Create(Prog, FLeft);
          FLeft:=nil;
          Free;
+         Exit;
       end;
    end;
+   Result:=inherited;
 end;
 
 // ------------------
@@ -4345,14 +4367,15 @@ end;
 //
 function TMultFloatExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
-   Result:=Self;
    if (FLeft is TFloatVarExpr) and (FRight is TFloatVarExpr) then begin
       if TFloatVarExpr(FLeft).SameVarAs(TFloatVarExpr(FRight)) then begin
          Result:=TSqrFloatExpr.Create(Prog, FLeft);
          FLeft:=nil;
          Free;
+         Exit;
       end;
    end;
+   Result:=inherited;
 end;
 
 // ------------------
