@@ -1321,23 +1321,32 @@ end;
 //
 procedure TdwsExprGenericCodeGen.DoCodeGen(codeGen : TdwsCodeGen; expr : TExprBase; start, stop : Integer);
 var
-   i : Integer;
+   i, idx : Integer;
    c : Char;
    item : TExprBase;
+   noWrap : Boolean;
 begin
    if FDependency<>'' then
       codeGen.Dependencies.Add(FDependency);
    for i:=start to stop do begin
       case FTemplate[i].VType of
          vtInteger : begin
-            item:=expr.SubExpr[FTemplate[i].VInteger];
-            if     (i>start) and (FTemplate[i-1].VType=vtWideChar) and (FTemplate[i-1].VWideChar='(')
-               and (i<stop) and (FTemplate[i+1].VType=vtWideChar) and (FTemplate[i+1].VWideChar=')')
-               and (item is TTypedExpr) then begin
-               codeGen.CompileNoWrap(TTypedExpr(item));
+            idx:=FTemplate[i].VInteger;
+            if idx>=0 then begin
+               item:=expr.SubExpr[idx];
+               noWrap:=(item is TVarExpr) or (item is TFieldExpr);
+               if not noWrap then begin
+                  noWrap:=    (i>start) and (FTemplate[i-1].VType=vtWideChar) and (FTemplate[i-1].VWideChar='(')
+                          and (i<stop) and (FTemplate[i+1].VType=vtWideChar) and (FTemplate[i+1].VWideChar=')')
+                          and (item is TTypedExpr);
+               end;
             end else begin
-               codeGen.Compile(item);
+               item:=expr.SubExpr[-idx];
+               noWrap:=True;
             end;
+            if noWrap then
+               codeGen.CompileNoWrap(TTypedExpr(item))
+            else codeGen.Compile(item);
          end;
          vtUnicodeString :
             codeGen.WriteString(String(FTemplate[i].VUnicodeString));

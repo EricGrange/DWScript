@@ -938,13 +938,13 @@ const
       (Name : 'TObject';
        Code : 'var TObject={'#13#10
                +#9'$ClassName: "TObject",'#13#10
-               +#9'ClassName: function (Self) { return Self.$ClassName },'#13#10
-               +#9'ClassType: function (Self) { return Self },'#13#10
+               +#9'ClassName: function (s) { return s.$ClassName },'#13#10
+               +#9'ClassType: function (s) { return s },'#13#10
                +#9'$Init: function () {},'#13#10
-               +#9'Create: function (Self) { return Self; },'#13#10
-               +#9'Destroy: function (Self) { for (prop in Self) { if (Self.hasOwnProperty(prop)) delete Self.prop; } },'#13#10
-               +#9'Destroy$v: function(Self) { return Self.ClassType.Destroy(Self) },'#13#10
-               +#9'Free: function (Self) { if (Self!=null) Self.ClassType.Destroy(Self) }'#13#10
+               +#9'Create: function (s) { return s; },'#13#10
+               +#9'Destroy: function (s) { for (prop in s) { if (s.hasOwnProperty(prop)) delete s.prop; } },'#13#10
+               +#9'Destroy$v: function(s) { return s.ClassType.Destroy(s) },'#13#10
+               +#9'Free: function (s) { if (s!=null) s.ClassType.Destroy(s) }'#13#10
                +'}';
        Dependency : '$New'),
       (Name : 'Exception';
@@ -952,7 +952,7 @@ const
                +#9'$ClassName: "Exception",'#13#10
                +#9'$Parent: TObject,'#13#10
                +#9'$Init: function () { FMessage=""; },'#13#10
-               +#9'Create$1: function (Self,Msg) { Self.FMessage=Msg; return Self; }'#13#10
+               +#9'Create$1: function (s,Msg) { s.FMessage=Msg; return s; }'#13#10
                +'}';
        Dependency : 'TObject'),
       (Name : 'EAssertionFailed';
@@ -1084,7 +1084,7 @@ begin
    RegisterCodeGen(TAssignNilClassToVarExpr,       TJSAssignNilToVarExpr.Create);
    RegisterCodeGen(TAssignConstDataToVarExpr,      TJSAssignConstDataToVarExpr.Create);
 
-   RegisterCodeGen(TAssignArrayConstantExpr, TdwsExprGenericCodeGen.Create([0, '=', 1, ';'], True));
+   RegisterCodeGen(TAssignArrayConstantExpr, TdwsExprGenericCodeGen.Create([0, '=', -1, ';'], True));
 
    RegisterCodeGen(TVarExpr,              TJSVarExpr.Create);
    RegisterCodeGen(TSelfVarExpr,          TJSVarExpr.Create);
@@ -1108,7 +1108,7 @@ begin
    RegisterCodeGen(TConvBoolExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '?true:false)']));
    RegisterCodeGen(TConvStringExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '.toString())']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '.toString()', ')']));
    RegisterCodeGen(TConvStaticArrayToDynamicExpr,
       TdwsExprGenericCodeGen.Create([0, '.slice()']));
 
@@ -1148,36 +1148,36 @@ begin
    RegisterCodeGen(TNegVariantExpr,       TdwsExprGenericCodeGen.Create(['(', '-', 0, ')']));
 
    RegisterCodeGen(TAppendStringVarExpr,
-      TdwsExprGenericCodeGen.Create([0, '+=', 1, ';'], True));
+      TdwsExprGenericCodeGen.Create([0, '+=', -1, ';'], True));
    RegisterCodeGen(TAppendConstStringVarExpr,      TJSAppendConstStringVarExpr.Create);
 
    RegisterCodeGen(TPlusAssignIntExpr,
-      TdwsExprGenericCodeGen.Create([0, '+=', 1, ';'], True));
+      TdwsExprGenericCodeGen.Create([0, '+=', -1, ';'], True));
    RegisterCodeGen(TPlusAssignFloatExpr,
-      TdwsExprGenericCodeGen.Create([0, '+=', 1, ';'], True));
+      TdwsExprGenericCodeGen.Create([0, '+=', -1, ';'], True));
    RegisterCodeGen(TPlusAssignStrExpr,
-      TdwsExprGenericCodeGen.Create([0, '+=', 1, ';'], True));
+      TdwsExprGenericCodeGen.Create([0, '+=', -1, ';'], True));
    RegisterCodeGen(TPlusAssignExpr,
-      TdwsExprGenericCodeGen.Create([0, '+=', 1, ';'], True));
+      TdwsExprGenericCodeGen.Create([0, '+=', -1, ';'], True));
    RegisterCodeGen(TMinusAssignIntExpr,
-      TdwsExprGenericCodeGen.Create([0, '-=', 1, ';'], True));
+      TdwsExprGenericCodeGen.Create([0, '-=', -1, ';'], True));
    RegisterCodeGen(TMinusAssignFloatExpr,
-      TdwsExprGenericCodeGen.Create([0, '-=', 1, ';'], True));
+      TdwsExprGenericCodeGen.Create([0, '-=', -1, ';'], True));
    RegisterCodeGen(TMinusAssignExpr,
-      TdwsExprGenericCodeGen.Create([0, '-=', 1, ';'], True));
+      TdwsExprGenericCodeGen.Create([0, '-=', -1, ';'], True));
    RegisterCodeGen(TMultAssignIntExpr,
-      TdwsExprGenericCodeGen.Create([0, '*=', 1, ';'], True));
+      TdwsExprGenericCodeGen.Create([0, '*=', -1, ';'], True));
    RegisterCodeGen(TMultAssignFloatExpr,
-      TdwsExprGenericCodeGen.Create([0, '*=', 1, ';'], True));
+      TdwsExprGenericCodeGen.Create([0, '*=', -1, ';'], True));
    RegisterCodeGen(TMultAssignExpr,
-      TdwsExprGenericCodeGen.Create([0, '*=', 1, ';'], True));
+      TdwsExprGenericCodeGen.Create([0, '*=', -1, ';'], True));
    RegisterCodeGen(TDivideAssignExpr,
-      TdwsExprGenericCodeGen.Create([0, '/=', 1, ';'], True));
+      TdwsExprGenericCodeGen.Create([0, '/=', -1, ';'], True));
 
    RegisterCodeGen(TIncIntVarExpr,
-      TdwsExprGenericCodeGen.Create([0, '+=', 1, ';'], True));
+      TdwsExprGenericCodeGen.Create([0, '+=', -1, ';'], True));
    RegisterCodeGen(TDecIntVarExpr,
-      TdwsExprGenericCodeGen.Create([0, '-=', 1, ';'], True));
+      TdwsExprGenericCodeGen.Create([0, '-=', -1, ';'], True));
 
    RegisterCodeGen(TIncVarFuncExpr,    TJSIncVarFuncExpr.Create);
    RegisterCodeGen(TDecVarFuncExpr,    TJSDecVarFuncExpr.Create);
@@ -1227,19 +1227,21 @@ begin
       TdwsExprGenericCodeGen.Create(['(', '!', 0, ')']));
 
    RegisterCodeGen(TAssignedInstanceExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '!==null)']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '!==null', ')']));
    RegisterCodeGen(TAssignedMetaClassExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '!==null)']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '!==null', ')']));
    RegisterCodeGen(TAssignedFuncPtrExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '!==null)']));
+      TdwsExprGenericCodeGen.Create(['(', 0, '!==null', ')']));
 
    RegisterCodeGen(TRelEqualBoolExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '==', 1, ')']));
    RegisterCodeGen(TRelNotEqualBoolExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '!=', 1, ')']));
 
-   RegisterCodeGen(TObjCmpExpr,
+   RegisterCodeGen(TObjCmpEqualExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '===', 1, ')']));
+   RegisterCodeGen(TObjCmpNotEqualExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '!==', 1, ')']));
 
    RegisterCodeGen(TRelEqualIntExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '==', 1, ')']));
@@ -1342,10 +1344,10 @@ begin
    RegisterCodeGen(TVarStringArraySetExpr,   TJSVarStringArraySetExpr.Create);
 
    RegisterCodeGen(TStringLengthExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, ')', '.length']));
+      TdwsExprGenericCodeGen.Create([0, '.length']));
    RegisterCodeGen(TArrayLengthExpr,         TJSArrayLengthExpr.Create);
    RegisterCodeGen(TOpenArrayLengthExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, ')', '.length']));
+      TdwsExprGenericCodeGen.Create([0, '.length']));
 
    RegisterCodeGen(TOrdIntExpr,
       TdwsExprGenericCodeGen.Create([0]));
@@ -1713,16 +1715,16 @@ begin
       WriteString('$v:');
       if meth.StructSymbol=cls then begin
          if meth.Kind=fkConstructor then begin
-            WriteString('function(Self){return Self.ClassType.');
+            WriteString('function(s){return s.ClassType.');
          end else if meth.IsClassMethod then begin
-            WriteString('function(Self){return Self.');
+            WriteString('function(s){return s.');
          end else begin
-            WriteString('function(Self){return Self.ClassType.');
+            WriteString('function(s){return s.ClassType.');
          end;
          WriteString(MemberName(meth, meth.StructSymbol));
          if meth.Params.Count=0 then
-            WriteStringLn('(Self)}')
-         else WriteStringLn('.apply(Self.ClassType, arguments)}');
+            WriteStringLn('(s)}')
+         else WriteStringLn('.apply(s.ClassType, arguments)}');
       end else begin
          WriteSymbolName(meth.StructSymbol);
          WriteString('.');
@@ -1806,7 +1808,7 @@ begin
    if FMainBodyName<>'' then begin
       WriteString('var ');
       WriteString(FMainBodyName);
-      WriteStringLn('=function() {');
+      WriteStringLn('= function() {');
       Indent;
    end;
    inherited;
@@ -2733,7 +2735,7 @@ begin
 
       codeGen.WriteString(' for (var i=0; i<');
       codeGen.WriteString(IntToStr(sas.ElementCount));
-      codeGen.WriteString(';i++) ');
+      codeGen.WriteString('; i++) ');
       codeGen.Compile(e.Expr);
       codeGen.WriteString('[i]=');
 
@@ -2831,7 +2833,7 @@ var
 begin
    e:=TAssignConstDataToVarExpr(expr);
 //   if e.Left.Typ is TRecordSymbol then begin
-      CodeGenRight.Compile(e.Right);
+      CodeGenRight.CompileNoWrap(e.Right);
 //   end else raise ECodeGenUnsupportedSymbol.CreateFmt('Unsupported %s on type %s', [e.ClassName, e.Left.Typ.ClassName]);
    CodeGenRight.WriteStringLn(';');
 end;
@@ -3804,17 +3806,17 @@ begin
       for i:=0 to e.CaseConditions.Count-1 do begin
          if mark[i] then continue;
          compCond:=TCompareCaseCondition(e.CaseConditions.List[i]);
-         codeGen.WriteString('case ');
          for j:=i to e.CaseConditions.Count-1 do begin
             compCondOther:=TCompareCaseCondition(e.CaseConditions.List[j]);
             if compCond.TrueExpr=compCondOther.TrueExpr then begin
                if j>i then
-                  codeGen.WriteString(', ');
-               codeGen.Compile(compCond.CompareExpr);
+                  codeGen.WriteLineEnd;
+               codeGen.WriteString('case ');
+               codeGen.Compile(compCondOther.CompareExpr);
+               codeGen.WriteStringLn(' :');
                mark[j]:=True;
             end;
          end;
-         codeGen.WriteStringLn(' :');
          codeGen.Indent;
          codeGen.Compile(compCond.TrueExpr);
          codeGen.WriteStringLn('break;');
@@ -4631,10 +4633,10 @@ begin
    if noRangeCheck then begin
 
       if typ.LowBound=0 then
-         codeGen.Compile(e.IndexExpr)
+         codeGen.CompileNoWrap(e.IndexExpr)
       else begin
          codeGen.WriteString('(');
-         codeGen.Compile(e.IndexExpr);
+         codeGen.CompileNoWrap(e.IndexExpr);
          codeGen.WriteString(')-');
          codeGen.WriteString(IntToStr(typ.LowBound));
       end;
@@ -4644,7 +4646,7 @@ begin
       codeGen.Dependencies.Add('$Idx');
 
       codeGen.WriteString('$Idx(');
-      codeGen.Compile(e.IndexExpr);
+      codeGen.CompileNoWrap(e.IndexExpr);
       codeGen.WriteString(',');
       codeGen.WriteString(IntToStr(typ.LowBound));
       codeGen.WriteString(',');
@@ -4678,7 +4680,7 @@ begin
 
       codeGen.Compile(e.BaseExpr);
       codeGen.WriteString('[');
-      codeGen.Compile(e.IndexExpr);
+      codeGen.CompileNoWrap(e.IndexExpr);
       codeGen.WriteString(']');
 
    end else begin
@@ -4688,7 +4690,7 @@ begin
       codeGen.WriteString('$DIdxR(');
       codeGen.Compile(e.BaseExpr);
       codeGen.WriteString(',');
-      codeGen.Compile(e.IndexExpr);
+      codeGen.CompileNoWrap(e.IndexExpr);
       codeGen.WriteString(',');
       WriteLocationString(codeGen, expr);
       codeGen.WriteString(')');
@@ -4758,7 +4760,7 @@ begin
 
       codeGen.Compile(e.Left);
       codeGen.WriteString('.charAt((');
-      codeGen.Compile(e.Right);
+      codeGen.CompileNoWrap(e.Right);
       codeGen.WriteString(')-1)');
 
    end else begin
@@ -4766,9 +4768,9 @@ begin
       codeGen.Dependencies.Add('$SIdx');
 
       codeGen.WriteString('$SIdx(');
-      codeGen.Compile(e.Left);
+      codeGen.CompileNoWrap(e.Left);
       codeGen.WriteString(',');
-      codeGen.Compile(e.Right);
+      codeGen.CompileNoWrap(e.Right);
       codeGen.WriteString(',');
       WriteLocationString(codeGen, expr);
       codeGen.WriteString(')');
@@ -4792,11 +4794,11 @@ begin
 
    codeGen.Compile(e.StringExpr);
    codeGen.WriteString('=$StrSet(');
-   codeGen.Compile(e.StringExpr);
+   codeGen.CompileNoWrap(e.StringExpr);
    codeGen.WriteString(',');
-   codeGen.Compile(e.IndexExpr);
+   codeGen.CompileNoWrap(e.IndexExpr);
    codeGen.WriteString(',');
-   codeGen.Compile(e.ValueExpr);
+   codeGen.CompileNoWrap(e.ValueExpr);
    if not (cgoNoRangeChecks in codeGen.Options) then begin
       codeGen.WriteString(',');
       WriteLocationString(codeGen, expr);
@@ -4819,10 +4821,10 @@ begin
    codeGen.Dependencies.Add('$Assert');
 
    codeGen.WriteString('$Assert(');
-   codeGen.Compile(e.Cond);
+   codeGen.CompileNoWrap(e.Cond);
    codeGen.WriteString(',');
    if e.Message<>nil then
-      codeGen.Compile(e.Message)
+      codeGen.CompileNoWrap(e.Message)
    else codeGen.WriteString('""');
    codeGen.WriteString(',');
    WriteLocationString(codeGen, expr);
@@ -4983,7 +4985,7 @@ begin
       codeGen.Compile(expr);
    end else begin
       codeGen.WriteString('Math.pow(');
-      codeGen.Compile(expr);
+      codeGen.CompileNoWrap(expr);
       codeGen.WriteString(',2)');
    end;
 end;
@@ -5120,7 +5122,7 @@ begin
    e:=TDefinedExpr(expr);
    codeGen.Dependencies.Add('$ConditionalDefines');
    codeGen.WriteString('($ConditionalDefines.indexOf(');
-   codeGen.Compile(e.Expr);
+   codeGen.CompileNoWrap(e.Expr);
    codeGen.WriteString(')!=-1)');
 end;
 
@@ -5162,10 +5164,10 @@ begin
 //   if symbol.Name<>'' then
 //      h:=BobJenkinsHash(symbol.Name[1], Length(symbol.Name)*SizeOf(Char), tryCount);
    case tryCount of
-      0..2 : h:=h and $1F;
-      3..7 : h:=h and $FF;
-      8..12 : h:=h and $FFF;
-      13..20 : h:=h and $FFFF;
+      0..4 : h:=h and $1F;
+      5..11 : h:=h and $FF;
+      12..16 : h:=h and $FFF;
+      17..20 : h:=h and $FFFF;
    end;
    Result:=Prefix+IntToSkewedBase62(h);
 end;
