@@ -1205,7 +1205,7 @@ begin
                      Break;
                   end else begin
                      if FTok.HasTokens then
-                        FMsgs.AddCompilerStop(FTok.CurrentPos, CPE_SemiExpected);
+                        FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
                   end;
                end;
             end;

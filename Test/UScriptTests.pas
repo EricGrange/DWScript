@@ -53,17 +53,19 @@ end;
 // SetUp
 //
 procedure TScriptTests.SetUp;
+const
+   cFilter = '*.pas';
 begin
    SetDecimalSeparator('.');
 
    FTests:=TStringList.Create;
    FFailures:=TStringList.Create;
 
-   CollectFiles(ExtractFilePath(ParamStr(0))+'SimpleScripts'+PathDelim, '*.pas', FTests);
-   CollectFiles(ExtractFilePath(ParamStr(0))+'InterfacesPass'+PathDelim, '*.pas', FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'SimpleScripts'+PathDelim, cFilter, FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'InterfacesPass'+PathDelim, cFilter, FTests);
 
-   CollectFiles(ExtractFilePath(ParamStr(0))+'FailureScripts'+PathDelim, '*.pas', FFailures);
-   CollectFiles(ExtractFilePath(ParamStr(0))+'InterfacesFail'+PathDelim, '*.pas', FFailures);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'FailureScripts'+PathDelim, cFilter, FFailures);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'InterfacesFail'+PathDelim, cFilter, FFailures);
 
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.OnInclude:=DoInclude;
