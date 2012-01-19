@@ -142,7 +142,7 @@ type
 
    { List all symbols in the script. Each symbol list contains a list of the
      positions where it was used. }
-   TSymbolDictionary = class
+   TdwsSymbolDictionary = class
       protected
          FSymbolList : TSymbolPositionListList;
          FSearchSymbolPositionList : TSymbolPositionList;
@@ -176,9 +176,9 @@ type
    end;
 
    // Context within the script. (A block of code) Can be nested
-   TContext = class
+   TdwsSourceContext = class
       private
-         FParentContext : TContext;
+         FParentContext : TdwsSourceContext;
          FParentSymbol : TSymbol;     // a parent symbol would be a procedure/method, etc.
          FSubContexts : TTightList;   // contexts that are inside of this one
          FEndPos : TScriptPos;
@@ -189,24 +189,25 @@ type
 
       protected
          function GetCount : Integer; inline;
-         function GetSubCountext(index : Integer) : TContext; inline;
+         function GetSubCountext(index : Integer) : TdwsSourceContext; inline;
 
       public
-         constructor Create(aParent : TContext; const aStartPos : TScriptPos;
+         constructor Create(aParent : TdwsSourceContext; const aStartPos : TScriptPos;
                             aParentSymbol : TSymbol; aToken : TTokenType);
          destructor Destroy; override;
 
          function IsPositionInContext(aCol, aLine : Integer; const sourceName : UnicodeString) : Boolean;
          function HasParentSymbolOfClass(SymbolType: TSymbolClass; SearchParents: Boolean): Boolean;
 
-         function FindContext(parentSymbol : TSymbol) : TContext;
+         function FindContext(parentSymbol : TSymbol) : TdwsSourceContext;
+         function FindContextByToken(aToken : TTokenType) : TdwsSourceContext;
 
-         property Parent : TContext read FParentContext;
+         property Parent : TdwsSourceContext read FParentContext;
          property ParentSym : TSymbol read FParentSymbol;
          property Token : TTokenType read FToken;
 
          property SubContexts : TTightList read FSubContexts;
-         property SubContext[index : Integer] : TContext read GetSubCountext;
+         property SubContext[index : Integer] : TdwsSourceContext read GetSubCountext;
          property Count : Integer read GetCount;
 
          property StartPos : TScriptPos read FStartPos;
@@ -216,10 +217,10 @@ type
    end;
 
    // Map the various script contexts. (Code blocks)
-   TContextMap = class
+   TdwsSourceContextMap = class
       private
-         FScriptContexts : TTightList;     // list of top-level contexts
-         FCurrentContext : TContext;  // current context (used when adding and leaving)
+         FScriptContexts : TTightList; // list of top-level contexts
+         FCurrentContext : TdwsSourceContext;   // current context (used when adding and leaving)
 
       public
          destructor Destroy; override;
@@ -228,18 +229,25 @@ type
          Standard Begin..end blocks do not have a ParentSymbol. }
          procedure OpenContext(const startPos : TScriptPos; parentSymbol : TSymbol; token : TTokenType);
          { Pop a context off the stack }
-         procedure CloseContext(const AEndPos : TScriptPos);
+         procedure CloseContext(const AEndPos : TScriptPos; onlyIfTokenType : TTokenType = ttNone);
+         { Pops and close all opened contexts in the stack }
+         procedure CloseAllContexts(const aEndPos : TScriptPos);
 
-         function FindContext(AParentSymbol : TSymbol) : TContext; overload;// return the first context group based on its parent
-         function FindContext(aCol, aLine : Integer; sourceFile : TSourceFile) : TContext; overload;
-         function FindContext(aCol, aLine : Integer; const sourceName : UnicodeString) : TContext; overload;
-         function FindContext(const ScriptPos : TScriptPos) : TContext; overload;
-         function FindContextByToken(aToken : TTokenType) : TContext;
+         { Suspends the current context and goes back to top level }
+         function SuspendContext : TdwsSourceContext;
+         { Sets specified context as current context }
+         procedure ResumeContext(aContext : TdwsSourceContext);
 
-         function RootContext : TContext;
+         function FindContext(AParentSymbol : TSymbol) : TdwsSourceContext; overload;// return the first context group based on its parent
+         function FindContext(aCol, aLine : Integer; sourceFile : TSourceFile) : TdwsSourceContext; overload;
+         function FindContext(aCol, aLine : Integer; const sourceName : UnicodeString) : TdwsSourceContext; overload;
+         function FindContext(const ScriptPos : TScriptPos) : TdwsSourceContext; overload;
+         function FindContextByToken(aToken : TTokenType) : TdwsSourceContext;
+
+         function RootContext : TdwsSourceContext;
 
          property Contexts : TTightList read FScriptContexts;
-         property Current : TContext read FCurrentContext;
+         property Current : TdwsSourceContext read FCurrentContext;
    end;
 
    TProgramEvent = procedure (Prog: TdwsProgram) of object;
@@ -374,8 +382,8 @@ type
       procedure SetTimeoutMilliseconds(const val : Integer);
       function GetDefaultUserObject : TObject;
       procedure SetDefaultUserObject(const val : TObject);
-      function GetSymbolDictionary : TSymbolDictionary;
-      function GetContextMap : TContextMap;
+      function GetSymbolDictionary : TdwsSymbolDictionary;
+      function GetContextMap : TdwsSourceContextMap;
       function GetSourceList : TScriptSourceList;
       function GetUnitMains : TUnitMainSymbols;
       function GetProgramObject : TdwsMainProgram;
@@ -392,8 +400,8 @@ type
       property TimeoutMilliseconds : Integer read GetTimeoutMilliseconds write SetTimeoutMilliseconds;
       property DefaultUserObject : TObject read GetDefaultUserObject write SetDefaultUserObject;
 
-      property SymbolDictionary : TSymbolDictionary read GetSymbolDictionary;
-      property ContextMap : TContextMap read GetContextMap;
+      property SymbolDictionary : TdwsSymbolDictionary read GetSymbolDictionary;
+      property ContextMap : TdwsSourceContextMap read GetContextMap;
       property SourceList : TScriptSourceList read GetSourceList;
       property UnitMains : TUnitMainSymbols read GetUnitMains;
       property ProgramObject : TdwsMainProgram read GetProgramObject;
@@ -554,8 +562,8 @@ type
          FExecutionsLock : TCriticalSection;
          FTimeoutMilliseconds : Integer;
 
-         FContextMap : TContextMap;
-         FSymbolDictionary : TSymbolDictionary;
+         FContextMap : TdwsSourceContextMap;
+         FSymbolDictionary : TdwsSymbolDictionary;
 
          FSystemTable : ISystemSymbolTable;
          FOperators : TObject;
@@ -582,8 +590,8 @@ type
          function GetTable : TSymbolTable;
          function GetTimeoutMilliseconds : Integer;
          procedure SetTimeoutMilliseconds(const val : Integer);
-         function GetSymbolDictionary : TSymbolDictionary;
-         function GetContextMap : TContextMap;
+         function GetSymbolDictionary : TdwsSymbolDictionary;
+         function GetContextMap : TdwsSourceContextMap;
          function GetProgramObject : TdwsMainProgram;
 
       public
@@ -614,8 +622,8 @@ type
          property Operators : TObject read FOperators write FOperators;
          property ConditionalDefines : IAutoStrings read FConditionalDefines;
          property Compiler : TObject read FCompiler write FCompiler;
-         property ContextMap : TContextMap read FContextMap;
-         property SymbolDictionary: TSymbolDictionary read FSymbolDictionary;
+         property ContextMap : TdwsSourceContextMap read FContextMap;
+         property SymbolDictionary: TdwsSymbolDictionary read FSymbolDictionary;
          property SourceList : TScriptSourceList read FSourceList;
          property LineCount : Integer read FLineCount write FLineCount;
 
@@ -2594,9 +2602,9 @@ begin
 
    FGlobalAddrGenerator:=TAddrGeneratorRec.CreatePositive(0);
 
-   FContextMap:=TContextMap.Create;
+   FContextMap:=TdwsSourceContextMap.Create;
 
-   FSymbolDictionary:=TSymbolDictionary.Create;
+   FSymbolDictionary:=TdwsSymbolDictionary.Create;
 
    sl:=TStringList.Create;
    sl.Sorted:=True;
@@ -2738,14 +2746,14 @@ end;
 
 // GetSymbolDictionary
 //
-function TdwsMainProgram.GetSymbolDictionary : TSymbolDictionary;
+function TdwsMainProgram.GetSymbolDictionary : TdwsSymbolDictionary;
 begin
    Result:=FSymbolDictionary;
 end;
 
 // GetContextMap
 //
-function TdwsMainProgram.GetContextMap : TContextMap;
+function TdwsMainProgram.GetContextMap : TdwsSourceContextMap;
 begin
    Result:=FContextMap;
 end;
@@ -6481,12 +6489,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TSymbolDictionary ------------------
+// ------------------ TdwsSymbolDictionary ------------------
 // ------------------
 
 // Create
 //
-constructor TSymbolDictionary.Create;
+constructor TdwsSymbolDictionary.Create;
 begin
    FSymbolList:=TSymbolPositionListList.Create;
    FSearchSymbolPositionList:=TSymbolPositionList.Create(nil);
@@ -6494,7 +6502,7 @@ end;
 
 // Destroy
 //
-destructor TSymbolDictionary.Destroy;
+destructor TdwsSymbolDictionary.Destroy;
 begin
    Clear;
    FSymbolList.Free;
@@ -6504,7 +6512,7 @@ end;
 
 // AddSymbol
 //
-procedure TSymbolDictionary.AddSymbol(sym : TSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages);
+procedure TdwsSymbolDictionary.AddSymbol(sym : TSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages);
 var
    symPosList: TSymbolPositionList;
 begin
@@ -6524,7 +6532,7 @@ end;
 
 // AddSymbolReference
 //
-procedure TSymbolDictionary.AddSymbolReference(sym : TSymbol; const pos : TScriptPos; isWrite : Boolean);
+procedure TdwsSymbolDictionary.AddSymbolReference(sym : TSymbol; const pos : TScriptPos; isWrite : Boolean);
 begin
    if isWrite then
       AddSymbol(sym, pos, [suReference, suWrite])
@@ -6533,28 +6541,28 @@ end;
 
 // AddValueSymbol
 //
-procedure TSymbolDictionary.AddValueSymbol(sym : TValueSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages);
+procedure TdwsSymbolDictionary.AddValueSymbol(sym : TValueSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages);
 begin
    AddSymbol(sym, pos, useTypes);
 end;
 
 // AddTypeSymbol
 //
-procedure TSymbolDictionary.AddTypeSymbol(sym : TTypeSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages = [suReference]);
+procedure TdwsSymbolDictionary.AddTypeSymbol(sym : TTypeSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages = [suReference]);
 begin
    AddSymbol(sym, pos, useTypes);
 end;
 
 // AddConstSymbol
 //
-procedure TSymbolDictionary.AddConstSymbol(sym : TConstSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages = [suReference]);
+procedure TdwsSymbolDictionary.AddConstSymbol(sym : TConstSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages = [suReference]);
 begin
    AddSymbol(sym, pos, useTypes);
 end;
 
 // FindSymbolAtPosition
 //
-function TSymbolDictionary.FindSymbolAtPosition(ACol, ALine: Integer; const sourceFile : UnicodeString): TSymbol;
+function TdwsSymbolDictionary.FindSymbolAtPosition(ACol, ALine: Integer; const sourceFile : UnicodeString): TSymbol;
 var
    i : Integer;
 begin
@@ -6567,21 +6575,21 @@ end;
 
 // GetList
 //
-function TSymbolDictionary.GetList(Index: Integer): TSymbolPositionList;
+function TdwsSymbolDictionary.GetList(Index: Integer): TSymbolPositionList;
 begin
    Result:=FSymbolList[Index];
 end;
 
 // Count
 //
-function TSymbolDictionary.Count: Integer;
+function TdwsSymbolDictionary.Count: Integer;
 begin
   Result:=FSymbolList.Count;
 end;
 
 // FindSymbolPosList
 //
-function TSymbolDictionary.FindSymbolPosList(Sym: TSymbol): TSymbolPositionList;
+function TdwsSymbolDictionary.FindSymbolPosList(Sym: TSymbol): TSymbolPositionList;
 var
    i : Integer;
 begin
@@ -6593,7 +6601,7 @@ end;
 
 // FindSymbolPosList
 //
-function TSymbolDictionary.FindSymbolPosList(const symName : UnicodeString) : TSymbolPositionList;
+function TdwsSymbolDictionary.FindSymbolPosList(const symName : UnicodeString) : TSymbolPositionList;
 var
    i : Integer;
 begin
@@ -6605,7 +6613,7 @@ begin
    Result:=nil;
 end;
 
-procedure TSymbolDictionary.Remove(Sym: TSymbol);
+procedure TdwsSymbolDictionary.Remove(Sym: TSymbol);
 var
    idx, x : Integer;
    symList : TSymbolPositionList;
@@ -6636,7 +6644,7 @@ end;
 
 // RemoveInRange
 //
-procedure TSymbolDictionary.RemoveInRange(const startPos, endPos : TScriptPos);
+procedure TdwsSymbolDictionary.RemoveInRange(const startPos, endPos : TScriptPos);
 var
    i, j : Integer;
    list : TSymbolPositionList;
@@ -6657,14 +6665,14 @@ end;
 
 // Clear
 //
-procedure TSymbolDictionary.Clear;
+procedure TdwsSymbolDictionary.Clear;
 begin
    FSymbolList.Clean;
 end;
 
 // FindSymbolUsage
 //
-function TSymbolDictionary.FindSymbolUsage(symbol : TSymbol; symbolUse : TSymbolUsage) : TSymbolPosition;
+function TdwsSymbolDictionary.FindSymbolUsage(symbol : TSymbol; symbolUse : TSymbolUsage) : TSymbolPosition;
 var
    list : TSymbolPositionList;
 begin
@@ -6674,7 +6682,7 @@ begin
    else Result:=nil;
 end;
 
-function TSymbolDictionary.FindSymbolUsage(const SymName: UnicodeString;
+function TdwsSymbolDictionary.FindSymbolUsage(const SymName: UnicodeString;
   SymbolUse: TSymbolUsage): TSymbolPosition;
 var
   list: TSymbolPositionList;
@@ -6685,7 +6693,7 @@ begin
     Result := list.FindUsage(SymbolUse);
 end;
 
-function TSymbolDictionary.FindSymbolUsageOfType(const SymName: UnicodeString;
+function TdwsSymbolDictionary.FindSymbolUsageOfType(const SymName: UnicodeString;
   SymbolType: TSymbolClass; SymbolUse: TSymbolUsage): TSymbolPosition;
 var
   list: TSymbolPositionList;
@@ -6696,7 +6704,7 @@ begin
     Result := list.FindUsage(SymbolUse);
 end;
 
-function TSymbolDictionary.FindSymbolPosListOfType(const SymName: UnicodeString;
+function TdwsSymbolDictionary.FindSymbolPosListOfType(const SymName: UnicodeString;
   SymbolType: TSymbolClass): TSymbolPositionList;
 var
   x: Integer;
@@ -6824,12 +6832,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TContext ------------------
+// ------------------ TdwsSourceContext ------------------
 // ------------------
 
 // Create
 //
-constructor TContext.Create(aParent : TContext; const aStartPos : TScriptPos;
+constructor TdwsSourceContext.Create(aParent : TdwsSourceContext; const aStartPos : TScriptPos;
                             aParentSymbol : TSymbol; aToken : TTokenType);
 begin
    FParentContext := AParent;
@@ -6840,13 +6848,13 @@ end;
 
 // Destroy
 //
-destructor TContext.Destroy;
+destructor TdwsSourceContext.Destroy;
 begin
    FSubContexts.Clean;
    inherited;
 end;
 
-function TContext.HasParentSymbolOfClass(SymbolType: TSymbolClass;
+function TdwsSourceContext.HasParentSymbolOfClass(SymbolType: TSymbolClass;
   SearchParents: Boolean): Boolean;
 begin
   // Return if the context has a parent symbol of the specified type. Optionally
@@ -6863,7 +6871,7 @@ end;
 
 // FindContext
 //
-function TContext.FindContext(parentSymbol : TSymbol) : TContext;
+function TdwsSourceContext.FindContext(parentSymbol : TSymbol) : TdwsSourceContext;
 var
    i : Integer;
 begin
@@ -6875,9 +6883,22 @@ begin
    Result:=nil;
 end;
 
+// FindContextByToken
+//
+function TdwsSourceContext.FindContextByToken(aToken : TTokenType) : TdwsSourceContext;
+var
+   i : Integer;
+begin
+   for i:=0 to Count-1 do begin
+      Result:=SubContext[i];
+      if Result.Token=aToken then Exit;
+   end;
+   Result:=nil;
+end;
+
 // IsPositionInContext
 //
-function TContext.IsPositionInContext(aCol, aLine : Integer; const sourceName : UnicodeString) : Boolean;
+function TdwsSourceContext.IsPositionInContext(aCol, aLine : Integer; const sourceName : UnicodeString) : Boolean;
 begin
    // check if the position is in the same SourceFile
    if sourceName<>'' then begin // if empty, don't check it
@@ -6895,33 +6916,41 @@ begin
          Result:=    (aLine = FStartPos.Line)
                  and (aCol >= FStartPos.Col)
                  and (aCol <= FEndPos.Col)
-      else  // not a single-line context
-         Result :=    ((aLine = FStartPos.Line) and (aCol >= FStartPos.Col)) // on top line, inside start
-                   or ((aLine = FEndPos.Line) and (aCol <= FEndPos.Col));    // on bottom line, inside end
+      else begin
+         // not a single-line context
+         if FEndPos.SourceFile=nil then begin
+            // unclosed context (compiled with errors)
+            Result :=    (aLine > FStartPos.Line)
+                      or ((aLine = FStartPos.Line) and (aCol >= FStartPos.Col)) ;    // after start
+         end else begin
+            Result :=    ((aLine = FStartPos.Line) and (aCol >= FStartPos.Col)) // on top line, inside start
+                      or ((aLine = FEndPos.Line) and (aCol <= FEndPos.Col));    // on bottom line, inside end
+         end;
+      end;
    end;
 end;
 
 // GetCount
 //
-function TContext.GetCount : Integer;
+function TdwsSourceContext.GetCount : Integer;
 begin
    Result:=FSubContexts.Count;
 end;
 
 // GetSubCountext
 //
-function TContext.GetSubCountext(index : Integer) : TContext;
+function TdwsSourceContext.GetSubCountext(index : Integer) : TdwsSourceContext;
 begin
-   Result:=TContext(FSubContexts.List[index]);
+   Result:=TdwsSourceContext(FSubContexts.List[index]);
 end;
 
 // ------------------
-// ------------------ TContextMap ------------------
+// ------------------ TdwsSourceContextMap ------------------
 // ------------------
 
 // Destroy
 //
-destructor TContextMap.Destroy;
+destructor TdwsSourceContextMap.Destroy;
 begin
    FScriptContexts.Clean;
    inherited;
@@ -6929,12 +6958,12 @@ end;
 
 // FindContext
 //
-function TContextMap.FindContext(aParentSymbol : TSymbol): TContext;
+function TdwsSourceContextMap.FindContext(aParentSymbol : TSymbol): TdwsSourceContext;
 var
    x : Integer;
 begin
    for x:=0 to FScriptContexts.Count-1 do begin
-      Result:=TContext(FScriptContexts.List[x]);
+      Result:=TdwsSourceContext(FScriptContexts.List[x]);
       if Result.FParentSymbol=aParentSymbol then Exit;
    end;
    Result:=nil;
@@ -6942,12 +6971,12 @@ end;
 
 // FindContextByToken
 //
-function TContextMap.FindContextByToken(aToken : TTokenType) : TContext;
+function TdwsSourceContextMap.FindContextByToken(aToken : TTokenType) : TdwsSourceContext;
 var
    x : Integer;
 begin
    for x:=0 to FScriptContexts.Count-1 do begin
-      Result:=TContext(FScriptContexts.List[x]);
+      Result:=TdwsSourceContext(FScriptContexts.List[x]);
       if Result.Token=aToken then Exit;
    end;
    Result:=nil;
@@ -6955,7 +6984,7 @@ end;
 
 // RootContext
 //
-function TContextMap.RootContext : TContext;
+function TdwsSourceContextMap.RootContext : TdwsSourceContext;
 begin
    Result:=FCurrentContext;
    if Result<>nil then
@@ -6965,22 +6994,22 @@ end;
 
 // FindContext
 //
-function TContextMap.FindContext(aCol, aLine : Integer; sourceFile : TSourceFile) : TContext;
+function TdwsSourceContextMap.FindContext(aCol, aLine : Integer; sourceFile : TSourceFile) : TdwsSourceContext;
 begin
    Result:=FindContext(aCol, aLine, sourceFile.Name);
 end;
 
 // FindContext
 //
-function TContextMap.FindContext(aCol, aLine : Integer; const sourceName : UnicodeString) : TContext;
+function TdwsSourceContextMap.FindContext(aCol, aLine : Integer; const sourceName : UnicodeString) : TdwsSourceContext;
 var
-   returnContext : TContext;    // Gets set to the context found
+   returnContext : TdwsSourceContext;    // Gets set to the context found
    hitEnd : Boolean;            // Followed branch to end, stop searching
 
-   function FoundContext(context : TContext) : Boolean;
+   function FoundContext(context : TdwsSourceContext) : Boolean;
    var
       x : Integer;
-      subContext : TContext;
+      subContext : TdwsSourceContext;
    begin
       Result := False;
       { Record that this context contains it and should be returned (provided it
@@ -6988,7 +7017,7 @@ var
       returnContext := context;
       { Search sub-contexts }
       for x := 0 to context.SubContexts.Count - 1 do begin
-         subContext:=TContext(context.SubContexts.List[x]);
+         subContext:=TdwsSourceContext(context.SubContexts.List[x]);
          if subContext.IsPositionInContext(aCol, aLine, sourceName) then
             Result := FoundContext(subContext)
       end;
@@ -7000,7 +7029,7 @@ var
 
 var
    i : Integer;
-   context : TContext;
+   context : TdwsSourceContext;
 begin
    { If this position is not in the top level contexts then it won't be in
      subcontexts. Use a recursive search to find the lowest context at which the
@@ -7014,7 +7043,7 @@ begin
       if hitEnd then
          Break;
       { If in top-level context, burrow into subcontexts }
-      context:=TContext(FScriptContexts.List[i]);
+      context:=TdwsSourceContext(FScriptContexts.List[i]);
       if context.IsPositionInContext(aCol, aLine, sourceName) then
          if not FoundContext(context) then
             Break;
@@ -7024,21 +7053,21 @@ end;
 
 // FindContext
 //
-function TContextMap.FindContext(const scriptPos : TScriptPos): TContext;
+function TdwsSourceContextMap.FindContext(const scriptPos : TScriptPos): TdwsSourceContext;
 begin
    Result:=FindContext(scriptPos.Col, scriptPos.Line, scriptPos.SourceFile.Name);
 end;
 
 // OpenContext
 //
-procedure TContextMap.OpenContext(const startPos : TScriptPos; parentSymbol : TSymbol; token : TTokenType);
+procedure TdwsSourceContextMap.OpenContext(const startPos : TScriptPos; parentSymbol : TSymbol; token : TTokenType);
 var
-   newContext: TContext;
+   newContext: TdwsSourceContext;
 begin
    // Uses a simple 'stack' concept. If currently in a context and a new context
    // is opened then the new context is a sub context of the current context.
    // new context is owned by the current context
-   newContext:=TContext.Create(FCurrentContext, startPos, parentSymbol, token);
+   newContext:=TdwsSourceContext.Create(FCurrentContext, startPos, parentSymbol, token);
    // Add new context to the appropriate 'parent' context
    if FCurrentContext=nil then           // if top-level,
       FScriptContexts.Add(newContext)      // Add to top-level contexts
@@ -7048,12 +7077,39 @@ end;
 
 // CloseContext
 //
-procedure TContextMap.CloseContext(const AEndPos: TScriptPos);
+procedure TdwsSourceContextMap.CloseContext(const AEndPos: TScriptPos; onlyIfTokenType : TTokenType = ttNone);
 begin
-  FCurrentContext.FEndPos := AEndPos;       // close the current context
-  { if the CurrentContext is not a top-level one, then pop the stack and make
-    the new context the closed one's parent }
-  FCurrentContext := FCurrentContext.Parent;
+   if (onlyIfTokenType<>ttNone) and (FCurrentContext.Token<>onlyIfTokenType) then Exit;
+
+   FCurrentContext.FEndPos := AEndPos;       // close the current context
+   { if the CurrentContext is not a top-level one, then pop the stack and make
+     the new context the closed one's parent }
+   FCurrentContext := FCurrentContext.Parent;
+end;
+
+// CloseAllContexts
+//
+procedure TdwsSourceContextMap.CloseAllContexts(const aEndPos : TScriptPos);
+begin
+   while FCurrentContext<>nil do
+      CloseContext(aEndPos);
+end;
+
+// SuspendContext
+//
+function TdwsSourceContextMap.SuspendContext : TdwsSourceContext;
+begin
+   Result:=FCurrentContext;
+   FCurrentContext:=nil;
+end;
+
+// ResumeContext
+//
+procedure TdwsSourceContextMap.ResumeContext(aContext : TdwsSourceContext);
+begin
+   if FCurrentContext<>nil then
+      Assert(FCurrentContext=nil);
+   FCurrentContext:=aContext;
 end;
 
 // ------------------

@@ -112,8 +112,8 @@ type
          FLocalTable : TSymbolTable;
          FTableStack : TTightStack;
 
-         FSymbolDictionary : TSymbolDictionary;
-         FContextMapRoot : TContext;
+         FSymbolDictionary : TdwsSymbolDictionary;
+         FContextMapRoot : TdwsSourceContext;
 
          FContext : TdwsProgram;
          FContextStack : TTightStack;
@@ -1183,7 +1183,7 @@ procedure TdwsCodeGen.SmartLinkFilterSymbolTable(table : TSymbolTable; var chang
 
    procedure RemoveReferencesInContextMap(symbol : TSymbol);
    var
-      context : TContext;
+      context : TdwsSourceContext;
    begin
       if FContextMapRoot=nil then Exit;
       context:=FContextMapRoot.FindContext(symbol);
@@ -1230,7 +1230,7 @@ procedure TdwsCodeGen.SmartLinkFilterStructSymbol(structSymbol : TStructuredType
 
    procedure RemoveReferencesInContextMap(symbol : TSymbol);
    var
-      context : TContext;
+      context : TdwsSourceContext;
    begin
       if FContextMapRoot=nil then Exit;
       context:=FContextMapRoot.FindContext(symbol);

@@ -247,6 +247,7 @@ type
    TdwsCompilerUnitContext = record
       Tokenizer : TTokenizer;
       UnitSymbol : TUnitMainSymbol;
+      Context : TdwsSourceContext;
    end;
 
    TdwsCompilerUnitContextStack = class(TSimpleStack<TdwsCompilerUnitContext>)
@@ -267,8 +268,8 @@ type
          FTok : TTokenizer;
          FProg : TdwsProgram;
          FMainProg : TdwsMainProgram;
-         FContextMap : TContextMap;
-         FSymbolDictionary : TSymbolDictionary;
+         FContextMap : TdwsSourceContextMap;
+         FSymbolDictionary : TdwsSymbolDictionary;
          FOperators : TOperators;
          FLoopExprs : TSimpleStack<TNoResultExpr>;
          FLoopExitable : TSimpleStack<TLoopExitable>;
@@ -515,7 +516,7 @@ type
          property CurrentProg : TdwsProgram read FProg write FProg;
          property Msgs : TdwsCompileMessageList read FMsgs;
          property Options : TCompilerOptions read FOptions write FOptions;
-         property SymbolDictionary : TSymbolDictionary read FSymbolDictionary;
+         property SymbolDictionary : TdwsSymbolDictionary read FSymbolDictionary;
          property UnitSection : TdwsUnitSection read FUnitSection write FUnitSection;
          property TokenizerRules : TTokenizerRules read FTokRules;
          property Tokenizer : TTokenizer read FTok write FTok;
@@ -1041,6 +1042,7 @@ var
    dependencies : TStrings;
    unitSource : UnicodeString;
    srcUnit : TSourceUnit;
+   oldContext : TdwsSourceContext;
 begin
    for i:=0 to FUnitsFromStack.Count-1 do
       if SameText(FUnitsFromStack.Items[i], unitName) then
@@ -1065,7 +1067,9 @@ begin
                srcUnit:=TSourceUnit.Create(unitName, FProg.Root.RootTable, FProg.UnitMains);
                unitResolved:=srcUnit;
                FUnits.Add(unitResolved);
+               oldContext:=FContextMap.SuspendContext;
                SwitchTokenizerToUnit(srcUnit, unitSource);
+               FContextMap.ResumeContext(oldContext);
             end;
          end;
       end;
@@ -1266,9 +1270,14 @@ begin
          FOnReadScript(Self, sourceFile, scriptType);
 
       case scriptType of
-         stMain :
+         stMain : begin
             HandleUnitDependencies;
+            if coContextMap in Options then
+               FContextMap.OpenContext(FTok.CurrentPos, FUnitSymbol, ttPROGRAM);
+         end;
          stUnit : begin
+            if coContextMap in Options then
+               FContextMap.OpenContext(FTok.CurrentPos, FUnitSymbol, ttUNIT);
             FUnitSection:=secHeader;
             ReadUnitHeader;
          end;
@@ -1276,9 +1285,22 @@ begin
 
       Result:=ReadRootBlock([], finalToken);
 
-      if scriptType=stUnit then begin
-         FProg.InitExpr.AddStatement(Result);
-         Result:=nil;
+      case scriptType of
+         stUnit : begin
+            if coContextMap in Options then begin
+               if (finalToken=ttNone) or (finalToken=ttEND) then
+                  FContextMap.CloseAllContexts(FTok.CurrentPos);
+            end;
+
+            FProg.InitExpr.AddStatement(Result);
+            Result:=nil;
+         end;
+         stMain : begin
+            if coContextMap in Options then begin
+               if scriptType=stMain then
+                  FContextMap.CloseAllContexts(FTok.CurrentPos);
+            end;
+         end;
       end;
 
       if FTok.ConditionalDepth.Count>0 then
@@ -1333,6 +1355,10 @@ begin
          FProg.Table:=implemTable;
          try
             unitBlock:=ReadRootBlock([], finalToken);
+
+            if coContextMap in Options then
+               FContextMap.CloseAllContexts(FTok.CurrentPos);
+
             if unitBlock.SubExprCount>0 then
                FProg.InitExpr.AddStatement(unitBlock)
             else FreeAndNil(unitBlock);
@@ -1384,8 +1410,9 @@ begin
             action:=rsaNoSemiColon;
          end else begin
             if coContextMap in FOptions then begin
-               FContextMap.CloseContext(FTok.HotPos);
-               FContextMap.OpenContext(FTok.HotPos, nil, ttIMPLEMENTATION);
+               if coContextMap in Options then
+                  FContextMap.CloseContext(FTok.HotPos, ttINTERFACE);
+               FContextMap.OpenContext(FTok.HotPos, FUnitSymbol, ttIMPLEMENTATION);
             end;
             FUnitSection:=secImplementation;
             DoSectionChanged;
@@ -2570,10 +2597,6 @@ begin
       end;
 
       oldTable:=FProg.Table;
-      // Add local table to context for the new block
-      if coContextMap in FOptions then
-         FContextMap.Current.LocalTable:=FProg.Table;
-
       FProg.Table:=blockExpr.Table;
       try
 
@@ -2623,8 +2646,8 @@ begin
       else Result:=blockExpr;
 
       if coContextMap in FOptions then begin
-         if not (Result is TBlockExpr) then
-            FContextMap.Current.LocalTable:=nil; // table got optimized away
+         if Result is TBlockExpr then
+            FContextMap.Current.LocalTable:=TBlockExpr(Result).Table;
          FContextMap.CloseContext(closePos);
       end;
 
@@ -7183,7 +7206,7 @@ procedure TdwsCompiler.HintUnusedSymbols;
 var
    sym : TSymbol;
    symDecl : TSymbolPosition;
-   symDic : TSymbolDictionary;
+   symDic : TdwsSymbolDictionary;
    symPosList : TSymbolPositionList;
 begin
    if not (coSymbolDictionary in Options) then Exit;
@@ -8758,6 +8781,7 @@ var
 begin
    context.Tokenizer:=compiler.FTok;
    context.UnitSymbol:=compiler.FUnitSymbol;
+   context.Context:=compiler.FContextMap.SuspendContext;
    Push(context);
 end;
 
@@ -8767,6 +8791,7 @@ procedure TdwsCompilerUnitContextStack.PopContext(compiler : TdwsCompiler);
 begin
    compiler.FTok:=Peek.Tokenizer;
    compiler.FUnitSymbol:=Peek.UnitSymbol;
+   compiler.FContextMap.ResumeContext(Peek.Context);
    Pop;
 end;
 

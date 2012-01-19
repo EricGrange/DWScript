@@ -93,7 +93,7 @@ type
          FPreviousSymbol : TSymbol;
          FPreviousTokenString : UnicodeString;
          FPreviousToken : TTokenType;
-         FLocalContext : TContext;
+         FLocalContext : TdwsSourceContext;
          FContextSymbol : TSymbol;
          FSymbolClassFilter : TSymbolClass;
 
@@ -197,7 +197,7 @@ var
 
 var
    sl : TStringList;
-   context : TContext;
+   context : TdwsSourceContext;
 begin
    FLocalContext:=FProg.ContextMap.FindContext(FSourcePos);
    context:=FLocalContext;
@@ -285,7 +285,7 @@ end;
 //
 function TdwsSuggestions.IsContextSymbol(sym : TSymbol) : Boolean;
 var
-   context : TContext;
+   context : TdwsSourceContext;
 begin
    context:=FLocalContext;
    while context<>nil do begin
@@ -400,7 +400,7 @@ end;
 procedure TdwsSuggestions.AddContextSuggestions;
 var
    list : TSimpleSymbolList;
-   context : TContext;
+   context : TdwsSourceContext;
    funcSym : TFuncSymbol;
    methSym : TMethodSymbol;
 begin
