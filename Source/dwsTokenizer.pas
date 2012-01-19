@@ -54,9 +54,10 @@ type
      ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN,
      ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCRIGHT,
      ttDEFAULT, ttUSES, ttUNIT,
+     ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
+     ttPROGRAM,
 
      // Tokens for compatibility to Delphi
-     ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
      ttREGISTER, ttPASCAL, ttCDECL, ttSTDCALL, ttFASTCALL);
 
    TTokenTypes = set of TTokenType;
@@ -272,6 +273,7 @@ const
      '(', ')', '[', ']', '}',
      'DEFAULT', 'USES', 'UNIT',
      'PRIVATE', 'PROTECTED', 'PUBLIC', 'PUBLISHED',
+     'PROGRAM',
      'REGISTER', 'PASCAL', 'CDECL', 'STDCALL', 'FASTCALL'
      );
 
@@ -518,7 +520,7 @@ end;
 // ToAlphaType
 //
 const
-   cAlphaTypeTokens : array [0..84] of TTokenType = (
+   cAlphaTypeTokens : TTokenTypes = [
       ttAND, ttARRAY, ttABSTRACT, ttAS,
       ttBEGIN, ttBREAK,
       ttCONST, ttCLASS, ttCONSTRUCTOR, ttCASE, ttCDECL, ttCONTINUE,
@@ -531,14 +533,15 @@ const
       ttMETHOD, ttMOD,
       ttNEW, ttNOT, ttNIL,
       ttOBJECT, ttOF, ttOLD, ttON, ttOPERATOR, ttOR, ttOVERRIDE,
-      ttPROCEDURE, ttPROPERTY, ttPASCAL, ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
+      ttPROCEDURE, ttPROPERTY, ttPASCAL, ttPROGRAM,
+      ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
       ttREPEAT, ttREQUIRE, ttRECORD, ttREAD, ttRAISE, ttREINTRODUCE, ttREGISTER,
       ttSEALED, ttSHL, ttSHR, ttSTATIC, ttSTDCALL,
       ttTHEN, ttTO, ttTRUE, ttTRY, ttTYPE,
       ttUNIT, ttUNTIL, ttUSES,
       ttVAR, ttVIRTUAL,
       ttWHILE, ttWRITE,
-      ttXOR );
+      ttXOR ];
 type
    TTokenAlphaLookup = record
       Alpha : UnicodeString;
@@ -551,18 +554,19 @@ var
 
 procedure PrepareAlphaToTokenType;
 var
-   i, n, len : Integer;
+   n, len : Integer;
    tokenName : UnicodeString;
+   tt : TTokenType;
 begin
-   for i:=Low(cAlphaTypeTokens) to High(cAlphaTypeTokens) do begin
-      tokenName:=GetEnumName(TypeInfo(TTokenType), Integer(cAlphaTypeTokens[i]));
+   for tt in cAlphaTypeTokens do begin
+      tokenName:=GetEnumName(TypeInfo(TTokenType), Ord(tt));
       len:=Length(tokenName)-2;
       Assert(len<=14);
       n:=Length(vAlphaToTokenType[len][tokenName[3]]);
       SetLength(vAlphaToTokenType[len][tokenName[3]], n+1);
       with vAlphaToTokenType[len][tokenName[3]][n] do begin
          Alpha:=Copy(tokenName, 3, MaxInt);
-         Token:=cAlphaTypeTokens[i];
+         Token:=tt;
       end;
    end;
 end;
