@@ -2297,7 +2297,7 @@ begin
          proc.AssignTo(funcSymbol);
          // Set the current context's LocalTable to be the table of the new procedure
          if coContextMap in FOptions then
-            FContextMap.Current.LocalTable := FProg.Table;
+            FContextMap.Current.LocalTable:=FProg.Table;
 
          if FTok.TestDelete(ttREQUIRE) then begin
             if funcSymbol is TMethodSymbol then begin
@@ -2570,11 +2570,12 @@ begin
       end;
 
       oldTable:=FProg.Table;
+      // Add local table to context for the new block
+      if coContextMap in FOptions then
+         FContextMap.Current.LocalTable:=FProg.Table;
+
       FProg.Table:=blockExpr.Table;
       try
-         // Add local table to context for the new block
-         if coContextMap in FOptions then
-            FContextMap.Current.LocalTable:=FProg.Table;
 
          repeat
 
@@ -2615,13 +2616,17 @@ begin
          HintUnusedSymbols;
       finally
          FProg.Table:=oldTable;
-         if coContextMap in FOptions then
-            FContextMap.CloseContext(closePos);   // get to end of block
       end;
 
       if Optimize then
          Result:=blockExpr.OptimizeToNoResultExpr(FProg, FExec)
       else Result:=blockExpr;
+
+      if coContextMap in FOptions then begin
+         if not (Result is TBlockExpr) then
+            FContextMap.Current.LocalTable:=nil; // table got optimized away
+         FContextMap.CloseContext(closePos);
+      end;
 
    except
       // Remove any symbols in the expression's table. Table will be freed.

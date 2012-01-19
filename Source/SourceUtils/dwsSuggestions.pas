@@ -654,6 +654,7 @@ procedure TSimpleSymbolList.AddSymbolTable(table : TSymbolTable);
 var
    sym : TSymbol;
 begin
+   if table=nil then Exit;
    if table is TLinkedSymbolTable then
       table:=TLinkedSymbolTable(table).ParentSymbolTable;
    for sym in table do begin
