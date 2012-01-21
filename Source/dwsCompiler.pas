@@ -2295,9 +2295,10 @@ end;
 procedure TdwsCompiler.ReadProcBody(funcSymbol : TFuncSymbol);
 var
    oldprog : TdwsProgram;
+
    proc : TdwsProcedure;
    assignExpr : TNoResultExpr;
-   sectionType, finalToken : TTokenType;
+   tt, sectionType, finalToken : TTokenType;
    constSym : TConstSymbol;
 begin
    // Stop if declaration was forwarded or external
@@ -2345,23 +2346,44 @@ begin
          end;
 
          // Read local variable declarations
-         if FTok.Test(ttVAR) or FTok.Test(ttCONST) then begin
+         tt:=FTok.TestAny([ttVAR, ttCONST, ttPROCEDURE, ttFUNCTION]);
+         if    (tt in [ttVAR, ttCONST])
+            or ((UnitSection=secImplementation) and (tt in [ttPROCEDURE, ttFUNCTION])) then begin
             // Read names of local variable and constants
             sectionType:=ttNone;
             repeat
 
-               if FTok.TestDelete(ttVAR) then
-                  sectionType:=ttVAR
-               else if FTok.TestDelete(ttCONST) then
-                  sectionType:=ttCONST;
+               tt:=FTok.TestAny([ttVAR, ttCONST, ttPROCEDURE, ttFUNCTION]);
+               case tt of
+                  ttVAR, ttCONST : begin
+                     sectionType:=tt;
+                     FTok.KillToken;
+                  end;
+                  ttPROCEDURE, ttFUNCTION : begin
+                     if UnitSection=secImplementation then begin
+                        FTok.KillToken;
+                        ReadProcBody(ReadProcDecl(tt));
+                        sectionType:=ttNone;
+                        ReadSemiColon;
+                        continue;
+                     end else Break;
+                  end;
+                  ttBEGIN :
+                     Break;
+               end;
 
-               if sectionType=ttVAR then begin
-                  assignExpr:=ReadVarDecl;
-                  if assignExpr<>nil then
-                     FProg.InitExpr.AddStatement(assignExpr);
-               end else if sectionType=ttCONST then begin
-                  constSym:=ReadConstDecl(TConstSymbol);
-                  FProg.Table.AddSymbol(constSym);
+               case sectionType of
+                  ttVAR : begin
+                     assignExpr:=ReadVarDecl;
+                     if assignExpr<>nil then
+                        FProg.InitExpr.AddStatement(assignExpr);
+                  end;
+                  ttCONST : begin
+                     constSym:=ReadConstDecl(TConstSymbol);
+                     FProg.Table.AddSymbol(constSym);
+                  end;
+               else
+                  Break;
                end;
 
                ReadSemiColon;
