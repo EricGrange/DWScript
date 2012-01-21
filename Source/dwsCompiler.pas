@@ -1791,7 +1791,7 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
       token:=FTok.TestAny([ttINTERFACE, ttIMPLEMENTATION,
                            ttVAR, ttCONST, ttEND,
-                           ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR]);
+                           ttCLASS, ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR]);
    until (not FTok.HasTokens) or (token<>ttNone);
 end;
 
@@ -1803,6 +1803,7 @@ var
    typNew, typOld : TTypeSymbol;
    typePos : TScriptPos;
    oldSymPos : TSymbolPosition; // Mark *where* the old declaration was
+   typContext : TdwsSourceContext;
 begin
    Result:=True;
    if not FTok.TestDeleteNamePos(name, typePos) then
@@ -1827,11 +1828,16 @@ begin
          oldSymPos := FSymbolDictionary.FindSymbolUsage(typOld, suDeclaration);  // may be nil
    end;
 
+   // Wrap whole type declarations in a context.
+   if coContextMap in FOptions then begin
+      FContextMap.OpenContext(typePos, nil, ttNAME);
+      typContext:=FContextMap.Current;
+   end else typContext:=nil;
+
    typNew := ReadType(name, tcDeclaration);
 
-   // Wrap whole type declarations in a context.
-   if coContextMap in FOptions then
-      FContextMap.OpenContext(typePos, typNew, ttNAME);
+   if typContext<>nil then
+      typContext.ParentSym:=typNew;
 
    try
       if typNew.Name<>'' then begin

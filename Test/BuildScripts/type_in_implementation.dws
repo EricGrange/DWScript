@@ -1,0 +1,24 @@
+Unit type_in_implementation;
+
+Interface
+
+function Hello : String;
+
+Implementation
+
+type
+   THello = class
+      class function Hello : String;
+   end;
+
+class function THello.Hello : String;
+begin
+   Result:='Hello';
+end;
+
+function Hello : String;
+begin
+   Result:=THello.Hello;
+end;
+
+End.

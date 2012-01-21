@@ -207,7 +207,7 @@ type
          procedure EnumerateContextsOfSymbol(aParentSymbol : TSymbol; const callBack : TdwsSourceContextCallBack);
 
          property Parent : TdwsSourceContext read FParentContext;
-         property ParentSym : TSymbol read FParentSymbol;
+         property ParentSym : TSymbol read FParentSymbol write FParentSymbol;
          property Token : TTokenType read FToken;
 
          property SubContexts : TTightList read FSubContexts;
