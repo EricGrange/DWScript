@@ -207,7 +207,9 @@ begin
             end;
          end;
       else
-         case theB of
+         if (theA=';') and (theB='}') then
+            action(2)
+         else case theB of
             ' ' : begin
                if IsAlphaNum(theA) then
                   action(1)
