@@ -470,7 +470,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..143] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..144] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -487,8 +487,10 @@ const
               +#9'return i'#13#10
               +'}';
        Dependency : 'Exception' ),
+      (Name : '$NewArrayFn';
+       Code : 'function $NewArrayFn(n,d) { var r=new Array(n); for(var i=0;i<n;i++) r[i]=d(); return r }'),
       (Name : '$NewArray';
-       Code : 'function $NewArray(n,d) { var r=new Array(n); for(var i=0;i<n;i++) r[i]=d(); return r }'),
+       Code : 'function $NewArray(n,v) { var r=new Array(n); for(var i=0;i<n;i++) r[i]=v; return r }'),
       (Name : '$ArrayInsert';
        Code : 'function $ArrayInsert(a,i,v,z) {'#13#10
               +#9'if (i==a.length) a.push(v); else a.splice($Idx(i,0,a.length-1,z),0,v)'#13#10
@@ -1596,7 +1598,7 @@ begin
 
    WriteString('function Copy$');
    WriteSymbolName(rec);
-   WriteStringLn('(s) {');
+   WriteStringLn('($s) {');
    Indent;
    WriteStringLn('return {');
    Indent;
@@ -1615,16 +1617,16 @@ begin
             or (field.Typ is TInterfaceSymbol)
             or (field.Typ is TFuncSymbol)
             or (field.Typ is TDynamicArraySymbol) then begin
-            WriteString('s.');
+            WriteString('$s.');
             WriteSymbolName(field)
          end else if field.Typ is TRecordSymbol then begin
             WriteString('Copy$');
             WriteSymbolName(field.Typ);
-            WriteString('(s.');
+            WriteString('($s.');
             WriteSymbolName(field);
             WriteString(')');
          end else if field.Typ is TStaticArraySymbol then begin
-            WriteString('s.');
+            WriteString('$s.');
             WriteSymbolName(field);
             WriteString('.slice(0)');
          end else raise ECodeGenUnsupportedSymbol.CreateFmt('Copy record field type %s', [field.Typ.ClassName]);
@@ -1715,16 +1717,16 @@ begin
       WriteString('$v:');
       if meth.StructSymbol=cls then begin
          if meth.Kind=fkConstructor then begin
-            WriteString('function(s){return s.ClassType.');
+            WriteString('function($s){return $s.ClassType.');
          end else if meth.IsClassMethod then begin
-            WriteString('function(s){return s.');
+            WriteString('function($s){return $s.');
          end else begin
-            WriteString('function(s){return s.ClassType.');
+            WriteString('function($s){return $s.ClassType.');
          end;
          WriteString(MemberName(meth, meth.StructSymbol));
          if meth.Params.Count=0 then
-            WriteStringLn('(s)}')
-         else WriteStringLn('.apply(s.ClassType, arguments)}');
+            WriteStringLn('($s)}')
+         else WriteStringLn('.apply($s.ClassType, arguments)}');
       end else begin
          WriteSymbolName(meth.StructSymbol);
          WriteString('.');
@@ -2731,15 +2733,24 @@ begin
 
       sas:=TStaticArraySymbol(t);
 
-      codeGen.WriteString('=new Array('+IntToStr(sas.ElementCount)+');');
+      if sas.ElementCount<20 then begin
 
-      codeGen.WriteString(' for (var i=0; i<');
-      codeGen.WriteString(IntToStr(sas.ElementCount));
-      codeGen.WriteString('; i++) ');
-      codeGen.Compile(e.Expr);
-      codeGen.WriteString('[i]=');
+         codeGen.WriteString('=');
+         (codeGen as TdwsJSCodeGen).WriteDefaultValue(t, False);
 
-      (codeGen as TdwsJSCodeGen).WriteDefaultValue(sas.Typ.UnAliasedType, False);
+      end else begin
+
+         codeGen.WriteString('=new Array('+IntToStr(sas.ElementCount)+');');
+
+         codeGen.WriteString(' for (var $i=0; $i<');
+         codeGen.WriteString(IntToStr(sas.ElementCount));
+         codeGen.WriteString('; $i++) ');
+         codeGen.Compile(e.Expr);
+         codeGen.WriteString('[$i]=');
+
+         (codeGen as TdwsJSCodeGen).WriteDefaultValue(sas.Typ.UnAliasedType, False);
+
+      end;
 
       codeGen.WriteStringLn(';');
 
@@ -4318,19 +4329,39 @@ var
 begin
    e:=TNewArrayExpr(expr);
 
-   codeGen.Dependencies.Add('$NewArray');
+   if e.LengthExprCount>1 then begin
 
-   for i:=0 to e.LengthExprCount-2 do begin
-      codeGen.WriteString('$NewArray(');
-      codeGen.Compile(e.LengthExpr[i]);
-      codeGen.WriteString(',function (){return ');
+      codeGen.Dependencies.Add('$NewArrayFn');
+
+      for i:=0 to e.LengthExprCount-2 do begin
+         codeGen.WriteString('$NewArrayFn(');
+         codeGen.Compile(e.LengthExpr[i]);
+         codeGen.WriteString(',function (){return ');
+      end;
+
    end;
 
-   codeGen.WriteString('$NewArray(');
-   codeGen.Compile(e.LengthExpr[e.LengthExprCount-1]);
-   codeGen.WriteString(',function (){return ');
-   (codeGen as TdwsJSCodeGen).WriteDefaultValue(e.Typ.Typ, False);
-   codeGen.WriteString('})');
+   if e.Typ.Typ.IsBaseType then begin
+
+      codeGen.Dependencies.Add('$NewArray');
+
+      codeGen.WriteString('$NewArray(');
+      codeGen.Compile(e.LengthExpr[e.LengthExprCount-1]);
+      codeGen.WriteString(',');
+      (codeGen as TdwsJSCodeGen).WriteDefaultValue(e.Typ.Typ, False);
+      codeGen.WriteString(')');
+
+   end else begin
+
+      codeGen.Dependencies.Add('$NewArrayFn');
+
+      codeGen.WriteString('$NewArrayFn(');
+      codeGen.Compile(e.LengthExpr[e.LengthExprCount-1]);
+      codeGen.WriteString(',function (){return ');
+      (codeGen as TdwsJSCodeGen).WriteDefaultValue(e.Typ.Typ, False);
+      codeGen.WriteString('})');
+
+   end;
 
    for i:=0 to e.LengthExprCount-2 do
       codeGen.WriteString('})');
@@ -5161,13 +5192,12 @@ begin
    if not canObfuscate then
       Exit(inherited DoNeedUniqueName(symbol, tryCount, canObfuscate));
    h:=Random(MaxInt);
-//   if symbol.Name<>'' then
-//      h:=BobJenkinsHash(symbol.Name[1], Length(symbol.Name)*SizeOf(Char), tryCount);
    case tryCount of
-      0..4 : h:=h and $1F;
-      5..11 : h:=h and $FF;
-      12..16 : h:=h and $FFF;
-      17..20 : h:=h and $FFFF;
+      0..4 : h:=h mod 52;
+      5..15 : h:=h mod (52*62);
+      16..30 : h:=h mod (52*62*62);
+   else
+      h:=h and $7FFFF;
    end;
    Result:=Prefix+IntToSkewedBase62(h);
 end;

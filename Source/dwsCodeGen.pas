@@ -113,7 +113,7 @@ type
          FTableStack : TTightStack;
 
          FSymbolDictionary : TdwsSymbolDictionary;
-         FContextMapRoot : TdwsSourceContext;
+         FSourceContextMap : TdwsSourceContextMap;
 
          FContext : TdwsProgram;
          FContextStack : TTightStack;
@@ -151,6 +151,7 @@ type
 
          function  SmartLink(symbol : TSymbol) : Boolean; virtual;
 
+         procedure SmartLinkFilterOutSourceContext(context : TdwsSourceContext);
          procedure SmartLinkFilterSymbolTable(table : TSymbolTable; var changed : Boolean); virtual;
          procedure SmartLinkFilterStructSymbol(structSymbol : TStructuredTypeSymbol; var changed : Boolean); virtual;
 
@@ -688,7 +689,7 @@ begin
 
    if (cgoSmartLink in Options) and (prog.SymbolDictionary.Count>0) then begin
       FSymbolDictionary:=prog.SymbolDictionary;
-      FContextMapRoot:=prog.ContextMap.RootContext;
+      FSourceContextMap:=prog.ContextMap;
    end;
    BeginProgramSession(prog);
    try
@@ -698,7 +699,7 @@ begin
    finally
       EndProgramSession;
       FSymbolDictionary:=nil;
-      FContextMapRoot:=nil;
+      FSourceContextMap:=nil;
    end;
 end;
 
@@ -1177,19 +1178,21 @@ begin
    Result:=(FSymbolDictionary=nil) or IsReferenced(symbol);
 end;
 
+// SmartLinkFilterOutSourceContext
+//
+procedure TdwsCodeGen.SmartLinkFilterOutSourceContext(context : TdwsSourceContext);
+begin
+   FSymbolDictionary.RemoveInRange(context.StartPos, context.EndPos);
+end;
+
 // SmartLinkFilterSymbolTable
 //
 procedure TdwsCodeGen.SmartLinkFilterSymbolTable(table : TSymbolTable; var changed : Boolean);
 
    procedure RemoveReferencesInContextMap(symbol : TSymbol);
-   var
-      context : TdwsSourceContext;
    begin
-      if FContextMapRoot=nil then Exit;
-      context:=FContextMapRoot.FindContext(symbol);
-      if context=nil then Exit;
-
-      FSymbolDictionary.RemoveInRange(context.StartPos, context.EndPos);
+      if FSourceContextMap=nil then Exit;
+      FSourceContextMap.EnumerateContextsOfSymbol(symbol, SmartLinkFilterOutSourceContext);
    end;
 
 var
@@ -1229,14 +1232,9 @@ end;
 procedure TdwsCodeGen.SmartLinkFilterStructSymbol(structSymbol : TStructuredTypeSymbol; var changed : Boolean);
 
    procedure RemoveReferencesInContextMap(symbol : TSymbol);
-   var
-      context : TdwsSourceContext;
    begin
-      if FContextMapRoot=nil then Exit;
-      context:=FContextMapRoot.FindContext(symbol);
-      if context=nil then Exit;
-
-      FSymbolDictionary.RemoveInRange(context.StartPos, context.EndPos);
+      if FSourceContextMap=nil then Exit;
+      FSourceContextMap.EnumerateContextsOfSymbol(symbol, SmartLinkFilterOutSourceContext);
    end;
 
 var
