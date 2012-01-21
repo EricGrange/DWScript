@@ -1,4 +1,4 @@
 uses subproc;
 
 PrintLn(Hello('DWS'));
-PrintLn(Hello('World'));
+PrintLn(Hello(cWorld));

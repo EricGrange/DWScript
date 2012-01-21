@@ -242,7 +242,7 @@ type
                           tcProperty);
 
    TdwsUnitSection = (secMixed, secHeader, secInterface, secImplementation, secEnd);
-   TdwsRootStatementAction = (rsaNone, rsaNoSemiColon, rsaInterface, rsaImplementation, rsaEnd);
+   TdwsStatementAction = (saNone, saNoSemiColon, saInterface, saImplementation, saEnd);
 
    TdwsCompilerUnitContext = record
       Tokenizer : TTokenizer;
@@ -429,13 +429,13 @@ type
          function ReadRecord(const typeName : UnicodeString) : TRecordSymbol;
          function ReadRaise : TRaiseBaseExpr;
          function ReadRepeat : TNoResultExpr;
-         function ReadRootStatement(var action : TdwsRootStatementAction) : TNoResultExpr;
+         function ReadRootStatement(var action : TdwsStatementAction) : TNoResultExpr;
          function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TBlockExpr;
          procedure ReadSemiColon;
          function ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TNoResultExpr;
          procedure ReadScriptImplementations;
          function ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
-         function ReadStatement : TNoResultExpr;
+         function ReadStatement(var action : TdwsStatementAction) : TNoResultExpr;
          function ReadStringArray(expr : TDataExpr; isWrite : Boolean) : TProgramExpr;
 
          function ReadSwitch(const switchName : UnicodeString) : Boolean;
@@ -1176,7 +1176,7 @@ function TdwsCompiler.ReadRootBlock(const endTokens : TTokenTypes; var finalToke
 var
    reach : TReachStatus;
    stmt : TNoResultExpr;
-   action : TdwsRootStatementAction;
+   action : TdwsStatementAction;
 begin
    reach:=rsReachable;
    Result:=TBlockExpr.Create(FProg, FTok.HotPos);
@@ -1200,7 +1200,7 @@ begin
          end;
 
          case action of
-            rsaNone : begin
+            saNone : begin
                if  not FTok.TestDelete(ttSEMI) then begin
                   if endTokens<>[] then begin
                      finalToken:=FTok.TestDeleteAny(endTokens);
@@ -1213,11 +1213,11 @@ begin
                   end;
                end;
             end;
-            rsaImplementation : begin
+            saImplementation : begin
                finalToken:=ttIMPLEMENTATION;
                Exit;
             end;
-            rsaEnd : begin
+            saEnd : begin
                finalToken:=ttEND;
                Exit;
             end;
@@ -1375,11 +1375,11 @@ end;
 
 // ReadRootStatement
 //
-function TdwsCompiler.ReadRootStatement(var action : TdwsRootStatementAction) : TNoResultExpr;
+function TdwsCompiler.ReadRootStatement(var action : TdwsStatementAction) : TNoResultExpr;
 var
    token : TTokenType;
 begin
-   action:=rsaNone;
+   action:=saNone;
    Result:=nil;
    token:=FTok.TestDeleteAny([ttTYPE, ttPROCEDURE, ttFUNCTION,
                               ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttCLASS,
@@ -1388,7 +1388,7 @@ begin
       ttTYPE :
          if UnitSection in [secInterface, secImplementation] then begin
             ReadTypeDeclBlock;
-            action:=rsaNoSemiColon
+            action:=saNoSemiColon
          end else ReadTypeDecl(True);
       ttPROCEDURE, ttFUNCTION, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD :
          ReadProcBody(ReadProcDecl(token));
@@ -1407,7 +1407,7 @@ begin
          if (FProg.Table<>FProg.Root.Table) or (UnitSection<>secInterface) then begin
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnexpectedSection,
                                       [cTokenStrings[token]]);
-            action:=rsaNoSemiColon;
+            action:=saNoSemiColon;
          end else begin
             if coContextMap in FOptions then begin
                if coContextMap in Options then
@@ -1416,7 +1416,7 @@ begin
             end;
             FUnitSection:=secImplementation;
             DoSectionChanged;
-            action:=rsaImplementation;
+            action:=saImplementation;
          end;
       end;
       ttEND : begin
@@ -1426,18 +1426,18 @@ begin
          else begin
             if FTok.TestDelete(ttDOT) then begin
                FUnitSection:=secEnd;
-               action:=rsaEnd;
+               action:=saEnd;
             end else FMsgs.AddCompilerError(FTok.HotPos, CPE_DotExpected);
          end;
       end;
    else
-      Result:=ReadStatement;
+      Result:=ReadStatement(action);
    end;
 end;
 
 // ReadStatement
 //
-function TdwsCompiler.ReadStatement : TNoResultExpr;
+function TdwsCompiler.ReadStatement(var action : TdwsStatementAction) : TNoResultExpr;
 var
    token : TTokenType;
    constSym : TConstSymbol;
@@ -1448,8 +1448,14 @@ begin
       ttVAR :
          Result:=ReadVarDecl;
       ttCONST : begin
-         constSym:=ReadConstDecl(TConstSymbol);
-         FProg.Table.AddSymbol(constSym);
+         action:=saNoSemiColon;
+         repeat
+            constSym:=ReadConstDecl(TConstSymbol);
+            FProg.Table.AddSymbol(constSym);
+            ReadSemiColon;
+         until not (    (UnitSection in [secInterface, secImplementation])
+                    and (FProg.Level=0)
+                    and FTok.TestName);
       end;
       ttOPERATOR :
          ReadOperatorDecl;
@@ -2614,6 +2620,7 @@ var
    blockExpr : TBlockExpr;
    sym : TSymbol;
    reach : TReachStatus;
+   action : TdwsStatementAction;
 begin
    // Read a block of instructions enclosed in "begin" and "end"
    reach:=rsReachable;
@@ -2645,7 +2652,8 @@ begin
                FMsgs.AddCompilerWarning(FTok.CurrentPos, CPW_UnReachableCode);
             end;
 
-            stmt:=ReadStatement;
+            action:=saNone;
+            stmt:=ReadStatement(action);
 
             if Assigned(stmt) then begin
                blockExpr.AddStatement(stmt);
@@ -2656,10 +2664,17 @@ begin
                   reach:=rsUnReachable;
             end;
 
-            if not FTok.TestDelete(ttSEMI) then begin
-               token:=FTok.GetToken;
-               if (token=nil) or (not (token.FTyp in EndTokens)) then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+            case action of
+               saNoSemiColon : ;
+               saNone : begin
+                  if not FTok.TestDelete(ttSEMI) then begin
+                     token:=FTok.GetToken;
+                     if (token=nil) or (not (token.FTyp in EndTokens)) then
+                        FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+                  end;
+               end;
+            else
+               Assert(False);
             end;
 
          until False;
