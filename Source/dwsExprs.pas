@@ -175,6 +175,9 @@ type
          property Items[Index: Integer] : TSymbolPositionList read GetList; default;
    end;
 
+   TdwsSourceContext = class;
+   TdwsSourceContextCallBack = procedure (context : TdwsSourceContext) of object;
+
    // Context within the script. (A block of code) Can be nested
    TdwsSourceContext = class
       private
@@ -201,6 +204,7 @@ type
 
          function FindContext(parentSymbol : TSymbol) : TdwsSourceContext;
          function FindContextByToken(aToken : TTokenType) : TdwsSourceContext;
+         procedure EnumerateContextsOfSymbol(aParentSymbol : TSymbol; const callBack : TdwsSourceContextCallBack);
 
          property Parent : TdwsSourceContext read FParentContext;
          property ParentSym : TSymbol read FParentSymbol;
@@ -243,8 +247,7 @@ type
          function FindContext(aCol, aLine : Integer; const sourceName : UnicodeString) : TdwsSourceContext; overload;
          function FindContext(const ScriptPos : TScriptPos) : TdwsSourceContext; overload;
          function FindContextByToken(aToken : TTokenType) : TdwsSourceContext;
-
-         function RootContext : TdwsSourceContext;
+         procedure EnumerateContextsOfSymbol(aParentSymbol : TSymbol; const callBack : TdwsSourceContextCallBack);
 
          property Contexts : TTightList read FScriptContexts;
          property Current : TdwsSourceContext read FCurrentContext;
@@ -6896,6 +6899,18 @@ begin
    Result:=nil;
 end;
 
+// EnumerateContextsOfSymbol
+//
+procedure TdwsSourceContext.EnumerateContextsOfSymbol(aParentSymbol : TSymbol; const callBack : TdwsSourceContextCallBack);
+var
+   i : Integer;
+begin
+   if ParentSym=aParentSymbol then
+      callBack(Self);
+   for i:=0 to Count-1 do
+      SubContext[i].EnumerateContextsOfSymbol(aParentSymbol, callBack);
+end;
+
 // IsPositionInContext
 //
 function TdwsSourceContext.IsPositionInContext(aCol, aLine : Integer; const sourceName : UnicodeString) : Boolean;
@@ -6982,14 +6997,14 @@ begin
    Result:=nil;
 end;
 
-// RootContext
+// EnumerateContextsOfSymbol
 //
-function TdwsSourceContextMap.RootContext : TdwsSourceContext;
+procedure TdwsSourceContextMap.EnumerateContextsOfSymbol(aParentSymbol : TSymbol; const callBack : TdwsSourceContextCallBack);
+var
+   x : Integer;
 begin
-   Result:=FCurrentContext;
-   if Result<>nil then
-      while Result.Parent<>nil do
-         Result:=Result.Parent;
+   for x:=0 to FScriptContexts.Count-1 do
+      TdwsSourceContext(FScriptContexts.List[x]).EnumerateContextsOfSymbol(aParentSymbol, callBack);
 end;
 
 // FindContext
