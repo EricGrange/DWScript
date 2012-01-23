@@ -170,6 +170,7 @@ type
          function FindSymbolUsage(symbol: TSymbol; symbolUse: TSymbolUsage): TSymbolPosition; overload;
          function FindSymbolUsage(const symName: UnicodeString; symbolUse: TSymbolUsage): TSymbolPosition; overload;
          function FindSymbolUsageOfType(const symName: UnicodeString; symbolType: TSymbolClass; symbolUse: TSymbolUsage): TSymbolPosition;
+         function FindSymbolByUsageAtLine(const scriptPos : TScriptPos; symbolUse: TSymbolUsage) : TSymbol;
 
          function Count : Integer; inline;
          property Items[Index: Integer] : TSymbolPositionList read GetList; default;
@@ -6705,6 +6706,28 @@ begin
   list := FindSymbolPosListOfType(SymName, SymbolType);
   if Assigned(list) then
     Result := list.FindUsage(SymbolUse);
+end;
+
+// FindSymbolByUsageAtLine
+//
+function TdwsSymbolDictionary.FindSymbolByUsageAtLine(const scriptPos : TScriptPos; symbolUse: TSymbolUsage) : TSymbol;
+var
+   i, j : Integer;
+   list : TSymbolPositionList;
+   symPos : TSymbolPosition;
+begin
+   for i:=0 to FSymbolList.Count-1 do begin
+      list:=FSymbolList[i];
+      for j:=0 to list.Count-1 do begin
+         symPos:=list[j];
+         if     (symbolUse in symPos.SymbolUsages)
+            and (symPos.ScriptPos.SourceFile=scriptPos.SourceFile)
+            and (symPos.ScriptPos.Line=scriptPos.Line) then begin
+            Exit(list.Symbol);
+         end;
+      end;
+   end;
+   Result:=nil;
 end;
 
 function TdwsSymbolDictionary.FindSymbolPosListOfType(const SymName: UnicodeString;
