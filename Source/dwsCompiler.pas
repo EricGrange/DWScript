@@ -410,7 +410,8 @@ type
          procedure ReadParams(const hasParamMeth : THasParamSymbolMethod;
                               const addParamMeth : TAddParamSymbolMethod;
                               paramsToDictionary : Boolean = True);
-         function ReadProcDecl(funcToken : TTokenType; isClassMethod : Boolean = False;
+         function ReadProcDecl(funcToken : TTokenType; const hotPos : TScriptPos;
+                               isClassMethod : Boolean = False;
                                isType : Boolean = False; isAnonymous : Boolean = False) : TFuncSymbol;
          procedure ReadProcBody(funcSymbol : TFuncSymbol);
          procedure ReadConditions(funcSymbol : TFuncSymbol; conditions : TSourceConditions;
@@ -1377,10 +1378,15 @@ end;
 //
 function TdwsCompiler.ReadRootStatement(var action : TdwsStatementAction) : TNoResultExpr;
 var
+   hotPos : TScriptPos;
    token : TTokenType;
 begin
    action:=saNone;
    Result:=nil;
+
+   FTok.TestName;
+   hotPos:=FTok.HotPos;
+
    token:=FTok.TestDeleteAny([ttTYPE, ttPROCEDURE, ttFUNCTION,
                               ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttCLASS,
                               ttUSES, ttIMPLEMENTATION, ttEND]);
@@ -1391,12 +1397,12 @@ begin
             action:=saNoSemiColon
          end else ReadTypeDecl(True);
       ttPROCEDURE, ttFUNCTION, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD :
-         ReadProcBody(ReadProcDecl(token));
+         ReadProcBody(ReadProcDecl(token, hotPos));
       ttCLASS : begin
          token:=FTok.TestDeleteAny([ttPROCEDURE, ttFUNCTION, ttMETHOD]);
          case token of
             ttPROCEDURE, ttFUNCTION, ttMETHOD :
-               ReadProcBody(ReadProcDecl(token, True));
+               ReadProcBody(ReadProcDecl(token, hotPos, True));
          else
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
          end;
@@ -1873,7 +1879,7 @@ end;
 
 // ReadProcDecl
 //
-function TdwsCompiler.ReadProcDecl(funcToken : TTokenType;
+function TdwsCompiler.ReadProcDecl(funcToken : TTokenType; const hotPos : TScriptPos;
               isClassMethod : Boolean = False; isType : Boolean = False;
               isAnonymous : Boolean = False) : TFuncSymbol;
 var
@@ -1883,6 +1889,7 @@ var
    funcPos : TScriptPos;
    forwardedSym : TFuncSymbol;
    forwardedSymPos : TSymbolPosition;
+   sourceContext : TdwsSourceContext;
 begin
    funcKind:=cTokenToFuncKind[funcToken];
    if not isType then begin
@@ -1900,13 +1907,16 @@ begin
          sym:=FProg.Table.FindSymbol(name, cvMagic);
       end;
 
-      // Open context for procedure declaration. Closed in ReadProcBody.
-      if coContextMap in FOptions then
-         FContextMap.OpenContext(funcPos, sym, funcToken);
    end else begin
       sym:=nil;
       name:='';
    end;
+
+   // Open context. Closed in ReadProcBody.
+   if coContextMap in Options then begin
+      FContextMap.OpenContext(hotPos, nil, funcToken);
+      sourceContext:=FContextMap.Current;
+   end else sourceContext:=nil;
 
    // name is the name of class -> Method
    if (sym is TClassSymbol) or (sym is TRecordSymbol) then begin
@@ -2003,6 +2013,9 @@ begin
          raise;
       end;
    end;
+
+   if sourceContext<>nil then
+      sourceContext.ParentSym:=Result;
 end;
 
 // ReadIntfMethodDecl
@@ -2306,6 +2319,7 @@ var
    assignExpr : TNoResultExpr;
    tt, sectionType, finalToken : TTokenType;
    constSym : TConstSymbol;
+   hotPos : TScriptPos;
 begin
    // Stop if declaration was forwarded or external
    if (funcSymbol.IsForwarded or funcSymbol.IsExternal) then begin
@@ -2367,8 +2381,9 @@ begin
                   end;
                   ttPROCEDURE, ttFUNCTION : begin
                      if UnitSection=secImplementation then begin
+                        hotPos:=FTok.HotPos;
                         FTok.KillToken;
-                        ReadProcBody(ReadProcDecl(tt));
+                        ReadProcBody(ReadProcDecl(tt, hotPos));
                         sectionType:=ttNone;
                         ReadSemiColon;
                         continue;
@@ -5795,9 +5810,10 @@ function TdwsCompiler.ReadType(const typeName : UnicodeString; typeContext : Tdw
 var
    tt : TTokenType;
    name, connectorQualifier : UnicodeString;
-   namePos : TScriptPos;
+   hotPos, namePos : TScriptPos;
    sym : TSymbol;
 begin
+   hotPos:=FTok.HotPos;
    tt:=FTok.TestDeleteAny([ttRECORD, ttARRAY, ttCLASS, ttINTERFACE, ttBLEFT,
                            ttPROCEDURE, ttFUNCTION]);
    case tt of
@@ -5831,7 +5847,7 @@ begin
          Result:=ReadEnumeration(typeName);
 
       ttPROCEDURE, ttFUNCTION : begin
-         Result:=ReadProcDecl(tt, False, True);
+         Result:=ReadProcDecl(tt, hotPos, False, True);
          Result.SetName(typeName);
          (Result as TFuncSymbol).SetIsType;
       end;
@@ -6295,11 +6311,11 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       Result:=TConstExpr.Create(FProg, expecting, Null);
    end;
 
-   function ReadAnonymousMethod(funcType : TTokenType) : TAnonymousFuncRefExpr;
+   function ReadAnonymousMethod(funcType : TTokenType; const hotPos : TScriptPos) : TAnonymousFuncRefExpr;
    var
       funcSym : TFuncSymbol;
    begin
-      funcSym:=ReadProcDecl(funcType, False, False, True);
+      funcSym:=ReadProcDecl(funcType, hotPos, False, False, True);
       FProg.Table.AddSymbol(funcSym);
       ReadProcBody(funcSym);
       Result:=TAnonymousFuncRefExpr.Create(FProg, GetFuncExpr(funcSym, False, nil, expecting));
@@ -6310,6 +6326,7 @@ var
    nameExpr : TProgramExpr;
    hotPos : TScriptPos;
 begin
+   hotPos:=FTok.HotPos;
    tt:=FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
                      ttTRUE, ttFALSE, ttNIL, ttFUNCTION, ttPROCEDURE]);
    if tt<>ttNone then
@@ -6353,7 +6370,7 @@ begin
       ttPROCEDURE, ttFUNCTION : begin
          if not (coAllowClosures in Options) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_LocalFunctionAsDelegate);
-         Result:=ReadAnonymousMethod(tt)
+         Result:=ReadAnonymousMethod(tt, hotPos)
       end;
    else
       if (FTok.TestAny([ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin
