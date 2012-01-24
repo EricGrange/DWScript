@@ -1093,7 +1093,6 @@ begin
       FSymbolMaps.Add(FSymbolMap);
    end else begin
       map.FParent:=FSymbolMap;
-//      FSymbolMapStack.Push(FSymbolMap);
       FSymbolMap:=map;
    end;
 end;
@@ -1114,10 +1113,6 @@ begin
       FSymbolMaps.Extract(i);
       m.Free;
    end;
-//   if (FSymbolMap=nil) and (FSymbolMapStack.Count>0) then begin
-//      FSymbolMap:=FSymbolMapStack.Peek;
-//      FSymbolMapStack.Pop;
-//   end;
 end;
 
 // EnterStructScope
@@ -1201,7 +1196,7 @@ var
    funcSym : TFuncSymbol;
 begin
    if FSymbolDictionary=nil then Exit;
-   exit;
+
    repeat
       localChanged:=False;
       for sym in table do begin
@@ -1212,7 +1207,7 @@ begin
          end else if sym is TFuncSymbol then begin
 
             funcSym:=TFuncSymbol(sym);
-            if funcSym.IsExternal then continue;
+            if funcSym.IsExternal or funcSym.IsType then continue;
             if not SmartLink(funcSym) then begin
                if FSymbolDictionary.FindSymbolPosList(funcSym)<>nil then begin
                   RemoveReferencesInContextMap(funcSym);
