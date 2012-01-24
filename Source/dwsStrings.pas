@@ -482,6 +482,7 @@ const
   RTE_TooManyIndices = 'Too many indices';
   RTE_TooFewIndices = 'Too few indices';
   RTE_NoRecordFields = 'Record has no field members';
+  RTE_NoProtectedVisibilityForRecords = 'Records do not supported "protected" visibility specifier';
 
   // Compiler Strings
 

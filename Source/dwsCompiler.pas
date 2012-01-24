@@ -5576,11 +5576,15 @@ begin
 
          repeat
 
-            tt:=FTok.TestDeleteAny([ttPRIVATE, ttPUBLIC, ttPUBLISHED, ttCLASS,
+            tt:=FTok.TestDeleteAny([ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED, ttCLASS,
                                     ttPROPERTY, ttFUNCTION, ttPROCEDURE, ttMETHOD]);
             case tt of
-               ttPRIVATE..ttPUBLISHED :
-                  visibility:=cTokenToVisibility[tt];
+               ttPRIVATE, ttPUBLIC, ttPUBLISHED :
+                  if visibility=cTokenToVisibility[tt] then
+                     FMsgs.AddCompilerHintFmt(FTok.HotPos, CPH_RedundantVisibilitySpecifier, [cTokenStrings[tt]])
+                  else visibility:=cTokenToVisibility[tt];
+               ttPROTECTED :
+                  FMsgs.AddCompilerError(FTok.HotPos, RTE_NoProtectedVisibilityForRecords);
                ttPROPERTY : begin
                   propSym := ReadPropertyDecl(Result, visibility);
                   Result.AddProperty(propSym);
