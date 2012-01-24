@@ -5161,8 +5161,11 @@ begin
 
                   end;
 
-                  ttPRIVATE..ttPUBLISHED :
-                     visibility:=cTokenToVisibility[tt];
+                  ttPRIVATE..ttPUBLISHED : begin
+                     if visibility=cTokenToVisibility[tt] then
+                        FMsgs.AddCompilerHintFmt(FTok.HotPos, CPH_RedundantVisibilitySpecifier, [cTokenStrings[tt]])
+                     else visibility:=cTokenToVisibility[tt];
+                  end;
 
                else
 

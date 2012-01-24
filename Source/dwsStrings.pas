@@ -264,6 +264,7 @@ const
   CPH_PrivateFieldDeclaredButNotUsed = 'Private field "%s" declared but never used';
   CPH_PrivateMethodDeclaredButNotUsed = 'Private method "%s" declared but never used';
   CPH_ResultNotUsed = 'Result is never used';
+  CPH_RedundantVisibilitySpecifier = 'Redundant specifier, visibility is already "%s"';
 
   // TypeCheck
   CPE_BooleanExpected = 'Boolean expected';
