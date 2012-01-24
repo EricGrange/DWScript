@@ -387,7 +387,7 @@ type
       function GetDefaultUserObject : TObject;
       procedure SetDefaultUserObject(const val : TObject);
       function GetSymbolDictionary : TdwsSymbolDictionary;
-      function GetContextMap : TdwsSourceContextMap;
+      function GetSourceContextMap : TdwsSourceContextMap;
       function GetSourceList : TScriptSourceList;
       function GetUnitMains : TUnitMainSymbols;
       function GetProgramObject : TdwsMainProgram;
@@ -405,7 +405,7 @@ type
       property DefaultUserObject : TObject read GetDefaultUserObject write SetDefaultUserObject;
 
       property SymbolDictionary : TdwsSymbolDictionary read GetSymbolDictionary;
-      property ContextMap : TdwsSourceContextMap read GetContextMap;
+      property SourceContextMap : TdwsSourceContextMap read GetSourceContextMap;
       property SourceList : TScriptSourceList read GetSourceList;
       property UnitMains : TUnitMainSymbols read GetUnitMains;
       property ProgramObject : TdwsMainProgram read GetProgramObject;
@@ -566,7 +566,7 @@ type
          FExecutionsLock : TCriticalSection;
          FTimeoutMilliseconds : Integer;
 
-         FContextMap : TdwsSourceContextMap;
+         FSourceContextMap : TdwsSourceContextMap;
          FSymbolDictionary : TdwsSymbolDictionary;
 
          FSystemTable : ISystemSymbolTable;
@@ -595,7 +595,7 @@ type
          function GetTimeoutMilliseconds : Integer;
          procedure SetTimeoutMilliseconds(const val : Integer);
          function GetSymbolDictionary : TdwsSymbolDictionary;
-         function GetContextMap : TdwsSourceContextMap;
+         function GetSourceContextMap : TdwsSourceContextMap;
          function GetProgramObject : TdwsMainProgram;
 
       public
@@ -626,7 +626,7 @@ type
          property Operators : TObject read FOperators write FOperators;
          property ConditionalDefines : IAutoStrings read FConditionalDefines;
          property Compiler : TObject read FCompiler write FCompiler;
-         property ContextMap : TdwsSourceContextMap read FContextMap;
+         property SourceContextMap : TdwsSourceContextMap read FSourceContextMap;
          property SymbolDictionary: TdwsSymbolDictionary read FSymbolDictionary;
          property SourceList : TScriptSourceList read FSourceList;
          property LineCount : Integer read FLineCount write FLineCount;
@@ -2606,7 +2606,7 @@ begin
 
    FGlobalAddrGenerator:=TAddrGeneratorRec.CreatePositive(0);
 
-   FContextMap:=TdwsSourceContextMap.Create;
+   FSourceContextMap:=TdwsSourceContextMap.Create;
 
    FSymbolDictionary:=TdwsSymbolDictionary.Create;
 
@@ -2649,7 +2649,7 @@ begin
    inherited;
 
    FOperators.Free;
-   FContextMap.Free;
+   FSourceContextMap.Free;
    FSymbolDictionary.Free;
    FUnifiedConstList.Free;
    FSourceFiles.Clean;
@@ -2755,11 +2755,11 @@ begin
    Result:=FSymbolDictionary;
 end;
 
-// GetContextMap
+// GetSourceContextMap
 //
-function TdwsMainProgram.GetContextMap : TdwsSourceContextMap;
+function TdwsMainProgram.GetSourceContextMap : TdwsSourceContextMap;
 begin
-   Result:=FContextMap;
+   Result:=FSourceContextMap;
 end;
 
 // GetProgramObject

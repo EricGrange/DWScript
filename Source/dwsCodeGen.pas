@@ -689,7 +689,7 @@ begin
 
    if (cgoSmartLink in Options) and (prog.SymbolDictionary.Count>0) then begin
       FSymbolDictionary:=prog.SymbolDictionary;
-      FSourceContextMap:=prog.ContextMap;
+      FSourceContextMap:=prog.SourceContextMap;
    end;
    BeginProgramSession(prog);
    try

@@ -747,7 +747,7 @@ begin
                            +'implementation;'#13#10);
    FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions;
 
-   unitContext:=prog.ContextMap.FindContextByToken(ttUNIT);
+   unitContext:=prog.SourceContextMap.FindContextByToken(ttUNIT);
    CheckNotNull(unitContext, 'unit map');
 
    context:=unitContext.FindContextByToken(ttINTERFACE);

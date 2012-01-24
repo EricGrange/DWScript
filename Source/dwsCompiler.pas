@@ -268,7 +268,7 @@ type
          FTok : TTokenizer;
          FProg : TdwsProgram;
          FMainProg : TdwsMainProgram;
-         FContextMap : TdwsSourceContextMap;
+         FSourceContextMap : TdwsSourceContextMap;
          FSymbolDictionary : TdwsSymbolDictionary;
          FOperators : TOperators;
          FLoopExprs : TSimpleStack<TNoResultExpr>;
@@ -902,7 +902,7 @@ begin
 
    FProg:=nil;
    FMainProg:=nil;
-   FContextMap:=nil;
+   FSourceContextMap:=nil;
    FSymbolDictionary:=nil;
 
    FLoopExprs.Clear;
@@ -943,7 +943,7 @@ begin
    FMainProg.TimeoutMilliseconds:=aConf.TimeoutMilliseconds;
    FMainProg.RuntimeFileSystem:=aConf.RuntimeFileSystem;
    FMainProg.ConditionalDefines.Value.Assign(aConf.Conditionals);
-   FContextMap:=FMainProg.ContextMap;
+   FSourceContextMap:=FMainProg.SourceContextMap;
    FSymbolDictionary:=FMainProg.SymbolDictionary;
    FUnitSection:=secMixed;
 
@@ -1068,9 +1068,9 @@ begin
                srcUnit:=TSourceUnit.Create(unitName, FProg.Root.RootTable, FProg.UnitMains);
                unitResolved:=srcUnit;
                FUnits.Add(unitResolved);
-               oldContext:=FContextMap.SuspendContext;
+               oldContext:=FSourceContextMap.SuspendContext;
                SwitchTokenizerToUnit(srcUnit, unitSource);
-               FContextMap.ResumeContext(oldContext);
+               FSourceContextMap.ResumeContext(oldContext);
             end;
          end;
       end;
@@ -1121,7 +1121,7 @@ begin
    FMainProg:=context.ProgramObject as TdwsMainProgram;
    FMainProg.Compiler:=Self;
    FSystemTable:=FMainProg.SystemTable.SymbolTable;
-   FContextMap:=FMainProg.ContextMap;
+   FSourceContextMap:=FMainProg.SourceContextMap;
    FSymbolDictionary:=FMainProg.SymbolDictionary;
 
    FMsgs:=FMainProg.CompileMsgs;
@@ -1274,11 +1274,11 @@ begin
          stMain : begin
             HandleUnitDependencies;
             if coContextMap in Options then
-               FContextMap.OpenContext(FTok.CurrentPos, FUnitSymbol, ttPROGRAM);
+               FSourceContextMap.OpenContext(FTok.CurrentPos, FUnitSymbol, ttPROGRAM);
          end;
          stUnit : begin
             if coContextMap in Options then
-               FContextMap.OpenContext(FTok.CurrentPos, FUnitSymbol, ttUNIT);
+               FSourceContextMap.OpenContext(FTok.CurrentPos, FUnitSymbol, ttUNIT);
             FUnitSection:=secHeader;
             ReadUnitHeader;
          end;
@@ -1290,7 +1290,7 @@ begin
          stUnit : begin
             if coContextMap in Options then begin
                if (finalToken=ttNone) or (finalToken=ttEND) then
-                  FContextMap.CloseAllContexts(FTok.CurrentPos);
+                  FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
             end;
 
             FProg.InitExpr.AddStatement(Result);
@@ -1299,7 +1299,7 @@ begin
          stMain : begin
             if coContextMap in Options then begin
                if scriptType=stMain then
-                  FContextMap.CloseAllContexts(FTok.CurrentPos);
+                  FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
             end;
          end;
       end;
@@ -1358,7 +1358,7 @@ begin
             unitBlock:=ReadRootBlock([], finalToken);
 
             if coContextMap in Options then
-               FContextMap.CloseAllContexts(FTok.CurrentPos);
+               FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
 
             if unitBlock.SubExprCount>0 then
                FProg.InitExpr.AddStatement(unitBlock)
@@ -1417,8 +1417,8 @@ begin
          end else begin
             if coContextMap in FOptions then begin
                if coContextMap in Options then
-                  FContextMap.CloseContext(FTok.HotPos, ttINTERFACE);
-               FContextMap.OpenContext(FTok.HotPos, FUnitSymbol, ttIMPLEMENTATION);
+                  FSourceContextMap.CloseContext(FTok.HotPos, ttINTERFACE);
+               FSourceContextMap.OpenContext(FTok.HotPos, FUnitSymbol, ttIMPLEMENTATION);
             end;
             FUnitSection:=secImplementation;
             DoSectionChanged;
@@ -1511,7 +1511,7 @@ begin
       end;
       compiler.FProg:=contextProgram;
       compiler.FMainProg:=contextProgram.Root;
-      compiler.FContextMap:=compiler.FMainProg.ContextMap;
+      compiler.FSourceContextMap:=compiler.FMainProg.SourceContextMap;
       compiler.FSymbolDictionary:=compiler.FMainProg.SymbolDictionary;
       try
          oldProgMsgs:=compiler.FProg.CompileMsgs;
@@ -1550,7 +1550,7 @@ begin
          end;
       finally
          compiler.FSymbolDictionary:=nil;
-         compiler.FContextMap:=nil;
+         compiler.FSourceContextMap:=nil;
          compiler.FMainProg:=nil;
          compiler.FProg:=nil;
       end;
@@ -1842,8 +1842,8 @@ begin
 
    // Wrap whole type declarations in a context.
    if coContextMap in FOptions then begin
-      FContextMap.OpenContext(typePos, nil, ttNAME);
-      typContext:=FContextMap.Current;
+      FSourceContextMap.OpenContext(typePos, nil, ttNAME);
+      typContext:=FSourceContextMap.Current;
    end else typContext:=nil;
 
    typNew := ReadType(name, tcDeclaration);
@@ -1873,7 +1873,7 @@ begin
       end;
    finally
       if coContextMap in FOptions then
-         FContextMap.CloseContext(FTok.CurrentPos);
+         FSourceContextMap.CloseContext(FTok.CurrentPos);
    end;
 end;
 
@@ -1914,8 +1914,8 @@ begin
 
    // Open context. Closed in ReadProcBody.
    if coContextMap in Options then begin
-      FContextMap.OpenContext(hotPos, nil, funcToken);
-      sourceContext:=FContextMap.Current;
+      FSourceContextMap.OpenContext(hotPos, nil, funcToken);
+      sourceContext:=FSourceContextMap.Current;
    end else sourceContext:=nil;
 
    // name is the name of class -> Method
@@ -2210,7 +2210,7 @@ begin
    if bodyToken<>ttNone then begin
       // inline declaration
       if coContextMap in FOptions then
-         FContextMap.OpenContext(FTok.HotPos, funcResult, bodyToken);
+         FSourceContextMap.OpenContext(FTok.HotPos, funcResult, bodyToken);
       ReadProcBody(funcResult);
       ReadSemiColon;
    end;
@@ -2325,7 +2325,7 @@ begin
    if (funcSymbol.IsForwarded or funcSymbol.IsExternal) then begin
       // Closed context of procedure (was only a forward)
       if coContextMap in FOptions then
-         FContextMap.CloseContext(FTok.HotPos);
+         FSourceContextMap.CloseContext(FTok.HotPos);
       Exit;
    end;
 
@@ -2337,7 +2337,7 @@ begin
 
    // Open context of full procedure body (may include a 'var' section)
    if coContextMap in FOptions then
-      FContextMap.OpenContext(FTok.CurrentPos, funcSymbol, ttBEGIN);   // attach to symbol that it belongs to (perhaps a class)
+      FSourceContextMap.OpenContext(FTok.CurrentPos, funcSymbol, ttBEGIN);   // attach to symbol that it belongs to (perhaps a class)
 
    funcSymbol.SourcePosition:=FTok.HotPos;
 
@@ -2351,7 +2351,7 @@ begin
          proc.AssignTo(funcSymbol);
          // Set the current context's LocalTable to be the table of the new procedure
          if coContextMap in FOptions then
-            FContextMap.Current.LocalTable:=FProg.Table;
+            FSourceContextMap.Current.LocalTable:=FProg.Table;
 
          if FTok.TestDelete(ttREQUIRE) then begin
             if funcSymbol is TMethodSymbol then begin
@@ -2413,7 +2413,7 @@ begin
          end;
 
          if coContextMap in FOptions then
-            FContextMap.OpenContext(FTok.CurrentPos, nil, ttBEGIN);
+            FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttBEGIN);
          try
             // Read procedure body
             if not FTok.TestDelete(ttBEGIN) then begin
@@ -2447,7 +2447,7 @@ begin
             HintUnusedResult(proc.Func.Result);
          finally
             if coContextMap in FOptions then
-               FContextMap.CloseContext(FTok.CurrentPos);  // close with inside procedure end
+               FSourceContextMap.CloseContext(FTok.CurrentPos);  // close with inside procedure end
          end;
       finally
          FMainProg.Compiler := nil;
@@ -2456,8 +2456,8 @@ begin
    finally
       // Closed procedure body and procedure implementation (from declaration to body)
       if coContextMap in FOptions then begin
-         FContextMap.CloseContext(FTok.CurrentPos);  // closed begin..end body (may include 'var' section)
-         FContextMap.CloseContext(FTok.CurrentPos);  // closed from declaration through implementation
+         FSourceContextMap.CloseContext(FTok.CurrentPos);  // closed begin..end body (may include 'var' section)
+         FSourceContextMap.CloseContext(FTok.CurrentPos);  // closed from declaration through implementation
       end;
    end;
 end;
@@ -2642,7 +2642,7 @@ begin
    blockExpr:=TBlockExpr.Create(FProg, FTok.HotPos);
    try
       if coContextMap in FOptions then begin
-         FContextMap.OpenContext(FTok.CurrentPos, nil, ttBEGIN);
+         FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttBEGIN);
          closePos:=FTok.CurrentPos;     // default to close context where it opened (used on errors)
       end;
 
@@ -2705,8 +2705,8 @@ begin
 
       if coContextMap in FOptions then begin
          if Result is TBlockExpr then
-            FContextMap.Current.LocalTable:=TBlockExpr(Result).Table;
-         FContextMap.CloseContext(closePos);
+            FSourceContextMap.Current.LocalTable:=TBlockExpr(Result).Table;
+         FSourceContextMap.CloseContext(closePos);
       end;
 
    except
@@ -5529,8 +5529,8 @@ begin
 
          // register context only if we're sure the property symbol will survive
          if coContextMap in FOptions then begin
-            FContextMap.OpenContext(propStartPos, result, ttPROPERTY);
-            FContextMap.CloseContext(FTok.CurrentPos);
+            FSourceContextMap.OpenContext(propStartPos, result, ttPROPERTY);
+            FSourceContextMap.CloseContext(FTok.CurrentPos);
          end;
       except
          // Remove reference to symbol (gets freed)
@@ -7568,12 +7568,12 @@ begin
    names:=TStringList.Create;
    try
       if coContextMap in FOptions then
-         FContextMap.OpenContext(FTok.HotPos, nil, ttUSES);
+         FSourceContextMap.OpenContext(FTok.HotPos, nil, ttUSES);
 
       ReadNameList(names, posArray, True);
 
       if coContextMap in FOptions then
-         FContextMap.CloseContext(FTok.HotPos);
+         FSourceContextMap.CloseContext(FTok.HotPos);
 
       u:=0;
       if FUnitSymbol<>nil then
@@ -7647,7 +7647,7 @@ begin
    if FTok.TestDelete(ttINTERFACE) then begin
       FUnitSection:=secInterface;
       if coContextMap in FOptions then
-         FContextMap.OpenContext(FTok.HotPos, nil, ttINTERFACE);
+         FSourceContextMap.OpenContext(FTok.HotPos, nil, ttINTERFACE);
    end else FUnitSection:=secMixed;
    DoSectionChanged;
 end;
@@ -8841,7 +8841,7 @@ var
 begin
    context.Tokenizer:=compiler.FTok;
    context.UnitSymbol:=compiler.FUnitSymbol;
-   context.Context:=compiler.FContextMap.SuspendContext;
+   context.Context:=compiler.FSourceContextMap.SuspendContext;
    Push(context);
 end;
 
@@ -8851,7 +8851,7 @@ procedure TdwsCompilerUnitContextStack.PopContext(compiler : TdwsCompiler);
 begin
    compiler.FTok:=Peek.Tokenizer;
    compiler.FUnitSymbol:=Peek.UnitSymbol;
-   compiler.FContextMap.ResumeContext(Peek.Context);
+   compiler.FSourceContextMap.ResumeContext(Peek.Context);
    Pop;
 end;
 

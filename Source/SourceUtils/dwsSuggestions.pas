@@ -199,7 +199,7 @@ var
    sl : TStringList;
    context : TdwsSourceContext;
 begin
-   FLocalContext:=FProg.ContextMap.FindContext(FSourcePos);
+   FLocalContext:=FProg.SourceContextMap.FindContext(FSourcePos);
    context:=FLocalContext;
    while (context<>nil) and (context.ParentSym=nil) do
       context:=context.Parent;
