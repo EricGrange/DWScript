@@ -514,6 +514,9 @@ type
 
          procedure WarnForVarUsage(varExpr : TVarExpr; const scriptPos : TScriptPos);
 
+         procedure RecordSymbolUse(sym : TSymbol; const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
+         procedure RecordSymbolUseReference(sym : TSymbol; const scriptPos : TScriptPos; isWrite : Boolean);
+
          property CurrentProg : TdwsProgram read FProg write FProg;
          property Msgs : TdwsCompileMessageList read FMsgs;
          property Options : TCompilerOptions read FOptions write FOptions;
@@ -1108,6 +1111,23 @@ begin
    Result:=unitMain.ReferenceInSymbolTable(FProg.Table);
 end;
 
+// RecordSymbolUse
+//
+procedure TdwsCompiler.RecordSymbolUse(sym : TSymbol; const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
+begin
+   if coSymbolDictionary in Options then
+      FSymbolDictionary.AddSymbol(sym, scriptPos, useTypes);
+end;
+
+// RecordSymbolUseReference
+//
+procedure TdwsCompiler.RecordSymbolUseReference(sym : TSymbol; const scriptPos : TScriptPos; isWrite : Boolean);
+begin
+   if isWrite then
+      RecordSymbolUse(sym, scriptPos, [suReference, suWrite])
+   else RecordSymbolUse(sym, scriptPos, [suReference, suRead]);
+end;
+
 // RecompileInContext
 //
 procedure TdwsCompiler.RecompileInContext(const context : IdwsProgram;
@@ -1645,17 +1665,14 @@ begin
 
             // Initialize with an expression
 
-            if coSymbolDictionary in FOptions then
-               FSymbolDictionary.AddValueSymbol(sym, posArray[x],
-                                               [suDeclaration, suReference, suWrite]);
+            RecordSymbolUse(sym, posArray[x], [suDeclaration, suReference, suWrite]);
 
             Result:=CreateAssign(pos, ttASSIGN, varExpr, initExpr);
             initExpr:=nil;
 
          end else begin
 
-            if coSymbolDictionary in FOptions then
-               FSymbolDictionary.AddValueSymbol(sym, posArray[x], [suDeclaration]);
+            RecordSymbolUse(sym, posArray[x], [suDeclaration]);
 
             if sym.Typ is TArraySymbol then begin
 
@@ -1777,8 +1794,7 @@ begin
                end;
             end;
 
-            if coSymbolDictionary in FOptions then
-               FSymbolDictionary.AddConstSymbol(Result, constPos, [suDeclaration]);
+            RecordSymbolUse(Result, constPos, [suDeclaration]);
          finally
             if detachTyp then begin
                FProg.Table.AddSymbol(typ);
@@ -1868,8 +1884,7 @@ begin
          end;
 
          // Add symbol position as being the type being declared (works for forwards too)
-         if coSymbolDictionary in FOptions then
-            FSymbolDictionary.AddTypeSymbol(typNew, typePos, [suDeclaration]);
+         RecordSymbolUse(typNew, typePos, [suDeclaration]);
       end;
    finally
       if coContextMap in FOptions then
@@ -1922,8 +1937,7 @@ begin
    if (sym is TClassSymbol) or (sym is TRecordSymbol) then begin
 
       // Store reference to class in dictionary
-      if coSymbolDictionary in FOptions then
-         FSymbolDictionary.AddTypeSymbol(TTypeSymbol(sym), funcPos, [suReference]);
+      RecordSymbolUse(sym, funcPos, [suReference]);
       Result:=ReadMethodImpl(TStructuredTypeSymbol(sym), funcKind, isClassMethod);
 
    end else begin
@@ -2006,8 +2020,7 @@ begin
          end;
 
          // Procedure is both Declared and Implemented here
-         if coSymbolDictionary in FOptions then
-            FSymbolDictionary.AddTypeSymbol(Result, funcPos, [suDeclaration, suImplementation]);
+         RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation]);
       except
          Result.Free;
          raise;
@@ -2048,8 +2061,7 @@ begin
       ReadSemiColon;
 
       // Added as last step. OnExcept, won't need to be freed.
-      if coSymbolDictionary in FOptions then
-         FSymbolDictionary.AddTypeSymbol(Result, methPos, [suDeclaration]);
+      RecordSymbolUse(Result, methPos, [suDeclaration]);
    except
       Result.Free;
       raise;
@@ -2199,8 +2211,7 @@ begin
       if isReintroduced then
          FMsgs.AddCompilerWarningFmt(methPos, CPE_ReintroduceWarning, [name]);
 
-      if coSymbolDictionary in FOptions then
-         FSymbolDictionary.AddTypeSymbol(funcResult, methPos, [suDeclaration]);
+      RecordSymbolUse(funcResult, methPos, [suDeclaration]);
 
    finally
       structSym.AddMethod(funcResult);
@@ -2280,8 +2291,7 @@ begin
       end;
    end;
 
-   if coSymbolDictionary in FOptions then
-      FSymbolDictionary.AddTypeSymbol(Result, methPos, [suImplementation]);
+   RecordSymbolUse(Result, methPos, [suImplementation]);
 end;
 
 // ReadDeprecated
@@ -2593,8 +2603,7 @@ begin
 
       // TODO: typecheck used function
       if usesSym<>nil then begin
-         if coSymbolDictionary in FOptions then
-            FSymbolDictionary.AddTypeSymbol(usesSym, usesPos);
+         RecordSymbolUse(usesSym, usesPos, [suReference]);
 
          if usesSym.Typ<>Result.Typ then
             FMsgs.AddCompilerErrorFmt(usesPos, CPE_BadResultType, [Result.Typ.Caption])
@@ -2886,8 +2895,7 @@ begin
 
    if Assigned(sym) then begin
 
-      if coSymbolDictionary in FOptions then
-         FSymbolDictionary.AddSymbolReference(sym, FTok.HotPos, isWrite);
+      RecordSymbolUseReference(sym, FTok.HotPos, isWrite);
 
       if sym is TMethodSymbol then begin
          if TMethodSymbol(sym).IsAbstract then
@@ -2998,8 +3006,7 @@ begin
    FTok.KillToken;
 
    // Add the symbol usage to Dictionary
-   if coSymbolDictionary in FOptions then
-      FSymbolDictionary.AddSymbolReference(sym, namePos, isWrite);
+   RecordSymbolUseReference(sym, namePos, isWrite);
 
    Result := nil;
    try
@@ -3022,8 +3029,7 @@ begin
             FTok.KillToken;
 
             // Already added symbol usage of the unit. Now add for the unit's specified symbol.
-            if coSymbolDictionary in FOptions then
-               FSymbolDictionary.AddSymbolReference(sym, namePos, isWrite);
+            RecordSymbolUseReference(sym, namePos, isWrite);
 
          end;
 
@@ -3622,8 +3628,8 @@ begin
                if baseType is TStructuredTypeSymbol then begin
 
                   member:=FindStructMember(TStructuredTypeSymbol(baseType), name);
-                  if coSymbolDictionary in FOptions then
-                     FSymbolDictionary.AddSymbolReference(member, symPos, isWrite);
+
+                  RecordSymbolUseReference(member, symPos, isWrite);
 
                   if (baseType is TRecordSymbol) and (Result is TFuncExpr) then
                      TFuncExpr(Result).SetResultAddr(FProg, nil);
@@ -3654,9 +3660,9 @@ begin
                // Meta (Class Of, Record Of)
                end else if baseType is TStructuredTypeMetaSymbol then begin
 
-                  member := TStructuredTypeSymbol(baseType.Typ).Members.FindSymbolFromScope(Name, CurrentStruct);
-                  if coSymbolDictionary in FOptions then
-                     FSymbolDictionary.AddSymbolReference(member, FTok.HotPos, isWrite);
+                  member:=TStructuredTypeSymbol(baseType.Typ).Members.FindSymbolFromScope(Name, CurrentStruct);
+
+                  RecordSymbolUseReference(member, FTok.HotPos, isWrite);
 
                   // Class method
                   if member is TMethodSymbol then begin
@@ -3711,8 +3717,7 @@ begin
                   // array property
                   defaultProperty:=GetDefaultProperty(TStructuredTypeSymbol(baseType));
                   if Assigned(defaultProperty) then begin
-                     if coSymbolDictionary in Options then
-                        SymbolDictionary.AddSymbolReference(defaultProperty, FTok.HotPos, isWrite);
+                     RecordSymbolUseReference(defaultProperty, FTok.HotPos, isWrite);
                      Result:=ReadPropertyExpr(TDataExpr(Result), defaultProperty, IsWrite)
                   end else begin
                      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NoDefaultProperty,
@@ -3933,8 +3938,7 @@ begin
          enumSymbol:=nil;
       end;
 
-      if coSymbolDictionary in FOptions then
-         FSymbolDictionary.AddTypeSymbol(enumSymbol, inPos);
+      RecordSymbolUse(enumSymbol, inPos, [suReference]);
 
       if enumSymbol is TEnumerationSymbol then begin
          fromExpr:=TConstExpr.CreateIntegerValue(FProg, loopVarExpr.Typ, TEnumerationSymbol(enumSymbol).LowBound);
@@ -4888,24 +4892,31 @@ begin
       FTok.KillToken;
 
       if FTok.TestDelete(ttALEFT) then begin
+
          if Assigned(sym) and sym.IsType then begin
+
             typSym:=TTypeSymbol(sym);
-            if coSymbolDictionary in FOptions then
-               FSymbolDictionary.AddTypeSymbol(typSym, hotPos);
+            RecordSymbolUse(typSym, hotPos, [suReference]);
             Result:=ReadNewArray(typSym, isWrite);
+
          end else begin
+
             FMsgs.AddCompilerError(hotPos, CPE_TypeExpected);
             Result:=ReadNewArray(FProg.TypVariant, isWrite);
+
          end;
          Exit;
+
       end else if sym is TClassSymbol then begin
+
          classSym:=TClassSymbol(sym);
-         if coSymbolDictionary in FOptions then
-            FSymbolDictionary.AddTypeSymbol(classSym, hotPos);
+         RecordSymbolUse(classSym, hotPos, [suReference]);
+
       end else if (sym is TDataSymbol) and (sym.Typ is TClassOfSymbol) then begin
+
          classSym:=TClassOfSymbol(sym.Typ).TypClassSymbol;
-         if coSymbolDictionary in FOptions then
-            FSymbolDictionary.AddSymbolReference(TDataSymbol(sym), hotPos, False);
+         RecordSymbolUseReference(sym, hotPos, False);
+
       end else FMsgs.AddCompilerStop(hotPos, CPE_ClassRefExpected);
 
       if sym is TClassSymbol then
@@ -4985,8 +4996,7 @@ begin
       classTyp:=FProg.TypObject; // keep compiling
    end else begin
       classTyp:=TClassSymbol(typ);
-      if coSymbolDictionary in FOptions then
-         FSymbolDictionary.AddTypeSymbol(classTyp, FTok.HotPos);
+      RecordSymbolUse(classTyp, FTok.HotPos, [suReference]);
    end;
 
    if typeName<>'' then
@@ -5220,8 +5230,7 @@ begin
          classSymbol.AddField(fieldSym);
 
          // Enter Field symbol in dictionary
-         if coSymbolDictionary in FOptions then
-            FSymbolDictionary.AddValueSymbol(fieldSym, PosArray[i], [suDeclaration]);
+         RecordSymbolUse(fieldSym, PosArray[i], [suDeclaration]);
       end;
    finally
       names.Free;
@@ -5293,8 +5302,7 @@ begin
       raise;
    end;
 
-   if coSymbolDictionary in FOptions then
-      FSymbolDictionary.AddTypeSymbol(Result, hotPos, [suDeclaration]);
+   RecordSymbolUse(Result, hotPos, [suDeclaration]);
 end;
 
 // CheckFuncParams
@@ -5360,8 +5368,7 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcedureMethodExpected);
 
       Result.UsesSym:=TMethodSymbol(sym);
-      if coSymbolDictionary in FOptions then
-         FSymbolDictionary.AddTypeSymbol(sym, usesPos);
+      RecordSymbolUse(sym, usesPos, [suReference]);
 
       if Result.UsesSym.Params.Count<>1 then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_SingleParameterExpected);
@@ -5430,8 +5437,7 @@ begin
       typ := ReadType('', tcProperty);
       Result := TPropertySymbol.Create(name, typ, aVisibility);
       try
-         if coSymbolDictionary in FOptions then
-            FSymbolDictionary.AddValueSymbol(Result, propNamePos, [suDeclaration]);
+         RecordSymbolUse(Result, propNamePos, [suDeclaration]);
 
          if FTok.TestDelete(ttINDEX) then begin
             indexExpr:=ReadExpr;
@@ -5605,8 +5611,7 @@ begin
                      Result.AddField(member);
 
                      // Add member symbols and positions
-                     if coSymbolDictionary in FOptions then
-                        FSymbolDictionary.AddValueSymbol(member, posArray[x], [suDeclaration]);
+                     RecordSymbolUse(member, posArray[x], [suDeclaration]);
                   end;
                end;
 
@@ -5783,8 +5788,7 @@ begin
       proc:=TdwsProcedure(FProg);
       if proc.Func.Result=nil then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoResultRequired);
-      if coSymbolDictionary in FOptions then
-         FSymbolDictionary.AddValueSymbol(proc.Func.Result, exitPos, [suReference, suWrite]);
+      RecordSymbolUse(proc.Func.Result, exitPos, [suReference, suWrite]);
       leftExpr:=TVarExpr.CreateTyped(FProg, proc.Func.Result);
       try
          assignExpr:=ReadAssign(ttASSIGN, leftExpr);
@@ -5908,8 +5912,7 @@ begin
          if typeName <> '' then
             Result:=TAliasSymbol.Create(typeName, Result);
 
-         if coSymbolDictionary in FOptions then
-            FSymbolDictionary.AddTypeSymbol(Result, namePos);
+         RecordSymbolUse(Result, namePos, [suReference]);
 
       end else begin
 
@@ -6482,8 +6485,7 @@ begin
          if memberSet[memberSym.Offset] then
             FMsgs.AddCompilerError(FTok.GetToken.FScriptPos, CPE_FieldAlreadySet);
          memberSet[memberSym.Offset]:=True;
-         if coSymbolDictionary in FOptions then
-            FSymbolDictionary.AddSymbolReference(memberSym, FTok.GetToken.FScriptPos, True);
+         RecordSymbolUseReference(memberSym, FTok.GetToken.FScriptPos, True);
       end;
       FTok.KillToken;
       if not FTok.TestDelete(ttCOLON) then
@@ -6577,6 +6579,7 @@ var
    typ : TTypeSymbol;
    lazyParam, varParam, constParam : Boolean;
    posArray : TScriptPosArray;
+   typScriptPos : TScriptPos;
    sym : TParamSymbol;
    defaultExpr : TTypedExpr;
    curName : String;
@@ -6599,11 +6602,17 @@ begin
                ReadNameList(names, posArray);
 
                if not FTok.TestDelete(ttCOLON) then
+
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected)
+
                else begin
+
                   defaultExpr:=nil;
+
                   typ:=ReadType('', tcParameter);
                   try
+                     typScriptPos:=FTok.HotPos;
+
                      if (not constParam) and (typ is TOpenArraySymbol) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamMustBeConst);
                      if lazyParam and (typ is TFuncSymbol) then
@@ -6660,10 +6669,13 @@ begin
 
                         // Enter Field symbol in dictionary
                         if ParamsToDictionary and (coSymbolDictionary in FOptions) then begin
-                           FSymbolDictionary.AddValueSymbol(sym, posArray[i], [suDeclaration]);  // add variable symbol
-                           FSymbolDictionary.AddTypeSymbol(typ, FTok.HotPos);  // add type symbol
+                           // add variable symbol
+                           RecordSymbolUse(sym, posArray[i], [suDeclaration]);
+                           // record type symbol
+                           RecordSymbolUse(typ, typScriptPos, [suReference]);
                         end;
                      end;
+
                   finally
                      FreeAndNil(defaultExpr);
                   end;
@@ -7540,8 +7552,7 @@ begin
          Result.AddElement(elemSym);
 
          // Add member symbol to Symbol Dictionary
-         if coSymbolDictionary in FOptions then
-            FSymbolDictionary.AddConstSymbol(elemSym, namePos, [suDeclaration]);
+         RecordSymbolUse(elemSym, namePos, [suDeclaration]);
 
       until not FTok.TestDelete(ttCOMMA);
 

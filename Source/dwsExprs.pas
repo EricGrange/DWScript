@@ -55,41 +55,49 @@ type
 
    TScriptSourceType = (stMain, stUnit, stRecompile);
 
-  // A specific ScriptSource entry. The text of the script contained in that unit.
-  TScriptSourceItem = class
-  private
-    FNameReference: UnicodeString;
-    FSourceFile: TSourceFile;
-    FSourceType: TScriptSourceType;
-  public
-    constructor Create(const ANameReference: UnicodeString; ASourceFile: TSourceFile; ASourceType: TScriptSourceType);
-    property NameReference: UnicodeString read FNameReference write FNameReference;
-    property SourceFile: TSourceFile read FSourceFile;
-    property SourceType: TScriptSourceType read FSourceType;
-  end;
+   // A specific ScriptSource entry. The text of the script contained in that unit.
+   TScriptSourceItem = class
+      private
+         FNameReference: UnicodeString;
+         FSourceFile: TSourceFile;
+         FSourceType: TScriptSourceType;
 
-  // Manage a list of all the different Script Texts (files) used in the program.
-  TScriptSourceList = class
-  private
-    FSourceList: TList;
-    FMainScript: TScriptSourceItem;
-    function GetSourceItem(Index: Integer): TScriptSourceItem;
-    procedure SetSourceItem(Index: Integer; SourceItem: TScriptSourceItem);
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure Clear;
-    procedure Add(const ANameReference: UnicodeString; ASourceFile: TSourceFile; ASourceType: TScriptSourceType);
-    function FindScriptSourceItem(const ScriptPos: TScriptPos): TScriptSourceItem; overload;
-    function FindScriptSourceItem(SourceFile: TSourceFile): TScriptSourceItem; overload;
-    function FindScriptSourceItem(const SourceFileName: UnicodeString): TScriptSourceItem; overload;
-    function IndexOf(const AScriptPos: TScriptPos): Integer; overload;
-    function IndexOf(ASourceFile: TSourceFile): Integer; overload;
-    function IndexOf(const SourceFileName: UnicodeString): Integer; overload;
-    function Count: Integer;
-    property Items[Index: Integer]: TScriptSourceItem read GetSourceItem write SetSourceItem; default;
-    property MainScript: TScriptSourceItem read FMainScript;
-  end;
+      public
+         constructor Create(const ANameReference: UnicodeString; ASourceFile: TSourceFile; ASourceType: TScriptSourceType);
+
+         property NameReference: UnicodeString read FNameReference write FNameReference;
+         property SourceFile: TSourceFile read FSourceFile;
+         property SourceType: TScriptSourceType read FSourceType;
+   end;
+
+   // Manage a list of all the different Script Texts (files) used in the program.
+   TScriptSourceList = class
+      private
+         FSourceList: TList;
+         FMainScript: TScriptSourceItem;
+         function GetSourceItem(Index: Integer): TScriptSourceItem;
+         procedure SetSourceItem(Index: Integer; SourceItem: TScriptSourceItem);
+
+      public
+         constructor Create;
+         destructor Destroy; override;
+
+         procedure Clear;
+         procedure Add(const ANameReference: UnicodeString; ASourceFile: TSourceFile; ASourceType: TScriptSourceType);
+
+         function FindScriptSourceItem(const ScriptPos: TScriptPos): TScriptSourceItem; overload;
+         function FindScriptSourceItem(SourceFile: TSourceFile): TScriptSourceItem; overload;
+         function FindScriptSourceItem(const SourceFileName: UnicodeString): TScriptSourceItem; overload;
+
+         function IndexOf(const AScriptPos: TScriptPos): Integer; overload;
+         function IndexOf(ASourceFile: TSourceFile): Integer; overload;
+         function IndexOf(const SourceFileName: UnicodeString): Integer; overload;
+
+         function Count: Integer;
+
+         property Items[Index: Integer]: TScriptSourceItem read GetSourceItem write SetSourceItem; default;
+         property MainScript: TScriptSourceItem read FMainScript;
+   end;
 
    { Describe how the symbol at the position is being used. suReference would be
      a typical usage of the symbol. }
@@ -97,6 +105,8 @@ type
                    suRead, suWrite);
    TSymbolUsages = set of TSymbolUsage;
 
+   // Records a symbol's position in source and usage at that position
+   //
    TSymbolPosition = class
       private
          FScriptPos : TScriptPos;     // location of symbol instance in script
@@ -154,13 +164,10 @@ type
          destructor Destroy; override;
 
          procedure Clear;  // clear the lists
-         procedure AddSymbol(sym : TSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages);
-         procedure AddSymbolReference(sym : TSymbol; const pos : TScriptPos; isWrite : Boolean);
-         procedure AddValueSymbol(sym : TValueSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages);
-         procedure AddTypeSymbol(sym : TTypeSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages = [suReference]);
-         procedure AddConstSymbol(sym : TConstSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages = [suReference]);
+         procedure AddSymbol(sym : TSymbol; const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
 
-         procedure Remove(sym : TSymbol); // remove references to the symbol
+         // remove all references to the symbol
+         procedure Remove(sym : TSymbol);
          procedure RemoveInRange(const startPos, endPos : TScriptPos);
 
          function FindSymbolAtPosition(aCol, aLine: Integer; const sourceFile : UnicodeString): TSymbol; overload;
@@ -180,6 +187,7 @@ type
    TdwsSourceContextCallBack = procedure (context : TdwsSourceContext) of object;
 
    // Context within the script. (A block of code) Can be nested
+   //
    TdwsSourceContext = class
       private
          FParentContext : TdwsSourceContext;
@@ -234,7 +242,7 @@ type
          Standard Begin..end blocks do not have a ParentSymbol. }
          procedure OpenContext(const startPos : TScriptPos; parentSymbol : TSymbol; token : TTokenType);
          { Pop a context off the stack }
-         procedure CloseContext(const AEndPos : TScriptPos; onlyIfTokenType : TTokenType = ttNone);
+         procedure CloseContext(const aEndPos : TScriptPos; onlyIfTokenType : TTokenType = ttNone);
          { Pops and close all opened contexts in the stack }
          procedure CloseAllContexts(const aEndPos : TScriptPos);
 
@@ -6516,63 +6524,33 @@ end;
 
 // AddSymbol
 //
-procedure TdwsSymbolDictionary.AddSymbol(sym : TSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages);
+procedure TdwsSymbolDictionary.AddSymbol(sym : TSymbol; const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
 var
-   symPosList: TSymbolPositionList;
+   symPosList : TSymbolPositionList;
 begin
-   if sym=nil then Exit;   // don't add a nil pointer
+   if sym=nil then Exit;         // don't add a nil pointer
    if sym.IsBaseType then Exit;  // don't store references to base symbols
 
-   { Check to see if symbol list already exists, if not create it }
-   symPosList:=FindSymbolPosList(Sym);
+   // Check to see if symbol list already exists, if not create it
+   symPosList:=FindSymbolPosList(sym);
    if symPosList=nil then begin
-      symPosList:=TSymbolPositionList.Create(Sym);
+      symPosList:=TSymbolPositionList.Create(sym);
       FSymbolList.Add(symPosList);
    end;
 
    // add the instance of the symbol to the position list
-   symPosList.Add(Pos, UseTypes);
-end;
-
-// AddSymbolReference
-//
-procedure TdwsSymbolDictionary.AddSymbolReference(sym : TSymbol; const pos : TScriptPos; isWrite : Boolean);
-begin
-   if isWrite then
-      AddSymbol(sym, pos, [suReference, suWrite])
-   else AddSymbol(sym, pos, [suReference, suRead]);
-end;
-
-// AddValueSymbol
-//
-procedure TdwsSymbolDictionary.AddValueSymbol(sym : TValueSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages);
-begin
-   AddSymbol(sym, pos, useTypes);
-end;
-
-// AddTypeSymbol
-//
-procedure TdwsSymbolDictionary.AddTypeSymbol(sym : TTypeSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages = [suReference]);
-begin
-   AddSymbol(sym, pos, useTypes);
-end;
-
-// AddConstSymbol
-//
-procedure TdwsSymbolDictionary.AddConstSymbol(sym : TConstSymbol; const pos : TScriptPos; const useTypes : TSymbolUsages = [suReference]);
-begin
-   AddSymbol(sym, pos, useTypes);
+   symPosList.Add(scriptPos, UseTypes);
 end;
 
 // FindSymbolAtPosition
 //
-function TdwsSymbolDictionary.FindSymbolAtPosition(ACol, ALine: Integer; const sourceFile : UnicodeString): TSymbol;
+function TdwsSymbolDictionary.FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : UnicodeString) : TSymbol;
 var
    i : Integer;
 begin
-   Result := nil;
-   for i := 0 to FSymbolList.Count - 1 do begin
-      Result := FSymbolList[i].FindSymbolAtPosition(ACol, ALine, sourceFile);
+   Result:=nil;
+   for i:=0 to FSymbolList.Count-1 do begin
+      Result:=FSymbolList[i].FindSymbolAtPosition(aCol, aLine, sourceFile);
       if Assigned(Result) then Break;
    end;
 end;
@@ -6617,32 +6595,34 @@ begin
    Result:=nil;
 end;
 
-procedure TdwsSymbolDictionary.Remove(Sym: TSymbol);
+// Remove
+//
+procedure TdwsSymbolDictionary.Remove(sym: TSymbol);
 var
-   idx, x : Integer;
+   idx, i : Integer;
    symList : TSymbolPositionList;
 begin
    // TFuncSymbol - remove params
-   if Sym is TFuncSymbol then begin
-      for x := 0 to TFuncSymbol(Sym).Params.Count - 1 do
-         Remove(TFuncSymbol(Sym).Params[x]);
+   if sym is TFuncSymbol then begin
+      for i := 0 to TFuncSymbol(sym).Params.Count - 1 do
+         Remove(TFuncSymbol(sym).Params[i]);
    // TPropertySymbol - remove array indices
-   end else if Sym is TPropertySymbol then begin
-      for x := 0 to TPropertySymbol(Sym).ArrayIndices.Count - 1 do
-         Remove(TPropertySymbol(Sym).ArrayIndices[x]);
+   end else if sym is TPropertySymbol then begin
+      for i := 0 to TPropertySymbol(sym).ArrayIndices.Count - 1 do
+         Remove(TPropertySymbol(sym).ArrayIndices[i]);
    // TStructuredTypeSymbol - remove members (methods, fields, properties)
-   end else if Sym is TStructuredTypeSymbol then begin
-      for x := 0 to TStructuredTypeSymbol(Sym).Members.Count - 1 do
-         Remove(TStructuredTypeSymbol(Sym).Members[x]);
+   end else if sym is TStructuredTypeSymbol then begin
+      for i := 0 to TStructuredTypeSymbol(sym).Members.Count - 1 do
+         Remove(TStructuredTypeSymbol(sym).Members[i]);
    end;
 
    // basic entry to remove
-   SymList := FindSymbolPosList(Sym);
-   if Assigned(SymList) then begin
-      // remove SymList from internal list
-      idx:=FSymbolList.Extract(SymList);
+   symList := FindSymbolPosList(sym);
+   if Assigned(symList) then begin
+      // remove symList from internal list
+      idx:=FSymbolList.Extract(symList);
       Assert(idx>=0);
-      SymList.Free;
+      symList.Free;
    end;
 end;
 
@@ -7115,7 +7095,7 @@ end;
 
 // CloseContext
 //
-procedure TdwsSourceContextMap.CloseContext(const AEndPos: TScriptPos; onlyIfTokenType : TTokenType = ttNone);
+procedure TdwsSourceContextMap.CloseContext(const aEndPos : TScriptPos; onlyIfTokenType : TTokenType = ttNone);
 begin
    if (onlyIfTokenType<>ttNone) and (FCurrentContext.Token<>onlyIfTokenType) then Exit;
 
