@@ -2135,8 +2135,15 @@ begin
       funcResult.Typ:=ReadFuncResultType(funcKind);
       ReadSemiColon;
 
+      if FTok.TestDelete(ttREINTRODUCE) then begin
+         if not isReintroduced then
+            FMsgs.AddCompilerErrorFmt(methPos, CPE_CantReintroduce, [name]);
+         isReintroduced := False;
+         ReadSemiColon;
+      end;
+
       if structSym.AllowVirtualMembers then begin
-         qualifier:=FTok.TestDeleteAny([ttVIRTUAL, ttOVERRIDE, ttREINTRODUCE, ttABSTRACT]);
+         qualifier:=FTok.TestDeleteAny([ttVIRTUAL, ttOVERRIDE, ttABSTRACT]);
          if qualifier<>ttNone then begin
             case qualifier of
                ttVIRTUAL : begin
@@ -2168,12 +2175,6 @@ begin
                      funcResult.SetOverride(meth);
                      isReintroduced := False;
                   end;
-                  ReadSemiColon;
-               end;
-               ttREINTRODUCE : begin
-                  if not isReintroduced then
-                     FMsgs.AddCompilerErrorFmt(methPos, CPE_CantReintroduce, [name]);
-                  isReintroduced := False;
                   ReadSemiColon;
                end;
                ttABSTRACT : begin
