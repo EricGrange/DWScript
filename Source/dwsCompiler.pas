@@ -5863,6 +5863,9 @@ begin
          Result:=ReadProcDecl(tt, hotPos, False, True);
          Result.SetName(typeName);
          (Result as TFuncSymbol).SetIsType;
+         // close declaration context
+         if coContextMap in Options then
+            FSourceContextMap.CloseContext(FTok.HotPos);
       end;
 
    else
