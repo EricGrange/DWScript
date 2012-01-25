@@ -5081,6 +5081,7 @@ begin
                else FMsgs.AddCompilerErrorFmt(namePos, CPE_NotAClass, [name]);
                typ:=FProg.TypObject;
             end;
+            RecordSymbolUse(typ, namePos, [suReference]);
 
             ancestorTyp:=TClassSymbol(typ);
 
@@ -5099,6 +5100,7 @@ begin
                if intfTyp=nil then
                   FMsgs.AddCompilerErrorFmt(namePos, CPE_NotAnInterface, [name])
                else begin
+                  RecordSymbolUse(intfTyp, namePos, [suReference]);
                   if interfaces.IndexOf(intfTyp)>=0 then
                      FMsgs.AddCompilerErrorFmt(namePos, CPE_InterfaceAlreadyImplemented, [name])
                   else interfaces.Add(intfTyp);
