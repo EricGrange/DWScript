@@ -3697,6 +3697,7 @@ begin
                      if TMethodSymbol(member).IsClassMethod then
                         funcExpr:=GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkClassOfRef, symPos, False)
                      else funcExpr:=GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkObjRef, symPos, False);
+                     Result:=nil; // avoid double-free in case of error in WrapUpFunctionRead
                      Result:=WrapUpFunctionRead(funcExpr, expecting);
 
                   end else if member is TFieldSymbol then begin
