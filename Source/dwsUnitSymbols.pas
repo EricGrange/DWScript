@@ -52,7 +52,7 @@ type
    TUnitSymbolTable = class (TSymbolTable)
       private
          FObjects : TTightList;
-         FUnitSymbol : TUnitMainSymbol;
+         FUnitMainSymbol : TUnitMainSymbol;
 
       public
          destructor Destroy; override;
@@ -60,7 +60,7 @@ type
          procedure AddObjectOwner(const AOwner : IObjectOwner);
          procedure ClearObjectOwners;
 
-         property UnitSymbol : TUnitMainSymbol read FUnitSymbol write FUnitSymbol;
+         property UnitMainSymbol : TUnitMainSymbol read FUnitMainSymbol write FUnitMainSymbol;
    end;
 
    // TUnitPrivateTable
@@ -95,6 +95,7 @@ type
          FTable : TUnitSymbolTable;
          FInterfaceTable : TSymbolTable;
          FImplementationTable : TUnitImplementationTable;
+         FStoredParents : TTightList;
 
       public
          constructor Create(const name : UnicodeString; table : TUnitSymbolTable;
@@ -105,6 +106,9 @@ type
 
          procedure CreateInterfaceTable;
          procedure UnParentInterfaceTable;
+
+         procedure StoreParents;
+         procedure RestoreParents;
 
          function ReferenceInSymbolTable(aTable : TSymbolTable) : TUnitSymbol;
 
@@ -393,6 +397,7 @@ begin
    FInterfaceTable.Free;
    FImplementationTable.Free;
    FTable.Free;
+   FStoredParents.Clear;
    inherited;
 end;
 
@@ -420,6 +425,34 @@ end;
 procedure TUnitMainSymbol.UnParentInterfaceTable;
 begin
    Table.RemoveParent(FInterfaceTable);
+end;
+
+// StoreParents
+//
+procedure TUnitMainSymbol.StoreParents;
+var
+   i : Integer;
+begin
+   if Self=nil then Exit;
+   Assert(FStoredParents.Count=0);
+   Assert(Table.ParentCount>0);
+   for i:=0 to Table.ParentCount-1 do
+      FStoredParents.Add(Table.Parents[i]);
+   Table.ClearParents;
+end;
+
+// RestoreParents
+//
+procedure TUnitMainSymbol.RestoreParents;
+var
+   i : Integer;
+begin
+   if Self=nil then Exit;
+   if FStoredParents.Count=0 then Exit;
+   Assert(Table.ParentCount=0);
+   for i:=0 to FStoredParents.Count-1 do
+      Table.AddParent(FStoredParents.List[i]);
+   FStoredParents.Clear;
 end;
 
 // HasSymbol
@@ -456,12 +489,11 @@ begin
       nameSpace.RegisterNameSpaceUnit(Result);
    end else begin
       Result:=nameSpace;
-      if not ((nameSpace.Main=nil) or (nameSpace.Main=Self)) then
-         Assert((nameSpace.Main=nil) or (nameSpace.Main=Self));
+      Assert((nameSpace.Main=nil) or (nameSpace.Main=Self));
       nameSpace.Main:=Self;
    end;
 
-   aTable.AddParent(Table);
+   aTable.InsertParent(0, Table);
 end;
 
 // ------------------

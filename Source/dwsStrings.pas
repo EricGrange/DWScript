@@ -253,6 +253,9 @@ const
   CPE_NoDefaultProperty = 'Class "%s" has no default property';
   CPE_ConstVarParam = 'Argument %d (%s) cannot be passed as Var-parameter';
   CPE_OnlyVariablesAsVarParam = 'Only a variable can be be passed as Var-parameter';
+  CPE_MustExplicitOverloads = 'Overloaded procedure "%s" must be marked with the "overload" directive';
+  CPE_NoMatchingOverload = 'There is no overloaded version of "%s" that can be called with these arguments';
+  CPE_MatchingOverload = 'Overload of "%s" will be ambiguous with a previously declared version';
 
   CPE_InvalidOperands = 'Invalid Operands';
   CPE_IncompatibleOperands = 'Incompatible operands';

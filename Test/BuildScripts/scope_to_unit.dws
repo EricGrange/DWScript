@@ -1,4 +1,5 @@
 uses ScopePrint, ScopePrintB;
 
 Print('Hello');
+Default.PrintLn('');
 PrintLn(123);

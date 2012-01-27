@@ -138,6 +138,7 @@ type
          procedure Add(const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
          procedure Delete(index : Integer);
          function FindUsage(const symbolUse : TSymbolUsage) : TSymbolPosition;
+         function IndexOfPosition(const scriptPos : TScriptPos) : Integer;
 
          property Items[index : Integer] : TSymbolPosition read GetPosition; default;
          function Count : Integer; inline;
@@ -169,6 +170,8 @@ type
          // remove all references to the symbol
          procedure Remove(sym : TSymbol);
          procedure RemoveInRange(const startPos, endPos : TScriptPos);
+
+         procedure ReplaceSymbolAt(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
 
          function FindSymbolAtPosition(aCol, aLine: Integer; const sourceFile : UnicodeString): TSymbol; overload;
          function FindSymbolPosList(sym: TSymbol): TSymbolPositionList; overload;  // return list of symbol
@@ -865,21 +868,26 @@ type
    // TFuncExprBase
    //
    TFuncExprBase = class(TPosDataExpr)
+      private
+         FFunc : TFuncSymbol;
+
       protected
          FArgs : TExprBaseListRec;
-         FFunc : TFuncSymbol;
          FResultAddr : Integer;
 
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         procedure SetFunc(aFuncSym : TFuncSymbol);
+
       public
          constructor Create(prog : TdwsProgram; const pos : TScriptPos; aFunc : TFuncSymbol);
          destructor Destroy; override;
 
-         procedure AddArg(arg : TTypedExpr); virtual; abstract;
+         procedure AddArg(arg : TTypedExpr);
          procedure ClearArgs;
          function ExpectedArg : TParamSymbol; virtual; abstract;
+         function GetArgType(idx : Integer) : TTypeSymbol;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function IsConstant : Boolean; override;
 
@@ -887,7 +895,7 @@ type
 
          procedure SetResultAddr(prog : TdwsProgram; exec : TdwsExecution; ResultAddr: Integer = -1);
 
-         property FuncSym : TFuncSymbol read FFunc;
+         property FuncSym : TFuncSymbol read FFunc write SetFunc;
          property Args : TExprBaseListRec read FArgs;
    end;
 
@@ -949,7 +957,6 @@ type
          constructor Create(prog : TdwsProgram; const pos : TScriptPos; func : TFuncSymbol);
          destructor Destroy; override;
 
-         procedure AddArg(arg : TTypedExpr); override;
          function ExpectedArg : TParamSymbol; override;
 
          procedure AddPushExprs(prog : TdwsProgram);
@@ -1004,7 +1011,7 @@ type
    TFuncRefExpr = class (TAnonymousFuncRefExpr)
    end;
 
-   TFuncPtrExpr = class(TFuncExpr)
+   TFuncPtrExpr = class sealed (TFuncExpr)
       private
          FCodeExpr : TDataExpr;
 
@@ -3833,9 +3840,7 @@ end;
 constructor TFuncExprBase.Create(prog : TdwsProgram; const pos : TScriptPos; aFunc : TFuncSymbol);
 begin
    inherited Create(Prog, Pos, nil);
-   FFunc:=aFunc;
-   if Assigned(aFunc) then
-      FTyp:=aFunc.Typ;
+   FuncSym:=aFunc;
 end;
 
 // Destroy
@@ -3844,6 +3849,13 @@ destructor TFuncExprBase.Destroy;
 begin
    FArgs.Clean;
    inherited;
+end;
+
+// AddArg
+//
+procedure TFuncExprBase.AddArg(arg : TTypedExpr);
+begin
+   FArgs.Add(arg);
 end;
 
 // ClearArgs
@@ -3929,12 +3941,31 @@ begin
    Result:=FArgs.Count;
 end;
 
+// SetFunc
+//
+procedure TFuncExprBase.SetFunc(aFuncSym : TFuncSymbol);
+begin
+   FFunc:=aFuncSym;
+   if Assigned(aFuncSym) then
+      FTyp:=aFuncSym.Typ
+   else FTyp:=nil;
+end;
+
 // Initialize
 //
 procedure TFuncExprBase.Initialize(prog : TdwsProgram);
 begin
    if Assigned(FFunc) and Assigned(FFunc.Executable) then
       FFunc.Executable.InitExpression(Self);
+end;
+
+// GetArgType
+//
+function TFuncExprBase.GetArgType(idx : Integer) : TTypeSymbol;
+begin
+   if Cardinal(idx)<Cardinal(FArgs.Count) then
+      Result:=TTypedExpr(FArgs[idx]).Typ
+   else Result:=nil;
 end;
 
 // ------------------
@@ -4239,13 +4270,6 @@ destructor TFuncExpr.Destroy;
 begin
    FreeMem(FPushExprs);
    inherited;
-end;
-
-// AddArg
-//
-procedure TFuncExpr.AddArg(arg: TTypedExpr);
-begin
-   FArgs.Add(arg);
 end;
 
 // ExpectedArg
@@ -6647,6 +6671,21 @@ begin
    end;
 end;
 
+// ReplaceSymbolAt
+//
+procedure TdwsSymbolDictionary.ReplaceSymbolAt(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
+var
+   i : Integer;
+   list : TSymbolPositionList;
+   symPos : TSymbolPosition;
+begin
+   list:=FindSymbolPosList(oldSym);
+   i:=list.IndexOfPosition(scriptPos);
+   symPos:=list[i];
+   AddSymbol(newSym, scriptPos, symPos.SymbolUsages);
+   list.Delete(i);
+end;
+
 // Clear
 //
 procedure TdwsSymbolDictionary.Clear;
@@ -6808,6 +6847,21 @@ begin
       end;
    end;
    Result:=nil;
+end;
+
+// IndexOfPosition
+//
+function TSymbolPositionList.IndexOfPosition(const scriptPos : TScriptPos) : Integer;
+var
+   i : Integer;
+   symPos : TSymbolPosition;
+begin
+   for i:=0 to Count-1 do begin
+      symPos:=Items[i];
+      if symPos.ScriptPos.SamePosAs(scriptPos) then
+         Exit(i);
+   end;
+   Result:=-1;
 end;
 
 // ------------------

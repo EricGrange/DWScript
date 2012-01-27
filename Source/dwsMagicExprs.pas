@@ -154,8 +154,8 @@ type
 
          constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos; func : TMagicFuncSymbol); virtual;
 
-         procedure AddArg(arg : TTypedExpr); override;
          function ExpectedArg : TParamSymbol; override;
+
          function IsWritable : Boolean; override;
    end;
 
@@ -414,19 +414,12 @@ begin
    inherited Create(prog, scriptPos, func);
 end;
 
-// AddArg
-//
-procedure TMagicFuncExpr.AddArg(arg : TTypedExpr);
-begin
-   FArgs.Add(arg);
-end;
-
 // ExpectedArg
 //
 function TMagicFuncExpr.ExpectedArg : TParamSymbol;
 begin
-   if FArgs.Count<FFunc.Params.Count then
-      Result:=(FFunc.Params[FArgs.Count] as TParamSymbol)
+   if FArgs.Count<FuncSym.Params.Count then
+      Result:=(FuncSym.Params[FArgs.Count] as TParamSymbol)
    else Result:=nil;
 end;
 

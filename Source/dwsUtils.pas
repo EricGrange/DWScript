@@ -383,6 +383,8 @@ function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
 
 function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 
+function Min(a, b : Integer) : Integer; inline;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -578,6 +580,15 @@ begin
    if (n2>n1) or (n2=0) then
       Result:=False
    else Result:=(UnicodeCompareLen(PWideChar(aStr), PWideChar(aBegin), n2)=0);
+end;
+
+// Min
+//
+function Min(a, b : Integer) : Integer;
+begin
+   if a<b then
+      Result:=a
+   else Result:=b;
 end;
 
 // ------------------

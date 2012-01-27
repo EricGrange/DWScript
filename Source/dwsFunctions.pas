@@ -760,11 +760,14 @@ constructor TSourceUnit.Create(const unitName : UnicodeString; rootTable : TSymb
                                unitSyms : TUnitMainSymbols);
 var
    ums : TUnitMainSymbol;
+   ust : TUnitSymbolTable;
 begin
    inherited Create;
    FDependencies:=TStringList.Create;
-   FSymbol:=TUnitMainSymbol.Create(unitName, TUnitSymbolTable.Create(nil, rootTable.AddrGenerator), unitSyms);
-   FSymbol.ReferenceInSymbolTable(rootTable);
+   ust:=TUnitSymbolTable.Create(nil, rootTable.AddrGenerator);
+   FSymbol:=TUnitMainSymbol.Create(unitName, ust, unitSyms);
+//   FSymbol.ReferenceInSymbolTable(rootTable);
+   ust.UnitMainSymbol:=FSymbol;
 
    FSymbol.CreateInterfaceTable;
 

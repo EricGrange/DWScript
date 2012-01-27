@@ -11,7 +11,7 @@ uses ScopePrint;
 
 procedure PrintLn(i : Integer);
 begin
-   Default.PrintLn('ScopedB<');
+   Default.Print('ScopedB<');
    Print(IntToStr(i));
    Default.PrintLn('>');
 end;

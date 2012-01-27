@@ -256,7 +256,7 @@ type
          procedure Clean;
 
          procedure PushContext(compiler : TdwsCompiler);
-         procedure PopContext(compiler : TdwsCompiler);
+         procedure PopContext(compiler : TdwsCompiler; var oldUnitSymbol : TUnitMainSymbol);
    end;
 
    // TdwsCompiler
@@ -292,7 +292,7 @@ type
          FUnitSection : TdwsUnitSection;
          FUnitContextStack : TdwsCompilerUnitContextStack;
          FUnitsFromStack : TSimpleStack<UnicodeString>;
-         FUnitSymbol : TUnitMainSymbol;
+         FCurrentUnitSymbol : TUnitMainSymbol;
          FAnyFuncSymbol : TAnyFuncSymbol;
 
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
@@ -334,7 +334,7 @@ type
          function ReadArrayType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
          function ReadArrayConstant(expecting : TTypeSymbol = nil) : TArrayConstantExpr;
          function ReadArrayMethod(const name : UnicodeString; const namePos : TScriptPos;
-                                  baseExpr : TTypedExpr; isWrite : Boolean) : TProgramExpr;
+                                  baseExpr : TTypedExpr) : TProgramExpr;
          function ReadCase : TCaseExpr;
          function ReadCaseConditions(condList : TCaseConditions; valueExpr : TTypedExpr) : Integer;
          function ReadClassOf(const typeName : UnicodeString) : TClassOfSymbol;
@@ -370,9 +370,16 @@ type
 
          function ReadStaticMethod(methodSym : TMethodSymbol; isWrite : Boolean;
                                    expecting : TTypeSymbol = nil) : TProgramExpr;
-         function ReadFunc(funcSym : TFuncSymbol; isWrite: Boolean;
-                        codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
-         function WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil) : TTypedExpr;
+         function ReadFuncOverloaded(funcSym : TFuncSymbol; fromTable : TSymbolTable;
+                                     codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
+         function ResolveOverload(funcExpr : TFuncExprBase; overloads : TFuncSymbolList) : Boolean;
+         function HasConflictingOverload(funcSym, forwardedSym : TFuncSymbol) : Boolean;
+         function PerfectMatchOverload(funcSym : TFuncSymbol) : TFuncSymbol;
+         function ReadFunc(funcSym : TFuncSymbol; codeExpr : TDataExpr = nil;
+                           expecting : TTypeSymbol = nil;
+                           overloads : TFuncSymbolList = nil) : TTypedExpr;
+         function WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil;
+                                     overloads : TFuncSymbolList = nil) : TTypedExpr;
 
          procedure ReadFuncArgs(funcExpr : TFuncExprBase; var argPosArray : TScriptPosArray);
          procedure TypeCheckArgs(funcExpr : TFuncExprBase; const argPosArray : TScriptPosArray);
@@ -392,7 +399,7 @@ type
          function ReadMethodImpl(structSym : TStructuredTypeSymbol; funcKind : TFuncKind;
                               isClassMethod : Boolean) : TMethodSymbol;
          procedure ReadDeprecated(funcSym : TFuncSymbol);
-         procedure WarnDeprecated(funcSym : TFuncSymbol);
+         procedure WarnDeprecated(funcExpr : TFuncExprBase);
          function ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
          function ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol) : TTypedExpr;
          function ReadClassSymbolName(baseType : TClassSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
@@ -404,7 +411,7 @@ type
          procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray;
                                 allowDots : Boolean = False);
          function  ReadNew(isWrite : Boolean) : TProgramExpr;
-         function  ReadNewArray(elementTyp : TTypeSymbol; isWrite : Boolean) : TNewArrayExpr;
+         function  ReadNewArray(elementTyp : TTypeSymbol) : TNewArrayExpr;
          procedure ReadArrayParams(ArrayIndices: TSymbolTable);
          // Don't want to add param symbols to dictionary when a method implementation (they get thrown away)
          procedure ReadParams(const hasParamMeth : THasParamSymbolMethod;
@@ -468,8 +475,7 @@ type
          procedure MarkLoopExitable(level : TLoopExitable);
          procedure LeaveLoop;
 
-         function GetFuncExpr(funcSym : TFuncSymbol; isWrite : Boolean;
-                           codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TFuncExprBase;
+         function GetFuncExpr(funcSym : TFuncSymbol; codeExpr : TDataExpr = nil) : TFuncExprBase;
          function GetMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
                              const Pos: TScriptPos; ForceStatic : Boolean): TFuncExpr;
 
@@ -493,6 +499,9 @@ type
 
          procedure DoSectionChanged;
 
+         property CurrentUnitSymbol : TUnitMainSymbol read FCurrentUnitSymbol;
+         procedure EnterUnit(unitSymbol : TUnitMainSymbol; var oldUnitSymbol : TUnitMainSymbol);
+         procedure LeaveUnit(oldUnitSymbol : TUnitMainSymbol);
          procedure SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : UnicodeString);
 
          procedure SetupCompileOptions(conf : TdwsConfiguration);
@@ -516,6 +525,7 @@ type
 
          procedure RecordSymbolUse(sym : TSymbol; const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
          procedure RecordSymbolUseReference(sym : TSymbol; const scriptPos : TScriptPos; isWrite : Boolean);
+         procedure ReplaceSymbolUse(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
 
          property CurrentProg : TdwsProgram read FProg write FProg;
          property Msgs : TdwsCompileMessageList read FMsgs;
@@ -783,32 +793,13 @@ end;
 
 // GetFuncExpr
 //
-function TdwsCompiler.GetFuncExpr(funcSym : TFuncSymbol; isWrite : Boolean;
-                                  codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TFuncExprBase;
+function TdwsCompiler.GetFuncExpr(funcSym : TFuncSymbol; codeExpr : TDataExpr = nil) : TFuncExprBase;
 var
    magicFuncSym : TMagicFuncSymbol;
 begin
    if (codeExpr=nil) and funcSym.IsType then
       FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionMethodExpected);
 
-(*   if funcSym.InheritsFrom(TMethodSymbol) and not (TMethodSymbol(funcSym).IsClassMethod) then begin
-
-      if codeExpr=nil then begin
-
-         Result:=TMethodStaticExpr.Create(FProg, FTok.HotPos, TMethodSymbol(funcSym),
-                                          TMethodObjExpr.Create(FProg, FTok.HotPos, codeExpr));
-
-      end else begin
-
-         Result:=nil;
-         Assert(False);
-//         Result:=TMethodStaticExpr.Create(FProg, FTok.HotPos, TMethodSymbol(funcSym),
-//                                          TMethodObjExpr.Create(FProg, FTok.HotPos, codeExpr),
-//                                          True, codeExpr, isWrite);
-
-      end;
-
-   end else*)
    if codeExpr=nil then begin
 
       if funcSym.InheritsFrom(TMagicFuncSymbol) then begin
@@ -834,7 +825,6 @@ end;
 function TdwsCompiler.GetMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
              const Pos: TScriptPos; ForceStatic : Boolean): TFuncExpr;
 begin
-   WarnDeprecated(meth);
    Result:=CreateMethodExpr(FProg, meth, Expr, RefKind, Pos, ForceStatic);
 end;
 
@@ -1052,7 +1042,7 @@ begin
       if SameText(FUnitsFromStack.Items[i], unitName) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitCircularReference);
 
-   Result:=TUnitSymbol(FProg.Table.FindSymbol(unitName, cvMagic, TUnitSymbol));
+   Result:=TUnitSymbol(FProg.Table.FindLocal(unitName, TUnitSymbol));
    if (Result<>nil) and (Result.Main<>nil) then begin
       // ignore multiple requests (for now)
       Exit;
@@ -1128,6 +1118,14 @@ begin
    else RecordSymbolUse(sym, scriptPos, [suReference, suRead]);
 end;
 
+// ReplaceSymbolUse
+//
+procedure TdwsCompiler.ReplaceSymbolUse(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
+begin
+   if coSymbolDictionary in Options then
+      FSymbolDictionary.ReplaceSymbolAt(oldSym, newSym, scriptPos);
+end;
+
 // RecompileInContext
 //
 procedure TdwsCompiler.RecompileInContext(const context : IdwsProgram;
@@ -1163,7 +1161,7 @@ begin
       sourceFile.Code:=codeText;
 
       FMainProg.ResetExprs;
-      FUnitSymbol:=nil;
+      FCurrentUnitSymbol:=nil;
       FUnitSection:=secMixed;
 
       // Start compilation
@@ -1294,11 +1292,11 @@ begin
          stMain : begin
             HandleUnitDependencies;
             if coContextMap in Options then
-               FSourceContextMap.OpenContext(FTok.CurrentPos, FUnitSymbol, ttPROGRAM);
+               FSourceContextMap.OpenContext(FTok.CurrentPos, CurrentUnitSymbol, ttPROGRAM);
          end;
          stUnit : begin
             if coContextMap in Options then
-               FSourceContextMap.OpenContext(FTok.CurrentPos, FUnitSymbol, ttUNIT);
+               FSourceContextMap.OpenContext(FTok.CurrentPos, CurrentUnitSymbol, ttUNIT);
             FUnitSection:=secHeader;
             ReadUnitHeader;
          end;
@@ -1308,11 +1306,10 @@ begin
 
       case scriptType of
          stUnit : begin
-            if coContextMap in Options then begin
-               if (finalToken=ttNone) or (finalToken=ttEND) then
+            if (finalToken=ttNone) or (finalToken=ttEND) then begin
+               if coContextMap in Options then
                   FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
             end;
-
             FProg.InitExpr.AddStatement(Result);
             Result:=nil;
          end;
@@ -1326,13 +1323,13 @@ begin
 
       if FTok.ConditionalDepth.Count>0 then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_UnbalancedConditionalDirective);
-      if FUnitSymbol<>nil then
-         FUnitSymbol.UnParentInterfaceTable;
+//      if CurrentUnitSymbol<>nil then
+//         FUnitSymbol.UnParentInterfaceTable;
 
       if finalToken=ttIMPLEMENTATION then begin
          if coSymbolDictionary in Options then
-            if FUnitSymbol<>nil then
-               FSymbolDictionary.AddSymbol(FUnitSymbol, FTok.HotPos, [suImplementation]);
+            if CurrentUnitSymbol<>nil then
+               FSymbolDictionary.AddSymbol(CurrentUnitSymbol, FTok.HotPos, [suImplementation]);
          if readingMain then begin
             unitBlock:=ReadRootBlock([], finalToken);
             FProg.InitExpr.AddStatement(unitBlock);
@@ -1367,11 +1364,10 @@ var
    oldUnit : TUnitMainSymbol;
 begin
    while FUnitContextStack.Count>0 do begin
-      oldUnit:=FUnitSymbol;
-      FUnitContextStack.PopContext(Self);
+      FUnitContextStack.PopContext(Self, oldUnit);
       FUnitSection:=secImplementation;
       try
-         implemTable:=TUnitImplementationTable.Create(FUnitSymbol);
+         implemTable:=TUnitImplementationTable.Create(CurrentUnitSymbol);
          oldTable:=FProg.Table;
          FProg.Table:=implemTable;
          try
@@ -1389,7 +1385,7 @@ begin
       finally
          Inc(FLineCount, FTok.CurrentPos.Line-2);
          FreeAndNil(FTok);
-         FUnitSymbol:=oldUnit;
+         LeaveUnit(oldUnit);
       end;
    end;
 end;
@@ -1438,7 +1434,7 @@ begin
             if coContextMap in FOptions then begin
                if coContextMap in Options then
                   FSourceContextMap.CloseContext(FTok.HotPos, ttINTERFACE);
-               FSourceContextMap.OpenContext(FTok.HotPos, FUnitSymbol, ttIMPLEMENTATION);
+               FSourceContextMap.OpenContext(FTok.HotPos, CurrentUnitSymbol, ttIMPLEMENTATION);
             end;
             FUnitSection:=secImplementation;
             DoSectionChanged;
@@ -1776,7 +1772,10 @@ begin
             if typ is TArraySymbol then begin
                sas:=TStaticArraySymbol.Create('', typ, FProg.TypInteger, 0, TArraySymbol(typ).typ.Size-1);
                FProg.Table.AddSymbol(sas);
-               Result:=constSymbolClass.Create(name, sas, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
+               if expr is TConstExpr then begin
+                  Result:=constSymbolClass.Create(name, sas, TConstExpr(expr).Data[FExec], TConstExpr(expr).Addr[FExec]);
+                  detachTyp:=False;
+               end else Result:=constSymbolClass.Create(name, sas, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
             end else begin
                if typ.Size=1 then begin
                   expr.EvalAsVariant(FExec, val);
@@ -1902,28 +1901,27 @@ var
    name : UnicodeString;
    sym : TSymbol;
    funcPos : TScriptPos;
-   forwardedSym : TFuncSymbol;
+   overloadFuncSym, existingFuncSym, forwardedSym : TFuncSymbol;
    forwardedSymPos : TSymbolPosition;
    sourceContext : TdwsSourceContext;
 begin
+   sym:=nil;
+
    funcKind:=cTokenToFuncKind[funcToken];
+
    if not isType then begin
-      // Find Symbol for Functionname
+      // Find existing symbol for function name (if any)
       if isAnonymous then begin
          name:='';
-         sym:=nil;
       end else begin
          if not FTok.TestDeleteNamePos(name, funcPos) then begin
             FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
             name:='';
          end;
          CheckSpecialName(name);
-
          sym:=FProg.Table.FindSymbol(name, cvMagic);
       end;
-
    end else begin
-      sym:=nil;
       name:='';
    end;
 
@@ -1933,8 +1931,8 @@ begin
       sourceContext:=FSourceContextMap.Current;
    end else sourceContext:=nil;
 
-   // name is the name of class -> Method
-   if (sym is TClassSymbol) or (sym is TRecordSymbol) then begin
+   // name is the name of structured type -> this is a method implementation
+   if sym is TStructuredTypeSymbol then begin
 
       // Store reference to class in dictionary
       RecordSymbolUse(sym, funcPos, [suReference]);
@@ -1946,14 +1944,20 @@ begin
       if isClassMethod or (funcKind in [fkConstructor, fkDestructor, fkMethod]) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ImplClassNameExpected);
 
-      if     (sym is TFuncSymbol)
-         and TFuncSymbol(sym).IsForwarded
-         and (FUnitSymbol.HasSymbol(sym) or FProg.Table.HasSymbol(sym)) then
-         // There was already a (forward) declaration
-         forwardedSym := TFuncSymbol(sym)
-      else forwardedSym := nil;
+      forwardedSym:=nil;
+      overloadFuncSym:=nil;
+      if sym is TFuncSymbol then begin
+         existingFuncSym:=TFuncSymbol(sym);
+         if existingFuncSym.IsOverloaded then
+            overloadFuncSym:=existingFuncSym;
+         if     existingFuncSym.IsForwarded
+            and (CurrentUnitSymbol.HasSymbol(sym) or FProg.Table.HasSymbol(sym)) then begin
+            // There was already a (forward) declaration
+            forwardedSym:=existingFuncSym;
+         end;
+      end;
 
-      if not Assigned(forwardedSym) then
+      if (forwardedSym=nil) and (overloadFuncSym=nil) then
          CheckName(name);
 
       if isType then
@@ -1968,15 +1972,61 @@ begin
          if not isAnonymous then begin
                 
             if not isType then begin
-               if Assigned(forwardedSym) then begin
-                  CompareFuncKinds(forwardedSym.Kind, Result.Kind);
-                  CompareFuncSymbolParams(forwardedSym, Result);
-               end;
 
                ReadSemiColon;
 
-               // forward & external declarations
-               if not Assigned(forwardedSym) then begin
+               if overloadFuncSym<>nil then
+                  forwardedSym:=PerfectMatchOverload(Result);
+
+               // handle function overloading
+               if FTok.TestDelete(ttOVERLOAD) then begin
+
+                  if HasConflictingOverload(Result, forwardedSym) then
+                     FMsgs.AddCompilerErrorFmt(hotPos, CPE_MatchingOverload, [name]);
+
+                  Result.IsOverloaded:=True;
+                  ReadSemiColon;
+
+(*               end else if funcOverloads<>nil then begin
+
+                  // lookup the family to see if this there is an exact match
+                  forwardedSym:=funcOverloads.LocalExactMatch(Result);
+                  if forwardedSym<>nil then begin
+                     // we got a match, check if it's a really forwarded symbol
+                     if not (    forwardedSym.IsForwarded
+                             and (FUnitSymbol.HasSymbol(sym) or FProg.Table.HasSymbol(sym))) then
+                        forwardedSym:=nil;
+                  end;
+                  if forwardedSym=nil then begin
+                     // no match, possible name conflict or fogotten overload keyword
+                     FMsgs.AddCompilerErrorFmt(hotPos, CPE_MustExplicitOverloads, [name]);
+                  end;
+                  // keep compiling, add to existing overloads family
+                  Result.Overloads:=funcOverloads;
+*)
+               end else if overloadFuncSym<>nil then begin
+
+                  forwardedSym:=PerfectMatchOverload(Result);
+                  if forwardedSym=nil then begin
+                     // no match, possible name conflict or fogotten overload keyword
+                     FMsgs.AddCompilerErrorFmt(hotPos, CPE_MustExplicitOverloads, [name]);
+                     // keep compiling, mark overloaded
+                     Result.IsOverloaded:=True;
+                  end;
+
+               end;
+
+               if Assigned(forwardedSym) then begin
+
+                  // check forward symbol match
+
+                  CompareFuncKinds(forwardedSym.Kind, Result.Kind);
+                  CompareFuncSymbolParams(forwardedSym, Result);
+
+               end else begin
+
+                  // forward & external declarations
+
                   if UnitSection=secInterface then begin
                      // default to forward in interface section
                      Result.SetForwardedPos(funcPos);
@@ -2001,7 +2051,7 @@ begin
                ReadDeprecated(Result);
 
                if Assigned(forwardedSym) then begin
-                  // Get forwarded position in script. If compiled without symbols it will just return from empty list (could optimize here to prevent the push/pop of call stack
+                  // Get forwarded position in script. If compiled without symbols it will just return a nil
                   forwardedSymPos := FSymbolDictionary.FindSymbolUsage(forwardedSym, suDeclaration);  // may be nil
                   // Adapt dictionary entry to reflect that it was a forward
                   // If the record is in the SymbolDictionary (disabled dictionary would leave pointer nil)
@@ -2310,13 +2360,16 @@ end;
 
 // WarnDeprecated
 //
-procedure TdwsCompiler.WarnDeprecated(funcSym : TFuncSymbol);
+procedure TdwsCompiler.WarnDeprecated(funcExpr : TFuncExprBase);
+var
+   funcSym : TFuncSymbol;
 begin
-   if FuncSym.IsDeprecated then begin
-      if FuncSym.DeprecatedMessage<>'!' then
-         FMsgs.AddCompilerWarningFmt(FTok.HotPos, CPW_DeprecatedWithMessage,
-                                     [FuncSym.Name, FuncSym.DeprecatedMessage])
-      else FMsgs.AddCompilerWarningFmt(FTok.HotPos, CPW_Deprecated, [FuncSym.Name]);
+   funcSym:=funcExpr.FuncSym;
+   if funcSym.IsDeprecated then begin
+      if funcSym.DeprecatedMessage<>'!' then
+         FMsgs.AddCompilerWarningFmt(funcExpr.ScriptPos, CPW_DeprecatedWithMessage,
+                                     [funcSym.Name, funcSym.DeprecatedMessage])
+      else FMsgs.AddCompilerWarningFmt(funcExpr.ScriptPos, CPW_Deprecated, [funcSym.Name]);
    end;
 end;
 
@@ -2821,7 +2874,7 @@ begin
                end;
             end else begin
                 if (locExpr is TDataExpr) and (locExpr.Typ is TFuncSymbol) then
-                     locExpr:=ReadFunc(TFuncSymbol(locExpr.Typ), False, locExpr as TDataExpr);
+                     locExpr:=ReadFunc(TFuncSymbol(locExpr.Typ), locExpr as TDataExpr);
 
                if locExpr is TAssignExpr then
                   Result:=TAssignExpr(locExpr)
@@ -2962,6 +3015,7 @@ var
    varExpr : TDataExpr;
    fieldExpr : TTypedExpr;
    propExpr : TProgramExpr;
+   funcExpr : TTypedExpr;
    progMeth : TMethodSymbol;
    selfSym : TDataSymbol;
    baseType : TTypeSymbol;
@@ -3064,7 +3118,7 @@ begin
                     and TDataSymbol(sym).Typ.IsOfType(expecting)
                     and not FTok.Test(ttBLEFT)) then
                Result:=GetVarExpr(TDataSymbol(sym))
-            else Result:=ReadFunc(TFuncSymbol(sym.Typ), IsWrite, GetVarExpr(TDataSymbol(sym)), expecting)
+            else Result:=ReadFunc(TFuncSymbol(sym.Typ), GetVarExpr(TDataSymbol(sym)), expecting)
          else Result:=ReadSymbol(GetVarExpr(TDataSymbol(sym)), IsWrite, expecting);
 
       end else if sym.ClassType=TExternalVarSymbol then begin
@@ -3123,19 +3177,22 @@ begin
          Result:=ReadStaticMethod(TMethodSymbol(sym), IsWrite, expecting)
 
       // Functions/Procedures
-      else if sym.InheritsFrom(TFuncSymbol) then
+      else if sym.InheritsFrom(TFuncSymbol) then begin
 
-         Result := ReadSymbol(ReadFunc(TFuncSymbol(sym), IsWrite, nil, expecting), IsWrite, expecting)
+         if TFuncSymbol(sym).IsOverloaded then
+            funcExpr:=ReadFuncOverloaded(TFuncSymbol(sym), FProg.Table, nil, expecting)
+         else funcExpr:=ReadFunc(TFuncSymbol(sym), nil, expecting);
+         Result:=ReadSymbol(funcExpr, IsWrite, expecting);
 
       // Enumeration type cast or type symbol
-      else if sym.InheritsFrom(TEnumerationSymbol) then begin
+      end else if sym.InheritsFrom(TEnumerationSymbol) then begin
 
          Result:=ReadEnumerationSymbolName(namePos, TEnumerationSymbol(sym));
 
       // generic type casts
       end else if sym.InheritsFrom(TTypeSymbol) then
 
-         Result := ReadTypeCast(namePos, TTypeSymbol(sym))
+         Result:=ReadTypeCast(namePos, TTypeSymbol(sym))
 
       else begin
 
@@ -3638,9 +3695,8 @@ begin
                   if member is TMethodSymbol then begin
 
                      if TMethodSymbol(member).IsClassMethod then
-                        funcExpr := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkClassOfRef, symPos, False)
-                     else funcExpr := GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkObjRef, symPos, False);
-                     Result:=nil;
+                        funcExpr:=GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkClassOfRef, symPos, False)
+                     else funcExpr:=GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkObjRef, symPos, False);
                      Result:=WrapUpFunctionRead(funcExpr, expecting);
 
                   end else if member is TFieldSymbol then begin
@@ -3695,7 +3751,7 @@ begin
                // Array symbol
                end else if baseType is TArraySymbol then begin
 
-                  Result := ReadArrayMethod(name, symPos, Result as TTypedExpr, isWrite);
+                  Result := ReadArrayMethod(name, symPos, Result as TTypedExpr);
 
                // Connector symbol
                end else if baseType is TConnectorSymbol then begin
@@ -3742,7 +3798,7 @@ begin
             end;
          end else if FTok.Test(ttBLEFT) then begin
             if baseType is TFuncSymbol then
-               Result := ReadFunc(TFuncSymbol(baseType), IsWrite, Result as TDataExpr)
+               Result := ReadFunc(TFuncSymbol(baseType), Result as TDataExpr)
             else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMethodExpected);
          end;
 
@@ -4286,17 +4342,125 @@ begin
    Result:=ReadSymbol(Result, IsWrite, expecting);
 end;
 
+// ReadFuncOverloaded
+//
+function TdwsCompiler.ReadFuncOverloaded(funcSym : TFuncSymbol; fromTable : TSymbolTable;
+      codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
+var
+   overloads : TFuncSymbolList;
+begin
+   overloads:=TFuncSymbolList.Create;
+   try
+      fromTable.EnumerateSymbolsOfNameInScope(funcSym.Name,
+         function (sym : TSymbol) : Boolean
+         var
+            funcSym : TFuncSymbol;
+         begin
+            if sym is TFuncSymbol then begin
+               funcSym:=TFuncSymbol(sym);
+               overloads.Add(funcSym);
+            end;
+            Result:=False;
+         end);
+      Result:=ReadFunc(funcSym, codeExpr, expecting, overloads);
+   finally
+      overloads.Free;
+   end;
+end;
+
+// ResolveOverload
+//
+function TdwsCompiler.ResolveOverload(funcExpr : TFuncExprBase; overloads : TFuncSymbolList) : Boolean;
+var
+   i : Integer;
+   j : Integer;
+   funcSym, match : TFuncSymbol;
+begin
+   Result:=True;
+   for i:=0 to overloads.Count-1 do begin
+      funcSym:=overloads[i];
+      if funcExpr.Args.Count>funcSym.Params.Count then continue;
+      match:=funcSym;
+      for j:=0 to funcExpr.Args.Count-1 do begin
+         if not funcExpr.GetArgType(j).IsOfType(funcSym.GetParamType(j)) then begin
+            match:=nil;
+            break;
+         end;
+      end;
+      if match=nil then continue;
+      for j:=funcExpr.Args.Count to funcSym.Params.Count-1 do begin
+         if funcSym.Params[j].ClassType<>TParamSymbolWithDefaultValue then begin
+            match:=nil;
+            Break;
+         end;
+      end;
+      if match<>nil then begin
+         if match<>funcExpr.FuncSym then begin
+            ReplaceSymbolUse(funcExpr.FuncSym, match, funcExpr.ScriptPos);
+            funcExpr.FuncSym:=match;
+         end;
+         Exit;
+      end;
+   end;
+   FMsgs.AddCompilerErrorFmt(funcExpr.ScriptPos, CPE_NoMatchingOverload,
+                             [funcExpr.FuncSym.Name]);
+   Result:=False;
+end;
+
+// HasConflictingOverload
+//
+function TdwsCompiler.HasConflictingOverload(funcSym, forwardedSym : TFuncSymbol) : Boolean;
+begin
+   Result:=FProg.Table.EnumerateSymbolsOfNameInScope(funcSym.Name,
+      function (sym : TSymbol) : Boolean
+      var
+         locSym : TFuncSymbol;
+      begin
+         if (sym<>forwardedSym) and (sym is TFuncSymbol) then begin
+            locSym:=TFuncSymbol(sym);
+            if locSym.Level=funcSym.Level then
+               if not funcSym.IsValidOverloadOf(locSym) then
+                  Exit(True);
+         end;
+         Result:=False;
+      end);
+end;
+
+// PerfectMatchOverload
+//
+function TdwsCompiler.PerfectMatchOverload(funcSym : TFuncSymbol) : TFuncSymbol;
+var
+   match : TFuncSymbol;
+begin
+   match:=nil;
+   FProg.Table.EnumerateSymbolsOfNameInScope(funcSym.Name,
+      function (sym : TSymbol) : Boolean
+      var
+         locSym : TFuncSymbol;
+      begin
+         if sym is TFuncSymbol then begin
+            locSym:=TFuncSymbol(sym);
+            if locSym.Level=funcSym.Level then
+               if funcSym.IsSameOverloadOf(locSym) then begin
+                  match:=locSym;
+                  Exit(True);
+               end;
+         end;
+         Result:=False;
+      end);
+   Result:=match;
+end;
+
 // ReadFunc
 //
-function TdwsCompiler.ReadFunc(funcSym : TFuncSymbol; isWrite : Boolean;
-                               codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
+function TdwsCompiler.ReadFunc(funcSym : TFuncSymbol; codeExpr : TDataExpr = nil;
+                               expecting : TTypeSymbol = nil;
+                               overloads : TFuncSymbolList = nil) : TTypedExpr;
 var
    funcExpr : TFuncExprBase;
 begin
-   WarnDeprecated(funcSym);
-
-   funcExpr:=GetFuncExpr(funcSym, isWrite, codeExpr, expecting);
-   Result:=WrapUpFunctionRead(funcExpr, expecting);
+   funcExpr:=GetFuncExpr(funcSym, codeExpr);
+   Result:=WrapUpFunctionRead(funcExpr, expecting, overloads);
 
    if funcSym.IsExternal then
       funcSym.Executable:=TExternalFuncHandler.Create;
@@ -4307,7 +4471,8 @@ end;
 
 // WrapUpFunctionRead
 //
-function TdwsCompiler.WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil) : TTypedExpr;
+function TdwsCompiler.WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil;
+                                         overloads : TFuncSymbolList = nil) : TTypedExpr;
 var
    argPosArray : TScriptPosArray;
 begin
@@ -4315,6 +4480,8 @@ begin
    try
       if FTok.Test(ttBLEFT) then begin
          ReadFuncArgs(funcExpr, argPosArray);
+         if overloads<>nil then
+            if not ResolveOverload(funcExpr, overloads) then Exit;
          TypeCheckArgs(funcExpr, argPosArray);
       end else begin
          if    (    (expecting is TNilSymbol)
@@ -4326,9 +4493,12 @@ begin
                FMsgs.AddCompilerError(funcExpr.Pos, CPE_LocalFunctionAsDelegate);
             Result:=TFuncRefExpr.Create(FProg, funcExpr);
          end else begin
+            if overloads<>nil then
+               if not ResolveOverload(funcExpr, overloads) then Exit;
             TypeCheckArgs(funcExpr, nil);
          end;
       end;
+      WarnDeprecated(funcExpr);
    except
       Result.Free;
       raise;
@@ -4362,7 +4532,7 @@ procedure TdwsCompiler.TypeCheckArgs(funcExpr : TFuncExprBase; const argPosArray
 var
    arg : TTypedExpr;
    x, paramCount, nbParamsToCheck : Integer;
-   funcSym : TFuncSymbol;
+   funcSym, overloadSym : TFuncSymbol;
    paramSymbol : TParamSymbol;
    argTyp : TSymbol;
    initialErrorCount : Integer;
@@ -4370,6 +4540,7 @@ var
    argPos : TScriptPos;
 begin
    funcSym:=funcExpr.FuncSym;
+
    paramCount:=funcSym.Params.Count;
 
    initialErrorCount:=FMsgs.Count;
@@ -4498,7 +4669,7 @@ begin
             if     (expectedType<>nil)
                and (arg.Typ is TFuncSymbol)
                and not (expectedType is TFuncSymbol) then begin
-               arg:=ReadFunc(TFuncSymbol(arg.Typ), False, arg as TDataExpr, nil);
+               arg:=ReadFunc(TFuncSymbol(arg.Typ), arg as TDataExpr, nil);
             end;
 
             AddArgProc(arg);
@@ -4539,6 +4710,8 @@ var
    min, max : TTypedExprList;
    typ : TTypeSymbol;
    boundsOk : Boolean;
+   lowBound : TTypedExpr;
+   enumSymbol : TEnumerationSymbol;
 begin
    boundsOk:=True;
    min:=TTypedExprList.Create;
@@ -4550,27 +4723,47 @@ begin
          repeat
             // Lower bound
             hotPos:=FTok.HotPos;
-            min.Insert0(ReadExpr);
+            lowBound:=ReadExpr;
 
-            boundsOk:=boundsOK and CheckBound(min[0]);
+            if lowBound is TTypeReferenceExpr then begin
 
-            if not FTok.TestDelete(ttDOTDOT) then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotDotExpected);
+               // handle "array [TEnum] of" special case
 
-            // Upper bound
-            hotPos:=FTok.HotPos;
-            max.Insert0(ReadExpr);
+               if not (TTypeReferenceExpr(lowBound).Typ is TEnumerationSymbol) then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBoundNotOrdinal);
+               enumSymbol:=TEnumerationSymbol(TTypeReferenceExpr(lowBound).Typ);
+               FreeAndNil(lowBound);
 
-            boundsOk:=boundsOK and CheckBound(max[0]);
+               min.Insert0(TConstExpr.CreateIntegerValue(FProg, enumSymbol, enumSymbol.LowBound));
+               max.Insert0(TConstExpr.CreateIntegerValue(FProg, enumSymbol, enumSymbol.HighBound));
 
-            if max[0].Typ<>min[0].Typ then
-               FMsgs.AddCompilerError(hotPos, CPE_ArrayBoundsOfDifferentTypes);
+            end else begin
 
-            if boundsOk and (max[0].EvalAsInteger(FExec)<min[0].EvalAsInteger(FExec)) then begin
-               FMsgs.AddCompilerError(hotPos, CPE_LowerBoundGreaterThanUpperBound);
-               // keep compiling
-               max[0].Free;
-               max[0]:=TConstExpr.CreateIntegerValue(FProg, min[0].EvalAsInteger(FExec));
+               // handle "array [low..high] of" normal case
+
+               min.Insert0(lowBound);
+
+               boundsOk:=boundsOK and CheckBound(min[0]);
+
+               if not FTok.TestDelete(ttDOTDOT) then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotDotExpected);
+
+               // Upper bound
+               hotPos:=FTok.HotPos;
+               max.Insert0(ReadExpr);
+
+               boundsOk:=boundsOK and CheckBound(max[0]);
+
+               if max[0].Typ<>min[0].Typ then
+                  FMsgs.AddCompilerError(hotPos, CPE_ArrayBoundsOfDifferentTypes);
+
+               if boundsOk and (max[0].EvalAsInteger(FExec)<min[0].EvalAsInteger(FExec)) then begin
+                  FMsgs.AddCompilerError(hotPos, CPE_LowerBoundGreaterThanUpperBound);
+                  // keep compiling
+                  max[0].Free;
+                  max[0]:=TConstExpr.CreateIntegerValue(FProg, min[0].EvalAsInteger(FExec));
+               end;
+
             end;
 
             if FTok.Test(ttARIGHT) then
@@ -4665,7 +4858,7 @@ end;
 // ReadArrayMethod
 //
 function TdwsCompiler.ReadArrayMethod(const name : UnicodeString; const namePos : TScriptPos;
-                                      baseExpr : TTypedExpr; isWrite : Boolean) : TProgramExpr;
+                                      baseExpr : TTypedExpr) : TProgramExpr;
 var
    arraySym : TArraySymbol;
    argList : TTypedExprList;
@@ -4898,12 +5091,12 @@ begin
 
             typSym:=TTypeSymbol(sym);
             RecordSymbolUse(typSym, hotPos, [suReference]);
-            Result:=ReadNewArray(typSym, isWrite);
+            Result:=ReadNewArray(typSym);
 
          end else begin
 
             FMsgs.AddCompilerError(hotPos, CPE_TypeExpected);
-            Result:=ReadNewArray(FProg.TypVariant, isWrite);
+            Result:=ReadNewArray(FProg.TypVariant);
 
          end;
          Exit;
@@ -4948,7 +5141,7 @@ end;
 
 // ReadNewArray
 //
-function TdwsCompiler.ReadNewArray(elementTyp : TTypeSymbol; isWrite : Boolean) : TNewArrayExpr;
+function TdwsCompiler.ReadNewArray(elementTyp : TTypeSymbol) : TNewArrayExpr;
 var
    lengthExpr : TTypedExpr;
    hotPos : TScriptPos;
@@ -5036,13 +5229,13 @@ begin
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [sym.Name]);
       end;
       if Result=nil then // make anonymous to keep compiling
-         Result:=TClassSymbol.Create('', FUnitSymbol);
+         Result:=TClassSymbol.Create('', CurrentUnitSymbol);
    end;
 
    isInSymbolTable := Assigned(Result);
 
    if not Assigned(Result) then
-      Result:=TClassSymbol.Create(typeName, FUnitSymbol);
+      Result:=TClassSymbol.Create(typeName, CurrentUnitSymbol);
 
    // forwarded declaration
    if FTok.Test(ttSEMI) then begin
@@ -5262,8 +5455,8 @@ begin
          FMsgs.AddCompilerErrorFmt(hotPos, CPE_InterfaceAlreadyDefined, [sym.Name])
       else FMsgs.AddCompilerErrorFmt(hotPos, CPE_NameAlreadyExists, [sym.Name]);
       // keep compiling, make it anonymous
-      Result:=TInterfaceSymbol.Create('', FUnitSymbol);
-   end else Result:=TInterfaceSymbol.Create(typeName, FUnitSymbol);
+      Result:=TInterfaceSymbol.Create('', CurrentUnitSymbol);
+   end else Result:=TInterfaceSymbol.Create(typeName, CurrentUnitSymbol);
 
    try
 
@@ -5570,7 +5763,7 @@ var
    visibility : TdwsVisibility;
    tt : TTokenType;
 begin
-   Result:=TRecordSymbol.Create(typeName, FUnitSymbol);
+   Result:=TRecordSymbol.Create(typeName, CurrentUnitSymbol);
    try
       FProg.Table.AddSymbol(Result); // auto-forward
       names:=TStringList.Create;
@@ -6334,7 +6527,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       funcSym:=ReadProcDecl(funcType, hotPos, False, False, True);
       FProg.Table.AddSymbol(funcSym);
       ReadProcBody(funcSym);
-      Result:=TAnonymousFuncRefExpr.Create(FProg, GetFuncExpr(funcSym, False, nil, expecting));
+      Result:=TAnonymousFuncRefExpr.Create(FProg, GetFuncExpr(funcSym, nil));
    end;
 
 var
@@ -7600,11 +7793,11 @@ begin
          FSourceContextMap.CloseContext(FTok.HotPos);
 
       u:=0;
-      if FUnitSymbol<>nil then
+      if CurrentUnitSymbol<>nil then
          if UnitSection=secImplementation then begin
-            rt:=FUnitSymbol.ImplementationTable;
+            rt:=CurrentUnitSymbol.ImplementationTable;
             u:=1;
-         end else rt:=FUnitSymbol.InterfaceTable
+         end else rt:=CurrentUnitSymbol.InterfaceTable
       else rt:=FProg.Root.RootTable;
       for x:=0 to names.Count-1 do begin
          y:=0;
@@ -7660,9 +7853,7 @@ begin
       name:=name+'.'+part;
    end;
 
-   if coSymbolDictionary in Options then
-      if FUnitSymbol<>nil then
-         FSymbolDictionary.AddSymbol(FUnitSymbol, namePos, [suDeclaration]);
+   RecordSymbolUse(CurrentUnitSymbol, namePos, [suDeclaration]);
    if not SameText(name, namePos.SourceFile.Name) then
       FMsgs.AddCompilerWarning(namePos, CPE_UnitNameDoesntMatch);
 
@@ -7872,7 +8063,7 @@ begin
       if op.BinExprClass<>nil then
          Result:=op.BinExprClass.Create(FProg, aLeft, aRight)
       else if op.FuncSym<>nil then begin
-         funcExpr:=GetFuncExpr(op.FuncSym, False);
+         funcExpr:=GetFuncExpr(op.FuncSym);
          funcExpr.AddArg(aLeft);
          funcExpr.AddArg(aRight);
          TypeCheckArgs(funcExpr, nil);
@@ -7907,6 +8098,25 @@ begin
       FOnSectionChanged(Self);
 end;
 
+// EnterUnit
+//
+procedure TdwsCompiler.EnterUnit(unitSymbol : TUnitMainSymbol; var oldUnitSymbol : TUnitMainSymbol);
+begin
+   FCurrentUnitSymbol.StoreParents;
+   oldUnitSymbol:=FCurrentUnitSymbol;
+   unitSymbol.RestoreParents;
+   FCurrentUnitSymbol:=unitSymbol;
+end;
+
+// LeaveUnit
+//
+procedure TdwsCompiler.LeaveUnit(oldUnitSymbol : TUnitMainSymbol);
+begin
+   FCurrentUnitSymbol.StoreParents;
+   FCurrentUnitSymbol:=oldUnitSymbol;
+   FCurrentUnitSymbol.RestoreParents;
+end;
+
 // SwitchTokenizerToUnit
 //
 procedure TdwsCompiler.SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : UnicodeString);
@@ -7917,16 +8127,15 @@ var
 begin
    sourceFile:=FMainProg.RegisterSourceFile(srcUnit.GetUnitName, sourceCode);
 
-   oldUnit:=FUnitSymbol;
-   FUnitSymbol:=srcUnit.Symbol;
+   EnterUnit(srcUnit.Symbol, oldUnit);
    oldTable:=FProg.Table;
-   FProg.Table:=FUnitSymbol.Table;
+   FProg.Table:=CurrentUnitSymbol.Table;
    FUnitsFromStack.Push(sourceFile.Name);
    try
       ReadScript(sourceFile, stUnit);
    finally
       FUnitsFromStack.Pop;
-      FUnitSymbol:=oldUnit;
+      LeaveUnit(oldUnit);
       FProg.Table:=oldTable;
    end;
 end;
@@ -8864,17 +9073,17 @@ var
    context : TdwsCompilerUnitContext;
 begin
    context.Tokenizer:=compiler.FTok;
-   context.UnitSymbol:=compiler.FUnitSymbol;
+   context.UnitSymbol:=compiler.CurrentUnitSymbol;
    context.Context:=compiler.FSourceContextMap.SuspendContext;
    Push(context);
 end;
 
 // PopContext
 //
-procedure TdwsCompilerUnitContextStack.PopContext(compiler : TdwsCompiler);
+procedure TdwsCompilerUnitContextStack.PopContext(compiler : TdwsCompiler; var oldUnitSymbol : TUnitMainSymbol);
 begin
    compiler.FTok:=Peek.Tokenizer;
-   compiler.FUnitSymbol:=Peek.UnitSymbol;
+   compiler.EnterUnit(Peek.UnitSymbol, oldUnitSymbol);
    compiler.FSourceContextMap.ResumeContext(Peek.Context);
    Pop;
 end;

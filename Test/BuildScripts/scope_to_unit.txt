@@ -1,2 +1,2 @@
-Scoped<Hello>ScopedB<
-Scoped<123>>
+Scoped<Hello>
+ScopedB<Scoped<123>>

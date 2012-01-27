@@ -1,0 +1,4 @@
+Syntax Error: Overload of "Test" will be ambiguous with a previously declared version [line: 5, column: 1]
+Syntax Error: Overload of "Test1" will be ambiguous with a previously declared version [line: 17, column: 1]
+Syntax Error: Overload of "Test1" will be ambiguous with a previously declared version [line: 21, column: 1]
+Syntax Error: Overload of "Test1" will be ambiguous with a previously declared version [line: 29, column: 1]

@@ -35,12 +35,12 @@ type
    TSymbol = class;
    TBaseSymbol = class;
    TDataSymbol = class;
-   TFuncSymbol = class;
    TClassSymbol = class;
    TStructuredTypeSymbol = class;
    TMethodSymbol = class;
    TFieldSymbol = class;
    TTypeSymbol = class;
+   TParamSymbol = class;
    TdwsRuntimeMessageList = class;
 
    TdwsExprLocation = record
@@ -279,6 +279,9 @@ type
 
    TSymbolClass = class of TSymbol;
 
+   // return True to abort
+   TSymbolEnumerationCallback = reference to function (symbol : TSymbol) : Boolean;
+
    // A table of symbols connected to other symboltables (property Parents)
    TSymbolTable = class
       private
@@ -321,6 +324,10 @@ type
                              ofClass : TSymbolClass = nil) : TSymbol; virtual;
          function FindTypeSymbol(const aName : UnicodeString; minVisibility : TdwsVisibility) : TTypeSymbol;
 
+         // returns True if aborted
+         function EnumerateLocalSymbolsOfName(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean;
+         function EnumerateSymbolsOfNameInScope(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean;
+
          function HasClass(const aClass : TSymbolClass) : Boolean;
          function HasSymbol(sym : TSymbol) : Boolean;
 
@@ -360,6 +367,10 @@ type
    // TParamsSymbolTable
    //
    TParamsSymbolTable = class (TUnSortedSymbolTable)
+      protected
+         function GetSymbol(x : Integer) : TParamSymbol;
+      public
+         property Symbols[x : Integer] : TParamSymbol read GetSymbol; default;
    end;
 
    // All Symbols containing a value
@@ -405,6 +416,8 @@ type
 
    // parameter: procedure P(x: Integer);
    TParamSymbol = class (TDataSymbol)
+      public
+         function SameParam(other : TParamSymbol) : Boolean; virtual;
    end;
 
    THasParamSymbolMethod = function (param : TParamSymbol) : Boolean of object;
@@ -420,6 +433,8 @@ type
       public
          constructor Create(const aName : UnicodeString; aType : TTypeSymbol;
                             const data : TData; addr : Integer);
+
+         function SameParam(other : TParamSymbol) : Boolean; override;
 
          property DefaultValue : TData read FDefaultValue;
    end;
@@ -446,23 +461,6 @@ type
    TVarParamSymbol = class sealed (TByRefParamSymbol)
       protected
          function GetDescription : UnicodeString; override;
-   end;
-
-   // variable with functions for read/write: var x: integer; extern 'type' in 'selector';
-   TExternalVarSymbol = class sealed (TValueSymbol)
-      private
-         FReadFunc : TFuncSymbol;
-         FWriteFunc : TFuncSymbol;
-
-      protected
-         function GetReadFunc : TFuncSymbol; virtual;
-         function GetWriteFunc : TFuncSymbol; virtual;
-
-      public
-         destructor Destroy; override;
-
-         property ReadFunc : TFuncSymbol read GetReadFunc write FReadFunc;
-         property WriteFunc : TFuncSymbol read GetWriteFunc write FWriteFunc;
    end;
 
    TTypeSymbolClass = class of TTypeSymbol;
@@ -544,7 +542,7 @@ type
    TResultSymbol = class(TDataSymbol)
    end;
 
-   TFuncSymbolFlag = (fsfStateless, fsfExternal, fsfType);
+   TFuncSymbolFlag = (fsfStateless, fsfExternal, fsfType, fsfOverloaded);
    TFuncSymbolFlags = set of TFuncSymbolFlag;
 
    // A script function / procedure: procedure X(param: Integer);
@@ -565,7 +563,7 @@ type
          function GetCaption : UnicodeString; override;
          function GetIsForwarded : Boolean;
          function GetDescription : UnicodeString; override;
-         function GetLevel: SmallInt; inline;
+         function GetLevel : SmallInt; inline;
          function GetParamSize : Integer; inline;
          function GetIsDeprecated : Boolean; inline;
          procedure SetIsDeprecated(const val : Boolean);
@@ -573,6 +571,8 @@ type
          procedure SetIsStateless(const val : Boolean);
          function GetIsExternal : Boolean; inline;
          procedure SetIsExternal(const val : Boolean);
+         function GetIsOverloaded : Boolean; inline;
+         procedure SetIsOverloaded(const val : Boolean);
          function GetSourcePosition : TScriptPos; virtual;
          procedure SetSourcePosition(const val : TScriptPos); virtual;
 
@@ -595,9 +595,13 @@ type
          procedure AddParam(param : TParamSymbol);
          function  HasParam(param : TParamSymbol) : Boolean;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
+         function  GetParamType(idx : Integer) : TTypeSymbol;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          procedure InitData(const data : TData; offset : Integer); override;
          procedure AddCondition(cond : TConditionSymbol);
+
+         function  IsValidOverloadOf(other : TFuncSymbol) : Boolean;
+         function  IsSameOverloadOf(other : TFuncSymbol) : Boolean;
 
          function  ParamsDescription : UnicodeString;
 
@@ -610,6 +614,7 @@ type
          property IsStateless : Boolean read GetIsStateless write SetIsStateless;
          property IsForwarded : Boolean read GetIsForwarded;
          property IsExternal : Boolean read GetIsExternal write SetIsExternal;
+         property IsOverloaded : Boolean read GetIsOverloaded write SetIsOverloaded;
          property Kind : TFuncKind read FKind write FKind;
          property Level : SmallInt read GetLevel;
          property InternalParams : TSymbolTable read FInternalParams;
@@ -619,6 +624,10 @@ type
          property Typ : TTypeSymbol read FTyp write SetType;
          property Conditions : TConditionsSymbolTable read FConditions;
          property SourcePosition : TScriptPos read GetSourcePosition write SetSourcePosition;
+   end;
+
+   // referring list of function symbols
+   TFuncSymbolList = class(TSimpleList<TFuncSymbol>)
    end;
 
    TAnyFuncSymbol = class(TFuncSymbol)
@@ -1286,6 +1295,23 @@ type
          property LowBound : Integer read FLowBound write FLowBound;
          property HighBound : Integer read FHighBound write FHighBound;
          function ShortDescription : UnicodeString;
+   end;
+
+   // variable with functions for read/write: var x: integer; extern 'type' in 'selector';
+   TExternalVarSymbol = class sealed (TValueSymbol)
+      private
+         FReadFunc : TFuncSymbol;
+         FWriteFunc : TFuncSymbol;
+
+      protected
+         function GetReadFunc : TFuncSymbol; virtual;
+         function GetWriteFunc : TFuncSymbol; virtual;
+
+      public
+         destructor Destroy; override;
+
+         property ReadFunc : TFuncSymbol read GetReadFunc write FReadFunc;
+         property WriteFunc : TFuncSymbol read GetWriteFunc write FWriteFunc;
    end;
 
    // TdwsExecution
@@ -2309,6 +2335,15 @@ begin
    dwsSymbols.GenerateParams(name, table, funcParams, addParam);
 end;
 
+// GetParamType
+//
+function TFuncSymbol.GetParamType(idx : Integer) : TTypeSymbol;
+begin
+   if Cardinal(idx)<Cardinal(Params.Count) then
+      Result:=Params[idx].Typ
+   else Result:=nil;
+end;
+
 // GetCaption
 //
 function TFuncSymbol.GetCaption : UnicodeString;
@@ -2367,14 +2402,14 @@ end;
 //
 function TFuncSymbol.GetLevel: SmallInt;
 begin
-   Result := FAddrGenerator.Level;
+   Result:=FAddrGenerator.Level;
 end;
 
 // GetParamSize
 //
-function TFuncSymbol.GetParamSize: Integer;
+function TFuncSymbol.GetParamSize : Integer;
 begin
-   Result := FAddrGenerator.DataSize;
+   Result:=FAddrGenerator.DataSize;
 end;
 
 // GetIsDeprecated
@@ -2423,6 +2458,22 @@ begin
    if val then
       Include(FFlags, fsfExternal)
    else Exclude(FFlags, fsfExternal);
+end;
+
+// GetIsOverloaded
+//
+function TFuncSymbol.GetIsOverloaded : Boolean;
+begin
+   Result:=(fsfOverloaded in FFlags);
+end;
+
+// SetIsOverloaded
+//
+procedure TFuncSymbol.SetIsOverloaded(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, fsfOverloaded)
+   else Exclude(FFlags, fsfOverloaded);
 end;
 
 // GetSourcePosition
@@ -2555,6 +2606,56 @@ begin
    if FConditions=nil then
       FConditions:=TConditionsSymbolTable.Create(nil, @FAddrGenerator);
    FConditions.AddSymbol(cond);
+end;
+
+// IsValidOverloadOf
+//
+function TFuncSymbol.IsValidOverloadOf(other : TFuncSymbol) : Boolean;
+var
+   i : Integer;
+   n : Integer;
+   locParam, otherParam : TParamSymbol;
+begin
+   // overload is valid if parameter types differ,
+   // and there is no ambiguity with default params
+
+   n:=Min(Params.Count, other.Params.Count);
+
+   // check special case of an overload of a parameter-less function
+   if (Params.Count=0) and (other.Params.Count=0) then Exit(False);
+
+   // check parameters positions defined in both
+   for i:=0 to n-1 do begin
+      locParam:=Params[i];
+      otherParam:=other.Params[i];
+      if     (locParam.ClassType=TParamSymbolWithDefaultValue)
+         and (otherParam.ClassType=TParamSymbolWithDefaultValue) then Exit(False);
+      if not locParam.Typ.IsOfType(otherParam.Typ) then Exit(True);
+   end;
+
+   // check that there is at least one remaining param that is not with a default
+   if Params.Count>n then
+      Result:=(Params[n].ClassType<>TParamSymbolWithDefaultValue)
+   else if other.Params.Count>n then
+      Result:=(other.Params[n].ClassType<>TParamSymbolWithDefaultValue)
+   else Result:=False;
+end;
+
+// IsSameOverloadOf
+//
+function TFuncSymbol.IsSameOverloadOf(other : TFuncSymbol) : Boolean;
+var
+   i : Integer;
+begin
+   Result:=(Kind=other.Kind) and (Typ=other.Typ) and (Params.Count=other.Params.Count);
+   if Result then begin
+      for i:=0 to Params.Count-1 do begin
+         if not Params[i].SameParam(other.Params[i]) then begin
+            Result:=False;
+            Break;
+         end;
+      end;
+   end;
 end;
 
 // ParamsDescription
@@ -3808,6 +3909,18 @@ begin
 end;
 
 // ------------------
+// ------------------ TParamsSymbolTable ------------------
+// ------------------
+
+// GetSymbol
+//
+function TParamsSymbolTable.GetSymbol(x : Integer) : TParamSymbol;
+begin
+   Result:=TParamSymbol(inherited Symbols[x]);
+   Assert(Result is TParamSymbol);
+end;
+
+// ------------------
 // ------------------ TValueSymbol ------------------
 // ------------------
 
@@ -3878,6 +3991,19 @@ begin
 end;
 
 // ------------------
+// ------------------ TParamSymbol ------------------
+// ------------------
+
+// SameParam
+//
+function TParamSymbol.SameParam(other : TParamSymbol) : Boolean;
+begin
+   Result:=    (ClassType=other.ClassType)
+           and (Typ=other.Typ)
+           and UnicodeSameText(Name, other.Name);
+end;
+
+// ------------------
 // ------------------ TParamSymbolWithDefaultValue ------------------
 // ------------------
 
@@ -3889,6 +4015,15 @@ begin
    inherited Create(aName, aType);
    SetLength(FDefaultValue, Typ.Size);
    DWSCopyData(data, addr, FDefaultValue, 0, Typ.Size);
+end;
+
+// SameParam
+//
+function TParamSymbolWithDefaultValue.SameParam(other : TParamSymbol) : Boolean;
+begin
+   Result:=    inherited SameParam(other)
+           and DWSSameData(FDefaultValue, (other as TParamSymbolWithDefaultValue).FDefaultValue,
+                           0, 0, Typ.Size);
 end;
 
 function TParamSymbolWithDefaultValue.GetDescription: UnicodeString;
@@ -4118,6 +4253,35 @@ end;
 function TSymbolTable.FindTypeSymbol(const aName : UnicodeString; minVisibility : TdwsVisibility) : TTypeSymbol;
 begin
    Result:=TTypeSymbol(FindSymbol(aName, minVisibility, TTypeSymbol));
+end;
+
+// EnumerateLocalSymbolsOfName
+//
+function TSymbolTable.EnumerateLocalSymbolsOfName(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean;
+var
+   i : Integer;
+   sym : TSymbol;
+begin
+   // TODO: optimize to take advantage of sorting
+   for i:=0 to Count-1 do begin
+      sym:=Symbols[i];
+      if UnicodeSameText(sym.Name, aName) then begin
+         if callback(sym) then Exit(True);
+      end;
+   end;
+   Result:=False;
+end;
+
+// EnumerateSymbolsOfNameInScope
+//
+function TSymbolTable.EnumerateSymbolsOfNameInScope(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean;
+var
+   i : Integer;
+begin
+   if EnumerateLocalSymbolsOfName(aName, callback) then Exit(True);
+   for i:=0 to ParentCount-1 do
+      if Parents[i].EnumerateSymbolsOfNameInScope(aName, callback) then Exit(True);
+   Result:=False;
 end;
 
 // HasClass
