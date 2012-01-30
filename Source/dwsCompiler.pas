@@ -4355,11 +4355,12 @@ begin
       fromTable.EnumerateSymbolsOfNameInScope(funcSym.Name,
          function (sym : TSymbol) : Boolean
          var
-            funcSym : TFuncSymbol;
+            locFuncSym : TFuncSymbol;
          begin
             if sym is TFuncSymbol then begin
-               funcSym:=TFuncSymbol(sym);
-               overloads.Add(funcSym);
+               locFuncSym:=TFuncSymbol(sym);
+               if locFuncSym.Level=funcSym.Level then
+                  overloads.Add(locFuncSym);
             end;
             Result:=False;
          end);
