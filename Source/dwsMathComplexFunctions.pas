@@ -262,13 +262,13 @@ initialization
    dwsInternalUnit.AddOperatorsRegistrationProc(RegisterComplexOperators);
    dwsInternalUnit.AddAbsHandler(HandleComplexAbs);
 
-   RegisterInternalFunction(TComplexMakeExpr, 'Complex', ['real', SYS_FLOAT, 'imaginary', SYS_FLOAT], SYS_COMPLEX, True);
-   RegisterInternalStringFunction(TComplexToStrExpr, 'ComplexToStr', ['c', SYS_COMPLEX], True);
+   RegisterInternalFunction(TComplexMakeExpr, 'Complex', ['real', SYS_FLOAT, 'imaginary', SYS_FLOAT], SYS_COMPLEX, [iffStateLess]);
+   RegisterInternalStringFunction(TComplexToStrExpr, 'ComplexToStr', ['c', SYS_COMPLEX], [iffStateLess]);
 
-   RegisterInternalFunction(TComplexNegOpExpr,  'ComplexNeg',  ['v', SYS_COMPLEX], SYS_COMPLEX, True);
-   RegisterInternalFunction(TComplexAddOpExpr,  'ComplexAdd',  ['left', SYS_COMPLEX, 'right', SYS_COMPLEX], SYS_COMPLEX, True);
-   RegisterInternalFunction(TComplexSubOpExpr,  'ComplexSub',  ['left', SYS_COMPLEX, 'right', SYS_COMPLEX], SYS_COMPLEX, True);
-   RegisterInternalFunction(TComplexMultOpExpr, 'ComplexMult', ['left', SYS_COMPLEX, 'right', SYS_COMPLEX], SYS_COMPLEX, True);
-   RegisterInternalFunction(TComplexDivOpExpr,  'ComplexDiv',  ['left', SYS_COMPLEX, 'right', SYS_COMPLEX], SYS_COMPLEX, True);
+   RegisterInternalFunction(TComplexNegOpExpr,  'ComplexNeg',  ['v', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess]);
+   RegisterInternalFunction(TComplexAddOpExpr,  'ComplexAdd',  ['left', SYS_COMPLEX, 'right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess]);
+   RegisterInternalFunction(TComplexSubOpExpr,  'ComplexSub',  ['left', SYS_COMPLEX, 'right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess]);
+   RegisterInternalFunction(TComplexMultOpExpr, 'ComplexMult', ['left', SYS_COMPLEX, 'right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess]);
+   RegisterInternalFunction(TComplexDivOpExpr,  'ComplexDiv',  ['left', SYS_COMPLEX, 'right', SYS_COMPLEX], SYS_COMPLEX, [iffStateLess]);
 
 end.

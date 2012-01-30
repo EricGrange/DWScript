@@ -236,10 +236,10 @@ end;
 
 procedure TdwsHtmlUnit.AddUnitSymbols(SymbolTable: TSymbolTable);
 begin
-  TSendFunction.Create(SymbolTable, 'Send', ['s', SYS_VARIANT], '', False);
-  TSendFunction.Create(SymbolTable, 'Print', ['s', SYS_VARIANT], '', False);
-  TSendLnFunction.Create(SymbolTable, 'SendLn', ['s', SYS_VARIANT], '', False);
-  TSendLnFunction.Create(SymbolTable, 'PrintLn', ['s', SYS_VARIANT], '', False);
+  TSendFunction.Create(SymbolTable, 'Send', ['s', SYS_VARIANT], '', []);
+  TSendFunction.Create(SymbolTable, 'Print', ['s', SYS_VARIANT], '', []);
+  TSendLnFunction.Create(SymbolTable, 'SendLn', ['s', SYS_VARIANT], '', []);
+  TSendLnFunction.Create(SymbolTable, 'PrintLn', ['s', SYS_VARIANT], '', []);
 end;
 
 constructor TdwsHtmlUnit.Create(AOwner: TComponent);

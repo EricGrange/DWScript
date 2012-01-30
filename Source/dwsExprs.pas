@@ -878,8 +878,6 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
-         procedure SetFunc(aFuncSym : TFuncSymbol);
-
       public
          constructor Create(prog : TdwsProgram; const pos : TScriptPos; aFunc : TFuncSymbol);
          destructor Destroy; override;
@@ -895,7 +893,9 @@ type
 
          procedure SetResultAddr(prog : TdwsProgram; exec : TdwsExecution; ResultAddr: Integer = -1);
 
-         property FuncSym : TFuncSymbol read FFunc write SetFunc;
+         function ChangeFuncSymbol(newFuncSym : TFuncSymbol) : TFuncExprBase; virtual;
+
+         property FuncSym : TFuncSymbol read FFunc;
          property Args : TExprBaseListRec read FArgs;
    end;
 
@@ -3019,8 +3019,8 @@ end;
 procedure TdwsDefaultResultType.AddResultSymbols(SymbolTable: TSymbolTable);
 begin
    inherited;
-   TPrintFunction.Create(SymbolTable, 'Print',  ['v', 'Variant'], '', False);
-   TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['v', 'Variant'], '', False);
+   TPrintFunction.Create(SymbolTable, 'Print',  ['v', 'Variant'], '', []);
+   TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['v', 'Variant'], '', []);
 end;
 
 // ------------------
@@ -3840,7 +3840,9 @@ end;
 constructor TFuncExprBase.Create(prog : TdwsProgram; const pos : TScriptPos; aFunc : TFuncSymbol);
 begin
    inherited Create(Prog, Pos, nil);
-   FuncSym:=aFunc;
+   FFunc:=aFunc;
+   if Assigned(aFunc) then
+      FTyp:=aFunc.Typ;
 end;
 
 // Destroy
@@ -3941,14 +3943,15 @@ begin
    Result:=FArgs.Count;
 end;
 
-// SetFunc
+// ChangeFuncSymbol
 //
-procedure TFuncExprBase.SetFunc(aFuncSym : TFuncSymbol);
+function TFuncExprBase.ChangeFuncSymbol(newFuncSym : TFuncSymbol) : TFuncExprBase;
 begin
-   FFunc:=aFuncSym;
-   if Assigned(aFuncSym) then
-      FTyp:=aFuncSym.Typ
+   FFunc:=newFuncSym;
+   if Assigned(newFuncSym) then
+      FTyp:=newFuncSym.Typ
    else FTyp:=nil;
+   Result:=Self;
 end;
 
 // Initialize

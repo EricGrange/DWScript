@@ -156,10 +156,12 @@ type
 
       public
          procedure Clean;
+         procedure Clear;
 
          function Add(expr : TExprBase) : Integer; inline;
          procedure Insert(idx : Integer;expr : TExprBase); inline;
          procedure Delete(index : Integer);
+         procedure Assign(const src : TExprBaseListRec);
 
          property ExprBase[const x : Integer] : TExprBase read GetExprBase write SetExprBase; default;
          property Count : Integer read FList.FCount;
@@ -325,8 +327,8 @@ type
          function FindTypeSymbol(const aName : UnicodeString; minVisibility : TdwsVisibility) : TTypeSymbol;
 
          // returns True if aborted
-         function EnumerateLocalSymbolsOfName(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean;
-         function EnumerateSymbolsOfNameInScope(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean;
+         function EnumerateLocalSymbolsOfName(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean; virtual;
+         function EnumerateSymbolsOfNameInScope(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean; virtual;
 
          function HasClass(const aClass : TSymbolClass) : Boolean;
          function HasSymbol(sym : TSymbol) : Boolean;
@@ -1594,6 +1596,13 @@ begin
    FList.Clean;
 end;
 
+// Clear
+//
+procedure TExprBaseListRec.Clear;
+begin
+   FList.Clear;
+end;
+
 // Add
 //
 function TExprBaseListRec.Add(expr : TExprBase) : Integer;
@@ -1613,6 +1622,13 @@ end;
 procedure TExprBaseListRec.Delete(index : Integer);
 begin
    FList.Delete(index);
+end;
+
+// Assign
+//
+procedure TExprBaseListRec.Assign(const src : TExprBaseListRec);
+begin
+   FList.Assign(src.FList);
 end;
 
 // GetExprBase

@@ -322,6 +322,7 @@ type
          constructor Create;
          destructor Destroy; override;
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+         procedure CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol); override;
    end;
 
    TJSRecordMethodExpr = class (TJSFuncBaseExpr)
@@ -470,7 +471,7 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..144] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..146] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -816,12 +817,16 @@ const
        Code : 'function LogN(n,x) { return Math.log(x)/Math.log(n) }'),
       (Name : 'LowerCase';
        Code : 'function LowerCase(v) { return v.toLowerCase() }'),
-      (Name : 'Max';
-       Code : 'function Max(a,b) { return (a>b)?a:b }'),
+      (Name : 'Max$_Float_Float_';
+       Code : 'function Max$_Float_Float_(a,b) { return (a>b)?a:b }'),
+      (Name : 'Max$_Integer_Integer_';
+       Code : 'function Max$_Integer_Integer_(a,b) { return (a>b)?a:b }'),
       (Name : 'MaxInt';
        Code : 'function MaxInt(a,b) { return (a>b)?a:b }'),
-      (Name : 'Min';
-       Code : 'function Min(a,b) { return (a<b)?a:b }'),
+      (Name : 'Min$_Float_Float_';
+       Code : 'function Min$_Float_Float_(a,b) { return (a<b)?a:b }'),
+      (Name : 'Min$_Integer_Integer_';
+       Code : 'function Min$_Integer_Integer_(a,b) { return (a<b)?a:b }'),
       (Name : 'MinInt';
        Code : 'function MinInt(a,b) { return (a<b)?a:b }'),
       (Name : 'Now';
@@ -3159,6 +3164,10 @@ begin
    FMagicCodeGens.AddObject('LeftStr', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(0,', 1, ')']));
    FMagicCodeGens.AddObject('Ln', TdwsExprGenericCodeGen.Create(['Math.log', '(', 0, ')']));
    FMagicCodeGens.AddObject('LowerCase', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toLowerCase()']));
+   FMagicCodeGens.AddObject('Max$_Float_Float_', TdwsExprGenericCodeGen.Create(['Math.max','(', 0, ',', 1, ')']));
+   FMagicCodeGens.AddObject('Max$_Integer_Integer_', TdwsExprGenericCodeGen.Create(['Math.max', '(', 0, ',', 1, ')']));
+   FMagicCodeGens.AddObject('Min$_Float_Float_', TdwsExprGenericCodeGen.Create(['Math.min','(', 0, ',', 1, ')']));
+   FMagicCodeGens.AddObject('Min$_Integer_Integer_', TdwsExprGenericCodeGen.Create(['Math.min', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('MaxInt', TdwsExprGenericCodeGen.Create(['Math.max','(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('MinInt', TdwsExprGenericCodeGen.Create(['Math.min', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('Pi', TdwsExprGenericCodeGen.Create(['Math.PI']));
@@ -3191,13 +3200,25 @@ end;
 // CodeGen
 //
 procedure TJSMagicFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+
+   function GetSignature(funcSym : TFuncSymbol) : String;
+   var
+      i : Integer;
+   begin
+      Result:=funcSym.QualifiedName+'$_';
+      for i:=0 to funcSym.Params.Count-1 do
+         Result:=Result+funcSym.GetParamType(i).Name+'_';
+   end;
+
 var
    e : TMagicFuncExpr;
    name : String;
    i : Integer;
 begin
    e:=TMagicFuncExpr(expr);
-   name:=e.FuncSym.QualifiedName;
+   if e.FuncSym.IsOverloaded then
+      name:=GetSignature(e.FuncSym)
+   else name:=e.FuncSym.QualifiedName;
    if cgoNoInlineMagics in codeGen.Options then
       i:=-1
    else i:=FMagicCodeGens.IndexOf(name);
@@ -3207,6 +3228,30 @@ begin
       codeGen.Dependencies.Add(name);
       inherited;
    end;
+end;
+
+// CodeGenFunctionName
+//
+procedure TJSMagicFuncExpr.CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol);
+
+   function GetSignature(funcSym : TFuncSymbol) : String;
+   var
+      i : Integer;
+   begin
+      Result:=funcSym.QualifiedName+'$_';
+      for i:=0 to funcSym.Params.Count-1 do
+         Result:=Result+funcSym.GetParamType(i).Name+'_';
+   end;
+
+var
+   e : TMagicFuncExpr;
+   name : String;
+begin
+   e:=TMagicFuncExpr(expr);
+   if e.FuncSym.IsOverloaded then
+      name:=GetSignature(e.FuncSym)
+   else name:=e.FuncSym.QualifiedName;
+   codeGen.WriteString(name);
 end;
 
 // ------------------

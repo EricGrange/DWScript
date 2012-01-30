@@ -193,6 +193,9 @@ type
          function FindSymbol(const Name: UnicodeString; minVisibility : TdwsVisibility; ofClass : TSymbolClass = nil) : TSymbol; override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
+         function EnumerateLocalSymbolsOfName(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean; override;
+         function EnumerateSymbolsOfNameInScope(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean; override;
+
          property Parent : IStaticSymbolTable read FParent;
          property ParentSymbolTable : TStaticSymbolTable read FParentSymbolTable;
    end;
@@ -374,6 +377,20 @@ procedure TLinkedSymbolTable.Initialize(const msgs : TdwsCompileMessageList);
 begin
   FParentSymbolTable.Initialize(msgs);
   inherited;
+end;
+
+// EnumerateLocalSymbolsOfName
+//
+function TLinkedSymbolTable.EnumerateLocalSymbolsOfName(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean;
+begin
+   Result:=FParentSymbolTable.EnumerateLocalSymbolsOfName(aName, callback);
+end;
+
+// EnumerateSymbolsOfNameInScope
+//
+function TLinkedSymbolTable.EnumerateSymbolsOfNameInScope(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean;
+begin
+   Result:=FParentSymbolTable.EnumerateSymbolsOfNameInScope(aName, callback);
 end;
 
 // ------------------

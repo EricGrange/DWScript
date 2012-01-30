@@ -72,14 +72,17 @@ type
          procedure Execute(info : TProgramInfo); virtual; abstract;
    end;
 
+   TInternalFunctionFlag = (iffStateLess, iffOverloaded);
+   TInternalFunctionFlags = set of TInternalFunctionFlag;
+
    TInternalFunction = class(TFunctionPrototype, IUnknown, ICallable)
       public
          constructor Create(table : TSymbolTable; const funcName : UnicodeString;
                             const params : TParamArray; const funcType : UnicodeString;
-                            const isStateLess : Boolean = False); overload; virtual;
+                            const flags : TInternalFunctionFlags = []); overload; virtual;
          constructor Create(table : TSymbolTable; const funcName : UnicodeString;
                             const params : array of UnicodeString; const funcType : UnicodeString;
-                            const isStateLess : Boolean = False); overload;
+                            const flags : TInternalFunctionFlags = []); overload;
          procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); override;
          procedure Execute(info : TProgramInfo); virtual; abstract;
    end;
@@ -183,7 +186,7 @@ type
 
 procedure RegisterInternalFunction(InternalFunctionClass: TInternalFunctionClass;
       const FuncName: UnicodeString; const FuncParams: array of UnicodeString;
-      const FuncType: UnicodeString; const isStateLess : Boolean = False);
+      const FuncType: UnicodeString; const flags : TInternalFunctionFlags = []);
 procedure RegisterInternalProcedure(InternalFunctionClass: TInternalFunctionClass;
       const FuncName: UnicodeString; const FuncParams: array of UnicodeString);
 
@@ -284,7 +287,7 @@ type
       FuncName : UnicodeString;
       FuncParams : TParamArray;
       FuncType : UnicodeString;
-      StateLess : Boolean;
+      Flags : TInternalFunctionFlags;
    end;
    PRegisteredInternalFunction = ^TRegisteredInternalFunction;
 
@@ -294,16 +297,16 @@ procedure RegisterInternalFunction(InternalFunctionClass: TInternalFunctionClass
                                    const FuncName: UnicodeString;
                                    const FuncParams: array of UnicodeString;
                                    const FuncType: UnicodeString;
-                                   const isStateLess : Boolean = False);
+                                   const flags : TInternalFunctionFlags = []);
 var
    rif : PRegisteredInternalFunction;
 begin
    New(rif);
-   rif.InternalFunctionClass := InternalFunctionClass;
-   rif.FuncName := FuncName;
-   rif.StateLess:=isStateLess;
+   rif.InternalFunctionClass:=InternalFunctionClass;
+   rif.FuncName:=FuncName;
+   rif.Flags:=flags;
    rif.FuncParams:=ConvertFuncParams(FuncParams);
-   rif.FuncType := FuncType;
+   rif.FuncType:=FuncType;
 
    dwsInternalUnit.AddInternalFunction(rif);
 end;
@@ -313,7 +316,7 @@ end;
 procedure RegisterInternalProcedure(InternalFunctionClass: TInternalFunctionClass;
       const FuncName: UnicodeString; const FuncParams: array of UnicodeString);
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, '', False);
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, '');
 end;
 
 { TEmptyFunc }
@@ -346,14 +349,15 @@ end;
 
 constructor TInternalFunction.Create(table : TSymbolTable; const funcName : UnicodeString;
                                      const params : TParamArray; const funcType : UnicodeString;
-                                     const isStateLess : Boolean = False);
+                                     const flags : TInternalFunctionFlags = []);
 var
    sym: TFuncSymbol;
 begin
    sym:=TFuncSymbol.Generate(table, funcName, params, funcType);
    sym.Params.AddParent(table);
    sym.Executable:=ICallable(Self);
-   sym.IsStateless:=isStateLess;
+   sym.IsStateless:=(iffStateLess in flags);
+   sym.IsOverloaded:=(iffOverloaded in flags);
    FFuncSymbol:=sym;
    table.AddSymbol(sym);
 end;
@@ -362,9 +366,9 @@ end;
 //
 constructor TInternalFunction.Create(table: TSymbolTable; const funcName : UnicodeString;
                                      const params : array of UnicodeString; const funcType : UnicodeString;
-                                     const isStateLess : Boolean = False);
+                                     const flags : TInternalFunctionFlags = []);
 begin
-   Create(table, funcName, ConvertFuncParams(params), funcType, isStateLess);
+   Create(table, funcName, ConvertFuncParams(params), funcType, flags);
 end;
 
 // Call
@@ -689,7 +693,7 @@ begin
       rif := PRegisteredInternalFunction(FRegisteredInternalFunctions[i]);
       try
          rif.InternalFunctionClass.Create(unitTable, rif.FuncName, rif.FuncParams,
-                                          rif.FuncType, rif.StateLess);
+                                          rif.FuncType, rif.Flags);
       except
          on e: Exception do
             raise Exception.CreateFmt('AddInternalFunctions failed on %s'#13#10'%s',

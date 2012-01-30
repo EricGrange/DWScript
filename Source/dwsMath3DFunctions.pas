@@ -249,13 +249,13 @@ initialization
    dwsInternalUnit.AddSymbolsRegistrationProc(RegisterMath3DTypes);
    dwsInternalUnit.AddOperatorsRegistrationProc(RegisterMath3DOperators);
 
-   RegisterInternalFunction(TVectorMakeExpr, 'Vector', ['x', SYS_FLOAT, 'y', SYS_FLOAT, 'z', SYS_FLOAT, 'w', SYS_FLOAT], SYS_VECTOR, True);
-   RegisterInternalStringFunction(TVectorToStrExpr, 'VectorToStr', ['c', SYS_VECTOR], True);
+   RegisterInternalFunction(TVectorMakeExpr, 'Vector', ['x', SYS_FLOAT, 'y', SYS_FLOAT, 'z', SYS_FLOAT, 'w', SYS_FLOAT], SYS_VECTOR, [iffStateLess]);
+   RegisterInternalStringFunction(TVectorToStrExpr, 'VectorToStr', ['c', SYS_VECTOR], [iffStateLess]);
 
-   RegisterInternalFunction(TVectorAddOpExpr,  'VectorAdd',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], SYS_VECTOR, True);
-   RegisterInternalFunction(TVectorSubOpExpr,  'VectorSub',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], SYS_VECTOR, True);
-   RegisterInternalFunction(TVectorCrossProductOpExpr,  'VectorCrossProduct',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], SYS_VECTOR, True);
-   RegisterInternalFloatFunction(TVectorDotProductOpExpr,  'VectorDotProduct',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], True);
-   RegisterInternalFunction(TVectorNormalizeExpr,  'VectorNormalize',  ['v', SYS_VECTOR], SYS_VECTOR, True);
+   RegisterInternalFunction(TVectorAddOpExpr,  'VectorAdd',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], SYS_VECTOR, [iffStateLess]);
+   RegisterInternalFunction(TVectorSubOpExpr,  'VectorSub',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], SYS_VECTOR, [iffStateLess]);
+   RegisterInternalFunction(TVectorCrossProductOpExpr,  'VectorCrossProduct',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], SYS_VECTOR, [iffStateLess]);
+   RegisterInternalFloatFunction(TVectorDotProductOpExpr,  'VectorDotProduct',  ['left', SYS_VECTOR, 'right', SYS_VECTOR], [iffStateLess]);
+   RegisterInternalFunction(TVectorNormalizeExpr,  'VectorNormalize',  ['v', SYS_VECTOR], SYS_VECTOR, [iffStateLess]);
 
 end.

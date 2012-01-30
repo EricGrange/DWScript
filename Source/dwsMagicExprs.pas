@@ -45,7 +45,7 @@ type
       public
          constructor Create(table: TSymbolTable; const funcName: UnicodeString;
                             const params : TParamArray; const funcType: UnicodeString;
-                            const isStateLess : Boolean = False); override;
+                            const flags : TInternalFunctionFlags = []); override;
          function MagicFuncExprClass : TMagicFuncExprClass; virtual; abstract;
    end;
 
@@ -157,6 +157,8 @@ type
          function ExpectedArg : TParamSymbol; override;
 
          function IsWritable : Boolean; override;
+
+         function ChangeFuncSymbol(newFuncSym : TFuncSymbol) : TFuncExprBase; override;
    end;
 
    // TMagicVariantFuncExpr
@@ -280,13 +282,13 @@ type
    end;
 
 procedure RegisterInternalIntFunction(InternalFunctionClass: TInternalMagicIntFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const isStateLess : Boolean = False);
+      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
 procedure RegisterInternalBoolFunction(InternalFunctionClass: TInternalMagicBoolFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const isStateLess : Boolean = False);
+      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
 procedure RegisterInternalFloatFunction(InternalFunctionClass: TInternalMagicFloatFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const isStateLess : Boolean = False);
+      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
 procedure RegisterInternalStringFunction(InternalFunctionClass: TInternalMagicStringFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const isStateLess : Boolean = False);
+      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -299,33 +301,33 @@ implementation
 // RegisterInternalIntFunction
 //
 procedure RegisterInternalIntFunction(InternalFunctionClass: TInternalMagicIntFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const isStateLess : Boolean = False);
+      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Integer', isStateLess);
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Integer', flags);
 end;
 
 // RegisterInternalBoolFunction
 //
 procedure RegisterInternalBoolFunction(InternalFunctionClass: TInternalMagicBoolFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const isStateLess : Boolean = False);
+      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Boolean', isStateLess);
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Boolean', flags);
 end;
 
 // RegisterInternalFloatFunction
 //
 procedure RegisterInternalFloatFunction(InternalFunctionClass: TInternalMagicFloatFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const isStateLess : Boolean = False);
+      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Float', isStateLess);
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Float', flags);
 end;
 
 // RegisterInternalStringFunction
 //
 procedure RegisterInternalStringFunction(InternalFunctionClass: TInternalMagicStringFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const isStateLess : Boolean = False);
+      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'String', isStateLess);
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'String', flags);
 end;
 
 // ------------------
@@ -384,14 +386,15 @@ end;
 //
 constructor TInternalMagicFunction.Create(table : TSymbolTable;
       const funcName : UnicodeString; const params : TParamArray; const funcType : UnicodeString;
-      const isStateLess : Boolean = False);
+      const flags : TInternalFunctionFlags = []);
 var
   sym : TMagicFuncSymbol;
 begin
   sym:=TMagicFuncSymbol.Generate(table, funcName, params, funcType);
   sym.params.AddParent(table);
   sym.InternalFunction:=Self;
-  sym.IsStateless:=isStateLess;
+  sym.IsStateless:=(iffStateLess in flags);
+  sym.IsOverloaded:=(iffOverloaded in flags);
   table.AddSymbol(sym);
 end;
 
@@ -428,6 +431,19 @@ end;
 function TMagicFuncExpr.IsWritable : Boolean;
 begin
    Result:=False;
+end;
+
+// ChangeFuncSymbol
+//
+function TMagicFuncExpr.ChangeFuncSymbol(newFuncSym : TFuncSymbol) : TFuncExprBase;
+begin
+   Assert(newFuncSym is TMagicFuncSymbol);
+   Result:=TMagicFuncExpr.CreateMagicFuncExpr(nil, ScriptPos, TMagicFuncSymbol(newFuncSym));
+
+   Result.Args.Assign(Args);
+   Args.Clear;
+   TMagicFuncExpr(Result).FResultAddr:=FResultAddr;
+   Free;
 end;
 
 // GetData

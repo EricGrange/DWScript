@@ -1,1 +1,1 @@
-Max;
+MaxInt;

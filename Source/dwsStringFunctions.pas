@@ -799,27 +799,27 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   RegisterInternalStringFunction(TChrFunc, 'Chr', ['i', cInteger], True);
+   RegisterInternalStringFunction(TChrFunc, 'Chr', ['i', cInteger], [iffStateLess]);
 
-   RegisterInternalStringFunction(TIntToStrFunc, 'IntToStr', ['i', cInteger], True);
-   RegisterInternalIntFunction(TStrToIntFunc, 'StrToInt', ['str', cString], True);
-   RegisterInternalIntFunction(TStrToIntDefFunc, 'StrToIntDef', ['str', cString, 'def', cInteger], True);
-   RegisterInternalIntFunction(TStrToIntDefFunc, 'VarToIntDef', ['val', cVariant, 'def', cInteger], True);
+   RegisterInternalStringFunction(TIntToStrFunc, 'IntToStr', ['i', cInteger], [iffStateLess]);
+   RegisterInternalIntFunction(TStrToIntFunc, 'StrToInt', ['str', cString], [iffStateLess]);
+   RegisterInternalIntFunction(TStrToIntDefFunc, 'StrToIntDef', ['str', cString, 'def', cInteger], [iffStateLess]);
+   RegisterInternalIntFunction(TStrToIntDefFunc, 'VarToIntDef', ['val', cVariant, 'def', cInteger], [iffStateLess]);
 
-   RegisterInternalStringFunction(TIntToHexFunc, 'IntToHex', ['v', cInteger, 'digits', cInteger], True);
-   RegisterInternalIntFunction(THexToIntFunc, 'HexToInt', ['hexa', cString], True);
-   RegisterInternalStringFunction(TIntToBinFunc, 'IntToBin', ['v', cInteger, 'digits', cInteger], True);
+   RegisterInternalStringFunction(TIntToHexFunc, 'IntToHex', ['v', cInteger, 'digits', cInteger], [iffStateLess]);
+   RegisterInternalIntFunction(THexToIntFunc, 'HexToInt', ['hexa', cString], [iffStateLess]);
+   RegisterInternalStringFunction(TIntToBinFunc, 'IntToBin', ['v', cInteger, 'digits', cInteger], [iffStateLess]);
 
-   RegisterInternalStringFunction(TBoolToStrFunc, 'BoolToStr', ['b', cBoolean], True);
+   RegisterInternalStringFunction(TBoolToStrFunc, 'BoolToStr', ['b', cBoolean], [iffStateLess]);
 
-   RegisterInternalStringFunction(TFloatToStrFunc, 'FloatToStr', ['f', cFloat, 'p=99', cInteger], True);
-   RegisterInternalFloatFunction(TStrToFloatFunc, 'StrToFloat', ['str', cString], True);
-   RegisterInternalFloatFunction(TStrToFloatDefFunc, 'StrToFloatDef', ['str', cString, 'def', cFloat], True);
-   RegisterInternalFloatFunction(TStrToFloatDefFunc, 'VarToFloatDef', ['val', cVariant, 'def', cFloat], True);
+   RegisterInternalStringFunction(TFloatToStrFunc, 'FloatToStr', ['f', cFloat, 'p=99', cInteger], [iffStateLess]);
+   RegisterInternalFloatFunction(TStrToFloatFunc, 'StrToFloat', ['str', cString], [iffStateLess]);
+   RegisterInternalFloatFunction(TStrToFloatDefFunc, 'StrToFloatDef', ['str', cString, 'def', cFloat], [iffStateLess]);
+   RegisterInternalFloatFunction(TStrToFloatDefFunc, 'VarToFloatDef', ['val', cVariant, 'def', cFloat], [iffStateLess]);
 
-   RegisterInternalStringFunction(TFormatFunc, 'Format', ['fmt', cString, 'args', 'array of const'], True);
+   RegisterInternalStringFunction(TFormatFunc, 'Format', ['fmt', cString, 'args', 'array of const'], [iffStateLess]);
 
-   RegisterInternalStringFunction(TCharAtFunc, 'CharAt', ['s', cString, 'x', cInteger], True);
+   RegisterInternalStringFunction(TCharAtFunc, 'CharAt', ['s', cString, 'x', cInteger], [iffStateLess]);
 
    RegisterInternalFunction(TDeleteFunc, 'Delete', ['@S', cString, 'index', cInteger, 'Len', cInteger], '');
    RegisterInternalFunction(TInsertFunc, 'Insert', ['src', cString, '@S', cString, 'index', cInteger], '');
@@ -829,46 +829,46 @@ initialization
    RegisterInternalStringFunction(TUpperCaseFunc, 'UpperCase', ['str', cString]);
    RegisterInternalStringFunction(TAnsiUpperCaseFunc, 'AnsiUpperCase', ['str', cString]);
 
-   RegisterInternalIntFunction(TPosFunc, 'Pos', ['subStr', cString, 'str', cString], True);
-   RegisterInternalIntFunction(TPosExFunc, 'PosEx', ['subStr', cString, 'str', cString, 'offset', cInteger], True);
-   RegisterInternalIntFunction(TRevPosFunc, 'RevPos', ['subStr', cString, 'str', cString], True);
+   RegisterInternalIntFunction(TPosFunc, 'Pos', ['subStr', cString, 'str', cString], [iffStateLess]);
+   RegisterInternalIntFunction(TPosExFunc, 'PosEx', ['subStr', cString, 'str', cString, 'offset', cInteger], [iffStateLess]);
+   RegisterInternalIntFunction(TRevPosFunc, 'RevPos', ['subStr', cString, 'str', cString], [iffStateLess]);
 
    RegisterInternalFunction(TSetLengthFunc, 'SetLength', ['@S', cString, 'NewLength', cInteger], '');
 
-   RegisterInternalStringFunction(TTrimLeftFunc, 'TrimLeft', ['str', cString], True);
-   RegisterInternalStringFunction(TTrimRightFunc, 'TrimRight', ['str', cString], True);
-   RegisterInternalStringFunction(TTrimFunc, 'Trim', ['str', cString], True);
+   RegisterInternalStringFunction(TTrimLeftFunc, 'TrimLeft', ['str', cString], [iffStateLess]);
+   RegisterInternalStringFunction(TTrimRightFunc, 'TrimRight', ['str', cString], [iffStateLess]);
+   RegisterInternalStringFunction(TTrimFunc, 'Trim', ['str', cString], [iffStateLess]);
 
-   RegisterInternalBoolFunction(TSameTextFunc, 'SameText', ['str1', cString, 'str2', cString], True);
-   RegisterInternalIntFunction(TCompareTextFunc, 'CompareText', ['str1', cString, 'str2', cString], True);
-   RegisterInternalIntFunction(TAnsiCompareTextFunc, 'AnsiCompareText', ['str1', cString, 'str2', cString], True);
-   RegisterInternalIntFunction(TCompareStrFunc, 'CompareStr', ['str1', cString, 'str2', cString], True);
-   RegisterInternalIntFunction(TAnsiCompareStrFunc, 'AnsiCompareStr', ['str1', cString, 'str2', cString], True);
+   RegisterInternalBoolFunction(TSameTextFunc, 'SameText', ['str1', cString, 'str2', cString], [iffStateLess]);
+   RegisterInternalIntFunction(TCompareTextFunc, 'CompareText', ['str1', cString, 'str2', cString], [iffStateLess]);
+   RegisterInternalIntFunction(TAnsiCompareTextFunc, 'AnsiCompareText', ['str1', cString, 'str2', cString], [iffStateLess]);
+   RegisterInternalIntFunction(TCompareStrFunc, 'CompareStr', ['str1', cString, 'str2', cString], [iffStateLess]);
+   RegisterInternalIntFunction(TAnsiCompareStrFunc, 'AnsiCompareStr', ['str1', cString, 'str2', cString], [iffStateLess]);
 
-   RegisterInternalBoolFunction(TIsDelimiterFunc, 'IsDelimiter', ['delims', cString, 'str', cString, 'index', cInteger], True);
-   RegisterInternalIntFunction(TLastDelimiterFunc, 'LastDelimiter', ['delims', cString, 'str', cString], True);
-   RegisterInternalIntFunction(TFindDelimiterFunc, 'FindDelimiter', ['delims', cString, 'str', cString, 'startIndex=1', cInteger], True);
+   RegisterInternalBoolFunction(TIsDelimiterFunc, 'IsDelimiter', ['delims', cString, 'str', cString, 'index', cInteger], [iffStateLess]);
+   RegisterInternalIntFunction(TLastDelimiterFunc, 'LastDelimiter', ['delims', cString, 'str', cString], [iffStateLess]);
+   RegisterInternalIntFunction(TFindDelimiterFunc, 'FindDelimiter', ['delims', cString, 'str', cString, 'startIndex=1', cInteger], [iffStateLess]);
 
-   RegisterInternalStringFunction(TQuotedStrFunc, 'QuotedStr', ['str', cString, 'quoteChar=', cString], True);
+   RegisterInternalStringFunction(TQuotedStrFunc, 'QuotedStr', ['str', cString, 'quoteChar=', cString], [iffStateLess]);
 
-   RegisterInternalStringFunction(TCopyFunc, 'Copy', ['str', cString, 'index', cInteger, 'Len', cInteger], True);
+   RegisterInternalStringFunction(TCopyFunc, 'Copy', ['str', cString, 'index', cInteger, 'Len', cInteger], [iffStateLess]);
 
-   RegisterInternalStringFunction(TLeftStrFunc, 'LeftStr', ['str', cString, 'count', cInteger], True);
-   RegisterInternalStringFunction(TRightStrFunc, 'RightStr', ['str', cString, 'count', cInteger], True);
-   RegisterInternalStringFunction(TCopyFunc, 'MidStr', ['str', cString, 'start', cInteger, 'count', cInteger], True);
-   RegisterInternalStringFunction(TSubStrFunc, 'SubStr', ['str', cString, 'start', cInteger], True);
-   RegisterInternalStringFunction(TSubStringFunc, 'SubString', ['str', cString, 'start', cInteger, 'end', cInteger], True);
+   RegisterInternalStringFunction(TLeftStrFunc, 'LeftStr', ['str', cString, 'count', cInteger], [iffStateLess]);
+   RegisterInternalStringFunction(TRightStrFunc, 'RightStr', ['str', cString, 'count', cInteger], [iffStateLess]);
+   RegisterInternalStringFunction(TCopyFunc, 'MidStr', ['str', cString, 'start', cInteger, 'count', cInteger], [iffStateLess]);
+   RegisterInternalStringFunction(TSubStrFunc, 'SubStr', ['str', cString, 'start', cInteger], [iffStateLess]);
+   RegisterInternalStringFunction(TSubStringFunc, 'SubString', ['str', cString, 'start', cInteger, 'end', cInteger], [iffStateLess]);
 
-   RegisterInternalStringFunction(TStringOfCharFunc, 'StringOfChar', ['ch', cString, 'count', cInteger], False);
-   RegisterInternalStringFunction(TStringOfStringFunc, 'StringOfString', ['str', cString, 'count', cInteger], False);
-   RegisterInternalStringFunction(TStringOfStringFunc, 'DupeString', ['str', cString, 'count', cInteger], False);
+   RegisterInternalStringFunction(TStringOfCharFunc, 'StringOfChar', ['ch', cString, 'count', cInteger], []);
+   RegisterInternalStringFunction(TStringOfStringFunc, 'StringOfString', ['str', cString, 'count', cInteger], []);
+   RegisterInternalStringFunction(TStringOfStringFunc, 'DupeString', ['str', cString, 'count', cInteger], []);
 
-   RegisterInternalBoolFunction(TStrBeginsWithFunc, 'StrBeginsWith', ['str', cString, 'beginStr', cString], True);
-   RegisterInternalBoolFunction(TStrEndsWithFunc, 'StrEndsWith', ['str', cString, 'endStr', cString], True);
+   RegisterInternalBoolFunction(TStrBeginsWithFunc, 'StrBeginsWith', ['str', cString, 'beginStr', cString], [iffStateLess]);
+   RegisterInternalBoolFunction(TStrEndsWithFunc, 'StrEndsWith', ['str', cString, 'endStr', cString], [iffStateLess]);
 
-   RegisterInternalStringFunction(TStrAfterFunc, 'StrAfter', ['str', cString, 'delimiter', cString], True);
-   RegisterInternalStringFunction(TStrBeforeFunc, 'StrBefore', ['str', cString, 'delimiter', cString], True);
+   RegisterInternalStringFunction(TStrAfterFunc, 'StrAfter', ['str', cString, 'delimiter', cString], [iffStateLess]);
+   RegisterInternalStringFunction(TStrBeforeFunc, 'StrBefore', ['str', cString, 'delimiter', cString], [iffStateLess]);
 
-   RegisterInternalStringFunction(TReverseStringFunc, 'ReverseString', ['str', cString], True);
+   RegisterInternalStringFunction(TReverseStringFunc, 'ReverseString', ['str', cString], [iffStateLess]);
 
 end.

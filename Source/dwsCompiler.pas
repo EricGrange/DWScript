@@ -372,7 +372,7 @@ type
                                    expecting : TTypeSymbol = nil) : TProgramExpr;
          function ReadFuncOverloaded(funcSym : TFuncSymbol; fromTable : TSymbolTable;
                                      codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
-         function ResolveOverload(funcExpr : TFuncExprBase; overloads : TFuncSymbolList) : Boolean;
+         function ResolveOverload(var funcExpr : TFuncExprBase; overloads : TFuncSymbolList) : Boolean;
          function HasConflictingOverload(funcSym, forwardedSym : TFuncSymbol) : Boolean;
          function PerfectMatchOverload(funcSym : TFuncSymbol) : TFuncSymbol;
          function ReadFunc(funcSym : TFuncSymbol; codeExpr : TDataExpr = nil;
@@ -4371,7 +4371,7 @@ end;
 
 // ResolveOverload
 //
-function TdwsCompiler.ResolveOverload(funcExpr : TFuncExprBase; overloads : TFuncSymbolList) : Boolean;
+function TdwsCompiler.ResolveOverload(var funcExpr : TFuncExprBase; overloads : TFuncSymbolList) : Boolean;
 var
    i : Integer;
    j : Integer;
@@ -4398,7 +4398,7 @@ begin
       if match<>nil then begin
          if match<>funcExpr.FuncSym then begin
             ReplaceSymbolUse(funcExpr.FuncSym, match, funcExpr.ScriptPos);
-            funcExpr.FuncSym:=match;
+            funcExpr:=funcExpr.ChangeFuncSymbol(match);
          end;
          Exit;
       end;
@@ -4481,8 +4481,10 @@ begin
    try
       if FTok.Test(ttBLEFT) then begin
          ReadFuncArgs(funcExpr, argPosArray);
-         if overloads<>nil then
+         if overloads<>nil then begin
             if not ResolveOverload(funcExpr, overloads) then Exit;
+            Result:=funcExpr;
+         end;
          TypeCheckArgs(funcExpr, argPosArray);
       end else begin
          if    (    (expecting is TNilSymbol)
@@ -4494,8 +4496,10 @@ begin
                FMsgs.AddCompilerError(funcExpr.Pos, CPE_LocalFunctionAsDelegate);
             Result:=TFuncRefExpr.Create(FProg, funcExpr);
          end else begin
-            if overloads<>nil then
+            if overloads<>nil then begin
                if not ResolveOverload(funcExpr, overloads) then Exit;
+               Result:=funcExpr;
+            end;
             TypeCheckArgs(funcExpr, nil);
          end;
       end;
@@ -8624,13 +8628,13 @@ begin
    sysTable.AddSymbol(clsDelphiException);
 
    // ExceptObj function
-   TExceptObjFunc.Create(sysTable, 'ExceptObject', [], SYS_EXCEPTION, False);
+   TExceptObjFunc.Create(sysTable, 'ExceptObject', [], SYS_EXCEPTION, []);
 
    // Runtime parameters
    if sysTable.TypVariant<>nil then
-      TParamFunc.Create(sysTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, False);
-   TParamStrFunc.Create(sysTable, 'ParamStr', ['Index', SYS_INTEGER], SYS_STRING, False);
-   TParamCountFunc.Create(sysTable, 'ParamCount', [], SYS_INTEGER, False);
+      TParamFunc.Create(sysTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, []);
+   TParamStrFunc.Create(sysTable, 'ParamStr', ['Index', SYS_INTEGER], SYS_STRING, []);
+   TParamCountFunc.Create(sysTable, 'ParamCount', [], SYS_INTEGER, []);
 end;
 
 // SetFilter

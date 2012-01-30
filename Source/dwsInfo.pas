@@ -308,8 +308,8 @@ end;
 procedure TdwsDefaultResultType.AddResultSymbols(SymbolTable: TSymbolTable);
 begin
    inherited;
-   TPrintFunction.Create(SymbolTable, 'Print',  ['v', 'Variant'], '', False);
-   TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['v', 'Variant'], '', False);
+   TPrintFunction.Create(SymbolTable, 'Print',  ['v', 'Variant'], '', []);
+   TPrintLnFunction.Create(SymbolTable, 'PrintLn', ['v', 'Variant'], '', []);
 end;
 
 // ------------------

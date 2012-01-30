@@ -193,16 +193,16 @@ procedure Tdws2StringsUnit.AddUnitSymbols(SymbolTable: TSymbolTable);
 var
   emptyArg: array of UnicodeString;
 begin
-  TWriteFunction.Create(SymbolTable, 'WriteStr', ['Str', SYS_VARIANT], '', False);
-  TWriteFunction.Create(SymbolTable, 'Print', ['Str', SYS_VARIANT], '', False);
-  TWriteLnFunction.Create(SymbolTable, 'WriteLn', ['Str', SYS_VARIANT], '', False);
-  TWriteLnFunction.Create(SymbolTable, 'PrintLn', ['Str', SYS_VARIANT], '', False);
-  TWriteAllFunction.Create(SymbolTable, 'WriteAll', ['Str', SYS_VARIANT], '', False);
+  TWriteFunction.Create(SymbolTable, 'WriteStr', ['Str', SYS_VARIANT], '', []);
+  TWriteFunction.Create(SymbolTable, 'Print', ['Str', SYS_VARIANT], '', []);
+  TWriteLnFunction.Create(SymbolTable, 'WriteLn', ['Str', SYS_VARIANT], '', []);
+  TWriteLnFunction.Create(SymbolTable, 'PrintLn', ['Str', SYS_VARIANT], '', []);
+  TWriteAllFunction.Create(SymbolTable, 'WriteAll', ['Str', SYS_VARIANT], '', []);
 
   SetLength(emptyArg, 0);
-  TReadCharFunction.Create(SymbolTable, 'ReadChar', emptyArg, SYS_STRING, False);
-  TReadLnFunction.Create(SymbolTable, 'ReadLn', emptyArg, SYS_STRING, False);
-  TReadAllFunction.Create(SymbolTable, 'ReadAll', emptyArg, SYS_STRING, False);
+  TReadCharFunction.Create(SymbolTable, 'ReadChar', emptyArg, SYS_STRING, []);
+  TReadLnFunction.Create(SymbolTable, 'ReadLn', emptyArg, SYS_STRING, []);
+  TReadAllFunction.Create(SymbolTable, 'ReadAll', emptyArg, SYS_STRING, []);
 end;
 
 constructor Tdws2StringsUnit.Create(AOwner: TComponent);
