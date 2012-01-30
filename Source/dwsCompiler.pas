@@ -4375,37 +4375,54 @@ function TdwsCompiler.ResolveOverload(var funcExpr : TFuncExprBase; overloads : 
 var
    i : Integer;
    j : Integer;
-   funcSym, match : TFuncSymbol;
+   match, bestMatch : TFuncSymbol;
+   matchDistance, bestMatchDistance, bestCount : Integer;
+   matchParamType, funcExprParamType : TTypeSymbol;
 begin
-   Result:=True;
+   bestMatch:=nil;
+   bestCount:=0;
+   bestMatchDistance:=MaxInt;
    for i:=0 to overloads.Count-1 do begin
-      funcSym:=overloads[i];
-      if funcExpr.Args.Count>funcSym.Params.Count then continue;
-      match:=funcSym;
+      match:=overloads[i];
+      if funcExpr.Args.Count>match.Params.Count then continue;
+      matchDistance:=0;
       for j:=0 to funcExpr.Args.Count-1 do begin
-         if not funcExpr.GetArgType(j).IsOfType(funcSym.GetParamType(j)) then begin
-            match:=nil;
-            break;
+         matchParamType:=match.GetParamType(j);
+         funcExprParamType:=funcExpr.GetArgType(j);
+         if not matchParamType.IsOfType(funcExprParamType) then begin
+            if not (   (matchParamType.IsOfType(FProg.TypFloat) and funcExprParamType.IsOfType(FProg.TypInteger))
+                    or matchParamType.IsCompatible(funcExprParamType)) then begin
+               match:=nil;
+               break;
+            end else Inc(matchDistance);
          end;
       end;
       if match=nil then continue;
-      for j:=funcExpr.Args.Count to funcSym.Params.Count-1 do begin
-         if funcSym.Params[j].ClassType<>TParamSymbolWithDefaultValue then begin
+      for j:=funcExpr.Args.Count to match.Params.Count-1 do begin
+         if match.Params[j].ClassType<>TParamSymbolWithDefaultValue then begin
             match:=nil;
             Break;
          end;
       end;
-      if match<>nil then begin
-         if match<>funcExpr.FuncSym then begin
-            ReplaceSymbolUse(funcExpr.FuncSym, match, funcExpr.ScriptPos);
-            funcExpr:=funcExpr.ChangeFuncSymbol(match);
-         end;
-         Exit;
+      if (match<>nil) and (matchDistance<=bestMatchDistance) then begin
+         if matchDistance<bestMatchDistance then begin
+            bestMatch:=match;
+            bestMatchDistance:=matchDistance;
+            bestCount:=1;
+         end else Inc(bestCount);
       end;
    end;
-   FMsgs.AddCompilerErrorFmt(funcExpr.ScriptPos, CPE_NoMatchingOverload,
-                             [funcExpr.FuncSym.Name]);
-   Result:=False;
+   if (bestMatch<>nil) and (bestCount=1) then begin
+      if bestMatch<>funcExpr.FuncSym then begin
+         ReplaceSymbolUse(funcExpr.FuncSym, bestMatch, funcExpr.ScriptPos);
+         funcExpr:=funcExpr.ChangeFuncSymbol(bestMatch);
+      end;
+      Result:=True;
+   end else begin
+      FMsgs.AddCompilerErrorFmt(funcExpr.ScriptPos, CPE_NoMatchingOverload,
+                                [funcExpr.FuncSym.Name]);
+      Result:=False;
+   end;
 end;
 
 // HasConflictingOverload
