@@ -46,6 +46,7 @@ type
    TSourceConditions = class;
    TSourcePreConditions = class;
    TSourcePostConditions = class;
+   TBlockExprBase = class;
 
    TVariantDynArray = array of Variant;
 
@@ -668,6 +669,8 @@ type
          procedure InitSymbol(Symbol: TSymbol);
          procedure InitExpression(Expr: TExprBase);
 
+         procedure OptimizeConstAssignments(blockExpr : TBlockExprBase);
+
          procedure SetBeginPos(const scriptPos : TScriptPos);
 
          property Func : TFuncSymbol read FFunc write FFunc;
@@ -803,7 +806,8 @@ type
          destructor Destroy; override;
 
          procedure AddStatement(expr : TNoResultExpr);
-         procedure AddStatementFirst(expr : TNoResultExpr);
+         procedure ReplaceStatement(index : Integer; expr : TNoResultExpr);
+         function ExtractStatement(index : Integer) : TNoResultExpr;
    end;
 
    // statement; statement; statement;
@@ -2944,6 +2948,40 @@ procedure TdwsProcedure.InitExpression(Expr: TExprBase);
 begin
 end;
 
+// OptimizeConstAssignments
+//
+procedure TdwsProcedure.OptimizeConstAssignments(blockExpr : TBlockExprBase);
+var
+   i, j : Integer;
+   subExpr, initSubExpr : TExprBase;
+   assignExpr : TAssignConstExpr;
+   assignExprSym : TDataSymbol;
+   initAssign : TAssignConstExpr;
+begin
+   i:=0;
+   while i<blockExpr.SubExprCount do begin
+      subExpr:=blockExpr.SubExpr[i];
+      if subExpr is TAssignConstExpr then begin
+         assignExpr:=TAssignConstExpr(subExpr);
+         if assignExpr.Left is TVarExpr then begin
+            assignExprSym:=TVarExpr(assignExpr.Left).DataSym;
+            for j:=0 to InitExpr.SubExprCount-1 do begin
+               initSubExpr:=InitExpr.SubExpr[j];
+               if initSubExpr.ClassType=assignExpr.ClassType then begin
+                  initAssign:=TAssignConstExpr(initSubExpr);
+                  if (initAssign.Left is TVarExpr) and (TVarExpr(initAssign.Left).DataSym=assignExprSym) then begin
+                     InitExpr.ReplaceStatement(j, blockExpr.ExtractStatement(i));
+                     Dec(i);
+                     Break;
+                  end;
+               end;
+            end;
+         end;
+      end else Break;
+      Inc(i);
+   end;
+end;
+
 // SetBeginPos
 //
 procedure TdwsProcedure.SetBeginPos(const scriptPos : TScriptPos);
@@ -3695,14 +3733,22 @@ begin
    Inc(FCount);
 end;
 
-// AddStatementFirst
+// ReplaceStatement
 //
-procedure TBlockExprBase.AddStatementFirst(expr : TNoResultExpr);
+procedure TBlockExprBase.ReplaceStatement(index : Integer; expr : TNoResultExpr);
 begin
-   ReallocMem(FStatements, (FCount+1)*SizeOf(TNoResultExpr));
-   Move(FStatements[0], FStatements[1], FCount);
-   FStatements[0]:=expr;
-   Inc(FCount);
+   FStatements[index].Free;
+   FStatements[index]:=expr;
+end;
+
+// ExtractStatement
+//
+function TBlockExprBase.ExtractStatement(index : Integer) : TNoResultExpr;
+begin
+   Result:=FStatements[index];
+   if index<FCount-1 then
+      Move(FStatements[index+1], FStatements[index], (FCount-index-1)*SizeOf(TNoResultExpr));
+   Dec(FCount);
 end;
 
 // GetSubExpr
@@ -3947,11 +3993,19 @@ end;
 //
 function TFuncExprBase.ChangeFuncSymbol(newFuncSym : TFuncSymbol) : TFuncExprBase;
 begin
-   FFunc:=newFuncSym;
-   if Assigned(newFuncSym) then
-      FTyp:=newFuncSym.Typ
-   else FTyp:=nil;
-   Result:=Self;
+   if (FuncSym is TMagicFuncSymbol) or (newFuncSym is TMagicFuncSymbol) then begin
+      Result:=TMagicFuncExpr.CreateMagicFuncExpr(nil, ScriptPos, TMagicFuncSymbol(newFuncSym));
+      Result.Args.Assign(Args);
+      Args.Clear;
+      TMagicFuncExpr(Result).FResultAddr:=FResultAddr;
+      Free;
+   end else begin
+      FFunc:=newFuncSym;
+      if Assigned(newFuncSym) then
+         FTyp:=newFuncSym.Typ
+      else FTyp:=nil;
+      Result:=Self;
+   end;
 end;
 
 // Initialize

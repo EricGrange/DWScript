@@ -157,8 +157,6 @@ type
          function ExpectedArg : TParamSymbol; override;
 
          function IsWritable : Boolean; override;
-
-         function ChangeFuncSymbol(newFuncSym : TFuncSymbol) : TFuncExprBase; override;
    end;
 
    // TMagicVariantFuncExpr
@@ -431,19 +429,6 @@ end;
 function TMagicFuncExpr.IsWritable : Boolean;
 begin
    Result:=False;
-end;
-
-// ChangeFuncSymbol
-//
-function TMagicFuncExpr.ChangeFuncSymbol(newFuncSym : TFuncSymbol) : TFuncExprBase;
-begin
-   Assert(newFuncSym is TMagicFuncSymbol);
-   Result:=TMagicFuncExpr.CreateMagicFuncExpr(nil, ScriptPos, TMagicFuncSymbol(newFuncSym));
-
-   Result.Args.Assign(Args);
-   Args.Clear;
-   TMagicFuncExpr(Result).FResultAddr:=FResultAddr;
-   Free;
 end;
 
 // GetData

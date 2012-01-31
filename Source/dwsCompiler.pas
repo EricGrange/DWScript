@@ -2384,6 +2384,7 @@ var
    tt, sectionType, finalToken : TTokenType;
    constSym : TConstSymbol;
    hotPos : TScriptPos;
+   progExpr : TBlockExpr;
 begin
    // Stop if declaration was forwarded or external
    if (funcSymbol.IsForwarded or funcSymbol.IsExternal) then begin
@@ -2488,9 +2489,11 @@ begin
 
             proc.SetBeginPos(FTok.HotPos);
 
-            FProg.Expr:=ReadRootBlock([ttEND, ttENSURE], finalToken);
-            if Optimize then
-               FProg.Expr:=FProg.Expr.OptimizeToNoResultExpr(FProg, FExec);
+            progExpr:=ReadRootBlock([ttEND, ttENSURE], finalToken);
+            if Optimize then begin
+               proc.OptimizeConstAssignments(progExpr);
+               FProg.Expr:=progExpr.OptimizeToNoResultExpr(FProg, FExec);
+            end else FProg.Expr:=progExpr;
 
             if finalToken=ttENSURE then begin
                if funcSymbol is TMethodSymbol then
@@ -2509,6 +2512,7 @@ begin
 
             HintUnusedSymbols;
             HintUnusedResult(proc.Func.Result);
+
          finally
             if coContextMap in FOptions then
                FSourceContextMap.CloseContext(FTok.CurrentPos);  // close with inside procedure end
