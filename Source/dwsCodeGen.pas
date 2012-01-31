@@ -976,7 +976,7 @@ end;
 function TdwsCodeGen.GetNewTempSymbol : String;
 begin
    Inc(FTempSymbolCounter);
-   Result:=IntToStr(FTempSymbolCounter);
+   Result:=IntToHex(FTempSymbolCounter, 1);
 end;
 
 // WriteCompiledOutput
@@ -1313,6 +1313,15 @@ end;
 // DoCodeGen
 //
 procedure TdwsExprGenericCodeGen.DoCodeGen(codeGen : TdwsCodeGen; expr : TExprBase; start, stop : Integer);
+
+   function IsBoundaryChar(var v : TVarRec) : Boolean;
+   begin
+      Result:=    (v.VType=vtWideChar)
+              and (   (v.VWideChar='(')
+                   or (v.VWideChar=',')
+                   or (v.VWideChar=')'));
+   end;
+
 var
    i, idx : Integer;
    c : Char;
@@ -1329,8 +1338,8 @@ begin
                item:=expr.SubExpr[idx];
                noWrap:=(item is TVarExpr) or (item is TFieldExpr);
                if not noWrap then begin
-                  noWrap:=    (i>start) and (FTemplate[i-1].VType=vtWideChar) and (FTemplate[i-1].VWideChar='(')
-                          and (i<stop) and (FTemplate[i+1].VType=vtWideChar) and (FTemplate[i+1].VWideChar=')')
+                  noWrap:=    (i>start) and IsBoundaryChar(FTemplate[i-1])
+                          and (i<stop) and IsBoundaryChar(FTemplate[i+1])
                           and (item is TTypedExpr);
                end;
             end else begin

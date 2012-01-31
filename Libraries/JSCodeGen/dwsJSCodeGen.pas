@@ -295,6 +295,10 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
+   TJSConvFloatExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
    TJSOrdExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -1110,8 +1114,7 @@ begin
    RegisterCodeGen(TRecordExpr,           TJSRecordExpr.Create);
 
    RegisterCodeGen(TConvIntegerExpr,      TJSConvIntegerExpr.Create);
-   RegisterCodeGen(TConvFloatExpr,
-      TdwsExprGenericCodeGen.Create(['Number', '(', 0, ')']));
+   RegisterCodeGen(TConvFloatExpr,        TJSConvFloatExpr.Create);
    RegisterCodeGen(TConvBoolExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '?true:false)']));
    RegisterCodeGen(TConvStringExpr,
@@ -1320,7 +1323,7 @@ begin
    RegisterCodeGen(TRepeatExpr,
       TdwsExprGenericCodeGen.Create(['do {', #9, 1, #8, '} while (!', 0, ');'], True));
    RegisterCodeGen(TLoopExpr,
-      TdwsExprGenericCodeGen.Create(['while (true) {', #9, 1, #8, '};'], True));
+      TdwsExprGenericCodeGen.Create(['while (1) {', #9, 1, #8, '};'], True));
 
    RegisterCodeGen(TContinueExpr,         TdwsExprGenericCodeGen.Create(['continue;'], True));
    RegisterCodeGen(TBreakExpr,            TdwsExprGenericCodeGen.Create(['break;'], True));
@@ -1833,14 +1836,26 @@ procedure TdwsJSCodeGen.CompileSymbolTable(table : TSymbolTable);
 var
    varSym : TDataSymbol;
    sym : TSymbol;
+   declaredOne : Boolean;
 begin
    inherited;
+   declaredOne:=False;
    for sym in table do begin
       if sym.ClassType=TDataSymbol then begin
          varSym:=TDataSymbol(sym);
          if FDeclaredLocalVars.IndexOf(varSym)<0 then begin
             FDeclaredLocalVars.Add(varSym);
-            WriteString('var ');
+            if not declaredOne then begin
+               WriteString('var ');
+               declaredOne:=True;
+            end else begin
+               if cgoOptimizeForSize in Options then
+                  WriteString(',')
+               else begin
+                  WriteStringLn(',');
+                  WriteString('    ');
+               end;
+            end;
             WriteSymbolName(varSym);
             if varSym.Typ.ClassType=TBaseVariantSymbol then begin
                // undefined is JS default for unassigned var
@@ -1848,10 +1863,11 @@ begin
                WriteString('=');
                WriteDefaultValue(varSym.Typ, TJSExprCodeGen.IsLocalVarParam(Self, varSym));
             end;
-            WriteStringLn(';');
          end;
       end;
    end;
+   if declaredOne then
+      WriteStringLn(';');
 end;
 
 // ReserveSymbolNames
@@ -1943,7 +1959,7 @@ end;
 //
 function TdwsJSCodeGen.GetNewTempSymbol : String;
 begin
-   Result:='$tmp'+inherited GetNewTempSymbol;
+   Result:='$t'+inherited GetNewTempSymbol;
 end;
 
 // WriteJavaScriptString
@@ -3155,11 +3171,11 @@ begin
    FMagicCodeGens.AddObject('ArcTan2', TdwsExprGenericCodeGen.Create(['Math.atan2', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('Ceil', TdwsExprGenericCodeGen.Create(['Math.ceil', '(', 0, ')']));
    FMagicCodeGens.AddObject('Cos', TdwsExprGenericCodeGen.Create(['Math.cos', '(', 0, ')']));
-   FMagicCodeGens.AddObject('Copy', TdwsExprGenericCodeGen.Create(['(', 0, ').substr((', 1, ')-1,', 2, ')']));
-   FMagicCodeGens.AddObject('Exp', TdwsExprGenericCodeGen.Create(['Math.exp(', 0, ')']));
-   FMagicCodeGens.AddObject('Floor', TdwsExprGenericCodeGen.Create(['Math.floor(', 0, ')']));
-   FMagicCodeGens.AddObject('HexToInt', TdwsExprGenericCodeGen.Create(['parseInt(', 0, ',16)']));
-   FMagicCodeGens.AddObject('IntPower', TdwsExprGenericCodeGen.Create(['Math.pow(', 0, ',', 1, ')']));
+   FMagicCodeGens.AddObject('Copy', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(', '(', 1, ')', '-1,', 2, ')']));
+   FMagicCodeGens.AddObject('Exp', TdwsExprGenericCodeGen.Create(['Math.exp', '(', 0, ')']));
+   FMagicCodeGens.AddObject('Floor', TdwsExprGenericCodeGen.Create(['Math.floor', '(', 0, ')']));
+   FMagicCodeGens.AddObject('HexToInt', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',','16)']));
+   FMagicCodeGens.AddObject('IntPower', TdwsExprGenericCodeGen.Create(['Math.pow', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('IntToStr', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toString()']));
    FMagicCodeGens.AddObject('LeftStr', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(0,', 1, ')']));
    FMagicCodeGens.AddObject('Ln', TdwsExprGenericCodeGen.Create(['Math.log', '(', 0, ')']));
@@ -3171,14 +3187,14 @@ begin
    FMagicCodeGens.AddObject('MaxInt', TdwsExprGenericCodeGen.Create(['Math.max','(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('MinInt', TdwsExprGenericCodeGen.Create(['Math.min', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('Pi', TdwsExprGenericCodeGen.Create(['Math.PI']));
-   FMagicCodeGens.AddObject('Pos', TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf', '(', 0, ')+1)']));
+   FMagicCodeGens.AddObject('Pos', TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf', '(', 0, ')', '+1)']));
    FMagicCodeGens.AddObject('PosEx', TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf', '(', 0, ',', '(', 2, ')', '-1)+1)']));
    FMagicCodeGens.AddObject('Power', TdwsExprGenericCodeGen.Create(['Math.pow', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('Round', TdwsExprGenericCodeGen.Create(['Math.round', '(', 0, ')']));
    FMagicCodeGens.AddObject('Sin', TdwsExprGenericCodeGen.Create(['Math.sin', '(', 0, ')']));
    FMagicCodeGens.AddObject('Sqrt', TdwsExprGenericCodeGen.Create(['Math.sqrt', '(', 0, ')']));
    FMagicCodeGens.AddObject('StrToFloat', TdwsExprGenericCodeGen.Create(['parseFloat', '(', 0, ')']));
-   FMagicCodeGens.AddObject('StrToInt', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',10)']));
+   FMagicCodeGens.AddObject('StrToInt', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',', '10)']));
    FMagicCodeGens.AddObject('SubStr', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(', '(', 1, ')', '-1)']));
    FMagicCodeGens.AddObject('SubString', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(', '(', 1, ')', '-1,', '(', 2, ')', '-2)']));
    FMagicCodeGens.AddObject('Tan', TdwsExprGenericCodeGen.Create(['Math.tan', '(', 0, ')']));
@@ -4025,6 +4041,26 @@ begin
       codeGen.Compile(e.Expr);
       codeGen.WriteString('?1:0)');
    end else codeGen.Compile(e.Expr);
+end;
+
+// ------------------
+// ------------------ TJSConvFloatExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSConvFloatExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TConvIntegerExpr;
+begin
+   e:=TConvIntegerExpr(expr);
+   if e.Expr.Typ.UnAliasedType is TBaseIntegerSymbol then
+      codeGen.Compile(e.Expr)
+   else begin
+      codeGen.WriteString('Number(');
+      codeGen.Compile(e.Expr);
+      codeGen.WriteString(')');
+   end;
 end;
 
 // ------------------
