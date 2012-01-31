@@ -1,0 +1,4 @@
+Syntax Error: Default value required [line: 2, column: 46]
+Syntax Error: Default value required [line: 7, column: 49]
+Syntax Error: Default value required [line: 13, column: 49]
+Syntax Error: Default value required [line: 16, column: 55]

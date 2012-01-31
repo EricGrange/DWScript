@@ -328,6 +328,7 @@ const
   CPE_LazyParamCantBeFunctionPointer = 'Lazy parameter can''t be a function pointer';
   CPE_VarParamCantHaveDefaultValue = 'var parameter can''t have a default value';
   CPE_ConstParamCantHaveDefaultValue = 'const parameter can''t have a default value';
+  CPE_DefaultValueRequired = 'Default value required';
   CPE_OpenArrayParamMustBeConst = 'open array parameter must be const';
   CPE_OpenArrayParamElementsMustBeConst = 'open array parameter elements must be "const"';
   CPE_FieldExists = 'There is already a field with name "%s"';

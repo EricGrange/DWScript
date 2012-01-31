@@ -6811,6 +6811,7 @@ var
    names : TStringList;
    typ : TTypeSymbol;
    lazyParam, varParam, constParam : Boolean;
+   onlyDefaultParamsNow : Boolean;
    posArray : TScriptPosArray;
    typScriptPos : TScriptPos;
    sym : TParamSymbol;
@@ -6822,6 +6823,7 @@ begin
          // At least one argument was found
          names:=TStringList.Create;
          try
+            onlyDefaultParamsNow:=False;
             repeat
                lazyParam:=FTok.TestDelete(ttLAZY);
                varParam:=FTok.TestDelete(ttVAR);
@@ -6852,6 +6854,7 @@ begin
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantBeFunctionPointer);
 
                      if FTok.TestDelete(ttEQ) then begin
+                        onlyDefaultParamsNow:=True;
                         if lazyParam then
                            FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantHaveDefaultValue);
                         if varParam then
@@ -6872,6 +6875,8 @@ begin
                               FreeAndNil(defaultExpr);
                            end;
                         end;
+                     end else if onlyDefaultParamsNow then begin
+                        FMsgs.AddCompilerError(FTok.HotPos, CPE_DefaultValueRequired);
                      end;
 
                      if (defaultExpr<>nil) and not (defaultExpr is TConstExpr) then
