@@ -2974,7 +2974,7 @@ begin
                      Dec(i);
                      Break;
                   end;
-               end;
+               end else if not (initSubExpr is TAssignConstExpr) then Break;
             end;
          end;
       end else Break;
