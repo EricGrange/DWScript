@@ -999,6 +999,11 @@ type
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
+   // a sar b
+   TSarExpr = class(TIntegerBinOpExpr)
+     function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+   end;
+
    // newType(x)
    TConvExpr = class(TUnaryOpExpr)
       public
@@ -4570,6 +4575,27 @@ end;
 function TShrExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
    Result := FLeft.EvalAsInteger(exec) shr FRight.EvalAsInteger(exec);
+end;
+
+// ------------------
+// ------------------ TSarExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TSarExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   left, right : Int64;
+begin
+   left:=FLeft.EvalAsInteger(exec);
+   right:=FRight.EvalAsInteger(exec);
+   if right=0 then
+      Result:=left
+   else if left>=0 then
+      Result:=left shr right
+   else if right>63 then
+      Result:=-1
+   else Result:=(left shr right) or (Int64(-1) shl (64-right));
 end;
 
 // ------------------

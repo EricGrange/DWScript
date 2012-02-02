@@ -2619,7 +2619,7 @@ var
 begin
    opPos:=FTok.HotPos;
    tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttTIMES, ttDIVIDE, ttMOD, ttDIV,
-                           ttOR, ttAND, ttXOR, ttIMPLIES, ttSHL, ttSHR,
+                           ttOR, ttAND, ttXOR, ttIMPLIES, ttSHL, ttSHR, ttSAR,
                            ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
                            ttLESSLESS, ttGTRGTR, ttCARET]);
    if tt=ttNone then
@@ -6297,7 +6297,7 @@ begin
 
       repeat
          tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttOR, ttAND, ttXOR, ttIMPLIES,
-                                 ttSHL, ttSHR, ttIN, ttNOT,
+                                 ttSHL, ttSHR, ttSAR, ttIN, ttNOT,
                                  ttLESSLESS, ttGTRGTR]);
          if tt=ttNone then Break;
 

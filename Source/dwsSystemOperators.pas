@@ -173,6 +173,11 @@ begin
    RegisterOperator(ttSHR,    TShrExpr,         typVariant,  typInteger);
    RegisterOperator(ttSHR,    TShrExpr,         typVariant,  typVariant);
 
+   RegisterOperator(ttSAR,    TSarExpr,         typInteger,  typInteger);
+   RegisterOperator(ttSAR,    TSarExpr,         typInteger,  typVariant);
+   RegisterOperator(ttSAR,    TSarExpr,         typVariant,  typInteger);
+   RegisterOperator(ttSAR,    TSarExpr,         typVariant,  typVariant);
+
    // comparison operators
 
    RegisterOperator(ttEQ,     TRelEqualBoolExpr,      typBoolean, typBoolean);

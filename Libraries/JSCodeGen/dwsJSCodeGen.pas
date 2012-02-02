@@ -1203,8 +1203,10 @@ begin
    RegisterCodeGen(TAbsVariantExpr,
       TdwsExprGenericCodeGen.Create(['Math.abs', '(', 0, ')']));
 
-   RegisterCodeGen(TShrExpr,
+   RegisterCodeGen(TSarExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '>>', 1, ')']));
+   RegisterCodeGen(TShrExpr,
+      TdwsExprGenericCodeGen.Create(['(', 0, '>>>', 1, ')']));
    RegisterCodeGen(TShlExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '<<', 1, ')']));
    RegisterCodeGen(TIntAndExpr,
