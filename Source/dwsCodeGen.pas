@@ -1233,13 +1233,59 @@ procedure TdwsCodeGen.SmartLinkFilterStructSymbol(structSymbol : TStructuredType
    end;
 
 var
+   i : Integer;
    member : TSymbol;
    method : TMethodSymbol;
    prop : TPropertySymbol;
    localChanged : Boolean;
+   symPosList : TSymbolPositionList;
+   symPos : TSymbolPosition;
+   selfReferencedOnly, foundSelf : Boolean;
+   srcContext : TdwsSourceContext;
 begin
    if FSymbolDictionary=nil then Exit;
 
+   symPosList:=FSymbolDictionary.FindSymbolPosList(structSymbol);
+   if symPosList=nil then Exit;
+
+   // is symbol only referenced by its members?
+   selfReferencedOnly:=True;
+   for i:=0 to symPosList.Count-1 do begin
+      symPos:=symPosList[i];
+      if suReference in symPos.SymbolUsages then begin
+         srcContext:=FSourceContextMap.FindContext(symPos.ScriptPos);
+         foundSelf:=False;
+         while srcContext<>nil do begin
+            if srcContext.ParentSym=structSymbol then begin
+               foundSelf:=True;
+               Break;
+            end;
+            if     (srcContext.ParentSym is TMethodSymbol)
+               and (TMethodSymbol(srcContext.ParentSym).StructSymbol=structSymbol) then begin
+               foundSelf:=True;
+               Break;
+            end;
+            srcContext:=srcContext.Parent;
+         end;
+         if not foundSelf then begin
+            selfReferencedOnly:=False;
+            Break;
+         end;
+      end;
+   end;
+   if selfReferencedOnly then begin
+      FSymbolDictionary.Remove(structSymbol);
+      for member in structSymbol.Members do begin
+         if FSymbolDictionary.FindSymbolPosList(member)<>nil then begin
+            RemoveReferencesInContextMap(member);
+            FSymbolDictionary.Remove(member);
+         end;
+      end;
+      changed:=True;
+      Exit;
+   end;
+
+   // remove members cross-references
    repeat
       localChanged:=False;
       for member in structSymbol.Members do begin

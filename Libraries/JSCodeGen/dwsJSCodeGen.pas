@@ -1665,6 +1665,8 @@ var
 begin
    inherited;
 
+   if not SmartLink(cls) then Exit;
+
    WriteString('var ');
    WriteSymbolName(cls);
    WriteStringLn('={');
