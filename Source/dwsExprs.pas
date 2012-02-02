@@ -743,7 +743,7 @@ type
          function GetBaseType : TTypeSymbol; override;
 
       public
-         function OptimizeToTypedExpr(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
+         function OptimizeToTypedExpr(prog : TdwsProgram; exec : TdwsExecution; const hotPos : TScriptPos) : TTypedExpr;
          function OptimizeIntegerConstantToFloatConstant(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
 
          function ScriptPos : TScriptPos; override;
@@ -2129,6 +2129,30 @@ end;
 // RunProgram
 //
 procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
+
+   procedure Handle_EScriptAssertionFailed(e : EScriptAssertionFailed);
+   begin
+      Msgs.AddRuntimeError(e.Pos, Copy(e.Message, 1, LastDelimiter('[', e.Message)-2), e.ScriptCallStack);
+   end;
+
+   procedure Handle_Exception(e : Exception);
+   var
+      debugPos : TScriptPos;
+   begin
+      if LastScriptError<>nil then
+         if LastScriptError is TFuncExpr then
+            Msgs.AddRuntimeError(LastScriptError.ScriptPos,
+                                 e.Message+' in '+TFuncExpr(LastScriptError).FuncSym.QualifiedName,
+                                 LastScriptCallStack)
+         else Msgs.AddRuntimeError(LastScriptError.ScriptPos, e.Message,
+                                   LastScriptCallStack)
+      else if (Debugger<>nil) and (Debugger.LastDebugStepExpr<>nil) then begin
+         debugPos:=Debugger.LastDebugStepExpr.ScriptPos;
+         debugPos.Col:=0;
+         Msgs.AddRuntimeError(debugPos, e.Message, LastScriptCallStack)
+      end else Msgs.AddRuntimeError(cNullPos, e.Message, LastScriptCallStack);
+   end;
+
 begin
    if FProgramState<>psRunning then begin
       Msgs.AddRuntimeError('Program state psRunning expected');
@@ -2154,7 +2178,7 @@ begin
          end;
       except
          on e: EScriptAssertionFailed do
-            Msgs.AddRuntimeError(e.Pos, Copy(e.Message, 1, LastDelimiter('[', e.Message)-2), e.ScriptCallStack);
+            Handle_EScriptAssertionFailed(e);
          on e: EScriptException do
             Msgs.AddRuntimeError(e.Pos, e.Message, e.ScriptCallStack);
          on e: EScriptError do
@@ -2164,14 +2188,7 @@ begin
                                  e.Message,
                                  LastScriptCallStack);
          on e: Exception do
-            if LastScriptError<>nil then
-               if LastScriptError is TFuncExpr then
-                  Msgs.AddRuntimeError(LastScriptError.ScriptPos,
-                                       e.Message+' in '+TFuncExpr(LastScriptError).FuncSym.QualifiedName,
-                                       LastScriptCallStack)
-               else Msgs.AddRuntimeError(LastScriptError.ScriptPos, e.Message,
-                                         LastScriptCallStack)
-            else Msgs.AddRuntimeError(cNullPos, e.Message, LastScriptCallStack);
+            Handle_Exception(e);
       end;
 
    finally
@@ -3520,13 +3537,18 @@ end;
 
 // OptimizeToTypedExpr
 //
-function TTypedExpr.OptimizeToTypedExpr(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
+function TTypedExpr.OptimizeToTypedExpr(prog : TdwsProgram; exec : TdwsExecution; const hotPos : TScriptPos) : TTypedExpr;
 var
    optimized : TProgramExpr;
 begin
-   optimized:=Optimize(prog, exec);
-   Assert(optimized is TTypedExpr);
-   Result:=TTypedExpr(optimized);
+   try
+      optimized:=Optimize(prog, exec);
+      Assert(optimized is TTypedExpr);
+      Result:=TTypedExpr(optimized);
+   except
+      on E: Exception do
+         raise ECompileException.CreateFromException(hotPos, E)
+   end;
 end;
 
 // OptimizeIntegerConstantToFloatConstant

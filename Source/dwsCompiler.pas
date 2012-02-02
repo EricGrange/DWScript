@@ -973,6 +973,8 @@ begin
    except
       on e: ECompileError do
          ;
+      on e: ECompileException do
+         FMsgs.AddCompilerError(e.ScriptPos, e.Message);
       on e: Exception do
          FMsgs.AddCompilerError(cNullPos, e.Message);
    end;
@@ -2555,7 +2557,7 @@ begin
          if not testExpr.IsOfType(FProg.TypBoolean) then
             FMsgs.AddCompilerError(hotPos, CPE_BooleanExpected);
          if Optimize then
-            testExpr:=testExpr.OptimizeToTypedExpr(FProg, FExec);
+            testExpr:=testExpr.OptimizeToTypedExpr(FProg, FExec, hotPos);
          if testExpr.IsConstant then
             FMsgs.AddCompilerWarning(hotPos, CPW_ConstantCondition);
 
@@ -2565,7 +2567,7 @@ begin
             if not msgExpr.IsOfType(FProg.TypString) then
                FMsgs.AddCompilerError(hotPos, CPE_StringExpected);
             if Optimize then
-               msgExpr:=msgExpr.OptimizeToTypedExpr(FProg, FExec);
+               msgExpr:=msgExpr.OptimizeToTypedExpr(FProg, FExec, hotPos);
          end else begin
             SetString(msg, testStart, testLength);
             msg:=Trim(msg);
@@ -4489,7 +4491,7 @@ begin
       funcSym.Executable:=TExternalFuncHandler.Create;
 
    if Optimize then
-      Result:=Result.OptimizeToTypedExpr(FProg, FExec);
+      Result:=Result.OptimizeToTypedExpr(FProg, FExec, funcExpr.ScriptPos);
 end;
 
 // WrapUpFunctionRead
@@ -4691,7 +4693,7 @@ begin
             else arg:=ReadExpr(expectedType);
 
             if Optimize then
-               arg:=arg.OptimizeToTypedExpr(FProg, FExec);
+               arg:=arg.OptimizeToTypedExpr(FProg, FExec, argPos);
 
             if     (expectedType<>nil)
                and (arg.Typ is TFuncSymbol)
@@ -6335,7 +6337,7 @@ begin
          end;
 
          if Optimize then
-            Result:=Result.OptimizeToTypedExpr(FProg, FExec);
+            Result:=Result.OptimizeToTypedExpr(FProg, FExec, hotPos);
       until False;
    except
       Result.Free;
@@ -6385,7 +6387,7 @@ begin
          end;
 
          if Optimize then
-            Result:=Result.OptimizeToTypedExpr(FProg, FExec);
+            Result:=Result.OptimizeToTypedExpr(FProg, FExec, hotPos);
       until False;
    except
       Result.Free;
@@ -6635,7 +6637,9 @@ function TdwsCompiler.ReadNegation : TTypedExpr;
 var
    negExprClass : TUnaryOpExprClass;
    negTerm : TTypedExpr;
+   hotPos : TScriptPos;
 begin
+   hotPos:=FTok.HotPos;
    negTerm:=ReadTerm;
    if negTerm.IsOfType(FProg.TypInteger) then
       negExprClass:=TNegIntExpr
@@ -6648,7 +6652,7 @@ begin
    end;
    Result:=negExprClass.Create(FProg, negTerm);
    if Optimize or (negTerm is TConstExpr) then
-      Result:=Result.OptimizeToTypedExpr(FProg, FExec);
+      Result:=Result.OptimizeToTypedExpr(FProg, FExec, hotPos);
 end;
 
 // ReadConstValue
@@ -6694,6 +6698,7 @@ var
    memberSet : array of Boolean;
    expr : TTypedExpr;
    constExpr : TConstExpr;
+   exprPos : TScriptPos;
 begin
    if not FTok.TestDelete(ttBLEFT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
@@ -6723,11 +6728,12 @@ begin
       FTok.KillToken;
       if not FTok.TestDelete(ttCOLON) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
+      exprPos:=FTok.HotPos;
       expr:=ReadExpr;
       try
          if not (expr is TConstExpr) then begin
             if expr.IsConstant then
-               expr:=expr.OptimizeToTypedExpr(FProg, FExec)
+               expr:=expr.OptimizeToTypedExpr(FProg, FExec, exprPos)
             else begin
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
                FreeAndNil(expr);
@@ -6813,7 +6819,7 @@ var
    lazyParam, varParam, constParam : Boolean;
    onlyDefaultParamsNow : Boolean;
    posArray : TScriptPosArray;
-   typScriptPos : TScriptPos;
+   typScriptPos, exprPos : TScriptPos;
    sym : TParamSymbol;
    defaultExpr : TTypedExpr;
    curName : String;
@@ -6862,6 +6868,7 @@ begin
                         if constParam then
                            FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstParamCantHaveDefaultValue);
 
+                        exprPos:=FTok.HotPos;
                         defaultExpr:=ReadExpr;
 
                         if (not defaultExpr.IsConstant) or (defaultExpr.Typ=nil) then begin
@@ -6880,7 +6887,7 @@ begin
                      end;
 
                      if (defaultExpr<>nil) and not (defaultExpr is TConstExpr) then
-                        defaultExpr:=defaultExpr.OptimizeToTypedExpr(Fprog, FExec);
+                        defaultExpr:=defaultExpr.OptimizeToTypedExpr(Fprog, FExec, exprPos);
 
                      for i:=0 to names.Count-1 do begin
                         curName:=names[i];
@@ -8100,7 +8107,7 @@ begin
          funcExpr.AddArg(aRight);
          TypeCheckArgs(funcExpr, nil);
          if Optimize then
-            Result:=funcExpr.OptimizeToTypedExpr(FProg, FExec)
+            Result:=funcExpr.OptimizeToTypedExpr(FProg, FExec, funcExpr.ScriptPos)
          else Result:=funcExpr;
       end;
    end;
@@ -8495,7 +8502,7 @@ begin
       end else FMsgs.AddCompilerStop(hotPos, CPE_InvalidOperands);
 
       if Optimize then
-         Result:=Result.OptimizeToTypedExpr(FProg, FExec);
+         Result:=Result.OptimizeToTypedExpr(FProg, FExec, hotPos);
 
   except
     argExpr.Free;

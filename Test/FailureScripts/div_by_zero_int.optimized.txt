@@ -1,0 +1,1 @@
+Syntax Error: Division by zero [line: 1, column: 12]

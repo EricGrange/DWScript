@@ -52,6 +52,7 @@ type
          procedure StopDebug(exec : TdwsExecution); virtual;
          procedure EnterFunc(exec : TdwsExecution; funcExpr : TExprBase); virtual;
          procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase); virtual;
+         function  LastDebugStepExpr : TExprBase; virtual;
 
       public
          property Debugger : IDebugger read FDebugger write FDebugger;
@@ -293,6 +294,7 @@ type
 
       protected
          procedure DoDebug(exec : TdwsExecution; expr : TExprBase); override;
+         function  LastDebugStepExpr : TExprBase; override;
 
          procedure StateChanged;
          procedure BreakpointsChanged;
@@ -408,6 +410,7 @@ type
       procedure StopDebug(exec : TdwsExecution);
       procedure EnterFunc(exec : TdwsExecution; funcExpr : TExprBase);
       procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase);
+      function  LastDebugStepExpr : TExprBase;
    end;
 
 // ------------------
@@ -508,6 +511,16 @@ begin
    Synchronize(procedure begin FMain.LeaveFunc(exec, funcExpr) end);
 end;
 
+// LastDebugStepExpr
+//
+function TSynchronizedThreadedDebugger.LastDebugStepExpr : TExprBase;
+var
+   expr : TExprBase;
+begin
+   Synchronize(procedure begin expr:=FMain.LastDebugStepExpr end);
+   Result:=expr;
+end;
+
 // ------------------
 // ------------------ TdwsSimpleDebugger ------------------
 // ------------------
@@ -542,6 +555,13 @@ begin
    if Assigned(FOnLeaveFunc) then
       if funcExpr is TFuncExprBase then
          FOnLeaveFunc(exec, TFuncExprBase(funcExpr));
+end;
+
+// LastDebugStepExpr
+//
+function TdwsSimpleDebugger.LastDebugStepExpr : TExprBase;
+begin
+   Result:=nil;
 end;
 
 // StartDebug
@@ -921,6 +941,13 @@ begin
          ProcessApplicationMessages(0);
       end;
    end;
+end;
+
+// LastDebugStepExpr
+//
+function TdwsDebugger.LastDebugStepExpr : TExprBase;
+begin
+   Result:=FCurrentExpression;
 end;
 
 // ------------------

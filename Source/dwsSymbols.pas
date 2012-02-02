@@ -60,6 +60,7 @@ type
       procedure StopDebug(exec : TdwsExecution);
       procedure EnterFunc(exec : TdwsExecution; funcExpr : TExprBase);
       procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase);
+      function  LastDebugStepExpr : TExprBase;
    end;
 
    TProgramState = (psUndefined, psReadyToRun, psRunning, psRunningStopped, psTerminated);

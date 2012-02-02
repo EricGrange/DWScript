@@ -5271,17 +5271,20 @@ var
    expr : PNoResultExpr;
 begin
    oldTable:=exec.ContextTable;
+   exec.ContextTable:=FTable;
+   expr:=@FStatements[0];
    try
-      exec.ContextTable:=FTable;
-      expr:=@FStatements[0];
       for i:=1 to FCount do begin
          exec.DoStep(expr^);
          expr.EvalNoResult(exec);
          if exec.Status<>esrNone then Break;
          Inc(expr);
       end;
-   finally
       exec.ContextTable:=oldTable;
+   except
+      exec.ContextTable:=oldTable;
+      exec.SetScriptError(expr^);
+      raise;
    end;
 end;
 

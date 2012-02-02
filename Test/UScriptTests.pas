@@ -170,7 +170,13 @@ begin
                     +'Result >>>>'#13#10
                     +exec.Result.ToString;
          end;
-         resultsFileName:=ChangeFileExt(FTests[i], '.txt');
+
+         if coOptimize in FCompiler.Config.CompilerOptions then begin
+            resultsFileName:=ChangeFileExt(FTests[i], '.optimized.txt');
+            if not FileExists(resultsFileName) then
+               resultsFileName:=ChangeFileExt(FTests[i], '.txt');
+         end else resultsFileName:=ChangeFileExt(FTests[i], '.txt');
+
          if FileExists(resultsFileName) then begin
             expectedResult.LoadFromFile(resultsFileName);
             CheckEquals(expectedResult.Text, output, FTests[i]);

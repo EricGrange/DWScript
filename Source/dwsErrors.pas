@@ -204,15 +204,24 @@ type
 
    EClassPropertyIncompleteError = class(EClassIncompleteError);
 
-   // The compilation has to be stopped because of an error
-   ECompileError = class(Exception)
+   // Compilation Exception
+   ECompileException = class(Exception)
       private
          FScriptPos : TScriptPos;
 
       public
          constructor CreatePosFmt(const pos : TScriptPos; const Msg: UnicodeString; const Args: array of const);
+         constructor CreateFromException(const pos : TScriptPos; e : Exception);
 
-         property Pos : TScriptPos read FScriptPos write FScriptPos;
+         property ScriptPos : TScriptPos read FScriptPos write FScriptPos;
+   end;
+
+   // An optimization failed with an exception
+   EOptimizationException = class(ECompileException)
+   end;
+
+   // The compilation has to be stopped because of an error
+   ECompileError = class(ECompileException)
    end;
 
    EReraise = class(Exception);
@@ -346,14 +355,22 @@ begin
 end;
 
 // ------------------
-// ------------------ ECompileError ------------------
+// ------------------ ECompileException ------------------
 // ------------------
 
 // CreatePosFmt
 //
-constructor ECompileError.CreatePosFmt(const pos : TScriptPos; const Msg: UnicodeString; const Args: array of const);
+constructor ECompileException.CreatePosFmt(const pos : TScriptPos; const Msg: UnicodeString; const Args: array of const);
 begin
    inherited CreateFmt(msg, args);
+   FScriptPos:=pos;
+end;
+
+// CreateFromException
+//
+constructor ECompileException.CreateFromException(const pos : TScriptPos; e : Exception);
+begin
+   inherited Create(e.Message);
    FScriptPos:=pos;
 end;
 
