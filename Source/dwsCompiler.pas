@@ -416,7 +416,7 @@ type
          // Don't want to add param symbols to dictionary when a method implementation (they get thrown away)
          procedure ReadParams(const hasParamMeth : THasParamSymbolMethod;
                               const addParamMeth : TAddParamSymbolMethod;
-                              paramsToDictionary : Boolean = True);
+                              forwardedParams : TParamsSymbolTable);
          function ReadProcDecl(funcToken : TTokenType; const hotPos : TScriptPos;
                                isClassMethod : Boolean = False;
                                isType : Boolean = False; isAnonymous : Boolean = False) : TFuncSymbol;
@@ -1973,7 +1973,9 @@ begin
       else Result := TSourceFuncSymbol.Create(name, funcKind, FMainProg.NextStackLevel(FProg.Level));
       try
          // Don't add params to dictionary when function is forwarded. It is already declared.
-         ReadParams(Result.HasParam, Result.AddParam, forwardedSym=nil);
+         if forwardedSym<>nil then
+            ReadParams(Result.HasParam, Result.AddParam, forwardedSym.Params)
+         else ReadParams(Result.HasParam, Result.AddParam, nil);
 
          Result.Typ:=ReadFuncResultType(funcKind);
 
@@ -1995,23 +1997,6 @@ begin
                   Result.IsOverloaded:=True;
                   ReadSemiColon;
 
-(*               end else if funcOverloads<>nil then begin
-
-                  // lookup the family to see if this there is an exact match
-                  forwardedSym:=funcOverloads.LocalExactMatch(Result);
-                  if forwardedSym<>nil then begin
-                     // we got a match, check if it's a really forwarded symbol
-                     if not (    forwardedSym.IsForwarded
-                             and (FUnitSymbol.HasSymbol(sym) or FProg.Table.HasSymbol(sym))) then
-                        forwardedSym:=nil;
-                  end;
-                  if forwardedSym=nil then begin
-                     // no match, possible name conflict or fogotten overload keyword
-                     FMsgs.AddCompilerErrorFmt(hotPos, CPE_MustExplicitOverloads, [name]);
-                  end;
-                  // keep compiling, add to existing overloads family
-                  Result.Overloads:=funcOverloads;
-*)
                end else if overloadFuncSym<>nil then begin
 
                   forwardedSym:=PerfectMatchOverload(Result);
@@ -2061,6 +2046,7 @@ begin
                if Assigned(forwardedSym) then begin
                   // Get forwarded position in script. If compiled without symbols it will just return a nil
                   forwardedSymPos := FSymbolDictionary.FindSymbolUsage(forwardedSym, suDeclaration);  // may be nil
+
                   // Adapt dictionary entry to reflect that it was a forward
                   // If the record is in the SymbolDictionary (disabled dictionary would leave pointer nil)
                   if Assigned(forwardedSymPos) then
@@ -2113,7 +2099,7 @@ begin
    Result.DeclarationPos:=methPos;
 
    try
-      ReadParams(Result.HasParam, Result.AddParam);
+      ReadParams(Result.HasParam, Result.AddParam, nil);
 
       Result.Typ:=ReadFuncResultType(funcKind);
       ReadSemiColon;
@@ -2188,7 +2174,7 @@ begin
          isReintroduced:=meth.IsVirtual;
       end else isReintroduced:=False;
 
-      ReadParams(funcResult.HasParam, funcResult.AddParam);
+      ReadParams(funcResult.HasParam, funcResult.AddParam, nil);
 
       funcResult.Typ:=ReadFuncResultType(funcKind);
       ReadSemiColon;
@@ -2335,7 +2321,7 @@ begin
                                              TMethodSymbol(Result).Visibility, isClassMethod);
          try
             // Don't store these params to Dictionary. They will become invalid when the method is freed.
-            ReadParams(tmpMeth.HasParam, tmpMeth.AddParam, False);
+            ReadParams(tmpMeth.HasParam, tmpMeth.AddParam, Result.Params);
             tmpMeth.Typ:=ReadFuncResultType(funcKind);
             ReadSemiColon;
             CompareFuncSymbolParams(Result, tmpMeth);
@@ -2343,8 +2329,8 @@ begin
             tmpMeth.Free;
          end;
       end else begin
-         // keep compiling on method that wasn't declared in class
-         ReadParams(Result.HasParam, Result.AddParam, True);
+         // keep compiling a method that wasn't declared in class
+         ReadParams(Result.HasParam, Result.AddParam, nil);
          Result.Typ:=ReadFuncResultType(funcKind);
          ReadSemiColon;
       end;
@@ -5053,14 +5039,19 @@ end;
 //
 procedure TdwsCompiler.ReadNameList(names : TStrings; var posArray : TScriptPosArray;
                                     allowDots : Boolean = False);
+var
+   n : Integer;
 begin
+   n:=0;
    names.Clear;
    repeat
       if not FTok.TestName then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-      SetLength(PosArray, Length(PosArray)+1);
-      PosArray[High(PosArray)]:=FTok.HotPos;
+      if n=Length(posArray) then
+         SetLength(posArray, n+1);
+      posArray[n]:=FTok.HotPos;
+      Inc(n);
 
       names.Add(FTok.GetToken.FString);
       CheckSpecialName(FTok.GetToken.FString);
@@ -6817,7 +6808,7 @@ end;
 //
 procedure TdwsCompiler.ReadParams(const hasParamMeth : THasParamSymbolMethod;
                                   const addParamMeth : TAddParamSymbolMethod;
-                                  paramsToDictionary : Boolean = True);
+                                  forwardedParams : TParamsSymbolTable);
 var
    i : Integer;
    names : TStringList;
@@ -6826,7 +6817,7 @@ var
    onlyDefaultParamsNow : Boolean;
    posArray : TScriptPosArray;
    typScriptPos, exprPos : TScriptPos;
-   sym : TParamSymbol;
+   paramSym : TParamSymbol;
    defaultExpr : TTypedExpr;
    curName : String;
 begin
@@ -6899,30 +6890,39 @@ begin
                         curName:=names[i];
 
                         if lazyParam then begin
-                           sym := TLazyParamSymbol.Create(curName, Typ)
+                           paramSym := TLazyParamSymbol.Create(curName, Typ)
                         end else if varParam then begin
-                           sym := TVarParamSymbol.Create(curName, Typ)
+                           paramSym := TVarParamSymbol.Create(curName, Typ)
                         end else if constParam then begin
-                           sym := TConstParamSymbol.Create(curName, Typ)
+                           paramSym := TConstParamSymbol.Create(curName, Typ)
                         end else begin
                            if Assigned(defaultExpr) then begin
-                              sym := TParamSymbolWithDefaultValue.Create(curName, Typ,
+                              paramSym := TParamSymbolWithDefaultValue.Create(curName, Typ,
                                        (defaultExpr as TConstExpr).Data[FExec],
                                        (defaultExpr as TConstExpr).Addr[FExec]);
                            end else begin
-                              sym := TParamSymbol.Create(curName, Typ);
+                              paramSym := TParamSymbol.Create(curName, Typ);
                            end;
                         end;
 
-                        if hasParamMeth(sym) then
+                        if hasParamMeth(paramSym) then
                            FMsgs.AddCompilerErrorFmt(posArray[i], CPE_NameAlreadyExists, [curName]);
-                        addParamMeth(sym);
+                        addParamMeth(paramSym);
 
                         // Enter Field symbol in dictionary
-                        if ParamsToDictionary and (coSymbolDictionary in FOptions) then begin
-                           // add variable symbol
-                           RecordSymbolUse(sym, posArray[i], [suDeclaration]);
-                           // record type symbol
+                        if coSymbolDictionary in FOptions then begin
+                           // add parameter symbol
+                           if forwardedParams=nil then begin
+                              // no forward, our param symbol is the actual one
+                              RecordSymbolUse(paramSym, posArray[i], [suDeclaration])
+                           end else begin
+                              // find the original param symbol and register it
+                              // in case of mismatch, RecordSymbolUse will discard
+                              // a nil automatically, so we don't have to check here
+                              RecordSymbolUse(forwardedParams.FindLocal(curName),
+                                              posArray[i], [suReference]);
+                           end;
+                           // record field's type symbol
                            RecordSymbolUse(typ, typScriptPos, [suReference]);
                         end;
                      end;
