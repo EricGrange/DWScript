@@ -393,6 +393,8 @@ type
       function GetMsgs : TdwsMessageList;
       function GetConditionalDefines : IAutoStrings;
       function GetLineCount : Integer;
+      function GetTimeStamp : TDateTime;
+      function GetCompileDuration : TDateTime;
       function GetTable : TSymbolTable;
       function GetTimeoutMilliseconds : Integer;
       procedure SetTimeoutMilliseconds(const val : Integer);
@@ -422,6 +424,8 @@ type
       property UnitMains : TUnitMainSymbols read GetUnitMains;
       property ProgramObject : TdwsMainProgram read GetProgramObject;
       property LineCount : Integer read GetLineCount;
+      property TimeStamp : TDateTime read GetTimeStamp;
+      property CompileDuration : TDateTime read GetCompileDuration;
    end;
 
    // holds execution context for a script
@@ -587,6 +591,8 @@ type
          FSourceFiles : TTightList;
          FSourceList : TScriptSourceList;
          FLineCount : Integer;
+         FTimeStamp : TDateTime;
+         FCompileDuration : TDateTime;
          FCompiler : TObject;
 
          FDefaultEnvironment : IdwsEnvironment;
@@ -598,6 +604,8 @@ type
 
          function GetSourceList : TScriptSourceList;
          function GetLineCount : Integer;
+         function GetTimeStamp : TDateTime;
+         function GetCompileDuration : TDateTime;
 
          procedure NotifyExecutionDestruction(exec : TdwsProgramExecution);
 
@@ -642,6 +650,8 @@ type
          property SymbolDictionary: TdwsSymbolDictionary read FSymbolDictionary;
          property SourceList : TScriptSourceList read FSourceList;
          property LineCount : Integer read FLineCount write FLineCount;
+         property TimeStamp : TDateTime read FTimeStamp write FTimeStamp;
+         property CompileDuration : TDateTime read FCompileDuration write FCompileDuration;
 
          property DefaultEnvironment : IdwsEnvironment read FDefaultEnvironment write FDefaultEnvironment;
          property DefaultUserObject : TObject read FDefaultUserObject write FDefaultUserObject;
@@ -2845,6 +2855,20 @@ end;
 function TdwsMainProgram.GetLineCount : Integer;
 begin
    Result:=FLineCount;
+end;
+
+// GetTimeStamp
+//
+function TdwsMainProgram.GetTimeStamp : TDateTime;
+begin
+   Result:=FTimeStamp;
+end;
+
+// GetCompileDuration
+//
+function TdwsMainProgram.GetCompileDuration : TDateTime;
+begin
+   Result:=FCompileDuration;
 end;
 
 // GetDefaultUserObject

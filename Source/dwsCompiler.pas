@@ -910,7 +910,10 @@ var
    stackParams : TStackParameters;
    codeText : UnicodeString;
    sourceFile : TSourceFile;
+   compileStartTime : TDateTime;
 begin
+   compileStartTime:=Now;
+
    SetupCompileOptions(aConf);
 
    stackParams.MaxByteSize:=aConf.MaxDataSize;
@@ -979,8 +982,11 @@ begin
          FMsgs.AddCompilerError(cNullPos, e.Message);
    end;
 
+   FMainProg.TimeStamp:=compileStartTime;
+   FMainProg.CompileDuration:=Now-compileStartTime;
    FMainProg.LineCount:=FLineCount;
    FMainProg.Compiler:=nil;
+
    Result:=FMainProg;
 
    CleanupAfterCompile;
