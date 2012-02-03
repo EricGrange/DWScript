@@ -1,4 +1,4 @@
 Syntax Error: Name "a" already exists [line: 3, column: 28]
-Syntax Error: Name "a" already exists [line: 7, column: 22]
+Syntax Error: Name "a" already exists [line: 7, column: 38]
 Syntax Error: Name "a" already exists [line: 12, column: 22]
-Syntax Error: Name "a" already exists [line: 16, column: 16]
+Syntax Error: Name "a" already exists [line: 16, column: 32]
