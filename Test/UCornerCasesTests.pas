@@ -222,30 +222,34 @@ begin
    prog:=FCompiler.Compile('while true do;');
 
    for i:=1 to 3 do
-      threads[i]:=TScriptThread.Create(prog, i*60);
+      threads[i]:=TScriptThread.Create(prog, i*80);
    for i:=1 to 3 do
       threads[i].Start;
    while (threads[1].FTimeStamp=0) or (threads[2].FTimeStamp=0) or (threads[3].FTimeStamp=0) do
       Sleep(10);
 
-   Check(threads[1].FTimeStamp<threads[2].FTimeStamp, '1 < 2');
-   Check(threads[2].FTimeStamp<threads[3].FTimeStamp, '2 < 3');
+   try
+      Check(threads[1].FTimeStamp<threads[2].FTimeStamp, '1 < 2');
+      Check(threads[2].FTimeStamp<threads[3].FTimeStamp, '2 < 3');
+   finally
+      for i:=1 to 3 do
+         threads[i].Free;
+   end;
 
    for i:=1 to 3 do
-      threads[i].Free;
-
-   for i:=1 to 3 do
-      threads[i]:=TScriptThread.Create(prog, 200-i*50);
+      threads[i]:=TScriptThread.Create(prog, 250-i*80);
    for i:=1 to 3 do
       threads[i].Start;
    while (threads[1].FTimeStamp=0) or (threads[2].FTimeStamp=0) or (threads[3].FTimeStamp=0) do
       Sleep(10);
 
-   Check(threads[1].FTimeStamp>threads[2].FTimeStamp, '1 > 2');
-   Check(threads[2].FTimeStamp>threads[3].FTimeStamp, '2 > 3');
-
-   for i:=1 to 3 do
-      threads[i].Free;
+   try
+      Check(threads[1].FTimeStamp>threads[2].FTimeStamp, '1 > 2');
+      Check(threads[2].FTimeStamp>threads[3].FTimeStamp, '2 > 3');
+   finally
+      for i:=1 to 3 do
+         threads[i].Free;
+   end;
 end;
 
 // DoOnInclude

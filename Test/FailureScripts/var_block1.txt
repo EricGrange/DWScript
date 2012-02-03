@@ -1,2 +1,3 @@
 Syntax Error: Name "a" already exists [line: 5, column: 13]
 Syntax Error: Name "b" already exists [line: 6, column: 11]
+Hint: Variable "a" declared but not used [line: 3, column: 4]

@@ -1,2 +1,3 @@
 Syntax Error: Type expected [line: 3, column: 18]
 Syntax Error: Type expected [line: 5, column: 53]
+Hint: Result is never used [line: 7, column: 1]

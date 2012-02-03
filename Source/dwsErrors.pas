@@ -162,18 +162,23 @@ type
          property HasErrors : Boolean read FHasErrors write FHasErrors;
    end;
 
+   TdwsHintsLevel = (hlDisabled, hlNormal, hlStrict);
+
    // TdwsCompileMessageList
    //
    TdwsCompileMessageList = class (TdwsMessageList)
       private
-         FHintsDisabled : Boolean;
+         FHintsLevel : TdwsHintsLevel;
          FWarningsDisabled : Boolean;
 
       public
          procedure AddCompilerInfo(const Text: UnicodeString);
 
-         procedure AddCompilerHint(const Pos: TScriptPos; const Text: UnicodeString); overload;
-         procedure AddCompilerHintFmt(const Pos: TScriptPos; const textFormat : UnicodeString; const args: array of const); overload;
+         procedure AddCompilerHint(const Pos: TScriptPos; const Text : UnicodeString;
+                                   const aLevel : TdwsHintsLevel = hlNormal); overload;
+         procedure AddCompilerHintFmt(const Pos: TScriptPos; const textFormat : UnicodeString;
+                                      const args : array of const;
+                                      const aLevel : TdwsHintsLevel = hlNormal); overload;
 
          procedure AddCompilerWarning(const Pos: TScriptPos; const Text: UnicodeString);
          procedure AddCompilerWarningFmt(const Pos: TScriptPos; const textFormat : UnicodeString; const args: array of const);
@@ -188,7 +193,7 @@ type
          procedure AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : UnicodeString; const args: array of const; messageClass : TScriptMessageClass); overload;
          procedure AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : UnicodeString; const args: array of const); overload;
 
-         property HintsDisabled : Boolean read FHintsDisabled write FHintsDisabled;
+         property HintsLevel : TdwsHintsLevel read FHintsLevel write FHintsLevel;
          property WarningsDisabled : Boolean read FWarningsDisabled write FWarningsDisabled;
    end;
 
@@ -576,17 +581,20 @@ end;
 
 // AddCompilerHint
 //
-procedure TdwsCompileMessageList.AddCompilerHint(const Pos: TScriptPos; const Text: UnicodeString);
+procedure TdwsCompileMessageList.AddCompilerHint(const Pos: TScriptPos;
+               const Text: UnicodeString; const aLevel : TdwsHintsLevel = hlNormal);
 begin
-   if not (HintsDisabled or HasErrors) then
+   if aLevel<=HintsLevel then
       AddMsg(THintMessage.Create(Self, Text, Pos));
 end;
 
 // AddCompilerHintFmt
 //
-procedure TdwsCompileMessageList.AddCompilerHintFmt(const Pos: TScriptPos; const textFormat : UnicodeString; const args: array of const);
+procedure TdwsCompileMessageList.AddCompilerHintFmt(const Pos: TScriptPos;
+               const textFormat : UnicodeString; const args: array of const;
+               const aLevel : TdwsHintsLevel = hlNormal);
 begin
-   AddCompilerHint(Pos, Format(textFormat, args));
+   AddCompilerHint(Pos, Format(textFormat, args), aLevel);
 end;
 
 // AddCompilerWarning

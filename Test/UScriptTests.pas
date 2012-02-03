@@ -234,7 +234,7 @@ end;
 //
 procedure TScriptTests.FailuresOptimized;
 begin
-   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coOptimize]-[coAssertions];
+   FCompiler.Config.CompilerOptions:=cDefaultCompilerOptions+[coOptimize, coSymbolDictionary]-[coAssertions];
    CompilationFailure;
 end;
 

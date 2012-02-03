@@ -68,6 +68,7 @@ type
    TdwsConfiguration = class(TPersistent)
       private
          FCompilerOptions : TCompilerOptions;
+         FHintsLevel : TdwsHintsLevel;
          FConnectors : TStrings;
          FDefaultResultType : TdwsResultType;
          FFilter : TdwsFilter;
@@ -114,6 +115,7 @@ type
          property Filter : TdwsFilter read FFilter write SetFilter;
          property ResultType : TdwsResultType read FResultType write SetResultType;
          property CompilerOptions : TCompilerOptions read FCompilerOptions write FCompilerOptions default cDefaultCompilerOptions;
+         property HintsLevel : TdwsHintsLevel read FHintsLevel write FHintsLevel default hlStrict;
          property MaxDataSize : Integer read FMaxDataSize write FMaxDataSize default 0;
          property MaxRecursionDepth : Integer read FMaxRecursionDepth write FMaxRecursionDepth default cDefaultMaxRecursionDepth;
          property Conditionals : TStringList read FConditionals write SetConditionals;
@@ -275,6 +277,7 @@ type
          FLoopExitable : TSimpleStack<TLoopExitable>;
          FFinallyExprs : TSimpleStack<Boolean>;
          FMsgs : TdwsCompileMessageList;
+         FDefaultHintsLevel : TdwsHintsLevel;
 
          FExec : TdwsCompilerExecution;
          FConnectors : TStrings;
@@ -505,6 +508,7 @@ type
          procedure SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : UnicodeString);
 
          procedure SetupCompileOptions(conf : TdwsConfiguration);
+         procedure SetupMsgsOptions(conf : TdwsConfiguration);
          procedure CleanupAfterCompile;
 
          procedure CheckFilterDependencies(confUnits : TIdwsUnitList);
@@ -875,6 +879,17 @@ begin
    else FCompileFileSystem := TdwsOSFileSystem.Create;
 end;
 
+// SetupMsgsOptions
+//
+procedure TdwsCompiler.SetupMsgsOptions(conf : TdwsConfiguration);
+begin
+   FDefaultHintsLevel:=conf.HintsLevel;
+   if coHintsDisabled in conf.CompilerOptions then
+      FMsgs.HintsLevel:=hlDisabled
+   else FMsgs.HintsLevel:=conf.HintsLevel;
+   FMsgs.WarningsDisabled:=(coWarningsDisabled in conf.CompilerOptions);
+end;
+
 // CleanupAfterCompile
 //
 procedure TdwsCompiler.CleanupAfterCompile;
@@ -930,10 +945,9 @@ begin
    // Create the TdwsProgram
    FMainProg:=CreateProgram(aConf.SystemTable, aConf.ResultType, stackParams);
    FSystemTable:=FMainProg.SystemTable.SymbolTable;
-   FMsgs:=FMainProg.CompileMsgs;
 
-   FMsgs.HintsDisabled:=(coHintsDisabled in aConf.CompilerOptions);
-   FMsgs.WarningsDisabled:=(coWarningsDisabled in aConf.CompilerOptions);
+   FMsgs:=FMainProg.CompileMsgs;
+   SetupMsgsOptions(aConf);
 
    FMainProg.Compiler:=Self;
    FMainProg.TimeoutMilliseconds:=aConf.TimeoutMilliseconds;
@@ -1151,8 +1165,7 @@ begin
    FSymbolDictionary:=FMainProg.SymbolDictionary;
 
    FMsgs:=FMainProg.CompileMsgs;
-   FMsgs.HintsDisabled:=(coHintsDisabled in aConf.CompilerOptions);
-   FMsgs.WarningsDisabled:=(coWarningsDisabled in aConf.CompilerOptions);
+   SetupMsgsOptions(aConf);
 
    FProg:=FMainProg;
 
@@ -2802,6 +2815,7 @@ var
    token : TTokenType;
    locExpr : TProgramExpr;
    hotPos : TScriptPos;
+   msgsCount : Integer;
 begin
    if Assigned(FOnReadInstr) then begin
       Result:=FOnReadInstr(Self);
@@ -2850,6 +2864,7 @@ begin
       // Try to read a function call, method call or an assignment
       if (FTok.TestAny([ttBLEFT, ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin // !! TestName must be the last !!
          hotPos:=FTok.HotPos;
+         msgsCount:=FMsgs.Count;
          if FTok.Test(ttBLEFT) then // (X as TY)
             locExpr := ReadSymbol(ReadTerm(True))
          else locExpr := ReadName(True);
@@ -2871,8 +2886,8 @@ begin
                   Result := ReadAssign(token, TDataExpr(locExpr));
                end;
             end else begin
-                if (locExpr is TDataExpr) and (locExpr.Typ is TFuncSymbol) then
-                     locExpr:=ReadFunc(TFuncSymbol(locExpr.Typ), locExpr as TDataExpr);
+               if (locExpr is TDataExpr) and (locExpr.Typ is TFuncSymbol) then
+                  locExpr:=ReadFunc(TFuncSymbol(locExpr.Typ), locExpr as TDataExpr);
 
                if locExpr is TAssignExpr then
                   Result:=TAssignExpr(locExpr)
@@ -2880,7 +2895,7 @@ begin
                        or (locExpr is TConnectorCallExpr) then begin
                   Result:=TNoResultWrapperExpr.Create(FProg, (locExpr as  TPosDataExpr).Pos, locExpr);
                   if locExpr.IsConstant then begin
-                     if not FMsgs.LastMessagePos.SamePosAs(hotPos) then   // avoid hint on calls with issues
+                     if FMsgs.Count=msgsCount then   // avoid hint on calls with issues
                         FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
                   end;
                end else if locExpr is TConnectorWriteExpr then
@@ -2894,7 +2909,8 @@ begin
                else if locExpr is TConstExpr then begin
                   FreeAndNil(locExpr);
                   Result:=TNullExpr.Create(FProg, hotPos);
-                  FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
+                  if FMsgs.Count=msgsCount then   // avoid hint on expression with issues
+                     FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
                end else if locExpr is TNullExpr then begin
                   Result:=TNullExpr(locExpr);
                   locExpr:=nil;
@@ -5385,7 +5401,7 @@ begin
 
                   ttPRIVATE..ttPUBLISHED : begin
                      if visibility=cTokenToVisibility[tt] then
-                        FMsgs.AddCompilerHintFmt(FTok.HotPos, CPH_RedundantVisibilitySpecifier, [cTokenStrings[tt]])
+                        FMsgs.AddCompilerHintFmt(FTok.HotPos, CPH_RedundantVisibilitySpecifier, [cTokenStrings[tt]], hlStrict)
                      else visibility:=cTokenToVisibility[tt];
                   end;
 
@@ -7157,15 +7173,26 @@ begin
          end;
 
       end;
-      siHints, siWarnings : begin
+      siWarnings : begin
          if not FTok.TestDeleteNamePos(name, condPos) then
             name:='';
          conditionalTrue:=SameText(name, 'ON');
-         if conditionalTrue or SameText(name, 'OFF') then begin
-            if switch=siHints then
-               FMsgs.HintsDisabled:=not conditionalTrue
-            else FMsgs.WarningsDisabled:=not conditionalTrue;
-         end else FMsgs.AddCompilerError(FTok.HotPos, CPE_OnOffExpected);
+         if conditionalTrue or SameText(name, 'OFF') then
+            FMsgs.WarningsDisabled:=not conditionalTrue
+         else FMsgs.AddCompilerError(FTok.HotPos, CPE_OnOffExpected);
+      end;
+      siHints : begin
+         if not FTok.TestDeleteNamePos(name, condPos) then
+            name:='';
+         if SameText(name, 'OFF') then
+            FMsgs.HintsLevel:=hlDisabled
+         else if SameText(name, 'ON') then
+            FMsgs.HintsLevel:=FDefaultHintsLevel
+         else if SameText(name, 'NORMAL') then
+            FMsgs.HintsLevel:=hlNormal
+         else if SameText(name, 'STRICT') then
+            FMsgs.HintsLevel:=hlStrict
+         else FMsgs.AddCompilerError(FTok.HotPos, CPE_OnOffExpected);
       end;
    else
       FMsgs.AddCompilerStopFmt(switchPos, CPE_CompilerSwitchUnknown, [Name]);
@@ -8535,6 +8562,7 @@ begin
    FDefaultResultType := TdwsDefaultResultType.Create(nil);
    FResultType := FDefaultResultType;
    FCompilerOptions := cDefaultCompilerOptions;
+   FHintsLevel := hlStrict;
    FMaxRecursionDepth := cDefaultMaxRecursionDepth;
 end;
 
