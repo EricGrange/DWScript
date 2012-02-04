@@ -2180,6 +2180,8 @@ begin
       case VarType(data[addr]) of
          varEmpty :
             WriteString('undefined');
+         varNull :
+            WriteString('null');
          varInteger, varSmallint, varShortInt, varInt64, varByte, varWord, varUInt64 :
             WriteString(IntToStr(data[addr]));
          varSingle, varDouble, varCurrency :
