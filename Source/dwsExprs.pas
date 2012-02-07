@@ -2999,6 +2999,14 @@ var
    assignExprSym : TDataSymbol;
    initAssign : TAssignConstExpr;
 begin
+   // merges all initial constant assignments in blockExpr in InitExpr
+
+   // valid only if InitExpr is only made of constant assignments
+   for i:=0 to InitExpr.SubExprCount-1 do begin
+      initSubExpr:=InitExpr.SubExpr[i];
+      if not (initSubExpr is TAssignConstExpr) then Exit;
+   end;
+
    i:=0;
    while i<blockExpr.SubExprCount do begin
       subExpr:=blockExpr.SubExpr[i];
@@ -3015,7 +3023,7 @@ begin
                      Dec(i);
                      Break;
                   end;
-               end else if not (initSubExpr is TAssignConstExpr) then Break;
+               end;
             end;
          end;
       end else Break;
