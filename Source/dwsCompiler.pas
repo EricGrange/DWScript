@@ -2893,7 +2893,7 @@ begin
                   Result:=TAssignExpr(locExpr)
                else if    (locExpr is TFuncExprBase)
                        or (locExpr is TConnectorCallExpr) then begin
-                  Result:=TNoResultWrapperExpr.Create(FProg, (locExpr as  TPosDataExpr).Pos, locExpr);
+                  Result:=TNoResultWrapperExpr.Create(FProg, (locExpr as  TPosDataExpr).Pos, TPosDataExpr(locExpr));
                   if locExpr.IsConstant then begin
                      if FMsgs.Count=msgsCount then   // avoid hint on calls with issues
                         FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
