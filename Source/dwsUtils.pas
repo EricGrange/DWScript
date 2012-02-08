@@ -1558,6 +1558,7 @@ begin
    FBuckets[i].HashCode:=hashCode;
    FBuckets[i].Value:=anItem;
    Inc(FCount);
+   Result:=True;
 end;
 
 // Extract
