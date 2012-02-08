@@ -1352,6 +1352,9 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+
+         property CondExpr : TTypedExpr read FCond;
+         property ThenExpr : TNoResultExpr read FThen;
    end;
 
    // if FCond then FThen else FElse
