@@ -4294,11 +4294,28 @@ end;
 function TSymbolTable.EnumerateSymbolsOfNameInScope(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean;
 var
    i : Integer;
+   visitedTables : TSimpleObjectHash<TSymbolTable>;
+   tableStack : TSimpleStack<TSymbolTable>;
+   current : TSymbolTable;
 begin
-   if EnumerateLocalSymbolsOfName(aName, callback) then Exit(True);
-   for i:=0 to ParentCount-1 do
-      if Parents[i].EnumerateSymbolsOfNameInScope(aName, callback) then Exit(True);
-   Result:=False;
+   visitedTables:=TSimpleObjectHash<TSymbolTable>.Create;
+   tableStack:=TSimpleStack<TSymbolTable>.Create;
+   try
+      tableStack.Push(Self);
+      while tableStack.Count>0 do begin
+         current:=tableStack.Peek;
+         tableStack.Pop;
+         if visitedTables.Add(current) then begin
+            if current.EnumerateLocalSymbolsOfName(aName, callback) then Exit(True);
+            for i:=0 to current.ParentCount-1 do
+               tableStack.Push(current.Parents[i]);
+         end;
+      end;
+      Result:=False;
+   finally
+      tableStack.Free;
+      visitedTables.Free;
+   end;
 end;
 
 // HasClass
