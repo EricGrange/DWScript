@@ -65,6 +65,8 @@ const
 // SetUp
 //
 procedure TJSCodeGenTests.SetUp;
+const
+   cBaseFilter = '*';
 var
    pasFilter : String;
    dwsFilter : String;
@@ -73,8 +75,8 @@ begin
 
    FTests:=TStringList.Create;
 
-   pasFilter:='*.pas';
-   dwsFilter:='*.dws';
+   pasFilter:=cBaseFilter+'.pas';
+   dwsFilter:=cBaseFilter+'.dws';
 
    CollectFiles(ExtractFilePath(ParamStr(0))+'Algorithms'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'SimpleScripts'+PathDelim, pasFilter, FTests);

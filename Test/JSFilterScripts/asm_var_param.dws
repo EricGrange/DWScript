@@ -1,0 +1,57 @@
+<script>
+
+<%pas2js
+
+procedure PrintLn(s : Variant);
+begin
+   asm
+      document.writeln(@s);
+      document.writeln("<br />");
+   end;
+end;
+
+procedure GetOne(var f1 : Float; var v1 : Variant);
+begin
+   asm
+      (@f1).v = 1.0;
+      (@v1).v = 'hello';
+   end;
+end;
+
+procedure GetTwo(var f2 : Float; var v2 : Variant);
+var
+   tf : Float;
+   tv : Variant;
+begin
+   asm
+      @tf = 2.0;
+      @tv = 'world';
+   end;
+   f2:=tf;
+   v2:=tv;
+end;
+
+procedure GetThree(var f3 : Float; var v3 : Variant);
+begin
+   f3:=3;
+   v3:='done';
+end;
+
+var f : Float;
+var v : Variant;
+
+GetOne(f, v);
+PrintLn(f);
+PrintLn(v);
+
+GetTwo(f, v);
+PrintLn(f);
+PrintLn(v);
+
+GetThree(f, v);
+PrintLn(f);
+PrintLn(v);
+
+%>
+
+</script>

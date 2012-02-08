@@ -152,6 +152,8 @@ type
          function Compare(const item1, item2 : TSymbolPositionList) : Integer; override;
    end;
 
+   TdwsSymbolDictionaryProc = reference to procedure (sym : TSymbol);
+
    { List all symbols in the script. Each symbol list contains a list of the
      positions where it was used. }
    TdwsSymbolDictionary = class
@@ -171,6 +173,7 @@ type
          // remove all references to the symbol
          procedure Remove(sym : TSymbol);
          procedure RemoveInRange(const startPos, endPos : TScriptPos);
+         procedure EnumerateInRange(const startPos, endPos : TScriptPos; const callBack : TdwsSymbolDictionaryProc);
 
          procedure ReplaceSymbolAt(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
 
@@ -204,8 +207,7 @@ type
          FToken : TTokenType;         // token associated with opening the context
 
       protected
-         function GetCount : Integer; inline;
-         function GetSubCountext(index : Integer) : TdwsSourceContext; inline;
+         function GetSubContext(index : Integer) : TdwsSourceContext; inline;
 
       public
          constructor Create(aParent : TdwsSourceContext; const aStartPos : TScriptPos;
@@ -224,8 +226,8 @@ type
          property Token : TTokenType read FToken;
 
          property SubContexts : TTightList read FSubContexts;
-         property SubContext[index : Integer] : TdwsSourceContext read GetSubCountext;
-         property Count : Integer read GetCount;
+         property SubContext[index : Integer] : TdwsSourceContext read GetSubContext;
+         property Count : Integer read FSubContexts.FCount;
 
          property StartPos : TScriptPos read FStartPos;
          property EndPos : TScriptPos read FEndPos;
@@ -238,6 +240,9 @@ type
       private
          FScriptContexts : TTightList; // list of top-level contexts
          FCurrentContext : TdwsSourceContext;   // current context (used when adding and leaving)
+
+      protected
+         function GetContext(index : Integer) : TdwsSourceContext; inline;
 
       public
          destructor Destroy; override;
@@ -263,6 +268,8 @@ type
          procedure EnumerateContextsOfSymbol(aParentSymbol : TSymbol; const callBack : TdwsSourceContextCallBack);
 
          property Contexts : TTightList read FScriptContexts;
+         property Context[index : Integer] : TdwsSourceContext read GetContext;
+         property Count : Integer read FScriptContexts.FCount;
          property Current : TdwsSourceContext read FCurrentContext;
    end;
 
@@ -1374,19 +1381,19 @@ type
    // wraps an expression with a result into a no-result one and discard the result
    TNoResultWrapperExpr = class(TNoResultExpr)
       protected
-         FExpr : TProgramExpr;
+         FExpr : TTypedExpr;
 
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TProgramExpr);
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TTypedExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          function  IsConstant : Boolean; override;
 
-         property Expr: TProgramExpr read FExpr write FExpr;
+         property Expr : TTypedExpr read FExpr write FExpr;
    end;
 
    // left "op" right
@@ -2995,10 +3002,12 @@ procedure TdwsProcedure.OptimizeConstAssignments(blockExpr : TBlockExprBase);
 var
    i, j : Integer;
    subExpr, initSubExpr : TExprBase;
-   assignExpr : TAssignConstExpr;
+   assignExpr : TAssignExpr;
    assignExprSym : TDataSymbol;
    initAssign : TAssignConstExpr;
 begin
+   if (InitExpr.SubExprCount=0) or (blockExpr.SubExprCount=0) then Exit;
+
    // merges all initial constant assignments in blockExpr in InitExpr
 
    // valid only if InitExpr is only made of constant assignments
@@ -3011,7 +3020,7 @@ begin
    while i<blockExpr.SubExprCount do begin
       subExpr:=blockExpr.SubExpr[i];
       if subExpr is TAssignConstExpr then begin
-         assignExpr:=TAssignConstExpr(subExpr);
+         assignExpr:=TAssignExpr(subExpr);
          if assignExpr.Left is TVarExpr then begin
             assignExprSym:=TVarExpr(assignExpr.Left).DataSym;
             for j:=0 to InitExpr.SubExprCount-1 do begin
@@ -3028,6 +3037,23 @@ begin
          end;
       end else Break;
       Inc(i);
+   end;
+
+   // the first assignment can be moved to the last of the InitExpr
+   if i<blockExpr.SubExprCount then begin
+      subExpr:=blockExpr.SubExpr[i];
+      if (subExpr is TAssignExpr) and not (subExpr is TOpAssignExpr) then begin
+         assignExpr:=TAssignExpr(subExpr);
+         if assignExpr.Left is TVarExpr then begin
+            assignExprSym:=TVarExpr(assignExpr.Left).DataSym;
+            j:=InitExpr.SubExprCount-1;
+            initSubExpr:=InitExpr.SubExpr[j];
+            initAssign:=(initSubExpr as TAssignConstExpr);
+            if (initAssign.Left is TVarExpr) and (TVarExpr(initAssign.Left).DataSym=assignExprSym) then begin
+               InitExpr.ReplaceStatement(j, blockExpr.ExtractStatement(i));
+            end;
+         end;
+      end;
    end;
 end;
 
@@ -6782,6 +6808,29 @@ begin
    end;
 end;
 
+// EnumerateInRange
+//
+procedure TdwsSymbolDictionary.EnumerateInRange(const startPos, endPos : TScriptPos; const callBack : TdwsSymbolDictionaryProc);
+var
+   i, j : Integer;
+   list : TSymbolPositionList;
+   symPos : TSymbolPosition;
+begin
+   if startPos.SourceFile<>endPos.SourceFile then Exit;
+
+   for i:=0 to FSymbolList.Count-1 do begin
+      list:=FSymbolList[i];
+      for j:=list.Count-1 downto 0 do begin
+         symPos:=list[j];
+         if     startPos.IsBeforeOrEqual(symPos.ScriptPos)
+            and symPos.ScriptPos.IsBeforeOrEqual(endPos) then begin
+            callBack(list.Symbol);
+            Break;
+         end;
+      end;
+   end;
+end;
+
 // ReplaceSymbolAt
 //
 procedure TdwsSymbolDictionary.ReplaceSymbolAt(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
@@ -7113,16 +7162,9 @@ begin
    end;
 end;
 
-// GetCount
+// GetSubContext
 //
-function TdwsSourceContext.GetCount : Integer;
-begin
-   Result:=FSubContexts.Count;
-end;
-
-// GetSubCountext
-//
-function TdwsSourceContext.GetSubCountext(index : Integer) : TdwsSourceContext;
+function TdwsSourceContext.GetSubContext(index : Integer) : TdwsSourceContext;
 begin
    Result:=TdwsSourceContext(FSubContexts.List[index]);
 end;
@@ -7293,6 +7335,13 @@ begin
    if FCurrentContext<>nil then
       Assert(FCurrentContext=nil);
    FCurrentContext:=aContext;
+end;
+
+// GetContext
+//
+function TdwsSourceContextMap.GetContext(index : Integer) : TdwsSourceContext;
+begin
+   Result:=TdwsSourceContext(FScriptContexts.List[index]);
 end;
 
 // ------------------
@@ -7516,7 +7565,7 @@ end;
 
 // Create
 //
-constructor TNoResultWrapperExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TProgramExpr);
+constructor TNoResultWrapperExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TTypedExpr);
 begin
    inherited Create(Prog, Pos);
    FExpr := Expr;

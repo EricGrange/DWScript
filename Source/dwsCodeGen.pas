@@ -151,6 +151,8 @@ type
 
          function  SmartLink(symbol : TSymbol) : Boolean; virtual;
 
+         function  SmartLinkMethod(meth : TMethodSymbol) : Boolean; virtual;
+
          procedure SmartLinkFilterOutSourceContext(context : TdwsSourceContext);
          procedure SmartLinkFilterSymbolTable(table : TSymbolTable; var changed : Boolean); virtual;
          procedure SmartLinkFilterStructSymbol(structSymbol : TStructuredTypeSymbol; var changed : Boolean); virtual;
@@ -756,8 +758,11 @@ procedure TdwsCodeGen.MapStructuredSymbol(structSym : TStructuredTypeSymbol; can
 var
    sym : TSymbol;
    n : Integer;
+   changed : Boolean;
 begin
    if FSymbolMaps.MapOf(structSym)<>nil then Exit;
+
+   SmartLinkFilterStructSymbol(structSym, changed);
 
    if structSym.Parent<>nil then
       MapStructuredSymbol(structSym.Parent, canObfuscate);
@@ -1171,6 +1176,63 @@ function TdwsCodeGen.SmartLink(symbol : TSymbol): Boolean;
 
 begin
    Result:=(FSymbolDictionary=nil) or IsReferenced(symbol);
+end;
+
+// SmartLinkMethod
+//
+//  TSub = class (TBase)
+//
+function TdwsCodeGen.SmartLinkMethod(meth : TMethodSymbol) : Boolean;
+var
+   i : Integer;
+   symPos : TSymbolPositionList;
+   lookup : TMethodSymbol;
+   isUsed : Boolean;
+begin
+   Result:=SmartLink(meth);
+   if Result then Exit;
+
+   // interfaces aren't smart-linked yet
+   if meth.IsInterfaced then Exit(True);
+   // constructors/destructors aren't smart-linked yet
+   if meth.Kind in [fkConstructor, fkDestructor] then Exit(True);
+   if meth.IsClassMethod and meth.IsVirtual then Exit(True);
+
+   // regular resolution works for non-virtual methods
+   if not meth.IsVirtual then Exit;
+
+   // the virtual method should be included if itself or any
+   // of its overrides are used
+   // filtering of unused subclasses is assumed to have been made already
+   for i:=0 to FSymbolDictionary.Count-1 do begin
+      symPos:=FSymbolDictionary.Items[i];
+      // only check methods
+      if not (symPos.Symbol is TMethodSymbol) then continue;
+
+      lookup:=TMethodSymbol(symPos.Symbol);
+      // quick filter on vmt index
+      if (not lookup.IsVirtual) or (lookup.VMTIndex<>meth.VMTIndex) then continue;
+
+      // is it an override of our method?
+      while (lookup<>meth) and (lookup<>nil) do begin
+         lookup:=lookup.ParentMeth;
+      end;
+      if lookup=nil then continue;
+
+      // is it used anywhere?
+      isUsed:=(symPos.FindUsage(suReference)<>nil);
+      lookup:=TMethodSymbol(symPos.Symbol);
+      while (lookup<>nil) and (not isUsed) do begin
+         isUsed:=isUsed or lookup.IsInterfaced
+                        or (FSymbolDictionary.FindSymbolUsage(lookup, suReference)<>nil);
+         lookup:=lookup.ParentMeth;
+      end;
+
+      Result:=isUsed;
+      Exit;
+   end;
+   Output.WriteString('// IGNORED: '+meth.StructSymbol.Name+'.'+meth.Name+#13#10);
+   Result:=False;
 end;
 
 // SmartLinkFilterOutSourceContext

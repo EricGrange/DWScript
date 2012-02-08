@@ -51,6 +51,7 @@ type
          procedure EnterContext(proc : TdwsProgram); override;
          procedure LeaveContext; override;
 
+         function  SameDefaultValue(typ1, typ2 : TTypeSymbol) : Boolean;
          procedure WriteDefaultValue(typ : TTypeSymbol; box : Boolean);
          procedure WriteValue(typ : TTypeSymbol; const data : TData; addr : Integer);
          procedure WriteStringArray(destStream : TWriteOnlyBlockStream; strings : TStrings); overload;
@@ -63,6 +64,7 @@ type
 
          procedure DoCompileRecordSymbol(rec : TRecordSymbol); override;
          procedure DoCompileClassSymbol(cls : TClassSymbol); override;
+         procedure DoCompileFieldsInit(cls : TClassSymbol);
          procedure DoCompileInterfaceTable(cls : TClassSymbol);
          procedure DoCompileFuncSymbol(func : TSourceFuncSymbol); override;
 
@@ -115,6 +117,10 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
    TJSRAWBlockExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
+   TJSNoResultWrapperExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
@@ -303,11 +309,18 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
-   TJSIncVarFuncExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   TJSIncDecVarFuncExpr = class (TJSExprCodeGen)
+      procedure DoCodeGen(codeGen : TdwsCodeGen; expr : TMagicFuncExpr;
+                          op : Char; noWrap : Boolean);
    end;
-   TJSDecVarFuncExpr = class (TJSExprCodeGen)
+
+   TJSIncVarFuncExpr = class (TJSIncDecVarFuncExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+      procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
+   end;
+   TJSDecVarFuncExpr = class (TJSIncDecVarFuncExpr)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+      procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
    end;
 
    TJSFuncBaseExpr = class (TJSExprCodeGen)
@@ -468,6 +481,7 @@ implementation
 const
    cBoolToJSBool : array [False..True] of String = ('false', 'true');
    cFormatSettings : TFormatSettings = ( DecimalSeparator : '.' );
+   cBoxFieldName = 'v';
 
 type
    TJSRTLDependency = record
@@ -521,8 +535,7 @@ const
        Code : 'function $ArraySwap(a,i1,i2) { var t=a[i1]; a[i1]=a[i2]; a[i2]=t }' ),
       (Name : '$ArraySwapChk';
        Code : 'function $ArraySwapChk(a,i1,i2,z) {'#13#10
-              +#9'var n=a.length-1;'#13#10
-              +#9'var t=a[$Idx(i1,0,n,z)];'#13#10
+              +#9'var n=a.length-1, t=a[$Idx(i1,0,n,z)];'#13#10
               +#9'a[i1]=a[$Idx(i2,0,n,z)]'#13#10
               +#9'a[i2]=t;'#13#10
               +'}';
@@ -565,7 +578,7 @@ const
        Dependency : '$Inh' ),
       (Name : '$AsIntf';
        Code : 'function $AsIntf(o,i) {'#13#10
-               +#9'if (o==null) return null;'#13#10
+               +#9'if (o===null) return null;'#13#10
                +#9'var r = o.ClassType.$Intf[i].map(function (e) {'#13#10
                   +#9#9'return function () {'#13#10
                      +#9#9#9'var arg=Array.prototype.slice.call(arguments);'#13#10
@@ -575,22 +588,22 @@ const
                +#9'});'#13#10
                +#9'r.O = o;'#13#10
                +#9'return r;'#13#10
-               +'};'#13#10),
+               +'}'#13#10),
       (Name : '$Implements';
        Code : 'function $Implements(o,i) {'#13#10
-               +#9'if (o==null) return false;'#13#10
+               +#9'if (o===null) return false;'#13#10
                +#9'var cti=o.ClassType.$Intf;'#13#10
                +#9'return ((cti!=undefined)&&(cti[i]!=undefined));'#13#10
                +'}'#13#10),
       (Name : '$ClassImplements';
        Code : 'function $ClassImplements(c,i) {'#13#10
-               +#9'if (c==null) return false;'#13#10
+               +#9'if (c===null) return false;'#13#10
                +#9'var cti=c.$Intf;'#13#10
                +#9'return ((cti!=undefined)&&(cti[i]!=undefined));'#13#10
                +'}'#13#10),
       (Name : '$IntfAsClass';
        Code : 'function $IntfAsClass(i,c) {'#13#10
-               +#9'if (i==null) return null;'#13#10
+               +#9'if (i===null) return null;'#13#10
                +#9'if ($Is(i.O,c)) return i.O;'#13#10
                +#9'else throw Exception.Create$1($New(Exception),"Can''t cast interface of \""+i.O.ClassType.$ClassName+"\" to class \""+c.$ClassName+"\"");'#13#10
                +'}'#13#10;
@@ -643,7 +656,6 @@ const
                +#9'return function(){'#13#10
                   +#9#9'var arg=Array.prototype.slice.call(arguments);'#13#10
                   +#9#9'arg.unshift(li);'#13#10
-//                  +#9#9'arg.splice(0,0,li);'#13#10
                   +#9#9'return lf.apply(li,arg)'#13#10
                +#9'}'#13#10
                +'}'),
@@ -744,7 +756,8 @@ const
       (Name : 'DegToRad';
        Code : 'function DegToRad(v) { return v*(Math.PI/180) }'),
       (Name : 'Delete';
-       Code : 'function Delete(s,i,n) { var v=s.value; if ((i<=0)||(i>v.length)||(n<=0)) return; s.value=v.substr(0,i-1)+v.substr(i+n-1); }'),
+       Code : 'function Delete(s,i,n) { var v=s.'+cBoxFieldName+'; if ((i<=0)||(i>v.length)||(n<=0)) return;'
+                                     +' s.'+cBoxFieldName+'=v.substr(0,i-1)+v.substr(i+n-1); }'),
       (Name : 'EncodeDate';
        Code : 'function EncodeDate(y,m,d) { return (new Date(y,m,d)).getTime()/864e5+25569 }'),
       (Name : 'Even';
@@ -774,8 +787,8 @@ const
       (Name : 'Hypot';
        Code : 'function Hypot(x,y) { return Math.sqrt(x*x+y*y) }'),
       (Name : 'Insert';
-       Code : 'function Insert(s,d,i) { var v=d.value; if (s=="") return; if (i<1) i=1; if (i>v.length) i=v.length+1;'
-               +'d.value=v.substr(0,i-1)+s+v.substr(i-1); }'),
+       Code : 'function Insert(s,d,i) { var v=d.'+cBoxFieldName+'; if (s=="") return; if (i<1) i=1; if (i>v.length) i=v.length+1;'
+               +'d.'+cBoxFieldName+'=v.substr(0,i-1)+s+v.substr(i-1); }'),
       (Name : 'Int';
        Code : 'function Int(v) { return (v>0)?Math.floor(v):Math.ceil(v) }'),
       (Name : 'IntPower';
@@ -883,7 +896,8 @@ const
       (Name : 'SameText';
        Code : 'function SameText(a,b) { return a.toUpperCase()==b.toUpperCase() }'),
       (Name : 'SetLength';
-       Code : 'function SetLength(s,n) { if (s.value.length>n) s.value=s.value.substring(0,n); else while (s.value.length<n) s.value+=" "; }'),
+       Code : 'function SetLength(s,n) { if (s.'+cBoxFieldName+'.length>n) s.'+cBoxFieldName+'=s.'+cBoxFieldName+'.substring(0,n);'
+                                       +'else while (s.'+cBoxFieldName+'.length<n) s.'+cBoxFieldName+'+=" "; }'),
       (Name : 'SetRandSeed';
        Code : 'function SetRandSeed(v) { $dwsRand = v }';
        Dependency : '$dwsRand'),
@@ -953,9 +967,9 @@ const
                +#9'ClassType: function (s) { return s },'#13#10
                +#9'$Init: function () {},'#13#10
                +#9'Create: function (s) { return s; },'#13#10
-               +#9'Destroy: function (s) { for (prop in s) { if (s.hasOwnProperty(prop)) delete s.prop; } },'#13#10
+               +#9'Destroy: function (s) { for (var prop in s) { if (s.hasOwnProperty(prop)) delete s.prop; } },'#13#10
                +#9'Destroy$v: function(s) { return s.ClassType.Destroy(s) },'#13#10
-               +#9'Free: function (s) { if (s!=null) s.ClassType.Destroy(s) }'#13#10
+               +#9'Free: function (s) { if (s!==null) s.ClassType.Destroy(s) }'#13#10
                +'}';
        Dependency : '$New'),
       (Name : 'Exception';
@@ -1070,7 +1084,7 @@ begin
    RegisterCodeGen(TdwsJSBlockExpr,       TJSRAWBlockExpr.Create);
 
    RegisterCodeGen(TNullExpr,             TdwsExprGenericCodeGen.Create(['/* null */'], True));
-   RegisterCodeGen(TNoResultWrapperExpr,  TdwsExprGenericCodeGen.Create([0, ';'], True));
+   RegisterCodeGen(TNoResultWrapperExpr,  TJSNoResultWrapperExpr.Create);
 
    RegisterCodeGen(TConstExpr,            TJSConstExpr.Create);
    RegisterCodeGen(TUnifiedConstExpr,     TJSConstExpr.Create);
@@ -1671,7 +1685,7 @@ begin
 
    WriteString('var ');
    WriteSymbolName(cls);
-   WriteStringLn('={');
+   WriteStringLn('= {');
    Indent;
 
    WriteString('$ClassName:');
@@ -1684,22 +1698,11 @@ begin
    Dependencies.Add('$New');
    Dependencies.Add('TObject');
 
-   WriteStringLn('$Init:function (Self) {');
+   WriteStringLn('$Init:function ($) {');
    Indent;
    WriteSymbolName(cls.Parent);
-   WriteStringLn('.$Init(Self);');
-   for i:=0 to cls.Members.Count-1 do begin
-      sym:=cls.Members[i];
-      if sym is TFieldSymbol then begin
-         if (TFieldSymbol(sym).Visibility=cvPublished) or SmartLink(sym) then begin
-            WriteString('Self.');
-            WriteString(MemberName(sym, cls));
-            WriteString('=');
-            WriteDefaultValue(sym.Typ, False);
-            WriteStringLn(';');
-         end;
-      end;
-   end;
+   WriteStringLn('.$Init($);');
+   DoCompileFieldsInit(cls);
    UnIndent;
    WriteStringLn('}');
 
@@ -1715,6 +1718,7 @@ begin
 
    for i:=0 to cls.VMTCount-1 do begin
       meth:=cls.VMTMethod(i);
+      if not SmartLinkMethod(meth) then continue;
       if meth.StructSymbol<>cls then begin
          WriteString(',');
          WriteString(MemberName(meth, meth.StructSymbol));
@@ -1726,19 +1730,19 @@ begin
       end;
       WriteString(',');
       WriteString(MemberName(meth, meth.StructSymbol));
-      WriteString('$v:');
+      WriteString('$'+cBoxFieldName+':');
       if meth.StructSymbol=cls then begin
          if meth.Kind=fkConstructor then begin
-            WriteString('function($s){return $s.ClassType.');
+            WriteString('function($){return $.ClassType.');
          end else if meth.IsClassMethod then begin
-            WriteString('function($s){return $s.');
+            WriteString('function($){return $.');
          end else begin
-            WriteString('function($s){return $s.ClassType.');
+            WriteString('function($){return $.ClassType.');
          end;
          WriteString(MemberName(meth, meth.StructSymbol));
          if meth.Params.Count=0 then
-            WriteStringLn('($s)}')
-         else WriteStringLn('.apply($s.ClassType, arguments)}');
+            WriteStringLn('($)}')
+         else WriteStringLn('.apply($.ClassType, arguments)}');
       end else begin
          WriteSymbolName(meth.StructSymbol);
          WriteString('.');
@@ -1751,6 +1755,45 @@ begin
    WriteStringLn('};');
 
    DoCompileInterfaceTable(cls);
+end;
+
+// DoCompileFieldsInit
+//
+procedure TdwsJSCodeGen.DoCompileFieldsInit(cls : TClassSymbol);
+var
+   i, j, n : Integer;
+   sym, sym2 : TSymbol;
+   flds : array of TFieldSymbol;
+begin
+   SetLength(flds, cls.Members.Count);
+   n:=0;
+   for i:=0 to cls.Members.Count-1 do begin
+      sym:=cls.Members[i];
+      if sym is TFieldSymbol then begin
+         if (TFieldSymbol(sym).Visibility=cvPublished) or SmartLink(sym) then begin
+            flds[n]:=TFieldSymbol(sym);
+            Inc(n);
+         end;
+      end;
+   end;
+
+   // aggregate initializations by type
+   for i:=0 to n-1 do begin
+      sym:=flds[i];
+      if sym=nil then continue;
+      for j:=i to n-1 do begin
+         sym2:=flds[j];
+         if sym2=nil then continue;
+         if SameDefaultValue(sym2.Typ, sym.Typ) then begin
+            WriteString('$.');
+            WriteString(MemberName(sym2, cls));
+            WriteString('=');
+            flds[j]:=nil;
+         end;
+      end;
+      WriteDefaultValue(sym.Typ, False);
+      WriteStringLn(';');
+   end;
 end;
 
 // DoCompileInterfaceTable
@@ -2090,6 +2133,15 @@ begin
    inherited;
 end;
 
+// SameDefaultValue
+//
+function TdwsJSCodeGen.SameDefaultValue(typ1, typ2 : TTypeSymbol) : Boolean;
+begin
+   Result:=   (typ1=typ2)
+           or (    ((typ1 is TClassSymbol) or (typ1 is TFuncSymbol) or (typ1 is TInterfaceSymbol))
+               and ((typ2 is TClassSymbol) or (typ2 is TFuncSymbol) or (typ2 is TInterfaceSymbol)) );
+end;
+
 // WriteDefaultValue
 //
 procedure TdwsJSCodeGen.WriteDefaultValue(typ : TTypeSymbol; box : Boolean);
@@ -2103,7 +2155,7 @@ begin
    typ:=typ.UnAliasedType;
 
    if box then
-      WriteString('{value:');
+      WriteString('{'+cBoxFieldName+':');
    if typ is TBaseIntegerSymbol then
       WriteString('0')
    else if typ is TBaseFloatSymbol then
@@ -2323,7 +2375,7 @@ begin
       param:=proc.Func.Params[i] as TParamSymbol;
       if (not (param is TByRefParamSymbol)) and TJSExprCodeGen.IsLocalVarParam(Self, param) then begin
          WriteSymbolName(param);
-         WriteString('={value:');
+         WriteString('={'+cBoxFieldName+':');
          WriteSymbolName(param);
          WriteStringLn('};');
       end;
@@ -2382,7 +2434,7 @@ begin
    if resultTyp<>nil then begin
       if resultIsBoxed then begin
          UnIndent;
-         WriteStringLn('} finally {return Result.value}')
+         WriteStringLn('} finally {return Result.'+cBoxFieldName+'}')
       end else WriteStringLn('return Result');
    end;
 end;
@@ -2395,6 +2447,8 @@ var
 begin
    if not (meth.Executable is TdwsProcedure) then Exit;
    proc:=(meth.Executable as TdwsProcedure);
+
+   if not SmartLinkMethod(meth) then Exit;
 
    if not (meth.IsVirtual or meth.IsInterfaced) then
       if meth.Kind in [fkProcedure, fkFunction, fkMethod] then
@@ -2637,6 +2691,22 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSNoResultWrapperExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSNoResultWrapperExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TNoResultWrapperExpr;
+begin
+   e:=TNoResultWrapperExpr(expr);
+   if e.Expr<>nil then
+      codeGen.CompileNoWrap(e.Expr);
+   codeGen.WriteStringLn(';');
+end;
+
+// ------------------
 // ------------------ TJSVarExpr ------------------
 // ------------------
 
@@ -2648,7 +2718,7 @@ var
 begin
    sym:=CodeGenName(codeGen, expr);
    if IsLocalVarParam(codeGen, sym) then
-      codeGen.WriteString('.value');
+      codeGen.WriteString('.'+cBoxFieldName);
 end;
 
 // CodeGenName
@@ -2695,7 +2765,7 @@ begin
       raise ECodeGenUnsupportedSymbol.Create(IntToStr(e.StackAddr));
    codeGen.WriteSymbolName(sym);
    if IsLocalVarParam(codeGen, sym) then
-      codeGen.WriteString('.value');
+      codeGen.WriteString('.'+cBoxFieldName);
 end;
 
 // ------------------
@@ -2707,7 +2777,7 @@ end;
 procedure TJSVarParamExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 begin
    inherited;
-   codeGen.WriteString('.value');
+   codeGen.WriteString('.'+cBoxFieldName);
 end;
 
 // ------------------
@@ -2719,7 +2789,7 @@ end;
 procedure TJSVarParamParentExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 begin
    inherited;
-   codeGen.WriteString('.value');
+   codeGen.WriteString('.'+cBoxFieldName);
 end;
 
 // ------------------
@@ -2735,7 +2805,7 @@ begin
    sym:=TLazyParamExpr(expr).DataSym;
    codeGen.WriteSymbolName(sym);
    if IsLocalVarParam(codeGen, sym) then
-      codeGen.WriteString('.value');
+      codeGen.WriteString('.'+cBoxFieldName);
    codeGen.WriteString('()');
 end;
 
@@ -3117,7 +3187,7 @@ begin
             if paramExpr is TVarExpr then
                TJSVarExpr.CodeGenName(codeGen, TVarExpr(paramExpr))
             else begin
-               codeGen.WriteString('{value:');
+               codeGen.WriteString('{'+cBoxFieldName+':');
                codeGen.Compile(paramExpr);
                codeGen.WriteString('}');
             end;
@@ -3980,12 +4050,13 @@ begin
 end;
 
 // ------------------
-// ------------------ TJSIncVarFuncExpr ------------------
+// ------------------ TJSIncDecVarFuncExpr ------------------
 // ------------------
 
-// CodeGen
+// DoCodeGen
 //
-procedure TJSIncVarFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+procedure TJSIncDecVarFuncExpr.DoCodeGen(codeGen : TdwsCodeGen; expr : TMagicFuncExpr;
+                                         op : Char; noWrap : Boolean);
 var
    e : TIncVarFuncExpr;
    left, right : TExprBase;
@@ -3994,15 +4065,37 @@ begin
    left:=e.Args[0];
    right:=e.Args[1];
    if (right is TConstIntExpr) and (TConstIntExpr(right).Value=1) then begin
-      codeGen.WriteString('++');
+      codeGen.WriteString(op);
+      codeGen.WriteString(op);
       codeGen.Compile(left);
    end else begin
-      codeGen.WriteString('(');
+      if not noWrap then
+         codeGen.WriteString('(');
       codeGen.Compile(left);
-      codeGen.WriteString('+=');
+      codeGen.WriteString(op);
+      codeGen.WriteString('=');
       codeGen.Compile(right);
-      codeGen.WriteString(')');
+      if not noWrap then
+         codeGen.WriteString(')');
    end;
+end;
+
+// ------------------
+// ------------------ TJSIncVarFuncExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSIncVarFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+begin
+   DoCodeGen(codeGen, TIncVarFuncExpr(expr), '+', False);
+end;
+
+// CodeGenNoWrap
+//
+procedure TJSIncVarFuncExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+begin
+   DoCodeGen(codeGen, TIncVarFuncExpr(expr), '+', True);
 end;
 
 // ------------------
@@ -4012,23 +4105,15 @@ end;
 // CodeGen
 //
 procedure TJSDecVarFuncExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
-var
-   e : TDecVarFuncExpr;
-   left, right : TExprBase;
 begin
-   e:=TDecVarFuncExpr(expr);
-   left:=e.Args[0];
-   right:=e.Args[1];
-   if (right is TConstIntExpr) and (TConstIntExpr(right).Value=1) then begin
-      codeGen.WriteString('--');
-      codeGen.Compile(left);
-   end else begin
-      codeGen.WriteString('(');
-      codeGen.Compile(left);
-      codeGen.WriteString('-=');
-      codeGen.Compile(right);
-      codeGen.WriteString(')');
-   end;
+   DoCodeGen(codeGen, TIncVarFuncExpr(expr), '-', False);
+end;
+
+// CodeGenNoWrap
+//
+procedure TJSDecVarFuncExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+begin
+   DoCodeGen(codeGen, TIncVarFuncExpr(expr), '-', True);
 end;
 
 // ------------------
