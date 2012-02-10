@@ -2438,6 +2438,7 @@ end;
 //
 function TdwsProgramExecution.GetInfo : TProgramInfo;
 begin
+   Assert(FProgramState<>psReadyToRun, 'Must call BeginProgram before accessing Info');
    if ProgramInfo<>nil then
       Result:=ProgramInfo
    else Result:=AcquireProgramInfo(nil);
