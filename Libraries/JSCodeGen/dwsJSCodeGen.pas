@@ -3882,7 +3882,7 @@ begin
       Exit;
    end;
 
-   wrapped:=not((e.Left is TVarExpr) or (e.Left is TConstExpr));
+   wrapped:=not ((e.Left is TVarExpr) or (e.Left is TConstExpr) or (e.Left is TFieldExpr));
 
    if wrapped then begin
       codeGen.WriteString('{f:function(){var v$=');
