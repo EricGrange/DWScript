@@ -212,6 +212,7 @@ type
          procedure WriteSymbolName(sym : TSymbol; scope : TdwsCodeGenSymbolScope = cgssGlobal);
 
          function LocationString(e : TExprBase) : String;
+         function IncTempSymbolCounter : Integer;
          function GetNewTempSymbol : String; virtual;
 
          procedure WriteCompiledOutput(dest : TWriteOnlyBlockStream; const prog : IdwsProgram); virtual;
@@ -976,12 +977,20 @@ begin
    else Result:=' in '+e.ScriptLocation(Context);
 end;
 
+// IncTempSymbolCounter
+//
+function TdwsCodeGen.IncTempSymbolCounter : Integer;
+begin
+   Inc(FTempSymbolCounter);
+   Result:=FTempSymbolCounter;
+end;
+
 // GetNewTempSymbol
 //
 function TdwsCodeGen.GetNewTempSymbol : String;
 begin
    Inc(FTempSymbolCounter);
-   Result:=IntToHex(FTempSymbolCounter, 1);
+   Result:=IntToStr(FTempSymbolCounter);
 end;
 
 // WriteCompiledOutput
