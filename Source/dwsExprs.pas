@@ -223,7 +223,7 @@ type
 
          property Parent : TdwsSourceContext read FParentContext;
          property ParentSym : TSymbol read FParentSymbol write FParentSymbol;
-         property Token : TTokenType read FToken;
+         property Token : TTokenType read FToken write FToken;
 
          property SubContexts : TTightList read FSubContexts;
          property SubContext[index : Integer] : TdwsSourceContext read GetSubContext;

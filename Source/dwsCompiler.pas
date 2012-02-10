@@ -501,6 +501,7 @@ type
                                            aLeft, aRight : TTypedExpr) : TAssignExpr;
 
          procedure DoSectionChanged;
+         procedure DoTokenizerEndSourceFile(sourceFile : TSourceFile);
 
          property CurrentUnitSymbol : TUnitMainSymbol read FCurrentUnitSymbol;
          procedure EnterUnit(unitSymbol : TUnitMainSymbol; var oldUnitSymbol : TUnitMainSymbol);
@@ -1286,12 +1287,23 @@ var
    finalToken : TTokenType;
    unitBlock : TBlockExpr;
    readingMain : Boolean;
+   contextFix : TdwsSourceContext;
 begin
    oldTok:=FTok;
    oldSection:=FUnitSection;
    FTok:=FTokRules.CreateTokenizer(FProg.CompileMsgs);
    try
       FTok.BeginSourceFile(sourceFile);
+      if coContextMap in Options then begin
+         case scriptType of
+            stMain :
+               FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttPROGRAM);
+            stUnit :
+               FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttUNIT);
+         else
+            FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttNone);
+         end;
+      end;
       FTok.SwitchHandler:=ReadSwitch;
       FTok.SwitchProcessor:=ReadInstrSwitch;
       if scriptType=stMain then
@@ -1302,6 +1314,18 @@ begin
 
       readingMain:=(scriptType=stMain);
       if (scriptType=stMain) and FTOk.Test(ttUNIT) then begin
+         if coContextMap in Options then begin
+            // need to fix the context map
+            // the convoluted code below is required in case the first code content encountered
+            // was an include switch, worst case is a 'UNIT' keyword in a bunch of nested includes
+            contextFix:=FSourceContextMap.Current;
+            while     (contextFix<>nil)
+                  and (contextFix.Token<>ttPROGRAM)
+                  and (contextFix.StartPos.SourceFile<>sourceFile) do
+               contextFix:=contextFix.Parent;
+            if contextFix<>nil then
+               contextFix.Token:=ttUNIT;
+         end;
          HandleUnitDependencies;
          scriptType:=stUnit;
       end;
@@ -1312,12 +1336,8 @@ begin
       case scriptType of
          stMain : begin
             HandleUnitDependencies;
-            if coContextMap in Options then
-               FSourceContextMap.OpenContext(FTok.CurrentPos, CurrentUnitSymbol, ttPROGRAM);
          end;
          stUnit : begin
-            if coContextMap in Options then
-               FSourceContextMap.OpenContext(FTok.CurrentPos, CurrentUnitSymbol, ttUNIT);
             FUnitSection:=secHeader;
             ReadUnitHeader;
          end;
@@ -7057,6 +7077,10 @@ begin
 
                   sourceFile:=FMainProg.RegisterSourceFile(name, scriptSource);
                   FTok.BeginSourceFile(sourceFile);
+                  if coContextMap in Options then begin
+                     FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttSWITCH);
+                     FTok.OnEndSourceFile:=DoTokenizerEndSourceFile;
+                  end;
 
                   FTok.SimulateToken(ttSEMI);
 
@@ -8168,6 +8192,16 @@ procedure TdwsCompiler.DoSectionChanged;
 begin
    if Assigned(FOnSectionChanged) then
       FOnSectionChanged(Self);
+end;
+
+// DoTokenizerEndSourceFile
+//
+procedure TdwsCompiler.DoTokenizerEndSourceFile(sourceFile : TSourceFile);
+begin
+   if     (coContextMap in Options)
+      and (FSourceContextMap.Current<>nil)
+      and (FSourceContextMap.Current.StartPos.SourceFile=sourceFile) then
+      FSourceContextMap.CloseContext(FTok.CurrentPos);
 end;
 
 // EnterUnit

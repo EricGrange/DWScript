@@ -178,6 +178,8 @@ type
 
    TTokenizerConditional = (tcIf, tcElse);
 
+   TTokenizerEndSourceFileEvent = procedure (sourceFile : TSourceFile) of object;
+
    TTokenizer = class
       private
          FTokenBuf : TTokenBuffer;
@@ -196,6 +198,7 @@ type
          FTokenStoreCount : Integer;
 
          FSourceStack : array of TTokenizerSourceInfo;
+         FOnEndSourceFile : TTokenizerEndSourceFileEvent;
 
          procedure AllocateToken;
          procedure ReleaseToken;
@@ -244,6 +247,7 @@ type
          property SwitchHandler : TSwitchHandler read FSwitchHandler write FSwitchHandler;
          property SwitchProcessor : TSwitchHandler read FSwitchProcessor write FSwitchProcessor;
          property ConditionalDefines : IAutoStore<TStrings> read FConditionalDefines write FConditionalDefines;
+         property OnEndSourceFile : TTokenizerEndSourceFileEvent read FOnEndSourceFile write FOnEndSourceFile;
    end;
 
 const
@@ -783,6 +787,8 @@ var
 begin
    n:=Length(FSourceStack);
    if n>0 then begin
+      if Assigned(FOnEndSourceFile) then
+         FOnEndSourceFile(FSource.FDefaultPos.SourceFile);
       FSource:=FSourceStack[n-1];
       SetLength(FSourceStack, n-1);
    end else begin
