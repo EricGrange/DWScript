@@ -264,6 +264,10 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
+   TJSBitwiseInOpExpr = class (TJSExprCodeGen)
+      procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
+   end;
+
    TJSCaseExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
       class procedure CodeGenCondition(codeGen : TdwsCodeGen; cond : TCaseCondition;
@@ -1327,6 +1331,7 @@ begin
       TdwsExprGenericCodeGen.Create(['if ', '(', 0, ')', ' {', #9, 1, #8, '} else {', #9, 2, #8, '};'], True));
 
    RegisterCodeGen(TInOpExpr,             TJSInOpExpr.Create);
+   RegisterCodeGen(TBitwiseInOpExpr,      TJSBitwiseInOpExpr.Create);
    RegisterCodeGen(TCaseExpr,             TJSCaseExpr.Create);
 
    RegisterCodeGen(TForUpwardExpr,        TJSForUpwardExpr.Create);
@@ -2005,8 +2010,30 @@ end;
 // GetNewTempSymbol
 //
 function TdwsJSCodeGen.GetNewTempSymbol : String;
+
+   function IntToBase62(i : Integer) : String;
+   var
+      n : Integer;
+      c : Char;
+   begin
+      Result:='';
+      repeat
+         n:=(i mod 62);
+         i:=(i div 62);
+         case n of
+            0..9 : c:=Char(Ord('0')+n);
+            10..35 : c:=Char(Ord('A')+n-10);
+         else
+            c:=Char(Ord('a')+n-36);
+         end;
+         Result:=Result+c;
+      until i=0;
+   end;
+
 begin
-   Result:='$t'+inherited GetNewTempSymbol;
+   if cgoOptimizeForSize in Options then begin
+      Result:='$t'+IntToBase62(IncTempSymbolCounter)
+   end else Result:='$temp'+inherited GetNewTempSymbol;
 end;
 
 // WriteJavaScriptString
@@ -3910,6 +3937,26 @@ begin
 
    if wrapped then
       codeGen.WriteString('}}.f()');
+end;
+
+// ------------------
+// ------------------ TJSBitwiseInOpExpr ------------------
+// ------------------
+
+// CodeGenNoWrap
+//
+procedure TJSBitwiseInOpExpr.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
+var
+   e : TBitwiseInOpExpr;
+begin
+   e:=TBitwiseInOpExpr(expr);
+
+   // JavaScript << has a higher precedence than &, which is lower than !=
+   codeGen.WriteString('(1<<');
+   codeGen.Compile(e.Expr);
+   codeGen.WriteString('&');
+   codeGen.WriteString(IntToStr(e.Mask));
+   codeGen.WriteString(')!=0');
 end;
 
 // ------------------

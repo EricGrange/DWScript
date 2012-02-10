@@ -4589,7 +4589,7 @@ procedure TdwsCompiler.TypeCheckArgs(funcExpr : TFuncExprBase; const argPosArray
 var
    arg : TTypedExpr;
    x, paramCount, nbParamsToCheck : Integer;
-   funcSym, overloadSym : TFuncSymbol;
+   funcSym : TFuncSymbol;
    paramSymbol : TParamSymbol;
    argTyp : TSymbol;
    initialErrorCount : Integer;

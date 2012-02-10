@@ -1288,6 +1288,8 @@ type
          function GetSubExprCount : Integer; override;
          function GetCaseConditions(idx : Integer) : TCaseCondition;
 
+         function ConstantConditions : Boolean;
+
       public
          constructor Create(Prog: TdwsProgram; Left : TTypedExpr);
          destructor Destroy; override;
@@ -1297,9 +1299,22 @@ type
          function IsConstant : Boolean; override;
          procedure AddCaseCondition(cond : TCaseCondition);
 
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+
          property Left : TTypedExpr read FLeft;
          property CaseConditions[idx : Integer] : TCaseCondition read GetCaseConditions; default;
          property Count : Integer read FCaseConditions.FCount;
+   end;
+
+   // bitwise val in [case conditions list]
+   TBitwiseInOpExpr = class(TUnaryOpBoolExpr)
+      private
+         FMask : Integer;
+
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+
+         property Mask : Integer read FMask write FMask;
    end;
 
    // statement; statement; statement;
@@ -3750,19 +3765,59 @@ begin
    Result:=False;
 end;
 
-// IsConstant
+// ConstantConditions
 //
-function TInOpExpr.IsConstant : Boolean;
+function TInOpExpr.ConstantConditions : Boolean;
 var
    i : Integer;
 begin
-   Result:=FLeft.IsConstant;
-   if Result then
-      for i:=0 to FCaseConditions.Count-1 do
-         if not TCaseCondition(FCaseConditions.List[i]).IsConstant then
-            Exit(False);
+   for i:=0 to FCaseConditions.Count-1 do
+      if not TCaseCondition(FCaseConditions.List[i]).IsConstant then
+         Exit(False);
+   Result:=True;
 end;
 
+// IsConstant
+//
+function TInOpExpr.IsConstant : Boolean;
+begin
+   Result:=FLeft.IsConstant and ConstantConditions;
+end;
+
+// Optimize
+//
+function TInOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+var
+   enumSym : TEnumerationSymbol;
+   value : Variant;
+   i, k, mask : Integer;
+   cc : TCaseCondition;
+begin
+   Result:=Self;
+   // if left is an enumeration with 31 or less symbols (31 is limit for JS)
+   // and conditions are constants, then it can be optimized to a bitwise test
+   if (FLeft.Typ is TEnumerationSymbol) and ConstantConditions then begin
+      enumSym:=TEnumerationSymbol(FLeft.Typ);
+      if (enumSym.LowBound<0) or (enumSym.HighBound>31) then Exit;
+      mask:=0;
+      for k:=enumSym.LowBound to enumSym.HighBound do begin
+         value:=Int64(k);
+         for i:=0 to FCaseConditions.Count-1 do begin
+            cc:=TCaseCondition(FCaseConditions.List[i]);
+            if cc.IsTrue(exec, Value) then begin
+               mask:=mask or (1 shl k);
+               Break;
+            end;
+         end;
+      end;
+      Result:=TBitwiseInOpExpr.Create(prog, FLeft);
+      TBitwiseInOpExpr(Result).Mask:=mask;
+      FLeft:=nil;
+      Free;
+   end;
+end;
+
+// GetSubExpr
 // AddCaseCondition
 //
 procedure TInOpExpr.AddCaseCondition(cond : TCaseCondition);
@@ -3770,7 +3825,6 @@ begin
    FCaseConditions.Add(cond);
 end;
 
-// GetSubExpr
 //
 function TInOpExpr.GetSubExpr(i : Integer) : TExprBase;
 var
@@ -3807,6 +3861,21 @@ end;
 function TInOpExpr.GetCaseConditions(idx : Integer) : TCaseCondition;
 begin
    Result:=TCaseCondition(FCaseConditions.List[idx]);
+end;
+
+// ------------------
+// ------------------ TBitwiseInOpExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TBitwiseInOpExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   i : Int64;
+begin
+   i:=Expr.EvalAsInteger(exec);
+   Result:=    (UInt64(i)<UInt64(32))
+           and (((1 shl i) and Mask)<>0);
 end;
 
 // ------------------
