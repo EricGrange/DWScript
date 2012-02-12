@@ -72,7 +72,7 @@ type
          procedure Execute(info : TProgramInfo); virtual; abstract;
    end;
 
-   TInternalFunctionFlag = (iffStateLess, iffOverloaded);
+   TInternalFunctionFlag = (iffStateLess, iffOverloaded, iffDeprecated);
    TInternalFunctionFlags = set of TInternalFunctionFlag;
 
    TInternalFunction = class(TFunctionPrototype, IUnknown, ICallable)
@@ -358,6 +358,8 @@ begin
    sym.Executable:=ICallable(Self);
    sym.IsStateless:=(iffStateLess in flags);
    sym.IsOverloaded:=(iffOverloaded in flags);
+   if iffDeprecated in flags then
+      sym.IsDeprecated:=True;
    FFuncSymbol:=sym;
    table.AddSymbol(sym);
 end;
