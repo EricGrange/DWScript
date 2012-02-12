@@ -1,8 +1,18 @@
 SetRandSeed(12);
-if RandSeed<>12 then PrintLn('SetRandSeed failed');
+var r1a := Random;
+var r1b := Random;
 
+SetRandSeed(12);
 Randomize;
-if RandSeed=12 then PrintLn('Randomize failed');
+var r2a := Random;
+var r2b := Random;
+
+SetRandSeed(12);
+var r3a := Random;
+var r3b := Random;
+
+if (r1a<>r3a) or (r1b<>r3b) then PrintLn('SetRandSeed failed');
+if (r1a=r2a) or (r1b=r2b) then PrintLn('Randomize failed');
 
 var i : Integer;
 for i:=1 to 100 do begin
