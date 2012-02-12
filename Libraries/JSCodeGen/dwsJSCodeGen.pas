@@ -493,13 +493,11 @@ type
    end;
    PJSRTLDependency = ^TJSRTLDependency;
 const
-   cJSRTLDependencies : array [1..146] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..145] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
        Dependency : 'Exception' ),
-      (Name : '$dwsRand';
-       Code : 'var $dwsRand=0'),
       (Name : '$New';
        Code : 'function $New(c) { var i={ClassType:c}; c.$Init(i); return i }'),
       (Name : '$NewDyn';
@@ -867,8 +865,8 @@ const
       (Name : 'RadToDeg';
        Code : 'function RadToDeg(v) { return v*(180/Math.PI) }'),
       (Name : 'Random';
-       Code : 'function Random() { var tmp=Math.floor($dwsRand*0x08088405+1)%4294967296; $dwsRand=tmp; return tmp*Math.pow(2, -32) }';
-       Dependency : '$dwsRand'),
+       Code : 'var Random = $alea()';
+       Dependency : '!alea_js' ),
       (Name : 'RandG';
        Code : 'function RandG(m, s) {'#13#10
               +#9'var u, r, n;'#13#10
@@ -884,11 +882,10 @@ const
        Code : 'function RandomInt(i) { return Math.floor(Random()*i) }';
        Dependency : 'Random'),
       (Name : 'Randomize';
-       Code : 'function Randomize() { $dwsRand=Math.round(Math.random*(1<<31)) }';
-       Dependency : '$dwsRand'),
+       Code : 'function Randomize() { Random = $alea() }';
+       Dependency : 'Random'),
       (Name : 'RandSeed';
-       Code : 'function RandSeed() { return $dwsRand }';
-       Dependency : '$dwsRand'),
+       Code : 'function RandSeed() { return 0 }'), // deprecated
       (Name : 'ReverseString';
        Code : 'function ReverseString(s) { return s.split("").reverse().join("") }'),
       (Name : 'RevPos';
@@ -903,8 +900,8 @@ const
        Code : 'function SetLength(s,n) { if (s.'+cBoxFieldName+'.length>n) s.'+cBoxFieldName+'=s.'+cBoxFieldName+'.substring(0,n);'
                                        +'else while (s.'+cBoxFieldName+'.length<n) s.'+cBoxFieldName+'+=" "; }'),
       (Name : 'SetRandSeed';
-       Code : 'function SetRandSeed(v) { $dwsRand = v }';
-       Dependency : '$dwsRand'),
+       Code : 'function SetRandSeed(v) { Random = $alea(v) }';
+       Dependency : 'Random'),
       (Name : 'Sin';
        Code : 'function Sin(v) { return Math.sin(v) }'),
       (Name : 'Sinh';
