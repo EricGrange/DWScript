@@ -759,7 +759,7 @@ initialization
    RegisterInternalIntFunction(TRandomIntFunc, 'RandomInt', ['range', cInteger]);
    RegisterInternalFunction(TRandomizeFunc, 'Randomize', [], '');
    RegisterInternalFloatFunction(TRandGFunc, 'RandG', ['mean', cFloat, 'stdDev', cFloat]);
-   RegisterInternalIntFunction(TRandSeedFunc, 'RandSeed', []);
+   RegisterInternalIntFunction(TRandSeedFunc, 'RandSeed', [], [iffDeprecated]);
    RegisterInternalProcedure(TSetRandSeedFunc, 'SetRandSeed', ['seed', cInteger]);
 
 end.
