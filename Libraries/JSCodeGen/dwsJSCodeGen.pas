@@ -20,7 +20,7 @@ interface
 
 uses Classes, SysUtils, dwsUtils, dwsSymbols, dwsCodeGen, dwsCoreExprs,
    dwsExprs, dwsRelExprs, dwsJSON, dwsMagicExprs, dwsStack, Variants, dwsStrings,
-   dwsJSLibModule, dwsJSMin, Generics.Defaults;
+   dwsJSLibModule, dwsJSMin;
 
 type
 
@@ -486,6 +486,7 @@ const
    cBoolToJSBool : array [False..True] of String = ('false', 'true');
    cFormatSettings : TFormatSettings = ( DecimalSeparator : '.' );
    cBoxFieldName = 'v';
+   cInlineStaticArrayLimit = 20;
 
 type
    TJSRTLDependency = record
@@ -2204,13 +2205,26 @@ begin
       WriteString(IntToStr(TEnumerationSymbol(typ).DefaultValue))
    else if typ is TStaticArraySymbol then begin
       sas:=TStaticArraySymbol(typ);
-      WriteString('[');
-      for i:=0 to sas.ElementCount-1 do begin
-         if i>0 then
-            WriteString(',');
+      if sas.ElementCount<cInlineStaticArrayLimit then begin
+         // initialize "small" static arrays inline
+         WriteString('[');
+         for i:=0 to sas.ElementCount-1 do begin
+            if i>0 then
+               WriteString(',');
+            WriteDefaultValue(sas.Typ, False);
+         end;
+         WriteString(']');
+      end else begin
+         // use a function for larger ones
+         WriteStringLn('function () {');
+         Indent;
+         WriteString('for (var r=[],i=0; i<'+IntToStr(sas.ElementCount)+'; i++) r.push(');
          WriteDefaultValue(sas.Typ, False);
+         WriteStringLn(');');
+         WriteStringLn('return r');
+         UnIndent;
+         WriteString('}()');
       end;
-      WriteString(']');
    end else if typ is TDynamicArraySymbol then begin
       WriteString('[]');
    end else if typ is TRecordSymbol then begin
@@ -2856,7 +2870,7 @@ begin
 
       sas:=TStaticArraySymbol(t);
 
-      if sas.ElementCount<20 then begin
+      if sas.ElementCount<cInlineStaticArrayLimit then begin
 
          codeGen.WriteString('=');
          (codeGen as TdwsJSCodeGen).WriteDefaultValue(t, False);
