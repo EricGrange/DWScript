@@ -1791,6 +1791,8 @@ begin
             WriteString(MemberName(sym2, cls));
             WriteString('=');
             flds[j]:=nil;
+            // records, static arrays and other value types can't be assigned together
+            if not ((sym.Typ is TBaseSymbol) or (sym.Typ is TClassSymbol) or (sym.Typ is TInterfaceSymbol)) then Break;
          end;
       end;
       WriteDefaultValue(sym.Typ, False);
