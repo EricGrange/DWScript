@@ -753,6 +753,8 @@ begin
 
    unitContext:=prog.SourceContextMap.FindContextByToken(ttUNIT);
    CheckNotNull(unitContext, 'unit map');
+   CheckNotNull(unitContext.ParentSym, 'unit parentsym');
+   CheckEquals('dummy', unitContext.ParentSym.Name, 'unit parentsym name');
 
    context:=unitContext.FindContextByToken(ttINTERFACE);
    CheckEquals(' [line: 2, column: 1]', context.StartPos.AsInfo, 'intf start');

@@ -908,6 +908,7 @@ begin
    FSystemTable:=nil;
    FUnitContextStack.Clean;
    FUnitsFromStack.Clear;
+   FCurrentUnitSymbol:=nil;
 
    FProg:=nil;
    FMainProg:=nil;
@@ -975,6 +976,7 @@ begin
 
       // Start compilation
       FProg.Expr:=ReadScript(sourceFile, stMain);
+
       if FProg.Expr=nil then
          FProg.Expr:=TNullExpr.Create(FProg, cNullPos);
 
@@ -7936,6 +7938,9 @@ procedure TdwsCompiler.ReadUnitHeader;
 var
    name, part : UnicodeString;
    namePos, partPos : TScriptPos;
+   contextFix : TdwsSourceContext;
+   srcUnit : TSourceUnit;
+   oldUnitSymbol : TUnitMainSymbol;
 begin
    if not FTok.TestDelete(ttUNIT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitExpected);
@@ -7949,16 +7954,34 @@ begin
       name:=name+'.'+part;
    end;
 
+   if CurrentUnitSymbol=nil then begin
+      // special case of a unit compiled directly (not through main program)
+      srcUnit:=TSourceUnit.Create(name, FProg.Root.RootTable, FProg.UnitMains);
+      FUnits.Add(srcUnit);
+      FCurrentUnitSymbol:=srcUnit.Symbol;
+   end;
+
+   if coContextMap in Options then begin
+      contextFix:=FSourceContextMap.Current;
+      while (contextFix<>nil) and (contextFix.Token<>ttUNIT) do
+         contextFix:=contextFix.Parent;
+      if contextFix<>nil then begin
+         Assert(contextFix.ParentSym=nil);
+         contextFix.ParentSym:=CurrentUnitSymbol;
+      end;
+   end;
+
    RecordSymbolUse(CurrentUnitSymbol, namePos, [suDeclaration]);
    if not SameText(name, namePos.SourceFile.Name) then
       FMsgs.AddCompilerWarning(namePos, CPE_UnitNameDoesntMatch);
 
    if not FTok.TestDelete(ttSEMI) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+
    if FTok.TestDelete(ttINTERFACE) then begin
       FUnitSection:=secInterface;
       if coContextMap in FOptions then
-         FSourceContextMap.OpenContext(FTok.HotPos, nil, ttINTERFACE);
+         FSourceContextMap.OpenContext(FTok.HotPos, CurrentUnitSymbol, ttINTERFACE);
    end else FUnitSection:=secMixed;
    DoSectionChanged;
 end;
