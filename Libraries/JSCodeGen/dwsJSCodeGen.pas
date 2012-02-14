@@ -346,6 +346,11 @@ type
          procedure CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol); override;
    end;
 
+   TJSFloatToStrExpr = class (TJSFuncBaseExpr)
+      public
+         procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
    TJSRecordMethodExpr = class (TJSFuncBaseExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -3289,6 +3294,7 @@ begin
    FMagicCodeGens.AddObject('Cos', TdwsExprGenericCodeGen.Create(['Math.cos', '(', 0, ')']));
    FMagicCodeGens.AddObject('Copy', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(', '(', 1, ')', '-1,', 2, ')']));
    FMagicCodeGens.AddObject('Exp', TdwsExprGenericCodeGen.Create(['Math.exp', '(', 0, ')']));
+   FMagicCodeGens.AddObject('FloatToStr', TJSFloatToStrExpr.Create);
    FMagicCodeGens.AddObject('Floor', TdwsExprGenericCodeGen.Create(['Math.floor', '(', 0, ')']));
    FMagicCodeGens.AddObject('HexToInt', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',','16)']));
    FMagicCodeGens.AddObject('IntPower', TdwsExprGenericCodeGen.Create(['Math.pow', '(', 0, ',', 1, ')']));
@@ -3384,6 +3390,46 @@ begin
       name:=GetSignature(e.FuncSym)
    else name:=e.FuncSym.QualifiedName;
    codeGen.WriteString(name);
+   codeGen.Dependencies.Add(name);
+end;
+
+// ------------------
+// ------------------ TJSFloatToStrExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSFloatToStrExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TMagicFuncExpr;
+   i : Integer;
+begin
+   e:=TMagicFuncExpr(expr);
+
+   if e.Args[1] is TConstIntExpr then begin
+
+      codeGen.Compile(e.Args[0]);
+
+      i:=e.Args[1].EvalAsInteger(nil);
+      if i=99 then
+         codeGen.WriteString('.toString()')
+      else begin
+         codeGen.WriteString('.toFixed(');
+         codeGen.WriteString(IntToStr(i));
+         codeGen.WriteString(')');
+      end;
+
+   end else begin
+
+      codeGen.Dependencies.Add('FloatToStr');
+
+      codeGen.WriteString('FloatToStr(');
+      codeGen.CompileNoWrap(e.Args[0] as TTypedExpr);
+      codeGen.WriteString(',');
+      codeGen.CompileNoWrap(e.Args[1] as TTypedExpr);
+      codeGen.WriteString(')');
+
+   end;
 end;
 
 // ------------------
