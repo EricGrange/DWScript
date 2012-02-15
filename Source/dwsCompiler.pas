@@ -530,6 +530,7 @@ type
 
          procedure RecordSymbolUse(sym : TSymbol; const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
          procedure RecordSymbolUseReference(sym : TSymbol; const scriptPos : TScriptPos; isWrite : Boolean);
+         procedure RecordSymbolUseImplicitReference(sym : TSymbol; const scriptPos : TScriptPos; isWrite : Boolean);
          procedure ReplaceSymbolUse(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
 
          property CurrentProg : TdwsProgram read FProg write FProg;
@@ -1143,6 +1144,15 @@ begin
    else RecordSymbolUse(sym, scriptPos, [suReference, suRead]);
 end;
 
+// RecordSymbolUseImplicitReference
+//
+procedure TdwsCompiler.RecordSymbolUseImplicitReference(sym : TSymbol; const scriptPos : TScriptPos; isWrite : Boolean);
+begin
+   if isWrite then
+      RecordSymbolUse(sym, scriptPos, [suReference, suWrite, suImplicit])
+   else RecordSymbolUse(sym, scriptPos, [suReference, suRead, suImplicit]);
+end;
+
 // ReplaceSymbolUse
 //
 procedure TdwsCompiler.ReplaceSymbolUse(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
@@ -1315,7 +1325,7 @@ begin
       FMainProg.SourceList.Add(sourceFile.Name, sourceFile, scriptType);
 
       readingMain:=(scriptType=stMain);
-      if (scriptType=stMain) and FTOk.Test(ttUNIT) then begin
+      if (scriptType=stMain) and FTok.Test(ttUNIT) then begin
          if coContextMap in Options then begin
             // need to fix the context map
             // the convoluted code below is required in case the first code content encountered
@@ -1371,8 +1381,7 @@ begin
 
       if finalToken=ttIMPLEMENTATION then begin
          if coSymbolDictionary in Options then
-            if CurrentUnitSymbol<>nil then
-               FSymbolDictionary.AddSymbol(CurrentUnitSymbol, FTok.HotPos, [suImplementation]);
+            RecordSymbolUse(CurrentUnitSymbol, FTok.HotPos, [suImplementation, suImplicit]);
          if readingMain then begin
             unitBlock:=ReadRootBlock([], finalToken);
             FProg.InitExpr.AddStatement(unitBlock);
@@ -3811,8 +3820,8 @@ begin
                   // array property
                   defaultProperty:=GetDefaultProperty(TStructuredTypeSymbol(baseType));
                   if Assigned(defaultProperty) then begin
-                     RecordSymbolUseReference(defaultProperty, FTok.HotPos, isWrite);
-                     Result:=ReadPropertyExpr(TDataExpr(Result), defaultProperty, IsWrite)
+                     RecordSymbolUseImplicitReference(defaultProperty, FTok.HotPos, isWrite);
+                     Result:=ReadPropertyExpr(TDataExpr(Result), defaultProperty, isWrite)
                   end else begin
                      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NoDefaultProperty,
                                               [TDataExpr(Result).Typ.Name]);

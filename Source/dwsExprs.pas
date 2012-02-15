@@ -101,9 +101,10 @@ type
    end;
 
    { Describe how the symbol at the position is being used. suReference would be
-     a typical usage of the symbol. }
+     a typical usage of the symbol.
+     suImplicit indicates that the symbol was only implicitly present }
    TSymbolUsage = (suForward, suDeclaration, suImplementation, suReference,
-                   suRead, suWrite);
+                   suRead, suWrite, suImplicit);
    TSymbolUsages = set of TSymbolUsage;
 
    // Records a symbol's position in source and usage at that position
