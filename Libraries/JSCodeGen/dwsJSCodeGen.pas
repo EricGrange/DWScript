@@ -3408,13 +3408,14 @@ begin
 
    if e.Args[1] is TConstIntExpr then begin
 
+      codeGen.WriteString('(');
       codeGen.Compile(e.Args[0]);
 
       i:=e.Args[1].EvalAsInteger(nil);
       if i=99 then
-         codeGen.WriteString('.toString()')
+         codeGen.WriteString(').toString()')
       else begin
-         codeGen.WriteString('.toFixed(');
+         codeGen.WriteString(').toFixed(');
          codeGen.WriteString(IntToStr(i));
          codeGen.WriteString(')');
       end;
