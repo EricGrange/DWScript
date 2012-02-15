@@ -7940,7 +7940,6 @@ var
    namePos, partPos : TScriptPos;
    contextFix : TdwsSourceContext;
    srcUnit : TSourceUnit;
-   oldUnitSymbol : TUnitMainSymbol;
 begin
    if not FTok.TestDelete(ttUNIT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitExpected);
