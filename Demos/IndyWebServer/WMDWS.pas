@@ -5,7 +5,7 @@ interface
 uses
   SysUtils, Classes, HTTPApp, dwsComp, dwsExprs, dwsGlobalVarsFunctions,
   dwsCompiler, dwsHtmlFilter, dwsMathFunctions, dwsTimeFunctions, DSimpleDWScript,
-  dwsFileSystem;
+  dwsFileSystem, dwsUtils;
 
 type
   TWebModuleDWS = class(TWebModule)
@@ -34,6 +34,7 @@ begin
    if FileExists(ChangeFileExt(ParamStr(0), '.dpr')) then
       FBasePath:=FBasePath+'..\Data\www' // if compiled alongside dpr
    else FBasePath:=FBasePath+'..\..\..\Data\www'; // assume compiled in platform/target
+   FBasePath:=IncludeTrailingPathDelimiter(ExpandFileName(FBasePath));
 
    RestrictedFileSystem.Paths.Text:=FBasePath;
 
@@ -52,13 +53,12 @@ begin
    // lowercase because TDictionary is case-sensitive
    fileName:=AnsiLowerCase(String(Request.PathInfo));
    fileName:=StringReplace(fileName, '/', '\', [rfReplaceAll]); // $0.02 of normalization
-   fileName:=StringReplace(fileName, '..', '', [rfReplaceAll]); // $0.02 of security
 
    if fileName='\' then
       fileName:='\index.dws';
-   fileName:=FBasePath+fileName;
+   fileName:=ExpandFileName(FBasePath+fileName);
 
-   if not FileExists(fileName) then begin
+   if not (StrIBeginsWith(fileName, FBasePath) and FileExists(fileName)) then begin
       Response.Content:='Error 404: not found';
       Response.StatusCode:=404;
       Exit;
