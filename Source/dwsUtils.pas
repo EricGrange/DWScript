@@ -382,6 +382,7 @@ function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
 function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
 
 function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
+function StrBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 
 function Min(a, b : Integer) : Integer; inline;
 
@@ -580,6 +581,19 @@ begin
    if (n2>n1) or (n2=0) then
       Result:=False
    else Result:=(UnicodeCompareLen(PWideChar(aStr), PWideChar(aBegin), n2)=0);
+end;
+
+// StrBeginsWith
+//
+function StrBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
+var
+   n1, n2 : Integer;
+begin
+   n1:=Length(aStr);
+   n2:=Length(aBegin);
+   if (n2>n1) or (n2=0) then
+      Result:=False
+   else Result:=CompareMem(PWideChar(aStr), PWideChar(aBegin), n2);
 end;
 
 // Min
