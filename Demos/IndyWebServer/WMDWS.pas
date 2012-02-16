@@ -58,7 +58,7 @@ begin
       fileName:='\index.dws';
    fileName:=ExpandFileName(FBasePath+fileName);
 
-   if not (StrIBeginsWith(fileName, FBasePath) and FileExists(fileName)) then begin
+   if not (StrBeginsWith(fileName, FBasePath) and FileExists(fileName)) then begin
       Response.Content:='Error 404: not found';
       Response.StatusCode:=404;
       Exit;
