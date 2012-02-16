@@ -1204,7 +1204,7 @@ end;
 constructor TdwsJSONWriter.Create(aStream : TWriteOnlyBlockStream);
 begin
    inherited Create;
-   FOwnsStream:=(FStream=nil);
+   FOwnsStream:=(aStream=nil);
    if FOwnsStream then
       FStream:=TWriteOnlyBlockStream.Create
    else FStream:=aStream;
@@ -1226,8 +1226,9 @@ end;
 //
 procedure TdwsJSONWriter.BeginObject;
 begin
-   Assert(FState in [wsNone, wsObjectValue, wsArray]);
+   Assert(FState in [wsNone, wsObjectValue, wsArray, wsArrayValue]);
    FStateStack.Push(Pointer(FState));
+   BeforeWriteImmediate;
    FState:=wsObject;
    FStream.WriteChar('{');
 end;
@@ -1241,6 +1242,7 @@ begin
    FState:=TdwsJSONWriterState(FStateStack.Peek);
    FStateStack.Pop;
    FStream.WriteChar('}');
+   AfterWriteImmediate;
 end;
 
 // BeginArray
@@ -1249,6 +1251,7 @@ procedure TdwsJSONWriter.BeginArray;
 begin
    Assert(FState in [wsNone, wsObjectValue, wsArray]);
    FStateStack.Push(Pointer(FState));
+   BeforeWriteImmediate;
    FState:=wsArray;
    FStream.WriteChar('[');
 end;
@@ -1262,6 +1265,7 @@ begin
    FState:=TdwsJSONWriterState(FStateStack.Peek);
    FStateStack.Pop;
    FStream.WriteChar(']');
+   AfterWriteImmediate;
 end;
 
 // WriteName
