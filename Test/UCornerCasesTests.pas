@@ -4,7 +4,7 @@ interface
 
 uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
-   dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsStack;
+   dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsStack, dwsJSON;
 
 type
 
@@ -743,6 +743,8 @@ procedure TCornerCasesTests.SectionContextMaps;
 var
    prog : IdwsProgram;
    unitContext, context : TdwsSourceContext;
+   writer : TdwsJSONBeautifiedWriter;
+   wobs : TWriteOnlyBlockStream;
 begin
    FCompiler.Config.CompilerOptions:=[coContextMap];
    prog:=FCompiler.Compile( 'unit dummy;'#13#10
@@ -770,6 +772,49 @@ begin
    CheckEquals(' [line: 4, column: 1]', context.StartPos.AsInfo, 'implem start');
    CheckEquals('', context.EndPos.AsInfo, 'implem end');
    CheckEquals(0, context.Count, 'implem sub count');
+
+   wobs:=TWriteOnlyBlockStream.Create;
+   writer:=TdwsJSONBeautifiedWriter.Create(wobs, 0, 1);
+   try
+      prog.SourceContextMap.WriteToJSON(writer);
+      CheckEquals( '['#13#10
+                  +#9'{'#13#10
+                  +#9#9'"Token" : "ttUNIT",'#13#10
+                  +#9#9'"Symbol" : {'#13#10
+                  +#9#9#9'"Class" : "TUnitMainSymbol",'#13#10
+                  +#9#9#9'"Name" : "dummy"'#13#10
+                  +#9#9'},'#13#10
+                  +#9#9'"SubContexts" : ['#13#10
+                  +#9#9#9'{'#13#10
+                  +#9#9#9#9'"Token" : "ttINTERFACE",'#13#10
+                  +#9#9#9#9'"Symbol" : {'#13#10
+                  +#9#9#9#9#9'"Class" : "TUnitMainSymbol",'#13#10
+                  +#9#9#9#9#9'"Name" : "dummy"'#13#10
+                  +#9#9#9#9'},'#13#10
+                  +#9#9#9#9'"SubContexts" : ['#13#10
+                  +#9#9#9#9#9'{'#13#10
+                  +#9#9#9#9#9#9'"Token" : "ttUSES",'#13#10
+                  +#9#9#9#9#9#9'"Symbol" : null,'#13#10
+                  +#9#9#9#9#9#9'"SubContexts" : [ ]'#13#10
+                  +#9#9#9#9#9'}'#13#10
+                  +#9#9#9#9']'#13#10
+                  +#9#9#9'},'#13#10
+                  +#9#9#9'{'#13#10
+                  +#9#9#9#9'"Token" : "ttIMPLEMENTATION",'#13#10
+                  +#9#9#9#9'"Symbol" : {'#13#10
+                  +#9#9#9#9#9'"Class" : "TUnitMainSymbol",'#13#10
+                  +#9#9#9#9#9'"Name" : "dummy"'#13#10
+                  +#9#9#9#9'},'#13#10
+                  +#9#9#9#9'"SubContexts" : [ ]'#13#10
+                  +#9#9#9'}'#13#10
+                  +#9#9']'#13#10
+                  +#9'}'#13#10
+                  +']',
+                  wobs.ToString, 'JSON map');
+   finally
+      writer.Free;
+      wobs.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------

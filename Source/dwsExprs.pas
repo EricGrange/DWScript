@@ -24,7 +24,8 @@ unit dwsExprs;
 interface
 
 uses Classes, Variants, SysUtils, TypInfo, dwsSymbols, dwsErrors, dwsUtils,
-   dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsTokenizer, dwsUnitSymbols;
+   dwsStrings, dwsStack, SyncObjs, dwsFileSystem, dwsTokenizer, dwsUnitSymbols,
+   dwsJSON;
 
 type
    TRelOps = (roEqual, roUnEqual, roLess, roLessEqual, roMore, roMoreEqual);
@@ -222,6 +223,8 @@ type
          function FindContextByToken(aToken : TTokenType) : TdwsSourceContext;
          procedure EnumerateContextsOfSymbol(aParentSymbol : TSymbol; const callBack : TdwsSourceContextCallBack);
 
+         procedure WriteToJSON(writer : TdwsJSONWriter);
+
          property Parent : TdwsSourceContext read FParentContext;
          property ParentSym : TSymbol read FParentSymbol write FParentSymbol;
          property Token : TTokenType read FToken write FToken;
@@ -267,6 +270,8 @@ type
          function FindContext(const ScriptPos : TScriptPos) : TdwsSourceContext; overload;
          function FindContextByToken(aToken : TTokenType) : TdwsSourceContext;
          procedure EnumerateContextsOfSymbol(aParentSymbol : TSymbol; const callBack : TdwsSourceContextCallBack);
+
+         procedure WriteToJSON(writer : TdwsJSONWriter);
 
          property Contexts : TTightList read FScriptContexts;
          property Context[index : Integer] : TdwsSourceContext read GetContext;
@@ -7130,6 +7135,38 @@ begin
       SubContext[i].EnumerateContextsOfSymbol(aParentSymbol, callBack);
 end;
 
+// WriteToJSON
+//
+procedure TdwsSourceContext.WriteToJSON(writer : TdwsJSONWriter);
+var
+   i : Integer;
+begin
+   writer.BeginObject;
+
+   writer.WriteName('Token');
+   writer.WriteString(GetEnumName(TypeInfo(TTokenType), Ord(Token)));
+
+   writer.WriteName('Symbol');
+   if ParentSym=nil then
+      writer.WriteNull
+   else begin
+      writer.BeginObject;
+      writer.WriteName('Class');
+      writer.WriteString(ParentSym.ClassName);
+      writer.WriteName('Name');
+      writer.WriteString(ParentSym.Name);
+      writer.EndObject;
+   end;
+
+   writer.WriteName('SubContexts');
+   writer.BeginArray;
+   for i:=0 to Count-1 do
+      SubContext[i].WriteToJSON(writer);
+   writer.EndArray;
+
+   writer.EndObject;
+end;
+
 // IsPositionInContext
 //
 function TdwsSourceContext.IsPositionInContext(aCol, aLine : Integer; const sourceName : UnicodeString) : Boolean;
@@ -7217,6 +7254,18 @@ var
 begin
    for x:=0 to FScriptContexts.Count-1 do
       TdwsSourceContext(FScriptContexts.List[x]).EnumerateContextsOfSymbol(aParentSymbol, callBack);
+end;
+
+// WriteToJSON
+//
+procedure TdwsSourceContextMap.WriteToJSON(writer : TdwsJSONWriter);
+var
+   i : Integer;
+begin
+   writer.BeginArray;
+   for i:=0 to FScriptContexts.Count-1 do
+      TdwsSourceContext(FScriptContexts.List[i]).WriteToJSON(writer);
+   writer.EndArray;
 end;
 
 // FindContext

@@ -1,0 +1,84 @@
+[
+	{
+		"Token" : "ttPROGRAM",
+		"Symbol" : null,
+		"SubContexts" : [
+			{
+				"Token" : "ttUSES",
+				"Symbol" : null,
+				"SubContexts" : [ ]
+			}
+		]
+	},
+	{
+		"Token" : "ttUNIT",
+		"Symbol" : {
+			"Class" : "TUnitMainSymbol",
+			"Name" : "scope_isolation_direct"
+		},
+		"SubContexts" : [
+			{
+				"Token" : "ttINTERFACE",
+				"Symbol" : {
+					"Class" : "TUnitMainSymbol",
+					"Name" : "scope_isolation_direct"
+				},
+				"SubContexts" : [
+					{
+						"Token" : "ttUSES",
+						"Symbol" : null,
+						"SubContexts" : [ ]
+					},
+					{
+						"Token" : "ttPROCEDURE",
+						"Symbol" : {
+							"Class" : "TSourceFuncSymbol",
+							"Name" : "ShouldWork"
+						},
+						"SubContexts" : [ ]
+					}
+				]
+			},
+			{
+				"Token" : "ttIMPLEMENTATION",
+				"Symbol" : {
+					"Class" : "TUnitMainSymbol",
+					"Name" : "scope_isolation_direct"
+				},
+				"SubContexts" : [ ]
+			}
+		]
+	},
+	{
+		"Token" : "ttUNIT",
+		"Symbol" : {
+			"Class" : "TUnitMainSymbol",
+			"Name" : "scope_isolation_indirect"
+		},
+		"SubContexts" : [
+			{
+				"Token" : "ttPROCEDURE",
+				"Symbol" : {
+					"Class" : "TSourceFuncSymbol",
+					"Name" : "ShouldFail"
+				},
+				"SubContexts" : [
+					{
+						"Token" : "ttBEGIN",
+						"Symbol" : {
+							"Class" : "TSourceFuncSymbol",
+							"Name" : "ShouldFail"
+						},
+						"SubContexts" : [
+							{
+								"Token" : "ttBEGIN",
+								"Symbol" : null,
+								"SubContexts" : [ ]
+							}
+						]
+					}
+				]
+			}
+		]
+	}
+]

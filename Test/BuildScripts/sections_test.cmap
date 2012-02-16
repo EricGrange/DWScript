@@ -1,0 +1,120 @@
+[
+	{
+		"Token" : "ttPROGRAM",
+		"Symbol" : null,
+		"SubContexts" : [
+			{
+				"Token" : "ttUSES",
+				"Symbol" : null,
+				"SubContexts" : [ ]
+			}
+		]
+	},
+	{
+		"Token" : "ttUNIT",
+		"Symbol" : {
+			"Class" : "TUnitMainSymbol",
+			"Name" : "Sections"
+		},
+		"SubContexts" : [
+			{
+				"Token" : "ttINTERFACE",
+				"Symbol" : {
+					"Class" : "TUnitMainSymbol",
+					"Name" : "Sections"
+				},
+				"SubContexts" : [
+					{
+						"Token" : "ttNAME",
+						"Symbol" : {
+							"Class" : "TClassSymbol",
+							"Name" : "THello"
+						},
+						"SubContexts" : [ ]
+					},
+					{
+						"Token" : "ttBEGIN",
+						"Symbol" : null,
+						"SubContexts" : [ ]
+					},
+					{
+						"Token" : "ttPROCEDURE",
+						"Symbol" : {
+							"Class" : "TSourceFuncSymbol",
+							"Name" : "Stuff"
+						},
+						"SubContexts" : [ ]
+					},
+					{
+						"Token" : "ttPROCEDURE",
+						"Symbol" : {
+							"Class" : "TSourceFuncSymbol",
+							"Name" : "Dummy"
+						},
+						"SubContexts" : [ ]
+					}
+				]
+			},
+			{
+				"Token" : "ttIMPLEMENTATION",
+				"Symbol" : {
+					"Class" : "TUnitMainSymbol",
+					"Name" : "Sections"
+				},
+				"SubContexts" : [
+					{
+						"Token" : "ttMETHOD",
+						"Symbol" : {
+							"Class" : "TSourceMethodSymbol",
+							"Name" : "Dummy"
+						},
+						"SubContexts" : [
+							{
+								"Token" : "ttBEGIN",
+								"Symbol" : {
+									"Class" : "TSourceMethodSymbol",
+									"Name" : "Dummy"
+								},
+								"SubContexts" : [
+									{
+										"Token" : "ttBEGIN",
+										"Symbol" : null,
+										"SubContexts" : [ ]
+									}
+								]
+							}
+						]
+					},
+					{
+						"Token" : "ttBEGIN",
+						"Symbol" : null,
+						"SubContexts" : [ ]
+					},
+					{
+						"Token" : "ttPROCEDURE",
+						"Symbol" : {
+							"Class" : "TSourceFuncSymbol",
+							"Name" : "Dummy"
+						},
+						"SubContexts" : [
+							{
+								"Token" : "ttBEGIN",
+								"Symbol" : {
+									"Class" : "TSourceFuncSymbol",
+									"Name" : "Dummy"
+								},
+								"SubContexts" : [
+									{
+										"Token" : "ttBEGIN",
+										"Symbol" : null,
+										"SubContexts" : [ ]
+									}
+								]
+							}
+						]
+					}
+				]
+			}
+		]
+	}
+]

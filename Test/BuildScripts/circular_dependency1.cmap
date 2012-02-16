@@ -1,0 +1,82 @@
+[
+	{
+		"Token" : "ttPROGRAM",
+		"Symbol" : null,
+		"SubContexts" : [
+			{
+				"Token" : "ttUSES",
+				"Symbol" : null,
+				"SubContexts" : [ ]
+			}
+		]
+	},
+	{
+		"Token" : "ttUNIT",
+		"Symbol" : {
+			"Class" : "TUnitMainSymbol",
+			"Name" : "CircularA"
+		},
+		"SubContexts" : [
+			{
+				"Token" : "ttINTERFACE",
+				"Symbol" : {
+					"Class" : "TUnitMainSymbol",
+					"Name" : "CircularA"
+				},
+				"SubContexts" : [
+					{
+						"Token" : "ttUSES",
+						"Symbol" : null,
+						"SubContexts" : [ ]
+					}
+				]
+			}
+		]
+	},
+	{
+		"Token" : "ttUNIT",
+		"Symbol" : {
+			"Class" : "TUnitMainSymbol",
+			"Name" : "CircularB"
+		},
+		"SubContexts" : [
+			{
+				"Token" : "ttINTERFACE",
+				"Symbol" : {
+					"Class" : "TUnitMainSymbol",
+					"Name" : "CircularB"
+				},
+				"SubContexts" : [
+					{
+						"Token" : "ttUSES",
+						"Symbol" : null,
+						"SubContexts" : [ ]
+					}
+				]
+			}
+		]
+	},
+	{
+		"Token" : "ttUNIT",
+		"Symbol" : {
+			"Class" : "TUnitMainSymbol",
+			"Name" : "CircularC"
+		},
+		"SubContexts" : [
+			{
+				"Token" : "ttINTERFACE",
+				"Symbol" : {
+					"Class" : "TUnitMainSymbol",
+					"Name" : "CircularC"
+				},
+				"SubContexts" : [
+					{
+						"Token" : "ttUSES",
+						"Symbol" : null,
+						"SubContexts" : [ ]
+					}
+				]
+			}
+		]
+	}
+]
