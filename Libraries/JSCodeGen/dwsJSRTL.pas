@@ -42,7 +42,32 @@ type
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
+   TFormatSplitInfoDetail = (fsidIndex, fsidLeftAligned, fsidWidth, fsidPrecision, fsidType, fsidError);
+   TFormatSplitInfoDetails = set of TFormatSplitInfoDetail;
+
+   TFormatSplitInfo = class
+      public
+         Details : TFormatSplitInfoDetails;
+         Index : Integer;
+         Width : Integer;
+         Precision : Integer;
+         Typ : Char;
+         Str : String;
+   end;
+
+   TFormatSplitInfos = class (TObjectList<TFormatSplitInfo>)
+      private
+         FIsValid : Boolean;
+      public
+         constructor Create(const fmtString : String);
+
+         property IsValid : Boolean read FIsValid;
+   end;
+
    TJSFormatExpr = class (TJSFuncBaseExpr)
+      private
+         function FormatIsSimpleEnough(splitInfos : TFormatSplitInfos) : Boolean;
+
       public
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -772,20 +797,227 @@ end;
 // ------------------ TJSFormatExpr ------------------
 // ------------------
 
+// FormatIsSimpleEnough
+//
+function TJSFormatExpr.FormatIsSimpleEnough(splitInfos : TFormatSplitInfos) : Boolean;
+var
+   i : Integer;
+   si : TFormatSplitInfo;
+begin
+   Result:=False;
+   if not splitInfos.IsValid then Exit;
+   for i:=0 to splitInfos.Count-1 do begin
+      si:=splitInfos[i];
+      if si.Details-[fsidIndex, fsidType]<>[] then Exit;
+      case si.Typ of
+         's', 'f', 'd', 'g' : ;
+      else
+         Exit;
+      end;
+   end;
+   Result:=True;
+end;
+
 // CodeGen
 //
 procedure TJSFormatExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TMagicFuncExpr;
+   openArgs : TArrayConstantExpr;
+   buf : String;
+   splitInfos : TFormatSplitInfos;
+   si : TFormatSplitInfo;
+   i : Integer;
 begin
    e:=TMagicFuncExpr(expr);
 
    if e.Args[0] is TConstStringExpr then begin
+      e.Args[0].EvalAsString(nil, buf);
+      if buf='' then begin
+         codeGen.WriteString('""');
+         Exit;
+      end;
+      splitInfos:=TFormatSplitInfos.Create(buf);
+      try
+         if FormatIsSimpleEnough(splitInfos) then begin
+            openArgs:=(e.Args[1] as TArrayConstantExpr);
+            codeGen.WriteString('(');
+            for i:=0 to splitInfos.Count-1 do begin
+               if i>0 then
+                  codeGen.WriteString('+');
+               si:=splitInfos[i];
+               if (fsidType in si.Details) and (si.Index<openArgs.ElementCount) then begin
+                  codeGen.Compile(openArgs.Elements[si.Index]);
+                  codeGen.WriteString('.toString()');
+               end else begin
+                  (codeGen as TdwsJSCodeGen).WriteJavaScriptString(si.Str);
+               end;
+            end;
+            codeGen.WriteString(')');
+            Exit;
+         end;
+      finally
+         splitInfos.Free;
+      end;
    end;
 
    codeGen.Dependencies.Add('Format');
 
    inherited CodeGen(codeGen, expr);
+end;
+
+// ------------------
+// ------------------ TFormatSplitInfos ------------------
+// ------------------
+
+// Create
+//
+constructor TFormatSplitInfos.Create(const fmtString : String);
+var
+   i, n, p, pn, num, index : Integer;
+   info : TFormatSplitInfo;
+   scanState : TFormatSplitInfoDetail;
+begin
+   inherited Create;
+   FIsValid:=True;
+   if fmtString='' then Exit;
+   info:=TFormatSplitInfo.Create;
+   n:=Length(fmtString);
+   index:=0;
+   p:=1;
+   i:=p;
+   while i<n do begin
+      case fmtString[i] of
+         '%' : begin
+            Inc(i);
+            if fmtString[i]<>'%' then begin
+               // flush partial string
+               if i<>p then begin
+                  info.Str:=Copy(fmtString, p, i-p-1);
+                  Add(info);
+                  info:=TFormatSplitInfo.Create;
+               end;
+               // scan a format specifier
+               scanState:=fsidIndex;
+               repeat
+                  // scan a potential number
+                  pn:=i;
+                  while (i<n) do begin
+                     case fmtString[i] of
+                        '0'..'9' : ;
+                     else
+                        break;
+                     end;
+                     Inc(i);
+                  end;
+                  if pn<>i then begin
+                     // found a number
+                     num:=StrToInt(Copy(fmtString, pn, i-pn));
+                     case scanState of
+                        fsidIndex : begin
+                           // initial state, can be an index or a width
+                           case fmtString[i] of
+                              ':' : begin
+                                 // it's an index
+                                 Include(info.Details, fsidIndex);
+                                 info.Index:=num;
+                                 Inc(i);
+                                 scanState:=fsidLeftAligned;
+                              end;
+                           else
+                              // it's a width
+                              Include(info.Details, fsidWidth);
+                              info.Width:=num;
+                              if fmtString[i]='.' then begin
+                                 // followed by a precision
+                                 scanState:=fsidPrecision;
+                                 Inc(i);
+                              end else begin
+                                 // followed by type
+                                 scanState:=fsidType;
+                              end;
+                           end;
+                        end;
+                        fsidLeftAligned, fsidWidth : begin
+                           // it's a width
+                           Include(info.Details, fsidWidth);
+                           info.Width:=num;
+                           if fmtString[i]='.' then begin
+                              // followed by a precision
+                              scanState:=fsidPrecision;
+                              Inc(i);
+                           end else begin
+                              // followed by type
+                              scanState:=fsidType;
+                           end;
+                        end;
+                        fsidPrecision : begin
+                           // found precision
+                           Include(Info.Details, fsidPrecision);
+                           info.Precision:=num;
+                           scanState:=fsidType;
+                        end
+                     else
+                        Include(info.Details, fsidError);
+                        Break;
+                     end;
+                  end else begin
+                     // we found no number
+                     case scanState of
+                        fsidIndex, fsidLeftAligned : begin
+                           case fmtString[i] of
+                              '-' : begin
+                                 Include(info.Details, fsidLeftAligned);
+                                 Inc(i);
+                                 scanState:=fsidWidth;
+                              end;
+                              '.' : begin
+                                 Inc(i);
+                                 scanState:=fsidPrecision;
+                              end;
+                           else
+                              scanState:=fsidType;
+                           end;
+                        end;
+                        fsidWidth : begin
+                           if fmtString[i]='.' then begin
+                              Inc(i);
+                              scanState:=fsidPrecision;
+                           end else begin
+                              scanState:=fsidType;
+                           end;
+                        end;
+                     end;
+                  end;
+               until scanState=fsidType;
+            end;
+            case fmtString[i] of
+               'd', 'e', 'f', 'g', 'm', 'n', 'p', 's', 'u', 'x' : begin
+                  Include(info.Details, fsidType);
+                  info.Typ:=fmtString[i];
+               end;
+            else
+               Include(info.Details, fsidError);
+            end;
+            if fsidIndex in info.Details then
+               index:=info.Index+1
+            else begin
+               info.Index:=index;
+               Inc(index);
+            end;
+            FIsValid:=not (fsidError in info.Details);
+            Add(info);
+            info:=TFormatSplitInfo.Create;
+            if not IsValid then Break;
+            p:=i+1;
+         end;
+      end;
+      Inc(i);
+   end;
+   if p<=n then begin
+      info.Str:=Copy(fmtString, p, n-p+1);
+      Add(info);
+   end;
 end;
 
 end.
