@@ -20,7 +20,7 @@ type
       DelphiWebScript: TDelphiWebScript;
       dwsHtmlFilter: TdwsHtmlFilter;
       dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions;
-    dwsRTTIConnector: TdwsRTTIConnector;
+      dwsRTTIConnector: TdwsRTTIConnector;
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 

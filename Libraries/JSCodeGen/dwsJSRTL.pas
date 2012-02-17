@@ -42,6 +42,11 @@ type
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
+   TJSFormatExpr = class (TJSFuncBaseExpr)
+      public
+         procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
 function FindJSRTLDependency(const name : String) : PJSRTLDependency;
 function All_RTL_JS : String;
 procedure IgnoreJSRTLDependencies(dependencies : TStrings);
@@ -625,6 +630,7 @@ begin
    FMagicCodeGens.AddObject('Exp', TdwsExprGenericCodeGen.Create(['Math.exp', '(', 0, ')']));
    FMagicCodeGens.AddObject('FloatToStr', TJSFloatToStrExpr.Create);
    FMagicCodeGens.AddObject('Floor', TdwsExprGenericCodeGen.Create(['Math.floor', '(', 0, ')']));
+   FMagicCodeGens.AddObject('Format', TJSFormatExpr.Create);
    FMagicCodeGens.AddObject('HexToInt', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',','16)']));
    FMagicCodeGens.AddObject('IntPower', TdwsExprGenericCodeGen.Create(['Math.pow', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('IntToStr', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toString()']));
@@ -760,6 +766,26 @@ begin
       codeGen.WriteString(')');
 
    end;
+end;
+
+// ------------------
+// ------------------ TJSFormatExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSFormatExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TMagicFuncExpr;
+begin
+   e:=TMagicFuncExpr(expr);
+
+   if e.Args[0] is TConstStringExpr then begin
+   end;
+
+   codeGen.Dependencies.Add('Format');
+
+   inherited CodeGen(codeGen, expr);
 end;
 
 end.
