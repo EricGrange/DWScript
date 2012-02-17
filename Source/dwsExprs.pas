@@ -374,6 +374,12 @@ type
       ['{CCAA438D-76F4-49C2-A3A2-82445BC2976A}']
    end;
 
+   IdwsLocalizer = interface (IGetSelf)
+      ['{2AFDC297-FF85-43F5-9913-45DE5C1330AB}']
+      procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString);
+      procedure LocalizeString(const aString : UnicodeString; var Result : UnicodeString);
+   end;
+
    TProgramInfo = class;
 
    IdwsProgramExecution = interface (IdwsExecution)
@@ -384,6 +390,8 @@ type
       function GetProg : IdwsProgram;
       function GetEnvironment : IdwsEnvironment;
       procedure SetEnvironment(const env : IdwsEnvironment);
+      function GetLocalizer : IdwsLocalizer;
+      procedure SetLocalizer(const loc : IdwsLocalizer);
 
       procedure Execute(aTimeoutMilliSeconds : Integer = 0); overload;
       procedure ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0); overload;
@@ -399,6 +407,7 @@ type
       property Result : TdwsResult read GetResult;
       property ObjectCount : Integer read GetObjectCount;
       property Environment : IdwsEnvironment read GetEnvironment write SetEnvironment;
+      property Localizer : IdwsLocalizer read GetLocalizer write SetLocalizer;
    end;
 
    IdwsProgram = interface
@@ -456,6 +465,7 @@ type
          FResult : TdwsResult;
          FFileSystem : IdwsFileSystem;
          FEnvironment : IdwsEnvironment;
+         FLocalizer : IdwsLocalizer;
 
          FMsgs : TdwsRuntimeMessageList;
 
@@ -475,6 +485,8 @@ type
          function GetInfo : TProgramInfo;
          function GetResult : TdwsResult;
          function GetObjectCount : Integer;
+         function GetLocalizer : IdwsLocalizer;
+         procedure SetLocalizer(const val : IdwsLocalizer);
 
          procedure EnterRecursion(caller : TExprBase);
          procedure LeaveRecursion;
@@ -504,6 +516,9 @@ type
          function AcquireProgramInfo(funcSym : TFuncSymbol) : TProgramInfo;
          procedure ReleaseProgramInfo(info : TProgramInfo);
 
+         procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString); override;
+         procedure LocalizeString(const aString : UnicodeString; var Result : UnicodeString); override;
+
          property Prog : TdwsMainProgram read FProg;
          property CurrentProg : TdwsProgram read FCurrentProg write SetCurrentProg;
          property ProgramInfo : TProgramInfo read FProgramInfo;
@@ -512,6 +527,7 @@ type
          property Result : TdwsResult read FResult;
          property FileSystem : IdwsFileSystem read FFileSystem;
          property Environment : IdwsEnvironment read GetEnvironment write SetEnvironment;
+         property Localizer : IdwsLocalizer read FLocalizer write FLocalizer;
 
          property ObjectCount : Integer read FObjectCount;
    end;
@@ -583,6 +599,7 @@ type
    TdwsMainProgram = class (TdwsProgram, IdwsProgram)
       private
          FUnifiedConstList : TSortedList<TExprBase>;
+         FResourceStringList : TSimpleList<TResourceStringSymbol>;
 
          FDefaultUserObject : TObject;
 
@@ -609,6 +626,7 @@ type
          FCompiler : TObject;
 
          FDefaultEnvironment : IdwsEnvironment;
+         FDefaultLocalizer : IdwsLocalizer;
 
       protected
          function GetConditionalDefines : IAutoStrings;
@@ -653,6 +671,7 @@ type
          property MaxDataSize : Integer read FStackParameters.MaxByteSize write FStackParameters.MaxByteSize;
          property StackChunkSize : Integer read FStackParameters.ChunkSize write FStackParameters.ChunkSize;
          property UnifiedConstList : TSortedList<TExprBase> read FUnifiedConstList;
+         property ResourceStringList : TSimpleList<TResourceStringSymbol> read FResourceStringList write FResourceStringList;
          property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
 
          property SystemTable : ISystemSymbolTable read FSystemTable;
@@ -667,6 +686,7 @@ type
          property CompileDuration : TDateTime read FCompileDuration write FCompileDuration;
 
          property DefaultEnvironment : IdwsEnvironment read FDefaultEnvironment write FDefaultEnvironment;
+         property DefaultLocalizer : IdwsLocalizer read FDefaultLocalizer write FDefaultLocalizer;
          property DefaultUserObject : TObject read FDefaultUserObject write FDefaultUserObject;
    end;
 
@@ -2318,6 +2338,24 @@ begin
    end else info.Free;
 end;
 
+// LocalizeSymbol
+//
+procedure TdwsProgramExecution.LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString);
+begin
+   if Assigned(Localizer) then
+      Localizer.LocalizeSymbol(aResSymbol, Result)
+   else Result:=aResSymbol.Value;
+end;
+
+// LocalizeString
+//
+procedure TdwsProgramExecution.LocalizeString(const aString : UnicodeString; var Result : UnicodeString);
+begin
+   if Assigned(Localizer) then
+      Localizer.LocalizeString(aString, Result)
+   else Result:=aString;
+end;
+
 // ReleaseObjects
 //
 procedure TdwsProgramExecution.ReleaseObjects;
@@ -2462,6 +2500,20 @@ end;
 function TdwsProgramExecution.GetObjectCount : Integer;
 begin
    Result:=FObjectCount;
+end;
+
+// GetLocalizer
+//
+function TdwsProgramExecution.GetLocalizer : IdwsLocalizer;
+begin
+   Result:=FLocalizer;
+end;
+
+// SetLocalizer
+//
+procedure TdwsProgramExecution.SetLocalizer(const val : IdwsLocalizer);
+begin
+   FLocalizer:=val;
 end;
 
 // GetMsgs
@@ -2683,6 +2735,8 @@ begin
    FUnifiedConstList:=TUnifiedConstList.Create;
    TUnifiedConstList(FUnifiedConstList).Precharge(Self, systemTable.SymbolTable);
 
+   FResourceStringList:=TSimpleList<TResourceStringSymbol>.Create;
+
    FUnitMains:=TUnitMainSymbols.Create;
 
    FSystemTable := systemTable;
@@ -2712,6 +2766,7 @@ begin
    FSourceContextMap.Free;
    FSymbolDictionary.Free;
    FUnifiedConstList.Free;
+   FResourceStringList.Free;
    FSourceFiles.Clean;
    FSourceList.Free;
 end;
@@ -2727,6 +2782,7 @@ begin
    exec:=TdwsProgramExecution.Create(Self, FStackParameters);
    exec.UserObject:=DefaultUserObject;
    exec.Environment:=DefaultEnvironment;
+   exec.Localizer:=DefaultLocalizer;
    FExecutionsLock.Enter;
    try
       FExecutions.Add(exec);

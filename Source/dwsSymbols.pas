@@ -376,6 +376,21 @@ type
          property Symbols[x : Integer] : TParamSymbol read GetSymbol; default;
    end;
 
+   // A resource string (hybrid between a constant and a function)
+   TResourceStringSymbol = class sealed (TSymbol)
+      private
+         FValue : UnicodeString;
+
+      protected
+         function GetCaption : UnicodeString; override;
+         function GetDescription : UnicodeString; override;
+
+      public
+         constructor Create(const aName, aValue : UnicodeString);
+
+         property Value : UnicodeString read FValue;
+   end;
+
    // All Symbols containing a value
    TValueSymbol = class (TSymbol)
       protected
@@ -1375,6 +1390,9 @@ type
 
          function GetCallStack : TdwsExprLocationArray; virtual; abstract;
          function CallStackDepth : Integer; virtual; abstract;
+
+         procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString); virtual;
+         procedure LocalizeString(const aString : UnicodeString; var Result : UnicodeString); virtual;
 
          function Random : Double;
 
@@ -5151,6 +5169,20 @@ begin
    else FRandSeed:=val;
 end;
 
+// LocalizeSymbol
+//
+procedure TdwsExecution.LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString);
+begin
+   LocalizeString(aResSymbol.Value, Result);
+end;
+
+// LocalizeString
+//
+procedure TdwsExecution.LocalizeString(const aString : UnicodeString; var Result : UnicodeString);
+begin
+   Result:=aString;
+end;
+
 // ------------------
 // ------------------ TConditionSymbol ------------------
 // ------------------
@@ -5280,6 +5312,32 @@ end;
 function TAnyFuncSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=(typSym is TFuncSymbol);
+end;
+
+// ------------------
+// ------------------ TResourceStringSymbol ------------------
+// ------------------
+
+// Create
+//
+constructor TResourceStringSymbol.Create(const aName, aValue : UnicodeString);
+begin
+   inherited Create(aName, nil);
+   FValue:=aValue;
+end;
+
+// GetCaption
+//
+function TResourceStringSymbol.GetCaption : UnicodeString;
+begin
+   Result:='resourcestring '+Name;
+end;
+
+// GetDescription
+//
+function TResourceStringSymbol.GetDescription : UnicodeString;
+begin
+   Result:='resourcestring '+Name+' = '''+StringReplace(Value, '''', '''''', [rfReplaceAll])+'''';
 end;
 
 end.

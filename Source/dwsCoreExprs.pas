@@ -299,6 +299,25 @@ type
          property ZeroFloat : TUnifiedConstExpr read FZeroFloat;
    end;
 
+   // TResourceStringExpr
+   //
+   // Returns a localized version of a resourcestring
+   TResourceStringExpr = class sealed (TTypedExpr)
+      private
+         FResSymbol : TResourceStringSymbol;
+         FScriptPos : TScriptPos;
+
+      public
+         constructor Create(aProg : TdwsProgram; const aScriptPos : TScriptPos; aRes : TResourceStringSymbol);
+
+         function ScriptPos : TScriptPos; override;
+
+         function  Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
+
+         property ResSymbol : TResourceStringSymbol read FResSymbol;
+   end;
+
    TArrayConstantExpr = class sealed (TPosDataExpr)
       protected
          FArrayAddr : Integer;
@@ -7409,6 +7428,44 @@ begin
       typIntf:=TInterfaceSymbol(Right.EvalAsInteger(exec));
       Result:=classSym.ImplementsInterface(typIntf);
    end else Result:=False;
+end;
+
+// ------------------
+// ------------------ TResourceStringExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TResourceStringExpr.Create(aProg : TdwsProgram; const aScriptPos : TScriptPos; aRes : TResourceStringSymbol);
+begin
+   inherited Create;
+   FScriptPos:=aScriptPos;
+   FResSymbol:=aRes;
+   Typ:=aProg.TypString;
+end;
+
+// ScriptPos
+//
+function TResourceStringExpr.ScriptPos : TScriptPos;
+begin
+   Result:=FScriptPos;
+end;
+
+// Eval
+//
+function TResourceStringExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   buf : String;
+begin
+   exec.LocalizeSymbol(FResSymbol, buf);
+   Result:=buf;
+end;
+
+// EvalAsString
+//
+procedure TResourceStringExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
+begin
+   exec.LocalizeSymbol(FResSymbol, Result);
 end;
 
 end.

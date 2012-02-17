@@ -87,6 +87,8 @@ type
     property Script: TDelphiWebScript read FScript write SetScript;
   end;
 
+   TNeedLocalizerEvent = function (Sender : TObject) : IdwsLocalizer;
+
    // TDelphiWebScript
    //
    TDelphiWebScript = class (TdwsEmptyUnit)
@@ -117,10 +119,46 @@ type
          property Extensions : TdwsLanguageExtensionAggregator read FExtensions;
 
       published
-         property Config: TdwsConfiguration read FConfig write SetConfig stored True;
+         property Config : TdwsConfiguration read FConfig write SetConfig stored True;
          property OnNeedUnit : TdwsOnNeedUnitEvent read GetOnNeedUnit write SetOnNeedUnit stored False;
-         property OnInclude: TIncludeEvent read GetOnInclude write SetOnInclude stored False;
-         property Version: UnicodeString read GetVersion write SetVersion stored False;
+         property OnInclude : TIncludeEvent read GetOnInclude write SetOnInclude stored False;
+         property Version : UnicodeString read GetVersion write SetVersion stored False;
+   end;
+
+   TLocalizeSymbolEvent = procedure (Sender : TObject; aResSymbol : TResourceStringSymbol; var result : String) of object;
+   TLocalizeStringEvent = procedure (Sender : TObject; const aString : String; var result : String) of object;
+   TGetLocalizerEvent = procedure (Sender : TObject; var localizer : IdwsLocalizer) of object;
+
+   TEventBasedLocalizer = class (TInterfacedSelfObject, IdwsLocalizer)
+      private
+         FSender : TObject;
+         FOnLocalizeSymbol : TLocalizeSymbolEvent;
+         FOnLocalizeString : TLocalizeStringEvent;
+
+      public
+         procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString);
+         procedure LocalizeString(const aString : UnicodeString; var Result : UnicodeString);
+
+         property Sender : TObject read FSender write FSender;
+         property OnLocalizeSymbol : TLocalizeSymbolEvent read FOnLocalizeSymbol write FOnLocalizeSymbol;
+         property OnLocalizeString : TLocalizeStringEvent read FOnLocalizeString write FOnLocalizeString;
+   end;
+
+   // TdwsCustomLocalizer
+   //
+   TdwsCustomLocalizer = class (TdwsLocalizerComponent)
+      private
+         FOnLocalizeSymbol : TLocalizeSymbolEvent;
+         FOnLocalizeString : TLocalizeStringEvent;
+         FOnGetLocalizer : TGetLocalizerEvent;
+
+      public
+         function GetLocalizer : IdwsLocalizer; override;
+
+      published
+         property OnLocalizeSymbol : TLocalizeSymbolEvent read FOnLocalizeSymbol write FOnLocalizeSymbol;
+         property OnLocalizeString : TLocalizeStringEvent read FOnLocalizeString write FOnLocalizeString;
+         property OnGetLocalizer : TGetLocalizerEvent read FOnGetLocalizer write FOnGetLocalizer;
    end;
 
   TdwsAbstractUnit = class(TComponent, IUnknown, IdwsUnit)
@@ -4535,6 +4573,47 @@ end;
 function TdwsOperators.Add : TdwsOperator;
 begin
    Result:=TdwsOperator(inherited Add);
+end;
+
+// ------------------
+// ------------------ TEventBasedLocalizer ------------------
+// ------------------
+
+// LocalizeSymbol
+//
+procedure TEventBasedLocalizer.LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString);
+begin
+   if Assigned(FOnLocalizeSymbol) then
+      FOnLocalizeSymbol(Sender, aResSymbol, Result)
+   else LocalizeString(aResSymbol.Value, Result);
+end;
+
+// LocalizeString
+//
+procedure TEventBasedLocalizer.LocalizeString(const aString : UnicodeString; var Result : UnicodeString);
+begin
+   if Assigned(FOnLocalizeString) then
+      FOnLocalizeString(Sender, aString, Result)
+   else Result:=aString;
+end;
+
+// ------------------
+// ------------------ TdwsCustomLocalizer ------------------
+// ------------------
+
+// GetLocalizer
+//
+function TdwsCustomLocalizer.GetLocalizer : IdwsLocalizer;
+var
+   loc : TEventBasedLocalizer;
+begin
+   loc:=TEventBasedLocalizer.Create;
+   loc.Sender:=Self;
+   loc.OnLocalizeSymbol:=OnLocalizeSymbol;
+   loc.OnLocalizeString:=OnLocalizeString;
+   Result:=loc;
+   if Assigned(FOnGetLocalizer) then
+      FOnGetLocalizer(Self, Result);
 end;
 
 end.

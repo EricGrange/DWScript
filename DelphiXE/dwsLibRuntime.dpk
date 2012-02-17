@@ -75,6 +75,7 @@ contains
   dwsJSCodeGen in '..\Libraries\JSCodeGen\dwsJSCodeGen.pas',
   dwsJSFilter in '..\Libraries\JSCodeGen\dwsJSFilter.pas',
   dwsJSLibModule in '..\Libraries\JSCodeGen\dwsJSLibModule.pas',
+  dwsJSRTL in '..\Libraries\JSCodeGen\dwsJSRTL.pas',
   dwsJSMin in '..\Libraries\JSCodeGen\dwsJSMin.pas';
 
 end.

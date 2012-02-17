@@ -33,7 +33,8 @@ uses
   dwsMath3DFunctions in '..\Source\dwsMath3DFunctions.pas',
   UBuildTests in 'UBuildTests.pas',
   URTTIExposeTests in 'URTTIExposeTests.pas',
-  USourceUtilsTests in 'USourceUtilsTests.pas';
+  USourceUtilsTests in 'USourceUtilsTests.pas',
+  ULocalizerTests in 'ULocalizerTests.pas';
 
 {$R *.res}
 

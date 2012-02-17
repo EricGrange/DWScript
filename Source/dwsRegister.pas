@@ -54,7 +54,8 @@ begin
                      TdwsGUIFunctions,
                      TdwsRestrictedFileSystem,
                      TdwsNoFileSystem,
-                     TdwsClassesLib
+                     TdwsClassesLib,
+                     TdwsCustomLocalizer
                      ]);
 end;
 

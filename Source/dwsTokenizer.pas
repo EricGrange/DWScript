@@ -31,7 +31,8 @@ type
 
    TTokenType =
      (ttNone, ttStrVal, ttIntVal, ttFloatVal, ttNAME, ttSWITCH,
-     ttLAZY, ttVAR, ttCONST, ttTYPE, ttRECORD, ttARRAY, ttSET, ttDOT, ttDOTDOT, ttOF,
+     ttLAZY, ttVAR, ttCONST, ttRESOURCESTRING,
+     ttTYPE, ttRECORD, ttARRAY, ttSET, ttDOT, ttDOTDOT, ttOF,
      ttTRY, ttEXCEPT, ttRAISE, ttFINALLY, ttON, ttREAD, ttWRITE, ttPROPERTY,
      ttFUNCTION, ttPROCEDURE, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttOPERATOR,
      ttCLASS, ttNIL, ttIS, ttAS, ttIMPLEMENTS, ttINDEX, ttOBJECT,
@@ -253,7 +254,8 @@ type
 const
    cTokenStrings : array [TTokenType] of UnicodeString = (
      '', 'StrVal', 'IntVal', 'FloatVal', 'NAME', 'SWITCH',
-     'LAZY', 'VAR', 'CONST', 'TYPE', 'RECORD', 'ARRAY', 'SET', '.', '..', 'OF',
+     'LAZY', 'VAR', 'CONST', 'RESOURCESTRING',
+     'TYPE', 'RECORD', 'ARRAY', 'SET', '.', '..', 'OF',
      'TRY', 'EXCEPT', 'RAISE', 'FINALLY', 'ON', 'READ', 'WRITE', 'PROPERTY',
      'FUNCTION', 'PROCEDURE', 'CONSTRUCTOR', 'DESTRUCTOR', 'METHOD', 'OPERATOR',
      'CLASS', 'NIL', 'IS', 'AS', 'IMPLEMENTS', 'INDEX', 'OBJECT',
@@ -539,7 +541,8 @@ const
       ttOBJECT, ttOF, ttOLD, ttON, ttOPERATOR, ttOR, ttOVERLOAD, ttOVERRIDE,
       ttPROCEDURE, ttPROPERTY, ttPASCAL, ttPROGRAM,
       ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
-      ttREPEAT, ttREQUIRE, ttRECORD, ttREAD, ttRAISE, ttREINTRODUCE, ttREGISTER,
+      ttRECORD, ttREAD, ttRAISE, ttREINTRODUCE, ttREGISTER,
+      ttREPEAT, ttREQUIRE, ttRESOURCESTRING,
       ttSAR, ttSEALED, ttSHL, ttSHR, ttSTATIC, ttSTDCALL,
       ttTHEN, ttTO, ttTRUE, ttTRY, ttTYPE,
       ttUNIT, ttUNTIL, ttUSES,

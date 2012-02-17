@@ -62,8 +62,16 @@ type
    TCompilerSectionChangedEvent = procedure (compiler : TdwsCompiler) of object;
    TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile; scriptType : TScriptSourceType) of object;
    TCompilerGetDefaultEnvironmentEvent = function : IdwsEnvironment of object;
+   TCompilerGetDefaultLocalizerEvent = function : IdwsLocalizer of object;
 
    TdwsFilter = class;
+
+   // TdwsLocalizerComponent
+   //
+   TdwsLocalizerComponent = class (TComponent)
+      public
+         function GetLocalizer : IdwsLocalizer; virtual; abstract;
+   end;
 
    TdwsConfiguration = class(TPersistent)
       private
@@ -87,6 +95,7 @@ type
          FUnits : TIdwsUnitList;
          FCompileFileSystem : TdwsCustomFileSystem;
          FRuntimeFileSystem : TdwsCustomFileSystem;
+         FLocalizer : TdwsLocalizerComponent;
 
       protected
          procedure InitSystemTable;
@@ -98,6 +107,9 @@ type
          procedure SetScriptPaths(const values : TStrings);
          procedure SetConditionals(const val : TStringList);
          function  GetSystemTable : ISystemSymbolTable;
+         procedure SetLocalizer(const val : TdwsLocalizerComponent);
+
+         function DoGetLocalizer : IdwsLocalizer;
 
       public
          constructor Create(Owner: TComponent);
@@ -122,6 +134,7 @@ type
          property ScriptPaths : TStrings read FScriptPaths write SetScriptPaths;
          property CompileFileSystem : TdwsCustomFileSystem read FCompileFileSystem write SetCompileFileSystem;
          property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write SetRuntimeFileSystem;
+         property Localizer : TdwsLocalizerComponent read FLocalizer write SetLocalizer;
          property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds default 0;
          property TimeOut : Integer write SetTimeOut;
          property StackChunkSize : Integer read FStackChunkSize write FStackChunkSize default cDefaultStackChunkSize;
@@ -305,6 +318,7 @@ type
          FOnSectionChanged : TCompilerSectionChangedEvent;
          FOnReadScript : TCompilerReadScriptEvent;
          FOnGetDefaultEnvironment : TCompilerGetDefaultEnvironmentEvent;
+         FOnGetDefaultLocalizer : TCompilerGetDefaultLocalizerEvent;
 
          function Optimize : Boolean;
 
@@ -349,6 +363,7 @@ type
          function ReadConnectorArray(const name : UnicodeString; baseExpr : TTypedExpr;
                                      const connectorType : IConnectorType; isWrite: Boolean) : TConnectorCallExpr;
          function ReadConstDecl(constSymbolClass : TConstSymbolClass) : TConstSymbol;
+         procedure ReadConstDeclBlock(var action : TdwsStatementAction);
          function ReadConstValue : TConstExpr;
          function ReadConstRecord(symbol : TRecordSymbol) : TData;
          function ReadBlock : TNoResultExpr;
@@ -409,6 +424,7 @@ type
          function ReadInterfaceSymbolName(baseType : TInterfaceSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadRecordSymbolName(baseType : TRecordSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadConstName(constSym : TConstSymbol; isWrite: Boolean) : TProgramExpr;
+         function ReadResourceStringName(resSym : TResourceStringSymbol; const namePos : TScriptPos) : TResourceStringExpr;
          function ReadNameOld(isWrite : Boolean) : TTypedExpr;
          function ReadNameInherited(isWrite : Boolean) : TProgramExpr;
          procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray;
@@ -447,6 +463,8 @@ type
          procedure ReadScriptImplementations;
          function ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
          function ReadStatement(var action : TdwsStatementAction) : TNoResultExpr;
+         function ReadResourceStringDecl : TResourceStringSymbol;
+         procedure ReadResourceStringDeclBlock(var action : TdwsStatementAction);
          function ReadStringArray(expr : TDataExpr; isWrite : Boolean) : TProgramExpr;
 
          function ReadSwitch(const switchName : UnicodeString) : Boolean;
@@ -548,6 +566,7 @@ type
          property OnSectionChanged : TCompilerSectionChangedEvent read FOnSectionChanged write FOnSectionChanged;
          property OnReadScript : TCompilerReadScriptEvent read FOnReadScript write FOnReadScript;
          property OnGetDefaultEnvironment : TCompilerGetDefaultEnvironmentEvent read FOnGetDefaultEnvironment write FOnGetDefaultEnvironment;
+         property OnGetDefaultLocalizer : TCompilerGetDefaultLocalizerEvent read FOnGetDefaultLocalizer write FOnGetDefaultLocalizer;
    end;
 
 // ------------------------------------------------------------------
@@ -876,9 +895,11 @@ begin
    if Assigned(FOnCreateBaseVariantSymbol) then
       conf.DetachSystemTable;
 
-   if Conf.CompileFileSystem<>nil then
-      FCompileFileSystem := Conf.CompileFileSystem.AllocateFileSystem
+   if conf.CompileFileSystem<>nil then
+      FCompileFileSystem := conf.CompileFileSystem.AllocateFileSystem
    else FCompileFileSystem := TdwsOSFileSystem.Create;
+
+   FOnGetDefaultLocalizer := conf.DoGetLocalizer;
 end;
 
 // SetupMsgsOptions
@@ -989,7 +1010,11 @@ begin
 
       // setup environment
       if Assigned(FOnGetDefaultEnvironment) then
-         FMainProg.DefaultEnvironment:=FOnGetDefaultEnvironment;
+         FMainProg.DefaultEnvironment:=FOnGetDefaultEnvironment();
+
+      // setup localizer
+      if Assigned(FOnGetDefaultLocalizer) then
+         FMainProg.DefaultLocalizer:=FOnGetDefaultLocalizer();
 
    except
       on e: ECompileError do
@@ -1514,23 +1539,16 @@ end;
 function TdwsCompiler.ReadStatement(var action : TdwsStatementAction) : TNoResultExpr;
 var
    token : TTokenType;
-   constSym : TConstSymbol;
 begin
    Result:=nil;
-   token:=FTok.TestDeleteAny([ttVAR, ttCONST, ttOPERATOR]);
+   token:=FTok.TestDeleteAny([ttVAR, ttCONST, ttOPERATOR, ttRESOURCESTRING]);
    case token of
       ttVAR :
          Result:=ReadVarDecl;
-      ttCONST : begin
-         action:=saNoSemiColon;
-         repeat
-            constSym:=ReadConstDecl(TConstSymbol);
-            FProg.Table.AddSymbol(constSym);
-            ReadSemiColon;
-         until not (    (UnitSection in [secInterface, secImplementation])
-                    and (FProg.Level=0)
-                    and FTok.TestName);
-      end;
+      ttCONST :
+         ReadConstDeclBlock(action);
+      ttRESOURCESTRING :
+         ReadResourceStringDeclBlock(action);
       ttOPERATOR :
          ReadOperatorDecl;
    else
@@ -1538,6 +1556,62 @@ begin
          FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedStatement);
       Result:=ReadBlock
    end;
+end;
+
+// ReadResourceStringDecl
+//
+function TdwsCompiler.ReadResourceStringDecl : TResourceStringSymbol;
+var
+   name, buf : String;
+   namePos : TScriptPos;
+   expr : TTypedExpr;
+begin
+   if not FTok.TestDeleteNamePos(name, namePos) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+
+   CheckName(name);
+   CheckSpecialName(name);
+
+   if not FTok.TestDelete(ttEQ) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
+
+   expr:=ReadExpr;
+   try
+      if (expr=nil) or (not expr.IsConstant) then begin
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+         FreeAndNil(expr);
+      end else if (expr.Typ=nil) or not expr.Typ.IsOfType(FProg.TypString) then begin
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
+         FreeAndNil(expr);
+      end;
+      // keep compiling
+      if expr=nil then
+         Result:=TResourceStringSymbol.Create(name, '')
+      else begin
+         expr.EvalAsString(FExec, buf);
+         Result:=TResourceStringSymbol.Create(name, buf);
+      end;
+      FMainProg.ResourceStringList.Add(Result);
+      RecordSymbolUse(Result, namePos, [suDeclaration]);
+   finally
+      expr.Free;
+   end;
+end;
+
+// ReadResourceStringDeclBlock
+//
+procedure TdwsCompiler.ReadResourceStringDeclBlock(var action : TdwsStatementAction);
+var
+   resStringSym : TResourceStringSymbol;
+begin
+   action:=saNoSemiColon;
+   repeat
+      resStringSym:=ReadResourceStringDecl;
+      FProg.Table.AddSymbol(resStringSym);
+      ReadSemiColon;
+   until not (    (UnitSection in [secInterface, secImplementation])
+              and (FProg.Level=0)
+              and FTok.TestName);
 end;
 
 // Evaluate
@@ -1855,6 +1929,22 @@ begin
          end;
       end;
    end;
+end;
+
+// ReadConstDeclBlock
+//
+procedure TdwsCompiler.ReadConstDeclBlock(var action : TdwsStatementAction);
+var
+   constSym : TConstSymbol;
+begin
+   action:=saNoSemiColon;
+   repeat
+      constSym:=ReadConstDecl(TConstSymbol);
+      FProg.Table.AddSymbol(constSym);
+      ReadSemiColon;
+   until not (    (UnitSection in [secInterface, secImplementation])
+              and (FProg.Level=0)
+              and FTok.TestName);
 end;
 
 // ReadTypeDeclBlock
@@ -3148,6 +3238,9 @@ begin
       end else if symClassType=TConstParamSymbol then begin
          Result:=ReadSymbol(GetConstParamExpr(TConstParamSymbol(sym)), IsWrite, expecting);
          Exit;
+      end else if symClassType=TResourceStringSymbol then begin
+         Result:=ReadResourceStringName(TResourceStringSymbol(sym), namePos);
+         Exit;
       end;
 
       if sym.InheritsFrom(TConstSymbol) then begin
@@ -3353,6 +3446,14 @@ begin
    if typ.Typ is TArraySymbol then
       typ:=typ.Typ;
    Result := ReadSymbol(TConstExpr.CreateTyped(FProg, typ, constSym), IsWrite)
+end;
+
+// ReadResourceStringName
+//
+function TdwsCompiler.ReadResourceStringName(resSym : TResourceStringSymbol; const namePos : TScriptPos) : TResourceStringExpr;
+begin
+   RecordSymbolUse(resSym, namePos, [suReference, suRead]);
+   Result:=TResourceStringExpr.Create(FProg, namePos, resSym);
 end;
 
 // ReadNameOld
@@ -8839,7 +8940,10 @@ begin
          Filter:=nil
       else if AComponent=ResultType then
          ResultType:=nil
+      else if AComponent=FLocalizer then
+         SetLocalizer(nil)
       else begin
+         // the samùe file system can be referred in two roles
          if AComponent=CompileFileSystem then
             CompileFileSystem:=nil;
          if AComponent=RuntimeFileSystem then
@@ -8876,6 +8980,26 @@ begin
    if FSystemTable=nil then
       InitSystemTable;
    Result:=FSystemTable;
+end;
+
+// SetLocalizer
+//
+procedure TdwsConfiguration.SetLocalizer(const val : TdwsLocalizerComponent);
+begin
+   if FLocalizer<>nil then
+      FLocalizer.RemoveFreeNotification(FOwner);
+   FLocalizer:=val;
+   if FLocalizer<>nil then
+      FLocalizer.FreeNotification(FOwner);
+end;
+
+// DoGetLocalizer
+//
+function TdwsConfiguration.DoGetLocalizer : IdwsLocalizer;
+begin
+   if FLocalizer<>nil then
+      Result:=FLocalizer.GetLocalizer
+   else Result:=nil;
 end;
 
 // ------------------
