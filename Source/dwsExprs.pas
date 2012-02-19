@@ -5621,7 +5621,7 @@ function TProgramInfo.GetVars(const str : UnicodeString): IInfo;
       if sym.Level=pin.FLevel then
          basePointer:=exec.Stack.BasePointer
       else basePointer:=exec.Stack.GetSavedBp(pin.Level);
-      if sym.ClassType=TVarParamSymbol then begin
+      if (sym.ClassType=TVarParamSymbol) or (sym.Typ is TOpenArraySymbol) then begin
          GetVarParamVars(sym, basePointer, Result);
       end else begin
          TInfo.SetChild(Result, pin, sym.Typ, exec.Stack.Data,

@@ -36,6 +36,7 @@ type
          procedure FuncFloatEval(Info: TProgramInfo);
          procedure FuncPointEval(Info: TProgramInfo);
          procedure FuncClassNameEval(Info: TProgramInfo);
+         procedure FuncOpenArrayEval(Info: TProgramInfo);
 
          procedure ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
          procedure ClassCleanup(ExternalObject: TObject);
@@ -78,6 +79,7 @@ type
          procedure CustomDestructor;
          procedure Delegates;
          procedure Operators;
+         procedure OpenArray;
 
          procedure ExplclitUses;
    end;
@@ -286,6 +288,14 @@ begin
    param.DataType:='TObject';
    param.DefaultValue:=IUnknown(nil);
    func.OnEval:=FuncClassNameEval;
+
+   func:=FUnit.Functions.Add;
+   func.Name:='FuncOpenArray';
+   func.ResultType:='String';
+   param:=func.Parameters.Add;
+   param.Name:='p';
+   param.DataType:='array of const';
+   func.OnEval:=FuncOpenArrayEval;
 end;
 
 // DeclareTestClasses
@@ -521,6 +531,23 @@ begin
    if o.ScriptObj=nil then
       Info.ResultAsString:=''
    else Info.ResultAsString:=o.ScriptObj.ClassSym.Name;
+end;
+
+// FuncOpenArrayEval
+//
+procedure TdwsUnitTests.FuncOpenArrayEval(Info: TProgramInfo);
+var
+   p : IInfo;
+   r : String;
+   i : Integer;
+begin
+   p:=Info.Vars['p'];
+   r:=IntToStr(p.Member['length'].ValueAsInteger)+':';
+   for i:=p.Member['low'].ValueAsInteger to p.Member['high'].ValueAsInteger do begin
+      if i>0 then r:=r+',';
+      r:=r+p.Element([i]).ValueAsString;
+   end;
+   Info.ResultAsString:=r;
 end;
 
 // ClassConstructor
@@ -1248,6 +1275,30 @@ begin
       exec.RunProgram(0);
 
       CheckEquals( '3.5'#13#10'2'#13#10,
+                  exec.Result.ToString+exec.Msgs.AsInfo);
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// OpenArray
+//
+procedure TdwsUnitTests.OpenArray;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   FMagicVar:='';
+   prog:=FCompiler.Compile( 'PrintLn(FuncOpenArray(["one","two"]));'#13#10
+                           +'PrintLn(FuncOpenArray([]));');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+
+      CheckEquals( '2:one,two'#13#10'0:'#13#10,
                   exec.Result.ToString+exec.Msgs.AsInfo);
    finally
       exec.EndProgram;

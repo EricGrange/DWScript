@@ -159,6 +159,11 @@ type
          procedure SetData(const Value: TData); override;
    end;
 
+   TInfoOpenArray = class(TInfoStaticArray)
+      function Element(const Indices: array of Integer): IInfo; override;
+      function GetMember(const s: UnicodeString): IInfo; override;
+   end;
+
    TInfoFunc = class(TInfo)
       protected
          FClassSym: TClassSymbol;
@@ -470,10 +475,15 @@ begin
    else if baseType is TRecordSymbol then
       Result := TInfoRecord.Create(ProgramInfo, ChildTypeSym, ChildData,
                                    ChildOffset, ChildDataMaster)
-   else if baseType is TStaticArraySymbol then
-      Result := TInfoStaticArray.Create(ProgramInfo, ChildTypeSym, ChildData,
-                                        ChildOffset, ChildDataMaster)
-   else if baseType is TDynamicArraySymbol then
+   else if baseType is TStaticArraySymbol then begin
+      if baseType is TOpenArraySymbol then begin
+         Result := TInfoOpenArray.Create(ProgramInfo, ChildTypeSym, ChildData,
+                                         ChildOffset, ChildDataMaster);
+      end else begin
+         Result := TInfoStaticArray.Create(ProgramInfo, ChildTypeSym, ChildData,
+                                           ChildOffset, ChildDataMaster);
+      end;
+   end else if baseType is TDynamicArraySymbol then
       Result := TInfoDynamicArray.Create(ProgramInfo, ChildTypeSym, ChildData,
                                          ChildOffset, ChildDataMaster)
    else if baseType is TClassSymbol then
@@ -1173,6 +1183,48 @@ var
 begin
    dynArray:=SelfDynArray;
    dynArray.Data:=value;
+end;
+
+// ------------------
+// ------------------ TInfoOpenArray ------------------
+// ------------------
+
+// GetMember
+//
+function TInfoOpenArray.GetMember(const s: UnicodeString): IInfo;
+begin
+   if SameText('length', s) then
+      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, Length(FData))
+   else if SameText('low', s) then
+      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, 0)
+   else if SameText('high', s) then
+      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, High(FData))
+   else
+      raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
+end;
+
+// Element
+//
+function TInfoOpenArray.Element(const Indices: array of Integer): IInfo;
+var
+   elemTyp : TSymbol;
+   elemOff, elemIdx : Integer;
+begin
+   if Length(Indices)>1 then
+      raise Exception.Create(RTE_TooManyIndices);
+
+   elemIdx := Indices[0];
+
+   if elemIdx > High(FData) then
+      raise Exception.CreateFmt(RTE_ArrayUpperBoundExceeded, [elemIdx]);
+
+   if elemIdx < 0 then
+      raise Exception.CreateFmt(RTE_ArrayLowerBoundExceeded, [elemIdx]);
+
+   elemTyp := FExec.Prog.TypVariant;
+   elemOff := elemIdx * elemTyp.Size;
+
+   SetChild(Result, FProgramInfo, elemTyp, FData, elemOff, FDataMaster);
 end;
 
 { TInfoConst }
