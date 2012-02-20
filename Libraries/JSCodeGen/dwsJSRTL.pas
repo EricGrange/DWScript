@@ -58,6 +58,7 @@ type
    TFormatSplitInfos = class (TObjectList<TFormatSplitInfo>)
       private
          FIsValid : Boolean;
+
       public
          constructor Create(const fmtString : String);
 
@@ -1017,7 +1018,7 @@ begin
    if p<=n then begin
       info.Str:=Copy(fmtString, p, n-p+1);
       Add(info);
-   end;
+   end else info.Free;
 end;
 
 end.
