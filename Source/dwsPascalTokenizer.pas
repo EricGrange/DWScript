@@ -62,7 +62,7 @@ const
       ttELSE, ttEND, ttEXCEPT, ttEXIT,
       ttFALSE, ttFINALLY, ttFOR, ttFUNCTION, ttIF, ttIMPLEMENTATION, ttIMPLIES,
       ttIN, ttINHERITED, ttINTERFACE, ttIS, ttMOD, ttNEW, ttNIL, ttNOT, ttOBJECT,
-      ttOF, ttOPERATOR, ttOR, ttPROCEDURE, ttPROPERTY, ttRAISE, ttRECORD,
+      ttOF, ttOPERATOR, ttOR, ttOVERLOAD, ttPROCEDURE, ttPROPERTY, ttRAISE, ttRECORD,
       ttREINTRODUCE, ttREPEAT, ttRESOURCESTRING, ttSAR, ttSET, ttSHL, ttSHR,
       ttTHEN, ttTRUE, ttTRY, ttTYPE,
       ttUNIT, ttUNTIL, ttUSES, ttVAR, ttWHILE, ttXOR
