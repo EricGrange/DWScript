@@ -619,7 +619,7 @@ type
          procedure AddCondition(cond : TConditionSymbol);
 
          function  IsValidOverloadOf(other : TFuncSymbol) : Boolean;
-         function  IsSameOverloadOf(other : TFuncSymbol) : Boolean;
+         function  IsSameOverloadOf(other : TFuncSymbol) : Boolean; virtual;
 
          function  ParamsDescription : UnicodeString;
 
@@ -646,6 +646,8 @@ type
 
    // referring list of function symbols
    TFuncSymbolList = class(TSimpleList<TFuncSymbol>)
+      public
+         function ContainsChildMethodOf(methSym : TMethodSymbol) : Boolean;
    end;
 
    TAnyFuncSymbol = class(TFuncSymbol)
@@ -722,6 +724,7 @@ type
          function QualifiedName : UnicodeString; override;
          function HasConditions : Boolean;
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
+         function IsSameOverloadOf(other : TFuncSymbol) : Boolean; override;
 
          property StructSymbol : TStructuredTypeSymbol read FStructSymbol;
          property VMTIndex : Integer read FVMTIndex;
@@ -3014,6 +3017,15 @@ end;
 function TMethodSymbol.IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean;
 begin
    Result:=(FVisibility>=aVisibility);
+end;
+
+// IsSameOverloadOf
+//
+function TMethodSymbol.IsSameOverloadOf(other : TFuncSymbol) : Boolean;
+begin
+   Result:=    inherited IsSameOverloadOf(other)
+           and (other is TMethodSymbol)
+           and (IsClassMethod=TMethodSymbol(other).IsClassMethod);
 end;
 
 // SetOverride
@@ -5338,6 +5350,31 @@ end;
 function TResourceStringSymbol.GetDescription : UnicodeString;
 begin
    Result:='resourcestring '+Name+' = '''+StringReplace(Value, '''', '''''', [rfReplaceAll])+'''';
+end;
+
+// ------------------
+// ------------------ TFuncSymbolList ------------------
+// ------------------
+
+// ContainsChildMethodOf
+//
+function TFuncSymbolList.ContainsChildMethodOf(methSym : TMethodSymbol) : Boolean;
+var
+   i : Integer;
+   funcSym : TFuncSymbol;
+   meth : TMethodSymbol;
+begin
+   for i:=0 to Count-1 do begin
+      funcSym:=Items[i];
+      if funcSym is TMethodSymbol then begin
+         meth:=TMethodSymbol(funcSym);
+         repeat
+            if meth=methSym then Exit(True);
+            meth:=meth.ParentMeth;
+         until meth=nil;
+      end;
+   end;
+   Result:=False;
 end;
 
 end.

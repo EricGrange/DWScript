@@ -386,16 +386,34 @@ type
                               iterVarExpr : TIntVarExpr; fromExpr, toExpr : TTypedExpr;
                               loopFirstStatement : TNoResultExpr) : TForExpr;
 
-         function ReadStaticMethod(methodSym : TMethodSymbol; isWrite : Boolean;
-                                   expecting : TTypeSymbol = nil) : TProgramExpr;
          function ReadFuncOverloaded(funcSym : TFuncSymbol; fromTable : TSymbolTable;
                                      codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
+         procedure CollectMethodOverloads(methSym : TMethodSymbol; overloads : TFuncSymbolList);
+         function ReadStaticMethOverloaded(methSym : TMethodSymbol; isWrite : Boolean;
+                                           expecting : TTypeSymbol = nil) : TTypedExpr;
+         function ReadMethOverloaded(methSym : TMethodSymbol; instanceExpr : TDataExpr;
+                                     const scriptPos : TScriptPos;
+                                     expecting : TTypeSymbol = nil) : TTypedExpr;
+
          function ResolveOverload(var funcExpr : TFuncExprBase; overloads : TFuncSymbolList) : Boolean;
-         function HasConflictingOverload(funcSym, forwardedSym : TFuncSymbol) : Boolean;
-         function PerfectMatchOverload(funcSym : TFuncSymbol) : TFuncSymbol;
+
+         function FuncHasConflictingOverload(funcSym, forwardedSym : TFuncSymbol) : Boolean;
+         function MethHasConflictingOverload(methSym : TMethodSymbol) : Boolean;
+
+         function FuncPerfectMatchOverload(funcSym : TFuncSymbol) : TFuncSymbol;
+         function MethPerfectMatchOverload(methSym : TMethodSymbol; recurse : Boolean) : TMethodSymbol;
+
          function ReadFunc(funcSym : TFuncSymbol; codeExpr : TDataExpr = nil;
                            expecting : TTypeSymbol = nil;
                            overloads : TFuncSymbolList = nil) : TTypedExpr;
+         function ReadStaticMethod(methodSym : TMethodSymbol; isWrite : Boolean;
+                                   expecting : TTypeSymbol = nil;
+                                   overloads : TFuncSymbolList = nil) : TTypedExpr;
+         function ReadMethod(methodSym : TMethodSymbol; instanceExpr : TDataExpr;
+                             const scriptPos : TScriptPos;
+                             expecting : TTypeSymbol = nil;
+                             overloads : TFuncSymbolList = nil) : TTypedExpr;
+
          function WrapUpFunctionRead(funcExpr : TFuncExprBase; expecting : TTypeSymbol = nil;
                                      overloads : TFuncSymbolList = nil) : TTypedExpr;
 
@@ -412,8 +430,9 @@ type
          function ReadInstr : TNoResultExpr;
          function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
          function ReadIntfMethodDecl(intfSym : TInterfaceSymbol; funcKind : TFuncKind) : TSourceMethodSymbol;
-         procedure ReadMethodDecl(structSym : TStructuredTypeSymbol; funcKind : TFuncKind;
-                               aVisibility : TdwsVisibility; isClassMethod : Boolean);
+         procedure ReadMethodDecl(const hotPos : TScriptPos;
+                                  structSym : TStructuredTypeSymbol; funcKind : TFuncKind;
+                                  aVisibility : TdwsVisibility; isClassMethod : Boolean);
          function ReadMethodImpl(structSym : TStructuredTypeSymbol; funcKind : TFuncKind;
                               isClassMethod : Boolean) : TMethodSymbol;
          procedure ReadDeprecated(funcSym : TFuncSymbol);
@@ -2120,12 +2139,12 @@ begin
                ReadSemiColon;
 
                if overloadFuncSym<>nil then
-                  forwardedSym:=PerfectMatchOverload(Result);
+                  forwardedSym:=FuncPerfectMatchOverload(Result);
 
                // handle function overloading
                if FTok.TestDelete(ttOVERLOAD) then begin
 
-                  if HasConflictingOverload(Result, forwardedSym) then
+                  if FuncHasConflictingOverload(Result, forwardedSym) then
                      FMsgs.AddCompilerErrorFmt(hotPos, CPE_MatchingOverload, [name]);
 
                   Result.IsOverloaded:=True;
@@ -2133,7 +2152,7 @@ begin
 
                end else if overloadFuncSym<>nil then begin
 
-                  forwardedSym:=PerfectMatchOverload(Result);
+                  forwardedSym:=FuncPerfectMatchOverload(Result);
                   if forwardedSym=nil then begin
                      // no match, possible name conflict or fogotten overload keyword
                      FMsgs.AddCompilerErrorFmt(hotPos, CPE_MustExplicitOverloads, [name]);
@@ -2248,7 +2267,7 @@ end;
 
 // ReadMethodDecl
 //
-procedure TdwsCompiler.ReadMethodDecl(structSym : TStructuredTypeSymbol; funcKind: TFuncKind;
+procedure TdwsCompiler.ReadMethodDecl(const hotPos : TScriptPos; structSym : TStructuredTypeSymbol; funcKind: TFuncKind;
                                       aVisibility : TdwsVisibility; isClassMethod: Boolean);
 
    function OverrideParamsCheck(newMeth, oldMeth : TMethodSymbol) : Boolean;
@@ -2271,7 +2290,7 @@ procedure TdwsCompiler.ReadMethodDecl(structSym : TStructuredTypeSymbol; funcKin
 var
    name : UnicodeString;
    sym : TSymbol;
-   meth, defaultConstructor : TMethodSymbol;
+   meth, defaultConstructor, match : TMethodSymbol;
    isReintroduced : Boolean;
    methPos: TScriptPos;
    qualifier : TTokenType;
@@ -2288,11 +2307,13 @@ begin
    // Check if name is already used
    sym:=structSym.Members.FindSymbolFromScope(name, structSym);
    if (sym<>nil) then begin
-      if sym is TMethodSymbol then
-         meth:=TMethodSymbol(sym)
-      else meth:=nil;
-      if structSym.Members.HasSymbol(sym) then
-         MemberSymbolWithNameAlreadyExists(sym);
+      if sym is TMethodSymbol then begin
+         meth:=TMethodSymbol(sym);
+      end else begin
+         meth:=nil;
+         if structSym.Members.HasSymbol(sym) then
+            MemberSymbolWithNameAlreadyExists(sym);
+      end;
    end else meth:=nil;
 
    if structSym.IsStatic and (not IsClassMethod) then
@@ -2302,23 +2323,59 @@ begin
    funcResult:=TSourceMethodSymbol.Create(name, funcKind, structSym, aVisibility, isClassMethod);
    funcResult.DeclarationPos:=methPos;
    try
-
-      if meth<>nil then begin
-         funcResult.SetOverlap(meth);
-         isReintroduced:=meth.IsVirtual;
-      end else isReintroduced:=False;
-
       ReadParams(funcResult.HasParam, funcResult.AddParam, nil);
 
       funcResult.Typ:=ReadFuncResultType(funcKind);
       ReadSemiColon;
 
+      if meth<>nil then
+         isReintroduced:=meth.IsVirtual
+      else isReintroduced:=False;
+
       if FTok.TestDelete(ttREINTRODUCE) then begin
          if not isReintroduced then
             FMsgs.AddCompilerErrorFmt(methPos, CPE_CantReintroduce, [name]);
-         isReintroduced := False;
+         isReintroduced:=False;
          ReadSemiColon;
       end;
+
+      // handle method overloading
+      if FTok.TestDelete(ttOVERLOAD) then begin
+
+         if MethHasConflictingOverload(funcResult) then
+            FMsgs.AddCompilerErrorFmt(hotPos, CPE_MatchingOverload, [name]);
+
+         funcResult.IsOverloaded:=True;
+         ReadSemiColon;
+
+      end else begin
+
+         funcResult.SetOverlap(meth);
+         if meth<>nil then begin
+            if MethPerfectMatchOverload(funcResult, False)<>nil then
+               MemberSymbolWithNameAlreadyExists(sym)
+            else if meth.StructSymbol=structSym then begin
+               if FTok.Test(ttOVERRIDE) then begin
+                  // this could actually be an override of an inherited method
+                  // and not just an overload of a local method
+                  // in that case 'overload' is optional
+                  match:=MethPerfectMatchOverload(funcResult, True);
+                  if match<>nil then
+                     funcResult.IsOverloaded:=True;
+               end;
+               if not funcResult.IsOverloaded then begin
+                  // name conflict or fogotten overload keyword
+                  FMsgs.AddCompilerErrorFmt(hotPos, CPE_MustExplicitOverloads, [name]);
+                  // keep compiling, mark overloaded
+                  funcResult.IsOverloaded:=True;
+               end;
+            end;
+         end;
+
+      end;
+
+      if funcResult.IsOverloaded then
+         isReintroduced:=False;
 
       if structSym.AllowVirtualMembers then begin
          qualifier:=FTok.TestDeleteAny([ttVIRTUAL, ttOVERRIDE, ttABSTRACT]);
@@ -2333,6 +2390,8 @@ begin
                   end;
                end;
                ttOVERRIDE : begin
+                  if funcResult.IsOverloaded then
+                     meth:=MethPerfectMatchOverload(funcResult, True);
                   if meth=nil then
                      FMsgs.AddCompilerErrorFmt(methPos, CPE_CantOverrideNotInherited, [name])
                   else if not meth.IsVirtual then
@@ -3310,12 +3369,15 @@ begin
          end;
 
       // Methods
-      end else if sym.InheritsFrom(TMethodSymbol) then
+      end else if sym.InheritsFrom(TMethodSymbol) then begin
 
-         Result:=ReadStaticMethod(TMethodSymbol(sym), IsWrite, expecting)
+         if TMethodSymbol(sym).IsOverloaded then
+            funcExpr:=ReadStaticMethOverloaded(TMethodSymbol(sym), isWrite, expecting)
+         else funcExpr:=ReadStaticMethod(TMethodSymbol(sym), isWrite, expecting);
+         Result:=ReadSymbol(funcExpr, IsWrite, expecting);
 
       // Functions/Procedures
-      else if sym.InheritsFrom(TFuncSymbol) then begin
+      end else if sym.InheritsFrom(TFuncSymbol) then begin
 
          if TFuncSymbol(sym).IsOverloaded then
             funcExpr:=ReadFuncOverloaded(TFuncSymbol(sym), FProg.Table, nil, expecting)
@@ -3840,11 +3902,9 @@ begin
 
                   if member is TMethodSymbol then begin
 
-                     if TMethodSymbol(member).IsClassMethod then
-                        funcExpr:=GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkClassOfRef, symPos, False)
-                     else funcExpr:=GetMethodExpr(TMethodSymbol(member), TDataExpr(Result), rkObjRef, symPos, False);
-                     Result:=nil; // avoid double-free in case of error in WrapUpFunctionRead
-                     Result:=WrapUpFunctionRead(funcExpr, expecting);
+                     if TMethodSymbol(member).IsOverloaded then
+                        Result:=ReadMethOverloaded(TMethodSymbol(member), TDataExpr(Result), symPos, expecting)
+                     else Result:=ReadMethod(TMethodSymbol(member), TDataExpr(Result), symPos, expecting);
 
                   end else if member is TFieldSymbol then begin
 
@@ -4474,7 +4534,8 @@ end;
 // ReadStaticMethod
 //
 function TdwsCompiler.ReadStaticMethod(methodSym : TMethodSymbol;
-               isWrite : Boolean; expecting : TTypeSymbol = nil) : TProgramExpr;
+               isWrite : Boolean; expecting : TTypeSymbol = nil;
+               overloads : TFuncSymbolList = nil) : TTypedExpr;
 var
    progMeth: TMethodSymbol;
 begin
@@ -4484,9 +4545,22 @@ begin
                            TVarExpr.CreateTyped(FProg, progMeth.SelfSym),
                            rkObjRef, FTok.HotPos, False);
 
-   Result:=WrapUpFunctionRead(TFuncExpr(Result), expecting);
+   Result:=WrapUpFunctionRead(TFuncExpr(Result), expecting, overloads);
+end;
 
-   Result:=ReadSymbol(Result, IsWrite, expecting);
+// ReadMethod
+//
+function TdwsCompiler.ReadMethod(methodSym : TMethodSymbol; instanceExpr : TDataExpr;
+                                 const scriptPos : TScriptPos;
+                                 expecting : TTypeSymbol = nil;
+                                 overloads : TFuncSymbolList = nil) : TTypedExpr;
+var
+   funcExpr : TFuncExpr;
+begin
+   if methodSym.IsClassMethod then
+      funcExpr:=GetMethodExpr(methodSym, instanceExpr, rkClassOfRef, scriptPos, False)
+   else funcExpr:=GetMethodExpr(methodSym, instanceExpr, rkObjRef, scriptPos, False);
+   Result:=WrapUpFunctionRead(funcExpr, expecting, overloads);
 end;
 
 // ReadFuncOverloaded
@@ -4511,6 +4585,61 @@ begin
             Result:=False;
          end);
       Result:=ReadFunc(funcSym, codeExpr, expecting, overloads);
+   finally
+      overloads.Free;
+   end;
+end;
+
+// CollectMethodOverloads
+//
+procedure TdwsCompiler.CollectMethodOverloads(methSym : TMethodSymbol; overloads : TFuncSymbolList);
+var
+   member : TSymbol;
+   struct : TStructuredTypeSymbol;
+   lastOverloaded : TMethodSymbol;
+begin
+   lastOverloaded:=methSym;
+   struct:=methSym.StructSymbol;
+   repeat
+      for member in struct.Members do begin
+         if not UnicodeSameText(member.Name, methSym.Name) then continue;
+         if not (member is TMethodSymbol) then continue;
+         lastOverloaded:=TMethodSymbol(member);
+         if not overloads.ContainsChildMethodOf(lastOverloaded) then
+            overloads.Add(lastOverloaded);
+      end;
+      struct:=struct.Parent;
+   until (struct=nil) or not lastOverloaded.IsOverloaded;
+end;
+
+// ReadStaticMethOverloaded
+//
+function TdwsCompiler.ReadStaticMethOverloaded(methSym : TMethodSymbol; isWrite : Boolean;
+                                               expecting : TTypeSymbol = nil) : TTypedExpr;
+var
+   overloads : TFuncSymbolList;
+begin
+   overloads:=TFuncSymbolList.Create;
+   try
+      CollectMethodOverloads(methSym, overloads);
+      Result:=ReadStaticMethod(methSym, isWrite, expecting, overloads);
+   finally
+      overloads.Free;
+   end;
+end;
+
+// ReadMethOverloaded
+//
+function TdwsCompiler.ReadMethOverloaded(methSym : TMethodSymbol; instanceExpr : TDataExpr;
+                                         const scriptPos : TScriptPos;
+                                         expecting : TTypeSymbol = nil) : TTypedExpr;
+var
+   overloads : TFuncSymbolList;
+begin
+   overloads:=TFuncSymbolList.Create;
+   try
+      CollectMethodOverloads(methSym, overloads);
+      Result:=ReadMethod(methSym, instanceExpr, scriptPos, expecting, overloads);
    finally
       overloads.Free;
    end;
@@ -4572,9 +4701,9 @@ begin
    end;
 end;
 
-// HasConflictingOverload
+// FuncHasConflictingOverload
 //
-function TdwsCompiler.HasConflictingOverload(funcSym, forwardedSym : TFuncSymbol) : Boolean;
+function TdwsCompiler.FuncHasConflictingOverload(funcSym, forwardedSym : TFuncSymbol) : Boolean;
 begin
    Result:=FProg.Table.EnumerateSymbolsOfNameInScope(funcSym.Name,
       function (sym : TSymbol) : Boolean
@@ -4591,9 +4720,26 @@ begin
       end);
 end;
 
-// PerfectMatchOverload
+// MethHasConflictingOverload
 //
-function TdwsCompiler.PerfectMatchOverload(funcSym : TFuncSymbol) : TFuncSymbol;
+function TdwsCompiler.MethHasConflictingOverload(methSym : TMethodSymbol) : Boolean;
+var
+   struct : TStructuredTypeSymbol;
+   member : TSymbol;
+begin
+   struct:=methSym.StructSymbol;
+   for member in struct.Members do begin
+      if not UnicodeSameText(member.Name, methSym.Name) then continue;
+      if not (member is TMethodSymbol) then continue;
+      if not methSym.IsValidOverloadOf(TMethodSymbol(member)) then
+         Exit(True);
+   end;
+   Result:=False;
+end;
+
+// FuncPerfectMatchOverload
+//
+function TdwsCompiler.FuncPerfectMatchOverload(funcSym : TFuncSymbol) : TFuncSymbol;
 var
    match : TFuncSymbol;
 begin
@@ -4614,6 +4760,29 @@ begin
          Result:=False;
       end);
    Result:=match;
+end;
+
+// MethPerfectMatchOverload
+//
+function TdwsCompiler.MethPerfectMatchOverload(methSym : TMethodSymbol; recurse : Boolean) : TMethodSymbol;
+var
+   struct : TStructuredTypeSymbol;
+   member : TSymbol;
+   locSym : TMethodSymbol;
+begin
+   locSym:=methSym;
+   struct:=methSym.StructSymbol;
+   repeat
+      for member in struct.Members do begin
+         if not UnicodeSameText(member.Name, methSym.Name) then continue;
+         if not (member is TMethodSymbol) then continue;
+         locSym:=TMethodSymbol(member);
+         if methSym.IsSameOverloadOf(locSym) then
+            Exit(locSym);
+      end;
+      struct:=struct.Parent;
+   until (not recurse) or (struct=nil) or (not locSym.IsOverloaded);
+   Result:=nil;
 end;
 
 // ReadFunc
@@ -5377,7 +5546,7 @@ end;
 function TdwsCompiler.ReadClass(const typeName : UnicodeString) : TClassSymbol;
 var
    name : UnicodeString;
-   namePos : TScriptPos;
+   namePos, hotPos : TScriptPos;
    sym, typ : TSymbol;
    propSym : TPropertySymbol;
    constSym : TClassConstSymbol;
@@ -5453,8 +5622,10 @@ begin
 
             ancestorTyp:=TClassSymbol(typ);
 
-            if ancestorTyp.IsForwarded then
+            if ancestorTyp.IsForwarded or (ancestorTyp=Result) then begin
+               ancestorTyp:=FProg.TypObject;
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassNotCompletelyDefined, [Name]);
+            end;
 
             if ancestorTyp.IsSealed then
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassIsSealed, [typ.Name]);
@@ -5494,6 +5665,7 @@ begin
             while not FTok.Test(ttEND) do begin
 
                // Read methods and properties
+               hotPos:=FTok.HotPos;
                tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD,
                                        ttCONSTRUCTOR, ttDESTRUCTOR,
                                        ttCLASS, ttPROPERTY, ttCONST,
@@ -5501,14 +5673,14 @@ begin
                case tt of
 
                   ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR :
-                     ReadMethodDecl(Result, cTokenToFuncKind[tt], visibility, False);
+                     ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, False);
 
                   ttCLASS : begin
 
                      tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttOPERATOR]);
                      case tt of
                         ttPROCEDURE, ttFUNCTION, ttMETHOD :
-                           ReadMethodDecl(Result, cTokenToFuncKind[tt], visibility, True);
+                           ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, True);
                         ttOPERATOR :
                            Result.AddOperator(ReadClassOperatorDecl(Result));
                      else
@@ -5934,6 +6106,7 @@ var
    typ : TTypeSymbol;
    propSym : TPropertySymbol;
    posArray : TScriptPosArray;
+   hotPos : TScriptPos;
    visibility : TdwsVisibility;
    tt : TTokenType;
 begin
@@ -5946,6 +6119,7 @@ begin
 
          repeat
 
+            hotPos:=FTok.HotPos;
             tt:=FTok.TestDeleteAny([ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED, ttCLASS,
                                     ttPROPERTY, ttFUNCTION, ttPROCEDURE, ttMETHOD]);
             case tt of
@@ -5960,12 +6134,12 @@ begin
                   Result.AddProperty(propSym);
                end;
                ttFUNCTION, ttPROCEDURE, ttMETHOD :
-                  ReadMethodDecl(Result, cTokenToFuncKind[tt], visibility, False);
+                  ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, False);
                ttCLASS : begin
                   tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD]);
                   case tt of
                      ttPROCEDURE, ttFUNCTION, ttMETHOD :
-                        ReadMethodDecl(Result, cTokenToFuncKind[tt], visibility, True);
+                        ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, True);
                   else
                      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
                   end;
