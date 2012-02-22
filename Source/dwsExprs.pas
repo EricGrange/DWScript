@@ -4144,9 +4144,13 @@ begin
       Free;
    end else begin
       FFunc:=newFuncSym;
-      if Assigned(newFuncSym) then
-         FTyp:=newFuncSym.Typ
-      else FTyp:=nil;
+      if Assigned(newFuncSym) then begin
+         // don't update type for a constructor as the "return type" of a constructor
+         // isn't specified by the constructor symbol, but by the meta the constructor
+         // is invoked upon
+         if newFuncSym.Kind<>fkConstructor then
+            FTyp:=newFuncSym.Typ
+      end else FTyp:=nil;
       Result:=Self;
    end;
 end;
@@ -6904,6 +6908,7 @@ var
 begin
    list:=FindSymbolPosList(oldSym);
    i:=list.IndexOfPosition(scriptPos);
+   Assert(i>=0);
    symPos:=list[i];
    AddSymbol(newSym, scriptPos, symPos.SymbolUsages);
    list.Delete(i);
