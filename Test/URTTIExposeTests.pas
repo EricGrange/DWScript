@@ -35,6 +35,7 @@ type
          procedure ConnectTypeCheckFail;
          procedure ConnectFormCreateComponent;
          procedure ConnectClassMethod;
+         procedure ConnectOverload;
 
          procedure EnvironmentTest;
          procedure EnvironmentTest2;
@@ -53,6 +54,9 @@ type
       public
          [dwsPublished]
          procedure DecValue;
+
+         procedure Add(a : Integer); overload;
+         procedure Add(a, b : Integer); overload;
 
       published
          [dwsPublished('CreateValued')]
@@ -191,6 +195,20 @@ end;
 function TSimpleClass.InverseBoolean(b : Boolean) : Boolean;
 begin
    Result:=not b;
+end;
+
+// Add
+//
+procedure TSimpleClass.Add(a : Integer);
+begin
+   FValue:=FValue+a;
+end;
+
+// Add
+//
+procedure TSimpleClass.Add(a, b : Integer);
+begin
+   FValue:=FValue+a+b;
 end;
 
 // DecValue
@@ -570,6 +588,30 @@ begin
    finally
       obj.Free;
    end;
+end;
+
+// ConnectOverload
+//
+procedure TRTTIExposeTests.ConnectOverload;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile('var v : RTTIVariant = GetSimpleInstance;'#13#10
+                           +'PrintLn(v.Value);'#13#10
+                           +'v.Add(1);'#13#10
+                           +'PrintLn(v.Value);'#13#10
+                           +'v.Add(10, 100);'#13#10
+                           +'PrintLn(v.Value);'#13#10
+                           +'v.Free();'#13#10
+                           );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.Execute;
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Exec Msgs');
+   CheckEquals('123'#13#10'124'#13#10'234'#13#10, exec.Result.ToString, 'Exec Result');
 end;
 
 // EnvironmentTest

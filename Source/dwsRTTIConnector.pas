@@ -505,8 +505,9 @@ var
    i : Integer;
    paramData : array of TValue;
    instance : TdwsRTTIVariant;
-   meth : TRttiMethod;
+   meth, overloadedMeth : TRttiMethod;
    methParams : TArray<TRttiParameter>;
+   methList : TArray<TRttiMethod>;
    resultValue : TValue;
 begin
    instance:=IUnknown(base) as TdwsRTTIVariant;
@@ -516,6 +517,21 @@ begin
                                         [instance.RTTIType.Name, FMethodName]);
 
    methParams:=meth.GetParameters;
+   if Length(methParams)<>Length(args) then begin
+      // manually check for an overload
+      // only match on parameter count for now
+      methList:=instance.RTTIType.GetMethods;
+      for overloadedMeth in methList do begin
+         if UnicodeSameText(overloadedMeth.Name, FMethodName) then begin
+            methParams:=overloadedMeth.GetParameters;
+            if Length(methParams)=Length(args) then begin
+               meth:=overloadedMeth;
+               Break;
+            end;
+         end;
+      end;
+   end;
+
    if Length(methParams)<>Length(args) then
       raise EdwsRTTIException.CreateFmt('Method "%s.%s" expects %d params, got %d',
                                         [instance.RTTIType.Name, FMethodName,
