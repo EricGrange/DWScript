@@ -88,6 +88,8 @@ type
 
          function GetNewTempSymbol : String; override;
 
+         procedure WriteSymbolVerbosity(sym : TSymbol); override;
+
          procedure WriteJavaScriptString(const s : String);
 
          function MemberName(sym : TSymbol; cls : TStructuredTypeSymbol) : String;
@@ -997,9 +999,10 @@ begin
 
    if not SmartLink(enum) then Exit;
 
-   WriteString('/* ');
-   WriteString(enum.QualifiedName);
-   WriteStringLn('*/');
+   if cgoOptimizeForSize in Options then Exit;
+
+   WriteSymbolVerbosity(enum);
+
    for i:=0 to enum.Elements.Count-1 do begin
       elem:=enum.Elements[i] as TElementSymbol;
       WriteString(elem.Name);
@@ -1098,6 +1101,8 @@ begin
 
    if not SmartLink(rec) then Exit;
 
+   WriteSymbolVerbosity(rec);
+
    WriteString('function Copy$');
    WriteSymbolName(rec);
    WriteStringLn('($s) {');
@@ -1160,6 +1165,8 @@ begin
    inherited;
 
    if not SmartLink(cls) then Exit;
+
+   WriteSymbolVerbosity(cls);
 
    WriteString('var ');
    WriteSymbolName(cls);
@@ -1509,6 +1516,60 @@ begin
    if cgoOptimizeForSize in Options then begin
       Result:='$t'+IntToBase62(IncTempSymbolCounter)
    end else Result:='$temp'+inherited GetNewTempSymbol;
+end;
+
+// WriteSymbolVerbosity
+//
+procedure TdwsJSCodeGen.WriteSymbolVerbosity(sym : TSymbol);
+
+   procedure DoWrite;
+   var
+      i : Integer;
+      funcSym : TFuncSymbol;
+      symPos : TSymbolPosition;
+   begin
+      if sym is TClassSymbol then begin
+         WriteString('/// ');
+         WriteString(sym.QualifiedName);
+         WriteString(' = class (');
+         WriteString(TClassSymbol(sym).Parent.QualifiedName);
+         WriteStringLn(')');
+      end else if sym is TRecordSymbol then begin
+         WriteString('/// ');
+         WriteString(sym.QualifiedName);
+         WriteStringLn(' = record');
+      end else if sym is TFuncSymbol then begin
+         funcSym:=TFuncSymbol(sym);
+         WriteString('/// ');
+         WriteString(cFuncKindToString[funcSym.Kind]);
+         WriteString(' ');
+         WriteString(funcSym.QualifiedName);
+         WriteString(funcSym.ParamsDescription);
+         if funcSym.Typ<>nil then begin
+            WriteString(' : ');
+            WriteString(funcSym.Typ.QualifiedName);
+         end;
+         WriteLineEnd;
+      end else if sym is TEnumerationSymbol then begin
+         WriteString('/// ');
+         WriteString(sym.QualifiedName);
+         WriteString(' enumeration');
+      end else Exit;
+      if SymbolDictionary<>nil then begin
+         symPos:=SymbolDictionary.FindSymbolUsage(sym, suImplementation);
+         if symPos=nil then
+            symPos:=SymbolDictionary.FindSymbolUsage(sym, suDeclaration);
+         if symPos<>nil then begin
+            WriteString('/// ');
+            WriteString(symPos.ScriptPos.AsInfo);
+            WriteLineEnd;
+         end;
+      end;
+   end;
+
+begin
+   if Verbosity>cgovNone then
+      DoWrite;
 end;
 
 // WriteJavaScriptString
@@ -1969,6 +2030,8 @@ begin
       if meth.Kind in [fkProcedure, fkFunction, fkMethod] then
          if not SmartLink(meth) then Exit;
 
+   WriteSymbolVerbosity(meth);
+
    WriteString(',');
    WriteString(MemberName(meth, meth.StructSymbol));
 
@@ -2005,6 +2068,8 @@ begin
    proc:=(meth.Executable as TdwsProcedure);
 
    if not SmartLink(meth) then Exit;
+
+   WriteSymbolVerbosity(meth);
 
    WriteString('function ');
    if not meth.IsClassMethod then begin

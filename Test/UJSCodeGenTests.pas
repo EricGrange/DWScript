@@ -340,7 +340,9 @@ procedure TJSCodeGenTests.ExecutionNonOptimized;
 begin
    FCompiler.Config.CompilerOptions:=cCompilerOptions-[coOptimize]+[coVariablesAsVarOnly];
    FCodeGen.Options:=FCodeGen.Options+[cgoNoInlineMagics];
+   FCodeGen.Verbosity:=cgovVerbose;
    Execution;
+   FCodeGen.Verbosity:=cgovNone;
 end;
 
 // ExecutionNonOptimizedWithInlineMagics

@@ -101,6 +101,8 @@ type
                         cgoOptimizeForSize, cgoSmartLink);
    TdwsCodeGenOptions = set of TdwsCodeGenOption;
 
+   TdwsCodeGenOutputVerbosity = (cgovNone, cgovNormal, cgovVerbose);
+
    TdwsCodeGen = class
       private
          FCodeGenList : TdwsRegisteredCodeGenList;
@@ -134,8 +136,11 @@ type
          FNeedIndent : Boolean;
          FIndentSize : Integer;
          FOptions : TdwsCodeGenOptions;
+         FVerbosity : TdwsCodeGenOutputVerbosity;
 
       protected
+         property SymbolDictionary : TdwsSymbolDictionary read FSymbolDictionary;
+
          procedure EnterContext(proc : TdwsProgram); virtual;
          procedure LeaveContext; virtual;
 
@@ -211,6 +216,8 @@ type
 
          procedure WriteSymbolName(sym : TSymbol; scope : TdwsCodeGenSymbolScope = cgssGlobal);
 
+         procedure WriteSymbolVerbosity(sym : TSymbol); virtual;
+
          function LocationString(e : TExprBase) : String;
          function IncTempSymbolCounter : Integer;
          function GetNewTempSymbol : String; virtual;
@@ -227,6 +234,7 @@ type
 
          property IndentSize : Integer read FIndentSize write FIndentSize;
          property Options : TdwsCodeGenOptions read FOptions write FOptions;
+         property Verbosity : TdwsCodeGenOutputVerbosity read FVerbosity write FVerbosity;
 
          property Output : TWriteOnlyBlockStream read FOutput;
          property Dependencies : TStringList read FDependencies;
@@ -966,6 +974,13 @@ end;
 procedure TdwsCodeGen.WriteSymbolName(sym : TSymbol; scope : TdwsCodeGenSymbolScope = cgssGlobal);
 begin
    WriteString(SymbolMappedName(sym, scope));
+end;
+
+// WriteSymbolVerbosity
+//
+procedure TdwsCodeGen.WriteSymbolVerbosity(sym : TSymbol);
+begin
+   // nothing by default
 end;
 
 // LocationString
