@@ -159,6 +159,14 @@ type
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
 
+   TSignFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+   end;
+
+   TSignIntFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+   end;
+
    TMaxFunc = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
@@ -543,6 +551,20 @@ begin
    Result:=RadToDeg(args.AsFloat[0]);
 end;
 
+{ TSignFunc }
+
+function TSignFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+begin
+   Result:=Sign(args.AsFloat[0]);
+end;
+
+{ TSignIntFunc }
+
+function TSignIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+begin
+   Result:=Sign(args.AsInteger[0]);
+end;
+
 { TMaxFunc }
 
 procedure TMaxFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
@@ -737,6 +759,9 @@ initialization
 
    RegisterInternalFloatFunction(TDegToRadFunc, 'DegToRad', ['a', cFloat], [iffStateLess]);
    RegisterInternalFloatFunction(TRadToDegFunc, 'RadToDeg', ['a', cFloat], [iffStateLess]);
+
+   RegisterInternalIntFunction(TSignFunc, 'Sign', ['v', cFloat], [iffStateLess, iffOverloaded]);
+   RegisterInternalIntFunction(TSignIntFunc, 'Sign', ['v', cInteger], [iffStateLess, iffOverloaded]);
 
    RegisterInternalFloatFunction(TMaxFunc, 'Max', ['v1', cFloat, 'v2', cFloat], [iffStateLess, iffOverloaded]);
    RegisterInternalIntFunction(TMaxIntFunc, 'Max', ['v1', cInteger, 'v2', cInteger], [iffStateLess, iffOverloaded]);

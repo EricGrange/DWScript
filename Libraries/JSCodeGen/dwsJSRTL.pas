@@ -88,7 +88,7 @@ implementation
 {$R dwsJSRTL.res dwsJSRTL.rc}
 
 const
-   cJSRTLDependencies : array [1..145] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..148] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -296,6 +296,8 @@ const
                +#9'throw Exception.Create$1($New(Exception),"Not an ordinal! "+z);'#13#10
                +'}';
        Dependency : 'Exception' ),
+      (Name : '$Sign';
+       Code : 'function $Sign(v) { return v<0?-1:v>0?1:0 }'),
       // RTL functions
       (Name : 'AnsiCompareStr';
        Code : 'function AnsiCompareStr(a,b) { return a.localeCompare(b) }'),
@@ -497,6 +499,12 @@ const
       (Name : 'SetRandSeed';
        Code : 'function SetRandSeed(v) { Random = $alea(v) }';
        Dependency : 'Random'),
+      (Name : 'Sign$_Float_';
+       Code : 'var Sign$_Float_ = $Sign';
+       Dependency : '$Sign'),
+      (Name : 'Sign$_Integer_';
+       Code : 'var Sign$_Integer_ = $Sign';
+       Dependency : '$Sign'),
       (Name : 'Sin';
        Code : 'function Sin(v) { return Math.sin(v) }'),
       (Name : 'Sinh';
@@ -674,6 +682,8 @@ begin
    FMagicCodeGens.AddObject('PosEx', TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf', '(', 0, ',', '(', 2, ')', '-1)+1)']));
    FMagicCodeGens.AddObject('Power', TdwsExprGenericCodeGen.Create(['Math.pow', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('Round', TdwsExprGenericCodeGen.Create(['Math.round', '(', 0, ')']));
+   FMagicCodeGens.AddObject('Sign$_Float_', TdwsExprGenericCodeGen.Create(['$Sign', '(', 0, ')'], False, '$Sign'));
+   FMagicCodeGens.AddObject('Sign$_Integer_', TdwsExprGenericCodeGen.Create(['$Sign', '(', 0, ')'], False, '$Sign'));
    FMagicCodeGens.AddObject('Sin', TdwsExprGenericCodeGen.Create(['Math.sin', '(', 0, ')']));
    FMagicCodeGens.AddObject('Sqrt', TdwsExprGenericCodeGen.Create(['Math.sqrt', '(', 0, ')']));
    FMagicCodeGens.AddObject('StrToFloat', TdwsExprGenericCodeGen.Create(['parseFloat', '(', 0, ')']));
