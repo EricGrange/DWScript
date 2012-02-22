@@ -2107,11 +2107,13 @@ end;
 //
 function TRecordSymbol.GetDescription : UnicodeString;
 var
-   x : Integer;
+   member : TSymbol;
 begin
    Result:=Name+' = record'#13#10;
-   for x:=0 to FMembers.Count-1 do
-      Result:=Result+'   '+FMembers[x].Name+' : '+FMembers[x].Typ.Name+';'#13#10;
+   for member in FMembers do begin
+      if member is TFieldSymbol then
+         Result:=Result+'   '+member.Name+' : '+member.Typ.Name+';'#13#10;
+   end;
    Result:=Result+'end;';
 end;
 
