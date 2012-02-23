@@ -940,7 +940,7 @@ type
 
          procedure SetResultAddr(prog : TdwsProgram; exec : TdwsExecution; ResultAddr: Integer = -1);
 
-         function ChangeFuncSymbol(newFuncSym : TFuncSymbol) : TFuncExprBase; virtual;
+         function ChangeFuncSymbol(aProg: TdwsProgram; newFuncSym : TFuncSymbol) : TFuncExprBase; virtual;
 
          property FuncSym : TFuncSymbol read FFunc;
          property Args : TExprBaseListRec read FArgs;
@@ -1256,6 +1256,8 @@ type
          destructor Destroy; override;
 
          function MethSym : TMethodSymbol; inline;
+
+         function ChangeFuncSymbol(aProg: TdwsProgram; newFuncSym : TFuncSymbol) : TFuncExprBase; override;
 
          property BaseExpr : TDataExpr read FBaseExpr;
    end;
@@ -4134,10 +4136,10 @@ end;
 
 // ChangeFuncSymbol
 //
-function TFuncExprBase.ChangeFuncSymbol(newFuncSym : TFuncSymbol) : TFuncExprBase;
+function TFuncExprBase.ChangeFuncSymbol(aProg: TdwsProgram; newFuncSym : TFuncSymbol) : TFuncExprBase;
 begin
    if (FuncSym is TMagicFuncSymbol) or (newFuncSym is TMagicFuncSymbol) then begin
-      Result:=TMagicFuncExpr.CreateMagicFuncExpr(nil, ScriptPos, TMagicFuncSymbol(newFuncSym));
+      Result:=TMagicFuncExpr.CreateMagicFuncExpr(aProg, ScriptPos, TMagicFuncSymbol(newFuncSym));
       Result.Args.Assign(Args);
       Args.Clear;
       TMagicFuncExpr(Result).FResultAddr:=FResultAddr;
@@ -4152,7 +4154,7 @@ begin
             FTyp:=newFuncSym.Typ
       end else FTyp:=nil;
       Result:=Self;
-   end;
+   end
 end;
 
 // Initialize
@@ -5323,6 +5325,27 @@ end;
 function TMethodExpr.MethSym : TMethodSymbol;
 begin
    Result:=TMethodSymbol(FuncSym);
+end;
+
+// ChangeFuncSymbol
+//
+function TMethodExpr.ChangeFuncSymbol(aProg: TdwsProgram; newFuncSym : TFuncSymbol) : TFuncExprBase;
+var
+   newMeth : TMethodSymbol;
+   refKind : TRefKind;
+begin
+   newMeth:=(newFuncSym as TMethodSymbol);
+
+   if BaseExpr.Typ is TStructuredTypeMetaSymbol then begin
+      Assert(newMeth.IsClassMethod or (newMeth.Kind=fkConstructor));
+      refKind:=rkClassOfRef;
+   end else refKind:=rkObjRef;
+
+   Result:=CreateMethodExpr(aProg, newMeth, BaseExpr, refKind, ScriptPos);
+   Result.Args.Assign(Args);
+   Self.FArgs.Clear;
+   Self.FBaseExpr:=nil;
+   Self.Free;
 end;
 
 // GetSubExpr

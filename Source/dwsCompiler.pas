@@ -4735,7 +4735,7 @@ begin
    if (bestMatch<>nil) and (bestCount=1) then begin
       if bestMatch<>funcExpr.FuncSym then begin
          ReplaceSymbolUse(funcExpr.FuncSym, bestMatch, funcExpr.ScriptPos);
-         funcExpr:=funcExpr.ChangeFuncSymbol(bestMatch);
+         funcExpr:=funcExpr.ChangeFuncSymbol(FProg, bestMatch);
       end;
       Result:=True;
    end else begin
