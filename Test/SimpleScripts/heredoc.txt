@@ -1,0 +1,6 @@
+hello
+heredoc
+long
+multiline
+"strings"
+with quotes

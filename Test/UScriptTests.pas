@@ -53,7 +53,6 @@ end;
 // SetUp
 //
 procedure TScriptTests.SetUp;
-
 const
    cFilter = '*.pas';
 var

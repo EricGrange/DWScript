@@ -683,7 +683,7 @@ procedure TState.SetElse(o : TTransition);
 var
    c : AnsiChar;
 begin
-   for c:=#0 to #127 do
+   for c:=#1 to #127 do
       if FTransitions[c]=nil then
         FTransitions[c]:=o;
   FOwnedTransitions.Add(o);
@@ -1029,8 +1029,16 @@ procedure TTokenizer.ConsumeToken;
    // don't trigger error for EOF
    procedure DoErrorTransition(trns : TErrorTransition; ch : WideChar);
    begin
-      if trns.ErrorMessage<>'' then
-         FMsgs.AddCompilerStopFmt(CurrentPos, '%s (found "%s")', [trns.ErrorMessage, ch]);
+      if trns.ErrorMessage<>'' then begin
+         case ch of
+            #0 :
+               FMsgs.AddCompilerError(CurrentPos, trns.ErrorMessage);
+            #1..#31 :
+               FMsgs.AddCompilerStopFmt(CurrentPos, '%s (found #%x)', [trns.ErrorMessage, Ord(ch)]);
+         else
+            FMsgs.AddCompilerStopFmt(CurrentPos, '%s (found "%s")', [trns.ErrorMessage, ch])
+         end;
+      end;
    end;
 
    // return True to reset state and continue to next token
@@ -1252,10 +1260,14 @@ end;
 procedure TTokenizerRules.PrepareStates;
 var
    i : Integer;
+   state : TState;
 begin
    FEOFTransition:=TErrorTransition.Create('');
-   for i:=0 to FStates.Count-1 do
-      FStates[i].FTransitions[#0]:=FEOFTransition;
+   for i:=0 to FStates.Count-1 do begin
+      state:=FStates[i];
+      if (state.FTransitions[#0]=nil) or not (state.FTransitions[#0] is TErrorTransition) then
+         state.FTransitions[#0]:=FEOFTransition;
+   end;
 end;
 
 // CreateState

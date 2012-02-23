@@ -257,16 +257,16 @@ begin
 
    sString0.AddTransition(cANYCHAR - ['''', #13, #10], TConsumeTransition.Create(sString0, [], caNone));
    sString0.AddTransition([''''], TSeekTransition.Create(sStringF, [], caNone));
-   sString0.SetElse(TErrorTransition.Create(TOK_StringTerminationError));
+   sString0.AddTransition([#0, #13, #10], TErrorTransition.Create(TOK_StringTerminationError));
 
    sStringF.AddTransition([''''], TConsumeTransition.Create(sString0, [], caNone));
    sStringF.AddTransition(['#'], TCheckTransition.Create(sStart, [], caString));
    sStringF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caString));
    sStringF.SetElse(TErrorTransition.Create(TOK_InvalidChar));
 
-   sString1.AddTransition(cANYCHAR - ['"', #13, #10], TConsumeTransition.Create(sString1, [], caNone));
+   sString1.AddTransition(cANYCHAR - ['"', #0], TConsumeTransition.Create(sString1, [], caNone));
    sString1.AddTransition(['"'], TSeekTransition.Create(sStringF1, [], caNone));
-   sString1.SetElse(TErrorTransition.Create(TOK_StringTerminationError));
+   sString1.AddTransition([#0], TErrorTransition.Create(TOK_HereDocTerminationError));
 
    sStringF1.AddTransition(['"'], TConsumeTransition.Create(sString1, [], caNone));
    sStringF1.AddTransition(['#'], TCheckTransition.Create(sStart, [], caString));
