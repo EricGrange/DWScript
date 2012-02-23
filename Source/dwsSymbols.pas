@@ -380,6 +380,7 @@ type
    TResourceStringSymbol = class sealed (TSymbol)
       private
          FValue : UnicodeString;
+         FIndex : Integer;
 
       protected
          function GetCaption : UnicodeString; override;
@@ -389,6 +390,12 @@ type
          constructor Create(const aName, aValue : UnicodeString);
 
          property Value : UnicodeString read FValue;
+         property Index : Integer read FIndex write FIndex;
+   end;
+
+   TResourceStringSymbolList = class(TSimpleList<TResourceStringSymbol>)
+      public
+         procedure ComputeIndexes;
    end;
 
    // All Symbols containing a value
@@ -5338,6 +5345,7 @@ constructor TResourceStringSymbol.Create(const aName, aValue : UnicodeString);
 begin
    inherited Create(aName, nil);
    FValue:=aValue;
+   FIndex:=-1;
 end;
 
 // GetCaption
@@ -5352,6 +5360,20 @@ end;
 function TResourceStringSymbol.GetDescription : UnicodeString;
 begin
    Result:='resourcestring '+Name+' = '''+StringReplace(Value, '''', '''''', [rfReplaceAll])+'''';
+end;
+
+// ------------------
+// ------------------ TResourceStringSymbolList ------------------
+// ------------------
+
+// ComputeIndexes
+//
+procedure TResourceStringSymbolList.ComputeIndexes;
+var
+   i : Integer;
+begin
+   for i:=0 to Count-1 do
+      Items[i].Index:=i;
 end;
 
 // ------------------

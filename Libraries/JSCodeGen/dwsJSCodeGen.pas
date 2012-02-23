@@ -85,6 +85,7 @@ type
          procedure ReserveSymbolNames; override;
 
          procedure CompileDependencies(destStream : TWriteOnlyBlockStream; const prog : IdwsProgram); override;
+         procedure CompileResourceStrings(destStream : TWriteOnlyBlockStream; const prog : IdwsProgram); override;
 
          function GetNewTempSymbol : String; override;
 
@@ -192,6 +193,10 @@ type
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
    TJSArrayConstantExpr = class (TJSConstExpr)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
+   TJSResourceStringExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
@@ -571,6 +576,7 @@ begin
    RegisterCodeGen(TConstStringExpr,      TJSConstStringExpr.Create);
    RegisterCodeGen(TConstFloatExpr,       TJSConstFloatExpr.Create);
    RegisterCodeGen(TConstBooleanExpr,     TJSConstBooleanExpr.Create);
+   RegisterCodeGen(TResourceStringExpr,   TJSResourceStringExpr.Create);
    RegisterCodeGen(TArrayConstantExpr,    TJSArrayConstantExpr.Create);
 
    RegisterCodeGen(TInitDataExpr,         TJSInitDataExpr.Create);
@@ -1489,6 +1495,27 @@ begin
    end;
 end;
 
+// CompileResourceStrings
+//
+procedure TdwsJSCodeGen.CompileResourceStrings(destStream : TWriteOnlyBlockStream; const prog : IdwsProgram);
+var
+   i : Integer;
+   resList : TResourceStringSymbolList;
+begin
+   if (cgoSmartLink in Options) and (Dependencies.IndexOf('$R')<0) then Exit;
+
+   resList:=prog.ProgramObject.ResourceStringList;
+
+   destStream.WriteString('var $R = [');
+   for i:=0 to resList.Count-1 do begin
+      if i>0 then
+         destStream.WriteString(','#13#10#9)
+      else destStream.WriteString(#13#10#9);
+      dwsJSON.WriteJavaScriptString(destStream, resList[i].Value);
+   end;
+   destStream.WriteString('];'#13#10);
+end;
+
 // GetNewTempSymbol
 //
 function TdwsJSCodeGen.GetNewTempSymbol : String;
@@ -1524,7 +1551,6 @@ procedure TdwsJSCodeGen.WriteSymbolVerbosity(sym : TSymbol);
 
    procedure DoWrite;
    var
-      i : Integer;
       funcSym : TFuncSymbol;
       symPos : TSymbolPosition;
    begin
@@ -2631,6 +2657,24 @@ begin
          codeGen.WriteString(',');
       codeGen.CompileNoWrap(e.Elements[i]);
    end;
+   codeGen.WriteString(']');
+end;
+
+// ------------------
+// ------------------ TJSResourceStringExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSResourceStringExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TResourceStringExpr;
+begin
+   e:=TResourceStringExpr(expr);
+
+   codeGen.Dependencies.Add('$R');
+   codeGen.WriteString('$R[');
+   codeGen.WriteString(IntToStr(e.ResSymbol.Index));
    codeGen.WriteString(']');
 end;
 

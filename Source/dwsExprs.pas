@@ -599,7 +599,7 @@ type
    TdwsMainProgram = class (TdwsProgram, IdwsProgram)
       private
          FUnifiedConstList : TSortedList<TExprBase>;
-         FResourceStringList : TSimpleList<TResourceStringSymbol>;
+         FResourceStringList : TResourceStringSymbolList;
 
          FDefaultUserObject : TObject;
 
@@ -671,7 +671,7 @@ type
          property MaxDataSize : Integer read FStackParameters.MaxByteSize write FStackParameters.MaxByteSize;
          property StackChunkSize : Integer read FStackParameters.ChunkSize write FStackParameters.ChunkSize;
          property UnifiedConstList : TSortedList<TExprBase> read FUnifiedConstList;
-         property ResourceStringList : TSimpleList<TResourceStringSymbol> read FResourceStringList write FResourceStringList;
+         property ResourceStringList : TResourceStringSymbolList read FResourceStringList write FResourceStringList;
          property RuntimeFileSystem : TdwsCustomFileSystem read FRuntimeFileSystem write FRuntimeFileSystem;
 
          property SystemTable : ISystemSymbolTable read FSystemTable;
@@ -2737,7 +2737,7 @@ begin
    FUnifiedConstList:=TUnifiedConstList.Create;
    TUnifiedConstList(FUnifiedConstList).Precharge(Self, systemTable.SymbolTable);
 
-   FResourceStringList:=TSimpleList<TResourceStringSymbol>.Create;
+   FResourceStringList:=TResourceStringSymbolList.Create;
 
    FUnitMains:=TUnitMainSymbols.Create;
 

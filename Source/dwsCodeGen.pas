@@ -204,6 +204,7 @@ type
          procedure MapNormalSymbolNames(table : TSymbolTable); virtual;
 
          procedure CompileDependencies(destStream : TWriteOnlyBlockStream; const prog : IdwsProgram); virtual;
+         procedure CompileResourceStrings(destStream : TWriteOnlyBlockStream; const prog : IdwsProgram); virtual;
 
          procedure WriteIndent;
          procedure Indent;
@@ -702,6 +703,9 @@ begin
       FSymbolDictionary:=prog.SymbolDictionary;
       FSourceContextMap:=prog.SourceContextMap;
    end;
+
+   p.ResourceStringList.ComputeIndexes;
+
    BeginProgramSession(prog);
    try
       BeforeCompileProgram(prog.Table, p.SystemTable.SymbolTable, p.UnitMains);
@@ -906,6 +910,13 @@ begin
    // nothing
 end;
 
+// CompileResourceStrings
+//
+procedure TdwsCodeGen.CompileResourceStrings(destStream : TWriteOnlyBlockStream; const prog : IdwsProgram);
+begin
+   // nothing
+end;
+
 // WriteIndent
 //
 procedure TdwsCodeGen.WriteIndent;
@@ -1012,6 +1023,7 @@ end;
 //
 procedure TdwsCodeGen.WriteCompiledOutput(dest : TWriteOnlyBlockStream; const prog : IdwsProgram);
 begin
+   CompileResourceStrings(dest, prog);
    CompileDependencies(dest, prog);
    dest.WriteString(Output.ToString);
 end;
