@@ -4696,6 +4696,7 @@ var
    i : Integer;
    j : Integer;
    match, bestMatch : TFuncSymbol;
+   struct : TStructuredTypeSymbol;
    matchDistance, bestMatchDistance, bestCount : Integer;
    matchParamType, funcExprParamType : TTypeSymbol;
 begin
@@ -4724,7 +4725,20 @@ begin
             Break;
          end;
       end;
-      if (match<>nil) and (matchDistance<=bestMatchDistance) then begin
+      if match=nil then continue;
+
+      if match is TMethodSymbol then begin
+         // for method symbols gives precedence to the deepest subclass
+         // this will only differentiate matches that rated the same on parameters
+         matchDistance:=(matchDistance+1) shl 16;
+         struct:=TMethodSymbol(match).StructSymbol;
+         while struct<>nil do begin
+            Dec(matchDistance);
+            struct:=struct.Parent;
+         end;
+      end;
+
+      if matchDistance<=bestMatchDistance then begin
          if matchDistance<bestMatchDistance then begin
             bestMatch:=match;
             bestMatchDistance:=matchDistance;
