@@ -9266,8 +9266,13 @@ end;
 // Execute
 //
 procedure TObjectClassNameMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+var
+   classSym : TClassSymbol;
 begin
-   Info.ResultAsString:=info.ValueAsClassSymbol[SYS_SELF].Name; //.ClassSym.Name;
+   classSym:=info.ValueAsClassSymbol[SYS_SELF];
+   if classSym=nil then
+      raise EScriptError.CreatePosFmt(info.Execution.CallStackLastExpr.ScriptPos, RTE_ClassTypeIsNil, []);
+   Info.ResultAsString:=classSym.Name;
 end;
 
 // ------------------

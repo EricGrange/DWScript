@@ -508,6 +508,7 @@ type
 
          function CallStackDepth : Integer; override;
          function GetCallStack : TdwsExprLocationArray; override;
+         function CallStackLastExpr : TExprBase;
 
          class function CallStackToString(const callStack : TdwsExprLocationArray) : UnicodeString; static;
          procedure RaiseAssertionFailed(const msg : UnicodeString; const scriptPos : TScriptPos);
@@ -2608,6 +2609,18 @@ begin
       Result[n-1-i].Expr:=(TObject(FCallStack.List[i*2+2]) as TExprBase);
       Result[n-1-i].Prog:=TObject(FCallStack.List[i*2+3]);
    end;
+end;
+
+// CallStackLastExpr
+//
+function TdwsProgramExecution.CallStackLastExpr : TExprBase;
+var
+   n : Integer;
+begin
+   n:=FCallStack.Count-2;
+   if n>=0 then
+      Result:=(TObject(FCallStack.List[n]) as TExprBase)
+   else Result:=nil;
 end;
 
 // ------------------
