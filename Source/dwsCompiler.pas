@@ -4683,6 +4683,7 @@ begin
       end;
       if overloads.Count=0 then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticMethodExpected);
+      methSym:=TMethodSymbol(overloads[0]);
       Result:=ReadStaticMethod(methSym, metaExpr, scriptPos, expecting, overloads);
    finally
       overloads.Free;
