@@ -59,7 +59,7 @@ type
     tkSpace, tkString, tkSymbol, tkUnknown, tkFloat, tkHex, tkDirec, tkChar);
 
   TRangeState = (rsANil, rsAnsi, rsAnsiAsm, rsAsm, rsBor, rsBorAsm, rsProperty,
-    rsExports, rsDirective, rsDirectiveAsm, rsUnKnown);
+    rsExports, rsDirective, rsDirectiveAsm, rsHereDoc, rsUnKnown);
 
   PIdentFuncTableFunc = ^TIdentFuncTableFunc;
   TIdentFuncTableFunc = function : TtkTokenKind of object;
@@ -674,11 +674,13 @@ procedure TSynDWSSyn.StringQuoteProc;
 begin
   fTokenID := tkString;
   Inc(Run);
+  fRange := rsHereDoc;
   while not IsLineEnd(Run) do
   begin
     if fLine[Run] = '"' then begin
       Inc(Run);
       if fLine[Run] <> '"' then
+        fRange := rsUnknown;
         break;
     end;
     Inc(Run);
@@ -699,49 +701,50 @@ end;
 
 procedure TSynDWSSyn.Next;
 begin
-  fAsmStart := False;
-  fTokenPos := Run;
-  case fRange of
-    rsAnsi, rsAnsiAsm:
-      AnsiProc;
-    rsBor, rsBorAsm, rsDirective, rsDirectiveAsm:
-      BorProc;
-    else
+   fAsmStart := False;
+   fTokenPos := Run;
+   case fRange of
+      rsAnsi, rsAnsiAsm:
+         AnsiProc;
+      rsBor, rsBorAsm, rsDirective, rsDirectiveAsm:
+         BorProc;
+      rsHereDoc:
+         StringQuoteProc;
+   else
       case fLine[Run] of
-        #0: NullProc;
-        #10: LFProc;
-        #13: CRProc;
-        #1..#9, #11, #12, #14..#32: SpaceProc;
-        '#': AsciiCharProc;
-        '$': IntegerProc;
-        #39: StringAposProc;
-        '"': StringQuoteProc;
-        '0'..'9': NumberProc;
-        'A'..'Z', 'a'..'z', '_': IdentProc;
-        '{': BraceOpenProc;
-        '}', '!', '%', '&', '('..'/', ':'..'@', '['..'^', '`', '~':
-          begin
+         #0: NullProc;
+         #10: LFProc;
+         #13: CRProc;
+         #1..#9, #11, #12, #14..#32: SpaceProc;
+         '#': AsciiCharProc;
+         '$': IntegerProc;
+         #39: StringAposProc;
+         '"': StringQuoteProc;
+         '0'..'9': NumberProc;
+         'A'..'Z', 'a'..'z', '_': IdentProc;
+         '{': BraceOpenProc;
+         '}', '!', '%', '&', '('..'/', ':'..'@', '['..'^', '`', '~': begin
             case fLine[Run] of
-              '(': RoundOpenProc;
-              '.': PointProc;
-              ';': SemicolonProc;
-              '/': SlashProc;
-              ':', '>': ColonOrGreaterProc;
-              '<': LowerProc;
-              '@': AddressOpProc;
-              else
-                 SymbolProc;
+               '(': RoundOpenProc;
+               '.': PointProc;
+               ';': SemicolonProc;
+               '/': SlashProc;
+               ':', '>': ColonOrGreaterProc;
+               '<': LowerProc;
+               '@': AddressOpProc;
+            else
+               SymbolProc;
             end;
-          end;
+         end;
          #$0080..#$FFFF :
             if TCharacter.IsLetterOrDigit(fLine[Run]) then
                IdentProc
             else UnknownProc;
-        else
-          UnknownProc;
+      else
+         UnknownProc;
       end;
-  end;
-  inherited;
+   end;
+   inherited;
 end;
 
 function TSynDWSSyn.GetDefaultAttribute(Index: Integer):
