@@ -74,6 +74,7 @@ type
       function LastChar : WideChar;
       function ToStr : UnicodeString; overload; inline;
       procedure ToStr(var result : UnicodeString); overload;
+      procedure AppendMultiToStr(var result : UnicodeString);
       procedure AppendToStr(var result : UnicodeString);
       procedure ToUpperStr(var result : UnicodeString); overload;
       function UpperFirstChar : WideChar;
@@ -112,8 +113,9 @@ type
    end;
 
    TConvertAction = (caNone, caClear, caName, caNameEscaped,
-                     caHex, caInteger, caFloat, caChar,
-                     caCharHex, caString, caSwitch, caDotDot);
+                     caHex, caInteger, caFloat,
+                     caChar, caCharHex, caString, caMultiLineString,
+                     caSwitch, caDotDot);
    TTransitionOptions = set of (toStart, toFinal);
 
    TTransition = class
@@ -341,7 +343,7 @@ begin
    end;
 end;
 
-// ToStr
+// AppendToStr
 //
 procedure TTokenBuffer.AppendToStr(var result : UnicodeString);
 var
@@ -352,6 +354,101 @@ begin
       SetLength(result, n+Len);
       Move(Buffer[0], PWideChar(Pointer(result))[n], Len*SizeOf(WideChar));
    end;
+end;
+
+// AppendMultiToStr
+//
+procedure TTokenBuffer.AppendMultiToStr(var result : UnicodeString);
+var
+   i, n, k, minWhite, white : Integer;
+   leftWhite, firstIsCRLF, lastIsWhite, firstLine : Boolean;
+   c : Char;
+begin
+   if Len=0 then Exit;
+   // count nb lines and minimum whitespace, also detect if first line is whitespace + CRLF
+   n:=0;
+   minWhite:=MaxInt;
+   leftWhite:=True;
+   white:=0;
+   firstIsCRLF:=False;
+   firstLine:=True;
+   for i:=0 to Len-1 do begin
+      case Buffer[i] of
+         ' ' : if leftWhite then Inc(white);
+         #13 : ;
+         #10 : begin
+            if firstLine then begin
+               if leftWhite then
+                  firstIsCRLF:=True;
+               firstLine:=False;
+            end;
+            if not leftWhite then begin
+               if white<minWhite then
+                  minWhite:=white;
+               leftWhite:=True;
+            end;
+            white:=0;
+            Inc(n);
+         end;
+      else
+         leftWhite:=False;
+      end;
+   end;
+   // single line, use simple AppendToStr
+   if n=0 then begin
+      AppendToStr(result);
+      Exit;
+   end;
+   // account for last line
+   lastIsWhite:=leftWhite;
+
+   // ok now collect and removed indents
+   k:=Length(result);
+   SetLength(result, k+Len); // allocate for worst case
+   i:=0;
+   n:=Len;
+
+   // do we have to remove indents?
+   if firstIsCRLF and lastIsWhite then begin
+      // skip first line
+      repeat
+         Inc(i);
+      until Buffer[i]=#10;
+      Inc(i);
+      // ignore last line
+      Dec(n);
+      while Buffer[n]<>#10 do
+         Dec(n);
+      if Buffer[n-1]=#13 then Dec(n);
+   end;
+
+   leftWhite:=(minWhite>0);
+   white:=0;
+   while i<n do begin
+      case Buffer[i] of
+         ' ' : begin
+            if leftWhite and (white<minWhite) then
+               Inc(white)
+            else begin
+               Inc(k);
+               result[k]:=' ';
+            end;
+         end;
+         #10 : begin
+            leftWhite:=(minWhite>0);
+            white:=0;
+            Inc(k);
+            result[k]:=Buffer[i];
+         end
+      else
+         leftWhite:=False;
+         Inc(k);
+         result[k]:=Buffer[i];
+      end;
+      Inc(i);
+   end;
+
+   SetLength(result, k);
 end;
 
 // ToUpperStr
@@ -1070,6 +1167,11 @@ procedure TTokenizer.ConsumeToken;
             // Concatenates the parts of a UnicodeString constant
             caString : begin
                FTokenBuf.AppendToStr(FToken.FString);
+               FToken.FTyp:=ttStrVal;
+            end;
+
+            caMultiLineString : begin
+               FTokenBuf.AppendMultiToStr(FToken.FString);
                FToken.FTyp:=ttStrVal;
             end;
 
