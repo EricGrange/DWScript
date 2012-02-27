@@ -3316,14 +3316,17 @@ begin
 
       if sym.InheritsFrom(TDataSymbol) then begin
 
-         if sym.Typ is TFuncSymbol then
+         if sym.Typ is TFuncSymbol then begin
             if     FTok.Test(ttASSIGN)
                or  (    (expecting<>nil)
                     and TDataSymbol(sym).Typ.IsOfType(expecting)
                     and not FTok.Test(ttBLEFT)) then
                Result:=GetVarExpr(TDataSymbol(sym))
-            else Result:=ReadFunc(TFuncSymbol(sym.Typ), GetVarExpr(TDataSymbol(sym)), expecting)
-         else Result:=ReadSymbol(GetVarExpr(TDataSymbol(sym)), IsWrite, expecting);
+            else begin
+               Result:=ReadFunc(TFuncSymbol(sym.Typ), GetVarExpr(TDataSymbol(sym)), expecting);
+               Result:=ReadSymbol(Result, isWrite, expecting);
+            end;
+         end else Result:=ReadSymbol(GetVarExpr(TDataSymbol(sym)), IsWrite, expecting);
 
       end else if sym.ClassType=TExternalVarSymbol then begin
 
