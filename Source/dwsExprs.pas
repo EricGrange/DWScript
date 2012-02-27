@@ -1072,6 +1072,7 @@ type
          destructor Destroy; override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
+         function IsConstant : Boolean; override;
 
          function Extract : TDataExpr; // also a destructor
 
@@ -4865,6 +4866,13 @@ begin
       end;
 
    end;
+end;
+
+// IsConstant
+//
+function TFuncPtrExpr.IsConstant : Boolean;
+begin
+   Result:=False;
 end;
 
 // GetSubExpr
