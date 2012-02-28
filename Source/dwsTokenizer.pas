@@ -361,8 +361,7 @@ end;
 procedure TTokenBuffer.AppendMultiToStr(var result : UnicodeString);
 var
    i, n, k, minWhite, white : Integer;
-   leftWhite, firstIsCRLF, lastIsWhite, firstLine : Boolean;
-   c : Char;
+   leftWhite, firstIsCRLF, firstLine : Boolean;
 begin
    if Len=0 then Exit;
    // count nb lines and minimum whitespace, also detect if first line is whitespace + CRLF
@@ -399,27 +398,20 @@ begin
       AppendToStr(result);
       Exit;
    end;
-   // account for last line
-   lastIsWhite:=leftWhite;
 
-   // ok now collect and removed indents
+   // ok now collect and remove indents
    k:=Length(result);
    SetLength(result, k+Len); // allocate for worst case
    i:=0;
    n:=Len;
 
    // do we have to remove indents?
-   if firstIsCRLF and lastIsWhite then begin
+   if firstIsCRLF then begin
       // skip first line
       repeat
          Inc(i);
       until Buffer[i]=#10;
       Inc(i);
-      // ignore last line
-      Dec(n);
-      while Buffer[n]<>#10 do
-         Dec(n);
-      if Buffer[n-1]=#13 then Dec(n);
    end;
 
    leftWhite:=(minWhite>0);
