@@ -393,8 +393,8 @@ begin
          leftWhite:=False;
       end;
    end;
-   // single line, use simple AppendToStr
-   if n=0 then begin
+   // single line with no indent, use simple AppendToStr
+   if (n=0) and (minWhite=0) then begin
       AppendToStr(result);
       Exit;
    end;
