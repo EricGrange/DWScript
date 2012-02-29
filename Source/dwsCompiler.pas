@@ -7014,10 +7014,10 @@ begin
          else if not (expecting is TFuncSymbol) then
             FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt);
          Result:=ReadTerm(isWrite, expecting);
-         if (Result is TConstExpr) or (Result is TTypeReferenceExpr) then
-            FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
-         else if (Result.Typ=nil) or not (Result.Typ is TFuncSymbol) then begin
-            ReportIncompatibleAt(hotPos, Result);
+         if (Result.Typ=nil) or not (Result.Typ is TFuncSymbol) then begin
+            if (expecting=FAnyFuncSymbol) or (Result is TConstExpr) then
+               FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
+            else ReportIncompatibleAt(hotPos, Result);
             // keep compiling
             Result.Free;
             Result:=ReadNilTerm;
