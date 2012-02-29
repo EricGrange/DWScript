@@ -713,6 +713,7 @@ type
          function GetIsDefault : Boolean; inline;
          procedure SetIsDefault(const val : Boolean); inline;
 
+         function GetCaption : UnicodeString; override;
          function GetDescription : UnicodeString; override;
 
       public
@@ -2398,9 +2399,7 @@ var
    i : Integer;
    nam : UnicodeString;
 begin
-   if Name <> '' then
-      nam:=Name
-   else nam:=cFuncKindToString[Kind]+' ';
+   nam:=cFuncKindToString[Kind]+' '+Name;
 
    if Params.Count>0 then begin
       Result:=Params[0].Typ.Caption;
@@ -2985,6 +2984,15 @@ end;
 procedure TMethodSymbol.SetIsFinal;
 begin
    Include(FAttributes, maFinal);
+end;
+
+// GetCaption
+//
+function TMethodSymbol.GetCaption : UnicodeString;
+begin
+   Result:=inherited GetCaption;
+   if IsClassMethod then
+      Result:='class '+Result;
 end;
 
 // GetDescription

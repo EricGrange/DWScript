@@ -730,7 +730,7 @@ begin
 
    sym:=prog.Table.FindSymbol('Func1', cvMagic);
    CheckEquals('function Func1(): Integer', sym.Description);
-   CheckEquals('Func1: Integer', sym.Caption);
+   CheckEquals('function Func1: Integer', sym.Caption);
    sym:=prog.Table.FindSymbol('FuncOne', cvMagic);
    CheckEquals('function FuncOne(): String', sym.Description);
    sym:=prog.Table.FindSymbol('FuncOneDotFive', cvMagic);
@@ -741,13 +741,13 @@ begin
    CheckEquals('procedure FuncException()', sym.Description);
    sym:=prog.Table.FindSymbol('FuncInc', cvMagic);
    CheckEquals('function FuncInc(v: Integer): Integer', sym.Description);
-   CheckEquals('FuncInc(Integer): Integer', sym.Caption);
+   CheckEquals('function FuncInc(Integer): Integer', sym.Caption);
    sym:=prog.Table.FindSymbol('FuncIncN', cvMagic);
    CheckEquals('function FuncIncN(v: Integer; n: Integer = 1): Integer', sym.Description);
-   CheckEquals('FuncIncN(Integer, Integer): Integer', sym.Caption);
+   CheckEquals('function FuncIncN(Integer, Integer): Integer', sym.Caption);
    sym:=prog.Table.FindSymbol('FuncClassName', cvMagic);
    CheckEquals('function FuncClassName(obj: TObject = nil): String', sym.Description);
-   CheckEquals('FuncClassName(TObject): String', sym.Caption);
+   CheckEquals('function FuncClassName(TObject): String', sym.Caption);
 
    sym:=prog.Table.FindSymbol('TAutoEnum', cvMagic);
    CheckEquals('(aeVal9, aeVal8, aeVal7, aeVal6, aeVal5, aeVal4, aeVal3, aeVal2, aeVal1)', sym.Description);

@@ -6964,6 +6964,19 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       Result:=TAnonymousFuncRefExpr.Create(FProg, GetFuncExpr(funcSym, nil));
    end;
 
+   procedure ReportIncompatibleAt(const scriptPos : TScriptPos; expr : TTypedExpr);
+   var
+      exprTyp : String;
+   begin
+      if (expr is TFuncExpr) and (TFuncExpr(expr).FuncSym<>nil) then
+         exprTyp:=TFuncExpr(expr).FuncSym.Caption
+      else if expr.Typ<>nil then
+         exprTyp:=expr.Typ.Caption
+      else exprTyp:=SYS_VOID;
+      FMsgs.AddCompilerErrorFmt(scriptPos, CPE_IncompatibleTypes,
+                                [expecting.Caption, exprTyp]);
+   end;
+
 var
    tt : TTokenType;
    nameExpr : TProgramExpr;
@@ -7002,7 +7015,13 @@ begin
             FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt);
          Result:=ReadTerm(isWrite, expecting);
          if Result is TConstExpr then
-            FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt);
+            FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
+         else if (Result.Typ=nil) or not (Result.Typ is TFuncSymbol) then begin
+            ReportIncompatibleAt(hotPos, Result);
+            // keep compiling
+            Result.Free;
+            Result:=ReadNilTerm;
+         end;
       end;
       ttTRUE :
          Result:=ReadTrue;
