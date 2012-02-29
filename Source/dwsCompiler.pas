@@ -6968,8 +6968,8 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
    var
       exprTyp : String;
    begin
-      if (expr is TFuncExpr) and (TFuncExpr(expr).FuncSym<>nil) then
-         exprTyp:=TFuncExpr(expr).FuncSym.Caption
+      if (expr is TFuncExprBase) and (TFuncExprBase(expr).FuncSym<>nil) then
+         exprTyp:=TFuncExprBase(expr).FuncSym.Caption
       else if expr.Typ<>nil then
          exprTyp:=expr.Typ.Caption
       else exprTyp:=SYS_VOID;
