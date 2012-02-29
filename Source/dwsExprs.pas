@@ -1991,7 +1991,8 @@ begin
             end;
          fkDestructor:
             begin
-               Assert(RefKind = rkObjRef);
+               if RefKind<>rkObjRef then
+                  prog.CompileMsgs.AddCompilerError(scriptPos, CPE_UnexpectedDestructor);
                if not ForceStatic and meth.IsVirtual then
                   Result := TDestructorVirtualExpr.Create(prog, scriptPos, meth, expr)
                else Result := TDestructorStaticExpr.Create(prog, scriptPos, meth, expr)

@@ -1,0 +1,2 @@
+Syntax Error: Destructor can only be invoked on instance [line: 3, column: 15]
+Syntax Error: Incompatible types: "function IntToStr(Integer): String" and "destructor Destroy" [line: 3, column: 6]
