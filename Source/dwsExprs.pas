@@ -1972,7 +1972,8 @@ begin
                   Result := TClassMethodVirtualExpr.Create(prog, scriptPos, meth, expr)
                else Result := TClassMethodStaticExpr.Create(prog, scriptPos, meth, expr)
             end else begin
-               Assert(RefKind = rkObjRef);
+               if RefKind<>rkObjRef then
+                  prog.CompileMsgs.AddCompilerError(scriptPos, CPE_StaticMethodExpected);
                if not ForceStatic and meth.IsVirtual then
                   Result := TMethodVirtualExpr.Create(prog, scriptPos, meth, expr)
                else Result := TMethodStaticExpr.Create(prog, scriptPos, meth, expr);

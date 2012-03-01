@@ -7017,7 +7017,9 @@ begin
          if expecting=nil then
             expecting:=FAnyFuncSymbol
          else if not (expecting is TFuncSymbol) then
-            FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt);
+            FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
+         else if expecting=FAnyFuncSymbol then
+            FMsgs.AddCompilerStop(hotPos, CPE_UnexpectedAt);
          Result:=ReadTerm(isWrite, expecting);
          if (Result.Typ=nil) or not (Result.Typ is TFuncSymbol) then begin
             if (expecting=FAnyFuncSymbol) or (Result is TConstExpr) then
