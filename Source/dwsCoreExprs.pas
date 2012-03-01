@@ -395,6 +395,12 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
+   // Array expressions x[bool] for static arrays
+   TStaticArrayBoolExpr = class (TStaticArrayExpr)
+      protected
+         function GetAddr(exec : TdwsExecution) : Integer; override;
+   end;
+
    // Array expressions x[index] for open arrays
    TOpenArrayExpr = class(TArrayExpr)
       protected
@@ -2883,6 +2889,22 @@ end;
 function TStaticArrayExpr.GetData(exec : TdwsExecution) : TData;
 begin
    Result:=FBaseExpr.Data[exec];
+end;
+
+// ------------------
+// ------------------ TStaticArrayBoolExpr ------------------
+// ------------------
+
+// GetAddr
+//
+function TStaticArrayBoolExpr.GetAddr(exec : TdwsExecution) : Integer;
+var
+   index : Integer;
+begin
+   if FIndexExpr.EvalAsBoolean(exec) then
+      index:=FElementSize
+   else index:=0;
+   Result:=FBaseExpr.Addr[exec]+index;
 end;
 
 // ------------------

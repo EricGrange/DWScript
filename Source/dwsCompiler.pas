@@ -3829,18 +3829,28 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
 
                end else begin
 
-                  newBaseExpr := TStaticArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
-                                                    arraySymbol.LowBound, arraySymbol.HighBound);
-                  if indexExpr.IsConstant and (FMsgs.Count=errCount) then begin
-                     idx:=indexExpr.EvalAsInteger(FExec);
-                     if idx<arraySymbol.LowBound then
-                        FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayLowerBoundExceeded, [idx])
-                     else if idx>arraySymbol.HighBound then
-                        FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayUpperBoundExceeded, [idx]);
+                  if arraySymbol.IndexType.IsOfType(FProg.TypBoolean) then begin
+
+                     newBaseExpr:=TStaticArrayBoolExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+                                                              arraySymbol.LowBound, arraySymbol.HighBound);
+
+                  end else begin
+
+                     newBaseExpr:=TStaticArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+                                                          arraySymbol.LowBound, arraySymbol.HighBound);
+                     if indexExpr.IsConstant and (FMsgs.Count=errCount) then begin
+                        idx:=indexExpr.EvalAsInteger(FExec);
+                        if idx<arraySymbol.LowBound then
+                           FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayLowerBoundExceeded, [idx])
+                        else if idx>arraySymbol.HighBound then
+                           FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayUpperBoundExceeded, [idx]);
+                     end;
+
                   end;
                end;
 
             end else begin
+
                Assert(baseType is TDynamicArraySymbol);
 
                if FTok.Test(ttCOMMA) then
@@ -5134,13 +5144,23 @@ begin
 
                // handle "array [TEnum] of" special case
 
-               if not (TTypeReferenceExpr(lowBound).Typ is TEnumerationSymbol) then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBoundNotOrdinal);
-               enumSymbol:=TEnumerationSymbol(TTypeReferenceExpr(lowBound).Typ);
-               FreeAndNil(lowBound);
+               if TTypeReferenceExpr(lowBound).Typ is TBaseBooleanSymbol then begin
 
-               min.Insert0(TConstExpr.CreateIntegerValue(FProg, enumSymbol, enumSymbol.LowBound));
-               max.Insert0(TConstExpr.CreateIntegerValue(FProg, enumSymbol, enumSymbol.HighBound));
+                  FreeAndNil(lowBound);
+                  min.Insert0(TConstExpr.CreateBooleanValue(FProg, False));
+                  max.Insert0(TConstExpr.CreateBooleanValue(FProg, True));
+
+               end else begin
+
+                  if not (TTypeReferenceExpr(lowBound).Typ is TEnumerationSymbol) then
+                     FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBoundNotOrdinal);
+                  enumSymbol:=TEnumerationSymbol(TTypeReferenceExpr(lowBound).Typ);
+                  FreeAndNil(lowBound);
+
+                  min.Insert0(TConstExpr.CreateIntegerValue(FProg, enumSymbol, enumSymbol.LowBound));
+                  max.Insert0(TConstExpr.CreateIntegerValue(FProg, enumSymbol, enumSymbol.HighBound));
+
+               end;
 
             end else begin
 

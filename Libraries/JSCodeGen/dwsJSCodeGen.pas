@@ -256,6 +256,9 @@ type
    TJSStaticArrayExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
+   TJSStaticArrayBoolExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
    TJSDynamicArrayExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -850,6 +853,7 @@ begin
    RegisterCodeGen(TArrayReverseExpr,        TdwsExprGenericCodeGen.Create([0, '.reverse();'], True));
 
    RegisterCodeGen(TStaticArrayExpr,         TJSStaticArrayExpr.Create);
+   RegisterCodeGen(TStaticArrayBoolExpr,     TJSStaticArrayBoolExpr.Create);
    RegisterCodeGen(TDynamicArrayExpr,        TJSDynamicArrayExpr.Create);
    RegisterCodeGen(TDynamicArraySetExpr,     TJSDynamicArraySetExpr.Create);
    RegisterCodeGen(TStringArrayOpExpr,       TJSStringArrayOpExpr.Create);
@@ -4367,6 +4371,29 @@ begin
 
    codeGen.WriteString(']');
 
+end;
+
+// ------------------
+// ------------------ TJSStaticArrayBoolExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSStaticArrayBoolExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TStaticArrayBoolExpr;
+   typ : TStaticArraySymbol;
+begin
+   e:=TStaticArrayBoolExpr(expr);
+
+   typ:=(e.BaseExpr.Typ as TStaticArraySymbol);
+
+   codeGen.Compile(e.BaseExpr);
+   codeGen.WriteString('[');
+
+   codeGen.Compile(e.IndexExpr);
+
+   codeGen.WriteString('?1:0]');
 end;
 
 // ------------------
