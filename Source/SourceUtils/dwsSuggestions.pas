@@ -96,6 +96,8 @@ type
          FLocalContext : TdwsSourceContext;
          FContextSymbol : TSymbol;
          FSymbolClassFilter : TSymbolClass;
+         FStaticArrayHelpers : TSymbolTable;
+         FDynArrayHelpers : TSymbolTable;
 
       protected
          function GetCode(i : Integer) : UnicodeString;
@@ -110,6 +112,11 @@ type
 
          procedure AddToList(aList : TSimpleSymbolList);
          function IsContextSymbol(sym : TSymbol) : Boolean;
+
+         function CreateHelper(const name : String; resultType : TTypeSymbol;
+                               const args : array of const) : TFuncSymbol;
+         procedure AddStaticArrayHelpers(list : TSimpleSymbolList);
+         procedure AddDynamicArrayHelpers(dyn : TDynamicArraySymbol;list : TSimpleSymbolList);
 
          procedure AddReservedWords;
          procedure AddImmediateSuggestions;
@@ -170,6 +177,8 @@ begin
    FListLookup.Free;
    FList.Free;
    FCleanupList.Clean;
+   FStaticArrayHelpers.Free;
+   FDynArrayHelpers.Free;
    inherited;
 end;
 
@@ -296,6 +305,69 @@ begin
    Result:=False;
 end;
 
+// CreateHelper
+//
+function TdwsSuggestions.CreateHelper(const name : String; resultType : TTypeSymbol;
+                                      const args : array of const) : TFuncSymbol;
+var
+   i : Integer;
+   p : TParamSymbol;
+begin
+   if resultType=nil then
+      Result:=TFuncSymbol.Create(name, fkProcedure, 0)
+   else begin
+      Result:=TFuncSymbol.Create(name, fkFunction, 0);
+      Result.Typ:=resultType;
+   end;
+   for i:=0 to (Length(args) div 2)-1 do begin
+      Assert(args[i*2].VType=vtUnicodeString);
+      Assert(args[i*2+1].VType=vtObject);
+      p:=TParamSymbol.Create(String(args[i*2].VUnicodeString), TObject(args[i*2+1].VObject) as TTypeSymbol);
+      Result.Params.AddSymbol(p);
+   end;
+end;
+
+// AddStaticArrayHelpers
+//
+procedure TdwsSuggestions.AddStaticArrayHelpers(list : TSimpleSymbolList);
+var
+   p : TdwsMainProgram;
+begin
+   if FStaticArrayHelpers=nil then begin
+      FStaticArrayHelpers:=TSymbolTable.Create;
+      p:=FProg.ProgramObject;
+      FStaticArrayHelpers.AddSymbol(CreateHelper('Low', p.TypInteger, []));
+      FStaticArrayHelpers.AddSymbol(CreateHelper('High', p.TypInteger, []));
+      FStaticArrayHelpers.AddSymbol(CreateHelper('Length', p.TypInteger, []));
+   end;
+
+   list.AddSymbolTable(FStaticArrayHelpers);
+end;
+
+// AddDynamicArrayHelpers
+//
+procedure TdwsSuggestions.AddDynamicArrayHelpers(dyn : TDynamicArraySymbol; list : TSimpleSymbolList);
+var
+   p : TdwsMainProgram;
+begin
+   if FDynArrayHelpers=nil then begin
+      p:=FProg.ProgramObject;
+      FDynArrayHelpers:=TSystemSymbolTable.Create;
+      FDynArrayHelpers.AddSymbol(CreateHelper('Add', nil, ['item', dyn.Typ]));
+      FDynArrayHelpers.AddSymbol(CreateHelper('Push', nil, ['item', dyn.Typ]));
+      FDynArrayHelpers.AddSymbol(CreateHelper('Delete', nil, ['index', dyn.Typ, 'count', p.TypInteger]));
+      FDynArrayHelpers.AddSymbol(CreateHelper('IndexOf', p.TypInteger, ['item', dyn.Typ, 'fromIndex', p.TypInteger]));
+      FDynArrayHelpers.AddSymbol(CreateHelper('Insert', nil, ['index', p.TypInteger, 'item', dyn.Typ]));
+      FDynArrayHelpers.AddSymbol(CreateHelper('SetLength', nil, ['newLength', p.TypInteger]));
+      FDynArrayHelpers.AddSymbol(CreateHelper('Clear', nil, []));
+      FDynArrayHelpers.AddSymbol(CreateHelper('Reverse', nil, []));
+      FDynArrayHelpers.AddSymbol(CreateHelper('Swap', nil, ['index1', p.TypInteger, 'index2', p.TypInteger]));
+      FDynArrayHelpers.AddSymbol(CreateHelper('Copy', nil, ['startIndex', p.TypInteger, 'count', p.TypInteger]));
+   end;
+
+   list.AddSymbolTable(FDynArrayHelpers);
+end;
+
 // AddReservedWords
 //
 procedure TdwsSuggestions.AddReservedWords;
@@ -375,13 +447,16 @@ begin
 
             list.AddSymbolTable(TUnitSymbol(FPreviousSymbol).Main.Table);
 
-         end else if FPreviousSymbol is TArraySymbol then begin
+         end else if FPreviousSymbol.Typ is TArraySymbol then begin
 
-            if FPreviousSymbol is TDynamicArraySymbol then begin
-               // todo
-            end else begin
-               // todo
+            AddStaticArrayHelpers(list);
+            if FPreviousSymbol.Typ is TDynamicArraySymbol then begin
+               AddDynamicArrayHelpers(TDynamicArraySymbol(FPreviousSymbol.Typ), list);
             end;
+
+         end else if FPreviousSymbol.Typ is TBaseStringSymbol then begin
+
+            AddStaticArrayHelpers(list);
 
          end else FPreviousSymbol:=nil;
 

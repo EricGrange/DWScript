@@ -23,6 +23,9 @@ type
          procedure UnitDotTest;
          procedure MetaClassTest;
          procedure EmptyOptimizedLocalTable;
+         procedure StringTest;
+         procedure StaticArrayTest;
+         procedure DynamicArrayTest;
    end;
 
 // ------------------------------------------------------------------
@@ -249,7 +252,84 @@ begin
 
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
 
-   FCompiler.Config.CompilerOptions:=FCompiler.Config.CompilerOptions+[];
+   FCompiler.Config.CompilerOptions:=FCompiler.Config.CompilerOptions-[coOptimize];
+end;
+
+// StringTest
+//
+procedure TSourceUtilsTests.StringTest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile('var s:='''';'#13#10's.h');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+
+   CheckTrue(sugg.Count=3, 's.');
+   CheckEquals('High', sugg.Code[0], 's. 0');
+   CheckEquals('Length', sugg.Code[1], 's. 1');
+   CheckEquals('Low', sugg.Code[2], 's. 2');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 4);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+   CheckTrue(sugg.Count=1, 's.h');
+   CheckEquals('High', sugg.Code[0], 's.h 0');
+end;
+
+// StaticArrayTest
+//
+procedure TSourceUtilsTests.StaticArrayTest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile('var s : array [0..2] of Integer;'#13#10's.h');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+
+   CheckTrue(sugg.Count=3, 's.');
+   CheckEquals('High', sugg.Code[0], 's. 0');
+   CheckEquals('Length', sugg.Code[1], 's. 1');
+   CheckEquals('Low', sugg.Code[2], 's. 2');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 4);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+   CheckTrue(sugg.Count=1, 's.h');
+   CheckEquals('High', sugg.Code[0], 's.h 0');
+end;
+
+// DynamicArrayTest
+//
+procedure TSourceUtilsTests.DynamicArrayTest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile('var d : array of Integer;'#13#10'd.');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+
+   CheckTrue(sugg.Count=13, 'd.');
+   CheckEquals('Add', sugg.Code[0], 'd. 0');
+   CheckEquals('Clear', sugg.Code[1], 'd. 1');
+   CheckEquals('Copy', sugg.Code[2], 'd. 2');
+   CheckEquals('Delete', sugg.Code[3], 'd. 3');
+   CheckEquals('High', sugg.Code[4], 'd. 4');
+   CheckEquals('IndexOf', sugg.Code[5], 'd. 5');
+   CheckEquals('Insert', sugg.Code[6], 'd. 6');
+   CheckEquals('Length', sugg.Code[7], 'd. 7');
+   CheckEquals('Low', sugg.Code[8], 'd. 8');
+   CheckEquals('Push', sugg.Code[9], 'd. 9');
+   CheckEquals('Reverse', sugg.Code[10], 'd. 10');
+   CheckEquals('SetLength', sugg.Code[11], 'd. 11');
+   CheckEquals('Swap', sugg.Code[12], 'd. 12');
 end;
 
 // ------------------------------------------------------------------
