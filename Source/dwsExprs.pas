@@ -1245,7 +1245,7 @@ type
    // Call of a method
    TMethodExpr = class abstract (TFuncExpr)
       private
-         FBaseExpr : TDataExpr;
+         FBaseExpr : TTypedExpr;
          FSelfAddr : Integer;
 
       protected
@@ -1254,14 +1254,14 @@ type
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-                            BaseExpr: TDataExpr);
+                            BaseExpr: TTypedExpr);
          destructor Destroy; override;
 
          function MethSym : TMethodSymbol; inline;
 
          function ChangeFuncSymbol(aProg: TdwsProgram; newFuncSym : TFuncSymbol) : TFuncExprBase; override;
 
-         property BaseExpr : TDataExpr read FBaseExpr;
+         property BaseExpr : TTypedExpr read FBaseExpr;
    end;
 
    // Call of a record method
@@ -1313,7 +1313,7 @@ type
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-                            Base: TDataExpr);
+                            Base: TTypedExpr);
    end;
 
    // Call to a virtual constructor
@@ -1325,7 +1325,7 @@ type
          function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-                            Base: TDataExpr);
+                            Base: TTypedExpr);
          property ExternalObject: TObject read FExternalObject write FExternalObject;
    end;
 
@@ -1334,7 +1334,7 @@ type
          function PostCall(exec : TdwsExecution) : Variant; override;
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-                            BaseExpr: TDataExpr);
+                            BaseExpr: TTypedExpr);
    end;
 
    TConstructorVirtualObjExpr = class(TMethodVirtualExpr)
@@ -1342,7 +1342,7 @@ type
          function PostCall(exec : TdwsExecution): Variant; override;
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
-                            Base: TDataExpr);
+                            Base: TTypedExpr);
    end;
 
    TDestructorStaticExpr = class(TMethodStaticExpr)
@@ -1743,7 +1743,7 @@ type
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
                         const scriptObj : IScriptObj; structSym : TStructuredTypeSymbol;
                         forceStatic : Boolean = False): TFuncExpr;
-function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
+function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; expr : TTypedExpr; RefKind: TRefKind;
                           const scriptPos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
 
 function RawByteStringToScriptString(const s : RawByteString) : UnicodeString;
@@ -1942,7 +1942,7 @@ end;
 
 // CreateMethodExpr
 //
-function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; expr: TDataExpr; RefKind: TRefKind;
+function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; expr: TTypedExpr; RefKind: TRefKind;
                           const scriptPos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
 begin
    // Create the correct TExpr for a method symbol
@@ -4656,7 +4656,7 @@ end;
 constructor TFuncPointer.Create(exec : TdwsExecution; funcExpr : TFuncExprBase);
 var
    prog : TdwsMainProgram;
-   baseExpr : TDataExpr;
+   baseExpr : TTypedExpr;
    scriptObj : IScriptObj;
    classSym : TClassSymbol;
    magicFuncSym : TMagicFuncSymbol;
@@ -5327,7 +5327,7 @@ end;
 // Create
 //
 constructor TMethodExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-  Func: TMethodSymbol; BaseExpr: TDataExpr);
+  Func: TMethodSymbol; BaseExpr: TTypedExpr);
 begin
    inherited Create(Prog, Pos, Func);
    FBaseExpr:=BaseExpr;
@@ -5524,7 +5524,7 @@ end;
 // ------------------
 
 constructor TConstructorStaticExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-   Func: TMethodSymbol; Base: TDataExpr);
+   Func: TMethodSymbol; Base: TTypedExpr);
 begin
   inherited Create(Prog, Pos, Func, Base);
   if Base.Typ is TClassOfSymbol then
@@ -5565,7 +5565,7 @@ end;
 // ------------------
 
 constructor TConstructorVirtualExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-   Func: TMethodSymbol; Base: TDataExpr);
+   Func: TMethodSymbol; Base: TTypedExpr);
 begin
   inherited Create(Prog, Pos, Func, Base);
   FTyp := Base.Typ.Typ;
@@ -7667,7 +7667,7 @@ end;
 // ------------------
 
 constructor TConstructorStaticObjExpr.Create(Prog: TdwsProgram;
-  const Pos: TScriptPos; Func: TMethodSymbol; BaseExpr: TDataExpr);
+  const Pos: TScriptPos; Func: TMethodSymbol; BaseExpr: TTypedExpr);
 begin
   inherited Create(Prog,Pos,Func,BaseExpr);
   Typ := BaseExpr.Typ;
@@ -7683,7 +7683,7 @@ end;
 // ------------------
 
 constructor TConstructorVirtualObjExpr.Create(Prog: TdwsProgram;
-  const Pos: TScriptPos; Func: TMethodSymbol; Base: TDataExpr);
+  const Pos: TScriptPos; Func: TMethodSymbol; Base: TTypedExpr);
 begin
   inherited Create(Prog,Pos,Func,Base);
   Typ := Base.Typ;

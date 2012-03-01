@@ -489,7 +489,7 @@ type
    // Field expression: obj.Field
    TFieldExpr = class(TPosDataExpr)
       protected
-         FObjectExpr : TDataExpr;
+         FObjectExpr : TTypedExpr;
          FFieldAddr : Integer;
 
          function GetAddr(exec : TdwsExecution) : Integer; override;
@@ -500,7 +500,7 @@ type
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TTypeSymbol;
-                           FieldSym: TFieldSymbol; ObjExpr: TDataExpr);
+                           FieldSym: TFieldSymbol; ObjExpr: TTypedExpr);
          destructor Destroy; override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
@@ -508,7 +508,7 @@ type
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
 
-         property ObjectExpr : TDataExpr read FObjectExpr;
+         property ObjectExpr : TTypedExpr read FObjectExpr;
          property FieldAddr : Integer read FFieldAddr;
    end;
 
@@ -3424,7 +3424,7 @@ end;
 // Create
 //
 constructor TFieldExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TTypeSymbol;
-                              FieldSym: TFieldSymbol; ObjExpr: TDataExpr);
+                              FieldSym: TFieldSymbol; ObjExpr: TTypedExpr);
 begin
    inherited Create(Prog, Pos, Typ);
    FObjectExpr := ObjExpr;

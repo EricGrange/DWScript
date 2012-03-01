@@ -377,7 +377,7 @@ type
          function ReadExprInConditions(var left : TTypedExpr) : TInOpExpr;
          function ReadExternalVar(sym : TExternalVarSymbol; isWrite : Boolean) : TFuncExpr;
          function ReadField(const scriptPos : TScriptPos; selfSym : TDataSymbol;
-                         fieldSym : TFieldSymbol; varExpr : TDataExpr) : TDataExpr;
+                         fieldSym : TFieldSymbol; varExpr : TTypedExpr) : TDataExpr;
 
          function ReadFor : TForExpr;
          function ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
@@ -391,10 +391,10 @@ type
          procedure CollectMethodOverloads(methSym : TMethodSymbol; overloads : TFuncSymbolList);
          function ReadSelfMethOverloaded(methSym : TMethodSymbol; isWrite : Boolean;
                                          expecting : TTypeSymbol = nil) : TTypedExpr;
-         function ReadMethOverloaded(methSym : TMethodSymbol; instanceExpr : TDataExpr;
+         function ReadMethOverloaded(methSym : TMethodSymbol; instanceExpr : TTypedExpr;
                                      const scriptPos : TScriptPos;
                                      expecting : TTypeSymbol = nil) : TTypedExpr;
-         function ReadStaticMethOverloaded(methSym : TMethodSymbol; metaExpr : TDataExpr;
+         function ReadStaticMethOverloaded(methSym : TMethodSymbol; metaExpr : TTypedExpr;
                                            const scriptPos : TScriptPos;
                                            expecting : TTypeSymbol = nil) : TTypedExpr;
 
@@ -412,11 +412,11 @@ type
          function ReadSelfMethod(methodSym : TMethodSymbol; isWrite : Boolean;
                                  expecting : TTypeSymbol = nil;
                                  overloads : TFuncSymbolList = nil) : TTypedExpr;
-         function ReadMethod(methodSym : TMethodSymbol; instanceExpr : TDataExpr;
+         function ReadMethod(methodSym : TMethodSymbol; instanceExpr : TTypedExpr;
                              const scriptPos : TScriptPos;
                              expecting : TTypeSymbol = nil;
                              overloads : TFuncSymbolList = nil) : TTypedExpr;
-         function ReadStaticMethod(methodSym : TMethodSymbol; metaExpr : TDataExpr;
+         function ReadStaticMethod(methodSym : TMethodSymbol; metaExpr : TTypedExpr;
                                    const scriptPos : TScriptPos;
                                    expecting : TTypeSymbol = nil;
                                    overloads : TFuncSymbolList = nil) : TTypedExpr;
@@ -473,12 +473,12 @@ type
          function ReadOperatorDecl : TOperatorSymbol;
          function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
          function ReadPropertyDecl(structSym : TStructuredTypeSymbol; aVisibility : TdwsVisibility) : TPropertySymbol;
-         function ReadPropertyExpr(var expr : TDataExpr; propertySym : TPropertySymbol; isWrite: Boolean) : TProgramExpr;
-         function ReadPropertyReadExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TTypedExpr;
-         function ReadPropertyWriteExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TProgramExpr;
-         function ReadPropertyArrayAccessor(var expr : TDataExpr; propertySym : TPropertySymbol;
-                                         typedExprList : TTypedExprList;
-                                         const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExpr;
+         function ReadPropertyExpr(expr : TTypedExpr; propertySym : TPropertySymbol; isWrite: Boolean) : TProgramExpr;
+         function ReadPropertyReadExpr(expr : TTypedExpr; propertySym : TPropertySymbol) : TTypedExpr;
+         function ReadPropertyWriteExpr(expr : TTypedExpr; propertySym : TPropertySymbol) : TProgramExpr;
+         function ReadPropertyArrayAccessor(expr : TTypedExpr; propertySym : TPropertySymbol;
+                                            typedExprList : TTypedExprList;
+                                            const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExpr;
          function ReadRecord(const typeName : UnicodeString) : TRecordSymbol;
          function ReadRaise : TRaiseBaseExpr;
          function ReadRepeat : TNoResultExpr;
@@ -523,7 +523,7 @@ type
          procedure LeaveLoop;
 
          function GetFuncExpr(funcSym : TFuncSymbol; codeExpr : TDataExpr = nil) : TFuncExprBase;
-         function GetMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
+         function GetMethodExpr(meth: TMethodSymbol; Expr: TTypedExpr; RefKind: TRefKind;
                              const Pos: TScriptPos; ForceStatic : Boolean): TFuncExpr;
 
          procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol);
@@ -873,7 +873,7 @@ end;
 
 // GetMethodExpr
 //
-function TdwsCompiler.GetMethodExpr(meth: TMethodSymbol; Expr: TDataExpr; RefKind: TRefKind;
+function TdwsCompiler.GetMethodExpr(meth: TMethodSymbol; Expr: TTypedExpr; RefKind: TRefKind;
              const Pos: TScriptPos; ForceStatic : Boolean): TFuncExpr;
 begin
    Result:=CreateMethodExpr(FProg, meth, Expr, RefKind, Pos, ForceStatic);
@@ -3573,12 +3573,12 @@ end;
 // ReadField
 //
 function TdwsCompiler.ReadField(const scriptPos : TScriptPos; selfSym : TDataSymbol;
-                                fieldSym : TFieldSymbol; varExpr : TDataExpr) : TDataExpr;
+                                fieldSym : TFieldSymbol; varExpr : TTypedExpr) : TDataExpr;
 begin
    if fieldSym.StructSymbol is TRecordSymbol then begin
       if varExpr=nil then
          varExpr:=GetVarParamExpr(selfSym as TVarParamSymbol);
-      Result:=TRecordExpr.Create(FProg, scriptPos, varExpr, fieldSym)
+      Result:=TRecordExpr.Create(FProg, scriptPos, (varExpr as TDataExpr), fieldSym)
    end else begin
       if varExpr=nil then
          varExpr:=GetVarExpr(selfSym);
@@ -3587,7 +3587,7 @@ begin
 end;
 
 // Parses statements like "property[i, j, k] := expr" and "expr := property[i, j, k]"
-function TdwsCompiler.ReadPropertyExpr(var Expr: TDataExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TProgramExpr;
+function TdwsCompiler.ReadPropertyExpr(Expr: TTypedExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TProgramExpr;
 begin
    if IsWrite then
       Result:=ReadPropertyWriteExpr(expr, propertySym)
@@ -3596,7 +3596,7 @@ end;
 
 // ReadPropertyReadExpr
 //
-function TdwsCompiler.ReadPropertyReadExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TTypedExpr;
+function TdwsCompiler.ReadPropertyReadExpr(expr : TTypedExpr; propertySym : TPropertySymbol) : TTypedExpr;
 var
    sym : TSymbol;
    aPos : TScriptPos;
@@ -3640,7 +3640,7 @@ end;
 
 // ReadPropertyWriteExpr
 //
-function TdwsCompiler.ReadPropertyWriteExpr(var expr : TDataExpr; propertySym : TPropertySymbol) : TProgramExpr;
+function TdwsCompiler.ReadPropertyWriteExpr(expr : TTypedExpr; propertySym : TPropertySymbol) : TProgramExpr;
 var
    sym : TSymbol;
    aPos : TScriptPos;
@@ -3729,7 +3729,7 @@ end;
 
 // ReadPropertyArrayAccessor
 //
-function TdwsCompiler.ReadPropertyArrayAccessor(var expr : TDataExpr; propertySym : TPropertySymbol;
+function TdwsCompiler.ReadPropertyArrayAccessor(expr : TTypedExpr; propertySym : TPropertySymbol;
       typedExprList : TTypedExprList; const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExpr;
 var
    i : Integer;
@@ -3747,8 +3747,6 @@ begin
    end else Result:=GetMethodExpr(TMethodSymbol(sym), expr, rkObjRef, scriptPos, False);
 
    try
-      expr := nil; // is part of Result
-
       // Add array indices (if any)
       for i:=0 to typedExprList.Count-1 do
          Result.AddArg(typedExprList.Expr[i]);
@@ -3885,6 +3883,7 @@ var
    baseType : TTypeSymbol;
    meth : TMethodSymbol;
    dataExpr : TDataExpr;
+   baseExpr : TTypedExpr;
 begin
    Result := Expr;
    try
@@ -3912,19 +3911,23 @@ begin
 
                   if member is TMethodSymbol then begin
 
-                     if TMethodSymbol(member).IsOverloaded then
-                        Result:=ReadMethOverloaded(TMethodSymbol(member), TDataExpr(Result), symPos, expecting)
-                     else Result:=ReadMethod(TMethodSymbol(member), TDataExpr(Result), symPos, expecting);
+                     baseExpr:=(Result as TTypedExpr);
+                     Result:=nil;
+                     meth:=TMethodSymbol(member);
+                     if meth.IsOverloaded then
+                        Result:=ReadMethOverloaded(meth, baseExpr, symPos, expecting)
+                     else Result:=ReadMethod(meth, baseExpr, symPos, expecting);
 
                   end else if member is TFieldSymbol then begin
 
                      Result:=ReadField(FTok.HotPos, nil, TFieldSymbol(member), TDataExpr(Result));
 
-                  end else if member is TPropertySymbol then
+                  end else if member is TPropertySymbol then begin
 
-                     Result := ReadPropertyExpr(TDataExpr(Result), TPropertySymbol(member), IsWrite)
+                     Assert(Result is TTypedExpr);
+                     Result := ReadPropertyExpr(TTypedExpr(Result), TPropertySymbol(member), IsWrite)
 
-                  else if member is TConstSymbol then begin
+                  end else if member is TConstSymbol then begin
 
                      FreeAndNil(Result);
                      Result := ReadConstName(TConstSymbol(member), IsWrite);
@@ -3941,10 +3944,12 @@ begin
                   // Class method
                   if member is TMethodSymbol then begin
 
+                     baseExpr:=(Result as TTypedExpr);
+                     Result:=nil;
                      meth:=TMethodSymbol(member);
                      if meth.IsOverloaded then
-                        Result:=ReadStaticMethOverloaded(meth, TDataExpr(Result), symPos, expecting)
-                     else Result:=ReadStaticMethod(meth, TDataExpr(Result), symPos, expecting);
+                        Result:=ReadStaticMethOverloaded(meth, baseExpr, symPos, expecting)
+                     else Result:=ReadStaticMethod(meth, baseExpr, symPos, expecting);
 
                   // Static property
                   end else if member is TPropertySymbol then
@@ -4553,7 +4558,7 @@ end;
 
 // ReadMethod
 //
-function TdwsCompiler.ReadMethod(methodSym : TMethodSymbol; instanceExpr : TDataExpr;
+function TdwsCompiler.ReadMethod(methodSym : TMethodSymbol; instanceExpr : TTypedExpr;
                                  const scriptPos : TScriptPos;
                                  expecting : TTypeSymbol = nil;
                                  overloads : TFuncSymbolList = nil) : TTypedExpr;
@@ -4568,7 +4573,7 @@ end;
 
 // ReadStaticMethod
 //
-function TdwsCompiler.ReadStaticMethod(methodSym : TMethodSymbol; metaExpr : TDataExpr;
+function TdwsCompiler.ReadStaticMethod(methodSym : TMethodSymbol; metaExpr : TTypedExpr;
                                        const scriptPos : TScriptPos;
                                        expecting : TTypeSymbol = nil;
                                        overloads : TFuncSymbolList = nil) : TTypedExpr;
@@ -4646,7 +4651,7 @@ end;
 
 // ReadMethOverloaded
 //
-function TdwsCompiler.ReadMethOverloaded(methSym : TMethodSymbol; instanceExpr : TDataExpr;
+function TdwsCompiler.ReadMethOverloaded(methSym : TMethodSymbol; instanceExpr : TTypedExpr;
                                          const scriptPos : TScriptPos;
                                          expecting : TTypeSymbol = nil) : TTypedExpr;
 var
@@ -4663,7 +4668,7 @@ end;
 
 // ReadStaticMethOverloaded
 //
-function TdwsCompiler.ReadStaticMethOverloaded(methSym : TMethodSymbol; metaExpr : TDataExpr;
+function TdwsCompiler.ReadStaticMethOverloaded(methSym : TMethodSymbol; metaExpr : TTypedExpr;
                                                const scriptPos : TScriptPos;
                                                expecting : TTypeSymbol = nil) : TTypedExpr;
 var
