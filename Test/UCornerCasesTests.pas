@@ -29,6 +29,7 @@ type
          procedure IncludeViaFileRestricted;
          procedure StackMaxRecursion;
          procedure StackOverFlow;
+         procedure StackOverFlowOnFuncPtr;
          procedure Assertions;
          procedure ScriptVersion;
          procedure ExecuteParams;
@@ -446,6 +447,34 @@ begin
                exec.Msgs.AsInfo, 'stack overflow');
 
    FCompiler.Config.MaxDataSize:=0;
+end;
+
+// StackOverFlowOnFuncPtr
+//
+procedure TCornerCasesTests.StackOverFlowOnFuncPtr;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   buf, buf2 : String;
+begin
+   FCompiler.Config.MaxRecursionDepth:=1500;
+   FCompiler.Config.CompilerOptions:=[coSymbolDictionary, coContextMap, coOptimize];
+
+   prog:=FCompiler.Compile( 'type TObj = Class'#13#10
+                           +' Procedure Proc;'#13#10
+                           +' Begin'#13#10
+                           +'  var p := @Proc;'#13#10
+                           +'  p;'#13#10
+                           +' End;'#13#10
+                           +'End;'#13#10
+                           +'TObj.Create.Proc;'#13#10);
+   CheckEquals('', prog.Msgs.AsInfo, 'compile');
+   exec:=prog.Execute;
+   buf:='TObj.Proc [line: 5, column: 4]'#13#10' [line: 8, column: 13]'#13#10;
+   buf2:=exec.Msgs.AsInfo;
+   CheckEquals(buf, Copy(buf2, Length(buf2)-Length(buf)+1), 'stack overflow');
+
+   FCompiler.Config.MaxRecursionDepth:=1024;
 end;
 
 // Assertions

@@ -992,6 +992,7 @@ type
    TFuncExpr = class(TFuncExprBase)
       private
          FPushExprs : PPushOperatorArray;
+         FCallerID : TFuncExpr;
          FPushExprsCount : SmallInt;
          FLevel : SmallInt;
 
@@ -1014,6 +1015,8 @@ type
          function GetAddr(exec : TdwsExecution) : Integer; override;
          procedure Initialize(prog : TdwsProgram); override;
          function IsWritable : Boolean; override;
+
+         property CallerID : TFuncExpr read FCallerID write FCallerID;
    end;
 
    IFuncPointer = interface
@@ -4482,6 +4485,7 @@ end;
 constructor TFuncExpr.Create(prog : TdwsProgram; const pos : TScriptPos; func : TFuncSymbol);
 begin
    inherited Create(Prog, Pos, Func);
+   FCallerID:=Self;
    FLevel:=Prog.Level;
    FResultAddr:=-1;
 end;
@@ -4533,7 +4537,7 @@ begin
          EvalPushExprs(exec);
 
          oldBasePointer:=exec.Stack.SwitchFrame(FLevel);
-         TdwsProgramExecution(exec).EnterRecursion(Self);
+         TdwsProgramExecution(exec).EnterRecursion(CallerID);
          try
             ICallable(func.Executable).Call(TdwsProgramExecution(exec), func);
          finally
@@ -4859,6 +4863,7 @@ begin
       for i:=0 to FArgs.Count-1 do
          funcExpr.AddArg(FArgs.ExprBase[i] as TTypedExpr);
       funcExpr.AddPushExprs((exec as TdwsProgramExecution).Prog);
+      funcExpr.CallerID:=Self;
 
       try
          funcExprBase.EvalAsVariant(exec, Result);
