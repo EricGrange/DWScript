@@ -34,8 +34,17 @@ type
          function DoNeedUniqueName(symbol : TSymbol; tryCount : Integer; canObfuscate : Boolean) : String; override;
    end;
 
+   TSimpleSymbolHash = class (TSimpleObjectHash<TSymbol>)
+   end;
+
+   TSimpleProgramHash = class (TSimpleObjectHash<TdwsProgram>)
+   end;
+
+
    TdwsJSCodeGen = class (TdwsCodeGen)
       private
+         FLocalVarScannedProg : TSimpleProgramHash;
+         FAllLocalVarSymbols : TSimpleSymbolHash;
          FLocalVarParams : TDataSymbolList;
          FLocalVarParamsStack : TSimpleStack<TDataSymbolList>;
          FDeclaredLocalVars : TDataSymbolList;
@@ -43,6 +52,8 @@ type
          FMainBodyName : String;
 
       protected
+         procedure CollectLocalVars(proc : TdwsProgram);
+         procedure CollectFuncSymLocalVars(funcSym : TFuncSymbol);
          procedure CollectLocalVarParams(expr : TExprBase);
          procedure CollectInitExprLocalVars(initExpr : TBlockExprBase);
 
@@ -71,6 +82,8 @@ type
       public
          constructor Create; override;
          destructor Destroy; override;
+
+         procedure Clear; override;
 
          function  SymbolMappedName(sym : TSymbol; scope : TdwsCodeGenSymbolScope) : String; override;
 
@@ -552,6 +565,9 @@ const
 constructor TdwsJSCodeGen.Create;
 begin
    inherited;
+   FLocalVarScannedProg:=TSimpleProgramHash.Create;
+   FAllLocalVarSymbols:=TSimpleSymbolHash.Create;
+
    FLocalVarParams:=TDataSymbolList.Create;
    FLocalVarParamsStack:=TSimpleStack<TDataSymbolList>.Create;
 
@@ -918,6 +934,9 @@ end;
 //
 destructor TdwsJSCodeGen.Destroy;
 begin
+   FLocalVarScannedProg.Free;
+   FAllLocalVarSymbols.Free;
+
    while FLocalVarParamsStack.Count>0 do begin
       FLocalVarParamsStack.Peek.Free;
       FLocalVarParamsStack.Pop;
@@ -932,6 +951,15 @@ begin
    FDeclaredLocalVarsStack.Free;
    FDeclaredLocalVars.Free;
 
+   inherited;
+end;
+
+// Clear
+//
+procedure TdwsJSCodeGen.Clear;
+begin
+   FLocalVarScannedProg.Clear;
+   FAllLocalVarSymbols.Clear;
    inherited;
 end;
 
@@ -1609,6 +1637,40 @@ begin
    dwsJSON.WriteJavaScriptString(Output, s);
 end;
 
+// CollectLocalVars
+//
+procedure TdwsJSCodeGen.CollectLocalVars(proc : TdwsProgram);
+begin
+   CollectInitExprLocalVars(proc.InitExpr);
+
+   CollectLocalVarParams(proc.InitExpr);
+   CollectLocalVarParams(proc.Expr);
+end;
+
+// CollectFuncSymLocalVars
+//
+procedure TdwsJSCodeGen.CollectFuncSymLocalVars(funcSym : TFuncSymbol);
+var
+   p : TdwsProgram;
+   s : TObject;
+   exec : IExecutable;
+begin
+   if (funcSym.ClassType=TSourceFuncSymbol) or (funcSym.ClassType=TSourceMethodSymbol) then begin
+      exec:=funcSym.Executable;
+      if exec<>nil then begin
+         s:=exec.GetSelf;
+         if s is TdwsProgram then begin
+            p:=TdwsProgram(s);
+            if FLocalVarScannedProg.Add(p) then begin
+               EnterScope(funcSym);
+               CollectLocalVars(p);
+               LeaveScope;
+            end;
+         end;
+      end;
+   end;
+end;
+
 // CollectLocalVarParams
 //
 procedure TdwsJSCodeGen.CollectLocalVarParams(expr : TExprBase);
@@ -1622,8 +1684,15 @@ begin
          i : Integer;
          right : TExprBase;
       begin
+         if expr is TFuncExprBase then begin
+            funcSym:=TFuncExprBase(expr).FuncSym;
+            if funcSym<>nil then
+               CollectFuncSymLocalVars(funcSym);
+         end;
+
          if (expr is TVarExpr) and (parent is TFuncExprBase) then begin
             funcSym:=TFuncExprBase(parent).FuncSym;
+
             i:=parent.IndexOfSubExpr(expr);
             if parent is TFuncPtrExpr then begin
                if i=0 then
@@ -1659,8 +1728,10 @@ begin
             // else not supported yet
             Exit;
          end;
-         if FLocalVarParams.IndexOf(varSym)<0 then
+         if FLocalVarParams.IndexOf(varSym)<0 then begin
             FLocalVarParams.Add(varSym);
+            FAllLocalVarSymbols.Add(varSym);
+         end;
       end);
 end;
 
@@ -1706,10 +1777,7 @@ begin
    FDeclaredLocalVarsStack.Push(FDeclaredLocalVars);
    FDeclaredLocalVars:=TDataSymbolList.Create;
 
-   CollectInitExprLocalVars(proc.InitExpr);
-
-   CollectLocalVarParams(proc.InitExpr);
-   CollectLocalVarParams(proc.Expr);
+   CollectLocalVars(proc);
 end;
 
 // LeaveContext
@@ -3871,12 +3939,13 @@ class function TJSExprCodeGen.IsLocalVarParam(codeGen : TdwsCodeGen; sym : TData
 var
    i : Integer;
 begin
-   Result:=(TdwsJSCodeGen(codeGen).FLocalVarParams.IndexOf(sym)>=0);
-   if Result then Exit;
-   for i:=0 to TdwsJSCodeGen(codeGen).FLocalVarParamsStack.Count-1 do begin
-      Result:=(TdwsJSCodeGen(codeGen).FLocalVarParamsStack.Items[i].IndexOf(sym)>=0);
-      if Result then Exit;
-   end;
+//   Result:=(TdwsJSCodeGen(codeGen).FLocalVarParams.IndexOf(sym)>=0);
+   Result:=(TdwsJSCodeGen(codeGen).FAllLocalVarSymbols.Contains(sym));
+//   if Result then Exit;
+//   for i:=0 to TdwsJSCodeGen(codeGen).FLocalVarParamsStack.Count-1 do begin
+//      Result:=(TdwsJSCodeGen(codeGen).FLocalVarParamsStack.Items[i].IndexOf(sym)>=0);
+//      if Result then Exit;
+//   end;
 end;
 
 // WriteLocationString
@@ -4385,8 +4454,6 @@ var
    typ : TStaticArraySymbol;
 begin
    e:=TStaticArrayBoolExpr(expr);
-
-   typ:=(e.BaseExpr.Typ as TStaticArraySymbol);
 
    codeGen.Compile(e.BaseExpr);
    codeGen.WriteString('[');
