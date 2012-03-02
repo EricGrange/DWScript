@@ -395,7 +395,7 @@ const
       (Name : 'IntToBin';
        Code : 'function IntToBin(v,d) { var r=v.toString(2).toUpperCase(); while (r.length<d) r="0"+r; return r }'),
       (Name : 'IntToHex';
-       Code : 'function IntToHex(v,d) { var hex=v.toString(16).toUpperCase(); return "00000000".substr(0, 8-d-hex.length)+hex }'),
+       Code : 'function IntToHex(v,d) { var hex=v.toString(16).toUpperCase(); return "00000000".substr(0, d-hex.length)+hex }'),
       (Name : 'IntToStr';
        Code : 'function IntToStr(i) { return i.toString() }'),
       (Name : 'IsDelimiter';
