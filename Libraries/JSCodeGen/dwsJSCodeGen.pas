@@ -3936,8 +3936,8 @@ end;
 // IsLocalVarParam
 //
 class function TJSExprCodeGen.IsLocalVarParam(codeGen : TdwsCodeGen; sym : TDataSymbol) : Boolean;
-var
-   i : Integer;
+//var
+//   i : Integer;
 begin
 //   Result:=(TdwsJSCodeGen(codeGen).FLocalVarParams.IndexOf(sym)>=0);
    Result:=(TdwsJSCodeGen(codeGen).FAllLocalVarSymbols.Contains(sym));
@@ -4451,7 +4451,6 @@ end;
 procedure TJSStaticArrayBoolExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TStaticArrayBoolExpr;
-   typ : TStaticArraySymbol;
 begin
    e:=TStaticArrayBoolExpr(expr);
 
