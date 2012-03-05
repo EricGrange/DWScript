@@ -434,6 +434,8 @@ type
   TdwsArrays = class(TdwsCollection)
   protected
     class function GetSymbolClass : TdwsSymbolClass; override;
+  public
+    function AddArray: TdwsArray;
   end;
 
   TdwsArraysClass = class of TdwsArrays;
@@ -4102,6 +4104,11 @@ end;
 class function TdwsArrays.GetSymbolClass: TdwsSymbolClass;
 begin
   Result := TdwsArray;
+end;
+
+function TdwsArrays.AddArray: TdwsArray;
+begin
+  Result := TdwsArray(inherited Add);
 end;
 
 { TdwsRecords }

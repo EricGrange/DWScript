@@ -20,7 +20,7 @@ unit dwsRTTIExposer;
 
 interface
 
-uses Classes, SysUtils, RTTI, TypInfo, dwsComp, dwsSymbols, dwsExprs, dwsStrings;
+uses Classes, SysUtils, RTTI, TypInfo, dwsComp, dwsSymbols, dwsExprs, dwsStrings, dwsStack;
 
 type
 
@@ -77,6 +77,9 @@ type
 
          function ExposeRTTIInterface(intf : TRttiInterfaceType;
                                       const options : TdwsRTTIExposerOptions) : TdwsInterface;
+
+         function ExposeRTTIDynamicArray(intf : TRttiDynamicArrayType;
+                                      const options : TdwsRTTIExposerOptions) : TdwsArray;
 
          procedure DoStandardCleanUp(externalObject: TObject);
 
@@ -192,6 +195,12 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+const
+  cTYPEKIND_NAMES: array[TTypeKind] of string = (
+    'Unknown', 'Integer', 'Char', 'Enumeration', 'Float',
+    'String', 'Set', 'Class', 'Method', 'WChar', 'LString', 'WString',
+    'Variant', 'Array', 'Record', 'Interface', 'Int64', 'DynArray', 'UString',
+    'ClassRef', 'Pointer', 'Procedure');
 
 // ------------------
 // ------------------ dwsPublished ------------------
@@ -291,35 +300,59 @@ begin
       Result:=ExposeRTTIRecord(TRttiRecordType(typ), options)
    else if typ is TRttiInterfaceType then
       Result:=ExposeRTTIInterface(TRttiInterfaceType(typ), options)
+   else if typ is TRttiDynamicArrayType then
+      Result := ExposeRTTIDynamicArray(TRttiDynamicArrayType(typ), options)
    else raise Exception.CreateFmt('Expose unsupported for %s', [typ.ClassName]);
 end;
 
 // RTTITypeToScriptType
 //
 class function TdwsRTTIExposer.RTTITypeToScriptType(const aType : TRTTIType) : String;
+var
+  LDynType: string;
+  LTypeKind: TTypeKind;
 begin
    if aType<>nil then begin
       case aType.TypeKind of
          tkInteger, tkInt64 :
-            Result:='Integer';
+            Result := SYS_INTEGER;
          tkChar, tkString, tkUString, tkWChar, tkLString, tkWString :
-            Result:='String';
+            Result := SYS_STRING;
          tkFloat :
-            Result:='Float';
+            Result := SYS_FLOAT;
          tkVariant :
-            Result:='Variant';
+            Result := SYS_VARIANT;
          tkRecord :
             Result:=dwsPublished.NameOf(aType);
-         tkSet, tkProcedure, tkPointer, tkDynArray, tkInterface, tkArray,
+         tkSet, tkProcedure, tkPointer, {tkDynArray, }tkInterface, tkArray,
             tkEnumeration, tkClassRef, tkClass, tkMethod : begin
-             Result:='Variant'; // todo, someday maybe...
+             Result := SYS_VARIANT; // todo, someday maybe...
          end;
          tkUnknown : begin
-             Result:='Variant'; // unsupported
+             Result := SYS_VARIANT; // unsupported
              Assert(False);
          end;
+         tkDynArray: begin
+          LTypeKind := TRttiDynamicArrayType( aType ).ElementType.TypeKind;
+            //  we want to raise exception if the tpe is not expected
+            case LTypeKind of
+              tkInteger, tkInt64:
+                LDynType := SYS_INTEGER;
+              tkChar, tkString, tkUString, tkWChar, tkLString, tkWString:
+                LDynType := SYS_STRING;
+              tkFloat:
+                LDynType := SYS_FLOAT;
+              tkVariant:
+                LDynType := SYS_VARIANT;
+              else
+                raise Exception.Create(
+                  'Cannot handle this dynamic array RTTI type, maybe you haven''t exposed type"' + atype.name + '" yet?');
+            end;
+            // set the type, we expect that the type is already exposed
+            Result := aType.Name;
+         end
       else
-         Result:='Variant';
+         Result := SYS_VARIANT;
          Assert(False);
       end;
    end else Result:='';
@@ -422,6 +455,29 @@ begin
    invoker:=TdwsRTTIConstructorInvoker.Create(meth);
    helper.AddInvoker(invoker);
    Result.OnEval:=invoker.InvokeConstructor;
+end;
+
+function TdwsRTTIExposer.ExposeRTTIDynamicArray(intf: TRttiDynamicArrayType;
+  const options: TdwsRTTIExposerOptions): TdwsArray;
+var
+  LType: string;
+  LTypeKind: TTypeKind;
+begin
+  LTypeKind := intf.ElementType.TypeKind;
+  case LTypeKind of
+    tkInteger,
+    tkInt64: LType := SYS_INTEGER;
+    tkFloat: LType := SYS_FLOAT;
+    tkChar, tkString, tkUString, tkWChar, tkLString, tkWString:
+      LType := SYS_STRING;
+    tkVariant: LType := SYS_VARIANT;
+    else raise Exception.CreateFmt('Cannot expose dynamic array of type: %s', [
+      cTYPEKIND_NAMES[LTypeKind]]);
+  end; // case LTypeKind of
+  Result := Self.Arrays.AddArray;
+  Result.DataType := LType;
+  Result.IsDynamic := True;
+  Result.Name := intf.Name;
 end;
 
 // ExposeRTTIMethod
@@ -622,6 +678,11 @@ end;
 // ValueFromIInfo
 //
 class function TdwsRTTIInvoker.ValueFromIInfo(asType : TRttiType; const info : IInfo) : TValue;
+type
+  TValueArray = TArray<TValue>;
+var
+  LLen: Integer;
+  Index: Integer;
 begin
    case asType.TypeKind of
       tkInteger, tkInt64 :
@@ -638,6 +699,13 @@ begin
          if asType.Handle=TypeInfo(Boolean) then
             Result:=info.ValueAsBoolean
          else Result:=info.ValueAsInteger;
+      tkDynArray: begin
+        LLen := Length(info.Data);
+        TValue.MakeWithoutCopy(NIL, asType.Handle, Result);
+        DynArraySetLength(PPointer(Result.GetReferenceToRawData)^, Result.TypeInfo, 1, @LLen);
+        for Index := Low(info.Data) to High(info.Data) do
+          Result.SetArrayElement(Index, TValue.FromVariant(info.Data[Index]));
+      end
    else
       Result:=ValueFromIInfo(asType, info);
       Result:=TValue.Empty;

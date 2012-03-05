@@ -4,7 +4,7 @@ interface
 
 uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsRTTIExposer, dwsRTTIConnector, TypInfo, Types, RTTI,
-   Forms, StdCtrls;
+   Forms, StdCtrls, Variants;
 
 type
 
@@ -42,6 +42,9 @@ type
          procedure EnvironmentWriteTest;
 
          procedure ExposeGeneric;
+
+         procedure DynamicParamTest;
+         procedure DynamicParamTestDirectPass;
    end;
 
 type
@@ -128,6 +131,22 @@ type
          FieldInteger : Integer;
          FieldRec : TSimpleRecord;
    end;
+
+   TDynamicParamOfFloat = array of Double;
+
+   TDynamicParamOfInteger = array of Integer;
+
+   TDynamicParamOfString = array of string;
+
+   TDynamicParamOfVariant = array of Variant;
+
+  TDynamicTestClass = class(TObject)
+  published
+    function CallWithArrayOfFloat(const Value: TDynamicParamOfFloat): string;
+    function CallWithArrayOfInteger(const Value: TDynamicParamOfInteger): string;
+    function CallWithArrayOfString(const Value: TDynamicParamOfString): string;
+    function CallWithArrayOfVariant(const Value: TDynamicParamOfVariant): string;
+  end;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -237,6 +256,50 @@ begin
 end;
 
 // ------------------
+// ------------------ TDynamicTestClass ------------------
+// ------------------
+
+function TDynamicTestClass.CallWithArrayOfFloat(
+  const Value: TDynamicParamOfFloat): string;
+var
+  Index: Integer;
+begin
+  Result := sLineBreak;
+  for Index := Low(Value) to High(Value) do
+    Result := Result + '[' + IntToStr(Index) + '] ' + FloatToStr(Value[Index]) + sLineBreak;
+end;
+
+function TDynamicTestClass.CallWithArrayOfInteger(
+  const Value: TDynamicParamOfInteger): string;
+var
+  Index: Integer;
+begin
+  Result := sLineBreak;
+  for Index := Low(Value) to High(Value) do
+    Result := Result + '[' + IntToStr(Index) + '] ' + IntToStr(Value[Index]) + sLineBreak;
+end;
+
+function TDynamicTestClass.CallWithArrayOfString(
+  const Value: TDynamicParamOfString): string;
+var
+  Index: Integer;
+begin
+  Result := sLineBreak;
+  for Index := Low(Value) to High(Value) do
+    Result := Result + '[' + IntToStr(Index) + '] ' + Value[Index] + sLineBreak;
+end;
+
+function TDynamicTestClass.CallWithArrayOfVariant(
+  const Value: TDynamicParamOfVariant): string;
+var
+  Index: Integer;
+begin
+  Result := sLineBreak;
+  for Index := Low(Value) to High(Value) do
+    Result := Result + '[' + IntToStr(Index) + '] ' + VarToStr(Value[Index]) + sLineBreak;
+end;
+
+// ------------------
 // ------------------ TRTTIExposeTests ------------------
 // ------------------
 
@@ -276,6 +339,138 @@ end;
 procedure TRTTIExposeTests.DoGetSimpleClassInstance(Info: TProgramInfo);
 begin
    Info.ResultAsVariant:=TdwsRTTIVariant.FromObject(TSimpleClass.Create(123));
+end;
+
+procedure TRTTIExposeTests.DynamicParamTest;
+const
+  cDynamicParamTest =
+    //  create a class of TDynamicTestClass
+    'var LObject := TDynamicTestClass.Create;'#$D#$A +
+    //  test dynamic param of float
+    'var LDynamicParamOfFloat: TDynamicParamOfFloat;'#$D#$A +
+    'LDynamicParamOfFloat.SetLength(3);'#$D#$A +
+    'LDynamicParamOfFloat[0] := 0.1;'#$D#$A +
+    'LDynamicParamOfFloat[1] := 0.2;'#$D#$A +
+    'LDynamicParamOfFloat[2] := 0.3;'#$D#$A +
+    'PrintLn(''DynamicParamOfFloat: '' + LObject.CallWithArrayOfFloat(LDynamicParamOfFloat));'#$D#$A +
+    //  test dynamic param of integer
+    'var LDynamicParamOfInteger: TDynamicParamOfInteger;'#$D#$A +
+    'LDynamicParamOfInteger.SetLength(3);'#$D#$A +
+    'LDynamicParamOfInteger[0] := 1;'#$D#$A +
+    'LDynamicParamOfInteger[1] := 2;'#$D#$A +
+    'LDynamicParamOfInteger[2] := 3;'#$D#$A +
+    'PrintLn(''DynamicParamOfInteger: '' + LObject.CallWithArrayOfInteger(LDynamicParamOfInteger));'#$D#$A +
+    //  test dynamic param of string
+    'var LDynamicParamOfString: TDynamicParamOfString;'#$D#$A +
+    'LDynamicParamOfString.SetLength(4);'#$D#$A +
+    'LDynamicParamOfString[0] := ''hello'';'#$D#$A +
+    'LDynamicParamOfString[1] := ''world'';'#$D#$A +
+    'LDynamicParamOfString[2] := ''from'';'#$D#$A +
+    'LDynamicParamOfString[3] := ''DWScript!'';'#$D#$A +
+    'PrintLn(''DynamicParamOfString: '' + LObject.CallWithArrayofString(LDynamicParamOfString));'#$D#$A +
+    //  test dynamic param of variant
+    'var LDynamicParamOfVariant: TDynamicParamOfVariant;'#$D#$A +
+    'LDynamicParamOfVariant.SetLength(4);'#$D#$A +
+    'LDynamicParamOfVariant[0] := 0.02;'#$D#$A +
+    'LDynamicParamOfVariant[1] := 5;'#$D#$A +
+    'LDynamicParamOfVariant[2] := ''hello world!'';'#$D#$A +
+    //  intentionally left LDynamicParamOfVariant[3] empty
+    'PrintLn(''DynamicParamOfVariant: '' + LObject.CallWithArrayOfVariant(LDynamicParamOfVariant));'#$D#$A;
+
+  cDynamicParamTestResult =
+    'DynamicParamOfFloat: '#$D#$A +
+    '[0] 0.1'#$D#$A +
+    '[1] 0.2'#$D#$A +
+    '[2] 0.3'#$D#$A#$D#$A +
+    'DynamicParamOfInteger: '#$D#$A +
+    '[0] 1'#$D#$A +
+    '[1] 2'#$D#$A +
+    '[2] 3'#$D#$A#$D#$A +
+    'DynamicParamOfString: '#$D#$A +
+    '[0] hello'#$D#$A +
+    '[1] world'#$D#$A +
+    '[2] from'#$D#$A +
+    '[3] DWScript!'#$D#$A#$D#$A +
+    'DynamicParamOfVariant: '#$D#$A +
+    '[0] 0.02'#$D#$A +
+    '[1] 5'#$D#$A +
+    '[2] hello world!'#$D#$A +
+    '[3] '#$D#$A#$D#$A;
+
+var
+  LProg: IdwsProgram;
+  LExec: IdwsProgramExecution;
+begin
+  //  expose types
+  FUnit.ExposeRTTI(TypeInfo(TDynamicTestClass));
+  FUnit.ExposeRTTI(TypeInfo(TDynamicParamOfFloat));
+  FUnit.ExposeRTTI(TypeInfo(TDynamicParamOfInteger));
+  FUnit.ExposeRTTI(TypeInfo(TDynamicParamOfString));
+  FUnit.ExposeRTTI(TypeInfo(TDynamicParamOfVariant));
+
+  //  compile and execute
+  LProg := FCompiler.Compile(cDynamicParamTest);
+  CheckEquals('', LProg.Msgs.AsInfo, 'Compile');
+
+  LExec := LProg.Execute;
+  CheckEquals('', LProg.Msgs.AsInfo, 'Exec Msgs');
+
+  CheckEquals(cDynamicParamTestResult, LExec.Result.ToString, 'Exec Result');
+end;
+
+procedure TRTTIExposeTests.DynamicParamTestDirectPass;
+const
+  cDynamicParamTestDirectPass =
+    //  create a class of TDynamicTestClass
+    'var LObject := TDynamicTestClass.Create;'#$D#$A +
+    //  test dynamic param of float direct pass
+    'PrintLn(''DynamicParamOfFloat: '' + LObject.CallWithArrayOfFloat([0.1, 0.2, 0.3]));'#$D#$A +
+    //  test dynamic param of integer direct pass
+    'PrintLn(''DynamicParamOfInteger: '' + LObject.CallWithArrayOfInteger([1, 2, 3]));'#$D#$A +
+    //  test dynamic param of string direct pass
+    'PrintLn(''DynamicParamOfString: '' + LObject.CallWithArrayofString([''hello'', ''world'', ''from'', ''DWScript!'']));'#$D#$A +
+    //  test dynamic param of variant direct pass
+    'PrintLn(''DynamicParamOfVariant: '' + LObject.CallWithArrayOfVariant([0.02, 5, ''hello world!'', null]));'#$D#$A;
+
+  cDynamicParamTestResultDirectPass =
+    'DynamicParamOfFloat: '#$D#$A +
+    '[0] 0.1'#$D#$A +
+    '[1] 0.2'#$D#$A +
+    '[2] 0.3'#$D#$A#$D#$A +
+    'DynamicParamOfInteger: '#$D#$A +
+    '[0] 1'#$D#$A +
+    '[1] 2'#$D#$A +
+    '[2] 3'#$D#$A#$D#$A +
+    'DynamicParamOfString: '#$D#$A +
+    '[0] hello'#$D#$A +
+    '[1] world'#$D#$A +
+    '[2] from'#$D#$A +
+    '[3] DWScript!'#$D#$A#$D#$A +
+    'DynamicParamOfVariant: '#$D#$A +
+    '[0] 0.02'#$D#$A +
+    '[1] 5'#$D#$A +
+    '[2] hello world!'#$D#$A +
+    '[3] '#$D#$A#$D#$A;
+
+var
+  LProg: IdwsProgram;
+  LExec: IdwsProgramExecution;
+begin
+  //  expose types
+  FUnit.ExposeRTTI(TypeInfo(TDynamicTestClass));
+  FUnit.ExposeRTTI(TypeInfo(TDynamicParamOfFloat));
+  FUnit.ExposeRTTI(TypeInfo(TDynamicParamOfInteger));
+  FUnit.ExposeRTTI(TypeInfo(TDynamicParamOfString));
+  FUnit.ExposeRTTI(TypeInfo(TDynamicParamOfVariant));
+
+  //  compile and execute
+  LProg := FCompiler.Compile(cDynamicParamTestDirectPass);
+  CheckEquals('', LProg.Msgs.AsInfo, 'Compile');
+
+  LExec := LProg.Execute;
+  CheckEquals('', LProg.Msgs.AsInfo, 'Exec Msgs');
+
+  CheckEquals(cDynamicParamTestResultDirectPass, LExec.Result.ToString, 'Exec Result');
 end;
 
 // SimpleClass
