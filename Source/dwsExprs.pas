@@ -6339,14 +6339,16 @@ end;
 //
 procedure TScriptDynamicArray.Delete(index, count : Integer);
 var
-   i : Integer;
+   i, d : Integer;
 begin
    Dec(FLength, count);
    index:=index*ElementSize;
    count:=count*ElementSize;
    for i:=index to index+count-1 do
       VarClear(FData[i]);
-   System.Move(FData[index+count], FData[index], count*SizeOf(Variant));
+   d:=(FLength-1)*ElementSize+count-index;
+   if d>0 then
+      System.Move(FData[index+count], FData[index], d*SizeOf(Variant));
    System.FillChar(FData[FLength*ElementSize], count*SizeOf(Variant), 0);
    System.SetLength(FData, FLength*ElementSize);
 end;
