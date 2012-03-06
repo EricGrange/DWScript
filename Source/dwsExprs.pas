@@ -813,7 +813,7 @@ type
       public
          constructor Create(aTyp : TTypeSymbol; const scriptPos : TScriptPos);
 
-         function  Eval(exec : TdwsExecution) : Variant; override;
+         function Eval(exec : TdwsExecution) : Variant; override;
          function ScriptPos : TScriptPos; override;
   end;
 

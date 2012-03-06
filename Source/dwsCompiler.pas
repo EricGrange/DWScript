@@ -310,6 +310,7 @@ type
          FUnitsFromStack : TSimpleStack<UnicodeString>;
          FCurrentUnitSymbol : TUnitMainSymbol;
          FAnyFuncSymbol : TAnyFuncSymbol;
+         FAnyTypeSymbol : TAnyTypeSymbol;
 
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
          FOnReadInstr : TCompilerReadInstrEvent;
@@ -445,7 +446,7 @@ type
          procedure ReadDeprecated(funcSym : TFuncSymbol);
          procedure WarnDeprecated(funcExpr : TFuncExprBase);
          function ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
-         function ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol) : TTypedExpr;
+         function ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol; acceptTypeRef : Boolean) : TProgramExpr;
          function ReadClassSymbolName(baseType : TClassSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadInterfaceSymbolName(baseType : TInterfaceSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadRecordSymbolName(baseType : TRecordSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
@@ -507,7 +508,7 @@ type
          function ReadExcept(tryExpr : TNoResultExpr; var finalToken : TTokenType) : TExceptExpr;
 
          function ReadType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
-         function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
+         function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol; acceptTypeRef : Boolean) : TTypedExpr;
 
          procedure ReadTypeDeclBlock;
          function  ReadTypeDecl(firstInBlock : Boolean) : Boolean;
@@ -703,7 +704,9 @@ begin
    FFinallyExprs:=TSimpleStack<Boolean>.Create;
    FUnitsFromStack:=TSimpleStack<UnicodeString>.Create;
    FUnitContextStack:=TdwsCompilerUnitContextStack.Create;
+
    FAnyFuncSymbol:=TAnyFuncSymbol.Create('', fkFunction, 0);
+   FAnyTypeSymbol:=TAnyTypeSymbol.Create('', nil);
 
    stackParams.MaxLevel:=1;
    stackParams.ChunkSize:=512;
@@ -718,6 +721,8 @@ end;
 destructor TdwsCompiler.Destroy;
 begin
    FAnyFuncSymbol.Free;
+   FAnyTypeSymbol.Free;
+
    FUnitsFromStack.Free;
    FUnitContextStack.Free;
    FExec.Free;
@@ -3397,12 +3402,12 @@ begin
       // Enumeration type cast or type symbol
       end else if sym.InheritsFrom(TEnumerationSymbol) then begin
 
-         Result:=ReadEnumerationSymbolName(namePos, TEnumerationSymbol(sym));
+         Result:=ReadEnumerationSymbolName(namePos, TEnumerationSymbol(sym), expecting=FAnyTypeSymbol)
 
       // generic type casts
       end else if sym.InheritsFrom(TTypeSymbol) then
 
-         Result:=ReadTypeCast(namePos, TTypeSymbol(sym))
+         Result:=ReadTypeCast(namePos, TTypeSymbol(sym), expecting=FAnyTypeSymbol)
 
       else begin
 
@@ -3418,7 +3423,8 @@ end;
 
 // ReadEnumerationSymbolName
 //
-function TdwsCompiler.ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol) : TTypedExpr;
+function TdwsCompiler.ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol;
+                                                acceptTypeRef : Boolean) : TProgramExpr;
 var
    name : UnicodeString;
    elemPos : TScriptPos;
@@ -3427,7 +3433,7 @@ var
 begin
    if FTok.Test(ttBLEFT) then begin
 
-      Result:=ReadTypeCast(elemPos, enumSym);
+      Result:=ReadTypeCast(elemPos, enumSym, acceptTypeRef);
 
    end else if FTok.TestDelete(ttDOT) then begin
 
@@ -3441,7 +3447,13 @@ begin
 
       Result:=TConstExpr.CreateIntegerValue(FProg, enumSym, elemValue);
 
-   end else Result:=TTypeReferenceExpr.Create(enumSym, enumPos);
+   end else begin
+
+      Result:=TTypeReferenceExpr.Create(enumSym, enumPos);
+      if not acceptTypeRef then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_BrackLeftExpected);
+
+   end;
 end;
 
 // ReadClassSymbolName
@@ -4162,7 +4174,7 @@ begin
 
    inPos:=FTok.HotPos;
 
-   inExpr:=ReadName;
+   inExpr:=ReadName(False, FAnyTypeSymbol);
 
    readArrayItemExpr:=nil;
 
@@ -5138,7 +5150,7 @@ begin
          repeat
             // Lower bound
             hotPos:=FTok.HotPos;
-            lowBound:=ReadExpr;
+            lowBound:=ReadExpr(FAnyTypeSymbol);
 
             if lowBound is TTypeReferenceExpr then begin
 
@@ -8715,10 +8727,12 @@ begin
    FTok.HasTokens;  // get token in buffer for correct argPos below
    argPos:=FTok.HotPos;
    case specialKind of
-      skAssigned, skHigh :
+      skAssigned :
          argExpr:=ReadExpr(FProg.TypNil);
       skInc, skDec :
          argExpr:=ReadTerm(True);
+      skLow, skHigh :
+         argExpr:=ReadExpr(FAnyTypeSymbol);
    else
       argExpr:=ReadExpr;
    end;
@@ -8934,7 +8948,8 @@ end;
 
 // ReadTypeCast
 //
-function TdwsCompiler.ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
+function TdwsCompiler.ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol;
+                                   acceptTypeRef : Boolean) : TTypedExpr;
 var
    argExpr : TTypedExpr;
    hotPos : TScriptPos;
@@ -8943,9 +8958,12 @@ begin
 
       if typeSym.ClassType=TClassOfSymbol then
          Exit(TConstExpr.Create(FProg, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol)))
-      else Exit(TTypeReferenceExpr.Create(typeSym, namePos));
-
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
+      else begin
+         Result:=TTypeReferenceExpr.Create(typeSym, namePos);
+         if not acceptTypeRef then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_BrackLeftExpected);
+         Exit;
+      end;
    end;
 
    hotPos:=FTok.CurrentPos;

@@ -505,6 +505,11 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; virtual;
    end;
 
+   TAnyTypeSymbol = class(TTypeSymbol)
+      public
+         function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+   end;
+
    TFuncKind = (fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod);
 
    // Record used for TFuncSymbol.Generate
@@ -5015,6 +5020,17 @@ end;
 procedure TTypeSymbol.InitData(const data : TData; offset : Integer);
 begin
    Assert(False);
+end;
+
+// ------------------
+// ------------------ TAnyTypeSymbol ------------------
+// ------------------
+
+// IsCompatible
+//
+function TAnyTypeSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+begin
+   Result:=(typSym<>nil);
 end;
 
 // ------------------
