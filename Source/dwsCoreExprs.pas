@@ -322,6 +322,7 @@ type
       protected
          FArrayAddr : Integer;
          FElementExprs : TTightList;
+         FArrayEvaled : Boolean;
 
          function GetData(exec : TdwsExecution) : TData; override;
          function GetAddr(exec : TdwsExecution) : Integer; override;
@@ -3217,34 +3218,37 @@ begin
 end;
 
 function TArrayConstantExpr.Eval(exec : TdwsExecution) : Variant;
-//var
-//  x: Integer;
-//  elemSize: Integer;
+
+   procedure DoEval;
+   var
+      x, addr : Integer;
+      elemSize : Integer;
+      elemExpr : TTypedExpr;
+      dataExpr : TDataExpr;
+   begin
+      exec.Stack.WriteValue(FArrayAddr, FElementExprs.Count);
+
+      elemSize:=Typ.Typ.Size;
+      addr:=FArrayAddr+1;
+      for x:=0 to FElementExprs.Count-1 do begin
+         elemExpr:=TTypedExpr(FElementExprs.List[x]);
+         if elemSize=1 then begin
+            exec.Stack.WriteValue(addr, elemExpr.Eval(exec));
+         end else begin
+            dataExpr:=elemExpr as TDataExpr;
+            exec.Stack.WriteData(dataExpr.Addr[exec], addr, elemSize, dataExpr.Data[exec]);
+         end;
+         Inc(addr, elemSize);
+      end;
+   end;
+
 begin
-   // at the moment, Eval shouldn't ever be invoked
-//
-//   if FElementExprs.Count>0 then
-//      exec.Stack.WriteValue(FArrayAddr, FElementExprs.Count);
-//
-//  elemSize := Typ.Typ.Size;
-//  if elemSize = 1 then
-//  begin
-//    for x := 0 to FElementExprs.Count - 1 do
-//    begin
-//      exec.Stack.WriteValue(FArrayAddr + 1 + x, TTypedExpr(FElementExprs.List[x]).Eval(exec));
-//    end;
-//  end
-//  else begin
-//    for x := 0 to FElementExprs.Count - 1 do
-//    begin
-//      exec.Stack.WriteData(
-//        TDataExpr(FElementExprs.List[x]).Addr[exec],
-//        FArrayAddr + 1 + x * elemSize,
-//        elemSize,
-//        TDataExpr(FElementExprs.List[x]).Data[exec]);
-//    end;
-//  end;
-//  Result := FArrayAddr + 1;
+   if not FArrayEvaled then begin
+      FArrayEvaled:=True;
+      DoEval;
+   end;
+
+   Result := FArrayAddr + 1;
 end;
 
 // EvalAsTData
