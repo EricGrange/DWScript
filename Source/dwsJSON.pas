@@ -349,11 +349,14 @@ begin
          nw:=(wobs.Size div SizeOf(WideChar));
          SetLength(Result, n+nw);
          wobs.StoreData(Result[1]);
+         if n>0 then
+            Move(localBuffer[0], Result[nw+1], n*SizeOf(WideChar));
       end else begin
-         SetLength(Result, n);
+         if n>0 then begin
+            SetLength(Result, n);
+            Move(localBuffer[0], Result[1], n*SizeOf(WideChar));
+         end else Result:='';
       end;
-      if n>0 then
-         Move(localBuffer[0], Result[1], n*SizeOf(WideChar));
    finally
       wobs.Free;
    end;
@@ -465,6 +468,11 @@ begin
          '[' : Result:=TdwsJSONArray.Create;
          '0'..'9', '"', '-', 't', 'f', 'n' :
             Result:=TdwsJSONImmediate.Create;
+         ']', '}' : begin
+            // empty array or object
+            trailCharacter:=c;
+            Exit(nil);
+         end;
       else
          RaiseJSONParseError('Invalid value start character "%s"', c);
       end;
@@ -1057,6 +1065,7 @@ begin
    Assert(initialChar='[');
    repeat
       value:=TdwsJSONValue.Parse(needChar, c);
+      if value=nil then Break;
       Add(value);
       c:=SkipBlanks(c, needChar);
    until c<>',';

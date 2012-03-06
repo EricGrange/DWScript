@@ -25,6 +25,7 @@ type
 
          procedure JSONTest;
          procedure ParseJSON;
+         procedure AccessJSON;
 
          procedure UnicodeCompareTextTest;
 
@@ -290,6 +291,39 @@ begin
       json.Free;
    finally
       sl.Free;
+   end;
+end;
+
+// AccessJSON
+//
+procedure TdwsUtilsTests.AccessJSON;
+const
+   jsonData = '{"Result":[{"Links":[{"UrlTo":"http://atomos.com/ninja/","Anchor":"Manufacturer info",'
+             +'"Type":"Text","Flag":[]}],"Index":1,"Rating":2.035556,"Visited":1330236394,"UrlFrom":'
+             +'"http://anthonywrites.posterous.com/","IpFrom":"184.106.20.99","Title":"Anthony Agius - Home"},'
+             +'{"Links":[{"UrlTo":"http://atomos.com/samurai/","Type":"Redirect","HttpCode":302,"Flag":[]}],'
+             +'"Index":2,"Rating":0.941064,"Visited":1329500858,"UrlFrom":"http://theeditman.com/blogg/ct.ashx'
+             +'?id=13592790-3605-42fd-9308-73c79199d1eb&url=http%3A%2F%2Fatomos.com%2Fsamurai%2F","IpFrom":'
+             +'"64.202.163.118","Title":""},{"Links":[{"UrlTo":"http://atomos.com/ninja/","Anchor":"","Type":'
+             +'"Text","Flag":["img"],"Alt":""}],"Index":3,"Rating":0.925152,"Visited":1329902294,"UrlFrom":'
+             +'"http://www.lafcpug.org/events/supermeet_sf_2012.html","IpFrom":"64.93.81.159","Title":'
+             +'"The Eleventh Annual San Francisco SuperMeet"},{"Links":[{"UrlTo":"http://atomos.com/",'
+             +'"Type":"Redirect","HttpCode":302,"Flag":[]}],"Index":4,"Rating":0.915592,"Visited":1330795307,'
+             +'"UrlFrom":"http://tienda.vantec.es/redirect.php?action=manufacturer&manufacturers_id=39",'
+             +'"IpFrom":"194.79.85.30","Title":""}]}';
+var
+   json : TdwsJSONValue;
+   result : TdwsJSONValue;
+begin
+   json:=TdwsJSONValue.ParseString(jsonData);
+   try
+      result:=json.Items['Result'];
+      Check(result<>nil, 'Result is present');
+      CheckEquals(4, result.ElementCount, '4 Entries');
+      CheckEquals('http://theeditman.com/blogg/ct.ashx?id=13592790-3605-42fd-9308-73c79199d1eb&url=http%3A%2F%2Fatomos.com%2Fsamurai%2F',
+                  result[1]['UrlFrom'].Value.AsString, 'long url');
+   finally
+      json.Free;
    end;
 end;
 
