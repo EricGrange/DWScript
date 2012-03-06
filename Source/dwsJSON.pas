@@ -292,12 +292,12 @@ var
    wobs : TWriteOnlyBlockStream;
    hexBuf, hexCount, n, nw : Integer;
    localBufferPtr : PWideChar;
-   localBuffer : array [0..50] of WideChar;
+   localBuffer : array [0..59] of WideChar;
 begin
    Assert(initialChar='"');
-   localBufferPtr:=@localBuffer[0];
    wobs:=nil;
    try
+      localBufferPtr:=@localBuffer[0];
       repeat
          c:=needChar;
          case c of
@@ -348,13 +348,14 @@ begin
       if wobs<>nil then begin
          nw:=(wobs.Size div SizeOf(WideChar));
          SetLength(Result, n+nw);
-         wobs.StoreData(Result[1]);
-         if n>0 then
-            Move(localBuffer[0], Result[nw+1], n*SizeOf(WideChar));
+         localBufferPtr:=PWideChar(Pointer(Result));
+         wobs.StoreData(localBufferPtr^);
+         Move(localBuffer[0], localBufferPtr[nw], n*SizeOf(WideChar));
       end else begin
          if n>0 then begin
             SetLength(Result, n);
-            Move(localBuffer[0], Result[1], n*SizeOf(WideChar));
+            localBufferPtr:=PWideChar(Pointer(Result));
+            Move(localBuffer[0], localBufferPtr^, n*SizeOf(WideChar));
          end else Result:='';
       end;
    finally
