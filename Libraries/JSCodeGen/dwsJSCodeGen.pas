@@ -2340,12 +2340,15 @@ var
    e : TdwsJSBlockExpr;
    i : Integer;
    jsCode : String;
+   sym : TSymbol;
 begin
    e:=TdwsJSBlockExpr(expr);
    jsCode:=e.Code;
 
-   for i:=e.SymbolsCount-1 downto 0 do
-      Insert(codeGen.SymbolMappedName(e.Symbols[i], cgssGlobal), jsCode, e.SymbolOffsets[i]);
+   for i:=e.SymbolsCount-1 downto 0 do begin
+      sym:=e.Symbols[i];
+      Insert(codeGen.SymbolMappedName(sym, cgssGlobal), jsCode, e.SymbolOffsets[i]);
+   end;
 
    codeGen.WriteString(jsCode);
 end;
