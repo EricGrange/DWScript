@@ -45,8 +45,6 @@ type
       private
          FLocalVarScannedProg : TSimpleProgramHash;
          FAllLocalVarSymbols : TSimpleSymbolHash;
-         FLocalVarParams : TDataSymbolList;
-         FLocalVarParamsStack : TSimpleStack<TDataSymbolList>;
          FDeclaredLocalVars : TDataSymbolList;
          FDeclaredLocalVarsStack : TSimpleStack<TDataSymbolList>;
          FMainBodyName : String;
@@ -568,9 +566,6 @@ begin
    FLocalVarScannedProg:=TSimpleProgramHash.Create;
    FAllLocalVarSymbols:=TSimpleSymbolHash.Create;
 
-   FLocalVarParams:=TDataSymbolList.Create;
-   FLocalVarParamsStack:=TSimpleStack<TDataSymbolList>.Create;
-
    FDeclaredLocalVars:=TDataSymbolList.Create;
    FDeclaredLocalVarsStack:=TSimpleStack<TDataSymbolList>.Create;
 
@@ -934,15 +929,10 @@ end;
 //
 destructor TdwsJSCodeGen.Destroy;
 begin
+   inherited;
+
    FLocalVarScannedProg.Free;
    FAllLocalVarSymbols.Free;
-
-   while FLocalVarParamsStack.Count>0 do begin
-      FLocalVarParamsStack.Peek.Free;
-      FLocalVarParamsStack.Pop;
-   end;
-   FLocalVarParamsStack.Free;
-   FLocalVarParams.Free;
 
    while FDeclaredLocalVarsStack.Count>0 do begin
       FDeclaredLocalVarsStack.Peek.Free;
@@ -950,8 +940,6 @@ begin
    end;
    FDeclaredLocalVarsStack.Free;
    FDeclaredLocalVars.Free;
-
-   inherited;
 end;
 
 // Clear
@@ -972,7 +960,13 @@ begin
    ct:=sym.ClassType;
    if (ct=TSelfSymbol) or (ct=TResultSymbol) then
       Result:=sym.Name
-   else Result:=inherited SymbolMappedName(sym, scope);
+   else begin
+      try
+      Result:=inherited SymbolMappedName(sym, scope);
+      except
+      Result:=inherited SymbolMappedName(sym, scope);
+      end;
+   end;
 end;
 
 // CompileValue
@@ -1641,8 +1635,6 @@ end;
 //
 procedure TdwsJSCodeGen.CollectLocalVars(proc : TdwsProgram);
 begin
-   CollectInitExprLocalVars(proc.InitExpr);
-
    CollectLocalVarParams(proc.InitExpr);
    CollectLocalVarParams(proc.Expr);
 end;
@@ -1728,10 +1720,7 @@ begin
             // else not supported yet
             Exit;
          end;
-         if FLocalVarParams.IndexOf(varSym)<0 then begin
-            FLocalVarParams.Add(varSym);
-            FAllLocalVarSymbols.Add(varSym);
-         end;
+         FAllLocalVarSymbols.Add(varSym);
       end);
 end;
 
@@ -1771,13 +1760,11 @@ end;
 procedure TdwsJSCodeGen.EnterContext(proc : TdwsProgram);
 begin
    inherited;
-   FLocalVarParamsStack.Push(FLocalVarParams);
-   FLocalVarParams:=TDataSymbolList.Create;
 
    FDeclaredLocalVarsStack.Push(FDeclaredLocalVars);
    FDeclaredLocalVars:=TDataSymbolList.Create;
 
-   CollectLocalVars(proc);
+   CollectInitExprLocalVars(proc.InitExpr);
 end;
 
 // LeaveContext
@@ -1788,9 +1775,6 @@ begin
    FDeclaredLocalVars:=FDeclaredLocalVarsStack.Peek;
    FDeclaredLocalVarsStack.Pop;
 
-   FLocalVarParams.Free;
-   FLocalVarParams:=FLocalVarParamsStack.Peek;
-   FLocalVarParamsStack.Pop;
    inherited;
 end;
 
