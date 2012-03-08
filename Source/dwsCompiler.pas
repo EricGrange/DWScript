@@ -4889,7 +4889,7 @@ begin
       funcSym.Executable:=TExternalFuncHandler.Create;
 
    if Optimize then
-      Result:=Result.OptimizeToTypedExpr(FProg, FExec, funcExpr.ScriptPos);
+      Result:=Result.OptimizeToTypedExpr(FProg, FExec, Result.ScriptPos);
 end;
 
 // WrapUpFunctionRead
