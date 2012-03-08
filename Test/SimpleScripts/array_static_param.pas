@@ -1,8 +1,12 @@
 type TArr = array [1..2] of Integer;
 
 procedure Test(p : TArr);
+var
+   i : Integer;
 begin
+   i:=123;
    PrintLn('= '+IntToStr(p[1])+', '+IntToStr(p[2]));
+   Assert(i=123);
 end;
 
 const c : TArr = [1, 2];

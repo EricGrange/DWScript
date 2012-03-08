@@ -3151,27 +3151,27 @@ end;
 
 // Prepare
 //
-procedure TArrayConstantExpr.Prepare(Prog: TdwsProgram; ElementTyp : TTypeSymbol);
+procedure TArrayConstantExpr.Prepare(prog: TdwsProgram; elementTyp : TTypeSymbol);
 var
    x, n : Integer;
    elemExpr : TTypedExpr;
 begin
-   if (ElementTyp<>nil) and (FTyp.Typ<>ElementTyp) then begin
-      if     ElementTyp.IsCompatible(FTyp.Typ)
-          or (ElementTyp.IsOfType(Prog.TypFloat) and FTyp.Typ.IsOfType(Prog.TypInteger)) then
-         (FTyp as TStaticArraySymbol).Typ:=ElementTyp;
+   if (elementTyp<>nil) and (FTyp.Typ<>elementTyp) then begin
+      if     elementTyp.IsCompatible(FTyp.Typ)
+          or (elementTyp.IsOfType(prog.TypFloat) and FTyp.Typ.IsOfType(prog.TypInteger)) then
+         (FTyp as TStaticArraySymbol).Typ:=elementTyp;
    end;
 
    for x := 0 to FElementExprs.Count - 1 do begin
       elemExpr:=FElementExprs.List[x];
       if elemExpr is TArrayConstantExpr then
-         TArrayConstantExpr(elemExpr).Prepare(Prog, FTyp.Typ);
+         TArrayConstantExpr(elemExpr).Prepare(prog, FTyp.Typ);
    end;
 
    if FTyp.Typ<>nil then
       n:=FElementExprs.Count * FTyp.Typ.Size
    else n:=0;
-   FArrayAddr := Prog.GetGlobalAddr(n + 1);
+   FArrayAddr := prog.GetGlobalAddr(n);
 end;
 
 // GetData
@@ -3186,7 +3186,7 @@ end;
 //
 function TArrayConstantExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
-   Result:=FArrayAddr+1;
+   Result:=FArrayAddr;
 end;
 
 // GetSubExpr
@@ -3229,7 +3229,7 @@ function TArrayConstantExpr.Eval(exec : TdwsExecution) : Variant;
       exec.Stack.WriteValue(FArrayAddr, FElementExprs.Count);
 
       elemSize:=Typ.Typ.Size;
-      addr:=FArrayAddr+1;
+      addr:=FArrayAddr;
       for x:=0 to FElementExprs.Count-1 do begin
          elemExpr:=TTypedExpr(FElementExprs.List[x]);
          if elemSize=1 then begin
@@ -3248,7 +3248,7 @@ begin
       DoEval;
    end;
 
-   Result := FArrayAddr + 1;
+   Result:=FArrayAddr;
 end;
 
 // EvalAsTData

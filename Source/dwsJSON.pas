@@ -292,7 +292,7 @@ var
    wobs : TWriteOnlyBlockStream;
    hexBuf, hexCount, n, nw : Integer;
    localBufferPtr : PWideChar;
-   localBuffer : array [0..59] of WideChar;
+   localBuffer : array [0..59] of WideChar; // range adjusted to have a stack space of 128 for the proc
 begin
    Assert(initialChar='"');
    wobs:=nil;
