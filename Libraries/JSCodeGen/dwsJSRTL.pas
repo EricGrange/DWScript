@@ -163,7 +163,7 @@ const
        Dependency : '$Inh' ),
       (Name : '$As';
        Code : 'function $As(o,c) {'#13#10
-               +#9'if ((o!==null)&&$Is(o,c)) return o;'#13#10
+               +#9'if ((o===null)||$Is(o,c)) return o;'#13#10
                +#9'throw Exception.Create$1($New(Exception),"Can''t cast instance of type \""+o.ClassType.$ClassName+"\" to class \""+c.$ClassName+"\"");'#13#10
                +'}';
        Dependency : '$Is' ),
