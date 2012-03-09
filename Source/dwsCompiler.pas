@@ -2488,7 +2488,7 @@ function TdwsCompiler.ReadMethodImpl(structSym : TStructuredTypeSymbol;
 var
    methName : UnicodeString;
    sym : TSymbol;
-   tmpMeth : TMethodSymbol;
+   tmpMeth, overloadedMeth : TMethodSymbol;
    methPos : TScriptPos;
    declaredMethod : Boolean;
 begin
@@ -2512,18 +2512,6 @@ begin
       structSym.AddMethod(Result);
    end;
 
-   if Result.IsAbstract then
-      FMsgs.AddCompilerErrorFmt(methPos, CPE_ImplAbstract, [structSym.Name, methName]);
-
-   if Result.IsClassMethod<>isClassMethod then begin
-      if Result.IsClassMethod then
-         FMsgs.AddCompilerError(methPos, CPE_ImplClassExpected)
-      else FMsgs.AddCompilerError(methPos, CPE_ImplNotClassExpected);
-      isClassMethod:=Result.IsClassMethod;
-   end;
-
-   CompareFuncKinds(Result.Kind, funcKind);
-
    if not FTok.TestDelete(ttSEMI) then begin
       if declaredMethod then begin
          tmpMeth:=TSourceMethodSymbol.Create(methName, funcKind, structSym,
@@ -2533,7 +2521,12 @@ begin
             ReadParams(tmpMeth.HasParam, tmpMeth.AddParam, Result.Params);
             tmpMeth.Typ:=ReadFuncResultType(funcKind);
             ReadSemiColon;
-            CompareFuncSymbolParams(Result, tmpMeth);
+            if Result.IsOverloaded then begin
+               overloadedMeth:=MethPerfectMatchOverload(tmpMeth, False);
+               if overloadedMeth=nil then
+                  FMsgs.AddCompilerErrorFmt(methPos, CPE_NoMatchingOverload, [tmpMeth.Name])
+               else Result:=overloadedMeth;
+            end else CompareFuncSymbolParams(Result, tmpMeth);
          finally
             tmpMeth.Free;
          end;
@@ -2544,6 +2537,17 @@ begin
          ReadSemiColon;
       end;
    end;
+
+   if Result.IsClassMethod<>isClassMethod then begin
+      if Result.IsClassMethod then
+         FMsgs.AddCompilerError(methPos, CPE_ImplClassExpected)
+      else FMsgs.AddCompilerError(methPos, CPE_ImplNotClassExpected);
+   end;
+
+   CompareFuncKinds(Result.Kind, funcKind);
+
+   if Result.IsAbstract then
+      FMsgs.AddCompilerErrorFmt(methPos, CPE_ImplAbstract, [structSym.Name, methName]);
 
    RecordSymbolUse(Result, methPos, [suImplementation]);
 end;
@@ -3479,12 +3483,14 @@ begin
       Result:=ReadExpr;
       try
          castedExprTyp:=TTypedExpr(Result).Typ;
-         if    (not (castedExprTyp is TClassSymbol))
-            or (
-                      (not TClassSymbol(castedExprTyp).IsOfType(baseType))
-                  and (not baseType.IsOfType(castedExprTyp))
-               ) then begin
-            IncompatibleTypes(namePos, CPE_IncompatibleTypes, castedExprTyp, baseType);
+         if castedExprTyp<>FProg.TypNil then begin
+            if    (not (castedExprTyp is TClassSymbol))
+               or (
+                         (not TClassSymbol(castedExprTyp).IsOfType(baseType))
+                     and (not baseType.IsOfType(castedExprTyp))
+                  ) then begin
+               IncompatibleTypes(namePos, CPE_IncompatibleTypes, castedExprTyp, baseType);
+            end;
          end;
          if not (FTok.TestDelete(ttBRIGHT)) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
@@ -7988,11 +7994,11 @@ procedure TdwsCompiler.CompareFuncKinds(a, b : TFuncKind);
 begin
    if a<>b then begin
       case a of
-         fkFunction : FMsgs.AddCompilerStop(FTok.HotPos, CPE_FunctionExpected);
-         fkProcedure : FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcedureExpected);
-         fkConstructor : FMsgs.AddCompilerStop(FTok.HotPos, CPE_ConstructorExpected);
-         fkDestructor : FMsgs.AddCompilerStop(FTok.HotPos, CPE_DestructorExpected);
-         fkMethod : FMsgs.AddCompilerStop(FTok.HotPos, CPE_MethodExpected);
+         fkFunction : FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionExpected);
+         fkProcedure : FMsgs.AddCompilerError(FTok.HotPos, CPE_ProcedureExpected);
+         fkConstructor : FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstructorExpected);
+         fkDestructor : FMsgs.AddCompilerError(FTok.HotPos, CPE_DestructorExpected);
+         fkMethod : FMsgs.AddCompilerError(FTok.HotPos, CPE_MethodExpected);
       else
          Assert(False);
       end;
