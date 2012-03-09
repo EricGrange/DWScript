@@ -1,0 +1,2 @@
+Syntax Error: Class method or constructor expected [line: 18, column: 22]
+Syntax Error: Unknown name "bug" [line: 19, column: 13]

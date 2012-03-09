@@ -1746,7 +1746,7 @@ type
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
                         const scriptObj : IScriptObj; structSym : TStructuredTypeSymbol;
                         forceStatic : Boolean = False): TFuncExpr;
-function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; expr : TTypedExpr; RefKind: TRefKind;
+function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; var expr : TTypedExpr; RefKind: TRefKind;
                           const scriptPos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
 
 function RawByteStringToScriptString(const s : RawByteString) : UnicodeString;
@@ -1927,25 +1927,27 @@ end;
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
                         const scriptObj : IScriptObj; structSym : TStructuredTypeSymbol;
                         forceStatic : Boolean = False): TFuncExpr;
+var
+   instanceExpr : TTypedExpr;
 begin
    if FuncSym is TMethodSymbol then begin
       if Assigned(scriptObj) then begin
-         Result := CreateMethodExpr(Prog, TMethodSymbol(funcSym),
-                                    TConstExpr.Create(Prog, structSym, scriptObj),
-                                    rkObjRef, cNullPos, ForceStatic)
+         instanceExpr:=TConstExpr.Create(Prog, structSym, scriptObj);
+         Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
+                                  instanceExpr, rkObjRef, cNullPos, ForceStatic)
       end else begin
-         Result := CreateMethodExpr(Prog, TMethodSymbol(funcSym),
-                                    TConstExpr.Create(Prog, (structSym as TClassSymbol).ClassOf, Int64(structSym)),
-                                    rkClassOfRef, cNullPos, ForceStatic)
+         instanceExpr:=TConstExpr.Create(prog, (structSym as TClassSymbol).ClassOf, Int64(structSym));
+         Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
+                                  instanceExpr, rkClassOfRef, cNullPos, ForceStatic)
       end;
    end else begin
-      Result := TFuncExpr.Create(Prog, cNullPos, funcSym);
+      Result:=TFuncExpr.Create(Prog, cNullPos, funcSym);
    end;
 end;
 
 // CreateMethodExpr
 //
-function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; expr: TTypedExpr; RefKind: TRefKind;
+function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; var expr: TTypedExpr; RefKind: TRefKind;
                           const scriptPos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
 begin
    // Create the correct TExpr for a method symbol
@@ -2020,6 +2022,8 @@ begin
       end;
 
    end else Assert(False);
+
+   expr:=nil;
 end;
 
 // ------------------
@@ -5369,10 +5373,9 @@ begin
       refKind:=rkClassOfRef;
    end else refKind:=rkObjRef;
 
-   Result:=CreateMethodExpr(aProg, newMeth, BaseExpr, refKind, ScriptPos);
+   Result:=CreateMethodExpr(aProg, newMeth, Self.FBaseExpr, refKind, ScriptPos);
    Result.Args.Assign(Args);
    Self.FArgs.Clear;
-   Self.FBaseExpr:=nil;
    Self.Free;
 end;
 
@@ -6330,7 +6333,7 @@ procedure TScriptDynamicArray.Insert(index : Integer);
 begin
    Inc(FLength);
    System.SetLength(FData, FLength*ElementSize);
-   Move(FData[index*ElementSize], FData[(index+1)*ElementSize], (FLength-index)*ElementSize*SizeOf(Variant));
+   Move(FData[index*ElementSize], FData[(index+1)*ElementSize], (FLength-index-1)*ElementSize*SizeOf(Variant));
    FillChar(FData[index*ElementSize], ElementSize*SizeOf(Variant), 0);
    FTyp.Typ.InitData(FData, index*ElementSize);
 end;

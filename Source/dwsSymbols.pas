@@ -2784,7 +2784,7 @@ begin
       if aStructSymbol is TRecordSymbol then
          Params.AddSymbol(FSelfSym)
       else InternalParams.AddSymbol(FSelfSym);
-   FSize:=2; // code + data
+   FSize:=1; // wrapped in a interface
    FParams.AddParent(FStructSymbol.Members);
    FVisibility:=aVisibility;
    FVMTIndex:=-1;

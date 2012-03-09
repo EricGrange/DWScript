@@ -1,0 +1,2 @@
+Syntax Error: Object reference needed to read/write an object field [line: 11, column: 15]
+Syntax Error: Read access of property should be a static method [line: 13, column: 15]

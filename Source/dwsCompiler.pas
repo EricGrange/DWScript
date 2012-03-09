@@ -348,7 +348,7 @@ type
          function GetVarParamExpr(dataSym : TVarParamSymbol) : TVarParamExpr;
          function GetConstParamExpr(dataSym : TConstParamSymbol) : TVarParamExpr;
 
-         function ReadAssign(token : TTokenType; left : TDataExpr) : TNoResultExpr;
+         function ReadAssign(token : TTokenType; var left : TDataExpr) : TNoResultExpr;
          function ReadArrayType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
          function ReadArrayConstant(expecting : TTypeSymbol = nil) : TArrayConstantExpr;
          function ReadArrayMethod(const name : UnicodeString; const namePos : TScriptPos;
@@ -377,8 +377,11 @@ type
          function ReadExprIn(var left : TTypedExpr) : TTypedExpr;
          function ReadExprInConditions(var left : TTypedExpr) : TInOpExpr;
          function ReadExternalVar(sym : TExternalVarSymbol; isWrite : Boolean) : TFuncExpr;
+
          function ReadField(const scriptPos : TScriptPos; selfSym : TDataSymbol;
-                         fieldSym : TFieldSymbol; varExpr : TTypedExpr) : TDataExpr;
+                            fieldSym : TFieldSymbol) : TDataExpr; overload;
+         function ReadField(const scriptPos : TScriptPos; selfSym : TDataSymbol;
+                         fieldSym : TFieldSymbol; var varExpr : TTypedExpr) : TDataExpr; overload;
 
          function ReadFor : TForExpr;
          function ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
@@ -474,10 +477,11 @@ type
          function ReadOperatorDecl : TOperatorSymbol;
          function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
          function ReadPropertyDecl(structSym : TStructuredTypeSymbol; aVisibility : TdwsVisibility) : TPropertySymbol;
-         function ReadPropertyExpr(expr : TTypedExpr; propertySym : TPropertySymbol; isWrite: Boolean) : TProgramExpr;
-         function ReadPropertyReadExpr(expr : TTypedExpr; propertySym : TPropertySymbol) : TTypedExpr;
-         function ReadPropertyWriteExpr(expr : TTypedExpr; propertySym : TPropertySymbol) : TProgramExpr;
-         function ReadPropertyArrayAccessor(expr : TTypedExpr; propertySym : TPropertySymbol;
+         function ReadPropertyExpr(var expr : TDataExpr; propertySym : TPropertySymbol; isWrite: Boolean) : TProgramExpr; overload;
+         function ReadPropertyExpr(var expr : TTypedExpr; propertySym : TPropertySymbol; isWrite: Boolean) : TProgramExpr; overload;
+         function ReadPropertyReadExpr(var expr : TTypedExpr; propertySym : TPropertySymbol) : TTypedExpr;
+         function ReadPropertyWriteExpr(var expr : TTypedExpr; propertySym : TPropertySymbol) : TProgramExpr;
+         function ReadPropertyArrayAccessor(var expr : TTypedExpr; propertySym : TPropertySymbol;
                                             typedExprList : TTypedExprList;
                                             const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExpr;
          function ReadRecord(const typeName : UnicodeString) : TRecordSymbol;
@@ -3364,7 +3368,7 @@ begin
          if (selfSym=nil) or (selfSym.Typ is TStructuredTypeMetaSymbol) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
 
-         fieldExpr:=ReadField(namePos, selfSym, TFieldSymbol(sym), nil);
+         fieldExpr:=ReadField(namePos, selfSym, TFieldSymbol(sym));
 
          Result:=ReadSymbol(fieldExpr, IsWrite, expecting);
 
@@ -3376,7 +3380,6 @@ begin
          else varExpr:=GetVarExpr(progMeth.SelfSym);
          try
             propExpr:=ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
-            varExpr:=nil;
             Result:=ReadSymbol(propExpr, IsWrite, expecting);
          except
             varExpr.Free;
@@ -3585,7 +3588,18 @@ end;
 // ReadField
 //
 function TdwsCompiler.ReadField(const scriptPos : TScriptPos; selfSym : TDataSymbol;
-                                fieldSym : TFieldSymbol; varExpr : TTypedExpr) : TDataExpr;
+                                fieldSym : TFieldSymbol) : TDataExpr;
+var
+   varExpr : TTypedExpr;
+begin
+   varExpr:=nil;
+   Result:=ReadField(scriptPos, selfSym, fieldSym, varExpr);
+end;
+
+// ReadField
+//
+function TdwsCompiler.ReadField(const scriptPos : TScriptPos; selfSym : TDataSymbol;
+                                fieldSym : TFieldSymbol; var varExpr : TTypedExpr) : TDataExpr;
 begin
    if fieldSym.StructSymbol is TRecordSymbol then begin
       if varExpr=nil then
@@ -3596,10 +3610,17 @@ begin
          varExpr:=GetVarExpr(selfSym);
       Result:=TFieldExpr.Create(FProg, FTok.HotPos, fieldSym.Typ, fieldSym, varExpr);
    end;
+   varExpr:=nil;
 end;
 
-// Parses statements like "property[i, j, k] := expr" and "expr := property[i, j, k]"
-function TdwsCompiler.ReadPropertyExpr(Expr: TTypedExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TProgramExpr;
+// ReadPropertyExpr
+//
+function TdwsCompiler.ReadPropertyExpr(var expr : TDataExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TProgramExpr;
+begin
+   Result:=ReadPropertyExpr(TTypedExpr(expr), propertySym, isWrite);
+end;
+
+function TdwsCompiler.ReadPropertyExpr(var expr : TTypedExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TProgramExpr;
 begin
    if IsWrite then
       Result:=ReadPropertyWriteExpr(expr, propertySym)
@@ -3608,7 +3629,7 @@ end;
 
 // ReadPropertyReadExpr
 //
-function TdwsCompiler.ReadPropertyReadExpr(expr : TTypedExpr; propertySym : TPropertySymbol) : TTypedExpr;
+function TdwsCompiler.ReadPropertyReadExpr(var expr : TTypedExpr; propertySym : TPropertySymbol) : TTypedExpr;
 var
    sym : TSymbol;
    aPos : TScriptPos;
@@ -3652,7 +3673,7 @@ end;
 
 // ReadPropertyWriteExpr
 //
-function TdwsCompiler.ReadPropertyWriteExpr(expr : TTypedExpr; propertySym : TPropertySymbol) : TProgramExpr;
+function TdwsCompiler.ReadPropertyWriteExpr(var expr : TTypedExpr; propertySym : TPropertySymbol) : TProgramExpr;
 var
    sym : TSymbol;
    aPos : TScriptPos;
@@ -3719,7 +3740,8 @@ begin
                if Expr.Typ is TClassOfSymbol then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
                Result:=TReadOnlyFieldExpr.Create(FProg, FTok.HotPos, sym.Typ,
-                                                 TFieldSymbol(sym), expr)
+                                                 TFieldSymbol(sym), expr);
+               expr:=nil;
 
             end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_WriteOnlyProperty)
 
@@ -3741,7 +3763,7 @@ end;
 
 // ReadPropertyArrayAccessor
 //
-function TdwsCompiler.ReadPropertyArrayAccessor(expr : TTypedExpr; propertySym : TPropertySymbol;
+function TdwsCompiler.ReadPropertyArrayAccessor(var expr : TTypedExpr; propertySym : TPropertySymbol;
       typedExprList : TTypedExprList; const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExpr;
 var
    i : Integer;
@@ -3753,11 +3775,15 @@ begin
 
    if expr.Typ is TClassOfSymbol then begin
       // Class properties
-      if not TMethodSymbol(sym).IsClassMethod then
-         FMsgs.AddCompilerStop(scriptPos, CPE_StaticPropertyWriteExpected);
+      if not TMethodSymbol(sym).IsClassMethod then begin
+         if isWrite then
+            FMsgs.AddCompilerStop(scriptPos, CPE_StaticPropertyWriteExpected)
+         else FMsgs.AddCompilerStop(scriptPos, CPE_StaticPropertyReadExpected);
+      end;
       Result:=GetMethodExpr(TMethodSymbol(sym), expr, rkClassOfRef, scriptPos, False);
    end else Result:=GetMethodExpr(TMethodSymbol(sym), expr, rkObjRef, scriptPos, False);
 
+   expr:=nil;
    try
       // Add array indices (if any)
       for i:=0 to typedExprList.Count-1 do
@@ -3942,7 +3968,7 @@ begin
 
                   end else if member is TFieldSymbol then begin
 
-                     Result:=ReadField(FTok.HotPos, nil, TFieldSymbol(member), TDataExpr(Result));
+                     Result:=ReadField(FTok.HotPos, nil, TFieldSymbol(member), TTypedExpr(Result));
 
                   end else if member is TPropertySymbol then begin
 
@@ -4546,16 +4572,19 @@ end;
 
 // ReadAssign
 //
-function TdwsCompiler.ReadAssign(token : TTokenType; left : TDataExpr) : TNoResultExpr;
+function TdwsCompiler.ReadAssign(token : TTokenType; var left : TDataExpr) : TNoResultExpr;
 var
    pos : TScriptPos;
    right : TTypedExpr;
 begin
    pos:=FTok.HotPos;
-   right:=ReadExpr(left.Typ);
+   right:=nil;
    try
+      right:=ReadExpr(left.Typ);
       Result:=CreateAssign(pos, token, left, right);
+      left:=nil;
    except
+      FreeAndNil(left);
       right.Free;
       raise;
    end;
