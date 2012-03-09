@@ -1765,6 +1765,7 @@ begin
    FDeclaredLocalVars:=TDataSymbolList.Create;
 
    CollectInitExprLocalVars(proc.InitExpr);
+   CollectLocalVarParams(proc.Expr);
 end;
 
 // LeaveContext
