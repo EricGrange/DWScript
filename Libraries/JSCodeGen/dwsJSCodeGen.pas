@@ -623,6 +623,7 @@ begin
    RegisterCodeGen(TBoolVarExpr,          TJSVarExpr.Create);
    RegisterCodeGen(TObjectVarExpr,        TJSVarExpr.Create);
    RegisterCodeGen(TConstParamExpr,       TJSVarExpr.Create);
+   RegisterCodeGen(TConstParamParentExpr, TJSVarExpr.Create);
 
    RegisterCodeGen(TRecordExpr,           TJSRecordExpr.Create);
 
@@ -2384,7 +2385,7 @@ var
    varExpr : TVarExpr;
 begin
    varExpr:=TVarExpr(expr);
-   Result:=varExpr.DataSym; // codeGen.FindSymbolAtStackAddr(varExpr.StackAddr, codeGen.Context.Level);
+   Result:=varExpr.DataSym;
    if Result=nil then
       raise ECodeGenUnsupportedSymbol.CreateFmt('Var not found at StackAddr %d', [varExpr.StackAddr]);
 end;
@@ -2397,22 +2398,11 @@ end;
 //
 procedure TJSVarParentExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
-   i : Integer;
    e : TVarParentExpr;
-   sym : TDataSymbol;
 begin
    e:=TVarParentExpr(expr);
-   sym:=nil;
-   if codeGen.LocalTable<>nil then begin
-      for i:=0 to codeGen.LocalTable.ParentCount-1 do begin
-         sym:=codeGen.LocalTable.Parents[i].FindSymbolAtStackAddr(e.StackAddr, e.Level);
-         if sym<>nil then Break;
-      end;
-   end;
-   if sym=nil then
-      raise ECodeGenUnsupportedSymbol.Create(IntToStr(e.StackAddr));
-   codeGen.WriteSymbolName(sym);
-   if IsLocalVarParam(codeGen, sym) then
+   codeGen.WriteSymbolName(e.DataSym);
+   if IsLocalVarParam(codeGen, e.DataSym) then
       codeGen.WriteString('.'+TdwsJSCodeGen.cBoxFieldName);
 end;
 
@@ -2424,7 +2414,7 @@ end;
 //
 procedure TJSVarParamExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 begin
-   inherited;
+   CodeGenName(codeGen, expr);
    codeGen.WriteString('.'+TdwsJSCodeGen.cBoxFieldName);
 end;
 
@@ -2435,8 +2425,11 @@ end;
 // CodeGen
 //
 procedure TJSVarParamParentExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TVarParentExpr;
 begin
-   inherited;
+   e:=TVarParentExpr(expr);
+   codeGen.WriteSymbolName(e.DataSym);
    codeGen.WriteString('.'+TdwsJSCodeGen.cBoxFieldName);
 end;
 
