@@ -1136,21 +1136,20 @@ begin
 
    i:=FUnits.IndexOfName(unitName);
    if i<0 then begin
-      if Assigned(FOnNeedUnit) then begin
+      if Assigned(FOnNeedUnit) then
          unitResolved:=FOnNeedUnit(unitName, unitSource);
-         if unitResolved<>nil then
-            FUnits.Add(unitResolved)
-         else begin
-            if unitSource='' then
-               unitSource:=GetScriptSource(unitName);
-            if unitSource<>'' then begin
-               srcUnit:=TSourceUnit.Create(unitName, FProg.Root.RootTable, FProg.UnitMains);
-               unitResolved:=srcUnit;
-               FUnits.Add(unitResolved);
-               oldContext:=FSourceContextMap.SuspendContext;
-               SwitchTokenizerToUnit(srcUnit, unitSource);
-               FSourceContextMap.ResumeContext(oldContext);
-            end;
+      if unitResolved<>nil then
+         FUnits.Add(unitResolved)
+      else begin
+         if unitSource='' then
+            unitSource:=GetScriptSource(unitName+'.pas');
+         if unitSource<>'' then begin
+            srcUnit:=TSourceUnit.Create(unitName, FProg.Root.RootTable, FProg.UnitMains);
+            unitResolved:=srcUnit;
+            FUnits.Add(unitResolved);
+            oldContext:=FSourceContextMap.SuspendContext;
+            SwitchTokenizerToUnit(srcUnit, unitSource);
+            FSourceContextMap.ResumeContext(oldContext);
          end;
       end;
       if unitResolved=nil then begin
