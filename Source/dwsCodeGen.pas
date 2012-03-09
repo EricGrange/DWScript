@@ -1125,6 +1125,7 @@ procedure TdwsCodeGen.EnterScope(symbol : TSymbol);
 var
    map : TdwsCodeGenSymbolMap;
 begin
+   FSymbolMapStack.Push(FSymbolMap);
    if symbol is TUnitSymbol then
       symbol:=TUnitSymbol(symbol).Main;
    map:=FSymbolMaps.MapOf(symbol);
@@ -1141,19 +1142,11 @@ end;
 // LeaveScope
 //
 procedure TdwsCodeGen.LeaveScope;
-var
-   i : Integer;
-   m : TdwsCodeGenSymbolMap;
 begin
    Assert(FSymbolMap<>nil);
-   m:=FSymbolMap;
-   FSymbolMap:=m.Parent;
-   m.FParent:=nil;
-   if (m.Symbol=nil) or (m.Symbol is TFuncSymbol) then begin
-      i:=FSymbolMaps.IndexOf(m);
-      FSymbolMaps.Extract(i);
-      m.Free;
-   end;
+   FSymbolMap.FParent:=nil;
+   FSymbolMap:=TdwsCodeGenSymbolMap(FSymbolMapStack.Peek);
+   FSymbolMapStack.Pop;
 end;
 
 // EnterStructScope
