@@ -2084,6 +2084,7 @@ begin
    sym:=nil;
 
    funcKind:=cTokenToFuncKind[funcToken];
+   funcPos:=hotPos;
 
    if not isType then begin
       // Find existing symbol for function name (if any)
