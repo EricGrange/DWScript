@@ -3767,14 +3767,23 @@ procedure TJSObjAsClassExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TObjAsClassExpr;
 begin
-   codeGen.Dependencies.Add('$As');
-
    e:=TObjAsClassExpr(expr);
-   codeGen.WriteString('$As(');
-   codeGen.Compile(e.Expr);
-   codeGen.WriteString(',');
-   codeGen.WriteSymbolName(e.Typ.UnAliasedType);
-   codeGen.WriteString(')');
+
+   if e.Expr.Typ.IsOfType(e.Typ) then begin
+
+      codeGen.Compile(e.Expr);
+
+   end else begin
+
+      codeGen.Dependencies.Add('$As');
+
+      codeGen.WriteString('$As(');
+      codeGen.Compile(e.Expr);
+      codeGen.WriteString(',');
+      codeGen.WriteSymbolName(e.Typ.UnAliasedType);
+      codeGen.WriteString(')');
+
+   end;
 end;
 
 // ------------------
