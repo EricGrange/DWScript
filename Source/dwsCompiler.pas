@@ -8216,8 +8216,11 @@ begin
    try
       ReadArguments(Result.AddArg, ttALEFT, ttARIGHT, argPosArray);
 
-      if IsWrite and FTok.TestDelete(ttASSIGN) then
-         Result.AddArg(ReadExpr);
+      if IsWrite then begin
+         if FTok.TestDelete(ttASSIGN) then
+            Result.AddArg(ReadExpr)
+         else Result.IsWrite:=False;
+      end;
 
       if not Result.AssignConnectorSym(FProg, connectorType) then
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorIndex, [ConnectorType.ConnectorCaption]);

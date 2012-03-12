@@ -1182,7 +1182,7 @@ type
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const Name: UnicodeString;
-                            BaseExpr: TTypedExpr; IsWritable: Boolean = True; IsIndex: Boolean = False);
+                            BaseExpr: TTypedExpr; IsWrite: Boolean = True; IsIndex: Boolean = False);
          destructor Destroy; override;
 
          function AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType) : Boolean;
@@ -1191,6 +1191,7 @@ type
          function IsWritable : Boolean; override;
 
          property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
+         property IsWrite : Boolean read FIsWritable write FIsWritable;
          property IsIndex : Boolean read FIsIndex write FIsIndex;
          property ConnectorCall : IConnectorCall read FConnectorCall write FConnectorCall;
    end;
@@ -6481,13 +6482,13 @@ end;
 { TConnectorExpr }
 
 constructor TConnectorCallExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-  const Name: UnicodeString; BaseExpr: TTypedExpr; IsWritable: Boolean; IsIndex: Boolean);
+  const Name: UnicodeString; BaseExpr: TTypedExpr; IsWrite: Boolean; IsIndex: Boolean);
 begin
   inherited Create(Prog, Pos, nil);
   FName := Name;
   FBaseExpr := BaseExpr;
-  FIsInstruction := IsWritable;
-  FIsWritable := IsWritable;
+  FIsInstruction := IsWrite;
+  FIsWritable := IsWrite;
   FIsIndex := IsIndex;
 end;
 
