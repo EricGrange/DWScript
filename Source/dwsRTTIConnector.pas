@@ -156,6 +156,20 @@ type
 
    EdwsRTTIException = class(Exception) end;
 
+   TRTTIIndexedPropertyGetter = function(instance: Pointer; const args: array of TValue): TValue;
+   TRTTIIndexedPropertySetter = procedure(instance: Pointer; const args: array of TValue);
+   TRTTIIndexedProperty = record
+      ClassType : TClass;
+      PropName : String;
+      IsDefault : Boolean;
+      GetValue : TRTTIIndexedPropertyGetter;
+      SetValue : TRTTIIndexedPropertySetter;
+   end;
+   PRTTIIndexedProperty = ^TRTTIIndexedProperty;
+
+procedure RegisterRTTIIndexedProperty(aClassType : TClass; const aPropName : String;
+      isDefault : Boolean; const getValue : TRTTIIndexedPropertyGetter; const setValue : TRTTIIndexedPropertySetter);
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -167,6 +181,7 @@ implementation
 var
    vRTTIContext : TRttiContext;
    vEmptyTValue : TValue;
+   vIndexedProperties : array of TRTTIIndexedProperty;
 
 type
 
@@ -290,6 +305,38 @@ begin
    else
       Result:=default;
    end;
+end;
+
+procedure RegisterRTTIIndexedProperty(
+   aClassType : TClass; const aPropName : String; isDefault : Boolean;
+   const getValue : TRTTIIndexedPropertyGetter; const setValue : TRTTIIndexedPropertySetter);
+var
+   n : Integer;
+   entry : PRTTIIndexedProperty;
+begin
+   n:=Length(vIndexedProperties);
+   SetLength(vIndexedProperties, n+1);
+   entry:=@vIndexedProperties[n];
+   entry.ClassType:=aClassType;
+   entry.PropName:=aPropName;
+   entry.IsDefault:=isDefault;
+   entry.GetValue:=getValue;
+   entry.SetValue:=setValue;
+end;
+
+function TStrings_GetStrings(instance: Pointer; const args: array of TValue): TValue;
+begin
+   Result:=TStrings(instance).Strings[args[0].AsInteger];
+end;
+
+procedure TStrings_SetStrings(instance: Pointer; const args: array of TValue);
+begin
+   TStrings(instance).Strings[args[0].AsInteger]:=args[1].AsString;
+end;
+
+function TComponent_GetComponents(instance: Pointer; const args: array of TValue): TValue;
+begin
+   Result:=TComponent(instance).Components[args[0].AsInteger];
 end;
 
 // ------------------
@@ -1021,96 +1068,75 @@ begin
    FMethodType:=methodType;
 end;
 
-function TStrings_GetStrings(instance: TdwsRTTIVariant; args: TConnectorArgs): Variant;
-begin
-   Result:=TStrings(instance.AsObject).Strings[args[0][0]];
-end;
-
-procedure TStrings_SetStrings(instance: TdwsRTTIVariant; args: TConnectorArgs);
-begin
-   TStrings(instance.AsObject).Strings[args[0][0]]:=args[1][0];
-end;
-
-function TComponent_GetComponents(instance: TdwsRTTIVariant; args: TConnectorArgs): Variant;
-begin
-   Result := TdwsRTTIVariant.FromObject(TComponent(instance.AsObject).Components[args[0][0]]);
-end;
-
 // Call
 //
-function TdwsRTTIConnectorIndexedProperty.Call(const base: Variant;
-   args: TConnectorArgs): TData;
+function TdwsRTTIConnectorIndexedProperty.Call(const base : Variant;
+                                               args : TConnectorArgs) : TData;
 var
-   i : Integer;
+   i, k : Integer;
    instance : TdwsRTTIVariant;
    resultValue : TValue;
    prop : TRttiProperty;
    value : Variant;
-type
-   TIndexedPropertyEntry = record
-      ClassType : TClass;
-      PropName : String;
-      IsDefault : Boolean;
-      Getter : function(instance: TdwsRTTIVariant; data: TConnectorArgs): Variant;
-      Setter : procedure(instance: TdwsRTTIVariant; data: TConnectorArgs);
-   end;
-const
-   IndexedProperties: array[0..1] of TIndexedPropertyEntry = (
-     (ClassType: TStrings; PropName: 'Strings'; IsDefault: True;
-     Getter: TStrings_GetStrings; Setter: TStrings_SetStrings),
-     (ClassType: TComponent; PropName: 'Components'; IsDefault: False;
-     Getter: TComponent_GetComponents)
-   );
+   values : TArray<TValue>;
+   cip : TdwsRTTIConnectorIndexedProperty;
 begin
+   SetLength(Result, 1);
    instance:=IUnknown(base) as TdwsRTTIVariant;
 
-   for i:=0 to Pred(Length(IndexedProperties)) do
-   begin
-      if instance.RTTIType.AsInstance.MetaclassType.InheritsFrom(IndexedProperties[i].ClassType)
-         and (SameText(FPropertyName, IndexedProperties[i].PropName)
-         or ((FPropertyName = '') and IndexedProperties[i].IsDefault)) then
-      begin
+   for i:=0 to High(vIndexedProperties) do begin
+      if     instance.RTTIType.AsInstance.MetaclassType.InheritsFrom(vIndexedProperties[i].ClassType)
+         and (   SameText(FPropertyName, vIndexedProperties[i].PropName)
+              or (    (FPropertyName = '')
+                  and vIndexedProperties[i].IsDefault)) then begin
+
          case FMethodType of
-            mtPropertyGet:
-            begin                     
-               value:=IndexedProperties[i].Getter(instance, args);
+            mtPropertyGet : begin
+               SetLength(values, Length(args));
+               for k:=Low(values) to High(values) do
+                  VariantToValue(args[k][0], values[k]);
+               ValueToVariant(vIndexedProperties[i].GetValue(instance.InstancePointer, values), value);
             end;
-            mtPropertySet:
-            begin
-               if not Assigned(IndexedProperties[i].Setter) then
+            mtPropertySet : begin
+               if not Assigned(vIndexedProperties[i].SetValue) then
                   raise EdwsRTTIException.CreateFmt('"%s.%s" is not writable',
-                                                   [instance.RTTIType.Name, FPropertyName]);
-               IndexedProperties[i].Setter(instance, args);
+                                                    [instance.RTTIType.Name, FPropertyName]);
+               SetLength(values, Length(args));
+               for k:=Low(values) to High(values) do
+                  VariantToValue(args[k][0], values[k]);
+               vIndexedProperties[i].SetValue(instance.InstancePointer, values);
             end;
+         else
+            Assert(False);
          end;
-         SetLength(Result, 1);
          Result[0]:=value;
          Exit;
-      end else
-      begin
+
+      end else begin
+
          prop:=instance.RTTIType.GetProperty(FPropertyName);
-         if prop<>nil then
-         begin
-            if prop.PropertyType.AsInstance.MetaclassType.InheritsFrom(IndexedProperties[i].ClassType)
-               and IndexedProperties[i].IsDefault then
-            begin
-               with TdwsRTTIConnectorIndexedProperty.Create(IndexedProperties[i].PropName, nil, FMethodType) do
-               try
-                  resultValue:=prop.GetValue(instance.InstancePointer);
-                  ValueToVariant(resultValue, value);
-                  SetLength(Result, 1);
-                  Result[0]:=Call(value, args)[0];
-               finally
-                  Free;
-               end;
-               Exit;
+         if     (prop<>nil)
+            and prop.PropertyType.AsInstance.MetaclassType.InheritsFrom(vIndexedProperties[i].ClassType)
+            and vIndexedProperties[i].IsDefault then begin
+
+            resultValue:=prop.GetValue(instance.InstancePointer);
+            ValueToVariant(resultValue, value);
+
+            cip:=TdwsRTTIConnectorIndexedProperty.Create(vIndexedProperties[i].PropName, nil, FMethodType);
+            try
+               Result[0]:=cip.Call(value, args)[0];
+            finally
+               cip.Free;
             end;
+            Exit;
+
          end;
+
       end;
    end;
 
    raise EdwsRTTIException.CreateFmt('"%s" does not have a method "%s" exposed via RTTI',
-                                        [instance.RTTIType.Name, FPropertyName]);
+                                     [instance.RTTIType.Name, FPropertyName]);
 end;
 
 // NeedDirectReference
@@ -1119,5 +1145,16 @@ function TdwsRTTIConnectorIndexedProperty.NeedDirectReference: Boolean;
 begin
    Result := False;
 end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+  RegisterRTTIIndexedProperty(TStrings, 'Strings', True, TStrings_GetStrings, TStrings_SetStrings);
+  RegisterRTTIIndexedProperty(TComponent, 'Components', False, TComponent_GetComponents, nil);
 
 end.

@@ -48,6 +48,7 @@ type
 
          procedure IndexedProperties;
          procedure IndexedPropertiesDefault;
+         procedure IndexedPropertiesCustom;
    end;
 
 type
@@ -566,6 +567,55 @@ begin
         exec := prog.Execute(0);
         CheckEquals('', exec.Msgs.AsInfo, 'exec');
         CheckEquals('Hello'#13#10'World'#13#10, exec.Result.ToString, 'result');
+      finally
+        prog := nil;
+      end;
+    finally
+      FCompiler.Extensions.Remove(env);
+      env.Free;
+    end;
+  finally
+    obj.Free;
+  end;
+end;
+
+function TStrings_GetValues(instance: Pointer; const args: array of TValue): TValue;
+begin
+   Result:=TStrings(instance).Values[args[0].AsString];
+end;
+
+procedure TStrings_SetValues(instance: Pointer; const args: array of TValue);
+begin
+   TStrings(instance).Values[args[0].AsString]:=args[1].AsString;
+end;
+
+// IndexedPropertiesCustom
+//
+procedure TRTTIExposeTests.IndexedPropertiesCustom;
+var
+  obj: TIndexedPropertiesTestClass;
+  env: TRTTIEnvironment;
+  prog: IdwsProgram;
+  exec: IdwsProgramExecution;
+begin
+  obj := TIndexedPropertiesTestClass.Create;
+  try
+    env := TRTTIEnvironment.Create;
+    env.DefaultEnvironment := obj;
+    FCompiler.Extensions.Add(env);
+    RegisterRTTIIndexedProperty(TStrings, 'Values', False,
+      TStrings_GetValues, TStrings_SetValues);
+
+    try
+      prog := FCompiler.Compile('Items.Add("Hello=World");'#13#10+
+                                'PrintLn(Items.Values["Hello"]);'#13#10+
+                                'Items.Values["Hello"]:="Moon";'#13#10+
+                                'PrintLn(Items[0]);');
+      try
+        CheckEquals('', prog.Msgs.AsInfo, 'compile');
+        exec := prog.Execute(0);
+        CheckEquals('', exec.Msgs.AsInfo, 'exec');
+        CheckEquals('World'#13#10'Hello=Moon'#13#10, exec.Result.ToString, 'result');
       finally
         prog := nil;
       end;
