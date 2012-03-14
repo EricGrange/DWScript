@@ -33,9 +33,12 @@ type
    // TSourceFile
    //
    TSourceFile = class
+      private
+         FLineCount : Integer;
       public
          Name : UnicodeString;
          Code : UnicodeString;
+         function LineCount : Integer;
    end;
 
    // TScriptPos
@@ -671,6 +674,25 @@ end;
 procedure TdwsCompileMessageList.AddCompilerStopFmt(const Pos: TScriptPos; const textFormat : UnicodeString; const args: array of const);
 begin
    AddCompilerStop(Pos, Format(textFormat, args), TSyntaxErrorMessage);
+end;
+
+// ------------------
+// ------------------ TSourceFile ------------------
+// ------------------
+
+// LineCount
+//
+function TSourceFile.LineCount : Integer;
+var
+   i : Integer;
+begin
+   if FLineCount=0 then begin
+      FLineCount:=1;
+      for i:=1 to Length(Code) do
+         if Code[i]=#10 then
+            Inc(FLineCount);
+   end;
+   Result:=FLineCount;
 end;
 
 end.

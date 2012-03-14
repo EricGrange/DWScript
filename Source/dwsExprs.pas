@@ -264,7 +264,8 @@ type
          { Sets specified context as current context }
          procedure ResumeContext(aContext : TdwsSourceContext);
 
-         function FindContext(AParentSymbol : TSymbol) : TdwsSourceContext; overload;// return the first context group based on its parent
+         // return the first context group based on its parent
+         function FindContext(AParentSymbol : TSymbol) : TdwsSourceContext; overload;
          function FindContext(aCol, aLine : Integer; sourceFile : TSourceFile) : TdwsSourceContext; overload;
          function FindContext(aCol, aLine : Integer; const sourceName : UnicodeString) : TdwsSourceContext; overload;
          function FindContext(const ScriptPos : TScriptPos) : TdwsSourceContext; overload;
