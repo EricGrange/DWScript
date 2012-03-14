@@ -4777,11 +4777,23 @@ begin
          matchParamType:=match.GetParamType(j);
          funcExprParamType:=funcExpr.GetArgType(j);
          if not matchParamType.IsOfType(funcExprParamType) then begin
-            if not (   (matchParamType.IsOfType(FProg.TypFloat) and funcExprParamType.IsOfType(FProg.TypInteger))
-                    or matchParamType.IsCompatible(funcExprParamType)) then begin
+            if funcExprParamType.IsOfType(FProg.TypVariant) then begin
+               if not funcExprParamType.IsCompatible(matchParamType) then begin
+                  match:=nil;
+                  break;
+               end else begin
+                  // disfavor variant promotion to integer
+                  if matchParamType.IsOfType(FProg.TypInteger) then
+                     Inc(matchDistance, 256)
+                  else Inc(matchDistance, 1);
+               end;
+            end else if not (   (matchParamType.IsOfType(FProg.TypFloat) and funcExprParamType.IsOfType(FProg.TypInteger))
+                             or matchParamType.IsCompatible(funcExprParamType)) then begin
                match:=nil;
                break;
-            end else Inc(matchDistance);
+            end else begin
+               Inc(matchDistance, 1);
+            end;
          end;
       end;
       if match=nil then continue;
@@ -4794,7 +4806,7 @@ begin
       if match=nil then continue;
 
       if match is TMethodSymbol then begin
-         // for method symbols gives precedence to the deepest subclass
+         // for method symbols give precedence to the deepest subclass
          // this will only differentiate matches that rated the same on parameters
          matchDistance:=(matchDistance+1) shl 16;
          struct:=TMethodSymbol(match).StructSymbol;
