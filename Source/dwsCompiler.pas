@@ -4091,7 +4091,7 @@ begin
             // Transform a := b into a(b)
             Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.WriteFunc);
             Result.AddArg(ReadExpr);
-         end else if (Sym.Typ is TClassSymbol) or (Sym.Typ is TClassOfSymbol) then begin
+         end else if (Sym.Typ is TClassSymbol) or (Sym.Typ is TClassOfSymbol) or (Sym.Typ is TConnectorSymbol) then begin
             if not Assigned(Sym.ReadFunc) then
                FMsgs.AddCompilerStop(FTok.HotPos,CPE_RightSideNeedsReturnType);
             Result := TFuncExpr.Create(FProg, FTok.HotPos, Sym.ReadFunc)

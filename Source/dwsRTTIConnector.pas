@@ -223,6 +223,20 @@ type
          constructor Create(const memberName : String);
    end;
 
+   TdwsRTTIConnectorIndexedProperty = class(TInterfacedSelfObject, IUnknown, IConnectorCall)
+      private
+         FPropertyName : String;
+         FMethodType : TdwsRTTIMethodType;
+
+      protected
+         function Call(const base : Variant; args : TConnectorArgs) : TData;
+         function NeedDirectReference : Boolean;
+
+      public
+         constructor Create(const propertyName : String; const params : TConnectorParamArray;
+                            methodType : TdwsRTTIMethodType);
+   end;
+
 // ValueToVariant
 //
 procedure ValueToVariant(const v : TValue; var result : Variant);
@@ -402,10 +416,10 @@ function TdwsRTTIConnectorType.HasIndex(const propName : String; const params : 
                                         var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
 begin
    Result:=nil; // unsupported by Delphi XE RTTI
-//   typSym:=FTable.FindTypeSymbol(SYS_RTTIVARIANT, cvMagic);
-//   if isWrite then
-//      Result:=TdwsRTTIConnectorCall.Create(propName, params, mtPropertySet)
-//   else Result:=TdwsRTTIConnectorCall.Create(propName, params, mtPropertyGet)
+   typSym:=FTable.FindTypeSymbol(SYS_RTTIVARIANT, cvMagic);
+   if isWrite then
+      Result:=TdwsRTTIConnectorIndexedProperty.Create(propName, params, mtPropertySet)
+   else Result:=TdwsRTTIConnectorIndexedProperty.Create(propName, params, mtPropertyGet)
 end;
 
 // HasMember
@@ -994,5 +1008,116 @@ begin
    else Result:=v.GetReferenceToRawData;
 end;
 
-end.
+// ------------------
+// ------------------ TdwsRTTIConnectorIndexedProperty ------------------
+// ------------------
 
+// Create
+//
+constructor TdwsRTTIConnectorIndexedProperty.Create(const propertyName: String;
+   const params: TConnectorParamArray; methodType: TdwsRTTIMethodType);
+begin
+   FPropertyName:=propertyName;
+   FMethodType:=methodType;
+end;
+
+function TStrings_GetStrings(instance: TdwsRTTIVariant; args: TConnectorArgs): Variant;
+begin
+   Result:=TStrings(instance.AsObject).Strings[args[0][0]];
+end;
+
+procedure TStrings_SetStrings(instance: TdwsRTTIVariant; args: TConnectorArgs);
+begin
+   TStrings(instance.AsObject).Strings[args[0][0]]:=args[1][0];
+end;
+
+function TComponent_GetComponents(instance: TdwsRTTIVariant; args: TConnectorArgs): Variant;
+begin
+   Result := TdwsRTTIVariant.FromObject(TComponent(instance.AsObject).Components[args[0][0]]);
+end;
+
+// Call
+//
+function TdwsRTTIConnectorIndexedProperty.Call(const base: Variant;
+   args: TConnectorArgs): TData;
+var
+   i : Integer;
+   instance : TdwsRTTIVariant;
+   resultValue : TValue;
+   prop : TRttiProperty;
+   value : Variant;
+type
+   TIndexedPropertyEntry = record
+      ClassType : TClass;
+      PropName : String;
+      IsDefault : Boolean;
+      Getter : function(instance: TdwsRTTIVariant; data: TConnectorArgs): Variant;
+      Setter : procedure(instance: TdwsRTTIVariant; data: TConnectorArgs);
+   end;
+const
+   IndexedProperties: array[0..1] of TIndexedPropertyEntry = (
+     (ClassType: TStrings; PropName: 'Strings'; IsDefault: True;
+     Getter: TStrings_GetStrings; Setter: TStrings_SetStrings),
+     (ClassType: TComponent; PropName: 'Components'; IsDefault: False;
+     Getter: TComponent_GetComponents)
+   );
+begin
+   instance:=IUnknown(base) as TdwsRTTIVariant;
+
+   for i:=0 to Pred(Length(IndexedProperties)) do
+   begin
+      if instance.RTTIType.AsInstance.MetaclassType.InheritsFrom(IndexedProperties[i].ClassType)
+         and (SameText(FPropertyName, IndexedProperties[i].PropName)
+         or ((FPropertyName = '') and IndexedProperties[i].IsDefault)) then
+      begin
+         case FMethodType of
+            mtPropertyGet:
+            begin                     
+               value:=IndexedProperties[i].Getter(instance, args);
+            end;
+            mtPropertySet:
+            begin
+               if not Assigned(IndexedProperties[i].Setter) then
+                  raise EdwsRTTIException.CreateFmt('"%s.%s" is not writable',
+                                                   [instance.RTTIType.Name, FPropertyName]);
+               IndexedProperties[i].Setter(instance, args);
+            end;
+         end;
+         SetLength(Result, 1);
+         Result[0]:=value;
+         Exit;
+      end else
+      begin
+         prop:=instance.RTTIType.GetProperty(FPropertyName);
+         if prop<>nil then
+         begin
+            if prop.PropertyType.AsInstance.MetaclassType.InheritsFrom(IndexedProperties[i].ClassType)
+               and IndexedProperties[i].IsDefault then
+            begin
+               with TdwsRTTIConnectorIndexedProperty.Create(IndexedProperties[i].PropName, nil, FMethodType) do
+               try
+                  resultValue:=prop.GetValue(instance.InstancePointer);
+                  ValueToVariant(resultValue, value);
+                  SetLength(Result, 1);
+                  Result[0]:=Call(value, args)[0];
+               finally
+                  Free;
+               end;
+               Exit;
+            end;
+         end;
+      end;
+   end;
+
+   raise EdwsRTTIException.CreateFmt('"%s" does not have a method "%s" exposed via RTTI',
+                                        [instance.RTTIType.Name, FPropertyName]);
+end;
+
+// NeedDirectReference
+//
+function TdwsRTTIConnectorIndexedProperty.NeedDirectReference: Boolean;
+begin
+   Result := False;
+end;
+
+end.

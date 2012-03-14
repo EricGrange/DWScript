@@ -45,6 +45,9 @@ type
 
          procedure DynamicParamTest;
          procedure DynamicParamTestDirectPass;
+
+         procedure IndexedProperties;
+         procedure IndexedPropertiesDefault;
    end;
 
 type
@@ -146,6 +149,16 @@ type
     function CallWithArrayOfInteger(const Value: TDynamicParamOfInteger): string;
     function CallWithArrayOfString(const Value: TDynamicParamOfString): string;
     function CallWithArrayOfVariant(const Value: TDynamicParamOfVariant): string;
+  end;
+
+  TIndexedPropertiesTestClass = class
+  private
+    FItems: TStrings;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    property Items: TStrings read FItems;
   end;
 
 // ------------------------------------------------------------------
@@ -297,6 +310,26 @@ begin
   Result := sLineBreak;
   for Index := Low(Value) to High(Value) do
     Result := Result + '[' + IntToStr(Index) + '] ' + VarToStr(Value[Index]) + sLineBreak;
+end;
+
+// ------------------
+// ------------------ TIndexedPropertiesTestClass ------------------
+// ------------------
+
+// Create
+//
+constructor TIndexedPropertiesTestClass.Create;
+begin
+   inherited;
+   FItems:=TStringList.Create;
+end;
+
+// Destroy
+//
+destructor TIndexedPropertiesTestClass.Destroy;
+begin
+   inherited;
+   FItems.Free;
 end;
 
 // ------------------
@@ -471,6 +504,78 @@ begin
   CheckEquals('', LProg.Msgs.AsInfo, 'Exec Msgs');
 
   CheckEquals(cDynamicParamTestResultDirectPass, LExec.Result.ToString, 'Exec Result');
+end;
+
+// IndexedProperties
+//
+procedure TRTTIExposeTests.IndexedProperties;
+var
+  obj: TIndexedPropertiesTestClass;
+  env: TRTTIEnvironment;
+  prog: IdwsProgram;
+  exec: IdwsProgramExecution;
+begin
+  obj := TIndexedPropertiesTestClass.Create;
+  try
+    env := TRTTIEnvironment.Create;
+    env.DefaultEnvironment := obj;
+    FCompiler.Extensions.Add(env);
+    try
+      prog := FCompiler.Compile('Items.Add("Hello");'#13#10+
+                                'PrintLn(Items.Strings[0]);'#13#10+
+                                'Items.Strings[0]:="World";'#13#10+
+                                'PrintLn(Items.Strings[0]);');
+      try
+        CheckEquals('', prog.Msgs.AsInfo, 'compile');
+        exec := prog.Execute(0);
+        CheckEquals('', exec.Msgs.AsInfo, 'exec');
+        CheckEquals('Hello'#13#10'World'#13#10, exec.Result.ToString, 'result');
+      finally
+        prog := nil;
+      end;
+    finally
+      FCompiler.Extensions.Remove(env);
+      env.Free;
+    end;
+  finally
+    obj.Free;
+  end;
+end;
+
+// IndexedPropertiesDefault
+//
+procedure TRTTIExposeTests.IndexedPropertiesDefault;
+var
+  obj: TIndexedPropertiesTestClass;
+  env: TRTTIEnvironment;
+  prog: IdwsProgram;
+  exec: IdwsProgramExecution;
+begin
+  obj := TIndexedPropertiesTestClass.Create;
+  try
+    env := TRTTIEnvironment.Create;
+    env.DefaultEnvironment := obj;
+    FCompiler.Extensions.Add(env);
+    try
+      prog := FCompiler.Compile('Items.Add("Hello");'#13#10+
+                                'PrintLn(Items[0]);'#13#10+
+                                'Items[0]:="World";'#13#10+
+                                'PrintLn(Items[0]);');
+      try
+        CheckEquals('', prog.Msgs.AsInfo, 'compile');
+        exec := prog.Execute(0);
+        CheckEquals('', exec.Msgs.AsInfo, 'exec');
+        CheckEquals('Hello'#13#10'World'#13#10, exec.Result.ToString, 'result');
+      finally
+        prog := nil;
+      end;
+    finally
+      FCompiler.Extensions.Remove(env);
+      env.Free;
+    end;
+  finally
+    obj.Free;
+  end;
 end;
 
 // SimpleClass
