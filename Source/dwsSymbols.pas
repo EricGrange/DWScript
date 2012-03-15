@@ -435,6 +435,8 @@ type
          function GetDescription : UnicodeString; override;
 
       public
+         procedure AllocateStackAddr(generator : TAddrGenerator);
+
          property Level : SmallInt read FLevel write FLevel;
          property StackAddr: Integer read FStackAddr write FStackAddr;
    end;
@@ -1109,7 +1111,7 @@ type
    end;
 
    // property X: Integer read FReadSym write FWriteSym;
-   TPropertySymbol = class(TValueSymbol)
+   TPropertySymbol = class (TValueSymbol)
       private
          FStructSymbol : TStructuredTypeSymbol;
          FReadSym : TSymbol;
@@ -4059,6 +4061,14 @@ begin
   else Result:=Name+': ???';
 end;
 
+// AllocateStackAddr
+//
+procedure TDataSymbol.AllocateStackAddr(generator : TAddrGenerator);
+begin
+   FLevel:=generator.Level;
+   FStackAddr:=generator.GetStackAddr(Size);
+end;
+
 // ------------------
 // ------------------ TParamSymbol ------------------
 // ------------------
@@ -4411,10 +4421,8 @@ end;
 function TSymbolTable.AddSymbol(sym : TSymbol) : Integer;
 begin
    Result:=AddSymbolDirect(sym);
-   if (sym is TDataSymbol) and (FAddrGenerator <> nil) then begin
-      TDataSymbol(sym).Level := FAddrGenerator.Level;
-      TDataSymbol(sym).StackAddr := FAddrGenerator.GetStackAddr(sym.Size);
-   end;
+   if (FAddrGenerator<>nil) and (sym is TDataSymbol) then
+      TDataSymbol(sym).AllocateStackAddr(FAddrGenerator);
 end;
 
 // AddSymbolDirect

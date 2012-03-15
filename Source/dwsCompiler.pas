@@ -454,6 +454,7 @@ type
          function ReadInterfaceSymbolName(baseType : TInterfaceSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadRecordSymbolName(baseType : TRecordSymbol; isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadConstName(constSym : TConstSymbol; isWrite: Boolean) : TProgramExpr;
+         function ReadDataSymbolName(dataSym : TDataSymbol; isWrite: Boolean; expecting : TTypeSymbol) : TProgramExpr;
          function ReadResourceStringName(resSym : TResourceStringSymbol; const namePos : TScriptPos) : TResourceStringExpr;
          function ReadNameOld(isWrite : Boolean) : TTypedExpr;
          function ReadNameInherited(isWrite : Boolean) : TProgramExpr;
@@ -518,7 +519,7 @@ type
          function  ReadTypeDecl(firstInBlock : Boolean) : Boolean;
          procedure ReadUses;
          procedure ReadUnitHeader;
-         function ReadVarDecl : TNoResultExpr;
+         function ReadVarDecl(table : TSymbolTable) : TNoResultExpr;
          function ReadWhile : TNoResultExpr;
          function ResolveUnitReferences : TIdwsUnitList;
 
@@ -1578,7 +1579,7 @@ begin
    token:=FTok.TestDeleteAny([ttVAR, ttCONST, ttOPERATOR, ttRESOURCESTRING]);
    case token of
       ttVAR :
-         Result:=ReadVarDecl;
+         Result:=ReadVarDecl(FProg.Table);
       ttCONST :
          ReadConstDeclBlock(action);
       ttRESOURCESTRING :
@@ -1745,7 +1746,7 @@ end;
 
 // ReadVarDecl
 //
-function TdwsCompiler.ReadVarDecl : TNoResultExpr;
+function TdwsCompiler.ReadVarDecl(table : TSymbolTable) : TNoResultExpr;
 var
    x : Integer;
    names : TStringList;
@@ -1814,7 +1815,9 @@ begin
       for x:=0 to names.Count-1 do begin
          CheckName(names[x]);
          sym:=TDataSymbol.Create(names[x], typ);
-         FProg.Table.AddSymbol(sym);
+         table.AddSymbol(sym);
+         if table.AddrGenerator=nil then
+            sym.AllocateStackAddr(FProg.Table.AddrGenerator);
 
          varExpr:=GetVarExpr(sym);
          if Assigned(initExpr) then begin
@@ -2667,7 +2670,7 @@ begin
 
                case sectionType of
                   ttVAR : begin
-                     assignExpr:=ReadVarDecl;
+                     assignExpr:=ReadVarDecl(FProg.Table);
                      if assignExpr<>nil then
                         FProg.InitExpr.AddStatement(assignExpr);
                   end;
@@ -3329,17 +3332,7 @@ begin
 
       if sym.InheritsFrom(TDataSymbol) then begin
 
-         if sym.Typ is TFuncSymbol then begin
-            if     FTok.Test(ttASSIGN)
-               or  (    (expecting<>nil)
-                    and TDataSymbol(sym).Typ.IsOfType(expecting)
-                    and not FTok.Test(ttBLEFT)) then
-               Result:=GetVarExpr(TDataSymbol(sym))
-            else begin
-               Result:=ReadFunc(TFuncSymbol(sym.Typ), GetVarExpr(TDataSymbol(sym)), expecting);
-               Result:=ReadSymbol(Result, isWrite, expecting);
-            end;
-         end else Result:=ReadSymbol(GetVarExpr(TDataSymbol(sym)), IsWrite, expecting);
+         Result:=ReadDataSymbolName(TDataSymbol(sym), isWrite, expecting);
 
       end else if sym.ClassType=TExternalVarSymbol then begin
 
@@ -3539,6 +3532,23 @@ begin
    if typ.Typ is TArraySymbol then
       typ:=typ.Typ;
    Result := ReadSymbol(TConstExpr.CreateTyped(FProg, typ, constSym), IsWrite)
+end;
+
+// ReadDataSymbolName
+//
+function TdwsCompiler.ReadDataSymbolName(dataSym : TDataSymbol; isWrite: Boolean; expecting : TTypeSymbol) : TProgramExpr;
+begin
+   if dataSym.Typ is TFuncSymbol then begin
+      if     FTok.Test(ttASSIGN)
+         or  (    (expecting<>nil)
+              and dataSym.Typ.IsOfType(expecting)
+              and not FTok.Test(ttBLEFT)) then
+         Result:=GetVarExpr(TDataSymbol(dataSym))
+      else begin
+         Result:=ReadFunc(TFuncSymbol(dataSym.Typ), GetVarExpr(dataSym), expecting);
+         Result:=ReadSymbol(Result, isWrite, expecting);
+      end;
+   end else Result:=ReadSymbol(GetVarExpr(dataSym), IsWrite, expecting);
 end;
 
 // ReadResourceStringName
@@ -3932,6 +3942,7 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
 var
    name : UnicodeString;
    member : TSymbol;
+   memberClassType : TClass;
    defaultProperty : TPropertySymbol;
    symPos : TScriptPos;
    baseType : TTypeSymbol;
@@ -3957,6 +3968,9 @@ begin
                if baseType is TStructuredTypeSymbol then begin
 
                   member:=FindStructMember(TStructuredTypeSymbol(baseType), name);
+                  if member<>nil then
+                     memberClassType:=member.ClassType
+                  else memberClassType:=nil;
 
                   RecordSymbolUseReference(member, symPos, isWrite);
 
@@ -3981,10 +3995,15 @@ begin
                      Assert(Result is TTypedExpr);
                      Result := ReadPropertyExpr(TTypedExpr(Result), TPropertySymbol(member), IsWrite)
 
+                  end else if memberClassType=TDataSymbol then begin
+
+                     FreeAndNil(Result);
+                     Result:=ReadDataSymbolName(TDataSymbol(member), IsWrite, expecting);
+
                   end else if member is TConstSymbol then begin
 
                      FreeAndNil(Result);
-                     Result := ReadConstName(TConstSymbol(member), IsWrite);
+                     Result:=ReadConstName(TConstSymbol(member), IsWrite);
 
                   end else FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [Name]);
 
@@ -3992,6 +4011,9 @@ begin
                end else if baseType is TStructuredTypeMetaSymbol then begin
 
                   member:=TStructuredTypeSymbol(baseType.Typ).Members.FindSymbolFromScope(Name, CurrentStruct);
+                  if member<>nil then
+                     memberClassType:=member.ClassType
+                  else memberClassType:=nil;
 
                   RecordSymbolUseReference(member, FTok.HotPos, isWrite);
 
@@ -4006,11 +4028,16 @@ begin
                      else Result:=ReadStaticMethod(meth, baseExpr, symPos, expecting);
 
                   // Static property
-                  end else if member is TPropertySymbol then
+                  end else if member is TPropertySymbol then begin
 
-                     Result := ReadPropertyExpr(TDataExpr(Result), TPropertySymbol(member), IsWrite)
+                     Result := ReadPropertyExpr(TDataExpr(Result), TPropertySymbol(member), IsWrite);
 
-                  else if member is TConstSymbol then begin
+                  end else if memberClassType=TDataSymbol then begin
+
+                     FreeAndNil(Result);
+                     Result:=ReadDataSymbolName(TDataSymbol(member), IsWrite, expecting);
+
+                  end else if member is TConstSymbol then begin
 
                      FreeAndNil(Result);
                      Result:=ReadConstName(TConstSymbol(member), IsWrite);
@@ -5728,6 +5755,7 @@ var
    visibility : TdwsVisibility;
    tt : TTokenType;
    i : Integer;
+   assignExpr : TNoResultExpr;
 begin
    // Check for a forward declaration of this class
    sym:=FProg.Table.FindSymbol(typeName, cvMagic);
@@ -5847,12 +5875,18 @@ begin
 
                   ttCLASS : begin
 
-                     tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttOPERATOR]);
+                     tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttOPERATOR, ttVAR]);
                      case tt of
                         ttPROCEDURE, ttFUNCTION, ttMETHOD :
                            ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, True);
                         ttOPERATOR :
                            Result.AddOperator(ReadClassOperatorDecl(Result));
+                        ttVAR : begin
+                           assignExpr:=ReadVarDecl(Result.Members);
+                           if assignExpr<>nil then
+                              FProg.InitExpr.AddStatement(assignExpr);
+                           ReadSemiColon;
+                        end;
                      else
                         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
                      end;
@@ -7696,7 +7730,7 @@ begin
          else FMsgs.AddCompilerError(FTok.HotPos, CPE_OnOffExpected);
       end;
    else
-      FMsgs.AddCompilerStopFmt(switchPos, CPE_CompilerSwitchUnknown, [Name]);
+      FMsgs.AddCompilerErrorFmt(switchPos, CPE_CompilerSwitchUnknown, [Name]);
    end;
 
    if not FTok.Test(ttCRIGHT) then
