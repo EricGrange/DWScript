@@ -178,23 +178,23 @@ uses
 
 const
    // if the language is case-insensitive keywords *must* be in lowercase
-   cKeyWords: array[1..107] of UnicodeString = (
+   cKeyWords: array[1..98] of UnicodeString = (
       'absolute', 'abstract', 'and', 'array', 'as', 'asm',
       'begin', 'break', 'case', 'cdecl', 'class', 'const', 'constructor',
       'contains', 'continue', 'deprecated', 'destructor',
-      'div', 'do', 'downto', 'dynamic', 'else', 'end', 'ensure', 'except', 'exit',
-      'export', 'exports', 'external', 'far', 'file', 'final', 'finalization',
+      'div', 'do', 'downto', 'else', 'end', 'ensure', 'except', 'exit',
+      'export', 'exports', 'external', 'final', 'finalization',
       'finally', 'for', 'forward', 'function', 'goto', 'helper', 'if',
       'implementation', 'implements', 'implies', 'in', 'index', 'inherited',
-      'initialization', 'inline', 'interface', 'is', 'label', 'lazy', 'library',
+      'initialization', 'inline', 'interface', 'is', 'lazy', 'library',
       'message', 'method', 'mod', 'name', 'new', 'nil', 'nodefault', 'not', 'object', 'of',
-      'old', 'on', 'operator', 'or', 'out', 'overload', 'override', 'package', 'packed',
-      'pascal', 'platform', 'private', 'procedure', 'program', 'property',
+      'old', 'on', 'operator', 'or', 'overload', 'override',
+      'pascal', 'private', 'procedure', 'program', 'property',
       'protected', 'public', 'published', 'raise', 'record',
       'register', 'reintroduce', 'repeat', 'require', 'resourcestring',
       'sealed', 'set', 'shl', 'shr', 'step', 'string',
       'then', 'to', 'try', 'type', 'unit', 'until',
-      'uses', 'var', 'virtual', 'while', 'with', 'xor', 'if'
+      'uses', 'var', 'virtual', 'while', 'xor', 'if'
   );
   cKeyWords_PropertyScoped: array [0..4] of UnicodeString = (
       'default', 'index', 'read', 'stored', 'write'
