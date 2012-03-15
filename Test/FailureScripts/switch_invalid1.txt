@@ -1,0 +1,3 @@
+Syntax Error: ON/OFF expected [line: 3, column: 9]
+Syntax Error: Compiler switch "INVALID_SWITCH" unknown [line: 5, column: 3]
+Syntax Error: Unbalanced conditional directive [line: 7, column: 3]

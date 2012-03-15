@@ -1,1 +1,2 @@
 Syntax Error: Name of include file expected [line: 1, column: 3]
+Syntax Error: "}" expected [line: 1, column: 3]

@@ -1,0 +1,6 @@
+Syntax Error: Boolean expected [line: 1, column: 3]
+Syntax Error: Constant expression expected [line: 5, column: 3]
+Syntax Error: Name expected [line: 7, column: 9]
+Syntax Error: Name expected [line: 9, column: 10]
+Syntax Error: Name expected [line: 11, column: 9]
+Syntax Error: Unbalanced conditional directive [line: 7, column: 3]

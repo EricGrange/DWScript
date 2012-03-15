@@ -1435,9 +1435,7 @@ begin
       end;
 
       if FTok.ConditionalDepth.Count>0 then
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_UnbalancedConditionalDirective);
-//      if CurrentUnitSymbol<>nil then
-//         FUnitSymbol.UnParentInterfaceTable;
+         FMsgs.AddCompilerError(FTok.ConditionalDepth.Peek.ScriptPos, CPE_UnbalancedConditionalDirective);
 
       if finalToken=ttIMPLEMENTATION then begin
          if coSymbolDictionary in Options then
@@ -7511,6 +7509,16 @@ end;
 // ReadInstrSwitch
 //
 function TdwsCompiler.ReadInstrSwitch(const switchName : UnicodeString) : Boolean;
+
+   procedure SkipUntilCurlyRight;
+   begin
+      while not FTok.Test(ttCRIGHT) do begin
+         if not FTok.HasTokens then
+            Exit;
+         FTok.KillToken;
+      end;
+   end;
+
 var
    switch : TSwitchInstruction;
    name, scriptSource : UnicodeString;
@@ -7520,6 +7528,7 @@ var
    condExpr : TTypedExpr;
    sourceFile : TSourceFile;
    includeSymbol : TIncludeSymbol;
+   condInfo : TTokenizerConditionalInfo;
 begin
    Result:=True;
    if Assigned(FOnReadInstrSwitch) then begin
@@ -7545,11 +7554,7 @@ begin
             FMsgs.AddCompilerError(FTok.HotPos, CPE_IncludeFileExpected);
             // skip in attempt to recover from error
             Result:=False;
-            while not FTok.Test(ttCRIGHT) do begin
-               if not FTok.HasTokens then
-                  Exit;
-               FTok.KillToken;
-            end;
+            SkipUntilCurlyRight;
 
          end else begin
 
@@ -7609,33 +7614,44 @@ begin
       end;
       siDefine : begin
 
-         if not FTok.Test(ttNAME) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-
-         FTok.ConditionalDefines.Value.Add(FTok.GetToken.FString);
-         FTok.KillToken;
+         if not FTok.Test(ttNAME) then begin
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
+            // skip in attempt to recover from error
+            SkipUntilCurlyRight;
+         end else begin
+            FTok.ConditionalDefines.Value.Add(FTok.GetToken.FString);
+            FTok.KillToken;
+         end;
 
       end;
       siUndef : begin
 
-         if not FTok.Test(ttNAME) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-
-         i:=FTok.ConditionalDefines.Value.IndexOf(FTok.GetToken.FString);
-         if i>=0 then
-            FTok.ConditionalDefines.Value.Delete(i);
-         FTok.KillToken;
+         if not FTok.Test(ttNAME) then begin
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
+            // skip in attempt to recover from error
+            SkipUntilCurlyRight;
+         end else begin
+            i:=FTok.ConditionalDefines.Value.IndexOf(FTok.GetToken.FString);
+            if i>=0 then
+               FTok.ConditionalDefines.Value.Delete(i);
+            FTok.KillToken;
+         end;
 
       end;
       siIfDef, siIfNDef, siIf : begin
 
+         conditionalTrue:=True;
          case switch of
             siIfDef, siIfNDef : begin
-               if not FTok.Test(ttNAME) then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-               conditionalTrue:=    (FTok.ConditionalDefines.Value.IndexOf(FTok.GetToken.FString)>=0)
-                                xor (switch = siIfNDef);
-               FTok.KillToken;
+               if not FTok.Test(ttNAME) then begin
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
+                  // skip in attempt to recover from error
+                  SkipUntilCurlyRight;
+               end else begin
+                  conditionalTrue:=    (FTok.ConditionalDefines.Value.IndexOf(FTok.GetToken.FString)>=0)
+                                   xor (switch = siIfNDef);
+                  FTok.KillToken;
+               end;
             end;
             siIf : begin
                condPos:=Ftok.HotPos;
@@ -7644,11 +7660,10 @@ begin
                   condExpr:=ReadExpr;
                   try
                      if not condExpr.IsConstant then
-                        FMsgs.AddCompilerStop(condPos, CPE_ConstantExpressionExpected);
-                     if not condExpr.IsOfType(FProg.TypBoolean) then
-                        FMsgs.AddCompilerStop(condPos, CPE_BooleanExpected);
-
-                     conditionalTrue:=condExpr.EvalAsBoolean(FExec);
+                        FMsgs.AddCompilerError(condPos, CPE_ConstantExpressionExpected)
+                     else if not condExpr.IsOfType(FProg.TypBoolean) then
+                        FMsgs.AddCompilerError(condPos, CPE_BooleanExpected)
+                     else conditionalTrue:=condExpr.EvalAsBoolean(FExec);
                   finally
                      condExpr.Free;
                   end;
@@ -7656,16 +7671,17 @@ begin
                   FIsSwitch:=False;
                end;
             end
-         else
-            conditionalTrue:=False;
-            Assert(False);
          end;
 
-         if conditionalTrue then
-            FTok.ConditionalDepth.Push(tcIf)
-         else begin
-            if ReadUntilEndOrElseSwitch(True) then
-               FTok.ConditionalDepth.Push(tcElse);
+         condInfo.ScriptPos:=switchPos;
+         if conditionalTrue then begin
+            condInfo.Conditional:=tcIf;
+            FTok.ConditionalDepth.Push(condInfo);
+         end else begin
+            if ReadUntilEndOrElseSwitch(True) then begin
+               condInfo.Conditional:=tcElse;
+               FTok.ConditionalDepth.Push(condInfo);
+            end;
             if not FTok.HasTokens then
                FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective);
          end;
@@ -7675,7 +7691,7 @@ begin
 
          if FTok.ConditionalDepth.Count=0 then
             FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective);
-         if FTok.ConditionalDepth.Peek=tcElse then
+         if FTok.ConditionalDepth.Peek.Conditional=tcElse then
             FMsgs.AddCompilerStop(switchPos, CPE_UnfinishedConditionalDirective);
 
          FTok.ConditionalDepth.Pop;

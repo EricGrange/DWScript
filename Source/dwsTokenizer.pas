@@ -180,6 +180,10 @@ type
    end;
 
    TTokenizerConditional = (tcIf, tcElse);
+   TTokenizerConditionalInfo = record
+      Conditional : TTokenizerConditional;
+      ScriptPos : TScriptPos;
+   end;
 
    TTokenizerEndSourceFileEvent = procedure (sourceFile : TSourceFile) of object;
 
@@ -195,7 +199,7 @@ type
          FSwitchProcessor : TSwitchHandler;
          FMsgs : TdwsCompileMessageList;
          FConditionalDefines : IAutoStore<TStrings>;
-         FConditionalDepth : TSimpleStack<TTokenizerConditional>;
+         FConditionalDepth : TSimpleStack<TTokenizerConditionalInfo>;
 
          FTokenStore : array of TToken;
          FTokenStoreCount : Integer;
@@ -245,7 +249,7 @@ type
          property HotPos : TScriptPos read FSource.FHotPos;
          property CurrentPos : TScriptPos read FSource.FCurPos;
 
-         property ConditionalDepth : TSimpleStack<TTokenizerConditional> read FConditionalDepth;
+         property ConditionalDepth : TSimpleStack<TTokenizerConditionalInfo> read FConditionalDepth;
 
          property SwitchHandler : TSwitchHandler read FSwitchHandler write FSwitchHandler;
          property SwitchProcessor : TSwitchHandler read FSwitchProcessor write FSwitchProcessor;
@@ -829,7 +833,7 @@ begin
 
    SetLength(FTokenStore, 8);
 
-   FConditionalDepth:=TSimpleStack<TTokenizerConditional>.Create;
+   FConditionalDepth:=TSimpleStack<TTokenizerConditionalInfo>.Create;
 end;
 
 // Destroy
