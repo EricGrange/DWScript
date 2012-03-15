@@ -357,6 +357,8 @@ type
          function ReadCaseConditions(condList : TCaseConditions; valueExpr : TTypedExpr) : Integer;
          function ReadClassOf(const typeName : UnicodeString) : TClassOfSymbol;
          function ReadClass(const typeName : UnicodeString) : TClassSymbol;
+         procedure ReadClassVars(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
+         procedure ReadClassConst(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
          procedure ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
          function ReadInterface(const typeName : UnicodeString) : TInterfaceSymbol;
          function ReadConnectorSym(const name : UnicodeString; baseExpr : TTypedExpr;
@@ -519,7 +521,7 @@ type
          function  ReadTypeDecl(firstInBlock : Boolean) : Boolean;
          procedure ReadUses;
          procedure ReadUnitHeader;
-         function ReadVarDecl(table : TSymbolTable) : TNoResultExpr;
+         function ReadVarDecl(const dataSymbolFactory : TDataSymbolFactory) : TNoResultExpr;
          function ReadWhile : TNoResultExpr;
          function ResolveUnitReferences : TIdwsUnitList;
 
@@ -1577,7 +1579,7 @@ begin
    token:=FTok.TestDeleteAny([ttVAR, ttCONST, ttOPERATOR, ttRESOURCESTRING]);
    case token of
       ttVAR :
-         Result:=ReadVarDecl(FProg.Table);
+         Result:=ReadVarDecl(nil);
       ttCONST :
          ReadConstDeclBlock(action);
       ttRESOURCESTRING :
@@ -1744,7 +1746,7 @@ end;
 
 // ReadVarDecl
 //
-function TdwsCompiler.ReadVarDecl(table : TSymbolTable) : TNoResultExpr;
+function TdwsCompiler.ReadVarDecl(const dataSymbolFactory : TDataSymbolFactory) : TNoResultExpr;
 var
    x : Integer;
    names : TStringList;
@@ -1812,10 +1814,12 @@ begin
 
       for x:=0 to names.Count-1 do begin
          CheckName(names[x]);
-         sym:=TDataSymbol.Create(names[x], typ);
-         table.AddSymbol(sym);
-         if table.AddrGenerator=nil then
-            sym.AllocateStackAddr(FProg.Table.AddrGenerator);
+         if Assigned(dataSymbolFactory) then
+            sym:=dataSymbolFactory(names[x], typ)
+         else begin
+            sym:=TDataSymbol.Create(names[x], typ);
+            FProg.Table.AddSymbol(sym);
+         end;
 
          varExpr:=GetVarExpr(sym);
          if Assigned(initExpr) then begin
@@ -2668,7 +2672,7 @@ begin
 
                case sectionType of
                   ttVAR : begin
-                     assignExpr:=ReadVarDecl(FProg.Table);
+                     assignExpr:=ReadVarDecl(nil);
                      if assignExpr<>nil then
                         FProg.InitExpr.AddStatement(assignExpr);
                   end;
@@ -3993,12 +3997,12 @@ begin
                      Assert(Result is TTypedExpr);
                      Result := ReadPropertyExpr(TTypedExpr(Result), TPropertySymbol(member), IsWrite)
 
-                  end else if memberClassType=TDataSymbol then begin
+                  end else if memberClassType=TClassVarSymbol then begin
 
                      FreeAndNil(Result);
                      Result:=ReadDataSymbolName(TDataSymbol(member), IsWrite, expecting);
 
-                  end else if member is TConstSymbol then begin
+                  end else if memberClassType=TClassConstSymbol then begin
 
                      FreeAndNil(Result);
                      Result:=ReadConstName(TConstSymbol(member), IsWrite);
@@ -4030,12 +4034,12 @@ begin
 
                      Result := ReadPropertyExpr(TDataExpr(Result), TPropertySymbol(member), IsWrite);
 
-                  end else if memberClassType=TDataSymbol then begin
+                  end else if memberClassType=TClassVarSymbol then begin
 
                      FreeAndNil(Result);
                      Result:=ReadDataSymbolName(TDataSymbol(member), IsWrite, expecting);
 
-                  end else if member is TConstSymbol then begin
+                  end else if memberClassType=TClassConstSymbol then begin
 
                      FreeAndNil(Result);
                      Result:=ReadConstName(TConstSymbol(member), IsWrite);
@@ -5744,7 +5748,6 @@ var
    namePos, hotPos : TScriptPos;
    sym, typ : TSymbol;
    propSym : TPropertySymbol;
-   constSym : TClassConstSymbol;
    ancestorTyp : TClassSymbol;
    intfTyp : TInterfaceSymbol;
    interfaces : TList;
@@ -5753,7 +5756,6 @@ var
    visibility : TdwsVisibility;
    tt : TTokenType;
    i : Integer;
-   assignExpr : TNoResultExpr;
 begin
    // Check for a forward declaration of this class
    sym:=FProg.Table.FindSymbol(typeName, cvMagic);
@@ -5873,18 +5875,16 @@ begin
 
                   ttCLASS : begin
 
-                     tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttOPERATOR, ttVAR]);
+                     tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttOPERATOR, ttVAR, ttCONST]);
                      case tt of
                         ttPROCEDURE, ttFUNCTION, ttMETHOD :
                            ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, True);
                         ttOPERATOR :
                            Result.AddOperator(ReadClassOperatorDecl(Result));
-                        ttVAR : begin
-                           assignExpr:=ReadVarDecl(Result.Members);
-                           if assignExpr<>nil then
-                              FProg.InitExpr.AddStatement(assignExpr);
-                           ReadSemiColon;
-                        end;
+                        ttVAR :
+                           ReadClassVars(Result, visibility);
+                        ttCONST :
+                           ReadClassConst(Result, visibility);
                      else
                         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
                      end;
@@ -5892,23 +5892,21 @@ begin
                   end;
                   ttPROPERTY : begin
 
-                     propSym := ReadPropertyDecl(Result, visibility);
+                     propSym:=ReadPropertyDecl(Result, visibility);
                      Result.AddProperty(propSym);
 
                   end;
                   ttCONST : begin
 
-                     constSym:=ReadConstDecl(TClassConstSymbol) as TClassConstSymbol;
-                     constSym.Visibility:=visibility;
-                     Result.AddConst(constSym);
-                     ReadSemiColon;
+                     ReadClassConst(Result, visibility);
 
                   end;
-
                   ttPRIVATE..ttPUBLISHED : begin
+
                      if visibility=cTokenToVisibility[tt] then
                         FMsgs.AddCompilerHintFmt(FTok.HotPos, CPH_RedundantVisibilitySpecifier, [cTokenStrings[tt]], hlStrict)
                      else visibility:=cTokenToVisibility[tt];
+
                   end;
 
                else
@@ -5945,6 +5943,40 @@ begin
       if not isInSymbolTable then
          FProg.Table.Remove(Result);  // auto-forward
    end;
+end;
+
+// ReadClassVars
+//
+procedure TdwsCompiler.ReadClassVars(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
+var
+   assignExpr : TNoResultExpr;
+begin
+   assignExpr:=ReadVarDecl(
+      function (const name : String; typ : TTypeSymbol) : TDataSymbol
+      var
+         cvs : TClassVarSymbol;
+      begin
+         cvs:=TClassVarSymbol.Create(name, typ);
+         cvs.Visibility:=aVisibility;
+         cvs.AllocateStackAddr(FProg.Table.AddrGenerator);
+         classSymbol.AddClassVar(cvs);
+         Result:=cvs;
+      end);
+   if assignExpr<>nil then
+      FProg.InitExpr.AddStatement(assignExpr);
+   ReadSemiColon;
+end;
+
+// ReadClassConst
+//
+procedure TdwsCompiler.ReadClassConst(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
+var
+   constSym : TClassConstSymbol;
+begin
+   constSym:=ReadConstDecl(TClassConstSymbol) as TClassConstSymbol;
+   constSym.Visibility:=aVisibility;
+   classSymbol.AddConst(constSym);
+   ReadSemiColon;
 end;
 
 // ReadClassFields

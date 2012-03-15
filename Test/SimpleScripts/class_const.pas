@@ -1,7 +1,7 @@
 type TBase = class
    private const cPrivate = 1;
    protected const cProtected = 2;
-   public const cPublic = 3;
+   public class const cPublic = 3;
    procedure PrintAll;
    class procedure ClassPrintAll;
 end;

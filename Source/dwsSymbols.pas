@@ -441,6 +441,8 @@ type
          property StackAddr: Integer read FStackAddr write FStackAddr;
    end;
 
+   TDataSymbolFactory = reference to function (const name : String; typ : TTypeSymbol) : TDataSymbol;
+
    // parameter: procedure P(x: Integer);
    TParamSymbol = class (TDataSymbol)
       public
@@ -1097,7 +1099,7 @@ type
    end;
 
    // Const attached to a class
-   TClassConstSymbol = class(TConstSymbol)
+   TClassConstSymbol = class sealed (TConstSymbol)
       protected
          FClassSymbol : TClassSymbol;
          FVisibility : TdwsVisibility;
@@ -1106,7 +1108,21 @@ type
          function QualifiedName : UnicodeString; override;
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
 
-         property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
+         property ClassSymbol : TClassSymbol read FClassSymbol write FClassSymbol;
+         property Visibility : TdwsVisibility read FVisibility write FVisibility;
+   end;
+
+   // Var attached to a class
+   TClassVarSymbol = class sealed (TDataSymbol)
+      protected
+         FClassSymbol : TClassSymbol;
+         FVisibility : TdwsVisibility;
+
+      public
+         function QualifiedName : UnicodeString; override;
+         function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
+
+         property ClassSymbol : TClassSymbol read FClassSymbol write FClassSymbol;
          property Visibility : TdwsVisibility read FVisibility write FVisibility;
    end;
 
@@ -1237,6 +1253,7 @@ type
          procedure AddMethod(methSym : TMethodSymbol); override;
          procedure AddOperator(Sym: TClassOperatorSymbol);
          procedure AddConst(sym : TClassConstSymbol);
+         procedure AddClassVar(sym : TClassVarSymbol);
 
          function AddInterface(intfSym : TInterfaceSymbol; visibility : TdwsVisibility;
                                var missingMethod : TMethodSymbol) : Boolean; // True if added
@@ -2255,6 +2272,24 @@ end;
 // IsVisibleFor
 //
 function TClassConstSymbol.IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean;
+begin
+   Result:=(FVisibility>=aVisibility);
+end;
+
+// ------------------
+// ------------------ TClassVarSymbol ------------------
+// ------------------
+
+// QualifiedName
+//
+function TClassVarSymbol.QualifiedName : UnicodeString;
+begin
+   Result:=ClassSymbol.QualifiedName+'.'+Name;
+end;
+
+// IsVisibleFor
+//
+function TClassVarSymbol.IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean;
 begin
    Result:=(FVisibility>=aVisibility);
 end;
@@ -3327,6 +3362,14 @@ end;
 // AddConst
 //
 procedure TClassSymbol.AddConst(sym : TClassConstSymbol);
+begin
+   sym.ClassSymbol:=Self;
+   FMembers.AddSymbol(sym);
+end;
+
+// AddClassVar
+//
+procedure TClassSymbol.AddClassVar(sym : TClassVarSymbol);
 begin
    sym.ClassSymbol:=Self;
    FMembers.AddSymbol(sym);
