@@ -730,9 +730,9 @@ begin
    for i:=0 to p.UnitMains.Count-1 do
       CompileUnitSymbol(p.UnitMains[i]);
 
-   Compile(p.InitExpr);
-
    CompileSymbolTable(p.Table);
+
+   Compile(p.InitExpr);
 
    if not (p.Expr is TNullExpr) then
       CompileProgramBody(p.Expr);

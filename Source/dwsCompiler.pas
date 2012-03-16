@@ -265,6 +265,11 @@ type
       Context : TdwsSourceContext;
    end;
 
+   IdwsDataSymbolFactory = interface
+      function CreateDataSymbol(const name : String; typ : TTypeSymbol) : TDataSymbol;
+      function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
+   end;
+
    TdwsCompilerUnitContextStack = class(TSimpleStack<TdwsCompilerUnitContext>)
       public
          destructor Destroy; override;
@@ -311,6 +316,7 @@ type
          FCurrentUnitSymbol : TUnitMainSymbol;
          FAnyFuncSymbol : TAnyFuncSymbol;
          FAnyTypeSymbol : TAnyTypeSymbol;
+         FStandardDataSymbolFactory : IdwsDataSymbolFactory;
 
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
          FOnReadInstr : TCompilerReadInstrEvent;
@@ -373,6 +379,7 @@ type
          function ReadBlocks(const endTokens : TTokenTypes; var finalToken : TTokenType) : TNoResultExpr;
          function ReadEnumeration(const typeName : UnicodeString) : TEnumerationSymbol;
          function ReadExit : TNoResultExpr;
+         function ReadClassExpr(structSymbol : TStructuredTypeSymbol; expecting : TTypeSymbol = nil) : TTypedExpr;
          function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
          function ReadExprAdd(expecting : TTypeSymbol = nil; leftExpr : TTypedExpr = nil) : TTypedExpr;
          function ReadExprMult(expecting : TTypeSymbol = nil) : TTypedExpr;
@@ -447,7 +454,7 @@ type
                                   structSym : TStructuredTypeSymbol; funcKind : TFuncKind;
                                   aVisibility : TdwsVisibility; isClassMethod : Boolean);
          function ReadMethodImpl(structSym : TStructuredTypeSymbol; funcKind : TFuncKind;
-                              isClassMethod : Boolean) : TMethodSymbol;
+                                 isClassMethod : Boolean) : TMethodSymbol;
          procedure ReadDeprecated(funcSym : TFuncSymbol);
          procedure WarnDeprecated(funcExpr : TFuncExprBase);
          function ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
@@ -521,7 +528,7 @@ type
          function  ReadTypeDecl(firstInBlock : Boolean) : Boolean;
          procedure ReadUses;
          procedure ReadUnitHeader;
-         function ReadVarDecl(const dataSymbolFactory : TDataSymbolFactory) : TNoResultExpr;
+         function ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory) : TNoResultExpr;
          function ReadWhile : TNoResultExpr;
          function ResolveUnitReferences : TIdwsUnitList;
 
@@ -680,6 +687,22 @@ type
       procedure Execute(info : TProgramInfo); override;
    end;
 
+   TStandardSymbolFactory = class (TInterfacedObject, IdwsDataSymbolFactory)
+      FCompiler : TdwsCompiler;
+      constructor Create(aCompiler : TdwsCompiler);
+      function CreateDataSymbol(const name : String; typ : TTypeSymbol) : TDataSymbol; virtual;
+      function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr; virtual;
+   end;
+
+   TStructuredTypeSymbolFactory = class (TStandardSymbolFactory)
+      FStructuredType : TStructuredTypeSymbol;
+      FVisibility : TdwsVisibility;
+      constructor Create(aCompiler : TdwsCompiler; structType : TStructuredTypeSymbol;
+                         aVisibility : TdwsVisibility);
+      function CreateDataSymbol(const name : String; typ : TTypeSymbol) : TDataSymbol; override;
+      function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr; override;
+   end;
+
 // StringToSwitchInstruction
 //
 function StringToSwitchInstruction(const str : UnicodeString) : TSwitchInstruction;
@@ -693,6 +716,73 @@ begin
 end;
 
 // ------------------
+// ------------------ TStandardSymbolFactory ------------------
+// ------------------
+
+// Create
+//
+constructor TStandardSymbolFactory.Create(aCompiler : TdwsCompiler);
+begin
+   inherited Create;
+   FCompiler:=aCompiler;
+end;
+
+// CreateDataSymbol
+//
+function TStandardSymbolFactory.CreateDataSymbol(const name : String; typ : TTypeSymbol) : TDataSymbol;
+begin
+   FCompiler.CheckName(name);
+   Result:=TDataSymbol.Create(name, typ);
+   FCompiler.FProg.Table.AddSymbol(Result);
+end;
+
+// ReadExpr
+//
+function TStandardSymbolFactory.ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
+begin
+   Result:=FCompiler.ReadExpr(expecting);
+end;
+
+// ------------------
+// ------------------ TStructuredTypeSymbolFactory ------------------
+// ------------------
+
+// Create
+//
+constructor TStructuredTypeSymbolFactory.Create(aCompiler : TdwsCompiler;
+      structType : TStructuredTypeSymbol; aVisibility : TdwsVisibility);
+begin
+   inherited Create(aCompiler);
+   FStructuredType:=structType;
+   FVisibility:=aVisibility;
+end;
+
+// CreateDataSymbol
+//
+function TStructuredTypeSymbolFactory.CreateDataSymbol(const name : String; typ : TTypeSymbol) : TDataSymbol;
+var
+   sym : TSymbol;
+   cvs : TClassVarSymbol;
+begin
+   sym:=FStructuredType.Members.FindLocal(name);
+   if Assigned(sym) then
+      FCompiler.FMsgs.AddCompilerErrorFmt(FCompiler.FTok.HotPos, CPE_NameAlreadyExists, [name]);
+
+   cvs:=TClassVarSymbol.Create(name, typ);
+   cvs.Visibility:=FVisibility;
+   cvs.AllocateStackAddr(FCompiler.FProg.Table.AddrGenerator);
+   FStructuredType.AddClassVar(cvs);
+   Result:=cvs;
+end;
+
+// ReadExpr
+//
+function TStructuredTypeSymbolFactory.ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
+begin
+   Result:=FCompiler.ReadClassExpr(FStructuredType, expecting);
+end;
+
+// ------------------
 // ------------------ TdwsCompiler ------------------
 // ------------------
 
@@ -703,6 +793,8 @@ var
    stackParams : TStackParameters;
 begin
    inherited;
+
+   FStandardDataSymbolFactory:=TStandardSymbolFactory.Create(Self);
 
    FTokRules:=TPascalTokenizerStateRules.Create;
 
@@ -1579,7 +1671,7 @@ begin
    token:=FTok.TestDeleteAny([ttVAR, ttCONST, ttOPERATOR, ttRESOURCESTRING]);
    case token of
       ttVAR :
-         Result:=ReadVarDecl(nil);
+         Result:=ReadVarDecl(FStandardDataSymbolFactory);
       ttCONST :
          ReadConstDeclBlock(action);
       ttRESOURCESTRING :
@@ -1746,7 +1838,7 @@ end;
 
 // ReadVarDecl
 //
-function TdwsCompiler.ReadVarDecl(const dataSymbolFactory : TDataSymbolFactory) : TNoResultExpr;
+function TdwsCompiler.ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory) : TNoResultExpr;
 var
    x : Integer;
    names : TStringList;
@@ -1781,7 +1873,7 @@ begin
                if (typ is TRecordSymbol) and FTok.Test(ttBLEFT) then begin
                   initExpr:=TConstExpr.Create(FProg, typ, ReadConstRecord(TRecordSymbol(typ)), 0);
                end else begin
-                  initExpr := ReadExpr(typ)
+                  initExpr:=dataSymbolFactory.ReadExpr(typ)
                end;
             end;
          end;
@@ -1793,7 +1885,7 @@ begin
          //    var myVar := expr
          if names.Count<>1 then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
-         initExpr:=ReadExpr;
+         initExpr:=dataSymbolFactory.ReadExpr(nil);
          typ:=initExpr.Typ;
 
          if typ=nil then begin
@@ -1813,13 +1905,7 @@ begin
          FMsgs.AddCompilerErrorFmt(pos, CPE_ClassIsStatic, [TClassSymbol(typ).Name]);
 
       for x:=0 to names.Count-1 do begin
-         CheckName(names[x]);
-         if Assigned(dataSymbolFactory) then
-            sym:=dataSymbolFactory(names[x], typ)
-         else begin
-            sym:=TDataSymbol.Create(names[x], typ);
-            FProg.Table.AddSymbol(sym);
-         end;
+         sym:=dataSymbolFactory.CreateDataSymbol(names[x], typ);
 
          varExpr:=GetVarExpr(sym);
          if Assigned(initExpr) then begin
@@ -2672,7 +2758,7 @@ begin
 
                case sectionType of
                   ttVAR : begin
-                     assignExpr:=ReadVarDecl(nil);
+                     assignExpr:=ReadVarDecl(FStandardDataSymbolFactory);
                      if assignExpr<>nil then
                         FProg.InitExpr.AddStatement(assignExpr);
                   end;
@@ -4631,13 +4717,23 @@ function TdwsCompiler.ReadSelfMethod(methodSym : TMethodSymbol;
                isWrite : Boolean; expecting : TTypeSymbol = nil;
                overloads : TFuncSymbolList = nil) : TTypedExpr;
 var
-   progMeth: TMethodSymbol;
+   progMeth : TMethodSymbol;
+   structSym : TStructuredTypeSymbol;
 begin
-   progMeth := TMethodSymbol(TdwsProcedure(FProg).Func);
+   if FProg is TdwsProcedure then
+      progMeth:=(TdwsProcedure(FProg).Func as TMethodSymbol)
+   else progMeth:=nil;
 
-   Result := GetMethodExpr(methodSym,
-                           TVarExpr.CreateTyped(FProg, progMeth.SelfSym),
-                           rkObjRef, FTok.HotPos, False);
+   if progMeth<>nil then begin
+      Result:=GetMethodExpr(methodSym,
+                            TVarExpr.CreateTyped(FProg, progMeth.SelfSym),
+                            rkObjRef, FTok.HotPos, False);
+   end else begin
+      structSym:=methodSym.StructSymbol;
+      Result:=GetMethodExpr(methodSym,
+                            TConstExpr.Create(FProg, structSym.MetaSymbol, Int64(structSym)),
+                            rkClassOfRef, FTok.HotPos, True);
+   end;
 
    Result:=WrapUpFunctionRead(TFuncExpr(Result), expecting, overloads);
 end;
@@ -5950,18 +6046,10 @@ end;
 procedure TdwsCompiler.ReadClassVars(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
 var
    assignExpr : TNoResultExpr;
+   factory : IdwsDataSymbolFactory;
 begin
-   assignExpr:=ReadVarDecl(
-      function (const name : String; typ : TTypeSymbol) : TDataSymbol
-      var
-         cvs : TClassVarSymbol;
-      begin
-         cvs:=TClassVarSymbol.Create(name, typ);
-         cvs.Visibility:=aVisibility;
-         cvs.AllocateStackAddr(FProg.Table.AddrGenerator);
-         classSymbol.AddClassVar(cvs);
-         Result:=cvs;
-      end);
+   factory:=TStructuredTypeSymbolFactory.Create(Self, classSymbol, aVisibility);
+   assignExpr:=ReadVarDecl(factory);
    if assignExpr<>nil then
       FProg.InitExpr.AddStatement(assignExpr);
    ReadSemiColon;
@@ -6590,6 +6678,26 @@ begin
          leftExpr.Free;
          raise;
       end;
+   end;
+end;
+
+// ReadClassExpr
+//
+function TdwsCompiler.ReadClassExpr(structSymbol : TStructuredTypeSymbol; expecting : TTypeSymbol = nil) : TTypedExpr;
+var
+   oldTable : TSymbolTable;
+begin
+   oldTable:=FProg.Table;
+   try
+      FProg.Table:=TSymbolTable.Create(structSymbol.Members);
+      try
+         FProg.Table.AddParent(oldTable);
+         Result:=ReadExpr(expecting);
+      finally
+         FProg.Table.Free;
+      end;
+   finally
+      FProg.Table:=oldTable;
    end;
 end;
 

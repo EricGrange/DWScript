@@ -441,8 +441,6 @@ type
          property StackAddr: Integer read FStackAddr write FStackAddr;
    end;
 
-   TDataSymbolFactory = reference to function (const name : String; typ : TTypeSymbol) : TDataSymbol;
-
    // parameter: procedure P(x: Integer);
    TParamSymbol = class (TDataSymbol)
       public
@@ -987,6 +985,34 @@ type
 
    TStructuredTypeMetaSymbol = class;
 
+   // Const attached to a class
+   TClassConstSymbol = class sealed (TConstSymbol)
+      protected
+         FStructSymbol : TStructuredTypeSymbol;
+         FVisibility : TdwsVisibility;
+
+      public
+         function QualifiedName : UnicodeString; override;
+         function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
+
+         property StructSymbol : TStructuredTypeSymbol read FStructSymbol write FStructSymbol;
+         property Visibility : TdwsVisibility read FVisibility write FVisibility;
+   end;
+
+   // Var attached to a class
+   TClassVarSymbol = class sealed (TDataSymbol)
+      protected
+         FStructSymbol : TStructuredTypeSymbol;
+         FVisibility : TdwsVisibility;
+
+      public
+         function QualifiedName : UnicodeString; override;
+         function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
+
+         property StructSymbol : TStructuredTypeSymbol read FStructSymbol write FStructSymbol;
+         property Visibility : TdwsVisibility read FVisibility write FVisibility;
+   end;
+
    // class, record, interface
    TStructuredTypeSymbol = class(TTypeSymbol)
       private
@@ -1014,6 +1040,8 @@ type
          procedure AddField(fieldSym : TFieldSymbol); virtual;
          procedure AddProperty(propSym : TPropertySymbol); virtual;
          procedure AddMethod(methSym : TMethodSymbol); virtual;
+         procedure AddConst(sym : TClassConstSymbol);
+         procedure AddClassVar(sym : TClassVarSymbol);
 
          function FieldAtOffset(offset : Integer) : TFieldSymbol; virtual;
          function DuckTypedMatchingMethod(methSym : TMethodSymbol; visibility : TdwsVisibility) : TMethodSymbol; virtual;
@@ -1096,34 +1124,6 @@ type
 
          function Parent : TInterfaceSymbol; inline;
          property MethodCount : Integer read FMethodCount;
-   end;
-
-   // Const attached to a class
-   TClassConstSymbol = class sealed (TConstSymbol)
-      protected
-         FClassSymbol : TClassSymbol;
-         FVisibility : TdwsVisibility;
-
-      public
-         function QualifiedName : UnicodeString; override;
-         function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
-
-         property ClassSymbol : TClassSymbol read FClassSymbol write FClassSymbol;
-         property Visibility : TdwsVisibility read FVisibility write FVisibility;
-   end;
-
-   // Var attached to a class
-   TClassVarSymbol = class sealed (TDataSymbol)
-      protected
-         FClassSymbol : TClassSymbol;
-         FVisibility : TdwsVisibility;
-
-      public
-         function QualifiedName : UnicodeString; override;
-         function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
-
-         property ClassSymbol : TClassSymbol read FClassSymbol write FClassSymbol;
-         property Visibility : TdwsVisibility read FVisibility write FVisibility;
    end;
 
    // property X: Integer read FReadSym write FWriteSym;
@@ -1252,8 +1252,6 @@ type
          procedure AddField(fieldSym : TFieldSymbol); override;
          procedure AddMethod(methSym : TMethodSymbol); override;
          procedure AddOperator(Sym: TClassOperatorSymbol);
-         procedure AddConst(sym : TClassConstSymbol);
-         procedure AddClassVar(sym : TClassVarSymbol);
 
          function AddInterface(intfSym : TInterfaceSymbol; visibility : TdwsVisibility;
                                var missingMethod : TMethodSymbol) : Boolean; // True if added
@@ -1983,6 +1981,22 @@ begin
    methSym.FStructSymbol:=Self;
 end;
 
+// AddConst
+//
+procedure TStructuredTypeSymbol.AddConst(sym : TClassConstSymbol);
+begin
+   sym.StructSymbol:=Self;
+   FMembers.AddSymbol(sym);
+end;
+
+// AddClassVar
+//
+procedure TStructuredTypeSymbol.AddClassVar(sym : TClassVarSymbol);
+begin
+   sym.StructSymbol:=Self;
+   FMembers.AddSymbol(sym);
+end;
+
 // FieldAtOffset
 //
 function TStructuredTypeSymbol.FieldAtOffset(offset : Integer) : TFieldSymbol;
@@ -2266,7 +2280,7 @@ end;
 //
 function TClassConstSymbol.QualifiedName : UnicodeString;
 begin
-   Result:=ClassSymbol.QualifiedName+'.'+Name;
+   Result:=StructSymbol.QualifiedName+'.'+Name;
 end;
 
 // IsVisibleFor
@@ -2284,7 +2298,7 @@ end;
 //
 function TClassVarSymbol.QualifiedName : UnicodeString;
 begin
-   Result:=ClassSymbol.QualifiedName+'.'+Name;
+   Result:=StructSymbol.QualifiedName+'.'+Name;
 end;
 
 // IsVisibleFor
@@ -3357,22 +3371,6 @@ begin
    sym.ClassSymbol:=Self;
    FMembers.AddSymbol(sym);
    FOperators.Add(sym);
-end;
-
-// AddConst
-//
-procedure TClassSymbol.AddConst(sym : TClassConstSymbol);
-begin
-   sym.ClassSymbol:=Self;
-   FMembers.AddSymbol(sym);
-end;
-
-// AddClassVar
-//
-procedure TClassSymbol.AddClassVar(sym : TClassVarSymbol);
-begin
-   sym.ClassSymbol:=Self;
-   FMembers.AddSymbol(sym);
 end;
 
 // AddInterface
