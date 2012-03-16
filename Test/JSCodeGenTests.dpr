@@ -16,7 +16,8 @@ uses
   dwsJSCodeGen in '..\Libraries\JSCodeGen\dwsJSCodeGen.pas',
   dwsJSFilter in '..\Libraries\JSCodeGen\dwsJSFilter.pas',
   UJSFilterTests in 'UJSFilterTests.pas',
-  dwsJSRTL in '..\Libraries\JSCodeGen\dwsJSRTL.pas';
+  dwsJSRTL in '..\Libraries\JSCodeGen\dwsJSRTL.pas',
+  UJSSmartLinkerTests in 'UJSSmartLinkerTests.pas';
 
 {$R *.res}
 
