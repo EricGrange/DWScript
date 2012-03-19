@@ -2436,9 +2436,12 @@ end;
 //
 class function TConstExpr.CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer = 0) : TConstExpr;
 begin
-   if Length(Data)=1 then
-      Result:=TConstExpr.CreateTypedVariantValue(Prog, Typ, Data[addr])
-   else Result:=TConstExpr.Create(Prog, Typ, Data, addr);
+   case Length(Data) of
+      0 : Result:=TConstExpr.Create(Prog, Typ, Null);
+      1 : Result:=TConstExpr.CreateTypedVariantValue(Prog, Typ, Data[addr]);
+   else
+      Result:=TConstExpr.Create(Prog, Typ, Data, addr);
+   end;
 end;
 
 // CreateTyped

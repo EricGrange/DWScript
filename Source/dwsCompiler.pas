@@ -267,6 +267,8 @@ type
 
    IdwsDataSymbolFactory = interface
       function CreateDataSymbol(const name : String; typ : TTypeSymbol) : TDataSymbol;
+      function CreateConstSymbol(const name : String; typ : TTypeSymbol;
+                                 const data : TData; addr : Integer) : TConstSymbol;
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
    end;
 
@@ -371,7 +373,7 @@ type
                                    const connectorType : IConnectorType; isWrite: Boolean) : TProgramExpr;
          function ReadConnectorArray(const name : UnicodeString; baseExpr : TTypedExpr;
                                      const connectorType : IConnectorType; isWrite: Boolean) : TConnectorCallExpr;
-         function ReadConstDecl(constSymbolClass : TConstSymbolClass) : TConstSymbol;
+         procedure ReadConstDecl(const factory : IdwsDataSymbolFactory);
          procedure ReadConstDeclBlock(var action : TdwsStatementAction);
          function ReadConstValue : TConstExpr;
          function ReadConstRecord(symbol : TRecordSymbol) : TData;
@@ -691,6 +693,7 @@ type
       FCompiler : TdwsCompiler;
       constructor Create(aCompiler : TdwsCompiler);
       function CreateDataSymbol(const name : String; typ : TTypeSymbol) : TDataSymbol; virtual;
+      function CreateConstSymbol(const name : String; typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol; virtual;
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr; virtual;
    end;
 
@@ -700,6 +703,7 @@ type
       constructor Create(aCompiler : TdwsCompiler; structType : TStructuredTypeSymbol;
                          aVisibility : TdwsVisibility);
       function CreateDataSymbol(const name : String; typ : TTypeSymbol) : TDataSymbol; override;
+      function CreateConstSymbol(const name : String; typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol; override;
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr; override;
    end;
 
@@ -733,6 +737,17 @@ function TStandardSymbolFactory.CreateDataSymbol(const name : String; typ : TTyp
 begin
    FCompiler.CheckName(name);
    Result:=TDataSymbol.Create(name, typ);
+   FCompiler.FProg.Table.AddSymbol(Result);
+end;
+
+// CreateConstSymbol
+//
+function TStandardSymbolFactory.CreateConstSymbol(const name : String; typ : TTypeSymbol;
+                                                  const data : TData; addr : Integer) : TConstSymbol;
+begin
+   if data<>nil then
+      Result:=TConstSymbol.Create(name, typ, data, addr)
+   else Result:=TConstSymbol.Create(name, typ);
    FCompiler.FProg.Table.AddSymbol(Result);
 end;
 
@@ -773,6 +788,20 @@ begin
    cvs.AllocateStackAddr(FCompiler.FProg.Table.AddrGenerator);
    FStructuredType.AddClassVar(cvs);
    Result:=cvs;
+end;
+
+// CreateConstSymbol
+//
+function TStructuredTypeSymbolFactory.CreateConstSymbol(const name : String; typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol;
+var
+   classConstSym : TClassConstSymbol;
+begin
+   if data<>nil then
+      classConstSym:=TClassConstSymbol.Create(name, typ, data, addr)
+   else classConstSym:=TClassConstSymbol.Create(name, typ);
+   classConstSym.Visibility:=FVisibility;
+   FStructuredType.AddConst(classConstSym);
+   Result:=classConstSym;
 end;
 
 // ReadExpr
@@ -1966,7 +1995,7 @@ end;
 
 // ReadConstDecl
 //
-function TdwsCompiler.ReadConstDecl(constSymbolClass : TConstSymbolClass) : TConstSymbol;
+procedure TdwsCompiler.ReadConstDecl(const factory : IdwsDataSymbolFactory);
 var
    name : UnicodeString;
    expr : TTypedExpr;
@@ -1975,12 +2004,11 @@ var
    sas : TStaticArraySymbol;
    detachTyp : Boolean;
    constPos : TScriptPos;
-   val : Variant;
    recordData : TData;
+   constSym : TConstSymbol;
 begin
    if not FTok.TestDeleteNamePos(name, constPos) then begin
 
-      Result:=nil; // warning workaround
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
    end else begin
@@ -1999,11 +2027,14 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
 
       if typ is TRecordSymbol then begin
+
          recordData:=ReadConstRecord(TRecordSymbol(typ));
-         Result:=constSymbolClass.Create(name, typ, recordData, 0);
+         constSym:=factory.CreateConstSymbol(name, typ, recordData, 0);
+
       end else begin
+
          detachTyp:=False;
-         expr:=ReadExpr;
+         expr:=factory.ReadExpr(nil);
          try
             if Assigned(typ) then begin
                if not typ.IsCompatible(expr.typ) then
@@ -2014,37 +2045,40 @@ begin
             end;
 
             if (expr=nil) or (not expr.IsConstant) then begin
+
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
                // keep compiling
-               Result:=constSymbolClass.Create(name, typ);
-               Exit;
-            end;
+               constSym:=factory.CreateConstSymbol(name, typ, nil, 0);
 
-            if typ is TArraySymbol then begin
-               sas:=TStaticArraySymbol.Create('', typ, FProg.TypInteger, 0, TArraySymbol(typ).typ.Size-1);
-               FProg.Table.AddSymbol(sas);
-               if expr is TConstExpr then begin
-                  Result:=constSymbolClass.Create(name, sas, TConstExpr(expr).Data[FExec], TConstExpr(expr).Addr[FExec]);
-                  detachTyp:=False;
-               end else Result:=constSymbolClass.Create(name, sas, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
             end else begin
-               if typ.Size=1 then begin
-                  expr.EvalAsVariant(FExec, val);
-                  Result:=constSymbolClass.Create(name, typ, val);
+
+               if typ is TArraySymbol then begin
+                  sas:=TStaticArraySymbol.Create('', typ, FProg.TypInteger, 0, TArraySymbol(typ).typ.Size-1);
+                  FProg.Table.AddSymbol(sas);
+                  if expr is TConstExpr then begin
+                     constSym:=factory.CreateConstSymbol(name, sas, TConstExpr(expr).Data[FExec], TConstExpr(expr).Addr[FExec]);
+                     detachTyp:=False;
+                  end else constSym:=factory.CreateConstSymbol(name, sas, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
                end else begin
-                  dataExpr:=(expr as TDataExpr);
-                  FExec.Stack.Push(FProg.DataSize);
-                  try
-                     Result:=constSymbolClass.Create(name, typ,
-                                                     dataExpr.Data[FExec],
-                                                     dataExpr.Addr[FExec]);
-                  finally
-                     FExec.Stack.Pop(FProg.DataSize);
+                  if typ.Size=1 then begin
+                     SetLength(recordData, 1);
+                     expr.EvalAsVariant(FExec, recordData[0]);
+                     constSym:=factory.CreateConstSymbol(name, typ, recordData, 0);
+                  end else begin
+                     dataExpr:=(expr as TDataExpr);
+                     FExec.Stack.Push(FProg.DataSize);
+                     try
+                        constSym:=factory.CreateConstSymbol(name, typ,
+                                                            dataExpr.Data[FExec],
+                                                            dataExpr.Addr[FExec]);
+                     finally
+                        FExec.Stack.Pop(FProg.DataSize);
+                     end;
                   end;
                end;
+
             end;
 
-            RecordSymbolUse(Result, constPos, [suDeclaration]);
          finally
             if detachTyp then begin
                FProg.Table.AddSymbol(typ);
@@ -2053,19 +2087,18 @@ begin
             expr.Free;
          end;
       end;
+
+      RecordSymbolUse(constSym, constPos, [suDeclaration]);
    end;
 end;
 
 // ReadConstDeclBlock
 //
 procedure TdwsCompiler.ReadConstDeclBlock(var action : TdwsStatementAction);
-var
-   constSym : TConstSymbol;
 begin
    action:=saNoSemiColon;
    repeat
-      constSym:=ReadConstDecl(TConstSymbol);
-      FProg.Table.AddSymbol(constSym);
+      ReadConstDecl(FStandardDataSymbolFactory);
       ReadSemiColon;
    until not (    (UnitSection in [secInterface, secImplementation])
               and (FProg.Level=0)
@@ -2680,7 +2713,6 @@ var
    proc : TdwsProcedure;
    assignExpr : TNoResultExpr;
    tt, sectionType, finalToken : TTokenType;
-   constSym : TConstSymbol;
    hotPos : TScriptPos;
    progExpr : TBlockExpr;
 begin
@@ -2763,8 +2795,7 @@ begin
                         FProg.InitExpr.AddStatement(assignExpr);
                   end;
                   ttCONST : begin
-                     constSym:=ReadConstDecl(TConstSymbol);
-                     FProg.Table.AddSymbol(constSym);
+                     ReadConstDecl(FStandardDataSymbolFactory);
                   end;
                else
                   Break;
@@ -6059,11 +6090,10 @@ end;
 //
 procedure TdwsCompiler.ReadClassConst(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
 var
-   constSym : TClassConstSymbol;
+   factory : IdwsDataSymbolFactory;
 begin
-   constSym:=ReadConstDecl(TClassConstSymbol) as TClassConstSymbol;
-   constSym.Visibility:=aVisibility;
-   classSymbol.AddConst(constSym);
+   factory:=TStructuredTypeSymbolFactory.Create(Self, classSymbol, aVisibility);
+   ReadConstDecl(factory);
    ReadSemiColon;
 end;
 
