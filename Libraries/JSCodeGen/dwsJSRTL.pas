@@ -42,6 +42,11 @@ type
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
+   TJSIntToStrExpr = class (TJSFuncBaseExpr)
+      public
+         procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
    TFormatSplitInfoDetail = (fsidIndex, fsidLeftAligned, fsidWidth, fsidPrecision, fsidType, fsidError);
    TFormatSplitInfoDetails = set of TFormatSplitInfoDetail;
 
@@ -88,7 +93,7 @@ implementation
 {$R dwsJSRTL.res dwsJSRTL.rc}
 
 const
-   cJSRTLDependencies : array [1..148] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..149] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -205,6 +210,12 @@ const
                +#9'else throw Exception.Create$1($New(Exception),"Can''t cast interface of \""+i.O.ClassType.$ClassName+"\" to class \""+c.$ClassName+"\"");'#13#10
                +'}'#13#10;
        Dependency : '$Is' ),
+      (Name : '$Pop';
+       Code : 'function $Pop(a,z) {'#13#10
+               +#9'if (a.length>0) return a.pop();'#13#10
+               +#9'throw Exception.Create$1($New(Exception),"Upper bound exceeded! Index 0"+z);'#13#10
+               +'}';
+       Dependency : 'Exception' ),
       (Name : '$Idx';
        Code : 'function $Idx(i,l,h,z) {'#13#10
                +#9'if (i<l) throw Exception.Create$1($New(Exception),"Lower bound exceeded! Index "+i.toString()+z);'#13#10
@@ -570,9 +581,9 @@ const
                +#9'ClassName: function (s) { return s.$ClassName },'#13#10
                +#9'ClassType: function (s) { return s },'#13#10
                +#9'$Init: function () {},'#13#10
-               +#9'Create: function (s) { return s; },'#13#10
-               +#9'Destroy: function (s) { for (var prop in s) { if (s.hasOwnProperty(prop)) delete s.prop; } },'#13#10
-               +#9'Destroy$v: function(s) { return s.ClassType.Destroy(s) },'#13#10
+               +#9'Create: function (s) { return s },'#13#10
+               +#9'Destroy: function (s) { for (var prop in s) if (s.hasOwnProperty(prop)) delete s.prop },'#13#10
+               +#9'Destroy'+TdwsJSCodeGen.cVirtualPostfix+': function(s) { return s.ClassType.Destroy(s) },'#13#10
                +#9'Free: function (s) { if (s!==null) s.ClassType.Destroy(s) }'#13#10
                +'}';
        Dependency : '$New'),
@@ -580,8 +591,8 @@ const
        Code : 'var Exception={'#13#10
                +#9'$ClassName: "Exception",'#13#10
                +#9'$Parent: TObject,'#13#10
-               +#9'$Init: function () { FMessage=""; },'#13#10
-               +#9'Create$1: function (s,Msg) { s.FMessage=Msg; return s; }'#13#10
+               +#9'$Init: function () { FMessage="" },'#13#10
+               +#9'Create$1: function (s,Msg) { s.FMessage=Msg; return s }'#13#10
                +'}';
        Dependency : 'TObject'),
       (Name : 'EAssertionFailed';
@@ -667,7 +678,7 @@ begin
    FMagicCodeGens.AddObject('Format', TJSFormatExpr.Create);
    FMagicCodeGens.AddObject('HexToInt', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',','16)']));
    FMagicCodeGens.AddObject('IntPower', TdwsExprGenericCodeGen.Create(['Math.pow', '(', 0, ',', 1, ')']));
-   FMagicCodeGens.AddObject('IntToStr', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toString()']));
+   FMagicCodeGens.AddObject('IntToStr', TJSIntToStrExpr.Create);
    FMagicCodeGens.AddObject('LeftStr', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(0,', 1, ')']));
    FMagicCodeGens.AddObject('Ln', TdwsExprGenericCodeGen.Create(['Math.log', '(', 0, ')']));
    FMagicCodeGens.AddObject('LowerCase', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.toLowerCase()']));
@@ -682,8 +693,8 @@ begin
    FMagicCodeGens.AddObject('PosEx', TdwsExprGenericCodeGen.Create(['(', 1, '.indexOf', '(', 0, ',', '(', 2, ')', '-1)+1)']));
    FMagicCodeGens.AddObject('Power', TdwsExprGenericCodeGen.Create(['Math.pow', '(', 0, ',', 1, ')']));
    FMagicCodeGens.AddObject('Round', TdwsExprGenericCodeGen.Create(['Math.round', '(', 0, ')']));
-   FMagicCodeGens.AddObject('Sign$_Float_', TdwsExprGenericCodeGen.Create(['$Sign', '(', 0, ')'], False, '$Sign'));
-   FMagicCodeGens.AddObject('Sign$_Integer_', TdwsExprGenericCodeGen.Create(['$Sign', '(', 0, ')'], False, '$Sign'));
+   FMagicCodeGens.AddObject('Sign$_Float_', TdwsExprGenericCodeGen.Create(['$Sign', '(', 0, ')'], gcgExpression, '$Sign'));
+   FMagicCodeGens.AddObject('Sign$_Integer_', TdwsExprGenericCodeGen.Create(['$Sign', '(', 0, ')'], gcgExpression, '$Sign'));
    FMagicCodeGens.AddObject('Sin', TdwsExprGenericCodeGen.Create(['Math.sin', '(', 0, ')']));
    FMagicCodeGens.AddObject('Sqrt', TdwsExprGenericCodeGen.Create(['Math.sqrt', '(', 0, ')']));
    FMagicCodeGens.AddObject('StrToFloat', TdwsExprGenericCodeGen.Create(['parseFloat', '(', 0, ')']));
@@ -805,6 +816,31 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSIntToStrExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSIntToStrExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TMagicFuncExpr;
+   a : TExprBase;
+begin
+   e:=TMagicFuncExpr(expr);
+
+   a:=e.Args[0];
+   if (a is TVarExpr) or (a is TFuncExpr) or (a is TFieldExpr) then
+      codeGen.Compile(a)
+   else begin
+      Assert(a is TTypedExpr);
+      codeGen.WriteString('(');
+      codeGen.CompileNoWrap(TTypedExpr(a));
+      codeGen.WriteString(')');
+   end;
+   codeGen.WriteString('.toString()');
+end;
+
+// ------------------
 // ------------------ TJSFormatExpr ------------------
 // ------------------
 
@@ -822,6 +858,7 @@ begin
       if si.Details-[fsidIndex, fsidType]<>[] then Exit;
       case si.Typ of
          's', 'f', 'd', 'g' : ;
+         #0 : ;
       else
          Exit;
       end;
@@ -837,6 +874,7 @@ var
    openArgs : TArrayConstantExpr;
    buf : String;
    splitInfos : TFormatSplitInfos;
+   elem : TTypedExpr;
    si : TFormatSplitInfo;
    i : Integer;
 begin
@@ -858,7 +896,12 @@ begin
                   codeGen.WriteString('+');
                si:=splitInfos[i];
                if (fsidType in si.Details) and (si.Index<openArgs.ElementCount) then begin
-                  codeGen.Compile(openArgs.Elements[si.Index]);
+                  elem:=openArgs.Elements[si.Index];
+                  if elem is TConstExpr then begin
+                     codeGen.WriteString('(');
+                     codeGen.Compile(elem);
+                     codeGen.WriteString(')');
+                  end else codeGen.Compile(elem);
                   codeGen.WriteString('.toString()');
                end else begin
                   (codeGen as TdwsJSCodeGen).WriteJavaScriptString(si.Str);
@@ -903,7 +946,7 @@ begin
             Inc(i);
             if fmtString[i]<>'%' then begin
                // flush partial string
-               if i<>p then begin
+               if i-1>p then begin
                   info.Str:=Copy(fmtString, p, i-p-1);
                   Add(info);
                   info:=TFormatSplitInfo.Create;

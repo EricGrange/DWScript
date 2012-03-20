@@ -214,6 +214,10 @@ type
          procedure WriteString(const c : Char); overload;
          procedure WriteStringLn(const s : String);
          procedure WriteLineEnd;
+         procedure WriteStatementEnd; virtual;
+         procedure WriteBlockBegin(const prefix : String); virtual;
+         procedure WriteBlockEnd; virtual;
+         procedure WriteBlockEndLn;
 
          procedure WriteSymbolName(sym : TSymbol; scope : TdwsCodeGenSymbolScope = cgssGlobal);
 
@@ -246,12 +250,16 @@ type
       public
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); virtual;
          procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); virtual;
+
+         class function ExprIsConstantInteger(expr : TExprBase; value : Integer) : Boolean; static;
    end;
+
+   TdwsGenericCodeGenType = (gcgExpression, gcgStatement);
 
    TdwsExprGenericCodeGen = class(TdwsExprCodeGen)
       private
          FTemplate : array of TVarRec;
-         FStatement : Boolean;
+         FCodeGenType : TdwsGenericCodeGenType;
          FUnWrapable : Boolean;
          FDependency : String;
 
@@ -259,7 +267,8 @@ type
          procedure DoCodeGen(codeGen : TdwsCodeGen; expr : TExprBase; start, stop : Integer);
 
       public
-         constructor Create(const template : array of const; statement : Boolean = False;
+         constructor Create(const template : array of const;
+                            codeGenType : TdwsGenericCodeGenType = gcgExpression;
                             const dependency : String = ''); overload;
 
          procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
@@ -980,6 +989,38 @@ begin
    FNeedIndent:=True;
 end;
 
+// WriteStatementEnd
+//
+procedure TdwsCodeGen.WriteStatementEnd;
+begin
+   WriteStringLn(';');
+end;
+
+// WriteBlockBegin
+//
+procedure TdwsCodeGen.WriteBlockBegin(const prefix : String);
+begin
+   WriteString(prefix);
+   WriteStringLn('{');
+   Indent;
+end;
+
+// WriteBlockEnd
+//
+procedure TdwsCodeGen.WriteBlockEnd;
+begin
+   UnIndent;
+   WriteString('}');
+end;
+
+// WriteBlockEndLn
+//
+procedure TdwsCodeGen.WriteBlockEndLn;
+begin
+   WriteBlockEnd;
+   WriteLineEnd;
+end;
+
 // WriteSymbolName
 //
 procedure TdwsCodeGen.WriteSymbolName(sym : TSymbol; scope : TdwsCodeGenSymbolScope = cgssGlobal);
@@ -1413,17 +1454,18 @@ end;
 
 // Create
 //
-constructor TdwsExprGenericCodeGen.Create(const template : array of const; statement : Boolean = False;
+constructor TdwsExprGenericCodeGen.Create(const template : array of const;
+                                          codeGenType : TdwsGenericCodeGenType = gcgExpression;
                                           const dependency : String = '');
 var
    i : Integer;
 begin
    inherited Create;
-   FStatement:=statement;
+   FCodeGenType:=codeGenType;
    SetLength(FTemplate, Length(template));
    for i:=0 to High(template) do
       FTemplate[i]:=template[i];
-   if not FStatement then begin
+   if codeGenType<>gcgStatement then begin
       i:=High(template);
       FUnWrapable:=    (FTemplate[0].VType=vtWideChar) and (FTemplate[0].VWideChar='(')
                    and (FTemplate[i].VType=vtWideChar) and (FTemplate[i].VWideChar=')');
@@ -1457,6 +1499,12 @@ procedure TdwsExprGenericCodeGen.DoCodeGen(codeGen : TdwsCodeGen; expr : TExprBa
               and (   (v.VWideChar='(')
                    or (v.VWideChar=',')
                    or (v.VWideChar=')'));
+   end;
+
+   function IsBlockEndChar(var v : TVarRec) : Boolean;
+   begin
+      Result:=    (v.VType=vtWideChar)
+              and (v.VWideChar='}');
    end;
 
 var
@@ -1505,8 +1553,11 @@ begin
          Assert(False);
       end;
    end;
-   if FStatement then
-      codeGen.WriteLineEnd;
+   if FCodeGenType=gcgStatement then begin
+      if IsBlockEndChar(FTemplate[stop]) then
+         codeGen.WriteLineEnd
+      else codeGen.WriteStatementEnd;
+   end;
 end;
 
 // ------------------
@@ -1529,6 +1580,15 @@ end;
 procedure TdwsExprCodeGen.CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr);
 begin
    Self.CodeGen(codeGen, expr);
+end;
+
+// ExprIsConstantInteger
+//
+class function TdwsExprCodeGen.ExprIsConstantInteger(expr : TExprBase; value : Integer) : Boolean;
+begin
+   Result:=    (expr<>nil)
+           and (expr.ClassType=TConstIntExpr)
+           and (expr.EvalAsInteger(nil)=value);
 end;
 
 // ------------------
