@@ -8332,7 +8332,7 @@ procedure TdwsCompiler.HintUnusedPrivateSymbols;
                HintIfUnused(fieldSym, CPH_PrivateFieldDeclaredButNotUsed);
          end else if sym is TMethodSymbol then begin
             methSym:=TMethodSymbol(sym);
-            if methSym.Visibility=cvPrivate then
+            if (methSym.Visibility=cvPrivate) and (not methSym.IsInterfaced) then
                HintIfUnused(methSym, CPH_PrivateMethodDeclaredButNotUsed);
          end;
       end;
