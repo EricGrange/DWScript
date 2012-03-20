@@ -5547,7 +5547,7 @@ begin
          end else if SameText(name, 'high') then begin
             CheckArguments(0, 0);
             Result:=CreateArrayHigh(baseExpr, arraySym, True);
-         end else if SameText(name, 'length') then begin
+         end else if SameText(name, 'length') or SameText(name, 'count') then begin
             CheckArguments(0, 0);
             Result:=CreateArrayLength(baseExpr, arraySym);
          end else if SameText(name, 'add') or SameText(name, 'push') then begin
@@ -5559,6 +5559,10 @@ begin
                Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, argList[0] as TDataExpr);
                argList.Clear;
             end else Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, nil);
+         end else if SameText(name, 'pop') then begin
+            CheckRestricted;
+            CheckArguments(0, 0);
+            Result:=TArrayPopExpr.Create(FProg, namePos, baseExpr);
          end else if SameText(name, 'delete') then begin
             CheckRestricted;
             if CheckArguments(1, 2) then begin
@@ -6677,7 +6681,7 @@ function TdwsCompiler.ReadExit : TNoResultExpr;
 var
    gotParenthesis : Boolean;
    leftExpr : TDataExpr;
-   assignExpr : TNoResultExpr;
+   assignExpr : TAssignExpr;
    proc : TdwsProcedure;
    exitPos : TScriptPos;
 begin
@@ -6694,7 +6698,7 @@ begin
       RecordSymbolUse(proc.Func.Result, exitPos, [suReference, suWrite]);
       leftExpr:=TVarExpr.CreateTyped(FProg, proc.Func.Result);
       try
-         assignExpr:=ReadAssign(ttASSIGN, leftExpr);
+         assignExpr:=ReadAssign(ttASSIGN, leftExpr) as TAssignExpr;
          try
             leftExpr:=nil;
             if gotParenthesis and not FTok.TestDelete(ttBRIGHT) then
