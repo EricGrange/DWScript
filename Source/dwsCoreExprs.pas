@@ -2755,7 +2755,7 @@ procedure TNewArrayExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScri
       n:=LengthExpr[d].EvalAsInteger(exec);
       if n<0 then
          RaiseScriptError(exec, EScriptOutOfBounds.CreatePosFmt(FScriptPos, RTE_ArrayLengthIncorrectForDimension, [n, d]));
-      Result:=TScriptDynamicArray.Create(TDynamicArraySymbol(FTyps.List[FTyps.Count-1-d]));
+      Result:=TScriptDynamicArray.Create(TDynamicArraySymbol(FTyps.List[FTyps.Count-1-d]).Typ);
       Result.Length:=n;
       Inc(d);
       if d<LengthExprCount then begin
@@ -4096,7 +4096,7 @@ var
 begin
    arr:=TArrayConstantExpr(Expr);
 
-   dynArray:=TScriptDynamicArray.Create(TDynamicArraySymbol(Typ));
+   dynArray:=TScriptDynamicArray.Create(TDynamicArraySymbol(Typ).Typ);
    dynArray.Data:=arr.EvalAsTData(exec);
 
    Result:=IUnknown(IScriptObj(dynArray));
@@ -4976,7 +4976,7 @@ begin
       FLeft.EvalAsScriptObj(exec, obj);
       if obj=nil then begin
          // first init
-         dyn:=TScriptDynamicArray.Create(TDynamicArraySymbol(FLeft.Typ));
+         dyn:=TScriptDynamicArray.Create(TDynamicArraySymbol(FLeft.Typ).Typ);
          FLeft.AssignValueAsScriptObj(exec, dyn);
       end else begin
          dyn:=TScriptDynamicArray(obj.InternalObject);
@@ -7266,7 +7266,7 @@ begin
       BoundsCheck(exec, dyn, index+count-1);
    end else count:=dyn.Length-index;
 
-   newDyn:=TScriptDynamicArray.Create(dyn.Typ);
+   newDyn:=TScriptDynamicArray.Create(dyn.ElementTyp);
    if count>0 then
       newDyn.Copy(dyn, index, count);
    Result:=newDyn;

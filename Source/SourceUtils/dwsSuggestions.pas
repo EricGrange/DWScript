@@ -274,6 +274,7 @@ begin
             if not ((sym is FSymbolClassFilter) or (sym.Typ is FSymbolClassFilter)) then continue;
          end else if sym is TOpenArraySymbol then
             continue;
+         if Pos(' ', sym.Name)>0 then continue;
          if FListLookup.IndexOf(sym)<0 then begin
             FListLookup.Add(sym);
             if FNamesLookup.IndexOf(sym.Name)<0 then begin

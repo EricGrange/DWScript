@@ -8718,6 +8718,8 @@ begin
                                                [classSymbol.Name, intfSymbol.Name]);
                   Result:=TAssignExpr.Create(FProg, scriptPos, left, TObjAsIntfExpr.Create(FProg, scriptPos, right, intfSymbol));
                end else Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
+            end else if left.Typ.ClassType=TDynamicArraySymbol then begin
+               Result:=TAssignExpr.Create(FProg, scriptPos, left, right);
             end else if right.InheritsFrom(TDataExpr) and ((right.Typ.Size<>1) or (right.Typ is TArraySymbol)) then begin
                if right.InheritsFrom(TFuncExpr) then
                   TFuncExpr(right).SetResultAddr(FProg, nil);
@@ -9381,6 +9383,7 @@ begin
 
    sysTable.TypString:=TBaseStringSymbol.Create;
    sysTable.AddSymbol(sysTable.TypString);
+   sysTable.AddSymbol(TDynamicArraySymbol.Create('array of string', sysTable.TypString, sysTable.TypInteger));
 
    if Assigned(FOnCreateBaseVariantSymbol) then
       FOnCreateBaseVariantSymbol(sysTable)

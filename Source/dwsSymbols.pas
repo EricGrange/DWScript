@@ -4744,7 +4744,7 @@ end;
 //
 procedure TDynamicArraySymbol.InitData(const Data: TData; Offset: Integer);
 begin
-   Data[Offset]:=IScriptObj(TScriptDynamicArray.Create(Self));
+   Data[Offset]:=IScriptObj(TScriptDynamicArray.Create(Self.Typ));
 end;
 
 // DoIsOfType

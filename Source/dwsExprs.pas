@@ -1687,7 +1687,7 @@ type
 
    TScriptDynamicArray = class(TScriptObj)
       private
-         FTyp : TDynamicArraySymbol;
+         FElementTyp : TTypeSymbol;
          FElementSize : Integer;
          FLength : Integer;
 
@@ -1697,7 +1697,7 @@ type
          procedure SetData(const data : TData);
 
       public
-         constructor Create(aTyp : TDynamicArraySymbol);
+         constructor Create(elemTyp : TTypeSymbol);
 
          procedure Delete(index, count : Integer);
          procedure Insert(index : Integer);
@@ -1709,7 +1709,7 @@ type
          function IndexOf(const item : Variant; fromIndex : Integer) : Integer; overload;
          function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer; overload;
 
-         property Typ : TDynamicArraySymbol read FTyp;
+         property ElementTyp : TTypeSymbol read FElementTyp;
          property ElementSize : Integer read FElementSize;
          property Data : TData read FData write SetData;
          property Length : Integer read FLength write SetLength;
@@ -6303,10 +6303,10 @@ end;
 
 // Create
 //
-constructor TScriptDynamicArray.Create(aTyp : TDynamicArraySymbol);
+constructor TScriptDynamicArray.Create(elemTyp : TTypeSymbol);
 begin
-   FTyp:=aTyp;
-   FElementSize:=aTyp.Typ.Size;
+   FElementTyp:=elemTyp;
+   FElementSize:=elemTyp.Size;
 end;
 
 // SetLength
@@ -6317,7 +6317,7 @@ var
 begin
    System.SetLength(FData, n*ElementSize);
    for i:=FLength to n-1 do
-      FTyp.Typ.InitData(FData, i*ElementSize);
+      FElementTyp.InitData(FData, i*ElementSize);
    FLength:=n;
 end;
 
@@ -6337,7 +6337,7 @@ begin
    System.SetLength(FData, FLength*ElementSize);
    Move(FData[index*ElementSize], FData[(index+1)*ElementSize], (FLength-index-1)*ElementSize*SizeOf(Variant));
    FillChar(FData[index*ElementSize], ElementSize*SizeOf(Variant), 0);
-   FTyp.Typ.InitData(FData, index*ElementSize);
+   FElementTyp.InitData(FData, index*ElementSize);
 end;
 
 // Delete
