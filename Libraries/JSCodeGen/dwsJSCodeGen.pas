@@ -907,6 +907,7 @@ begin
    RegisterCodeGen(TMagicStringFuncExpr,  TJSMagicFuncExpr.Create);
    RegisterCodeGen(TMagicFloatFuncExpr,   TJSMagicFuncExpr.Create);
    RegisterCodeGen(TMagicBoolFuncExpr,    TJSMagicFuncExpr.Create);
+   RegisterCodeGen(TMagicVariantFuncExpr, TJSMagicFuncExpr.Create);
    RegisterCodeGen(TMagicProcedureExpr,   TJSMagicFuncExpr.Create);
 
    RegisterCodeGen(TConstructorStaticExpr,      TJSConstructorStaticExpr.Create);

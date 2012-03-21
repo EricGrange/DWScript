@@ -93,7 +93,7 @@ implementation
 {$R dwsJSRTL.res dwsJSRTL.rc}
 
 const
-   cJSRTLDependencies : array [1..149] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..151] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -534,6 +534,10 @@ const
       (Name : 'StringOfString';
        Code : 'function StringOfString(s,n) { return stringRepeat(s,n) }';
        Dependency : '!stringRepeat_js'),
+      (Name : 'StrJoin';
+       Code : 'function StrJoin(a,d) { return a.join(d) }'),
+      (Name : 'StrSplit';
+       Code : 'function StrSplit(s,d) { return s.split(d) }'),
       (Name : 'StrToFloat';
        Code : 'function StrToFloat(v) { return parseFloat(v) }'),
       (Name : 'StrToFloatDef';
@@ -697,6 +701,8 @@ begin
    FMagicCodeGens.AddObject('Sign$_Integer_', TdwsExprGenericCodeGen.Create(['$Sign', '(', 0, ')'], gcgExpression, '$Sign'));
    FMagicCodeGens.AddObject('Sin', TdwsExprGenericCodeGen.Create(['Math.sin', '(', 0, ')']));
    FMagicCodeGens.AddObject('Sqrt', TdwsExprGenericCodeGen.Create(['Math.sqrt', '(', 0, ')']));
+   FMagicCodeGens.AddObject('StrJoin', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.join', '(', 1, ')']));
+   FMagicCodeGens.AddObject('StrSplit', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.split', '(', 1, ')']));
    FMagicCodeGens.AddObject('StrToFloat', TdwsExprGenericCodeGen.Create(['parseFloat', '(', 0, ')']));
    FMagicCodeGens.AddObject('StrToInt', TdwsExprGenericCodeGen.Create(['parseInt', '(', 0, ',', '10)']));
    FMagicCodeGens.AddObject('SubStr', TdwsExprGenericCodeGen.Create(['(', 0, ')', '.substr(', '(', 1, ')', '-1)']));

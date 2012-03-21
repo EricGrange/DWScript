@@ -214,6 +214,14 @@ type
     procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
+  TStrSplitFunc = class(TInternalMagicVariantFunction)
+    function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+  end;
+
+  TStrJoinFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
+  end;
+
   TReverseStringFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
@@ -724,8 +732,6 @@ end;
 
 { TStrAfterFunc }
 
-// DoEvalAsString
-//
 procedure TStrAfterFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
    p : Integer;
@@ -741,8 +747,6 @@ end;
 
 { TStrBeforeFunc }
 
-// DoEvalAsString
-//
 procedure TStrBeforeFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
    p : Integer;
@@ -758,8 +762,6 @@ end;
 
 { TReverseStringFunc }
 
-// DoEvalAsString
-//
 procedure TReverseStringFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=ReverseString(args.AsString[0]);
@@ -767,8 +769,6 @@ end;
 
 { TFormatFunc }
 
-// DoEvalAsString
-//
 procedure TFormatFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
    expr : TExprBase;
@@ -788,6 +788,90 @@ begin
       Result:=Format(args.AsString[0], varRecs.VarRecArray);
    finally
       varRecs.Free;
+   end;
+end;
+
+{ TStrSplitFunc }
+
+function TStrSplitFunc.DoEvalAsVariant(args : TExprBaseList) : Variant;
+var
+   str, delim : String;
+   dyn : TScriptDynamicArray;
+   p, pn, nDelim, k : Integer;
+begin
+   str:=args.AsString[0];
+   delim:=args.AsString[1];
+
+   dyn:=TScriptDynamicArray.Create((args.ExprBase[0] as TTypedExpr).Typ);
+
+   if delim='' then begin
+
+      // special case, split separates all characters
+      pn:=Length(str);
+      dyn.Length:=pn;
+      for k:=1 to pn do
+         dyn.Data[k-1]:=str[k];
+
+   end else begin
+
+      nDelim:=Length(delim);
+      p:=1;
+      k:=0;
+      while True do begin
+         pn:=PosEx(delim, str, p);
+         if pn>0 then begin
+            dyn.Insert(k);
+            dyn.Data[k]:=Copy(str, p, pn-p);
+            Inc(k);
+            p:=pn+nDelim;
+         end else break;
+      end;
+      dyn.Insert(k);
+      dyn.Data[k]:=Copy(str, p, Length(str)+1-p);
+
+   end;
+
+   Result:=IScriptObj(dyn);
+end;
+
+// ------------------
+// ------------------ TStrJoinFunc ------------------
+// ------------------
+
+// DoEvalAsString
+//
+procedure TStrJoinFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
+var
+   delim : String;
+   obj : IScriptObj;
+   dyn : TScriptDynamicArray;
+   i : Integer;
+   wobs : TWriteOnlyBlockStream;
+begin
+   args.ExprBase[0].EvalAsScriptObj(args.Exec, obj);
+   dyn:=obj.InternalObject as TScriptDynamicArray;
+
+   delim:=args.AsString[1];
+
+   case dyn.Length of
+      0 : Result:='';
+      1..5 : begin
+         Result:=dyn.Data[0];
+         for i:=1 to dyn.Length-1 do
+            Result:=Result+delim+dyn.Data[i];
+      end;
+   else
+      wobs:=TWriteOnlyBlockStream.Create;
+      try
+         wobs.WriteString(dyn.Data[0]);
+         for i:=1 to dyn.Length-1 do begin
+            wobs.WriteString(delim);
+            wobs.WriteString(dyn.Data[i]);
+         end;
+         Result:=wobs.ToString;
+      finally
+         wobs.Free;
+      end;
    end;
 end;
 
@@ -868,6 +952,8 @@ initialization
 
    RegisterInternalStringFunction(TStrAfterFunc, 'StrAfter', ['str', cString, 'delimiter', cString], [iffStateLess]);
    RegisterInternalStringFunction(TStrBeforeFunc, 'StrBefore', ['str', cString, 'delimiter', cString], [iffStateLess]);
+   RegisterInternalFunction(TStrSplitFunc, 'StrSplit', ['str', cString, 'delimiter', cString], 'array of string', []);
+   RegisterInternalStringFunction(TStrJoinFunc, 'StrJoin', ['strs', 'array of string', 'delimiter', cString], []);
 
    RegisterInternalStringFunction(TReverseStringFunc, 'ReverseString', ['str', cString], [iffStateLess]);
 

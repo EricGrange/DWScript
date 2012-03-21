@@ -400,11 +400,11 @@ procedure TJSCodeGenTests.ExecutionOptimizedObfuscatedSmartLinked;
 begin
    FCompiler.Config.CompilerOptions:=
       cCompilerOptions+[coOptimize, coVariablesAsVarOnly, coSymbolDictionary, coContextMap];
-   FCodeGen.Options:=FCodeGen.Options+[cgoObfuscate, cgoSmartLink];
+   FCodeGen.Options:=FCodeGen.Options+[cgoObfuscate, cgoSmartLink, cgoOptimizeForSize];
    try
       Execution;
    finally
-      FCodeGen.Options:=FCodeGen.Options-[cgoObfuscate, cgoSmartLink];
+      FCodeGen.Options:=FCodeGen.Options-[cgoObfuscate, cgoSmartLink, cgoOptimizeForSize];
    end;
 end;
 
