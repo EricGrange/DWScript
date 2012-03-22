@@ -662,26 +662,29 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
-   // Add to a dynamic array
+   // Add an item to a dynamic array
    TArrayAddExpr = class(TArrayPseudoMethodExpr)
       private
-         FItemExpr : TDataExpr;
+         FArgs : TTightList;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         function GetItemExpr(idx : Integer) : TDataExpr;
+
       public
          constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-                            aBase :  TTypedExpr; aItem : TDataExpr);
+                            aBase :  TTypedExpr; argExprs : TTypedExprList);
          destructor Destroy; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
 
-         property ItemExpr : TDataExpr read FItemExpr;
+         property ArgExpr[idx : Integer] : TDataExpr read GetItemExpr;
+         property ArgCount : Integer read FArgs.FCount;
    end;
 
-   // Adop the last value of a dynamic array
-   TArrayPopExpr = class(TPosDataExpr)
+   // base class for dynamic array expr that return a value
+   TArrayDataExpr = class(TPosDataExpr)
       private
          FBaseExpr : TTypedExpr;
          FResultAddr : Integer;
@@ -693,14 +696,26 @@ type
          function GetAddr(exec : TdwsExecution) : Integer; override;
          function GetData(exec : TdwsExecution) : TData; override;
 
+         function GetBaseDynArray(exec : TdwsExecution) : TScriptDynamicArray;
+
       public
          constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
                             aBase :  TTypedExpr);
          destructor Destroy; override;
 
-         procedure EvalNoResult(exec : TdwsExecution); override;
-
          property BaseExpr : TTypedExpr read FBaseExpr write FBaseExpr;
+   end;
+
+   // Peek the last value of a dynamic array
+   TArrayPeekExpr = class(TArrayDataExpr)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
+   // Pop the last value of a dynamic array
+   TArrayPopExpr = class(TArrayPeekExpr)
+      public
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // Delete one or N elements of a dynamic array
@@ -7025,10 +7040,17 @@ end;
 // Create
 //
 constructor TArrayAddExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-                                 aBase :  TTypedExpr; aItem : TDataExpr);
+                                 aBase :  TTypedExpr; argExprs : TTypedExprList);
+var
+   i : Integer;
+   arg : TTypedExpr;
 begin
    inherited Create(prog, scriptPos, aBase);
-   FItemExpr:=aItem;
+   for i:=0 to argExprs.Count-1 do begin
+      arg:=argExprs[i];
+      Assert(arg is TDataExpr);
+      FArgs.Add(arg);
+   end;
 end;
 
 // Destroy
@@ -7036,25 +7058,42 @@ end;
 destructor TArrayAddExpr.Destroy;
 begin
    inherited;
-   FItemExpr.Free;
+   FArgs.Clean;
 end;
 
 // EvalNoResult
 //
 procedure TArrayAddExpr.EvalNoResult(exec : TdwsExecution);
 var
-   base : IScriptObj;
-   dyn : TScriptDynamicArray;
-   n : Integer;
+   base, src : IScriptObj;
+   dyn, dynSrc : TScriptDynamicArray;
+   i, n : Integer;
+   arg : TDataExpr;
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
    dyn:=TScriptDynamicArray(base.InternalObject);
-   n:=dyn.Length;
-   dyn.Length:=n+1;
-   if ItemExpr.Typ.Size>1 then begin
-      DWSCopyData(ItemExpr.Data[exec], ItemExpr.Addr[exec],
-                  dyn.Data, n*dyn.ElementSize, dyn.ElementSize);
-   end else ItemExpr.EvalAsVariant(exec, dyn.Data[n]);
+
+   for i:=0 to FArgs.Count-1 do begin
+      arg:=TDataExpr(FArgs.List[i]);
+
+      if dyn.ElementTyp.IsCompatible(arg.Typ) then begin
+
+         n:=dyn.Length;
+         dyn.Length:=n+1;
+         if arg.Typ.Size>1 then begin
+            DWSCopyData(arg.Data[exec], arg.Addr[exec],
+                        dyn.Data, n*dyn.ElementSize, dyn.ElementSize);
+         end else arg.EvalAsVariant(exec, dyn.Data[n]);
+
+      end else begin
+
+         arg.EvalAsScriptObj(exec, src);
+         dynSrc:=(src.InternalObject as TScriptDynamicArray);
+
+         dyn.Concat(dynSrc);
+
+      end;
+   end;
 end;
 
 // GetSubExpr
@@ -7063,24 +7102,31 @@ function TArrayAddExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
    if i=0 then
       Result:=FBaseExpr
-   else Result:=FItemExpr;
+   else Result:=FArgs.List[i-1];
 end;
 
 // GetSubExprCount
 //
 function TArrayAddExpr.GetSubExprCount : Integer;
 begin
-   Result:=2;
+   Result:=1+FArgs.Count;
+end;
+
+// GetItemExpr
+//
+function TArrayAddExpr.GetItemExpr(idx : Integer) : TDataExpr;
+begin
+   Result:=TDataExpr(FArgs.List[idx]);
 end;
 
 // ------------------
-// ------------------ TArrayPopExpr ------------------
+// ------------------ TArrayDataExpr ------------------
 // ------------------
 
 // Create
 //
-constructor TArrayPopExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-                                 aBase :  TTypedExpr);
+constructor TArrayDataExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+                            aBase :  TTypedExpr);
 begin
    inherited Create(prog, scriptPos, (aBase.Typ as TDynamicArraySymbol).Typ);
    FBaseExpr:=aBase;
@@ -7089,7 +7135,7 @@ end;
 
 // Destroy
 //
-destructor TArrayPopExpr.Destroy;
+destructor TArrayDataExpr.Destroy;
 begin
    inherited;
    FBaseExpr.Free;
@@ -7097,7 +7143,7 @@ end;
 
 // GetData
 //
-function TArrayPopExpr.GetData(exec : TdwsExecution) : TData;
+function TArrayDataExpr.GetData(exec : TdwsExecution) : TData;
 begin
    EvalNoResult(exec);
    Result:=exec.Stack.Data;
@@ -7105,21 +7151,47 @@ end;
 
 // GetAddr
 //
-function TArrayPopExpr.GetAddr(exec : TdwsExecution) : Integer;
+function TArrayDataExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
   Result:=exec.Stack.BasePointer+FResultAddr;
 end;
 
-// EvalNoResult
+// GetSubExpr
 //
-procedure TArrayPopExpr.EvalNoResult(exec : TdwsExecution);
+function TArrayDataExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   Result:=FBaseExpr;
+end;
+
+// GetSubExprCount
+//
+function TArrayDataExpr.GetSubExprCount : Integer;
+begin
+   Result:=1;
+end;
+
+// GetBaseDynArray
+//
+function TArrayDataExpr.GetBaseDynArray(exec : TdwsExecution) : TScriptDynamicArray;
 var
    base : IScriptObj;
+begin
+   BaseExpr.EvalAsScriptObj(exec, base);
+   Result:=TScriptDynamicArray(base.InternalObject);
+end;
+
+// ------------------
+// ------------------ TArrayPeekExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TArrayPeekExpr.EvalNoResult(exec : TdwsExecution);
+var
    dyn : TScriptDynamicArray;
    idx : Integer;
 begin
-   BaseExpr.EvalAsScriptObj(exec, base);
-   dyn:=TScriptDynamicArray(base.InternalObject);
+   dyn:=GetBaseDynArray(exec);
    if dyn.Length=0 then
       RaiseUpperExceeded(exec, 0);
 
@@ -7127,21 +7199,22 @@ begin
    DWSCopyData(dyn.Data, idx,
                exec.Stack.Data, exec.Stack.BasePointer+FResultAddr,
                dyn.ElementSize);
+end;
+
+// ------------------
+// ------------------ TArrayPopExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
+procedure TArrayPopExpr.EvalNoResult(exec : TdwsExecution);
+var
+   dyn : TScriptDynamicArray;
+begin
+   inherited EvalNoResult(exec);
+
+   dyn:=GetBaseDynArray(exec);
    dyn.Delete(dyn.Length-1, 1);
-end;
-
-// GetSubExpr
-//
-function TArrayPopExpr.GetSubExpr(i : Integer) : TExprBase;
-begin
-   Result:=FBaseExpr;
-end;
-
-// GetSubExprCount
-//
-function TArrayPopExpr.GetSubExprCount : Integer;
-begin
-   Result:=1;
 end;
 
 // ------------------

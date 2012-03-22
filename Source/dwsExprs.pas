@@ -1705,6 +1705,7 @@ type
          procedure Reverse;
          procedure Copy(src : TScriptDynamicArray; index, count : Integer);
          procedure RawCopy(const src : TData; rawIndex, rawCount : Integer);
+         procedure Concat(src : TScriptDynamicArray);
          function IndexOf(const item : TData; addr, fromIndex : Integer) : Integer; overload;
          function IndexOf(const item : Variant; fromIndex : Integer) : Integer; overload;
          function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer; overload;
@@ -6401,6 +6402,21 @@ begin
    System.SetLength(FData, rawCount);
    for i:=rawIndex to rawIndex+rawCount-1 do
       FData[i-rawIndex]:=src[i];
+end;
+
+// Concat
+//
+procedure TScriptDynamicArray.Concat(src : TScriptDynamicArray);
+var
+   n, nSrc : Integer;
+begin
+   if src.Length>0 then begin
+      n:=Length;
+      nSrc:=src.Length;
+      FLength:=n+nSrc;
+      System.SetLength(FData, FLength*ElementSize);
+      DWSCopyData(src.Data, 0, FData, n*ElementSize, nSrc*ElementSize);
+   end;
 end;
 
 // IndexOf

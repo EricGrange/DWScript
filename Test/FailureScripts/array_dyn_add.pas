@@ -1,11 +1,12 @@
 var ints : array of Integer;
+var stints : array [0..1] of Integer;
 
 ints.Add(TObject.Create);
 ints.Add('a');
 ints.Add(1);
 ints.Add(1.5);
 ints.Add(False);
-ints.Add(ints);
+ints.Add(stints);  // will be supported later
 ints.Add(nil);
 
 var objs : array of TObject;

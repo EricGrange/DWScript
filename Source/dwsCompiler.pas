@@ -5504,6 +5504,7 @@ var
    argList : TTypedExprList;
    argPosArray : TScriptPosArray;
    argSymTable : TUnSortedSymbolTable;
+   i : Integer;
 
    procedure CheckRestricted;
    begin
@@ -5552,17 +5553,27 @@ begin
             Result:=CreateArrayLength(baseExpr, arraySym);
          end else if SameText(name, 'add') or SameText(name, 'push') then begin
             CheckRestricted;
-            if CheckArguments(1, 1) then begin
-               if (argList[0].Typ=nil) or not arraySym.Typ.IsCompatible(argList[0].Typ) then
-                  IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
-                                    arraySym.Typ, argList[0].Typ);
-               Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, argList[0] as TDataExpr);
+            if CheckArguments(1, 99) then begin
+               for i:=0 to argList.Count-1 do begin
+                  if    (argList[0].Typ=nil)
+                     or not (   arraySym.Typ.IsCompatible(argList[0].Typ)
+                             or arraySym.IsCompatible(argList[0].Typ)) then begin
+                     IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+                                       arraySym.Typ, argList[0].Typ);
+                     Break;
+                  end;
+               end;
+               Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, argList);
                argList.Clear;
-            end else Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, nil);
+            end else Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, argList);
          end else if SameText(name, 'pop') then begin
             CheckRestricted;
             CheckArguments(0, 0);
             Result:=TArrayPopExpr.Create(FProg, namePos, baseExpr);
+         end else if SameText(name, 'peek') then begin
+            CheckRestricted;
+            CheckArguments(0, 0);
+            Result:=TArrayPeekExpr.Create(FProg, namePos, baseExpr);
          end else if SameText(name, 'delete') then begin
             CheckRestricted;
             if CheckArguments(1, 2) then begin

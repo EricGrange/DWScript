@@ -93,7 +93,7 @@ implementation
 {$R dwsJSRTL.res dwsJSRTL.rc}
 
 const
-   cJSRTLDependencies : array [1..151] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..153] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -210,12 +210,21 @@ const
                +#9'else throw Exception.Create$1($New(Exception),"Can''t cast interface of \""+i.O.ClassType.$ClassName+"\" to class \""+c.$ClassName+"\"");'#13#10
                +'}'#13#10;
        Dependency : '$Is' ),
+      (Name : '$Peek';
+       Code : 'function $Peek(a,z) {'#13#10
+               +#9'var n=a.length;'#13#10
+               +#9'if (n>0) return a[n-1];'#13#10
+               +#9'throw Exception.Create$1($New(Exception),"Upper bound exceeded! Index 0"+z);'#13#10
+               +'}';
+       Dependency : 'Exception' ),
       (Name : '$Pop';
        Code : 'function $Pop(a,z) {'#13#10
                +#9'if (a.length>0) return a.pop();'#13#10
                +#9'throw Exception.Create$1($New(Exception),"Upper bound exceeded! Index 0"+z);'#13#10
                +'}';
        Dependency : 'Exception' ),
+      (Name : '$Pusha';
+       Code : 'Array.prototype.pusha = function (e) { this.push.apply(this, e); return this }' ),
       (Name : '$Idx';
        Code : 'function $Idx(i,l,h,z) {'#13#10
                +#9'if (i<l) throw Exception.Create$1($New(Exception),"Lower bound exceeded! Index "+i.toString()+z);'#13#10

@@ -922,7 +922,7 @@ type
    end;
 
    // array of FTyp
-   TDynamicArraySymbol = class(TArraySymbol)
+   TDynamicArraySymbol = class sealed (TArraySymbol)
       protected
          function GetCaption : UnicodeString; override;
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;

@@ -253,6 +253,9 @@ type
    TJSArrayAddExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
+   TJSArrayPeekExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
    TJSArrayPopExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -871,6 +874,7 @@ begin
    RegisterCodeGen(TNewArrayExpr,            TJSNewArrayExpr.Create);
    RegisterCodeGen(TArraySetLengthExpr,      TJSArraySetLengthExpr.Create);
    RegisterCodeGen(TArrayAddExpr,            TJSArrayAddExpr.Create);
+   RegisterCodeGen(TArrayPeekExpr,           TJSArrayPeekExpr.Create);
    RegisterCodeGen(TArrayPopExpr,            TJSArrayPopExpr.Create);
    RegisterCodeGen(TArrayDeleteExpr,         TJSArrayDeleteExpr.Create);
    RegisterCodeGen(TArrayIndexOfExpr,        TJSArrayIndexOfExpr.Create);
@@ -4228,13 +4232,98 @@ end;
 procedure TJSArrayAddExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TArrayAddExpr;
+   arg : TDataExpr;
+   i : Integer;
+   elementTyp : TTypeSymbol;
+   pushElementFunc : String;
+   pushType : Integer;
+   inPushElems : Boolean;
 begin
    e:=TArrayAddExpr(expr);
 
    codeGen.Compile(e.BaseExpr);
-   codeGen.WriteString('.push(');
-   codeGen.CompileValue(e.ItemExpr);
-   codeGen.WriteStringLn(');');
+
+   elementTyp:=(e.BaseExpr.Typ as TDynamicArraySymbol).Typ;
+
+   pushType:=0;
+   for i:=0 to e.ArgCount-1 do begin
+      arg:=e.ArgExpr[i];
+      if elementTyp.IsCompatible(arg.Typ) then
+         pushType:=pushType or 1
+      else pushType:=pushType or 2;
+   end;
+
+   if pushType=1 then begin
+
+      // only elements
+
+      codeGen.WriteString('.push(');
+      for i:=0 to e.ArgCount-1 do begin
+         if i>0 then
+            codeGen.WriteString(', ');
+         codeGen.CompileValue(e.ArgExpr[i]);
+      end;
+      codeGen.WriteString(')');
+
+   end else begin
+
+      // a mix of elements and arrays
+
+      codeGen.Dependencies.Add('$Pusha');
+
+      inPushElems:=False;
+      for i:=0 to e.ArgCount-1 do begin
+         arg:=e.ArgExpr[i];
+
+         if elementTyp.IsCompatible(arg.Typ) then begin
+
+            if not inPushElems then begin
+               codeGen.WriteString('.pusha([');
+               inPushElems:=True;
+            end else codeGen.WriteString(', ');
+            codeGen.CompileValue(arg);
+
+         end else begin
+
+
+            if inPushElems then begin
+               codeGen.WriteString('])');
+               inPushElems:=False;
+            end;
+            codeGen.WriteString('.pusha(');
+            codeGen.CompileValue(arg);
+            codeGen.WriteString(')');
+
+         end;
+      end;
+
+      if inPushElems then
+         codeGen.WriteString('])');
+
+   end;
+
+   codeGen.WriteStatementEnd;
+end;
+
+// ------------------
+// ------------------ TJSArrayPeekExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSArrayPeekExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TArrayPeekExpr;
+begin
+   e:=TArrayPeekExpr(expr);
+
+   codeGen.Dependencies.Add('$Peek');
+
+   codeGen.WriteString('$Peek(');
+   codeGen.Compile(e.BaseExpr);
+   codeGen.WriteString(',');
+   WriteLocationString(codeGen, expr);
+   codeGen.WriteString(')');
 end;
 
 // ------------------

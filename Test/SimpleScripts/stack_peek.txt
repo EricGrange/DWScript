@@ -1,0 +1,5 @@
+Upper bound exceeded! Index 0 in DoPeek [line: 7, column: 17]
+world
+hello
+hello
+Upper bound exceeded! Index 0 in DoPeek [line: 7, column: 17]
