@@ -4235,7 +4235,6 @@ var
    arg : TDataExpr;
    i : Integer;
    elementTyp : TTypeSymbol;
-   pushElementFunc : String;
    pushType : Integer;
    inPushElems : Boolean;
 begin

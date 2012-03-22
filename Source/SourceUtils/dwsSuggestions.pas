@@ -808,6 +808,8 @@ begin
                Add(Sym);
          end else if sym is TClassConstSymbol then begin
             Add(sym);
+         end else if sym is TClassVarSymbol then begin
+            Add(sym);
          end;
       end;
       if first then begin

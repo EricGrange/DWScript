@@ -270,6 +270,7 @@ const
   CPH_PrivateMethodDeclaredButNotUsed = 'Private method "%s" declared but never used';
   CPH_ResultNotUsed = 'Result is never used';
   CPH_RedundantVisibilitySpecifier = 'Redundant specifier, visibility is already "%s"';
+  CPH_NameAmbiguousInScopeContext = 'Name "%s" could be ambiguous in its scope context';
 
   // TypeCheck
   CPE_BooleanExpected = 'Boolean expected';

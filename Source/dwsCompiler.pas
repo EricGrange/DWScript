@@ -266,8 +266,8 @@ type
    end;
 
    IdwsDataSymbolFactory = interface
-      function CreateDataSymbol(const name : String; typ : TTypeSymbol) : TDataSymbol;
-      function CreateConstSymbol(const name : String; typ : TTypeSymbol;
+      function CreateDataSymbol(const name : String; const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol;
+      function CreateConstSymbol(const name : String; const namePos : TScriptPos; typ : TTypeSymbol;
                                  const data : TData; addr : Integer) : TConstSymbol;
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
    end;
@@ -333,7 +333,7 @@ type
 
          function CheckFuncParams(paramsA, paramsB : TSymbolTable; indexSym : TSymbol = nil;
                                typSym : TTypeSymbol = nil) : Boolean;
-         procedure CheckName(const name : UnicodeString);
+         procedure CheckName(const name : UnicodeString; const namePos : TScriptPos);
          function IdentifySpecialName(const name : UnicodeString) : TSpecialKeywordKind;
          procedure CheckSpecialName(const name : UnicodeString);
          function CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
@@ -692,8 +692,9 @@ type
    TStandardSymbolFactory = class (TInterfacedObject, IdwsDataSymbolFactory)
       FCompiler : TdwsCompiler;
       constructor Create(aCompiler : TdwsCompiler);
-      function CreateDataSymbol(const name : String; typ : TTypeSymbol) : TDataSymbol; virtual;
-      function CreateConstSymbol(const name : String; typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol; virtual;
+      function CreateDataSymbol(const name : String; const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol; virtual;
+      function CreateConstSymbol(const name : String; const namePos : TScriptPos;
+                                 typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol; virtual;
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr; virtual;
    end;
 
@@ -702,8 +703,9 @@ type
       FVisibility : TdwsVisibility;
       constructor Create(aCompiler : TdwsCompiler; structType : TStructuredTypeSymbol;
                          aVisibility : TdwsVisibility);
-      function CreateDataSymbol(const name : String; typ : TTypeSymbol) : TDataSymbol; override;
-      function CreateConstSymbol(const name : String; typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol; override;
+      function CreateDataSymbol(const name : String; const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol; override;
+      function CreateConstSymbol(const name : String; const namePos : TScriptPos;
+                                 typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol; override;
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr; override;
    end;
 
@@ -733,17 +735,18 @@ end;
 
 // CreateDataSymbol
 //
-function TStandardSymbolFactory.CreateDataSymbol(const name : String; typ : TTypeSymbol) : TDataSymbol;
+function TStandardSymbolFactory.CreateDataSymbol(const name : String; const namePos : TScriptPos;
+                                                 typ : TTypeSymbol) : TDataSymbol;
 begin
-   FCompiler.CheckName(name);
+   FCompiler.CheckName(name, namePos);
    Result:=TDataSymbol.Create(name, typ);
    FCompiler.FProg.Table.AddSymbol(Result);
 end;
 
 // CreateConstSymbol
 //
-function TStandardSymbolFactory.CreateConstSymbol(const name : String; typ : TTypeSymbol;
-                                                  const data : TData; addr : Integer) : TConstSymbol;
+function TStandardSymbolFactory.CreateConstSymbol(const name : String; const namePos : TScriptPos;
+                                                  typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol;
 begin
    if data<>nil then
       Result:=TConstSymbol.Create(name, typ, data, addr)
@@ -774,14 +777,15 @@ end;
 
 // CreateDataSymbol
 //
-function TStructuredTypeSymbolFactory.CreateDataSymbol(const name : String; typ : TTypeSymbol) : TDataSymbol;
+function TStructuredTypeSymbolFactory.CreateDataSymbol(const name : String; const namePos : TScriptPos;
+                                                       typ : TTypeSymbol) : TDataSymbol;
 var
    sym : TSymbol;
    cvs : TClassVarSymbol;
 begin
    sym:=FStructuredType.Members.FindLocal(name);
    if Assigned(sym) then
-      FCompiler.FMsgs.AddCompilerErrorFmt(FCompiler.FTok.HotPos, CPE_NameAlreadyExists, [name]);
+      FCompiler.FMsgs.AddCompilerErrorFmt(namePos, CPE_NameAlreadyExists, [name]);
 
    cvs:=TClassVarSymbol.Create(name, typ);
    cvs.Visibility:=FVisibility;
@@ -792,7 +796,8 @@ end;
 
 // CreateConstSymbol
 //
-function TStructuredTypeSymbolFactory.CreateConstSymbol(const name : String; typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol;
+function TStructuredTypeSymbolFactory.CreateConstSymbol(const name : String; const namePos : TScriptPos;
+                                                        typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol;
 var
    classConstSym : TClassConstSymbol;
 begin
@@ -1593,7 +1598,6 @@ var
    finalToken : TTokenType;
    unitBlock : TBlockExpr;
    implemTable : TUnitImplementationTable;
-   oldTable : TSymbolTable;
    oldUnit : TUnitMainSymbol;
 begin
    while FUnitContextStack.Count>0 do begin
@@ -1601,8 +1605,7 @@ begin
       FUnitSection:=secImplementation;
       try
          implemTable:=TUnitImplementationTable.Create(CurrentUnitSymbol);
-         oldTable:=FProg.Table;
-         FProg.Table:=implemTable;
+         FProg.EnterSubTable(implemTable);
          try
             unitBlock:=ReadRootBlock([], finalToken);
 
@@ -1613,7 +1616,7 @@ begin
                FProg.InitExpr.AddStatement(unitBlock)
             else FreeAndNil(unitBlock);
          finally
-            FProg.Table:=oldTable;
+            FProg.LeaveSubTable;
          end;
       finally
          Inc(FLineCount, FTok.CurrentPos.Line-2);
@@ -1725,7 +1728,7 @@ begin
    if not FTok.TestDeleteNamePos(name, namePos) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-   CheckName(name);
+   CheckName(name, namePos);
    CheckSpecialName(name);
 
    if not FTok.TestDelete(ttEQ) then
@@ -1934,7 +1937,7 @@ begin
          FMsgs.AddCompilerErrorFmt(pos, CPE_ClassIsStatic, [TClassSymbol(typ).Name]);
 
       for x:=0 to names.Count-1 do begin
-         sym:=dataSymbolFactory.CreateDataSymbol(names[x], typ);
+         sym:=dataSymbolFactory.CreateDataSymbol(names[x], posArray[x], typ);
 
          varExpr:=GetVarExpr(sym);
          if Assigned(initExpr) then begin
@@ -2013,7 +2016,7 @@ begin
 
    end else begin
 
-      CheckName(name);
+      CheckName(name, constPos);
       CheckSpecialName(name);
 
       if FTok.TestDelete(ttCOLON) then
@@ -2029,7 +2032,7 @@ begin
       if typ is TRecordSymbol then begin
 
          recordData:=ReadConstRecord(TRecordSymbol(typ));
-         constSym:=factory.CreateConstSymbol(name, typ, recordData, 0);
+         constSym:=factory.CreateConstSymbol(name, constPos, typ, recordData, 0);
 
       end else begin
 
@@ -2048,7 +2051,7 @@ begin
 
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
                // keep compiling
-               constSym:=factory.CreateConstSymbol(name, typ, nil, 0);
+               constSym:=factory.CreateConstSymbol(name, constPos, typ, nil, 0);
 
             end else begin
 
@@ -2056,19 +2059,19 @@ begin
                   sas:=TStaticArraySymbol.Create('', typ, FProg.TypInteger, 0, TArraySymbol(typ).typ.Size-1);
                   FProg.Table.AddSymbol(sas);
                   if expr is TConstExpr then begin
-                     constSym:=factory.CreateConstSymbol(name, sas, TConstExpr(expr).Data[FExec], TConstExpr(expr).Addr[FExec]);
+                     constSym:=factory.CreateConstSymbol(name, constPos, sas, TConstExpr(expr).Data[FExec], TConstExpr(expr).Addr[FExec]);
                      detachTyp:=False;
-                  end else constSym:=factory.CreateConstSymbol(name, sas, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
+                  end else constSym:=factory.CreateConstSymbol(name, constPos, sas, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
                end else begin
                   if typ.Size=1 then begin
                      SetLength(recordData, 1);
                      expr.EvalAsVariant(FExec, recordData[0]);
-                     constSym:=factory.CreateConstSymbol(name, typ, recordData, 0);
+                     constSym:=factory.CreateConstSymbol(name, constPos, typ, recordData, 0);
                   end else begin
                      dataExpr:=(expr as TDataExpr);
                      FExec.Stack.Push(FProg.DataSize);
                      try
-                        constSym:=factory.CreateConstSymbol(name, typ,
+                        constSym:=factory.CreateConstSymbol(name, constPos, typ,
                                                             dataExpr.Data[FExec],
                                                             dataExpr.Addr[FExec]);
                      finally
@@ -2170,7 +2173,7 @@ begin
       if typNew.Name<>'' then begin
          // typOld = typNew if a forwarded class declaration was overwritten
          if typOld <> typNew then begin
-            CheckName(name);
+            CheckName(name, typePos);
             CheckSpecialName(name);
             if typNew.Name<>'' then
                FProg.Table.AddSymbol(typNew);
@@ -2259,7 +2262,7 @@ begin
       end;
 
       if (forwardedSym=nil) and (overloadFuncSym=nil) then
-         CheckName(name);
+         CheckName(name, funcPos);
 
       if isType then
          Result := TSourceFuncSymbol.Create('', funcKind, -1)
@@ -3025,7 +3028,6 @@ end;
 function TdwsCompiler.ReadBlocks(const endTokens : TTokenTypes; var finalToken : TTokenType) : TNoResultExpr;
 var
    stmt : TNoResultExpr;
-   oldTable : TSymbolTable;
    token : TToken;
    closePos : TScriptPos; // Position at which the ending token was found (for context)
    blockExpr : TBlockExpr;
@@ -3042,8 +3044,7 @@ begin
          closePos:=FTok.CurrentPos;     // default to close context where it opened (used on errors)
       end;
 
-      oldTable:=FProg.Table;
-      FProg.Table:=blockExpr.Table;
+      FProg.EnterSubTable(blockExpr.Table);
       try
 
          repeat
@@ -3092,7 +3093,7 @@ begin
 
          HintUnusedSymbols;
       finally
-         FProg.Table:=oldTable;
+         FProg.LeaveSubTable;
       end;
 
       if Optimize then
@@ -6730,19 +6731,19 @@ end;
 //
 function TdwsCompiler.ReadClassExpr(structSymbol : TStructuredTypeSymbol; expecting : TTypeSymbol = nil) : TTypedExpr;
 var
-   oldTable : TSymbolTable;
+   membersTable : TSymbolTable;
 begin
-   oldTable:=FProg.Table;
+   membersTable:=TSymbolTable.Create(structSymbol.Members);
    try
-      FProg.Table:=TSymbolTable.Create(structSymbol.Members);
+      membersTable.AddParent(FProg.Table);
+      FProg.EnterSubTable(membersTable);
       try
-         FProg.Table.AddParent(oldTable);
          Result:=ReadExpr(expecting);
       finally
-         FProg.Table.Free;
+         FProg.LeaveSubTable;
       end;
    finally
-      FProg.Table:=oldTable;
+      membersTable.Free;
    end;
 end;
 
@@ -8061,9 +8062,10 @@ end;
 
 // Checks if a name already exists in the Symboltable
 
-procedure TdwsCompiler.CheckName(const name : UnicodeString);
+procedure TdwsCompiler.CheckName(const name : UnicodeString; const namePos : TScriptPos);
 var
    sym : TSymbol;
+   i : Integer;
 begin
    sym:=FProg.Table.FindLocal(name);
 
@@ -8071,7 +8073,15 @@ begin
       sym:=TdwsProcedure(FProg).Func.Params.FindLocal(name);
 
    if Assigned(sym) then
-      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [name]);
+      FMsgs.AddCompilerErrorFmt(namePos, CPE_NameAlreadyExists, [name]);
+
+   for i:=0 to FProg.SubTableDepth-1 do begin
+      sym:=FProg.SubTable(i).FindLocal(name);
+      if sym<>nil then begin
+         FMsgs.AddCompilerHintFmt(namePos, CPH_NameAmbiguousInScopeContext, [name]);
+         Break;
+      end;
+   end;
 end;
 
 // IdentifySpecialName
@@ -8966,20 +8976,18 @@ procedure TdwsCompiler.SwitchTokenizerToUnit(srcUnit : TSourceUnit; const source
 var
    sourceFile : TSourceFile;
    oldUnit : TUnitMainSymbol;
-   oldTable : TSymbolTable;
 begin
    sourceFile:=FMainProg.RegisterSourceFile(srcUnit.GetUnitName, sourceCode);
 
    EnterUnit(srcUnit.Symbol, oldUnit);
-   oldTable:=FProg.Table;
-   FProg.Table:=CurrentUnitSymbol.Table;
+   FProg.EnterSubTable(CurrentUnitSymbol.Table);
    FUnitsFromStack.Push(sourceFile.Name);
    try
       ReadScript(sourceFile, stUnit);
    finally
       FUnitsFromStack.Pop;
       LeaveUnit(oldUnit);
-      FProg.Table:=oldTable;
+      FProg.LeaveSubTable;
    end;
 end;
 

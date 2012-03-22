@@ -559,6 +559,7 @@ type
          FTable : TSymbolTable;
          FUnitMains : TUnitMainSymbols;
          FBaseTypes : TdwsProgramBaseTypes;
+         FSubTables : TTightList;
 
       protected
          function GetLevel : Integer; inline;
@@ -574,6 +575,11 @@ type
 
          procedure ResetExprs;
 
+         procedure EnterSubTable(subTable : TSymbolTable);
+         procedure LeaveSubTable;
+         function  SubTableDepth : Integer;
+         function  SubTable(depth : Integer) : TSymbolTable;
+
          property Expr : TNoResultExpr read FExpr write FExpr;
          property InitExpr : TBlockInitExpr read FInitExpr;
          property Level : Integer read GetLevel;
@@ -584,7 +590,7 @@ type
 
          property RootTable : TProgramSymbolTable read FRootTable;
          property UnitMains : TUnitMainSymbols read FUnitMains;
-         property Table : TSymbolTable read FTable write FTable;
+         property Table : TSymbolTable read FTable;
 
          property TypBoolean: TTypeSymbol read FBaseTypes.FTypBoolean;
          property TypFloat: TTypeSymbol read FBaseTypes.FTypFloat;
@@ -2679,6 +2685,7 @@ begin
    FUnitMains.Free;
    FBaseTypes.FTypNil.Free;
    FCompileMsgs.Free;
+   FSubTables.Clear;
 
    inherited;
 end;
@@ -2719,6 +2726,39 @@ begin
    FreeAndNil(FExpr);
    FreeAndNil(FInitExpr);
    FInitExpr:=TBlockInitExpr.Create(Self, cNullPos);
+end;
+
+// EnterSubTable
+//
+procedure TdwsProgram.EnterSubTable(subTable : TSymbolTable);
+begin
+   FSubTables.Add(Table);
+   FTable:=subTable;
+end;
+
+// LeaveSubTable
+//
+procedure TdwsProgram.LeaveSubTable;
+var
+   n : Integer;
+begin
+   n:=FSubTables.Count-1;
+   FTable:=TSymbolTable(FSubTables.List[n]);
+   FSubTables.Delete(n);
+end;
+
+// SubTableDepth
+//
+function TdwsProgram.SubTableDepth : Integer;
+begin
+   Result:=FSubTables.Count;
+end;
+
+// SubTable
+//
+function TdwsProgram.SubTable(depth : Integer) : TSymbolTable;
+begin
+   Result:=TSymbolTable(FSubTables.List[depth]);
 end;
 
 // ------------------

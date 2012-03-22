@@ -1,3 +1,7 @@
+Errors >>>>
+Hint: Name "s" could be ambiguous in its scope context [line: 16, column: 7]
+Hint: Name "s" could be ambiguous in its scope context [line: 24, column: 7]
+Result >>>>
 0
 1
 2
