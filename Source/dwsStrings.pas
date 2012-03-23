@@ -311,6 +311,8 @@ const
 
   CPE_CompilerSwitchUnknown = 'Compiler switch "%s" unknown';
 
+  CPE_FlagEnumerationCantHaveUserValues = 'Flags enumerations can''t have user values';
+
   CPE_IncludeFileNotFound = 'Couldn''t find file "%s" on input paths';
   CPE_IncludeFileExpected = 'Name of include file expected';
   CPE_IncludeItemUnknown = 'Include item "%s" unknown';

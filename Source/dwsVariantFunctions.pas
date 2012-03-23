@@ -143,7 +143,7 @@ var
    i : Integer;
    E : TTypeSymbol;
 begin
-   E := TEnumerationSymbol.Create('TVarType', systemTable.TypInteger);
+   E := TEnumerationSymbol.Create('TVarType', systemTable.TypInteger, enumClassic);
    UnitTable.AddSymbol(E);
    for i:=Low(cVarTypes) to High(cVarTypes) do
       UnitTable.AddSymbol(TElementSymbol.Create('var'+cVarTypes[i].n, E, cVarTypes[i].v, True));

@@ -1259,10 +1259,10 @@ begin
          WriteString(MemberName(meth, meth.StructSymbol));
          WriteLineEnd;
       end;
-      WriteString(',');
-      WriteString(MemberName(meth, meth.StructSymbol));
-      WriteString(cVirtualPostfix+':');
       if meth.StructSymbol=cls then begin
+         WriteString(',');
+         WriteString(MemberName(meth, meth.StructSymbol));
+         WriteString(cVirtualPostfix+':');
          if meth.Kind=fkConstructor then begin
             WriteString('function($){return $.ClassType.');
          end else if meth.IsClassMethod then begin
@@ -1274,11 +1274,6 @@ begin
          if meth.Params.Count=0 then
             WriteStringLn('($)}')
          else WriteStringLn('.apply($.ClassType, arguments)}');
-      end else begin
-         WriteSymbolName(meth.StructSymbol);
-         WriteString('.');
-         WriteString(MemberName(meth, meth.StructSymbol)+cVirtualPostfix);
-         WriteLineEnd;
       end;
    end;
 
@@ -2943,7 +2938,7 @@ begin
 
    e:=TMethodVirtualExpr(expr);
    FVirtualCall:=True;
-   codeGen.WriteSymbolName(e.BaseExpr.Typ.UnAliasedType);
+   codeGen.WriteSymbolName(e.MethSym.RootParentMeth.StructSymbol);
    codeGen.WriteString('.');
    inherited;
 end;
@@ -3057,9 +3052,7 @@ begin
 
    e:=TClassMethodVirtualExpr(expr);
    FVirtualCall:=True;
-   if e.BaseExpr.Typ is TClassSymbol then
-      codeGen.WriteSymbolName(e.BaseExpr.Typ.UnAliasedType)
-   else codeGen.WriteSymbolName(e.BaseExpr.Typ.UnAliasedType.Typ);
+   codeGen.WriteSymbolName(e.MethSym.RootParentMeth.StructSymbol);
    codeGen.WriteString('.');
    inherited;
 end;
@@ -3143,9 +3136,7 @@ begin
 
    e:=TConstructorVirtualExpr(expr);
    FVirtualCall:=True;
-   if e.BaseExpr.Typ is TClassSymbol then
-      codeGen.WriteSymbolName(e.BaseExpr.Typ.UnAliasedType)
-   else codeGen.WriteSymbolName(e.BaseExpr.Typ.UnAliasedType.Typ);
+   codeGen.WriteSymbolName(e.MethSym.RootParentMeth.StructSymbol);
    codeGen.WriteString('.');
    inherited;
 end;
@@ -3339,8 +3330,9 @@ begin
       codeGen.Compile(methExpr.BaseExpr);
       if methExpr is TMethodVirtualExpr then begin
          codeGen.WriteString(',');
-         codeGen.Compile(methExpr.BaseExpr);
-         codeGen.WriteString('.ClassType.');
+         codeGen.WriteSymbolName(methExpr.MethSym.RootParentMeth.StructSymbol);
+         codeGen.WriteString('.');
+
          codeGen.WriteString((codeGen as TdwsJSCodeGen).MemberName(methSym, methSym.StructSymbol));
          codeGen.WriteString(TdwsJSCodeGen.cVirtualPostfix);
       end else if methExpr is TMethodInterfaceExpr then begin

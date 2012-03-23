@@ -723,6 +723,8 @@ type
          function GetCaption : UnicodeString; override;
          function GetDescription : UnicodeString; override;
 
+         function GetRootParentMeth : TMethodSymbol;
+
       public
          constructor Create(const Name: UnicodeString; FuncKind: TFuncKind; aStructSymbol : TStructuredTypeSymbol;
                             aVisibility : TdwsVisibility; isClassMethod : Boolean;
@@ -752,6 +754,7 @@ type
          property IsOverlap : Boolean read GetIsOverlap;
          property IsClassMethod : Boolean read GetIsClassMethod;
          property ParentMeth : TMethodSymbol read FParentMeth;
+         property RootParentMeth : TMethodSymbol read GetRootParentMeth;
          property SelfSym : TDataSymbol read FSelfSym;
          property Visibility : TdwsVisibility read FVisibility;
    end;
@@ -1321,11 +1324,14 @@ type
          property UserDefValue: Integer read FUserDefValue;
    end;
 
+   TEnumerationSymbolStyle = (enumClassic, enumScoped, enumFlags);
+
    // Enumeration type. E. g. "type myEnum = (One, Two, Three);"
    TEnumerationSymbol = class sealed (TTypeSymbol)
       private
          FElements : TSymbolTable;
          FLowBound, FHighBound : Integer;
+         FStyle : TEnumerationSymbolStyle;
 
       protected
          function GetCaption : UnicodeString; override;
@@ -1333,7 +1339,8 @@ type
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
       public
-         constructor Create(const name : UnicodeString; baseType : TTypeSymbol);
+         constructor Create(const name : UnicodeString; baseType : TTypeSymbol;
+                            aStyle : TEnumerationSymbolStyle);
          destructor Destroy; override;
 
          function DefaultValue : Integer;
@@ -1343,6 +1350,7 @@ type
          procedure AddElement(element : TElementSymbol);
 
          property Elements : TSymbolTable read FElements;
+         property Style : TEnumerationSymbolStyle read FStyle;
          property LowBound : Integer read FLowBound write FLowBound;
          property HighBound : Integer read FHighBound write FHighBound;
          function ShortDescription : UnicodeString;
@@ -3058,6 +3066,15 @@ begin
    Result:=inherited GetDescription;
    if IsClassMethod then
       Result:='class '+Result;
+end;
+
+// GetRootParentMeth
+//
+function TMethodSymbol.GetRootParentMeth : TMethodSymbol;
+begin
+   Result:=Self;
+   while Result.IsOverride do
+      Result:=Result.ParentMeth;
 end;
 
 procedure TMethodSymbol.InitData(const Data: TData; Offset: Integer);
@@ -4883,19 +4900,22 @@ end;
 
 // Create
 //
-constructor TEnumerationSymbol.Create(const Name: UnicodeString; BaseType: TTypeSymbol);
+constructor TEnumerationSymbol.Create(const Name: UnicodeString; BaseType: TTypeSymbol;
+                                      aStyle : TEnumerationSymbolStyle);
 begin
    inherited Create(Name, BaseType);
    FElements:=TUnSortedSymbolTable.Create;
    FLowBound:=MaxInt;
    FHighBound:=-MaxInt;
+   FStyle:=aStyle;
 end;
 
 // Destroy
 //
 destructor TEnumerationSymbol.Destroy;
 begin
-   FElements.Clear;
+   if FStyle=enumClassic then
+      FElements.Clear;
    FElements.Free;
    inherited;
 end;

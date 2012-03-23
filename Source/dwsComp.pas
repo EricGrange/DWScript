@@ -880,6 +880,7 @@ type
   TdwsEnumeration = class(TdwsSymbol)
   private
     FElements: TdwsElements;
+    FStyle : TEnumerationSymbolStyle;
   protected
     function GetDisplayName: UnicodeString; override;
   public
@@ -889,6 +890,7 @@ type
     function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
   published
     property Elements: TdwsElements read FElements write FElements;
+    property Style : TEnumerationSymbolStyle read FStyle write FStyle default enumClassic;
   end;
 
    TdwsEnumerations = class(TdwsCollection)
@@ -3859,6 +3861,7 @@ constructor TdwsEnumeration.Create(Collection: TCollection);
 begin
   inherited;
   FElements := TdwsElements.Create(Self);
+  FStyle:=enumClassic;
 end;
 
 destructor TdwsEnumeration.Destroy;
@@ -3874,7 +3877,7 @@ begin
   FIsGenerating := True;
   CheckName(Table, Name);
 
-  Result := TEnumerationSymbol.Create(Name, Table.FindSymbol(SYS_INTEGER, cvMagic) as TTypeSymbol);
+  Result := TEnumerationSymbol.Create(Name, Table.FindSymbol(SYS_INTEGER, cvMagic) as TTypeSymbol, Style);
   try
     for x := 0 to FElements.Count - 1 do
       TEnumerationSymbol(Result).AddElement(

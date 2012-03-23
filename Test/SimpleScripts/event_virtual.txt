@@ -1,0 +1,6 @@
+Base a 1 TBase
+Child b 2 TChild
+Child c 3 TSubChild
+Child d 2 TChild
+Child f 3 TSubChild
+Child g 3 TSubChild

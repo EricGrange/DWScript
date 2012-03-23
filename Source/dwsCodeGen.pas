@@ -161,6 +161,8 @@ type
          procedure SmartLinkFilterOutSourceContext(context : TdwsSourceContext);
          procedure SmartLinkFilterSymbolTable(table : TSymbolTable; var changed : Boolean); virtual;
          procedure SmartLinkFilterStructSymbol(structSymbol : TStructuredTypeSymbol; var changed : Boolean); virtual;
+         procedure SmartLinkFilterInterfaceSymbol(intfSymbol : TInterfaceSymbol; var changed : Boolean); virtual;
+         procedure SmartLinkFilterMemberFieldSymbol(fieldSymbol : TFieldSymbol; var changed : Boolean); virtual;
 
          procedure DoCompileRecordSymbol(rec : TRecordSymbol); virtual;
          procedure DoCompileClassSymbol(cls : TClassSymbol); virtual;
@@ -1266,6 +1268,7 @@ begin
    if meth.IsInterfaced then Exit(True);
    // constructors/destructors aren't smart-linked yet
    if meth.Kind in [fkConstructor, fkDestructor] then Exit(True);
+   // virtual class methods aren't smart-linked yet
    if meth.IsClassMethod and meth.IsVirtual then Exit(True);
 
    // regular resolution works for non-virtual methods
@@ -1287,19 +1290,18 @@ begin
       while (lookup<>meth) and (lookup<>nil) do begin
          lookup:=lookup.ParentMeth;
       end;
-      if lookup=nil then continue;
+      if (lookup=nil) then continue;
 
       // is it used anywhere?
       isUsed:=(symPos.FindUsage(suReference)<>nil);
       lookup:=TMethodSymbol(symPos.Symbol);
       while (lookup<>nil) and (not isUsed) do begin
-         isUsed:=isUsed or lookup.IsInterfaced
-                        or (FSymbolDictionary.FindSymbolUsage(lookup, suReference)<>nil);
+         isUsed:=   lookup.IsInterfaced
+                 or (FSymbolDictionary.FindSymbolUsage(lookup, suReference)<>nil);
          lookup:=lookup.ParentMeth;
       end;
 
-      Result:=isUsed;
-      Exit;
+      if isUsed then Exit(True);
    end;
    Output.WriteString('// IGNORED: '+meth.StructSymbol.Name+'.'+meth.Name+#13#10);
    Result:=False;
@@ -1334,7 +1336,9 @@ begin
       for sym in table do begin
          if sym is TStructuredTypeSymbol then begin
 
-            SmartLinkFilterStructSymbol(TStructuredTypeSymbol(sym), localChanged);
+            if sym is TInterfaceSymbol then
+               SmartLinkFilterInterfaceSymbol(TInterfaceSymbol(sym), localChanged)
+            else SmartLinkFilterStructSymbol(TStructuredTypeSymbol(sym), localChanged);
 
          end else if sym is TFuncSymbol then begin
 
@@ -1380,6 +1384,14 @@ begin
    symPosList:=FSymbolDictionary.FindSymbolPosList(structSymbol);
    if symPosList=nil then Exit;
 
+   // remove unused field members
+   for member in structSymbol.Members do begin
+      if member is TFieldSymbol then begin
+         if FSymbolDictionary.FindSymbolPosList(member)<>nil then
+            SmartLinkFilterMemberFieldSymbol(TFieldSymbol(member), changed);
+      end;
+   end;
+
    // is symbol only referenced by its members?
    selfReferencedOnly:=True;
    for i:=0 to symPosList.Count-1 do begin
@@ -1407,11 +1419,10 @@ begin
    end;
    if selfReferencedOnly then begin
       FSymbolDictionary.Remove(structSymbol);
+      RemoveReferencesInContextMap(structSymbol);
       for member in structSymbol.Members do begin
-         if FSymbolDictionary.FindSymbolPosList(member)<>nil then begin
-            RemoveReferencesInContextMap(member);
-            FSymbolDictionary.Remove(member);
-         end;
+         RemoveReferencesInContextMap(member);
+         FSymbolDictionary.Remove(member);
       end;
       changed:=True;
       Exit;
@@ -1446,6 +1457,62 @@ begin
       end;
       changed:=changed or localChanged;
    until not localChanged;
+end;
+
+// SmartLinkFilterInterfaceSymbol
+//
+procedure TdwsCodeGen.SmartLinkFilterInterfaceSymbol(intfSymbol : TInterfaceSymbol; var changed : Boolean);
+var
+   i, n : Integer;
+   symPosList : TSymbolPositionList;
+   symPos : TSymbolPosition;
+begin
+   if FSymbolDictionary=nil then Exit;
+
+   symPosList:=FSymbolDictionary.FindSymbolPosList(intfSymbol);
+   if symPosList=nil then Exit;
+
+   for i:=0 to symPosList.Count-1 do begin
+      symPos:=symPosList.Items[i];
+      if symPos.SymbolUsages=[suDeclaration] then continue;
+      Exit;
+   end;
+
+   FSymbolDictionary.Remove(intfSymbol);
+end;
+
+// SmartLinkFilterMemberFieldSymbol
+//
+procedure TdwsCodeGen.SmartLinkFilterMemberFieldSymbol(fieldSymbol : TFieldSymbol; var changed : Boolean);
+var
+   fieldType : TTypeSymbol;
+   fieldDeclarationPos : TSymbolPosition;
+   typeReferencePos : TSymbolPosition;
+   typeReferencePosList : TSymbolPositionList;
+   i : Integer;
+begin
+   if SmartLink(fieldSymbol) then Exit;
+
+   fieldType:=fieldSymbol.Typ;
+
+   fieldDeclarationPos:=FSymbolDictionary.FindSymbolUsage(fieldSymbol, suDeclaration);
+   if fieldDeclarationPos<>nil then begin
+      typeReferencePosList:=FSymbolDictionary.FindSymbolPosList(fieldType);
+      if typeReferencePosList<>nil then begin
+         for i:=0 to typeReferencePosList.Count-1 do begin
+            typeReferencePos:=typeReferencePosList.Items[i];
+            if     (typeReferencePos.SymbolUsages=[suReference])
+               and (typeReferencePos.ScriptPos.SourceFile=fieldDeclarationPos.ScriptPos.SourceFile)
+               and (typeReferencePos.ScriptPos.Line=fieldDeclarationPos.ScriptPos.Line)
+               and (typeReferencePos.ScriptPos.Col>fieldDeclarationPos.ScriptPos.Col) then begin
+               typeReferencePosList.Delete(i);
+               Break;
+            end;
+         end;
+      end;
+      FSymbolDictionary.Remove(fieldSymbol);
+      changed:=True;
+   end;
 end;
 
 // ------------------
