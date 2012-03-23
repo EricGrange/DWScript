@@ -8066,6 +8066,7 @@ procedure TdwsCompiler.CheckName(const name : UnicodeString; const namePos : TSc
 var
    sym : TSymbol;
    i : Integer;
+   subTable : TSymbolTable;
 begin
    sym:=FProg.Table.FindLocal(name);
 
@@ -8075,8 +8076,11 @@ begin
    if Assigned(sym) then
       FMsgs.AddCompilerErrorFmt(namePos, CPE_NameAlreadyExists, [name]);
 
+   if FProg.Table.ClassType=TUnitImplementationTable then Exit;
+
    for i:=0 to FProg.SubTableDepth-1 do begin
-      sym:=FProg.SubTable(i).FindLocal(name);
+      subTable:=FProg.SubTable(i);
+      sym:=subTable.FindLocal(name);
       if sym<>nil then begin
          FMsgs.AddCompilerHintFmt(namePos, CPH_NameAmbiguousInScopeContext, [name]);
          Break;
