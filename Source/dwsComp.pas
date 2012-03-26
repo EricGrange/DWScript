@@ -2556,7 +2556,7 @@ begin
       param:=TdwsParameter(Parameters.Items[i]);
       name := param.Name;
 
-      // Check wether parameter name is unique
+      // Check whether parameter name is unique
       for j := i - 1 downto 0 do begin
          if UnicodeSameText(Result[j].ParamName, name) then
             raise Exception.CreateFmt(UNT_ParameterNameAlreadyExists, [name]);
@@ -2575,7 +2575,7 @@ begin
             elemSym:=TEnumerationSymbol(paramSym).Elements.FindLocal(param.DefaultValue);
             if elemSym=nil then
                elemValue:=param.DefaultValue
-            else elemValue:=TElementSymbol(elemSym).UserDefValue;
+            else elemValue:=TElementSymbol(elemSym).Value;
             Result[i].DefaultValue[0] := elemValue;
          end else Result[i].DefaultValue[0] := param.DefaultValue;
       end else Result[i].DefaultValue := nil;
@@ -3920,7 +3920,7 @@ begin
   if FIsUserDef then
     enumInt := FUserDefValue
   else if enumSym.Elements.Count > 0 then
-    enumInt := TElementSymbol(enumSym.Elements[enumSym.Elements.Count - 1]).Data[0] + 1
+    enumInt := TElementSymbol(enumSym.Elements[enumSym.Elements.Count - 1]).Value + 1
   else
     enumInt := 0;
 

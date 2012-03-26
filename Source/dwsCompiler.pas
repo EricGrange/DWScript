@@ -3549,7 +3549,7 @@ var
    name : UnicodeString;
    elemPos : TScriptPos;
    elem : TSymbol;
-   elemValue : Integer;
+   elemValue : Int64;
 begin
    if FTok.Test(ttBLEFT) then begin
 
@@ -3563,7 +3563,7 @@ begin
       if elem=nil then begin
          FMsgs.AddCompilerErrorFmt(elemPos, CPE_UnknownNameDotName, [enumSym.Name, name]);
          elemValue:=0;
-      end else elemValue:=TElementSymbol(elem).UserDefValue;
+      end else elemValue:=TElementSymbol(elem).Value;
 
       Result:=TConstExpr.CreateIntegerValue(FProg, enumSym, elemValue);
 
@@ -6755,7 +6755,8 @@ var
    sym : TSymbol;
 begin
    hotPos:=FTok.HotPos;
-   tt:=FTok.TestDeleteAny([ttRECORD, ttARRAY, ttCLASS, ttINTERFACE, ttBLEFT,
+   tt:=FTok.TestDeleteAny([ttRECORD, ttARRAY, ttCLASS, ttINTERFACE,
+                           ttBLEFT, ttENUM, ttFLAGS,
                            ttPROCEDURE, ttFUNCTION]);
    case tt of
       ttRECORD :
@@ -6784,8 +6785,19 @@ begin
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_TypeExpected);
          end;
 
-      ttBLEFT :
+      ttENUM, ttFLAGS : begin
+         // explicitly scoped enum
+         if not FTok.TestDelete(ttBLEFT) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
+         if tt=ttENUM then
+            Result:=ReadEnumeration(typeName, enumScoped)
+         else Result:=ReadEnumeration(typeName, enumFlags);
+      end;
+
+      ttBLEFT : begin
+         // class, globally scoped enum
          Result:=ReadEnumeration(typeName, enumClassic);
+      end;
 
       ttPROCEDURE, ttFUNCTION : begin
          Result:=ReadProcDecl(tt, hotPos, False, True);
@@ -6804,67 +6816,54 @@ begin
          namePos:=FTok.HotPos;        // get the position before token is deleted
          FTok.KillToken;
 
-         if UnicodeSameText(name, 'enum') or UnicodeSameText(name, 'flags') then begin
+         sym:=FProg.Table.FindSymbol(name, cvMagic);
+         Result:=nil;
 
-            // explicitly scoped enum
-            if not FTok.TestDelete(ttBLEFT) then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackLeftExpected);
-            if UnicodeSameText(name, 'enum') then
-               Result:=ReadEnumeration(typeName, enumScoped)
-            else Result:=ReadEnumeration(typeName, enumFlags);
-
-         end else begin
-
-            sym:=FProg.Table.FindSymbol(name, cvMagic);
-            Result:=nil;
-
-            if (sym<>nil) and (sym.ClassType=TUnitSymbol) then begin
-               if not FTok.TestDelete(ttDOT) then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotExpected);
-               if not FTok.TestName then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-               name:=FTok.GetToken.FString;
-               FTok.KillToken;
-               sym:=TUnitSymbol(sym).Table.FindLocal(name);
-            end;
-
-            if not Assigned(sym) then
-               FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_TypeUnknown, [name])
-            else if not sym.IsType then begin
-               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidType, [name]);
-               Result:=FProg.TypVariant; // keep compiling
-            end else if sym is TConnectorSymbol then begin
-               connectorQualifier:='';
-               if FTok.TestDelete(ttLESS) then begin
-                  repeat
-                     if not FTok.TestDeleteNamePos(name, namePos) then
-                        FMsgs.AddCompilerStop(namePos, CPE_NameExpected);
-                     connectorQualifier:=connectorQualifier+name;
-                     if FTok.TestDelete(ttGTR) then
-                        Break;
-                     if not FTok.TestDelete(ttDOT) then
-                        FMsgs.AddCompilerStop(namePos, CPE_DotExpected);
-                     connectorQualifier:=connectorQualifier+'.';
-                  until False;
-               end;
-               if connectorQualifier='' then
-                  Result:=TTypeSymbol(sym)
-               else begin
-                  Result:=TConnectorSymbol(sym).Specialize(FProg.Table, connectorQualifier);
-                  if Result=sym then
-                     FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConnectorCantBeSpecialized, [sym.Name])
-                  else if Result=nil then begin
-                     FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConnectorInvalidSpecifier, [sym.Name, connectorQualifier]);
-                     Result:=TTypeSymbol(sym);
-                  end;
-               end;
-            end else Result:=TTypeSymbol(sym);
-
-            // Create name symbol, e. g.: type a = integer;
-            if typeName <> '' then
-               Result:=TAliasSymbol.Create(typeName, Result);
-
+         if (sym<>nil) and (sym.ClassType=TUnitSymbol) then begin
+            if not FTok.TestDelete(ttDOT) then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotExpected);
+            if not FTok.TestName then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+            name:=FTok.GetToken.FString;
+            FTok.KillToken;
+            sym:=TUnitSymbol(sym).Table.FindLocal(name);
          end;
+
+         if not Assigned(sym) then
+            FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_TypeUnknown, [name])
+         else if not sym.IsType then begin
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidType, [name]);
+            Result:=FProg.TypVariant; // keep compiling
+         end else if sym is TConnectorSymbol then begin
+            connectorQualifier:='';
+            if FTok.TestDelete(ttLESS) then begin
+               repeat
+                  if not FTok.TestDeleteNamePos(name, namePos) then
+                     FMsgs.AddCompilerStop(namePos, CPE_NameExpected);
+                  connectorQualifier:=connectorQualifier+name;
+                  if FTok.TestDelete(ttGTR) then
+                     Break;
+                  if not FTok.TestDelete(ttDOT) then
+                     FMsgs.AddCompilerStop(namePos, CPE_DotExpected);
+                  connectorQualifier:=connectorQualifier+'.';
+               until False;
+            end;
+            if connectorQualifier='' then
+               Result:=TTypeSymbol(sym)
+            else begin
+               Result:=TConnectorSymbol(sym).Specialize(FProg.Table, connectorQualifier);
+               if Result=sym then
+                  FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConnectorCantBeSpecialized, [sym.Name])
+               else if Result=nil then begin
+                  FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConnectorInvalidSpecifier, [sym.Name, connectorQualifier]);
+                  Result:=TTypeSymbol(sym);
+               end;
+            end;
+         end else Result:=TTypeSymbol(sym);
+
+         // Create name symbol, e. g.: type a = integer;
+         if typeName <> '' then
+            Result:=TAliasSymbol.Create(typeName, Result);
 
          RecordSymbolUse(Result, namePos, [suReference]);
 
@@ -8553,11 +8552,11 @@ var
    name : UnicodeString;
    elemSym : TElementSymbol;
    constExpr : TTypedExpr;
-   enumInt : Integer;
+   enumInt : Int64;
    namePos : TScriptPos;
    isUserDef : Boolean;
 begin
-   Result := TEnumerationSymbol.Create(TypeName, FProg.TypInteger, aStyle);
+   Result:=TEnumerationSymbol.Create(TypeName, FProg.TypInteger, aStyle);
    try
       if aStyle=enumFlags then
          enumInt:=1
@@ -8590,6 +8589,10 @@ begin
 
             isUserDef:=True;
          end else isUserDef:=False;
+
+         // error for duplicate names
+         if Result.Elements.FindLocal(name)<>nil then
+            FMsgs.AddCompilerErrorFmt(namePos, CPE_NameAlreadyExists, [name]);
 
          // Create member symbol
          elemSym:=TElementSymbol.Create(name, Result, enumInt, isUserDef);

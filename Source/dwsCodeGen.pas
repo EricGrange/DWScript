@@ -1463,7 +1463,7 @@ end;
 //
 procedure TdwsCodeGen.SmartLinkFilterInterfaceSymbol(intfSymbol : TInterfaceSymbol; var changed : Boolean);
 var
-   i, n : Integer;
+   i : Integer;
    symPosList : TSymbolPositionList;
    symPos : TSymbolPosition;
 begin

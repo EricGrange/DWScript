@@ -1310,18 +1310,19 @@ type
    end;
 
    // Element of an enumeration type. E. g. "type DummyEnum = (Elem1, Elem2, Elem3);"
-   TElementSymbol = class(TConstSymbol)
+   TElementSymbol = class (TConstSymbol)
       private
-         FIsUserDef: Boolean;
-         FUserDefValue: Integer;
+         FIsUserDef : Boolean;
 
       protected
          function GetDescription : UnicodeString; override;
+         function GetValue : Int64; inline;
 
       public
-         constructor Create(const Name: UnicodeString; Typ: TTypeSymbol; Value: Integer; IsUserDef: Boolean);
-         property IsUserDef: Boolean read FIsUserDef;
-         property UserDefValue: Integer read FUserDefValue;
+         constructor Create(const Name: UnicodeString; Typ: TTypeSymbol;
+                            const aValue : Int64; isUserDef: Boolean);
+         property IsUserDef : Boolean read FIsUserDef;
+         property Value : Int64 read GetValue;
    end;
 
    TEnumerationSymbolStyle = (enumClassic, enumScoped, enumFlags);
@@ -1343,11 +1344,12 @@ type
                             aStyle : TEnumerationSymbolStyle);
          destructor Destroy; override;
 
-         function DefaultValue : Integer;
+         function DefaultValue : Int64;
          procedure InitData(const data : TData; offset : Integer); override;
          function BaseType : TTypeSymbol; override;
 
          procedure AddElement(element : TElementSymbol);
+         function ElementByValue(const value : Int64) : TElementSymbol;
 
          property Elements : TSymbolTable read FElements;
          property Style : TEnumerationSymbolStyle read FStyle;
@@ -4878,11 +4880,10 @@ end;
 // Create
 //
 constructor TElementSymbol.Create(const Name: UnicodeString; Typ: TTypeSymbol;
-  Value: Integer; IsUserDef: Boolean);
+                                  const aValue : Int64; isUserDef: Boolean);
 begin
-   inherited Create(Name, Typ, Value);
+   inherited Create(Name, Typ, aValue);
    FIsUserDef := IsUserDef;
-   FUserDefValue := Value;
 end;
 
 // GetDescription
@@ -4890,8 +4891,15 @@ end;
 function TElementSymbol.GetDescription: UnicodeString;
 begin
    if FIsUserDef then
-      Result:=Name+' = '+IntToStr(Data[0])
+      Result:=Name+' = '+IntToStr(Value)
    else Result:=Name;
+end;
+
+// GetValue
+//
+function TElementSymbol.GetValue : Int64;
+begin
+   Result:=PVarData(@Data[0]).VInt64;
 end;
 
 // ------------------
@@ -4922,10 +4930,10 @@ end;
 
 // DefaultValue
 //
-function TEnumerationSymbol.DefaultValue : Integer;
+function TEnumerationSymbol.DefaultValue : Int64;
 begin
    if FElements.Count>0 then
-      Result:=TElementSymbol(FElements[0]).FUserDefValue
+      Result:=TElementSymbol(FElements[0]).Value
    else Result:=0;
 end;
 
@@ -4956,10 +4964,25 @@ end;
 procedure TEnumerationSymbol.AddElement(Element: TElementSymbol);
 begin
    FElements.AddSymbol(Element);
-   if Element.UserDefValue<FLowBound then
-      FLowBound:=Element.UserDefValue;
-   if Element.UserDefValue>FHighBound then
-      FHighBound:=Element.UserDefValue;
+   if Element.Value<FLowBound then
+      FLowBound:=Element.Value;
+   if Element.Value>FHighBound then
+      FHighBound:=Element.Value;
+end;
+
+// ElementByValue
+//
+function TEnumerationSymbol.ElementByValue(const value : Int64) : TElementSymbol;
+var
+   i : Integer;
+begin
+   if (value>=FLowBound) and (value<FHighBound) then begin
+      for i:=0 to Elements.Count-1 do begin
+         Result:=TElementSymbol(Elements[i]);
+         if Result.Value=value then Exit;
+      end;
+   end;
+   Result:=nil;
 end;
 
 // GetCaption

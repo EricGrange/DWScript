@@ -1058,7 +1058,7 @@ begin
       elem:=enum.Elements[i] as TElementSymbol;
       WriteString(elem.Name);
       WriteString('=');
-      WriteString(IntToStr(elem.UserDefValue));
+      WriteString(IntToStr(elem.Value));
       WriteStatementEnd;
    end;
 end;
