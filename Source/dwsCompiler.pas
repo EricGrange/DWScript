@@ -8552,7 +8552,7 @@ var
    name : UnicodeString;
    elemSym : TElementSymbol;
    constExpr : TTypedExpr;
-   enumInt : Int64;
+   enumInt, enumIntPrev : Int64;
    namePos : TScriptPos;
    isUserDef : Boolean;
 begin
@@ -8597,9 +8597,12 @@ begin
          // Create member symbol
          elemSym:=TElementSymbol.Create(name, Result, enumInt, isUserDef);
 
+         enumIntPrev:=enumInt;
          if aStyle=enumFlags then
             enumInt:=enumInt*2
          else Inc(enumInt);
+         if enumInt<enumIntPrev then
+            FMsgs.AddCompilerError(namePos, CPE_EnumerationElementOverflow);
 
          // Add member symbol to table and enumeration type
          if aStyle=enumClassic then
