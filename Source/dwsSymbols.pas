@@ -1331,7 +1331,7 @@ type
    TEnumerationSymbol = class sealed (TTypeSymbol)
       private
          FElements : TSymbolTable;
-         FLowBound, FHighBound : Integer;
+         FLowBound, FHighBound : Int64;
          FStyle : TEnumerationSymbolStyle;
 
       protected
@@ -1353,8 +1353,8 @@ type
 
          property Elements : TSymbolTable read FElements;
          property Style : TEnumerationSymbolStyle read FStyle;
-         property LowBound : Integer read FLowBound write FLowBound;
-         property HighBound : Integer read FHighBound write FHighBound;
+         property LowBound : Int64 read FLowBound write FLowBound;
+         property HighBound : Int64 read FHighBound write FHighBound;
          function ShortDescription : UnicodeString;
    end;
 

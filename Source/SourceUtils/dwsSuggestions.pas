@@ -71,6 +71,7 @@ type
          procedure AddSymbolTable(table : TSymbolTable);
          procedure AddDirectSymbolTable(table : TSymbolTable);
 
+         procedure AddEnumeration(enum : TEnumerationSymbol; const addToList : TProcAddToList = nil);
          procedure AddMembers(struc : TStructuredTypeSymbol; from : TSymbol;
                               const addToList : TProcAddToList = nil);
          procedure AddMetaMembers(struc : TStructuredTypeSymbol; from : TSymbol;
@@ -459,6 +460,10 @@ begin
 
             AddStaticArrayHelpers(list);
 
+         end else if FPreviousSymbol is TEnumerationSymbol then begin
+
+            list.AddSymbolTable(TEnumerationSymbol(FPreviousSymbol).Elements);
+
          end else FPreviousSymbol:=nil;
 
       end;
@@ -736,8 +741,8 @@ begin
    for sym in table do begin
       if sym is TUnitSymbol then continue;
       Add(sym);
-      if sym is TEnumerationSymbol then
-         AddDirectSymbolTable(TEnumerationSymbol(sym).Elements);
+      if sym.ClassType=TEnumerationSymbol  then
+         AddEnumeration(TEnumerationSymbol(sym));
    end;
 end;
 
@@ -749,6 +754,14 @@ var
 begin
    for sym in table do
       Add(sym);
+end;
+
+// AddEnumeration
+//
+procedure TSimpleSymbolList.AddEnumeration(enum : TEnumerationSymbol; const addToList : TProcAddToList = nil);
+begin
+   if enum.Style=enumClassic then
+      AddDirectSymbolTable(enum.Elements);
 end;
 
 // AddMembers
