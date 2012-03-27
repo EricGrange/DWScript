@@ -435,7 +435,7 @@ type
   protected
     class function GetSymbolClass : TdwsSymbolClass; override;
   public
-    function AddArray: TdwsArray;
+    function Add : TdwsArray;
   end;
 
   TdwsArraysClass = class of TdwsArrays;
@@ -470,10 +470,12 @@ type
       override;
   end;
 
-  TdwsForwards = class(TdwsCollection)
-  protected
-    class function GetSymbolClass : TdwsSymbolClass; override;
-  end;
+   TdwsForwards = class(TdwsCollection)
+      protected
+         class function GetSymbolClass : TdwsSymbolClass; override;
+      public
+         function Add : TdwsForward;
+   end;
 
   TdwsForwardsClass = class of TdwsForwards;
 
@@ -1511,28 +1513,30 @@ procedure TdwsUnit.AddCollectionSymbols(Collection: TdwsCollection;
 var
   y: Integer;
   clsName : UnicodeString;
+  collSym : TdwsSymbol;
   sym : TSymbol;
 begin
    // add all classes as forwards automatically if they aren't there already
    for y:=0 to FClasses.Count-1 do begin
       clsName:=FClasses.Items[y].Name;
       if FForwards.IndexOf(clsName)<0 then
-         TdwsForward(Forwards.Add).Name:=clsName;
+         Forwards.Add.Name:=clsName;
    end;
 
-  for y := 0 to Collection.Count - 1 do
-  begin
-    if not TdwsSymbol(Collection.Items[y]).IsGenerating then
-    try
-      sym:=TdwsSymbol(Collection.Items[y]).Generate(Table);
-      if sym is TOperatorSymbol then
-         operators.RegisterOperator(TOperatorSymbol(sym));
-    except
-      on e: Exception do
-        raise EGenerationError.CreateFmt(UNT_UnitGenerationError, [UnitName,
-          e.Message]);
-    end;
-  end;
+   for y := 0 to Collection.Count - 1 do begin
+      collSym:=TdwsSymbol(Collection.Items[y]);
+      if not collSym.IsGenerating then begin
+         try
+            sym:=collSym.Generate(Table);
+            if sym is TOperatorSymbol then
+               operators.RegisterOperator(TOperatorSymbol(sym));
+         except
+            on e: Exception do
+               raise EGenerationError.CreateFmt(UNT_UnitGenerationError,
+                                                [UnitName, e.Message]);
+         end;
+      end;
+   end;
 end;
 
 procedure TdwsUnit.AddUnitSymbols(Table: TSymbolTable; operators : TOperators);
@@ -1595,40 +1599,39 @@ begin
 end;
 
 function TdwsUnit.GetSymbol(Table: TSymbolTable; const Name: UnicodeString): TSymbol;
-{var
-  x, y: Integer;
-  item: TdwsSymbol;
-  coll: TdwsCollection; }
+var
+   x, y: Integer;
+   item: TdwsSymbol;
+   coll: TdwsCollection;
 begin
    Result:=Table.FindSymbol(Name, cvMagic);
-   if not Assigned(Result) then
-      raise EHandledGenerationError.CreateFmt('Symbol not found: %s in %s', [Name, self.Name]);
-//      if FIs
+   if Assigned(Result) then Exit;
 
-{    for x := Low(FCollections) to High(FCollections) do
-    begin
+   for x := Low(FCollections) to High(FCollections) do begin
       // Check if the symbol is defined but not yet generated
       coll := FCollections[x];
-      for y := 0 to coll.Count - 1 do
-        if SameText(coll.Items[y].Name, Name) then
-        begin
-          item := coll.Items[y];
 
-          // Check for circular references
-          if item.IsGenerating then
-            raise Exception.CreateFmt(UNT_CircularReference, [item.ClassName+':'+Name]);
+      for y := 0 to coll.Count - 1 do begin
 
-          // Generate the symbol now
-          try
-            Result := item.Generate(Table);
-          except
-            on e: Exception do
-              raise EHandledGenerationError.Create(e.Message);
-          end;
+         item := coll.Items[y];
+         if UnicodeSameText(item.Name, Name) then begin
 
-          Exit;
-        end;
-    end; }
+            // Check for circular references
+            if item.IsGenerating then
+               raise Exception.CreateFmt(UNT_CircularReference, [item.ClassName+':'+Name]);
+
+            // Generate the symbol now
+            try
+               Result := item.Generate(Table);
+            except
+               on e: Exception do
+                  raise EHandledGenerationError.Create(e.Message);
+            end;
+
+            Exit;
+         end;
+      end;
+   end;
 end;
 
 procedure TdwsUnit.SetArrays(const Value: TdwsArrays);
@@ -4060,6 +4063,13 @@ begin
   Result := TdwsForward;
 end;
 
+// Add
+//
+function TdwsForwards.Add : TdwsForward;
+begin
+   Result:=TdwsForward(inherited Add);
+end;
+
 { TdwsEnumerations }
 
 class function TdwsEnumerations.GetSymbolClass: TdwsSymbolClass;
@@ -4109,7 +4119,7 @@ begin
   Result := TdwsArray;
 end;
 
-function TdwsArrays.AddArray: TdwsArray;
+function TdwsArrays.Add : TdwsArray;
 begin
   Result := TdwsArray(inherited Add);
 end;

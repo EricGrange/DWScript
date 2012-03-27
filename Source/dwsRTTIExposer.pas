@@ -474,7 +474,7 @@ begin
     else raise Exception.CreateFmt('Cannot expose dynamic array of type: %s', [
       cTYPEKIND_NAMES[LTypeKind]]);
   end; // case LTypeKind of
-  Result := Self.Arrays.AddArray;
+  Result := Self.Arrays.Add;
   Result.DataType := LType;
   Result.IsDynamic := True;
   Result.Name := intf.Name;

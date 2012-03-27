@@ -476,6 +476,7 @@ const
   RTE_NoClassNoMethod = '"%s" is not a class and has no method "%s"';
   RTE_MethodNotFoundInClass = 'Method "%s" not found in class "%s"';
   RTE_FieldNotFoundInClass = 'Field "%s" not found in class "%s"';
+  RTE_NoMemberOfArray = '"%s" isn''t a member of array "%s"';
 
   RTE_CanNotReadComplexType = 'To read a value of complex type "%s" use .Data!';
   RTE_CanNotSetValueForType = 'To write values of type "%s" use .Data!';

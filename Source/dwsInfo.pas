@@ -42,12 +42,12 @@ type
    TInfo = class(TInterfacedObject, IUnknown, IInfo)
       protected
          FExec : TdwsProgramExecution;
-         FChild: IInfo;
-         FData: TData;
-         FOffset: Integer;
-         FProgramInfo: TProgramInfo;
-         FDataMaster: IDataMaster;
-         FTypeSym: TSymbol;
+         FChild : IInfo;
+         FData : TData;
+         FOffset : Integer;
+         FProgramInfo : TProgramInfo;
+         FDataMaster : IDataMaster;
+         FTypeSym : TSymbol;
 
          function GetData : TData; virtual;
          function GetExternalObject: TObject; virtual;
@@ -57,7 +57,7 @@ type
          function GetScriptObj: IScriptObj; virtual;
          function GetParameter(const s: UnicodeString): IInfo; virtual;
          function GetTypeSym: TSymbol;
-         function GetValue: Variant; virtual;
+         function GetValue : Variant; virtual;
          function GetValueAsString : UnicodeString; virtual;
          function GetValueAsDataString : RawByteString; virtual;
          function GetValueAsInteger : Int64; virtual;
@@ -76,6 +76,9 @@ type
          function Call(const params : array of Variant) : IInfo; overload; virtual;
          function Element(const indices : array of Integer) : IInfo; virtual;
          function GetConstructor(const methName : UnicodeString; extObject : TObject) : IInfo; virtual;
+
+         property Data : TData read FData write FData;
+         property Offset : Integer read FOffset write FOffset;
 
          class procedure SetChild(var result : IInfo; programInfo : TProgramInfo; childTypeSym : TSymbol;
                                   const childData : TData; childOffset : Integer; const childDataMaster : IDataMaster = nil);
@@ -147,9 +150,24 @@ type
       function GetValueAsString : UnicodeString; override;
    end;
 
-   TInfoDynamicArray = class(TInfoData)
-      private
+   TInfoDynamicArrayBase = class (TInfo)
+      protected
          function SelfDynArray : TScriptDynamicArray;
+   end;
+
+   TInfoDynamicArrayLength = class (TInfoDynamicArrayBase)
+      private
+         FDelta : Integer;
+
+      public
+         constructor Create(ProgramInfo: TProgramInfo; const Data: TData; Offset, Delta: Integer);
+         function GetValue: Variant; override;
+         procedure SetValue(const Value: Variant); override;
+   end;
+
+   TInfoDynamicArray = class(TInfoDynamicArrayBase)
+      protected
+         function GetScriptObj : IScriptObj; override;
 
       public
          function Element(const Indices: array of Integer): IInfo; override;
@@ -497,17 +515,17 @@ end;
 
 procedure TInfo.SetData(const Value: TData);
 begin
-  raise Exception.CreateFmt(RTE_InvalidOp, ['Data', FTypeSym.Caption]);
+  raise Exception.CreateFmt(RTE_InvalidOp, ['SetData', FTypeSym.Caption]);
 end;
 
 procedure TInfo.SetExternalObject(ExtObject: TObject);
 begin
-  raise Exception.CreateFmt(RTE_InvalidOp, ['ExternalObject', FTypeSym.Caption]);
+  raise Exception.CreateFmt(RTE_InvalidOp, ['SetExternalObject', FTypeSym.Caption]);
 end;
 
 procedure TInfo.SetValue(const Value: Variant);
 begin
-  raise Exception.CreateFmt(RTE_InvalidOp, ['Value', FTypeSym.Caption]);
+  raise Exception.CreateFmt(RTE_InvalidOp, ['SetValue', FTypeSym.Caption]);
 end;
 
 function TInfo.GetInherited: IInfo;
@@ -1073,14 +1091,14 @@ var
 begin
   h := TStaticArraySymbol(FTypeSym).HighBound;
   l := TStaticArraySymbol(FTypeSym).LowBound;
-  if SameText('length', s) then
+  if UnicodeSameText('length', s) then
     Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, h - l + 1)
-  else if SameText('low', s) then
+  else if UnicodeSameText('low', s) then
     Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, l)
-  else if SameText('high', s) then
+  else if UnicodeSameText('high', s) then
     Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, h)
   else
-    raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
+    raise Exception.CreateFmt(RTE_NoMemberOfArray, [s, FTypeSym.Caption]);
 end;
 
 // GetValueAsString
@@ -1091,12 +1109,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TInfoDynamicArray ------------------
+// ------------------ TInfoDynamicArrayBase ------------------
 // ------------------
 
 // SelfDynArray
 //
-function TInfoDynamicArray.SelfDynArray : TScriptDynamicArray;
+function TInfoDynamicArrayBase.SelfDynArray : TScriptDynamicArray;
 var
    obj : IScriptObj;
 begin
@@ -1105,6 +1123,36 @@ begin
       Result:=obj.InternalObject as TScriptDynamicArray
    else Result:=nil;
 end;
+
+// ------------------
+// ------------------ TInfoDynamicArrayLength ------------------
+// ------------------
+
+// Create
+//
+constructor TInfoDynamicArrayLength.Create(ProgramInfo: TProgramInfo; const Data: TData; Offset, Delta: Integer);
+begin
+   inherited Create(ProgramInfo, ProgramInfo.Execution.Prog.TypInteger, Data, Offset);
+   FDelta:=Delta;
+end;
+
+// GetValue
+//
+function TInfoDynamicArrayLength.GetValue: Variant;
+begin
+   Result:=SelfDynArray.Length+FDelta;
+end;
+
+// SetValue
+//
+procedure TInfoDynamicArrayLength.SetValue(const Value: Variant);
+begin
+   SelfDynArray.Length:=Value-FDelta;
+end;
+
+// ------------------
+// ------------------ TInfoDynamicArray ------------------
+// ------------------
 
 // Element
 //
@@ -1145,17 +1193,14 @@ end;
 // GetMember
 //
 function TInfoDynamicArray.GetMember(const s: UnicodeString): IInfo;
-var
-   dynArray : TScriptDynamicArray;
 begin
-   dynArray:=SelfDynArray;
-   if SameText('length', s) then
-      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, dynArray.Length)
-   else if SameText('low', s) then
-      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, 0)
-   else if SameText('high', s) then
-      Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, dynArray.Length - 1)
-   else raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
+   if UnicodeSameText('length', s) then
+      Result:=TInfoDynamicArrayLength.Create(FProgramInfo, Data, Offset, 0)
+   else if UnicodeSameText('low', s) then
+      Result:=TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, 0)
+   else if UnicodeSameText('high', s) then
+      Result:=TInfoDynamicArrayLength.Create(FProgramInfo, Data, Offset, -1)
+   else raise Exception.CreateFmt(RTE_NoMemberOfArray, [s, FTypeSym.Caption]);
 end;
 
 // GetValueAsString
@@ -1185,6 +1230,13 @@ begin
    dynArray.Data:=value;
 end;
 
+// GetScriptObj
+//
+function TInfoDynamicArray.GetScriptObj : IScriptObj;
+begin
+   Result:=IScriptObj(IUnknown(FData[FOffset]));
+end;
+
 // ------------------
 // ------------------ TInfoOpenArray ------------------
 // ------------------
@@ -1193,11 +1245,11 @@ end;
 //
 function TInfoOpenArray.GetMember(const s: UnicodeString): IInfo;
 begin
-   if SameText('length', s) then
+   if UnicodeSameText('length', s) then
       Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, Length(FData))
-   else if SameText('low', s) then
+   else if UnicodeSameText('low', s) then
       Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, 0)
-   else if SameText('high', s) then
+   else if UnicodeSameText('high', s) then
       Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, High(FData))
    else
       raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);

@@ -36,6 +36,7 @@ type
          procedure FuncFloatEval(Info: TProgramInfo);
          procedure FuncPointEval(Info: TProgramInfo);
          procedure FuncPointVarParamEval(Info: TProgramInfo);
+         procedure FuncPointArrayEval(Info: TProgramInfo);
          procedure FuncClassNameEval(Info: TProgramInfo);
          procedure FuncOpenArrayEval(Info: TProgramInfo);
 
@@ -70,6 +71,7 @@ type
          procedure CallFunc;
          procedure CallFuncVarParam;
          procedure CallFuncPointVarParam;
+         procedure CallFuncPointArray;
          procedure PredefinedVar;
          procedure AssignTest;
          procedure PredefinedArray;
@@ -294,6 +296,13 @@ begin
    func.OnEval:=FuncPointVarParamEval;
 
    func:=FUnit.Functions.Add;
+   func.Name:='FuncPointArray';
+   param:=func.Parameters.Add;
+   param.Name:='a';
+   param.DataType:='TPoints';
+   func.OnEval:=FuncPointArrayEval;
+
+   func:=FUnit.Functions.Add;
    func.Name:='FuncClassName';
    func.ResultType:='String';
    param:=func.Parameters.Add;
@@ -421,11 +430,16 @@ procedure TdwsUnitTests.DeclareTestArrays;
 var
    a : TdwsArray;
 begin
-   a:=FUnit.Arrays.Add as TdwsArray;
+   a:=FUnit.Arrays.Add;
    a.Name:='array_5_10';
    a.DataType:='Integer';
    a.LowBound:=5;
    a.HighBound:=10;
+
+   a:=FUnit.Arrays.Add;
+   a.Name:='TPoints';
+   a.IsDynamic:=True;
+   a.DataType:='TPoint';
 end;
 
 // DeclareTestRecords
@@ -544,6 +558,27 @@ begin
    pOut:=Info.Vars['pOut'];
    pOut.Member['x'].Value:=pIn.Member['x'].Value+1;
    pOut.Member['y'].Value:=pIn.Member['y'].Value+2;
+end;
+
+// FuncPointArrayEval
+//
+procedure TdwsUnitTests.FuncPointArrayEval(Info: TProgramInfo);
+var
+   a : IInfo;
+   dynArray : TScriptDynamicArray;
+   item : IInfo;
+begin
+   a:=Info.Vars['a'];
+
+   a.Member['length'].Value:=2;
+
+   item:=a.Element([0]);
+   item.Member['x'].Value:=1;
+   item.Member['y'].Value:=2;
+
+   item:=a.Element([1]);
+   item.Member['x'].Value:=3;
+   item.Member['y'].Value:=4;
 end;
 
 // FuncClassNameEval
@@ -958,9 +993,7 @@ end;
 procedure TdwsUnitTests.CallFuncPointVarParam;
 var
    prog : IdwsProgram;
-   funcInfo : IInfo;
    exec : IdwsProgramExecution;
-   paramString : String;
 begin
    prog:=FCompiler.Compile( 'var p1, p2 : TPoint;'
                            +'p1.X:=10; p1.Y:=20;'
@@ -973,6 +1006,26 @@ begin
    exec:=prog.Execute;
 
    CheckEquals('11'#13#10'22'#13#10, exec.Result.ToString);
+end;
+
+// CallFuncPointArray
+//
+procedure TdwsUnitTests.CallFuncPointArray;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'var a : TPoints;'
+                           +'FuncPointArray(a);'
+                           +'var i : Integer;'
+                           +'for i:=0 to a.High do'
+                           +'   PrintLn(IntToStr(a[i].x)+","+IntToStr(a[i].y));');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.Execute;
+
+   CheckEquals('1,2'#13#10'3,4'#13#10, exec.Result.ToString);
 end;
 
 // PredefinedVar
