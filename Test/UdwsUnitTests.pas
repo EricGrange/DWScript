@@ -35,6 +35,7 @@ type
          procedure FuncVarEval(Info: TProgramInfo);
          procedure FuncFloatEval(Info: TProgramInfo);
          procedure FuncPointEval(Info: TProgramInfo);
+         procedure FuncPointVarParamEval(Info: TProgramInfo);
          procedure FuncClassNameEval(Info: TProgramInfo);
          procedure FuncOpenArrayEval(Info: TProgramInfo);
 
@@ -68,6 +69,7 @@ type
          procedure ListOrdAutoEnum;
          procedure CallFunc;
          procedure CallFuncVarParam;
+         procedure CallFuncPointVarParam;
          procedure PredefinedVar;
          procedure AssignTest;
          procedure PredefinedArray;
@@ -279,6 +281,17 @@ begin
    func.Name:='FuncPoint';
    func.ResultType:='TPoint';
    func.OnEval:=FuncPointEval;
+
+   func:=FUnit.Functions.Add;
+   func.Name:='FuncPointVarParam';
+   param:=func.Parameters.Add;
+   param.Name:='pIn';
+   param.DataType:='TPoint';
+   param:=func.Parameters.Add;
+   param.Name:='pOut';
+   param.DataType:='TPoint';
+   param.IsVarParam:=True;
+   func.OnEval:=FuncPointVarParamEval;
 
    func:=FUnit.Functions.Add;
    func.Name:='FuncClassName';
@@ -519,6 +532,18 @@ procedure TdwsUnitTests.FuncPointEval(Info: TProgramInfo);
 begin
    Info.Vars['Result'].Member['x'].Value:=12;
    Info.Vars['Result'].Member['y'].Value:=24;
+end;
+
+// FuncPointVarParamEval
+//
+procedure TdwsUnitTests.FuncPointVarParamEval(Info: TProgramInfo);
+var
+   pIn, pOut : IInfo;
+begin
+   pIn:=Info.Vars['pIn'];
+   pOut:=Info.Vars['pOut'];
+   pOut.Member['x'].Value:=pIn.Member['x'].Value+1;
+   pOut.Member['y'].Value:=pIn.Member['y'].Value+2;
 end;
 
 // FuncClassNameEval
@@ -926,6 +951,28 @@ begin
    finally
       exec.EndProgram;
    end;
+end;
+
+// CallFuncPointVarParam
+//
+procedure TdwsUnitTests.CallFuncPointVarParam;
+var
+   prog : IdwsProgram;
+   funcInfo : IInfo;
+   exec : IdwsProgramExecution;
+   paramString : String;
+begin
+   prog:=FCompiler.Compile( 'var p1, p2 : TPoint;'
+                           +'p1.X:=10; p1.Y:=20;'
+                           +'FuncPointVarParam(p1, p2);'
+                           +'PrintLn(p2.X);'
+                           +'PrintLn(p2.Y);');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.Execute;
+
+   CheckEquals('11'#13#10'22'#13#10, exec.Result.ToString);
 end;
 
 // PredefinedVar
