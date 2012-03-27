@@ -565,7 +565,6 @@ end;
 procedure TdwsUnitTests.FuncPointArrayEval(Info: TProgramInfo);
 var
    a : IInfo;
-   dynArray : TScriptDynamicArray;
    item : IInfo;
 begin
    a:=Info.Vars['a'];

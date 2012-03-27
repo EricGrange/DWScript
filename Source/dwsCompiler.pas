@@ -8554,13 +8554,14 @@ var
    constExpr : TTypedExpr;
    enumInt, enumIntPrev : Int64;
    namePos : TScriptPos;
-   isUserDef : Boolean;
+   isUserDef, overflowed : Boolean;
 begin
    Result:=TEnumerationSymbol.Create(TypeName, FProg.TypInteger, aStyle);
    try
       if aStyle=enumFlags then
          enumInt:=1
       else enumInt:=0;
+      overflowed:=False;
 
       repeat
          // Read a member of the enumeration
@@ -8594,6 +8595,10 @@ begin
          if Result.Elements.FindLocal(name)<>nil then
             FMsgs.AddCompilerErrorFmt(namePos, CPE_NameAlreadyExists, [name]);
 
+         // error for overflow
+         if overflowed and (not isUserDef) then
+            FMsgs.AddCompilerError(namePos, CPE_EnumerationElementOverflow);
+
          // Create member symbol
          elemSym:=TElementSymbol.Create(name, Result, enumInt, isUserDef);
 
@@ -8601,8 +8606,7 @@ begin
          if aStyle=enumFlags then
             enumInt:=enumInt*2
          else Inc(enumInt);
-         if enumInt<enumIntPrev then
-            FMsgs.AddCompilerError(namePos, CPE_EnumerationElementOverflow);
+         overflowed:=(enumInt<enumIntPrev);
 
          // Add member symbol to table and enumeration type
          if aStyle=enumClassic then
