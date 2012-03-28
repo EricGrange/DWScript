@@ -409,11 +409,11 @@ end;
 type
    TStringListCracker = class (TStrings)
       private
-         {$IFDEF VER230}
-         FList: TStringItemList;
+         {$IF CompilerVersion > 22}
+         FList : TStringItemList;
          {$ELSE}
          FList : PStringItemList;
-         {$ENDIF}
+         {$IFEND}
    end;
 
    TUnifierStringList = class (TFastCompareStringList)
