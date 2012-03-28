@@ -47,7 +47,7 @@ type
      ttTRUE, ttFALSE,
      ttAND, ttOR, ttXOR, ttIMPLIES, ttDIV, ttMOD, ttNOT, ttSHL, ttSHR, ttSAR,
      ttPLUS, ttMINUS,
-     ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttDOLLAR,
+     ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttDOLLAR, ttEXCLAMATION,
      ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
      ttLESSLESS, ttGTRGTR,
      ttSEMI, ttCOMMA, ttCOLON,
@@ -276,7 +276,7 @@ const
      'TRUE', 'FALSE',
      'AND', 'OR', 'XOR', 'IMPLIES', 'DIV', 'MOD', 'NOT', 'SHL', 'SHR', 'SAR',
      '+', '-',
-     '*', '/', '%', '^', '@', '$',
+     '*', '/', '%', '^', '@', '$', '!',
      '=', '<>', '>', '>=', '<', '<=',
      '<<', '>>',
      ';', ',', ':',
@@ -534,83 +534,84 @@ begin
    if Len=0 then Exit;
 
    case Buffer[0] of
-     '/':
-       if Len=1 then
-         Result := ttDIVIDE
-       else if Len=2 then
-         if Buffer[1]='=' then
-            Result := ttDIVIDE_ASSIGN; // '/='
-     '*':
-       if Len=1 then
-         Result := ttTIMES
-       else if Len=2 then
-         if Buffer[1]='=' then
-            Result := ttTIMES_ASSIGN; // '*='
-     '+':
-       if Len=1 then
-         Result := ttPLUS
-       else if Len=2 then
-         if Buffer[1]='=' then
-            Result := ttPLUS_ASSIGN; // '+='
+      '/':
+         if Len=1 then
+            Result := ttDIVIDE
+         else if Len=2 then
+            if Buffer[1]='=' then
+               Result := ttDIVIDE_ASSIGN; // '/='
+      '*':
+         if Len=1 then
+            Result := ttTIMES
+         else if Len=2 then
+            if Buffer[1]='=' then
+               Result := ttTIMES_ASSIGN; // '*='
+      '+':
+         if Len=1 then
+            Result := ttPLUS
+         else if Len=2 then
+            if Buffer[1]='=' then
+               Result := ttPLUS_ASSIGN; // '+='
      '-':
-       if Len=1 then
-         Result := ttMINUS
-       else if Len=2 then
-         if Buffer[1]='=' then
-            Result := ttMINUS_ASSIGN; // '-='
+         if Len=1 then
+            Result := ttMINUS
+         else if Len=2 then
+            if Buffer[1]='=' then
+               Result := ttMINUS_ASSIGN; // '-='
      '@':
-       if Len=1 then
-         Result := ttAT
-       else if Len=2 then
-         if Buffer[1]='=' then
-            Result := ttAT_ASSIGN; // '@='
+         if Len=1 then
+            Result := ttAT
+         else if Len=2 then
+            if Buffer[1]='=' then
+               Result := ttAT_ASSIGN; // '@='
      '%':
-       if Len=1 then
-         Result := ttPERCENT
-       else if Len=2 then
-         if Buffer[1]='=' then
-            Result := ttPERCENT_ASSIGN; // '%='
+         if Len=1 then
+            Result := ttPERCENT
+         else if Len=2 then
+            if Buffer[1]='=' then
+               Result := ttPERCENT_ASSIGN; // '%='
      '^':
-       if Len=1 then
-         Result := ttCARET
-       else if Len=2 then
-         if Buffer[1]='=' then
-            Result := ttCARET_ASSIGN; // '^='
+         if Len=1 then
+            Result := ttCARET
+         else if Len=2 then
+            if Buffer[1]='=' then
+               Result := ttCARET_ASSIGN; // '^='
      ';': Result := ttSEMI;
      '(': Result := ttBLEFT;
      ')': Result := ttBRIGHT;
      '[': Result := ttALEFT;
      ']': Result := ttARIGHT;
+     '!': Result := ttEXCLAMATION;
      '=': Result := ttEQ;
      '<':
-       if Len=1 then // '<'
-         Result := ttLESS
-       else if Len=2 then case Buffer[1] of
-         '=' : Result := ttLESSEQ;     // '<='
-         '>' : Result := ttNOTEQ;      // '<>'
-         '<' : Result := ttLESSLESS;   // '<<'
-       end;
+         if Len=1 then // '<'
+            Result := ttLESS
+         else if Len=2 then case Buffer[1] of
+            '=' : Result := ttLESSEQ;     // '<='
+            '>' : Result := ttNOTEQ;      // '<>'
+            '<' : Result := ttLESSLESS;   // '<<'
+         end;
      '>':
-       if Len=1 then // '>'
-         Result := ttGTR
-       else if Len=2 then case Buffer[1] of
-         '=' : Result := ttGTREQ;      // '>='
-         '>' : Result := ttGTRGTR;     // '>>'
-       end;
+         if Len=1 then // '>'
+            Result := ttGTR
+         else if Len=2 then case Buffer[1] of
+            '=' : Result := ttGTREQ;      // '>='
+            '>' : Result := ttGTRGTR;     // '>>'
+         end;
      ':':
-       if Len=1 then // ':'
-         Result := ttCOLON
-       else if Len=2 then
-         if Buffer[1]='=' then
-            Result := ttASSIGN; // ':='
+         if Len=1 then // ':'
+            Result := ttCOLON
+         else if Len=2 then
+            if Buffer[1]='=' then
+               Result := ttASSIGN; // ':='
      ',': Result := ttCOMMA;
      '}': Result := ttCRIGHT;
      '.':
-       if Len=1 then
-         Result := ttDOT;
+         if Len=1 then
+            Result := ttDOT;
      '$':
-       if Len=1 then
-         Result := ttDOLLAR;
+         if Len=1 then
+            Result := ttDOLLAR;
    else
       Result:=ToAlphaType;
    end;
