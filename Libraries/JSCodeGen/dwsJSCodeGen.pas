@@ -369,6 +369,10 @@ type
       procedure CodeGenNoWrap(codeGen : TdwsCodeGen; expr : TTypedExpr); override;
    end;
 
+   TJSSarExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
    TJSFuncBaseExpr = class (TJSExprCodeGen)
       private
          FVirtualCall : Boolean;
@@ -736,8 +740,7 @@ begin
    RegisterCodeGen(TAbsVariantExpr,
       TdwsExprGenericCodeGen.Create(['Math.abs', '(', 0, ')']));
 
-   RegisterCodeGen(TSarExpr,
-      TdwsExprGenericCodeGen.Create(['(', 0, '>>', 1, ')']));
+   RegisterCodeGen(TSarExpr,           TJSSarExpr.Create);
    RegisterCodeGen(TShrExpr,
       TdwsExprGenericCodeGen.Create(['(', 0, '>>>', 1, ')']));
    RegisterCodeGen(TShlExpr,
@@ -3732,6 +3735,45 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSSarExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSSarExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TSarExpr;
+   d : Int64;
+begin
+   e:=TSarExpr(expr);
+
+   codeGen.WriteString('(');
+   if e.Right is TConstIntExpr then begin
+
+      d:=e.Right.EvalAsInteger(nil);
+      if d=0 then
+         codeGen.CompileNoWrap(e.Left)
+      else begin
+         codeGen.Compile(e.Left);
+         if d>31 then
+            codeGen.WriteString('<0?-1:0')
+         else begin
+            codeGen.WriteString('>>');
+            codeGen.Compile(e.Right);
+         end;
+      end;
+
+   end else begin
+
+      codeGen.Compile(e.Left);
+      codeGen.WriteString('>>');
+      codeGen.Compile(e.Right);
+
+   end;
+   codeGen.WriteString(')');
+end;
+
+// ------------------
 // ------------------ TJSConvIntegerExpr ------------------
 // ------------------
 
@@ -4071,37 +4113,66 @@ begin
    codeGen.Compile(e.TryExpr);
    codeGen.WriteBlockEnd;
    codeGen.WriteBlockBegin(' catch ($e) ');
-   if e.DoExprCount=0 then
-      codeGen.Compile(e.HandlerExpr)
-   else begin
-      for i:=0 to e.DoExprCount-1 do begin
-         de:=e.DoExpr[i];
-         if i>0 then
-            codeGen.WriteString('else ');
-         codeGen.WriteString('if ($Is($e,');
-         codeGen.WriteSymbolName(de.ExceptionVar.Typ.UnAliasedType);
-         codeGen.WriteBlockBegin(')) ');
 
+   if e.DoExprCount=0 then
+
+      codeGen.Compile(e.HandlerExpr)
+
+   else begin
+
+      codeGen.Dependencies.Add('$W');
+
+      if (e.DoExprCount=1) and (e.DoExpr[0].ExceptionVar.Typ.UnAliasedType=codeGen.Context.TypException) then begin
+
+         // special case with only "on E: Exception"
+
+         de:=e.DoExpr[0];
          codeGen.LocalTable.AddSymbolDirect(de.ExceptionVar);
          try
             codeGen.WriteString('var ');
             codeGen.WriteSymbolName(de.ExceptionVar);
-            codeGen.WriteStringLn('=$e;');
+            codeGen.WriteStringLn('=$W($e);');
             codeGen.Compile(de.DoBlockExpr);
          finally
             codeGen.SymbolMap.ForgetSymbol(de.ExceptionVar);
             codeGen.LocalTable.Remove(de.ExceptionVar);
          end;
 
-         codeGen.WriteBlockEndLn;
+      end else begin
+
+         // normal case, multiple exception or filtered exceptions
+
+         for i:=0 to e.DoExprCount-1 do begin
+            de:=e.DoExpr[i];
+            if i>0 then
+               codeGen.WriteString('else ');
+            codeGen.WriteString('if ($Is($e,');
+            codeGen.WriteSymbolName(de.ExceptionVar.Typ.UnAliasedType);
+            codeGen.WriteBlockBegin(')) ');
+
+            codeGen.LocalTable.AddSymbolDirect(de.ExceptionVar);
+            try
+               codeGen.WriteString('var ');
+               codeGen.WriteSymbolName(de.ExceptionVar);
+               codeGen.WriteStringLn('=$W($e);');
+               codeGen.Compile(de.DoBlockExpr);
+            finally
+               codeGen.SymbolMap.ForgetSymbol(de.ExceptionVar);
+               codeGen.LocalTable.Remove(de.ExceptionVar);
+            end;
+
+            codeGen.WriteBlockEndLn;
+         end;
+
+         if e.ElseExpr<>nil then begin
+            codeGen.WriteBlockBegin('else ');
+
+            codeGen.Compile(e.ElseExpr);
+
+            codeGen.WriteBlockEndLn;
+         end else codeGen.WriteStringLn('else throw $e');
+
       end;
-      if e.ElseExpr<>nil then begin
-         codeGen.WriteBlockBegin('else ');
-
-         codeGen.Compile(e.ElseExpr);
-
-         codeGen.WriteBlockEndLn;
-      end else codeGen.WriteStringLn('else throw $e');
    end;
    codeGen.WriteBlockEndLn;
 end;

@@ -1,0 +1,1 @@
+TypeError, Cannot call method 'bug' of null

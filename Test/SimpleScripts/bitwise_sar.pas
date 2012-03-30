@@ -11,8 +11,12 @@ var i := 123456;
 PrintLn(i sar 0);
 PrintLn(i sar 2);
 
+PrintLn(i sar 128);
+
 i := -123456;
 
 PrintLn(i sar 0);
 PrintLn(i sar 2);
+
+PrintLn(i sar 128);
 

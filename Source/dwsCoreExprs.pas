@@ -4753,10 +4753,12 @@ begin
    right:=FRight.EvalAsInteger(exec);
    if right=0 then
       Result:=left
+   else if right>63 then
+      if left<0 then
+         Result:=-1
+      else Result:=0
    else if left>=0 then
       Result:=left shr right
-   else if right>63 then
-      Result:=-1
    else Result:=(left shr right) or (Int64(-1) shl (64-right));
 end;
 

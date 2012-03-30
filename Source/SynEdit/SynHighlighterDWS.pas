@@ -178,16 +178,16 @@ uses
 
 const
    // if the language is case-insensitive keywords *must* be in lowercase
-   cKeyWords: array[1..98] of UnicodeString = (
+   cKeyWords: array[1..94] of UnicodeString = (
       'absolute', 'abstract', 'and', 'array', 'as', 'asm',
       'begin', 'break', 'case', 'cdecl', 'class', 'const', 'constructor',
       'contains', 'continue', 'deprecated', 'destructor',
       'div', 'do', 'downto', 'else', 'end', 'ensure', 'except', 'exit',
       'export', 'exports', 'external', 'final', 'finalization',
-      'finally', 'for', 'forward', 'function', 'goto', 'helper', 'if',
-      'implementation', 'implements', 'implies', 'in', 'index', 'inherited',
+      'finally', 'for', 'forward', 'function', 'helper', 'if',
+      'implementation', 'implements', 'implies', 'in', 'inherited',
       'initialization', 'inline', 'interface', 'is', 'lazy', 'library',
-      'message', 'method', 'mod', 'name', 'new', 'nil', 'nodefault', 'not', 'object', 'of',
+      'message', 'method', 'mod', 'new', 'nil', 'not', 'object', 'of',
       'old', 'on', 'operator', 'or', 'overload', 'override',
       'pascal', 'private', 'procedure', 'program', 'property',
       'protected', 'public', 'published', 'raise', 'record',
@@ -205,24 +205,21 @@ begin
    Result:=CompareText(S1, S2);
 end;
 
-{$Q-}
 function TSynDWSSyn.HashKey(Str: PWideChar): Cardinal;
 var
-  c : Word;
+   c : Word;
 begin
-  Result := 0;
-  while IsIdentChar(Str^) do
-  begin
-    c := Ord(Str^);
-    Result := Result * 812 + c * 76;
-    if c in [Ord('A')..Ord('Z')] then
-      Result := Result + (Ord('a') - Ord('A')) * 76;
-    inc(Str);
-  end;
-  Result := Result mod 389;
-  fStringLen := Str - fToIdent;
+   Result := 0;
+   while IsIdentChar(Str^) do begin
+      c := Ord(Str^);
+      Result := Result * 812 + c * 76;
+      if c in [Ord('A')..Ord('Z')] then
+         Result := Result + (Ord('a') - Ord('A')) * 76;
+      inc(Str);
+   end;
+   Result := Result mod 389;
+   fStringLen := Str - fToIdent;
 end;
-{$Q+}
 
 function TSynDWSSyn.IdentKind(MayBe: PWideChar): TtkTokenKind;
 var

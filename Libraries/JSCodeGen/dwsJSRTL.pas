@@ -93,11 +93,13 @@ implementation
 {$R dwsJSRTL.res dwsJSRTL.rc}
 
 const
-   cJSRTLDependencies : array [1..153] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..154] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
        Dependency : 'Exception' ),
+      (Name : '$W';  // only invoked from try..except codegen, which handles dependencies
+       Code : 'function $W(e) { return e.ClassType?e:Exception.Create$1($New(Exception),e.constructor.name+", "+e.message) }'),
       (Name : '$New';
        Code : 'function $New(c) { var i={ClassType:c}; c.$Init(i); return i }'),
       (Name : '$NewDyn';
