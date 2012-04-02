@@ -541,7 +541,7 @@ type
 
          function GetFuncExpr(funcSym : TFuncSymbol; codeExpr : TDataExpr = nil) : TFuncExprBase;
          function GetMethodExpr(meth: TMethodSymbol; Expr: TTypedExpr; RefKind: TRefKind;
-                             const Pos: TScriptPos; ForceStatic : Boolean): TFuncExpr;
+                                const scriptPos: TScriptPos; ForceStatic : Boolean): TFuncExpr;
 
          procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol);
          procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : UnicodeString; typ1, typ2 : TTypeSymbol);
@@ -1012,9 +1012,9 @@ end;
 // GetMethodExpr
 //
 function TdwsCompiler.GetMethodExpr(meth: TMethodSymbol; Expr: TTypedExpr; RefKind: TRefKind;
-             const Pos: TScriptPos; ForceStatic : Boolean): TFuncExpr;
+                                    const scriptPos : TScriptPos; ForceStatic : Boolean): TFuncExpr;
 begin
-   Result:=CreateMethodExpr(FProg, meth, Expr, RefKind, Pos, ForceStatic);
+   Result:=CreateMethodExpr(FProg, meth, Expr, RefKind, scriptPos, ForceStatic);
 end;
 
 // MemberSymbolWithNameAlreadyExists
@@ -4135,7 +4135,7 @@ begin
                      memberClassType:=member.ClassType
                   else memberClassType:=nil;
 
-                  RecordSymbolUseReference(member, FTok.HotPos, isWrite);
+                  RecordSymbolUseReference(member, symPos, isWrite);
 
                   // Class method
                   if member is TMethodSymbol then begin
@@ -4904,8 +4904,11 @@ begin
          end;
       end;
       if overloads.Count=0 then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticMethodExpected);
+         FMsgs.AddCompilerStop(scriptPos, CPE_StaticMethodExpected);
+      meth:=methSym;
       methSym:=TMethodSymbol(overloads[0]);
+      if (meth<>methSym) and (coSymbolDictionary in Options) then
+         ReplaceSymbolUse(meth, methSym, scriptPos);
       Result:=ReadStaticMethod(methSym, metaExpr, scriptPos, expecting, overloads);
    finally
       overloads.Free;
@@ -5981,6 +5984,8 @@ begin
                   FMsgs.AddCompilerErrorFmt(namePos, CPE_NotAnInterface, [name])
                else begin
                   RecordSymbolUse(intfTyp, namePos, [suReference]);
+                  if intfTyp.IsForwarded then
+                     FMsgs.AddCompilerErrorFmt(namePos, CPE_InterfaceNotCompletelyDefined, [name]);
                   if interfaces.IndexOf(intfTyp)>=0 then
                      FMsgs.AddCompilerErrorFmt(namePos, CPE_InterfaceAlreadyImplemented, [name])
                   else interfaces.Add(intfTyp);
@@ -6160,56 +6165,88 @@ var
    namePos, hotPos : TScriptPos;
    tt : TTokenType;
    propSym : TPropertySymbol;
+   wasForwarded : Boolean;
 begin
    hotPos:=FTok.HotPos;
    sym:=FProg.Table.FindSymbol(typeName, cvMagic);
 
+   wasForwarded:=False;
    if Assigned(sym) then begin
-      if sym is TInterfaceSymbol then
-         FMsgs.AddCompilerErrorFmt(hotPos, CPE_InterfaceAlreadyDefined, [sym.Name])
-      else FMsgs.AddCompilerErrorFmt(hotPos, CPE_NameAlreadyExists, [sym.Name]);
-      // keep compiling, make it anonymous
-      Result:=TInterfaceSymbol.Create('', CurrentUnitSymbol);
+      if sym is TInterfaceSymbol then begin
+         Result:=TInterfaceSymbol(sym);
+         if not Result.IsForwarded then begin
+            Result:=nil;
+            FMsgs.AddCompilerErrorFmt(hotPos, CPE_InterfaceAlreadyDefined, [sym.Name]);
+         end;
+      end else begin
+         Result:=nil;
+         FMsgs.AddCompilerErrorFmt(hotPos, CPE_NameAlreadyExists, [sym.Name]);
+      end;
+      if Result=nil then begin
+         // keep compiling, make it anonymous
+         Result:=TInterfaceSymbol.Create('', CurrentUnitSymbol);
+      end;
    end else Result:=TInterfaceSymbol.Create(typeName, CurrentUnitSymbol);
 
+   if FTok.Test(ttSEMI) then begin
+      // forward declaration
+      if Result.IsForwarded then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InterfaceForwardAlreadyExists, [sym.Name])
+      else Result.SetForwardedPos(hotPos);
+      Exit;
+   end else Result.ClearIsForwarded;
+
    try
+      // auto-forward
+      if not wasForwarded then
+         FProg.Table.AddSymbol(Result);
+      try
 
-      if FTok.TestDelete(ttBLEFT) then begin
-         if not FTok.TestDeleteNamePos(name, namePos) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-         ancestor:=TInterfaceSymbol(FProg.Table.FindSymbol(name, cvMagic, TInterfaceSymbol));
-         if ancestor=nil then
-            FMsgs.AddCompilerErrorFmt(namePos, CPE_NotAnInterface, [Name])
-         else Result.InheritFrom(ancestor);
-         if not FTok.TestDelete(ttBRIGHT) then
-            FMsgs.AddCompilerStop(namePos, CPE_BrackRightExpected);
-      end;
-      if Result.Parent=nil then
-         Result.InheritFrom(FProg.TypInterface);
-
-      while not FTok.Test(ttEND) do begin
-
-         // Read methods and properties
-         tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttPROPERTY]);
-         case tt of
-            ttFUNCTION, ttPROCEDURE, ttMETHOD :
-               Result.AddMethod(ReadIntfMethodDecl(Result, cTokenToFuncKind[tt]));
-
-            ttPROPERTY : begin
-
-               propSym := ReadPropertyDecl(Result, cvPublished);
-               Result.AddProperty(propSym);
-
+         if FTok.TestDelete(ttBLEFT) then begin
+            if not FTok.TestDeleteNamePos(name, namePos) then
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+            ancestor:=TInterfaceSymbol(FProg.Table.FindSymbol(name, cvMagic, TInterfaceSymbol));
+            if ancestor=nil then
+               FMsgs.AddCompilerErrorFmt(namePos, CPE_NotAnInterface, [Name])
+            else begin
+               if ancestor.IsForwarded then
+                  msgs.AddCompilerErrorFmt(namePos, CPE_InterfaceNotCompletelyDefined, [ancestor.Name]);
+               Result.InheritFrom(ancestor);
             end;
-         else
-            Break;
+            if not FTok.TestDelete(ttBRIGHT) then
+               FMsgs.AddCompilerStop(namePos, CPE_BrackRightExpected);
+         end;
+         if Result.Parent=nil then
+            Result.InheritFrom(FProg.TypInterface);
+
+         while not FTok.Test(ttEND) do begin
+
+            // Read methods and properties
+            tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttPROPERTY]);
+            case tt of
+               ttFUNCTION, ttPROCEDURE, ttMETHOD :
+                  Result.AddMethod(ReadIntfMethodDecl(Result, cTokenToFuncKind[tt]));
+
+               ttPROPERTY : begin
+
+                  propSym := ReadPropertyDecl(Result, cvPublished);
+                  Result.AddProperty(propSym);
+
+               end;
+            else
+               Break;
+            end;
+
          end;
 
+         if not FTok.TestDelete(ttEND) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
+
+      finally
+         // remove auto-forward
+         if not wasForwarded then
+            FProg.Table.Remove(Result);
       end;
-
-      if not FTok.TestDelete(ttEND) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
-
    except
       Result.Free;
       raise;

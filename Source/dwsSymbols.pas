@@ -1024,10 +1024,12 @@ type
          FMembers : TMembersSymbolTable;
          FParent : TStructuredTypeSymbol;
          FMetaSymbol : TStructuredTypeMetaSymbol;
+         FForwardPosition : PScriptPos;
 
       protected
          function CreateMembersTable : TMembersSymbolTable; virtual;
 
+         function GetIsForwarded : Boolean; inline;
          function GetIsStatic : Boolean; virtual;
          function GetIsExternal : Boolean; virtual;
 
@@ -1052,6 +1054,10 @@ type
          function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; virtual;
          function AllowVirtualMembers : Boolean; virtual;
 
+         procedure SetForwardedPos(const pos : TScriptPos);
+         procedure ClearIsForwarded;
+
+         property IsForwarded : Boolean read GetIsForwarded;
          property IsStatic : Boolean read GetIsStatic;
          property IsExternal : Boolean read GetIsExternal;
 
@@ -1123,6 +1129,7 @@ type
          procedure AddMethod(methSym : TMethodSymbol); override;
 
          procedure InitData(const Data: TData; Offset: Integer); override;
+         procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
          function Parent : TInterfaceSymbol; inline;
@@ -1223,7 +1230,6 @@ type
    TClassSymbol = class (TStructuredTypeSymbol)
       private
          FFlags : TClassSymbolFlags;
-         FForwardPosition : PScriptPos;
          FOperators : TTightList;
          FScriptInstanceSize : Integer;
          FOnObjectDestroy : TObjectDestroyEvent;
@@ -1233,7 +1239,6 @@ type
       protected
          function GetClassOf : TClassOfSymbol; inline;
          function GetDescription : UnicodeString; override;
-         function GetIsForwarded : Boolean; inline;
          function GetIsExplicitAbstract : Boolean; inline;
          procedure SetIsExplicitAbstract(const val : Boolean); inline;
          function GetIsAbstract : Boolean; inline;
@@ -1272,9 +1277,6 @@ type
          function  VMTMethod(index : Integer) : TMethodSymbol;
          function  VMTCount : Integer;
 
-         procedure SetForwardedPos(const pos : TScriptPos);
-         procedure ClearIsForwarded;
-
          function FindClassOperatorStrict(tokenType : TTokenType; paramType : TSymbol; recursive : Boolean) : TClassOperatorSymbol;
          function FindClassOperator(tokenType : TTokenType; paramType : TTypeSymbol) : TClassOperatorSymbol;
 
@@ -1288,7 +1290,6 @@ type
          property ScriptInstanceSize : Integer read FScriptInstanceSize;
          property Interfaces : TResolvedInterfaces read FInterfaces;
 
-         property IsForwarded : Boolean read GetIsForwarded;
          property IsExplicitAbstract : Boolean read GetIsExplicitAbstract write SetIsExplicitAbstract;
          property IsAbstract : Boolean read GetIsAbstract;
          property IsSealed : Boolean read GetIsSealed write SetIsSealed;
@@ -1909,6 +1910,8 @@ end;
 //
 destructor TStructuredTypeSymbol.Destroy;
 begin
+   if FForwardPosition<>nil then
+      Dispose(FForwardPosition);
    FMetaSymbol.Free;
    FMembers.Free;
    inherited;
@@ -1965,6 +1968,13 @@ function TStructuredTypeSymbol.CreateMembersTable : TMembersSymbolTable;
 begin
    Result:=TMembersSymbolTable.Create(nil);
    Result.StructSymbol:=Self;
+end;
+
+// GetIsForwarded
+//
+function TStructuredTypeSymbol.GetIsForwarded : Boolean;
+begin
+   Result:=Assigned(FForwardPosition);
 end;
 
 // AddField
@@ -2055,6 +2065,23 @@ end;
 function TStructuredTypeSymbol.AllowVirtualMembers : Boolean;
 begin
    Result:=False;
+end;
+
+// SetForwardedPos
+//
+procedure TStructuredTypeSymbol.SetForwardedPos(const pos : TScriptPos);
+begin
+   if FForwardPosition=nil then
+      New(FForwardPosition);
+   FForwardPosition^:=pos;
+end;
+
+// ClearIsForwarded
+//
+procedure TStructuredTypeSymbol.ClearIsForwarded;
+begin
+   Dispose(FForwardPosition);
+   FForwardPosition:=nil;
 end;
 
 // GetIsStatic
@@ -2225,6 +2252,15 @@ const
    cNilIntf : IUnknown = nil;
 begin
    Data[Offset]:=cNilIntf;
+end;
+
+// Initialize
+//
+procedure TInterfaceSymbol.Initialize(const msgs : TdwsCompileMessageList);
+begin
+   // Check validity of the interface declaration
+   if IsForwarded then
+      msgs.AddCompilerErrorFmt(FForwardPosition^, CPE_InterfaceNotCompletelyDefined, [Name]);
 end;
 
 // IsCompatible
@@ -3344,8 +3380,6 @@ end;
 //
 destructor TClassSymbol.Destroy;
 begin
-   if FForwardPosition<>nil then
-      Dispose(FForwardPosition);
    FOperators.Free;
    FInterfaces.Free;
    inherited;
@@ -3606,13 +3640,6 @@ begin
   Result := Result + 'end';
 end;
 
-// GetIsForwarded
-//
-function TClassSymbol.GetIsForwarded : Boolean;
-begin
-   Result:=Assigned(FForwardPosition);
-end;
-
 // GetIsExplicitAbstract
 //
 function TClassSymbol.GetIsExplicitAbstract : Boolean;
@@ -3690,23 +3717,6 @@ function TClassSymbol.AllocateVMTindex : Integer;
 begin
    Result:=Length(FVirtualMethodTable);
    SetLength(FVirtualMethodTable, Result+1);
-end;
-
-// SetForwardedPos
-//
-procedure TClassSymbol.SetForwardedPos(const pos : TScriptPos);
-begin
-   if FForwardPosition=nil then
-      New(FForwardPosition);
-   FForwardPosition^:=pos;
-end;
-
-// ClearIsForwarded
-//
-procedure TClassSymbol.ClearIsForwarded;
-begin
-   Dispose(FForwardPosition);
-   FForwardPosition:=nil;
 end;
 
 // FindClassOperatorStrict

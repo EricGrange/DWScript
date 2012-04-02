@@ -1711,8 +1711,8 @@ begin
                if i=0 then
                   Exit
                else Dec(i);
-            end else if parent is TMethodExpr then begin
-               if i=0 then
+            end else if (parent is TMethodExpr) then begin
+               if (i=0) then
                   Exit
                else Dec(i);
             end else if (i>0) and (parent is TConstructorStaticExpr) then begin
@@ -1729,7 +1729,7 @@ begin
                   Exit;
                end;
             end else begin
-               if funcSym.Params[i] is TVarParamSymbol then begin
+               if funcSym.Params[i] is TByRefParamSymbol then begin
                   varSym:=TVarExpr(expr).DataSym; // FindSymbolAtStackAddr(TVarExpr(expr).StackAddr, Context.Level);
                end else Exit;
             end;
@@ -2220,7 +2220,7 @@ function TdwsJSCodeGen.MemberName(sym : TSymbol; cls : TStructuredTypeSymbol) : 
 //   n : Integer;
 //   match : TSymbol;
 begin
-   Result:=SymbolMappedName(sym, cgssClass);
+   Result:=SymbolMappedName(sym, cgssGlobal);
 //   n:=0;
 //   cls:=cls.Parent;
 //   while cls<>nil do begin
@@ -2826,7 +2826,7 @@ begin
             codeGen.WriteString(',');
          paramExpr:=e.Args.ExprBase[i] as TTypedExpr;
          paramSymbol:=funcSym.Params[i] as TParamSymbol;
-         if (paramSymbol is TVarParamSymbol) then begin
+         if paramSymbol is TByRefParamSymbol then begin
             if paramExpr is TVarExpr then
                TJSVarExpr.CodeGenName(codeGen, TVarExpr(paramExpr))
             else begin
@@ -2834,8 +2834,6 @@ begin
                codeGen.Compile(paramExpr);
                codeGen.WriteString('}');
             end;
-         end else if paramSymbol is TByRefParamSymbol then begin
-            codeGen.Compile(paramExpr);
          end else if paramSymbol is TLazyParamSymbol then begin
             codeGen.WriteString('function () { return ');
             codeGen.Compile(paramExpr);

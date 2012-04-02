@@ -1,0 +1,2 @@
+Syntax Error: Interface "IIntf" isn't defined completely [line: 4, column: 23]
+Syntax Error: Interface "IIntf" isn't defined completely [line: 8, column: 30]

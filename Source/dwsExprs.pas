@@ -902,7 +902,7 @@ type
          FPos: TScriptPos;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TTypeSymbol);
+         constructor Create(Prog: TdwsProgram; const scriptPos : TScriptPos; Typ: TTypeSymbol);
 
          function ScriptPos : TScriptPos; override;
 
@@ -1264,7 +1264,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
+         constructor Create(Prog: TdwsProgram; const scriptPos : TScriptPos; Func: TMethodSymbol;
                             BaseExpr: TTypedExpr);
          destructor Destroy; override;
 
@@ -3853,10 +3853,10 @@ end;
 
 // Create
 //
-constructor TPosDataExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TTypeSymbol);
+constructor TPosDataExpr.Create(Prog: TdwsProgram; const scriptPos : TScriptPos; Typ: TTypeSymbol);
 begin
    inherited Create(Prog, Typ);
-   FPos:=Pos;
+   FPos:=scriptPos;
 end;
 
 // ScriptPos
@@ -5379,10 +5379,10 @@ end;
 
 // Create
 //
-constructor TMethodExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
+constructor TMethodExpr.Create(Prog: TdwsProgram; const scriptPos: TScriptPos;
   Func: TMethodSymbol; BaseExpr: TTypedExpr);
 begin
-   inherited Create(Prog, Pos, Func);
+   inherited Create(Prog, scriptPos, Func);
    FBaseExpr:=BaseExpr;
    FSelfAddr:=Func.SelfSym.StackAddr;
 end;

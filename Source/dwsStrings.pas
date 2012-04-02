@@ -198,6 +198,8 @@ const
   CPE_NotAnInterface = '"%s" is not an interface';
   CPE_MissingMethodForInterface = 'Missing matching method "%s" for interface "%s"';
   CPE_InterfaceAlreadyImplemented = 'Interface "%s" already implemented';
+  CPE_InterfaceNotCompletelyDefined = 'Interface "%s" isn''t defined completely';
+  CPE_InterfaceForwardAlreadyExists = 'There is already a forward declaration of the "%s" interface!';
 
   // CompareFuncSymbols
   CPE_FunctionExpected = 'Declaration should be "function"';
