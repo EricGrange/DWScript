@@ -221,16 +221,13 @@ type
       class function CodeGenName(codeGen : TdwsCodeGen; expr : TExprBase) : TDataSymbol; static;
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSVarParentExpr = class (TJSExprCodeGen)
-      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
-   end;
    TJSVarParamExpr = class (TJSVarExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSVarParamParentExpr = class (TJSVarParentExpr)
+   TJSLazyParamExpr = class (TJSVarExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
-   TJSLazyParamExpr = class (TJSVarExpr)
+   TJSConstParamExpr = class (TJSVarExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
@@ -577,6 +574,12 @@ const
       'onsubmit', 'onunload'
    );
 
+function ShouldBoxParam(param : TParamSymbol) : Boolean;
+begin
+   Result:=   (param is TVarParamSymbol)
+           or ((param is TByRefParamSymbol) and (param.Typ.UnAliasedType is TRecordSymbol));
+end;
+   
 // ------------------
 // ------------------ TdwsJSCodeGen ------------------
 // ------------------
@@ -635,18 +638,18 @@ begin
 
    RegisterCodeGen(TVarExpr,              TJSVarExpr.Create);
    RegisterCodeGen(TSelfVarExpr,          TJSVarExpr.Create);
-   RegisterCodeGen(TVarParentExpr,        TJSVarParentExpr.Create);
+   RegisterCodeGen(TVarParentExpr,        TJSVarExpr.Create);
    RegisterCodeGen(TVarParamExpr,         TJSVarParamExpr.Create);
-   RegisterCodeGen(TVarParamParentExpr,   TJSVarParamParentExpr.Create);
+   RegisterCodeGen(TVarParamParentExpr,   TJSVarParamExpr.Create);
    RegisterCodeGen(TLazyParamExpr,        TJSLazyParamExpr.Create);
+   RegisterCodeGen(TConstParamExpr,       TJSConstParamExpr.Create);
+   RegisterCodeGen(TConstParamParentExpr, TJSConstParamExpr.Create);
 
    RegisterCodeGen(TIntVarExpr,           TJSVarExpr.Create);
    RegisterCodeGen(TFloatVarExpr,         TJSVarExpr.Create);
    RegisterCodeGen(TStrVarExpr,           TJSVarExpr.Create);
    RegisterCodeGen(TBoolVarExpr,          TJSVarExpr.Create);
    RegisterCodeGen(TObjectVarExpr,        TJSVarExpr.Create);
-   RegisterCodeGen(TConstParamExpr,       TJSVarExpr.Create);
-   RegisterCodeGen(TConstParamParentExpr, TJSVarExpr.Create);
 
    RegisterCodeGen(TRecordExpr,           TJSRecordExpr.Create);
 
@@ -1694,6 +1697,7 @@ begin
       var
          funcSym : TFuncSymbol;
          varSym : TDataSymbol;
+         paramSym : TParamSymbol;
          i : Integer;
          right : TExprBase;
       begin
@@ -1723,15 +1727,16 @@ begin
                   right:=TMagicIteratorFuncExpr(parent).Args[1];
                   if TdwsExprCodeGen.ExprIsConstantInteger(right, 1) then
                      Exit // special case handled via ++ or --, no need to pass by ref
-                  else varSym:=TVarExpr(expr).DataSym; // FindSymbolAtStackAddr(TVarExpr(expr).StackAddr, Context.Level);
+                  else varSym:=TVarExpr(expr).DataSym;
                end else begin
                   // else not supported yet
                   Exit;
                end;
             end else begin
-               if funcSym.Params[i] is TByRefParamSymbol then begin
-                  varSym:=TVarExpr(expr).DataSym; // FindSymbolAtStackAddr(TVarExpr(expr).StackAddr, Context.Level);
-               end else Exit;
+               paramSym:=funcSym.Params[i] as TParamSymbol;
+               if ShouldBoxParam(paramSym) then 
+                  varSym:=TVarExpr(expr).DataSym
+               else Exit;
             end;
          end else if (expr is TExitExpr) then begin
             // exit with a try.. clause that modifies the result can cause issues
@@ -2052,7 +2057,7 @@ begin
    // box params that the function will pass as var
    for i:=0 to proc.Func.Params.Count-1 do begin
       param:=proc.Func.Params[i] as TParamSymbol;
-      if (not (param is TByRefParamSymbol)) and TJSExprCodeGen.IsLocalVarParam(Self, param) then begin
+      if (not ShouldBoxParam(param)) and TJSExprCodeGen.IsLocalVarParam(Self, param) then begin
          WriteSymbolName(param);
          WriteString('={'+cBoxFieldName+':');
          WriteSymbolName(param);
@@ -2436,22 +2441,6 @@ begin
 end;
 
 // ------------------
-// ------------------ TJSVarParentExpr ------------------
-// ------------------
-
-// CodeGen
-//
-procedure TJSVarParentExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
-var
-   e : TVarParentExpr;
-begin
-   e:=TVarParentExpr(expr);
-   codeGen.WriteSymbolName(e.DataSym);
-   if IsLocalVarParam(codeGen, e.DataSym) then
-      codeGen.WriteString('.'+TdwsJSCodeGen.cBoxFieldName);
-end;
-
-// ------------------
 // ------------------ TJSVarParamExpr ------------------
 // ------------------
 
@@ -2460,21 +2449,6 @@ end;
 procedure TJSVarParamExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 begin
    CodeGenName(codeGen, expr);
-   codeGen.WriteString('.'+TdwsJSCodeGen.cBoxFieldName);
-end;
-
-// ------------------
-// ------------------ TJSVarParamParentExpr ------------------
-// ------------------
-
-// CodeGen
-//
-procedure TJSVarParamParentExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
-var
-   e : TVarParentExpr;
-begin
-   e:=TVarParentExpr(expr);
-   codeGen.WriteSymbolName(e.DataSym);
    codeGen.WriteString('.'+TdwsJSCodeGen.cBoxFieldName);
 end;
 
@@ -2493,6 +2467,21 @@ begin
    if IsLocalVarParam(codeGen, sym) then
       codeGen.WriteString('.'+TdwsJSCodeGen.cBoxFieldName);
    codeGen.WriteString('()');
+end;
+
+// ------------------
+// ------------------ TJSConstParamExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSConstParamExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   sym : TDataSymbol;
+begin
+   sym:=CodeGenName(codeGen, expr);
+   if (sym.Typ.UnAliasedType is TRecordSymbol) or IsLocalVarParam(codeGen, sym) then
+      codeGen.WriteString('.'+TdwsJSCodeGen.cBoxFieldName);
 end;
 
 // ------------------
@@ -2826,7 +2815,7 @@ begin
             codeGen.WriteString(',');
          paramExpr:=e.Args.ExprBase[i] as TTypedExpr;
          paramSymbol:=funcSym.Params[i] as TParamSymbol;
-         if paramSymbol is TByRefParamSymbol then begin
+         if ShouldBoxParam(paramSymbol) then begin
             if paramExpr is TVarExpr then
                TJSVarExpr.CodeGenName(codeGen, TVarExpr(paramExpr))
             else begin
@@ -2838,6 +2827,8 @@ begin
             codeGen.WriteString('function () { return ');
             codeGen.Compile(paramExpr);
             codeGen.WriteString('}');
+         end else if paramSymbol is TByRefParamSymbol then begin
+            codeGen.Compile(paramExpr);
          end else begin
             codeGen.CompileValue(paramExpr);
          end;
