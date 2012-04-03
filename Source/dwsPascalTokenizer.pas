@@ -187,12 +187,14 @@ begin
    sBlockCommentBracket.SetElse(TSeekTransition.Create(sBlockCommentBracket, [], caNone));
 
    sBlockCommentBracket1.AddTransition([')'], TSeekTransition.Create(sStart, [], caClear));
+   sBlockCommentBracket1.AddTransition(['*'], TSeekTransition.Create(sBlockCommentBracket1, [], caNone));
    sBlockCommentBracket1.SetElse(TSeekTransition.Create(sBlockCommentBracket, [], caNone));
 
    sBlockCommentSlash.AddTransition(['*'], TSeekTransition.Create(sBlockCommentSlash1, [], caNone));
    sBlockCommentSlash.SetElse(TSeekTransition.Create(sBlockCommentSlash, [], caNone));
 
    sBlockCommentSlash1.AddTransition(['/'], TSeekTransition.Create(sStart, [], caClear));
+   sBlockCommentSlash1.AddTransition(['*'], TSeekTransition.Create(sBlockCommentSlash1, [], caNone));
    sBlockCommentSlash1.SetElse(TSeekTransition.Create(sBlockCommentSlash, [], caNone));
 
    sChar0.AddTransition(cINT, TConsumeTransition.Create(sCharF, [], caNone));
