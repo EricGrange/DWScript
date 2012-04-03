@@ -3222,7 +3222,7 @@ begin
                         FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
                   end;
                end else if locExpr is TConnectorWriteExpr then
-                  Result:=TConnectorWriteExpr(locExpr)
+                  Result:=TNoResultWrapperExpr.Create(FProg, locExpr.ScriptPos, TConnectorWriteExpr(locExpr))
                else if locExpr is TDynamicArraySetExpr then
                   Result:=TDynamicArraySetExpr(locExpr)
                else if locExpr is TStringArraySetExpr then

@@ -1228,24 +1228,26 @@ type
          property ConnectorMember : IConnectorMember read FConnectorMember write FConnectorMember;
   end;
 
-   TConnectorWriteExpr = class(TNoResultExpr)
+   TConnectorWriteExpr = class(TTypedExpr)
       private
-         FTyp : TTypeSymbol;
          FBaseExpr: TTypedExpr;
          FValueExpr: TTypedExpr;
          FConnectorMember: IConnectorMember;
          FName: UnicodeString;
+         FScriptPos : TScriptPos;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const Name: UnicodeString;
+         constructor Create(Prog: TdwsProgram; const scriptPos: TScriptPos; const Name: UnicodeString;
                             BaseExpr, ValueExpr: TTypedExpr);
          destructor Destroy; override;
 
-         function AssignConnectorSym(Prog: TdwsProgram; ConnectorType: IConnectorType): Boolean;
+         function ScriptPos : TScriptPos; override;
+         function AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType) : Boolean;
+         function  Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          property ConnectorMember : IConnectorMember read FConnectorMember write FConnectorMember;
@@ -6769,30 +6771,53 @@ begin
    Result:=1;
 end;
 
-{ TConnectorWriteExpr }
+// ------------------
+// ------------------ TConnectorWriteExpr ------------------
+// ------------------
 
-function TConnectorWriteExpr.AssignConnectorSym(Prog: TdwsProgram; ConnectorType: IConnectorType): Boolean;
+constructor TConnectorWriteExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+  const Name: UnicodeString; BaseExpr, ValueExpr: TTypedExpr);
 begin
-   FConnectorMember := ConnectorType.HasMember(FName, FTyp, True);
+   inherited Create;
+   FScriptPos:=scriptPos;
+   FName:=Name;
+   FBaseExpr:=BaseExpr;
+   FValueExpr:=ValueExpr;
+end;
+
+// Destroy
+//
+destructor TConnectorWriteExpr.Destroy;
+begin
+   FBaseExpr.Free;
+   FValueExpr.Free;
+   inherited;
+end;
+
+// ScriptPos
+//
+function TConnectorWriteExpr.ScriptPos : TScriptPos;
+begin
+   Result:=FScriptPos;
+end;
+
+// AssignConnectorSym
+//
+function TConnectorWriteExpr.AssignConnectorSym(prog : TdwsProgram; const connectorType : IConnectorType) : Boolean;
+var
+   memberTyp : TTypeSymbol;
+begin
+   FConnectorMember := ConnectorType.HasMember(FName, memberTyp, True);
    Result := Assigned(FConnectorMember);
-   if Result and not (Assigned(FTyp) and Assigned(FValueExpr.Typ) and FTyp.IsCompatible(FValueExpr.Typ)) then
+   if Result and not (Assigned(memberTyp) and Assigned(FValueExpr.Typ) and memberTyp.IsCompatible(FValueExpr.Typ)) then
       Prog.CompileMsgs.AddCompilerError(FScriptPos, CPE_ConnectorTypeMismatch);
 end;
 
-constructor TConnectorWriteExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-  const Name: UnicodeString; BaseExpr, ValueExpr: TTypedExpr);
+// Eval
+//
+function TConnectorWriteExpr.Eval(exec : TdwsExecution) : Variant;
 begin
-  inherited Create(Prog, Pos);
-  FName := Name;
-  FBaseExpr := BaseExpr;
-  FValueExpr := ValueExpr;
-end;
-
-destructor TConnectorWriteExpr.Destroy;
-begin
-  FBaseExpr.Free;
-  FValueExpr.Free;
-  inherited;
+   EvalNoResult(exec);
 end;
 
 // EvalNoResult
