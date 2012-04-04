@@ -651,8 +651,6 @@ var
    valueSym : TValueSymbol;
    enumSym : TEnumerationSymbol;
    propSymbol : TPropertySymbol;
-   dynSymbol : TDynamicArraySymbol;
-   statSymbol : TStaticArraySymbol;
 begin
    symbol:=FList[i];
    if symbol is TFuncSymbol then begin

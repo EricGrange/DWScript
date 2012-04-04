@@ -4949,7 +4949,9 @@ begin
          matchParamType:=match.GetParamType(j);
          funcExprParamType:=funcExpr.GetArgType(j);
          if not matchParamType.IsOfType(funcExprParamType) then begin
+
             if funcExprParamType.IsOfType(FProg.TypVariant) then begin
+
                if not funcExprParamType.IsCompatible(matchParamType) then begin
                   match:=nil;
                   break;
@@ -4959,20 +4961,54 @@ begin
                      Inc(matchDistance, 256)
                   else Inc(matchDistance, 1);
                end;
+
             end else if     (funcExprParamType is TStaticArraySymbol)
-                        and (matchParamType is TDynamicArraySymbol)
-                        and (   matchParamType.Typ.IsOfType(funcExprParamType.Typ)
-                             or (TStaticArraySymbol(funcExprParamType).ElementCount=0)
-                             or (    (funcExprParamType.Typ=FProg.TypNil)
-                                 and (   (matchParamType.Typ is TClassSymbol)
-                                      or (matchParamType.Typ is TInterfaceSymbol)))) then begin
-               Inc(matchDistance, 1);
+                        and (matchParamType is TDynamicArraySymbol) then begin
+
+               if funcExprParamType.Typ.IsOfType(matchParamType.Typ) then begin
+
+                  if (funcExprParamType.Typ is TClassSymbol) or (funcExprParamType.Typ is TInterfaceSymbol) then begin
+
+                     Inc(matchDistance, (matchParamType.Typ as TStructuredTypeSymbol).NthParentOf(TStructuredTypeSymbol(funcExprParamType.Typ)));
+
+                  end else begin
+
+                     Inc(matchDistance, 1);
+
+                  end;
+
+               end else if    (TStaticArraySymbol(funcExprParamType).ElementCount=0)
+                           or (    (funcExprParamType.Typ=FProg.TypNil)
+                               and (   (matchParamType.Typ is TClassSymbol)
+                                    or (matchParamType.Typ is TInterfaceSymbol))) then begin
+
+                  Inc(matchDistance, 1);
+
+               end else begin
+
+                  match:=nil;
+                  break;
+
+               end;
+
             end else if not (   (matchParamType.IsOfType(FProg.TypFloat) and funcExprParamType.IsOfType(FProg.TypInteger))
                              or matchParamType.IsCompatible(funcExprParamType)) then begin
+
                match:=nil;
                break;
+
             end else begin
-               Inc(matchDistance, 1);
+
+               if (funcExprParamType is TClassSymbol) or (funcExprParamType is TInterfaceSymbol) then begin
+
+                  Inc(matchDistance, (matchParamType as TStructuredTypeSymbol).NthParentOf(TStructuredTypeSymbol(funcExprParamType)));
+
+               end else begin
+
+                  Inc(matchDistance, 1);
+
+               end;
+
             end;
          end;
       end;

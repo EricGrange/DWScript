@@ -1034,7 +1034,6 @@ type
          function GetIsExternal : Boolean; virtual;
 
          procedure DoInheritFrom(ancestor : TStructuredTypeSymbol);
-         function IsParentCompatible(typSym : TStructuredTypeSymbol) : Boolean;
 
          procedure CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
 
@@ -1051,6 +1050,7 @@ type
          function FieldAtOffset(offset : Integer) : TFieldSymbol; virtual;
          function DuckTypedMatchingMethod(methSym : TMethodSymbol; visibility : TdwsVisibility) : TMethodSymbol; virtual;
 
+         function NthParentOf(structType : TStructuredTypeSymbol) : Integer;
          function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; virtual;
          function AllowVirtualMembers : Boolean; virtual;
 
@@ -1928,16 +1928,20 @@ begin
    FParent:=ancestor;
 end;
 
-// IsParentCompatible
+// NthParentOf
 //
-function TStructuredTypeSymbol.IsParentCompatible(typSym : TStructuredTypeSymbol) : Boolean;
+function TStructuredTypeSymbol.NthParentOf(structType : TStructuredTypeSymbol) : Integer;
 begin
-   while typSym<>nil do begin
-      if typSym=Self then
-         Exit(True)
-      else typSym:=typSym.Parent;
+   Result:=0;
+   while structType<>nil do begin
+      if structType=Self then
+         Exit
+      else begin
+         structType:=structType.Parent;
+         Inc(Result);
+      end;
    end;
-   Result:=False;
+   Result:=-1;
 end;
 
 // CheckMethodsImplemented
@@ -2271,7 +2275,7 @@ begin
    if typSym is TNilSymbol then
       Result:=True
    else if typSym is TInterfaceSymbol then
-      Result:=IsParentCompatible(TInterfaceSymbol(typSym))
+      Result:=(NthParentOf(TInterfaceSymbol(typSym))>=0)
    else Result:=False;
 end;
 
@@ -2281,7 +2285,7 @@ function TInterfaceSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    typSym:=typSym.UnAliasedType;
    if typSym is TInterfaceSymbol then
-      Result:=IsParentCompatible(TInterfaceSymbol(typSym))
+      Result:=(NthParentOf(TInterfaceSymbol(typSym))>=0)
    else Result:=False;
 end;
 
@@ -3595,7 +3599,7 @@ begin
    if typSym is TNilSymbol then
       Result:=True
    else if typSym is TClassSymbol then
-      Result:=IsParentCompatible(TClassSymbol(typSym))
+      Result:=(NthParentOf(TClassSymbol(typSym))>=0)
    else Result:=False;
 end;
 
