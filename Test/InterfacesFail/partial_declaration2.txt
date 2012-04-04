@@ -1,2 +1,3 @@
 Syntax Error: "TObject" is not an interface [line: 1, column: 25]
 Syntax Error: Name expected [line: 2, column: 25]
+Syntax Error: END expected [line: 2, column: 25]

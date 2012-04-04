@@ -1,0 +1,18 @@
+uses UnitPrefix;
+
+UnitPrefix.Hello;
+
+var o : UnitPrefix.TTest;
+
+o:=UnitPrefix.TTest.Create;
+
+o.Hello;
+UnitPrefix.TTest(o).Hello;
+
+type
+   TMyTest = class (UnitPrefix.TTest)
+   end;
+   
+o := new TMyTest;
+o.Hello;
+UnitPrefix.TTest(o).Hello;

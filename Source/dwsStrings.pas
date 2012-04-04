@@ -238,7 +238,6 @@ const
   CPE_NameAlreadyExists = 'Name "%s" already exists';
   CPE_NameIsReserved = 'Name "%s" is reserved';
   CPE_TypeExpected = 'Type expected';
-  CPE_TypeUnknown = 'Type "%s" not found';
   CPE_InvalidType = '%s is not a Type!';
   CPE_UnknownMember = 'There''s no member with name "%s"!';
   CPE_NoMemberExpected = 'No member expected';

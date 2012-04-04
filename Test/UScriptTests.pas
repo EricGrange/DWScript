@@ -265,7 +265,13 @@ begin
 
          if FileExists(expectedErrorsFileName) then begin
             expectedError.LoadFromFile(expectedErrorsFileName);
-            CheckEquals(expectedError.Text, prog.Msgs.AsInfo, FFailures[i]);
+            try
+               CheckEquals(expectedError.Text, prog.Msgs.AsInfo, FFailures[i]);
+            except
+               on E: Exception do begin
+                  Check(False, FFailures[i]+', '+E.ClassName+': '+E.Message);
+               end;
+            end;
          end else Check(prog.Msgs.AsInfo<>'', FFailures[i]+': undetected error');
 
          (prog as TdwsProgram).InitExpr.RecursiveEnumerateSubExprs(EmptyCallBack);
