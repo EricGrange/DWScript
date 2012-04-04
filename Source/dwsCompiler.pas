@@ -1879,7 +1879,7 @@ var
    names : TStringList;
    sym : TDataSymbol;
    typ : TTypeSymbol;
-   pos : TScriptPos;
+   hotPos : TScriptPos;
    posArray : TScriptPosArray;
    initData : TData;
    initExpr : TTypedExpr;
@@ -1894,7 +1894,7 @@ begin
    try
       ReadNameList(names, posArray);
 
-      pos := FTok.HotPos;
+      hotPos:=FTok.HotPos;
 
       if FTok.TestDelete(ttCOLON) then begin
 
@@ -1902,8 +1902,8 @@ begin
          //    var myVar : type
          //    var myVar : type = expr
          //    var myVar : type := expr
-         typ := ReadType('', tcVariable);
-         if names.Count = 1 then begin
+         typ:=ReadType('', tcVariable);
+         if names.Count=1 then begin
             if FTok.TestDelete(ttEQ) or FTok.TestDelete(ttASSIGN) then begin
                if (typ is TRecordSymbol) and FTok.Test(ttBLEFT) then begin
                   initExpr:=TConstExpr.Create(FProg, typ, ReadConstRecord(TRecordSymbol(typ)), 0);
@@ -1924,20 +1924,23 @@ begin
          typ:=initExpr.Typ;
 
          if typ=nil then begin
-            FMsgs.AddCompilerError(pos, CPE_RightSideNeedsReturnType);
-            typ:=FProg.TypVariant; // keep going
+            FMsgs.AddCompilerError(hotPos, CPE_RightSideNeedsReturnType);
             FreeAndNil(initExpr);
          end;
 
       end else begin
 
-         typ := nil;
+         // keep going
+         typ := FProg.TypVariant;
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
 
       end;
 
-      if (typ is TClassSymbol) and TClassSymbol(typ).IsStatic then
-         FMsgs.AddCompilerErrorFmt(pos, CPE_ClassIsStatic, [TClassSymbol(typ).Name]);
+      // keep going in case of error
+      if typ=nil then
+         typ:=FProg.TypVariant
+      else if (typ is TClassSymbol) and TClassSymbol(typ).IsStatic then
+         FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStatic, [TClassSymbol(typ).Name]);
 
       for x:=0 to names.Count-1 do begin
          sym:=dataSymbolFactory.CreateDataSymbol(names[x], posArray[x], typ);
@@ -1949,7 +1952,7 @@ begin
 
             RecordSymbolUse(sym, posArray[x], [suDeclaration, suReference, suWrite]);
 
-            Result:=CreateAssign(pos, ttASSIGN, varExpr, initExpr);
+            Result:=CreateAssign(hotPos, ttASSIGN, varExpr, initExpr);
             initExpr:=nil;
 
          end else begin
@@ -1960,32 +1963,32 @@ begin
 
                // TODO: if Sym.DynamicInit?
                FProg.InitExpr.AddStatement(
-                  TInitDataExpr.Create(FProg, Pos, varExpr));
+                  TInitDataExpr.Create(FProg, hotPos, varExpr));
 
             end else begin
 
                // Initialize with default value
                if (varExpr.Typ=FProg.TypInteger) or (varExpr.Typ is TEnumerationSymbol) then
-                  assignExpr:=TAssignConstToIntegerVarExpr.CreateVal(FProg, pos, varExpr, 0)
+                  assignExpr:=TAssignConstToIntegerVarExpr.CreateVal(FProg, hotPos, varExpr, 0)
                else if varExpr.Typ=FProg.TypFloat then
-                  assignExpr:=TAssignConstToFloatVarExpr.CreateVal(FProg, pos, varExpr, 0)
+                  assignExpr:=TAssignConstToFloatVarExpr.CreateVal(FProg, hotPos, varExpr, 0)
                else if varExpr.Typ=FProg.TypBoolean then
-                  assignExpr:=TAssignConstToBoolVarExpr.CreateVal(FProg, pos, varExpr, False)
+                  assignExpr:=TAssignConstToBoolVarExpr.CreateVal(FProg, hotPos, varExpr, False)
                else if varExpr.Typ=FProg.TypString then
-                  assignExpr:=TAssignConstToStringVarExpr.CreateVal(FProg, pos, varExpr, '')
+                  assignExpr:=TAssignConstToStringVarExpr.CreateVal(FProg, hotPos, varExpr, '')
                else if varExpr.Typ.ClassType=TClassSymbol then
-                  assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, pos, varExpr)
+                  assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, hotPos, varExpr)
                else if varExpr.Typ.ClassType=TClassOfSymbol then
-                  assignExpr:=TAssignNilClassToVarExpr.CreateVal(FProg, pos, varExpr)
+                  assignExpr:=TAssignNilClassToVarExpr.CreateVal(FProg, hotPos, varExpr)
                else if varExpr.Typ is TFuncSymbol then
-                  assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, pos, varExpr)
+                  assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, hotPos, varExpr)
                else begin
                   initData := nil;
                   SetLength(initData, sym.Typ.Size);
                   TDataSymbol(sym).Typ.InitData(initData, 0);
 
                   constExpr:=TConstExpr.CreateTyped(FProg, sym.Typ, initData);
-                  assignExpr:=TAssignConstDataToVarExpr.Create(FProg, pos, varExpr, constExpr);
+                  assignExpr:=TAssignConstDataToVarExpr.Create(FProg, hotPos, varExpr, constExpr);
                end;
                FProg.InitExpr.AddStatement(assignExpr);
 
@@ -4220,9 +4223,11 @@ begin
                end;
             end;
          end else if FTok.Test(ttBLEFT) then begin
-            if baseType is TFuncSymbol then
-               Result := ReadFunc(TFuncSymbol(baseType), Result as TDataExpr)
-            else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMethodExpected);
+            if baseType is TFuncSymbol then begin
+               dataExpr:=Result as TDataExpr;
+               Result:=nil;
+               Result:=ReadFunc(TFuncSymbol(baseType), dataExpr);
+            end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMethodExpected);
          end;
 
       until (Expr = Result);

@@ -638,9 +638,11 @@ function TdwsSuggestions.GetCaption(i : Integer) : UnicodeString;
 
    function SafeSymbolName(symbol : TSymbol) : UnicodeString;
    begin
-      if symbol<>nil then
-         Result:=symbol.Name
-      else Result:='???';
+      if symbol<>nil then begin
+         Result:=symbol.Name;
+         if (Result='') and (symbol.Typ<>nil) then
+            Result:=symbol.Caption;
+      end else Result:='???';
    end;
 
 var
@@ -649,6 +651,8 @@ var
    valueSym : TValueSymbol;
    enumSym : TEnumerationSymbol;
    propSymbol : TPropertySymbol;
+   dynSymbol : TDynamicArraySymbol;
+   statSymbol : TStaticArraySymbol;
 begin
    symbol:=FList[i];
    if symbol is TFuncSymbol then begin
