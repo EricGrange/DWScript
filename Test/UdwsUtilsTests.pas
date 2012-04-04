@@ -22,6 +22,7 @@ type
          procedure WOBSBigFirstTest;
          procedure TightListTest;
          procedure LookupTest;
+         procedure SortedListExtract;
 
          procedure JSONTest;
          procedure ParseJSON;
@@ -221,6 +222,31 @@ begin
    finally
       lookup.Free;
    end;
+end;
+
+// SortedListExtract
+//
+type
+   TTestSortedList = class (TSortedList<TObject>)
+      function Compare(const item1, item2 : TObject) : Integer; override;
+   end;
+function TTestSortedList.Compare(const item1, item2 : TObject) : Integer;
+begin
+   Result:=NativeInt(item1)-NativeInt(item2);
+end;
+procedure TdwsUtilsTests.SortedListExtract;
+var
+   list : TSortedList<TObject>;
+begin
+   list:=TTestSortedList.Create;
+   list.Add(nil);
+   list.Add(nil);
+   CheckEquals(2, list.Count);
+   list.Extract(0);
+   CheckEquals(1, list.Count);
+   list.Extract(0);
+   CheckEquals(0, list.Count);
+   list.Free;
 end;
 
 // JSONTest

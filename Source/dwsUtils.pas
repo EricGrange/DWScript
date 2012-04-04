@@ -1113,11 +1113,15 @@ end;
 // Extract
 //
 function TSortedList<T>.Extract(index : Integer) : T;
+var
+   n : Integer;
 begin
-   Result:=FItems[index];
-   Move(FItems[index+1], FItems[index], (FCount-index-1)*SizeOf(T));
-   SetLength(FItems, FCount-1);
    Dec(FCount);
+   Result:=FItems[index];
+   n:=FCount-index;
+   if n>0 then
+      Move(FItems[index+1], FItems[index], n*SizeOf(T));
+   SetLength(FItems, FCount);
 end;
 
 // IndexOf
