@@ -3627,11 +3627,17 @@ end;
 // CodeGen
 //
 procedure TJSExitExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   func : TFuncSymbol;
 begin
-   if     (codeGen.Context is TdwsProcedure)
-      and (TdwsProcedure(codeGen.Context).Func.Typ<>nil) then begin
+   if codeGen.Context is TdwsProcedure then
+      func:=TdwsProcedure(codeGen.Context).Func
+   else func:=nil;
+   if (func<>nil) and (func.Typ<>nil) then begin
       codeGen.WriteString('return ');
       codeGen.WriteString(TdwsJSCodeGen(codeGen).ResultSymbolName);
+      if IsLocalVarParam(codeGen, func.Result) then
+         codeGen.WriteString('.'+TdwsJSCodeGen.cBoxFieldName);
    end else codeGen.WriteString('return');
    codeGen.WriteStatementEnd;
 end;

@@ -7353,8 +7353,9 @@ begin
             Result.Free;
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
          end;
-         if Result.Typ is TClassSymbol then
-            Result:=ReadSymbol(Result, isWrite) as TTypedExpr;
+         if Result.Typ is TClassSymbol then begin
+            Result:=(ReadSymbol(Result, isWrite) as TTypedExpr);
+         end;
       end;
       ttAT : begin
          FTok.KillToken;
