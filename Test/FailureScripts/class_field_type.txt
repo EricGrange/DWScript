@@ -1,0 +1,2 @@
+Syntax Error: Unknown name "Bug" [line: 2, column: 15]
+Syntax Error: Unknown name "Bug" [line: 3, column: 25]

@@ -3366,20 +3366,43 @@ procedure TArrayConstantExpr.TypeCheckElements(prog : TdwsProgram);
 var
    x : Integer;
    expr : TTypedExpr;
+   elemTyp : TTypeSymbol;
 begin
    if Typ.Typ=nil then
       prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_InvalidConstType, [SYS_VOID])
-   else begin
-      for x:=0 to FElementExprs.Count-1 do begin
-         expr:=TTypedExpr(FElementExprs.List[x]);
-         if (Typ.Typ=Prog.TypFloat) and (expr.Typ=Prog.TypInteger) then begin
-            expr:=TConvFloatExpr.Create(Prog, expr);
-            FElementExprs.List[x]:=expr;
+   else if FElementExprs.Count>0 then begin
+      elemTyp:=Elements[0].Typ;
+      for x:=1 to FElementExprs.Count-1 do begin
+         expr:=Elements[x];
+         if not elemTyp.IsCompatible(expr.Typ) then begin
+            if elemTyp.IsOfType(prog.TypInteger) and expr.Typ.IsOfType(prog.TypFloat) then
+               elemTyp:=prog.TypFloat
+            else if elemTyp.IsOfType(prog.TypFloat) and expr.Typ.IsOfType(prog.TypInteger) then
+               // handled below
+            else if expr.Typ.IsCompatible(elemTyp) then
+               elemTyp:=expr.Typ
+            else if prog.TypVariant.IsCompatible(expr.Typ) and prog.TypVariant.IsCompatible(elemTyp) then
+               elemTyp:=prog.TypVariant
+            else begin
+               prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_AssignIncompatibleTypes,
+                                                    [expr.Typ.Caption, elemTyp.Caption]);
+               Exit;
+            end;
          end;
-         if not Typ.Typ.IsCompatible(expr.Typ) then
-            prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_AssignIncompatibleTypes,
-                                                 [expr.Typ.Caption, Typ.Typ.Caption]);
       end;
+
+      // implicit cast integer to float
+      if elemTyp.IsOfType(Prog.TypFloat) then begin
+         for x:=1 to FElementExprs.Count-1 do begin
+            expr:=Elements[x];
+            if expr.Typ.IsOfType(Prog.TypInteger) then begin
+               expr:=TConvFloatExpr.Create(Prog, expr);
+               FElementExprs.List[x]:=expr;
+            end;
+         end;
+      end;
+
+      Typ.Typ:=elemTyp;
    end;
 end;
 

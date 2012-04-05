@@ -1,0 +1,11 @@
+Empty
+0 : nil
+0 : TObject
+1 : TTest
+0 : TTest
+1 : TObject
+0 : TObject
+1 : nil
+0 : nil
+1 : TObject
+Empty

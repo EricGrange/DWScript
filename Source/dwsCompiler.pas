@@ -6233,7 +6233,8 @@ begin
       if not FTok.TestDelete(ttCOLON) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
 
-      typ := ReadType('', tcMember);
+      typ:=ReadType('', tcMember);
+
       for i := 0 to Names.Count - 1 do begin
          // Check if name isn't already used
          sym := classSymbol.Members.FindLocal(Names[i]);
@@ -6953,10 +6954,10 @@ begin
 
          sym:=ReadNameSymbol(namePos);
 
-
-         if not Assigned(sym) then
-            Result:=nil
-         else if not sym.IsType then begin
+         if not Assigned(sym) then begin
+            // keep compiling
+            Result:=FProg.TypVariant;
+         end else if not sym.IsType then begin
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidType, [sym.Name]);
             Result:=FProg.TypVariant; // keep compiling
          end else if sym is TConnectorSymbol then begin
