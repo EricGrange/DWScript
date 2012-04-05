@@ -1,6 +1,6 @@
 {$IFDEF TEST}
 PrintLn('Bug 1');
-{$ENDIF}
+{$ENDIF junk}
 
 {$IFNDEF TEST}
 PrintLn('Hello');

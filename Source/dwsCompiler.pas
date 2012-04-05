@@ -516,6 +516,7 @@ type
          function ReadSwitch(const switchName : UnicodeString) : Boolean;
          function ReadInstrSwitch(const switchName : UnicodeString) : Boolean;
          function ReadExprSwitch(const switchPos : TScriptPos) : Boolean;
+         procedure SkipUntilCurlyRight;
 
          function ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                              expecting : TTypeSymbol = nil) : TProgramExpr;
@@ -7833,16 +7834,6 @@ end;
 // ReadInstrSwitch
 //
 function TdwsCompiler.ReadInstrSwitch(const switchName : UnicodeString) : Boolean;
-
-   procedure SkipUntilCurlyRight;
-   begin
-      while not FTok.Test(ttCRIGHT) do begin
-         if not FTok.HasTokens then
-            Exit;
-         FTok.KillToken;
-      end;
-   end;
-
 var
    switch : TSwitchInstruction;
    name, scriptSource : UnicodeString;
@@ -8029,6 +8020,8 @@ begin
          if FTok.ConditionalDepth.Count=0 then
             FMsgs.AddCompilerStop(switchPos, CPE_UnbalancedConditionalDirective)
          else FTok.ConditionalDepth.Pop;
+         // tolerate junk after endif before the curly right
+         SkipUntilCurlyRight;
 
       end;
       siHint, siWarning, siError, siFatal : begin
@@ -8125,6 +8118,17 @@ begin
    FTok.SimulateStringToken(switchPos, value);
 end;
 
+// SkipUntilCurlyRight
+//
+procedure TdwsCompiler.SkipUntilCurlyRight;
+begin
+   while not FTok.Test(ttCRIGHT) do begin
+      if not FTok.HasTokens then
+         Exit;
+      FTok.KillToken;
+   end;
+end;
+
 // ReadUntilEndOrElseSwitch
 //
 function TdwsCompiler.ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
@@ -8163,6 +8167,8 @@ begin
 
          siEndIf : begin
 
+            // tolerate junk after endif
+            SkipUntilCurlyRight;
             Dec(innerDepth);
             if innerDepth<0 then Break;
 
