@@ -1178,7 +1178,8 @@ begin
             or (field.Typ is TClassSymbol)
             or (field.Typ is TInterfaceSymbol)
             or (field.Typ is TFuncSymbol)
-            or (field.Typ is TDynamicArraySymbol) then begin
+            or (field.Typ is TDynamicArraySymbol)
+            or (field.Typ is TEnumerationSymbol) then begin
             WriteString('$s.');
             WriteSymbolName(field)
          end else if field.Typ is TRecordSymbol then begin

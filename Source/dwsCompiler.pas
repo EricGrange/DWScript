@@ -266,6 +266,7 @@ type
    end;
 
    IdwsDataSymbolFactory = interface
+      procedure CheckName(const name : String; const namePos : TScriptPos);
       function CreateDataSymbol(const name : String; const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol;
       function CreateConstSymbol(const name : String; const namePos : TScriptPos; typ : TTypeSymbol;
                                  const data : TData; addr : Integer) : TConstSymbol;
@@ -696,6 +697,7 @@ type
    TStandardSymbolFactory = class (TInterfacedObject, IdwsDataSymbolFactory)
       FCompiler : TdwsCompiler;
       constructor Create(aCompiler : TdwsCompiler);
+      procedure CheckName(const name : String; const namePos : TScriptPos); virtual;
       function CreateDataSymbol(const name : String; const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol; virtual;
       function CreateConstSymbol(const name : String; const namePos : TScriptPos;
                                  typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol; virtual;
@@ -707,6 +709,7 @@ type
       FVisibility : TdwsVisibility;
       constructor Create(aCompiler : TdwsCompiler; structType : TStructuredTypeSymbol;
                          aVisibility : TdwsVisibility);
+      procedure CheckName(const name : String; const namePos : TScriptPos); override;
       function CreateDataSymbol(const name : String; const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol; override;
       function CreateConstSymbol(const name : String; const namePos : TScriptPos;
                                  typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol; override;
@@ -737,12 +740,19 @@ begin
    FCompiler:=aCompiler;
 end;
 
+// CheckName
+//
+procedure TStandardSymbolFactory.CheckName(const name : String; const namePos : TScriptPos);
+begin
+   FCompiler.CheckName(name, namePos);
+end;
+
 // CreateDataSymbol
 //
 function TStandardSymbolFactory.CreateDataSymbol(const name : String; const namePos : TScriptPos;
                                                  typ : TTypeSymbol) : TDataSymbol;
 begin
-   FCompiler.CheckName(name, namePos);
+   CheckName(name, namePos);
    Result:=TDataSymbol.Create(name, typ);
    FCompiler.FProg.Table.AddSymbol(Result);
 end;
@@ -779,17 +789,25 @@ begin
    FVisibility:=aVisibility;
 end;
 
+// CheckName
+//
+procedure TStructuredTypeSymbolFactory.CheckName(const name : String; const namePos : TScriptPos);
+var
+   sym : TSymbol;
+begin
+   sym:=FStructuredType.Members.FindLocal(name);
+   if Assigned(sym) then
+      FCompiler.FMsgs.AddCompilerErrorFmt(namePos, CPE_NameAlreadyExists, [name]);
+end;
+
 // CreateDataSymbol
 //
 function TStructuredTypeSymbolFactory.CreateDataSymbol(const name : String; const namePos : TScriptPos;
                                                        typ : TTypeSymbol) : TDataSymbol;
 var
-   sym : TSymbol;
    cvs : TClassVarSymbol;
 begin
-   sym:=FStructuredType.Members.FindLocal(name);
-   if Assigned(sym) then
-      FCompiler.FMsgs.AddCompilerErrorFmt(namePos, CPE_NameAlreadyExists, [name]);
+   CheckName(name, namePos);
 
    cvs:=TClassVarSymbol.Create(name, typ);
    cvs.Visibility:=FVisibility;
@@ -2023,7 +2041,7 @@ begin
 
    end else begin
 
-      CheckName(name, constPos);
+      factory.CheckName(name, constPos);
       CheckSpecialName(name);
 
       if FTok.TestDelete(ttCOLON) then
@@ -6001,7 +6019,7 @@ var
    i : Integer;
 begin
    // Check for a forward declaration of this class
-   sym:=FProg.Table.FindSymbol(typeName, cvMagic);
+   sym:=FProg.Table.FindTypeLocal(typeName);
    Result:=nil;
 
    if Assigned(sym) then begin

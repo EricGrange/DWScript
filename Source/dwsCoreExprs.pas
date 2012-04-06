@@ -7068,14 +7068,10 @@ constructor TArrayAddExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos
                                  aBase :  TTypedExpr; argExprs : TTypedExprList);
 var
    i : Integer;
-   arg : TTypedExpr;
 begin
    inherited Create(prog, scriptPos, aBase);
-   for i:=0 to argExprs.Count-1 do begin
-      arg:=argExprs[i];
-      Assert(arg is TDataExpr);
-      FArgs.Add(arg);
-   end;
+   for i:=0 to argExprs.Count-1 do
+      FArgs.Add(argExprs[i]);
 end;
 
 // Destroy
@@ -7093,20 +7089,22 @@ var
    base, src : IScriptObj;
    dyn, dynSrc : TScriptDynamicArray;
    i, n : Integer;
-   arg : TDataExpr;
+   arg : TTypedExpr;
+   argData : TDataExpr;
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
    dyn:=TScriptDynamicArray(base.InternalObject);
 
    for i:=0 to FArgs.Count-1 do begin
-      arg:=TDataExpr(FArgs.List[i]);
+      arg:=TTypedExpr(FArgs.List[i]);
 
       if dyn.ElementTyp.IsCompatible(arg.Typ) then begin
 
          n:=dyn.Length;
          dyn.Length:=n+1;
          if arg.Typ.Size>1 then begin
-            DWSCopyData(arg.Data[exec], arg.Addr[exec],
+            argData:=(arg as TDataExpr);
+            DWSCopyData(argData.Data[exec], argData.Addr[exec],
                         dyn.Data, n*dyn.ElementSize, dyn.ElementSize);
          end else arg.EvalAsVariant(exec, dyn.Data[n]);
 
