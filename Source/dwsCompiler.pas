@@ -795,6 +795,8 @@ procedure TStructuredTypeSymbolFactory.CheckName(const name : String; const name
 var
    sym : TSymbol;
 begin
+   if name='' then Exit;
+
    sym:=FStructuredType.Members.FindLocal(name);
    if Assigned(sym) then
       FCompiler.FMsgs.AddCompilerErrorFmt(namePos, CPE_NameAlreadyExists, [name]);
@@ -8228,6 +8230,8 @@ var
    i : Integer;
    subTable : TSymbolTable;
 begin
+   if name='' then Exit;
+
    sym:=FProg.Table.FindLocal(name);
 
    if not Assigned(sym) and (FProg is TdwsProcedure) then
