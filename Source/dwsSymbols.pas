@@ -4085,7 +4085,7 @@ end;
 
 function TValueSymbol.GetDescription: UnicodeString;
 begin
-  Result := Name + ': ' + Typ.Description;
+  Result := Name + ': ' + Typ.Caption;
 end;
 
 // ------------------

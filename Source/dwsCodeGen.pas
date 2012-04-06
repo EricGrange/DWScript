@@ -802,11 +802,11 @@ begin
       for sym in structSym.Members do begin
          if (sym is TMethodSymbol) and (TMethodSymbol(sym).IsClassMethod) then
             SymbolMap.MapSymbol(sym, cgssGlobal, canObfuscate)
-         else SymbolMap.MapSymbol(sym, cgssClass, canObfuscate);
+         else SymbolMap.MapSymbol(sym, cgssGlobal, canObfuscate);
       end;
    end else begin
       for sym in structSym.Members do
-         SymbolMap.MapSymbol(sym, cgssClass, canObfuscate);
+         SymbolMap.MapSymbol(sym, cgssGlobal, canObfuscate);
    end;
    LeaveScopes(n);
 end;
