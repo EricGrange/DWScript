@@ -580,6 +580,8 @@ type
          function  SubTableDepth : Integer;
          function  SubTable(depth : Integer) : TSymbolTable;
 
+         function ContextMethodSymbol : TMethodSymbol;
+
          property Expr : TNoResultExpr read FExpr write FExpr;
          property InitExpr : TBlockInitExpr read FInitExpr;
          property Level : Integer read GetLevel;
@@ -2761,6 +2763,23 @@ end;
 function TdwsProgram.SubTable(depth : Integer) : TSymbolTable;
 begin
    Result:=TSymbolTable(FSubTables.List[depth]);
+end;
+
+// ContextMethodSymbol
+//
+function TdwsProgram.ContextMethodSymbol : TMethodSymbol;
+var
+   progIter : TdwsProgram;
+begin
+   progIter:=Self;
+   while (progIter<>nil) and (progIter is TdwsProcedure) do begin
+      if TdwsProcedure(progIter).Func is TMethodSymbol then begin
+         Result:=TMethodSymbol(TdwsProcedure(progIter).Func);
+         Exit;
+      end;
+      progIter:=progIter.Parent;
+   end;
+   Result:=nil;
 end;
 
 // ------------------

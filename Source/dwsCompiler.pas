@@ -3505,7 +3505,7 @@ begin
       end else if sym.InheritsFrom(TFieldSymbol) then begin
 
          if TdwsProcedure(FProg).Func is TMethodSymbol then begin
-            progMeth:=TMethodSymbol(TdwsProcedure(FProg).Func);
+            progMeth:=FProg.ContextMethodSymbol;
             selfSym:=progMeth.SelfSym;
          end else begin
             selfSym:=TDataSymbol(FProg.Table.FindSymbol(SYS_SELF, cvMagic, TDataSymbol));
@@ -3520,7 +3520,7 @@ begin
 
       end else if sym.InheritsFrom(TPropertySymbol) then begin
 
-         progMeth := TMethodSymbol(TdwsProcedure(FProg).Func);
+         progMeth := FProg.ContextMethodSymbol;
          if progMeth.SelfSym.ClassType=TVarParamSymbol then
             varExpr:=GetVarParamExpr(progMeth.SelfSym as TVarParamSymbol)
          else varExpr:=GetVarExpr(progMeth.SelfSym);
@@ -4783,9 +4783,7 @@ var
    progMeth : TMethodSymbol;
    structSym : TStructuredTypeSymbol;
 begin
-   if FProg is TdwsProcedure then
-      progMeth:=(TdwsProcedure(FProg).Func as TMethodSymbol)
-   else progMeth:=nil;
+   progMeth:=FProg.ContextMethodSymbol;
 
    if progMeth<>nil then begin
       Result:=GetMethodExpr(methodSym,
