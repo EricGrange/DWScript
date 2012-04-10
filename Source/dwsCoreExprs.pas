@@ -5907,7 +5907,7 @@ end;
 //
 procedure TCompareCaseCondition.TypeCheck(prog : TdwsProgram; typ : TTypeSymbol);
 begin
-   if not typ.IsCompatible(FCompareExpr.Typ) then
+   if (FCompareExpr.Typ=nil) or not typ.IsCompatible(FCompareExpr.Typ) then
       if not (IsOfTypeNumber(prog, FCompareExpr.Typ) and IsOfTypeNumber(prog, typ)) then
          prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_IncompatibleTypes,
                                               [typ.Caption, FCompareExpr.Typ.Caption]);
@@ -5982,7 +5982,7 @@ var
 begin
    fromIsNumber:=IsOfTypeNumber(prog, FFromExpr.Typ);
 
-   if not FFromExpr.Typ.IsCompatible(FToExpr.Typ) then begin
+   if (FFromExpr.Typ=nil) or not FFromExpr.Typ.IsCompatible(FToExpr.Typ) then begin
       if not (fromIsNumber and IsOfTypeNumber(prog, FToExpr.Typ)) then begin
          prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_RangeIncompatibleTypes,
                                               [FFromExpr.Typ.Caption, FToExpr.Typ.Caption]);

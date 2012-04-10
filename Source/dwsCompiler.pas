@@ -4620,7 +4620,9 @@ begin
    try
       Result := TCaseExpr.Create(FProg, FTok.HotPos);
       try
-         Result.ValueExpr := ReadExpr;
+         Result.ValueExpr:=ReadExpr;
+         if Result.ValueExpr.Typ=nil then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
 
          if not FTok.TestDelete(ttOF) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_OfExpected);
@@ -4672,7 +4674,7 @@ begin
    repeat
 
       hotPos:=FTok.HotPos;
-      exprFrom := ReadExpr;
+      exprFrom:=ReadExpr;
 
       try
          if FTok.TestDelete(ttDOTDOT) then begin
@@ -4685,7 +4687,8 @@ begin
          end;
          exprFrom:=nil;
          condList.Add(condition);
-         condition.TypeCheck(FProg, valueExpr.Typ);
+         if valueExpr.Typ<>nil then
+            condition.TypeCheck(FProg, valueExpr.Typ);
       except
          exprFrom.Free;
          raise;
