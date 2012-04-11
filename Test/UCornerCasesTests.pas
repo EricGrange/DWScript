@@ -38,6 +38,7 @@ type
          procedure DestructorCall;
          procedure SubExprTest;
          procedure RecompileInContext;
+         procedure RecompileInContext2;
          procedure ScriptPos;
          procedure MonkeyTest;
          procedure SameVariantTest;
@@ -692,6 +693,45 @@ begin
 
    exec:=prog.Execute;
    CheckEquals('world', exec.Result.ToString, 'Recompile Result');
+end;
+
+// RecompileInContext2
+//
+procedure TCornerCasesTests.RecompileInContext2;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'type TTest = class '
+                              +'constructor Create;'
+                              +'procedure Test;'
+                           +'end;'
+                           +'var t : TTest;'
+                           +'constructor TTest.Create; begin t:=Self; end;'
+                           +'procedure TTest.Test; begin Print(ClassName); end;'
+                           +'TTest.Create;'
+                           );
+
+   CheckEquals(0, prog.Msgs.Count, 'Compile: '+prog.Msgs.AsInfo);
+
+   exec:=prog.BeginNewExecution;
+   try
+
+      exec.RunProgram(0);
+
+      CheckEquals('', exec.Result.ToString, 'Compile Result');
+
+      FCompiler.RecompileInContext(prog, 't.Test;');
+
+      CheckEquals(0, prog.Msgs.Count, 'Recompile: '+prog.Msgs.AsInfo);
+
+      exec.RunProgram(0);
+
+      CheckEquals('TTest', exec.Result.ToString, 'Recompile Result');
+
+   finally
+      exec.EndProgram;
+   end;
 end;
 
 // ScriptPos
