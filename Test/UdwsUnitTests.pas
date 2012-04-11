@@ -84,6 +84,7 @@ type
          procedure Delegates;
          procedure Operators;
          procedure OpenArray;
+         procedure CallPrint;
 
          procedure ExplclitUses;
    end;
@@ -1398,6 +1399,32 @@ begin
       exec.RunProgram(0);
 
       CheckEquals( '2:one,two'#13#10'0:'#13#10,
+                  exec.Result.ToString+exec.Msgs.AsInfo);
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// CallPrint
+//
+procedure TdwsUnitTests.CallPrint;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   print : IInfo;
+begin
+   FMagicVar:='';
+   prog:=FCompiler.Compile( 'PrintLn("Hello");');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.BeginNewExecution;
+   try
+      exec.RunProgram(0);
+      print:=exec.Info.Func['Print'];
+      print.Call(['world']);
+
+      CheckEquals( 'Hello'#13#10'world',
                   exec.Result.ToString+exec.Msgs.AsInfo);
    finally
       exec.EndProgram;
