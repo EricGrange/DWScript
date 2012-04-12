@@ -4217,9 +4217,14 @@ begin
          // Arrays
          else if FTok.Test(ttALEFT) then begin
             if Assigned(Result) then begin
-               if baseType is TStructuredTypeSymbol then begin
-                  // array property
-                  defaultProperty:=GetDefaultProperty(TStructuredTypeSymbol(baseType));
+
+               if (baseType is TStructuredTypeSymbol) or (baseType is TStructuredTypeMetaSymbol) then begin
+
+                  // class array property
+                  if baseType is TStructuredTypeSymbol then
+                     defaultProperty:=GetDefaultProperty(TStructuredTypeSymbol(baseType))
+                  else defaultProperty:=GetDefaultProperty(TStructuredTypeMetaSymbol(baseType).StructSymbol);
+
                   if Assigned(defaultProperty) then begin
                      RecordSymbolUseImplicitReference(defaultProperty, FTok.HotPos, isWrite);
                      Result:=ReadPropertyExpr(TDataExpr(Result), defaultProperty, isWrite)
@@ -4227,7 +4232,9 @@ begin
                      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NoDefaultProperty,
                                               [TDataExpr(Result).Typ.Name]);
                   end;
+
                end else begin
+
                   // Type "array"
                   dataExpr:=(Result as TDataExpr);
                   if baseType is TArraySymbol then
@@ -4241,7 +4248,9 @@ begin
                   end else FMsgs.AddCompilerError(FTok.HotPos, CPE_ArrayExpected);
                   if Optimize then
                      Result:=Result.Optimize(FProg, FExec);
+
                end;
+
             end;
          end else if FTok.Test(ttBLEFT) then begin
             if baseType is TFuncSymbol then begin
