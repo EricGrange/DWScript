@@ -8446,7 +8446,7 @@ end;
 //
 procedure TdwsCompiler.CompareFuncSymbolParams(a, b : TFuncSymbol);
 begin
-   if Assigned(a.Typ) and not a.Typ.IsCompatible(b.Typ) then
+   if (a.Typ<>nil) and ((b.Typ=nil) or not a.Typ.IsCompatible(b.Typ)) then
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadResultType, [a.Typ.Caption]);
 
    if a.Params.Count<>b.Params.Count then
