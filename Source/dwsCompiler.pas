@@ -475,6 +475,7 @@ type
          function ReadNameInherited(isWrite : Boolean) : TProgramExpr;
          procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray;
                                 allowDots : Boolean = False);
+         procedure ReadExternalName(funcSym : TFuncSymbol);
          function  ReadNew(isWrite : Boolean) : TProgramExpr;
          function  ReadNewArray(elementTyp : TTypeSymbol) : TNewArrayExpr;
          procedure ReadArrayParams(ArrayIndices: TSymbolTable);
@@ -2362,6 +2363,13 @@ begin
                         ReadSemiColon;
                      end;
                   end;
+
+                  if FTok.TestName and UnicodeSameText(FTok.GetToken.FString, 'NAME') then begin
+                     if not Result.IsExternal then
+                        FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_StructureIsNotExternal, [Result.Name]);
+                     ReadExternalName(Result);
+                  end;
+
                end;
 
                ReadDeprecated(Result);
@@ -2612,6 +2620,12 @@ begin
             else funcResult.SetIsFinal;
             ReadSemiColon;
          end;
+      end;
+
+      if FTok.TestName and UnicodeSameText(FTok.GetToken.FString, 'NAME') then begin
+         if not structSym.IsExternal then
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_StructureIsNotExternal, [funcResult.QualifiedName]);
+         ReadExternalName(funcResult);
       end;
 
       ReadDeprecated(funcResult);
@@ -5789,6 +5803,20 @@ begin
          FTok.KillToken;
       end;
    until not FTok.TestDelete(ttCOMMA);
+end;
+
+// ReadExternalName
+//
+procedure TdwsCompiler.ReadExternalName(funcSym : TFuncSymbol);
+begin
+   FTok.KillToken;
+   if not FTok.Test(ttStrVal) then begin
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_StringExpected);
+   end else begin
+      funcSym.ExternalName:=FTok.GetToken.FString;
+      FTok.KillToken;
+   end;
+   ReadSemiColon;
 end;
 
 // ReadNew

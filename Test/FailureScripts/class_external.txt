@@ -1,0 +1,3 @@
+Syntax Error: "TInternal.Bug1" is not external [line: 3, column: 23]
+Syntax Error: "Dummy" is not external [line: 6, column: 27]
+Syntax Error: String expected [line: 12, column: 28]

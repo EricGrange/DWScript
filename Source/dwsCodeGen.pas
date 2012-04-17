@@ -423,7 +423,7 @@ var
 begin
    if sym is TFuncSymbol then begin
       if TFuncSymbol(sym).IsExternal then
-         Exit(sym.Name);
+         Exit(TFuncSymbol(sym).ExternalName);
       if (sym is TMethodSymbol) then begin
          while TMethodSymbol(sym).IsOverride do
             sym:=TMethodSymbol(sym).ParentMeth;
@@ -1786,10 +1786,14 @@ end;
 procedure TdwsCodeGenSymbolMap.ReserveExternalName(sym : TSymbol);
 var
    i : Integer;
+   n : String;
 begin
-   i:=FNames.IndexOf(sym.Name);
+   if sym is TFuncSymbol then
+      n:=TFuncSymbol(sym).ExternalName
+   else n:=sym.Name;
+   i:=FNames.IndexOf(n);
    if i<0 then
-      FNames.AddObject(sym.Name, sym)
+      FNames.AddObject(n, sym)
    else begin
       if (FNames.Objects[i]<>FReservedSymbol) and (FNames.Objects[i]<>sym) then
          raise ECodeGenException.CreateFmt('External symbol "%s" already defined', [sym.Name]);

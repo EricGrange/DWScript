@@ -590,6 +590,7 @@ type
          FConditions : TConditionsSymbolTable;
          FFlags : TFuncSymbolFlags;
          FKind : TFuncKind;
+         FExternalName : String;
 
          procedure SetType(const Value: TTypeSymbol);
          function GetCaption : UnicodeString; override;
@@ -607,6 +608,8 @@ type
          procedure SetIsOverloaded(const val : Boolean);
          function GetSourcePosition : TScriptPos; virtual;
          procedure SetSourcePosition(const val : TScriptPos); virtual;
+         function GetExternalName : String;
+         procedure SetExternalName(const val : String);
 
          function GetSourceSubExpr(i : Integer) : TExprBase;
          function GetSourceSubExprCount : Integer;
@@ -645,9 +648,10 @@ type
          property IsDeprecated : Boolean read GetIsDeprecated write SetIsDeprecated;
          property IsStateless : Boolean read GetIsStateless write SetIsStateless;
          property IsForwarded : Boolean read GetIsForwarded;
-         property IsExternal : Boolean read GetIsExternal write SetIsExternal;
          property IsOverloaded : Boolean read GetIsOverloaded write SetIsOverloaded;
+         property IsExternal : Boolean read GetIsExternal write SetIsExternal;
          property Kind : TFuncKind read FKind write FKind;
+         property ExternalName : String read GetExternalName write SetExternalName;
          property Level : SmallInt read GetLevel;
          property InternalParams : TSymbolTable read FInternalParams;
          property Params : TParamsSymbolTable read FParams;
@@ -2642,6 +2646,22 @@ begin
    // ignore
 end;
 
+// GetExternalName
+//
+function TFuncSymbol.GetExternalName : String;
+begin
+   if FExternalName='' then
+      Result:=Name
+   else Result:=FExternalName;
+end;
+
+// SetExternalName
+//
+procedure TFuncSymbol.SetExternalName(const val : String);
+begin
+   FExternalName:=val;
+end;
+
 // GetSourceSubExpr
 //
 function TFuncSymbol.GetSourceSubExpr(i : Integer) : TExprBase;
@@ -2889,6 +2909,8 @@ begin
    FParams.AddParent(FStructSymbol.Members);
    FVisibility:=aVisibility;
    FVMTIndex:=-1;
+   if aStructSymbol.IsExternal then
+      IsExternal:=True;
 end;
 
 constructor TMethodSymbol.Generate(Table: TSymbolTable; MethKind: TMethodKind;

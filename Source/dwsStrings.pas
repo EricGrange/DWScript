@@ -142,6 +142,7 @@ const
   CPE_ImplClassNameExpected = 'Class name expected';
   CPE_ImplInvalidClass = '"%s" is not a method of class "%s"';
   CPE_ImplAbstract = '"%s.%s" is declared "abstract", no implementation allowed';
+  CPE_StructureIsNotExternal = '"%s" is not external';
   CPE_NonVirtualAbstract = '"abstract" is only valid for virtual methods';
   CPE_NonConstructorDefault = 'Only a constructor can be marked as default';
   CPE_DefaultConstructorAlreadyDefined = 'Class "%s" already has "%s" as default constructor!';
