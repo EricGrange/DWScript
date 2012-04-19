@@ -3849,7 +3849,12 @@ begin
          typedExprList.Free;
       end;
 
-   end;
+   end else if sym is TClassVarSymbol then begin
+
+      FreeAndNil(expr);
+      Result:=GetVarExpr(TClassVarSymbol(sym));
+
+   end else FMsgs.AddCompilerStop(aPos, CPE_WriteOnlyProperty);
 end;
 
 // ReadPropertyWriteExpr
@@ -3896,6 +3901,13 @@ begin
             fieldExpr:=ReadField(aPos, nil, TFieldSymbol(sym), expr);
             Result:=ReadAssign(ttASSIGN, fieldExpr);
 
+         end else if sym is TClassVarSymbol then begin
+
+            // WriteSym is a class var
+            FreeAndNil(expr);
+            fieldExpr:=GetVarExpr(TClassVarSymbol(sym));
+            Result:=ReadAssign(ttASSIGN, fieldExpr);
+
          end else begin
 
             // WriteSym is a Method
@@ -3924,7 +3936,15 @@ begin
                                                  TFieldSymbol(sym), expr);
                expr:=nil;
 
-            end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_WriteOnlyProperty)
+            end else if sym is TClassVarSymbol then begin
+
+               Result:=GetVarExpr(TClassVarSymbol(sym));
+
+            end else begin
+
+               FMsgs.AddCompilerStop(FTok.HotPos, CPE_WriteOnlyProperty)
+
+            end;
 
          end else begin
 
