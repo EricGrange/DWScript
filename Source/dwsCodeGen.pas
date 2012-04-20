@@ -431,6 +431,9 @@ begin
    end else if sym is TClassSymbol then begin
       if TClassSymbol(sym).IsExternal then
          Exit(sym.Name);
+   end else if sym is TFieldSymbol then begin
+      if TFieldSymbol(sym).StructSymbol.IsExternal then
+         Exit(sym.Name);
    end;
    Result:=FSymbolMap.SymbolToName(sym);
    if Result<>'' then Exit;
