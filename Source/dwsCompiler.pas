@@ -1052,6 +1052,10 @@ begin
       msgFmt:=CPE_FieldRedefined
    else if sym is TPropertySymbol then
       msgFmt:=CPE_PropertyRedefined
+   else if sym is TClassVarSymbol then
+      msgFmt:=CPE_ClassVarRedefined
+   else if sym is TConstSymbol then
+      msgFmt:=CPE_ClassConstRedefined
    else begin
       Assert(sym is TMethodSymbol);
       msgFmt:=CPE_MethodRedefined

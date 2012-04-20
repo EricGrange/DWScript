@@ -139,6 +139,8 @@ const
   CPE_PropertyRedefined = 'There is already a property with name "%s"';
   CPE_MethodRedefined = 'There is already a method with name "%s"';
   CPE_ClassOperatorRedefined = 'Class operator already defined for type "%s"';
+  CPE_ClassVarRedefined = 'There is already a class variable with name "%s"';
+  CPE_ClassConstRedefined = 'There is already a class const with name "%s"';
   CPE_ImplClassNameExpected = 'Class name expected';
   CPE_ImplInvalidClass = '"%s" is not a method of class "%s"';
   CPE_ImplAbstract = '"%s.%s" is declared "abstract", no implementation allowed';
