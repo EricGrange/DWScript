@@ -188,7 +188,7 @@ const
   CPE_InvalidNumberOfArguments = 'Method "%s" has a wrong number of arguments';
   CPE_InvalidParameterType = 'Method "%s" has an incompatible parameter type';
   CPE_ReadOrWriteExpected = 'Neither "read" nor "write" directive found';
-  CPE_IncompatibleWriteSymbol = 'Field/method "%s" has an incompatible type';
+  CPE_IncompatibleWriteSymbol = 'Symbol "%s" has an incompatible type';
   CPE_ClassNotCompletelyDefined = 'Class "%s" isn''t defined completely';
   CPE_MethodNotImplemented = 'Method "%s" of class "%s" not implemented';
   CPE_CantWriteProperty = 'Can''t write properties of complex type (record, array)';
@@ -312,6 +312,7 @@ const
   CPE_ConstantExpressionExpected = 'Constant expression expected';
   CPE_IntegerExpressionExpected = 'Integer expression expected';
   CPE_InvalidConstType = 'Invalid const type "%s"';
+  CPE_ConstantCannotBeWrittenTo = 'Constant "%s" cannot be written to';
 
   CPE_CompilerSwitchUnknown = 'Compiler switch "%s" unknown';
 

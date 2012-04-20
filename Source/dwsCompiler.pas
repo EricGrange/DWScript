@@ -3858,6 +3858,11 @@ begin
       FreeAndNil(expr);
       Result:=GetVarExpr(TClassVarSymbol(sym));
 
+   end else if sym is TConstSymbol then begin
+
+      FreeAndNil(expr);
+      Result:=TConstExpr.CreateTyped(FProg, sym.Typ, TConstSymbol(sym));
+
    end else FMsgs.AddCompilerStop(aPos, CPE_WriteOnlyProperty);
 end;
 
@@ -3912,12 +3917,16 @@ begin
             fieldExpr:=GetVarExpr(TClassVarSymbol(sym));
             Result:=ReadAssign(ttASSIGN, fieldExpr);
 
-         end else begin
+         end else if sym is TMethodSymbol then begin
 
             // WriteSym is a Method
             // Convert an assignment to a function call f := x  -->  f(x)
-            Assert(sym is TMethodSymbol);
             Result:=ReadPropertyArrayAccessor(expr, propertySym, typedExprList, aPos, True);
+
+         end else begin
+
+            Result:=TNullExpr.Create(FProg, aPos);
+            FMsgs.AddCompilerError(aPos, CPE_ReadOnlyProperty)
 
          end;
 
@@ -3946,7 +3955,8 @@ begin
 
             end else begin
 
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_WriteOnlyProperty)
+               Result:=TNullExpr.Create(FProg, aPos);
+               FMsgs.AddCompilerError(aPos, CPE_WriteOnlyProperty)
 
             end;
 
@@ -6637,7 +6647,11 @@ begin
 
             end else if Result.Typ <> sym.Typ then begin
 
-               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleWriteSymbol, [Name]);
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleWriteSymbol, [name]);
+
+            end else if sym is TConstSymbol then  begin
+
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConstantCannotBeWrittenTo, [name]);
 
             end;
 
