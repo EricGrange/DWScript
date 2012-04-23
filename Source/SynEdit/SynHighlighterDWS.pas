@@ -59,7 +59,7 @@ type
     tkSpace, tkString, tkSymbol, tkUnknown, tkFloat, tkHex, tkDirec, tkChar);
 
   TRangeState = (rsANil, rsAnsi, rsAnsiAsm, rsAsm, rsBor, rsBorAsm, rsProperty,
-    rsExports, rsDirective, rsDirectiveAsm, rsHereDoc, rsUnKnown);
+    rsExports, rsDirective, rsDirectiveAsm, rsHereDocSingle, rsHereDocDouble, rsUnKnown);
 
   PIdentFuncTableFunc = ^TIdentFuncTableFunc;
   TIdentFuncTableFunc = function : TtkTokenKind of object;
@@ -119,6 +119,7 @@ type
     procedure SlashProc;
     procedure SpaceProc;
     procedure StringAposProc;
+    procedure StringAposMultiProc;
     procedure StringQuoteProc;
     procedure SymbolProc;
     procedure UnknownProc;
@@ -178,7 +179,7 @@ uses
 
 const
    // if the language is case-insensitive keywords *must* be in lowercase
-   cKeyWords: array[1..94] of UnicodeString = (
+   cKeyWords: array[1..95] of UnicodeString = (
       'absolute', 'abstract', 'and', 'array', 'as', 'asm',
       'begin', 'break', 'case', 'cdecl', 'class', 'const', 'constructor',
       'contains', 'continue', 'deprecated', 'destructor',
@@ -192,7 +193,7 @@ const
       'pascal', 'private', 'procedure', 'program', 'property',
       'protected', 'public', 'published', 'raise', 'record',
       'register', 'reintroduce', 'repeat', 'require', 'resourcestring',
-      'sealed', 'set', 'shl', 'shr', 'step', 'string',
+      'sealed', 'set', 'shl', 'shr', 'static', 'step', 'string',
       'then', 'to', 'try', 'type', 'unit', 'until',
       'uses', 'var', 'virtual', 'while', 'xor', 'if'
   );
@@ -405,8 +406,12 @@ procedure TSynDWSSyn.AsciiCharProc;
 begin
   fTokenID := tkChar;
   Inc(Run);
-  while IsAsciiChar do
-    Inc(Run);
+  if fLine[run]='''' then
+      StringAposMultiProc
+  else begin
+     while IsAsciiChar do
+       Inc(Run);
+  end;
 end;
 
 procedure TSynDWSSyn.BorProc;
@@ -667,11 +672,28 @@ begin
   end;
 end;
 
+procedure TSynDWSSyn.StringAposMultiProc;
+begin
+  fTokenID := tkString;
+  Inc(Run);
+  fRange := rsHereDocSingle;
+  while not IsLineEnd(Run) do
+  begin
+    if fLine[Run] = '''' then begin
+      Inc(Run);
+      if fLine[Run] <> '''' then
+        fRange := rsUnknown;
+        break;
+    end;
+    Inc(Run);
+  end;
+end;
+
 procedure TSynDWSSyn.StringQuoteProc;
 begin
   fTokenID := tkString;
   Inc(Run);
-  fRange := rsHereDoc;
+  fRange := rsHereDocDouble;
   while not IsLineEnd(Run) do
   begin
     if fLine[Run] = '"' then begin
@@ -705,7 +727,9 @@ begin
          AnsiProc;
       rsBor, rsBorAsm, rsDirective, rsDirectiveAsm:
          BorProc;
-      rsHereDoc:
+      rsHereDocSingle:
+         StringAposMultiProc;
+      rsHereDocDouble:
          StringQuoteProc;
    else
       case fLine[Run] of

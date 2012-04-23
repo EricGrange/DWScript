@@ -1,0 +1,10 @@
+hello "world" !
+hello 'again' !
+first form
+'single'
+""double"" 
+with quotes
+second form
+''single''
+"double" 
+with quotes
