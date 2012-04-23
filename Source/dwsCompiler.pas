@@ -3936,6 +3936,7 @@ begin
 
          end else begin
 
+            FreeAndNil(expr);
             Result:=TNullExpr.Create(FProg, aPos);
             FMsgs.AddCompilerError(aPos, CPE_ReadOnlyProperty)
 
@@ -3962,10 +3963,12 @@ begin
 
             end else if sym is TClassVarSymbol then begin
 
+               FreeAndNil(expr);
                Result:=GetVarExpr(TClassVarSymbol(sym));
 
             end else begin
 
+               FreeAndNil(expr);
                Result:=TNullExpr.Create(FProg, aPos);
                FMsgs.AddCompilerError(aPos, CPE_WriteOnlyProperty)
 
