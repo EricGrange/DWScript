@@ -163,6 +163,7 @@ const
   CPE_ObjectReferenceExpected = 'Object reference needed to read/write an object field';
   CPE_StaticPropertyWriteExpected = 'Write access of property should be a static method';
   CPE_StaticPropertyReadExpected = 'Read access of property should be a static method';
+  CPE_OnlyNonVirtualClassMethodsAsStatic = 'Only non-virtual class methods can be marked as static';
   CPE_UnknownClass = 'Class "%s" not found';
   CPE_NotAClass = '"%s" is not a class';
   CPE_ClassForwardAlreadyExists = 'There is already a forward declaration of the "%s" class!';

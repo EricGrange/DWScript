@@ -2626,6 +2626,17 @@ begin
          end;
       end;
 
+      if FTok.TestDelete(ttSTATIC) then begin
+         if    funcResult.IsVirtual
+            or (not funcResult.IsClassMethod)
+            or (not (funcKind in [fkFunction, fkProcedure, fkMethod])) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_OnlyNonVirtualClassMethodsAsStatic)
+         else if not funcResult.IsClassMethod then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_OnlyNonVirtualClassMethodsAsStatic);
+         funcResult.IsStatic:=True;
+         ReadSemiColon;
+      end;
+
       if FTok.TestName and UnicodeSameText(FTok.GetToken.FString, 'NAME') then begin
          if not structSym.IsExternal then
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_StructureIsNotExternal, [funcResult.QualifiedName]);
@@ -4848,9 +4859,13 @@ begin
    progMeth:=FProg.ContextMethodSymbol;
 
    if progMeth<>nil then begin
-      Result:=GetMethodExpr(methodSym,
-                            TVarExpr.CreateTyped(FProg, progMeth.SelfSym),
-                            rkObjRef, FTok.HotPos, False);
+      if methodSym.IsStatic then
+         Result:=GetMethodExpr(methodSym, nil, rkObjRef, FTok.HotPos, False)
+      else begin
+         Result:=GetMethodExpr(methodSym,
+                               TVarExpr.CreateTyped(FProg, progMeth.SelfSym),
+                               rkObjRef, FTok.HotPos, False);
+      end;
    end else begin
       structSym:=methodSym.StructSymbol;
       Result:=GetMethodExpr(methodSym,

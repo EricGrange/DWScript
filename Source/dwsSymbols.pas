@@ -694,7 +694,8 @@ type
    TMethodKind = ( mkProcedure, mkFunction, mkConstructor, mkDestructor, mkMethod,
                    mkClassProcedure, mkClassFunction, mkClassMethod );
    TMethodAttribute = ( maVirtual, maOverride, maReintroduce, maAbstract,
-                        maOverlap, maClassMethod, maFinal, maDefault, maInterfaced );
+                        maOverlap, maClassMethod, maFinal, maDefault, maInterfaced,
+                        maStatic );
    TMethodAttributes = set of TMethodAttribute;
 
    // A method of a script class: TMyClass = class procedure X(param: UnicodeString); end;
@@ -723,6 +724,8 @@ type
          procedure SetIsInterfaced(const val : Boolean); inline;
          function GetIsDefault : Boolean; inline;
          procedure SetIsDefault(const val : Boolean); inline;
+         function GetIsStatic : Boolean; inline;
+         procedure SetIsStatic(const val : Boolean); inline;
 
          function GetCaption : UnicodeString; override;
          function GetDescription : UnicodeString; override;
@@ -757,6 +760,7 @@ type
          property IsFinal : Boolean read GetIsFinal;
          property IsOverlap : Boolean read GetIsOverlap;
          property IsClassMethod : Boolean read GetIsClassMethod;
+         property IsStatic : Boolean read GetIsStatic write SetIsStatic;
          property ParentMeth : TMethodSymbol read FParentMeth;
          property RootParentMeth : TMethodSymbol read GetRootParentMeth;
          property SelfSym : TDataSymbol read FSelfSym;
@@ -1109,6 +1113,7 @@ type
          constructor Create(const name : UnicodeString; aUnit : TSymbol);
 
          procedure AddField(fieldSym : TFieldSymbol); override;
+         procedure AddMethod(methSym : TMethodSymbol); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
          procedure InitData(const data : TData; offset : Integer); override;
@@ -2152,6 +2157,15 @@ begin
    FSize:=FSize+fieldSym.Typ.Size;
 end;
 
+// AddMethod
+//
+procedure TRecordSymbol.AddMethod(methSym : TMethodSymbol);
+begin
+   inherited;
+   if methSym.IsClassMethod then
+      methSym.IsStatic:=True;
+end;
+
 // Initialize
 //
 procedure TRecordSymbol.Initialize(const msgs : TdwsCompileMessageList);
@@ -3105,6 +3119,22 @@ begin
    if val then
       Include(FAttributes, maDefault)
    else Exclude(FAttributes, maDefault);
+end;
+
+// GetIsStatic
+//
+function TMethodSymbol.GetIsStatic : Boolean;
+begin
+   Result:=maStatic in FAttributes;
+end;
+
+// SetIsStatic
+//
+procedure TMethodSymbol.SetIsStatic(const val : Boolean);
+begin
+   if val then
+      Include(FAttributes, maStatic)
+   else Exclude(FAttributes, maStatic);
 end;
 
 // SetIsFinal
