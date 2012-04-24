@@ -255,7 +255,13 @@ begin
 
          source.LoadFromFile(FFailures[i]);
 
-         prog:=FCompiler.Compile(source.Text);
+         try
+            prog:=FCompiler.Compile(source.Text);
+         except
+            on E : Exception do begin
+               Check(False, FFailures[i]+', during compile '+E.ClassName+': '+E.Message);
+            end;
+         end;
 
          if coOptimize in FCompiler.Config.CompilerOptions then begin
             expectedErrorsFileName:=ChangeFileExt(FFailures[i], '.optimized.txt');
@@ -276,6 +282,14 @@ begin
 
          (prog as TdwsProgram).InitExpr.RecursiveEnumerateSubExprs(EmptyCallBack);
          (prog as TdwsProgram).Expr.RecursiveEnumerateSubExprs(EmptyCallBack);
+
+         try
+            prog:=nil;
+         except
+            on E : Exception do begin
+               Check(False, FFailures[i]+', during cleanup '+E.ClassName+': '+E.Message);
+            end;
+         end;
 
       end;
 
