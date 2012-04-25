@@ -7,6 +7,8 @@ interface
 type
    TMyClass1 = class end;
    TMyClass2 = class end;
+   
+type   
    TMyAlias = Integer;
 
 procedure PrintHelloWorld2a; forward;

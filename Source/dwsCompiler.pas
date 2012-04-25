@@ -2152,7 +2152,7 @@ begin
       if not FTok.TestDelete(ttSEMI) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
       token:=FTok.TestAny([ttINTERFACE, ttIMPLEMENTATION,
-                           ttVAR, ttCONST, ttEND,
+                           ttTYPE, ttVAR, ttCONST, ttEND,
                            ttCLASS, ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR]);
    until (not FTok.HasTokens) or (token<>ttNone);
 end;
