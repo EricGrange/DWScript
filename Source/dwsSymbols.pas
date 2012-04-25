@@ -725,7 +725,6 @@ type
          function GetIsDefault : Boolean; inline;
          procedure SetIsDefault(const val : Boolean); inline;
          function GetIsStatic : Boolean; inline;
-         procedure SetIsStatic(const val : Boolean); inline;
 
          function GetCaption : UnicodeString; override;
          function GetDescription : UnicodeString; override;
@@ -735,7 +734,7 @@ type
       public
          constructor Create(const Name: UnicodeString; FuncKind: TFuncKind; aStructSymbol : TStructuredTypeSymbol;
                             aVisibility : TdwsVisibility; isClassMethod : Boolean;
-                            FuncLevel: SmallInt = 1); virtual;
+                            funcLevel : Integer = 1); virtual;
          constructor Generate(Table: TSymbolTable; MethKind: TMethodKind;
                               const Attributes: TMethodAttributes; const MethName: UnicodeString;
                               const MethParams: TParamArray; const MethType: UnicodeString;
@@ -744,6 +743,7 @@ type
          procedure SetOverride(meth: TMethodSymbol);
          procedure SetOverlap(meth: TMethodSymbol);
          procedure SetIsFinal;
+         procedure SetIsStatic;
          procedure InitData(const data : TData; offset : Integer); override;
          function QualifiedName : UnicodeString; override;
          function HasConditions : Boolean;
@@ -760,7 +760,7 @@ type
          property IsFinal : Boolean read GetIsFinal;
          property IsOverlap : Boolean read GetIsOverlap;
          property IsClassMethod : Boolean read GetIsClassMethod;
-         property IsStatic : Boolean read GetIsStatic write SetIsStatic;
+         property IsStatic : Boolean read GetIsStatic;
          property ParentMeth : TMethodSymbol read FParentMeth;
          property RootParentMeth : TMethodSymbol read GetRootParentMeth;
          property SelfSym : TDataSymbol read FSelfSym;
@@ -2163,7 +2163,7 @@ procedure TRecordSymbol.AddMethod(methSym : TMethodSymbol);
 begin
    inherited;
    if methSym.IsClassMethod then
-      methSym.IsStatic:=True;
+      methSym.SetIsStatic;
 end;
 
 // Initialize
@@ -2901,9 +2901,9 @@ end;
 //
 constructor TMethodSymbol.Create(const Name: UnicodeString; FuncKind: TFuncKind;
   aStructSymbol : TStructuredTypeSymbol; aVisibility : TdwsVisibility; isClassMethod : Boolean;
-  FuncLevel: SmallInt);
+  funcLevel : Integer);
 begin
-   inherited Create(Name, FuncKind, FuncLevel);
+   inherited Create(Name, FuncKind, funcLevel);
    FStructSymbol := aStructSymbol;
    if isClassMethod then begin
       Include(FAttributes, maClassMethod);
@@ -3130,11 +3130,15 @@ end;
 
 // SetIsStatic
 //
-procedure TMethodSymbol.SetIsStatic(const val : Boolean);
+procedure TMethodSymbol.SetIsStatic;
 begin
-   if val then
-      Include(FAttributes, maStatic)
-   else Exclude(FAttributes, maStatic);
+   Include(FAttributes, maStatic);
+   if FSelfSym<>nil then begin
+      FInternalParams.Remove(FSelfSym);
+      FParams.Remove(FSelfSym);
+      FSelfSym.Free;
+      FSelfSym:=nil;
+   end;
 end;
 
 // SetIsFinal

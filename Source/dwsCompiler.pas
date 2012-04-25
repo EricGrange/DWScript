@@ -2633,7 +2633,7 @@ begin
             FMsgs.AddCompilerError(FTok.HotPos, CPE_OnlyNonVirtualClassMethodsAsStatic)
          else if not funcResult.IsClassMethod then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_OnlyNonVirtualClassMethodsAsStatic);
-         funcResult.IsStatic:=True;
+         funcResult.SetIsStatic;
          ReadSemiColon;
       end;
 
@@ -3542,26 +3542,37 @@ begin
             selfSym:=TDataSymbol(FProg.Table.FindSymbol(SYS_SELF, cvMagic, TDataSymbol));
          end;
 
-         if (selfSym=nil) or (selfSym.Typ is TStructuredTypeMetaSymbol) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
+         if (selfSym=nil) or (selfSym.Typ is TStructuredTypeMetaSymbol) then begin
 
-         fieldExpr:=ReadField(namePos, selfSym, TFieldSymbol(sym));
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ObjectReferenceExpected);
+            fieldExpr:=TFieldExpr.Create(FProg, namePos, TFieldSymbol(sym), nil);
 
+         end else begin
+
+            fieldExpr:=ReadField(namePos, selfSym, TFieldSymbol(sym));
+
+         end;
          Result:=ReadSymbol(fieldExpr, IsWrite, expecting);
 
       end else if sym.InheritsFrom(TPropertySymbol) then begin
 
-         progMeth := FProg.ContextMethodSymbol;
-         if progMeth.SelfSym.ClassType=TVarParamSymbol then
+         progMeth:=FProg.ContextMethodSymbol;
+         selfSym:=progMeth.SelfSym;
+
+         if selfSym=nil then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
+
+         if selfSym.ClassType=TVarParamSymbol then
             varExpr:=GetVarParamExpr(progMeth.SelfSym as TVarParamSymbol)
          else varExpr:=GetVarExpr(progMeth.SelfSym);
          try
             propExpr:=ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
-            Result:=ReadSymbol(propExpr, IsWrite, expecting);
          except
             varExpr.Free;
             raise;
          end;
+
+         Result:=ReadSymbol(propExpr, IsWrite, expecting);
 
       // Methods
       end else if sym.InheritsFrom(TMethodSymbol) then begin
@@ -3804,7 +3815,7 @@ begin
    end else begin
       if varExpr=nil then
          varExpr:=GetVarExpr(selfSym);
-      Result:=TFieldExpr.Create(FProg, FTok.HotPos, fieldSym.Typ, fieldSym, varExpr);
+      Result:=TFieldExpr.Create(FProg, FTok.HotPos, fieldSym, varExpr);
    end;
    varExpr:=nil;
 end;
@@ -3957,8 +3968,7 @@ begin
 
                if Expr.Typ is TClassOfSymbol then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_ObjectReferenceExpected);
-               Result:=TReadOnlyFieldExpr.Create(FProg, FTok.HotPos, sym.Typ,
-                                                 TFieldSymbol(sym), expr);
+               Result:=TReadOnlyFieldExpr.Create(FProg, FTok.HotPos, TFieldSymbol(sym), expr);
                expr:=nil;
 
             end else if sym is TClassVarSymbol then begin
@@ -4864,7 +4874,12 @@ begin
    if progMeth<>nil then begin
       if methodSym.IsStatic then
          Result:=GetMethodExpr(methodSym, nil, rkObjRef, FTok.HotPos, False)
-      else begin
+      else if progMeth.IsStatic then begin
+         structSym:=progMeth.StructSymbol;
+         Result:=GetMethodExpr(methodSym,
+                               TConstExpr.Create(FProg, structSym.MetaSymbol, Int64(structSym)),
+                               rkClassOfRef, FTok.HotPos, False);
+      end else begin
          Result:=GetMethodExpr(methodSym,
                                TVarExpr.CreateTyped(FProg, progMeth.SelfSym),
                                rkObjRef, FTok.HotPos, False);

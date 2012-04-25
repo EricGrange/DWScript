@@ -2010,7 +2010,9 @@ var
    i : Integer;
    needComma : Boolean;
 begin
-   if (func is TMethodSymbol) and not (TMethodSymbol(func).StructSymbol is TRecordSymbol) then begin
+   if     (func is TMethodSymbol)
+      and not (   TMethodSymbol(func).IsStatic
+               or (TMethodSymbol(func).StructSymbol is TRecordSymbol)) then begin
       WriteString(SelfSymbolName);
       needComma:=True;
    end else needComma:=False;
@@ -2843,10 +2845,17 @@ end;
 // CodeGenFunctionName
 //
 procedure TJSFuncBaseExpr.CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol);
+var
+   meth : TMethodSymbol;
 begin
-   if funcSym is TMethodSymbol then
-      codeGen.WriteString((codeGen as TdwsJSCodeGen).MemberName(funcSym, TMethodSymbol(funcSym).StructSymbol))
-   else codeGen.WriteSymbolName(funcSym);
+   if funcSym is TMethodSymbol then begin
+      meth:=TMethodSymbol(funcSym);
+      if meth.IsStatic and not (meth.StructSymbol is TRecordSymbol) then begin
+         codeGen.WriteSymbolName(meth.StructSymbol);
+         codeGen.WriteString('.');
+      end;
+      codeGen.WriteString((codeGen as TdwsJSCodeGen).MemberName(funcSym, meth.StructSymbol))
+   end else codeGen.WriteSymbolName(funcSym);
    if FVirtualCall then
       codeGen.WriteString(TdwsJSCodeGen.cVirtualPostfix);
 end;
@@ -3014,7 +3023,7 @@ var
 begin
    e:=TClassMethodStaticExpr(expr);
 
-   if cgoNoCheckInstantiated in codeGen.Options then begin
+   if (cgoNoCheckInstantiated in codeGen.Options) or (e.BaseExpr is TConstExpr) then begin
       codeGen.Compile(e.BaseExpr);
    end else begin
       codeGen.Dependencies.Add('$Check');
@@ -3300,6 +3309,7 @@ end;
 class procedure TJSFuncRefExpr.DoCodeGen(codeGen : TdwsCodeGen; funcExpr : TFuncExprBase);
 var
    methExpr : TMethodExpr;
+   funcSym : TFuncSymbol;
    methSym : TMethodSymbol;
    eventFunc : String;
 begin
@@ -3348,10 +3358,20 @@ begin
 
    end else begin
 
-      codeGen.WriteSymbolName(funcExpr.FuncSym);
+      funcSym:=funcExpr.FuncSym;
+
+      if funcSym is TMethodSymbol then begin
+         methSym:=TMethodSymbol(funcSym);
+         if not (methSym.StructSymbol is TRecordSymbol) then begin
+            codeGen.WriteSymbolName(methSym.StructSymbol);
+            codeGen.WriteString('.');
+         end;
+      end;
+
+      codeGen.WriteSymbolName(funcSym);
 
       if funcExpr is TMagicFuncExpr then
-         codeGen.Dependencies.Add(funcExpr.FuncSym.QualifiedName);
+         codeGen.Dependencies.Add(funcSym.QualifiedName);
 
    end;
 end;

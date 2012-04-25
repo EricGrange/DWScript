@@ -1948,8 +1948,14 @@ begin
          instanceExpr:=TConstExpr.Create(Prog, structSym, scriptObj);
          Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
                                   instanceExpr, rkObjRef, cNullPos, ForceStatic)
-      end else begin
+      end else if structSym<>nil then begin
          instanceExpr:=TConstExpr.Create(prog, (structSym as TClassSymbol).ClassOf, Int64(structSym));
+         Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
+                                  instanceExpr, rkClassOfRef, cNullPos, ForceStatic)
+      end else begin
+         // static method
+         structSym:=TMethodSymbol(funcSym).StructSymbol;
+         instanceExpr:=TConstExpr.Create(prog, structSym.MetaSymbol, Int64(structSym));
          Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
                                   instanceExpr, rkClassOfRef, cNullPos, ForceStatic)
       end;
@@ -1972,7 +1978,13 @@ begin
 
    end else if meth.StructSymbol is TClassSymbol then begin
 
-      if (expr.Typ is TClassOfSymbol) then begin
+      if meth.IsStatic then begin
+
+         Result:=TFuncExpr.Create(prog, scriptPos, meth);
+         expr.Free;
+         Exit;
+
+      end else if (expr.Typ is TClassOfSymbol) then begin
          if expr.IsConstant and TClassOfSymbol(expr.Typ).TypClassSymbol.IsAbstract then begin
             if meth.Kind=fkConstructor then
                prog.CompileMsgs.AddCompilerError(scriptPos, RTE_InstanceOfAbstractClass)

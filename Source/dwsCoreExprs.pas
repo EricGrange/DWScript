@@ -506,8 +506,8 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TTypeSymbol;
-                           FieldSym: TFieldSymbol; ObjExpr: TTypedExpr);
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos;
+                            fieldSym : TFieldSymbol; ObjExpr: TTypedExpr);
          destructor Destroy; override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
@@ -3517,10 +3517,10 @@ end;
 
 // Create
 //
-constructor TFieldExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Typ: TTypeSymbol;
-                              FieldSym: TFieldSymbol; ObjExpr: TTypedExpr);
+constructor TFieldExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
+                              fieldSym: TFieldSymbol; ObjExpr: TTypedExpr);
 begin
-   inherited Create(Prog, Pos, Typ);
+   inherited Create(Prog, Pos, fieldSym.Typ);
    FObjectExpr := ObjExpr;
    FFieldAddr := FieldSym.Offset;
 end;
