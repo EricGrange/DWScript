@@ -1033,6 +1033,7 @@ type
          FParent : TStructuredTypeSymbol;
          FMetaSymbol : TStructuredTypeMetaSymbol;
          FForwardPosition : PScriptPos;
+         FExternalName : String;
 
       protected
          function CreateMembersTable : TMembersSymbolTable; virtual;
@@ -1040,6 +1041,7 @@ type
          function GetIsForwarded : Boolean; inline;
          function GetIsStatic : Boolean; virtual;
          function GetIsExternal : Boolean; virtual;
+         function GetExternalName : String;
 
          procedure DoInheritFrom(ancestor : TStructuredTypeSymbol);
 
@@ -1068,6 +1070,7 @@ type
          property IsForwarded : Boolean read GetIsForwarded;
          property IsStatic : Boolean read GetIsStatic;
          property IsExternal : Boolean read GetIsExternal;
+         property ExternalName : String read GetExternalName write FExternalName;
 
          property Parent : TStructuredTypeSymbol read FParent;
          property MetaSymbol : TStructuredTypeMetaSymbol read FMetaSymbol;
@@ -2109,6 +2112,15 @@ end;
 function TStructuredTypeSymbol.GetIsExternal : Boolean;
 begin
    Result:=False;
+end;
+
+// GetExternalName
+//
+function TStructuredTypeSymbol.GetExternalName : String;
+begin
+   if FExternalName='' then
+      Result:=Name
+   else Result:=FExternalName;
 end;
 
 // ------------------
@@ -4207,7 +4219,9 @@ end;
 //
 function TParamSymbol.SameParam(other : TParamSymbol) : Boolean;
 begin
-   Result:=    (ClassType=other.ClassType)
+   Result:=    (   (ClassType=other.ClassType)
+                or (    (ClassType=TParamSymbol)
+                    and (other.ClassType=TParamSymbolWithDefaultValue)))
            and (Typ=other.Typ)
            and UnicodeSameText(Name, other.Name);
 end;

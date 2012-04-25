@@ -2707,7 +2707,7 @@ begin
             if Result.IsOverloaded then begin
                overloadedMeth:=MethPerfectMatchOverload(tmpMeth, False);
                if overloadedMeth=nil then
-                  FMsgs.AddCompilerErrorFmt(methPos, CPE_NoMatchingOverload, [tmpMeth.Name])
+                  FMsgs.AddCompilerErrorFmt(methPos, CPE_NoMatchingOverloadDeclaration, [tmpMeth.Name])
                else Result:=overloadedMeth;
             end else CompareFuncSymbolParams(Result, tmpMeth);
          finally
@@ -5159,7 +5159,7 @@ begin
       end;
       Result:=True;
    end else begin
-      FMsgs.AddCompilerErrorFmt(funcExpr.ScriptPos, CPE_NoMatchingOverload,
+      FMsgs.AddCompilerErrorFmt(funcExpr.ScriptPos, CPE_NoMatchingOverloadForCall,
                                 [funcExpr.FuncSym.Name]);
       Result:=False;
    end;
@@ -6168,8 +6168,13 @@ begin
             ttSEALED :
                Result.IsSealed:=True;
          end;
-         if FTok.TestDelete(ttEXTERNAL) then
+         if FTok.TestDelete(ttEXTERNAL) then begin
             Result.IsExternal:=True;
+            if FTok.Test(ttStrVal) then begin
+               Result.ExternalName:=FTok.GetToken.FString;
+               FTok.KillToken;
+            end;
+         end;
 
          // inheritance
          if FTok.TestDelete(ttBLEFT) then begin

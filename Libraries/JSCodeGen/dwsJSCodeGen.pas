@@ -407,6 +407,7 @@ type
 
    TJSConstructorStaticExpr = class (TJSFuncBaseExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+      procedure CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol); override;
       procedure CodeGenBeginParams(codeGen : TdwsCodeGen; expr : TFuncExprBase); override;
    end;
    TJSConstructorVirtualExpr = class (TJSFuncBaseExpr)
@@ -3093,13 +3094,38 @@ end;
 procedure TJSConstructorStaticExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TConstructorStaticExpr;
+   structSymbol : TStructuredTypeSymbol;
 begin
-   codeGen.Dependencies.Add('TObject');
-
    e:=TConstructorStaticExpr(expr);
-   codeGen.WriteSymbolName((e.FuncSym as TMethodSymbol).StructSymbol);
-   codeGen.WriteString('.');
+
+   structSymbol:=(e.FuncSym as TMethodSymbol).StructSymbol;
+
+   if structSymbol.IsExternal then begin
+
+      codeGen.WriteString('new ');
+      codeGen.WriteString(structSymbol.ExternalName);
+
+   end else begin
+
+      codeGen.Dependencies.Add('TObject');
+
+      codeGen.WriteSymbolName(structSymbol);
+      codeGen.WriteString('.');
+
+   end;
+
    inherited;
+end;
+
+// CodeGenFunctionName
+//
+procedure TJSConstructorStaticExpr.CodeGenFunctionName(codeGen : TdwsCodeGen; expr : TFuncExprBase; funcSym : TFuncSymbol);
+var
+   e : TConstructorStaticExpr;
+begin
+   e:=TConstructorStaticExpr(expr);
+   if not (e.FuncSym as TMethodSymbol).StructSymbol.IsExternal then
+      inherited;
 end;
 
 // CodeGenBeginParams
@@ -3109,19 +3135,24 @@ var
    e : TConstructorStaticExpr;
 begin
    e:=TConstructorStaticExpr(expr);
-   if e.BaseExpr is TConstExpr then begin
-      codeGen.WriteString('$New(');
-      codeGen.Compile(e.BaseExpr);
-   end else begin
-      codeGen.Dependencies.Add('$NewDyn');
-      codeGen.WriteString('$NewDyn(');
-      codeGen.Compile(e.BaseExpr);
-      codeGen.WriteString(',');
-      WriteLocationString(codeGen, expr);
+
+   if not (e.FuncSym as TMethodSymbol).StructSymbol.IsExternal then begin
+
+      if e.BaseExpr is TConstExpr then begin
+         codeGen.WriteString('$New(');
+         codeGen.Compile(e.BaseExpr);
+      end else begin
+         codeGen.Dependencies.Add('$NewDyn');
+         codeGen.WriteString('$NewDyn(');
+         codeGen.Compile(e.BaseExpr);
+         codeGen.WriteString(',');
+         WriteLocationString(codeGen, expr);
+      end;
+      codeGen.WriteString(')');
+      if e.FuncSym.Params.Count>0 then
+         codeGen.WriteString(',');
+
    end;
-   codeGen.WriteString(')');
-   if e.FuncSym.Params.Count>0 then
-      codeGen.WriteString(',');
 end;
 
 // ------------------
