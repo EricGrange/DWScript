@@ -126,6 +126,7 @@ type
   protected
     function GetSampleSource: UnicodeString; override;
     function IsFilterStored: Boolean; override;
+    function IsCurrentToken(const Token: UnicodeString): Boolean; override;
 
   public
     class function GetCapabilities: TSynHighlighterCapabilities; override;
@@ -878,6 +879,28 @@ end;
 function TSynDWSSyn.IsFilterStored: Boolean;
 begin
   Result := fDefaultFilter <> SYNS_FilterPascal;
+end;
+
+// IsCurrentToken
+//
+function TSynDWSSyn.IsCurrentToken(const Token: UnicodeString): Boolean;
+var
+   i : Integer;
+   temp : PWideChar;
+begin
+   temp := fToIdent;
+   if Length(Token) = fStringLen then begin
+      Result := True;
+      for i := 1 to fStringLen do begin
+         if     (temp^ <> Token[i])
+            and (   (temp^>'z')
+                 or (UpCase(temp^)<>UpCase(Token[i])))  then begin
+            Result := False;
+            break;
+         end;
+         inc(temp);
+      end;
+   end else Result := False;
 end;
 
 // IsIdentChar
