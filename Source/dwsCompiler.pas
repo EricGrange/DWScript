@@ -368,8 +368,8 @@ type
          function ReadClassName : TClassSymbol;
          function ReadClassOf(const typeName : UnicodeString) : TClassOfSymbol;
          function ReadClass(const typeName : UnicodeString) : TClassSymbol;
-         procedure ReadClassVars(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
-         procedure ReadClassConst(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
+         procedure ReadClassVars(const structSymbol : TStructuredTypeSymbol; aVisibility : TdwsVisibility);
+         procedure ReadClassConst(const structSymbol : TStructuredTypeSymbol; aVisibility : TdwsVisibility);
          procedure ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
          function ReadInterface(const typeName : UnicodeString) : TInterfaceSymbol;
          function ReadConnectorSym(const name : UnicodeString; baseExpr : TTypedExpr;
@@ -6323,12 +6323,12 @@ end;
 
 // ReadClassVars
 //
-procedure TdwsCompiler.ReadClassVars(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
+procedure TdwsCompiler.ReadClassVars(const structSymbol : TStructuredTypeSymbol; aVisibility : TdwsVisibility);
 var
    assignExpr : TNoResultExpr;
    factory : IdwsDataSymbolFactory;
 begin
-   factory:=TStructuredTypeSymbolFactory.Create(Self, classSymbol, aVisibility);
+   factory:=TStructuredTypeSymbolFactory.Create(Self, structSymbol, aVisibility);
    assignExpr:=ReadVarDecl(factory);
    if assignExpr<>nil then
       FProg.InitExpr.AddStatement(assignExpr);
@@ -6337,11 +6337,11 @@ end;
 
 // ReadClassConst
 //
-procedure TdwsCompiler.ReadClassConst(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
+procedure TdwsCompiler.ReadClassConst(const structSymbol : TStructuredTypeSymbol; aVisibility : TdwsVisibility);
 var
    factory : IdwsDataSymbolFactory;
 begin
-   factory:=TStructuredTypeSymbolFactory.Create(Self, classSymbol, aVisibility);
+   factory:=TStructuredTypeSymbolFactory.Create(Self, structSymbol, aVisibility);
    ReadConstDecl(factory);
    ReadSemiColon;
 end;
@@ -6762,7 +6762,7 @@ begin
 
             hotPos:=FTok.HotPos;
             tt:=FTok.TestDeleteAny([ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED, ttCLASS,
-                                    ttPROPERTY, ttFUNCTION, ttPROCEDURE, ttMETHOD]);
+                                    ttPROPERTY, ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONST]);
             case tt of
                ttPRIVATE, ttPUBLIC, ttPUBLISHED :
                   if visibility=cTokenToVisibility[tt] then
@@ -6777,14 +6777,20 @@ begin
                ttFUNCTION, ttPROCEDURE, ttMETHOD :
                   ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, False);
                ttCLASS : begin
-                  tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD]);
+                  tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttVAR, ttCONST]);
                   case tt of
                      ttPROCEDURE, ttFUNCTION, ttMETHOD :
                         ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, True);
+                     ttVAR :
+                        ReadClassVars(Result, visibility);
+                     ttCONST :
+                        ReadClassConst(Result, visibility);
                   else
                      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
                   end;
                end;
+               ttCONST :
+                  ReadClassConst(Result, visibility);
             else
                if FTok.Test(ttEND) then
                   Break;

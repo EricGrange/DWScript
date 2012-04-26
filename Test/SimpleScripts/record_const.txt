@@ -1,0 +1,9 @@
+From Outside
+3
+3
+From class proc
+1
+3
+From base
+1
+3
