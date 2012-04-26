@@ -416,7 +416,8 @@ type
                                            const scriptPos : TScriptPos;
                                            expecting : TTypeSymbol = nil) : TTypedExpr;
 
-         function ResolveOverload(var funcExpr : TFuncExprBase; overloads : TFuncSymbolList) : Boolean;
+         function ResolveOverload(var funcExpr : TFuncExprBase; overloads : TFuncSymbolList;
+                                  const argPosArray : TScriptPosArray) : Boolean;
 
          function FuncHasConflictingOverload(funcSym, forwardedSym : TFuncSymbol) : Boolean;
          function MethHasConflictingOverload(methSym : TMethodSymbol) : Boolean;
@@ -5041,7 +5042,8 @@ end;
 
 // ResolveOverload
 //
-function TdwsCompiler.ResolveOverload(var funcExpr : TFuncExprBase; overloads : TFuncSymbolList) : Boolean;
+function TdwsCompiler.ResolveOverload(var funcExpr : TFuncExprBase; overloads : TFuncSymbolList;
+                                      const argPosArray : TScriptPosArray) : Boolean;
 var
    i : Integer;
    j : Integer;
@@ -5049,6 +5051,7 @@ var
    struct : TStructuredTypeSymbol;
    matchDistance, bestMatchDistance, bestCount : Integer;
    matchParamType, funcExprParamType : TTypeSymbol;
+   wasVarParam, nowVarParam : Boolean;
 begin
    bestMatch:=nil;
    bestCount:=0;
@@ -5154,7 +5157,18 @@ begin
    end;
    if (bestMatch<>nil) and (bestCount=1) then begin
       if bestMatch<>funcExpr.FuncSym then begin
-         ReplaceSymbolUse(funcExpr.FuncSym, bestMatch, funcExpr.ScriptPos);
+         if coSymbolDictionary in Options then begin
+            ReplaceSymbolUse(funcExpr.FuncSym, bestMatch, funcExpr.ScriptPos);
+            for i:=0 to Min(bestMatch.Params.Count, funcExpr.FuncSym.Params.Count)-1 do begin
+               nowVarParam:=(bestMatch.Params[i] is TVarParamSymbol);
+               wasVarParam:=(funcExpr.FuncSym.Params[i] is TVarParamSymbol);
+               if wasVarParam<>nowVarParam then begin
+                  if wasVarParam then
+                     FSymbolDictionary.ChangeUsageAt(argPosArray[i], [], [suWrite])
+                  else FSymbolDictionary.ChangeUsageAt(argPosArray[i], [suWrite], []);
+               end;
+            end;
+         end;
          funcExpr:=funcExpr.ChangeFuncSymbol(FProg, bestMatch);
       end;
       Result:=True;
@@ -5279,7 +5293,7 @@ begin
       if FTok.Test(ttBLEFT) then begin
          ReadFuncArgs(funcExpr, argPosArray);
          if overloads<>nil then begin
-            if not ResolveOverload(funcExpr, overloads) then Exit;
+            if not ResolveOverload(funcExpr, overloads, argPosArray) then Exit;
             Result:=funcExpr;
          end;
          TypeCheckArgs(funcExpr, argPosArray);
@@ -5294,7 +5308,7 @@ begin
             Result:=TFuncRefExpr.Create(FProg, funcExpr);
          end else begin
             if overloads<>nil then begin
-               if not ResolveOverload(funcExpr, overloads) then Exit;
+               if not ResolveOverload(funcExpr, overloads, argPosArray) then Exit;
                Result:=funcExpr;
             end;
             TypeCheckArgs(funcExpr, nil);
@@ -5481,7 +5495,7 @@ begin
 
             if (argSym<>nil) and (argSym.ClassType=TVarParamSymbol) and (arg is TVarExpr) then
                WarnForVarUsage(TVarExpr(arg), argPos);
-         until not FTok.TestDelete(ttCOMMA);
+         until not (FTok.TestDelete(ttCOMMA) and FTok.HasTokens);
          if not FTok.TestDelete(rightDelim) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
       end;
@@ -5994,7 +6008,7 @@ begin
          (Result as TMethodExpr).Typ:=classSym;
          if overloads<>nil then begin
             funcExpr:=(Result as TFuncExpr);
-            if not ResolveOverload(funcExpr, overloads) then Exit;
+            if not ResolveOverload(funcExpr, overloads, argPosArray) then Exit;
             Result:=funcExpr;
          end;
          TypeCheckArgs(TFuncExpr(Result), argPosArray);
@@ -9429,7 +9443,11 @@ begin
                   WarnForVarUsage(TVarExpr(argExpr), argPos);
                if FTok.TestDelete(ttCOMMA) then begin
                   operandExpr:=ReadExpr;
-                  if (operandExpr=nil) or (not operandExpr.IsOfType(FProg.TypInteger)) then
+                  if operandExpr=nil then
+                     FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
+                  if operandExpr.IsOfType(FProg.TypVariant) then
+                     operandExpr:=TConvIntegerExpr.Create(FProg, operandExpr);
+                  if not operandExpr.IsOfType(FProg.TypInteger) then
                      FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
                end else operandExpr:=TConstExpr.CreateIntegerValue(FProg, 1);
                case specialKind of

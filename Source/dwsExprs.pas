@@ -178,6 +178,7 @@ type
          procedure EnumerateInRange(const startPos, endPos : TScriptPos; const callBack : TdwsSymbolDictionaryProc);
 
          procedure ReplaceSymbolAt(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
+         procedure ChangeUsageAt(const scriptPos : TScriptPos; const addUsages, removeUsages : TSymbolUsages);
 
          function FindSymbolAtPosition(aCol, aLine: Integer; const sourceFile : UnicodeString): TSymbol; overload;
          function FindSymbolPosList(sym: TSymbol): TSymbolPositionList; overload;  // return list of symbol
@@ -7082,6 +7083,24 @@ begin
    symPos:=list[i];
    AddSymbol(newSym, scriptPos, symPos.SymbolUsages);
    list.Delete(i);
+end;
+
+// ChangeUsageAt
+//
+procedure TdwsSymbolDictionary.ChangeUsageAt(const scriptPos : TScriptPos; const addUsages, removeUsages : TSymbolUsages);
+var
+   i, k : Integer;
+   symPosList : TSymbolPositionList;
+   symPos : TSymbolPosition;
+begin
+   for i:=0 to FSymbolList.Count-1 do begin
+      symPosList:=FSymbolList[i];
+      k:=symPosList.IndexOfPosition(scriptPos);
+      if k>=0 then begin
+         symPos:=symPosList[k];
+         symPos.SymbolUsages:=symPos.SymbolUsages+addUsages-removeUsages;
+      end;
+   end;
 end;
 
 // Clear
