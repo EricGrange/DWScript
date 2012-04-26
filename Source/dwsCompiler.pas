@@ -2349,30 +2349,26 @@ begin
 
                   // forward & external declarations
 
+                  if FTok.TestDelete(ttEXTERNAL) then begin
+                     Result.IsExternal:=True;
+                     ReadExternalName(Result);
+                  end;
+
                   if UnitSection=secInterface then begin
-                     // default to forward in interface section
-                     Result.SetForwardedPos(funcPos);
+                     // default to forward in interface section, except for external funcs
+                     if not Result.IsExternal then
+                        Result.SetForwardedPos(funcPos);
                      if FTok.TestDelete(ttFORWARD) then begin
                         FMsgs.AddCompilerHint(FTok.HotPos, CPW_ForwardIsImplicit);
-                        ReadSemiColon;
-                     end else if FTok.TestDelete(ttEXTERNAL) then begin
-                        Result.IsExternal:=True;
                         ReadSemiColon;
                      end;
                   end else begin
                      if FTok.TestDelete(ttFORWARD) then begin
+                        if Result.IsExternal then
+                           FMsgs.AddCompilerHint(FTok.HotPos, CPW_ForwardIsMeaningless);
                         Result.SetForwardedPos(funcPos);
                         ReadSemiColon;
-                     end else if FTok.TestDelete(ttEXTERNAL) then begin
-                        Result.IsExternal:=True;
-                        ReadSemiColon;
                      end;
-                  end;
-
-                  if FTok.TestName and UnicodeSameText(FTok.GetToken.FString, 'NAME') then begin
-                     if not Result.IsExternal then
-                        FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_StructureIsNotExternal, [Result.Name]);
-                     ReadExternalName(Result);
                   end;
 
                end;
@@ -2638,7 +2634,7 @@ begin
          ReadSemiColon;
       end;
 
-      if FTok.TestName and UnicodeSameText(FTok.GetToken.FString, 'NAME') then begin
+      if FTok.TestDelete(ttEXTERNAL) then begin
          if not structSym.IsExternal then
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_StructureIsNotExternal, [funcResult.QualifiedName]);
          ReadExternalName(funcResult);
@@ -5891,11 +5887,13 @@ end;
 procedure TdwsCompiler.ReadExternalName(funcSym : TFuncSymbol);
 begin
    FTok.KillToken;
-   if not FTok.Test(ttStrVal) then begin
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_StringExpected);
-   end else begin
-      funcSym.ExternalName:=FTok.GetToken.FString;
-      FTok.KillToken;
+   if not FTok.Test(ttSEMI) then begin
+      if not FTok.Test(ttStrVal) then begin
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_StringExpected);
+      end else begin
+         funcSym.ExternalName:=FTok.GetToken.FString;
+         FTok.KillToken;
+      end;
    end;
    ReadSemiColon;
 end;

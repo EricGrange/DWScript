@@ -14,7 +14,7 @@ function PrintLn(s) { Print(s); document.writeln("<br />") };
 type
    TApple = class external 'Apple'
       color : String;
-      function GetColor : String; name 'getColor';
+      function GetColor : String; external 'getColor';
       constructor Create(color : String);
    end;
 

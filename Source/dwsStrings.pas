@@ -357,6 +357,7 @@ const
   CPW_UnReachableCode = 'Unreachable code';
   CPW_IncludeOnceWithDifferentCase = 'Filename case does not match: "%s" already included as "%s"';
   CPW_ForwardIsImplicit = '"forward" is implicit here';
+  CPW_ForwardIsMeaningless = '"forward" is meaningless for external functions';
 
   CPE_NoResultTypeRequired = 'No result type required';
   CPE_ResultTypeExpected = 'Result type expected';

@@ -14,10 +14,10 @@ function PrintLn(s) { Print(s); document.writeln("<br />") };
 type
    TExternalClass = class external
       Field : String;
-      function Method(s : String) : String; name "MyMethod";
+      function Method(s : String) : String; external "MyMethod";
    end;
 
-function GetOne : TExternalClass; external; name "GetMyOne";
+function GetOne : TExternalClass; external "GetMyOne";
 
 var obj := GetOne;
 
