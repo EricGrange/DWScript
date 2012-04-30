@@ -129,6 +129,7 @@ type
          FPosList : TArrayObjectList<TSymbolPosition>;   // list of positions where symbol is declared and used
 
       protected
+         function GetList : TArray<TSymbolPosition>; inline;
          function GetPosition(index : Integer) : TSymbolPosition; inline;
 
          // Used by TSymbolDictionary. Not meaningful to make public (symbol is known).
@@ -144,9 +145,9 @@ type
 
          function FindUsage(const symbolUse : TSymbolUsage) : TSymbolPosition;
          function IndexOfPosition(const scriptPos : TScriptPos) : Integer;
+         procedure RemoveInRange(const startPos, endPos : TScriptPos);
 
          property Items[index : Integer] : TSymbolPosition read GetPosition; default;
-         property List : TArray<TSymbolPosition> read FPosList.List;
          function Count : Integer; inline;
 
          property Symbol: TSymbol read FSymbol;
@@ -7074,21 +7075,12 @@ end;
 //
 procedure TdwsSymbolDictionary.RemoveInRange(const startPos, endPos : TScriptPos);
 var
-   i, j : Integer;
-   list : TSymbolPositionList;
-   symPos : TSymbolPosition;
+   i : Integer;
 begin
    if startPos.SourceFile<>endPos.SourceFile then Exit;
 
-   for i:=0 to FSymbolList.Count-1 do begin
-      list:=FSymbolList[i];
-      for j:=list.Count-1 downto 0 do begin
-         symPos:=list.List[j];
-         if     startPos.IsBeforeOrEqual(symPos.ScriptPos)
-            and symPos.ScriptPos.IsBeforeOrEqual(endPos) then
-            list.Delete(j);
-      end;
-   end;
+   for i:=0 to FSymbolList.Count-1 do
+      FSymbolList[i].RemoveInRange(startPos, endPos);
 end;
 
 // EnumerateInRange
@@ -7331,6 +7323,28 @@ begin
          Exit(i);
    end;
    Result:=-1;
+end;
+
+// RemoveInRange
+//
+procedure TSymbolPositionList.RemoveInRange(const startPos, endPos : TScriptPos);
+var
+   i : Integer;
+   symPos : TSymbolPosition;
+begin
+   for i:=FPosList.Count-1 downto 0 do begin
+      symPos:=FPosList.List[i];
+      if     startPos.IsBeforeOrEqual(symPos.ScriptPos)
+         and symPos.ScriptPos.IsBeforeOrEqual(endPos) then
+         FPosList.Delete(i);
+   end;
+end;
+
+// GetList
+//
+function TSymbolPositionList.GetList : TArray<TSymbolPosition>;
+begin
+   Result:=FPosList.List;
 end;
 
 // ------------------
