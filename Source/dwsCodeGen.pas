@@ -160,6 +160,7 @@ type
 
          procedure SmartLinkFilterOutSourceContext(context : TdwsSourceContext);
          procedure SmartLinkFilterSymbolTable(table : TSymbolTable; var changed : Boolean); virtual;
+         procedure SmartLinkUnaliasSymbolTable(table : TSymbolTable); virtual;
          procedure SmartLinkFilterStructSymbol(structSymbol : TCompositeTypeSymbol; var changed : Boolean); virtual;
          procedure SmartLinkFilterInterfaceSymbol(intfSymbol : TInterfaceSymbol; var changed : Boolean); virtual;
          procedure SmartLinkFilterMemberFieldSymbol(fieldSymbol : TFieldSymbol; var changed : Boolean); virtual;
@@ -683,6 +684,13 @@ begin
    MapInternalSymbolNames(table, systemTable);
 
    if FSymbolDictionary<>nil then begin
+
+      SmartLinkUnaliasSymbolTable(table);
+      for i:=0 to unitSyms.Count-1 do begin
+         SmartLinkUnaliasSymbolTable(unitSyms[i].Table);
+         SmartLinkUnaliasSymbolTable(unitSyms[i].ImplementationTable);
+      end;
+
       repeat
          changed:=False;
          for i:=0 to unitSyms.Count-1 do begin
@@ -1380,6 +1388,40 @@ begin
       end;
       changed:=changed or localChanged;
    until not localChanged;
+end;
+
+// SmartLinkUnaliasSymbolTable
+//
+procedure TdwsCodeGen.SmartLinkUnaliasSymbolTable(table : TSymbolTable);
+var
+   sym : TSymbol;
+   unaliased : TTypeSymbol;
+   symPosListAlias, symPosListUnAliased : TSymbolPositionList;
+   symPos : TSymbolPosition;
+   i : Integer;
+begin
+   if FSymbolDictionary=nil then Exit;
+
+   for sym in table do begin
+      if sym is TAliasSymbol then begin
+
+         unaliased:=TAliasSymbol(sym).UnAliasedType;
+
+         symPosListAlias:=FSymbolDictionary.FindSymbolPosList(sym);
+         if symPosListAlias.Count>0 then begin
+            symPosListUnAliased:=FSymbolDictionary.FindSymbolPosList(unaliased);
+            if symPosListUnAliased<>nil then begin
+               for i:=0 to symPosListAlias.Count-1 do begin
+                  symPos:=symPosListAlias[i];
+                  if suReference in symPos.SymbolUsages then
+                     symPosListUnAliased.Add(symPos.ScriptPos, symPos.SymbolUsages);
+               end;
+               symPosListAlias.Clear;
+            end;
+         end;
+
+      end;
+   end;
 end;
 
 // SmartLinkFilterStructSymbol

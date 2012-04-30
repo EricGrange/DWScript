@@ -24,6 +24,7 @@ type
 
       published
          procedure ClassSimple;
+         procedure AliasedRecord;
    end;
 
 // ------------------------------------------------------------------
@@ -119,6 +120,30 @@ begin
    buf:=FJSCodeGen.CompiledOutput(prog);
 
    CheckEquals(0, Pos('TClass2', buf), 'TClass2');
+end;
+
+// AliasedRecord
+//
+procedure TJSSmartLinkerTests.AliasedRecord;
+var
+   buf : String;
+   prog : IdwsProgram;
+begin
+   prog:=FJSCompiler.Compile(
+       'type TRec = record'#13#10
+      +'x:Integer;'#13#10
+      +'end;'#13#10
+      +'type TAlias = TRec;'#13#10
+      +'var A, B : TAlias;'#13#10
+      +'a:=B;'#13#10);
+   CheckEquals(0, prog.Msgs.Count, prog.Msgs.AsInfo);
+
+   FJSCodeGen.Clear;
+   FJSCodeGen.CompileProgram(prog);
+
+   buf:=FJSCodeGen.CompiledOutput(prog);
+
+   Check((Pos('TRec', buf)>0), 'TRec alias');
 end;
 
 // ------------------------------------------------------------------

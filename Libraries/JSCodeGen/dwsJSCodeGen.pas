@@ -1180,6 +1180,7 @@ var
    i : Integer;
    sym : TSymbol;
    field : TFieldSymbol;
+   fieldTyp : TTypeSymbol;
    firstField : Boolean;
 begin
    // compile record copier
@@ -1202,25 +1203,26 @@ begin
          else WriteString(',');
          WriteSymbolName(field);
          WriteString(':');
-         if    (field.Typ is TBaseSymbol)
-            or (field.Typ is TClassSymbol)
-            or (field.Typ is TInterfaceSymbol)
-            or (field.Typ is TFuncSymbol)
-            or (field.Typ is TDynamicArraySymbol)
-            or (field.Typ is TEnumerationSymbol) then begin
+         fieldTyp:=field.Typ.UnAliasedType;
+         if    (fieldTyp is TBaseSymbol)
+            or (fieldTyp is TClassSymbol)
+            or (fieldTyp is TInterfaceSymbol)
+            or (fieldTyp is TFuncSymbol)
+            or (fieldTyp is TDynamicArraySymbol)
+            or (fieldTyp is TEnumerationSymbol) then begin
             WriteString('$s.');
             WriteSymbolName(field)
-         end else if field.Typ is TRecordSymbol then begin
+         end else if fieldTyp is TRecordSymbol then begin
             WriteString('Copy$');
-            WriteSymbolName(field.Typ);
+            WriteSymbolName(fieldTyp);
             WriteString('($s.');
             WriteSymbolName(field);
             WriteString(')');
-         end else if field.Typ is TStaticArraySymbol then begin
+         end else if fieldTyp is TStaticArraySymbol then begin
             WriteString('$s.');
             WriteSymbolName(field);
             WriteString('.slice(0)');
-         end else raise ECodeGenUnsupportedSymbol.CreateFmt('Copy record field type %s', [field.Typ.ClassName]);
+         end else raise ECodeGenUnsupportedSymbol.CreateFmt('Copy record field type %s', [fieldTyp.ClassName]);
          WriteStringLn('');
       end;
    end;
@@ -4219,7 +4221,7 @@ begin
    e:=TRecordExpr(expr);
    codeGen.Compile(e.BaseExpr);
    codeGen.WriteString('.');
-   member:=(e.BaseExpr.Typ as TRecordSymbol).FieldAtOffset(e.MemberOffset);
+   member:=(e.BaseExpr.Typ.UnAliasedType as TRecordSymbol).FieldAtOffset(e.MemberOffset);
    codeGen.WriteSymbolName(member);
 end;
 

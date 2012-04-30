@@ -140,6 +140,8 @@ type
 
          procedure Add(const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
          procedure Delete(index : Integer);
+         procedure Clear;
+
          function FindUsage(const symbolUse : TSymbolUsage) : TSymbolPosition;
          function IndexOfPosition(const scriptPos : TScriptPos) : Integer;
 
@@ -7260,6 +7262,13 @@ procedure TSymbolPositionList.Delete(index : Integer);
 begin
    FPosList[index].Free;
    FPosList.Delete(index);
+end;
+
+// Clear
+//
+procedure TSymbolPositionList.Clear;
+begin
+   FPosList.Clean;
 end;
 
 // FindSymbolAtPosition

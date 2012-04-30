@@ -295,7 +295,7 @@ begin
             if not (expectedResult=output) then begin
                diagnostic.Add( ExtractFileName(FTests[i])
                               +': expected <'+expectedResult
-                              +'> but got <'+output+'>'+jsCode);
+                              +'> but got <'+output+'>');//+jsCode);
             end;
          except
             on e : Exception do begin
