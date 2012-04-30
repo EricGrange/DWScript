@@ -1046,6 +1046,8 @@ type
          function GetIsExternal : Boolean; virtual;
          function GetExternalName : String; virtual;
 
+         procedure CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
+
       public
          constructor Create(const name : UnicodeString; aUnit : TSymbol);
          destructor Destroy; override;
@@ -1086,8 +1088,6 @@ type
 
          procedure DoInheritFrom(ancestor : TStructuredTypeSymbol);
 
-         procedure CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
-
       public
          destructor Destroy; override;
 
@@ -1120,7 +1120,7 @@ type
    end;
 
    // field of a script object
-   TFieldSymbol = class(TValueSymbol)
+   TFieldSymbol = class sealed (TValueSymbol)
       protected
          FStructSymbol : TStructuredTypeSymbol;
          FOffset : Integer;
@@ -1357,6 +1357,8 @@ type
          function IsType : Boolean; override;
          function AllowDefaultProperty : Boolean; override;
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
+
+         procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
          property ForType : TTypeSymbol read FForType;
    end;
@@ -2056,6 +2058,28 @@ begin
    Result:=nil;
 end;
 
+// CheckMethodsImplemented
+//
+procedure TCompositeTypeSymbol.CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
+var
+   i : Integer;
+   methSym : TMethodSymbol;
+begin
+   for i:=0 to FMembers.Count-1 do begin
+      if FMembers[i] is TMethodSymbol then begin
+         methSym:=TMethodSymbol(FMembers[i]);
+         if not methSym.IsAbstract then begin
+            if Assigned(methSym.FExecutable) then
+               methSym.FExecutable.InitSymbol(FMembers[i])
+            else if not IsExternal then begin
+               msgs.AddCompilerErrorFmt((methSym as TSourceMethodSymbol).DeclarationPos, CPE_MethodNotImplemented,
+                                        [methSym.Name, methSym.StructSymbol.Caption]);
+            end;
+         end;
+      end;
+   end;
+end;
+
 // ------------------
 // ------------------ TStructuredTypeSymbol ------------------
 // ------------------
@@ -2095,28 +2119,6 @@ begin
       end;
    end;
    Result:=-1;
-end;
-
-// CheckMethodsImplemented
-//
-procedure TStructuredTypeSymbol.CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
-var
-   i : Integer;
-   methSym : TMethodSymbol;
-begin
-   for i:=0 to FMembers.Count-1 do begin
-      if FMembers[i] is TMethodSymbol then begin
-         methSym:=TMethodSymbol(FMembers[i]);
-         if not methSym.IsAbstract then begin
-            if Assigned(methSym.FExecutable) then
-               methSym.FExecutable.InitSymbol(FMembers[i])
-            else if not IsExternal then begin
-               msgs.AddCompilerErrorFmt((methSym as TSourceMethodSymbol).DeclarationPos, CPE_MethodNotImplemented,
-                                        [methSym.Name, methSym.StructSymbol.Caption]);
-            end;
-         end;
-      end;
-   end;
 end;
 
 // GetIsForwarded
@@ -5811,6 +5813,13 @@ begin
       else if Result.Typ is TStructuredTypeMetaSymbol then
          methSym.Params.AddParent(TStructuredTypeMetaSymbol(Result.Typ).StructSymbol.Members)
    end;
+end;
+
+// Initialize
+//
+procedure THelperSymbol.Initialize(const msgs : TdwsCompileMessageList);
+begin
+   CheckMethodsImplemented(msgs);
 end;
 
 // ------------------
