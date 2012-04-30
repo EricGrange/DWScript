@@ -7335,8 +7335,10 @@ begin
    for i:=FPosList.Count-1 downto 0 do begin
       symPos:=FPosList.List[i];
       if     startPos.IsBeforeOrEqual(symPos.ScriptPos)
-         and symPos.ScriptPos.IsBeforeOrEqual(endPos) then
+         and symPos.ScriptPos.IsBeforeOrEqual(endPos) then begin
+         symPos.Free;
          FPosList.Delete(i);
+      end;
    end;
 end;
 
