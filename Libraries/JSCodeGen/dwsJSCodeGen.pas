@@ -671,6 +671,8 @@ begin
       TdwsExprGenericCodeGen.Create(['(', 0, '.toString()', ')']));
    RegisterCodeGen(TConvStaticArrayToDynamicExpr,
       TdwsExprGenericCodeGen.Create([0, '.slice()']));
+   RegisterCodeGen(TConvExternalExpr,
+      TdwsExprGenericCodeGen.Create([0]));
 
    RegisterCodeGen(TOrdExpr,              TJSOrdExpr.Create);
 

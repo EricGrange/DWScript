@@ -1123,6 +1123,11 @@ type
       function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
+   // ExternalClass(x)
+   TConvExternalExpr = class (TUnaryOpVariantExpr)
+      procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+   end;
+
    // Assert(condition, message);
    TAssertExpr = class(TNoResultExpr)
       protected
@@ -4178,6 +4183,17 @@ begin
    dynArray.Data:=arr.EvalAsTData(exec);
 
    Result:=IUnknown(IScriptObj(dynArray));
+end;
+
+// ------------------
+// ------------------ TConvExternalExpr ------------------
+// ------------------
+
+// EvalAsVariant
+//
+procedure TConvExternalExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+begin
+   Expr.EvalAsVariant(exec, Result);
 end;
 
 // ------------------

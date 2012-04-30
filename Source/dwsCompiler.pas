@@ -3678,7 +3678,7 @@ function TdwsCompiler.ReadClassSymbolName(baseType : TClassSymbol; isWrite : Boo
 var
    namePos : TScriptPos;
    constExpr : TTypedExpr;
-   convInstanceExpr : TObjAsClassExpr;
+   operandExpr, convExpr : TTypedExpr;
    castedExprTyp : TTypeSymbol;
 begin
    if baseType.IsForwarded then
@@ -3688,26 +3688,31 @@ begin
       // Cast
       FTok.TestName;
       namePos:=FTok.HotPos;
-      Result:=ReadExpr;
+      operandExpr:=ReadExpr(expecting);
       try
-         castedExprTyp:=TTypedExpr(Result).Typ;
-         if castedExprTyp<>FProg.TypNil then begin
-            if    (not (castedExprTyp is TClassSymbol))
-               or (
-                         (not TClassSymbol(castedExprTyp).IsOfType(baseType))
-                     and (not baseType.IsOfType(castedExprTyp))
-                  ) then begin
-               IncompatibleTypes(namePos, CPE_IncompatibleTypes, castedExprTyp, baseType);
+         if baseType.IsExternal then begin
+            convExpr:=TConvExternalExpr.Create(FProg, operandExpr);
+            convExpr.Typ:=baseType;
+         end else begin
+            castedExprTyp:=operandExpr.Typ;
+            if castedExprTyp<>FProg.TypNil then begin
+               if    (not (castedExprTyp is TClassSymbol))
+                  or (
+                            (not TClassSymbol(castedExprTyp).IsOfType(baseType))
+                        and (not baseType.IsOfType(castedExprTyp))
+                     ) then begin
+                  IncompatibleTypes(namePos, CPE_IncompatibleTypes, castedExprTyp, baseType);
+               end;
             end;
+            convExpr:=TObjAsClassExpr.Create(FProg, namePos, operandExpr, baseType);
          end;
-         if not (FTok.TestDelete(ttBRIGHT)) then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
-         convInstanceExpr:=TObjAsClassExpr.Create(FProg, namePos, TTypedExpr(Result), baseType);
-         Result:=ReadSymbol(convInstanceExpr, IsWrite, expecting);
       except
-         Result.Free;
+         operandExpr.Free;
          raise;
       end;
+      if not (FTok.TestDelete(ttBRIGHT)) then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_BrackRightExpected);
+      Result:=ReadSymbol(convExpr, IsWrite, expecting);
 
    end else begin
 
@@ -4334,7 +4339,7 @@ begin
                      raise;
                   end;
 
-               end else if Result is TTypedExpr then begin
+               end else if (Result.Typ<>nil) then begin
 
                   Result:=ReadTypeHelper(TTypedExpr(Result), Result.Typ, name, symPos, expecting);
 

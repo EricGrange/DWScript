@@ -1,0 +1,21 @@
+<script>
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+type
+   JString = class external
+      function concat(s : JString) : JString;
+      function ToString : String; external 'toString';      
+   end;
+
+var s := 'world';
+
+PrintLn(JString(s).ToString);
+
+PrintLn(JString('Hello ').concat(JString(s)).ToString());
+
+%>
+
+</script>
