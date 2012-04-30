@@ -11,11 +11,13 @@ type
    TCornerCasesTests = class (TTestCase)
       private
          FCompiler : TDelphiWebScript;
+         FLastResource : String;
 
       public
          procedure SetUp; override;
          procedure TearDown; override;
          procedure DoOnInclude(const scriptName : String; var scriptSource : String);
+         procedure DoOnResource(const resName : String);
 
       published
          procedure EmptyTokenBuffer;
@@ -43,6 +45,7 @@ type
          procedure MonkeyTest;
          procedure SameVariantTest;
          procedure SectionContextMaps;
+         procedure ResourceTest;
    end;
 
 // ------------------------------------------------------------------
@@ -260,6 +263,13 @@ procedure TCornerCasesTests.DoOnInclude(const scriptName : String; var scriptSou
 begin
    CheckEquals('test.dummy', scriptName, 'DoOnInclude');
    scriptSource:='Print(''hello'');';
+end;
+
+// DoOnResource
+//
+procedure TCornerCasesTests.DoOnResource(const resName : String);
+begin
+   FLastResource:=resName;
 end;
 
 // IncludeViaEvent
@@ -884,6 +894,30 @@ begin
       writer.Free;
       wobs.Free;
    end;
+end;
+
+// ResourceTest
+//
+procedure TCornerCasesTests.ResourceTest;
+var
+   prog : IdwsProgram;
+begin
+   FLastResource:='';
+   prog:=FCompiler.Compile('{$R "hello"}');
+   CheckEquals('', FLastResource);
+
+   FCompiler.OnResource:=DoOnResource;
+
+   prog:=FCompiler.Compile('{$R "hello"}');
+   CheckEquals('hello', FLastResource);
+
+   prog:=FCompiler.Compile('{$RESOURCE ''world''}');
+   CheckEquals('world', FLastResource);
+
+   prog:=FCompiler.Compile('{$R "hello'#13#10'world"}');
+   CheckEquals('hello'#13#10'world', FLastResource);
+
+   FCompiler.OnResource:=nil;
 end;
 
 // ------------------------------------------------------------------

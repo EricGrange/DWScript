@@ -63,18 +63,18 @@ type
 
    TSimpleSymbolList = class(TSimpleList<TSymbol>)
       protected
-         function ScopeStruct(symbol : TSymbol) : TStructuredTypeSymbol;
+         function ScopeStruct(symbol : TSymbol) : TCompositeTypeSymbol;
          // min visibility of struct members when seen from scope
-         function ScopeVisiblity(scope, struct : TStructuredTypeSymbol) : TdwsVisibility;
+         function ScopeVisiblity(scope, struct : TCompositeTypeSymbol) : TdwsVisibility;
 
       public
          procedure AddSymbolTable(table : TSymbolTable);
          procedure AddDirectSymbolTable(table : TSymbolTable);
 
          procedure AddEnumeration(enum : TEnumerationSymbol; const addToList : TProcAddToList = nil);
-         procedure AddMembers(struc : TStructuredTypeSymbol; from : TSymbol;
+         procedure AddMembers(struc : TCompositeTypeSymbol; from : TSymbol;
                               const addToList : TProcAddToList = nil);
-         procedure AddMetaMembers(struc : TStructuredTypeSymbol; from : TSymbol;
+         procedure AddMetaMembers(struc : TCompositeTypeSymbol; from : TSymbol;
                                   const addToList : TProcAddToList = nil);
    end;
 
@@ -709,20 +709,20 @@ end;
 
 // ScopeStruct
 //
-function TSimpleSymbolList.ScopeStruct(symbol : TSymbol) : TStructuredTypeSymbol;
+function TSimpleSymbolList.ScopeStruct(symbol : TSymbol) : TCompositeTypeSymbol;
 begin
-   if symbol is TStructuredTypeSymbol then
-      Result:=TStructuredTypeSymbol(symbol)
+   if symbol is TCompositeTypeSymbol then
+      Result:=TCompositeTypeSymbol(symbol)
    else if symbol is TMethodSymbol then
       Result:=TMethodSymbol(symbol).StructSymbol
    else if symbol is TStructuredTypeMetaSymbol then
-      Result:=(TStructuredTypeMetaSymbol(symbol).Typ as TStructuredTypeSymbol)
+      Result:=(TStructuredTypeMetaSymbol(symbol).Typ as TCompositeTypeSymbol)
    else Result:=nil;
 end;
 
 // ScopeVisiblity
 //
-function TSimpleSymbolList.ScopeVisiblity(scope, struct : TStructuredTypeSymbol) : TdwsVisibility;
+function TSimpleSymbolList.ScopeVisiblity(scope, struct : TCompositeTypeSymbol) : TdwsVisibility;
 begin
    if scope=struct then
       Result:=cvPrivate
@@ -768,11 +768,11 @@ end;
 
 // AddMembers
 //
-procedure TSimpleSymbolList.AddMembers(struc : TStructuredTypeSymbol; from : TSymbol;
+procedure TSimpleSymbolList.AddMembers(struc : TCompositeTypeSymbol; from : TSymbol;
                                        const addToList : TProcAddToList = nil);
 var
    sym : TSymbol;
-   scope : TStructuredTypeSymbol;
+   scope : TCompositeTypeSymbol;
    visibility : TdwsVisibility;
    first : Boolean;
 begin
@@ -801,12 +801,12 @@ end;
 
 // AddMetaMembers
 //
-procedure TSimpleSymbolList.AddMetaMembers(struc : TStructuredTypeSymbol; from : TSymbol;
+procedure TSimpleSymbolList.AddMetaMembers(struc : TCompositeTypeSymbol; from : TSymbol;
                                            const addToList : TProcAddToList = nil);
 var
    sym : TSymbol;
    methSym : TMethodSymbol;
-   scope : TStructuredTypeSymbol;
+   scope : TCompositeTypeSymbol;
    visibility : TdwsVisibility;
    first : Boolean;
 begin

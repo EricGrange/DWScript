@@ -1,0 +1,3 @@
+Syntax Error: TDummy is not a Type! [line: 5, column: 9]
+Syntax Error: TDummy is not a Type! [line: 8, column: 22]
+Syntax Error: TBug is not a Type! [line: 11, column: 19]

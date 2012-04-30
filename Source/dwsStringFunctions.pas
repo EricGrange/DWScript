@@ -778,9 +778,9 @@ begin
    expr:=args.ExprBase[1];
    if expr is TArrayConstantExpr then
       varRecs:=TArrayConstantExpr(expr).EvalAsVarRecArray(args.Exec)
-   else if expr is TVarParamExpr then begin
-      if TVarParamExpr(expr).Typ is TOpenArraySymbol then
-         varRecs:=TVarRecArrayContainer.Create(TVarParamExpr(expr).Data[args.Exec])
+   else if expr is TByRefParamExpr then begin
+      if TByRefParamExpr(expr).Typ is TOpenArraySymbol then
+         varRecs:=TVarRecArrayContainer.Create(TByRefParamExpr(expr).Data[args.Exec])
    end;
    // current implementation, limitations may be relaxed later
    if varRecs=nil then raise EScriptError.Create('Constant expression or open array expected');

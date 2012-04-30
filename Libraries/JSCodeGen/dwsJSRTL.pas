@@ -93,7 +93,7 @@ implementation
 {$R dwsJSRTL.res dwsJSRTL.rc}
 
 const
-   cJSRTLDependencies : array [1..154] of TJSRTLDependency = (
+   cJSRTLDependencies : array [1..155] of TJSRTLDependency = (
       // codegen utility functions
       (Name : '$CheckStep';
        Code : 'function $CheckStep(s,z) { if (s>0) return s; throw Exception.Create$1($New(Exception),"FOR loop STEP should be strictly positive: "+s.toString()+z); }';
@@ -145,11 +145,14 @@ const
               +'}';
        Dependency : '$Idx' ),
       (Name : '$Check';
-       Code : 'function $Check(i,z) { if (i) return i; throw Exception.Create$1($New(Exception),"Object not instantiated"+z); }'),
+       Code : 'function $Check(i,z) { if (i) return i; throw Exception.Create$1($New(Exception),"Object not instantiated"+z); }';
+       Dependency : 'Exception' ),
       (Name : '$CheckIntf';
-       Code : 'function $CheckIntf(i,z) { if (i) return i; throw Exception.Create$1($New(Exception),"Interface is nil"+z); }'),
+       Code : 'function $CheckIntf(i,z) { if (i) return i; throw Exception.Create$1($New(Exception),"Interface is nil"+z); }';
+       Dependency : 'Exception' ),
       (Name : '$CheckFunc';
-       Code : 'function $CheckFunc(i,z) { if (i) return i; throw Exception.Create$1($New(Exception),"Function pointer is nil"+z); }'),
+       Code : 'function $CheckFunc(i,z) { if (i) return i; throw Exception.Create$1($New(Exception),"Function pointer is nil"+z); }';
+       Dependency : 'Exception' ),
       (Name : '$Assert';
        Code : 'function $Assert(b,m,z) { if (!b) throw Exception.Create$1($New(EAssertionFailed),"Assertion failed"+z+((m=="")?"":" : ")+m); }';
        Dependency : 'EAssertionFailed' ),
@@ -162,6 +165,12 @@ const
                +#9'while ((s)&&(s!==c)) s=s.$Parent;'#13#10
                +#9'return (s)?true:false;'#13#10
                +'}'#13#10 ),
+      (Name : '$ToClassType';
+       Code : 'function $ToClassType(o) {'#13#10
+               +#9'if (o===null) return o;'#13#10
+               +#9'return o.ClassType'#13#10
+               +'}'#13#10;
+       Dependency : 'TObject' ),
       (Name : '$Is';
        Code : 'function $Is(o,c) {'#13#10
                +#9'if (o===null) return false;'#13#10

@@ -1,0 +1,6 @@
+A int
+B int
+A int
+B int
+A func
+B func

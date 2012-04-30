@@ -68,10 +68,12 @@ begin
    CollectFiles(basePath+'SimpleScripts'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'InterfacesPass'+PathDelim, cFilter, FTests);
    CollectFiles(basePath+'OverloadsPass'+PathDelim, cFilter, FTests);
+   CollectFiles(basePath+'HelpersPass'+PathDelim, cFilter, FTests);
 
    CollectFiles(basePath+'FailureScripts'+PathDelim, cFilter, FFailures);
    CollectFiles(basePath+'InterfacesFail'+PathDelim, cFilter, FFailures);
    CollectFiles(basePath+'OverloadsFail'+PathDelim, cFilter, FFailures);
+   CollectFiles(basePath+'HelpersFail'+PathDelim, cFilter, FFailures);
 
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.OnInclude:=DoInclude;

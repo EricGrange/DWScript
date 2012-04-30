@@ -125,8 +125,8 @@ type
    {Re-list every symbol (pointer to it) and every position it is in in the script }
    TSymbolPositionList = class
       private
-         FSymbol : TSymbol;            // pointer to the symbol
-         FPosList : TTightList;        // list of positions where symbol is declared and used
+         FSymbol : TSymbol;                     // pointer to the symbol
+         FPosList : TArrayObjectList<TSymbolPosition>;   // list of positions where symbol is declared and used
 
       protected
          function GetPosition(index : Integer) : TSymbolPosition; inline;
@@ -144,6 +144,7 @@ type
          function IndexOfPosition(const scriptPos : TScriptPos) : Integer;
 
          property Items[index : Integer] : TSymbolPosition read GetPosition; default;
+         property List : TArray<TSymbolPosition> read FPosList.List;
          function Count : Integer; inline;
 
          property Symbol: TSymbol read FSymbol;
@@ -957,6 +958,16 @@ type
          property Args : TExprBaseListRec read FArgs;
    end;
 
+   TFuncExprOverloadsHelper = class
+      private
+         FExpr : TFuncExprBase;
+         FOverloads : TFuncSymbolList;
+
+      public
+         constructor Create(expr : TFuncExprBase; overloads : TFuncSymbolList);
+         function ExpectedArg : TParamSymbol;
+   end;
+
    TPushOperatorType = (potUnknown,
                         potAddr, potPassAddr, potTempAddr, potTempArrayAddr, potTempArray,
                         potResult,
@@ -1282,6 +1293,10 @@ type
 
    // Call of a record method
    TRecordMethodExpr = class (TFuncExpr)
+   end;
+
+   // Call of a helper method
+   THelperMethodExpr = class (TFuncExpr)
    end;
 
    // Call of static methods (not virtual)
@@ -1758,7 +1773,7 @@ type
    end;
 
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
-                        const scriptObj : IScriptObj; structSym : TStructuredTypeSymbol;
+                        const scriptObj : IScriptObj; structSym : TCompositeTypeSymbol;
                         forceStatic : Boolean = False): TFuncExpr;
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; var expr : TTypedExpr; RefKind: TRefKind;
                           const scriptPos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
@@ -1939,7 +1954,7 @@ end;
 // CreateFuncExpr
 //
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
-                        const scriptObj : IScriptObj; structSym : TStructuredTypeSymbol;
+                        const scriptObj : IScriptObj; structSym : TCompositeTypeSymbol;
                         forceStatic : Boolean = False): TFuncExpr;
 var
    instanceExpr : TTypedExpr;
@@ -1950,15 +1965,20 @@ begin
          Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
                                   instanceExpr, rkObjRef, cNullPos, ForceStatic)
       end else if structSym<>nil then begin
-         instanceExpr:=TConstExpr.Create(prog, (structSym as TClassSymbol).ClassOf, Int64(structSym));
+         instanceExpr:=TConstExpr.Create(prog, (structSym as TClassSymbol).MetaSymbol, Int64(structSym));
          Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
                                   instanceExpr, rkClassOfRef, cNullPos, ForceStatic)
       end else begin
          // static method
          structSym:=TMethodSymbol(funcSym).StructSymbol;
-         instanceExpr:=TConstExpr.Create(prog, structSym.MetaSymbol, Int64(structSym));
-         Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
-                                  instanceExpr, rkClassOfRef, cNullPos, ForceStatic)
+         if structSym is TStructuredTypeSymbol then begin
+            instanceExpr:=TConstExpr.Create(prog, TStructuredTypeSymbol(structSym).MetaSymbol, Int64(structSym));
+            Result:=CreateMethodExpr(prog, TMethodSymbol(funcSym),
+                                     instanceExpr, rkClassOfRef, cNullPos, ForceStatic)
+         end else begin
+            Result:=nil;
+            Assert(False, 'TODO');
+         end;
       end;
    end else begin
       Result:=TFuncExpr.Create(Prog, cNullPos, funcSym);
@@ -1969,6 +1989,8 @@ end;
 //
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; var expr: TTypedExpr; RefKind: TRefKind;
                           const scriptPos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
+var
+   helper : THelperSymbol;
 begin
    // Create the correct TExpr for a method symbol
    Result := nil;
@@ -2044,6 +2066,25 @@ begin
 
          Result:=TRecordMethodExpr.Create(prog, scriptPos, meth);
          Result.AddArg(expr);
+
+      end;
+
+   end else if meth.StructSymbol is THelperSymbol then begin
+
+      helper:=THelperSymbol(meth.StructSymbol);
+      if     meth.IsClassMethod
+         and (   (helper.ForType.ClassType=TInterfaceSymbol)
+              or not (   (helper.ForType is TStructuredTypeSymbol)
+                      or (helper.ForType is TStructuredTypeMetaSymbol))) then begin
+
+         Result:=TFuncExpr.Create(prog, scriptPos, meth);
+         expr.Free;
+
+      end else begin
+
+         Result:=THelperMethodExpr.Create(prog, scriptPos, meth);
+         if expr<>nil then
+            Result.AddArg(expr);
 
       end;
 
@@ -4583,7 +4624,9 @@ end;
 //
 function TFuncExpr.ExpectedArg : TParamSymbol;
 begin
-   if FArgs.Count<FFunc.Params.Count then
+(*   if FFunc.IsOverloaded then
+      Result:=nil
+   else*) if FArgs.Count<FFunc.Params.Count then
       Result:=(FFunc.Params[FArgs.Count] as TParamSymbol)
    else Result:=nil;
 end;
@@ -6233,7 +6276,7 @@ end;
 constructor TScriptObj.Create(aClassSym : TClassSymbol; executionContext : TdwsProgramExecution);
 var
    i : Integer;
-   classSymIter : TStructuredTypeSymbol;
+   classSymIter : TCompositeTypeSymbol;
    externalClass : TClassSymbol;
    fs : TFieldSymbol;
    member : TSymbol;
@@ -7010,9 +7053,9 @@ begin
       for i := 0 to TPropertySymbol(sym).ArrayIndices.Count - 1 do
          Remove(TPropertySymbol(sym).ArrayIndices[i]);
    // TStructuredTypeSymbol - remove members (methods, fields, properties)
-   end else if sym is TStructuredTypeSymbol then begin
-      for i := 0 to TStructuredTypeSymbol(sym).Members.Count - 1 do
-         Remove(TStructuredTypeSymbol(sym).Members[i]);
+   end else if sym is TCompositeTypeSymbol then begin
+      for i := 0 to TCompositeTypeSymbol(sym).Members.Count - 1 do
+         Remove(TCompositeTypeSymbol(sym).Members[i]);
    end;
 
    // basic entry to remove
@@ -7038,7 +7081,7 @@ begin
    for i:=0 to FSymbolList.Count-1 do begin
       list:=FSymbolList[i];
       for j:=list.Count-1 downto 0 do begin
-         symPos:=list[j];
+         symPos:=list.List[j];
          if     startPos.IsBeforeOrEqual(symPos.ScriptPos)
             and symPos.ScriptPos.IsBeforeOrEqual(endPos) then
             list.Delete(j);
@@ -7188,7 +7231,7 @@ end;
 //
 constructor TSymbolPositionList.Create(ASymbol: TSymbol);
 begin
-   FSymbol := ASymbol;
+   FSymbol:=ASymbol;
 end;
 
 // Destroy
@@ -7215,7 +7258,7 @@ end;
 //
 procedure TSymbolPositionList.Delete(index : Integer);
 begin
-   Items[index].Free;
+   FPosList[index].Free;
    FPosList.Delete(index);
 end;
 
@@ -7227,7 +7270,7 @@ var
    symPos : TSymbolPosition;
 begin
    for i:=0 to FPosList.Count-1 do begin
-      symPos:=TSymbolPosition(FPosList.List[i]);
+      symPos:=FPosList[i];
       if     (symPos.ScriptPos.Line=ALine)
          and (symPos.ScriptPos.Col=ACol)
          and (symPos.ScriptPos.SourceFile.Name=sourceFile) then begin
@@ -7241,7 +7284,7 @@ end;
 //
 function TSymbolPositionList.GetPosition(Index: Integer): TSymbolPosition;
 begin
-   Result:=TSymbolPosition(FPosList.List[Index]);
+   Result:=FPosList[Index];
 end;
 
 // Count
@@ -7259,7 +7302,7 @@ var
 begin
    if Self<>nil then begin
       for i:=0 to Count-1 do begin
-         Result:=Items[i];
+         Result:=FPosList[i];
          if SymbolUse in Result.SymbolUsages then Exit;
       end;
    end;
@@ -7274,7 +7317,7 @@ var
    symPos : TSymbolPosition;
 begin
    for i:=0 to Count-1 do begin
-      symPos:=Items[i];
+      symPos:=FPosList[i];
       if symPos.ScriptPos.SamePosAs(scriptPos) then
          Exit(i);
    end;
@@ -8172,6 +8215,38 @@ begin
    e:=EScriptStopped.CreatePosFmt(stoppedOn.ScriptPos, RTE_ScriptStopped, []);
    e.ScriptCallStack:=exec.GetCallStack;
    raise e;
+end;
+
+// ------------------
+// ------------------ TFuncExprOverloadsHelper ------------------
+// ------------------
+
+// Create
+//
+constructor TFuncExprOverloadsHelper.Create(expr : TFuncExprBase; overloads : TFuncSymbolList);
+begin
+   FExpr:=expr;
+   FOverloads:=overloads;
+end;
+
+// ExpectedArg
+//
+function TFuncExprOverloadsHelper.ExpectedArg : TParamSymbol;
+var
+   i, n : Integer;
+   func : TFuncSymbol;
+begin
+   Result:=nil;
+   n:=FExpr.FArgs.Count;
+   for i:=0 to FOverloads.Count-1 do begin
+      func:=FOverloads[i];
+      if n<func.Params.Count then begin
+         if Result=nil then
+            Result:=(func.Params[n] as TParamSymbol)
+         else if not Result.Typ.IsOfType(func.Params[n].Typ) then
+            Exit(nil);
+      end else Exit(nil);
+   end;
 end;
 
 // ------------------------------------------------------------------

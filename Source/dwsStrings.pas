@@ -59,6 +59,8 @@ const
   SWI_INCLUDE_ONCE = 'INCLUDE_ONCE';
   SWI_FILTER_LONG = 'FILTER';
   SWI_FILTER_SHORT = 'F';
+  SWI_RESOURCE_LONG = 'RESOURCE';
+  SWI_RESOURCE_SHORT = 'R';
   SWI_DEFINE = 'DEFINE';
   SWI_UNDEF = 'UNDEF';
   SWI_IFDEF = 'IFDEF';
@@ -102,6 +104,7 @@ const
   CPE_StringExpected = 'String expected';
   CPE_BeginExpected = 'BEGIN expected';
   CPE_VariableExpected = 'Variable expected';
+  CPE_ForExpected = 'FOR expected';
   CPE_ToOrDowntoExpected = 'TO or DOWNTO expected';
   CPE_DoExpected = 'DO expected';
   CPE_ThenExpected = 'Then expected';
@@ -195,7 +198,11 @@ const
   CPE_CantWriteProperty = 'Can''t write properties of complex type (record, array)';
   CPE_CantUseCombinedAssignmentOnProperty = 'Can''t use combined assignment on property';
   CPE_MultipleDefaultProperties = '"%s" already has "%s" as default property';
+  CPE_NoDefaultPropertyAllowed = 'No default property is allowed here';
   CPE_ParamsExpected = 'Parameters expected';
+  CPE_NoProtectedVisibilityForRecords = 'Records do not supported "protected" visibility specifier';
+  CPE_NoProtectedVisibilityForHelpers = 'Helpers do not supported "protected" visibility specifier';
+  CPE_HelpersNotAllowedForDelegates = 'Helpers not allowed for delegates or function pointers';
 
   // Interface declaration
   CPE_InterfaceAlreadyDefined = 'Interface "%s" already defined';
@@ -243,7 +250,7 @@ const
   CPE_NameIsReserved = 'Name "%s" is reserved';
   CPE_TypeExpected = 'Type expected';
   CPE_InvalidType = '%s is not a Type!';
-  CPE_UnknownMember = 'There''s no member with name "%s"!';
+  CPE_UnknownMember = 'There''s no accessible member with name "%s"!';
   CPE_NoMemberExpected = 'No member expected';
   CPE_NoArrayExpected = 'Not an array!';
   CPE_NoMethodExpected = 'Not a method!';
@@ -502,7 +509,6 @@ const
   RTE_TooManyIndices = 'Too many indices';
   RTE_TooFewIndices = 'Too few indices';
   RTE_NoRecordFields = 'Record has no field members';
-  RTE_NoProtectedVisibilityForRecords = 'Records do not supported "protected" visibility specifier';
 
   // Compiler Strings
 

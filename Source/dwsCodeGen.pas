@@ -47,7 +47,8 @@ type
          FSymbol : TSymbol;
          FHash : TdwsMappedSymbolHash;
          FMaps : TdwsCodeGenSymbolMaps;
-         FNames : TFastCompareStringList;
+//         FNames : TFastCompareStringList;
+         FNames : TSimpleNameObjectHash<TSymbol>;
          FLookup : TdwsMappedSymbol;
          FReservedSymbol : TSymbol;
          FPrefix : String;
@@ -66,7 +67,6 @@ type
          procedure ReserveExternalName(sym : TSymbol); inline;
 
          function MapSymbol(symbol : TSymbol; scope : TdwsCodeGenSymbolScope; canObfuscate : Boolean) : String;
-         procedure ForgetSymbol(symbol : TSymbol);
 
          property Maps : TdwsCodeGenSymbolMaps read FMaps write FMaps;
          property Parent : TdwsCodeGenSymbolMap read FParent;
@@ -148,7 +148,7 @@ type
 
          procedure EnterScope(symbol : TSymbol);
          procedure LeaveScope;
-         function  EnterStructScope(struct : TStructuredTypeSymbol) : Integer;
+         function  EnterStructScope(struct : TCompositeTypeSymbol) : Integer;
          procedure LeaveScopes(n : Integer);
          function  IsScopeLevel(symbol : TSymbol) : Boolean;
 
@@ -160,16 +160,17 @@ type
 
          procedure SmartLinkFilterOutSourceContext(context : TdwsSourceContext);
          procedure SmartLinkFilterSymbolTable(table : TSymbolTable; var changed : Boolean); virtual;
-         procedure SmartLinkFilterStructSymbol(structSymbol : TStructuredTypeSymbol; var changed : Boolean); virtual;
+         procedure SmartLinkFilterStructSymbol(structSymbol : TCompositeTypeSymbol; var changed : Boolean); virtual;
          procedure SmartLinkFilterInterfaceSymbol(intfSymbol : TInterfaceSymbol; var changed : Boolean); virtual;
          procedure SmartLinkFilterMemberFieldSymbol(fieldSymbol : TFieldSymbol; var changed : Boolean); virtual;
 
+         procedure DoCompileHelperSymbol(helper : THelperSymbol); virtual;
          procedure DoCompileRecordSymbol(rec : TRecordSymbol); virtual;
          procedure DoCompileClassSymbol(cls : TClassSymbol); virtual;
          procedure DoCompileFuncSymbol(func : TSourceFuncSymbol); virtual;
          procedure DoCompileUnitSymbol(un : TUnitMainSymbol); virtual;
 
-         procedure MapStructuredSymbol(structSym : TStructuredTypeSymbol; canObfuscate : Boolean);
+         procedure MapStructuredSymbol(structSym : TCompositeTypeSymbol; canObfuscate : Boolean);
 
       public
          constructor Create; virtual;
@@ -190,6 +191,7 @@ type
          procedure CompileFuncSymbol(func : TSourceFuncSymbol);
          procedure CompileConditions(func : TFuncSymbol; conditions : TSourceConditions;
                                      preConds : Boolean); virtual;
+         procedure CompileHelperSymbol(helper : THelperSymbol);
          procedure CompileRecordSymbol(rec : TRecordSymbol);
          procedure CompileClassSymbol(cls : TClassSymbol);
          procedure BeforeCompileProgram(table, systemTable : TSymbolTable; unitSyms : TUnitMainSymbols);
@@ -231,7 +233,7 @@ type
 
          procedure WriteCompiledOutput(dest : TWriteOnlyBlockStream; const prog : IdwsProgram); virtual;
          function CompiledOutput(const prog : IdwsProgram) : String;
-         procedure FushDependencies;
+         procedure FlushDependencies;
 
          procedure Clear; virtual;
 
@@ -535,6 +537,8 @@ begin
       else if sym is TClassSymbol then begin
          if FCompiledClasses.IndexOf(sym)<0 then
             CompileClassSymbol(TClassSymbol(sym));
+      end else if sym is THelperSymbol then begin
+         CompileHelperSymbol(THelperSymbol(sym))
       end;
    end;
 end;
@@ -628,6 +632,15 @@ begin
    // nothing
 end;
 
+// CompileHelperSymbol
+//
+procedure TdwsCodeGen.CompileHelperSymbol(helper : THelperSymbol);
+begin
+   if helper.IsExternal then Exit;
+
+   DoCompileHelperSymbol(helper);
+end;
+
 // CompileRecordSymbol
 //
 procedure TdwsCodeGen.CompileRecordSymbol(rec : TRecordSymbol);
@@ -684,6 +697,13 @@ begin
 
    MapPrioritySymbolNames(table);
    MapNormalSymbolNames(table);
+end;
+
+// DoCompileHelperSymbol
+//
+procedure TdwsCodeGen.DoCompileHelperSymbol(helper : THelperSymbol);
+begin
+   // nothing by default
 end;
 
 // DoCompileRecordSymbol
@@ -781,7 +801,7 @@ end;
 
 // MapStructuredSymbol
 //
-procedure TdwsCodeGen.MapStructuredSymbol(structSym : TStructuredTypeSymbol; canObfuscate : Boolean);
+procedure TdwsCodeGen.MapStructuredSymbol(structSym : TCompositeTypeSymbol; canObfuscate : Boolean);
 var
    sym : TSymbol;
    n : Integer;
@@ -1089,9 +1109,9 @@ begin
    end;
 end;
 
-// FushDependencies
+// FlushDependencies
 //
-procedure TdwsCodeGen.FushDependencies;
+procedure TdwsCodeGen.FlushDependencies;
 begin
    FFlushedDependencies.Assign(FDependencies);
    FDependencies.Clear;
@@ -1197,7 +1217,7 @@ end;
 
 // EnterStructScope
 //
-function TdwsCodeGen.EnterStructScope(struct : TStructuredTypeSymbol) : Integer;
+function TdwsCodeGen.EnterStructScope(struct : TCompositeTypeSymbol) : Integer;
 begin
    if struct<>nil then begin
       Result:=EnterStructScope(struct.Parent)+1;
@@ -1341,7 +1361,8 @@ begin
 
             if sym is TInterfaceSymbol then
                SmartLinkFilterInterfaceSymbol(TInterfaceSymbol(sym), localChanged)
-            else SmartLinkFilterStructSymbol(TStructuredTypeSymbol(sym), localChanged);
+            else if not (sym is THelperSymbol) then
+               SmartLinkFilterStructSymbol(TStructuredTypeSymbol(sym), localChanged);
 
          end else if sym is TFuncSymbol then begin
 
@@ -1363,7 +1384,7 @@ end;
 
 // SmartLinkFilterStructSymbol
 //
-procedure TdwsCodeGen.SmartLinkFilterStructSymbol(structSymbol : TStructuredTypeSymbol; var changed : Boolean);
+procedure TdwsCodeGen.SmartLinkFilterStructSymbol(structSymbol : TCompositeTypeSymbol; var changed : Boolean);
 
    procedure RemoveReferencesInContextMap(symbol : TSymbol);
    begin
@@ -1692,9 +1713,10 @@ begin
    FHash:=TdwsMappedSymbolHash.Create;
    FParent:=aParent;
    FSymbol:=aSymbol;
-   FNames:=TFastCompareStringList.Create;
-   FNames.Sorted:=True;
-   FNames.Duplicates:=dupError;
+   FNames:=TSimpleNameObjectHash<TSymbol>.Create;
+//   FNames:=TFastCompareStringList.Create;
+//   FNames.Sorted:=True;
+//   FNames.Duplicates:=dupError;
    FReservedSymbol:=TSymbol.Create('', nil);
    if aSymbol is TUnitSymbol then
       FPrefix:=aSymbol.Name+'_';
@@ -1722,16 +1744,6 @@ begin
    else Result:='';
 end;
 
-// ForgetSymbol
-//
-procedure TdwsCodeGenSymbolMap.ForgetSymbol(symbol : TSymbol);
-begin
-   FLookup.Symbol:=symbol;
-   if not FHash.Extract(FLookup) then
-      Assert(False)
-   else FNames.Delete(FNames.IndexOfObject(symbol));
-end;
-
 // NameToSymbol
 //
 function TdwsCodeGenSymbolMap.NameToSymbol(const name : String; scope : TdwsCodeGenSymbolScope) : TSymbol;
@@ -1741,11 +1753,12 @@ var
    skip : Boolean;
    rootMap : TdwsCodeGenSymbolMap;
 begin
-   i:=FNames.IndexOf(name);
-   if i>=0 then
-      Result:=TSymbol(FNames.Objects[i])
-   else begin
-      Result:=nil;
+   Result:=FNames[name];
+//   i:=FNames.IndexOf(name);
+//   if i>=0 then
+//      Exit(TSymbol(FNames.Objects[i]));
+//   Result:=nil;
+   if Result=nil then begin
       case scope of
          cgssGlobal : if Parent<>nil then
             Result:=Parent.NameToSymbol(name, scope);
@@ -1781,26 +1794,24 @@ end;
 //
 procedure TdwsCodeGenSymbolMap.ReserveName(const name : String);
 begin
-   FNames.AddObject(name, FReservedSymbol);
+   FNames.Objects[name]:=FReservedSymbol;
 end;
 
 // ReserveExternalName
 //
 procedure TdwsCodeGenSymbolMap.ReserveExternalName(sym : TSymbol);
 var
-   i : Integer;
    n : String;
+   existing : TSymbol;
 begin
    if sym is TFuncSymbol then
       n:=TFuncSymbol(sym).ExternalName
    else n:=sym.Name;
-   i:=FNames.IndexOf(n);
-   if i<0 then
-      FNames.AddObject(n, sym)
-   else begin
-      if (FNames.Objects[i]<>FReservedSymbol) and (FNames.Objects[i]<>sym) then
-         raise ECodeGenException.CreateFmt('External symbol "%s" already defined', [sym.Name]);
-      FNames.Objects[i]:=sym;
+   if not FNames.AddObject(n, sym) then begin
+      existing:=FNames[n];
+      if (existing<>FReservedSymbol) and (existing<>sym) then
+         raise ECodeGenException.CreateFmt('External symbol "%s" already defined', [sym.Name])
+      else FNames.Objects[n]:=sym;
    end;
 end;
 

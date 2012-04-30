@@ -83,6 +83,7 @@ begin
    CollectFiles(ExtractFilePath(ParamStr(0))+'BuildScripts'+PathDelim, dwsFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'InterfacesPass'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'OverloadsPass'+PathDelim, pasFilter, FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'HelpersPass'+PathDelim, pasFilter, FTests);
 
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsMath'+PathDelim, pasFilter, FTests);
    CollectFiles(ExtractFilePath(ParamStr(0))+'FunctionsString'+PathDelim, pasFilter, FTests);
@@ -294,7 +295,7 @@ begin
             if not (expectedResult=output) then begin
                diagnostic.Add( ExtractFileName(FTests[i])
                               +': expected <'+expectedResult
-                              +'> but got <'+output+'>');//+jsCode);
+                              +'> but got <'+output+'>'+jsCode);
             end;
          except
             on e : Exception do begin

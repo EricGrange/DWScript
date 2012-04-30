@@ -177,9 +177,30 @@ type
          property Count : Integer read FCount;
    end;
 
+   // TArrayObjectList<T>
+   //
+   {: An embeddable wrapped array. }
+   TArrayObjectList<T: Class> = record
+      private
+         FCount : Integer;
+
+         function GetItems(const idx : Integer) : T; inline;
+         procedure SetItems(const idx : Integer; const value : T); inline;
+
+      public
+         List : TArray<T>;
+
+         procedure Add(const item : T);
+         procedure Delete(idx : Integer);
+         procedure Clear;
+         procedure Clean;
+         property Items[const position : Integer] : T read GetItems write SetItems; default;
+         property Count : Integer read FCount;
+   end;
+
    // TSimpleList<T>
    //
-   {: A minimalistic generic list. }
+   {: A minimalistic generic list class. }
    TSimpleList<T> = class
       private
          FItems : array of T;
@@ -270,7 +291,7 @@ type
    end;
 
    TSimpleHashBucket<T> = record
-      HashCode : Integer;
+      HashCode : Cardinal;
       Value : T;
    end;
    TSimpleHashBucketArray<T> = array of TSimpleHashBucket<T>;
@@ -287,7 +308,6 @@ type
 
       protected
          procedure Grow;
-         function HashBucket(const hashCode : Integer) : Integer; inline;
          function LinearFind(const item : T; var index : Integer) : Boolean;
          function SameItem(const item1, item2 : T) : Boolean; virtual; abstract;
          // hashCode must be non-null
@@ -295,7 +315,6 @@ type
 
       public
          function Add(const anItem : T) : Boolean; // true if added
-         function Extract(const anItem : T) : Boolean; // true if extracted
          function Contains(const anItem : T) : Boolean;
          function Match(var anItem : T) : Boolean;
          procedure Enumerate(const callBack : TSimpleHashProc<T>);
@@ -311,6 +330,25 @@ type
 
       public
          procedure Clean;
+   end;
+
+   TNameObjectHashBucket<T: Class> = record
+      Name : String;
+      Obj : T;
+   end;
+
+   TSimpleNameObjectHash<T: Class> = class(TSimpleHash<TNameObjectHashBucket<T>>)
+      protected
+         function SameItem(const item1, item2 : TNameObjectHashBucket<T>) : Boolean; override;
+         function GetItemHashCode(const item1 : TNameObjectHashBucket<T>) : Integer; override;
+
+         function GetObjects(const name : String) : T;
+         procedure SetObjects(const name : String; obj : T);
+
+      public
+         function AddObject(const name : String; obj : T; replace : Boolean = False) : Boolean;
+
+         property Objects[const name : String] : T read GetObjects write SetObjects; default;
    end;
 
    TObjectsLookup = class (TSortedList<TObject>)
@@ -362,6 +400,7 @@ type
 
    TFastCompareStringList = class (TStringList)
       function CompareStrings(const S1, S2: UnicodeString): Integer; override;
+      function Find(const S: string; var Index: Integer): Boolean; override;
    end;
 
    TFastCompareTextList = class (TStringList)
@@ -386,6 +425,8 @@ function StrBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 
 function Min(a, b : Integer) : Integer; inline;
 
+function SimpleStringHash(const s : String) : Cardinal;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -402,18 +443,31 @@ begin
    PPointer(ref)^:=Pointer(newClass);
 end;
 
+// SimpleStringHash
+//
+function SimpleStringHash(const s : String) : Cardinal;
+var
+   i : Integer;
+begin
+   Result:=Length(s);
+   for i:=1 to Result do
+      Result:=((Result shl 2) or (Result shr 30)) xor Ord(s[i]);
+end;
+
 // ------------------
 // ------------------ UnicodeString Unifier ------------------
 // ------------------
 
 type
+   {$IF CompilerVersion > 22}
+   TStringListList = TStringItemList;
+   {$ELSE}
+   TStringListList = PStringItemList;
+   {$IFEND}
+
    TStringListCracker = class (TStrings)
       private
-         {$IF CompilerVersion > 22}
-         FList : TStringItemList;
-         {$ELSE}
-         FList : PStringItemList;
-         {$IFEND}
+         FList : TStringListList;
    end;
 
    TUnifierStringList = class (TFastCompareStringList)
@@ -430,6 +484,34 @@ var
 function TFastCompareStringList.CompareStrings(const S1, S2: UnicodeString): Integer;
 begin
    Result:=CompareStr(S1, S2);
+end;
+
+// Find
+//
+function TFastCompareStringList.Find(const S: string; var Index: Integer): Boolean;
+var
+   list : TStringListList;
+   lowBound, highBound, midPoint, cmpResult : Integer;
+begin
+   Result := False;
+   list:=TStringListCracker(Self).FList;
+   lowBound:=0;
+   highBound:=Count-1;
+   while lowBound<=highBound do begin
+      midPoint:=(lowBound + highBound) shr 1;
+      cmpResult:=CompareStr(list^[midPoint].FString, S);
+      if cmpResult<0 then
+         lowBound:=midPoint+1
+      else begin
+         highBound:=midPoint-1;
+         if cmpResult=0 then begin
+            Result:=True;
+            if Duplicates<>dupAccept then
+               lowBound:=midPoint;
+         end;
+      end;
+   end;
+   Index := lowBound;
 end;
 
 // TUnifierStringList.Create
@@ -1523,7 +1605,7 @@ var
    oldBuckets : TSimpleHashBucketArray<T>;
 begin
    if FCapacity=0 then
-      FCapacity:=16
+      FCapacity:=32
    else FCapacity:=FCapacity*2;
    FGrowth:=(FCapacity*3) div 4;
 
@@ -1534,18 +1616,11 @@ begin
    n:=FCapacity-1;
    for i:=0 to High(oldBuckets) do begin
       if oldBuckets[i].HashCode=0 then continue;
-      j:=HashBucket(oldBuckets[i].HashCode);
+      j:=(oldBuckets[i].HashCode and (FCapacity-1));
       while FBuckets[j].HashCode<>0 do
          j:=(j+1) and n;
       FBuckets[j]:=oldBuckets[i];
    end;
-end;
-
-// HashBucket
-//
-function TSimpleHash<T>.HashBucket(const hashCode : Integer) : Integer;
-begin
-   Result:=hashCode and (FCapacity-1); // capacity is a power of two
 end;
 
 // LinearFind
@@ -1571,28 +1646,12 @@ begin
    if FCount>=FGrowth then Grow;
 
    hashCode:=GetItemHashCode(anItem);
-   i:=HashBucket(hashCode);
+   i:=(hashCode and (FCapacity-1));
    if LinearFind(anItem, i) then Exit(False);
    FBuckets[i].HashCode:=hashCode;
    FBuckets[i].Value:=anItem;
    Inc(FCount);
    Result:=True;
-end;
-
-// Extract
-//
-function TSimpleHash<T>.Extract(const anItem : T) : Boolean;
-var
-   i : Integer;
-   hashCode : Integer;
-begin
-   hashCode:=GetItemHashCode(anItem);
-   i:=HashBucket(hashCode);
-   Result:=LinearFind(anItem, i);
-   if Result then begin
-      FBuckets[i].HashCode:=0;
-      Dec(FCount);
-   end;
 end;
 
 // Contains
@@ -1602,7 +1661,7 @@ var
    i : Integer;
 begin
    if FCount=0 then Exit(False);
-   i:=HashBucket(GetItemHashCode(anItem));
+   i:=(GetItemHashCode(anItem) and (FCapacity-1));
    Result:=LinearFind(anItem, i);
 end;
 
@@ -1613,7 +1672,7 @@ var
    i : Integer;
 begin
    if FCount=0 then Exit(False);
-   i:=HashBucket(GetItemHashCode(anItem));
+   i:=(GetItemHashCode(anItem) and (FCapacity-1));
    Result:=LinearFind(anItem, i);
    if Result then
       anItem:=FBuckets[i].Value;
@@ -1877,6 +1936,153 @@ end;
 destructor TAutoStore<T>.Destroy;
 begin
    FValue.Free;
+end;
+
+// ------------------
+// ------------------ TSimpleNameObjectHash<T> ------------------
+// ------------------
+
+// SameItem
+//
+function TSimpleNameObjectHash<T>.SameItem(const item1, item2 : TNameObjectHashBucket<T>) : Boolean;
+begin
+   Result:=(item1.Name=item2.Name);
+end;
+
+// GetItemHashCode
+//
+function TSimpleNameObjectHash<T>.GetItemHashCode(const item1 : TNameObjectHashBucket<T>) : Integer;
+begin
+   Result:=SimpleStringHash(item1.Name);
+end;
+
+// GetObjects
+//
+function TSimpleNameObjectHash<T>.GetObjects(const name : String) : T;
+var
+   h : Cardinal;
+   i : Integer;
+begin
+   if FCount=0 then Exit(nil);
+
+   h:=SimpleStringHash(name);
+   i:=(h and (FCapacity-1));
+
+   repeat
+      with FBuckets[i] do begin
+         if HashCode=0 then
+            Exit(nil);
+         if (HashCode=h) and (Value.Name=name) then begin
+            Result:=Value.Obj;
+            Exit;
+         end;
+      end;
+      i:=(i+1) and (FCapacity-1);
+   until False;
+end;
+
+// SetObjects
+//
+procedure TSimpleNameObjectHash<T>.SetObjects(const name : String; obj : T);
+begin
+   AddObject(name, obj, True);
+end;
+
+// AddObject
+//
+function TSimpleNameObjectHash<T>.AddObject(const name : String; obj : T;
+                                            replace : Boolean = False) : Boolean;
+var
+   i : Integer;
+   h : Cardinal;
+begin
+   if FCount>=FGrowth then Grow;
+
+   h:=SimpleStringHash(name);
+   i:=(h and (FCapacity-1));
+
+   repeat
+      with FBuckets[i] do begin
+         if HashCode=0 then
+            Break
+         else if (HashCode=h) and (Value.Name=name) then begin
+            if replace then
+               Value.Obj:=obj;
+            Exit(False);
+         end;
+      end;
+      i:=(i+1) and (FCapacity-1);
+   until False;
+
+   with FBuckets[i] do begin
+      HashCode:=h;
+      Value.Name:=name;
+      Value.Obj:=obj;
+   end;
+   Inc(FCount);
+   Result:=True;
+end;
+
+// ------------------
+// ------------------ TArrayObjectList<T> ------------------
+// ------------------
+
+// Add
+//
+procedure TArrayObjectList<T>.Add(const item : T);
+var
+   n : Integer;
+begin
+   n:=FCount;
+   SetLength(List, n+1);
+   List[n]:=item;
+   Inc(FCount);
+end;
+
+// Delete
+//
+procedure TArrayObjectList<T>.Delete(idx : Integer);
+var
+   n : Integer;
+begin
+   n:=FCount-1;
+   if idx<n then
+      System.Move(List[idx+1], List[idx], (n-idx)*SizeOf(TObject));
+   SetLength(List, n);
+   Dec(FCount);
+end;
+
+// Clear
+//
+procedure TArrayObjectList<T>.Clear;
+begin
+   SetLength(List, 0);
+   FCount:=0;
+end;
+
+// Clean
+//
+procedure TArrayObjectList<T>.Clean;
+var
+   i : Integer;
+begin
+   for i:=0 to High(List) do
+      List[i].Free;
+   Clear;
+end;
+
+// GetItems
+//
+function TArrayObjectList<T>.GetItems(const idx : Integer) : T;
+begin
+   Result:=List[idx];
+end;
+
+// SetItems
+//
+procedure TArrayObjectList<T>.SetItems(const idx : Integer; const value : T);
+begin
+   List[idx]:=value;
 end;
 
 // ------------------------------------------------------------------

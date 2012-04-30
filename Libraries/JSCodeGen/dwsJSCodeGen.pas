@@ -72,7 +72,9 @@ type
          procedure CompileFuncBody(func : TFuncSymbol);
          procedure CompileMethod(meth : TMethodSymbol);
          procedure CompileRecordMethod(meth : TMethodSymbol);
+         procedure CompileHelperMethod(meth : TMethodSymbol);
 
+         procedure DoCompileHelperSymbol(helper : THelperSymbol); override;
          procedure DoCompileRecordSymbol(rec : TRecordSymbol); override;
          procedure DoCompileClassSymbol(cls : TClassSymbol); override;
          procedure DoCompileFieldsInit(cls : TClassSymbol);
@@ -109,7 +111,7 @@ type
 
          procedure WriteJavaScriptString(const s : String);
 
-         function MemberName(sym : TSymbol; cls : TStructuredTypeSymbol) : String;
+         function MemberName(sym : TSymbol; cls : TCompositeTypeSymbol) : String;
 
          procedure WriteCompiledOutput(dest : TWriteOnlyBlockStream; const prog : IdwsProgram); override;
 
@@ -323,6 +325,9 @@ type
    TJSObjAsIntfExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
+   TJSObjToClassTypeExpr = class (TJSExprCodeGen)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
    TJSIntfAsClassExpr = class (TJSExprCodeGen)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
@@ -380,6 +385,10 @@ type
    end;
 
    TJSRecordMethodExpr = class (TJSFuncBaseExpr)
+      procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
+   end;
+
+   TJSHelperMethodExpr = class (TJSFuncBaseExpr)
       procedure CodeGen(codeGen : TdwsCodeGen; expr : TExprBase); override;
    end;
 
@@ -670,6 +679,7 @@ begin
    RegisterCodeGen(TIsOpExpr,             TJSIsOpExpr.Create);
 
    RegisterCodeGen(TObjAsIntfExpr,        TJSObjAsIntfExpr.Create);
+   RegisterCodeGen(TObjToClassTypeExpr,   TJSObjToClassTypeExpr.Create);
    RegisterCodeGen(TIntfAsClassExpr,      TJSIntfAsClassExpr.Create);
    RegisterCodeGen(TIntfAsIntfExpr,       TJSIntfAsIntfExpr.Create);
    RegisterCodeGen(TImplementsIntfOpExpr, TJSTImplementsIntfOpExpr.Create);
@@ -913,6 +923,7 @@ begin
    RegisterCodeGen(TFuncExpr,             TJSFuncBaseExpr.Create);
 
    RegisterCodeGen(TRecordMethodExpr,     TJSRecordMethodExpr.Create);
+   RegisterCodeGen(THelperMethodExpr,     TJSHelperMethodExpr.Create);
 
    RegisterCodeGen(TMagicIntFuncExpr,     TJSMagicFuncExpr.Create);
    RegisterCodeGen(TMagicStringFuncExpr,  TJSMagicFuncExpr.Create);
@@ -1144,6 +1155,22 @@ begin
 
    if not preConds then
       CompileInheritedConditions;
+end;
+
+// DoCompileHelperSymbol
+//
+procedure TdwsJSCodeGen.DoCompileHelperSymbol(helper : THelperSymbol);
+var
+   i : Integer;
+   sym : TSymbol;
+begin
+   // compile methods
+
+   for i:=0 to helper.Members.Count-1 do begin
+      sym:=helper.Members[i];
+      if sym is TMethodSymbol then
+         CompileHelperMethod(TMethodSymbol(sym));
+   end;
 end;
 
 // DoCompileRecordSymbol
@@ -2013,7 +2040,8 @@ var
 begin
    if     (func is TMethodSymbol)
       and not (   TMethodSymbol(func).IsStatic
-               or (TMethodSymbol(func).StructSymbol is TRecordSymbol)) then begin
+               or (TMethodSymbol(func).StructSymbol is TRecordSymbol)
+               or (TMethodSymbol(func).StructSymbol is THelperSymbol)) then begin
       WriteString(SelfSymbolName);
       needComma:=True;
    end else needComma:=False;
@@ -2222,9 +2250,52 @@ begin
    end;
 end;
 
+// CompileHelperMethod
+//
+procedure TdwsJSCodeGen.CompileHelperMethod(meth : TMethodSymbol);
+var
+   proc : TdwsProcedure;
+begin
+   if not (meth.Executable is TdwsProcedure) then Exit;
+   proc:=(meth.Executable as TdwsProcedure);
+
+   if not SmartLink(meth) then Exit;
+
+   WriteSymbolVerbosity(meth);
+
+   WriteString('function ');
+   if not meth.IsClassMethod then begin
+      WriteSymbolName(meth.StructSymbol);
+      WriteString('$');
+   end;
+   WriteSymbolName(meth);
+
+   EnterScope(meth);
+   EnterContext(proc);
+   try
+
+      WriteString('(');
+      WriteFuncParams(meth);
+      WriteBlockBegin(') ');
+
+      CompileFuncBody(meth);
+
+      if meth.Kind=fkConstructor then begin
+         WriteString('return ');
+         WriteStringLn(SelfSymbolName);
+      end;
+
+      WriteBlockEndLn;
+
+   finally
+      LeaveContext;
+      LeaveScope;
+   end;
+end;
+
 // MemberName
 //
-function TdwsJSCodeGen.MemberName(sym : TSymbol; cls : TStructuredTypeSymbol) : String;
+function TdwsJSCodeGen.MemberName(sym : TSymbol; cls : TCompositeTypeSymbol) : String;
 //var
 //   n : Integer;
 //   match : TSymbol;
@@ -2891,6 +2962,28 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSHelperMethodExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSHelperMethodExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : THelperMethodExpr;
+   methSym : TMethodSymbol;
+begin
+   e:=THelperMethodExpr(expr);
+
+   methSym:=(e.FuncSym as TMethodSymbol);
+   if not methSym.IsClassMethod then begin
+      codeGen.WriteSymbolName(methSym.StructSymbol);
+      codeGen.WriteString('$');
+   end;
+
+   inherited;
+end;
+
+// ------------------
 // ------------------ TJSMethodStaticExpr ------------------
 // ------------------
 
@@ -3094,7 +3187,7 @@ end;
 procedure TJSConstructorStaticExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TConstructorStaticExpr;
-   structSymbol : TStructuredTypeSymbol;
+   structSymbol : TCompositeTypeSymbol;
 begin
    e:=TConstructorStaticExpr(expr);
 
@@ -3973,6 +4066,25 @@ begin
 end;
 
 // ------------------
+// ------------------ TJSObjToClassTypeExpr ------------------
+// ------------------
+
+// CodeGen
+//
+procedure TJSObjToClassTypeExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
+var
+   e : TObjToClassTypeExpr;
+begin
+   e:=TObjToClassTypeExpr(expr);
+
+   codeGen.Dependencies.Add('$ToClassType');
+
+   codeGen.WriteString('$ToClassType(');
+   codeGen.Compile(e.Expr);
+   codeGen.WriteString(')');
+end;
+
+// ------------------
 // ------------------ TJSIntfAsClassExpr ------------------
 // ------------------
 
@@ -4181,7 +4293,6 @@ begin
             codeGen.WriteStringLn('=$W($e);');
             codeGen.Compile(de.DoBlockExpr);
          finally
-            codeGen.SymbolMap.ForgetSymbol(de.ExceptionVar);
             codeGen.LocalTable.Remove(de.ExceptionVar);
          end;
 
@@ -4204,7 +4315,6 @@ begin
                codeGen.WriteStringLn('=$W($e);');
                codeGen.Compile(de.DoBlockExpr);
             finally
-               codeGen.SymbolMap.ForgetSymbol(de.ExceptionVar);
                codeGen.LocalTable.Remove(de.ExceptionVar);
             end;
 

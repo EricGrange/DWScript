@@ -104,6 +104,9 @@ type
          procedure SetVersion(const Value: UnicodeString);
          function GetOnNeedUnit : TdwsOnNeedUnitEvent;
          procedure SetOnNeedUnit(const val : TdwsOnNeedUnitEvent);
+         function GetOnResource : TdwsResourceEvent;
+         procedure SetOnResource(const val : TdwsResourceEvent);
+
          procedure SetConfig(const Value: TdwsConfiguration);
          procedure AddUnitSymbols(SymbolTable: TSymbolTable); override;
          procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -122,6 +125,7 @@ type
          property Config : TdwsConfiguration read FConfig write SetConfig stored True;
          property OnNeedUnit : TdwsOnNeedUnitEvent read GetOnNeedUnit write SetOnNeedUnit stored False;
          property OnInclude : TIncludeEvent read GetOnInclude write SetOnInclude stored False;
+         property OnResource : TdwsResourceEvent read GetOnResource write SetOnResource;
          property Version : UnicodeString read GetVersion write SetVersion stored False;
    end;
 
@@ -1262,6 +1266,20 @@ end;
 procedure TDelphiWebScript.SetOnNeedUnit(const val : TdwsOnNeedUnitEvent);
 begin
    Config.OnNeedUnit:=val;
+end;
+
+// GetOnResource
+//
+function TDelphiWebScript.GetOnResource : TdwsResourceEvent;
+begin
+   Result:=Config.OnResource;
+end;
+
+// SetOnResource
+//
+procedure TDelphiWebScript.SetOnResource(const val : TdwsResourceEvent);
+begin
+   Config.OnResource:=val;
 end;
 
 // SetupExtensions

@@ -148,7 +148,7 @@ type
    end;
 
    // Encapsulates a var parameter
-   TVarParamExpr = class(TVarExpr)
+   TByRefParamExpr = class (TVarExpr)
       protected
          function GetAddr(exec : TdwsExecution) : Integer; override;
          function GetData(exec : TdwsExecution) : TData; override;
@@ -167,22 +167,30 @@ type
          function  Eval(exec : TdwsExecution) : Variant; override;
    end;
 
-   TConstParamExpr = class(TVarParamExpr)
+   TVarParamExpr = class (TByRefParamExpr)
+   end;
+
+   TConstParamExpr = class (TByRefParamExpr)
       public
          function IsWritable : Boolean; override;
    end;
 
    // Encapsulates a var parameter
-   TVarParamParentExpr = class(TVarParamExpr)
-   protected
-     FLevel: Integer;
-     function GetAddr(exec : TdwsExecution) : Integer; override;
-     function GetData(exec : TdwsExecution) : TData; override;
-   public
-     constructor Create(prog : TdwsProgram; dataSym : TDataSymbol);
+   TByRefParentParamExpr = class(TByRefParamExpr)
+      protected
+         FLevel: Integer;
+
+         function GetAddr(exec : TdwsExecution) : Integer; override;
+         function GetData(exec : TdwsExecution) : TData; override;
+
+      public
+         constructor Create(prog : TdwsProgram; dataSym : TDataSymbol);
    end;
 
-   TConstParamParentExpr = class(TVarParamParentExpr)
+   TVarParamParentExpr = class(TByRefParentParamExpr)
+   end;
+
+   TConstParamParentExpr = class(TByRefParentParamExpr)
       public
          function IsWritable : Boolean; override;
    end;
@@ -877,6 +885,14 @@ type
 
       public
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+   end;
+
+   // obj.ClassType
+   TObjToClassTypeExpr = class(TUnaryOpExpr)
+      public
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
+
+         function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // obj left = obj right
@@ -2186,12 +2202,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TVarParamExpr ------------------
+// ------------------ TByRefParamExpr ------------------
 // ------------------
 
 // CreateFromVarExpr
 //
-constructor TVarParamExpr.CreateFromVarExpr(expr : TVarExpr);
+constructor TByRefParamExpr.CreateFromVarExpr(expr : TVarExpr);
 begin
    FTyp:=expr.Typ;
    FStackAddr:=expr.FStackAddr;
@@ -2200,7 +2216,7 @@ end;
 
 // GetVarParamDataPointer
 //
-function TVarParamExpr.GetVarParamDataAsPointer(exec : TdwsExecution) : Pointer;
+function TByRefParamExpr.GetVarParamDataAsPointer(exec : TdwsExecution) : Pointer;
 var
    varData : PVarData;
 begin
@@ -2211,49 +2227,49 @@ end;
 
 // GetVarParamData
 //
-procedure TVarParamExpr.GetVarParamData(exec : TdwsExecution; var result : IVarParamData);
+procedure TByRefParamExpr.GetVarParamData(exec : TdwsExecution; var result : IVarParamData);
 begin
    result:=IVarParamData(GetVarParamDataAsPointer(exec));
 end;
 
 // GetVarParamEval
 //
-function TVarParamExpr.GetVarParamEval(exec : TdwsExecution) : PVariant;
+function TByRefParamExpr.GetVarParamEval(exec : TdwsExecution) : PVariant;
 begin
    Result:=IVarParamData(GetVarParamDataAsPointer(exec)).Eval;
 end;
 
 // GetAddr
 //
-function TVarParamExpr.GetAddr(exec : TdwsExecution) : Integer;
+function TByRefParamExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
    Result:=IVarParamData(GetVarParamDataAsPointer(exec)).Addr;
 end;
 
 // GetData
 //
-function TVarParamExpr.GetData(exec : TdwsExecution) : TData;
+function TByRefParamExpr.GetData(exec : TdwsExecution) : TData;
 begin
    Result:=IVarParamData(GetVarParamDataAsPointer(exec)).Data;
 end;
 
 // AssignData
 //
-procedure TVarParamExpr.AssignData(exec : TdwsExecution; const sourceData : TData; sourceAddr : Integer);
+procedure TByRefParamExpr.AssignData(exec : TdwsExecution; const sourceData : TData; sourceAddr : Integer);
 begin
    DWSCopyData(sourceData, sourceAddr, Data[exec], Addr[exec], Typ.Size);
 end;
 
 // AssignValue
 //
-procedure TVarParamExpr.AssignValue(exec : TdwsExecution; const value : Variant);
+procedure TByRefParamExpr.AssignValue(exec : TdwsExecution; const value : Variant);
 begin
    VarCopy(Data[exec][Addr[exec]], value);
 end;
 
 // AssignExpr
 //
-procedure TVarParamExpr.AssignExpr(exec : TdwsExecution; expr : TTypedExpr);
+procedure TByRefParamExpr.AssignExpr(exec : TdwsExecution; expr : TTypedExpr);
 var
    v : PVariant;
 begin
@@ -2263,14 +2279,14 @@ end;
 
 // AssignDataExpr
 //
-procedure TVarParamExpr.AssignDataExpr(exec : TdwsExecution; dataExpr: TDataExpr);
+procedure TByRefParamExpr.AssignDataExpr(exec : TdwsExecution; dataExpr: TDataExpr);
 begin
    DWSCopyData(dataExpr.Data[exec], dataExpr.Addr[exec], Data[exec], Addr[exec], Typ.Size);
 end;
 
 // Eval
 //
-function TVarParamExpr.Eval(exec : TdwsExecution) : Variant;
+function TByRefParamExpr.Eval(exec : TdwsExecution) : Variant;
 begin
    Result:=GetVarParamEval(exec)^;
 end;
@@ -2287,12 +2303,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TVarParamParentExpr ------------------
+// ------------------ TByRefParentParamExpr ------------------
 // ------------------
 
 // Create
 //
-constructor TVarParamParentExpr.Create(prog : TdwsProgram; dataSym : TDataSymbol);
+constructor TByRefParentParamExpr.Create(prog : TdwsProgram; dataSym : TDataSymbol);
 begin
    inherited;
    FLevel := DataSym.Level;
@@ -2300,14 +2316,14 @@ end;
 
 // GetAddr
 //
-function TVarParamParentExpr.GetAddr(exec : TdwsExecution) : Integer;
+function TByRefParentParamExpr.GetAddr(exec : TdwsExecution) : Integer;
 begin
    Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel) + FStackAddr])).Addr;
 end;
 
 // GetData
 //
-function TVarParamParentExpr.GetData(exec : TdwsExecution) : TData;
+function TByRefParentParamExpr.GetData(exec : TdwsExecution) : TData;
 begin
    Result := IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel) + FStackAddr])).Data;
 end;
@@ -3806,7 +3822,7 @@ begin
    Result:=Int64(ref);
 
    if ref<>nil then begin
-      if not FTyp.IsCompatible(ref.ClassOf) then
+      if not FTyp.IsCompatible(ref.MetaSymbol) then
          RaiseMetaClassCastFailed(exec, ref);
    end;
 end;
@@ -3831,6 +3847,30 @@ begin
 
    if Assigned(Result) and not (FTyp.IsCompatible(Result.ClassSym)) then
       RaiseInstanceClassCastFailed(exec, Result.ClassSym);
+end;
+
+// ------------------
+// ------------------ TObjToClassTypeExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TObjToClassTypeExpr.Create(prog : TdwsProgram; expr : TTypedExpr);
+begin
+   inherited Create(prog, expr);
+   Typ:=(expr.Typ as TStructuredTypeSymbol).MetaSymbol;
+end;
+
+// Eval
+//
+function TObjToClassTypeExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   obj : IScriptObj;
+begin
+   Expr.EvalAsScriptObj(exec, obj);
+   if obj=nil then
+      Result:=Int64(0)
+   else Result:=Int64(obj.ClassSym);
 end;
 
 // ------------------

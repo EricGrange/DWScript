@@ -36,11 +36,13 @@ type
    TBaseSymbol = class;
    TDataSymbol = class;
    TClassSymbol = class;
+   TCompositeTypeSymbol = class;
    TStructuredTypeSymbol = class;
    TMethodSymbol = class;
    TFieldSymbol = class;
    TTypeSymbol = class;
    TParamSymbol = class;
+   THelperSymbol = class;
    TdwsRuntimeMessageList = class;
 
    TdwsExprLocation = record
@@ -285,6 +287,8 @@ type
    // return True to abort
    TSymbolEnumerationCallback = reference to function (symbol : TSymbol) : Boolean;
 
+   THelperSymbolEnumerationCallback = function (helper : THelperSymbol) : Boolean of object;
+
    // A table of symbols connected to other symboltables (property Parents)
    TSymbolTable = class
       private
@@ -330,6 +334,9 @@ type
          // returns True if aborted
          function EnumerateLocalSymbolsOfName(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean; virtual;
          function EnumerateSymbolsOfNameInScope(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean; virtual;
+
+         function EnumerateLocalHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean;
+         function EnumerateHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean;
 
          function HasClass(const aClass : TSymbolClass) : Boolean;
          function HasSymbol(sym : TSymbol) : Boolean;
@@ -701,7 +708,7 @@ type
    // A method of a script class: TMyClass = class procedure X(param: UnicodeString); end;
    TMethodSymbol = class(TFuncSymbol)
       private
-         FStructSymbol : TStructuredTypeSymbol;
+         FStructSymbol : TCompositeTypeSymbol;
          FParentMeth : TMethodSymbol;
          FSelfSym : TDataSymbol;
          FVisibility : TdwsVisibility;
@@ -732,7 +739,7 @@ type
          function GetRootParentMeth : TMethodSymbol;
 
       public
-         constructor Create(const Name: UnicodeString; FuncKind: TFuncKind; aStructSymbol : TStructuredTypeSymbol;
+         constructor Create(const Name: UnicodeString; FuncKind: TFuncKind; aStructSymbol : TCompositeTypeSymbol;
                             aVisibility : TdwsVisibility; isClassMethod : Boolean;
                             funcLevel : Integer = 1); virtual;
          constructor Generate(Table: TSymbolTable; MethKind: TMethodKind;
@@ -750,7 +757,7 @@ type
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
          function IsSameOverloadOf(other : TFuncSymbol) : Boolean; override;
 
-         property StructSymbol : TStructuredTypeSymbol read FStructSymbol;
+         property StructSymbol : TCompositeTypeSymbol read FStructSymbol;
          property VMTIndex : Integer read FVMTIndex;
          property IsDefault : Boolean read GetIsDefault write SetIsDefault;
          property IsAbstract : Boolean read GetIsAbstract write SetIsAbstract;
@@ -984,14 +991,14 @@ type
    //
    TMembersSymbolTable = class (TSymbolTable)
       private
-         FStructSymbol : TStructuredTypeSymbol;
+         FOwner : TCompositeTypeSymbol;
 
       public
          procedure AddParent(parent : TMembersSymbolTable);
          function FindSymbol(const aName : UnicodeString; minVisibility : TdwsVisibility; ofClass : TSymbolClass = nil) : TSymbol; override;
-         function FindSymbolFromScope(const aName : UnicodeString; scopeSym : TStructuredTypeSymbol) : TSymbol; reintroduce;
+         function FindSymbolFromScope(const aName : UnicodeString; scopeSym : TCompositeTypeSymbol) : TSymbol; reintroduce;
 
-         property StructSymbol : TStructuredTypeSymbol read FStructSymbol write FStructSymbol;
+         property Owner : TCompositeTypeSymbol read FOwner write FOwner;
    end;
 
    TStructuredTypeMetaSymbol = class;
@@ -999,84 +1006,107 @@ type
    // Const attached to a class
    TClassConstSymbol = class sealed (TConstSymbol)
       protected
-         FStructSymbol : TStructuredTypeSymbol;
+         FOwnerSymbol : TCompositeTypeSymbol;
          FVisibility : TdwsVisibility;
 
       public
          function QualifiedName : UnicodeString; override;
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
 
-         property StructSymbol : TStructuredTypeSymbol read FStructSymbol write FStructSymbol;
+         property OwnerSymbol : TCompositeTypeSymbol read FOwnerSymbol write FOwnerSymbol;
          property Visibility : TdwsVisibility read FVisibility write FVisibility;
    end;
 
    // Var attached to a class
    TClassVarSymbol = class sealed (TDataSymbol)
       protected
-         FStructSymbol : TStructuredTypeSymbol;
+         FOwnerSymbol : TCompositeTypeSymbol;
          FVisibility : TdwsVisibility;
 
       public
          function QualifiedName : UnicodeString; override;
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
 
-         property StructSymbol : TStructuredTypeSymbol read FStructSymbol write FStructSymbol;
+         property OwnerSymbol : TCompositeTypeSymbol read FOwnerSymbol write FOwnerSymbol;
          property Visibility : TdwsVisibility read FVisibility write FVisibility;
    end;
 
-   // class, record, interface
-   TStructuredTypeSymbol = class(TTypeSymbol)
+   // type symbol with members
+   TCompositeTypeSymbol = class(TTypeSymbol)
       private
          FUnitSymbol : TSymbol;
-         FDefaultProperty : TPropertySymbol;
+         FParent : TCompositeTypeSymbol;
          FMembers : TMembersSymbolTable;
-         FParent : TStructuredTypeSymbol;
+         FDefaultProperty : TPropertySymbol;
+
+      protected
+         function CreateMembersTable : TMembersSymbolTable; virtual;
+
+         function GetIsStatic : Boolean; virtual;
+         function GetIsExternal : Boolean; virtual;
+         function GetExternalName : String; virtual;
+
+      public
+         constructor Create(const name : UnicodeString; aUnit : TSymbol);
+         destructor Destroy; override;
+
+         procedure AddConst(sym : TClassConstSymbol);
+         procedure AddClassVar(sym : TClassVarSymbol);
+         procedure AddProperty(propSym : TPropertySymbol);
+         procedure AddMethod(methSym : TMethodSymbol); virtual;
+
+         function AllowVirtualMembers : Boolean; virtual;
+         function AllowDefaultProperty : Boolean; virtual; abstract;
+
+         function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; virtual;
+
+         function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; virtual; abstract;
+
+         property UnitSymbol : TSymbol read FUnitSymbol;
+         property Parent : TCompositeTypeSymbol read FParent;
+         property Members : TMembersSymbolTable read FMembers;
+         property DefaultProperty : TPropertySymbol read FDefaultProperty write FDefaultProperty;
+
+         property IsStatic : Boolean read GetIsStatic;
+         property IsExternal : Boolean read GetIsExternal;
+         property ExternalName : String read GetExternalName;
+   end;
+
+   // class, record, interface
+   TStructuredTypeSymbol = class(TCompositeTypeSymbol)
+      private
          FMetaSymbol : TStructuredTypeMetaSymbol;
          FForwardPosition : PScriptPos;
          FExternalName : String;
 
       protected
-         function CreateMembersTable : TMembersSymbolTable; virtual;
-
          function GetIsForwarded : Boolean; inline;
-         function GetIsStatic : Boolean; virtual;
-         function GetIsExternal : Boolean; virtual;
-         function GetExternalName : String;
+         function GetIsExternal : Boolean; override;
+         function GetExternalName : String; override;
 
          procedure DoInheritFrom(ancestor : TStructuredTypeSymbol);
 
          procedure CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
 
       public
-         constructor Create(const name : UnicodeString; aUnit : TSymbol);
          destructor Destroy; override;
 
          procedure AddField(fieldSym : TFieldSymbol); virtual;
-         procedure AddProperty(propSym : TPropertySymbol); virtual;
-         procedure AddMethod(methSym : TMethodSymbol); virtual;
-         procedure AddConst(sym : TClassConstSymbol);
-         procedure AddClassVar(sym : TClassVarSymbol);
 
          function FieldAtOffset(offset : Integer) : TFieldSymbol; virtual;
          function DuckTypedMatchingMethod(methSym : TMethodSymbol; visibility : TdwsVisibility) : TMethodSymbol; virtual;
 
-         function NthParentOf(structType : TStructuredTypeSymbol) : Integer;
-         function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; virtual;
-         function AllowVirtualMembers : Boolean; virtual;
+         function NthParentOf(structType : TCompositeTypeSymbol) : Integer;
+         function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; override;
+         function AllowDefaultProperty : Boolean; override;
 
          procedure SetForwardedPos(const pos : TScriptPos);
          procedure ClearIsForwarded;
 
          property IsForwarded : Boolean read GetIsForwarded;
-         property IsStatic : Boolean read GetIsStatic;
-         property IsExternal : Boolean read GetIsExternal;
          property ExternalName : String read GetExternalName write FExternalName;
 
-         property Parent : TStructuredTypeSymbol read FParent;
          property MetaSymbol : TStructuredTypeMetaSymbol read FMetaSymbol;
-         property UnitSymbol : TSymbol read FUnitSymbol;
-         property Members : TMembersSymbolTable read FMembers;
-         property DefaultProperty : TPropertySymbol read FDefaultProperty write FDefaultProperty;
    end;
 
    // class of, record of
@@ -1088,7 +1118,8 @@ type
 
          function StructSymbol : TStructuredTypeSymbol; inline;
    end;
-                                   // Field of a script object
+
+   // field of a script object
    TFieldSymbol = class(TValueSymbol)
       protected
          FStructSymbol : TStructuredTypeSymbol;
@@ -1119,12 +1150,14 @@ type
          procedure AddMethod(methSym : TMethodSymbol); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
+         function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
+
          procedure InitData(const data : TData; offset : Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    // interface
-   TInterfaceSymbol = class (TStructuredTypeSymbol)
+   TInterfaceSymbol = class sealed (TStructuredTypeSymbol)
       private
          FMethodCount : Integer;
 
@@ -1143,6 +1176,7 @@ type
          procedure InitData(const Data: TData; Offset: Integer); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
 
          function Parent : TInterfaceSymbol; inline;
          property MethodCount : Integer read FMethodCount;
@@ -1151,7 +1185,7 @@ type
    // property X: Integer read FReadSym write FWriteSym;
    TPropertySymbol = class (TValueSymbol)
       private
-         FStructSymbol : TStructuredTypeSymbol;
+         FOwnerSymbol : TCompositeTypeSymbol;
          FReadSym : TSymbol;
          FWriteSym : TSymbol;
          FArrayIndices : TSymbolTable;
@@ -1177,7 +1211,7 @@ type
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
          function HasArrayIndices : Boolean;
 
-         property StructSymbol : TStructuredTypeSymbol read FStructSymbol;
+         property OwnerSymbol : TCompositeTypeSymbol read FOwnerSymbol;
          property Visibility : TdwsVisibility read FVisibility write FVisibility;
          property ArrayIndices : TSymbolTable read GetArrayIndices;
          property ReadSym : TSymbol read FReadSym write FReadSym;
@@ -1239,7 +1273,7 @@ type
    TClassSymbolFlags = set of TClassSymbolFlag;
 
    // type X = class ... end;
-   TClassSymbol = class (TStructuredTypeSymbol)
+   TClassSymbol = class sealed (TStructuredTypeSymbol)
       private
          FFlags : TClassSymbolFlags;
          FOperators : TTightList;
@@ -1249,7 +1283,6 @@ type
          FInterfaces : TResolvedInterfaces;
 
       protected
-         function GetClassOf : TClassOfSymbol; inline;
          function GetDescription : UnicodeString; override;
          function GetIsExplicitAbstract : Boolean; inline;
          procedure SetIsExplicitAbstract(const val : Boolean); inline;
@@ -1294,11 +1327,11 @@ type
 
          function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; override;
          function AllowVirtualMembers : Boolean; override;
+         function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
 
          class function VisibilityToString(visibility : TdwsVisibility) : UnicodeString; static;
 
          function Parent : TClassSymbol; inline;
-         property ClassOf : TClassOfSymbol read GetClassOF;
          property ScriptInstanceSize : Integer read FScriptInstanceSize;
          property Interfaces : TResolvedInterfaces read FInterfaces;
 
@@ -1309,6 +1342,28 @@ type
          property IsExternal : Boolean read GetIsExternal write SetIsExternal;
 
          property OnObjectDestroy : TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
+   end;
+
+   // class or type helper
+   THelperSymbol = class sealed (TCompositeTypeSymbol)
+      private
+         FForType : TTypeSymbol;
+
+      protected
+
+      public
+         constructor Create(const name : UnicodeString; aUnit : TSymbol; aForType : TTypeSymbol);
+
+         function IsType : Boolean; override;
+         function AllowDefaultProperty : Boolean; override;
+         function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
+
+         property ForType : TTypeSymbol read FForType;
+   end;
+
+   THelperSymbols = class(TSimpleList<THelperSymbol>)
+      public
+         function AddHelper(helper : THelperSymbol) : Boolean;
    end;
 
    // nil "class"
@@ -1906,12 +1961,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TStructuredTypeSymbol ------------------
+// ------------------ TCompositeTypeSymbol ------------------
 // ------------------
 
 // Create
 //
-constructor TStructuredTypeSymbol.Create(const name : UnicodeString; aUnit : TSymbol);
+constructor TCompositeTypeSymbol.Create(const name : UnicodeString; aUnit : TSymbol);
 begin
    inherited Create(name, nil);
    FUnitSymbol:=aUnit;
@@ -1920,12 +1975,98 @@ end;
 
 // Destroy
 //
+destructor TCompositeTypeSymbol.Destroy;
+begin
+   FMembers.Free;
+   inherited;
+end;
+
+// AddConst
+//
+procedure TCompositeTypeSymbol.AddConst(sym : TClassConstSymbol);
+begin
+   sym.OwnerSymbol:=Self;
+   FMembers.AddSymbol(sym);
+end;
+
+// AddClassVar
+//
+procedure TCompositeTypeSymbol.AddClassVar(sym : TClassVarSymbol);
+begin
+   sym.OwnerSymbol:=Self;
+   FMembers.AddSymbol(sym);
+end;
+
+// AddProperty
+//
+procedure TCompositeTypeSymbol.AddProperty(propSym : TPropertySymbol);
+begin
+   FMembers.AddSymbol(propSym);
+   propSym.FOwnerSymbol:=Self;
+end;
+
+// AddMethod
+//
+procedure TCompositeTypeSymbol.AddMethod(methSym : TMethodSymbol);
+begin
+   FMembers.AddSymbol(methSym);
+   methSym.FStructSymbol:=Self;
+end;
+
+// AllowVirtualMembers
+//
+function TCompositeTypeSymbol.AllowVirtualMembers : Boolean;
+begin
+   Result:=False;
+end;
+
+// CreateMembersTable
+//
+function TCompositeTypeSymbol.CreateMembersTable : TMembersSymbolTable;
+begin
+   Result:=TMembersSymbolTable.Create(nil);
+   Result.Owner:=Self;
+end;
+
+// GetIsStatic
+//
+function TCompositeTypeSymbol.GetIsStatic : Boolean;
+begin
+   Result:=False;
+end;
+
+// GetIsExternal
+//
+function TCompositeTypeSymbol.GetIsExternal : Boolean;
+begin
+   Result:=False;
+end;
+
+// GetExternalName
+//
+function TCompositeTypeSymbol.GetExternalName : String;
+begin
+   Result:=Name;
+end;
+
+// FindDefaultConstructor
+//
+function TCompositeTypeSymbol.FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol;
+begin
+   Result:=nil;
+end;
+
+// ------------------
+// ------------------ TStructuredTypeSymbol ------------------
+// ------------------
+
+// Destroy
+//
 destructor TStructuredTypeSymbol.Destroy;
 begin
    if FForwardPosition<>nil then
       Dispose(FForwardPosition);
    FMetaSymbol.Free;
-   FMembers.Free;
    inherited;
 end;
 
@@ -1942,7 +2083,7 @@ end;
 
 // NthParentOf
 //
-function TStructuredTypeSymbol.NthParentOf(structType : TStructuredTypeSymbol) : Integer;
+function TStructuredTypeSymbol.NthParentOf(structType : TCompositeTypeSymbol) : Integer;
 begin
    Result:=0;
    while structType<>nil do begin
@@ -1978,14 +2119,6 @@ begin
    end;
 end;
 
-// CreateMembersTable
-//
-function TStructuredTypeSymbol.CreateMembersTable : TMembersSymbolTable;
-begin
-   Result:=TMembersSymbolTable.Create(nil);
-   Result.StructSymbol:=Self;
-end;
-
 // GetIsForwarded
 //
 function TStructuredTypeSymbol.GetIsForwarded : Boolean;
@@ -1999,38 +2132,6 @@ procedure TStructuredTypeSymbol.AddField(fieldSym : TFieldSymbol);
 begin
    FMembers.AddSymbol(fieldSym);
    fieldSym.FStructSymbol:=Self;
-end;
-
-// AddProperty
-//
-procedure TStructuredTypeSymbol.AddProperty(propSym : TPropertySymbol);
-begin
-   FMembers.AddSymbol(propSym);
-   propSym.FStructSymbol:=Self;
-end;
-
-// AddMethod
-//
-procedure TStructuredTypeSymbol.AddMethod(methSym : TMethodSymbol);
-begin
-   FMembers.AddSymbol(methSym);
-   methSym.FStructSymbol:=Self;
-end;
-
-// AddConst
-//
-procedure TStructuredTypeSymbol.AddConst(sym : TClassConstSymbol);
-begin
-   sym.StructSymbol:=Self;
-   FMembers.AddSymbol(sym);
-end;
-
-// AddClassVar
-//
-procedure TStructuredTypeSymbol.AddClassVar(sym : TClassVarSymbol);
-begin
-   sym.StructSymbol:=Self;
-   FMembers.AddSymbol(sym);
 end;
 
 // FieldAtOffset
@@ -2065,7 +2166,7 @@ begin
       end;
    end;
    if Parent<>nil then
-      Result:=Parent.DuckTypedMatchingMethod(methSym, cvPublic)
+      Result:=(Parent as TStructuredTypeSymbol).DuckTypedMatchingMethod(methSym, cvPublic)
    else Result:=nil;
 end;
 
@@ -2076,11 +2177,11 @@ begin
    Result:=nil;
 end;
 
-// AllowVirtualMembers
+// AllowDefaultProperty
 //
-function TStructuredTypeSymbol.AllowVirtualMembers : Boolean;
+function TStructuredTypeSymbol.AllowDefaultProperty : Boolean;
 begin
-   Result:=False;
+   Result:=True;
 end;
 
 // SetForwardedPos
@@ -2098,13 +2199,6 @@ procedure TStructuredTypeSymbol.ClearIsForwarded;
 begin
    Dispose(FForwardPosition);
    FForwardPosition:=nil;
-end;
-
-// GetIsStatic
-//
-function TStructuredTypeSymbol.GetIsStatic : Boolean;
-begin
-   Result:=False;
 end;
 
 // GetIsExternal
@@ -2183,6 +2277,18 @@ end;
 procedure TRecordSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
    CheckMethodsImplemented(msgs);
+end;
+
+// CreateSelfParameter
+//
+function TRecordSymbol.CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol;
+begin
+   if methSym.IsClassMethod then
+      Result:=nil
+   else begin
+      Result:=TVarParamSymbol.Create(SYS_SELF, Self);
+      methSym.Params.AddSymbol(Result);
+   end;
 end;
 
 // InitData
@@ -2309,6 +2415,15 @@ begin
    else Result:=False;
 end;
 
+// CreateSelfParameter
+//
+function TInterfaceSymbol.CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol;
+begin
+   Assert(not methSym.IsClassMethod);
+   Result:=TSelfSymbol.Create(SYS_SELF, Self);
+   methSym.InternalParams.AddSymbol(Result);
+end;
+
 // DoIsOfType
 //
 function TInterfaceSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
@@ -2360,7 +2475,7 @@ end;
 //
 function TClassConstSymbol.QualifiedName : UnicodeString;
 begin
-   Result:=StructSymbol.QualifiedName+'.'+Name;
+   Result:=OwnerSymbol.QualifiedName+'.'+Name;
 end;
 
 // IsVisibleFor
@@ -2378,7 +2493,7 @@ end;
 //
 function TClassVarSymbol.QualifiedName : UnicodeString;
 begin
-   Result:=StructSymbol.QualifiedName+'.'+Name;
+   Result:=OwnerSymbol.QualifiedName+'.'+Name;
 end;
 
 // IsVisibleFor
@@ -2912,25 +3027,14 @@ end;
 // Create
 //
 constructor TMethodSymbol.Create(const Name: UnicodeString; FuncKind: TFuncKind;
-  aStructSymbol : TStructuredTypeSymbol; aVisibility : TdwsVisibility; isClassMethod : Boolean;
+  aStructSymbol : TCompositeTypeSymbol; aVisibility : TdwsVisibility; isClassMethod : Boolean;
   funcLevel : Integer);
 begin
    inherited Create(Name, FuncKind, funcLevel);
    FStructSymbol := aStructSymbol;
-   if isClassMethod then begin
+   if isClassMethod then
       Include(FAttributes, maClassMethod);
-      if aStructSymbol is TRecordSymbol then
-         FSelfSym:=nil
-      else FSelfSym:=TSelfSymbol.Create(SYS_SELF, (aStructSymbol as TClassSymbol).ClassOf);
-   end else begin
-      if aStructSymbol is TRecordSymbol then
-         FSelfSym:=TVarParamSymbol.Create(SYS_SELF, aStructSymbol)
-      else FSelfSym:=TSelfSymbol.Create(SYS_SELF, aStructSymbol);
-   end;
-   if FSelfSym<>nil then
-      if aStructSymbol is TRecordSymbol then
-         Params.AddSymbol(FSelfSym)
-      else InternalParams.AddSymbol(FSelfSym);
+   FSelfSym:=aStructSymbol.CreateSelfParameter(Self);
    FSize:=1; // wrapped in a interface
    FParams.AddParent(FStructSymbol.Members);
    FVisibility:=aVisibility;
@@ -3350,7 +3454,7 @@ end;
 //
 function TPropertySymbol.QualifiedName : UnicodeString;
 begin
-   Result:=StructSymbol.QualifiedName+'.'+Name;
+   Result:=OwnerSymbol.QualifiedName+'.'+Name;
 end;
 
 // IsVisibleFor
@@ -3386,9 +3490,11 @@ begin
       Result := Result + '; default;';
 end;
 
-function TPropertySymbol.GetIsDefault: Boolean;
+// GetIsDefault
+//
+function TPropertySymbol.GetIsDefault : Boolean;
 begin
-  Result := StructSymbol.DefaultProperty = Self;
+   Result:=(OwnerSymbol.DefaultProperty=Self);
 end;
 
 procedure TPropertySymbol.SetIndex(const Data: TData; Addr: Integer; Sym: TTypeSymbol);
@@ -3870,6 +3976,16 @@ begin
    Result:=True;
 end;
 
+// CreateSelfParameter
+//
+function TClassSymbol.CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol;
+begin
+   if methSym.IsClassMethod then
+      Result:=TSelfSymbol.Create(SYS_SELF, MetaSymbol)
+   else Result:=TSelfSymbol.Create(SYS_SELF, Self);
+   methSym.InternalParams.AddSymbol(Result);
+end;
+
 // VisibilityToString
 //
 class function TClassSymbol.VisibilityToString(visibility : TdwsVisibility) : UnicodeString;
@@ -3887,14 +4003,9 @@ begin
    Result:=TClassSymbol(FParent);
 end;
 
-// GetClassOf
-//
-function TClassSymbol.GetClassOf : TClassOfSymbol;
-begin
-   Result:=TClassOfSymbol(FMetaSymbol);
-end;
-
-{ TNilSymbol }
+// ------------------
+// ------------------ TNilSymbol ------------------
+// ------------------
 
 constructor TNilSymbol.Create;
 begin
@@ -3913,7 +4024,9 @@ begin
   Result := (TypSym is TClassSymbol) or (TypSym is TNilSymbol);
 end;
 
-{ TClassOfSymbol }
+// ------------------
+// ------------------ TClassOfSymbol ------------------
+// ------------------
 
 constructor TClassOfSymbol.Create(const Name: UnicodeString; Typ: TClassSymbol);
 begin
@@ -4524,6 +4637,51 @@ begin
    end;
 end;
 
+// EnumerateLocalHelpers
+//
+function TSymbolTable.EnumerateLocalHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean;
+var
+   i : Integer;
+   sym : TSymbol;
+begin
+   for i:=0 to Count-1 do begin
+      sym:=Symbols[i];
+      if (sym.ClassType=THelperSymbol) and  (THelperSymbol(sym).ForType=helpedType) then begin
+         if callback(THelperSymbol(sym)) then Exit(True);
+      end;
+   end;
+   Result:=False;
+end;
+
+// EnumerateHelpers
+//
+function TSymbolTable.EnumerateHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean;
+var
+   i : Integer;
+   visitedTables : TSimpleObjectHash<TSymbolTable>;
+   tableStack : TSimpleStack<TSymbolTable>;
+   current : TSymbolTable;
+begin
+   visitedTables:=TSimpleObjectHash<TSymbolTable>.Create;
+   tableStack:=TSimpleStack<TSymbolTable>.Create;
+   try
+      tableStack.Push(Self);
+      while tableStack.Count>0 do begin
+         current:=tableStack.Peek;
+         tableStack.Pop;
+         if visitedTables.Add(current) then begin
+            if current.EnumerateLocalHelpers(helpedType, callback) then Exit(True);
+            for i:=0 to current.ParentCount-1 do
+               tableStack.Push(current.Parents[i]);
+         end;
+      end;
+      Result:=False;
+   finally
+      tableStack.Free;
+      visitedTables.Free;
+   end;
+end;
+
 // HasClass
 //
 function TSymbolTable.HasClass(const aClass : TSymbolClass) : Boolean;
@@ -4723,13 +4881,13 @@ end;
 
 // FindSymbolFromScope
 //
-function TMembersSymbolTable.FindSymbolFromScope(const aName : UnicodeString; scopeSym : TStructuredTypeSymbol) : TSymbol;
+function TMembersSymbolTable.FindSymbolFromScope(const aName : UnicodeString; scopeSym : TCompositeTypeSymbol) : TSymbol;
 begin
    if scopeSym=nil then
       Result:=FindSymbol(aName, cvPublic)
-   else if scopeSym=StructSymbol then
+   else if scopeSym=Owner then
       Result:=FindSymbol(aName, cvPrivate)
-   else if scopeSym.DoIsOfType(StructSymbol) then
+   else if scopeSym.DoIsOfType(Owner) then
       Result:=FindSymbol(aName, cvProtected)
    else Result:=FindSymbol(aName, cvPublic);
 end;
@@ -5598,6 +5756,72 @@ begin
          until meth=nil;
       end;
    end;
+   Result:=False;
+end;
+
+// ------------------
+// ------------------ THelperSymbol ------------------
+// ------------------
+
+// Create
+//
+constructor THelperSymbol.Create(const name : UnicodeString; aUnit : TSymbol; aForType : TTypeSymbol);
+begin
+   inherited Create(name, aUnit);
+   FForType:=aForType;
+end;
+
+// IsType
+//
+function THelperSymbol.IsType : Boolean;
+begin
+   Result:=False;
+end;
+
+// AllowDefaultProperty
+//
+function THelperSymbol.AllowDefaultProperty : Boolean;
+begin
+   Result:=False;
+end;
+
+// CreateSelfParameter
+//
+function THelperSymbol.CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol;
+var
+   meta : TStructuredTypeMetaSymbol;
+begin
+   if methSym.IsClassMethod then begin
+      if ForType is TStructuredTypeSymbol then begin
+         meta:=TStructuredTypeSymbol(ForType).MetaSymbol;
+         if meta<>nil then
+            Result:=TParamSymbol.Create(SYS_SELF, meta)
+//      Result:=TConstParamSymbol.Create(SYS_SELF, ForType)
+         else Result:=nil;
+      end else Result:=nil
+   end else begin
+      if (ForType is TClassSymbol) or (ForType is TInterfaceSymbol) then
+         Result:=TParamSymbol.Create(SYS_SELF, ForType)
+      else Result:=TConstParamSymbol.Create(SYS_SELF, ForType);
+   end;
+   if Result<>nil then begin
+      methSym.Params.AddSymbol(Result);
+      if Result.Typ is TCompositeTypeSymbol then
+         methSym.Params.AddParent(TCompositeTypeSymbol(Result.Typ).Members)
+      else if Result.Typ is TStructuredTypeMetaSymbol then
+         methSym.Params.AddParent(TStructuredTypeMetaSymbol(Result.Typ).StructSymbol.Members)
+   end;
+end;
+
+// ------------------
+// ------------------ THelperSymbols ------------------
+// ------------------
+
+// AddHelper
+//
+function THelperSymbols.AddHelper(helper : THelperSymbol) : Boolean;
+begin
+   Add(helper);
    Result:=False;
 end;
 
