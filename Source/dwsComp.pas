@@ -1038,6 +1038,7 @@ type
         function StoreClasses : Boolean;
         function StoreConstants : Boolean;
         function StoreEnumerations : Boolean;
+        function StoreForwards : Boolean;
         function StoreFunctions : Boolean;
         function StoreRecords : Boolean;
         function StoreInterfaces : Boolean;
@@ -1073,7 +1074,7 @@ type
         property Constants: TdwsConstants read FConstants write SetConstants stored StoreConstants;
         property Dependencies;
         property Enumerations: TdwsEnumerations read FEnumerations write SetEnumerations stored StoreEnumerations;
-        property Forwards: TdwsForwards read FForwards write SetForwards stored False;
+        property Forwards: TdwsForwards read FForwards write SetForwards stored StoreForwards;
         property Functions: TdwsFunctions read FFunctions write SetFunctions stored StoreFunctions;
         property Instances: TdwsInstances read FInstances write SetInstances stored StoreInstances;
         property Operators : TdwsOperators read FOperators write SetOperators stored StoreOperators;
@@ -1806,6 +1807,13 @@ end;
 function TdwsUnit.StoreEnumerations : Boolean;
 begin
    Result:=FEnumerations.Count>0;
+end;
+
+// StoreForwards
+//
+function TdwsUnit.StoreForwards : Boolean;
+begin
+   Result:=FForwards.Count>0;
 end;
 
 // StoreFunctions
