@@ -4202,11 +4202,12 @@ var
    member : TSymbol;
    memberClassType : TClass;
    defaultProperty : TPropertySymbol;
-   symPos : TScriptPos;
+   namePos : TScriptPos;
    baseType : TTypeSymbol;
    meth : TMethodSymbol;
    dataExpr : TDataExpr;
    baseExpr : TTypedExpr;
+   helperExpr : TProgramExpr;
 begin
    Result := Expr;
    try
@@ -4217,20 +4218,26 @@ begin
          // Member
          if FTok.TestDelete(ttDOT) then begin
 
-            if FTok.TestName then begin
-               Name := FTok.GetToken.FString;
-               symPos := FTok.HotPos;
-               FTok.KillToken;
+            if FTok.TestDeleteNamePos(name, namePos) then begin
+
+               if baseType<>nil then
+                  helperExpr:=ReadTypeHelper(Result as TTypedExpr, Result.Typ,
+                                             name, namePos, expecting)
+               else helperExpr:=nil;
+               if helperExpr<>nil then begin
+
+                  expr:=nil;
+                  Result:=helperExpr;
 
                // Class, record, intf
-               if baseType is TStructuredTypeSymbol then begin
+               end else if baseType is TStructuredTypeSymbol then begin
 
                   member:=FindStructMember(TStructuredTypeSymbol(baseType), name);
                   if member<>nil then
                      memberClassType:=member.ClassType
                   else memberClassType:=nil;
 
-                  RecordSymbolUseReference(member, symPos, isWrite);
+                  RecordSymbolUseReference(member, namePos, isWrite);
 
                   if (baseType is TRecordSymbol) and (Result is TFuncExpr) then
                      TFuncExpr(Result).SetResultAddr(FProg, nil);
@@ -4241,8 +4248,8 @@ begin
                      Result:=nil;
                      meth:=TMethodSymbol(member);
                      if meth.IsOverloaded then
-                        Result:=ReadMethOverloaded(meth, baseExpr, symPos, expecting)
-                     else Result:=ReadMethod(meth, baseExpr, symPos, expecting);
+                        Result:=ReadMethOverloaded(meth, baseExpr, namePos, expecting)
+                     else Result:=ReadMethod(meth, baseExpr, namePos, expecting);
 
                   end else if member is TFieldSymbol then begin
 
@@ -4263,15 +4270,9 @@ begin
                      FreeAndNil(Result);
                      Result:=ReadConstName(TConstSymbol(member), IsWrite);
 
-                  end else if member<>nil then begin
-
-                     FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [Name]);
-
                   end else begin
 
-                     expr:=nil;
-                     Result:=ReadTypeHelper(Result as TTypedExpr, Result.Typ,
-                                            name, symPos, expecting);
+                     FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
 
                   end;
 
@@ -4283,7 +4284,7 @@ begin
                      memberClassType:=member.ClassType
                   else memberClassType:=nil;
 
-                  RecordSymbolUseReference(member, symPos, isWrite);
+                  RecordSymbolUseReference(member, namePos, isWrite);
 
                   // Class method
                   if member is TMethodSymbol then begin
@@ -4292,8 +4293,8 @@ begin
                      Result:=nil;
                      meth:=TMethodSymbol(member);
                      if meth.IsOverloaded then
-                        Result:=ReadStaticMethOverloaded(meth, baseExpr, symPos, expecting)
-                     else Result:=ReadStaticMethod(meth, baseExpr, symPos, expecting);
+                        Result:=ReadStaticMethOverloaded(meth, baseExpr, namePos, expecting)
+                     else Result:=ReadStaticMethod(meth, baseExpr, namePos, expecting);
 
                   // Static property
                   end else if member is TPropertySymbol then begin
@@ -4313,20 +4314,18 @@ begin
 
                   end else if member<>nil then begin
 
-                     FMsgs.AddCompilerStop(FTok.HotPos, CPE_StaticMethodExpected);
+                     FMsgs.AddCompilerStop(namePos, CPE_StaticMethodExpected);
 
                   end else begin
 
-                     expr:=nil;
-                     Result:=ReadTypeHelper(Result as TTypedExpr, TStructuredTypeSymbol(baseType.Typ),
-                                            name, symPos, expecting);
+                     FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
 
                   end;
 
                // Array symbol
                end else if baseType is TArraySymbol then begin
 
-                  Result:=ReadArrayMethod(name, symPos, Result as TTypedExpr);
+                  Result:=ReadArrayMethod(name, namePos, Result as TTypedExpr);
 
                // Connector symbol
                end else if baseType is TConnectorSymbol then begin
@@ -4339,11 +4338,7 @@ begin
                      raise;
                   end;
 
-               end else if (Result.Typ<>nil) then begin
-
-                  Result:=ReadTypeHelper(TTypedExpr(Result), Result.Typ, name, symPos, expecting);
-
-               end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMemberExpected);
+               end else FMsgs.AddCompilerStop(namePos, CPE_NoMemberExpected);
 
             end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
          end
@@ -5930,7 +5925,7 @@ begin
             CheckRestricted;
             CheckArguments(0, 0);
             Result:=TArrayReverseExpr.Create(FProg, namePos, baseExpr);
-         end else Result:=ReadTypeHelper(baseExpr, baseExpr.Typ, name, namePos, nil);
+         end else FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
       except
          Result.Free;
          raise;
@@ -9871,11 +9866,12 @@ begin
 
    helpers:=EnumerateHelpers(typeSym);
    try
-      if helpers.Count=0 then begin
-         if (typeSym is TCompositeTypeSymbol) or (typeSym is TArraySymbol) then
-            FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [name])
-         else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMemberExpected);
-      end;
+      if helpers.Count=0 then Exit;
+//      if helpers.Count=0 then begin
+//         if (typeSym is TCompositeTypeSymbol) or (typeSym is TArraySymbol) then
+//            FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [name])
+//         else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMemberExpected);
+//      end;
 
       if name='' then begin
          if not FTok.TestDeleteNamePos(name, namePos) then
@@ -9924,8 +9920,8 @@ begin
       helpers.Free;
    end;
 
-   if Result=nil then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [name]);
+//   if Result=nil then
+//      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [name]);
 end;
 
 // ------------------

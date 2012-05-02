@@ -1348,6 +1348,8 @@ type
    THelperSymbol = class sealed (TCompositeTypeSymbol)
       private
          FForType : TTypeSymbol;
+         FUnAliasedForType : TTypeSymbol;
+         FMetaForType : TTypeSymbol;
 
       protected
 
@@ -1359,6 +1361,8 @@ type
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
 
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
+
+         function HelpsType(typ : TTypeSymbol) : Boolean;
 
          property ForType : TTypeSymbol read FForType;
    end;
@@ -4648,8 +4652,9 @@ var
 begin
    for i:=0 to Count-1 do begin
       sym:=Symbols[i];
-      if (sym.ClassType=THelperSymbol) and  (THelperSymbol(sym).ForType=helpedType) then begin
-         if callback(THelperSymbol(sym)) then Exit(True);
+      if sym.ClassType=THelperSymbol then
+         if THelperSymbol(sym).HelpsType(helpedType) then begin
+            if callback(THelperSymbol(sym)) then Exit(True);
       end;
    end;
    Result:=False;
@@ -4660,28 +4665,11 @@ end;
 function TSymbolTable.EnumerateHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean;
 var
    i : Integer;
-   visitedTables : TSimpleObjectHash<TSymbolTable>;
-   tableStack : TSimpleStack<TSymbolTable>;
-   current : TSymbolTable;
 begin
-   visitedTables:=TSimpleObjectHash<TSymbolTable>.Create;
-   tableStack:=TSimpleStack<TSymbolTable>.Create;
-   try
-      tableStack.Push(Self);
-      while tableStack.Count>0 do begin
-         current:=tableStack.Peek;
-         tableStack.Pop;
-         if visitedTables.Add(current) then begin
-            if current.EnumerateLocalHelpers(helpedType, callback) then Exit(True);
-            for i:=0 to current.ParentCount-1 do
-               tableStack.Push(current.Parents[i]);
-         end;
-      end;
-      Result:=False;
-   finally
-      tableStack.Free;
-      visitedTables.Free;
-   end;
+   if EnumerateLocalHelpers(helpedType, callback) then Exit(True);
+   for i:=0 to ParentCount-1 do
+      if Parents[i].EnumerateLocalHelpers(helpedType, callback) then Exit(True);
+   Result:=False;
 end;
 
 // HasClass
@@ -5771,6 +5759,9 @@ constructor THelperSymbol.Create(const name : UnicodeString; aUnit : TSymbol; aF
 begin
    inherited Create(name, aUnit);
    FForType:=aForType;
+   FUnAliasedForType:=aForType.UnAliasedType;
+   if FUnAliasedForType is TStructuredTypeSymbol then
+      FMetaForType:=TStructuredTypeSymbol(FUnAliasedForType).MetaSymbol;
 end;
 
 // IsType
@@ -5820,6 +5811,21 @@ end;
 procedure THelperSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
    CheckMethodsImplemented(msgs);
+end;
+
+// HelpsType
+//
+function THelperSymbol.HelpsType(typ : TTypeSymbol) : Boolean;
+begin
+   if typ=nil then
+      Result:=False
+   else if typ=ForType then
+      Result:=True
+   else if typ.IsOfType(FUnAliasedForType) then
+      Result:=True
+   else if FMetaForType<>nil then
+      Result:=typ.IsOfType(FMetaForType)
+   else Result:=False;
 end;
 
 // ------------------
