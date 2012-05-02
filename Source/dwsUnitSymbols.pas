@@ -110,7 +110,7 @@ type
          procedure StoreParents;
          procedure RestoreParents;
 
-         function ReferenceInSymbolTable(aTable : TSymbolTable) : TUnitSymbol;
+         function ReferenceInSymbolTable(aTable : TSymbolTable; implicit : Boolean) : TUnitSymbol;
 
          function HasSymbol(sym : TSymbol) : Boolean;
 
@@ -131,6 +131,7 @@ type
       private
          FMain : TUnitMainSymbol;
          FNameSpace : TFastCompareTextList;
+         FImplicit : Boolean;
 
       public
          constructor Create(mainSymbol : TUnitMainSymbol; const name : UnicodeString);
@@ -143,6 +144,7 @@ type
          function  PossibleNameSpace(const name : UnicodeString) : Boolean;
 
          property Main : TUnitMainSymbol read FMain write FMain;
+         property Implicit : Boolean read FImplicit write FImplicit;
 
          function Table : TUnitSymbolTable; inline;
          function InterfaceTable : TSymbolTable; inline;
@@ -483,7 +485,7 @@ end;
 
 // ReferenceInSymbolTable
 //
-function TUnitMainSymbol.ReferenceInSymbolTable(aTable : TSymbolTable) : TUnitSymbol;
+function TUnitMainSymbol.ReferenceInSymbolTable(aTable : TSymbolTable; implicit : Boolean) : TUnitSymbol;
 var
    p : Integer;
    nameSpace : TUnitSymbol;
@@ -497,6 +499,7 @@ begin
    nameSpace:=TUnitSymbol(aTable.FindLocal(part, TUnitSymbol));
    if nameSpace=nil then begin
       nameSpace:=TUnitSymbol.Create(nil, part);
+      nameSpace.Implicit:=implicit;
       aTable.AddSymbol(nameSpace);
    end;
 

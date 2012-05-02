@@ -1282,7 +1282,7 @@ begin
       for i:=0 to unitsResolved.Count-1 do begin
          unitTable:=unitsResolved[i].GetUnitTable(FSystemTable, FMainProg.UnitMains, FOperators);
          unitSymbol:=TUnitMainSymbol.Create(unitsResolved[i].GetUnitName, unitTable, FMainProg.UnitMains);
-         unitSymbol.ReferenceInSymbolTable(FProg.Table);
+         unitSymbol.ReferenceInSymbolTable(FProg.Table, True);
       end;
    finally
       unitsResolved.Free;
@@ -1361,7 +1361,7 @@ begin
       end;
    end;
 
-   Result:=unitMain.ReferenceInSymbolTable(FProg.Table);
+   Result:=unitMain.ReferenceInSymbolTable(FProg.Table, False);
 end;
 
 // RecordSymbolUse
@@ -1562,7 +1562,7 @@ begin
       FMainProg.SourceList.Add(sourceFile.Name, sourceFile, scriptType);
 
       readingMain:=(scriptType=stMain);
-      if (scriptType=stMain) and FTok.Test(ttUNIT) then begin
+      if readingMain and FTok.Test(ttUNIT) then begin
          if coContextMap in Options then begin
             // need to fix the context map
             // the convoluted code below is required in case the first code content encountered
@@ -1621,7 +1621,13 @@ begin
             unitBlock:=ReadRootBlock([], finalToken);
             FProg.InitExpr.AddStatement(unitBlock);
             FTok.Free;
-         end else FUnitContextStack.PushContext(Self);
+         end else
+//         if readingMain then begin
+//            FUnitSection:=secImplementation;
+//            CurrentUnitSymbol.InterfaceTable.AddParent(FProg.Table);
+//            scriptType:=stMain;
+//         end;
+         FUnitContextStack.PushContext(Self);
          FTok:=nil;
       end else begin
          Inc(FLineCount, FTok.CurrentPos.Line-2);
@@ -3336,9 +3342,10 @@ end;
 function TdwsCompiler.ReadInherited(isWrite : Boolean) : TProgramExpr;
 var
    name : UnicodeString;
+   namePos : TScriptPos;
    sym : TSymbol;
    methSym : TMethodSymbol;
-   classSym, parentSym : TClassSymbol;
+   compositeSym, parentSym : TCompositeTypeSymbol;
    varExpr : TDataExpr;
    argPosArray : TScriptPosArray;
 begin
@@ -3347,18 +3354,32 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedOnlyAllowedInMethods);
 
    methSym := TMethodSymbol(TdwsProcedure(FProg).Func);
-   classSym := methSym.StructSymbol as TClassSymbol;
-   parentSym := classSym.Parent;
-   sym := nil;
 
-   if FTok.TestName then begin
-      name := FTok.GetToken.FString;
-      FTok.KillToken;
+   if not FTok.TestDeleteNamePos(name, namePos) then begin
+
+      if not methSym.IsOverride then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedWithoutName)
+      else sym := methSym.ParentMeth;
+
+   end else begin
+
+      compositeSym := methSym.StructSymbol;
+      if compositeSym.ClassType=THelperSymbol then begin
+         sym:=THelperSymbol(compositeSym).ForType.UnAliasedType;
+         if sym is TArraySymbol then begin
+            Result:=ReadArrayMethod(name, namePos, GetConstParamExpr(methSym.SelfSym as TConstParamSymbol));
+            Exit;
+         end;
+         if sym is TCompositeTypeSymbol then
+            parentSym:=TCompositeTypeSymbol(sym)
+         else parentSym:=nil;
+      end else parentSym:=compositeSym.Parent;
+
       if parentSym<>nil then
-         sym := parentSym.Members.FindSymbol(name, cvPrivate);
-   end else if not methSym.IsOverride then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedWithoutName)
-   else sym := methSym.ParentMeth;
+         sym:=parentSym.Members.FindSymbol(name, cvPrivate)
+      else sym:=nil;
+
+   end;
 
    if Assigned(sym) then begin
 
@@ -9105,7 +9126,7 @@ procedure TdwsCompiler.ReadUses;
 var
    names : TStringList;
    x, y, z, u : Integer;
-   rt : TSymbolTable;
+   rt, rtInterface : TSymbolTable;
    rSym : TSymbol;
    unitSymbol : TUnitSymbol;
    posArray : TScriptPosArray;
@@ -9121,26 +9142,39 @@ begin
          FSourceContextMap.CloseContext(FTok.HotPos);
 
       u:=0;
-      if CurrentUnitSymbol<>nil then
+      rtInterface:=nil;
+      if CurrentUnitSymbol<>nil then begin
          if UnitSection=secImplementation then begin
             rt:=CurrentUnitSymbol.ImplementationTable;
+            if rt=nil then
+               rt:=FProg.Table;
+            rtInterface:=CurrentUnitSymbol.InterfaceTable;
             u:=1;
-         end else rt:=CurrentUnitSymbol.InterfaceTable
-      else rt:=FProg.Root.RootTable;
+         end else rt:=CurrentUnitSymbol.InterfaceTable;
+      end else rt:=FProg.Root.RootTable;
       for x:=0 to names.Count-1 do begin
+         if rtInterface<>nil then begin
+            unitSymbol:=TUnitSymbol(rtInterface.FindLocal(names[x], TUnitSymbol));
+            if (unitSymbol<>nil) and not unitSymbol.Implicit then
+               FMsgs.AddCompilerHintFmt(posArray[x], CPH_UnitAlreadyReferredInInterface, [names[x]]);
+         end;
          y:=0;
          z:=-1;
          while (y<rt.Count) do begin
             rSym:=rt[y];
-            if     (rSym.ClassType=TUnitSymbol)
-               and (TUnitSymbol(rSym).Main<>nil)
-               and UnicodeSameText(rSym.Name, names[x]) then begin
-               z:=rt.IndexOfParent(TUnitSymbol(rSym).Table);
-               if z>=u then begin // uses A,B,A,C => uses A,B,C
-                  rt.MoveParent(z,u);
-//                  Inc(u);
+            if rSym.ClassType=TUnitSymbol then begin
+               unitSymbol:=TUnitSymbol(rSym);
+               if (unitSymbol.Main<>nil) and UnicodeSameText(rSym.Name, names[x]) then begin
+                  if unitSymbol.Implicit then
+                     unitSymbol.Implicit:=False
+                  else FMsgs.AddCompilerHintFmt(posArray[x], CPH_UnitAlreadyReferred, [names[x]]);
+                  z:=rt.IndexOfParent(TUnitSymbol(rSym).Table);
+                  if z>=u then begin // uses A,B,A,C => uses A,B,C
+                     rt.MoveParent(z,u);
+//                     Inc(u);
+                  end;
+                  Break;
                end;
-               Break;
             end;
             Inc(y);
          end;
@@ -9861,22 +9895,24 @@ var
    sym : TSymbol;
    meth : TMethodSymbol;
    meta : TStructuredTypeMetaSymbol;
+   readNameLocally : Boolean;
 begin
    Result:=nil;
+
+   if name='' then begin
+      readNameLocally:=True;
+      if not FTok.TestDeleteNamePos(name, namePos) then begin
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
+         // keep compiling
+         expr.Free;
+         Result:=TNullExpr.Create(FProg, namePos);
+         Exit;
+      end;
+   end else readNameLocally:=False;
 
    helpers:=EnumerateHelpers(typeSym);
    try
       if helpers.Count=0 then Exit;
-//      if helpers.Count=0 then begin
-//         if (typeSym is TCompositeTypeSymbol) or (typeSym is TArraySymbol) then
-//            FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [name])
-//         else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMemberExpected);
-//      end;
-
-      if name='' then begin
-         if not FTok.TestDeleteNamePos(name, namePos) then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
-      end;
 
       for i:=0 to helpers.Count-1 do begin
          helper:=helpers[i];
@@ -9920,8 +9956,8 @@ begin
       helpers.Free;
    end;
 
-//   if Result=nil then
-//      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [name]);
+   if readNameLocally and (Result=nil) then
+      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [name]);
 end;
 
 // ------------------

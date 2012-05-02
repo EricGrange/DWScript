@@ -2888,7 +2888,7 @@ begin
    FSystemTable := systemTable;
    systemUnitTable:=TLinkedSymbolTable.Create(systemTable.SymbolTable);
    systemUnit:=TUnitMainSymbol.Create(SYS_SYSTEM, systemUnitTable, FUnitMains);
-   systemUnit.ReferenceInSymbolTable(FRootTable);
+   systemUnit.ReferenceInSymbolTable(FRootTable, True);
 
    FRoot:=Self;
 end;

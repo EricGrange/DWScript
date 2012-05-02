@@ -777,12 +777,12 @@ begin
 
    FSymbol.CreateInterfaceTable;
 
-   unitSyms.Find(SYS_SYSTEM).ReferenceInSymbolTable(FSymbol.InterfaceTable);
-   unitSyms.Find(SYS_INTERNAL).ReferenceInSymbolTable(FSymbol.InterfaceTable);
+   unitSyms.Find(SYS_SYSTEM).ReferenceInSymbolTable(FSymbol.InterfaceTable, True);
+   unitSyms.Find(SYS_INTERNAL).ReferenceInSymbolTable(FSymbol.InterfaceTable, True);
 
    ums:=unitSyms.Find(SYS_DEFAULT);
    if ums<>nil then
-      ums.ReferenceInSymbolTable(FSymbol.InterfaceTable);
+      ums.ReferenceInSymbolTable(FSymbol.InterfaceTable, True);
 end;
 
 // Destroy

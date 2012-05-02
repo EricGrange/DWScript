@@ -3825,7 +3825,7 @@ begin
       // insert links to units this unit depends of
       for x:=0 to FDependencies.Count-1 do begin
          sym:=unitSyms.Find(FDependencies[x]);
-         sym.ReferenceInSymbolTable(Result);
+         sym.ReferenceInSymbolTable(Result, False);
       end;
 
       // create the symbols of this unit
@@ -4380,7 +4380,7 @@ begin
 
    for x := 0 to FDependencies.Count - 1 do begin
       sym := unitSyms.Find(FDependencies[x]);
-      sym.ReferenceInSymbolTable(unitTable);
+      sym.ReferenceInSymbolTable(unitTable, False);
    end;
 
    AddUnitSymbols(unitTable, operators);

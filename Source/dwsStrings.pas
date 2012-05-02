@@ -284,6 +284,8 @@ const
   CPH_ResultNotUsed = 'Result is never used';
   CPH_RedundantVisibilitySpecifier = 'Redundant specifier, visibility is already "%s"';
   CPH_NameAmbiguousInScopeContext = 'Name "%s" could be ambiguous in its scope context';
+  CPH_UnitAlreadyReferred = 'Unit "%s" redeclared';
+  CPH_UnitAlreadyReferredInInterface = 'Unit "%s" already declared in interface section';
 
   // TypeCheck
   CPE_BooleanExpected = 'Boolean expected';
