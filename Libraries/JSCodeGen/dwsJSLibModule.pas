@@ -56,25 +56,31 @@ type
          property SymbolMarker : TTokenType read FSymbolMarker write FSymbolMarker;
    end;
 
+   TdwsJSBlockExprSymbols = record
+      Offset : Integer;
+      Symbol : TSymbol;
+      PrefixSymbol : TSymbol;
+   end;
+
    // TdwsJSBlockExpr
    //
    TdwsJSBlockExpr = class (TNoResultExpr)
       private
          FCode : String;
-         FSymbols : TTightList;
-         FSymbolOffsets : array of Integer;
+         FSymbols : array of TdwsJSBlockExprSymbols;
 
       protected
          function GetSymbol(idx : Integer) : TSymbol;
-         function GetSymbolOffset(idx : Integer) : Integer;
+         function GetPrefixSymbol(idx : Integer) : TSymbol;
+         function GetOffset(idx : Integer) : Integer;
 
       public
-         destructor Destroy; override;
+         function RegisterSymbol(aSymbol : TSymbol; anOffset : Integer) : Integer;
+         procedure RegisterPrefix(prefixSymbol : TSymbol);
 
-         procedure RegisterSymbol(symbol : TSymbol; offset : Integer);
-
+         property Offsets[idx : Integer] : Integer read GetOffset;
          property Symbols[idx : Integer] : TSymbol read GetSymbol;
-         property SymbolOffsets[idx : Integer] : Integer read GetSymbolOffset;
+         property PrefixSymbols[idx : Integer] : TSymbol read GetPrefixSymbol;
          function SymbolsCount : Integer;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -195,6 +201,7 @@ var
    sym : TSymbol;
    table : TSymbolTable;
    blockExpr : TdwsJSBlockExpr;
+   firstSymbol : Boolean;
 
    function FlushCode(drop : Integer) : String;
    begin
@@ -226,6 +233,7 @@ begin
             jsCode:=jsCode+FlushCode(1);
 
             table:=compiler.CurrentProg.Table;
+            firstSymbol:=True;
 
             repeat
 
@@ -241,6 +249,11 @@ begin
                else compiler.RecordSymbolUseReference(sym, hotPos, True);
 
                blockExpr.RegisterSymbol(sym, Length(jsCode)+1);
+               if firstSymbol then begin
+                  firstSymbol:=False;
+                  if sym.ClassType=TFieldSymbol then
+                     blockExpr.RegisterPrefix(table.FindSymbol(SYS_SELF, cvMagic));
+               end;
 
                if sym is TDataSymbol then
                   sym:=sym.Typ;
@@ -290,31 +303,29 @@ end;
 // ------------------ TdwsJSBlockExpr ------------------
 // ------------------
 
-// Destroy
-//
-destructor TdwsJSBlockExpr.Destroy;
-begin
-   inherited;
-   FSymbols.Free;
-end;
-
 // RegisterSymbol
 //
-procedure TdwsJSBlockExpr.RegisterSymbol(symbol : TSymbol; offset : Integer);
-var
-   n : Integer;
+function TdwsJSBlockExpr.RegisterSymbol(aSymbol : TSymbol; anOffset : Integer) : Integer;
 begin
-   FSymbols.Add(symbol);
-   n:=Length(FSymbolOffsets);
-   SetLength(FSymbolOffsets, n+1);
-   FSymbolOffsets[n]:=offset;
+   Result:=Length(FSymbols);
+   SetLength(FSymbols, Result+1);
+   FSymbols[Result].Offset:=anOffset;
+   FSymbols[Result].Symbol:=aSymbol;
+   FSymbols[Result].PrefixSymbol:=nil;
+end;
+
+// RegisterPrefix
+//
+procedure TdwsJSBlockExpr.RegisterPrefix(prefixSymbol : TSymbol);
+begin
+   FSymbols[High(FSymbols)].PrefixSymbol:=prefixSymbol;
 end;
 
 // SymbolsCount
 //
 function TdwsJSBlockExpr.SymbolsCount : Integer;
 begin
-   Result:=Length(FSymbolOffsets);
+   Result:=Length(FSymbols);
 end;
 
 // EvalNoResult
@@ -328,14 +339,21 @@ end;
 //
 function TdwsJSBlockExpr.GetSymbol(idx : Integer) : TSymbol;
 begin
-   Result:=TSymbol(FSymbols.List[idx]);
+   Result:=FSymbols[idx].Symbol;
 end;
 
-// GetSymbolOffset
+// GetPrefixSymbol
 //
-function TdwsJSBlockExpr.GetSymbolOffset(idx : Integer) : Integer;
+function TdwsJSBlockExpr.GetPrefixSymbol(idx : Integer) : TSymbol;
 begin
-   Result:=FSymbolOffsets[idx];
+   Result:=FSymbols[idx].PrefixSymbol;
+end;
+
+// GetOffset
+//
+function TdwsJSBlockExpr.GetOffset(idx : Integer) : Integer;
+begin
+   Result:=FSymbols[idx].Offset;
 end;
 
 // ------------------

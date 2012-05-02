@@ -1,0 +1,49 @@
+<script>
+
+function Print(s) { document.write(s) };
+function PrintLn(s) { Print(s); document.writeln("<br />") };
+
+<%pas2js
+type
+   TMy = class
+      Field : Integer;
+      procedure IncField;
+      begin
+         asm
+            @Field += 1;
+         end;
+      end;
+      procedure IncField2;
+      begin
+         asm
+            @Self.Field += 1;
+         end;
+      end;
+   end;
+
+type
+   TRec = record
+      Field : Integer;
+      procedure IncField;
+      begin
+         asm
+            @Field += 1;
+         end;
+      end;
+   end;
+   
+var o := new TMy;
+PrintLn(o.Field);
+o.IncField;
+PrintLn(o.Field);
+o.IncField2;
+PrintLn(o.Field);
+
+var r : TRec;
+PrintLn(r.Field);
+r.IncField;
+PrintLn(r.Field);
+
+%>
+
+</script>

@@ -2454,15 +2454,23 @@ procedure TJSRAWBlockExpr.CodeGen(codeGen : TdwsCodeGen; expr : TExprBase);
 var
    e : TdwsJSBlockExpr;
    i : Integer;
-   jsCode : String;
-   sym : TSymbol;
+   jsCode, symCode, prefCode : String;
+   sym, prefix : TSymbol;
 begin
    e:=TdwsJSBlockExpr(expr);
    jsCode:=e.Code;
 
    for i:=e.SymbolsCount-1 downto 0 do begin
       sym:=e.Symbols[i];
-      Insert(codeGen.SymbolMappedName(sym, cgssGlobal), jsCode, e.SymbolOffsets[i]);
+      symCode:=codeGen.SymbolMappedName(sym, cgssGlobal);
+      prefix:=e.PrefixSymbols[i];
+      if prefix<>nil then begin
+         prefCode:=codeGen.SymbolMappedName(prefix, cgssGlobal);
+         if prefix.Typ is TRecordSymbol then
+            symCode:=prefCode+'.v.'+symCode
+         else symCode:=prefCode+'.'+symCode;
+      end;
+      Insert(symCode, jsCode, e.Offsets[i]);
    end;
 
    codeGen.WriteString(jsCode);
