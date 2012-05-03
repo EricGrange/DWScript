@@ -224,6 +224,8 @@ type
          procedure WriteBoolean(b : Boolean);
          procedure WriteNull;
 
+         function ToString : String; override;
+
          property Stream : TWriteOnlyBlockStream read FStream write FStream;
    end;
 
@@ -1331,6 +1333,13 @@ begin
    BeforeWriteImmediate;
    FStream.WriteString('null');
    AfterWriteImmediate;
+end;
+
+// ToString
+//
+function TdwsJSONWriter.ToString : String;
+begin
+   Result:=FStream.ToString;
 end;
 
 // BeforeWriteImmediate

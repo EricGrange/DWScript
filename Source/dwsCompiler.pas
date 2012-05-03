@@ -9228,6 +9228,9 @@ begin
             if (unitSymbol<>nil) and not unitSymbol.Implicit then
                FMsgs.AddCompilerHintFmt(posArray[x], CPH_UnitAlreadyReferredInInterface, [names[x]]);
          end;
+         if names.IndexOf(names[x])<x then
+            FMsgs.AddCompilerHintFmt(posArray[x], CPH_UnitAlreadyReferred, [names[x]]);
+
          y:=0;
          z:=-1;
          while (y<rt.Count) do begin
@@ -9236,8 +9239,7 @@ begin
                unitSymbol:=TUnitSymbol(rSym);
                if (unitSymbol.Main<>nil) and UnicodeSameText(rSym.Name, names[x]) then begin
                   if unitSymbol.Implicit then
-                     unitSymbol.Implicit:=False
-                  else FMsgs.AddCompilerHintFmt(posArray[x], CPH_UnitAlreadyReferred, [names[x]]);
+                     unitSymbol.Implicit:=False;
                   z:=rt.IndexOfParent(TUnitSymbol(rSym).Table);
                   if z>=u then begin // uses A,B,A,C => uses A,B,C
                      rt.MoveParent(z,u);
