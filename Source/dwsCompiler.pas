@@ -10013,19 +10013,31 @@ begin
          end else if sym is TMethodSymbol then begin
 
             meth:=TMethodSymbol(sym);
-            if     meth.IsClassMethod and (helper.ForType is TStructuredTypeSymbol) then begin
-               meta:=TStructuredTypeSymbol(helper.ForType).MetaSymbol;
-               if meta<>nil then begin
-                  if expr<>nil then begin
-                     if expr.Typ is TStructuredTypeSymbol then
-                        expr:=TObjToClassTypeExpr.Create(FProg, expr)
-                  end else expr:=TConstExpr.Create(FProg, meta, Int64(helper.ForType));
-               end else begin
-                  FreeAndNil(expr);
+            if meth.IsClassMethod then begin
+
+               if (helper.ForType is TStructuredTypeSymbol) then begin
+                  meta:=TStructuredTypeSymbol(helper.ForType).MetaSymbol;
+                  if meta<>nil then begin
+                     if expr<>nil then begin
+                        if expr.Typ is TStructuredTypeSymbol then
+                           expr:=TObjToClassTypeExpr.Create(FProg, expr)
+                     end else expr:=TConstExpr.Create(FProg, meta, Int64(helper.ForType));
+                  end else begin
+                     FreeAndNil(expr);
+                  end;
                end;
+
+            end else begin
+
+               if expr is TTypeReferenceExpr then
+                  FMsgs.AddCompilerError(namePos, CPE_ClassMethodExpected);
+
             end;
+
             if (expr<>nil) and (expr.Typ is THelperSymbol) then
                FreeAndNil(expr);
+
+
             if meth.IsOverloaded then
                Result:=ReadMethOverloaded(meth, expr, namePos, expecting)
             else Result:=ReadMethod(meth, expr, namePos, expecting);
