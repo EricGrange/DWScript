@@ -181,7 +181,7 @@ uses
 const
    // if the language is case-insensitive keywords *must* be in lowercase
    cKeyWords: array[1..95] of UnicodeString = (
-      'absolute', 'abstract', 'and', 'array', 'as', 'asm',
+      'abstract', 'and', 'array', 'as', 'asm',
       'begin', 'break', 'case', 'cdecl', 'class', 'const', 'constructor',
       'contains', 'continue', 'deprecated', 'destructor',
       'div', 'do', 'downto', 'else', 'end', 'ensure', 'except', 'exit',
@@ -191,7 +191,7 @@ const
       'initialization', 'inline', 'interface', 'is', 'lazy', 'library',
       'message', 'method', 'mod', 'new', 'nil', 'not', 'object', 'of',
       'old', 'on', 'operator', 'or', 'overload', 'override',
-      'pascal', 'private', 'procedure', 'program', 'property',
+      'pascal', 'partial', 'private', 'procedure', 'program', 'property',
       'protected', 'public', 'published', 'raise', 'record',
       'register', 'reintroduce', 'repeat', 'require', 'resourcestring',
       'sealed', 'set', 'shl', 'shr', 'static', 'step', 'string',

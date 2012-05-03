@@ -4,6 +4,7 @@ Syntax Error: Class "TStatic" is static, instantiation not allowed! [line: 6, co
 Syntax Error: Class "TSub" is static, instantiation not allowed! [line: 15, column: 13]
 Syntax Error: Class "TStatic" is static, instantiation not allowed! [line: 18, column: 7]
 Syntax Error: Trying to use an abstract class! [line: 20, column: 17]
+Syntax Error: Class "TStatic" is static, instantiation not allowed! [line: 24, column: 9]
 Syntax Error: Trying to create an instance of an abstract class [line: 24, column: 9]
 Syntax Error: Class "TStatic" is static, instantiation not allowed! [line: 24, column: 9]
 Syntax Error: Method "Func" of class "TStatic" not implemented [line: 3, column: 22]

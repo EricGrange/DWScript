@@ -374,7 +374,7 @@ type
          function ReadNameSymbol(var namePos : TScriptPos) : TSymbol;
          function ReadClassName : TClassSymbol;
          function ReadClassOf(const typeName : UnicodeString) : TClassOfSymbol;
-         function ReadClass(const typeName : UnicodeString) : TClassSymbol;
+         function ReadClass(const typeName : UnicodeString; const flags : TClassSymbolFlags) : TClassSymbol;
          procedure ReadClassVars(const ownerSymbol : TCompositeTypeSymbol; aVisibility : TdwsVisibility);
          procedure ReadClassConst(const ownerSymbol : TCompositeTypeSymbol; aVisibility : TdwsVisibility);
          procedure ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
@@ -1994,7 +1994,7 @@ begin
       if typ=nil then
          typ:=FProg.TypVariant
       else if (typ is TClassSymbol) and TClassSymbol(typ).IsStatic then
-         FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStatic, [TClassSymbol(typ).Name]);
+         FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStatic, [typ.Name]);
 
       for x:=0 to names.Count-1 do begin
          sym:=dataSymbolFactory.CreateDataSymbol(names[x], posArray[x], typ);
@@ -4992,7 +4992,9 @@ var
 begin
    if methodSym.IsClassMethod then
       funcExpr:=GetMethodExpr(methodSym, instanceExpr, rkClassOfRef, scriptPos, False)
-   else funcExpr:=GetMethodExpr(methodSym, instanceExpr, rkObjRef, scriptPos, False);
+   else begin
+      funcExpr:=GetMethodExpr(methodSym, instanceExpr, rkObjRef, scriptPos, False);
+   end;
    Result:=WrapUpFunctionRead(funcExpr, expecting, overloads);
 end;
 
@@ -5004,7 +5006,13 @@ function TdwsCompiler.ReadStaticMethod(methodSym : TMethodSymbol; metaExpr : TTy
                                        overloads : TFuncSymbolList = nil) : TTypedExpr;
 var
    funcExpr : TFuncExpr;
+   compoSym : TCompositeTypeSymbol;
 begin
+   if methodSym.Kind=fkConstructor then begin
+      compoSym:=(metaExpr.Typ as TStructuredTypeMetaSymbol).StructSymbol;
+      if compoSym.IsStatic then
+         FMsgs.AddCompilerErrorFmt(scriptPos, CPE_ClassIsStatic, [compoSym.Name]);
+   end;
    funcExpr:=GetMethodExpr(methodSym, metaExpr, rkClassOfRef, scriptPos, False);
    Result:=WrapUpFunctionRead(funcExpr, expecting, overloads);
 end;
@@ -6086,6 +6094,9 @@ begin
 
    end;
 
+   if classSym.IsStatic then
+      FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStatic, [classSym.Name]);
+
    methSym:=classSym.FindDefaultConstructor(cvPrivate);
    if methSym.IsOverloaded then
       overloads:=TFuncSymbolList.Create
@@ -6229,7 +6240,7 @@ end;
 
 // ReadClass
 //
-function TdwsCompiler.ReadClass(const typeName : UnicodeString) : TClassSymbol;
+function TdwsCompiler.ReadClass(const typeName : UnicodeString; const flags : TClassSymbolFlags) : TClassSymbol;
 var
    namePos, hotPos : TScriptPos;
    sym, typ : TSymbol;
@@ -6238,7 +6249,8 @@ var
    intfTyp : TInterfaceSymbol;
    interfaces : TList;
    missingMethod : TMethodSymbol;
-   isInSymbolTable: Boolean;
+   isInSymbolTable : Boolean;
+   previousClassFlags  : TClassSymbolFlags;
    visibility : TdwsVisibility;
    tt : TTokenType;
    i : Integer;
@@ -6249,9 +6261,13 @@ begin
 
    if Assigned(sym) then begin
       if sym is TClassSymbol then begin
-         if TClassSymbol(sym).IsForwarded then
+         Result:=TClassSymbol(sym);
+         if Result.IsForwarded or Result.IsPartial then
             Result:=TClassSymbol(sym)
-         else FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassAlreadyDefined, [sym.Name]);
+         else begin
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassAlreadyDefined, [sym.Name]);
+            Result:=nil;
+         end;
       end else begin
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [sym.Name]);
       end;
@@ -6259,15 +6275,19 @@ begin
          Result:=TClassSymbol.Create('', CurrentUnitSymbol);
    end;
 
-   isInSymbolTable := Assigned(Result);
+   isInSymbolTable:=Assigned(Result);
 
-   if not Assigned(Result) then
+   if not Assigned(Result) then begin
       Result:=TClassSymbol.Create(typeName, CurrentUnitSymbol);
+      previousClassFlags:=[];
+   end else previousClassFlags:=Result.Flags;
 
    // forwarded declaration
    if FTok.Test(ttSEMI) then begin
       if Result.IsForwarded then
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassForwardAlreadyExists, [sym.Name]);
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassForwardAlreadyExists, [sym.Name])
+      else if csfPartial in flags then
+         Result.SetIsPartial;
       Result.SetForwardedPos(FTok.HotPos);
       Exit;
    end else Result.ClearIsForwarded;
@@ -6277,8 +6297,9 @@ begin
    interfaces:=TList.Create;
    try
       try
-         if FTok.TestDelete(ttSTATIC) then
+         if FTok.TestDelete(ttSTATIC) or (csfStatic in flags) then begin
             Result.IsStatic:=True;
+         end;
          tt:=FTok.TestDeleteAny([ttABSTRACT, ttSEALED]);
          case tt of
             ttABSTRACT :
@@ -6291,6 +6312,15 @@ begin
             if FTok.Test(ttStrVal) then begin
                Result.ExternalName:=FTok.GetToken.FString;
                FTok.KillToken;
+            end;
+         end;
+         if FTok.TestDelete(ttPARTIAL) or (csfPartial in flags) then begin
+            Result.SetIsPartial;
+            if isInSymbolTable then begin
+               if not (csfPartial in previousClassFlags) then
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassWasNotPartial)
+               else if previousClassFlags<>Result.Flags then
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassPartialModifiersNotMatched);
             end;
          end;
 
@@ -6341,14 +6371,25 @@ begin
             if not FTok.TestDelete(ttBRIGHT) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
 
-         end else ancestorTyp:=FProg.TypObject;
+         end else begin
+
+            if csfPartial in previousClassFlags then
+               ancestorTyp:=Result.Parent
+            else ancestorTyp:=FProg.TypObject;
+
+         end;
 
          if     Result.IsStatic
             and (ancestorTyp<>FProg.TypObject)
-            and (not ancestorTyp.IsStatic) then
-           FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassAncestorNotStatic, [ancestorTyp.Name]);
+            and (not ancestorTyp.IsStatic) then begin
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassAncestorNotStatic, [ancestorTyp.Name]);
+         end;
 
-         Result.InheritFrom(ancestorTyp);
+         if Result.Parent<>nil then begin
+            if ancestorTyp<>Result.Parent then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassAncestorDoesNotMatch);
+         end else if Result.Parent<>ancestorTyp then
+            Result.InheritFrom(ancestorTyp);
 
          visibility:=cvPublished;
 
@@ -6972,7 +7013,7 @@ begin
    if forType is TFuncSymbol then
       FMsgs.AddCompilerError(FTok.HotPos, CPE_HelpersNotAllowedForDelegates);
 
-   Result:=THelperSymbol.Create(typeName, CurrentUnitSymbol, forType);
+   Result:=THelperSymbol.Create(typeName, CurrentUnitSymbol, forType, FProg.Table.Count);
    try
       visibility:=cvPublic;
 
@@ -7219,6 +7260,25 @@ end;
 // ReadType
 //
 function TdwsCompiler.ReadType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
+
+   function ReadClassFlags(token : TTokenType) : TTypeSymbol;
+   var
+      flags : TClassSymbolFlags;
+   begin
+      case token of
+         ttPARTIAL : flags:=[csfPartial];
+         ttSTATIC : flags:=[csfStatic];
+      else
+         flags:=[];
+      end;
+      if FTok.TestDelete(ttCLASS) and (typeContext=tcDeclaration) then
+         Result:=ReadClass(typeName, flags)
+      else begin
+         Result:=nil;
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ClassExpected);
+      end;
+   end;
+
 var
    tt : TTokenType;
    name, connectorQualifier : UnicodeString;
@@ -7227,7 +7287,7 @@ var
 begin
    hotPos:=FTok.HotPos;
    tt:=FTok.TestDeleteAny([ttRECORD, ttARRAY, ttCLASS, ttINTERFACE, ttHELPER,
-                           ttBLEFT, ttENUM, ttFLAGS,
+                           ttBLEFT, ttENUM, ttFLAGS, ttPARTIAL, ttSTATIC,
                            ttPROCEDURE, ttFUNCTION]);
    case tt of
       ttRECORD :
@@ -7241,12 +7301,15 @@ begin
             Result:=ReadClassOf(typeName)
          else begin
             if typeContext=tcDeclaration then
-               Result:=ReadClass(typeName)
+               Result:=ReadClass(typeName, [])
             else begin
                Result:=nil;
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_TypeExpected);
             end;
          end;
+
+      ttPARTIAL, ttSTATIC :
+         Result:=ReadClassFlags(tt);
 
       ttINTERFACE :
          if typeContext=tcDeclaration then

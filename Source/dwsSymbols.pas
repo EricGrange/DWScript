@@ -1269,7 +1269,7 @@ type
    TObjectDestroyEvent = procedure (ExternalObject: TObject) of object;
 
    TClassSymbolFlag = (csfAbstract, csfExplicitAbstract, csfSealed,
-                       csfStatic, csfExternal);
+                       csfStatic, csfExternal, csfPartial);
    TClassSymbolFlags = set of TClassSymbolFlag;
 
    // type X = class ... end;
@@ -1293,6 +1293,7 @@ type
          procedure SetIsStatic(const val : Boolean); inline;
          function GetIsExternal : Boolean; override;
          procedure SetIsExternal(const val : Boolean); inline;
+         function GetIsPartial : Boolean; inline;
 
          function AllocateVMTindex : Integer;
 
@@ -1312,6 +1313,7 @@ type
          procedure AddOverriddenInterfaces;
          function ResolveInterface(intfSym : TInterfaceSymbol; var resolved : TResolvedInterface) : Boolean;
          function ImplementsInterface(intfSym : TInterfaceSymbol) : Boolean;
+         procedure SetIsPartial; inline;
 
          function  FieldAtOffset(offset : Integer) : TFieldSymbol; override;
          procedure InheritFrom(ancestorClassSym : TClassSymbol);
@@ -1334,12 +1336,14 @@ type
          function Parent : TClassSymbol; inline;
          property ScriptInstanceSize : Integer read FScriptInstanceSize;
          property Interfaces : TResolvedInterfaces read FInterfaces;
+         property Flags : TClassSymbolFlags read FFlags;
 
          property IsExplicitAbstract : Boolean read GetIsExplicitAbstract write SetIsExplicitAbstract;
          property IsAbstract : Boolean read GetIsAbstract;
          property IsSealed : Boolean read GetIsSealed write SetIsSealed;
          property IsStatic : Boolean read GetIsStatic write SetIsStatic;
          property IsExternal : Boolean read GetIsExternal write SetIsExternal;
+         property IsPartial : Boolean read GetIsPartial;
 
          property OnObjectDestroy : TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
    end;
@@ -1350,11 +1354,13 @@ type
          FForType : TTypeSymbol;
          FUnAliasedForType : TTypeSymbol;
          FMetaForType : TTypeSymbol;
+         FPriority : Integer;
 
       protected
 
       public
-         constructor Create(const name : UnicodeString; aUnit : TSymbol; aForType : TTypeSymbol);
+         constructor Create(const name : UnicodeString; aUnit : TSymbol;
+                            aForType : TTypeSymbol; priority : Integer);
 
          function IsType : Boolean; override;
          function AllowDefaultProperty : Boolean; override;
@@ -1365,6 +1371,7 @@ type
          function HelpsType(typ : TTypeSymbol) : Boolean;
 
          property ForType : TTypeSymbol read FForType;
+         property Priority : Integer read FPriority;
    end;
 
    THelperSymbols = class(TSimpleList<THelperSymbol>)
@@ -3895,6 +3902,20 @@ begin
    else Exclude(FFlags, csfExternal);
 end;
 
+// GetIsPartial
+//
+function TClassSymbol.GetIsPartial : Boolean;
+begin
+   Result:=(csfPartial in FFlags);
+end;
+
+// SetIsPartial
+//
+procedure TClassSymbol.SetIsPartial;
+begin
+   Include(FFlags, csfPartial);
+end;
+
 // AllocateVMTindex
 //
 function TClassSymbol.AllocateVMTindex : Integer;
@@ -5755,7 +5776,8 @@ end;
 
 // Create
 //
-constructor THelperSymbol.Create(const name : UnicodeString; aUnit : TSymbol; aForType : TTypeSymbol);
+constructor THelperSymbol.Create(const name : UnicodeString; aUnit : TSymbol;
+                                 aForType : TTypeSymbol; priority : Integer);
 begin
    inherited Create(name, aUnit);
    FForType:=aForType;

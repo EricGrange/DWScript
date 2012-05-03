@@ -119,6 +119,7 @@ const
   CPE_UnexpectedStatement = 'Unexpected statement';
   CPE_UnexpectedImplementationInInterface = 'Unexpected implementation in interface section';
   CPE_UnexpectedEnd = 'Unexpected END';
+  CPE_ClassExpected = 'CLASS expected';
 
   // ReadName
   CPE_UnknownName = 'Unknown name "%s"';
@@ -171,12 +172,15 @@ const
   CPE_NotAClass = '"%s" is not a class';
   CPE_ClassForwardAlreadyExists = 'There is already a forward declaration of the "%s" class!';
   CPE_ClassAlreadyDefined = 'Class "%s" already defined!';
+  CPE_ClassWasNotPartial = 'Previous declaration of class was not "partial"';
+  CPE_ClassPartialModifiersNotMatched = 'Modifiers do not match previous "partial" declaration of class';
   CPE_FuncForwardAlreadyExists = 'There is already a forward declaration of this function!';
   CPE_ForwardNotImplemented = 'The function "%s" was forward declared but not implemented!';
   CPE_CantImplementAFunctionType = 'Can''t implement a function type';
   CPE_ClassIsSealed = 'Class "%s" is sealed, inheriting is not allowed!';
   CPE_ClassIsStatic = 'Class "%s" is static, instantiation not allowed!';
   CPE_ClassAncestorNotStatic = 'Class "%s" is not static, can''t inherit as static!';
+  CPE_ClassAncestorDoesNotMatch = 'Class ancestor does not match with previous declaration!';
   CPE_MethodOrPropertyExpected = 'Method or property declaration expected';
   CPE_OverloadableOperatorExpected = 'Overloadable operator expected';
   CPE_OverloadOnlyInGlobalScope = 'Overloads can only be declared in the global scope';
