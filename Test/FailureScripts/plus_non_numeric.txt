@@ -1,0 +1,3 @@
+Syntax Error: Numerical operand expected [line: 1, column: 13]
+Syntax Error: Numerical operand expected [line: 2, column: 13]
+Syntax Error: Numerical operand expected [line: 3, column: 13]

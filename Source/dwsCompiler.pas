@@ -7761,8 +7761,15 @@ begin
    if tt<>ttNone then
       FTok.KillToken;
    case tt of
-      ttPLUS :
+      ttPLUS : begin
+         FTok.TestName;
+         hotPos:=FTok.HotPos;
          Result:=ReadTerm; // (redundant) plus sign
+         if not (   Result.IsOfType(FProg.TypFloat)
+                 or Result.IsOfType(FProg.TypInteger)
+                 or Result.IsOfType(FProg.TypVariant)) then
+            FMsgs.AddCompilerError(hotPos, CPE_NumericalExpected);
+      end;
       ttMINUS :
          Result:=ReadNegation;
       ttALEFT :
