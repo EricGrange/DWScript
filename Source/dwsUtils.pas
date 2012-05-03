@@ -400,7 +400,6 @@ type
 
    TFastCompareStringList = class (TStringList)
       function CompareStrings(const S1, S2: UnicodeString): Integer; override;
-      function Find(const S: string; var Index: Integer): Boolean; override;
    end;
 
    TFastCompareTextList = class (TStringList)
@@ -484,34 +483,6 @@ var
 function TFastCompareStringList.CompareStrings(const S1, S2: UnicodeString): Integer;
 begin
    Result:=CompareStr(S1, S2);
-end;
-
-// Find
-//
-function TFastCompareStringList.Find(const S: string; var Index: Integer): Boolean;
-var
-   list : TStringListList;
-   lowBound, highBound, midPoint, cmpResult : Integer;
-begin
-   Result := False;
-   list:=TStringListCracker(Self).FList;
-   lowBound:=0;
-   highBound:=Count-1;
-   while lowBound<=highBound do begin
-      midPoint:=(lowBound + highBound) shr 1;
-      cmpResult:=CompareStr(list^[midPoint].FString, S);
-      if cmpResult<0 then
-         lowBound:=midPoint+1
-      else begin
-         highBound:=midPoint-1;
-         if cmpResult=0 then begin
-            Result:=True;
-            if Duplicates<>dupAccept then
-               lowBound:=midPoint;
-         end;
-      end;
-   end;
-   Index := lowBound;
 end;
 
 // TUnifierStringList.Create

@@ -543,7 +543,9 @@ type
          function ReadExcept(tryExpr : TNoResultExpr; var finalToken : TTokenType) : TExceptExpr;
 
          function ReadType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
-         function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol; acceptTypeRef : Boolean) : TTypedExpr;
+         function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
+         function ReadTypeExpr(const namePos : TScriptPos; typeSym : TTypeSymbol;
+                               isWrite : Boolean; expecting : TTypeSymbol = nil) : TProgramExpr;
 
          function EnumerateHelpers(typeSym : TTypeSymbol) : THelperSymbols;
          function ReadTypeHelper(expr : TTypedExpr; typeSym : TTypeSymbol;
@@ -3357,9 +3359,9 @@ begin
 
    if not FTok.TestDeleteNamePos(name, namePos) then begin
 
+      sym := methSym.ParentMeth;
       if not methSym.IsOverride then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedWithoutName)
-      else sym := methSym.ParentMeth;
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedWithoutName);
 
    end else begin
 
@@ -3452,7 +3454,6 @@ var
    fieldExpr : TTypedExpr;
    propExpr : TProgramExpr;
    funcExpr : TTypedExpr;
-   helperExpr : TProgramExpr;
    progMeth : TMethodSymbol;
    selfSym : TDataSymbol;
    baseType : TTypeSymbol;
@@ -3638,14 +3639,13 @@ begin
          Result:=ReadEnumerationSymbolName(namePos, TEnumerationSymbol(sym), expecting=FAnyTypeSymbol)
 
       // helpers and generic type casts
-      end else if sym.InheritsFrom(TTypeSymbol) then
+      end else if sym.InheritsFrom(TTypeSymbol) then begin
 
-         if FTok.TestDelete(ttDOT) then begin
-            helperExpr:=ReadTypeHelper(nil, TTypeSymbol(sym), '', cNullPos, expecting);
-            Result:=ReadSymbol(helperExpr, isWrite, expecting);
-         end else Result:=ReadTypeCast(namePos, TTypeSymbol(sym), expecting=FAnyTypeSymbol)
+         if FTok.TestDelete(ttBLEFT) then
+            Result:=ReadTypeCast(namePos, TTypeSymbol(sym))
+         else Result:=ReadTypeExpr(namePos, TTypeSymbol(sym), isWrite, expecting);
 
-      else begin
+      end else begin
 
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownType, [sym.Name]);
 
@@ -3667,9 +3667,9 @@ var
    elem : TSymbol;
    elemValue : Int64;
 begin
-   if FTok.Test(ttBLEFT) then begin
+   if FTok.TestDelete(ttBLEFT) then begin
 
-      Result:=ReadTypeCast(elemPos, enumSym, acceptTypeRef);
+      Result:=ReadTypeCast(elemPos, enumSym);
 
    end else if FTok.TestDelete(ttDOT) then begin
 
@@ -9788,24 +9788,11 @@ end;
 
 // ReadTypeCast
 //
-function TdwsCompiler.ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol;
-                                   acceptTypeRef : Boolean) : TTypedExpr;
+function TdwsCompiler.ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
 var
    argExpr : TTypedExpr;
    hotPos : TScriptPos;
 begin
-   if not FTok.TestDelete(ttBLEFT) then begin
-
-      if typeSym.ClassType=TClassOfSymbol then
-         Exit(TConstExpr.Create(FProg, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol)))
-      else begin
-         Result:=TTypeReferenceExpr.Create(typeSym, namePos);
-         if not acceptTypeRef then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_BrackLeftExpected);
-         Exit;
-      end;
-   end;
-
    hotPos:=FTok.CurrentPos;
    argExpr:=ReadExpr;
 
@@ -9873,6 +9860,28 @@ begin
   end;
 end;
 
+// ReadTypeExpr
+//
+function TdwsCompiler.ReadTypeExpr(const namePos : TScriptPos; typeSym : TTypeSymbol;
+                                   isWrite : Boolean; expecting : TTypeSymbol = nil) : TProgramExpr;
+var
+   typeExpr : TTypedExpr;
+begin
+   if typeSym.ClassType=TClassOfSymbol then
+      typeExpr:=TConstExpr.Create(FProg, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol))
+   else typeExpr:=TTypeReferenceExpr.Create(typeSym, namePos);
+
+   if FTok.Test(ttDOT) then
+      Result:=ReadSymbol(typeExpr, isWrite, expecting)
+   else begin
+      if     (expecting<>FAnyTypeSymbol)
+         and not (   (typeSym.ClassType=TClassSymbol)
+                  or (typeSym.ClassType=TClassOfSymbol)) then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_BrackLeftExpected);
+      Result:=typeExpr;
+   end;
+end;
+
 // EnumerateHelpers
 //
 function TdwsCompiler.EnumerateHelpers(typeSym : TTypeSymbol) : THelperSymbols;
@@ -9921,7 +9930,7 @@ begin
 
          RecordSymbolUseReference(sym, namePos, False);
 
-         if sym is TClassVarSymbol then begin
+         if sym.ClassType=TClassVarSymbol then begin
 
             FreeAndNil(expr);
             Result:=GetVarExpr(TClassVarSymbol(sym));
@@ -9945,6 +9954,8 @@ begin
                   FreeAndNil(expr);
                end;
             end;
+            if (expr<>nil) and (expr.Typ is THelperSymbol) then
+               FreeAndNil(expr);
             if meth.IsOverloaded then
                Result:=ReadMethOverloaded(meth, expr, namePos, expecting)
             else Result:=ReadMethod(meth, expr, namePos, expecting);
