@@ -1,0 +1,4 @@
+Syntax Error: Modifiers do not match previous "partial" declaration of class [line: 10, column: 25]
+Syntax Error: Modifiers do not match previous "partial" declaration of class [line: 14, column: 25]
+Syntax Error: Modifiers do not match previous "partial" declaration of class [line: 18, column: 27]
+Syntax Error: Modifiers do not match previous "partial" declaration of class [line: 22, column: 27]
