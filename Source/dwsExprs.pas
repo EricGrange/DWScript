@@ -1679,40 +1679,59 @@ type
    // An instance of a script class FClassSym. Instance data in FData,
    TScriptObj = class(TInterfacedObject, IScriptObj)
       private
-         FClassSym : TClassSymbol;
-         FExternalObj : TObject;
-         FDestroyed : Boolean;
-         FExecutionContext : TdwsProgramExecution;
-         FOnObjectDestroy: TObjectDestroyEvent;
          FNextObject, FPrevObject : TScriptObj;
 
       protected
          FData : TData;
 
-         { IScriptObj }
-         function GetClassSym: TClassSymbol;
+         function GetClassSym : TClassSymbol; virtual;
+         procedure SetClassSym(clsSym : TClassSymbol); virtual;
+
          function GetData : TData;
          function DataOfAddr(addr : Integer) : Variant;
          function DataOfAddrAsString(addr : Integer) : UnicodeString;
          function DataOfAddrAsInteger(addr : Integer) : Int64;
          procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
-         function GetDestroyed : Boolean;
-         procedure SetDestroyed(const val : Boolean);
+         function GetDestroyed : Boolean; virtual;
+         procedure SetDestroyed(const val : Boolean); virtual;
          function GetInternalObject: TObject;
-         function GetExternalObject: TObject;
-         procedure SetExternalObject(Value: TObject);
+         function GetExternalObject: TObject; virtual;
+         procedure SetExternalObject(Value: TObject); virtual;
+         procedure SetExecutionContext(exec : TdwsProgramExecution); virtual;
+
+      public
+         property NextObject : TScriptObj read FNextObject write FNextObject;
+         property PrevObject : TScriptObj read FPrevObject write FPrevObject;
+   end;
+
+   TScriptObjInstance = class(TScriptObj)
+      private
+         FClassSym : TClassSymbol;
+         FExternalObj : TObject;
+         FExecutionContext : TdwsProgramExecution;
+         FOnObjectDestroy: TObjectDestroyEvent;
+         FDestroyed : Boolean;
+
+      protected
+         function GetClassSym: TClassSymbol; override;
+         procedure SetClassSym(clsSym : TClassSymbol); override;
+         function GetExternalObject: TObject; override;
+         procedure SetExternalObject(Value: TObject); override;
+         function GetDestroyed : Boolean; override;
+         procedure SetDestroyed(const val : Boolean); override;
+         procedure SetExecutionContext(exec : TdwsProgramExecution); override;
 
       public
          constructor Create(aClassSym : TClassSymbol; executionContext : TdwsProgramExecution = nil);
          destructor Destroy; override;
          procedure BeforeDestruction; override;
-         property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
 
          property ExecutionContext : TdwsProgramExecution read FExecutionContext write FExecutionContext;
+         property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
          property Destroyed : Boolean read FDestroyed write FDestroyed;
-         property NextObject : TScriptObj read FNextObject write FNextObject;
-         property PrevObject : TScriptObj read FPrevObject write FPrevObject;
    end;
+
+   TScriptDynamicArrayCompareFunc = function (idx1, idx2 : Integer) : Integer of object;
 
    TScriptDynamicArray = class(TScriptObj)
       private
@@ -1725,6 +1744,9 @@ type
          property GetLength : Integer read FLength;
          procedure SetData(const data : TData);
 
+         procedure QuickSort(lo, hi : Integer; const compareFunc : TScriptDynamicArrayCompareFunc);
+         function CompareFunc(idx1, idx2 : Integer) : Integer;
+
       public
          constructor Create(elemTyp : TTypeSymbol);
 
@@ -1732,6 +1754,7 @@ type
          procedure Insert(index : Integer);
          procedure Swap(i1, i2 : Integer);
          procedure Reverse;
+         procedure Sort(exec : TdwsExecution; compareExpr : TTypedExpr);
          procedure Copy(src : TScriptDynamicArray; index, count : Integer);
          procedure RawCopy(const src : TData; rawIndex, rawCount : Integer);
          procedure Concat(src : TScriptDynamicArray);
@@ -1745,7 +1768,7 @@ type
          property Length : Integer read FLength write SetLength;
    end;
 
-   TScriptInterface = class(TScriptObj)
+   TScriptInterface = class(TScriptObjInstance)
       private
          FTyp : TInterfaceSymbol;
          FInstance : IScriptObj;
@@ -1806,13 +1829,15 @@ type
          procedure Execute(info : TProgramInfo); override;
    end;
 
+   TDynamicArrayConstExpr = class(TConstExpr);
+
 { TScriptObjectWrapper }
 
 // wrapper to interact with an released script object
 type
    TScriptObjectWrapper = class (TInterfacedObject, IUnknown, IScriptObj)
       private
-         FScriptObj : TScriptObj;
+         FScriptObj : TScriptObjInstance;
       protected
          { IScriptObj }
          function GetClassSym: TClassSymbol;
@@ -1827,12 +1852,12 @@ type
          function GetDestroyed : Boolean;
          procedure SetDestroyed(const val : Boolean);
       public
-         constructor Create(scriptObj : TScriptObj);
+         constructor Create(scriptObj : TScriptObjInstance);
    end;
 
 // Create
 //
-constructor TScriptObjectWrapper.Create(scriptObj : TScriptObj);
+constructor TScriptObjectWrapper.Create(scriptObj : TScriptObjInstance);
 begin
    inherited Create;
    FScriptObj:=scriptObj;
@@ -2458,7 +2483,7 @@ begin
       buffer[i]:=iter;
       Inc(i);
       iter._AddRef;
-      iter.ExecutionContext:=nil;
+      iter.SetExecutionContext(nil);
       iter:=iter.NextObject;
    end;
 
@@ -2466,7 +2491,7 @@ begin
    for i:=0 to FObjectCount-1 do begin
       iter:=buffer[i];
       SetLength(buffer[i].FData, 0);
-      iter.FClassSym:=nil;
+      iter.SetClassSym(nil);
       iter.PrevObject:=nil;
       iter.NextObject:=nil;
    end;
@@ -2488,7 +2513,7 @@ end;
 //
 procedure TdwsProgramExecution.ScriptObjCreated(scriptObj: TScriptObj);
 begin
-   scriptObj.ExecutionContext:=Self;
+   scriptObj.SetExecutionContext(Self);
    if FObjectCount=0 then begin
       FFirstObject:=scriptObj;
       FLastObject:=scriptObj;
@@ -2504,7 +2529,7 @@ end;
 //
 procedure TdwsProgramExecution.ScriptObjDestroyed(scriptObj: TScriptObj);
 begin
-   scriptObj.ExecutionContext:=nil;
+   scriptObj.SetExecutionContext(nil);
    Dec(FObjectCount);
 
    if FObjectCount>0 then begin
@@ -5676,7 +5701,7 @@ begin
       RaiseScriptError(exec, RTE_ClassTypeIsNil);
 
    // Create object
-   exec.SelfScriptObject^:=TScriptObj.Create(classSym, exec as TdwsProgramExecution);
+   exec.SelfScriptObject^:=TScriptObjInstance.Create(classSym, exec as TdwsProgramExecution);
    exec.SelfScriptObject^.ExternalObject:=exec.ExternalObject;
 
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, exec.SelfScriptObject^);
@@ -5721,7 +5746,7 @@ begin
   Result := FindVirtualMethod(classSym);
 
   // Create object
-  exec.SelfScriptObject^ := TScriptObj.Create(classSym, exec as TdwsProgramExecution);
+  exec.SelfScriptObject^ := TScriptObjInstance.Create(classSym, exec as TdwsProgramExecution);
   exec.SelfScriptObject^.ExternalObject := ExternalObject;
 
   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer + FSelfAddr, exec.SelfScriptObject^);
@@ -6194,7 +6219,7 @@ begin
       context := Execution
     else
       context := nil;
-    NewScriptObj := TScriptObj.Create(ClassSym, context);
+    NewScriptObj := TScriptObjInstance.Create(ClassSym, context);
     NewScriptObj.ExternalObject := AObject;
     Result := IScriptObj(NewScriptObj);
   end
@@ -6274,73 +6299,18 @@ end;
 // ------------------ TScriptObj ------------------
 // ------------------
 
-// Create
+// GetClassSym
 //
-constructor TScriptObj.Create(aClassSym : TClassSymbol; executionContext : TdwsProgramExecution);
-var
-   i : Integer;
-   classSymIter : TCompositeTypeSymbol;
-   externalClass : TClassSymbol;
-   fs : TFieldSymbol;
-   member : TSymbol;
-begin
-   FClassSym:=aClassSym;
-
-   if executionContext<>nil then
-      executionContext.ScriptObjCreated(Self);
-
-   SetLength(FData, aClassSym.ScriptInstanceSize);
-
-   // initialize fields
-   classSymIter:=aClassSym;
-   while classSymIter<>nil do begin
-      for i:=0 to classSymIter.Members.Count-1 do begin
-         member:=classSymIter.Members[i];
-         if member is TFieldSymbol then begin
-            fs:=TFieldSymbol(member);
-            fs.Typ.InitData(FData, fs.Offset);
-         end;
-      end;
-      classSymIter := classSymIter.Parent;
-   end;
-
-   // initialize OnObjectDestroy
-   externalClass:=aClassSym;
-   while (externalClass<>nil) and not Assigned(externalClass.OnObjectDestroy) do
-      externalClass:=externalClass.Parent;
-   if externalClass<>nil then
-      FOnObjectDestroy:=externalClass.OnObjectDestroy;
-end;
-
-// BeforeDestruction
-//
-procedure TScriptObj.BeforeDestruction;
-var
-   iso : IScriptObj;
-begin
-   if Assigned(FExecutionContext) then begin
-      // we are released, so never do: Self as IScriptObj
-      if not FDestroyed then begin
-         iso:=TScriptObjectWrapper.Create(Self);
-         ExecutionContext.DestroyScriptObj(iso);
-      end;
-      ExecutionContext.ScriptObjDestroyed(Self);
-   end;
-   inherited;
-end;
-
-// Destroy
-//
-destructor TScriptObj.Destroy;
-begin
-   if Assigned(FOnObjectDestroy) then
-      FOnObjectDestroy(FExternalObj);
-   inherited;
-end;
-
 function TScriptObj.GetClassSym: TClassSymbol;
 begin
-  Result := FClassSym;
+   Result:=nil;
+end;
+
+// SetClassSym
+//
+procedure TScriptObj.SetClassSym(clsSym : TClassSymbol);
+begin
+   // ignore
 end;
 
 function TScriptObj.GetData : TData;
@@ -6382,28 +6352,39 @@ begin
 //   scriptObj:=IScriptObj(IUnknown(FData[addr]));
 end;
 
+// GetExternalObject
+//
 function TScriptObj.GetExternalObject: TObject;
 begin
-  Result := FExternalObj;
+   Result:=nil;
+end;
+
+// SetExternalObject
+//
+procedure TScriptObj.SetExternalObject(Value: TObject);
+begin
+   Assert(False);
+end;
+
+// SetExecutionContext
+//
+procedure TScriptObj.SetExecutionContext(exec : TdwsProgramExecution);
+begin
+   // ignore
 end;
 
 // GetDestroyed
 //
 function TScriptObj.GetDestroyed : Boolean;
 begin
-   Result:=FDestroyed;
+   Result:=False;
 end;
 
 // SetDestroyed
 //
 procedure TScriptObj.SetDestroyed(const val : Boolean);
 begin
-   if Assigned(FOnObjectDestroy) then begin
-      FOnObjectDestroy(FExternalObj);
-      FOnObjectDestroy:=nil;
-      FExternalObj:=nil;
-   end;
-   FDestroyed:=True;
+   Assert(False);
 end;
 
 // GetInternalObject
@@ -6413,9 +6394,126 @@ begin
    Result:=Self;
 end;
 
-procedure TScriptObj.SetExternalObject(Value: TObject);
+// ------------------
+// ------------------ TScriptObjInstance ------------------
+// ------------------
+
+// Create
+//
+constructor TScriptObjInstance.Create(aClassSym : TClassSymbol; executionContext : TdwsProgramExecution);
+var
+   i : Integer;
+   classSymIter : TCompositeTypeSymbol;
+   externalClass : TClassSymbol;
+   fs : TFieldSymbol;
+   member : TSymbol;
 begin
-  FExternalObj := Value;
+   FClassSym:=aClassSym;
+
+   if executionContext<>nil then
+      executionContext.ScriptObjCreated(Self);
+
+   SetLength(FData, aClassSym.ScriptInstanceSize);
+
+   // initialize fields
+   classSymIter:=aClassSym;
+   while classSymIter<>nil do begin
+      for i:=0 to classSymIter.Members.Count-1 do begin
+         member:=classSymIter.Members[i];
+         if member is TFieldSymbol then begin
+            fs:=TFieldSymbol(member);
+            fs.Typ.InitData(FData, fs.Offset);
+         end;
+      end;
+      classSymIter := classSymIter.Parent;
+   end;
+
+   // initialize OnObjectDestroy
+   externalClass:=aClassSym;
+   while (externalClass<>nil) and not Assigned(externalClass.OnObjectDestroy) do
+      externalClass:=externalClass.Parent;
+   if externalClass<>nil then
+      FOnObjectDestroy:=externalClass.OnObjectDestroy;
+end;
+
+// Destroy
+//
+destructor TScriptObjInstance.Destroy;
+begin
+   if Assigned(FOnObjectDestroy) then
+      FOnObjectDestroy(FExternalObj);
+   inherited;
+end;
+
+// BeforeDestruction
+//
+procedure TScriptObjInstance.BeforeDestruction;
+var
+   iso : IScriptObj;
+begin
+   if Assigned(FExecutionContext) then begin
+      // we are released, so never do: Self as IScriptObj
+      if not FDestroyed then begin
+         iso:=TScriptObjectWrapper.Create(Self);
+         ExecutionContext.DestroyScriptObj(iso);
+      end;
+      ExecutionContext.ScriptObjDestroyed(Self);
+   end;
+   inherited;
+end;
+
+// GetClassSym
+//
+function TScriptObjInstance.GetClassSym: TClassSymbol;
+begin
+   Result:=FClassSym;
+end;
+
+// SetClassSym
+//
+procedure TScriptObjInstance.SetClassSym(clsSym : TClassSymbol);
+begin
+   FClassSym:=nil;
+end;
+
+// GetExternalObject
+//
+function TScriptObjInstance.GetExternalObject: TObject;
+begin
+   Result:=FExternalObj;
+end;
+
+// SetExternalObject
+//
+procedure TScriptObjInstance.SetExternalObject(Value: TObject);
+begin
+   FExternalObj:=Value;
+end;
+
+// GetDestroyed
+//
+function TScriptObjInstance.GetDestroyed : Boolean;
+begin
+   Result:=FDestroyed;
+end;
+
+// SetDestroyed
+//
+procedure TScriptObjInstance.SetDestroyed(const val : Boolean);
+begin
+   if Assigned(FOnObjectDestroy) then begin
+      FOnObjectDestroy(FExternalObj);
+      FOnObjectDestroy:=nil;
+      FExternalObj:=nil;
+   end;
+   FDestroyed:=True;
+end;
+
+// SetExecutionContext
+//
+procedure TScriptObjInstance.SetExecutionContext(exec : TdwsProgramExecution);
+begin
+   FExecutionContext:=exec;
 end;
 
 // ------------------
@@ -6503,6 +6601,48 @@ begin
       for i:=0 to (Length div 2)-1 do
          Swap(i, Length-i-1);
    end;
+end;
+
+// QuickSort
+//
+procedure TScriptDynamicArray.QuickSort(lo, hi : Integer; const compareFunc : TScriptDynamicArrayCompareFunc);
+var
+   i, j, pivot : Integer;
+begin
+   repeat
+      i:=lo;
+      j:=hi;
+      pivot:=(lo+hi) shr 1;
+      repeat
+         while compareFunc(i, pivot)<0 do
+            Inc(i);
+         while compareFunc(i, pivot)>0 do
+            Dec(j);
+         if i<=j then begin
+            if i<>j then
+               Swap(i, j);
+            Inc(i);
+            Dec(j);
+         end;
+      until i>j;
+      if lo<j then
+         QuickSort(lo, j, compareFunc);
+      lo:=i;
+   until i>=hi;
+end;
+
+// CompareFunc
+//
+function TScriptDynamicArray.CompareFunc(idx1, idx2 : Integer) : Integer;
+begin
+   Result:=0;
+end;
+
+// Sort
+//
+procedure TScriptDynamicArray.Sort(exec : TdwsExecution; compareExpr : TTypedExpr);
+begin
+   QuickSort(0, FLength-1, CompareFunc);
 end;
 
 // Copy

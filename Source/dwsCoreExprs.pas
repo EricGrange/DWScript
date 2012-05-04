@@ -259,7 +259,7 @@ type
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
-         property Value : Int64 read FValue;
+         property Value : Int64 read FValue write FValue;
    end;
 
    // TConstFloatExpr
@@ -662,6 +662,25 @@ type
 
          property Index1Expr : TTypedExpr read FIndex1Expr;
          property Index2Expr : TTypedExpr read FIndex2Expr;
+   end;
+
+   // Sort a dynamic array
+   TArraySortExpr = class(TArrayPseudoMethodExpr)
+      private
+         FCompareExpr : TTypedExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+                            aBase, aCompare : TTypedExpr);
+         destructor Destroy; override;
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property CompareExpr : TTypedExpr read FCompareExpr write FCompareExpr;
    end;
 
    // Reverse a dynamic array
@@ -7104,6 +7123,55 @@ end;
 function TArraySwapExpr.GetSubExprCount : Integer;
 begin
    Result:=3;
+end;
+
+// ------------------
+// ------------------ TArraySortExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TArraySortExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
+                            aBase, aCompare : TTypedExpr);
+begin
+   inherited Create(prog, scriptPos, aBase);
+   FCompareExpr:=aCompare;
+end;
+
+// Destroy
+//
+destructor TArraySortExpr.Destroy;
+begin
+   inherited;
+   FCompareExpr.Free;
+end;
+
+// EvalNoResult
+//
+procedure TArraySortExpr.EvalNoResult(exec : TdwsExecution);
+var
+   base : IScriptObj;
+   dyn : TScriptDynamicArray;
+begin
+   BaseExpr.EvalAsScriptObj(exec, base);
+   dyn:=TScriptDynamicArray(base.InternalObject);
+   dyn.Sort(exec, CompareExpr);
+end;
+
+// GetSubExpr
+//
+function TArraySortExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i=0 then
+      Result:=BaseExpr
+   else Result:=CompareExpr;
+end;
+
+// GetSubExprCount
+//
+function TArraySortExpr.GetSubExprCount : Integer;
+begin
+   Result:=2;
 end;
 
 // ------------------

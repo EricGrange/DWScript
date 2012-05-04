@@ -535,6 +535,10 @@ type
 
          function ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
                              expecting : TTypeSymbol = nil) : TProgramExpr;
+         function ReadSymbolArrayExpr(var baseExpr : TDataExpr) : TProgramExpr;
+         function ReadSymbolMemberExpr(var expr : TProgramExpr;
+                                       isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
+
          function ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TTypedExpr;
          function ReadNegation : TTypedExpr;
 
@@ -3567,17 +3571,22 @@ begin
 
       // OOP related stuff
 
-      end else if baseType is TClassSymbol then begin
+      end else if baseType is TStructuredTypeSymbol then begin
 
-         Result:=ReadClassSymbolName(TClassSymbol(baseType), isWrite, expecting);
+         if baseType.ClassType=TClassSymbol then begin
 
-      end else if baseType is TInterfaceSymbol then begin
+            Result:=ReadClassSymbolName(TClassSymbol(baseType), isWrite, expecting);
 
-         Result:=ReadInterfaceSymbolName(TInterfaceSymbol(baseType), isWrite, expecting);
+         end else if baseType.ClassType=TInterfaceSymbol then begin
 
-      end else if baseType is TRecordSymbol then begin
+            Result:=ReadInterfaceSymbolName(TInterfaceSymbol(baseType), isWrite, expecting);
 
-         Result:=ReadRecordSymbolName(TRecordSymbol(baseType), isWrite, expecting);
+         end else begin
+
+            Assert(baseType.ClassType=TRecordSymbol);
+            Result:=ReadRecordSymbolName(TRecordSymbol(baseType), isWrite, expecting);
+
+         end;
 
       end else if sym.InheritsFrom(TFieldSymbol) then begin
 
@@ -4119,305 +4128,335 @@ function TdwsCompiler.ReadSymbol(expr : TProgramExpr; isWrite : Boolean = False;
       else Result:=nil;
    end;
 
-   function ReadArrayExpr(var baseExpr : TDataExpr) : TProgramExpr;
-   var
-      idx : Int64;
-      indexExpr, valueExpr : TTypedExpr;
-      newBaseExpr : TDataExpr;
-      baseType : TArraySymbol;
-      arraySymbol : TStaticArraySymbol;
-      errCount : Integer;
-      hotPos : TScriptPos;
-   begin
-      FTok.KillToken;
-
-      newBaseExpr:=nil;
-
-      if FTok.TestDelete(ttARIGHT) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
-
-      errCount:=FMsgs.Count;
-
-      // There is at one index expression
-      repeat
-         hotPos:=FTok.HotPos;
-         indexExpr := ReadExpr;
-         if not (baseExpr.BaseType is TArraySymbol) then begin
-            FMsgs.AddCompilerError(hotPos, RTE_TooManyIndices);
-            indexExpr.Free;
-            Continue;
-         end;
-
-         baseType := TArraySymbol(baseExpr.BaseType);
-
-         try
-            if    (indexExpr.Typ=nil)
-               or not (   (indexExpr.Typ.UnAliasedType=baseType.IndexType.UnAliasedType)
-                       or indexExpr.Typ.IsOfType(FProg.TypVariant)) then
-               IncompatibleTypes(hotPos, CPE_ArrayIndexMismatch,
-                                 baseType.IndexType, indexExpr.Typ);
-
-            if baseType is TStaticArraySymbol then begin
-
-               arraySymbol:=TStaticArraySymbol(baseType);
-               if arraySymbol is TOpenArraySymbol then begin
-
-                  newBaseExpr := TOpenArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
-
-               end else begin
-
-                  if arraySymbol.IndexType.IsOfType(FProg.TypBoolean) then begin
-
-                     newBaseExpr:=TStaticArrayBoolExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
-                                                              arraySymbol.LowBound, arraySymbol.HighBound);
-
-                  end else begin
-
-                     newBaseExpr:=TStaticArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
-                                                          arraySymbol.LowBound, arraySymbol.HighBound);
-                     if indexExpr.IsConstant and (FMsgs.Count=errCount) then begin
-                        idx:=indexExpr.EvalAsInteger(FExec);
-                        if idx<arraySymbol.LowBound then
-                           FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayLowerBoundExceeded, [idx])
-                        else if idx>arraySymbol.HighBound then
-                           FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayUpperBoundExceeded, [idx]);
-                     end;
-
-                  end;
-               end;
-
-            end else begin
-
-               Assert(baseType is TDynamicArraySymbol);
-
-               if FTok.Test(ttCOMMA) then
-                  newBaseExpr:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
-               else if FTok.TestDelete(ttARIGHT) then begin
-                  if FTok.TestDelete(ttASSIGN) then begin
-                     hotPos:=FTok.HotPos;
-                     valueExpr:=ReadExpr(baseType.Typ);
-                     if not baseType.Typ.IsCompatible(valueExpr.Typ) then
-                        IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
-                                          valueExpr.Typ, baseType.Typ);
-                     Result:=TDynamicArraySetExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr);
-                  end else begin
-                     Result:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr);
-                  end;
-                  Exit;
-               end;
-
-            end;
-
-         except
-            indexExpr.Free;
-            raise;
-         end;
-
-         baseExpr := newBaseExpr;
-      until not FTok.TestDelete(ttCOMMA);
-
-      Result:=baseExpr;
-
-      if not FTok.TestDelete(ttARIGHT) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
-   end;
-
 var
-   name : UnicodeString;
-   member : TSymbol;
-   memberClassType : TClass;
    defaultProperty : TPropertySymbol;
-   namePos : TScriptPos;
    baseType : TTypeSymbol;
-   meth : TMethodSymbol;
    dataExpr : TDataExpr;
-   baseExpr : TTypedExpr;
-   helperExpr : TProgramExpr;
 begin
    Result := Expr;
    try
       repeat
          Expr := Result;
-         baseType := Result.BaseType;
 
          // Member
-         if FTok.TestDelete(ttDOT) then begin
+         case FTok.TestAny([ttDOT, ttALEFT, ttBLEFT]) of
 
-            if FTok.TestDeleteNamePos(name, namePos) then begin
+            ttDOT : begin
 
-               if baseType<>nil then
-                  helperExpr:=ReadTypeHelper(Result as TTypedExpr, Result.Typ,
-                                             name, namePos, expecting)
-               else helperExpr:=nil;
-               if helperExpr<>nil then begin
-
-                  expr:=nil;
-                  Result:=helperExpr;
-
-               // Class, record, intf
-               end else if baseType is TStructuredTypeSymbol then begin
-
-                  member:=FindStructMember(TStructuredTypeSymbol(baseType), name);
-                  if member<>nil then
-                     memberClassType:=member.ClassType
-                  else memberClassType:=nil;
-
-                  RecordSymbolUseReference(member, namePos, isWrite);
-
-                  if (baseType is TRecordSymbol) and (Result is TFuncExpr) then
-                     TFuncExpr(Result).SetResultAddr(FProg, nil);
-
-                  if member is TMethodSymbol then begin
-
-                     baseExpr:=(Result as TTypedExpr);
-                     Result:=nil;
-                     meth:=TMethodSymbol(member);
-                     if meth.IsOverloaded then
-                        Result:=ReadMethOverloaded(meth, baseExpr, namePos, expecting)
-                     else Result:=ReadMethod(meth, baseExpr, namePos, expecting);
-
-                  end else if member is TFieldSymbol then begin
-
-                     Result:=ReadField(FTok.HotPos, nil, TFieldSymbol(member), TTypedExpr(Result));
-
-                  end else if member is TPropertySymbol then begin
-
-                     Assert(Result is TTypedExpr);
-                     Result := ReadPropertyExpr(TTypedExpr(Result), TPropertySymbol(member), IsWrite)
-
-                  end else if memberClassType=TClassVarSymbol then begin
-
-                     FreeAndNil(Result);
-                     Result:=ReadDataSymbolName(TDataSymbol(member), TStructuredTypeSymbol(member).Members, IsWrite, expecting);
-
-                  end else if memberClassType=TClassConstSymbol then begin
-
-                     FreeAndNil(Result);
-                     Result:=ReadConstName(TConstSymbol(member), IsWrite);
-
-                  end else begin
-
-                     FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
-
-                  end;
-
-               // Meta (Class Of, Record Of)
-               end else if baseType is TStructuredTypeMetaSymbol then begin
-
-                  member:=TStructuredTypeSymbol(baseType.Typ).Members.FindSymbolFromScope(Name, CurrentStruct);
-                  if member<>nil then
-                     memberClassType:=member.ClassType
-                  else memberClassType:=nil;
-
-                  RecordSymbolUseReference(member, namePos, isWrite);
-
-                  // Class method
-                  if member is TMethodSymbol then begin
-
-                     baseExpr:=(Result as TTypedExpr);
-                     Result:=nil;
-                     meth:=TMethodSymbol(member);
-                     if meth.IsOverloaded then
-                        Result:=ReadStaticMethOverloaded(meth, baseExpr, namePos, expecting)
-                     else Result:=ReadStaticMethod(meth, baseExpr, namePos, expecting);
-
-                  // Static property
-                  end else if member is TPropertySymbol then begin
-
-                     Result := ReadPropertyExpr(TDataExpr(Result), TPropertySymbol(member), IsWrite);
-
-                  end else if memberClassType=TClassVarSymbol then begin
-
-                     FreeAndNil(Result);
-                     Result:=ReadDataSymbolName(TDataSymbol(member), TStructuredTypeSymbol(baseType.Typ).Members,
-                                                IsWrite, expecting);
-
-                  end else if memberClassType=TClassConstSymbol then begin
-
-                     FreeAndNil(Result);
-                     Result:=ReadConstName(TConstSymbol(member), IsWrite);
-
-                  end else if member<>nil then begin
-
-                     FMsgs.AddCompilerStop(namePos, CPE_StaticMethodExpected);
-
-                  end else begin
-
-                     FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
-
-                  end;
-
-               // Array symbol
-               end else if baseType is TArraySymbol then begin
-
-                  Result:=ReadArrayMethod(name, namePos, Result as TTypedExpr);
-
-               // Connector symbol
-               end else if baseType is TConnectorSymbol then begin
-
-                  try
-                     Result:=ReadConnectorSym(Name, Result as TTypedExpr,
-                                                TConnectorSymbol(baseType).ConnectorType, IsWrite)
-                  except
-                     Result:=nil;
-                     raise;
-                  end;
-
-               end else FMsgs.AddCompilerStop(namePos, CPE_NoMemberExpected);
-
-            end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-         end
-         // Arrays
-         else if FTok.Test(ttALEFT) then begin
-
-            if Assigned(Result) then begin
-
-               if (baseType is TStructuredTypeSymbol) or (baseType is TStructuredTypeMetaSymbol) then begin
-
-                  // class array property
-                  if baseType is TStructuredTypeSymbol then
-                     defaultProperty:=GetDefaultProperty(TStructuredTypeSymbol(baseType))
-                  else defaultProperty:=GetDefaultProperty(TStructuredTypeMetaSymbol(baseType).StructSymbol);
-
-                  if Assigned(defaultProperty) then begin
-                     RecordSymbolUseImplicitReference(defaultProperty, FTok.HotPos, isWrite);
-                     Result:=ReadPropertyExpr(TDataExpr(Result), defaultProperty, isWrite)
-                  end else begin
-                     FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NoDefaultProperty,
-                                              [TDataExpr(Result).Typ.Name]);
-                  end;
-
-               end else begin
-
-                  // Type "array"
-                  dataExpr:=(Result as TDataExpr);
-                  if baseType is TArraySymbol then
-                     Result := ReadArrayExpr(dataExpr)
-                  else if baseType is TConnectorSymbol then
-                     Result := ReadConnectorArray('', Result as TTypedExpr,
-                                                  TConnectorSymbol(baseType).ConnectorType, IsWrite)
-                  else if dataExpr.IsOfType(FProg.TypString) then begin
-                     FTok.KillToken;
-                     Result := ReadStringArray(dataExpr, IsWrite)
-                  end else FMsgs.AddCompilerError(FTok.HotPos, CPE_ArrayExpected);
-                  if Optimize then
-                     Result:=Result.Optimize(FProg, FExec);
-
-               end;
+               FTok.KillToken;
+               Result:=nil;
+               Result:=ReadSymbolMemberExpr(expr, isWrite, expecting);
 
             end;
+            ttALEFT : begin
+               // Arrays
 
-         end else if FTok.Test(ttBLEFT) then begin
+               if Assigned(Result) then begin
 
-            if baseType is TFuncSymbol then begin
-               dataExpr:=Result as TDataExpr;
-               Result:=nil;
-               Result:=ReadFunc(TFuncSymbol(baseType), dataExpr);
-            end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMethodExpected);
+                  baseType := Result.BaseType;
+                  if (baseType is TStructuredTypeSymbol) or (baseType is TStructuredTypeMetaSymbol) then begin
+
+                     // class array property
+                     if baseType is TStructuredTypeSymbol then
+                        defaultProperty:=GetDefaultProperty(TStructuredTypeSymbol(baseType))
+                     else defaultProperty:=GetDefaultProperty(TStructuredTypeMetaSymbol(baseType).StructSymbol);
+
+                     if Assigned(defaultProperty) then begin
+                        RecordSymbolUseImplicitReference(defaultProperty, FTok.HotPos, isWrite);
+                        Result:=ReadPropertyExpr(TDataExpr(Result), defaultProperty, isWrite)
+                     end else begin
+                        FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_NoDefaultProperty,
+                                                 [TDataExpr(Result).Typ.Name]);
+                     end;
+
+                  end else begin
+
+                     // Type "array"
+                     dataExpr:=(Result as TDataExpr);
+                     if baseType is TArraySymbol then
+                        Result := ReadSymbolArrayExpr(dataExpr)
+                     else if baseType is TConnectorSymbol then
+                        Result := ReadConnectorArray('', Result as TTypedExpr,
+                                                     TConnectorSymbol(baseType).ConnectorType, IsWrite)
+                     else if dataExpr.IsOfType(FProg.TypString) then begin
+                        FTok.KillToken;
+                        Result := ReadStringArray(dataExpr, IsWrite)
+                     end else FMsgs.AddCompilerError(FTok.HotPos, CPE_ArrayExpected);
+                     if Optimize then
+                        Result:=Result.Optimize(FProg, FExec);
+
+                  end;
+
+               end;
+            end;
+
+            ttBLEFT : begin
+
+               baseType := Result.BaseType;
+               if baseType is TFuncSymbol then begin
+                  dataExpr:=Result as TDataExpr;
+                  Result:=nil;
+                  Result:=ReadFunc(TFuncSymbol(baseType), dataExpr);
+               end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoMethodExpected);
+
+            end;
 
          end;
 
       until (Expr = Result);
+   except
+      Result.Free;
+      raise;
+   end;
+end;
+
+// ReadSymbolArrayExpr
+//
+function TdwsCompiler.ReadSymbolArrayExpr(var baseExpr : TDataExpr) : TProgramExpr;
+var
+   idx : Int64;
+   indexExpr, valueExpr : TTypedExpr;
+   newBaseExpr : TDataExpr;
+   baseType : TArraySymbol;
+   arraySymbol : TStaticArraySymbol;
+   errCount : Integer;
+   hotPos : TScriptPos;
+begin
+   FTok.KillToken;
+
+   newBaseExpr:=nil;
+
+   if FTok.TestDelete(ttARIGHT) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ExpressionExpected);
+
+   errCount:=FMsgs.Count;
+
+   // There is at one index expression
+   repeat
+      hotPos:=FTok.HotPos;
+      indexExpr := ReadExpr;
+      if not (baseExpr.BaseType is TArraySymbol) then begin
+         FMsgs.AddCompilerError(hotPos, RTE_TooManyIndices);
+         indexExpr.Free;
+         Continue;
+      end;
+
+      baseType := TArraySymbol(baseExpr.BaseType);
+
+      try
+         if    (indexExpr.Typ=nil)
+            or not (   (indexExpr.Typ.UnAliasedType=baseType.IndexType.UnAliasedType)
+                    or indexExpr.Typ.IsOfType(FProg.TypVariant)) then
+            IncompatibleTypes(hotPos, CPE_ArrayIndexMismatch,
+                              baseType.IndexType, indexExpr.Typ);
+
+         if baseType is TStaticArraySymbol then begin
+
+            arraySymbol:=TStaticArraySymbol(baseType);
+            if arraySymbol is TOpenArraySymbol then begin
+
+               newBaseExpr := TOpenArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
+
+            end else begin
+
+               if arraySymbol.IndexType.IsOfType(FProg.TypBoolean) then begin
+
+                  newBaseExpr:=TStaticArrayBoolExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+                                                           arraySymbol.LowBound, arraySymbol.HighBound);
+
+               end else begin
+
+                  newBaseExpr:=TStaticArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+                                                       arraySymbol.LowBound, arraySymbol.HighBound);
+                  if indexExpr.IsConstant and (FMsgs.Count=errCount) then begin
+                     idx:=indexExpr.EvalAsInteger(FExec);
+                     if idx<arraySymbol.LowBound then
+                        FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayLowerBoundExceeded, [idx])
+                     else if idx>arraySymbol.HighBound then
+                        FMsgs.AddCompilerErrorFmt(FTok.HotPos, RTE_ArrayUpperBoundExceeded, [idx]);
+                  end;
+
+               end;
+            end;
+
+         end else begin
+
+            Assert(baseType is TDynamicArraySymbol);
+
+            if FTok.Test(ttCOMMA) then
+               newBaseExpr:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
+            else if FTok.TestDelete(ttARIGHT) then begin
+               if FTok.TestDelete(ttASSIGN) then begin
+                  hotPos:=FTok.HotPos;
+                  valueExpr:=ReadExpr(baseType.Typ);
+                  if not baseType.Typ.IsCompatible(valueExpr.Typ) then
+                     IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
+                                       valueExpr.Typ, baseType.Typ);
+                  Result:=TDynamicArraySetExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr);
+               end else begin
+                  Result:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr);
+               end;
+               Exit;
+            end;
+
+         end;
+
+      except
+         indexExpr.Free;
+         raise;
+      end;
+
+      baseExpr := newBaseExpr;
+   until not FTok.TestDelete(ttCOMMA);
+
+   Result:=baseExpr;
+
+   if not FTok.TestDelete(ttARIGHT) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
+end;
+
+// ReadSymbolMemberExpr
+//
+function TdwsCompiler.ReadSymbolMemberExpr(var expr : TProgramExpr;
+                                           isWrite : Boolean; expecting : TTypeSymbol) : TProgramExpr;
+var
+   name : UnicodeString;
+   namePos : TScriptPos;
+   helperExpr : TProgramExpr;
+   member : TSymbol;
+   memberClassType : TClass;
+   baseExpr : TTypedExpr;
+   meth : TMethodSymbol;
+   baseType : TTypeSymbol;
+begin
+   Result:=expr;
+   try
+
+      if FTok.TestDeleteNamePos(name, namePos) then begin
+
+         baseType:=expr.BaseType;
+
+         if baseType<>nil then
+            helperExpr:=ReadTypeHelper(Result as TTypedExpr, Result.Typ,
+                                       name, namePos, expecting)
+         else helperExpr:=nil;
+         if helperExpr<>nil then begin
+
+            expr:=nil;
+            Result:=helperExpr;
+
+         // Class, record, intf
+         end else if baseType is TStructuredTypeSymbol then begin
+
+            member:=FindStructMember(TStructuredTypeSymbol(baseType), name);
+            if member<>nil then
+               memberClassType:=member.ClassType
+            else memberClassType:=nil;
+
+            RecordSymbolUseReference(member, namePos, isWrite);
+
+            if (baseType is TRecordSymbol) and (Result is TFuncExpr) then
+               TFuncExpr(Result).SetResultAddr(FProg, nil);
+
+            if member is TMethodSymbol then begin
+
+               baseExpr:=(Result as TTypedExpr);
+               Result:=nil;
+               meth:=TMethodSymbol(member);
+               if meth.IsOverloaded then
+                  Result:=ReadMethOverloaded(meth, baseExpr, namePos, expecting)
+               else Result:=ReadMethod(meth, baseExpr, namePos, expecting);
+
+            end else if member is TFieldSymbol then begin
+
+               Result:=ReadField(FTok.HotPos, nil, TFieldSymbol(member), TTypedExpr(Result));
+
+            end else if member is TPropertySymbol then begin
+
+               Assert(Result is TTypedExpr);
+               Result := ReadPropertyExpr(TTypedExpr(Result), TPropertySymbol(member), IsWrite)
+
+            end else if memberClassType=TClassVarSymbol then begin
+
+               FreeAndNil(Result);
+               Result:=ReadDataSymbolName(TDataSymbol(member), TStructuredTypeSymbol(member).Members, IsWrite, expecting);
+
+            end else if memberClassType=TClassConstSymbol then begin
+
+               FreeAndNil(Result);
+               Result:=ReadConstName(TConstSymbol(member), IsWrite);
+
+            end else begin
+
+               FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+
+            end;
+
+         // Meta (Class Of, Record Of)
+         end else if baseType is TStructuredTypeMetaSymbol then begin
+
+            member:=TStructuredTypeSymbol(baseType.Typ).Members.FindSymbolFromScope(Name, CurrentStruct);
+            if member<>nil then
+               memberClassType:=member.ClassType
+            else memberClassType:=nil;
+
+            RecordSymbolUseReference(member, namePos, isWrite);
+
+            // Class method
+            if member is TMethodSymbol then begin
+
+               baseExpr:=(Result as TTypedExpr);
+               Result:=nil;
+               meth:=TMethodSymbol(member);
+               if meth.IsOverloaded then
+                  Result:=ReadStaticMethOverloaded(meth, baseExpr, namePos, expecting)
+               else Result:=ReadStaticMethod(meth, baseExpr, namePos, expecting);
+
+            // Static property
+            end else if member is TPropertySymbol then begin
+
+               Result := ReadPropertyExpr(TDataExpr(Result), TPropertySymbol(member), IsWrite);
+
+            end else if memberClassType=TClassVarSymbol then begin
+
+               FreeAndNil(Result);
+               Result:=ReadDataSymbolName(TDataSymbol(member), TStructuredTypeSymbol(baseType.Typ).Members,
+                                          IsWrite, expecting);
+
+            end else if memberClassType=TClassConstSymbol then begin
+
+               FreeAndNil(Result);
+               Result:=ReadConstName(TConstSymbol(member), IsWrite);
+
+            end else if member<>nil then begin
+
+               FMsgs.AddCompilerStop(namePos, CPE_StaticMethodExpected);
+
+            end else begin
+
+               FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+
+            end;
+
+         // Array symbol
+         end else if baseType is TArraySymbol then begin
+
+            Result:=ReadArrayMethod(name, namePos, Result as TTypedExpr);
+
+         // Connector symbol
+         end else if baseType is TConnectorSymbol then begin
+
+            try
+               Result:=ReadConnectorSym(Name, Result as TTypedExpr,
+                                          TConnectorSymbol(baseType).ConnectorType, IsWrite)
+            except
+               Result:=nil;
+               raise;
+            end;
+
+         end else FMsgs.AddCompilerStop(namePos, CPE_NoMemberExpected);
+
+      end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
    except
       Result.Free;
       raise;
@@ -5459,12 +5498,24 @@ end;
 // TypeCheckArgs
 //
 procedure TdwsCompiler.TypeCheckArgs(funcExpr : TFuncExprBase; const argPosArray : TScriptPosArray);
+
+   procedure WrongArgumentError(const argPos : TScriptPos; n : Integer; typ : TTypeSymbol);
+   begin
+      FMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType, [n, typ.Caption]);
+   end;
+
+   procedure WrongArgumentLongError(const argPos : TScriptPos; n : Integer; typ1, typ2 : TTypeSymbol);
+   begin
+      FMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType_Long,
+                                [n, typ1.Caption, typ2.Caption]);
+   end;
+
 var
    arg : TTypedExpr;
    x, paramCount, nbParamsToCheck : Integer;
    funcSym : TFuncSymbol;
    paramSymbol : TParamSymbol;
-   argTyp : TSymbol;
+   argTyp : TTypeSymbol;
    initialErrorCount : Integer;
    tooManyArguments, tooFewArguments : Boolean;
    argPos : TScriptPos;
@@ -5518,20 +5569,13 @@ begin
       end;
       funcExpr.Args.ExprBase[x]:=arg;
 
-      if argTyp=nil then begin
-         FMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType,
-                                   [x, paramSymbol.Typ.Caption]);
-         continue;
-      end;
-      if not paramSymbol.Typ.IsCompatible(arg.Typ) then begin
-         FMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType_Long,
-                                   [x, paramSymbol.Typ.Caption, arg.Typ.Caption]);
-         continue;
-      end;
-      if paramSymbol.ClassType=TVarParamSymbol then begin
+      if argTyp=nil then
+         WrongArgumentError(argPos, x, paramSymbol.Typ)
+      else if not paramSymbol.Typ.IsCompatible(arg.Typ) then
+         WrongArgumentLongError(argPos, x, paramSymbol.Typ, arg.Typ)
+      else if paramSymbol.ClassType=TVarParamSymbol then begin
          if not paramSymbol.Typ.IsOfType(arg.Typ) then
-            FMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType_Long,
-                                      [x, paramSymbol.Typ.Caption, argTyp.Caption]);
+            WrongArgumentLongError(argPos, x, paramSymbol.Typ, argTyp);
          if arg is TDataExpr then begin
             if     (coVariablesAsVarOnly in Options)
                and (not (arg is TVarExpr))
@@ -5804,6 +5848,7 @@ var
    argList : TTypedExprList;
    argPosArray : TScriptPosArray;
    argSymTable : TUnSortedSymbolTable;
+//   delegateSym : TFuncSymbol;
    i : Integer;
 
    procedure CheckRestricted;
@@ -5831,27 +5876,46 @@ begin
    try
       arraySym:=baseExpr.Typ as TArraySymbol;
 
-      if SameText(name, 'add') or SameText(name, 'push') then
+      if UnicodeSameText(name, 'add') or UnicodeSameText(name, 'push') then begin
+
          argList.DefaultExpected:=TParamSymbol.Create('', arraySym.Typ)
-      else if SameText(name, 'indexof') then begin
+
+//      else if UnicodeSameText(name, 'sort') then begin
+//
+//         delegateSym:=TFuncSymbol.Create('', fkFunction, 0);
+//         delegateSym.Typ:=FProg.TypInteger;
+//         delegateSym.AddParam(TConstParamSymbol.Create('item1', arraySym.Typ));
+//         delegateSym.AddParam(TConstParamSymbol.Create('item2', arraySym.Typ));
+//         argList.DefaultExpected:=TParamSymbol.Create('', delegateSym);
+
+      end else if UnicodeSameText(name, 'indexof') then begin
+
          argSymTable:=TUnSortedSymbolTable.Create;
          argSymTable.AddSymbol(TParamSymbol.Create('', arraySym.Typ));
          argList.Table:=argSymTable;
+
       end;
 
       ReadArguments(argList.AddExpr, ttBLEFT, ttBRIGHT, argPosArray, argList.ExpectedArg);
 
       try
-         if SameText(name, 'low') then begin
+         if UnicodeSameText(name, 'low') then begin
+
             CheckArguments(0, 0);
             Result:=CreateArrayLow(baseExpr, arraySym, True);
-         end else if SameText(name, 'high') then begin
+
+         end else if UnicodeSameText(name, 'high') then begin
+
             CheckArguments(0, 0);
             Result:=CreateArrayHigh(baseExpr, arraySym, True);
-         end else if SameText(name, 'length') or SameText(name, 'count') then begin
+
+         end else if UnicodeSameText(name, 'length') or UnicodeSameText(name, 'count') then begin
+
             CheckArguments(0, 0);
             Result:=CreateArrayLength(baseExpr, arraySym);
-         end else if SameText(name, 'add') or SameText(name, 'push') then begin
+
+         end else if UnicodeSameText(name, 'add') or UnicodeSameText(name, 'push') then begin
+
             CheckRestricted;
             if CheckArguments(1, 99) then begin
                for i:=0 to argList.Count-1 do begin
@@ -5866,15 +5930,21 @@ begin
                Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, argList);
                argList.Clear;
             end else Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, argList);
-         end else if SameText(name, 'pop') then begin
+
+         end else if UnicodeSameText(name, 'pop') then begin
+
             CheckRestricted;
             CheckArguments(0, 0);
             Result:=TArrayPopExpr.Create(FProg, namePos, baseExpr);
-         end else if SameText(name, 'peek') then begin
+
+         end else if UnicodeSameText(name, 'peek') then begin
+
             CheckRestricted;
             CheckArguments(0, 0);
             Result:=TArrayPeekExpr.Create(FProg, namePos, baseExpr);
-         end else if SameText(name, 'delete') then begin
+
+         end else if UnicodeSameText(name, 'delete') then begin
+
             CheckRestricted;
             if CheckArguments(1, 2) then begin
                if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
@@ -5888,7 +5958,9 @@ begin
                                                         argList[0], nil);
                argList.Clear;
             end else Result:=TArrayDeleteExpr.Create(FProg, namePos, baseExpr, nil, nil);
-         end else if SameText(name, 'indexof') then begin
+
+         end else if UnicodeSameText(name, 'indexof') then begin
+
             CheckRestricted;
             if CheckArguments(1, 2) then begin
                if (argList[0].Typ=nil) or not arraySym.Typ.IsCompatible(argList[0].Typ) then
@@ -5903,7 +5975,9 @@ begin
                                                          argList[0] as TDataExpr, nil);
                argList.Clear;
             end else Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr, nil, nil);
-         end else if SameText(name, 'insert') then begin
+
+         end else if UnicodeSameText(name, 'insert') then begin
+
             CheckRestricted;
             if CheckArguments(2, 2) then begin
                if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
@@ -5915,7 +5989,9 @@ begin
                                                argList[0], argList[1] as TDataExpr);
                argList.Clear;
             end else Result:=TArrayDeleteExpr.Create(FProg, namePos, baseExpr, nil, nil);
-         end else if SameText(name, 'setlength') then begin
+
+         end else if UnicodeSameText(name, 'setlength') then begin
+
             CheckRestricted;
             if CheckArguments(1, 1) then begin
                if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
@@ -5923,11 +5999,15 @@ begin
                Result:=TArraySetLengthExpr.Create(FProg, namePos, baseExpr, argList[0]);
                argList.Clear;
             end else Result:=TArraySetLengthExpr.Create(FProg, namePos, baseExpr, nil);
-         end else if SameText(name, 'clear') then begin
+
+         end else if UnicodeSameText(name, 'clear') then begin
+
             CheckRestricted;
             CheckArguments(0, 0);
             Result:=TArraySetLengthExpr.Create(FProg, namePos, baseExpr, TConstIntExpr.CreateIntegerValue(FProg, 0));
-         end else if SameText(name, 'swap') then begin
+
+         end else if UnicodeSameText(name, 'swap') then begin
+
             CheckRestricted;
             if CheckArguments(2, 2) then begin
                if (argList[0].Typ=nil) or not argList[0].Typ.IsOfType(FProg.TypInteger) then
@@ -5938,7 +6018,9 @@ begin
                                              argList[0], argList[1]);
                argList.Clear;
             end else Result:=TArraySwapExpr.Create(FProg, namePos, baseExpr, nil, nil);
-         end else if SameText(name, 'copy') then begin
+
+         end else if UnicodeSameText(name, 'copy') then begin
+
             CheckRestricted;
             if CheckArguments(0, 2) then begin
                if argList.Count>0 then begin
@@ -5954,10 +6036,24 @@ begin
                end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr, nil, nil);
                argList.Clear;
             end else Result:=TArrayCopyExpr.Create(FProg, namePos, baseExpr, nil, nil);
-         end else if SameText(name, 'reverse') then begin
+
+//         end else if UnicodeSameText(name, 'sort') then begin
+//
+//            CheckRestricted;
+//            if CheckArguments(1, 1) then begin
+//               if not argList[0].Typ.IsOfType(argList.DefaultExpected.Typ) then
+//                  IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+//                                    argList.DefaultExpected.Typ, argList[0].Typ);
+//               Result:=TArraySortExpr.Create(FProg, namePos, baseExpr, argList[0]);
+//               argList.Clear;
+//            end else Result:=TArraySortExpr.Create(FProg, namePos, baseExpr, nil);
+
+         end else if UnicodeSameText(name, 'reverse') then begin
+
             CheckRestricted;
             CheckArguments(0, 0);
             Result:=TArrayReverseExpr.Create(FProg, namePos, baseExpr);
+
          end else FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
       except
          Result.Free;
@@ -7887,7 +7983,7 @@ begin
       if (FTok.TestAny([ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin
          // Variable or Function
          nameExpr:=ReadName(isWrite, expecting);
-         if (nameExpr<>nil) and not (nameExpr is TTypedExpr) then begin
+         if (nameExpr<>nil) and not nameExpr.InheritsFrom(TTypedExpr) then begin
             nameExpr.Free;
             FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
             // keep compiling

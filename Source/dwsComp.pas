@@ -2294,7 +2294,7 @@ end;
 
 procedure TInstantiateFunc.Execute(info : TProgramInfo);
 var
-  scriptObj: TScriptObj;
+  scriptObj: TScriptObjInstance;
   extObj: TObject;
 begin
   if Assigned(FScriptObj) then
@@ -2303,7 +2303,7 @@ begin
   else
   begin
     // First access to this variable. Create object instance!
-    scriptObj := TScriptObj.Create(FClassSym{, Info.Caller});
+    scriptObj := TScriptObjInstance.Create(FClassSym{, Info.Caller});
     scriptObj.OnObjectDestroy := FOnObjectDestroy;
     FScriptObj := scriptObj;
 
@@ -4424,7 +4424,7 @@ begin
   else
   begin
     // First access to this variable. Create object instance!
-    FScriptObj := TScriptObj.Create(FClassSym);
+    FScriptObj := TScriptObjInstance.Create(FClassSym);
     FScriptObj.ExternalObject := FExternalObject;
     Info.ResultAsVariant := FScriptObj;
   end;

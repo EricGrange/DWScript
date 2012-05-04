@@ -289,13 +289,16 @@ type
 
    THelperSymbolEnumerationCallback = function (helper : THelperSymbol) : Boolean of object;
 
+   TSymbolTableFlag = (stfSorted, stfHasHelpers);
+   TSymbolTableFlags = set of TSymbolTableFlag;
+
    // A table of symbols connected to other symboltables (property Parents)
    TSymbolTable = class
       private
          FAddrGenerator : TAddrGenerator;
          FSymbols : TTightList;
          FParents : TTightList;
-         FSymbolsSorted : Boolean;
+         FFlags : TSymbolTableFlags;
 
          function GetParentCount : Integer;
          function GetParents(Index: Integer) : TSymbolTable;
@@ -4473,9 +4476,9 @@ var
 begin
    n:=FSymbols.Count;
    if n>6 then begin
-      if not FSymbolsSorted then begin
+      if not (stfSorted in FFlags) then begin
          SortSymbols(0, n-1);
-         FSymbolsSorted:=True;
+         Include(FFlags, stfSorted);
       end;
       Result:=FindLocalSorted(aName);
    end else begin
@@ -4672,11 +4675,13 @@ var
    i : Integer;
    sym : TSymbol;
 begin
-   for i:=0 to Count-1 do begin
-      sym:=Symbols[i];
-      if sym.ClassType=THelperSymbol then
-         if THelperSymbol(sym).HelpsType(helpedType) then begin
-            if callback(THelperSymbol(sym)) then Exit(True);
+   if stfHasHelpers in FFlags then begin
+      for i:=0 to Count-1 do begin
+         sym:=Symbols[i];
+         if sym.ClassType=THelperSymbol then
+            if THelperSymbol(sym).HelpsType(helpedType) then begin
+               if callback(THelperSymbol(sym)) then Exit(True);
+         end;
       end;
    end;
    Result:=False;
@@ -4749,7 +4754,9 @@ end;
 function TSymbolTable.AddSymbol(sym : TSymbol) : Integer;
 begin
    Result:=AddSymbolDirect(sym);
-   if (FAddrGenerator<>nil) and (sym is TDataSymbol) then
+   if sym.ClassType=THelperSymbol then
+      Include(FFlags, stfHasHelpers)
+   else if (FAddrGenerator<>nil) and sym.InheritsFrom(TDataSymbol) then
       TDataSymbol(sym).AllocateStackAddr(FAddrGenerator);
 end;
 
@@ -4760,7 +4767,7 @@ var
    n : Integer;
    ptrList : PPointerTightList;
 begin
-   if FSymbolsSorted then begin
+   if stfSorted in FFlags then begin
       Result:=0;
       n:=FSymbols.Count;
       ptrList:=FSymbols.List;
