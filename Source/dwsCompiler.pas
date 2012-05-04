@@ -3455,7 +3455,7 @@ var
    namePos : TScriptPos;
    varExpr : TDataExpr;
    fieldExpr : TTypedExpr;
-   propExpr : TProgramExpr;
+   propExpr, castExpr : TProgramExpr;
    funcExpr : TTypedExpr;
    progMeth : TMethodSymbol;
    selfSym : TDataSymbol;
@@ -3645,8 +3645,9 @@ begin
       end else if sym.InheritsFrom(TTypeSymbol) then begin
 
          if FTok.TestDelete(ttBLEFT) then
-            Result:=ReadTypeCast(namePos, TTypeSymbol(sym))
-         else Result:=ReadTypeExpr(namePos, TTypeSymbol(sym), isWrite, expecting);
+            castExpr:=ReadTypeCast(namePos, TTypeSymbol(sym))
+         else castExpr:=ReadTypeExpr(namePos, TTypeSymbol(sym), isWrite, expecting);
+         Result:=ReadSymbol(castExpr, IsWrite, expecting);
 
       end else begin
 
