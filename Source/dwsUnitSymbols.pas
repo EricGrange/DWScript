@@ -84,6 +84,10 @@ type
    TUnitImplementationTable = class(TUnitPrivateTable)
       public
          constructor Create(unitMainSymbol : TUnitMainSymbol);
+
+         class function IsUnitTable : Boolean; override;
+
+         function EnumerateHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean; override;
    end;
 
    TUnitSymbol = class;
@@ -201,6 +205,9 @@ type
 
          function EnumerateLocalSymbolsOfName(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean; override;
          function EnumerateSymbolsOfNameInScope(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean; override;
+
+         function EnumerateLocalHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean; override;
+         function EnumerateHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean; override;
 
          property Parent : IStaticSymbolTable read FParent;
          property ParentSymbolTable : TStaticSymbolTable read FParentSymbolTable;
@@ -397,6 +404,20 @@ end;
 function TLinkedSymbolTable.EnumerateSymbolsOfNameInScope(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean;
 begin
    Result:=FParentSymbolTable.EnumerateSymbolsOfNameInScope(aName, callback);
+end;
+
+// EnumerateLocalHelpers
+//
+function TLinkedSymbolTable.EnumerateLocalHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean;
+begin
+   Result:=FParentSymbolTable.EnumerateLocalHelpers(helpedType, callback);
+end;
+
+// EnumerateHelpers
+//
+function TLinkedSymbolTable.EnumerateHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean;
+begin
+   Result:=EnumerateHelpers(helpedType, callback);
 end;
 
 // ------------------
@@ -729,6 +750,22 @@ begin
    inherited Create(unitMainSymbol);
    unitMainSymbol.FImplementationTable:=Self;
    AddParent(unitMainSymbol.InterfaceTable);
+end;
+
+// IsUnitTable
+//
+class function TUnitImplementationTable.IsUnitTable : Boolean;
+begin
+   Result:=False;
+end;
+
+// EnumerateHelpers
+//
+function TUnitImplementationTable.EnumerateHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean;
+begin
+//   Result:=inherited EnumerateHelpers(helpedType, callback);
+//   if Result then Exit;
+   Result:=UnitMainSymbol.Table.EnumerateHelpers(helpedType, callback);
 end;
 
 // ------------------

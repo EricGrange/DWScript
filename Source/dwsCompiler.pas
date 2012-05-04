@@ -552,8 +552,8 @@ type
                                isWrite : Boolean; expecting : TTypeSymbol = nil) : TProgramExpr;
 
          function EnumerateHelpers(typeSym : TTypeSymbol) : THelperSymbols;
-         function ReadTypeHelper(expr : TTypedExpr; typeSym : TTypeSymbol;
-                                 name : String; namePos : TScriptPos;
+         function ReadTypeHelper(expr : TTypedExpr;
+                                 const name : String; const namePos : TScriptPos;
                                  expecting : TTypeSymbol) : TProgramExpr;
 
          procedure ReadTypeDeclBlock;
@@ -1627,13 +1627,7 @@ begin
             unitBlock:=ReadRootBlock([], finalToken);
             FProg.InitExpr.AddStatement(unitBlock);
             FTok.Free;
-         end else
-//         if readingMain then begin
-//            FUnitSection:=secImplementation;
-//            CurrentUnitSymbol.InterfaceTable.AddParent(FProg.Table);
-//            scriptType:=stMain;
-//         end;
-         FUnitContextStack.PushContext(Self);
+         end else FUnitContextStack.PushContext(Self);
          FTok:=nil;
       end else begin
          Inc(FLineCount, FTok.CurrentPos.Line-2);
@@ -4329,24 +4323,28 @@ var
    meth : TMethodSymbol;
    baseType : TTypeSymbol;
 begin
-   Result:=expr;
+   Result:=nil;
    try
 
       if FTok.TestDeleteNamePos(name, namePos) then begin
 
          baseType:=expr.BaseType;
 
-         if baseType<>nil then
-            helperExpr:=ReadTypeHelper(Result as TTypedExpr, Result.Typ,
-                                       name, namePos, expecting)
-         else helperExpr:=nil;
-         if helperExpr<>nil then begin
+         if baseType<>nil then begin
+            helperExpr:=ReadTypeHelper(expr as TTypedExpr,
+                                       name, namePos, expecting);
+            if helperExpr<>nil then begin
 
-            expr:=nil;
-            Result:=helperExpr;
+               expr:=nil;
+               Result:=helperExpr;
+               Exit;
+
+            end;
+         end;
+         Result:=expr;
 
          // Class, record, intf
-         end else if baseType is TStructuredTypeSymbol then begin
+         if baseType is TStructuredTypeSymbol then begin
 
             member:=FindStructMember(TStructuredTypeSymbol(baseType), name);
             if member<>nil then
@@ -4456,7 +4454,12 @@ begin
 
          end else FMsgs.AddCompilerStop(namePos, CPE_NoMemberExpected);
 
-      end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+      end else begin
+
+         FreeAndNil(expr);
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+
+      end;
    except
       Result.Free;
       raise;
@@ -10066,8 +10069,8 @@ end;
 
 // ReadTypeHelper
 //
-function TdwsCompiler.ReadTypeHelper(expr : TTypedExpr; typeSym : TTypeSymbol;
-                                     name : String; namePos : TScriptPos;
+function TdwsCompiler.ReadTypeHelper(expr : TTypedExpr;
+                                     const name : String; const namePos : TScriptPos;
                                      expecting : TTypeSymbol) : TProgramExpr;
 var
    i : Integer;
@@ -10076,20 +10079,10 @@ var
    sym : TSymbol;
    meth : TMethodSymbol;
    meta : TStructuredTypeMetaSymbol;
-   readNameLocally : Boolean;
+   typeSym : TTypeSymbol;
 begin
    Result:=nil;
-
-   if name='' then begin
-      readNameLocally:=True;
-      if not FTok.TestDeleteNamePos(name, namePos) then begin
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
-         // keep compiling
-         expr.Free;
-         Result:=TNullExpr.Create(FProg, namePos);
-         Exit;
-      end;
-   end else readNameLocally:=False;
+   typeSym:=expr.Typ;
 
    helpers:=EnumerateHelpers(typeSym);
    try
@@ -10154,9 +10147,6 @@ begin
    finally
       helpers.Free;
    end;
-
-   if readNameLocally and (Result=nil) then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownMember, [name]);
 end;
 
 // ------------------

@@ -6,4 +6,8 @@ type
       begin
          Result:='Helper1('+IntToStr(Self)+')';
       end;
+      function By2 : Integer;
+      begin
+         Result:=Self*2;
+      end;
    end;

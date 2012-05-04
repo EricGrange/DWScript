@@ -5,7 +5,6 @@ begin
    PrintLn(i.ToString);
 end;
 
-
 PrintLn((123).ToString);
 
 DoIt(456);
@@ -13,3 +12,5 @@ DoIt(456);
 var i := 789;
 
 PrintLn(i.ToString);
+
+PrintLn(H2Use1(123));
