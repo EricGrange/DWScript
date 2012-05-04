@@ -5520,18 +5520,18 @@ begin
 
       if argTyp=nil then begin
          FMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType,
-                                               [x, paramSymbol.Typ.Caption]);
+                                   [x, paramSymbol.Typ.Caption]);
          continue;
       end;
       if not paramSymbol.Typ.IsCompatible(arg.Typ) then begin
          FMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType_Long,
-                                               [x, paramSymbol.Typ.Caption, arg.Typ.Caption]);
+                                   [x, paramSymbol.Typ.Caption, arg.Typ.Caption]);
          continue;
       end;
       if paramSymbol.ClassType=TVarParamSymbol then begin
          if not paramSymbol.Typ.IsOfType(arg.Typ) then
             FMsgs.AddCompilerErrorFmt(argPos, CPE_WrongArgumentType_Long,
-                                                  [x, paramSymbol.Typ.Caption, argTyp.Caption]);
+                                      [x, paramSymbol.Typ.Caption, argTyp.Caption]);
          if arg is TDataExpr then begin
             if     (coVariablesAsVarOnly in Options)
                and (not (arg is TVarExpr))
@@ -10035,14 +10035,18 @@ begin
 
             end else begin
 
-               if expr is TTypeReferenceExpr then
+               if    (expr is TTypeReferenceExpr)
+                  or (expr.Typ is TStructuredTypeMetaSymbol) then begin
                   FMsgs.AddCompilerError(namePos, CPE_ClassMethodExpected);
+                  // keep compiling
+                  expr:=TConvExpr.Create(Fprog, expr);
+                  expr.Typ:=meth.Params[0].Typ;
+               end;
 
             end;
 
             if (expr<>nil) and (expr.Typ is THelperSymbol) then
                FreeAndNil(expr);
-
 
             if meth.IsOverloaded then
                Result:=ReadMethOverloaded(meth, expr, namePos, expecting)

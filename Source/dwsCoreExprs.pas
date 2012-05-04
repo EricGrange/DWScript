@@ -1090,6 +1090,7 @@ type
          class function WrapWithConvCast(prog : TdwsProgram; const scriptPos : TScriptPos;
                                          toTyp : TTypeSymbol; expr : TTypedExpr;
                                          reportError : Boolean) : TTypedExpr; static;
+         function Eval(exec : TdwsExecution) : Variant; override;
    end;
 
    // Float(x)
@@ -4100,6 +4101,13 @@ begin
    // Look if Types are compatible
    if not toTyp.IsCompatible(Result.Typ) then
       ReportIncompatibleTypes;
+end;
+
+// Eval
+//
+function TConvExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   Assert(False);
 end;
 
 // ------------------
