@@ -3369,7 +3369,10 @@ begin
       if compositeSym.ClassType=THelperSymbol then begin
          sym:=THelperSymbol(compositeSym).ForType.UnAliasedType;
          if sym is TArraySymbol then begin
-            Result:=ReadArrayMethod(name, namePos, GetConstParamExpr(methSym.SelfSym as TConstParamSymbol));
+            if sym is TDynamicArraySymbol then
+               varExpr:=GetVarExpr(methSym.SelfSym)
+            else varExpr:=GetConstParamExpr(methSym.SelfSym as TConstParamSymbol);
+            Result:=ReadArrayMethod(name, namePos, varExpr);
             Exit;
          end;
          if sym is TCompositeTypeSymbol then

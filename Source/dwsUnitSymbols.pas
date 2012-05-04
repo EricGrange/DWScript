@@ -60,6 +60,8 @@ type
          procedure AddObjectOwner(const AOwner : IObjectOwner);
          procedure ClearObjectOwners;
 
+         class function IsUnitTable : Boolean; override;
+
          property UnitMainSymbol : TUnitMainSymbol read FUnitMainSymbol write FUnitMainSymbol;
    end;
 
@@ -71,6 +73,8 @@ type
 
       public
          constructor Create(unitMainSymbol : TUnitMainSymbol);
+
+         class function IsUnitTable : Boolean; override;
 
          property UnitMainSymbol : TUnitMainSymbol read FUnitMainSymbol;
    end;
@@ -591,6 +595,13 @@ begin
    FObjects.Clear;
 end;
 
+// IsUnitTable
+//
+class function TUnitSymbolTable.IsUnitTable : Boolean;
+begin
+   Result:=True;
+end;
+
 // ------------------
 // ------------------ TUnitSymbol ------------------
 // ------------------
@@ -698,6 +709,13 @@ constructor TUnitPrivateTable.Create(unitMainSymbol : TUnitMainSymbol);
 begin
    inherited Create(unitMainSymbol.Table, unitMainSymbol.Table.AddrGenerator);
    FUnitMainSymbol:=unitMainSymbol;
+end;
+
+// IsUnitTable
+//
+class function TUnitPrivateTable.IsUnitTable : Boolean;
+begin
+   Result:=True;
 end;
 
 // ------------------

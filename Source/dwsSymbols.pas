@@ -340,6 +340,7 @@ type
 
          function HasClass(const aClass : TSymbolClass) : Boolean;
          function HasSymbol(sym : TSymbol) : Boolean;
+         class function IsUnitTable : Boolean; virtual;
 
          procedure Initialize(const msgs : TdwsCompileMessageList); virtual;
 
@@ -4686,10 +4687,17 @@ end;
 function TSymbolTable.EnumerateHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean;
 var
    i : Integer;
+   p : TSymbolTable;
 begin
    if EnumerateLocalHelpers(helpedType, callback) then Exit(True);
-   for i:=0 to ParentCount-1 do
-      if Parents[i].EnumerateLocalHelpers(helpedType, callback) then Exit(True);
+   for i:=0 to ParentCount-1 do begin
+      p:=Parents[i];
+      if p.IsUnitTable then begin
+         if p.EnumerateLocalHelpers(helpedType, callback) then Exit(True)
+      end else begin
+         if p.EnumerateHelpers(helpedType, callback) then Exit(True);
+      end;
+   end;
    Result:=False;
 end;
 
@@ -4713,6 +4721,13 @@ end;
 function TSymbolTable.HasSymbol(sym : TSymbol) : Boolean;
 begin
    Result:=Assigned(Self) and (FSymbols.IndexOf(sym)>=0);
+end;
+
+// IsUnitTable
+//
+class function TSymbolTable.IsUnitTable : Boolean;
+begin
+   Result:=False;
 end;
 
 // GetCount
@@ -5811,11 +5826,11 @@ begin
          meta:=TStructuredTypeSymbol(ForType).MetaSymbol;
          if meta<>nil then
             Result:=TParamSymbol.Create(SYS_SELF, meta)
-//      Result:=TConstParamSymbol.Create(SYS_SELF, ForType)
          else Result:=nil;
       end else Result:=nil
    end else begin
-      if (ForType is TClassSymbol) or (ForType is TInterfaceSymbol) then
+      if    (ForType is TClassSymbol) or (ForType is TInterfaceSymbol)
+         or (ForType is TDynamicArraySymbol) then
          Result:=TParamSymbol.Create(SYS_SELF, ForType)
       else Result:=TConstParamSymbol.Create(SYS_SELF, ForType);
    end;

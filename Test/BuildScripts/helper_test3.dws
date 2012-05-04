@@ -1,0 +1,15 @@
+uses Helper3;
+
+procedure DoIt(i : Integer);
+begin
+   PrintLn(i.ToString);
+end;
+
+
+PrintLn((123).ToString);
+
+DoIt(456);
+
+var i := 789;
+
+PrintLn(i.ToString);
