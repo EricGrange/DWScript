@@ -8332,7 +8332,7 @@ begin
 
    FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CompilerSwitchUnknown, [SwitchName]);
 
-   while not FTok.TestDelete(ttCRIGHT) do
+   while FTok.HasTokens and not FTok.TestDelete(ttCRIGHT) do
       FTok.KillToken;
 end;
 
