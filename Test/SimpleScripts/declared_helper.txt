@@ -1,0 +1,4 @@
+TObject.Proc!
+THelper.ProcBug not declared
+TObject.Proc!
+TObject.ProcBug not declared

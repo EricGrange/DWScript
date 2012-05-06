@@ -10124,12 +10124,14 @@ begin
 
             end else begin
 
-               if    (expr is TTypeReferenceExpr)
-                  or (expr.Typ is TStructuredTypeMetaSymbol) then begin
-                  FMsgs.AddCompilerError(namePos, CPE_ClassMethodExpected);
-                  // keep compiling
-                  expr:=TConvExpr.Create(Fprog, expr);
-                  expr.Typ:=meth.Params[0].Typ;
+               if typeSym.ClassType<>THelperSymbol then begin
+                  if    (expr is TTypeReferenceExpr)
+                     or (expr.Typ is TStructuredTypeMetaSymbol) then begin
+                     FMsgs.AddCompilerError(namePos, CPE_ClassMethodExpected);
+                     // keep compiling
+                     expr:=TConvExpr.Create(Fprog, expr);
+                     expr.Typ:=meth.Params[0].Typ;
+                  end;
                end;
 
             end;

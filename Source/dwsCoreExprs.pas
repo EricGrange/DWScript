@@ -6948,8 +6948,10 @@ end;
 //
 class function TDeclaredExpr.FindSymbol(symbolTable : TSymbolTable; const name : UnicodeString) : TSymbol;
 var
-   p : Integer;
+   p, i : Integer;
    identifier : UnicodeString;
+   helpers : THelperSymbols;
+   sym : TSymbol;
 begin
    p:=Pos('.', name);
    if p<=0 then
@@ -6960,11 +6962,26 @@ begin
       identifier:=Copy(name, p+1, MaxInt);
       if Result.ClassType=TUnitSymbol then
          Result:=FindSymbol(TUnitSymbol(Result).Table, identifier)
-      else if Result.InheritsFrom(TClassSymbol) then
-         Result:=FindSymbol(TClassSymbol(Result).Members, identifier)
-      else if Result.InheritsFrom(TRecordSymbol) then
-         Result:=FindSymbol(TRecordSymbol(Result).Members, identifier)
-      else Result:=nil;
+      else begin
+         sym:=Result;
+         if Result.InheritsFrom(TCompositeTypeSymbol) then begin
+            Result:=FindSymbol(TCompositeTypeSymbol(Result).Members, identifier);
+            if Result<>nil then Exit;
+         end;
+         if sym is TTypeSymbol then begin
+            helpers:=THelperSymbols.Create;
+            try
+               symbolTable.EnumerateHelpers(TTypeSymbol(sym), helpers.AddHelper);
+               for i:=0 to helpers.Count-1 do begin
+                  Result:=helpers[i].Members.FindSymbol(identifier, cvMagic);
+                  if Result<>nil then Exit;
+               end;
+            finally
+               helpers.Free;
+            end;
+         end;
+         Result:=nil;
+      end;
    end;
 end;
 
