@@ -3593,8 +3593,8 @@ end;
 //
 procedure TClassSymbol.AddMethod(methSym : TMethodSymbol);
 var
-   x : Integer;
-   memberSymbol : TSymbol;
+   i : Integer;
+   methodSymbol : TMethodSymbol;
 begin
    inherited;
    // Check if class is abstract or not
@@ -3602,9 +3602,9 @@ begin
       Include(FFlags, csfAbstract)
    else if methSym.IsOverride and methSym.FParentMeth.IsAbstract then begin
       Exclude(FFlags, csfAbstract);
-      for x:=0 to FMembers.Count - 1 do begin
-         memberSymbol:=FMembers[x];
-         if (memberSymbol is TMethodSymbol) and (TMethodSymbol(memberSymbol).IsAbstract) then begin
+      for i:=0 to High(FVirtualMethodTable) do begin
+         methodSymbol:=FVirtualMethodTable[i];
+         if methodSymbol.IsAbstract then begin
             Include(FFlags, csfAbstract);
             Break;
          end;
