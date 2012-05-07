@@ -352,10 +352,6 @@ type
          procedure HintUnusedPrivateSymbols;
          procedure HintUnusedResult(resultSymbol : TDataSymbol);
 
-         function OpenStreamForFile(const scriptName : UnicodeString) : TStream;
-         function GetScriptSource(const scriptName : UnicodeString) : UnicodeString;
-         function GetIncludeScriptSource(const scriptName : UnicodeString) : UnicodeString;
-
          function GetVarExpr(dataSym : TDataSymbol): TVarExpr;
 
          function GetLazyParamExpr(dataSym : TLazyParamSymbol) : TLazyParamExpr;
@@ -623,6 +619,10 @@ type
          procedure RecordSymbolUseReference(sym : TSymbol; const scriptPos : TScriptPos; isWrite : Boolean);
          procedure RecordSymbolUseImplicitReference(sym : TSymbol; const scriptPos : TScriptPos; isWrite : Boolean);
          procedure ReplaceSymbolUse(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
+
+         function OpenStreamForFile(const fileName : UnicodeString) : TStream;
+         function GetScriptSource(const scriptName : UnicodeString) : UnicodeString;
+         function GetIncludeScriptSource(const scriptName : UnicodeString) : UnicodeString;
 
          property CurrentProg : TdwsProgram read FProg write FProg;
          property Msgs : TdwsCompileMessageList read FMsgs;
@@ -8795,15 +8795,15 @@ end;
 
 // OpenStreamForFile
 //
-function TdwsCompiler.OpenStreamForFile(const scriptName : UnicodeString) : TStream;
+function TdwsCompiler.OpenStreamForFile(const fileName : UnicodeString) : TStream;
 var
    i : Integer;
    fname : UnicodeString;
 begin
    for i:=0 to FScriptPaths.Count-1 do begin
       if FScriptPaths[i]<>'' then
-         fname:=IncludeTrailingPathDelimiter(FScriptPaths[i])+scriptName
-      else fname:=scriptName;
+         fname:=IncludeTrailingPathDelimiter(FScriptPaths[i])+fileName
+      else fname:=fileName;
       if FCompileFileSystem.FileExists(fname) then
          Exit(FCompileFileSystem.OpenFileStream(fname, fomReadOnly);
    end;
