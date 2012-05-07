@@ -129,7 +129,7 @@ const
   CPE_MemberSymbolNotVisible = 'Member symbol "%s" is not visible from this scope';
 
   // Class declaration errors
-  CPE_CantOverrideNotInherited = 'No method* "%s" found in class: "override" not applicable';
+  CPE_CantOverrideNotInherited = 'No method "%s" found in class: "override" not applicable';
   CPE_CantOverrideNotVirtual = 'Inherited method "%s" isn''t virtual. "override" not applicable';
   CPE_CantOverrideWrongParameterList = 'Parameter list doesn''t match the inherited method';
   CPE_CantOverrideWrongResultType = 'Result type doesn''t match the inherited method';
