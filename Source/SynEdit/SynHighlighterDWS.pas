@@ -907,14 +907,9 @@ end;
 //
 function TSynDWSSyn.IsIdentChar(AChar: WideChar): Boolean;
 begin
-   case AChar of
-      '_', '0'..'9', 'A'..'Z', 'a'..'z' :
-         Result:=True;
-      #$0080..#$FFFF :
-         Result:=TCharacter.IsLetterOrDigit(AChar);
-   else
-      Result:=False;
-   end;
+   if AChar<#$80 then
+      Result:=AnsiChar(AChar) in ['_', '0'..'9', 'A'..'Z', 'a'..'z']
+   else Result:=TCharacter.IsLetterOrDigit(AChar);
 end;
 
 class function TSynDWSSyn.GetFriendlyLanguageName: UnicodeString;
