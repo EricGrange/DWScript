@@ -4948,12 +4948,13 @@ var
    tt : TTokenType;
    condExpr : TTypedExpr;
 begin
-   Result := TRepeatExpr.Create(FProg, FTok.HotPos);
+   Result:=TRepeatExpr.Create(FProg, FTok.HotPos);
    EnterLoop(Result);
    try
-      TRepeatExpr(Result).LoopExpr := ReadBlocks([ttUNTIL], tt);
+      TRepeatExpr(Result).LoopExpr:=ReadBlocks([ttUNTIL], tt);
+      Result.SetScriptPos(FTok.HotPos);
       condExpr:=ReadExpr;
-      TRepeatExpr(Result).CondExpr := condExpr;
+      TRepeatExpr(Result).CondExpr:=condExpr;
       if not (condExpr.IsOfType(FProg.TypBoolean) or condExpr.IsOfType(FProg.TypVariant)) then
          FMsgs.AddCompilerError(Result.ScriptPos, CPE_BooleanExpected)
       else if (not condExpr.IsConstant) or condExpr.EvalAsBoolean(FExec) then

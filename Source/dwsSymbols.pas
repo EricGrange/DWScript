@@ -1469,22 +1469,25 @@ type
          FCallStack : TTightStack; // expr + prog duples
          FSelfScriptObject : PIScriptObj;
          FSelfScriptClassSymbol : TClassSymbol;
-         FLastScriptError : TExprBase;
-         FLastScriptCallStack : TdwsExprLocationArray;
-         FExceptionObjectStack : TSimpleStack<Variant>;
 
          FDebugger : IDebugger;
          FIsDebugging : Boolean;
 
+      protected
+         FProgramState : TProgramState;  // here to reduce its offset
+
+      private
          FContextTable : TSymbolTable;
          FExternalObject : TObject;
          FUserObject : TObject;
 
+         FExceptionObjectStack : TSimpleStack<Variant>;
+         FLastScriptError : TExprBase;
+         FLastScriptCallStack : TdwsExprLocationArray;
+
          FRandSeed : UInt64;
 
       protected
-         FProgramState : TProgramState;
-
          function  GetDebugger : IDebugger;
          procedure SetDebugger(const aDebugger : IDebugger);
          procedure StartDebug;
@@ -1506,7 +1509,7 @@ type
          constructor Create(const stackParams : TStackParameters);
          destructor Destroy; override;
 
-         procedure DoStep(expr : TExprBase); inline;
+         procedure DoStep(expr : TExprBase);
 
          property Status : TExecutionStatusResult read FStatus write FStatus;
          property Stack : TStackMixIn read FStack;
@@ -5460,11 +5463,19 @@ end;
 // DoStep
 //
 procedure TdwsExecution.DoStep(expr : TExprBase);
+
+   procedure DoDebug(exec : TdwsExecution; expr : TExprBase);
+   begin
+      exec.Debugger.DoDebug(exec, expr);
+      if exec.ProgramState=psRunningStopped then
+         EScriptStopped.DoRaise(exec, expr);
+   end;
+
 begin
    if ProgramState=psRunningStopped then
-      EScriptStopped.DoRaise(Self, expr);
-   if IsDebugging then
-      Debugger.DoDebug(Self, expr);
+      EScriptStopped.DoRaise(Self, expr)
+   else if IsDebugging then
+      DoDebug(Self, expr);
 end;
 
 // SetScriptError

@@ -844,6 +844,7 @@ type
          function OptimizeToNoResultExpr(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
 
          function ScriptPos : TScriptPos; override;
+         procedure SetScriptPos(const aPos : TScriptPos);
    end;
 
    // Does nothing! E. g.: "for x := 1 to 10 do {TNullExpr};"
@@ -3985,6 +3986,13 @@ end;
 function TNoResultExpr.ScriptPos : TScriptPos;
 begin
    Result:=FScriptPos;
+end;
+
+// SetScriptPos
+//
+procedure TNoResultExpr.SetScriptPos(const aPos : TScriptPos);
+begin
+   FScriptPos:=aPos;
 end;
 
 // Eval
