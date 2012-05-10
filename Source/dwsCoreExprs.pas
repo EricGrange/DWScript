@@ -3422,7 +3422,16 @@ begin
                // handled below
             else if expr.Typ.IsCompatible(elemTyp) then
                elemTyp:=expr.Typ
-            else if prog.TypVariant.IsCompatible(expr.Typ) and prog.TypVariant.IsCompatible(elemTyp) then
+            else if (expr.Typ is TStructuredTypeSymbol) and (elemTyp is TStructuredTypeSymbol) then begin
+               repeat
+                  elemTyp:=TStructuredTypeSymbol(elemTyp).Parent;
+                  if elemTyp=nil then begin
+                     prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_AssignIncompatibleTypes,
+                                                          [expr.Typ.Caption, Elements[0].Typ.Caption]);
+                     Exit;
+                  end;
+               until elemTyp.IsCompatible(expr.Typ);
+            end else if prog.TypVariant.IsCompatible(expr.Typ) and prog.TypVariant.IsCompatible(elemTyp) then
                elemTyp:=prog.TypVariant
             else begin
                prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_AssignIncompatibleTypes,

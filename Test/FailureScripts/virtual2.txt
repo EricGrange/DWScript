@@ -1,2 +1,2 @@
-Syntax Error: No method* "Dummy" found in class: "override" not applicable [line: 3, column: 17]
+Syntax Error: No method "Dummy" found in class: "override" not applicable [line: 3, column: 17]
 Syntax Error: BEGIN expected [line: 6, column: 18]

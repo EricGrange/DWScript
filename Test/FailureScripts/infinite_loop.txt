@@ -1,5 +1,5 @@
-Warning: Infinite loop [line: 4, column: 7]
+Warning: Infinite loop [line: 6, column: 7]
 Warning: Infinite loop [line: 3, column: 4]
 Warning: Infinite loop [line: 19, column: 1]
 Warning: Infinite loop [line: 21, column: 1]
-Warning: Infinite loop [line: 33, column: 1]
+Warning: Infinite loop [line: 35, column: 1]
