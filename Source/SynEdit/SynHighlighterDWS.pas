@@ -907,7 +907,7 @@ end;
 //
 function TSynDWSSyn.IsIdentChar(AChar: WideChar): Boolean;
 begin
-   if AChar<#$80 then
+   if Ord(AChar)<=$7F then
       Result:=AnsiChar(AChar) in ['_', '0'..'9', 'A'..'Z', 'a'..'z']
    else Result:=TCharacter.IsLetterOrDigit(AChar);
 end;
