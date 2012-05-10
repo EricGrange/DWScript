@@ -67,6 +67,9 @@ type
 
    TdwsFilter = class;
 
+   TdwsNameListOption = (nloAllowDots, nloNoCheckSpecials);
+   TdwsNameListOptions = set of TdwsNameListOption;
+
    // TdwsLocalizerComponent
    //
    TdwsLocalizerComponent = class (TComponent)
@@ -479,7 +482,7 @@ type
          function ReadNameOld(isWrite : Boolean) : TTypedExpr;
          function ReadNameInherited(isWrite : Boolean) : TProgramExpr;
          procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray;
-                                allowDots : Boolean = False);
+                                const options : TdwsNameListOptions = []);
          procedure ReadExternalName(funcSym : TFuncSymbol);
          function  ReadNew(isWrite : Boolean) : TProgramExpr;
          function  ReadNewArray(elementTyp : TTypeSymbol) : TNewArrayExpr;
@@ -6073,7 +6076,7 @@ end;
 // ReadNameList
 //
 procedure TdwsCompiler.ReadNameList(names : TStrings; var posArray : TScriptPosArray;
-                                    allowDots : Boolean = False);
+                                    const options : TdwsNameListOptions = []);
 var
    n : Integer;
 begin
@@ -6089,10 +6092,11 @@ begin
       Inc(n);
 
       names.Add(FTok.GetToken.FString);
-      CheckSpecialName(FTok.GetToken.FString);
+      if not (nloNoCheckSpecials in options) then
+         CheckSpecialName(FTok.GetToken.FString);
       FTok.KillToken;
 
-      while allowDots and FTok.TestDelete(ttDOT) do begin
+      while (nloAllowDots in options) and FTok.TestDelete(ttDOT) do begin
          if not FTok.TestName then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
          names[names.Count-1]:=names[names.Count-1]+'.'+FTok.GetToken.FString;
@@ -6623,7 +6627,9 @@ var
 begin
    names:=TStringList.Create;
    try
-      ReadNameList(names, posArray);
+      if classSymbol.IsExternal then
+         ReadNameList(names, posArray, [nloNoCheckSpecials])
+      else ReadNameList(names, posArray);
 
       if not FTok.TestDelete(ttCOLON) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
@@ -9311,7 +9317,7 @@ begin
       if coContextMap in FOptions then
          FSourceContextMap.OpenContext(FTok.HotPos, nil, ttUSES);
 
-      ReadNameList(names, posArray, True);
+      ReadNameList(names, posArray, [nloAllowDots]);
 
       if coContextMap in FOptions then
          FSourceContextMap.CloseContext(FTok.HotPos);
