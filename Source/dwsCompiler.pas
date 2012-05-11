@@ -3485,7 +3485,7 @@ begin
    sk:=IdentifySpecialName(nameToken.FString);
    if sk<>skNone then begin
       FTok.KillToken;
-      Exit(ReadSpecialFunction(namePos, sk));
+      Exit(ReadSymbol(ReadSpecialFunction(namePos, sk), isWrite, expecting));
    end;
 
    // Find name in symboltable
