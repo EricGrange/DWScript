@@ -32,6 +32,7 @@ type
          procedure StackMaxRecursion;
          procedure StackOverFlow;
          procedure StackOverFlowOnFuncPtr;
+         //procedure StackOverFlowCompiler;
          procedure Assertions;
          procedure ScriptVersion;
          procedure ExecuteParams;
@@ -487,6 +488,27 @@ begin
 
    FCompiler.Config.MaxRecursionDepth:=1024;
 end;
+
+// StackOverFlowCompiler
+//
+(*procedure TCornerCasesTests.StackOverFlowCompiler;
+var
+   prog : IdwsProgram;
+   buf : String;
+   i : Integer;
+begin
+   buf:= 'Type TIntegerHelper = Helper For Integer '
+        +'Function T : Integer; begin Result:=Self; end; '
+        +'end; '
+        +'println((0)';
+   for i:=1 to 24000 do
+      buf:=buf+'.T';
+   try
+   prog:=FCompiler.Compile(buf+');');
+   except
+   CheckEquals('sss', prog.Msgs.AsInfo, 'compile');
+   end;
+end;      *)
 
 // Assertions
 //

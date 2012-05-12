@@ -764,6 +764,8 @@ end;
 function TUnitImplementationTable.EnumerateHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean;
 begin
    Result:=UnitMainSymbol.Table.EnumerateHelpers(helpedType, callback);
+   if not Result then
+      Result:=inherited EnumerateHelpers(helpedType, callback);
 end;
 
 // ------------------

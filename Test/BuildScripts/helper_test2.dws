@@ -14,3 +14,4 @@ var i := 789;
 PrintLn(i.ToString);
 
 PrintLn(H2Use1(123));
+PrintLn(H2Use3(123));

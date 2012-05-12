@@ -10,6 +10,7 @@ type
    end;
    
 function H2Use1(i : Integer) : Integer;
+function H2Use3(i : Integer) : Integer;
    
 implementation
 
@@ -23,4 +24,9 @@ end;
 function H2Use1(i : Integer) : Integer;
 begin
    Result:=i.By2;
+end;
+
+function H2Use3(i : Integer) : Integer;
+begin
+   Result:=i.By3;
 end;
