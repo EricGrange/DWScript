@@ -325,8 +325,12 @@ end;
 // DoDebug
 //
 procedure TdwsSamplingDebugger.DoDebug(exec : TdwsExecution; expr : TExprBase);
+var
+   sample : TScriptPos;
 begin
-   FSamplingPos:=expr.ScriptPos;
+   sample:=expr.ScriptPos;
+   if sample.LineCol<>0 then
+      FSamplingPos:=sample;
    inherited;
 end;
 

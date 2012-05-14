@@ -46,9 +46,14 @@ implementation
 // ProcessApplicationMessages
 //
 procedure ProcessApplicationMessages(sleepMilliSeconds : Integer);
+var
+   msg: TMsg;
 begin
-   Application.HandleMessage;
-   Application.ProcessMessages;
+   if PeekMessage(msg, 0, 0, 0, PM_NOREMOVE) then begin
+      Application.HandleMessage;
+      if PeekMessage(msg, 0, 0, 0, PM_NOREMOVE) then
+         Application.ProcessMessages;
+   end;
    if sleepMilliSeconds>0 then
       Sleep(sleepMilliSeconds);
 end;
