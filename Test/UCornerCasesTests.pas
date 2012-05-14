@@ -32,7 +32,6 @@ type
          procedure StackMaxRecursion;
          procedure StackOverFlow;
          procedure StackOverFlowOnFuncPtr;
-         //procedure StackOverFlowCompiler;
          procedure Assertions;
          procedure ScriptVersion;
          procedure ExecuteParams;
@@ -47,6 +46,7 @@ type
          procedure SameVariantTest;
          procedure SectionContextMaps;
          procedure ResourceTest;
+         procedure LongLineTest;
    end;
 
 // ------------------------------------------------------------------
@@ -491,27 +491,6 @@ begin
    FCompiler.Config.MaxRecursionDepth:=1024;
 end;
 
-// StackOverFlowCompiler
-//
-(*procedure TCornerCasesTests.StackOverFlowCompiler;
-var
-   prog : IdwsProgram;
-   buf : String;
-   i : Integer;
-begin
-   buf:= 'Type TIntegerHelper = Helper For Integer '
-        +'Function T : Integer; begin Result:=Self; end; '
-        +'end; '
-        +'println((0)';
-   for i:=1 to 24000 do
-      buf:=buf+'.T';
-   try
-   prog:=FCompiler.Compile(buf+');');
-   except
-   CheckEquals('sss', prog.Msgs.AsInfo, 'compile');
-   end;
-end;      *)
-
 // Assertions
 //
 procedure TCornerCasesTests.Assertions;
@@ -945,6 +924,20 @@ begin
    CheckEquals('Syntax Error: Missing resource [line: 1, column: 5]'#13#10, prog.Msgs.AsInfo);
 
    FCompiler.OnResource:=nil;
+end;
+
+// LongLineTest
+//
+procedure TCornerCasesTests.LongLineTest;
+var
+   s : String;
+   prog : IdwsProgram;
+begin
+   // script pos location should saturate at 4095
+   s:='var s:="'+StringOfChar('a', 6000)+'";bug';
+
+   prog:=FCompiler.Compile(s);
+   CheckEquals('Syntax Error: Unknown name "bug" [line: 1, column: 4095]'#13#10, prog.Msgs.AsInfo);
 end;
 
 // ------------------------------------------------------------------

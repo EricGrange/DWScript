@@ -318,14 +318,20 @@ end;
 //
 procedure TScriptPos.IncCol;
 begin
-   Inc(FLineCol, $100000);
+   if FLineCol<(Cardinal(4095) shl 20) then
+      Inc(FLineCol, $100000);
 end;
 
 // NewLine
 //
 procedure TScriptPos.NewLine;
+var
+   n : Integer;
 begin
-   FLineCol:=(FLineCol and cLineMask)+$100001;
+   n:=(FLineCol and cLineMask);
+   if n<cLineMask then
+      Inc(n);
+   FLineCol:=n or $100000;
 end;
 
 // IsBeforeOrEqual
