@@ -51,11 +51,13 @@ const
    cDefaultStackChunkSize = 4096;  // 64 kB in 32bit
 
 type
+   TdwsCompiler = class;
+   TdwsFilter = class;
+
    TIncludeEvent = procedure(const scriptName: UnicodeString; var scriptSource: UnicodeString) of object;
    TdwsOnNeedUnitEvent = function(const unitName : UnicodeString; var unitSource : UnicodeString) : IdwsUnit of object;
-   TdwsResourceEvent = procedure(const resourceName : UnicodeString) of object;
+   TdwsResourceEvent = procedure(compiler : TdwsCompiler; const resourceName : UnicodeString) of object;
 
-   TdwsCompiler = class;
    TCompilerCreateBaseVariantSymbol = function (table : TSystemSymbolTable) : TBaseVariantSymbol of object;
    TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
    TCompilerReadInstrSwitchEvent = function (compiler : TdwsCompiler) : Boolean of object;
@@ -64,8 +66,6 @@ type
    TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile; scriptType : TScriptSourceType) of object;
    TCompilerGetDefaultEnvironmentEvent = function : IdwsEnvironment of object;
    TCompilerGetDefaultLocalizerEvent = function : IdwsLocalizer of object;
-
-   TdwsFilter = class;
 
    TdwsNameListOption = (nloAllowDots, nloNoCheckSpecials);
    TdwsNameListOptions = set of TdwsNameListOption;
@@ -8542,7 +8542,7 @@ begin
          if not FTok.Test(ttStrVal) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
          if Assigned(FOnResource) then
-            FOnResource(FTok.GetToken.FString);
+            FOnResource(Self, FTok.GetToken.FString);
          FTok.KillToken;
 
       end;

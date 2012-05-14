@@ -17,7 +17,7 @@ type
          procedure SetUp; override;
          procedure TearDown; override;
          procedure DoOnInclude(const scriptName : String; var scriptSource : String);
-         procedure DoOnResource(const resName : String);
+         procedure DoOnResource(compiler : TdwsCompiler; const resName : String);
 
       published
          procedure EmptyTokenBuffer;
@@ -268,9 +268,11 @@ end;
 
 // DoOnResource
 //
-procedure TCornerCasesTests.DoOnResource(const resName : String);
+procedure TCornerCasesTests.DoOnResource(compiler : TdwsCompiler; const resName : String);
 begin
    FLastResource:=resName;
+   if resName='missing' then
+      compiler.Msgs.AddCompilerError(compiler.Tokenizer.HotPos, 'Missing resource');
 end;
 
 // IncludeViaEvent
@@ -938,6 +940,9 @@ begin
 
    prog:=FCompiler.Compile('{$R "hello'#13#10'world"}');
    CheckEquals('hello'#13#10'world', FLastResource);
+
+   prog:=FCompiler.Compile('{$R "missing"}');
+   CheckEquals('Syntax Error: Missing resource [line: 1, column: 5]'#13#10, prog.Msgs.AsInfo);
 
    FCompiler.OnResource:=nil;
 end;
