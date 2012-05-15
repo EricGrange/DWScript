@@ -2118,8 +2118,12 @@ begin
             end else begin
 
                if typ is TArraySymbol then begin
-                  sas:=TStaticArraySymbol.Create('', typ, FProg.TypInteger, 0, TArraySymbol(typ).typ.Size-1);
-                  FProg.Table.AddSymbol(sas);
+                  if typ is TStaticArraySymbol then
+                     sas:=TStaticArraySymbol(typ)
+                  else begin
+                     sas:=TStaticArraySymbol.Create('', typ.Typ, FProg.TypInteger, 0, TArraySymbol(typ).typ.Size-1);
+                     FProg.Table.AddSymbol(sas);
+                  end;
                   if expr is TConstExpr then begin
                      constSym:=factory.CreateConstSymbol(name, constPos, sas, TConstExpr(expr).Data[FExec], TConstExpr(expr).Addr[FExec]);
                      detachTyp:=False;
