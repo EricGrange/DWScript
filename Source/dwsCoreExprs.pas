@@ -1681,6 +1681,7 @@ type
 
    TFlowControlExpr = class(TNoResultExpr)
       public
+         function InterruptsFlow : Boolean; override;
    end;
 
    TBreakExpr = class(TFlowControlExpr)
@@ -1719,7 +1720,7 @@ type
    end;
 
    // raise TExceptionClass.Create;
-   TRaiseExpr = class(TRaiseBaseExpr)
+   TRaiseExpr = class (TRaiseBaseExpr)
       private
          FExceptionExpr: TTypedExpr;
 
@@ -1732,6 +1733,8 @@ type
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
+
+         function InterruptsFlow : Boolean; override;
    end;
 
    TReraiseExpr = class(TRaiseBaseExpr)
@@ -6424,15 +6427,34 @@ begin
    end;
 end;
 
-{ TBreakExpr }
+// ------------------
+// ------------------ TFlowControlExpr ------------------
+// ------------------
 
+// InterruptsFlow
+//
+function TFlowControlExpr.InterruptsFlow : Boolean;
+begin
+   Result:=True;
+end;
+
+// ------------------
+// ------------------ TBreakExpr ------------------
+// ------------------
+
+// EvalNoResult
+//
 procedure TBreakExpr.EvalNoResult(exec : TdwsExecution);
 begin
    exec.Status:=esrBreak;
 end;
 
-{ TExitExpr }
+// ------------------
+// ------------------ TBreakExpr ------------------
+// ------------------
 
+// EvalNoResult
+//
 procedure TExitExpr.EvalNoResult(exec : TdwsExecution);
 begin
    exec.Status:=esrExit;
@@ -6764,6 +6786,13 @@ begin
                                     exceptVal, FExceptionExpr.Typ, FScriptPos)
    else raise EScriptException.Create(RTE_UserDefinedException,
                                       exceptVal, FExceptionExpr.Typ, FScriptPos);
+end;
+
+// InterruptsFlow
+//
+function TRaiseExpr.InterruptsFlow : Boolean;
+begin
+   Result:=True;
 end;
 
 // GetSubExpr

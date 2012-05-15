@@ -938,7 +938,7 @@ begin
    end;
 
    Result:=(FToken.FTyp=t);
-   FSource.FHotPos.LineCol:=FToken.FScriptPos.LineCol;
+   FSource.FHotPos.SetLineCol(FToken.FScriptPos);
 end;
 
 // TestAny
@@ -951,7 +951,7 @@ begin
          Exit(ttNone);
    end;
 
-   FSource.FHotPos.LineCol:=FToken.FScriptPos.LineCol;
+   FSource.FHotPos.SetLineCol(FToken.FScriptPos);
    if (FToken.FTyp in t) then
       Result:=FToken.FTyp
    else Result:=ttNone;
@@ -967,7 +967,7 @@ begin
          Exit(False);
    end;
 
-   FSource.FHotPos.LineCol:=FToken.FScriptPos.LineCol;
+   FSource.FHotPos.SetLineCol(FToken.FScriptPos);
    if FToken.FTyp=t then begin
       KillToken;
       Result:=True;
@@ -984,7 +984,7 @@ begin
          Exit(ttNone);
    end;
 
-   FSource.FHotPos.LineCol:=FToken.FScriptPos.LineCol;
+   FSource.FHotPos.SetLineCol(FToken.FScriptPos);
    if FToken.FTyp in t then begin
       Result:=FToken.FTyp;
       KillToken;
@@ -1000,7 +1000,7 @@ begin
       ReadToken;
    if Assigned(FToken) then begin
       Result:=(FToken.FString<>'') and not (FToken.FTyp in FRules.ReservedNames);
-      FSource.FHotPos:=FToken.FScriptPos;
+      FSource.FHotPos.SetLineCol(FToken.FScriptPos);
    end;
 end;
 
@@ -1053,7 +1053,7 @@ begin
    if not Assigned(FToken) then begin
       ReadToken;
       if FToken<>nil then
-         FSource.FHotPos.LineCol:=FToken.FScriptPos.LineCol;
+         FSource.FHotPos.SetLineCol(FToken.FScriptPos);
    end;
    Result:=(FToken<>nil);
 end;
@@ -1186,7 +1186,7 @@ procedure TTokenizer.ConsumeToken;
 
             caSwitch :
                if Assigned(FSwitchHandler) then begin
-                  FSource.FHotPos:=FToken.FScriptPos;
+                  FSource.FHotPos.SetLineCol(FToken.FScriptPos);
 
                   // Ask parser if we should create a token or not
                   FTokenBuf.ToUpperStr(FToken.FString);
@@ -1248,7 +1248,11 @@ begin
    while Assigned(state) do begin
 
       // Find next state
-      trns:=state.FindTransition(pch^);
+      //trns:=state.FindTransition(pch^);
+      if pch^>#127 then
+         trns:=state.FTransitions[#127]
+      else trns:=state.FTransitions[pch^];
+
       trnsClassType:=trns.ClassType;
 
       // Handle Errors
@@ -1264,7 +1268,7 @@ begin
       end;
 
       // A new token begins
-      if trns.Start and (FToken.FScriptPos.LineCol=0) then
+      if trns.Start and (FToken.FScriptPos.Col=0) then
          FToken.FScriptPos:=CurrentPos;
 
       // Add actual character to s

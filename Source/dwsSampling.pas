@@ -290,7 +290,7 @@ end;
 procedure TdwsSamplingDebugger.CollectSample;
 begin
    if FSuspended then Exit;
-   if FSamplingPos.LineCol=0 then Exit; // not started
+   if not FSamplingPos.Defined then Exit; // not started
    if FCollecting then Exit; // ignore sample if too busy
    FCollecting:=True;
    try
@@ -329,7 +329,7 @@ var
    sample : TScriptPos;
 begin
    sample:=expr.ScriptPos;
-   if sample.LineCol<>0 then
+   if sample.Defined then
       FSamplingPos:=sample;
    inherited;
 end;

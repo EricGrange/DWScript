@@ -553,6 +553,10 @@ const
   DBG_NotDebugging = '(not debugging)';
   DBG_NoResult = '(no result)';
 
+  // AutoFix Actions
+
+  AFA_NoLongerApplicable = 'Source code changed, no longer applicable';
+
 implementation
 
 end.

@@ -28,6 +28,8 @@ uses
 
 type
 
+   TdwsMessage = class;
+   TScriptMessage = class;
    TdwsMessageList = class;
 
    // TSourceFile
@@ -48,12 +50,7 @@ type
       private
          // 12bits for the column (4096)
          // 20bits for the line (1048576)
-         FLineCol : Cardinal;
-
-         function GetLine : Integer; inline;
-         procedure SetLine(const aLine : Integer); inline;
-         function GetCol : Integer; inline;
-         procedure SetCol(const aCol : Integer); inline;
+         FLine, FCol : Integer;
 
       public
          SourceFile : TSourceFile;
@@ -62,9 +59,8 @@ type
 
          constructor Create(aSourceFile : TSourceFile; aLine, aCol : Integer);
 
-         property LineCol : Cardinal read FLineCol write FLineCol;
-         property Line : Integer read GetLine write SetLine;
-         property Col : Integer read GetCol write SetCol;
+         property Line : Integer read FLine write FLine;
+         property Col : Integer read FCol write FCol;
 
          function SamePosAs(const aPos : TScriptPos) : Boolean;
          function IsMainModule : Boolean;
@@ -73,6 +69,8 @@ type
 
          procedure IncCol; inline;
          procedure NewLine; inline;
+         procedure SetColLine(aCol, aLine : Integer); inline;
+         procedure SetLineCol(const aPos : TScriptPos); inline;
 
          function IsBeforeOrEqual(const aPos : TScriptPos) : Boolean;
 
@@ -84,35 +82,59 @@ type
    //
    TdwsMessage = class abstract
       private
-         FMsgs: TdwsMessageList;
-         FText: UnicodeString;
+         FMsgs : TdwsMessageList;
+         FText : UnicodeString;
 
       public
          constructor Create(Msgs: TdwsMessageList; const Text: UnicodeString);
 
-         function AsInfo: UnicodeString; virtual; abstract;
+         function AsInfo : UnicodeString; virtual; abstract;
          property Text : UnicodeString read FText;
    end;
-
-   // Messages without position
 
    TInfoMessage = class(TdwsMessage)
       function AsInfo: UnicodeString; override;
    end;
 
-   // Messages with position
+   IAutoFixSourceBuffer = interface
+      function CodeAt(col, line, nb : Integer) : String;
+      procedure ReplaceAt(col, line, nb : Integer; const newText : String);
+   end;
+
+   // TdwsAutoFixAction
+   //
+   TdwsAutoFixAction = class abstract
+      private
+         FCaption : String;
+         FMsg : TScriptMessage;
+         FNextAction : TdwsAutoFixAction;
+
+      public
+         constructor Create(msg : TScriptMessage; const caption : String);
+         destructor Destroy; override;
+
+         function Apply(const buffer : IAutoFixSourceBuffer) : String; virtual; abstract;
+
+         property Msg : TScriptMessage read FMsg write FMsg;
+         property Caption : String read FCaption;
+         property NextAction : TdwsAutoFixAction read FNextAction;
+   end;
 
    // TScriptMessage
    //
    TScriptMessage = class(TdwsMessage)
       private
          FPos : TScriptPos;
+         FAutoFix : TdwsAutoFixAction;
 
       public
          constructor Create(msgs: TdwsMessageList; const text : UnicodeString; const p : TScriptPos); overload;
+         destructor Destroy; override;
+
          function AsInfo : UnicodeString; override;
 
          property Pos : TScriptPos read FPos write FPos;
+         property AutoFix : TdwsAutoFixAction read FAutoFix write FAutoFix;
    end;
 
    TScriptMessageClass = class of TScriptMessage;
@@ -165,7 +187,7 @@ type
          property HasErrors : Boolean read FHasErrors write FHasErrors;
    end;
 
-   TdwsHintsLevel = (hlDisabled, hlNormal, hlStrict);
+   TdwsHintsLevel = (hlDisabled, hlNormal, hlStrict, hlPedantic);
 
    // TdwsCompileMessageList
    //
@@ -234,8 +256,22 @@ type
 
    EReraise = class(Exception);
 
+   // TdwsAFAReplace
+   //
+   TdwsAFAReplace = class (TdwsAutoFixAction)
+      private
+         FOldText  : String;
+         FNewText : String;
+
+      public
+         function Apply(const buffer : IAutoFixSourceBuffer) : String; override;
+
+         property OldText : String read FOldText write FOldText;
+         property NewText : String read FNewText write FNewText;
+   end;
+
 const
-   cNullPos: TScriptPos = (FLineCol: 0; SourceFile: nil);
+   cNullPos: TScriptPos = (FLine: 0; FCol: 0; SourceFile: nil);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -254,42 +290,15 @@ implementation
 constructor TScriptPos.Create(aSourceFile : TSourceFile; aLine, aCol : Integer);
 begin
    SourceFile:=aSourceFile;
-   FLineCol:=(aCol shl 20)+aLine;
-end;
-
-// GetLine
-//
-function TScriptPos.GetLine : Integer;
-begin
-   Result:=FLineCol and cLineMask;
-end;
-
-// SetLine
-//
-procedure TScriptPos.SetLine(const aLine : Integer);
-begin
-   FLineCol:=(FLineCol and $FFF00000) or Cardinal(aLine);
-end;
-
-// GetCol
-//
-function TScriptPos.GetCol : Integer;
-begin
-   Result:=(FLineCol shr 20) and $FFF;
-end;
-
-// SetCol
-//
-procedure TScriptPos.SetCol(const aCol : Integer);
-begin
-   FLineCol:=(FLineCol and cLineMask) or (Cardinal(aCol) shl 20);
+   FLine:=aLine;
+   FCol:=aCol;
 end;
 
 // SamePosAs
 //
 function TScriptPos.SamePosAs(const aPos : TScriptPos) : Boolean;
 begin
-   Result:=    (FLineCol=aPos.FLineCol)
+   Result:=    (FLine=aPos.Line) and (Col=aPos.Col)
            and (SourceFile=aPos.SourceFile);
 end;
 
@@ -311,27 +320,37 @@ end;
 //
 function TScriptPos.Defined : Boolean;
 begin
-   Result:=(SourceFile<>nil) and (FLineCol<>0);
+   Result:=(SourceFile<>nil) and ((FLine or FCol)<>0);
 end;
 
 // IncCol
 //
 procedure TScriptPos.IncCol;
 begin
-   if FLineCol<(Cardinal(4095) shl 20) then
-      Inc(FLineCol, $100000);
+   Inc(FCol);
 end;
 
 // NewLine
 //
 procedure TScriptPos.NewLine;
-var
-   n : Integer;
 begin
-   n:=(FLineCol and cLineMask);
-   if n<cLineMask then
-      Inc(n);
-   FLineCol:=n or $100000;
+   Inc(FLine);
+   FCol:=1;
+end;
+
+// SetColLine
+//
+procedure TScriptPos.SetColLine(aCol, aLine : Integer);
+begin
+   FCol:=aCol;
+   FLine:=aLine;
+end;
+
+// SetLineCol
+//
+procedure TScriptPos.SetLineCol(const aPos : TScriptPos);
+begin
+   PUInt64(@Self)^:=PUInt64(@aPos)^;
 end;
 
 // IsBeforeOrEqual
@@ -435,7 +454,7 @@ end;
 //
 procedure TdwsMessageList.AddMsgs(src : TdwsMessageList; lineOffset, colOffset : Integer);
 var
-   i : Integer;
+   i, col : Integer;
    msg : TdwsMessage;
    srcMsg : TScriptMessage;
    sf : TSourceFile;
@@ -450,8 +469,9 @@ begin
          FSourceFiles.Add(sf);
          srcMsg.FPos.SourceFile:=sf;
          if srcMsg.Pos.Line=1 then
-            srcMsg.Pos.Col:=srcMsg.Pos.Col+colOffset;
-         srcMsg.Pos.Line:=srcMsg.Pos.Line+lineOffset;
+            col:=srcMsg.Pos.Col+colOffset
+         else col:=srcMsg.Pos.Col;
+         srcMsg.Pos.SetColLine(col, srcMsg.Pos.Line+lineOffset);
       end;
       AddMsg(msg);
    end;
@@ -524,6 +544,14 @@ constructor TScriptMessage.Create(Msgs: TdwsMessageList; const Text: UnicodeStri
 begin
    inherited Create(Msgs, Text);
    Pos:=P;
+end;
+
+// Destroy
+//
+destructor TScriptMessage.Destroy;
+begin
+   inherited;
+   FAutoFix.Free;
 end;
 
 // AsInfo
@@ -699,6 +727,46 @@ begin
             Inc(FLineCount);
    end;
    Result:=FLineCount;
+end;
+
+// ------------------
+// ------------------ TdwsAutoFixAction ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsAutoFixAction.Create(msg : TScriptMessage; const caption : String);
+begin
+   inherited Create;
+   FCaption:=caption;
+   FMsg:=msg;
+   FNextAction:=msg.AutoFix;
+   msg.AutoFix:=Self;
+end;
+
+// Destroy
+//
+destructor TdwsAutoFixAction.Destroy;
+begin
+   FNextAction.Free;
+   inherited;
+end;
+
+// ------------------
+// ------------------ TdwsAFAReplace ------------------
+// ------------------
+
+// Apply
+//
+function TdwsAFAReplace.Apply(const buffer : IAutoFixSourceBuffer) : String;
+var
+   check : String;
+begin
+   check:=buffer.CodeAt(Msg.Pos.Col, Msg.Pos.Line, Length(OldText));
+   if check=OldText then begin
+      buffer.ReplaceAt(Msg.Pos.Col, Msg.Pos.Line, Length(OldText), NewText);
+      Result:='';
+   end else Result:=AFA_NoLongerApplicable;
 end;
 
 end.

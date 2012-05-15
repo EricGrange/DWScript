@@ -2701,12 +2701,11 @@ var
    methPos : TScriptPos;
    declaredMethod, explicitParams : Boolean;
 begin
-   if not (FTok.TestDelete(ttDOT) and FTok.TestName) then
+   if not FTok.TestDelete(ttDOT) then
+      FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotExpected);
+   if not FTok.TestDeleteNamePos(methName, methPos) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
-   methName := FTok.GetToken.FString;
-   methPos := FTok.HotPos;
-   FTok.KillToken;
    FTok.Test(ttBLEFT);
 
    sym:=ownerSym.Members.FindSymbol(methName, cvPrivate);
@@ -3156,9 +3155,7 @@ begin
             if Assigned(stmt) then begin
                blockExpr.AddStatement(stmt);
 
-               if     (reach=rsReachable)
-                  and (   (stmt is TFlowControlExpr)
-                       or (stmt is TRaiseExpr)) then
+               if stmt.InterruptsFlow then
                   reach:=rsUnReachable;
             end;
 
@@ -5567,7 +5564,7 @@ begin
          argPos:=argPosArray[x]
       else argPos:=funcExpr.Pos;
 
-      if arg is TArrayConstantExpr then
+      if arg.ClassType=TArrayConstantExpr then
          TArrayConstantExpr(arg).Prepare(FProg, paramSymbol.Typ.Typ);
 
       argTyp:=arg.Typ;
@@ -8057,7 +8054,7 @@ begin
                Result:=TConstIntExpr.CreateUnified(FProg, nil, token.FInteger);
             end;
          ttFloatVal :
-            if FTok.GetToken.FFloat=0 then
+            if token.FFloat=0 then
                Result:=unifiedList.ZeroFloat
             else Result:=TConstFloatExpr.CreateUnified(FProg, nil, token.FFloat);
          ttStrVal :

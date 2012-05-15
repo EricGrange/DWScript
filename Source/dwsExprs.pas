@@ -843,6 +843,8 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
          function OptimizeToNoResultExpr(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
 
+         function InterruptsFlow : Boolean; virtual;
+
          function ScriptPos : TScriptPos; override;
          procedure SetScriptPos(const aPos : TScriptPos);
    end;
@@ -4021,6 +4023,13 @@ begin
    Result:=TNoResultExpr(optimized);
 end;
 
+// InterruptsFlow
+//
+function TNoResultExpr.InterruptsFlow : Boolean;
+begin
+   Result:=False;
+end;
+
 // ------------------
 // ------------------ TNullExpr ------------------
 // ------------------
@@ -4381,7 +4390,7 @@ procedure TPushOperator.InitPushTempArrayAddr(stackAddr: Integer; argExpr: TType
 begin
    FTypeParamSym:=TSymbol(potTempArrayAddr);
    FStackAddr:=stackAddr;
-   FArgExpr:=argExpr as TArrayConstantExpr;
+   FArgExpr:=TArrayConstantExpr(argExpr);
 end;
 
 // InitPushTempArray
@@ -4776,7 +4785,7 @@ begin
          pushOperator.InitPushLazy(param.StackAddr, arg)
       else if arg is TDataExpr then begin
          if param.Typ is TOpenArraySymbol then begin
-            if arg is TArrayConstantExpr then
+            if arg.ClassType=TArrayConstantExpr then
                pushOperator.InitPushTempArrayAddr(param.StackAddr, arg)
             else pushOperator.InitPushTempArray(param.StackAddr, arg);
          end else if param is TByRefParamSymbol then begin

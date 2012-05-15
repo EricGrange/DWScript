@@ -933,11 +933,10 @@ var
    s : String;
    prog : IdwsProgram;
 begin
-   // script pos location should saturate at 4095
    s:='var s:="'+StringOfChar('a', 6000)+'";bug';
 
    prog:=FCompiler.Compile(s);
-   CheckEquals('Syntax Error: Unknown name "bug" [line: 1, column: 4095]'#13#10, prog.Msgs.AsInfo);
+   CheckEquals('Syntax Error: Unknown name "bug" [line: 1, column: 6011]'#13#10, prog.Msgs.AsInfo);
 end;
 
 // ------------------------------------------------------------------
