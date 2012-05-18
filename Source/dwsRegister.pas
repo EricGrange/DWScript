@@ -32,7 +32,7 @@ implementation
 uses
   Classes, Controls, dwsComp, dwsComConnector, dwsDebugger, dwsGlobalVarsFunctions,
   dwsVCLGUIFunctions, dwsHtmlFilter, dwsClasses, dwsClassesLibModule,
-  dwsFileSystem, dwsSymbolsLibModule, dwsJSFilter, dwsJSLibModule, dwsRTTIConnector;
+  dwsFileSystem, dwsSymbolsLibModule, dwsRTTIConnector;
 
 procedure Register;
 begin
@@ -47,8 +47,6 @@ begin
                      TdwsDebugger,
                      TdwsUnit,
                      TdwsHtmlFilter,
-                     TdwsJSFilter,
-                     TdwsJSLibModule,
                      TdwsSymbolsLib,
                      TdwsGlobalVarsFunctions,
                      TdwsGUIFunctions,
