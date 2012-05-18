@@ -1,3 +1,0 @@
-hellohellohello
-n<=0
-world

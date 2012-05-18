@@ -1,8 +1,0 @@
-false
-true
-hello
-hello
-false
-true
-world
-world

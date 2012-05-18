@@ -1,2 +1,0 @@
-TClass1
-TClass2

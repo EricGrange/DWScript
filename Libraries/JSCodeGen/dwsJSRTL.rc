@@ -1,4 +1,0 @@
-sprintf_js dwsjsrtl "rtl\sprintf.js"
-stringRepeat_js dwsjsrtl "rtl\stringRepeat.js"
-formatDateTime_js dwsjsrtl "rtl\formatDateTime.js"
-alea_js dwsjsrtl "rtl\alea.js"
