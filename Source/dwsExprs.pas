@@ -1223,7 +1223,7 @@ type
          property ConnectorCall : IConnectorCall read FConnectorCall write FConnectorCall;
    end;
 
-   TConnectorReadExpr = class(TPosDataExpr)
+   TConnectorReadExpr = class sealed (TPosDataExpr)
       private
          FBaseExpr: TTypedExpr;
          FConnectorMember: IConnectorMember;
@@ -1248,7 +1248,7 @@ type
          property ConnectorMember : IConnectorMember read FConnectorMember write FConnectorMember;
   end;
 
-   TConnectorWriteExpr = class(TTypedExpr)
+   TConnectorWriteExpr = class sealed (TTypedExpr)
       private
          FBaseExpr: TTypedExpr;
          FValueExpr: TTypedExpr;

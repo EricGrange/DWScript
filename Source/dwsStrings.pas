@@ -276,6 +276,7 @@ const
   CPE_NoMatchingOverloadForCall = 'There is no overloaded version of "%s" that can be called with these arguments';
   CPE_MatchingOverload = 'Overload of "%s" will be ambiguous with a previously declared version';
   CPE_ClassMethodExpected = 'Class method expected';
+  CPE_RecordTypeExpected = 'Record type expected';
 
   CPE_InvalidOperands = 'Invalid Operands';
   CPE_IncompatibleOperands = 'Incompatible operands';

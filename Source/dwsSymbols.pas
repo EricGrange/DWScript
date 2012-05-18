@@ -245,6 +245,7 @@ type
    TAddrGenerator = ^TAddrGeneratorRec;
 
    TdwsVisibility = (cvMagic, cvPrivate, cvProtected, cvPublic, cvPublished);
+   TdwsVisibilities = set of TdwsVisibility;
 
    // TSymbol
    //
@@ -1001,6 +1002,7 @@ type
          procedure AddParent(parent : TMembersSymbolTable);
          function FindSymbol(const aName : UnicodeString; minVisibility : TdwsVisibility; ofClass : TSymbolClass = nil) : TSymbol; override;
          function FindSymbolFromScope(const aName : UnicodeString; scopeSym : TCompositeTypeSymbol) : TSymbol; reintroduce;
+         function Visibilities : TdwsVisibilities;
 
          property Owner : TCompositeTypeSymbol read FOwner write FOwner;
    end;
@@ -1065,6 +1067,8 @@ type
          function AllowDefaultProperty : Boolean; virtual; abstract;
 
          function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; virtual;
+
+         function MembersVisibilities : TdwsVisibilities;
 
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; virtual; abstract;
 
@@ -2074,6 +2078,15 @@ end;
 function TCompositeTypeSymbol.FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol;
 begin
    Result:=nil;
+end;
+
+// MembersVisibilities
+//
+function TCompositeTypeSymbol.MembersVisibilities : TdwsVisibilities;
+begin
+   Result:=Members.Visibilities;
+   if Parent<>nil then
+      Result:=Result+Parent.MembersVisibilities;
 end;
 
 // CheckMethodsImplemented
@@ -4926,6 +4939,25 @@ begin
    else if scopeSym.DoIsOfType(Owner) then
       Result:=FindSymbol(aName, cvProtected)
    else Result:=FindSymbol(aName, cvPublic);
+end;
+
+// Visibilities
+//
+function TMembersSymbolTable.Visibilities : TdwsVisibilities;
+var
+   sym : TSymbol;
+   symClass : TClass;
+begin
+   Result:=[];
+   for sym in Self do begin
+      symClass:=sym.ClassType;
+      if symClass=TFieldSymbol then
+         Include(Result, TFieldSymbol(sym).Visibility)
+      else if symClass.InheritsFrom(TPropertySymbol) then
+         Include(Result, TPropertySymbol(sym).Visibility)
+      else if symClass.InheritsFrom(TMethodSymbol) then
+         Include(Result, TMethodSymbol(symClass).Visibility)
+   end;
 end;
 
 // ------------------
