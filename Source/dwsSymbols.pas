@@ -4066,7 +4066,7 @@ end;
 
 constructor TNilSymbol.Create;
 begin
-  inherited Create('', nil);
+  inherited Create('<nil>', nil);
   FSize := 1;
 end;
 
