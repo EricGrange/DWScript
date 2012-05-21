@@ -6422,7 +6422,6 @@ var
    i : Integer;
    classSymIter : TCompositeTypeSymbol;
    externalClass : TClassSymbol;
-   fs : TFieldSymbol;
    member : TSymbol;
 begin
    FClassSym:=aClassSym;
@@ -6437,10 +6436,8 @@ begin
    while classSymIter<>nil do begin
       for i:=0 to classSymIter.Members.Count-1 do begin
          member:=classSymIter.Members[i];
-         if member is TFieldSymbol then begin
-            fs:=TFieldSymbol(member);
-            fs.Typ.InitData(FData, fs.Offset);
-         end;
+         if member.ClassType=TFieldSymbol then
+            TFieldSymbol(member).InitData(FData, 0);
       end;
       classSymIter := classSymIter.Parent;
    end;

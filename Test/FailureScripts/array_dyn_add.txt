@@ -2,7 +2,6 @@ Syntax Error: Incompatible parameter types - "Integer" expected (instead of "TOb
 Syntax Error: Incompatible parameter types - "Integer" expected (instead of "String") [line: 5, column: 10]
 Syntax Error: Incompatible parameter types - "Integer" expected (instead of "Float") [line: 7, column: 10]
 Syntax Error: Incompatible parameter types - "Integer" expected (instead of "Boolean") [line: 8, column: 10]
-Syntax Error: Incompatible parameter types - "Integer" expected (instead of "array [0..1] of Integer") [line: 9, column: 10]
 Syntax Error: Incompatible parameter types - "Integer" expected (instead of "nil") [line: 10, column: 10]
 Syntax Error: Incompatible parameter types - "TObject" expected (instead of "String") [line: 15, column: 10]
 Syntax Error: Incompatible parameter types - "TObject" expected (instead of "Integer") [line: 16, column: 10]

@@ -7275,7 +7275,7 @@ procedure TArrayAddExpr.EvalNoResult(exec : TdwsExecution);
 var
    base, src : IScriptObj;
    dyn, dynSrc : TScriptDynamicArray;
-   i, n : Integer;
+   i, n, k : Integer;
    arg : TTypedExpr;
    argData : TDataExpr;
 begin
@@ -7295,12 +7295,23 @@ begin
                         dyn.Data, n*dyn.ElementSize, dyn.ElementSize);
          end else arg.EvalAsVariant(exec, dyn.Data[n]);
 
-      end else begin
+      end else if arg.Typ.ClassType=TDynamicArraySymbol then begin
 
          arg.EvalAsScriptObj(exec, src);
          dynSrc:=(src.InternalObject as TScriptDynamicArray);
 
          dyn.Concat(dynSrc);
+
+      end else begin
+
+         Assert(arg.Typ is TStaticArraySymbol);
+         argData:=(arg as TDataExpr);
+
+         n:=dyn.Length;
+         k:=argData.Typ.Size div dyn.ElementSize;
+         dyn.Length:=n+k;
+         DWSCopyData(argData.Data[exec], argData.Addr[exec],
+                     dyn.Data, n*dyn.ElementSize, k*dyn.ElementSize);
 
       end;
    end;

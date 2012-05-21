@@ -6,7 +6,7 @@ ints.Add('a');
 ints.Add(1);
 ints.Add(1.5);
 ints.Add(False);
-ints.Add(stints);  // will be supported later
+ints.Add(stints);  
 ints.Add(nil);
 
 var objs : array of TObject;

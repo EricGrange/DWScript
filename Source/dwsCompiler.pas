@@ -67,7 +67,7 @@ type
    TCompilerGetDefaultEnvironmentEvent = function : IdwsEnvironment of object;
    TCompilerGetDefaultLocalizerEvent = function : IdwsLocalizer of object;
 
-   TdwsNameListOption = (nloAllowDots, nloNoCheckSpecials);
+   TdwsNameListOption = (nloAllowDots, nloNoCheckSpecials, nloAllowStrings);
    TdwsNameListOptions = set of TdwsNameListOption;
 
    // TdwsLocalizerComponent
@@ -376,7 +376,6 @@ type
          function ReadClass(const typeName : UnicodeString; const flags : TClassSymbolFlags) : TClassSymbol;
          procedure ReadClassVars(const ownerSymbol : TCompositeTypeSymbol; aVisibility : TdwsVisibility);
          procedure ReadClassConst(const ownerSymbol : TCompositeTypeSymbol; aVisibility : TdwsVisibility);
-         procedure ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
          function ReadInterface(const typeName : UnicodeString) : TInterfaceSymbol;
          function ReadConnectorSym(const name : UnicodeString; baseExpr : TTypedExpr;
                                    const connectorType : IConnectorType; isWrite: Boolean) : TProgramExpr;
@@ -463,9 +462,9 @@ type
          function ReadInstr : TNoResultExpr;
          function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
          function ReadIntfMethodDecl(intfSym : TInterfaceSymbol; funcKind : TFuncKind) : TSourceMethodSymbol;
-         procedure ReadMethodDecl(const hotPos : TScriptPos;
-                                  ownerSym : TCompositeTypeSymbol; funcKind : TFuncKind;
-                                  aVisibility : TdwsVisibility; isClassMethod : Boolean);
+         function ReadMethodDecl(const hotPos : TScriptPos;
+                                 ownerSym : TCompositeTypeSymbol; funcKind : TFuncKind;
+                                 aVisibility : TdwsVisibility; isClassMethod : Boolean) : TMethodSymbol;
          function ReadMethodImpl(ownerSym : TCompositeTypeSymbol; funcKind : TFuncKind;
                                  isClassMethod : Boolean) : TMethodSymbol;
          procedure ReadDeprecated(funcSym : TFuncSymbol);
@@ -511,6 +510,7 @@ type
                                             const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExpr;
 
          function ReadRecordDecl(const typeName : UnicodeString) : TRecordSymbol;
+         procedure ReadFieldsDecl(struct : TStructuredTypeSymbol; visibility : TdwsVisibility);
 
          function ReadHelperDecl(const typeName : UnicodeString) : THelperSymbol;
 
@@ -572,7 +572,7 @@ type
          function GetMethodExpr(meth: TMethodSymbol; Expr: TTypedExpr; RefKind: TRefKind;
                                 const scriptPos: TScriptPos; ForceStatic : Boolean): TFuncExpr;
 
-         procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol);
+         procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol; const hotPos : TScriptPos);
          procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : UnicodeString; typ1, typ2 : TTypeSymbol);
 
          function CreateProgram(const systemTable : ISystemSymbolTable;
@@ -1073,7 +1073,7 @@ end;
 
 // MemberSymbolWithNameAlreadyExists
 //
-procedure TdwsCompiler.MemberSymbolWithNameAlreadyExists(sym : TSymbol);
+procedure TdwsCompiler.MemberSymbolWithNameAlreadyExists(sym : TSymbol; const hotPos : TScriptPos);
 var
    msgFmt : UnicodeString;
 begin
@@ -1089,7 +1089,7 @@ begin
       Assert(sym is TMethodSymbol);
       msgFmt:=CPE_MethodRedefined
    end;
-   FMsgs.AddCompilerErrorFmt(FTok.HotPos, msgFmt, [sym.Name])
+   FMsgs.AddCompilerErrorFmt(hotPos, msgFmt, [sym.Name])
 end;
 
 // IncompatibleTypes
@@ -2457,7 +2457,7 @@ begin
    // Check if name is already used
    sym:=intfSym.Members.FindSymbolFromScope(name, intfSym);
    if sym<>nil then
-      MemberSymbolWithNameAlreadyExists(sym);
+      MemberSymbolWithNameAlreadyExists(sym, methPos);
 
    // Read declaration of method
    Result:=TSourceMethodSymbol.Create(name, funcKind, intfSym, cvPublished, False);
@@ -2479,8 +2479,8 @@ end;
 
 // ReadMethodDecl
 //
-procedure TdwsCompiler.ReadMethodDecl(const hotPos : TScriptPos; ownerSym : TCompositeTypeSymbol; funcKind: TFuncKind;
-                                      aVisibility : TdwsVisibility; isClassMethod: Boolean);
+function TdwsCompiler.ReadMethodDecl(const hotPos : TScriptPos; ownerSym : TCompositeTypeSymbol; funcKind: TFuncKind;
+                                     aVisibility : TdwsVisibility; isClassMethod: Boolean) : TMethodSymbol;
 
    function OverrideParamsCheck(newMeth, oldMeth : TMethodSymbol) : Boolean;
    var
@@ -2524,7 +2524,7 @@ begin
       end else begin
          meth:=nil;
          if ownerSym.Members.HasSymbol(sym) then
-            MemberSymbolWithNameAlreadyExists(sym);
+            MemberSymbolWithNameAlreadyExists(sym, methPos);
       end;
    end else meth:=nil;
 
@@ -2565,7 +2565,7 @@ begin
          funcResult.SetOverlap(meth);
          if meth<>nil then begin
             if MethPerfectMatchOverload(funcResult, False)<>nil then
-               MemberSymbolWithNameAlreadyExists(sym)
+               MemberSymbolWithNameAlreadyExists(sym, Ftok.HotPos)
             else if meth.StructSymbol=ownerSym then begin
                if FTok.Test(ttOVERRIDE) then begin
                   // this could actually be an override of an inherited method
@@ -2692,6 +2692,8 @@ begin
       ReadProcBody(funcResult);
       ReadSemiColon;
    end;
+
+   Result:=funcResult;
 end;
 
 // ReadMethodImpl
@@ -5928,12 +5930,17 @@ begin
             CheckRestricted;
             if CheckArguments(1, 99) then begin
                for i:=0 to argList.Count-1 do begin
-                  if    (argList[0].Typ=nil)
-                     or not (   arraySym.Typ.IsCompatible(argList[0].Typ)
-                             or arraySym.IsCompatible(argList[0].Typ)) then begin
-                     IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
-                                       arraySym.Typ, argList[0].Typ);
+                  if    (argList[i].Typ=nil)
+                     or not (   arraySym.Typ.IsCompatible(argList[i].Typ)
+                             or arraySym.IsCompatible(argList[i].Typ)
+                             or (    (argList[i].Typ is TStaticArraySymbol)
+                                 and (   arraySym.Typ.IsCompatible(argList[i].Typ.Typ)
+                                      or (argList[i].Typ.Size=0)))) then begin
+                     IncompatibleTypes(argPosArray[i], CPE_IncompatibleParameterTypes,
+                                       arraySym.Typ, argList[i].Typ);
                      Break;
+                  end else if argList[i].ClassType=TArrayConstantExpr then begin
+                     TArrayConstantExpr(argList[i]).Prepare(FProg, arraySym.Typ);
                   end;
                end;
                Result:=TArrayAddExpr.Create(FProg, namePos, baseExpr, argList);
@@ -6084,8 +6091,10 @@ begin
    n:=0;
    names.Clear;
    repeat
-      if not FTok.TestName then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+      if not FTok.TestName then begin
+         if not ((nloAllowStrings in Options) and FTok.Test(ttStrVal)) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+      end;
 
       if n=Length(posArray) then
          SetLength(posArray, n+1);
@@ -6557,7 +6566,7 @@ begin
                else
 
                   if FTok.TestName then begin
-                     ReadClassFields(Result, visibility);
+                     ReadFieldsDecl(Result, visibility);
                      if not (FTok.TestDelete(ttSEMI) or FTok.Test(ttEND)) then
                         Break;
                   end else Break;
@@ -6613,46 +6622,6 @@ begin
    factory:=TCompositeTypeSymbolFactory.Create(Self, ownerSymbol, aVisibility);
    ReadConstDecl(factory);
    ReadSemiColon;
-end;
-
-// ReadClassFields
-//
-procedure TdwsCompiler.ReadClassFields(const classSymbol : TClassSymbol; aVisibility : TdwsVisibility);
-var
-   i : Integer;
-   sym : TSymbol;
-   typ : TTypeSymbol;
-   fieldSym : TFieldSymbol;
-   names : TStringList;
-   posArray : TScriptPosArray;    // positions of items pulled from ReadNameList call
-begin
-   names:=TStringList.Create;
-   try
-      if classSymbol.IsExternal then
-         ReadNameList(names, posArray, [nloNoCheckSpecials])
-      else ReadNameList(names, posArray);
-
-      if not FTok.TestDelete(ttCOLON) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
-
-      typ:=ReadType('', tcMember);
-
-      for i := 0 to Names.Count - 1 do begin
-         // Check if name isn't already used
-         sym := classSymbol.Members.FindLocal(Names[i]);
-         if Assigned(sym) then
-            MemberSymbolWithNameAlreadyExists(sym);
-
-         // Create Internal Field
-         fieldSym := TFieldSymbol.Create(Names[i], typ, aVisibility);
-         classSymbol.AddField(fieldSym);
-
-         // Enter Field symbol in dictionary
-         RecordSymbolUse(fieldSym, PosArray[i], [suDeclaration]);
-      end;
-   finally
-      names.Free;
-   end;
 end;
 
 // ReadInterface
@@ -6871,8 +6840,8 @@ begin
    if Assigned(sym) then begin
       if sym is TPropertySymbol then begin
          if TPropertySymbol(sym).OwnerSymbol = ownerSym then
-            MemberSymbolWithNameAlreadyExists(sym);
-      end else MemberSymbolWithNameAlreadyExists(sym);
+            MemberSymbolWithNameAlreadyExists(sym, propNamePos);
+      end else MemberSymbolWithNameAlreadyExists(sym, propNamePos);
    end;
 
    arrayIndices := TUnSortedSymbolTable.Create;
@@ -7014,12 +6983,9 @@ end;
 //
 function TdwsCompiler.ReadRecordDecl(const typeName : UnicodeString) : TRecordSymbol;
 var
-   x : Integer;
    names : TStringList;
-   member : TFieldSymbol;
-   typ : TTypeSymbol;
    propSym : TPropertySymbol;
-   posArray : TScriptPosArray;
+   meth : TMethodSymbol;
    hotPos : TScriptPos;
    visibility : TdwsVisibility;
    tt : TTokenType;
@@ -7029,7 +6995,9 @@ begin
       FProg.Table.AddSymbol(Result); // auto-forward
       names:=TStringList.Create;
       try
-         visibility:=cvPublic;
+         if typeName='' then
+            visibility:=cvPublished
+         else visibility:=cvPublic;
 
          repeat
 
@@ -7047,13 +7015,19 @@ begin
                   propSym := ReadPropertyDecl(Result, visibility);
                   Result.AddProperty(propSym);
                end;
-               ttFUNCTION, ttPROCEDURE, ttMETHOD :
-                  ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, False);
+               ttFUNCTION, ttPROCEDURE, ttMETHOD : begin
+                  meth:=ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, False);
+                  if meth.IsForwarded then
+                     FMsgs.AddCompilerError(hotPos, CPE_AnonymousRecordMethodsMustBeInline);
+               end;
                ttCLASS : begin
                   tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD, ttVAR, ttCONST]);
                   case tt of
-                     ttPROCEDURE, ttFUNCTION, ttMETHOD :
-                        ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, True);
+                     ttPROCEDURE, ttFUNCTION, ttMETHOD : begin
+                        meth:=ReadMethodDecl(hotPos, Result, cTokenToFuncKind[tt], visibility, True);
+                        if meth.IsForwarded then
+                           FMsgs.AddCompilerError(hotPos, CPE_AnonymousRecordMethodsMustBeInline);
+                     end;
                      ttVAR :
                         ReadClassVars(Result, visibility);
                      ttCONST :
@@ -7068,23 +7042,7 @@ begin
                if FTok.Test(ttEND) then
                   Break;
 
-               ReadNameList(names, posArray);
-
-               if not FTok.TestDelete(ttCOLON) then
-                  FMsgs.AddCompilerError(FTok.HotPos, CPE_ColonExpected)
-               else begin
-                  typ:=ReadType('', tcMember);
-                  for x := 0 to names.Count - 1 do begin
-                     if Result.Members.FindLocal(names[x]) <> nil then
-                        FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameAlreadyExists, [names[x]]);
-
-                     member := TFieldSymbol.Create(names[x], typ, visibility);
-                     Result.AddField(member);
-
-                     // Add member symbols and positions
-                     RecordSymbolUse(member, posArray[x], [suDeclaration]);
-                  end;
-               end;
+               ReadFieldsDecl(Result, visibility);
 
                if not FTok.TestDelete(ttSEMI) then
                   Break;
@@ -7106,6 +7064,101 @@ begin
          FSymbolDictionary.Remove(Result);
       Result.Free;
       raise;
+   end;
+end;
+
+// ReadFieldsDecl
+//
+procedure TdwsCompiler.ReadFieldsDecl(struct : TStructuredTypeSymbol; visibility : TdwsVisibility);
+var
+   x : Integer;
+   names : TStringList;
+   sym : TSymbol;
+   member : TFieldSymbol;
+   typ : TTypeSymbol;
+   posArray : TScriptPosArray;
+   expr : TTypedExpr;
+   exprData : TData;
+   detachTyp : Boolean;
+   options : TdwsNameListOptions;
+begin
+   names:=TStringList.Create;
+   try
+      options:=[];
+      if struct.Name='' then
+         Include(options, nloAllowStrings);
+      if struct.IsExternal then
+         Include(options, nloNoCheckSpecials);
+      ReadNameList(names, posArray, options);
+
+      if FTok.TestDelete(ttCOLON) then
+         typ:=ReadType('', tcConstant)
+      else typ:=nil;
+
+      if FTok.TestDeleteAny([ttEQ, ttASSIGN])<>ttNone then begin
+         detachTyp:=False;
+         expr:=ReadExpr(nil);
+         try
+            if Assigned(typ) then begin
+               if not typ.IsCompatible(expr.typ) then
+                  IncompatibleTypes(FTok.HotPos, CPE_AssignIncompatibleTypes, expr.typ, typ);
+            end else begin
+               typ:=expr.typ;
+               detachTyp:=(typ.Name='');
+            end;
+
+            if (typ=nil) or (expr=nil) then begin
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+               if typ=nil then
+                  typ:=FProg.TypVariant;
+            end else if not expr.IsConstant then begin
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+            end else if not FMsgs.HasErrors then begin
+               SetLength(exprData, typ.Size);
+               if typ.Size=1 then begin
+                  expr.EvalAsVariant(FExec, exprData[0]);
+               end else begin
+                  FExec.Stack.Push(typ.Size);
+                  try
+                     DWSCopyData((expr as TDataExpr).Data[FExec],
+                                 (expr as TDataExpr).Addr[FExec],
+                                 exprData, 0, typ.Size);
+                  finally
+                     FExec.Stack.Pop(typ.Size);
+                  end;
+               end;
+            end;
+         finally
+            if detachTyp then begin
+               if not FProg.Table.HasSymbol(typ) then
+                  FProg.Table.AddSymbol(typ);
+               expr.Typ:=nil;
+            end;
+            FreeAndNil(expr);
+         end;
+      end else begin
+         exprData:=nil;
+         if typ=nil then begin
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ColonExpected);
+            typ:=FProg.TypVariant;
+         end;
+      end;
+
+      for x:=0 to names.Count - 1 do begin
+         sym:=struct.Members.FindLocal(names[x]);
+         if Assigned(sym) then
+            MemberSymbolWithNameAlreadyExists(sym, posArray[x]);
+
+         member:=TFieldSymbol.Create(names[x], typ, visibility);
+         struct.AddField(member);
+         if exprData<>nil then
+            member.DefaultValue:=exprData;
+
+         // Add member symbols and positions
+         RecordSymbolUse(member, posArray[x], [suDeclaration]);
+      end;
+   finally
+      names.Free;
    end;
 end;
 
@@ -7927,6 +7980,20 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       Result:=TConstExpr.CreateTyped(FProg, recordType, data);
    end;
 
+   function ReadAnonymousRecord : TConstExpr;
+   var
+      recordType : TRecordSymbol;
+      data : TData;
+   begin
+      recordType:=ReadRecordDecl('');
+      FProg.Table.AddSymbol(recordType);
+
+      SetLength(data, recordType.Size);
+      recordType.InitData(data, 0);
+
+      Result:=TConstExpr.CreateTyped(FProg, recordType, data);
+   end;
+
    procedure ReportIncompatibleAt(const scriptPos : TScriptPos; expr : TTypedExpr);
    var
       exprTyp : String;
@@ -7947,7 +8014,8 @@ var
 begin
    hotPos:=FTok.HotPos;
    tt:=FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
-                     ttTRUE, ttFALSE, ttNIL, ttFUNCTION, ttPROCEDURE, ttCONST]);
+                     ttTRUE, ttFALSE, ttNIL, ttFUNCTION, ttPROCEDURE,
+                     ttCONST, ttRECORD]);
    if tt<>ttNone then
       FTok.KillToken;
    case tt of
@@ -8008,6 +8076,8 @@ begin
       end;
       ttCONST :
          Result:=ReadInlineConstRecord(nil);
+      ttRECORD :
+         Result:=ReadAnonymousRecord;
    else
       if (FTok.TestAny([ttINHERITED, ttNEW])<>ttNone) or FTok.TestName then begin
          // Variable or Function

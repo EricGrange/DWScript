@@ -1133,16 +1133,21 @@ type
          FStructSymbol : TStructuredTypeSymbol;
          FOffset : Integer;
          FVisibility : TdwsVisibility;
+         FDefaultValue : TData;
 
       public
-         constructor Create(const name : UnicodeString; typ : TTypeSymbol; aVisibility : TdwsVisibility);
+         constructor Create(const name : UnicodeString; typ : TTypeSymbol;
+                            aVisibility : TdwsVisibility);
 
          function QualifiedName : UnicodeString; override;
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
 
+         procedure InitData(const data : TData; structOffset : Integer);
+
          property StructSymbol : TStructuredTypeSymbol read FStructSymbol;
          property Offset : Integer read FOffset;
          property Visibility : TdwsVisibility read FVisibility write FVisibility;
+         property DefaultValue : TData read FDefaultValue write FDefaultValue;
    end;
 
    // record member1: Integer; member2: Integer end;
@@ -1305,7 +1310,7 @@ type
 
          function AllocateVMTindex : Integer;
 
-         function  DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
+         function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
       public
          constructor Create(const name : UnicodeString; aUnit : TSymbol);
@@ -1329,8 +1334,8 @@ type
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
-         function  VMTMethod(index : Integer) : TMethodSymbol;
-         function  VMTCount : Integer;
+         function VMTMethod(index : Integer) : TMethodSymbol;
+         function VMTCount : Integer;
 
          function FindClassOperatorStrict(tokenType : TTokenType; paramType : TSymbol; recursive : Boolean) : TClassOperatorSymbol;
          function FindClassOperator(tokenType : TTokenType; paramType : TTypeSymbol) : TClassOperatorSymbol;
@@ -2328,15 +2333,11 @@ end;
 //
 procedure TRecordSymbol.InitData(const data : TData; offset : Integer);
 var
-   field : TFieldSymbol;
    sym : TSymbol;
 begin
-   for sym in FMembers do begin
-      if sym.ClassType=TFieldSymbol then begin
-         field:=TFieldSymbol(sym);
-         field.Typ.InitData(Data, offset+field.Offset);
-      end;
-   end;
+   for sym in FMembers do
+      if sym.ClassType=TFieldSymbol then
+         TFieldSymbol(sym).InitData(Data, offset);
 end;
 
 // IsCompatible
@@ -2498,6 +2499,15 @@ end;
 function TFieldSymbol.IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean;
 begin
    Result:=(FVisibility>=aVisibility);
+end;
+
+// InitData
+//
+procedure TFieldSymbol.InitData(const data : TData; structOffset : Integer);
+begin
+   if DefaultValue<>nil then
+      DWSCopyData(DefaultValue, 0, data, structOffset+Offset, Typ.Size)
+   else Typ.InitData(data, structOffset+Offset);
 end;
 
 // ------------------

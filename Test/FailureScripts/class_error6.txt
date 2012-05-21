@@ -1,1 +1,2 @@
 Syntax Error: Colon ":" expected [line: 2, column: 4]
+Syntax Error: END expected [line: 2, column: 4]

@@ -176,6 +176,7 @@ const
   CPE_ClassPartialModifiersNotMatched = 'Modifiers do not match previous "partial" declaration of class';
   CPE_FuncForwardAlreadyExists = 'There is already a forward declaration of this function!';
   CPE_ForwardNotImplemented = 'The function "%s" was forward declared but not implemented!';
+  CPE_AnonymousRecordMethodsMustBeInline = 'Anonymous record methods must be inline!';
   CPE_CantImplementAFunctionType = 'Can''t implement a function type';
   CPE_ClassIsSealed = 'Class "%s" is sealed, inheriting is not allowed!';
   CPE_ClassIsStatic = 'Class "%s" is static, instantiation not allowed!';
