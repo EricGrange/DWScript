@@ -76,6 +76,7 @@ type
                               const addToList : TProcAddToList = nil);
          procedure AddMetaMembers(struc : TCompositeTypeSymbol; from : TSymbol;
                                   const addToList : TProcAddToList = nil);
+         procedure AddNameSpace(unitSym : TUnitSymbol);
    end;
 
    TdwsSuggestionsOption = (soNoReservedWords);
@@ -117,7 +118,8 @@ type
          function CreateHelper(const name : String; resultType : TTypeSymbol;
                                const args : array of const) : TFuncSymbol;
          procedure AddStaticArrayHelpers(list : TSimpleSymbolList);
-         procedure AddDynamicArrayHelpers(dyn : TDynamicArraySymbol;list : TSimpleSymbolList);
+         procedure AddDynamicArrayHelpers(dyn : TDynamicArraySymbol; list : TSimpleSymbolList);
+         procedure AddUnitSymbol(unitSym : TUnitSymbol; list : TSimpleSymbolList);
 
          procedure AddReservedWords;
          procedure AddImmediateSuggestions;
@@ -127,7 +129,8 @@ type
 
       public
          constructor Create(const prog : IdwsProgram; const sourcePos : TScriptPos;
-                            const options : TdwsSuggestionsOptions = []);
+                            const options : TdwsSuggestionsOptions = [];
+                            customSuggestions : TSimpleSymbolList = nil);
          destructor Destroy; override;
    end;
 
@@ -146,7 +149,8 @@ implementation
 // Create
 //
 constructor TdwsSuggestions.Create(const prog : IdwsProgram; const sourcePos : TScriptPos;
-                                   const options : TdwsSuggestionsOptions = []);
+                                   const options : TdwsSuggestionsOptions = [];
+                                   customSuggestions : TSimpleSymbolList = nil);
 begin
    FProg:=prog;
    FSourcePos:=sourcePos;
@@ -159,6 +163,8 @@ begin
    AnalyzeLocalTokens;
 
    AddImmediateSuggestions;
+   if customSuggestions<>nil then
+      AddToList(customSuggestions);
    AddContextSuggestions;
    AddUnitSuggestions;
    AddGlobalSuggestions;
@@ -370,6 +376,16 @@ begin
    list.AddSymbolTable(FDynArrayHelpers);
 end;
 
+// AddUnitSymbol
+//
+procedure TdwsSuggestions.AddUnitSymbol(unitSym : TUnitSymbol; list : TSimpleSymbolList);
+begin
+   if unitSym.Main<>nil then
+      list.AddSymbolTable(unitSym.Table);
+   if unitSym.NameSpace<>nil then
+      list.AddNameSpace(unitSym);
+end;
+
 // AddReservedWords
 //
 procedure TdwsSuggestions.AddReservedWords;
@@ -447,7 +463,7 @@ begin
 
          end else if FPreviousSymbol is TUnitSymbol then begin
 
-            list.AddSymbolTable(TUnitSymbol(FPreviousSymbol).Main.Table);
+            AddUnitSymbol(TUnitSymbol(FPreviousSymbol), list);
 
          end else if FPreviousSymbol.Typ is TArraySymbol then begin
 
@@ -741,10 +757,13 @@ begin
    if table is TLinkedSymbolTable then
       table:=TLinkedSymbolTable(table).ParentSymbolTable;
    for sym in table do begin
-      if sym is TUnitSymbol then continue;
-      Add(sym);
-      if sym.ClassType=TEnumerationSymbol  then
-         AddEnumeration(TEnumerationSymbol(sym));
+      if sym is TUnitSymbol then
+         AddNameSpace(TUnitSymbol(sym))
+      else begin
+         Add(sym);
+         if sym.ClassType=TEnumerationSymbol  then
+            AddEnumeration(TEnumerationSymbol(sym));
+      end;
    end;
 end;
 
@@ -838,6 +857,20 @@ begin
          visibility:=cvProtected;
       struc:=struc.Parent;
    until struc=nil;
+end;
+
+// AddNameSpace
+//
+procedure TSimpleSymbolList.AddNameSpace(unitSym : TUnitSymbol);
+var
+   i : Integer;
+begin
+   if unitSym.Main<>nil then
+      Add(unitSym)
+   else begin
+      for i:=0 to unitSym.NameSpace.Count-1 do
+         AddNameSpace(unitSym.NameSpace.Objects[i] as TUnitSymbol);
+   end;
 end;
 
 end.

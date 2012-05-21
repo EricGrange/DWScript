@@ -586,6 +586,7 @@ type
          function CreateArrayLength(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
          function CreateArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TArrayExpr;
 
+         function ResolveOperatorFor(token : TTokenType; aLeftType, aRightType : TTypeSymbol) : TOperatorSymbol;
          function CreateTypedOperatorExpr(token : TTokenType; aLeft, aRight : TTypedExpr) : TTypedExpr;
          function CreateAssignOperatorExpr(token : TTokenType; const scriptPos : TScriptPos;
                                            aLeft, aRight : TTypedExpr) : TAssignExpr;
@@ -3105,13 +3106,15 @@ begin
       raise;
    end;
 
+   FProg.Table.AddSymbol(Result);
    if (Result.Token<>ttNone) and (Result.UsesSym<>nil) then begin
-      FProg.Table.AddSymbol(Result);
       if FProg.Table<>FProg.Root.RootTable then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_OverloadOnlyInGlobalScope)
-      else if not FOperators.RegisterOperator(Result) then
-         FMsgs.AddCompilerError(opPos, CPE_OverloadAlreadyExists);
-   end else FreeAndNil(Result);
+      else begin
+         if FProg.Table.HasSameLocalOperator(Result) then
+            FMsgs.AddCompilerError(opPos, CPE_OverloadAlreadyExists);
+      end;
+   end;
 end;
 
 // ReadBlocks
@@ -6507,8 +6510,10 @@ begin
          if Result.Parent<>nil then begin
             if ancestorTyp<>Result.Parent then
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassAncestorDoesNotMatch);
-         end else if Result.Parent<>ancestorTyp then
-            Result.InheritFrom(ancestorTyp);
+         end else if Result.Parent<>ancestorTyp then begin
+            if (not Result.IsExternal) or (ancestorTyp.IsExternal) then
+               Result.InheritFrom(ancestorTyp);
+         end;
 
          visibility:=cvPublished;
 
@@ -9709,21 +9714,57 @@ begin
    end else Result:=nil;
 end;
 
+type
+   // manual "anonymous method" because compiler goes into internal error hell otherwise
+   TOperatorResolver = class
+      Resolved : TOperatorSymbol;
+      LeftType, RightType : TTypeSymbol;
+      function Callback(opSym : TOperatorSymbol) : Boolean;
+   end;
+
+// Callback
+//
+function TOperatorResolver.Callback(opSym : TOperatorSymbol) : Boolean;
+begin
+   Result:=(opSym.Params[0]=LeftType) and (opSym.Params[1]=RightType);
+   if Result or (Resolved=nil) then
+      Resolved:=opSym;
+end;
+
+// ResolveOperatorFor
+//
+function TdwsCompiler.ResolveOperatorFor(token : TTokenType; aLeftType, aRightType : TTypeSymbol) : TOperatorSymbol;
+var
+   resolver : TOperatorResolver;
+begin
+   resolver:=TOperatorResolver.Create;
+   try
+      resolver.LeftType:=aLeftType;
+      resolver.RightType:=aRightType;
+      if FProg.Table.EnumerateOperatorsFor(token, aLeftType, aRightType, resolver.Callback) then
+         Exit(resolver.Resolved);
+      FOperators.EnumerateOperatorsFor(token, aLeftType, aRightType, resolver.Callback);
+      Result:=resolver.Resolved;
+   finally
+      resolver.Free;
+   end;
+end;
+
 // CreateTypedOperatorExpr
 //
 function TdwsCompiler.CreateTypedOperatorExpr(token : TTokenType; aLeft, aRight : TTypedExpr) : TTypedExpr;
 var
-   op : PRegisteredOperator;
+   opSym : TOperatorSymbol;
    funcExpr : TFuncExprBase;
 begin
    Result:=nil;
    if (aLeft=nil) or (aRight=nil) then Exit;
-   op:=FOperators.OperatorFor(token, aLeft.Typ, aRight.Typ);
-   if op<>nil then begin
-      if op.BinExprClass<>nil then
-         Result:=op.BinExprClass.Create(FProg, aLeft, aRight)
-      else if op.FuncSym<>nil then begin
-         funcExpr:=GetFuncExpr(op.FuncSym);
+   opSym:=ResolveOperatorFor(token, aLeft.Typ, aRight.Typ);
+   if opSym<>nil then begin
+      if opSym.BinExprClass<>nil then
+         Result:=TBinaryOpExprClass(opSym.BinExprClass).Create(FProg, aLeft, aRight)
+      else if opSym.UsesSym<>nil then begin
+         funcExpr:=GetFuncExpr(opSym.UsesSym);
          funcExpr.AddArg(aLeft);
          funcExpr.AddArg(aRight);
          TypeCheckArgs(funcExpr, nil);
@@ -9739,14 +9780,14 @@ end;
 function TdwsCompiler.CreateAssignOperatorExpr(token : TTokenType; const scriptPos : TScriptPos;
                                                aLeft, aRight : TTypedExpr) : TAssignExpr;
 var
-   op : PRegisteredOperator;
+   opSym : TOperatorSymbol;
 begin
    Result:=nil;
    if (aLeft=nil) or (aRight=nil) then Exit;
-   op:=FOperators.OperatorFor(token, aLeft.Typ, aRight.Typ);
-   if op<>nil then begin
-      if op.AssignExprClass<>nil then
-         Result:=op.AssignExprClass.Create(FProg, scriptPos, aLeft as TDataExpr, aRight);
+   opSym:=ResolveOperatorFor(token, aLeft.Typ, aRight.Typ);
+   if opSym<>nil then begin
+      if opSym.AssignExprClass<>nil then
+         Result:=TAssignExprClass(opSym.AssignExprClass).Create(FProg, scriptPos, aLeft as TDataExpr, aRight);
    end;
 end;
 

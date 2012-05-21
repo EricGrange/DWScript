@@ -43,6 +43,7 @@ type
    TTypeSymbol = class;
    TParamSymbol = class;
    THelperSymbol = class;
+   TOperatorSymbol = class;
    TdwsRuntimeMessageList = class;
 
    TdwsExprLocation = record
@@ -290,7 +291,9 @@ type
 
    THelperSymbolEnumerationCallback = function (helper : THelperSymbol) : Boolean of object;
 
-   TSymbolTableFlag = (stfSorted, stfHasHelpers);
+   TOperatorSymbolEnumerationCallback = function (opSym : TOperatorSymbol) : Boolean of object;
+
+   TSymbolTableFlag = (stfSorted, stfHasHelpers, stfHasOperators);
    TSymbolTableFlags = set of TSymbolTableFlag;
 
    // A table of symbols connected to other symboltables (property Parents)
@@ -341,6 +344,12 @@ type
 
          function EnumerateLocalHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean; virtual;
          function EnumerateHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean; virtual;
+
+         function EnumerateLocalOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
+                                             const callback : TOperatorSymbolEnumerationCallback) : Boolean; virtual;
+         function EnumerateOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
+                                        const callback : TOperatorSymbolEnumerationCallback) : Boolean; virtual;
+         function HasSameLocalOperator(anOpSym : TOperatorSymbol) : Boolean; virtual;
 
          function HasClass(const aClass : TSymbolClass) : Boolean;
          function HasSymbol(sym : TSymbol) : Boolean;
@@ -797,11 +806,13 @@ type
          property SubExprCount;
    end;
 
-   TOperatorSymbol = class(TSymbol)
+   TOperatorSymbol = class sealed (TSymbol)
       private
          FToken : TTokenType;
          FParams : TTypeSymbols;
          FUsesSym : TFuncSymbol;
+         FBinExprClass : TExprBaseClass;
+         FAssignExprClass : TExprBaseClass;
 
       protected
          function GetCaption : UnicodeString; override;
@@ -815,6 +826,8 @@ type
          property Token : TTokenType read FToken write FToken;
          property Params : TTypeSymbols read FParams;
          property UsesSym : TFuncSymbol read FUsesSym write FUsesSym;
+         property BinExprClass : TExprBaseClass read FBinExprClass write FBinExprClass;
+         property AssignExprClass : TExprBaseClass read FAssignExprClass write FAssignExprClass;
    end;
 
    // type x = TMyType;
@@ -1320,12 +1333,12 @@ type
          procedure AddMethod(methSym : TMethodSymbol); override;
          procedure AddOperator(Sym: TClassOperatorSymbol);
 
-         function AddInterface(intfSym : TInterfaceSymbol; visibility : TdwsVisibility;
-                               var missingMethod : TMethodSymbol) : Boolean; // True if added
-         function AddOverriddenInterface(const ancestorResolved : TResolvedInterface) : Boolean; // True if added
+         function  AddInterface(intfSym : TInterfaceSymbol; visibility : TdwsVisibility;
+                                var missingMethod : TMethodSymbol) : Boolean; // True if added
+         function  AddOverriddenInterface(const ancestorResolved : TResolvedInterface) : Boolean; // True if added
          procedure AddOverriddenInterfaces;
-         function ResolveInterface(intfSym : TInterfaceSymbol; var resolved : TResolvedInterface) : Boolean;
-         function ImplementsInterface(intfSym : TInterfaceSymbol) : Boolean;
+         function  ResolveInterface(intfSym : TInterfaceSymbol; var resolved : TResolvedInterface) : Boolean;
+         function  ImplementsInterface(intfSym : TInterfaceSymbol) : Boolean;
          procedure SetIsPartial; inline;
 
          function  FieldAtOffset(offset : Integer) : TFieldSymbol; override;
@@ -4732,6 +4745,83 @@ begin
    Result:=False;
 end;
 
+// EnumerateLocalOperatorsFor
+//
+function TSymbolTable.EnumerateLocalOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
+                                             const callback : TOperatorSymbolEnumerationCallback) : Boolean;
+var
+   i : Integer;
+   sym : TSymbol;
+   opSym : TOperatorSymbol;
+   leftParam, rightParam : TTypeSymbol;
+begin
+   if stfHasOperators in FFlags then begin
+      for i:=0 to Count-1 do begin
+         sym:=Symbols[i];
+         if sym.ClassType=TOperatorSymbol then begin
+            opSym:=TOperatorSymbol(sym);
+            if opSym.Token<>aToken then continue;
+            leftParam:=opSym.Params[0];
+            if     (aLeftType<>leftParam)
+               and not aLeftType.IsOfType(leftParam) then continue;
+            rightParam:=opSym.Params[1];
+            if     (aRightType<>rightParam)
+               and not aRightType.IsOfType(rightParam) then continue;
+            if callback(opSym) then Exit(True);
+         end;
+      end;
+   end;
+   Result:=False;
+end;
+
+// EnumerateOperatorsFor
+//
+function TSymbolTable.EnumerateOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
+                                         const callback : TOperatorSymbolEnumerationCallback) : Boolean;
+var
+   i : Integer;
+   p : TSymbolTable;
+begin
+   if EnumerateLocalOperatorsFor(aToken, aLeftType, aRightType, callback) then Exit(True);
+   for i:=0 to ParentCount-1 do begin
+      p:=Parents[i];
+      if p.EnumerateOperatorsFor(aToken, aLeftType, aRightType, callback) then Exit(True);
+   end;
+   Result:=False;
+end;
+
+// HasSameLocalOperator
+//
+function TSymbolTable.HasSameLocalOperator(anOpSym : TOperatorSymbol) : Boolean;
+var
+   i : Integer;
+   sym : TSymbol;
+   opSym : TOperatorSymbol;
+   leftType, rightType : TTypeSymbol;
+begin
+   Result:=False;
+   if not (stfHasOperators in FFlags) then Exit;
+   if Length(anOpSym.Params)<>2 then Exit;
+   leftType:=anOpSym.Params[0];
+   rightType:=anOpSym.Params[1];
+   if (leftType=nil) or (rightType=nil) then Exit;
+
+   leftType:=leftType.UnAliasedType;
+   rightType:=rightType.UnAliasedType;
+   for i:=0 to Count-1 do begin
+      sym:=Symbols[i];
+      if sym=anOpSym then continue;
+      if sym.ClassType=TOperatorSymbol then begin
+         opSym:=TOperatorSymbol(sym);
+         if     (opSym.Token=anOpSym.Token)
+            and (leftType=opSym.Params[0].UnAliasedType)
+            and (rightType=opSym.Params[1].UnAliasedType) then begin
+            Exit(True);
+         end;
+      end;
+   end;
+end;
+
 // HasClass
 //
 function TSymbolTable.HasClass(const aClass : TSymbolClass) : Boolean;
@@ -4778,10 +4868,15 @@ end;
 // AddSymbol
 //
 function TSymbolTable.AddSymbol(sym : TSymbol) : Integer;
+var
+   ct : TClass;
 begin
    Result:=AddSymbolDirect(sym);
-   if sym.ClassType=THelperSymbol then
+   ct:=sym.ClassType;
+   if ct=THelperSymbol then
       Include(FFlags, stfHasHelpers)
+   else if ct=TOperatorSymbol then
+      Include(FFlags, stfHasOperators)
    else if (FAddrGenerator<>nil) and sym.InheritsFrom(TDataSymbol) then
       TDataSymbol(sym).AllocateStackAddr(FAddrGenerator);
 end;

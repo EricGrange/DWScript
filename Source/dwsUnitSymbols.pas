@@ -24,7 +24,7 @@ unit dwsUnitSymbols;
 interface
 
 uses SysUtils, dwsUtils, dwsSymbols, dwsErrors, dwsStack, dwsXPlatform,
-   dwsStrings;
+   dwsStrings, dwsTokenizer;
 
 type
 
@@ -153,6 +153,7 @@ type
 
          property Main : TUnitMainSymbol read FMain write FMain;
          property Implicit : Boolean read FImplicit write FImplicit;
+         property NameSpace : TFastCompareTextList read FNameSpace;
 
          function Table : TUnitSymbolTable; inline;
          function InterfaceTable : TSymbolTable; inline;
@@ -200,14 +201,25 @@ type
          constructor Create(const parent : IStaticSymbolTable);
 
          function FindLocal(const Name: UnicodeString; ofClass : TSymbolClass = nil) : TSymbol; override;
-         function FindSymbol(const Name: UnicodeString; minVisibility : TdwsVisibility; ofClass : TSymbolClass = nil) : TSymbol; override;
+         function FindSymbol(const Name: UnicodeString; minVisibility : TdwsVisibility;
+                              ofClass : TSymbolClass = nil) : TSymbol; override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
-         function EnumerateLocalSymbolsOfName(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean; override;
-         function EnumerateSymbolsOfNameInScope(const aName : UnicodeString; const callback : TSymbolEnumerationCallback) : Boolean; override;
+         function EnumerateLocalSymbolsOfName(const aName : UnicodeString;
+                              const callback : TSymbolEnumerationCallback) : Boolean; override;
+         function EnumerateSymbolsOfNameInScope(const aName : UnicodeString;
+                              const callback : TSymbolEnumerationCallback) : Boolean; override;
 
-         function EnumerateLocalHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean; override;
-         function EnumerateHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean; override;
+         function EnumerateLocalHelpers(helpedType : TTypeSymbol;
+                              const callback : THelperSymbolEnumerationCallback) : Boolean; override;
+         function EnumerateHelpers(helpedType : TTypeSymbol;
+                              const callback : THelperSymbolEnumerationCallback) : Boolean; override;
+
+         function EnumerateLocalOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
+                                             const callback : TOperatorSymbolEnumerationCallback) : Boolean; override;
+         function EnumerateOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
+                                        const callback : TOperatorSymbolEnumerationCallback) : Boolean; override;
+         function HasSameLocalOperator(anOpSym : TOperatorSymbol) : Boolean; override;
 
          property Parent : IStaticSymbolTable read FParent;
          property ParentSymbolTable : TStaticSymbolTable read FParentSymbolTable;
@@ -408,16 +420,41 @@ end;
 
 // EnumerateLocalHelpers
 //
-function TLinkedSymbolTable.EnumerateLocalHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean;
+function TLinkedSymbolTable.EnumerateLocalHelpers(helpedType : TTypeSymbol;
+            const callback : THelperSymbolEnumerationCallback) : Boolean;
 begin
    Result:=FParentSymbolTable.EnumerateLocalHelpers(helpedType, callback);
 end;
 
 // EnumerateHelpers
 //
-function TLinkedSymbolTable.EnumerateHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean;
+function TLinkedSymbolTable.EnumerateHelpers(helpedType : TTypeSymbol;
+            const callback : THelperSymbolEnumerationCallback) : Boolean;
 begin
-   Result:=EnumerateHelpers(helpedType, callback);
+   Result:=FParentSymbolTable.EnumerateHelpers(helpedType, callback);
+end;
+
+// EnumerateLocalOperatorsFor
+//
+function TLinkedSymbolTable.EnumerateLocalOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
+                                             const callback : TOperatorSymbolEnumerationCallback) : Boolean;
+begin
+   Result:=FParentSymbolTable.EnumerateLocalOperatorsFor(aToken, aLeftType, aRightType, callback);
+end;
+
+// EnumerateOperatorsFor
+//
+function TLinkedSymbolTable.EnumerateOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
+                                         const callback : TOperatorSymbolEnumerationCallback) : Boolean;
+begin
+   Result:=FParentSymbolTable.EnumerateOperatorsFor(aToken, aLeftType, aRightType, callback);
+end;
+
+// HasSameLocalOperator
+//
+function TLinkedSymbolTable.HasSameLocalOperator(anOpSym : TOperatorSymbol) : Boolean;
+begin
+   Result:=FParentSymbolTable.HasSameLocalOperator(anOpSym);
 end;
 
 // ------------------

@@ -70,7 +70,7 @@ var
    end;
 
 begin
-   inherited Create(nil);
+   inherited Create;
 
    typInteger:=systemTable.TypInteger;
    typFloat:=systemTable.TypFloat;

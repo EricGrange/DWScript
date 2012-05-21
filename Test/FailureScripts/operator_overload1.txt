@@ -1,6 +1,7 @@
 Syntax Error: Expected 2 parameters (instead of 1) [line: 20, column: 20]
 Syntax Error: Result type should be "Integer" [line: 20, column: 37]
 Syntax Error: Expected 2 parameters (instead of 0) [line: 21, column: 45]
+Syntax Error: An overload already exists for this operator and types [line: 22, column: 1]
 Syntax Error: Parameter 1 - Type "TObject" expected (instead of "Integer") [line: 23, column: 45]
 Syntax Error: Parameter 0 - Type "Integer" expected (instead of "TObject") [line: 24, column: 45]
 Syntax Error: Overloadable operator expected [line: 26, column: 10]

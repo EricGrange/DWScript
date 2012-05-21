@@ -25,11 +25,10 @@ uses dwsSymbols, dwsTokenizer, dwsStrings, dwsExprs, dwsCoreExprs, dwsErrors;
 type
 
    TRegisteredOperator = record
-      BinExprClass : TBinaryOpExprClass;
-      AssignExprClass : TAssignExprClass;
-      FuncSym : TFuncSymbol;
+      OperatorSym : TOperatorSymbol;
       LeftType : TTypeSymbol;
       RighType : TTypeSymbol;
+      Owned : Boolean;
    end;
    PRegisteredOperator = ^TRegisteredOperator;
 
@@ -39,24 +38,23 @@ type
       private
          FCount : Integer;
          FItems : array [TTokenType] of array of TRegisteredOperator;
-         FParent, FChild : TOperators;
 
-         function AddOperator(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : Integer;
+         function AddOperator(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator;
 
       public
-         constructor Create(aParent : TOperators);
          destructor Destroy; override;
 
-         function RegisterOperator(sym : TOperatorSymbol) : Boolean; overload;
+         procedure RegisterOperator(sym : TOperatorSymbol); overload;
 
-         procedure RegisterOperator(aToken : TTokenType; aExprClass : TBinaryOpExprClass;
-                                    aLeftType, aRightType : TTypeSymbol); overload;
-         procedure RegisterOperator(aToken : TTokenType; aExprClass : TAssignExprClass;
-                                    aLeftType, aRightType : TTypeSymbol); overload;
-         procedure RegisterOperator(aToken : TTokenType; funcSymbol : TFuncSymbol;
-                                    aLeftType, aRightType : TTypeSymbol); overload;
+         function RegisterOperator(aToken : TTokenType; aExprClass : TBinaryOpExprClass;
+                                   aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator; overload;
+         function RegisterOperator(aToken : TTokenType; aExprClass : TAssignExprClass;
+                                   aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator; overload;
+         function RegisterOperator(aToken : TTokenType; funcSymbol : TFuncSymbol;
+                                   aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator; overload;
 
-         function OperatorFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator;
+         function EnumerateOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
+                                        const callback : TOperatorSymbolEnumerationCallback) : Boolean;
    end;
 
 
@@ -72,100 +70,101 @@ implementation
 // ------------------ TOperators ------------------
 // ------------------
 
-// Create
-//
-constructor TOperators.Create(aParent : TOperators);
-begin
-   if aParent<>nil then begin
-      FParent:=aParent;
-      aParent.FChild:=Self;
-   end;
-end;
-
 // Destroy
 //
 destructor TOperators.Destroy;
+var
+   tt : TTokenType;
+   i : Integer;
 begin
-   FChild.Free;
+   for tt:=Low(TTokenType) to High(TTokenType) do begin
+      for i:=0 to High(FItems[tt]) do
+         if FItems[tt][i].Owned then
+            FItems[tt][i].OperatorSym.Free;
+   end;
    inherited;
 end;
 
 // AddOperator
 //
-function TOperators.AddOperator(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : Integer;
+function TOperators.AddOperator(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator;
+var
+   n : Integer;
 begin
-   Result:=Length(FItems[aToken]);
-   SetLength(FItems[aToken], Result+1);
-   with FItems[aToken][Result] do begin
-      LeftType:=aLeftType;
-      RighType:=aRightType;
-   end;
+   n:=Length(FItems[aToken]);
+   SetLength(FItems[aToken], n+1);
+   Result:=@FItems[aToken][n];
+   Result.LeftType:=aLeftType;
+   Result.RighType:=aRightType;
    Inc(FCount);
 end;
 
 // RegisterOperator
 //
-function TOperators.RegisterOperator(sym : TOperatorSymbol) : Boolean;
+procedure TOperators.RegisterOperator(sym : TOperatorSymbol);
+var
+   p : PRegisteredOperator;
 begin
-   Result:=(OperatorFor(sym.Token, sym.Params[0], sym.Params[1])=nil);
-   RegisterOperator(sym.Token, sym.UsesSym, sym.Params[0], sym.Params[1]);
+   p:=AddOperator(sym.Token, sym.Params[0], sym.Params[1]);
+   p.OperatorSym:=sym;
+   p.Owned:=False;
 end;
 
 // RegisterOperator
 //
-procedure TOperators.RegisterOperator(aToken : TTokenType; aExprClass : TBinaryOpExprClass;
-                                      aLeftType, aRightType : TTypeSymbol);
-var
-   n : Integer;
+function TOperators.RegisterOperator(aToken : TTokenType; aExprClass : TBinaryOpExprClass;
+                                     aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator;
 begin
-   n:=AddOperator(aToken, aLeftType, aRightType);
-   FItems[aToken][n].BinExprClass:=aExprClass;
+   Result:=AddOperator(aToken, aLeftType, aRightType);
+   Result.OperatorSym:=TOperatorSymbol.Create(aToken);
+   Result.OperatorSym.BinExprClass:=aExprClass;
+   Result.OperatorSym.AddParam(aLeftType);
+   Result.OperatorSym.AddParam(aRightType);
+   Result.Owned:=True;
 end;
 
 // RegisterOperator
 //
-procedure TOperators.RegisterOperator(aToken : TTokenType; aExprClass : TAssignExprClass;
-                                      aLeftType, aRightType : TTypeSymbol);
-var
-   n : Integer;
+function TOperators.RegisterOperator(aToken : TTokenType; aExprClass : TAssignExprClass;
+                                     aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator;
 begin
-   n:=AddOperator(aToken, aLeftType, aRightType);
-   FItems[aToken][n].AssignExprClass:=aExprClass;
+   Result:=AddOperator(aToken, aLeftType, aRightType);
+   Result.OperatorSym:=TOperatorSymbol.Create(aToken);
+   Result.OperatorSym.AssignExprClass:=aExprClass;
+   Result.OperatorSym.AddParam(aLeftType);
+   Result.OperatorSym.AddParam(aRightType);
+   Result.Owned:=True;
 end;
 
 // RegisterOperator
 //
-procedure TOperators.RegisterOperator(aToken : TTokenType; funcSymbol : TFuncSymbol;
-                                      aLeftType, aRightType : TTypeSymbol);
-var
-   n : Integer;
+function TOperators.RegisterOperator(aToken : TTokenType; funcSymbol : TFuncSymbol;
+                                     aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator;
 begin
-   n:=AddOperator(aToken, aLeftType, aRightType);
-   FItems[aToken][n].FuncSym:=funcSymbol;
+   Result:=AddOperator(aToken, aLeftType, aRightType);
+   Result.OperatorSym:=TOperatorSymbol.Create(aToken);
+   Result.OperatorSym.UsesSym:=funcSymbol;
+   Result.OperatorSym.AddParam(aLeftType);
+   Result.OperatorSym.AddParam(aRightType);
+   Result.Owned:=True;
 end;
 
-// OperatorFor
+// EnumerateOperatorsFor
 //
-function TOperators.OperatorFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol) : PRegisteredOperator;
+function TOperators.EnumerateOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
+                                          const callback : TOperatorSymbolEnumerationCallback) : Boolean;
 var
    i : Integer;
    p : PRegisteredOperator;
 begin
-   p:=nil;
-   if (FCount>0) and (aLeftType<>nil) and (aRightType<>nil) then begin
-      for i:=0 to High(FItems[aToken]) do begin
-         Result:=@FItems[aToken][i];
-         if (aLeftType=Result.LeftType) and (aRightType=Result.RighType) then
-            Exit
-         else if aLeftType.IsOfType(Result.LeftType) and aRightType.IsOfType(Result.RighType) then
-            p:=Result;
+   for i:=0 to High(FItems[aToken]) do begin
+      p:=@FItems[aToken][i];
+      if     ((aLeftType=p.LeftType) or aLeftType.IsOfType(p.LeftType))
+         and ((aRightType=p.RighType) or aRightType.IsOfType(p.RighType)) then begin
+         if callback(p.OperatorSym) then Exit(True);
       end;
    end;
-   if p=nil then
-      if FParent<>nil then
-         Result:=FParent.OperatorFor(aToken, aLeftType, aRightType)
-      else Result:=nil
-   else Result:=p;
+   Result:=False;
 end;
 
 end.
