@@ -102,6 +102,7 @@ const
   CPE_InExpected = 'IN expected';
   CPE_ArrayExpected = 'Array expected';
   CPE_StringExpected = 'String expected';
+  CPE_StringOrExternalClassExpected = 'String or external class expected';
   CPE_BeginExpected = 'BEGIN expected';
   CPE_VariableExpected = 'Variable expected';
   CPE_ForExpected = 'FOR expected';

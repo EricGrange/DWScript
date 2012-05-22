@@ -1849,6 +1849,11 @@ type
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
+   TDefinedExternalExpr = class(TSpecialUnaryBoolExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
    TDeclaredExpr = class(TSpecialUnaryBoolExpr)
       public
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
@@ -6966,6 +6971,20 @@ var
 begin
    Expr.EvalAsString(exec, name);
    Result:=((exec as TdwsProgramExecution).Prog.ConditionalDefines.Value.IndexOf(name)>=0);
+end;
+
+// ------------------
+// ------------------ TDefinedExternalExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TDefinedExternalExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   v : Variant;
+begin
+   Expr.EvalAsVariant(exec, v);
+   Result:=not VarIsEmpty(v);
 end;
 
 // ------------------

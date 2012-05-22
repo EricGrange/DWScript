@@ -340,12 +340,12 @@ type
 
          function Optimize : Boolean;
 
-         function CheckFuncParams(paramsA, paramsB : TSymbolTable; indexSym : TSymbol = nil;
-                               typSym : TTypeSymbol = nil) : Boolean;
+         function CheckPropertyFuncParams(paramsA : TSymbolTable; methSym : TMethodSymbol;
+                                          indexSym : TSymbol = nil; typSym : TTypeSymbol = nil) : Boolean;
          procedure CheckName(const name : UnicodeString; const namePos : TScriptPos);
          function IdentifySpecialName(const name : UnicodeString) : TSpecialKeywordKind;
          procedure CheckSpecialName(const name : UnicodeString);
-         function CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
+         function CheckParams(A, B: TSymbolTable; CheckNames: Boolean; skipB : Integer = 0): Boolean;
          procedure CompareFuncKinds(a, b : TFuncKind);
          procedure CompareFuncSymbolParams(a, b : TFuncSymbol);
          function  CurrentStruct : TCompositeTypeSymbol;
@@ -6737,33 +6737,41 @@ begin
    end;
 end;
 
-// CheckFuncParams
+// CheckPropertyFuncParams
 //
-function TdwsCompiler.CheckFuncParams(paramsA, paramsB : TSymbolTable;
+function TdwsCompiler.CheckPropertyFuncParams(paramsA : TSymbolTable; methSym : TMethodSymbol;
                                       indexSym : TSymbol = nil;
                                       typSym : TTypeSymbol = nil) : Boolean;
+var
+   paramsB : TSymbolTable;
+   skipB : Integer;
 begin
    Result:=False;
+   paramsB:=methSym.Params;
+
+   if (paramsB.Count>0) and (paramsB[0]=methSym.SelfSym) then
+      skipB:=1
+   else skipB:=0;
 
    if Assigned(indexSym) then begin
       if Assigned(typSym) then begin
-         if paramsB.Count<>paramsA.Count+2 then Exit;
-         if paramsB[paramsA.Count+1].Typ<>typSym then Exit;
-         if paramsB[paramsA.Count].Typ<>indexSym then Exit;
+         if paramsB.Count<>paramsA.Count+skipB+2 then Exit;
+         if paramsB[paramsA.Count+skipB+1].Typ<>typSym then Exit;
+         if paramsB[paramsA.Count+skipB].Typ<>indexSym then Exit;
       end else begin
-         if paramsB.Count<>paramsA.Count+1 then Exit
-         else if paramsB[paramsA.Count].Typ<>indexSym then Exit;
+         if paramsB.Count<>paramsA.Count+skipB+1 then Exit
+         else if paramsB[paramsA.Count+skipB].Typ<>indexSym then Exit;
       end;
    end else begin
       if Assigned(typSym) then begin
-         if paramsB.Count<>paramsA.Count+1 then Exit;
-         if paramsB[paramsA.Count].Typ<>typSym then Exit;
+         if paramsB.Count<>paramsA.Count+skipB+1 then Exit;
+         if paramsB[paramsA.Count+skipB].Typ<>typSym then Exit;
       end else begin
-         if paramsA.Count<>paramsB.Count then Exit;
+         if paramsA.Count+skipB<>paramsB.Count then Exit;
       end;
    end;
 
-   Result:=CheckParams(paramsA, paramsB, False);
+   Result:=CheckParams(paramsA, paramsB, False, skipB);
 end;
 
 // ReadClassOperatorDecl
@@ -6856,8 +6864,6 @@ begin
 
    arrayIndices := TUnSortedSymbolTable.Create;
    try
-      if ownerSym is TRecordSymbol then
-         arrayIndices.AddSymbol(TVarParamSymbol.Create(SYS_SELF, ownerSym));
       baseArrayIndices:=arrayIndices.Count;
 
       if FTok.TestDelete(ttALEFT) then
@@ -6899,7 +6905,7 @@ begin
 
             else if sym is TMethodSymbol then begin
 
-               if not CheckFuncParams(arrayIndices, TMethodSymbol(sym).Params, indexTyp) then
+               if not CheckPropertyFuncParams(arrayIndices, TMethodSymbol(sym), indexTyp) then
                   FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleParameters, [name]);
 
             end else if arrayIndices.Count>baseArrayIndices then begin
@@ -6927,10 +6933,10 @@ begin
 
             end else if sym is TMethodSymbol then begin
 
-               if    (not (TFuncSymbol(sym).Kind in [fkProcedure, fkMethod]))
-                  or (TFuncSymbol(sym).Typ<>nil) then
+               if    (not (TMethodSymbol(sym).Kind in [fkProcedure, fkMethod]))
+                  or (TMethodSymbol(sym).Typ<>nil) then
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_ProcedureMethodExpected)
-               else if not CheckFuncParams(arrayIndices, TFuncSymbol(sym).Params, indexTyp, Result.Typ) then
+               else if not CheckPropertyFuncParams(arrayIndices, TMethodSymbol(sym), indexTyp, Result.Typ) then
                   FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleParameters, [name]);
 
             end else if Result.Typ <> sym.Typ then begin
@@ -8996,30 +9002,32 @@ begin
    end;
 end;
 
-function TdwsCompiler.CheckParams(A, B: TSymbolTable; CheckNames: Boolean): Boolean;
+function TdwsCompiler.CheckParams(A, B: TSymbolTable; CheckNames: Boolean; skipB : Integer = 0): Boolean;
 var
-  x: Integer;
-  r: Boolean;
+   x : Integer;
+   r : Boolean;
+   bParam : TSymbol;
 begin
-  Result := True;
-  for x := 0 to A.Count - 1 do begin
-    r := False;
-    if CheckNames and not UnicodeSameText(A[x].Name, B[x].Name) then
-        FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterName, [x, A[x].Name])
-    else if not A[x].Typ.IsCompatible(B[x].Typ) then
-      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterType,
-                                [x, A[x].Typ.Caption, B[x].Typ.Caption])
-    else if (A[x].ClassType=TVarParamSymbol) and not (B[x].ClassType=TVarParamSymbol) then
-      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_VarParameterExpected, [x, A[x].Name])
-    else if not (A[x].ClassType=TVarParamSymbol) and (B[x].ClassType=TVarParamSymbol) then
-      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ValueParameterExpected, [x, A[x].Name])
-    else if (A[x] is TConstParamSymbol) and not (B[x] is TConstParamSymbol) then
-      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConstParameterExpected, [x, A[x].Name])
-    else if not (A[x] is TConstParamSymbol) and (B[x] is TConstParamSymbol) then
-      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ValueParameterExpected, [x, A[x].Name])
-    else r := True;
-    Result := Result and r;
-  end;
+   Result := True;
+   for x := 0 to A.Count - 1 do begin
+      r := False;
+      bParam:=B[x+skipB];
+      if CheckNames and not UnicodeSameText(A[x].Name, bParam.Name) then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterName, [x, A[x].Name])
+      else if not A[x].Typ.IsCompatible(bParam.Typ) then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterType,
+                                   [x, A[x].Typ.Caption, bParam.Typ.Caption])
+      else if (A[x].ClassType=TVarParamSymbol) and not (bParam.ClassType=TVarParamSymbol) then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_VarParameterExpected, [x, A[x].Name])
+      else if not (A[x].ClassType=TVarParamSymbol) and (bParam.ClassType=TVarParamSymbol) then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ValueParameterExpected, [x, A[x].Name])
+      else if (A[x] is TConstParamSymbol) and not (bParam is TConstParamSymbol) then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConstParameterExpected, [x, A[x].Name])
+      else if not (A[x] is TConstParamSymbol) and (bParam is TConstParamSymbol) then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ValueParameterExpected, [x, A[x].Name])
+      else r := True;
+      Result := Result and r;
+   end;
 end;
 
 // CompareFuncKinds
@@ -10044,9 +10052,9 @@ begin
              FreeAndNil(argExpr);
          end;
          skDefined, skDeclared : begin
-            if not argExpr.IsOfType(FProg.TypString) then
-               FMsgs.AddCompilerStop(argPos, CPE_StringExpected);
             if FIsSwitch then begin
+               if not argExpr.IsOfType(FProg.TypString) then
+                  FMsgs.AddCompilerStop(argPos, CPE_StringExpected);
                if not argExpr.IsConstant then
                   FMsgs.AddCompilerStop(argPos, CPE_ConstantExpressionExpected);
                try
@@ -10061,10 +10069,20 @@ begin
                end;
             end else begin
                case SpecialKind of
-                  skDefined :
-                     Result:=TDefinedExpr.Create(FProg, argExpr);
-                  skDeclared :
+                  skDefined : begin
+                     if (argExpr.Typ is TClassSymbol) and TClassSymbol(argExpr.Typ).IsExternal then begin
+                        Result:=TDefinedExternalExpr.Create(FProg, argExpr);
+                     end else begin
+                        if not argExpr.IsOfType(FProg.TypString) then
+                           FMsgs.AddCompilerStop(argPos, CPE_StringExpected);
+                        Result:=TDefinedExpr.Create(FProg, argExpr);
+                     end;
+                  end;
+                  skDeclared : begin
+                     if not argExpr.IsOfType(FProg.TypString) then
+                        FMsgs.AddCompilerStop(argPos, CPE_StringExpected);
                      Result:=TDeclaredExpr.Create(FProg, argExpr);
+                  end;
                end;
                argExpr:=nil;
             end;
@@ -10238,7 +10256,11 @@ begin
 
          RecordSymbolUseReference(sym, namePos, False);
 
-         if sym.ClassType=TClassVarSymbol then begin
+         if sym.ClassType=TPropertySymbol then begin
+
+            Result:=ReadPropertyExpr(expr, TPropertySymbol(sym), FTok.Test(ttASSIGN));
+
+         end else if sym.ClassType=TClassVarSymbol then begin
 
             FreeAndNil(expr);
             Result:=GetVarExpr(TClassVarSymbol(sym));

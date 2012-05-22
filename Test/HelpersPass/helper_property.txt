@@ -1,0 +1,5 @@
+GetProp
+5
+SetProp
+hello
+123

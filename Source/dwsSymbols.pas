@@ -1209,7 +1209,7 @@ type
    end;
 
    // property X: Integer read FReadSym write FWriteSym;
-   TPropertySymbol = class (TValueSymbol)
+   TPropertySymbol = class sealed (TValueSymbol)
       private
          FOwnerSymbol : TCompositeTypeSymbol;
          FReadSym : TSymbol;
