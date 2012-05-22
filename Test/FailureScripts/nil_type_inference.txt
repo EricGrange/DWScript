@@ -1,0 +1,6 @@
+Syntax Error: Type could not be inferenced [line: 3, column: 7]
+Syntax Error: Type could not be inferenced [line: 4, column: 8]
+Syntax Error: Type could not be inferenced [line: 8, column: 15]
+Syntax Error: Type could not be inferenced [line: 9, column: 14]
+Syntax Error: Type could not be inferenced [line: 14, column: 15]
+Syntax Error: Type could not be inferenced [line: 15, column: 14]

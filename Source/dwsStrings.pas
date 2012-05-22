@@ -311,6 +311,7 @@ const
   CPE_IncompatibleTypes = 'Incompatible types: "%s" and "%s"';
   CPE_AssignIncompatibleTypes = 'Incompatible types: Cannot assign "%s" to "%s"';
   CPE_RangeIncompatibleTypes = 'Range start and range stop are of incompatible types: "%s" and "%s"';
+  CPE_TypeCouldNotBeInferenced = 'Type could not be inferenced';
 
   CPE_LocalFunctionAsDelegate = 'Local procedure/function can''t be used as delegate';
 

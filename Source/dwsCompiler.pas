@@ -747,6 +747,9 @@ type
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr; override;
    end;
 
+   // const expr created to "keep compiling"
+   TBogusConstExpr = class sealed (TConstExpr);
+
 // StringToSwitchInstruction
 //
 function StringToSwitchInstruction(const str : UnicodeString) : TSwitchInstruction;
@@ -1983,7 +1986,9 @@ begin
          if typ=nil then begin
             FMsgs.AddCompilerError(hotPos, CPE_RightSideNeedsReturnType);
             FreeAndNil(initExpr);
-         end;
+         end else if typ=FProg.TypNil then
+            if not (initExpr is TBogusConstExpr) then
+               FMsgs.AddCompilerError(hotPos, CPE_TypeCouldNotBeInferenced);
 
       end else begin
 
@@ -7111,6 +7116,9 @@ begin
                typ:=expr.typ;
                detachTyp:=(typ.Name='');
             end;
+            if typ=FProg.TypNil then
+               if not (expr is TBogusConstExpr) then
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_TypeCouldNotBeInferenced);
 
             if (typ=nil) or (expr=nil) then begin
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
@@ -7919,10 +7927,10 @@ end;
 // ReadTerm
 //
 function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TTypedExpr;
+const
+   cNilIntf : IUnknown = nil;
 
-   function ReadNilTerm : TTypedExpr;
-   const
-      cNilIntf : IUnknown = nil;
+   function ReadNilTerm : TConstExpr;
    begin
       Result:=TConstExpr.CreateTypedVariantValue(FProg, FProg.TypNil, cNilIntf);
    end;
@@ -7970,21 +7978,6 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       Result:=TAnonymousFuncRefExpr.Create(FProg, GetFuncExpr(funcSym, nil));
    end;
 
-   function ReadInlineConstRecord(recordType : TRecordSymbol) : TConstExpr;
-   var
-      typ : TTypeSymbol;
-      data : TData;
-   begin
-      if recordType=nil then begin
-         typ:=ReadType('', tcConstant);
-         if typ.ClassType<>TRecordSymbol then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_RecordTypeExpected);
-         recordType:=TRecordSymbol(typ);
-      end;
-      data:=ReadConstRecord(recordType);
-      Result:=TConstExpr.CreateTyped(FProg, recordType, data);
-   end;
-
    function ReadAnonymousRecord : TConstExpr;
    var
       recordType : TRecordSymbol;
@@ -8012,15 +8005,36 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
                                 [expecting.Caption, exprTyp]);
    end;
 
+   function ReadAt(expecting : TTypeSymbol = nil) : TTypedExpr;
+   var
+      hotPos : TScriptPos;
+   begin
+      hotPos:=FTok.HotPos;
+      if expecting=nil then
+         expecting:=FAnyFuncSymbol
+      else if not (expecting is TFuncSymbol) then
+         FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
+      else if expecting=FAnyFuncSymbol then
+         FMsgs.AddCompilerStop(hotPos, CPE_UnexpectedAt);
+      Result:=ReadTerm(isWrite, expecting);
+      if (Result.Typ=nil) or not (Result.Typ is TFuncSymbol) then begin
+         if (expecting=FAnyFuncSymbol) or (Result is TConstExpr) then
+            FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
+         else ReportIncompatibleAt(hotPos, Result);
+         // keep compiling
+         Result.Free;
+         Result:=TBogusConstExpr.Create(FProg, FProg.TypNil, cNilIntf);
+      end;
+   end;
+
 var
    tt : TTokenType;
    nameExpr : TProgramExpr;
    hotPos : TScriptPos;
 begin
-   hotPos:=FTok.HotPos;
    tt:=FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
                      ttTRUE, ttFALSE, ttNIL, ttFUNCTION, ttPROCEDURE,
-                     ttCONST, ttRECORD]);
+                     ttRECORD]);
    if tt<>ttNone then
       FTok.KillToken;
    case tt of
@@ -8049,25 +8063,8 @@ begin
          if FTok.Test(ttDOT) then
             Result:=(ReadSymbol(Result, isWrite) as TTypedExpr);
       end;
-      ttAT : begin
-         FTok.KillToken;
-         hotPos:=FTok.HotPos;
-         if expecting=nil then
-            expecting:=FAnyFuncSymbol
-         else if not (expecting is TFuncSymbol) then
-            FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
-         else if expecting=FAnyFuncSymbol then
-            FMsgs.AddCompilerStop(hotPos, CPE_UnexpectedAt);
-         Result:=ReadTerm(isWrite, expecting);
-         if (Result.Typ=nil) or not (Result.Typ is TFuncSymbol) then begin
-            if (expecting=FAnyFuncSymbol) or (Result is TConstExpr) then
-               FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
-            else ReportIncompatibleAt(hotPos, Result);
-            // keep compiling
-            Result.Free;
-            Result:=ReadNilTerm;
-         end;
-      end;
+      ttAT :
+         Result:=ReadAt(expecting);
       ttTRUE :
          Result:=ReadTrue;
       ttFALSE :
@@ -8077,10 +8074,8 @@ begin
       ttPROCEDURE, ttFUNCTION : begin
          if not (coAllowClosures in Options) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_LocalFunctionAsDelegate);
-         Result:=ReadAnonymousMethod(tt, hotPos)
+         Result:=ReadAnonymousMethod(tt, FTok.HotPos);
       end;
-      ttCONST :
-         Result:=ReadInlineConstRecord(nil);
       ttRECORD :
          Result:=ReadAnonymousRecord;
    else
@@ -10181,11 +10176,17 @@ end;
 //
 function TdwsCompiler.ReadTypeExpr(const namePos : TScriptPos; typeSym : TTypeSymbol;
                                    isWrite : Boolean; expecting : TTypeSymbol = nil) : TProgramExpr;
+
+   function CreateClassSymbolExpr(typeSym : TTypeSymbol) : TConstExpr;
+   begin
+      Result:=TConstExpr.Create(FProg, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol));
+   end;
+
 var
    typeExpr : TTypedExpr;
 begin
    if typeSym.ClassType=TClassOfSymbol then
-      typeExpr:=TConstExpr.Create(FProg, typeSym, Int64(TClassOfSymbol(typeSym).TypClassSymbol))
+      typeExpr:=CreateClassSymbolExpr(typeSym)
    else typeExpr:=TTypeReferenceExpr.Create(typeSym, namePos);
 
    if FTok.Test(ttDOT) then

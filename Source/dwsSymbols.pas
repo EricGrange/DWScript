@@ -831,7 +831,7 @@ type
    end;
 
    // type x = TMyType;
-   TAliasSymbol = class(TTypeSymbol)
+   TAliasSymbol = class sealed (TTypeSymbol)
       protected
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 

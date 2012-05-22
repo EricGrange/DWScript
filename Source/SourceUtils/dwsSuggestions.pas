@@ -196,6 +196,24 @@ var
    codeLine : UnicodeString;
    p, p2 : Integer;
 
+   function MoveBackArrayBrackets : Boolean;
+   var
+      n : Integer;
+   begin
+      Result:=False;
+      if p<1 then Exit;
+      n:=Ord(codeLine[p]=']');
+      if n=0 then Exit(False);
+      while (p>1) and (n>0) do begin
+         case codeLine[p-1] of
+            ']' : Inc(n);
+            '[' : Dec(n);
+         end;
+         Dec(p);
+      end;
+      Result:=(n=0);
+   end;
+
    procedure MoveToTokenStart;
    begin
       if p>Length(codeLine)+1 then
@@ -214,6 +232,7 @@ var
 var
    sl : TStringList;
    context : TdwsSourceContext;
+   arrayItem : Boolean;
 begin
    FLocalContext:=FProg.SourceContextMap.FindContext(FSourcePos);
    context:=FLocalContext;
@@ -239,10 +258,17 @@ begin
 
    if (p>1) and (codeLine[p-1]='.') then begin
       Dec(p, 2);
+      arrayItem:=MoveBackArrayBrackets;
       MoveToTokenStart;
       FPreviousSymbol:=FProg.SymbolDictionary.FindSymbolAtPosition(p, FSourcePos.Line, FSourceFile.Name);
       if FPreviousSymbol is TAliasSymbol then
          FPreviousSymbol:=TAliasSymbol(FPreviousSymbol).UnAliasedType;
+      if arrayItem then begin
+         if FPreviousSymbol.Typ is TArraySymbol then
+            FPreviousSymbol:=TArraySymbol(FPreviousSymbol.Typ).Typ
+         else if FPreviousSymbol is TPropertySymbol then
+            FPreviousSymbol:=TArraySymbol(FPreviousSymbol).Typ;
+      end;
    end;
 
    Dec(p);
@@ -667,6 +693,7 @@ var
    valueSym : TValueSymbol;
    enumSym : TEnumerationSymbol;
    propSymbol : TPropertySymbol;
+   alias : TAliasSymbol;
 begin
    symbol:=FList[i];
    if symbol is TFuncSymbol then begin
@@ -694,6 +721,11 @@ begin
 
       valueSym:=TValueSymbol(symbol);
       Result:=valueSym.Name+' : '+SafeSymbolName(valueSym.Typ);
+
+   end else if symbol is TAliasSymbol then begin
+
+      alias:=TAliasSymbol(symbol);
+      Result:=alias.Name+' = '+SafeSymbolName(alias.Typ);
 
    end else Result:=symbol.Name;
 end;
