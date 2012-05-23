@@ -10070,11 +10070,16 @@ begin
             end else begin
                case SpecialKind of
                   skDefined : begin
-                     if (argExpr.Typ is TClassSymbol) and TClassSymbol(argExpr.Typ).IsExternal then begin
+                     argTyp:=argExpr.Typ;
+                     if argTyp<>nil then
+                        argTyp:=argTyp.UnAliasedType;
+                     if    (argTyp is TClassSymbol)
+                        or (argTyp is TBaseVariantSymbol)
+                        or (argTyp is TConnectorSymbol)  then begin
                         Result:=TDefinedExternalExpr.Create(FProg, argExpr);
                      end else begin
                         if not argExpr.IsOfType(FProg.TypString) then
-                           FMsgs.AddCompilerStop(argPos, CPE_StringExpected);
+                           FMsgs.AddCompilerStop(argPos, CPE_StringClassOrVariantExpected);
                         Result:=TDefinedExpr.Create(FProg, argExpr);
                      end;
                   end;
