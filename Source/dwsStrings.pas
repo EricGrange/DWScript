@@ -102,7 +102,6 @@ const
   CPE_InExpected = 'IN expected';
   CPE_ArrayExpected = 'Array expected';
   CPE_StringExpected = 'String expected';
-  CPE_StringClassOrVariantExpected = 'String, class or variant expected';
   CPE_BeginExpected = 'BEGIN expected';
   CPE_VariableExpected = 'Variable expected';
   CPE_ForExpected = 'FOR expected';
@@ -121,6 +120,7 @@ const
   CPE_UnexpectedImplementationInInterface = 'Unexpected implementation in interface section';
   CPE_UnexpectedEnd = 'Unexpected END';
   CPE_ClassExpected = 'CLASS expected';
+  CPE_OnlyOneFieldExpectedForExternal = 'Only one field expected for EXTERNAL name';
 
   // ReadName
   CPE_UnknownName = 'Unknown name "%s"';

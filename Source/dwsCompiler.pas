@@ -173,7 +173,7 @@ type
    TSpecialKeywordKind = (skNone, skAbs, skAssert, skAssigned,
                           skHigh, skLength, skLow,
                           skOrd, skSizeOf, skDefined, skDeclared, skSqr,
-                          skInc, skDec, skSucc, skPred);
+                          skInc, skDec, skSucc, skPred, skConditionalDefined);
 
    TSwitchInstruction = (siNone,
                          siIncludeLong, siIncludeShort, siIncludeOnce,
@@ -2193,7 +2193,8 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
       token:=FTok.TestAny([ttINTERFACE, ttIMPLEMENTATION,
                            ttTYPE, ttVAR, ttCONST, ttEND,
-                           ttCLASS, ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR]);
+                           ttCLASS, ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR,
+                           ttOPERATOR]);
    until (not FTok.HasTokens) or (token<>ttNone);
 end;
 
@@ -2429,7 +2430,7 @@ begin
                end else FProg.Table.AddSymbol(Result);
 
                if Result.IsForwarded or Result.IsExternal then
-                  FTok.SimulateToken(ttSEMI);
+                  FTok.SimulateToken(ttSEMI, FTok.HotPos);
             end;
             
          end;
@@ -3036,12 +3037,40 @@ end;
 // ReadOperatorDecl
 //
 function TdwsCompiler.ReadOperatorDecl : TOperatorSymbol;
+
+   procedure FindOverloadedFunc(var usesSym : TFuncSymbol; const usesName : UnicodeString;
+                                fromTable : TSymbolTable; opSymbol : TOperatorSymbol);
+   var
+      capturableUsesSym : TFuncSymbol;
+   begin
+      capturableUsesSym:=usesSym;
+      fromTable.EnumerateSymbolsOfNameInScope(usesName,
+         function (symbol : TSymbol) : Boolean
+         var
+            funcSym : TFuncSymbol;
+         begin
+            Result:=False;
+            if (symbol is TFuncSymbol) and (not symbol.IsType) then begin
+               funcSym:=TFuncSymbol(symbol);
+               if     (funcSym.Params.Count=2) and (funcSym.Typ<>nil)
+                  and funcSym.Typ.IsOfType(opSymbol.Typ)
+                  and funcSym.Params[0].Typ.IsOfType(opSymbol.Params[0])
+                  and funcSym.Params[1].Typ.IsOfType(opSymbol.Params[1]) then begin
+                  capturableUsesSym:=funcSym;
+                  Result:=True;
+               end;
+            end;
+         end);
+      usesSym:=capturableUsesSym;
+   end;
+
 var
    tt : TTokenType;
    usesName : UnicodeString;
    opPos, usesPos : TScriptPos;
    sym : TTypeSymbol;
    usesSym : TFuncSymbol;
+   fromTable : TSymbolTable;
    typ : TTypeSymbol;
 begin
    opPos:=FTok.HotPos;
@@ -3079,20 +3108,35 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_UsesExpected);
 
       usesSym:=nil;
+      fromTable:=FProg.Table;
       if not FTok.TestDeleteNamePos(usesName, usesPos) then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected)
       else begin
-         sym:=FProg.Table.FindTypeSymbol(usesName, cvPublic);
+         sym:=fromTable.FindTypeSymbol(usesName, cvPublic);
+         if sym is THelperSymbol then begin
+            RecordSymbolUse(sym, usesPos, [suReference]);
+            if not FTok.TestDelete(ttDOT) then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_DotExpected)
+            else if not FTok.TestDeleteNamePos(usesName, usesPos) then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected)
+            else begin
+               fromTable:=THelperSymbol(sym).Members;
+               sym:=fromTable.FindTypeSymbol(usesName, cvPublic);
+            end;
+         end;
          if (sym=nil) or sym.IsType or not (sym is TFuncSymbol) then
             FMsgs.AddCompilerError(usesPos, CPE_FunctionMethodExpected)
          else usesSym:=TFuncSymbol(sym);
       end;
 
-      // TODO: typecheck used function
       if usesSym<>nil then begin
+
+         if usesSym.IsOverloaded then
+            FindOverloadedFunc(usesSym, usesName, fromTable, Result);
+
          RecordSymbolUse(usesSym, usesPos, [suReference]);
 
-         if usesSym.Typ<>Result.Typ then
+         if (usesSym.typ=nil) or not usesSym.Typ.IsOfType(Result.Typ) then
             FMsgs.AddCompilerErrorFmt(usesPos, CPE_BadResultType, [Result.Typ.Caption])
          else if usesSym.Params.Count<>2 then
             FMsgs.AddCompilerErrorFmt(usesPos, CPE_BadNumberOfParameters, [2, usesSym.Params.Count])
@@ -7163,6 +7207,7 @@ begin
          end;
       end;
 
+      member:=nil;
       for x:=0 to names.Count - 1 do begin
          sym:=struct.Members.FindLocal(names[x]);
          if Assigned(sym) then
@@ -7176,6 +7221,24 @@ begin
          // Add member symbols and positions
          RecordSymbolUse(member, posArray[x], [suDeclaration]);
       end;
+
+      if FTok.TestDelete(ttSEMI) then begin
+
+         if FTok.TestDelete(ttEXTERNAL) then begin
+
+            if names.Count<>1 then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_OnlyOneFieldExpectedForExternal);
+
+            if FTok.Test(ttStrVal) then begin
+               if member<>nil then
+                  member.ExternalName:=FTok.GetToken.FString;
+               FTok.KillToken;
+            end else FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
+
+         end else FTok.SimulateToken(ttSEMI, FTok.HotPos);
+
+      end;
+
    finally
       names.Free;
    end;
@@ -8520,7 +8583,7 @@ begin
                      FTok.OnEndSourceFile:=DoTokenizerEndSourceFile;
                   end;
 
-                  FTok.SimulateToken(ttSEMI);
+                  FTok.SimulateToken(ttSEMI, FTok.HotPos);
 
                   Exit;
                except
@@ -8883,6 +8946,7 @@ begin
          'a', 'A' : if SameText(name, 'assigned') then Exit(skAssigned);
          'd', 'D' : if SameText(name, 'declared') then Exit(skDeclared);
       end;
+      18 : if SameText(name, 'conditionaldefined') then Exit(skConditionalDefined);
    end;
    Result:=skNone;
 end;
@@ -9767,8 +9831,13 @@ begin
       if opSym.BinExprClass<>nil then
          Result:=TBinaryOpExprClass(opSym.BinExprClass).Create(FProg, aLeft, aRight)
       else if opSym.UsesSym<>nil then begin
-         funcExpr:=GetFuncExpr(opSym.UsesSym);
-         funcExpr.AddArg(aLeft);
+         if opSym.UsesSym is TMethodSymbol then begin
+            funcExpr:=CreateMethodExpr(FProg, TMethodSymbol(opSym.UsesSym), aLeft, rkObjRef, FTok.HotPos)
+
+         end else begin
+            funcExpr:=GetFuncExpr(opSym.UsesSym);
+            funcExpr.AddArg(aLeft);
+         end;
          funcExpr.AddArg(aRight);
          TypeCheckArgs(funcExpr, nil);
          if Optimize then
@@ -10070,18 +10139,9 @@ begin
             end else begin
                case SpecialKind of
                   skDefined : begin
-                     argTyp:=argExpr.Typ;
-                     if argTyp<>nil then
-                        argTyp:=argTyp.UnAliasedType;
-                     if    (argTyp is TClassSymbol)
-                        or (argTyp is TBaseVariantSymbol)
-                        or (argTyp is TConnectorSymbol)  then begin
-                        Result:=TDefinedExternalExpr.Create(FProg, argExpr);
-                     end else begin
-                        if not argExpr.IsOfType(FProg.TypString) then
-                           FMsgs.AddCompilerStop(argPos, CPE_StringClassOrVariantExpected);
-                        Result:=TDefinedExpr.Create(FProg, argExpr);
-                     end;
+                     if argExpr.Typ=nil then
+                        FMsgs.AddCompilerStop(argPos, CPE_ExpressionExpected);
+                     Result:=TDefinedExpr.Create(FProg, argExpr);
                   end;
                   skDeclared : begin
                      if not argExpr.IsOfType(FProg.TypString) then
@@ -10091,6 +10151,11 @@ begin
                end;
                argExpr:=nil;
             end;
+         end;
+         skConditionalDefined : begin
+            if not argExpr.IsOfType(FProg.TypString) then
+               FMsgs.AddCompilerStop(argPos, CPE_StringExpected);
+            Result:=TConditionalDefinedExpr.Create(FProg, argExpr);
          end;
       end;
 

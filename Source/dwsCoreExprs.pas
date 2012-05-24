@@ -1844,12 +1844,12 @@ type
          function IsConstant : Boolean; override;
    end;
 
-   TDefinedExpr = class(TSpecialUnaryBoolExpr)
+   TConditionalDefinedExpr = class(TSpecialUnaryBoolExpr)
       public
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
-   TDefinedExternalExpr = class(TSpecialUnaryBoolExpr)
+   TDefinedExpr = class(TSpecialUnaryBoolExpr)
       public
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
@@ -6960,12 +6960,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TDefinedExpr ------------------
+// ------------------ TConditionalDefinedExpr ------------------
 // ------------------
 
 // EvalAsBoolean
 //
-function TDefinedExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+function TConditionalDefinedExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
    name : UnicodeString;
 begin
@@ -6974,12 +6974,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TDefinedExternalExpr ------------------
+// ------------------ TDefinedExpr ------------------
 // ------------------
 
 // EvalAsBoolean
 //
-function TDefinedExternalExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+function TDefinedExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
    v : Variant;
 begin

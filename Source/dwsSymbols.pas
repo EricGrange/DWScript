@@ -1147,6 +1147,9 @@ type
          FOffset : Integer;
          FVisibility : TdwsVisibility;
          FDefaultValue : TData;
+         FExternalName : String;
+
+         function GetExternalName : String;
 
       public
          constructor Create(const name : UnicodeString; typ : TTypeSymbol;
@@ -1161,6 +1164,7 @@ type
          property Offset : Integer read FOffset;
          property Visibility : TdwsVisibility read FVisibility write FVisibility;
          property DefaultValue : TData read FDefaultValue write FDefaultValue;
+         property ExternalName : String read GetExternalName write FExternalName;
    end;
 
    // record member1: Integer; member2: Integer end;
@@ -2521,6 +2525,15 @@ begin
    if DefaultValue<>nil then
       DWSCopyData(DefaultValue, 0, data, structOffset+Offset, Typ.Size)
    else Typ.InitData(data, structOffset+Offset);
+end;
+
+// GetExternalName
+//
+function TFieldSymbol.GetExternalName : String;
+begin
+   if FExternalName='' then
+      Result:=Name
+   else Result:=FExternalName;
 end;
 
 // ------------------
