@@ -802,7 +802,7 @@ type
 
       public
          function OptimizeToTypedExpr(prog : TdwsProgram; exec : TdwsExecution; const hotPos : TScriptPos) : TTypedExpr;
-         function OptimizeIntegerConstantToFloatConstant(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
+         function OptimizeToFloatConstant(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
 
          function ScriptPos : TScriptPos; override;
 
@@ -3846,13 +3846,15 @@ begin
    end;
 end;
 
-// OptimizeIntegerConstantToFloatConstant
+// OptimizeToFloatConstant
 //
-function TTypedExpr.OptimizeIntegerConstantToFloatConstant(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
+function TTypedExpr.OptimizeToFloatConstant(prog : TdwsProgram; exec : TdwsExecution) : TTypedExpr;
 begin
-   if IsConstant and Typ.IsOfType(prog.TypInteger) then begin
-      Result:=TConstFloatExpr.CreateUnified(prog, nil, EvalAsFloat(exec));
-      Free;
+   if IsConstant then begin
+      if Typ.IsOfType(prog.TypInteger) or Typ.IsOfType(prog.TypFloat) then begin
+         Result:=TConstFloatExpr.CreateUnified(prog, nil, EvalAsFloat(exec));
+         Free;
+      end else Result:=OptimizeToTypedExpr(prog, exec, ScriptPos);
    end else Result:=Self;
 end;
 
@@ -5304,8 +5306,8 @@ begin
       Result:=TConstFloatExpr.CreateUnified(Prog, nil, EvalAsFloat(exec));
       Free;
    end else begin
-      FLeft:=FLeft.OptimizeIntegerConstantToFloatConstant(prog, exec);
-      FRight:=FRight.OptimizeIntegerConstantToFloatConstant(prog, exec);
+      FLeft:=FLeft.OptimizeToFloatConstant(prog, exec);
+      FRight:=FRight.OptimizeToFloatConstant(prog, exec);
       Result:=Self;
    end;
 end;

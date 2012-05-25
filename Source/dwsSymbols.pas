@@ -1147,6 +1147,7 @@ type
          FOffset : Integer;
          FVisibility : TdwsVisibility;
          FDefaultValue : TData;
+         FDefaultExpr : TExprBase;
          FExternalName : String;
 
          function GetExternalName : String;
@@ -1154,6 +1155,7 @@ type
       public
          constructor Create(const name : UnicodeString; typ : TTypeSymbol;
                             aVisibility : TdwsVisibility);
+         destructor Destroy; override;
 
          function QualifiedName : UnicodeString; override;
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
@@ -1164,11 +1166,15 @@ type
          property Offset : Integer read FOffset;
          property Visibility : TdwsVisibility read FVisibility write FVisibility;
          property DefaultValue : TData read FDefaultValue write FDefaultValue;
+         property DefaultExpr : TExprBase read FDefaultExpr write FDefaultExpr;
          property ExternalName : String read GetExternalName write FExternalName;
    end;
 
    // record member1: Integer; member2: Integer end;
    TRecordSymbol = class sealed (TStructuredTypeSymbol)
+      private
+         FIsDynamic : Boolean;
+
       protected
          function GetCaption : UnicodeString; override;
          function GetDescription : UnicodeString; override;
@@ -1184,6 +1190,8 @@ type
 
          procedure InitData(const data : TData; offset : Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
+         property IsDynamic : Boolean read FIsDynamic write FIsDynamic;
    end;
 
    // interface
@@ -2316,6 +2324,8 @@ begin
    inherited;
    fieldSym.FOffset:=FSize;
    FSize:=FSize+fieldSym.Typ.Size;
+   if fieldSym.DefaultExpr<>nil then
+      FIsDynamic:=True;
 end;
 
 // AddMethod
@@ -2502,6 +2512,14 @@ constructor TFieldSymbol.Create(const Name: UnicodeString; Typ: TTypeSymbol; aVi
 begin
    inherited Create(Name, Typ);
    FVisibility:=aVisibility;
+end;
+
+// Destroy
+//
+destructor TFieldSymbol.Destroy;
+begin
+   FDefaultExpr.Free;
+   inherited;
 end;
 
 // QualifiedName

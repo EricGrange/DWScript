@@ -477,6 +477,7 @@ type
                             fieldSymbol: TFieldSymbol);
          destructor Destroy; override;
 
+         function IsConstant : Boolean; override;
          function Eval(exec : TdwsExecution) : Variant; override;
 
          property BaseExpr : TDataExpr read FBaseExpr;
@@ -499,6 +500,27 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          property Expr : TDataExpr read FExpr;
+   end;
+
+   // dynamic anonymous record
+   TDynamicRecordExpr = class(TPosDataExpr)
+      private
+         FAddr : Integer;
+
+      protected
+         function GetAddr(exec : TdwsExecution) : Integer; override;
+         function GetData(exec : TdwsExecution) : TData; override;
+
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(aProg : TdwsProgram; const aPos : TScriptPos;
+                            recordTyp : TRecordSymbol);
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property Addr : Integer read FAddr;
    end;
 
    // Field expression: obj.Field
@@ -2941,9 +2963,11 @@ var
 begin
    Result:=Self;
    if IsConstant then begin
-      EvalAsVariant(exec, v);
-      Result:=TConstExpr.CreateTypedVariantValue(prog, Typ, v);
-      Free;
+      if Typ.Size=1 then begin
+         EvalAsVariant(exec, v);
+         Result:=TConstExpr.CreateTypedVariantValue(prog, Typ, v);
+         Free;
+      end;
    end;
 end;
 
@@ -3486,6 +3510,13 @@ begin
    inherited;
 end;
 
+// IsConstant
+//
+function TRecordExpr.IsConstant : Boolean;
+begin
+   Result:=BaseExpr.IsConstant;
+end;
+
 // Eval
 //
 function TRecordExpr.Eval(exec : TdwsExecution) : Variant;
@@ -3567,6 +3598,101 @@ end;
 function TInitDataExpr.GetSubExprCount : Integer;
 begin
    Result:=1;
+end;
+
+// ------------------
+// ------------------ TDynamicRecordExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TDynamicRecordExpr.Create(aProg : TdwsProgram; const aPos : TScriptPos;
+                                      recordTyp : TRecordSymbol);
+begin
+   inherited Create(aProg, aPos, recordTyp);
+   FAddr:=aProg.GetTempAddr(recordTyp.Size);
+end;
+
+// EvalNoResult
+//
+procedure TDynamicRecordExpr.EvalNoResult(exec : TdwsExecution);
+var
+   recType : TRecordSymbol;
+   sym : TSymbol;
+   expr : TExprBase;
+   dataExpr : TDataExpr;
+   fieldSym : TFieldSymbol;
+begin
+   recType:=TRecordSymbol(Typ);
+   for sym in recType.Members do begin
+      if sym.ClassType=TFieldSymbol then begin
+         fieldSym:=TFieldSymbol(sym);
+         expr:=fieldSym.DefaultExpr;
+         if expr=nil then
+            fieldSym.InitData(exec.Stack.Data, exec.Stack.BasePointer+FAddr)
+         else if expr is TDataExpr then begin
+            dataExpr:=TDataExpr(expr);
+            DWSCopyData(dataExpr.Data[exec], dataExpr.Addr[exec],
+                        exec.Stack.Data, exec.Stack.BasePointer+FAddr+fieldSym.Offset,
+                        fieldSym.Size);
+         end else expr.EvalAsVariant(exec, exec.Stack.Data[exec.Stack.BasePointer+FAddr+fieldSym.Offset]);
+      end;
+   end;
+end;
+
+// GetAddr
+//
+function TDynamicRecordExpr.GetAddr(exec : TdwsExecution) : Integer;
+begin
+  Result:=exec.Stack.BasePointer+FAddr;
+end;
+
+// GetData
+//
+function TDynamicRecordExpr.GetData(exec : TdwsExecution) : TData;
+begin
+   EvalNoResult(exec);
+   Result:=exec.Stack.Data;
+end;
+
+// GetSubExpr
+//
+function TDynamicRecordExpr.GetSubExpr(i : Integer) : TExprBase;
+var
+   recType : TRecordSymbol;
+   sym : TSymbol;
+   k : Integer;
+begin
+   recType:=TRecordSymbol(Typ);
+   for k:=0 to recType.Members.Count-1 do begin
+      sym:=recType.Members[k];
+      if sym.ClassType=TFieldSymbol then begin
+         Result:=TFieldSymbol(sym).DefaultExpr;
+         if i=0 then
+            Exit
+         else Dec(i);
+      end;
+   end;
+   Result:=nil;
+end;
+
+// GetSubExprCount
+//
+function TDynamicRecordExpr.GetSubExprCount : Integer;
+var
+   recType : TRecordSymbol;
+   sym : TSymbol;
+   k : Integer;
+begin
+   Result:=0;
+   recType:=TRecordSymbol(Typ);
+   for k:=0 to recType.Members.Count-1 do begin
+      sym:=recType.Members[k];
+      if sym.ClassType=TFieldSymbol then begin
+         if TFieldSymbol(sym).DefaultExpr<>nil then
+            Inc(Result);
+      end;
+   end;
 end;
 
 // ------------------

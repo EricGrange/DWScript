@@ -509,8 +509,9 @@ type
                                             typedExprList : TTypedExprList;
                                             const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExpr;
 
-         function ReadRecordDecl(const typeName : UnicodeString) : TRecordSymbol;
-         procedure ReadFieldsDecl(struct : TStructuredTypeSymbol; visibility : TdwsVisibility);
+         function ReadRecordDecl(const typeName : UnicodeString; allowNonConstExpressions : Boolean) : TRecordSymbol;
+         procedure ReadFieldsDecl(struct : TStructuredTypeSymbol; visibility : TdwsVisibility;
+                                  allowNonConstExpressions : Boolean);
 
          function ReadHelperDecl(const typeName : UnicodeString) : THelperSymbol;
 
@@ -5642,6 +5643,7 @@ begin
          if arg is TDataExpr then begin
             if     (coVariablesAsVarOnly in Options)
                and (not (arg is TVarExpr))
+               and (not (argTyp.UnAliasedType.ClassType=TRecordSymbol))
                and (   (x>0)
                     or (not (funcSym is TMethodSymbol))
                     or (not (TMethodSymbol(funcSym).StructSymbol is TRecordSymbol))
@@ -6620,7 +6622,7 @@ begin
                else
 
                   if FTok.TestName then begin
-                     ReadFieldsDecl(Result, visibility);
+                     ReadFieldsDecl(Result, visibility, False);
                      if not (FTok.TestDelete(ttSEMI) or FTok.Test(ttEND)) then
                         Break;
                   end else Break;
@@ -7041,7 +7043,8 @@ end;
 
 // ReadRecordDecl
 //
-function TdwsCompiler.ReadRecordDecl(const typeName : UnicodeString) : TRecordSymbol;
+function TdwsCompiler.ReadRecordDecl(const typeName : UnicodeString;
+                                     allowNonConstExpressions : Boolean) : TRecordSymbol;
 var
    names : TStringList;
    propSym : TPropertySymbol;
@@ -7102,7 +7105,7 @@ begin
                if FTok.Test(ttEND) then
                   Break;
 
-               ReadFieldsDecl(Result, visibility);
+               ReadFieldsDecl(Result, visibility, allowNonConstExpressions);
 
                if not FTok.TestDelete(ttSEMI) then
                   Break;
@@ -7129,7 +7132,8 @@ end;
 
 // ReadFieldsDecl
 //
-procedure TdwsCompiler.ReadFieldsDecl(struct : TStructuredTypeSymbol; visibility : TdwsVisibility);
+procedure TdwsCompiler.ReadFieldsDecl(struct : TStructuredTypeSymbol; visibility : TdwsVisibility;
+                                      allowNonConstExpressions : Boolean);
 var
    x : Integer;
    names : TStringList;
@@ -7139,6 +7143,7 @@ var
    posArray : TScriptPosArray;
    expr : TTypedExpr;
    exprData : TData;
+   exprDyn : TTypedExpr;
    detachTyp : Boolean;
    options : TdwsNameListOptions;
 begin
@@ -7155,6 +7160,7 @@ begin
          typ:=ReadType('', tcConstant)
       else typ:=nil;
 
+      exprDyn:=nil;
       if FTok.TestDeleteAny([ttEQ, ttASSIGN])<>ttNone then begin
          detachTyp:=False;
          expr:=ReadExpr(nil);
@@ -7174,22 +7180,28 @@ begin
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
                if typ=nil then
                   typ:=FProg.TypVariant;
-            end else if not expr.IsConstant then begin
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
-            end else if not FMsgs.HasErrors then begin
-               SetLength(exprData, typ.Size);
-               if typ.Size=1 then begin
-                  expr.EvalAsVariant(FExec, exprData[0]);
-               end else begin
-                  FExec.Stack.Push(typ.Size);
-                  try
-                     DWSCopyData((expr as TDataExpr).Data[FExec],
-                                 (expr as TDataExpr).Addr[FExec],
-                                 exprData, 0, typ.Size);
-                  finally
-                     FExec.Stack.Pop(typ.Size);
+            end else if expr.IsConstant then begin
+               if not FMsgs.HasErrors then begin
+                  SetLength(exprData, typ.Size);
+                  if typ.Size=1 then begin
+                     expr.EvalAsVariant(FExec, exprData[0]);
+                  end else begin
+                     FExec.Stack.Push(typ.Size);
+                     try
+                        DWSCopyData((expr as TDataExpr).Data[FExec],
+                                    (expr as TDataExpr).Addr[FExec],
+                                    exprData, 0, typ.Size);
+                     finally
+                        FExec.Stack.Pop(typ.Size);
+                     end;
                   end;
                end;
+            end else if not allowNonConstExpressions then begin
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+            end else begin
+               exprDyn:=expr;
+               expr:=nil;
+               detachTyp:=False;
             end;
          finally
             if detachTyp then begin
@@ -7214,6 +7226,12 @@ begin
             MemberSymbolWithNameAlreadyExists(sym, posArray[x]);
 
          member:=TFieldSymbol.Create(names[x], typ, visibility);
+         if exprDyn<>nil then begin
+            case x of
+               0 : member.DefaultExpr:=exprDyn;
+               1 : FMsgs.AddCompilerError(FTok.HotPos, CPE_OnlyOneFieldExpectedForExternal);
+            end;
+         end;
          struct.AddField(member);
          if exprData<>nil then
             member.DefaultValue:=exprData;
@@ -7538,7 +7556,7 @@ begin
                            ttPROCEDURE, ttFUNCTION]);
    case tt of
       ttRECORD :
-         Result:=ReadRecordDecl(typeName);
+         Result:=ReadRecordDecl(typeName, False);
 
       ttARRAY :
          Result:=ReadArrayType(typeName, typeContext);
@@ -8047,18 +8065,30 @@ const
       Result:=TAnonymousFuncRefExpr.Create(FProg, GetFuncExpr(funcSym, nil));
    end;
 
-   function ReadAnonymousRecord : TConstExpr;
+   function ReadAnonymousRecord : TTypedExpr;
    var
+      scriptPos : TScriptPos;
       recordType : TRecordSymbol;
       data : TData;
    begin
-      recordType:=ReadRecordDecl('');
+      scriptPos:=FTok.HotPos;
+      recordType:=ReadRecordDecl('', True);
       FProg.Table.AddSymbol(recordType);
 
-      SetLength(data, recordType.Size);
-      recordType.InitData(data, 0);
+      RecordSymbolUseImplicitReference(recordType, scriptPos, False);
 
-      Result:=TConstExpr.CreateTyped(FProg, recordType, data);
+      if recordType.IsDynamic then begin
+
+         Result:=TDynamicRecordExpr.Create(FProg, scriptPos, recordType);
+
+      end else begin
+
+         SetLength(data, recordType.Size);
+         recordType.InitData(data, 0);
+
+         Result:=TConstExpr.CreateTyped(FProg, recordType, data);
+
+      end;
    end;
 
    procedure ReportIncompatibleAt(const scriptPos : TScriptPos; expr : TTypedExpr);
