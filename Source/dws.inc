@@ -32,6 +32,8 @@
 {$B-} // BoolEval off
 {$X+} // extended syntax
 {$H+} // long strings
+{$Q-} // overflow checks off
+{$J-} // assignable typed constants off
 
 {$T-} // typed addr off - otherwise you'll get problems with ComSupport
       // <<.CreateResFmt(@SNoMethod, [Names]);>>
