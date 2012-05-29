@@ -95,6 +95,8 @@ function UnicodeComparePChars(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 :
 function InterlockedIncrement(var val : Integer) : Integer;
 function InterlockedDecrement(var val : Integer) : Integer;
 
+procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Cardinal(-1));
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -157,6 +159,32 @@ end;
 function InterlockedDecrement(var val : Integer) : Integer;
 begin
    Result:=Windows.InterlockedDecrement(val);
+end;
+
+// SetThreadName
+//
+procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Cardinal(-1));
+// http://www.codeproject.com/Articles/8549/Name-your-threads-in-the-VC-debugger-thread-list
+type
+   TThreadNameInfo = record
+      dwType : Cardinal;      // must be 0x1000
+      szName : PAnsiChar;     // pointer to name (in user addr space)
+      dwThreadID : Cardinal;  // thread ID (-1=caller thread)
+      dwFlags : Cardinal;     // reserved for future use, must be zero
+   end;
+var
+   info : TThreadNameInfo;
+begin
+   if not IsDebuggerPresent then Exit;
+
+   info.dwType:=$1000;
+   info.szName:=threadName;
+   info.dwThreadID:=threadID;
+   info.dwFlags:=0;
+   try
+      RaiseException($406D1388, 0, SizeOf(info) div SizeOf(Cardinal), @info);
+   except
+   end;
 end;
 
 // SetDecimalSeparator

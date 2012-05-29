@@ -1818,7 +1818,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsInfo;
+uses dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsInfo, dwsXPlatform;
 
 type
 
@@ -3472,6 +3472,8 @@ begin
    FreeOnTerminate:=False;
 
    inherited Create(True);
+
+   SetThreadName('DWScript Guardian');
 
    Priority:=tpTimeCritical;
 end;
