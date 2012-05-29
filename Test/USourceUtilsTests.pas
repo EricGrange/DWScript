@@ -26,6 +26,7 @@ type
          procedure StringTest;
          procedure StaticArrayTest;
          procedure DynamicArrayTest;
+         procedure HelperSuggestTest;
    end;
 
 // ------------------------------------------------------------------
@@ -330,6 +331,26 @@ begin
    CheckEquals('Reverse', sugg.Code[10], 'd. 10');
    CheckEquals('SetLength', sugg.Code[11], 'd. 11');
    CheckEquals('Swap', sugg.Code[12], 'd. 12');
+end;
+
+// HelperSuggestTest
+//
+procedure TSourceUtilsTests.HelperSuggestTest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile( 'type TIntegerHelper = helper for Integer const Hello = 123; function Next : Integer; begin Result:=Self+1; end; end;'#13#10
+                           +'var d : Integer;'#13#10
+                           +'d.');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 3, 3);
+   sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
+
+   CheckEquals(2, sugg.Count, 'd.');
+   CheckEquals('Hello', sugg.Code[0], 'd. 0');
+   CheckEquals('Next', sugg.Code[1], 'd. 0');
 end;
 
 // ------------------------------------------------------------------

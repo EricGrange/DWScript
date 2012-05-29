@@ -1260,7 +1260,7 @@ type
    end;
 
    // class operator X (params) uses method;
-   TClassOperatorSymbol = class(TSymbol)
+   TClassOperatorSymbol = class sealed (TSymbol)
       private
          FClassSymbol : TClassSymbol;
          FTokenType : TTokenType;

@@ -96,6 +96,7 @@ type
          FPreviousTokenString : UnicodeString;
          FPreviousToken : TTokenType;
          FLocalContext : TdwsSourceContext;
+         FLocalTable : TSymbolTable;
          FContextSymbol : TSymbol;
          FSymbolClassFilter : TSymbolClass;
          FStaticArrayHelpers : TSymbolTable;
@@ -119,6 +120,7 @@ type
                                const args : array of const) : TFuncSymbol;
          procedure AddStaticArrayHelpers(list : TSimpleSymbolList);
          procedure AddDynamicArrayHelpers(dyn : TDynamicArraySymbol; list : TSimpleSymbolList);
+         procedure AddTypeHelpers(typ : TTypeSymbol; meta : Boolean; list : TSimpleSymbolList);
          procedure AddUnitSymbol(unitSym : TUnitSymbol; list : TSimpleSymbolList);
 
          procedure AddReservedWords;
@@ -141,6 +143,23 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+type
+   THelperFilter = class (TSimpleSymbolList)
+      List : TSimpleSymbolList;
+      Meta : Boolean;
+      function OnHelper(helper : THelperSymbol) : Boolean;
+   end;
+
+// OnHelper
+//
+function THelperFilter.OnHelper(helper : THelperSymbol) : Boolean;
+begin
+   if not Meta then
+      List.AddMembers(helper, nil);
+   List.AddMetaMembers(helper, nil);
+   Result:=False;
+end;
 
 // ------------------
 // ------------------ TdwsSuggestions ------------------
@@ -235,11 +254,21 @@ var
    arrayItem : Boolean;
 begin
    FLocalContext:=FProg.SourceContextMap.FindContext(FSourcePos);
+
+   // find context symbol
    context:=FLocalContext;
    while (context<>nil) and (context.ParentSym=nil) do
       context:=context.Parent;
    if context<>nil then
       FContextSymbol:=context.ParentSym;
+
+   // find context table
+   context:=FLocalContext;
+   while (context<>nil) and (context.LocalTable=nil) do
+      context:=context.Parent;
+   if context<>nil then
+      FLocalTable:=context.LocalTable
+   else FLocalTable:=FProg.Table;
 
    sl:=TStringList.Create;
    try
@@ -402,6 +431,24 @@ begin
    list.AddSymbolTable(FDynArrayHelpers);
 end;
 
+// AddTypeHelpers
+//
+procedure TdwsSuggestions.AddTypeHelpers(typ : TTypeSymbol; meta : Boolean; list : TSimpleSymbolList);
+var
+   filter : THelperFilter;
+begin
+   if FLocalTable=nil then Exit;
+
+   filter:=THelperFilter.Create;
+   try
+      filter.List:=list;
+      filter.Meta:=meta;
+      FLocalTable.EnumerateHelpers(typ, filter.OnHelper);
+   finally
+      filter.Free;
+   end;
+end;
+
 // AddUnitSymbol
 //
 procedure TdwsSuggestions.AddUnitSymbol(unitSym : TUnitSymbol; list : TSimpleSymbolList);
@@ -460,6 +507,11 @@ begin
    try
       if FPreviousSymbol<>nil then begin
 
+         if FPreviousSymbol.IsType then
+            AddTypeHelpers(FPreviousSymbol as TTypeSymbol, True, list)
+         else if (FPreviousSymbol.Typ<>nil) and FPreviousSymbol.Typ.IsType then
+            AddTypeHelpers(FPreviousSymbol.Typ, False, list);
+
          if FPreviousSymbol is TStructuredTypeMetaSymbol then begin
 
             // nothing
@@ -506,9 +558,12 @@ begin
 
             list.AddSymbolTable(TEnumerationSymbol(FPreviousSymbol).Elements);
 
-         end else FPreviousSymbol:=nil;
+         end else if list.Count=0 then
+
+            FPreviousSymbol:=nil;
 
       end;
+
       if FPreviousToken=ttNEW then
          FSymbolClassFilter:=TClassSymbol;
 
@@ -823,6 +878,7 @@ procedure TSimpleSymbolList.AddMembers(struc : TCompositeTypeSymbol; from : TSym
                                        const addToList : TProcAddToList = nil);
 var
    sym : TSymbol;
+   symClass : TClass;
    scope : TCompositeTypeSymbol;
    visibility : TdwsVisibility;
    first : Boolean;
@@ -833,7 +889,11 @@ begin
 
    repeat
       for sym in struc.Members do begin
-         if sym is TClassOperatorSymbol then continue;
+         symClass:=sym.ClassType;
+         if    (symClass=TClassOperatorSymbol)
+            or (symClass=TClassConstSymbol)
+            or (symClass=TClassVarSymbol)
+            then continue;
          if not sym.IsVisibleFor(visibility) then continue;
          Add(sym);
       end;
