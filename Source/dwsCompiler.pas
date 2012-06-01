@@ -633,6 +633,7 @@ type
          property Msgs : TdwsCompileMessageList read FMsgs;
          property Options : TCompilerOptions read FOptions write FOptions;
          property ScriptPaths : TStrings read FScriptPaths;
+         property Filter : TdwsFilter read FFilter;
          property SymbolDictionary : TdwsSymbolDictionary read FSymbolDictionary;
          property UnitSection : TdwsUnitSection read FUnitSection write FUnitSection;
          property TokenizerRules : TTokenizerRules read FTokRules;

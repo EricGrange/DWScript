@@ -9,13 +9,15 @@ var y, m, d : Integer;
 DecodeDate(dt, y, m, d);
 PrintLn(Format('%d-%d-%d', [y, m, d]));
 
+const BoolToStr : array [False..True] of String = ['False', 'True'];
+
 PrintLn('DayOfWeek '+IntToStr(DayOfWeek(dt)));
 PrintLn('DayOfTheWeek '+IntToStr(DayOfTheWeek(dt)));
 PrintLn('DayOfMonth '+IntToStr(DayOfMonth(dt)));
 PrintLn('MonthOfYear '+IntToStr(MonthOfYear(dt)));
 PrintLn('DayOfYear '+IntToStr(DayOfYear(dt)));
-PrintLn('IsLeapYear 2010 '+VarToStr(IsLeapYear(2010)));
-PrintLn('IsLeapYear 2012 '+VarToStr(IsLeapYear(2012)));
+PrintLn('IsLeapYear 2010 '+BoolToStr[IsLeapYear(2010)]);
+PrintLn('IsLeapYear 2012 '+BoolToStr[IsLeapYear(2012)]);
 
 dt:=dt+EncodeTime(12, 34, 45, 567);
 

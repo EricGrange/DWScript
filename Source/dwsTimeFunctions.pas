@@ -103,8 +103,8 @@ type
     function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
   end;
 
-  TIncMonthFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
+  TIncMonthFunc = class(TInternalMagicFloatFunction)
+    procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
   end;
 
   TDecodeDateFunc = class(TInternalFunction)
@@ -324,9 +324,9 @@ end;
 
 { TIncMonthFunc }
 
-procedure TIncMonthFunc.Execute(info : TProgramInfo);
+procedure TIncMonthFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
 begin
-  Info.ResultAsFloat := IncMonth(Info.ValueAsFloat['dt'], Info.ValueAsInteger['nb']);
+   Result:=IncMonth(args.AsFloat[0], args.AsInteger[1]);
 end;
 
 { TDecodeDateFunc }
