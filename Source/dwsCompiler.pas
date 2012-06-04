@@ -2352,7 +2352,15 @@ begin
 
          if not isAnonymous then begin
                 
-            if not isType then begin
+            if isType then begin
+
+               if FTok.TestDelete(ttOF) then begin
+                  if FTok.TestDelete(ttOBJECT) then
+                     FMsgs.AddCompilerHint(FTok.HotPos, CPH_OfObjectIsLegacy, hlPedantic)
+                  else FMsgs.AddCompilerError(FTok.HotPos, CPE_OfObjectExpected);
+               end;
+
+            end else begin
 
                ReadSemiColon;
 
@@ -7545,6 +7553,17 @@ function TdwsCompiler.ReadType(const typeName : UnicodeString; typeContext : Tdw
       end;
    end;
 
+   function ReadProcType(token : TTokenType; const hotPos : TScriptPos) : TTypeSymbol;
+   begin
+      Result:=ReadProcDecl(token, hotPos, False, True);
+      Result.SetName(typeName);
+      (Result as TFuncSymbol).SetIsType;
+      // close declaration context
+      if coContextMap in Options then
+         FSourceContextMap.CloseContext(FTok.HotPos);
+
+   end;
+
 var
    tt : TTokenType;
    name, connectorQualifier : UnicodeString;
@@ -7554,7 +7573,7 @@ begin
    hotPos:=FTok.HotPos;
    tt:=FTok.TestDeleteAny([ttRECORD, ttARRAY, ttCLASS, ttINTERFACE, ttHELPER,
                            ttBLEFT, ttENUM, ttFLAGS, ttPARTIAL, ttSTATIC,
-                           ttPROCEDURE, ttFUNCTION]);
+                           ttPROCEDURE, ttFUNCTION, ttREFERENCE]);
    case tt of
       ttRECORD :
          Result:=ReadRecordDecl(typeName, False);
@@ -7602,14 +7621,18 @@ begin
          Result:=ReadEnumeration(typeName, enumClassic);
       end;
 
-      ttPROCEDURE, ttFUNCTION : begin
-         Result:=ReadProcDecl(tt, hotPos, False, True);
-         Result.SetName(typeName);
-         (Result as TFuncSymbol).SetIsType;
-         // close declaration context
-         if coContextMap in Options then
-            FSourceContextMap.CloseContext(FTok.HotPos);
+      ttREFERENCE : begin
+         if FTok.TestDelete(ttTO) then
+            FMsgs.AddCompilerHint(FTok.HotPos, CPH_ReferenceToIsLegacy, hlPedantic)
+         else FMsgs.AddCompilerError(FTok.HotPos, CPE_ToExpected);
+         tt:=FTok.TestDeleteAny([ttPROCEDURE, ttFUNCTION]);
+         if tt=ttNone then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ProcOrFuncExpected);
+         Result:=ReadProcType(tt, hotPos)
       end;
+
+      ttPROCEDURE, ttFUNCTION :
+         Result:=ReadProcType(tt, hotPos);
 
    else
 

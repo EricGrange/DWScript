@@ -106,6 +106,7 @@ const
   CPE_VariableExpected = 'Variable expected';
   CPE_ForExpected = 'FOR expected';
   CPE_ToOrDowntoExpected = 'TO or DOWNTO expected';
+  CPE_ToExpected = 'TO expected';
   CPE_DoExpected = 'DO expected';
   CPE_ThenExpected = 'Then expected';
   CPE_OfExpected = 'OF expected';
@@ -294,6 +295,10 @@ const
   CPH_NameAmbiguousInScopeContext = 'Name "%s" could be ambiguous in its scope context';
   CPH_UnitAlreadyReferred = 'Unit "%s" redeclared';
   CPH_UnitAlreadyReferredInInterface = 'Unit "%s" already declared in interface section';
+
+  CPH_OfObjectIsLegacy = 'OF OBJECT modifier is legacy and ignored';
+  CPE_OfObjectExpected = 'OF OBJECT expected';
+  CPH_ReferenceToIsLegacy = 'REFERENCE TO modifier is legacy and ignored';
 
   // TypeCheck
   CPE_BooleanExpected = 'Boolean expected';
