@@ -3,7 +3,7 @@ unit UScriptTests;
 interface
 
 uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsUtils,
-   dwsXPlatform, dwsSymbols;
+   dwsXPlatform, dwsSymbols, dwsErrors;
 
 type
 
@@ -77,6 +77,7 @@ begin
 
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.OnInclude:=DoInclude;
+   FCompiler.Config.HintsLevel:=hlPedantic;
 end;
 
 // TearDown
@@ -125,6 +126,8 @@ begin
 
          (prog as TdwsProgram).InitExpr.RecursiveEnumerateSubExprs(EmptyCallBack);
          (prog as TdwsProgram).Expr.RecursiveEnumerateSubExprs(EmptyCallBack);
+
+         prog:=nil;
 
       end;
 
