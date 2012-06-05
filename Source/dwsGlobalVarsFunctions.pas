@@ -118,7 +118,7 @@ implementation
 
 var
    vGlobalVarsCS : TRTLCriticalSection;
-   vGlobalVars : TStringList;
+   vGlobalVars : TFastCompareStringList;
    vGlobalVarsNamesCache : UnicodeString;
 
 const // type constants to make sure strings get reused by the compiler
@@ -537,7 +537,7 @@ end;
 initialization
 
    InitializeCriticalSection(vGlobalVarsCS);
-   vGlobalVars:=TStringList.Create;
+   vGlobalVars:=TFastCompareStringList.Create;
    vGlobalVars.CaseSensitive:=True;
    vGlobalVars.Sorted:=True;
 
