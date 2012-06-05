@@ -221,8 +221,11 @@ type
          procedure WriteName(const aName : UnicodeString); virtual;
          procedure WriteString(const str : UnicodeString);
          procedure WriteNumber(const n : Double);
+         procedure WriteInteger(const n : Integer);
          procedure WriteBoolean(b : Boolean);
          procedure WriteNull;
+
+         procedure WriteStrings(const str : TStrings);
 
          function ToString : String; override;
 
@@ -1315,6 +1318,15 @@ begin
    AfterWriteImmediate;
 end;
 
+// WriteInteger
+//
+procedure TdwsJSONWriter.WriteInteger(const n : Integer);
+begin
+   BeforeWriteImmediate;
+   FStream.WriteString(IntToStr(n));
+   AfterWriteImmediate;
+end;
+
 // WriteBoolean
 //
 procedure TdwsJSONWriter.WriteBoolean(b : Boolean);
@@ -1333,6 +1345,18 @@ begin
    BeforeWriteImmediate;
    FStream.WriteString('null');
    AfterWriteImmediate;
+end;
+
+// WriteStrings
+//
+procedure TdwsJSONWriter.WriteStrings(const str : TStrings);
+var
+   i : Integer;
+begin
+   BeginArray;
+   for i:=0 to str.Count-1 do
+      WriteString(str[i]);
+   EndArray;
 end;
 
 // ToString
