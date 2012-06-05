@@ -565,6 +565,7 @@ const
   // AutoFix Actions
 
   AFA_NoLongerApplicable = 'Source code changed, no longer applicable';
+  AFA_AddImplementation = 'Add implementation';
 
 implementation
 

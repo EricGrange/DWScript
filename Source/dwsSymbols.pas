@@ -2123,8 +2123,10 @@ end;
 //
 procedure TCompositeTypeSymbol.CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
 var
-   i : Integer;
+   i, k : Integer;
    methSym : TMethodSymbol;
+   msg : TScriptMessage;
+   afa : TdwsAFAAddImplementation;
 begin
    for i:=0 to FMembers.Count-1 do begin
       if FMembers[i] is TMethodSymbol then begin
@@ -2133,8 +2135,15 @@ begin
             if Assigned(methSym.FExecutable) then
                methSym.FExecutable.InitSymbol(FMembers[i])
             else if not IsExternal then begin
-               msgs.AddCompilerErrorFmt((methSym as TSourceMethodSymbol).DeclarationPos, CPE_MethodNotImplemented,
-                                        [methSym.Name, methSym.StructSymbol.Caption]);
+               msg:=msgs.AddCompilerErrorFmt((methSym as TSourceMethodSymbol).DeclarationPos, CPE_MethodNotImplemented,
+                                             [methSym.Name, methSym.StructSymbol.Caption]);
+               afa:=TdwsAFAAddImplementation.Create(msg, AFA_AddImplementation);
+               afa.Text:= #13#10
+                         +StringReplace(methSym.GetDescription, '()', ' ', [rfIgnoreCase])
+                         +';'#13#10'begin'#13#10#9'|'#13#10'end'#13#10;
+               k:=Pos(methSym.Name, afa.Text);
+               afa.Text:=Copy(afa.Text, 1, k-1)+methSym.StructSymbol.Name+'.'
+                        +Copy(afa.Text, k, MaxInt);
             end;
          end;
       end;
@@ -2772,14 +2781,23 @@ end;
 // Initialize
 //
 procedure TFuncSymbol.Initialize(const msgs : TdwsCompileMessageList);
+var
+   msg : TScriptMessage;
+   afa : TdwsAFAAddImplementation;
 begin
    inherited;
    if IsExternal then Exit;
    FInternalParams.Initialize(msgs);
    if Assigned(FExecutable) then
       FExecutable.InitSymbol(Self)
-   else if Level>=0 then
-      msgs.AddCompilerErrorFmt(FForwardPosition^, CPE_ForwardNotImplemented, [Name]);
+   else if Level>=0 then begin
+      msg:=msgs.AddCompilerErrorFmt(FForwardPosition^, CPE_ForwardNotImplemented, [Name]);
+      afa:=TdwsAFAAddImplementation.Create(msg, AFA_AddImplementation);
+
+      afa.Text:= #13#10
+                +StringReplace(GetDescription, '()', ' ', [rfIgnoreCase])
+                +';'#13#10'begin'#13#10#9'|'#13#10'end'#13#10;
+   end;
 end;
 
 // GetLevel
