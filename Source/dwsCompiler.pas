@@ -5541,7 +5541,8 @@ begin
          FMsgs.AddCompilerError(FTok.HotPos, CPE_NoResultTypeExpected);
       Result:=ReadType('', tcResult);
    end else if funcKind=fkFunction then begin
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_FunctionTypeExpected);
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionTypeExpected);
+      Result:=FProg.TypVariant;
    end;
 end;
 

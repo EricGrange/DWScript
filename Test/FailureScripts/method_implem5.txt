@@ -1,1 +1,3 @@
 Syntax Error: Function type expected [line: 5, column: 22]
+Syntax Error: Result type should be "Integer" [line: 5, column: 22]
+Hint: Result is never used [line: 7, column: 1]
