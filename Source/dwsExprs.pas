@@ -7432,7 +7432,7 @@ begin
       symPos:=FPosList[i];
       if     (symPos.ScriptPos.Line=ALine)
          and (symPos.ScriptPos.Col=ACol)
-         and (symPos.ScriptPos.SourceFile.Name=sourceFile) then begin
+         and UnicodeSameText(symPos.ScriptPos.SourceFile.Name, sourceFile) then begin
          Exit(FSymbol);
       end;
    end;
