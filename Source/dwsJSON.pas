@@ -326,9 +326,9 @@ begin
                            '0'..'9' :
                               hexBuf:=(hexBuf shl 4)+Ord(c)-Ord('0');
                            'a'..'f' :
-                              hexBuf:=(hexBuf shl 4)+Ord(c)-Ord('a');
+                              hexBuf:=(hexBuf shl 4)+Ord(c)-Ord('a')+10;
                            'A'..'F' :
-                              hexBuf:=(hexBuf shl 4)+Ord(c)-Ord('A');
+                              hexBuf:=(hexBuf shl 4)+Ord(c)-Ord('A')+10;
                         else
                            TdwsJSONValue.RaiseJSONParseError('Invalid unicode hex character "%s"', c);
                         end;

@@ -27,6 +27,7 @@ type
          procedure JSONTest;
          procedure ParseJSON;
          procedure AccessJSON;
+         procedure JSONUnicodeLiteral;
 
          procedure UnicodeCompareTextTest;
 
@@ -351,6 +352,18 @@ begin
    finally
       json.Free;
    end;
+end;
+
+// JSONUnicodeLiteral
+//
+procedure TdwsUtilsTests.JSONUnicodeLiteral;
+var
+   json : TdwsJSONValue;
+begin
+   json:=TdwsJSONValue.ParseString('"\u044F\u00aA"');
+   CheckEquals(TdwsJSONImmediate.ClassName, json.ClassName, 'TdwsJSONImmediate');
+   CheckEquals(Chr($44f)+Chr($aa), TdwsJSONImmediate(json).AsString, 'unicode');
+   json.Free;
 end;
 
 // UnicodeCompareTextTest
