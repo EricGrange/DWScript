@@ -1066,7 +1066,6 @@ begin
 
    if (funcSym.Typ<>nil) and (funcSym.Typ.Size>1) and Result.InheritsFrom(TFuncExpr) then
       TFuncExpr(Result).SetResultAddr(FProg, nil);
-
 end;
 
 // GetMethodExpr
@@ -1075,6 +1074,9 @@ function TdwsCompiler.GetMethodExpr(meth: TMethodSymbol; Expr: TTypedExpr; RefKi
                                     const scriptPos : TScriptPos; ForceStatic : Boolean): TFuncExpr;
 begin
    Result:=CreateMethodExpr(FProg, meth, Expr, RefKind, scriptPos, ForceStatic);
+
+   if (meth.Typ<>nil) and (meth.Typ.Size>1) then
+      Result.SetResultAddr(FProg, nil);
 end;
 
 // MemberSymbolWithNameAlreadyExists
