@@ -41,6 +41,8 @@ type
          procedure SubExprTest;
          procedure RecompileInContext;
          procedure RecompileInContext2;
+         procedure RecompileInContext3;
+         procedure RecompileInContext4;
          procedure ScriptPos;
          procedure MonkeyTest;
          procedure SameVariantTest;
@@ -741,6 +743,61 @@ begin
       exec.RunProgram(0);
 
       CheckEquals('TTest', exec.Result.ToString, 'Recompile Result');
+
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// RecompileInContext3
+//
+procedure TCornerCasesTests.RecompileInContext3;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'Print("Hello");'
+                           +'var x: Integer;');
+
+   exec:=prog.BeginNewExecution;
+
+   exec.RunProgram(0);
+   CheckEquals('Hello', exec.Result.ToString, 'compile');
+
+   FCompiler.RecompileInContext(prog, 'x := 2; Print(x);');
+   exec.RunProgram(0);
+   CheckEquals('Hello2', exec.Result.ToString, 're compile');
+
+   FCompiler.RecompileInContext(prog, 'x:=x+1; Print(x);');
+   exec.RunProgram(0);
+   CheckEquals('Hello23', exec.Result.ToString, 're re compile');
+
+   exec.EndProgram;
+end;
+
+// RecompileInContext4
+//
+procedure TCornerCasesTests.RecompileInContext4;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'Print("Hello");');
+
+   exec:=prog.BeginNewExecution;
+   try
+
+      FCompiler.RecompileInContext(prog, 'var x := 2');
+      exec.RunProgram(0);
+      CheckEquals('', exec.Result.ToString, 'compile');
+
+      FCompiler.RecompileInContext(prog, 'Print(x)');
+      exec.RunProgram(0);
+      CheckEquals('2', exec.Result.ToString, 're compile');
+
+      FCompiler.RecompileInContext(prog, 'var y := x+1; Print(y);');
+      exec.RunProgram(0);
+      CheckEquals('23', exec.Result.ToString, 're re compile');
 
    finally
       exec.EndProgram;

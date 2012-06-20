@@ -2307,6 +2307,8 @@ procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
       end else Msgs.AddRuntimeError(cNullPos, e.Message, LastScriptCallStack);
    end;
 
+var
+   stackBaseReqSize : Integer;
 begin
    if FProgramState<>psRunning then begin
       Msgs.AddRuntimeError('Program state psRunning expected');
@@ -2317,6 +2319,10 @@ begin
       aTimeOutMilliseconds:=FProg.TimeoutMilliseconds;
    if aTimeoutMilliSeconds>0 then
       TdwsGuardianThread.GuardExecution(Self, aTimeoutMilliSeconds);
+
+   stackBaseReqSize:=FProg.FGlobalAddrGenerator.DataSize+FProg.DataSize;
+   if Stack.StackPointer<stackBaseReqSize then
+      Stack.FixBaseStack(stackBaseReqSize);
 
    try
       Status:=esrNone;

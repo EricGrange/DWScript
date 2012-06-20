@@ -132,6 +132,8 @@ type
          function  GetSavedBp(Level: Integer): Integer; inline;
          procedure PopBp(Level : Integer); inline;
 
+         procedure FixBaseStack(newSize : Integer);
+
          function  SwitchFrame(level : Integer) : Integer; inline;
          procedure RestoreFrame(level, oldBasePointer: Integer); inline;
          procedure Reset;
@@ -394,6 +396,16 @@ end;
 procedure TStackMixIn.PopBp(Level : Integer);
 begin
    FBpStore[Level].Pop;
+end;
+
+// FixBaseStack
+//
+procedure TStackMixIn.FixBaseStack(newSize : Integer);
+begin
+   Assert(BasePointer=0);
+   Assert(FBpStore[0].Count=2);
+   GrowTo(newSize);
+   FStackPointer:=newSize;
 end;
 
 // SwitchFrame
