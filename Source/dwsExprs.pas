@@ -55,49 +55,47 @@ type
    PNoResultExprList = ^TNoResultExprList;
    PNoResultExpr = ^TNoResultExpr;
 
-   TScriptSourceType = (stMain, stUnit, stRecompile);
+   TScriptSourceType = (stMain, stUnit, stInclude, stRecompile);
 
    // A specific ScriptSource entry. The text of the script contained in that unit.
    TScriptSourceItem = class
       private
-         FNameReference: UnicodeString;
-         FSourceFile: TSourceFile;
-         FSourceType: TScriptSourceType;
+         FNameReference : UnicodeString;
+         FSourceFile : TSourceFile;
+         FSourceType : TScriptSourceType;
 
       public
          constructor Create(const ANameReference: UnicodeString; ASourceFile: TSourceFile; ASourceType: TScriptSourceType);
+         destructor Destroy; override;
 
-         property NameReference: UnicodeString read FNameReference write FNameReference;
-         property SourceFile: TSourceFile read FSourceFile;
-         property SourceType: TScriptSourceType read FSourceType;
+         property NameReference : UnicodeString read FNameReference write FNameReference;
+         property SourceFile : TSourceFile read FSourceFile;
+         property SourceType : TScriptSourceType read FSourceType;
    end;
 
    // Manage a list of all the different Script Texts (files) used in the program.
    TScriptSourceList = class
       private
-         FSourceList: TList;
-         FMainScript: TScriptSourceItem;
-         function GetSourceItem(Index: Integer): TScriptSourceItem;
-         procedure SetSourceItem(Index: Integer; SourceItem: TScriptSourceItem);
+         FSourceList : TTightList;
+         FMainScript : TScriptSourceItem;
+
+      protected
+         function GetSourceItem(index : Integer) : TScriptSourceItem; inline;
 
       public
          constructor Create;
          destructor Destroy; override;
 
          procedure Clear;
-         procedure Add(const ANameReference: UnicodeString; ASourceFile: TSourceFile; ASourceType: TScriptSourceType);
+         function Add(const nameReference, code: UnicodeString; sourceType: TScriptSourceType) : TSourceFile;
 
-         function FindScriptSourceItem(const ScriptPos: TScriptPos): TScriptSourceItem; overload;
-         function FindScriptSourceItem(SourceFile: TSourceFile): TScriptSourceItem; overload;
          function FindScriptSourceItem(const SourceFileName: UnicodeString): TScriptSourceItem; overload;
 
-         function IndexOf(const AScriptPos: TScriptPos): Integer; overload;
-         function IndexOf(ASourceFile: TSourceFile): Integer; overload;
          function IndexOf(const SourceFileName: UnicodeString): Integer; overload;
 
-         function Count: Integer;
+         property Count : Integer read FSourceList.FCount;
 
-         property Items[Index: Integer]: TScriptSourceItem read GetSourceItem write SetSourceItem; default;
+         property Items[Index: Integer] : TScriptSourceItem read GetSourceItem; default;
          property MainScript: TScriptSourceItem read FMainScript;
    end;
 
@@ -633,7 +631,6 @@ type
          FSystemTable : ISystemSymbolTable;
          FOperators : TObject;
          FConditionalDefines : IAutoStrings;
-         FSourceFiles : TTightList;
          FSourceList : TScriptSourceList;
          FLineCount : Integer;
          FTimeStamp : TDateTime;
@@ -676,7 +673,6 @@ type
          function ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
          function ExecuteParam(const params : OleVariant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
 
-         function RegisterSourceFile(const sourceFile : UnicodeString; const sourceCode : UnicodeString) : TSourceFile;
          function GetSourceFile(const aSourceFile : UnicodeString) : TSourceFile;
 
          function NextStackLevel(level : Integer) : Integer;
@@ -2947,7 +2943,6 @@ begin
    FSymbolDictionary.Free;
    FUnifiedConstList.Free;
    FResourceStringList.Free;
-   FSourceFiles.Clean;
    FSourceList.Free;
 end;
 
@@ -3065,32 +3060,16 @@ begin
    Result:=Self;
 end;
 
-// RegisterSourceFile
-//
-function TdwsMainProgram.RegisterSourceFile(const sourceFile : UnicodeString; const sourceCode : UnicodeString) : TSourceFile;
-var
-   sf: TSourceFile;
-begin
-   sf:=GetSourceFile(SourceFile);
-   if not Assigned(sf) or (sf.Code <> sourceCode) then begin
-      Result:=TSourceFile.Create;
-      Result.Name:=sourceFile;
-      Result.Code:=sourceCode;
-      FSourceFiles.Add(Result);
-   end else Result:=sf;
-end;
-
 // GetSourceFile
 //
 function TdwsMainProgram.GetSourceFile(const aSourceFile : UnicodeString) : TSourceFile;
 var
    i : Integer;
 begin
-   for i:=0 to FSourceFiles.Count-1 do begin
-      Result:=TSourceFile(FSourceFiles.List[i]);
-      if UnicodeSameText(Result.Name, aSourceFile) then Exit;
-   end;
-   Result:=nil;
+   i:=FSourceList.IndexOf(aSourceFile);
+   if i>=0 then
+      Result:=FSourceList[i].SourceFile
+   else Result:=nil;
 end;
 
 // GetSourceList
@@ -7884,136 +7863,97 @@ end;
 constructor TScriptSourceItem.Create(const ANameReference: UnicodeString; ASourceFile: TSourceFile;
   ASourceType: TScriptSourceType);
 begin
-  FNameReference := ANameReference;
-  FSourceFile := ASourceFile;
-  FSourceType := ASourceType;
+   FNameReference := ANameReference;
+   FSourceFile := ASourceFile;
+   FSourceType := ASourceType;
 end;
 
-{ TScriptSourceList }
-
-procedure TScriptSourceList.Add(const ANameReference: UnicodeString; ASourceFile: TSourceFile;
-  ASourceType: TScriptSourceType);
-var
-  testItem: TScriptSourceItem;
+// Destroy
+//
+destructor TScriptSourceItem.Destroy;
 begin
-  { Determine if that script item alread exists, if not add it. }
-  testItem := FindScriptSourceItem(ASourceFile);
-  if not Assigned(testItem) then   // if not found, create a new one and add it to the list
-  begin
-    testItem := TScriptSourceItem.Create(ANameReference, ASourceFile, ASourceType);
-    FSourceList.Add(testItem);
-    // get a pointer to the 'main' script item
-    if ASourceType = stMain then
-      FMainScript := testItem;
-  end;
+   FSourceFile.Free;
+   inherited;
 end;
 
-procedure TScriptSourceList.Clear;
-var
-  x: Integer;
-begin
-  for x := 0 to FSourceList.Count - 1 do
-    try
-      TScriptSourceItem(FSourceList[x]).Free;
-    except
-      FSourceList[x] := nil;   // initialized things *could* be left
-    end;
-end;
+// ------------------
+// ------------------ TScriptSourceList ------------------
+// ------------------
 
-function TScriptSourceList.Count: Integer;
-begin
-  Result := FSourceList.Count;
-end;
-
+// Create
+//
 constructor TScriptSourceList.Create;
 begin
-  FSourceList := TList.Create;
-  FMainScript := nil;
+   inherited;
+   FMainScript:=nil;
 end;
 
+// Destroy
+//
 destructor TScriptSourceList.Destroy;
 begin
-  Clear;
-  FSourceList.Free;
-  inherited;
+   Clear;
+   FSourceList.Free;
+   inherited;
 end;
 
-function TScriptSourceList.FindScriptSourceItem(const SourceFileName: UnicodeString): TScriptSourceItem;
+// Add
+//
+function TScriptSourceList.Add(const nameReference, code: UnicodeString;
+   sourceType: TScriptSourceType) : TSourceFile;
 var
-  x: Integer;
+   srcItem : TScriptSourceItem;
 begin
-  Result := nil;
-  x := IndexOf(SourceFileName);
-  if x > -1 then
-    Result := TScriptSourceItem(FSourceList[x]);
+   srcItem:=FindScriptSourceItem(nameReference);
+   if srcItem=nil then begin
+      Result:=TSourceFile.Create;
+      Result.Name:=nameReference;
+      Result.Code:=code;
+      srcItem:=TScriptSourceItem.Create(nameReference, Result, sourceType);
+      FSourceList.Add(srcItem);
+      // get a pointer to the 'main' script item
+      if sourceType=stMain then
+         FMainScript:=srcItem;
+   end else begin
+      Result:=srcItem.SourceFile;
+   end;
 end;
 
-function TScriptSourceList.FindScriptSourceItem(SourceFile: TSourceFile): TScriptSourceItem;
-var
-  x: Integer;
+// Clear
+//
+procedure TScriptSourceList.Clear;
 begin
-  Result :=  nil;
-  x := IndexOf(SourceFile);
-  if x > -1 then
-    Result := TScriptSourceItem(FSourceList[x]);
+   FSourceList.Clean;
+   FMainScript:=nil;
 end;
 
-function TScriptSourceList.FindScriptSourceItem(const ScriptPos: TScriptPos): TScriptSourceItem;
-var
-  x: Integer;
-begin
-  Result :=  nil;
-  x := IndexOf(ScriptPos);
-  if x > -1 then
-    Result := TScriptSourceItem(FSourceList[x]);
-end;
-
+// GetSourceItem
+//
 function TScriptSourceList.GetSourceItem(Index: Integer): TScriptSourceItem;
 begin
-  Result := TScriptSourceItem(FSourceList[Index]);
+   Result := TScriptSourceItem(FSourceList.List[Index]);
 end;
 
-function TScriptSourceList.IndexOf(ASourceFile: TSourceFile): Integer;
+// FindScriptSourceItem
+//
+function TScriptSourceList.FindScriptSourceItem(const sourceFileName: UnicodeString): TScriptSourceItem;
 var
-  x: Integer;
+   x : Integer;
 begin
-  Result := -1;
-  for x := 0 to FSourceList.Count - 1 do
-  begin
-    // if they both point to the same TSourceFile then they match
-    if TScriptSourceItem(FSourceList[x]).SourceFile = ASourceFile then
-    begin
-      Result := x;
-      Break;           // found match, stop searching
-    end;
-  end;
+   x:=IndexOf(SourceFileName);
+   if x>=0 then
+      Result:=Items[x]
+   else Result:=nil;
 end;
 
 function TScriptSourceList.IndexOf(const SourceFileName: UnicodeString): Integer;
 var
-  x: Integer;
+   x: Integer;
 begin
-  Result := -1;
-  for x := 0 to FSourceList.Count - 1 do
-  begin
-    // if both names match, consider it a match
-    if AnsiCompareText(TScriptSourceItem(FSourceList[x]).SourceFile.Name, SourceFileName) = 0 then
-    begin
-      Result := x;
-      Break;           // found match, stop searching
-    end;
-  end;
-end;
-
-function TScriptSourceList.IndexOf(const AScriptPos: TScriptPos): Integer;
-begin
-  Result := IndexOf(AScriptPos.SourceFile);
-end;
-
-procedure TScriptSourceList.SetSourceItem(Index: Integer;
-  SourceItem: TScriptSourceItem);
-begin
-  FSourceList[Index] := SourceItem;
+   for x := 0 to FSourceList.Count-1 do
+      if UnicodeSameText(Items[x].NameReference, SourceFileName) then
+         Exit(x);
+   Result:=-1;
 end;
 
 // ------------------

@@ -355,6 +355,10 @@ begin
    exec:=prog.Execute;
    CheckEquals('world', exec.Result.ToString, 'exec include via file');
 
+   CheckEquals(2, prog.SourceList.Count, 'source list count');
+   CheckEquals(MSG_MainModule, prog.SourceList[0].NameReference, 'source list 0');
+   CheckEquals('test.dummy', prog.SourceList[1].NameReference, 'source list 1');
+
    prog:=FCompiler.Compile('{$include ''test.dummy''}print(" happy");');
    CheckEquals('', prog.Msgs.AsInfo, 'include via file followup');
    exec:=prog.Execute;

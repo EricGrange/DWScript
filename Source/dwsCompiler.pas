@@ -1225,7 +1225,7 @@ begin
          codeText := FFilter.Process(aCodeText, FMsgs)
       else codeText := aCodeText;
 
-      sourceFile:=FMainProg.RegisterSourceFile(MSG_MainModule, codeText);
+      sourceFile:=FMainProg.SourceList.Add(MSG_MainModule, codeText, stMain);
 
       // Start compilation
       FProg.Expr:=ReadScript(sourceFile, stMain);
@@ -1577,7 +1577,7 @@ begin
          FTok.ConditionalDefines:=FMainProg.ConditionalDefines
       else FTok.ConditionalDefines:=TAutoStore<TStrings>.Create(TStringList.Create);
 
-      FMainProg.SourceList.Add(sourceFile.Name, sourceFile, scriptType);
+//!!!!      FMainProg.SourceList.Add(sourceFile.Name, sourceFile, scriptType);
 
       readingMain:=(scriptType=stMain);
       if readingMain and FTok.Test(ttUNIT) then begin
@@ -8633,7 +8633,7 @@ begin
                   if not FTok.TestDelete(ttCRIGHT) then
                      FMsgs.AddCompilerStop(FTok.HotPos, CPE_CurlyRightExpected);
 
-                  sourceFile:=FMainProg.RegisterSourceFile(name, scriptSource);
+                  sourceFile:=FMainProg.SourceList.Add(name, scriptSource, stInclude);
                   FTok.BeginSourceFile(sourceFile);
                   if coContextMap in Options then begin
                      FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttSWITCH);
@@ -9964,7 +9964,7 @@ var
    sourceFile : TSourceFile;
    oldUnit : TUnitMainSymbol;
 begin
-   sourceFile:=FMainProg.RegisterSourceFile(srcUnit.GetUnitName, sourceCode);
+   sourceFile:=FMainProg.SourceList.Add(srcUnit.GetUnitName, sourceCode, stUnit);
 
    EnterUnit(srcUnit.Symbol, oldUnit);
    FProg.EnterSubTable(CurrentUnitSymbol.Table);
