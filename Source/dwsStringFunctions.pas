@@ -62,6 +62,10 @@ type
     procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
+  TStrToBoolFunc = class(TInternalMagicBoolFunction)
+    function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
+  end;
+
   TFloatToStrFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
@@ -329,6 +333,19 @@ const
    cBoolToStr : array [False..True] of UnicodeString = ( 'False', 'True' );
 begin
    Result:=cBoolToStr[args.AsBoolean[0]];
+end;
+
+{ TStrToBoolFunc }
+
+function TStrToBoolFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
+var
+   s : String;
+begin
+   s:=args.AsString[0];
+
+   Result:=   UnicodeSameText(s, 'True') or UnicodeSameText(s, 'T')
+           or UnicodeSameText(s, 'Yes') or UnicodeSameText(s, 'Y')
+           or UnicodeSameText(s, '1');
 end;
 
 { TFloatToStrFunc }
@@ -895,6 +912,7 @@ initialization
    RegisterInternalStringFunction(TIntToBinFunc, 'IntToBin', ['v', cInteger, 'digits', cInteger], [iffStateLess]);
 
    RegisterInternalStringFunction(TBoolToStrFunc, 'BoolToStr', ['b', cBoolean], [iffStateLess]);
+   RegisterInternalBoolFunction(TStrToBoolFunc, 'StrToBool', ['str', cString], [iffStateLess]);
 
    RegisterInternalStringFunction(TFloatToStrFunc, 'FloatToStr', ['f', cFloat, 'p=99', cInteger], [iffStateLess]);
    RegisterInternalFloatFunction(TStrToFloatFunc, 'StrToFloat', ['str', cString], [iffStateLess]);

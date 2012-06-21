@@ -1,0 +1,21 @@
+False
+False
+True
+True
+y : True
+Y : True
+n : False
+N : False
+yes : True
+Yes : True
+no : False
+No : False
+t : True
+T : True
+f : False
+F : False
+true : True
+True : True
+false : False
+False : False
+dummy : False

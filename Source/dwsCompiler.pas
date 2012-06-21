@@ -1642,7 +1642,6 @@ begin
          end else FUnitContextStack.PushContext(Self);
          FTok:=nil;
       end else begin
-         Inc(FLineCount, FTok.CurrentPos.Line-2);
          FreeAndNil(FTok);
       end;
 
@@ -1686,7 +1685,6 @@ begin
             FProg.LeaveSubTable;
          end;
       finally
-         Inc(FLineCount, FTok.CurrentPos.Line-2);
          FreeAndNil(FTok);
          LeaveUnit(oldUnit);
       end;
@@ -9932,6 +9930,7 @@ end;
 //
 procedure TdwsCompiler.DoTokenizerEndSourceFile(sourceFile : TSourceFile);
 begin
+   Inc(FLineCount, FTok.CurrentPos.Line-2);
    if     (coContextMap in Options)
       and (FSourceContextMap.Current<>nil)
       and (FSourceContextMap.Current.StartPos.SourceFile=sourceFile) then
