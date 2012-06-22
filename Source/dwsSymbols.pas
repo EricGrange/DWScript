@@ -104,6 +104,7 @@ type
    TdwsRuntimeMessageList = class (TdwsMessageList)
       public
          procedure AddRuntimeError(const Text: UnicodeString); overload;
+         procedure AddRuntimeError(e : Exception); overload;
          procedure AddRuntimeError(const scriptPos : TScriptPos; const Text: UnicodeString;
                                    const callStack : TdwsExprLocationArray); overload;
    end;
@@ -5834,6 +5835,13 @@ end;
 procedure TdwsRuntimeMessageList.AddRuntimeError(const Text: UnicodeString);
 begin
    AddRuntimeError(cNullPos, Text, nil);
+end;
+
+// AddRuntimeError
+//
+procedure TdwsRuntimeMessageList.AddRuntimeError(e : Exception);
+begin
+   AddRuntimeError(E.ClassName+': '+E.Message);
 end;
 
 // AddRuntimeError

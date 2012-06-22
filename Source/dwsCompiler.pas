@@ -354,6 +354,7 @@ type
          procedure HintUnusedSymbols;
          procedure HintUnusedPrivateSymbols;
          procedure HintUnusedResult(resultSymbol : TDataSymbol);
+         procedure HintReferenceConstVarParams(funcSym : TFuncSymbol);
 
          function GetVarExpr(dataSym : TDataSymbol): TVarExpr;
 
@@ -2952,6 +2953,7 @@ begin
 
             HintUnusedSymbols;
             HintUnusedResult(proc.Func.Result);
+            HintReferenceConstVarParams(proc.Func);
 
          finally
             if coContextMap in FOptions then
@@ -9288,8 +9290,48 @@ begin
    if not (coSymbolDictionary in FOptions) then Exit;
    if coHintsDisabled in Options then Exit;
 
-   if FMainProg.SymbolDictionary.FindSymbolUsage(resultSymbol, suReference)=nil then
+   if FSymbolDictionary.FindSymbolUsage(resultSymbol, suReference)=nil then
       FMsgs.AddCompilerHint(FTok.HotPos, CPH_ResultNotUsed);
+end;
+
+// HintReferenceConstVarParams
+//
+procedure TdwsCompiler.HintReferenceConstVarParams(funcSym : TFuncSymbol);
+var
+   param : TSymbol;
+   isVirtual : Boolean;
+   paramPos : TSymbolPosition;
+begin
+   if not (coSymbolDictionary in FOptions) then Exit;
+   if coHintsDisabled in Options then Exit;
+
+   isVirtual:=(funcSym is TMethodSymbol) and TMethodSymbol(funcSym).IsVirtual;
+
+   for param in funcSym.Params do begin
+      if not (param is TByRefParamSymbol) then continue;
+      if not (param.Typ is TClassSymbol) then continue;
+
+      paramPos:=FSymbolDictionary.FindSymbolUsage(param, suDeclaration);
+      if paramPos=nil then continue;
+
+      if param is TConstParamSymbol then begin
+
+         FMsgs.AddCompilerHintFmt(paramPos.ScriptPos, CPH_ReferenceTypeParamAsConst,
+                                  [param.Name], hlPedantic);
+
+      end else if not isVirtual then begin
+
+         if param is TVarParamSymbol then begin
+
+            if FSymbolDictionary.FindSymbolUsage(param, suWrite)=nil then
+               FMsgs.AddCompilerHintFmt(paramPos.ScriptPos, CPH_ReferenceTypeParamAsVarButNeverWrittenTo,
+                                        [param.Name], hlPedantic);
+
+         end;
+
+      end;
+
+   end;
 end;
 
 // ReadConnectorSym

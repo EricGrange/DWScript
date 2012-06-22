@@ -1,3 +1,6 @@
+Hint: "o" parameter is a reference type passed as VAR, but never written to [line: 4, column: 22]
+Hint: "o" parameter is a reference type passed as VAR, but never written to [line: 8, column: 23]
+Hint: "o" parameter is a reference type passed as VAR, but never written to [line: 12, column: 24]
 Syntax Error: Argument 0 expects type "TObject" instead of "TBase" [line: 21, column: 8]
 Syntax Error: Argument 0 expects type "TObject" instead of "TChild" [line: 22, column: 8]
 Syntax Error: Argument 0 expects type "TBase" instead of "TObject" [line: 24, column: 9]

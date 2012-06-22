@@ -293,6 +293,8 @@ const
   CPH_ResultNotUsed = 'Result is never used';
   CPH_RedundantVisibilitySpecifier = 'Redundant specifier, visibility is already "%s"';
   CPH_NameAmbiguousInScopeContext = 'Name "%s" could be ambiguous in its scope context';
+  CPH_ReferenceTypeParamAsVarButNeverWrittenTo = '"%s" parameter is a reference type passed as VAR, but never written to';
+  CPH_ReferenceTypeParamAsConst = '"%s" parameter is a reference type passed as CONST';
   CPH_UnitAlreadyReferred = 'Unit "%s" redeclared';
   CPH_UnitAlreadyReferredInInterface = 'Unit "%s" already declared in interface section';
 
