@@ -393,8 +393,6 @@ end;
 
 { TLeftStrFunc }
 
-// DoEvalAsString
-//
 procedure TLeftStrFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=Copy(args.AsString[0], 1, args.AsInteger[1]);
@@ -402,8 +400,6 @@ end;
 
 { TRightStrFunc }
 
-// DoEvalAsString
-//
 procedure TRightStrFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
    buf : UnicodeString;
@@ -416,8 +412,6 @@ end;
 
 { TSubStrFunc }
 
-// DoEvalAsString
-//
 procedure TSubStrFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=Copy(args.AsString[0], args.AsInteger[1], MaxInt);
@@ -425,8 +419,6 @@ end;
 
 { TSubStringFunc }
 
-// DoEvalAsString
-//
 procedure TSubStringFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
    s, e : Integer;
@@ -439,8 +431,6 @@ end;
 
 { TDeleteFunc }
 
-// DoEvalProc
-//
 procedure TDeleteFunc.DoEvalProc(args : TExprBaseList);
 var
    s : UnicodeString;
@@ -452,8 +442,6 @@ end;
 
 { TInsertFunc }
 
-// DoEvalProc
-//
 procedure TInsertFunc.DoEvalProc(args : TExprBaseList);
 var
    s : UnicodeString;
@@ -465,8 +453,6 @@ end;
 
 { TLowerCaseFunc }
 
-// DoEvalAsString
-//
 procedure TLowerCaseFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=LowerCase(args.AsString[0]);
@@ -474,8 +460,6 @@ end;
 
 { TAnsiLowerCaseFunc }
 
-// DoEvalAsString
-//
 procedure TAnsiLowerCaseFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=AnsiLowerCase(args.AsString[0]);
@@ -483,8 +467,6 @@ end;
 
 { TUpperCaseFunc }
 
-// DoEvalAsString
-//
 procedure TUpperCaseFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=UpperCase(args.AsString[0]);
@@ -492,8 +474,6 @@ end;
 
 { TAnsiUpperCaseFunc }
 
-// DoEvalAsString
-//
 procedure TAnsiUpperCaseFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=AnsiUpperCase(args.AsString[0]);
