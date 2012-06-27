@@ -7770,37 +7770,32 @@ begin
                   end;
                end;
             else
-               if    (Result.Typ is TClassSymbol)
-                  or (Result.Typ is TInterfaceSymbol)
-                  or (Result.Typ=FProg.TypNil) then begin
-                  case tt of
-                     ttEQ, ttNOTEQ: begin
-                        if not ((rightTyp.ClassType=Result.Typ.ClassType) or (rightTyp=FProg.TypNil)) then
-                           if Result.Typ is TClassSymbol then
-                              FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
-                           else FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
+               opExpr:=CreateTypedOperatorExpr(tt, Result, right);
+               if opExpr=nil then begin
+                  if     ((tt=ttEQ) or (tt=ttNOTEQ))
+                     and (
+                             (Result.Typ is TClassSymbol)
+                          or (Result.Typ is TInterfaceSymbol)
+                          or (Result.Typ=FProg.TypNil)
+                          ) then begin
+                     if not ((rightTyp.ClassType=Result.Typ.ClassType) or (rightTyp=FProg.TypNil)) then
                         if Result.Typ is TClassSymbol then
-                           if tt=ttNOTEQ then
-                              Result:=TObjCmpNotEqualExpr.Create(FProg, Result, right)
-                           else Result:=TObjCmpEqualExpr.Create(FProg, Result, right)
-                        else begin
-                           Result:=TIntfCmpExpr.Create(FProg, Result, right);
-                           if tt=ttNOTEQ then
-                              Result:=TNotBoolExpr.Create(FProg, Result);
-                        end;
+                           FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
+                        else FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
+                     if Result.Typ is TClassSymbol then
+                        if tt=ttNOTEQ then
+                           Result:=TObjCmpNotEqualExpr.Create(FProg, Result, right)
+                        else Result:=TObjCmpEqualExpr.Create(FProg, Result, right)
+                     else begin
+                        Result:=TIntfCmpExpr.Create(FProg, Result, right);
+                        if tt=ttNOTEQ then
+                           Result:=TNotBoolExpr.Create(FProg, Result);
                      end;
-                  else
+                  end else begin
                      FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                      Result:=TRelOpExpr.Create(FProg, Result, right); // keep going
                   end;
-               end else begin
-                  opExpr:=CreateTypedOperatorExpr(tt, Result, right);
-                  if opExpr=nil then begin
-                     FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
-                     // keep going
-                     Result:=TRelOpExpr.Create(FProg, Result, right);
-                  end else Result:=opExpr;
-               end;
+               end else Result:=opExpr;
             end;
          except
             right.Free;
