@@ -780,6 +780,10 @@ type
          procedure RaiseUpperExceeded(exec : TdwsExecution; index : Integer);
          procedure RaiseLowerExceeded(exec : TdwsExecution; index : Integer);
 
+         procedure CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj); inline;
+         procedure RaiseObjectNotInstantiated(exec : TdwsExecution);
+         procedure RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
+
          function ScriptLocation(prog : TObject) : UnicodeString; override;
 
          property Typ : TTypeSymbol read GetType;
@@ -802,9 +806,6 @@ type
 
          function ScriptPos : TScriptPos; override;
 
-         procedure CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj); inline;
-         procedure RaiseObjectNotInstantiated(exec : TdwsExecution);
-         procedure RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
          procedure CheckInterface(exec : TdwsExecution; const scriptObj : IScriptObj); inline;
          procedure RaiseInterfaceIsNil(exec : TdwsExecution);
 
@@ -2266,7 +2267,7 @@ begin
 
    except
       on e: EScriptError do begin
-         FMsgs.AddRuntimeError(e.Pos, e.Message, e.ScriptCallStack);
+         FMsgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
          FProgramState:=psRunningStopped;
       end;
       on e: Exception do begin
@@ -2282,7 +2283,7 @@ procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
 
    procedure Handle_EScriptAssertionFailed(e : EScriptAssertionFailed);
    begin
-      Msgs.AddRuntimeError(e.Pos, Copy(e.Message, 1, LastDelimiter('[', e.Message)-2), e.ScriptCallStack);
+      Msgs.AddRuntimeError(e.ScriptPos, Copy(e.Message, 1, LastDelimiter('[', e.Message)-2), e.ScriptCallStack);
    end;
 
    procedure Handle_Exception(e : Exception);
@@ -2336,9 +2337,9 @@ begin
          on e: EScriptAssertionFailed do
             Handle_EScriptAssertionFailed(e);
          on e: EScriptException do
-            Msgs.AddRuntimeError(e.Pos, e.Message, e.ScriptCallStack);
+            Msgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
          on e: EScriptError do
-            Msgs.AddRuntimeError(e.Pos, e.Message, e.ScriptCallStack);
+            Msgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
          on e: EScriptStackException do
             Msgs.AddRuntimeError(LastScriptError.ScriptPos,
                                  e.Message,
@@ -2390,7 +2391,7 @@ begin
       FProgramState:=psReadyToRun;
    except
       on e: EScriptError do
-         Msgs.AddRuntimeError(e.Pos, e.Message, e.ScriptCallStack);
+         Msgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
       on e: Exception do
          Msgs.AddRuntimeError(e.Message);
    end;
@@ -3749,7 +3750,7 @@ end;
 //
 procedure TProgramExpr.RaiseScriptError(exec : TdwsExecution; e : EScriptError);
 begin
-   e.Pos:=ScriptPos;
+   e.ScriptPos:=ScriptPos;
    e.ScriptCallStack:=exec.GetCallStack;
    raise e;
 end;
@@ -3804,6 +3805,30 @@ begin
    RaiseScriptError(exec, EScriptOutOfBounds.CreateFmt(RTE_ArrayLowerBoundExceeded, [index]));
 end;
 
+// CheckScriptObject
+//
+procedure TProgramExpr.CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj);
+begin
+   if scriptObj=nil then
+      RaiseObjectNotInstantiated(exec)
+   else if scriptObj.Destroyed then
+      RaiseObjectAlreadyDestroyed(exec);
+end;
+
+// RaiseObjectNotInstantiated
+//
+procedure TProgramExpr.RaiseObjectNotInstantiated(exec : TdwsExecution);
+begin
+   RaiseScriptError(exec, EScriptError, RTE_ObjectNotInstantiated);
+end;
+
+// RaiseObjectAlreadyDestroyed
+//
+procedure TProgramExpr.RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
+begin
+   RaiseScriptError(exec, EScriptError, RTE_ObjectAlreadyDestroyed);
+end;
+
 // ScriptLocation
 //
 function TProgramExpr.ScriptLocation(prog : TObject) : UnicodeString;
@@ -3850,30 +3875,6 @@ end;
 function TTypedExpr.ScriptPos : TScriptPos;
 begin
    Result:=cNullPos;
-end;
-
-// CheckScriptObject
-//
-procedure TTypedExpr.CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj);
-begin
-   if scriptObj=nil then
-      RaiseObjectNotInstantiated(exec)
-   else if scriptObj.Destroyed then
-      RaiseObjectAlreadyDestroyed(exec);
-end;
-
-// RaiseObjectNotInstantiated
-//
-procedure TTypedExpr.RaiseObjectNotInstantiated(exec : TdwsExecution);
-begin
-   RaiseScriptError(exec, EScriptError, RTE_ObjectNotInstantiated);
-end;
-
-// RaiseObjectAlreadyDestroyed
-//
-procedure TTypedExpr.RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
-begin
-   RaiseScriptError(exec, EScriptError, RTE_ObjectAlreadyDestroyed);
 end;
 
 // CheckInterface
@@ -4254,7 +4255,7 @@ begin
          end;
       except
          on E: EScriptError do begin
-            Prog.CompileMsgs.AddCompilerErrorFmt(E.Pos, CPE_FunctionOptimizationFailed,
+            Prog.CompileMsgs.AddCompilerErrorFmt(E.ScriptPos, CPE_FunctionOptimizationFailed,
                                                  [FuncSym.Name, E.RawClassName, E.Message],
                                                   TCompilerErrorMessage);
          end;

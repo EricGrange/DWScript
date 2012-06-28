@@ -1618,7 +1618,7 @@ type
       public
          constructor CreatePosFmt(const pos : TScriptPos; const Msg: UnicodeString; const Args: array of const);
 
-         property Pos : TScriptPos read FScriptPos write FScriptPos;
+         property ScriptPos : TScriptPos read FScriptPos write FScriptPos;
          property ScriptCallStack : TdwsExprLocationArray read FScriptCallStack write FScriptCallStack;
          property RawClassName : UnicodeString read FRawClassName write FRawClassName;
    end;
@@ -1627,19 +1627,16 @@ type
    // Is thrown by "raise" statements in script code
    EScriptException = class(Exception)
       private
-         FTyp: TSymbol;
-         FValue: Variant;
-         FPos: TScriptPos;
+         FExceptObj : IScriptObj;
+         FScriptPos : TScriptPos;
          FScriptCallStack : TdwsExprLocationArray;
 
       public
-         constructor Create(const Message: UnicodeString; const ExceptionObj: IScriptObj; const Pos: TScriptPos); overload;
-         constructor Create(const Message: UnicodeString; const Value: Variant; Typ: TTypeSymbol; const Pos: TScriptPos); overload;
+         constructor Create(const msgString : UnicodeString; const anExceptionObj : IScriptObj;
+                            const aScriptPos: TScriptPos); overload;
 
-         property ExceptionObj: Variant read FValue;
-         property Value: Variant read FValue;
-         property Typ: TSymbol read FTyp;
-         property Pos: TScriptPos read FPos;
+         property ExceptionObj : IScriptObj read FExceptObj;
+         property ScriptPos : TScriptPos read FScriptPos;
          property ScriptCallStack : TdwsExprLocationArray read FScriptCallStack;
    end;
 
@@ -5606,19 +5603,14 @@ end;
 // ------------------ EScriptException ------------------
 // ------------------
 
-constructor EScriptException.Create(const Message: UnicodeString; const Value: Variant;
-  Typ: TTypeSymbol; const Pos: TScriptPos);
+// Create
+//
+constructor EScriptException.Create(const msgString : UnicodeString;
+      const anExceptionObj : IScriptObj; const aScriptPos: TScriptPos);
 begin
-  inherited Create(Message);
-  FValue := Value;
-  FTyp := Typ;
-  FPos := Pos;
-end;
-
-constructor EScriptException.Create(const Message: UnicodeString;
-  const ExceptionObj: IScriptObj; const Pos: TScriptPos);
-begin
-  Create(Message,ExceptionObj,ExceptionObj.ClassSym,Pos);
+   inherited Create(msgString);
+   FExceptObj:=anExceptionObj;
+   FScriptPos:=aScriptPos;
 end;
 
 // ------------------

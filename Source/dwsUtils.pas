@@ -315,6 +315,7 @@ type
 
       public
          function Add(const anItem : T) : Boolean; // true if added
+         function Replace(const anItem : T) : Boolean; // true if added
          function Contains(const anItem : T) : Boolean;
          function Match(var anItem : T) : Boolean;
          procedure Enumerate(const callBack : TSimpleHashProc<T>);
@@ -421,6 +422,8 @@ function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
 
 function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 function StrBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
+
+function StrCountChar(const aStr : UnicodeString; c : Char) : Integer;
 
 function Min(a, b : Integer) : Integer; inline;
 
@@ -647,6 +650,18 @@ begin
    if (n2>n1) or (n2=0) then
       Result:=False
    else Result:=CompareMem(PWideChar(aStr), PWideChar(aBegin), n2);
+end;
+
+// StrCountChar
+//
+function StrCountChar(const aStr : UnicodeString; c : Char) : Integer;
+var
+   i : Integer;
+begin
+   Result:=0;
+   for i:=1 to Length(aStr) do
+      if aStr[i]=c then
+         Inc(Result);
 end;
 
 // Min
@@ -1623,6 +1638,27 @@ begin
    FBuckets[i].Value:=anItem;
    Inc(FCount);
    Result:=True;
+end;
+
+// Replace
+//
+function TSimpleHash<T>.Replace(const anItem : T) : Boolean;
+var
+   i : Integer;
+   hashCode : Integer;
+begin
+   if FCount>=FGrowth then Grow;
+
+   hashCode:=GetItemHashCode(anItem);
+   i:=(hashCode and (FCapacity-1));
+   if LinearFind(anItem, i) then begin
+      FBuckets[i].Value:=anItem
+   end else begin
+      FBuckets[i].HashCode:=hashCode;
+      FBuckets[i].Value:=anItem;
+      Inc(FCount);
+      Result:=True;
+   end;
 end;
 
 // Contains
