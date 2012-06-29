@@ -1452,7 +1452,6 @@ var
    exec : IdwsProgramExecution;
    printit : IInfo;
    v : IInfo;
-   obj : IScriptObj;
 begin
    FMagicVar:='';
    prog:=FCompiler.Compile( 'procedure PrintIt(o : TTestClass);'#13#10
