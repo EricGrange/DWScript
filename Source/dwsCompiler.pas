@@ -329,6 +329,8 @@ type
          FAnyTypeSymbol : TAnyTypeSymbol;
          FStandardDataSymbolFactory : IdwsDataSymbolFactory;
 
+         FDataSymbolExprReuse : TSimpleObjectObjectHash<TDataSymbol,TVarExpr>;
+
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
          FOnReadInstr : TCompilerReadInstrEvent;
          FOnReadInstrSwitch : TCompilerReadInstrSwitchEvent;
@@ -595,7 +597,7 @@ type
          procedure DoSectionChanged;
          procedure DoTokenizerEndSourceFile(sourceFile : TSourceFile);
 
-         property CurrentUnitSymbol : TUnitMainSymbol read FCurrentUnitSymbol;
+         property  CurrentUnitSymbol : TUnitMainSymbol read FCurrentUnitSymbol;
          procedure EnterUnit(unitSymbol : TUnitMainSymbol; var oldUnitSymbol : TUnitMainSymbol);
          procedure LeaveUnit(oldUnitSymbol : TUnitMainSymbol);
          procedure SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : UnicodeString);
@@ -1131,6 +1133,8 @@ begin
    else FCompileFileSystem := TdwsOSFileSystem.Create;
 
    FOnGetDefaultLocalizer := conf.DoGetLocalizer;
+
+   FDataSymbolExprReuse:=TSimpleObjectObjectHash<TDataSymbol,TVarExpr>.Create;
 end;
 
 // SetupMsgsOptions
@@ -1148,6 +1152,10 @@ end;
 //
 procedure TdwsCompiler.CleanupAfterCompile;
 begin
+   FDataSymbolExprReuse.CleanValues;
+   FDataSymbolExprReuse.Free;
+   FDataSymbolExprReuse:=nil;
+
    FIsExcept:=False;
 
    FOperators:=nil;
@@ -2292,8 +2300,6 @@ var
 begin
    sym:=nil;
 
-   if not (funcToken in [ttFUNCTION..ttMETHOD]) then
-      Assert(funcToken in [ttFUNCTION..ttMETHOD]);
    funcKind:=cTokenToFuncKind[funcToken];
    funcPos:=hotPos;
 
@@ -5043,7 +5049,7 @@ begin
    EnterLoop(Result);
    try
       TRepeatExpr(Result).LoopExpr:=ReadBlocks([ttUNTIL], tt);
-      Result.SetScriptPos(FTok.HotPos);
+      TRepeatExpr(Result).SetScriptPos(FTok.HotPos);
       condExpr:=ReadExpr;
       TRepeatExpr(Result).CondExpr:=condExpr;
       if not (condExpr.IsOfType(FProg.TypBoolean) or condExpr.IsOfType(FProg.TypVariant)) then
@@ -9098,16 +9104,19 @@ begin
                                [scriptName], TCompilerErrorMessage)
 end;
 
+// GetVarExpr
+//
 function TdwsCompiler.GetVarExpr(dataSym: TDataSymbol): TVarExpr;
 begin
    if FProg.Level=dataSym.Level then begin
-      if dataSym.Expr<>nil then
-         Result:=dataSym.Expr as TVarExpr
-      else begin
-         Result:=TVarExpr.CreateTyped(FProg, dataSym);
-         dataSym.Expr:=Result;
-      end;
-      Result.IncRefCount;
+      if FDataSymbolExprReuse<>nil then begin
+         Result:=FDataSymbolExprReuse.GetValue(dataSym);
+         if Result=nil then begin
+            Result:=TVarExpr.CreateTyped(FProg, dataSym);
+            FDataSymbolExprReuse.SetValue(dataSym, Result);
+         end;
+         Result.IncRefCount;
+      end else Result:=TVarExpr.CreateTyped(FProg, dataSym);
    end else Result:=TVarParentExpr.Create(FProg, dataSym);
 end;
 

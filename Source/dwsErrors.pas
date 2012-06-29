@@ -48,8 +48,6 @@ type
    PScriptPos = ^TScriptPos;
    TScriptPos = packed record
       private
-         // 12bits for the column (4096)
-         // 20bits for the line (1048576)
          FLine, FCol : Integer;
 
       public

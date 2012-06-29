@@ -453,19 +453,14 @@ type
       protected
          FStackAddr : Integer;
          FLevel : SmallInt;
-         FExpr : TExprBase;
 
          function GetDescription : UnicodeString; override;
 
       public
-         destructor Destroy; override;
-
          procedure AllocateStackAddr(generator : TAddrGenerator);
 
          property Level : SmallInt read FLevel write FLevel;
          property StackAddr: Integer read FStackAddr write FStackAddr;
-
-         property Expr : TExprBase read FExpr write FExpr;
    end;
 
    // parameter: procedure P(x: Integer);
@@ -731,9 +726,9 @@ type
          FStructSymbol : TCompositeTypeSymbol;
          FParentMeth : TMethodSymbol;
          FSelfSym : TDataSymbol;
+         FVMTIndex : Integer;
          FVisibility : TdwsVisibility;
          FAttributes : TMethodAttributes;
-         FVMTIndex : Integer;
 
       protected
          function GetIsClassMethod : Boolean;
@@ -4436,14 +4431,6 @@ begin
    if Assigned(Typ) then
       Result:=Name+': '+Typ.Name
   else Result:=Name+': ???';
-end;
-
-// Destroy
-//
-destructor TDataSymbol.Destroy;
-begin
-   FExpr.Free;
-   inherited;
 end;
 
 // AllocateStackAddr

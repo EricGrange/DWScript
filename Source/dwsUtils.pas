@@ -375,6 +375,23 @@ type
          property Objects[const name : String] : T read GetObjects write SetObjects; default;
    end;
 
+   TObjectObjectHashBucket<TKey, TValue: TRefCountedObject> = record
+      Key : TKey;
+      Value : TValue;
+   end;
+
+   TSimpleObjectObjectHash<TKey, TValue: TRefCountedObject> = class(TSimpleHash<TObjectObjectHashBucket<TKey, TValue>>)
+      protected
+         function SameItem(const item1, item2 : TObjectObjectHashBucket<TKey, TValue>) : Boolean; override;
+         function GetItemHashCode(const item1 : TObjectObjectHashBucket<TKey, TValue>) : Integer; override;
+
+      public
+         function  GetValue(key : TKey) : TValue;
+         procedure SetValue(key : TKey; value : TValue);
+
+         procedure CleanValues;
+   end;
+
    TObjectsLookup = class (TSortedList<TRefCountedObject>)
       protected
          function Compare(const item1, item2 : TRefCountedObject) : Integer; override;
@@ -2221,6 +2238,60 @@ var
 begin
    p:=PInteger(NativeInt(Self)+InstanceSize-hfFieldSize+hfMonitorOffset);
    p^:=n;
+end;
+
+// ------------------
+// ------------------ TSimpleObjectObjectHash<T1, T2> ------------------
+// ------------------
+
+// SameItem
+//
+function TSimpleObjectObjectHash<TKey, TValue>.SameItem(const item1, item2 : TObjectObjectHashBucket<TKey, TValue>) : Boolean;
+begin
+   Result:=(item1.Key=item2.Key);
+end;
+
+// GetItemHashCode
+//
+function TSimpleObjectObjectHash<TKey, TValue>.GetItemHashCode(const item1 : TObjectObjectHashBucket<TKey, TValue>) : Integer;
+begin
+   Result:=(PNativeInt(@item1.Key)^ shr 2);
+end;
+
+// GetValue
+//
+function TSimpleObjectObjectHash<TKey, TValue>.GetValue(key : TKey) : TValue;
+var
+   bucket : TObjectObjectHashBucket<TKey,TValue>;
+begin
+   bucket.Key:=key;
+   if Match(bucket) then
+      Result:=bucket.Value
+   else Result:=nil;
+end;
+
+// SetValue
+//
+procedure TSimpleObjectObjectHash<TKey, TValue>.SetValue(key : TKey; value : TValue);
+var
+   bucket : TObjectObjectHashBucket<TKey,TValue>;
+begin
+   bucket.Key:=key;
+   bucket.Value:=value;
+   Replace(bucket);
+end;
+
+// CleanValues
+//
+procedure TSimpleObjectObjectHash<TKey, TValue>.CleanValues;
+var
+   i : Integer;
+begin
+   for i:=0 to FCapacity-1 do begin
+      if FBuckets[i].HashCode<>0 then
+         FBuckets[i].Value.Value.Free;
+   end;
+   Clear;
 end;
 
 // ------------------------------------------------------------------

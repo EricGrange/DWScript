@@ -434,7 +434,7 @@ type
    end;
 
    // array[index]:=val for dynamic arrays
-   TDynamicArraySetExpr = class(TNoResultExpr)
+   TDynamicArraySetExpr = class(TNoResultPosExpr)
       private
          FArrayExpr : TTypedExpr;
          FIndexExpr : TTypedExpr;
@@ -482,7 +482,7 @@ type
          function IsWritable : Boolean; override;
    end;
 
-   TInitDataExpr = class(TNoResultExpr)
+   TInitDataExpr = class(TNoResultPosExpr)
       protected
          FExpr : TDataExpr;
 
@@ -626,7 +626,7 @@ type
    end;
 
    // Pseudo-method for dynamic array
-   TArrayPseudoMethodExpr = class(TNoResultExpr)
+   TArrayPseudoMethodExpr = class(TNoResultPosExpr)
       private
          FBaseExpr : TTypedExpr;
 
@@ -1167,7 +1167,7 @@ type
    end;
 
    // Assert(condition, message);
-   TAssertExpr = class(TNoResultExpr)
+   TAssertExpr = class(TNoResultPosExpr)
       protected
          FCond : TTypedExpr;
          FMessage : TTypedExpr;
@@ -1187,7 +1187,7 @@ type
    end;
 
    // left := right;
-   TAssignExpr = class(TNoResultExpr)
+   TAssignExpr = class(TNoResultPosExpr)
       protected
          FLeft : TDataExpr;
          FRight : TTypedExpr;
@@ -1474,7 +1474,7 @@ type
    end;
 
    // if FCond then FThen
-   TIfThenExpr = class(TNoResultExpr)
+   TIfThenExpr = class(TNoResultPosExpr)
       private
          FCond : TTypedExpr;
          FThen : TNoResultExpr;
@@ -1581,7 +1581,7 @@ type
    end;
 
    // case FValueExpr of {CaseConditions} else FElseExpr end;
-   TCaseExpr = class(TNoResultExpr)
+   TCaseExpr = class(TNoResultPosExpr)
       private
          FCaseConditions : TTightList;
          FElseExpr : TNoResultExpr;
@@ -1603,7 +1603,7 @@ type
    end;
 
    // for FVarExpr := FFromExpr to FToExpr do FDoExpr;
-   TForExpr = class(TNoResultExpr)
+   TForExpr = class(TNoResultPosExpr)
       private
          FDoExpr : TNoResultExpr;
          FFromExpr : TTypedExpr;
@@ -1665,7 +1665,7 @@ type
    end;
 
    // base class for while, repeat and infinite loops
-   TLoopExpr = class(TNoResultExpr)
+   TLoopExpr = class(TNoResultPosExpr)
       private
          FCondExpr : TTypedExpr;
          FLoopExpr : TNoResultExpr;
@@ -1697,7 +1697,7 @@ type
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
-   TFlowControlExpr = class(TNoResultExpr)
+   TFlowControlExpr = class(TNoResultPosExpr)
       public
          function InterruptsFlow : Boolean; override;
    end;
@@ -1734,7 +1734,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
-   TRaiseBaseExpr = class(TNoResultExpr)
+   TRaiseBaseExpr = class(TNoResultPosExpr)
    end;
 
    // raise TExceptionClass.Create;
@@ -1760,7 +1760,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
-   TExceptionExpr = class(TNoResultExpr)
+   TExceptionExpr = class(TNoResultPosExpr)
       private
          FTryExpr : TNoResultExpr;
          FHandlerExpr : TNoResultExpr;
@@ -1807,7 +1807,7 @@ type
    end;
 
    // try..except on FExceptionVar: FExceptionVar.Typ do FDoBlockExpr; ... end;
-   TExceptDoExpr = class(TNoResultExpr)
+   TExceptDoExpr = class(TNoResultPosExpr)
       private
          FExceptionVar : TDataSymbol;
          FDoBlockExpr : TNoResultExpr;
@@ -1831,7 +1831,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
-   TStringArraySetExpr = class(TNoResultExpr)
+   TStringArraySetExpr = class(TNoResultPosExpr)
       private
          FStringExpr: TDataExpr;
          FIndexExpr: TTypedExpr;

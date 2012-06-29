@@ -108,26 +108,24 @@ type
 
    // Records a symbol's position in source and usage at that position
    //
-   TSymbolPosition = class (TRefCountedObject)
+   TSymbolPositionRec = record
       private
          FScriptPos : TScriptPos;     // location of symbol instance in script
          FSymUsages : TSymbolUsages;  // how symbol is used at this location (mutiple uses possible, Functions are Delcared/Implemented at same spot)
 
       public
-         constructor Create(const aScriptPos : TScriptPos; const aUsages : TSymbolUsages);
-
          property ScriptPos : TScriptPos read FScriptPos;
          property SymbolUsages : TSymbolUsages read FSymUsages write FSymUsages;
    end;
+   TSymbolPosition = ^TSymbolPositionRec;
 
    {Re-list every symbol (pointer to it) and every position it is in in the script }
    TSymbolPositionList = class (TRefCountedObject)
       private
-         FSymbol : TSymbol;                     // pointer to the symbol
-         FPosList : TArrayObjectList<TSymbolPosition>;   // list of positions where symbol is declared and used
+         FSymbol : TSymbol;                           // pointer to the symbol
+         FPosList : TSimpleList<TSymbolPosition>;  // list of positions where symbol is declared and used
 
       protected
-         function GetList : TArray<TSymbolPosition>; inline;
          function GetPosition(index : Integer) : TSymbolPosition; inline;
 
          // Used by TSymbolDictionary. Not meaningful to make public (symbol is known).
@@ -438,6 +436,8 @@ type
       function ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
       function ExecuteParam(const params : OleVariant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
 
+      procedure DropMapAndDictionary;
+
       property Table : TSymbolTable read GetTable;
       property Msgs : TdwsMessageList read GetMsgs;
       property ConditionalDefines : IAutoStrings read GetConditionalDefines;
@@ -677,6 +677,8 @@ type
 
          function NextStackLevel(level : Integer) : Integer;
 
+         procedure DropMapAndDictionary;
+
          property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds;
          property MaxRecursionDepth : Integer read FStackParameters.MaxRecursionDepth write FStackParameters.MaxRecursionDepth;
          property MaxDataSize : Integer read FStackParameters.MaxByteSize write FStackParameters.MaxByteSize;
@@ -830,29 +832,34 @@ type
 
    // base class of expressions that return no result
    TNoResultExpr = class(TProgramExpr)
+      public
+         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         function OptimizeToNoResultExpr(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
+
+         function InterruptsFlow : Boolean; virtual;
+   end;
+
+   // base class of expressions that return no result
+   TNoResultPosExpr = class(TNoResultExpr)
       protected
          FScriptPos : TScriptPos;
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
 
-         function Eval(exec : TdwsExecution) : Variant; override;
-         procedure EvalNoResult(exec : TdwsExecution); override;
-         function OptimizeToNoResultExpr(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
-
-         function InterruptsFlow : Boolean; virtual;
-
          function ScriptPos : TScriptPos; override;
          procedure SetScriptPos(const aPos : TScriptPos);
    end;
 
    // Does nothing! E. g.: "for x := 1 to 10 do {TNullExpr};"
-   TNullExpr = class(TNoResultExpr)
+   TNullExpr = class(TNoResultPosExpr)
       procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // statement; statement; statement;
-   TBlockExprBase = class(TNoResultExpr)
+   TBlockExprBase = class(TNoResultPosExpr)
       protected
          FStatements : PNoResultExprList;
          FCount : Integer;
@@ -906,14 +913,14 @@ type
    // Encapsulates data
    TPosDataExpr = class(TDataExpr)
       protected
-         FPos: TScriptPos;
+         FPos : TScriptPos;
 
       public
          constructor Create(Prog: TdwsProgram; const scriptPos : TScriptPos; Typ: TTypeSymbol);
 
          function ScriptPos : TScriptPos; override;
 
-         property Pos: TScriptPos read FPos;
+         property Pos : TScriptPos read FPos;
    end;
 
    // TExternalFuncHandler
@@ -979,9 +986,9 @@ type
                         potData, potLazy, potInitResult);
    PPushOperator = ^TPushOperator;
    TPushOperator = packed record
-      FStackAddr: Integer;
-      FArgExpr: TTypedExpr;
-      FTypeParamSym: TSymbol;  // TSymbol / TPushOperatorType union
+      FStackAddr : Integer;
+      FArgExpr : TTypedExpr;
+      FTypeParamSym : TSymbol;  // TSymbol / TPushOperatorType union
 
       procedure InitPushAddr(stackAddr: Integer; argExpr: TTypedExpr);
       procedure InitPushTempAddr(stackAddr: Integer; argExpr: TTypedExpr);
@@ -1027,7 +1034,7 @@ type
          procedure EvalPushExprs(exec : TdwsExecution); inline;
 
       public
-         constructor Create(prog : TdwsProgram; const pos : TScriptPos; func : TFuncSymbol);
+         constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos; func : TFuncSymbol);
          destructor Destroy; override;
 
          function ExpectedArg : TParamSymbol; override;
@@ -1456,6 +1463,8 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          function  IsConstant : Boolean; override;
+
+         function ScriptPos : TScriptPos; override;
 
          property Expr : TTypedExpr read FExpr write FExpr;
    end;
@@ -2036,11 +2045,13 @@ begin
          Exit;
 
       end else if (expr.Typ is TClassOfSymbol) then begin
+
          if expr.IsConstant and TClassOfSymbol(expr.Typ).TypClassSymbol.IsAbstract then begin
             if meth.Kind=fkConstructor then
                prog.CompileMsgs.AddCompilerError(scriptPos, RTE_InstanceOfAbstractClass)
             else prog.CompileMsgs.AddCompilerError(scriptPos, CPE_AbstractClassUsage);
          end;
+
       end;
       if (not meth.IsClassMethod) and meth.StructSymbol.IsStatic then
          prog.CompileMsgs.AddCompilerErrorFmt(scriptPos, CPE_ClassIsStatic, [meth.StructSymbol.Name]);
@@ -3126,6 +3137,16 @@ begin
       FStackParameters.MaxLevel:=Result;
 end;
 
+// DropMapAndDictionary
+//
+procedure TdwsMainProgram.DropMapAndDictionary;
+begin
+   FSymbolDictionary.Free;
+   FSymbolDictionary:=nil;
+   FSourceContextMap.Free;
+   FSourceContextMap:=nil;
+end;
+
 // GetConditionalDefines
 //
 function TdwsMainProgram.GetConditionalDefines : IAutoStrings;
@@ -3970,27 +3991,6 @@ end;
 // ------------------ TNoResultExpr ------------------
 // ------------------
 
-// Create
-//
-constructor TNoResultExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
-begin
-   FScriptPos:=Pos;
-end;
-
-// ScriptPos
-//
-function TNoResultExpr.ScriptPos : TScriptPos;
-begin
-   Result:=FScriptPos;
-end;
-
-// SetScriptPos
-//
-procedure TNoResultExpr.SetScriptPos(const aPos : TScriptPos);
-begin
-   FScriptPos:=aPos;
-end;
-
 // Eval
 //
 function TNoResultExpr.Eval(exec : TdwsExecution) : Variant;
@@ -4022,6 +4022,31 @@ end;
 function TNoResultExpr.InterruptsFlow : Boolean;
 begin
    Result:=False;
+end;
+
+// ------------------
+// ------------------ TNoResultPosExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TNoResultPosExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
+begin
+   FScriptPos:=Pos;
+end;
+
+// ScriptPos
+//
+function TNoResultPosExpr.ScriptPos : TScriptPos;
+begin
+   Result:=FScriptPos;
+end;
+
+// SetScriptPos
+//
+procedure TNoResultPosExpr.SetScriptPos(const aPos : TScriptPos);
+begin
+   FScriptPos:=aPos;
 end;
 
 // ------------------
@@ -4646,9 +4671,9 @@ end;
 
 // Create
 //
-constructor TFuncExpr.Create(prog : TdwsProgram; const pos : TScriptPos; func : TFuncSymbol);
+constructor TFuncExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos; func : TFuncSymbol);
 begin
-   inherited Create(Prog, Pos, Func);
+   inherited Create(Prog, scriptPos, Func);
    FCallerID:=Self;
    FLevel:=Prog.Level;
    FResultAddr:=-1;
@@ -7381,13 +7406,15 @@ end;
 constructor TSymbolPositionList.Create(ASymbol: TSymbol);
 begin
    FSymbol:=ASymbol;
+   FPosList:=TSimpleList<TSymbolPosition>.Create;
 end;
 
 // Destroy
 //
 destructor TSymbolPositionList.Destroy;
 begin
-   FPosList.Clean;
+   Clear;
+   FPosList.Free;
    inherited;
 end;
 
@@ -7399,7 +7426,9 @@ var
 begin
    if (scriptPos.Line<=0) or (scriptPos.SourceFile=nil) then Exit;
 
-   symPos:=TSymbolPosition.Create(scriptPos, useTypes);
+   New(symPos);
+   symPos.FScriptPos:=scriptPos;
+   symPos.FSymUsages:=useTypes;
    FPosList.Add(symPos);
 end;
 
@@ -7407,15 +7436,19 @@ end;
 //
 procedure TSymbolPositionList.Delete(index : Integer);
 begin
-   FPosList[index].Free;
-   FPosList.Delete(index);
+   Dispose(FPosList[index]);
+   FPosList.Extract(index);
 end;
 
 // Clear
 //
 procedure TSymbolPositionList.Clear;
+var
+   i : Integer;
 begin
-   FPosList.Clean;
+   for i:=0 to FPosList.Count-1 do
+      Dispose(FPosList[i]);
+   FPosList.Clear;
 end;
 
 // FindSymbolAtPosition
@@ -7488,20 +7521,13 @@ var
    symPos : TSymbolPosition;
 begin
    for i:=FPosList.Count-1 downto 0 do begin
-      symPos:=FPosList.List[i];
+      symPos:=FPosList[i];
       if     startPos.IsBeforeOrEqual(symPos.ScriptPos)
          and symPos.ScriptPos.IsBeforeOrEqual(endPos) then begin
-         symPos.Free;
-         FPosList.Delete(i);
+         Dispose(symPos);
+         FPosList.Extract(i);
       end;
    end;
-end;
-
-// GetList
-//
-function TSymbolPositionList.GetList : TArray<TSymbolPosition>;
-begin
-   Result:=FPosList.List;
 end;
 
 // ------------------
@@ -7517,18 +7543,6 @@ begin
    else if NativeInt(item1.Symbol)>NativeInt(item2.Symbol) then
       Result:=1
    else Result:=0;
-end;
-
-// ------------------
-// ------------------ TSymbolPosition ------------------
-// ------------------
-
-// Create
-//
-constructor TSymbolPosition.Create(const AScriptPos: TScriptPos; const AUsages: TSymbolUsages);
-begin
-   FScriptPos := AScriptPos;
-   FSymUsages := AUsages;
 end;
 
 // ------------------
@@ -8052,7 +8066,7 @@ end;
 //
 constructor TNoResultWrapperExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TTypedExpr);
 begin
-   inherited Create(Prog, Pos);
+   inherited Create;
    FExpr := Expr;
 end;
 
@@ -8076,6 +8090,13 @@ end;
 function TNoResultWrapperExpr.IsConstant : Boolean;
 begin
    Result:=FExpr.IsConstant;
+end;
+
+// ScriptPos
+//
+function TNoResultWrapperExpr.ScriptPos : TScriptPos;
+begin
+   Result:=FExpr.ScriptPos;
 end;
 
 // GetSubExpr
