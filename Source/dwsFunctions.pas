@@ -584,8 +584,9 @@ begin
    Result:=nil;
    for i:=0 to High(FAbsHandlers) do begin
       Result:=FAbsHandlers[i](prog, argExpr);
-      if Result<>nil then Break;
+      if Result<>nil then Exit;
    end;
+   argExpr.Free;
 end;
 
 // AddInternalFunction
@@ -832,6 +833,7 @@ initialization
 
 finalization
 
-   FreeAndNil(vInternalUnit);
+   vInternalUnit.Free;
+   vInternalUnit:=nil;
 
 end.

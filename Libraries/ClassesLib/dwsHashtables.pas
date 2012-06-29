@@ -84,7 +84,7 @@ implementation
 
 var
   HashTable: array[#0..#255] of Byte;
-  InsensitiveHashTable: array[#0..#255] of Byte;
+  InsensitiveHashTable: array[#0..#255] of Word;
 
 procedure InitTables;
 var
@@ -94,7 +94,7 @@ begin
   for I := #0 to #255 do
   begin
     HashTable[I] := Ord(I);
-    InsensitiveHashTable[I] := Ord(AnsiUpperCase(string(I))[1]);
+    InsensitiveHashTable[I] := Ord(AnsiUpperCase(Char(I))[1]);
   end;
   RandSeed := 111;
   for I := #1 to #255 do

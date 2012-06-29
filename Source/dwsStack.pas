@@ -307,6 +307,8 @@ begin
   Result := FStackPointer - FBasePointer;
 end;
 
+// Pop
+//
 procedure TStackMixIn.Pop(delta : Integer);
 var
    x, sp : Integer;

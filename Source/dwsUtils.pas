@@ -32,6 +32,21 @@ type
    end;
    {$HINTS ON}
 
+   // TRefCountedObject
+   //
+   // Uses Monitor hidden field to store refcount, so not compatible with monitor use
+   // (but Monitor is buggy, so no great loss)
+   TRefCountedObject = class
+      private
+         function  GetRefCount : Integer; inline;
+         procedure SetRefCount(n : Integer); inline;
+      public
+         function  IncRefCount : Integer; inline;
+         function  DecRefCount : Integer;
+         property  RefCount : Integer read GetRefCount write SetRefCount;
+         procedure Free;
+   end;
+
    // IGetSelf
    //
    IGetSelf = interface
@@ -40,9 +55,17 @@ type
 
    // TInterfacedSelfObject
    //
-   TInterfacedSelfObject = class (TInterfacedObject, IUnknown, IGetSelf)
+   TInterfacedSelfObject = class (TRefCountedObject, IUnknown, IGetSelf)
       protected
          function GetSelf : TObject;
+         function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+         function _AddRef: Integer; stdcall;
+         function _Release: Integer; stdcall;
+
+      public
+         class function NewInstance: TObject; override;
+         procedure AfterConstruction; override;
+         procedure BeforeDestruction; override;
    end;
 
    // IAutoStore
@@ -97,30 +120,30 @@ type
       If the list holds only 1 item, no dynamic memory is allocated
       (the list pointer is used).
       Make sure to Clear or Clean in the destructor of the Owner. }
-   TTightListArray = array [0..MaxInt shr 4] of Pointer;
-   PPointerTightList = ^TTightListArray;
+   TTightListArray = array [0..MaxInt shr 4] of TRefCountedObject;
+   PObjectTightList = ^TTightListArray;
    TTightList = record
       private
-         FList : PPointerTightList;
+         FList : PObjectTightList;
 
          procedure RaiseIndexOutOfBounds;
-         function GetList : PPointerTightList; inline;
+         function GetList : PObjectTightList; inline;
 
       public
          FCount : Integer;     // exposed so it can be used for direct property access
 
-         property List : PPointerTightList read GetList;
+         property List : PObjectTightList read GetList;
          property Count : Integer read FCount;
 
          procedure Free; // to posture as a regular TList
          procedure Clean;  // clear the list and free the item objects
          procedure Clear;  // clear the list without freeing the items
-         function Add(item : Pointer) : Integer;
+         function Add(item : TRefCountedObject) : Integer;
          procedure Assign(const aList : TTightList);
-         function IndexOf(item : Pointer) : Integer;
-         function Remove(item : Pointer) : Integer;
+         function IndexOf(item : TRefCountedObject) : Integer;
+         function Remove(item : TRefCountedObject) : Integer;
          procedure Delete(index : Integer);
-         procedure Insert(index : Integer; item : Pointer);
+         procedure Insert(index : Integer; item : TRefCountedObject);
          procedure Move(curIndex, newIndex : Integer);
          procedure Exchange(index1, index2 : Integer);
    end;
@@ -130,22 +153,22 @@ type
    {: Embeddable stack functionality }
    TTightStack = record
       private
-         FList : PPointerTightList;
+         FList : PObjectTightList;
          FCount : Integer;
          FCapacity : Integer;
 
          procedure Grow;
 
       public
-         procedure Push(item : Pointer); inline;
-         function  Peek : Pointer; inline;
+         procedure Push(item : TRefCountedObject); inline;
+         function  Peek : TRefCountedObject; inline;
          procedure Pop; inline;
 
          procedure Clear; inline;
          procedure Clean;
          procedure Free;
 
-         property List : PPointerTightList read FList;
+         property List : PObjectTightList read FList;
          property Count : Integer read FCount;
    end;
 
@@ -180,7 +203,7 @@ type
    // TArrayObjectList<T>
    //
    {: An embeddable wrapped array. }
-   TArrayObjectList<T: Class> = record
+   TArrayObjectList<T: TRefCountedObject> = record
       private
          FCount : Integer;
 
@@ -222,7 +245,7 @@ type
    // TObjectList
    //
    {: A simple generic object list, owns objects }
-   TObjectList<T: class> = class
+   TObjectList<T: TRefCountedObject> = class
       private
          FItems : array of T;
          FCount : Integer;
@@ -243,7 +266,7 @@ type
    // TSortedList
    //
    {: List that maintains its elements sorted, subclasses must override Compare }
-   TSortedList<T: class> = class
+   TSortedList<T: TRefCountedObject> = class
       private
          FItems : array of T;
          FCount : Integer;
@@ -324,7 +347,7 @@ type
          property Count : Integer read FCount;
    end;
 
-   TSimpleObjectHash<T: Class> = class(TSimpleHash<T>)
+   TSimpleObjectHash<T: TRefCountedObject> = class(TSimpleHash<T>)
       protected
          function SameItem(const item1, item2 : T) : Boolean; override;
          function GetItemHashCode(const item1 : T) : Integer; override;
@@ -333,12 +356,12 @@ type
          procedure Clean;
    end;
 
-   TNameObjectHashBucket<T: Class> = record
+   TNameObjectHashBucket<T: TRefCountedObject> = record
       Name : String;
       Obj : T;
    end;
 
-   TSimpleNameObjectHash<T: Class> = class(TSimpleHash<TNameObjectHashBucket<T>>)
+   TSimpleNameObjectHash<T: TRefCountedObject> = class(TSimpleHash<TNameObjectHashBucket<T>>)
       protected
          function SameItem(const item1, item2 : TNameObjectHashBucket<T>) : Boolean; override;
          function GetItemHashCode(const item1 : TNameObjectHashBucket<T>) : Integer; override;
@@ -352,9 +375,9 @@ type
          property Objects[const name : String] : T read GetObjects write SetObjects; default;
    end;
 
-   TObjectsLookup = class (TSortedList<TObject>)
+   TObjectsLookup = class (TSortedList<TRefCountedObject>)
       protected
-         function Compare(const item1, item2 : TObject) : Integer; override;
+         function Compare(const item1, item2 : TRefCountedObject) : Integer; override;
    end;
 
 const
@@ -522,8 +545,10 @@ procedure FinalizeStringsUnifier;
 var
    i : Integer;
 begin
-   for i:=Low(vCharStrings) to High(vCharStrings) do
-      FreeAndNil(vCharStrings[i]);
+   for i:=Low(vCharStrings) to High(vCharStrings) do begin
+      vCharStrings[i].Free;
+      vCharStrings[i]:=nil;
+   end;
 end;
 
 // UnifyAssignString
@@ -822,10 +847,10 @@ var
 begin
    case Count of
       0 : Exit;
-      1 : TObject(FList).Free;
+      1 : TRefCountedObject(FList).Free;
    else
       for i:=Count-1 downto 0 do
-         TObject(FList[i]).Free;
+         FList[i].Free;
    end;
    Clear;
 end;
@@ -853,7 +878,7 @@ end;
 
 // GetList
 //
-function TTightList.GetList : PPointerTightList;
+function TTightList.GetList : PObjectTightList;
 begin
    if Count=1 then
       Result:=@FList
@@ -862,13 +887,13 @@ end;
 
 // Add
 //
-function TTightList.Add(item : Pointer) : Integer;
+function TTightList.Add(item : TRefCountedObject) : Integer;
 var
    buf : Pointer;
 begin
    case Count of
       0 : begin
-         FList:=item;
+         FList:=PObjectTightList(item);
          FCount:=1;
       end;
       1 : begin
@@ -903,11 +928,15 @@ end;
 
 // IndexOf
 //
-function TTightList.IndexOf(item : Pointer) : Integer;
+function TTightList.IndexOf(item : TRefCountedObject) : Integer;
 begin
    case Count of
       0 : Result:=-1;
-      1 : if FList=item then Result:=0 else Result:=-1;
+      1 : begin
+         if FList=PObjectTightList(item) then
+            Result:=0
+         else Result:=-1;
+      end;
    else
       Result:=0;
       while Result<FCount do begin
@@ -920,7 +949,7 @@ end;
 
 // Remove
 //
-function TTightList.Remove(item : Pointer) : Integer;
+function TTightList.Remove(item : TRefCountedObject) : Integer;
 begin
    Result:=IndexOf(item);
    if Result>=0 then
@@ -945,8 +974,8 @@ begin
          2 : begin
             buf:=FList;
             if index=0 then
-               FList:=FList[1]
-            else FList:=FList[0];
+               FList:=PObjectTightList(FList[1])
+            else FList:=PObjectTightList(FList[0]);
             FreeMem(buf);
             FCount:=1;
          end;
@@ -960,23 +989,23 @@ end;
 
 // Insert
 //
-procedure TTightList.Insert(index : Integer; item : Pointer);
+procedure TTightList.Insert(index : Integer; item : TRefCountedObject);
 var
    i : Integer;
-   locList : PPointerTightList;
+   locList : PObjectTightList;
 begin
    if Cardinal(index)>Cardinal(FCount) then
       RaiseIndexOutOfBounds
    else case Count of
       0 : begin
-         FList:=item;
+         FList:=PObjectTightList(item);
          FCount:=1;
       end;
       1 : begin
          if index=1 then
             Add(item)
          else begin
-            Add(FList);
+            Add(TRefCountedObject(FList));
             FList[0]:=item;
          end;
       end;
@@ -1530,7 +1559,7 @@ end;
 
 // Push
 //
-procedure TTightStack.Push(item : Pointer);
+procedure TTightStack.Push(item : TRefCountedObject);
 begin
    if FCount=FCapacity then Grow;
    FList[FCount]:=item;
@@ -1539,7 +1568,7 @@ end;
 
 // Peek
 //
-function TTightStack.Peek : Pointer;
+function TTightStack.Peek : TRefCountedObject;
 begin
    Result:=FList[FCount-1];
 end;
@@ -1563,7 +1592,7 @@ end;
 procedure TTightStack.Clean;
 begin
    while Count>0 do begin
-      TObject(Peek).Free;
+      TRefCountedObject(Peek).Free;
       Pop;
    end;
 end;
@@ -1900,7 +1929,7 @@ end;
 
 // Compare
 //
-function TObjectsLookup.Compare(const item1, item2 : TObject) : Integer;
+function TObjectsLookup.Compare(const item1, item2 : TRefCountedObject) : Integer;
 begin
    if NativeUInt(item1)<NativeUInt(item2) then
       Result:=-1
@@ -1918,6 +1947,53 @@ end;
 function TInterfacedSelfObject.GetSelf : TObject;
 begin
    Result:=Self;
+end;
+
+// QueryInterface
+//
+function TInterfacedSelfObject.QueryInterface(const IID: TGUID; out Obj): HResult;
+begin
+   if GetInterface(IID, Obj) then
+      Result:=0
+   else Result:=E_NOINTERFACE;
+end;
+
+// _AddRef
+//
+function TInterfacedSelfObject._AddRef: Integer;
+begin
+   Result:=IncRefCount;
+end;
+
+// _Release
+//
+function TInterfacedSelfObject._Release: Integer;
+begin
+   Result:=DecRefCount;
+   if Result=0 then Destroy;
+end;
+
+// NewInstance
+//
+class function TInterfacedSelfObject.NewInstance: TObject;
+begin
+   Result:=inherited NewInstance;
+   TRefCountedObject(Result).IncRefCount;
+end;
+
+// AfterConstruction
+//
+procedure TInterfacedSelfObject.AfterConstruction;
+begin
+   // Release the constructor's implicit refcount
+   DecRefCount;
+end;
+
+// BeforeDestruction
+//
+procedure TInterfacedSelfObject.BeforeDestruction;
+begin
+   Assert(RefCount=0);
 end;
 
 // ------------------
@@ -2092,6 +2168,61 @@ begin
    List[idx]:=value;
 end;
 
+// ------------------
+// ------------------ TRefCountedObject ------------------
+// ------------------
+
+// Free
+//
+procedure TRefCountedObject.Free;
+begin
+   if Self<>nil then
+      DecRefCount;
+end;
+
+// IncRefCount
+//
+function TRefCountedObject.IncRefCount : Integer;
+var
+   p : PInteger;
+begin
+   p:=PInteger(NativeInt(Self)+InstanceSize-hfFieldSize+hfMonitorOffset);
+   Result:=InterlockedIncrement(p^);
+end;
+
+// DecRefCount
+//
+function TRefCountedObject.DecRefCount : Integer;
+var
+   p : PInteger;
+begin
+   p:=PInteger(NativeInt(Self)+InstanceSize-hfFieldSize+hfMonitorOffset);
+   if p^=0 then begin
+      Destroy;
+      Result:=0;
+   end else Result:=InterlockedDecrement(p^);
+end;
+
+// GetRefCount
+//
+function TRefCountedObject.GetRefCount : Integer;
+var
+   p : PInteger;
+begin
+   p:=PInteger(NativeInt(Self)+InstanceSize-hfFieldSize+hfMonitorOffset);
+   Result:=p^;
+end;
+
+// SetRefCount
+//
+procedure TRefCountedObject.SetRefCount(n : Integer);
+var
+   p : PInteger;
+begin
+   p:=PInteger(NativeInt(Self)+InstanceSize-hfFieldSize+hfMonitorOffset);
+   p^:=n;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -2107,8 +2238,4 @@ finalization
    FinalizeStringsUnifier;
 
 end.
-
-
-
-
 

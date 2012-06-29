@@ -29,7 +29,46 @@ uses SysUtils, dwsUtils, dwsSymbols, dwsErrors, dwsStack, dwsXPlatform,
 type
 
    TSystemSymbolTable = class;
-   TUnitMainSymbol = class;
+   TUnitSymbolTable = class;
+   TUnitImplementationTable = class;
+   TUnitMainSymbols = class;
+   TUnitSymbol = class;
+
+   // Invisible symbol for source code
+   TSourceSymbol = class (TSymbol)
+      public
+   end;
+
+   // Invisible symbol for units (e. g. for TdwsUnit)
+   TUnitMainSymbol = class sealed (TSourceSymbol)
+      private
+         FTable : TUnitSymbolTable;
+         FInterfaceTable : TSymbolTable;
+         FImplementationTable : TUnitImplementationTable;
+         FStoredParents : TTightList;
+
+      public
+         constructor Create(const name : UnicodeString; table : TUnitSymbolTable;
+                            unitSyms : TUnitMainSymbols);
+         destructor Destroy; override;
+
+         procedure Initialize(const msgs : TdwsCompileMessageList); override;
+
+         procedure CreateInterfaceTable;
+         procedure UnParentInterfaceTable;
+
+         procedure StoreParents;
+         procedure RestoreParents;
+
+         function ReferenceInSymbolTable(aTable : TSymbolTable; implicit : Boolean) : TUnitSymbol;
+
+         function HasSymbol(sym : TSymbol) : Boolean;
+
+         property Table : TUnitSymbolTable read FTable;
+
+         property InterfaceTable : TSymbolTable read FInterfaceTable;
+         property ImplementationTable : TUnitImplementationTable read FImplementationTable;
+   end;
 
    // list of unit main symbols (one per prog)
    TUnitMainSymbols = class(TObjectList<TUnitMainSymbol>)
@@ -88,44 +127,6 @@ type
          class function IsUnitTable : Boolean; override;
 
          function EnumerateHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean; override;
-   end;
-
-   TUnitSymbol = class;
-
-   // Invisible symbol for source code
-   TSourceSymbol = class (TSymbol)
-      public
-   end;
-
-   // Invisible symbol for units (e. g. for TdwsUnit)
-   TUnitMainSymbol = class sealed (TSourceSymbol)
-      private
-         FTable : TUnitSymbolTable;
-         FInterfaceTable : TSymbolTable;
-         FImplementationTable : TUnitImplementationTable;
-         FStoredParents : TTightList;
-
-      public
-         constructor Create(const name : UnicodeString; table : TUnitSymbolTable;
-                            unitSyms : TUnitMainSymbols);
-         destructor Destroy; override;
-
-         procedure Initialize(const msgs : TdwsCompileMessageList); override;
-
-         procedure CreateInterfaceTable;
-         procedure UnParentInterfaceTable;
-
-         procedure StoreParents;
-         procedure RestoreParents;
-
-         function ReferenceInSymbolTable(aTable : TSymbolTable; implicit : Boolean) : TUnitSymbol;
-
-         function HasSymbol(sym : TSymbol) : Boolean;
-
-         property Table : TUnitSymbolTable read FTable;
-
-         property InterfaceTable : TSymbolTable read FInterfaceTable;
-         property ImplementationTable : TUnitImplementationTable read FImplementationTable;
    end;
 
    // Invisible symbol for included source code
@@ -532,7 +533,7 @@ begin
    if FStoredParents.Count=0 then Exit;
    Assert(Table.ParentCount=0);
    for i:=0 to FStoredParents.Count-1 do
-      Table.AddParent(FStoredParents.List[i]);
+      Table.AddParent(TSymbolTable(FStoredParents.List[i]));
    FStoredParents.Clear;
 end;
 

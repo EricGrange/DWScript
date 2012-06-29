@@ -99,7 +99,7 @@ type
    TCharsType = set of AnsiChar;
    TTransition = class;
 
-   TState = class
+   TState = class (TRefCountedObject)
       private
          FOwnedTransitions : TTightList;
          FTransitions : array [#0..#127] of TTransition;
@@ -118,7 +118,7 @@ type
                      caSwitch, caDotDot);
    TTransitionOptions = set of (toStart, toFinal);
 
-   TTransition = class
+   TTransition = class (TRefCountedObject)
       private
          NextState : TState;
          Start : Boolean; // Marks the begin of a Token

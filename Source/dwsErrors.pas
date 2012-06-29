@@ -34,7 +34,7 @@ type
 
    // TSourceFile
    //
-   TSourceFile = class
+   TSourceFile = class (TRefCountedObject)
       private
          FLineCount : Integer;
       public
@@ -80,7 +80,7 @@ type
 
    // TdwsMessage
    //
-   TdwsMessage = class abstract
+   TdwsMessage = class abstract (TRefCountedObject)
       private
          FMsgs : TdwsMessageList;
          FText : UnicodeString;
@@ -248,10 +248,10 @@ type
    // to be implemented.
    EClassIncompleteError = class(Exception)
       private
-         FClassSymObj: TObject;   // object that refers to the TClassSymbol
+         FClassSymObj : TRefCountedObject;   // object that refers to the TClassSymbol
 
       public
-         property ClassSymObj: TObject read FClassSymObj write FClassSymObj;
+         property ClassSymObj : TRefCountedObject read FClassSymObj write FClassSymObj;
    end;
 
    EClassPropertyIncompleteError = class(EClassIncompleteError);

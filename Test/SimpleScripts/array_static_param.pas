@@ -7,6 +7,7 @@ begin
    i:=123;
    PrintLn('= '+IntToStr(p[1])+', '+IntToStr(p[2]));
    Assert(i=123);
+   Assert(p[2]>0);
 end;
 
 const c : TArr = [1, 2];

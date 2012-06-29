@@ -58,7 +58,7 @@ type
    TScriptSourceType = (stMain, stUnit, stInclude, stRecompile);
 
    // A specific ScriptSource entry. The text of the script contained in that unit.
-   TScriptSourceItem = class
+   TScriptSourceItem = class (TRefCountedObject)
       private
          FNameReference : UnicodeString;
          FSourceFile : TSourceFile;
@@ -108,7 +108,7 @@ type
 
    // Records a symbol's position in source and usage at that position
    //
-   TSymbolPosition = class
+   TSymbolPosition = class (TRefCountedObject)
       private
          FScriptPos : TScriptPos;     // location of symbol instance in script
          FSymUsages : TSymbolUsages;  // how symbol is used at this location (mutiple uses possible, Functions are Delcared/Implemented at same spot)
@@ -121,7 +121,7 @@ type
    end;
 
    {Re-list every symbol (pointer to it) and every position it is in in the script }
-   TSymbolPositionList = class
+   TSymbolPositionList = class (TRefCountedObject)
       private
          FSymbol : TSymbol;                     // pointer to the symbol
          FPosList : TArrayObjectList<TSymbolPosition>;   // list of positions where symbol is declared and used
@@ -200,7 +200,7 @@ type
 
    // Context within the script. (A block of code) Can be nested
    //
-   TdwsSourceContext = class
+   TdwsSourceContext = class (TRefCountedObject)
       private
          FParentContext : TdwsSourceContext;
          FParentSymbol : TSymbol;     // a parent symbol would be a procedure/method, etc.
@@ -337,7 +337,7 @@ type
          function CreateProgResult: TdwsResult; override;
    end;
 
-   TdwsGuardedExecution = class
+   TdwsGuardedExecution = class (TRefCountedObject)
       Exec : IdwsProgramExecution;
       TimeOutAt : TDateTime;
    end;
@@ -2386,7 +2386,8 @@ begin
       // FileSystem
       FFileSystem:=nil;
 
-      FreeAndNil(FProgramInfo);
+      FProgramInfo.Free;
+      FProgramInfo:=nil;
 
       FProgramState:=psReadyToRun;
    except
@@ -2676,9 +2677,9 @@ end;
 procedure TdwsProgramExecution.LeaveRecursion;
 begin
    if IsDebugging then
-      Debugger.LeaveFunc(Self, FCallStack.Peek);
+      Debugger.LeaveFunc(Self, TExprBase(FCallStack.Peek));
 
-   FCurrentProg:=FCallStack.Peek;
+   FCurrentProg:=TdwsProgram(FCallStack.Peek);
 
    FCallStack.Pop;
    FCallStack.Pop;
@@ -2696,7 +2697,7 @@ end;
 procedure TdwsProgramExecution.RaiseMaxRecursionReached;
 begin
    FCallStack.Pop;
-   SetScriptError(FCallStack.Peek);
+   SetScriptError(TExprBase(FCallStack.Peek));
    FCallStack.Pop;
    raise EScriptStackOverflow.CreateFmt(RTE_MaximalRecursionExceeded, [FStack.MaxRecursionDepth]);
 end;
@@ -2815,8 +2816,9 @@ end;
 //
 procedure TdwsProgram.ResetExprs;
 begin
-   FreeAndNil(FExpr);
-   FreeAndNil(FInitExpr);
+   FExpr.Free;
+   FExpr:=nil;
+   FInitExpr.Free;
    FInitExpr:=TBlockInitExpr.Create(Self, cNullPos);
 end;
 
@@ -3544,6 +3546,7 @@ var
    currentTime : TDateTime;
    item : TdwsGuardedExecution;
    n, millisecs : Integer;
+   timeLeft : Double;
 begin
    while not Terminated do begin
 
@@ -3557,12 +3560,12 @@ begin
             item:=FExecutions[n-1];
             if item.Exec=nil then begin
                FExecutions.Extract(n-1);
-               FreeAndNil(item);
+               item.Free;
             end else begin
                if item.TimeOutAt<=currentTime then begin
                   item.Exec.Stop;
                   FExecutions.Extract(n-1);
-                  FreeAndNil(item);
+                  item.Free;
                end else Break;
             end;
          end;
@@ -3573,9 +3576,10 @@ begin
       if item=nil then
          FEvent.WaitFor(INFINITE)
       else begin
-         millisecs:=Round((item.TimeOutAt-currentTime)*(86400*1000));
-         if millisecs<0 then
-            millisecs:=0;
+         timeLeft:=item.TimeOutAt-currentTime;
+         if timeLeft<0 then
+            millisecs:=0
+         else millisecs:=Round(timeLeft*(86400*1000));
          FEvent.WaitFor(millisecs);
       end;
 
@@ -4445,20 +4449,20 @@ end;
 //
 procedure TPushOperator.Execute(exec : TdwsExecution);
 begin
-   case TPushOperatorType(FTypeParamSym) of
-      potAddr : ExecuteAddr(exec);
-      potPassAddr : ExecutePassAddr(exec);
-      potTempAddr : ExecuteTempAddr(exec);
-      potTempArrayAddr : ExecuteTempArrayAddr(exec);
-      potTempArray : ExecuteTempArray(exec);
-      potResultBoolean : ExecuteResultBoolean(exec);
-      potResultInteger : ExecuteResultInteger(exec);
-      potResultFloat : ExecuteResultFloat(exec);
-      potResultString : ExecuteResultString(exec);
-      potResultConstString : ExecuteResultConstString(exec);
-      potResult : ExecuteResult(exec);
-      potInitResult : ExecuteInitResult(exec);
-      potLazy : ExecuteLazy(exec);
+   case NativeInt(FTypeParamSym) of
+      NativeInt(potAddr) : ExecuteAddr(exec);
+      NativeInt(potPassAddr) : ExecutePassAddr(exec);
+      NativeInt(potTempAddr) : ExecuteTempAddr(exec);
+      NativeInt(potTempArrayAddr) : ExecuteTempArrayAddr(exec);
+      NativeInt(potTempArray) : ExecuteTempArray(exec);
+      NativeInt(potResultBoolean) : ExecuteResultBoolean(exec);
+      NativeInt(potResultInteger) : ExecuteResultInteger(exec);
+      NativeInt(potResultFloat) : ExecuteResultFloat(exec);
+      NativeInt(potResultString) : ExecuteResultString(exec);
+      NativeInt(potResultConstString) : ExecuteResultConstString(exec);
+      NativeInt(potResult) : ExecuteResult(exec);
+      NativeInt(potInitResult) : ExecuteInitResult(exec);
+      NativeInt(potLazy) : ExecuteLazy(exec);
    else
       ExecuteData(exec);
    end;
@@ -4613,9 +4617,12 @@ end;
 // ExecuteData
 //
 procedure TPushOperator.ExecuteData(exec : TdwsExecution);
+var
+   dataExpr : TDataExpr;
 begin
-   exec.Stack.WriteData(TDataExpr(FArgExpr).Addr[exec], exec.Stack.StackPointer + FStackAddr,
-                        FTypeParamSym.Typ.Size, TDataExpr(FArgExpr).Data[exec]);
+   dataExpr:=TDataExpr(FArgExpr);
+   exec.Stack.WriteData(dataExpr.Addr[exec], exec.Stack.StackPointer+FStackAddr,
+                        FTypeParamSym.Typ.Size, dataExpr.Data[exec]);
 end;
 
 // ExecuteInitResult
@@ -6555,10 +6562,14 @@ end;
 // Insert
 //
 procedure TScriptDynamicArray.Insert(index : Integer);
+var
+   n : Integer;
 begin
    Inc(FLength);
    System.SetLength(FData, FLength*ElementSize);
-   Move(FData[index*ElementSize], FData[(index+1)*ElementSize], (FLength-index-1)*ElementSize*SizeOf(Variant));
+   n:=(FLength-index-1)*ElementSize*SizeOf(Variant);
+   if n>0 then
+      Move(FData[index*ElementSize], FData[(index+1)*ElementSize], n);
    FillChar(FData[index*ElementSize], ElementSize*SizeOf(Variant), 0);
    FElementTyp.InitData(FData, index*ElementSize);
 end;
@@ -8169,7 +8180,7 @@ end;
 function TSourceConditions.Test(exec : TdwsExecution) : TSourceCondition;
 var
    i : Integer;
-   ptrList : PPointerTightList;
+   ptrList : PObjectTightList;
 begin
    ptrList:=FItems.List;
    for i:=0 to FItems.Count-1 do begin

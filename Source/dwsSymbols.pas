@@ -114,7 +114,7 @@ type
    TExprBaseEnumeratorProc = reference to procedure (parent, expr : TExprBase; var abort : Boolean);
 
    // Base class for all Exprs
-   TExprBase = class
+   TExprBase = class (TRefCountedObject)
       protected
          function GetSubExpr(i : Integer) : TExprBase; virtual;
          function GetSubExprCount : Integer; virtual;
@@ -252,7 +252,7 @@ type
    // TSymbol
    //
    // Named item in the script
-   TSymbol = class
+   TSymbol = class (TRefCountedObject)
       private
          FName : UnicodeString;
 
@@ -298,7 +298,7 @@ type
    TSymbolTableFlags = set of TSymbolTableFlag;
 
    // A table of symbols connected to other symboltables (property Parents)
-   TSymbolTable = class
+   TSymbolTable = class (TRefCountedObject)
       private
          FAddrGenerator : TAddrGenerator;
          FSymbols : TTightList;
@@ -453,14 +453,19 @@ type
       protected
          FStackAddr : Integer;
          FLevel : SmallInt;
+         FExpr : TExprBase;
 
          function GetDescription : UnicodeString; override;
 
       public
+         destructor Destroy; override;
+
          procedure AllocateStackAddr(generator : TAddrGenerator);
 
          property Level : SmallInt read FLevel write FLevel;
          property StackAddr: Integer read FStackAddr write FStackAddr;
+
+         property Expr : TExprBase read FExpr write FExpr;
    end;
 
    // parameter: procedure P(x: Integer);
@@ -4433,6 +4438,14 @@ begin
   else Result:=Name+': ???';
 end;
 
+// Destroy
+//
+destructor TDataSymbol.Destroy;
+begin
+   FExpr.Free;
+   inherited;
+end;
+
 // AllocateStackAddr
 //
 procedure TDataSymbol.AllocateStackAddr(generator : TAddrGenerator);
@@ -4547,7 +4560,7 @@ end;
 procedure TSymbolTable.Initialize(const msgs : TdwsCompileMessageList);
 var
    i : Integer;
-   ptrList : PPointerTightList;
+   ptrList : PObjectTightList;
 begin
    ptrList:=FSymbols.List;
    for i:=0 to FSymbols.Count-1 do
@@ -4589,7 +4602,7 @@ var
    sym : TSymbol;
 begin
    for i:=0 to FSymbols.Count-1 do begin
-      sym:=FSymbols.List[i];
+      sym:=TSymbol(FSymbols.List[i]);
       if sym.InheritsFrom(TDataSymbol) then begin
          Result:=TDataSymbol(sym);
          if (Result.StackAddr=stackAddr) and (Result.Level=level) then
@@ -4611,7 +4624,7 @@ procedure TSymbolTable.SortSymbols(minIndex, maxIndex : Integer);
 var
   i, j, p : Integer;
   pSym : TSymbol;
-  ptrList : PPointerTightList;
+  ptrList : PObjectTightList;
 begin
    if (maxIndex<=minIndex) then
       Exit;
@@ -4645,7 +4658,7 @@ end;
 function TSymbolTable.FindLocalSorted(const name : UnicodeString) : TSymbol;
 var
    lo, hi, mid, cmpResult: Integer;
-   ptrList : PPointerTightList;
+   ptrList : PObjectTightList;
 begin
    lo:=0;
    hi:=FSymbols.Count-1;
@@ -4669,7 +4682,7 @@ end;
 function TSymbolTable.FindLocalUnSorted(const name: UnicodeString) : TSymbol;
 var
    i : Integer;
-   ptrList : PPointerTightList;
+   ptrList : PObjectTightList;
 begin
    ptrList:=FSymbols.List;
    for i:=FSymbols.Count-1 downto 0 do begin
@@ -4874,7 +4887,7 @@ end;
 function TSymbolTable.HasClass(const aClass : TSymbolClass) : Boolean;
 var
    i : Integer;
-   ptrList : PPointerTightList;
+   ptrList : PObjectTightList;
 begin
    ptrList:=FSymbols.List;
    for i:=FSymbols.Count-1 downto 0 do begin
@@ -4933,7 +4946,7 @@ end;
 function TSymbolTable.AddSymbolDirect(sym : TSymbol) : Integer;
 var
    n : Integer;
-   ptrList : PPointerTightList;
+   ptrList : PObjectTightList;
 begin
    if stfSorted in FFlags then begin
       Result:=0;
@@ -5744,6 +5757,12 @@ end;
 
 // Random
 //
+{$IFOPT R+}
+  {$DEFINE RANGEON}
+  {$R-}
+{$ELSE}
+  {$UNDEF RANGEON}
+{$ENDIF}
 function TdwsExecution.Random : Double;
 // Marsaglia, George (July 2003). "Xorshift RNGs". Journal of Statistical Software Vol. 8 (Issue  14).
 const
@@ -5761,6 +5780,10 @@ begin
    FRandSeed:=buf;
    Result:=(buf shr 1)*cScale;
 end;
+{$IFDEF RANGEON}
+  {$R+}
+  {$UNDEF RANGEON}
+{$ENDIF}
 
 // SetRandSeed
 //

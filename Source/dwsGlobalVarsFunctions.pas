@@ -554,6 +554,7 @@ finalization
 
    CleanupGlobalVars;
    DeleteCriticalSection(vGlobalVarsCS);
-   FreeAndNil(vGlobalVars);
+   vGlobalVars.Free;
+   vGlobalVars:=nil;
   
 end.

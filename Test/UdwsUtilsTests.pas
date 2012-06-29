@@ -163,43 +163,49 @@ end;
 // TightListTest
 //
 procedure TdwsUtilsTests.TightListTest;
+var
+   s : TRefCountedObject;
 begin
+   s:=TRefCountedObject.Create;
+
    CheckEquals(-1, FTightList.IndexOf(nil), 'empty search');
 
    CheckException(TightListOutOfBoundsDelete, ETightListOutOfBound, 'OutOfBounds Delete');
    CheckException(TightListOutOfBoundsInsert, ETightListOutOfBound, 'OutOfBounds Insert');
    CheckException(TightListOutOfBoundsMove, ETightListOutOfBound, 'OutOfBounds Move');
 
-   FTightList.Add(Self);
+   FTightList.Add(s);
    CheckEquals(-1, FTightList.IndexOf(nil), 'single search nil');
-   CheckEquals(0, FTightList.IndexOf(Self), 'single search Self');
+   CheckEquals(0, FTightList.IndexOf(s), 'single search Self');
 
    FTightList.Move(0, 0);
 
-   CheckEquals(0, FTightList.IndexOf(Self), 'single search Self 2');
+   CheckEquals(0, FTightList.IndexOf(s), 'single search Self 2');
 
    FTightList.Add(nil);
    CheckEquals(1, FTightList.IndexOf(nil), 'two search nil');
-   CheckEquals(0, FTightList.IndexOf(Self), 'two search Self');
+   CheckEquals(0, FTightList.IndexOf(s), 'two search Self');
    CheckEquals(-1, FTightList.IndexOf(Pointer(-1)), 'two search -1');
 
    FTightList.Move(0, 1);
 
    CheckEquals(0, FTightList.IndexOf(nil), 'two search nil 2');
-   CheckEquals(1, FTightList.IndexOf(Self), 'two search Self 2');
+   CheckEquals(1, FTightList.IndexOf(s), 'two search Self 2');
 
    FTightList.Move(1, 0);
 
    CheckEquals(1, FTightList.IndexOf(nil), 'two search nil 3');
-   CheckEquals(0, FTightList.IndexOf(Self), 'two search Self 3');
+   CheckEquals(0, FTightList.IndexOf(s), 'two search Self 3');
 
    FTightList.Add(nil);
    FTightList.Move(2, 0);
 
    CheckEquals(0, FTightList.IndexOf(nil), 'three search nil');
-   CheckEquals(1, FTightList.IndexOf(Self), 'three search Self');
+   CheckEquals(1, FTightList.IndexOf(s), 'three search Self');
 
-   FTightList.Clear
+   FTightList.Clear;
+
+   s.Free;
 end;
 
 // LookupTest
@@ -207,14 +213,14 @@ end;
 procedure TdwsUtilsTests.LookupTest;
 var
    lookup : TObjectsLookup;
-   obj : TObject;
+   obj : TRefCountedObject;
 begin
    lookup:=TObjectsLookup.Create;
    try
       CheckFalse(lookup.IndexOf(nil)>=0, 'empty');
       lookup.Add(nil);
       CheckTrue(lookup.IndexOf(nil)>=0, 'nil');
-      obj:=TObject.Create;
+      obj:=TRefCountedObject.Create;
       CheckFalse(lookup.IndexOf(obj)>=0, 'obj');
       lookup.Add(obj);
       CheckTrue(lookup.IndexOf(nil)>=0, 'nil bis');
@@ -228,16 +234,16 @@ end;
 // SortedListExtract
 //
 type
-   TTestSortedList = class (TSortedList<TObject>)
-      function Compare(const item1, item2 : TObject) : Integer; override;
+   TTestSortedList = class (TSortedList<TRefCountedObject>)
+      function Compare(const item1, item2 : TRefCountedObject) : Integer; override;
    end;
-function TTestSortedList.Compare(const item1, item2 : TObject) : Integer;
+function TTestSortedList.Compare(const item1, item2 : TRefCountedObject) : Integer;
 begin
    Result:=NativeInt(item1)-NativeInt(item2);
 end;
 procedure TdwsUtilsTests.SortedListExtract;
 var
-   list : TSortedList<TObject>;
+   list : TSortedList<TRefCountedObject>;
 begin
    list:=TTestSortedList.Create;
    list.Add(nil);

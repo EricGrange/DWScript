@@ -25,7 +25,7 @@ uses Windows, Classes, dwsDebugger, dwsUtils, dwsErrors, dwsSymbols,
 
 type
 
-   TdwsSample = class
+   TdwsSample = class (TRefCountedObject)
       private
          FSourceName : UnicodeString;
          FFuncName : UnicodeString;

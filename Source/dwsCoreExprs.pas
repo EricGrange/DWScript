@@ -200,11 +200,11 @@ type
    // A constant value (like 0, 3.14159, 'Hello' or true)
    TConstExpr = class(TDataExpr)
       protected
-         FData: TData;
+         FData : TData;
          function GetData(exec : TdwsExecution) : TData; override;
 
       public
-         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); overload;
+         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); overload; virtual;
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer); overload;
 
          function Eval(exec : TdwsExecution) : Variant; override;
@@ -229,12 +229,8 @@ type
    //
    {: Unified constants go into a program root unified const list. }
    TUnifiedConstExpr = class (TConstExpr)
-      protected
-         procedure DoNothing;
       public
-         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); virtual;
          class function CreateUnified(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant) : TUnifiedConstExpr;
-         destructor DestroyTrue;
    end;
 
    // TConstBooleanExpr
@@ -1520,7 +1516,7 @@ type
    end;
 
    // Part of a case statement
-   TCaseCondition = class
+   TCaseCondition = class (TRefCountedObject)
       private
          FOwnsTrueExpr : Boolean;
          FTrueExpr : TNoResultExpr;
@@ -1892,7 +1888,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsStringFunctions;
+uses dwsStringFunctions, dwsXPlatform;
 
 // ------------------
 // ------------------ TVarExpr ------------------
@@ -2404,9 +2400,30 @@ destructor TUnifiedConstList.Destroy;
 var
    i : Integer;
 begin
-   for i:=0 to Count-1 do
-      TUnifiedConstExpr(Items[i]).DestroyTrue;
+   Clean;
+   FEmptyString.Free;
+   for i:=Low(FIntegers) to High(FIntegers) do begin
+      Assert(FIntegers[i].RefCount=0);
+      FIntegers[i].Free;
+   end;
+   FZeroFloat.Free;
    inherited;
+end;
+
+// Precharge
+//
+procedure TUnifiedConstList.Precharge(prog : TdwsMainProgram; systemTable : TSystemSymbolTable);
+const
+   cEmptyString : UnicodeString = '';
+   cZeroFloat : Double = 0;
+var
+   i : Integer;
+begin
+   inherited Create;
+   FEmptyString:=TConstStringExpr.CreateUnified(prog, systemTable.TypString, cEmptyString);
+   for i:=Low(FIntegers) to High(FIntegers) do
+      FIntegers[i]:=TConstIntExpr.CreateUnified(prog, systemTable.TypInteger, Int64(i));
+   FZeroFloat:=TConstFloatExpr.CreateUnified(prog, systemTable.TypFloat, cZeroFloat);
 end;
 
 // Compare
@@ -2448,22 +2465,6 @@ begin
    else if rawResult>0 then
       Result:=1
    else Result:=-1;
-end;
-
-// Precharge
-//
-procedure TUnifiedConstList.Precharge(prog : TdwsMainProgram; systemTable : TSystemSymbolTable);
-const
-   cEmptyString : UnicodeString = '';
-   cZeroFloat : Double = 0;
-var
-   i : Integer;
-begin
-   inherited Create;
-   FEmptyString:=TConstStringExpr.CreateUnified(prog, systemTable.TypString, cEmptyString);
-   for i:=Low(FIntegers) to High(FIntegers) do
-      FIntegers[i]:=TConstIntExpr.CreateUnified(prog, systemTable.TypInteger, Int64(i));
-   FZeroFloat:=TConstFloatExpr.CreateUnified(prog, systemTable.TypFloat, cZeroFloat);
 end;
 
 // ------------------
@@ -2590,66 +2591,22 @@ end;
 // ------------------ TUnifiedConstExpr ------------------
 // ------------------
 
-// Create
-//
-constructor TUnifiedConstExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant);
-begin
-   inherited Create(Prog, Typ, Value);
-end;
-
 // CreateUnified
 //
 class function TUnifiedConstExpr.CreateUnified(Prog: TdwsProgram; Typ: TTypeSymbol;
                                                const Value: Variant) : TUnifiedConstExpr;
-const
-   vmtDestroy = -4;
 var
    i : Integer;
-   p : Cardinal;
-   {$IFDEF VER230}
-   n : NativeUInt;
-   {$ELSE}
-   n : Cardinal;
-   {$ENDIF}
    added : Boolean;
 begin
    Result:=Self.Create(Prog, Typ, Value);
 
    i:=Prog.Root.UnifiedConstList.AddOrFind(Result, added);
    if not added then begin
-      Result.DestroyTrue;
+      Result.Free;
       Result:=TUnifiedConstExpr(Prog.Root.UnifiedConstList[i]);
-      Exit;
    end;
-
-   p:=Cardinal(@TUnifiedConstExpr.DoNothing);
-   {$IFDEF WIN32}
-   if PCardinal(NativeInt(Self)+vmtDestroy)^<>p then begin
-      WriteProcessMemory(GetCurrentProcess,
-                         Pointer(NativeInt(Self)+vmtDestroy),
-                         @p, SizeOf(Pointer), n);
-   end;
-   {$ELSE}
-   if PCardinal(NativeInt(Self)+vmtDestroy-4)^<>p then begin
-      WriteProcessMemory(GetCurrentProcess,
-                         Pointer(NativeInt(Self)+vmtDestroy-4),
-                         @p, SizeOf(Cardinal), n);
-   end;
-  {$ENDIF}
-end;
-
-// DoNothing
-//
-procedure TUnifiedConstExpr.DoNothing;
-begin
-   // nothing
-end;
-
-// DestroyTrue
-//
-destructor TUnifiedConstExpr.DestroyTrue;
-begin
-   inherited Destroy;
+   Result.IncRefCount;
 end;
 
 // ------------------
@@ -3281,7 +3238,7 @@ begin
    end;
 
    for x := 0 to FElementExprs.Count - 1 do begin
-      elemExpr:=FElementExprs.List[x];
+      elemExpr:=TTypedExpr(FElementExprs.List[x]);
       if elemExpr is TArrayConstantExpr then
          TArrayConstantExpr(elemExpr).Prepare(prog, FTyp.Typ);
    end;
@@ -6915,10 +6872,9 @@ begin
    CheckScriptObject(exec, exceptObj);
    exceptMessage:=VarToStr(exceptObj.GetData[0]);
    if exceptMessage<>'' then
-      raise EScriptException.Create(Format(RTE_UserDefinedException_Msg, [exceptMessage]),
-                                    exceptObj, FScriptPos)
-   else raise EScriptException.Create(RTE_UserDefinedException,
-                                      exceptObj, FScriptPos);
+      exceptMessage:=Format(RTE_UserDefinedException_Msg, [exceptMessage])
+   else exceptMessage:=RTE_UserDefinedException;
+   raise EScriptException.Create(exceptMessage, exceptObj, FScriptPos);
 end;
 
 // InterruptsFlow
@@ -7470,7 +7426,7 @@ function TArrayAddExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
    if i=0 then
       Result:=FBaseExpr
-   else Result:=FArgs.List[i-1];
+   else Result:=TExprBase(FArgs.List[i-1]);
 end;
 
 // GetSubExprCount

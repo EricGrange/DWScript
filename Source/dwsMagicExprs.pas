@@ -130,7 +130,7 @@ type
    //
    TMagicMethodSymbol = class(TMethodSymbol)
       private
-         FInternalFunction : TObject;
+         FInternalFunction : TInternalFunction;
 
       public
          destructor Destroy; override;
@@ -138,7 +138,7 @@ type
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function IsType : Boolean; override;
 
-         property InternalFunction : TObject read FInternalFunction write FInternalFunction;
+         property InternalFunction : TInternalFunction read FInternalFunction write FInternalFunction;
    end;
 
    // TMagicFuncExpr
@@ -348,7 +348,8 @@ end;
 //
 destructor TMagicFuncSymbol.Destroy;
 begin
-   FreeAndNil(FInternalFunction);
+   FInternalFunction.Free;
+   FInternalFunction:=nil;
    inherited;
 end;
 
@@ -372,7 +373,8 @@ end;
 //
 destructor TMagicMethodSymbol.Destroy;
 begin
-   FreeAndNil(FInternalFunction);
+   FInternalFunction.Free;
+   FInternalFunction:=nil;
    inherited;
 end;
 

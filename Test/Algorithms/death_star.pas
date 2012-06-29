@@ -12,7 +12,7 @@ end;
  
 function Dot(x, y : TVector3) : Float;
 begin
-   var d :=x[0]*y[0] + x[1]*y[1] + x[2]*y[2];
+   var d := x[0]*y[0] + x[1]*y[1] + x[2]*y[2];
    if d<0 then 
       Result:=-d 
    else Result:=0;

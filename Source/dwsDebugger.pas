@@ -83,7 +83,7 @@ type
 
    // TdwsDebuggerBreakpoint
    //
-   TdwsDebuggerBreakpoint = class
+   TdwsDebuggerBreakpoint = class (TRefCountedObject)
       private
          FEnabled : Boolean;
          FLine : Integer;
@@ -136,7 +136,7 @@ type
 
    // TdwsDebuggerWatch
    //
-   TdwsDebuggerWatch = class
+   TdwsDebuggerWatch = class (TRefCountedObject)
       private
          FExpressionText : UnicodeString;
          FEvaluator : IdwsEvaluateExpr;
@@ -1217,7 +1217,8 @@ begin
    FEvaluationError:=dweeNone;
    if debugger.State<>dsDebugSuspended then begin
       FValueInfo:=nil;
-      FreeAndNil(FValueData);
+      FValueData.Free;
+      FValueData:=nil;
       Exit;
    end;
 
@@ -1263,7 +1264,8 @@ begin
    FEvaluationError:=dweeNone;
    Evaluator:=nil;
    FValueInfo:=nil;
-   FreeAndNil(FValueData);
+   FValueData.Free;
+   FValueData:=nil;
 end;
 
 // SetExpressionText
