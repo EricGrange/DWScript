@@ -44,6 +44,7 @@ type
          procedure ClassCleanup(ExternalObject: TObject);
          procedure ClassDestructor(Info: TProgramInfo; ExtObject: TObject);
          procedure MethodPrintEval(Info: TProgramInfo; ExtObject: TObject);
+         procedure MethodPrintExternalEval(Info: TProgramInfo; ExtObject: TObject);
          procedure MethodGetIntEval(Info: TProgramInfo; ExtObject: TObject);
          procedure MethodSetIntEval(Info: TProgramInfo; ExtObject: TObject);
          procedure MethodGetArrayIntEval(Info: TProgramInfo; ExtObject: TObject);
@@ -85,8 +86,9 @@ type
          procedure Operators;
          procedure OpenArray;
          procedure CallPrint;
+         procedure CreateExternally;
 
-         procedure ExplclitUses;
+         procedure ExplicitUses;
    end;
 
    EDelphiException = class (Exception)
@@ -352,6 +354,10 @@ begin
    meth:=cls.Methods.Add;
    meth.Name:='Print';
    meth.OnEval:=MethodPrintEval;
+
+   meth:=cls.Methods.Add;
+   meth.Name:='PrintExternal';
+   meth.OnEval:=MethodPrintExternalEval;
 
    fld:=cls.Fields.Add;
    fld.Name:='FField';
@@ -638,6 +644,13 @@ end;
 procedure TdwsUnitTests.MethodPrintEval(Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.Execution.Result.AddString(FMagicVar+#13#10);
+end;
+
+// MethodPrintExternalEval
+//
+procedure TdwsUnitTests.MethodPrintExternalEval(Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.Execution.Result.AddString(ExtObject.ToString+#13#10);
 end;
 
 // MethodGetIntEval
@@ -1431,9 +1444,40 @@ begin
    end;
 end;
 
-// ExplclitUses
+// CreateExternally
 //
-procedure TdwsUnitTests.ExplclitUses;
+procedure TdwsUnitTests.CreateExternally;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   printit : IInfo;
+   v : IInfo;
+   obj : IScriptObj;
+begin
+   FMagicVar:='';
+   prog:=FCompiler.Compile( 'procedure PrintIt(o : TTestClass);'#13#10
+                           +'begin o.PrintExternal end');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   exec:=prog.BeginNewExecution;
+   try
+      v:=exec.Info.Vars['TTestClass'].Method['Create'].Call();
+      v.ScriptObj.ExternalObject:=TObject.Create;
+
+      printit:=exec.Info.Func['PrintIt'];
+      printit.Call([v.Value]);
+
+      CheckEquals('TObject'#13#10,
+                  exec.Result.ToString+exec.Msgs.AsInfo);
+   finally
+      exec.EndProgram;
+   end;
+end;
+
+// ExplicitUses
+//
+procedure TdwsUnitTests.ExplicitUses;
 var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
