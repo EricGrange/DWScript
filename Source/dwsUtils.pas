@@ -2064,7 +2064,7 @@ var
    i : Integer;
 begin
    if FCount=0 then
-      Exit(T(TObject(NIL)));  // workaround for D2010 compiler bug
+      Exit(T(TObject(nil)));  // workaround for D2010 compiler bug
 
    h:=SimpleStringHash(name);
    i:=(h and (FCapacity-1));
@@ -2072,7 +2072,7 @@ begin
    repeat
       with FBuckets[i] do begin
          if HashCode=0 then
-            Exit(nil);
+            Exit(T(TObject(nil)));  // workaround for D2010 compiler bug
          if (HashCode=h) and (Value.Name=name) then begin
             Result:=Value.Obj;
             Exit;
@@ -2268,7 +2268,7 @@ begin
    bucket.Key:=key;
    if Match(bucket) then
       Result:=bucket.Value
-   else Result:=nil;
+   else Result:=TValue(TObject(nil));  // workaround for D2010 compiler bug
 end;
 
 // SetValue
