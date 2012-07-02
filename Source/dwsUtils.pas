@@ -2063,7 +2063,8 @@ var
    h : Cardinal;
    i : Integer;
 begin
-   if FCount=0 then Exit(nil);
+   if FCount=0 then
+      Exit(T(TObject(NIL)));  // workaround for D2010 compiler bug
 
    h:=SimpleStringHash(name);
    i:=(h and (FCapacity-1));
