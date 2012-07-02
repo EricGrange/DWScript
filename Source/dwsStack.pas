@@ -55,6 +55,7 @@ type
       ChunkSize : Integer;
       MaxByteSize : Integer;
       MaxRecursionDepth : Integer;
+      MaxExceptionDepth : Integer;
    end;
 
    {$IFDEF VER200}
@@ -143,10 +144,12 @@ type
          property MaxSize: Integer read FMaxSize write FMaxSize;
          property StackPointer: Integer read FStackPointer;
          property MaxRecursionDepth : Integer read FParams.MaxRecursionDepth write FParams.MaxRecursionDepth;
+         property MaxExceptionDepth : Integer read FParams.MaxExceptionDepth write FParams.MaxExceptionDepth;
    end;
 
    EScriptStackException = class(Exception);
    EScriptStackOverflow = class(EScriptStackException);
+   EScriptExceptionOverflow = class(EScriptStackException);
 
 procedure DWSCopyData(const sourceData : TData; sourceAddr : Integer;
                       destData : TData; destAddr : Integer; size : Integer);

@@ -49,6 +49,7 @@ type
          procedure SectionContextMaps;
          procedure ResourceTest;
          procedure LongLineTest;
+         procedure TryExceptLoop;
    end;
 
 // ------------------------------------------------------------------
@@ -998,6 +999,34 @@ begin
 
    prog:=FCompiler.Compile(s);
    CheckEquals('Syntax Error: Unknown name "bug" [line: 1, column: 6011]'#13#10, prog.Msgs.AsInfo);
+end;
+
+// TryExceptLoop
+//
+procedure TCornerCasesTests.TryExceptLoop;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'Procedure Proc;'#13#10
+                           +'Begin'#13#10
+                           +' Try'#13#10
+                           +'  Raise Exception.Create("");'#13#10
+                           +' Except'#13#10
+                           +'  Proc;'#13#10
+                           +' End;'#13#10
+                           +'End;'#13#10
+                           +'Proc;');
+
+   exec:=prog.CreateNewExecution;
+   try
+      exec.Execute;
+      CheckTrue(StrBeginsWith(exec.Msgs.AsInfo,
+         'Runtime Error: Maximal exception depth exceeded (11 nested exceptions) in Proc [line: 6, column: 3]'),
+         'exception depth');
+   finally
+      exec:=nil;
+   end;
 end;
 
 // ------------------------------------------------------------------

@@ -493,6 +493,7 @@ const
   // Stack
   RTE_MaximalDatasizeExceeded = 'Maximal data size exceeded (%d Variants)';
   RTE_MaximalRecursionExceeded = 'Maximal recursion exceeded (%d calls)';
+  RTE_MaximalExceptionDepthExceeded = 'Maximal exception depth exceeded (%d nested exceptions)';
 
   // TProgramInfo/TInfo
   RTE_VariableNotFound = 'Variable "%s" not found';

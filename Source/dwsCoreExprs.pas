@@ -6626,6 +6626,9 @@ var
    err : EScriptError;
    msg : UnicodeString;
 begin
+   if exec.ExceptionObjectStack.Count>exec.Stack.MaxExceptionDepth then
+      raise EScriptExceptionOverflow.CreateFmt(RTE_MaximalExceptionDepthExceeded, [exec.ExceptionObjectStack.Count]);
+
    mainException:=System.ExceptObject as Exception;
 
    if mainException is EScriptException then begin

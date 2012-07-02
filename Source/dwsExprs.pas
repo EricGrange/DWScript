@@ -681,6 +681,7 @@ type
 
          property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds;
          property MaxRecursionDepth : Integer read FStackParameters.MaxRecursionDepth write FStackParameters.MaxRecursionDepth;
+         property MaxExceptionDepth : Integer read FStackParameters.MaxExceptionDepth write FStackParameters.MaxExceptionDepth;
          property MaxDataSize : Integer read FStackParameters.MaxByteSize write FStackParameters.MaxByteSize;
          property StackChunkSize : Integer read FStackParameters.ChunkSize write FStackParameters.ChunkSize;
          property UnifiedConstList : TSortedList<TExprBase> read FUnifiedConstList;

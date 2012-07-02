@@ -48,7 +48,8 @@ type
 const
    cDefaultCompilerOptions = [coOptimize, coAssertions];
    cDefaultMaxRecursionDepth = 1024;
-   cDefaultStackChunkSize = 4096;  // 64 kB in 32bit
+   cDefaultMaxExceptionDepth = 10;
+   cDefaultStackChunkSize = 4096;  // 64 kB in 32bit Delphi, each stack entry is a Variant
 
 type
    TdwsCompiler = class;
@@ -86,6 +87,7 @@ type
          FFilter : TdwsFilter;
          FMaxDataSize : Integer;
          FMaxRecursionDepth : Integer;
+         FMaxExceptionDepth : Integer;
          FOnInclude : TIncludeEvent;
          FOnNeedUnit : TdwsOnNeedUnitEvent;
          FOnResource : TdwsResourceEvent;
@@ -135,6 +137,7 @@ type
          property HintsLevel : TdwsHintsLevel read FHintsLevel write FHintsLevel default hlStrict;
          property MaxDataSize : Integer read FMaxDataSize write FMaxDataSize default 0;
          property MaxRecursionDepth : Integer read FMaxRecursionDepth write FMaxRecursionDepth default cDefaultMaxRecursionDepth;
+         property MaxExceptionDepth : Integer read FMaxExceptionDepth write FMaxExceptionDepth default cDefaultMaxExceptionDepth;
          property Conditionals : TStringList read FConditionals write SetConditionals;
          property ScriptPaths : TStrings read FScriptPaths write SetScriptPaths;
          property CompileFileSystem : TdwsCustomFileSystem read FCompileFileSystem write SetCompileFileSystem;
@@ -906,7 +909,8 @@ begin
    stackParams.MaxLevel:=1;
    stackParams.ChunkSize:=512;
    stackParams.MaxByteSize:=MaxInt;
-   stackParams.MaxRecursionDepth:=MaxInt;
+   stackParams.MaxRecursionDepth:=cDefaultMaxRecursionDepth;
+   stackParams.MaxExceptionDepth:=cDefaultMaxExceptionDepth;
 
    FExec:=TdwsCompilerExecution.Create(stackParams, Self);
 end;
@@ -1202,6 +1206,7 @@ begin
    Assert(stackParams.ChunkSize>0);
 
    stackParams.MaxRecursionDepth:=aConf.MaxRecursionDepth;
+   stackParams.MaxExceptionDepth:=aConf.MaxExceptionDepth;
 
    FLineCount:=0;
 
@@ -10565,6 +10570,7 @@ begin
    FCompilerOptions := cDefaultCompilerOptions;
    FHintsLevel := hlStrict;
    FMaxRecursionDepth := cDefaultMaxRecursionDepth;
+   FMaxExceptionDepth := cDefaultMaxExceptionDepth;
 end;
 
 destructor TdwsConfiguration.Destroy;
