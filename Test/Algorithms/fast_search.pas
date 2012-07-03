@@ -2,7 +2,7 @@
 type TMyArray=array[1..1000] of integer;
 var MyArray:TMyArray;
 
-procedure swap(var a,b:integer);
+procedure swapint(var a,b:integer);
 begin
   var z:integer;
   z:=a;
@@ -19,7 +19,7 @@ begin
  begin 
   m1 := trunc((lower+upper)/2);
   m2 := lower+trunc((upper-lower)*(tosearch-MyArray[lower])/(MyArray[upper]- MyArray[lower]));
-  if m1 > m2 then swap(m1,m2);
+  if m1 > m2 then swapint(m1,m2);
   if tosearch = MyArray[m1] then result := m1
   else if tosearch = MyArray[m2] then result := m2
   else if tosearch < MyArray[m1] then result := fastsearchrec(lower,m1-1,tosearch)
@@ -37,7 +37,7 @@ begin
  repeat
   m1 := trunc((lower+upper)/2);
   m2 := lower+trunc((upper-lower)*(tosearch-MyArray[lower])/(MyArray[upper]- MyArray[lower]));
-  if m1 > m2 then swap(m1,m2);
+  if m1 > m2 then swapint(m1,m2);
   if tosearch = MyArray[m1] then pos := m1
   else if tosearch = MyArray[m2] then pos := m2
   else if tosearch < MyArray[m1] then upper:=m1-1

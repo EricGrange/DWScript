@@ -230,6 +230,10 @@ type
     procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
+  TGetTextFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
+  end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -872,6 +876,17 @@ begin
    end;
 end;
 
+// ------------------
+// ------------------ TGetTextFunc ------------------
+// ------------------
+
+// DoEvalAsString
+//
+procedure TGetTextFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
+begin
+   args.Exec.LocalizeString(args.AsString[0], Result);
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -954,5 +969,7 @@ initialization
    RegisterInternalStringFunction(TStrJoinFunc, 'StrJoin', ['strs', 'array of string', 'delimiter', cString], []);
 
    RegisterInternalStringFunction(TReverseStringFunc, 'ReverseString', ['str', cString], [iffStateLess]);
+
+   RegisterInternalStringFunction(TGetTextFunc, '_', ['str', cString], []);
 
 end.

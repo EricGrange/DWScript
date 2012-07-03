@@ -51,8 +51,18 @@ type
    end;
 
    TdwsFuncFunctionsTestsString = class (TdwsFunctionsTestsBase)
+      private
+         FLocalizer : TdwsCustomLocalizer;
+
+      protected
+         procedure DoOnLocalize(Sender : TObject; const aString : String; var result : String);
+
       public
          procedure SetUp; override;
+
+      published
+         procedure LocalizeTest;
+
    end;
 
    TdwsFuncFunctionsTestsVariant = class (TdwsFunctionsTestsBase)
@@ -249,6 +259,30 @@ procedure TdwsFuncFunctionsTestsString.SetUp;
 begin
    FFolder:='FunctionsString';
    inherited;
+
+   FLocalizer:=TdwsCustomLocalizer.Create(FCompiler);
+   FCompiler.Config.Localizer:=FLocalizer;
+   FLocalizer.OnLocalizeString:=DoOnLocalize;
+end;
+
+// DoOnLocalize
+//
+procedure TdwsFuncFunctionsTestsString.DoOnLocalize(Sender : TObject; const aString : String; var result : String);
+begin
+   Result:='['+aString+']';
+end;
+
+// LocalizeTest
+//
+procedure TdwsFuncFunctionsTestsString.LocalizeTest;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile('Print(_("Test"));');
+   exec:=prog.CreateNewExecution;
+   exec.Execute;
+   CheckEquals('[Test]', exec.Result.ToString);
 end;
 
 // ------------------

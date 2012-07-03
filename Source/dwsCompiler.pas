@@ -176,7 +176,9 @@ type
    TSpecialKeywordKind = (skNone, skAbs, skAssert, skAssigned,
                           skHigh, skLength, skLow,
                           skOrd, skSizeOf, skDefined, skDeclared, skSqr,
-                          skInc, skDec, skSucc, skPred, skConditionalDefined);
+                          skInc, skDec, skSucc, skPred,
+                          skSwap,
+                          skConditionalDefined);
 
    TSwitchInstruction = (siNone,
                          siIncludeLong, siIncludeShort, siIncludeOnce,
@@ -3411,8 +3413,8 @@ begin
                end else if locExpr is TNullExpr then begin
                   Result:=TNullExpr(locExpr);
                   locExpr:=nil;
-               end else if locExpr is TAssertExpr then begin
-                  Result:=TAssertExpr(locExpr);
+               end else if locExpr is TNoResultPosExpr then begin
+                  Result:=TNoResultPosExpr(locExpr);
                   locExpr:=nil;
                end else begin
                   Result:=nil;
@@ -9024,7 +9026,10 @@ begin
       4 : case name[1] of
          'h', 'H' : if SameText(name, 'high') then Exit(skHigh);
          'p', 'P' : if SameText(name, 'pred') then Exit(skPred);
-         's', 'S' : if SameText(name, 'succ') then Exit(skSucc);
+         's', 'S' : case name[2] of
+            'u', 'U' : if SameText(name, 'succ') then Exit(skSucc);
+            'w', 'W' : if SameText(name, 'swap') then Exit(skSwap);
+         end;
       end;
       6 : case name[1] of
          'a', 'A' : if SameText(name, 'assert') then Exit(skAssert);
@@ -10311,6 +10316,32 @@ begin
                FMsgs.AddCompilerError(argPos, CPE_StringExpected);
             Result:=TConditionalDefinedExpr.Create(FProg, argExpr);
             argExpr:=nil;
+         end;
+         skSwap : begin
+            if not ((argExpr is TDataExpr) and TDataExpr(argExpr).IsWritable) then begin
+               FMsgs.AddCompilerError(argPos, CPE_VariableExpected);
+               argExpr.Free;
+               argExpr:=nil;
+            end;
+            if not FTok.TestDelete(ttCOMMA) then begin
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_CommaExpected);
+               msgExpr:=nil;
+            end else begin
+               FTok.TestName;
+               argPos:=FTok.HotPos;
+               msgExpr:=ReadExpr(argTyp);
+               if not ((msgExpr is TDataExpr) and TDataExpr(msgExpr).IsWritable) then begin
+                  FMsgs.AddCompilerError(argPos, CPE_VariableExpected);
+                  msgExpr.Free;
+                  msgExpr:=nil;
+               end else if (argExpr<>nil) then begin
+                  if (msgExpr=nil) or not (msgExpr.IsOfType(argTyp) and argTyp.IsOfType(msgExpr.Typ)) then
+                     IncompatibleTypes(namePos, CPE_IncompatibleTypes, argTyp, msgExpr.Typ);
+               end;
+            end;
+            Result:=TSwapExpr.Create(FProg, namePos, TDataExpr(argExpr), TDataExpr(msgExpr));
+            argExpr:=nil;
+            msgExpr:=nil;
          end;
       end;
 

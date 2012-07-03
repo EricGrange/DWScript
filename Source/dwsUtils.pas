@@ -457,6 +457,7 @@ procedure ChangeObjectClass(ref : TObject; newClass : TClass);
 procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString);
 procedure TidyStringsUnifier;
 
+function UnicodeCompareLen(p1, p2 : PWideChar; n : Integer) : Integer;
 function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
 function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
 

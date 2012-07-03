@@ -86,6 +86,7 @@ const
 const
 
   // Missing Tokens
+  CPE_CommaExpected = '"," expected.';
   CPE_SemiExpected = '";" expected.';
   CPE_BrackLeftExpected = '"(" expected.';
   CPE_BrackRightExpected = '")" expected.';

@@ -1878,6 +1878,26 @@ type
          class function FindSymbol(symbolTable : TSymbolTable; const name : UnicodeString) : TSymbol; static;
    end;
 
+   TSwapExpr = class(TNoResultPosExpr)
+      private
+         FArg0 : TDataExpr;
+         FArg1 : TDataExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
+                            expr0, expr1 : TDataExpr);
+         destructor Destroy; override;
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property Arg0 : TDataExpr read FArg0;
+         property Arg1 : TDataExpr read FArg1;
+   end;
+
    EClassCast = class (EScriptError) end;
 
 // ------------------------------------------------------------------
@@ -7993,6 +8013,70 @@ end;
 procedure TResourceStringExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
 begin
    exec.LocalizeSymbol(FResSymbol, Result);
+end;
+
+// ------------------
+// ------------------ TSwapExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TSwapExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos;
+                             expr0, expr1 : TDataExpr);
+begin
+   inherited Create(prog, scriptPos);
+   FArg0:=expr0;
+   FArg1:=expr1;
+end;
+
+// Destroy
+//
+destructor TSwapExpr.Destroy;
+begin
+   FArg0.Free;
+   FArg1.Free;
+   inherited;
+end;
+
+// EvalNoResult
+//
+procedure TSwapExpr.EvalNoResult(exec : TdwsExecution);
+var
+   buf, buf0, buf1 : TData;
+   size, addr0, addr1 : Integer;
+   tmp : Variant;
+begin
+   size:=Arg0.Typ.Size;
+   if size=1 then begin
+      Arg0.EvalAsVariant(exec, tmp);
+      Arg0.AssignValue(exec, Arg1.Eval(exec));
+      Arg1.AssignValue(exec, tmp);
+   end else begin
+      SetLength(buf, size);
+      addr0:=Arg0.Addr[exec];
+      buf0:=Arg0.Data[exec];
+      addr1:=Arg1.Addr[exec];
+      buf1:=Arg1.Data[exec];
+      DWSCopyData(buf0, addr0, buf, 0, size);
+      Arg0.AssignData(exec, buf1, addr1);
+      Arg1.AssignData(exec, buf, 0);
+   end;
+end;
+
+// GetSubExpr
+//
+function TSwapExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   if i=0 then
+      Result:=Arg0
+   else Result:=Arg1;
+end;
+
+// GetSubExprCount
+//
+function TSwapExpr.GetSubExprCount : Integer;
+begin
+   Result:=2;
 end;
 
 end.

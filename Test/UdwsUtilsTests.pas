@@ -397,6 +397,25 @@ begin
    CheckTrue(UnicodeCompareText('abé', 'abÉ')=0, 'abé, abÉ');
    CheckTrue(UnicodeCompareText('abéaa', 'abÉz')<0, 'abéaa, abÉz');
    CheckTrue(UnicodeCompareText('abéz', 'abÉaa')>0, 'abéz, abÉaa');
+
+   CheckTrue(UnicodeCompareText('se', 'sé')<0, 'se, sé');
+   CheckTrue(UnicodeCompareText('sé', 'sé')=0, 'sé, sé');
+   CheckTrue(UnicodeCompareText('se', 'se')=0, 'se, se');
+   CheckTrue(UnicodeCompareText('sé', 'se')>0, 'sé, se');
+
+   CheckTrue(UnicodeCompareText('su', 'sé')>0, 'su, sé');
+   CheckTrue(UnicodeCompareText('su', 'se')>0, 'su, se');
+   CheckTrue(UnicodeCompareText('sé', 'su')<0, 'sé, su');
+   CheckTrue(UnicodeCompareText('se', 'su')<0, 'se, su');
+   CheckTrue(UnicodeCompareText('su', 'se')>0, 'su, se');
+   CheckTrue(UnicodeCompareText('se', 'su')<0, 'se, su');
+
+   CheckTrue(UnicodeCompareText('sup', 'sé')>0, 'su, sé');
+   CheckTrue(UnicodeCompareText('sup', 'se')>0, 'su, se');
+   CheckTrue(UnicodeCompareText('sé', 'sup')<0, 'sé, su');
+   CheckTrue(UnicodeCompareText('se', 'sup')<0, 'se, su');
+   CheckTrue(UnicodeCompareText('sup', 'se')>0, 'su, se');
+   CheckTrue(UnicodeCompareText('se', 'sup')<0, 'se, su');
 end;
 
 // VarRecArrayTest

@@ -5285,8 +5285,12 @@ function TStaticArraySymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=inherited DoIsOfType(typSym);
    if not Result then begin
-      if (typSym is TOpenArraySymbol) then
-         Result:=(ElementCount=0) or (Typ.IsCompatible(TypSym.Typ));
+      if typSym.ClassType=TStaticArraySymbol then
+         Result:=    (LowBound=TStaticArraySymbol(typSym).LowBound)
+                 and (HighBound=TStaticArraySymbol(typSym).HighBound)
+                 and Typ.IsCompatible(TypSym.Typ)
+      else if typSym is TOpenArraySymbol then
+         Result:=(ElementCount=0) or (Typ.IsCompatible(TypSym.Typ))
    end;
 end;
 
