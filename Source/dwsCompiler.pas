@@ -268,7 +268,8 @@ type
                           tcParameter, tcResult, tcOperand, tcExceptionClass,
                           tcProperty, tcHelper);
 
-   TdwsUnitSection = (secMixed, secHeader, secInterface, secImplementation, secEnd);
+   TdwsUnitSection = (secMixed, secHeader, secInterface, secImplementation,
+                      secInitialization, secFinalization, secEnd);
    TdwsStatementAction = (saNone, saNoSemiColon, saInterface, saImplementation, saEnd);
 
    TdwsCompilerUnitContext = record
@@ -526,6 +527,7 @@ type
          function ReadRepeat : TNoResultExpr;
          function ReadRootStatement(var action : TdwsStatementAction) : TNoResultExpr;
          function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TBlockExpr;
+         procedure ReadImplementationBlock;
          procedure ReadSemiColon;
          function ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TNoResultExpr;
          procedure ReadScriptImplementations;
@@ -614,6 +616,8 @@ type
          procedure CheckFilterDependencies(confUnits : TIdwsUnitList);
          procedure HandleUnitDependencies;
          function  HandleExplicitDependency(const unitName : UnicodeString) : TUnitSymbol;
+
+         procedure SetupInitializationFinalization;
 
       public
          constructor Create;
@@ -1254,6 +1258,8 @@ begin
       FProg.Table.Initialize(FMsgs);
       FProg.UnitMains.Initialize(FMsgs);
 
+      SetupInitializationFinalization;
+
       // setup environment
       if Assigned(FOnGetDefaultEnvironment) then
          FMainProg.DefaultEnvironment:=FOnGetDefaultEnvironment();
@@ -1395,6 +1401,43 @@ begin
    end;
 
    Result:=unitMain.ReferenceInSymbolTable(FProg.Table, False);
+end;
+
+// SetupInitializationFinalization
+//
+procedure TdwsCompiler.SetupInitializationFinalization;
+var
+   i : Integer;
+   rankedUnits : array of TUnitMainSymbol;
+   ums : TUnitMainSymbol;
+begin
+   // collect and rank all units with an initialization or finalization sections
+   // NOTE: UnitMains order may change arbitrarily in the future, hence the need to reorder
+   SetLength(rankedUnits, FProg.UnitMains.Count);
+   for i:=0 to FProg.UnitMains.Count-1 do begin
+      ums:=FProg.UnitMains[i];
+      if (ums.InitializationExpr<>nil) or (ums.FinalizationExpr<>nil) then begin
+         rankedUnits[i]:=ums;
+      end;
+   end;
+   // append initializations to InitExpr of the main prog
+   for i:=0 to High(rankedUnits) do begin
+      ums:=rankedUnits[i];
+      if (ums<>nil) and (ums.InitializationExpr<>nil) then begin
+         FMainProg.InitExpr.AddStatement(ums.InitializationExpr as TBlockExprBase);
+         ums.InitializationExpr.IncRefCount;
+      end;
+   end;
+   // append initializations to FinalExpr of the main prog in reverse order
+   for i:=High(rankedUnits) downto 0 do begin
+      ums:=rankedUnits[i];
+      if (ums<>nil) and (ums.FinalizationExpr<>nil) then begin
+         if FMainProg.FinalExpr=nil then
+            FMainProg.FinalExpr:=TBlockFinalExpr.Create(FMainProg, cNullPos);
+         FMainProg.FinalExpr.AddStatement(ums.FinalizationExpr as TBlockExprBase);
+         ums.FinalizationExpr.IncRefCount;
+      end;
+   end;
 end;
 
 // RecordSymbolUse
@@ -1651,6 +1694,7 @@ begin
          if coSymbolDictionary in Options then
             RecordSymbolUse(CurrentUnitSymbol, FTok.HotPos, [suImplementation, suImplicit]);
          if readingMain then begin
+            ReadImplementationBlock;
             unitBlock:=ReadRootBlock([], finalToken);
             FProg.InitExpr.AddStatement(unitBlock);
             FTok.Free;
@@ -1673,12 +1717,64 @@ begin
    end;
 end;
 
+// ReadImplementationBlock
+//
+procedure TdwsCompiler.ReadImplementationBlock;
+var
+   finalToken : TTokenType;
+   unitBlock : TBlockExpr;
+   initializationBlock, finalizationBlock : TBlockExpr;
+begin
+   initializationBlock:=nil;
+   finalizationBlock:=nil;
+   unitBlock:=ReadRootBlock([ttINITIALIZATION, ttFINALIZATION], finalToken);
+   try
+      if finalToken=ttINITIALIZATION then begin
+         FUnitSection:=secInitialization;
+         if coContextMap in Options then
+            FSourceContextMap.OpenContext(FTok.HotPos, FCurrentUnitSymbol, ttINITIALIZATION);
+         initializationBlock:=ReadRootBlock([ttFINALIZATION, ttEND], finalToken);
+         if coContextMap in Options then
+            FSourceContextMap.CloseContext(FTok.HotPos);
+      end;
+      if finalToken=ttFINALIZATION then begin
+         FUnitSection:=secFinalization;
+         if coContextMap in Options then
+            FSourceContextMap.OpenContext(FTok.HotPos, FCurrentUnitSymbol, ttFINALIZATION);
+         finalizationBlock:=ReadRootBlock([ttEND], finalToken);
+         if coContextMap in Options then
+            FSourceContextMap.CloseContext(FTok.HotPos);
+      end;
+
+      if coContextMap in Options then
+         FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
+
+      if unitBlock.SubExprCount>0 then begin
+         FProg.InitExpr.AddStatement(unitBlock);
+         unitBlock:=nil;
+      end;
+
+      if FCurrentUnitSymbol<>nil then begin
+         if (initializationBlock<>nil) and (initializationBlock.SubExprCount>0) then begin
+            FCurrentUnitSymbol.InitializationExpr:=initializationBlock;
+            initializationBlock:=nil;
+         end;
+         if (finalizationBlock<>nil) and (finalizationBlock.SubExprCount>0) then begin
+            FCurrentUnitSymbol.FinalizationExpr:=finalizationBlock;
+            finalizationBlock:=nil;
+         end;
+      end;
+   finally
+      unitBlock.Free;
+      initializationBlock.Free; // TODO!!!
+      finalizationBlock.Free; // TODO!!!
+   end;
+end;
+
 // ReadScriptImplementations
 //
 procedure TdwsCompiler.ReadScriptImplementations;
 var
-   finalToken : TTokenType;
-   unitBlock : TBlockExpr;
    implemTable : TUnitImplementationTable;
    oldUnit : TUnitMainSymbol;
 begin
@@ -1689,14 +1785,7 @@ begin
          implemTable:=TUnitImplementationTable.Create(CurrentUnitSymbol);
          FProg.EnterSubTable(implemTable);
          try
-            unitBlock:=ReadRootBlock([], finalToken);
-
-            if coContextMap in Options then
-               FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
-
-            if unitBlock.SubExprCount>0 then
-               FProg.InitExpr.AddStatement(unitBlock)
-            else unitBlock.Free;
+            ReadImplementationBlock;
          finally
             FProg.LeaveSubTable;
          end;
@@ -1793,7 +1882,7 @@ begin
       ttOPERATOR :
          ReadOperatorDecl;
    else
-      if (UnitSection<>secMixed) and (FProg.Level=0) then
+      if (FProg.Level=0) and not (UnitSection in [secMixed, secInitialization, secFinalization]) then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_UnexpectedStatement);
       Result:=ReadBlock
    end;
@@ -9717,6 +9806,7 @@ begin
    if CurrentUnitSymbol=nil then begin
       // special case of a unit compiled directly (not through main program)
       srcUnit:=TSourceUnit.Create(name, FProg.Root.RootTable, FProg.UnitMains);
+      srcUnit.Symbol.InitializationRank:=FUnits.Count;
       FUnits.Add(srcUnit);
       FCurrentUnitSymbol:=srcUnit.Symbol;
    end;

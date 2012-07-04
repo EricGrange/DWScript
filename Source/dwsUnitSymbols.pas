@@ -46,6 +46,9 @@ type
          FInterfaceTable : TSymbolTable;
          FImplementationTable : TUnitImplementationTable;
          FStoredParents : TTightList;
+         FInitializationRank : Integer;
+         FInitializationExpr : TExprBase;
+         FFinalizationExpr : TExprBase;
 
       public
          constructor Create(const name : UnicodeString; table : TUnitSymbolTable;
@@ -68,6 +71,10 @@ type
 
          property InterfaceTable : TSymbolTable read FInterfaceTable;
          property ImplementationTable : TUnitImplementationTable read FImplementationTable;
+
+         property InitializationRank : Integer read FInitializationRank write FInitializationRank;
+         property InitializationExpr : TExprBase read FInitializationExpr write FInitializationExpr;
+         property FinalizationExpr : TExprBase read FFinalizationExpr write FFinalizationExpr;
    end;
 
    // list of unit main symbols (one per prog)
@@ -476,6 +483,8 @@ end;
 //
 destructor TUnitMainSymbol.Destroy;
 begin
+   FInitializationExpr.Free;
+   FFinalizationExpr.Free;
    FInterfaceTable.Free;
    FImplementationTable.Free;
    FTable.Free;

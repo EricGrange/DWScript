@@ -1352,7 +1352,7 @@ end;
 constructor TdwsBreakpointableLines.Create(const prog : IdwsProgram);
 var
    i : Integer;
-   p : TdwsProgram;
+   p : TdwsMainProgram;
    mp : TdwsMainProgram;
 begin
    FSources:=TFastCompareStringList.Create;
@@ -1460,23 +1460,30 @@ end;
 // ProcessProg
 //
 procedure TdwsBreakpointableLines.ProcessProg(const prog : TdwsProgram);
+var
+   enumerator : TExprBaseEnumeratorProc;
 begin
    if FProcessedProgs.IndexOf(prog)>=0 then Exit;
    FProcessedProgs.Add(prog);
 
    ProcessSymbolTable(prog.Table);
 
-   if (prog.InitExpr.ScriptPos.SourceFile<>nil) and (prog.InitExpr.SubExprCount>0) then
-      RegisterScriptPos(prog.InitExpr.ScriptPos);
-
-   RegisterScriptPos(prog.Expr.ScriptPos);
-
-   prog.Expr.RecursiveEnumerateSubExprs(
+   enumerator:=
       procedure (parent, expr : TExprBase; var abort : Boolean)
       begin
          if expr is TBlockExprBase then Exit;
          RegisterScriptPos(expr.ScriptPos);
-      end);
+      end;
+
+   if (prog.InitExpr.ScriptPos.SourceFile<>nil) and (prog.InitExpr.SubExprCount>0) then
+      prog.InitExpr.RecursiveEnumerateSubExprs(enumerator);
+
+   RegisterScriptPos(prog.Expr.ScriptPos);
+
+   prog.Expr.RecursiveEnumerateSubExprs(enumerator);
+
+   if prog is TdwsMainProgram then
+      TdwsMainProgram(prog).FinalExpr.RecursiveEnumerateSubExprs(enumerator);
 end;
 
 // ProcessFuncSymbol

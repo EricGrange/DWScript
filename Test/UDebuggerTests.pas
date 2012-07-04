@@ -271,7 +271,7 @@ begin
    CheckEquals('2'#13#10, prog.Execute.Result.ToString, 'Result 1');
 
    breakpointables:=TdwsBreakpointableLines.Create(prog);
-   CheckEquals('*MainModule*: 1,4,5,7,', ReportBreakpointables, 'Case 1');
+   CheckEquals('*MainModule*: 1,3,5,7,', ReportBreakpointables, 'Case 1');
    breakpointables.Free;
 
    prog:=FCompiler.Compile( 'var i := 1;'#13#10
@@ -284,7 +284,7 @@ begin
    CheckEquals('', prog.Execute.Result.ToString, 'Result 2');
 
    breakpointables:=TdwsBreakpointableLines.Create(prog);
-   CheckEquals('*MainModule*: 1,4,5,7,', ReportBreakpointables, 'Case 2');
+   CheckEquals('*MainModule*: 1,3,5,7,', ReportBreakpointables, 'Case 2');
    breakpointables.Free;
 end;
 

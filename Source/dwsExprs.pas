@@ -35,6 +35,7 @@ type
    TTypedExpr = class;
    TNoResultExpr = class;
    TBlockInitExpr = class;
+   TBlockFinalExpr = class;
    TTypedExprList = class;
    TdwsProgram = class;
    TdwsMainProgram = class;
@@ -611,6 +612,8 @@ type
    // A script main executable program
    TdwsMainProgram = class (TdwsProgram, IdwsProgram)
       private
+         FFinalExpr : TBlockFinalExpr;
+
          FUnifiedConstList : TSortedList<TExprBase>;
          FResourceStringList : TResourceStringSymbolList;
 
@@ -678,6 +681,8 @@ type
          function NextStackLevel(level : Integer) : Integer;
 
          procedure DropMapAndDictionary;
+
+         property FinalExpr : TBlockFinalExpr read FFinalExpr write FFinalExpr;
 
          property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds;
          property MaxRecursionDepth : Integer read FStackParameters.MaxRecursionDepth write FStackParameters.MaxRecursionDepth;
@@ -877,9 +882,17 @@ type
    end;
 
    // statement; statement; statement;
-   TBlockInitExpr = class(TBlockExprBase)
+   TBlockRawExpr = class(TBlockExprBase)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
+   // var initialization + finalization block
+   TBlockInitExpr = class(TBlockRawExpr)
+   end;
+
+   // finalization block
+   TBlockFinalExpr = class(TBlockRawExpr)
    end;
 
   // Encapsulates data
@@ -2383,6 +2396,9 @@ begin
    if not (FProgramState in [psRunning, psRunningStopped]) then
       raise Exception.Create('Program was not started!');
 
+   if FProg.FinalExpr<>nil then
+      FProg.FinalExpr.EvalNoResult(Self);
+
    FProgramState:=psTerminated;
    try
       // Stack
@@ -2953,6 +2969,7 @@ begin
 
    inherited;
 
+   FFinalExpr.Free;
    FOperators.Free;
    FSourceContextMap.Free;
    FSymbolDictionary.Free;
@@ -4117,12 +4134,12 @@ begin
 end;
 
 // ------------------
-// ------------------ TBlockInitExpr ------------------
+// ------------------ TBlockRawExpr ------------------
 // ------------------
 
 // EvalNoResult
 //
-procedure TBlockInitExpr.EvalNoResult(exec : TdwsExecution);
+procedure TBlockRawExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
    expr : PNoResultExpr;

@@ -914,7 +914,7 @@ begin
 
    context:=unitContext.FindContextByToken(ttIMPLEMENTATION);
    CheckEquals(' [line: 4, column: 1]', context.StartPos.AsInfo, 'implem start');
-   CheckEquals('', context.EndPos.AsInfo, 'implem end');
+   CheckEquals(' [line: 6, column: 1]', context.EndPos.AsInfo, 'implem end');
    CheckEquals(0, context.Count, 'implem sub count');
 
    wobs:=TWriteOnlyBlockStream.Create;
