@@ -26,7 +26,7 @@ interface
 uses  Windows,
   Variants, Classes, SysUtils, TypInfo, dwsCompiler, dwsExprs, dwsSymbols,
   dwsStack, dwsFunctions, dwsStrings, dwsFileSystem, dwsLanguageExtension,
-  dwsTokenizer, dwsUtils, dwsOperators, dwsUnitSymbols,
+  dwsTokenizer, dwsUtils, dwsOperators, dwsUnitSymbols, dwsXPlatform,
   // Built-In functions
 {$IFNDEF DWS_NO_BUILTIN_FUNCTIONS}
   dwsMathFunctions, dwsStringFunctions, dwsTimeFunctions, dwsVariantFunctions,
@@ -3899,23 +3899,33 @@ begin
   inherited;
 end;
 
+// DoGenerate
+//
 function TdwsEnumeration.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol): TSymbol;
 var
-  x: Integer;
+   i : Integer;
+   enumSymbol : TEnumerationSymbol;
+   element : TElementSymbol;
 begin
-  FIsGenerating := True;
-  CheckName(Table, Name);
+   FIsGenerating := True;
+   CheckName(Table, Name);
 
-  Result := TEnumerationSymbol.Create(Name, Table.FindSymbol(SYS_INTEGER, cvMagic) as TTypeSymbol, Style);
-  try
-    for x := 0 to FElements.Count - 1 do
-      TEnumerationSymbol(Result).AddElement(
-        TElementSymbol(TdwsElement(FElements.Items[x]).Generate(Table, Result)));
-    GetUnit.Table.AddSymbol(Result);
-  except
-    Result.Free;
-    raise;
-  end;
+   enumSymbol:=TEnumerationSymbol.Create(Name, Table.FindTypeSymbol(SYS_INTEGER, cvMagic), Style);
+   try
+      for i:=0 to FElements.Count-1 do begin
+         element:=(Elements.Items[i] as TdwsElement).Generate(table, enumSymbol) as TElementSymbol;
+         enumSymbol.AddElement(element);
+         if Style=enumClassic then begin
+            Table.AddSymbol(element);
+            element.IncRefCount;
+         end;
+      end;
+   except
+      enumSymbol.Free;
+      raise;
+   end;
+   Table.AddSymbol(enumSymbol);
+   Result:=enumSymbol;
 end;
 
 // GetDisplayName
@@ -3924,7 +3934,12 @@ function TdwsEnumeration.GetDisplayName: UnicodeString;
 var
    i : Integer;
 begin
-   Result:=Name+' = (';
+   Result:=Name+' =';
+   case Style of
+      enumScoped : Result:=Result+' enum';
+      enumFlags : Result:=Result+' flags';
+   end;
+   Result:=Result+' (';
    for i:=0 to FElements.Count-1 do begin
       if i<>0 then
          Result:=Result + ', ';
@@ -3954,7 +3969,6 @@ begin
     enumInt := 0;
 
   Result := TElementSymbol.Create(Name, enumSym, enumInt, FIsUserDef);
-  GetUnit.Table.AddSymbol(Result);
 end;
 
 function TdwsElement.GetDisplayName: UnicodeString;

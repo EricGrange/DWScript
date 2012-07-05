@@ -5388,8 +5388,6 @@ end;
 //
 destructor TEnumerationSymbol.Destroy;
 begin
-   if FStyle=enumClassic then
-      FElements.Clear;
    FElements.Free;
    inherited;
 end;

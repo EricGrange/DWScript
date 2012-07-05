@@ -9686,8 +9686,10 @@ begin
          overflowed:=(enumInt<enumIntPrev);
 
          // Add member symbol to table and enumeration type
-         if aStyle=enumClassic then
+         if aStyle=enumClassic then begin
             FProg.Table.AddSymbol(elemSym);
+            elemSym.IncRefCount;
+         end;
          Result.AddElement(elemSym);
 
          // Add member symbol to Symbol Dictionary
