@@ -96,6 +96,7 @@ type
          FCompiler : TdwsCompiler;
          FConfig : TdwsConfiguration;
          FExtensions : TdwsLanguageExtensionAggregator;
+         FLock : TFixedCriticalSection;
 
       protected
          function GetOnInclude: TIncludeEvent;
@@ -115,10 +116,16 @@ type
       public
          constructor Create(AOwner: TComponent); override;
          destructor Destroy; override;
+
          procedure AddUnit(const Un: IdwsUnit);
+         function RemoveUnit(const Un: IdwsUnit): Boolean;
+
          function Compile(const Text: UnicodeString): IdwsProgram; virtual;
          procedure RecompileInContext(const prog : IdwsProgram; const text : UnicodeString); virtual;
-         function RemoveUnit(const Un: IdwsUnit): Boolean;
+
+         procedure Lock;
+         procedure UnLock;
+
          property Extensions : TdwsLanguageExtensionAggregator read FExtensions;
 
       published
@@ -1227,11 +1234,12 @@ end;
 constructor TDelphiWebScript.Create(AOwner: TComponent);
 begin
    inherited Create(AOwner);
-   FUnitName := SYS_DEFAULT;
-   FCompiler := TdwsCompiler.Create;
-   FConfig := TdwsConfiguration.Create(Self);
+   FUnitName:=SYS_DEFAULT;
+   FCompiler:=TdwsCompiler.Create;
+   FConfig:=TdwsConfiguration.Create(Self);
    AddUnit(Self);
-   FExtensions := TdwsLanguageExtensionAggregator.Create;
+   FExtensions:=TdwsLanguageExtensionAggregator.Create;
+   FLock:=TFixedCriticalSection.Create;
 end;
 
 // Destroy
@@ -1242,6 +1250,7 @@ begin
    FCompiler.Free;
    FConfig.Free;
    FExtensions.Free;
+   FLock.Free;
 end;
 
 function TDelphiWebScript.GetVersion: UnicodeString;
@@ -1310,16 +1319,26 @@ end;
 //
 function TDelphiWebScript.Compile(const Text: UnicodeString): IdwsProgram;
 begin
-   SetupExtensions;
-   Result := FCompiler.Compile(Text, FConfig);
+   Lock;
+   try
+      SetupExtensions;
+      Result := FCompiler.Compile(Text, FConfig);
+   finally
+      UnLock;
+   end;
 end;
 
 // RecompileInContext
 //
 procedure TDelphiWebScript.RecompileInContext(const prog : IdwsProgram; const text : UnicodeString);
 begin
-   SetupExtensions;
-   FCompiler.RecompileInContext(prog, text, FConfig);
+   Lock;
+   try
+      SetupExtensions;
+      FCompiler.RecompileInContext(prog, text, FConfig);
+   finally
+      UnLock;
+   end;
 end;
 
 // AddUnit
@@ -1343,6 +1362,20 @@ begin
       FConfig.Units.Extract(i);
    end;
    Result := i >= 0;
+end;
+
+// Lock
+//
+procedure TDelphiWebScript.Lock;
+begin
+   FLock.Enter;
+end;
+
+// UnLock
+//
+procedure TDelphiWebScript.UnLock;
+begin
+   FLock.Leave;
 end;
 
 procedure TDelphiWebScript.SetConfig(const Value: TdwsConfiguration);
