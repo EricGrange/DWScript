@@ -621,7 +621,6 @@ type
          function GetLevel : SmallInt; inline;
          function GetParamSize : Integer; inline;
          function GetIsDeprecated : Boolean; inline;
-         procedure SetIsDeprecated(const val : Boolean);
          function GetIsStateless : Boolean; inline;
          procedure SetIsStateless(const val : Boolean);
          function GetIsExternal : Boolean; inline;
@@ -667,7 +666,7 @@ type
 
          property Executable : IExecutable read FExecutable write FExecutable;
          property DeprecatedMessage : UnicodeString read FDeprecatedMessage write FDeprecatedMessage;
-         property IsDeprecated : Boolean read GetIsDeprecated write SetIsDeprecated;
+         property IsDeprecated : Boolean read GetIsDeprecated;
          property IsStateless : Boolean read GetIsStateless write SetIsStateless;
          property IsForwarded : Boolean read GetIsForwarded;
          property IsOverloaded : Boolean read GetIsOverloaded write SetIsOverloaded;
@@ -1231,6 +1230,7 @@ type
          FIndexSym : TTypeSymbol;
          FIndexValue: TData;
          FVisibility : TdwsVisibility;
+         FDeprecatedMessage : UnicodeString;
 
       protected
          function GetCaption : UnicodeString; override;
@@ -1238,6 +1238,7 @@ type
          function GetIsDefault: Boolean;
          function GetArrayIndices : TSymbolTable;
          procedure AddParam(Param : TParamSymbol);
+         function GetIsDeprecated : Boolean; inline;
 
       public
          constructor Create(const name : UnicodeString; typ : TTypeSymbol; aVisibility : TdwsVisibility);
@@ -1258,6 +1259,8 @@ type
          property IsDefault : Boolean read GetIsDefault;
          property IndexValue : TData read FIndexValue;
          property IndexSym : TTypeSymbol read FIndexSym;
+         property DeprecatedMessage : UnicodeString read FDeprecatedMessage write FDeprecatedMessage;
+         property IsDeprecated : Boolean read GetIsDeprecated;
    end;
 
    // class operator X (params) uses method;
@@ -2819,15 +2822,6 @@ begin
    Result:=(FDeprecatedMessage<>'');
 end;
 
-// SetIsDeprecated
-//
-procedure TFuncSymbol.SetIsDeprecated(const val : Boolean);
-begin
-   if val then
-      FDeprecatedMessage:='!'
-   else FDeprecatedMessage:='';
-end;
-
 // GetIsStateless
 //
 function TFuncSymbol.GetIsStateless : Boolean;
@@ -3513,6 +3507,13 @@ end;
 procedure TPropertySymbol.AddParam(Param: TParamSymbol);
 begin
    ArrayIndices.AddSymbol(Param);
+end;
+
+// GetIsDeprecated
+//
+function TPropertySymbol.GetIsDeprecated : Boolean;
+begin
+   Result:=(FDeprecatedMessage<>'');
 end;
 
 procedure TPropertySymbol.GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);

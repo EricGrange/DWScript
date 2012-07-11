@@ -510,37 +510,43 @@ type
          function Add : TdwsField;
    end;
 
-  TdwsProperty = class(TdwsSymbol)
-  private
-    FDataType: TDataType;
-    FReadAccess: UnicodeString;
-    FWriteAccess: UnicodeString;
-    FParameters: TdwsParameters;
-    FIsDefault: Boolean;
-    FIndexType: TDataType;
-    FIndexValue: Variant;
-    FVisibility : TdwsVisibility;
-  protected
-    function GetDisplayName: UnicodeString; override;
-    function GetIsDefault: Boolean;
-    procedure SetIsDefault(Value: Boolean);
-    procedure SetParameters(const Value: TdwsParameters);
-    function StoreParameters : Boolean;
-  public
-    constructor Create(Collection: TCollection); override;
-    destructor Destroy; override;
-    procedure Assign(Source: TPersistent); override;
-    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
-  published
-    property DataType: TDataType read FDataType write FDataType;
-    property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
-    property ReadAccess: UnicodeString read FReadAccess write FReadAccess;
-    property WriteAccess: UnicodeString read FWriteAccess write FWriteAccess;
-    property Parameters: TdwsParameters read FParameters write SetParameters stored StoreParameters;
-    property IsDefault: Boolean read GetIsDefault write SetIsDefault;
-    property IndexType: TDataType read FIndexType write FIndexType;
-    property IndexValue: Variant read FIndexValue write FIndexValue;
-  end;
+   TdwsProperty = class(TdwsSymbol)
+      private
+         FDataType: TDataType;
+         FReadAccess: UnicodeString;
+         FWriteAccess: UnicodeString;
+         FParameters: TdwsParameters;
+         FDeprecated : UnicodeString;
+         FIndexValue: Variant;
+         FIsDefault: Boolean;
+         FIndexType: TDataType;
+         FVisibility : TdwsVisibility;
+
+      protected
+         function GetDisplayName: UnicodeString; override;
+         function GetIsDefault: Boolean;
+         procedure SetIsDefault(Value: Boolean);
+         procedure SetParameters(const Value: TdwsParameters);
+         function StoreParameters : Boolean;
+
+      public
+         constructor Create(Collection: TCollection); override;
+         destructor Destroy; override;
+         procedure Assign(Source: TPersistent); override;
+
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+
+      published
+         property DataType: TDataType read FDataType write FDataType;
+         property Deprecated : UnicodeString read FDeprecated write FDeprecated;
+         property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
+         property ReadAccess: UnicodeString read FReadAccess write FReadAccess;
+         property WriteAccess: UnicodeString read FWriteAccess write FWriteAccess;
+         property Parameters: TdwsParameters read FParameters write SetParameters stored StoreParameters;
+         property IsDefault: Boolean read GetIsDefault write SetIsDefault;
+         property IndexType: TDataType read FIndexType write FIndexType;
+         property IndexValue: Variant read FIndexValue write FIndexValue;
+   end;
 
    TdwsProperties = class(TdwsCollection)
       protected
@@ -3460,54 +3466,53 @@ begin
   inherited;
 end;
 
-function TdwsProperty.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil):
-  TSymbol;
+// DoGenerate
+//
+function TdwsProperty.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil) : TSymbol;
 var
-  sym: TSymbol;
-  propSym: TPropertySymbol;
-  indexData: TData;
+   sym : TSymbol;
+   propSym : TPropertySymbol;
+   indexData : TData;
+   parent : TCompositeTypeSymbol;
 begin
-  FIsGenerating := True;
+   FIsGenerating := True;
 
-  if DataType='' then
-    raise Exception.CreateFmt(UNT_DatatypeNotSpecified, [Name, ParentSym.Name]);
+   if DataType='' then
+      raise Exception.CreateFmt(UNT_DatatypeNotSpecified, [Name, ParentSym.Name]);
 
-  propSym := TPropertySymbol.Create(Name, GetDataType(Table, DataType), Visibility);
-  Result := PropSym;
+   propSym := TPropertySymbol.Create(Name, GetDataType(Table, DataType), Visibility);
+   Result := PropSym;
 
-  propSym.GenerateParams(Table,GetParameters(Self, Parameters, Table));
+   propSym.GenerateParams(Table, GetParameters(Self, Parameters, Table));
 
-  if FReadAccess <> '' then
-  begin
-    // ReadAccess
-    sym := TClassSymbol(ParentSym).Members.FindLocal(FReadAccess);
+   parent:=(ParentSym as TCompositeTypeSymbol);
 
-    if not Assigned(sym) then
-      raise Exception.CreateFmt(UNT_ReadAccessNotFound, [ReadAccess]);
+   if FReadAccess <> '' then begin
+      sym := parent.Members.FindLocal(FReadAccess);
+      if not Assigned(sym) then
+         raise Exception.CreateFmt(UNT_ReadAccessNotFound, [ReadAccess]);
 
-    propSym.ReadSym := sym;
-  end;
+      propSym.ReadSym := sym;
+   end;
 
-  if FWriteAccess <> '' then
-  begin
-    // WriteAccess
-    sym := TClassSymbol(ParentSym).Members.FindLocal(FWriteAccess);
+   if FWriteAccess <> '' then begin
+      sym := parent.Members.FindLocal(FWriteAccess);
+      if not Assigned(sym) then
+         raise Exception.CreateFmt(UNT_WriteAccessNotFound, [WriteAccess]);
 
-    if not Assigned(sym) then
-      raise Exception.CreateFmt(UNT_WriteAccessNotFound, [WriteAccess]);
+      propSym.WriteSym := sym;
+   end;
 
-    propSym.WriteSym := sym;
-  end;
+   if FIndexType <> '' then begin
+      SetLength(indexData,1);
+      indexData[0] := FIndexValue;
+      propSym.SetIndex(indexData, 0, GetDataType(Table, IndexType));
+   end;
 
-  if FIndexType <> '' then
-  begin
-    SetLength(indexData,1);
-    indexData[0] := FIndexValue;
-    propSym.SetIndex(indexData,0,GetDataType(Table, IndexType));
-  end;
+   if IsDefault then
+      parent.DefaultProperty := propSym;
 
-  if IsDefault then
-    TClassSymbol(ParentSym).DefaultProperty := propSym;
+   propSym.DeprecatedMessage:=Deprecated;
 end;
 
 // GetDisplayName

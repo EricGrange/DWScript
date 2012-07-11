@@ -475,8 +475,9 @@ type
                                  aVisibility : TdwsVisibility; isClassMethod : Boolean) : TMethodSymbol;
          function ReadMethodImpl(ownerSym : TCompositeTypeSymbol; funcKind : TFuncKind;
                                  isClassMethod : Boolean) : TMethodSymbol;
-         procedure ReadDeprecated(funcSym : TFuncSymbol);
-         procedure WarnDeprecated(funcExpr : TFuncExprBase);
+         procedure ReadDeprecatedFunc(funcSym : TFuncSymbol);
+         procedure WarnDeprecatedFunc(funcExpr : TFuncExprBase);
+         procedure WarnDeprecatedProp(propSym : TPropertySymbol);
          function ResolveUnitNameSpace(unitPrefix : TUnitSymbol) : TUnitSymbol;
          function ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
          function ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol; acceptTypeRef : Boolean) : TProgramExpr;
@@ -2534,7 +2535,7 @@ begin
 
                end;
 
-               ReadDeprecated(Result);
+               ReadDeprecatedFunc(Result);
 
                if Assigned(forwardedSym) then begin
                   // Get forwarded position in script. If compiled without symbols it will just return a nil
@@ -2801,7 +2802,7 @@ begin
          ReadExternalName(funcResult);
       end;
 
-      ReadDeprecated(funcResult);
+      ReadDeprecatedFunc(funcResult);
 
       if isReintroduced then
          FMsgs.AddCompilerWarningFmt(methPos, CPE_ReintroduceWarning, [name]);
@@ -2898,32 +2899,42 @@ begin
    RecordSymbolUse(Result, methPos, [suImplementation]);
 end;
 
-// ReadDeprecated
+// ReadDeprecatedFunc
 //
-procedure TdwsCompiler.ReadDeprecated(funcSym : TFuncSymbol);
+procedure TdwsCompiler.ReadDeprecatedFunc(funcSym : TFuncSymbol);
 begin
    if FTok.TestDelete(ttDEPRECATED) then begin
       if FTok.Test(ttStrVal) then begin
          funcSym.DeprecatedMessage:=FTok.GetToken.FString;
          FTok.KillToken;
-      end else funcSym.IsDeprecated:=True;
+      end else funcSym.DeprecatedMessage:=MSG_DeprecatedEmptyMsg;
       ReadSemiColon;
    end;
 end;
 
-// WarnDeprecated
+// WarnDeprecatedFunc
 //
-procedure TdwsCompiler.WarnDeprecated(funcExpr : TFuncExprBase);
+procedure TdwsCompiler.WarnDeprecatedFunc(funcExpr : TFuncExprBase);
 var
    funcSym : TFuncSymbol;
 begin
    funcSym:=funcExpr.FuncSym;
    if funcSym.IsDeprecated then begin
-      if funcSym.DeprecatedMessage<>'!' then
+      if funcSym.DeprecatedMessage<>MSG_DeprecatedEmptyMsg then
          FMsgs.AddCompilerWarningFmt(funcExpr.ScriptPos, CPW_DeprecatedWithMessage,
                                      [funcSym.Name, funcSym.DeprecatedMessage])
       else FMsgs.AddCompilerWarningFmt(funcExpr.ScriptPos, CPW_Deprecated, [funcSym.Name]);
    end;
+end;
+
+// WarnDeprecatedProp
+//
+procedure TdwsCompiler.WarnDeprecatedProp(propSym : TPropertySymbol);
+begin
+   if propSym.DeprecatedMessage<>MSG_DeprecatedEmptyMsg then
+      FMsgs.AddCompilerWarningFmt(FTok.HotPos, CPW_DeprecatedWithMessage,
+                                  [propSym.Name, propSym.DeprecatedMessage])
+   else FMsgs.AddCompilerWarningFmt(FTok.HotPos, CPW_Deprecated, [propSym.Name]);
 end;
 
 // ReadProcBody
@@ -4068,14 +4079,20 @@ end;
 
 // ReadPropertyExpr
 //
-function TdwsCompiler.ReadPropertyExpr(var expr : TDataExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TProgramExpr;
+function TdwsCompiler.ReadPropertyExpr(var expr : TDataExpr; propertySym : TPropertySymbol;
+                                       isWrite : Boolean) : TProgramExpr;
 begin
    Result:=ReadPropertyExpr(TTypedExpr(expr), propertySym, isWrite);
 end;
 
-function TdwsCompiler.ReadPropertyExpr(var expr : TTypedExpr; PropertySym: TPropertySymbol; IsWrite: Boolean): TProgramExpr;
+// ReadPropertyExpr
+//
+function TdwsCompiler.ReadPropertyExpr(var expr : TTypedExpr; propertySym : TPropertySymbol;
+                                       isWrite : Boolean) : TProgramExpr;
 begin
-   if IsWrite then
+   if propertySym.IsDeprecated then
+      WarnDeprecatedProp(propertySym);
+   if isWrite then
       Result:=ReadPropertyWriteExpr(expr, propertySym)
    else Result:=ReadPropertyReadExpr(expr, propertySym);
 end;
@@ -5650,7 +5667,7 @@ begin
             TypeCheckArgs(funcExpr, nil);
          end;
       end;
-      WarnDeprecated(funcExpr);
+      WarnDeprecatedFunc(funcExpr);
    except
       Result.Free;
       raise;
@@ -7156,6 +7173,14 @@ begin
                                             [ownerSym.Name, ownerSym.DefaultProperty.Name])
                else ownerSym.DefaultProperty:=Result;
             end;
+         end;
+
+         if FTok.TestDelete(ttDEPRECATED) then begin
+            if FTok.Test(ttStrVal) then begin
+               Result.DeprecatedMessage:=FTok.GetToken.FString;
+               FTok.KillToken;
+            end else Result.DeprecatedMessage:=MSG_DeprecatedEmptyMsg;
+            ReadSemiColon;
          end;
 
          // register context only if we're sure the property symbol will survive

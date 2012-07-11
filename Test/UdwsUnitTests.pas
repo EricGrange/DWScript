@@ -87,6 +87,7 @@ type
          procedure OpenArray;
          procedure CallPrint;
          procedure CreateExternally;
+         procedure DeprecatedProp;
 
          procedure ExplicitUses;
    end;
@@ -406,6 +407,12 @@ begin
    param:=prop.Parameters.Add;
    param.DataType:='String';
    param.Name:='v';
+
+   prop:=cls.Properties.Add;
+   prop.Name:='DeprecatedProp';
+   prop.DataType:='Integer';
+   prop.ReadAccess:='FField';
+   prop.Deprecated:='Obsolete';
 
    constant:=cls.Constants.Add;
    constant.Name:='cTest';
@@ -1472,6 +1479,19 @@ begin
    finally
       exec.EndProgram;
    end;
+end;
+
+// DeprecatedProp
+//
+procedure TdwsUnitTests.DeprecatedProp;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'var t := new TTestClass;'#13#10
+                           +'var i := t.DeprecatedProp;');
+
+   CheckEquals('Warning: "DeprecatedProp" has been deprecated: Obsolete [line: 2, column: 12]'#13#10,
+               prog.Msgs.AsInfo, 'Compile');
 end;
 
 // ExplicitUses

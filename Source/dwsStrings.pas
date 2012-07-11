@@ -431,6 +431,7 @@ const
   MSG_DatatypeMissing = 'Invalid type: %s!';
   MSG_MainModule = '*MainModule*';
   MSG_MainFunction = '*Main*';
+  MSG_DeprecatedEmptyMsg = '!';
   MSG_Info = 'Info: %s';
   MSG_Error = 'Error: %s';
   MSG_ScriptPosLine = 'line: %d';
