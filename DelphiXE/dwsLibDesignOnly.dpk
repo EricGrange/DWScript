@@ -65,7 +65,7 @@ contains
   dwsClassesLibModule in '..\Libraries\ClassesLib\dwsClassesLibModule.pas' {dwsClassesLib: TDataModule},
   dwsAsmLibModule in '..\Libraries\asmLib\dwsAsmLibModule.pas',
   dwsSymbolsLibModule in '..\Libraries\SymbolsLib\dwsSymbolsLibModule.pas' {dwsSymbolsLib: TDataModule},
-  dwsCodeGen in '..\Source\dwsCodeGen.pas',
+  dwsCodeGen in '..\Libraries\JSCodeGen\dwsCodeGen.pas',
   dwsJSON in '..\Source\dwsJSON.pas',
   dwsOperators in '..\Source\dwsOperators.pas',
   dwsSystemOperators in '..\Source\dwsSystemOperators.pas',
