@@ -2907,7 +2907,9 @@ begin
       if FTok.Test(ttStrVal) then begin
          funcSym.DeprecatedMessage:=FTok.GetToken.FString;
          FTok.KillToken;
-      end else funcSym.DeprecatedMessage:=MSG_DeprecatedEmptyMsg;
+      end;
+      if funcSym.DeprecatedMessage='' then
+         funcSym.DeprecatedMessage:=MSG_DeprecatedEmptyMsg;
       ReadSemiColon;
    end;
 end;
@@ -7179,7 +7181,9 @@ begin
             if FTok.Test(ttStrVal) then begin
                Result.DeprecatedMessage:=FTok.GetToken.FString;
                FTok.KillToken;
-            end else Result.DeprecatedMessage:=MSG_DeprecatedEmptyMsg;
+            end;
+            if Result.DeprecatedMessage='' then
+               Result.DeprecatedMessage:=MSG_DeprecatedEmptyMsg;
             ReadSemiColon;
          end;
 

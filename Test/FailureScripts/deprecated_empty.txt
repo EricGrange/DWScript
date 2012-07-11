@@ -1,0 +1,2 @@
+Warning: "test" has been deprecated [line: 10, column: 1]
+Warning: "prop" has been deprecated [line: 13, column: 3]
