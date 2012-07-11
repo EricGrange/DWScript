@@ -48,7 +48,7 @@ type
 
    // TdwsASMBlockExpr
    //
-   TdwsASMBlockExpr = class (TNoResultExpr)
+   TdwsASMBlockExpr = class (TNoResultPosExpr)
       private
          FCodePtr : Pointer;
          FCodeSize : Integer;

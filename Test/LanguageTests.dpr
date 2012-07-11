@@ -8,7 +8,6 @@ program LanguageTests;
 {$ENDIF}
 
 uses
-//  FastMM4,
   Classes,
   Forms,
   Windows,
@@ -35,8 +34,7 @@ uses
   UBuildTests in 'UBuildTests.pas',
   URTTIExposeTests in 'URTTIExposeTests.pas',
   USourceUtilsTests in 'USourceUtilsTests.pas',
-  ULocalizerTests in 'ULocalizerTests.pas',
-  dwsMetrics in '..\Source\SourceUtils\dwsMetrics.pas';
+  ULocalizerTests in 'ULocalizerTests.pas';
 
 {$R *.res}
 
