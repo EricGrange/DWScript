@@ -291,6 +291,7 @@ const
   CPH_VariableDeclaredButNotWrittenTo = 'Variable "%s" declared but never written to';
   CPH_PrivateFieldDeclaredButNotUsed = 'Private field "%s" declared but never used';
   CPH_PrivateMethodDeclaredButNotUsed = 'Private method "%s" declared but never used';
+  CPH_PrivateVirtualMethodCantBeOverridden = 'Private virtual methods can''t be overridden';
   CPH_ResultNotUsed = 'Result is never used';
   CPH_RedundantVisibilitySpecifier = 'Redundant specifier, visibility is already "%s"';
   CPH_NameAmbiguousInScopeContext = 'Name "%s" could be ambiguous in its scope context';

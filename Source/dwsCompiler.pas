@@ -2723,10 +2723,12 @@ begin
          if qualifier<>ttNone then begin
             case qualifier of
                ttVIRTUAL : begin
-                  funcResult.IsVirtual := True;
+                  if aVisibility=cvPrivate then
+                     FMsgs.AddCompilerHint(FTok.HotPos, CPH_PrivateVirtualMethodCantBeOverridden);
+                  funcResult.IsVirtual:=True;
                   ReadSemiColon;
                   if FTok.TestDelete(ttABSTRACT) then begin
-                     funcResult.IsAbstract := True;
+                     funcResult.IsAbstract:=True;
                      ReadSemiColon;
                   end;
                end;
