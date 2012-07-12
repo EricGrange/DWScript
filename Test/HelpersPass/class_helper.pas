@@ -5,7 +5,7 @@ type
    end;
 
 type
-   TMYHelper = helper for TMy
+   TMYHelper = class helper for TMy
       procedure IncX; begin Inc(x); end;
       procedure IncXY; begin IncX; IncY; end;
       class procedure PrintClassName;

@@ -9,6 +9,8 @@ type
 			begin
 				Result := FLine;
 			end;
+         
+      protected
 			procedure SetLine(aLine : String); virtual;
 			
 		public

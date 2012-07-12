@@ -522,7 +522,7 @@ type
          procedure ReadFieldsDecl(struct : TStructuredTypeSymbol; visibility : TdwsVisibility;
                                   allowNonConstExpressions : Boolean);
 
-         function ReadHelperDecl(const typeName : UnicodeString) : THelperSymbol;
+         function ReadHelperDecl(const typeName : UnicodeString; qualifierToken : TTokenType) : THelperSymbol;
 
          function ReadRaise : TRaiseBaseExpr;
          function ReadRepeat : TNoResultExpr;
@@ -7430,7 +7430,7 @@ end;
 
 // ReadHelperDecl
 //
-function TdwsCompiler.ReadHelperDecl(const typeName : UnicodeString) : THelperSymbol;
+function TdwsCompiler.ReadHelperDecl(const typeName : UnicodeString; qualifierToken : TTokenType) : THelperSymbol;
 var
    propSym : TPropertySymbol;
    hotPos : TScriptPos;
@@ -7440,9 +7440,24 @@ var
 begin
    if not FTok.TestDelete(ttFOR) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_ForExpected);
+   hotPos:=FTok.HotPos;
    forType:=ReadType('', tcHelper);
    if forType is TFuncSymbol then
-      FMsgs.AddCompilerError(FTok.HotPos, CPE_HelpersNotAllowedForDelegates);
+      FMsgs.AddCompilerError(hotPos, CPE_HelpersNotAllowedForDelegates);
+   case qualifierToken of
+      ttNone : ;
+      ttCLASS :
+         if not ((forType is TClassSymbol) or (forType is TClassOfSymbol)) then
+            FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
+      ttRECORD :
+         if not ((forType is TRecordSymbol) or (forType is TBaseSymbol)) then
+            FMsgs.AddCompilerError(hotPos, CPE_RecordTypeExpected);
+      ttINTERFACE :
+         if not (forType is TInterfaceSymbol) then
+            FMsgs.AddCompilerError(hotPos, CPE_InterfaceExpected);
+   else
+      Assert(False);
+   end;
 
    Result:=THelperSymbol.Create(typeName, CurrentUnitSymbol, forType, FProg.Table.Count);
    try
@@ -7733,15 +7748,21 @@ begin
                            ttPROCEDURE, ttFUNCTION, ttREFERENCE]);
    case tt of
       ttRECORD :
-         Result:=ReadRecordDecl(typeName, False);
+         if FTok.TestDelete(ttHELPER) then
+            Result:=ReadHelperDecl(typeName, ttRECORD)
+         else Result:=ReadRecordDecl(typeName, False);
 
       ttARRAY :
          Result:=ReadArrayType(typeName, typeContext);
 
-      ttCLASS :
-         if FTok.TestDelete(ttOF) then
-            Result:=ReadClassOf(typeName)
-         else begin
+      ttCLASS : begin
+         tt:=FTok.TestDeleteAny([ttOF, ttHELPER]);
+         case tt of
+            ttOF :
+               Result:=ReadClassOf(typeName);
+            ttHELPER :
+               Result:=ReadHelperDecl(typeName, ttCLASS);
+         else
             if typeContext=tcDeclaration then
                Result:=ReadClass(typeName, [])
             else begin
@@ -7749,20 +7770,27 @@ begin
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_TypeExpected);
             end;
          end;
+      end;
 
       ttPARTIAL, ttSTATIC :
          Result:=ReadClassFlags(tt);
 
-      ttINTERFACE :
-         if typeContext=tcDeclaration then
-            Result:=ReadInterface(typeName)
+      ttINTERFACE : begin
+         hotPos:=FTok.HotPos;
+         if FTok.TestDelete(ttHELPER) then
+            Result:=ReadHelperDecl(typeName, ttINTERFACE)
          else begin
-            Result:=nil;
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_TypeExpected);
+            if typeContext=tcDeclaration then
+               Result:=ReadInterface(typeName)
+            else begin
+               Result:=nil;
+               FMsgs.AddCompilerStop(hotPos, CPE_TypeExpected);
+            end;
          end;
+      end;
 
       ttHELPER :
-         Result:=ReadHelperDecl(typeName);
+         Result:=ReadHelperDecl(typeName, ttNone);
 
       ttENUM, ttFLAGS : begin
          // explicitly scoped enum

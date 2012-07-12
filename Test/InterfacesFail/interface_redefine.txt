@@ -1,2 +1,2 @@
-Syntax Error: Interface "IMyIntf" already defined [line: 5, column: 16]
-Syntax Error: Name "TMyClass" already exists [line: 7, column: 17]
+Syntax Error: Interface "IMyIntf" already defined [line: 5, column: 26]
+Syntax Error: Name "TMyClass" already exists [line: 7, column: 27]

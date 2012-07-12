@@ -1,0 +1,3 @@
+Syntax Error: Record type expected [line: 2, column: 31]
+Syntax Error: Interface expected [line: 5, column: 35]
+Syntax Error: Class reference expected [line: 8, column: 32]
