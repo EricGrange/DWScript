@@ -1649,6 +1649,7 @@ type
          function GetParamAsString(index : Integer) : UnicodeString;
          function GetParamAsFloat(index : Integer) : Double;
          function GetParamAsBoolean(index : Integer) : Boolean;
+         function GetParamAsObject(index : Integer) : TObject;
 
          function CreateUnitList : TList;
          function FindSymbolInUnits(AUnitList: TList; const Name: UnicodeString): TSymbol; overload;
@@ -1691,6 +1692,7 @@ type
          property ParamAsString[index : Integer] : UnicodeString read GetParamAsString;
          property ParamAsFloat[index : Integer] : Double read GetParamAsFloat;
          property ParamAsBoolean[index : Integer] : Boolean read GetParamAsBoolean;
+         property ParamAsObject[index : Integer] : TObject read GetParamAsObject;
 
          property ResultAsString : UnicodeString write SetResultAsString;
          property ResultAsDataString : RawByteString write SetResultAsDataString;
@@ -6206,6 +6208,13 @@ begin
    if p^.VType=varBoolean then
       Result:=p.VBoolean
    else Result:=PVariant(p)^;
+end;
+
+// GetParamAsObject
+//
+function TProgramInfo.GetParamAsObject(index : Integer) : TObject;
+begin
+   Result:=IScriptObj(IUnknown(GetParamAsPVariant(index)^)).ExternalObject;
 end;
 
 function TProgramInfo.FindClassMatch(AObject: TObject; ExactMatch: Boolean): TClassSymbol;
