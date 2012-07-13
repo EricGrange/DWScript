@@ -2793,8 +2793,8 @@ begin
             or (not (funcKind in [fkFunction, fkProcedure, fkMethod])) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_OnlyNonVirtualClassMethodsAsStatic)
          else if not funcResult.IsClassMethod then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_OnlyNonVirtualClassMethodsAsStatic);
-         funcResult.SetIsStatic;
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_OnlyNonVirtualClassMethodsAsStatic)
+         else funcResult.SetIsStatic;
          ReadSemiColon;
       end;
 
