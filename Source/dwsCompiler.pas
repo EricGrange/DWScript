@@ -5231,7 +5231,7 @@ begin
          Result:=GetMethodExpr(methodSym, nil, rkClassOfRef, FTok.HotPos, False);
       end else begin
          Result:=GetMethodExpr(methodSym,
-                               TVarExpr.CreateTyped(FProg, progMeth.SelfSym),
+                               GetVarExpr(progMeth.SelfSym),
                                rkObjRef, FTok.HotPos, False);
       end;
    end else begin
@@ -9381,10 +9381,18 @@ end;
 // CurrentStruct
 //
 function TdwsCompiler.CurrentStruct : TCompositeTypeSymbol;
+var
+   prog : TdwsProgram;
+   func : TFuncSymbol;
 begin
-   if (FProg is TdwsProcedure) and (TdwsProcedure(FProg).Func is TMethodSymbol) then
-      Result:=TMethodSymbol(TdwsProcedure(FProg).Func).StructSymbol
-   else Result:=nil;
+   prog:=FProg;
+   while prog is TdwsProcedure do begin
+      func:=TdwsProcedure(prog).Func;
+      if func is TMethodSymbol then
+         Exit(TMethodSymbol(func).StructSymbol)
+      else prog:=prog.Parent;
+   end;
+   Result:=nil;
 end;
 
 // FindStructMember
