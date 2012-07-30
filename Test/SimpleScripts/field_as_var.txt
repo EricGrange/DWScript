@@ -1,0 +1,5 @@
+toto
+tata
+456
+4.5
+True

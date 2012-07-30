@@ -164,6 +164,12 @@ type
          procedure AssignDataExpr(exec : TdwsExecution; dataExpr: TDataExpr); override;
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
          procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
+         procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
+         procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
+         procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
+         procedure AssignValueAsString(exec : TdwsExecution; const value : UnicodeString); override;
+         procedure AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj); override;
+
          function  Eval(exec : TdwsExecution) : Variant; override;
    end;
 
@@ -2336,6 +2342,41 @@ end;
 procedure TByRefParamExpr.AssignValue(exec : TdwsExecution; const value : Variant);
 begin
    VarCopy(Data[exec][Addr[exec]], value);
+end;
+
+// AssignValueAsInteger
+//
+procedure TByRefParamExpr.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
+begin
+   Data[exec][Addr[exec]]:=value;
+end;
+
+// AssignValueAsBoolean
+//
+procedure TByRefParamExpr.AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean);
+begin
+   Data[exec][Addr[exec]]:=value;
+end;
+
+// AssignValueAsFloat
+//
+procedure TByRefParamExpr.AssignValueAsFloat(exec : TdwsExecution; const value : Double);
+begin
+   Data[exec][Addr[exec]]:=value;
+end;
+
+// AssignValueAsString
+//
+procedure TByRefParamExpr.AssignValueAsString(exec : TdwsExecution; const value : UnicodeString);
+begin
+   Data[exec][Addr[exec]]:=value;
+end;
+
+// AssignValueAsScriptObj
+//
+procedure TByRefParamExpr.AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj);
+begin
+   Data[exec][Addr[exec]]:=value;
 end;
 
 // AssignExpr
