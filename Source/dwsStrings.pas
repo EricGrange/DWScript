@@ -459,6 +459,7 @@ const
   RTE_ArrayLowerBoundExceeded = 'Lower bound exceeded! Index %d';
   RTE_ArrayLengthIncorrect = 'Array length is incorrect (%d)';
   RTE_ArrayLengthIncorrectForDimension = 'Array length is incorrect (%d) for dimension %d';
+  RTE_ArrayInstanceExpected = 'Array instance expected';
   RTE_PositiveCountExpected = 'Positive count expected (got %d)';
   RTE_ForLoopStepShouldBeStrictlyPositive = 'FOR loop STEP should be strictly positive: %d';
   RTE_InvalidBreak = 'break without for/while/repeat or case';

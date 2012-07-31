@@ -825,7 +825,7 @@ type
    TTypedExprClass = class of TTypedExpr;
 
    // hosts a type reference
-   TTypeReferenceExpr = class(TTypedExpr)
+   TTypeReferenceExpr = class sealed (TTypedExpr)
       private
          FPos : TScriptPos;
 

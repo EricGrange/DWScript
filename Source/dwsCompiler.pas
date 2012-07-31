@@ -6072,10 +6072,17 @@ var
 //   delegateSym : TFuncSymbol;
    i : Integer;
 
+   procedure CheckNotTypeReference;
+   begin
+      if baseExpr.ClassType=TTypeReferenceExpr then
+         FMsgs.AddCompilerError(namePos, RTE_ArrayInstanceExpected);
+   end;
+
    procedure CheckRestricted;
    begin
       if arraySym.ClassType<>TDynamicArraySymbol then
-         FMsgs.AddCompilerErrorFmt(namePos, CPE_ArrayMethodRestrictedToDynamicArrays, [name]);
+         FMsgs.AddCompilerErrorFmt(namePos, CPE_ArrayMethodRestrictedToDynamicArrays, [name])
+      else CheckNotTypeReference;
    end;
 
    function CheckArguments(expectedMin, expectedMax : Integer) : Boolean;
@@ -6128,11 +6135,14 @@ begin
          end else if UnicodeSameText(name, 'high') then begin
 
             CheckArguments(0, 0);
+            if not (arraySym is TStaticArraySymbol) then
+               CheckNotTypeReference;
             Result:=CreateArrayHigh(baseExpr, arraySym, True);
 
          end else if UnicodeSameText(name, 'length') or UnicodeSameText(name, 'count') then begin
 
             CheckArguments(0, 0);
+            CheckNotTypeReference;
             Result:=CreateArrayLength(baseExpr, arraySym);
 
          end else if UnicodeSameText(name, 'add') or UnicodeSameText(name, 'push') then begin
