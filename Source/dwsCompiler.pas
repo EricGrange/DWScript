@@ -410,9 +410,9 @@ type
          function ReadField(const scriptPos : TScriptPos; selfSym : TDataSymbol;
                          fieldSym : TFieldSymbol; var varExpr : TTypedExpr) : TDataExpr; overload;
 
-         function ReadFor : TForExpr;
+         function ReadFor : TNoResultExpr;
          function ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
-         function ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
+         function ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TNoResultExpr;
          function ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
                               iterVarExpr : TIntVarExpr; fromExpr, toExpr : TTypedExpr;
                               loopFirstStatement : TNoResultExpr) : TForExpr;
@@ -592,8 +592,8 @@ type
          function CreateAssign(const scriptPos : TScriptPos; token : TTokenType;
                                left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
 
-         function CreateArrayLow(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
-         function CreateArrayHigh(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
+         function CreateArrayLow(baseExpr : TProgramExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
+         function CreateArrayHigh(baseExpr : TProgramExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
          function CreateArrayLength(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
          function CreateArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TArrayExpr;
 
@@ -4711,7 +4711,7 @@ end;
 
 // ReadFor
 //
-function TdwsCompiler.ReadFor : TForExpr;
+function TdwsCompiler.ReadFor : TNoResultExpr;
 var
    forPos : TScriptPos;
    expr : TProgramExpr;
@@ -4791,19 +4791,21 @@ end;
 
 // ReadForIn
 //
-function TdwsCompiler.ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
+function TdwsCompiler.ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TNoResultExpr;
 var
    iterVarExpr : TIntVarExpr;
    iterVarSym : TDataSymbol;
    initIterVarExpr : TAssignConstToIntegerVarExpr;
    inExpr : TProgramExpr;
-   inTypedExpr : TTypedExpr;
+   inExprVarSym : TDataSymbol;
    fromExpr, toExpr : TTypedExpr;
    forExprClass : TForExprClass;
    arraySymbol : TArraySymbol;
    enumSymbol : TTypeSymbol;
    inPos : TScriptPos;
-   readArrayItemExpr : TAssignExpr;
+   inExprAssignExpr, readArrayItemExpr : TAssignExpr;
+   inExprVarExpr : TVarExpr;
+   blockExpr : TBlockExprNoTable2;
 begin
    forExprClass:=TForUpwardExpr;
 
@@ -4812,14 +4814,24 @@ begin
    inExpr:=ReadName(False, FAnyTypeSymbol);
 
    readArrayItemExpr:=nil;
+   inExprAssignExpr:=nil;
 
-   if (inExpr is TTypedExpr) and not (inExpr is TTypeReferenceExpr) then begin
+   if (inExpr is TTypedExpr) and (inExpr.ClassType<>TTypeReferenceExpr) then begin
 
-      inTypedExpr:=TTypedExpr(inExpr);
-
-      if inTypedExpr.Typ is TArraySymbol then begin
+      if inExpr.Typ is TArraySymbol then begin
 
          arraySymbol:=TArraySymbol(inExpr.Typ);
+
+         // if inExpr is an expression, create a temporary variable
+         // so it is evaluated only once
+         if not ((inExpr is TVarExpr) or (inExpr is TConstExpr)) then begin
+            inExprVarSym:=TDataSymbol.Create('', arraySymbol);
+            FProg.Table.AddSymbol(inExprVarSym);
+            inExprVarExpr:=GetVarExpr(inExprVarSym);
+            inExprAssignExpr:=TAssignExpr.Create(FProg, FTok.HotPos, inExprVarExpr, TTypedExpr(inExpr));
+            inExpr:=inExprVarExpr;
+            inExpr.IncRefCount;
+         end;
 
          // create anonymous iter variables & it's initialization expression
          iterVarSym:=TDataSymbol.Create('', arraySymbol.IndexType);
@@ -4828,8 +4840,8 @@ begin
          initIterVarExpr:=TAssignConstToIntegerVarExpr.CreateVal(FProg, inPos, iterVarExpr, 0);
          FProg.InitExpr.AddStatement(initIterVarExpr);
 
-         fromExpr:=CreateArrayLow(inTypedExpr, arraySymbol, False);
-         toExpr:=CreateArrayHigh(inTypedExpr, arraySymbol, False);
+         fromExpr:=CreateArrayLow(inExpr, arraySymbol, False);
+         toExpr:=CreateArrayHigh(inExpr, arraySymbol, False);
 
          iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
          readArrayItemExpr:=TAssignExpr.Create(FProg, FTok.HotPos, loopVarExpr,
@@ -4883,6 +4895,13 @@ begin
 
    Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
                        fromExpr, toExpr, readArrayItemExpr);
+
+   if inExprAssignExpr<>nil then begin
+      blockExpr:=TBlockExprNoTable2.Create(FProg, forPos);
+      blockExpr.AddStatement(inExprAssignExpr);
+      blockExpr.AddStatement(Result);
+      Result:=blockExpr;
+   end;
 end;
 
 // ReadForStep
@@ -10022,7 +10041,7 @@ end;
 
 // CreateArrayLow
 //
-function TdwsCompiler.CreateArrayLow(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
+function TdwsCompiler.CreateArrayLow(baseExpr : TProgramExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
 begin
    if typ is TStaticArraySymbol then
       Result:=TConstExpr.CreateIntegerValue(FProg, TStaticArraySymbol(typ).LowBound)
@@ -10035,7 +10054,7 @@ end;
 
 // CreateArrayHigh
 //
-function TdwsCompiler.CreateArrayHigh(baseExpr : TTypedExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
+function TdwsCompiler.CreateArrayHigh(baseExpr : TProgramExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
 begin
    if typ is TOpenArraySymbol then begin
       if baseExpr=nil then
@@ -10045,7 +10064,7 @@ begin
    end else if typ is TDynamicArraySymbol then begin
       if baseExpr=nil then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-      Result:=TArrayLengthExpr.Create(FProg, baseExpr, captureBase);
+      Result:=TArrayLengthExpr.Create(FProg, baseExpr as TTypedExpr, captureBase);
       TArrayLengthExpr(Result).Delta:=-1;
    end else begin
       if captureBase then
