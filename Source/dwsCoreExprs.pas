@@ -576,7 +576,7 @@ type
 
    end;
 
-   // left[right] UnicodeString read access
+   // left[right] String read access
    TStringArrayOpExpr = class(TStringBinOpExpr)
       private
          FPos : TScriptPos;
@@ -1668,6 +1668,29 @@ type
    TForDownwardStepExpr = class(TForStepExpr)
       public
          procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
+   // for charCode in aString do ...;
+   TForCharCodeExpr = class(TNoResultPosExpr)
+      private
+         FDoExpr : TNoResultExpr;
+         FInExpr : TTypedExpr;
+         FVarExpr : TIntVarExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(aProg: TdwsProgram; const aPos: TScriptPos;
+                            aVarExpr : TIntVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
+         destructor Destroy; override;
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property DoExpr : TNoResultExpr read FDoExpr write FDoExpr;
+         property InExpr : TTypedExpr read FInExpr write FInExpr;
+         property VarExpr : TIntVarExpr read FVarExpr write FVarExpr;
    end;
 
    // base class for while, repeat and infinite loops
@@ -8118,6 +8141,92 @@ end;
 function TSwapExpr.GetSubExprCount : Integer;
 begin
    Result:=2;
+end;
+
+// ------------------
+// ------------------ TForCharCodeExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TForCharCodeExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
+         aVarExpr : TIntVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
+begin
+   inherited Create(aProg, aPos);
+   FVarExpr:=aVarExpr;
+   FInExpr:=aInExpr;
+   FDoExpr:=aDoExpr;
+end;
+
+// Destroy
+//
+destructor TForCharCodeExpr.Destroy;
+begin
+   FDoExpr.Free;
+   FInExpr.Free;
+   FVarExpr.Free;
+   inherited;
+end;
+
+// GetSubExpr
+//
+function TForCharCodeExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FVarExpr;
+      1 : Result:=FInExpr;
+   else
+      Result:=FDoExpr;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TForCharCodeExpr.GetSubExprCount : Integer;
+begin
+   Result:=3;
+end;
+
+// EvalNoResult
+//
+procedure TForCharCodeExpr.EvalNoResult(exec : TdwsExecution);
+var
+   code, i : Integer;
+   v : PInt64;
+   p : PChar;
+   s : String;
+begin
+   FInExpr.EvalAsString(exec, s);
+
+   v:=FVarExpr.EvalAsPInteger(exec);
+
+   p:=PChar(s);
+   for i:=1 to Length(s) do begin
+      code:=Ord(p^);
+      Inc(p);
+      case code of
+         $D800..$DBFF : // high surrogate
+            v^:=(code-$D800)*$400+(Ord(p^)-$DC00)+$10000;
+         $DC00..$DFFF : //low surrogate
+            continue;
+      else
+         v^:=code;
+      end;
+
+      exec.DoStep(FDoExpr);
+      FDoExpr.EvalNoResult(exec);
+      if exec.Status<>esrNone then begin
+         case exec.Status of
+            esrBreak : begin
+               exec.Status:=esrNone;
+               break;
+            end;
+            esrContinue :
+               exec.Status:=esrNone;
+            esrExit : Exit;
+         end;
+      end;
+   end;
 end;
 
 end.

@@ -4818,7 +4818,18 @@ begin
 
    if (inExpr is TTypedExpr) and (inExpr.ClassType<>TTypeReferenceExpr) then begin
 
-      if inExpr.Typ is TArraySymbol then begin
+      if inExpr.Typ.IsOfType(FProg.TypString) and loopVarExpr.Typ.IsOfType(FProg.TypInteger) then begin
+
+         if not FTok.TestDelete(ttDO) then begin
+            inExpr.Free;
+            loopVarExpr.Free;
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
+         end;
+         Result:=TForCharCodeExpr.Create(FProg, forPos, loopVarExpr as TIntVarExpr,
+                                         TTypedExpr(inExpr), ReadBlock);
+         Exit;
+
+      end else if inExpr.Typ is TArraySymbol then begin
 
          arraySymbol:=TArraySymbol(inExpr.Typ);
 

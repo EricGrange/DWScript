@@ -1,0 +1,17 @@
+H: 72
+e: 101
+l: 108
+l: 108
+o: 111
+unicode $1D538
+unicode $003B1
+unicode $1D516
+ord $0D835
+ord $0DD38
+ord $003B1
+ord $0D835
+ord $0DD16
+t: $00074
+r: $00072
+a: $00061
+p: $00070

@@ -1065,13 +1065,23 @@ var
    tokenIntVal, n : Integer;
 begin
    tokenIntVal:=FTokenBuf.ToInt64;
-   if Cardinal(tokenIntVal)>Cardinal($FFFF) then
+   case tokenIntVal of
+      0..$FFFF : begin
+         n:=Length(result.FString)+1;
+         SetLength(result.FString, n);
+         result.FString[n]:=WideChar(tokenIntVal);
+         result.FTyp:=ttStrVal;
+      end;
+      $10000..$10FFFF : begin
+         n:=Length(result.FString)+2;
+         SetLength(result.FString, n);
+         tokenIntVal:=tokenIntVal-$10000;
+         result.FString[n-1]:=WideChar($D800+(tokenIntVal shr 10));
+         result.FString[n]:=WideChar($DC00+(tokenIntVal and $3FF));
+         result.FTyp:=ttStrVal;
+      end;
+   else
       AddCompilerStopFmtTokenBuffer(TOK_InvalidCharConstant)
-   else begin
-      n:=Length(result.FString)+1;
-      SetLength(result.FString, n);
-      result.FString[n]:=WideChar(tokenIntVal);
-      result.FTyp:=ttStrVal;
    end;
 end;
 
