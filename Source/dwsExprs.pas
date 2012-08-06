@@ -2310,7 +2310,10 @@ procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
 
    procedure Handle_EScriptAssertionFailed(e : EScriptAssertionFailed);
    begin
-      Msgs.AddRuntimeError(e.ScriptPos, Copy(e.Message, 1, LastDelimiter('[', e.Message)-2), e.ScriptCallStack);
+      Msgs.AddRuntimeError(e.ScriptPos,
+                            Copy(e.Message, 1, LastDelimiter('[', e.Message)-2)
+                           +Copy(e.Message, Pos(']', e.Message)+1, MaxInt),
+                           e.ScriptCallStack);
    end;
 
    procedure Handle_Exception(e : Exception);
