@@ -39,7 +39,6 @@ object DwsIdeForm: TDwsIdeForm
     ParentBackground = False
     ParentDoubleBuffered = False
     TabOrder = 0
-    ExplicitHeight = 867
     object imgTabs: TImage
       Left = 5
       Top = 5
@@ -73,7 +72,6 @@ object DwsIdeForm: TDwsIdeForm
         item
           Width = 50
         end>
-      ExplicitTop = 843
     end
     object pnlPageControl: TPanel
       Left = 5
@@ -85,8 +83,6 @@ object DwsIdeForm: TDwsIdeForm
       ParentBackground = False
       TabOrder = 1
       OnResize = pnlPageControlResize
-      ExplicitTop = 48
-      ExplicitHeight = 795
     end
   end
   object Panel2: TPanel
@@ -98,7 +94,6 @@ object DwsIdeForm: TDwsIdeForm
     BevelOuter = bvNone
     BorderWidth = 5
     TabOrder = 1
-    ExplicitHeight = 867
     inline DwsIdeLocalVariablesFrame: TDwsIdeLocalVariablesFrame
       Left = 5
       Top = 5
@@ -571,7 +566,7 @@ object DwsIdeForm: TDwsIdeForm
     Left = 176
     Top = 256
     Bitmap = {
-      494C01011A008000080210001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C01011A001D00040010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000007000000001002000000000000070
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000

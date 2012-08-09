@@ -353,7 +353,7 @@ type
     FHoveredLeftArrow, FHoveredRightArrow : Boolean;
     FLeftArrowActive, FRightArrowActive : Boolean;
     FTabArrowLeft, FTabArrowRight : TRect;
-    FPages : TObjectList<TEditorPage>;
+    FPages : TSimpleList<TEditorPage>;
 
     procedure CodeSuggest( ACodeSuggestionMode : TCodeSuggestionMode);
     procedure DoOnCodeSuggestionFormSelectItem( const AItemText : string );
@@ -1760,17 +1760,21 @@ begin
      bmp.Free;
   end;
 
-  FPages:=TObjectList<TEditorPage>.Create;
+  FPages:=TSimpleList<TEditorPage>.Create;
   FActivePageIndex:=-1;
   FHoveredPageIndex:=-1;
 end;
 
 procedure TDwsIdeForm.FormDestroy(Sender: TObject);
+var
+   i : Integer;
 begin
   FreeAndNil( FCodeProposalForm );
   dwsDebugger1.Breakpoints.Clean;
   dwsDebugger1.Watches.Clean;
   FProgram := nil;
+  for i:=0 to FPages.Count-1 do
+   FPages[i].Free;
   FPages.Free;
 end;
 
@@ -2149,7 +2153,8 @@ begin
     If FPages.Count > 0 then
       EditorCurrentPageIndex := 0;
 
-  FPages.Extract(AIndex).Free;
+  FPages[AIndex].Free;
+  FPages.Extract(AIndex);
   RefreshTabs;
 end;
 
