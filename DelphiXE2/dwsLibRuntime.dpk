@@ -68,16 +68,11 @@ contains
   dwsClassesLibModule in '..\Libraries\ClassesLib\dwsClassesLibModule.pas' {dwsClassesLib: TDataModule},
   dwsAsmLibModule in '..\Libraries\asmLib\dwsAsmLibModule.pas',
   dwsSymbolsLibModule in '..\Libraries\SymbolsLib\dwsSymbolsLibModule.pas' {dwsSymbolsLib: TDataModule},
-  dwsCodeGen in '..\Source\dwsCodeGen.pas',
   dwsJSON in '..\Source\dwsJSON.pas',
   dwsOperators in '..\Source\dwsOperators.pas',
   dwsSystemOperators in '..\Source\dwsSystemOperators.pas',
   dwsPascalTokenizer in '..\Source\dwsPascalTokenizer.pas',
   dwsRTTIConnector in '..\Source\dwsRTTIConnector.pas',
-  dwsXPlatformUI in '..\Source\dwsXPlatformUI.pas',
-  dwsJSCodeGen in '..\Libraries\JSCodeGen\dwsJSCodeGen.pas',
-  dwsJSFilter in '..\Libraries\JSCodeGen\dwsJSFilter.pas',
-  dwsJSLibModule in '..\Libraries\JSCodeGen\dwsJSLibModule.pas',
-  dwsJSMin in '..\Libraries\JSCodeGen\dwsJSMin.pas';
+  dwsXPlatformUI in '..\Source\dwsXPlatformUI.pas';
 
 end.
