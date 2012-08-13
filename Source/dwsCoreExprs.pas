@@ -1670,12 +1670,12 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
-   // for charCode in aString do ...;
-   TForCharCodeExpr = class(TNoResultPosExpr)
+   // for something in aString do ...;
+   TForInStrExpr = class(TNoResultPosExpr)
       private
          FDoExpr : TNoResultExpr;
          FInExpr : TTypedExpr;
-         FVarExpr : TIntVarExpr;
+         FVarExpr : TVarExpr;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
@@ -1683,14 +1683,30 @@ type
 
       public
          constructor Create(aProg: TdwsProgram; const aPos: TScriptPos;
-                            aVarExpr : TIntVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
+                            aVarExpr : TVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
          destructor Destroy; override;
-
-         procedure EvalNoResult(exec : TdwsExecution); override;
 
          property DoExpr : TNoResultExpr read FDoExpr write FDoExpr;
          property InExpr : TTypedExpr read FInExpr write FInExpr;
-         property VarExpr : TIntVarExpr read FVarExpr write FVarExpr;
+         property VarExpr : TVarExpr read FVarExpr write FVarExpr;
+   end;
+
+   // for charCode in aString do ...;
+   TForCharCodeInStrExpr = class(TForInStrExpr)
+      public
+         constructor Create(aProg: TdwsProgram; const aPos: TScriptPos;
+                            aVarExpr : TIntVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
+   end;
+
+   // for char in aString do ...;
+   TForCharInStrExpr = class(TForInStrExpr)
+      public
+         constructor Create(aProg: TdwsProgram; const aPos: TScriptPos;
+                            aVarExpr : TStrVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // base class for while, repeat and infinite loops
@@ -8144,13 +8160,13 @@ begin
 end;
 
 // ------------------
-// ------------------ TForCharCodeExpr ------------------
+// ------------------ TForInStrExpr ------------------
 // ------------------
 
 // Create
 //
-constructor TForCharCodeExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
-         aVarExpr : TIntVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
+constructor TForInStrExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
+         aVarExpr : TVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
 begin
    inherited Create(aProg, aPos);
    FVarExpr:=aVarExpr;
@@ -8160,7 +8176,7 @@ end;
 
 // Destroy
 //
-destructor TForCharCodeExpr.Destroy;
+destructor TForInStrExpr.Destroy;
 begin
    FDoExpr.Free;
    FInExpr.Free;
@@ -8170,7 +8186,7 @@ end;
 
 // GetSubExpr
 //
-function TForCharCodeExpr.GetSubExpr(i : Integer) : TExprBase;
+function TForInStrExpr.GetSubExpr(i : Integer) : TExprBase;
 begin
    case i of
       0 : Result:=FVarExpr;
@@ -8182,14 +8198,26 @@ end;
 
 // GetSubExprCount
 //
-function TForCharCodeExpr.GetSubExprCount : Integer;
+function TForInStrExpr.GetSubExprCount : Integer;
 begin
    Result:=3;
 end;
 
+// ------------------
+// ------------------ TForCharCodeInStrExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TForCharCodeInStrExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
+         aVarExpr : TIntVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
+begin
+   inherited Create(aProg, aPos, aVarExpr, aInExpr, aDoExpr);
+end;
+
 // EvalNoResult
 //
-procedure TForCharCodeExpr.EvalNoResult(exec : TdwsExecution);
+procedure TForCharCodeInStrExpr.EvalNoResult(exec : TdwsExecution);
 var
    code, i : Integer;
    v : PInt64;
@@ -8198,7 +8226,7 @@ var
 begin
    FInExpr.EvalAsString(exec, s);
 
-   v:=FVarExpr.EvalAsPInteger(exec);
+   v:=TIntVarExpr(FVarExpr).EvalAsPInteger(exec);
 
    p:=PChar(s);
    for i:=1 to Length(s) do begin
@@ -8211,6 +8239,57 @@ begin
             continue;
       else
          v^:=code;
+      end;
+
+      exec.DoStep(FDoExpr);
+      FDoExpr.EvalNoResult(exec);
+      if exec.Status<>esrNone then begin
+         case exec.Status of
+            esrBreak : begin
+               exec.Status:=esrNone;
+               break;
+            end;
+            esrContinue :
+               exec.Status:=esrNone;
+            esrExit : Exit;
+         end;
+      end;
+   end;
+end;
+
+// ------------------
+// ------------------ TForCharCodeInStrExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TForCharInStrExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
+         aVarExpr : TStrVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
+begin
+   inherited Create(aProg, aPos, aVarExpr, aInExpr, aDoExpr);
+end;
+
+// EvalNoResult
+//
+procedure TForCharInStrExpr.EvalNoResult(exec : TdwsExecution);
+var
+   code, i : Integer;
+   p : PChar;
+   s : String;
+begin
+   FInExpr.EvalAsString(exec, s);
+
+   p:=PChar(s);
+   for i:=1 to Length(s) do begin
+      code:=Ord(p^);
+      Inc(p);
+      case code of
+         $D800..$DBFF : // high surrogate
+            FVarExpr.AssignValueAsString(exec, Char(code)+p^);
+         $DC00..$DFFF : //low surrogate
+            continue;
+      else
+         FVarExpr.AssignValueAsString(exec, Char(code));
       end;
 
       exec.DoStep(FDoExpr);
