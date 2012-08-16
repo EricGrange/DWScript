@@ -74,6 +74,7 @@ begin
    CollectFiles(basePath+'InterfacesFail'+PathDelim, cFilter, FFailures);
    CollectFiles(basePath+'OverloadsFail'+PathDelim, cFilter, FFailures);
    CollectFiles(basePath+'HelpersFail'+PathDelim, cFilter, FFailures);
+   CollectFiles(basePath+'AttributesFail'+PathDelim, cFilter, FFailures);
 
    FCompiler:=TDelphiWebScript.Create(nil);
    FCompiler.OnInclude:=DoInclude;

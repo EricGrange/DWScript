@@ -286,6 +286,10 @@ type
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
    end;
 
+   ISymbolAttributesBag = interface
+      function Attributes : TdwsSymbolAttributes;
+   end;
+
    TdwsCompilerUnitContextStack = class(TSimpleStack<TdwsCompilerUnitContext>)
       public
          destructor Destroy; override;
@@ -334,6 +338,7 @@ type
          FAnyFuncSymbol : TAnyFuncSymbol;
          FAnyTypeSymbol : TAnyTypeSymbol;
          FStandardDataSymbolFactory : IdwsDataSymbolFactory;
+         FPendingAttributes : TdwsSymbolAttributes;
 
          FDataSymbolExprReuse : TSimpleObjectObjectHash<TDataSymbol,TVarExpr>;
 
@@ -492,7 +497,7 @@ type
          procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray;
                                 const options : TdwsNameListOptions = []);
          procedure ReadExternalName(funcSym : TFuncSymbol);
-         function  ReadNew(isWrite : Boolean) : TProgramExpr;
+         function  ReadNew(restrictTo : TClassSymbol) : TProgramExpr;
          function  ReadNewArray(elementTyp : TTypeSymbol) : TNewArrayExpr;
          procedure ReadArrayParams(ArrayIndices: TSymbolTable);
          // Don't want to add param symbols to dictionary when a method implementation (they get thrown away)
@@ -560,6 +565,11 @@ type
          function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
          function ReadTypeExpr(const namePos : TScriptPos; typeSym : TTypeSymbol;
                                isWrite : Boolean; expecting : TTypeSymbol = nil) : TProgramExpr;
+
+         procedure ReadAttributes;
+         function  BagPendingAttributes : ISymbolAttributesBag;
+         procedure AttachBaggedAttributes(symbol : TSymbol; const bag : ISymbolAttributesBag);
+         procedure CheckNoPendingAttributes;
 
          function EnumerateHelpers(typeSym : TTypeSymbol) : THelperSymbols;
          function ReadTypeHelper(expr : TTypedExpr;
@@ -764,6 +774,12 @@ type
    // const expr created to "keep compiling"
    TBogusConstExpr = class sealed (TConstExpr);
 
+   TSymbolAttributesBag = class (TInterfacedSelfObject, ISymbolAttributesBag)
+      FAttributes : TdwsSymbolAttributes;
+      destructor Destroy; override;
+      function Attributes : TdwsSymbolAttributes;
+   end;
+
 // StringToSwitchInstruction
 //
 function StringToSwitchInstruction(const str : UnicodeString) : TSwitchInstruction;
@@ -774,6 +790,25 @@ begin
          Exit;
    end;
    Result:=siNone;
+end;
+
+// ------------------
+// ------------------ TSymbolAttributesBag ------------------
+// ------------------
+
+// Destroy
+//
+destructor TSymbolAttributesBag.Destroy;
+begin
+   FAttributes.Free;
+   inherited;
+end;
+
+// Attributes
+//
+function TSymbolAttributesBag.Attributes : TdwsSymbolAttributes;
+begin
+   Result:=FAttributes;
 end;
 
 // ------------------
@@ -913,6 +948,8 @@ begin
    FAnyFuncSymbol:=TAnyFuncSymbol.Create('', fkFunction, 0);
    FAnyTypeSymbol:=TAnyTypeSymbol.Create('', nil);
 
+   FPendingAttributes:=TdwsSymbolAttributes.Create;
+
    stackParams.MaxLevel:=1;
    stackParams.ChunkSize:=512;
    stackParams.MaxByteSize:=MaxInt;
@@ -926,6 +963,8 @@ end;
 //
 destructor TdwsCompiler.Destroy;
 begin
+   FPendingAttributes.Free;
+
    FAnyFuncSymbol.Free;
    FAnyTypeSymbol.Free;
 
@@ -1163,6 +1202,8 @@ end;
 //
 procedure TdwsCompiler.CleanupAfterCompile;
 begin
+   FPendingAttributes.Clear;
+
    FDataSymbolExprReuse.CleanValues;
    FDataSymbolExprReuse.Free;
    FDataSymbolExprReuse:=nil;
@@ -2321,8 +2362,14 @@ var
    typePos : TScriptPos;
    oldSymPos : TSymbolPosition; // Mark *where* the old declaration was
    typContext : TdwsSourceContext;
+   attributesBag : ISymbolAttributesBag;
 begin
    Result:=True;
+
+   ReadAttributes;
+
+   attributesBag:=BagPendingAttributes;
+
    if not FTok.TestDeleteNamePos(name, typePos) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
@@ -2350,13 +2397,15 @@ begin
       FSourceContextMap.OpenContext(typePos, nil, ttNAME);
       typContext:=FSourceContextMap.Current;
    end else typContext:=nil;
-
-   typNew := ReadType(name, tcDeclaration);
-
-   if typContext<>nil then
-      typContext.ParentSym:=typNew;
-
    try
+
+      typNew := ReadType(name, tcDeclaration);
+
+      if typContext<>nil then
+         typContext.ParentSym:=typNew;
+
+      AttachBaggedAttributes(typNew, attributesBag);
+
       if typNew.Name<>'' then begin
          // typOld = typNew if a forwarded class declaration was overwritten
          if typOld <> typNew then begin
@@ -2375,6 +2424,7 @@ begin
          // Add symbol position as being the type being declared (works for forwards too)
          RecordSymbolUse(typNew, typePos, [suDeclaration]);
       end;
+
    finally
       if coContextMap in FOptions then
          FSourceContextMap.CloseContext(FTok.CurrentPos);
@@ -3662,8 +3712,11 @@ begin
    if (FSourcePostConditionsIndex<>0) and FTok.TestDelete(ttOLD) then
       Exit(ReadNameOld(isWrite));
 
-   if FTok.TestDelete(ttNEW) then
-      Exit(ReadNew(isWrite));
+   if FTok.TestDelete(ttNEW) then begin
+      Result:=ReadNew(nil);
+      Result:=ReadSymbol(Result, isWrite);
+      Exit;
+   end;
 
    if FTok.TestDelete(ttINHERITED) then
       Exit(ReadNameInherited(isWrite));
@@ -6390,7 +6443,7 @@ end;
 
 // ReadNew
 //
-function TdwsCompiler.ReadNew(isWrite : Boolean) : TProgramExpr;
+function TdwsCompiler.ReadNew(restrictTo : TClassSymbol) : TProgramExpr;
 var
    sym : TSymbol;
    typSym : TTypeSymbol;
@@ -6472,6 +6525,8 @@ begin
 
    if classSym.IsStatic then
       FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStatic, [classSym.Name]);
+   if (restrictTo<>nil) and not classSym.IsOfType(restrictTo) then
+      FMsgs.AddCompilerErrorFmt(hotPos, CPE_MustBeSubClassOf, [restrictTo.Name]);
 
    methSym:=classSym.FindDefaultConstructor(cvPrivate);
    if methSym.IsOverloaded then
@@ -6510,8 +6565,6 @@ begin
    finally
       overloads.Free;
    end;
-
-   Result:=ReadSymbol(Result, isWrite);
 end;
 
 // ReadNewArray
@@ -6836,6 +6889,8 @@ begin
 
             if not FTok.TestDelete(ttEND) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
+
+            CheckNoPendingAttributes;
          end;
 
          // resolve interface tables
@@ -6974,6 +7029,7 @@ begin
 
          if not FTok.TestDelete(ttEND) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
+         CheckNoPendingAttributes;
 
       finally
          // remove auto-forward
@@ -7333,6 +7389,7 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
       if Result.Size=0 then
          FMsgs.AddCompilerError(FTok.HotPos, RTE_NoRecordFields);
+      CheckNoPendingAttributes;
 
    except
       // Removed added record symbols. Destroying object
@@ -7550,6 +7607,7 @@ begin
 
       if not FTok.TestDelete(ttEND) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
+      CheckNoPendingAttributes;
 
    except
       // Removed added record symbols. Destroying object
@@ -10683,6 +10741,83 @@ begin
    end;
 end;
 
+// ReadAttributes
+//
+procedure TdwsCompiler.ReadAttributes;
+var
+   expr : TProgramExpr;
+   customAttribute : TClassSymbol;
+   hotPos : TScriptPos;
+begin
+   if not FTok.Test(ttALEFT) then Exit;
+
+   customAttribute:=TClassSymbol(FProg.RootTable.FindSymbol('TCustomAttribute', cvPublic, TClassSymbol));
+
+   while FTok.TestDelete(ttALEFT) do begin
+      hotPos:=FTok.HotPos;
+      expr:=ReadNew(customAttribute);
+      if not ((expr is TMethodExpr) and (TMethodExpr(expr).MethSym.Kind=fkConstructor)) then
+         FMsgs.AddCompilerError(hotPos, CPE_AttributeConstructorExpected);
+      expr.Free;
+      if not FTok.TestDelete(ttARIGHT) then
+         FMsgs.AddCompilerStop(hotPos, CPE_ArrayBracketRightExpected);
+   end;
+end;
+
+// BagPendingAttributes
+//
+function TdwsCompiler.BagPendingAttributes : ISymbolAttributesBag;
+var
+   bag : TSymbolAttributesBag;
+begin
+   if FPendingAttributes.Count>0 then begin
+      bag:=TSymbolAttributesBag.Create;
+      bag.FAttributes:=FPendingAttributes;
+      FPendingAttributes:=TdwsSymbolAttributes.Create;
+      Result:=bag;
+   end else Result:=nil;
+end;
+
+// AttachBaggedAttributes
+//
+procedure TdwsCompiler.AttachBaggedAttributes(symbol : TSymbol; const bag : ISymbolAttributesBag);
+var
+   i : Integer;
+   attrs : TdwsSymbolAttributes;
+   attr : TdwsSymbolAttribute;
+begin
+   if bag=nil then Exit;
+
+   attrs:=bag.Attributes;
+   for i:=0 to attrs.Count-1 do begin
+      attr:=attrs[i];
+      attr.Symbol:=symbol;
+      FMainProg.Attributes.Add(attr);
+   end;
+   attrs.ExtractAll;
+end;
+
+// CheckNoPendingAttributes
+//
+procedure TdwsCompiler.CheckNoPendingAttributes;
+
+   procedure ErrorDanglingAttributes;
+   var
+      i : Integer;
+      attr : TdwsSymbolAttribute;
+   begin
+      for i:=0 to FPendingAttributes.Count-1 do begin
+         attr:=FPendingAttributes[i];
+         FMsgs.AddCompilerError(attr.ScriptPos, CPE_DanglingAttribute);
+      end;
+      FPendingAttributes.Clear;
+   end;
+
+begin
+   if FPendingAttributes.Count>0 then
+      ErrorDanglingAttributes;
+end;
+
 // EnumerateHelpers
 //
 function TdwsCompiler.EnumerateHelpers(typeSym : TTypeSymbol) : THelperSymbols;
@@ -10840,7 +10975,7 @@ end;
 //
 procedure TdwsConfiguration.InitSystemTable;
 var
-   clsDelphiException, clsAssertionFailed : TClassSymbol;
+   clsDelphiException, clsAssertionFailed, clsCustomAttribute : TClassSymbol;
    meth : TMethodSymbol;
    fldSym : TFieldSymbol;
    propSym : TPropertySymbol;
@@ -10939,6 +11074,11 @@ begin
                                        ['Cls', SYS_STRING, 'Msg', SYS_STRING], '',
                                        clsDelphiException, cvPublic, sysTable);
    sysTable.AddSymbol(clsDelphiException);
+
+   // Create TCustomAttribute
+   clsCustomAttribute := TClassSymbol.Create(SYS_TCUSTOMATTRIBUTE, nil);
+   clsCustomAttribute.InheritFrom(sysTable.TypObject);
+   sysTable.AddSymbol(clsCustomAttribute);
 
    // ExceptObj function
    TExceptObjFunc.Create(sysTable, 'ExceptObject', [], SYS_EXCEPTION, []);

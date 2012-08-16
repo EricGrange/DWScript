@@ -1,0 +1,3 @@
+Syntax Error: Attribute constructor expected [line: 17, column: 4]
+Syntax Error: Subclass of TCustomAttribute expected! [line: 21, column: 5]
+Syntax Error: Class reference expected [line: 25, column: 5]
