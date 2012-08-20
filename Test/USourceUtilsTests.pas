@@ -133,10 +133,11 @@ begin
    prog:=FCompiler.Compile(cBase+'new TObject');
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 6);
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
-   CheckEquals(3, sugg.Count, 'new TObject 6');
+   CheckEquals(4, sugg.Count, 'new TObject 6');
    CheckEquals('TMyClass', sugg.Code[0], 'new TObject 6,0');
    CheckEquals('TClass', sugg.Code[1], 'new TObject 6,1');
-   CheckEquals('TObject', sugg.Code[2], 'new TObject 6,2');
+   CheckEquals('TCustomAttribute', sugg.Code[2], 'new TCustomAttribute 6,2');
+   CheckEquals('TObject', sugg.Code[3], 'new TObject 6,3');
    scriptPos.Col:=7;
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
    CheckEquals(1, sugg.Count, 'new TObject 7');
@@ -206,11 +207,12 @@ begin
 
    scriptPos.Col:=9;
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
-   CheckEquals(4, sugg.Count, 'column 9');
+   CheckEquals(5, sugg.Count, 'column 9');
    CheckEquals('TClass', sugg.Code[0], 'sugg 9, 0');
    CheckEquals('TComplex', sugg.Code[1], 'sugg 9, 1');
-   CheckEquals('TObject', sugg.Code[2], 'sugg 9, 2');
-   CheckEquals('TVector', sugg.Code[3], 'sugg 9, 3');
+   CheckEquals('TCustomAttribute', sugg.Code[2], 'sugg 9, 2');
+   CheckEquals('TObject', sugg.Code[3], 'sugg 9, 3');
+   CheckEquals('TVector', sugg.Code[4], 'sugg 9, 4');
 end;
 
 // MetaClassTest

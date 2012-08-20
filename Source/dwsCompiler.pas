@@ -284,6 +284,7 @@ type
       function CreateConstSymbol(const name : String; const namePos : TScriptPos; typ : TTypeSymbol;
                                  const data : TData; addr : Integer) : TConstSymbol;
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
+      function ReadArrayConstantExpr(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
    end;
 
    ISymbolAttributesBag = interface
@@ -378,7 +379,7 @@ type
          function GetSelfParamExpr(selfSym : TDataSymbol) : TVarExpr;
                           function ReadAssign(token : TTokenType; var left : TDataExpr) : TNoResultExpr;
          function ReadArrayType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
-         function ReadArrayConstant(expecting : TTypeSymbol = nil) : TArrayConstantExpr;
+         function ReadArrayConstant(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
          function ReadArrayMethod(const name : UnicodeString; const namePos : TScriptPos;
                                   baseExpr : TTypedExpr) : TProgramExpr;
          function ReadCase : TCaseExpr;
@@ -757,6 +758,7 @@ type
       function CreateConstSymbol(const name : String; const namePos : TScriptPos;
                                  typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol; virtual;
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr; virtual;
+      function ReadArrayConstantExpr(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
    end;
 
    TCompositeTypeSymbolFactory = class (TStandardSymbolFactory)
@@ -856,6 +858,13 @@ end;
 function TStandardSymbolFactory.ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
 begin
    Result:=FCompiler.ReadExpr(expecting);
+end;
+
+// ReadArrayConstantExpr
+//
+function TStandardSymbolFactory.ReadArrayConstantExpr(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
+begin
+   Result:=FCompiler.ReadArrayConstant(closingToken, expecting);
 end;
 
 // ------------------
@@ -2260,7 +2269,14 @@ begin
       end else begin
 
          detachTyp:=False;
-         expr:=factory.ReadExpr(nil);
+         if typ is TArraySymbol then begin
+            case FTok.TestDeleteAny([ttALEFT, ttBLEFT]) of
+               ttALEFT : expr:=factory.ReadArrayConstantExpr(ttARIGHT, TArraySymbol(typ).Typ);
+               ttBLEFT : expr:=factory.ReadArrayConstantExpr(ttBRIGHT, TArraySymbol(typ).Typ);
+            else
+               expr:=factory.ReadExpr(nil);
+            end;
+         end else expr:=factory.ReadExpr(nil);
          try
             if Assigned(typ) then begin
                if not typ.IsCompatible(expr.typ) then
@@ -6122,17 +6138,18 @@ end;
 
 // ReadArrayConstant
 //
-function TdwsCompiler.ReadArrayConstant(expecting : TTypeSymbol = nil) : TArrayConstantExpr;
+function TdwsCompiler.ReadArrayConstant(closingToken : TTokenType;
+                                        expecting : TTypeSymbol) : TArrayConstantExpr;
 begin
    Result:=TArrayConstantExpr.Create(FProg, FTok.HotPos);
    try
-      if not FTok.TestDelete(ttARIGHT) then begin
+      if not FTok.TestDelete(closingToken) then begin
          // At least one argument was found
          repeat
             TArrayConstantExpr(Result).AddElementExpr(FProg, ReadExpr);
          until not FTok.TestDelete(ttCOMMA);
 
-         if not FTok.TestDelete(ttARIGHT) then
+         if not FTok.TestDelete(closingToken) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
       end else begin
          // empty array
@@ -8460,7 +8477,7 @@ begin
       ttMINUS :
          Result:=ReadNegation;
       ttALEFT :
-         Result:=ReadArrayConstant(expecting);
+         Result:=ReadArrayConstant(ttARIGHT, expecting);
       ttNOT :
          Result:=ReadNotTerm;
       ttBLEFT : begin
