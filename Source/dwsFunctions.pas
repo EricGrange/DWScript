@@ -773,7 +773,6 @@ begin
    FDependencies:=TStringList.Create;
    ust:=TUnitSymbolTable.Create(nil, rootTable.AddrGenerator);
    FSymbol:=TUnitMainSymbol.Create(unitName, ust, unitSyms);
-//   FSymbol.ReferenceInSymbolTable(rootTable);
    ust.UnitMainSymbol:=FSymbol;
 
    FSymbol.CreateInterfaceTable;

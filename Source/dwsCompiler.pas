@@ -509,6 +509,7 @@ type
                                isClassMethod : Boolean = False;
                                isType : Boolean = False; isAnonymous : Boolean = False) : TFuncSymbol;
          procedure ReadProcBody(funcSymbol : TFuncSymbol);
+         procedure ReadProcEmpty(funcSymbol : TFuncSymbol);
          procedure ReadConditions(funcSymbol : TFuncSymbol; conditions : TSourceConditions;
                                condsSymClass : TConditionSymbolClass);
          procedure ReadPostConditions(funcSymbol : TFuncSymbol; conditions : TSourcePostConditions;
@@ -2881,13 +2882,19 @@ begin
       ownerSym.AddMethod(funcResult);
    end;
 
-   bodyToken:=FTok.TestAny([ttBEGIN, ttREQUIRE]);
-   if bodyToken<>ttNone then begin
-      // inline declaration
-      if coContextMap in FOptions then
-         FSourceContextMap.OpenContext(FTok.HotPos, funcResult, bodyToken);
-      ReadProcBody(funcResult);
-      ReadSemiColon;
+   bodyToken:=FTok.TestAny([ttBEGIN, ttREQUIRE, ttEMPTY]);
+   case bodyToken of
+      ttBEGIN, ttREQUIRE : begin
+         // inline declaration
+         if coContextMap in FOptions then
+            FSourceContextMap.OpenContext(FTok.HotPos, funcResult, bodyToken);
+         ReadProcBody(funcResult);
+         ReadSemiColon;
+      end;
+      ttEMPTY : begin
+         // empty body
+         ReadProcEmpty(funcResult);
+      end;
    end;
 
    Result:=funcResult;
@@ -3161,6 +3168,24 @@ begin
          FSourceContextMap.CloseContext(FTok.CurrentPos);  // closed from declaration through implementation
       end;
    end;
+end;
+
+// ReadProcEmpty
+//
+procedure TdwsCompiler.ReadProcEmpty(funcSymbol : TFuncSymbol);
+var
+   proc : TdwsProcedure;
+begin
+   FTok.KillToken;
+
+   funcSymbol.SourcePosition:=FTok.HotPos;
+
+   proc:=TdwsProcedure.Create(FProg);
+   proc.SetBeginPos(funcSymbol.SourcePosition);
+   proc.AssignTo(funcSymbol);
+   proc.Expr:=TNullExpr.Create(proc, funcSymbol.SourcePosition);
+
+   ReadSemiColon;
 end;
 
 // ReadConditions
