@@ -170,7 +170,7 @@ var
 begin
    msgs:=TdwsCompileMessageList.Create;
    sourceFile:=TSourceFile.Create;
-   sourceFile.Code:='@ @= %= ^ ^= $(';
+   sourceFile.Code:='@ @= %= ^ ^= $( ?';
    rules:=TPascalTokenizerStateRules.Create;
    t:=rules.CreateTokenizer(msgs);
    try
@@ -183,6 +183,7 @@ begin
       CheckTrue(t.TestDelete(ttCARET_ASSIGN), '^=');
       CheckTrue(t.TestDelete(ttDOLLAR), '$');
       CheckTrue(t.TestDelete(ttBLEFT), '(');
+      CheckTrue(t.TestDelete(ttQUESTION), '?');
 
       CheckTrue(t.TestAny([ttNAME])=ttNone, 'Any at end');
       CheckTrue(t.TestDeleteAny([ttNAME])=ttNone, 'DeleteAny at end');

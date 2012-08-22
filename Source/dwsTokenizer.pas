@@ -47,7 +47,7 @@ type
      ttTRUE, ttFALSE,
      ttAND, ttOR, ttXOR, ttIMPLIES, ttDIV, ttMOD, ttNOT, ttSHL, ttSHR, ttSAR,
      ttPLUS, ttMINUS,
-     ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttDOLLAR, ttEXCLAMATION,
+     ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttDOLLAR, ttEXCLAMATION, ttQUESTION,
      ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
      ttLESSLESS, ttGTRGTR,
      ttSEMI, ttCOMMA, ttCOLON,
@@ -276,7 +276,7 @@ const
      'TRUE', 'FALSE',
      'AND', 'OR', 'XOR', 'IMPLIES', 'DIV', 'MOD', 'NOT', 'SHL', 'SHR', 'SAR',
      '+', '-',
-     '*', '/', '%', '^', '@', '$', '!',
+     '*', '/', '%', '^', '@', '$', '!', '?',
      '=', '<>', '>', '>=', '<', '<=',
      '<<', '>>',
      ';', ',', ':',
@@ -582,6 +582,7 @@ begin
      '[': Result := ttALEFT;
      ']': Result := ttARIGHT;
      '!': Result := ttEXCLAMATION;
+     '?': Result := ttQUESTION;
      '=': Result := ttEQ;
      '<':
          if Len=1 then // '<'
