@@ -88,6 +88,7 @@ type
          procedure CallPrint;
          procedure CreateExternally;
          procedure DeprecatedProp;
+         procedure ReservedNameMethod;
 
          procedure ExplicitUses;
    end;
@@ -375,6 +376,11 @@ begin
    param.DataType:='Integer';
    param.Name:='v';
    meth.OnEval:=MethodSetIntEval;
+
+   meth:=cls.Methods.Add;
+   meth.Name:='Function';
+   meth.ResultType:='Integer';
+   meth.OnEval:=MethodGetIntEval;
 
    meth:=cls.Methods.Add;
    meth.Name:='GetArrayProp';
@@ -1492,6 +1498,18 @@ begin
 
    CheckEquals('Warning: "DeprecatedProp" has been deprecated: Obsolete [line: 2, column: 12]'#13#10,
                prog.Msgs.AsInfo, 'Compile');
+end;
+
+// ReservedNameMethod
+//
+procedure TdwsUnitTests.ReservedNameMethod;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'var t := new TTestClass;'#13#10
+                           +'var i := t.Function;');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
 end;
 
 // ExplicitUses

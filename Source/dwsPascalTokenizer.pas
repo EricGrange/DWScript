@@ -47,9 +47,10 @@ type
    end;
 
 const
-   cPascalReservedNames : TTokenTypes = [
-      ttStrVal, ttIntVal, ttFloatVal, ttDOT, ttDOTDOT,
+   cPascalSymbolTokens : TTokenTypes = [
+      ttStrVal, ttIntVal, ttFloatVal,
 
+      ttDOT, ttDOTDOT,
       ttPLUS, ttMINUS,
       ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttDOLLAR,
       ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
@@ -57,8 +58,10 @@ const
       ttSEMI, ttCOMMA, ttCOLON,
       ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
       ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN,
-      ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCRIGHT,
+      ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCRIGHT
+   ];
 
+   cPascalReservedNames : TTokenTypes = [
       ttAND, ttARRAY, ttAS, ttBEGIN, ttBREAK,
       ttCASE, ttCLASS, ttCONST, ttCONSTRUCTOR, ttCONTINUE,
       ttDESTRUCTOR, ttDIV, ttDO, ttDOWNTO,
@@ -70,7 +73,7 @@ const
       ttREINTRODUCE, ttREPEAT, ttRESOURCESTRING, ttSAR, ttSET, ttSHL, ttSHR,
       ttTHEN, ttTRUE, ttTRY, ttTYPE,
       ttUNIT, ttUNTIL, ttUSES, ttVAR, ttWHILE, ttXOR
-      ];
+   ];
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -101,6 +104,7 @@ constructor TPascalTokenizerStateRules.Create;
 begin
    inherited;
 
+   SymbolTokens:=cPascalSymbolTokens;
    ReservedNames:=cPascalReservedNames;
 
    sStart:=CreateState;

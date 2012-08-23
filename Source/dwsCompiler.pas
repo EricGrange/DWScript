@@ -4634,7 +4634,7 @@ begin
    Result:=nil;
    try
 
-      if FTok.TestDeleteNamePos(name, namePos) then begin
+      if FTok.TestDeleteAnyNamePos(name, namePos) then begin
 
          baseType:=expr.BaseType;
 
