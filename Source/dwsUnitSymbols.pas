@@ -250,6 +250,7 @@ type
          FTypClass : TClassOfSymbol;
          FTypException : TClassSymbol;
          FTypInterface : TInterfaceSymbol;
+         FTypCustomAttribute : TClassSymbol;
 
       protected
          function SymbolTable : TSystemSymbolTable;
@@ -267,6 +268,8 @@ type
          property TypException : TClassSymbol read FTypException write FTypException;
 
          property TypInterface : TInterfaceSymbol read FTypInterface write FTypInterface;
+
+         property TypCustomAttribute : TClassSymbol read FTypCustomAttribute write FTypCustomAttribute;
    end;
 
    // TProgramSymbolTable

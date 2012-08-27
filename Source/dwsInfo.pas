@@ -150,7 +150,7 @@ type
       function GetValueAsString : UnicodeString; override;
    end;
 
-   TInfoDynamicArrayBase = class (TInfo)
+   TInfoDynamicArrayBase = class (TInfoData)
       protected
          function SelfDynArray : TScriptDynamicArray;
    end;
@@ -161,7 +161,8 @@ type
 
       public
          constructor Create(ProgramInfo: TProgramInfo; const Data: TData; Offset, Delta: Integer);
-         function GetValue: Variant; override;
+         function GetValue : Variant; override;
+         function GetValueAsInteger : Int64; override;
          procedure SetValue(const Value: Variant); override;
    end;
 
@@ -1139,6 +1140,13 @@ end;
 // GetValue
 //
 function TInfoDynamicArrayLength.GetValue: Variant;
+begin
+   Result:=GetValueAsInteger;
+end;
+
+// GetValueAsInteger
+//
+function TInfoDynamicArrayLength.GetValueAsInteger : Int64;
 begin
    Result:=SelfDynArray.Length+FDelta;
 end;

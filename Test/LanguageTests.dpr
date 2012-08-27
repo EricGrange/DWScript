@@ -34,7 +34,8 @@ uses
   UBuildTests in 'UBuildTests.pas',
   URTTIExposeTests in 'URTTIExposeTests.pas',
   USourceUtilsTests in 'USourceUtilsTests.pas',
-  ULocalizerTests in 'ULocalizerTests.pas';
+  ULocalizerTests in 'ULocalizerTests.pas',
+  dwsRTTIFunctions;
 
 {$R *.res}
 

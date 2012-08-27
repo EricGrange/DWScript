@@ -502,6 +502,7 @@ type
          FFileSystem : IdwsFileSystem;
          FEnvironment : IdwsEnvironment;
          FLocalizer : IdwsLocalizer;
+         FRTTIRawAttributes : IScriptObj;
 
          FMsgs : TdwsRuntimeMessageList;
 
@@ -565,6 +566,7 @@ type
          property FileSystem : IdwsFileSystem read FFileSystem;
          property Environment : IdwsEnvironment read GetEnvironment write SetEnvironment;
          property Localizer : IdwsLocalizer read FLocalizer write FLocalizer;
+         property RTTIRawAttributes : IScriptObj read FRTTIRawAttributes write FRTTIRawAttributes;
 
          property ObjectCount : Integer read FObjectCount;
    end;
@@ -2545,6 +2547,8 @@ var
    iter : TScriptObj;
    buffer : array of TScriptObj;
 begin
+   FRTTIRawAttributes:=nil;
+
    if FObjectCount=0 then Exit;
 
    // add refcount to keep all alive during cleanup

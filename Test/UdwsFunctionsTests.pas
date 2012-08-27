@@ -75,6 +75,11 @@ type
          procedure SetUp; override;
    end;
 
+   TdwsFuncFunctionsTestsRTTI = class (TdwsFunctionsTestsBase)
+      public
+         procedure SetUp; override;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -309,6 +314,18 @@ begin
    inherited;
 end;
 
+// ------------------
+// ------------------ TdwsFuncFunctionsTestsRTTI ------------------
+// ------------------
+
+// SetUp
+//
+procedure TdwsFuncFunctionsTestsRTTI.SetUp;
+begin
+   FFolder:='FunctionsRTTI';
+   inherited;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -324,5 +341,6 @@ initialization
    TestFramework.RegisterTest('FunctionsString', TdwsFuncFunctionsTestsString.Suite);
    TestFramework.RegisterTest('FunctionsVariant', TdwsFuncFunctionsTestsVariant.Suite);
    TestFramework.RegisterTest('FunctionsGlobalVars', TdwsFuncFunctionsTestsGlobalVars.Suite);
+   TestFramework.RegisterTest('FunctionsRTTI', TdwsFuncFunctionsTestsRTTI.Suite);
 
 end.

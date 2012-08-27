@@ -10793,14 +10793,14 @@ var
 begin
    if not FTok.Test(ttALEFT) then Exit;
 
-   customAttribute:=TClassSymbol(FProg.RootTable.FindSymbol('TCustomAttribute', cvPublic, TClassSymbol));
+   customAttribute:=FProg.Root.SystemTable.SymbolTable.TypCustomAttribute;
 
    while FTok.TestDelete(ttALEFT) do begin
       hotPos:=FTok.HotPos;
       expr:=ReadNew(customAttribute);
       if not ((expr is TMethodExpr) and (TMethodExpr(expr).MethSym.Kind=fkConstructor)) then
          FMsgs.AddCompilerError(hotPos, CPE_AttributeConstructorExpected);
-      expr.Free;
+      FPendingAttributes.Add(TdwsSymbolAttribute.Create(hotPos, TMethodExpr(expr)));
       if not FTok.TestDelete(ttARIGHT) then
          FMsgs.AddCompilerStop(hotPos, CPE_ArrayBracketRightExpected);
    end;
@@ -11017,7 +11017,7 @@ end;
 //
 procedure TdwsConfiguration.InitSystemTable;
 var
-   clsDelphiException, clsAssertionFailed, clsCustomAttribute : TClassSymbol;
+   clsDelphiException, clsAssertionFailed : TClassSymbol;
    meth : TMethodSymbol;
    fldSym : TFieldSymbol;
    propSym : TPropertySymbol;
@@ -11118,9 +11118,9 @@ begin
    sysTable.AddSymbol(clsDelphiException);
 
    // Create TCustomAttribute
-   clsCustomAttribute := TClassSymbol.Create(SYS_TCUSTOMATTRIBUTE, nil);
-   clsCustomAttribute.InheritFrom(sysTable.TypObject);
-   sysTable.AddSymbol(clsCustomAttribute);
+   sysTable.TypCustomAttribute := TClassSymbol.Create(SYS_TCUSTOMATTRIBUTE, nil);
+   sysTable.TypCustomAttribute.InheritFrom(sysTable.TypObject);
+   sysTable.AddSymbol(sysTable.TypCustomAttribute);
 
    // ExceptObj function
    TExceptObjFunc.Create(sysTable, 'ExceptObject', [], SYS_EXCEPTION, []);
