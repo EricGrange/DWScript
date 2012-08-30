@@ -44,6 +44,7 @@ type
    TParamSymbol = class;
    THelperSymbol = class;
    TOperatorSymbol = class;
+   TPropertySymbol = class;
    TdwsRuntimeMessageList = class;
 
    TdwsExprLocation = record
@@ -351,6 +352,9 @@ type
          function EnumerateOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
                                         const callback : TOperatorSymbolEnumerationCallback) : Boolean; virtual;
          function HasSameLocalOperator(anOpSym : TOperatorSymbol) : Boolean; virtual;
+
+         procedure CollectPropertyAttributes(tableList : TSimpleObjectHash<TSymbolTable>;
+                                             propertyList : TSimpleList<TPropertySymbol>);
 
          function HasClass(const aClass : TSymbolClass) : Boolean;
          function HasSymbol(sym : TSymbol) : Boolean;
@@ -759,7 +763,7 @@ type
          constructor Generate(Table: TSymbolTable; MethKind: TMethodKind;
                               const Attributes: TMethodAttributes; const MethName: UnicodeString;
                               const MethParams: TParamArray; const MethType: UnicodeString;
-                              Cls: TClassSymbol; aVisibility : TdwsVisibility);
+                              Cls: TCompositeTypeSymbol; aVisibility : TdwsVisibility);
 
          procedure SetOverride(meth: TMethodSymbol);
          procedure SetOverlap(meth: TMethodSymbol);
@@ -1003,8 +1007,6 @@ type
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
-   TPropertySymbol = class;
-
    // TMembersSymbolTable
    //
    TMembersSymbolTable = class (TSymbolTable)
@@ -1071,7 +1073,8 @@ type
          constructor Create(const name : UnicodeString; aUnit : TSymbol);
          destructor Destroy; override;
 
-         procedure AddConst(sym : TClassConstSymbol);
+         procedure AddConst(sym : TClassConstSymbol); overload;
+         procedure AddConst(sym : TClassConstSymbol; visibility : TdwsVisibility); overload;
          procedure AddClassVar(sym : TClassVarSymbol);
          procedure AddProperty(propSym : TPropertySymbol);
          procedure AddMethod(methSym : TMethodSymbol); virtual;
@@ -2042,6 +2045,14 @@ procedure TCompositeTypeSymbol.AddConst(sym : TClassConstSymbol);
 begin
    sym.OwnerSymbol:=Self;
    FMembers.AddSymbol(sym);
+end;
+
+// AddConst
+//
+procedure TCompositeTypeSymbol.AddConst(sym : TClassConstSymbol; visibility : TdwsVisibility);
+begin
+   sym.Visibility:=visibility;
+   AddConst(sym);
 end;
 
 // AddClassVar
@@ -3142,7 +3153,7 @@ end;
 
 constructor TMethodSymbol.Generate(Table: TSymbolTable; MethKind: TMethodKind;
   const Attributes: TMethodAttributes; const MethName: UnicodeString; const MethParams: TParamArray;
-  const MethType: UnicodeString; Cls: TClassSymbol; aVisibility : TdwsVisibility);
+  const MethType: UnicodeString; Cls: TCompositeTypeSymbol; aVisibility : TdwsVisibility);
 var
    typSym : TTypeSymbol;
    meth : TSymbol;
@@ -4315,7 +4326,8 @@ function TBaseVariantSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=    (typSym<>nil)
            and (   (typSym.UnAliasedType is TBaseSymbol)
-                or (typSym.UnAliasedType is TEnumerationSymbol));
+                or (typSym.UnAliasedType is TEnumerationSymbol)
+                or (typSym.UnAliasedType is TClassSymbol));
 end;
 
 // InitData
@@ -4865,6 +4877,33 @@ begin
             and (leftType=opSym.Params[0].UnAliasedType)
             and (rightType=opSym.Params[1].UnAliasedType) then begin
             Exit(True);
+         end;
+      end;
+   end;
+end;
+
+// CollectPropertyAttributes
+//
+procedure TSymbolTable.CollectPropertyAttributes(tableList : TSimpleObjectHash<TSymbolTable>;
+                                                 propertyList : TSimpleList<TPropertySymbol>);
+var
+   i : Integer;
+   parent : TSymbolTable;
+   sym, member : TSymbol;
+begin
+   tableList.Add(Self);
+   for i:=0 to ParentCount-1 do begin
+      parent:=Parents[i];
+      if not tableList.Contains(parent) then
+         parent.CollectPropertyAttributes(tableList, propertyList);
+   end;
+   for sym in Self do begin
+      if sym.ClassType=TClassSymbol then begin
+         for member in TClassSymbol(sym).Members do begin
+            if member.ClassType=TPropertySymbol then begin
+               if TPropertySymbol(member).Visibility=cvPublished then
+                  propertyList.Add(TPropertySymbol(member));
+            end;
          end;
       end;
    end;

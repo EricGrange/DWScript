@@ -304,6 +304,7 @@ type
 
 const
    cNullPos: TScriptPos = (FLine: 0; FCol: 0; SourceFile: nil);
+   cFakePos: TScriptPos = (FLine: 0; FCol: 0; SourceFile: nil);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------

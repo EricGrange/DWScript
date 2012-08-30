@@ -1,0 +1,9 @@
+TBase:
+- Indirect, 3 : Number = 10
+- Direct, 3 : Number = 2
+TSub:
+- Stuff, 3 : String = hello
+- Indirect, 3 : Number = 10
+- Direct, 3 : Number = 2
+4
+hellohello

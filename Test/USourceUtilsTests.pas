@@ -108,10 +108,11 @@ begin
    prog:=FCompiler.Compile(cBase+'TObject.Create');
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 10);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
-   CheckEquals(3, sugg.Count, 'TObject.Create 10');
+   CheckEquals(4, sugg.Count, 'TObject.Create 10');
    CheckEquals('ClassName', sugg.Code[0], 'TObject.Create 10,0');
-   CheckEquals('ClassType', sugg.Code[1], 'TObject.Create 10,1');
-   CheckEquals('Create', sugg.Code[2], 'TObject.Create 10,2');
+   CheckEquals('ClassParent', sugg.Code[1], 'TObject.Create 10,1');
+   CheckEquals('ClassType', sugg.Code[2], 'TObject.Create 10,2');
+   CheckEquals('Create', sugg.Code[3], 'TObject.Create 10,3');
    scriptPos.Col:=11;
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
    CheckEquals(1, sugg.Count, 'TObject.Create 11');
@@ -173,8 +174,9 @@ begin
    CheckEquals('second', sugg.Code[2], 'Self 12,2');
    CheckEquals('third', sugg.Code[3], 'Self 12,3');
    CheckEquals('ClassName', sugg.Code[4], 'Self 12,4');
-   CheckEquals('ClassType', sugg.Code[5], 'Self 12,5');
-   CheckEquals('Create', sugg.Code[6], 'Self 12,6');
+   CheckEquals('ClassParent', sugg.Code[5], 'Self 12,5');
+   CheckEquals('ClassType', sugg.Code[6], 'Self 12,6');
+   CheckEquals('Create', sugg.Code[7], 'Self 12,7');
 end;
 
 // UnitDotTest
@@ -207,12 +209,15 @@ begin
 
    scriptPos.Col:=9;
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
-   CheckEquals(5, sugg.Count, 'column 9');
+   CheckEquals(8, sugg.Count, 'column 9');
    CheckEquals('TClass', sugg.Code[0], 'sugg 9, 0');
    CheckEquals('TComplex', sugg.Code[1], 'sugg 9, 1');
    CheckEquals('TCustomAttribute', sugg.Code[2], 'sugg 9, 2');
    CheckEquals('TObject', sugg.Code[3], 'sugg 9, 3');
-   CheckEquals('TVector', sugg.Code[4], 'sugg 9, 4');
+   CheckEquals('TRTTIRawAttribute', sugg.Code[4], 'sugg 9, 4');
+   CheckEquals('TRTTIRawAttributes', sugg.Code[5], 'sugg 9, 5');
+   CheckEquals('TRTTITypeInfo', sugg.Code[6], 'sugg 9, 6');
+   CheckEquals('TVector', sugg.Code[7], 'sugg 9, 7');
 end;
 
 // MetaClassTest
@@ -233,10 +238,11 @@ begin
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
-   CheckTrue(sugg.Count=3, 'v.');
+   CheckTrue(sugg.Count=4, 'v.');
    CheckEquals('ClassName', sugg.Code[0], 'v. 0');
-   CheckEquals('ClassType', sugg.Code[1], 'v. 1');
-   CheckEquals('Create', sugg.Code[2], 'v. 2');
+   CheckEquals('ClassParent', sugg.Code[1], 'v. 1');
+   CheckEquals('ClassType', sugg.Code[2], 'v. 2');
+   CheckEquals('Create', sugg.Code[3], 'v. 3');
 end;
 
 // EmptyOptimizedLocalTable

@@ -1,0 +1,4 @@
+ => TBase => TObject
+ => TChild => TBase => TObject
+ => TSubChild => TChild => TBase => TObject
+ => TOtherChild => TBase => TObject

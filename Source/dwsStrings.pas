@@ -43,6 +43,7 @@ const
   SYS_TOBJECT_FREE = 'Free';
   SYS_TOBJECT_CLASSNAME = 'ClassName';
   SYS_TOBJECT_CLASSTYPE = 'ClassType';
+  SYS_TOBJECT_CLASSPARENT = 'ClassParent';
   SYS_EXCEPTION = 'Exception';
   SYS_EXCEPTION_MESSAGE = 'Message';
   SYS_EXCEPTION_MESSAGE_FIELD = 'FMessage';

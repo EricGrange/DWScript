@@ -12,7 +12,7 @@ type
    end;
 
    
-procedure PrintAttributesForType(typeID : Variant);
+procedure PrintAttributesForType(typeID : TRTTITypeInfo);
 begin
    var rtti := RTTIRawAttributes;
    var i : Integer;

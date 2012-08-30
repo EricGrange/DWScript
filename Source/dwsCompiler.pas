@@ -711,6 +711,10 @@ type
       procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
    end;
 
+   TObjectClassParentMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
+
    TObjectDestroyMethod = class(TInternalMethod)
       procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
    end;
@@ -11081,6 +11085,10 @@ begin
    TObjectClassTypeMethod.Create(mkClassFunction, [], SYS_TOBJECT_CLASSTYPE,
                                  [], SYS_TCLASS, sysTable.TypObject, cvPublic, sysTable);
 
+   // Add ClassParent method
+   TObjectClassParentMethod.Create(mkClassFunction, [], SYS_TOBJECT_CLASSPARENT,
+                                   [], SYS_TCLASS, sysTable.TypObject, cvPublic, sysTable);
+
    // Create class Exception
    sysTable.TypException := TClassSymbol.Create(SYS_EXCEPTION, nil);
    sysTable.TypException.InheritFrom(sysTable.TypObject);
@@ -11288,6 +11296,17 @@ end;
 procedure TObjectClassTypeMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
 begin
    Info.ResultAsInteger:=Int64(info.ValueAsClassSymbol[SYS_SELF]);
+end;
+
+// ------------------
+// ------------------ TObjectClassParentMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TObjectClassParentMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+begin
+   Info.ResultAsInteger:=Int64(info.ValueAsClassSymbol[SYS_SELF].Parent);
 end;
 
 // ------------------

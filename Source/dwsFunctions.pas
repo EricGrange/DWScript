@@ -99,11 +99,20 @@ type
       public
          constructor Create(methKind : TMethodKind; attributes : TMethodAttributes;
                             const methName : UnicodeString; const methParams : array of UnicodeString;
-                            const methType : UnicodeString; cls : TClassSymbol;
+                            const methType : UnicodeString; cls : TCompositeTypeSymbol;
                             aVisibility : TdwsVisibility;
                             table : TSymbolTable);
          procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); override;
          procedure Execute(info : TProgramInfo; var externalObject : TObject); virtual; abstract;
+   end;
+
+   TInternalRecordMethod = class(TInternalFunction)
+      public
+         constructor Create(methKind : TMethodKind; attributes : TMethodAttributes;
+                            const methName : UnicodeString; const methParams : array of UnicodeString;
+                            const methType : UnicodeString; rec : TRecordSymbol;
+                            aVisibility : TdwsVisibility;
+                            table : TSymbolTable);
    end;
 
    TInternalInitProc = procedure (systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
@@ -395,7 +404,7 @@ end;
 //
 constructor TInternalMethod.Create(methKind: TMethodKind; attributes: TMethodAttributes;
                                    const methName: UnicodeString; const methParams: array of UnicodeString;
-                                   const methType: UnicodeString; cls: TClassSymbol;
+                                   const methType: UnicodeString; cls: TCompositeTypeSymbol;
                                    aVisibility : TdwsVisibility;
                                    table: TSymbolTable);
 var
@@ -442,7 +451,36 @@ begin
    end;
 end;
 
-{ TAnonymousFunction }
+// ------------------
+// ------------------ TInternalRecordMethod ------------------
+// ------------------
+
+// Create
+//
+constructor TInternalRecordMethod.Create(methKind : TMethodKind; attributes : TMethodAttributes;
+                            const methName : UnicodeString; const methParams : array of UnicodeString;
+                            const methType : UnicodeString; rec : TRecordSymbol;
+                            aVisibility : TdwsVisibility;
+                            table : TSymbolTable);
+var
+   sym : TMethodSymbol;
+   params : TParamArray;
+begin
+   params:=ConvertFuncParams(methParams);
+
+   sym:=TMethodSymbol.Generate(table, methKind, attributes, methName, Params,
+                               methType, rec, aVisibility);
+   sym.Params.AddParent(table);
+   sym.Executable := ICallable(Self);
+
+   // Add method to its class
+   rec.AddMethod(sym);
+end;
+
+// ------------------
+// ------------------ TAnonymousFunction ------------------
+// ------------------
+
 
 constructor TAnonymousFunction.Create(FuncSym: TFuncSymbol);
 begin

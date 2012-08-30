@@ -93,15 +93,17 @@ type
     function GetData : TData; override;
   end;
 
-  TInfoData = class(TInfo)
-    function GetValue: Variant; override;
-    function GetValueAsString : UnicodeString; override;
-    function GetValueAsInteger : Int64; override;
-    function GetValueAsFloat : Double; override;
-    function GetData : TData; override;
-    procedure SetData(const Value: TData); override;
-    procedure SetValue(const Value: Variant); override;
-  end;
+   TInfoData = class(TInfo)
+      protected
+         function GetValue: Variant; override;
+         function GetValueAsString : UnicodeString; override;
+         function GetValueAsInteger : Int64; override;
+         function GetValueAsFloat : Double; override;
+         function GetData : TData; override;
+         function GetScriptObj: IScriptObj; override;
+         procedure SetData(const Value: TData); override;
+         procedure SetValue(const Value: Variant); override;
+   end;
 
   TInfoClass = class(TInfoData)
     FScriptObj: IScriptObj;
@@ -545,7 +547,23 @@ begin
   DWSCopyData(FData, FOffset, Result, 0, FTypeSym.Size);
 end;
 
-function TInfoData.GetValue: Variant;
+// GetScriptObj
+//
+function TInfoData.GetScriptObj : IScriptObj;
+var
+   v : Variant;
+begin
+   if FTypeSym.Size=1 then begin
+      v:=GetValue;
+      if VarType(v)=varUnknown then begin
+         Result:=IScriptObj(IUnknown(v));
+         Exit;
+      end;
+   end;
+   Result:=inherited GetScriptObj;
+end;
+
+function TInfoData.GetValue : Variant;
 begin
    if Assigned(FDataMaster) then
       FDataMaster.Read(FExec, FData);

@@ -716,6 +716,8 @@ type
 
          procedure DropMapAndDictionary;
 
+         function CollectAllPropertyAttributes : TSimpleList<TPropertySymbol>;
+
          property FinalExpr : TBlockFinalExpr read FFinalExpr write FFinalExpr;
 
          property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds;
@@ -3208,6 +3210,21 @@ begin
    FSymbolDictionary:=nil;
    FSourceContextMap.Free;
    FSourceContextMap:=nil;
+end;
+
+// CollectAllPropertyAttributes
+//
+function TdwsMainProgram.CollectAllPropertyAttributes : TSimpleList<TPropertySymbol>;
+var
+   tableList : TSimpleObjectHash<TSymbolTable>;
+begin
+   Result:=TSimpleList<TPropertySymbol>.Create;
+   tableList:=TSimpleObjectHash<TSymbolTable>.Create;
+   try
+      RootTable.CollectPropertyAttributes(tableList, Result);
+   finally
+      tableList.Free;
+   end;
 end;
 
 // GetConditionalDefines
