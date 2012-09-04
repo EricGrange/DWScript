@@ -23,7 +23,7 @@ unit dwsStack;
 
 interface
 
-uses Variants, Classes, SysUtils, dwsStrings, dwsUtils;
+uses Variants, Classes, SysUtils, dwsStrings, dwsUtils, dwsXPlatform;
 
 type
 
@@ -209,7 +209,11 @@ begin
          varDouble :
             Result:=TVarData(v1).VDouble=TVarData(v2).VDouble;
          varUString :
+            {$ifdef FPC}
+            Result:=UnicodeString(TVarData(v1).VString)=UnicodeString(TVarData(v2).VString);
+            {$else}
             Result:=UnicodeString(TVarData(v1).VUString)=UnicodeString(TVarData(v2).VUString);
+            {$endif}
          varUnknown :
             Result:=TVarData(v1).VUnknown=TVarData(v2).VUnknown;
       else
@@ -282,13 +286,13 @@ end;
 
 procedure TStackMixIn.CopyData(SourceAddr, DestAddr, Size: Integer);
 begin
-  while Size > 0 do
-  begin
-    VarCopy(Data[DestAddr], Data[SourceAddr]);
-    Inc(SourceAddr);
-    Inc(DestAddr);
-    Dec(Size);
-  end;
+   while Size > 0 do begin
+
+      VarCopy(Data[DestAddr], Data[SourceAddr]);
+      Inc(SourceAddr);
+      Inc(DestAddr);
+      Dec(Size);
+   end;
 end;
 
 // ClearData
@@ -514,7 +518,11 @@ var
 begin
    varData:=@Data[SourceAddr];
    if varData.VType=varUString then
+      {$ifdef FPC}
+      Result:=UnicodeString(varData.VString)
+      {$else}
       Result:=UnicodeString(varData.VUString)
+      {$endif}
    else Result:=PVariant(varData)^;
 end;
 
@@ -600,7 +608,11 @@ var
 begin
    varData:=@FBaseData[destAddr];
    if varData.VType=varUString then
+      {$ifdef FPC}
+      UnicodeString(varData.VString):=UnicodeString(varData.VString)+value
+      {$else}
       UnicodeString(varData.VUString):=UnicodeString(varData.VUString)+value
+      {$endif}
    else Fallback(varData);
 end;
 
@@ -691,7 +703,11 @@ var
 begin
    varData:=@Data[DestAddr];
    if varData.VType=varUString then
+      {$ifdef FPC}
+      UnicodeString(varData.VString):=Value
+      {$else}
       UnicodeString(varData.VUString):=Value
+      {$endif}
    else PVariant(varData)^:=Value;
 end;
 
@@ -727,9 +743,15 @@ var
 begin
    varData:=@Data[DestAddr];
    if varData.VType=varUString then
+      {$ifdef FPC}
+      if index>Length(UnicodeString(varData.VString)) then
+         Exit(False)
+      else UnicodeString(varData.VString)[index]:=c
+      {$else}
       if index>Length(UnicodeString(varData.VUString)) then
          Exit(False)
       else UnicodeString(varData.VUString)[index]:=c
+      {$endif}
    else PVariant(varData)^[index]:=c;
    Result:=True;
 end;

@@ -67,6 +67,9 @@ type
    TBytes = array of Byte;
 
    RawByteString = String;
+
+   PNativeInt = ^NativeInt;
+   PUInt64 = ^UInt64;
    {$ENDIF}
 
    TPath = class
@@ -97,6 +100,13 @@ function InterlockedDecrement(var val : Integer) : Integer;
 
 procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Cardinal(-1));
 
+function TryTextToFloat(const s : PWideChar; var value : Extended; const formatSettings : TFormatSettings) : Boolean; inline;
+
+{$ifdef FPC}
+function Format(const Fmt : UnicodeString; const Args : Array of const) : UnicodeString; overload;
+procedure VarCopy(var dest : Variant; const src : Variant);
+{$endif}
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -118,6 +128,7 @@ function UTCDateTime : TDateTime;
 var
    systemTime : TSystemTime;
 begin
+   FillChar(systemTime, SizeOf(systemTime), 0);
    GetSystemTime(systemTime);
    with systemTime do
       Result:= EncodeDate(wYear, wMonth, wDay)
@@ -144,7 +155,7 @@ function UnicodeComparePChars(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 :
 const
    CSTR_EQUAL = 2;
 begin
-   Result:=CompareString(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n1, p2, n2)-CSTR_EQUAL;
+   Result:=CompareStringW(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n1, p2, n2)-CSTR_EQUAL;
 end;
 
 // InterlockedIncrement
@@ -163,6 +174,7 @@ end;
 
 // SetThreadName
 //
+function IsDebuggerPresent : BOOL; stdcall; external kernel32 name 'IsDebuggerPresent';
 procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Cardinal(-1));
 // http://www.codeproject.com/Articles/8549/Name-your-threads-in-the-VC-debugger-thread-list
 type
@@ -234,6 +246,33 @@ begin
    FindClose(searchRec);
 end;
 
+{$ifdef FPC}
+// Format
+//
+function Format(const Fmt : UnicodeString; const Args : Array of const) : UnicodeString;
+begin
+   Result:=SysUtils.Format(fmt, args);
+end;
+
+// VarCopy
+//
+procedure VarCopy(var dest : Variant; const src : Variant);
+begin
+   dest:=src;
+end;
+{$endif}
+
+// TryTextToFloat
+//
+function TryTextToFloat(const s : PWideChar; var value : Extended; const formatSettings : TFormatSettings) : Boolean;
+begin
+   {$ifdef FPC}
+   Result:=TryStrToFloat(s, value, formatSettings);
+   {$else}
+   Result:=TextToFloat(s, value, fvExtended, formatSettings)
+   {$endif}
+end;
+
 // ------------------
 // ------------------ TPath ------------------
 // ------------------
@@ -245,9 +284,11 @@ class function TPath.GetTempFileName : UnicodeString;
 var
    tempPath, tempFileName : array [0..MAX_PATH] of WideChar; // Buf sizes are MAX_PATH+1
 begin
-   if Windows.GetTempPath(MAX_PATH, @tempPath[0])=0 then
-      tempPath:='.'; // Current directory
-   if Windows.GetTempFileName(@tempPath[0], 'DWS', 0, tempFileName)=0 then
+   if Windows.GetTempPath(MAX_PATH, @tempPath[0])=0 then begin
+      tempPath[1]:='.'; // Current directory
+      tempPath[2]:=#0;
+   end;
+   if Windows.GetTempFileNameW(@tempPath[0], 'DWS', 0, tempFileName)=0 then
       RaiseLastOSError; // should never happen
    Result:=tempFileName;
 {$ELSE}

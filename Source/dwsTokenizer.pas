@@ -34,7 +34,7 @@ type
      ttLAZY, ttVAR, ttCONST, ttRESOURCESTRING,
      ttTYPE, ttRECORD, ttARRAY, ttSET, ttDOT, ttDOTDOT, ttOF, ttENUM, ttFLAGS,
      ttTRY, ttEXCEPT, ttRAISE, ttFINALLY, ttON, ttREAD, ttWRITE, ttPROPERTY,
-     ttFUNCTION, ttPROCEDURE, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttOPERATOR,
+     ttFUNCTION, ttPROCEDURE, ttCONSTRUCTOR, ttDESTRUCTOR, ttMETHOD, ttLAMBDA, ttOPERATOR,
      ttCLASS, ttNIL, ttIS, ttAS, ttIMPLEMENTS, ttINDEX, ttOBJECT,
      ttVIRTUAL, ttOVERRIDE, ttREINTRODUCE, ttINHERITED, ttFINAL, ttNEW,
      ttABSTRACT, ttSEALED, ttSTATIC, ttPARTIAL, ttDEPRECATED, ttOVERLOAD,
@@ -48,7 +48,7 @@ type
      ttAND, ttOR, ttXOR, ttIMPLIES, ttDIV, ttMOD, ttNOT, ttSHL, ttSHR, ttSAR,
      ttPLUS, ttMINUS,
      ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttDOLLAR, ttEXCLAMATION, ttQUESTION,
-     ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
+     ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ, ttEQGTR,
      ttLESSLESS, ttGTRGTR,
      ttSEMI, ttCOMMA, ttCOLON,
      ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
@@ -269,7 +269,7 @@ const
      'LAZY', 'VAR', 'CONST', 'RESOURCESTRING',
      'TYPE', 'RECORD', 'ARRAY', 'SET', '.', '..', 'OF', 'ENUM', 'FLAGS',
      'TRY', 'EXCEPT', 'RAISE', 'FINALLY', 'ON', 'READ', 'WRITE', 'PROPERTY',
-     'FUNCTION', 'PROCEDURE', 'CONSTRUCTOR', 'DESTRUCTOR', 'METHOD', 'OPERATOR',
+     'FUNCTION', 'PROCEDURE', 'CONSTRUCTOR', 'DESTRUCTOR', 'METHOD', 'LAMBDA', 'OPERATOR',
      'CLASS', 'NIL', 'IS', 'AS', 'IMPLEMENTS', 'INDEX', 'OBJECT',
      'VIRTUAL', 'OVERRIDE', 'REINTRODUCE', 'INHERITED', 'FINAL', 'NEW',
      'ABSTRACT', 'SEALED', 'STATIC', 'PARTIAL', 'DEPRECATED', 'OVERLOAD',
@@ -283,7 +283,7 @@ const
      'AND', 'OR', 'XOR', 'IMPLIES', 'DIV', 'MOD', 'NOT', 'SHL', 'SHR', 'SAR',
      '+', '-',
      '*', '/', '%', '^', '@', '$', '!', '?',
-     '=', '<>', '>', '>=', '<', '<=',
+     '=', '<>', '>', '>=', '<', '<=', '=>',
      '<<', '>>',
      ';', ',', ':',
      ':=', '+=', '-=', '*=', '/=',
@@ -497,7 +497,7 @@ function TTokenBuffer.ToInt64 : Int64;
 
    function ComplexToInt64(var buffer : TTokenBuffer) : Int64;
    begin
-      Result:=StrToInt64(ToStr);
+      Result:=StrToInt64(buffer.ToStr);
    end;
 
 var
@@ -527,7 +527,7 @@ var
    buf : Extended;
 begin
    AppendChar(#0);
-   if not TextToFloat(PWideChar(@Buffer[0]), buf, fvExtended, cFormatSettings) then
+   if not TryTextToFloat(PWideChar(@Buffer[0]), buf, cFormatSettings) then
       raise EConvertError.Create('');
    Result:=buf;
 end;
@@ -589,7 +589,11 @@ begin
      ']': Result := ttARIGHT;
      '!': Result := ttEXCLAMATION;
      '?': Result := ttQUESTION;
-     '=': Result := ttEQ;
+     '=': if Len=1 then
+            Result := ttEQ
+         else if Len=2 then
+            if Buffer[1]='>' then
+               Result := ttEQGTR;
      '<':
          if Len=1 then // '<'
             Result := ttLESS
@@ -637,7 +641,7 @@ const
       ttFORWARD, ttFUNCTION, ttHELPER,
       ttIF, ttIMPLIES, ttIMPLEMENTS, ttIN, ttINITIALIZATION, ttINVARIANTS,
       ttIS, ttINHERITED, ttINDEX, ttINTERFACE, ttIMPLEMENTATION,
-      ttLAZY,
+      ttLAMBDA, ttLAZY,
       ttMETHOD, ttMOD,
       ttNEW, ttNOT, ttNIL,
       ttOBJECT, ttOF, ttOLD, ttON, ttOPERATOR, ttOR, ttOVERLOAD, ttOVERRIDE,

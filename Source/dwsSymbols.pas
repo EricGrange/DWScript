@@ -112,7 +112,7 @@ type
 
    TExecutionStatusResult = (esrNone, esrExit, esrBreak, esrContinue);
 
-   TExprBaseEnumeratorProc = reference to procedure (parent, expr : TExprBase; var abort : Boolean);
+   TExprBaseEnumeratorProc = procedure (parent, expr : TExprBase; var abort : Boolean) of object;
 
    // Base class for all Exprs
    TExprBase = class (TRefCountedObject)
@@ -144,7 +144,8 @@ type
 
          class function CallStackToString(const callStack : TdwsExprLocationArray) : UnicodeString; static;
 
-         procedure RecursiveEnumerateSubExprs(const callback : TExprBaseEnumeratorProc);
+         // returns True if aborted
+         function RecursiveEnumerateSubExprs(const callback : TExprBaseEnumeratorProc) : Boolean;
          function IndexOfSubExpr(expr : TExprBase) : Integer;
    end;
 
@@ -237,8 +238,8 @@ type
          FSign : TAddrGeneratorSign;
 
       public
-         constructor CreatePositive(aLevel : SmallInt; anInitialSize : Integer = 0);
-         constructor CreateNegative(aLevel : SmallInt);
+         class function CreatePositive(aLevel : SmallInt; anInitialSize : Integer = 0) : TAddrGeneratorRec; static;
+         class function CreateNegative(aLevel : SmallInt) : TAddrGeneratorRec; static;
 
          function GetStackAddr(size : Integer) : Integer;
 
@@ -538,7 +539,9 @@ type
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
    end;
 
-   TFuncKind = (fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod);
+   TFuncKind = (fkFunction, fkProcedure,
+                fkConstructor, fkDestructor, fkMethod,
+                fkLambda);
 
    // Record used for TFuncSymbol.Generate
    PParamRec = ^TParamRec;
@@ -1652,7 +1655,7 @@ type
 
 const
    cFuncKindToString : array [Low(TFuncKind)..High(TFuncKind)] of UnicodeString = (
-      'function', 'procedure', 'constructor', 'destructor', 'method' );
+      'function', 'procedure', 'constructor', 'destructor', 'method', 'lambda' );
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1718,14 +1721,14 @@ end;
 
 // RecursiveEnumerateSubExprs
 //
-procedure TExprBase.RecursiveEnumerateSubExprs(const callback : TExprBaseEnumeratorProc);
+function TExprBase.RecursiveEnumerateSubExprs(const callback : TExprBaseEnumeratorProc) : Boolean;
 var
    i : Integer;
    abort : Boolean;
    base, expr : TExprBase;
    stack : TSimpleStack<TExprBase>;
 begin
-   if Self=nil then Exit;
+   if Self=nil then Exit(False);
    stack:=TSimpleStack<TExprBase>.Create;
    try
       abort:=False;
@@ -1738,13 +1741,14 @@ begin
             if expr<>nil then begin
                stack.Push(expr);
                callback(base, expr, abort);
-               if abort then Exit;
+               if abort then Exit(True);
             end;
          end;
       until stack.Count=0;
    finally
       stack.Free;
    end;
+   Result:=False;
 end;
 
 // IndexOfSubExpr
@@ -2935,12 +2939,13 @@ end;
 function TFuncSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 const
    cCompatibleKinds : array [TFuncKind, TFuncKind] of Boolean =
-      //  fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod
-      ( (     True,      False,        False,         False,      True ),       // fkFunction
-        (     False,     True,         False,         False,      True ),       // fkProcedure
-        (     False,     False,        True,          False,      False),       // fkConstructor
-        (     False,     False,        False,         True,       False),       // fkDestructor
-        (     True,      True,         False,         False,      True )  );    // fkMethod
+      //  fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod, fkLambda
+      ( (     True,      False,        False,         False,      True,     True),      // fkFunction
+        (     False,     True,         False,         False,      True,     True),      // fkProcedure
+        (     False,     False,        True,          False,      False,    False),     // fkConstructor
+        (     False,     False,        False,         True,       False,    False),     // fkDestructor
+        (     True,      True,         False,         False,      True,     True),      // fkMethod
+        (     True,      True,         False,         False,      True,     True) );    // fkLambda
 var
    funcSym : TFuncSymbol;
    i : Integer;
@@ -5192,20 +5197,20 @@ end;
 
 // CreatePositive
 //
-constructor TAddrGeneratorRec.CreatePositive(aLevel : SmallInt; anInitialSize: Integer = 0);
+class function TAddrGeneratorRec.CreatePositive(aLevel : SmallInt; anInitialSize: Integer = 0) : TAddrGeneratorRec;
 begin
-   FDataSize:=anInitialSize;
-   FLevel:=aLevel;
-   FSign:=agsPositive;
+   Result.FDataSize:=anInitialSize;
+   Result.FLevel:=aLevel;
+   Result.FSign:=agsPositive;
 end;
 
 // CreateNegative
 //
-constructor TAddrGeneratorRec.CreateNegative(aLevel : SmallInt);
+class function TAddrGeneratorRec.CreateNegative(aLevel : SmallInt) : TAddrGeneratorRec;
 begin
-   FDataSize:=0;
-   FLevel:=aLevel;
-   FSign:=agsNegative;
+   Result.FDataSize:=0;
+   Result.FLevel:=aLevel;
+   Result.FSign:=agsNegative;
 end;
 
 // GetStackAddr

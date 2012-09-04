@@ -186,6 +186,8 @@ type
          procedure WriteTo(writer : TdwsJSONWriter); override;
 
       public
+         class function ParseString(const json : UnicodeString) : TdwsJSONImmediate; static;
+
          property AsString : UnicodeString read GetAsString write SetAsString;
          property IsNull : Boolean read GetIsNull write SetIsNull;
          property AsBoolean : Boolean read GetAsBoolean write SetAsBoolean;
@@ -1207,6 +1209,21 @@ begin
          writer.WriteNumber(FValue);
    else
       writer.WriteString(FValue);
+   end;
+end;
+
+// ParseString
+//
+class function TdwsJSONImmediate.ParseString(const json : UnicodeString) : TdwsJSONImmediate;
+var
+   value : TdwsJSONValue;
+begin
+   value:=TdwsJSONValue.ParseString(json);
+   if value is TdwsJSONImmediate then
+      Result:=TdwsJSONImmediate(value)
+   else begin
+      value.Free;
+      Result:=nil;
    end;
 end;
 

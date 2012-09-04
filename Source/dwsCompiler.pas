@@ -268,6 +268,9 @@ type
                           tcParameter, tcResult, tcOperand, tcExceptionClass,
                           tcProperty, tcHelper);
 
+   TdwsReadProcDeclOption = (pdoClassMethod, pdoType, pdoAnonymous, pdoLambda);
+   TdwsReadProcDeclOptions = set of TdwsReadProcDeclOption;
+
    TdwsUnitSection = (secMixed, secHeader, secInterface, secImplementation,
                       secInitialization, secFinalization, secEnd);
    TdwsStatementAction = (saNone, saNoSemiColon, saInterface, saImplementation, saEnd);
@@ -377,7 +380,7 @@ type
          function GetConstParamExpr(dataSym : TConstParamSymbol) : TByRefParamExpr;
 
          function GetSelfParamExpr(selfSym : TDataSymbol) : TVarExpr;
-                          function ReadAssign(token : TTokenType; var left : TDataExpr) : TNoResultExpr;
+         function ReadAssign(token : TTokenType; var left : TDataExpr) : TNoResultExpr;
          function ReadArrayType(const typeName : UnicodeString; typeContext : TdwsReadTypeContext) : TTypeSymbol;
          function ReadArrayConstant(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
          function ReadArrayMethod(const name : UnicodeString; const namePos : TScriptPos;
@@ -504,10 +507,11 @@ type
          // Don't want to add param symbols to dictionary when a method implementation (they get thrown away)
          procedure ReadParams(const hasParamMeth : THasParamSymbolMethod;
                               const addParamMeth : TAddParamSymbolMethod;
-                              forwardedParams : TParamsSymbolTable);
+                              forwardedParams : TParamsSymbolTable;
+                              expectedLambdaParams : TParamsSymbolTable);
          function ReadProcDecl(funcToken : TTokenType; const hotPos : TScriptPos;
-                               isClassMethod : Boolean = False;
-                               isType : Boolean = False; isAnonymous : Boolean = False) : TFuncSymbol;
+                               declOptions : TdwsReadProcDeclOptions = [];
+                               expectedLambdaParams : TParamsSymbolTable = nil) : TFuncSymbol;
          procedure ReadProcBody(funcSymbol : TFuncSymbol);
          procedure ReadProcEmpty(funcSymbol : TFuncSymbol);
          procedure ReadConditions(funcSymbol : TFuncSymbol; conditions : TSourceConditions;
@@ -697,8 +701,8 @@ const
 
    cTokenToVisibility : array [ttPRIVATE..ttPUBLISHED] of TdwsVisibility = (
       cvPrivate, cvProtected, cvPublic, cvPublished );
-   cTokenToFuncKind : array [ttFUNCTION..ttMETHOD] of TFuncKind = (
-      fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod );
+   cTokenToFuncKind : array [ttFUNCTION..ttLAMBDA] of TFuncKind = (
+      fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod, fkLambda );
 
 type
    TReachStatus = (rsReachable, rsUnReachable, rsUnReachableWarned);
@@ -1881,7 +1885,7 @@ begin
          token:=FTok.TestDeleteAny([ttPROCEDURE, ttFUNCTION, ttMETHOD]);
          case token of
             ttPROCEDURE, ttFUNCTION, ttMETHOD :
-               ReadProcBody(ReadProcDecl(token, hotPos, True));
+               ReadProcBody(ReadProcDecl(token, hotPos, [pdoClassMethod]));
          else
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
          end;
@@ -2455,8 +2459,8 @@ end;
 // ReadProcDecl
 //
 function TdwsCompiler.ReadProcDecl(funcToken : TTokenType; const hotPos : TScriptPos;
-              isClassMethod : Boolean = False; isType : Boolean = False;
-              isAnonymous : Boolean = False) : TFuncSymbol;
+                                   declOptions : TdwsReadProcDeclOptions = [];
+                                   expectedLambdaParams : TParamsSymbolTable = nil) : TFuncSymbol;
 var
    funcKind : TFuncKind;
    name : UnicodeString;
@@ -2470,10 +2474,12 @@ begin
 
    funcKind:=cTokenToFuncKind[funcToken];
    funcPos:=hotPos;
+   if funcToken=ttLAMBDA then
+      Include(declOptions, pdoLambda);
 
-   if not isType then begin
+   if not (pdoType in declOptions) then begin
       // Find existing symbol for function name (if any)
-      if isAnonymous then begin
+      if pdoAnonymous in declOptions then begin
          name:='';
       end else begin
          if not FTok.TestDeleteNamePos(name, funcPos) then begin
@@ -2498,12 +2504,12 @@ begin
 
       // Store reference to class in dictionary
       RecordSymbolUse(sym, funcPos, [suReference]);
-      Result:=ReadMethodImpl(TCompositeTypeSymbol(sym), funcKind, isClassMethod);
+      Result:=ReadMethodImpl(TCompositeTypeSymbol(sym), funcKind, pdoClassMethod in declOptions);
 
    end else begin
 
       // Read normal procedure/function declaration
-      if isClassMethod or (funcKind in [fkConstructor, fkDestructor, fkMethod]) then
+      if (pdoClassMethod in declOptions) or (funcKind in [fkConstructor, fkDestructor, fkMethod]) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ImplClassNameExpected);
 
       forwardedSym:=nil;
@@ -2522,20 +2528,21 @@ begin
       if (forwardedSym=nil) and (overloadFuncSym=nil) then
          CheckName(name, funcPos);
 
-      if isType then
+      if pdoType in declOptions then
          Result := TSourceFuncSymbol.Create('', funcKind, -1)
       else Result := TSourceFuncSymbol.Create(name, funcKind, FMainProg.NextStackLevel(FProg.Level));
       try
          // Don't add params to dictionary when function is forwarded. It is already declared.
          if forwardedSym<>nil then
-            ReadParams(Result.HasParam, Result.AddParam, forwardedSym.Params)
-         else ReadParams(Result.HasParam, Result.AddParam, nil);
+            ReadParams(Result.HasParam, Result.AddParam, forwardedSym.Params, nil)
+         else ReadParams(Result.HasParam, Result.AddParam, nil, expectedLambdaParams);
 
-         Result.Typ:=ReadFuncResultType(funcKind);
+         if (funcToken<>ttLAMBDA) or FTok.Test(ttCOLON) then
+            Result.Typ:=ReadFuncResultType(funcKind);
 
-         if not isAnonymous then begin
+         if not (pdoAnonymous in declOptions) then begin
                 
-            if isType then begin
+            if pdoType in declOptions then begin
 
                if FTok.TestDelete(ttOF) then begin
                   if FTok.TestDelete(ttOBJECT) then
@@ -2664,7 +2671,7 @@ begin
    Result.DeclarationPos:=methPos;
 
    try
-      ReadParams(Result.HasParam, Result.AddParam, nil);
+      ReadParams(Result.HasParam, Result.AddParam, nil, nil);
 
       Result.Typ:=ReadFuncResultType(funcKind);
       ReadSemiColon;
@@ -2735,7 +2742,7 @@ begin
    funcResult:=TSourceMethodSymbol.Create(name, funcKind, ownerSym, aVisibility, isClassMethod);
    funcResult.DeclarationPos:=methPos;
    try
-      ReadParams(funcResult.HasParam, funcResult.AddParam, nil);
+      ReadParams(funcResult.HasParam, funcResult.AddParam, nil, nil);
 
       funcResult.Typ:=ReadFuncResultType(funcKind);
       ReadSemiColon;
@@ -2941,7 +2948,7 @@ begin
       try
          // Don't store these params to Dictionary. They will become invalid when the method is freed.
          if not FTok.TestDelete(ttSEMI) then begin
-            ReadParams(tmpMeth.HasParam, tmpMeth.AddParam, Result.Params);
+            ReadParams(tmpMeth.HasParam, tmpMeth.AddParam, Result.Params, nil);
             tmpMeth.Typ:=ReadFuncResultType(funcKind);
             ReadSemiColon;
          end;
@@ -2958,7 +2965,7 @@ begin
    end else begin
       // keep compiling a method that wasn't declared in class
       if not FTok.TestDelete(ttSEMI) then begin
-         ReadParams(Result.HasParam, Result.AddParam, nil);
+         ReadParams(Result.HasParam, Result.AddParam, nil, nil);
          Result.Typ:=ReadFuncResultType(funcKind);
          ReadSemiColon;
       end;
@@ -3124,10 +3131,12 @@ begin
             FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttBEGIN);
          try
             // Read procedure body
-            if not FTok.TestDelete(ttBEGIN) then begin
-               if FTok.Test(ttFORWARD) then
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_FuncForwardAlreadyExists)
-               else FMsgs.AddCompilerStop(FTok.HotPos, CPE_BeginExpected);
+            if funcSymbol.Kind<>fkLambda then begin
+               if not FTok.TestDelete(ttBEGIN) then begin
+                  if FTok.Test(ttFORWARD) then
+                     FMsgs.AddCompilerStop(FTok.HotPos, CPE_FuncForwardAlreadyExists)
+                  else FMsgs.AddCompilerStop(FTok.HotPos, CPE_BeginExpected);
+               end;
             end;
 
             proc.SetBeginPos(FTok.HotPos);
@@ -5819,7 +5828,7 @@ function TdwsCompiler.ReadFuncResultType(funcKind : TFuncKind) : TTypeSymbol;
 begin
    Result:=nil;
    if FTok.TestDelete(ttCOLON) then begin
-      if not (funcKind in [fkFunction, fkMethod]) then
+      if not (funcKind in [fkFunction, fkMethod, fkLambda]) then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_NoResultTypeExpected);
       Result:=ReadType('', tcResult);
    end else if funcKind=fkFunction then begin
@@ -7878,7 +7887,7 @@ function TdwsCompiler.ReadType(const typeName : UnicodeString; typeContext : Tdw
 
    function ReadProcType(token : TTokenType; const hotPos : TScriptPos) : TTypeSymbol;
    begin
-      Result:=ReadProcDecl(token, hotPos, False, True);
+      Result:=ReadProcDecl(token, hotPos, [pdoType]);
       Result.SetName(typeName);
       (Result as TFuncSymbol).SetIsType;
       // close declaration context
@@ -8416,9 +8425,59 @@ const
    var
       funcSym : TFuncSymbol;
    begin
-      funcSym:=ReadProcDecl(funcType, hotPos, False, False, True);
+      funcSym:=ReadProcDecl(funcType, hotPos, [pdoAnonymous]);
       FProg.Table.AddSymbol(funcSym);
       ReadProcBody(funcSym);
+      Result:=TAnonymousFuncRefExpr.Create(FProg, GetFuncExpr(funcSym, nil));
+   end;
+
+   function ReadLambda(funcType : TTokenType; const hotPos : TScriptPos) : TAnonymousFuncRefExpr;
+   var
+      funcSym : TFuncSymbol;
+      expectingParams : TParamsSymbolTable;
+      resultExpr : TTypedExpr;
+      resultVar : TVarExpr;
+      proc : TdwsProcedure;
+      procPos : TScriptPos;
+      oldProg : TdwsProgram;
+   begin
+      if expecting is TFuncSymbol then
+         expectingParams:=TFuncSymbol(expecting).Params
+      else expectingParams:=nil;
+
+      funcSym:=ReadProcDecl(funcType, hotPos, [pdoAnonymous], expectingParams);
+      FProg.Table.AddSymbol(funcSym);
+
+      if (funcSym.Typ=nil) and (expecting is TFuncSymbol) then
+         funcSym.Typ:=TFuncSymbol(expecting).Typ;
+
+      if FTok.TestDelete(ttEQGTR) then begin
+
+         FTok.TestName;
+         procPos:=FTok.HotPos;
+
+         proc:=TdwsProcedure.Create(FProg);
+         proc.SetBeginPos(procPos);
+         proc.AssignTo(funcSym);
+
+         oldProg:=FProg;
+         FProg:=proc;
+         try
+            resultExpr:=ReadExpr(funcSym.Typ);
+         finally
+            FProg:=oldProg;
+         end;
+         if funcSym.Typ=nil then
+            funcSym.Typ:=resultExpr.Typ;
+
+         resultVar:=TVarExpr.CreateTyped(FProg, proc.Func.Result);
+         proc.Expr:=CreateAssign(procPos, ttASSIGN, resultVar, resultExpr);
+
+      end else begin
+
+         ReadProcBody(funcSym);
+
+      end;
       Result:=TAnonymousFuncRefExpr.Create(FProg, GetFuncExpr(funcSym, nil));
    end;
 
@@ -8489,7 +8548,7 @@ var
    hotPos : TScriptPos;
 begin
    tt:=FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
-                     ttTRUE, ttFALSE, ttNIL, ttFUNCTION, ttPROCEDURE,
+                     ttTRUE, ttFALSE, ttNIL, ttFUNCTION, ttPROCEDURE, ttLAMBDA,
                      ttRECORD]);
    if tt<>ttNone then
       FTok.KillToken;
@@ -8531,6 +8590,11 @@ begin
          if not (coAllowClosures in Options) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_LocalFunctionAsDelegate);
          Result:=ReadAnonymousMethod(tt, FTok.HotPos);
+      end;
+      ttLAMBDA : begin
+         if not (coAllowClosures in Options) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_LocalFunctionAsDelegate);
+         Result:=ReadLambda(tt, FTok.HotPos);
       end;
       ttRECORD :
          Result:=ReadAnonymousRecord;
@@ -8739,24 +8803,73 @@ end;
 //
 procedure TdwsCompiler.ReadParams(const hasParamMeth : THasParamSymbolMethod;
                                   const addParamMeth : TAddParamSymbolMethod;
-                                  forwardedParams : TParamsSymbolTable);
+                                  forwardedParams : TParamsSymbolTable;
+                                  expectedLambdaParams : TParamsSymbolTable);
 var
-   i : Integer;
+   lazyParam, varParam, constParam : Boolean;
+
+   procedure GenerateParam(const curName : String; const scriptPos : TScriptPos;
+                           paramType : TTypeSymbol; const typScriptPos : TScriptPos;
+                           var defaultExpr : TTypedExpr);
+   var
+      paramSym : TParamSymbol;
+   begin
+      if lazyParam then begin
+         paramSym := TLazyParamSymbol.Create(curName, paramType)
+      end else if varParam then begin
+         paramSym := TVarParamSymbol.Create(curName, paramType)
+      end else if constParam then begin
+         paramSym := TConstParamSymbol.Create(curName, paramType)
+      end else begin
+         if Assigned(defaultExpr) then begin
+            paramSym := TParamSymbolWithDefaultValue.Create(curName, paramType,
+                     (defaultExpr as TConstExpr).Data[FExec],
+                     (defaultExpr as TConstExpr).Addr[FExec]);
+         end else begin
+            paramSym := TParamSymbol.Create(curName, paramType);
+         end;
+      end;
+
+      if hasParamMeth(paramSym) then
+         FMsgs.AddCompilerErrorFmt(scriptPos, CPE_NameAlreadyExists, [curName]);
+      addParamMeth(paramSym);
+
+      // Enter Field symbol in dictionary
+      if coSymbolDictionary in FOptions then begin
+         // add parameter symbol
+         if forwardedParams=nil then begin
+            // no forward, our param symbol is the actual one
+            RecordSymbolUse(paramSym, scriptPos, [suDeclaration])
+         end else begin
+            // find the original param symbol and register it
+            // in case of mismatch, RecordSymbolUse will discard
+            // a nil automatically, so we don't have to check here
+            RecordSymbolUse(forwardedParams.FindLocal(curName),
+                            scriptPos, [suReference]);
+         end;
+         // record field's type symbol
+         if typScriptPos.Defined then
+            RecordSymbolUse(paramType, typScriptPos, [suReference])
+         else RecordSymbolUse(paramType, scriptPos, [suReference, suImplicit])
+      end;
+   end;
+
+var
+   i, paramIdx : Integer;
    names : TStringList;
    typ : TTypeSymbol;
-   lazyParam, varParam, constParam : Boolean;
    onlyDefaultParamsNow : Boolean;
    posArray : TScriptPosArray;
    typScriptPos, exprPos : TScriptPos;
-   paramSym : TParamSymbol;
    defaultExpr : TTypedExpr;
-   curName : String;
+   expectedParam : TParamSymbol;
 begin
    if FTok.TestDelete(ttBLEFT) then begin
       if not FTok.TestDelete(ttBRIGHT) then begin
          // At least one argument was found
          names:=TStringList.Create;
          try
+            paramIdx:=0;
             onlyDefaultParamsNow:=False;
             repeat
                lazyParam:=FTok.TestDelete(ttLAZY);
@@ -8770,15 +8883,32 @@ begin
 
                ReadNameList(names, posArray);
 
-               if not FTok.TestDelete(ttCOLON) then
+               if not FTok.TestDelete(ttCOLON) then begin
 
-                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected)
+                  if (expectedLambdaParams<>nil) and (paramIdx+names.Count-1<expectedLambdaParams.Count) then begin
 
-               else begin
+                     defaultExpr:=nil;
+                     for i:=0 to names.Count-1 do begin
+                        expectedParam:=expectedLambdaParams[paramIdx+i];
+                        if not (lazyParam or varParam or constParam) then begin
+                           lazyParam:=(expectedParam.ClassType=TLazyParamSymbol);
+                           varParam:=(expectedParam.ClassType=TVarParamSymbol);
+                           constParam:=(expectedParam.ClassType=TConstParamSymbol);
+                        end;
+                        GenerateParam(names[i], posArray[i], expectedParam.Typ, cNullPos, defaultExpr);
+                     end;
 
-                  defaultExpr:=nil;
+                  end else begin
+
+                     FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected)
+
+                  end;
+
+               end else begin
 
                   typ:=ReadType('', tcParameter);
+
+                  defaultExpr:=nil;
                   try
                      typScriptPos:=FTok.HotPos;
 
@@ -8819,51 +8949,17 @@ begin
                      if (defaultExpr<>nil) and not (defaultExpr is TConstExpr) then
                         defaultExpr:=defaultExpr.OptimizeToTypedExpr(Fprog, FExec, exprPos);
 
-                     for i:=0 to names.Count-1 do begin
-                        curName:=names[i];
-
-                        if lazyParam then begin
-                           paramSym := TLazyParamSymbol.Create(curName, Typ)
-                        end else if varParam then begin
-                           paramSym := TVarParamSymbol.Create(curName, Typ)
-                        end else if constParam then begin
-                           paramSym := TConstParamSymbol.Create(curName, Typ)
-                        end else begin
-                           if Assigned(defaultExpr) then begin
-                              paramSym := TParamSymbolWithDefaultValue.Create(curName, Typ,
-                                       (defaultExpr as TConstExpr).Data[FExec],
-                                       (defaultExpr as TConstExpr).Addr[FExec]);
-                           end else begin
-                              paramSym := TParamSymbol.Create(curName, Typ);
-                           end;
-                        end;
-
-                        if hasParamMeth(paramSym) then
-                           FMsgs.AddCompilerErrorFmt(posArray[i], CPE_NameAlreadyExists, [curName]);
-                        addParamMeth(paramSym);
-
-                        // Enter Field symbol in dictionary
-                        if coSymbolDictionary in FOptions then begin
-                           // add parameter symbol
-                           if forwardedParams=nil then begin
-                              // no forward, our param symbol is the actual one
-                              RecordSymbolUse(paramSym, posArray[i], [suDeclaration])
-                           end else begin
-                              // find the original param symbol and register it
-                              // in case of mismatch, RecordSymbolUse will discard
-                              // a nil automatically, so we don't have to check here
-                              RecordSymbolUse(forwardedParams.FindLocal(curName),
-                                              posArray[i], [suReference]);
-                           end;
-                           // record field's type symbol
-                           RecordSymbolUse(typ, typScriptPos, [suReference]);
-                        end;
-                     end;
+                     for i:=0 to names.Count-1 do
+                        GenerateParam(names[i], posArray[i], typ, typScriptPos, defaultExpr);
 
                   finally
                      defaultExpr.Free;
                   end;
+
                end;
+
+               Inc(paramIdx, names.Count);
+
             until not FTok.TestDelete(ttSEMI);
 
          finally
@@ -8873,6 +8969,20 @@ begin
          if not FTok.TestDelete(ttBRIGHT) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
       end;
+
+   end else if (expectedLambdaParams<>nil) and (expectedLambdaParams.Count>0) then begin
+
+      // implicit anonmous lambda params
+      defaultExpr:=nil;
+      for i:=0 to expectedLambdaParams.Count-1 do begin
+         expectedParam:=expectedLambdaParams[i];
+         lazyParam:=(expectedParam.ClassType=TLazyParamSymbol);
+         varParam:=(expectedParam.ClassType=TVarParamSymbol);
+         constParam:=(expectedParam.ClassType=TConstParamSymbol);
+         GenerateParam('_implicit_'+expectedParam.Name, cNullPos,
+                       expectedParam.Typ, cNullPos, defaultExpr);
+      end;
+
    end;
 end;
 
@@ -9509,7 +9619,7 @@ begin
          fkProcedure : FMsgs.AddCompilerError(FTok.HotPos, CPE_ProcedureExpected);
          fkConstructor : FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstructorExpected);
          fkDestructor : FMsgs.AddCompilerError(FTok.HotPos, CPE_DestructorExpected);
-         fkMethod : FMsgs.AddCompilerError(FTok.HotPos, CPE_MethodExpected);
+         fkMethod, fkLambda : FMsgs.AddCompilerError(FTok.HotPos, CPE_MethodExpected);
       else
          Assert(False);
       end;

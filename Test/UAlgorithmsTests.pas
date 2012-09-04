@@ -37,7 +37,12 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-procedure EmptyCallBack(parent, expr : TExprBase; var abort : Boolean);
+type
+   TEnumeratorEmptyCallBack = class
+      procedure EmptyCallBack(parent, expr : TExprBase; var abort : Boolean);
+   end;
+
+procedure TEnumeratorEmptyCallBack.EmptyCallBack(parent, expr : TExprBase; var abort : Boolean);
 begin
    // just used for detecting crashes in subexpr tree navigation
 end;
@@ -121,8 +126,8 @@ begin
 
          CheckEquals('', prog.Msgs.AsInfo, FTests[i]);
 
-         (prog as TdwsProgram).InitExpr.RecursiveEnumerateSubExprs(EmptyCallBack);
-         (prog as TdwsProgram).Expr.RecursiveEnumerateSubExprs(EmptyCallBack);
+         (prog as TdwsProgram).InitExpr.RecursiveEnumerateSubExprs(TEnumeratorEmptyCallBack(nil).EmptyCallBack);
+         (prog as TdwsProgram).Expr.RecursiveEnumerateSubExprs(TEnumeratorEmptyCallBack(nil).EmptyCallBack);
 
       end;
 

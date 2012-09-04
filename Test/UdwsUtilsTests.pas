@@ -249,9 +249,9 @@ begin
    list.Add(nil);
    list.Add(nil);
    CheckEquals(2, list.Count);
-   list.Extract(0);
+   list.ExtractAt(0);
    CheckEquals(1, list.Count);
-   list.Extract(0);
+   list.ExtractAt(0);
    CheckEquals(0, list.Count);
    list.Free;
 end;

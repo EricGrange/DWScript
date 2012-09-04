@@ -43,7 +43,7 @@
       {$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
    {$ENDIF}
 {$ELSE}
-   {$MODE DELPHI}
+   {$mode delphi}
 {$ENDIF}
 
 {.$DEFINE PUREPASCAL}

@@ -2111,7 +2111,7 @@ begin
 
       // Return the right expression
       case meth.Kind of
-         fkFunction, fkProcedure, fkMethod:
+         fkFunction, fkProcedure, fkMethod, fkLambda:
             if meth.IsClassMethod then begin
                if not ForceStatic and meth.IsVirtual then
                   Result := TClassMethodVirtualExpr.Create(prog, scriptPos, meth, expr)
@@ -3660,12 +3660,12 @@ begin
             n:=FExecutions.Count;
             item:=FExecutions[n-1];
             if item.Exec=nil then begin
-               FExecutions.Extract(n-1);
+               FExecutions.ExtractAt(n-1);
                item.Free;
             end else begin
                if item.TimeOutAt<=currentTime then begin
                   item.Exec.Stop;
-                  FExecutions.Extract(n-1);
+                  FExecutions.ExtractAt(n-1);
                   item.Free;
                end else Break;
             end;

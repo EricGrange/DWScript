@@ -24,7 +24,7 @@ unit dwsErrors;
 interface
 
 uses
-   Classes, SysUtils, dwsStrings, dwsUtils;
+   Classes, SysUtils, dwsStrings, dwsUtils, dwsXPlatform;
 
 type
 
@@ -55,7 +55,7 @@ type
 
          const cLineMask = $FFFFF;
 
-         constructor Create(aSourceFile : TSourceFile; aLine, aCol : Integer);
+         class function Create(aSourceFile : TSourceFile; aLine, aCol : Integer) : TScriptPos; static;
 
          property Line : Integer read FLine write FLine;
          property Col : Integer read FCol write FCol;
@@ -320,11 +320,11 @@ implementation
 
 // Create
 //
-constructor TScriptPos.Create(aSourceFile : TSourceFile; aLine, aCol : Integer);
+class function TScriptPos.Create(aSourceFile : TSourceFile; aLine, aCol : Integer) : TScriptPos;
 begin
-   SourceFile:=aSourceFile;
-   FLine:=aLine;
-   FCol:=aCol;
+   Result.SourceFile:=aSourceFile;
+   Result.FLine:=aLine;
+   Result.FCol:=aCol;
 end;
 
 // SamePosAs

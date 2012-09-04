@@ -360,6 +360,7 @@ type
          function GetLines(i : Integer) : TBits; inline;
          function GetSourceName(i : Integer) : UnicodeString; inline;
 
+         procedure EnumeratorCallback(parent, expr : TExprBase; var abort : Boolean);
          procedure RegisterScriptPos(const scriptPos : TScriptPos);
 
          procedure ProcessProg(const prog : TdwsProgram);
@@ -1423,6 +1424,14 @@ begin
    Result:=FSources[i];
 end;
 
+// EnumeratorCallback
+//
+procedure TdwsBreakpointableLines.EnumeratorCallback(parent, expr : TExprBase; var abort : Boolean);
+begin
+   if expr is TBlockExprBase then Exit;
+   RegisterScriptPos(expr.ScriptPos);
+end;
+
 // RegisterScriptPos
 //
 procedure TdwsBreakpointableLines.RegisterScriptPos(const scriptPos : TScriptPos);
@@ -1460,30 +1469,21 @@ end;
 // ProcessProg
 //
 procedure TdwsBreakpointableLines.ProcessProg(const prog : TdwsProgram);
-var
-   enumerator : TExprBaseEnumeratorProc;
 begin
    if FProcessedProgs.IndexOf(prog)>=0 then Exit;
    FProcessedProgs.Add(prog);
 
    ProcessSymbolTable(prog.Table);
 
-   enumerator:=
-      procedure (parent, expr : TExprBase; var abort : Boolean)
-      begin
-         if expr is TBlockExprBase then Exit;
-         RegisterScriptPos(expr.ScriptPos);
-      end;
-
    if (prog.InitExpr.ScriptPos.SourceFile<>nil) and (prog.InitExpr.SubExprCount>0) then
-      prog.InitExpr.RecursiveEnumerateSubExprs(enumerator);
+      prog.InitExpr.RecursiveEnumerateSubExprs(EnumeratorCallback);
 
    RegisterScriptPos(prog.Expr.ScriptPos);
 
-   prog.Expr.RecursiveEnumerateSubExprs(enumerator);
+   prog.Expr.RecursiveEnumerateSubExprs(EnumeratorCallback);
 
    if prog is TdwsMainProgram then
-      TdwsMainProgram(prog).FinalExpr.RecursiveEnumerateSubExprs(enumerator);
+      TdwsMainProgram(prog).FinalExpr.RecursiveEnumerateSubExprs(EnumeratorCallback);
 end;
 
 // ProcessFuncSymbol
