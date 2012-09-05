@@ -34,7 +34,7 @@ type
    TTestCase = TestFrameWork.TTestCase;
    {$endif}
 
-procedure RegisterTest(const testName : UnicodeString; aTest : TTestCaseClass);
+procedure RegisterTest(const testName : String; aTest : TTestCaseClass);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -46,7 +46,7 @@ implementation
 
 // RegisterTest
 //
-procedure RegisterTest(const testName : UnicodeString; aTest : TTestCaseClass);
+procedure RegisterTest(const testName : String; aTest : TTestCaseClass);
 begin
    {$ifdef FPC}
    testregistry.RegisterTest(aTest);
