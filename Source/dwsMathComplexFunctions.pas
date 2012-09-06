@@ -21,7 +21,7 @@ unit dwsMathComplexFunctions;
 interface
 
 uses dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators, dwsStack,
-   dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs, dwsUnitSymbols, dwsCoreExprs;
+   dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs, dwsUnitSymbols;
 
 type
    TComplexMakeExpr = class(TInternalMagicDataFunction)
@@ -31,7 +31,7 @@ type
 
    TComplexToStrExpr = class(TInternalMagicStringFunction)
       public
-         procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
+         procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
    end;
 
    TAbsComplexExpr = class(TUnaryOpFloatExpr)
@@ -135,7 +135,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TComplexToStrExpr.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
+procedure TComplexToStrExpr.DoEvalAsString(args : TExprBaseList; var Result : String);
 var
    cmplxData : TDataPtr;
    r, i : Double;

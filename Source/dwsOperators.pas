@@ -20,7 +20,7 @@ unit dwsOperators;
 
 interface
 
-uses dwsSymbols, dwsTokenizer, dwsStrings, dwsExprs, dwsCoreExprs, dwsErrors;
+uses dwsSymbols, dwsTokenizer, dwsExprs, dwsCoreExprs;
 
 type
 

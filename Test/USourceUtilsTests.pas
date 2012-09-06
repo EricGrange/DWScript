@@ -2,9 +2,10 @@ unit USourceUtilsTests;
 
 interface
 
-uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
-   dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsSuggestions;
+uses Classes, SysUtils, dwsXPlatformTests,
+   dwsComp, dwsCompiler, dwsExprs,
+   dwsTokenizer, dwsErrors, dwsUtils, Variants,
+   dwsSymbols, dwsSuggestions;
 
 type
 
@@ -369,6 +370,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   TestFramework.RegisterTest('SourceUtilsTests', TSourceUtilsTests.Suite);
+   RegisterTest('SourceUtilsTests', TSourceUtilsTests);
 
 end.

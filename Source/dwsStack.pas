@@ -106,7 +106,7 @@ type
          procedure WriteIntValue_BaseRelative(DestAddr: Integer; const pValue: PInt64); overload; inline;
          procedure WriteFloatValue(DestAddr: Integer; const Value: Double); inline;
          procedure WriteFloatValue_BaseRelative(DestAddr: Integer; const Value: Double); inline;
-         procedure WriteStrValue(DestAddr: Integer; const Value: UnicodeString); inline;
+         procedure WriteStrValue(DestAddr: Integer; const Value: String); inline;
          procedure WriteBoolValue(DestAddr: Integer; const Value: Boolean); inline;
          procedure WriteInterfaceValue(DestAddr: Integer; const intf: IUnknown);
 
@@ -118,7 +118,7 @@ type
          function  ReadIntAsFloatValue_BaseRelative(SourceAddr: Integer) : Double; inline;
          function  ReadFloatValue(SourceAddr: Integer) : Double; inline;
          function  ReadFloatValue_BaseRelative(SourceAddr: Integer) : Double; inline;
-         procedure ReadStrValue(SourceAddr: Integer; var Result : UnicodeString);
+         procedure ReadStrValue(SourceAddr: Integer; var Result : String);
          function  ReadBoolValue(SourceAddr: Integer): Boolean;
          procedure ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown);
 
@@ -127,7 +127,7 @@ type
          function  PointerToInterfaceValue(addr : Integer) : PIUnknown;
 
          procedure IncIntValue_BaseRelative(destAddr : Integer; const value : Int64); inline;
-         procedure AppendStringValue_BaseRelative(destAddr : Integer; const value : UnicodeString);
+         procedure AppendStringValue_BaseRelative(destAddr : Integer; const value : String);
 
          procedure PushBp(Level, Bp: Integer); inline;
          function  GetSavedBp(Level: Integer): Integer; inline;
@@ -210,9 +210,9 @@ begin
             Result:=TVarData(v1).VDouble=TVarData(v2).VDouble;
          varUString :
             {$ifdef FPC}
-            Result:=UnicodeString(TVarData(v1).VString)=UnicodeString(TVarData(v2).VString);
+            Result:=String(TVarData(v1).VString)=String(TVarData(v2).VString);
             {$else}
-            Result:=UnicodeString(TVarData(v1).VUString)=UnicodeString(TVarData(v2).VUString);
+            Result:=String(TVarData(v1).VUString)=String(TVarData(v2).VUString);
             {$endif}
          varUnknown :
             Result:=TVarData(v1).VUnknown=TVarData(v2).VUnknown;
@@ -512,16 +512,16 @@ end;
 
 // ReadStrValue
 //
-procedure TStackMixIn.ReadStrValue(SourceAddr: Integer; var Result : UnicodeString);
+procedure TStackMixIn.ReadStrValue(SourceAddr: Integer; var Result : String);
 var
    varData : PVarData;
 begin
    varData:=@Data[SourceAddr];
    if varData.VType=varUString then
       {$ifdef FPC}
-      Result:=UnicodeString(varData.VString)
+      Result:=String(varData.VString)
       {$else}
-      Result:=UnicodeString(varData.VUString)
+      Result:=String(varData.VUString)
       {$endif}
    else Result:=PVariant(varData)^;
 end;
@@ -596,7 +596,7 @@ end;
 
 // AppendStringValue_BaseRelative
 //
-procedure TStackMixIn.AppendStringValue_BaseRelative(destAddr : Integer; const value : UnicodeString);
+procedure TStackMixIn.AppendStringValue_BaseRelative(destAddr : Integer; const value : String);
 
    procedure Fallback(varData : PVarData);
    begin
@@ -609,9 +609,9 @@ begin
    varData:=@FBaseData[destAddr];
    if varData.VType=varUString then
       {$ifdef FPC}
-      UnicodeString(varData.VString):=UnicodeString(varData.VString)+value
+      String(varData.VString):=String(varData.VString)+value
       {$else}
-      UnicodeString(varData.VUString):=UnicodeString(varData.VUString)+value
+      String(varData.VUString):=String(varData.VUString)+value
       {$endif}
    else Fallback(varData);
 end;
@@ -697,16 +697,16 @@ end;
 
 // WriteStrValue
 //
-procedure TStackMixIn.WriteStrValue(DestAddr: Integer; const Value: UnicodeString);
+procedure TStackMixIn.WriteStrValue(DestAddr: Integer; const Value: String);
 var
    varData : PVarData;
 begin
    varData:=@Data[DestAddr];
    if varData.VType=varUString then
       {$ifdef FPC}
-      UnicodeString(varData.VString):=Value
+      String(varData.VString):=Value
       {$else}
-      UnicodeString(varData.VUString):=Value
+      String(varData.VUString):=Value
       {$endif}
    else PVariant(varData)^:=Value;
 end;
@@ -744,13 +744,13 @@ begin
    varData:=@Data[DestAddr];
    if varData.VType=varUString then
       {$ifdef FPC}
-      if index>Length(UnicodeString(varData.VString)) then
+      if index>Length(String(varData.VString)) then
          Exit(False)
-      else UnicodeString(varData.VString)[index]:=c
+      else String(varData.VString)[index]:=c
       {$else}
-      if index>Length(UnicodeString(varData.VUString)) then
+      if index>Length(String(varData.VUString)) then
          Exit(False)
-      else UnicodeString(varData.VUString)[index]:=c
+      else String(varData.VUString)[index]:=c
       {$endif}
    else PVariant(varData)^[index]:=c;
    Result:=True;

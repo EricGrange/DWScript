@@ -2,7 +2,7 @@ unit UCOMConnectorTests;
 
 interface
 
-uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
+uses Windows, Classes, SysUtils,dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
    dwsComConnector, Variants, ActiveX, ComObj, dwsXPlatform, dwsUtils;
 
 type
@@ -245,6 +245,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   TestFramework.RegisterTest('COMConnectorTests', TCOMConnectorTests.Suite);
+   RegisterTest('COMConnectorTests', TCOMConnectorTests);
 
 end.

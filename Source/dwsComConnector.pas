@@ -34,11 +34,11 @@ const
 type
   TdwsComConnector = class(TdwsAbstractStaticUnit, IUnknown, IConnector)
   private
-    function ConnectorCaption: UnicodeString;
-    function ConnectorName: UnicodeString;
-    function GetUnit(const UnitName: UnicodeString): IConnectorType;
+    function ConnectorCaption: String;
+    function ConnectorName: String;
+    function GetUnit(const UnitName: String): IConnectorType;
   protected
-    function GetUnitName: UnicodeString; override;
+    function GetUnitName: String; override;
     procedure AddUnitSymbols(Table: TSymbolTable; operators : TOperators); override;
   published
     property StaticSymbols;
@@ -98,12 +98,12 @@ type
     FTable: TSymbolTable;
   protected
     { IConnectorType }
-    function ConnectorCaption: UnicodeString;
+    function ConnectorCaption: String;
     function AcceptsParams(const params: TConnectorParamArray) : Boolean;
-    function HasMethod(Const MethodName: UnicodeString; const Params: TConnectorParamArray;
+    function HasMethod(Const MethodName: String; const Params: TConnectorParamArray;
                        var TypSym: TTypeSymbol): IConnectorCall;
-    function HasMember(Const MemberName: UnicodeString; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
-    function HasIndex(const PropName: UnicodeString; const Params: TConnectorParamArray;
+    function HasMember(Const MemberName: String; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
+    function HasIndex(const PropName: String; const Params: TConnectorParamArray;
                       var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
   public
     constructor Create(Table: TSymbolTable);
@@ -121,7 +121,7 @@ type
          function NeedDirectReference : Boolean;
 
       public
-         constructor Create(const MethodName: UnicodeString; const Params: TConnectorParamArray;
+         constructor Create(const MethodName: String; const Params: TConnectorParamArray;
                             MethodType: Cardinal = DISPATCH_METHOD);
   end;
 
@@ -134,12 +134,12 @@ type
     function Read(const Base: Variant): TData;
     procedure Write(const Base: Variant; const Data: TData);
   public
-    constructor Create(MemberName: UnicodeString);
+    constructor Create(MemberName: String);
   end;
 
   TComVariantArraySymbol = class(TConnectorSymbol)
   public
-    constructor Create(const Name: UnicodeString; const ConnectorType: IConnectorType; Typ: TTypeSymbol);
+    constructor Create(const Name: String; const ConnectorType: IConnectorType; Typ: TTypeSymbol);
     function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
     procedure InitData(const Dat: TData; Offset: Integer); override;
   end;
@@ -184,12 +184,12 @@ type
     function ReadHighBound(const Base: Variant; Args: TConnectorArgs): TData; overload;
     function NeedDirectReference : Boolean;
     { IConnectorType }
-    function ConnectorCaption: UnicodeString;
+    function ConnectorCaption: String;
     function AcceptsParams(const params: TConnectorParamArray) : Boolean;
-    function HasMethod(Const MethodName: UnicodeString; const Params: TConnectorParamArray;
+    function HasMethod(Const MethodName: String; const Params: TConnectorParamArray;
                        var TypSym: TTypeSymbol): IConnectorCall;
-    function HasMember(Const MemberName: UnicodeString; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
-    function HasIndex(Const PropName: UnicodeString; const Params: TConnectorParamArray;
+    function HasMember(Const MemberName: String; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
+    function HasIndex(Const PropName: String; const Params: TConnectorParamArray;
                       var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
     { IConnectorCall }
     function IComVariantArrayReadIndex.Call = ReadIndex;
@@ -210,22 +210,22 @@ type
 
 { TdwsComConnector }
 
-function TdwsComConnector.ConnectorCaption: UnicodeString;
+function TdwsComConnector.ConnectorCaption: String;
 begin
   Result := COM_ConnectorCaption;
 end;
 
-function TdwsComConnector.ConnectorName: UnicodeString;
+function TdwsComConnector.ConnectorName: String;
 begin
   Result := COM_UnitName;
 end;
 
-function TdwsComConnector.GetUnit(const UnitName: UnicodeString): IConnectorType;
+function TdwsComConnector.GetUnit(const UnitName: String): IConnectorType;
 begin
   raise Exception.Create('Not supported');
 end;
 
-function TdwsComConnector.GetUnitName: UnicodeString;
+function TdwsComConnector.GetUnitName: String;
 begin
   Result := COM_UnitName;
 end;
@@ -308,7 +308,7 @@ end;
 
 { TComConnectorSymbol }
 
-function TComConnectorType.ConnectorCaption: UnicodeString;
+function TComConnectorType.ConnectorCaption: String;
 begin
   Result := COM_ConnectorCaption;
 end;
@@ -318,7 +318,7 @@ begin
   FTable := Table;
 end;
 
-function TComConnectorType.HasIndex(Const PropName: UnicodeString; const Params: TConnectorParamArray;
+function TComConnectorType.HasIndex(Const PropName: String; const Params: TConnectorParamArray;
   var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
 var
   methType: Cardinal;
@@ -330,7 +330,7 @@ begin
    Result := TComConnectorCall.Create(PropName, Params, methType);
 end;
 
-function TComConnectorType.HasMember(Const MemberName: UnicodeString;
+function TComConnectorType.HasMember(Const MemberName: String;
   var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
 begin
   TypSym := FTable.FindTypeSymbol('ComVariant', cvMagic);
@@ -357,7 +357,7 @@ begin
    Result:=True;
 end;
 
-function TComConnectorType.HasMethod(Const MethodName: UnicodeString;
+function TComConnectorType.HasMethod(Const MethodName: String;
   const Params: TConnectorParamArray; var TypSym: TTypeSymbol): IConnectorCall;
 begin
   TypSym := FTable.FindTypeSymbol('ComVariant', cvMagic);
@@ -444,7 +444,7 @@ begin
               // Transform Delphi-strings to OLE-strings
               with strings[strCount] do
               begin
-                BStr := StringToOleStr(UnicodeString(PVarData(PParams[x]).VUString));
+                BStr := StringToOleStr(String(PVarData(PParams[x]).VUString));
                 PStr := @(PVarData(PParams[x]).VUString);
                 argPtr.vt := VT_BSTR or VT_BYREF;
                 argPtr.pbstrVal := @BStr;
@@ -554,7 +554,7 @@ begin
    Result:=False;
 end;
 
-constructor TComConnectorCall.Create(const MethodName: UnicodeString;
+constructor TComConnectorCall.Create(const MethodName: String;
                      const Params: TConnectorParamArray; MethodType: Cardinal);
 begin
   FMethodName := MethodName;
@@ -563,7 +563,7 @@ end;
 
 { TComConnectorMember }
 
-constructor TComConnectorMember.Create(MemberName: UnicodeString);
+constructor TComConnectorMember.Create(MemberName: String);
 begin
   FMemberName := MemberName;
 end;
@@ -623,7 +623,7 @@ begin
   VarArrayPut(Baseref^, Args[ArgCount][0], Indices) ;
 end;
 
-function TComVariantArrayType.ConnectorCaption: UnicodeString;
+function TComVariantArrayType.ConnectorCaption: String;
 begin
   Result := 'ComVariantArray';
 end;
@@ -634,7 +634,7 @@ begin
   FTable := Table;
 end;
 
-function TComVariantArrayType.HasIndex(Const PropName: UnicodeString; const Params: TConnectorParamArray;
+function TComVariantArrayType.HasIndex(Const PropName: String; const Params: TConnectorParamArray;
   var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
 var
   SymInteger: TTypeSymbol;
@@ -674,7 +674,7 @@ begin
   end;
 end;
 
-function TComVariantArrayType.HasMember(const MemberName: UnicodeString;
+function TComVariantArrayType.HasMember(const MemberName: String;
   var typSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
 begin
   if SameText(MemberName, 'high') then
@@ -714,7 +714,7 @@ begin
           and FTable.FindTypeSymbol(SYS_INTEGER, cvMagic).IsCompatible(params[0].typSym);
 end;
 
-function TComVariantArrayType.HasMethod(Const methodName: UnicodeString;
+function TComVariantArrayType.HasMethod(Const methodName: String;
   const params: TConnectorParamArray; var typSym: TTypeSymbol): IConnectorCall;
 begin
    if SameText(methodName, 'length') then begin
@@ -809,7 +809,7 @@ begin
             or (typSym.IsBaseType and Typ.IsCompatible(typSym.Typ));
 end;
 
-constructor TComVariantArraySymbol.Create(const Name: UnicodeString;
+constructor TComVariantArraySymbol.Create(const Name: String;
   const ConnectorType: IConnectorType; Typ: TTypeSymbol);
 begin
   inherited Create(Name, ConnectorType);

@@ -30,8 +30,10 @@ type
 
    {$ifdef FPC}
    TTestCase = fpcunit.TTestCase;
+   ETestFailure = class (Exception);
    {$else}
    TTestCase = TestFrameWork.TTestCase;
+   ETestFailure = TestFrameWork.ETestFailure;
    {$endif}
 
 procedure RegisterTest(const testName : String; aTest : TTestCaseClass);

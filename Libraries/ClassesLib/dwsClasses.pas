@@ -151,7 +151,7 @@ type
 implementation
 
 {$IFDEF MSWINDOWS}
-uses RTLConsts, SysConst, Types;
+uses RTLConsts, Types;
 {$ENDIF}
 {$IFDEF LINUX}
 uses RTLConsts, SysConst;

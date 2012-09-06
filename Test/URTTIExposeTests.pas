@@ -2,7 +2,7 @@ unit URTTIExposeTests;
 
 interface
 
-uses Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
+uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsRTTIExposer, dwsRTTIConnector, TypInfo, Types, RTTI,
    Forms, StdCtrls, Variants;
 
@@ -1163,6 +1163,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   TestFramework.RegisterTest('RTTIExposeTests', TRTTIExposeTests.Suite);
+   RegisterTest('RTTIExposeTests', TRTTIExposeTests);
 
 end.

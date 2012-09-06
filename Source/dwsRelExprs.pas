@@ -21,7 +21,7 @@ unit dwsRelExprs;
 
 interface
 
-uses dwsExprs, dwsErrors, dwsStrings, dwsSymbols;
+uses dwsExprs, dwsSymbols;
 
 type
 
@@ -320,7 +320,7 @@ end;
 //
 function TRelEqualStringExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
-   a, b : UnicodeString;
+   a, b : String;
 begin
    FLeft.EvalAsString(exec, a);
    FRight.EvalAsString(exec, b);
@@ -335,7 +335,7 @@ end;
 //
 function TRelNotEqualStringExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
-   a, b : UnicodeString;
+   a, b : String;
 begin
    FLeft.EvalAsString(exec, a);
    FRight.EvalAsString(exec, b);
@@ -350,7 +350,7 @@ end;
 //
 function TRelLessStringExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
-   a, b : UnicodeString;
+   a, b : String;
 begin
    FLeft.EvalAsString(exec, a);
    FRight.EvalAsString(exec, b);
@@ -365,7 +365,7 @@ end;
 //
 function TRelLessEqualStringExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
-   a, b : UnicodeString;
+   a, b : String;
 begin
    FLeft.EvalAsString(exec, a);
    FRight.EvalAsString(exec, b);
@@ -380,7 +380,7 @@ end;
 //
 function TRelGreaterStringExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
-   a, b : UnicodeString;
+   a, b : String;
 begin
    FLeft.EvalAsString(exec, a);
    FRight.EvalAsString(exec, b);
@@ -395,7 +395,7 @@ end;
 //
 function TRelGreaterEqualStringExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 var
-   a, b : UnicodeString;
+   a, b : String;
 begin
    FLeft.EvalAsString(exec, a);
    FRight.EvalAsString(exec, b);

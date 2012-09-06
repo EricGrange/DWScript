@@ -71,26 +71,24 @@ type
          procedure BeforeDestruction; override;
    end;
 
-   // IAutoStore
+   // IAutoStrings
    //
-   IAutoStore<T{$IFNDEF FPC}: class{$ENDIF}> = interface
-      function GetValue : T;
-      property Value : T read GetValue;
+   IAutoStrings = interface
+      function GetValue : TStrings;
+      property Value : TStrings read GetValue;
    end;
 
-   // TAutoStore
+   // TAutoStrings
    //
-   TAutoStore<T{$IFNDEF FPC}: class{$ENDIF}> = class(TInterfacedSelfObject, IAutoStore<T>)
+   TAutoStrings = class(TInterfacedSelfObject, IAutoStrings)
       private
-         FValue : T;
+         FValue : TStrings;
       protected
-         function GetValue : T;
+         function GetValue : TStrings;
       public
-         constructor Create(value : T);
+         constructor Create(value : TStrings);
          destructor Destroy; override;
    end;
-
-   IAutoStrings = IAutoStore<TStrings>;
 
    // TVarRecArrayContainer
    //
@@ -98,7 +96,7 @@ type
       private
          FIntegers : array of Int64;
          FFloats : array of Extended;
-         FStrings : array of UnicodeString;
+         FStrings : array of String;
 
          function AddVarRec : PVarRec;
 
@@ -112,7 +110,7 @@ type
          procedure AddBoolean(const b : Boolean);
          procedure AddInteger(const i : Int64);
          procedure AddFloat(const f : Double);
-         procedure AddString(const s : UnicodeString);
+         procedure AddString(const s : String);
 
          procedure Initialize;
    end;
@@ -177,7 +175,7 @@ type
 
    TSimpleCallbackStatus = (csContinue, csAbort);
 
-   TSimpleCallback<T> = {$IFNDEF FPC}reference to {$ENDIF}function (var item : T) : TSimpleCallbackStatus;
+   TSimpleCallback<T> = function (var item : T) : TSimpleCallbackStatus;
 
    // TSimpleQueue
    //
@@ -321,7 +319,7 @@ type
       Value : T;
    end;
    TSimpleHashBucketArray<T> = array of TSimpleHashBucket<T>;
-   TSimpleHashProc<T> = {$IFNDEF FPC}reference to {$ENDIF}procedure (const item : T);
+   TSimpleHashProc<T> = procedure (const item : T) of object;
 
    {: Minimalistic open-addressing hash, subclasses must override SameItem and GetItemHashCode.
       HashCodes *MUST* be non zero }
@@ -344,7 +342,7 @@ type
          function Replace(const anItem : T) : Boolean; // true if added
          function Contains(const anItem : T) : Boolean;
          function Match(var anItem : T) : Boolean;
-         procedure Enumerate(const callBack : TSimpleHashProc<T>);
+         procedure Enumerate(callBack : TSimpleHashProc<T>);
          procedure Clear;
 
          property Count : Integer read FCount;
@@ -358,6 +356,8 @@ type
       public
          procedure Clean;
    end;
+
+   TSimpleRefCountedObjectHash = class (TSimpleObjectHash<TRefCountedObject>);
 
    TSimpleNameObjectHash<T{$IFNDEF FPC}: TRefCountedObject{$ENDIF}> = class
       type
@@ -457,13 +457,18 @@ type
          function Seek(Offset: Longint; Origin: Word): Longint; override;
          function Read(var Buffer; Count: Longint): Longint; override;
          function Write(const buffer; count: Longint): Longint; override;
-         // must be strictly an utf16 UnicodeString
-         procedure WriteString(const utf16String : UnicodeString);
+
+         {$ifdef FPC}
+         procedure WriteString(const utf8String : String); overload;
+         {$endif}
+
+         // must be strictly an utf16 String
+         procedure WriteString(const utf16String : UnicodeString); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos, length : Integer); overload;
          procedure WriteChar(utf16Char : WideChar);
-         // assumes data is an utf16 UnicodeString
-         function ToString : UnicodeString; {$ifndef FPC} override; {$endif}
+         // assumes data is an utf16 String, spits out utf8 in FPC, utf16 in Delphi
+         function ToString : String; override;
 
          procedure Clear;
 
@@ -475,7 +480,7 @@ type
       {$ifdef FPC}
       function DoCompareText(const s1,s2 : string) : PtrInt; override;
       {$else}
-      function CompareStrings(const S1, S2: UnicodeString): Integer; override;
+      function CompareStrings(const S1, S2: String): Integer; override;
       {$endif}
    end;
 
@@ -483,7 +488,7 @@ type
       {$ifdef FPC}
       function DoCompareText(const s1,s2 : string) : PtrInt; override;
       {$else}
-      function CompareStrings(const S1, S2: UnicodeString): Integer; override;
+      function CompareStrings(const S1, S2: String): Integer; override;
       {$endif}
    end;
 
@@ -494,17 +499,17 @@ type
    Use only if you understand fully what the above means. }
 procedure ChangeObjectClass(ref : TObject; newClass : TClass);
 
-procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString);
+procedure UnifyAssignString(const fromStr : String; var toStr : String);
 procedure TidyStringsUnifier;
 
-function UnicodeCompareLen(p1, p2 : PWideChar; n : Integer) : Integer;
-function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
-function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
+function UnicodeCompareLen(p1, p2 : PChar; n : Integer) : Integer;
+function UnicodeCompareText(const s1, s2 : String) : Integer;
+function UnicodeSameText(const s1, s2 : String) : Boolean;
 
-function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
-function StrBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
+function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
+function StrBeginsWith(const aStr, aBegin : String) : Boolean;
 
-function StrCountChar(const aStr : UnicodeString; c : Char) : Integer;
+function StrCountChar(const aStr : String; c : Char) : Integer;
 
 function Min(a, b : Integer) : Integer; inline;
 
@@ -538,7 +543,7 @@ begin
 end;
 
 // ------------------
-// ------------------ UnicodeString Unifier ------------------
+// ------------------ String Unifier ------------------
 // ------------------
 
 type
@@ -570,7 +575,7 @@ var
 // CompareStrings
 //
 {$ifndef FPC}
-function TFastCompareStringList.CompareStrings(const S1, S2: UnicodeString): Integer;
+function TFastCompareStringList.CompareStrings(const S1, S2: String): Integer;
 {$else}
 function TFastCompareStringList.DoCompareText(const S1, S2: String): Integer;
 {$endif}
@@ -620,7 +625,7 @@ end;
 
 // UnifyAssignString
 //
-procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString);
+procedure UnifyAssignString(const fromStr : String; var toStr : String);
 var
    i : Integer;
    sl : TUnifierStringList;
@@ -654,7 +659,7 @@ end;
 
 // UnicodeCompareLen
 //
-function UnicodeCompareLen(p1, p2 : PWideChar; n : Integer) : Integer;
+function UnicodeCompareLen(p1, p2 : PChar; n : Integer) : Integer;
 var
    i : Integer;
    remaining : Integer;
@@ -687,7 +692,7 @@ end;
 
 // UnicodeCompareText
 //
-function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
+function UnicodeCompareText(const s1, s2 : String) : Integer;
 var
    n1, n2, dn : Integer;
 begin
@@ -697,11 +702,11 @@ begin
          n2:=Length(s2);
          dn:=n1-n2;
          if dn<0 then begin
-            Result:=UnicodeCompareLen(PWideChar(NativeInt(s1)), PWideChar(NativeInt(s2)), n1);
+            Result:=UnicodeCompareLen(PChar(NativeInt(s1)), PChar(NativeInt(s2)), n1);
             if Result=0 then
                Result:=-1;
          end else begin
-            Result:=UnicodeCompareLen(PWideChar(NativeInt(S1)), PWideChar(NativeInt(s2)), n2);
+            Result:=UnicodeCompareLen(PChar(NativeInt(S1)), PChar(NativeInt(s2)), n2);
             if (Result=0) and (dn>0) then
                Result:=1;
          end;
@@ -713,14 +718,14 @@ end;
 
 // UnicodeSameText
 //
-function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
+function UnicodeSameText(const s1, s2 : String) : Boolean;
 begin
    Result:=(Length(s1)=Length(s2)) and (UnicodeCompareText(s1, s2)=0)
 end;
 
 // StrIBeginsWith
 //
-function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
+function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
 var
    n1, n2 : Integer;
 begin
@@ -728,12 +733,12 @@ begin
    n2:=Length(aBegin);
    if (n2>n1) or (n2=0) then
       Result:=False
-   else Result:=(UnicodeCompareLen(PWideChar(aStr), PWideChar(aBegin), n2)=0);
+   else Result:=(UnicodeCompareLen(PChar(aStr), PChar(aBegin), n2)=0);
 end;
 
 // StrBeginsWith
 //
-function StrBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
+function StrBeginsWith(const aStr, aBegin : String) : Boolean;
 var
    n1, n2 : Integer;
 begin
@@ -741,12 +746,12 @@ begin
    n2:=Length(aBegin);
    if (n2>n1) or (n2=0) then
       Result:=False
-   else Result:=CompareMem(PWideChar(aStr), PWideChar(aBegin), n2);
+   else Result:=CompareMem(PChar(aStr), PChar(aBegin), n2);
 end;
 
 // StrCountChar
 //
-function StrCountChar(const aStr : UnicodeString; c : Char) : Integer;
+function StrCountChar(const aStr : String; c : Char) : Integer;
 var
    i : Integer;
 begin
@@ -772,7 +777,7 @@ end;
 // CompareStrings
 //
 {$ifndef FPC}
-function TFastCompareTextList.CompareStrings(const S1, S2: UnicodeString): Integer;
+function TFastCompareTextList.CompareStrings(const S1, S2: String): Integer;
 {$else}
 function TFastCompareTextList.DoCompareText(const S1, S2: String): Integer;
 {$endif}
@@ -876,7 +881,7 @@ end;
 
 // AddString
 //
-procedure TVarRecArrayContainer.AddString(const s : UnicodeString);
+procedure TVarRecArrayContainer.AddString(const s : String);
 var
    n : Integer;
 begin
@@ -1163,6 +1168,7 @@ begin
    if Count=Length(FItems) then
       SetLength(FItems, Count+8+(Count shr 4));
    FItems[FCount]:=anItem;
+   Result:=FCount;
    Inc(FCount);
 end;
 
@@ -1551,6 +1557,15 @@ begin
    Inc(FBlockRemaining^, count);
 end;
 
+{$ifdef FPC}
+// WriteString
+//
+procedure TWriteOnlyBlockStream.WriteString(const utf8String : String); overload;
+begin
+   WriteString(UTF8Decode(utf8String));
+end;
+{$endif}
+
 // WriteString
 //
 procedure TWriteOnlyBlockStream.WriteString(const utf16String : UnicodeString);
@@ -1572,15 +1587,29 @@ end;
 
 // ToString
 //
-function TWriteOnlyBlockStream.ToString : UnicodeString;
+function TWriteOnlyBlockStream.ToString : String;
+{$ifdef FPC}
+var
+   uniBuf : UnicodeString;
 begin
    if FTotalSize>0 then begin
 
       Assert((FTotalSize and 1) = 0);
-      SetLength(Result, FTotalSize div 2);
+      SetLength(uniBuf, FTotalSize div SizeOf(WideChar));
+      StoreData(uniBuf[1]);
+      Result:=UTF8Encode(uniBuf);
+
+   end else Result:='';
+{$else}
+begin
+   if FTotalSize>0 then begin
+
+      Assert((FTotalSize and 1) = 0);
+      SetLength(Result, FTotalSize div SizeOf(WideChar));
       StoreData(Result[1]);
 
    end else Result:='';
+   {$endif}
 end;
 
 // GetSize
@@ -1785,7 +1814,7 @@ end;
 
 // Enumerate
 //
-procedure TSimpleHash<T>.Enumerate(const callBack : TSimpleHashProc<T>);
+procedure TSimpleHash<T>.Enumerate(callBack : TSimpleHashProc<T>);
 var
    i : Integer;
 begin
@@ -2066,26 +2095,26 @@ begin
 end;
 
 // ------------------
-// ------------------ TAutoStore<T> ------------------
+// ------------------ TAutoStrings ------------------
 // ------------------
 
 // GetValue
 //
-function TAutoStore<T>.GetValue : T;
+function TAutoStrings.GetValue : TStrings;
 begin
    Result:=FValue;
 end;
 
 // Create
 //
-constructor TAutoStore<T>.Create(value : T);
+constructor TAutoStrings.Create(value : TStrings);
 begin
    FValue:=value;
 end;
 
 // Destroy
 //
-destructor TAutoStore<T>.Destroy;
+destructor TAutoStrings.Destroy;
 begin
    FValue.Free;
 end;

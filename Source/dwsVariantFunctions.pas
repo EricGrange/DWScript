@@ -48,19 +48,10 @@ type
   end;
 
   TVarToStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
 
 implementation
-
-uses dwsOperators;
-
-const // type constants
-  cFloat = 'Float';
-  cInteger = 'Integer';
-  cString = 'String';
-  cBoolean = 'Boolean';
-  cVariant = 'Variant';
 
 { TVarClearFunc }
 
@@ -110,7 +101,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TVarToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
+procedure TVarToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
 var
    v : Variant;
 begin
@@ -123,7 +114,7 @@ end;
 procedure InitVariants(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                        unitTable : TSymbolTable);
 type
-   TVarTypeRec = packed record n : UnicodeString; v : Word; end;
+   TVarTypeRec = packed record n : String; v : Word; end;
 const
    cVarTypes : array [0..24] of TVarTypeRec = (
       (n:'Empty'; v:varEmpty),         (n:'Null'; v:varNull),
@@ -153,12 +144,12 @@ initialization
 
    RegisterInternalSymbolsProc(InitVariants);
 
-   RegisterInternalFunction(TVarClearFunc, 'VarClear', ['@v', cVariant], '');
-   RegisterInternalBoolFunction(TVarIsNullFunc, 'VarIsNull', ['v', cVariant]);
-   RegisterInternalBoolFunction(TVarIsEmptyFunc, 'VarIsEmpty', ['v', cVariant]);
-   RegisterInternalFunction(TVarTypeFunc, 'VarType', ['v', cVariant], 'TVarType');
-   RegisterInternalFunction(TVarAsTypeFunc, 'VarAsType', ['v', cVariant, 'VarType', 'TVarType'], cVariant);
-   RegisterInternalStringFunction(TVarToStrFunc, 'VarToStr', ['v', cVariant]);
+   RegisterInternalFunction(TVarClearFunc, 'VarClear', ['@v', 'Variant'], '');
+   RegisterInternalBoolFunction(TVarIsNullFunc, 'VarIsNull', ['v', 'Variant']);
+   RegisterInternalBoolFunction(TVarIsEmptyFunc, 'VarIsEmpty', ['v', 'Variant']);
+   RegisterInternalFunction(TVarTypeFunc, 'VarType', ['v', 'Variant'], 'TVarType');
+   RegisterInternalFunction(TVarAsTypeFunc, 'VarAsType', ['v', 'Variant', 'VarType', 'TVarType'], 'Variant');
+   RegisterInternalStringFunction(TVarToStrFunc, 'VarToStr', ['v', 'Variant']);
 
 end.
 

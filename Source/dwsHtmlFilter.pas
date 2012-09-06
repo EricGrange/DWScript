@@ -32,7 +32,7 @@ interface
 
 uses
   Variants, Classes, SysUtils, dwsComp, dwsExprs, dwsFunctions, dwsSymbols,
-  dwsErrors, dwsCompiler, dwsStrings, dwsStringResult, dwsUtils, StrUtils;
+  dwsErrors, dwsCompiler, dwsStrings, dwsUtils, StrUtils;
 
 type
 
@@ -40,21 +40,21 @@ type
    //
    TdwsHtmlFilter = class(TdwsFilter)
       private
-         FPatternOpen: UnicodeString;
-         FPatternClose: UnicodeString;
-         FPatternEval: UnicodeString;
+         FPatternOpen: String;
+         FPatternClose: String;
+         FPatternEval: String;
 
       public
          constructor Create(AOwner: TComponent); override;
 
          procedure CheckPatterns;
 
-         function Process(const Text: UnicodeString; Msgs: TdwsMessageList): UnicodeString; override;
+         function Process(const Text: String; Msgs: TdwsMessageList): String; override;
 
       published
-         property PatternClose: UnicodeString read FPatternClose write FPatternClose;
-         property PatternEval: UnicodeString read FPatternEval write FPatternEval;
-         property PatternOpen: UnicodeString read FPatternOpen write FPatternOpen;
+         property PatternClose: String read FPatternClose write FPatternClose;
+         property PatternEval: String read FPatternEval write FPatternEval;
+         property PatternOpen: String read FPatternOpen write FPatternOpen;
    end;
 
   TdwsHtmlUnit = class(TdwsUnitComponent)
@@ -98,9 +98,9 @@ end;
 
 // Process
 //
-function TdwsHtmlFilter.Process(const Text: UnicodeString; Msgs: TdwsMessageList): UnicodeString;
+function TdwsHtmlFilter.Process(const Text: String; Msgs: TdwsMessageList): String;
 
-   procedure StuffString(const str: UnicodeString; start, stop : Integer;
+   procedure StuffString(const str: String; start, stop : Integer;
                          dest : TWriteOnlyBlockStream);
    var
       isQuoted: Boolean;
@@ -162,7 +162,7 @@ function TdwsHtmlFilter.Process(const Text: UnicodeString; Msgs: TdwsMessageList
 var
    p, start, stop : Integer;
    isEval : Boolean;
-   input : UnicodeString;
+   input : String;
    output : TWriteOnlyBlockStream;
 begin
    CheckPatterns;

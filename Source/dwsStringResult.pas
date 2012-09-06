@@ -36,21 +36,21 @@ type
   TdwsStringResult = class(TdwsResult)
   private
     FStrBuilder: TWriteOnlyBlockStream;
-    function GetStr : UnicodeString;
+    function GetStr : String;
   public
     constructor Create(resultType : TdwsResultType); override;
     destructor Destroy; override;
-    procedure AddString(const Str: UnicodeString); override;
+    procedure AddString(const Str: String); override;
     procedure Clear; override;
-    procedure SetStr(const Str: UnicodeString);
-    function ReadLn: UnicodeString;
-    function ReadChar: UnicodeString;
-    function ToString : UnicodeString; override;
-    property Str: UnicodeString read GetStr;
+    procedure SetStr(const Str: String);
+    function ReadLn: String;
+    function ReadChar: String;
+    function ToString : String; override;
+    property Str: String read GetStr;
   end;
 
-  TChangeStringEvent = procedure (Result: TdwsStringResult; const Str: UnicodeString) of object;
-  TReadStringEvent = procedure (Result: TdwsStringResult; var Str: UnicodeString) of object;
+  TChangeStringEvent = procedure (Result: TdwsStringResult; const Str: String) of object;
+  TReadStringEvent = procedure (Result: TdwsStringResult; var Str: String) of object;
 
   TdwsStringResultType = class(TdwsResultType)
   private
@@ -128,7 +128,7 @@ begin
    FStrBuilder.Free;
 end;
 
-procedure TdwsStringResult.AddString(const Str: UnicodeString);
+procedure TdwsStringResult.AddString(const Str: String);
 begin
   FStrBuilder.WriteString(Str);
   if Assigned(TdwsStringResultType(ResultType).OnAddString) then
@@ -142,7 +142,7 @@ begin
    FStrBuilder.Clear;
 end;
 
-procedure TdwsStringResult.SetStr(const Str: UnicodeString);
+procedure TdwsStringResult.SetStr(const Str: String);
 begin
   FStrBuilder.Clear;
   FStrBuilder.WriteString(Str);
@@ -150,7 +150,7 @@ begin
     TdwsStringResultType(ResultType).OnSetString(Self, Str)
 end;
 
-function TdwsStringResult.ReadLn: UnicodeString;
+function TdwsStringResult.ReadLn: String;
 begin
   if Assigned(TdwsStringResultType(ResultType).OnReadLn) then
     TdwsStringResultType(ResultType).OnReadLn(Self, Result)
@@ -158,7 +158,7 @@ begin
     Result := '';
 end;
 
-function TdwsStringResult.ReadChar: UnicodeString;
+function TdwsStringResult.ReadChar: String;
 begin
   if Assigned(TdwsStringResultType(ResultType).OnReadLn) then
     TdwsStringResultType(ResultType).OnReadLn(Self, Result)
@@ -168,14 +168,14 @@ end;
 
 // ToString
 //
-function TdwsStringResult.ToString : UnicodeString;
+function TdwsStringResult.ToString : String;
 begin
    Result:=GetStr;
 end;
 
 // GetStr
 //
-function TdwsStringResult.GetStr : UnicodeString;
+function TdwsStringResult.GetStr : String;
 begin
    Result:=FStrBuilder.ToString;
 end;
@@ -191,7 +191,7 @@ end;
 
 procedure Tdws2StringsUnit.AddUnitSymbols(SymbolTable: TSymbolTable);
 var
-  emptyArg: array of UnicodeString;
+  emptyArg: array of String;
 begin
   TWriteFunction.Create(SymbolTable, 'WriteStr', ['Str', SYS_VARIANT], '', []);
   TWriteFunction.Create(SymbolTable, 'Print', ['Str', SYS_VARIANT], '', []);

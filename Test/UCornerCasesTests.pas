@@ -2,7 +2,7 @@ unit UCornerCasesTests;
 
 interface
 
-uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
+uses Windows, Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
    dwsTokenizer, dwsXPlatform, dwsFileSystem, dwsErrors, dwsUtils, Variants,
    dwsSymbols, dwsPascalTokenizer, dwsStrings, dwsStack, dwsJSON;
 
@@ -494,7 +494,7 @@ begin
    exec:=prog.Execute;
    buf:='TObj.Proc [line: 5, column: 4]'#13#10' [line: 8, column: 13]'#13#10;
    buf2:=exec.Msgs.AsInfo;
-   CheckEquals(buf, Copy(buf2, Length(buf2)-Length(buf)+1), 'stack overflow');
+   CheckEquals(buf, Copy(buf2, Length(buf2)-Length(buf)+1, MaxInt), 'stack overflow');
 
    FCompiler.Config.MaxRecursionDepth:=1024;
 end;
@@ -624,15 +624,15 @@ end;
 //
 procedure TCornerCasesTests.SubExprTest;
 
-   procedure SubExprTree(output : TStringBuilder; const expr : TExprBase; indent : Integer);
+   procedure SubExprTree(output : TWriteOnlyBlockStream; const expr : TExprBase; indent : Integer);
    var
       i : Integer;
    begin
-      output.Append(StringOfChar(#9, indent));
+      output.WriteString(StringOfChar(#9, indent));
       if expr=nil then
-         output.Append('nil')
-      else output.Append(expr.ClassName);
-      output.AppendLine;
+         output.WriteString('nil')
+      else output.WriteString(expr.ClassName);
+      output.WriteString(#13#10);
       if expr<>nil then
          for i:=0 to expr.SubExprCount-1 do
             SubExprTree(output, expr.SubExpr[i], indent+1);
@@ -640,9 +640,9 @@ procedure TCornerCasesTests.SubExprTest;
 
    function MakeSubExprTree(const expr : TExprBase) : String;
    var
-      sb : TStringBuilder;
+      sb : TWriteOnlyBlockStream;
    begin
-      sb:=TStringBuilder.Create;
+      sb:=TWriteOnlyBlockStream.Create;
       try
          SubExprTree(sb, expr, 0);
          Result:=sb.ToString;
@@ -1038,6 +1038,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   TestFramework.RegisterTest('CornerCasesTests', TCornerCasesTests.Suite);
+   RegisterTest('CornerCasesTests', TCornerCasesTests);
 
 end.

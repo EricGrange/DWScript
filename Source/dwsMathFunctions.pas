@@ -243,13 +243,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsCoreExprs;
-
 const // type constants
   cFloat = 'Float';
   cInteger = 'Integer';
-  cString = 'String';
-  cBoolean = 'Boolean';
 
 // Gcd
 //

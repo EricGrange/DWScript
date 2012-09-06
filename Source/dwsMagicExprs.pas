@@ -24,7 +24,7 @@ unit dwsMagicExprs;
 interface
 
 uses Classes, SysUtils, dwsExprs, dwsSymbols, dwsStack, dwsErrors, dwsFunctions,
-   dwsUtils, dwsCoreExprs;
+   dwsUtils;
 
 type
 
@@ -37,14 +37,14 @@ type
    TMagicFuncDoEvalAsIntegerEvent = function(args : TExprBaseList) : Int64 of object;
    TMagicFuncDoEvalAsBooleanEvent = function(args : TExprBaseList) : Boolean of object;
    TMagicFuncDoEvalAsFloatEvent = procedure(args : TExprBaseList; var Result : Double) of object;
-   TMagicFuncDoEvalAsStringEvent = procedure(args : TExprBaseList; var Result : UnicodeString) of object;
+   TMagicFuncDoEvalAsStringEvent = procedure(args : TExprBaseList; var Result : String) of object;
 
    // TInternalMagicFunction
    //
    TInternalMagicFunction = class(TInternalFunction)
       public
-         constructor Create(table: TSymbolTable; const funcName: UnicodeString;
-                            const params : TParamArray; const funcType: UnicodeString;
+         constructor Create(table: TSymbolTable; const funcName: String;
+                            const params : TParamArray; const funcType: String;
                             const flags : TInternalFunctionFlags = []); override;
          function MagicFuncExprClass : TMagicFuncExprClass; virtual; abstract;
    end;
@@ -106,7 +106,7 @@ type
    //
    TInternalMagicStringFunction = class(TInternalMagicFunction)
       public
-         procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); virtual; abstract;
+         procedure DoEvalAsString(args : TExprBaseList; var Result : String); virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicStringFunctionClass = class of TInternalMagicStringFunction;
@@ -216,7 +216,7 @@ type
          constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos; func : TMagicFuncSymbol); override;
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Eval(exec : TdwsExecution) : Variant; override;
-         procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
+         procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
    end;
 
    // TMagicFloatFuncExpr
@@ -280,13 +280,13 @@ type
    end;
 
 procedure RegisterInternalIntFunction(InternalFunctionClass: TInternalMagicIntFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
 procedure RegisterInternalBoolFunction(InternalFunctionClass: TInternalMagicBoolFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
 procedure RegisterInternalFloatFunction(InternalFunctionClass: TInternalMagicFloatFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
 procedure RegisterInternalStringFunction(InternalFunctionClass: TInternalMagicStringFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -299,7 +299,7 @@ implementation
 // RegisterInternalIntFunction
 //
 procedure RegisterInternalIntFunction(InternalFunctionClass: TInternalMagicIntFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
 begin
    RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Integer', flags);
 end;
@@ -307,7 +307,7 @@ end;
 // RegisterInternalBoolFunction
 //
 procedure RegisterInternalBoolFunction(InternalFunctionClass: TInternalMagicBoolFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
 begin
    RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Boolean', flags);
 end;
@@ -315,7 +315,7 @@ end;
 // RegisterInternalFloatFunction
 //
 procedure RegisterInternalFloatFunction(InternalFunctionClass: TInternalMagicFloatFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
 begin
    RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Float', flags);
 end;
@@ -323,7 +323,7 @@ end;
 // RegisterInternalStringFunction
 //
 procedure RegisterInternalStringFunction(InternalFunctionClass: TInternalMagicStringFunctionClass;
-      const FuncName: UnicodeString; const FuncParams: array of UnicodeString; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
 begin
    RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'String', flags);
 end;
@@ -385,7 +385,7 @@ end;
 // Create
 //
 constructor TInternalMagicFunction.Create(table : TSymbolTable;
-      const funcName : UnicodeString; const params : TParamArray; const funcType : UnicodeString;
+      const funcName : String; const params : TParamArray; const funcType : String;
       const flags : TInternalFunctionFlags = []);
 var
   sym : TMagicFuncSymbol;
@@ -577,7 +577,7 @@ end;
 //
 procedure TMagicStringFuncExpr.EvalNoResult(exec : TdwsExecution);
 var
-   buf : UnicodeString;
+   buf : String;
 begin
    EvalAsString(exec, buf);
 end;
@@ -586,7 +586,7 @@ end;
 //
 function TMagicStringFuncExpr.Eval(exec : TdwsExecution) : Variant;
 var
-   buf : UnicodeString;
+   buf : String;
 begin
    EvalAsString(exec, buf);
    Result:=buf;
@@ -594,7 +594,7 @@ end;
 
 // EvalAsString
 //
-procedure TMagicStringFuncExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
+procedure TMagicStringFuncExpr.EvalAsString(exec : TdwsExecution; var Result : String);
 var
    execRec : TExprBaseListExec;
 begin

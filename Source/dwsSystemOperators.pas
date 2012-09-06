@@ -20,8 +20,9 @@ unit dwsSystemOperators;
 
 interface
 
-uses dwsSymbols, dwsTokenizer, dwsStrings, dwsExprs, dwsCoreExprs, dwsErrors,
-   dwsRelExprs, dwsOperators, dwsUnitSymbols;
+uses
+   dwsSymbols, dwsTokenizer, dwsExprs, dwsCoreExprs, dwsRelExprs,
+   dwsOperators, dwsUnitSymbols;
 
 type
 

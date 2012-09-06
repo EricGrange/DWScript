@@ -2,9 +2,8 @@ unit UDebuggerTests;
 
 interface
 
-uses Windows, Classes, SysUtils, TestFrameWork, dwsComp, dwsCompiler, dwsExprs,
-   dwsComConnector, Variants, ActiveX, ComObj, dwsXPlatform, dwsUtils,
-   dwsSymbols, dwsDebugger, dwsStrings;
+uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
+   Variants, ComObj, dwsUtils, dwsSymbols, dwsDebugger, dwsStrings;
 
 type
 
@@ -339,6 +338,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   TestFramework.RegisterTest('DebuggerTests', TDebuggerTests.Suite);
+   RegisterTest('DebuggerTests', TDebuggerTests);
 
 end.

@@ -31,7 +31,7 @@ type
 
    TVectorToStrExpr = class(TInternalMagicStringFunction)
       public
-         procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
+         procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
    end;
 
    TVectorOpExpr = class(TInternalMagicDataFunction);
@@ -130,7 +130,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TVectorToStrExpr.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
+procedure TVectorToStrExpr.DoEvalAsString(args : TExprBaseList; var Result : String);
 var
    vectorData : TDataPtr;
 begin

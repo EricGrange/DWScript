@@ -49,7 +49,7 @@ const
 procedure SetDecimalSeparator(c : WideChar);
 function GetDecimalSeparator : WideChar;
 
-procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings);
+procedure CollectFiles(const directory, fileMask : String; list : TStrings);
 
 type
    {$IFNDEF FPC}
@@ -73,11 +73,11 @@ type
    {$ENDIF}
 
    TPath = class
-      class function GetTempFileName : UnicodeString; static;
+      class function GetTempFileName : String; static;
    end;
 
    TFile = class
-      class function ReadAllBytes(const filename : UnicodeString) : TBytes; static;
+      class function ReadAllBytes(const filename : String) : TBytes; static;
    end;
 
    TdwsThread = class (TThread)
@@ -91,20 +91,19 @@ type
 function GetSystemMilliseconds : Cardinal;
 function UTCDateTime : TDateTime;
 
-function AnsiCompareText(const S1, S2 : UnicodeString) : Integer;
-function AnsiCompareStr(const S1, S2 : UnicodeString) : Integer;
-function UnicodeComparePChars(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 : Integer) : Integer;
+function AnsiCompareText(const S1, S2 : String) : Integer;
+function AnsiCompareStr(const S1, S2 : String) : Integer;
+function UnicodeComparePChars(p1 : PChar; n1 : Integer; p2 : PChar; n2 : Integer) : Integer;
 
 function InterlockedIncrement(var val : Integer) : Integer;
 function InterlockedDecrement(var val : Integer) : Integer;
 
 procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Cardinal(-1));
 
-function TryTextToFloat(const s : PWideChar; var value : Extended; const formatSettings : TFormatSettings) : Boolean; inline;
+function TryTextToFloat(const s : PChar; var value : Extended; const formatSettings : TFormatSettings) : Boolean; inline;
 
 {$ifdef FPC}
-function Format(const Fmt : UnicodeString; const Args : Array of const) : UnicodeString; overload;
-procedure VarCopy(var dest : Variant; const src : Variant);
+procedure VarCopy(out dest : Variant; const src : Variant);
 {$endif}
 
 // ------------------------------------------------------------------
@@ -137,25 +136,29 @@ end;
 
 // AnsiCompareText
 //
-function AnsiCompareText(const S1, S2: UnicodeString) : Integer;
+function AnsiCompareText(const S1, S2: String) : Integer;
 begin
    Result:=SysUtils.AnsiCompareText(S1, S2);
 end;
 
 // AnsiCompareStr
 //
-function AnsiCompareStr(const S1, S2: UnicodeString) : Integer;
+function AnsiCompareStr(const S1, S2: String) : Integer;
 begin
    Result:=SysUtils.AnsiCompareStr(S1, S2);
 end;
 
 // UnicodeComparePChars
 //
-function UnicodeComparePChars(p1 : PWideChar; n1 : Integer; p2 : PWideChar; n2 : Integer) : Integer;
+function UnicodeComparePChars(p1 : PChar; n1 : Integer; p2 : PChar; n2 : Integer) : Integer;
 const
    CSTR_EQUAL = 2;
 begin
+   {$ifdef FPC}
+   Result:=CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n1, p2, n2)-CSTR_EQUAL;
+   {$else}
    Result:=CompareStringW(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n1, p2, n2)-CSTR_EQUAL;
+   {$endif}
 end;
 
 // InterlockedIncrement
@@ -193,10 +196,12 @@ begin
    info.szName:=threadName;
    info.dwThreadID:=threadID;
    info.dwFlags:=0;
+   {$ifndef FPC}
    try
       RaiseException($406D1388, 0, SizeOf(info) div SizeOf(Cardinal), @info);
    except
    end;
+   {$endif}
 end;
 
 // SetDecimalSeparator
@@ -231,7 +236,7 @@ end;
 
 // CollectFiles
 //
-procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings);
+procedure CollectFiles(const directory, fileMask : String; list : TStrings);
 var
    searchRec : TSearchRec;
    found : Integer;
@@ -247,16 +252,9 @@ begin
 end;
 
 {$ifdef FPC}
-// Format
-//
-function Format(const Fmt : UnicodeString; const Args : Array of const) : UnicodeString;
-begin
-   Result:=SysUtils.Format(fmt, args);
-end;
-
 // VarCopy
 //
-procedure VarCopy(var dest : Variant; const src : Variant);
+procedure VarCopy(out dest : Variant; const src : Variant);
 begin
    dest:=src;
 end;
@@ -264,7 +262,7 @@ end;
 
 // TryTextToFloat
 //
-function TryTextToFloat(const s : PWideChar; var value : Extended; const formatSettings : TFormatSettings) : Boolean;
+function TryTextToFloat(const s : PChar; var value : Extended; const formatSettings : TFormatSettings) : Boolean;
 begin
    {$ifdef FPC}
    Result:=TryStrToFloat(s, value, formatSettings);
@@ -279,7 +277,7 @@ end;
 
 // GetTempFileName
 //
-class function TPath.GetTempFileName : UnicodeString;
+class function TPath.GetTempFileName : String;
 {$IFDEF VER200} // Delphi 2009
 var
    tempPath, tempFileName : array [0..MAX_PATH] of WideChar; // Buf sizes are MAX_PATH+1
@@ -303,7 +301,7 @@ end;
 
 // ReadAllBytes
 //
-class function TFile.ReadAllBytes(const filename : UnicodeString) : TBytes;
+class function TFile.ReadAllBytes(const filename : String) : TBytes;
 {$IFDEF VER200} // Delphi 2009
 var
    fileStream : TFileStream;

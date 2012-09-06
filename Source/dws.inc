@@ -44,6 +44,7 @@
    {$ENDIF}
 {$ELSE}
    {$mode delphi}
+   {$DEFINE PUREPASCAL}
 {$ENDIF}
 
 {.$DEFINE PUREPASCAL}
