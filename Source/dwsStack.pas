@@ -208,12 +208,13 @@ begin
             Result:=TVarData(v1).VBoolean=TVarData(v2).VBoolean;
          varDouble :
             Result:=TVarData(v1).VDouble=TVarData(v2).VDouble;
-         varUString :
-            {$ifdef FPC}
+         {$ifdef FPC}
+         varString :
             Result:=String(TVarData(v1).VString)=String(TVarData(v2).VString);
-            {$else}
+         {$else}
+         varUString :
             Result:=String(TVarData(v1).VUString)=String(TVarData(v2).VUString);
-            {$endif}
+         {$endif}
          varUnknown :
             Result:=TVarData(v1).VUnknown=TVarData(v2).VUnknown;
       else
@@ -517,12 +518,13 @@ var
    varData : PVarData;
 begin
    varData:=@Data[SourceAddr];
-   if varData.VType=varUString then
-      {$ifdef FPC}
+   {$ifdef FPC}
+   if varData.VType=varString then
       Result:=String(varData.VString)
-      {$else}
+   {$else}
+   if varData.VType=varUString then
       Result:=String(varData.VUString)
-      {$endif}
+   {$endif}
    else Result:=PVariant(varData)^;
 end;
 
@@ -607,12 +609,13 @@ var
    varData : PVarData;
 begin
    varData:=@FBaseData[destAddr];
-   if varData.VType=varUString then
-      {$ifdef FPC}
+   {$ifdef FPC}
+   if varData.VType=varString then
       String(varData.VString):=String(varData.VString)+value
-      {$else}
+   {$else}
+   if varData.VType=varUString then
       String(varData.VUString):=String(varData.VUString)+value
-      {$endif}
+   {$endif}
    else Fallback(varData);
 end;
 
@@ -702,12 +705,13 @@ var
    varData : PVarData;
 begin
    varData:=@Data[DestAddr];
-   if varData.VType=varUString then
-      {$ifdef FPC}
+   {$ifdef FPC}
+   if varData.VType=varString then
       String(varData.VString):=Value
-      {$else}
+   {$else}
+   if varData.VType=varUString then
       String(varData.VUString):=Value
-      {$endif}
+    {$endif}
    else PVariant(varData)^:=Value;
 end;
 
@@ -742,17 +746,19 @@ var
    varData : PVarData;
 begin
    varData:=@Data[DestAddr];
-   if varData.VType=varUString then
-      {$ifdef FPC}
+   {$ifdef FPC}
+   if varData.VType=varString then
       if index>Length(String(varData.VString)) then
          Exit(False)
       else String(varData.VString)[index]:=c
-      {$else}
+   else PVariant(varData)^[index]:=Char(c);
+   {$else}
+   if varData.VType=varUString then
       if index>Length(String(varData.VUString)) then
          Exit(False)
       else String(varData.VUString)[index]:=c
-      {$endif}
    else PVariant(varData)^[index]:=c;
+   {$endif}
    Result:=True;
 end;
 

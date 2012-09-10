@@ -3230,7 +3230,7 @@ begin
          if testExpr.IsConstant then
             FMsgs.AddCompilerWarning(hotPos, CPW_ConstantCondition);
 
-         testLength:=(NativeUInt(FTok.PosPtr)-NativeUInt(testStart)) div 2;
+         testLength:=(NativeUInt(FTok.PosPtr)-NativeUInt(testStart)) div SizeOf(Char);
          if FTok.TestDelete(ttCOLON) then begin
             msgExpr:=ReadExpr;
             if not msgExpr.IsOfType(FProg.TypString) then

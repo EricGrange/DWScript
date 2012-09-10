@@ -722,8 +722,8 @@ begin
    if Length(str)<Length(beginStr) then
       Result:=False
    else begin
-      Result:=CompareMem(PWideChar(Pointer(str)), PWideChar(Pointer(beginStr)),
-                         Length(beginStr)*SizeOf(WideChar));
+      Result:=CompareMem(PChar(Pointer(str)), PChar(Pointer(beginStr)),
+                         Length(beginStr)*SizeOf(Char));
    end;
 end;
 
@@ -738,8 +738,8 @@ begin
    if Length(str)<Length(endStr) then
       Result:=False
    else begin
-      Result:=CompareMem(@str[Length(str)-Length(endStr)+1], PWideChar(Pointer(endStr)),
-                         Length(endStr)*SizeOf(WideChar));
+      Result:=CompareMem(@str[Length(str)-Length(endStr)+1], PChar(Pointer(endStr)),
+                         Length(endStr)*SizeOf(Char));
    end;
 end;
 

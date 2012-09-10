@@ -37,9 +37,16 @@ type
    TSourceFile = class (TRefCountedObject)
       private
          FLineCount : Integer;
+         FCode : String;
+
+      {$ifdef FPC}
+      protected
+         procedure SetCode(const sourceCode : String);
+      {$endif}
+
       public
          Name : String;
-         Code : String;
+         property Code : String read FCode write {$ifdef FPC}SetCode{$else}FCode{$endif};
          function LineCount : Integer;
    end;
 
@@ -761,6 +768,27 @@ end;
 // ------------------
 // ------------------ TSourceFile ------------------
 // ------------------
+
+{$ifdef FPC}
+// SetCode
+//
+procedure TSourceFile.SetCode(const sourceCode: String);
+begin
+   if Length(sourceCode)>3 then begin
+      if (Ord(sourceCode[1])=$EF) and (Ord(sourceCode[2])=$BB) and (Ord(sourceCode[3])=$BF) then begin
+         // UTF-8
+         FCode:=Copy(sourceCode, 4, MaxInt);
+      end else if (Ord(sourceCode[1])=$FE) and (Ord(sourceCode[2])=$FF) then begin
+         // UTF-16 BE
+         FCode:=UTF8Encode(Copy(sourceCode, 3, MaxInt));
+      end else if (Ord(sourceCode[1])=$FF) and (Ord(sourceCode[2])=$FE) then begin
+         // UTF-16 LE
+         // TODO: revert bytes...
+         FCode:=UTF8Encode(Copy(sourceCode, 3, MaxInt));
+      end else FCode:=sourceCode;
+   end else FCode:=sourceCode;
+end;
+{$endif}
 
 // LineCount
 //

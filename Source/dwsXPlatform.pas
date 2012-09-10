@@ -46,8 +46,8 @@ const
    cLineTerminator  = #13#10;
 {$ENDIF}
 
-procedure SetDecimalSeparator(c : WideChar);
-function GetDecimalSeparator : WideChar;
+procedure SetDecimalSeparator(c : Char);
+function GetDecimalSeparator : Char;
 
 procedure CollectFiles(const directory, fileMask : String; list : TStrings);
 
@@ -100,10 +100,11 @@ function InterlockedDecrement(var val : Integer) : Integer;
 
 procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Cardinal(-1));
 
-function TryTextToFloat(const s : PChar; var value : Extended; const formatSettings : TFormatSettings) : Boolean; inline;
+function TryTextToFloat(const s : PChar; var value : Extended;
+                        const formatSettings : TFormatSettings) : Boolean; {$ifndef FPC} inline; {$endif}
 
 {$ifdef FPC}
-procedure VarCopy(out dest : Variant; const src : Variant);
+procedure VarCopy(out dest : Variant; const src : Variant); inline;
 {$endif}
 
 // ------------------------------------------------------------------
@@ -206,7 +207,7 @@ end;
 
 // SetDecimalSeparator
 //
-procedure SetDecimalSeparator(c : WideChar);
+procedure SetDecimalSeparator(c : Char);
 begin
    {$IFDEF FPC}
       FormatSettings.DecimalSeparator:=c;
@@ -221,7 +222,7 @@ end;
 
 // GetDecimalSeparator
 //
-function GetDecimalSeparator : WideChar;
+function GetDecimalSeparator : Char;
 begin
    {$IFDEF FPC}
       Result:=FormatSettings.DecimalSeparator;
@@ -263,12 +264,22 @@ end;
 // TryTextToFloat
 //
 function TryTextToFloat(const s : PChar; var value : Extended; const formatSettings : TFormatSettings) : Boolean;
+{$ifdef FPC}
+var
+   cw : Word;
 begin
-   {$ifdef FPC}
-   Result:=TryStrToFloat(s, value, formatSettings);
-   {$else}
+   cw:=Get8087CW;;
+   Set8087CW($133F);
+   if TryStrToFloat(s, value, formatSettings) then
+      Result:=(value>-1.7e308) and (value<1.7e308);
+   if not Result then
+      value:=0;
+   asm fclex end;
+   Set8087CW(cw);
+{$else}
+begin
    Result:=TextToFloat(s, value, fvExtended, formatSettings)
-   {$endif}
+{$endif}
 end;
 
 // ------------------

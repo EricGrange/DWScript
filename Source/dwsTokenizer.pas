@@ -24,7 +24,8 @@ unit dwsTokenizer;
 interface
 
 uses
-  SysUtils, Classes, TypInfo, dwsErrors, dwsStrings, dwsXPlatform, dwsUtils;
+  SysUtils, Classes, TypInfo, dwsErrors, dwsStrings, dwsXPlatform, dwsUtils
+  {$ifdef FPC},lazutf8{$endif};
 
 type
 
@@ -78,6 +79,8 @@ type
       procedure ToUpperStr(var result : String); overload;
       function UpperFirstChar : Char;
       function UpperMatchLen(const str : String) : Boolean;
+      function BinToInt64 : Int64;
+      function HexToInt64 : Int64;
       function ToInt64 : Int64;
       function ToFloat : Double;
       function ToType : TTokenType;
@@ -112,7 +115,7 @@ type
    end;
 
    TConvertAction = (caNone, caClear, caName, caNameEscaped,
-                     caHex, caInteger, caFloat,
+                     caBin, caHex, caInteger, caFloat,
                      caChar, caCharHex, caString, caMultiLineString,
                      caSwitch, caDotDot);
    TTransitionOptions = set of (toStart, toFinal);
@@ -213,6 +216,7 @@ type
          procedure ReleaseToken;
 
          procedure HandleChar(var tokenBuf : TTokenBuffer; var result : TToken);
+         procedure HandleBin(var tokenBuf : TTokenBuffer; var result : TToken);
          procedure HandleHexa(var tokenBuf : TTokenBuffer; var result : TToken);
          procedure HandleInteger(var tokenBuf : TTokenBuffer; var result : TToken);
          procedure HandleFloat(var tokenBuf : TTokenBuffer; var result : TToken);
@@ -487,6 +491,35 @@ begin
          'a'..'z' : Result:=Char(Word(Result) xor $0020)
       end;
    end;
+end;
+
+// BinToInt64
+//
+function TTokenBuffer.BinToInt64 : Int64;
+
+   procedure RaiseInvalid;
+   begin
+      raise EIntOverflow.CreateFmt(TOK_InvalidIntegerConstant, [ToStr]);
+   end;
+
+var
+   i : Integer;
+begin
+   if Len>64+2 then
+      RaiseInvalid;
+   Result:=0;
+   for i:=2 to Len-1 do begin
+      if Buffer[i]='1' then
+         Result:=(Result shl 1) or 1
+      else Result:=(Result shl 1);
+   end;
+end;
+
+// BinToInt64
+//
+function TTokenBuffer.HexToInt64 : Int64;
+begin
+   Result:=StrToInt64(ToStr);
 end;
 
 // ToInt64
@@ -1099,21 +1132,32 @@ end;
 procedure TTokenizer.HandleChar(var tokenBuf : TTokenBuffer; var result : TToken);
 var
    tokenIntVal, n : Integer;
+   {$ifdef FPC}
+   us : UnicodeString;
+   {$endif}
 begin
    tokenIntVal:=FTokenBuf.ToInt64;
    case tokenIntVal of
       0..$FFFF : begin
+         {$ifdef FPC}
+         result.FString:=result.FString+UTF8Encode(WideChar(tokenIntVal));
+         {$else}
          n:=Length(result.FString)+1;
          SetLength(result.FString, n);
-         result.FString[n]:=Char(tokenIntVal);
+         result.FString[n]:=WideChar(tokenIntVal);
+         {$endif}
          result.FTyp:=ttStrVal;
       end;
       $10000..$10FFFF : begin
+         {$ifdef FPC}
+         result.FString:=result.FString+UnicodeToUTF8(tokenIntVal);
+         {$else}
+         tokenIntVal:=tokenIntVal-$10000;
          n:=Length(result.FString)+2;
          SetLength(result.FString, n);
-         tokenIntVal:=tokenIntVal-$10000;
-         result.FString[n-1]:=Char($D800+(tokenIntVal shr 10));
-         result.FString[n]:=Char($DC00+(tokenIntVal and $3FF));
+         result.FString[n-1]:=WideChar($D800+(tokenIntVal shr 10));
+         result.FString[n]:=WideChar($DC00+(tokenIntVal and $3FF));
+         {$endif}
          result.FTyp:=ttStrVal;
       end;
    else
@@ -1121,12 +1165,20 @@ begin
    end;
 end;
 
+// HandleBin
+//
+procedure TTokenizer.HandleBin(var tokenBuf : TTokenBuffer; var result : TToken);
+begin
+   result.FInteger:=tokenBuf.BinToInt64;
+   result.FTyp:=ttIntVal;
+end;
+
 // HandleHexa
 //
 procedure TTokenizer.HandleHexa(var tokenBuf : TTokenBuffer; var result : TToken);
 begin
    try
-      result.FInteger:=tokenBuf.ToInt64;
+      result.FInteger:=tokenBuf.HexToInt64;
       result.FTyp:=ttIntVal;
    except
       on e : Exception do
@@ -1217,6 +1269,10 @@ procedure TTokenizer.ConsumeToken;
                FTokenBuf.AppendMultiToStr(FToken.FString);
                FToken.FTyp:=ttStrVal;
             end;
+
+            // Converts binary number to integer
+            caBin :
+               HandleBin(FTokenBuf, FToken);
 
             // Converts hexadecimal number to integer
             caHex :

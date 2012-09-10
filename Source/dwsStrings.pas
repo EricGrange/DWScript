@@ -421,6 +421,7 @@ const
   TOK_EqualityExpected = '"=" expected.';
   TOK_NumberExpected = 'Number expected';
   TOK_HexDigitExpected = 'Hexadecimal digit expected';
+  TOK_BinDigitExpected = 'Binary digit expected';
   TOK_NumberPointExponentExpected = 'Number, point or exponent expected';
   TOK_NumberExponentExpected = 'Number or exponent expected';
   TOK_NumberSignExpected = 'Number or minus expected';

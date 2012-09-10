@@ -385,7 +385,7 @@ begin
          writer.WriteInteger(PVarData(@value).VInt64);
       varUString :
          {$ifdef FPC}
-         writer.WriteString(String(PVarData(@value).VString));
+         writer.WriteString(UnicodeString(PVarData(@value).VString));
          {$else}
          writer.WriteString(String(PVarData(@value).VUString));
          {$endif}
@@ -426,13 +426,21 @@ function ReadVariant(reader: TReader): Variant;
   end;
 
 const
-
+   {$ifdef FPC}
+   cValTtoVarT: array[TValueType] of Integer = (
+      varNull, varError, varByte, varSmallInt, varInteger, varDouble,
+      varString, varError, varBoolean, varBoolean, varError, varError, varString,
+      varEmpty, varError, varSingle, varCurrency, varDate, varOleStr,
+      varUInt64, varString, varDouble{$ifdef FPC}, varQWord{$endif}
+    );
+   {$else}
    cValTtoVarT: array[TValueType] of Integer = (
       varNull, varError, varByte, varSmallInt, varInteger, varDouble,
       varUString, varError, varBoolean, varBoolean, varError, varError, varUString,
       varEmpty, varError, varSingle, varCurrency, varDate, varOleStr,
       varUInt64, varUString, varDouble{$ifdef FPC}, varQWord{$endif}
     );
+   {$endif}
 
 var
   valType: TValueType;

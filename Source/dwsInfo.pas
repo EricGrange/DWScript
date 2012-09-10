@@ -580,12 +580,13 @@ var
 begin
    if (FDataMaster=nil) and (FTypeSym<>nil) and (FTypeSym.Size=1) then begin
       varData:=@FData[FOffset];
-      if varData.VType=varUString then
-         {$ifdef FPC}
+      {$ifdef FPC}
+      if varData.VType=varString then
          Result:=String(varData.VString)
-         {$else}
+      {$else}
+      if varData.VType=varUString then
          Result:=String(varData.VUString)
-         {$endif}
+      {$endif}
       else Result:=PVariant(varData)^;
    end else Result:=inherited GetValueAsString;
 end;

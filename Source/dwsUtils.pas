@@ -515,6 +515,9 @@ function Min(a, b : Integer) : Integer; inline;
 
 function SimpleStringHash(const s : String) : Cardinal;
 
+function RawByteStringToScriptString(const s : RawByteString) : String;
+function ScriptStringToRawByteString(const s : String) : RawByteString;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -540,6 +543,40 @@ begin
    Result:=Length(s);
    for i:=1 to Result do
       Result:=((Result shl 2) or (Result shr 30)) xor Ord(s[i]);
+end;
+
+// ScriptStringToRawByteString
+//
+function ScriptStringToRawByteString(const s : String) : RawByteString;
+var
+   i, n : Integer;
+   pSrc : PChar;
+   pDest : PByteArray;
+begin
+   if s='' then Exit('');
+   n:=Length(s);
+   SetLength(Result, n);
+   pSrc:=PChar(Pointer(s));
+   pDest:=PByteArray(NativeUInt(Result));
+   for i:=0 to n-1 do
+      pDest[i]:=PByte(@pSrc[i])^;
+end;
+
+// RawByteStringToScriptString
+//
+function RawByteStringToScriptString(const s : RawByteString) : String;
+var
+   i, n : Integer;
+   pSrc : PByteArray;
+   pDest : PWordArray;
+begin
+   if s='' then Exit('');
+   n:=Length(s);
+   SetLength(Result, n);
+   pSrc:=PByteArray(NativeUInt(s));
+   pDest:=PWordArray(NativeUInt(Result));
+   for i:=0 to n-1 do
+      pDest[i]:=Word(PByte(@pSrc[i])^);
 end;
 
 // ------------------
@@ -889,7 +926,11 @@ begin
    SetLength(FStrings, n+1);
    FStrings[n]:=s;
    with AddVarRec^ do begin
+      {$ifdef FPC}
+      VType:=vtAnsiString;
+      {$else}
       VType:=vtUnicodeString;
+      {$endif}
       VInteger:=n;
    end;
 end;
@@ -906,7 +947,11 @@ begin
       case rec.VType of
          vtInt64 : rec.VInt64:=@FIntegers[rec.VInteger];
          vtExtended : rec.VExtended:=@FFloats[rec.VInteger];
+         {$ifdef FPC}
+         vtAnsiString : rec.VAnsiString:=Pointer(FStrings[rec.VInteger]);
+         {$else}
          vtUnicodeString : rec.VString:=Pointer(FStrings[rec.VInteger]);
+         {$endif}
       end;
    end;
 end;
@@ -1573,8 +1618,12 @@ var
    stringCracker : NativeInt;
 begin
    if utf16String<>'' then begin
+      {$ifdef FPC}
+      Write(utf16String[1], Length(utf16String)*SizeOf(WideChar));
+      {$else}
       stringCracker:=NativeInt(utf16String);
       Write(Pointer(stringCracker)^, PInteger(stringCracker-SizeOf(Integer))^*SizeOf(WideChar));
+      {$endif}
    end;
 end;
 

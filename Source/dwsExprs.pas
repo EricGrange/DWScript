@@ -1866,9 +1866,6 @@ function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; var expr : TTypedExpr; RefKind: TRefKind;
                           const scriptPos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
 
-function RawByteStringToScriptString(const s : RawByteString) : String;
-function ScriptStringToRawByteString(const s : String) : RawByteString;
-
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1994,50 +1991,22 @@ begin
    FScriptObj.Destroyed:=val;
 end;
 
-// ScriptStringToRawByteString
+// RaiseVariableNotFound
 //
-function ScriptStringToRawByteString(const s : String) : RawByteString;
-var
-   i, n : Integer;
-   pSrc : PWideChar;
-   pDest : PByteArray;
-begin
-   if s='' then Exit('');
-   n:=Length(s);
-   SetLength(Result, n);
-   pSrc:=PWideChar(Pointer(s));
-   pDest:=PByteArray(NativeUInt(Result));
-   for i:=0 to n-1 do
-      pDest[i]:=PByte(@pSrc[i])^;
-end;
-
-// RawByteStringToScriptString
-//
-function RawByteStringToScriptString(const s : RawByteString) : String;
-var
-   i, n : Integer;
-   pSrc : PByteArray;
-   pDest : PWordArray;
-begin
-   if s='' then Exit('');
-   n:=Length(s);
-   SetLength(Result, n);
-   pSrc:=PByteArray(NativeUInt(s));
-   pDest:=PWordArray(NativeUInt(Result));
-   for i:=0 to n-1 do
-      pDest[i]:=Word(PByte(@pSrc[i])^);
-end;
-
 procedure RaiseVariableNotFound(const s : String);
 begin
    raise Exception.CreateFmt(RTE_VariableNotFound, [s]);
 end;
 
+// RaiseIncorrectParameterIndex
+//
 procedure RaiseIncorrectParameterIndex(i : Integer);
 begin
    raise Exception.CreateFmt(RTE_IncorrectParameterIndex, [i]);
 end;
 
+// RaiseOnlyVarSymbols
+//
 procedure RaiseOnlyVarSymbols(sym : TSymbol);
 begin
    raise Exception.CreateFmt(RTE_OnlyVarSymbols, [sym.Caption]);
@@ -6247,12 +6216,13 @@ var
    p : PVarData;
 begin
    p:=PVarData(GetParamAsPVariant(index));
-   if p^.VType=varUString then
-      {$ifdef FPC}
+   {$ifdef FPC}
+   if p^.VType=varString then
       Result:=String(p.VString)
-      {$else}
+   {$else}
+   if p^.VType=varUString then
       Result:=String(p.VUString)
-      {$endif}
+   {$endif}
    else Result:=PVariant(p)^;
 end;
 

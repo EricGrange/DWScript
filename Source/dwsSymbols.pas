@@ -24,7 +24,8 @@ unit dwsSymbols;
 interface
 
 uses SysUtils, Variants, Classes, dwsStrings, dwsErrors, dwsUtils,
-   dwsTokenizer, dwsStack, dwsXPlatform;
+   dwsTokenizer, dwsStack, dwsXPlatform
+   {$ifdef FPC},LazUTF8{$endif};
 
 type
 
@@ -116,6 +117,9 @@ type
    TExprBaseEnumeratorProc = procedure (parent, expr : TExprBase; var abort : Boolean) of object;
 
    // Base class for all Exprs
+
+   { TExprBase }
+
    TExprBase = class (TRefCountedObject)
       protected
          function GetSubExpr(i : Integer) : TExprBase; virtual;
@@ -127,6 +131,9 @@ type
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; virtual; abstract;
          function  EvalAsFloat(exec : TdwsExecution) : Double; virtual; abstract;
          procedure EvalAsString(exec : TdwsExecution; var Result : String); overload; virtual; abstract;
+         {$ifdef FPC}
+         procedure EvalAsUnicodeString(exec : TdwsExecution; var Result : UnicodeString);
+         {$endif}
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); overload; virtual; abstract;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); virtual; abstract;
 
@@ -1788,6 +1795,16 @@ begin
    Result:=0;
 end;
 
+{$ifdef FPC}
+procedure TExprBase.EvalAsUnicodeString(exec: TdwsExecution; var Result: UnicodeString);
+var
+   buf : String;
+begin
+   EvalAsString(exec, buf);
+   Result:=UTF8ToUTF16(buf);
+end;
+{$endif}
+
 // ------------------
 // ------------------ TExprBaseListRec ------------------
 // ------------------
@@ -1932,20 +1949,8 @@ end;
 // GetAsDataString
 //
 function TExprBaseListExec.GetAsDataString(const x : Integer) : RawByteString;
-var
-   ustr : String;
-   i, n : Integer;
-   pSrc : PWideChar;
-   pDest : PByteArray;
 begin
-   ustr:=GetAsString(x);
-   if ustr='' then Exit('');
-   n:=Length(ustr);
-   SetLength(Result, n);
-   pSrc:=PWideChar(Pointer(ustr));
-   pDest:=PByteArray(Pointer(Result));
-   for i:=0 to n-1 do
-      pDest[i]:=PByte(@pSrc[i])^;
+   Result:=ScriptStringToRawByteString(GetAsString(x));
 end;
 
 // ------------------
