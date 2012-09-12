@@ -509,9 +509,10 @@ begin
       RaiseInvalid;
    Result:=0;
    for i:=2 to Len-1 do begin
-      if Buffer[i]='1' then
-         Result:=(Result shl 1) or 1
-      else Result:=(Result shl 1);
+      case Ord(Buffer[i]) of
+         Ord('1') : Result:=(Result shl 1) or 1;
+         Ord('0') : Result:=(Result shl 1);
+      end;
    end;
 end;
 
