@@ -92,7 +92,7 @@ const
    cANYCHAR = [#0..#255];
    cNAM = ['A'..'Z', 'a'..'z', '_', #127];
    cINT = ['0'..'9'];
-   cHEX = cINT + ['A'..'F', 'a'..'f'];
+   cHEX = cINT + ['A'..'F', 'a'..'f', '_'];
    cBIN = ['0', '1', '_'];
    cStart = ['''', '"', '#', ':', '$', '.'] + cNAM + cINT + cOPS;
 

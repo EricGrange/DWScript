@@ -505,10 +505,10 @@ function TTokenBuffer.BinToInt64 : Int64;
 var
    i : Integer;
 begin
-   if Len>64+2 then
-      RaiseInvalid;
    Result:=0;
    for i:=2 to Len-1 do begin
+      // highest bit already set, if we're still here we'll overflow
+      if Result<0 then RaiseInvalid;
       case Ord(Buffer[i]) of
          Ord('1') : Result:=(Result shl 1) or 1;
          Ord('0') : Result:=(Result shl 1);
@@ -519,8 +519,35 @@ end;
 // BinToInt64
 //
 function TTokenBuffer.HexToInt64 : Int64;
+
+   procedure RaiseInvalid;
+   begin
+      raise EIntOverflow.CreateFmt(TOK_InvalidIntegerConstant, [ToStr]);
+   end;
+
+var
+   i : Integer;
+   v : Integer;
 begin
-   Result:=StrToInt64(ToStr);
+   //Result:=StrToInt64(ToStr);
+   if Buffer[0]='$' then
+      i:=1     // $ form
+   else i:=2;  // 0x form
+   Result:=0;
+   while i<Len do begin
+      // highest nibble already set, if we're still here we'll overflow
+      if (Result shr 60)>0 then RaiseInvalid;
+      v:=Ord(Buffer[i]);
+      Inc(i);
+      case v of
+         Ord('0')..Ord('9') : v:=v-Ord('0');
+         Ord('a')..Ord('f') : v:=v-(Ord('a')-10);
+         Ord('A')..Ord('F') : v:=v-(Ord('A')-10);
+      else
+         continue;
+      end;
+      Result:=(Result shl 4) or v;
+   end;
 end;
 
 // ToInt64

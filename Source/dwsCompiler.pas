@@ -1757,13 +1757,14 @@ begin
             ReadImplementationBlock;
             unitBlock:=ReadRootBlock([], finalToken);
             FProg.InitExpr.AddStatement(unitBlock);
+            FLineCount:=FLineCount+FTok.CurrentPos.Line-2;
             FTok.Free;
          end else FUnitContextStack.PushContext(Self);
-         FTok:=nil;
       end else begin
+         FLineCount:=FLineCount+FTok.CurrentPos.Line-2;
          FTok.Free;
-         FTok:=nil;
       end;
+      FTok:=nil;
 
       if scriptType=stMain then
          ReadScriptImplementations;
