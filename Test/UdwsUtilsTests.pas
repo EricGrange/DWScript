@@ -28,6 +28,8 @@ type
          procedure ParseJSON;
          procedure AccessJSON;
          procedure JSONUnicodeLiteral;
+         procedure JSONCRLF;
+         procedure UndefinedJSON;
 
          procedure UnicodeCompareTextTest;
 
@@ -373,6 +375,39 @@ begin
    {$else}
    CheckEquals(WideChar($44f)+WideChar($aa), TdwsJSONImmediate(json).AsString, 'unicode');
    {$endif}
+   json.Free;
+end;
+
+// JSONCRLF
+//
+procedure TdwsUtilsTests.JSONCRLF;
+var
+   json1, json2 : TdwsJSONValue;
+begin
+   json1:=TdwsJSONValue.ParseString('{"Value": []}');
+   json2:=TdwsJSONValue.ParseString( '{'#13#10
+                                    +#9'"Value": ['#13#10
+                                    +#9']'#13#10
+                                    +'}');
+   CheckEquals('{"Value":[]}', json1.ToString, 'Roundtrip');
+   CheckEquals(json1.ToString, json2.ToString, 'Json1 vs Json2');
+
+   json1.Free;
+   json2.Free;
+end;
+
+// UndefinedJSON
+//
+procedure TdwsUtilsTests.UndefinedJSON;
+var
+   json : TdwsJSONValue;
+begin
+   json:=TdwsJSONValue.ParseString('{"hello":123}');
+
+   Check(json['hello'].ValueType=jvtNumber, 'check hello value type');
+   Check(json['missing'].ValueType=jvtUndefined, 'check missing value type');
+   Check(json['missing'][2].ValueType=jvtUndefined, 'check missing[2] value type');
+
    json.Free;
 end;
 

@@ -21,7 +21,7 @@ uses Classes, SysUtils, Variants, dwsUtils, dwsXPlatform;
 
 type
 
-   TdwsJSONValueType = (jvtNull, jvtObject, jvtArray, jvtString, jvtNumber, jvtBoolean);
+   TdwsJSONValueType = (jvtUndefined, jvtNull, jvtObject, jvtArray, jvtString, jvtNumber, jvtBoolean);
 
    TdwsJSONValue = class;
    TdwsJSONArray = class;
@@ -426,28 +426,52 @@ end;
 // WriteJavaScriptString
 //
 procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : String);
+
+   procedure WriteUTF16(destStream : TWriteOnlyBlockStream; c : Integer);
+   const
+      cIntToHex : String = '0123456789ABCDEF';
+   var
+      hex : array [0..5] of Char;
+   begin
+      hex[0]:='\';
+      hex[1]:='u';
+      hex[2]:=cIntToHex[c shr 12];
+      hex[3]:=cIntToHex[(c shr 8) and $F];
+      hex[4]:=cIntToHex[(c shr 4) and $F];
+      hex[5]:=cIntToHex[c and $F];
+      destStream.Write(hex[0], 6*SizeOf(Char));
+   end;
+
+const
+   cQUOTE : Char = '"';
 var
    c : Char;
+   p : PChar;
 begin
-   destStream.WriteString('"');
-   for c in str do begin
+   destStream.Write(cQUOTE, SizeOf(Char));
+   p:=PChar(Pointer(str));
+   if p<>nil then while True do begin
+      c:=p^;
       case c of
-         {$ifdef FPC}
-         #0..#7, #9, #11, #12, #14..#31 :
-         {$else}
-         #0..#7, #9, #11, #12, #14..#31, #255..#65535 :
+         #0..#31 :
+            case c of
+               #0 : Break;
+               #8 : destStream.WriteString('\t');
+               #10 : destStream.WriteString('\n');
+               #13 : destStream.WriteString('\r');
+            else
+               WriteUTF16(destStream, Ord(c));
+            end;
+         {$ifndef FPC}
+         #255..#65535 :
+            WriteUTF16(destStream, Ord(c));
          {$endif}
-            destStream.WriteString(Format('\u%.04x', [Ord(c)]));
-         #8 : destStream.WriteString('\t');
-         #10 : destStream.WriteString('\n');
-         #13 : destStream.WriteString('\r');
-         '"' : destStream.WriteString('\"');
-         '\' : destStream.WriteString('\\');
       else
-         destStream.WriteChar(c);
+         destStream.Write(p^, SizeOf(Char));
       end;
+      Inc(p);
    end;
-   destStream.WriteChar('"');
+   destStream.Write(cQUOTE, SizeOf(Char));
 end;
 
 // ------------------
@@ -661,7 +685,7 @@ function TdwsJSONValue.GetValueType : TdwsJSONValueType;
 begin
    if Assigned(Self) then
       Result:=FValueType
-   else Result:=jvtNull;
+   else Result:=jvtUndefined;
 end;
 
 // GetName
@@ -1220,11 +1244,13 @@ begin
       varEmpty :
          writer.WriteNull;
       varBoolean :
-         writer.WriteBoolean(FValue);
+         writer.WriteBoolean(TVarData(FValue).VBoolean);
       varDouble :
-         writer.WriteNumber(FValue);
+         writer.WriteNumber(TVarData(FValue).VDouble);
+      varUString :
+         writer.WriteString(String(TVarData(FValue).VUString));
    else
-      writer.WriteString(FValue);
+      Assert(False, 'Unsupported type');
    end;
 end;
 

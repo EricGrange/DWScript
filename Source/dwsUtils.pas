@@ -466,7 +466,7 @@ type
          procedure WriteString(const utf16String : UnicodeString); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos, length : Integer); overload;
-         procedure WriteChar(utf16Char : WideChar);
+         procedure WriteChar(utf16Char : WideChar); inline;
          // assumes data is an utf16 String, spits out utf8 in FPC, utf16 in Delphi
          function ToString : String; override;
 
