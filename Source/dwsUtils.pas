@@ -1562,7 +1562,7 @@ end;
 function TWriteOnlyBlockStream.Write(const buffer; count: Longint): Longint;
 var
    newBlock : PPointerArray;
-   source : PByteArray;
+   dest, source : PByteArray;
    fraction : Integer;
 begin
    Result:=count;
@@ -1598,7 +1598,13 @@ begin
    end;
 
    // if we reach here, everything fits in current block
-   Move(source^, PByteArray(@FCurrentBlock[2])[FBlockRemaining^], count);
+   dest:=@PByteArray(@FCurrentBlock[2])[FBlockRemaining^];
+   case count of
+      1 : dest[0]:=source[0];
+      2 : PWord(dest)^:=PWord(source)^;
+   else
+      Move(source^, dest^, count);
+   end;
    Inc(FBlockRemaining^, count);
 end;
 
@@ -1617,14 +1623,14 @@ procedure TWriteOnlyBlockStream.WriteString(const utf16String : UnicodeString);
 var
    stringCracker : NativeInt;
 begin
+   {$ifdef FPC}
    if utf16String<>'' then begin
-      {$ifdef FPC}
       Write(utf16String[1], Length(utf16String)*SizeOf(WideChar));
-      {$else}
-      stringCracker:=NativeInt(utf16String);
+   {$else}
+   stringCracker:=NativeInt(utf16String);
+   if stringCracker<>0 then
       Write(Pointer(stringCracker)^, PInteger(stringCracker-SizeOf(Integer))^*SizeOf(WideChar));
-      {$endif}
-   end;
+   {$endif}
 end;
 
 // WriteChar
