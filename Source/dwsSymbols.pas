@@ -1107,6 +1107,8 @@ type
 
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; virtual; abstract;
 
+         function ExternalRoot : TCompositeTypeSymbol;
+
          property UnitSymbol : TSymbol read FUnitSymbol;
          property Parent : TCompositeTypeSymbol read FParent;
          property Members : TMembersSymbolTable read FMembers;
@@ -2180,6 +2182,15 @@ begin
          end;
       end;
    end;
+end;
+
+// ExternalRoot
+//
+function TCompositeTypeSymbol.ExternalRoot : TCompositeTypeSymbol;
+begin
+   Result:=Self;
+   while (Result<>nil) and not Result.IsExternal do
+      Result:=Result.Parent;
 end;
 
 // ------------------

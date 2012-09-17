@@ -50,6 +50,7 @@ type
          procedure ResourceTest;
          procedure LongLineTest;
          procedure TryExceptLoop;
+         procedure ExternalSubClass;
    end;
 
 // ------------------------------------------------------------------
@@ -1028,6 +1029,31 @@ begin
    finally
       exec:=nil;
    end;
+end;
+
+// ExternalSubClass
+//
+procedure TCornerCasesTests.ExternalSubClass;
+var
+   prog : IdwsProgram;
+   subSym : TClassSymbol;
+begin
+   prog:=FCompiler.Compile( 'type TExt = class external end;'#13#10
+                           +'type TSub = class (TExt) end;'#13#10
+                           +'type TSub2 = class external (TExt) end;');
+
+   CheckEquals(0, prog.Msgs.Count, prog.Msgs.AsInfo);
+   subSym:=(prog.Table.FindLocal('TSub') as TClassSymbol);
+   Check(not subSym.IsExternal, 'sub is not external');
+   Check(subSym.ExternalRoot.IsExternal, 'sub is externally rooted');
+
+   subSym:=(prog.Table.FindLocal('TSub2') as TClassSymbol);
+   Check(subSym.IsExternal, 'sub2 is external');
+   Check(subSym.ExternalRoot=subSym, 'sub2 external root is self');
+
+   prog:=FCompiler.Compile( 'type TInt = class end;'#13#10
+                           +'type TSub = class external (TInt) end;');
+   CheckNotEquals(0, prog.Msgs.Count, prog.Msgs.AsInfo);
 end;
 
 // ------------------------------------------------------------------

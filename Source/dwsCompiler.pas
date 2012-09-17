@@ -6914,6 +6914,11 @@ begin
 
          end;
 
+         if     Result.IsExternal
+            and (ancestorTyp<>FProg.TypObject)
+            and (ancestorTyp.ExternalRoot=nil) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassExternalAncestorMustBeExternalOrTObject);
+
          if     Result.IsStatic
             and (ancestorTyp<>FProg.TypObject)
             and (not ancestorTyp.IsStatic) then begin
