@@ -435,7 +435,8 @@ procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : 
 
    procedure WriteUTF16(destStream : TWriteOnlyBlockStream; c : Integer);
    const
-      cIntToHex : String = '0123456789ABCDEF';
+      cIntToHex : array [0..15] of Char = (
+         '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F');
    var
       hex : array [0..5] of Char;
    begin
