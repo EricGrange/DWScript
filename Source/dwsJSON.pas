@@ -124,9 +124,15 @@ type
          procedure Clear;
 
          procedure Add(const aName : String; aValue : TdwsJSONValue);
+
          function AddObject(const name : String) : TdwsJSONObject;
+
          function AddArray(const name : String) : TdwsJSONArray;
-         function AddValue(const name : String) : TdwsJSONImmediate;
+
+         function AddValue(const name : String) : TdwsJSONImmediate; overload;
+         function AddValue(const name, value : String) : TdwsJSONImmediate; overload;
+         function AddValue(const name : String; const value : Double) : TdwsJSONImmediate; overload;
+         function AddValue(const name : String; const value : Boolean) : TdwsJSONImmediate; overload;
    end;
 
    PdwsJSONValueArray = ^TdwsJSONValueArray;
@@ -854,6 +860,30 @@ function TdwsJSONObject.AddValue(const name : String) : TdwsJSONImmediate;
 begin
    Result:=TdwsJSONImmediate.Create;
    Add(name, Result);
+end;
+
+// AddValue (string)
+//
+function TdwsJSONObject.AddValue(const name, value : String) : TdwsJSONImmediate;
+begin
+   Result:=AddValue(name);
+   Result.AsString:=value;
+end;
+
+// AddValue (number)
+//
+function TdwsJSONObject.AddValue(const name : String; const value : Double) : TdwsJSONImmediate;
+begin
+   Result:=AddValue(name);
+   Result.AsNumber:=value;
+end;
+
+// AddValue (bool)
+//
+function TdwsJSONObject.AddValue(const name : String; const value : Boolean) : TdwsJSONImmediate;
+begin
+   Result:=AddValue(name);
+   Result.AsBoolean:=value;
 end;
 
 // DetachChild
