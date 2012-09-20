@@ -943,8 +943,10 @@ begin
    Assert(initialChar='{');
    repeat
       c:=SkipBlanks(needChar(), needChar);
-      if c<>'"' then
-         RaiseJSONParseError('Invalid object pair name start character "%s"', c);
+      if c<>'"' then begin
+         if FCount=0 then Break;
+         RaiseJSONParseError('Invalid object pair name start character "%s"', c)
+      end;
       {$ifdef FPC}
       name:=UTF8Encode(ParseJSONString(c, needChar));
       {$else}

@@ -15,6 +15,8 @@ type
          procedure TightListOutOfBoundsInsert;
          procedure TightListOutOfBoundsMove;
 
+         procedure JSONExtraComma;
+
       published
 
          procedure StackIntegerTest;
@@ -30,6 +32,7 @@ type
          procedure JSONUnicodeLiteral;
          procedure JSONCRLF;
          procedure UndefinedJSON;
+         procedure JSONEmptyObject;
 
          procedure UnicodeCompareTextTest;
 
@@ -409,6 +412,32 @@ begin
    Check(json['missing'][2].ValueType=jvtUndefined, 'check missing[2] value type');
 
    json.Free;
+end;
+
+// JSONExtraComma
+//
+procedure TdwsUtilsTests.JSONExtraComma;
+var
+   json : TdwsJSONValue;
+begin
+   json:=TdwsJSONValue.ParseString('{"a":1,}');
+   json.Free;
+end;
+
+// JSONEmptyObject
+//
+procedure TdwsUtilsTests.JSONEmptyObject;
+var
+   json : TdwsJSONValue;
+begin
+   json:=TdwsJSONValue.ParseString('{"empty":{}}');
+
+   Check(json['empty'].ValueType=jvtObject, 'check empty value type');
+   CheckEquals(0, json['empty'].ElementCount, 'check empty element count');
+
+   json.Free;
+
+   CheckException(JSONExtraComma, EdwsJSONParseError, 'extra comma');
 end;
 
 // UnicodeCompareTextTest
