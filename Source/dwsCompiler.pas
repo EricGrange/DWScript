@@ -6191,6 +6191,11 @@ begin
          typ:=ReadType('', typeContext);
 
          if boundsOk and (min.Count>0) then begin
+
+            if typ.ClassType=TRecordSymbol then
+               if not TRecordSymbol(typ).IsFullyDefined then
+                  FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_RecordTypeNotFullyDefined, [typ.Name]);
+
             // initialize innermost array
             Result:=TStaticArraySymbol.Create('', typ, min[0].Typ,
                                                 min[0].EvalAsInteger(FExec),
@@ -7488,6 +7493,9 @@ begin
                if FTok.Test(ttEND) then
                   Break;
 
+               if Result.Members.HasMethods then
+                  FMsgs.AddCompilerStop(FTok.HotPos, CPE_RecordFieldsMustBeBeforeMethods);
+
                ReadFieldsDecl(Result, visibility, allowNonConstExpressions);
 
                if not FTok.TestDelete(ttSEMI) then
@@ -7505,6 +7513,7 @@ begin
          FMsgs.AddCompilerError(FTok.HotPos, RTE_NoRecordFields);
       CheckNoPendingAttributes;
 
+      Result.IsFullyDefined:=True;
    except
       // Removed added record symbols. Destroying object
       if coSymbolDictionary in FOptions then
@@ -7602,6 +7611,8 @@ begin
             typ:=FProg.TypVariant;
          end;
       end;
+      if (typ=struct) and (typ.ClassType=TRecordSymbol) then
+         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_RecordTypeNotFullyDefined, [typ.Name]);
 
       member:=nil;
       for x:=0 to names.Count - 1 do begin

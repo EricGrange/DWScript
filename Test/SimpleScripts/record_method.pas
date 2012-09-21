@@ -2,7 +2,11 @@ type
    TTest = record
       private
          FHidden : String;
-         
+
+      public
+         Field : Integer;
+
+      private
          procedure SetHidden(v : String);
          begin
             FHidden := v;
@@ -11,8 +15,6 @@ type
          function GetIdx(i : Integer) : String;
          
       public
-         Field : Integer;
-      
          property Shown : String read FHidden write SetHidden;
          property Idx[i : Integer] : String read GetIdx; default;
    

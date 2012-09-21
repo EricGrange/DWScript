@@ -375,6 +375,7 @@ type
 
          function HasClass(const aClass : TSymbolClass) : Boolean;
          function HasSymbol(sym : TSymbol) : Boolean;
+         function HasMethods : Boolean;
          class function IsUnitTable : Boolean; virtual;
 
          procedure Initialize(const msgs : TdwsCompileMessageList); virtual;
@@ -1194,14 +1195,22 @@ type
          property ExternalName : String read GetExternalName write FExternalName;
    end;
 
+   TRecordSymbolFlag = (rsfDynamic, rsfFullyDefined);
+   TRecordSymbolFlags = set of TRecordSymbolFlag;
+
    // record member1: Integer; member2: Integer end;
    TRecordSymbol = class sealed (TStructuredTypeSymbol)
       private
-         FIsDynamic : Boolean;
+         FFlags : TRecordSymbolFlags;
 
       protected
          function GetCaption : String; override;
          function GetDescription : String; override;
+
+         function GetIsDynamic : Boolean; inline;
+         procedure SetIsDynamic(const val : Boolean);
+         function GetIsFullyDefined : Boolean; inline;
+         procedure SetIsFullyDefined(const val : Boolean);
 
       public
          constructor Create(const name : String; aUnit : TSymbol);
@@ -1215,7 +1224,8 @@ type
          procedure InitData(const data : TData; offset : Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
-         property IsDynamic : Boolean read FIsDynamic write FIsDynamic;
+         property IsDynamic : Boolean read GetIsDynamic write SetIsDynamic;
+         property IsFullyDefined : Boolean read GetIsFullyDefined write SetIsFullyDefined;
    end;
 
    // interface
@@ -2377,7 +2387,7 @@ begin
    fieldSym.FOffset:=FSize;
    FSize:=FSize+fieldSym.Typ.Size;
    if fieldSym.DefaultExpr<>nil then
-      FIsDynamic:=True;
+      IsDynamic:=True;
 end;
 
 // AddMethod
@@ -2451,6 +2461,38 @@ begin
          Result:=Result+'   '+member.Name+' : '+member.Typ.Name+';'#13#10;
    end;
    Result:=Result+'end;';
+end;
+
+// GetIsDynamic
+//
+function TRecordSymbol.GetIsDynamic : Boolean;
+begin
+   Result:=(rsfDynamic in FFlags);
+end;
+
+// SetIsDynamic
+//
+procedure TRecordSymbol.SetIsDynamic(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, rsfDynamic)
+   else Exclude(FFlags, rsfDynamic);
+end;
+
+// GetIsFullyDefined
+//
+function TRecordSymbol.GetIsFullyDefined : Boolean;
+begin
+   Result:=(rsfFullyDefined in FFlags);
+end;
+
+// SetIsFullyDefined
+//
+procedure TRecordSymbol.SetIsFullyDefined(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, rsfFullyDefined)
+   else Exclude(FFlags, rsfFullyDefined);
 end;
 
 // ------------------
@@ -4970,6 +5012,21 @@ end;
 function TSymbolTable.HasSymbol(sym : TSymbol) : Boolean;
 begin
    Result:=Assigned(Self) and (FSymbols.IndexOf(sym)>=0);
+end;
+
+// HasMethods
+//
+function TSymbolTable.HasMethods : Boolean;
+var
+   i : Integer;
+   ptrList : PObjectTightList;
+begin
+   ptrList:=FSymbols.List;
+   for i:=FSymbols.Count-1 downto 0 do begin
+      if TSymbol(ptrList[i]) is TFuncSymbol then
+         Exit(True);
+   end;
+   Result:=False;
 end;
 
 // IsUnitTable

@@ -181,7 +181,6 @@ const
   CPE_ClassPartialModifiersNotMatched = 'Modifiers do not match previous "partial" declaration of class';
   CPE_FuncForwardAlreadyExists = 'There is already a forward declaration of this function!';
   CPE_ForwardNotImplemented = 'The function "%s" was forward declared but not implemented!';
-  CPE_AnonymousRecordMethodsMustBeInline = 'Anonymous record methods must be inline!';
   CPE_CantImplementAFunctionType = 'Can''t implement a function type';
   CPE_ClassIsSealed = 'Class "%s" is sealed, inheriting is not allowed!';
   CPE_ClassIsStatic = 'Class "%s" is static, instantiation not allowed!';
@@ -212,12 +211,16 @@ const
   CPE_MultipleDefaultProperties = '"%s" already has "%s" as default property';
   CPE_NoDefaultPropertyAllowed = 'No default property is allowed here';
   CPE_ParamsExpected = 'Parameters expected';
-  CPE_NoProtectedVisibilityForRecords = 'Records do not supported "protected" visibility specifier';
   CPE_NoProtectedVisibilityForHelpers = 'Helpers do not supported "protected" visibility specifier';
   CPE_HelpersNotAllowedForDelegates = 'Helpers not allowed for delegates or function pointers';
 
   CPE_AttributeConstructorExpected = 'Attribute constructor expected';
   CPE_DanglingAttribute = 'Dangling attribute declaration';
+
+  // Record declaration
+  CPE_AnonymousRecordMethodsMustBeInline = 'Anonymous record methods must be inline!';
+  CPE_NoProtectedVisibilityForRecords = 'Records do not supported "protected" visibility specifier';
+  CPE_RecordFieldsMustBeBeforeMethods = 'Record fields must be declared before record methods';
 
   // Interface declaration
   CPE_InterfaceAlreadyDefined = 'Interface "%s" already defined';
@@ -288,6 +291,7 @@ const
   CPE_MatchingOverload = 'Overload of "%s" will be ambiguous with a previously declared version';
   CPE_ClassMethodExpected = 'Class method expected';
   CPE_RecordTypeExpected = 'Record type expected';
+  CPE_RecordTypeNotFullyDefined = 'Record type "%s" is not fully defined';
 
   CPE_InvalidOperands = 'Invalid Operands';
   CPE_IncompatibleOperands = 'Incompatible operands';
