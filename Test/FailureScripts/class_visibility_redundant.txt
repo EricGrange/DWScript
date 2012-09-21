@@ -1,3 +1,2 @@
-Hint: Redundant specifier, visibility is already "PUBLISHED" [line: 3, column: 7]
 Hint: Redundant specifier, visibility is already "PROTECTED" [line: 5, column: 7]
 Hint: Redundant specifier, visibility is already "PUBLIC" [line: 7, column: 7]

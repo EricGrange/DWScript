@@ -6784,7 +6784,7 @@ var
    intfTyp : TInterfaceSymbol;
    interfaces : TList;
    missingMethod : TMethodSymbol;
-   isInSymbolTable : Boolean;
+   isInSymbolTable, firstVisibilityToken : Boolean;
    previousClassFlags  : TClassSymbolFlags;
    visibility : TdwsVisibility;
    tt : TTokenType;
@@ -6934,6 +6934,7 @@ begin
          end;
 
          visibility:=cvPublished;
+         firstVisibilityToken:=True;
 
          // standard class definition
          if not FTok.Test(ttSEMI) then begin
@@ -6980,9 +6981,11 @@ begin
                   end;
                   ttPRIVATE..ttPUBLISHED : begin
 
-                     if visibility=cTokenToVisibility[tt] then
-                        FMsgs.AddCompilerHintFmt(FTok.HotPos, CPH_RedundantVisibilitySpecifier, [cTokenStrings[tt]], hlStrict)
-                     else visibility:=cTokenToVisibility[tt];
+                     if visibility=cTokenToVisibility[tt] then begin
+                        if not firstVisibilityToken then
+                           FMsgs.AddCompilerHintFmt(FTok.HotPos, CPH_RedundantVisibilitySpecifier, [cTokenStrings[tt]], hlStrict)
+                     end else visibility:=cTokenToVisibility[tt];
+                     firstVisibilityToken:=False;
 
                   end;
 

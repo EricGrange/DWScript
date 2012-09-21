@@ -50,13 +50,13 @@ type
          FTypeSym : TSymbol;
 
          function GetData : TData; virtual;
-         function GetExternalObject: TObject; virtual;
-         function GetMember(const s: String): IInfo; virtual;
+         function GetExternalObject : TObject; virtual;
+         function GetMember(const s : String) : IInfo; virtual;
          function GetFieldMemberNames : TStrings; virtual;
-         function GetMethod(const s: String): IInfo; virtual;
-         function GetScriptObj: IScriptObj; virtual;
-         function GetParameter(const s: String): IInfo; virtual;
-         function GetTypeSym: TSymbol;
+         function GetMethod(const s : String) : IInfo; virtual;
+         function GetScriptObj : IScriptObj; virtual;
+         function GetParameter(const s : String) : IInfo; virtual;
+         function GetTypeSym : TSymbol;
          function GetValue : Variant; virtual;
          function GetValueAsString : String; virtual;
          function GetValueAsDataString : RawByteString; virtual;
@@ -120,7 +120,7 @@ type
                        const Data: TData; Offset: Integer;
                        const DataMaster: IDataMaster = nil);
     destructor Destroy; override;
-    function GetMember(const s: String): IInfo; override;
+    function GetMember(const s : String): IInfo; override;
     function GetFieldMemberNames : TStrings; override;
     function GetExternalObject: TObject; override;
     procedure SetExternalObject(ExtObject: TObject); override;
@@ -406,9 +406,11 @@ begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['ExternalObject', FTypeSym.Caption]);
 end;
 
-function TInfo.GetMember(const s: String): IInfo;
+// GetMember
+//
+function TInfo.GetMember(const s : String) : IInfo;
 begin
-  raise Exception.CreateFmt(RTE_InvalidOp, ['Member', FTypeSym.Caption]);
+   raise Exception.CreateFmt(RTE_InvalidOp, ['Member', FTypeSym.Caption]);
 end;
 
 // GetFieldMemberNames
@@ -721,12 +723,14 @@ var
    member : TSymbol;
 begin
    member:=FScriptObj.ClassSym.Members.FindSymbol(s, cvMagic);
+   if member=nil then
+      raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
 
    if member is TFieldSymbol then
       SetChild(Result, FProgramInfo, member.Typ, FScriptObj.Data, TFieldSymbol(member).Offset)
    else if member is TPropertySymbol then
       Result:=TInfoProperty.Create(FProgramInfo, member.Typ, nil, 0, TPropertySymbol(member), FScriptObj)
-   else raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
+   else raise Exception.CreateFmt(RTE_UnsupportedMemberOfClass, [member.ClassName]);
 end;
 
 // GetFieldMemberNames

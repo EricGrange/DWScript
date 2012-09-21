@@ -309,7 +309,7 @@ type
    TSymbolTableFlag = (stfSorted, stfHasHelpers, stfHasOperators);
    TSymbolTableFlags = set of TSymbolTableFlag;
 
-   TSimplePropertySymbolList = TSimpleList<TPropertySymbol>;
+   TSimpleSymbolList = TSimpleList<TSymbol>;
 
    // A table of symbols connected to other symboltables (property Parents)
    TSymbolTable = class (TRefCountedObject)
@@ -370,8 +370,8 @@ type
                                         const callback : TOperatorSymbolEnumerationCallback) : Boolean; virtual;
          function HasSameLocalOperator(anOpSym : TOperatorSymbol) : Boolean; virtual;
 
-         procedure CollectPropertyAttributes(tableList : TSimpleRefCountedObjectHash;
-                                             propertyList : TSimplePropertySymbolList);
+         procedure CollectPublishedSymbols(tableList : TSimpleRefCountedObjectHash;
+                                           symbolList : TSimpleSymbolList);
 
          function HasClass(const aClass : TSymbolClass) : Boolean;
          function HasSymbol(sym : TSymbol) : Boolean;
@@ -4920,10 +4920,10 @@ begin
    end;
 end;
 
-// CollectPropertyAttributes
+// CollectPublishedSymbols
 //
-procedure TSymbolTable.CollectPropertyAttributes(tableList : TSimpleRefCountedObjectHash;
-                                                 propertyList : TSimpleList<TPropertySymbol>);
+procedure TSymbolTable.CollectPublishedSymbols(tableList : TSimpleRefCountedObjectHash;
+                                               symbolList : TSimpleSymbolList);
 var
    i : Integer;
    parent : TSymbolTable;
@@ -4933,14 +4933,17 @@ begin
    for i:=0 to ParentCount-1 do begin
       parent:=Parents[i];
       if not tableList.Contains(parent) then
-         parent.CollectPropertyAttributes(tableList, propertyList);
+         parent.CollectPublishedSymbols(tableList, symbolList);
    end;
    for sym in Self do begin
       if sym.ClassType=TClassSymbol then begin
          for member in TClassSymbol(sym).Members do begin
             if member.ClassType=TPropertySymbol then begin
                if TPropertySymbol(member).Visibility=cvPublished then
-                  propertyList.Add(TPropertySymbol(member));
+                  symbolList.Add(member);
+            end else if member.ClassType=TFieldSymbol then begin
+               if TFieldSymbol(member).Visibility=cvPublished then
+                  symbolList.Add(member);
             end;
          end;
       end;

@@ -31,6 +31,7 @@ type
          procedure AccessJSON;
          procedure JSONUnicodeLiteral;
          procedure JSONCRLF;
+         procedure JSONQuote;
          procedure UndefinedJSON;
          procedure JSONEmptyObject;
 
@@ -379,6 +380,11 @@ begin
    CheckEquals(WideChar($44f)+WideChar($aa), TdwsJSONImmediate(json).AsString, 'unicode');
    {$endif}
    json.Free;
+
+   json:=TdwsJSONObject.Create;
+   TdwsJSONObject(json).AddValue('test', #$1234#$ABCD);
+   CheckEquals('{"test":"\u1234\uABCD"}', json.ToString, 'encode');
+   json.Free;
 end;
 
 // JSONCRLF
@@ -397,6 +403,18 @@ begin
 
    json1.Free;
    json2.Free;
+end;
+
+// JSONQuote
+//
+procedure TdwsUtilsTests.JSONQuote;
+var
+   json : TdwsJSONValue;
+begin
+   json:=TdwsJSONValue.ParseString('{"Value":"\""}');
+   CheckEquals('"', json['Value'].Value.AsString, 'parse');
+   CheckEquals('{"Value":"\""}', json.ToString, 'roundtrip');
+   json.Free;
 end;
 
 // UndefinedJSON

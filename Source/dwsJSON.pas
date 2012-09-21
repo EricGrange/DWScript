@@ -469,6 +469,8 @@ begin
             else
                WriteUTF16(destStream, Ord(c));
             end;
+         '"' :
+            destStream.WriteString('\"');
          {$ifndef FPC}
          #255..#65535 :
             WriteUTF16(destStream, Ord(c));
