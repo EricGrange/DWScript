@@ -79,6 +79,7 @@ type
       procedure ToUpperStr(var result : String); overload;
       function UpperFirstChar : Char;
       function UpperMatchLen(const str : String) : Boolean;
+      procedure RaiseInvalidIntegerConstant;
       function BinToInt64 : Int64;
       function HexToInt64 : Int64;
       function ToInt64 : Int64;
@@ -377,7 +378,6 @@ var
 begin
    if Len=0 then Exit;
    // count nb lines and minimum whitespace, also detect if first line is whitespace + CRLF
-   n:=0;
    minWhite:=MaxInt;
    leftWhite:=True;
    white:=0;
@@ -399,16 +399,10 @@ begin
                leftWhite:=True;
             end;
             white:=0;
-            Inc(n);
          end;
       else
          leftWhite:=False;
       end;
-   end;
-   // single line with no indent, use simple AppendToStr
-   if (n=0) and (minWhite=0) then begin
-      AppendToStr(result);
-      Exit;
    end;
 
    // ok now collect and remove indents
@@ -493,22 +487,24 @@ begin
    end;
 end;
 
+// RaiseInvalidIntegerConstant
+//
+procedure TTokenBuffer.RaiseInvalidIntegerConstant;
+begin
+   raise EIntOverflow.CreateFmt(TOK_InvalidIntegerConstant, [ToStr]);
+end;
+
 // BinToInt64
 //
 function TTokenBuffer.BinToInt64 : Int64;
-
-   procedure RaiseInvalid;
-   begin
-      raise EIntOverflow.CreateFmt(TOK_InvalidIntegerConstant, [ToStr]);
-   end;
-
 var
    i : Integer;
 begin
    Result:=0;
    for i:=2 to Len-1 do begin
       // highest bit already set, if we're still here we'll overflow
-      if Result<0 then RaiseInvalid;
+      if Result<0 then
+         RaiseInvalidIntegerConstant;
       case Ord(Buffer[i]) of
          Ord('1') : Result:=(Result shl 1) or 1;
          Ord('0') : Result:=(Result shl 1);
@@ -519,12 +515,6 @@ end;
 // BinToInt64
 //
 function TTokenBuffer.HexToInt64 : Int64;
-
-   procedure RaiseInvalid;
-   begin
-      raise EIntOverflow.CreateFmt(TOK_InvalidIntegerConstant, [ToStr]);
-   end;
-
 var
    i : Integer;
    v : Integer;
@@ -536,7 +526,7 @@ begin
    Result:=0;
    while i<Len do begin
       // highest nibble already set, if we're still here we'll overflow
-      if (Result shr 60)>0 then RaiseInvalid;
+      if (Result shr 60)>0 then RaiseInvalidIntegerConstant;
       v:=Ord(Buffer[i]);
       Inc(i);
       case v of
@@ -1254,7 +1244,7 @@ procedure TTokenizer.ConsumeToken;
             #0 :
                FMsgs.AddCompilerError(CurrentPos, trns.ErrorMessage);
             #1..#31 :
-               FMsgs.AddCompilerStopFmt(CurrentPos, '%s (found #%x)', [trns.ErrorMessage, Ord(ch)]);
+               FMsgs.AddCompilerStopFmt(CurrentPos, '%s (found #%d)', [trns.ErrorMessage, Ord(ch)]);
          else
             FMsgs.AddCompilerStopFmt(CurrentPos, '%s (found "%s")', [trns.ErrorMessage, ch])
          end;

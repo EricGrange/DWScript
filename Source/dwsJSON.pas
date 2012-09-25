@@ -463,8 +463,10 @@ begin
          #0..#31 :
             case c of
                #0 : Break;
-               #8 : destStream.WriteString('\t');
+               #8 : destStream.WriteString('\b');
+               #9 : destStream.WriteString('\t');
                #10 : destStream.WriteString('\n');
+               #12 : destStream.WriteString('\f');
                #13 : destStream.WriteString('\r');
             else
                WriteUTF16(destStream, Ord(c));

@@ -23,6 +23,7 @@ type
          procedure EmptyTokenBuffer;
          procedure IgnoreDecimalSeparator;
          procedure TokenizerSpecials;
+         procedure TokenizerErrorTransition;
          procedure TimeOutTestFinite;
          procedure TimeOutTestInfinite;
          procedure TimeOutTestSequence;
@@ -196,6 +197,17 @@ begin
       msgs.Free;
       rules.Free;
    end;
+end;
+
+// TokenizerErrorTransition
+//
+procedure TCornerCasesTests.TokenizerErrorTransition;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile('var s = $'#25);
+
+   CheckEquals('Syntax Error: Hexadecimal digit expected (found #25) [line: 1, column: 10]'#13#10, prog.Msgs.AsInfo);
 end;
 
 // TimeOutTestFinite

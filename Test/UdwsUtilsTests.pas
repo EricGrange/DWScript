@@ -16,6 +16,9 @@ type
          procedure TightListOutOfBoundsMove;
 
          procedure JSONExtraComma;
+         procedure JSONInvalidChar;
+         procedure JSONInvalidUnicodeHexa;
+         procedure JSONInvalidEscaped;
 
       published
 
@@ -34,6 +37,8 @@ type
          procedure JSONQuote;
          procedure UndefinedJSON;
          procedure JSONEmptyObject;
+         procedure JSONSpecialChars;
+         procedure JSONLongNumber;
 
          procedure UnicodeCompareTextTest;
 
@@ -442,6 +447,36 @@ begin
    json.Free;
 end;
 
+// JSONInvalidChar
+//
+procedure TdwsUtilsTests.JSONInvalidChar;
+var
+   json : TdwsJSONValue;
+begin
+   json:=TdwsJSONValue.ParseString('{"a":"abc'#25'def"}');
+   json.Free;
+end;
+
+// JSONInvalidUnicodeHexa
+//
+procedure TdwsUtilsTests.JSONInvalidUnicodeHexa;
+var
+   json : TdwsJSONValue;
+begin
+   json:=TdwsJSONValue.ParseString('{"a":"\u0z"}');
+   json.Free;
+end;
+
+// JSONInvalidEscaped
+//
+procedure TdwsUtilsTests.JSONInvalidEscaped;
+var
+   json : TdwsJSONValue;
+begin
+   json:=TdwsJSONValue.ParseString('{"a":"\z"}');
+   json.Free;
+end;
+
 // JSONEmptyObject
 //
 procedure TdwsUtilsTests.JSONEmptyObject;
@@ -456,6 +491,39 @@ begin
    json.Free;
 
    CheckException(JSONExtraComma, EdwsJSONParseError, 'extra comma');
+end;
+
+// JSONSpecialChars
+//
+procedure TdwsUtilsTests.JSONSpecialChars;
+var
+   json : TdwsJSONValue;
+begin
+   json:=TdwsJSONValue.ParseString('{"test":"\t\n\r\b\f"}');
+
+   CheckEquals(#9#10#13#8#12, json['test'].Value.AsString, 'specials check');
+   CheckEquals('"\t\n\r\b\f"', json['test'].ToString, 'specials toString');
+
+   json.Free;
+
+   CheckException(JSONInvalidChar, EdwsJSONParseError, '#25 char');
+   CheckException(JSONInvalidUnicodeHexa, EdwsJSONParseError, 'unicode');
+   CheckException(JSONInvalidEscaped, EdwsJSONParseError, 'escaped');
+end;
+
+// JSONLongNumber
+//
+procedure TdwsUtilsTests.JSONLongNumber;
+const
+   c1e64 : Double = 1e64;
+var
+   json : TdwsJSONValue;
+begin
+   json:=TdwsJSONValue.ParseString('{"test":1'+StringOfChar('0', 64)+'}');
+
+   CheckEquals(c1e64, json['test'].Value.AsNumber, 'specials');
+
+   json.Free;
 end;
 
 // UnicodeCompareTextTest
@@ -535,6 +603,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   RegisterTest('dwsUtilsTests', TdwsUtilsTests);
+   RegisterTest('UtilsTests', TdwsUtilsTests);
 
 end.
