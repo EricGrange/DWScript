@@ -2553,7 +2553,8 @@ begin
 
             end else begin
 
-               ReadSemiColon;
+               if not FTok.TestDelete(ttSEMI) then
+                  FMsgs.AddCompilerWarning(FTok.HotPos, CPE_SemiExpected);
 
                if overloadFuncSym<>nil then
                   forwardedSym:=FuncPerfectMatchOverload(Result);
@@ -2951,7 +2952,8 @@ begin
          if not FTok.TestDelete(ttSEMI) then begin
             ReadParams(tmpMeth.HasParam, tmpMeth.AddParam, Result.Params, nil);
             tmpMeth.Typ:=ReadFuncResultType(funcKind);
-            ReadSemiColon;
+            if not FTok.TestDelete(ttSEMI) then
+               FMsgs.AddCompilerWarning(FTok.HotPos, CPE_SemiExpected);
          end;
          if Result.IsOverloaded then begin
             overloadedMeth:=MethPerfectMatchOverload(tmpMeth, False);
