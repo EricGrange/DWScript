@@ -19,6 +19,11 @@ type
          procedure JSONInvalidChar;
          procedure JSONInvalidUnicodeHexa;
          procedure JSONInvalidEscaped;
+         procedure JSONInvalidStart;
+         procedure JSONInvalidTrue;
+         procedure JSONInvalidFalse;
+         procedure JSONInvalidNull;
+         procedure JSONInvalidImmediate;
 
       published
 
@@ -39,6 +44,7 @@ type
          procedure JSONEmptyObject;
          procedure JSONSpecialChars;
          procedure JSONLongNumber;
+         procedure JSONInvalidStuff;
 
          procedure UnicodeCompareTextTest;
 
@@ -477,6 +483,44 @@ begin
    json.Free;
 end;
 
+// JSONInvalidStart
+//
+procedure TdwsUtilsTests.JSONInvalidStart;
+var
+   json : TdwsJSONValue;
+begin
+   json:=TdwsJSONValue.ParseString('z');
+   json.Free;
+end;
+
+// JSONInvalidTrue
+//
+procedure TdwsUtilsTests.JSONInvalidTrue;
+begin
+   TdwsJSONValue.ParseString('{"v":tru}');
+end;
+
+// JSONInvalidFalse
+//
+procedure TdwsUtilsTests.JSONInvalidFalse;
+begin
+   TdwsJSONValue.ParseString('{"v":falze}');
+end;
+
+// JSONInvalidNull
+//
+procedure TdwsUtilsTests.JSONInvalidNull;
+begin
+   TdwsJSONValue.ParseString('{"v":nul');
+end;
+
+// JSONInvalidImmediate
+//
+procedure TdwsUtilsTests.JSONInvalidImmediate;
+begin
+   TdwsJSONValue.ParseString('{"v":bug}');
+end;
+
 // JSONEmptyObject
 //
 procedure TdwsUtilsTests.JSONEmptyObject;
@@ -504,11 +548,10 @@ begin
    CheckEquals(#9#10#13#8#12, json['test'].Value.AsString, 'specials check');
    CheckEquals('"\t\n\r\b\f"', json['test'].ToString, 'specials toString');
 
-   json.Free;
+   json['test'].Value.AsString:=#25#0'bug';
+   CheckEquals('"\u0019"', json['test'].ToString, 'very specials');
 
-   CheckException(JSONInvalidChar, EdwsJSONParseError, '#25 char');
-   CheckException(JSONInvalidUnicodeHexa, EdwsJSONParseError, 'unicode');
-   CheckException(JSONInvalidEscaped, EdwsJSONParseError, 'escaped');
+   json.Free;
 end;
 
 // JSONLongNumber
@@ -524,6 +567,20 @@ begin
    CheckEquals(c1e64, json['test'].Value.AsNumber, 'specials');
 
    json.Free;
+end;
+
+// JSONInvalidStuff
+//
+procedure TdwsUtilsTests.JSONInvalidStuff;
+begin
+   CheckException(JSONInvalidChar, EdwsJSONParseError, '#25 char');
+   CheckException(JSONInvalidUnicodeHexa, EdwsJSONParseError, 'unicode');
+   CheckException(JSONInvalidEscaped, EdwsJSONParseError, 'escaped');
+   CheckException(JSONInvalidStart, EdwsJSONParseError, 'start');
+   CheckException(JSONInvalidTrue, EdwsJSONParseError, 'true');
+   CheckException(JSONInvalidFalse, EdwsJSONParseError, 'false');
+   CheckException(JSONInvalidNull, EdwsJSONParseError, 'null');
+   CheckException(JSONInvalidImmediate, EdwsJSONParseError, 'immediate');
 end;
 
 // UnicodeCompareTextTest
