@@ -577,6 +577,7 @@ type
       FTypInteger : TTypeSymbol;
       FTypNil : TNilSymbol;
       FTypObject : TClassSymbol;
+      FTypTObject : TClassSymbol;
       FTypString : TTypeSymbol;
       FTypVariant : TTypeSymbol;
       FTypException : TClassSymbol;
@@ -636,6 +637,7 @@ type
          property TypInteger: TTypeSymbol read FBaseTypes.FTypInteger;
          property TypNil: TNilSymbol read FBaseTypes.FTypNil;
          property TypObject: TClassSymbol read FBaseTypes.FTypObject;
+         property TypTObject: TClassSymbol read FBaseTypes.FTypTObject;
          property TypString: TTypeSymbol read FBaseTypes.FTypString;
          property TypVariant: TTypeSymbol read FBaseTypes.FTypVariant;
          property TypException: TClassSymbol read FBaseTypes.FTypException;
@@ -2808,6 +2810,7 @@ begin
    FBaseTypes.FTypVariant := sysTable.TypVariant;
    FBaseTypes.FTypNil := TNilSymbol.Create;
    FBaseTypes.FTypObject := sysTable.TypObject;
+   FBaseTypes.FTypTObject := sysTable.TypTObject;
    FBaseTypes.FTypException := sysTable.TypException;
    FBaseTypes.FTypInterface := sysTable.TypInterface;
 end;

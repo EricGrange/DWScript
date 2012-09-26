@@ -36,6 +36,7 @@ const
   SYS_INTERNAL = 'Internal';
   SYS_SYSTEM = 'System';
   SYS_DEFAULT = 'Default';
+  SYS_OBJECT = 'Object';
   SYS_TCLASS = 'TClass';
   SYS_TOBJECT = 'TObject';
   SYS_TOBJECT_CREATE = 'Create';
@@ -186,7 +187,7 @@ const
   CPE_ClassIsStatic = 'Class "%s" is static, instantiation not allowed!';
   CPE_ClassAncestorNotStatic = 'Class "%s" is not static, can''t inherit as static!';
   CPE_ClassAncestorDoesNotMatch = 'Class ancestor does not match with previous declaration!';
-  CPE_ClassExternalAncestorMustBeExternalOrTObject = 'External classes must inherit from an external class or TObject';
+  CPE_ClassExternalAncestorMustBeExternalOrObject = 'External classes must inherit from an external class or Object';
   CPE_MustBeSubClassOf = 'Subclass of %s expected!';
   CPE_MethodOrPropertyExpected = 'Method or property declaration expected';
   CPE_OverloadableOperatorExpected = 'Overloadable operator expected';

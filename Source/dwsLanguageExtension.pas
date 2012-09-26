@@ -31,6 +31,7 @@ type
          constructor Create; virtual;
 
          function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; virtual;
+         procedure CreateSystemSymbols(table : TSystemSymbolTable); virtual;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; virtual;
          function ReadInstrSwitch(compiler : TdwsCompiler) : Boolean; virtual;
          function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; virtual;
@@ -38,6 +39,7 @@ type
          procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                               scriptType : TScriptSourceType); virtual;
          procedure GetDefaultEnvironment(var enviro : IdwsEnvironment); virtual;
+         function RootExternalClass(compiler : TdwsCompiler; const externalName : String) : TClassSymbol; virtual;
    end;
 
    // TdwsLanguageExtensionAggregator
@@ -57,6 +59,7 @@ type
          procedure Clear;
 
          function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; override;
+         procedure CreateSystemSymbols(table : TSystemSymbolTable); override;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; override;
          function ReadInstrSwitch(compiler : TdwsCompiler) : Boolean; override;
          function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; override;
@@ -65,6 +68,7 @@ type
                               scriptType : TScriptSourceType); override;
          procedure GetDefaultEnvironment(var enviro : IdwsEnvironment); override;
          function DefaultEnvironment : IdwsEnvironment;
+         function RootExternalClass(compiler : TdwsCompiler; const externalName : String) : TClassSymbol; override;
    end;
 
 // ------------------------------------------------------------------
@@ -93,6 +97,13 @@ begin
    Result:=TBaseVariantSymbol.Create;
    table.AddSymbol(Result);
    table.TypVariant:=Result;
+end;
+
+// CreateSystemSymbols
+//
+procedure TdwsLanguageExtension.CreateSystemSymbols(table : TSystemSymbolTable);
+begin
+   // nothing
 end;
 
 // ReadInstr
@@ -136,6 +147,13 @@ end;
 procedure TdwsLanguageExtension.GetDefaultEnvironment(var enviro : IdwsEnvironment);
 begin
    // nothing
+end;
+
+// RootExternalClass
+//
+function TdwsLanguageExtension.RootExternalClass(compiler : TdwsCompiler; const externalName : String) : TClassSymbol;
+begin
+   Result:=compiler.CurrentProg.TypObject;
 end;
 
 // ------------------
@@ -201,6 +219,19 @@ begin
    Result:=nil;
 end;
 
+// CreateSystemSymbols
+//
+procedure TdwsLanguageExtensionAggregator.CreateSystemSymbols(table : TSystemSymbolTable);
+var
+   i : Integer;
+   ext : TdwsLanguageExtension;
+begin
+   for i:=0 to FList.Count-1 do begin
+      ext:=TdwsLanguageExtension(FList.List[i]);
+      ext.CreateSystemSymbols(table);
+   end;
+end;
+
 // ReadInstr
 //
 function TdwsLanguageExtensionAggregator.ReadInstr(compiler : TdwsCompiler) : TNoResultExpr;
@@ -243,8 +274,7 @@ begin
       Result:=ext.FindUnknownName(compiler, name);
       if Result<>nil then Exit;
    end;
-   Result:=nil;
-
+   Result:=inherited FindUnknownName(compiler, name);
 end;
 
 // SectionChanged
@@ -293,6 +323,21 @@ function TdwsLanguageExtensionAggregator.DefaultEnvironment : IdwsEnvironment;
 begin
    Result:=nil;
    GetDefaultEnvironment(Result);
+end;
+
+// RootExternalClass
+//
+function TdwsLanguageExtensionAggregator.RootExternalClass(compiler : TdwsCompiler; const externalName : String) : TClassSymbol;
+var
+   i : Integer;
+   ext : TdwsLanguageExtension;
+begin
+   Result:=nil;
+   for i:=0 to FList.Count-1 do begin
+      ext:=TdwsLanguageExtension(FList.List[i]);
+      Result:=ext.RootExternalClass(compiler, externalName);
+      if Result<>nil then Exit;
+   end;
 end;
 
 end.

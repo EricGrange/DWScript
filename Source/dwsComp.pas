@@ -1304,20 +1304,24 @@ procedure TDelphiWebScript.SetupExtensions;
 begin
    if FExtensions.Count>0 then begin
       FCompiler.OnCreateBaseVariantSymbol:=FExtensions.CreateBaseVariantSymbol;
+      FCompiler.OnCreateSystemSymbols:=FExtensions.CreateSystemSymbols;
       FCompiler.OnReadInstr:=FExtensions.ReadInstr;
       FCompiler.OnReadInstrSwitch:=FExtensions.ReadInstrSwitch;
       FCompiler.OnFindUnknownName:=FExtensions.FindUnknownName;
       FCompiler.OnSectionChanged:=FExtensions.SectionChanged;
       FCompiler.OnReadScript:=FExtensions.ReadScript;
       FCompiler.OnGetDefaultEnvironment:=FExtensions.DefaultEnvironment;
+      FCompiler.OnRootExternalClass:=FExtensions.RootExternalClass;
    end else begin
       FCompiler.OnCreateBaseVariantSymbol:=nil;
+      FCompiler.OnCreateSystemSymbols:=nil;
       FCompiler.OnReadInstr:=nil;
       FCompiler.OnReadInstrSwitch:=nil;
       FCompiler.OnFindUnknownName:=nil;
       FCompiler.OnSectionChanged:=nil;
       FCompiler.OnReadScript:=nil;
       FCompiler.OnGetDefaultEnvironment:=nil;
+      FCompiler.OnRootExternalClass:=nil;
    end;
 end;
 

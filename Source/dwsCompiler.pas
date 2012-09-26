@@ -59,7 +59,8 @@ type
    TdwsOnNeedUnitEvent = function(const unitName : String; var unitSource : String) : IdwsUnit of object;
    TdwsResourceEvent = procedure(compiler : TdwsCompiler; const resourceName : String) of object;
 
-   TCompilerCreateBaseVariantSymbol = function (table : TSystemSymbolTable) : TBaseVariantSymbol of object;
+   TCompilerCreateBaseVariantSymbolEvent = function (table : TSystemSymbolTable) : TBaseVariantSymbol of object;
+   TCompilerCreateSystemSymbolsEvent = procedure (table : TSystemSymbolTable) of object;
    TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
    TCompilerReadInstrSwitchEvent = function (compiler : TdwsCompiler) : Boolean of object;
    TCompilerFindUnknownNameEvent = function (compiler : TdwsCompiler; const name : String) : TSymbol of object;
@@ -67,6 +68,7 @@ type
    TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile; scriptType : TScriptSourceType) of object;
    TCompilerGetDefaultEnvironmentEvent = function : IdwsEnvironment of object;
    TCompilerGetDefaultLocalizerEvent = function : IdwsLocalizer of object;
+   TCompilerOnRootExternalClassEvent = function (compiler : TdwsCompiler; const externalName : String) : TClassSymbol of object;
 
    TdwsNameListOption = (nloAllowDots, nloNoCheckSpecials, nloAllowStrings);
    TdwsNameListOptions = set of TdwsNameListOption;
@@ -91,7 +93,8 @@ type
          FOnInclude : TIncludeEvent;
          FOnNeedUnit : TdwsOnNeedUnitEvent;
          FOnResource : TdwsResourceEvent;
-         FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
+         FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent;
+         FOnCreateSystemSymbols : TCompilerCreateSystemSymbolsEvent;
          FOwner : TComponent;
          FResultType : TdwsResultType;
          FScriptPaths : TStrings;
@@ -346,7 +349,8 @@ type
 
          FDataSymbolExprReuse : TSimpleObjectObjectHash<TDataSymbol,TVarExpr>;
 
-         FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol;
+         FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent;
+         FOnCreateSystemSymbols : TCompilerCreateSystemSymbolsEvent;
          FOnReadInstr : TCompilerReadInstrEvent;
          FOnReadInstrSwitch : TCompilerReadInstrSwitchEvent;
          FOnFindUnknownName : TCompilerFindUnknownNameEvent;
@@ -354,6 +358,7 @@ type
          FOnReadScript : TCompilerReadScriptEvent;
          FOnGetDefaultEnvironment : TCompilerGetDefaultEnvironmentEvent;
          FOnGetDefaultLocalizer : TCompilerGetDefaultLocalizerEvent;
+         FOnRootExternalClass : TCompilerOnRootExternalClassEvent;
 
          function Optimize : Boolean;
 
@@ -667,7 +672,8 @@ type
          property TokenizerRules : TTokenizerRules read FTokRules;
          property Tokenizer : TTokenizer read FTok write FTok;
 
-         property OnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbol read FOnCreateBaseVariantSymbol write FOnCreateBaseVariantSymbol;
+         property OnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent read FOnCreateBaseVariantSymbol write FOnCreateBaseVariantSymbol;
+         property OnCreateSystemSymbols : TCompilerCreateSystemSymbolsEvent read FOnCreateSystemSymbols write FOnCreateSystemSymbols;
          property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
          property OnReadInstrSwitch : TCompilerReadInstrSwitchEvent read FOnReadInstrSwitch write FOnReadInstrSwitch;
          property OnFindUnknownName : TCompilerFindUnknownNameEvent read FOnFindUnknownName write FOnFindUnknownName;
@@ -675,6 +681,7 @@ type
          property OnReadScript : TCompilerReadScriptEvent read FOnReadScript write FOnReadScript;
          property OnGetDefaultEnvironment : TCompilerGetDefaultEnvironmentEvent read FOnGetDefaultEnvironment write FOnGetDefaultEnvironment;
          property OnGetDefaultLocalizer : TCompilerGetDefaultLocalizerEvent read FOnGetDefaultLocalizer write FOnGetDefaultLocalizer;
+         property OnRootExternalClass : TCompilerOnRootExternalClassEvent read FOnRootExternalClass write FOnRootExternalClass;
    end;
 
 // ------------------------------------------------------------------
@@ -1193,7 +1200,8 @@ begin
    FScriptPaths := conf.ScriptPaths;
 
    conf.FOnCreateBaseVariantSymbol:=FOnCreateBaseVariantSymbol;
-   if Assigned(FOnCreateBaseVariantSymbol) then
+   conf.FOnCreateSystemSymbols:=FOnCreateSystemSymbols;
+   if Assigned(FOnCreateBaseVariantSymbol) or Assigned(FOnCreateSystemSymbols) then
       conf.DetachSystemTable;
 
    if conf.CompileFileSystem<>nil then
@@ -6759,7 +6767,7 @@ begin
    if not (sym is TClassSymbol) then begin
       if Assigned(sym) then
          FMsgs.AddCompilerErrorFmt(namePos, CPE_NotAClass, [sym.Name]);
-      Result:=FProg.TypObject; // keep compiling
+      Result:=FProg.TypTObject; // keep compiling
    end else begin
       Result:=TClassSymbol(sym);
       RecordSymbolUse(Result, namePos, [suReference]);
@@ -6876,7 +6884,7 @@ begin
                   interfaces.Add(typ)
                else if typ<>nil then
                   FMsgs.AddCompilerErrorFmt(namePos, CPE_NotAClass, [typ.name]);
-               typ:=FProg.TypObject;
+               typ:=FProg.TypTObject;
             end;
             RecordSymbolUse(typ, namePos, [suReference]);
 
@@ -6884,7 +6892,7 @@ begin
 
             if ancestorTyp.IsForwarded or (ancestorTyp=Result) then begin
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassNotCompletelyDefined, [ancestorTyp.Name]);
-               ancestorTyp:=FProg.TypObject;
+               ancestorTyp:=FProg.TypTObject;
             end;
 
             if ancestorTyp.IsSealed then
@@ -6917,17 +6925,21 @@ begin
 
             if csfPartial in previousClassFlags then
                ancestorTyp:=Result.Parent
-            else ancestorTyp:=FProg.TypObject;
+            else if Result.IsExternal then begin
+               if Assigned(FOnRootExternalClass) then
+                  ancestorTyp:=FOnRootExternalClass(Self, Result.ExternalName)
+               else ancestorTyp:=FProg.TypObject;
+            end else ancestorTyp:=FProg.TypTObject;
 
          end;
 
          if     Result.IsExternal
             and (ancestorTyp<>FProg.TypObject)
             and (ancestorTyp.ExternalRoot=nil) then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassExternalAncestorMustBeExternalOrTObject);
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassExternalAncestorMustBeExternalOrObject);
 
          if     Result.IsStatic
-            and (ancestorTyp<>FProg.TypObject)
+            and (ancestorTyp<>FProg.TypTObject)
             and (not ancestorTyp.IsStatic) then begin
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ClassAncestorNotStatic, [ancestorTyp.Name]);
          end;
@@ -8143,7 +8155,11 @@ begin
                   if not (Result.Typ is TClassSymbol) then
                      FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected)
                   else if not (rightTyp is TClassOfSymbol) then
-                     FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
+                     FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected)
+                  else if not (   TClassSymbol(rightTyp.Typ).IsOfType(Result.Typ)
+                               or TClassSymbol(Result.Typ).IsOfType(rightTyp.Typ)) then
+                     FMsgs.AddCompilerWarningFmt(hotPos, CPE_IncompatibleTypes,
+                                                 [Result.Typ.Caption, rightTyp.Typ.Caption]);
                   Result:=TIsOpExpr.Create(FProg, Result, right)
                end;
                ttAS : begin
@@ -8153,7 +8169,7 @@ begin
                      end else begin
                         if not (rightTyp is TClassOfSymbol) then begin
                            FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected);
-                           rightTyp:=FProg.TypObject.MetaSymbol;
+                           rightTyp:=FProg.TypTObject.MetaSymbol;
                         end;
                         Result:=TIntfAsClassExpr.Create(FProg, hotPos, Result, TClassOfSymbol(rightTyp).Typ);
                      end;
@@ -11241,39 +11257,43 @@ begin
    sysTable.TypInterface:=TInterfaceSymbol.Create(SYS_IINTERFACE, nil);
    sysTable.AddSymbol(sysTable.TypInterface);
 
-   // Create "root" class TObject
-   sysTable.TypObject:=TClassSymbol.Create(SYS_TOBJECT, nil);
+   // Create "root" class Object
+   sysTable.TypObject:=TClassSymbol.Create(SYS_OBJECT, nil);
    sysTable.AddSymbol(sysTable.TypObject);
+
+   // Create "almost root" class TObject
+   sysTable.TypTObject:=TClassSymbol.Create(SYS_TOBJECT, nil);
+   sysTable.TypTObject.InheritFrom(sysTable.TypObject);
+   sysTable.AddSymbol(sysTable.TypTObject);
    // Add constructor Create
-   meth:=TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, sysTable.TypObject, cvPublic, False);
+   meth:=TMethodSymbol.Create(SYS_TOBJECT_CREATE, fkConstructor, sysTable.TypTObject, cvPublic, False);
    meth.Executable:=ICallable(TEmptyFunc.Create);
    meth.IsDefault:=True;
-   sysTable.TypObject.AddMethod(meth);
+   sysTable.TypTObject.AddMethod(meth);
    // Add destructor Destroy
    TObjectDestroyMethod.Create(mkDestructor, [maVirtual], SYS_TOBJECT_DESTROY,
-                               [], '', sysTable.TypObject, cvPublic, sysTable);
+                               [], '', sysTable.TypTObject, cvPublic, sysTable);
    // Add procedure Free
    TObjectFreeMethod.Create(mkProcedure, [], SYS_TOBJECT_FREE,
-                            [], '', sysTable.TypObject, cvPublic, sysTable);
+                            [], '', sysTable.TypTObject, cvPublic, sysTable);
    // Add ClassName method
    TObjectClassNameMethod.Create(mkClassFunction, [], SYS_TOBJECT_CLASSNAME,
-                                 [], SYS_STRING, sysTable.TypObject, cvPublic, sysTable);
+                                 [], SYS_STRING, sysTable.TypTObject, cvPublic, sysTable);
 
    // Create "root" metaclass TClass
-   sysTable.TypClass:=TClassOfSymbol.Create(SYS_TCLASS, sysTable.TypObject);
+   sysTable.TypClass:=TClassOfSymbol.Create(SYS_TCLASS, sysTable.TypTObject);
    sysTable.AddSymbol(sysTable.TypClass);
 
    // Add ClassType method
    TObjectClassTypeMethod.Create(mkClassFunction, [], SYS_TOBJECT_CLASSTYPE,
-                                 [], SYS_TCLASS, sysTable.TypObject, cvPublic, sysTable);
-
+                                 [], SYS_TCLASS, sysTable.TypTObject, cvPublic, sysTable);
    // Add ClassParent method
    TObjectClassParentMethod.Create(mkClassFunction, [], SYS_TOBJECT_CLASSPARENT,
-                                   [], SYS_TCLASS, sysTable.TypObject, cvPublic, sysTable);
+                                   [], SYS_TCLASS, sysTable.TypTObject, cvPublic, sysTable);
 
    // Create class Exception
    sysTable.TypException := TClassSymbol.Create(SYS_EXCEPTION, nil);
-   sysTable.TypException.InheritFrom(sysTable.TypObject);
+   sysTable.TypException.InheritFrom(sysTable.TypTObject);
    fldSym:=TFieldSymbol.Create(SYS_EXCEPTION_MESSAGE_FIELD, sysTable.TypString, cvProtected);
    sysTable.TypException.AddField(fldSym);
    propSym:=TPropertySymbol.Create(SYS_EXCEPTION_MESSAGE, sysTable.TypString, cvPublic);
@@ -11309,7 +11329,7 @@ begin
 
    // Create TCustomAttribute
    sysTable.TypCustomAttribute := TClassSymbol.Create(SYS_TCUSTOMATTRIBUTE, nil);
-   sysTable.TypCustomAttribute.InheritFrom(sysTable.TypObject);
+   sysTable.TypCustomAttribute.InheritFrom(sysTable.TypTObject);
    sysTable.AddSymbol(sysTable.TypCustomAttribute);
 
    // ExceptObj function
@@ -11320,6 +11340,9 @@ begin
       TParamFunc.Create(sysTable, 'Param', ['Index', SYS_INTEGER], SYS_VARIANT, []);
    TParamStrFunc.Create(sysTable, 'ParamStr', ['Index', SYS_INTEGER], SYS_STRING, []);
    TParamCountFunc.Create(sysTable, 'ParamCount', [], SYS_INTEGER, []);
+
+   if Assigned(FOnCreateSystemSymbols) then
+      FOnCreateSystemSymbols(sysTable);
 end;
 
 // SetFilter
@@ -11487,8 +11510,13 @@ end;
 // Execute
 //
 procedure TObjectClassParentMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+var
+   p : TClassSymbol;
 begin
-   Info.ResultAsInteger:=Int64(info.ValueAsClassSymbol[SYS_SELF].Parent);
+   p:=info.ValueAsClassSymbol[SYS_SELF].Parent;
+   if p=Info.Execution.Prog.TypObject then
+      p:=nil;
+   Info.ResultAsInteger:=Int64(p);
 end;
 
 // ------------------

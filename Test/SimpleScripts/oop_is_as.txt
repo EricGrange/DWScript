@@ -1,3 +1,7 @@
+Errors >>>>
+Warning: Incompatible types: "AClass" and "CClass" [line: 42, column: 9]
+Warning: Incompatible types: "AClass" and "CClass" [line: 46, column: 9]
+Result >>>>
 objA is AClass
 objB is AClass
 objB is BClass

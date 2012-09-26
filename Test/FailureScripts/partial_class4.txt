@@ -2,3 +2,4 @@ Syntax Error: Modifiers do not match previous "partial" declaration of class [li
 Syntax Error: Modifiers do not match previous "partial" declaration of class [line: 14, column: 25]
 Syntax Error: Modifiers do not match previous "partial" declaration of class [line: 18, column: 27]
 Syntax Error: Modifiers do not match previous "partial" declaration of class [line: 22, column: 27]
+Syntax Error: External classes must inherit from an external class or Object [line: 23, column: 4]

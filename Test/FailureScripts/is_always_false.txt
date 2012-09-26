@@ -1,0 +1,6 @@
+Warning: Incompatible types: "T1" and "T2" [line: 11, column: 7]
+Warning: Incompatible types: "T2" and "T1" [line: 12, column: 7]
+Warning: Incompatible types: "T1s" and "T2" [line: 19, column: 8]
+Warning: Incompatible types: "T2s" and "T1" [line: 20, column: 8]
+Warning: Incompatible types: "T1" and "T2s" [line: 24, column: 7]
+Warning: Incompatible types: "T2" and "T1s" [line: 25, column: 7]

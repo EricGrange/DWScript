@@ -247,6 +247,7 @@ type
          FTypString : TBaseStringSymbol;
          FTypVariant : TBaseVariantSymbol;
          FTypObject : TClassSymbol;
+         FTypTObject : TClassSymbol;
          FTypClass : TClassOfSymbol;
          FTypException : TClassSymbol;
          FTypInterface : TInterfaceSymbol;
@@ -263,6 +264,7 @@ type
          property TypVariant : TBaseVariantSymbol read FTypVariant write FTypVariant;
 
          property TypObject : TClassSymbol read FTypObject write FTypObject;
+         property TypTObject : TClassSymbol read FTypTObject write FTypTObject;
          property TypClass : TClassOfSymbol read FTypClass write FTypClass;
 
          property TypException : TClassSymbol read FTypException write FTypException;

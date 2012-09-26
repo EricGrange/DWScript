@@ -1345,7 +1345,7 @@ type
    TObjectDestroyEvent = procedure (ExternalObject: TObject) of object;
 
    TClassSymbolFlag = (csfAbstract, csfExplicitAbstract, csfSealed,
-                       csfStatic, csfExternal, csfPartial);
+                       csfStatic, csfExternal, csfPartial, csfNoVirtualMembers);
    TClassSymbolFlags = set of TClassSymbolFlag;
 
    // type X = class ... end;
@@ -1392,6 +1392,7 @@ type
          function  ResolveInterface(intfSym : TInterfaceSymbol; var resolved : TResolvedInterface) : Boolean;
          function  ImplementsInterface(intfSym : TInterfaceSymbol) : Boolean;
          procedure SetIsPartial; inline;
+         procedure SetNoVirtualMembers; inline;
 
          function  FieldAtOffset(offset : Integer) : TFieldSymbol; override;
          procedure InheritFrom(ancestorClassSym : TClassSymbol);
@@ -3957,6 +3958,9 @@ begin
    FVirtualMethodTable:=ancestorClassSym.FVirtualMethodTable;
 
    IsStatic:=IsStatic or ancestorClassSym.IsStatic;
+
+   if csfNoVirtualMembers in ancestorClassSym.FFlags then
+      SetNoVirtualMembers;
 end;
 
 // IsCompatible
@@ -4097,6 +4101,13 @@ begin
    Include(FFlags, csfPartial);
 end;
 
+// SetNoVirtualMembers
+//
+procedure TClassSymbol.SetNoVirtualMembers;
+begin
+   Include(FFlags, csfNoVirtualMembers);
+end;
+
 // AllocateVMTindex
 //
 function TClassSymbol.AllocateVMTindex : Integer;
@@ -4181,7 +4192,7 @@ end;
 //
 function TClassSymbol.AllowVirtualMembers : Boolean;
 begin
-   Result:=True;
+   Result:=not (csfNoVirtualMembers in FFlags);
 end;
 
 // CreateSelfParameter
