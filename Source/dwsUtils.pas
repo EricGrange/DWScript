@@ -1624,7 +1624,7 @@ var
    stringCracker : NativeInt;
 begin
    {$ifdef FPC}
-   if utf16String<>'' then begin
+   if utf16String<>'' then
       Write(utf16String[1], Length(utf16String)*SizeOf(WideChar));
    {$else}
    stringCracker:=NativeInt(utf16String);

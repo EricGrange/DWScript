@@ -1285,7 +1285,11 @@ begin
       varDouble :
          writer.WriteNumber(TVarData(FValue).VDouble);
       varUString :
+         {$ifdef FPC}
+         writer.WriteString(String(TVarData(FValue).VString));
+         {$else}
          writer.WriteString(String(TVarData(FValue).VUString));
+         {$endif}
    else
       Assert(False, 'Unsupported type');
    end;
