@@ -325,7 +325,11 @@ type
       HashCodes *MUST* be non zero }
    TSimpleHash<T> = class
       private
+         {$IF CompilerVersion = 24}
+         FBuckets : array of TSimpleHashBucket<T>;
+         {$else}
          FBuckets : TSimpleHashBucketArray<T>;
+         {$IFEND}
          FCount : Integer;
          FGrowth : Integer;
          FCapacity : Integer;
@@ -1770,14 +1774,25 @@ procedure TSimpleHash<T>.Grow;
 var
    i, j, n : Integer;
    hashCode : Integer;
+   {$IF CompilerVersion = 24}
+   oldBuckets : array of TSimpleHashBucket<T>;
+   {$ELSE}
    oldBuckets : TSimpleHashBucketArray<T>;
+   {$IFEND}
 begin
    if FCapacity=0 then
       FCapacity:=32
    else FCapacity:=FCapacity*2;
    FGrowth:=(FCapacity*3) div 4;
 
+   {$IF CompilerVersion = 24}
+   SetLength(oldBuckets, Length(FBuckets));
+   for i := 0 to Length(FBuckets) - 1 do
+     oldBuckets[i] := FBuckets[i];
+   {$ELSE}
    oldBuckets:=FBuckets;
+   {$IFEND}
+
    FBuckets:=nil;
    SetLength(FBuckets, FCapacity);
 
