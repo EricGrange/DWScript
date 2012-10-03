@@ -35,7 +35,8 @@ uses
   URTTIExposeTests in 'URTTIExposeTests.pas',
   USourceUtilsTests in 'USourceUtilsTests.pas',
   ULocalizerTests in 'ULocalizerTests.pas',
-  dwsRTTIFunctions;
+  dwsRTTIFunctions,
+  UJSONTests in 'UJSONTests.pas';
 
 {$R *.res}
 

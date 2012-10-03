@@ -1364,7 +1364,7 @@ end;
 //
 procedure TdwsJSONWriter.BeginArray;
 begin
-   Assert(FState in [wsNone, wsObjectValue, wsArray]);
+   Assert(FState in [wsNone, wsObjectValue, wsArray, wsArrayValue]);
    FStateStack.Push(TRefCountedObject(FState));
    BeforeWriteImmediate;
    FState:=wsArray;
