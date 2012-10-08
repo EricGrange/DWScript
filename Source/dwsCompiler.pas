@@ -9337,6 +9337,8 @@ begin
             FMsgs.HintsLevel:=hlNormal
          else if SameText(name, 'STRICT') then
             FMsgs.HintsLevel:=hlStrict
+         else if SameText(name, 'PEDANTIC') then
+            FMsgs.HintsLevel:=hlPedantic
          else FMsgs.AddCompilerError(FTok.HotPos, CPE_OnOffExpected);
       end;
    else
