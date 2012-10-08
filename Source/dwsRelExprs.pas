@@ -131,6 +131,13 @@ type
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
+   // metaclass rel ops
+
+   TRelEqualMetaExpr = class(TRelEqualIntExpr)
+   end;
+   TRelNotEqualMetaExpr = class(TRelNotEqualIntExpr)
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------

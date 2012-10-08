@@ -8208,6 +8208,7 @@ begin
                      and (
                              (Result.Typ is TClassSymbol)
                           or (Result.Typ is TInterfaceSymbol)
+                          or (Result.Typ is TClassOfSymbol)
                           or (Result.Typ=FProg.TypNil)
                           ) then begin
                      if not ((rightTyp.ClassType=Result.Typ.ClassType) or (rightTyp=FProg.TypNil)) then
@@ -8218,7 +8219,13 @@ begin
                         if tt=ttNOTEQ then
                            Result:=TObjCmpNotEqualExpr.Create(FProg, Result, right)
                         else Result:=TObjCmpEqualExpr.Create(FProg, Result, right)
-                     else begin
+                     else if Result.Typ is TClassOfSymbol then begin
+                        Assert(rightTyp=FProg.TypNil);
+                        Result:=TAssignedMetaClassExpr.Create(FProg, Result);
+                        if tt=ttEQ then
+                           Result:=TNotBoolExpr.Create(FProg, Result);
+                        right.Free;
+                     end else begin
                         Result:=TIntfCmpExpr.Create(FProg, Result, right);
                         if tt=ttNOTEQ then
                            Result:=TNotBoolExpr.Create(FProg, Result);

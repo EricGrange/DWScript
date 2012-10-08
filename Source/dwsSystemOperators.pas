@@ -196,8 +196,8 @@ begin
    RegisterRelOp(ttGTR,    TRelGreaterIntExpr, TRelGreaterFloatExpr, TRelGreaterStringExpr, TRelGreaterVariantExpr);
    RegisterRelOp(ttGTREQ,  TRelGreaterEqualIntExpr, TRelGreaterEqualFloatExpr, TRelGreaterEqualStringExpr, TRelGreaterEqualVariantExpr);
 
-   RegisterOperator(ttEQ,     TRelEqualStringExpr,    typClassOf, typClassOf);
-   RegisterOperator(ttNOTEQ,  TRelNotEqualStringExpr, typClassOf, typClassOf);
+   RegisterOperator(ttEQ,     TRelEqualMetaExpr,      typClassOf, typClassOf);
+   RegisterOperator(ttNOTEQ,  TRelNotEqualMetaExpr,   typClassOf, typClassOf);
 
    // combined assignment operator
 
