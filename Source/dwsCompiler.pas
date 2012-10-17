@@ -8917,9 +8917,15 @@ var
          paramSym := TConstParamSymbol.Create(curName, paramType)
       end else begin
          if Assigned(defaultExpr) then begin
-            paramSym := TParamSymbolWithDefaultValue.Create(curName, paramType,
-                     (defaultExpr as TConstExpr).Data[FExec],
-                     (defaultExpr as TConstExpr).Addr[FExec]);
+            if defaultExpr.ClassType=TArrayConstantExpr then begin
+               paramSym:=TParamSymbolWithDefaultValue.Create(
+                              curName, paramType, TArrayConstantExpr(defaultExpr).EvalAsTData(FExec), 0);
+            end else begin
+               paramSym:=TParamSymbolWithDefaultValue.Create(
+                              curName, paramType,
+                              (defaultExpr as TConstExpr).Data[FExec],
+                              (defaultExpr as TConstExpr).Addr[FExec]);
+            end;
          end else begin
             paramSym := TParamSymbol.Create(curName, paramType);
          end;

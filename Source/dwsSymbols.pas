@@ -1011,6 +1011,7 @@ type
          procedure InitData(const Data: TData; Offset: Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure AddElement;
+         function IsEmptyArray : Boolean;
 
          property HighBound : Integer read FHighBound;
          property LowBound : Integer read FLowBound;
@@ -1459,7 +1460,7 @@ type
    end;
 
    // nil "class"
-   TNilSymbol = class(TTypeSymbol)
+   TNilSymbol = class sealed (TTypeSymbol)
       protected
          function GetCaption : String; override;
 
@@ -4570,7 +4571,8 @@ constructor TParamSymbolWithDefaultValue.Create(const aName : String; aType : TT
 begin
    inherited Create(aName, aType);
    SetLength(FDefaultValue, Typ.Size);
-   DWSCopyData(data, addr, FDefaultValue, 0, Typ.Size);
+   if data<>nil then
+      DWSCopyData(data, addr, FDefaultValue, 0, Typ.Size);
 end;
 
 // SameParam
@@ -5389,8 +5391,10 @@ end;
 //
 function TDynamicArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-  Result :=     (typSym is TDynamicArraySymbol)
-            and (Typ.IsCompatible(typSym.Typ) or (typSym.Typ is TNilSymbol));
+  Result :=    (    (typSym is TDynamicArraySymbol)
+                and (Typ.IsCompatible(typSym.Typ) or (typSym.Typ is TNilSymbol))
+            or (    (typSym is TStaticArraySymbol)
+                and TStaticArraySymbol(typSym).IsEmptyArray));
 end;
 
 // ------------------
@@ -5450,6 +5454,13 @@ begin
    Inc(FHighBound);
    Inc(FElementCount);
    FSize:=FElementCount*ElementSize;
+end;
+
+// IsEmptyArray
+//
+function TStaticArraySymbol.IsEmptyArray : Boolean;
+begin
+   Result:=(HighBound<LowBound);
 end;
 
 // GetCaption

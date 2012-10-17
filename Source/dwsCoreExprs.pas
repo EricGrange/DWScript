@@ -228,6 +228,8 @@ type
          class function CreateIntegerValue(prog : TdwsProgram; typ : TTypeSymbol; const value : Int64) : TConstExpr; overload; static;
 
          class function CreateBooleanValue(prog : TdwsProgram; const value : Boolean) : TConstExpr; overload; static;
+
+         class function CreateDynamicArrayValue(prog : TdwsProgram; typ : TTypeSymbol) : TConstExpr; overload; static;
    end;
 
    TUnifiedConstExprClass = class of TUnifiedConstExpr;
@@ -2644,6 +2646,8 @@ class function TConstExpr.CreateTypedVariantValue(
 begin
    if typ=prog.TypString then
       Result:=TConstStringExpr.CreateUnified(prog, typ, value)
+   else if typ.ClassType=TDynamicArraySymbol then
+      Result:=CreateDynamicArrayValue(prog, typ)
    else if (typ=prog.TypInteger) or (typ.typ=prog.TypInteger) then
       Result:=CreateIntegerValue(prog, typ, value)
    else if typ=prog.TypBoolean then
@@ -2692,6 +2696,13 @@ end;
 class function TConstExpr.CreateBooleanValue(prog : TdwsProgram; const value : Boolean) : TConstExpr;
 begin
    Result:=TConstBooleanExpr.CreateUnified(prog, prog.TypBoolean, value);
+end;
+
+// CreateDynamicArrayValue
+//
+class function TConstExpr.CreateDynamicArrayValue(prog : TdwsProgram; typ : TTypeSymbol) : TConstExpr;
+begin
+   Result:=TConstExpr.Create(prog, typ, TScriptDynamicArray.Create(typ.Typ) as IScriptObj);
 end;
 
 // ------------------
