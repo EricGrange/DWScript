@@ -554,6 +554,7 @@ begin
    Str:=aStr;
    {$endif}
    Ptr:=PWideChar(Str);
+   ColStart:=Ptr;
 end;
 
 // NeedChar

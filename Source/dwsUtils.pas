@@ -2242,7 +2242,11 @@ var
    i : Integer;
 begin
    if FCount=0 then
+      {$ifdef VER200}
+      Exit(default(T));  // D2009 support
+      {$else}
       Exit(T(TObject(nil)));  // workaround for D2010 compiler bug
+      {$endif}
 
    h:=SimpleStringHash(aName);
    i:=(h and (FCapacity-1));
@@ -2250,7 +2254,11 @@ begin
    repeat
       with FBuckets[i] do begin
          if HashCode=0 then
+            {$ifdef VER200}
+            Exit(default(T)); // D2009 support
+            {$else}
             Exit(T(TObject(nil)));  // workaround for D2010 compiler bug
+            {$endif}
          if (HashCode=h) and (Name=aName) then begin
             Result:=Obj;
             Exit;
@@ -2352,10 +2360,21 @@ end;
 
 // GetItems
 //
+{$ifdef VER200} // D2009 support
+type
+   PObject = ^TObject;
+function TArrayObjectList<T>.GetItems(const idx : Integer) : T;
+begin
+   PObject(@Result)^ := List[idx];
+end;
+{$else}
 function TArrayObjectList<T>.GetItems(const idx : Integer) : T;
 begin
    Result:=T(List[idx]);
 end;
+{$endif}
+
+
 
 // SetItems
 //
@@ -2482,7 +2501,11 @@ begin
    bucket.Key:=aKey;
    if Match(bucket) then
       Result:=bucket.Value
+   {$ifdef VER200}
+   else Result:=default(TValue); // D2009 support
+   {$else}
    else Result:=TValue(TObject(nil));  // workaround for D2010 compiler bug
+   {$endif}
 end;
 
 // SetValue

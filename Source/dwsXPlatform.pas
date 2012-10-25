@@ -63,6 +63,10 @@ type
    {$IFEND}
    {$ENDIF}
 
+   {$IF compilerversion = 20}
+   NativeInt = Integer; // D2009 workaround
+   {$IFEND}
+
    {$IFDEF FPC}
    TBytes = array of Byte;
 
