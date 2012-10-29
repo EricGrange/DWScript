@@ -24,7 +24,7 @@ unit dwsStringFunctions;
 interface
 
 uses Classes, SysUtils, Variants, StrUtils, dwsFunctions, dwsSymbols,
-   dwsUtils, dwsExprs, dwsCoreExprs, dwsXPlatform, dwsMagicExprs, Math;
+   dwsUtils, dwsExprs, dwsCoreExprs, dwsXPlatform, dwsMagicExprs, Math, RTLConsts;
 
 type
 
@@ -313,8 +313,14 @@ end;
 { THexToIntFunc }
 
 function THexToIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+var
+   buf : String;
+   err : Integer;
 begin
-   Result:=StrToInt64('$'+args.AsString[0]);
+   buf:=args.AsString[0];
+   Val('$'+buf, Result, err);
+   if err<>0 then
+      raise EConvertError.CreateFmt('''''%s'''' is not a valid integer value', [buf]);
 end;
 
 { TIntToBinFunc }
