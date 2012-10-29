@@ -2991,7 +2991,6 @@ begin
    inherited;
 
    FFinalExpr.Free;
-   FOperators.Free;
    FSourceContextMap.Free;
    FSymbolDictionary.Free;
    FAttributes.Free;

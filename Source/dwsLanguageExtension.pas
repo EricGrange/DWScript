@@ -32,6 +32,7 @@ type
 
          function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; virtual;
          procedure CreateSystemSymbols(table : TSystemSymbolTable); virtual;
+         function StaticSymbols : Boolean; virtual;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; virtual;
          function ReadInstrSwitch(compiler : TdwsCompiler) : Boolean; virtual;
          function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; virtual;
@@ -60,6 +61,7 @@ type
 
          function CreateBaseVariantSymbol(table : TSystemSymbolTable) : TBaseVariantSymbol; override;
          procedure CreateSystemSymbols(table : TSystemSymbolTable); override;
+         function StaticSymbols : Boolean; override;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; override;
          function ReadInstrSwitch(compiler : TdwsCompiler) : Boolean; override;
          function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; override;
@@ -104,6 +106,13 @@ end;
 procedure TdwsLanguageExtension.CreateSystemSymbols(table : TSystemSymbolTable);
 begin
    // nothing
+end;
+
+// StaticSymbols
+//
+function TdwsLanguageExtension.StaticSymbols : Boolean;
+begin
+   Result:=False;
 end;
 
 // ReadInstr
@@ -229,6 +238,20 @@ begin
    for i:=0 to FList.Count-1 do begin
       ext:=TdwsLanguageExtension(FList.List[i]);
       ext.CreateSystemSymbols(table);
+   end;
+end;
+
+// StaticSymbols
+//
+function TdwsLanguageExtensionAggregator.StaticSymbols : Boolean;
+var
+   i : Integer;
+   ext : TdwsLanguageExtension;
+begin
+   Result:=True;
+   for i:=0 to FList.Count-1 do begin
+      ext:=TdwsLanguageExtension(FList.List[i]);
+      Result:=Result and ext.StaticSymbols;
    end;
 end;
 

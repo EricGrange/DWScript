@@ -1303,6 +1303,7 @@ end;
 procedure TDelphiWebScript.SetupExtensions;
 begin
    if FExtensions.Count>0 then begin
+      FCompiler.StaticExtensionSymbols:=FExtensions.StaticSymbols;
       FCompiler.OnCreateBaseVariantSymbol:=FExtensions.CreateBaseVariantSymbol;
       FCompiler.OnCreateSystemSymbols:=FExtensions.CreateSystemSymbols;
       FCompiler.OnReadInstr:=FExtensions.ReadInstr;
@@ -1313,6 +1314,7 @@ begin
       FCompiler.OnGetDefaultEnvironment:=FExtensions.DefaultEnvironment;
       FCompiler.OnRootExternalClass:=FExtensions.RootExternalClass;
    end else begin
+      FCompiler.StaticExtensionSymbols:=True;
       FCompiler.OnCreateBaseVariantSymbol:=nil;
       FCompiler.OnCreateSystemSymbols:=nil;
       FCompiler.OnReadInstr:=nil;
@@ -1621,7 +1623,7 @@ begin
       Exit;
 
    if Assigned(FScript) then begin
-      sysTable:=FScript.Config.SystemTable.SymbolTable;
+      sysTable:=FScript.Config.SystemSymbols.SymbolTable;
       for x:=0 to sysTable.Count - 1 do begin
          if sysTable[x] is TClassSymbol then
             List.Add(sysTable[x].Name);
@@ -1643,7 +1645,7 @@ begin
 
   if Assigned(FScript) then begin
     // Add all type symbols from the systemtable
-    sysTable:=FScript.Config.SystemTable.SymbolTable;
+    sysTable:=FScript.Config.SystemSymbols.SymbolTable;
     for x := 0 to sysTable.Count - 1 do
     begin
       if sysTable[x] is TTypeSymbol then

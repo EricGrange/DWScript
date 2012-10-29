@@ -28,20 +28,22 @@ uses Windows, Variants, Classes, SysUtils, SysConst, dwsComp, dwsSymbols,
    AxCtrls, dwsOperators, dwsUtils;
 
 const
-  COM_ConnectorCaption = 'COM Connector 1.0';
-  COM_UnitName = 'COM';
+   COM_ConnectorCaption = 'COM Connector 1.0';
+   COM_UnitName = 'COM';
 
 type
-  TdwsComConnector = class(TdwsAbstractStaticUnit, IUnknown, IConnector)
-  private
-    function ConnectorCaption: String;
-    function ConnectorName: String;
-    function GetUnit(const UnitName: String): IConnectorType;
-  protected
-    function GetUnitName: String; override;
-    procedure AddUnitSymbols(Table: TSymbolTable; operators : TOperators); override;
-  published
-    property StaticSymbols;
+   TdwsComConnector = class(TdwsAbstractStaticUnit, IUnknown, IConnector)
+      private
+         function ConnectorCaption: String;
+         function ConnectorName: String;
+         function GetUnit(const UnitName: String): IConnectorType;
+
+      protected
+         function GetUnitName: String; override;
+         procedure AddUnitSymbols(Table: TSymbolTable; operators : TOperators); override;
+
+      published
+         property StaticSymbols;
   end;
 
 // ------------------------------------------------------------------

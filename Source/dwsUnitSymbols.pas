@@ -331,9 +331,13 @@ var
    staticTable : TStaticSymbolTable;
 begin
    // accept only static parents
-   Assert((parent is TStaticSymbolTable), CPE_NoStaticSymbols);
+   if parent is TLinkedSymbolTable then
+      staticTable:=TLinkedSymbolTable(parent).ParentSymbolTable
+   else begin
+      Assert((parent is TStaticSymbolTable), CPE_NoStaticSymbols);
+      staticTable:=TStaticSymbolTable(parent);
+   end;
 
-   staticTable:=TStaticSymbolTable(parent);
    staticTable._AddRef;
    inherited InsertParent(index, staticTable);
 end;

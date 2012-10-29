@@ -7,15 +7,16 @@ uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
 
 type
 
-   TdwsUnitTests = class (TTestCase)
-      private
+   TdwsUnitTestsContext = class
+      protected
          FCompiler : TDelphiWebScript;
          FUnit : TdwsUnit;
          FMagicVar : String;
 
+         procedure SetupUnit;
+
       public
-         procedure SetUp; override;
-         procedure TearDown; override;
+         destructor Destroy; override;
 
          procedure DeclareTestEnumerate;
          procedure DeclareTestFuncs;
@@ -53,6 +54,18 @@ type
 
          procedure DoReadVar(info: TProgramInfo; var value : Variant);
          procedure DoWriteVar(info: TProgramInfo; const value : Variant);
+   end;
+
+
+   TdwsUnitTests = class (TTestCase)
+      protected
+         FContext : TdwsUnitTestsContext;
+         FCompiler : TDelphiWebScript;
+         FUnit : TdwsUnit;
+
+      public
+         procedure SetUp; override;
+         procedure TearDown; override;
 
          procedure CompilationExecution(execute : Boolean);
 
@@ -143,12 +156,12 @@ type
    end;
 
 // ------------------
-// ------------------ TdwsUnitTests ------------------
+// ------------------ TdwsUnitTestsContext ------------------
 // ------------------
 
-// SetUp
+// SetupUnit
 //
-procedure TdwsUnitTests.SetUp;
+procedure TdwsUnitTestsContext.SetupUnit;
 begin
    FCompiler:=TDelphiWebScript.Create(nil);
 
@@ -165,17 +178,18 @@ begin
    DeclareTestOperators;
 end;
 
-// TearDown
+// Destroy
 //
-procedure TdwsUnitTests.TearDown;
+destructor TdwsUnitTestsContext.Destroy;
 begin
+   inherited;
    FUnit.Free;
    FCompiler.Free;
 end;
 
 // DeclareTestEnumerate
 //
-procedure TdwsUnitTests.DeclareTestEnumerate;
+procedure TdwsUnitTestsContext.DeclareTestEnumerate;
 var
    i : Integer;
    enum : TdwsEnumeration;
@@ -200,7 +214,7 @@ end;
 
 // DeclareTestFuncs
 //
-procedure TdwsUnitTests.DeclareTestFuncs;
+procedure TdwsUnitTestsContext.DeclareTestFuncs;
 var
    func : TdwsFunction;
    param : TdwsParameter;
@@ -327,7 +341,7 @@ end;
 
 // DeclareTestClasses
 //
-procedure TdwsUnitTests.DeclareTestClasses;
+procedure TdwsUnitTestsContext.DeclareTestClasses;
 var
    cls : TdwsClass;
    cst : TdwsConstructor;
@@ -428,7 +442,7 @@ end;
 
 // DeclareTestVars
 //
-procedure TdwsUnitTests.DeclareTestVars;
+procedure TdwsUnitTestsContext.DeclareTestVars;
 var
    v : TdwsGlobal;
 begin
@@ -446,7 +460,7 @@ end;
 
 // DeclareTestArrays
 //
-procedure TdwsUnitTests.DeclareTestArrays;
+procedure TdwsUnitTestsContext.DeclareTestArrays;
 var
    a : TdwsArray;
 begin
@@ -464,7 +478,7 @@ end;
 
 // DeclareTestRecords
 //
-procedure TdwsUnitTests.DeclareTestRecords;
+procedure TdwsUnitTestsContext.DeclareTestRecords;
 var
    r : TdwsRecord;
    m : TdwsMember;
@@ -483,7 +497,7 @@ end;
 
 // DeclareTestOperators
 //
-procedure TdwsUnitTests.DeclareTestOperators;
+procedure TdwsUnitTestsContext.DeclareTestOperators;
 var
    o : TdwsOperator;
 begin
@@ -499,70 +513,70 @@ end;
 
 // Func1Eval
 //
-procedure TdwsUnitTests.Func1Eval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.Func1Eval(Info: TProgramInfo);
 begin
    Info.ResultAsInteger:=1;
 end;
 
 // FuncOneEval
 //
-procedure TdwsUnitTests.FuncOneEval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.FuncOneEval(Info: TProgramInfo);
 begin
    Info.ResultAsString:='One';
 end;
 
 // FuncOneDotFiveEval
 //
-procedure TdwsUnitTests.FuncOneDotFiveEval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.FuncOneDotFiveEval(Info: TProgramInfo);
 begin
    Info.ResultAsFloat:=1.5;
 end;
 
 // FuncTrueEval
 //
-procedure TdwsUnitTests.FuncTrueEval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.FuncTrueEval(Info: TProgramInfo);
 begin
    Info.ResultAsBoolean:=True;
 end;
 
 // FuncIncEval
 //
-procedure TdwsUnitTests.FuncIncEval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.FuncIncEval(Info: TProgramInfo);
 begin
    Info.ResultAsInteger:=Info.ValueAsInteger['v']+1;
 end;
 
 // FuncIncNEval
 //
-procedure TdwsUnitTests.FuncIncNEval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.FuncIncNEval(Info: TProgramInfo);
 begin
    Info.ResultAsInteger:=Info.ValueAsInteger['v']+Info.ValueAsInteger['n'];
 end;
 
 // FuncEnumEval
 //
-procedure TdwsUnitTests.FuncEnumEval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.FuncEnumEval(Info: TProgramInfo);
 begin
    Info.ResultAsInteger:=Info.ValueAsInteger['e'];
 end;
 
 // FuncVarEval
 //
-procedure TdwsUnitTests.FuncVarEval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.FuncVarEval(Info: TProgramInfo);
 begin
    Info.ValueAsInteger['i']:=Info.ParamAsInteger[0]+Info.ParamAsInteger[1];
 end;
 
 // FuncFloatEval
 //
-procedure TdwsUnitTests.FuncFloatEval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.FuncFloatEval(Info: TProgramInfo);
 begin
    Info.ResultAsFloat:=Info.ParamAsFloat[0]+Info.ValueAsFloat['b'];
 end;
 
 // FuncPointEval
 //
-procedure TdwsUnitTests.FuncPointEval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.FuncPointEval(Info: TProgramInfo);
 begin
    Info.Vars['Result'].Member['x'].Value:=12;
    Info.Vars['Result'].Member['y'].Value:=24;
@@ -570,7 +584,7 @@ end;
 
 // FuncPointVarParamEval
 //
-procedure TdwsUnitTests.FuncPointVarParamEval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.FuncPointVarParamEval(Info: TProgramInfo);
 var
    pIn, pOut : IInfo;
 begin
@@ -582,7 +596,7 @@ end;
 
 // FuncPointArrayEval
 //
-procedure TdwsUnitTests.FuncPointArrayEval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.FuncPointArrayEval(Info: TProgramInfo);
 var
    a : IInfo;
    item : IInfo;
@@ -602,7 +616,7 @@ end;
 
 // FuncClassNameEval
 //
-procedure TdwsUnitTests.FuncClassNameEval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.FuncClassNameEval(Info: TProgramInfo);
 var
    o : IInfo;
 begin
@@ -614,7 +628,7 @@ end;
 
 // FuncOpenArrayEval
 //
-procedure TdwsUnitTests.FuncOpenArrayEval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.FuncOpenArrayEval(Info: TProgramInfo);
 var
    p : IInfo;
    r : String;
@@ -631,7 +645,7 @@ end;
 
 // ClassConstructor
 //
-procedure TdwsUnitTests.ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
+procedure TdwsUnitTestsContext.ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
 begin
    FMagicVar:=Info.ParamAsString[0];
    ExtObject:=TObject.Create;
@@ -639,7 +653,7 @@ end;
 
 // ClassCleanup
 //
-procedure TdwsUnitTests.ClassCleanup(ExternalObject: TObject);
+procedure TdwsUnitTestsContext.ClassCleanup(ExternalObject: TObject);
 begin
    FMagicVar:='cleaned up';
    ExternalObject.Free;
@@ -647,65 +661,90 @@ end;
 
 // ClassDestructor
 //
-procedure TdwsUnitTests.ClassDestructor(Info: TProgramInfo; ExtObject: TObject);
+procedure TdwsUnitTestsContext.ClassDestructor(Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.Execution.Result.AddString('my destructor'#13#10);
 end;
 
 // MethodPrintEval
 //
-procedure TdwsUnitTests.MethodPrintEval(Info: TProgramInfo; ExtObject: TObject);
+procedure TdwsUnitTestsContext.MethodPrintEval(Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.Execution.Result.AddString(FMagicVar+#13#10);
 end;
 
 // MethodPrintExternalEval
 //
-procedure TdwsUnitTests.MethodPrintExternalEval(Info: TProgramInfo; ExtObject: TObject);
+procedure TdwsUnitTestsContext.MethodPrintExternalEval(Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.Execution.Result.AddString(ExtObject.ToString+#13#10);
 end;
 
 // MethodGetIntEval
 //
-procedure TdwsUnitTests.MethodGetIntEval(Info: TProgramInfo; ExtObject: TObject);
+procedure TdwsUnitTestsContext.MethodGetIntEval(Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsInteger:=Info.ValueAsInteger['FField']*10;
 end;
 
 // MethodSetIntEval
 //
-procedure TdwsUnitTests.MethodSetIntEval(Info: TProgramInfo; ExtObject: TObject);
+procedure TdwsUnitTestsContext.MethodSetIntEval(Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ValueAsInteger['FField']:=Info.ValueAsInteger['v'] div 10;
 end;
 
 // MethodGetArrayIntEval
 //
-procedure TdwsUnitTests.MethodGetArrayIntEval(Info: TProgramInfo; ExtObject: TObject);
+procedure TdwsUnitTestsContext.MethodGetArrayIntEval(Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsInteger:=StrToInt(Info.ValueAsString['v'])*2;
 end;
 
 // FuncExceptionEval
 //
-procedure TdwsUnitTests.FuncExceptionEval(Info: TProgramInfo);
+procedure TdwsUnitTestsContext.FuncExceptionEval(Info: TProgramInfo);
 begin
    raise EDelphiException.Create('Hello, Delphi Exception here!');
 end;
 
 // DoReadVar
 //
-procedure TdwsUnitTests.DoReadVar(info: TProgramInfo; var value : Variant);
+procedure TdwsUnitTestsContext.DoReadVar(info: TProgramInfo; var value : Variant);
 begin
    value:=FMagicVar;
 end;
 
 // DoWriteVar
 //
-procedure TdwsUnitTests.DoWriteVar(info: TProgramInfo; const value : Variant);
+procedure TdwsUnitTestsContext.DoWriteVar(info: TProgramInfo; const value : Variant);
 begin
    FMagicVar:=value;
+end;
+
+// ------------------
+// ------------------ TdwsUnitTests ------------------
+// ------------------
+
+// SetUp
+//
+procedure TdwsUnitTests.SetUp;
+begin
+   if FContext=nil then begin
+      FContext:=TdwsUnitTestsContext.Create;
+      FContext.SetupUnit;
+   end;
+   FCompiler:=FContext.FCompiler;
+   FUnit:=FContext.FUnit;
+end;
+
+// TearDown
+//
+procedure TdwsUnitTests.TearDown;
+begin
+   FCompiler:=nil;
+   FUnit:=nil;
+   FreeAndNil(FContext);
 end;
 
 // CompilationExecution
@@ -1069,14 +1108,14 @@ begin
    exec:=prog.BeginNewExecution;
    try
       exec.Info.ValueAsString['xyzVar']:='xyz';
-      FMagicVar:='magic';
+      FContext.FMagicVar:='magic';
 
       exec.RunProgram(0);
 
       CheckEquals( 'xyz'#13#10'XYZ'#13#10
                   +'magic'#13#10'MAGIC'#13#10, exec.Result.ToString, 'Result');
       CheckEquals('XYZ', exec.Info.ValueAsString['xyzVar'], 'xyz var value');
-      CheckEquals('MAGIC', FMagicVar, 'magic var value');
+      CheckEquals('MAGIC', FContext.FMagicVar, 'magic var value');
    finally
       exec.EndProgram;
    end;
@@ -1274,7 +1313,7 @@ var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
 begin
-   FMagicVar:='';
+   FContext.FMagicVar:='';
    prog:=FCompiler.Compile( 'var o := TTestClass.MyCreate(''hello'');'
                            +'o.Print;'
                            +'o.Free;'
@@ -1301,7 +1340,7 @@ var
    exec : IdwsProgramExecution;
    p : IInfo;
 begin
-   FMagicVar:='';
+   FContext.FMagicVar:='';
    prog:=FCompiler.Compile( 'var o := TTestClass.MyCreate(''hello'');');
 
    exec:=prog.BeginNewExecution;
@@ -1325,7 +1364,7 @@ var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
 begin
-   FMagicVar:='';
+   FContext.FMagicVar:='';
    prog:=FCompiler.Compile( 'var o := TTestClass.MyCreate(''hello'');'
                            +'o.Print;'
                            +'o.MyDestroy;'
@@ -1352,7 +1391,7 @@ var
    exec : IdwsProgramExecution;
    func : IInfo;
 begin
-   FMagicVar:='';
+   FContext.FMagicVar:='';
    prog:=FCompiler.Compile( 'type TFunc = function (i : Integer) : Integer;'
                            +'var v1 : TFunc = FuncInc;'
                            +'function MyFunc(i : Integer) : Integer; begin Result:=i+10; end;'
@@ -1389,7 +1428,7 @@ var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
 begin
-   FMagicVar:='';
+   FContext.FMagicVar:='';
    prog:=FCompiler.Compile( 'var f := 1.0 ^ 2.5;'
                            +'PrintLn(f);'
                            +'PrintLn(f^(-1.5));');
@@ -1414,7 +1453,7 @@ var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
 begin
-   FMagicVar:='';
+   FContext.FMagicVar:='';
    prog:=FCompiler.Compile( 'PrintLn(FuncOpenArray(["one","two"]));'#13#10
                            +'PrintLn(FuncOpenArray([]));');
 
@@ -1439,7 +1478,7 @@ var
    exec : IdwsProgramExecution;
    print : IInfo;
 begin
-   FMagicVar:='';
+   FContext.FMagicVar:='';
    prog:=FCompiler.Compile( 'PrintLn("Hello");');
 
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
@@ -1466,7 +1505,7 @@ var
    printit : IInfo;
    v : IInfo;
 begin
-   FMagicVar:='';
+   FContext.FMagicVar:='';
    prog:=FCompiler.Compile( 'procedure PrintIt(o : TTestClass);'#13#10
                            +'begin o.PrintExternal end');
 

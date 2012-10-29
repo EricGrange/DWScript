@@ -80,6 +80,10 @@ type
          function GetLocalizer : IdwsLocalizer; virtual; abstract;
    end;
 
+   ISystemSymbols = interface(ISystemSymbolTable)
+      function Operators : TSystemOperators;
+   end;
+
    TdwsConfiguration = class(TPersistent)
       private
          FCompilerOptions : TCompilerOptions;
@@ -100,7 +104,7 @@ type
          FScriptPaths : TStrings;
          FConditionals : TStringList;
          FStackChunkSize : Integer;
-         FSystemTable : ISystemSymbolTable;
+         FSystemSymbols : ISystemSymbols;
          FTimeoutMilliseconds: Integer;
          FUnits : TIdwsUnitList;
          FCompileFileSystem : TdwsCustomFileSystem;
@@ -116,7 +120,7 @@ type
          procedure SetRuntimeFileSystem(const val : TdwsCustomFileSystem);
          procedure SetScriptPaths(const values : TStrings);
          procedure SetConditionals(const val : TStringList);
-         function  GetSystemTable : ISystemSymbolTable;
+         function  GetSystemSymbols : ISystemSymbols;
          procedure SetLocalizer(const val : TdwsLocalizerComponent);
 
          function DoGetLocalizer : IdwsLocalizer;
@@ -130,7 +134,7 @@ type
          procedure DetachSystemTable;
 
          property Connectors : TStrings read FConnectors write FConnectors;
-         property SystemTable : ISystemSymbolTable read GetSystemTable;
+         property SystemSymbols : ISystemSymbols read GetSystemSymbols;
          property Units : TIdwsUnitList read FUnits;
 
       published
@@ -349,6 +353,7 @@ type
 
          FDataSymbolExprReuse : TSimpleObjectObjectHash<TDataSymbol,TVarExpr>;
 
+         FStaticExtensionSymbols : Boolean;
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent;
          FOnCreateSystemSymbols : TCompilerCreateSystemSymbolsEvent;
          FOnReadInstr : TCompilerReadInstrEvent;
@@ -672,6 +677,7 @@ type
          property TokenizerRules : TTokenizerRules read FTokRules;
          property Tokenizer : TTokenizer read FTok write FTok;
 
+         property StaticExtensionSymbols : Boolean read FStaticExtensionSymbols write FStaticExtensionSymbols;
          property OnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent read FOnCreateBaseVariantSymbol write FOnCreateBaseVariantSymbol;
          property OnCreateSystemSymbols : TCompilerCreateSystemSymbolsEvent read FOnCreateSystemSymbols write FOnCreateSystemSymbols;
          property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
@@ -798,6 +804,12 @@ type
       function Attributes : TdwsSymbolAttributes;
    end;
 
+   TSystemSymbols = class (TSystemSymbolTable, ISystemSymbols)
+      FOperators : TSystemOperators;
+      destructor Destroy; override;
+      function Operators : TSystemOperators;
+   end;
+
 // StringToSwitchInstruction
 //
 function StringToSwitchInstruction(const str : String) : TSwitchInstruction;
@@ -827,6 +839,25 @@ end;
 function TSymbolAttributesBag.Attributes : TdwsSymbolAttributes;
 begin
    Result:=FAttributes;
+end;
+
+// ------------------
+// ------------------ TSystemSymbols ------------------
+// ------------------
+
+// Destroy
+//
+destructor TSystemSymbols.Destroy;
+begin
+   FOperators.Free;
+   inherited;
+end;
+
+// Operators
+//
+function TSystemSymbols.Operators : TSystemOperators;
+begin
+   Result:=FOperators;
 end;
 
 // ------------------
@@ -1201,7 +1232,7 @@ begin
 
    conf.FOnCreateBaseVariantSymbol:=FOnCreateBaseVariantSymbol;
    conf.FOnCreateSystemSymbols:=FOnCreateSystemSymbols;
-   if Assigned(FOnCreateBaseVariantSymbol) or Assigned(FOnCreateSystemSymbols) then
+   if not StaticExtensionSymbols then
       conf.DetachSystemTable;
 
    if conf.CompileFileSystem<>nil then
@@ -1285,7 +1316,7 @@ begin
    FLineCount:=0;
 
    // Create the TdwsProgram
-   FMainProg:=CreateProgram(aConf.SystemTable, aConf.ResultType, stackParams);
+   FMainProg:=CreateProgram(aConf.SystemSymbols, aConf.ResultType, stackParams);
    FSystemTable:=FMainProg.SystemTable.SymbolTable;
 
    FMsgs:=FMainProg.CompileMsgs;
@@ -1301,7 +1332,7 @@ begin
 
    FProg:=FMainProg;
 
-   FOperators:=TSystemOperators.Create(FSystemTable, FProg.Table);
+   FOperators:=aConf.SystemSymbols.Operators;
    FMainProg.Operators:=FOperators;
 
    try
@@ -11207,7 +11238,7 @@ end;
 destructor TdwsConfiguration.Destroy;
 begin
    inherited;
-   FSystemTable:=nil;
+   FSystemSymbols:=nil;
    FConnectors.Free;
    FScriptPaths.Free;
    FConditionals.Free;
@@ -11238,10 +11269,10 @@ var
    meth : TMethodSymbol;
    fldSym : TFieldSymbol;
    propSym : TPropertySymbol;
-   sysTable : TSystemSymbolTable;
+   sysTable : TSystemSymbols;
 begin
-   sysTable:=TSystemSymbolTable.Create(nil);
-   FSystemTable:=sysTable;
+   sysTable:=TSystemSymbols.Create(nil);
+   FSystemSymbols:=sysTable;
 
    // Create base data types
    sysTable.TypBoolean:=TBaseBooleanSymbol.Create;
@@ -11358,6 +11389,8 @@ begin
 
    if Assigned(FOnCreateSystemSymbols) then
       FOnCreateSystemSymbols(sysTable);
+
+   sysTable.FOperators:=TSystemOperators.Create(sysTable);
 end;
 
 // SetFilter
@@ -11445,7 +11478,7 @@ end;
 //
 procedure TdwsConfiguration.DetachSystemTable;
 begin
-   FSystemTable:=nil;
+   FSystemSymbols:=nil;
 end;
 
 // SetScriptPaths
@@ -11462,13 +11495,13 @@ begin
    FConditionals.Assign(val);
 end;
 
-// GetSystemTable
+// GetSystemSymbols
 //
-function TdwsConfiguration.GetSystemTable : ISystemSymbolTable;
+function TdwsConfiguration.GetSystemSymbols : ISystemSymbols;
 begin
-   if FSystemTable=nil then
+   if FSystemSymbols=nil then
       InitSystemTable;
-   Result:=FSystemTable;
+   Result:=FSystemSymbols;
 end;
 
 // SetLocalizer

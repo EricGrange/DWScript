@@ -18,6 +18,7 @@ uses
   UScriptTests in 'UScriptTests.pas',
   UAlgorithmsTests in 'UAlgorithmsTests.pas',
   UdwsUnitTests in 'UdwsUnitTests.pas',
+  UdwsUnitTestsStatic in 'UdwsUnitTestsStatic.pas',
   UHTMLFilterTests in 'UHTMLFilterTests.pas',
   UCornerCasesTests in 'UCornerCasesTests.pas',
   UdwsClassesTests in 'UdwsClassesTests.pas',
