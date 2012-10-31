@@ -23,9 +23,10 @@ the dwscript project (http://code.google.com/p/dwscript/).
 Recent Contributors (in alphabetical order):
 
 - Brian Frost (UK)
+- Dorin Duminica
 - Kazantsev, Alexey (Russia)
 - Krystian Bigaj
-- Dorin Duminica
+- Hallvard Vassbotn (Norway)
 - Steffen Binas
 - Teti, Daniele (Italy)
 
