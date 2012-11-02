@@ -6784,6 +6784,9 @@ begin
 
       FTok.KillToken;
    end;
+
+   if (Result<>nil) and (Result.ClassType=TAliasSymbol) then
+      Result:=TAliasSymbol(Result).UnAliasedType;
 end;
 
 // ReadClassName
