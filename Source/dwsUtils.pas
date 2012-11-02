@@ -702,26 +702,23 @@ end;
 //
 function UnicodeCompareLen(p1, p2 : PChar; n : Integer) : Integer;
 var
-   i : Integer;
-   remaining : Integer;
    c1, c2 : Integer;
 begin
-   for i:=1 to n do begin
+   for n:=n downto 1 do begin
       c1:=Ord(p1^);
       c2:=Ord(p2^);
       if (c1<>c2) then begin
          if (c1<=127) and (c2<=127) then begin
             if c1 in [Ord('a')..Ord('z')] then
-               c1:=c1+Ord('A')-Ord('a');
+               c1:=c1+(Ord('A')-Ord('a'));
             if c2 in [Ord('a')..Ord('z')] then
-               c2:=c2+Ord('A')-Ord('a');
+               c2:=c2+(Ord('A')-Ord('a'));
             if c1<>c2 then begin
                Result:=c1-c2;
                Exit;
             end;
          end else begin
-            remaining:=n-i+1;
-            Result:=UnicodeComparePChars(p1, remaining, p2, remaining);
+            Result:=UnicodeComparePChars(p1, p2, n);
             Exit;
          end;
       end;
@@ -733,26 +730,29 @@ end;
 
 // UnicodeCompareText
 //
+{$R-}
 function UnicodeCompareText(const s1, s2 : String) : Integer;
 var
-   n1, n2, dn : Integer;
+   n1, n2 : Integer;
+   ps1, ps2 : PChar;
 begin
-   if S1<>'' then begin
-      if S2<>'' then begin
-         n1:=Length(s1);
-         n2:=Length(s2);
-         dn:=n1-n2;
-         if dn<0 then begin
-            Result:=UnicodeCompareLen(PChar(NativeInt(s1)), PChar(NativeInt(s2)), n1);
+   ps1:=PChar(NativeInt(s1));
+   ps2:=PChar(NativeInt(s2));
+   if ps1<>nil then begin
+      if ps2<>nil then begin
+         n1:=PInteger(NativeInt(ps1)-4)^;
+         n2:=PInteger(NativeInt(ps2)-4)^;
+         if n1<n2 then begin
+            Result:=UnicodeCompareLen(ps1, ps2, n1);
             if Result=0 then
                Result:=-1;
          end else begin
-            Result:=UnicodeCompareLen(PChar(NativeInt(S1)), PChar(NativeInt(s2)), n2);
-            if (Result=0) and (dn>0) then
+            Result:=UnicodeCompareLen(ps1, ps2, n2);
+            if (Result=0) and (n1>n2) then
                Result:=1;
          end;
       end else Result:=1;
-   end else if S2<>'' then
+   end else if ps2<>nil then
       Result:=-1
    else Result:=0;
 end;

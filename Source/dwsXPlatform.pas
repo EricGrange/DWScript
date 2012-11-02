@@ -97,7 +97,8 @@ function UTCDateTime : TDateTime;
 
 function AnsiCompareText(const S1, S2 : String) : Integer;
 function AnsiCompareStr(const S1, S2 : String) : Integer;
-function UnicodeComparePChars(p1 : PChar; n1 : Integer; p2 : PChar; n2 : Integer) : Integer;
+function UnicodeComparePChars(p1 : PChar; n1 : Integer; p2 : PChar; n2 : Integer) : Integer; overload;
+function UnicodeComparePChars(p1, p2 : PChar; n : Integer) : Integer; overload;
 
 function InterlockedIncrement(var val : Integer) : Integer;
 function InterlockedDecrement(var val : Integer) : Integer;
@@ -163,6 +164,19 @@ begin
    Result:=CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n1, p2, n2)-CSTR_EQUAL;
    {$else}
    Result:=CompareStringW(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n1, p2, n2)-CSTR_EQUAL;
+   {$endif}
+end;
+
+// UnicodeComparePChars
+//
+function UnicodeComparePChars(p1, p2 : PChar; n : Integer) : Integer; overload;
+const
+   CSTR_EQUAL = 2;
+begin
+   {$ifdef FPC}
+   Result:=CompareStringA(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n, p2, n)-CSTR_EQUAL;
+   {$else}
+   Result:=CompareStringW(LOCALE_USER_DEFAULT, NORM_IGNORECASE, p1, n, p2, n)-CSTR_EQUAL;
    {$endif}
 end;
 

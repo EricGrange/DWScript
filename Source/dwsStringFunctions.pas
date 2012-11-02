@@ -320,7 +320,7 @@ begin
    buf:=args.AsString[0];
    Val('$'+buf, Result, err);
    if err<>0 then
-      raise EConvertError.CreateFmt('''''%s'''' is not a valid integer value', [buf]);
+      raise EConvertError.CreateFmt('''''%s'''' is not a valid hexadecimal value', [buf]);
 end;
 
 { TIntToBinFunc }
