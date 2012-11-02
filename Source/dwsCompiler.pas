@@ -6837,7 +6837,9 @@ var
    i : Integer;
 begin
    // Check for a forward declaration of this class
-   sym:=FProg.Table.FindTypeLocal(typeName);
+   if csfPartial in flags then
+      sym:=FProg.Table.FindTypeSymbol(typeName, cvMagic)
+   else sym:=FProg.Table.FindTypeLocal(typeName);
    Result:=nil;
 
    if Assigned(sym) then begin
@@ -6858,10 +6860,16 @@ begin
 
    isInSymbolTable:=Assigned(Result);
 
-   if not Assigned(Result) then begin
+   if isInSymbolTable then begin
+      previousClassFlags:=Result.Flags;
+      if (csfPartial in flags) and not FProg.Table.HasSymbol(Result) then begin
+         FProg.Table.AddSymbolDirect(Result);
+         Result.IncRefCount;
+      end;
+   end else begin
       Result:=TClassSymbol.Create(typeName, CurrentUnitSymbol);
       previousClassFlags:=[];
-   end else previousClassFlags:=Result.Flags;
+   end;
 
    // forwarded declaration
    if FTok.Test(ttSEMI) then begin

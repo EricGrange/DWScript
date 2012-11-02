@@ -1,0 +1,7 @@
+uses PartialB;
+
+var t := new TTest;
+
+t.PrintA;
+t.AdjustA;
+t.PrintB;

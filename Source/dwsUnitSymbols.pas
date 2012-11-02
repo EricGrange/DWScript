@@ -133,6 +133,7 @@ type
 
          class function IsUnitTable : Boolean; override;
 
+         function FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol; override;
          function EnumerateHelpers(helpedType : TTypeSymbol; const callback : THelperSymbolEnumerationCallback) : Boolean; override;
    end;
 
@@ -813,6 +814,15 @@ end;
 class function TUnitImplementationTable.IsUnitTable : Boolean;
 begin
    Result:=False;
+end;
+
+// FindLocal
+//
+function TUnitImplementationTable.FindLocal(const aName : String; ofClass : TSymbolClass = nil) : TSymbol;
+begin
+   Result:=inherited FindLocal(aName, ofClass);
+   if Result=nil then
+      Result:=UnitMainSymbol.Table.FindLocal(aName, ofClass);
 end;
 
 // EnumerateHelpers
