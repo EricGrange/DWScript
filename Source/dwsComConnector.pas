@@ -679,7 +679,7 @@ end;
 function TComVariantArrayType.HasMember(const MemberName: String;
   var typSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
 begin
-  if SameText(MemberName, 'high') then
+  if UnicodeSameText(MemberName, 'high') then
   begin
     Result := IComVariantArrayHighBound(Self);
     typSym := FTable.FindTypeSymbol(SYS_INTEGER, cvMagic);
@@ -688,17 +688,17 @@ begin
     Result := nil
   else
   begin
-    if SameText(MemberName, 'length') then
+    if UnicodeSameText(MemberName, 'length') then
     begin
       Result := IComVariantArrayLength(Self);
       typSym := FTable.FindTypeSymbol(SYS_INTEGER, cvMagic);
     end
-    else if SameText(MemberName, 'low') then
+    else if UnicodeSameText(MemberName, 'low') then
     begin
       Result := IComVariantArrayLowBound(Self);
       typSym := FTable.FindTypeSymbol(SYS_INTEGER, cvMagic);
     end
-    else if SameText(MemberName, 'dimcount') then
+    else if UnicodeSameText(MemberName, 'dimcount') then
     begin
       Result := IComVariantArrayDimCount(Self);
       typSym := FTable.FindTypeSymbol(SYS_INTEGER, cvMagic);
@@ -719,13 +719,13 @@ end;
 function TComVariantArrayType.HasMethod(Const methodName: String;
   const params: TConnectorParamArray; var typSym: TTypeSymbol): IConnectorCall;
 begin
-   if SameText(methodName, 'length') then begin
+   if UnicodeSameText(methodName, 'length') then begin
       Result := IComVariantArrayLengthCall(Self);
       typSym := FTable.FindTypeSymbol(SYS_INTEGER, cvMagic);
-   end else if SameText(methodName, 'low') then begin
+   end else if UnicodeSameText(methodName, 'low') then begin
       Result := IComVariantArrayLowBoundCall(Self);
       typSym := FTable.FindTypeSymbol(SYS_INTEGER, cvMagic);
-   end else if SameText(methodName, 'high') then begin
+   end else if UnicodeSameText(methodName, 'high') then begin
       Result := IComVariantArrayHighBoundCall(Self);
       typSym := FTable.FindTypeSymbol(SYS_INTEGER, cvMagic);
    end else Result := nil;
