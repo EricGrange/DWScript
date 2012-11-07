@@ -6932,11 +6932,18 @@ begin
    end;
 
    // Ask the connector symbol if such a method exists
-   if FIsIndex then
-      FConnectorCall := ConnectorType.HasIndex(FName, FConnectorParams, typSym, FIsWritable)
-   else begin
-      FIsWritable := False;
-      FConnectorCall := ConnectorType.HasMethod(FName, FConnectorParams, typSym);
+   try
+      if FIsIndex then
+         FConnectorCall := ConnectorType.HasIndex(FName, FConnectorParams, typSym, FIsWritable)
+      else begin
+         FIsWritable := False;
+         FConnectorCall := ConnectorType.HasMethod(FName, FConnectorParams, typSym);
+      end;
+   except
+      on E: ECompileException do begin
+         prog.CompileMsgs.AddCompilerError(Pos, E.Message);
+         Exit(False);
+      end else raise;
    end;
 
    Result := Assigned(FConnectorCall);
