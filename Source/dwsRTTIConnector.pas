@@ -219,7 +219,7 @@ type
          FMethodType : TdwsRTTIMethodType;
 
       protected
-         function Call(const base : Variant; args : TConnectorArgs) : TData;
+         function Call(const base : Variant; const args : TConnectorArgs) : TData;
          function NeedDirectReference : Boolean;
 
       public
@@ -244,7 +244,7 @@ type
          FMethodType : TdwsRTTIMethodType;
 
       protected
-         function Call(const base : Variant; args : TConnectorArgs) : TData;
+         function Call(const base : Variant; const args : TConnectorArgs) : TData;
          function NeedDirectReference : Boolean;
 
       public
@@ -561,7 +561,7 @@ end;
 
 // Call
 //
-function TdwsRTTIConnectorCall.Call(const base : Variant; args : TConnectorArgs) : TData;
+function TdwsRTTIConnectorCall.Call(const base : Variant; const args : TConnectorArgs) : TData;
 var
    i : Integer;
    paramData : array of TValue;
@@ -1071,7 +1071,7 @@ end;
 // Call
 //
 function TdwsRTTIConnectorIndexedProperty.Call(const base : Variant;
-                                               args : TConnectorArgs) : TData;
+                                               const args : TConnectorArgs) : TData;
 var
    i, k : Integer;
    instance : TdwsRTTIVariant;

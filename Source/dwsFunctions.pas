@@ -95,15 +95,25 @@ type
          procedure Execute(info : TProgramInfo; var ExternalObject: TObject); virtual; abstract;
    end;
 
-   TInternalMethod = class(TFunctionPrototype, IUnknown, ICallable)
+   TInternalBaseMethod = class(TFunctionPrototype, IUnknown, ICallable)
       public
          constructor Create(methKind : TMethodKind; attributes : TMethodAttributes;
                             const methName : String; const methParams : array of String;
                             const methType : String; cls : TCompositeTypeSymbol;
                             aVisibility : TdwsVisibility;
                             table : TSymbolTable);
+   end;
+
+   TInternalMethod = class(TInternalBaseMethod)
+      public
          procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); override;
          procedure Execute(info : TProgramInfo; var externalObject : TObject); virtual; abstract;
+   end;
+
+   TInternalStaticMethod = class (TInternalBaseMethod)
+      public
+         procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); override;
+         procedure Execute(info : TProgramInfo); virtual; abstract;
    end;
 
    TInternalRecordMethod = class(TInternalFunction)
@@ -398,16 +408,16 @@ begin
 end;
 
 // ------------------
-// ------------------ TInternalMethod ------------------
+// ------------------ TInternalBaseMethod ------------------
 // ------------------
 
 // Create
 //
-constructor TInternalMethod.Create(methKind: TMethodKind; attributes: TMethodAttributes;
-                                   const methName: String; const methParams: array of String;
-                                   const methType: String; cls: TCompositeTypeSymbol;
-                                   aVisibility : TdwsVisibility;
-                                   table: TSymbolTable);
+constructor TInternalBaseMethod.Create(methKind: TMethodKind; attributes: TMethodAttributes;
+                                       const methName: String; const methParams: array of String;
+                                       const methType: String; cls: TCompositeTypeSymbol;
+                                       aVisibility : TdwsVisibility;
+                                       table: TSymbolTable);
 var
    sym : TMethodSymbol;
    params : TParamArray;
@@ -423,16 +433,21 @@ begin
    cls.AddMethod(sym);
 end;
 
+// ------------------
+// ------------------ TInternalMethod ------------------
+// ------------------
+
+// Call
+//
 procedure TInternalMethod.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
 var
-   scriptObj: IScriptObj;
-   extObj: TObject;
+   scriptObj : IScriptObj;
+   extObj : TObject;
    info : TProgramInfo;
 begin
    info:=exec.AcquireProgramInfo(func);
    try
-      scriptObj := Info.Vars[SYS_SELF].ScriptObj;
-
+      scriptObj:=Info.Vars[SYS_SELF].ScriptObj;
       if Assigned(scriptObj) then begin
          info.ScriptObj := scriptObj;
          extObj := scriptObj.ExternalObject;
@@ -447,6 +462,22 @@ begin
          extObj := nil;
          Execute(info, extObj);
       end;
+   finally
+      exec.ReleaseProgramInfo(info);
+   end;
+end;
+
+// ------------------
+// ------------------ TInternalStaticMethod ------------------
+// ------------------
+
+procedure TInternalStaticMethod.Call(exec: TdwsProgramExecution; func: TFuncSymbol);
+var
+   info : TProgramInfo;
+begin
+   info:=exec.AcquireProgramInfo(func);
+   try
+      Execute(info);
    finally
       exec.ReleaseProgramInfo(info);
    end;

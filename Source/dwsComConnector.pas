@@ -119,7 +119,7 @@ type
          FMethodType: Cardinal;
 
       protected
-         function Call(Const Base: Variant; Args: TConnectorArgs): TData;
+         function Call(Const Base: Variant; const args : TConnectorArgs) : TData;
          function NeedDirectReference : Boolean;
 
       public
@@ -179,11 +179,11 @@ type
     function ReadHighBound(const Base: Variant): TData; overload;
     function ReadDimCount(const Base: Variant): TData;
     procedure WriteHighBound(const Base: Variant; const Data: TData);
-    function ReadIndex(const Base: Variant; Args: TConnectorArgs): TData;
-    function WriteIndex(const Base: Variant; Args: TConnectorArgs): TData;
-    function ReadLength(const Base: Variant; Args: TConnectorArgs): TData; overload;
-    function ReadLowBound(const Base: Variant; Args: TConnectorArgs): TData; overload;
-    function ReadHighBound(const Base: Variant; Args: TConnectorArgs): TData; overload;
+    function ReadIndex(const Base: Variant; const Args: TConnectorArgs): TData;
+    function WriteIndex(const Base: Variant; const Args: TConnectorArgs): TData;
+    function ReadLength(const Base: Variant; const Args: TConnectorArgs): TData; overload;
+    function ReadLowBound(const Base: Variant; const Args: TConnectorArgs): TData; overload;
+    function ReadHighBound(const Base: Variant; const Args: TConnectorArgs): TData; overload;
     function NeedDirectReference : Boolean;
     { IConnectorType }
     function ConnectorCaption: String;
@@ -521,7 +521,7 @@ end;
 
 { TComConnectorCall }
 
-function TComConnectorCall.Call(const Base: Variant; Args: TConnectorArgs): TData;
+function TComConnectorCall.Call(const Base: Variant; const args : TConnectorArgs) : TData;
 const
    maxOleArgs = 64;
 var
@@ -597,7 +597,7 @@ end;
 { TComVariantArrayType }
 
 function TComVariantArrayType.ReadIndex(const Base: Variant;
-  Args: TConnectorArgs): TData;
+  const Args: TConnectorArgs): TData;
 var
   Indices: array of Integer;
   x, ArgCount: Integer;
@@ -611,7 +611,7 @@ begin
 end;
 
 function TComVariantArrayType.WriteIndex(const Base: Variant;
-  Args: TConnectorArgs): TData;
+  const Args: TConnectorArgs): TData;
 var
   BaseRef: PVariant;
   x, ArgCount: Integer;
@@ -778,14 +778,14 @@ begin
 end;
 
 function TComVariantArrayType.ReadHighBound(const Base: Variant;
-  Args: TConnectorArgs): TData;
+  const Args: TConnectorArgs): TData;
 begin
   SetLength(Result, 1);
   Result[0] := VarArrayHighBound(Base, Args[0][0]);
 end;
 
 function TComVariantArrayType.ReadLength(const Base: Variant;
-  Args: TConnectorArgs): TData;
+  const Args: TConnectorArgs): TData;
 var
   x: Integer;
 begin
@@ -795,7 +795,7 @@ begin
 end;
 
 function TComVariantArrayType.ReadLowBound(const Base: Variant;
-  Args: TConnectorArgs): TData;
+  const Args: TConnectorArgs): TData;
 begin
   SetLength(Result, 1);
   Result[0] := VarArrayLowBound(Base, Args[0][0]);

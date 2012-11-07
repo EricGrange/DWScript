@@ -925,7 +925,7 @@ type
 
    IConnectorCall = interface (IGetSelf)
       ['{8D534D1B-4C6B-11D5-8DCB-0000216D9E86}']
-      function Call(const base : Variant; args : TConnectorArgs) : TData;
+      function Call(const base : Variant; const args : TConnectorArgs) : TData;
       function NeedDirectReference : Boolean;
    end;
 
@@ -3299,6 +3299,8 @@ begin
       else raise Exception.CreateFmt(CPE_CanNotOverride, [Name]);
    end else if Attributes = [maReintroduce] then
       //
+   else if (Attributes = [maStatic]) and IsClassMethod then
+      SetIsStatic
    else if Attributes = [] then
       //
    else raise Exception.Create(CPE_InvalidArgCombination);
