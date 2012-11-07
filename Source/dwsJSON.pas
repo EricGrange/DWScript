@@ -39,7 +39,7 @@ type
 
    // TdwsJSONValue
    //
-   TdwsJSONValue = class
+   TdwsJSONValue = class (TRefCountedObject)
       private
          FOwner : TdwsJSONValue;
 
@@ -84,7 +84,12 @@ type
          function ElementCount : Integer;
          property Values[const index : Variant] : TdwsJSONValue read GetValue; default;
 
+         function IsImmediateValue : Boolean; inline;
          function Value : TdwsJSONImmediate; inline;
+
+         const ValueTypeStrings : array [TdwsJSONValueType] of String = (
+            'Undefined', 'Null', 'Object', 'Array', 'String', 'Number', 'Boolean'
+            );
    end;
 
    TdwsJSONPair = record
@@ -194,11 +199,12 @@ type
       public
          class function ParseString(const json : String) : TdwsJSONImmediate; static;
 
+         property RawValue : Variant read FValue write FValue;
+
          property AsString : String read GetAsString write SetAsString;
          property IsNull : Boolean read GetIsNull write SetIsNull;
          property AsBoolean : Boolean read GetAsBoolean write SetAsBoolean;
          property AsNumber : Double read GetAsNumber write SetAsNumber;
-
    end;
 
    TdwsJSONWriterState = (wsNone, wsObject, wsObjectValue, wsArray, wsArrayValue, wsDone);
@@ -662,6 +668,13 @@ begin
    if Assigned(Self) then
       Result:=DoElementCount
    else Result:=0;
+end;
+
+// IsImmediateValue
+//
+function TdwsJSONValue.IsImmediateValue : Boolean;
+begin
+   Result:=not (FValueType in [jvtObject, jvtArray]);
 end;
 
 // Value
