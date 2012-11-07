@@ -1,0 +1,15 @@
+Object
+String
+world
+Number
+1
+Number
+0.5
+Boolean
+True
+False
+hello
+one
+half
+yes
+no

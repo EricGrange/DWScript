@@ -37,7 +37,8 @@ uses
   USourceUtilsTests in 'USourceUtilsTests.pas',
   ULocalizerTests in 'ULocalizerTests.pas',
   dwsRTTIFunctions,
-  UJSONTests in 'UJSONTests.pas';
+  UJSONTests in 'UJSONTests.pas',
+  UJSONConnectorTests in 'UJSONConnectorTests.pas';
 
 {$R *.res}
 

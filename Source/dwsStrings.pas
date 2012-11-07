@@ -212,6 +212,7 @@ const
   CPE_MultipleDefaultProperties = '"%s" already has "%s" as default property';
   CPE_NoDefaultPropertyAllowed = 'No default property is allowed here';
   CPE_ParamsExpected = 'Parameters expected';
+  CPE_NoParamsExpected = 'No parameters expected';
   CPE_NoProtectedVisibilityForHelpers = 'Helpers do not supported "protected" visibility specifier';
   CPE_HelpersNotAllowedForDelegates = 'Helpers not allowed for delegates or function pointers';
 
