@@ -9960,7 +9960,6 @@ function TdwsCompiler.ReadConnectorSym(const name : String; baseExpr : TTypedExp
       ReadArguments(Result.AddArg, ttBLEFT, ttBRIGHT, argPosArray);
 
       if not Result.AssignConnectorSym(FProg, connectorType) then begin
-         Result.BaseExpr:=nil; // freed by caller
          Result.Free;
          Result:=nil;
       end;
