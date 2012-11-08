@@ -100,15 +100,15 @@ type
 
          procedure ClearData(addr, size : Integer); inline;
 
-         procedure WriteValue(DestAddr: Integer; const Value: Variant);
-         procedure WriteIntValue(DestAddr: Integer; const Value: Int64); overload; inline;
-         procedure WriteIntValue_BaseRelative(DestAddr: Integer; const Value: Int64); overload; inline;
-         procedure WriteIntValue_BaseRelative(DestAddr: Integer; const pValue: PInt64); overload; inline;
-         procedure WriteFloatValue(DestAddr: Integer; const Value: Double); inline;
-         procedure WriteFloatValue_BaseRelative(DestAddr: Integer; const Value: Double); inline;
-         procedure WriteStrValue(DestAddr: Integer; const Value: String); inline;
-         procedure WriteBoolValue(DestAddr: Integer; const Value: Boolean); inline;
-         procedure WriteInterfaceValue(DestAddr: Integer; const intf: IUnknown);
+         procedure WriteValue(destAddr: Integer; const Value: Variant);
+         procedure WriteIntValue(destAddr: Integer; const Value: Int64); overload; inline;
+         procedure WriteIntValue_BaseRelative(destAddr: Integer; const Value: Int64); overload; inline;
+         procedure WriteIntValue_BaseRelative(destAddr: Integer; const pValue: PInt64); overload; inline;
+         procedure WriteFloatValue(destAddr: Integer; const Value: Double); inline;
+         procedure WriteFloatValue_BaseRelative(destAddr: Integer; const Value: Double); inline;
+         procedure WriteStrValue(destAddr: Integer; const Value: String); inline;
+         procedure WriteBoolValue(destAddr: Integer; const Value: Boolean); inline;
+         procedure WriteInterfaceValue(destAddr: Integer; const intf: IUnknown);
 
          function  SetStrChar(DestAddr: Integer; index : Integer; c : WideChar) : Boolean;
 
@@ -635,7 +635,7 @@ end;
 //
 procedure TStackMixIn.WriteValue(DestAddr: Integer; const Value: Variant);
 begin
-  VarCopy(Data[DestAddr], Value);
+   VarCopy(Data[destAddr], Value);
 end;
 
 // WriteIntValue

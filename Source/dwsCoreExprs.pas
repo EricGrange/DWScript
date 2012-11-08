@@ -356,8 +356,11 @@ type
          procedure Prepare(Prog: TdwsProgram; ElementTyp : TTypeSymbol);
          procedure TypeCheckElements(prog : TdwsProgram);
 
+         function Size : Integer; inline;
+
          function Eval(exec : TdwsExecution) : Variant; override;
-         function EvalAsTData(exec : TdwsExecution) : TData;
+         function EvalAsTData(exec : TdwsExecution) : TData; overload; inline;
+         procedure EvalAsTData(exec : TdwsExecution; var result : TData); overload;
          function EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArrayContainer;
 
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
@@ -3410,6 +3413,15 @@ begin
    Result:=FElementExprs.Count;
 end;
 
+// Size
+//
+function TArrayConstantExpr.Size : Integer;
+begin
+   Result:=ElementCount;
+end;
+
+// Eval
+//
 function TArrayConstantExpr.Eval(exec : TdwsExecution) : Variant;
 
    procedure DoEval;
@@ -3447,14 +3459,21 @@ end;
 // EvalAsTData
 //
 function TArrayConstantExpr.EvalAsTData(exec : TdwsExecution) : TData;
+begin
+   EvalAsTData(exec, Result);
+end;
+
+// EvalAsTData
+//
+procedure TArrayConstantExpr.EvalAsTData(exec : TdwsExecution; var result : TData);
 var
    i : Integer;
    expr : TTypedExpr;
 begin
-   SetLength(Result, FElementExprs.Count);
+   SetLength(result, Size);
    for i:=0 to FElementExprs.Count-1 do begin
       expr:=TTypedExpr(FElementExprs.List[i]);
-      expr.EvalAsVariant(exec, Result[i]);
+      expr.EvalAsVariant(exec, result[i]);
    end;
 end;
 

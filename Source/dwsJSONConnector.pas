@@ -111,9 +111,10 @@ type
    // TdwsJSONConnectorMember
    //
    TdwsJSONConnectorMember = class(TInterfacedSelfObject, IUnknown, IConnectorMember)
-      protected
+      private
          FMemberName : String;
 
+      protected
          function Read(const base : Variant) : TData;
          procedure Write(const base : Variant; const data : TData);
 

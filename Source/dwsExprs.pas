@@ -1014,6 +1014,7 @@ type
          procedure Initialize(prog : TdwsProgram); virtual;
 
          procedure SetResultAddr(prog : TdwsProgram; exec : TdwsExecution; ResultAddr: Integer = -1);
+         property ResultAddr : Integer read FResultAddr;
 
          function ChangeFuncSymbol(aProg: TdwsProgram; newFuncSym : TFuncSymbol) : TFuncExprBase; virtual;
 
@@ -1032,7 +1033,7 @@ type
    end;
 
    TPushOperatorType = (potUnknown,
-                        potAddr, potPassAddr, potTempAddr, potTempArrayAddr, potTempArray,
+                        potAddr, potPassAddr, potTempAddr, potTempData, potTempArrayAddr, potTempArray,
                         potResult,
                         potResultInteger, potResultFloat, potResultBoolean,
                         potResultString, potResultConstString,
@@ -1057,6 +1058,7 @@ type
       procedure ExecuteAddr(exec : TdwsExecution);
       procedure ExecutePassAddr(exec : TdwsExecution);
       procedure ExecuteTempAddr(exec : TdwsExecution);
+      procedure ExecuteTempData(exec : TdwsExecution);
       procedure ExecuteTempArrayAddr(exec : TdwsExecution);
       procedure ExecuteTempArray(exec : TdwsExecution);
       procedure ExecuteResult(exec : TdwsExecution);
@@ -4456,7 +4458,9 @@ end;
 //
 procedure TPushOperator.InitPushTempAddr(stackAddr: Integer; argExpr: TTypedExpr);
 begin
-   FTypeParamSym:=TSymbol(potTempAddr);
+   if argExpr.Typ.Size>1 then
+      FTypeParamSym:=TSymbol(potTempData)
+   else FTypeParamSym:=TSymbol(potTempAddr);
    FStackAddr:=stackAddr;
    FArgExpr:=argExpr;
 end;
@@ -4536,6 +4540,7 @@ begin
       NativeInt(potAddr) : ExecuteAddr(exec);
       NativeInt(potPassAddr) : ExecutePassAddr(exec);
       NativeInt(potTempAddr) : ExecuteTempAddr(exec);
+      NativeInt(potTempData) : ExecuteTempData(exec);
       NativeInt(potTempArrayAddr) : ExecuteTempArrayAddr(exec);
       NativeInt(potTempArray) : ExecuteTempArray(exec);
       NativeInt(potResultBoolean) : ExecuteResultBoolean(exec);
@@ -4553,25 +4558,46 @@ end;
 
 type
 
-   TVarParamData = class (TInterfacedObject, IVarParamData)
+   TVarParamData = class (TInterfacedSelfObject, IVarParamData)
       private
          FData : TData;
          FAddr : Integer;
+
       protected
          function GetData : TData;
          function GetAddr : Integer;
+
       public
-         constructor Create(const Data: TData; Addr: Integer);
+         constructor Create(const aData : TData; aAddr : Integer); overload;
+         constructor Create(const aData: TData); overload;
+         constructor Create(size : Integer); overload;
+
          function Eval : PVariant;
+
+         property Data : TData read FData;
+         property Addr : Integer read FAddr;
   end;
 
-{ TVarParamData }
-
-constructor TVarParamData.Create(const Data: TData; Addr: Integer);
+// Create (data, addr)
+//
+constructor TVarParamData.Create(const aData : TData; aAddr : Integer);
 begin
-   inherited Create;
-   FData:=Data;
-   FAddr:=Addr;
+   FData:=aData;
+   FAddr:=aAddr;
+end;
+
+// Create (data)
+//
+constructor TVarParamData.Create(const aData : TData);
+begin
+   FData:=aData;
+end;
+
+// Create (size)
+//
+constructor TVarParamData.Create(size : Integer);
+begin
+   SetLength(FData, size);
 end;
 
 // Eval
@@ -4581,14 +4607,18 @@ begin
    Result:=@FData[FAddr];
 end;
 
+// GetAddr
+//
 function TVarParamData.GetAddr : Integer;
 begin
    Result:=FAddr;
 end;
 
+// GetData
+//
 function TVarParamData.GetData : TData;
 begin
-  Result := FData;
+   Result:=FData;
 end;
 
 // ExecuteAddr
@@ -4598,7 +4628,7 @@ var
    vpd : IVarParamData;
 begin
    vpd:=TVarParamData.Create(TDataExpr(FArgExpr).Data[exec], TDataExpr(FArgExpr).Addr[exec]);
-   exec.Stack.WriteValue(exec.Stack.StackPointer + FStackAddr, vpd);
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
 end;
 
 // ExecutePassAddr
@@ -4608,7 +4638,7 @@ var
    vpd : IVarParamData;
 begin
    TVarParamExpr(FArgExpr).GetVarParamData(exec, vpd);
-   exec.Stack.WriteValue(exec.Stack.StackPointer+FStackAddr, vpd);
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
 end;
 
 // ExecuteTempAddr
@@ -4616,24 +4646,40 @@ end;
 procedure TPushOperator.ExecuteTempAddr(exec : TdwsExecution);
 var
    vpd : IVarParamData;
-   data : TData;
 begin
-   SetLength(data, 1);
-   FArgExpr.EvalAsVariant(exec, data[0]);
-   vpd:=TVarParamData.Create(data, 0);
-   exec.Stack.WriteValue(exec.Stack.StackPointer + FStackAddr, vpd);
+   vpd:=TVarParamData.Create(1);
+   FArgExpr.EvalAsVariant(exec, vpd.Data[0]);
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
+end;
+
+// ExecuteTempData
+//
+procedure TPushOperator.ExecuteTempData(exec : TdwsExecution);
+var
+   vpd : IVarParamData;
+   dataExpr : TDataExpr;
+begin
+   vpd:=TVarParamData.Create(FArgExpr.Typ.Size);
+
+   dataExpr:=TDataExpr(FArgExpr);
+   DWSCopyData(dataExpr.Data[exec], dataExpr.Addr[exec], vpd.Data, 0, FArgExpr.Typ.Size);
+
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
 end;
 
 // ExecuteTempArrayAddr
 //
 procedure TPushOperator.ExecuteTempArrayAddr(exec : TdwsExecution);
 var
-   vpd : IVarParamData;
-   data : TData;
+   ace : TArrayConstantExpr;
+   ivpd : IVarParamData;
+   vpd : TVarParamData;
 begin
-   data:=TArrayConstantExpr(FArgExpr).EvalAsTData(exec);
-   vpd:=TVarParamData.Create(data, 0);
-   exec.Stack.WriteValue(exec.Stack.StackPointer+FStackAddr, vpd);
+   ace:=TArrayConstantExpr(FArgExpr);
+   vpd:=TVarParamData.Create(ace.Size);
+   ivpd:=vpd;
+   ace.EvalAsTData(exec, vpd.FData);
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, ivpd);
 end;
 
 // ExecuteTempArray
@@ -4641,42 +4687,40 @@ end;
 procedure TPushOperator.ExecuteTempArray(exec : TdwsExecution);
 var
    vpd : IVarParamData;
-   data : TData;
 begin
-   data:=TConstParamExpr(FArgExpr).Data[exec];
-   vpd:=TVarParamData.Create(data, 0);
-   exec.Stack.WriteValue(exec.Stack.StackPointer+FStackAddr, vpd);
+   vpd:=TVarParamData.Create(TConstParamExpr(FArgExpr).Data[exec]);
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
 end;
 
 // ExecuteResult
 //
 procedure TPushOperator.ExecuteResult(exec : TdwsExecution);
-var
-   buf : Variant;
 begin
-   FArgExpr.EvalAsVariant(exec, buf);
-   exec.Stack.WriteValue(exec.Stack.StackPointer + FStackAddr, buf);
+   FArgExpr.EvalAsVariant(exec, exec.Stack.Data[exec.Stack.StackPointer+FStackAddr]);
 end;
 
 // ExecuteResultBoolean
 //
 procedure TPushOperator.ExecuteResultBoolean(exec : TdwsExecution);
 begin
-   exec.Stack.WriteBoolValue(exec.Stack.StackPointer + FStackAddr, FArgExpr.EvalAsBoolean(exec));
+   exec.Stack.WriteBoolValue(exec.Stack.StackPointer+FStackAddr,
+                             FArgExpr.EvalAsBoolean(exec));
 end;
 
 // ExecuteResultInteger
 //
 procedure TPushOperator.ExecuteResultInteger(exec : TdwsExecution);
 begin
-   exec.Stack.WriteIntValue(exec.Stack.StackPointer + FStackAddr, FArgExpr.EvalAsInteger(exec));
+   exec.Stack.WriteIntValue(exec.Stack.StackPointer+FStackAddr,
+                            FArgExpr.EvalAsInteger(exec));
 end;
 
 // ExecuteResultFloat
 //
 procedure TPushOperator.ExecuteResultFloat(exec : TdwsExecution);
 begin
-   exec.Stack.WriteFloatValue(exec.Stack.StackPointer + FStackAddr, FArgExpr.EvalAsFloat(exec));
+   exec.Stack.WriteFloatValue(exec.Stack.StackPointer+FStackAddr,
+                              FArgExpr.EvalAsFloat(exec));
 end;
 
 // ExecuteResultString
@@ -4686,14 +4730,15 @@ var
    buf : String;
 begin
    FArgExpr.EvalAsString(exec, buf);
-   exec.Stack.WriteStrValue(exec.Stack.StackPointer + FStackAddr, buf);
+   exec.Stack.WriteStrValue(exec.Stack.StackPointer+FStackAddr,
+                            buf);
 end;
 
 // ExecuteResultConstString
 //
 procedure TPushOperator.ExecuteResultConstString(exec : TdwsExecution);
 begin
-   exec.Stack.WriteStrValue(exec.Stack.StackPointer + FStackAddr,
+   exec.Stack.WriteStrValue(exec.Stack.StackPointer+FStackAddr,
                             TConstStringExpr(FArgExpr).Value);
 end;
 
