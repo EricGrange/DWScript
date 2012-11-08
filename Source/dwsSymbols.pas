@@ -5239,7 +5239,9 @@ function TMembersSymbolTable.FindSymbolFromScope(const aName : String; scopeSym 
 begin
    if scopeSym=nil then
       Result:=FindSymbol(aName, cvPublic)
-   else if scopeSym=Owner then
+   else if    (scopeSym=Owner)
+           or (    (scopeSym.UnitSymbol<>nil)
+               and (scopeSym.UnitSymbol=Owner.UnitSymbol)) then
       Result:=FindSymbol(aName, cvPrivate)
    else if scopeSym.DoIsOfType(Owner) then
       Result:=FindSymbol(aName, cvProtected)

@@ -1,0 +1,2 @@
+Syntax Error: Member symbol "Field" is not visible from this scope [line: 24, column: 26]
+Syntax Error: Member symbol "Internal" is not visible from this scope [line: 25, column: 11]
