@@ -91,7 +91,7 @@ type
          FText : String;
 
       public
-         constructor Create(Msgs: TdwsMessageList; const Text: String);
+         constructor Create(aMessageList : TdwsMessageList; const Text: String);
 
          function AsInfo : String; virtual; abstract;
          property Text : String read FText;
@@ -196,7 +196,7 @@ type
          procedure AddInfo(const Text: String);
          function LastMessagePos : TScriptPos;
 
-         procedure AddMsg(aMessage : TdwsMessage); virtual;
+         procedure AddMessage(aMessage : TdwsMessage); virtual;
          procedure AddMsgs(src : TdwsMessageList; lineOffset, colOffset : Integer);
          procedure Clear;
 
@@ -220,10 +220,10 @@ type
          function AddCompilerInfo(const Text: String) : TInfoMessage;
 
          function AddCompilerHint(const Pos: TScriptPos; const Text : String;
-                                   const aLevel : TdwsHintsLevel = hlNormal) : TScriptMessage; overload;
+                                  const aLevel : TdwsHintsLevel = hlNormal) : TScriptMessage; overload;
          function AddCompilerHintFmt(const Pos: TScriptPos; const textFormat : String;
-                                      const args : array of const;
-                                      const aLevel : TdwsHintsLevel = hlNormal) : TScriptMessage; overload;
+                                     const args : array of const;
+                                     const aLevel : TdwsHintsLevel = hlNormal) : TScriptMessage; overload;
 
          function AddCompilerWarning(const Pos: TScriptPos; const Text: String) : TScriptMessage;
          function AddCompilerWarningFmt(const Pos: TScriptPos; const textFormat : String;
@@ -483,9 +483,9 @@ begin
    Result:=FMessageList.Count;
 end;
 
-// AddMsg
+// AddMessage
 //
-procedure TdwsMessageList.AddMsg(aMessage: TdwsMessage);
+procedure TdwsMessageList.AddMessage(aMessage: TdwsMessage);
 begin
    FMessageList.Add(aMessage);
 end;
@@ -513,7 +513,7 @@ begin
          else col:=srcMsg.Pos.Col;
          srcMsg.Pos.SetColLine(col, srcMsg.Pos.Line+lineOffset);
       end;
-      AddMsg(msg);
+      AddMessage(msg);
    end;
    src.FMessageList.Clear;
    src.FSourceFiles.Clear;
@@ -523,7 +523,7 @@ end;
 //
 procedure TdwsMessageList.AddInfo(const Text: String);
 begin
-   AddMsg(TInfoMessage.Create(Self, Text));
+   AddMessage(TInfoMessage.Create(Self, Text));
 end;
 
 // LastMessagePos
@@ -557,10 +557,11 @@ end;
 
 // Create
 //
-constructor TdwsMessage.Create(Msgs: TdwsMessageList; const Text: String);
+constructor TdwsMessage.Create(aMessageList : TdwsMessageList; const Text: String);
 begin
-   FMsgs:=Msgs;
+   FMsgs:=aMessageList;
    FText:=Text;
+   aMessageList.AddMessage(Self);
 end;
 
 // ------------------
@@ -654,7 +655,6 @@ end;
 function TdwsCompileMessageList.AddCompilerInfo(const Text: String) : TInfoMessage;
 begin
    Result:=TInfoMessage.Create(Self, Text);
-   AddMsg(Result);
 end;
 
 // AddCompilerHint
@@ -662,10 +662,9 @@ end;
 function TdwsCompileMessageList.AddCompilerHint(const Pos: TScriptPos;
       const Text: String; const aLevel : TdwsHintsLevel = hlNormal) : TScriptMessage;
 begin
-   if aLevel<=HintsLevel then begin
-      Result:=THintMessage.Create(Self, Text, Pos);
-      AddMsg(Result);
-   end else Result:=nil;
+   if aLevel<=HintsLevel then
+      Result:=THintMessage.Create(Self, Text, Pos)
+   else Result:=nil;
 end;
 
 // AddCompilerHintFmt
@@ -682,10 +681,9 @@ end;
 function TdwsCompileMessageList.AddCompilerWarning(const Pos: TScriptPos;
       const Text: String) : TScriptMessage;
 begin
-   if not WarningsDisabled then begin
-      Result:=TWarningMessage.Create(Self, Text, Pos);
-      AddMsg(Result);
-   end else Result:=nil;
+   if not WarningsDisabled then
+      Result:=TWarningMessage.Create(Self, Text, Pos)
+   else Result:=nil;
 end;
 
 // AddCompilerWarningFmt
@@ -702,7 +700,6 @@ function TdwsCompileMessageList.AddCompilerError(const Pos: TScriptPos;
       const Text: String; messageClass : TScriptMessageClass) : TScriptMessage;
 begin
    Result:=messageClass.Create(Self, Text, Pos);
-   AddMsg(Result);
    FHasErrors:=True;
 end;
 

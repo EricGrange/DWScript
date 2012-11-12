@@ -317,6 +317,8 @@ const
   CPE_OfObjectExpected = 'OF OBJECT expected';
   CPH_ReferenceToIsLegacy = 'REFERENCE TO modifier is legacy and ignored';
 
+  CPH_CaseDoesNotMatchDeclaration = '"%s" does not match case of declaration ("%s")';
+
   // TypeCheck
   CPE_BooleanExpected = 'Boolean expected';
   CPE_IntegerExpected = 'Integer expected';

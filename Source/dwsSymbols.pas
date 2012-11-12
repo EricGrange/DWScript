@@ -6021,7 +6021,6 @@ var
 begin
    msg:=TRuntimeErrorMessage.Create(Self, Text, scriptPos);
    msg.FCallStack:=callStack;
-   AddMsg(msg);
    HasErrors:=True;
 end;
 

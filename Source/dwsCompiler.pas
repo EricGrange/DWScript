@@ -203,7 +203,7 @@ type
          FCompileMsgs : TdwsCompileMessageList;
 
       public
-         procedure AddMsg(aMessage : TdwsMessage); override;
+         procedure AddMessage(aMessage : TdwsMessage); override;
 
    end;
 
@@ -657,6 +657,8 @@ type
                               options : TdwsEvaluateOptions = []) : IdwsEvaluateExpr;
 
          procedure WarnForVarUsage(varExpr : TVarExpr; const scriptPos : TScriptPos);
+
+         procedure CheckMatchingDeclarationCase(const nameString : String; sym : TSymbol; const scriptPos : TScriptPos);
 
          procedure RecordSymbolUse(sym : TSymbol; const scriptPos : TScriptPos; const useTypes : TSymbolUsages);
          procedure RecordSymbolUseReference(sym : TSymbol; const scriptPos : TScriptPos; isWrite : Boolean);
@@ -1537,6 +1539,16 @@ begin
          ums.FinalizationExpr.IncRefCount;
       end;
    end;
+end;
+
+// CheckMatchingDeclarationCase
+//
+procedure TdwsCompiler.CheckMatchingDeclarationCase(const nameString : String; sym : TSymbol;
+                                                    const scriptPos : TScriptPos);
+begin
+   if (nameString<>sym.Name) and UnicodeSameText(nameString, sym.Name) then
+      FMsgs.AddCompilerHintFmt(scriptPos, CPH_CaseDoesNotMatchDeclaration,
+                               [nameString, sym.Name], hlPedantic);
 end;
 
 // RecordSymbolUse
@@ -3857,6 +3869,9 @@ begin
          else FMsgs.AddCompilerErrorFmt(namePos, CPE_MemberSymbolNotVisible, [nameToken.FString]);
       end;
    end;
+
+   if (sym<>nil) and not (coHintsDisabled in FOptions) then
+      CheckMatchingDeclarationCase(nameToken.FString, sym, namePos);
 
    FTok.KillToken;
 
@@ -7395,8 +7410,7 @@ begin
             end;
 
             Result.ReadSym := sym;
-            if coSymbolDictionary in FOptions then
-               FSymbolDictionary.AddSymbol(sym, accessPos, [suReference, suRead])
+            RecordSymbolUse(sym, accessPos, [suReference, suRead]);
          end;
 
          if FTok.TestDelete(ttWRITE) then begin
@@ -7430,8 +7444,7 @@ begin
             end;
 
             Result.WriteSym := sym;
-            if coSymbolDictionary in FOptions then
-               FSymbolDictionary.AddSymbol(sym, accessPos, [suReference, suWrite]);
+            RecordSymbolUse(sym, accessPos, [suReference, suWrite]);
          end;
 
          if (Result.ReadSym = nil) and (Result.WriteSym = nil) then
@@ -9197,7 +9210,7 @@ begin
                FProg.Table.AddSymbol(includeSymbol);
                fileNamePos:=FTok.HotPos;
                fileNamePos.IncCol; // skip quote
-               FSymbolDictionary.AddSymbol(includeSymbol, fileNamePos, [suReference]);
+               RecordSymbolUse(includeSymbol, fileNamePos, [suReference]);
             end;
 
             if (switch=siIncludeOnce) then begin
@@ -10248,7 +10261,7 @@ begin
          end;
          if coSymbolDictionary in Options then begin
             rSym:=FProg.UnitMains.Find(names[x]);
-            FSymbolDictionary.AddSymbol(rSym, posArray[x], [suReference]);
+            RecordSymbolUse(rSym, posArray[x], [suReference]);
          end;
       end;
    finally
@@ -11756,10 +11769,10 @@ end;
 
 // AddMsg
 //
-procedure TdwsOptimizationMessageList.AddMsg(aMessage : TdwsMessage);
+procedure TdwsOptimizationMessageList.AddMessage(aMessage : TdwsMessage);
 begin
    inherited;
-   FCompileMsgs.AddMsg(aMessage);
+   FCompileMsgs.AddMessage(aMessage);
    FCompileMsgs.HasErrors:=FCompileMsgs.HasErrors or HasErrors;
 end;
 
