@@ -23,10 +23,10 @@ const
 
    GAB_HintMessage = 'Gabelou: %s';
 
-   GAB_CamelCaseParameters_Name = 'CamelCase parameters';
+   GAB_CamelCaseParameters_Name = 'camelCase parameters';
    GAB_CamelCaseParameters_Description = 'Parameter names should follow camelCase and start with a lower-case character';
 
-   GAB_CamelCaseLocalVariables_Name = 'CamelCase local variables';
+   GAB_CamelCaseLocalVariables_Name = 'camelCase local variables';
    GAB_CamelCaseLocalVariables_Description = 'Local variables names should follow camelCase and start with a lower-case character';
 
    GAB_PrefixedClassVariables_Name = 'Prefixed class variables';

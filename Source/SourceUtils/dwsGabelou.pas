@@ -75,7 +75,8 @@ type
       public
          constructor Create;
 
-         procedure Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList);
+         procedure Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList); overload;
+         procedure Evaluate(const aProg : IdwsProgram); overload;
 
          procedure AddRule(const rule : IdwsGabelouRule);
 
@@ -152,6 +153,13 @@ var
 begin
    for i:=0 to High(FRules) do
       FRules[i].Evaluate(aProg, msgs);
+end;
+
+// Evaluate
+//
+procedure TdwsGabelou.Evaluate(const aProg : IdwsProgram);
+begin
+   Evaluate(aProg, aProg.Msgs);
 end;
 
 // AddRule

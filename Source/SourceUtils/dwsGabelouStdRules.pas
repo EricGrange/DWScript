@@ -281,6 +281,7 @@ end;
 procedure TGR_PascalCaseTypes.EvaluateSymbol(const aSymbolList : TSymbolPositionList; msgs : TdwsMessageList);
 begin
    if not (aSymbolList.Symbol is TTypeSymbol) then Exit;
+   if aSymbolList.Symbol is TFuncSymbol then Exit;
 
    if TCharacter.IsLower(aSymbolList.Symbol.Name[1]) then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
