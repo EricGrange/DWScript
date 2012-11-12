@@ -1,2 +1,4 @@
+Hint: "now" does not match case of declaration ("Now") [line: 5, column: 11]
 Syntax Error: Argument 0 expects type "String" instead of "Float" [line: 5, column: 5]
+Hint: "now" does not match case of declaration ("Now") [line: 7, column: 5]
 Syntax Error: Argument 0 expects type "String" instead of "Float" [line: 7, column: 5]

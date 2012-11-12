@@ -1,3 +1,11 @@
+Errors >>>>
+Hint: "fn" does not match case of declaration ("Fn") [line: 24, column: 5]
+Hint: "fn" does not match case of declaration ("Fn") [line: 25, column: 5]
+Hint: "fn" does not match case of declaration ("Fn") [line: 28, column: 5]
+Hint: "fn" does not match case of declaration ("Fn") [line: 29, column: 5]
+Hint: "fn" does not match case of declaration ("Fn") [line: 30, column: 6]
+Hint: "fn" does not match case of declaration ("Fn") [line: 31, column: 6]
+Result >>>>
 A int
 B int
 A int

@@ -1,3 +1,6 @@
+Errors >>>>
+Hint: "e" does not match case of declaration ("E") [line: 72, column: 15]
+Result >>>>
 Direct
 TBase.SetName on Base with Base
 TChild.SetName on Child with Child

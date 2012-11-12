@@ -1,2 +1,6 @@
+Errors >>>>
+Hint: "test" does not match case of declaration ("Test") [line: 6, column: 26]
+Hint: "c" does not match case of declaration ("C") [line: 6, column: 33]
+Result >>>>
 Hello
 11

@@ -1,1 +1,2 @@
+Hint: "print" does not match case of declaration ("Print") [line: 2, column: 10]
 Syntax Error: Incompatible operands [line: 2, column: 8]

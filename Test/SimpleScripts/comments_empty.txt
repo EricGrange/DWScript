@@ -1,3 +1,8 @@
+Errors >>>>
+Hint: "Println" does not match case of declaration ("PrintLn") [line: 11, column: 3]
+Hint: "Println" does not match case of declaration ("PrintLn") [line: 18, column: 3]
+Hint: "Println" does not match case of declaration ("PrintLn") [line: 25, column: 3]
+Result >>>>
 a
 b
 c

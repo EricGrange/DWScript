@@ -1,3 +1,6 @@
+Errors >>>>
+Hint: "v" does not match case of declaration ("V") [line: 4, column: 44]
+Result >>>>
 10: 20, 14
 9: 18, 12
 8: 16, 10

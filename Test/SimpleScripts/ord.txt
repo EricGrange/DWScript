@@ -1,3 +1,6 @@
+Errors >>>>
+Hint: "PI" does not match case of declaration ("Pi") [line: 25, column: 4]
+Result >>>>
 65
 0
 123

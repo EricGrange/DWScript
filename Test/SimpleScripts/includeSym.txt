@@ -1,2 +1,5 @@
+Errors >>>>
+Hint: "IncludeSym" does not match case of declaration ("includeSym") [line: 5, column: 20]
+Result >>>>
 Hello world
 Bye bye world

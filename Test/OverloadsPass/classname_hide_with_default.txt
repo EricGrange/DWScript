@@ -1,3 +1,10 @@
+Errors >>>>
+Hint: "TObj" does not match case of declaration ("tobj") [line: 17, column: 10]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 19, column: 1]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 20, column: 1]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 21, column: 1]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 23, column: 1]
+Result >>>>
 5
 1
 tobj

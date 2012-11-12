@@ -1,3 +1,7 @@
+Errors >>>>
+Hint: "TObj" does not match case of declaration ("tobj") [line: 11, column: 10]
+Hint: "TObj" does not match case of declaration ("tobj") [line: 13, column: 6]
+Result >>>>
 0
 1
 0

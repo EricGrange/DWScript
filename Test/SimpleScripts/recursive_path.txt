@@ -1,1 +1,6 @@
+Errors >>>>
+Hint: "result" does not match case of declaration ("Result") [line: 10, column: 5]
+Hint: "s" does not match case of declaration ("S") [line: 20, column: 7]
+Hint: "s" does not match case of declaration ("S") [line: 21, column: 10]
+Result >>>>
 TPersistent

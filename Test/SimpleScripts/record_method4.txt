@@ -1,2 +1,5 @@
+Errors >>>>
+Hint: "println" does not match case of declaration ("PrintLn") [line: 4, column: 29]
+Result >>>>
 0
 1

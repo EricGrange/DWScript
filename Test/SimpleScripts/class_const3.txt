@@ -1,3 +1,6 @@
+Errors >>>>
+Hint: "cToto" does not match case of declaration ("cTOTO") [line: 17, column: 9]
+Result >>>>
 toto
 titi
 tata

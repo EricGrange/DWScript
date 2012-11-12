@@ -1,3 +1,6 @@
+Errors >>>>
+Hint: "e" does not match case of declaration ("E") [line: 59, column: 15]
+Result >>>>
 TMyClass
 TMyOtherClass
 This is TMyClass

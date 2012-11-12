@@ -1,1 +1,4 @@
-﻿ต่ายอรทัย
+﻿Errors >>>>
+Hint: "println" does not match case of declaration ("PrintLn") [line: 1, column: 1]
+Result >>>>
+ต่ายอรทัย

@@ -1,1 +1,5 @@
+Errors >>>>
+Hint: "result" does not match case of declaration ("Result") [line: 9, column: 4]
+Hint: "result" does not match case of declaration ("Result") [line: 20, column: 4]
+Result >>>>
 We can do it!

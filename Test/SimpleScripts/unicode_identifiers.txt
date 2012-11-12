@@ -1,2 +1,5 @@
-﻿hello
+﻿Errors >>>>
+Hint: "ÉRIC" does not match case of declaration ("éric") [line: 13, column: 9]
+Result >>>>
+hello
 éric

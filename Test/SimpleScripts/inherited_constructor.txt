@@ -1,2 +1,9 @@
+Errors >>>>
+Hint: "createElement" does not match case of declaration ("CreateElement") [line: 17, column: 12]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 29, column: 3]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 30, column: 3]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 43, column: 3]
+Hint: "println" does not match case of declaration ("PrintLn") [line: 44, column: 3]
+Result >>>>
 We dont have a handle
 We have a handle
