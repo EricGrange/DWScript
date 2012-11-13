@@ -4420,7 +4420,9 @@ begin
    Result:=    (typSym<>nil)
            and (   (typSym.UnAliasedType is TBaseSymbol)
                 or (typSym.UnAliasedType is TEnumerationSymbol)
-                or (typSym.UnAliasedType is TClassSymbol));
+                or (typSym.UnAliasedType is TClassSymbol)
+                or (typSym.UnAliasedType is TNilSymbol)
+                or (typSym.UnAliasedType is TInterfaceSymbol));
 end;
 
 // InitData

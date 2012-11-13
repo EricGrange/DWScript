@@ -161,6 +161,7 @@ const
 
 type
    IBoxedJSONValue = interface
+      ['{585B989C-220C-4120-B5F4-2819A0708A80}']
       function Root : TdwsJSONValue;
       function Value : TdwsJSONValue;
    end;
@@ -174,6 +175,7 @@ type
 
       function Root : TdwsJSONValue;
       function Value : TdwsJSONValue;
+      function ToString : String; override;
 
       class procedure Allocate(root, wrapped : TdwsJSONValue; var v : Variant); static;
    end;
@@ -215,6 +217,13 @@ end;
 function TBoxedJSONValue.Value : TdwsJSONValue;
 begin
    Result:=FValue;
+end;
+
+// ToString
+//
+function TBoxedJSONValue.ToString : String;
+begin
+   Result:=FValue.ToString;
 end;
 
 // Allocate
@@ -581,8 +590,12 @@ var
    box : TBoxedJSONValue;
 begin
    v:=TdwsJSONValue.ParseString(info.ParamAsString[0]);
-   box:=TBoxedJSONValue.Create(v, v);
-   v.DecRefCount;
+   if v=nil then
+      box:=TBoxedJSONValue.Create(TdwsJSONObject.Create, nil)
+   else begin
+      box:=TBoxedJSONValue.Create(v, v);
+      v.DecRefCount;
+   end;
    Info.ResultAsVariant:=IUnknown(IBoxedJSONValue(box));
 end;
 
@@ -593,8 +606,47 @@ end;
 // Execute
 //
 procedure TJSONStringifyMethod.Execute(info : TProgramInfo);
+var
+   v : Variant;
+   p : PVarData;
+   unk : IUnknown;
+   getSelf : IGetSelf;
+   boxedJSON : IBoxedJSONValue;
+   writer : TdwsJSONWriter;
+   stream : TWriteOnlyBlockStream;
 begin
-   Info.ResultAsString:='test';
+   stream:=TWriteOnlyBlockStream.Create;
+   writer:=TdwsJSONWriter.Create(stream);
+   try
+      v:=info.ParamAsVariant[0];
+      p:=PVarData(@v);
+      case p^.VType of
+         varInt64 :
+            writer.WriteInteger(p^.VInt64);
+         varDouble :
+            writer.WriteNumber(p^.VDouble);
+         varBoolean :
+            writer.WriteBoolean(p^.VBoolean);
+         varUnknown : begin
+            unk:=IUnknown(p^.VUnknown);
+            if unk=nil then
+               writer.WriteNull
+            else if unk.QueryInterface(IBoxedJSONValue, boxedJSON)=0 then begin
+               if boxedJSON.Value<>nil then
+                  boxedJSON.Value.WriteTo(writer)
+               else writer.WriteString('Undefined');
+            end else if unk.QueryInterface(IGetSelf, getSelf)=0 then
+               writer.WriteString(getSelf.ToString)
+            else writer.WriteString('IUnknown');
+         end;
+      else
+         writer.WriteString(v);
+      end;
+      Info.ResultAsString:=stream.ToString;
+   finally
+      writer.Free;
+      stream.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------

@@ -1155,6 +1155,7 @@ type
    // String(x)
    TConvStringExpr = class (TUnaryOpStringExpr)
      procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
+     class procedure VariantToString(const v : Variant; var s : String); static;
    end;
 
    // Boolean(x)
@@ -4413,8 +4414,53 @@ end;
 // EvalAsString
 //
 procedure TConvStringExpr.EvalAsString(exec : TdwsExecution; var Result : String);
+var
+   v : Variant;
 begin
-   FExpr.EvalAsString(exec, Result);
+   FExpr.EvalAsVariant(exec, v);
+   VariantToString(v, Result);
+end;
+
+// VariantToString
+//
+class procedure TConvStringExpr.VariantToString(const v : Variant; var s : String);
+
+   function UnknownAsString(const unknown : IUnknown) : String;
+   var
+      intf : IGetSelf;
+   begin
+      if unknown=nil then
+         Exit('nil');
+      if unknown.QueryInterface(IGetSelf, intf)=0 then
+         Result:=intf.ToString
+      else Result:='[IUnknown]';
+   end;
+
+var
+   varData : PVarData;
+begin
+   varData:=PVarData(@v);
+   case varData^.VType of
+      {$ifdef FPC}
+      varString :
+         Result:=String(varData^.VString);
+      {$else}
+      varUString :
+         s:=String(varData^.VUString);
+      {$endif}
+      varInt64 :
+         s:=IntToStr(varData^.VInt64);
+      varDouble :
+         s:=FloatToStr(varData^.VDouble);
+      varBoolean :
+         if varData^.VBoolean then
+            s:='True'
+         else s:='False';
+      varUnknown :
+         s:=UnknownAsString(IUnknown(varData^.VUnknown));
+   else
+      s:=v;
+   end;
 end;
 
 // ------------------

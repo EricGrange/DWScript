@@ -10992,9 +10992,13 @@ begin
       end else if typeSym = FProg.TypString then begin
 
          // Cast String(...)
-         Result := TConvStringExpr.Create(FProg, argExpr);
-         if not (argExpr.IsOfType(FProg.TypString) or argExpr.IsOfType(FProg.TypVariant)) then
-            FMsgs.AddCompilerError(hotPos, CPE_StringExpected);
+         if argExpr.IsOfType(FProg.TypString) then
+            Result:=argExpr
+         else begin
+            Result:=TConvStringExpr.Create(FProg, argExpr);
+            if not argExpr.IsOfType(FProg.TypVariant) then
+               FMsgs.AddCompilerError(hotPos, CPE_VariantExpected);
+         end;
 
       end else if typeSym = FProg.TypBoolean then begin
 

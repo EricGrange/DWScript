@@ -1,0 +1,10 @@
+var a:=JSON.Parse('{"test1":["a","b","c"],"test2":2,"test3":"toto"}');
+PrintLn(a.test1[0]);
+PrintLn(a.test2);
+PrintLn(a.test3);
+PrintLn(a[0]);
+PrintLn(a.test0);
+PrintLn(a.test1);
+PrintLn(a.test2[0]);
+PrintLn(a.test1.toto);
+PrintLn(JSON.stringify(a));

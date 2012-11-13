@@ -32,6 +32,7 @@ type
          procedure JSONInvalidFalse;
          procedure JSONInvalidNull;
          procedure JSONInvalidImmediate;
+         procedure JSONMissingElementValue;
 
       published
          procedure JSONTest;
@@ -46,6 +47,7 @@ type
          procedure JSONLongNumber;
          procedure JSONInvalidStuff;
          procedure NestedArrays;
+         procedure MultipleElementsWithSameName;
    end;
 
 // ------------------------------------------------------------------
@@ -308,6 +310,13 @@ begin
    TdwsJSONValue.ParseString('{"v":bug}');
 end;
 
+// JSONMissingElementValue
+//
+procedure TdwsJSONTests.JSONMissingElementValue;
+begin
+   TdwsJSONValue.ParseString('{"v":}');
+end;
+
 // JSONEmptyObject
 //
 procedure TdwsJSONTests.JSONEmptyObject;
@@ -368,6 +377,8 @@ begin
    CheckException(JSONInvalidFalse, EdwsJSONParseError, 'false');
    CheckException(JSONInvalidNull, EdwsJSONParseError, 'null');
    CheckException(JSONInvalidImmediate, EdwsJSONParseError, 'immediate');
+
+   CheckException(JSONMissingElementValue, EdwsJSONParseError, 'missing element value');
 end;
 
 // NestedArrays
@@ -383,6 +394,31 @@ begin
       CheckEquals('[[],[]]', a.ToString);
    finally
       a.Free;
+   end;
+end;
+
+// MultipleElementsWithSameName
+//
+procedure TdwsJSONTests.MultipleElementsWithSameName;
+const
+   cAlternatives : array [1..8] of String = (
+      '1', 'true', 'null', '"a"',
+      '{"b":2}', '[1,2]',
+      '{"b":[1,2]}', '[{"b":1}]'
+      );
+var
+   i, j : Integer;
+   json : TdwsJSONValue;
+begin
+   for i:=Low(cAlternatives) to High(cAlternatives) do begin
+      for j:=Low(cAlternatives) to High(cAlternatives) do begin
+         json:=TdwsJSONValue.ParseString('{"a":'+cAlternatives[i]+',"a":'+cAlternatives[j]+'}', jdoOverwrite);
+         try
+            CheckEquals('{"a":'+cAlternatives[j]+'}', json.ToString);
+         finally
+            json.Free;
+         end;
+      end;
    end;
 end;
 
