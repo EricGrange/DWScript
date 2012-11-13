@@ -1793,6 +1793,8 @@ type
          destructor Destroy; override;
          procedure BeforeDestruction; override;
 
+         function ToString : String; override;
+
          property ExecutionContext : TdwsProgramExecution read FExecutionContext write FExecutionContext;
          property OnObjectDestroy: TObjectDestroyEvent read FOnObjectDestroy write FOnObjectDestroy;
          property Destroyed : Boolean read FDestroyed write FDestroyed;
@@ -1829,6 +1831,8 @@ type
          function IndexOf(const item : Variant; fromIndex : Integer) : Integer; overload;
          function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer; overload;
 
+         function ToString : String; override;
+
          property ElementTyp : TTypeSymbol read FElementTyp;
          property ElementSize : Integer read FElementSize;
          property Data : TData read FData write SetData;
@@ -1848,6 +1852,8 @@ type
                             const resolvedInterface : TResolvedInterface;
                             executionContext : TdwsProgramExecution = nil);
          procedure BeforeDestruction; override;
+
+         function ToString : String; override;
 
          property Typ : TInterfaceSymbol read FTyp;
          property Instance : IScriptObj read FInstance;
@@ -6621,6 +6627,13 @@ begin
    inherited;
 end;
 
+// ToString
+//
+function TScriptObjInstance.ToString : String;
+begin
+   Result:=FClassSym.Name;
+end;
+
 // GetClassSym
 //
 function TScriptObjInstance.GetClassSym: TClassSymbol;
@@ -6890,6 +6903,13 @@ begin
    Result:=-1;
 end;
 
+// ToString
+//
+function TScriptDynamicArray.ToString : String;
+begin
+   Result:='array of '+FElementTyp.Name;
+end;
+
 // ------------------
 // ------------------ TScriptInterface ------------------
 // ------------------
@@ -6917,6 +6937,13 @@ begin
    if Assigned(FExecutionContext) then
       ExecutionContext.ScriptObjDestroyed(Self);
    inherited;
+end;
+
+// ToString
+//
+function TScriptInterface.ToString : String;
+begin
+   Result:=FTyp.ClassName;
 end;
 
 { TConnectorExpr }

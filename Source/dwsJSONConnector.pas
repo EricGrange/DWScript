@@ -181,6 +181,7 @@ type
    TBoxedNilJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue)
       function Root : TdwsJSONValue;
       function Value : TdwsJSONValue;
+      function ToString : String; override;
    end;
 
 var
@@ -238,6 +239,13 @@ end;
 function TBoxedNilJSONValue.Value : TdwsJSONValue;
 begin
    Result:=nil;
+end;
+
+// ToString
+//
+function TBoxedNilJSONValue.ToString;
+begin
+   Result:='';
 end;
 
 // ------------------

@@ -674,7 +674,7 @@ end;
 //
 function TdwsJSONValue.IsImmediateValue : Boolean;
 begin
-   Result:=not (FValueType in [jvtObject, jvtArray]);
+   Result:=Assigned(Self) and not (FValueType in [jvtObject, jvtArray]);
 end;
 
 // Value

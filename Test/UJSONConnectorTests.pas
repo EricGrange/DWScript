@@ -45,12 +45,14 @@ implementation
 // SetUp
 //
 procedure TJSONConnectorTests.SetUp;
+const
+   cMask = '*.pas';
 begin
    FTests:=TStringList.Create;
    FFailures:=TStringList.Create;
 
-   CollectFiles(ExtractFilePath(ParamStr(0))+'JSONConnectorPass'+PathDelim, '*.pas', FTests);
-   CollectFiles(ExtractFilePath(ParamStr(0))+'JSONConnectorFail'+PathDelim, '*.pas', FFailures);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'JSONConnectorPass'+PathDelim, cMask, FTests);
+   CollectFiles(ExtractFilePath(ParamStr(0))+'JSONConnectorFail'+PathDelim, cMask, FFailures);
 
    FCompiler:=TDelphiWebScript.Create(nil);
    FConnector:=TdwsJSONLibModule.Create(nil);

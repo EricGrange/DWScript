@@ -53,7 +53,9 @@ type
    // IGetSelf
    //
    IGetSelf = interface
+      ['{77D8EA0B-311C-422B-B8DE-AA5BDE726E41}']
       function GetSelf : TObject;
+      function ToString : String;
    end;
 
    // TInterfacedSelfObject

@@ -446,8 +446,45 @@ begin
 end;
 
 function TInfo.GetValueAsString : String;
+
+   function UnknownAsString(const unknown : IUnknown) : String;
+   var
+      intf : IGetSelf;
+   begin
+      if unknown=nil then
+         Exit('nil');
+      if unknown.QueryInterface(IGetSelf, intf)=0 then
+         Result:=intf.ToString
+      else Result:='[IUnknown]';
+   end;
+
+var
+   v : Variant;
+   varData : PVarData;
 begin
-   Result:=GetValue;
+   v:=GetValue;
+   varData:=PVarData(@v);
+   case varData.VType of
+      {$ifdef FPC}
+      varString :
+         Result:=String(PVarData(@v).VString);
+      {$else}
+      varUString :
+         Result:=String(varData.VUString);
+      {$endif}
+      varInt64 :
+         Result:=IntToStr(varData.VInt64);
+      varDouble :
+         Result:=FloatToStr(varData.VDouble);
+      varBoolean :
+         if varData.VBoolean then
+            Result:='True'
+         else Result:='False';
+      varUnknown :
+         Result:=UnknownAsString(IUnknown(varData.VUnknown));
+   else
+      Result:=v;
+   end;
 end;
 
 // GetValueAsDataString
@@ -583,14 +620,16 @@ begin
    if (FDataMaster=nil) and (FTypeSym<>nil) and (FTypeSym.Size=1) then begin
       varData:=@FData[FOffset];
       {$ifdef FPC}
-      if varData.VType=varString then
+      if varData.VType=varString then begin
          Result:=String(varData.VString)
       {$else}
-      if varData.VType=varUString then
-         Result:=String(varData.VUString)
+      if varData.VType=varUString then begin
+         Result:=String(varData.VUString);
       {$endif}
-      else Result:=PVariant(varData)^;
-   end else Result:=inherited GetValueAsString;
+         Exit;
+      end;
+   end;
+   Result:=inherited GetValueAsString;
 end;
 
 // GetValueAsInteger

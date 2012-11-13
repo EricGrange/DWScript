@@ -188,13 +188,13 @@ const
       'export', 'exports', 'external', 'final', 'finalization',
       'finally', 'for', 'forward', 'function', 'helper', 'if',
       'implementation', 'implements', 'implies', 'in', 'inherited',
-      'initialization', 'inline', 'interface', 'is', 'lazy', 'library',
+      'initialization', 'inline', 'interface', 'is', 'lambda', 'lazy', 'library',
       'message', 'method', 'mod', 'new', 'nil', 'not', 'object', 'of',
       'old', 'on', 'operator', 'or', 'overload', 'override',
       'pascal', 'partial', 'private', 'procedure', 'program', 'property',
       'protected', 'public', 'published', 'raise', 'record',
       'register', 'reintroduce', 'repeat', 'require', 'resourcestring',
-      'sealed', 'set', 'shl', 'shr', 'static', 'step', 'string',
+      'sealed', 'set', 'shl', 'shr', 'static', 'step',
       'then', 'to', 'try', 'type', 'unit', 'until',
       'uses', 'var', 'virtual', 'while', 'xor', 'if'
   );
