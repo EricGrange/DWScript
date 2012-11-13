@@ -2227,7 +2227,7 @@ begin
       if typ=nil then
          typ:=FProg.TypVariant
       else if (typ is TClassSymbol) and TClassSymbol(typ).IsStatic then
-         FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStatic, [typ.Name]);
+         FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStaticNoInstances, [typ.Name]);
 
       for x:=0 to names.Count-1 do begin
          sym:=dataSymbolFactory.CreateDataSymbol(names[x], posArray[x], typ);
@@ -2789,7 +2789,7 @@ begin
    end else meth:=nil;
 
    if ownerSym.IsStatic and (not IsClassMethod) then
-      FMsgs.AddCompilerErrorFmt(methPos, CPE_ClassIsStatic, [ownerSym.Name]);
+      FMsgs.AddCompilerErrorFmt(methPos, CPE_ClassIsStaticNoInstances, [ownerSym.Name]);
 
    // Read declaration of method implementation
    funcResult:=TSourceMethodSymbol.Create(name, funcKind, ownerSym, aVisibility, isClassMethod);
@@ -5489,7 +5489,7 @@ begin
    if methodSym.Kind=fkConstructor then begin
       compoSym:=(metaExpr.Typ as TStructuredTypeMetaSymbol).StructSymbol;
       if compoSym.IsStatic then
-         FMsgs.AddCompilerErrorFmt(scriptPos, CPE_ClassIsStatic, [compoSym.Name]);
+         FMsgs.AddCompilerErrorFmt(scriptPos, CPE_ClassIsStaticNoInstantiation, [compoSym.Name]);
    end;
    funcExpr:=GetMethodExpr(methodSym, metaExpr, rkClassOfRef, scriptPos, False);
    Result:=WrapUpFunctionRead(funcExpr, expecting, overloads);
@@ -6690,8 +6690,12 @@ begin
 
    end;
 
-   if classSym.IsStatic then
-      FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStatic, [classSym.Name]);
+   if classSym.IsStatic then begin
+      baseExpr.Free;
+      FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStaticNoInstantiation, [classSym.Name]);
+      Result:=TConstExpr.Create(FProg, classSym, Null);
+      Exit;
+   end;
    if (restrictTo<>nil) and not classSym.IsOfType(restrictTo) then
       FMsgs.AddCompilerErrorFmt(hotPos, CPE_MustBeSubClassOf, [restrictTo.Name]);
 

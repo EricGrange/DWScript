@@ -2089,7 +2089,7 @@ begin
 
       end;
       if (not meth.IsClassMethod) and meth.StructSymbol.IsStatic then
-         prog.CompileMsgs.AddCompilerErrorFmt(scriptPos, CPE_ClassIsStatic, [meth.StructSymbol.Name]);
+         prog.CompileMsgs.AddCompilerErrorFmt(scriptPos, CPE_ClassIsStaticNoInstantiation, [meth.StructSymbol.Name]);
 
       // Return the right expression
       case meth.Kind of

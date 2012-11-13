@@ -184,7 +184,8 @@ const
   CPE_ForwardNotImplemented = 'The function "%s" was forward declared but not implemented!';
   CPE_CantImplementAFunctionType = 'Can''t implement a function type';
   CPE_ClassIsSealed = 'Class "%s" is sealed, inheriting is not allowed!';
-  CPE_ClassIsStatic = 'Class "%s" is static, instantiation not allowed!';
+  CPE_ClassIsStaticNoInstantiation = 'Class "%s" is static, instantiation not allowed!';
+  CPE_ClassIsStaticNoInstances = 'Class "%s" is static, no instances not allowed!';
   CPE_ClassAncestorNotStatic = 'Class "%s" is not static, can''t inherit as static!';
   CPE_ClassAncestorDoesNotMatch = 'Class ancestor does not match with previous declaration!';
   CPE_ClassExternalAncestorMustBeExternalOrObject = 'External classes must inherit from an external class or Object';
