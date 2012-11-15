@@ -232,7 +232,7 @@ procedure TGR_PrefixedFields.EvaluateSymbol(const aSymbolList : TSymbolPositionL
 begin
    if aSymbolList.Symbol.ClassType<>TFieldSymbol then Exit;
 
-   if TFieldSymbol(aSymbolList.Symbol).Visibility in [cvPublic, cvPublished] then begin
+   if not (TFieldSymbol(aSymbolList.Symbol).Visibility in [cvPublic, cvPublished]) then begin
       if    (Length(aSymbolList.Symbol.Name)<2)
          or (aSymbolList.Symbol.Name[1]<>'F') or TCharacter.IsLower(aSymbolList.Symbol.Name[2]) then
          TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);

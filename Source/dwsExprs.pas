@@ -1689,6 +1689,7 @@ type
          function GetParamAsVariant(index : Integer) : Variant;
          function GetParamAsInteger(index : Integer) : Int64;
          function GetParamAsString(index : Integer) : String;
+         function GetParamAsDataString(index : Integer) : RawByteString;
          function GetParamAsFloat(index : Integer) : Double;
          function GetParamAsBoolean(index : Integer) : Boolean;
          function GetParamAsObject(index : Integer) : TObject;
@@ -1732,6 +1733,7 @@ type
          property ParamAsVariant[index : Integer] : Variant read GetParamAsVariant;
          property ParamAsInteger[index : Integer] : Int64 read GetParamAsInteger;
          property ParamAsString[index : Integer] : String read GetParamAsString;
+         property ParamAsDataString[index : Integer] : RawByteString read GetParamAsDataString;
          property ParamAsFloat[index : Integer] : Double read GetParamAsFloat;
          property ParamAsBoolean[index : Integer] : Boolean read GetParamAsBoolean;
          property ParamAsObject[index : Integer] : TObject read GetParamAsObject;
@@ -6278,6 +6280,13 @@ begin
       Result:=String(p.VUString)
    {$endif}
    else Result:=PVariant(p)^;
+end;
+
+// GetParamAsDataString
+//
+function TProgramInfo.GetParamAsDataString(index : Integer) : RawByteString;
+begin
+   Result:=ScriptStringToRawByteString(GetParamAsString(index));
 end;
 
 // GetParamAsFloat
