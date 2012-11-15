@@ -186,6 +186,7 @@ procedure TGR_ConstantNamingRules.EvaluateSymbol(const aSymbolList : TSymbolPosi
 
 begin
    if not (aSymbolList.Symbol is TConstSymbol) then Exit;
+   if aSymbolList.Symbol is TElementSymbol then Exit;
 
    if not (ChecksCPrefix(aSymbolList.Symbol.Name) or ChecksAllCapsUpToUnderscore(aSymbolList.Symbol.Name)) then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
