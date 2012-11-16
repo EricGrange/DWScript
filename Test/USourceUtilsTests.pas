@@ -28,6 +28,7 @@ type
          procedure StaticArrayTest;
          procedure DynamicArrayTest;
          procedure HelperSuggestTest;
+         procedure SymDictFunctionForward;
    end;
 
 // ------------------------------------------------------------------
@@ -360,6 +361,43 @@ begin
    CheckEquals(2, sugg.Count, 'd.');
    CheckEquals('Hello', sugg.Code[0], 'd. 0');
    CheckEquals('Next', sugg.Code[1], 'd. 0');
+end;
+
+// SymDictFunctionForward
+//
+procedure TSourceUtilsTests.SymDictFunctionForward;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'procedure Test; begin end;');
+
+   Check(prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suForward)=nil, 'Forward');
+   CheckEquals(1, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suDeclaration).ScriptPos.Line,
+               'a Declaration');
+   CheckEquals(1, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suImplementation).ScriptPos.Line,
+               'a Implementation');
+
+   prog:=FCompiler.Compile( 'procedure Test; forward;'#13#10
+                           +'procedure Test; begin end;');
+
+   CheckEquals(1, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suForward).ScriptPos.Line,
+               'b Forward');
+   CheckEquals(1, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suDeclaration).ScriptPos.Line,
+               'b Declaration');
+   CheckEquals(2, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suImplementation).ScriptPos.Line,
+               'b Implementation');
+
+   prog:=FCompiler.Compile( 'unit Test; interface'#13#10
+                           +'procedure Test;'#13#10
+                           +'implementation'#13#10
+                           +'procedure Test; begin end;');
+
+   CheckEquals(2, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suForward).ScriptPos.Line,
+               'c Forward');
+   CheckEquals(2, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suDeclaration).ScriptPos.Line,
+               'c Declaration');
+   CheckEquals(4, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suImplementation).ScriptPos.Line,
+               'c Implementation');
 end;
 
 // ------------------------------------------------------------------

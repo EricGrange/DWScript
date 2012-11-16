@@ -65,10 +65,12 @@ type
    TCompilerReadInstrSwitchEvent = function (compiler : TdwsCompiler) : Boolean of object;
    TCompilerFindUnknownNameEvent = function (compiler : TdwsCompiler; const name : String) : TSymbol of object;
    TCompilerSectionChangedEvent = procedure (compiler : TdwsCompiler) of object;
-   TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile; scriptType : TScriptSourceType) of object;
+   TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile;
+                                         scriptType : TScriptSourceType) of object;
    TCompilerGetDefaultEnvironmentEvent = function : IdwsEnvironment of object;
    TCompilerGetDefaultLocalizerEvent = function : IdwsLocalizer of object;
-   TCompilerOnRootExternalClassEvent = function (compiler : TdwsCompiler; const externalName : String) : TClassSymbol of object;
+   TCompilerOnRootExternalClassEvent = function (compiler : TdwsCompiler;
+                                                 const externalName : String) : TClassSymbol of object;
 
    TdwsNameListOption = (nloAllowDots, nloNoCheckSpecials, nloAllowStrings);
    TdwsNameListOptions = set of TdwsNameListOption;
@@ -158,24 +160,31 @@ type
          property OnResource : TdwsResourceEvent read FOnResource write FOnResource;
    end;
 
-  TdwsFilter = class(TComponent)
-  private
-    FSubFilter: TdwsFilter;
-    FDependencies: TStrings;
-    FPrivateDependencies: TStrings;
-    function GetDependencies: TStrings;
-  protected
-    procedure SetSubFilter(const Filter: TdwsFilter); virtual;
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    property PrivateDependencies: TStrings read FPrivateDependencies;
-  public
-    constructor Create(AOwner: TComponent); override;
-    destructor Destroy; override;
-    function Process(const Text: String; Msgs: TdwsMessageList): String; virtual;
-    property Dependencies: TStrings read GetDependencies;
-  published
-    property SubFilter: TdwsFilter read FSubFilter write SetSubFilter;
-  end;
+   TdwsFilter = class(TComponent)
+      private
+         FSubFilter : TdwsFilter;
+         FDependencies : TStrings;
+         FPrivateDependencies : TStrings;
+
+         function GetDependencies : TStrings;
+
+      protected
+         procedure SetSubFilter(const filter : TdwsFilter); virtual;
+         procedure Notification(aComponent : TComponent; operation: TOperation); override;
+
+         property PrivateDependencies: TStrings read FPrivateDependencies;
+
+      public
+         constructor Create(AOwner: TComponent); override;
+         destructor Destroy; override;
+
+         function Process(const Text: String; Msgs: TdwsMessageList): String; virtual;
+
+         property Dependencies: TStrings read GetDependencies;
+
+      published
+         property SubFilter: TdwsFilter read FSubFilter write SetSubFilter;
+   end;
 
    TAddArgProcedure = procedure (argExpr : TTypedExpr) of object;
    TExpectedArgFunction = function : TParamSymbol of object;
@@ -430,11 +439,12 @@ type
                          fieldSym : TFieldSymbol; var varExpr : TTypedExpr) : TDataExpr; overload;
 
          function ReadFor : TNoResultExpr;
-         function ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
-         function ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TNoResultExpr;
+         function ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr;
+                            const loopVarName : String; const loopVarNamePos : TScriptPos) : TNoResultExpr;
          function ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
                               iterVarExpr : TIntVarExpr; fromExpr, toExpr : TTypedExpr;
                               loopFirstStatement : TNoResultExpr) : TForExpr;
+         function ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TNoResultExpr;
 
          function ReadFuncOverloaded(funcSym : TFuncSymbol; fromTable : TSymbolTable;
                                      codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
@@ -2495,7 +2505,7 @@ begin
             // Original symbol was a forward. Update symbol entry
             // If the type is in the SymbolDictionary (disabled dictionary would leave pointer nil),
             if Assigned(oldSymPos) then              // update original position information
-               oldSymPos.SymbolUsages := [suForward]; // update old postion to reflect that the type was forwarded
+               oldSymPos.SymbolUsages := [suDeclaration, suForward]; // update old postion to reflect that the type was forwarded
          end;
 
          // Add symbol position as being the type being declared (works for forwards too)
@@ -2675,7 +2685,7 @@ begin
                   // Adapt dictionary entry to reflect that it was a forward
                   // If the record is in the SymbolDictionary (disabled dictionary would leave pointer nil)
                   if Assigned(forwardedSymPos) then
-                     forwardedSymPos.SymbolUsages := [suForward];  // update old postion to reflect that the type was forwarded
+                     forwardedSymPos.SymbolUsages := [suDeclaration, suForward];  // update old position to reflect that the type was forwarded
 
                   Result.Free;
                   Result := forwardedSym;
@@ -2685,11 +2695,12 @@ begin
                if Result.IsForwarded or Result.IsExternal then
                   FTok.SimulateToken(ttSEMI, FTok.HotPos);
             end;
-            
+
          end;
 
-         // Procedure is both Declared and Implemented here
-         RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation]);
+         if forwardedSym=nil then
+            RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation])
+         else RecordSymbolUse(Result, funcPos, [suImplementation]);
       except
          Result.Free;
          raise;
@@ -4894,27 +4905,44 @@ var
    forPos : TScriptPos;
    expr : TProgramExpr;
    loopVarExpr : TVarExpr;
+   loopVarName : String;
+   loopVarNamePos : TScriptPos;
 begin
    forPos:=FTok.HotPos;
 
-   expr:=ReadName(True);
+   if FTok.TestDelete(ttVAR) then begin
 
-   if expr is TFuncPtrExpr then
-      expr:=TFuncPtrExpr(expr).Extract;
-   if not (expr is TVarExpr) then begin
-      expr.Free;
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_VariableExpected);
+      expr:=nil;
+      loopVarExpr:=nil;
+      if not FTok.TestDeleteNamePos(loopVarName, loopVarNamePos) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+      CheckName(loopVarName, loopVarNamePos);
+
+   end else begin
+
+      expr:=ReadName(True);
+
+      if expr is TFuncPtrExpr then
+         expr:=TFuncPtrExpr(expr).Extract;
+      if not (expr is TVarExpr) then begin
+         expr.Free;
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_VariableExpected);
+      end;
+
+      loopVarExpr:=TVarExpr(expr);
+
+      WarnForVarUsage(loopVarExpr, FTok.HotPos);
+
    end;
-
-   loopVarExpr:=TVarExpr(expr);
-
-   WarnForVarUsage(loopVarExpr, FTok.HotPos);
 
    case FTok.TestDeleteAny([ttASSIGN, ttIN]) of
       ttASSIGN :
-         Result:=ReadForTo(forPos, loopVarExpr);
-      ttIN :
+         Result:=ReadForTo(forPos, loopVarExpr, loopVarName, loopVarNamePos);
+      ttIN : begin
+         if loopVarExpr=nil then
+            FMsgs.AddCompilerStop(loopVarNamePos, CPE_VariableExpected);
          Result:=ReadForIn(forPos, loopVarExpr);
+      end;
    else
       expr.Free;
       Result:=nil;
@@ -4924,25 +4952,41 @@ end;
 
 // ReadForTo
 //
-function TdwsCompiler.ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TForExpr;
+function TdwsCompiler.ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr;
+                                const loopVarName : String; const loopVarNamePos : TScriptPos) : TNoResultExpr;
 var
    iterVarExpr : TIntVarExpr;
    fromExpr, toExpr : TTypedExpr;
    forExprClass : TForExprClass;
+   loopVarSymbol : TDataSymbol;
+   loopBlockExpr : TBlockExpr;
 begin
    fromExpr:=nil;
    toExpr:=nil;
+   loopBlockExpr:=nil;
    try
-      if not loopVarExpr.IsOfType(FProg.TypInteger) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
-      if not (loopVarExpr is TIntVarExpr) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_FORLoopMustBeLocalVariable);
-
-      iterVarExpr:=TIntVarExpr(loopVarExpr);
+      if loopVarExpr<>nil then begin
+         if not loopVarExpr.IsOfType(FProg.TypInteger) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
+         if not (loopVarExpr is TIntVarExpr) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_FORLoopMustBeLocalVariable);
+      end;
 
       fromExpr:=ReadExpr;
       if not fromExpr.IsOfType(FProg.TypInteger) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_IntegerExpected);
+
+      if loopVarExpr=nil then begin
+         loopBlockExpr:=TBlockExpr.Create(FProg, forPos);
+         loopVarSymbol:=TDataSymbol.Create(loopVarName, fromExpr.Typ);
+         loopBlockExpr.Table.AddSymbol(loopVarSymbol);
+         RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
+         loopVarExpr:=GetVarExpr(loopVarSymbol);
+         FProg.InitExpr.AddStatement(TAssignConstToIntegerVarExpr.CreateVal(FProg, loopVarNamePos, loopVarExpr, 0));
+         loopVarExpr.IncRefCount;
+      end;
+
+      iterVarExpr:=TIntVarExpr(loopVarExpr);
 
       if FTok.TestDelete(ttTO) then
          forExprClass:=TForUpwardExpr
@@ -4952,19 +4996,107 @@ begin
          forExprClass:=TForUpwardExpr;
          FMsgs.AddCompilerError(FTok.HotPos, CPE_ToOrDowntoExpected);
       end;
-
-      toExpr:=ReadExpr;
-      if not toExpr.IsOfType(FProg.TypInteger) then
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
    except
+      loopBlockExpr.Free;
       fromExpr.Free;
       toExpr.Free;
       loopVarExpr.Free;
       raise;
    end;
 
-   Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
-                       fromExpr, toExpr, nil);
+   if loopBlockExpr<>nil then
+      FProg.EnterSubTable(loopBlockExpr.Table);
+   try
+      toExpr:=ReadExpr;
+      if not toExpr.IsOfType(FProg.TypInteger) then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
+
+      Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
+                          fromExpr, toExpr, nil);
+   finally
+      if loopBlockExpr<>nil then
+         FProg.LeaveSubTable;
+   end;
+
+   if loopBlockExpr<>nil then begin
+      loopBlockExpr.AddStatement(Result);
+      Result:=loopBlockExpr;
+   end;
+end;
+
+// ReadForStep
+//
+function TdwsCompiler.ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
+                           iterVarExpr : TIntVarExpr; fromExpr, toExpr : TTypedExpr;
+                           loopFirstStatement : TNoResultExpr) : TForExpr;
+var
+   stepExpr : TTypedExpr;
+   stepPos : TScriptPos;
+   iterBlockExpr : TBlockExpr;
+begin
+   try
+      if FTok.Test(ttNAME) and SameText(FTok.GetToken.FString, 'step') then begin
+         FTok.KillToken;
+         FTok.Test(ttNone);
+         stepPos:=FTok.HotPos;
+         stepExpr:=ReadExpr;
+         if not stepExpr.IsOfType(FProg.TypInteger) then
+            FMsgs.AddCompilerError(stepPos, CPE_IntegerExpected);
+         if stepExpr.InheritsFrom(TConstIntExpr) and (TConstIntExpr(stepExpr).Value<=0) then
+            FMsgs.AddCompilerErrorFmt(stepPos, RTE_ForLoopStepShouldBeStrictlyPositive,
+                                      [TConstIntExpr(stepExpr).Value]);
+         if forExprClass=TForUpwardExpr then
+            forExprClass:=TForUpwardStepExpr
+         else forExprClass:=TForDownwardStepExpr;
+      end else stepExpr:=nil;
+
+      iterBlockExpr:=nil;
+      Result:=forExprClass.Create(FProg, forPos);
+      EnterLoop(Result);
+      try
+         MarkLoopExitable(leBreak);
+         Result.VarExpr:=iterVarExpr;
+         iterVarExpr:=nil;
+
+         Result.FromExpr:=fromExpr;
+         fromExpr:=nil;
+
+         Result.ToExpr:=toExpr;
+         toExpr:=nil;
+
+         if stepExpr<>nil then begin
+            TForStepExpr(Result).StepExpr:=stepExpr;
+            stepExpr:=nil;
+         end;
+
+         if not FTok.TestDelete(ttDO) then
+           FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
+
+         if loopFirstStatement<>nil then begin
+            iterBlockExpr:=TBlockExpr.Create(FProg, FTok.HotPos);
+            iterBlockExpr.AddStatement(loopFirstStatement);
+            loopFirstStatement:=nil;
+            iterBlockExpr.AddStatement(ReadBlock);
+            Result.DoExpr:=iterBlockExpr;
+            iterBlockExpr:=nil;
+         end else begin
+            Result.DoExpr:=ReadBlock;
+         end;
+
+      except
+         iterBlockExpr.Free;
+         stepExpr.Free;
+         Result.Free;
+         raise;
+      end;
+      LeaveLoop;
+   except
+      iterVarExpr.Free;
+      fromExpr.Free;
+      toExpr.Free;
+      loopFirstStatement.Free;
+      raise;
+   end;
 end;
 
 // ReadForIn
@@ -5097,81 +5229,6 @@ begin
       blockExpr.AddStatement(inExprAssignExpr);
       blockExpr.AddStatement(Result);
       Result:=blockExpr;
-   end;
-end;
-
-// ReadForStep
-//
-function TdwsCompiler.ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
-                           iterVarExpr : TIntVarExpr; fromExpr, toExpr : TTypedExpr;
-                           loopFirstStatement : TNoResultExpr) : TForExpr;
-var
-   stepExpr : TTypedExpr;
-   stepPos : TScriptPos;
-   iterBlockExpr : TBlockExpr;
-begin
-   try
-      if FTok.Test(ttNAME) and SameText(FTok.GetToken.FString, 'step') then begin
-         FTok.KillToken;
-         FTok.Test(ttNone);
-         stepPos:=FTok.HotPos;
-         stepExpr:=ReadExpr;
-         if not stepExpr.IsOfType(FProg.TypInteger) then
-            FMsgs.AddCompilerError(stepPos, CPE_IntegerExpected);
-         if stepExpr.InheritsFrom(TConstIntExpr) and (TConstIntExpr(stepExpr).Value<=0) then
-            FMsgs.AddCompilerErrorFmt(stepPos, RTE_ForLoopStepShouldBeStrictlyPositive,
-                                      [TConstIntExpr(stepExpr).Value]);
-         if forExprClass=TForUpwardExpr then
-            forExprClass:=TForUpwardStepExpr
-         else forExprClass:=TForDownwardStepExpr;
-      end else stepExpr:=nil;
-
-      iterBlockExpr:=nil;
-      Result:=forExprClass.Create(FProg, forPos);
-      EnterLoop(Result);
-      try
-         MarkLoopExitable(leBreak);
-         Result.VarExpr:=iterVarExpr;
-         iterVarExpr:=nil;
-
-         Result.FromExpr:=fromExpr;
-         fromExpr:=nil;
-
-         Result.ToExpr:=toExpr;
-         toExpr:=nil;
-
-         if stepExpr<>nil then begin
-            TForStepExpr(Result).StepExpr:=stepExpr;
-            stepExpr:=nil;
-         end;
-
-         if not FTok.TestDelete(ttDO) then
-           FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
-
-         if loopFirstStatement<>nil then begin
-            iterBlockExpr:=TBlockExpr.Create(FProg, FTok.HotPos);
-            iterBlockExpr.AddStatement(loopFirstStatement);
-            loopFirstStatement:=nil;
-            iterBlockExpr.AddStatement(ReadBlock);
-            Result.DoExpr:=iterBlockExpr;
-            iterBlockExpr:=nil;
-         end else begin
-            Result.DoExpr:=ReadBlock;
-         end;
-
-      except
-         iterBlockExpr.Free;
-         stepExpr.Free;
-         Result.Free;
-         raise;
-      end;
-      LeaveLoop;
-   except
-      iterVarExpr.Free;
-      fromExpr.Free;
-      toExpr.Free;
-      loopFirstStatement.Free;
-      raise;
    end;
 end;
 
@@ -11744,8 +11801,7 @@ begin
   Result := FDependencies;
 end;
 
-procedure TdwsFilter.Notification(AComponent: TComponent;
-  Operation: TOperation);
+procedure TdwsFilter.Notification(aComponent: TComponent; operation: TOperation);
 begin
   inherited;
   if (Operation = opRemove) and (AComponent = FSubFilter) then
