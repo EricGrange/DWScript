@@ -2,10 +2,8 @@ unit USourceUtilsTests;
 
 interface
 
-uses Classes, SysUtils, dwsXPlatformTests,
-   dwsComp, dwsCompiler, dwsExprs,
-   dwsTokenizer, dwsErrors, dwsUtils, Variants,
-   dwsSymbols, dwsSuggestions;
+uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
+   dwsTokenizer, dwsErrors, dwsUtils, Variants, dwsSymbols, dwsSuggestions;
 
 type
 
@@ -29,6 +27,7 @@ type
          procedure DynamicArrayTest;
          procedure HelperSuggestTest;
          procedure SymDictFunctionForward;
+         procedure SymDictInherited;
    end;
 
 // ------------------------------------------------------------------
@@ -398,6 +397,58 @@ begin
                'c Declaration');
    CheckEquals(4, prog.SymbolDictionary.FindSymbolUsageOfType('Test', TFuncSymbol, suImplementation).ScriptPos.Line,
                'c Implementation');
+end;
+
+// SymDictInherited
+//
+procedure TSourceUtilsTests.SymDictInherited;
+var
+   prog : IdwsProgram;
+   symPosList : TSymbolPositionList;
+   sym : TSymbol;
+begin
+   prog:=FCompiler.Compile( 'type TBaseClass = class procedure Foo; virtual; end;'#13#10
+                           +'type TDerivedClass = class(TBaseClass) procedure Foo; override; end;'#13#10
+                           +'procedure TDerivedClass.Foo; begin'#13#10
+                           +'inherited;'#13#10
+                           +'inherited Foo;'#13#10
+                           +'end;');
+
+   // base method
+
+   sym:=prog.Table.FindSymbol('TBaseClass', cvMagic);
+   sym:=(sym as TClassSymbol).Members.FindSymbol('Foo', cvMagic);
+
+   symPosList:=prog.SymbolDictionary.FindSymbolPosList(sym);
+
+   CheckEquals(4, symPosList.Count);
+
+   CheckEquals(1, symPosList[0].ScriptPos.Line, 'TBaseClass Line 1');
+   Check(symPosList[0].SymbolUsages=[suDeclaration], 'TBaseClass Line 1 usage');
+
+   CheckEquals(2, symPosList[1].ScriptPos.Line, 'TBaseClass Line 2');
+   Check(symPosList[1].SymbolUsages=[suReference, suImplicit], 'TBaseClass Line 2 usage');
+
+   CheckEquals(4, symPosList[2].ScriptPos.Line, 'TBaseClass Line 4');
+   Check(symPosList[2].SymbolUsages=[suReference, suImplicit], 'TBaseClass Line 4 usage');
+
+   CheckEquals(5, symPosList[3].ScriptPos.Line, 'TBaseClass Line 5');
+   Check(symPosList[3].SymbolUsages=[suReference], 'TBaseClass Line 5 usage');
+
+   // derived method
+
+   sym:=prog.Table.FindSymbol('TDerivedClass', cvMagic);
+   sym:=(sym as TClassSymbol).Members.FindSymbol('Foo', cvMagic);
+
+   symPosList:=prog.SymbolDictionary.FindSymbolPosList(sym);
+
+   CheckEquals(2, symPosList.Count);
+
+   CheckEquals(2, symPosList[0].ScriptPos.Line, 'TDerivedClass Line 2');
+   Check(symPosList[0].SymbolUsages=[suDeclaration], 'TDerivedClass Line 2 usage');
+
+   CheckEquals(3, symPosList[1].ScriptPos.Line, 'TDerivedClass Line 3');
+   Check(symPosList[1].SymbolUsages=[suImplementation], 'TDerivedClass Line 3 usage');
 end;
 
 // ------------------------------------------------------------------

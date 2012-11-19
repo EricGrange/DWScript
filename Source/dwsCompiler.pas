@@ -2879,23 +2879,26 @@ begin
                      meth:=MethPerfectMatchOverload(funcResult, True);
                   if meth=nil then
                      FMsgs.AddCompilerErrorFmt(methPos, CPE_CantOverrideNotInherited, [name])
-                  else if not meth.IsVirtual then
-                     FMsgs.AddCompilerErrorFmt(methPos, CPE_CantOverrideNotVirtual, [name])
                   else begin
-                     if funcResult.Kind<>meth.Kind then
-                        FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CantOverrideWrongFuncKind,
-                                                  [cFuncKindToString[meth.Kind],
-                                                   cFuncKindToString[funcResult.Kind]])
-                     else if funcResult.IsClassMethod<>meth.IsClassMethod then
-                        FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongMethodType)
-                     else if not funcResult.Typ.IsOfType(meth.Typ) then
-                        FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongResultType)
-                     else if not OverrideParamsCheck(funcResult, meth) then
-                        FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongParameterList)
-                     else if meth.IsFinal then
-                        FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CantOverrideFinal, [name]);
-                     funcResult.SetOverride(meth);
-                     isReintroduced := False;
+                     RecordSymbolUse(meth, methPos, [suReference, suImplicit]);
+                     if not meth.IsVirtual then
+                        FMsgs.AddCompilerErrorFmt(methPos, CPE_CantOverrideNotVirtual, [name])
+                     else begin
+                        if funcResult.Kind<>meth.Kind then
+                           FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CantOverrideWrongFuncKind,
+                                                     [cFuncKindToString[meth.Kind],
+                                                      cFuncKindToString[funcResult.Kind]])
+                        else if funcResult.IsClassMethod<>meth.IsClassMethod then
+                           FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongMethodType)
+                        else if not funcResult.Typ.IsOfType(meth.Typ) then
+                           FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongResultType)
+                        else if not OverrideParamsCheck(funcResult, meth) then
+                           FMsgs.AddCompilerError(FTok.HotPos, CPE_CantOverrideWrongParameterList)
+                        else if meth.IsFinal then
+                           FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_CantOverrideFinal, [name]);
+                        funcResult.SetOverride(meth);
+                        isReintroduced := False;
+                     end;
                   end;
                   ReadSemiColon;
                end;
@@ -3730,21 +3733,21 @@ var
    varExpr : TDataExpr;
    argPosArray : TScriptPosArray;
 begin
-   Result := nil;
+   Result:=nil;
    if not ((FProg is TdwsProcedure) and (TdwsProcedure(FProg).Func is TMethodSymbol)) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedOnlyAllowedInMethods);
 
-   methSym := TMethodSymbol(TdwsProcedure(FProg).Func);
+   methSym:=TMethodSymbol(TdwsProcedure(FProg).Func);
 
    if not FTok.TestDeleteNamePos(name, namePos) then begin
 
-      sym := methSym.ParentMeth;
+      sym:=methSym.ParentMeth;
       if not methSym.IsOverride then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedWithoutName);
 
    end else begin
 
-      compositeSym := methSym.StructSymbol;
+      compositeSym:=methSym.StructSymbol;
       if compositeSym.ClassType=THelperSymbol then begin
          sym:=THelperSymbol(compositeSym).ForType.UnAliasedType;
          if sym is TArraySymbol then begin
@@ -3767,12 +3770,15 @@ begin
 
    if Assigned(sym) then begin
 
-      RecordSymbolUseReference(sym, FTok.HotPos, isWrite);
-
       if sym is TMethodSymbol then begin
+
+         if name='' then
+            RecordSymbolUse(sym, FTok.HotPos, [suReference, suImplicit])
+         else RecordSymbolUse(sym, FTok.HotPos, [suReference]);
+
          if TMethodSymbol(sym).IsAbstract then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_AbstractMethodUsage);
-         varExpr := TVarExpr.CreateTyped(FProg, methSym.SelfSym);
+         varExpr:=TVarExpr.CreateTyped(FProg, methSym.SelfSym);
          try
             Result:=GetMethodExpr(TMethodSymbol(sym), varExpr, rkObjRef, FTok.HotPos, True);
          except
@@ -3788,14 +3794,19 @@ begin
             Result.Free;
             raise;
          end;
+
       end else if sym is TPropertySymbol then begin
-         varExpr := TVarExpr.CreateTyped(FProg, methSym.SelfSym);
+
+         RecordSymbolUseReference(sym, FTok.HotPos, isWrite);
+
+         varExpr:=TVarExpr.CreateTyped(FProg, methSym.SelfSym);
          try
-            Result := ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
+            Result:=ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
          except
             varExpr.Free;
             raise;
          end;
+
       end else FMsgs.AddCompilerStop(FTok.HotPos, CPE_InheritedWithoutName);
    end else FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_InheritedMethodNotFound, [Name]);
 end;
