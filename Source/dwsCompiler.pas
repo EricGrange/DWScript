@@ -4428,8 +4428,7 @@ begin
 
       end else begin
 
-         if    FTok.Test(ttDOT)
-            or (FTok.Test(ttBLEFT) and (propertySym.BaseType is TFuncSymbol))  then begin
+         if    FTok.Test(ttDOT) or (propertySym.Typ is TFuncSymbol) then begin
 
             sym:=propertySym.ReadSym;
 
@@ -4459,7 +4458,11 @@ begin
 
             end;
 
-         end else begin
+         end {else if (propertySym.ReadSym<>nil) and (propertySym.Typ is TFuncSymbol) then begin
+
+            Result:=GetFuncExpr(propertySym.Typ,
+
+         end }else begin
 
             FMsgs.AddCompilerError(aPos, CPE_InvalidInstruction);
             // fake to keep going
@@ -6650,7 +6653,10 @@ begin
             baseExpr.Free;
             baseExpr:=nil;
             Result:=TConstExpr.CreateIntegerValue(FProg, 1);
-         end else FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+         end else begin
+            Result:=nil;
+            FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+         end;
       end;
    except
       baseExpr.Free;
