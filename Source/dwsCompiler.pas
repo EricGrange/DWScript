@@ -404,6 +404,8 @@ type
          function ReadArrayConstant(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
          function ReadArrayMethod(const name : String; const namePos : TScriptPos;
                                   baseExpr : TTypedExpr) : TProgramExpr;
+         function ReadStringMethod(const name : String; const namePos : TScriptPos;
+                                   baseExpr : TTypedExpr) : TProgramExpr;
          function ReadCase : TCaseExpr;
          function ReadCaseConditions(condList : TCaseConditions; valueExpr : TTypedExpr) : Integer;
          function ReadNameSymbol(var namePos : TScriptPos) : TSymbol;
@@ -4855,6 +4857,12 @@ begin
 
             Result:=ReadArrayMethod(name, namePos, Result as TTypedExpr);
 
+         // String symbol
+         end else if baseType is TBaseStringSymbol then begin
+
+            Result:=nil;
+            Result:=ReadStringMethod(name, namePos, expr as TTypedExpr);
+
          // Connector symbol
          end else if baseType is TConnectorSymbol then begin
 
@@ -6623,6 +6631,30 @@ begin
    finally
       argSymTable.Free;
       argList.Free;
+   end;
+end;
+
+// ReadStringMethod
+//
+function TdwsCompiler.ReadStringMethod(const name : String; const namePos : TScriptPos;
+                                       baseExpr : TTypedExpr) : TProgramExpr;
+begin
+   try
+      if FTok.TestDelete(ttBLEFT) and not FTok.TestDelete(ttBRIGHT) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoParamsExpected);
+
+      if UnicodeSameText(name, 'length') or UnicodeSameText(name, 'high') then
+         Result:=TStringLengthExpr.Create(FProg, baseExpr)
+      else begin
+         if UnicodeSameText(name, 'low') then begin
+            baseExpr.Free;
+            baseExpr:=nil;
+            Result:=TConstExpr.CreateIntegerValue(FProg, 1);
+         end else FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
+      end;
+   except
+      baseExpr.Free;
+      raise;
    end;
 end;
 

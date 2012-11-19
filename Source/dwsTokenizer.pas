@@ -248,6 +248,8 @@ type
          function TestDeleteNamePos(var aName : String; var aPos : TScriptPos) : Boolean; inline;
          function TestDeleteAnyNamePos(var aName : String; var aPos : TScriptPos) : Boolean; inline;
 
+         procedure SkipTo(t : TTokenType);
+
          procedure SimulateToken(t : TTokenType; const scriptPos : TScriptPos);
          procedure SimulateStringToken(const scriptPos : TScriptPos; const str : String);
          procedure SimulateNameToken(const scriptPos : TScriptPos; const name : String);
@@ -1104,6 +1106,14 @@ begin
       KillToken;
       Result:=True;
    end;
+end;
+
+// SkipTo
+//
+procedure TTokenizer.SkipTo(t : TTokenType);
+begin
+   while (not Test(t)) and Assigned(FToken) do
+      KillToken;
 end;
 
 // SimulateToken
