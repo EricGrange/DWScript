@@ -339,10 +339,10 @@ procedure TdwsJSONTests.JSONSpecialChars;
 var
    json : TdwsJSONValue;
 begin
-   json:=TdwsJSONValue.ParseString('{"test":"\t\n\r\b\f"}');
+   json:=TdwsJSONValue.ParseString('{"test":"\t\n\r\b\f\\"}');
 
-   CheckEquals(#9#10#13#8#12, json['test'].Value.AsString, 'specials check');
-   CheckEquals('"\t\n\r\b\f"', json['test'].ToString, 'specials toString');
+   CheckEquals(#9#10#13#8#12'\', json['test'].Value.AsString, 'specials check');
+   CheckEquals('"\t\n\r\b\f\\"', json['test'].ToString, 'specials toString');
 
    json['test'].Value.AsString:=#25#0'bug';
    CheckEquals('"\u0019"', json['test'].ToString, 'very specials');

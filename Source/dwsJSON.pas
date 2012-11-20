@@ -540,6 +540,8 @@ begin
             end;
          '"' :
             destStream.WriteString('\"');
+         '\' :
+            destStream.WriteString('\\');
          {$ifndef FPC}
          #255..#65535 :
             WriteUTF16(destStream, Ord(c));
