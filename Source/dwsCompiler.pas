@@ -594,7 +594,7 @@ type
          function ReadTypeExpr(const namePos : TScriptPos; typeSym : TTypeSymbol;
                                isWrite : Boolean; expecting : TTypeSymbol = nil) : TProgramExpr;
 
-         procedure ReadAttributes;
+         procedure ReadAttributes(tokenALEFTAlreadyDeleted : Boolean);
          function  BagPendingAttributes : ISymbolAttributesBag;
          procedure AttachBaggedAttributes(symbol : TSymbol; const bag : ISymbolAttributesBag);
          procedure CheckNoPendingAttributes;
@@ -2455,7 +2455,7 @@ var
 begin
    Result:=True;
 
-   ReadAttributes;
+   ReadAttributes(False);
 
    attributesBag:=BagPendingAttributes;
 
@@ -2938,8 +2938,6 @@ begin
          if    funcResult.IsVirtual
             or (not funcResult.IsClassMethod)
             or (not (funcKind in [fkFunction, fkProcedure, fkMethod])) then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_OnlyNonVirtualClassMethodsAsStatic)
-         else if not funcResult.IsClassMethod then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_OnlyNonVirtualClassMethodsAsStatic)
          else funcResult.SetIsStatic;
          ReadSemiColon;
@@ -4458,11 +4456,7 @@ begin
 
             end;
 
-         end {else if (propertySym.ReadSym<>nil) and (propertySym.Typ is TFuncSymbol) then begin
-
-            Result:=GetFuncExpr(propertySym.Typ,
-
-         end }else begin
+         end else begin
 
             FMsgs.AddCompilerError(aPos, CPE_InvalidInstruction);
             // fake to keep going
@@ -4960,11 +4954,8 @@ begin
    case FTok.TestDeleteAny([ttASSIGN, ttIN]) of
       ttASSIGN :
          Result:=ReadForTo(forPos, loopVarExpr, loopVarName, loopVarNamePos);
-      ttIN : begin
-         if loopVarExpr=nil then
-            FMsgs.AddCompilerStop(loopVarNamePos, CPE_VariableExpected);
+      ttIN :
          Result:=ReadForIn(forPos, loopVarExpr);
-      end;
    else
       expr.Free;
       Result:=nil;
@@ -7131,7 +7122,8 @@ begin
                tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD,
                                        ttCONSTRUCTOR, ttDESTRUCTOR,
                                        ttCLASS, ttPROPERTY, ttCONST,
-                                       ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED]);
+                                       ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
+                                       ttALEFT]);
                case tt of
 
                   ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR :
@@ -7173,6 +7165,9 @@ begin
                      end else visibility:=cTokenToVisibility[tt];
                      firstVisibilityToken:=False;
 
+                  end;
+                  ttALEFT : begin
+                     ReadAttributes(True);
                   end;
 
                else
@@ -10852,7 +10847,7 @@ begin
             else if argTyp is TFuncSymbol then
                Result:=TAssignedFuncPtrExpr.Create(FProg, argExpr)
             else begin
-               FMsgs.AddCompilerError(argPos, CPE_InvalidOperands);
+               FMsgs.AddCompilerError(argPos, CPE_InvalidArgumentType);
                argExpr.Free;
             end;
             argExpr:=nil;
@@ -10872,7 +10867,7 @@ begin
                argExpr.Free;
                Result:=TConstExpr.CreateIntegerValue(FProg, High(Int64));
             end else begin
-               FMsgs.AddCompilerError(argPos, CPE_InvalidOperands);
+               FMsgs.AddCompilerError(argPos, CPE_InvalidArgumentType);
                argExpr.Free;
             end;
             argExpr:=nil;
@@ -10912,7 +10907,7 @@ begin
             end else if ((argTyp=FProg.TypString) or (argTyp=FProg.TypVariant)) and Assigned(argExpr) then begin
                Result:=TStringLengthExpr.Create(FProg, argExpr);
             end else begin
-               FMsgs.AddCompilerError(argPos, CPE_InvalidOperands);
+               FMsgs.AddCompilerError(argPos, CPE_InvalidArgumentType);
                argExpr.Free;
             end;
             argExpr:=nil;
@@ -10929,7 +10924,7 @@ begin
                end else if (argTyp=FProg.TypInteger) then begin
                   Result:=TConstExpr.CreateIntegerValue(FProg, Low(Int64));
                end else begin
-                  FMsgs.AddCompilerError(argPos, CPE_InvalidOperands);
+                  FMsgs.AddCompilerError(argPos, CPE_InvalidArgumentType);
                end;
             end;
             argExpr:=nil;
@@ -10968,7 +10963,7 @@ begin
          skDefined, skDeclared : begin
             if FIsSwitch then begin
                if not argExpr.IsOfType(FProg.TypString) then
-                  FMsgs.AddCompilerStop(argPos, CPE_StringExpected);
+                  FMsgs.AddCompilerError(argPos, CPE_StringExpected);
                if not argExpr.IsConstant then
                   FMsgs.AddCompilerStop(argPos, CPE_ConstantExpressionExpected);
                try
@@ -10984,11 +10979,8 @@ begin
                end;
             end else begin
                case SpecialKind of
-                  skDefined : begin
-                     if argExpr.Typ=nil then
-                        FMsgs.AddCompilerError(argPos, CPE_ExpressionExpected);
+                  skDefined :
                      Result:=TDefinedExpr.Create(FProg, argExpr);
-                  end;
                   skDeclared : begin
                      if not argExpr.IsOfType(FProg.TypString) then
                         FMsgs.AddCompilerError(argPos, CPE_StringExpected);
@@ -11170,17 +11162,17 @@ end;
 
 // ReadAttributes
 //
-procedure TdwsCompiler.ReadAttributes;
+procedure TdwsCompiler.ReadAttributes(tokenALEFTAlreadyDeleted : Boolean);
 var
    expr : TProgramExpr;
    customAttribute : TClassSymbol;
    hotPos : TScriptPos;
 begin
-   if not FTok.Test(ttALEFT) then Exit;
+   if not (tokenALEFTAlreadyDeleted or FTok.TestDelete(ttALEFT)) then Exit;
 
    customAttribute:=FProg.Root.SystemTable.SymbolTable.TypCustomAttribute;
 
-   while FTok.TestDelete(ttALEFT) do begin
+   repeat
       hotPos:=FTok.HotPos;
       expr:=ReadNew(customAttribute);
       if not ((expr is TMethodExpr) and (TMethodExpr(expr).MethSym.Kind=fkConstructor)) then
@@ -11188,7 +11180,7 @@ begin
       FPendingAttributes.Add(TdwsSymbolAttribute.Create(hotPos, TMethodExpr(expr)));
       if not FTok.TestDelete(ttARIGHT) then
          FMsgs.AddCompilerStop(hotPos, CPE_ArrayBracketRightExpected);
-   end;
+   until not FTok.TestDelete(ttALEFT);
 end;
 
 // BagPendingAttributes

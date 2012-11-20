@@ -408,6 +408,7 @@ const
 
   CPE_CanNotOverride = 'Method %s not found in parent class. Can''t override!';
   CPE_InvalidArgCombination = 'Invalid argument combination';
+  CPE_InvalidArgumentType = 'Invalid argument type';
 
   CPE_FieldAlreadySet = 'Field has already been set';
 

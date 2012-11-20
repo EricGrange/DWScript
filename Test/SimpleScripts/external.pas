@@ -7,6 +7,15 @@ type
    TBClass = class external 'hello'
       procedure Hello; external 'world';
    end;
+
+{$ifdef JS_CODEGEN}
+asm
+   function Dummy(p) { 
+      PrintLn('Fake: Unhandled call to external symbol "Dummy" from [line: 25, column: 4]') 
+   }
+end;
+{$endif}
+
    
 function Dummy(param : Integer) : String; external;
 

@@ -1,3 +1,1 @@
-Errors >>>>
-Runtime Error: Dummy is not defined
-Result >>>>
+Fake: Unhandled call to external symbol "Dummy" from [line: 25, column: 4]

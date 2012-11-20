@@ -1,1 +1,1 @@
-Syntax Error: Invalid Operands [line: 1, column: 20]
+Syntax Error: Invalid argument type [line: 1, column: 20]
