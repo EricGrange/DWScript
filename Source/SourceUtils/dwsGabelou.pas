@@ -42,7 +42,8 @@ type
       property Name : String read GetName;
       property Description : String read GetDescription;
 
-      procedure Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList);
+      procedure Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList;
+                         const restrictToSourceFile : TSourceFile);
    end;
 
    TdwsGabelouRule = class abstract (TInterfacedSelfObject, IdwsGabelouRule)
@@ -56,7 +57,8 @@ type
       public
          constructor Create; virtual;
 
-         procedure Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList); virtual; abstract;
+         procedure Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList;
+                            const restrictToSourceFile : TSourceFile); virtual; abstract;
 
          property Name : String read FName write FName;
          property Description : String read FDescription write FDescription;
@@ -75,8 +77,10 @@ type
       public
          constructor Create;
 
-         procedure Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList); overload;
-         procedure Evaluate(const aProg : IdwsProgram); overload;
+         procedure Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList;
+                            const restrictToSourceFile : TSourceFile = nil); overload;
+         procedure Evaluate(const aProg : IdwsProgram;
+                            const restrictToSourceFile : TSourceFile = nil); overload;
 
          procedure AddRule(const rule : IdwsGabelouRule);
 
@@ -86,7 +90,8 @@ type
 
    TdwsSymbolDictionaryGabelouRule = class abstract (TdwsGabelouRule)
       public
-         procedure Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList); override;
+         procedure Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList;
+                            const restrictToSourceFile : TSourceFile); override;
          procedure EvaluateSymbol(const aSymbolList : TSymbolPositionList; msgs : TdwsMessageList); virtual; abstract;
    end;
 
@@ -147,19 +152,21 @@ end;
 
 // Evaluate
 //
-procedure TdwsGabelou.Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList);
+procedure TdwsGabelou.Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList;
+                               const restrictToSourceFile : TSourceFile = nil);
 var
    i : Integer;
 begin
    for i:=0 to High(FRules) do
-      FRules[i].Evaluate(aProg, msgs);
+      FRules[i].Evaluate(aProg, msgs, restrictToSourceFile);
 end;
 
 // Evaluate
 //
-procedure TdwsGabelou.Evaluate(const aProg : IdwsProgram);
+procedure TdwsGabelou.Evaluate(const aProg : IdwsProgram;
+                               const restrictToSourceFile : TSourceFile = nil);
 begin
-   Evaluate(aProg, aProg.Msgs);
+   Evaluate(aProg, aProg.Msgs, restrictToSourceFile);
 end;
 
 // AddRule
@@ -200,18 +207,27 @@ end;
 
 // Evaluate
 //
-procedure TdwsSymbolDictionaryGabelouRule.Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList);
+procedure TdwsSymbolDictionaryGabelouRule.Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList;
+                                                   const restrictToSourceFile : TSourceFile);
 var
    i : Integer;
    symDict : TdwsSymbolDictionary;
    symPosList : TSymbolPositionList;
+   symPos : TSymbolPosition;
    sym : TSymbol;
 begin
    symDict:=aProg.SymbolDictionary;
    for i:=0 to symDict.Count-1 do begin
       symPosList:=symDict.Items[i];
       sym:=symPosList.Symbol;
-      if (sym.Name='') or (Pos(' ', sym.Name)>0) then continue; // skip magic symbols
+      // skip magic symbols
+      if (sym.Name='') or (Pos(' ', sym.Name)>0) then
+         continue;
+      if restrictToSourceFile<>nil then begin
+         symPos:=symPosList.FindUsage(suDeclaration);
+         if (symPos<>nil) and (symPos.ScriptPos.SourceFile<>restrictToSourceFile) then
+            continue;
+      end;
       EvaluateSymbol(symPosList, msgs);
    end;
 end;

@@ -381,7 +381,7 @@ type
          procedure CheckName(const name : String; const namePos : TScriptPos);
          function IdentifySpecialName(const name : String) : TSpecialKeywordKind;
          procedure CheckSpecialName(const name : String);
-         function CheckParams(A, B: TSymbolTable; CheckNames: Boolean; skipB : Integer = 0): Boolean;
+         function CheckParams(tableA, tableB : TSymbolTable; checkNames : Boolean; skipB : Integer = 0) : Boolean;
          procedure CompareFuncKinds(a, b : TFuncKind);
          procedure CompareFuncSymbolParams(a, b : TFuncSymbol);
          function  CurrentStruct : TCompositeTypeSymbol;
@@ -9848,31 +9848,40 @@ begin
    end;
 end;
 
-function TdwsCompiler.CheckParams(A, B: TSymbolTable; CheckNames: Boolean; skipB : Integer = 0): Boolean;
+function TdwsCompiler.CheckParams(tableA, tableB : TSymbolTable; checkNames : Boolean; skipB : Integer = 0) : Boolean;
 var
    x : Integer;
    r : Boolean;
-   bParam : TSymbol;
+   paramA, paramB : TSymbol;
 begin
-   Result := True;
-   for x := 0 to A.Count - 1 do begin
-      r := False;
-      bParam:=B[x+skipB];
-      if CheckNames and not UnicodeSameText(A[x].Name, bParam.Name) then
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterName, [x, A[x].Name])
-      else if not A[x].Typ.IsCompatible(bParam.Typ) then
+   Result:=True;
+   for x:=0 to tableA.Count-1 do begin
+      r:=False;
+      paramA:=tableA[x];
+      paramB:=tableB[x+skipB];
+      if checkNames and not UnicodeSameText(paramA.Name, paramB.Name) then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterName, [x, tableA[x].Name])
+      else if not paramA.Typ.IsCompatible(paramB.Typ) then
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_BadParameterType,
-                                   [x, A[x].Typ.Caption, bParam.Typ.Caption])
-      else if (A[x].ClassType=TVarParamSymbol) and not (bParam.ClassType=TVarParamSymbol) then
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_VarParameterExpected, [x, A[x].Name])
-      else if not (A[x].ClassType=TVarParamSymbol) and (bParam.ClassType=TVarParamSymbol) then
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ValueParameterExpected, [x, A[x].Name])
-      else if (A[x] is TConstParamSymbol) and not (bParam is TConstParamSymbol) then
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConstParameterExpected, [x, A[x].Name])
-      else if not (A[x] is TConstParamSymbol) and (bParam is TConstParamSymbol) then
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ValueParameterExpected, [x, A[x].Name])
-      else r := True;
-      Result := Result and r;
+                                   [x, paramA.Typ.Caption, paramB.Typ.Caption])
+      else if (paramA.ClassType=TVarParamSymbol) and not (paramB.ClassType=TVarParamSymbol) then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_VarParameterExpected, [x, paramA.Name])
+      else if not (paramA.ClassType=TVarParamSymbol) and (paramB.ClassType=TVarParamSymbol) then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ValueParameterExpected, [x, paramA.Name])
+      else if (paramA.ClassType=TConstParamSymbol) and (paramB.ClassType<>TConstParamSymbol) then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConstParameterExpected, [x, paramA.Name])
+      else if (paramA.ClassType<>TConstParamSymbol) and (paramB.ClassType=TConstParamSymbol) then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ValueParameterExpected, [x, paramA.Name])
+      else if     (paramA.ClassType<>TParamSymbolWithDefaultValue)
+              and (paramB.ClassType=TParamSymbolWithDefaultValue) then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_MismatchingParameterDefaultValues, [x, paramA.Name])
+      else if     (paramA.ClassType=TParamSymbolWithDefaultValue)
+              and (paramB.ClassType=TParamSymbolWithDefaultValue)
+              and not DWSSameData(TParamSymbolWithDefaultValue(paramA).DefaultValue,
+                                  TParamSymbolWithDefaultValue(paramB).DefaultValue) then
+         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_MismatchingParameterDefaultValues, [x, paramA.Name])
+      else r:=True;
+      Result:=Result and r;
    end;
 end;
 

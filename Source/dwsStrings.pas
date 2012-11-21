@@ -244,9 +244,10 @@ const
   CPE_BadParameterName = 'Parameter %d - Name "%s" expected';
   CPE_BadParameterType = 'Parameter %d - Type "%s" expected (instead of "%s")';
   CPE_IncompatibleParameterTypes = 'Incompatible parameter types - "%s" expected (instead of "%s")';
-  CPE_VarParameterExpected = 'Parameter %d - Var-parameter expected';
-  CPE_ConstParameterExpected = 'Parameter %d - Const-parameter expected';
-  CPE_ValueParameterExpected = 'Parameter %d - Value-parameter expected';
+  CPE_VarParameterExpected = 'Parameter %d (%s) - Var-parameter expected';
+  CPE_ConstParameterExpected = 'Parameter %d (%s) - Const-parameter expected';
+  CPE_ValueParameterExpected = 'Parameter %d (%s) - Value-parameter expected';
+  CPE_MismatchingParameterDefaultValues = 'Parameter %d (%s) - mismatching default values';
   CPE_VarParameterForbidden = 'Parameter %d - Var-parameter forbidden';
 
   // Arrays

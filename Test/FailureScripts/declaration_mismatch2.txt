@@ -1,0 +1,2 @@
+Syntax Error: Expected 0 parameters (instead of 1) [line: 4, column: 30]
+Syntax Error: Parameter 0 - Name "a" expected [line: 5, column: 33]

@@ -1,0 +1,2 @@
+Syntax Error: Declaration should be "destructor" [line: 7, column: 22]
+Syntax Error: Declaration should be "constructor" [line: 11, column: 21]

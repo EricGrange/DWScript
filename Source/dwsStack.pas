@@ -153,7 +153,8 @@ type
 
 procedure DWSCopyData(const sourceData : TData; sourceAddr : Integer;
                       destData : TData; destAddr : Integer; size : Integer);
-function DWSSameData(const data1, data2 : TData; offset1, offset2, size : Integer) : Boolean;
+function DWSSameData(const data1, data2 : TData; offset1, offset2, size : Integer) : Boolean; overload;
+function DWSSameData(const data1, data2 : TData) : Boolean; overload;
 function DWSSameVariant(const v1, v2 : Variant) : Boolean;
 
 // ------------------------------------------------------------------
@@ -189,6 +190,16 @@ begin
       if not DWSSameVariant(data1[offset1+i], data2[offset2+i]) then
          Exit(False);
    Result:=True;
+end;
+
+// DWSSameData
+//
+function DWSSameData(const data1, data2 : TData) : Boolean;
+var
+   s : Integer;
+begin
+   s:=Length(data1);
+   Result:=(s=Length(data2)) and DWSSameData(data1, data2, 0, 0, s);
 end;
 
 // DWSSameVariant

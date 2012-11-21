@@ -1,0 +1,2 @@
+Syntax Error: Parameter 0 (i) - mismatching default values [line: 4, column: 44]
+Syntax Error: Parameter 0 (i) - mismatching default values [line: 8, column: 42]
