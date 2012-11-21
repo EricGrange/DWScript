@@ -1,0 +1,2 @@
+Syntax Error: TO or DOWNTO expected [line: 1, column: 12]
+Syntax Error: Expression expected [line: 1, column: 12]

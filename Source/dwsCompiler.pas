@@ -444,7 +444,7 @@ type
          function ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr;
                             const loopVarName : String; const loopVarNamePos : TScriptPos) : TNoResultExpr;
          function ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
-                              iterVarExpr : TIntVarExpr; fromExpr, toExpr : TTypedExpr;
+                              iterVarExpr : TIntVarExpr; var fromExpr, toExpr : TTypedExpr;
                               loopFirstStatement : TNoResultExpr) : TForExpr;
          function ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TNoResultExpr;
 
@@ -5009,26 +5009,28 @@ begin
          forExprClass:=TForUpwardExpr;
          FMsgs.AddCompilerError(FTok.HotPos, CPE_ToOrDowntoExpected);
       end;
+
+      if loopBlockExpr<>nil then
+         FProg.EnterSubTable(loopBlockExpr.Table);
+      try
+         toExpr:=ReadExpr;
+         if not toExpr.IsOfType(FProg.TypInteger) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
+
+         loopVarExpr:=nil;
+         Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
+                             fromExpr, toExpr, nil);
+      finally
+         if loopBlockExpr<>nil then
+            FProg.LeaveSubTable;
+      end;
+
    except
       loopBlockExpr.Free;
       fromExpr.Free;
       toExpr.Free;
       loopVarExpr.Free;
       raise;
-   end;
-
-   if loopBlockExpr<>nil then
-      FProg.EnterSubTable(loopBlockExpr.Table);
-   try
-      toExpr:=ReadExpr;
-      if not toExpr.IsOfType(FProg.TypInteger) then
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
-
-      Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
-                          fromExpr, toExpr, nil);
-   finally
-      if loopBlockExpr<>nil then
-         FProg.LeaveSubTable;
    end;
 
    if loopBlockExpr<>nil then begin
@@ -5040,7 +5042,7 @@ end;
 // ReadForStep
 //
 function TdwsCompiler.ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
-                           iterVarExpr : TIntVarExpr; fromExpr, toExpr : TTypedExpr;
+                           iterVarExpr : TIntVarExpr; var fromExpr, toExpr : TTypedExpr;
                            loopFirstStatement : TNoResultExpr) : TForExpr;
 var
    stepExpr : TTypedExpr;
@@ -5106,7 +5108,9 @@ begin
    except
       iterVarExpr.Free;
       fromExpr.Free;
+      fromExpr:=nil;
       toExpr.Free;
+      toExpr:=nil;
       loopFirstStatement.Free;
       raise;
    end;
