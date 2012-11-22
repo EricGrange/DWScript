@@ -68,9 +68,9 @@ type
 
    TdwsGabelou = class abstract (TRefCountedObject)
       private
-         class var vRegisteredRuleClasses : array of TdwsGabelouRuleClass;
-
          FRules : array of IdwsGabelouRule;
+
+         class var vRegisteredRuleClasses : array of TdwsGabelouRuleClass;
 
          procedure AddRegisteredRules;
 
