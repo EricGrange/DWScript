@@ -49,6 +49,7 @@ type
          FInitializationRank : Integer;
          FInitializationExpr : TExprBase;
          FFinalizationExpr : TExprBase;
+         FDeprecatedMessage : String;
 
       public
          constructor Create(const name : String; table : TUnitSymbolTable;
@@ -75,6 +76,7 @@ type
          property InitializationRank : Integer read FInitializationRank write FInitializationRank;
          property InitializationExpr : TExprBase read FInitializationExpr write FInitializationExpr;
          property FinalizationExpr : TExprBase read FFinalizationExpr write FFinalizationExpr;
+         property DeprecatedMessage : String read FDeprecatedMessage write FDeprecatedMessage;
    end;
 
    // list of unit main symbols (one per prog)
@@ -160,6 +162,8 @@ type
          function  FindNameSpaceUnit(const name : String) : TUnitSymbol;
          function  PossibleNameSpace(const name : String) : Boolean;
 
+         function IsDeprecated : Boolean;
+
          property Main : TUnitMainSymbol read FMain write FMain;
          property Implicit : Boolean read FImplicit write FImplicit;
          property NameSpace : TFastCompareTextList read FNameSpace;
@@ -169,6 +173,19 @@ type
          function ImplementationTable : TUnitImplementationTable; inline;
    end;
 
+   TUnitSymbolList = class(TObjectList<TUnitSymbol>);
+
+   // unit namespaces, aggregate unit symbols
+   TUnitNamespaceSymbol = class (TSourceSymbol)
+      private
+         FUnitSymbols : TUnitSymbolList;
+
+      public
+         constructor Create(const name : String);
+         destructor Destroy; override;
+
+         property UnitSymbols : TUnitSymbolList read FUnitSymbols;
+   end;
 
    TStaticSymbolTable = class;
 
@@ -750,6 +767,13 @@ begin
            and (candidate[Length(name)+1]='.');
 end;
 
+// IsDeprecated
+//
+function TUnitSymbol.IsDeprecated : Boolean;
+begin
+   Result:=(Main.DeprecatedMessage<>'');
+end;
+
 // Table
 //
 function TUnitSymbol.Table : TUnitSymbolTable;
@@ -869,6 +893,26 @@ end;
 procedure TProgramSymbolTable.RemoveFromDestructionList(sym : TSymbol);
 begin
    FDestructionList.Remove(sym);
+end;
+
+// ------------------
+// ------------------ TUnitNamespaceSymbol ------------------
+// ------------------
+
+// Create
+//
+constructor TUnitNamespaceSymbol.Create(const name : String);
+begin
+   inherited Create(name, nil);
+   FUnitSymbols:=TUnitSymbolList.Create;
+end;
+
+// Destroy
+//
+destructor TUnitNamespaceSymbol.Destroy;
+begin
+   FUnitSymbols.Free;
+   inherited;
 end;
 
 end.

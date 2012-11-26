@@ -40,6 +40,7 @@ type
                             operators : TOperators) : TUnitSymbolTable;
       function GetDependencies : TStrings;
       function GetUnitFlags : TIdwsUnitFlags;
+      function GetDeprecatedMessage : String;
    end;
 
    TIdwsUnitList = class(TSimpleList<IdwsUnit>)
@@ -154,6 +155,7 @@ type
          function QueryInterface({$ifdef FPC}constref{$else}const{$endif} IID: TGUID; out Obj): HResult; stdcall;
          function GetDependencies : TStrings;
          function GetUnitName : String;
+         function GetDeprecatedMessage : String;
 
          procedure InitUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                                  unitTable : TSymbolTable);
@@ -200,6 +202,7 @@ type
                                operators : TOperators) : TUnitSymbolTable;
          function GetDependencies : TStrings;
          function GetUnitFlags : TIdwsUnitFlags;
+         function GetDeprecatedMessage : String;
 
          property Symbol : TUnitMainSymbol read FSymbol write FSymbol;
    end;
@@ -689,6 +692,13 @@ begin
    Result:=SYS_INTERNAL;
 end;
 
+// GetDeprecatedMessage
+//
+function TInternalUnit.GetDeprecatedMessage : String;
+begin
+   Result:='';
+end;
+
 // InitStaticSymbols
 //
 procedure TInternalUnit.InitStaticSymbols(
@@ -892,6 +902,13 @@ end;
 function TSourceUnit.GetUnitFlags : TIdwsUnitFlags;
 begin
    Result:=[ufOwnsSymbolTable];
+end;
+
+// GetDeprecatedMessage
+//
+function TSourceUnit.GetDeprecatedMessage : String;
+begin
+   Result:=Symbol.DeprecatedMessage;
 end;
 
 // ------------------------------------------------------------------

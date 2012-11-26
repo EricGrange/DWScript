@@ -1,0 +1,7 @@
+uses Dotted.Both;
+
+PrintLn(Abc);
+PrintLn(HelloWorld);
+
+PrintLn(Dotted.Abc.Abc);
+PrintLn(Dotted.Hello.World.HelloWorld)

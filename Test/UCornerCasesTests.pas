@@ -52,6 +52,7 @@ type
          procedure LongLineTest;
          procedure TryExceptLoop;
          procedure ExternalSubClass;
+         procedure DeprecatedTdwsUnit;
    end;
 
 // ------------------------------------------------------------------
@@ -1066,6 +1067,34 @@ begin
    prog:=FCompiler.Compile( 'type TInt = class end;'#13#10
                            +'type TSub = class external (TInt) end;');
    CheckNotEquals(0, prog.Msgs.Count, prog.Msgs.AsInfo);
+end;
+
+// DeprecatedTdwsUnit
+//
+procedure TCornerCasesTests.DeprecatedTdwsUnit;
+var
+   un : TdwsUnit;
+   prog : IdwsProgram;
+   oldOptions : TCompilerOptions;
+begin
+   oldOptions:=FCompiler.Config.CompilerOptions;
+   un:=TdwsUnit.Create(nil);
+   try
+      un.UnitName:='Hello';
+      un.DeprecatedMessage:='world';
+
+      un.Script:=FCompiler;
+
+      FCompiler.Config.CompilerOptions:=oldOptions+[coExplicitUnitUses];
+      prog:=FCompiler.Compile('uses Hello;');
+
+      CheckEquals('Warning: "Hello" has been deprecated: world [line: 1, column: 6]'#13#10, prog.Msgs.AsInfo);
+
+      prog:=nil;
+   finally
+      FCompiler.Config.CompilerOptions:=oldOptions;
+      un.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------

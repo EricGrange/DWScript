@@ -54,7 +54,7 @@ type
      ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
      ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN,
      ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCRIGHT,
-     ttDEFAULT, ttUSES, ttUNIT,
+     ttDEFAULT, ttUSES, ttUNIT, ttNAMESPACE,
      ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
      ttPROGRAM,
 
@@ -294,7 +294,7 @@ const
      ':=', '+=', '-=', '*=', '/=',
      '%=', '^=', '@=',
      '(', ')', '[', ']', '}',
-     'DEFAULT', 'USES', 'UNIT',
+     'DEFAULT', 'USES', 'UNIT', 'NAMESPACE',
      'PRIVATE', 'PROTECTED', 'PUBLIC', 'PUBLISHED',
      'PROGRAM',
      'REGISTER', 'PASCAL', 'CDECL', 'STDCALL', 'FASTCALL', 'REFERENCE'
@@ -694,7 +694,7 @@ const
       ttIS, ttINHERITED, ttINDEX, ttINTERFACE, ttIMPLEMENTATION,
       ttLAMBDA, ttLAZY,
       ttMETHOD, ttMOD,
-      ttNEW, ttNOT, ttNIL,
+      ttNAMESPACE, ttNEW, ttNIL, ttNOT,
       ttOBJECT, ttOF, ttOLD, ttON, ttOPERATOR, ttOR, ttOVERLOAD, ttOVERRIDE,
       ttPARTIAL, ttPROCEDURE, ttPROPERTY, ttPASCAL, ttPROGRAM,
       ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,

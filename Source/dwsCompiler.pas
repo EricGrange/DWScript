@@ -292,6 +292,7 @@ type
    TdwsStatementAction = (saNone, saNoSemiColon, saInterface, saImplementation, saEnd);
 
    TdwsCompilerUnitContext = record
+      SourceUnit : TSourceUnit;
       Tokenizer : TTokenizer;
       UnitSymbol : TUnitMainSymbol;
       Context : TdwsSourceContext;
@@ -316,7 +317,7 @@ type
          procedure Clean;
 
          procedure PushContext(compiler : TdwsCompiler);
-         procedure PopContext(compiler : TdwsCompiler; var oldUnitSymbol : TUnitMainSymbol);
+         procedure PopContext(compiler : TdwsCompiler; var oldSourceUnit : TSourceUnit);
    end;
 
    // TdwsCompiler
@@ -354,6 +355,7 @@ type
          FUnitSection : TdwsUnitSection;
          FUnitContextStack : TdwsCompilerUnitContextStack;
          FUnitsFromStack : TSimpleStack<String>;
+         FCurrentSourceUnit : TSourceUnit;
          FCurrentUnitSymbol : TUnitMainSymbol;
          FAnyFuncSymbol : TAnyFuncSymbol;
          FAnyTypeSymbol : TAnyTypeSymbol;
@@ -506,9 +508,11 @@ type
                                  aVisibility : TdwsVisibility; isClassMethod : Boolean) : TMethodSymbol;
          function ReadMethodImpl(ownerSym : TCompositeTypeSymbol; funcKind : TFuncKind;
                                  isClassMethod : Boolean) : TMethodSymbol;
-         procedure ReadDeprecatedFunc(funcSym : TFuncSymbol);
+
+         function  ReadDeprecatedMessage : String;
          procedure WarnDeprecatedFunc(funcExpr : TFuncExprBase);
-         procedure WarnDeprecatedProp(propSym : TPropertySymbol);
+         procedure WarnDeprecatedSymbol(const scriptPos : TScriptPos; sym : TSymbol; const deprecatedMessage : String);
+
          function ResolveUnitNameSpace(unitPrefix : TUnitSymbol) : TUnitSymbol;
          function ReadName(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TProgramExpr;
          function ReadEnumerationSymbolName(const enumPos : TScriptPos; enumSym : TEnumerationSymbol; acceptTypeRef : Boolean) : TProgramExpr;
@@ -607,7 +611,8 @@ type
          procedure ReadTypeDeclBlock;
          function  ReadTypeDecl(firstInBlock : Boolean) : Boolean;
          procedure ReadUses;
-         procedure ReadUnitHeader;
+         function  ReadUnitHeader : TScriptSourceType;
+
          function ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory) : TNoResultExpr;
          function ReadWhile : TNoResultExpr;
          function ResolveUnitReferences : TIdwsUnitList;
@@ -643,9 +648,10 @@ type
          procedure DoSectionChanged;
          procedure DoTokenizerEndSourceFile(sourceFile : TSourceFile);
 
+         property  CurrentSourceUnit : TSourceUnit read FCurrentSourceUnit;
          property  CurrentUnitSymbol : TUnitMainSymbol read FCurrentUnitSymbol;
-         procedure EnterUnit(unitSymbol : TUnitMainSymbol; var oldUnitSymbol : TUnitMainSymbol);
-         procedure LeaveUnit(oldUnitSymbol : TUnitMainSymbol);
+         procedure EnterUnit(srcUnit : TSourceUnit; var oldSrcUnit : TSourceUnit);
+         procedure LeaveUnit(oldSrcUnit : TSourceUnit);
          procedure SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : String);
 
          procedure SetupCompileOptions(conf : TdwsConfiguration);
@@ -1434,6 +1440,7 @@ begin
       for i:=0 to unitsResolved.Count-1 do begin
          unitTable:=unitsResolved[i].GetUnitTable(FSystemTable, FMainProg.UnitMains, FOperators);
          unitSymbol:=TUnitMainSymbol.Create(unitsResolved[i].GetUnitName, unitTable, FMainProg.UnitMains);
+         unitSymbol.DeprecatedMessage:=unitsResolved[i].GetDeprecatedMessage;
          unitSymbol.ReferenceInSymbolTable(FProg.Table, True);
       end;
    finally
@@ -1507,6 +1514,7 @@ begin
       try
          unitTable:=unitResolved.GetUnitTable(FSystemTable, FProg.UnitMains, FOperators);
          unitMain:=TUnitMainSymbol.Create(unitName, unitTable, FProg.UnitMains);
+         unitMain.DeprecatedMessage:=unitResolved.GetDeprecatedMessage;
       except
          unitTable.Free;
          raise;
@@ -1736,6 +1744,8 @@ var
    unitBlock : TBlockExpr;
    readingMain : Boolean;
    contextFix : TdwsSourceContext;
+   i : Integer;
+   unitSymbol : TUnitSymbol;
 begin
    oldTok:=FTok;
    oldSection:=FUnitSection;
@@ -1787,7 +1797,7 @@ begin
          end;
          stUnit : begin
             FUnitSection:=secHeader;
-            ReadUnitHeader;
+            scriptType:=ReadUnitHeader;
          end;
       end;
 
@@ -1807,6 +1817,20 @@ begin
                if scriptType=stMain then
                   FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
             end;
+         end;
+         stUnitNamespace : begin
+            if (finalToken=ttNone) or (finalToken=ttEND) then begin
+               if coContextMap in Options then
+                  FSourceContextMap.CloseAllContexts(FTok.CurrentPos);
+            end;
+            for i:=0 to CurrentUnitSymbol.Table.Count-1 do
+               if CurrentUnitSymbol.Table[i] is TUnitSymbol then begin
+                  unitSymbol:=TUnitSymbol(CurrentUnitSymbol.Table[i]);
+                  if unitSymbol.Main<>nil then
+                     CurrentSourceUnit.GetDependencies.Add(unitSymbol.Name);
+               end;
+            FreeAndNil(Result);
+            Result:=nil;
          end;
       end;
 
@@ -1900,7 +1924,7 @@ end;
 procedure TdwsCompiler.ReadScriptImplementations;
 var
    implemTable : TUnitImplementationTable;
-   oldUnit : TUnitMainSymbol;
+   oldUnit : TSourceUnit;
 begin
    while FUnitContextStack.Count>0 do begin
       FUnitContextStack.PopContext(Self, oldUnit);
@@ -2678,7 +2702,8 @@ begin
 
                end;
 
-               ReadDeprecatedFunc(Result);
+               if FTok.Test(ttDEPRECATED) then
+                  Result.DeprecatedMessage:=ReadDeprecatedMessage;
 
                if Assigned(forwardedSym) then begin
                   // Get forwarded position in script. If compiled without symbols it will just return a nil
@@ -2949,7 +2974,8 @@ begin
          ReadExternalName(funcResult);
       end;
 
-      ReadDeprecatedFunc(funcResult);
+      if FTok.Test(ttDEPRECATED) then
+         funcResult.DeprecatedMessage:=ReadDeprecatedMessage;
 
       if isReintroduced then
          FMsgs.AddCompilerWarningFmt(methPos, CPE_ReintroduceWarning, [name]);
@@ -3053,19 +3079,19 @@ begin
    RecordSymbolUse(Result, methPos, [suImplementation]);
 end;
 
-// ReadDeprecatedFunc
+// ReadDeprecatedMessage
 //
-procedure TdwsCompiler.ReadDeprecatedFunc(funcSym : TFuncSymbol);
+function TdwsCompiler.ReadDeprecatedMessage : String;
 begin
    if FTok.TestDelete(ttDEPRECATED) then begin
       if FTok.Test(ttStrVal) then begin
-         funcSym.DeprecatedMessage:=FTok.GetToken.FString;
+         Result:=FTok.GetToken.FString;
          FTok.KillToken;
       end;
-      if funcSym.DeprecatedMessage='' then
-         funcSym.DeprecatedMessage:=MSG_DeprecatedEmptyMsg;
+      if Result='' then
+         Result:=MSG_DeprecatedEmptyMsg;
       ReadSemiColon;
-   end;
+   end else Result:='';
 end;
 
 // WarnDeprecatedFunc
@@ -3075,22 +3101,19 @@ var
    funcSym : TFuncSymbol;
 begin
    funcSym:=funcExpr.FuncSym;
-   if funcSym.IsDeprecated then begin
-      if funcSym.DeprecatedMessage<>MSG_DeprecatedEmptyMsg then
-         FMsgs.AddCompilerWarningFmt(funcExpr.ScriptPos, CPW_DeprecatedWithMessage,
-                                     [funcSym.Name, funcSym.DeprecatedMessage])
-      else FMsgs.AddCompilerWarningFmt(funcExpr.ScriptPos, CPW_Deprecated, [funcSym.Name]);
-   end;
+   if funcSym.IsDeprecated then
+      WarnDeprecatedSymbol(funcExpr.ScriptPos, funcSym, funcSym.DeprecatedMessage);
 end;
 
-// WarnDeprecatedProp
+// WarnDeprecatedSymbol
 //
-procedure TdwsCompiler.WarnDeprecatedProp(propSym : TPropertySymbol);
+procedure TdwsCompiler.WarnDeprecatedSymbol(const scriptPos : TScriptPos; sym : TSymbol;
+                                            const deprecatedMessage : String);
 begin
-   if propSym.DeprecatedMessage<>MSG_DeprecatedEmptyMsg then
-      FMsgs.AddCompilerWarningFmt(FTok.HotPos, CPW_DeprecatedWithMessage,
-                                  [propSym.Name, propSym.DeprecatedMessage])
-   else FMsgs.AddCompilerWarningFmt(FTok.HotPos, CPW_Deprecated, [propSym.Name]);
+   if deprecatedMessage<>MSG_DeprecatedEmptyMsg then
+      FMsgs.AddCompilerWarningFmt(scriptPos, CPW_DeprecatedWithMessage,
+                                  [sym.Name, deprecatedMessage])
+   else FMsgs.AddCompilerWarningFmt(scriptPos, CPW_Deprecated, [sym.Name]);
 end;
 
 // ReadProcBody
@@ -4295,7 +4318,7 @@ function TdwsCompiler.ReadPropertyExpr(var expr : TTypedExpr; propertySym : TPro
                                        isWrite : Boolean) : TProgramExpr;
 begin
    if propertySym.IsDeprecated then
-      WarnDeprecatedProp(propertySym);
+      WarnDeprecatedSymbol(FTok.HotPos, propertySym, propertySym.DeprecatedMessage);
    if isWrite then
       Result:=ReadPropertyWriteExpr(expr, propertySym)
    else Result:=ReadPropertyReadExpr(expr, propertySym);
@@ -7579,15 +7602,8 @@ begin
             end;
          end;
 
-         if FTok.TestDelete(ttDEPRECATED) then begin
-            if FTok.Test(ttStrVal) then begin
-               Result.DeprecatedMessage:=FTok.GetToken.FString;
-               FTok.KillToken;
-            end;
-            if Result.DeprecatedMessage='' then
-               Result.DeprecatedMessage:=MSG_DeprecatedEmptyMsg;
-            ReadSemiColon;
-         end;
+         if FTok.Test(ttDEPRECATED) then
+            Result.DeprecatedMessage:=ReadDeprecatedMessage;
 
          // register context only if we're sure the property symbol will survive
          if coContextMap in FOptions then begin
@@ -10372,6 +10388,8 @@ begin
          if z<0 then begin
             unitSymbol:=HandleExplicitDependency(names[x]);
             if unitSymbol<>nil then begin
+               if unitSymbol.IsDeprecated then
+                  WarnDeprecatedSymbol(posArray[x], unitSymbol.Main, unitSymbol.Main.DeprecatedMessage);
                z:=rt.IndexOfParent(unitSymbol.Table);
                if z>u then
                   rt.MoveParent(z, u);
@@ -10389,7 +10407,7 @@ end;
 
 // ReadUnitHeader
 //
-procedure TdwsCompiler.ReadUnitHeader;
+function TdwsCompiler.ReadUnitHeader : TScriptSourceType;
 var
    name, part : String;
    namePos, partPos : TScriptPos;
@@ -10398,6 +10416,10 @@ var
 begin
    if not FTok.TestDelete(ttUNIT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_UnitExpected);
+
+   if FTok.TestDelete(ttNAMESPACE) then
+      Result:=stUnitNamespace
+   else Result:=stUnit;
 
    if not FTok.TestDeleteNamePos(name, namePos) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
@@ -10430,8 +10452,14 @@ begin
    if not SameText(name, namePos.SourceFile.Name) then
       FMsgs.AddCompilerWarning(namePos, CPE_UnitNameDoesntMatch);
 
-   if not FTok.TestDelete(ttSEMI) then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+   // usually deprecated statement follows after the semi
+   // but for units, Delphi wants it before, this supports both forms
+   if FTok.Test(ttDEPRECATED) then
+      CurrentUnitSymbol.DeprecatedMessage:=ReadDeprecatedMessage
+   else begin
+      ReadSemiColon;
+      CurrentUnitSymbol.DeprecatedMessage:=ReadDeprecatedMessage;
+   end;
 
    if FTok.TestDelete(ttINTERFACE) then begin
       FUnitSection:=secInterface;
@@ -10728,21 +10756,26 @@ end;
 
 // EnterUnit
 //
-procedure TdwsCompiler.EnterUnit(unitSymbol : TUnitMainSymbol; var oldUnitSymbol : TUnitMainSymbol);
+procedure TdwsCompiler.EnterUnit(srcUnit : TSourceUnit; var oldSrcUnit : TSourceUnit);
 begin
+   oldSrcUnit:=FCurrentSourceUnit;
+   FCurrentSourceUnit:=srcUnit;
+
    FCurrentUnitSymbol.StoreParents;
-   oldUnitSymbol:=FCurrentUnitSymbol;
-   unitSymbol.RestoreParents;
-   FCurrentUnitSymbol:=unitSymbol;
+   FCurrentUnitSymbol:=srcUnit.Symbol;
+   FCurrentUnitSymbol.RestoreParents;
 end;
 
 // LeaveUnit
 //
-procedure TdwsCompiler.LeaveUnit(oldUnitSymbol : TUnitMainSymbol);
+procedure TdwsCompiler.LeaveUnit(oldSrcUnit : TSourceUnit);
 begin
    FCurrentUnitSymbol.StoreParents;
-   FCurrentUnitSymbol:=oldUnitSymbol;
+   if oldSrcUnit<>nil then
+      FCurrentUnitSymbol:=oldSrcUnit.Symbol
+   else FCurrentUnitSymbol:=nil;
    FCurrentUnitSymbol.RestoreParents;
+   FCurrentSourceUnit:=oldSrcUnit;
 end;
 
 // SwitchTokenizerToUnit
@@ -10750,11 +10783,11 @@ end;
 procedure TdwsCompiler.SwitchTokenizerToUnit(srcUnit : TSourceUnit; const sourceCode : String);
 var
    sourceFile : TSourceFile;
-   oldUnit : TUnitMainSymbol;
+   oldUnit : TSourceUnit;
 begin
    sourceFile:=FMainProg.SourceList.Add(srcUnit.GetUnitName, sourceCode, stUnit);
 
-   EnterUnit(srcUnit.Symbol, oldUnit);
+   EnterUnit(srcUnit, oldUnit);
    FProg.EnterSubTable(CurrentUnitSymbol.Table);
    FUnitsFromStack.Push(sourceFile.Name);
    try
@@ -12019,6 +12052,7 @@ procedure TdwsCompilerUnitContextStack.PushContext(compiler : TdwsCompiler);
 var
    context : TdwsCompilerUnitContext;
 begin
+   context.SourceUnit:=compiler.CurrentSourceUnit;
    context.Tokenizer:=compiler.FTok;
    context.UnitSymbol:=compiler.CurrentUnitSymbol;
    context.Context:=compiler.FSourceContextMap.SuspendContext;
@@ -12027,10 +12061,10 @@ end;
 
 // PopContext
 //
-procedure TdwsCompilerUnitContextStack.PopContext(compiler : TdwsCompiler; var oldUnitSymbol : TUnitMainSymbol);
+procedure TdwsCompilerUnitContextStack.PopContext(compiler : TdwsCompiler; var oldSourceUnit : TSourceUnit);
 begin
    compiler.FTok:=Peek.Tokenizer;
-   compiler.EnterUnit(Peek.UnitSymbol, oldUnitSymbol);
+   compiler.EnterUnit(Peek.SourceUnit, oldSourceUnit);
    compiler.FSourceContextMap.ResumeContext(Peek.Context);
    Pop;
 end;

@@ -1,0 +1,4 @@
+Errors >>>>
+Warning: "DottedAbc" has been deprecated: Now with a dot [line: 1, column: 6]
+Result >>>>
+Abc

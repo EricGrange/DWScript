@@ -180,7 +180,7 @@ uses
 
 const
    // if the language is case-insensitive keywords *must* be in lowercase
-   cKeyWords: array[1..95] of UnicodeString = (
+   cKeyWords: array[1..96] of UnicodeString = (
       'abstract', 'and', 'array', 'as', 'asm',
       'begin', 'break', 'case', 'cdecl', 'class', 'const', 'constructor',
       'contains', 'continue', 'deprecated', 'destructor',
@@ -194,7 +194,7 @@ const
       'pascal', 'partial', 'private', 'procedure', 'program', 'property',
       'protected', 'public', 'published', 'raise', 'record',
       'register', 'reintroduce', 'repeat', 'require', 'resourcestring',
-      'sealed', 'set', 'shl', 'shr', 'static', 'step',
+      'sar', 'sealed', 'set', 'shl', 'shr', 'static', 'step',
       'then', 'to', 'try', 'type', 'unit', 'until',
       'uses', 'var', 'virtual', 'while', 'xor', 'if'
   );

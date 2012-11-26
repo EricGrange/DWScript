@@ -66,6 +66,7 @@ type
       function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                             operators : TOperators) : TUnitSymbolTable;
     function GetUnitFlags : TIdwsUnitFlags;
+    function GetDeprecatedMessage : String;
   protected
     FUnitName: String;
     FDependencies: TStrings;
@@ -172,35 +173,51 @@ type
          property OnGetLocalizer : TGetLocalizerEvent read FOnGetLocalizer write FOnGetLocalizer;
    end;
 
-  TdwsAbstractUnit = class(TComponent, IUnknown, IdwsUnit)
-  private
-    FDependencies: TStrings;
-    FScript: TDelphiWebScript;
-    FUnitName: String;
-    function GetDependencies: TStrings;
-    procedure SetDependencies(const Value: TStrings);
-    procedure SetScript(const Value: TDelphiWebScript);
-    procedure SetUnitName(const Value: String);
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    function GetUnitName: String; virtual;
-      function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
-                            operators : TOperators) : TUnitSymbolTable; virtual; abstract;
-    function GetUnitFlags : TIdwsUnitFlags;
+   // TdwsAbstractUnit
+   //
+   TdwsAbstractUnit = class(TComponent, IUnknown, IdwsUnit)
+      private
+         FDependencies : TStrings;
+         FScript : TDelphiWebScript;
+         FUnitName : String;
+         FDeprecatedMessage : String;
+         FImplicitUse : Boolean;
 
-    property Dependencies: TStrings read FDependencies write SetDependencies;
-    {$WARNINGS OFF}
-    property UnitName: String read GetUnitName write SetUnitName;
-    {$WARNINGS ON}
-  public
-    constructor Create(AOwner: TComponent); override;
-    destructor Destroy; override;
-  published
-    property Script: TDelphiWebScript read FScript write SetScript;
-  end;
+         function GetDependencies: TStrings;
+         procedure SetDependencies(const Value: TStrings);
+         procedure SetScript(const Value: TDelphiWebScript);
+         procedure SetUnitName(const Value: String);
+
+      protected
+         procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+
+         function GetUnitName: String; virtual;
+         function GetUnitTable(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
+                               operators : TOperators) : TUnitSymbolTable; virtual; abstract;
+         function GetUnitFlags : TIdwsUnitFlags;
+         function GetDeprecatedMessage : String;
+
+         property Dependencies: TStrings read FDependencies write SetDependencies;
+         {$WARNINGS OFF}
+         property UnitName: String read GetUnitName write SetUnitName;
+         {$WARNINGS ON}
+
+         property DeprecatedMessage : String read FDeprecatedMessage write FDeprecatedMessage;
+         property ImplicitUse : Boolean read FImplicitUse write FImplicitUse;
+
+      public
+         constructor Create(AOwner: TComponent); override;
+         destructor Destroy; override;
+
+      published
+         property Script: TDelphiWebScript read FScript write SetScript;
+
+   end;
 
    TSymbolTableType = (sttDefault, sttStatic, sttLinked);
 
+   // TdwsAbstractStaticUnit
+   //
    TdwsAbstractStaticUnit = class(TdwsAbstractUnit)
       private
          FStaticSymbols : Boolean;
@@ -221,6 +238,7 @@ type
          constructor Create(AOwner: TComponent); override;
          destructor Destroy; override;
          procedure BeforeDestruction; override;
+
          function InitStaticSymbols(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols; operators : TOperators): Boolean;
          procedure ReleaseStaticSymbols;
    end;
@@ -1059,6 +1077,7 @@ type
         function StoreInstances : Boolean;
         function StoreSynonyms : Boolean;
         function StoreOperators : Boolean;
+        function StoreImplicitUse : Boolean;
 
       protected
         function GetSymbol(Table: TSymbolTable; const Name: String): TSymbol;
@@ -1079,6 +1098,7 @@ type
         procedure GetClassTypes(List: TStrings);
         procedure ExposeClassToUnit(AClass, AAncestor: TClass; ASearchProgram: TdwsProgram=nil; const ScriptAncestorType: String='');
         procedure ExposeInstanceToUnit(const AName, AClassType: String; AInstance: TObject);
+
         property Table: TUnitSymbolTable read FTable;
 
       published
@@ -1095,7 +1115,9 @@ type
         property Interfaces : TdwsInterfaces read FInterfaces write SetInterfaces stored StoreInterfaces;
         property Synonyms: TdwsSynonyms read FSynonyms write SetSynonyms stored StoreSynonyms;
         property UnitName;
-        property Variables: TdwsVariables read FVariables write SetVariables stored StoreVariables;
+        property DeprecatedMessage;
+        property ImplicitUse stored StoreImplicitUse;
+        property Variables : TdwsVariables read FVariables write SetVariables stored StoreVariables;
         property StaticSymbols;
 
         property OnAfterInitUnitTable : TNotifyEvent read FOnAfterInitUnitTable write FOnAfterInitUnitTable;
@@ -1908,6 +1930,13 @@ end;
 function TdwsUnit.StoreOperators : Boolean;
 begin
    Result:=FOperators.Count>0;
+end;
+
+// StoreImplicitUse
+//
+function TdwsUnit.StoreImplicitUse : Boolean;
+begin
+   Result:=ImplicitUse;
 end;
 
 procedure TdwsUnit.HandleDynamicProperty(Info: TProgramInfo; ExtObject: TObject);
@@ -3839,7 +3868,16 @@ end;
 //
 function TdwsAbstractUnit.GetUnitFlags : TIdwsUnitFlags;
 begin
-   Result:=[];
+   if ImplicitUse then
+      Result:=[ufImplicitUse]
+   else Result:=[];
+end;
+
+// GetDeprecatedMessage
+//
+function TdwsAbstractUnit.GetDeprecatedMessage : String;
+begin
+   Result:=FDeprecatedMessage;
 end;
 
 { TdwsEmptyUnit }
@@ -3894,6 +3932,13 @@ end;
 function TdwsEmptyUnit.GetUnitFlags : TIdwsUnitFlags;
 begin
    Result:=[ufImplicitUse];
+end;
+
+// GetDeprecatedMessage
+//
+function TdwsEmptyUnit.GetDeprecatedMessage : String;
+begin
+   Result:='';
 end;
 
 { TdwsEmptyUnit }
