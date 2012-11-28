@@ -1,4 +1,4 @@
-object SimpleDWScript: TSimpleDWScript
+object SynDWScript: TSynDWScript
   OldCreateOrder = False
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy
@@ -8,6 +8,7 @@ object SimpleDWScript: TSimpleDWScript
   Width = 341
   object DelphiWebScript: TDelphiWebScript
     Config.Filter = dwsHtmlFilter
+    Config.StackChunkSize = 256
     Left = 72
     Top = 32
   end

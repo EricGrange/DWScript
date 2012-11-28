@@ -4,23 +4,28 @@ interface
 
 uses
   SysUtils, Classes, dwsFileSystem, dwsGlobalVarsFunctions, dwsCompiler,
-  dwsHtmlFilter, dwsComp, SyncObjs, Generics.Collections, dwsExprs, HTTPApp,
-  dwsRTTIConnector, dwsUtils;
+  dwsHtmlFilter, dwsComp, SyncObjs, dwsExprs, dwsRTTIConnector, dwsUtils,
+  dwsWebEnvironment, Rtti;
 
 type
-   {$M+}
-   TWebEnvironment = class
-      published
-         Request : TWebRequest;
-         Response : TWebResponse;
-   end;
-   {$M-}
 
-  TSimpleDWScript = class(TDataModule)
+   TCompiledProgram = record
+      Name : String;
+      Prog : IdwsProgram;
+   end;
+
+   TCompiledProgramHash = class (TSimpleHash<TCompiledProgram>)
+      protected
+         function SameItem(const item1, item2 : TCompiledProgram) : Boolean; override;
+         function GetItemHashCode(const item1 : TCompiledProgram) : Integer; override;
+   end;
+
+
+   TSynDWScript = class(TDataModule)
       DelphiWebScript: TDelphiWebScript;
       dwsHtmlFilter: TdwsHtmlFilter;
       dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions;
-      dwsRTTIConnector: TdwsRTTIConnector;
+    dwsRTTIConnector: TdwsRTTIConnector;
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 
@@ -29,7 +34,7 @@ type
 
       FFileSystem : TdwsCustomFileSystem;
 
-      FCompiledPrograms : TDictionary<String,IdwsProgram>;
+      FCompiledPrograms : TCompiledProgramHash;
       FCompiledProgramsLock : TFixedCriticalSection;
 
       FCompilerEnvironment : TRTTIEnvironment;
@@ -52,16 +57,28 @@ type
       property FileSystem : TdwsCustomFileSystem read GetFileSystem write SetFileSystem;
   end;
 
-var
-  SimpleDWScript: TSimpleDWScript;
-
 implementation
 
 {$R *.dfm}
 
-procedure TSimpleDWScript.DataModuleCreate(Sender: TObject);
+function TWebRequest_GetHeaders(instance: Pointer; const args: array of TValue): TValue;
 begin
-   FCompiledPrograms:=TDictionary<String,IdwsProgram>.Create;
+   Result:=TWebRequest(instance).Header(args[0].AsString);
+end;
+
+function TWebRequest_GetCookies(instance: Pointer; const args: array of TValue): TValue;
+begin
+   Result:=TWebRequest(instance).Cookies.Values[args[0].AsString];
+end;
+
+function TWebRequest_GetQueryFields(instance: Pointer; const args: array of TValue): TValue;
+begin
+   Result:=TWebRequest(instance).QueryFields.Values[args[0].AsString];
+end;
+
+procedure TSynDWScript.DataModuleCreate(Sender: TObject);
+begin
+   FCompiledPrograms:=TCompiledProgramHash.Create;
    FCompiledProgramsLock:=TFixedCriticalSection.Create;
    FCompilerLock:=TFixedCriticalSection.Create;
 
@@ -73,7 +90,7 @@ begin
    FScriptTimeoutMilliseconds:=3000;
 end;
 
-procedure TSimpleDWScript.DataModuleDestroy(Sender: TObject);
+procedure TSynDWScript.DataModuleDestroy(Sender: TObject);
 begin
    DelphiWebScript.Extensions.Remove(FCompilerEnvironment);
 
@@ -88,22 +105,23 @@ end;
 
 // GetFileSystem
 //
-function TSimpleDWScript.GetFileSystem : TdwsCustomFileSystem;
+function TSynDWScript.GetFileSystem : TdwsCustomFileSystem;
 begin
-   Result:=DelphiWebScript.Config.CompileFileSystem;
+   Result:=FFileSystem;
 end;
 
 // SetFileSystem
 //
-procedure TSimpleDWScript.SetFileSystem(const val : TdwsCustomFileSystem);
+procedure TSynDWScript.SetFileSystem(const val : TdwsCustomFileSystem);
 begin
+   FFileSystem:=val;
    DelphiWebScript.Config.CompileFileSystem:=val;
    DelphiWebScript.Config.RuntimeFileSystem:=val;
 end;
 
 // HandleDWS
 //
-procedure TSimpleDWScript.HandleDWS(const fileName : String; Request: TWebRequest; Response: TWebResponse);
+procedure TSynDWScript.HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse);
 var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
@@ -115,14 +133,14 @@ begin
 
    if prog.Msgs.HasErrors then begin
 
-      Response.StatusCode:=400;
-      Response.Content:=prog.Msgs.AsInfo;
+      response.StatusCode:=400;
+      response.ContentData:=UTF8Encode(prog.Msgs.AsInfo);
 
    end else begin
 
       webenv:=TWebEnvironment.Create;
       webenv.Request:=request;
-      webenv.Response:=response;
+      webenv.response:=response;
       try
          exec:=prog.CreateNewExecution;
          exec.Environment:=TRTTIRuntimeEnvironment.Create(webenv);
@@ -135,17 +153,18 @@ begin
       end;
 
       if exec.Msgs.Count>0 then begin
-         Response.StatusCode:=400;
-         Response.Content:=prog.Msgs.AsInfo;
+         response.StatusCode:=400;
+         response.ContentData:=UTF8Encode(prog.Msgs.AsInfo);
       end else begin
-         Response.Content:=exec.Result.ToString;
+         if response.ContentData='' then
+            response.ContentData:=UTF8Encode(exec.Result.ToString);
       end;
    end;
 end;
 
 // FlushDWSCache
 //
-procedure TSimpleDWScript.FlushDWSCache;
+procedure TSynDWScript.FlushDWSCache;
 begin
    FCompiledProgramsLock.Enter;
    try
@@ -157,11 +176,15 @@ end;
 
 // TryAcquireDWS
 //
-procedure TSimpleDWScript.TryAcquireDWS(const fileName : String; var prog : IdwsProgram);
+procedure TSynDWScript.TryAcquireDWS(const fileName : String; var prog : IdwsProgram);
+var
+   cp : TCompiledProgram;
 begin
+   cp.Name:=fileName;
    FCompiledProgramsLock.Enter;
    try
-      FCompiledPrograms.TryGetValue(fileName, prog);
+      if FCompiledPrograms.Match(cp) then
+         prog:=cp.Prog;
    finally
       FCompiledProgramsLock.Leave;
    end;
@@ -169,10 +192,11 @@ end;
 
 // CompileDWS
 //
-procedure TSimpleDWScript.CompileDWS(const fileName : String; var prog : IdwsProgram);
+procedure TSynDWScript.CompileDWS(const fileName : String; var prog : IdwsProgram);
 var
    sl : TStringList;
    code : String;
+   cp : TCompiledProgram;
 begin
    sl:=TStringList.Create;
    try
@@ -190,9 +214,12 @@ begin
 
       prog:=DelphiWebScript.Compile(code);
 
+      cp.Name:=fileName;
+      cp.Prog:=prog;
+
       FCompiledProgramsLock.Enter;
       try
-         FCompiledPrograms.Add(fileName, prog);
+         FCompiledPrograms.Add(cp);
       finally
          FCompiledProgramsLock.Leave;
       end;
@@ -200,5 +227,35 @@ begin
       FCompilerLock.Leave;
    end;
 end;
+
+// ------------------
+// ------------------ TCompiledProgramHash ------------------
+// ------------------
+
+// SameItem
+//
+function TCompiledProgramHash.SameItem(const item1, item2 : TCompiledProgram) : Boolean;
+begin
+   Result:=UnicodeSameText(item1.Name, item2.Name)
+end;
+
+// GetItemHashCode
+//
+function TCompiledProgramHash.GetItemHashCode(const item1 : TCompiledProgram) : Integer;
+begin
+   Result:=SimpleStringHash(item1.Name);
+end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+  RegisterRTTIIndexedProperty(TWebRequest, 'Headers', True, varUString, TWebRequest_GetHeaders, nil);
+  RegisterRTTIIndexedProperty(TWebRequest, 'Cookies', True, varUString, TWebRequest_GetCookies, nil);
+  RegisterRTTIIndexedProperty(TWebRequest, 'QueryFields', True, varUString, TWebRequest_GetQueryFields, nil);
 
 end.
