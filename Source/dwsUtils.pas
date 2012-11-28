@@ -496,6 +496,8 @@ type
       {$else}
       function CompareStrings(const S1, S2: String): Integer; override;
       {$endif}
+      function  FindName(const name : String; var index : Integer) : Boolean;
+      function IndexOfName(const name : String): Integer; override;
    end;
 
    ETightListOutOfBound = class(Exception);
@@ -514,6 +516,9 @@ function UnicodeSameText(const s1, s2 : String) : Boolean;
 
 function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
 function StrBeginsWith(const aStr, aBegin : String) : Boolean;
+
+function StrAfter(const aStr : String; aChar : Char) : String; overload;
+function StrBefore(const aStr : String; aChar : Char) : String; overload;
 
 function StrCountChar(const aStr : String; c : Char) : Integer;
 
@@ -792,6 +797,30 @@ begin
    else Result:=CompareMem(PChar(aStr), PChar(aBegin), n2);
 end;
 
+// StrAfter
+//
+function StrAfter(const aStr : String; aChar : Char) : String;
+var
+   p : Integer;
+begin
+   p:=Pos(aChar, aStr);
+   if p>0 then
+      Result:=Copy(aStr, p+1)
+   else Result:='';
+end;
+
+// StrBefore
+//
+function StrBefore(const aStr : String; aChar : Char) : String; overload;
+var
+   p : Integer;
+begin
+   p:=Pos(aChar, aStr);
+   if p>0 then
+      Result:=Copy(aStr, 1, p-1)
+   else Result:=aStr;
+end;
+
 // StrCountChar
 //
 function StrCountChar(const aStr : String; c : Char) : Integer;
@@ -826,6 +855,67 @@ function TFastCompareTextList.DoCompareText(const S1, S2: String): Integer;
 {$endif}
 begin
    Result:=UnicodeCompareText(s1, s2);
+end;
+
+// FindName
+//
+function TFastCompareTextList.FindName(const name : String; var index : Integer) : Boolean;
+var
+   lo, hi, mid, cmp, n, nc : Integer;
+   initial : String;
+   list : TStringListList;
+begin
+   Result:=False;
+   list:=TStringListCracker(Self).FList;
+   initial:=Name+NameValueSeparator;
+   n:=Length(initial);
+   lo:=0;
+   hi:=Count-1;
+   while lo<=hi do begin
+      mid:=(lo+hi) shr 1;
+      nc:=Length(list^[mid].FString);
+      if nc>=n then begin
+         cmp:=UnicodeCompareLen(PChar(Pointer(list^[mid].FString)), PChar(Pointer(initial)), n);
+      end else begin
+         cmp:=UnicodeCompareLen(PChar(Pointer(list^[mid].FString)), PChar(Pointer(initial)), nc);
+         if cmp=0 then
+            cmp:=-1;
+      end;
+      if cmp<0 then
+         lo:=mid+1
+      else begin
+         hi:=mid-1;
+         if cmp=0 then begin
+            Result:=True;
+            if Duplicates<>dupAccept then
+               lo:=mid;
+         end;
+      end;
+   end;
+   index:=lo;
+end;
+
+// IndexOfName
+//
+function TFastCompareTextList.IndexOfName(const name : String): Integer;
+var
+   n, nc : Integer;
+   list : TStringListList;
+begin
+   if not Sorted then begin
+      n:=Length(name);
+      list:=TStringListCracker(Self).FList;
+      for Result:=0 to Count-1 do begin
+         nc:=Length(list^[Result].FString);
+         if     (nc>n) and (list^[Result].FString[n+1]=NameValueSeparator)
+            and (UnicodeCompareLen(PChar(Pointer(name)),
+                                   PChar(Pointer(list^[Result].FString)), n)=0) then Exit;
+      end;
+      Result:=-1;
+   end else begin
+      if not FindName(name, Result) then
+         Result:=-1;
+   end;
 end;
 
 // ------------------
