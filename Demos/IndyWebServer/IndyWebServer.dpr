@@ -1,6 +1,3 @@
-... obsolete ...
-... no longer maintained ...
-
 program IndyWebServer;
 {$APPTYPE CONSOLE}
 

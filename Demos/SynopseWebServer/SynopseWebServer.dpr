@@ -1,6 +1,30 @@
-program SynopseWebServer;
+{
+    Will serve static content and DWS dynamic content via http.sys
+    kernel mode high-performance HTTP server (available since XP SP2).
+    See http://blog.synopse.info/post/2011/03/11/HTTP-server-using-fast-http.sys-kernel-mode-server
+    WARNING: you need to first register the server URI and port to the http.sys stack.
+    That is, run the application at least once as administrator.
 
-/// sample program which will serve C:\ content on http://localhost:888/root
+    Sample based on official mORMot's sample
+    "SQLite3\Samples\09 - HttpApi web server\HttpApiServer.dpr"
+
+    Synopse mORMot framework. Copyright (C) 2012 Arnaud Bouchez
+      Synopse Informatique - http://synopse.info
+
+    Original tri-license: MPL 1.1/GPL 2.0/LGPL 2.1
+
+    You would need at least the following files from mORMot framework
+    to be available in your project path:
+    - SynCommons.pas
+    - Synopse.inc
+    - SynLZ.pas
+    - SynZip.pas
+    - SynCrtSock.pas
+    - SynWinWock.pas
+    http://synopse.info/fossil/wiki?name=Downloads
+
+}
+program SynopseWebServer;
 
 {$APPTYPE CONSOLE}
 

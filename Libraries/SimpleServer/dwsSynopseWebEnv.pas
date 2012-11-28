@@ -14,6 +14,10 @@
 {    Current maintainer: Eric Grange                                   }
 {                                                                      }
 {**********************************************************************}
+{
+    Synopse mORMot framework. Copyright (C) 2012 Arnaud Bouchez
+      Synopse Informatique - http://synopse.info
+}
 unit dwsSynopseWebEnv;
 
 interface
