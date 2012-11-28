@@ -6,6 +6,7 @@
 <h2>Hello DWS</h2>
 <p>This page was generated at <%=FormatDateTime('hh:nn:ss.zzz', Now)%>.</p>
 <p>Some test links<ul>
+<li><a href="hello.dws">hello</a></li>
 <li><a href="requestInfo.dws">blank request info</a></li>
 <li><a href="requestInfo.dws?p=alpha&b=beta&c=gamma+delta">parameterized request info</a></li>
 </ul></p>
