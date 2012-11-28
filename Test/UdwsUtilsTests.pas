@@ -17,7 +17,7 @@ unit UdwsUtilsTests;
 
 interface
 
-uses Classes, SysUtils, dwsXPlatformTests, dwsUtils;
+uses Classes, SysUtils, Math, dwsXPlatformTests, dwsUtils;
 
 type
 
@@ -40,6 +40,7 @@ type
          procedure SortedListExtract;
 
          procedure UnicodeCompareTextTest;
+         procedure FastCompareTextSortedValues;
 
          procedure VarRecArrayTest;
    end;
@@ -310,6 +311,40 @@ begin
    CheckTrue(UnicodeCompareText('se', 'sup')<0, 'se, su');
    CheckTrue(UnicodeCompareText('sup', 'se')>0, 'su, se');
    CheckTrue(UnicodeCompareText('se', 'sup')<0, 'se, su');
+end;
+
+// FastCompareTextSortedValues
+//
+procedure TdwsUtilsTests.FastCompareTextSortedValues;
+var
+   i, k : Integer;
+   sl : TStringList;
+   fsl : TFastCompareTextList;
+begin
+   RandSeed:=0;
+   sl:=TStringList.Create;
+   fsl:=TFastCompareTextList.Create;
+   try
+      for i:=1 to 50 do begin
+         k:=Round(IntPower(10, 3+Random(8)));
+         sl.Values[IntToStr(Random(k))]:=IntToStr(Random(10000));
+      end;
+      fsl.Assign(sl);
+
+      // check unsorted
+      for i:=0 to sl.Count-1 do
+         CheckEquals(sl.ValueFromIndex[i], fsl.Values[sl.Names[i]], IntToStr(i));
+      CheckEquals('', fsl.Values['none'], 'none');
+
+      // check sorted
+      fsl.Sorted:=True;
+      for i:=0 to sl.Count-1 do
+         CheckEquals(sl.ValueFromIndex[i], fsl.Values[sl.Names[i]], IntToStr(i));
+      CheckEquals('', fsl.Values['none'], 'none');
+   finally
+      sl.Free;
+      fsl.Free;
+   end;
 end;
 
 // VarRecArrayTest
