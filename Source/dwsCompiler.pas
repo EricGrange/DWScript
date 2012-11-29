@@ -9755,12 +9755,17 @@ var
    i : Integer;
    fname : String;
 begin
-   for i:=0 to FScriptPaths.Count-1 do begin
-      if FScriptPaths[i]<>'' then
-         fname:=IncludeTrailingPathDelimiter(FScriptPaths[i])+fileName
-      else fname:=fileName;
-      if FCompileFileSystem.FileExists(fname) then
-         Exit(FCompileFileSystem.OpenFileStream(fname, fomReadOnly));
+   if FScriptPaths.Count=0 then begin
+      if FCompileFileSystem.FileExists(fileName) then
+         Exit(FCompileFileSystem.OpenFileStream(fileName, fomReadOnly));
+   end else begin
+      for i:=0 to FScriptPaths.Count-1 do begin
+         if FScriptPaths[i]<>'' then
+            fname:=IncludeTrailingPathDelimiter(FScriptPaths[i])+fileName
+         else fname:=fileName;
+         if FCompileFileSystem.FileExists(fname) then
+            Exit(FCompileFileSystem.OpenFileStream(fname, fomReadOnly));
+      end;
    end;
    Result:=nil;
 end;
