@@ -233,11 +233,13 @@ var
    basePath : String;
 begin
    basePath:=ExtractFilePath(ParamStr(0));
-   if FileExists(ChangeFileExt(ParamStr(0), '.dpr')) then
+   if DirectoryExists(basePath+'www') then
+      basePath:=basePath+'www' // subfolder 'ww' of where the exe is placed
+   else if FileExists(ChangeFileExt(ParamStr(0), '.dpr')) then
       basePath:=basePath+'..\Data\www' // if compiled alongside dpr
    else basePath:=basePath+'..\..\..\Data\www'; // assume compiled in platform/target
    with TTestServer.Create(basePath) do try
-      write('Server is now running on http://localhost:888/root'#13#10#13#10+
+      write('Server is now running on http://localhost:888/'#13#10#13#10+
             'Press [Enter] to quit');
       readln;
    finally
