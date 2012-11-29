@@ -517,8 +517,8 @@ function UnicodeSameText(const s1, s2 : String) : Boolean;
 function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
 function StrBeginsWith(const aStr, aBegin : String) : Boolean;
 
-function StrAfter(const aStr : String; aChar : Char) : String; overload;
-function StrBefore(const aStr : String; aChar : Char) : String; overload;
+function StrAfter(const aStr : String; aChar : Char) : String;
+function StrBefore(const aStr : String; aChar : Char) : String;
 
 function StrCountChar(const aStr : String; c : Char) : Integer;
 
