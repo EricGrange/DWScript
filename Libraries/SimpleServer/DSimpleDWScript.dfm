@@ -4,10 +4,11 @@ object SynDWScript: TSynDWScript
   OnDestroy = DataModuleDestroy
   Left = 745
   Top = 94
-  Height = 244
+  Height = 249
   Width = 341
   object DelphiWebScript: TDelphiWebScript
     Config.Filter = dwsHtmlFilter
+    Config.CompilerOptions = [coOptimize, coAssertions, coHintsDisabled, coWarningsDisabled]
     Config.StackChunkSize = 256
     Left = 72
     Top = 32

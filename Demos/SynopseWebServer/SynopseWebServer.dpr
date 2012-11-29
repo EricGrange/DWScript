@@ -33,18 +33,25 @@ uses
   SynCommons,
   SynZip,
   SynCrtSock,
-  DSimpleDWScript in '..\..\Libraries\SimpleServer\DSimpleDWScript.pas',
+  DSimpleDWScript,
   dwsUtils,
-  dwsWebEnvironment in '..\..\Libraries\SimpleServer\dwsWebEnvironment.pas',
-  dwsSynopseWebEnv in '..\..\Libraries\SimpleServer\dwsSynopseWebEnv.pas';
+  dwsWebEnvironment,
+  dwsSynopseWebEnv,
+  dwsFileSystem,
+  dwsDirectoryNotifier;
 
 type
 
    TTestServer = class
       protected
-         FPath: TFileName;
-         FServer: THttpApiServer;
+         FPath : TFileName;
+         FServer : THttpApiServer;
+         FFileSystem : TdwsRestrictedFileSystem;
          FDWS : TSynDWScript;
+         FNotifier : TdwsDirectoryNotifier;
+
+         procedure DirectoryChanged(sender : TdwsDirectoryNotifier);
+
       public
          constructor Create(const basePath : TFileName);
          destructor Destroy; override;
@@ -60,20 +67,30 @@ type
 
 constructor TTestServer.Create(const basePath : TFileName);
 begin
-   FDWS:=TSynDWScript.Create(nil);
-
-   FServer := THttpApiServer.Create(false);
-   FServer.AddUrl('', '888', false,'+');
-//  FServer.RegisterCompress(CompressDeflate); // our server will deflate html :)
-   FServer.OnRequest := Process;
    FPath:=IncludeTrailingPathDelimiter(ExpandFileName(basePath));
+
+   FFileSystem:=TdwsRestrictedFileSystem.Create(nil);
+   FFileSystem.Paths.Add(FPath);
+
+   FDWS:=TSynDWScript.Create(nil);
+   FDWS.FileSystem:=FFileSystem;
+
+   FServer:=THttpApiServer.Create(false);
+   FServer.AddUrl('', '888', false,'+');
+   // FServer.RegisterCompress(CompressDeflate); // our server will deflate html :)
+   FServer.OnRequest:=Process;
+
+   FNotifier:=TdwsDirectoryNotifier.Create(FPath, dnoDirectoryAndSubTree);
+   FNotifier.OnDirectoryChanged:=DirectoryChanged;
 end;
 
 destructor TTestServer.Destroy;
 begin
-  FServer.Free;
-  FDWS.Free;
-  inherited;
+   FNotifier.Free;
+   FServer.Free;
+   FDWS.Free;
+   FFileSystem.Free;
+   inherited;
 end;
 
 {$WARN SYMBOL_PLATFORM OFF}
@@ -203,6 +220,13 @@ begin
    finally
       W.Free;
    end;
+end;
+
+// DirectoryChanged
+//
+procedure TTestServer.DirectoryChanged(sender : TdwsDirectoryNotifier);
+begin
+   FDWS.FlushDWSCache;
 end;
 
 var

@@ -1,11 +1,27 @@
+{**********************************************************************}
+{                                                                      }
+{    "The contents of this file are subject to the Mozilla Public      }
+{    License Version 1.1 (the "License"); you may not use this         }
+{    file except in compliance with the License. You may obtain        }
+{    a copy of the License at http://www.mozilla.org/MPL/              }
+{                                                                      }
+{    Software distributed under the License is distributed on an       }
+{    "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express       }
+{    or implied. See the License for the specific language             }
+{    governing rights and limitations under the License.               }
+{                                                                      }
+{    Copyright Creative IT.                                            }
+{    Current maintainer: Eric Grange                                   }
+{                                                                      }
+{**********************************************************************}
 unit DSimpleDWScript;
 
 interface
 
 uses
-  SysUtils, Classes, dwsFileSystem, dwsGlobalVarsFunctions, dwsCompiler,
-  dwsHtmlFilter, dwsComp, SyncObjs, dwsExprs, dwsRTTIConnector, dwsUtils,
-  dwsWebEnvironment, Rtti;
+   SysUtils, Classes, Rtti, dwsFileSystem, dwsGlobalVarsFunctions,
+   dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsRTTIConnector, dwsUtils,
+   dwsWebEnvironment;
 
 type
 
@@ -25,7 +41,7 @@ type
       DelphiWebScript: TDelphiWebScript;
       dwsHtmlFilter: TdwsHtmlFilter;
       dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions;
-    dwsRTTIConnector: TdwsRTTIConnector;
+      dwsRTTIConnector: TdwsRTTIConnector;
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 
@@ -41,6 +57,8 @@ type
 
       FCompilerLock : TFixedCriticalSection;
 
+      FFlushMatching : String;
+
    protected
       function GetFileSystem : TdwsCustomFileSystem;
       procedure SetFileSystem(const val : TdwsCustomFileSystem);
@@ -48,10 +66,13 @@ type
       procedure TryAcquireDWS(const fileName : String; var prog : IdwsProgram);
       procedure CompileDWS(const fileName : String; var prog : IdwsProgram);
 
+      procedure AddNotMatching(const cp : TCompiledProgram);
+
    public
       procedure HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse);
 
-      procedure FlushDWSCache;
+      // flush the cache of fileName that begin by matchBegin
+      procedure FlushDWSCache(const matchingBegin : String = '');
 
       property ScriptTimeoutMilliseconds : Integer read FScriptTimeoutMilliseconds write FScriptTimeoutMilliseconds;
       property FileSystem : TdwsCustomFileSystem read GetFileSystem write SetFileSystem;
@@ -133,8 +154,9 @@ begin
 
    if prog.Msgs.HasErrors then begin
 
-      response.StatusCode:=400;
+      response.StatusCode:=200;
       response.ContentData:=UTF8Encode(prog.Msgs.AsInfo);
+      response.ContentType:='text/plain; charset=utf-8';
 
    end else begin
 
@@ -164,11 +186,24 @@ end;
 
 // FlushDWSCache
 //
-procedure TSynDWScript.FlushDWSCache;
+procedure TSynDWScript.FlushDWSCache(const matchingBegin : String = '');
+var
+   oldHash : TCompiledProgramHash;
 begin
    FCompiledProgramsLock.Enter;
    try
-      FCompiledPrograms.Clear;
+      if matchingBegin='' then
+         FCompiledPrograms.Clear
+      else begin
+         FFlushMatching:=matchingBegin;
+         oldHash:=FCompiledPrograms;
+         try
+            FCompiledPrograms:=TCompiledProgramHash.Create;
+            oldHash.Enumerate(AddNotMatching);
+         finally
+            oldHash.Free;
+         end;
+      end;
    finally
       FCompiledProgramsLock.Leave;
    end;
@@ -226,6 +261,14 @@ begin
    finally
       FCompilerLock.Leave;
    end;
+end;
+
+// AddNotMatching
+//
+procedure TSynDWScript.AddNotMatching(const cp : TCompiledProgram);
+begin
+   if cp.Prog.Msgs.HasErrors or not StrBeginsWith(cp.Name, FFlushMatching) then
+      FCompiledPrograms.Add(cp);
 end;
 
 // ------------------
