@@ -3573,13 +3573,16 @@ end;
 // Finalize
 //
 class procedure TdwsGuardianThread.Finalize;
+var
+   guardian : TdwsGuardianThread;
 begin
    if vThread<>nil then begin
-      vThread.Terminate;
-      vThread.FEvent.SetEvent;
-      vThread.WaitFor;
-      vThread.Destroy;
+      guardian:=vThread;
       vThread:=nil;
+      guardian.Terminate;
+      guardian.FEvent.SetEvent;
+      guardian.WaitFor;
+      guardian.Destroy;
    end;
 end;
 
@@ -3613,6 +3616,7 @@ var
    guarded : TdwsGuardedExecution;
 begin
    thread:=vThread;
+   if thread=nil then Exit;
    thread.FExecutionsLock.Enter;
    try
       execs:=thread.FExecutions;
