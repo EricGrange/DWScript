@@ -1,4 +1,4 @@
-unit FMain;
+ï»¿unit FMain;
 
 interface
 
@@ -15,7 +15,7 @@ type
     DelphiWebScript: TDelphiWebScript;
     procedure FormCreate(Sender: TObject);
   private
-    { Déclarations privées }
+    { DÃ©clarations privÃ©es }
     FBitmap : TBitmap;
     FScanLines : array of Pointer;
     procedure PrepareBitmap;
@@ -24,7 +24,7 @@ type
     procedure PaintBitmapDelphi;
     procedure PaintBitmapDWSscript;
   public
-    { Déclarations publiques }
+    { DÃ©clarations publiques }
   end;
 
 var
@@ -92,8 +92,9 @@ begin
    FBitmap.Height:=500;
 
    SetLength(FScanLines, FBitmap.Height);
-   for i:=0 to FBitmap.Height-1 do
-      FScanLines[i]:=FBitmap.ScanLine[i];
+
+//   for i:=0 to FBitmap.Height-1 do
+//      FScanLines[i]:=FBitmap.ScanLine[i];
 end;
 
 // SetPixel
@@ -105,7 +106,8 @@ const
       $101099, $3030AA, $4040BB, $5050CC, $6060DD, $7070EE, $8080FF, $000000
       );
 begin
-   PIntegerArray(FScanLines[y])[x]:=cColors[color];
+//   PIntegerArray(FScanLines[y])[x]:=cColors[color];
+   FBitmap.Canvas.Pixels[x, y]:=cColors[color];
 end;
 
 // PaintBitmapDelphi

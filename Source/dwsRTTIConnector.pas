@@ -1088,7 +1088,7 @@ var
    argVarType : TVarType;
 begin
    // current implementation limitation
-   if Length(args)<>1 then
+   if Length(args)<1 then
       raise EdwsRTTIException.CreateFmt(CPE_BadNumberOfParameters, [1, Length(args)]);
 
    SetLength(Result, 1);

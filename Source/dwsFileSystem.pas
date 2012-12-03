@@ -286,7 +286,7 @@ begin
       Result:=ExpandFileName(path+fileName);
       if UnicodeSameText(path, Copy(Result, 1, Length(path))) then Exit;
    end;
-   raise EdwsFSInvalidFileName.Create(fileName);
+   Result:='';
 end;
 
 // ------------------

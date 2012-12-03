@@ -406,39 +406,44 @@ var
    restricted : TdwsRestrictedFileSystem;
 begin
    restricted:=TdwsRestrictedFileSystem.Create(nil);
-   FCompiler.OnInclude:=nil;
-   FCompiler.Config.CompileFileSystem:=restricted;
-
-   tempDir:=GetTemporaryFilesPath;
-   tempFile:=tempDir+'test.dummy';
-
-   sl:=TStringList.Create;
    try
-      sl.Add('Print(''world'');');
-      sl.SaveToFile(tempFile);
+      FCompiler.OnInclude:=nil;
+      FCompiler.Config.CompileFileSystem:=restricted;
+
+      tempDir:=GetTemporaryFilesPath;
+      tempFile:=tempDir+'test.dummy';
+
+      sl:=TStringList.Create;
+      try
+         sl.Add('Print(''world'');');
+         sl.SaveToFile(tempFile);
+      finally
+         sl.Free;
+      end;
+
+      restricted.Paths.Text:=tempDir+'\nothing';
+      prog:=FCompiler.Compile('{$include ''test.dummy''}');
+      CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+                  prog.Msgs.AsInfo, 'include via file missing paths');
+
+      restricted.Paths.Clear;
+
+      prog:=FCompiler.Compile('{$include ''test.dummy''}');
+      CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+                  prog.Msgs.AsInfo, 'include via file restricted - no paths');
+
+      restricted.Paths.Text:=tempDir;
+
+      FCompiler.Config.ScriptPaths.Add('.');
+      prog:=FCompiler.Compile('{$include ''test.dummy''}');
+      CheckEquals('', prog.Msgs.AsInfo, 'include via file restricted - dot path');
+      exec:=prog.Execute;
+      CheckEquals('world', exec.Result.ToString, 'exec include via file');
+
+      DeleteFile(tempFile);
    finally
-      sl.Free;
+      restricted.Free;
    end;
-
-   restricted.Paths.Text:=tempDir+'\nothing';
-   prog:=FCompiler.Compile('{$include ''test.dummy''}');
-   CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
-               prog.Msgs.AsInfo, 'include via file no paths');
-
-   restricted.Paths.Text:=tempDir;
-
-   prog:=FCompiler.Compile('{$include ''test.dummy''}');
-   CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
-               prog.Msgs.AsInfo, 'include via file restricted - no paths');
-
-   FCompiler.Config.ScriptPaths.Add('.');
-   prog:=FCompiler.Compile('{$include ''test.dummy''}');
-   CheckEquals('', prog.Msgs.AsInfo, 'include via file restricted - dot path');
-   exec:=prog.Execute;
-   CheckEquals('world', exec.Result.ToString, 'exec include via file');
-
-   DeleteFile(tempFile);
-   restricted.Free;
 
    CheckTrue(FCompiler.Config.CompileFileSystem=nil, 'Notification release');
 end;

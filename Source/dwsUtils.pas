@@ -517,8 +517,8 @@ function UnicodeSameText(const s1, s2 : String) : Boolean;
 function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
 function StrBeginsWith(const aStr, aBegin : String) : Boolean;
 
-function StrAfter(const aStr : String; aChar : Char) : String;
-function StrBefore(const aStr : String; aChar : Char) : String;
+function StrAfterChar(const aStr : String; aChar : Char) : String;
+function StrBeforeChar(const aStr : String; aChar : Char) : String;
 
 function StrCountChar(const aStr : String; c : Char) : Integer;
 
@@ -797,9 +797,9 @@ begin
    else Result:=CompareMem(PChar(aStr), PChar(aBegin), n2);
 end;
 
-// StrAfter
+// StrAfterChar
 //
-function StrAfter(const aStr : String; aChar : Char) : String;
+function StrAfterChar(const aStr : String; aChar : Char) : String;
 var
    p : Integer;
 begin
@@ -809,9 +809,9 @@ begin
    else Result:='';
 end;
 
-// StrBefore
+// StrBeforeChar
 //
-function StrBefore(const aStr : String; aChar : Char) : String; overload;
+function StrBeforeChar(const aStr : String; aChar : Char) : String; overload;
 var
    p : Integer;
 begin
@@ -900,14 +900,16 @@ end;
 function TFastCompareTextList.IndexOfName(const name : String): Integer;
 var
    n, nc : Integer;
+   nvs : Char;
    list : TStringListList;
 begin
    if not Sorted then begin
+      nvs:=NameValueSeparator;
       n:=Length(name);
       list:=TStringListCracker(Self).FList;
       for Result:=0 to Count-1 do begin
          nc:=Length(list^[Result].FString);
-         if     (nc>n) and (list^[Result].FString[n+1]=NameValueSeparator)
+         if     (nc>n) and (list^[Result].FString[n+1]=nvs)
             and (UnicodeCompareLen(PChar(Pointer(name)),
                                    PChar(Pointer(list^[Result].FString)), n)=0) then Exit;
       end;

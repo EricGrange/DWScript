@@ -603,7 +603,7 @@ begin
     env := TRTTIEnvironment.Create;
     env.DefaultEnvironment := obj;
     FCompiler.Extensions.Add(env);
-    RegisterRTTIIndexedProperty(TStrings, 'Values', False,
+    RegisterRTTIIndexedProperty(TStrings, 'Values', False, varUString,
       TStrings_GetValues, TStrings_SetValues);
 
     try
