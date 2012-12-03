@@ -1367,6 +1367,7 @@ begin
 
       // Start compilation
       FProg.Expr:=ReadScript(sourceFile, stMain);
+      ReadScriptImplementations;
 
       if FProg.Expr=nil then
          FProg.Expr:=TNullExpr.Create(FProg, cNullPos);
@@ -1643,7 +1644,8 @@ begin
       FUnitSection:=secMixed;
 
       // Start compilation
-      FProg.Expr := ReadScript(sourceFile, stRecompile);
+      FProg.Expr:=ReadScript(sourceFile, stRecompile);
+      ReadScriptImplementations;
 
       // Initialize symbol table
       FProg.Table.Initialize(FMsgs);
@@ -1853,8 +1855,8 @@ begin
       end;
       FTok:=nil;
 
-      if scriptType=stMain then
-         ReadScriptImplementations;
+//      if scriptType=stMain then
+//         ReadScriptImplementations;
 
       if (Result<>nil) and Optimize then
          Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
@@ -10454,7 +10456,8 @@ begin
    end;
 
    RecordSymbolUse(CurrentUnitSymbol, namePos, [suDeclaration]);
-   if not SameText(name, namePos.SourceFile.Name) then
+   if not (   UnicodeSameText(name, namePos.SourceFile.Name)
+           or UnicodeSameText(MSG_MainModule, namePos.SourceFile.Name)) then
       FMsgs.AddCompilerWarning(namePos, CPE_UnitNameDoesntMatch);
 
    // usually deprecated statement follows after the semi

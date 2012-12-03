@@ -1,4 +1,3 @@
-Warning: Unit name does not match file name [line: 1, column: 6]
 Hint: Unit "Default" redeclared [line: 5, column: 15]
 Hint: Unit "Default" already declared in interface section [line: 9, column: 6]
 Hint: Unit "Default" already declared in interface section [line: 9, column: 15]

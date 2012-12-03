@@ -1,3 +1,0 @@
-Errors >>>>
-Warning: Unit name does not match file name [line: 1, column: 6]
-Result >>>>

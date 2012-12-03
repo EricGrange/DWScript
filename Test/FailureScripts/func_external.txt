@@ -1,4 +1,3 @@
-Warning: Unit name does not match file name [line: 1, column: 6]
 Warning: "Dummy" has been deprecated: doh [line: 15, column: 4]
 Syntax Error: Name "Deprec" already exists [line: 18, column: 11]
 Warning: "Dummy" has been deprecated: doh [line: 21, column: 4]
