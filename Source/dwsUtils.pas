@@ -873,11 +873,11 @@ begin
    hi:=Count-1;
    while lo<=hi do begin
       mid:=(lo+hi) shr 1;
-      nc:=Length(list^[mid].FString);
+      nc:=Length(list[mid].FString);
       if nc>=n then begin
-         cmp:=UnicodeCompareLen(PChar(Pointer(list^[mid].FString)), PChar(Pointer(initial)), n);
+         cmp:=UnicodeCompareLen(PChar(Pointer(list[mid].FString)), PChar(Pointer(initial)), n);
       end else begin
-         cmp:=UnicodeCompareLen(PChar(Pointer(list^[mid].FString)), PChar(Pointer(initial)), nc);
+         cmp:=UnicodeCompareLen(PChar(Pointer(list[mid].FString)), PChar(Pointer(initial)), nc);
          if cmp=0 then
             cmp:=-1;
       end;
@@ -908,10 +908,10 @@ begin
       n:=Length(name);
       list:=TStringListCracker(Self).FList;
       for Result:=0 to Count-1 do begin
-         nc:=Length(list^[Result].FString);
-         if     (nc>n) and (list^[Result].FString[n+1]=nvs)
+         nc:=Length(list[Result].FString);
+         if     (nc>n) and (list[Result].FString[n+1]=nvs)
             and (UnicodeCompareLen(PChar(Pointer(name)),
-                                   PChar(Pointer(list^[Result].FString)), n)=0) then Exit;
+                                   PChar(Pointer(list[Result].FString)), n)=0) then Exit;
       end;
       Result:=-1;
    end else begin
