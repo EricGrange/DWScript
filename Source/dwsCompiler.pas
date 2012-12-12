@@ -615,7 +615,7 @@ type
 
          function ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory) : TNoResultExpr;
          function ReadWhile : TNoResultExpr;
-         function ResolveUnitReferences : TIdwsUnitList;
+         function ResolveUnitReferences(scriptType : TScriptSourceType) : TIdwsUnitList;
 
       protected
          procedure EnterLoop(loopExpr : TNoResultExpr);
@@ -659,7 +659,7 @@ type
          procedure CleanupAfterCompile;
 
          procedure CheckFilterDependencies(confUnits : TIdwsUnitList);
-         procedure HandleUnitDependencies;
+         procedure HandleUnitDependencies(scriptType : TScriptSourceType);
          function  HandleExplicitDependency(const unitName : String) : TUnitSymbol;
 
          procedure SetupInitializationFinalization;
@@ -1054,7 +1054,7 @@ begin
    inherited;
 end;
 
-function TdwsCompiler.ResolveUnitReferences : TIdwsUnitList;
+function TdwsCompiler.ResolveUnitReferences(scriptType : TScriptSourceType) : TIdwsUnitList;
 var
    x, y, z : Integer;
    expectedUnitCount : Integer;
@@ -1071,7 +1071,9 @@ begin
    // Calculate number of outgoing references
    for x := 0 to FUnits.Count-1 do begin
       curUnit:=FUnits[x];
-      if (ufImplicitUse in curUnit.GetUnitFlags) or not (coExplicitUnitUses in FOptions) then begin
+      if    (ufImplicitUse in curUnit.GetUnitFlags)
+         or (  (scriptType<>stUnit)
+             and not (coExplicitUnitUses in FOptions)) then begin
          deps := curUnit.GetDependencies;
          for y := 0 to deps.Count - 1 do begin
             if FUnits.IndexOfName(deps[y]) < 0 then
@@ -1428,14 +1430,14 @@ end;
 
 // HandleUnitDependencies
 //
-procedure TdwsCompiler.HandleUnitDependencies;
+procedure TdwsCompiler.HandleUnitDependencies(scriptType : TScriptSourceType);
 var
    i : Integer;
    unitsResolved : TIdwsUnitList;
    unitTable : TUnitSymbolTable;
    unitSymbol : TUnitMainSymbol;
 begin
-   unitsResolved:=ResolveUnitReferences;
+   unitsResolved:=ResolveUnitReferences(scriptType);
    try
       // Get the symboltables of the units
       for i:=0 to unitsResolved.Count-1 do begin
@@ -1786,8 +1788,8 @@ begin
             if contextFix<>nil then
                contextFix.Token:=ttUNIT;
          end;
-         HandleUnitDependencies;
          scriptType:=stUnit;
+         HandleUnitDependencies(scriptType);
       end;
 
       if Assigned(FOnReadScript) then
@@ -1795,7 +1797,7 @@ begin
 
       case scriptType of
          stMain : begin
-            HandleUnitDependencies;
+            HandleUnitDependencies(scriptType);
          end;
          stUnit : begin
             FUnitSection:=secHeader;

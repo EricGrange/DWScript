@@ -41,6 +41,7 @@ type
    TdwsMainProgram = class;
    IdwsProgram = interface;
    TdwsProgramExecution = class;
+   TdwsProgramExecutionClass = class of TdwsProgramExecution;
    IdwsProgramExecution = interface;
    TSymbolPositionList = class;
    TFuncExprBase = class;
@@ -461,6 +462,7 @@ type
       function GetSourceList : TScriptSourceList;
       function GetUnitMains : TUnitMainSymbols;
       function GetProgramObject : TdwsMainProgram;
+      procedure SetExecutionsClass(aClass : TdwsProgramExecutionClass);
 
       function CreateNewExecution : IdwsProgramExecution;
       function BeginNewExecution : IdwsProgramExecution;
@@ -484,6 +486,7 @@ type
       property LineCount : Integer read GetLineCount;
       property TimeStamp : TDateTime read GetTimeStamp;
       property CompileDuration : TDateTime read GetCompileDuration;
+      property ExecutionsClass : TdwsProgramExecutionClass write SetExecutionsClass;
    end;
 
    // holds execution context for a script
@@ -531,17 +534,17 @@ type
          procedure SetCurrentProg(const val : TdwsProgram); inline;
 
       public
-         constructor Create(aProgram : TdwsMainProgram; const stackParams : TStackParameters);
+         constructor Create(aProgram : TdwsMainProgram; const stackParams : TStackParameters); virtual;
          destructor Destroy; override;
 
          procedure Execute(aTimeoutMilliSeconds : Integer = 0); overload;
          procedure ExecuteParam(const Params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0); overload;
          procedure ExecuteParam(const Params : OleVariant; aTimeoutMilliSeconds : Integer = 0); overload;
 
-         procedure BeginProgram;
+         procedure BeginProgram; virtual;
          procedure RunProgram(aTimeoutMilliSeconds : Integer);
          procedure Stop;
-         procedure EndProgram;
+         procedure EndProgram; virtual;
 
          function CallStackDepth : Integer; override;
          function GetCallStack : TdwsExprLocationArray; override;
@@ -679,6 +682,8 @@ type
          FDefaultEnvironment : IdwsEnvironment;
          FDefaultLocalizer : IdwsLocalizer;
 
+         FExecutionsClass : TdwsProgramExecutionClass;
+
       protected
          function GetConditionalDefines : IAutoStrings;
          function GetDefaultUserObject : TObject;
@@ -699,6 +704,7 @@ type
          function GetSymbolDictionary : TdwsSymbolDictionary;
          function GetSourceContextMap : TdwsSourceContextMap;
          function GetProgramObject : TdwsMainProgram;
+         procedure SetExecutionsClass(aClass : TdwsProgramExecutionClass);
 
       public
          constructor Create(const systemTable : ISystemSymbolTable;
@@ -3017,7 +3023,9 @@ var
 begin
    if CompileMsgs.HasErrors then
       raise EScriptException.Create(RTE_CantRunScript);
-   exec:=TdwsProgramExecution.Create(Self, FStackParameters);
+   if FExecutionsClass=nil then
+      exec:=TdwsProgramExecution.Create(Self, FStackParameters)
+   else exec:=FExecutionsClass.Create(Self, FStackParameters);
    exec.UserObject:=DefaultUserObject;
    exec.Environment:=DefaultEnvironment;
    exec.Localizer:=DefaultLocalizer;
@@ -3121,6 +3129,13 @@ end;
 function TdwsMainProgram.GetProgramObject : TdwsMainProgram;
 begin
    Result:=Self;
+end;
+
+// SetExecutionsClass
+//
+procedure TdwsMainProgram.SetExecutionsClass(aClass : TdwsProgramExecutionClass);
+begin
+   FExecutionsClass:=aClass;
 end;
 
 // GetSourceFile
