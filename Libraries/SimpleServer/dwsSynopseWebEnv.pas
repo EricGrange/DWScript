@@ -83,7 +83,7 @@ begin
    n:=1;
    for i:=1 to Length(val) do begin
       if val[i]=#13 then begin
-         buf:=UTF8ToString(UrlDecode(Copy(val, n, i-n)));
+         buf:=UTF8ToString(Copy(val, n, i-n));
          n:=i+2;
          p:=Pos(': ', buf);
          if p>0 then

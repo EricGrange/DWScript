@@ -175,14 +175,14 @@ end;
 //
 function TWebRequest.GetPathInfo : String;
 begin
-   Result:=StrBefore(URL, '?');
+   Result:=StrBeforeChar(URL, '?');
 end;
 
 // GetQueryString
 //
 function TWebRequest.GetQueryString : String;
 begin
-   Result:=StrAfter(URL, '?');
+   Result:=StrAfterChar(URL, '?');
 end;
 
 // GetCookies

@@ -62,7 +62,6 @@ type
          function DirectoryListing(FN : RawByteString; const fileName : TFileName) : RawByteString;
   end;
 
-
 { TTestServer }
 
 constructor TTestServer.Create(const basePath : TFileName);
