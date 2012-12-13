@@ -174,7 +174,7 @@ type
 
    TdwsJSONPair = record
       Name : String;
-      Hash : Integer;
+      Hash : Cardinal;
       Value : TdwsJSONValue;
    end;
    TdwsJSONPairArray = array [0..MaxInt shr 5] of TdwsJSONPair;
@@ -903,7 +903,8 @@ end;
 //
 procedure TdwsJSONObject.MergeDuplicates;
 var
-   i, j, h : Integer;
+   i, j : Integer;
+   h : Cardinal;
 begin
    for i:=FCount-1 downto 1 do begin
       h:=FItems[i].Hash;
@@ -1036,7 +1037,8 @@ end;
 //
 function TdwsJSONObject.IndexOfName(const name : String) : Integer;
 var
-   i, h : Integer;
+   i : Integer;
+   h : Cardinal;
 begin
    h:=SimpleStringHash(name);
    for i:=0 to FCount-1 do
