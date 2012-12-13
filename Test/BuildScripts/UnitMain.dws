@@ -1,0 +1,16 @@
+unit UnitMain;
+
+interface
+
+uses HelloWorld2;
+
+procedure Test;
+
+implementation
+
+procedure Test;
+begin
+   PrintHelloWorld2a;
+end;
+
+end.

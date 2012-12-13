@@ -135,10 +135,14 @@ type
          function DoGetElement(index : Integer) : TdwsJSONValue; virtual;
          function GetItem(const name : String) : TdwsJSONValue; inline;
          function DoGetItem(const name : String) : TdwsJSONValue; virtual;
+         procedure SetItem(const name : String; const value : TdwsJSONValue); inline;
+         procedure DoSetItem(const name : String; const value : TdwsJSONValue); virtual; abstract;
          function DoElementCount : Integer; virtual;
          function GetValue(const index : Variant) : TdwsJSONValue;
 
          procedure DoParse(initialChar : WideChar; parserState : TdwsJSONParserState); virtual; abstract;
+
+         function DoClone : TdwsJSONValue; virtual; abstract;
 
          class procedure RaiseJSONException(const msg : String); static;
          class procedure RaiseJSONParseError(const msg : String; c : WideChar = #0); static;
@@ -151,6 +155,8 @@ type
          class function ParseString(const json : String;
                                     duplicatesOption : TdwsJSONDuplicatesOptions = jdoOverwrite) : TdwsJSONValue; static;
 
+         function Clone : TdwsJSONValue;
+
          procedure WriteTo(writer : TdwsJSONWriter); virtual; abstract;
          function ToString : String; reintroduce;
          function ToBeautifiedString(initialTabs, indentTabs : Integer) : String;
@@ -158,7 +164,7 @@ type
 
          property Owner : TdwsJSONValue read FOwner;
          property ValueType : TdwsJSONValueType read GetValueType;
-         property Items[const name : String] : TdwsJSONValue read GetItem;
+         property Items[const name : String] : TdwsJSONValue read GetItem write SetItem;
          property Names[index : Integer] : String read GetName;
          property Elements[index : Integer] : TdwsJSONValue read GetElement;
          function ElementCount : Integer;
@@ -190,6 +196,7 @@ type
 
       protected
          procedure Grow;
+         procedure SetCapacity(newCapacity : Integer);
          function IndexOfName(const name : String) : Integer;
          function IndexOfValue(const aValue : TdwsJSONValue) : Integer;
          procedure DetachChild(child : TdwsJSONValue); override;
@@ -198,13 +205,18 @@ type
          function DoGetName(index : Integer) : String; override;
          function DoGetElement(index : Integer) : TdwsJSONValue; override;
          function DoGetItem(const name : String) : TdwsJSONValue; override;
+         procedure DoSetItem(const name : String; const value : TdwsJSONValue); override;
          function DoElementCount : Integer; override;
 
          procedure DoParse(initialChar : WideChar; parserState : TdwsJSONParserState); override;
 
+         function DoClone : TdwsJSONValue; override;
+
       public
          constructor Create;
          destructor Destroy; override;
+
+         function Clone : TdwsJSONObject;
 
          procedure Clear;
 
@@ -237,18 +249,25 @@ type
 
       protected
          procedure Grow;
+         procedure SetCapacity(newCapacity : Integer);
          procedure DetachChild(child : TdwsJSONValue); override;
+         procedure DeleteIndex(idx : Integer);
 
          function DoGetName(index : Integer) : String; override;
          function DoGetElement(index : Integer) : TdwsJSONValue; override;
          function DoGetItem(const name : String) : TdwsJSONValue; override;
+         procedure DoSetItem(const name : String; const value : TdwsJSONValue); override;
          function DoElementCount : Integer; override;
 
          procedure DoParse(initialChar : WideChar; parserState : TdwsJSONParserState); override;
 
+         function DoClone : TdwsJSONValue; override;
+
       public
          constructor Create;
          destructor Destroy; override;
+
+         function Clone : TdwsJSONArray;
 
          procedure Clear;
 
@@ -267,6 +286,8 @@ type
          FValue : Variant;
 
       protected
+         procedure DoSetItem(const name : String; const value : TdwsJSONValue); override;
+
          function GetAsString : String; inline;
          procedure SetAsString(const val : String); inline;
          function GetIsNull : Boolean; inline;
@@ -277,8 +298,14 @@ type
          procedure SetAsNumber(const val : Double); inline;
 
          procedure DoParse(initialChar : WideChar; parserState : TdwsJSONParserState); override;
+
+         function DoClone : TdwsJSONValue; override;
+
       public
          class function ParseString(const json : String) : TdwsJSONImmediate; static;
+         class function FromVariant(const v : Variant) : TdwsJSONImmediate; static;
+
+         function Clone : TdwsJSONImmediate;
 
          procedure WriteTo(writer : TdwsJSONWriter); override;
 
@@ -627,6 +654,15 @@ begin
    end;
 end;
 
+// Clone
+//
+function TdwsJSONValue.Clone : TdwsJSONValue;
+begin
+   if Self<>nil then
+      Result:=DoClone
+   else Result:=nil;
+end;
+
 // ToString
 //
 function TdwsJSONValue.ToString : String;
@@ -663,10 +699,8 @@ end;
 //
 procedure TdwsJSONValue.Detach;
 begin
-   if FOwner<>nil then begin
+   if FOwner<>nil then
       FOwner.DetachChild(Self);
-      FOwner:=nil;
-   end;
 end;
 
 // DoElementCount
@@ -776,6 +810,15 @@ begin
    Result:=nil;
 end;
 
+// SetItem
+//
+procedure TdwsJSONValue.SetItem(const name : String; const value : TdwsJSONValue);
+begin
+   if Assigned(Self) then
+      DoSetItem(name, value)
+   else raise EdwsJSONException.CreateFmt('Can''t set member "%s" of Undefined', [name]);
+end;
+
 // RaiseJSONException
 //
 class procedure TdwsJSONValue.RaiseJSONException(const msg : String);
@@ -813,6 +856,15 @@ begin
    inherited;
 end;
 
+// Clone
+//
+function TdwsJSONObject.Clone : TdwsJSONObject;
+begin
+   if Self<>nil then
+      Result:=(DoClone as TdwsJSONObject)
+   else Result:=nil;
+end;
+
 // WriteTo
 //
 procedure TdwsJSONObject.WriteTo(writer : TdwsJSONWriter);
@@ -844,7 +896,7 @@ begin
    for i:=0 to FCount-1 do begin
       v:=FItems^[i].Value;
       v.FOwner:=nil;
-      v.Destroy;
+      v.DecRefCount;
       FItems^[i].Name:='';
    end;
    FreeMem(FItems);
@@ -857,7 +909,14 @@ end;
 //
 procedure TdwsJSONObject.Grow;
 begin
-   FCapacity:=FCapacity+8+(FCapacity shr 2);
+   SetCapacity(FCapacity+8+(FCapacity shr 2));
+end;
+
+// SetCapacity
+//
+procedure TdwsJSONObject.SetCapacity(newCapacity : Integer);
+begin
+   FCapacity:=newCapacity;
    ReallocMem(FItems, FCapacity*SizeOf(TdwsJSONPair));
    FillChar(FItems[FCount], (FCapacity-FCount)*SizeOf(TdwsJSONPair), 0);
 end;
@@ -959,7 +1018,7 @@ var
 begin
    child:=FItems[i].Value;
    child.FOwner:=nil;
-   child.Free;
+   child.DecRefCount;
    Finalize(FItems[i]);
    n:=FCount-1;
    if i<n then
@@ -997,6 +1056,35 @@ begin
    else Result:=nil;
 end;
 
+// DoSetItem
+//
+procedure TdwsJSONObject.DoSetItem(const name : String; const value : TdwsJSONValue);
+var
+   i : Integer;
+   member : TdwsJSONValue;
+begin
+   i:=IndexOfName(name);
+   if i>=0 then begin
+
+      if value<>nil then begin
+
+         member:=FItems^[i].Value;
+         member.FOwner:=nil;
+         member.DecRefCount;
+
+         FItems^[i].Value:=value;
+         value.Detach;
+         value.FOwner:=Self;
+
+      end else DetachIndex(i);
+
+   end else if value<>nil then begin
+
+      Add(name, value);
+
+   end;
+end;
+
 // DoParse
 //
 procedure TdwsJSONObject.DoParse(initialChar : WideChar; parserState : TdwsJSONParserState);
@@ -1031,6 +1119,27 @@ begin
    if parserState.DuplicatesOption=jdoOverwrite then
       MergeDuplicates;
    parserState.TrailCharacter:=' ';
+end;
+
+// DoClone
+//
+function TdwsJSONObject.DoClone : TdwsJSONValue;
+var
+   obj : TdwsJSONObject;
+   member : TdwsJSONValue;
+   i : Integer;
+begin
+   obj:=TdwsJSONObject.Create;
+   obj.SetCapacity(FCount);
+   obj.FCount:=FCount;
+   for i:=0 to FCount-1 do begin
+      obj.FItems[i].Name:=FItems[i].Name;
+      obj.FItems[i].Hash:=FItems[i].Hash;
+      member:=FItems[i].Value.Clone;
+      member.FOwner:=Self;
+      obj.FItems[i].Value:=member;
+   end;
+   Result:=obj;
 end;
 
 // IndexOfName
@@ -1078,6 +1187,15 @@ begin
    inherited;
 end;
 
+// Clone
+//
+function TdwsJSONArray.Clone : TdwsJSONArray;
+begin
+   if Self<>nil then
+      Result:=(DoClone as TdwsJSONArray)
+   else Result:=nil;
+end;
+
 // WriteTo
 //
 procedure TdwsJSONArray.WriteTo(writer : TdwsJSONWriter);
@@ -1094,7 +1212,14 @@ end;
 //
 procedure TdwsJSONArray.Grow;
 begin
-   FCapacity:=FCapacity+8+(FCapacity shr 2);
+   SetCapacity(FCapacity+8+(FCapacity shr 2));
+end;
+
+// SetCapacity
+//
+procedure TdwsJSONArray.SetCapacity(newCapacity : Integer);
+begin
+   FCapacity:=newCapacity;
    ReallocMem(FElements, FCapacity*SizeOf(Pointer));
 end;
 
@@ -1107,11 +1232,20 @@ begin
    Assert(child.Owner=Self);
    for i:=0 to FCount-1 do begin
       if FElements^[i]=child then begin
-         child.Detach;
-         Move(FElements[i+1], FElements[i], (FCount-1-i)*SizeOf(Pointer));
-         Dec(FCount);
+         DeleteIndex(i);
+         Break;
       end;
    end;
+end;
+
+// DeleteIndex
+//
+procedure TdwsJSONArray.DeleteIndex(idx : Integer);
+begin
+   FElements[idx].FOwner:=nil;
+   FElements[idx].DecRefCount;
+   Move(FElements[idx+1], FElements[idx], (FCount-1-idx)*SizeOf(Pointer));
+   Dec(FCount);
 end;
 
 // DoElementCount
@@ -1131,7 +1265,7 @@ begin
    for i:=0 to FCount-1 do begin
       v:=FElements^[i];
       v.FOwner:=nil;
-      v.Free;
+      v.DecRefCount;
    end;
    FreeMem(FElements);
    FCount:=0;
@@ -1201,6 +1335,35 @@ begin
    Result:=DoGetElement(i);
 end;
 
+// DoSetItem
+//
+procedure TdwsJSONArray.DoSetItem(const name : String; const value : TdwsJSONValue);
+var
+   i : Integer;
+begin
+   i:=StrToIntDef(name, -1);
+   if i<0 then
+      raise EdwsJSONException.CreateFmt('Invalid array member "%s"', [name]);
+
+   if i<FCount then begin
+
+      if value <> nil then begin
+
+         FElements[i].FOwner:=nil;
+         FElements[i].DecRefCount;
+         FElements[i]:=value;
+         value.Detach;
+         value.FOwner:=Self;
+
+      end else DeleteIndex(i);
+
+   end else if value<>nil then begin
+
+      raise EdwsJSONException.Create('extending array by index not supported yet');
+
+   end;
+end;
+
 // DoParse
 //
 procedure TdwsJSONArray.DoParse(initialChar : WideChar; parserState : TdwsJSONParserState);
@@ -1217,6 +1380,25 @@ begin
    if parserState.TrailCharacter<>']' then
       RaiseJSONParseError('Invalid array termination character "%s"', parserState.TrailCharacter);
    parserState.TrailCharacter:=' ';
+end;
+
+// DoClone
+//
+function TdwsJSONArray.DoClone : TdwsJSONValue;
+var
+   arr : TdwsJSONArray;
+   elem : TdwsJSONValue;
+   i : Integer;
+begin
+   arr:=TdwsJSONArray.Create;
+   arr.SetCapacity(FCount);
+   arr.FCount:=FCount;
+   for i:=0 to FCount-1 do begin
+      elem:=FElements^[i].Clone;
+      elem.FOwner:=Self;
+      arr.FElements^[i]:=elem;
+   end;
+   Result:=arr;
 end;
 
 // ------------------
@@ -1343,6 +1525,23 @@ begin
    end;
 end;
 
+// DoClone
+//
+function TdwsJSONImmediate.DoClone : TdwsJSONValue;
+begin
+   Result:=TdwsJSONImmediate.Create;
+   TdwsJSONImmediate(Result).FValue:=FValue;
+end;
+
+// Clone
+//
+function TdwsJSONImmediate.Clone : TdwsJSONImmediate;
+begin
+   if Self<>nil then
+      Result:=(DoClone as TdwsJSONImmediate)
+   else Result:=nil;
+end;
+
 // WriteTo
 //
 procedure TdwsJSONImmediate.WriteTo(writer : TdwsJSONWriter);
@@ -1378,6 +1577,31 @@ begin
       locValue.Free;
       Result:=nil;
    end;
+end;
+
+// FromVariant
+//
+class function TdwsJSONImmediate.FromVariant(const v : Variant) : TdwsJSONImmediate;
+begin
+   Result:=TdwsJSONImmediate.Create;
+   case VarType(v) of
+      varNull, varUString, varDouble, varBoolean :
+         Result.FValue:=v;
+   else
+      if VarIsNumeric(v) then
+         Result.FValue:=Double(v)
+      else if VarIsStr(v) then
+         Result.FValue:=String(v)
+      else raise EdwsJSONException.CreateFmt('Unsupported VarType in FromVariant (%d)',
+                                             [VarType(v)]);
+   end;
+end;
+
+// DoSetItem
+//
+procedure TdwsJSONImmediate.DoSetItem(const name : String; const value : TdwsJSONValue);
+begin
+   raise EdwsJSONException.CreateFmt('Can''t set member "%s" of immediate value', [name]);
 end;
 
 // ------------------

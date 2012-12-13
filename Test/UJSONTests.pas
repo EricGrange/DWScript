@@ -48,6 +48,7 @@ type
          procedure JSONInvalidStuff;
          procedure NestedArrays;
          procedure MultipleElementsWithSameName;
+         procedure SetItemTest;
    end;
 
 // ------------------------------------------------------------------
@@ -420,6 +421,33 @@ begin
          end;
       end;
    end;
+end;
+
+// SetItemTest
+//
+procedure TdwsJSONTests.SetItemTest;
+var
+   json : TdwsJSONValue;
+begin
+   json:=TdwsJSONValue.ParseString('{"hello":1,"world":{}}');
+
+   json.Items['hello']:=TdwsJSONValue.ParseString('[1, 2]');
+
+   CheckEquals('{"hello":[1,2],"world":{}}', json.ToString, 'replace 1 with [1,2]');
+
+   json.Items['world']:=TdwsJSONImmediate.FromVariant(3);
+
+   CheckEquals('{"hello":[1,2],"world":3}', json.ToString, 'replace {} with 3');
+
+   json.Items['world']:=nil;
+
+   CheckEquals('{"hello":[1,2]}', json.ToString, 'delete world');
+
+   json.Items['hello'].Items['1']:=nil;
+
+   CheckEquals('{"hello":[1]}', json.ToString, 'delete 2');
+
+   json.Free;
 end;
 
 // ------------------------------------------------------------------
