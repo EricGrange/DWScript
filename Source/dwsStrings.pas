@@ -321,6 +321,8 @@ const
 
   CPH_CaseDoesNotMatchDeclaration = '"%s" does not match case of declaration ("%s")';
 
+  CPH_CallConventionIsNotSupportedAndIgnored = 'Call convention "%s" is not supported and ignored';
+
   // TypeCheck
   CPE_BooleanExpected = 'Boolean expected';
   CPE_IntegerExpected = 'Integer expected';

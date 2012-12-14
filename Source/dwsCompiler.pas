@@ -535,6 +535,7 @@ type
                               const addParamMeth : TAddParamSymbolMethod;
                               forwardedParams : TParamsSymbolTable;
                               expectedLambdaParams : TParamsSymbolTable);
+         procedure SkipProcCallQualifiers;
          function ReadProcDecl(funcToken : TTokenType; const hotPos : TScriptPos;
                                declOptions : TdwsReadProcDeclOptions = [];
                                expectedLambdaParams : TParamsSymbolTable = nil) : TFuncSymbol;
@@ -2641,6 +2642,7 @@ begin
                      FMsgs.AddCompilerHint(FTok.HotPos, CPH_OfObjectIsLegacy, hlPedantic)
                   else FMsgs.AddCompilerError(FTok.HotPos, CPE_OfObjectExpected);
                end;
+               SkipProcCallQualifiers;
 
             end else begin
 
@@ -2705,6 +2707,8 @@ begin
                   end;
 
                end;
+
+               SkipProcCallQualifiers;
 
                if FTok.Test(ttDEPRECATED) then
                   Result.DeprecatedMessage:=ReadDeprecatedMessage;
@@ -2977,6 +2981,8 @@ begin
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_StructureIsNotExternal, [funcResult.QualifiedName]);
          ReadExternalName(funcResult);
       end;
+
+      SkipProcCallQualifiers;
 
       if FTok.Test(ttDEPRECATED) then
          funcResult.DeprecatedMessage:=ReadDeprecatedMessage;
@@ -9268,6 +9274,20 @@ begin
                        expectedParam.Typ, cNullPos, defaultExpr);
       end;
 
+   end;
+end;
+
+// SkipProcCallQualifiers
+//
+procedure TdwsCompiler.SkipProcCallQualifiers;
+var
+   tt : TTokenType;
+begin
+   tt:=FTok.TestDeleteAny([ttSAFECALL, ttSTDCALL, ttCDECL, ttREGISTER, ttPASCAL]);
+   if tt<>ttNone then begin
+      FMsgs.AddCompilerHintFmt(FTok.HotPos, CPH_CallConventionIsNotSupportedAndIgnored,
+                               [cTokenStrings[tt]], hlStrict);
+      ReadSemiColon;
    end;
 end;
 

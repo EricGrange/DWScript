@@ -508,6 +508,7 @@ type
 procedure ChangeObjectClass(ref : TObject; newClass : TClass);
 
 procedure UnifyAssignString(const fromStr : String; var toStr : String);
+function  UnifiedString(const fromStr : String) : String; inline;
 procedure TidyStringsUnifier;
 
 function UnicodeCompareLen(p1, p2 : PChar; n : Integer) : Integer;
@@ -688,6 +689,13 @@ begin
       toStr:=TStringListCracker(sl).FList[i].FString;
       sl.FLock.Leave;
    end;
+end;
+
+// UnifiedString
+//
+function UnifiedString(const fromStr : String) : String;
+begin
+   UnifyAssignString(fromStr, Result);
 end;
 
 // TidyStringsUnifier

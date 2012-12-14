@@ -59,7 +59,7 @@ type
      ttPROGRAM,
 
      // Tokens for compatibility to Delphi
-     ttREGISTER, ttPASCAL, ttCDECL, ttSTDCALL, ttFASTCALL, ttREFERENCE);
+     ttREGISTER, ttPASCAL, ttCDECL, ttSAFECALL, ttSTDCALL, ttFASTCALL, ttREFERENCE);
 
    TTokenTypes = set of TTokenType;
 
@@ -297,7 +297,7 @@ const
      'DEFAULT', 'USES', 'UNIT', 'NAMESPACE',
      'PRIVATE', 'PROTECTED', 'PUBLIC', 'PUBLISHED',
      'PROGRAM',
-     'REGISTER', 'PASCAL', 'CDECL', 'STDCALL', 'FASTCALL', 'REFERENCE'
+     'REGISTER', 'PASCAL', 'CDECL', 'SAFECALL', 'STDCALL', 'FASTCALL', 'REFERENCE'
      );
 
 // ------------------------------------------------------------------
@@ -700,7 +700,7 @@ const
       ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
       ttRECORD, ttREAD, ttRAISE, ttREINTRODUCE, ttREFERENCE, ttREGISTER,
       ttREPEAT, ttREQUIRE, ttRESOURCESTRING,
-      ttSAR, ttSEALED, ttSHL, ttSHR, ttSTATIC, ttSTDCALL,
+      ttSAFECALL, ttSAR, ttSEALED, ttSHL, ttSHR, ttSTATIC, ttSTDCALL,
       ttTHEN, ttTO, ttTRUE, ttTRY, ttTYPE,
       ttUNIT, ttUNTIL, ttUSES,
       ttVAR, ttVIRTUAL,
