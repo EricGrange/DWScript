@@ -698,9 +698,14 @@ end;
 // Detach
 //
 procedure TdwsJSONValue.Detach;
+var
+   oldOwner : TdwsJSONValue;
 begin
-   if FOwner<>nil then
-      FOwner.DetachChild(Self);
+   oldOwner:=FOwner;
+   if oldOwner<>nil then begin
+      FOwner:=nil;
+      oldOwner.DetachChild(Self);
+   end;
 end;
 
 // DoElementCount
@@ -1004,9 +1009,9 @@ procedure TdwsJSONObject.DetachChild(child : TdwsJSONValue);
 var
    i : Integer;
 begin
-   Assert(child.Owner=Self);
    i:=IndexOfValue(child);
-   DetachIndex(i);
+   if i>=0 then
+      DetachIndex(i);
 end;
 
 // DetachIndex
@@ -1017,8 +1022,10 @@ var
    child : TdwsJSONValue;
 begin
    child:=FItems[i].Value;
-   child.FOwner:=nil;
-   child.DecRefCount;
+   if child.FOwner=Self then begin
+      child.FOwner:=nil;
+      child.DecRefCount;
+   end;
    Finalize(FItems[i]);
    n:=FCount-1;
    if i<n then
@@ -1229,7 +1236,6 @@ procedure TdwsJSONArray.DetachChild(child : TdwsJSONValue);
 var
    i : Integer;
 begin
-   Assert(child.Owner=Self);
    for i:=0 to FCount-1 do begin
       if FElements^[i]=child then begin
          DeleteIndex(i);
@@ -1241,9 +1247,14 @@ end;
 // DeleteIndex
 //
 procedure TdwsJSONArray.DeleteIndex(idx : Integer);
+var
+   child : TdwsJSONValue;
 begin
-   FElements[idx].FOwner:=nil;
-   FElements[idx].DecRefCount;
+   child:=FElements[idx];
+   if child.FOwner=Self then begin
+      child.FOwner:=nil;
+      child.DecRefCount;
+   end;
    Move(FElements[idx+1], FElements[idx], (FCount-1-idx)*SizeOf(Pointer));
    Dec(FCount);
 end;

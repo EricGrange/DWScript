@@ -49,6 +49,7 @@ type
          procedure NestedArrays;
          procedure MultipleElementsWithSameName;
          procedure SetItemTest;
+         procedure SubItemFree;
    end;
 
 // ------------------------------------------------------------------
@@ -448,6 +449,27 @@ begin
    CheckEquals('{"hello":[1]}', json.ToString, 'delete 2');
 
    json.Free;
+end;
+
+// SubItemFree
+//
+procedure TdwsJSONTests.SubItemFree;
+var
+   obj : TdwsJSONObject;
+   key : TdwsJSONValue;
+begin
+   obj:=TdwsJSONObject.ParseString('{"Key": "value"}') as TdwsJSONObject;
+   key:=obj['Key'];
+   key.Free;
+   obj.Free;
+
+   key:=TdwsJSONValue.ParseString('{"Key": "value"}');
+   key.Items['Key'].Free;
+   key.Free;
+
+   key:=TdwsJSONValue.ParseString('["Key", "value"]');
+   key.Elements[0].Free;
+   key.Free;
 end;
 
 // ------------------------------------------------------------------
