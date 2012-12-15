@@ -607,7 +607,10 @@ type
          function EnumerateHelpers(typeSym : TTypeSymbol) : THelperSymbols;
          function ReadTypeHelper(expr : TTypedExpr;
                                  const name : String; const namePos : TScriptPos;
-                                 expecting : TTypeSymbol) : TProgramExpr;
+                                 expecting : TTypeSymbol;
+                                 killNameToken : Boolean = False) : TProgramExpr;
+         function ReadSelfTypeHelper(const name : TToken; const namePos : TScriptPos;
+                                     expecting : TTypeSymbol) : TProgramExpr;
 
          procedure ReadTypeDeclBlock;
          function  ReadTypeDecl(firstInBlock : Boolean) : Boolean;
@@ -3915,6 +3918,9 @@ begin
    // Find name in symboltable
    sym:=FProg.Table.FindSymbol(nameToken.FString, cvPrivate);
    if not Assigned(sym) then begin
+      Result:=ReadSelfTypeHelper(nameToken, FTok.HotPos, expecting);
+      if Result<>nil then
+         Exit;
       if Assigned(FOnFindUnknownName) then
          sym:=FOnFindUnknownName(Self, nameToken.FString);
       if sym=nil then begin
@@ -11327,7 +11333,8 @@ end;
 //
 function TdwsCompiler.ReadTypeHelper(expr : TTypedExpr;
                                      const name : String; const namePos : TScriptPos;
-                                     expecting : TTypeSymbol) : TProgramExpr;
+                                     expecting : TTypeSymbol;
+                                     killNameToken : Boolean = False) : TProgramExpr;
 var
    i : Integer;
    helper : THelperSymbol;
@@ -11348,6 +11355,9 @@ begin
          helper:=helpers[i];
          sym:=helper.Members.FindSymbol(name, cvPublic);
          if sym=nil then continue;
+
+         if killNameToken then
+            FTok.KillToken;
 
          RecordSymbolUseReference(sym, namePos, False);
 
@@ -11414,6 +11424,32 @@ begin
    finally
       helpers.Free;
    end;
+end;
+
+// ReadSelfTypeHelper
+//
+function TdwsCompiler.ReadSelfTypeHelper(const name : TToken; const namePos : TScriptPos;
+                                         expecting : TTypeSymbol) : TProgramExpr;
+var
+   progMeth : TMethodSymbol;
+   structSym : TCompositeTypeSymbol;
+   selfExpr : TTypedExpr;
+begin
+   progMeth:=FProg.ContextMethodSymbol;
+
+   if progMeth<>nil then begin
+      if progMeth.IsStatic then begin
+         structSym:=progMeth.StructSymbol;
+         selfExpr:=TConstExpr.Create(FProg, (structSym as TStructuredTypeSymbol).MetaSymbol, Int64(structSym));
+      end else if progMeth.SelfSym is TConstParamSymbol then
+         selfExpr:=GetConstParamExpr(TConstParamSymbol(progMeth.SelfSym))
+      else if progMeth.SelfSym=nil then
+         Exit(nil)
+      else selfExpr:=GetSelfParamExpr(progMeth.SelfSym);
+      Result:=ReadTypeHelper(selfExpr, name.FString, namePos, expecting, True);
+      if Result=nil then
+         selfExpr.Free;
+   end else Result:=nil;
 end;
 
 // ------------------
