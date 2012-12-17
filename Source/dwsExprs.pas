@@ -2156,6 +2156,7 @@ begin
       helper:=THelperSymbol(meth.StructSymbol);
       if     meth.IsClassMethod
          and (   (helper.ForType.ClassType=TInterfaceSymbol)
+              or meth.IsStatic
               or not (   (helper.ForType is TStructuredTypeSymbol)
                       or (helper.ForType is TStructuredTypeMetaSymbol))) then begin
 

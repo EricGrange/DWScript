@@ -16,8 +16,8 @@ end;
 
 procedure TClass1.Test;
 begin
-  Self.ABC; // compiles
-  ABC;      // doesn't compile: 'Syntax Error: Unknown name "ABC"'
+  Self.ABC;
+  ABC;     
 end;
 
 var o := new TClass1;
