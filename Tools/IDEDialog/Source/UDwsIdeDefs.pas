@@ -86,10 +86,14 @@ function Lighten( AColor: TColor; AFactor: Byte): TColor;
 function BeginsWith( const ABeginsStr, AStr : string; AMatchCase : boolean = False ) : boolean;
 // Returns TRUE if AStr begins with ABeginsStr
 
-{$IFDEF VER230} // Delphi XE2
+{$IFDEF VER240} // Delphi XE3
   function IDEStyleServices: TCustomStyleServices;
 {$ELSE}
-  function IDEStyleServices: TThemeServices;
+  {$IFDEF VER230} // Delphi XE2
+    function IDEStyleServices: TCustomStyleServices;
+  {$ELSE}
+    function IDEStyleServices: TThemeServices;
+  {$ENDIF}
 {$ENDIF}
 
 implementation
@@ -170,16 +174,23 @@ end;
 
 
 
-{$IFDEF VER230} // Delphi XE2
+{$IFDEF VER240} // Delphi XE3
   function IDEStyleServices: TCustomStyleServices;
   begin
     Result := StyleServices;
   end;
 {$ELSE}
-  function IDEStyleServices: TThemeServices;
-  begin
-    Result := ThemeServices;
-  end;
+  {$IFDEF VER230} // Delphi XE2
+    function IDEStyleServices: TCustomStyleServices;
+    begin
+      Result := StyleServices;
+    end;
+  {$ELSE}
+    function IDEStyleServices: TThemeServices;
+    begin
+      Result := ThemeServices;
+    end;
+  {$ENDIF}
 {$ENDIF}
 
 

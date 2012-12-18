@@ -460,9 +460,10 @@ uses
 
 
 const
-  sProjectSourceFileExt = '.dws';
-  sProjectFileExt       = '.dwsproj';
-  sMainModule           = '*MainModule*';
+  sProjectSourceFileExt   = '.dws';
+  sProjectSourceFileExt2  = '.pas';
+  sProjectFileExt         = '.dwsproj';
+  sMainModule             = '*MainModule*';
 
   iiExecutableLine        = 13;
   iiForwardArrow          = 16;
@@ -1136,6 +1137,13 @@ const
    cSlantMargin = 10;
    cCloseButtonSize = 12;
    cArrowButtonSize = 15;
+
+   cTabImageIndex_ProjectSourceFile = 28;
+   cTabImageIndex_Script = 26;
+   cTabImageIndex_NonScript = 6;
+   cTabImageIndex_IncludeFile = 29;
+
+
 procedure TDwsIdeForm.RefreshTabs;
 
    function ColorLerp(col1, col2 : TColor; f : Single) : TColor;
@@ -1184,6 +1192,28 @@ procedure TDwsIdeForm.RefreshTabs;
 
    procedure RenderTab(canvas : TCanvas; page : TEditorPage;
                        active, hovered, hoveredClose : Boolean);
+
+     function GetImageIndexFromContent : integer;
+     var
+       sExt : string;
+     begin
+       sExt := ExtractFileExt( Page.FileName );
+
+       If Page.IsProjectSourcefile then
+         Result := cTabImageIndex_ProjectSourceFile
+        else
+       if SameText( sExt, sProjectSourceFileExt ) {eg DWS}
+         or SameText( sExt, sProjectSourceFileExt2 ) {eg PAS}
+        then
+         Result := cTabImageIndex_Script
+        else
+         if SameText( sExt, '.INC' )
+           then
+             Result := cTabImageIndex_IncludeFile
+           else
+          Result := cTabImageIndex_NonScript;
+     end;
+
    var
       tabRect : TRect;
       r : TRect;
@@ -1207,9 +1237,8 @@ procedure TDwsIdeForm.RefreshTabs;
 
       canvas.Brush.Style:=bsClear;
 
-      {$Message 'support custom tab icons depending on content' }
       SmallImages.Draw(canvas, tabRect.Left+cMargin,
-                       (tabRect.Bottom-tabRect.Top-SmallImages.Height) div 2, 6, True);
+                       (tabRect.Bottom-tabRect.Top-SmallImages.Height) div 2, GetImageIndexFromContent, True);
 
       txt:=page.Caption;
       r:=tabRect;
@@ -1970,26 +1999,32 @@ var
 begin
    if Value=FActivePageIndex then Exit;
 
+   if Value > FPages.Count-1 then
+     Exit;
+
    LockWindowUpdate(pnlPageControl.Handle);
+   try
 
-   if FActivePageIndex>=0 then begin
-    page := EditorPage( Value );
-    page.Visible:=False;
-    page.Parent:=nil;
+     if FActivePageIndex>=0 then begin
+      page := EditorPage( Value );
+      page.Visible:=False;
+      page.Parent:=nil;
+     end;
+
+    if (Value >= 0) and (Value < FPages.Count) then
+      begin
+      FActivePageIndex:=Value;
+      RefreshTabs;
+      page := EditorPage( Value );
+      page.Align:=alClient;
+      page.Parent:=pnlPageControl;
+      page.Visible:=True;
+      page.Editor.Repaint;
+      end;
+
+   finally
+     LockWindowUpdate(0);
    end;
-
-  if (Value >= 0) and (Value < FPages.Count) then
-    begin
-    FActivePageIndex:=Value;
-    RefreshTabs;
-    page := EditorPage( Value );
-    page.Align:=alClient;
-    page.Parent:=pnlPageControl;
-    page.Visible:=True;
-    page.Editor.Repaint;
-    end;
-
-   LockWindowUpdate(0);
 end;
 
 procedure TDwsIdeForm.SetProjectFileName(const Value: string);
@@ -2155,6 +2190,10 @@ begin
 
   FPages[AIndex].Free;
   FPages.Extract(AIndex);
+
+  If FPages.Count = 0 then
+    FActivePageIndex := -1;
+
   RefreshTabs;
 end;
 
