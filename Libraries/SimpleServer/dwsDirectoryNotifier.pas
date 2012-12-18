@@ -94,7 +94,6 @@ begin
    Terminate;
    SetEvent(FNotifyHandle[1]);
    WaitFor;
-   Free;
 end;
 
 // Execute
