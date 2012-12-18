@@ -21,7 +21,7 @@ interface
 uses
    SysUtils, Classes, Rtti, dwsFileSystem, dwsGlobalVarsFunctions,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsRTTIConnector, dwsUtils,
-   dwsWebEnvironment;
+   dwsWebEnvironment, dwsSystemInfoLibModule;
 
 type
 
@@ -48,6 +48,7 @@ type
    private
       FScriptTimeoutMilliseconds : Integer;
 
+      FSystemInfo : TdwsSystemInfoLibModule;
       FFileSystem : TdwsCustomFileSystem;
 
       FCompiledPrograms : TCompiledProgramHash;
@@ -99,6 +100,9 @@ end;
 
 procedure TSynDWScript.DataModuleCreate(Sender: TObject);
 begin
+   FSystemInfo:=TdwsSystemInfoLibModule.Create(Self);
+   FSystemInfo.dwsSystemInfo.Script:=DelphiWebScript;
+
    FCompiledPrograms:=TCompiledProgramHash.Create;
    FCompiledProgramsLock:=TFixedCriticalSection.Create;
    FCompilerLock:=TFixedCriticalSection.Create;
