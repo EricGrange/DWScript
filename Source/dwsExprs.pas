@@ -1632,6 +1632,7 @@ type
       procedure SetData(const Data: TData);
       procedure SetExternalObject(ExtObject: TObject);
       procedure SetValue(const Value: Variant);
+      procedure SetValueAsInteger(const value : Int64);
 
       property Data: TData read GetData write SetData;
       property ExternalObject: TObject read GetExternalObject write SetExternalObject;
@@ -1645,7 +1646,7 @@ type
       property Value: Variant read GetValue write SetValue;
       property ValueAsString : String read GetValueAsString;
       property ValueAsDataString : RawByteString read GetValueAsDataString;
-      property ValueAsInteger : Int64 read GetValueAsInteger;
+      property ValueAsInteger : Int64 read GetValueAsInteger write SetValueAsInteger;
       property ValueAsBoolean : Boolean read GetValueAsBoolean;
       property ValueAsFloat : Double read GetValueAsFloat;
    end;

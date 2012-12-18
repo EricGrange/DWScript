@@ -67,6 +67,7 @@ type
          procedure SetData(const Value: TData); virtual;
          procedure SetExternalObject(ExtObject: TObject); virtual;
          procedure SetValue(const Value: Variant); virtual;
+         procedure SetValueAsInteger(const value : Int64); virtual;
 
       public
          constructor Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol;
@@ -531,6 +532,13 @@ end;
 procedure TInfo.SetValue(const Value: Variant);
 begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['SetValue', FTypeSym.Caption]);
+end;
+
+// SetValueAsInteger
+//
+procedure TInfo.SetValueAsInteger(const value : Int64);
+begin
+   SetValue(value);
 end;
 
 function TInfo.GetInherited: IInfo;
