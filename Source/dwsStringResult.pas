@@ -33,51 +33,64 @@ uses
   Variants, Classes, SysUtils, dwsExprs, dwsSymbols, dwsComp, dwsUtils;
 
 type
-  TdwsStringResult = class(TdwsResult)
-  private
-    FStrBuilder: TWriteOnlyBlockStream;
-    function GetStr : String;
-  public
-    constructor Create(resultType : TdwsResultType); override;
-    destructor Destroy; override;
-    procedure AddString(const Str: String); override;
-    procedure Clear; override;
-    procedure SetStr(const Str: String);
-    function ReadLn: String;
-    function ReadChar: String;
-    function ToString : String; override;
-    property Str: String read GetStr;
-  end;
+   TdwsStringResult = class(TdwsResult)
+      private
+         FStrBuilder : TWriteOnlyBlockStream;
 
-  TChangeStringEvent = procedure (Result: TdwsStringResult; const Str: String) of object;
-  TReadStringEvent = procedure (Result: TdwsStringResult; var Str: String) of object;
+         function GetStr : String;
 
-  TdwsStringResultType = class(TdwsResultType)
-  private
-    FOnAddString: TChangeStringEvent;
-    FOnSetString: TChangeStringEvent;
-    FOnReadLn: TReadStringEvent;
-    FOnReadChar: TReadStringEvent;
-  public
-    function CreateProgResult: TdwsResult; override;
-  published
-    property OnAddString: TChangeStringEvent read FOnAddString write FOnAddString;
-    property OnSetString: TChangeStringEvent read FOnSetString write FOnSetString;
-    property OnReadLn: TReadStringEvent read FOnReadLn write FOnReadLn;
-    property OnReadChar: TReadStringEvent read FOnReadChar write FOnReadChar;
-  end;
+      public
+         constructor Create(resultType : TdwsResultType); override;
+         destructor Destroy; override;
 
-  Tdws2StringsUnit = class(TdwsUnitComponent)
-  protected
-    procedure AddUnitSymbols(SymbolTable: TSymbolTable); override;
-  public
-    constructor Create(AOwner: TComponent); override;
-  end;
+         procedure AddString(const Str: String); override;
+         procedure Clear; override;
+         procedure SetStr(const Str: String);
 
+         function ReadLn : String;
+         function ReadChar : String;
+         function ToString : String; override;
+
+         property Str : String read GetStr;
+   end;
+
+   TChangeStringEvent = procedure (result : TdwsStringResult; var str : String) of object;
+   TReadStringEvent = procedure (result : TdwsStringResult; var str : String) of object;
+
+   TdwsStringResultType = class(TdwsResultType)
+      private
+         FOnAddString : TChangeStringEvent;
+         FOnSetString : TChangeStringEvent;
+         FOnReadLn : TReadStringEvent;
+         FOnReadChar : TReadStringEvent;
+
+      protected
+         procedure DoAddString(result : TdwsStringResult; var str : String); virtual;
+         procedure DoSetString(result : TdwsStringResult; var str : String); virtual;
+         procedure DoReadLn(result : TdwsStringResult; var str : String); virtual;
+         procedure DoReadChar(result : TdwsStringResult; var str : String); virtual;
+
+      public
+         procedure AddResultSymbols(SymbolTable: TSymbolTable); override;
+         function CreateProgResult: TdwsResult; override;
+
+      published
+         property OnAddString: TChangeStringEvent read FOnAddString write FOnAddString;
+         property OnSetString: TChangeStringEvent read FOnSetString write FOnSetString;
+         property OnReadLn: TReadStringEvent read FOnReadLn write FOnReadLn;
+         property OnReadChar: TReadStringEvent read FOnReadChar write FOnReadChar;
+   end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
 uses
-  dwsFunctions, dwsStrings;
+   dwsFunctions, dwsStrings;
 
 type
   TWriteFunction = class(TInternalFunction)
@@ -128,11 +141,15 @@ begin
    FStrBuilder.Free;
 end;
 
+// AddString
+//
 procedure TdwsStringResult.AddString(const Str: String);
+var
+   buf : String;
 begin
-  FStrBuilder.WriteString(Str);
-  if Assigned(TdwsStringResultType(ResultType).OnAddString) then
-    TdwsStringResultType(ResultType).OnAddString(Self, Str)
+   buf:=str;
+   TdwsStringResultType(ResultType).DoAddString(Self, buf);
+   FStrBuilder.WriteString(buf);
 end;
 
 // Clear
@@ -142,28 +159,30 @@ begin
    FStrBuilder.Clear;
 end;
 
+// SetStr
+//
 procedure TdwsStringResult.SetStr(const Str: String);
+var
+   buf : String;
 begin
-  FStrBuilder.Clear;
-  FStrBuilder.WriteString(Str);
-  if Assigned(TdwsStringResultType(ResultType).OnSetString) then
-    TdwsStringResultType(ResultType).OnSetString(Self, Str)
+   buf:=str;
+   FStrBuilder.Clear;
+   TdwsStringResultType(ResultType).DoSetString(Self, buf);
+   FStrBuilder.WriteString(buf);
 end;
 
-function TdwsStringResult.ReadLn: String;
+// ReadLn
+//
+function TdwsStringResult.ReadLn : String;
 begin
-  if Assigned(TdwsStringResultType(ResultType).OnReadLn) then
-    TdwsStringResultType(ResultType).OnReadLn(Self, Result)
-  else
-    Result := '';
+   TdwsStringResultType(ResultType).DoReadLn(Self, Result);
 end;
 
-function TdwsStringResult.ReadChar: String;
+// ReadChar
+//
+function TdwsStringResult.ReadChar : String;
 begin
-  if Assigned(TdwsStringResultType(ResultType).OnReadLn) then
-    TdwsStringResultType(ResultType).OnReadLn(Self, Result)
-  else
-    Result := '';
+   TdwsStringResultType(ResultType).DoReadChar(Self, Result);
 end;
 
 // ToString
@@ -184,31 +203,56 @@ end;
 
 function TdwsStringResultType.CreateProgResult: TdwsResult;
 begin
-  Result := TdwsStringResult.Create(Self);
+   Result := TdwsStringResult.Create(Self);
 end;
 
-{ Tdws2StringUnit }
-
-procedure Tdws2StringsUnit.AddUnitSymbols(SymbolTable: TSymbolTable);
-var
-  emptyArg: array of String;
+// AddResultSymbols
+//
+procedure TdwsStringResultType.AddResultSymbols(SymbolTable: TSymbolTable);
 begin
-  TWriteFunction.Create(SymbolTable, 'WriteStr', ['Str', SYS_VARIANT], '', []);
-  TWriteFunction.Create(SymbolTable, 'Print', ['Str', SYS_VARIANT], '', []);
-  TWriteLnFunction.Create(SymbolTable, 'WriteLn', ['Str', SYS_VARIANT], '', []);
-  TWriteLnFunction.Create(SymbolTable, 'PrintLn', ['Str', SYS_VARIANT], '', []);
-  TWriteAllFunction.Create(SymbolTable, 'WriteAll', ['Str', SYS_VARIANT], '', []);
+   TWriteFunction.Create(SymbolTable, 'WriteStr', ['Str', SYS_VARIANT], '', []);
+   TWriteFunction.Create(SymbolTable, 'Print', ['Str', SYS_VARIANT], '', []);
+   TWriteLnFunction.Create(SymbolTable, 'WriteLn', ['Str', SYS_VARIANT], '', []);
+   TWriteLnFunction.Create(SymbolTable, 'PrintLn', ['Str', SYS_VARIANT], '', []);
+   TWriteAllFunction.Create(SymbolTable, 'WriteAll', ['Str', SYS_VARIANT], '', []);
 
-  SetLength(emptyArg, 0);
-  TReadCharFunction.Create(SymbolTable, 'ReadChar', emptyArg, SYS_STRING, []);
-  TReadLnFunction.Create(SymbolTable, 'ReadLn', emptyArg, SYS_STRING, []);
-  TReadAllFunction.Create(SymbolTable, 'ReadAll', emptyArg, SYS_STRING, []);
+   TReadCharFunction.Create(SymbolTable, 'ReadChar', [], SYS_STRING, []);
+   TReadLnFunction.Create(SymbolTable, 'ReadLn', [], SYS_STRING, []);
+   TReadAllFunction.Create(SymbolTable, 'ReadAll', [], SYS_STRING, []);
 end;
 
-constructor Tdws2StringsUnit.Create(AOwner: TComponent);
+// DoAddString
+//
+procedure TdwsStringResultType.DoAddString(result : TdwsStringResult; var str : String);
 begin
-  inherited;
-  FUnitName := 'Strings';
+   if Assigned(FOnAddString) then
+      FOnAddString(result, str);
+end;
+
+// DoSetString
+//
+procedure TdwsStringResultType.DoSetString(result : TdwsStringResult; var str : String);
+begin
+   if Assigned(FOnAddString) then
+      FOnSetString(result, str);
+end;
+
+// DoReadLn
+//
+procedure TdwsStringResultType.DoReadLn(result : TdwsStringResult; var str : String);
+begin
+   if Assigned(FOnReadLn) then
+      FOnReadLn(result, str)
+   else str:='';
+end;
+
+// DoReadChar
+//
+procedure TdwsStringResultType.DoReadChar(result : TdwsStringResult; var str : String);
+begin
+   if Assigned(FOnReadChar) then
+      FOnReadChar(result, str)
+   else str:='';
 end;
 
 { TWriteFunction }
@@ -254,4 +298,3 @@ begin
 end;
 
 end.
- 
