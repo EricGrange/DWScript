@@ -21,7 +21,6 @@ interface
 uses Classes, SysUtils, StrUtils, dwsUtils;
 
 type
-
    {$M+}
    TWebRequest = class
       private

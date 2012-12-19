@@ -589,6 +589,7 @@ type
 
          function ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TTypedExpr;
          function ReadNegation : TTypedExpr;
+         function ReadIfExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
 
          function ReadTry : TExceptionExpr;
          function ReadFinally(tryExpr : TNoResultExpr) : TFinallyExpr;
@@ -2619,7 +2620,7 @@ begin
             // There was already a (forward) declaration
             forwardedSym:=existingFuncSym;
          end;
-      end;
+      end else existingFuncSym:=nil;
 
       if (forwardedSym=nil) and (overloadFuncSym=nil) then
          CheckName(name, funcPos);
@@ -8842,7 +8843,8 @@ var
    hotPos : TScriptPos;
 begin
    tt:=FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
-                     ttTRUE, ttFALSE, ttNIL, ttFUNCTION, ttPROCEDURE, ttLAMBDA,
+                     ttTRUE, ttFALSE, ttNIL, ttIF,
+                     ttFUNCTION, ttPROCEDURE, ttLAMBDA,
                      ttRECORD]);
    if tt<>ttNone then
       FTok.KillToken;
@@ -8880,6 +8882,8 @@ begin
          Result:=ReadFalse;
       ttNIL :
          Result:=ReadNilTerm;
+      ttIF :
+         Result:=ReadIfExpr;
       ttPROCEDURE, ttFUNCTION : begin
          if not (coAllowClosures in Options) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_LocalFunctionAsDelegate);
@@ -8935,6 +8939,69 @@ begin
    Result:=negExprClass.Create(FProg, negTerm);
    if Optimize or (negTerm is TConstExpr) then
       Result:=Result.OptimizeToTypedExpr(FProg, FExec, hotPos);
+end;
+
+// ReadIfExpr
+//
+function TdwsCompiler.ReadIfExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
+var
+   hotPos : TScriptPos;
+   boolExpr : TTypedExpr;
+   trueExpr, falseExpr : TTypedExpr;
+   typ : TTypeSymbol;
+begin
+   hotPos:=FTok.HotPos;
+   boolExpr:=ReadExpr;
+   if not boolExpr.IsOfType(FProg.TypBoolean) then
+      FMsgs.AddCompilerError(hotPos, CPE_BooleanExpected);
+   trueExpr:=nil;
+   falseExpr:=nil;
+   try
+      if not FTok.TestDelete(ttTHEN) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ThenExpected);
+
+      trueExpr:=ReadExpr(expecting);
+      if trueExpr.Typ=nil then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
+
+      if not ftok.TestDelete(ttELSE) then
+         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ElseExpected);
+
+      falseExpr:=ReadExpr(expecting);
+      if falseExpr.Typ=nil then
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
+
+      if (trueExpr.Typ=nil) or (falseExpr.Typ=nil) then begin
+
+         typ:=nil;
+
+      end else begin
+
+         if trueExpr.IsOfType(FProg.TypInteger) and falseExpr.IsOfType(FProg.TypFloat) then
+            trueExpr:=TConvFloatExpr.Create(FProg, trueExpr)
+         else if trueExpr.IsOfType(FProg.TypFloat) and falseExpr.IsOfType(FProg.TypInteger) then
+            falseExpr:=TConvFloatExpr.Create(FProg, falseExpr);
+
+         if falseExpr.Typ.IsCompatible(trueExpr.Typ) then
+            typ:=falseExpr.Typ
+         else begin
+            typ:=trueExpr.Typ;
+            if not typ.IsCompatible(falseExpr.Typ) then
+               FMsgs.AddCompilerError(hotPos, CPE_InvalidArgCombination);;
+         end;
+
+      end;
+
+      if (typ<>nil) and (typ.Size>1) then   // TODO !!!!!!!!!!!
+         FMsgs.AddCompilerError(hotPos, 'Implementation currently limited to arguments of size 1');
+
+      Result:=TIfThenElseValueExpr.Create(FProg, hotPos, typ, boolExpr, trueExpr, falseExpr);
+   except
+      boolExpr.Free;
+      trueExpr.Free;
+      falseExpr.Free;
+      raise;
+   end;
 end;
 
 // ReadConstValue

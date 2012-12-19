@@ -1,0 +1,5 @@
+Syntax Error: Invalid argument combination [line: 1, column: 10]
+Syntax Error: Expression expected [line: 5, column: 26]
+Syntax Error: Assignment's right-side-argument has no return type! [line: 5, column: 8]
+Syntax Error: Expression expected [line: 7, column: 33]
+Syntax Error: Assignment's right-side-argument has no return type! [line: 7, column: 8]

@@ -33,9 +33,12 @@ program SynopseWebServer;
 {$APPTYPE CONSOLE}
 
 uses
-   Windows, SysUtils, WinSvc,
-   mORMotService,
-   USynopseSimpleWebServer in 'USynopseSimpleWebServer.pas';
+  Windows,
+  SysUtils,
+  WinSvc,
+  mORMotService,
+  USynopseSimpleWebServer in 'USynopseSimpleWebServer.pas',
+  dwsCPUUsage in '..\..\Libraries\SimpleServer\dwsCPUUsage.pas';
 
 function CreateNewServer : TSynopseSimpleServer;
 var
@@ -107,24 +110,51 @@ var
 begin
    ctrl:=TServiceController.CreateOpenService('','',cHttpServiceName);
    try
-      if ctrl.State<>ssErrorRetrievingState then
+      if ctrl.State=ssErrorRetrievingState then
+         writeln('Errior retrieving state')
+      else begin
          for i:=1 to ParamCount do begin
             param:=SysUtils.LowerCase(paramstr(i));
             if param='/install' then begin
-               TServiceController.CreateNewService('','',cHttpServiceName,
-                                                   cHttpServiceDisplayName, paramstr(0),'','','','',
-                                                   SERVICE_ALL_ACCESS,
-                                                   SERVICE_WIN32_OWN_PROCESS,
-                                                   SERVICE_DEMAND_START)
-               .Free
+               if ctrl.State=ssNotInstalled then begin
+                  ctrl.Free;
+                  ctrl:=TServiceController.CreateNewService(
+                     '','',cHttpServiceName, cHttpServiceDisplayName,
+                     ParamStr(0), '', '', '', '',
+                     SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START);
+                  if ctrl.State<>ssNotInstalled then
+                     writeln('Installed successfully')
+                  else writeln('Failed to install');
+               end else writeln('Already installed');
             end else if param='/uninstall' then begin
-               ctrl.Stop;
-               ctrl.Delete;
-            end else if param='/stop' then
-               ctrl.Stop
-            else if param='/start' then
-               ctrl.Start([])
-            else begin
+               if ctrl.State=ssNotInstalled then
+                  writeln('Not installed')
+               else begin
+                  ctrl.Stop;
+                  if ctrl.State<>ssStopped then
+                     writeln('Failed to stop')
+                  else begin
+                     ctrl.Delete;
+                     if ctrl.State=ssNotInstalled then
+                        writeln('Uninstalled successfully')
+                     else writeln('Failed to uninstall');
+                  end;
+               end;
+            end else if param='/stop' then begin
+               if ctrl.State=ssNotInstalled then
+                  writeln('Not installed')
+               else begin
+                  ctrl.Stop;
+                  writeln('Stop command issued')
+               end;
+            end else if param='/start' then begin
+               if ctrl.State=ssNotInstalled then
+                  writeln('Not installed')
+               else begin
+                  ctrl.Start([]);
+                  writeln('Start command issued')
+               end;
+            end else begin
                Writeln( cHttpServiceName+#13#10#13#10
                        +'Parameters:'#13#10
                        +'* none : run as application'#13#10
@@ -132,6 +162,7 @@ begin
                        +'* /start & /stop : start & stop service');
             end;
          end;
+      end;
    finally
       ctrl.Free;
    end;
@@ -176,7 +207,7 @@ begin
    end else begin
 
       // started as application
-      with CreateNewServer  do try
+      with CreateNewServer do try
          write( 'Server is now running on http://localhost:888/'#13#10#13#10
                +'Press [Enter] to quit');
          readln;

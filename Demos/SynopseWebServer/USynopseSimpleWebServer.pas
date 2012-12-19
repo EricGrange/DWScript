@@ -46,11 +46,13 @@ begin
 
    FServer:=THttpApiServer.Create(false);
    FServer.AddUrl('', '888', false,'+');
-   // FServer.RegisterCompress(CompressDeflate); // our server will deflate html :)
+   FServer.RegisterCompress(CompressDeflate); // our server will deflate html :)
    FServer.OnRequest:=Process;
 
    FNotifier:=TdwsDirectoryNotifier.Create(FPath, dnoDirectoryAndSubTree);
    FNotifier.OnDirectoryChanged:=DirectoryChanged;
+
+   FServer.Clone(8);
 end;
 
 destructor TSynopseSimpleServer.Destroy;

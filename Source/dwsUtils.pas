@@ -435,6 +435,27 @@ type
          function Compare(const item1, item2 : TRefCountedObject) : Integer; override;
    end;
 
+   TThreadCached<T> = class
+      private
+         FLock : TFixedCriticalSection;
+         FExpiresAt : TDateTime;
+         FMaxAge : TDateTime;
+         FOnNeedValue : TSimpleCallback<T>;
+         FValue : T;
+
+      protected
+         function GetValue : T;
+         procedure SetValue(const v : T);
+
+      public
+         constructor Create(const aNeedValue : TSimpleCallback<T>; maxAgeMSec : Integer);
+         destructor Destroy; override;
+
+         procedure Invalidate;
+
+         property Value : T read GetValue write SetValue;
+   end;
+
 const
    cWriteOnlyBlockStreamBlockSize = $2000 - 2*SizeOf(Pointer);
 
@@ -501,6 +522,9 @@ type
    end;
 
    ETightListOutOfBound = class(Exception);
+
+const
+   cMSecToDateTime : Double = 1/(24*3600*1000);
 
 {: Changes the class of an object (by altering the VMT pointer).<p>
    Only checks IntanceSize.
@@ -2689,6 +2713,65 @@ begin
    FCapacity:=0;
    FGrowth:=0;
    SetLength(FBuckets, 0);
+end;
+
+// ------------------
+// ------------------ TThreadCached<T> ------------------
+// ------------------
+
+// Create
+//
+constructor TThreadCached<T>.Create(const aNeedValue : TSimpleCallback<T>; maxAgeMSec : Integer);
+begin
+   FLock:=TFixedCriticalSection.Create;
+   FOnNeedValue:=aNeedValue;
+   FMaxAge:=maxAgeMSec*cMSecToDateTime;
+end;
+
+// Destroy
+//
+destructor TThreadCached<T>.Destroy;
+begin
+   FLock.Free;
+end;
+
+// Invalidate
+//
+procedure TThreadCached<T>.Invalidate;
+begin
+   FExpiresAt:=0;
+end;
+
+// GetValue
+//
+function TThreadCached<T>.GetValue : T;
+var
+   ts : TDateTime;
+begin
+   FLock.Enter;
+   try
+      ts:=Now;
+      if ts>=FExpiresAt then begin
+         if FOnNeedValue(FValue)=csContinue then
+            FExpiresAt:=ts+FMaxAge;
+      end;
+      Result:=FValue;
+   finally
+      FLock.Leave;
+   end;
+end;
+
+// SetValue
+//
+procedure TThreadCached<T>.SetValue(const v : T);
+begin
+   FLock.Enter;
+   try
+      FExpiresAt:=Now+FMaxAge;
+      FValue:=v;
+   finally
+      FLock.Leave;
+   end;
 end;
 
 // ------------------------------------------------------------------

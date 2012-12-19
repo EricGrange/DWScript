@@ -940,7 +940,7 @@ type
    TBlockFinalExpr = class(TBlockRawExpr)
    end;
 
-  // Encapsulates data
+   // Encapsulates data
    TDataExpr = class(TTypedExpr)
       protected
          function GetAddr(exec : TdwsExecution) : Integer; virtual;

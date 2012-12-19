@@ -1528,6 +1528,34 @@ type
          property ElseExpr : TNoResultExpr read FElse;
    end;
 
+   // value := if FCond then FTrue else FFalse
+   TIfThenElseValueExpr = class(TTypedExpr)
+      private
+         FPos : TScriptPos;
+         FCondExpr : TTypedExpr;
+         FTrueExpr : TTypedExpr;
+         FFalseExpr : TTypedExpr;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(prog : TdwsProgram; const aPos : TScriptPos;
+                            aTyp : TTypeSymbol;
+                            condExpr, trueExpr, falseExpr : TTypedExpr);
+         destructor Destroy; override;
+
+         function Eval(exec : TdwsExecution) : Variant; override;
+         function IsConstant : Boolean; override;
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+
+         property Pos : TScriptPos read FPos write FPos;
+         property CondExpr : TTypedExpr read FCondExpr write FCondExpr;
+         property TrueExpr : TTypedExpr read FTrueExpr write FTrueExpr;
+         property FalseExpr : TTypedExpr read FFalseExpr write FFalseExpr;
+   end;
+
    // Part of a case statement
    TCaseCondition = class (TRefCountedObject)
       private
@@ -8457,6 +8485,85 @@ begin
          end;
       end;
    end;
+end;
+
+// ------------------
+// ------------------ TIfThenElseValueExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TIfThenElseValueExpr.Create(prog : TdwsProgram; const aPos : TScriptPos;
+                                        aTyp : TTypeSymbol;
+                                        condExpr, trueExpr, falseExpr : TTypedExpr);
+begin
+   inherited Create;
+   FPos:=aPos;
+   Typ:=aTyp;
+   FCondExpr:=condExpr;
+   FTrueExpr:=trueExpr;
+   FFalseExpr:=falseExpr;
+end;
+
+// Destroy
+//
+destructor TIfThenElseValueExpr.Destroy;
+begin
+   FCondExpr.Free;
+   FFalseExpr.Free;
+   FTrueExpr.Free;
+   inherited;
+end;
+
+// Eval
+//
+function TIfThenElseValueExpr.Eval(exec : TdwsExecution) : Variant;
+begin
+   if FCondExpr.EvalAsBoolean(exec) then
+      Result:=FTrueExpr.Eval(exec)
+   else Result:=FFalseExpr.Eval(exec);
+end;
+
+// IsConstant
+//
+function TIfThenElseValueExpr.IsConstant : Boolean;
+begin
+   Result:=FCondExpr.IsConstant and FTrueExpr.IsConstant and FFalseExpr.IsConstant;
+end;
+
+// Optimize
+//
+function TIfThenElseValueExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   if FCondExpr.IsConstant then begin
+      if FCondExpr.EvalAsBoolean(exec) then begin
+         Result:=FTrueExpr;
+         FTrueExpr:=nil;
+      end else begin
+         Result:=FFalseExpr;
+         FFalseExpr:=nil;
+      end;
+      Free;
+   end else Result:=Self;
+end;
+
+// GetSubExpr
+//
+function TIfThenElseValueExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=FCondExpr;
+      1 : Result:=FTrueExpr;
+   else
+      Result:=FFalseExpr;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TIfThenElseValueExpr.GetSubExprCount : Integer;
+begin
+   Result:=3;
 end;
 
 end.

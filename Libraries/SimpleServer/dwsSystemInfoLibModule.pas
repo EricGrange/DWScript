@@ -3,7 +3,8 @@ unit dwsSystemInfoLibModule;
 interface
 
 uses
-  Windows, SysUtils, Classes, ActiveX, ComObj, dwsComp, dwsExprs;
+  Windows, SysUtils, Classes, ActiveX, ComObj,
+  dwsComp, dwsExprs, dwsUtils, dwsCPUUsage;
 
 type
    TOSNameVersion = record
@@ -17,9 +18,20 @@ type
       Info: TProgramInfo; var ExtObject: TObject);
     procedure dwsSystemInfoClassesOSVersionInfoMethodsNameEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure DataModuleCreate(Sender: TObject);
+    procedure DataModuleDestroy(Sender: TObject);
+    procedure dwsSystemInfoClassesOSVersionInfoMethodsVersionEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesCPUInfoMethodsSystemUsageEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesCPUInfoMethodsCountEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsSystemInfoClassesCPUInfoMethodsKernelUsageEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FOSNameVersion : TOSNameVersion;
+    FGlobalMemory : TThreadCached<TMemoryStatusEx>;
   public
     { Public declarations }
   end;
@@ -28,7 +40,7 @@ implementation
 
 {$R *.dfm}
 
-function GetWin32_OSNameVersion : TOSNameVersion;
+procedure GetWin32_OSNameVersion(var osnv : TOSNameVersion);
 var
    locator : OleVariant;
    objWMIService : OLEVariant;
@@ -38,22 +50,61 @@ var
    iValue : LongWord;
 begin
    CoInitialize(nil);
-   Result.Name:='?';
-   Result.Version:='?';
+   osnv.Name:='?';
+   osnv.Version:='?';
    try
       locator:=CreateOleObject('WbemScripting.SWbemLocator');
       objWMIService:=locator.ConnectServer('localhost', 'root\CIMV2', '', '');
       colItems:=objWMIService.ExecQuery('SELECT * FROM Win32_OperatingSystem','WQL',0);
       oEnum:=IUnknown(colItems._NewEnum) as IEnumVariant;
       if oEnum.Next(1, colItem, iValue)=0 then begin
-         Result.Name:=colItem.Caption;
-         Result.Version:=colItem.Version;
+         osnv.Name:=colItem.Caption;
+         osnv.Version:=colItem.Version;
       end;
    except
       on E : Exception do
-         Result.Name:=E.Message;
+         osnv.Name:=E.Message;
    end;
    CoUninitialize;
+end;
+
+function GetGlobalMemory(var ms : TMemoryStatusEx) : TSimpleCallbackStatus;
+begin
+   ms.dwLength:=SizeOf(ms);
+   GlobalMemoryStatusEx(ms);
+   Result:=csContinue;
+end;
+
+procedure TdwsSystemInfoLibModule.DataModuleCreate(Sender: TObject);
+begin
+   // limit query rate to 10 Hz
+   FGlobalMemory:=TThreadCached<TMemoryStatusEx>.Create(GetGlobalMemory, 100);
+
+   GetWin32_OSNameVersion(FOSNameVersion);
+   SystemCPU.Track;
+end;
+
+procedure TdwsSystemInfoLibModule.DataModuleDestroy(Sender: TObject);
+begin
+   FGlobalMemory.Free;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesCPUInfoMethodsCountEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=SystemCPU.Count;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesCPUInfoMethodsKernelUsageEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=SystemCPU.Kernel;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesCPUInfoMethodsSystemUsageEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=SystemCPU.Usage;
 end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesMemoryStatusConstructorsCreateEval(
@@ -71,8 +122,7 @@ procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesMemoryStatusConstructorsCr
 var
    ms : TMemoryStatusEx;
 begin
-   ms.dwLength:=SizeOf(ms);
-   GlobalMemoryStatusEx(ms);
+   ms:=FGlobalMemory.Value;
    SetDetail('Physical', ms.ullTotalPhys, ms.ullAvailPhys);
    SetDetail('Virtual', ms.ullTotalVirtual, ms.ullAvailVirtual);
    SetDetail('PageFile', ms.ullTotalPageFile, ms.ullAvailPageFile);
@@ -81,9 +131,13 @@ end;
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesOSVersionInfoMethodsNameEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   if FOSNameVersion.Name='' then
-      FOSNameVersion:=GetWin32_OSNameVersion;
    Info.ResultAsString:=FOSNameVersion.Name;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesOSVersionInfoMethodsVersionEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=FOSNameVersion.Version;
 end;
 
 end.

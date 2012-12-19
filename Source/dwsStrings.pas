@@ -112,7 +112,8 @@ const
   CPE_ToOrDowntoExpected = 'TO or DOWNTO expected';
   CPE_ToExpected = 'TO expected';
   CPE_DoExpected = 'DO expected';
-  CPE_ThenExpected = 'Then expected';
+  CPE_ThenExpected = 'THEN expected';
+  CPE_ElseExpected = 'ELSE expected';
   CPE_OfExpected = 'OF expected';
   CPE_ExpressionExpected = 'Expression expected';
   CPE_DotDotExpected = '".." expected';

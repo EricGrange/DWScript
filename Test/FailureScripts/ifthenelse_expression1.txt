@@ -1,0 +1,2 @@
+Syntax Error: Boolean expected [line: 1, column: 11]
+Syntax Error: THEN expected [line: 3, column: 18]

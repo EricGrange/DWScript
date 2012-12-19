@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>Uses test</title>
+<title>System Info</title>
 </head>
 <body><%
 uses System.Info;
@@ -41,7 +41,8 @@ div.bar {
    height : 11;
 }
 </style>
-<h4><%=OSVersionInfo.Name%></h4>
+<p><b><%=OSVersionInfo.Name%> (<%=OSVersionInfo.Version%>)</b><br>
+<%=CPUInfo.Count%> core(s)</p>
 <table cellspacing="0" cellpadding="6">
    <tr>
       <th>Memory
