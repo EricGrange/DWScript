@@ -2666,12 +2666,15 @@ begin
 
                end else if overloadFuncSym<>nil then begin
 
-                  forwardedSym:=FuncPerfectMatchOverload(Result);
-                  if forwardedSym=nil then begin
-                     // no match, possible name conflict or fogotten overload keyword
-                     FMsgs.AddCompilerErrorFmt(hotPos, CPE_MustExplicitOverloads, [name]);
-                     // keep compiling, mark overloaded
-                     Result.IsOverloaded:=True;
+                  // nested funcs are allowed to overwrite overloads without errors
+                  if Result.Level<=existingFuncSym.Level then begin
+                     forwardedSym:=FuncPerfectMatchOverload(Result);
+                     if forwardedSym=nil then begin
+                        // no match, possible name conflict or fogotten overload keyword
+                        FMsgs.AddCompilerErrorFmt(hotPos, CPE_MustExplicitOverloads, [name]);
+                        // keep compiling, mark overloaded
+                        Result.IsOverloaded:=True;
+                     end;
                   end;
 
                end;
