@@ -32,6 +32,7 @@ uses
   UMemoryTests in 'UMemoryTests.pas',
   dwsMathComplexFunctions in '..\Source\dwsMathComplexFunctions.pas',
   dwsMath3DFunctions in '..\Source\dwsMath3DFunctions.pas',
+  dwsDebugFunctions in '..\Source\dwsDebugFunctions.pas',
   UBuildTests in 'UBuildTests.pas',
   URTTIExposeTests in 'URTTIExposeTests.pas',
   USourceUtilsTests in 'USourceUtilsTests.pas',

@@ -105,6 +105,8 @@ function InterlockedDecrement(var val : Integer) : Integer;
 
 procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Cardinal(-1));
 
+procedure OutputDebugString(const msg : String);
+
 function TryTextToFloat(const s : PChar; var value : Extended;
                         const formatSettings : TFormatSettings) : Boolean; {$ifndef FPC} inline; {$endif}
 
@@ -221,6 +223,13 @@ begin
    except
    end;
    {$endif}
+end;
+
+// OutputDebugString
+//
+procedure OutputDebugString(const msg : String);
+begin
+   Windows.OutputDebugString(PChar(msg));
 end;
 
 // SetDecimalSeparator

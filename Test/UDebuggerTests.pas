@@ -16,12 +16,14 @@ type
          FDebugEvalAtLine : Integer;
          FDebugEvalExpr : String;
          FDebugLastEvalResult : String;
+         FDebugLastMessage : String;
 
          procedure DoCreateExternal(Info: TProgramInfo; var ExtObject: TObject);
          procedure DoCleanupExternal(externalObject : TObject);
          procedure DoGetValue(Info: TProgramInfo; ExtObject: TObject);
 
          procedure DoDebugEval(exec: TdwsExecution; expr: TExprBase);
+         procedure DoDebugMessage(const msg : String);
 
       public
          procedure SetUp; override;
@@ -35,6 +37,8 @@ type
          procedure ExecutableLines;
 
          procedure AttachToScript;
+
+         procedure DebugMessage;
    end;
 
 // ------------------------------------------------------------------
@@ -76,6 +80,7 @@ begin
    FUnits.Script:=FCompiler;
    FDebugger:=TdwsDebugger.Create(nil);
    FDebugger.OnDebug:=DoDebugEval;
+   FDebugger.OnDebugMessage:=DoDebugMessage;
 
    cls:=FUnits.Classes.Add;
    cls.Name:='TTestClass';
@@ -126,6 +131,13 @@ procedure TDebuggerTests.DoDebugEval(exec: TdwsExecution; expr: TExprBase);
 begin
    if expr.ScriptPos.Line=FDebugEvalAtLine then
       FDebugLastEvalResult:=FDebugger.EvaluateAsString(FDebugEvalExpr);
+end;
+
+// DoDebugMessage
+//
+procedure TDebuggerTests.DoDebugMessage(const msg : String);
+begin
+   FDebugLastMessage:=msg;
 end;
 
 // EvaluateSimpleTest
@@ -328,6 +340,28 @@ begin
    finally
       exec.EndProgram;
    end;
+end;
+
+// DebugMessage
+//
+procedure TDebuggerTests.DebugMessage;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'OutputDebugString("hello");');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'compile');
+
+   FDebugLastMessage:='';
+
+   exec:=prog.CreateNewExecution;
+
+   FDebugger.BeginDebug(exec);
+   FDebugger.EndDebug;
+
+   CheckEquals('', exec.Msgs.AsInfo, 'exec');
+   CheckEquals('hello', FDebugLastMessage, 'msg');
 end;
 
 // ------------------------------------------------------------------
