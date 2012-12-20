@@ -34,6 +34,7 @@ uses
   dwsComp,
   dwsCompiler,
   dwsDebugger,
+  dwsStringResult,
   dwsErrors,
   dwsFunctions,
   dwsUtils, dwsSymbols, dwsUnitSymbols,
@@ -139,6 +140,19 @@ type
     procedure ShowExecutableLines;
 
   end;
+
+
+  TOutputWindowStringResultType = class (TdwsStringResultType)
+    constructor Create( AOwner : TComponent; ADwsIdeForm : TDwsIdeForm ); reintroduce;
+  PRIVATE
+    FDwsIdeForm: TDwsIdeForm;
+  PROTECTED
+    procedure DoAddString(result : TdwsStringResult; var str : String); override;
+    procedure DoReadLn(result : TdwsStringResult; var str : String); override;
+    procedure DoReadChar(result : TdwsStringResult; var str : String); override;
+   end;
+
+
 
 
   TDwsIdeForm = class(TForm, IDwsIde)
@@ -257,6 +271,12 @@ type
     actCodeProposalInvoke: TAction;
     pnlPageControl: TPanel;
     imgTabs: TImage;
+    Panel1: TPanel;
+    memOutputWindow: TMemo;
+    actClearOutputWindow: TAction;
+    N10: TMenuItem;
+    Clearoutputwindow1: TMenuItem;
+    Panel3: TPanel;
     procedure EditorChange(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure actOpenFileExecute(Sender: TObject);
@@ -327,6 +347,8 @@ type
     procedure imgTabsMouseMove(Sender: TObject; Shift: TShiftState; X,
       Y: Integer);
     procedure imgTabsMouseLeave(Sender: TObject);
+    procedure actClearOutputWindowExecute(Sender: TObject);
+    procedure actClearOutputWindowUpdate(Sender: TObject);
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -506,13 +528,23 @@ end;
 procedure DwsIDE_ShowModal( AScript : TDelphiWebScript; const AOptions : TDwsIdeOptions );
 var
   Frm : TDwsIdeForm;
+  SaveResultType : TdwsResultType;
 begin
-  Frm := TDwsIdeForm.Create( Application, AOptions );
+  If Assigned( AScript ) then
+    SaveResultType := AScript.Config.ResultType
+   else
+     SaveResultType := nil;
   try
-    Frm.Script := AScript;
-    Frm.ShowModal;
+    Frm := TDwsIdeForm.Create( Application, AOptions );
+    try
+      Frm.Script := AScript;
+      Frm.ShowModal;
+    finally
+      Frm.Free;
+    end;
   finally
-    Frm.Free;
+    If Assigned( AScript ) then
+      AScript.Config.ResultType := SaveResultType;
   end;
 end;
 
@@ -683,6 +715,17 @@ begin
 end;
 
 
+
+procedure TDwsIdeForm.actClearOutputWindowExecute(Sender: TObject);
+begin
+  memOutputWindow.Clear;
+end;
+
+procedure TDwsIdeForm.actClearOutputWindowUpdate(Sender: TObject);
+begin
+  With Sender as TAction do
+    Enabled := memOutputWindow.Text <> '';
+end;
 
 procedure TDwsIdeForm.Compile( ABuild : boolean );
 begin
@@ -1020,6 +1063,8 @@ begin
   DwsIdeLocalVariablesFrame.DwsIde := Self;
   DwsIdeWatchesFrame.DwsIde        := Self;
   DwsIdeCallStackFrame.DwsIde      := Self;
+
+  memOutputWindow.Clear;
 
   // Set the script folder, creating it if required
   ScriptFolder := IncludeTrailingBackslash(GetDesktopPath) + 'DWS Script Files';
@@ -1976,6 +2021,10 @@ begin
   If FScript.Config.ScriptPaths.IndexOf( FScriptFolder ) = -1 then
      FScript.Config.ScriptPaths.Add( FScriptFolder );
 
+  // Script result type has been saved before calling the IDE form
+  // so we can load an 'output window' connection here..
+  FScript.Config.ResultType := TOutputWindowStringResultType.Create( FScript, Self );
+
   //FScriptFolder := FScript.Config.ScriptPaths[0];
 
   //OpenFileDialog.DefaultFolder    := FScriptFolder;
@@ -2332,6 +2381,8 @@ begin
 
   EditorCloseAllPages;
 
+  memOutputWindow.Clear;
+
   FProjectFileName := AProjectFileName;
 
   FProgram := nil;
@@ -2359,6 +2410,9 @@ end;
 procedure TDwsIdeForm.NewProjectFile( const AProjectFileName : string );
 begin
   EditorCloseAllPages;
+
+  memOutputWindow.Clear;
+
   FProjectFileName := AProjectFileName;
 end;
 
@@ -2970,5 +3024,35 @@ begin
 end;
 
 {$Message 'Add editor action images'}
+
+{ TOutputWindowsStringResultType }
+
+constructor TOutputWindowStringResultType.Create(AOwner : TComponent; ADwsIdeForm: TDwsIdeForm);
+begin
+  inherited Create( AOwner );
+  FDwsIDEForm := ADwsIdeForm;
+end;
+
+procedure TOutputWindowStringResultType.DoAddString(result: TdwsStringResult;
+  var str: String);
+begin
+//  Write(str);
+  FDwsIdeForm.memOutputWindow.Lines.Add( str );
+end;
+
+procedure TOutputWindowStringResultType.DoReadChar(result: TdwsStringResult;
+  var str: String);
+var
+   c : Char;
+begin
+   Read(c);
+   str:=c;
+end;
+
+procedure TOutputWindowStringResultType.DoReadLn(result: TdwsStringResult;
+  var str: String);
+begin
+   ReadLn(str);
+end;
 
 end.

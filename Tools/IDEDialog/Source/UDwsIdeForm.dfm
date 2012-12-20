@@ -2,8 +2,8 @@ object DwsIdeForm: TDwsIdeForm
   Left = 281
   Top = 84
   Caption = 'Dws Ide'
-  ClientHeight = 771
-  ClientWidth = 901
+  ClientHeight = 770
+  ClientWidth = 937
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -21,17 +21,18 @@ object DwsIdeForm: TDwsIdeForm
   PixelsPerInch = 96
   TextHeight = 13
   object Splitter1: TSplitter
-    Left = 637
+    Left = 673
     Top = 0
-    Height = 771
+    Height = 663
     Align = alRight
+    ExplicitLeft = 637
     ExplicitHeight = 867
   end
   object pnlEditor: TPanel
     Left = 0
     Top = 0
-    Width = 637
-    Height = 771
+    Width = 673
+    Height = 663
     Align = alClient
     BevelOuter = bvNone
     BorderWidth = 5
@@ -42,7 +43,7 @@ object DwsIdeForm: TDwsIdeForm
     object imgTabs: TImage
       Left = 5
       Top = 5
-      Width = 627
+      Width = 663
       Height = 22
       Align = alTop
       OnMouseDown = pcEditorMouseDown
@@ -50,11 +51,12 @@ object DwsIdeForm: TDwsIdeForm
       OnMouseMove = imgTabsMouseMove
       ExplicitLeft = 2
       ExplicitTop = 0
+      ExplicitWidth = 627
     end
     object StatusBar: TStatusBar
       Left = 5
-      Top = 747
-      Width = 627
+      Top = 639
+      Width = 663
       Height = 19
       Panels = <
         item
@@ -76,8 +78,8 @@ object DwsIdeForm: TDwsIdeForm
     object pnlPageControl: TPanel
       Left = 5
       Top = 27
-      Width = 627
-      Height = 720
+      Width = 663
+      Height = 612
       Align = alClient
       BevelOuter = bvNone
       ParentBackground = False
@@ -86,10 +88,10 @@ object DwsIdeForm: TDwsIdeForm
     end
   end
   object Panel2: TPanel
-    Left = 640
+    Left = 676
     Top = 0
     Width = 261
-    Height = 771
+    Height = 663
     Align = alRight
     BevelOuter = bvNone
     BorderWidth = 5
@@ -141,23 +143,58 @@ object DwsIdeForm: TDwsIdeForm
       Left = 5
       Top = 469
       Width = 251
-      Height = 296
-      Align = alTop
+      Height = 189
+      Align = alClient
       TabOrder = 2
       ExplicitLeft = 5
       ExplicitTop = 469
       ExplicitWidth = 251
-      ExplicitHeight = 296
+      ExplicitHeight = 189
       inherited memCallStack: TMemo
         Width = 251
-        Height = 279
+        Height = 172
         ExplicitWidth = 251
-        ExplicitHeight = 279
+        ExplicitHeight = 172
       end
       inherited Panel1: TPanel
         Width = 251
         ExplicitWidth = 251
       end
+    end
+  end
+  object Panel1: TPanel
+    Left = 0
+    Top = 663
+    Width = 937
+    Height = 107
+    Align = alBottom
+    BevelOuter = bvNone
+    Caption = 'Panel1'
+    ShowCaption = False
+    TabOrder = 2
+    object memOutputWindow: TMemo
+      Left = 0
+      Top = 17
+      Width = 937
+      Height = 90
+      Align = alClient
+      Lines.Strings = (
+        '')
+      ReadOnly = True
+      TabOrder = 0
+      ExplicitTop = 0
+      ExplicitHeight = 107
+    end
+    object Panel3: TPanel
+      Left = 0
+      Top = 0
+      Width = 937
+      Height = 17
+      Align = alTop
+      BevelOuter = bvNone
+      Caption = 'Output'
+      TabOrder = 1
+      ExplicitWidth = 251
     end
   end
   object ActionList1: TActionList
@@ -372,6 +409,12 @@ object DwsIdeForm: TDwsIdeForm
       ShortCut = 16416
       OnExecute = actCodeProposalInvokeExecute
     end
+    object actClearOutputWindow: TAction
+      Category = 'Edit'
+      Caption = 'Clear output window'
+      OnExecute = actClearOutputWindowExecute
+      OnUpdate = actClearOutputWindowUpdate
+    end
   end
   object EditorPageTabContextMenu: TPopupMenu
     Images = SmallImages
@@ -513,6 +556,12 @@ object DwsIdeForm: TDwsIdeForm
       end
       object ReadOnly2: TMenuItem
         Action = actToggleReadOnly
+      end
+      object N10: TMenuItem
+        Caption = '-'
+      end
+      object Clearoutputwindow1: TMenuItem
+        Action = actClearOutputWindow
       end
     end
     object View1: TMenuItem
