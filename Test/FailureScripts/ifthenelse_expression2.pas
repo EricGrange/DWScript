@@ -1,1 +1,1 @@
-var t := if true then 'a' ;
+var t := if true then 'a' else;

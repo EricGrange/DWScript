@@ -33,6 +33,7 @@ type
 
    TOnDebugStartStopEvent = procedure(exec: TdwsExecution) of object;
    TOnDebugEvent = procedure(exec: TdwsExecution; expr: TExprBase) of object;
+   TOnDebugMessageEvent = procedure(const msg : String) of object;
 
    // TdwsSimpleDebugger
    //
@@ -46,6 +47,7 @@ type
          FOnStopDebug : TOnDebugStartStopEvent;
          FOnEnterFunc : TOnDebugEvent;
          FOnLeaveFunc : TOnDebugEvent;
+         FOnDebugMessage : TOnDebugMessageEvent;
 
          procedure StartDebug(exec : TdwsExecution); virtual;
          procedure DoDebug(exec : TdwsExecution; expr : TExprBase); virtual;
@@ -53,6 +55,7 @@ type
          procedure EnterFunc(exec : TdwsExecution; funcExpr : TExprBase); virtual;
          procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase); virtual;
          function  LastDebugStepExpr : TExprBase; virtual;
+         procedure DebugMessage(const msg : String); virtual;
 
       public
          property Debugger : IDebugger read FDebugger write FDebugger;
@@ -63,6 +66,7 @@ type
          property OnDebugStop : TOnDebugStartStopEvent read FOnStopDebug write FOnStopDebug;
          property OnEnterFunc : TOnDebugEvent read FOnEnterFunc write FOnEnterFunc;
          property OnLeaveFunc : TOnDebugEvent read FOnLeaveFunc write FOnLeaveFunc;
+         property OnDebugMessage : TOnDebugMessageEvent read FOnDebugMessage write FOnDebugMessage;
    end;
 
    TdwsDebuggerState = (dsIdle, dsDebugRun,
@@ -412,6 +416,7 @@ type
       procedure EnterFunc(exec : TdwsExecution; funcExpr : TExprBase);
       procedure LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase);
       function  LastDebugStepExpr : TExprBase;
+      procedure DebugMessage(const msg : String);
    end;
    {$endif}
 
@@ -525,6 +530,13 @@ begin
 end;
 {$endif}
 
+// DebugMessage
+//
+procedure TSynchronizedThreadedDebugger.DebugMessage(const msg : String);
+begin
+   Synchronize(procedure begin FMain.DebugMessage(msg) end);
+end;
+
 // ------------------
 // ------------------ TdwsSimpleDebugger ------------------
 // ------------------
@@ -566,6 +578,14 @@ end;
 function TdwsSimpleDebugger.LastDebugStepExpr : TExprBase;
 begin
    Result:=nil;
+end;
+
+// DebugMessage
+//
+procedure TdwsSimpleDebugger.DebugMessage(const msg : String);
+begin
+   if Assigned(FOnDebugMessage) then
+      FOnDebugMessage(msg);
 end;
 
 // StartDebug

@@ -8964,12 +8964,13 @@ begin
       if trueExpr.Typ=nil then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
 
-      if not ftok.TestDelete(ttELSE) then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ElseExpected);
+      if FTok.TestDelete(ttELSE) then begin
 
-      falseExpr:=ReadExpr(expecting);
-      if falseExpr.Typ=nil then
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
+         falseExpr:=ReadExpr(expecting);
+         if falseExpr.Typ=nil then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
+
+      end else falseExpr:=TConstExpr.CreateTypedDefault(FProg, trueExpr.Typ);
 
       if (trueExpr.Typ=nil) or (falseExpr.Typ=nil) then begin
 

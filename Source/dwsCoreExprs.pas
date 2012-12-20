@@ -222,6 +222,8 @@ type
          class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer = 0) : TConstExpr; overload; static;
          class function CreateTyped(Prog: TdwsProgram; Typ: TTypeSymbol; constSymbol : TConstSymbol) : TConstExpr; overload; static;
 
+         class function CreateTypedDefault(prog : TdwsProgram; typ : TTypeSymbol) : TConstExpr;
+
          class function CreateTypedVariantValue(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant) : TConstExpr; overload; static;
 
          class function CreateIntegerValue(prog : TdwsProgram; const value : Int64) : TConstExpr; overload; static;
@@ -2698,6 +2700,21 @@ begin
       1 : Result:=TConstExpr.CreateTypedVariantValue(Prog, Typ, Data[addr]);
    else
       Result:=TConstExpr.Create(Prog, Typ, Data, addr);
+   end;
+end;
+
+// CreateTypedDefault
+//
+class function TConstExpr.CreateTypedDefault(prog : TdwsProgram; typ : TTypeSymbol) : TConstExpr;
+var
+   data : TData;
+begin
+   if typ=nil then
+      Result:=TConstExpr.CreateTypedVariantValue(prog, prog.TypNil, IUnknown(nil))
+   else begin
+      SetLength(data, typ.Size);
+      typ.InitData(data, 0);
+      Result:=TConstExpr.CreateTyped(prog, typ, data);
    end;
 end;
 

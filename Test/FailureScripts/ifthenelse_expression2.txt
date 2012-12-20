@@ -1,1 +1,1 @@
-Syntax Error: ELSE expected [line: 1, column: 27]
+Syntax Error: Expression expected [line: 1, column: 31]
