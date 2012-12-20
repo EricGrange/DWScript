@@ -182,8 +182,6 @@ object DwsIdeForm: TDwsIdeForm
         '')
       ReadOnly = True
       TabOrder = 0
-      ExplicitTop = 0
-      ExplicitHeight = 107
     end
     object Panel3: TPanel
       Left = 0
@@ -194,7 +192,6 @@ object DwsIdeForm: TDwsIdeForm
       BevelOuter = bvNone
       Caption = 'Output'
       TabOrder = 1
-      ExplicitWidth = 251
     end
   end
   object ActionList1: TActionList

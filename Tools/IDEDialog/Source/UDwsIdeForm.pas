@@ -377,6 +377,7 @@ type
     FTabArrowLeft, FTabArrowRight : TRect;
     FPages : TSimpleList<TEditorPage>;
 
+    procedure DoDebugMessage(const msg : String);
     procedure CodeSuggest( ACodeSuggestionMode : TCodeSuggestionMode);
     procedure DoOnCodeSuggestionFormSelectItem( const AItemText : string );
     procedure EditorPageAddNew( const AFileName : string; ALoadfile : boolean  );
@@ -477,6 +478,7 @@ implementation
 uses
   Registry,
   dwsSuggestions,
+  dwsDebugFunctions,
   SynHighlighterPas,
   ShlObj;
 
@@ -1822,6 +1824,8 @@ procedure TDwsIdeForm.FormCreate(Sender: TObject);
 var
    bmp : TBitmap;
 begin
+  dwsDebugger1.OnDebugMessage := DoDebugMessage;
+
   FCodeProposalForm := TDwsIdeCodeProposalForm.Create( Self );
   FCodeProposalForm.OnSelectItem := DoOnCodeSuggestionFormSelectItem;
 
@@ -2542,6 +2546,13 @@ end;
 
 
 
+procedure TDwsIdeForm.DoDebugMessage(const msg : String);
+begin
+  memOutputWindow.Lines.Add( 'ODS: ' + msg );
+end;
+
+
+
 
 { TEditorPage }
 
@@ -3036,8 +3047,7 @@ end;
 procedure TOutputWindowStringResultType.DoAddString(result: TdwsStringResult;
   var str: String);
 begin
-//  Write(str);
-  FDwsIdeForm.memOutputWindow.Lines.Add( str );
+  FDwsIdeForm.memOutputWindow.Lines.Add( 'STD: ' + str );
 end;
 
 procedure TOutputWindowStringResultType.DoReadChar(result: TdwsStringResult;
