@@ -106,7 +106,7 @@ function TdwsHtmlFilter.Process(const Text: String; Msgs: TdwsMessageList): Stri
       isQuoted: Boolean;
       i, lineCount: Integer;
    begin
-      if start>=stop then Exit;
+      if start>stop then Exit;
 
       dest.WriteString('Print(');
       isQuoted:=False;
