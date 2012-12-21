@@ -28,6 +28,12 @@ type
       ExtObject: TObject);
     procedure dwsSystemInfoClassesCPUInfoMethodsKernelUsageEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesCPUInfoMethodsFrequencyMHzEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsSystemInfoClassesCPUInfoMethodsNameEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsSystemInfoClassesCPUInfoMethodsProcessUsageEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
     FOSNameVersion : TOSNameVersion;
@@ -95,16 +101,34 @@ begin
    Info.ResultAsInteger:=SystemCPU.Count;
 end;
 
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesCPUInfoMethodsFrequencyMHzEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=SystemCPU.Frequency;
+end;
+
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesCPUInfoMethodsKernelUsageEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsInteger:=SystemCPU.Kernel;
+   Info.ResultAsFloat:=SystemCPU.Kernel;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesCPUInfoMethodsNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=SystemCPU.Name;
+end;
+
+procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesCPUInfoMethodsProcessUsageEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsFloat:=SystemCPU.ProcessUser+SystemCPU.ProcessKernel;
 end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesCPUInfoMethodsSystemUsageEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsInteger:=SystemCPU.Usage;
+   Info.ResultAsFloat:=SystemCPU.Usage;
 end;
 
 procedure TdwsSystemInfoLibModule.dwsSystemInfoClassesMemoryStatusConstructorsCreateEval(

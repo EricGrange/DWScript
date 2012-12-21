@@ -21,7 +21,7 @@ interface
 uses
    SysUtils, Classes, Rtti, dwsFileSystem, dwsGlobalVarsFunctions,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsRTTIConnector, dwsUtils,
-   dwsWebEnvironment, dwsSystemInfoLibModule;
+   dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage;
 
 type
 
@@ -47,6 +47,7 @@ type
 
    private
       FScriptTimeoutMilliseconds : Integer;
+      FCPUUsageLimit : Integer;
 
       FSystemInfo : TdwsSystemInfoLibModule;
       FFileSystem : TdwsCustomFileSystem;
@@ -69,6 +70,9 @@ type
 
       procedure AddNotMatching(const cp : TCompiledProgram);
 
+      procedure SetCPUUsageLimit(const val : Integer);
+      function WaitForCPULimit : Boolean;
+
    public
       procedure HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse);
 
@@ -76,6 +80,8 @@ type
       procedure FlushDWSCache(const matchingBegin : String = '');
 
       property ScriptTimeoutMilliseconds : Integer read FScriptTimeoutMilliseconds write FScriptTimeoutMilliseconds;
+      property CPUUsageLimit : Integer read FCPUUsageLimit write SetCPUUsageLimit;
+
       property FileSystem : TdwsCustomFileSystem read GetFileSystem write SetFileSystem;
   end;
 
@@ -112,7 +118,7 @@ begin
 
    DelphiWebScript.Extensions.Add(FCompilerEnvironment);
 
-   FScriptTimeoutMilliseconds:=3000;
+   FScriptTimeoutMilliseconds:=30000;
 end;
 
 procedure TSynDWScript.DataModuleDestroy(Sender: TObject);
@@ -152,6 +158,15 @@ var
    exec : IdwsProgramExecution;
    webenv : TWebEnvironment;
 begin
+   if (CPUUsageLimit>0) and not WaitForCPULimit then begin
+
+      response.StatusCode:=503;
+      response.ContentData:='CPU Usage limit reached, please try again later';
+      response.ContentType:='text/plain';
+      Exit;
+
+   end;
+
    TryAcquireDWS(fileName, prog);
    if prog=nil then
       CompileDWS(fileName, prog);
@@ -180,11 +195,12 @@ begin
 
       if exec.Msgs.Count>0 then begin
          response.StatusCode:=400;
-         response.ContentData:=UTF8Encode(prog.Msgs.AsInfo);
+         response.ContentData:=UTF8Encode(exec.Msgs.AsInfo);
       end else begin
          if response.ContentData='' then
             response.ContentData:=UTF8Encode(exec.Result.ToString);
       end;
+      response.AllowCORS:='*';
    end;
 end;
 
@@ -273,6 +289,30 @@ procedure TSynDWScript.AddNotMatching(const cp : TCompiledProgram);
 begin
    if cp.Prog.Msgs.HasErrors or not StrBeginsWith(cp.Name, FFlushMatching) then
       FCompiledPrograms.Add(cp);
+end;
+
+// SetCPUUsageLimit
+//
+procedure TSynDWScript.SetCPUUsageLimit(const val : Integer);
+begin
+   FCPUUsageLimit:=val;
+   if FCPUUsageLimit>0 then
+      SystemCPU.Track;
+end;
+
+// WaitForCPULimit
+//
+function TSynDWScript.WaitForCPULimit : Boolean;
+var
+   i : Integer;
+begin
+   i:=0;
+   while SystemCPU.ProcessUsage>CPUUsageLimit do begin
+      Sleep(100);
+      Inc(i);
+      if i=10 then Exit(False);
+   end;
+   Result:=True;
 end;
 
 // ------------------

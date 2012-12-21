@@ -53,6 +53,13 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
         IsStatic = True
         Methods = <
           item
+            Name = 'Name'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesCPUInfoMethodsNameEval
+            Kind = mkClassFunction
+          end
+          item
             Name = 'Count'
             ResultType = 'Integer'
             Attributes = [maStatic]
@@ -61,16 +68,30 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
           end
           item
             Name = 'SystemUsage'
-            ResultType = 'Integer'
+            ResultType = 'Float'
             Attributes = [maStatic]
             OnEval = dwsSystemInfoClassesCPUInfoMethodsSystemUsageEval
             Kind = mkClassFunction
           end
           item
             Name = 'KernelUsage'
-            ResultType = 'Integer'
+            ResultType = 'Float'
             Attributes = [maStatic]
             OnEval = dwsSystemInfoClassesCPUInfoMethodsKernelUsageEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'FrequencyMHz'
+            ResultType = 'Integer'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesCPUInfoMethodsFrequencyMHzEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'ProcessUsage'
+            ResultType = 'Float'
+            Attributes = [maStatic]
+            OnEval = dwsSystemInfoClassesCPUInfoMethodsProcessUsageEval
             Kind = mkClassFunction
           end>
       end>

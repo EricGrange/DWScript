@@ -2,7 +2,7 @@ unit dwsCPUUsage;
 
 interface
 
-uses Windows, MMSystem, SysUtils, dwsUtils;
+uses Windows, MMSystem, SysUtils, Registry, dwsUtils;
 
 type
    SystemCPUCategory = (cpuUser, cpuKernel, cpuIdle);
@@ -13,14 +13,22 @@ type
 
       class function Tracking : Boolean; static;
 
+      class function Name : String; static;
       class function Count : Integer; static;
-      class function Usage : Integer; static;
+      class function Frequency : Integer; static;
 
-      class function Category(cat : SystemCPUCategory) : Integer; static;
+      class function Usage : Single; static;
+      class function ProcessUsage : Single; static;
 
-      class property User : Integer index cpuUser read Category;
-      class property Kernel : Integer index cpuKernel read Category;
-      class property Idle : Integer index cpuIdle read Category;
+      class function Category(cat : SystemCPUCategory) : Single; static;
+      class function ProcessCategory(cat : SystemCPUCategory) : Single; static;
+
+      class property User : Single index cpuUser read Category;
+      class property Kernel : Single index cpuKernel read Category;
+      class property Idle : Single index cpuIdle read Category;
+
+      class property ProcessUser : Single index cpuUser read ProcessCategory;
+      class property ProcessKernel : Single index cpuKernel read ProcessCategory;
    end;
 
 // ------------------------------------------------------------------
@@ -36,10 +44,15 @@ type
 
 var
    vProcessorCount : Integer;
+   vProcessorName : String;
+   vProcessorFreq : Integer;
+
    vCPUUsageScaleFactor : Double;
    vCPUUsageLock : TFixedCriticalSection;
-   vCycleSystemCPUUsage : TCPUUsage;
-   vLastSystemCPUUsage : TCPUUsage;
+
+   vCycleSystem, vCycleProcess : TCPUUsage;
+   vLastSystem, vLastProcess : TCPUUsage;
+
    vCPUUsageTimerID : Integer;
    vTrackInterval : Integer;
 
@@ -66,30 +79,74 @@ begin
    end;
 end;
 
+// GetCurrentSystemTimes
+//
+function GetCurrentProcessTimes(handle : Cardinal) : TCPUUsage;
+var
+   lpStartTime, lpExitTime, lpKernelTime, lpUserTime : FILETIME;
+begin
+   if GetProcessTimes(handle, lpStartTime, lpExitTime, lpKernelTime, lpUserTime) then begin
+      Result[cpuIdle]:=0;
+      Result[cpuKernel]:=FileTimeToDateTime(lpKernelTime);
+      Result[cpuUser]:=FileTimeToDateTime(lpUserTime);
+   end;
+end;
+
 // CPUUsageCallBack
 //
 var
    vAnalyzingCPUUsage : Boolean;
 procedure CPUUsageCallBack(TimerID, Msg: Uint; dwUser, dw1, dw2: DWORD); pascal;
 var
-   current : TCPUUsage;
+   systemCurrent, processCurrent : TCPUUsage;
    cat : SystemCPUCategory;
 begin
    if vAnalyzingCPUUsage then Exit;
 
    vAnalyzingCPUUsage:=True;
 
-   current:=GetCurrentSystemTimes;
+   systemCurrent:=GetCurrentSystemTimes;
+   processCurrent:=GetCurrentProcessTimes(GetCurrentProcess);
+
    vCPUUsageLock.Enter;
    try
-      for cat:=Low(SystemCPUCategory) to High(SystemCPUCategory) do
-         vCycleSystemCPUUsage[cat]:=current[cat]-vLastSystemCPUUsage[cat];
-      vLastSystemCPUUsage:=current;
+      for cat:=Low(SystemCPUCategory) to High(SystemCPUCategory) do begin
+         vCycleSystem[cat]:=systemCurrent[cat]-vLastSystem[cat];
+         vCycleProcess[cat]:=processCurrent[cat]-vLastProcess[cat];
+      end;
+      vLastSystem:=systemCurrent;
+      vLastProcess:=processCurrent;
    finally
       vCPUUsageLock.Leave;
    end;
 
    vAnalyzingCPUUsage:=False;
+end;
+
+procedure GetCPUStaticInfo;
+var
+   reg : TRegistry;
+begin
+   vProcessorCount:=1;
+
+   try
+      reg:=TRegistry.Create;
+      try
+         reg.RootKey:=HKEY_LOCAL_MACHINE;
+         reg.OpenKeyReadOnly('HARDWARE\DESCRIPTION\System\CentralProcessor\0');
+         vProcessorName:=reg.ReadString('ProcessorNameString');
+         vProcessorFreq:=reg.ReadInteger('~MHz');
+         reg.CloseKey;
+
+         while reg.KeyExists('HARDWARE\DESCRIPTION\System\CentralProcessor\'+IntToStr(vProcessorCount)) do
+            Inc(vProcessorCount);
+      finally
+         reg.Free;
+      end;
+   except
+      vProcessorName:='Unknown';
+      vProcessorFreq:=1;
+   end;
 end;
 
 // ------------------
@@ -106,11 +163,11 @@ begin
 
    vTrackInterval:=everyMilliseconds;
 
-   vLastSystemCPUUsage:=GetCurrentSystemTimes;
+   vLastSystem:=GetCurrentSystemTimes;
 
-   vCycleSystemCPUUsage[cpuUser]:=0;
-   vCycleSystemCPUUsage[cpuKernel]:=0;
-   vCycleSystemCPUUsage[cpuIdle]:=0;
+   vCycleSystem[cpuUser]:=0;
+   vCycleSystem[cpuKernel]:=0;
+   vCycleSystem[cpuIdle]:=0;
 
    vCPUUsageScaleFactor:=100/(Count*everyMilliseconds*(1/1000/86400));
    vCPUUsageTimerID:=timeSetEvent(everyMilliseconds, 0, @CPUUsageCallBack, 0, TIME_PERIODIC);
@@ -133,36 +190,56 @@ begin
    Result:=(vCPUUsageTimerID<>0);
 end;
 
+// Name
+//
+class function SystemCPU.Name : String;
+begin
+   if vProcessorCount=0 then
+      GetCPUStaticInfo;
+   Result:=vProcessorName;
+end;
+
 // Count
 //
 class function SystemCPU.Count : Integer;
-var
-   processMask, mask : {$IFDEF VER230}NativeUInt{$ELSE}DWORD{$ENDIF};
 begin
-   if vProcessorCount=0 then begin
-      vProcessorCount:=1;
-      if GetProcessAffinityMask(GetCurrentProcess, processMask, mask) then begin
-         mask:=mask shr 1;
-         while mask>0 do begin
-            Inc(vProcessorCount);
-            mask:=mask shr 1;
-         end;
-      end;
-   end;
+   if vProcessorCount=0 then
+      GetCPUStaticInfo;
    Result:=vProcessorCount;
+end;
+
+// Frequency
+//
+class function SystemCPU.Frequency : Integer;
+begin
+   if vProcessorCount=0 then
+      GetCPUStaticInfo;
+   Result:=vProcessorFreq;
 end;
 
 // Usage
 //
-class function SystemCPU.Usage : Integer;
+class function SystemCPU.Usage : Single;
 begin
    if vCPUUsageTimerID=0 then Exit(0);
 
    vCPUUsageLock.Enter;
    try
-      Result:=Round( (  vCycleSystemCPUUsage[cpuKernel] + vCycleSystemCPUUsage[cpuUser]
-                      - vCycleSystemCPUUsage[cpuIdle])
-                    * vCPUUsageScaleFactor);
+      Result:=(vCycleSystem[cpuKernel]+vCycleSystem[cpuUser]-vCycleSystem[cpuIdle])*vCPUUsageScaleFactor;
+   finally
+      vCPUUsageLock.Leave;
+   end;
+end;
+
+// ProcessUsage
+//
+class function SystemCPU.ProcessUsage : Single;
+begin
+   if vCPUUsageTimerID=0 then Exit(0);
+
+   vCPUUsageLock.Enter;
+   try
+      Result:=(vCycleProcess[cpuKernel]+vCycleProcess[cpuUser])*vCPUUsageScaleFactor;
    finally
       vCPUUsageLock.Leave;
    end;
@@ -170,13 +247,27 @@ end;
 
 // Category
 //
-class function SystemCPU.Category(cat : SystemCPUCategory) : Integer;
+class function SystemCPU.Category(cat : SystemCPUCategory) : Single;
 begin
    if vCPUUsageTimerID=0 then Exit(0);
 
    vCPUUsageLock.Enter;
    try
-      Result:=Round(vCycleSystemCPUUsage[cat]*vCPUUsageScaleFactor);
+      Result:=vCycleSystem[cat]*vCPUUsageScaleFactor;
+   finally
+      vCPUUsageLock.Leave;
+   end;
+end;
+
+// ProcessCategory
+//
+class function SystemCPU.ProcessCategory(cat : SystemCPUCategory) : Single;
+begin
+   if vCPUUsageTimerID=0 then Exit(0);
+
+   vCPUUsageLock.Enter;
+   try
+      Result:=vCycleProcess[cat]*vCPUUsageScaleFactor;
    finally
       vCPUUsageLock.Leave;
    end;

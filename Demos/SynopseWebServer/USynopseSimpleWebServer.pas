@@ -43,6 +43,7 @@ begin
 
    FDWS:=TSynDWScript.Create(nil);
    FDWS.FileSystem:=FFileSystem;
+   FDWS.CPUUsageLimit:=10;
 
    FServer:=THttpApiServer.Create(false);
    FServer.AddUrl('', '888', false,'+');
@@ -123,6 +124,9 @@ begin
 
          outResponse.OutContent:=response.ContentData;
          outResponse.OutContentType:=response.ContentType;
+         if response.AllowCORS<>'' then
+            outResponse.OutCustomHeader:=outResponse.OutCustomHeader
+               +'Access-Control-Allow-Origin: '+response.AllowCORS+#13#10;
          Result:=response.StatusCode;
       finally
          request.Free;
@@ -130,10 +134,12 @@ begin
       end;
 
    end else begin
+
       // http.sys will send the specified file from kernel mode
       outResponse.OutContent:=StringToUTF8(pathFileName);
       outResponse.OutContentType:=HTTP_RESP_STATICFILE;
       Result:=200; // THttpApiServer.Execute will return 404 if not found
+
    end;
 end;
 

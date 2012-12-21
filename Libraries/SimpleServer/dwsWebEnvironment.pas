@@ -66,6 +66,7 @@ type
          FContentData : RawByteString;
          FContentType : RawByteString;
          FContentEncoding : RawByteString;
+         FAllowCORS : RawByteString;
 
       public
 
@@ -74,6 +75,7 @@ type
          property ContentData : RawByteString read FContentData write FContentData;
          property ContentType : RawByteString read FContentType write FContentType;
          property ContentEncoding : RawByteString read FContentEncoding write FContentEncoding;
+         property AllowCORS : RawByteString read FAllowCORS write FAllowCORS;
    end;
 
    TWebEnvironment = class
