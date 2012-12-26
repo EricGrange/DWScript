@@ -1,0 +1,1155 @@
+{
+  Server based on HTTP.sys 2.0 (Win 7 or Win 2k8 minimum)
+
+  This file is based on Synopse framework.
+
+  HTTP.Sys API & server extracted, moved to Unicode-only
+
+  Synopse framework. Copyright (C) 2012 Arnaud Bouchez
+    Synopse Informatique - http://synopse.info
+
+  *** BEGIN LICENSE BLOCK *****
+  Version: MPL 1.1/GPL 2.0/LGPL 2.1
+
+  The contents of this file are subject to the Mozilla Public License Version
+  1.1 (the "License"); you may not use this file except in compliance with
+  the License. You may obtain a copy of the License at
+  http://www.mozilla.org/MPL
+}
+unit dwsHTTPSysServer;
+
+interface
+
+uses
+   Windows,
+   ActiveX,
+   SysUtils,
+   Classes,
+   SynWinSock,
+   dwsHTTPSysAPI, dwsUtils;
+
+type
+   /// FPC 64 compatibility Integer type
+   PtrInt = Integer;
+   /// FPC 64 compatibility pointer type
+   PPtrInt = ^PtrInt;
+
+   PtrUInt = NativeUInt;
+   PPtrUInt = ^PtrUInt;
+
+   /// event used to compress or uncompress some data during HTTP protocol
+   // - should always return the protocol name for ACCEPT-ENCODING: header
+   // e.g. 'gzip' or 'deflate' for standard HTTP format, but you can add
+   // your own (like 'synlzo' or 'synlz')
+   // - the data is compressed (if Compress=TRUE) or uncompressed (if
+   // Compress=FALSE) in the Data variable (i.e. it is modified in-place)
+   // - to be used with THttpSocket.RegisterCompress method
+   // - type is a generic AnsiString, which should be in practice a
+   // RawByteString or a RawByteString
+   THttpSocketCompress = function(var Data : RawByteString; Compress : boolean) : RawByteString;
+
+   /// used to maintain a list of known compression algorithms
+   THttpSocketCompressRec = record
+      /// the compression name, as in ACCEPT-ENCODING: header (gzip,deflate,synlz)
+      Name : AnsiString;
+      NameLength : Integer;
+      /// the function handling compression and decompression
+      Func : THttpSocketCompress;
+   end;
+
+   THttpSocketCompressRecDynArray = array of THttpSocketCompressRec;
+
+   THttpSocketCompressSet = set of 0..31;
+
+   /// event handler used by THttpServerGeneric.OnRequest property
+   // - InURL/InMethod/InHeaders/InContent properties are input parameters
+   // - OutContent/OutContentType/OutCustomHeader are output parameters
+   // - result of the function is the HTTP error code (200 if OK, e.g.)
+   // - OutCustomHeader will handle Content-Type/Location
+   // - if OutContentType is HTTP_RESP_STATICFILE (i.e. '!STATICFILE'),
+   // then OutContent is the UTF-8 file name of a file which must be sent to the
+   // client via http.sys (much faster than manual buffering/sending)
+   TSynHttpServerRequest = record
+      InURL, InMethod, InHeaders, InContent, InContentType : RawByteString;
+      ConnectionID : Int64;
+   end;
+
+   TSynHttpServerResponse = record
+      OutContent, OutContentType, OutCustomHeader : RawByteString;
+      LogUserName : String;
+   end;
+
+   TOnHttpServerRequest = function(
+      const inRequest : TSynHttpServerRequest;
+      var outResponse : TSynHttpServerResponse) : cardinal of object;
+
+   /// event prototype used e.g. by THttpServerGeneric.OnHttpThreadStart
+   TNotifyThreadEvent = procedure(Sender : TThread) of object;
+
+   /// generic HTTP server
+   THttpServerGeneric = class (TThread)
+      protected
+         /// optional event handler for the virtual Request method
+         FOnRequest : TOnHttpServerRequest;
+         /// list of all registered compression algorithms
+         FCompress : THttpSocketCompressRecDynArray;
+         /// set by RegisterCompress method
+         FCompressAcceptEncoding : RawByteString;
+         FOnHttpThreadStart : TNotifyThreadEvent;
+         FOnHttpThreadTerminate : TNotifyEvent;
+
+         procedure DoTerminate; override;
+         /// server main loop: just launch FOnHttpThreadStart event (if any)
+         // - should be called by all overriden methods
+         procedure Execute; override;
+
+      public
+         /// override this function to customize your http server
+         // - InURL/InMethod/InContent properties are input parameters
+         // - OutContent/OutContentType/OutCustomHeader are output parameters
+         // - result of the function is the HTTP error code (200 if OK, e.g.)
+         // - OutCustomHeader will handle Content-Type/Location
+         // - if OutContentType is HTTP_RESP_STATICFILE (i.e. '!STATICFILE'),
+         // then OutContent is the UTF-8 file name of a file which must be sent to the
+         // client via http.sys (much faster than manual buffering/sending)
+         // - default implementation is to call the OnRequest event (if existing)
+         // - warning: this process must be thread-safe (can be called by several
+         // threads simultaneously)
+         function DoRequest(const InRequest : TSynHttpServerRequest;
+                            out OutRequest : TSynHttpServerResponse) : cardinal; virtual;
+         /// will register a compression algorithm
+         // - used e.g. to compress on the fly the data, with standard gzip/deflate
+         // or custom (synlzo/synlz) protocols
+         // - the first registered algorithm will be the prefered one for compression
+         procedure RegisterCompress(aFunction : THttpSocketCompress); virtual;
+         /// event handler called by the default implementation of the
+         // virtual Request method
+         // - warning: this process must be thread-safe (can be called by several
+         // threads simultaneously)
+         property OnRequest : TOnHttpServerRequest read FOnRequest write FOnRequest;
+         /// event handler called when the Thread is just initiated
+         // - called in the thread context at first place in THttpServerGeneric.Execute
+         property OnHttpThreadStart : TNotifyThreadEvent read FOnHttpThreadStart write FOnHttpThreadStart;
+         /// event handler called when the Thread is terminating, in the thread context
+         // - the TThread.OnTerminate event will be called within a Synchronize()
+         // wrapper, so it won't fit our purpose
+         // - to be used e.g. to call CoUnInitialize from thread in which CoInitialize
+         // was made, for instance via a method defined as such:
+         // ! procedure TMyServer.OnHttpThreadTerminate(Sender: TObject);
+         // ! begin // TSQLDBConnectionPropertiesThreadSafe
+         // !   fMyConnectionProps.EndCurrentThread;
+         // ! end;
+         property OnHttpThreadTerminate : TNotifyEvent read FOnHttpThreadTerminate write FOnHttpThreadTerminate;
+   end;
+
+  {/ HTTP server using fast http.sys 2.0 l-mode server
+
+     Requires Win2008 or Vista. }
+   THttpApi2Server = class (THttpServerGeneric)
+      protected
+         /// the internal request queue
+         FReqQueue : THandle;
+         /// contain clones list
+         FClones : TList;
+         /// list of all registered URL (Unicode-encoded)
+         FRegisteredUrl : array of String;
+         FMaxInputCountLength : Cardinal;
+
+         // Http API 2.0
+         FServerSessionID : HTTP_SERVER_SESSION_ID;
+         FUrlGroupID : HTTP_URL_GROUP_ID;
+         FLogFieldsData : HTTP_LOG_FIELDS_DATA;
+         FLogDataPtr : PHTTP_LOG_DATA;
+         FLogDirectory : String;
+         FLogType : HTTP_LOGGING_TYPE;
+         FLogFields : Cardinal;
+         FLogRolloverSize : Cardinal;
+         FServerName : UTF8String;
+         FServiceName : UTF8String;
+         FMaxBandwidth : Cardinal;
+
+         /// server main loop - don't change directly
+         // - will call the Request public virtual method with the appropriate
+         // parameters to retrive the content
+         procedure Execute; override;
+         /// create a clone
+         constructor CreateClone(From : THttpApi2Server);
+
+         function GetLogging : Boolean; inline;
+         procedure SetLogging(const val : Boolean);
+         procedure SetLogDirectory(const val : String);
+         procedure SetLogType(const val : HTTP_LOGGING_TYPE);
+         procedure SetLogFields(const val : Cardinal);
+         procedure SetLogRolloverSize(const val : Cardinal);
+
+         procedure UpdateLogInfo;
+
+         function GetServerName : String;
+         procedure SetServerName(const val : String);
+         function GetServiceName : String;
+         procedure SetServiceName(const val : String);
+
+         procedure SetMaxBandwidth(val : Cardinal);
+
+      public
+         /// initialize the HTTP Service
+         // - will raise an exception if http.sys is not available (e.g. before
+         // Windows XP SP2) or if the request queue creation failed
+         // - if you override this contructor, put the AddUrl() methods within,
+         // and you can set CreateSuspended to TRUE
+         // - if you will call AddUrl() methods later, set CreateSuspended to FALSE,
+         // then call explicitely the Resume method, after all AddUrl() calls, in
+         // order to start the server
+         constructor Create(CreateSuspended : Boolean);
+         /// release all associated memory and handles
+         destructor Destroy; override;
+
+         /// will clone this thread into multiple other threads
+         // - could speed up the process on multi-core CPU
+         // - will work only if the OnProcess property was set (this is the case
+         // e.g. in TSQLHttpServer.Create() constructor)
+         // - maximum value is 256 - higher should not be worth it
+         procedure Clone(ChildThreadCount : Integer);
+         /// register the URLs to Listen On
+         // - e.g. AddUrl('root','888')
+         // - aDomainName could be either a fully qualified case-insensitive domain
+         // name, an IPv4 or IPv6 literal string, or a wildcard ('+' will bound
+         // to all domain names for the specified port, '*' will accept the request
+         // when no other listening hostnames match the request for that port)
+         // - return 0 (NO_ERROR) on success, an error code if failed: under Vista
+         // and Seven, you could have ERROR_ACCESS_DENIED if the process is not
+         // running with enough rights (by default, UAC requires administrator rights
+         // for adding an URL to http.sys registration list) - solution is to call
+         // the THttpApi2Server.AddUrlAuthorize class method during program setup
+         // - if this method is not used within an overriden constructor, default
+         // Create must have be called with CreateSuspended = TRUE and then call the
+         // Resume method after all Url have been added
+         function AddUrl(const aRoot : String; aPort : Integer; isHttps : boolean;
+                         const aDomainName : String = '*') : Integer;
+         /// un-register the URLs to Listen On
+         // - this method expect the same parameters as specified to AddUrl()
+         // - return 0 (NO_ERROR) on success, an error code if failed (e.g.
+         // -1 if the corresponding parameters do not match any previous AddUrl)
+         function RemoveUrl(const aRoot : String; aPort : Integer; isHttps : boolean;
+                            const aDomainName : String = '*') : Integer;
+
+         /// will authorize a specified URL prefix
+         // - will allow to call AddUrl() later for any user on the computer
+         // - if aRoot is left '', it will authorize any root for this port
+         // - must be called with Administrator rights: this class function is to be
+         // used in a Setup program for instance, especially under Vista or Seven,
+         // to reserve the Url for the server
+         // - add a new record to the http.sys URL reservation store
+         // - return '' on success, an error message otherwise
+         // - will first delete any matching rule for this URL prefix
+         // - if OnlyDelete is true, will delete but won't add the new authorization;
+         // in this case, any error message at deletion will be returned
+         class function AddUrlAuthorize(const aRoot : String; aPort : Integer; isHttps : boolean;
+                            const aDomainName : String = '*'; OnlyDelete : boolean = false) : string;
+         /// will register a compression algorithm
+         // - overriden method which will handle any cloned instances
+         procedure RegisterCompress(aFunction : THttpSocketCompress); override;
+
+         property MaxInputCountLength : Cardinal read FMaxInputCountLength write FMaxInputCountLength;
+
+         property Logging : Boolean read GetLogging write SetLogging;
+         property LogDirectory : String read FLogDirectory write SetLogDirectory;
+         property LogType : HTTP_LOGGING_TYPE read FLogType write SetLogType;
+         property LogFields : Cardinal read FLogFields write SetLogFields;
+         property LogRolloverSize : Cardinal read FLogRolloverSize write SetLogRolloverSize;
+         property ServerName : String read GetServerName write SetServerName;
+         property ServiceName : String read GetServiceName write SetServiceName;
+
+         property MaxBandwidth : Cardinal read FMaxBandwidth write SetMaxBandwidth;
+
+   end;
+
+implementation
+
+var
+   vWsaDataOnce : TWSADATA;
+
+function GetNextItemUInt64(var P : PAnsiChar) : Int64;
+var
+   c : PtrUInt;
+begin
+   if P = nil then begin
+      result := 0;
+      exit;
+   end;
+   result := byte(P^)-48;  // caller ensured that P^ in ['0'..'9']
+   inc(P);
+   repeat
+      c := byte(P^)-48;
+      if c>9 then
+         break
+      else result := result*10+c;
+      inc(P);
+   until false;
+end; // P^ will point to the first non digit char
+
+function GetCardinal(P, PEnd : PAnsiChar) : cardinal; overload;
+var
+   c : cardinal;
+begin
+   result := 0;
+   if (P = nil) or (P>=PEnd) then
+      exit;
+   if P^ = ' ' then
+      repeat
+         inc(P);
+         if P = PEnd then
+            exit;
+      until P^<>' ';
+   c := byte(P^)-48;
+   if c>9 then
+      exit;
+   result := c;
+   inc(P);
+   while P<PEnd do begin
+      c := byte(P^)-48;
+      if c>9 then
+         break
+      else result := result*10+c;
+      inc(P);
+   end;
+end;
+
+/// decode 'CONTENT-ENCODING: ' parameter from registered compression list
+function SetCompressHeader(const compress : THttpSocketCompressRecDynArray;
+   P : PAnsiChar) : THttpSocketCompressSet;
+var
+   i, n : Integer;
+   Beg : PAnsiChar;
+begin
+   Integer(result) := 0;
+   if P<>nil then begin
+      repeat
+         while P^ in [' ', ','] do
+            inc(P);
+         Beg := P; // 'gzip;q=1.0, deflate' -> aName='gzip' then 'deflate'
+         while not (P^ in [';', ',', #0]) do
+            inc(P);
+         n:=P-Beg;
+         for i := 0 to high(Compress) do
+            if     (n=Compress[i].NameLength)
+               and CompareMem(Beg, Pointer(Compress[i].Name), n) then
+               include(result, i);
+         while not (P^ in [',', #0]) do
+            inc(P);
+      until P^ = #0;
+   end;
+end;
+
+function RegisterCompressFunc(var Compress : THttpSocketCompressRecDynArray;
+   aFunction : THttpSocketCompress; var aAcceptEncoding : RawByteString) : AnsiString;
+var
+   i, n : Integer;
+   dummy, aName : RawByteString;
+begin
+   result := '';
+   if @aFunction = nil then
+      exit;
+   aName := aFunction(dummy, true);
+   n := length(Compress);
+   if n = 32 then
+      exit; // fCompressHeader is 0..31 (casted as Integer)
+   for i := 0 to n-1 do begin
+      if (@Compress[i].Func = @aFunction) or (Compress[i].Name = aName) then
+         exit;
+   end;
+   setLength(Compress, n+1);
+   with Compress[n] do begin
+      Name := aName;
+      NameLength := Length(aName);
+      @Func := @aFunction;
+   end;
+   if aAcceptEncoding = '' then
+      aAcceptEncoding := 'Accept-Encoding: '+aName
+   else aAcceptEncoding := aAcceptEncoding+','+aName;
+   result := aName;
+end;
+
+const
+   // below this size (in bytes), no compression will be done (not worth it)
+   COMPRESS_MIN_SIZE = 1024;
+
+function CompressDataAndGetHeaders(Accepted : THttpSocketCompressSet;
+   var Handled : THttpSocketCompressRecDynArray; const OutContentType : RawByteString;
+   var OutContent : RawByteString) : RawByteString;
+var
+   i : Integer;
+begin
+   if     (Integer(Accepted)<>0)
+      and (OutContentType<>'')
+      and (Handled<>nil)
+      and (Length(OutContent)>=COMPRESS_MIN_SIZE)
+      and (   StrBeginsWithA(OutContentType, 'text/')
+           or (    StrBeginsWithA(OutContentType, 'application/')
+               and (   StrBeginsWithA(OutContentType, 'application/json')
+                    or StrBeginsWithA(OutContentType, 'application/xml')
+                    or StrBeginsWithA(OutContentType, 'application/javascript')
+                    )
+               )
+           )
+      then begin
+      for i := 0 to high(Handled) do begin
+         if i in Accepted then begin
+            // compression of the OutContent + update header
+            result := Handled[i].Func(OutContent, true);
+            exit; // first in FCompress[] is prefered
+         end;
+      end;
+   end;
+   result := '';
+end;
+
+function RegURL(aRoot : String; aPort : Integer; isHttps : boolean;
+   aDomainName : String) : String;
+const
+   Prefix : array[boolean] of String = ('http://', 'https://');
+begin
+   if aPort=0 then
+      aPort := 80;
+   aRoot := Trim(aRoot);
+   aDomainName := Trim(aDomainName);
+   if aDomainName = '' then begin
+      result := '';
+      exit;
+   end;
+   if aRoot<>'' then begin
+      if aRoot[1]<>'/' then
+         insert('/', aRoot, 1);
+      if aRoot[length(aRoot)]<>'/' then
+         aRoot := aRoot+'/';
+   end else begin
+      aRoot := '/'; // allow for instance 'http://*:2869/'
+   end;
+   result := Prefix[isHttps]+aDomainName+':'+IntToStr(aPort)+aRoot;
+end;
+
+constructor THttpApi2Server.Create(CreateSuspended : Boolean);
+var
+   bindInfo : HTTP_BINDING_INFO;
+begin
+   inherited Create(true);
+
+   FLogType:=HttpLoggingTypeNCSA;
+
+   HttpApi.InitializeAPI; // will raise an exception in case of failure
+
+   HttpAPI.Check(
+      HttpAPI.Initialize(HTTPAPI_VERSION_2, HTTP_INITIALIZE_SERVER),
+      hInitialize);
+
+   HttpAPI.Check(
+      HttpAPI.CreateServerSession(HTTPAPI_VERSION_2, FServerSessionID),
+      hCreateServerSession);
+
+   HttpAPI.Check(
+      HttpAPI.CreateUrlGroup(FServerSessionID, FUrlGroupID),
+      hCreateUrlGroup);
+
+   HttpAPI.Check(
+      HttpAPI.CreateRequestQueue(HTTPAPI_VERSION_2, nil, nil, 0, FReqQueue),
+      hCreateRequestQueue);
+
+   bindInfo.Flags := 1;
+   bindInfo.RequestQueueHandle := FReqQueue;
+
+   HttpAPI.Check(
+      HttpAPI.SetUrlGroupProperty(FUrlGroupID, HttpServerBindingProperty,
+                                  @bindInfo, SizeOf(bindInfo)),
+      hSetUrlGroupProperty);
+
+   FClones := TList.Create;
+   if not CreateSuspended then
+      Suspended := False;
+end;
+
+destructor THttpApi2Server.Destroy;
+var
+   i : Integer;
+begin
+   if FClones<>nil then begin  // FClones=nil for clone threads
+
+      if FReqQueue<>0 then begin
+
+         for i := 0 to high(FRegisteredUrl) do
+            HttpAPI.RemoveUrlFromUrlGroup(FUrlGroupID, Pointer(FRegisteredUrl[i]));
+
+         if FUrlGroupID<>0 then
+            HttpAPI.CloseUrlGroup(FUrlGroupID);
+
+         CloseHandle(FReqQueue); // will break all THttpApi2Server.Execute
+
+         if FServerSessionID<>0 then
+            HttpAPI.CloseServerSession(FServerSessionID);
+
+         HttpAPI.Terminate(HTTP_INITIALIZE_SERVER);
+
+      end;
+
+      for i := FClones.Count-1 downto 0 do
+         TObject(FClones[i]).Free;
+      FClones.Free;
+
+   end;
+
+   inherited Destroy;
+end;
+
+constructor THttpApi2Server.CreateClone(From : THttpApi2Server);
+begin
+   inherited Create(false);
+   FReqQueue := From.FReqQueue;
+   FOnRequest := From.OnRequest;
+   FCompress := From.FCompress;
+   OnHttpThreadTerminate := From.OnHttpThreadTerminate;
+   FCompressAcceptEncoding := From.FCompressAcceptEncoding;
+   if From.Logging then begin
+      FLogDataPtr:=@FLogFieldsData;
+      ServerName:=From.ServerName;
+      ServiceName:=From.ServiceName;
+   end;
+end;
+
+function THttpApi2Server.AddUrl(const aRoot : String; aPort : Integer; isHttps : boolean;
+   const aDomainName : String) : Integer;
+var
+   s : String;
+   n : Integer;
+begin
+   result := -1;
+   if (Self = nil) or (FReqQueue = 0) or (HttpAPI.Module = 0) then
+      exit;
+   s := RegURL(aRoot, aPort, isHttps, aDomainName);
+   if s = '' then
+      exit; // invalid parameters
+
+   HttpAPI.Check(
+      HttpAPI.AddUrlToUrlGroup(FUrlGroupID, Pointer(s)),
+      hAddUrlToUrlGroup);
+
+   n := length(FRegisteredUrl);
+   SetLength(FRegisteredUrl, n+1);
+   FRegisteredUrl[n] := s;
+end;
+
+function THttpApi2Server.RemoveUrl(const aRoot : String; aPort : Integer; isHttps : boolean;
+                                   const aDomainName : String) : Integer;
+var
+   s : String;
+   i, j, n : Integer;
+begin
+   result := -1;
+   if (Self = nil) or (FReqQueue = 0) or (HttpAPI.Module = 0) then
+      exit;
+   s := RegURL(aRoot, aPort, isHttps, aDomainName);
+   if s = '' then
+      exit; // invalid parameters
+   n := High(FRegisteredUrl);
+   for i := 0 to n do begin
+      if FRegisteredUrl[i] = s then begin
+         HttpAPI.Check(
+            HttpAPI.RemoveUrlFromUrlGroup(FUrlGroupID, Pointer(FRegisteredUrl[i])),
+            hRemoveUrlFromUrlGroup);
+         for j := i to n-1 do
+            FRegisteredUrl[j] := FRegisteredUrl[j+1];
+         SetLength(FRegisteredUrl, n);
+         exit;
+      end;
+   end;
+end;
+
+const
+   /// will allow AddUrl() registration to everyone
+   // - 'GA' (GENERIC_ALL) to grant all access
+   // - 'S-1-1-0'   defines a group that includes all users
+   HTTPADDURLSECDESC : PWideChar = 'D:(A;;GA;;;S-1-1-0)';
+
+class function THttpApi2Server.AddUrlAuthorize(const aRoot : String; aPort : Integer; isHttps : boolean;
+                            const aDomainName : String = '*'; OnlyDelete : boolean = false) : string;
+var
+   prefix : String;
+   Error : HRESULT;
+   Config : HTTP_SERVICE_CONFIG_URLACL_SET;
+begin
+   try
+      HttpApi.InitializeAPI;
+      prefix := RegURL(aRoot, aPort, isHttps, aDomainName);
+      if prefix = '' then
+         result := 'Invalid parameters'
+      else begin
+         Error := HttpAPI.Initialize(HTTPAPI_VERSION_2, HTTP_INITIALIZE_CONFIG);
+         if Error<>NO_ERROR then
+            raise EHttpApiServer.Create(hInitialize, Error);
+         try
+            fillchar(Config, sizeof(Config), 0);
+            Config.KeyDesc.pUrlPrefix := pointer(prefix);
+            // first delete any existing information
+            Error := HttpAPI.DeleteServiceConfiguration(0, hscUrlAclInfo, @Config, Sizeof(Config));
+            // then add authorization rule
+            if not OnlyDelete then begin
+               Config.KeyDesc.pUrlPrefix := pointer(prefix);
+               Config.ParamDesc.pStringSecurityDescriptor := HTTPADDURLSECDESC;
+               Error := HttpAPI.SetServiceConfiguration(0, hscUrlAclInfo, @Config, Sizeof(Config));
+            end;
+            if (Error<>NO_ERROR) and (Error<>ERROR_ALREADY_EXISTS) then
+               raise EHttpApiServer.Create(hSetServiceConfiguration, Error);
+            result := ''; // success
+         finally
+            HttpAPI.Terminate(HTTP_INITIALIZE_CONFIG);
+         end;
+      end;
+   except
+      on E : Exception do
+         result := E.Message;
+   end;
+end;
+
+procedure THttpApi2Server.Clone(ChildThreadCount : Integer);
+var
+   i : Integer;
+begin
+   if (FReqQueue = 0) or not Assigned(OnRequest) or (ChildThreadCount<=0) then
+      exit; // nothing to clone (need a queue and a process event)
+   if ChildThreadCount>256 then
+      ChildThreadCount := 256; // not worth adding
+   for i := 1 to ChildThreadCount do
+      FClones.Add(THttpApi2Server.CreateClone(self));
+end;
+
+// GetServerName
+//
+function THttpApi2Server.GetServerName : String;
+begin
+   Result := UTF8ToString(FServerName);
+end;
+
+// SetServerName
+//
+procedure THttpApi2Server.SetServerName(const val : String);
+begin
+   FServerName := UTF8Encode(val);
+   FLogFieldsData.ServerNameLength := Length(FServerName);
+   FLogFieldsData.ServerName := Pointer(FServerName);
+end;
+
+// GetLogging
+//
+function THttpApi2Server.GetLogging : Boolean;
+begin
+   Result:=(FLogDataPtr<>nil);
+end;
+
+// SetLogging
+//
+procedure THttpApi2Server.SetLogging(const val : Boolean);
+var
+   i : Integer;
+   clone : THttpApi2Server;
+begin
+   if val=Logging then Exit;
+
+   if val then
+      FLogDataPtr:=@FLogFieldsData
+   else FLogDataPtr:=nil;
+
+   if FClones<>nil then begin
+      for i:=0 to FClones.Count-1 do begin
+         clone:=THttpApi2Server(FClones[i]);
+         if val then
+            clone.FLogDataPtr:=@clone.FLogFieldsData
+         else clone.FLogDataPtr:=nil;
+      end;
+   end;
+
+   UpdateLogInfo;
+end;
+
+// SetLogDirectory
+//
+procedure THttpApi2Server.SetLogDirectory(const val : String);
+begin
+   FLogDirectory:=val;
+   UpdateLogInfo;
+end;
+
+// SetLogType
+//
+procedure THttpApi2Server.SetLogType(const val : HTTP_LOGGING_TYPE);
+begin
+   FLogType:=val;
+   UpdateLogInfo;
+end;
+
+// SetLogFields
+//
+procedure THttpApi2Server.SetLogFields(const val : Cardinal);
+begin
+   FLogFields:=val;
+   UpdateLogInfo;
+end;
+
+// SetLogRolloverSize
+//
+procedure THttpApi2Server.SetLogRolloverSize(const val : Cardinal);
+begin
+   FLogRolloverSize:=val;
+   UpdateLogInfo;
+end;
+
+// GetServiceName
+//
+function THttpApi2Server.GetServiceName : String;
+begin
+   Result := UTF8ToString(FServiceName);
+end;
+
+// SetServiceName
+//
+procedure THttpApi2Server.SetServiceName(const val : String);
+begin
+   FServiceName := UTF8Encode(val);
+   FLogFieldsData.ServerNameLength := Length(FServiceName);
+   FLogFieldsData.ServerName := Pointer(FServiceName);
+end;
+
+// SetMaxBandwidth
+//
+procedure THttpApi2Server.SetMaxBandwidth(val : Cardinal);
+var
+   qosInfo : HTTP_QOS_SETTING_INFO;
+   limitInfo : HTTP_BANDWIDTH_LIMIT_INFO;
+begin
+   if val<=0 then
+      val:=HTTP_LIMIT_INFINITE
+   else if val<HTTP_MIN_ALLOWED_BANDWIDTH_THROTTLING_RATE then
+      val:=HTTP_MIN_ALLOWED_BANDWIDTH_THROTTLING_RATE;
+   FMaxBandwidth:=val;
+
+   qosInfo.QosType:=HttpQosSettingTypeBandwidth;
+   qosInfo.QosSetting:=@limitInfo;
+
+   limitInfo.Flags:=1;
+   limitInfo.MaxBandwidth:=FMaxBandwidth;
+
+   HttpAPI.Check(
+      HttpAPI.SetServerSessionProperty(FServerSessionID, HttpServerQosProperty,
+                                       @qosInfo, SizeOf(qosInfo)),
+      hSetServerSessionProperty);
+end;
+
+const
+   KNOWNHEADERS_NAME : array[reqCacheControl..reqUserAgent] of string[19] = (
+      'Cache-Control', 'Connection', 'Date', 'Keep-Alive', 'Pragma', 'Trailer',
+      'Transfer-Encoding', 'Upgrade', 'Via', 'Warning', 'Allow', 'Content-Length',
+      'Content-Type', 'Content-Encoding', 'Content-Language', 'Content-Location',
+      'Content-MD5', 'Content-Range', 'Expires', 'Last-Modified', 'Accept',
+      'Accept-Charset', 'Accept-Encoding', 'Accept-Language', 'Authorization',
+      'Cookie', 'Expect', 'From', 'Host', 'If-Match', 'If-Modified-Since',
+      'If-None-Match', 'If-Range', 'If-Unmodified-Since', 'Max-Forwards',
+      'Proxy-Authorization', 'Referer', 'Range', 'TE', 'Translate', 'User-Agent');
+
+function RetrieveHeaders(const head : HTTP_REQUEST_HEADERS;
+   const address : PSOCKADDR; var IP : RawByteString) : RawByteString;
+var
+   i, len: Integer;
+   h : THttpHeader;
+   p : PHTTP_UNKNOWN_HEADER;
+   d : PAnsiChar;
+begin
+   Assert(Low(KNOWNHEADERS_NAME) = Low(head.KnownHeaders));
+   Assert(High(KNOWNHEADERS_NAME) = High(head.KnownHeaders));
+   // compute headers length
+   len := 0;
+   for h := Low(KNOWNHEADERS_NAME) to High(KNOWNHEADERS_NAME) do
+      if head.KnownHeaders[h].RawValueLength<>0 then
+         Inc(len, head.KnownHeaders[h].RawValueLength+Ord(KNOWNHEADERS_NAME[h][0])+4);
+   p := head.pUnknownHeaders;
+   if p<>nil then
+      for i := 1 to head.UnknownHeaderCount do begin
+         Inc(len, p^.NameLength+p^.RawValueLength+4); // +4 for each ': '+#13#10
+         Inc(p);
+      end;
+   // set headers content
+   SetString(Result, nil, len);
+   d := Pointer(Result);
+   for h := Low(head.KnownHeaders) to High(head.KnownHeaders) do
+      if head.KnownHeaders[h].RawValueLength<>0 then begin
+         Move(KNOWNHEADERS_NAME[h][1], d^, Ord(KNOWNHEADERS_NAME[h][0]));
+         Inc(d, Ord(KNOWNHEADERS_NAME[h][0]));
+         PWord(d)^ := Ord(':')+Ord(' ')shl 8;
+         Inc(d, 2);
+         Move(head.KnownHeaders[h].pRawValue^, d^, head.KnownHeaders[h].RawValueLength);
+         Inc(d, head.KnownHeaders[h].RawValueLength);
+         PWord(d)^ := 13+10 shl 8;
+         Inc(d, 2);
+      end;
+   p := head.pUnknownHeaders;
+   if p<>nil then begin
+      for i := 1 to head.UnknownHeaderCount do begin
+         Move(p^.pName, d^, p^.NameLength);
+         Inc(d, p^.NameLength);
+         PWord(d)^ := Ord(':')+Ord(' ')shl 8;
+         Inc(d, 2);
+         Move(p^.pRawValue, d^, p^.RawValueLength);
+         Inc(d, p^.RawValueLength);
+         Inc(p);
+         PWord(d)^ := 13+10 shl 8;
+         Inc(d, 2);
+      end;
+   end;
+   Assert(d-Pointer(Result) = len);
+   if address<>nil then begin
+      IP := GetSinIP(PVarSin(address)^);
+      if IP<>'' then
+         Result := Result+'RemoteIP: '+IP+#13#10;
+   end;
+end;
+
+const
+   VERB_TEXT : array[hvOPTIONS..hvSEARCH] of RawByteString = (
+      'OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE',
+      'CONNECT', 'TRACK', 'MOVE', 'COPY', 'PROPFIND', 'PROPPATCH',
+      'MKCOL', 'LOCK', 'UNLOCK', 'SEARCH');
+
+procedure THttpApi2Server.Execute;
+var
+   request : PHTTP_REQUEST_V2;
+   requestID : HTTP_REQUEST_ID;
+   requestBuffer, responseBuffer : RawByteString;
+   i : Integer;
+   flags, bytesRead, bytesSent : Cardinal;
+   errCode : HRESULT;
+   inCompressAccept : THttpSocketCompressSet;
+   inContentLength, inContentLengthRead : Cardinal;
+   inContentEncoding, inAcceptEncoding, contentRange, remoteIP : RawByteString;
+   outContentEncoding : RawByteString;
+   inRequest : TSynHttpServerRequest;
+   outResponse : TSynHttpServerResponse;
+   outStatus : RawByteString;
+   response : PHTTP_RESPONSE_V2;
+   bufRead, R : PAnsiChar;
+   headers : array of HTTP_UNKNOWN_HEADER;
+   dataChunkInMemory : HTTP_DATA_CHUNK_INMEMORY;
+
+   procedure SendError(statusCode : Cardinal; const errorMsg : string);
+   begin
+      FLogFieldsData.ProtocolStatus := statusCode;
+      response^.SetStatus(statusCode, outStatus, @dataChunkInMemory, UTF8String(errorMsg));
+      HttpAPI.SendHttpResponse(FReqQueue, request^.RequestId, 0, response^, nil, bytesSent, nil, 0, nil, FLogDataPtr);
+   end;
+
+   procedure SendStaticFile;
+   var
+      fileHandle : THandle;
+      dataChunkFile : HTTP_DATA_CHUNK_FILEHANDLE;
+      rangeStart, rangeLength : Int64;
+   begin
+      fileHandle := FileOpen(UTF8ToUnicodeString(outResponse.OutContent),
+                             fmOpenRead or fmShareDenyNone);
+      if PtrInt(fileHandle)<0 then begin
+         SendError(404, SysErrorMessage(GetLastError));
+         exit;
+      end;
+      try
+         dataChunkFile.DataChunkType := hctFromFileHandle;
+         dataChunkFile.FileHandle := fileHandle;
+         flags := 0;
+         dataChunkFile.ByteRange.StartingOffset.QuadPart := 0;
+         Int64(dataChunkFile.ByteRange.Length.QuadPart) := -1; // to eof
+         with request^.Headers.KnownHeaders[reqRange] do
+            if     (RawValueLength>6)
+               and StrBeginsWithA(pRawValue, 'bytes=')
+               and (pRawValue[6] in ['0'..'9']) then begin
+               SetString(contentRange, pRawValue+6, RawValueLength-6); // need #0 end
+               R := pointer(contentRange);
+               rangeStart := GetNextItemUInt64(R);
+               if R^ = '-' then begin
+                  inc(R);
+                  flags := HTTP_SEND_RESPONSE_FLAG_PROCESS_RANGES;
+                  dataChunkFile.ByteRange.StartingOffset := ULARGE_INTEGER(rangeStart);
+                  if R^ in ['0'..'9'] then begin
+                     rangeLength := GetNextItemUInt64(R)-rangeStart+1;
+                     if rangeLength>=0 then // "bytes=0-499" -> start=0, len=500
+                        dataChunkFile.ByteRange.Length := ULARGE_INTEGER(rangeLength);
+                  end; // "bytes=1000-" -> start=1000, len=-1 (to eof)
+               end;
+            end;
+         response^.EntityChunkCount := 1;
+         response^.pEntityChunks := @dataChunkFile;
+         HttpAPI.SendHttpResponse(FReqQueue, request^.RequestId, flags, response^,
+                                  nil, bytesSent, nil, 0, nil, FLogDataPtr);
+      finally
+         FileClose(fileHandle);
+      end;
+   end;
+
+   procedure UpdateLogData;
+   begin
+      FLogFieldsData.MethodNum := request^.Verb;
+      FLogFieldsData.MethodLength := Length(inRequest.InMethod);
+      FLogFieldsData.Method := Pointer(inRequest.InMethod);
+
+      FLogFieldsData.UriStemLength := request^.CookedUrl.AbsPathLength;
+      FLogFieldsData.UriStem := request^.CookedUrl.pAbsPath;
+
+      FLogFieldsData.ClientIpLength := Length(remoteIP);
+      FLogFieldsData.ClientIp := Pointer(remoteIP);
+   end;
+
+begin
+   // THttpServerGeneric thread preparation: launch any OnHttpThreadStart event
+   inherited Execute;
+   CoInitialize(nil);
+   // reserve working buffers
+   SetLength(headers, 64);
+   SetLength(responseBuffer, SizeOf(response^));
+   response := Pointer(responseBuffer);
+   SetLength(requestBuffer, 16384+SizeOf(HTTP_REQUEST_V2)); // space for request^ + 16 KB of headers
+   request := Pointer(requestBuffer);
+   // main loop
+   requestID := 0;
+   repeat
+      // retrieve next pending request, and read its headers
+      FillChar(request^, SizeOf(HTTP_REQUEST_V2), 0);
+      errCode := HttpAPI.ReceiveHttpRequest(FReqQueue, requestID, 0, request^,
+                                            Length(requestBuffer), bytesRead);
+      if Terminated then
+         break;
+      case errCode of
+         NO_ERROR :
+            try
+               // parse method and headers
+               inRequest.ConnectionID := request^.ConnectionId;
+               inRequest.InURL := request^.pRawUrl;
+               if request^.Verb in [low(VERB_TEXT)..high(VERB_TEXT)] then
+                  inRequest.InMethod := VERB_TEXT[request^.Verb]
+               else SetString(inRequest.InMethod, request^.pUnknownVerb, request^.UnknownVerbLength);
+
+               with request^.Headers.KnownHeaders[reqContentType] do
+                  SetString(inRequest.InContentType, pRawValue, RawValueLength);
+               with request^.Headers.KnownHeaders[reqAcceptEncoding] do
+                  SetString(inAcceptEncoding, pRawValue, RawValueLength);
+               inCompressAccept := SetCompressHeader(FCompress, Pointer(inAcceptEncoding));
+               inRequest.InHeaders := RetrieveHeaders(request^.Headers, request^.Address.pRemoteAddress, remoteIP);
+
+               if FLogDataPtr<>nil then begin
+                  UpdateLogData;
+                  outResponse.LogUserName:='';
+               end;
+
+               // retrieve body
+               inRequest.InContent := '';
+               if HTTP_REQUEST_FLAG_MORE_ENTITY_BODY_EXISTS and request^.Flags<>0 then begin
+                  with request^.Headers.KnownHeaders[reqContentLength] do
+                     inContentLength := GetCardinal(pRawValue, pRawValue+RawValueLength);
+                  if inContentLength<>0 then begin
+                     if (MaxInputCountLength>0) and (inContentLength>MaxInputCountLength) then begin
+                        // ideally SendError(412, 'Content-Length too large');
+                        // but if we don't cancel the request, it'll eat all the
+                        // incoming bandwidth anyway...
+                        HttpAPI.CancelHttpRequest(FReqQueue, request^.RequestId, nil);
+                        continue;
+                     end;
+                     SetLength(inRequest.InContent, inContentLength);
+                     bufRead := Pointer(inRequest.InContent);
+                     inContentLengthRead := 0;
+                     repeat
+                        BytesRead := 0;
+                        if Win32MajorVersion>5 then // speed optimization for Vista+
+                           flags := HTTP_RECEIVE_REQUEST_ENTITY_BODY_FLAG_FILL_BUFFER
+                        else flags := 0;
+                        errCode := HttpAPI.ReceiveRequestEntityBody(FReqQueue, request^.RequestId, flags,
+                           bufRead, inContentLength-inContentLengthRead, BytesRead);
+                        inc(inContentLengthRead, BytesRead);
+                        if errCode = ERROR_HANDLE_EOF then begin
+                           if inContentLengthRead<inContentLength then
+                              SetLength(inRequest.InContent, inContentLengthRead);
+                           errCode := NO_ERROR;
+                           break; // should loop until returns ERROR_HANDLE_EOF
+                        end;
+                        if errCode<>NO_ERROR then
+                           break;
+                        inc(bufRead, BytesRead);
+                     until inContentLengthRead = inContentLength;
+                     if errCode<>NO_ERROR then begin
+                        SendError(406, SysErrorMessage(errCode));
+                        continue;
+                     end;
+                     with request^.Headers.KnownHeaders[reqContentEncoding] do
+                        SetString(InContentEncoding, pRawValue, RawValueLength);
+                     if InContentEncoding<>'' then begin
+                        for i := 0 to high(FCompress) do begin
+                           if FCompress[i].Name = InContentEncoding then begin
+                              FCompress[i].Func(inRequest.InContent, false); // uncompress
+                              break;
+                           end;
+                        end;
+                     end;
+                  end;
+               end;
+               try
+                  // compute response
+                  FillChar(response^, SizeOf(response^), 0);
+                  FLogFieldsData.ProtocolStatus := DoRequest(inRequest, outResponse);
+                  response^.SetStatus(FLogFieldsData.ProtocolStatus, outStatus);
+                  if FLogDataPtr<>nil then begin
+                     FLogFieldsData.UserNameLength:=Length(outResponse.LogUserName);
+                     FLogFieldsData.UserName:=Pointer(outResponse.LogUserName);
+                  end;
+                  if Terminated then
+                     exit;
+                  // send response
+                  response^.Version := request^.Version;
+                  if FCompressAcceptEncoding<>'' then
+                     outResponse.OutCustomHeader := outResponse.OutCustomHeader+#13#10+FCompressAcceptEncoding;
+                  response^.SetHeaders(pointer(outResponse.OutCustomHeader), pointer(headers), high(headers));
+                  if outResponse.OutContentType = HTTP_RESP_STATICFILE then begin
+                     // response is file -> let http.sys serve it (OutContent is UTF-8)
+                     SendStaticFile;
+                  end else begin
+                     // response is in OutContent -> sent it from memory
+                     if FCompress<>nil then begin
+                        with response^.Headers.KnownHeaders[reqContentEncoding] do begin
+                           if RawValueLength = 0 then begin
+                              // no previous encoding -> try if any compression
+                              outContentEncoding := CompressDataAndGetHeaders(inCompressAccept,
+                                 FCompress, outResponse.OutContentType, outResponse.OutContent);
+                              pRawValue := Pointer(outContentEncoding);
+                              RawValueLength := Length(outContentEncoding);
+                           end;
+                        end;
+                     end;
+                     response^.SetContent(dataChunkInMemory, outResponse.OutContent, outResponse.OutContentType);
+                     errCode := HttpAPI.SendHttpResponse(FReqQueue, request^.RequestId,
+                                       0, response^, nil, bytesSent, nil, 0, nil, FLogDataPtr);
+                     if errCode<>NO_ERROR then
+                        raise EHttpApiServer.Create(hSendHttpResponse, errCode);
+                  end;
+               except
+                  on E : Exception do
+                     // handle any exception raised during process: show must go on!
+                     SendError(500, E.Message);
+               end;
+            finally
+               requestID := 0; // reset Request ID to handle the next pending request
+            end;
+         ERROR_MORE_DATA : begin
+            // input buffer was too small to hold the request headers
+            // -> increase buffer size and call the API again
+            requestID := request^.RequestId;
+            SetLength(requestBuffer, bytesRead);
+            request := Pointer(requestBuffer);
+         end;
+         ERROR_CONNECTION_INVALID :
+            if requestID = 0 then
+               break
+            else // TCP connection was corrupted by the peer -> ignore + next request
+               requestID := 0;
+      else
+         break;
+      end;
+   until Terminated;
+   CoUninitialize;
+end;
+
+procedure THttpApi2Server.RegisterCompress(aFunction : THttpSocketCompress);
+var
+   i : Integer;
+begin
+   inherited;
+   if FClones<>nil then
+      for i := 0 to FClones.Count-1 do
+         THttpApi2Server(FClones.List[i]).RegisterCompress(aFunction);
+end;
+
+// UpdateLogInfo
+//
+procedure THttpApi2Server.UpdateLogInfo;
+var
+   logInfo : HTTP_LOGGING_INFO;
+begin
+   if not Logging then Exit;
+   if FClones=nil then Exit;
+
+   FillChar(logInfo, SizeOf(logInfo), 0);
+   logInfo.Flags := 1;
+   logInfo.LoggingFlags := HTTP_LOGGING_FLAG_USE_UTF8_CONVERSION;
+   // Http API limit,
+   // cf. http://msdn.microsoft.com/en-us/library/windows/desktop/aa364532(v=vs.85).aspx
+   Assert(Length(FLogDirectory)<212);
+   logInfo.DirectoryName := Pointer(LogDirectory);
+   logInfo.DirectoryNameLength := Length(LogDirectory)*SizeOf(Char);
+   logInfo.Format :=  LogType;
+   if LogType = HttpLoggingTypeNCSA then
+      logInfo.Fields := HTTP_ALL_NON_ERROR_LOG_FIELDS
+   else logInfo.Fields := LogFields;
+   if LogRolloverSize>0 then begin
+      logInfo.RolloverType := HttpLoggingRolloverSize;
+      logInfo.RolloverSize := LogRolloverSize;
+   end else begin
+      logInfo.RolloverType := HttpLoggingRolloverMonthly;
+   end;
+
+   HttpAPI.Check(
+      HttpAPI.SetUrlGroupProperty(FUrlGroupID, HttpServerLoggingProperty,
+                                  @logInfo, SizeOf(logInfo)),
+      hSetServerSessionProperty);
+end;
+
+{ THttpServerGeneric }
+
+procedure THttpServerGeneric.RegisterCompress(aFunction : THttpSocketCompress);
+begin
+   RegisterCompressFunc(FCompress, aFunction, FCompressAcceptEncoding);
+end;
+
+function THttpServerGeneric.DoRequest(const InRequest : TSynHttpServerRequest;
+   out OutRequest : TSynHttpServerResponse) : cardinal;
+begin
+   if Assigned(OnRequest) then
+      result := OnRequest(InRequest, OutRequest)
+   else
+      result := 404; // 404 NOT FOUND
+end;
+
+procedure THttpServerGeneric.Execute;
+begin
+   if Assigned(FOnHttpThreadStart) then
+      FOnHttpThreadStart(self);
+end;
+
+{$ifndef LVCL}
+procedure THttpServerGeneric.DoTerminate;
+begin
+   if Assigned(FOnHttpThreadTerminate) then
+      FOnHttpThreadTerminate(self);
+   inherited DoTerminate;
+end;
+
+{$endif}
+
+initialization
+
+   Assert((sizeof(HTTP_REQUEST_V2) = 464+8) and (sizeof(HTTP_SSL_INFO) = 28) and
+      (sizeof(HTTP_DATA_CHUNK_INMEMORY) = 24) and
+      (sizeof(HTTP_DATA_CHUNK_FILEHANDLE) = 32) and
+      (sizeof(HTTP_REQUEST_HEADERS) = 344) and
+      (sizeof(HTTP_RESPONSE_HEADERS) = 256) and (sizeof(HTTP_COOKED_URL) = 24) and
+      (sizeof(HTTP_RESPONSE_V2) = 288) and (ord(reqUserAgent) = 40) and
+      (ord(respLocation) = 23) and (sizeof(THttpHeader) = 4));
+   if InitSocketInterface then
+      WSAStartup(WinsockLevel, vWsaDataOnce)
+   else
+      fillchar(vWsaDataOnce, sizeof(vWsaDataOnce), 0);
+
+finalization
+
+   if vWsaDataOnce.wVersion<>0 then
+      WSACleanup;
+   DestroySocketInterface;
+
+end.
