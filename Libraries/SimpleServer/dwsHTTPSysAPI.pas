@@ -1052,7 +1052,8 @@ begin
    ReasonLength := length(OutStatus);
    pReason := pointer(OutStatus);
    if DataChunkForErrorContent<>nil then
-      SetContent(DataChunkForErrorContent^, '<h1>'+OutStatus+'</h1>'+ErrorMsg);
+      SetContent(DataChunkForErrorContent^, '<h1>'+OutStatus+'</h1>'+ErrorMsg,
+                 'text/html; charset=utf-8');
 end;
 
 end.

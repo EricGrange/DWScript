@@ -18,10 +18,10 @@ unit dwsWebEnvironment;
 
 interface
 
-uses Classes, SysUtils, StrUtils, dwsUtils;
+uses Classes, SysUtils, StrUtils, dwsExprs, dwsUtils;
 
 type
-   {$M+}
+
    TWebRequest = class
       private
          FRemoteIP : String;
@@ -45,7 +45,6 @@ type
          constructor Create;
          destructor Destroy; override;
 
-      published
          function Header(const headerName : String) : String;
 
          property RemoteIP : String read FRemoteIP write FRemoteIP;
@@ -66,30 +65,79 @@ type
          FContentData : RawByteString;
          FContentType : RawByteString;
          FContentEncoding : RawByteString;
-         FAllowCORS : RawByteString;
+         FHeaders : TStrings;
+
+      protected
+         function GetHeaders : TStrings;
+
+         procedure SetContentText(const textType : RawByteString; const text : String);
 
       public
+         destructor Destroy; override;
 
-      published
+         function HasHeaders : Boolean; inline;
+         function CompiledHeaders : RawByteString;
+
          property StatusCode : Integer read FStatusCode write FStatusCode;
+         property ContentText[const textType : RawByteString] : String write SetContentText;
          property ContentData : RawByteString read FContentData write FContentData;
          property ContentType : RawByteString read FContentType write FContentType;
          property ContentEncoding : RawByteString read FContentEncoding write FContentEncoding;
-         property AllowCORS : RawByteString read FAllowCORS write FAllowCORS;
+
+         property Headers : TStrings read GetHeaders;
    end;
 
-   TWebEnvironment = class
-      private
+   IWebEnvironment = interface
+      ['{797FDC50-0643-4290-88D1-8BD3C0D7C303}']
+      function GetWebRequest : TWebRequest;
+      function GetWebResponse : TWebResponse;
+
+      property WebRequest : TWebRequest read GetWebRequest;
+      property WebResponse : TWebResponse read GetWebResponse;
+   end;
+
+   TWebEnvironment = class (TInterfacedSelfObject, IdwsEnvironment, IWebEnvironment)
+      protected
+         function GetWebRequest : TWebRequest;
+         function GetWebResponse : TWebResponse;
 
       public
-
-      published
-         Response : TWebResponse;
-         Request : TWebRequest;
+         WebRequest : TWebRequest;
+         WebResponse : TWebResponse;
    end;
-   {$M-}
+
+   TWebEnvironmentHelper = class helper for TProgramInfo
+      function WebEnvironment : IWebEnvironment; inline;
+      function WebRequest : TWebRequest; inline;
+      function WebResponse : TWebResponse; inline;
+   end;
 
 implementation
+
+// ------------------
+// ------------------ TWebEnvironmentHelper ------------------
+// ------------------
+
+// WebEnvironment
+//
+function TWebEnvironmentHelper.WebEnvironment : IWebEnvironment;
+begin
+   Result:=(Execution.Environment as IWebEnvironment);
+end;
+
+// WebRequest
+//
+function TWebEnvironmentHelper.WebRequest : TWebRequest;
+begin
+   Result:=WebEnvironment.WebRequest;
+end;
+
+// WebResponse
+//
+function TWebEnvironmentHelper.WebResponse : TWebResponse;
+begin
+   Result:=WebEnvironment.WebResponse;
+end;
 
 // ------------------
 // ------------------ TWebRequest ------------------
@@ -100,7 +148,7 @@ implementation
 constructor TWebRequest.Create;
 begin
    inherited;
-   FHeaders:=TFastCompareTextList.Create;
+   FHeaders:=TFastCompareStringList.Create;
 end;
 
 // Destroy
@@ -202,6 +250,72 @@ begin
    if FQueryFields=nil then
       FQueryFields:=PrepareQueryFields;
    Result:=FQueryFields;
+end;
+
+// ------------------
+// ------------------ TWebEnvironment ------------------
+// ------------------
+
+// GetWebRequest
+//
+function TWebEnvironment.GetWebRequest : TWebRequest;
+begin
+   Result:=WebRequest;
+end;
+
+// GetWebResponse
+//
+function TWebEnvironment.GetWebResponse : TWebResponse;
+begin
+   Result:=WebResponse;
+end;
+
+// ------------------
+// ------------------ TWebResponse ------------------
+// ------------------
+
+// Destroy
+//
+destructor TWebResponse.Destroy;
+begin
+   FHeaders.Free;
+   inherited;
+end;
+
+// HasHeaders
+//
+function TWebResponse.HasHeaders : Boolean;
+begin
+   Result:=(FHeaders<>nil);
+end;
+
+// CompiledHeaders
+//
+function TWebResponse.CompiledHeaders : RawByteString;
+var
+   i : Integer;
+begin
+   Result:='';
+   if FHeaders=nil then Exit;
+   for i:=0 to Headers.Count-1 do
+      Result:=Result+UTF8Encode(FHeaders.Names[i]+': '+FHeaders.ValueFromIndex[i])+#13#10;
+end;
+
+// GetHeaders
+//
+function TWebResponse.GetHeaders : TStrings;
+begin
+   if FHeaders=nil then
+      FHeaders:=TFastCompareStringList.Create;
+   Result:=FHeaders;
+end;
+
+// SetContentText
+//
+procedure TWebResponse.SetContentText(const textType : RawByteString; const text : String);
+begin
+   ContentType:='text/'+textType+'; charset=utf-8';
+   ContentData:=UTF8Encode(text);
 end;
 
 end.

@@ -177,6 +177,7 @@ type
 
          function GetLogging : Boolean; inline;
          procedure SetLogging(const val : Boolean);
+         procedure SetMaxInputCountLength(const val : Cardinal);
          procedure SetLogDirectory(const val : String);
          procedure SetLogType(const val : HTTP_LOGGING_TYPE);
          procedure SetLogFields(const val : Cardinal);
@@ -250,7 +251,7 @@ type
          // - overriden method which will handle any cloned instances
          procedure RegisterCompress(aFunction : THttpSocketCompress); override;
 
-         property MaxInputCountLength : Cardinal read FMaxInputCountLength write FMaxInputCountLength;
+         property MaxInputCountLength : Cardinal read FMaxInputCountLength write SetMaxInputCountLength;
 
          property Logging : Boolean read GetLogging write SetLogging;
          property LogDirectory : String read FLogDirectory write SetLogDirectory;
@@ -264,7 +265,16 @@ type
 
    end;
 
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+const
+   cDefaultMaxInputCountLength = 10*1024*1024; // 10 MB
 
 var
    vWsaDataOnce : TWSADATA;
@@ -668,6 +678,15 @@ begin
    UpdateLogInfo;
 end;
 
+// SetMaxInputCountLength
+//
+procedure THttpApi2Server.SetMaxInputCountLength(const val : Cardinal);
+begin
+   if val<=0 then
+      FMaxInputCountLength:=cDefaultMaxInputCountLength
+   else FMaxInputCountLength:=val;
+end;
+
 // SetLogDirectory
 //
 procedure THttpApi2Server.SetLogDirectory(const val : String);
@@ -835,7 +854,7 @@ var
    headers : array of HTTP_UNKNOWN_HEADER;
    dataChunkInMemory : HTTP_DATA_CHUNK_INMEMORY;
 
-   procedure SendError(statusCode : Cardinal; const errorMsg : string);
+   procedure SendError(statusCode : Cardinal; const errorMsg : String);
    begin
       FLogFieldsData.ProtocolStatus := statusCode;
       response^.SetStatus(statusCode, outStatus, @dataChunkInMemory, UTF8String(errorMsg));

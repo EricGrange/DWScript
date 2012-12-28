@@ -22,7 +22,6 @@
     - Synopse.inc
     - SynLZ.pas
     - SynZip.pas
-    - SynCrtSock.pas
     - SynWinWock.pas
     - mORMotService.pas
     http://synopse.info/fossil/wiki?name=Downloads
@@ -30,51 +29,48 @@
 }
 program SynopseWebServer;
 
+{$SetPEFlags $0001}
+
+{$IFNDEF VER200} // delphi 2009
+   {$WEAKLINKRTTI ON}
+   {$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
+{$ENDIF}
+
 {$APPTYPE CONSOLE}
 
 uses
   Windows,
-  SysUtils,
   WinSvc,
+  SysUtils,
   mORMotService,
   USynopseSimpleWebServer in 'USynopseSimpleWebServer.pas',
-  dwsCPUUsage in '..\..\Libraries\SimpleServer\dwsCPUUsage.pas';
-
-function CreateNewServer : TSynopseSimpleServer;
-var
-   basePath : String;
-begin
-   basePath:=ExtractFilePath(ParamStr(0));
-   if DirectoryExists(basePath+'www') then
-      basePath:=basePath+'www' // subfolder 'ww' of where the exe is placed
-   else if FileExists(ChangeFileExt(ParamStr(0), '.dpr')) then
-      basePath:=basePath+'..\Data\www' // if compiled alongside dpr
-   else basePath:=basePath+'..\..\..\Data\www'; // assume compiled in platform/target
-   Result:=TSynopseSimpleServer.Create(basePath);
-end;
-
+  dwsJSON,
+  dwsXPlatform,
+  dwsCPUUsage,
+  DSimpleDWScript,
+  dwsWebLibModule in '..\..\Libraries\SimpleServer\dwsWebLibModule.pas' {dwsWebLib: TDataModule},
+  dwsWindowsService in '..\..\Libraries\SimpleServer\dwsWindowsService.pas';
 
 type
-   TWebServerHttpService = class(TService)
+   TWebServerHttpService = class(TdwsWindowsService)
       public
          Server: TSynopseSimpleServer;
 
          procedure DoStart(Sender: TService);
          procedure DoStop(Sender: TService);
 
-         constructor Create; reintroduce;
+         constructor Create(aOptions : TdwsJSONValue); override;
          destructor Destroy; override;
-   end;
 
-const
-   cHttpServiceName = 'DWSSynWebServer';
-   cHttpServiceDisplayName = 'DWScript SynopseWebServer Service';
+         class function DefaultServiceOptions : String; override;
+   end;
 
 { TWebServerHttpService }
 
-constructor TWebServerHttpService.Create;
+constructor TWebServerHttpService.Create(aOptions : TdwsJSONValue);
 begin
-   inherited Create(cHttpServiceName,cHttpServiceDisplayName);
+   inherited;
+
    OnStart := DoStart;
    OnStop := DoStop;
    OnResume := DoStart;
@@ -87,12 +83,43 @@ begin
   inherited;
 end;
 
+// DefaultServiceOptions
+//
+class function TWebServerHttpService.DefaultServiceOptions : String;
+begin
+   Result :=
+      '{'
+         // Windows service name
+         +'"Name": "DWSServer",'
+         // Windows service display name
+         +'"DisplayName": "DWScript WebServer",'
+         // Windows service description
+         +'"Description": "DWScript WebServer Service"'
+      +'}';
+end;
+
 procedure TWebServerHttpService.DoStart(Sender: TService);
+var
+   wwwPath : TdwsJSONValue;
+   basePath : String;
 begin
   if Server<>nil then
     DoStop(nil); // should never happen
 
-   Server:=CreateNewServer;
+   wwwPath:=Options['Server']['WWWPath'];
+   if wwwPath.ValueType=jvtString then
+      basePath:=wwwPath.AsString;
+
+   if basePath='' then begin
+      basePath:=ExtractFilePath(ParamStr(0));
+      if DirectoryExists(basePath+'www') then
+         basePath:=basePath+'www' // subfolder 'www' of where the exe is placed
+      else if FileExists(ChangeFileExt(ParamStr(0), '.dpr')) then
+         basePath:=basePath+'..\Data\www' // if compiled alongside dpr
+      else basePath:=basePath+'..\..\..\Data\www'; // assume compiled in platform/target
+   end;
+
+   Server:=TSynopseSimpleServer.Create(basePath, Options);
 end;
 
 procedure TWebServerHttpService.DoStop(Sender: TService);
@@ -102,118 +129,46 @@ begin
    FreeAndNil(Server);
 end;
 
-procedure CheckParameters;
 var
-   i : Integer;
-   param : String;
-   ctrl : TServiceController;
+   optionsFileName : String;
+   options : TdwsJSONValue;
+   service : TWebServerHttpService;
 begin
-   ctrl:=TServiceController.CreateOpenService('','',cHttpServiceName);
+   FormatSettings.DecimalSeparator:='.';
+
+   optionsFileName:=ExtractFilePath(ParamStr(0))+'options.json';
+   if FileExists(optionsFileName) then
+      options:=TdwsJSONValue.ParseFile(optionsFileName)
+   else options:=TdwsJSONObject.Create;
+   service:=TWebServerHttpService.Create(options);
    try
-      if ctrl.State=ssErrorRetrievingState then
-         writeln('Errior retrieving state')
-      else begin
-         for i:=1 to ParamCount do begin
-            param:=SysUtils.LowerCase(paramstr(i));
-            if param='/install' then begin
-               if ctrl.State=ssNotInstalled then begin
-                  ctrl.Free;
-                  ctrl:=TServiceController.CreateNewService(
-                     '','',cHttpServiceName, cHttpServiceDisplayName,
-                     ParamStr(0), '', '', '', '',
-                     SERVICE_ALL_ACCESS, SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START);
-                  if ctrl.State<>ssNotInstalled then
-                     writeln('Installed successfully')
-                  else writeln('Failed to install');
-               end else writeln('Already installed');
-            end else if param='/uninstall' then begin
-               if ctrl.State=ssNotInstalled then
-                  writeln('Not installed')
-               else begin
-                  ctrl.Stop;
-                  if ctrl.State<>ssStopped then
-                     writeln('Failed to stop')
-                  else begin
-                     ctrl.Delete;
-                     if ctrl.State=ssNotInstalled then
-                        writeln('Uninstalled successfully')
-                     else writeln('Failed to uninstall');
-                  end;
-               end;
-            end else if param='/stop' then begin
-               if ctrl.State=ssNotInstalled then
-                  writeln('Not installed')
-               else begin
-                  ctrl.Stop;
-                  writeln('Stop command issued')
-               end;
-            end else if param='/start' then begin
-               if ctrl.State=ssNotInstalled then
-                  writeln('Not installed')
-               else begin
-                  ctrl.Start([]);
-                  writeln('Start command issued')
-               end;
-            end else begin
-               Writeln( cHttpServiceName+#13#10#13#10
-                       +'Parameters:'#13#10
-                       +'* none : run as application'#13#10
-                       +'* /install & /uninstall : install & uninstall service'#13#10
-                       +'* /start & /stop : start & stop service');
-            end;
-         end;
+      if ParamCount<>0 then begin
+         service.ExecuteCommandLineParameters;
+         Exit;
       end;
-   finally
-      ctrl.Free;
-   end;
-end;
 
-function LaunchedBySCM : Boolean;
-var
-	scHandle, svInfo : Integer;
-	servStat : TServiceStatus;
-begin
-   Result:=False;
-   scHandle:=OpenSCManager(nil, nil, GENERIC_READ);
-   try
-      svInfo:=OpenService(scHandle, PChar(cHttpServiceName), GENERIC_READ);
-      if svInfo<>0 then begin
-         try
-            QueryServiceStatus(svInfo, servStat);
-            Result:=(servStat.dwCurrentState=SERVICE_START_PENDING);
-         finally
-            CloseServiceHandle(svInfo);
-         end;
-      end;
-   finally
-      CloseServiceHandle(scHandle);
-   end;
-end;
+      if service.LaunchedBySCM then begin
 
-begin
-   if ParamCount<>0 then
-
-      CheckParameters
-
-   else if LaunchedBySCM then begin
-
-      // started as service
-      with TWebServerHttpService.Create do try
+         // started as service
          ServicesRun;
-      finally
-         Free;
-      end;
 
-   end else begin
+      end else begin
 
-      // started as application
-      with CreateNewServer do try
-         write( 'Server is now running on http://localhost:888/'#13#10#13#10
-               +'Press [Enter] to quit');
+         // started as application
+         service.DoStart(service);
+
+         writeln('Server is now running on');
+         if service.Server.Port>0 then
+            writeln('http://localhost:', service.Server.Port, '/');
+         if service.Server.SSLPort>0 then
+            writeln('https://localhost:', service.Server.SSLPort, '/');
+         writeln;
+         writeln('Press [Enter] to quit');
          readln;
-      finally
-         Free;
-      end
 
+      end;
+   finally
+      service.Free;
+      options.Free;
    end;
 end.

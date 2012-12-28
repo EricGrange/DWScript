@@ -15,8 +15,9 @@
 <div style="width: 450px; float:left">
 <p>
 <b><%=OSVersionInfo.Name%> (<%=OSVersionInfo.Version%>)</b><br>
-<i><%=CPUInfo.Count%> core<%=if CPUInfo.Count>1 then "(s)"%> 
-<%=CPUInfo.Name%> @ <%=Format("%.1f", [CPUInfo.FrequencyMHz*0.001])%> GHz</i>
+<i><%=CPUInfo.Name%>, 
+<%=CPUInfo.Count%> core<%=if CPUInfo.Count>1 then "s"%> 
+@ <%=Format("%.1f", [CPUInfo.FrequencyMHz*0.001])%> GHz</i>
 </p>
 <div id="memory">
 <%
@@ -40,8 +41,8 @@
  var line2 = new TimeSeries();
  
  function fmtPercent(v) {
-   if (v<10) return '&nbsp;&nbsp;'+v;
-   if (v<100) return '&nbsp;'+v;
+   if (v<10) return '&nbsp;&nbsp;'+v.toFixed(1);
+   if (v<100) return '&nbsp;'+v.toFixed(1);
    return v;
  }
  
@@ -52,7 +53,7 @@
      .done(
        function (data) {
          var dt = new Date().getTime();
-         data = data.split(',').map(function (v) { return parseInt(v) });
+         data = data.split('/').map(function (v) { return parseFloat(v) });
          line1.append(dt, data[0]);
          $('#process').html(fmtPercent(data[0]));
          line2.append(dt, data[1]);

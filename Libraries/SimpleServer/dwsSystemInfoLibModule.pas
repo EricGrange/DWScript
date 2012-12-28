@@ -3,7 +3,7 @@ unit dwsSystemInfoLibModule;
 interface
 
 uses
-  Windows, SysUtils, Classes, ActiveX, ComObj,
+  Windows, SysUtils, Classes, Registry,
   dwsComp, dwsExprs, dwsUtils, dwsCPUUsage;
 
 type
@@ -48,30 +48,22 @@ implementation
 
 procedure GetWin32_OSNameVersion(var osnv : TOSNameVersion);
 var
-   locator : OleVariant;
-   objWMIService : OLEVariant;
-   colItems : OLEVariant;
-   colItem : OLEVariant;
-   oEnum : IEnumvariant;
-   iValue : LongWord;
+   reg : TRegistry;
 begin
-   CoInitialize(nil);
    osnv.Name:='?';
-   osnv.Version:='?';
+   osnv.Version:=Format('%d.%d.%d', [Win32MajorVersion, Win32MinorVersion, Win32BuildNumber]);
+   reg:=TRegistry.Create;
    try
-      locator:=CreateOleObject('WbemScripting.SWbemLocator');
-      objWMIService:=locator.ConnectServer('localhost', 'root\CIMV2', '', '');
-      colItems:=objWMIService.ExecQuery('SELECT * FROM Win32_OperatingSystem','WQL',0);
-      oEnum:=IUnknown(colItems._NewEnum) as IEnumVariant;
-      if oEnum.Next(1, colItem, iValue)=0 then begin
-         osnv.Name:=colItem.Caption;
-         osnv.Version:=colItem.Version;
+      reg.RootKey:=HKEY_LOCAL_MACHINE;
+      reg.OpenKeyReadOnly('\Software\Microsoft\Windows NT\CurrentVersion\');
+      if reg.ValueExists('ProductName') then begin
+         osnv.Name:=reg.ReadString('ProductName');
+         if Win32CSDVersion<>'' then
+            osnv.Name:=osnv.Name+' '+Win32CSDVersion;
       end;
-   except
-      on E : Exception do
-         osnv.Name:=E.Message;
+   finally
+      reg.Free;
    end;
-   CoUninitialize;
 end;
 
 function GetGlobalMemory(var ms : TMemoryStatusEx) : TSimpleCallbackStatus;

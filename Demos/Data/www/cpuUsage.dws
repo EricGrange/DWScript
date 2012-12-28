@@ -1,1 +1,3 @@
-<%=Round(CPUInfo.ProcessUsage)%>,<%=Round(CPUInfo.SystemUsage)%>
+<%
+Print(Format('%.1f/%.1f', [CPUInfo.ProcessUsage, CPUInfo.SystemUsage]));
+%>

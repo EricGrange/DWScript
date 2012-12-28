@@ -18,13 +18,13 @@ begin
    PrintLn('</td></tr>');
 end;
 
-WriteValue('RemoteIP', Request.RemoteIP);
-WriteValue('URL', Request.URL);
-WriteValue('Method', Request.Method);
-WriteValue('PathInfo', Request.PathInfo);
-WriteValue('QueryString', Request.QueryString);
-WriteValue('Cookies', Request.Cookies.CommaText);
-WriteValue('QueryFields', Request.QueryFields.CommaText);
+WriteValue('RemoteIP', WebRequest.RemoteIP);
+WriteValue('URL', WebRequest.URL);
+WriteValue('Method', WebRequest.Method);
+WriteValue('PathInfo', WebRequest.PathInfo);
+WriteValue('QueryString', WebRequest.QueryString);
+WriteValue('Cookies', WebRequest.Cookies);
+WriteValue('QueryFields', WebRequest.QueryFields);
 %>
 </table>
 </body>

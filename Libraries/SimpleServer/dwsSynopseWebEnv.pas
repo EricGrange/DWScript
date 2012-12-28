@@ -49,8 +49,6 @@ type
 
       public
 
-      published
-
    end;
 
 implementation

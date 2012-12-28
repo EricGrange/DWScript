@@ -3,9 +3,11 @@ unit USynopseSimpleWebServer;
 interface
 
 uses
-  SysUtils,
-  SynCommons, SynZip, SynCrtSock,
-  dwsUtils, dwsWebEnvironment, dwsSynopseWebEnv, dwsFileSystem, dwsDirectoryNotifier,
+  Windows, SysUtils,
+  SynCommons, SynZip,
+  dwsHTTPSysServer, dwsHTTPSysAPI,
+  dwsUtils, dwsWebEnvironment, dwsSynopseWebEnv, dwsFileSystem,
+  dwsDirectoryNotifier, dwsJSON, dwsXPlatform,
   DSimpleDWScript;
 
 type
@@ -13,47 +15,110 @@ type
    TSynopseSimpleServer = class
       protected
          FPath : TFileName;
-         FServer : THttpApiServer;
+         FServer : THttpApi2Server;
          FFileSystem : TdwsRestrictedFileSystem;
          FDWS : TSynDWScript;
          FNotifier : TdwsDirectoryNotifier;
+         FPort : Integer;
+         FSSLPort : Integer;
 
          procedure DirectoryChanged(sender : TdwsDirectoryNotifier);
 
       public
-         constructor Create(const basePath : TFileName);
+         constructor Create(const basePath : TFileName; options : TdwsJSONValue);
          destructor Destroy; override;
 
          function Process(const inRequest : TSynHttpServerRequest;
                           var outResponse : TSynHttpServerResponse) : cardinal;
 
-         function DirectoryListing(FN : RawByteString; const fileName : TFileName) : RawByteString;
+         function FindDirectoryIndex(var pathFileName : String) : Boolean;
+
+         property Port : Integer read FPort;
+         property SSLPort : Integer read FSSLPort;
   end;
 
+const
+   cDefaultServerOptions =
+      '{'
+         // http server port, if zero, no http port is opened
+         +'"Port": 888,'
+         // https server port, if zero, no https port is opened
+         +'"SSLPort": 0,'
+         // Base path for served files
+         // If not defined, assumes a www subfolder of the folder where the exe is
+         +'"WWWPath": "",'
+         // Directory for log files (NCSA)
+         // If empty, logs are not active
+         +'"LogDirectory": "",'
+         // Maximum bandwidth in bytes per second
+         // Zero and negative values mean "infinite"
+         +'"MaxBandwidth": "",'
+         // Maximum input http request length in bytes
+         // If zero or negative, defaults to 10 Megabytes
+         // requests larger than this value will get canceled
+         +'"MaxInputLength": 0'
+      +'}';
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
-{ TSynopseSimpleServer }
+// ------------------
+// ------------------ TSynopseSimpleServer ------------------
+// ------------------
 
-constructor TSynopseSimpleServer.Create(const basePath : TFileName);
+constructor TSynopseSimpleServer.Create(const basePath : TFileName; options : TdwsJSONValue);
+var
+   logPath : TdwsJSONValue;
+   serverOptions : TdwsJSONValue;
 begin
    FPath:=IncludeTrailingPathDelimiter(ExpandFileName(basePath));
 
    FFileSystem:=TdwsRestrictedFileSystem.Create(nil);
    FFileSystem.Paths.Add(FPath);
 
+   serverOptions:=TdwsJSONValue.ParseString(cDefaultServerOptions);
+   try
+      serverOptions.Extend(options['Server']);
+
+      FServer:=THttpApi2Server.Create(False);
+      FPort:=serverOptions['Port'].AsInteger;
+      if FPort<>0 then
+         FServer.AddUrl('', FPort, False, '+');
+      FSSLPort:=serverOptions['SSLPort'].AsInteger;
+      if FSSLPort<>0 then begin
+         FServer.AddUrl('', FSSLPort, True, '+');
+      end;
+      FServer.RegisterCompress(CompressDeflate);
+      FServer.OnRequest:=Process;
+
+      logPath:=serverOptions['LogDirectory'];
+      if (logPath.ValueType=jvtString) and (logPath.AsString<>'') then begin
+         FServer.LogDirectory:=IncludeTrailingPathDelimiter(logPath.AsString);
+         FServer.LogRolloverSize:=1024*1024;
+         FServer.Logging:=True;
+      end;
+
+      FServer.MaxBandwidth:=serverOptions['MaxBandwidth'].AsInteger;
+
+      FServer.MaxInputCountLength:=serverOptions['MaxInputLength'].AsInteger;
+   finally
+      serverOptions.Free;
+   end;
+
    FDWS:=TSynDWScript.Create(nil);
    FDWS.FileSystem:=FFileSystem;
-   FDWS.CPUUsageLimit:=10;
-
-   FServer:=THttpApiServer.Create(false);
-   FServer.AddUrl('', '888', false,'+');
-   FServer.RegisterCompress(CompressDeflate); // our server will deflate html :)
-   FServer.OnRequest:=Process;
+   FDWS.LoadCPUOptions(options['CPU']);
+   FDWS.LoadDWScriptOptions(options['DWScript']);
 
    FNotifier:=TdwsDirectoryNotifier.Create(FPath, dnoDirectoryAndSubTree);
    FNotifier.OnDirectoryChanged:=DirectoryChanged;
 
-   FServer.Clone(8);
+   FServer.Clone(7);
 end;
 
 destructor TSynopseSimpleServer.Destroy;
@@ -71,12 +136,13 @@ function TSynopseSimpleServer.Process(
       const inRequest : TSynHttpServerRequest;
       var outResponse : TSynHttpServerResponse) : cardinal;
 var
-   pathFileName : TFileName;
+   pathFileName : String;
    rawUrl : RawUTF8;
    params : String;
    p : Integer;
    request : TSynopseWebRequest;
    response : TSynopseWebResponse;
+   fileAttribs : Cardinal;
 begin
    rawUrl:=StringReplaceChars(UrlDecode(copy(inRequest.InURL,2,maxInt)), '/', '\');
    while (rawUrl<>'') and (rawUrl[1]='\') do
@@ -93,20 +159,41 @@ begin
 
    pathFileName:=ExpandFileName(pathFileName);
 
-   if not StrBeginsWith(pathFileName, FPath) then begin
+   if Pos('\.', pathFileName)>0 then
+
+      // Directories or files beginning with a '.' are invisible
+      fileAttribs:=INVALID_FILE_ATTRIBUTES
+
+   else if not StrBeginsWith(pathFileName, FPath) then begin
 
       // request is outside base path
-      outResponse.OutContent:='Not authorized';
-      outResponse.OutContentType:=TEXT_CONTENT_TYPE;
-      Result:=401;
-
-   end else if DirectoryExists(pathFileName) then begin
-
-      outResponse.OutContent:=DirectoryListing(rawURL, pathFileName);
+      outResponse.OutContent:='<h1>Not authorized</h1>';
       outResponse.OutContentType:=HTML_CONTENT_TYPE;
-      Result:=200;
+      Result:=401;
+      Exit;
 
-   end else if ExtractFileExt(pathFileName)='.dws' then begin
+   end else begin
+
+      fileAttribs:=GetFileAttributes(Pointer(pathFileName));
+      if fileAttribs<>INVALID_FILE_ATTRIBUTES then begin
+         if (fileAttribs and faHidden)<>0 then
+            fileAttribs:=INVALID_FILE_ATTRIBUTES
+         else if (fileAttribs and faDirectory)<>0 then begin
+            if not FindDirectoryIndex(pathFileName) then
+               fileAttribs:=INVALID_FILE_ATTRIBUTES;
+         end;
+      end;
+
+   end;
+
+   if fileAttribs=INVALID_FILE_ATTRIBUTES then begin
+
+      outResponse.OutContent:='<h1>Not found</h1>';
+      outResponse.OutContentType:=HTML_CONTENT_TYPE;
+      Result:=404;
+      Exit;
+
+   end else if StrEndsWith(pathFileName, '.dws') then begin
 
       request:=TSynopseWebRequest.Create;
       response:=TSynopseWebResponse.Create;
@@ -124,9 +211,9 @@ begin
 
          outResponse.OutContent:=response.ContentData;
          outResponse.OutContentType:=response.ContentType;
-         if response.AllowCORS<>'' then
-            outResponse.OutCustomHeader:=outResponse.OutCustomHeader
-               +'Access-Control-Allow-Origin: '+response.AllowCORS+#13#10;
+         if response.HasHeaders then
+            outResponse.OutCustomHeader:=outResponse.OutCustomHeader+response.CompiledHeaders;
+
          Result:=response.StatusCode;
       finally
          request.Free;
@@ -143,60 +230,18 @@ begin
    end;
 end;
 
-// DirectoryListing
+// FindDirectoryIndex
 //
-function TSynopseSimpleServer.DirectoryListing(FN : RawByteString; const fileName : TFileName) : RawByteString;
-var
-   W : TTextWriter;
-   SRName, href: RawUTF8;
-   i : integer;
-   SR : TSearchRec;
-
-   procedure hrefCompute;
-   begin
-      SRName := StringToUTF8(SR.Name);
-      href := FN+StringReplaceChars(SRName,'\','/');
-   end;
-
+function TSynopseSimpleServer.FindDirectoryIndex(var pathFileName : String) : Boolean;
 begin
-   // reply directory listing as html
-   W := TTextWriter.CreateOwnedStream;
-   try
-      W.Add( '<html><body style="font-family: Arial">'
-            +'<h3>%</h3><p><table>',[FN]);
-      FN := StringReplaceChars(FN,'\','/');
-      if FN<>'' then
-         FN := FN+'/';
-      if FindFirst(FileName+'\*.*',faDirectory,SR)=0 then begin
-         repeat
-            if (SR.Attr and faDirectory<>0) and (SR.Name<>'.') then begin
-               hrefCompute;
-               if SRName='..' then begin
-                  i := length(FN);
-                  while (i>0) and (FN[i]='/') do dec(i);
-                  while (i>0) and (FN[i]<>'/') do dec(i);
-                  href := copy(FN,1,i);
-               end;
-               W.Add('<tr><td><b><a href="/%">[%]</a></b></td></tr>', [href, SRName]);
-            end;
-         until FindNext(SR)<>0;
-         FindClose(SR);
-      end;
-      if FindFirst(FileName+'\*.*',faAnyFile-faDirectory-faHidden,SR)=0 then begin
-         repeat
-            hrefCompute;
-            if SR.Attr and faDirectory=0 then
-               W.Add('<tr><td><b><a href="/%">%</a></b></td><td>%</td><td>%</td></td></tr>',
-                     [href, SRName,KB(SR.Size), DateTimeToStr(SR.TimeStamp)]);
-         until FindNext(SR)<>0;
-         FindClose(SR);
-      end;
-      W.AddString('</table></p><p><i>Powered by <strong>THttpApiServer</strong></i> - '+
-                  'see <a href=http://synopse.info>http://synopse.info</a></p></body></html>');
-      Result:=W.Text;
-   finally
-      W.Free;
-   end;
+   Result:=True;
+   if FileExists(pathFileName+'\index.dws') then
+      pathFileName:=pathFileName+'\index.dws'
+   else if FileExists(pathFileName+'\index.htm') then
+      pathFileName:=pathFileName+'\index.htm'
+   else if FileExists(pathFileName+'\index.html') then
+      pathFileName:=pathFileName+'\index.html'
+   else Result:=False;
 end;
 
 // DirectoryChanged

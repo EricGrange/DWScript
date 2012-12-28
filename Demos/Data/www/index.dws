@@ -9,6 +9,10 @@
 <li><a href="hello.dws">hello</a></li>
 <li><a href="requestInfo.dws">blank request info</a></li>
 <li><a href="requestInfo.dws?p=alpha&b=beta&c=gamma+delta">parameterized request info</a></li>
+<li><a href="infiniteLoop.dws">infinite loop script</a> (aborted by script engine after 3 sec)</li>
+<li><a href="systemInfo.dws">system information</a></li>
+<li><a href="uses.dws">uses Test</a></li>
+<li><a href="big.pas">big.pas</a></li>
 </ul></p>
 <p>Some facts:<ul><%
 procedure PrintFacts(i : Integer);

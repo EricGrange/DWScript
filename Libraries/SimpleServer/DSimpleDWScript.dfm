@@ -4,7 +4,7 @@ object SynDWScript: TSynDWScript
   OnDestroy = DataModuleDestroy
   Left = 745
   Top = 94
-  Height = 249
+  Height = 222
   Width = 341
   object DelphiWebScript: TDelphiWebScript
     Config.Filter = dwsHtmlFilter
@@ -22,12 +22,6 @@ object SynDWScript: TSynDWScript
   end
   object dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions
     Left = 208
-    Top = 96
-  end
-  object dwsRTTIConnector: TdwsRTTIConnector
-    Script = DelphiWebScript
-    StaticSymbols = False
-    Left = 72
     Top = 96
   end
 end

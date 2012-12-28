@@ -1,10 +1,16 @@
 program Mandelbrot;
 
+{$IFDEF FPC}
+  {$MODE Delphi}
+{$ENDIF}
+
 uses
+{$IFNDEF FPC}
+{$ELSE}
+  Interfaces,
+{$ENDIF}
   Forms,
   FMain in 'FMain.pas' {MainForm};
-
-{$R *.res}
 
 begin
   Application.Initialize;

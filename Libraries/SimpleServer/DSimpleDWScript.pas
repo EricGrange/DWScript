@@ -19,9 +19,10 @@ unit DSimpleDWScript;
 interface
 
 uses
-   SysUtils, Classes, Rtti, dwsFileSystem, dwsGlobalVarsFunctions,
-   dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsRTTIConnector, dwsUtils,
-   dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage;
+   Windows, SysUtils, Classes, dwsFileSystem, dwsGlobalVarsFunctions,
+   dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils,
+   dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
+   dwsJSON, dwsErrors, dwsFunctions;
 
 type
 
@@ -36,26 +37,25 @@ type
          function GetItemHashCode(const item1 : TCompiledProgram) : Integer; override;
    end;
 
-
    TSynDWScript = class(TDataModule)
       DelphiWebScript: TDelphiWebScript;
       dwsHtmlFilter: TdwsHtmlFilter;
       dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions;
-      dwsRTTIConnector: TdwsRTTIConnector;
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 
    private
+      FLibraryPaths : TStrings;
       FScriptTimeoutMilliseconds : Integer;
       FCPUUsageLimit : Integer;
+      FCPUAffinity : Cardinal;
 
       FSystemInfo : TdwsSystemInfoLibModule;
       FFileSystem : TdwsCustomFileSystem;
+      FWebEnv : TdwsWebLib;
 
       FCompiledPrograms : TCompiledProgramHash;
       FCompiledProgramsLock : TFixedCriticalSection;
-
-      FCompilerEnvironment : TRTTIEnvironment;
 
       FCompilerLock : TFixedCriticalSection;
 
@@ -70,7 +70,11 @@ type
 
       procedure AddNotMatching(const cp : TCompiledProgram);
 
+      function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+
       procedure SetCPUUsageLimit(const val : Integer);
+      procedure SetCPUAffinity(const val : Cardinal);
+
       function WaitForCPULimit : Boolean;
 
    public
@@ -79,56 +83,73 @@ type
       // flush the cache of fileName that begin by matchBegin
       procedure FlushDWSCache(const matchingBegin : String = '');
 
+      procedure LoadCPUOptions(options : TdwsJSONValue);
+      procedure LoadDWScriptOptions(options : TdwsJSONValue);
+
       property ScriptTimeoutMilliseconds : Integer read FScriptTimeoutMilliseconds write FScriptTimeoutMilliseconds;
+
       property CPUUsageLimit : Integer read FCPUUsageLimit write SetCPUUsageLimit;
+      property CPUAffinity : Cardinal read FCPUAffinity write SetCPUAffinity;
 
       property FileSystem : TdwsCustomFileSystem read GetFileSystem write SetFileSystem;
   end;
 
+const
+   cDefaultCPUOptions =
+      '{'
+         // Percentage (0-100) of total system usage
+         // f.i. 25 on a quad core is reached by a full core and 3 cores idle
+         // zero = no limit
+         +'"UsageLimit":0,'
+         // Core affinity
+         // bitwise CPU affinity flags
+         // zero = no affinity
+         +'"Affinity":0'
+      +'}';
+
+   cDefaultDWScriptOptions =
+      '{'
+         // Script timeout in milliseconds
+         // zero = no limit (not recommended)
+         +'"TimeoutMSec": 3000,'
+         // Library paths (outside of www folder)
+         // If missing, assumes a lib subfolder of the folder where the exe is
+         +'"LibraryPaths": []'
+      +'}';
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 implementation
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
 {$R *.dfm}
-
-function TWebRequest_GetHeaders(instance: Pointer; const args: array of TValue): TValue;
-begin
-   Result:=TWebRequest(instance).Header(args[0].AsString);
-end;
-
-function TWebRequest_GetCookies(instance: Pointer; const args: array of TValue): TValue;
-begin
-   Result:=TWebRequest(instance).Cookies.Values[args[0].AsString];
-end;
-
-function TWebRequest_GetQueryFields(instance: Pointer; const args: array of TValue): TValue;
-begin
-   Result:=TWebRequest(instance).QueryFields.Values[args[0].AsString];
-end;
 
 procedure TSynDWScript.DataModuleCreate(Sender: TObject);
 begin
    FSystemInfo:=TdwsSystemInfoLibModule.Create(Self);
    FSystemInfo.dwsSystemInfo.Script:=DelphiWebScript;
 
+   FWebEnv:=TdwsWebLib.Create(Self);
+   FWebEnv.dwsWeb.Script:=DelphiWebScript;
+
    FCompiledPrograms:=TCompiledProgramHash.Create;
    FCompiledProgramsLock:=TFixedCriticalSection.Create;
    FCompilerLock:=TFixedCriticalSection.Create;
 
-   FCompilerEnvironment:=TRTTIEnvironment.Create;
-   FCompilerEnvironment.SetForClass(TWebEnvironment);
+   FScriptTimeoutMilliseconds:=3000;
 
-   DelphiWebScript.Extensions.Add(FCompilerEnvironment);
-
-   FScriptTimeoutMilliseconds:=30000;
+   FLibraryPaths:=TStringList.Create;
+   DelphiWebScript.OnNeedUnit:=DoNeedUnit;
 end;
 
 procedure TSynDWScript.DataModuleDestroy(Sender: TObject);
 begin
-   DelphiWebScript.Extensions.Remove(FCompilerEnvironment);
-
    FlushDWSCache;
 
-   FCompilerEnvironment.Free;
-
+   FLibraryPaths.Free;
    FCompilerLock.Free;
    FCompiledProgramsLock.Free;
    FCompiledPrograms.Free;
@@ -153,54 +174,62 @@ end;
 // HandleDWS
 //
 procedure TSynDWScript.HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse);
+
+   procedure Handle503(response : TWebResponse);
+   begin
+      response.StatusCode:=503;
+      response.ContentData:='CPU Usage limit reached, please try again later';
+      response.ContentType:='text/plain';
+   end;
+
+   procedure Handle400(response : TWebResponse; msgs : TdwsMessageList);
+   begin
+      response.StatusCode:=400;
+      response.ContentText['plain']:=msgs.AsInfo;
+   end;
+
+   procedure HandleScriptResult(response : TWebResponse; scriptResult : TdwsResult);
+   begin
+      if StrBeginsWithA(response.ContentType, 'text/') then
+         response.ContentData:=scriptResult.ToUTF8String
+      else response.ContentData:=scriptResult.ToDataString;
+   end;
+
 var
    prog : IdwsProgram;
    exec : IdwsProgramExecution;
    webenv : TWebEnvironment;
 begin
    if (CPUUsageLimit>0) and not WaitForCPULimit then begin
-
-      response.StatusCode:=503;
-      response.ContentData:='CPU Usage limit reached, please try again later';
-      response.ContentType:='text/plain';
+      Handle503(response);
       Exit;
-
    end;
 
    TryAcquireDWS(fileName, prog);
    if prog=nil then
       CompileDWS(fileName, prog);
 
-   if prog.Msgs.HasErrors then begin
-
-      response.StatusCode:=200;
-      response.ContentData:=UTF8Encode(prog.Msgs.AsInfo);
-      response.ContentType:='text/plain; charset=utf-8';
-
-   end else begin
+   if prog.Msgs.HasErrors then
+      Handle400(response, prog.Msgs)
+   else begin
+      exec:=prog.CreateNewExecution;
 
       webenv:=TWebEnvironment.Create;
-      webenv.Request:=request;
-      webenv.response:=response;
+      webenv.WebRequest:=request;
+      webenv.WebResponse:=response;
+      exec.Environment:=webenv;
       try
-         exec:=prog.CreateNewExecution;
-         exec.Environment:=TRTTIRuntimeEnvironment.Create(webenv);
          exec.BeginProgram;
          exec.RunProgram(ScriptTimeoutMilliseconds);
          exec.EndProgram;
-         exec.Environment:=nil;
       finally
-         webenv.Free;
+         exec.Environment:=nil;
       end;
 
-      if exec.Msgs.Count>0 then begin
-         response.StatusCode:=400;
-         response.ContentData:=UTF8Encode(exec.Msgs.AsInfo);
-      end else begin
-         if response.ContentData='' then
-            response.ContentData:=UTF8Encode(exec.Result.ToString);
-      end;
-      response.AllowCORS:='*';
+      if exec.Msgs.Count>0 then
+         Handle400(response, exec.Msgs)
+      else if response.ContentData='' then
+         HandleScriptResult(response, exec.Result);
    end;
 end;
 
@@ -226,6 +255,50 @@ begin
       end;
    finally
       FCompiledProgramsLock.Leave;
+   end;
+end;
+
+// LoadCPUOptions
+//
+procedure TSynDWScript.LoadCPUOptions(options : TdwsJSONValue);
+var
+   cpu : TdwsJSONValue;
+begin
+   cpu:=TdwsJSONValue.ParseString(cDefaultCPUOptions);
+   try
+      cpu.Extend(options);
+
+      CPUUsageLimit:=cpu['UsageLimit'].AsInteger;
+      CPUAffinity:=cpu['Affinity'].AsInteger;
+   finally
+      cpu.Free;
+   end;
+end;
+
+// LoadDWScriptOptions
+//
+procedure TSynDWScript.LoadDWScriptOptions(options : TdwsJSONValue);
+var
+   dws, libs : TdwsJSONValue;
+   i : Integer;
+   path : String;
+begin
+   dws:=TdwsJSONValue.ParseString(cDefaultDWScriptOptions);
+   try
+      dws.Extend(options);
+
+      ScriptTimeoutMilliseconds:=dws['TimeoutMSec'].AsInteger;
+
+      libs:=dws['LibraryPaths'];
+      FLibraryPaths.Clear;
+      for i:=0 to libs.ElementCount-1 do begin
+         path:=libs.Elements[i].AsString;
+         if path<>'' then
+            FLibraryPaths.Add(IncludeTrailingPathDelimiter(path));
+      end;
+
+   finally
+      dws.Free;
    end;
 end;
 
@@ -291,6 +364,26 @@ begin
       FCompiledPrograms.Add(cp);
 end;
 
+// DoNeedUnit
+//
+function TSynDWScript.DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+var
+   i : Integer;
+   fileName : String;
+begin
+   for i:=0 to FLibraryPaths.Count-1 do begin
+      fileName:=FLibraryPaths[i]+unitName+'.pas';
+      if not FileExists(fileName) then begin
+         fileName:=FLibraryPaths[i]+unitName+'.inc';
+         if not FileExists(fileName) then
+            continue;
+      end;
+      unitSource:=LoadTextFromFile(fileName);
+      break;
+   end;
+   Result:=nil;
+end;
+
 // SetCPUUsageLimit
 //
 procedure TSynDWScript.SetCPUUsageLimit(const val : Integer);
@@ -298,6 +391,21 @@ begin
    FCPUUsageLimit:=val;
    if FCPUUsageLimit>0 then
       SystemCPU.Track;
+end;
+
+// SetCPUAffinity
+//
+procedure TSynDWScript.SetCPUAffinity(const val : Cardinal);
+var
+   hProcess : THandle;
+   procMask, systemMask : Cardinal;
+begin
+   hProcess:=GetCurrentProcess;
+   GetProcessAffinityMask(hProcess, procMask, systemMask);
+   procMask:=systemMask and val;
+   if procMask=0 then
+      procMask:=systemMask;
+   SetProcessAffinityMask(hProcess, procMask);
 end;
 
 // WaitForCPULimit
@@ -310,7 +418,7 @@ begin
    while SystemCPU.ProcessUsage>CPUUsageLimit do begin
       Sleep(100);
       Inc(i);
-      if i=10 then Exit(False);
+      if i=15 then Exit(False);
    end;
    Result:=True;
 end;
@@ -332,17 +440,5 @@ function TCompiledProgramHash.GetItemHashCode(const item1 : TCompiledProgram) : 
 begin
    Result:=SimpleStringHash(item1.Name);
 end;
-
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-initialization
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-// ------------------------------------------------------------------
-
-  RegisterRTTIIndexedProperty(TWebRequest, 'Headers', True, varUString, TWebRequest_GetHeaders, nil);
-  RegisterRTTIIndexedProperty(TWebRequest, 'Cookies', True, varUString, TWebRequest_GetCookies, nil);
-  RegisterRTTIIndexedProperty(TWebRequest, 'QueryFields', True, varUString, TWebRequest_GetQueryFields, nil);
 
 end.
