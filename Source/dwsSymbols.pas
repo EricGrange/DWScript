@@ -244,17 +244,17 @@ type
    //
    TAddrGeneratorRec = record
       private
-         FDataSize : Integer;
          FLevel : SmallInt;
          FSign : TAddrGeneratorSign;
 
       public
+         DataSize : Integer;
+
          class function CreatePositive(aLevel : SmallInt; anInitialSize : Integer = 0) : TAddrGeneratorRec; static;
          class function CreateNegative(aLevel : SmallInt) : TAddrGeneratorRec; static;
 
          function GetStackAddr(size : Integer) : Integer;
 
-         property DataSize : Integer read FDataSize;
          property Level : SmallInt read FLevel;
    end;
    TAddrGenerator = ^TAddrGeneratorRec;
@@ -701,7 +701,7 @@ type
          property Level : SmallInt read GetLevel;
          property InternalParams : TSymbolTable read FInternalParams;
          property Params : TParamsSymbolTable read FParams;
-         property ParamSize : Integer read GetParamSize;
+         property ParamSize : Integer read FAddrGenerator.DataSize;//GetParamSize;
          property Result : TDataSymbol read FResult;
          property Typ : TTypeSymbol read FTyp write SetType;
          property Conditions : TConditionsSymbolTable read FConditions;
@@ -5312,7 +5312,7 @@ end;
 //
 class function TAddrGeneratorRec.CreatePositive(aLevel : SmallInt; anInitialSize: Integer = 0) : TAddrGeneratorRec;
 begin
-   Result.FDataSize:=anInitialSize;
+   Result.DataSize:=anInitialSize;
    Result.FLevel:=aLevel;
    Result.FSign:=agsPositive;
 end;
@@ -5321,7 +5321,7 @@ end;
 //
 class function TAddrGeneratorRec.CreateNegative(aLevel : SmallInt) : TAddrGeneratorRec;
 begin
-   Result.FDataSize:=0;
+   Result.DataSize:=0;
    Result.FLevel:=aLevel;
    Result.FSign:=agsNegative;
 end;
@@ -5331,11 +5331,11 @@ end;
 function TAddrGeneratorRec.GetStackAddr(size : Integer): Integer;
 begin
    if FSign=agsPositive then begin
-      Result:=FDataSize;
-      Inc(FDataSize, Size);
+      Result:=DataSize;
+      Inc(DataSize, Size);
    end else begin
-      Inc(FDataSize, Size);
-      Result:=-FDataSize;
+      Inc(DataSize, Size);
+      Result:=-DataSize;
    end;
 end;
 

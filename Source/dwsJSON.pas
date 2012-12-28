@@ -140,9 +140,21 @@ type
          function DoElementCount : Integer; virtual;
          function GetValue(const index : Variant) : TdwsJSONValue;
 
+         function GetAsString : String; inline;
+         procedure SetAsString(const val : String); inline;
+         function GetIsNull : Boolean; inline;
+         procedure SetIsNull(const val : Boolean);
+         function GetAsBoolean : Boolean;
+         procedure SetAsBoolean(const val : Boolean); inline;
+         function GetAsNumber : Double;
+         procedure SetAsNumber(const val : Double); inline;
+         function GetAsInteger : Int64;
+         procedure SetAsInteger(const val : Int64);
+
          procedure DoParse(initialChar : WideChar; parserState : TdwsJSONParserState); virtual; abstract;
 
          function DoClone : TdwsJSONValue; virtual; abstract;
+         procedure DoExtend(other : TdwsJSONValue); virtual; abstract;
 
          class procedure RaiseJSONException(const msg : String); static;
          class procedure RaiseJSONParseError(const msg : String; c : WideChar = #0); static;
@@ -154,12 +166,14 @@ type
 
          class function ParseString(const json : String;
                                     duplicatesOption : TdwsJSONDuplicatesOptions = jdoOverwrite) : TdwsJSONValue; static;
+         class function ParseFile(const fileName : String) : TdwsJSONValue; static;
 
          function Clone : TdwsJSONValue;
+         procedure Extend(other : TdwsJSONValue);
 
          procedure WriteTo(writer : TdwsJSONWriter); virtual; abstract;
          function ToString : String; reintroduce;
-         function ToBeautifiedString(initialTabs, indentTabs : Integer) : String;
+         function ToBeautifiedString(initialTabs : Integer = 0; indentTabs : Integer = 1) : String;
          procedure Detach;
 
          property Owner : TdwsJSONValue read FOwner;
@@ -172,6 +186,12 @@ type
 
          function IsImmediateValue : Boolean; inline;
          function Value : TdwsJSONImmediate; inline;
+
+         property AsString : String read GetAsString write SetAsString;
+         property IsNull : Boolean read GetIsNull write SetIsNull;
+         property AsBoolean : Boolean read GetAsBoolean write SetAsBoolean;
+         property AsNumber : Double read GetAsNumber write SetAsNumber;
+         property AsInteger : Int64 read GetAsInteger write SetAsInteger;
 
          const ValueTypeStrings : array [TdwsJSONValueType] of String = (
             'Undefined', 'Null', 'Object', 'Array', 'String', 'Number', 'Boolean'
@@ -211,6 +231,7 @@ type
          procedure DoParse(initialChar : WideChar; parserState : TdwsJSONParserState); override;
 
          function DoClone : TdwsJSONValue; override;
+         procedure DoExtend(other : TdwsJSONValue); override;
 
       public
          constructor Create;
@@ -262,6 +283,7 @@ type
          procedure DoParse(initialChar : WideChar; parserState : TdwsJSONParserState); override;
 
          function DoClone : TdwsJSONValue; override;
+         procedure DoExtend(other : TdwsJSONValue); override;
 
       public
          constructor Create;
@@ -296,10 +318,13 @@ type
          procedure SetAsBoolean(const val : Boolean); inline;
          function GetAsNumber : Double;
          procedure SetAsNumber(const val : Double); inline;
+         function GetAsInteger : Int64;
+         procedure SetAsInteger(const val : Int64);
 
          procedure DoParse(initialChar : WideChar; parserState : TdwsJSONParserState); override;
 
          function DoClone : TdwsJSONValue; override;
+         procedure DoExtend(other : TdwsJSONValue); override;
 
       public
          class function ParseString(const json : String) : TdwsJSONImmediate; static;
@@ -315,6 +340,7 @@ type
          property IsNull : Boolean read GetIsNull write SetIsNull;
          property AsBoolean : Boolean read GetAsBoolean write SetAsBoolean;
          property AsNumber : Double read GetAsNumber write SetAsNumber;
+         property AsInteger : Int64 read GetAsInteger write SetAsInteger;
    end;
 
    EdwsJSONException = class (Exception);
@@ -654,6 +680,13 @@ begin
    end;
 end;
 
+// ParseFile
+//
+class function TdwsJSONValue.ParseFile(const fileName : String) : TdwsJSONValue;
+begin
+   Result:=ParseString(LoadTextFromFile(fileName));
+end;
+
 // Clone
 //
 function TdwsJSONValue.Clone : TdwsJSONValue;
@@ -661,6 +694,16 @@ begin
    if Self<>nil then
       Result:=DoClone
    else Result:=nil;
+end;
+
+// Extend
+//
+procedure TdwsJSONValue.Extend(other : TdwsJSONValue);
+begin
+   if Self=nil then
+      RaiseJSONException('Cannot extend undefined object')
+   else if other<>nil then
+      DoExtend(other);
 end;
 
 // ToString
@@ -749,6 +792,76 @@ begin
          Result:=Elements[index]
       else Result:=Items[index];
    end else Result:=nil;
+end;
+
+// GetAsString
+//
+function TdwsJSONValue.GetAsString : String;
+begin
+   Result:=Value.AsString;
+end;
+
+// SetAsString
+//
+procedure TdwsJSONValue.SetAsString(const val : String);
+begin
+   Value.AsString:=val;
+end;
+
+// GetIsNull
+//
+function TdwsJSONValue.GetIsNull : Boolean;
+begin
+   Result:=(ValueType=jvtNull);
+end;
+
+// SetIsNull
+//
+procedure TdwsJSONValue.SetIsNull(const val : Boolean);
+begin
+   Value.IsNull:=val;
+end;
+
+// GetAsBoolean
+//
+function TdwsJSONValue.GetAsBoolean : Boolean;
+begin
+   Result:=Value.AsBoolean;
+end;
+
+// SetAsBoolean
+//
+procedure TdwsJSONValue.SetAsBoolean(const val : Boolean);
+begin
+   Value.AsBoolean:=val;
+end;
+
+// GetAsNumber
+//
+function TdwsJSONValue.GetAsNumber : Double;
+begin
+   Result:=Value.AsNumber;
+end;
+
+// SetAsNumber
+//
+procedure TdwsJSONValue.SetAsNumber(const val : Double);
+begin
+   Value.AsNumber:=val;
+end;
+
+// GetAsInteger
+//
+function TdwsJSONValue.GetAsInteger : Int64;
+begin
+   Result:=Value.AsInteger;
+end;
+
+// SetAsInteger
+//
+procedure TdwsJSONValue.SetAsInteger(const val : Int64);
+begin
+   Value.AsInteger:=val;
 end;
 
 // DetachChild
@@ -1149,6 +1262,32 @@ begin
    Result:=obj;
 end;
 
+// DoExtend
+//
+procedure TdwsJSONObject.DoExtend(other : TdwsJSONValue);
+var
+   i, k : Integer;
+   otherObj : TdwsJSONObject;
+   member : TdwsJSONValue;
+begin
+   if other.ClassType<>TdwsJSONObject then
+      RaiseJSONException('Can only extend Object with Object');
+   otherObj:=TdwsJSONObject(other);
+   for i:=0 to otherObj.FCount-1 do begin
+      k:=IndexOfName(otherObj.FItems[i].Name);
+      if k>=0 then begin
+         member:=FItems[k].Value;
+         member.FOwner:=nil;
+         member.DecRefCount;
+         member:=otherObj.FItems[i].Value.Clone;
+         member.FOwner:=Self;
+         FItems[k].Value:=member;
+      end else begin
+         Add(otherObj.FItems[i].Name, otherObj.FItems[i].Value.Clone);
+      end;
+   end;
+end;
+
 // IndexOfName
 //
 function TdwsJSONObject.IndexOfName(const name : String) : Integer;
@@ -1412,6 +1551,13 @@ begin
    Result:=arr;
 end;
 
+// DoExtend
+//
+procedure TdwsJSONArray.DoExtend(other : TdwsJSONValue);
+begin
+   RaiseJSONException('Cannot extend arrays (yet)');
+end;
+
 // ------------------
 // ------------------ TdwsJSONImmediate ------------------
 // ------------------
@@ -1486,7 +1632,7 @@ begin
       varBoolean : if FValue then Result:=-1 else Result:=0;
       varDouble : Result:=FValue;
    else
-      Result:=StrToFloat(FValue);
+      Result:=StrToFloatDef(FValue, 0);
    end;
 end;
 
@@ -1496,6 +1642,20 @@ procedure TdwsJSONImmediate.SetAsNumber(const val : Double);
 begin
    FValue:=val;
    FValueType:=jvtNumber;
+end;
+
+// GetAsInteger
+//
+function TdwsJSONImmediate.GetAsInteger : Int64;
+begin
+   Result:=Round(GetAsNumber);
+end;
+
+// SetAsInteger
+//
+procedure TdwsJSONImmediate.SetAsInteger(const val : Int64);
+begin
+   AsNumber:=val;
 end;
 
 // DoParse
@@ -1542,6 +1702,14 @@ function TdwsJSONImmediate.DoClone : TdwsJSONValue;
 begin
    Result:=TdwsJSONImmediate.Create;
    TdwsJSONImmediate(Result).FValue:=FValue;
+   TdwsJSONImmediate(Result).FValueType:=FValueType;
+end;
+
+// DoExtend
+//
+procedure TdwsJSONImmediate.DoExtend(other : TdwsJSONValue);
+begin
+   RaiseJSONException('Cannot extend immediate values');
 end;
 
 // Clone

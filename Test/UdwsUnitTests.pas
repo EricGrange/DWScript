@@ -102,6 +102,7 @@ type
          procedure CreateExternally;
          procedure DeprecatedProp;
          procedure ReservedNameMethod;
+         procedure CallInNested;
 
          procedure ExplicitUses;
    end;
@@ -1549,6 +1550,23 @@ begin
                            +'var i := t.Function;');
 
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+end;
+
+// CallInNested
+//
+procedure TdwsUnitTests.CallInNested;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'function Test1 : Integer; begin;'#13#10
+                           +'procedure Test2; begin;'#13#10
+                           +'Result := Func1;'#13#10
+                           +'end; Test2; end;'#13#10
+                           +'Print(Test1);');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   CheckEquals('1', prog.Execute.Result.ToString, 'exec');
 end;
 
 // ExplicitUses

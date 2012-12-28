@@ -330,6 +330,9 @@ type
 
          procedure AddString(const str : String); virtual; abstract;
          procedure Clear; virtual; abstract;
+
+         function ToUTF8String : UTF8String; virtual;
+         function ToDataString : RawByteString; virtual;
    end;
 
    TdwsDefaultResult = class(TdwsResult)
@@ -344,8 +347,9 @@ type
          procedure AddString(const str : String); override;
          procedure Clear; override;
          function ToString : String; override;
+         function ToDataString : RawByteString; override;
 
-         property Text: String read GetText;
+         property Text : String read GetText;
    end;
 
    TdwsResultType = class(TComponent)
@@ -1668,7 +1672,6 @@ type
          function GetVars(const str: String): IInfo;
          procedure SetData(const s: String; const Value: TData);
          procedure SetValueAsVariant(const s: String; const Value: Variant);
-         procedure SetResultAsVariant(const Value: Variant);
          function GetResultAsVariant: Variant;
          function GetResultVars: IInfo;
 
@@ -1686,6 +1689,10 @@ type
          function GetValueAsObject(const s: String): TObject;
          function GetValueAsClassSymbol(const s: String): TClassSymbol;
          function GetValueAsTStrings(const s: String): TStrings;
+
+         function GetResultAsPVariant : PVariant;
+
+         procedure SetResultAsVariant(const Value: Variant);
          procedure SetResultAsString(const value : String);
          procedure SetResultAsDataString(const value : RawByteString);
          procedure SetResultAsInteger(const value : Int64);
@@ -3443,6 +3450,20 @@ begin
   FResultType := ResultType;
 end;
 
+// ToDataString
+//
+function TdwsResult.ToDataString : RawByteString;
+begin
+   Result:=ScriptStringToRawByteString(ToString);
+end;
+
+// ToUTF8String
+//
+function TdwsResult.ToUTF8String : UTF8String;
+begin
+   Result:=UTF8Encode(ToString);
+end;
+
 // ------------------
 // ------------------ TdwsDefaultResultType ------------------
 // ------------------
@@ -3469,7 +3490,7 @@ end;
 
 procedure TPrintFunction.Execute(info : TProgramInfo);
 begin
-   info.Execution.Result.AddString(info.ValueAsString['v']);
+   info.Execution.Result.AddString(info.ParamAsString[0]);
 end;
 
 // ------------------
@@ -3481,7 +3502,7 @@ var
    result : TdwsResult;
 begin
    result:=info.Execution.Result;
-   result.AddString(Info.ValueAsString['v']);
+   result.AddString(info.ParamAsString[0]);
    result.AddString(#13#10);
 end;
 
@@ -3524,6 +3545,13 @@ end;
 function TdwsDefaultResult.ToString : String;
 begin
    Result:=GetText;
+end;
+
+// ToDataString
+//
+function TdwsDefaultResult.ToDataString : RawByteString;
+begin
+   Result:=ScriptStringToRawByteString(FTextBuilder.ToString);
 end;
 
 // GetText
@@ -6083,11 +6111,6 @@ begin
     FLevel := 0;
 end;
 
-procedure TProgramInfo.SetResultAsVariant(const Value: Variant);
-begin
-  GetResultVars.Value := Value;
-end;
-
 function TProgramInfo.GetResultAsVariant: Variant;
 begin
   Result := GetResultVars.Value;
@@ -6197,11 +6220,35 @@ begin
    else Result:=nil;
 end;
 
+// GetResultAsPVariant
+//
+function TProgramInfo.GetResultAsPVariant : PVariant;
+var
+   sym : TDataSymbol;
+   stackAddr : Integer;
+   exec : TdwsExecution;
+begin
+   sym:=FuncSym.Result;
+   if sym=nil then
+      RaiseVariableNotFound(SYS_RESULT);
+   Assert(sym.InheritsFrom(TDataSymbol));
+   exec:=Execution;
+   if sym.Level=FLevel then
+      stackAddr:=sym.StackAddr+exec.Stack.BasePointer
+   else stackAddr:=sym.StackAddr+exec.Stack.GetSavedBp(Level);
+   Result:=@exec.Stack.Data[stackAddr];
+end;
+
+procedure TProgramInfo.SetResultAsVariant(const Value: Variant);
+begin
+   GetResultAsPVariant^:=value;
+end;
+
 // SetResultAsString
 //
 procedure TProgramInfo.SetResultAsString(const value : String);
 begin
-   GetVars(SYS_RESULT).Value:=value;
+   GetResultAsPVariant^:=value;
 end;
 
 // SetResultAsDataString
@@ -6215,21 +6262,21 @@ end;
 //
 procedure TProgramInfo.SetResultAsInteger(const value : Int64);
 begin
-   GetVars(SYS_RESULT).Value:=value;
+   GetResultAsPVariant^:=value;
 end;
 
 // SetResultAsBoolean
 //
 procedure TProgramInfo.SetResultAsBoolean(const value : Boolean);
 begin
-   GetVars(SYS_RESULT).Value:=value;
+   GetResultAsPVariant^:=value;
 end;
 
 // SetResultAsFloat
 //
 procedure TProgramInfo.SetResultAsFloat(const value : Double);
 begin
-   GetVars(SYS_RESULT).Value:=value;
+   GetResultAsPVariant^:=value;
 end;
 
 // GetParamAsPVariant
@@ -6300,7 +6347,7 @@ begin
    if p^.VType=varUString then
       Result:=String(p.VUString)
    {$endif}
-   else Result:=PVariant(p)^;
+   else TConvStringExpr.VariantToString(PVariant(p)^, Result);
 end;
 
 // GetParamAsDataString

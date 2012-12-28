@@ -32,7 +32,7 @@ interface
 
 uses
   Variants, Classes, SysUtils, dwsComp, dwsExprs, dwsFunctions, dwsSymbols,
-  dwsErrors, dwsCompiler, dwsStrings, dwsUtils, StrUtils;
+  dwsErrors, dwsCompiler, dwsStrings, dwsUtils, StrUtils, dwsMagicExprs;
 
 type
 
@@ -64,14 +64,14 @@ type
     constructor Create(AOwner: TComponent); override;
   end;
 
-  TSendFunction = class(TInternalFunction)
-  public
-    procedure Execute(info : TProgramInfo); override;
+   TSendFunction = class(TInternalMagicProcedure)
+      public
+         procedure DoEvalProc(args : TExprBaseList); override;
   end;
 
-  TSendLnFunction = class(TInternalFunction)
-  public
-    procedure Execute(info : TProgramInfo); override;
+  TSendLnFunction = class(TInternalMagicProcedure)
+      public
+         procedure DoEvalProc(args : TExprBaseList); override;
   end;
 
   EHTMLFilterException = class (Exception) end;
@@ -216,19 +216,23 @@ end;
 
 { TSendFunction }
 
-procedure TSendFunction.Execute(info : TProgramInfo);
+// DoEvalProc
+//
+procedure TSendFunction.DoEvalProc(args : TExprBaseList);
 begin
-  Info.Execution.Result.AddString(Info.ValueAsString['s']);
+   (args.Exec as TdwsProgramExecution).Result.AddString(args.AsString[0]);
 end;
 
 { TSendLnFunction }
 
-procedure TSendLnFunction.Execute(info : TProgramInfo);
+// DoEvalProc
+//
+procedure TSendLnFunction.DoEvalProc(args : TExprBaseList);
 var
    result : TdwsResult;
 begin
-   result:=Info.Execution.Result;
-   result.AddString(Info.ValueAsString['s']);
+   result:=(args.Exec as TdwsProgramExecution).Result;
+   result.AddString(args.AsString[0]);
    result.AddString(#13#10);
 end;
 

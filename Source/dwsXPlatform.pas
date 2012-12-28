@@ -107,6 +107,9 @@ procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Card
 
 procedure OutputDebugString(const msg : String);
 
+procedure WriteToOSEventLog(const logName, logCaption, logDetails : String;
+                            const logRawData : RawByteString = ''); overload;
+
 function TryTextToFloat(const s : PChar; var value : Extended;
                         const formatSettings : TFormatSettings) : Boolean; {$ifndef FPC} inline; {$endif}
 
@@ -230,6 +233,30 @@ end;
 procedure OutputDebugString(const msg : String);
 begin
    Windows.OutputDebugString(PChar(msg));
+end;
+
+// WriteToOSEventLog
+//
+procedure WriteToOSEventLog(const logName, logCaption, logDetails : String;
+                            const logRawData : RawByteString = '');
+var
+  eventSource : THandle;
+  detailsPtr : array [0..1] of PChar;
+begin
+   if logName<>'' then
+      eventSource:=RegisterEventSource(nil, PChar(logName))
+   else eventSource:=RegisterEventSource(nil, PChar(ChangeFileExt(ExtractFileName(ParamStr(0)), '')));
+   if eventSource>0 then begin
+      try
+         detailsPtr[0]:=PChar(logCaption);
+         detailsPtr[1]:=PChar(logDetails);
+         ReportEvent(eventSource, EVENTLOG_INFORMATION_TYPE, 0, 0, nil,
+                     2, Length(logRawData),
+                     @detailsPtr, Pointer(logRawData));
+      finally
+         DeregisterEventSource(eventSource);
+      end;
+   end;
 end;
 
 // SetDecimalSeparator

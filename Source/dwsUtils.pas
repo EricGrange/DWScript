@@ -494,6 +494,7 @@ type
          procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos, length : Integer); overload;
          procedure WriteChar(utf16Char : WideChar); inline;
+
          // assumes data is an utf16 String, spits out utf8 in FPC, utf16 in Delphi
          function ToString : String; override;
 
@@ -521,7 +522,8 @@ type
       function IndexOfName(const name : String): Integer; override;
    end;
 
-   ETightListOutOfBound = class(Exception);
+   ETightListOutOfBound = class(Exception)
+   end;
 
 const
    cMSecToDateTime : Double = 1/(24*3600*1000);
@@ -530,6 +532,9 @@ const
    Only checks IntanceSize.
    Use only if you understand fully what the above means. }
 procedure ChangeObjectClass(ref : TObject; newClass : TClass);
+
+function LoadTextFromStream(aStream : TStream) : String;
+function LoadTextFromFile(const fileName : String) : String;
 
 procedure UnifyAssignString(const fromStr : String; var toStr : String);
 function  UnifiedString(const fromStr : String) : String; inline;
@@ -541,6 +546,8 @@ function UnicodeSameText(const s1, s2 : String) : Boolean;
 
 function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
 function StrBeginsWith(const aStr, aBegin : String) : Boolean;
+function StrBeginsWithA(const aStr, aBegin : RawByteString) : Boolean;
+function StrEndsWith(const aStr, aEnd : String) : Boolean;
 
 function StrAfterChar(const aStr : String; aChar : Char) : String;
 function StrBeforeChar(const aStr : String; aChar : Char) : String;
@@ -613,6 +620,36 @@ begin
    pDest:=PWordArray(NativeUInt(Result));
    for i:=0 to n-1 do
       pDest[i]:=Word(PByte(@pSrc[i])^);
+end;
+
+// LoadTextFromStream
+//
+function LoadTextFromStream(aStream : TStream) : String;
+var
+   n : Integer;
+   buf : TBytes;
+   encoding : TEncoding;
+begin
+   n:=aStream.Size-aStream.Position;
+   SetLength(buf, n);
+   aStream.Read(buf[0], n);
+   encoding:=nil;
+   n:=TEncoding.GetBufferEncoding(buf, encoding, TEncoding.UTF8);
+   Result:=encoding.GetString(buf, n, Length(buf)-n);
+end;
+
+// LoadTextFromFile
+//
+function LoadTextFromFile(const fileName : String) : String;
+var
+   fs : TFileStream;
+begin
+   fs:=TFileStream.Create(fileName, fmOpenRead+fmShareDenyNone);
+   try
+      Result:=LoadTextFromStream(fs);
+   finally
+      fs.Free;
+   end;
 end;
 
 // ------------------
@@ -826,7 +863,33 @@ begin
    n2:=Length(aBegin);
    if (n2>n1) or (n2=0) then
       Result:=False
-   else Result:=CompareMem(PChar(aStr), PChar(aBegin), n2);
+   else Result:=CompareMem(Pointer(aStr), Pointer(aBegin), n2*SizeOf(Char));
+end;
+
+// StrBeginsWithA
+//
+function StrBeginsWithA(const aStr, aBegin : RawByteString) : Boolean;
+var
+   n1, n2 : Integer;
+begin
+   n1:=Length(aStr);
+   n2:=Length(aBegin);
+   if (n2>n1) or (n2=0) then
+      Result:=False
+   else Result:=CompareMem(Pointer(aStr), Pointer(aBegin), n2);
+end;
+
+// StrEndsWith
+//
+function StrEndsWith(const aStr, aEnd : String) : Boolean;
+var
+   n1, n2 : Integer;
+begin
+   n1:=Length(aStr);
+   n2:=Length(aEnd);
+   if (n2>n1) or (n2=0) then
+      Result:=False
+   else Result:=CompareMem(@aStr[n1-n2+1], Pointer(aEnd), n2*SizeOf(Char));
 end;
 
 // StrAfterChar

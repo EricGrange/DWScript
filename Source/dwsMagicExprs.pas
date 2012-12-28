@@ -47,6 +47,7 @@ type
                             const params : TParamArray; const funcType: String;
                             const flags : TInternalFunctionFlags = []); override;
          function MagicFuncExprClass : TMagicFuncExprClass; virtual; abstract;
+         procedure Execute(info : TProgramInfo); override;
    end;
 
    // TInternalMagicProcedure
@@ -396,6 +397,13 @@ begin
   sym.IsStateless:=(iffStateLess in flags);
   sym.IsOverloaded:=(iffOverloaded in flags);
   table.AddSymbol(sym);
+end;
+
+// Execute
+//
+procedure TInternalMagicFunction.Execute(info : TProgramInfo);
+begin
+   Assert(False);
 end;
 
 // ------------------

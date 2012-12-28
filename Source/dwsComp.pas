@@ -354,6 +354,7 @@ type
    end;
 
    TFuncEvalEvent = procedure(info : TProgramInfo) of object;
+   TFuncFastEvalEvent = function(args : TExprBaseList) : Variant of object;
    TInitSymbolEvent = procedure(sender : TObject; symbol : TSymbol) of object;
    TInitExprEvent = procedure(sender : TObject; expr : TExprBase) of object;
 
@@ -419,6 +420,9 @@ type
    end;
 
    TdwsFunction = class(TdwsFunctionSymbol)
+      private
+         FOnFastEval : TFuncFastEvalEvent;
+
       protected
          function GetOnEval : TFuncEvalEvent;
          procedure SetOnEval(const val : TFuncEvalEvent);
@@ -426,8 +430,11 @@ type
       public
          constructor Create(collection : TCollection); override;
 
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+
       published
          property OnEval : TFuncEvalEvent read GetOnEval write SetOnEval;
+         property OnFastEval : TFuncFastEvalEvent read FOnFastEval write FOnFastEval;
    end;
 
    TdwsFunctions = class(TdwsCollection)
@@ -1207,9 +1214,11 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsMagicExprs;
+
 type
-  EGenerationError = class(Exception);
-  EHandledGenerationError = class(Exception);
+   EGenerationError = class(Exception);
+   EHandledGenerationError = class(Exception);
 
 // ValueToString
 //
@@ -1235,25 +1244,30 @@ begin
   Result := IScriptObj(IUnknown(Info.ValueAsVariant[AVarName])).ExternalObject;
 end;
 
-//function GetOrCreateObjectID(Info: TProgramInfo; AObject: TObject; AClassName: String): Integer;
-//var
-//  ScriptObj: TScriptObj;
-//begin
-//  if Assigned(AObject) then                // if object was returned
-//  begin
-//    if AClassName = '' then
-//      AClassName := AObject.ClassName;
+type
+   TCustomInternalMagicProcedure = class(TInternalMagicProcedure)
+      FOnFastEval : TFuncFastEvalEvent;
+      procedure DoEvalProc(args : TExprBaseList); override;
+   end;
+
+   TCustomInternalMagicFunction = class(TInternalMagicVariantFunction)
+      FOnFastEval : TFuncFastEvalEvent;
+      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+   end;
+
+// DoEvalProc
 //
-//    // Find the Delphi object and return the Id
-//    ScriptObj := Info.Caller.FindExternalObject(AObject);
-//    if Assigned(ScriptObj) then            // if object found
-//      Result := ScriptObj.Id               // return the object's Id
-//    else                                   // if not found, register the object and return the Id
-//      Result := Info.Vars[AClassName].GetConstructor('Create', AObject).Call.Value;
-//  end
-//  else                                     // no object returned
-//    Result := 0;                           // return 'nil' Id
-//end;
+procedure TCustomInternalMagicProcedure.DoEvalProc(args : TExprBaseList);
+begin
+   FOnFastEval(args);
+end;
+
+// DoEvalAsVariant
+//
+function TCustomInternalMagicFunction.DoEvalAsVariant(args : TExprBaseList) : Variant;
+begin
+   Result:=FOnFastEval(args);
+end;
 
 { TDelphiWebScript }
 
@@ -2737,6 +2751,37 @@ begin
    FCallable:=TdwsFunctionCallable.Create(Self);
 end;
 
+// DoGenerate
+//
+function TdwsFunction.DoGenerate(table : TSymbolTable; parentSym : TSymbol = nil): TSymbol;
+var
+   func : TInternalMagicFunction;
+   flags : TInternalFunctionFlags;
+begin
+   if not Assigned(FOnFastEval) then
+      Exit(inherited DoGenerate(Table, parentSym));
+
+   FIsGenerating:=True;
+   CheckName(table, Name);
+   if ResultType<>'' then
+      if GetDataType(table, ResultType).Size<>1 then
+         raise EGenerationError.Create('OnFastEval is only supported for result types of size 1');
+
+   flags:=[];
+   if Deprecated<>'' then
+      Include(flags, iffDeprecated);
+
+   if ResultType='' then begin
+      func:=TCustomInternalMagicProcedure.Create(table, Name, GetParameters(table), ResultType, flags);
+      TCustomInternalMagicProcedure(func).FOnFastEval:=FOnFastEval;
+   end else begin
+      func:=TCustomInternalMagicFunction.Create(table, Name, GetParameters(table), ResultType, flags);
+      TCustomInternalMagicFunction(func).FOnFastEval:=FOnFastEval;
+   end;
+
+   Result:=table.FindLocal(Name) as TMagicFuncSymbol;
+end;
+
 // GetOnEval
 //
 function TdwsFunction.GetOnEval : TFuncEvalEvent;
@@ -2876,6 +2921,8 @@ begin
    else
       Assert(false); // if triggered, this func needs upgrade !
    end;
+   if maStatic in Attributes then
+      Result:=Result+' static;';
    if Deprecated<>'' then
       Result:=Result+' deprecated;';
    Result:=TClassSymbol.VisibilityToString(Visibility)+' '+Result;
