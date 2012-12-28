@@ -21,12 +21,12 @@ interface
 uses Classes, SysUtils, StrUtils, dwsExprs, dwsUtils;
 
 type
-
    TWebRequest = class
       private
          FRemoteIP : String;
          FURL : String;
          FMethod : String;
+         FSecurity : String;
 
          FHeaders : TStrings;
          FCookies : TStrings;
@@ -50,6 +50,7 @@ type
          property RemoteIP : String read FRemoteIP write FRemoteIP;
          property URL : String read FURL write FURL;
          property Method : String read FMethod write FMethod;
+         property Security : String read FSecurity write FSecurity;
          property PathInfo : String read GetPathInfo;
          property QueryString : String read GetQueryString;
 

@@ -104,6 +104,13 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnEval = dwsWebClassesWebRequestMethodsQueryFieldsEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'Security'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsSecureEval
+            Kind = mkClassFunction
           end>
         Properties = <
           item

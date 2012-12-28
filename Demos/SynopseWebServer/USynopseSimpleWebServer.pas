@@ -203,6 +203,11 @@ begin
          request.InHeaders:=inRequest.InHeaders;
          request.InContent:=inRequest.InContent;
          request.InContentType:=inRequest.InContentType;
+         case inRequest.Security of
+            hrsSSL : request.Security:=Format('SSL, %d bits', [inRequest.SecurityBytes*8]);
+         else
+            request.Security:='';
+         end;
 
          response.StatusCode:=200;
          response.ContentType:=HTML_CONTENT_TYPE;

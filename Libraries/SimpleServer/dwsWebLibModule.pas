@@ -38,6 +38,8 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesWebResponseMethodsSetContentTextEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesWebRequestMethodsSecureEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -106,6 +108,12 @@ procedure TdwsWebLib.dwsWebClassesWebRequestMethodsRemoteIPEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsString:=Info.WebRequest.RemoteIP;
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsSecureEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=Info.WebRequest.Security;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsURLEval(Info: TProgramInfo;

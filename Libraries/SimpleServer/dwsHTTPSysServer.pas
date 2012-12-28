@@ -61,6 +61,11 @@ type
 
    THttpSocketCompressSet = set of 0..31;
 
+   THttpRequestSecurity = (
+      hrsNone,
+      hrsSSL
+   );
+
    /// event handler used by THttpServerGeneric.OnRequest property
    // - InURL/InMethod/InHeaders/InContent properties are input parameters
    // - OutContent/OutContentType/OutCustomHeader are output parameters
@@ -71,6 +76,8 @@ type
    // client via http.sys (much faster than manual buffering/sending)
    TSynHttpServerRequest = record
       InURL, InMethod, InHeaders, InContent, InContentType : RawByteString;
+      Security : THttpRequestSecurity;
+      SecurityBytes : Integer;
       ConnectionID : Int64;
    end;
 
@@ -943,6 +950,12 @@ begin
             try
                // parse method and headers
                inRequest.ConnectionID := request^.ConnectionId;
+               if request^.pSslInfo<>nil then begin
+                  inRequest.Security := hrsSSL;
+                  inRequest.SecurityBytes := request^.pSslInfo^.ConnectionKeySize;
+               end else begin
+                  inRequest.Security := hrsNone;
+               end;
                inRequest.InURL := request^.pRawUrl;
                if request^.Verb in [low(VERB_TEXT)..high(VERB_TEXT)] then
                   inRequest.InMethod := VERB_TEXT[request^.Verb]

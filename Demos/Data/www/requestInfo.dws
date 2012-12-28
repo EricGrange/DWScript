@@ -19,6 +19,7 @@ begin
 end;
 
 WriteValue('RemoteIP', WebRequest.RemoteIP);
+WriteValue('Security', if WebRequest.Security<>'' then WebRequest.Security else 'none');
 WriteValue('URL', WebRequest.URL);
 WriteValue('Method', WebRequest.Method);
 WriteValue('PathInfo', WebRequest.PathInfo);
