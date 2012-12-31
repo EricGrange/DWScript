@@ -258,7 +258,7 @@ type
    end;
 
    PdwsJSONValueArray = ^TdwsJSONValueArray;
-   TdwsJSONValueArray = array [0..MaxInt shr 3] of TdwsJSONValue;
+   TdwsJSONValueArray = array [0..MaxInt shr 4] of TdwsJSONValue;
 
    // TdwsJSONArray
    //
