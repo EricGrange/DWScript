@@ -39,9 +39,9 @@ type
    end;
 
    TSynDWScript = class(TDataModule)
+      DelphiWebScript: TDelphiWebScript;
       dwsHtmlFilter: TdwsHtmlFilter;
       dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions;
-    DelphiWebScript: TDelphiWebScript;
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 

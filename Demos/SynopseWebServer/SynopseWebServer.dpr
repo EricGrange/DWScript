@@ -49,7 +49,8 @@ uses
   dwsCPUUsage,
   DSimpleDWScript,
   dwsWebLibModule in '..\..\Libraries\SimpleServer\dwsWebLibModule.pas' {dwsWebLib: TDataModule},
-  dwsWindowsService in '..\..\Libraries\SimpleServer\dwsWindowsService.pas';
+  dwsWindowsService in '..\..\Libraries\SimpleServer\dwsWindowsService.pas',
+  dwsWebServerHelpers in '..\..\Libraries\SimpleServer\dwsWebServerHelpers.pas';
 
 type
    TWebServerHttpService = class(TdwsWindowsService)
@@ -131,6 +132,11 @@ var
    options : TdwsJSONValue;
    service : TWebServerHttpService;
 begin
+   if Win32MajorVersion<6 then begin
+      writeln('This program requires Windows 2008 or Vista');
+      exit;
+   end;
+
    FormatSettings.DecimalSeparator:='.';
 
    optionsFileName:=ExtractFilePath(ParamStr(0))+'options.json';

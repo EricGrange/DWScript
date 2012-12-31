@@ -1,13 +1,45 @@
+{**********************************************************************}
+{                                                                      }
+{    "The contents of this file are subject to the Mozilla Public      }
+{    License Version 1.1 (the "License"); you may not use this         }
+{    file except in compliance with the License. You may obtain        }
+{    a copy of the License at http://www.mozilla.org/MPL/              }
+{                                                                      }
+{    Software distributed under the License is distributed on an       }
+{    "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either express       }
+{    or implied. See the License for the specific language             }
+{    governing rights and limitations under the License.               }
+{                                                                      }
+{    Copyright Creative IT.                                            }
+{    Current maintainer: Eric Grange                                   }
+{                                                                      }
+{**********************************************************************}
+{
+  Server based on HTTP.sys 2.0 (Win 7 or Win 2k8 minimum)
+
+  This file is based on Synopse framework's example.
+
+  Synopse framework. Copyright (C) 2012 Arnaud Bouchez
+    Synopse Informatique - http://synopse.info
+
+  *** BEGIN LICENSE BLOCK *****
+  Version: MPL 1.1/GPL 2.0/LGPL 2.1
+
+  The contents of this file are subject to the Mozilla Public License Version
+  1.1 (the "License"); you may not use this file except in compliance with
+  the License. You may obtain a copy of the License at
+  http://www.mozilla.org/MPL
+}
 unit USynopseSimpleWebServer;
 
 interface
 
 uses
-  Windows, SysUtils,
-  SynCommons, SynZip,
+  Windows, SysUtils, Classes,
+  SynZip,
   dwsHTTPSysServer, dwsHTTPSysAPI,
   dwsUtils, dwsWebEnvironment, dwsSynopseWebEnv, dwsFileSystem,
-  dwsDirectoryNotifier, dwsJSON, dwsXPlatform,
+  dwsDirectoryNotifier, dwsJSON, dwsXPlatform, dwsWebServerHelpers,
   DSimpleDWScript;
 
 type
@@ -21,6 +53,9 @@ type
          FNotifier : TdwsDirectoryNotifier;
          FPort : Integer;
          FSSLPort : Integer;
+         FRelativeURI : String;
+         FSSLRelativeURI : String;
+         FDirectoryIndex : TDirectoryIndexCache;
 
          procedure DirectoryChanged(sender : TdwsDirectoryNotifier);
 
@@ -35,6 +70,8 @@ type
 
          property Port : Integer read FPort;
          property SSLPort : Integer read FSSLPort;
+         property RelativeURI : String read FRelativeURI;
+         property SSLRelativeURI : String read FSSLRelativeURI;
   end;
 
 const
@@ -42,8 +79,12 @@ const
       '{'
          // http server port, if zero, no http port is opened
          +'"Port": 888,'
+         // http relative URI
+         +'"RelativeURI": "",'
          // https server port, if zero, no https port is opened
          +'"SSLPort": 0,'
+         // https relative URI
+         +'"SSLRelativeURI": "",'
          // Base path for served files
          // If not defined, assumes a www subfolder of the folder where the exe is
          +'"WWWPath": "",'
@@ -92,14 +133,21 @@ begin
 
    FDWS.PathVariables.Values['www']:=FPath;
 
+   FDirectoryIndex:=TDirectoryIndexCache.Create;
+   FDirectoryIndex.IndexFileNames.CommaText:='"index.dws","index.htm","index.html"';
+
    serverOptions:=TdwsJSONValue.ParseString(cDefaultServerOptions);
    try
       serverOptions.Extend(options['Server']);
 
       FServer:=THttpApi2Server.Create(False);
+
+      FRelativeURI:=serverOptions['RelativeURI'].AsString;
       FPort:=serverOptions['Port'].AsInteger;
       if FPort<>0 then
-         FServer.AddUrl('', FPort, False, '+');
+         FServer.AddUrl(FRelativeURI, FPort, False, '+');
+
+      FSSLRelativeURI:=serverOptions['SSLRelativeURI'].AsString;
       FSSLPort:=serverOptions['SSLPort'].AsInteger;
       if FSSLPort<>0 then begin
          FServer.AddUrl('', FSSLPort, True, '+');
@@ -142,37 +190,24 @@ begin
    FServer.Free;
    FDWS.Free;
    FFileSystem.Free;
+   FDirectoryIndex.Free;
    inherited;
 end;
 
-{$WARN SYMBOL_PLATFORM OFF}
 
 function TSynopseSimpleServer.Process(
       const inRequest : TSynHttpServerRequest;
-      var outResponse : TSynHttpServerResponse) : cardinal;
+      var outResponse : TSynHttpServerResponse) : Cardinal;
 var
    pathFileName : String;
-   rawUrl : RawUTF8;
    params : String;
-   p : Integer;
    request : TSynopseWebRequest;
    response : TSynopseWebResponse;
    fileAttribs : Cardinal;
 begin
-   rawUrl:=StringReplaceChars(UrlDecode(copy(inRequest.InURL,2,maxInt)), '/', '\');
-   while (rawUrl<>'') and (rawUrl[1]='\') do
-      delete(rawUrl,1,1);
-   while (rawUrl<>'') and (rawUrl[length(rawUrl)]='\') do
-      delete(rawUrl,length(rawUrl),1);
-   pathFileName:=FPath+UTF8ToString(rawUrl);
+   HttpRequestUrlDecode(inRequest.InURL, pathFileName, params);
 
-   p:=Pos('?', pathFileName);
-   if p>0 then begin
-      params:=Copy(pathFileName, p+1);
-      SetLength(pathFileName, p-1);
-   end else params:='';
-
-   pathFileName:=ExpandFileName(pathFileName);
+   pathFileName:=ExpandFileName(FPath+pathFileName);
 
    if Pos('\.', pathFileName)>0 then
 
@@ -183,12 +218,13 @@ begin
 
       // request is outside base path
       outResponse.OutContent:='<h1>Not authorized</h1>';
-      outResponse.OutContentType:=HTML_CONTENT_TYPE;
+      outResponse.OutContentType:=cHTMTL_UTF8_CONTENT_TYPE;
       Result:=401;
       Exit;
 
    end else begin
 
+      {$WARN SYMBOL_PLATFORM OFF}
       fileAttribs:=GetFileAttributes(Pointer(pathFileName));
       if fileAttribs<>INVALID_FILE_ATTRIBUTES then begin
          if (fileAttribs and faHidden)<>0 then
@@ -198,13 +234,14 @@ begin
                fileAttribs:=INVALID_FILE_ATTRIBUTES;
          end;
       end;
+      {$WARN SYMBOL_PLATFORM ON}
 
    end;
 
    if fileAttribs=INVALID_FILE_ATTRIBUTES then begin
 
       outResponse.OutContent:='<h1>Not found</h1>';
-      outResponse.OutContentType:=HTML_CONTENT_TYPE;
+      outResponse.OutContentType:=cHTMTL_UTF8_CONTENT_TYPE;
       Result:=404;
       Exit;
 
@@ -225,7 +262,7 @@ begin
          end;
 
          response.StatusCode:=200;
-         response.ContentType:=HTML_CONTENT_TYPE;
+         response.ContentType:=cHTMTL_UTF8_CONTENT_TYPE;
 
          FDWS.HandleDWS(pathFileName, request, response);
 
@@ -243,7 +280,7 @@ begin
    end else begin
 
       // http.sys will send the specified file from kernel mode
-      outResponse.OutContent:=StringToUTF8(pathFileName);
+      outResponse.OutContent:=UTF8Encode(pathFileName);
       outResponse.OutContentType:=HTTP_RESP_STATICFILE;
       Result:=200; // THttpApiServer.Execute will return 404 if not found
 
@@ -254,14 +291,7 @@ end;
 //
 function TSynopseSimpleServer.FindDirectoryIndex(var pathFileName : String) : Boolean;
 begin
-   Result:=True;
-   if FileExists(pathFileName+'\index.dws') then
-      pathFileName:=pathFileName+'\index.dws'
-   else if FileExists(pathFileName+'\index.htm') then
-      pathFileName:=pathFileName+'\index.htm'
-   else if FileExists(pathFileName+'\index.html') then
-      pathFileName:=pathFileName+'\index.html'
-   else Result:=False;
+   Result:=FDirectoryIndex.IndexFileForDirectory(pathFileName);
 end;
 
 // DirectoryChanged
@@ -269,6 +299,7 @@ end;
 procedure TSynopseSimpleServer.DirectoryChanged(sender : TdwsDirectoryNotifier);
 begin
    FDWS.FlushDWSCache;
+   FDirectoryIndex.Flush;
 end;
 
 end.
