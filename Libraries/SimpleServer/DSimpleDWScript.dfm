@@ -6,13 +6,6 @@ object SynDWScript: TSynDWScript
   Top = 94
   Height = 222
   Width = 341
-  object DelphiWebScript: TDelphiWebScript
-    Config.Filter = dwsHtmlFilter
-    Config.CompilerOptions = [coOptimize, coAssertions, coHintsDisabled, coWarningsDisabled]
-    Config.StackChunkSize = 256
-    Left = 72
-    Top = 32
-  end
   object dwsHtmlFilter: TdwsHtmlFilter
     PatternClose = '%>'
     PatternEval = '='
@@ -23,5 +16,13 @@ object SynDWScript: TSynDWScript
   object dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions
     Left = 208
     Top = 96
+  end
+  object DelphiWebScript: TDelphiWebScript
+    Config.Filter = dwsHtmlFilter
+    Config.MaxRecursionDepth = 512
+    Config.TimeoutMilliseconds = 3000
+    Config.StackChunkSize = 300
+    Left = 72
+    Top = 32
   end
 end

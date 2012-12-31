@@ -19,7 +19,8 @@ unit DSimpleDWScript;
 interface
 
 uses
-   Windows, SysUtils, Classes, dwsFileSystem, dwsGlobalVarsFunctions,
+   Windows, SysUtils, Classes, StrUtils,
+   dwsFileSystem, dwsGlobalVarsFunctions,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsJSON, dwsErrors, dwsFunctions;
@@ -38,9 +39,9 @@ type
    end;
 
    TSynDWScript = class(TDataModule)
-      DelphiWebScript: TDelphiWebScript;
       dwsHtmlFilter: TdwsHtmlFilter;
       dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions;
+    DelphiWebScript: TDelphiWebScript;
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 
@@ -49,6 +50,8 @@ type
       FScriptTimeoutMilliseconds : Integer;
       FCPUUsageLimit : Integer;
       FCPUAffinity : Cardinal;
+
+      FPathVariables : TStrings;
 
       FSystemInfo : TdwsSystemInfoLibModule;
       FFileSystem : TdwsCustomFileSystem;
@@ -86,10 +89,13 @@ type
       procedure LoadCPUOptions(options : TdwsJSONValue);
       procedure LoadDWScriptOptions(options : TdwsJSONValue);
 
+      function ApplyPathVariables(const aPath : String) : String;
+
       property ScriptTimeoutMilliseconds : Integer read FScriptTimeoutMilliseconds write FScriptTimeoutMilliseconds;
 
       property CPUUsageLimit : Integer read FCPUUsageLimit write SetCPUUsageLimit;
       property CPUAffinity : Cardinal read FCPUAffinity write SetCPUAffinity;
+      property PathVariables : TStrings read FPathVariables;
 
       property FileSystem : TdwsCustomFileSystem read GetFileSystem write SetFileSystem;
   end;
@@ -112,8 +118,14 @@ const
          // Script timeout in milliseconds
          // zero = no limit (not recommended)
          +'"TimeoutMSec": 3000,'
+         // Size of stack growth chunks
+         +'"StackChunkSize": 300,'
+         // Maximum stack size per script
+         +'"StackMaxSize": 10000,'
+         // Maximum recursion depth per script
+         +'"MaxRecursionDepth": 512,'
          // Library paths (outside of www folder)
-         // If missing, assumes a lib subfolder of the folder where the exe is
+         // If missing, assumes a '.lib' subfolder of the folder where the exe is
          +'"LibraryPaths": []'
       +'}';
 
@@ -129,6 +141,8 @@ implementation
 
 procedure TSynDWScript.DataModuleCreate(Sender: TObject);
 begin
+   FPathVariables:=TFastCompareTextList.Create;
+
    FSystemInfo:=TdwsSystemInfoLibModule.Create(Self);
    FSystemInfo.dwsSystemInfo.Script:=DelphiWebScript;
 
@@ -153,6 +167,7 @@ begin
    FCompilerLock.Free;
    FCompiledProgramsLock.Free;
    FCompiledPrograms.Free;
+   FPathVariables.Free;
 end;
 
 // GetFileSystem
@@ -182,9 +197,9 @@ procedure TSynDWScript.HandleDWS(const fileName : String; request : TWebRequest;
       response.ContentType:='text/plain';
    end;
 
-   procedure Handle400(response : TWebResponse; msgs : TdwsMessageList);
+   procedure Handle500(response : TWebResponse; msgs : TdwsMessageList);
    begin
-      response.StatusCode:=400;
+      response.StatusCode:=500;
       response.ContentText['plain']:=msgs.AsInfo;
    end;
 
@@ -210,7 +225,7 @@ begin
       CompileDWS(fileName, prog);
 
    if prog.Msgs.HasErrors then
-      Handle400(response, prog.Msgs)
+      Handle500(response, prog.Msgs)
    else begin
       exec:=prog.CreateNewExecution;
 
@@ -227,7 +242,7 @@ begin
       end;
 
       if exec.Msgs.Count>0 then
-         Handle400(response, exec.Msgs)
+         Handle500(response, exec.Msgs)
       else if response.ContentData='' then
          HandleScriptResult(response, exec.Result);
    end;
@@ -288,6 +303,9 @@ begin
       dws.Extend(options);
 
       ScriptTimeoutMilliseconds:=dws['TimeoutMSec'].AsInteger;
+
+      DelphiWebScript.Config.MaxDataSize:=dws['StackMaxSize'].AsInteger;
+      DelphiWebScript.Config.MaxRecursionDepth:=dws['MaxRecursionDepth'].AsInteger;
 
       libs:=dws['LibraryPaths'];
       FLibraryPaths.Clear;
@@ -421,6 +439,24 @@ begin
       if i=15 then Exit(False);
    end;
    Result:=True;
+end;
+
+// ApplyPathVariables
+//
+function TSynDWScript.ApplyPathVariables(const aPath : String) : String;
+var
+   p1, p2 : Integer;
+begin
+   Result:=aPath;
+   p1:=Pos('%', Result);
+   while p1>0 do begin
+      p2:=PosEx('%', Result, p1+1);
+      if p2<p1 then Break;
+      Result:= Copy(Result, 1, p1-1)
+              +FPathVariables.Values[Copy(Result, p1+1, p2-p1-1)]
+              +Copy(Result, p2+1);
+      p1:=PosEx('%', Result, p1);
+   end;
 end;
 
 // ------------------

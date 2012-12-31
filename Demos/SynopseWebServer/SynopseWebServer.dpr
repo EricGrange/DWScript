@@ -113,10 +113,7 @@ begin
    if basePath='' then begin
       basePath:=ExtractFilePath(ParamStr(0));
       if DirectoryExists(basePath+'www') then
-         basePath:=basePath+'www' // subfolder 'www' of where the exe is placed
-      else if FileExists(ChangeFileExt(ParamStr(0), '.dpr')) then
-         basePath:=basePath+'..\Data\www' // if compiled alongside dpr
-      else basePath:=basePath+'..\..\..\Data\www'; // assume compiled in platform/target
+         basePath:=basePath+'www'; // subfolder 'www' of where the exe is placed
    end;
 
    Server:=TSynopseSimpleServer.Create(basePath, Options);

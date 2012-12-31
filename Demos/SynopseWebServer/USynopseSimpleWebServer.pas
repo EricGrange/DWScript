@@ -47,12 +47,17 @@ const
          // Base path for served files
          // If not defined, assumes a www subfolder of the folder where the exe is
          +'"WWWPath": "",'
+         // Number of WorkerThreads
+         +'"WorkerThreads": 8,'
          // Directory for log files (NCSA)
          // If empty, logs are not active
          +'"LogDirectory": "",'
+         // Maximum number of connections
+         // Zero means "infinite"
+         +'"MaxConnections": 0,'
          // Maximum bandwidth in bytes per second
-         // Zero and negative values mean "infinite"
-         +'"MaxBandwidth": "",'
+         // Zero means "infinite"
+         +'"MaxBandwidth": 0,'
          // Maximum input http request length in bytes
          // If zero or negative, defaults to 10 Megabytes
          // requests larger than this value will get canceled
@@ -75,11 +80,17 @@ constructor TSynopseSimpleServer.Create(const basePath : TFileName; options : Td
 var
    logPath : TdwsJSONValue;
    serverOptions : TdwsJSONValue;
+   nbThreads : Integer;
 begin
    FPath:=IncludeTrailingPathDelimiter(ExpandFileName(basePath));
 
    FFileSystem:=TdwsRestrictedFileSystem.Create(nil);
    FFileSystem.Paths.Add(FPath);
+
+   FDWS:=TSynDWScript.Create(nil);
+   FDWS.FileSystem:=FFileSystem;
+
+   FDWS.PathVariables.Values['www']:=FPath;
 
    serverOptions:=TdwsJSONValue.ParseString(cDefaultServerOptions);
    try
@@ -96,12 +107,16 @@ begin
       FServer.RegisterCompress(CompressDeflate);
       FServer.OnRequest:=Process;
 
+      nbThreads:=serverOptions['WorkerThreads'].AsInteger;
+
       logPath:=serverOptions['LogDirectory'];
       if (logPath.ValueType=jvtString) and (logPath.AsString<>'') then begin
-         FServer.LogDirectory:=IncludeTrailingPathDelimiter(logPath.AsString);
+         FServer.LogDirectory:=IncludeTrailingPathDelimiter(FDWS.ApplyPathVariables(logPath.AsString));
          FServer.LogRolloverSize:=1024*1024;
          FServer.Logging:=True;
       end;
+
+      FServer.MaxConnections:=serverOptions['MaxConnections'].AsInteger;
 
       FServer.MaxBandwidth:=serverOptions['MaxBandwidth'].AsInteger;
 
@@ -110,15 +125,15 @@ begin
       serverOptions.Free;
    end;
 
-   FDWS:=TSynDWScript.Create(nil);
-   FDWS.FileSystem:=FFileSystem;
    FDWS.LoadCPUOptions(options['CPU']);
+
    FDWS.LoadDWScriptOptions(options['DWScript']);
 
    FNotifier:=TdwsDirectoryNotifier.Create(FPath, dnoDirectoryAndSubTree);
    FNotifier.OnDirectoryChanged:=DirectoryChanged;
 
-   FServer.Clone(7);
+   if nbThreads>1 then
+      FServer.Clone(nbThreads-1);
 end;
 
 destructor TSynopseSimpleServer.Destroy;

@@ -174,6 +174,7 @@ type
          FServerName : UTF8String;
          FServiceName : UTF8String;
          FMaxBandwidth : Cardinal;
+         FMaxConnections : Cardinal;
 
          /// server main loop - don't change directly
          // - will call the Request public virtual method with the appropriate
@@ -198,6 +199,7 @@ type
          procedure SetServiceName(const val : String);
 
          procedure SetMaxBandwidth(val : Cardinal);
+         procedure SetMaxConnections(val : Cardinal);
 
       public
          /// initialize the HTTP Service
@@ -269,6 +271,7 @@ type
          property ServiceName : String read GetServiceName write SetServiceName;
 
          property MaxBandwidth : Cardinal read FMaxBandwidth write SetMaxBandwidth;
+         property MaxConnections : Cardinal read FMaxConnections write SetMaxConnections;
 
    end;
 
@@ -760,6 +763,29 @@ begin
 
    limitInfo.Flags:=1;
    limitInfo.MaxBandwidth:=FMaxBandwidth;
+
+   HttpAPI.Check(
+      HttpAPI.SetServerSessionProperty(FServerSessionID, HttpServerQosProperty,
+                                       @qosInfo, SizeOf(qosInfo)),
+      hSetServerSessionProperty);
+end;
+
+// SetMaxConnections
+//
+procedure THttpApi2Server.SetMaxConnections(val : Cardinal);
+var
+   qosInfo : HTTP_QOS_SETTING_INFO;
+   limitInfo : HTTP_CONNECTION_LIMIT_INFO;
+begin
+   if val<=0 then
+      val:=HTTP_LIMIT_INFINITE;
+   FMaxConnections:=val;
+
+   qosInfo.QosType:=HttpQosSettingTypeBandwidth;
+   qosInfo.QosSetting:=@limitInfo;
+
+   limitInfo.Flags:=1;
+   limitInfo.MaxConnections:=FMaxConnections;
 
    HttpAPI.Check(
       HttpAPI.SetServerSessionProperty(FServerSessionID, HttpServerQosProperty,
