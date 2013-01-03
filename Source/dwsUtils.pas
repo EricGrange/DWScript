@@ -634,7 +634,9 @@ begin
    SetLength(buf, n);
    aStream.Read(buf[0], n);
    encoding:=nil;
-   n:=TEncoding.GetBufferEncoding(buf, encoding, TEncoding.UTF8);
+   n:=TEncoding.GetBufferEncoding(buf, encoding);
+   if not assigned(encoding) then
+      encoding:=TEncoding.UTF8;
    Result:=encoding.GetString(buf, n, Length(buf)-n);
 end;
 
