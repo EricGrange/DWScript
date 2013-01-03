@@ -57,6 +57,8 @@ type
    PNoResultExprList = ^TNoResultExprList;
    PNoResultExpr = ^TNoResultExpr;
 
+   TdwsExecutionEvent = procedure (exec : TdwsProgramExecution) of object;
+
    TScriptSourceType = (stMain, stUnit, stUnitNamespace, stInclude, stRecompile);
 
    // A specific ScriptSource entry. The text of the script contained in that unit.
@@ -511,6 +513,9 @@ type
          FLocalizer : IdwsLocalizer;
          FRTTIRawAttributes : IScriptObj;
 
+         FOnExecutionStarted : TdwsExecutionEvent;
+         FOnExecutionEnded : TdwsExecutionEvent;
+
          FMsgs : TdwsRuntimeMessageList;
 
       protected
@@ -576,6 +581,9 @@ type
          property RTTIRawAttributes : IScriptObj read FRTTIRawAttributes write FRTTIRawAttributes;
 
          property ObjectCount : Integer read FObjectCount;
+
+         property OnExecutionStarted : TdwsExecutionEvent read FOnExecutionStarted write FOnExecutionStarted;
+         property OnExecutionEnded : TdwsExecutionEvent read FOnExecutionEnded write FOnExecutionEnded;
    end;
 
    TdwsProgramBaseTypes = record
@@ -685,6 +693,8 @@ type
 
          FDefaultEnvironment : IdwsEnvironment;
          FDefaultLocalizer : IdwsLocalizer;
+         FOnExecutionStarted : TdwsExecutionEvent;
+         FOnExecutionEnded : TdwsExecutionEvent;
 
          FExecutionsClass : TdwsProgramExecutionClass;
 
@@ -756,6 +766,9 @@ type
          property DefaultEnvironment : IdwsEnvironment read FDefaultEnvironment write FDefaultEnvironment;
          property DefaultLocalizer : IdwsLocalizer read FDefaultLocalizer write FDefaultLocalizer;
          property DefaultUserObject : TObject read FDefaultUserObject write FDefaultUserObject;
+
+         property OnExecutionStarted : TdwsExecutionEvent read FOnExecutionStarted write FOnExecutionStarted;
+         property OnExecutionEnded : TdwsExecutionEvent read FOnExecutionEnded write FOnExecutionEnded;
    end;
 
    // Functions callable from a script program implement this interfaces
@@ -2292,6 +2305,9 @@ begin
       Exit;
    end;
 
+   if Assigned(FOnExecutionStarted) then
+      FOnExecutionStarted(Self);
+
    FProgramState:=psRunning;
    try
       Msgs.Clear;
@@ -2466,6 +2482,8 @@ begin
          Msgs.AddRuntimeError(e.Message);
    end;
 
+   if Assigned(FOnExecutionEnded) then
+      FOnExecutionEnded(Self);
 end;
 
 // CallStackToString
@@ -3038,6 +3056,8 @@ begin
    exec.UserObject:=DefaultUserObject;
    exec.Environment:=DefaultEnvironment;
    exec.Localizer:=DefaultLocalizer;
+   exec.OnExecutionStarted:=OnExecutionStarted;
+   exec.OnExecutionEnded:=OnExecutionEnded;
    FExecutionsLock.Enter;
    try
       FExecutions.Add(exec);

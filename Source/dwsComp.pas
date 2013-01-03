@@ -102,6 +102,10 @@ type
       protected
          function GetOnInclude: TIncludeEvent;
          procedure SetOnInclude(const Value: TIncludeEvent);
+         function GetOnExecutionStarted : TdwsExecutionEvent;
+         procedure SetOnExecutionStarted(const val : TdwsExecutionEvent);
+         function GetOnExecutionEnded : TdwsExecutionEvent;
+         procedure SetOnExecutionEnded(const val : TdwsExecutionEvent);
          function GetVersion: String;
          procedure SetVersion(const Value: String);
          function GetOnNeedUnit : TdwsOnNeedUnitEvent;
@@ -134,6 +138,8 @@ type
          property OnNeedUnit : TdwsOnNeedUnitEvent read GetOnNeedUnit write SetOnNeedUnit stored False;
          property OnInclude : TIncludeEvent read GetOnInclude write SetOnInclude stored False;
          property OnResource : TdwsResourceEvent read GetOnResource write SetOnResource;
+         property OnExecutionStarted : TdwsExecutionEvent read GetOnExecutionStarted write SetOnExecutionStarted;
+         property OnExecutionEnded : TdwsExecutionEvent read GetOnExecutionEnded write SetOnExecutionEnded;
          property Version : String read GetVersion write SetVersion stored False;
    end;
 
@@ -1446,6 +1452,34 @@ end;
 procedure TDelphiWebScript.SetOnInclude(const Value: TIncludeEvent);
 begin
   Config.OnInclude := Value;
+end;
+
+// GetOnExecutionStarted
+//
+function TDelphiWebScript.GetOnExecutionStarted : TdwsExecutionEvent;
+begin
+   Result:=Config.OnExecutionStarted;
+end;
+
+// SetOnExecutionStarted
+//
+procedure TDelphiWebScript.SetOnExecutionStarted(const val : TdwsExecutionEvent);
+begin
+   Config.OnExecutionStarted:=val;
+end;
+
+// GetOnExecutionEnded
+//
+function TDelphiWebScript.GetOnExecutionEnded : TdwsExecutionEvent;
+begin
+   Result:=Config.OnExecutionEnded;
+end;
+
+// SetOnExecutionEnded
+//
+procedure TDelphiWebScript.SetOnExecutionEnded(const val : TdwsExecutionEvent);
+begin
+   Config.OnExecutionEnded:=val;
 end;
 
 function TDelphiWebScript.GetOnInclude: TIncludeEvent;

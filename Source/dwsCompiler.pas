@@ -101,6 +101,8 @@ type
          FOnResource : TdwsResourceEvent;
          FOnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent;
          FOnCreateSystemSymbols : TCompilerCreateSystemSymbolsEvent;
+         FOnExecutionStarted : TdwsExecutionEvent;
+         FOnExecutionEnded : TdwsExecutionEvent;
          FOwner : TComponent;
          FResultType : TdwsResultType;
          FScriptPaths : TStrings;
@@ -155,9 +157,12 @@ type
          property TimeoutMilliseconds : Integer read FTimeoutMilliseconds write FTimeoutMilliseconds default 0;
          property TimeOut : Integer write SetTimeOut;
          property StackChunkSize : Integer read FStackChunkSize write FStackChunkSize default cDefaultStackChunkSize;
+
          property OnInclude : TIncludeEvent read FOnInclude write FOnInclude;
          property OnNeedUnit : TdwsOnNeedUnitEvent read FOnNeedUnit write FOnNeedUnit;
          property OnResource : TdwsResourceEvent read FOnResource write FOnResource;
+         property OnExecutionStarted : TdwsExecutionEvent read FOnExecutionStarted write FOnExecutionStarted;
+         property OnExecutionEnded : TdwsExecutionEvent read FOnExecutionEnded write FOnExecutionEnded;
    end;
 
    TdwsFilter = class(TComponent)
@@ -375,6 +380,8 @@ type
          FOnGetDefaultEnvironment : TCompilerGetDefaultEnvironmentEvent;
          FOnGetDefaultLocalizer : TCompilerGetDefaultLocalizerEvent;
          FOnRootExternalClass : TCompilerOnRootExternalClassEvent;
+         FOnExecutionStarted : TdwsExecutionEvent;
+         FOnExecutionEnded : TdwsExecutionEvent;
 
          function Optimize : Boolean;
 
@@ -1257,6 +1264,9 @@ begin
    FOnResource := conf.OnResource;
    FScriptPaths := conf.ScriptPaths;
 
+   FOnExecutionStarted := conf.OnExecutionStarted;
+   FOnExecutionEnded := conf.OnExecutionEnded;
+
    conf.FOnCreateBaseVariantSymbol:=FOnCreateBaseVariantSymbol;
    conf.FOnCreateSystemSymbols:=FOnCreateSystemSymbols;
    if not StaticExtensionSymbols then
@@ -1312,6 +1322,9 @@ begin
    FSourceContextMap:=nil;
    FSymbolDictionary:=nil;
 
+   FOnExecutionStarted:=nil;
+   FOnExecutionEnded:=nil;
+
    FLoopExprs.Clear;
    FLoopExitable.Clear;
    FFinallyExprs.Clear;
@@ -1353,6 +1366,8 @@ begin
    FMainProg.TimeoutMilliseconds:=aConf.TimeoutMilliseconds;
    FMainProg.RuntimeFileSystem:=aConf.RuntimeFileSystem;
    FMainProg.ConditionalDefines.Value.Assign(aConf.Conditionals);
+   FMainProg.OnExecutionStarted:=FOnExecutionStarted;
+   FMainProg.OnExecutionEnded:=FOnExecutionEnded;
    FSourceContextMap:=FMainProg.SourceContextMap;
    FSymbolDictionary:=FMainProg.SymbolDictionary;
    FUnitSection:=secMixed;
