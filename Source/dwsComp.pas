@@ -261,7 +261,7 @@ type
   protected
     procedure AssignTo(Dest: TPersistent); override;
     procedure CheckName(aTable : TSymbolTable; const aName : String; overloaded : Boolean = False);
-    function GetDataType(Table: TSymbolTable; Name: String): TTypeSymbol;
+    function GetDataType(aTable : TSymbolTable; const aName : String) : TTypeSymbol;
     procedure Reset;
     property IsGenerating: Boolean read FIsGenerating;
   public
@@ -427,7 +427,7 @@ type
          property OnInitSymbol : TInitSymbolEvent read GetOnInitSymbol write SetOnInitSymbol;
          property OnInitExpr : TInitExprEvent read GetOnInitExpr write SetOnInitExpr;
          property Deprecated : String read FDeprecated write FDeprecated;
-         property Overloaded : Boolean read FOverloaded write FOverloaded;
+         property Overloaded : Boolean read FOverloaded write FOverloaded default False;
    end;
 
    TdwsFunction = class(TdwsFunctionSymbol)
@@ -706,7 +706,8 @@ type
       protected
          class function GetSymbolClass : TdwsSymbolClass; override;
       public
-         function Add : TdwsMethod;
+         function Add : TdwsMethod; overload; inline;
+         function Add(const name : String; const resultType : String = '') : TdwsMethod; overload;
    end;
 
    TdwsConstructorCallable = class(TdwsCallable)
@@ -2925,7 +2926,7 @@ begin
 
    methSymbol:=TMethodSymbol.Generate(table, Kind, Attributes, Name,
                                       GetParameters(table), ResultType,
-                                      TClassSymbol(parentSym), Visibility);
+                                      TClassSymbol(parentSym), Visibility, Overloaded);
    try
       methSymbol.Params.AddParent(table);
       methSymbol.DeprecatedMessage:=Deprecated;
@@ -3079,7 +3080,8 @@ begin
    CheckName(TClassSymbol(ParentSym).Members, Name);
 
    methSymbol := TMethodSymbol.Generate(Table, mkConstructor, Attributes, Name,
-                                        GetParameters(Table), '', TClassSymbol(ParentSym), Visibility);
+                                        GetParameters(Table), '', TClassSymbol(ParentSym),
+                                        Visibility, Overloaded);
    try
       methSymbol.Params.AddParent(Table);
       methSymbol.Executable := FCallable;
@@ -3786,13 +3788,16 @@ begin
   end;
 end;
 
-function TdwsSymbol.GetDataType(Table: TSymbolTable; Name: String): TTypeSymbol;
-var sym : TSymbol;
+// GetDataType
+//
+function TdwsSymbol.GetDataType(aTable : TSymbolTable; const aName : String) : TTypeSymbol;
+var
+   sym : TSymbol;
 begin
-  sym := GetUnit.GetSymbol(Table, Name);
-  if not (sym is TTypeSymbol) then
-    raise Exception.CreateFmt(UNT_DatatypeUnknown, [Name]);
-  Result := TTypeSymbol(sym);
+   sym := GetUnit.GetSymbol(aTable, aName);
+   if not (sym is TTypeSymbol) then
+      raise Exception.CreateFmt(UNT_DatatypeUnknown, [aName]);
+   Result := TTypeSymbol(sym);
 end;
 
 // CheckName
@@ -4453,6 +4458,15 @@ end;
 function TdwsMethods.Add : TdwsMethod;
 begin
    Result:=TdwsMethod(inherited Add);
+end;
+
+// Add
+//
+function TdwsMethods.Add(const name : String; const resultType : String = '') : TdwsMethod;
+begin
+   Result:=Add;
+   Result.Name:=name;
+   Result.ResultType:=resultType;
 end;
 
 { TdwsProperties }

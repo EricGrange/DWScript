@@ -428,7 +428,7 @@ begin
    params:=ConvertFuncParams(methParams);
 
    sym:=TMethodSymbol.Generate(table, methKind, attributes, methName, Params,
-                                 methType, cls, aVisibility);
+                                 methType, cls, aVisibility, False);
    sym.Params.AddParent(table);
    sym.Executable := ICallable(Self);
 
@@ -504,7 +504,7 @@ begin
    params:=ConvertFuncParams(methParams);
 
    sym:=TMethodSymbol.Generate(table, methKind, attributes, methName, Params,
-                               methType, rec, aVisibility);
+                               methType, rec, aVisibility, False);
    sym.Params.AddParent(table);
    sym.Executable := ICallable(Self);
 

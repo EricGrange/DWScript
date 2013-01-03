@@ -784,7 +784,8 @@ type
          constructor Generate(Table: TSymbolTable; MethKind: TMethodKind;
                               const Attributes: TMethodAttributes; const MethName: String;
                               const MethParams: TParamArray; const MethType: String;
-                              Cls: TCompositeTypeSymbol; aVisibility : TdwsVisibility);
+                              Cls: TCompositeTypeSymbol; aVisibility : TdwsVisibility;
+                              overloaded : Boolean);
 
          procedure SetOverride(meth: TMethodSymbol);
          procedure SetOverlap(meth: TMethodSymbol);
@@ -3229,8 +3230,10 @@ begin
 end;
 
 constructor TMethodSymbol.Generate(Table: TSymbolTable; MethKind: TMethodKind;
-  const Attributes: TMethodAttributes; const MethName: String; const MethParams: TParamArray;
-  const MethType: String; Cls: TCompositeTypeSymbol; aVisibility : TdwsVisibility);
+                              const Attributes: TMethodAttributes; const MethName: String;
+                              const MethParams: TParamArray; const MethType: String;
+                              Cls: TCompositeTypeSymbol; aVisibility : TdwsVisibility;
+                              overloaded : Boolean);
 var
    typSym : TTypeSymbol;
    meth : TSymbol;
@@ -3243,8 +3246,12 @@ begin
       else if meth is TPropertySymbol then
          raise Exception.CreateFmt(CPE_PropertyExists, [MethName])
       else if meth is TMethodSymbol then begin
-         if TMethodSymbol(meth).StructSymbol = Cls then
-            raise Exception.CreateFmt(CPE_MethodExists, [MethName]);
+         if TMethodSymbol(meth).StructSymbol=Cls then begin
+            if not overloaded then
+               raise Exception.CreateFmt(CPE_MethodExists, [MethName])
+            else if not TMethodSymbol(meth).IsOverloaded then
+               raise Exception.CreateFmt(UNT_PreviousNotOverloaded, [MethName])
+         end;
       end;
    end;
 
@@ -3270,7 +3277,7 @@ begin
       Assert(False);
    end;
 
-   // Set Resulttype
+   // Set Result type
    if MethType <> '' then begin
       if not (Kind in [fkFunction, fkMethod]) then
          raise Exception.Create(CPE_NoResultTypeRequired);
@@ -3286,7 +3293,9 @@ begin
 
    GenerateParams(Table, MethParams);
 
-   if Assigned(meth) then
+   if overloaded then
+      IsOverloaded:=True
+   else if Assigned(meth) then
       SetOverlap(TMethodSymbol(meth));
 
    if Attributes = [maVirtual] then

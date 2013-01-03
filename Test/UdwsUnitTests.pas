@@ -51,6 +51,8 @@ type
          procedure MethodGetIntEval(Info: TProgramInfo; ExtObject: TObject);
          procedure MethodSetIntEval(Info: TProgramInfo; ExtObject: TObject);
          procedure MethodGetArrayIntEval(Info: TProgramInfo; ExtObject: TObject);
+         procedure MethodOverloadIntEval(Info: TProgramInfo; ExtObject: TObject);
+         procedure MethodOverloadStrEval(Info: TProgramInfo; ExtObject: TObject);
 
          procedure FuncExceptionEval(Info: TProgramInfo);
 
@@ -422,6 +424,16 @@ begin
    param.Name:='v';
    meth.OnEval:=MethodGetArrayIntEval;
 
+   meth:=cls.Methods.Add('MethOverload', 'String');
+   meth.Parameters.Add('v', 'Integer');
+   meth.Overloaded:=True;
+   meth.OnEval:=MethodOverloadIntEval;
+
+   meth:=cls.Methods.Add('MethOverload', 'String');
+   meth.Parameters.Add('v', 'String');
+   meth.Overloaded:=True;
+   meth.OnEval:=MethodOverloadStrEval;
+
    prop:=cls.Properties.Add;
    prop.Name:='MyReadOnlyProp';
    prop.DataType:='Integer';
@@ -731,6 +743,20 @@ end;
 procedure TdwsUnitTestsContext.MethodGetArrayIntEval(Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsInteger:=StrToInt(Info.ValueAsString['v'])*2;
+end;
+
+// MethodOverloadIntEval
+//
+procedure TdwsUnitTestsContext.MethodOverloadIntEval(Info: TProgramInfo; ExtObject: TObject);
+begin
+   FuncOverloadIntEval(Info);
+end;
+
+// MethodOverloadStrEval
+//
+procedure TdwsUnitTestsContext.MethodOverloadStrEval(Info: TProgramInfo; ExtObject: TObject);
+begin
+   FuncOverloadStrEval(Info);
 end;
 
 // FuncExceptionEval
@@ -1607,11 +1633,14 @@ var
    prog : IdwsProgram;
 begin
    prog:=FCompiler.Compile( 'Print(FuncOverload(123));'#13#10
-                           +'Print(FuncOverload("123"));');
+                           +'Print(FuncOverload("123"));'#13#10
+                           +'var t := TTestClass.Create;'#13#10
+                           +'Print(t.MethOverload(234));'#13#10
+                           +'Print(t.MethOverload("234"));');
 
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
 
-   CheckEquals('246(123)', prog.Execute.Result.ToString, 'exec');
+   CheckEquals('246(123)468(234)', prog.Execute.Result.ToString, 'exec');
 end;
 
 // ExplicitUses
