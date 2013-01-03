@@ -40,6 +40,8 @@ type
          procedure FuncPointArrayEval(Info: TProgramInfo);
          procedure FuncClassNameEval(Info: TProgramInfo);
          procedure FuncOpenArrayEval(Info: TProgramInfo);
+         procedure FuncOverloadIntEval(Info: TProgramInfo);
+         procedure FuncOverloadStrEval(Info: TProgramInfo);
 
          procedure ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
          procedure ClassCleanup(ExternalObject: TObject);
@@ -103,6 +105,7 @@ type
          procedure DeprecatedProp;
          procedure ReservedNameMethod;
          procedure CallInNested;
+         procedure OverloadedFunc;
 
          procedure ExplicitUses;
    end;
@@ -338,6 +341,20 @@ begin
    param.Name:='p';
    param.DataType:='array of const';
    func.OnEval:=FuncOpenArrayEval;
+
+   func:=FUnit.Functions.Add;
+   func.Name:='FuncOverload';
+   func.ResultType:='String';
+   func.Overloaded:=True;
+   func.Parameters.Add('v', 'Integer');
+   func.OnEval:=FuncOverloadIntEval;
+
+   func:=FUnit.Functions.Add;
+   func.Name:='FuncOverload';
+   func.ResultType:='String';
+   func.Overloaded:=True;
+   func.Parameters.Add('v', 'String');
+   func.OnEval:=FuncOverloadStrEval;
 end;
 
 // DeclareTestClasses
@@ -642,6 +659,20 @@ begin
       r:=r+p.Element([i]).ValueAsString;
    end;
    Info.ResultAsString:=r;
+end;
+
+// FuncOverloadIntEval
+//
+procedure TdwsUnitTestsContext.FuncOverloadIntEval(Info: TProgramInfo);
+begin
+   Info.ResultAsString:=IntToStr(Info.ParamAsInteger[0]*2);
+end;
+
+// FuncOverloadStrEval
+//
+procedure TdwsUnitTestsContext.FuncOverloadStrEval(Info: TProgramInfo);
+begin
+   Info.ResultAsString:='('+Info.ParamAsString[0]+')';
 end;
 
 // ClassConstructor
@@ -1567,6 +1598,20 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
 
    CheckEquals('1', prog.Execute.Result.ToString, 'exec');
+end;
+
+// OverloadedFunc
+//
+procedure TdwsUnitTests.OverloadedFunc;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'Print(FuncOverload(123));'#13#10
+                           +'Print(FuncOverload("123"));');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   CheckEquals('246(123)', prog.Execute.Result.ToString, 'exec');
 end;
 
 // ExplicitUses

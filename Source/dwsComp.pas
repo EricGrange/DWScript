@@ -254,7 +254,7 @@ type
     FName: String;
   protected
     procedure AssignTo(Dest: TPersistent); override;
-    procedure CheckName(Table: TSymbolTable; Name: String);
+    procedure CheckName(aTable : TSymbolTable; const aName : String; overloaded : Boolean = False);
     function GetDataType(Table: TSymbolTable; Name: String): TTypeSymbol;
     procedure Reset;
     property IsGenerating: Boolean read FIsGenerating;
@@ -349,8 +349,10 @@ type
    TdwsParameters = class(TdwsVariables)
       protected
          class function GetSymbolClass : TdwsSymbolClass; override;
+
       public
-         function Add : TdwsParameter;
+         function Add : TdwsParameter; overload; inline;
+         function Add(const name, typeName : String) : TdwsParameter; overload;
    end;
 
    TFuncEvalEvent = procedure(info : TProgramInfo) of object;
@@ -393,6 +395,7 @@ type
          FParameters : TdwsParameters;
          FDeprecated : String;
          FCallable : TdwsCallable;
+         FOverloaded : Boolean;
 
       protected
          function GetDisplayName: String; override;
@@ -406,6 +409,7 @@ type
       public
          constructor Create(collection : TCollection); override;
          destructor Destroy; override;
+
          procedure Assign(Source: TPersistent); override;
 
          function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
@@ -417,6 +421,7 @@ type
          property OnInitSymbol : TInitSymbolEvent read GetOnInitSymbol write SetOnInitSymbol;
          property OnInitExpr : TInitExprEvent read GetOnInitExpr write SetOnInitExpr;
          property Deprecated : String read FDeprecated write FDeprecated;
+         property Overloaded : Boolean read FOverloaded write FOverloaded;
    end;
 
    TdwsFunction = class(TdwsFunctionSymbol)
@@ -2649,7 +2654,7 @@ var
    funcSym : TFuncSymbol;
 begin
    FIsGenerating:=True;
-   CheckName(Table, Name);
+   CheckName(Table, Name, Overloaded);
    if ResultType<>'' then
       GetDataType(Table, ResultType);
 
@@ -2659,6 +2664,7 @@ begin
 
       funcSym.Executable:=FCallable;
       funcSym.DeprecatedMessage:=Deprecated;
+      funcSym.IsOverloaded:=Overloaded;
       GetUnit.Table.AddSymbol(funcSym);
    except
       funcSym.Free;
@@ -2729,14 +2735,17 @@ begin
       Result:=Result+' deprecated;'
 end;
 
+// Assign
+//
 procedure TdwsFunctionSymbol.Assign(Source: TPersistent);
 begin
-  inherited;
-  if Source is TdwsFunctionSymbol then
-  begin
-    FFuncType := TdwsFunctionSymbol(Source).ResultType;
-    FParameters.Assign(TdwsFunctionSymbol(Source).Parameters);
-  end;
+   inherited;
+   if Source is TdwsFunctionSymbol then begin
+      FFuncType := TdwsFunctionSymbol(Source).ResultType;
+      FParameters.Assign(TdwsFunctionSymbol(Source).Parameters);
+      FDeprecated:=TdwsFunctionSymbol(Source).Deprecated;
+      FOverloaded:=TdwsFunctionSymbol(Source).Overloaded;
+   end;
 end;
 
 // ------------------
@@ -2875,7 +2884,7 @@ var
    methSymbol : TMethodSymbol;
 begin
    FIsGenerating := True;
-   CheckName(TClassSymbol(parentSym).Members, Name);
+   CheckName(TClassSymbol(parentSym).Members, Name, Overloaded);
 
    if ResultType <> '' then
       GetUnit.GetSymbol(table, ResultType);
@@ -2886,6 +2895,7 @@ begin
    try
       methSymbol.Params.AddParent(table);
       methSymbol.DeprecatedMessage:=Deprecated;
+      methSymbol.IsOverloaded:=Overloaded;
 
       methSymbol.Executable:=FCallable;
    except
@@ -3751,14 +3761,24 @@ begin
   Result := TTypeSymbol(sym);
 end;
 
-procedure TdwsSymbol.CheckName(Table: TSymbolTable;
-  Name: String);
+// CheckName
+//
+procedure TdwsSymbol.CheckName(aTable : TSymbolTable; const aName : String;
+                               overloaded : Boolean = False);
+var
+   sym : TSymbol;
 begin
-  if Name = '' then
-    raise Exception.Create(UNT_NameIsEmpty);
+   if aName='' then
+      raise Exception.Create(UNT_NameIsEmpty);
 
-  if Assigned(Table.FindLocal(Name)) then
-    raise Exception.CreateFmt(UNT_NameAlreadyExists, [Name]);
+   sym:=aTable.FindLocal(aName);
+   if Assigned(sym) then begin
+      if overloaded then begin
+         if not (    (sym is TFuncSymbol)
+                 and TFuncSymbol(sym).IsOverloaded) then
+            raise Exception.CreateFmt(UNT_PreviousNotOverloaded, [aName]);
+      end else raise Exception.CreateFmt(UNT_NameAlreadyExists, [aName]);
+   end;
 end;
 
 procedure TdwsSymbol.Assign(Source: TPersistent);
@@ -4334,6 +4354,15 @@ end;
 function TdwsParameters.Add : TdwsParameter;
 begin
    Result:=TdwsParameter(inherited Add);
+end;
+
+// Add
+//
+function TdwsParameters.Add(const name, typeName : String) : TdwsParameter;
+begin
+   Result:=Add;
+   Result.Name:=name;
+   Result.DataType:=typeName;
 end;
 
 { TdwsInstances }

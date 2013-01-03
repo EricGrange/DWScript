@@ -564,6 +564,7 @@ const
   UNT_UnitNameNotDefined = 'Property %s.UnitName is undefined!';
   UNT_ParameterNameAlreadyExists = 'Parameter name "%s" already exists';
   UNT_DependencyError = 'Dependency check from unit "%s" to unit "%s" failed: %s';
+  UNT_PreviousNotOverloaded = 'Previous symbol "%s" not marked as overloaded';
 
   UNT_UnitGenerationError = 'TdwsUnit: "%s" -- %s';
   UNT_SymbolGenerationError = '%s: "%s" -- %s';
