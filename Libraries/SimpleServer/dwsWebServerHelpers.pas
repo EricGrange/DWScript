@@ -166,6 +166,7 @@ begin
    inherited;
    FHash.Free;
    FLock.Free;
+   FIndexFileNames.Free;
 end;
 
 // IndexFileForDirectory

@@ -50,14 +50,15 @@ type
          FServer : THttpApi2Server;
          FFileSystem : TdwsRestrictedFileSystem;
          FDWS : TSimpleDWScript;
-         FNotifier : TdwsDirectoryNotifier;
+         FNotifier : TdwsFileNotifier;
          FPort : Integer;
          FSSLPort : Integer;
          FRelativeURI : String;
          FSSLRelativeURI : String;
          FDirectoryIndex : TDirectoryIndexCache;
 
-         procedure DirectoryChanged(sender : TdwsDirectoryNotifier);
+         procedure FileChanged(sender : TdwsFileNotifier; const fileName : String;
+                               changeAction : TFileNotificationAction);
 
       public
          constructor Create(const basePath : TFileName; options : TdwsJSONValue);
@@ -181,8 +182,8 @@ begin
 
    FDWS.LoadDWScriptOptions(options['DWScript']);
 
-   FNotifier:=TdwsDirectoryNotifier.Create(FPath, dnoDirectoryAndSubTree);
-   FNotifier.OnDirectoryChanged:=DirectoryChanged;
+   FNotifier:=TdwsFileNotifier.Create(FPath, dnoDirectoryAndSubTree);
+   FNotifier.OnFileChanged:=FileChanged;
 
    if nbThreads>1 then
       FServer.Clone(nbThreads-1);
@@ -298,12 +299,17 @@ begin
    Result:=FDirectoryIndex.IndexFileForDirectory(pathFileName);
 end;
 
-// DirectoryChanged
+// FileChanged
 //
-procedure THttpSys2WebServer.DirectoryChanged(sender : TdwsDirectoryNotifier);
+procedure THttpSys2WebServer.FileChanged(sender : TdwsFileNotifier; const fileName : String;
+                                         changeAction : TFileNotificationAction);
 begin
-   FDWS.FlushDWSCache;
-   FDirectoryIndex.Flush;
+   if    StrEndsWith(fileName, '.dws')
+      or StrEndsWith(fileName, '.inc')
+      or StrEndsWith(fileName, '.pas') then
+      FDWS.FlushDWSCache;
+   if (Pos('\.', fileName)<=0) and (Pos('\index.', fileName)>0) then
+      FDirectoryIndex.Flush;
 end;
 
 end.

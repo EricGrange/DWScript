@@ -23,10 +23,22 @@ uses Windows, Classes, SysUtils;
 type
 
    TdwsDirectoryNotifier = class;
+   TdwsFileNotifier = class;
 
    TdwsDirectoryNotifierMode = (dnoDirectoryOnly, dnoDirectoryAndSubTree);
 
+   {$MINENUMSIZE 4}
+   TFileNotificationAction = (
+      FILE_ACTION_ADDED = 1,
+      FILE_ACTION_REMOVED,
+      FILE_ACTION_MODIFIED,
+      FILE_ACTION_RENAMED_OLD_NAME,
+      FILE_ACTION_RENAMED_NEW_NAME
+   );
+
    TdwsDirectoryChangedEvent = procedure (sender : TdwsDirectoryNotifier) of object;
+   TdwsFileChangedEvent = procedure (sender : TdwsFileNotifier; const fileName : String;
+                                     changeAction : TFileNotificationAction) of object;
 
 	// TdwsDirectoryNotifier
 	//
@@ -57,6 +69,41 @@ type
          property OnDirectoryChanged : TdwsDirectoryChangedEvent read FOnDirectoryChanged write FOnDirectoryChanged;
    end;
 
+	// TdwsFileNotifier
+	//
+   TdwsFileNotifier = class (TThread)
+	   private
+	      { Private Declarations }
+         FDirectory : String;
+         FOnFileChanged : TdwsFileChangedEvent;
+         FMode : TdwsDirectoryNotifierMode;
+         FDirectoryHandle : THandle;
+         FNotificationBuffer : array[0..4096] of Byte;
+         FNotifyFilter : DWORD;
+         FOverlapped : TOverlapped;
+         FPOverlapped : POverlapped;
+         FBytesWritten : DWORD;
+         FCompletionPort : THandle;
+         FLastChange : TDateTime;
+
+	   protected
+	      { Protected Declarations }
+         procedure Shutdown;
+
+	   public
+	      { Public Declarations }
+         constructor Create(const aDirectory : String; aMode : TdwsDirectoryNotifierMode);
+         destructor Destroy; override;
+
+         procedure Execute; override;
+
+         property Directory : String read FDirectory;
+         property Mode : TdwsDirectoryNotifierMode read FMode;
+         property LastChange : TDateTime read FLastChange write FLastChange;
+
+         property OnFileChanged : TdwsFileChangedEvent read FOnFileChanged write FOnFileChanged;
+   end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -64,6 +111,15 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+type
+   TFileNotifyInformation = record
+      NextEntryOffset : DWORD;
+      Action : TFileNotificationAction;
+      FileNameLength : DWORD;
+      FileName : array[0..0] of WideChar;
+   end;
+   PFileNotifyInformation = ^TFileNotifyInformation;
 
 // ------------------
 // ------------------ TdwsDirectoryNotifier ------------------
@@ -131,6 +187,88 @@ begin
       FindCloseChangeNotification(FNotifyHandle[0]);
       CloseHandle(FNotifyHandle[1]);
    end;
+end;
+
+// ------------------
+// ------------------ TdwsFileNotifier ------------------
+// ------------------
+
+// Create
+//
+constructor TdwsFileNotifier.Create(const aDirectory : String; aMode : TdwsDirectoryNotifierMode);
+begin
+   inherited Create(False);
+   NameThreadForDebugging('FileNotifier');
+   FDirectory:=IncludeTrailingPathDelimiter(aDirectory);
+   FMode:=aMode;
+   FNotifyFilter:=   FILE_NOTIFY_CHANGE_FILE_NAME  or FILE_NOTIFY_CHANGE_DIR_NAME
+                  or FILE_NOTIFY_CHANGE_ATTRIBUTES or FILE_NOTIFY_CHANGE_SIZE
+                  or FILE_NOTIFY_CHANGE_LAST_WRITE or FILE_NOTIFY_CHANGE_SECURITY;
+   FDirectoryHandle:=CreateFile(PChar(FDirectory), FILE_LIST_DIRECTORY,
+         FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil,
+         OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS or FILE_FLAG_OVERLAPPED, 0);
+   if FDirectoryHandle=INVALID_HANDLE_VALUE then
+      RaiseLastOSError;
+   FCompletionPort:=CreateIoCompletionPort(FDirectoryHandle, 0, 1, 0);
+   FBytesWritten:=0;
+   if not ReadDirectoryChanges(FDirectoryHandle, @FNotificationBuffer, SizeOf(FNotificationBuffer),
+                               (FMode=dnoDirectoryAndSubTree), FNotifyFilter, @FBytesWritten,
+                               @FOverlapped, nil) then
+      RaiseLastOSError;
+end;
+
+// Destroy
+//
+destructor TdwsFileNotifier.Destroy;
+begin
+   Shutdown;
+   if FDirectoryHandle<>0 then
+      CloseHandle(FDirectoryHandle);
+   if FCompletionPort<>0 then
+      CloseHandle(FCompletionPort);
+   inherited;
+end;
+
+// Execute
+//
+procedure TdwsFileNotifier.Execute;
+var
+   numBytes : DWORD;
+   completionKey : DWORD;
+   fileOpNotification : PFileNotifyInformation;
+   offset : Longint;
+   fileName : String;
+begin
+   while not Terminated do begin
+      GetQueuedCompletionStatus(FCompletionPort, numBytes, completionKey, FPOverlapped, INFINITE);
+      if completionKey<>0 then begin
+         fileOpNotification:=@FNotificationBuffer;
+         repeat
+            offset:=fileOpNotification^.NextEntryOffset;
+            if Assigned(FOnFileChanged) then begin
+               SetString(fileName, fileOpNotification^.FileName,
+                         fileOpNotification^.FileNameLength div SizeOf(Char));
+               FOnFileChanged(Self, FDirectory+fileName, fileOpNotification^.Action);
+            end;
+            fileOpNotification:=@PAnsiChar(fileOpNotification)[offset];
+         until offset=0;
+         FBytesWritten:=0;
+         FillChar(FNotificationBuffer, 0, SizeOf(FNotificationBuffer));
+         ReadDirectoryChanges(FDirectoryHandle, @FNotificationBuffer, SizeOf(FNotificationBuffer),
+                              (FMode=dnoDirectoryAndSubTree), FNotifyFilter,
+                              @FBytesWritten, @FOverlapped, nil);
+      end else Terminate;
+   end;
+end;
+
+// Shutdown
+//
+procedure TdwsFileNotifier.Shutdown;
+begin
+   Terminate;
+   if FCompletionPort<>0 then
+      PostQueuedCompletionStatus(FCompletionPort, 0, 0, nil);
+   WaitFor;
 end;
 
 end.
