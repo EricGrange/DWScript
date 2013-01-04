@@ -1,0 +1,56 @@
+<html>
+<head>
+<title>SQLite DB test</title>
+<link rel="stylesheet" type="text/css" href="systemInfo.css">
+</head>
+<body>
+<%
+var db := new DataBase('SQLite', ['%www%\.db\test.sql3']);
+
+db.BeginTransaction;
+
+db.Exec('create table if not exists ip_log (dt datetime, ip text, ua text)');
+
+// add to table
+db.Exec('insert into ip_log values (?, ?, ?)', [Now, WebRequest.RemoteIP, WebRequest.UserAgent]);
+// keep only last 24 hours
+db.Exec('delete from ip_log where dt<?', [Now-1]);
+
+const SqlQuery = #"
+                  select * from ip_log 
+                  order by rowid desc 
+                  limit 10";
+
+%>
+<h3>Last 10 IP that queried this page</h3>
+<pre><%=SqlQuery%></pre>
+<table>
+   <tr>
+      <th>Request time</th>
+      <th>Request IP</th>
+      <th>User Agent</th>
+   </tr>
+<%
+var ds := db.Query(SqlQuery);
+
+// using different methods below for each for illustration purposes
+      
+while not ds.Eof do begin
+   %>
+   <tr>
+      <td><%=FormatDateTime('hh:nn:ss.zzz', ds.Fields[0].AsFloat)%></td>
+      <td><%="xxx.xxx."+StrAfter(StrAfter(ds.AsString(1), '.'), '.')%></td>
+      <td><%=ds.AsString('ua')%></td>
+   </tr>
+   <%
+   ds.Next;
+end;
+%>
+</table>
+
+<h5><%=db.Query("select count(*) from ip_log").AsInteger(0)%> requests in the last 24 hours</h5>
+<%
+db.Commit;
+%>
+</body>
+</html>

@@ -1,0 +1,350 @@
+unit dwsDatabaseLibModule;
+
+interface
+
+uses
+  SysUtils, Classes,
+  dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase;
+
+type
+
+  TdwsDatabaseLib = class(TDataModule)
+    dwsDatabase: TdwsUnit;
+    procedure dwsDatabaseClassesDataBaseConstructorsCreateEval(
+      Info: TProgramInfo; var ExtObject: TObject);
+    procedure dwsDatabaseClassesDataBaseCleanUp(ExternalObject: TObject);
+    procedure dwsDatabaseClassesDataBaseMethodsBeginTransactionEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsDatabaseClassesDataBaseMethodsCommitEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataBaseMethodsInTransactionEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsDatabaseClassesDataBaseMethodsExecEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataBaseMethodsQueryEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataBaseMethodsRollbackEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsEofEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsNextEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsFieldCountEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataFieldMethodsNameEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataFieldMethodsDataTypeEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataFieldMethodsAsStringEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsGetFieldEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsAsStringByNameEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsAsIntegerByIndexEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsAsIntegerByNameEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsAsFloatByIndexEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsAsFloatByNameEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsAsStringByIndexEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataFieldMethodsIsNullEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataFieldMethodsAsIntegerEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsDatabaseClassesDataFieldMethodsAsFloatEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataFieldMethodsAsBooleanEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsFieldNameEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsFieldByNameEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsIndexOfFieldEval(
+      Info: TProgramInfo; ExtObject: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+implementation
+
+{$R *.dfm}
+
+type
+   TDataBase = class
+      Intf : IdwsDataBase;
+   end;
+
+   TDataSet = class
+      Intf : IdwsDataSet;
+      function IndexOfField(const name : String) : Integer;
+      function FieldByName(Info : TProgramInfo) : IdwsDataField;
+   end;
+
+   TDataField = class
+      Intf : IdwsDataField;
+   end;
+
+// IndexOfField
+//
+function TDataSet.IndexOfField(const name : String) : Integer;
+begin
+   for Result:=0 to Intf.FieldCount-1 do
+      if Intf.Fields[Result].Name=name then Exit;
+   Result:=-1;
+end;
+
+// FieldByName
+//
+function TDataSet.FieldByName(Info : TProgramInfo) : IdwsDataField;
+var
+   fieldName : String;
+   index : Integer;
+begin
+   fieldName:=Info.ParamAsString[0];
+   index:=IndexOfField(fieldName);
+   if index>=0 then
+      Result:=Intf.GetField(index)
+   else raise Exception.CreateFmt('Unknown field "%s"', [fieldName]);
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseCleanUp(
+  ExternalObject: TObject);
+begin
+   ExternalObject.Free;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseConstructorsCreateEval(
+  Info: TProgramInfo; var ExtObject: TObject);
+var
+   db : IdwsDataBase;
+   scriptObj : IScriptObj;
+   dynArray : TScriptDynamicArray;
+begin
+   scriptObj:=Info.Vars['parameters'].ScriptObj;
+   dynArray:=(scriptObj.InternalObject as TScriptDynamicArray);
+   db:=TdwsDatabase.CreateDataBase(Info.ParamAsString[0], dynArray.ToStringArray);
+
+   ExtObject:=TDataBase.Create;
+   TDataBase(ExtObject).Intf:=db;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsBeginTransactionEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   (ExtObject as TDataBase).Intf.BeginTransaction;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsCommitEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   (ExtObject as TDataBase).Intf.Commit;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsExecEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   scriptObj : IScriptObj;
+   dynArray : TScriptDynamicArray;
+begin
+   scriptObj:=Info.Vars['parameters'].ScriptObj;
+   dynArray:=(scriptObj.InternalObject as TScriptDynamicArray);
+
+   (ExtObject as TDataBase).Intf.Exec(Info.ParamAsString[0], dynArray.Data);
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsInTransactionEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean:=(ExtObject as TDataBase).Intf.InTransaction;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsQueryEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   scriptObj : IScriptObj;
+   dynArray : TScriptDynamicArray;
+   ids : IdwsDataSet;
+   dataFieldConstructor : IInfo;
+   dataSetInfo, dataFieldInfo : IInfo;
+   dataSet : TDataSet;
+   dataFieldsInfo : IInfo;
+   dataFieldsArray : TScriptDynamicArray;
+   dataFieldObj : TDataField;
+   i : Integer;
+begin
+   scriptObj:=Info.Vars['parameters'].ScriptObj;
+   dynArray:=(scriptObj.InternalObject as TScriptDynamicArray);
+
+   ids:=(ExtObject as TDataBase).Intf.Query(Info.ParamAsString[0], dynArray.Data);
+
+   dataSetInfo:=Info.Vars['DataSet'].Method['Create'].Call;
+
+   dataSet:=TDataSet.Create;
+   dataSet.Intf:=ids;
+
+   dataSetInfo.ExternalObject:=dataSet;
+
+   dataFieldsInfo:=dataSetInfo.Member['FFields'];
+   dataFieldsArray:=(dataFieldsInfo.ScriptObj.InternalObject as TScriptDynamicArray);
+   dataFieldsArray.Length:=ids.FieldCount;
+
+   dataFieldConstructor:=Info.Vars['DataField'].Method['Create'];
+   for i:=0 to ids.FieldCount-1 do begin
+      dataFieldInfo:=dataFieldConstructor.Call;
+      dataFieldObj:=TDataField.Create;
+      dataFieldObj.Intf:=ids.Fields[i];
+      dataFieldInfo.ExternalObject:=dataFieldObj;
+      dataFieldsArray.Data[i]:=dataFieldInfo.Value;
+   end;
+
+   Info.ResultAsVariant:=dataSetInfo.Value;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsRollbackEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   (ExtObject as TDataBase).Intf.Rollback;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsAsBooleanEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean:=(ExtObject as TDataField).Intf.AsBoolean;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsAsFloatEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsFloat:=(ExtObject as TDataField).Intf.AsFloat;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsAsIntegerEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=(ExtObject as TDataField).Intf.AsInteger;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsAsStringEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=(ExtObject as TDataField).Intf.AsString;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsDataTypeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=(ExtObject as TDataField).Intf.DataType;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsIsNullEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean:=(ExtObject as TDataField).Intf.AsBoolean;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=(ExtObject as TDataField).Intf.Name;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsStringByNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=(ExtObject as TDataSet).FieldByName(Info).AsString;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsStringByIndexEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=(ExtObject as TDataSet).Intf.GetField(Info.ParamAsInteger[0]).AsString;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsIntegerByNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=(ExtObject as TDataSet).FieldByName(Info).AsInteger;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsIntegerByIndexEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=(ExtObject as TDataSet).Intf.GetField(Info.ParamAsInteger[0]).AsInteger;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsFloatByNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsFloat:=(ExtObject as TDataSet).FieldByName(Info).AsFloat;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsAsFloatByIndexEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsFloat:=(ExtObject as TDataSet).Intf.GetField(Info.ParamAsInteger[0]).AsFloat;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsEofEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean:=(ExtObject as TDataSet).Intf.Eof;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsFieldByNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   fieldsInfo : IInfo;
+   index : Integer;
+begin
+   index:=(ExtObject as TDataSet).IndexOfField(Info.ParamAsString[0]);
+   if index<0 then
+      Info.ResultAsVariant:=IUnknown(nil)
+   else begin
+      fieldsInfo:=Info.Vars['FFields'];
+      index:=Info.ParamAsInteger[0];
+      Info.ResultAsVariant:=fieldsInfo.Element([index]).Value;
+   end;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsFieldCountEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=(ExtObject as TDataSet).Intf.FieldCount;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsFieldNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=(ExtObject as TDataSet).Intf.Fields[Info.ParamAsInteger[0]].Name;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsGetFieldEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   fieldsInfo : IInfo;
+   index : Integer;
+begin
+   fieldsInfo:=Info.Vars['FFields'];
+   index:=Info.ParamAsInteger[0];
+   Info.ResultAsVariant:=fieldsInfo.Element([index]).Value;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsIndexOfFieldEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=(ExtObject as TDataSet).IndexOfField(Info.ParamAsString[0]);
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsNextEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   (ExtObject as TDataSet).Intf.Next;
+end;
+
+end.

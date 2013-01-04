@@ -23,6 +23,7 @@ uses
    dwsFileSystem, dwsGlobalVarsFunctions,
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
+   dwsDataBase, dwsDataBaseLibModule, dwsSynSQLiteDatabase,
    dwsJSON, dwsErrors, dwsFunctions;
 
 type
@@ -38,7 +39,7 @@ type
          function GetItemHashCode(const item1 : TCompiledProgram) : Integer; override;
    end;
 
-   TSynDWScript = class(TDataModule)
+   TSimpleDWScript = class(TDataModule)
       DelphiWebScript: TDelphiWebScript;
       dwsHtmlFilter: TdwsHtmlFilter;
       dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions;
@@ -56,6 +57,7 @@ type
       FSystemInfo : TdwsSystemInfoLibModule;
       FFileSystem : TdwsCustomFileSystem;
       FWebEnv : TdwsWebLib;
+      FDataBase : TdwsDatabaseLib;
 
       FCompiledPrograms : TCompiledProgramHash;
       FCompiledProgramsLock : TFixedCriticalSection;
@@ -139,12 +141,16 @@ implementation
 
 {$R *.dfm}
 
-procedure TSynDWScript.DataModuleCreate(Sender: TObject);
+procedure TSimpleDWScript.DataModuleCreate(Sender: TObject);
 begin
    FPathVariables:=TFastCompareTextList.Create;
 
    FSystemInfo:=TdwsSystemInfoLibModule.Create(Self);
    FSystemInfo.dwsSystemInfo.Script:=DelphiWebScript;
+
+   FDataBase:=TdwsDatabaseLib.Create(Self);
+   FDataBase.dwsDatabase.Script:=DelphiWebScript;
+   TdwsDataBase.OnApplyPathVariables:=ApplyPathVariables;
 
    FWebEnv:=TdwsWebLib.Create(Self);
    FWebEnv.dwsWeb.Script:=DelphiWebScript;
@@ -157,9 +163,10 @@ begin
 
    FLibraryPaths:=TStringList.Create;
    DelphiWebScript.OnNeedUnit:=DoNeedUnit;
+
 end;
 
-procedure TSynDWScript.DataModuleDestroy(Sender: TObject);
+procedure TSimpleDWScript.DataModuleDestroy(Sender: TObject);
 begin
    FlushDWSCache;
 
@@ -172,14 +179,14 @@ end;
 
 // GetFileSystem
 //
-function TSynDWScript.GetFileSystem : TdwsCustomFileSystem;
+function TSimpleDWScript.GetFileSystem : TdwsCustomFileSystem;
 begin
    Result:=FFileSystem;
 end;
 
 // SetFileSystem
 //
-procedure TSynDWScript.SetFileSystem(const val : TdwsCustomFileSystem);
+procedure TSimpleDWScript.SetFileSystem(const val : TdwsCustomFileSystem);
 begin
    FFileSystem:=val;
    DelphiWebScript.Config.CompileFileSystem:=val;
@@ -188,7 +195,7 @@ end;
 
 // HandleDWS
 //
-procedure TSynDWScript.HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse);
+procedure TSimpleDWScript.HandleDWS(const fileName : String; request : TWebRequest; response : TWebResponse);
 
    procedure Handle503(response : TWebResponse);
    begin
@@ -250,7 +257,7 @@ end;
 
 // FlushDWSCache
 //
-procedure TSynDWScript.FlushDWSCache(const matchingBegin : String = '');
+procedure TSimpleDWScript.FlushDWSCache(const matchingBegin : String = '');
 var
    oldHash : TCompiledProgramHash;
 begin
@@ -275,7 +282,7 @@ end;
 
 // LoadCPUOptions
 //
-procedure TSynDWScript.LoadCPUOptions(options : TdwsJSONValue);
+procedure TSimpleDWScript.LoadCPUOptions(options : TdwsJSONValue);
 var
    cpu : TdwsJSONValue;
 begin
@@ -292,7 +299,7 @@ end;
 
 // LoadDWScriptOptions
 //
-procedure TSynDWScript.LoadDWScriptOptions(options : TdwsJSONValue);
+procedure TSimpleDWScript.LoadDWScriptOptions(options : TdwsJSONValue);
 var
    dws, libs : TdwsJSONValue;
    i : Integer;
@@ -322,7 +329,7 @@ end;
 
 // TryAcquireDWS
 //
-procedure TSynDWScript.TryAcquireDWS(const fileName : String; var prog : IdwsProgram);
+procedure TSimpleDWScript.TryAcquireDWS(const fileName : String; var prog : IdwsProgram);
 var
    cp : TCompiledProgram;
 begin
@@ -338,7 +345,7 @@ end;
 
 // CompileDWS
 //
-procedure TSynDWScript.CompileDWS(const fileName : String; var prog : IdwsProgram);
+procedure TSimpleDWScript.CompileDWS(const fileName : String; var prog : IdwsProgram);
 var
    sl : TStringList;
    code : String;
@@ -376,7 +383,7 @@ end;
 
 // AddNotMatching
 //
-procedure TSynDWScript.AddNotMatching(const cp : TCompiledProgram);
+procedure TSimpleDWScript.AddNotMatching(const cp : TCompiledProgram);
 begin
    if cp.Prog.Msgs.HasErrors or not StrBeginsWith(cp.Name, FFlushMatching) then
       FCompiledPrograms.Add(cp);
@@ -384,7 +391,7 @@ end;
 
 // DoNeedUnit
 //
-function TSynDWScript.DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+function TSimpleDWScript.DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
 var
    i : Integer;
    fileName : String;
@@ -404,7 +411,7 @@ end;
 
 // SetCPUUsageLimit
 //
-procedure TSynDWScript.SetCPUUsageLimit(const val : Integer);
+procedure TSimpleDWScript.SetCPUUsageLimit(const val : Integer);
 begin
    FCPUUsageLimit:=val;
    if FCPUUsageLimit>0 then
@@ -413,7 +420,7 @@ end;
 
 // SetCPUAffinity
 //
-procedure TSynDWScript.SetCPUAffinity(const val : Cardinal);
+procedure TSimpleDWScript.SetCPUAffinity(const val : Cardinal);
 var
    hProcess : THandle;
    procMask, systemMask : Cardinal;
@@ -428,7 +435,7 @@ end;
 
 // WaitForCPULimit
 //
-function TSynDWScript.WaitForCPULimit : Boolean;
+function TSimpleDWScript.WaitForCPULimit : Boolean;
 var
    i : Integer;
 begin
@@ -443,7 +450,7 @@ end;
 
 // ApplyPathVariables
 //
-function TSynDWScript.ApplyPathVariables(const aPath : String) : String;
+function TSimpleDWScript.ApplyPathVariables(const aPath : String) : String;
 var
    p1, p2 : Integer;
 begin

@@ -1076,17 +1076,19 @@ begin
                   // compute response
                   FillChar(response^, SizeOf(response^), 0);
                   FLogFieldsData.ProtocolStatus := DoRequest(inRequest, outResponse);
+                  if Terminated then
+                     exit;
                   response^.SetStatus(FLogFieldsData.ProtocolStatus, outStatus);
+                  with response^.Headers.KnownHeaders[respServer] do begin
+                     pRawValue:=Pointer(FServerName);
+                     RawValueLength:=Length(FServerName);
+                  end;
                   if FLogDataPtr<>nil then begin
                      FLogFieldsData.UserNameLength:=Length(outResponse.LogUserName);
                      FLogFieldsData.UserName:=Pointer(outResponse.LogUserName);
                   end;
-                  if Terminated then
-                     exit;
                   // send response
                   response^.Version := request^.Version;
-                  if FCompressAcceptEncoding<>'' then
-                     outResponse.OutCustomHeader := outResponse.OutCustomHeader+#13#10+FCompressAcceptEncoding;
                   response^.SetHeaders(pointer(outResponse.OutCustomHeader), pointer(headers), high(headers));
                   if outResponse.OutContentType = HTTP_RESP_STATICFILE then begin
                      // response is file -> let http.sys serve it (OutContent is UTF-8)

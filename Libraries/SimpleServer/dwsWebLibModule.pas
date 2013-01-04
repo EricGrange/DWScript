@@ -40,6 +40,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsWebClassesWebRequestMethodsSecureEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsWebClassesWebRequestMethodsUserAgentEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -53,7 +55,7 @@ implementation
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsCookieEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsString:=Info.WebRequest.Cookies.Values['Info.ParamAsString[0]'];
+   Info.ResultAsString:=Info.WebRequest.Cookies.Values[Info.ParamAsString[0]];
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsCookiesEval(
@@ -120,6 +122,12 @@ procedure TdwsWebLib.dwsWebClassesWebRequestMethodsURLEval(Info: TProgramInfo;
   ExtObject: TObject);
 begin
    Info.ResultAsString:=Info.WebRequest.URL;
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsUserAgentEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=Info.WebRequest.UserAgent;
 end;
 
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsContentDataEval(

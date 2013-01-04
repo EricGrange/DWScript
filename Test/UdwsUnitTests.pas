@@ -42,6 +42,7 @@ type
          procedure FuncOpenArrayEval(Info: TProgramInfo);
          procedure FuncOverloadIntEval(Info: TProgramInfo);
          procedure FuncOverloadStrEval(Info: TProgramInfo);
+         function  FuncFastEval(args : TExprBaseList) : Variant;
 
          procedure ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
          procedure ClassCleanup(ExternalObject: TObject);
@@ -108,6 +109,7 @@ type
          procedure ReservedNameMethod;
          procedure CallInNested;
          procedure OverloadedFunc;
+         procedure FastEvalTest;
 
          procedure ExplicitUses;
    end;
@@ -357,6 +359,10 @@ begin
    func.Overloaded:=True;
    func.Parameters.Add('v', 'String');
    func.OnEval:=FuncOverloadStrEval;
+
+   func:=FUnit.Functions.Add('FuncFast', 'Integer');
+   func.Parameters.Add('v', 'String');
+   func.OnFastEval:=FuncFastEval;
 end;
 
 // DeclareTestClasses
@@ -685,6 +691,13 @@ end;
 procedure TdwsUnitTestsContext.FuncOverloadStrEval(Info: TProgramInfo);
 begin
    Info.ResultAsString:='('+Info.ParamAsString[0]+')';
+end;
+
+// FuncFastEval
+//
+function TdwsUnitTestsContext.FuncFastEval(args : TExprBaseList) : Variant;
+begin
+   Result:=Length(args.AsString[0]);
 end;
 
 // ClassConstructor
@@ -1641,6 +1654,21 @@ begin
    CheckEquals('', prog.Msgs.AsInfo, 'Compile');
 
    CheckEquals('246(123)468(234)', prog.Execute.Result.ToString, 'exec');
+end;
+
+// FastEvalTest
+//
+procedure TdwsUnitTests.FastEvalTest;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile( 'Print(FuncFast("hello"));'#13#10
+                           +'var f := @FuncFast;'#13#10
+                           +'Print(f("test"));');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+
+   CheckEquals('54', prog.Execute.Result.ToString, 'exec');
 end;
 
 // ExplicitUses

@@ -451,8 +451,10 @@ type
    TdwsFunctions = class(TdwsCollection)
       protected
          class function GetSymbolClass : TdwsSymbolClass; override;
+
       public
-         function Add : TdwsFunction;
+         function Add : TdwsFunction; overload; inline;
+         function Add(const name : String; const resultType : String = '') : TdwsFunction; overload;
    end;
 
   TdwsFunctionsClass = class of TdwsFunctions;
@@ -504,7 +506,7 @@ type
          class function GetSymbolClass : TdwsSymbolClass; override;
 
       public
-         function Add : TdwsConstant;
+         function Add : TdwsConstant; inline;
   end;
 
   TdwsConstantsClass = class of TdwsConstants;
@@ -521,7 +523,7 @@ type
       protected
          class function GetSymbolClass : TdwsSymbolClass; override;
       public
-         function Add : TdwsForward;
+         function Add : TdwsForward; inline;
    end;
 
   TdwsForwardsClass = class of TdwsForwards;
@@ -536,6 +538,8 @@ type
       public
          constructor Create(Collection: TCollection); override;
          function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+
+      published
          property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
    end;
 
@@ -2766,8 +2770,10 @@ begin
    if ResultType='' then
       Result:=Format('procedure %s%s;', [Name, Result])
    else Result:=Format('function %s%s : %s;', [Name, Result, ResultType]);
+   if Overloaded then
+      Result:=Result+' overloaded;';
    if Deprecated<>'' then
-      Result:=Result+' deprecated;'
+      Result:=Result+' deprecated;';
 end;
 
 // Assign
@@ -4297,6 +4303,15 @@ end;
 function TdwsFunctions.Add : TdwsFunction;
 begin
    Result:=TdwsFunction(inherited Add);
+end;
+
+// Add
+//
+function TdwsFunctions.Add(const name : String; const resultType : String = '') : TdwsFunction;
+begin
+   Result:=Add;
+   Result.Name:=name;
+   Result.ResultType:=resultType;
 end;
 
 { TdwsForwards }

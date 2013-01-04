@@ -110,7 +110,7 @@ object dwsSystemInfoLibModule: TdwsSystemInfoLibModule
         Properties = <>
       end>
     UnitName = 'System.Info'
-    StaticSymbols = False
+    StaticSymbols = True
     Left = 56
     Top = 24
   end

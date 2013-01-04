@@ -38,6 +38,8 @@ type
          function GetCookies : TStrings;
          function GetQueryFields : TStrings;
 
+         function GetUserAgent : String;
+
          function PrepareCookies : TStrings; virtual;
          function PrepareQueryFields : TStrings; virtual;
 
@@ -53,6 +55,7 @@ type
          property Security : String read FSecurity write FSecurity;
          property PathInfo : String read GetPathInfo;
          property QueryString : String read GetQueryString;
+         property UserAgent : String read GetUserAgent;
 
          property Headers : TStrings read FHeaders;
          property Cookies : TStrings read GetCookies;
@@ -251,6 +254,13 @@ begin
    if FQueryFields=nil then
       FQueryFields:=PrepareQueryFields;
    Result:=FQueryFields;
+end;
+
+// GetUserAgent
+//
+function TWebRequest.GetUserAgent : String;
+begin
+   Result:=Header('User-Agent');
 end;
 
 // ------------------

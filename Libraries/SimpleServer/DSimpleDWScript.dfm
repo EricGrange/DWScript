@@ -1,4 +1,4 @@
-object SynDWScript: TSynDWScript
+object SimpleDWScript: TSimpleDWScript
   OldCreateOrder = False
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy

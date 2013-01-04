@@ -111,6 +111,13 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnEval = dwsWebClassesWebRequestMethodsSecureEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'UserAgent'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsUserAgentEval
+            Kind = mkClassFunction
           end>
         Properties = <
           item
@@ -276,7 +283,7 @@ object dwsWebLib: TdwsWebLib
           end>
       end>
     UnitName = 'System.Net'
-    StaticSymbols = False
+    StaticSymbols = True
     Left = 24
     Top = 16
   end

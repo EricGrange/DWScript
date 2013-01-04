@@ -52,6 +52,7 @@ type
    TBlockExprBase = class;
 
    TVariantDynArray = array of Variant;
+   TStringDynArray = array of String;
 
    TNoResultExprList = array[0..MaxInt shr 4] of TNoResultExpr;
    PNoResultExprList = ^TNoResultExprList;
@@ -1773,7 +1774,7 @@ type
   end;
 
    // An instance of a script class FClassSym. Instance data in FData,
-   TScriptObj = class(TInterfacedObject, IScriptObj)
+   TScriptObj = class(TInterfacedSelfObject, IScriptObj)
       private
          FNextObject, FPrevObject : TScriptObj;
 
@@ -1847,6 +1848,7 @@ type
 
       public
          constructor Create(elemTyp : TTypeSymbol);
+         destructor Destroy; override;
 
          procedure Delete(index, count : Integer);
          procedure Insert(index : Integer);
@@ -1861,6 +1863,7 @@ type
          function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer; overload;
 
          function ToString : String; override;
+         function ToStringArray : TStringDynArray;
 
          property ElementTyp : TTypeSymbol read FElementTyp;
          property ElementSize : Integer read FElementSize;
@@ -6797,6 +6800,13 @@ begin
    FElementSize:=elemTyp.Size;
 end;
 
+// Destroy
+//
+destructor TScriptDynamicArray.Destroy;
+begin
+   inherited;
+end;
+
 // SetLength
 //
 procedure TScriptDynamicArray.SetLength(n : Integer);
@@ -7005,6 +7015,19 @@ end;
 function TScriptDynamicArray.ToString : String;
 begin
    Result:='array of '+FElementTyp.Name;
+end;
+
+// ToStringArray
+//
+function TScriptDynamicArray.ToStringArray : TStringDynArray;
+var
+   i : Integer;
+begin
+   Assert(FElementTyp.BaseType.ClassType=TBaseStringSymbol);
+
+   System.SetLength(Result, Length);
+   for i:=0 to Length-1 do
+      Result[i]:=Data[i];
 end;
 
 // ------------------

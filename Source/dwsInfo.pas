@@ -174,7 +174,7 @@ type
          function GetScriptObj : IScriptObj; override;
 
       public
-         function Element(const Indices: array of Integer): IInfo; override;
+         function Element(const indices : array of Integer) : IInfo; override;
          function GetMember(const s: String): IInfo; override;
          function GetValueAsString : String; override;
          function GetData : TData; override;
@@ -1201,35 +1201,40 @@ end;
 
 // Element
 //
-function TInfoDynamicArray.Element(const Indices: array of Integer): IInfo;
+function TInfoDynamicArray.Element(const indices : array of Integer): IInfo;
 var
    x : Integer;
    elemTyp : TSymbol;
    elemOff : Integer;
    dynArray : TScriptDynamicArray;
+   p : PVarData;
 begin
    dynArray:=SelfDynArray;
 
-   elemTyp := FTypeSym;
-   elemOff := 0;
-   if Length(Indices)=0 then
+   elemTyp:=FTypeSym;
+   elemOff:=0;
+   if Length(indices)=0 then
       raise Exception.Create(RTE_TooFewIndices);
 
-   for x := 0 to High(Indices) do begin
-      if Assigned(elemTyp) and (elemTyp.BaseType is TDynamicArraySymbol) then
-         elemTyp := elemTyp.BaseType.Typ
+   for x:=0 to High(indices) do begin
+      if Assigned(elemTyp) and (elemTyp.BaseType.ClassType=TDynamicArraySymbol) then
+         elemTyp:=elemTyp.BaseType.Typ
       else raise Exception.Create(RTE_TooManyIndices);
 
-      if Indices[x]>=dynArray.Length then
-         raise Exception.CreateFmt(RTE_ArrayUpperBoundExceeded,[x]);
+      if Cardinal(indices[x])>=Cardinal(dynArray.Length) then begin
+         if indices[x]<0 then
+            raise Exception.CreateFmt(RTE_ArrayLowerBoundExceeded, [x])
+         else raise Exception.CreateFmt(RTE_ArrayUpperBoundExceeded, [x]);
+      end;
 
-      if Indices[x]<0 then
-         raise Exception.CreateFmt(RTE_ArrayLowerBoundExceeded,[x]);
+      elemOff:=indices[x]*dynArray.ElementSize;
 
-      elemOff := Indices[x] * SelfDynArray.ElementSize;
-
-      if x<High(Indices) then
-         dynArray := IScriptObj(IUnknown(dynArray.Data[elemOff])).InternalObject as TScriptDynamicArray;
+      if x<High(indices) then begin
+         p:=@dynArray.Data[elemOff];
+         if p.VType<>varUnknown then
+            raise Exception.Create(RTE_TooManyIndices);
+         dynArray:=IScriptObj(p.VUnknown).InternalObject as TScriptDynamicArray;
+      end;
    end;
 
    SetChild(Result, FProgramInfo, elemTyp, dynArray.Data, elemOff, FDataMaster);

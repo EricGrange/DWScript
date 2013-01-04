@@ -64,8 +64,8 @@ type
       protected
          function GetSelf : TObject;
          function QueryInterface({$IFDEF FPC_HAS_CONSTREF}constref{$ELSE}const{$ENDIF} IID: TGUID; out Obj): HResult; stdcall;
-         function _AddRef: Integer; stdcall;
-         function _Release: Integer; stdcall;
+         function _AddRef : Integer; stdcall;
+         function _Release : Integer; stdcall;
 
       public
          class function NewInstance: TObject; override;
