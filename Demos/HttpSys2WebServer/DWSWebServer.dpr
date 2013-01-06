@@ -134,7 +134,7 @@ begin
       exit;
    end;
 
-   FormatSettings.DecimalSeparator:='.';
+   SetDecimalSeparator('.');
 
    optionsFileName:=ExtractFilePath(ParamStr(0))+'options.json';
    if FileExists(optionsFileName) then
