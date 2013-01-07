@@ -15,22 +15,22 @@
 {                                                                      }
 {**********************************************************************}
 {
-    This unit wraps SynDBODBC from Synopse mORMot framework.
+    This unit wraps SynDBOracle from Synopse mORMot framework.
 
     Synopse mORMot framework. Copyright (C) 2012 Arnaud Bouchez
       Synopse Informatique - http://synopse.info
 }
-unit dwsSynODBCDatabase;
+unit dwsSynOracleDatabase;
 
 interface
 
 uses
-   SynDB, SynDBODBC,
+   SynDB, SynDBOracle,
    dwsSynDBDatabase, dwsDatabase, dwsExprs;
 
 type
 
-   TdwsSynODBCDataBaseFactory = class (TdwsDataBaseFactory)
+   TdwsSynOracleDataBaseFactory = class (TdwsDataBaseFactory)
       public
          function CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase; override;
    end;
@@ -44,16 +44,16 @@ implementation
 // ------------------------------------------------------------------
 
 // ------------------
-// ------------------ TdwsSynODBCDataBaseFactory ------------------
+// ------------------ TdwsSynOracleDataBaseFactory ------------------
 // ------------------
 
 // CreateDataBase
 //
-function TdwsSynODBCDataBaseFactory.CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase;
+function TdwsSynOracleDataBaseFactory.CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase;
 var
    db : TdwsSynDBDataBase;
 begin
-   db:=TdwsSynDBDataBase.Create(TODBCConnectionProperties, parameters);
+   db:=TdwsSynDBDataBase.Create(TSQLDBOracleConnectionProperties, parameters);
    Result:=db;
 end;
 
@@ -65,6 +65,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   TdwsDatabase.RegisterDriver('ODBC', TdwsSynODBCDataBaseFactory.Create);
+   TdwsDatabase.RegisterDriver('Oracle', TdwsSynOracleDataBaseFactory.Create);
 
 end.

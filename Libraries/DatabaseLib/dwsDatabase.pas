@@ -97,8 +97,6 @@ type
          class var vOnApplyPathVariables : TdwsDataBaseApplyPathVariablesEvent;
 
       public
-         constructor Create(const parameters : array of String); virtual; abstract;
-
          class property OnApplyPathVariables : TdwsDataBaseApplyPathVariablesEvent read vOnApplyPathVariables write vOnApplyPathVariables;
          class function ApplyPathVariables(const path : String) : String; static;
 

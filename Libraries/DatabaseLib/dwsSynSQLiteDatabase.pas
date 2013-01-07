@@ -36,7 +36,7 @@ type
          FDB : TSQLDatabase;
 
       public
-         constructor Create(const parameters : array of String); override;
+         constructor Create(const parameters : array of String);
          destructor Destroy; override;
 
          procedure BeginTransaction;
