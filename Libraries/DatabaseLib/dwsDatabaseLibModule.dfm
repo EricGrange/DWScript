@@ -47,6 +47,11 @@ object dwsDatabaseLib: TdwsDatabaseLib
             Kind = mkProcedure
           end
           item
+            Name = 'StartTransaction'
+            OnEval = dwsDatabaseClassesDataBaseMethodsBeginTransactionEval
+            Kind = mkProcedure
+          end
+          item
             Name = 'Commit'
             OnEval = dwsDatabaseClassesDataBaseMethodsCommitEval
             Kind = mkProcedure
@@ -271,8 +276,14 @@ object dwsDatabaseLib: TdwsDatabaseLib
           end
           item
             Name = 'DataType'
-            ResultType = 'String'
+            ResultType = 'DataFieldType'
             OnEval = dwsDatabaseClassesDataFieldMethodsDataTypeEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'DeclaredType'
+            ResultType = 'String'
+            OnEval = dwsDatabaseClassesDataFieldMethodsDeclaredTypeEval
             Kind = mkFunction
           end
           item
@@ -306,6 +317,52 @@ object dwsDatabaseLib: TdwsDatabaseLib
             Kind = mkFunction
           end>
         OnCleanUp = dwsDatabaseClassesDataBaseCleanUp
+      end>
+    Enumerations = <
+      item
+        Name = 'DataFieldType'
+        Elements = <
+          item
+            Name = 'Unknown'
+            UserDefValue = 0
+            IsUserDef = False
+          end
+          item
+            Name = 'Null'
+            UserDefValue = 0
+            IsUserDef = False
+          end
+          item
+            Name = 'Integer'
+            UserDefValue = 0
+            IsUserDef = False
+          end
+          item
+            Name = 'Float'
+            UserDefValue = 0
+            IsUserDef = False
+          end
+          item
+            Name = 'String'
+            UserDefValue = 0
+            IsUserDef = False
+          end
+          item
+            Name = 'Boolean'
+            UserDefValue = 0
+            IsUserDef = False
+          end
+          item
+            Name = 'DateTime'
+            UserDefValue = 0
+            IsUserDef = False
+          end
+          item
+            Name = 'Blob'
+            UserDefValue = 0
+            IsUserDef = False
+          end>
+        Style = enumScoped
       end>
     UnitName = 'System.Data'
     StaticSymbols = True

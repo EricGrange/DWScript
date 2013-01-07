@@ -52,10 +52,22 @@ type
       property Fields[index : Integer] : IdwsDataField read GetField;
    end;
 
+   TdwsDataFieldType = (
+      dftUnknown,
+      dftNull,
+      dftInteger,
+      dftFloat,
+      dftString,
+      dftBoolean,
+      dftDateTime,
+      dftBlob
+      );
+
    IdwsDataField = interface
       ['{1376FC38-6BDB-4E24-99A0-7987C02B2E23}']
       function Name : String;
-      function DataType : String;
+      function DataType : TdwsDataFieldType;
+      function DeclaredType : String;
 
       function IsNull : Boolean;
       function AsString : String;
@@ -123,11 +135,13 @@ type
          FDataSet : TdwsDataSet;
          FIndex : Integer;
          FName : String;
-         FDataType : String;
+         FDataType : TdwsDataFieldType;
+         FDeclaredType : String;
 
       protected
          function GetName : String; virtual; abstract;
-         function GetDataType : String; virtual; abstract;
+         function GetDataType : TdwsDataFieldType; virtual; abstract;
+         function GetDeclaredType : String; virtual; abstract;
 
       public
          constructor Create(dataSet : TdwsDataSet; fieldIndex : Integer);
@@ -136,7 +150,8 @@ type
          property Index : Integer read FIndex;
 
          function Name : String;
-         function DataType : String;
+         function DataType : TdwsDataFieldType;
+         function DeclaredType : String;
 
          function IsNull : Boolean; virtual; abstract;
          function AsString : String; virtual; abstract;
@@ -272,11 +287,20 @@ end;
 
 // DataType
 //
-function TdwsDataField.DataType : String;
+function TdwsDataField.DataType : TdwsDataFieldType;
 begin
-   if FDataType='' then
+   if FDataType=dftUnknown then
       FDataType:=GetDataType;
    Result:=FDataType;
+end;
+
+// DeclaredType
+//
+function TdwsDataField.DeclaredType : String;
+begin
+   if FDeclaredType='' then
+      FDeclaredType:=GetDeclaredType;
+   Result:=FDeclaredType;
 end;
 
 // AsBoolean

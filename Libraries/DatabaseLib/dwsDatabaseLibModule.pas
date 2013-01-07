@@ -65,6 +65,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsDatabaseClassesDataSetMethodsIndexOfFieldEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsDatabaseClassesDataFieldMethodsDeclaredTypeEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -239,7 +241,13 @@ end;
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsDataTypeEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-   Info.ResultAsString:=(ExtObject as TDataField).Intf.DataType;
+   Info.ResultAsInteger:=Ord((ExtObject as TDataField).Intf.DataType);
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsDeclaredTypeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=(ExtObject as TDataField).Intf.DeclaredType;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataFieldMethodsIsNullEval(

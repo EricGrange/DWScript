@@ -15,25 +15,26 @@
 {                                                                      }
 {**********************************************************************}
 {
-    This unit wraps SynSQLite3 from Synopse mORMot framework.
+    This unit wraps SynDBODBC from Synopse mORMot framework.
 
     Synopse mORMot framework. Copyright (C) 2012 Arnaud Bouchez
       Synopse Informatique - http://synopse.info
 }
-unit dwsSynSQLiteDatabase;
+unit dwsSynODBCDatabase;
 
 interface
 
 uses
    Classes, Variants, SysUtils,
-   SynSQLite3,
+   SynDB, SynDBODBC,
    dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform;
 
 type
 
-   TdwsSynSQLiteDataBase = class (TdwsDataBase, IdwsDataBase)
+   TdwsSynODBCDataBase = class (TdwsDataBase, IdwsDataBase)
       private
-         FDB : TSQLDatabase;
+         FProps : TSQLDBConnectionProperties;
+         FConn : TODBCConnection;
 
       public
          constructor Create(const parameters : array of String); override;
@@ -48,17 +49,17 @@ type
          function Query(const sql : String; const parameters : TData) : IdwsDataSet;
    end;
 
-   TdwsSynSQLiteDataSet = class (TdwsDataSet)
+   TdwsSynODBCDataSet = class (TdwsDataSet)
       private
-         FDB : TdwsSynSQLiteDataBase;
-         FQuery : TSQLRequest;
+         FDB : TdwsSynODBCDataBase;
+         FStmt : TODBCStatement;
          FEOFReached : Boolean;
 
       protected
          procedure DoPrepareFields; override;
 
       public
-         constructor Create(db : TdwsSynSQLiteDataBase; const sql : String; const parameters : TData);
+         constructor Create(db : TdwsSynODBCDataBase; const sql : String; const parameters : TData);
          destructor Destroy; override;
 
          function Eof : Boolean; override;
@@ -67,14 +68,14 @@ type
          function FieldCount : Integer; override;
    end;
 
-   TdwsSynSQLiteDataField = class (TdwsDataField)
+   TdwsSynODBCDataField = class (TdwsDataField)
       protected
          function GetName : String; override;
          function GetDataType : TdwsDataFieldType; override;
          function GetDeclaredType : String; override;
 
       public
-         constructor Create(dataSet : TdwsSynSQLiteDataSet; fieldIndex : Integer);
+         constructor Create(dataSet : TdwsSynODBCDataSet; fieldIndex : Integer);
 
          function IsNull : Boolean; override;
          function AsString : String; override;
@@ -99,7 +100,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-procedure AssignParameters(var rq : TSQLRequest; const params : TData);
+procedure AssignParameters(var stmt : TODBCStatement; const params : TData);
 var
    i : Integer;
    p : PVarData;
@@ -107,11 +108,11 @@ begin
    for i:=1 to Length(params) do begin
       p:=PVarData(@params[i-1]);
       case p.VType of
-         varInt64 : rq.Bind(i, p.VInt64);
-         varDouble : rq.Bind(i, p.VDouble);
-         varUString : rq.BindS(i, String(p.VUString));
-         varBoolean : rq.Bind(i, Ord(p.VBoolean));
-         varNull : rq.BindNull(i);
+         varInt64 : stmt.Bind(i, p.VInt64);
+         varDouble : stmt.Bind(i, p.VDouble);
+         varUString : stmt.BindTextS(i, String(p.VUString));
+         varBoolean : stmt.Bind(i, Ord(p.VBoolean));
+         varNull : stmt.BindNull(i);
       else
          raise Exception.CreateFmt('Unsupported VarType %d', [p.VType]);
       end;
@@ -126,27 +127,36 @@ end;
 //
 function TdwsSynSQLiteDataBaseFactory.CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase;
 var
-   db : TdwsSynSQLiteDataBase;
+   db : TdwsSynODBCDataBase;
 begin
-   db:=TdwsSynSQLiteDataBase.Create(parameters);
+   db:=TdwsSynODBCDataBase.Create(parameters);
    Result:=db;
 end;
 
 // ------------------
-// ------------------ TdwsSynSQLiteDataBase ------------------
+// ------------------ TdwsSynODBCDataBase ------------------
 // ------------------
 
 // Create
 //
-constructor TdwsSynSQLiteDataBase.Create(const parameters : array of String);
+constructor TdwsSynODBCDataBase.Create(const parameters : array of String);
 var
-   dbName : String;
+   n : Integer;
+   serverName, dbName, user, passWord : String;
 begin
-   if Length(parameters)>0 then
-      dbName:=TdwsDataBase.ApplyPathVariables(parameters[0])
-   else dbName:=':memory:';
+   n:=Length(parameters);
+   if n>0 then
+      serverName:=parameters[0];
+   if n>1 then
+      dbName:=TdwsDataBase.ApplyPathVariables(parameters[1]);
+   if n>2 then
+      user:=parameters[2];
+   if n>3 then
+      passWord:=parameters[3];
    try
-      FDB:=TSQLDatabase.Create(dbName);
+      FProps:=TODBCConnectionProperties.Create(UTF8Encode(serverName), UTF8Encode(dbName),
+                                               UTF8Encode(user), UTF8Encode(passWord));
+      FConn:=(FProps.NewConnection as TODBCConnection);
    except
       RefCount:=0;
       raise;
@@ -155,85 +165,83 @@ end;
 
 // Destroy
 //
-destructor TdwsSynSQLiteDataBase.Destroy;
+destructor TdwsSynODBCDataBase.Destroy;
 begin
-   FDB.Free;
+   FConn.Free;
+   FProps.Free;
    inherited;
 end;
 
 // BeginTransaction
 //
-procedure TdwsSynSQLiteDataBase.BeginTransaction;
+procedure TdwsSynODBCDataBase.BeginTransaction;
 begin
-   FDB.TransactionBegin;
+   FConn.StartTransaction;
 end;
 
 // Commit
 //
-procedure TdwsSynSQLiteDataBase.Commit;
+procedure TdwsSynODBCDataBase.Commit;
 begin
-   FDB.Commit;
+   FConn.Commit;
 end;
 
 // Rollback
 //
-procedure TdwsSynSQLiteDataBase.Rollback;
+procedure TdwsSynODBCDataBase.Rollback;
 begin
-   FDB.Rollback;
+   FConn.Rollback;
 end;
 
 // InTransaction
 //
-function TdwsSynSQLiteDataBase.InTransaction : Boolean;
+function TdwsSynODBCDataBase.InTransaction : Boolean;
 begin
-   Result:=FDB.TransactionActive;
+   Result:=(FConn.TransactionCount>0);
 end;
 
 // Exec
 //
-procedure TdwsSynSQLiteDataBase.Exec(const sql : String; const parameters : TData);
+procedure TdwsSynODBCDataBase.Exec(const sql : String; const parameters : TData);
 var
-   rq : TSQLRequest;
+   stmt : TODBCStatement;
 begin
-   rq.Prepare(FDB.DB, UTF8Encode(sql));
+   stmt:=TODBCStatement.Create(FConn);
    try
-      AssignParameters(rq, parameters);
-      rq.Execute;
-   except
-      rq.Close;
-      raise;
+      stmt.Prepare(UTF8Encode(sql));
+      AssignParameters(stmt, parameters);
+      stmt.ExecutePrepared;
+   finally
+      stmt.Free;
    end;
 end;
 
 // Query
 //
-function TdwsSynSQLiteDataBase.Query(const sql : String; const parameters : TData) : IdwsDataSet;
+function TdwsSynODBCDataBase.Query(const sql : String; const parameters : TData) : IdwsDataSet;
 var
-   ds : TdwsSynSQLiteDataSet;
+   ds : TdwsSynODBCDataSet;
 begin
-   ds:=TdwsSynSQLiteDataSet.Create(Self, sql, parameters);
+   ds:=TdwsSynODBCDataSet.Create(Self, sql, parameters);
    Result:=ds;
 end;
 
 // ------------------
-// ------------------ TdwsSynSQLiteDataSet ------------------
+// ------------------ TdwsSynODBCDataSet ------------------
 // ------------------
 
 // Create
 //
-constructor TdwsSynSQLiteDataSet.Create(db : TdwsSynSQLiteDataBase; const sql : String; const parameters : TData);
+constructor TdwsSynODBCDataSet.Create(db : TdwsSynODBCDataBase; const sql : String; const parameters : TData);
 begin
    FDB:=db;
    inherited Create(db);
    try
-      FQuery.Prepare(db.FDB.DB, UTF8Encode(sql));
-      try
-         AssignParameters(FQuery, parameters);
-         FEOFReached:=(FQuery.Step=SQLITE_DONE);
-      except
-         FQuery.Close;
-         raise;
-      end;
+      FStmt:=TODBCStatement.Create(db.FConn);
+      FStmt.Prepare(UTF8Encode(sql), True);
+      AssignParameters(FStmt, parameters);
+      FStmt.ExecutePrepared;
+      FEOFReached:=not FStmt.Step;
    except
       RefCount:=0;
       raise;
@@ -242,113 +250,111 @@ end;
 
 // Destroy
 //
-destructor TdwsSynSQLiteDataSet.Destroy;
+destructor TdwsSynODBCDataSet.Destroy;
 begin
-   if FQuery.Request<>0 then
-      FQuery.Close;
+   FStmt.Free;
    inherited;
 end;
 
 // Eof
 //
-function TdwsSynSQLiteDataSet.Eof : Boolean;
+function TdwsSynODBCDataSet.Eof : Boolean;
 begin
    Result:=FEOFReached;
 end;
 
 // Next
 //
-procedure TdwsSynSQLiteDataSet.Next;
+procedure TdwsSynODBCDataSet.Next;
 begin
-   FEOFReached:=(FQuery.Step=SQLITE_DONE);
+   FEOFReached:=not FStmt.Step;
 end;
 
 // FieldCount
 //
-function TdwsSynSQLiteDataSet.FieldCount : Integer;
+function TdwsSynODBCDataSet.FieldCount : Integer;
 begin
-   Result:=FQuery.FieldCount;
+   Result:=FStmt.ColumnCount;
 end;
 
 // DoPrepareFields
 //
-procedure TdwsSynSQLiteDataSet.DoPrepareFields;
+procedure TdwsSynODBCDataSet.DoPrepareFields;
 var
    i, n : Integer;
 begin
-   n:=FQuery.FieldCount;
+   n:=FStmt.ColumnCount;
    SetLength(FFields, n);
    for i:=0 to n-1 do
-      FFields[i]:=TdwsSynSQLiteDataField.Create(Self, i);
+      FFields[i]:=TdwsSynODBCDataField.Create(Self, i);
 end;
 
 // ------------------
-// ------------------ TdwsSynSQLiteDataField ------------------
+// ------------------ TdwsSynODBCDataField ------------------
 // ------------------
 
 // Create
 //
-constructor TdwsSynSQLiteDataField.Create(dataSet : TdwsSynSQLiteDataSet; fieldIndex : Integer);
+constructor TdwsSynODBCDataField.Create(dataSet : TdwsSynODBCDataSet; fieldIndex : Integer);
 begin
    inherited Create(dataSet, fieldIndex);
 end;
 
 // IsNull
 //
-function TdwsSynSQLiteDataField.IsNull : Boolean;
+function TdwsSynODBCDataField.IsNull : Boolean;
 begin
-   Result:=TdwsSynSQLiteDataSet(DataSet).FQuery.FieldNull(Index);
+   Result:=TdwsSynODBCDataSet(DataSet).FStmt.ColumnNull(Index);
 end;
 
 // GetName
 //
-function TdwsSynSQLiteDataField.GetName : String;
+function TdwsSynODBCDataField.GetName : String;
 begin
-   Result:=UTF8ToString(TdwsSynSQLiteDataSet(DataSet).FQuery.FieldName(Index));
+   Result:=UTF8ToString(TdwsSynODBCDataSet(DataSet).FStmt.ColumnName(Index));
 end;
 
 // GetDataType
 //
-function TdwsSynSQLiteDataField.GetDataType : TdwsDataFieldType;
+function TdwsSynODBCDataField.GetDataType : TdwsDataFieldType;
 const
-   cSQLiteTypeToDataType : array [SQLITE_INTEGER..SQLITE_NULL] of TdwsDataFieldType = (
-      dftInteger, dftFloat, dftString, dftBlob, dftNull
+   cSynDBTypeToDataType : array [TSQLDBFieldType] of TdwsDataFieldType = (
+      dftUnknown, dftNull, dftInteger, dftFloat, dftFloat, dftDateTime, dftString, dftBlob
    );
-var
-   sqliteType : Integer;
 begin
-   sqliteType:=TdwsSynSQLiteDataSet(DataSet).FQuery.FieldType(Index);
-   if sqliteType in [Low(cSQLiteTypeToDataType)..High(SQLITE_NULL)] then
-      Result:=cSQLiteTypeToDataType[sqliteType]
-   else Result:=dftUnknown;
+   Result:=cSynDBTypeToDataType[TdwsSynODBCDataSet(DataSet).FStmt.ColumnType(Index)];
 end;
 
 // GetDeclaredType
 //
-function TdwsSynSQLiteDataField.GetDeclaredType : String;
+function TdwsSynODBCDataField.GetDeclaredType : String;
+const
+   cSynDBTypeToString : array [TSQLDBFieldType] of String = (
+      'Unknown', 'Null', 'Integer', 'Float', 'Currency', 'Date', 'Text', 'Blob'
+   );
 begin
-   Result:=TdwsSynSQLiteDataSet(DataSet).FQuery.FieldDeclaredTypeS(Index);
+   Result:=cSynDBTypeToString[TdwsSynODBCDataSet(DataSet).FStmt.ColumnType(Index)];
 end;
 
 // AsString
 //
-function TdwsSynSQLiteDataField.AsString : String;
+function TdwsSynODBCDataField.AsString : String;
 begin
-   Result:=TdwsSynSQLiteDataSet(DataSet).FQuery.FieldS(Index);
+   Result:=TdwsSynODBCDataSet(DataSet).FStmt.ColumnString(Index);
 end;
 
 // AsInteger
 //
-function TdwsSynSQLiteDataField.AsInteger : Int64;
+function TdwsSynODBCDataField.AsInteger : Int64;
 begin
-   Result:=TdwsSynSQLiteDataSet(DataSet).FQuery.FieldInt(Index);
+   Result:=TdwsSynODBCDataSet(DataSet).FStmt.ColumnInt(Index);
 end;
 
 // AsFloat
 //
-function TdwsSynSQLiteDataField.AsFloat : Double;
+function TdwsSynODBCDataField.AsFloat : Double;
 begin
-   Result:=TdwsSynSQLiteDataSet(DataSet).FQuery.FieldDouble(Index);
+   Result:=TdwsSynODBCDataSet(DataSet).FStmt.ColumnDouble(Index);
 end;
 
 // ------------------------------------------------------------------
@@ -359,6 +365,6 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   TdwsDatabase.RegisterDriver('SQLite', TdwsSynSQLiteDataBaseFactory.Create);
+   TdwsDatabase.RegisterDriver('ODBC', TdwsSynSQLiteDataBaseFactory.Create);
 
 end.
