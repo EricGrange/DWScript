@@ -27,6 +27,17 @@ uses
 
 type
 
+   TdwsDataFieldType = (
+      dftUnknown,
+      dftNull,
+      dftInteger,
+      dftFloat,
+      dftString,
+      dftBoolean,
+      dftDateTime,
+      dftBlob
+      );
+
    IdwsDataSet = interface;
    IdwsDataField = interface;
 
@@ -47,21 +58,9 @@ type
       procedure Next;
 
       function GetField(index : Integer) : IdwsDataField;
-      function FieldCount : Integer;
-
       property Fields[index : Integer] : IdwsDataField read GetField;
+      function FieldCount : Integer;
    end;
-
-   TdwsDataFieldType = (
-      dftUnknown,
-      dftNull,
-      dftInteger,
-      dftFloat,
-      dftString,
-      dftBoolean,
-      dftDateTime,
-      dftBlob
-      );
 
    IdwsDataField = interface
       ['{1376FC38-6BDB-4E24-99A0-7987C02B2E23}']

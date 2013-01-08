@@ -59,8 +59,6 @@ type
       ExtObject: TObject);
     procedure dwsDatabaseClassesDataFieldMethodsAsBooleanEval(
       Info: TProgramInfo; ExtObject: TObject);
-    procedure dwsDatabaseClassesDataSetMethodsFieldNameEval(Info: TProgramInfo;
-      ExtObject: TObject);
     procedure dwsDatabaseClassesDataSetMethodsFieldByNameEval(
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsDatabaseClassesDataSetMethodsIndexOfFieldEval(
@@ -324,12 +322,6 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsFieldCountEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsInteger:=(ExtObject as TDataSet).Intf.FieldCount;
-end;
-
-procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsFieldNameEval(
-  Info: TProgramInfo; ExtObject: TObject);
-begin
-   Info.ResultAsString:=(ExtObject as TDataSet).Intf.Fields[Info.ParamAsInteger[0]].Name;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsGetFieldEval(

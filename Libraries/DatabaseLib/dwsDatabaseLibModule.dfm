@@ -158,17 +158,6 @@ object dwsDatabaseLib: TdwsDatabaseLib
             Kind = mkFunction
           end
           item
-            Name = 'FieldName'
-            Parameters = <
-              item
-                Name = 'index'
-                DataType = 'Integer'
-              end>
-            ResultType = 'String'
-            OnEval = dwsDatabaseClassesDataSetMethodsFieldNameEval
-            Kind = mkFunction
-          end
-          item
             Name = 'FieldByName'
             Parameters = <
               item

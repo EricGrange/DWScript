@@ -99,6 +99,17 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+function SQLiteTypeToDataType(sqliteType : Integer) : TdwsDataFieldType;
+const
+   cSQLiteTypeToDataType : array [SQLITE_INTEGER..SQLITE_NULL] of TdwsDataFieldType = (
+      dftInteger, dftFloat, dftString, dftBlob, dftNull
+   );
+begin
+   if sqliteType in [Low(cSQLiteTypeToDataType)..High(SQLITE_NULL)] then
+      Result:=cSQLiteTypeToDataType[sqliteType]
+   else Result:=dftUnknown;
+end;
+
 procedure AssignParameters(var rq : TSQLRequest; const params : TData);
 var
    i : Integer;
@@ -310,17 +321,8 @@ end;
 // GetDataType
 //
 function TdwsSynSQLiteDataField.GetDataType : TdwsDataFieldType;
-const
-   cSQLiteTypeToDataType : array [SQLITE_INTEGER..SQLITE_NULL] of TdwsDataFieldType = (
-      dftInteger, dftFloat, dftString, dftBlob, dftNull
-   );
-var
-   sqliteType : Integer;
 begin
-   sqliteType:=TdwsSynSQLiteDataSet(DataSet).FQuery.FieldType(Index);
-   if sqliteType in [Low(cSQLiteTypeToDataType)..High(SQLITE_NULL)] then
-      Result:=cSQLiteTypeToDataType[sqliteType]
-   else Result:=dftUnknown;
+   Result:=SQLiteTypeToDataType(TdwsSynSQLiteDataSet(DataSet).FQuery.FieldType(Index));
 end;
 
 // GetDeclaredType
