@@ -199,7 +199,7 @@ type
          FUsesTempParams: Boolean;
          FForceStatic: Boolean;
 
-         function CreateTempFuncExpr : TFuncExpr;
+         function CreateTempFuncExpr : TFuncExprBase;
          procedure InitTempParams;
          function GetParameter(const s: String): IInfo; override;
          function GetExternalObject: TObject; override;
@@ -830,11 +830,11 @@ end;
 
 // Call
 //
-function TInfoFunc.Call: IInfo;
+function TInfoFunc.Call : IInfo;
 var
    x : Integer;
    tp : TTempParam;
-   funcExpr : TFuncExpr;
+   funcExpr : TFuncExprBase;
    resultAddr : Integer;
    resultData : TData;
 begin
@@ -921,7 +921,7 @@ var
    x : Integer;
    funcSym : TFuncSymbol;
    dataSym : TDataSymbol;
-   funcExpr : TFuncExpr;
+   funcExpr : TFuncExprBase;
    resultAddr : Integer;
    resultData : TData;
 begin
@@ -1037,7 +1037,7 @@ end;
 
 // CreateTempFuncExpr
 //
-function TInfoFunc.CreateTempFuncExpr : TFuncExpr;
+function TInfoFunc.CreateTempFuncExpr : TFuncExprBase;
 begin
    if FData<>nil then begin
       Result:=TFuncPtrExpr.Create(FExec.Prog, cNullPos,
@@ -1573,7 +1573,7 @@ var
    x : Integer;
    resultData : TData;
    resultAddr : Integer;
-   funcExpr : TFuncExpr;
+   funcExpr : TFuncExprBase;
    prog : TdwsProgram;
 begin
    resultData := nil;
@@ -1608,13 +1608,14 @@ end;
 //
 procedure TExternalVarDataMaster.Write(exec : TdwsExecution; const Data: TData);
 var
-   funcExpr : TFuncExpr;
+   funcExpr : TFuncExprBase;
 begin
    if TExternalVarSymbol(FSym).WriteFunc<>nil then begin
       funcExpr := CreateFuncExpr(FCaller.Prog, TExternalVarSymbol(FSym).WriteFunc, nil, nil);
       try
          funcExpr.AddArg(TConstExpr.CreateTyped(FCaller.Prog, FSym.Typ, Data));
-         funcExpr.AddPushExprs((exec as TdwsProgramExecution).Prog);
+         if (funcExpr is TFuncExpr) then
+            TFuncExpr(funcExpr).AddPushExprs((exec as TdwsProgramExecution).Prog);
          funcExpr.EvalNoResult(exec);
       finally
          funcExpr.Free;

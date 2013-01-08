@@ -73,17 +73,19 @@ type
          procedure Execute(info : TProgramInfo); virtual; abstract;
    end;
 
-   TInternalFunctionFlag = (iffStateLess, iffOverloaded, iffDeprecated);
+   TInternalFunctionFlag = (iffStateLess, iffOverloaded, iffDeprecated, iffStaticMethod);
    TInternalFunctionFlags = set of TInternalFunctionFlag;
 
    TInternalFunction = class(TFunctionPrototype, IUnknown, ICallable)
       public
          constructor Create(table : TSymbolTable; const funcName : String;
                             const params : TParamArray; const funcType : String;
-                            const flags : TInternalFunctionFlags = []); overload; virtual;
+                            const flags : TInternalFunctionFlags;
+                            compositeSymbol : TCompositeTypeSymbol); overload; virtual;
          constructor Create(table : TSymbolTable; const funcName : String;
                             const params : array of String; const funcType : String;
-                            const flags : TInternalFunctionFlags = []); overload;
+                            const flags : TInternalFunctionFlags = [];
+                            compositeSymbol : TCompositeTypeSymbol = nil); overload;
          procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); override;
          procedure Execute(info : TProgramInfo); virtual; abstract;
    end;
@@ -372,7 +374,8 @@ end;
 
 constructor TInternalFunction.Create(table : TSymbolTable; const funcName : String;
                                      const params : TParamArray; const funcType : String;
-                                     const flags : TInternalFunctionFlags = []);
+                                     const flags : TInternalFunctionFlags;
+                                     compositeSymbol : TCompositeTypeSymbol);
 var
    sym: TFuncSymbol;
 begin
@@ -391,9 +394,10 @@ end;
 //
 constructor TInternalFunction.Create(table: TSymbolTable; const funcName : String;
                                      const params : array of String; const funcType : String;
-                                     const flags : TInternalFunctionFlags = []);
+                                     const flags : TInternalFunctionFlags = [];
+                                     compositeSymbol : TCompositeTypeSymbol = nil);
 begin
-   Create(table, funcName, ConvertFuncParams(params), funcType, flags);
+   Create(table, funcName, ConvertFuncParams(params), funcType, flags, compositeSymbol);
 end;
 
 // Call
@@ -778,7 +782,7 @@ begin
       rif := PRegisteredInternalFunction(FRegisteredInternalFunctions[i]);
       try
          rif.InternalFunctionClass.Create(unitTable, rif.FuncName, rif.FuncParams,
-                                          rif.FuncType, rif.Flags);
+                                          rif.FuncType, rif.Flags, nil);
       except
          on e: Exception do
             raise Exception.CreateFmt('AddInternalFunctions failed on %s'#13#10'%s',

@@ -561,7 +561,7 @@ type
          function ReadPropertyWriteExpr(var expr : TTypedExpr; propertySym : TPropertySymbol) : TProgramExpr;
          function ReadPropertyArrayAccessor(var expr : TTypedExpr; propertySym : TPropertySymbol;
                                             typedExprList : TTypedExprList;
-                                            const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExpr;
+                                            const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExprBase;
 
          function ReadRecordDecl(const typeName : String; allowNonConstExpressions : Boolean) : TRecordSymbol;
          procedure ReadFieldsDecl(struct : TStructuredTypeSymbol; visibility : TdwsVisibility;
@@ -636,7 +636,7 @@ type
 
          function GetFuncExpr(funcSym : TFuncSymbol; codeExpr : TDataExpr = nil) : TFuncExprBase;
          function GetMethodExpr(meth: TMethodSymbol; Expr: TTypedExpr; RefKind: TRefKind;
-                                const scriptPos: TScriptPos; ForceStatic : Boolean): TFuncExpr;
+                                const scriptPos: TScriptPos; ForceStatic : Boolean) : TFuncExprBase;
 
          procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol; const hotPos : TScriptPos);
          procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
@@ -708,6 +708,8 @@ type
          property UnitSection : TdwsUnitSection read FUnitSection write FUnitSection;
          property TokenizerRules : TTokenizerRules read FTokRules;
          property Tokenizer : TTokenizer read FTok write FTok;
+
+         property AnyTypeSymbol : TAnyTypeSymbol read FAnyTypeSymbol;
 
          property StaticExtensionSymbols : Boolean read FStaticExtensionSymbols write FStaticExtensionSymbols;
          property OnCreateBaseVariantSymbol : TCompilerCreateBaseVariantSymbolEvent read FOnCreateBaseVariantSymbol write FOnCreateBaseVariantSymbol;
@@ -1213,7 +1215,7 @@ end;
 // GetMethodExpr
 //
 function TdwsCompiler.GetMethodExpr(meth: TMethodSymbol; Expr: TTypedExpr; RefKind: TRefKind;
-                                    const scriptPos : TScriptPos; ForceStatic : Boolean): TFuncExpr;
+                                    const scriptPos : TScriptPos; ForceStatic : Boolean) : TFuncExprBase;
 begin
    Result:=CreateMethodExpr(FProg, meth, Expr, RefKind, scriptPos, ForceStatic);
 
@@ -4534,7 +4536,7 @@ end;
 // ReadPropertyArrayAccessor
 //
 function TdwsCompiler.ReadPropertyArrayAccessor(var expr : TTypedExpr; propertySym : TPropertySymbol;
-      typedExprList : TTypedExprList; const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExpr;
+      typedExprList : TTypedExprList; const scriptPos : TScriptPos; isWrite : Boolean) : TFuncExprBase;
 var
    i : Integer;
    sym : TSymbol;
@@ -5598,7 +5600,7 @@ function TdwsCompiler.ReadMethod(methodSym : TMethodSymbol; instanceExpr : TType
                                  expecting : TTypeSymbol = nil;
                                  overloads : TFuncSymbolList = nil) : TTypedExpr;
 var
-   funcExpr : TFuncExpr;
+   funcExpr : TFuncExprBase;
 begin
    if methodSym.IsClassMethod then
       funcExpr:=GetMethodExpr(methodSym, instanceExpr, rkClassOfRef, scriptPos, False)
@@ -5615,7 +5617,7 @@ function TdwsCompiler.ReadStaticMethod(methodSym : TMethodSymbol; metaExpr : TTy
                                        expecting : TTypeSymbol = nil;
                                        overloads : TFuncSymbolList = nil) : TTypedExpr;
 var
-   funcExpr : TFuncExpr;
+   funcExpr : TFuncExprBase;
    compoSym : TCompositeTypeSymbol;
 begin
    if methodSym.Kind=fkConstructor then begin
@@ -8585,7 +8587,7 @@ var
    setExpr : TTypedExpr;
    elementType : TTypeSymbol;
    classOpSymbol : TClassOperatorSymbol;
-   classOpExpr : TFuncExpr;
+   classOpExpr : TFuncExprBase;
    argPosArray : TScriptPosArray;
 begin
    hotPos:=FTok.HotPos;
@@ -10597,7 +10599,7 @@ function TdwsCompiler.CreateAssign(const scriptPos : TScriptPos; token : TTokenT
                                    left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
 var
    classOpSymbol : TClassOperatorSymbol;
-   classOpExpr : TFuncExpr;
+   classOpExpr : TFuncExprBase;
    assignOpExpr : TAssignExpr;
    classSymbol : TClassSymbol;
    intfSymbol : TInterfaceSymbol;

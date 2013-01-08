@@ -37,6 +37,7 @@ const
   SYS_SYSTEM = 'System';
   SYS_DEFAULT = 'Default';
   SYS_OBJECT = 'Object';
+  SYS_ANY = 'Any';
   SYS_TCLASS = 'TClass';
   SYS_TOBJECT = 'TObject';
   SYS_TOBJECT_CREATE = 'Create';

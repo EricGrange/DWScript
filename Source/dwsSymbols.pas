@@ -2182,7 +2182,7 @@ begin
          if not methSym.IsAbstract then begin
             if Assigned(methSym.FExecutable) then
                methSym.FExecutable.InitSymbol(FMembers[i])
-            else if not IsExternal then begin
+            else if not methSym.IsExternal then begin
                msg:=msgs.AddCompilerErrorFmt((methSym as TSourceMethodSymbol).DeclarationPos, CPE_MethodNotImplemented,
                                              [methSym.Name, methSym.StructSymbol.Caption]);
                afa:=TdwsAFAAddImplementation.Create(msg, AFA_AddImplementation);

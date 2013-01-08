@@ -23,7 +23,7 @@ interface
 uses Classes, SysUtils, dwsLanguageExtension, dwsComp, dwsCompiler,
    dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs, dwsStack,
    dwsStrings, dwsXPlatform, dwsUtils, dwsOperators, dwsUnitSymbols,
-   dwsFunctions, dwsJSON;
+   dwsFunctions, dwsJSON, dwsMagicExprs;
 
 type
 
@@ -48,12 +48,14 @@ type
    IJSONHigh = interface(IConnectorCall) end;
    IJSONLength = interface(IConnectorCall) end;
    IJSONClone = interface(IConnectorCall) end;
+   IJSONExtend = interface(IConnectorCall) end;
 
    // TdwsJSONConnectorType
    //
    TdwsJSONConnectorType = class (TInterfacedSelfObject, IConnectorType,
                                   IJSONTypeName, IJSONElementName,
-                                  IJSONLow, IJSONHigh, IJSONLength, IJSONClone)
+                                  IJSONLow, IJSONHigh, IJSONLength,
+                                  IJSONClone, IJSONExtend)
       private
          FTable : TSymbolTable;
          FLowValue : TData;
@@ -76,6 +78,7 @@ type
          function HighCall(const base : Variant; const args : TConnectorArgs) : TData;
          function LengthCall(const base : Variant; const args : TConnectorArgs) : TData;
          function CloneCall(const base : Variant; const args : TConnectorArgs) : TData;
+         function ExtendCall(const base : Variant; const args : TConnectorArgs) : TData;
 
          function IJSONTypeName.Call = TypeNameCall;
          function IJSONElementName.Call = ElementNameCall;
@@ -83,6 +86,7 @@ type
          function IJSONHigh.Call = HighCall;
          function IJSONLength.Call = LengthCall;
          function IJSONClone.Call = CloneCall;
+         function IJSONExtend.Call = ExtendCall;
 
       public
          constructor Create(table : TSymbolTable);
@@ -142,9 +146,16 @@ type
 
    // TJSONStringifyMethod
    //
-   TJSONStringifyMethod = class(TInternalStaticMethod)
-      procedure Execute(info : TProgramInfo); override;
-      class function DoStringify(const v : Variant) : String; static;
+   TJSONStringifyMethod = class (TInternalMagicStringFunction)
+      procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+
+      class procedure StringifyVariant(writer : TdwsJSONWriter; const v : Variant); static;
+      class procedure StringifySymbol(writer : TdwsJSONWriter; sym : TSymbol; const data : TData; offset : Integer); static;
+      class procedure StringifyDynamicArray(writer : TdwsJSONWriter; dynArray : TScriptDynamicArray); static;
+      class procedure StringifyArray(writer : TdwsJSONWriter; elemSym : TSymbol;
+                                     const data : TData; offset, nb : Integer); static;
+      class procedure StringifyComposite(writer : TdwsJSONWriter; compSym : TCompositeTypeSymbol; const data : TData; offset : Integer); static;
+      class procedure StringifyClass(writer : TdwsJSONWriter; clsSym : TClassSymbol; const data : TData; offset : Integer); static;
    end;
 
 // ------------------------------------------------------------------
@@ -294,6 +305,7 @@ procedure TdwsJSONLanguageExtension.CreateSystemSymbols(table : TSystemSymbolTab
 var
    connSym : TJSONConnectorSymbol;
    jsonObject : TClassSymbol;
+   anyType : TAnyTypeSymbol;
 begin
    connSym:=TJSONConnectorSymbol.Create(SYS_JSON_VARIANT, TdwsJSONConnectorType.Create(table));
    table.AddSymbol(connSym);
@@ -305,9 +317,17 @@ begin
    jsonObject.IsSealed:=True;
    jsonObject.SetNoVirtualMembers;
 
-   TJSONStringifyMethod.Create(mkClassFunction, [maStatic], SYS_JSON_STRINGIFY,
-                               ['obj', SYS_JSON_VARIANT], SYS_STRING,
-                               jsonObject, cvPublic, table);
+   anyType:=TAnyTypeSymbol.Create('Any Type', nil);
+   table.AddSymbol(anyType);
+
+//   TJSONStringifyMethod.Create(mkClassFunction, [maStatic], SYS_JSON_STRINGIFY,
+//                               ['obj', 'Any Type'], SYS_STRING,
+//                               jsonObject, cvPublic, table);
+   TJSONStringifyMethod.Create(table, SYS_JSON_STRINGIFY,
+                               ['val', 'Any Type'], SYS_STRING,
+                               [iffStateLess, iffStaticMethod],
+                               jsonObject);
+
    TJSONParseMethod.Create(mkClassFunction, [maStatic], SYS_JSON_PARSE,
                            ['str', SYS_STRING], SYS_JSON_VARIANT,
                            jsonObject, cvPublic, table);
@@ -379,6 +399,16 @@ begin
 
       Result:=IJSONElementName(Self);
       typSym:=FTable.FindTypeSymbol(SYS_STRING, cvMagic);
+
+   end else if UnicodeSameText(methodName, 'extend') then begin
+
+      if Length(params)<>1 then
+         raise ECompileException.CreateFmt(CPE_BadNumberOfParameters, [1, Length(params)]);
+      if params[0].TypSym.UnAliasedType<>FTable.FindTypeSymbol(SYS_JSON_VARIANT, cvMagic) then
+         raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_JSON_VARIANT, params[0].TypSym.Caption]);
+
+      Result:=IJSONExtend(Self);
+      typSym:=nil;
 
    end else begin
 
@@ -517,6 +547,21 @@ begin
    end else Result[0]:=vNilJSONValue;
 end;
 
+// ExtendCall
+//
+function TdwsJSONConnectorType.ExtendCall(const base : Variant; const args : TConnectorArgs) : TData;
+var
+   pBase, pParam : PVarData;
+begin
+   Result:=nil;
+   pBase:=PVarData(@base);
+   if pBase^.VType=varUnknown then begin
+      pParam:=PVarData(@args[0]);
+      if (pParam^.VType=varUnknown) and (pParam.VUnknown<>nil) then
+         IBoxedJSONValue(IUnknown(pBase^.VUnknown)).Value.Extend(IBoxedJSONValue(IUnknown(pParam^.VUnknown)).Value);
+   end;
+end;
+
 // ------------------
 // ------------------ TdwsJSONIndexCall ------------------
 // ------------------
@@ -648,55 +693,165 @@ end;
 // ------------------ TJSONStringifyMethod ------------------
 // ------------------
 
-// Execute
+// DoEvalAsString
 //
-procedure TJSONStringifyMethod.Execute(info : TProgramInfo);
-begin
-   Info.ResultAsString:=DoStringify(info.ParamAsVariant[0]);
-end;
-
-// DoStringify
-//
-class function TJSONStringifyMethod.DoStringify(const v : Variant) : String;
+procedure TJSONStringifyMethod.DoEvalAsString(args : TExprBaseList; var Result : String);
 var
-   p : PVarData;
-   unk : IUnknown;
-   getSelf : IGetSelf;
-   boxedJSON : IBoxedJSONValue;
    writer : TdwsJSONWriter;
    stream : TWriteOnlyBlockStream;
+   expr : TTypedExpr;
+   dataExpr : TDataExpr;
+   v : Variant;
 begin
    stream:=TWriteOnlyBlockStream.Create;
    writer:=TdwsJSONWriter.Create(stream);
    try
-      p:=PVarData(@v);
-      case p^.VType of
-         varInt64 :
-            writer.WriteInteger(p^.VInt64);
-         varDouble :
-            writer.WriteNumber(p^.VDouble);
-         varBoolean :
-            writer.WriteBoolean(p^.VBoolean);
-         varUnknown : begin
-            unk:=IUnknown(p^.VUnknown);
-            if unk=nil then
-               writer.WriteNull
-            else if unk.QueryInterface(IBoxedJSONValue, boxedJSON)=0 then begin
-               if boxedJSON.Value<>nil then
-                  boxedJSON.Value.WriteTo(writer)
-               else writer.WriteString('Undefined');
-            end else if unk.QueryInterface(IGetSelf, getSelf)=0 then
-               writer.WriteString(getSelf.ToString)
-            else writer.WriteString('IUnknown');
-         end;
-      else
-         writer.WriteString(v);
+      expr:=(args.ExprBase[0] as TTypedExpr);
+      if expr.Typ.Size=1 then begin
+         expr.EvalAsVariant(args.Exec, v);
+         StringifyVariant(writer, v);
+      end else begin
+         dataExpr:=(expr as TDataExpr);
+         StringifySymbol(writer, expr.Typ, dataExpr.Data[args.Exec], dataExpr.Addr[args.Exec]);
       end;
       Result:=stream.ToString;
    finally
       writer.Free;
       stream.Free;
    end;
+end;
+
+// StringifyVariant
+//
+class procedure TJSONStringifyMethod.StringifyVariant(writer : TdwsJSONWriter; const v : Variant);
+var
+   unk : IUnknown;
+   getSelf : IGetSelf;
+   boxedJSON : IBoxedJSONValue;
+   scriptObj : IScriptObj;
+   p : PVarData;
+begin
+   p:=PVarData(@v);
+   case p^.VType of
+      varInt64 :
+         writer.WriteInteger(p^.VInt64);
+      varDouble :
+         writer.WriteNumber(p^.VDouble);
+      varBoolean :
+         writer.WriteBoolean(p^.VBoolean);
+      varUnknown : begin
+         unk:=IUnknown(p^.VUnknown);
+         if unk=nil then
+            writer.WriteNull
+         else if unk.QueryInterface(IBoxedJSONValue, boxedJSON)=0 then begin
+            if boxedJSON.Value<>nil then
+               boxedJSON.Value.WriteTo(writer)
+            else writer.WriteString('Undefined');
+         end else begin
+            if unk.QueryInterface(IScriptObj, scriptObj)=0 then begin
+               if scriptObj.InternalObject.ClassType=TScriptDynamicArray then
+                  StringifyDynamicArray(writer, TScriptDynamicArray(scriptObj.InternalObject))
+               else writer.WriteString(scriptObj.ClassSym.Name);
+            end else begin
+               if unk.QueryInterface(IGetSelf, getSelf)=0 then
+                  writer.WriteString(getSelf.ToString)
+               else writer.WriteString('IUnknown');
+            end;
+         end;
+      end;
+   else
+      writer.WriteString(v);
+   end;
+end;
+
+// StringifySymbol
+//
+class procedure TJSONStringifyMethod.StringifySymbol(writer : TdwsJSONWriter; sym : TSymbol; const data : TData; offset : Integer);
+var
+   ct : TClass;
+begin
+   sym:=sym.BaseType;
+   ct:=sym.ClassType;
+   if ct.InheritsFrom(TBaseSymbol) then
+      StringifyVariant(writer, data[offset])
+   else if ct=TDynamicArraySymbol then
+      StringifyDynamicArray(writer, IScriptObj(IUnknown(data[offset])).InternalObject as TScriptDynamicArray)
+   else if ct.InheritsFrom(TStaticArraySymbol) then
+      StringifyArray(writer, TStaticArraySymbol(sym).Typ, data, offset, TStaticArraySymbol(sym).ElementCount)
+   else if ct=TRecordSymbol then
+      StringifyComposite(writer, TRecordSymbol(sym), data, offset)
+   else if ct=TClassSymbol then
+      StringifyClass(writer, TClassSymbol(sym), data, offset)
+   else writer.WriteString(sym.ClassName);
+end;
+
+// StringifyArray
+//
+class procedure TJSONStringifyMethod.StringifyArray(
+   writer : TdwsJSONWriter; elemSym : TSymbol; const data : TData; offset, nb : Integer);
+var
+   i, s : Integer;
+begin
+   s:=elemSym.Size;
+   writer.BeginArray;
+   for i:=0 to nb-1 do
+      StringifySymbol(writer, elemSym, data, offset+i*s);
+   writer.EndArray;
+end;
+
+// StringifyDynamicArray
+//
+class procedure TJSONStringifyMethod.StringifyDynamicArray(writer : TdwsJSONWriter; dynArray : TScriptDynamicArray);
+begin
+   StringifyArray(writer, dynArray.ElementTyp, dynArray.Data, 0, dynArray.Length);
+end;
+
+// StringifyComposite
+//
+class procedure TJSONStringifyMethod.StringifyComposite(writer : TdwsJSONWriter; compSym : TCompositeTypeSymbol; const data : TData; offset : Integer);
+var
+   i : Integer;
+   bufData : TData;
+   sym : TSymbol;
+   fieldSym : TFieldSymbol;
+   propSym : TPropertySymbol;
+begin
+   writer.BeginObject;
+   for i:=0 to compSym.Members.Count-1 do begin
+      sym:=compSym.Members[i];
+      if sym.ClassType=TPropertySymbol then begin
+         propSym:=TPropertySymbol(sym);
+         if (propSym.Visibility>=cvPublished) and (propSym.ReadSym<>nil) then
+            sym:=propSym.ReadSym
+         else continue;
+         writer.WriteName(propSym.Name);
+      end else if sym.ClassType=TFieldSymbol then begin
+         if TFieldSymbol(sym).Visibility<cvPublished then
+            continue;
+         writer.WriteName(sym.Name);
+      end else continue;
+
+      if sym.ClassType=TFieldSymbol then begin
+         fieldSym:=TFieldSymbol(sym);
+         StringifySymbol(writer, fieldSym.Typ, data, offset+fieldSym.Offset);
+      end else begin
+         SetLength(bufData, sym.Typ.Size);
+         Assert(False, 'Unsupported yet');
+      end;
+   end;
+   writer.EndObject;
+end;
+
+// StringifyClass
+//
+class procedure TJSONStringifyMethod.StringifyClass(writer : TdwsJSONWriter; clsSym : TClassSymbol; const data : TData; offset : Integer);
+var
+   obj : IScriptObj;
+begin
+   obj:=IScriptObj(IUnknown(data[offset]));
+   if (obj=nil) or (obj.Destroyed) then
+      writer.WriteNull
+   else StringifyComposite(writer, clsSym, obj.Data, 0);
 end;
 
 // ------------------------------------------------------------------

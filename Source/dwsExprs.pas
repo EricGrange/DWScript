@@ -1042,6 +1042,9 @@ type
 
          function ChangeFuncSymbol(aProg: TdwsProgram; newFuncSym : TFuncSymbol) : TFuncExprBase; virtual;
 
+         function GetData(exec : TdwsExecution) : TData; override;
+         function GetAddr(exec : TdwsExecution) : Integer; override;
+
          property FuncSym : TFuncSymbol read FFunc;
          property Args : TExprBaseListRec read FArgs;
    end;
@@ -1121,8 +1124,6 @@ type
          procedure AddPushExprs(prog : TdwsProgram);
 
          function Eval(exec : TdwsExecution) : Variant; override;
-         function GetData(exec : TdwsExecution) : TData; override;
-         function GetAddr(exec : TdwsExecution) : Integer; override;
          procedure Initialize(prog : TdwsProgram); override;
          function IsWritable : Boolean; override;
 
@@ -1801,7 +1802,7 @@ type
          property PrevObject : TScriptObj read FPrevObject write FPrevObject;
    end;
 
-   TScriptObjInstance = class(TScriptObj)
+   TScriptObjInstance = class (TScriptObj)
       private
          FClassSym : TClassSymbol;
          FExternalObj : TObject;
@@ -1871,11 +1872,12 @@ type
          property Length : Integer read FLength write SetLength;
    end;
 
-   TScriptInterface = class(TScriptObjInstance)
+   TScriptInterface = class(TScriptObj)
       private
          FTyp : TInterfaceSymbol;
          FInstance : IScriptObj;
          FVMT : TMethodSymbolArray;
+         FExecutionContext : TdwsProgramExecution;
 
       protected
 
@@ -1905,9 +1907,9 @@ type
 
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
                         const scriptObj : IScriptObj; structSym : TCompositeTypeSymbol;
-                        forceStatic : Boolean = False): TFuncExpr;
+                        forceStatic : Boolean = False) : TFuncExprBase;
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; var expr : TTypedExpr; RefKind: TRefKind;
-                          const scriptPos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
+                          const scriptPos: TScriptPos; ForceStatic : Boolean = False) : TFuncExprBase;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -2059,7 +2061,7 @@ end;
 //
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
                         const scriptObj : IScriptObj; structSym : TCompositeTypeSymbol;
-                        forceStatic : Boolean = False): TFuncExpr;
+                        forceStatic : Boolean = False) : TFuncExprBase;
 var
    instanceExpr : TTypedExpr;
 begin
@@ -2092,14 +2094,23 @@ end;
 // CreateMethodExpr
 //
 function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; var expr: TTypedExpr; RefKind: TRefKind;
-                          const scriptPos: TScriptPos; ForceStatic : Boolean = False): TFuncExpr;
+                          const scriptPos: TScriptPos; ForceStatic : Boolean = False) : TFuncExprBase;
 var
    helper : THelperSymbol;
+   internalFunc : TInternalMagicFunction;
 begin
    // Create the correct TExpr for a method symbol
    Result := nil;
 
-   if meth.StructSymbol is TInterfaceSymbol then begin
+   if meth is TMagicMethodSymbol then begin
+
+      if meth is TMagicStaticMethodSymbol then begin
+         FreeAndNil(expr);
+         internalFunc:=TMagicStaticMethodSymbol(meth).InternalFunction;
+         Result:=internalFunc.MagicFuncExprClass.Create(prog, scriptPos, meth, internalFunc);
+      end else Assert(False, 'not supported yet');
+
+   end else if meth.StructSymbol is TInterfaceSymbol then begin
 
       Result:=TMethodInterfaceExpr.Create(prog, scriptPos, meth, expr);
 
@@ -4502,6 +4513,21 @@ begin
    end
 end;
 
+// GetData
+//
+function TFuncExprBase.GetData(exec : TdwsExecution) : TData;
+begin
+   Eval(exec);
+   Result := exec.Stack.Data;
+end;
+
+// GetAddr
+//
+function TFuncExprBase.GetAddr(exec : TdwsExecution) : Integer;
+begin
+   Result := exec.Stack.BasePointer + FResultAddr;
+end;
+
 // Initialize
 //
 procedure TFuncExprBase.Initialize(prog : TdwsProgram);
@@ -4955,17 +4981,6 @@ begin
          exec.Stack.CopyData(sourceAddr, destAddr, FFunc.Typ.Size);
       end;
    end;
-end;
-
-function TFuncExpr.GetData(exec : TdwsExecution) : TData;
-begin
-   Eval(exec);
-   Result := exec.Stack.Data;
-end;
-
-function TFuncExpr.GetAddr(exec : TdwsExecution) : Integer;
-begin
-  Result := exec.Stack.BasePointer + FResultAddr;
 end;
 
 // AddPushExprs
@@ -7055,7 +7070,7 @@ end;
 procedure TScriptInterface.BeforeDestruction;
 begin
    if Assigned(FExecutionContext) then
-      ExecutionContext.ScriptObjDestroyed(Self);
+      FExecutionContext.ScriptObjDestroyed(Self);
    inherited;
 end;
 
