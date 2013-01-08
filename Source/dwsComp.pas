@@ -912,23 +912,27 @@ type
          function Add : TdwsRecord; inline;
    end;
 
-  TdwsRecordsClass = class of TdwsRecords;
+   TdwsRecordsClass = class of TdwsRecords;
 
-  TdwsElement = class(TdwsSymbol)
-  private
-    FIsUserDef: Boolean;
-    FUserDefValue: Integer;
-    procedure SetUserDefValue(const Value: Integer);
-    procedure SetIsUserDef(const Value: Boolean);
-  protected
-    function GetDisplayName: String; override;
-  public
-    procedure Assign(Source: TPersistent); override;
-    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
-  published
-    property UserDefValue: Integer read FUserDefValue write SetUserDefValue;
-    property IsUserDef: Boolean read FIsUserDef write SetIsUserDef;
-  end;
+   TdwsElement = class(TdwsSymbol)
+      private
+         FIsUserDef: Boolean;
+         FUserDefValue: Integer;
+
+         procedure SetUserDefValue(const Value: Integer);
+         procedure SetIsUserDef(const Value: Boolean);
+
+     protected
+         function GetDisplayName: String; override;
+
+      public
+         procedure Assign(Source: TPersistent); override;
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+
+      published
+         property UserDefValue : Integer read FUserDefValue write SetUserDefValue default 0;
+         property IsUserDef : Boolean read FIsUserDef write SetIsUserDef default False;
+   end;
 
    TdwsElements = class(TdwsCollection)
       protected
@@ -937,21 +941,24 @@ type
          function Add : TdwsElement; inline;
    end;
 
-  TdwsEnumeration = class(TdwsSymbol)
-  private
-    FElements: TdwsElements;
-    FStyle : TEnumerationSymbolStyle;
-  protected
-    function GetDisplayName: String; override;
-  public
-    constructor Create(Collection: TCollection); override;
-    destructor Destroy; override;
-    procedure Assign(Source: TPersistent); override;
-    function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
-  published
-    property Elements: TdwsElements read FElements write FElements;
-    property Style : TEnumerationSymbolStyle read FStyle write FStyle default enumClassic;
-  end;
+   TdwsEnumeration = class(TdwsSymbol)
+      private
+         FElements: TdwsElements;
+         FStyle : TEnumerationSymbolStyle;
+
+      protected
+         function GetDisplayName: String; override;
+
+      public
+         constructor Create(Collection: TCollection); override;
+         destructor Destroy; override;
+         procedure Assign(Source: TPersistent); override;
+         function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
+
+      published
+         property Elements: TdwsElements read FElements write FElements;
+         property Style : TEnumerationSymbolStyle read FStyle write FStyle default enumClassic;
+   end;
 
    TdwsEnumerations = class(TdwsCollection)
       protected
@@ -2961,6 +2968,8 @@ begin
          Result:=Format('procedure %s%s;', [Name, Result]);
       mkFunction:
          Result:=Format('function %s%s : %s;', [Name, Result, ResultType]);
+      mkMethod:
+         Result:=Format('method %s%s : %s;', [Name, Result, ResultType]);
       mkConstructor:
          Result:=Format('constructor %s%s;', [Name, Result]);
       mkDestructor:
@@ -2969,6 +2978,8 @@ begin
          Result:=Format('class procedure %s%s;', [Name, Result]);
       mkClassFunction:
          Result:=Format('class function %s%s : %s;', [Name, Result, ResultType]);
+      mkClassMethod:
+         Result:=Format('class method %s%s : %s;', [Name, Result, ResultType]);
    else
       Assert(false); // if triggered, this func needs upgrade !
    end;
