@@ -42,7 +42,7 @@ uses
    SysUtils,
    Classes,
    SynWinSock,
-   dwsHTTPSysAPI, dwsUtils;
+   dwsHTTPSysAPI, dwsUtils, dwsWebEnvironment;
 
 type
    /// FPC 64 compatibility Integer type
@@ -94,6 +94,8 @@ type
       InURL, InMethod, InHeaders, InContent, InContentType : RawByteString;
       Security : THttpRequestSecurity;
       SecurityBytes : Integer;
+      Authentication : TWebRequestAuthentication;
+      AuthenticatedUser : String;
       ConnectionID : Int64;
    end;
 
@@ -165,6 +167,31 @@ type
          property OnHttpThreadTerminate : TNotifyEvent read FOnHttpThreadTerminate write FOnHttpThreadTerminate;
    end;
 
+   THttpApiFragmentCache = class
+      private
+         FQueue : THandle;
+         FSize : Integer;
+         FMaxSize : Integer;
+         FMaxChunkSize : Integer;
+         FPrefix : String;
+         FLock : TFixedCriticalSection;
+
+      public
+         constructor Create(queueHandle : THandle; const aPrefix : String; aMaxSize : Integer);
+         destructor Destroy; override;
+
+         procedure Send(const fileName : String;
+                        request : PHTTP_REQUEST_V2;
+                        response : PHTTP_RESPONSE_V2);
+         procedure Flush;
+
+         property Size : Integer read FSize write FSize;
+         property MaxSize : Integer read FMaxSize write FMaxSize;
+         property MaxChunkSize : Integer read FMaxChunkSize write FMaxChunkSize;
+
+         property Prefix : String read FPrefix write FPrefix;
+   end;
+
   {/ HTTP server using fast http.sys 2.0 l-mode server
 
      Requires Win2008 or Vista. }
@@ -191,6 +218,7 @@ type
          FServiceName : UTF8String;
          FMaxBandwidth : Cardinal;
          FMaxConnections : Cardinal;
+         FAuthentication : Cardinal;
 
          /// server main loop - don't change directly
          // - will call the Request public virtual method with the appropriate
@@ -276,6 +304,8 @@ type
          // - overriden method which will handle any cloned instances
          procedure RegisterCompress(aFunction : THttpSocketCompress); override;
 
+         procedure SetAuthentication(schemeFlags : Cardinal);
+
          property MaxInputCountLength : Cardinal read FMaxInputCountLength write SetMaxInputCountLength;
 
          property Logging : Boolean read GetLogging write SetLogging;
@@ -288,6 +318,7 @@ type
 
          property MaxBandwidth : Cardinal read FMaxBandwidth write SetMaxBandwidth;
          property MaxConnections : Cardinal read FMaxConnections write SetMaxConnections;
+         property Authentication : Cardinal read FAuthentication;
 
    end;
 
@@ -309,8 +340,38 @@ implementation
 const
    cDefaultMaxInputCountLength = 10*1024*1024; // 10 MB
 
+   cHRAtoWRA : array [HTTP_REQUEST_AUTH_TYPE] of TWebRequestAuthentication = (
+      wraNone, wraBasic, wraDigest, wraNTLM, wraNegotiate, wraKerberos
+   );
+
 var
    vWsaDataOnce : TWSADATA;
+
+procedure GetDomainUserFromToken(hToken : THandle; var result: String);
+var
+   err : Boolean;
+   buffer : array [0..511] of Byte;
+   bufferSize, userSize, domainSize : DWORD;
+   pBuffer : PTokenUser;
+   nameUse : SID_NAME_USE;
+   p : PChar;
+begin
+   err:=GetTokenInformation(hToken, TokenUser, @buffer, SizeOf(buffer), bufferSize);
+   if not err then Exit;
+   pBuffer:=@buffer;
+
+   // get field sizes
+   userSize:=0;
+   domainSize:=0;
+   LookupAccountSid(nil, pBuffer.User.Sid, nil, userSize, nil, domainSize, nameUse);
+   if (userSize=0) or (domainSize=0) then Exit;
+   SetLength(result, userSize+domainSize-1);
+   p:=Pointer(result);
+   err:=LookupAccountSid(nil, pBuffer.User.Sid, @p[domainSize], userSize, p, domainSize, nameUse);
+   if err then
+      p[domainSize]:='\'
+   else result:='';
+end;
 
 function GetNextItemUInt64(var P : PAnsiChar) : Int64;
 var
@@ -548,11 +609,11 @@ begin
    FReqQueue := From.FReqQueue;
    FOnRequest := From.OnRequest;
    FCompress := From.FCompress;
+   ServerName := From.ServerName;
    OnHttpThreadTerminate := From.OnHttpThreadTerminate;
    FCompressAcceptEncoding := From.FCompressAcceptEncoding;
    if From.Logging then begin
       FLogDataPtr:=@FLogFieldsData;
-      ServerName:=From.ServerName;
       ServiceName:=From.ServiceName;
    end;
 end;
@@ -909,6 +970,7 @@ var
    bufRead, R : PAnsiChar;
    headers : array of HTTP_UNKNOWN_HEADER;
    dataChunkInMemory : HTTP_DATA_CHUNK_INMEMORY;
+   authInfo : PHTTP_REQUEST_AUTH_INFO;
 
    procedure SendError(statusCode : Cardinal; const errorMsg : String);
    begin
@@ -944,6 +1006,8 @@ var
                rangeStart := GetNextItemUInt64(R);
                if R^ = '-' then begin
                   inc(R);
+                  // EG: suspicious flags, was incorrect and doing a disconnect
+                  // and the ranges flags is not encouraged in the doc
                   flags := HTTP_SEND_RESPONSE_FLAG_PROCESS_RANGES;
                   dataChunkFile.ByteRange.StartingOffset := ULARGE_INTEGER(rangeStart);
                   if R^ in ['0'..'9'] then begin
@@ -1017,9 +1081,24 @@ begin
                inCompressAccept := SetCompressHeader(FCompress, Pointer(inAcceptEncoding));
                inRequest.InHeaders := RetrieveHeaders(request^.Headers, request^.Address.pRemoteAddress, remoteIP);
 
+               inRequest.Authentication:=wraNone;
+               inRequest.AuthenticatedUser:='';
+               if (request.RequestInfoCount>0) and (request.pRequestInfo.InfoType=HttpRequestInfoTypeAuth) then begin
+                  authInfo:=PHTTP_REQUEST_AUTH_INFO(request.pRequestInfo.pInfo);
+                  case authInfo.AuthStatus of
+                     HttpAuthStatusSuccess : begin
+                        inRequest.Authentication:=cHRAtoWRA[authInfo.AuthType];
+                        if authInfo.AccessToken<>0 then
+                           GetDomainUserFromToken(authInfo.AccessToken, inRequest.AuthenticatedUser);
+                     end;
+                     HttpAuthStatusFailure :
+                        inRequest.Authentication:=wraFailed;
+                  end;
+               end;
+
                if FLogDataPtr<>nil then begin
                   UpdateLogData;
-                  outResponse.LogUserName:='';
+                  outResponse.LogUserName:=inRequest.AuthenticatedUser;
                end;
 
                // retrieve body
@@ -1072,9 +1151,10 @@ begin
                      end;
                   end;
                end;
+               // Prepare response
+               FillChar(response^, SizeOf(response^), 0);
                try
                   // compute response
-                  FillChar(response^, SizeOf(response^), 0);
                   FLogFieldsData.ProtocolStatus := DoRequest(inRequest, outResponse);
                   if Terminated then
                      exit;
@@ -1149,6 +1229,23 @@ begin
          THttpApi2Server(FClones.List[i]).RegisterCompress(aFunction);
 end;
 
+// SetAuthentication
+//
+procedure THttpApi2Server.SetAuthentication(schemeFlags : Cardinal);
+var
+   authInfo : HTTP_SERVER_AUTHENTICATION_INFO;
+begin
+   FillChar(authInfo, SizeOf(authInfo), 0);
+   authInfo.Flags:=1;
+   authInfo.AuthSchemes:=schemeFlags;
+   authInfo.ReceiveMutualAuth:=True;
+
+   HttpAPI.Check(
+      HttpAPI.SetUrlGroupProperty(FUrlGroupID, HttpServerAuthenticationProperty,
+                                  @authInfo, SizeOf(authInfo)),
+      hSetServerSessionProperty);
+end;
+
 // UpdateLogInfo
 //
 procedure THttpApi2Server.UpdateLogInfo;
@@ -1215,7 +1312,53 @@ end;
 
 {$endif}
 
+// ------------------
+// ------------------ THttpApiFragmentCache ------------------
+// ------------------
+
+// Create
+//
+constructor THttpApiFragmentCache.Create(queueHandle : THandle; const aPrefix : String; aMaxSize : Integer);
+begin
+   inherited Create;
+   FPrefix:=aPrefix;
+   FQueue:=queueHandle;
+   FMaxSize:=aMaxSize;
+   FMaxChunkSize:=aMaxSize div 10;
+   FLock:=TFixedCriticalSection.Create;
+end;
+
+// Destroy
+//
+destructor THttpApiFragmentCache.Destroy;
+begin
+   Flush;
+   inherited;
+end;
+
+// Send
+//
+procedure THttpApiFragmentCache.Send(const fileName : String;
+                        request : PHTTP_REQUEST_V2;
+                        response : PHTTP_RESPONSE_V2);
+begin
+   // TODO
+end;
+
+// Flush
+//
+procedure THttpApiFragmentCache.Flush;
+begin
+   HttpAPI.FlushResponseCache(FQueue, PChar(FPrefix), 0, nil);
+end;
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 initialization
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
 
    Assert((sizeof(HTTP_REQUEST_V2) = 464+8) and (sizeof(HTTP_SSL_INFO) = 28) and
       (sizeof(HTTP_DATA_CHUNK_INMEMORY) = 24) and
@@ -1224,6 +1367,7 @@ initialization
       (sizeof(HTTP_RESPONSE_HEADERS) = 256) and (sizeof(HTTP_COOKED_URL) = 24) and
       (sizeof(HTTP_RESPONSE_V2) = 288) and (ord(reqUserAgent) = 40) and
       (ord(respLocation) = 23) and (sizeof(THttpHeader) = 4));
+
    if InitSocketInterface then
       WSAStartup(WinsockLevel, vWsaDataOnce)
    else

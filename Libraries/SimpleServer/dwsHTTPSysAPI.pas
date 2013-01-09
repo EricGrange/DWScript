@@ -40,7 +40,7 @@ uses
    SynWinSock;
 
 {$MINENUMSIZE 4}
-{$A+}
+{$A8}
 
 type
    ULONGLONG = Int64;
@@ -357,12 +357,13 @@ type
       Headers : HTTP_REQUEST_HEADERS;
       // The total number of bytes received from network for this request
       BytesReceived : ULONGLONG;
-      EntityChunkCount : word;
-      pEntityChunks : pointer;
+      EntityChunkCount : USHORT;
+      pEntityChunks : Pointer;
       RawConnectionId : HTTP_RAW_CONNECTION_ID;
       // SSL connection information
       pSslInfo : PHTTP_SSL_INFO;
       // V2 new fields
+      xxxPadding : DWORD;
       RequestInfoCount : USHORT;
       pRequestInfo : PHTTP_REQUEST_INFO;
    end;
@@ -499,6 +500,12 @@ type
    end;
    PHTTP_TIMEOUT_LIMIT_INFO = ^HTTP_TIMEOUT_LIMIT_INFO;
 
+   HTTP_LISTEN_ENDPOINT_INFO = record
+      Flags : HTTP_PROPERTY_FLAGS;
+      EnableSharing : BOOLEAN;
+   end;
+   PHTTP_LISTEN_ENDPOINT_INFO = ^HTTP_LISTEN_ENDPOINT_INFO;
+
    HTTP_SERVER_AUTHENTICATION_DIGEST_PARAMS = record
       DomainNameLength : USHORT;
       DomainName : PWideChar;
@@ -518,19 +525,80 @@ const
    HTTP_AUTH_ENABLE_DIGEST = $00000002;
    HTTP_AUTH_ENABLE_NTLM = $00000004;
    HTTP_AUTH_ENABLE_NEGOTIATE = $00000008;
-   HTTP_AUTH_ENABLE_ALL = $0000000F;
+   HTTP_AUTH_ENABLE_KERBEROS = $00000010;
+   HTTP_AUTH_ENABLE_ALL = $0000001F;
 
 type
    HTTP_SERVER_AUTHENTICATION_INFO = record
       Flags : HTTP_PROPERTY_FLAGS;
       AuthSchemes : ULONG;
-      ReceiveMutualAuth : BOOL;
-      ReceiveContextHandle : BOOL;
-      DisableNTLMCredentialCaching : BOOL;
+      ReceiveMutualAuth : BYTEBOOL;
+      ReceiveContextHandle : BYTEBOOL;
+      DisableNTLMCredentialCaching : BYTEBOOL;
+      ExFlags : BYTE;
       DigestParams : HTTP_SERVER_AUTHENTICATION_DIGEST_PARAMS;
       BasicParams : HTTP_SERVER_AUTHENTICATION_BASIC_PARAMS;
    end;
    PHTTP_SERVER_AUTHENTICATION_INFO = ^HTTP_SERVER_AUTHENTICATION_INFO;
+
+
+   HTTP_SERVICE_BINDING_TYPE=(
+      HttpServiceBindingTypeNone = 0,
+      HttpServiceBindingTypeW,
+      HttpServiceBindingTypeA
+   );
+
+   HTTP_SERVICE_BINDING_BASE = record
+      BindingType : HTTP_SERVICE_BINDING_TYPE;
+   end;
+   PHTTP_SERVICE_BINDING_BASE = ^HTTP_SERVICE_BINDING_BASE;
+
+   HTTP_SERVICE_BINDING_A = record
+      Base : HTTP_SERVICE_BINDING_BASE;
+      Buffer : PAnsiChar;
+      BufferSize : ULONG;
+   end;
+   PHTTP_SERVICE_BINDING_A = HTTP_SERVICE_BINDING_A;
+
+   HTTP_SERVICE_BINDING_W = record
+      Base : HTTP_SERVICE_BINDING_BASE;
+      Buffer : PWCHAR;
+      BufferSize : ULONG;
+   end;
+   PHTTP_SERVICE_BINDING_W = ^HTTP_SERVICE_BINDING_W;
+
+   HTTP_AUTHENTICATION_HARDENING_LEVELS = (
+      HttpAuthenticationHardeningLegacy = 0,
+      HttpAuthenticationHardeningMedium,
+      HttpAuthenticationHardeningStrict
+   );
+
+const
+   HTTP_CHANNEL_BIND_PROXY = $1;
+   HTTP_CHANNEL_BIND_PROXY_COHOSTING = $20;
+
+   HTTP_CHANNEL_BIND_NO_SERVICE_NAME_CHECK = $2;
+   HTTP_CHANNEL_BIND_DOTLESS_SERVICE = $4;
+
+   HTTP_CHANNEL_BIND_SECURE_CHANNEL_TOKEN = $8;
+   HTTP_CHANNEL_BIND_CLIENT_SERVICE = $10;
+
+type
+   HTTP_CHANNEL_BIND_INFO = record
+      Hardening : HTTP_AUTHENTICATION_HARDENING_LEVELS;
+      Flags : ULONG;
+      ServiceNames : PHTTP_SERVICE_BINDING_BASE;
+      NumberOfServiceNames : ULONG;
+   end;
+   PHTTP_CHANNEL_BIND_INFO = ^HTTP_CHANNEL_BIND_INFO;
+
+   HTTP_REQUEST_CHANNEL_BIND_STATUS = record
+      ServiceName : PHTTP_SERVICE_BINDING_BASE;
+      ChannelToken : PUCHAR;
+      ChannelTokenSize : ULONG;
+      Flags : ULONG;
+   end;
+   PHTTP_REQUEST_CHANNEL_BIND_STATUS = ^HTTP_REQUEST_CHANNEL_BIND_STATUS;
 
 const
    // Logging option flags. When used in the logging configuration alters
@@ -676,6 +744,18 @@ type
       RequestQueueHandle : THandle;
    end;
 
+   HTTP_PROTECTION_LEVEL_TYPE=(
+      HttpProtectionLevelUnrestricted,
+      HttpProtectionLevelEdgeRestricted,
+      HttpProtectionLevelRestricted
+   );
+
+   HTTP_PROTECTION_LEVEL_INFO = record
+      Flags : HTTP_PROPERTY_FLAGS;
+      Level : HTTP_PROTECTION_LEVEL_TYPE;
+   end;
+   PHTTP_PROTECTION_LEVEL_INFO = ^HTTP_PROTECTION_LEVEL_INFO;
+
 const
    //   HTTP_VERSION_UNKNOWN : HTTPAPI_VERSION = (MajorVersion : 0; MinorVersion : 0);
    //   HTTP_VERSION_0_9 : HTTPAPI_VERSION = (MajorVersion : 0; MinorVersion : 9);
@@ -687,18 +767,30 @@ const
    // if set, available entity body is copied along with the request headers
    // into pEntityChunks
    HTTP_RECEIVE_REQUEST_FLAG_COPY_BODY = 1;
+   HTTP_RECEIVE_REQUEST_FLAG_FLUSH_BODY = 2;
+   // see http://msdn.microsoft.com/en-us/library/windows/desktop/aa364496
+   HTTP_RECEIVE_REQUEST_ENTITY_BODY_FLAG_FILL_BUFFER = 1;
+
    // there is more entity body to be read for this request
    HTTP_REQUEST_FLAG_MORE_ENTITY_BODY_EXISTS = 1;
    // initialization for applications that use the HTTP Server API
    HTTP_INITIALIZE_SERVER = 1;
    // initialization for applications that use the HTTP configuration functions
    HTTP_INITIALIZE_CONFIG = 2;
-   // see http://msdn.microsoft.com/en-us/library/windows/desktop/aa364496
-   HTTP_RECEIVE_REQUEST_ENTITY_BODY_FLAG_FILL_BUFFER = 1;
-   // see http://msdn.microsoft.com/en-us/library/windows/desktop/aa364499
-   HTTP_SEND_RESPONSE_FLAG_PROCESS_RANGES = 1;
 
    HTTP_URL_FLAG_REMOVE_ALL = 1;
+
+   HTTP_CREATE_REQUEST_QUEUE_FLAG_OPEN_EXISTING = 1;
+   HTTP_CREATE_REQUEST_QUEUE_FLAG_CONTROLLER = 2;
+
+   // see http://msdn.microsoft.com/en-us/library/windows/desktop/aa364499
+   HTTP_SEND_RESPONSE_FLAG_DISCONNECT        = $00000001;
+   HTTP_SEND_RESPONSE_FLAG_MORE_DATA         = $00000002;
+   HTTP_SEND_RESPONSE_FLAG_BUFFER_DATA       = $00000004;
+   HTTP_SEND_RESPONSE_FLAG_ENABLE_NAGLING    = $00000008;
+   HTTP_SEND_RESPONSE_FLAG_PROCESS_RANGES    = $00000020;
+
+   HTTP_FLUSH_RESPONSE_FLAG_RECURSIVE = 1;
 
 type
    HTTP_SERVER_PROPERTY = (
@@ -712,7 +804,8 @@ type
       HttpServerBindingProperty,
       HttpServerExtendedAuthenticationProperty,
       HttpServerListenEndpointProperty,
-      HttpServerChannelBindProperty
+      HttpServerChannelBindProperty,
+      HttpServerProtectionLevelProperty
       );
 
    THttpAPIs = (
@@ -720,6 +813,8 @@ type
       hAddUrl, hRemoveUrl, hReceiveHttpRequest,
       hSendHttpResponse, hReceiveRequestEntityBody,
       hSetServiceConfiguration, hDeleteServiceConfiguration,
+
+      hFlushResponseCache,
 
       hCancelHttpRequest,
       hCreateServerSession, hCloseServerSession,
@@ -735,6 +830,8 @@ const
       'HttpAddUrl', 'HttpRemoveUrl', 'HttpReceiveHttpRequest',
       'HttpSendHttpResponse', 'HttpReceiveRequestEntityBody',
       'HttpSetServiceConfiguration', 'HttpDeleteServiceConfiguration',
+
+      'HttpFlushResponseCache',
 
       'HttpCancelHttpRequest',
       'HttpCreateServerSession', 'HttpCloseServerSession',
@@ -798,6 +895,9 @@ type
       DeleteServiceConfiguration : function(ServiceHandle : THandle;
             ConfigId : THttpServiceConfigID; pConfigInformation : pointer;
             ConfigInformationLength : ULONG; pOverlapped : pointer = nil) : HRESULT; stdcall;
+
+      FlushResponseCache : function(ReqQueueHandle: THandle; pUrlPrefix: PWideChar; Flags: ULONG;
+            pOverlapped: POverlapped): ULONG; stdcall;
 
       CancelHttpRequest : function(ReqQueueHandle : THandle; RequestId : HTTP_REQUEST_ID;
             pOverlapped : pointer = nil) : HRESULT; stdcall;
@@ -1014,6 +1114,8 @@ begin
             Known := reqContentEncoding
          else if IdemPChar(P, 'LOCATION:') then
             Known := respLocation
+         else if IdemPChar(P, 'WWW-AUTHENTICATE:') then
+            Known := respWwwAuthenticate
          else
             Known := reqCacheControl; // mark not found
          if Known<>reqCacheControl then

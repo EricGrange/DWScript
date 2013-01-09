@@ -60,6 +60,8 @@ type
          procedure FileChanged(sender : TdwsFileNotifier; const fileName : String;
                                changeAction : TFileNotificationAction);
 
+         procedure LoadAuthenticateOptions(authOptions : TdwsJSONValue);
+
       public
          constructor Create(const basePath : TFileName; options : TdwsJSONValue);
          destructor Destroy; override;
@@ -91,6 +93,9 @@ const
          // Base path for served files
          // If not defined, assumes a www subfolder of the folder where the exe is
          +'"WWWPath": "",'
+         // Enabled Authentication options
+         // Allowed values are "Basic", "Digest", "NTLM", "Negotiate" and "*" for all
+         +'"Authentication": [],'
          // Number of WorkerThreads
          +'"WorkerThreads": 8,'
          // Directory for log files (NCSA)
@@ -168,6 +173,8 @@ begin
          FServer.LogRolloverSize:=1024*1024;
          FServer.Logging:=True;
       end;
+
+      LoadAuthenticateOptions(serverOptions['Authentication']);
 
       FServer.MaxConnections:=serverOptions['MaxConnections'].AsInteger;
 
@@ -260,6 +267,8 @@ begin
          request.InHeaders:=inRequest.InHeaders;
          request.InContent:=inRequest.InContent;
          request.InContentType:=inRequest.InContentType;
+         request.Authentication:=inRequest.Authentication;
+         request.AuthenticatedUser:=inRequest.AuthenticatedUser;
          case inRequest.Security of
             hrsSSL : request.Security:=Format('SSL, %d bits', [inRequest.SecurityBytes*8]);
          else
@@ -310,6 +319,36 @@ begin
       FDWS.FlushDWSCache;
    if (Pos('\.', fileName)<=0) and (Pos('\index.', fileName)>0) then
       FDirectoryIndex.Flush;
+end;
+
+// LoadAuthenticateOptions
+//
+procedure THttpSys2WebServer.LoadAuthenticateOptions(authOptions : TdwsJSONValue);
+const
+   cAuthName : array [0..5] of String = (
+      'Basic', 'Digest', 'NTLM', 'Negotiate', 'Kerberos', '*'
+   );
+   cAuthMasks : array [0..5] of Cardinal = (
+      HTTP_AUTH_ENABLE_BASIC, HTTP_AUTH_ENABLE_DIGEST, HTTP_AUTH_ENABLE_NTLM,
+      HTTP_AUTH_ENABLE_NEGOTIATE, HTTP_AUTH_ENABLE_KERBEROS, HTTP_AUTH_ENABLE_ALL
+      );
+var
+   authMask : Cardinal;
+   authName : String;
+   i, j : Integer;
+begin
+   authMask:=0;
+   for i:=0 to authOptions.ElementCount-1 do begin
+      authName:=authOptions.Elements[i].AsString;
+      for j:=Low(cAuthName) to High(cAuthName) do begin
+         if UnicodeSameText(authName, cAuthName[j]) then begin
+            authMask:=authMask or cAuthMasks[j];
+            Break;
+         end;
+      end;
+   end;
+   if authMask<>0 then
+      FServer.SetAuthentication(authMask);
 end;
 
 end.

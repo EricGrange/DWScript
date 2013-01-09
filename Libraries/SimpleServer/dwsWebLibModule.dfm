@@ -118,6 +118,20 @@ object dwsWebLib: TdwsWebLib
             Attributes = [maStatic]
             OnEval = dwsWebClassesWebRequestMethodsUserAgentEval
             Kind = mkClassFunction
+          end
+          item
+            Name = 'AuthenticatedUser'
+            ResultType = 'String'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsAuthenticatedUserEval
+            Kind = mkClassFunction
+          end
+          item
+            Name = 'Authentication'
+            ResultType = 'WebAuthentication'
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebRequestMethodsAuthenticationEval
+            Kind = mkClassFunction
           end>
         Properties = <
           item
@@ -166,6 +180,7 @@ object dwsWebLib: TdwsWebLib
                 DataType = 'Integer'
               end>
             Attributes = [maStatic]
+            OnEval = dwsWebClassesWebResponseMethodsSetStatusCodeEval
             Visibility = cvProtected
             Kind = mkClassProcedure
           end
@@ -217,6 +232,7 @@ object dwsWebLib: TdwsWebLib
                 DataType = 'String'
               end>
             Attributes = [maStatic]
+            OnEval = dwsWebClassesWebResponseMethodsSetHeaderEval
             Visibility = cvProtected
             Kind = mkClassProcedure
           end
@@ -232,6 +248,17 @@ object dwsWebLib: TdwsWebLib
                 DataType = 'String'
               end>
             OnEval = dwsWebClassesWebResponseMethodsSetContentTextEval
+            Kind = mkClassProcedure
+          end
+          item
+            Name = 'RequestAuthentication'
+            Parameters = <
+              item
+                Name = 'auth'
+                DataType = 'WebAuthentication'
+              end>
+            Attributes = [maStatic]
+            OnEval = dwsWebClassesWebResponseMethodsRequestAuthenticationEval
             Kind = mkClassProcedure
           end>
         Properties = <
@@ -282,9 +309,36 @@ object dwsWebLib: TdwsWebLib
             IsDefault = False
           end>
       end>
+    Enumerations = <
+      item
+        Name = 'WebAuthentication'
+        Elements = <
+          item
+            Name = 'None'
+          end
+          item
+            Name = 'Failed'
+          end
+          item
+            Name = 'Basic'
+          end
+          item
+            Name = 'Digest'
+          end
+          item
+            Name = 'NTLM'
+          end
+          item
+            Name = 'Negotiate'
+          end
+          item
+            Name = 'Kerberos'
+          end>
+        Style = enumScoped
+      end>
     UnitName = 'System.Net'
     StaticSymbols = True
-    Left = 24
+    Left = 56
     Top = 16
   end
 end

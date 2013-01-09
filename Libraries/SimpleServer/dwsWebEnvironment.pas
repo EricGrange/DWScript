@@ -21,6 +21,16 @@ interface
 uses Classes, SysUtils, StrUtils, dwsExprs, dwsUtils;
 
 type
+   TWebRequestAuthentication = (
+      wraNone,
+      wraFailed,
+      wraBasic,
+      wraDigest,
+      wraNTLM,
+      wraNegotiate,
+      wraKerberos
+   );
+
    TWebRequest = class
       private
          FRemoteIP : String;
@@ -39,6 +49,9 @@ type
          function GetQueryFields : TStrings;
 
          function GetUserAgent : String;
+
+         function GetAuthentication : TWebRequestAuthentication; virtual;
+         function GetAuthenticatedUser : String; virtual;
 
          function PrepareCookies : TStrings; virtual;
          function PrepareQueryFields : TStrings; virtual;
@@ -61,6 +74,8 @@ type
          property Cookies : TStrings read GetCookies;
          property QueryFields : TStrings read GetQueryFields;
 
+         property Authentication : TWebRequestAuthentication read GetAuthentication;
+         property AuthenticatedUser : String read GetAuthenticatedUser;
    end;
 
    TWebResponse = class
@@ -115,6 +130,12 @@ type
       function WebRequest : TWebRequest; inline;
       function WebResponse : TWebResponse; inline;
    end;
+
+const
+   cWebRequestAuthenticationToString : array [TWebRequestAuthentication] of String = (
+      'None', 'Failed', 'Basic', 'Digest', 'NTLM', 'Negotiate', 'Kerberos'
+   );
+
 
 implementation
 
@@ -261,6 +282,20 @@ end;
 function TWebRequest.GetUserAgent : String;
 begin
    Result:=Header('User-Agent');
+end;
+
+// GetAuthentication
+//
+function TWebRequest.GetAuthentication : TWebRequestAuthentication;
+begin
+   Result:=wraNone;
+end;
+
+// GetAuthenticatedUser
+//
+function TWebRequest.GetAuthenticatedUser : String;
+begin
+   Result:='';
 end;
 
 // ------------------

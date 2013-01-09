@@ -42,6 +42,16 @@ type
       ExtObject: TObject);
     procedure dwsWebClassesWebRequestMethodsUserAgentEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsWebClassesWebRequestMethodsAuthenticatedUserEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesWebResponseMethodsSetStatusCodeEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesWebResponseMethodsSetHeaderEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsWebClassesWebRequestMethodsAuthenticationEval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsWebClassesWebResponseMethodsRequestAuthenticationEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -51,6 +61,18 @@ type
 implementation
 
 {$R *.dfm}
+
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsAuthenticatedUserEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=Info.WebRequest.AuthenticatedUser;
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebRequestMethodsAuthenticationEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsInteger:=Ord(Info.WebRequest.Authentication);
+end;
 
 procedure TdwsWebLib.dwsWebClassesWebRequestMethodsCookieEval(
   Info: TProgramInfo; ExtObject: TObject);
@@ -148,10 +170,32 @@ begin
    Info.WebResponse.ContentType:=Info.ParamAsDataString[0];
 end;
 
+procedure TdwsWebLib.dwsWebClassesWebResponseMethodsRequestAuthenticationEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   wra : TWebRequestAuthentication;
+begin
+   wra:=TWebRequestAuthentication(Info.ParamAsInteger[0]);
+   Info.WebResponse.Headers.Values['WWW-Authenticate']:=cWebRequestAuthenticationToString[wra];
+   Info.WebResponse.StatusCode:=401;
+end;
+
 procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetContentTextEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.WebResponse.ContentText[Info.ParamAsDataString[0]]:=Info.ParamAsString[1];
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetHeaderEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.WebResponse.Headers.Values[Info.ParamAsString[0]]:=Info.ParamAsString[1];
+end;
+
+procedure TdwsWebLib.dwsWebClassesWebResponseMethodsSetStatusCodeEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.WebResponse.StatusCode:=Info.ParamAsInteger[0];
 end;
 
 end.

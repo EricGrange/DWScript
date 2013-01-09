@@ -30,11 +30,16 @@ type
       private
          FInContent : RawByteString;
          FInContentType : RawByteString;
+         FAuthentication : TWebRequestAuthentication;
+         FAuthenticatedUser : String;
 
       protected
          procedure SetInURL(const val : RawByteString);
          procedure SetInMethod(const val : RawByteString);
          procedure SetInHeaders(const val : RawByteString);
+
+         function GetAuthentication : TWebRequestAuthentication; override;
+         function GetAuthenticatedUser : String; override;
 
       public
          property InURL : RawByteString write SetInURL;
@@ -42,6 +47,8 @@ type
          property InHeaders : RawByteString write SetInHeaders;
          property InContent : RawByteString read FInContent write FInContent;
          property InContentType : RawByteString read FInContentType write FInContentType;
+         property Authentication : TWebRequestAuthentication read FAuthentication write FAuthentication;
+         property AuthenticatedUser : String read FAuthenticatedUser write FAuthenticatedUser;
    end;
 
    TSynopseWebResponse = class (TWebResponse)
@@ -89,6 +96,20 @@ begin
       end;
    end;
    RemoteIP:=Headers.Values['RemoteIP'];
+end;
+
+// GetAuthentication
+//
+function TSynopseWebRequest.GetAuthentication : TWebRequestAuthentication;
+begin
+   Result:=FAuthentication;
+end;
+
+// GetAuthenticatedUser
+//
+function TSynopseWebRequest.GetAuthenticatedUser : String;
+begin
+   Result:=FAuthenticatedUser;
 end;
 
 end.
