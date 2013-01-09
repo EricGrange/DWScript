@@ -423,7 +423,11 @@ end;
 procedure TSimpleDWScript.SetCPUAffinity(const val : Cardinal);
 var
    hProcess : THandle;
+   {$if CompilerVersion < 24.0} // XE3
    procMask, systemMask : Cardinal;
+   {$else}
+   procMask, systemMask : DWORD_PTR;
+   {$ifend}
 begin
    hProcess:=GetCurrentProcess;
    GetProcessAffinityMask(hProcess, procMask, systemMask);

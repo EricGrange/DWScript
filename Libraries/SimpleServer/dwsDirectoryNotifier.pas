@@ -234,7 +234,11 @@ end;
 procedure TdwsFileNotifier.Execute;
 var
    numBytes : DWORD;
+   {$if CompilerVersion < 24.0} // XE3
    completionKey : DWORD;
+   {$else}
+   completionKey : ULONG_PTR;
+   {$ifend}
    fileOpNotification : PFileNotifyInformation;
    offset : Longint;
    fileName : String;
