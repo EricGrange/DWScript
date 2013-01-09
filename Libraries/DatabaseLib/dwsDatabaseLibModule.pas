@@ -65,6 +65,8 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsDatabaseClassesDataFieldMethodsDeclaredTypeEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsStepEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -82,8 +84,10 @@ type
 
    TDataSet = class
       Intf : IdwsDataSet;
+      FirstDone : Boolean;
       function IndexOfField(const name : String) : Integer;
       function FieldByName(Info : TProgramInfo) : IdwsDataField;
+      function Step : Boolean;
    end;
 
    TDataField = class
@@ -111,6 +115,16 @@ begin
    if index>=0 then
       Result:=Intf.GetField(index)
    else raise Exception.CreateFmt('Unknown field "%s"', [fieldName]);
+end;
+
+// Step
+//
+function TDataSet.Step : Boolean;
+begin
+   if FirstDone then
+      Intf.Next
+   else FirstDone:=True;
+   Result:=not Intf.EOF;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseCleanUp(
@@ -345,6 +359,12 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsNextEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    (ExtObject as TDataSet).Intf.Next;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStepEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsBoolean:=(ExtObject as TDataSet).Step;
 end;
 
 end.
