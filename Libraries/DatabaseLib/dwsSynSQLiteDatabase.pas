@@ -26,7 +26,7 @@ interface
 
 uses
    Classes, Variants, SysUtils,
-   SynSQLite3,
+   SynSQLite3, SynCommons,
    dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform;
 
 type
@@ -206,7 +206,7 @@ procedure TdwsSynSQLiteDataBase.Exec(const sql : String; const parameters : TDat
 var
    rq : TSQLRequest;
 begin
-   rq.Prepare(FDB.DB, UTF8Encode(sql));
+   rq.Prepare(FDB.DB, StringToUTF8(sql));
    try
       AssignParameters(rq, parameters);
       rq.Execute;
@@ -237,7 +237,7 @@ begin
    FDB:=db;
    inherited Create(db);
    try
-      FQuery.Prepare(db.FDB.DB, UTF8Encode(sql));
+      FQuery.Prepare(db.FDB.DB, StringToUTF8(sql));
       try
          AssignParameters(FQuery, parameters);
          FEOFReached:=(FQuery.Step=SQLITE_DONE);

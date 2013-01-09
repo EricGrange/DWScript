@@ -30,39 +30,18 @@ uses
 
 type
 
-   TdwsSynOleDBOracleDataBaseFactory = class (TdwsDataBaseFactory)
-      public
-         function CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase; override;
-   end;
+   TOleDBConnectionPropertiesClass = class of TOleDBConnectionProperties;
 
-   TdwsSynOleDBMSOracleDataBaseFactory = class (TdwsDataBaseFactory)
-      public
-         function CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase; override;
-   end;
+   TdwsSynOleDBDataBaseFactory = class (TdwsDataBaseFactory)
+      private
+         FConnPropsClass : TOleDBConnectionPropertiesClass;
 
-   TdwsSynOleDBMSSQLDataBaseFactory = class (TdwsDataBaseFactory)
       public
-         function CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase; override;
-   end;
+         constructor Create(cls : TOleDBConnectionPropertiesClass);
 
-   TdwsSynOleDBMySQLDataBaseFactory = class (TdwsDataBaseFactory)
-      public
          function CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase; override;
-   end;
 
-   TdwsSynOleDBJetDataBaseFactory = class (TdwsDataBaseFactory)
-      public
-         function CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase; override;
-   end;
-
-   TdwsSynOleDBAS400DataBaseFactory = class (TdwsDataBaseFactory)
-      public
-         function CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase; override;
-   end;
-
-   TdwsSynOleDBODBCDataBaseFactory = class (TdwsDataBaseFactory)
-      public
-         function CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase; override;
+         property ConnPropsClass : TOleDBConnectionPropertiesClass read FConnPropsClass write FConnPropsClass;
    end;
 
 // ------------------------------------------------------------------
@@ -73,101 +52,30 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-// ------------------
-// ------------------ TdwsSynOleDBOracleDataBaseFactory ------------------
-// ------------------
-
-// CreateDataBase
-//
-function TdwsSynOleDBOracleDataBaseFactory.CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase;
-var
-   db : TdwsSynDBDataBase;
+procedure RegisterSynOleDBDriver(const name : String; cls : TOleDBConnectionPropertiesClass);
 begin
-   db:=TdwsSynDBDataBase.Create(TOleDBOracleConnectionProperties, parameters);
-   Result:=db;
+   TdwsDatabase.RegisterDriver(name, TdwsSynOleDBDataBaseFactory.Create(cls));
 end;
 
 // ------------------
-// ------------------ TdwsSynOleDBMSOracleDataBaseFactory ------------------
+// ------------------ TdwsSynOleDBDataBaseFactory ------------------
 // ------------------
 
-// CreateDataBase
+// Create
 //
-function TdwsSynOleDBMSOracleDataBaseFactory.CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase;
-var
-   db : TdwsSynDBDataBase;
+constructor TdwsSynOleDBDataBaseFactory.Create(cls : TOleDBConnectionPropertiesClass);
 begin
-   db:=TdwsSynDBDataBase.Create(TOleDBMSOracleConnectionProperties, parameters);
-   Result:=db;
+   inherited Create;
+   FConnPropsClass:=cls;
 end;
 
-// ------------------
-// ------------------ TdwsSynOleDBMSSQLDataBaseFactory ------------------
-// ------------------
-
 // CreateDataBase
 //
-function TdwsSynOleDBMSSQLDataBaseFactory.CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase;
+function TdwsSynOleDBDataBaseFactory.CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase;
 var
    db : TdwsSynDBDataBase;
 begin
-   db:=TdwsSynDBDataBase.Create(TOleDBMSSQLConnectionProperties, parameters);
-   Result:=db;
-end;
-
-// ------------------
-// ------------------ TdwsSynOleDBMySQLDataBaseFactory ------------------
-// ------------------
-
-// CreateDataBase
-//
-function TdwsSynOleDBMySQLDataBaseFactory.CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase;
-var
-   db : TdwsSynDBDataBase;
-begin
-   db:=TdwsSynDBDataBase.Create(TOleDBMySQLConnectionProperties, parameters);
-   Result:=db;
-end;
-
-// ------------------
-// ------------------ TdwsSynOleDBJetDataBaseFactory ------------------
-// ------------------
-
-// CreateDataBase
-//
-function TdwsSynOleDBJetDataBaseFactory.CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase;
-var
-   db : TdwsSynDBDataBase;
-begin
-   db:=TdwsSynDBDataBase.Create(TOleDBJetConnectionProperties, parameters);
-   Result:=db;
-end;
-
-// ------------------
-// ------------------ TdwsSynOleDBAS400DataBaseFactory ------------------
-// ------------------
-
-// CreateDataBase
-//
-function TdwsSynOleDBAS400DataBaseFactory.CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase;
-var
-   db : TdwsSynDBDataBase;
-begin
-   db:=TdwsSynDBDataBase.Create(TOleDBAS400ConnectionProperties, parameters);
-   Result:=db;
-end;
-
-// ------------------
-// ------------------ TdwsSynOleDBODBCDataBaseFactory ------------------
-// ------------------
-
-// CreateDataBase
-//
-function TdwsSynOleDBODBCDataBaseFactory.CreateDataBase(const parameters : TStringDynArray) : IdwsDataBase;
-var
-   db : TdwsSynDBDataBase;
-begin
-   db:=TdwsSynDBDataBase.Create(TOleDBODBCSQLConnectionProperties, parameters);
+   db:=TdwsSynDBDataBase.Create(FConnPropsClass, parameters);
    Result:=db;
 end;
 
@@ -179,12 +87,15 @@ initialization
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-   TdwsDatabase.RegisterDriver('OleDB Oracle', TdwsSynOleDBOracleDataBaseFactory.Create);
-   TdwsDatabase.RegisterDriver('OleDB MSOracle', TdwsSynOleDBMSOracleDataBaseFactory.Create);
-   TdwsDatabase.RegisterDriver('OleDB MSSQL', TdwsSynOleDBMSSQLDataBaseFactory.Create);
-   TdwsDatabase.RegisterDriver('OleDB MySQL', TdwsSynOleDBMySQLDataBaseFactory.Create);
-   TdwsDatabase.RegisterDriver('OleDB Jet', TdwsSynOleDBJetDataBaseFactory.Create);
-   TdwsDatabase.RegisterDriver('OleDB AS400', TdwsSynOleDBAS400DataBaseFactory.Create);
-   TdwsDatabase.RegisterDriver('OleDB ODBC', TdwsSynOleDBODBCDataBaseFactory.Create);
+   RegisterSynOleDBDriver('OleDB Oracle', TOleDBOracleConnectionProperties);
+   RegisterSynOleDBDriver('OleDB MSOracle', TOleDBMSOracleConnectionProperties);
+   RegisterSynOleDBDriver('OleDB MSSQL', TOleDBMSSQLConnectionProperties);
+   RegisterSynOleDBDriver('OleDB MSSQL2005', TOleDBMSSQL2005ConnectionProperties);
+   RegisterSynOleDBDriver('OleDB MSSQL2008', TOleDBMSSQL2008ConnectionProperties);
+   RegisterSynOleDBDriver('OleDB MSSQL2012', TOleDBMSSQL2012ConnectionProperties);
+   RegisterSynOleDBDriver('OleDB MySQL', TOleDBMySQLConnectionProperties);
+   RegisterSynOleDBDriver('OleDB Jet', TOleDBJetConnectionProperties);
+   RegisterSynOleDBDriver('OleDB AS400', TOleDBAS400ConnectionProperties);
+   RegisterSynOleDBDriver('OleDB ODBC', TOleDBODBCSQLConnectionProperties);
 
 end.

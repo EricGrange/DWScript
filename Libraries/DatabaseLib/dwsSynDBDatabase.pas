@@ -28,7 +28,7 @@ interface
 
 uses
    Classes, Variants, SysUtils,
-   SynDB,
+   SynDB, SynCommons,
    dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform;
 
 type
@@ -137,8 +137,8 @@ begin
    if n>3 then
       passWord:=parameters[3];
    try
-      FProps:=connPropsClass.Create(UTF8Encode(serverName), UTF8Encode(dbName),
-                                      UTF8Encode(user), UTF8Encode(passWord));
+      FProps:=connPropsClass.Create(StringToUTF8(serverName), StringToUTF8(dbName),
+                                    StringToUTF8(user), StringToUTF8(passWord));
       FConn:=FProps.NewConnection;
    except
       RefCount:=0;
@@ -191,7 +191,7 @@ var
 begin
    stmt:=FConn.NewStatement;
    try
-      stmt.Prepare(UTF8Encode(sql), False);
+      stmt.Prepare(StringToUTF8(sql), False);
       AssignParameters(stmt, parameters);
       stmt.ExecutePrepared;
    finally
@@ -221,7 +221,7 @@ begin
    inherited Create(db);
    try
       FStmt:=db.FConn.NewStatement;
-      FStmt.Prepare(UTF8Encode(sql), True);
+      FStmt.Prepare(StringToUTF8(sql), True);
       AssignParameters(FStmt, parameters);
       FStmt.ExecutePrepared;
       FEOFReached:=not FStmt.Step;
