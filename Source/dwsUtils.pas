@@ -179,51 +179,6 @@ type
 
    TSimpleCallback<T> = function (var item : T) : TSimpleCallbackStatus;
 
-   // TSimpleQueue
-   //
-   {: A minimalistic generic FIFO queue. }
-   TSimpleQueue<T> = class
-      private
-         { Private Declarations }
-         FItems : array of T;
-         FHead, FTail, FCount : Integer;
-         procedure SetCapacity(newCapacity : Integer);
-
-		protected
-         { Protected Declarations }
-         class var vDefault_T : T;
-
-      public
-         { Public Declarations }
-         procedure EnQueue(const value : T);
-         procedure DeQueue;
-         function Peek : T; inline;
-         procedure Clear;
-         procedure Enumerate(const callback : TSimpleCallback<T>);
-         property Count : Integer read FCount;
-   end;
-
-   // TArrayObjectList<T>
-   //
-   {: An embeddable wrapped array. }
-   TArrayObjectList<T{$IFNDEF FPC}: TRefCountedObject{$ENDIF}> = record
-      private
-         FCount : Integer;
-
-         function GetItems(const idx : Integer) : T; inline;
-         procedure SetItems(const idx : Integer; const value : T); inline;
-
-      public
-         List : array of TObject;
-
-         procedure Add(const item : T);
-         procedure Delete(idx : Integer);
-         procedure Clear;
-         procedure Clean;
-         property Items[const position : Integer] : T read GetItems write SetItems; default;
-         property Count : Integer read FCount;
-   end;
-
    // TSimpleList<T>
    //
    {: A minimalistic generic list class. }
@@ -528,11 +483,6 @@ type
 const
    cMSecToDateTime : Double = 1/(24*3600*1000);
 
-{: Changes the class of an object (by altering the VMT pointer).<p>
-   Only checks IntanceSize.
-   Use only if you understand fully what the above means. }
-procedure ChangeObjectClass(ref : TObject; newClass : TClass);
-
 function LoadTextFromStream(aStream : TStream) : String;
 function LoadTextFromFile(const fileName : String) : String;
 
@@ -568,14 +518,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-// MorphObjectClass
-//
-procedure ChangeObjectClass(ref : TObject; newClass : TClass);
-begin
-   Assert(ref.InstanceSize=newClass.InstanceSize);
-   PPointer(ref)^:=Pointer(newClass);
-end;
 
 // SimpleStringHash
 //
@@ -2128,93 +2070,6 @@ begin
 end;
 
 // ------------------
-// ------------------ TSimpleQueue<T> ------------------
-// ------------------
-
-// EnQueue
-//
-procedure TSimpleQueue<T>.EnQueue(const value : T);
-var
-   n : Integer;
-begin
-   n:=Length(FItems);
-   if Count=n then begin
-      n:=n*2+8;
-      SetCapacity(n);
-   end;
-   FItems[FHead]:=Value;
-   FHead:=(FHead+1) mod n;
-   Inc(FCount);
-end;
-
-// DeQueue
-//
-procedure TSimpleQueue<T>.DeQueue;
-begin
-   Assert(FCount>0);
-   FItems[FTail]:=vDefault_T;
-   FTail:=(FTail+1) mod Length(FItems);
-   Dec(FCount);
-end;
-
-// Peek
-//
-function TSimpleQueue<T>.Peek : T;
-begin
-   Result:=FItems[FTail];
-end;
-
-// Clear
-//
-procedure TSimpleQueue<T>.Clear;
-begin
-   SetLength(FItems, 0);
-   FHead:=0;
-   FTail:=0;
-   FCount:=0;
-end;
-
-// Enumerate
-//
-procedure TSimpleQueue<T>.Enumerate(const callback : TSimpleCallback<T>);
-var
-   i, n : Integer;
-begin
-   n:=Length(FItems);
-   for i:=0 to Count-1 do begin
-      if callback(FItems[(FTail+i) mod n])=csAbort then
-         Break;
-   end;
-end;
-
-// SetCapacity
-//
-procedure TSimpleQueue<T>.SetCapacity(newCapacity : Integer);
-var
-   tailCount, offset, i : Integer;
-begin
-   offset:=newCapacity-Length(FItems);
-   if offset=0 then Exit;
-
-   // If head <= tail, then part of the queue wraps around
-   // the end of the array; don't introduce a gap in the queue.
-   if (FHead<FTail) or ((FHead=FTail) and (Count>0)) then
-      tailCount:=Length(FItems)-FTail
-   else tailCount:=0;
-
-   if offset>0 then
-      SetLength(FItems, newCapacity);
-   if tailCount>0 then begin
-      System.Move(FItems[FTail], FItems[FTail+offset], tailCount*SizeOf(T));
-      if offset>0 then
-         System.FillChar(FItems[FTail], offset*SizeOf(T), 0);
-      Inc(FTail, offset);
-   end;
-   if offset<0 then
-      SetLength(FItems, newCapacity);
-end;
-
-// ------------------
 // ------------------ TSimpleList<T> ------------------
 // ------------------
 
@@ -2499,79 +2354,6 @@ begin
    end;
    Inc(FCount);
    Result:=True;
-end;
-
-// ------------------
-// ------------------ TArrayObjectList<T> ------------------
-// ------------------
-
-// Add
-//
-procedure TArrayObjectList<T>.Add(const item : T);
-var
-   n : Integer;
-begin
-   n:=FCount;
-   SetLength(List, n+1);
-   List[n]:=item;
-   Inc(FCount);
-end;
-
-// Delete
-//
-procedure TArrayObjectList<T>.Delete(idx : Integer);
-var
-   n : Integer;
-begin
-   n:=FCount-1;
-   if idx<n then
-      System.Move(List[idx+1], List[idx], (n-idx)*SizeOf(TObject));
-   SetLength(List, n);
-   Dec(FCount);
-end;
-
-// Clear
-//
-procedure TArrayObjectList<T>.Clear;
-begin
-   SetLength(List, 0);
-   FCount:=0;
-end;
-
-// Clean
-//
-procedure TArrayObjectList<T>.Clean;
-var
-   i : Integer;
-begin
-   for i:=0 to High(List) do
-      List[i].Free;
-   Clear;
-end;
-
-// GetItems
-//
-{$ifdef VER200} // D2009 support
-type
-   PObject = ^TObject;
-function TArrayObjectList<T>.GetItems(const idx : Integer) : T;
-begin
-   PObject(@Result)^ := List[idx];
-end;
-{$else}
-function TArrayObjectList<T>.GetItems(const idx : Integer) : T;
-begin
-   Result:=T(List[idx]);
-end;
-{$endif}
-
-
-
-// SetItems
-//
-procedure TArrayObjectList<T>.SetItems(const idx : Integer; const value : T);
-begin
-   List[idx]:=value;
 end;
 
 // ------------------
