@@ -192,7 +192,7 @@ type
          property Prefix : String read FPrefix write FPrefix;
    end;
 
-  {/ HTTP server using fast http.sys 2.0 l-mode server
+  {/ HTTP server using fast http.sys 2.0 kernel-mode server
 
      Requires Win2008 or Vista. }
    THttpApi2Server = class (THttpServerGeneric)

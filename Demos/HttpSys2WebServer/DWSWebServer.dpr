@@ -49,6 +49,9 @@ uses
   UHttpSys2WebServer in 'UHttpSys2WebServer.pas',
   dwsDatabaseLibModule in '..\..\Libraries\DatabaseLib\dwsDatabaseLibModule.pas' {dwsDatabaseLib: TDataModule},
   dwsSynSQLiteDatabase in '..\..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas',
+  dwsSynODBCDatabase in '..\..\Libraries\DatabaseLib\dwsSynODBCDatabase.pas',
+  dwsSynOleDBDatabase in '..\..\Libraries\DatabaseLib\dwsSynOleDBDatabase.pas',
+  dwsUIBDatabase in '..\..\Libraries\DatabaseLib\dwsUIBDatabase.pas',
   dwsDatabase in '..\..\Libraries\DatabaseLib\dwsDatabase.pas';
 
 type
