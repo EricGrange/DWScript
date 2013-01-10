@@ -21,6 +21,7 @@ interface
 
 uses Classes, SysUtils, Character,
    dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsCoreExprs, dwsTokenizer,
+   dwsStrings, dwsUnitSymbols,
    dwsGabelou, dwsGabelouStrings;
 
 type
@@ -98,6 +99,7 @@ end;
 procedure TGR_CamelCaseParameters.EvaluateSymbol(const aSymbolList : TSymbolPositionList; msgs : TdwsMessageList);
 begin
    if not (aSymbolList.Symbol is TParamSymbol) then Exit;
+   if aSymbolList.Symbol.Name='Self' then Exit;
 
    if TCharacter.IsUpper(aSymbolList.Symbol.Name[1]) then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
@@ -187,6 +189,7 @@ procedure TGR_ConstantNamingRules.EvaluateSymbol(const aSymbolList : TSymbolPosi
 begin
    if not (aSymbolList.Symbol is TConstSymbol) then Exit;
    if aSymbolList.Symbol is TElementSymbol then Exit;
+   if aSymbolList.Symbol.Name='Null' then Exit;
 
    if not (ChecksCPrefix(aSymbolList.Symbol.Name) or ChecksAllCapsUpToUnderscore(aSymbolList.Symbol.Name)) then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
@@ -283,6 +286,7 @@ procedure TGR_PascalCaseTypes.EvaluateSymbol(const aSymbolList : TSymbolPosition
 begin
    if not (aSymbolList.Symbol is TTypeSymbol) then Exit;
    if aSymbolList.Symbol is TFuncSymbol then Exit;
+   if aSymbolList.Symbol is TUnitSymbol then Exit;
 
    if TCharacter.IsLower(aSymbolList.Symbol.Name[1]) then
       TGabelouMessage.CreateOnSymbolPosList(msgs, aSymbolList, Description);
