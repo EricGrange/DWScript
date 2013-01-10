@@ -751,6 +751,12 @@ const
    cTokenToFuncKind : array [ttFUNCTION..ttLAMBDA] of TFuncKind = (
       fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod, fkLambda );
 
+   cSpecialKeywords : array [TSpecialKeywordKind] of String = (
+      '', 'Abs', 'Assert', 'Assigned', 'High', 'Length', 'Low',
+      'Ord', 'SizeOf', 'Defined', 'Declared', 'Sqr', 'Inc', 'Dec', 'Succ', 'Pred',
+      'Swap', 'ConditionalDefined'
+   );
+
 type
    TReachStatus = (rsReachable, rsUnReachable, rsUnReachableWarned);
 
@@ -3932,6 +3938,10 @@ begin
    // Test for special functions
    sk:=IdentifySpecialName(nameToken.FString);
    if sk<>skNone then begin
+      if not (coHintsDisabled in FOptions) then
+         if (nameToken.FString<>cSpecialKeywords[sk]) then
+            FMsgs.AddCompilerHintFmt(namePos, CPH_CaseDoesNotMatchDeclaration,
+                                     [nameToken.FString, cSpecialKeywords[sk]], hlPedantic);
       FTok.KillToken;
       Exit(ReadSymbol(ReadSpecialFunction(namePos, sk), isWrite, expecting));
    end;
@@ -9826,34 +9836,34 @@ begin
    n:=Length(name);
    case n of
       3 : case name[1] of
-         'a', 'A' : if SameText(name, 'abs') then Exit(skAbs);
-         'd', 'D' : if SameText(name, 'dec') then Exit(skDec);
-         'i', 'I' : if SameText(name, 'inc') then Exit(skInc);
-         'l', 'L' : if SameText(name, 'low') then Exit(skLow);
-         'o', 'O' : if SameText(name, 'ord') then Exit(skOrd);
-         's', 'S' : if SameText(name, 'sqr') then Exit(skSqr);
+         'a', 'A' : if SameText(name, cSpecialKeywords[skAbs]) then Exit(skAbs);
+         'd', 'D' : if SameText(name, cSpecialKeywords[skDec]) then Exit(skDec);
+         'i', 'I' : if SameText(name, cSpecialKeywords[skInc]) then Exit(skInc);
+         'l', 'L' : if SameText(name, cSpecialKeywords[skLow]) then Exit(skLow);
+         'o', 'O' : if SameText(name, cSpecialKeywords[skOrd]) then Exit(skOrd);
+         's', 'S' : if SameText(name, cSpecialKeywords[skSqr]) then Exit(skSqr);
       end;
       4 : case name[1] of
-         'h', 'H' : if SameText(name, 'high') then Exit(skHigh);
-         'p', 'P' : if SameText(name, 'pred') then Exit(skPred);
+         'h', 'H' : if SameText(name, cSpecialKeywords[skHigh]) then Exit(skHigh);
+         'p', 'P' : if SameText(name, cSpecialKeywords[skPred]) then Exit(skPred);
          's', 'S' : case name[2] of
-            'u', 'U' : if SameText(name, 'succ') then Exit(skSucc);
-            'w', 'W' : if SameText(name, 'swap') then Exit(skSwap);
+            'u', 'U' : if SameText(name, cSpecialKeywords[skSucc]) then Exit(skSucc);
+            'w', 'W' : if SameText(name, cSpecialKeywords[skSwap]) then Exit(skSwap);
          end;
       end;
       6 : case name[1] of
-         'a', 'A' : if SameText(name, 'assert') then Exit(skAssert);
-         'l', 'L' : if SameText(name, 'length') then Exit(skLength);
-         's', 'S' : if SameText(name, 'sizeof') then Exit(skSizeOf);
+         'a', 'A' : if SameText(name, cSpecialKeywords[skAssert]) then Exit(skAssert);
+         'l', 'L' : if SameText(name, cSpecialKeywords[skLength]) then Exit(skLength);
+         's', 'S' : if SameText(name, cSpecialKeywords[skSizeOf]) then Exit(skSizeOf);
       end;
       7 : case name[1] of
-         'd', 'D' : if SameText(name, 'defined') then Exit(skDefined);
+         'd', 'D' : if SameText(name, cSpecialKeywords[skDefined]) then Exit(skDefined);
       end;
       8 : case name[1] of
-         'a', 'A' : if SameText(name, 'assigned') then Exit(skAssigned);
-         'd', 'D' : if SameText(name, 'declared') then Exit(skDeclared);
+         'a', 'A' : if SameText(name, cSpecialKeywords[skAssigned]) then Exit(skAssigned);
+         'd', 'D' : if SameText(name, cSpecialKeywords[skDeclared]) then Exit(skDeclared);
       end;
-      18 : if SameText(name, 'conditionaldefined') then Exit(skConditionalDefined);
+      18 : if SameText(name, cSpecialKeywords[skConditionalDefined]) then Exit(skConditionalDefined);
    end;
    Result:=skNone;
 end;
