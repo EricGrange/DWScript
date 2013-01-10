@@ -2187,8 +2187,8 @@ begin
                                              [methSym.Name, methSym.StructSymbol.Caption]);
                afa:=TdwsAFAAddImplementation.Create(msg, AFA_AddImplementation);
                afa.Text:= #13#10
-                         +StringReplace(methSym.GetDescription, '()', ' ', [rfIgnoreCase])
-                         +';'#13#10'begin'#13#10#9'|'#13#10'end'#13#10;
+                         +TrimRight(StringReplace(methSym.GetDescription, '()', ' ', [rfIgnoreCase]))
+                         +';'#13#10'begin'#13#10#9'|'#13#10'end;'#13#10;
                k:=Pos(methSym.Name, afa.Text);
                afa.Text:=Copy(afa.Text, 1, k-1)+methSym.StructSymbol.Name+'.'
                         +Copy(afa.Text, k, MaxInt);
@@ -2884,8 +2884,8 @@ begin
       afa:=TdwsAFAAddImplementation.Create(msg, AFA_AddImplementation);
 
       afa.Text:= #13#10
-                +StringReplace(GetDescription, '()', ' ', [rfIgnoreCase])
-                +';'#13#10'begin'#13#10#9'|'#13#10'end'#13#10;
+                +TrimRight(StringReplace(GetDescription, '()', ' ', [rfIgnoreCase]))
+                +';'#13#10'begin'#13#10#9'|'#13#10'end;'#13#10;
    end;
 end;
 
