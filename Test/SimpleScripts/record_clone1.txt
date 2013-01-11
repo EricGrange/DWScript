@@ -1,3 +1,9 @@
+Errors >>>>
+Hint: "s" does not match case of declaration ("S") [line: 19, column: 4]
+Hint: "s" does not match case of declaration ("S") [line: 20, column: 4]
+Hint: "b" does not match case of declaration ("B") [line: 20, column: 6]
+Hint: "c" does not match case of declaration ("C") [line: 21, column: 4]
+Result >>>>
 000
 123
 10230

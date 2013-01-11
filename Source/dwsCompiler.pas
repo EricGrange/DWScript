@@ -463,7 +463,7 @@ type
                                      codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
          procedure CollectMethodOverloads(methSym : TMethodSymbol; overloads : TFuncSymbolList);
          function ReadSelfMethOverloaded(methSym : TMethodSymbol; isWrite : Boolean;
-                                         expecting : TTypeSymbol = nil) : TTypedExpr;
+                                         expecting : TTypeSymbol = nil; forceStatic : Boolean = False) : TTypedExpr;
          function ReadMethOverloaded(methSym : TMethodSymbol; instanceExpr : TTypedExpr;
                                      const scriptPos : TScriptPos;
                                      expecting : TTypeSymbol = nil) : TTypedExpr;
@@ -485,7 +485,8 @@ type
                            overloads : TFuncSymbolList = nil) : TTypedExpr;
          function ReadSelfMethod(methodSym : TMethodSymbol; isWrite : Boolean;
                                  expecting : TTypeSymbol = nil;
-                                 overloads : TFuncSymbolList = nil) : TTypedExpr;
+                                 overloads : TFuncSymbolList = nil;
+                                 forceStatic : Boolean = False) : TTypedExpr;
          function ReadMethod(methodSym : TMethodSymbol; instanceExpr : TTypedExpr;
                              const scriptPos : TScriptPos;
                              expecting : TTypeSymbol = nil;
@@ -3545,12 +3546,8 @@ begin
 
    FProg.Table.AddSymbol(Result);
    if (Result.Token<>ttNone) and (Result.UsesSym<>nil) then begin
-      if FProg.Table<>FProg.Root.RootTable then
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_OverloadOnlyInGlobalScope)
-      else begin
-         if FProg.Table.HasSameLocalOperator(Result) then
-            FMsgs.AddCompilerError(opPos, CPE_OverloadAlreadyExists);
-      end;
+      if FProg.Table.HasSameLocalOperator(Result) then
+         FMsgs.AddCompilerError(opPos, CPE_OverloadAlreadyExists);
    end;
 end;
 
@@ -3796,7 +3793,6 @@ var
    methSym : TMethodSymbol;
    compositeSym, parentSym : TCompositeTypeSymbol;
    varExpr : TDataExpr;
-   argPosArray : TScriptPosArray;
 begin
    Result:=nil;
    if not ((FProg is TdwsProcedure) and (TdwsProcedure(FProg).Func is TMethodSymbol)) then
@@ -3837,28 +3833,18 @@ begin
 
       if sym is TMethodSymbol then begin
 
-         if name='' then
-            RecordSymbolUse(sym, FTok.HotPos, [suReference, suImplicit])
-         else RecordSymbolUse(sym, FTok.HotPos, [suReference]);
+         methSym:=TMethodSymbol(sym);
 
-         if TMethodSymbol(sym).IsAbstract then
+         if name='' then
+            RecordSymbolUse(methSym, FTok.HotPos, [suReference, suImplicit])
+         else RecordSymbolUse(methSym, FTok.HotPos, [suReference]);
+
+         if methSym.IsAbstract then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_AbstractMethodUsage);
-         varExpr:=TVarExpr.CreateTyped(FProg, methSym.SelfSym);
-         try
-            Result:=GetMethodExpr(TMethodSymbol(sym), varExpr, rkObjRef, FTok.HotPos, True);
-         except
-            varExpr.Free;
-            raise;
-         end;
-         try
-            ReadFuncArgs(TFuncExpr(Result), argPosArray, nil);
-            if TMethodSymbol(sym).Kind = fkConstructor then
-               (Result as TMethodExpr).Typ := (methSym.StructSymbol as TClassSymbol).Parent;
-            TypeCheckArgs(TFuncExpr(Result), argPosArray);
-         except
-            Result.Free;
-            raise;
-         end;
+
+         if methSym.IsOverloaded then
+            Result:=ReadSelfMethOverloaded(methSym, isWrite, nil, True)
+         else Result:=ReadSelfMethod(methSym, isWrite, nil, nil, True);
 
       end else if sym is TPropertySymbol then begin
 
@@ -5569,7 +5555,8 @@ end;
 //
 function TdwsCompiler.ReadSelfMethod(methodSym : TMethodSymbol;
                isWrite : Boolean; expecting : TTypeSymbol = nil;
-               overloads : TFuncSymbolList = nil) : TTypedExpr;
+               overloads : TFuncSymbolList = nil;
+               forceStatic : Boolean = False) : TTypedExpr;
 var
    progMeth : TMethodSymbol;
    structSym : TCompositeTypeSymbol;
@@ -5578,22 +5565,22 @@ begin
 
    if progMeth<>nil then begin
       if methodSym.IsStatic then
-         Result:=GetMethodExpr(methodSym, nil, rkObjRef, FTok.HotPos, False)
+         Result:=GetMethodExpr(methodSym, nil, rkObjRef, FTok.HotPos, forceStatic)
       else if progMeth.IsStatic then begin
          structSym:=progMeth.StructSymbol;
          Result:=GetMethodExpr(methodSym,
                                TConstExpr.Create(FProg, (structSym as TStructuredTypeSymbol).MetaSymbol, Int64(structSym)),
-                               rkClassOfRef, FTok.HotPos, False);
+                               rkClassOfRef, FTok.HotPos, forceStatic);
       end else if progMeth.SelfSym is TConstParamSymbol then begin
          Result:=GetMethodExpr(methodSym,
                                GetConstParamExpr(TConstParamSymbol(progMeth.SelfSym)),
-                               rkObjRef, FTok.HotPos, False);
+                               rkObjRef, FTok.HotPos, forceStatic);
       end else if progMeth.SelfSym=nil then begin
-         Result:=GetMethodExpr(methodSym, nil, rkClassOfRef, FTok.HotPos, False);
+         Result:=GetMethodExpr(methodSym, nil, rkClassOfRef, FTok.HotPos, forceStatic);
       end else begin
          Result:=GetMethodExpr(methodSym,
                                GetVarExpr(progMeth.SelfSym),
-                               rkObjRef, FTok.HotPos, False);
+                               rkObjRef, FTok.HotPos, forceStatic);
       end;
    end else begin
       structSym:=methodSym.StructSymbol;
@@ -5701,14 +5688,15 @@ end;
 // ReadSelfMethOverloaded
 //
 function TdwsCompiler.ReadSelfMethOverloaded(methSym : TMethodSymbol; isWrite : Boolean;
-                                               expecting : TTypeSymbol = nil) : TTypedExpr;
+                                             expecting : TTypeSymbol = nil;
+                                             forceStatic : Boolean = False) : TTypedExpr;
 var
    overloads : TFuncSymbolList;
 begin
    overloads:=TFuncSymbolList.Create;
    try
       CollectMethodOverloads(methSym, overloads);
-      Result:=ReadSelfMethod(methSym, isWrite, expecting, overloads);
+      Result:=ReadSelfMethod(methSym, isWrite, expecting, overloads, forceStatic);
    finally
       overloads.Free;
    end;

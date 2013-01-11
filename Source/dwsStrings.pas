@@ -194,7 +194,6 @@ const
   CPE_MustBeSubClassOf = 'Subclass of %s expected!';
   CPE_MethodOrPropertyExpected = 'Method or property declaration expected';
   CPE_OverloadableOperatorExpected = 'Overloadable operator expected';
-  CPE_OverloadOnlyInGlobalScope = 'Overloads can only be declared in the global scope';
   CPE_OverloadAlreadyExists = 'An overload already exists for this operator and types';
   CPE_SingleParameterExpected = 'Single parameter expected';
   CPE_UsesExpected = '"USES" expected';

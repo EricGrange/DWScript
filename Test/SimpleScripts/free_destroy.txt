@@ -3,6 +3,9 @@ Hint: "Classname" does not match case of declaration ("ClassName") [line: 16, co
 Hint: "Classname" does not match case of declaration ("ClassName") [line: 22, column: 22]
 Hint: "Classname" does not match case of declaration ("ClassName") [line: 42, column: 25]
 Hint: "Classname" does not match case of declaration ("ClassName") [line: 49, column: 26]
+Hint: "free" does not match case of declaration ("Free") [line: 50, column: 9]
+Hint: "free" does not match case of declaration ("Free") [line: 65, column: 7]
+Hint: "free" does not match case of declaration ("Free") [line: 66, column: 8]
 Result >>>>
 Create TFirstClass
 2nd Create TSecondClass
