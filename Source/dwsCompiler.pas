@@ -388,9 +388,11 @@ type
          function CheckPropertyFuncParams(paramsA : TSymbolTable; methSym : TMethodSymbol;
                                           indexSym : TSymbol = nil; typSym : TTypeSymbol = nil) : Boolean;
          procedure CheckName(const name : String; const namePos : TScriptPos);
-         function IdentifySpecialName(const name : String) : TSpecialKeywordKind;
+         function  IdentifySpecialName(const name : String) : TSpecialKeywordKind;
          procedure CheckSpecialName(const name : String);
-         function CheckParams(tableA, tableB : TSymbolTable; checkNames : Boolean; skipB : Integer = 0) : Boolean;
+         procedure CheckSpecialNameCase(const name : String; sk : TSpecialKeywordKind;
+                                        const namePos : TScriptPos);
+         function  CheckParams(tableA, tableB : TSymbolTable; checkNames : Boolean; skipB : Integer = 0) : Boolean;
          procedure CompareFuncKinds(a, b : TFuncKind);
          procedure CompareFuncSymbolParams(a, b : TFuncSymbol);
          function  CurrentStruct : TCompositeTypeSymbol;
@@ -3939,9 +3941,7 @@ begin
    sk:=IdentifySpecialName(nameToken.FString);
    if sk<>skNone then begin
       if not (coHintsDisabled in FOptions) then
-         if (nameToken.FString<>cSpecialKeywords[sk]) then
-            FMsgs.AddCompilerHintFmt(namePos, CPH_CaseDoesNotMatchDeclaration,
-                                     [nameToken.FString, cSpecialKeywords[sk]], hlPedantic);
+         CheckSpecialNameCase(nameToken.FString, sk, namePos);
       FTok.KillToken;
       Exit(ReadSymbol(ReadSpecialFunction(namePos, sk), isWrite, expecting));
    end;
@@ -4830,9 +4830,11 @@ begin
          if baseType is TStructuredTypeSymbol then begin
 
             member:=FindStructMember(TStructuredTypeSymbol(baseType), name);
-            if member<>nil then
-               memberClassType:=member.ClassType
-            else memberClassType:=nil;
+            if member<>nil then begin
+               memberClassType:=member.ClassType;
+               if not (coHintsDisabled in FOptions) then
+                  CheckMatchingDeclarationCase(name, member, namePos);
+            end else memberClassType:=nil;
 
             RecordSymbolUseReference(member, namePos, isWrite);
 
@@ -6706,15 +6708,22 @@ end;
 //
 function TdwsCompiler.ReadStringMethod(const name : String; const namePos : TScriptPos;
                                        baseExpr : TTypedExpr) : TProgramExpr;
+var
+   sk : TSpecialKeywordKind;
 begin
    try
       if FTok.TestDelete(ttBLEFT) and not FTok.TestDelete(ttBRIGHT) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoParamsExpected);
 
-      if UnicodeSameText(name, 'length') or UnicodeSameText(name, 'high') then
+      sk:=IdentifySpecialName(name);
+
+      if sk in [skLength, skHigh] then
+
          Result:=TStringLengthExpr.Create(FProg, baseExpr)
+
       else begin
-         if UnicodeSameText(name, 'low') then begin
+
+         if sk=skLow then begin
             baseExpr.Free;
             baseExpr:=nil;
             Result:=TConstExpr.CreateIntegerValue(FProg, 1);
@@ -6722,7 +6731,11 @@ begin
             Result:=nil;
             FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
          end;
+
       end;
+
+      if not (coHintsDisabled in FOptions) then
+         CheckSpecialNameCase(name, sk, namePos);
    except
       baseExpr.Free;
       raise;
@@ -9876,6 +9889,16 @@ begin
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_NameIsReserved, [Name]);
 end;
 
+// CheckSpecialNameCase
+//
+procedure TdwsCompiler.CheckSpecialNameCase(const name : String; sk : TSpecialKeywordKind;
+                                            const namePos : TScriptPos);
+begin
+   if name<>cSpecialKeywords[sk] then
+      FMsgs.AddCompilerHintFmt(namePos, CPH_CaseDoesNotMatchDeclaration,
+                               [name, cSpecialKeywords[sk]], hlPedantic);
+end;
+
 // OpenStreamForFile
 //
 function TdwsCompiler.OpenStreamForFile(const fileName : String) : TStream;
@@ -11453,6 +11476,9 @@ begin
          helper:=helpers[i];
          sym:=helper.Members.FindSymbol(name, cvPublic);
          if sym=nil then continue;
+
+         if not (coHintsDisabled in FOptions) then
+            CheckMatchingDeclarationCase(name, sym, namePos);
 
          if killNameToken then
             FTok.KillToken;

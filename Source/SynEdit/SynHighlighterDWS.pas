@@ -271,7 +271,7 @@ var
    buf : String;
 begin
    SetString(buf, fToIdent, fStringLen);
-   if fKeyWords.IndexOf(buf)>0 then
+   if (fKeyWords.IndexOf(buf)>0) and (FLine[Run - 1] <> '&') then
       Result := tkKey
    else Result := tkIdentifier
 end;
