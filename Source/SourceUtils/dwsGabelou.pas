@@ -83,9 +83,13 @@ type
                             const restrictToSourceFile : TSourceFile = nil); overload;
 
          procedure AddRule(const rule : IdwsGabelouRule);
+         procedure RemoveRule(const rule : IdwsGabelouRule);
+         procedure ClearRules;
 
          class procedure RegisterRuleClass(aClass : TdwsGabelouRuleClass); static;
          class procedure RegisterRuleClasses(const aClasses : array of TdwsGabelouRuleClass); static;
+         class procedure UnRegisterRuleClass(aClass : TdwsGabelouRuleClass); static;
+         class procedure ClearRuleClasses; static;
    end;
 
    TdwsSymbolDictionaryGabelouRule = class abstract (TdwsGabelouRule)
@@ -180,6 +184,30 @@ begin
    FRules[n]:=rule;
 end;
 
+// RemoveRule
+//
+procedure TdwsGabelou.RemoveRule(const rule: IdwsGabelouRule);
+var
+   i, n : Integer;
+begin
+   n:=Length(FRules)-1;
+   for i:=0 to n do begin
+      if FRules[i]=rule then begin
+         if i<n then
+           Move(FRules[i+1], FRules[i], (n-i)*SizeOf(Pointer));
+         SetLength(FRules, n);
+         Exit;
+      end;
+   end;
+end;
+
+// ClearRules
+//
+procedure TdwsGabelou.ClearRules;
+begin
+   SetLength(FRules, 0);
+end;
+
 // RegisterRuleClass
 //
 class procedure TdwsGabelou.RegisterRuleClass(aClass : TdwsGabelouRuleClass);
@@ -199,6 +227,31 @@ var
 begin
    for i:=0 to High(aClasses) do
       RegisterRuleClass(aClasses[i]);
+end;
+
+// UnRegisterRuleClass
+//
+class procedure TdwsGabelou.UnRegisterRuleClass(aClass: TdwsGabelouRuleClass);
+var
+   i, n : Integer;
+begin
+   n:=Length(vRegisteredRuleClasses)-1;
+   for i:=0 to n do begin
+      if vRegisteredRuleClasses[i]=aClass then begin
+         if i<n then
+           Move(vRegisteredRuleClasses[i+1], vRegisteredRuleClasses[i],
+                (n-i)*SizeOf(Pointer));
+         SetLength(vRegisteredRuleClasses, n);
+         Exit;
+      end;
+   end;
+end;
+
+// ClearRuleClasses
+//
+class procedure TdwsGabelou.ClearRuleClasses;
+begin
+   SetLength(vRegisteredRuleClasses, 0);
 end;
 
 // ------------------

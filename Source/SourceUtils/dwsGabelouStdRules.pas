@@ -307,7 +307,7 @@ initialization
 
       TGR_PascalCaseFunctions, TGR_PascalCaseProperties, TGR_PascalCaseTypes,
 
-      TGR_PrefixedFields, TGR_PrefixedClassVariables, TGR_PrefixedClassVariables
+      TGR_PrefixedFields, TGR_PrefixedClassVariables
       ]);
 
 end.
