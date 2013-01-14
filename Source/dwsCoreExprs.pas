@@ -5254,6 +5254,8 @@ end;
 //
 procedure TAssignExpr.TypeCheckAssign(prog : TdwsProgram);
 begin
+   if FLeft=nil then Exit;
+
    if FRight.ClassType=TArrayConstantExpr then
       TArrayConstantExpr(FRight).Prepare(Prog, FLeft.Typ.Typ);
 
