@@ -278,8 +278,13 @@ begin
          continue;
       if restrictToSourceFile<>nil then begin
          symPos:=symPosList.FindUsage(suDeclaration);
-         if (symPos<>nil) and (symPos.ScriptPos.SourceFile<>restrictToSourceFile) then
-            continue;
+         if symPos=nil then begin
+            if restrictToSourceFile<>nil then
+               continue;
+         end else begin
+            if symPos.ScriptPos.SourceFile<>restrictToSourceFile then
+               continue;
+         end;
       end;
       EvaluateSymbol(symPosList, msgs);
    end;
