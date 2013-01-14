@@ -18,7 +18,8 @@ unit dwsDirectoryNotifier;
 
 interface
 
-uses Windows, Classes, SysUtils;
+uses Windows, Classes, SysUtils,
+   dwsXPlatform;
 
 type
 
@@ -234,11 +235,7 @@ end;
 procedure TdwsFileNotifier.Execute;
 var
    numBytes : DWORD;
-   {$if CompilerVersion < 24.0} // XE3
-   completionKey : DWORD;
-   {$else}
-   completionKey : ULONG_PTR;
-   {$ifend}
+   completionKey : NativeUInt;
    fileOpNotification : PFileNotifyInformation;
    offset : Longint;
    fileName : String;
