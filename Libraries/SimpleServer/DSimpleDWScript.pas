@@ -423,7 +423,11 @@ end;
 procedure TSimpleDWScript.SetCPUAffinity(const val : Cardinal);
 var
    hProcess : THandle;
-   procMask, systemMask : NativeUInt;
+   {$if CompilerVersion<23.0}
+   procMask, systemMask : DWORD;
+   {$else}
+   procMask, systemMask : DWORD_PTR;
+   {$ifend}
 begin
    hProcess:=GetCurrentProcess;
    GetProcessAffinityMask(hProcess, procMask, systemMask);
