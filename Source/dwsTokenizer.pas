@@ -49,7 +49,7 @@ type
      ttPLUS, ttMINUS,
      ttTIMES, ttDIVIDE, ttPERCENT, ttCARET, ttAT, ttDOLLAR, ttEXCLAMATION, ttQUESTION,
      ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ, ttEQGTR,
-     ttLESSLESS, ttGTRGTR,
+     ttLESSLESS, ttGTRGTR, ttPIPE, ttPIPEPIPE, ttAMP, ttAMPAMP,
      ttSEMI, ttCOMMA, ttCOLON,
      ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
      ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN,
@@ -118,7 +118,7 @@ type
    TConvertAction = (caNone, caClear, caName, caNameEscaped,
                      caBin, caHex, caInteger, caFloat,
                      caChar, caCharHex, caString, caMultiLineString,
-                     caSwitch, caDotDot);
+                     caSwitch, caDotDot, caAmp, caAmpAmp);
    TTransitionOptions = set of (toStart, toFinal);
 
    TTransition = class (TRefCountedObject)
@@ -289,7 +289,7 @@ const
      '+', '-',
      '*', '/', '%', '^', '@', '$', '!', '?',
      '=', '<>', '>', '>=', '<', '<=', '=>',
-     '<<', '>>',
+     '<<', '>>', '|', '||', '&', '&&',
      ';', ',', ':',
      ':=', '+=', '-=', '*=', '/=',
      '%=', '^=', '@=',
@@ -609,43 +609,44 @@ begin
          else if Len=2 then
             if Buffer[1]='=' then
                Result := ttPLUS_ASSIGN; // '+='
-     '-':
+      '-':
          if Len=1 then
             Result := ttMINUS
          else if Len=2 then
             if Buffer[1]='=' then
                Result := ttMINUS_ASSIGN; // '-='
-     '@':
+      '@':
          if Len=1 then
             Result := ttAT
          else if Len=2 then
             if Buffer[1]='=' then
                Result := ttAT_ASSIGN; // '@='
-     '%':
+      '%':
          if Len=1 then
             Result := ttPERCENT
          else if Len=2 then
             if Buffer[1]='=' then
                Result := ttPERCENT_ASSIGN; // '%='
-     '^':
+      '^':
          if Len=1 then
             Result := ttCARET
          else if Len=2 then
             if Buffer[1]='=' then
                Result := ttCARET_ASSIGN; // '^='
-     ';': Result := ttSEMI;
-     '(': Result := ttBLEFT;
-     ')': Result := ttBRIGHT;
-     '[': Result := ttALEFT;
-     ']': Result := ttARIGHT;
-     '!': Result := ttEXCLAMATION;
-     '?': Result := ttQUESTION;
-     '=': if Len=1 then
+      ';': Result := ttSEMI;
+      '(': Result := ttBLEFT;
+      ')': Result := ttBRIGHT;
+      '[': Result := ttALEFT;
+      ']': Result := ttARIGHT;
+      '!': Result := ttEXCLAMATION;
+      '?': Result := ttQUESTION;
+      '=':
+         if Len=1 then
             Result := ttEQ
          else if Len=2 then
             if Buffer[1]='>' then
                Result := ttEQGTR;
-     '<':
+      '<':
          if Len=1 then // '<'
             Result := ttLESS
          else if Len=2 then case Buffer[1] of
@@ -653,27 +654,39 @@ begin
             '>' : Result := ttNOTEQ;      // '<>'
             '<' : Result := ttLESSLESS;   // '<<'
          end;
-     '>':
+      '>':
          if Len=1 then // '>'
             Result := ttGTR
          else if Len=2 then case Buffer[1] of
             '=' : Result := ttGTREQ;      // '>='
             '>' : Result := ttGTRGTR;     // '>>'
          end;
-     ':':
+      ':':
          if Len=1 then // ':'
             Result := ttCOLON
          else if Len=2 then
             if Buffer[1]='=' then
                Result := ttASSIGN; // ':='
-     ',': Result := ttCOMMA;
-     '}': Result := ttCRIGHT;
-     '.':
+      ',': Result := ttCOMMA;
+      '}': Result := ttCRIGHT;
+      '.':
          if Len=1 then
             Result := ttDOT;
-     '$':
+      '$':
          if Len=1 then
             Result := ttDOLLAR;
+      '|':
+         if Len=1 then
+            Result := ttPIPE
+         else if Len=2 then
+            if Buffer[1]='|' then
+               Result := ttPIPEPIPE;
+      '&':
+         if Len=1 then
+            Result := ttAMP
+         else if Len=2 then
+            if Buffer[1]='&' then
+               Result := ttAMPAMP;
    else
       Result:=ToAlphaType;
    end;
@@ -1334,6 +1347,18 @@ procedure TTokenizer.ConsumeToken;
                FToken.FScriptPos:=CurrentPos;
                FToken.FScriptPos.Col:=FToken.FScriptPos.Col-1;
                FToken.FTyp:=ttDOTDOT;
+            end;
+
+            caAmp : begin
+               FToken.FScriptPos:=CurrentPos;
+               FToken.FScriptPos.Col:=FToken.FScriptPos.Col-1;
+               FToken.FTyp:=ttAMP;
+            end;
+
+            caAmpAmp : begin
+               FToken.FScriptPos:=CurrentPos;
+               FToken.FScriptPos.Col:=FToken.FScriptPos.Col-2;
+               FToken.FTyp:=ttAMPAMP;
             end;
          end;
          FTokenBuf.Len:=0;

@@ -544,8 +544,11 @@ type
          procedure ReadParams(const hasParamMeth : THasParamSymbolMethod;
                               const addParamMeth : TAddParamSymbolMethod;
                               forwardedParams : TParamsSymbolTable;
-                              expectedLambdaParams : TParamsSymbolTable);
+                              expectedLambdaParams : TParamsSymbolTable;
+                              var posArray : TScriptPosArray);
          procedure SkipProcCallQualifiers;
+         procedure AdaptParametersSymPos(guess, actual : TFuncSymbol; const useTypes : TSymbolUsages;
+                                         var posArray : TScriptPosArray);
          function ReadProcDecl(funcToken : TTokenType; const hotPos : TScriptPos;
                                declOptions : TdwsReadProcDeclOptions = [];
                                expectedLambdaParams : TParamsSymbolTable = nil) : TFuncSymbol;
@@ -2590,8 +2593,10 @@ var
    sym : TSymbol;
    funcPos : TScriptPos;
    overloadFuncSym, existingFuncSym, forwardedSym : TFuncSymbol;
+   forwardedSymForParams : TFuncSymbol;
    forwardedSymPos : TSymbolPosition;
    sourceContext : TdwsSourceContext;
+   posArray : TScriptPosArray;
 begin
    sym:=nil;
 
@@ -2656,9 +2661,10 @@ begin
       else Result := TSourceFuncSymbol.Create(name, funcKind, FMainProg.NextStackLevel(FProg.Level));
       try
          // Don't add params to dictionary when function is forwarded. It is already declared.
+         forwardedSymForParams:=forwardedSym;
          if forwardedSym<>nil then
-            ReadParams(Result.HasParam, Result.AddParam, forwardedSym.Params, nil)
-         else ReadParams(Result.HasParam, Result.AddParam, nil, expectedLambdaParams);
+            ReadParams(Result.HasParam, Result.AddParam, forwardedSym.Params, nil, posArray)
+         else ReadParams(Result.HasParam, Result.AddParam, nil, expectedLambdaParams, posArray);
 
          if (funcToken<>ttLAMBDA) or FTok.Test(ttCOLON) then
             Result.Typ:=ReadFuncResultType(funcKind);
@@ -2748,17 +2754,30 @@ begin
 
                if Assigned(forwardedSym) then begin
                   // Get forwarded position in script. If compiled without symbols it will just return a nil
-                  forwardedSymPos := FSymbolDictionary.FindSymbolUsage(forwardedSym, suDeclaration);  // may be nil
+                  forwardedSymPos:=FSymbolDictionary.FindSymbolUsage(forwardedSym, suDeclaration);  // may be nil
 
                   // Adapt dictionary entry to reflect that it was a forward
                   // If the record is in the SymbolDictionary (disabled dictionary would leave pointer nil)
                   if Assigned(forwardedSymPos) then
-                     forwardedSymPos.SymbolUsages := [suDeclaration, suForward];  // update old position to reflect that the type was forwarded
+                     forwardedSymPos.SymbolUsages:=[suDeclaration, suForward];  // update old position to reflect that the type was forwarded
+
+                  if forwardedSymForParams<>nil then
+                     AdaptParametersSymPos(forwardedSymForParams, forwardedSym, [suReference], posArray)
+                  else AdaptParametersSymPos(Result, forwardedSym, [suReference], posArray);
+
+                  SymbolDictionary.Remove(Result);
 
                   Result.Free;
                   Result := forwardedSym;
                   Result.ClearIsForwarded;
-               end else FProg.Table.AddSymbol(Result);
+               end else begin
+
+                  if forwardedSymForParams<>nil then
+                     AdaptParametersSymPos(forwardedSymForParams, Result,
+                                           [suReference, suDeclaration], posArray);
+
+                  FProg.Table.AddSymbol(Result);
+               end;
 
                if Result.IsForwarded or Result.IsExternal then
                   FTok.SimulateToken(ttSEMI, FTok.HotPos);
@@ -2779,6 +2798,37 @@ begin
       sourceContext.ParentSym:=Result;
 end;
 
+// AdaptParametersSymPos
+//
+procedure TdwsCompiler.AdaptParametersSymPos(guess, actual : TFuncSymbol; const useTypes : TSymbolUsages;
+                                             var posArray : TScriptPosArray);
+var
+   i, d : Integer;
+   guessSymPosList : TSymbolPositionList;
+   guessParam : TSymbol;
+   symPos : TSymbolPosition;
+begin
+   if not (coSymbolDictionary in Options) then Exit;
+   d:=actual.Params.Count-Length(posArray);
+   // params can have been mislocated in guess and must be reassigned to actual
+   for i:=0 to actual.Params.Count-1 do begin
+      // note: d can be negative in case of syntax errors
+      // f.i. when more parameters were specified than were declared
+      // so we can't use d as lower bound for the loop
+      if i<d then continue;
+      RecordSymbolUse(actual.Params[i], posArray[i-d], useTypes);
+      guessParam:=guess.Params.FindLocal(actual.Params[i].Name);
+      if guessParam<>nil then begin
+         guessSymPosList:=SymbolDictionary.FindSymbolPosList(guessParam);
+         if guessSymPosList<>nil then begin
+            symPos:=guessSymPosList.Items[guessSymPosList.Count-1];
+            if symPos.ScriptPos.SamePosAs(posArray[i]) then
+               guessSymPosList.Delete(guessSymPosList.Count-1);
+         end;
+      end;
+   end;
+end;
+
 // ReadIntfMethodDecl
 //
 function TdwsCompiler.ReadIntfMethodDecl(intfSym : TInterfaceSymbol; funcKind : TFuncKind) : TSourceMethodSymbol;
@@ -2786,6 +2836,7 @@ var
    name : String;
    sym : TSymbol;
    methPos : TScriptPos;
+   posArray : TScriptPosArray;
 begin
    // Find Symbol for Functionname
    if not FTok.TestDeleteNamePos(name, methPos) then begin
@@ -2803,7 +2854,7 @@ begin
    Result.DeclarationPos:=methPos;
 
    try
-      ReadParams(Result.HasParam, Result.AddParam, nil, nil);
+      ReadParams(Result.HasParam, Result.AddParam, nil, nil, posArray);
 
       Result.Typ:=ReadFuncResultType(funcKind);
       ReadSemiColon;
@@ -2847,6 +2898,7 @@ var
    qualifier : TTokenType;
    funcResult : TSourceMethodSymbol;
    bodyToken : TTokenType;
+   posArray : TScriptPosArray;
 begin
    // Find Symbol for Functionname
    if not FTok.TestDeleteNamePos(name, methPos) then begin
@@ -2874,7 +2926,7 @@ begin
    funcResult:=TSourceMethodSymbol.Create(name, funcKind, ownerSym, aVisibility, isClassMethod);
    funcResult.DeclarationPos:=methPos;
    try
-      ReadParams(funcResult.HasParam, funcResult.AddParam, nil, nil);
+      ReadParams(funcResult.HasParam, funcResult.AddParam, nil, nil, posArray);
 
       funcResult.Typ:=ReadFuncResultType(funcKind);
       ReadSemiColon;
@@ -3057,6 +3109,7 @@ var
    tmpMeth, overloadedMeth : TMethodSymbol;
    methPos : TScriptPos;
    declaredMethod, explicitParams : Boolean;
+   posArray : TScriptPosArray;
 begin
    if not FTok.TestDelete(ttDOT) then
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_DotExpected);
@@ -3084,7 +3137,7 @@ begin
       try
          // Don't store these params to Dictionary. They will become invalid when the method is freed.
          if not FTok.TestDelete(ttSEMI) then begin
-            ReadParams(tmpMeth.HasParam, tmpMeth.AddParam, Result.Params, nil);
+            ReadParams(tmpMeth.HasParam, tmpMeth.AddParam, Result.Params, nil, posArray);
             tmpMeth.Typ:=ReadFuncResultType(funcKind);
             if not FTok.TestDelete(ttSEMI) then
                FMsgs.AddCompilerWarning(FTok.HotPos, CPE_SemiExpected);
@@ -3093,7 +3146,10 @@ begin
             overloadedMeth:=MethPerfectMatchOverload(tmpMeth, False);
             if overloadedMeth=nil then
                FMsgs.AddCompilerErrorFmt(methPos, CPE_NoMatchingOverloadDeclaration, [tmpMeth.Name])
-            else Result:=overloadedMeth;
+            else begin
+               AdaptParametersSymPos(Result, overloadedMeth, [suReference], posArray);
+               Result:=overloadedMeth;
+            end;
          end else if explicitParams then
             CompareFuncSymbolParams(Result, tmpMeth);
       finally
@@ -3102,7 +3158,7 @@ begin
    end else begin
       // keep compiling a method that wasn't declared in class
       if not FTok.TestDelete(ttSEMI) then begin
-         ReadParams(Result.HasParam, Result.AddParam, nil, nil);
+         ReadParams(Result.HasParam, Result.AddParam, nil, nil, posArray);
          Result.Typ:=ReadFuncResultType(funcKind);
          ReadSemiColon;
       end;
@@ -9194,7 +9250,8 @@ end;
 procedure TdwsCompiler.ReadParams(const hasParamMeth : THasParamSymbolMethod;
                                   const addParamMeth : TAddParamSymbolMethod;
                                   forwardedParams : TParamsSymbolTable;
-                                  expectedLambdaParams : TParamsSymbolTable);
+                                  expectedLambdaParams : TParamsSymbolTable;
+                                  var posArray : TScriptPosArray);
 var
    lazyParam, varParam, constParam : Boolean;
 
@@ -9255,7 +9312,6 @@ var
    names : TStringList;
    typ : TTypeSymbol;
    onlyDefaultParamsNow : Boolean;
-   posArray : TScriptPosArray;
    typScriptPos, exprPos : TScriptPos;
    defaultExpr : TTypedExpr;
    expectedParam : TParamSymbol;

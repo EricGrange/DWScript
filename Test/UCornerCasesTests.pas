@@ -53,6 +53,8 @@ type
          procedure TryExceptLoop;
          procedure ExternalSubClass;
          procedure DeprecatedTdwsUnit;
+         procedure OverloadForwardDictionary;
+         procedure OverloadMethodDictionary;
    end;
 
 // ------------------------------------------------------------------
@@ -173,7 +175,7 @@ var
 begin
    msgs:=TdwsCompileMessageList.Create;
    sourceFile:=TSourceFile.Create;
-   sourceFile.Code:='@ @= %= ^ ^= $( ?';
+   sourceFile.Code:='@ @= %= ^ ^= $( ? | || & &&';
    rules:=TPascalTokenizerStateRules.Create;
    t:=rules.CreateTokenizer(msgs);
    try
@@ -187,6 +189,10 @@ begin
       CheckTrue(t.TestDelete(ttDOLLAR), '$');
       CheckTrue(t.TestDelete(ttBLEFT), '(');
       CheckTrue(t.TestDelete(ttQUESTION), '?');
+      CheckTrue(t.TestDelete(ttPIPE), '|');
+      CheckTrue(t.TestDelete(ttPIPEPIPE), '||');
+      CheckTrue(t.TestDelete(ttAMP), '&');
+      CheckTrue(t.TestDelete(ttAMPAMP), '&&');
 
       CheckTrue(t.TestAny([ttNAME])=ttNone, 'Any at end');
       CheckTrue(t.TestDeleteAny([ttNAME])=ttNone, 'DeleteAny at end');
@@ -1100,6 +1106,112 @@ begin
       FCompiler.Config.CompilerOptions:=oldOptions;
       un.Free;
    end;
+end;
+
+// OverloadForwardDictionary
+//
+procedure TCornerCasesTests.OverloadForwardDictionary;
+var
+   prog : IdwsProgram;
+   oldOptions : TCompilerOptions;
+   i : Integer;
+begin
+   oldOptions:=FCompiler.Config.CompilerOptions;
+
+   FCompiler.Config.CompilerOptions:=oldOptions+[coSymbolDictionary];
+
+   prog:=FCompiler.Compile(
+       'procedure Test(a1 : Integer); overload; forward;'#13#10
+      +'procedure Test(a2 : String); overload; forward;'#13#10
+      +'procedure Test(a3 : Boolean); overload; forward;'#13#10
+      +'procedure Test(a1 : Integer); begin end;'#13#10
+      +'procedure Test(a2 : String); begin end;'#13#10
+      +'procedure Test(a3 : Boolean); begin end;'#13#10
+      );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'compile A');
+   CheckEquals(6, prog.SymbolDictionary.Count, 'nb symbols A');
+   for i:=0 to prog.SymbolDictionary.Count-1 do
+      CheckEquals(2, prog.SymbolDictionary[i].Count,
+                   'A declared + reference for '+IntToStr(i)+' '
+                  +prog.SymbolDictionary[i].Symbol.Name);
+
+   prog:=nil;
+
+   prog:=FCompiler.Compile(
+       'procedure Test(a1, a2 : Integer); overload; forward;'#13#10
+      +'procedure Test(a2, a1 : String); overload; forward;'#13#10
+      +'procedure Test(a1, a2 : Integer); overload; begin end;'#13#10
+      +'procedure Test(a2, a1 : String); overload; begin end;'#13#10
+      );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'compile B');
+   CheckEquals(6, prog.SymbolDictionary.Count, 'nb symbols B');
+   for i:=0 to prog.SymbolDictionary.Count-1 do
+      CheckEquals(2, prog.SymbolDictionary[i].Count,
+                   'B declared + reference for '+IntToStr(i)+' '
+                  +prog.SymbolDictionary[i].Symbol.Name);
+
+
+   FCompiler.Config.CompilerOptions:=oldOptions;
+end;
+
+// OverloadMethodDictionary
+//
+procedure TCornerCasesTests.OverloadMethodDictionary;
+var
+   prog : IdwsProgram;
+   oldOptions : TCompilerOptions;
+   i : Integer;
+   symPosList : TSymbolPositionList;
+begin
+   oldOptions:=FCompiler.Config.CompilerOptions;
+
+   FCompiler.Config.CompilerOptions:=oldOptions+[coSymbolDictionary];
+
+   prog:=FCompiler.Compile(
+       'type TTest = class'#13#10
+      +'procedure Test(a1 : Integer); overload; '#13#10
+      +'procedure Test(a2 : String); overload;'#13#10
+      +'procedure Test(a3 : Boolean); overload;'#13#10
+      +'end;'#13#10
+      +'procedure TTest.Test(a1 : Integer); begin end;'#13#10
+      +'procedure TTest.Test(a2 : String); begin end;'#13#10
+      +'procedure TTest.Test(a3 : Boolean); begin end;'#13#10
+      );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'compile A');
+   CheckEquals(7, prog.SymbolDictionary.Count, 'nb symbols A');
+   for i:=0 to prog.SymbolDictionary.Count-1 do begin
+      symPosList:=prog.SymbolDictionary[i];
+      if symPosList.Symbol.Name='TTest' then
+         CheckEquals(4, symPosList.Count, 'TTest A')
+      else CheckEquals(2, symPosList.Count,
+                       'A declared + reference for '+IntToStr(i)+' '+symPosList.Symbol.Name);
+   end;
+
+   prog:=nil;
+
+   prog:=FCompiler.Compile(
+       'type TTest = class'#13#10
+      +'procedure Test(a1, a2 : Integer); overload;'#13#10
+      +'procedure Test(a2, a1 : String); overload;'#13#10
+      +'end;'#13#10
+      +'procedure TTest.Test(a1, a2 : Integer); begin end;'#13#10
+      +'procedure TTest.Test(a2, a1 : String); begin end;'#13#10
+      );
+
+   CheckEquals('', prog.Msgs.AsInfo, 'compile B');
+   CheckEquals(7, prog.SymbolDictionary.Count, 'nb symbols B');
+   for i:=0 to prog.SymbolDictionary.Count-1 do begin
+      symPosList:=prog.SymbolDictionary[i];
+      if symPosList.Symbol.Name='TTest' then
+         CheckEquals(3, symPosList.Count, 'TTest B')
+      else CheckEquals(2, symPosList.Count,
+                       'B declared + reference for '+IntToStr(i)+' '+symPosList.Symbol.Name);
+   end;
+
+   FCompiler.Config.CompilerOptions:=oldOptions;
 end;
 
 // ------------------------------------------------------------------

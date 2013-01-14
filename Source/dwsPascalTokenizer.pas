@@ -85,7 +85,7 @@ implementation
 // ------------------------------------------------------------------
 
 const
-   cOPS = ['+', '-', '*', '/', '=', '<', '>', '@', '%', '^'];
+   cOPS = ['+', '-', '*', '/', '=', '<', '>', '@', '%', '^', '|'];
    cSPACE = [' ', #9, #13, #10, #0];
    cSPEC = ['(', ')', ',', ';', '[', ']', '}', '!', '?'];
    cSTOP = cSPEC + cOPS + cSPACE + [':', '.', '{'];
@@ -160,7 +160,7 @@ begin
    sStart.AddTransition([''''], TSeekTransition.Create(sStringSingle, [toStart], caNone));
    sStart.AddTransition(['"'], TSeekTransition.Create(sStringDouble, [toStart], caNone));
    sStart.AddTransition(['#'], TSeekTransition.Create(sChar0, [toStart], caNone));
-   sStart.AddTransition([':', '+', '-', '*', '@', '%', '^'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
+   sStart.AddTransition([':', '+', '-', '*', '@', '%', '^', '|'], TConsumeTransition.Create(sAssign0, [toStart], caNone));
    sStart.AddTransition(['='], TConsumeTransition.Create(sEqualF, [toStart], caNone));
    sStart.AddTransition(cSPEC-['('], TConsumeTransition.Create(sStart, [toStart, toFinal], caName));
    sStart.AddTransition(['('], TConsumeTransition.Create(sBracketLeft, [toStart], caNone));
@@ -237,7 +237,9 @@ begin
    sNameF.SetElse(TErrorTransition.Create(TOK_InvalidChar));
 
    sNameEscapedS.AddTransition(cNAM, TConsumeTransition.Create(sNameEscapedF, [toStart], caNone));
-   sNameEscapedS.SetElse(TErrorTransition.Create(TOK_InvalidChar));
+   sNameEscapedS.AddTransition(['&'], TConsumeTransition.Create(sStart, [toFinal], caAmpAmp));
+   sNameEscapedS.SetElse(TCheckTransition.Create(sStart, [toFinal], caAmp));
+//   sNameEscapedS.SetElse(TErrorTransition.Create(TOK_InvalidChar));
 
    sNameEscapedF.AddTransition(cNAM+cINT, TConsumeTransition.Create(sNameEscapedF, [], caNone));
    sNameEscapedF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caNameEscaped));
@@ -328,7 +330,7 @@ begin
    sStringIndentDoubleF.AddTransition(cSTOP, TCheckTransition.Create(sStart, [toFinal], caMultiLineString));
    sStringIndentDoubleF.SetElse(TErrorTransition.Create(TOK_InvalidChar));
 
-   sAssign0.AddTransition(['='], TConsumeTransition.Create(sStart, [toFinal], caName));
+   sAssign0.AddTransition(['=', '|'], TConsumeTransition.Create(sStart, [toFinal], caName));
    sAssign0.AddTransition(cStart + cSTOP, TCheckTransition.Create(sStart, [toFinal], caName));
    sAssign0.SetElse(TErrorTransition.Create(TOK_EqualityExpected));
 
