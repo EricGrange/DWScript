@@ -211,16 +211,16 @@ function TSynDWSSyn.HashKey(Str: PWideChar): Cardinal;
 var
    c : Word;
 begin
-   Result := 0;
+   Result:=0;
    while IsIdentChar(Str^) do begin
-      c := Ord(Str^);
-      Result := Result * 812 + c * 76;
+      c:=Ord(Str^);
       if c in [Ord('A')..Ord('Z')] then
-         Result := Result + (Ord('a') - Ord('A')) * 76;
+         c := c + (Ord('a')-Ord('A'));
+      Result := Result * 39 + c * 219;
       inc(Str);
    end;
-   Result := Result mod 389;
    fStringLen := Str - fToIdent;
+   Result := Result mod Cardinal(Length(fIdentFuncTable));
 end;
 
 function TSynDWSSyn.IdentKind(MayBe: PWideChar): TtkTokenKind;
@@ -236,16 +236,25 @@ begin
 end;
 
 procedure TSynDWSSyn.InitIdent;
+
+   procedure SetIdentFunc(h : Integer; const func : TIdentFuncTableFunc);
+   begin
+      // make sure there are no collisions
+      if    (not Assigned(fIdentFuncTable[h]))
+         or CompareMem(@func, @fIdentFuncTable[h], SizeOf(func)) then
+         fIdentFuncTable[h]:=func;
+   end;
+
 var
-  i: Integer;
+  i : Integer;
 begin
    for i:=Low(cKeyWords) to High(cKeyWords) do begin
-      fIdentFuncTable[HashKey(@cKeyWords[i][1])]:=KeyWordFunc;
+      SetIdentFunc(HashKey(@cKeyWords[i][1]), KeyWordFunc);
       fKeyWords.Add(cKeyWords[i]);
    end;
 
    for i:=0 to High(cKeyWords_PropertyScoped) do begin
-      fIdentFuncTable[HashKey(@cKeyWords_PropertyScoped[i][1])]:=FuncPropertyScoped;
+      SetIdentFunc(HashKey(@cKeyWords_PropertyScoped[i][1]), FuncPropertyScoped);
       fKeyWords_PropertyScoped.Add(cKeyWords_PropertyScoped[i]);
    end;
 
@@ -253,10 +262,9 @@ begin
       if @fIdentFuncTable[i] = nil then
          fIdentFuncTable[i] := AltFunc;
 
-
-   fIdentFuncTable[HashKey('asm')] := FuncAsm;
-   fIdentFuncTable[HashKey('end')] := FuncEnd;
-   fIdentFuncTable[HashKey('property')] := FuncProperty;
+   SetIdentFunc(HashKey('asm'), FuncAsm);
+   SetIdentFunc(HashKey('end'), FuncEnd);
+   SetIdentFunc(HashKey('property'), FuncProperty);
 
    fKeyWords.Sorted:=True;
 end;
@@ -271,7 +279,7 @@ var
    buf : String;
 begin
    SetString(buf, fToIdent, fStringLen);
-   if (fKeyWords.IndexOf(buf)>0) and (FLine[Run - 1] <> '&') then
+   if (fKeyWords.IndexOf(buf)>=0) and (FLine[Run - 1] <> '&') then
       Result := tkKey
    else Result := tkIdentifier
 end;
@@ -300,7 +308,7 @@ var
    buf : String;
 begin
    SetString(buf, fToIdent, fStringLen);
-   if (fRange = rsProperty) and (fKeyWords_PropertyScoped.IndexOf(buf)>0) then
+   if (fRange = rsProperty) and (fKeyWords_PropertyScoped.IndexOf(buf)>=0) then
       Result:=tkKey
    else Result:=KeyWordFunc;
 end;

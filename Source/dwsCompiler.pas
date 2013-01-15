@@ -289,7 +289,7 @@ type
                           tcParameter, tcResult, tcOperand, tcExceptionClass,
                           tcProperty, tcHelper);
 
-   TdwsReadProcDeclOption = (pdoClassMethod, pdoType, pdoAnonymous, pdoLambda);
+   TdwsReadProcDeclOption = (pdoClassMethod, pdoType, pdoAnonymous);
    TdwsReadProcDeclOptions = set of TdwsReadProcDeclOption;
 
    TdwsUnitSection = (secMixed, secHeader, secInterface, secImplementation,
@@ -2602,8 +2602,6 @@ begin
 
    funcKind:=cTokenToFuncKind[funcToken];
    funcPos:=hotPos;
-   if funcToken=ttLAMBDA then
-      Include(declOptions, pdoLambda);
 
    if not (pdoType in declOptions) then begin
       // Find existing symbol for function name (if any)
@@ -2660,6 +2658,9 @@ begin
          Result := TSourceFuncSymbol.Create('', funcKind, -1)
       else Result := TSourceFuncSymbol.Create(name, funcKind, FMainProg.NextStackLevel(FProg.Level));
       try
+         if funcToken=ttLAMBDA then
+            Result.IsLambda:=True;
+
          // Don't add params to dictionary when function is forwarded. It is already declared.
          forwardedSymForParams:=forwardedSym;
          if forwardedSym<>nil then
@@ -3255,9 +3256,6 @@ begin
       try
          FMainProg.Compiler := Self;
          proc.AssignTo(funcSymbol);
-         // Set the current context's LocalTable to be the table of the new procedure
-         if coContextMap in FOptions then
-            FSourceContextMap.Current.LocalTable:=FProg.Table;
 
          if FTok.TestDelete(ttREQUIRE) then begin
             if funcSymbol is TMethodSymbol then begin
@@ -3271,50 +3269,52 @@ begin
                proc.PreConditions:=TSourceMethodPreConditions.Create(proc);
          end;
 
-         // Read local variable declarations
-         tt:=FTok.TestAny([ttVAR, ttCONST, ttPROCEDURE, ttFUNCTION]);
-         if    (tt in [ttVAR, ttCONST])
-            or ((UnitSection=secImplementation) and (tt in [ttPROCEDURE, ttFUNCTION])) then begin
-            // Read names of local variable and constants
-            sectionType:=ttNone;
-            repeat
+         if not funcSymbol.IsLambda then begin
+            // Read local variable, constant & proc declarations
+            tt:=FTok.TestAny([ttVAR, ttCONST, ttPROCEDURE, ttFUNCTION]);
+            if    (tt in [ttVAR, ttCONST])
+               or ((UnitSection=secImplementation) and (tt in [ttPROCEDURE, ttFUNCTION])) then begin
+               // Read names of local variable and constants
+               sectionType:=ttNone;
+               repeat
 
-               tt:=FTok.TestAny([ttVAR, ttCONST, ttPROCEDURE, ttFUNCTION]);
-               case tt of
-                  ttVAR, ttCONST : begin
-                     sectionType:=tt;
-                     FTok.KillToken;
-                  end;
-                  ttPROCEDURE, ttFUNCTION : begin
-                     if UnitSection=secImplementation then begin
-                        hotPos:=FTok.HotPos;
+                  tt:=FTok.TestAny([ttVAR, ttCONST, ttPROCEDURE, ttFUNCTION]);
+                  case tt of
+                     ttVAR, ttCONST : begin
+                        sectionType:=tt;
                         FTok.KillToken;
-                        ReadProcBody(ReadProcDecl(tt, hotPos));
-                        sectionType:=ttNone;
-                        ReadSemiColon;
-                        continue;
-                     end else Break;
+                     end;
+                     ttPROCEDURE, ttFUNCTION : begin
+                        if UnitSection=secImplementation then begin
+                           hotPos:=FTok.HotPos;
+                           FTok.KillToken;
+                           ReadProcBody(ReadProcDecl(tt, hotPos));
+                           sectionType:=ttNone;
+                           ReadSemiColon;
+                           continue;
+                        end else Break;
+                     end;
+                     ttBEGIN :
+                        Break;
                   end;
-                  ttBEGIN :
+
+                  case sectionType of
+                     ttVAR : begin
+                        assignExpr:=ReadVarDecl(FStandardDataSymbolFactory);
+                        if assignExpr<>nil then
+                           FProg.InitExpr.AddStatement(assignExpr);
+                     end;
+                     ttCONST : begin
+                        ReadConstDecl(FStandardDataSymbolFactory);
+                     end;
+                  else
                      Break;
-               end;
-
-               case sectionType of
-                  ttVAR : begin
-                     assignExpr:=ReadVarDecl(FStandardDataSymbolFactory);
-                     if assignExpr<>nil then
-                        FProg.InitExpr.AddStatement(assignExpr);
                   end;
-                  ttCONST : begin
-                     ReadConstDecl(FStandardDataSymbolFactory);
-                  end;
-               else
-                  Break;
-               end;
 
-               ReadSemiColon;
+                  ReadSemiColon;
 
-            until FTok.Test(ttBEGIN);
+               until FTok.Test(ttBEGIN);
+            end;
          end;
 
          if coContextMap in FOptions then
@@ -3360,6 +3360,10 @@ begin
             if coContextMap in FOptions then
                FSourceContextMap.CloseContext(FTok.CurrentPos);  // close with inside procedure end
          end;
+
+         // Set the current context's LocalTable to be the table of the new procedure
+         if coContextMap in FOptions then
+            FSourceContextMap.Current.LocalTable:=FProg.Table;
       finally
          FMainProg.Compiler := nil;
          FProg := oldprog;

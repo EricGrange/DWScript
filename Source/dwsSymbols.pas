@@ -621,7 +621,7 @@ type
    TResultSymbol = class(TDataSymbol)
    end;
 
-   TFuncSymbolFlag = (fsfStateless, fsfExternal, fsfType, fsfOverloaded);
+   TFuncSymbolFlag = (fsfStateless, fsfExternal, fsfType, fsfOverloaded, fsfLambda);
    TFuncSymbolFlags = set of TFuncSymbolFlag;
 
    // A script function / procedure: procedure X(param: Integer);
@@ -652,6 +652,8 @@ type
          procedure SetIsExternal(const val : Boolean);
          function GetIsOverloaded : Boolean; inline;
          procedure SetIsOverloaded(const val : Boolean);
+         function GetIsLambda : Boolean; inline;
+         procedure SetIsLambda(const val : Boolean);
          function GetSourcePosition : TScriptPos; virtual;
          procedure SetSourcePosition(const val : TScriptPos); virtual;
          function GetExternalName : String;
@@ -698,6 +700,7 @@ type
          property IsExternal : Boolean read GetIsExternal write SetIsExternal;
          property Kind : TFuncKind read FKind write FKind;
          property ExternalName : String read GetExternalName write SetExternalName;
+         property IsLambda : Boolean read GetIsLambda write SetIsLambda;
          property Level : SmallInt read GetLevel;
          property InternalParams : TSymbolTable read FInternalParams;
          property Params : TParamsSymbolTable read FParams;
@@ -2956,6 +2959,22 @@ begin
    if val then
       Include(FFlags, fsfOverloaded)
    else Exclude(FFlags, fsfOverloaded);
+end;
+
+// GetIsLambda
+//
+function TFuncSymbol.GetIsLambda : Boolean;
+begin
+   Result:=(fsfLambda in FFlags);
+end;
+
+// SetIsLambda
+//
+procedure TFuncSymbol.SetIsLambda(const val : Boolean);
+begin
+   if val then
+      Include(FFlags, fsfLambda)
+   else Exclude(FFlags, fsfLambda);
 end;
 
 // GetSourcePosition
