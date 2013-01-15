@@ -1506,8 +1506,8 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
 
-         property CondExpr : TTypedExpr read FCond;
-         property ThenExpr : TNoResultExpr read FThen;
+         property CondExpr : TTypedExpr read FCond write FCond;
+         property ThenExpr : TNoResultExpr read FThen write FThen;
    end;
 
    // if FCond then FThen else FElse
@@ -1527,7 +1527,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
 
-         property ElseExpr : TNoResultExpr read FElse;
+         property ElseExpr : TNoResultExpr read FElse write FElse;
    end;
 
    // value := if FCond then FTrue else FFalse
@@ -6163,8 +6163,10 @@ end;
 // Optimize
 //
 function TIfThenElseExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+var
+   bufNoResult : TNoResultExpr;
+   notExpr : TNotBoolExpr;
 begin
-   Result:=Self;
    if FCond.IsConstant then begin
       if FCond.EvalAsBoolean(exec) then begin
          Result:=FThen;
@@ -6174,6 +6176,17 @@ begin
          FElse:=nil;
       end;
       Free;
+   end else begin
+      Result:=Self;
+      if FCond is TNotBoolExpr then begin
+         notExpr:=TNotBoolExpr(FCond);
+         FCond:=notExpr.Expr;
+         notExpr.Expr:=nil;
+         notExpr.Free;
+         bufNoResult:=ElseExpr;
+         FElse:=FThen;
+         FThen:=bufNoResult;
+      end;
    end;
 end;
 
@@ -8553,6 +8566,9 @@ end;
 // Optimize
 //
 function TIfThenElseValueExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+var
+   bufExpr : TTypedExpr;
+   notExpr : TNotBoolExpr;
 begin
    if FCondExpr.IsConstant then begin
       if FCondExpr.EvalAsBoolean(exec) then begin
@@ -8563,7 +8579,18 @@ begin
          FFalseExpr:=nil;
       end;
       Free;
-   end else Result:=Self;
+   end else begin
+      Result:=Self;
+      if CondExpr is TNotBoolExpr then begin
+         notExpr:=TNotBoolExpr(CondExpr);
+         CondExpr:=notExpr.Expr;
+         notExpr.Expr:=nil;
+         notExpr.Free;
+         bufExpr:=TrueExpr;
+         TrueExpr:=FalseExpr;
+         FalseExpr:=bufExpr;
+      end;
+   end;
 end;
 
 // GetSubExpr
