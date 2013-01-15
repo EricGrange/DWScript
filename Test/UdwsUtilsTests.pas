@@ -38,6 +38,7 @@ type
          procedure TightListTest;
          procedure LookupTest;
          procedure SortedListExtract;
+         procedure SimpleListOfInterfaces;
 
          procedure UnicodeCompareTextTest;
          procedure FastCompareTextSortedValues;
@@ -265,6 +266,40 @@ begin
    list.ExtractAt(0);
    CheckEquals(0, list.Count);
    list.Free;
+end;
+
+// SimpleListOfInterfaces
+//
+procedure TdwsUtilsTests.SimpleListOfInterfaces;
+var
+   list : TSimpleList<IGetSelf>;
+   obj1 : IGetSelf;
+begin
+   obj1:=TInterfacedSelfObject.Create;
+
+   list:=TSimpleList<IGetSelf>.Create;
+   try
+      list.Add(nil);
+      list.Add(obj1);
+
+      CheckEquals(2, list.Count, 'count');
+      CheckEquals(2, (obj1.GetSelf as TRefCountedObject).RefCount, 'ref 1');
+
+      list.Extract(0);
+      list.Add(obj1);
+
+      CheckEquals(3, (obj1.GetSelf as TRefCountedObject).RefCount, 'ref 2');
+
+      list.Extract(1);
+
+      CheckEquals(2, (obj1.GetSelf as TRefCountedObject).RefCount, 'ref 3');
+
+      list.Extract(0);
+
+      CheckEquals(1, (obj1.GetSelf as TRefCountedObject).RefCount, 'ref 4');
+   finally
+      list.Free;
+   end;
 end;
 
 // UnicodeCompareTextTest

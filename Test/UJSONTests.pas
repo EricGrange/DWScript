@@ -43,6 +43,7 @@ type
          procedure JSONQuote;
          procedure UndefinedJSON;
          procedure JSONEmptyObject;
+         procedure JSONEmptyArray;
          procedure JSONSpecialChars;
          procedure JSONLongNumber;
          procedure JSONInvalidStuff;
@@ -329,6 +330,26 @@ begin
 
    Check(json['empty'].ValueType=jvtObject, 'check empty value type');
    CheckEquals(0, json['empty'].ElementCount, 'check empty element count');
+
+   json.Free;
+
+   CheckException(JSONExtraComma, EdwsJSONParseError, 'extra comma');
+end;
+
+// JSONEmptyArray
+//
+procedure TdwsJSONTests.JSONEmptyArray;
+var
+   json : TdwsJSONValue;
+begin
+   json:=TdwsJSONValue.ParseString('{"empty":[],"nested":[[]]}');
+
+   Check(json['empty'].ValueType=jvtArray, 'check empty value type');
+   CheckEquals(0, json['empty'].ElementCount, 'check empty element count');
+   Check(json['nested'].ValueType=jvtArray, 'check nested value type');
+   CheckEquals(1, json['nested'].ElementCount, 'check empty element count');
+
+   CheckEquals('{"empty":[],"nested":[[]]}', json.ToString, 'roundtrip');
 
    json.Free;
 

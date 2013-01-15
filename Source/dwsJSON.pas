@@ -57,7 +57,8 @@ type
          procedure WriteBoolean(b : Boolean);
          procedure WriteNull;
 
-         procedure WriteStrings(const str : TStrings);
+         procedure WriteStrings(const str : TStrings); overload;
+         procedure WriteStrings(const str : array of String); overload;
 
          function ToString : String; override;
 
@@ -1928,6 +1929,18 @@ var
 begin
    BeginArray;
    for i:=0 to str.Count-1 do
+      WriteString(str[i]);
+   EndArray;
+end;
+
+// WriteStrings
+//
+procedure TdwsJSONWriter.WriteStrings(const str : array of String);
+var
+   i : Integer;
+begin
+   BeginArray;
+   for i:=0 to High(str) do
       WriteString(str[i]);
    EndArray;
 end;

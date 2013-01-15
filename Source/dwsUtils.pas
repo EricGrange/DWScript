@@ -2088,10 +2088,12 @@ procedure TSimpleList<T>.Extract(idx : Integer);
 var
    n : Integer;
 begin
+   FItems[idx]:=Default(T);
    n:=FCount-idx-1;
-   if n>0 then
-      Move(FItems[idx+1], FItems[idx], n*SizeOf(T))
-   else FillChar(FItems[idx], SizeOf(T), 0);
+   if n>0 then begin
+      Move(FItems[idx+1], FItems[idx], n*SizeOf(T));
+      FillChar(FItems[FCount-1], SizeOf(T), 0);
+   end;
    Dec(FCount);
 end;
 
