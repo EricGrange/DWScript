@@ -180,7 +180,7 @@ uses
 
 const
    // if the language is case-insensitive keywords *must* be in lowercase
-   cKeyWords: array[1..96] of UnicodeString = (
+   cKeyWords: array[1..95] of UnicodeString = (
       'abstract', 'and', 'array', 'as', 'asm',
       'begin', 'break', 'case', 'cdecl', 'class', 'const', 'constructor',
       'contains', 'continue', 'deprecated', 'destructor',
@@ -196,7 +196,7 @@ const
       'register', 'reintroduce', 'repeat', 'require', 'resourcestring',
       'sar', 'sealed', 'set', 'shl', 'shr', 'static', 'step',
       'then', 'to', 'try', 'type', 'unit', 'until',
-      'uses', 'var', 'virtual', 'while', 'xor', 'if'
+      'uses', 'var', 'virtual', 'while', 'xor'
   );
   cKeyWords_PropertyScoped: array [0..4] of UnicodeString = (
       'default', 'index', 'read', 'stored', 'write'
@@ -216,7 +216,7 @@ begin
       c:=Ord(Str^);
       if c in [Ord('A')..Ord('Z')] then
          c := c + (Ord('a')-Ord('A'));
-      Result := Result * 39 + c * 219;
+      Result := Result * 692 + c * 171;
       inc(Str);
    end;
    fStringLen := Str - fToIdent;
