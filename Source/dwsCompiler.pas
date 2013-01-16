@@ -1769,7 +1769,7 @@ end;
 procedure TdwsCompiler.ReadSemiColon;
 begin
    if not FTok.TestDelete(ttSEMI) then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_SemiExpected);
 end;
 
 // ReadScript
@@ -2592,12 +2592,14 @@ var
    name : String;
    sym : TSymbol;
    funcPos : TScriptPos;
+   compositeSym : TCompositeTypeSymbol;
    overloadFuncSym, existingFuncSym, forwardedSym : TFuncSymbol;
    forwardedSymForParams : TFuncSymbol;
    forwardedSymPos : TSymbolPosition;
    sourceContext : TdwsSourceContext;
    posArray : TScriptPosArray;
 begin
+   Result:=nil;
    sym:=nil;
 
    funcKind:=cTokenToFuncKind[funcToken];
@@ -2628,11 +2630,18 @@ begin
    // name is the name of composite type -> this is a method implementation
    if sym is TCompositeTypeSymbol then begin
 
-      // Store reference to class in dictionary
-      RecordSymbolUse(sym, funcPos, [suReference]);
-      Result:=ReadMethodImpl(TCompositeTypeSymbol(sym), funcKind, pdoClassMethod in declOptions);
+      compositeSym:=TCompositeTypeSymbol(sym);
+      if compositeSym.IsPartial or (compositeSym.UnitSymbol=CurrentUnitSymbol) then begin
 
-   end else begin
+         // Store reference to class in dictionary
+         RecordSymbolUse(sym, funcPos, [suReference]);
+         Result:=ReadMethodImpl(compositeSym, funcKind, pdoClassMethod in declOptions);
+
+      end;
+
+   end;
+
+   if Result=nil then begin
 
       // Read normal procedure/function declaration
       if (pdoClassMethod in declOptions) or (funcKind in [fkConstructor, fkDestructor, fkMethod]) then

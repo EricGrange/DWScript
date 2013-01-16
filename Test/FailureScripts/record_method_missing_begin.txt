@@ -1,1 +1,2 @@
 Syntax Error: ";" expected. [line: 4, column: 22]
+Syntax Error: Record fields must be declared before record methods [line: 4, column: 22]

@@ -1092,6 +1092,7 @@ type
          function GetIsStatic : Boolean; virtual;
          function GetIsExternal : Boolean; virtual;
          function GetExternalName : String; virtual;
+         function GetIsPartial : Boolean; virtual;
 
          procedure CheckMethodsImplemented(const msgs : TdwsCompileMessageList);
 
@@ -1122,6 +1123,7 @@ type
          property DefaultProperty : TPropertySymbol read FDefaultProperty write FDefaultProperty;
 
          property IsStatic : Boolean read GetIsStatic;
+         property IsPartial : Boolean read GetIsPartial;
          property IsExternal : Boolean read GetIsExternal;
          property ExternalName : String read GetExternalName;
    end;
@@ -1375,7 +1377,7 @@ type
          procedure SetIsStatic(const val : Boolean); inline;
          function GetIsExternal : Boolean; override;
          procedure SetIsExternal(const val : Boolean); inline;
-         function GetIsPartial : Boolean; inline;
+         function GetIsPartial : Boolean; override;
 
          function AllocateVMTindex : Integer;
 
@@ -2152,6 +2154,13 @@ end;
 function TCompositeTypeSymbol.GetExternalName : String;
 begin
    Result:=Name;
+end;
+
+// GetIsPartial
+//
+function TCompositeTypeSymbol.GetIsPartial : Boolean;
+begin
+   Result:=False;
 end;
 
 // FindDefaultConstructor
