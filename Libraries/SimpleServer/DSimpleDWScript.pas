@@ -21,7 +21,7 @@ interface
 uses
    Windows, SysUtils, Classes, StrUtils,
    dwsFileSystem, dwsGlobalVarsFunctions,
-   dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils,
+   dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils, dwsXPlatform,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsDataBase, dwsDataBaseLibModule, dwsSynSQLiteDatabase,
    dwsJSON, dwsErrors, dwsFunctions;
@@ -43,11 +43,14 @@ type
       DelphiWebScript: TDelphiWebScript;
       dwsHtmlFilter: TdwsHtmlFilter;
       dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions;
+      dwsRestrictedFileSystem: TdwsRestrictedFileSystem;
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 
+      procedure DoInclude(const scriptName: String; var scriptSource: String);
+      function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+
    private
-      FLibraryPaths : TStrings;
       FScriptTimeoutMilliseconds : Integer;
       FCPUUsageLimit : Integer;
       FCPUAffinity : Cardinal;
@@ -55,7 +58,7 @@ type
       FPathVariables : TStrings;
 
       FSystemInfo : TdwsSystemInfoLibModule;
-      FFileSystem : TdwsCustomFileSystem;
+      FHotPath : String;
       FWebEnv : TdwsWebLib;
       FDataBase : TdwsDatabaseLib;
 
@@ -67,15 +70,10 @@ type
       FFlushMatching : String;
 
    protected
-      function GetFileSystem : TdwsCustomFileSystem;
-      procedure SetFileSystem(const val : TdwsCustomFileSystem);
-
       procedure TryAcquireDWS(const fileName : String; var prog : IdwsProgram);
       procedure CompileDWS(const fileName : String; var prog : IdwsProgram);
 
       procedure AddNotMatching(const cp : TCompiledProgram);
-
-      function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
 
       procedure SetCPUUsageLimit(const val : Integer);
       procedure SetCPUAffinity(const val : Cardinal);
@@ -98,8 +96,6 @@ type
       property CPUUsageLimit : Integer read FCPUUsageLimit write SetCPUUsageLimit;
       property CPUAffinity : Cardinal read FCPUAffinity write SetCPUAffinity;
       property PathVariables : TStrings read FPathVariables;
-
-      property FileSystem : TdwsCustomFileSystem read GetFileSystem write SetFileSystem;
   end;
 
 const
@@ -127,8 +123,8 @@ const
          // Maximum recursion depth per script
          +'"MaxRecursionDepth": 512,'
          // Library paths (outside of www folder)
-         // If missing, assumes a '.lib' subfolder of the folder where the exe is
-         +'"LibraryPaths": []'
+         // By default, assumes a '.lib' subfolder of the folder where the exe is
+         +'"LibraryPaths": ["%www%\\.lib"]'
       +'}';
 
 // ------------------------------------------------------------------
@@ -160,37 +156,16 @@ begin
    FCompilerLock:=TFixedCriticalSection.Create;
 
    FScriptTimeoutMilliseconds:=3000;
-
-   FLibraryPaths:=TStringList.Create;
-   DelphiWebScript.OnNeedUnit:=DoNeedUnit;
-
 end;
 
 procedure TSimpleDWScript.DataModuleDestroy(Sender: TObject);
 begin
    FlushDWSCache;
 
-   FLibraryPaths.Free;
    FCompilerLock.Free;
    FCompiledProgramsLock.Free;
    FCompiledPrograms.Free;
    FPathVariables.Free;
-end;
-
-// GetFileSystem
-//
-function TSimpleDWScript.GetFileSystem : TdwsCustomFileSystem;
-begin
-   Result:=FFileSystem;
-end;
-
-// SetFileSystem
-//
-procedure TSimpleDWScript.SetFileSystem(const val : TdwsCustomFileSystem);
-begin
-   FFileSystem:=val;
-   DelphiWebScript.Config.CompileFileSystem:=val;
-   DelphiWebScript.Config.RuntimeFileSystem:=val;
 end;
 
 // HandleDWS
@@ -315,11 +290,13 @@ begin
       DelphiWebScript.Config.MaxRecursionDepth:=dws['MaxRecursionDepth'].AsInteger;
 
       libs:=dws['LibraryPaths'];
-      FLibraryPaths.Clear;
+      dwsRestrictedFileSystem.Paths.Clear;
       for i:=0 to libs.ElementCount-1 do begin
          path:=libs.Elements[i].AsString;
-         if path<>'' then
-            FLibraryPaths.Add(IncludeTrailingPathDelimiter(path));
+         if path<>'' then begin
+            path:=ApplyPathVariables(path);
+            dwsRestrictedFileSystem.Paths.Add(IncludeTrailingPathDelimiter(path));
+         end;
       end;
 
    finally
@@ -347,23 +324,18 @@ end;
 //
 procedure TSimpleDWScript.CompileDWS(const fileName : String; var prog : IdwsProgram);
 var
-   sl : TStringList;
    code : String;
    cp : TCompiledProgram;
 begin
-   sl:=TStringList.Create;
-   try
-      sl.LoadFromFile(fileName);
-      code:=sl.Text;
-   finally
-      sl.Free;
-   end;
+   code:=LoadTextFromFile(fileName);
 
    FCompilerLock.Enter;
    try
       // check after compiler lock in case of simultaneous requests
       TryAcquireDWS(fileName, prog);
       if prog<>nil then Exit;
+
+      FHotPath:=ExtractFilePath(fileName);
 
       prog:=DelphiWebScript.Compile(code);
 
@@ -389,24 +361,20 @@ begin
       FCompiledPrograms.Add(cp);
 end;
 
+// DoInclude
+//
+procedure TSimpleDWScript.DoInclude(const scriptName: String; var scriptSource: String);
+begin
+   if FHotPath<>'' then
+      scriptSource:=LoadTextFromFile(FHotPath+scriptName);
+end;
+
 // DoNeedUnit
 //
 function TSimpleDWScript.DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
-var
-   i : Integer;
-   fileName : String;
 begin
-   for i:=0 to FLibraryPaths.Count-1 do begin
-      fileName:=FLibraryPaths[i]+unitName+'.pas';
-      if not FileExists(fileName) then begin
-         fileName:=FLibraryPaths[i]+unitName+'.inc';
-         if not FileExists(fileName) then
-            continue;
-      end;
-      unitSource:=LoadTextFromFile(fileName);
-      break;
-   end;
    Result:=nil;
+   DoInclude(unitName+'.pas', unitSource);
 end;
 
 // SetCPUUsageLimit

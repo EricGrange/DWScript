@@ -23,7 +23,7 @@ unit dwsFileSystem;
 
 interface
 
-uses Classes, SysUtils, dwsUtils;
+uses Classes, SysUtils, dwsUtils, dwsXPlatform;
 
 type
 
@@ -32,7 +32,8 @@ type
    TdwsFileOpenMode = (
       fomReadOnly,   // opens file for read-only, fails if doesn't exist
       fomReadWrite,  // opens file for read-write, creates a new one if doesn't exist
-      fomCreate      // opens file for read-write, always empty
+      fomCreate,     // opens file for read-write, always empty
+      fomFastSequentialRead // opens file for sequential read-only, return nil if doesn't exist
       );
 
    EdwsFileSystemException = class (Exception)
@@ -143,6 +144,19 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+type
+   TFileHandleStream = class (THandleStream)
+      destructor Destroy; override;
+   end;
+
+// Destroy
+//
+destructor TFileHandleStream.Destroy;
+begin
+   CloseFileHandle(Handle);
+   inherited;
+end;
+
 // ------------------
 // ------------------ TdwsBaseFileSystem ------------------
 // ------------------
@@ -199,6 +213,7 @@ end;
 function TdwsOSFileSystem.OpenFileStream(const fileName : String; const mode : TdwsFileOpenMode) : TStream;
 var
    validFileName : String;
+   hFile : THandle;
 begin
    validFileName:=ValidateFileName(fileName);
    case mode of
@@ -210,6 +225,12 @@ begin
          Result:=TFileStream.Create(validFileName, fmCreate);
          if Result.Size>0 then
             Result.Size:=0;
+      end;
+      fomFastSequentialRead : begin
+         hFile:=OpenFileForSequentialReadOnly(validFileName);
+         if hFile<>INVALID_HANDLE_VALUE then
+            Result:=TFileHandleStream.Create(hFile)
+         else Result:=nil;
       end;
    else
       Assert(False);

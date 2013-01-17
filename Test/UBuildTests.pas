@@ -80,18 +80,11 @@ end;
 //
 procedure TBuildTests.DoInclude(const scriptName: string; var scriptSource: string);
 var
-   sl : TStringList;
    fileName : String;
 begin
    fileName:='BuildScripts\'+scriptName;
    if FileExists(fileName) then begin
-      sl:=TStringList.Create;
-      try
-         sl.LoadFromFile(fileName);
-         scriptSource:=sl.Text;
-      finally
-         sl.Free;
-      end;
+      scriptSource:=LoadTextFromFile(fileName);
    end else scriptSource:='';
 end;
 
@@ -172,56 +165,41 @@ end;
 //
 procedure TBuildTests.Execution;
 var
-   source, expectedResult : TStringList;
    i : Integer;
    prog : IdwsProgram;
    resultsFileName : String;
    output : String;
    exec : IdwsProgramExecution;
 begin
-   source:=TStringList.Create;
-   expectedResult:=TStringList.Create;
-   try
+   for i:=0 to FTests.Count-1 do begin
 
-      for i:=0 to FTests.Count-1 do begin
+      prog:=FCompiler.Compile(LoadTextFromFile(FTests[i]));
 
-         source.LoadFromFile(FTests[i]);
-
-         prog:=FCompiler.Compile(source.Text);
-
-         if not prog.Msgs.HasErrors then begin
-            try
-               exec:=prog.Execute;
-            except
-               on E: Exception do begin
-                  CheckEquals('', E.Message, FTests[i]);
-               end;
+      if not prog.Msgs.HasErrors then begin
+         try
+            exec:=prog.Execute;
+         except
+            on E: Exception do begin
+               CheckEquals('', E.Message, FTests[i]);
             end;
-            if prog.Msgs.Count+exec.Msgs.Count=0 then
-               output:=exec.Result.ToString
-            else begin
-               output:= 'Errors >>>>'#13#10
-                       +prog.Msgs.AsInfo
-                       +exec.Msgs.AsInfo
-                       +'Result >>>>'#13#10
-                       +exec.Result.ToString;
-            end;
-         end else begin
+         end;
+         if prog.Msgs.Count+exec.Msgs.Count=0 then
+            output:=exec.Result.ToString
+         else begin
             output:= 'Errors >>>>'#13#10
                     +prog.Msgs.AsInfo
+                    +exec.Msgs.AsInfo
+                    +'Result >>>>'#13#10
+                    +exec.Result.ToString;
          end;
-
-         resultsFileName:=ChangeFileExt(FTests[i], '.txt');
-         if FileExists(resultsFileName) then begin
-            expectedResult.LoadFromFile(resultsFileName);
-            CheckEquals(expectedResult.Text, output, FTests[i]);
-         end else CheckEquals('', output, FTests[i]);
-
+      end else begin
+         output:= 'Errors >>>>'#13#10
+                 +prog.Msgs.AsInfo
       end;
 
-   finally
-      expectedResult.Free;
-      source.Free;
+      resultsFileName:=ChangeFileExt(FTests[i], '.txt');
+      CheckEquals(LoadTextFromFile(resultsFileName), output, FTests[i]);
+
    end;
 end;
 

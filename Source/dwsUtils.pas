@@ -483,9 +483,6 @@ type
 const
    cMSecToDateTime : Double = 1/(24*3600*1000);
 
-function LoadTextFromStream(aStream : TStream) : String;
-function LoadTextFromFile(const fileName : String) : String;
-
 procedure UnifyAssignString(const fromStr : String; var toStr : String);
 function  UnifiedString(const fromStr : String) : String; inline;
 procedure TidyStringsUnifier;
@@ -562,38 +559,6 @@ begin
    pDest:=PWordArray(NativeUInt(Result));
    for i:=0 to n-1 do
       pDest[i]:=Word(PByte(@pSrc[i])^);
-end;
-
-// LoadTextFromStream
-//
-function LoadTextFromStream(aStream : TStream) : String;
-var
-   n : Integer;
-   buf : TBytes;
-   encoding : TEncoding;
-begin
-   n:=aStream.Size-aStream.Position;
-   SetLength(buf, n);
-   aStream.Read(buf[0], n);
-   encoding:=nil;
-   n:=TEncoding.GetBufferEncoding(buf, encoding);
-   if not assigned(encoding) then
-      encoding:=TEncoding.UTF8;
-   Result:=encoding.GetString(buf, n, Length(buf)-n);
-end;
-
-// LoadTextFromFile
-//
-function LoadTextFromFile(const fileName : String) : String;
-var
-   fs : TFileStream;
-begin
-   fs:=TFileStream.Create(fileName, fmOpenRead+fmShareDenyNone);
-   try
-      Result:=LoadTextFromStream(fs);
-   finally
-      fs.Free;
-   end;
 end;
 
 // ------------------

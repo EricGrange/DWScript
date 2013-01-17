@@ -20,9 +20,16 @@ object SimpleDWScript: TSimpleDWScript
   object DelphiWebScript: TDelphiWebScript
     Config.Filter = dwsHtmlFilter
     Config.MaxRecursionDepth = 512
+    Config.CompileFileSystem = dwsRestrictedFileSystem
     Config.TimeoutMilliseconds = 3000
     Config.StackChunkSize = 300
+    Config.OnInclude = DoInclude
+    Config.OnNeedUnit = DoNeedUnit
     Left = 72
     Top = 32
+  end
+  object dwsRestrictedFileSystem: TdwsRestrictedFileSystem
+    Left = 72
+    Top = 96
   end
 end

@@ -1975,6 +1975,7 @@ begin
          finally
             FProg.LeaveSubTable;
          end;
+         FLineCount:=FLineCount+FTok.CurrentPos.Line-2;
       finally
          FTok.Free;
          FTok:=nil;
@@ -9965,14 +9966,14 @@ var
 begin
    if FScriptPaths.Count=0 then begin
       if FCompileFileSystem.FileExists(fileName) then
-         Exit(FCompileFileSystem.OpenFileStream(fileName, fomReadOnly));
+         Exit(FCompileFileSystem.OpenFileStream(fileName, fomFastSequentialRead));
    end else begin
       for i:=0 to FScriptPaths.Count-1 do begin
          if FScriptPaths[i]<>'' then
             fname:=IncludeTrailingPathDelimiter(FScriptPaths[i])+fileName
          else fname:=fileName;
          if FCompileFileSystem.FileExists(fname) then
-            Exit(FCompileFileSystem.OpenFileStream(fname, fomReadOnly));
+            Exit(FCompileFileSystem.OpenFileStream(fname, fomFastSequentialRead));
       end;
    end;
    Result:=nil;
@@ -9983,22 +9984,18 @@ end;
 function TdwsCompiler.GetScriptSource(const scriptName : String) : String;
 var
    stream : TStream;
-   sl : TStringList;
 begin
    stream:=OpenStreamForFile(scriptName);
-   sl:=TStringList.Create;
-   try
-      if stream=nil then
-         Result:=''
-      else begin
-         sl.LoadFromStream(stream);
-         if sl.Count>0 then
-            Result:=sl.Text
-         else Result:=' ';
+   if stream=nil then
+      Result:=''
+   else begin
+      try
+         Result:=LoadTextFromStream(stream);
+      finally
+         stream.Free;
       end;
-   finally
-      sl.Free;
-      stream.Free;
+      if Result='' then
+         Result:=' ';
    end;
 end;
 

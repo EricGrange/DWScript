@@ -117,6 +117,12 @@ function TryTextToFloat(const s : PChar; var value : Extended;
 procedure VarCopy(out dest : Variant; const src : Variant); inline;
 {$endif}
 
+function LoadTextFromBuffer(const buf : TBytes) : String;
+function LoadTextFromStream(aStream : TStream) : String;
+function LoadTextFromFile(const fileName : String) : String;
+function OpenFileForSequentialReadOnly(const fileName : String) : THandle;
+procedure CloseFileHandle(hFile : THandle);
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -334,6 +340,77 @@ begin
 begin
    Result:=TextToFloat(s, value, fvExtended, formatSettings)
 {$endif}
+end;
+
+// LoadTextFromBuffer
+//
+function LoadTextFromBuffer(const buf : TBytes) : String;
+var
+   n : Integer;
+   encoding : TEncoding;
+begin
+   encoding:=nil;
+   n:=TEncoding.GetBufferEncoding(buf, encoding);
+   if not Assigned(encoding) then
+      encoding:=TEncoding.UTF8;
+   Result:=encoding.GetString(buf, n, Length(buf)-n);
+end;
+
+// LoadTextFromStream
+//
+function LoadTextFromStream(aStream : TStream) : String;
+var
+   n : Integer;
+   buf : TBytes;
+begin
+   n:=aStream.Size-aStream.Position;
+   SetLength(buf, n);
+   aStream.Read(buf[0], n);
+   Result:=LoadTextFromBuffer(buf);
+end;
+
+// LoadTextFromFile
+//
+function LoadTextFromFile(const fileName : String) : String;
+var
+   hFile : THandle;
+   n, nRead : Cardinal;
+   buf : TBytes;
+begin
+   hFile:=OpenFileForSequentialReadOnly(fileName);
+   if hFile=INVALID_HANDLE_VALUE then
+      Exit('');
+   try
+      n:=GetFileSize(hFile, nil);
+      if n=INVALID_FILE_SIZE then
+         RaiseLastOSError;
+      SetLength(buf, n);
+      if not ReadFile(hFile, buf[0], n, nRead, nil) then
+         RaiseLastOSError;
+      Result:=LoadTextFromBuffer(buf);
+   finally
+      FileClose(hFile);
+   end;
+end;
+
+// OpenFileForSequentialReadOnly
+//
+function OpenFileForSequentialReadOnly(const fileName : String) : THandle;
+begin
+   Result:=CreateFile(PChar(fileName), GENERIC_READ, FILE_SHARE_READ+FILE_SHARE_WRITE,
+                      nil, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, 0);
+   if Result=INVALID_HANDLE_VALUE then begin
+      if GetLastError<>ERROR_FILE_NOT_FOUND then
+         RaiseLastOSError;
+      Exit;
+   end;
+end;
+
+// CloseFileHandle
+//
+procedure CloseFileHandle(hFile : THandle);
+begin
+   CloseHandle(hFile);
 end;
 
 // ------------------

@@ -48,7 +48,6 @@ type
       protected
          FPath : TFileName;
          FServer : THttpApi2Server;
-         FFileSystem : TdwsRestrictedFileSystem;
          FDWS : TSimpleDWScript;
          FNotifier : TdwsFileNotifier;
          FPort : Integer;
@@ -133,11 +132,7 @@ var
 begin
    FPath:=IncludeTrailingPathDelimiter(ExpandFileName(basePath));
 
-   FFileSystem:=TdwsRestrictedFileSystem.Create(nil);
-   FFileSystem.Paths.Add(FPath);
-
    FDWS:=TSimpleDWScript.Create(nil);
-   FDWS.FileSystem:=FFileSystem;
 
    FDWS.PathVariables.Values['www']:=ExcludeTrailingPathDelimiter(FPath);
 
@@ -201,7 +196,6 @@ begin
    FNotifier.Free;
    FServer.Free;
    FDWS.Free;
-   FFileSystem.Free;
    FDirectoryIndex.Free;
    inherited;
 end;
