@@ -51,8 +51,8 @@ uses
   dwsSynSQLiteDatabase in '..\..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas',
   dwsSynODBCDatabase in '..\..\Libraries\DatabaseLib\dwsSynODBCDatabase.pas',
   dwsSynOleDBDatabase in '..\..\Libraries\DatabaseLib\dwsSynOleDBDatabase.pas',
-//  dwsUIBDatabase in '..\..\Libraries\DatabaseLib\dwsUIBDatabase.pas',
-  dwsDatabase in '..\..\Libraries\DatabaseLib\dwsDatabase.pas';
+  dwsDatabase in '..\..\Libraries\DatabaseLib\dwsDatabase.pas',
+  dwsGUIDDatabase in '..\..\Libraries\DatabaseLib\dwsGUIDDatabase.pas';
 
 type
    TWebServerHttpService = class(TdwsWindowsService)
