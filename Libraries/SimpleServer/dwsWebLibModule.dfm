@@ -248,6 +248,7 @@ object dwsWebLib: TdwsWebLib
                 DataType = 'String'
               end>
             OnEval = dwsWebClassesWebResponseMethodsSetContentTextEval
+            Visibility = cvProtected
             Kind = mkClassProcedure
           end
           item

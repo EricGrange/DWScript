@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, Classes,
-  dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase;
+  dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase, dwsJSON;
 
 type
 
@@ -67,6 +67,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
     procedure dwsDatabaseClassesDataSetMethodsStepEval(Info: TProgramInfo;
       ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsStringifyEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsStringifyAllEval(
+      Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
   public
@@ -88,6 +92,10 @@ type
       function IndexOfField(const name : String) : Integer;
       function FieldByName(Info : TProgramInfo) : IdwsDataField;
       function Step : Boolean;
+      class procedure WriteValueToJSON(wr : TdwsJSONWriter; const fld : IdwsDataField); static;
+      procedure WriteToJSON(wr : TdwsJSONWriter);
+      function Stringify : String;
+      function StringifyAll : String;
    end;
 
    TDataField = class
@@ -125,6 +133,72 @@ begin
       Intf.Next
    else FirstDone:=True;
    Result:=not Intf.EOF;
+end;
+
+// WriteValueToJSON
+//
+class procedure TDataSet.WriteValueToJSON(wr : TdwsJSONWriter; const fld : IdwsDataField);
+begin
+   case fld.DataType of
+      dftInteger : wr.WriteInteger(fld.AsInteger);
+      dftFloat : wr.WriteNumber(fld.AsFloat);
+      dftString, dftBlob : wr.WriteString(fld.AsString);
+      dftBoolean : wr.WriteBoolean(fld.AsBoolean);
+      dftDateTime : wr.WriteDate(fld.AsFloat);
+   else
+      wr.WriteNull;
+   end;
+end;
+
+// WriteToJSON
+//
+procedure TDataSet.WriteToJSON(wr : TdwsJSONWriter);
+var
+   i : Integer;
+   fld : IdwsDataField;
+begin
+   wr.BeginObject;
+   for i:=0 to Intf.FieldCount-1 do begin
+      fld:=intf.Fields[i];
+      wr.WriteName(fld.Name);
+      WriteValueToJSON(wr, fld);
+   end;
+   wr.EndObject;
+end;
+
+// Stringify
+//
+function TDataSet.Stringify : String;
+var
+   wr : TdwsJSONWriter;
+begin
+   wr:=TdwsJSONWriter.Create(nil);
+   try
+      WriteToJSON(wr);
+      Result:=wr.ToString;
+   finally
+      wr.Free;
+   end;
+end;
+
+// StringifyAll
+//
+function TDataSet.StringifyAll : String;
+var
+   wr : TdwsJSONWriter;
+begin
+   wr:=TdwsJSONWriter.Create(nil);
+   try
+      wr.BeginArray;
+      while not Intf.EOF do begin
+         WriteToJSON(wr);
+         Intf.Next;
+      end;
+      wr.EndArray;
+      Result:=wr.ToString;
+   finally
+      wr.Free;
+   end;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseCleanUp(
@@ -365,6 +439,18 @@ procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStepEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
    Info.ResultAsBoolean:=(ExtObject as TDataSet).Step;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStringifyAllEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=(ExtObject as TDataSet).StringifyAll;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsStringifyEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+   Info.ResultAsString:=(ExtObject as TDataSet).Stringify;
 end;
 
 end.

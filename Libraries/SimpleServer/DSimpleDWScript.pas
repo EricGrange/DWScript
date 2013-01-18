@@ -24,7 +24,7 @@ uses
    dwsCompiler, dwsHtmlFilter, dwsComp, dwsExprs, dwsUtils, dwsXPlatform,
    dwsWebEnvironment, dwsSystemInfoLibModule, dwsCPUUsage, dwsWebLibModule,
    dwsDataBase, dwsDataBaseLibModule, dwsSynSQLiteDatabase,
-   dwsJSON, dwsErrors, dwsFunctions;
+   dwsJSONConnector, dwsJSON, dwsErrors, dwsFunctions, dwsSymbols;
 
 type
 
@@ -44,11 +44,14 @@ type
       dwsHtmlFilter: TdwsHtmlFilter;
       dwsGlobalVarsFunctions: TdwsGlobalVarsFunctions;
       dwsRestrictedFileSystem: TdwsRestrictedFileSystem;
+      dwsFileIO: TdwsUnit;
       procedure DataModuleCreate(Sender: TObject);
       procedure DataModuleDestroy(Sender: TObject);
 
       procedure DoInclude(const scriptName: String; var scriptSource: String);
       function  DoNeedUnit(const unitName : String; var unitSource : String) : IdwsUnit;
+      function dwsFileIOFunctionsDeleteFileFastEval(args: TExprBaseList): Variant;
+    function dwsFileIOFunctionsFileExistsFastEval(args: TExprBaseList): Variant;
 
    private
       FScriptTimeoutMilliseconds : Integer;
@@ -61,6 +64,7 @@ type
       FHotPath : String;
       FWebEnv : TdwsWebLib;
       FDataBase : TdwsDatabaseLib;
+      FJSON : TdwsJSONLibModule;
 
       FCompiledPrograms : TCompiledProgramHash;
       FCompiledProgramsLock : TFixedCriticalSection;
@@ -150,6 +154,9 @@ begin
 
    FWebEnv:=TdwsWebLib.Create(Self);
    FWebEnv.dwsWeb.Script:=DelphiWebScript;
+
+   FJSON:=TdwsJSONLibModule.Create(Self);
+   FJSON.Script:=DelphiWebScript;
 
    FCompiledPrograms:=TCompiledProgramHash.Create;
    FCompiledProgramsLock:=TFixedCriticalSection.Create;
@@ -454,6 +461,24 @@ end;
 function TCompiledProgramHash.GetItemHashCode(const item1 : TCompiledProgram) : Integer;
 begin
    Result:=SimpleStringHash(item1.Name);
+end;
+
+function TSimpleDWScript.dwsFileIOFunctionsDeleteFileFastEval(
+  args: TExprBaseList): Variant;
+var
+   fileName : String;
+begin
+   fileName:=ApplyPathVariables(args.AsString[0]);
+   Result:=DeleteFile(fileName);
+end;
+
+function TSimpleDWScript.dwsFileIOFunctionsFileExistsFastEval(
+  args: TExprBaseList): Variant;
+var
+   fileName : String;
+begin
+   fileName:=ApplyPathVariables(args.AsString[0]);
+   Result:=FileExists(fileName);
 end;
 
 end.

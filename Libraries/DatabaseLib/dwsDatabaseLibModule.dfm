@@ -245,6 +245,18 @@ object dwsDatabaseLib: TdwsDatabaseLib
             Overloaded = True
             OnEval = dwsDatabaseClassesDataSetMethodsAsFloatByIndexEval
             Kind = mkFunction
+          end
+          item
+            Name = 'Stringify'
+            ResultType = 'String'
+            OnEval = dwsDatabaseClassesDataSetMethodsStringifyEval
+            Kind = mkFunction
+          end
+          item
+            Name = 'StringifyAll'
+            ResultType = 'String'
+            OnEval = dwsDatabaseClassesDataSetMethodsStringifyAllEval
+            Kind = mkFunction
           end>
         Properties = <
           item

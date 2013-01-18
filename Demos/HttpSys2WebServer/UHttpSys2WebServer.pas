@@ -55,6 +55,7 @@ type
          FRelativeURI : String;
          FSSLRelativeURI : String;
          FDirectoryIndex : TDirectoryIndexCache;
+         FAutoRedirectFolders : Boolean;
 
          procedure FileChanged(sender : TdwsFileNotifier; const fileName : String;
                                changeAction : TFileNotificationAction);
@@ -74,6 +75,7 @@ type
          property SSLPort : Integer read FSSLPort;
          property RelativeURI : String read FRelativeURI;
          property SSLRelativeURI : String read FSSLRelativeURI;
+         property AutoRedirectFolders : Boolean read FAutoRedirectFolders;
   end;
 
 const
@@ -109,7 +111,10 @@ const
          // Maximum input http request length in bytes
          // If zero or negative, defaults to 10 Megabytes
          // requests larger than this value will get canceled
-         +'"MaxInputLength": 0'
+         +'"MaxInputLength": 0,'
+         // If true folder requests that don't include the trailing path delimiter
+         // will automatically be redirected with a 301 error
+         +'"AutoRedirectFolders": true'
       +'}';
 
 // ------------------------------------------------------------------
@@ -176,6 +181,8 @@ begin
       FServer.MaxBandwidth:=serverOptions['MaxBandwidth'].AsInteger;
 
       FServer.MaxInputCountLength:=serverOptions['MaxInputLength'].AsInteger;
+
+      FAutoRedirectFolders:=serverOptions['AutoRedirectFolders'].AsBoolean;
    finally
       serverOptions.Free;
    end;
@@ -210,6 +217,7 @@ var
    request : TSynopseWebRequest;
    response : TSynopseWebResponse;
    fileAttribs : Cardinal;
+   noTrailingPathDelimiter : Boolean;
 begin
    HttpRequestUrlDecode(inRequest.InURL, pathFileName, params);
 
@@ -236,8 +244,14 @@ begin
          if (fileAttribs and faHidden)<>0 then
             fileAttribs:=INVALID_FILE_ATTRIBUTES
          else if (fileAttribs and faDirectory)<>0 then begin
+            noTrailingPathDelimiter:=AutoRedirectFolders and (not StrEndsWith(pathFileName, '\'));
             if not FindDirectoryIndex(pathFileName) then
-               fileAttribs:=INVALID_FILE_ATTRIBUTES;
+               fileAttribs:=INVALID_FILE_ATTRIBUTES
+            else if noTrailingPathDelimiter then begin
+               outResponse.OutCustomHeader:='Location: '+inRequest.InURL+'/';
+               Result:=301;
+               Exit;
+            end;
          end;
       end;
       {$WARN SYMBOL_PLATFORM ON}
@@ -298,8 +312,14 @@ end;
 // FindDirectoryIndex
 //
 function THttpSys2WebServer.FindDirectoryIndex(var pathFileName : String) : Boolean;
+var
+   noTrailingPathDelimiter : Boolean;
 begin
+   noTrailingPathDelimiter:=AutoRedirectFolders and (not StrEndsWith(pathFileName, '\'));
+
    Result:=FDirectoryIndex.IndexFileForDirectory(pathFileName);
+   if Result and noTrailingPathDelimiter then
+
 end;
 
 // FileChanged
