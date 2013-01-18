@@ -449,6 +449,7 @@ type
          procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos, length : Integer); overload;
          procedure WriteChar(utf16Char : WideChar); inline;
+         procedure WriteDigits(value : Int64; digits : Integer);
 
          // assumes data is an utf16 String, spits out utf8 in FPC, utf16 in Delphi
          function ToString : String; override;
@@ -1740,6 +1741,29 @@ end;
 procedure TWriteOnlyBlockStream.WriteChar(utf16Char : WideChar);
 begin
    Write(utf16Char, SizeOf(WideChar));
+end;
+
+// WriteDigits
+//
+procedure TWriteOnlyBlockStream.WriteDigits(value : Int64; digits : Integer);
+var
+   buf : array [0..19] of Char;
+   n : Integer;
+begin
+   if digits<=0 then Exit;
+
+   Assert(digits<Length(buf));
+   n:=Length(buf);
+   while digits>0 do begin
+      Dec(n);
+      if value<>0 then begin
+         buf[n]:=Char(Ord('0')+(value mod 10));
+         value:=value div 10;
+      end else buf[n]:='0';
+      Dec(digits);
+   end;
+
+   Write(buf[n], (Length(buf)-n)*SizeOf(Char));
 end;
 
 // ToString

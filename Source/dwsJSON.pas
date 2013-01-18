@@ -57,6 +57,9 @@ type
          procedure WriteBoolean(b : Boolean);
          procedure WriteNull;
 
+         // ISO 8601 Date Time
+         procedure WriteDate(dt : TDateTime); overload;
+
          procedure WriteStrings(const str : TStrings); overload;
          procedure WriteStrings(const str : array of String); overload;
 
@@ -1918,6 +1921,33 @@ procedure TdwsJSONWriter.WriteNull;
 begin
    BeforeWriteImmediate;
    FStream.WriteString('null');
+   AfterWriteImmediate;
+end;
+
+// WriteDate
+//
+procedure TdwsJSONWriter.WriteDate(dt : TDateTime);
+var
+   y, m, d, h, n, s, z : Word;
+begin
+   BeforeWriteImmediate;
+
+   DecodeDate(dt, y, m, d);
+   FStream.WriteDigits(y, 4);
+   FStream.WriteDigits(m, 2);
+   FStream.WriteDigits(m, 2);
+
+   DecodeTime(dt, h, n, s, z);
+   if (h or n or s)<>0 then begin
+      FStream.WriteChar('T');
+      FStream.WriteDigits(h, 2);
+      if (n or s)<>0 then begin
+         FStream.WriteDigits(n, 2);
+         if s<>0 then
+            FStream.WriteDigits(s, 2);
+      end;
+   end;
+
    AfterWriteImmediate;
 end;
 
