@@ -259,7 +259,7 @@ type
 
    // TConstIntExpr
    //
-   TConstIntExpr = class (TUnifiedConstExpr)
+   TConstIntExpr = class sealed (TUnifiedConstExpr)
       private
          FValue : Int64;
       public
@@ -300,6 +300,8 @@ type
          FEmptyString : TUnifiedConstExpr;
          FIntegers : TStandardIntegersConstIntExprArray;
          FZeroFloat : TUnifiedConstExpr;
+         FTrue, FFalse : TUnifiedConstExpr;
+         FNil : TUnifiedConstExpr;
 
       protected
          function Compare(const item1, item2 : TExprBase) : Integer; override;
@@ -312,6 +314,9 @@ type
          property EmptyString : TUnifiedConstExpr read FEmptyString;
          property Integers : TStandardIntegersConstIntExprArray read FIntegers;
          property ZeroFloat : TUnifiedConstExpr read FZeroFloat;
+         property TrueConst : TUnifiedConstExpr read FTrue;
+         property FalseConst : TUnifiedConstExpr read FFalse;
+         property NilConst : TUnifiedConstExpr read FNil;
    end;
 
    // TResourceStringExpr
@@ -448,7 +453,7 @@ type
    end;
 
    // array[index]:=val for dynamic arrays
-   TDynamicArraySetExpr = class(TNoResultPosExpr)
+   TDynamicArraySetExpr = class(TNoResultExpr)
       private
          FArrayExpr : TTypedExpr;
          FIndexExpr : TTypedExpr;
@@ -496,7 +501,7 @@ type
          function IsWritable : Boolean; override;
    end;
 
-   TInitDataExpr = class(TNoResultPosExpr)
+   TInitDataExpr = class(TNoResultExpr)
       protected
          FExpr : TDataExpr;
 
@@ -640,7 +645,7 @@ type
    end;
 
    // Pseudo-method for dynamic array
-   TArrayPseudoMethodExpr = class(TNoResultPosExpr)
+   TArrayPseudoMethodExpr = class(TNoResultExpr)
       private
          FBaseExpr : TTypedExpr;
 
@@ -1152,6 +1157,7 @@ type
    // Integer(x)
    TConvIntegerExpr = class (TUnaryOpIntExpr)
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // String(x)
@@ -1182,7 +1188,7 @@ type
    end;
 
    // Assert(condition, message);
-   TAssertExpr = class(TNoResultPosExpr)
+   TAssertExpr = class(TNoResultExpr)
       protected
          FCond : TTypedExpr;
          FMessage : TTypedExpr;
@@ -1202,7 +1208,7 @@ type
    end;
 
    // left := right;
-   TAssignExpr = class(TNoResultPosExpr)
+   TAssignExpr = class(TNoResultExpr)
       protected
          FLeft : TDataExpr;
          FRight : TTypedExpr;
@@ -1489,7 +1495,7 @@ type
    end;
 
    // if FCond then FThen
-   TIfThenExpr = class(TNoResultPosExpr)
+   TIfThenExpr = class(TNoResultExpr)
       private
          FCond : TTypedExpr;
          FThen : TNoResultExpr;
@@ -1624,7 +1630,7 @@ type
    end;
 
    // case FValueExpr of {CaseConditions} else FElseExpr end;
-   TCaseExpr = class(TNoResultPosExpr)
+   TCaseExpr = class(TNoResultExpr)
       private
          FCaseConditions : TTightList;
          FElseExpr : TNoResultExpr;
@@ -1646,7 +1652,7 @@ type
    end;
 
    // for FVarExpr := FFromExpr to FToExpr do FDoExpr;
-   TForExpr = class(TNoResultPosExpr)
+   TForExpr = class(TNoResultExpr)
       private
          FDoExpr : TNoResultExpr;
          FFromExpr : TTypedExpr;
@@ -1708,7 +1714,7 @@ type
    end;
 
    // for something in aString do ...;
-   TForInStrExpr = class(TNoResultPosExpr)
+   TForInStrExpr = class(TNoResultExpr)
       private
          FDoExpr : TNoResultExpr;
          FInExpr : TTypedExpr;
@@ -1747,7 +1753,7 @@ type
    end;
 
    // base class for while, repeat and infinite loops
-   TLoopExpr = class(TNoResultPosExpr)
+   TLoopExpr = class(TNoResultExpr)
       private
          FCondExpr : TTypedExpr;
          FLoopExpr : TNoResultExpr;
@@ -1779,7 +1785,7 @@ type
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
-   TFlowControlExpr = class(TNoResultPosExpr)
+   TFlowControlExpr = class(TNoResultExpr)
       public
          function InterruptsFlow : Boolean; override;
    end;
@@ -1816,7 +1822,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
-   TRaiseBaseExpr = class(TNoResultPosExpr)
+   TRaiseBaseExpr = class(TNoResultExpr)
    end;
 
    // raise TExceptionClass.Create;
@@ -1842,7 +1848,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
-   TExceptionExpr = class(TNoResultPosExpr)
+   TExceptionExpr = class(TNoResultExpr)
       private
          FTryExpr : TNoResultExpr;
          FHandlerExpr : TNoResultExpr;
@@ -1889,7 +1895,7 @@ type
    end;
 
    // try..except on FExceptionVar: FExceptionVar.Typ do FDoBlockExpr; ... end;
-   TExceptDoExpr = class(TNoResultPosExpr)
+   TExceptDoExpr = class(TNoResultExpr)
       private
          FExceptionVar : TDataSymbol;
          FDoBlockExpr : TNoResultExpr;
@@ -1913,7 +1919,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
-   TStringArraySetExpr = class(TNoResultPosExpr)
+   TStringArraySetExpr = class(TNoResultExpr)
       private
          FStringExpr: TDataExpr;
          FIndexExpr: TTypedExpr;
@@ -1960,7 +1966,7 @@ type
          class function FindSymbol(symbolTable : TSymbolTable; const name : String) : TSymbol; static;
    end;
 
-   TSwapExpr = class(TNoResultPosExpr)
+   TSwapExpr = class(TNoResultExpr)
       private
          FArg0 : TDataExpr;
          FArg1 : TDataExpr;
@@ -2546,6 +2552,9 @@ begin
       FIntegers[i].Free;
    end;
    FZeroFloat.Free;
+   FTrue.Free;
+   FFalse.Free;
+   FNil.Free;
    inherited;
 end;
 
@@ -2555,6 +2564,7 @@ procedure TUnifiedConstList.Precharge(prog : TdwsMainProgram; systemTable : TSys
 const
    cEmptyString : String = '';
    cZeroFloat : Double = 0;
+   cNilIntf : IUnknown = nil;
 var
    i : Integer;
 begin
@@ -2563,6 +2573,9 @@ begin
    for i:=Low(FIntegers) to High(FIntegers) do
       FIntegers[i]:=TConstIntExpr.CreateUnified(prog, systemTable.TypInteger, Int64(i));
    FZeroFloat:=TConstFloatExpr.CreateUnified(prog, systemTable.TypFloat, cZeroFloat);
+   FTrue:=TConstBooleanExpr.CreateUnified(prog, systemTable.TypBoolean, True);
+   FFalse:=TConstBooleanExpr.CreateUnified(prog, systemTable.TypBoolean, False);
+   FNil:=TUnifiedConstExpr.CreateUnified(prog, prog.TypNil, cNilIntf);
 end;
 
 // Compare
@@ -4450,6 +4463,19 @@ end;
 function TConvIntegerExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
    Result:=FExpr.EvalAsInteger(exec);
+end;
+
+// Optimize
+//
+function TConvIntegerExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   // this can happen when an integer was qualifed as a type
+   // but when optimizing we can discard that type info
+   if Expr.ClassType=TConstIntExpr then begin
+      Result:=Expr;
+      Expr:=nil;
+      Free;
+   end else Result:=Self;
 end;
 
 // ------------------

@@ -54,18 +54,14 @@ type
    //
    PScriptPos = ^TScriptPos;
    TScriptPos = packed record
-      private
-         FLine, FCol : Integer;
-
       public
+         Line : Integer;
+         Col : Integer;
          SourceFile : TSourceFile;
 
          const cLineMask = $FFFFF;
 
          class function Create(aSourceFile : TSourceFile; aLine, aCol : Integer) : TScriptPos; static;
-
-         property Line : Integer read FLine write FLine;
-         property Col : Integer read FCol write FCol;
 
          function SamePosAs(const aPos : TScriptPos) : Boolean;
          function IsMainModule : Boolean;
@@ -310,8 +306,7 @@ type
    end;
 
 const
-   cNullPos: TScriptPos = (FLine: 0; FCol: 0; SourceFile: nil);
-   cFakePos: TScriptPos = (FLine: 0; FCol: 0; SourceFile: nil);
+   cNullPos: TScriptPos = (Line: 0; Col: 0; SourceFile: nil);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -330,15 +325,15 @@ implementation
 class function TScriptPos.Create(aSourceFile : TSourceFile; aLine, aCol : Integer) : TScriptPos;
 begin
    Result.SourceFile:=aSourceFile;
-   Result.FLine:=aLine;
-   Result.FCol:=aCol;
+   Result.Line:=aLine;
+   Result.Col:=aCol;
 end;
 
 // SamePosAs
 //
 function TScriptPos.SamePosAs(const aPos : TScriptPos) : Boolean;
 begin
-   Result:=    (FLine=aPos.Line) and (Col=aPos.Col)
+   Result:=    (Line=aPos.Line) and (Col=aPos.Col)
            and (SourceFile=aPos.SourceFile);
 end;
 
@@ -360,30 +355,30 @@ end;
 //
 function TScriptPos.Defined : Boolean;
 begin
-   Result:=(SourceFile<>nil) and ((FLine or FCol)<>0);
+   Result:=(SourceFile<>nil) and ((Line or Col)<>0);
 end;
 
 // IncCol
 //
 procedure TScriptPos.IncCol;
 begin
-   Inc(FCol);
+   Inc(Col);
 end;
 
 // NewLine
 //
 procedure TScriptPos.NewLine;
 begin
-   Inc(FLine);
-   FCol:=1;
+   Inc(Line);
+   Col:=1;
 end;
 
 // SetColLine
 //
 procedure TScriptPos.SetColLine(aCol, aLine : Integer);
 begin
-   FCol:=aCol;
-   FLine:=aLine;
+   Col:=aCol;
+   Line:=aLine;
 end;
 
 // SetLineCol

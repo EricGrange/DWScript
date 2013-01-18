@@ -307,7 +307,7 @@ type
 
    TOperatorSymbolEnumerationCallback = function (opSym : TOperatorSymbol) : Boolean of object;
 
-   TSymbolTableFlag = (stfSorted, stfHasHelpers, stfHasOperators);
+   TSymbolTableFlag = (stfSorted, stfHasHelpers, stfHasLocalOperators, stfHasParentOperators, stfHasOperators);
    TSymbolTableFlags = set of TSymbolTableFlag;
 
    TSimpleSymbolList = TSimpleList<TSymbol>;
@@ -370,6 +370,7 @@ type
          function EnumerateOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
                                         const callback : TOperatorSymbolEnumerationCallback) : Boolean; virtual;
          function HasSameLocalOperator(anOpSym : TOperatorSymbol) : Boolean; virtual;
+         function HasOperators : Boolean; inline;
 
          procedure CollectPublishedSymbols(tableList : TSimpleRefCountedObjectHash;
                                            symbolList : TSimpleSymbolList);
@@ -748,7 +749,7 @@ type
    TMethodAttributes = set of TMethodAttribute;
 
    // A method of a script class: TMyClass = class procedure X(param: String); end;
-   TMethodSymbol = class(TFuncSymbol)
+   TMethodSymbol = class (TFuncSymbol)
       private
          FStructSymbol : TCompositeTypeSymbol;
          FParentMeth : TMethodSymbol;
@@ -4950,7 +4951,7 @@ var
    opSym : TOperatorSymbol;
    leftParam, rightParam : TTypeSymbol;
 begin
-   if stfHasOperators in FFlags then begin
+   if stfHasLocalOperators in FFlags then begin
       for i:=0 to Count-1 do begin
          sym:=Symbols[i];
          if sym.ClassType=TOperatorSymbol then begin
@@ -4972,15 +4973,18 @@ end;
 // EnumerateOperatorsFor
 //
 function TSymbolTable.EnumerateOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
-                                         const callback : TOperatorSymbolEnumerationCallback) : Boolean;
+                                            const callback : TOperatorSymbolEnumerationCallback) : Boolean;
 var
    i : Integer;
    p : TSymbolTable;
 begin
-   if EnumerateLocalOperatorsFor(aToken, aLeftType, aRightType, callback) then Exit(True);
-   for i:=0 to ParentCount-1 do begin
-      p:=Parents[i];
-      if p.EnumerateOperatorsFor(aToken, aLeftType, aRightType, callback) then Exit(True);
+   if stfHasLocalOperators in FFlags then
+      if EnumerateLocalOperatorsFor(aToken, aLeftType, aRightType, callback) then Exit(True);
+   if stfHasParentOperators in FFlags then begin
+      for i:=0 to ParentCount-1 do begin
+         p:=Parents[i];
+         if p.EnumerateOperatorsFor(aToken, aLeftType, aRightType, callback) then Exit(True);
+      end;
    end;
    Result:=False;
 end;
@@ -4995,7 +4999,7 @@ var
    leftType, rightType : TTypeSymbol;
 begin
    Result:=False;
-   if not (stfHasOperators in FFlags) then Exit;
+   if not (stfHasLocalOperators in FFlags) then Exit;
    if Length(anOpSym.Params)<>2 then Exit;
    leftType:=anOpSym.Params[0];
    rightType:=anOpSym.Params[1];
@@ -5015,6 +5019,13 @@ begin
          end;
       end;
    end;
+end;
+
+// HasOperators
+//
+function TSymbolTable.HasOperators : Boolean;
+begin
+   Result:=(stfHasOperators in FFlags);
 end;
 
 // CollectPublishedSymbols
@@ -5116,7 +5127,7 @@ begin
    if ct=THelperSymbol then
       Include(FFlags, stfHasHelpers)
    else if ct=TOperatorSymbol then
-      Include(FFlags, stfHasOperators)
+      FFlags:=FFlags+[stfHasOperators, stfHasLocalOperators]
    else if (FAddrGenerator<>nil) and sym.InheritsFrom(TDataSymbol) then
       TDataSymbol(sym).AllocateStackAddr(FAddrGenerator);
 end;
@@ -5159,14 +5170,16 @@ end;
 //
 procedure TSymbolTable.AddParent(Parent: TSymbolTable);
 begin
-   InsertParent(ParentCount,Parent);
+   InsertParent(ParentCount, Parent);
 end;
 
 // InsertParent
 //
 procedure TSymbolTable.InsertParent(Index: Integer; Parent: TSymbolTable);
 begin
-   FParents.Insert(Index,Parent);
+   FParents.Insert(Index, Parent);
+   if stfHasOperators in Parent.FFlags then
+      FFlags:=FFlags+[stfHasOperators, stfHasParentOperators];
 end;
 
 // RemoveParent

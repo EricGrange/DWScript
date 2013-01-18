@@ -127,6 +127,9 @@ type
          Start : Boolean; // Marks the begin of a Token
          Final : Boolean; // Marks the end of a Token
          Action : TConvertAction;
+         IsError : Boolean;
+         Consume : Boolean;
+         Seek : Boolean;
 
       public
          constructor Create(nstate: TState; opts: TTransitionOptions; actn: TConvertAction);
@@ -145,8 +148,12 @@ type
    end;
 
    TCheckTransition = class(TTransition);
-   TSeekTransition = class(TCheckTransition); // Transition, next Char
-   TConsumeTransition = class(TSeekTransition); // Transition, consume Char, next Char
+   TSeekTransition = class (TCheckTransition) // Transition, next Char
+      constructor Create(nstate: TState; opts: TTransitionOptions; actn: TConvertAction);
+   end;
+   TConsumeTransition = class (TSeekTransition) // Transition, consume Char, next Char
+      constructor Create(nstate: TState; opts: TTransitionOptions; actn: TConvertAction);
+   end;
 
    TSwitchHandler = function(const switchName : String) : Boolean of object;
 
@@ -184,6 +191,7 @@ type
       FCurPos : TScriptPos;
       FPosPtr : PChar;
    end;
+   PTokenizerSourceInfo = ^TTokenizerSourceInfo;
 
    TTokenizerConditional = (tcIf, tcElse);
    TTokenizerConditionalInfo = record
@@ -892,7 +900,32 @@ end;
 
 constructor TErrorTransition.Create(const msg : String);
 begin
+   IsError:=True;
    ErrorMessage:=msg;
+end;
+
+// ------------------
+// ------------------ TSeekTransition ------------------
+// ------------------
+
+// Create
+//
+constructor TSeekTransition.Create(nstate: TState; opts: TTransitionOptions; actn: TConvertAction);
+begin
+   inherited;
+   Seek:=True;
+end;
+
+// ------------------
+// ------------------ TConsumeTransition ------------------
+// ------------------
+
+// Create
+//
+constructor TConsumeTransition.Create(nstate: TState; opts: TTransitionOptions; actn: TConvertAction);
+begin
+   inherited;
+   Consume:=True;
 end;
 
 // ------------------
@@ -1388,7 +1421,6 @@ procedure TTokenizer.ConsumeToken;
 var
    state : TState;
    trns : TTransition;
-   trnsClassType : TClass;
    pch : PChar;
 begin
    AllocateToken;
@@ -1403,17 +1435,14 @@ begin
    while Assigned(state) do begin
 
       // Find next state
-      //trns:=state.FindTransition(pch^);
       if pch^>#127 then
          trns:=state.FTransitions[#127]
       else trns:=state.FTransitions[pch^];
 
-      trnsClassType:=trns.ClassType;
-
       // Handle Errors
-      if trnsClassType=TErrorTransition then begin
+      if trns.IsError then begin
          // tokenizer errors will raise exceptions, EOF won't
-         DoErrorTransition(TErrorTransition(trns), pch^);
+         DoErrorTransition(trns as TErrorTransition, pch^);
          if FSourceStack<>nil then begin
             EndSourceFile;
             pch:=PosPtr;
@@ -1427,15 +1456,16 @@ begin
          FToken.FScriptPos:=CurrentPos;
 
       // Add actual character to s
-      if trnsClassType=TConsumeTransition then
+      if trns.Consume then
          FTokenBuf.AppendChar(pch^);
 
       // Proceed to the next character
-      if (trnsClassType=TSeekTransition) or (trnsClassType=TConsumeTransition) then begin
+      if trns.Seek then begin
          Inc(FSource.FPosPtr);
-         if pch^=#10 then
-            FSource.FCurPos.NewLine
-         else FSource.FCurPos.IncCol;
+         if pch^=#10 then begin
+            Inc(FSource.FCurPos.Line);
+            FSource.FCurPos.Col:=1;
+         end else Inc(FSource.FCurPos.Col);
          Inc(pch);
       end;
 

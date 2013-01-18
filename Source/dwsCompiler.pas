@@ -75,6 +75,12 @@ type
    TdwsNameListOption = (nloAllowDots, nloNoCheckSpecials, nloAllowStrings);
    TdwsNameListOptions = set of TdwsNameListOption;
 
+   TSimpleStringList = class(TSimpleList<String>)
+      public
+         Next : TSimpleStringList;
+         function IndexOf(const s : String) : Integer;
+   end;
+
    // TdwsLocalizerComponent
    //
    TdwsLocalizerComponent = class (TComponent)
@@ -325,6 +331,13 @@ type
          procedure PopContext(compiler : TdwsCompiler; var oldSourceUnit : TSourceUnit);
    end;
 
+   TOperatorResolver = class
+      private
+         Resolved : TOperatorSymbol;
+         LeftType, RightType : TTypeSymbol;
+         function Callback(opSym : TOperatorSymbol) : Boolean;
+   end;
+
    // TdwsCompiler
    //
    TdwsCompiler = class
@@ -366,6 +379,8 @@ type
          FAnyTypeSymbol : TAnyTypeSymbol;
          FStandardDataSymbolFactory : IdwsDataSymbolFactory;
          FPendingAttributes : TdwsSymbolAttributes;
+         FPooledStringList : TSimpleStringList;
+         FOperatorResolver : TOperatorResolver;
 
          FDataSymbolExprReuse : TSimpleObjectObjectHash<TDataSymbol,TVarExpr>;
 
@@ -534,7 +549,7 @@ type
          function ReadResourceStringName(resSym : TResourceStringSymbol; const namePos : TScriptPos) : TResourceStringExpr;
          function ReadNameOld(isWrite : Boolean) : TTypedExpr;
          function ReadNameInherited(isWrite : Boolean) : TProgramExpr;
-         procedure ReadNameList(names : TStrings; var posArray : TScriptPosArray;
+         procedure ReadNameList(names : TSimpleStringList; var posArray : TScriptPosArray;
                                 const options : TdwsNameListOptions = []);
          procedure ReadExternalName(funcSym : TFuncSymbol);
          function  ReadNew(restrictTo : TClassSymbol) : TProgramExpr;
@@ -646,6 +661,7 @@ type
 
          procedure MemberSymbolWithNameAlreadyExists(sym : TSymbol; const hotPos : TScriptPos);
          procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
+         procedure IncompatibleTypesWarn(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
 
          function CreateProgram(const systemTable : ISystemSymbolTable;
                                 resultType : TdwsResultType;
@@ -681,6 +697,10 @@ type
          function  HandleExplicitDependency(const unitName : String) : TUnitSymbol;
 
          procedure SetupInitializationFinalization;
+
+         function  AcquireStringList : TSimpleStringList;
+         procedure ReleaseStringList(sl : TSimpleStringList);
+         procedure ReleaseStringListPool;
 
       public
          constructor Create;
@@ -1059,12 +1079,18 @@ begin
    stackParams.MaxExceptionDepth:=cDefaultMaxExceptionDepth;
 
    FExec:=TdwsCompilerExecution.Create(stackParams, Self);
+
+   FOperatorResolver:=TOperatorResolver.Create;
 end;
 
 // Destroy
 //
 destructor TdwsCompiler.Destroy;
 begin
+   FOperatorResolver.Free;
+
+   ReleaseStringListPool;
+
    FPendingAttributes.Free;
 
    FAnyFuncSymbol.Free;
@@ -1262,6 +1288,13 @@ procedure TdwsCompiler.IncompatibleTypes(const scriptPos : TScriptPos;
                                          const fmt : String; typ1, typ2 : TTypeSymbol);
 begin
    FMsgs.AddCompilerErrorFmt(scriptPos, fmt, [typ1.Caption, typ2.Caption]);
+end;
+
+// IncompatibleTypesWarn
+//
+procedure TdwsCompiler.IncompatibleTypesWarn(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
+begin
+   FMsgs.AddCompilerWarningFmt(scriptPos, fmt, [typ1.Caption, typ2.Caption]);
 end;
 
 // SetupCompileOptions
@@ -1595,6 +1628,39 @@ begin
          FMainProg.FinalExpr.AddStatement(ums.FinalizationExpr as TBlockExprBase);
          ums.FinalizationExpr.IncRefCount;
       end;
+   end;
+end;
+
+// AcquireStringList
+//
+function TdwsCompiler.AcquireStringList : TSimpleStringList;
+begin
+   if FPooledStringList=nil then
+      Result:=TSimpleStringList.Create
+   else begin
+      Result:=FPooledStringList;
+      FPooledStringList:=Result.Next;
+   end;
+end;
+
+// ReleaseStringList
+//
+procedure TdwsCompiler.ReleaseStringList(sl : TSimpleStringList);
+begin
+   sl.Next:=FPooledStringList;
+   FPooledStringList:=sl;
+end;
+
+// ReleaseStringListPool
+//
+procedure TdwsCompiler.ReleaseStringListPool;
+var
+   sl : TSimpleStringList;
+begin
+   while FPooledStringList<>nil do begin
+      sl:=FPooledStringList;
+      FPooledStringList:=sl.Next;
+      sl.Free;
    end;
 end;
 
@@ -2235,7 +2301,7 @@ end;
 function TdwsCompiler.ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory) : TNoResultExpr;
 var
    x : Integer;
-   names : TStringList;
+   names : TSimpleStringList;
    sym : TDataSymbol;
    typ : TTypeSymbol;
    hotPos : TScriptPos;
@@ -2248,8 +2314,8 @@ var
 begin
    Result := nil;
 
-   names := TStringList.Create;
    initExpr := nil;
+   names := AcquireStringList;
    try
       ReadNameList(names, posArray);
 
@@ -2357,10 +2423,10 @@ begin
             end;
 
          end;
-      end;
+     end;
   finally
-      initExpr.Free;
-      names.Free;
+     initExpr.Free;
+     ReleaseStringList(names);
   end;
 end;
 
@@ -3835,8 +3901,8 @@ begin
                end else if locExpr is TNullExpr then begin
                   Result:=TNullExpr(locExpr);
                   locExpr:=nil;
-               end else if locExpr is TNoResultPosExpr then begin
-                  Result:=TNoResultPosExpr(locExpr);
+               end else if locExpr is TNoResultExpr then begin
+                  Result:=TNoResultExpr(locExpr);
                   locExpr:=nil;
                end else begin
                   Result:=nil;
@@ -6802,7 +6868,7 @@ end;
 
 // ReadNameList
 //
-procedure TdwsCompiler.ReadNameList(names : TStrings; var posArray : TScriptPosArray;
+procedure TdwsCompiler.ReadNameList(names : TSimpleStringList; var posArray : TScriptPosArray;
                                     const options : TdwsNameListOptions = []);
 var
    n : Integer;
@@ -7746,7 +7812,6 @@ end;
 function TdwsCompiler.ReadRecordDecl(const typeName : String;
                                      allowNonConstExpressions : Boolean) : TRecordSymbol;
 var
-   names : TStringList;
    propSym : TPropertySymbol;
    meth : TMethodSymbol;
    hotPos : TScriptPos;
@@ -7756,7 +7821,6 @@ begin
    Result:=TRecordSymbol.Create(typeName, CurrentUnitSymbol);
    try
       FProg.Table.AddSymbol(Result); // auto-forward
-      names:=TStringList.Create;
       try
          if typeName='' then
             visibility:=cvPublished
@@ -7815,7 +7879,6 @@ begin
             end;
          until not FTok.HasTokens;
       finally
-         names.Free;
          FProg.Table.Remove(Result);
       end;
 
@@ -7841,7 +7904,7 @@ procedure TdwsCompiler.ReadFieldsDecl(struct : TStructuredTypeSymbol; visibility
                                       allowNonConstExpressions : Boolean);
 var
    x : Integer;
-   names : TStringList;
+   names : TSimpleStringList;
    sym : TSymbol;
    member : TFieldSymbol;
    typ : TTypeSymbol;
@@ -7852,7 +7915,7 @@ var
    detachTyp : Boolean;
    options : TdwsNameListOptions;
 begin
-   names:=TStringList.Create;
+   names:=AcquireStringList;
    try
       options:=[];
       if struct.Name='' then
@@ -7965,7 +8028,7 @@ begin
       end;
 
    finally
-      names.Free;
+      ReleaseStringList(names);
    end;
 end;
 
@@ -8456,8 +8519,7 @@ begin
                      FMsgs.AddCompilerError(hotPos, CPE_ClassRefExpected)
                   else if not (   TClassSymbol(rightTyp.Typ).IsOfType(Result.Typ)
                                or TClassSymbol(Result.Typ).IsOfType(rightTyp.Typ)) then
-                     FMsgs.AddCompilerWarningFmt(hotPos, CPE_IncompatibleTypes,
-                                                 [Result.Typ.Caption, rightTyp.Typ.Caption]);
+                     IncompatibleTypesWarn(hotPos, CPE_IncompatibleTypes, Result.Typ, rightTyp.Typ);
                   Result:=TIsOpExpr.Create(FProg, Result, right)
                end;
                ttAS : begin
@@ -8773,13 +8835,6 @@ end;
 // ReadTerm
 //
 function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbol = nil) : TTypedExpr;
-const
-   cNilIntf : IUnknown = nil;
-
-   function ReadNilTerm : TConstExpr;
-   begin
-      Result:=TConstExpr.CreateTypedVariantValue(FProg, FProg.TypNil, cNilIntf);
-   end;
 
    function ReadNotTerm : TUnaryOpExpr;
    var
@@ -8799,14 +8854,22 @@ const
       end;
    end;
 
+   function ReadNilTerm : TConstExpr;
+   begin
+      Result:=TUnifiedConstList(FMainProg.UnifiedConstList).NilConst;
+      Result.IncRefCount;
+   end;
+
    function ReadTrue : TConstExpr;
    begin
-      Result:=TConstBooleanExpr.CreateUnified(FProg, nil, True);
+      Result:=TUnifiedConstList(FMainProg.UnifiedConstList).TrueConst;
+      Result.IncRefCount;
    end;
 
    function ReadFalse : TConstExpr;
    begin
-      Result:=TConstBooleanExpr.CreateUnified(FProg, nil, False);
+      Result:=TUnifiedConstList(FMainProg.UnifiedConstList).FalseConst;
+      Result.IncRefCount;
    end;
 
    function ReadNull(expecting : TTypeSymbol) : TConstExpr;
@@ -8914,6 +8977,8 @@ const
    end;
 
    function ReadAt(expecting : TTypeSymbol = nil) : TTypedExpr;
+   const
+      cNilIntf : IUnknown = nil;
    var
       hotPos : TScriptPos;
    begin
@@ -9216,7 +9281,7 @@ end;
 procedure TdwsCompiler.ReadArrayParams(ArrayIndices: TSymbolTable);
 var
    i : Integer;
-   names : TStringList;
+   names : TSimpleStringList;
    typSym : TTypeSymbol;
    isVarParam, isConstParam : Boolean;
    posArray : TScriptPosArray;
@@ -9227,7 +9292,7 @@ begin
    end;
 
    // At least one argument was found
-   names:=TStringList.Create;
+   names:=AcquireStringList;
    try
       repeat
          isVarParam:=FTok.TestDelete(ttVAR);
@@ -9252,7 +9317,7 @@ begin
       until not FTok.TestDelete(ttSEMI);
 
    finally
-      names.Free;
+      ReleaseStringList(names);
    end;
 
    if not FTok.TestDelete(ttARIGHT) then
@@ -9323,7 +9388,7 @@ var
 
 var
    i, paramIdx : Integer;
-   names : TStringList;
+   names : TSimpleStringList;
    typ : TTypeSymbol;
    onlyDefaultParamsNow : Boolean;
    typScriptPos, exprPos : TScriptPos;
@@ -9331,9 +9396,10 @@ var
    expectedParam : TParamSymbol;
 begin
    if FTok.TestDelete(ttBLEFT) then begin
+
       if not FTok.TestDelete(ttBRIGHT) then begin
          // At least one argument was found
-         names:=TStringList.Create;
+         names:=AcquireStringList;
          try
             paramIdx:=0;
             onlyDefaultParamsNow:=False;
@@ -9429,7 +9495,7 @@ begin
             until not FTok.TestDelete(ttSEMI);
 
          finally
-            names.Free;
+            ReleaseStringList(names);
          end;
 
          if not FTok.TestDelete(ttBRIGHT) then
@@ -10149,7 +10215,7 @@ var
    func : TFuncSymbol;
 begin
    prog:=FProg;
-   while prog is TdwsProcedure do begin
+   while prog.ClassType=TdwsProcedure do begin
       func:=TdwsProcedure(prog).Func;
       if func is TMethodSymbol then
          Exit(TMethodSymbol(func).StructSymbol)
@@ -10539,14 +10605,14 @@ end;
 //
 procedure TdwsCompiler.ReadUses;
 var
-   names : TStringList;
+   names : TSimpleStringList;
    x, y, z, u : Integer;
    rt, rtInterface : TSymbolTable;
    rSym : TSymbol;
    unitSymbol : TUnitSymbol;
    posArray : TScriptPosArray;
 begin
-   names:=TStringList.Create;
+   names:=AcquireStringList;
    try
       if coContextMap in FOptions then
          FSourceContextMap.OpenContext(FTok.HotPos, nil, ttUSES);
@@ -10611,7 +10677,7 @@ begin
          end;
       end;
    finally
-      names.Free;
+      ReleaseStringList(names);
    end;
 end;
 
@@ -10864,14 +10930,6 @@ begin
    end else Result:=nil;
 end;
 
-type
-   // manual "anonymous method" because compiler goes into internal error hell otherwise
-   TOperatorResolver = class
-      Resolved : TOperatorSymbol;
-      LeftType, RightType : TTypeSymbol;
-      function Callback(opSym : TOperatorSymbol) : Boolean;
-   end;
-
 // Callback
 //
 function TOperatorResolver.Callback(opSym : TOperatorSymbol) : Boolean;
@@ -10884,20 +10942,15 @@ end;
 // ResolveOperatorFor
 //
 function TdwsCompiler.ResolveOperatorFor(token : TTokenType; aLeftType, aRightType : TTypeSymbol) : TOperatorSymbol;
-var
-   resolver : TOperatorResolver;
 begin
-   resolver:=TOperatorResolver.Create;
-   try
-      resolver.LeftType:=aLeftType;
-      resolver.RightType:=aRightType;
-      if FProg.Table.EnumerateOperatorsFor(token, aLeftType, aRightType, resolver.Callback) then
-         Exit(resolver.Resolved);
-      FOperators.EnumerateOperatorsFor(token, aLeftType, aRightType, resolver.Callback);
-      Result:=resolver.Resolved;
-   finally
-      resolver.Free;
-   end;
+   FOperatorResolver.Resolved:=nil;
+   FOperatorResolver.LeftType:=aLeftType;
+   FOperatorResolver.RightType:=aRightType;
+   if FProg.Table.HasOperators then
+      if FProg.Table.EnumerateOperatorsFor(token, aLeftType, aRightType, FOperatorResolver.Callback) then
+         Exit(FOperatorResolver.Resolved);
+   FOperators.EnumerateOperatorsFor(token, aLeftType, aRightType, FOperatorResolver.Callback);
+   Result:=FOperatorResolver.Resolved;
 end;
 
 // CreateTypedOperatorExpr
@@ -12311,6 +12364,19 @@ begin
    compiler.EnterUnit(Peek.SourceUnit, oldSourceUnit);
    compiler.FSourceContextMap.ResumeContext(Peek.Context);
    Pop;
+end;
+
+// ------------------
+// ------------------ TSimpleStringList ------------------
+// ------------------
+
+// IndexOf
+//
+function TSimpleStringList.IndexOf(const s : String) : Integer;
+begin
+   for Result:=0 to Count-1 do
+      if Items[Result]=s then Exit;
+   Result:=-1;
 end;
 
 end.

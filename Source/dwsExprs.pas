@@ -127,7 +127,7 @@ type
    {Re-list every symbol (pointer to it) and every position it is in in the script }
    TSymbolPositionList = class (TRefCountedObject)
       private
-         FSymbol : TSymbol;                           // pointer to the symbol
+         FSymbol : TSymbol;                        // pointer to the symbol
          FPosList : TSimpleList<TSymbolPosition>;  // list of positions where symbol is declared and used
 
       protected
@@ -779,7 +779,7 @@ type
    end;
 
    // A script procedure
-   TdwsProcedure = class (TdwsProgram, IUnknown, ICallable)
+   TdwsProcedure = class sealed (TdwsProgram, IUnknown, ICallable)
       private
          FFunc : TFuncSymbol;
          FPreConditions : TSourcePreConditions;
@@ -901,34 +901,30 @@ type
 
    // base class of expressions that return no result
    TNoResultExpr = class(TProgramExpr)
-      public
-         function Eval(exec : TdwsExecution) : Variant; override;
-         procedure EvalNoResult(exec : TdwsExecution); override;
-
-         function OptimizeToNoResultExpr(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
-
-         function InterruptsFlow : Boolean; virtual;
-   end;
-
-   // base class of expressions that return no result
-   TNoResultPosExpr = class(TNoResultExpr)
       protected
          FScriptPos : TScriptPos;
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
 
+         function Eval(exec : TdwsExecution) : Variant; override;
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         function OptimizeToNoResultExpr(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
+
+         function InterruptsFlow : Boolean; virtual;
+
          function ScriptPos : TScriptPos; override;
          procedure SetScriptPos(const aPos : TScriptPos);
    end;
 
    // Does nothing! E. g.: "for x := 1 to 10 do {TNullExpr};"
-   TNullExpr = class(TNoResultPosExpr)
+   TNullExpr = class(TNoResultExpr)
       procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 
    // statement; statement; statement;
-   TBlockExprBase = class(TNoResultPosExpr)
+   TBlockExprBase = class(TNoResultExpr)
       protected
          FStatements : PNoResultExprList;
          FCount : Integer;
@@ -4142,6 +4138,13 @@ end;
 // ------------------ TNoResultExpr ------------------
 // ------------------
 
+// Create
+//
+constructor TNoResultExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
+begin
+   FScriptPos:=Pos;
+end;
+
 // Eval
 //
 function TNoResultExpr.Eval(exec : TdwsExecution) : Variant;
@@ -4175,27 +4178,16 @@ begin
    Result:=False;
 end;
 
-// ------------------
-// ------------------ TNoResultPosExpr ------------------
-// ------------------
-
-// Create
-//
-constructor TNoResultPosExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
-begin
-   FScriptPos:=Pos;
-end;
-
 // ScriptPos
 //
-function TNoResultPosExpr.ScriptPos : TScriptPos;
+function TNoResultExpr.ScriptPos : TScriptPos;
 begin
    Result:=FScriptPos;
 end;
 
 // SetScriptPos
 //
-procedure TNoResultPosExpr.SetScriptPos(const aPos : TScriptPos);
+procedure TNoResultExpr.SetScriptPos(const aPos : TScriptPos);
 begin
    FScriptPos:=aPos;
 end;
@@ -5001,7 +4993,7 @@ begin
       pushOperator:=@FPushExprs[i];
       arg:=TTypedExpr(FArgs.ExprBase[i]);
       param:=TParamSymbol(FFunc.Params[i]);
-      if param.InheritsFrom(TLazyParamSymbol) then
+      if param.ClassType=TLazyParamSymbol then
          pushOperator.InitPushLazy(param.StackAddr, arg)
       else if arg is TDataExpr then begin
          if param.Typ is TOpenArraySymbol then begin
@@ -8358,7 +8350,7 @@ end;
 //
 constructor TNoResultWrapperExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TTypedExpr);
 begin
-   inherited Create;
+   inherited Create(Prog, Pos);
    FExpr := Expr;
 end;
 
