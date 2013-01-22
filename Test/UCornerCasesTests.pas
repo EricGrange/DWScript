@@ -69,15 +69,18 @@ type
    // TTokenBufferWrapper
    //
    TTokenBufferWrapper = class
-      Buffer : TTokenBuffer;
+      public
+         Buffer : TTokenBuffer;
    end;
 
    TScriptThread = class (TThread)
-      FProg : IdwsProgram;
-      FTimeOut : Integer;
-      FTimeStamp : TDateTime;
-      constructor Create(const prog : IdwsProgram; timeOut : Integer);
-      procedure Execute; override;
+      private
+         FProg : IdwsProgram;
+         FTimeOut : Integer;
+         FTimeStamp : TDateTime;
+      public
+         constructor Create(const prog : IdwsProgram; timeOut : Integer);
+         procedure Execute; override;
    end;
 
 // Create

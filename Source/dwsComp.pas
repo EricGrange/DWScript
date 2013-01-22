@@ -1269,13 +1269,17 @@ end;
 
 type
    TCustomInternalMagicProcedure = class(TInternalMagicProcedure)
-      FOnFastEval : TFuncFastEvalEvent;
-      procedure DoEvalProc(args : TExprBaseList); override;
+      private
+         FOnFastEval : TFuncFastEvalEvent;
+      public
+         procedure DoEvalProc(args : TExprBaseList); override;
    end;
 
    TCustomInternalMagicFunction = class(TInternalMagicVariantFunction)
-      FOnFastEval : TFuncFastEvalEvent;
-      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+      private
+         FOnFastEval : TFuncFastEvalEvent;
+      public
+         function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
    end;
 
 // DoEvalProc
@@ -3633,8 +3637,8 @@ begin
    if DataType='' then
       raise Exception.CreateFmt(UNT_DatatypeNotSpecified, [Name, ParentSym.Name]);
 
-   propSym := TPropertySymbol.Create(Name, GetDataType(Table, DataType), Visibility);
-   Result := PropSym;
+   propSym:=TPropertySymbol.Create(Name, GetDataType(Table, DataType), Visibility, nil);
+   Result:=propSym;
 
    propSym.GenerateParams(Table, GetParameters(Self, Parameters, Table));
 

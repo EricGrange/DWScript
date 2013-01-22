@@ -1,5 +1,5 @@
 Syntax Error: Procedure expected [line: 8, column: 37]
-Syntax Error: Field/method "GetIT" has an incompatible type [line: 9, column: 36]
-Syntax Error: Method "DoIT" has incompatible parameters [line: 10, column: 37]
-Syntax Error: Field/method "DoIT" has an incompatible type [line: 11, column: 36]
+Syntax Error: Field/method "GetIt" has an incompatible type [line: 9, column: 36]
+Syntax Error: Method "DoIt" has incompatible parameters [line: 10, column: 37]
+Syntax Error: Field/method "DoIt" has an incompatible type [line: 11, column: 36]
 Syntax Error: Name expected [line: 12, column: 36]

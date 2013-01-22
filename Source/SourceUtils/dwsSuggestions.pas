@@ -146,9 +146,10 @@ implementation
 
 type
    THelperFilter = class (TSimpleSymbolList)
-      List : TSimpleSymbolList;
-      Meta : Boolean;
-      function OnHelper(helper : THelperSymbol) : Boolean;
+      private
+         List : TSimpleSymbolList;
+         Meta : Boolean;
+         function OnHelper(helper : THelperSymbol) : Boolean;
    end;
 
 // OnHelper

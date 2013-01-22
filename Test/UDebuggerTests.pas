@@ -51,8 +51,9 @@ implementation
 
 type
    TTestObject = class
-      FField : String;
-      constructor Create(const value : String);
+      private
+         FField : String;
+         constructor Create(const value : String);
    end;
 
 // Create

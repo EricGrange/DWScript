@@ -131,10 +131,11 @@ const // type constants to make sure strings get reused by the compiler
 type
 
    TGlobalVar = class(TObject)
-      Value: Variant;
+      private
+         Value: Variant;
 
-      procedure WriteToFiler(writer: TWriter; const Name : String);
-      procedure ReadFromFiler(reader: TReader; var Name : String);
+         procedure WriteToFiler(writer: TWriter; const Name : String);
+         procedure ReadFromFiler(reader: TReader; var Name : String);
    end;
 
 // WriteGlobalVar

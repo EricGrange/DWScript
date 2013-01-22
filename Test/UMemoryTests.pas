@@ -48,9 +48,10 @@ implementation
 
 type
    TTestObject = class
-      FAlreadyDestroyed : Boolean;
-      constructor Create;
-      destructor Destroy; override;
+      private
+         FAlreadyDestroyed : Boolean;
+         constructor Create;
+         destructor Destroy; override;
    end;
 
 var

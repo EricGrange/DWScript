@@ -376,8 +376,9 @@ type
    end;
 
    TdwsGuardedExecution = class (TRefCountedObject)
-      Exec : IdwsProgramExecution;
-      TimeOutAt : TDateTime;
+      public
+         Exec : IdwsProgramExecution;
+         TimeOutAt : TDateTime;
    end;
 
    TdwsGuardedExecutionList = class(TSortedList<TdwsGuardedExecution>)

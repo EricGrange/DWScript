@@ -57,6 +57,8 @@ const
   SYS_TCUSTOMATTRIBUTE = 'TCustomAttribute';
   SYS_IINTERFACE = 'IInterface';
 
+  SYS_EXTERNAL_ARRAY = '[]';
+
   // Compiler switches
   SWI_INCLUDE_LONG = 'INCLUDE';
   SWI_INCLUDE_SHORT = 'I';
@@ -128,6 +130,7 @@ const
   CPE_UnexpectedEnd = 'Unexpected END';
   CPE_ClassExpected = 'CLASS expected';
   CPE_OnlyOneFieldExpectedForExternal = 'Only one field expected for EXTERNAL name';
+  CPE_ExternalArrayForStaticMethodsOnly = 'Externalarray is supported only for static methods';
 
   // ReadName
   CPE_UnknownName = 'Unknown name "%s"';
@@ -295,6 +298,7 @@ const
   CPE_NoMatchingOverloadForCall = 'There is no overloaded version of "%s" that can be called with these arguments';
   CPE_MatchingOverload = 'Overload of "%s" will be ambiguous with a previously declared version';
   CPE_ClassMethodExpected = 'Class method expected';
+  CPE_ClassMemberExpected = 'Class member expected';
   CPE_RecordTypeExpected = 'Record type expected';
   CPE_RecordTypeNotFullyDefined = 'Record type "%s" is not fully defined';
 

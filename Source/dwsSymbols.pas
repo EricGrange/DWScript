@@ -490,6 +490,7 @@ type
    // parameter: procedure P(x: Integer);
    TParamSymbol = class (TDataSymbol)
       public
+         function Clone : TParamSymbol; virtual;
          function SameParam(other : TParamSymbol) : Boolean; virtual;
    end;
 
@@ -507,6 +508,7 @@ type
          constructor Create(const aName : String; aType : TTypeSymbol;
                             const data : TData; addr : Integer);
 
+         function Clone : TParamSymbol; override;
          function SameParam(other : TParamSymbol) : Boolean; override;
 
          property DefaultValue : TData read FDefaultValue;
@@ -516,24 +518,31 @@ type
    TByRefParamSymbol = class(TParamSymbol)
       public
          constructor Create(const Name: String; Typ: TTypeSymbol);
+         function Clone : TParamSymbol; override;
    end;
 
    // lazy parameter: procedure P(lazy x: Integer)
    TLazyParamSymbol = class sealed (TParamSymbol)
       protected
          function GetDescription : String; override;
+      public
+         function Clone : TParamSymbol; override;
    end;
 
    // const parameter: procedure P(const x: Integer)
    TConstParamSymbol = class sealed (TByRefParamSymbol)
       protected
          function GetDescription : String; override;
+      public
+         function Clone : TParamSymbol; override;
    end;
 
    // var parameter: procedure P(var x: Integer)
    TVarParamSymbol = class sealed (TByRefParamSymbol)
       protected
          function GetDescription : String; override;
+      public
+         function Clone : TParamSymbol; override;
    end;
 
    TTypeSymbolClass = class of TTypeSymbol;
@@ -677,6 +686,7 @@ type
          function  IsType : Boolean; override;
          procedure SetIsType;
          procedure AddParam(param : TParamSymbol);
+         procedure AddParams(params : TParamsSymbolTable);
          function  HasParam(param : TParamSymbol) : Boolean;
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
          function  GetParamType(idx : Integer) : TTypeSymbol;
@@ -1107,6 +1117,8 @@ type
          procedure AddProperty(propSym : TPropertySymbol);
          procedure AddMethod(methSym : TMethodSymbol); virtual;
 
+         function FieldAtOffset(offset : Integer) : TFieldSymbol; virtual;
+
          function AllowVirtualMembers : Boolean; virtual;
          function AllowDefaultProperty : Boolean; virtual; abstract;
 
@@ -1148,7 +1160,6 @@ type
 
          procedure AddField(fieldSym : TFieldSymbol); virtual;
 
-         function FieldAtOffset(offset : Integer) : TFieldSymbol; virtual;
          function DuckTypedMatchingMethod(methSym : TMethodSymbol; visibility : TdwsVisibility) : TMethodSymbol; virtual;
 
          function NthParentOf(structType : TCompositeTypeSymbol) : Integer;
@@ -1269,7 +1280,7 @@ type
          FOwnerSymbol : TCompositeTypeSymbol;
          FReadSym : TSymbol;
          FWriteSym : TSymbol;
-         FArrayIndices : TSymbolTable;
+         FArrayIndices : TParamsSymbolTable;
          FIndexSym : TTypeSymbol;
          FIndexValue: TData;
          FVisibility : TdwsVisibility;
@@ -1279,12 +1290,13 @@ type
          function GetCaption : String; override;
          function GetDescription : String; override;
          function GetIsDefault: Boolean;
-         function GetArrayIndices : TSymbolTable;
+         function GetArrayIndices : TParamsSymbolTable;
          procedure AddParam(Param : TParamSymbol);
          function GetIsDeprecated : Boolean; inline;
 
       public
-         constructor Create(const name : String; typ : TTypeSymbol; aVisibility : TdwsVisibility);
+         constructor Create(const name : String; typ : TTypeSymbol; aVisibility : TdwsVisibility;
+                            aArrayIndices : TParamsSymbolTable);
          destructor Destroy; override;
 
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
@@ -1296,7 +1308,7 @@ type
 
          property OwnerSymbol : TCompositeTypeSymbol read FOwnerSymbol;
          property Visibility : TdwsVisibility read FVisibility write FVisibility;
-         property ArrayIndices : TSymbolTable read GetArrayIndices;
+         property ArrayIndices : TParamsSymbolTable read GetArrayIndices;
          property ReadSym : TSymbol read FReadSym write FReadSym;
          property WriteSym : TSymbol read FWriteSym write FWriteSym;
          property IsDefault : Boolean read GetIsDefault;
@@ -2121,6 +2133,21 @@ begin
    methSym.FStructSymbol:=Self;
 end;
 
+// FieldAtOffset
+//
+function TCompositeTypeSymbol.FieldAtOffset(offset : Integer) : TFieldSymbol;
+var
+   sym : TSymbol;
+begin
+   for sym in Members do begin
+      if sym.ClassType=TFieldSymbol then begin
+         Result:=TFieldSymbol(sym);
+         if Result.Offset=offset then Exit;
+      end;
+   end;
+   Result:=nil;
+end;
+
 // AllowVirtualMembers
 //
 function TCompositeTypeSymbol.AllowVirtualMembers : Boolean;
@@ -2274,21 +2301,6 @@ procedure TStructuredTypeSymbol.AddField(fieldSym : TFieldSymbol);
 begin
    FMembers.AddSymbol(fieldSym);
    fieldSym.FStructSymbol:=Self;
-end;
-
-// FieldAtOffset
-//
-function TStructuredTypeSymbol.FieldAtOffset(offset : Integer) : TFieldSymbol;
-var
-   sym : TSymbol;
-begin
-   for sym in Members do begin
-      if sym.ClassType=TFieldSymbol then begin
-         Result:=TFieldSymbol(sym);
-         if Result.Offset=offset then Exit;
-      end;
-   end;
-   Result:=nil;
 end;
 
 // DuckTypedMatchingMethod
@@ -2756,6 +2768,16 @@ end;
 procedure TFuncSymbol.AddParam(param : TParamSymbol);
 begin
    Params.AddSymbol(param);
+end;
+
+// AddParams
+//
+procedure TFuncSymbol.AddParams(params : TParamsSymbolTable);
+var
+   i : Integer;
+begin
+   for i:=0 to params.Count-1 do
+      AddParam(params[i].Clone);
 end;
 
 // HasParam
@@ -3608,11 +3630,13 @@ end;
 
 // Create
 //
-constructor TPropertySymbol.Create(const Name: String; Typ: TTypeSymbol; aVisibility : TdwsVisibility);
+constructor TPropertySymbol.Create(const Name: String; Typ: TTypeSymbol; aVisibility : TdwsVisibility;
+                                   aArrayIndices : TParamsSymbolTable);
 begin
    inherited Create(Name, Typ);
    FIndexValue:=nil;
    FVisibility:=aVisibility;
+   FArrayIndices:=aArrayIndices;
 end;
 
 destructor TPropertySymbol.Destroy;
@@ -3623,10 +3647,10 @@ end;
 
 // GetArrayIndices
 //
-function TPropertySymbol.GetArrayIndices : TSymbolTable;
+function TPropertySymbol.GetArrayIndices : TParamsSymbolTable;
 begin
    if FArrayIndices=nil then
-      FArrayIndices:=TSymbolTable.Create;
+      FArrayIndices:=TParamsSymbolTable.Create;
    Result:=FArrayIndices;
 end;
 
@@ -4603,6 +4627,13 @@ begin
            and UnicodeSameText(Name, other.Name);
 end;
 
+// Clone
+//
+function TParamSymbol.Clone : TParamSymbol;
+begin
+   Result:=TParamSymbol.Create(Name, Typ);
+end;
+
 // ------------------
 // ------------------ TParamSymbolWithDefaultValue ------------------
 // ------------------
@@ -4616,6 +4647,13 @@ begin
    SetLength(FDefaultValue, Typ.Size);
    if data<>nil then
       DWSCopyData(data, addr, FDefaultValue, 0, Typ.Size);
+end;
+
+// Clone
+//
+function TParamSymbolWithDefaultValue.Clone : TParamSymbol;
+begin
+   Result:=TParamSymbolWithDefaultValue.Create(Name, Typ, FDefaultValue, 0);
 end;
 
 // SameParam
@@ -4651,6 +4689,13 @@ begin
   FSize := 1;
 end;
 
+// Clone
+//
+function TByRefParamSymbol.Clone : TParamSymbol;
+begin
+   Result:=TByRefParamSymbol.Create(Name, Typ);
+end;
+
 // ------------------
 // ------------------ TLazyParamSymbol ------------------
 // ------------------
@@ -4662,6 +4707,13 @@ begin
    Result:='lazy '+inherited GetDescription;
 end;
 
+// Clone
+//
+function TLazyParamSymbol.Clone : TParamSymbol;
+begin
+   Result:=TLazyParamSymbol.Create(Name, Typ);
+end;
+
 { TConstParamSymbol }
 
 function TConstParamSymbol.GetDescription: String;
@@ -4669,11 +4721,25 @@ begin
   Result := 'const ' + inherited GetDescription;
 end;
 
+// Clone
+//
+function TConstParamSymbol.Clone : TParamSymbol;
+begin
+   Result:=TConstParamSymbol.Create(Name, Typ);
+end;
+
 { TVarParamSymbol }
 
 function TVarParamSymbol.GetDescription: String;
 begin
   Result := 'var ' + inherited GetDescription;
+end;
+
+// Clone
+//
+function TVarParamSymbol.Clone : TParamSymbol;
+begin
+   Result:=TVarParamSymbol.Create(Name, Typ);
 end;
 
 { TSymbolTable }

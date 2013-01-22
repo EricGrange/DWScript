@@ -50,13 +50,14 @@ end;
 type
 
    TThreadedRunner = class(TdwsThread)
-      Script : String;
-      Exec : IdwsProgramExecution;
-      Count : Integer;
-      ExpectedResult : String;
-      ActualResult : String;
+      public
+         Script : String;
+         Exec : IdwsProgramExecution;
+         Count : Integer;
+         ExpectedResult : String;
+         ActualResult : String;
 
-      procedure Execute; override;
+         procedure Execute; override;
    end;
 
 // Execute

@@ -239,10 +239,7 @@ procedure TSynDWSSyn.InitIdent;
 
    procedure SetIdentFunc(h : Integer; const func : TIdentFuncTableFunc);
    begin
-      // make sure there are no collisions
-      if    (not Assigned(fIdentFuncTable[h]))
-         or CompareMem(@func, @fIdentFuncTable[h], SizeOf(func)) then
-         fIdentFuncTable[h]:=func;
+      fIdentFuncTable[h]:=func;
    end;
 
 var

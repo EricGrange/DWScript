@@ -1,4 +1,4 @@
 Syntax Error: Parameter 0 - Type "String" expected (instead of "Integer") [line: 8, column: 48]
-Syntax Error: Method "GetIT" has incompatible parameters [line: 8, column: 48]
+Syntax Error: Method "GetIt" has incompatible parameters [line: 8, column: 48]
 Syntax Error: Symbol "Field" has an incompatible type [line: 9, column: 36]
 Syntax Error: Name expected [line: 10, column: 37]
