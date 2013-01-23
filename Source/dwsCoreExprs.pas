@@ -4422,6 +4422,16 @@ begin
          Result:=TConvStringExpr.Create(prog, expr)
       else if toTyp.IsOfType(prog.TypBoolean) then
          Result:=TConvBoolExpr.Create(prog, expr);
+   end else if     (toTyp is TStructuredTypeMetaSymbol)
+               and (expr.Typ.IsOfType(toTyp.Typ)) then begin
+      if toTyp.ClassType=TClassOfSymbol then begin
+         Result:=TObjToClassTypeExpr.Create(prog, expr);
+         if toTyp.Typ<>expr.Typ then
+            Result:=TClassAsClassExpr.Create(prog, scriptPos, Result, toTyp);
+      end else begin
+         Assert(False);
+         Result:=nil;
+      end;
    end else begin
       if     toTyp.IsOfType(prog.TypFloat)
          and expr.IsOfType(prog.TypInteger) then begin

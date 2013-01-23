@@ -34,7 +34,7 @@ type
       coOptimize,          // enable compiler optimizations
       coSymbolDictionary,  // fillup symbol dictionary
       coContextMap,        // fillup context map
-      coAssertions,        // compile asserions (if absent, ignores assertions)
+      coAssertions,        // compile assertions (if absent, ignores assertions)
       coHintsDisabled,     // don't generate hints messages
       coWarningsDisabled,  // don't generate warnings messages
       coExplicitUnitUses,  // unit dependencies must be explicit via a "uses" clause
@@ -4688,7 +4688,7 @@ begin
       sym:=propertySym.WriteSym
    else sym:=propertySym.ReadSym;
 
-   if expr.Typ is TClassOfSymbol then begin
+   if expr.Typ is TStructuredTypeMetaSymbol then begin
       // Class properties
       if not TMethodSymbol(sym).IsClassMethod then begin
          if isWrite then
@@ -7836,7 +7836,7 @@ var
    name : String;
    expr : TTypedExpr;
    resultExpr : TVarExpr;
-   meth : TSourceMethodSymbol;
+   meth : TFuncSymbol;
    oldProg : TdwsProgram;
    proc : TdwsProcedure;
 begin
@@ -7849,11 +7849,16 @@ begin
 
    end else begin
 
-      meth:=TSourceMethodSymbol.Create('', fkFunction, propSym.OwnerSymbol,
-                                       cvPrivate, classProperty);
+      scriptPos:=FTok.HotPos;
+
+      meth:=propSym.OwnerSymbol.CreateAnonymousFunction(fkFunction, cvPrivate, classProperty);
       meth.Typ:=propSym.Typ;
-      propSym.OwnerSymbol.AddMethod(meth);
+      if meth is TMethodSymbol then
+         propSym.OwnerSymbol.AddMethod(TMethodSymbol(meth))
+      else FProg.Table.AddSymbol(meth);
       meth.AddParams(propSym.ArrayIndices);
+
+      RecordSymbolUse(meth, scriptPos, [suDeclaration, suImplicit]);
 
       proc:=TdwsProcedure.Create(FProg);
       proc.AssignTo(meth);
@@ -7887,7 +7892,7 @@ var
    expr : TTypedExpr;
    leftExpr : TDataExpr;
    paramExpr : TByRefParamExpr;
-   meth : TSourceMethodSymbol;
+   meth : TFuncSymbol;
    paramSymbol : TConstParamSymbol;
    oldProg : TdwsProgram;
    proc : TdwsProcedure;
@@ -7901,14 +7906,19 @@ begin
 
    end else begin
 
-      meth:=TSourceMethodSymbol.Create('', fkProcedure, propSym.OwnerSymbol,
-                                       cvPrivate, classProperty);
+      scriptPos:=FTok.HotPos;
+
+      meth:=propSym.OwnerSymbol.CreateAnonymousFunction(fkProcedure, cvPrivate, classProperty);
 
       meth.AddParams(propSym.ArrayIndices);
       paramSymbol:=TConstParamSymbol.Create('', propSym.Typ);
       meth.Params.AddSymbol(paramSymbol);
 
-      propSym.OwnerSymbol.AddMethod(meth);
+      if meth is TMethodSymbol then
+         propSym.OwnerSymbol.AddMethod(TMethodSymbol(meth))
+      else FProg.Table.AddSymbol(meth);
+
+      RecordSymbolUse(meth, scriptPos, [suDeclaration, suImplicit]);
 
       proc:=TdwsProcedure.Create(FProg);
       proc.AssignTo(meth);
@@ -11695,25 +11705,39 @@ function TdwsCompiler.ReadTypeHelper(expr : TTypedExpr;
                                      killNameToken : Boolean = False) : TProgramExpr;
 var
    i : Integer;
-   helper : THelperSymbol;
+   helper, bestHelper : THelperSymbol;
    helpers : THelperSymbols;
-   sym : TSymbol;
+   sym, candidate : TSymbol;
+   bestDist, helperDist : Integer;
    meth : TMethodSymbol;
    meta : TStructuredTypeMetaSymbol;
    typeSym : TTypeSymbol;
 begin
    Result:=nil;
    typeSym:=expr.Typ;
+   bestDist:=MaxInt;
 
    helpers:=EnumerateHelpers(typeSym);
    try
       if helpers.Count=0 then Exit;
 
+      sym:=nil;
+      bestHelper:=nil;
       for i:=0 to helpers.Count-1 do begin
          helper:=helpers[i];
-         sym:=helper.Members.FindSymbol(name, cvPublic);
-         if sym=nil then continue;
+         helperDist:=expr.Typ.DistanceTo(helper.ForType);
+         if helperDist<bestDist then begin
+            candidate:=helper.Members.FindSymbol(name, cvPublic);
+            if candidate<>nil then begin
+               sym:=candidate;
+               bestDist:=helperDist;
+               bestHelper:=helper;
+               if helperDist=0 then Break;
+            end;
+         end;
+      end;
 
+      if sym<>nil then begin
          if not (coHintsDisabled in FOptions) then
             CheckMatchingDeclarationCase(name, sym, namePos);
 
@@ -11743,13 +11767,13 @@ begin
             meth:=TMethodSymbol(sym);
             if meth.IsClassMethod then begin
 
-               if (helper.ForType is TStructuredTypeSymbol) then begin
-                  meta:=TStructuredTypeSymbol(helper.ForType).MetaSymbol;
+               if (bestHelper.ForType is TStructuredTypeSymbol) then begin
+                  meta:=TStructuredTypeSymbol(bestHelper.ForType).MetaSymbol;
                   if meta<>nil then begin
                      if expr<>nil then begin
                         if expr.Typ is TStructuredTypeSymbol then
                            expr:=TObjToClassTypeExpr.Create(FProg, expr)
-                     end else expr:=TConstExpr.Create(FProg, meta, Int64(helper.ForType));
+                     end else expr:=TConstExpr.Create(FProg, meta, Int64(bestHelper.ForType));
                   end else begin
                      expr.Free;
                      expr:=nil;
@@ -11780,7 +11804,6 @@ begin
             else Result:=ReadMethod(meth, expr, namePos, expecting);
 
          end;
-         Break;
       end;
    finally
       helpers.Free;

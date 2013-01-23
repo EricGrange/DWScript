@@ -1401,6 +1401,12 @@ type
          function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
    end;
 
+   // Call of an interface anonymous methods
+   TMethodInterfaceAnonymousExpr = class(TMethodStaticExpr)
+      protected
+         function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
+   end;
+
    // Call to a virtual method
    TMethodVirtualExpr = class(TMethodStaticExpr)
       protected
@@ -2109,7 +2115,11 @@ begin
 
    end else if meth.StructSymbol is TInterfaceSymbol then begin
 
-      Result:=TMethodInterfaceExpr.Create(prog, scriptPos, meth, expr);
+      if meth.Name<>'' then
+         Result:=TMethodInterfaceExpr.Create(prog, scriptPos, meth, expr)
+      else begin
+         Result:=TMethodInterfaceAnonymousExpr.Create(prog, scriptPos, meth, expr);
+      end;
 
    end else if meth.StructSymbol is TClassSymbol then begin
 
@@ -5829,6 +5839,21 @@ begin
    exec.SelfScriptObject^:=intfObj.Instance;
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, intfObj.Instance);
    Result:=intfObj.VMT[TMethodSymbol(FFunc).VMTIndex];
+end;
+
+// ------------------
+// ------------------ TMethodInterfaceAnonymousExpr ------------------
+// ------------------
+
+// PreCall
+//
+function TMethodInterfaceAnonymousExpr.PreCall(exec : TdwsExecution) : TFuncSymbol;
+var
+   intf : Variant;
+begin
+   FBaseExpr.EvalAsVariant(exec, intf);
+   exec.Stack.WriteValue(exec.Stack.StackPointer+FSelfAddr, intf);
+   Result:=FuncSym;
 end;
 
 // ------------------

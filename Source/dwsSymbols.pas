@@ -560,6 +560,8 @@ type
          function UnAliasedType : TTypeSymbol; virtual;
          function IsOfType(typSym : TTypeSymbol) : Boolean;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; virtual;
+         function DistanceTo(typeSym : TTypeSymbol) : Integer; virtual;
+         function HasMetaSymbol : Boolean; virtual;
    end;
 
    TAnyTypeSymbol = class(TTypeSymbol)
@@ -671,8 +673,6 @@ type
 
          function GetSourceSubExpr(i : Integer) : TExprBase;
          function GetSourceSubExprCount : Integer;
-         property SubExpr[i : Integer] : TExprBase read GetSourceSubExpr;
-         property SubExprCount : Integer read GetSourceSubExprCount;
 
          function  DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
@@ -701,6 +701,9 @@ type
 
          procedure SetForwardedPos(const pos : TScriptPos);
          procedure ClearIsForwarded;
+
+         property SubExpr[i : Integer] : TExprBase read GetSourceSubExpr;
+         property SubExprCount : Integer read GetSourceSubExprCount;
 
          property Executable : IExecutable read FExecutable write FExecutable;
          property DeprecatedMessage : String read FDeprecatedMessage write FDeprecatedMessage;
@@ -1127,6 +1130,8 @@ type
          function MembersVisibilities : TdwsVisibilities;
 
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; virtual; abstract;
+         function CreateAnonymousFunction(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
+                                          isClassMethod : Boolean) : TFuncSymbol; virtual; abstract;
 
          function ExternalRoot : TCompositeTypeSymbol;
 
@@ -1163,6 +1168,7 @@ type
          function DuckTypedMatchingMethod(methSym : TMethodSymbol; visibility : TdwsVisibility) : TMethodSymbol; virtual;
 
          function NthParentOf(structType : TCompositeTypeSymbol) : Integer;
+         function DistanceTo(typeSym : TTypeSymbol) : Integer; override;
          function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; override;
          function AllowDefaultProperty : Boolean; override;
 
@@ -1181,6 +1187,7 @@ type
          constructor Create(const name : String; typ : TStructuredTypeSymbol);
 
          procedure InitData(const Data: TData; Offset: Integer); override;
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
          function StructSymbol : TStructuredTypeSymbol; inline;
    end;
@@ -1240,6 +1247,8 @@ type
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
+         function CreateAnonymousFunction(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
+                                          isClassMethod : Boolean) : TFuncSymbol; override;
 
          procedure InitData(const data : TData; offset : Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
@@ -1268,7 +1277,10 @@ type
          procedure InitData(const Data: TData; Offset: Integer); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
+         function CreateAnonymousFunction(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
+                                          isClassMethod : Boolean) : TFuncSymbol; override;
 
          function Parent : TInterfaceSymbol; inline;
          property MethodCount : Integer read FMethodCount;
@@ -1420,6 +1432,7 @@ type
          procedure InitData(const Data: TData; Offset: Integer); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function  HasMetaSymbol : Boolean; override;
 
          function VMTMethod(index : Integer) : TMethodSymbol;
          function VMTCount : Integer;
@@ -1430,6 +1443,8 @@ type
          function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; override;
          function AllowVirtualMembers : Boolean; override;
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
+         function CreateAnonymousFunction(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
+                                          isClassMethod : Boolean) : TFuncSymbol; override;
 
          class function VisibilityToString(visibility : TdwsVisibility) : String; static;
 
@@ -1462,9 +1477,12 @@ type
          constructor Create(const name : String; aUnit : TSymbol;
                             aForType : TTypeSymbol; priority : Integer);
 
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function IsType : Boolean; override;
          function AllowDefaultProperty : Boolean; override;
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
+         function CreateAnonymousFunction(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
+                                          isClassMethod : Boolean) : TFuncSymbol; override;
 
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
@@ -2288,6 +2306,17 @@ begin
    Result:=-1;
 end;
 
+// DistanceTo
+//
+function TStructuredTypeSymbol.DistanceTo(typeSym : TTypeSymbol) : Integer;
+begin
+   if typeSym=Self then
+      Result:=0
+   else if typeSym is TStructuredTypeSymbol then
+      Result:=TStructuredTypeSymbol(typeSym).NthParentOf(Self)
+   else Result:=MaxInt;
+end;
+
 // GetIsForwarded
 //
 function TStructuredTypeSymbol.GetIsForwarded : Boolean;
@@ -2380,6 +2409,7 @@ end;
 constructor TStructuredTypeMetaSymbol.Create(const name : String; typ : TStructuredTypeSymbol);
 begin
    inherited Create(name, typ);
+   FSize:=1;
 end;
 
 // InitData
@@ -2387,6 +2417,13 @@ end;
 procedure TStructuredTypeMetaSymbol.InitData(const Data: TData; Offset: Integer);
 begin
    Data[Offset] := Int64(0);
+end;
+
+// IsCompatible
+//
+function TStructuredTypeMetaSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+begin
+   Result:=(typSym is TStructuredTypeMetaSymbol) and (Typ.BaseType=typSym.Typ.BaseType);
 end;
 
 // StructSymbol
@@ -2445,6 +2482,16 @@ begin
       Result:=TVarParamSymbol.Create(SYS_SELF, Self);
       methSym.Params.AddSymbol(Result);
    end;
+end;
+
+// CreateAnonymousFunction
+//
+function TRecordSymbol.CreateAnonymousFunction(
+      aFuncKind : TFuncKind; aVisibility : TdwsVisibility; isClassMethod : Boolean) : TFuncSymbol;
+begin
+   Result:=TSourceMethodSymbol.Create('', aFuncKind, Self, aVisibility, isClassMethod);
+   if isClassMethod then
+      TSourceMethodSymbol(Result).SetIsStatic;
 end;
 
 // InitData
@@ -2565,8 +2612,10 @@ end;
 procedure TInterfaceSymbol.AddMethod(methSym : TMethodSymbol);
 begin
    inherited;
-   methSym.FVMTIndex:=FMethodCount;
-   Inc(FMethodCount);
+   if methSym.Name<>'' then begin
+      methSym.FVMTIndex:=FMethodCount;
+      Inc(FMethodCount);
+   end;
 end;
 
 // InitData
@@ -2606,6 +2655,14 @@ begin
    Assert(not methSym.IsClassMethod);
    Result:=TSelfSymbol.Create(SYS_SELF, Self);
    methSym.InternalParams.AddSymbol(Result);
+end;
+
+// CreateAnonymousFunction
+//
+function TInterfaceSymbol.CreateAnonymousFunction(
+      aFuncKind : TFuncKind; aVisibility : TdwsVisibility; isClassMethod : Boolean) : TFuncSymbol;
+begin
+   Result:=TSourceMethodSymbol.Create('', aFuncKind, Self, aVisibility, isClassMethod);
 end;
 
 // DoIsOfType
@@ -3875,6 +3932,7 @@ begin
    iter:=intfSym;
    while iter<>nil do begin
       for sym in iter.Members do begin
+         if sym.Name='' then continue;
          if sym is TMethodSymbol then begin
             lookup:=TMethodSymbol(sym);
             match:=DuckTypedMatchingMethod(lookup, visibility);
@@ -4039,6 +4097,13 @@ begin
    else if typSym is TClassSymbol then
       Result:=(NthParentOf(TClassSymbol(typSym))>=0)
    else Result:=False;
+end;
+
+// HasMetaSymbol
+//
+function TClassSymbol.HasMetaSymbol : Boolean;
+begin
+   Result:=True;
 end;
 
 // DoIsOfType
@@ -4269,6 +4334,14 @@ begin
       Result:=TSelfSymbol.Create(SYS_SELF, MetaSymbol)
    else Result:=TSelfSymbol.Create(SYS_SELF, Self);
    methSym.InternalParams.AddSymbol(Result);
+end;
+
+// CreateAnonymousFunction
+//
+function TClassSymbol.CreateAnonymousFunction(
+      aFuncKind : TFuncKind; aVisibility : TdwsVisibility; isClassMethod : Boolean) : TFuncSymbol;
+begin
+   Result:=TSourceMethodSymbol.Create('', aFuncKind, Self, aVisibility, isClassMethod);
 end;
 
 // VisibilityToString
@@ -5844,7 +5917,27 @@ end;
 //
 function TTypeSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-  Result:=(BaseType.IsCompatible(typSym.BaseType));
+   Result:=BaseType.IsCompatible(typSym.BaseType);
+end;
+
+// DistanceTo
+//
+function TTypeSymbol.DistanceTo(typeSym : TTypeSymbol) : Integer;
+begin
+   if Self=typeSym then
+      Result:=0
+   else if UnAliasedType=typeSym.UnAliasedType then
+      Result:=1
+   else if IsCompatible(typeSym) then
+      Result:=2
+   else Result:=3;
+end;
+
+// HasMetaSymbol
+//
+function TTypeSymbol.HasMetaSymbol : Boolean;
+begin
+   Result:=False;
 end;
 
 // IsType
@@ -6299,6 +6392,13 @@ begin
       FMetaForType:=TStructuredTypeSymbol(FUnAliasedForType).MetaSymbol;
 end;
 
+// IsCompatible
+//
+function THelperSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
+begin
+   Result:=(typSym=Self);
+end;
+
 // IsType
 //
 function THelperSymbol.IsType : Boolean;
@@ -6339,6 +6439,17 @@ begin
       else if Result.Typ is TStructuredTypeMetaSymbol then
          methSym.Params.AddParent(TStructuredTypeMetaSymbol(Result.Typ).StructSymbol.Members)
    end;
+end;
+
+// CreateAnonymousFunction
+//
+function THelperSymbol.CreateAnonymousFunction(aFuncKind : TFuncKind;
+                                               aVisibility : TdwsVisibility;
+                                               isClassMethod : Boolean) : TFuncSymbol;
+begin
+   Result:=TSourceMethodSymbol.Create('', aFuncKind, Self, aVisibility, isClassMethod);
+   if isClassMethod and (not ForType.HasMetaSymbol) then
+      TSourceMethodSymbol(Result).SetIsStatic;
 end;
 
 // Initialize

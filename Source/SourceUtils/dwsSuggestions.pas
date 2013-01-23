@@ -35,7 +35,8 @@ type
                              scProperty,
                              scEnum, scElement,
                              scParameter,
-                             scVariable, scConst);
+                             scVariable, scConst,
+                             scReservedWord);
 
    IdwsSuggestions = interface
       ['{09CA8BF2-AF3F-4B5A-B188-4B2FF574AC34}']
@@ -731,7 +732,9 @@ begin
          else Result:=scConst
       end else Result:=scVariable;
 
-   end;
+ end else if symbolClass.InheritsFrom(TReservedWordSymbol) then
+    Result:=scReservedWord;
+
 end;
 
 // GetCaption

@@ -1,3 +1,6 @@
 Syntax Error: ")" expected. [line: 4, column: 45]
 Syntax Error: ")" expected. [line: 6, column: 46]
-Syntax Error: Field/method "InvalidName" not found! [line: 6, column: 52]
+Syntax Error: ")" expected. [line: 7, column: 48]
+Syntax Error: ")" expected. [line: 8, column: 55]
+Syntax Error: ";" expected. [line: 8, column: 55]
+Syntax Error: END expected [line: 8, column: 55]
