@@ -815,7 +815,7 @@ type
    THttpAPIs = (
       hInitialize, hTerminate, hCreateHttpHandle,
       hAddUrl, hRemoveUrl, hReceiveHttpRequest,
-      hSendHttpResponse, hReceiveRequestEntityBody,
+      hSendHttpResponse, hReceiveRequestEntityBody, hSendResponseEntityBody,
       hSetServiceConfiguration, hDeleteServiceConfiguration,
 
       hFlushResponseCache,
@@ -832,7 +832,7 @@ const
    HttpNames : array[THttpAPIs] of PChar = (
       'HttpInitialize', 'HttpTerminate', 'HttpCreateHttpHandle',
       'HttpAddUrl', 'HttpRemoveUrl', 'HttpReceiveHttpRequest',
-      'HttpSendHttpResponse', 'HttpReceiveRequestEntityBody',
+      'HttpSendHttpResponse', 'HttpReceiveRequestEntityBody', 'HttpSendResponseEntityBody',
       'HttpSetServiceConfiguration', 'HttpDeleteServiceConfiguration',
 
       'HttpFlushResponseCache',
@@ -889,6 +889,11 @@ type
       ReceiveRequestEntityBody : function(ReqQueueHandle : THandle; RequestId : HTTP_REQUEST_ID;
             Flags : ULONG; pBuffer : pointer; BufferLength : cardinal; var pBytesReceived : cardinal;
             pOverlapped : pointer = nil) : HRESULT; stdcall;
+      {/ sends entity-body data associated with an HTTP response. }
+      SendResponseEntityBody : function(ReqQueueHandle : THandle; RequestId : HTTP_REQUEST_ID;
+            Flags : ULONG; EntityChunkCount: USHORT; pEntityChunks: pointer; var pBytesSent: ULONG;
+            pReserved1 : pointer = nil; pReserved2 : ULONG = 0; pOverlapped : pointer = nil;
+            pLogData : PHTTP_LOG_DATA = nil) : HRESULT; stdcall;
       {/ set specified data, such as IP addresses or SSL Certificates, from the
          HTTP Server API configuration store}
       SetServiceConfiguration : function(ServiceHandle : THandle;
@@ -1009,6 +1014,8 @@ begin
    case Code of
       100 :
          result := 'Continue';
+      101 :
+         result := 'Switching Protocols';
       200 :
          result := 'OK';
       201 :
@@ -1105,7 +1112,7 @@ var
 begin
    Headers.pUnknownHeaders := UnknownHeaders;
    Headers.UnknownHeaderCount := 0;
-   inc(UnknownHeaders);
+   //inc(UnknownHeaders);
    if P<>nil then
       repeat
          while P^ in [#13, #10] do

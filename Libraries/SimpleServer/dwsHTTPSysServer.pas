@@ -227,6 +227,10 @@ type
          /// create a clone
          constructor CreateClone(From : THttpApi2Server);
 
+         function GetHttpResponseFlags: Cardinal; virtual;
+         procedure BeforeWaitForNextRequest; virtual;
+         procedure AfterWaitForNextRequest(const aCurRequest: PHTTP_REQUEST_V2); virtual;
+
          function GetLogging : Boolean; inline;
          procedure SetLogging(const val : Boolean);
          procedure SetMaxInputCountLength(const val : Cardinal);
@@ -328,6 +332,19 @@ const
    // corresponding to the file (e.g. by calling GetMimeContentType() function
    // from SynCommons supplyings the file name)
    HTTP_RESP_STATICFILE = '!STATICFILE';
+
+   KNOWNHEADERS_NAME : array[reqCacheControl..reqUserAgent] of string[19] = (
+      'Cache-Control', 'Connection', 'Date', 'Keep-Alive', 'Pragma', 'Trailer',
+      'Transfer-Encoding', 'Upgrade', 'Via', 'Warning', 'Allow', 'Content-Length',
+      'Content-Type', 'Content-Encoding', 'Content-Language', 'Content-Location',
+      'Content-MD5', 'Content-Range', 'Expires', 'Last-Modified', 'Accept',
+      'Accept-Charset', 'Accept-Encoding', 'Accept-Language', 'Authorization',
+      'Cookie', 'Expect', 'From', 'Host', 'If-Match', 'If-Modified-Since',
+      'If-None-Match', 'If-Range', 'If-Unmodified-Since', 'Max-Forwards',
+      'Proxy-Authorization', 'Referer', 'Range', 'TE', 'Translate', 'User-Agent');
+
+function RegURL(aRoot : String; aPort : Integer; isHttps : boolean;
+   aDomainName : String) : String;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -610,6 +627,7 @@ begin
    FOnRequest := From.OnRequest;
    FCompress := From.FCompress;
    ServerName := From.ServerName;
+   OnHttpThreadStart := From.OnHttpThreadStart;
    OnHttpThreadTerminate := From.OnHttpThreadTerminate;
    FCompressAcceptEncoding := From.FCompressAcceptEncoding;
    if From.Logging then begin
@@ -712,6 +730,16 @@ begin
    end;
 end;
 
+procedure THttpApi2Server.AfterWaitForNextRequest(const aCurRequest: PHTTP_REQUEST_V2);
+begin
+//
+end;
+
+procedure THttpApi2Server.BeforeWaitForNextRequest;
+begin
+//
+end;
+
 procedure THttpApi2Server.Clone(ChildThreadCount : Integer);
 var
    i : Integer;
@@ -738,6 +766,11 @@ begin
    FServerName := UTF8Encode(val);
    FLogFieldsData.ServerNameLength := Length(FServerName);
    FLogFieldsData.ServerName := Pointer(FServerName);
+end;
+
+function THttpApi2Server.GetHttpResponseFlags: Cardinal;
+begin
+  Result := 0;
 end;
 
 // GetLogging
@@ -876,17 +909,6 @@ begin
                                        @qosInfo, SizeOf(qosInfo)),
       hSetServerSessionProperty);
 end;
-
-const
-   KNOWNHEADERS_NAME : array[reqCacheControl..reqUserAgent] of string[19] = (
-      'Cache-Control', 'Connection', 'Date', 'Keep-Alive', 'Pragma', 'Trailer',
-      'Transfer-Encoding', 'Upgrade', 'Via', 'Warning', 'Allow', 'Content-Length',
-      'Content-Type', 'Content-Encoding', 'Content-Language', 'Content-Location',
-      'Content-MD5', 'Content-Range', 'Expires', 'Last-Modified', 'Accept',
-      'Accept-Charset', 'Accept-Encoding', 'Accept-Language', 'Authorization',
-      'Cookie', 'Expect', 'From', 'Host', 'If-Match', 'If-Modified-Since',
-      'If-None-Match', 'If-Range', 'If-Unmodified-Since', 'Max-Forwards',
-      'Proxy-Authorization', 'Referer', 'Range', 'TE', 'Translate', 'User-Agent');
 
 function RetrieveHeaders(const head : HTTP_REQUEST_HEADERS;
    const address : PSOCKADDR; var IP : RawByteString) : RawByteString;
@@ -1052,10 +1074,12 @@ begin
    // main loop
    requestID := 0;
    repeat
+      BeforeWaitForNextRequest;
       // retrieve next pending request, and read its headers
       FillChar(request^, SizeOf(HTTP_REQUEST_V2), 0);
       errCode := HttpAPI.ReceiveHttpRequest(FReqQueue, requestID, 0, request^,
                                             Length(requestBuffer), bytesRead);
+      AfterWaitForNextRequest(request);
       if Terminated then
          break;
       case errCode of
@@ -1188,7 +1212,7 @@ begin
                      end;
                      response^.SetContent(dataChunkInMemory, outResponse.OutContent, outResponse.OutContentType);
                      errCode := HttpAPI.SendHttpResponse(FReqQueue, request^.RequestId,
-                                       0, response^, nil, bytesSent, nil, 0, nil, FLogDataPtr);
+                                       GetHttpResponseFlags, response^, nil, bytesSent, nil, 0, nil, FLogDataPtr);
                      if errCode<>NO_ERROR then
                         raise EHttpApiServer.Create(hSendHttpResponse, errCode);
                   end;
