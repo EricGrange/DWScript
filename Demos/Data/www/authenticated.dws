@@ -1,0 +1,34 @@
+<%
+if WebRequest.Authentication=WebAuthentication.None then
+
+   if WebRequest.Header['Authorization']<>'' then
+      PrintLn('Authentication not activated in server options')
+   else WebResponse.RequestAuthentication(WebAuthentication.Negotiate)
+   
+else begin
+
+   if WebRequest.Authentication=WebAuthentication.Failed then
+
+      PrintLn('Authentication failed')
+   
+   else begin
+
+      Print('Authenticated as "'+WebRequest.AuthenticatedUser+'" using ');
+      case WebRequest.Authentication of
+         WebAuthentication.Basic : PrintLn('Basic');
+         WebAuthentication.Digest : PrintLn('Digest');
+         WebAuthentication.NTLM : PrintLn('NTLM');
+         WebAuthentication.Negotiate, WebAuthentication.Kerberos : PrintLn('Kerberos');
+      else
+         PrintLn('demo-needs-to-be-upgraded');
+      end;
+      
+   end;
+   
+   if WebRequest.Security<>'' then begin
+      PrintLn('<br> and ');
+      PrintLn(WebRequest.Security);
+   end;
+   
+end;
+%>

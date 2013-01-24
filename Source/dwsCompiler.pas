@@ -382,6 +382,9 @@ type
          FPooledStringList : TSimpleStringList;
          FOperatorResolver : TOperatorResolver;
 
+         // if set we're in a setter write expression or statement
+         FPendingSetterValueExpr : TVarExpr;
+
          FDataSymbolExprReuse : TSimpleObjectObjectHash<TDataSymbol,TVarExpr>;
 
          FStaticExtensionSymbols : Boolean;
@@ -641,8 +644,8 @@ type
          function EnumerateHelpers(typeSym : TTypeSymbol) : THelperSymbols;
          function ReadTypeHelper(expr : TTypedExpr;
                                  const name : String; const namePos : TScriptPos;
-                                 expecting : TTypeSymbol;
-                                 killNameToken : Boolean = False) : TProgramExpr;
+                                 expecting : TTypeSymbol; isWrite : Boolean;
+                                 killNameToken : Boolean) : TProgramExpr;
          function ReadSelfTypeHelper(const name : TToken; const namePos : TScriptPos;
                                      expecting : TTypeSymbol) : TProgramExpr;
 
@@ -3864,8 +3867,10 @@ begin
          if FTok.Test(ttBLEFT) then // (X as TY)
             locExpr := ReadSymbol(ReadTerm(True))
          else locExpr := ReadName(True);
-         if (FTok.TestAny([ttLESSLESS, ttGTRGTR])<>ttNone) and (locExpr is TTypedExpr) then
-            locExpr:=ReadExprAdd(nil, TTypedExpr(locExpr));
+         if locExpr is TTypedExpr then begin
+            if (FTok.TestAny([ttLESSLESS, ttGTRGTR])<>ttNone) then
+               locExpr:=ReadExprAdd(nil, TTypedExpr(locExpr));
+         end;
          try
             token:=FTok.TestDeleteAny(cAssignmentTokens);
             if token<>ttNone then begin
@@ -3908,12 +3913,16 @@ begin
                   locExpr:=nil;
                   Result:=TNullExpr.Create(FProg, hotPos);
                   if FMsgs.Count=msgsCount then   // avoid hint on expression with issues
-                     FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
+                     if FPendingSetterValueExpr=nil then
+                        FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
                end else if locExpr is TNullExpr then begin
                   Result:=TNullExpr(locExpr);
                   locExpr:=nil;
                end else if locExpr is TNoResultExpr then begin
                   Result:=TNoResultExpr(locExpr);
+                  locExpr:=nil;
+               end else if (FPendingSetterValueExpr<>nil) and (locExpr is TTypedExpr) then begin
+                  Result:=TNoResultWrapperExpr.Create(FProg, hotPos, TTypedExpr(locExpr));
                   locExpr:=nil;
                end else begin
                   Result:=nil;
@@ -4584,6 +4593,11 @@ begin
 
       tokenType:=FTok.TestDeleteAny(cAssignmentTokens);
 
+      // implicit assign for setter write expressions
+      if     (tokenType=ttNone) and (FPendingSetterValueExpr<>nil)
+         and FTok.Test(ttBRIGHT) then
+         tokenType:=ttASSIGN;
+
       if tokenType<>ttNone then begin
 
          if tokenType<>ttASSIGN then
@@ -4948,7 +4962,7 @@ begin
 
          if baseType<>nil then begin
             helperExpr:=ReadTypeHelper(expr as TTypedExpr,
-                                       name, namePos, expecting);
+                                       name, namePos, expecting, isWrite, False);
             if helperExpr<>nil then begin
 
                expr:=nil;
@@ -7889,6 +7903,7 @@ function TdwsCompiler.ReadPropertyDeclSetter(
       propSym : TPropertySymbol; var scriptPos : TScriptPos; classProperty : Boolean) : TSymbol;
 var
    name : String;
+   instr : TNoResultExpr;
    expr : TTypedExpr;
    leftExpr : TDataExpr;
    paramExpr : TByRefParamExpr;
@@ -7911,7 +7926,7 @@ begin
       meth:=propSym.OwnerSymbol.CreateAnonymousFunction(fkProcedure, cvPrivate, classProperty);
 
       meth.AddParams(propSym.ArrayIndices);
-      paramSymbol:=TConstParamSymbol.Create('', propSym.Typ);
+      paramSymbol:=TConstParamSymbol.Create('Value', propSym.Typ);
       meth.Params.AddSymbol(paramSymbol);
 
       if meth is TMethodSymbol then
@@ -7925,17 +7940,29 @@ begin
 
       oldProg:=FProg;
       FProg:=proc;
+      FPendingSetterValueExpr:=nil;
       try
-         expr:=ReadTerm(True, propSym.Typ);
-         if expr is TDataExpr then begin
-            leftExpr:=TDataExpr(expr);
-            paramExpr:=GetConstParamExpr(paramSymbol);
-            proc.Expr:=CreateAssign(scriptPos, ttASSIGN, leftExpr, paramExpr);
-         end else begin
-            FMsgs.AddCompilerError(scriptPos, CPE_CantWriteToLeftSide);
-            expr.Free;
+         FPendingSetterValueExpr:=GetConstParamExpr(paramSymbol);
+         instr:=ReadInstr;
+         if instr is TNoResultWrapperExpr then begin
+            expr:=TNoResultWrapperExpr(instr).Expr;
+            if expr.Typ.IsOfType(propSym.Typ) then begin
+               TNoResultWrapperExpr(instr).Expr:=nil;
+               FreeAndNil(instr);
+               if expr is TDataExpr then begin
+                  leftExpr:=TDataExpr(expr);
+                  paramExpr:=GetConstParamExpr(paramSymbol);
+                  proc.Expr:=CreateAssign(scriptPos, ttASSIGN, leftExpr, paramExpr);
+               end else begin
+                  FMsgs.AddCompilerError(scriptPos, CPE_CantWriteToLeftSide);
+                  expr.Free;
+               end;
+            end;
          end;
+         if instr<>nil then
+            proc.Expr:=instr;
       finally
+         FPendingSetterValueExpr.Free;
          FProg:=oldProg;
       end;
 
@@ -9148,9 +9175,17 @@ begin
    tt:=FTok.TestAny([ttPLUS, ttMINUS, ttALEFT, ttNOT, ttBLEFT, ttAT,
                      ttTRUE, ttFALSE, ttNIL, ttIF,
                      ttFUNCTION, ttPROCEDURE, ttLAMBDA,
-                     ttRECORD]);
-   if tt<>ttNone then
-      FTok.KillToken;
+                     ttRECORD, ttBRIGHT]);
+   if tt<>ttNone then begin
+      // special logic for property write expressions
+      if tt=ttBRIGHT then begin
+         if FPendingSetterValueExpr<>nil then begin
+            Result:=FPendingSetterValueExpr;
+            FPendingSetterValueExpr:=nil;
+         end else Result:=nil;
+         Exit;
+      end else FTok.KillToken;
+   end;
    case tt of
       ttPLUS : begin
          FTok.TestName;
@@ -11701,8 +11736,8 @@ end;
 //
 function TdwsCompiler.ReadTypeHelper(expr : TTypedExpr;
                                      const name : String; const namePos : TScriptPos;
-                                     expecting : TTypeSymbol;
-                                     killNameToken : Boolean = False) : TProgramExpr;
+                                     expecting : TTypeSymbol; isWrite : Boolean;
+                                     killNameToken : Boolean) : TProgramExpr;
 var
    i : Integer;
    helper, bestHelper : THelperSymbol;
@@ -11748,7 +11783,7 @@ begin
 
          if sym.ClassType=TPropertySymbol then begin
 
-            Result:=ReadPropertyExpr(expr, TPropertySymbol(sym), FTok.Test(ttASSIGN));
+            Result:=ReadPropertyExpr(expr, TPropertySymbol(sym), isWrite);
 
          end else if sym.ClassType=TClassVarSymbol then begin
 
@@ -11830,7 +11865,7 @@ begin
       else if progMeth.SelfSym=nil then
          Exit(nil)
       else selfExpr:=GetSelfParamExpr(progMeth.SelfSym);
-      Result:=ReadTypeHelper(selfExpr, name.FString, namePos, expecting, True);
+      Result:=ReadTypeHelper(selfExpr, name.FString, namePos, expecting, False, True);
       if Result=nil then
          selfExpr.Free;
    end else Result:=nil;
