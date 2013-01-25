@@ -1130,8 +1130,8 @@ type
          function MembersVisibilities : TdwsVisibilities;
 
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; virtual; abstract;
-         function CreateAnonymousFunction(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
-                                          isClassMethod : Boolean) : TFuncSymbol; virtual; abstract;
+         function CreateAnonymousMethod(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
+                                        isClassMethod : Boolean) : TMethodSymbol; virtual; abstract;
 
          function ExternalRoot : TCompositeTypeSymbol;
 
@@ -1247,8 +1247,8 @@ type
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
-         function CreateAnonymousFunction(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
-                                          isClassMethod : Boolean) : TFuncSymbol; override;
+         function CreateAnonymousMethod(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
+                                        isClassMethod : Boolean) : TMethodSymbol; override;
 
          procedure InitData(const data : TData; offset : Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
@@ -1279,8 +1279,8 @@ type
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
 
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
-         function CreateAnonymousFunction(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
-                                          isClassMethod : Boolean) : TFuncSymbol; override;
+         function CreateAnonymousMethod(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
+                                        isClassMethod : Boolean) : TMethodSymbol; override;
 
          function Parent : TInterfaceSymbol; inline;
          property MethodCount : Integer read FMethodCount;
@@ -1443,8 +1443,8 @@ type
          function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; override;
          function AllowVirtualMembers : Boolean; override;
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
-         function CreateAnonymousFunction(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
-                                          isClassMethod : Boolean) : TFuncSymbol; override;
+         function CreateAnonymousMethod(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
+                                        isClassMethod : Boolean) : TMethodSymbol; override;
 
          class function VisibilityToString(visibility : TdwsVisibility) : String; static;
 
@@ -1481,8 +1481,8 @@ type
          function IsType : Boolean; override;
          function AllowDefaultProperty : Boolean; override;
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
-         function CreateAnonymousFunction(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
-                                          isClassMethod : Boolean) : TFuncSymbol; override;
+         function CreateAnonymousMethod(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
+                                        isClassMethod : Boolean) : TMethodSymbol; override;
 
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
@@ -2484,10 +2484,10 @@ begin
    end;
 end;
 
-// CreateAnonymousFunction
+// CreateAnonymousMethod
 //
-function TRecordSymbol.CreateAnonymousFunction(
-      aFuncKind : TFuncKind; aVisibility : TdwsVisibility; isClassMethod : Boolean) : TFuncSymbol;
+function TRecordSymbol.CreateAnonymousMethod(
+      aFuncKind : TFuncKind; aVisibility : TdwsVisibility; isClassMethod : Boolean) : TMethodSymbol;
 begin
    Result:=TSourceMethodSymbol.Create('', aFuncKind, Self, aVisibility, isClassMethod);
    if isClassMethod then
@@ -2657,10 +2657,10 @@ begin
    methSym.InternalParams.AddSymbol(Result);
 end;
 
-// CreateAnonymousFunction
+// CreateAnonymousMethod
 //
-function TInterfaceSymbol.CreateAnonymousFunction(
-      aFuncKind : TFuncKind; aVisibility : TdwsVisibility; isClassMethod : Boolean) : TFuncSymbol;
+function TInterfaceSymbol.CreateAnonymousMethod(
+      aFuncKind : TFuncKind; aVisibility : TdwsVisibility; isClassMethod : Boolean) : TMethodSymbol;
 begin
    Result:=TSourceMethodSymbol.Create('', aFuncKind, Self, aVisibility, isClassMethod);
 end;
@@ -4336,10 +4336,10 @@ begin
    methSym.InternalParams.AddSymbol(Result);
 end;
 
-// CreateAnonymousFunction
+// CreateAnonymousMethod
 //
-function TClassSymbol.CreateAnonymousFunction(
-      aFuncKind : TFuncKind; aVisibility : TdwsVisibility; isClassMethod : Boolean) : TFuncSymbol;
+function TClassSymbol.CreateAnonymousMethod(
+      aFuncKind : TFuncKind; aVisibility : TdwsVisibility; isClassMethod : Boolean) : TMethodSymbol;
 begin
    Result:=TSourceMethodSymbol.Create('', aFuncKind, Self, aVisibility, isClassMethod);
 end;
@@ -6441,11 +6441,11 @@ begin
    end;
 end;
 
-// CreateAnonymousFunction
+// CreateAnonymousMethod
 //
-function THelperSymbol.CreateAnonymousFunction(aFuncKind : TFuncKind;
-                                               aVisibility : TdwsVisibility;
-                                               isClassMethod : Boolean) : TFuncSymbol;
+function THelperSymbol.CreateAnonymousMethod(aFuncKind : TFuncKind;
+                                             aVisibility : TdwsVisibility;
+                                             isClassMethod : Boolean) : TMethodSymbol;
 begin
    Result:=TSourceMethodSymbol.Create('', aFuncKind, Self, aVisibility, isClassMethod);
    if isClassMethod and (not ForType.HasMetaSymbol) then

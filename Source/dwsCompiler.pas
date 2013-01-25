@@ -3913,8 +3913,7 @@ begin
                   locExpr:=nil;
                   Result:=TNullExpr.Create(FProg, hotPos);
                   if FMsgs.Count=msgsCount then   // avoid hint on expression with issues
-                     if FPendingSetterValueExpr=nil then
-                        FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
+                     FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
                end else if locExpr is TNullExpr then begin
                   Result:=TNullExpr(locExpr);
                   locExpr:=nil;
@@ -4580,7 +4579,6 @@ var
    typedExprList : TTypedExprList;
    argPosArray : TScriptPosArray;
 begin
-   Result := nil;
    aPos:=FTok.HotPos;
 
    typedExprList:=TTypedExprList.Create;
@@ -4605,12 +4603,7 @@ begin
 
          sym := propertySym.WriteSym;
 
-         // No WriteSym
-         if sym = nil then
-
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ReadOnlyProperty)
-
-         else if sym is TFieldSymbol then begin
+         if sym is TFieldSymbol then begin
 
             // WriteSym is a Field
             if Expr.Typ is TClassOfSymbol then
@@ -7675,6 +7668,7 @@ end;
 procedure TdwsCompiler.ReadPropertyDecl(ownerSym : TCompositeTypeSymbol; aVisibility : TdwsVisibility;
                                         classProperty : Boolean);
 var
+   gotReadOrWrite : Boolean;
    name : String;
    propSym  : TPropertySymbol;
    sym : TSymbol;
@@ -7737,19 +7731,18 @@ begin
       indexExpr.Free;
    end else indexTyp:=nil;
 
+   gotReadOrWrite:=False;
+
    if FTok.TestDelete(ttREAD) then begin
 
+      gotReadOrWrite:=True;
       sym:=ReadPropertyDeclGetter(propSym, accessPos, classProperty);
 
       if sym=nil then
 
          // error already handled
 
-      else if sym is TPropertySymbol then begin
-
-         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_FieldMethodUnknown, [sym.Name]);
-
-      end else if propSym.Typ<>sym.Typ then
+      else if propSym.Typ<>sym.Typ then
 
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleType, [sym.Name])
 
@@ -7776,17 +7769,14 @@ begin
 
    if FTok.TestDelete(ttWRITE) then begin
 
+      gotReadOrWrite:=True;
       sym:=ReadPropertyDeclSetter(propSym, accessPos, classProperty);
 
       if sym=nil then
 
          // error already handled
 
-      else if sym is TPropertySymbol then begin
-
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_FieldMethodUnknown, [name]);
-
-      end else if sym is TMethodSymbol then begin
+      else if sym is TMethodSymbol then begin
 
          if classProperty and not TMethodSymbol(sym).IsClassMethod then
             FMsgs.AddCompilerError(accessPos, CPE_ClassMethodExpected);
@@ -7814,7 +7804,7 @@ begin
       RecordSymbolUse(sym, accessPos, [suReference, suWrite]);
    end;
 
-   if (propSym.ReadSym = nil) and (propSym.WriteSym = nil) then
+   if not gotReadOrWrite then
       FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ReadOrWriteExpected, [name]);
 
    ReadSemiColon;
@@ -7850,7 +7840,7 @@ var
    name : String;
    expr : TTypedExpr;
    resultExpr : TVarExpr;
-   meth : TFuncSymbol;
+   meth : TMethodSymbol;
    oldProg : TdwsProgram;
    proc : TdwsProcedure;
 begin
@@ -7861,15 +7851,21 @@ begin
 
       Result:=propSym.OwnerSymbol.Members.FindSymbol(name, cvPrivate);
 
+      if (Result<>nil) and (Result.ClassType=TPropertySymbol) then begin
+         Result:=TPropertySymbol(Result).ReadSym;
+         if Result=nil then begin
+            FMsgs.AddCompilerError(scriptPos, CPE_WriteOnlyProperty);
+            Exit;
+         end;
+      end;
+
    end else begin
 
       scriptPos:=FTok.HotPos;
 
-      meth:=propSym.OwnerSymbol.CreateAnonymousFunction(fkFunction, cvPrivate, classProperty);
+      meth:=propSym.OwnerSymbol.CreateAnonymousMethod(fkFunction, cvPrivate, classProperty);
       meth.Typ:=propSym.Typ;
-      if meth is TMethodSymbol then
-         propSym.OwnerSymbol.AddMethod(TMethodSymbol(meth))
-      else FProg.Table.AddSymbol(meth);
+      propSym.OwnerSymbol.AddMethod(meth);
       meth.AddParams(propSym.ArrayIndices);
 
       RecordSymbolUse(meth, scriptPos, [suDeclaration, suImplicit]);
@@ -7894,7 +7890,7 @@ begin
    end;
 
    if Result=nil then
-      FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_FieldMethodUnknown, [name]);
+      FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_FieldMethodUnknown, [name]);
 end;
 
 // ReadPropertyDeclSetter
@@ -7907,7 +7903,7 @@ var
    expr : TTypedExpr;
    leftExpr : TDataExpr;
    paramExpr : TByRefParamExpr;
-   meth : TFuncSymbol;
+   meth : TMethodSymbol;
    paramSymbol : TConstParamSymbol;
    oldProg : TdwsProgram;
    proc : TdwsProcedure;
@@ -7919,19 +7915,25 @@ begin
 
       Result:=propSym.OwnerSymbol.Members.FindSymbol(name, cvPrivate);
 
+      if (Result<>nil) and (Result.ClassType=TPropertySymbol) then begin
+         Result:=TPropertySymbol(Result).WriteSym;
+         if Result=nil then begin
+            FMsgs.AddCompilerError(scriptPos, CPE_WriteOnlyProperty);
+            Exit;
+         end;
+      end;
+
    end else begin
 
       scriptPos:=FTok.HotPos;
 
-      meth:=propSym.OwnerSymbol.CreateAnonymousFunction(fkProcedure, cvPrivate, classProperty);
+      meth:=propSym.OwnerSymbol.CreateAnonymousMethod(fkProcedure, cvPrivate, classProperty);
 
       meth.AddParams(propSym.ArrayIndices);
       paramSymbol:=TConstParamSymbol.Create('Value', propSym.Typ);
       meth.Params.AddSymbol(paramSymbol);
 
-      if meth is TMethodSymbol then
-         propSym.OwnerSymbol.AddMethod(TMethodSymbol(meth))
-      else FProg.Table.AddSymbol(meth);
+      propSym.OwnerSymbol.AddMethod(meth);
 
       RecordSymbolUse(meth, scriptPos, [suDeclaration, suImplicit]);
 
@@ -7949,7 +7951,7 @@ begin
             if expr.Typ.IsOfType(propSym.Typ) then begin
                TNoResultWrapperExpr(instr).Expr:=nil;
                FreeAndNil(instr);
-               if expr is TDataExpr then begin
+               if (expr is TDataExpr) and TDataExpr(expr).IsWritable then begin
                   leftExpr:=TDataExpr(expr);
                   paramExpr:=GetConstParamExpr(paramSymbol);
                   proc.Expr:=CreateAssign(scriptPos, ttASSIGN, leftExpr, paramExpr);

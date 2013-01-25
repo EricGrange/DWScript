@@ -1,0 +1,4 @@
+Syntax Error: Class method expected [line: 8, column: 41]
+Syntax Error: Class method expected [line: 8, column: 53]
+Syntax Error: Class member expected [line: 9, column: 43]
+Syntax Error: Class member expected [line: 9, column: 55]

@@ -466,6 +466,7 @@ type
       {$else}
       function CompareStrings(const S1, S2: String): Integer; override;
       {$endif}
+      function IndexOfName(const name : String): Integer; override;
    end;
 
    TFastCompareTextList = class (TStringList)
@@ -474,7 +475,7 @@ type
       {$else}
       function CompareStrings(const S1, S2: String): Integer; override;
       {$endif}
-      function  FindName(const name : String; var index : Integer) : Boolean;
+      function FindName(const name : String; var index : Integer) : Boolean;
       function IndexOfName(const name : String): Integer; override;
    end;
 
@@ -601,6 +602,26 @@ function TFastCompareStringList.DoCompareText(const S1, S2: String): Integer;
 {$endif}
 begin
    Result:=CompareStr(S1, S2);
+end;
+
+// IndexOfName
+//
+function TFastCompareStringList.IndexOfName(const name : String): Integer;
+var
+   n, nc : Integer;
+   nvs : Char;
+   list : TStringListList;
+begin
+   nvs:=NameValueSeparator;
+   n:=Length(name);
+   list:=TStringListCracker(Self).FList;
+   for Result:=0 to Count-1 do begin
+      nc:=Length(list[Result].FString);
+      if     (nc>n) and (list[Result].FString[n+1]=nvs)
+         and CompareMem(PChar(Pointer(name)),
+                        PChar(Pointer(list[Result].FString)), n) then Exit;
+   end;
+   Result:=-1;
 end;
 
 // TUnifierStringList.Create
