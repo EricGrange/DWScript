@@ -27,6 +27,12 @@
     http://synopse.info/fossil/wiki?name=Downloads
 
 }
+
+This demo is currently suspended and won't compile, 
+Work is happening in the HttpSys2WebServer demo instead
+which operates on a fork for some of the mORMot units
+that add htpp.sys 2.0 support
+
 program SynopseWebServer;
 
 {$SetPEFlags $0001}
