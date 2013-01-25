@@ -1,0 +1,38 @@
+body {
+   font-family : "Segoe UI" Helvetica Arial;
+}
+td, th {
+   color : #039;
+   border-bottom : 1px solid #ABC;
+}
+th {
+   border-bottom : 2px solid #039;
+}
+td + td {
+   text-align : right;
+}
+div.bar {
+   background-color : #DDF;
+   width : 150;
+}
+div.barfill {
+   background-color : #88F;
+   height : 11;
+}
+div.usage {
+   font-family: "Courier New", Courier;
+   font-size: 0.9em;
+   padding: 1 5 1 5;
+   background: #200;
+}
+div#connect {
+   position: absolute;
+   left: 30%;
+   top: 70px;
+   width: 30%;
+   background: rgba(255, 0, 0, 0.75);
+   padding: 5%;
+   border-radius: 10px;
+   box-shadow: red 0 0 10px;
+   font-weight: bold;
+}
