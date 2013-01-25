@@ -92,7 +92,7 @@ type
       {$ENDIF}
    end;
 
-function GetSystemMilliseconds : Cardinal;
+function GetSystemMilliseconds : Int64;
 function UTCDateTime : TDateTime;
 
 function AnsiCompareText(const S1, S2 : String) : Integer;
@@ -133,9 +133,12 @@ implementation
 
 // GetSystemMilliseconds
 //
-function GetSystemMilliseconds : Cardinal;
+function GetSystemMilliseconds : Int64;
+var
+   fileTime : TFileTime;
 begin
-   Result:=GetTickCount;
+   GetSystemTimeAsFileTime(fileTime);
+   Result:=PInt64(@fileTime)^;
 end;
 
 // UTCDateTime

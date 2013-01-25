@@ -378,12 +378,9 @@ type
    TdwsGuardedExecution = class (TRefCountedObject)
       public
          Exec : IdwsProgramExecution;
-         TimeOutAt : TDateTime;
-   end;
-
-   TdwsGuardedExecutionList = class(TSortedList<TdwsGuardedExecution>)
-      protected
-         function Compare(const item1, item2 : TdwsGuardedExecution) : Integer; override;
+         TimeOutAt : Int64;
+         Next : TdwsGuardedExecution;
+         procedure FreeAll;
    end;
 
    // TdwsGuardianThread
@@ -392,14 +389,14 @@ type
    TdwsGuardianThread = class(TThread)
       private
          FEvent : TEvent;
-         FExecutions : TdwsGuardedExecutionList;
+         FExecutions : TdwsGuardedExecution;
          FExecutionsLock : TFixedCriticalSection;
 
       protected
          procedure Execute; override;
 
-         class var vThreadLock : Integer;
          class var vThread : TdwsGuardianThread;
+         class var vExecutionsPool : TdwsGuardedExecution;
 
       public
          constructor Create;
@@ -3603,18 +3600,17 @@ begin
 end;
 
 // ------------------
-// ------------------ TdwsGuardedExecutionList ------------------
+// ------------------ TdwsGuardedExecution ------------------
 // ------------------
 
-// Compare
+// FreeAll
 //
-function TdwsGuardedExecutionList.Compare(const item1, item2 : TdwsGuardedExecution) : Integer;
+procedure TdwsGuardedExecution.FreeAll;
 begin
-   if item1.TimeOutAt<item2.TimeOutAt then
-      Result:=1
-   else if item1.TimeOutAt>item2.TimeOutAt then
-      Result:=-1
-   else Result:=0;
+   if Assigned(Self) then begin
+      Next.FreeAll;
+      Destroy;
+   end;
 end;
 
 // ------------------
@@ -3627,7 +3623,6 @@ constructor TdwsGuardianThread.Create;
 begin
    FEvent:=TEvent.Create(nil, False, False, '');
    FExecutionsLock:=TFixedCriticalSection.Create;
-   FExecutions:=TdwsGuardedExecutionList.Create;
    FreeOnTerminate:=False;
 
    inherited Create(True);
@@ -3641,8 +3636,7 @@ end;
 //
 destructor TdwsGuardianThread.Destroy;
 begin
-   FExecutions.Clear;
-   FExecutions.Free;
+   FExecutions.FreeAll;
    FEvent.Free;
    FExecutionsLock.Free;
    inherited;
@@ -3677,40 +3671,68 @@ end;
 class procedure TdwsGuardianThread.GuardExecution(const exec : IdwsProgramExecution; aMilliSecToLive : Integer);
 var
    thread : TdwsGuardianThread;
-   item : TdwsGuardedExecution;
+   item, prev, iter : TdwsGuardedExecution;
+   timeOutAt : Int64;
 begin
    thread:=vThread;
-   item:=TdwsGuardedExecution.Create;
-   item.Exec:=exec;
-   item.TimeOutAt:=Now+aMilliSecToLive*(1/(86400*1000));
+   timeOutAt:=GetSystemMilliseconds+aMilliSecToLive;
    thread.FExecutionsLock.Enter;
    try
-      thread.FExecutions.Add(item);
-      thread.FEvent.SetEvent;
+      if vExecutionsPool<>nil then begin
+         item:=vExecutionsPool;
+         vExecutionsPool:=item.Next;
+         item.Next:=nil;
+      end else item:=TdwsGuardedExecution.Create;
+      item.Exec:=exec;
+      item.TimeOutAt:=timeOutAt;
+
+      iter:=thread.FExecutions;
+      if iter=nil then
+         thread.FExecutions:=item
+      else if iter.TimeOutAt>=item.TimeOutAt then begin
+         item.Next:=thread.FExecutions;
+         thread.FExecutions:=item
+      end else begin
+         repeat
+            prev:=iter;
+            iter:=iter.Next;
+         until (iter=nil) or (iter.TimeOutAt>=item.TimeOutAt);
+         item.Next:=iter;
+         prev.Next:=item;
+      end;
    finally
       thread.FExecutionsLock.Leave;
    end;
+   thread.FEvent.SetEvent;
 end;
 
 // ForgetExecution
 //
 class procedure TdwsGuardianThread.ForgetExecution(const exec : IdwsProgramExecution);
 var
-   i : Integer;
    thread : TdwsGuardianThread;
-   execs : TdwsGuardedExecutionList;
-   guarded : TdwsGuardedExecution;
+   iter, prev : TdwsGuardedExecution;
 begin
    thread:=vThread;
    if thread=nil then Exit;
    thread.FExecutionsLock.Enter;
    try
-      execs:=thread.FExecutions;
-      for i:=0 to execs.Count-1 do begin
-         guarded:=execs[i];
-         if guarded.Exec=exec then begin
-            guarded.Exec:=nil;
-            Break;
+      iter:=thread.FExecutions;
+      if iter<>nil then begin
+         if iter.Exec=exec then
+            thread.FExecutions:=iter.Next
+         else begin
+            repeat
+               prev:=iter;
+               iter:=iter.Next;
+            until (iter=nil) or (iter.Exec=exec);
+            if iter<>nil then
+               prev.Next:=iter.Next;
+         end;
+         if iter<>nil then begin
+            iter.Exec:=nil;
+            iter.Next:=vExecutionsPool;
+            vExecutionsPool:=iter;
          end;
       end;
    finally
@@ -3722,45 +3744,39 @@ end;
 //
 procedure TdwsGuardianThread.Execute;
 var
-   currentTime : TDateTime;
+   currentTime : Int64;
    item : TdwsGuardedExecution;
-   n, millisecs : Integer;
-   timeLeft : Double;
+   millisecs : Cardinal;
+   timeLeft : Int64;
 begin
    while not Terminated do begin
 
-      currentTime:=Now;
-      item:=nil;
+      currentTime:=GetSystemMilliseconds;
 
       FExecutionsLock.Enter;
       try
-         while FExecutions.Count>0 do begin
-            n:=FExecutions.Count;
-            item:=FExecutions[n-1];
-            if item.Exec=nil then begin
-               FExecutions.ExtractAt(n-1);
-               item.Free;
-            end else begin
-               if item.TimeOutAt<=currentTime then begin
-                  item.Exec.Stop;
-                  FExecutions.ExtractAt(n-1);
-                  item.Free;
-               end else Break;
-            end;
+         item:=FExecutions;
+         while (item<>nil) and (item.TimeOutAt<=currentTime) do begin
+            item.Exec.Stop;
+            FExecutions:=item.Next;
+            item.Exec:=nil;
+            item.Next:=vExecutionsPool;
+            vExecutionsPool:=item;
+            item:=FExecutions;
          end;
+         item:=FExecutions;
+         if item=nil then
+            timeLeft:=INFINITE
+         else timeLeft:=item.TimeOutAt-currentTime;
       finally
          FExecutionsLock.Leave;
       end;
 
-      if item=nil then
-         FEvent.WaitFor(INFINITE)
-      else begin
-         timeLeft:=item.TimeOutAt-currentTime;
-         if timeLeft<0 then
-            millisecs:=0
-         else millisecs:=Round(timeLeft*(86400*1000));
-         FEvent.WaitFor(millisecs);
-      end;
+      Assert(timeLeft>0);
+      if timeLeft>5000 then
+         millisecs:=5000
+      else millisecs:=timeLeft;
+      FEvent.WaitFor(millisecs);
 
    end;
 end;
@@ -8778,5 +8794,6 @@ initialization
 finalization
 
    TdwsGuardianThread.Finalize;
+   TdwsGuardianThread.vExecutionsPool.FreeAll;
 
 end.
