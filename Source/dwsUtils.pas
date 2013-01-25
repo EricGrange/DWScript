@@ -448,6 +448,7 @@ type
          procedure WriteString(const utf16String : UnicodeString); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos, length : Integer); overload;
+         procedure WriteCRLF;
          procedure WriteChar(utf16Char : WideChar); inline;
          procedure WriteDigits(value : Int64; digits : Integer);
 
@@ -1726,6 +1727,7 @@ begin
    case count of
       1 : dest[0]:=source[0];
       2 : PWord(dest)^:=PWord(source)^;
+      4 : PInt64(dest)^:=PInt64(source)^;
    else
       Move(source^, dest^, count);
    end;
@@ -1826,6 +1828,15 @@ end;
 procedure TWriteOnlyBlockStream.WriteSubString(const utf16String : UnicodeString; startPos : Integer);
 begin
    WriteSubString(utf16String, startPos, Length(utf16String)-startPos+1);
+end;
+
+// WriteCRLF
+//
+procedure TWriteOnlyBlockStream.WriteCRLF;
+const
+   cCRLF : array [0..1] of Char = (#13, #10);
+begin
+   Write(cCRLF[0], 2*SizeOf(Char));
 end;
 
 // WriteSubString

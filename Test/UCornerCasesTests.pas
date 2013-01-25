@@ -709,17 +709,15 @@ begin
                   +#9'TAssignConstToStringVarExpr'#13#10
                      +#9#9'TStrVarExpr'#13#10
                      +#9#9'nil'#13#10
-                  +#9'TNoResultWrapperExpr'#13#10
-                     +#9#9'TFuncExpr'#13#10
-                        +#9#9#9'TStrVarExpr'#13#10
+                  +#9'TMagicProcedureExpr'#13#10
+                     +#9#9'TStrVarExpr'#13#10
                   +#9'TIfThenExpr'#13#10
                      +#9#9'TRelNotEqualStringExpr'#13#10
                         +#9#9#9'TStrVarExpr'#13#10
                         +#9#9#9'TConstStringExpr'#13#10
-                     +#9#9'TNoResultWrapperExpr'#13#10
+                     +#9#9'TMagicProcedureExpr'#13#10
                         +#9#9#9'TFuncExpr'#13#10
-                           +#9#9#9#9'TFuncExpr'#13#10
-                              +#9#9#9#9#9'TConstIntExpr'#13#10,
+                           +#9#9#9#9'TConstIntExpr'#13#10,
                MakeSubExprTree((prog as TdwsProgram).Expr), 'Main Expr');
 end;
 

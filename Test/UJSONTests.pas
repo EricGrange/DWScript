@@ -51,6 +51,7 @@ type
          procedure MultipleElementsWithSameName;
          procedure SetItemTest;
          procedure SubItemFree;
+         procedure ISO8601Test;
    end;
 
 // ------------------------------------------------------------------
@@ -491,6 +492,27 @@ begin
    key:=TdwsJSONValue.ParseString('["Key", "value"]');
    key.Elements[0].Free;
    key.Free;
+end;
+
+// ISO8601Test
+//
+procedure TdwsJSONTests.ISO8601Test;
+var
+   wr : TdwsJSONWriter;
+begin
+   wr:=TdwsJSONWriter.Create(nil);
+   try
+      wr.BeginObject;
+      wr.WriteName('Date');
+      wr.WriteDate(EncodeDate(2080, 12, 24));
+      wr.WriteName('DateTime');
+      wr.WriteDate(EncodeDate(2080, 12, 24)+EncodeTime(15, 30, 45, 450));
+      wr.EndObject;
+      CheckEquals('{"Date":"20801212","DateTime":"20801212T153045"}',
+                  wr.ToString);
+   finally
+      wr.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------

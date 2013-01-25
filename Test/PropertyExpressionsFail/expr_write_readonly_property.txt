@@ -1,3 +1,5 @@
 Syntax Error: Can't set a value for a read-only property [line: 6, column: 43]
 Hint: Constant Instruction - has no effect [line: 7, column: 44]
-Syntax Error: Can't assign a value to the left-side argument! [line: 8, column: 42]
+Syntax Error: ")" expected. [line: 10, column: 48]
+Syntax Error: ";" expected. [line: 10, column: 48]
+Syntax Error: END expected [line: 10, column: 48]

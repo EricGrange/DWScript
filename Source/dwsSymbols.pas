@@ -137,6 +137,7 @@ type
          {$endif}
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); overload; virtual; abstract;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); virtual; abstract;
+         procedure EvalNoResult(exec : TdwsExecution); virtual;
 
          procedure AssignValue(exec : TdwsExecution; const value : Variant); virtual; abstract;
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); virtual; abstract;
@@ -1694,10 +1695,12 @@ type
          FScriptCallStack : TdwsExprLocationArray;
          FRawClassName : String;
 
+         procedure SetScriptPos(const aPos : TScriptPos);
+
       public
          constructor CreatePosFmt(const pos : TScriptPos; const Msg: String; const Args: array of const);
 
-         property ScriptPos : TScriptPos read FScriptPos write FScriptPos;
+         property ScriptPos : TScriptPos read FScriptPos write SetScriptPos;//FScriptPos;
          property ScriptCallStack : TdwsExprLocationArray read FScriptCallStack write FScriptCallStack;
          property RawClassName : String read FRawClassName write FRawClassName;
    end;
@@ -1856,6 +1859,13 @@ begin
    Result:=UTF8ToUTF16(buf);
 end;
 {$endif}
+
+// EvalNoResult
+//
+procedure TExprBase.EvalNoResult(exec : TdwsExecution);
+begin
+   Eval(exec);
+end;
 
 // ------------------
 // ------------------ TExprBaseListRec ------------------
@@ -5975,6 +5985,13 @@ constructor EScriptError.CreatePosFmt(const pos : TScriptPos; const Msg: String;
 begin
    inherited CreateFmt(msg, args);
    FScriptPos:=pos;
+end;
+
+// SetScriptPos
+//
+procedure EScriptError.SetScriptPos(const aPos : TScriptPos);
+begin
+   FScriptPos:=aPos;
 end;
 
 // ------------------

@@ -50,13 +50,14 @@ type
    TSourcePreConditions = class;
    TSourcePostConditions = class;
    TBlockExprBase = class;
+   TProgramExpr = class;
 
    TVariantDynArray = array of Variant;
    TStringDynArray = array of String;
 
-   TNoResultExprList = array[0..MaxInt shr 4] of TNoResultExpr;
-   PNoResultExprList = ^TNoResultExprList;
-   PNoResultExpr = ^TNoResultExpr;
+   TProgramExprList = array[0..MaxInt shr 4] of TProgramExpr;
+   PProgramExprList = ^TProgramExprList;
+   PProgramExpr = ^TProgramExpr;
 
    TdwsExecutionEvent = procedure (exec : TdwsProgramExecution) of object;
 
@@ -332,6 +333,7 @@ type
          constructor Create(resultType : TdwsResultType); virtual;
 
          procedure AddString(const str : String); virtual; abstract;
+         procedure AddCRLF; virtual;
          procedure Clear; virtual; abstract;
 
          function ToUTF8String : UTF8String; virtual;
@@ -348,6 +350,7 @@ type
          destructor Destroy; override;
 
          procedure AddString(const str : String); override;
+         procedure AddCRLF; override;
          procedure Clear; override;
          function ToString : String; override;
          function ToDataString : RawByteString; override;
@@ -401,6 +404,8 @@ type
       public
          constructor Create;
          destructor Destroy; override;
+
+         const PulseIntervalMilliSeconds : Integer = 2500;
 
          class procedure Initialize; static;
          class procedure Finalize; static;
@@ -601,7 +606,7 @@ type
    // A script executable program
    TdwsProgram = class (TInterfacedSelfObject)
       private
-         FExpr : TNoResultExpr;
+         FExpr : TProgramExpr;
          FInitExpr : TBlockInitExpr;
          FAddrGenerator : TAddrGeneratorRec;
          FCompileMsgs : TdwsCompileMessageList;
@@ -634,7 +639,7 @@ type
 
          function ContextMethodSymbol : TMethodSymbol;
 
-         property Expr : TNoResultExpr read FExpr write FExpr;
+         property Expr : TProgramExpr read FExpr write FExpr;
          property InitExpr : TBlockInitExpr read FInitExpr;
          property Level : Integer read GetLevel;
          property CompileMsgs : TdwsCompileMessageList read FCompileMsgs write FCompileMsgs;
@@ -824,7 +829,6 @@ type
          function  IsConstant : Boolean; virtual;
          function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; virtual;
 
-         procedure EvalNoResult(exec : TdwsExecution); virtual;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
@@ -854,6 +858,8 @@ type
          procedure RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
 
          function ScriptLocation(prog : TObject) : String; override;
+
+         function InterruptsFlow : Boolean; virtual;
 
          property Typ : TTypeSymbol read GetType;
          property BaseType : TTypeSymbol read GetBaseType;
@@ -908,10 +914,6 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
 
-         function OptimizeToNoResultExpr(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
-
-         function InterruptsFlow : Boolean; virtual;
-
          function ScriptPos : TScriptPos; override;
          procedure SetScriptPos(const aPos : TScriptPos);
    end;
@@ -924,7 +926,7 @@ type
    // statement; statement; statement;
    TBlockExprBase = class(TNoResultExpr)
       protected
-         FStatements : PNoResultExprList;
+         FStatements : PProgramExprList;
          FCount : Integer;
 
          function GetSubExpr(i : Integer) : TExprBase; override;
@@ -933,9 +935,9 @@ type
       public
          destructor Destroy; override;
 
-         procedure AddStatement(expr : TNoResultExpr);
-         procedure ReplaceStatement(index : Integer; expr : TNoResultExpr);
-         function ExtractStatement(index : Integer) : TNoResultExpr;
+         procedure AddStatement(expr : TProgramExpr);
+         procedure ReplaceStatement(index : Integer; expr : TProgramExpr);
+         function ExtractStatement(index : Integer) : TProgramExpr;
    end;
 
    // statement; statement; statement;
@@ -1923,14 +1925,14 @@ uses dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsInfo;
 
 type
 
-   TPrintFunction = class(TInternalFunction)
+   TPrintFunction = class(TInternalMagicProcedure)
       public
-         procedure Execute(info : TProgramInfo); override;
+         procedure DoEvalProc(args : TExprBaseList); override;
    end;
 
-   TPrintLnFunction = class(TInternalFunction)
+   TPrintLnFunction = class(TInternalMagicProcedure)
       public
-         procedure Execute(info : TProgramInfo); override;
+         procedure DoEvalProc(args : TExprBaseList); override;
    end;
 
 { TScriptObjectWrapper }
@@ -2086,8 +2088,10 @@ begin
             Assert(False, 'TODO');
          end;
       end;
+   end else if funcSym is TMagicFuncSymbol then begin
+      Result:=TMagicFuncExpr.CreateMagicFuncExpr(prog, cNullPos, TMagicFuncSymbol(funcSym));
    end else begin
-      Result:=TFuncExpr.Create(Prog, cNullPos, funcSym);
+      Result:=TFuncExpr.Create(prog, cNullPos, funcSym);
    end;
 end;
 
@@ -3502,6 +3506,13 @@ begin
    Result:=UTF8Encode(ToString);
 end;
 
+// AddCRLF
+//
+procedure TdwsResult.AddCRLF;
+begin
+   AddString(#13#10);
+end;
+
 // ------------------
 // ------------------ TdwsDefaultResultType ------------------
 // ------------------
@@ -3526,22 +3537,36 @@ end;
 // ------------------ TPrintFunction ------------------
 // ------------------
 
-procedure TPrintFunction.Execute(info : TProgramInfo);
+//procedure TPrintFunction.Execute(info : TProgramInfo);
+//begin
+//   info.Execution.Result.AddString(info.ParamAsString[0]);
+//end;
+
+// DoEvalProc
+//
+procedure TPrintFunction.DoEvalProc(args : TExprBaseList);
+var
+   buf : String;
 begin
-   info.Execution.Result.AddString(info.ParamAsString[0]);
+   args.ExprBase[0].EvalAsString(args.Exec, buf);
+   (args.Exec as TdwsProgramExecution).Result.AddString(buf);
 end;
 
 // ------------------
 // ------------------ TPrintLnFunction ------------------
 // ------------------
 
-procedure TPrintLnFunction.Execute(info : TProgramInfo);
+// DoEvalProc
+//
+procedure TPrintLnFunction.DoEvalProc(args : TExprBaseList);
 var
+   buf : String;
    result : TdwsResult;
 begin
-   result:=info.Execution.Result;
-   result.AddString(info.ParamAsString[0]);
-   result.AddString(#13#10);
+   args.List.ExprBase[0].EvalAsString(args.Exec, buf);
+   result:=(args.Exec as TdwsProgramExecution).Result;
+   result.AddString(buf);
+   result.AddCRLF;
 end;
 
 // ------------------
@@ -3569,6 +3594,13 @@ end;
 procedure TdwsDefaultResult.AddString(const str : String);
 begin
    FTextBuilder.WriteString(str);
+end;
+
+// AddCRLF
+//
+procedure TdwsDefaultResult.AddCRLF;
+begin
+   FTextBuilder.WriteCRLF;
 end;
 
 // Clear
@@ -3703,7 +3735,8 @@ begin
    finally
       thread.FExecutionsLock.Leave;
    end;
-   thread.FEvent.SetEvent;
+   if aMilliSecToLive<PulseIntervalMilliSeconds then
+      thread.FEvent.SetEvent;
 end;
 
 // ForgetExecution
@@ -3751,30 +3784,35 @@ var
 begin
    while not Terminated do begin
 
-      currentTime:=GetSystemMilliseconds;
+      timeLeft:=INFINITE;
 
-      FExecutionsLock.Enter;
-      try
-         item:=FExecutions;
-         while (item<>nil) and (item.TimeOutAt<=currentTime) do begin
-            item.Exec.Stop;
-            FExecutions:=item.Next;
-            item.Exec:=nil;
-            item.Next:=vExecutionsPool;
-            vExecutionsPool:=item;
+      if FExecutions<>nil then begin
+
+         currentTime:=GetSystemMilliseconds;
+
+         FExecutionsLock.Enter;
+         try
             item:=FExecutions;
+            while (item<>nil) and (item.TimeOutAt<=currentTime) do begin
+               item.Exec.Stop;
+               FExecutions:=item.Next;
+               item.Exec:=nil;
+               item.Next:=vExecutionsPool;
+               vExecutionsPool:=item;
+               item:=FExecutions;
+            end;
+            item:=FExecutions;
+            if item<>nil then
+               timeLeft:=item.TimeOutAt-currentTime;
+         finally
+            FExecutionsLock.Leave;
          end;
-         item:=FExecutions;
-         if item=nil then
-            timeLeft:=INFINITE
-         else timeLeft:=item.TimeOutAt-currentTime;
-      finally
-         FExecutionsLock.Leave;
+
       end;
 
       Assert(timeLeft>0);
-      if timeLeft>5000 then
-         millisecs:=5000
+      if timeLeft>PulseIntervalMilliSeconds then
+         millisecs:=PulseIntervalMilliSeconds
       else millisecs:=timeLeft;
       FEvent.WaitFor(millisecs);
 
@@ -3926,23 +3964,25 @@ end;
 procedure TProgramExpr.EvalAsString(exec : TdwsExecution; var Result : String);
 var
    v : Variant;
+   p : PVarData;
 begin
    v:=Eval(exec);
    try
-      Result:=String(v);
+      p:=PVarData(@v);
+      {$ifdef FPC}
+      if p^.VType=varString then
+         Result:=String(p.VString)
+      {$else}
+      if p^.VType=varUString then
+         Result:=String(p.VUString)
+      {$endif}
+      else TConvStringExpr.VariantToString(v, Result);
    except
       // standardize RTL message
       on E : EVariantError do begin
          raise EdwsVariantTypeCastError.Create(v, 'String', E);
       end else raise;
    end;
-end;
-
-// EvalNoResult
-//
-procedure TProgramExpr.EvalNoResult(exec : TdwsExecution);
-begin
-   Eval(exec);
 end;
 
 // RaiseScriptError
@@ -4035,6 +4075,13 @@ begin
    if prog is TdwsProcedure then
       Result:=TdwsProcedure(prog).Func.QualifiedName+ScriptPos.AsInfo
    else Result:=ScriptPos.AsInfo;
+end;
+
+// InterruptsFlow
+//
+function TProgramExpr.InterruptsFlow : Boolean;
+begin
+   Result:=False;
 end;
 
 // ------------------
@@ -4187,24 +4234,6 @@ begin
    //nothing
 end;
 
-// OptimizeToNoResultExpr
-//
-function TNoResultExpr.OptimizeToNoResultExpr(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
-var
-   optimized : TProgramExpr;
-begin
-   optimized:=Optimize(prog, exec);
-   Assert(optimized is TNoResultExpr);
-   Result:=TNoResultExpr(optimized);
-end;
-
-// InterruptsFlow
-//
-function TNoResultExpr.InterruptsFlow : Boolean;
-begin
-   Result:=False;
-end;
-
 // ScriptPos
 //
 function TNoResultExpr.ScriptPos : TScriptPos;
@@ -4246,7 +4275,7 @@ end;
 
 // AddStatement
 //
-procedure TBlockExprBase.AddStatement(expr : TNoResultExpr);
+procedure TBlockExprBase.AddStatement(expr : TProgramExpr);
 begin
    ReallocMem(FStatements, (FCount+1)*SizeOf(TNoResultExpr));
    FStatements[FCount]:=expr;
@@ -4255,7 +4284,7 @@ end;
 
 // ReplaceStatement
 //
-procedure TBlockExprBase.ReplaceStatement(index : Integer; expr : TNoResultExpr);
+procedure TBlockExprBase.ReplaceStatement(index : Integer; expr : TProgramExpr);
 begin
    FStatements[index].Free;
    FStatements[index]:=expr;
@@ -4263,7 +4292,7 @@ end;
 
 // ExtractStatement
 //
-function TBlockExprBase.ExtractStatement(index : Integer) : TNoResultExpr;
+function TBlockExprBase.ExtractStatement(index : Integer) : TProgramExpr;
 begin
    Result:=FStatements[index];
    if index<FCount-1 then
@@ -4294,7 +4323,7 @@ end;
 procedure TBlockRawExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
-   expr : PNoResultExpr;
+   expr : PProgramExpr;
 begin
    expr:=@FStatements[0];
    for i:=1 to FCount do begin

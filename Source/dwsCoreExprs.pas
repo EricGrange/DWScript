@@ -501,7 +501,7 @@ type
          function IsWritable : Boolean; override;
    end;
 
-   TInitDataExpr = class(TNoResultExpr)
+   TInitDataExpr = class sealed (TNoResultExpr)
       protected
          FExpr : TDataExpr;
 
@@ -1498,7 +1498,7 @@ type
    TIfThenExpr = class(TNoResultExpr)
       private
          FCond : TTypedExpr;
-         FThen : TNoResultExpr;
+         FThen : TProgramExpr;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
@@ -1506,20 +1506,20 @@ type
 
       public
          constructor Create(prog : TdwsProgram; const Pos : TScriptPos;
-                            condExpr : TTypedExpr; thenExpr : TNoResultExpr);
+                            condExpr : TTypedExpr; thenExpr : TProgramExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
 
          property CondExpr : TTypedExpr read FCond write FCond;
-         property ThenExpr : TNoResultExpr read FThen write FThen;
+         property ThenExpr : TProgramExpr read FThen write FThen;
    end;
 
    // if FCond then FThen else FElse
    TIfThenElseExpr = class(TIfThenExpr)
       private
-         FElse : TNoResultExpr;
+         FElse : TProgramExpr;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
@@ -1527,13 +1527,13 @@ type
 
       public
          constructor Create(prog : TdwsProgram; const Pos : TScriptPos;
-                            condExpr : TTypedExpr; thenExpr, elseExpr : TNoResultExpr);
+                            condExpr : TTypedExpr; thenExpr, elseExpr : TProgramExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
 
-         property ElseExpr : TNoResultExpr read FElse write FElse;
+         property ElseExpr : TProgramExpr read FElse write FElse;
    end;
 
    // value := if FCond then FTrue else FFalse
@@ -1568,7 +1568,7 @@ type
    TCaseCondition = class (TRefCountedObject)
       private
          FOwnsTrueExpr : Boolean;
-         FTrueExpr : TNoResultExpr;
+         FTrueExpr : TProgramExpr;
          FPos : TScriptPos;
 
          function IsOfTypeNumber(prog : TdwsProgram; typ : TTypeSymbol) : Boolean;
@@ -1585,8 +1585,8 @@ type
          function IsConstant : Boolean; virtual; abstract;
 
          property Pos : TScriptPos read FPos;
-         property TrueExpr: TNoResultExpr read FTrueExpr write FTrueExpr;
-         property OwnsTrueExpr: Boolean read FOwnsTrueExpr write FOwnsTrueExpr;
+         property TrueExpr : TProgramExpr read FTrueExpr write FTrueExpr;
+         property OwnsTrueExpr : Boolean read FOwnsTrueExpr write FOwnsTrueExpr;
    end;
 
    TCaseConditions = TObjectList<TCaseCondition>;
@@ -1633,7 +1633,7 @@ type
    TCaseExpr = class(TNoResultExpr)
       private
          FCaseConditions : TTightList;
-         FElseExpr : TNoResultExpr;
+         FElseExpr : TProgramExpr;
          FValueExpr : TTypedExpr;
 
       protected
@@ -1648,13 +1648,13 @@ type
 
          property CaseConditions : TTightList read FCaseConditions;
          property ValueExpr: TTypedExpr read FValueExpr write FValueExpr;
-         property ElseExpr: TNoResultExpr read FElseExpr write FElseExpr;
+         property ElseExpr: TProgramExpr read FElseExpr write FElseExpr;
    end;
 
    // for FVarExpr := FFromExpr to FToExpr do FDoExpr;
    TForExpr = class(TNoResultExpr)
       private
-         FDoExpr : TNoResultExpr;
+         FDoExpr : TProgramExpr;
          FFromExpr : TTypedExpr;
          FToExpr : TTypedExpr;
          FVarExpr : TIntVarExpr;
@@ -1666,7 +1666,7 @@ type
       public
          destructor Destroy; override;
 
-         property DoExpr: TNoResultExpr read FDoExpr write FDoExpr;
+         property DoExpr: TProgramExpr read FDoExpr write FDoExpr;
          property FromExpr: TTypedExpr read FFromExpr write FFromExpr;
          property ToExpr: TTypedExpr read FToExpr write FToExpr;
          property VarExpr: TIntVarExpr read FVarExpr write FVarExpr;
@@ -1716,7 +1716,7 @@ type
    // for something in aString do ...;
    TForInStrExpr = class(TNoResultExpr)
       private
-         FDoExpr : TNoResultExpr;
+         FDoExpr : TProgramExpr;
          FInExpr : TTypedExpr;
          FVarExpr : TVarExpr;
 
@@ -1726,10 +1726,10 @@ type
 
       public
          constructor Create(aProg: TdwsProgram; const aPos: TScriptPos;
-                            aVarExpr : TVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
+                            aVarExpr : TVarExpr; aInExpr : TTypedExpr; aDoExpr : TProgramExpr);
          destructor Destroy; override;
 
-         property DoExpr : TNoResultExpr read FDoExpr write FDoExpr;
+         property DoExpr : TProgramExpr read FDoExpr write FDoExpr;
          property InExpr : TTypedExpr read FInExpr write FInExpr;
          property VarExpr : TVarExpr read FVarExpr write FVarExpr;
    end;
@@ -1738,7 +1738,7 @@ type
    TForCharCodeInStrExpr = class(TForInStrExpr)
       public
          constructor Create(aProg: TdwsProgram; const aPos: TScriptPos;
-                            aVarExpr : TIntVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
+                            aVarExpr : TIntVarExpr; aInExpr : TTypedExpr; aDoExpr : TProgramExpr);
 
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
@@ -1747,7 +1747,7 @@ type
    TForCharInStrExpr = class(TForInStrExpr)
       public
          constructor Create(aProg: TdwsProgram; const aPos: TScriptPos;
-                            aVarExpr : TStrVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
+                            aVarExpr : TStrVarExpr; aInExpr : TTypedExpr; aDoExpr : TProgramExpr);
 
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
@@ -1756,7 +1756,7 @@ type
    TLoopExpr = class(TNoResultExpr)
       private
          FCondExpr : TTypedExpr;
-         FLoopExpr : TNoResultExpr;
+         FLoopExpr : TProgramExpr;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
@@ -1768,7 +1768,7 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          property CondExpr : TTypedExpr read FCondExpr write FCondExpr;
-         property LoopExpr : TNoResultExpr read FLoopExpr write FLoopExpr;
+         property LoopExpr : TProgramExpr read FLoopExpr write FLoopExpr;
    end;
 
    // while FCondExpr do FLoopExpr
@@ -1850,8 +1850,8 @@ type
 
    TExceptionExpr = class(TNoResultExpr)
       private
-         FTryExpr : TNoResultExpr;
-         FHandlerExpr : TNoResultExpr;
+         FTryExpr : TProgramExpr;
+         FHandlerExpr : TProgramExpr;
 
       protected
          function CreateEDelphiObj(exec : TdwsExecution; const ClassName, Message: String): IScriptObj;
@@ -1865,8 +1865,8 @@ type
       public
          destructor Destroy; override;
 
-         property TryExpr : TNoResultExpr read FTryExpr write FTryExpr;
-         property HandlerExpr : TNoResultExpr read FHandlerExpr write FHandlerExpr;
+         property TryExpr : TProgramExpr read FTryExpr write FTryExpr;
+         property HandlerExpr : TProgramExpr read FHandlerExpr write FHandlerExpr;
    end;
 
    TExceptDoExpr = class;
@@ -1875,7 +1875,7 @@ type
    TExceptExpr = class(TExceptionExpr)
       private
          FDoExprs : TTightList;
-         FElseExpr : TNoResultExpr;
+         FElseExpr : TProgramExpr;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
@@ -1891,14 +1891,14 @@ type
          property DoExpr[i : Integer] : TExceptDoExpr read GetDoExpr;
          function DoExprCount : Integer;
 
-         property ElseExpr : TNoResultExpr read FElseExpr write FElseExpr;
+         property ElseExpr : TProgramExpr read FElseExpr write FElseExpr;
    end;
 
    // try..except on FExceptionVar: FExceptionVar.Typ do FDoBlockExpr; ... end;
    TExceptDoExpr = class(TNoResultExpr)
       private
          FExceptionVar : TDataSymbol;
-         FDoBlockExpr : TNoResultExpr;
+         FDoBlockExpr : TProgramExpr;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
@@ -1909,8 +1909,8 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
 
-         property DoBlockExpr: TNoResultExpr read FDoBlockExpr write FDoBlockExpr;
-         property ExceptionVar: TDataSymbol read FExceptionVar write FExceptionVar;
+         property DoBlockExpr : TProgramExpr read FDoBlockExpr write FDoBlockExpr;
+         property ExceptionVar : TDataSymbol read FExceptionVar write FExceptionVar;
    end;
 
    // try FTryExpr finally FHandlerExpr end;
@@ -2899,8 +2899,15 @@ end;
 // EvalAsString
 //
 procedure TConstStringExpr.EvalAsString(exec : TdwsExecution; var Result : String);
+{$ifdef PUREPASCAL}
 begin
    Result:=FValue;
+{$else}
+asm
+   mov   edx, [eax + OFFSET FVALUE]
+   mov   eax, ecx
+   call  System.@UStrAsg;
+{$endif}
 end;
 
 // ------------------
@@ -5956,7 +5963,7 @@ procedure TBlockExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
    oldTable : TSymbolTable;
-   expr : PNoResultExpr;
+   expr : PProgramExpr;
 begin
    oldTable:=exec.ContextTable;
    exec.ContextTable:=FTable;
@@ -6025,9 +6032,9 @@ end;
 procedure TBlockExprNoTable.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
-   iterator : PNoResultExpr;
+   iterator : PProgramExpr;
 begin
-   iterator:=PNoResultExpr(FStatements);
+   iterator:=PProgramExpr(FStatements);
    for i:=1 to FCount do begin
       exec.DoStep(iterator^);
       iterator^.EvalNoResult(exec);
@@ -6044,7 +6051,7 @@ end;
 //
 procedure TBlockExprNoTable2.EvalNoResult(exec : TdwsExecution);
 var
-   statements : PNoResultExprList;
+   statements : PProgramExprList;
 begin
    statements:=FStatements;
    exec.DoStep(statements[0]);
@@ -6062,7 +6069,7 @@ end;
 //
 procedure TBlockExprNoTable3.EvalNoResult(exec : TdwsExecution);
 var
-   statements : PNoResultExprList;
+   statements : PProgramExprList;
 begin
    statements:=FStatements;
    exec.DoStep(statements[0]);
@@ -6083,7 +6090,7 @@ end;
 //
 procedure TBlockExprNoTable4.EvalNoResult(exec : TdwsExecution);
 var
-   statements : PNoResultExprList;
+   statements : PProgramExprList;
 begin
    statements:=FStatements;
    exec.DoStep(statements[0]);
@@ -6106,7 +6113,7 @@ end;
 // Create
 //
 constructor TIfThenExpr.Create(prog : TdwsProgram; const Pos : TScriptPos;
-                               condExpr : TTypedExpr; thenExpr : TNoResultExpr);
+                               condExpr : TTypedExpr; thenExpr : TProgramExpr);
 begin
    inherited Create(prog, pos);
    FCond:=condExpr;
@@ -6169,7 +6176,7 @@ end;
 // Create
 //
 constructor TIfThenElseExpr.Create(prog : TdwsProgram; const Pos : TScriptPos;
-                 condExpr : TTypedExpr; thenExpr, elseExpr : TNoResultExpr);
+                 condExpr : TTypedExpr; thenExpr, elseExpr : TProgramExpr);
 begin
    inherited Create(prog, pos, condExpr, thenExpr);
    FElse:=elseExpr;
@@ -6200,7 +6207,7 @@ end;
 //
 function TIfThenElseExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 var
-   bufNoResult : TNoResultExpr;
+   bufNoResult : TProgramExpr;
    notExpr : TNotBoolExpr;
 begin
    if FCond.IsConstant then begin
@@ -8395,7 +8402,7 @@ end;
 // Create
 //
 constructor TForInStrExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
-         aVarExpr : TVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
+         aVarExpr : TVarExpr; aInExpr : TTypedExpr; aDoExpr : TProgramExpr);
 begin
    inherited Create(aProg, aPos);
    FVarExpr:=aVarExpr;
@@ -8439,7 +8446,7 @@ end;
 // Create
 //
 constructor TForCharCodeInStrExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
-         aVarExpr : TIntVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
+         aVarExpr : TIntVarExpr; aInExpr : TTypedExpr; aDoExpr : TProgramExpr);
 begin
    inherited Create(aProg, aPos, aVarExpr, aInExpr, aDoExpr);
 end;
@@ -8497,7 +8504,7 @@ end;
 // Create
 //
 constructor TForCharInStrExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
-         aVarExpr : TStrVarExpr; aInExpr : TTypedExpr; aDoExpr : TNoResultExpr);
+         aVarExpr : TStrVarExpr; aInExpr : TTypedExpr; aDoExpr : TProgramExpr);
 begin
    inherited Create(aProg, aPos, aVarExpr, aInExpr, aDoExpr);
 end;

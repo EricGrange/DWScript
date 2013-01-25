@@ -765,7 +765,9 @@ begin
    try
       FOnEval(@execRec);
    except
-      RaiseScriptError(exec);
+      on E : EScriptError do
+         raise
+      else RaiseScriptError(exec);
    end;
 end;
 

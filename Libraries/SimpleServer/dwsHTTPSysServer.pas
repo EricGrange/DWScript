@@ -92,11 +92,14 @@ type
    // client via http.sys (much faster than manual buffering/sending)
    TSynHttpServerRequest = record
       InURL, InMethod, InHeaders, InContent, InContentType : RawByteString;
+      RawRemoteIP : TVarSin;
       Security : THttpRequestSecurity;
       SecurityBytes : Integer;
       Authentication : TWebRequestAuthentication;
       AuthenticatedUser : String;
       ConnectionID : Int64;
+      function RemoteIP_UTF8 : RawByteString;
+      function RemoteIP : String;
    end;
 
    TSynHttpServerResponse = record
@@ -333,7 +336,7 @@ const
    // from SynCommons supplyings the file name)
    HTTP_RESP_STATICFILE = '!STATICFILE';
 
-   KNOWNHEADERS_NAME : array[reqCacheControl..reqUserAgent] of string[19] = (
+   KNOWNHEADERS_NAME : array [reqCacheControl..reqUserAgent] of String[19] = (
       'Cache-Control', 'Connection', 'Date', 'Keep-Alive', 'Pragma', 'Trailer',
       'Transfer-Encoding', 'Upgrade', 'Via', 'Warning', 'Allow', 'Content-Length',
       'Content-Type', 'Content-Encoding', 'Content-Language', 'Content-Location',
@@ -344,7 +347,7 @@ const
       'Proxy-Authorization', 'Referer', 'Range', 'TE', 'Translate', 'User-Agent');
 
 function RegURL(aRoot : String; aPort : Integer; isHttps : boolean;
-   aDomainName : String) : String;
+                aDomainName : String) : String;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -910,8 +913,7 @@ begin
       hSetServerSessionProperty);
 end;
 
-function RetrieveHeaders(const head : HTTP_REQUEST_HEADERS;
-   const address : PSOCKADDR; var IP : RawByteString) : RawByteString;
+function RetrieveHeaders(const head : HTTP_REQUEST_HEADERS) : RawByteString;
 var
    i, len: Integer;
    h : THttpHeader;
@@ -960,11 +962,16 @@ begin
       end;
    end;
    Assert(d-Pointer(Result) = len);
-   if address<>nil then begin
-      IP := GetSinIP(PVarSin(address)^);
-      if IP<>'' then
-         Result := Result+'RemoteIP: '+IP+#13#10;
-   end;
+end;
+
+function TSynHttpServerRequest.RemoteIP_UTF8 : RawByteString;
+begin
+   Result:=GetSinIP(RawRemoteIP);
+end;
+
+function TSynHttpServerRequest.RemoteIP : String;
+begin
+   Result:=UTF8ToString(RemoteIP_UTF8);
 end;
 
 const
@@ -983,8 +990,9 @@ var
    errCode : HRESULT;
    inCompressAccept : THttpSocketCompressSet;
    inContentLength, inContentLengthRead : Cardinal;
-   inContentEncoding, inAcceptEncoding, contentRange, remoteIP : RawByteString;
+   inContentEncoding, inAcceptEncoding, contentRange : RawByteString;
    outContentEncoding : RawByteString;
+   remoteIP : RawByteString;
    inRequest : TSynHttpServerRequest;
    outResponse : TSynHttpServerResponse;
    outStatus : RawByteString;
@@ -1057,8 +1065,9 @@ var
       FLogFieldsData.UriStemLength := request^.CookedUrl.AbsPathLength;
       FLogFieldsData.UriStem := request^.CookedUrl.pAbsPath;
 
+      remoteIP := inRequest.RemoteIP_UTF8;
       FLogFieldsData.ClientIpLength := Length(remoteIP);
-      FLogFieldsData.ClientIp := Pointer(remoteIP);
+      FLogFieldsData.ClientIp := PAnsiChar(remoteIP);
    end;
 
 begin
@@ -1103,7 +1112,10 @@ begin
                with request^.Headers.KnownHeaders[reqAcceptEncoding] do
                   SetString(inAcceptEncoding, pRawValue, RawValueLength);
                inCompressAccept := SetCompressHeader(FCompress, Pointer(inAcceptEncoding));
-               inRequest.InHeaders := RetrieveHeaders(request^.Headers, request^.Address.pRemoteAddress, remoteIP);
+               inRequest.InHeaders := RetrieveHeaders(request^.Headers);
+               if request^.Address.pRemoteAddress<>nil then
+                  inRequest.RawRemoteIP:=PVarSin(request^.Address.pRemoteAddress)^
+               else FillChar(inRequest.RawRemoteIP, SizeOf(TVarSin), 0);
 
                inRequest.Authentication:=wraNone;
                inRequest.AuthenticatedUser:='';
@@ -1315,13 +1327,13 @@ function THttpServerGeneric.DoRequest(const InRequest : TSynHttpServerRequest;
    out OutRequest : TSynHttpServerResponse) : cardinal;
 begin
    if Assigned(OnRequest) then
-      result := OnRequest(InRequest, OutRequest)
-   else
-      result := 404; // 404 NOT FOUND
+      Result := OnRequest(InRequest, OutRequest)
+   else Result := 404; // 404 NOT FOUND
 end;
 
 procedure THttpServerGeneric.Execute;
 begin
+   OutputDebugString(PChar('SAMPLING THREAD '+IntToStr(GetCurrentThreadId)));
    if Assigned(FOnHttpThreadStart) then
       FOnHttpThreadStart(self);
 end;

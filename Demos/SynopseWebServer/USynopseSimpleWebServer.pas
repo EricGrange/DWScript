@@ -250,6 +250,7 @@ begin
       request:=TSynopseWebRequest.Create;
       response:=TSynopseWebResponse.Create;
       try
+         request.RemoteIP:=inRequest.RemoteIP;
          request.InURL:=inRequest.InURL;
          request.InMethod:=inRequest.InMethod;
          request.InHeaders:=inRequest.InHeaders;

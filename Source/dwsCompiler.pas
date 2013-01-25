@@ -350,7 +350,7 @@ type
          FSourceContextMap : TdwsSourceContextMap;
          FSymbolDictionary : TdwsSymbolDictionary;
          FOperators : TOperators;
-         FLoopExprs : TSimpleStack<TNoResultExpr>;
+         FLoopExprs : TSimpleStack<TProgramExpr>;
          FLoopExitable : TSimpleStack<TLoopExitable>;
          FFinallyExprs : TSimpleStack<Boolean>;
          FMsgs : TdwsCompileMessageList;
@@ -428,7 +428,7 @@ type
          function GetConstParamExpr(dataSym : TConstParamSymbol) : TByRefParamExpr;
 
          function GetSelfParamExpr(selfSym : TDataSymbol) : TVarExpr;
-         function ReadAssign(token : TTokenType; var left : TDataExpr) : TNoResultExpr;
+         function ReadAssign(token : TTokenType; var left : TDataExpr) : TProgramExpr;
          function ReadArrayType(const typeName : String; typeContext : TdwsReadTypeContext) : TTypeSymbol;
          function ReadArrayConstant(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
          function ReadArrayMethod(const name : String; const namePos : TScriptPos;
@@ -452,8 +452,8 @@ type
          procedure ReadConstDeclBlock(var action : TdwsStatementAction);
          function ReadConstValue : TConstExpr;
          function ReadConstRecord(symbol : TRecordSymbol) : TData;
-         function ReadBlock : TNoResultExpr;
-         function ReadBlocks(const endTokens : TTokenTypes; var finalToken : TTokenType) : TNoResultExpr;
+         function ReadBlock : TProgramExpr;
+         function ReadBlocks(const endTokens : TTokenTypes; var finalToken : TTokenType) : TProgramExpr;
          function ReadEnumeration(const typeName : String; aStyle : TEnumerationSymbolStyle) : TEnumerationSymbol;
          function ReadExit : TNoResultExpr;
          function ReadClassExpr(ownerSymbol : TCompositeTypeSymbol; expecting : TTypeSymbol = nil) : TTypedExpr;
@@ -526,9 +526,9 @@ type
                                  const expectedProc : TExpectedArgFunction = nil);
          function ReadFuncResultType(funcKind : TFuncKind) : TTypeSymbol;
 
-         function ReadIf: TNoResultExpr;
+         function ReadIf : TProgramExpr;
          function ReadInherited(isWrite : Boolean) : TProgramExpr;
-         function ReadInstr : TNoResultExpr;
+         function ReadInstr : TProgramExpr;
          function ReadUntilEndOrElseSwitch(allowElse : Boolean) : Boolean;
          function ReadIntfMethodDecl(intfSym : TInterfaceSymbol; funcKind : TFuncKind) : TSourceMethodSymbol;
          function ReadMethodDecl(const hotPos : TScriptPos;
@@ -599,15 +599,15 @@ type
          function ReadHelperDecl(const typeName : String; qualifierToken : TTokenType) : THelperSymbol;
 
          function ReadRaise : TRaiseBaseExpr;
-         function ReadRepeat : TNoResultExpr;
-         function ReadRootStatement(var action : TdwsStatementAction) : TNoResultExpr;
+         function ReadRepeat : TProgramExpr;
+         function ReadRootStatement(var action : TdwsStatementAction) : TProgramExpr;
          function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TBlockExpr;
          procedure ReadImplementationBlock;
          procedure ReadSemiColon;
-         function ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TNoResultExpr;
+         function ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TProgramExpr;
          procedure ReadScriptImplementations;
          function ReadSpecialFunction(const namePos : TScriptPos; specialKind : TSpecialKeywordKind) : TProgramExpr;
-         function ReadStatement(var action : TdwsStatementAction) : TNoResultExpr;
+         function ReadStatement(var action : TdwsStatementAction) : TProgramExpr;
          function ReadResourceStringDecl : TResourceStringSymbol;
          procedure ReadResourceStringDeclBlock(var action : TdwsStatementAction);
          function ReadStringArray(expr : TDataExpr; isWrite : Boolean) : TProgramExpr;
@@ -628,8 +628,8 @@ type
          function ReadIfExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
 
          function ReadTry : TExceptionExpr;
-         function ReadFinally(tryExpr : TNoResultExpr) : TFinallyExpr;
-         function ReadExcept(tryExpr : TNoResultExpr; var finalToken : TTokenType) : TExceptExpr;
+         function ReadFinally(tryExpr : TProgramExpr) : TFinallyExpr;
+         function ReadExcept(tryExpr : TProgramExpr; var finalToken : TTokenType) : TExceptExpr;
 
          function ReadType(const typeName : String; typeContext : TdwsReadTypeContext) : TTypeSymbol;
          function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
@@ -654,12 +654,12 @@ type
          procedure ReadUses;
          function  ReadUnitHeader : TScriptSourceType;
 
-         function ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory) : TNoResultExpr;
-         function ReadWhile : TNoResultExpr;
+         function ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory) : TProgramExpr;
+         function ReadWhile : TProgramExpr;
          function ResolveUnitReferences(scriptType : TScriptSourceType) : TIdwsUnitList;
 
       protected
-         procedure EnterLoop(loopExpr : TNoResultExpr);
+         procedure EnterLoop(loopExpr : TProgramExpr);
          procedure MarkLoopExitable(level : TLoopExitable);
          procedure LeaveLoop;
 
@@ -675,7 +675,7 @@ type
                                 resultType : TdwsResultType;
                                 const stackParams : TStackParameters) : TdwsMainProgram;
          function CreateAssign(const scriptPos : TScriptPos; token : TTokenType;
-                               left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
+                               left : TDataExpr; right : TTypedExpr) : TProgramExpr;
 
          function CreateArrayLow(baseExpr : TProgramExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
          function CreateArrayHigh(baseExpr : TProgramExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
@@ -1075,7 +1075,7 @@ begin
 
    FTokRules:=TPascalTokenizerStateRules.Create;
 
-   FLoopExprs:=TSimpleStack<TNoResultExpr>.Create;
+   FLoopExprs:=TSimpleStack<TProgramExpr>.Create;
    FLoopExitable:=TSimpleStack<TLoopExitable>.Create;
    FFinallyExprs:=TSimpleStack<Boolean>.Create;
    FUnitsFromStack:=TSimpleStack<String>.Create;
@@ -1193,7 +1193,7 @@ end;
 
 // EnterLoop
 //
-procedure TdwsCompiler.EnterLoop(loopExpr : TNoResultExpr);
+procedure TdwsCompiler.EnterLoop(loopExpr : TProgramExpr);
 begin
    FLoopExprs.Push(loopExpr);
    FLoopExitable.Push(leNotExitable);
@@ -1790,7 +1790,7 @@ end;
 function TdwsCompiler.ReadRootBlock(const endTokens : TTokenTypes; var finalToken : TTokenType) : TBlockExpr;
 var
    reach : TReachStatus;
-   stmt : TNoResultExpr;
+   stmt : TProgramExpr;
    action : TdwsStatementAction;
 begin
    reach:=rsReachable;
@@ -1854,7 +1854,7 @@ end;
 
 // ReadScript
 //
-function TdwsCompiler.ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TNoResultExpr;
+function TdwsCompiler.ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TProgramExpr;
 var
    oldTok : TTokenizer;
    oldSection : TdwsUnitSection;
@@ -1975,7 +1975,7 @@ begin
 //         ReadScriptImplementations;
 
       if (Result<>nil) and Optimize then
-         Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
+         Result:=Result.Optimize(FProg, FExec);
    finally
       FTok.Free;
       FTok:=oldTok;
@@ -2066,7 +2066,7 @@ end;
 
 // ReadRootStatement
 //
-function TdwsCompiler.ReadRootStatement(var action : TdwsStatementAction) : TNoResultExpr;
+function TdwsCompiler.ReadRootStatement(var action : TdwsStatementAction) : TProgramExpr;
 var
    hotPos : TScriptPos;
    token : TTokenType;
@@ -2133,7 +2133,7 @@ end;
 
 // ReadStatement
 //
-function TdwsCompiler.ReadStatement(var action : TdwsStatementAction) : TNoResultExpr;
+function TdwsCompiler.ReadStatement(var action : TdwsStatementAction) : TProgramExpr;
 var
    token : TTokenType;
 begin
@@ -2312,7 +2312,7 @@ end;
 
 // ReadVarDecl
 //
-function TdwsCompiler.ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory) : TNoResultExpr;
+function TdwsCompiler.ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory) : TProgramExpr;
 var
    x : Integer;
    names : TSimpleStringList;
@@ -3313,7 +3313,7 @@ var
    oldprog : TdwsProgram;
 
    proc : TdwsProcedure;
-   assignExpr : TNoResultExpr;
+   assignExpr : TProgramExpr;
    tt, sectionType, finalToken : TTokenType;
    hotPos : TScriptPos;
    progExpr : TBlockExpr;
@@ -3424,7 +3424,7 @@ begin
             progExpr:=ReadRootBlock([ttEND, ttENSURE], finalToken);
             if Optimize then begin
                proc.OptimizeConstAssignments(progExpr);
-               FProg.Expr:=progExpr.OptimizeToNoResultExpr(FProg, FExec);
+               FProg.Expr:=progExpr.Optimize(FProg, FExec);
             end else FProg.Expr:=progExpr;
 
             if finalToken=ttENSURE then begin
@@ -3703,9 +3703,9 @@ end;
 
 // ReadBlocks
 //
-function TdwsCompiler.ReadBlocks(const endTokens : TTokenTypes; var finalToken : TTokenType) : TNoResultExpr;
+function TdwsCompiler.ReadBlocks(const endTokens : TTokenTypes; var finalToken : TTokenType) : TProgramExpr;
 var
-   stmt : TNoResultExpr;
+   stmt : TProgramExpr;
    token : TToken;
    closePos : TScriptPos; // Position at which the ending token was found (for context)
    blockExpr : TBlockExpr;
@@ -3773,7 +3773,7 @@ begin
       end;
 
       if Optimize then
-         Result:=blockExpr.OptimizeToNoResultExpr(FProg, FExec)
+         Result:=blockExpr.Optimize(FProg, FExec)
       else Result:=blockExpr;
 
       if coContextMap in FOptions then begin
@@ -3794,7 +3794,7 @@ end;
 
 // ReadBlock
 //
-function TdwsCompiler.ReadBlock: TNoResultExpr;
+function TdwsCompiler.ReadBlock : TProgramExpr;
 var
    tt: TTokenType;
 begin
@@ -3809,7 +3809,7 @@ end;
 
 // ReadInstr
 //
-function TdwsCompiler.ReadInstr : TNoResultExpr;
+function TdwsCompiler.ReadInstr : TProgramExpr;
 var
    token : TTokenType;
    locExpr : TProgramExpr;
@@ -3895,13 +3895,13 @@ begin
                   Result:=TAssignExpr(locExpr)
                else if    (locExpr is TFuncExprBase)
                        or (locExpr is TConnectorCallExpr) then begin
-                  Result:=TNoResultWrapperExpr.Create(FProg, (locExpr as  TPosDataExpr).Pos, TPosDataExpr(locExpr));
+                  Result:=locExpr;
                   if locExpr.IsConstant then begin
                      if FMsgs.Count=msgsCount then   // avoid hint on calls with issues
                         FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
                   end;
                end else if locExpr is TConnectorWriteExpr then
-                  Result:=TNoResultWrapperExpr.Create(FProg, locExpr.ScriptPos, TConnectorWriteExpr(locExpr))
+                  Result:=locExpr
                else if locExpr is TDynamicArraySetExpr then
                   Result:=TDynamicArraySetExpr(locExpr)
                else if locExpr is TStringArraySetExpr then
@@ -4431,7 +4431,7 @@ var
    sym : TDataSymbol;
    oldExpr : TProgramExpr;
    expr : TTypedExpr;
-   initExpr : TNoResultExpr;
+   initExpr : TProgramExpr;
    varExpr : TVarExpr;
 begin
    oldExpr:=ReadName(IsWrite);
@@ -5466,7 +5466,7 @@ end;
 procedure TdwsCompiler.WarnForVarUsage(varExpr : TVarExpr; const scriptPos : TScriptPos);
 var
    i : Integer;
-   loopExpr : TNoResultExpr;
+   loopExpr : TProgramExpr;
    currVarExpr : TVarExpr;
 begin
    for i:=0 to FLoopExprs.Count-1 do begin
@@ -5483,12 +5483,12 @@ end;
 
 // ReadIf
 //
-function TdwsCompiler.ReadIf : TNoResultExpr;
+function TdwsCompiler.ReadIf : TProgramExpr;
 var
    hotPos : TScriptPos;
    condExpr : TTypedExpr;
-   thenExpr : TNoResultExpr;
-   elseExpr : TNoResultExpr;
+   thenExpr : TProgramExpr;
+   elseExpr : TProgramExpr;
 begin
    hotPos:=FTok.HotPos;
 
@@ -5527,14 +5527,14 @@ begin
    end;
 
    if Optimize then
-      Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
+      Result:=Result.Optimize(FProg, FExec);
 end;
 
 // ReadCase
 //
 function TdwsCompiler.ReadCase;
 var
-   expr : TNoResultExpr;
+   expr : TProgramExpr;
    condList : TCaseConditions;
    condition : TCaseCondition;
    tt : TTokenType;
@@ -5561,7 +5561,7 @@ begin
                if not FTok.TestDelete(ttCOLON) then
                   FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
 
-               Expr := ReadBlock;
+               expr := ReadBlock;
 
                // Add case conditions to TCaseExpr
                for x:=0 to condList.Count-1 do begin
@@ -5625,7 +5625,7 @@ end;
 
 // ReadWhile
 //
-function TdwsCompiler.ReadWhile : TNoResultExpr;
+function TdwsCompiler.ReadWhile : TProgramExpr;
 var
    condExpr : TTypedExpr;
 begin
@@ -5653,12 +5653,12 @@ begin
    LeaveLoop;
 
    if Optimize then
-      Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
+      Result:=Result.Optimize(FProg, FExec);
 end;
 
 // ReadRepeat
 //
-function TdwsCompiler.ReadRepeat : TNoResultExpr;
+function TdwsCompiler.ReadRepeat : TProgramExpr;
 var
    tt : TTokenType;
    condExpr : TTypedExpr;
@@ -5681,12 +5681,12 @@ begin
    LeaveLoop;
 
    if Optimize then
-      Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
+      Result:=Result.Optimize(FProg, FExec);
 end;
 
 // ReadAssign
 //
-function TdwsCompiler.ReadAssign(token : TTokenType; var left : TDataExpr) : TNoResultExpr;
+function TdwsCompiler.ReadAssign(token : TTokenType; var left : TDataExpr) : TProgramExpr;
 var
    pos : TScriptPos;
    right : TTypedExpr;
@@ -7449,7 +7449,7 @@ end;
 //
 procedure TdwsCompiler.ReadClassVars(const ownerSymbol : TCompositeTypeSymbol; aVisibility : TdwsVisibility);
 var
-   assignExpr : TNoResultExpr;
+   assignExpr : TProgramExpr;
    factory : IdwsDataSymbolFactory;
 begin
    factory:=TCompositeTypeSymbolFactory.Create(Self, ownerSymbol, aVisibility);
@@ -7899,7 +7899,7 @@ function TdwsCompiler.ReadPropertyDeclSetter(
       propSym : TPropertySymbol; var scriptPos : TScriptPos; classProperty : Boolean) : TSymbol;
 var
    name : String;
-   instr : TNoResultExpr;
+   instr : TProgramExpr;
    expr : TTypedExpr;
    leftExpr : TDataExpr;
    paramExpr : TByRefParamExpr;
@@ -7946,11 +7946,16 @@ begin
       try
          FPendingSetterValueExpr:=GetConstParamExpr(paramSymbol);
          instr:=ReadInstr;
-         if instr is TNoResultWrapperExpr then begin
-            expr:=TNoResultWrapperExpr(instr).Expr;
+         if (instr is TVarExpr) or (instr is TFieldExpr) or (instr is TNoResultWrapperExpr) then begin
+            if instr is TNoResultWrapperExpr then
+               expr:=TNoResultWrapperExpr(instr).Expr
+            else expr:=TTypedExpr(instr);
             if expr.Typ.IsOfType(propSym.Typ) then begin
-               TNoResultWrapperExpr(instr).Expr:=nil;
-               FreeAndNil(instr);
+               if expr<>nil then begin
+                  TNoResultWrapperExpr(instr).Expr:=nil;
+                  instr.Free;
+               end;
+               instr:=nil;
                if (expr is TDataExpr) and TDataExpr(expr).IsWritable then begin
                   leftExpr:=TDataExpr(expr);
                   paramExpr:=GetConstParamExpr(paramSymbol);
@@ -8291,7 +8296,7 @@ end;
 //
 function TdwsCompiler.ReadTry: TExceptionExpr;
 var
-   tryBlock : TNoResultExpr;
+   tryBlock : TProgramExpr;
    tt : TTokenType;
    wasExcept : Boolean;
 begin
@@ -8314,7 +8319,7 @@ end;
 
 // ReadFinally
 //
-function TdwsCompiler.ReadFinally(tryExpr : TNoResultExpr) : TFinallyExpr;
+function TdwsCompiler.ReadFinally(tryExpr : TProgramExpr) : TFinallyExpr;
 var
    tt : TTokenType;
 begin
@@ -8335,7 +8340,7 @@ end;
 
 // ReadExcept
 //
-function TdwsCompiler.ReadExcept(tryExpr : TNoResultExpr; var finalToken : TTokenType) : TExceptExpr;
+function TdwsCompiler.ReadExcept(tryExpr : TProgramExpr; var finalToken : TTokenType) : TExceptExpr;
 var
    doExpr : TExceptDoExpr;
    varName : String;
@@ -10926,7 +10931,7 @@ end;
 // CreateAssign
 //
 function TdwsCompiler.CreateAssign(const scriptPos : TScriptPos; token : TTokenType;
-                                   left : TDataExpr; right : TTypedExpr) : TNoResultExpr;
+                                   left : TDataExpr; right : TTypedExpr) : TProgramExpr;
 var
    classOpSymbol : TClassOperatorSymbol;
    classOpExpr : TFuncExprBase;
@@ -10998,7 +11003,7 @@ begin
                   classOpExpr.Free;
                   raise;
                end;
-               Result:=TNoResultWrapperExpr.Create(FProg, scriptPos, classOpExpr);
+               Result:=classOpExpr;
 
             end else begin
 
@@ -11016,7 +11021,7 @@ begin
       end;
 
       if Optimize then
-         Result:=Result.OptimizeToNoResultExpr(FProg, FExec);
+         Result:=Result.Optimize(FProg, FExec);
 
    end else begin
 

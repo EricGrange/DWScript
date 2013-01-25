@@ -125,6 +125,31 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+// ExpandPathFileName
+//
+function ExpandPathFileName(const path : String; var fileName : String) : Boolean;
+var
+   fileNamePtr : PChar;
+   bufferIn : array [0..MAX_PATH] of Char;
+   bufferOut : array [0..MAX_PATH] of Char;
+   n1, n2, n : Integer;
+begin
+   n1:=Length(path);
+   Move(path[1], bufferIn[0], n1*SizeOf(Char));
+   n2:=Length(fileName);
+   if n1+n2>MAX_PATH then
+      Exit(False);
+   if n2>0 then
+      Move(fileName[1], bufferIn[n1], n2*SizeOf(char));
+   bufferIn[n1+n2]:=#0;
+
+   n:=GetFullPathName(bufferIn, Length(bufferOut), bufferOut, fileNamePtr);
+   if Cardinal(n)<=Cardinal(Length(bufferOut)) then begin
+      SetString(fileName, bufferOut, n);
+      Result:=True;
+   end else Result:=False;
+end;
+
 // ------------------
 // ------------------ THttpSys2WebServer ------------------
 // ------------------
@@ -221,9 +246,12 @@ var
 begin
    HttpRequestUrlDecode(inRequest.InURL, pathFileName, params);
 
-   pathFileName:=ExpandFileName(FPath+pathFileName);
+   if not ExpandPathFileName(FPath, pathFileName) then
 
-   if Pos('\.', pathFileName)>0 then
+      // invalid pathFileName
+      fileAttribs:=INVALID_FILE_ATTRIBUTES
+
+   else if Pos('\.', pathFileName)>0 then
 
       // Directories or files beginning with a '.' are invisible
       fileAttribs:=INVALID_FILE_ATTRIBUTES
@@ -270,6 +298,7 @@ begin
       request:=TSynopseWebRequest.Create;
       response:=TSynopseWebResponse.Create;
       try
+         request.RemoteIP:=inRequest.RemoteIP;
          request.InURL:=inRequest.InURL;
          request.InMethod:=inRequest.InMethod;
          request.InHeaders:=inRequest.InHeaders;

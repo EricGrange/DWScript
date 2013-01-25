@@ -1933,6 +1933,8 @@ var
 begin
    BeforeWriteImmediate;
 
+   FStream.WriteChar('"');
+
    DecodeDate(dt, y, m, d);
    FStream.WriteDigits(y, 4);
    FStream.WriteDigits(m, 2);
@@ -1948,6 +1950,8 @@ begin
             FStream.WriteDigits(s, 2);
       end;
    end;
+
+   FStream.WriteChar('"');
 
    AfterWriteImmediate;
 end;

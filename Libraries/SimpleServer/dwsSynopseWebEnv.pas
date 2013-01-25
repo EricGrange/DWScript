@@ -82,20 +82,28 @@ end;
 //
 procedure TSynopseWebRequest.SetInHeaders(const val : RawByteString);
 var
-   i, n, p : Integer;
-   buf : String;
+   i, n : Integer;
+   bufUTF8 : RawByteString;
+   pColon : Integer;
 begin
+   pColon:=0;
    n:=1;
    for i:=1 to Length(val) do begin
-      if val[i]=#13 then begin
-         buf:=UTF8ToString(Copy(val, n, i-n));
-         n:=i+2;
-         p:=Pos(': ', buf);
-         if p>0 then
-            Headers.Values[Copy(buf, 1, p-1)]:=Copy(buf, p+2);
+      case val[i] of
+         ':' : if pColon=0 then pColon:=i;
+         #13 : begin
+            if (pColon>0) and (val[pColon+1]=' ') and (i>n+1) then begin
+               SetLength(bufUTF8, i-n-1);
+               Move(val[n], bufUTF8[1], pColon-n);
+               bufUTF8[pColon-n+1]:='=';
+               Move(val[pColon+2], bufUTF8[pColon-n+2], i-pColon-2);
+               Headers.Add(UTF8ToString(bufUTF8));
+            end;
+            n:=i+2;
+            pColon:=0;
+         end;
       end;
    end;
-   RemoteIP:=Headers.Values['RemoteIP'];
 end;
 
 // GetAuthentication
