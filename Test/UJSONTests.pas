@@ -17,7 +17,7 @@ unit UJSONTests;
 
 interface
 
-uses Classes, SysUtils, dwsXPlatformTests, dwsJSON;
+uses Classes, SysUtils, dwsXPlatformTests, dwsJSON, dwsXPlatform;
 
 type
 
@@ -112,6 +112,7 @@ procedure TdwsJSONTests.ParseJSON;
 var
    json : TdwsJSONValue;
    sl : TStringList;
+   buf : String;
 begin
    json:=TdwsJSONValue.ParseString('"hello"');
    CheckEquals(TdwsJSONImmediate.ClassName, json.ClassName, '"hello"');
@@ -135,6 +136,17 @@ begin
       json.Free;
    finally
       sl.Free;
+   end;
+
+   buf:=LoadTextFromFile(ExtractFilePath(ParamStr(0))+'\Data\json2.txt');
+   json:=TdwsJSONValue.ParseString(buf);
+   try
+      CheckEquals(TdwsJSONArray.ClassName, json.ClassName, 'json2.txt');
+      CheckEquals(1, json.ElementCount, 'json2.txt a');
+      CheckEquals(1, json.Elements[0].ElementCount, 'json2.txt b');
+      CheckEquals(buf, json.ToString, 'json2.txt');
+   finally
+      json.Free;
    end;
 end;
 
@@ -526,13 +538,13 @@ begin
    try
       obj.AddValue('test');
       obj.AddValue('test');
-      CheckEquals(2, obj.ElementCount);
+      CheckEquals('{"test":null,"test":null}', obj.ToString);
       obj.MergeDuplicates;
-      CheckEquals(1, obj.ElementCount);
+      CheckEquals('{"test":null}', obj.ToString);
       obj.AddValue('test');
-      CheckEquals(2, obj.ElementCount);
+      CheckEquals('{"test":null,"test":null}', obj.ToString);
       obj.MergeDuplicates;
-      CheckEquals(1, obj.ElementCount);
+      CheckEquals('{"test":null}', obj.ToString);
    finally
       obj.Free;
    end;

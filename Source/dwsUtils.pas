@@ -1727,6 +1727,15 @@ end;
 // Write
 //
 function TWriteOnlyBlockStream.Write(const buffer; count: Longint): Longint;
+type
+   TThreeBytes = packed array [1..3] of Byte;
+   PThreeBytes = ^TThreeBytes;
+   TFiveBytes = packed array [1..5] of Byte;
+   PFiveBytes = ^TFiveBytes;
+   TSixBytes = packed array [1..6] of Byte;
+   PSixBytes = ^TSixBytes;
+   TSevenBytes = packed array [1..7] of Byte;
+   PSevenBytes = ^TSevenBytes;
 var
    newBlock : PPointerArray;
    dest, source : PByteArray;
@@ -1766,10 +1775,16 @@ begin
 
    // if we reach here, everything fits in current block
    dest:=@PByteArray(@FCurrentBlock[2])[FBlockRemaining^];
-   case count of
+   case Cardinal(count) of
+      0 : ;
       1 : dest[0]:=source[0];
       2 : PWord(dest)^:=PWord(source)^;
-      4 : PInt64(dest)^:=PInt64(source)^;
+      3 : PThreeBytes(dest)^:=PThreeBytes(source)^;
+      4 : PCardinal(dest)^:=PCardinal(source)^;
+      5 : PFiveBytes(dest)^:=PFiveBytes(source)^;
+      6 : PSixBytes(dest)^:=PSixBytes(source)^;
+      7 : PSevenBytes(dest)^:=PSevenBytes(source)^;
+      8 : PInt64(dest)^:=PInt64(source)^;
    else
       Move(source^, dest^, count);
    end;
@@ -2714,11 +2729,9 @@ var
 begin
    n:=InstanceSize;
    GetMem(p, n);
-   // we don't need to reset the BaseChunk portion as a whole
-   Move(Pointer(vTemplate)^, p^, n-SizeOf(TSimpleIntegerStackChunk));
+   Move(Pointer(vTemplate)^, p^, n);
    Result:=TSimpleIntegerStack(p);
    Result.FChunk:=@Result.FBaseChunk;
-   Result.FBaseChunk.Prev:=nil;
 end;
 
 // Push
