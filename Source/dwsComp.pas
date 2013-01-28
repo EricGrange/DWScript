@@ -583,7 +583,7 @@ type
          property ReadAccess: String read FReadAccess write FReadAccess;
          property WriteAccess: String read FWriteAccess write FWriteAccess;
          property Parameters: TdwsParameters read FParameters write SetParameters stored StoreParameters;
-         property IsDefault: Boolean read GetIsDefault write SetIsDefault;
+         property IsDefault: Boolean read GetIsDefault write SetIsDefault default False;
          property IndexType: TDataType read FIndexType write FIndexType;
          property IndexValue: Variant read FIndexValue write FIndexValue;
    end;
