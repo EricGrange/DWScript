@@ -52,6 +52,7 @@ type
          procedure SetItemTest;
          procedure SubItemFree;
          procedure ISO8601Test;
+         procedure DeleteAdd;
    end;
 
 // ------------------------------------------------------------------
@@ -512,6 +513,28 @@ begin
                   wr.ToString);
    finally
       wr.Free;
+   end;
+end;
+
+// DeleteAdd
+//
+procedure TdwsJSONTests.DeleteAdd;
+var
+   obj : TdwsJSONObject;
+begin
+   obj:=TdwsJSONObject.Create;
+   try
+      obj.AddValue('test');
+      obj.AddValue('test');
+      CheckEquals(2, obj.ElementCount);
+      obj.MergeDuplicates;
+      CheckEquals(1, obj.ElementCount);
+      obj.AddValue('test');
+      CheckEquals(2, obj.ElementCount);
+      obj.MergeDuplicates;
+      CheckEquals(1, obj.ElementCount);
+   finally
+      obj.Free;
    end;
 end;
 

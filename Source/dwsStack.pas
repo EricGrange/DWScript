@@ -58,12 +58,6 @@ type
       MaxExceptionDepth : Integer;
    end;
 
-   {$IFDEF VER200}
-   // D2009 workaround for:
-   // [DCC Fatal Error] dwsCoreExprs.pas(5327): F2051 Unit dwsCoreExprs was compiled with a different version of dwsStack.TSimpleStack<System.Integer>
-   TSimpleStackIntegerDummy = TSimpleStack<Integer>;
-   {$ENDIF}
-
    // TStackMixIn
    //
    TStack = ^TStackMixIn;
@@ -71,7 +65,7 @@ type
       private
          FBasePointer : Integer;
          FBaseData : PDataArray;
-         FBpStore : array of TSimpleStack<Integer>;
+         FBpStore : array of TSimpleIntegerStack;
          FParams : TStackParameters;
          FMaxSize : Integer;
          FSize : Integer;
@@ -391,7 +385,7 @@ begin
    ClearBpStore;
    SetLength(FBpStore, FParams.MaxLevel + 1);
    for i:=0 to High(FBpStore) do begin
-      FBpStore[i]:=TSimpleStack<Integer>.Create;
+      FBpStore[i]:=TSimpleIntegerStack.Allocate;
       FBpStore[i].Push(0);
    end;
 end;

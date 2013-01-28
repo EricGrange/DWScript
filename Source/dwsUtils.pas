@@ -271,6 +271,48 @@ type
          property Count : Integer read FCount;
    end;
 
+   PSimpleIntegerStackChunk = ^TSimpleIntegerStackChunk;
+   TSimpleIntegerStackChunk = record
+      public
+         const ChunkSize = 16-2;
+      public
+         Data : array [0..ChunkSize-1] of Integer;
+         Prev : PSimpleIntegerStackChunk;
+   end;
+
+   // TSimpleIntegerStack
+   //
+   {: A minimalistic chunked integer stack.
+      Note that internal array items are NOT cleared on Pop, for refcounted types,
+      you need to clear yourself manually via Peek. }
+   TSimpleIntegerStack = class
+      private
+         FChunk : PSimpleIntegerStackChunk;
+         FChunkIndex : Integer;
+         FCount : Integer;
+         FPooledChunk : PSimpleIntegerStackChunk;
+         FBaseChunk : TSimpleIntegerStackChunk;
+
+         class var vTemplate : TSimpleIntegerStack;
+
+      protected
+         procedure Grow;
+         procedure Shrink;
+         function GetPeek : Integer; inline;
+         procedure SetPeek(const item : Integer); inline;
+
+      public
+         constructor Create;
+         destructor Destroy; override;
+         class function Allocate : TSimpleIntegerStack; static;
+
+         procedure Push(const item : Integer); inline;
+         procedure Pop; inline;
+         procedure Clear;
+         property Peek : Integer read GetPeek write SetPeek;
+         property Count : Integer read FCount;
+   end;
+
    TSimpleHashBucket<T> = record
       HashCode : Cardinal;
       Value : T;
@@ -1612,7 +1654,7 @@ procedure TWriteOnlyBlockStream.AllocateCurrentBlock;
 var
    newBlock : PPointerArray;
 begin
-   newBlock:=GetMemory(cWriteOnlyBlockStreamBlockSize+2*SizeOf(Pointer));
+   GetMem(newBlock, cWriteOnlyBlockStreamBlockSize+2*SizeOf(Pointer));
    newBlock[0]:=nil;
    FBlockRemaining:=@newBlock[1];
    FBlockRemaining^:=0;
@@ -2644,6 +2686,121 @@ begin
    end;
 end;
 
+// ------------------
+// ------------------ TSimpleIntegerStack ------------------
+// ------------------
+
+// Create
+//
+constructor TSimpleIntegerStack.Create;
+begin
+   FChunk:=@FBaseChunk;
+   FChunkIndex:=-1;
+end;
+
+// Destroy
+//
+destructor TSimpleIntegerStack.Destroy;
+begin
+   Clear;
+end;
+
+// Allocate
+//
+class function TSimpleIntegerStack.Allocate : TSimpleIntegerStack;
+var
+   p : Pointer;
+   n : Integer;
+begin
+   n:=InstanceSize;
+   GetMem(p, n);
+   // we don't need to reset the BaseChunk portion as a whole
+   Move(Pointer(vTemplate)^, p^, n-SizeOf(TSimpleIntegerStackChunk));
+   Result:=TSimpleIntegerStack(p);
+   Result.FChunk:=@Result.FBaseChunk;
+   Result.FBaseChunk.Prev:=nil;
+end;
+
+// Push
+//
+procedure TSimpleIntegerStack.Push(const item : Integer);
+begin
+   if FChunkIndex<TSimpleIntegerStackChunk.ChunkSize-1 then
+      Inc(FChunkIndex)
+   else Grow;
+   FChunk.Data[FChunkIndex]:=item;
+   Inc(FCount);
+end;
+
+// Pop
+//
+procedure TSimpleIntegerStack.Pop;
+begin
+   if FChunkIndex>0 then
+      Dec(FChunkIndex)
+   else Shrink;
+   Dec(FCount);
+end;
+
+// Clear
+//
+procedure TSimpleIntegerStack.Clear;
+var
+   p : PSimpleIntegerStackChunk;
+begin
+   if FPooledChunk<>nil then
+      FreeMem(FPooledChunk);
+   FPooledChunk:=nil;
+   while FChunk<>@FBaseChunk do begin
+      p:=FChunk;
+      FChunk:=p.Prev;
+      FreeMem(p);
+   end;
+end;
+
+// Grow
+//
+procedure TSimpleIntegerStack.Grow;
+var
+   p : PSimpleIntegerStackChunk;
+begin
+   if FPooledChunk<>nil then begin
+      p:=FPooledChunk;
+      FPooledChunk:=nil;
+   end else GetMem(p, SizeOf(TSimpleIntegerStackChunk));
+   p.Prev:=FChunk;
+   FChunk:=p;
+   FChunkIndex:=0;
+end;
+
+// Shrink
+//
+procedure TSimpleIntegerStack.Shrink;
+begin
+   if FChunk.Prev=nil then
+      Dec(FChunkIndex)
+   else begin
+      FreeMem(FPooledChunk);
+      FPooledChunk:=FChunk;
+      FChunk:=FChunk.Prev;
+      FChunkIndex:=TSimpleIntegerStackChunk.ChunkSize-1;
+   end;
+end;
+
+// GetPeek
+//
+function TSimpleIntegerStack.GetPeek : Integer;
+begin
+   Result:=FChunk.Data[FChunkIndex];
+end;
+
+// SetPeek
+//
+procedure TSimpleIntegerStack.SetPeek(const item : Integer);
+begin
+   FChunk.Data[FChunkIndex]:=item;
+end;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -2653,10 +2810,12 @@ initialization
 // ------------------------------------------------------------------
 
    InitializeStringsUnifier;
+   TSimpleIntegerStack.vTemplate:=TSimpleIntegerStack.Create;
 
 finalization
 
    FinalizeStringsUnifier;
+   TSimpleIntegerStack.vTemplate.Free;
 
 end.
 

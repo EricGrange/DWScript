@@ -1147,7 +1147,7 @@ begin
    n:=FCount-1;
    if i<n then
       Move(FItems[i+1], FItems[i], (n-i)*SizeOf(TdwsJSONPair));
-   FillChar(FItems[FCount], SizeOf(TdwsJSONPair), 0);
+   FillChar(FItems[n+1], SizeOf(TdwsJSONPair), 0);
    FCount:=n;
 end;
 

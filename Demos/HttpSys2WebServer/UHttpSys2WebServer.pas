@@ -91,7 +91,7 @@ const
          +'"SSLPort": 0,'
          // https relative URI
          +'"SSLRelativeURI": "",'
-         // Base path for served files
+         // Base path for served files,
          // If not defined, assumes a www subfolder of the folder where the exe is
          +'"WWWPath": "",'
          // Enabled Authentication options

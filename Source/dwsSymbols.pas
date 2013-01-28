@@ -6056,17 +6056,20 @@ end;
 //
 procedure TdwsExecution.SetScriptError(expr : TExprBase);
 begin
-   if FLastScriptError<>nil then Exit;
-   FLastScriptError:=expr;
-   FLastScriptCallStack:=GetCallStack;
+   if FLastScriptError=nil then begin
+      FLastScriptError:=expr;
+      FLastScriptCallStack:=GetCallStack;
+   end;
 end;
 
 // ClearScriptError
 //
 procedure TdwsExecution.ClearScriptError;
 begin
-   FLastScriptError:=nil;
-   SetLength(FLastScriptCallStack, 0);
+   if FLastScriptError=nil then begin
+      FLastScriptError:=nil;
+      FLastScriptCallStack:=nil;
+   end;
 end;
 
 // GetDebugger

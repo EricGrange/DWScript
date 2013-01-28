@@ -32,7 +32,10 @@ type
 
       published
 
+         procedure StackIntegerGenericTest;
+         procedure StackLotsOfIntegerGenericTest;
          procedure StackIntegerTest;
+         procedure StackLotsOfIntegerTest;
          procedure WriteOnlyBlockStreamTest;
          procedure WOBSBigFirstTest;
          procedure TightListTest;
@@ -58,9 +61,9 @@ implementation
 // ------------------ TdwsUtilsTests ------------------
 // ------------------
 
-// StackIntegerTest
+// StackIntegerGenericTest
 //
-procedure TdwsUtilsTests.StackIntegerTest;
+procedure TdwsUtilsTests.StackIntegerGenericTest;
 var
    stack : TSimpleStack<Integer>;
 begin
@@ -89,6 +92,105 @@ begin
    CheckEquals(0, stack.Count);
 
    stack.Free;
+end;
+
+// StackLotsOfIntegerGenericTest
+//
+procedure TdwsUtilsTests.StackLotsOfIntegerGenericTest;
+var
+   i, j : Integer;
+   stack : TSimpleStack<Integer>;
+begin
+   stack:=TSimpleStack<Integer>.Create;
+   try
+      for i:=1 to 1000 do
+         stack.Push(i);
+
+      CheckEquals(1000, stack.Count, 'nb');
+
+      for i:=9 downto 0 do begin
+         for j:=100 downto 1 do begin
+            CheckEquals(i*100+j, stack.Peek, 'pop');
+            stack.Pop;
+         end;
+         for j:=1 to 100 do
+            stack.Push(j);
+         for j:=100 downto 1 do begin
+            CheckEquals(j, stack.Peek, 'pop bis');
+            stack.Pop;
+         end;
+      end;
+
+      CheckEquals(0, stack.Count, 'final nb');
+   finally
+      stack.Free;
+   end;
+end;
+
+// StackIntegerTest
+//
+procedure TdwsUtilsTests.StackIntegerTest;
+var
+   stack : TSimpleIntegerStack;
+begin
+   stack:=TSimpleIntegerStack.Allocate;
+
+   CheckEquals(0, stack.Count);
+
+   stack.Push(123);
+
+   CheckEquals(1, stack.Count);
+   CheckEquals(123, stack.Peek);
+
+   stack.Push(456);
+
+   CheckEquals(2, stack.Count);
+   CheckEquals(456, stack.Peek);
+
+   CheckEquals(456, stack.Peek);
+   stack.Pop;
+
+   CheckEquals(1, stack.Count);
+
+   CheckEquals(123, stack.Peek);
+   stack.Pop;
+
+   CheckEquals(0, stack.Count);
+
+   stack.Free;
+end;
+
+// StackLotsOfIntegerTest
+//
+procedure TdwsUtilsTests.StackLotsOfIntegerTest;
+var
+   i, j : Integer;
+   stack : TSimpleIntegerStack;
+begin
+   stack:=TSimpleIntegerStack.Allocate;
+   try
+      for i:=1 to 1000 do
+         stack.Push(i);
+
+      CheckEquals(1000, stack.Count, 'nb');
+
+      for i:=9 downto 0 do begin
+         for j:=100 downto 1 do begin
+            CheckEquals(i*100+j, stack.Peek, 'pop');
+            stack.Pop;
+         end;
+         for j:=1 to 100 do
+            stack.Push(j);
+         for j:=100 downto 1 do begin
+            CheckEquals(j, stack.Peek, 'pop bis');
+            stack.Pop;
+         end;
+      end;
+
+      CheckEquals(0, stack.Count, 'final nb');
+   finally
+      stack.Free;
+   end;
 end;
 
 // WriteOnlyBufferBlockTest
