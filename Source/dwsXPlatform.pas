@@ -100,8 +100,8 @@ function AnsiCompareStr(const S1, S2 : String) : Integer;
 function UnicodeComparePChars(p1 : PChar; n1 : Integer; p2 : PChar; n2 : Integer) : Integer; overload;
 function UnicodeComparePChars(p1, p2 : PChar; n : Integer) : Integer; overload;
 
-function InterlockedIncrement(var val : Integer) : Integer;
-function InterlockedDecrement(var val : Integer) : Integer;
+function InterlockedIncrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
+function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} inline; {$endif}
 
 procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Cardinal(-1));
 
@@ -197,15 +197,31 @@ end;
 // InterlockedIncrement
 //
 function InterlockedIncrement(var val : Integer) : Integer;
+{$ifdef PUREPASCAL}
 begin
    Result:=Windows.InterlockedIncrement(val);
+{$else}
+asm
+   mov   ecx,  eax
+   mov   eax,  1
+   lock  xadd [ecx], eax
+   inc   eax
+{$endif}
 end;
 
 // InterlockedDecrement
 //
 function InterlockedDecrement(var val : Integer) : Integer;
+{$ifdef PUREPASCAL}
 begin
    Result:=Windows.InterlockedDecrement(val);
+{$else}
+asm
+   mov   ecx,  eax
+   mov   eax,  -1
+   lock  xadd [ecx], eax
+   dec   eax
+{$endif}
 end;
 
 // SetThreadName

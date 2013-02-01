@@ -3614,7 +3614,7 @@ var
 begin
    opPos:=FTok.HotPos;
    tt:=FTok.TestDeleteAny([ttPLUS, ttMINUS, ttTIMES, ttDIVIDE, ttMOD, ttDIV,
-                           ttOR, ttAND, ttXOR, ttIMPLIES, ttSHL, ttSHR, ttSAR,
+                           ttOR, ttAND, ttXOR, ttIN, ttIMPLIES, ttSHL, ttSHR, ttSAR,
                            ttEQ, ttNOTEQ, ttGTR, ttGTREQ, ttLESS, ttLESSEQ,
                            ttLESSLESS, ttGTRGTR, ttCARET]);
    if tt=ttNone then
@@ -5002,11 +5002,13 @@ begin
             end else if memberClassType=TClassVarSymbol then begin
 
                Result.Free;
+               Result:=nil;
                Result:=ReadDataSymbolName(TDataSymbol(member), TStructuredTypeSymbol(member).Members, IsWrite, expecting);
 
             end else if memberClassType=TClassConstSymbol then begin
 
                Result.Free;
+               Result:=nil;
                Result:=ReadConstName(TConstSymbol(member), IsWrite);
 
             end else begin
@@ -5043,12 +5045,14 @@ begin
             end else if memberClassType=TClassVarSymbol then begin
 
                Result.Free;
+               Result:=nil;
                Result:=ReadDataSymbolName(TDataSymbol(member), TStructuredTypeSymbol(baseType.Typ).Members,
                                           IsWrite, expecting);
 
             end else if memberClassType=TClassConstSymbol then begin
 
                Result.Free;
+               Result:=nil;
                Result:=ReadConstName(TConstSymbol(member), IsWrite);
 
             end else if member<>nil then begin
@@ -7355,7 +7359,7 @@ begin
                // Read methods and properties
                hotPos:=FTok.HotPos;
                tt:=FTok.TestDeleteAny([ttFUNCTION, ttPROCEDURE, ttMETHOD,
-                                       ttCONSTRUCTOR, ttDESTRUCTOR,
+                                       ttCONSTRUCTOR, ttDESTRUCTOR, ttOPERATOR,
                                        ttCLASS, ttPROPERTY, ttCONST,
                                        ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
                                        ttALEFT]);
@@ -7378,7 +7382,7 @@ begin
                         ttCONST :
                            ReadClassConst(Result, visibility);
                         ttPROPERTY :
-                        ReadPropertyDecl(Result, visibility, True);
+                           ReadPropertyDecl(Result, visibility, True);
                      else
                         FMsgs.AddCompilerStop(FTok.HotPos, CPE_ProcOrFuncExpected);
                      end;
@@ -7387,6 +7391,11 @@ begin
                   ttPROPERTY : begin
 
                      ReadPropertyDecl(Result, visibility, False);
+
+                  end;
+                  ttOPERATOR : begin
+
+                     Result.AddOperator(ReadClassOperatorDecl(Result));
 
                   end;
                   ttCONST : begin
@@ -7644,7 +7653,7 @@ begin
       if Result.UsesSym.Params.Count<>1 then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_SingleParameterExpected);
       if tt=ttIN then begin
-         if Result.UsesSym.Params[0].Typ<>Result.Typ then
+         if not Result.UsesSym.Params[0].Typ.IsOfType(Result.Typ) then
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidParameterType, [Result.UsesSym.Name]);
          if not Result.UsesSym.Result.Typ.IsOfType(FProg.TypBoolean) then
             FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidResultType, [Result.UsesSym.Result.Typ.Name]);
@@ -7742,7 +7751,7 @@ begin
 
          // error already handled
 
-      else if propSym.Typ<>sym.Typ then
+      else if not sym.Typ.IsOfType(propSym.Typ) then
 
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleType, [sym.Name])
 
@@ -8947,24 +8956,33 @@ begin
 
          end else begin
 
-            if (setExpr.Typ=nil) or not (setExpr.Typ is TClassSymbol) then
-               FMsgs.AddCompilerStop(hotPos, CPE_ArrayBracketOrClassExpected);
-
-            classOpSymbol:=(setExpr.Typ as TClassSymbol).FindClassOperator(ttIN, left.Typ);
-            if classOpSymbol=nil then
-               FMsgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands);
-            classOpExpr:=GetMethodExpr(classOpSymbol.UsesSym, (setExpr as TDataExpr),
-                                       rkObjRef, hotPos, False);
-            try
-               setExpr:=nil;
-               classOpExpr.AddArg(left);
-               left:=nil;
-               TypeCheckArgs(classOpExpr, argPosArray);
-            except
-               classOpExpr.Free;
-               raise;
+            if setExpr.Typ is TClassSymbol then begin
+               classOpSymbol:=(setExpr.Typ as TClassSymbol).FindClassOperator(ttIN, left.Typ);
+               if classOpSymbol<>nil then begin
+                  classOpExpr:=GetMethodExpr(classOpSymbol.UsesSym, (setExpr as TDataExpr),
+                                             rkObjRef, hotPos, False);
+                  try
+                     setExpr:=nil;
+                     classOpExpr.AddArg(left);
+                     left:=nil;
+                     TypeCheckArgs(classOpExpr, argPosArray);
+                  except
+                     classOpExpr.Free;
+                     raise;
+                  end;
+                  Result:=classOpExpr;
+                  Exit;
+               end;
             end;
-            Result:=classOpExpr;
+
+            Result:=CreateTypedOperatorExpr(ttIN, left, setExpr);
+            if Result=nil then begin
+               FMsgs.AddCompilerError(hotPos, CPE_IncompatibleOperands);
+               // fake result to keep compiler going and report further issues
+               Result:=TBinaryOpExpr.Create(FProg, left, setExpr);
+               Result.Typ:=FProg.TypVariant;
+            end;
+            left:=nil;
 
          end;
 

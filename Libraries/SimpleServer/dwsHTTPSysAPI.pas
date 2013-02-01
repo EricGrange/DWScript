@@ -180,6 +180,8 @@ type
    end;
    PHTTP_UNKNOWN_HEADER = ^HTTP_UNKNOWN_HEADER;
 
+   HTTP_UNKNOWN_HEADER_ARRAY = array of HTTP_UNKNOWN_HEADER;
+
    HTTP_KNOWN_HEADER = record
       RawValueLength : word;     // in bytes not including the #0
       pRawValue : PAnsiChar;
@@ -211,6 +213,7 @@ type
       // Known headers
       KnownHeaders : array[low(THttpHeader)..reqUserAgent] of HTTP_KNOWN_HEADER;
    end;
+   PHTTP_REQUEST_HEADERS = ^HTTP_REQUEST_HEADERS;
 
    HTTP_BYTE_RANGE = record
       StartingOffset : ULARGE_INTEGER;
@@ -409,17 +412,17 @@ type
       // - OutStatus is a temporary variable
       // - if DataChunkForErrorContent is set, it will be used to add a content
       // body in the response with the textual representation of the error code
-      procedure SetStatus(code : integer; var OutStatus : RawByteString;
-         DataChunkForErrorContent : PHTTP_DATA_CHUNK_INMEMORY = nil;
-         const ErrorMsg : RawByteString = '');
+      procedure SetStatus(code : integer; var outStatus : RawByteString);
+      procedure SetErrorStatus(code : integer; var outStatus : RawByteString;
+                               dataChunkForErrorContent : PHTTP_DATA_CHUNK_INMEMORY;
+                               const errorMsg : String);
       // will set the content of the reponse, and ContentType header
       procedure SetContent(var DataChunk : HTTP_DATA_CHUNK_INMEMORY;
          const Content : RawByteString; const ContentType : RawByteString = 'text/html');
       /// will set all header values from lines
       // - Content-Type/Content-Encoding/Location will be set in KnownHeaders[]
       // - all other headers will be set in temp UnknownHeaders[0..MaxUnknownHeader]
-      procedure SetHeaders(P : PAnsiChar; UnknownHeaders : PHTTP_UNKNOWN_HEADER;
-         MaxUnknownHeader : integer);
+      procedure SetHeaders(P : PAnsiChar; const UnknownHeaders : HTTP_UNKNOWN_HEADER_ARRAY);
    end;
    PHTTP_RESPONSE_V2 = ^HTTP_RESPONSE_V2;
 
@@ -958,7 +961,7 @@ var
 
 /// retrieve the HTTP reason text from a code
 // - e.g. StatusCodeToReason(200)='OK'
-function StatusCodeToReason(Code : integer) : RawByteString;
+procedure StatusCodeToReason(code : integer; var result : RawByteString);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -1009,53 +1012,43 @@ begin
       raise EHttpApiServer.Create(api, error);
 end;
 
-function StatusCodeToReason(Code : integer) : RawByteString;
+// StatusCodeToReason
+//
+procedure StatusCodeToReason(code : integer; var result : RawByteString);
+const
+   cCodes200 : array [200..206] of RawByteString = (
+      'OK', 'Created', 'Accepted', 'Non-Authoritative Information',  // 200-203
+      'No Content', 'Reset Content', 'Partial Content' );            // 204-206
+   cCodes300 : array [300..307] of RawByteString = (
+      'Multiple Choices', 'Moved Permanently', 'Found', 'See Other', // 300-303
+      'Not Modified', 'Use Proxy', 'Unused', 'Temporary Redirect' ); // 304-307
+   cCodes400 : array [400..417] of RawByteString = (
+      'Bad Request', 'Unauthorized', 'Payment Required', 'Forbidden',// 400-403
+      'Not Found', 'Method Not Allowed', 'Not Acceptable',           // 404-406
+      'Proxy Authentication Required', 'Request Timeout',            // 407-408
+      'Conflict', 'Gone', 'Length Required', 'Precondition Failed',  // 409-412
+      'Request Entity Too Large', 'Request-URI Too Long',            // 413-414
+      'Unsupported Media Type', 'Requested Range Not Satisfiable',   // 415-416
+      'Expectation Failed' );
+   cCodes500 : array [500..503] of RawByteString = (
+      'Internal Server Error', 'Not Implemented', 'Bad Gateway',     // 500-502
+      'Service Unavailable' );
 begin
-   case Code of
-      100 :
-         result := 'Continue';
-      101 :
-         result := 'Switching Protocols';
-      200 :
-         result := 'OK';
-      201 :
-         result := 'Created';
-      202 :
-         result := 'Accepted';
-      203 :
-         result := 'Non-Authoritative Information';
-      204 :
-         result := 'No Content';
-      300 :
-         result := 'Multiple Choices';
-      301 :
-         result := 'Moved Permanently';
-      302 :
-         result := 'Found';
-      303 :
-         result := 'See Other';
-      304 :
-         result := 'Not Modified';
-      307 :
-         result := 'Temporary Redirect';
-      400 :
-         result := 'Bad Request';
-      401 :
-         result := 'Unauthorized';
-      403 :
-         result := 'Forbidden';
-      404 :
-         result := 'Not Found';
-      405 :
-         result := 'Method Not Allowed';
-      406 :
-         result := 'Not Acceptable';
-      500 :
-         result := 'Internal Server Error';
-      503 :
-         result := 'Service Unavailable';
+   if code=200 then
+      result := cCodes200[200]
+   else case code of
+      100 : result := 'Continue';
+      101 : result := 'Switching Protocols';
+      200..High(cCodes200) :
+         result := cCodes200[code];
+      300..High(cCodes300) :
+         result := cCodes300[code];
+      400..High(cCodes400) :
+         result := cCodes400[code];
+      500..High(cCodes500) :
+         result := cCodes500[code];
    else
-      str(Code, result);
+      result := 'Unknown';
    end;
 end;
 
@@ -1090,94 +1083,106 @@ end;
 
 { HTTP_RESPONSE_V2 }
 
-procedure HTTP_RESPONSE_V2.SetContent(var DataChunk : HTTP_DATA_CHUNK_INMEMORY;
+procedure HTTP_RESPONSE_V2.SetContent(var dataChunk : HTTP_DATA_CHUNK_INMEMORY;
    const Content, ContentType : RawByteString);
 begin
-   fillchar(DataChunk, sizeof(DataChunk), 0);
+   fillchar(dataChunk, sizeof(dataChunk), 0);
    if Content = '' then
       exit;
-   DataChunk.DataChunkType := hctFromMemory;
-   DataChunk.pBuffer := pointer(Content);
-   DataChunk.BufferLength := length(Content);
+   dataChunk.DataChunkType := hctFromMemory;
+   dataChunk.pBuffer := pointer(Content);
+   dataChunk.BufferLength := length(Content);
    EntityChunkCount := 1;
-   pEntityChunks := @DataChunk;
+   pEntityChunks := @dataChunk;
    Headers.KnownHeaders[reqContentType].RawValueLength := length(ContentType);
    Headers.KnownHeaders[reqContentType].pRawValue := pointer(ContentType);
 end;
 
 procedure HTTP_RESPONSE_V2.SetHeaders(P : PAnsiChar;
-   UnknownHeaders : PHTTP_UNKNOWN_HEADER; MaxUnknownHeader : integer);
+   const UnknownHeaders : HTTP_UNKNOWN_HEADER_ARRAY);
 var
-   Known : THttpHeader;
+   knownHeader : THttpHeader;
+   current : PHTTP_UNKNOWN_HEADER;
+   pKnown : PHTTP_KNOWN_HEADER;
 begin
-   Headers.pUnknownHeaders := UnknownHeaders;
+   current := @UnknownHeaders;
+   Headers.pUnknownHeaders := current;
    Headers.UnknownHeaderCount := 0;
-   //inc(UnknownHeaders);
-   if P<>nil then
-      repeat
-         while P^ in [#13, #10] do
-            inc(P);
-         if P^ = #0 then
-            break;
-         if IdemPChar(P, 'CONTENT-TYPE:') then
-            Known := reqContentType
-         else if IdemPChar(P, 'CONTENT-ENCODING:') then
-            Known := reqContentEncoding
-         else if IdemPChar(P, 'LOCATION:') then
-            Known := respLocation
-         else if IdemPChar(P, 'WWW-AUTHENTICATE:') then
-            Known := respWwwAuthenticate
-         else if IdemPChar(P, 'SET-COOKIE:') then
-            Known := respSetCookie
-         else
-            Known := reqCacheControl; // mark not found
-         if Known<>reqCacheControl then
-            with Headers.KnownHeaders[Known] do begin
-               while P^<>':' do
-                  inc(P);
-               inc(P); // jump ':'
-               while P^ = ' ' do
-                  inc(P);
-               pRawValue := P;
-               while P^>=' ' do
-                  inc(P);
-               RawValueLength := P-pRawValue;
-            end else begin
-            UnknownHeaders^.pName := P;
-            while (P^>=' ') and (P^<>':') do
-               inc(P);
-            if P^ = ':' then begin
-               with UnknownHeaders^ do begin
-                  NameLength := P-pName;
-                  repeat
-                     inc(P)
-                  until P^<>' ';
-                  pRawValue := P;
-                  repeat
-                     inc(P)
-                  until P^<' ';
-                  RawValueLength := P-pRawValue;
-                  if Headers.UnknownHeaderCount<MaxUnknownHeader then begin
-                     inc(UnknownHeaders);
-                     inc(Headers.UnknownHeaderCount);
-                  end;
-               end;
-            end else
-               while P^>=' ' do
-                  inc(P);
+
+   if P=nil then Exit;
+
+   while True do begin
+      while P^ in [#13, #10] do
+         Inc(P);
+      if P^ = #0 then
+         break;
+      if IdemPChar(P, 'CONTENT-TYPE:') then
+         knownHeader := reqContentType
+      else if IdemPChar(P, 'CONTENT-ENCODING:') then
+         knownHeader := reqContentEncoding
+      else if IdemPChar(P, 'LOCATION:') then
+         knownHeader := respLocation
+      else if IdemPChar(P, 'WWW-AUTHENTICATE:') then
+         knownHeader := respWwwAuthenticate
+      else if IdemPChar(P, 'SET-COOKIE:') then
+         knownHeader := respSetCookie
+      else knownHeader := reqCacheControl; // mark not found
+
+      if knownHeader<>reqCacheControl then begin
+         pKnown := @Headers.KnownHeaders[knownHeader];
+         while P^<>':' do
+            Inc(P);
+         Inc(P); // jump ':'
+         while P^ = ' ' do
+            Inc(P);
+         pKnown^.pRawValue := P;
+         while P^>=' ' do
+            Inc(P);
+         pKnown^.RawValueLength := P-pKnown^.pRawValue;
+      end else begin
+         current^.pName := P;
+         while (P^>=' ') and (P^<>':') do
+            Inc(P);
+         if P^ = ':' then begin
+            current^.NameLength := P-current^.pName;
+            repeat
+               Inc(P)
+            until P^<>' ';
+            current^.pRawValue := P;
+            repeat
+               Inc(P)
+            until P^<' ';
+            current^.RawValueLength := P-current^.pRawValue;
+            if Headers.UnknownHeaderCount<Length(UnknownHeaders) then begin
+               Inc(current);
+               Inc(Headers.UnknownHeaderCount);
+            end;
+         end else begin
+            while P^>=' ' do
+               Inc(P);
          end;
-      until false;
+      end;
+   end;
 end;
 
-procedure HTTP_RESPONSE_V2.SetStatus(code : integer; var OutStatus : RawByteString;
-   DataChunkForErrorContent : PHTTP_DATA_CHUNK_INMEMORY; const ErrorMsg : RawByteString);
+procedure HTTP_RESPONSE_V2.SetStatus(code : integer; var outStatus : RawByteString);
 begin
    StatusCode := code;
-   OutStatus := StatusCodeToReason(code);
-   ReasonLength := length(OutStatus);
-   pReason := pointer(OutStatus);
-   if DataChunkForErrorContent<>nil then
-      SetContent(DataChunkForErrorContent^, '<h1>'+OutStatus+'</h1>'+ErrorMsg,
+   StatusCodeToReason(code, outStatus);
+   ReasonLength := Length(outStatus);
+   pReason := Pointer(outStatus);
+end;
+
+// SetErrorStatus
+//
+procedure HTTP_RESPONSE_V2.SetErrorStatus(code : integer; var outStatus : RawByteString;
+                         dataChunkForErrorContent : PHTTP_DATA_CHUNK_INMEMORY;
+                         const errorMsg : String);
+begin
+   SetStatus(code, outStatus);
+   if dataChunkForErrorContent<>nil then
+      SetContent(dataChunkForErrorContent^,
+                 '<h1>'+outStatus+'</h1>'+UTF8Encode(errorMsg),
                  'text/html; charset=utf-8');
 end;
 

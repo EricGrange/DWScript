@@ -140,9 +140,17 @@ begin
    SetDecimalSeparator('.');
 
    optionsFileName:=ExtractFilePath(ParamStr(0))+'options.json';
-   if FileExists(optionsFileName) then
-      options:=TdwsJSONValue.ParseFile(optionsFileName)
-   else options:=TdwsJSONObject.Create;
+   if FileExists(optionsFileName) then begin
+      try
+         options:=TdwsJSONValue.ParseFile(optionsFileName);
+      except
+         on E: Exception do begin
+            Writeln('Invalid options.json:');
+            Writeln(E.Message);
+            exit;
+         end;
+      end;
+   end else options:=TdwsJSONObject.Create;
    service:=TWebServerHttpService.Create(options);
    try
       if ParamCount<>0 then begin

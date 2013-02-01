@@ -1334,7 +1334,7 @@ type
    // class operator X (params) uses method;
    TClassOperatorSymbol = class sealed (TSymbol)
       private
-         FClassSymbol : TClassSymbol;
+         FCompositeSymbol : TCompositeTypeSymbol;
          FTokenType : TTokenType;
          FUsesSym : TMethodSymbol;
 
@@ -1346,7 +1346,7 @@ type
          constructor Create(tokenType : TTokenType);
          function QualifiedName : String; override;
 
-         property ClassSymbol: TClassSymbol read FClassSymbol write FClassSymbol;
+         property CompositeSymbol : TCompositeTypeSymbol read FCompositeSymbol write FCompositeSymbol;
          property TokenType : TTokenType read FTokenType write FTokenType;
          property UsesSym : TMethodSymbol read FUsesSym write FUsesSym;
    end;
@@ -3843,7 +3843,7 @@ end;
 //
 function TClassOperatorSymbol.QualifiedName : String;
 begin
-   Result:=ClassSymbol.QualifiedName+'.'+Name;
+   Result:=CompositeSymbol.QualifiedName+'.'+Name;
 end;
 
 // GetCaption
@@ -3922,7 +3922,7 @@ end;
 //
 procedure TClassSymbol.AddOperator(sym: TClassOperatorSymbol);
 begin
-   sym.ClassSymbol:=Self;
+   sym.CompositeSymbol:=Self;
    FMembers.AddSymbol(sym);
    FOperators.Add(sym);
 end;

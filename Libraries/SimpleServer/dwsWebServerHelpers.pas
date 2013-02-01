@@ -44,13 +44,36 @@ type
          property IndexFileNames : TStrings read FIndexFileNames;
    end;
 
+   TFileAccessInfo = class(TRefCountedObject)
+      public
+         CookedPathName : String;
+         FileAttribs : Cardinal;
+         DWScript : Boolean;
+   end;
+
+   // this class is not thread safe, use from a single thread
+   TFileAccessInfoCache = class
+      private
+         FHash : TSimpleNameObjectHash<TFileAccessInfo>;
+         FMaxSize, FSize : Integer;
+         FCacheCounter : Cardinal;
+
+      public
+         constructor Create(const aMaxSize : Integer);
+         destructor Destroy; override;
+
+         function FileAccessInfo(const pathInfo : String) : TFileAccessInfo; inline;
+         function CreateFileAccessInfo(const pathInfo : String) : TFileAccessInfo;
+
+         procedure Flush;
+
+         property CacheCounter : Cardinal read FCacheCounter write FCacheCounter;
+   end;
+
 // Decodes an http request URL and splits path & params
 // Skips initial '/'
 // Normalizes '/' to '\' for the pathInfo
 procedure HttpRequestUrlDecode(const s : RawByteString; var pathInfo, params : String);
-
-const
-   cHTMTL_UTF8_CONTENT_TYPE = 'text/html; charset=utf-8';
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -225,6 +248,55 @@ begin
          Break;
       end;
    end;
+end;
+
+// ------------------
+// ------------------ TFileAccessInfoCache ------------------
+// ------------------
+
+// Create
+//
+constructor TFileAccessInfoCache.Create(const aMaxSize : Integer);
+begin
+   inherited Create;
+   FHash:=TSimpleNameObjectHash<TFileAccessInfo>.Create;
+   FMaxSize:=aMaxSize;
+end;
+
+// Destroy
+//
+destructor TFileAccessInfoCache.Destroy;
+begin
+   FHash.Free;
+   inherited;
+end;
+
+// FileAccessInfo
+//
+function TFileAccessInfoCache.FileAccessInfo(const pathInfo : String) : TFileAccessInfo;
+begin
+   Result:=FHash.Objects[pathInfo];
+end;
+
+// CreateFileAccessInfo
+//
+function TFileAccessInfoCache.CreateFileAccessInfo(const pathInfo : String) : TFileAccessInfo;
+begin
+   if FSize=FMaxSize then
+      Flush;
+   Result:=TFileAccessInfo.Create;
+   Result.CookedPathName:=pathInfo;
+   FHash.AddObject(pathInfo, Result);
+   Inc(FSize);
+end;
+
+// Flush
+//
+procedure TFileAccessInfoCache.Flush;
+begin
+   FHash.Free;
+   FHash:=TSimpleNameObjectHash<TFileAccessInfo>.Create;
+   FSize:=0;
 end;
 
 end.

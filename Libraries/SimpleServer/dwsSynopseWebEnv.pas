@@ -18,6 +18,10 @@
     Synopse mORMot framework. Copyright (C) 2012 Arnaud Bouchez
       Synopse Informatique - http://synopse.info
 }
+
+Currently in stasis and not working
+Replaced by dwsHTTPSysWebEnv
+
 unit dwsSynopseWebEnv;
 
 interface
@@ -42,6 +46,8 @@ type
          function GetAuthenticatedUser : String; override;
 
       public
+         function RemoteIP : String; override;
+
          property InURL : RawByteString write SetInURL;
          property InMethod : RawByteString write SetInMethod;
          property InHeaders : RawByteString write SetInHeaders;
@@ -63,20 +69,6 @@ implementation
 // ------------------
 // ------------------ TSynopseWebRequest ------------------
 // ------------------
-
-// SetInURL
-//
-procedure TSynopseWebRequest.SetInURL(const val : RawByteString);
-begin
-   URL:=UTF8ToString(UrlDecode(val));
-end;
-
-// SetInMethod
-//
-procedure TSynopseWebRequest.SetInMethod(const val : RawByteString);
-begin
-   Method:=RawByteStringToScriptString(val);
-end;
 
 // SetInHeaders
 //
@@ -118,6 +110,13 @@ end;
 function TSynopseWebRequest.GetAuthenticatedUser : String;
 begin
    Result:=FAuthenticatedUser;
+end;
+
+// RemoteIP
+//
+function TSynopseWebRequest.RemoteIP : String;
+begin
+   Result:='';
 end;
 
 end.

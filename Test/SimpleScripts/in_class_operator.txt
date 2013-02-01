@@ -2,3 +2,5 @@ Range 1-5:
 12345
 Range 3-7:
 34567
+True
+False

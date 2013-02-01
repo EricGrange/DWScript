@@ -31,20 +31,38 @@ type
       wraKerberos
    );
 
+   TWebRequestMethodVerb = (
+      wrmvUnknown,
+      wrmvOPTIONS,
+      wrmvGET,
+      wrmvHEAD,
+      wrmvPOST,
+      wrmvPUT,
+      wrmvDELETE,
+      wrmvTRACE,
+      wrmvCONNECT,
+      wrmvTRACK,
+      wrmvMOVE,
+      wrmvCOPY,
+      wrmvPROPFIND,
+      wrmvPROPPATCH,
+      wrmvMKCOL,
+      wrmvLOCK,
+      wrmvUNLOCK,
+      wrmvSEARCH
+   );
+
    TWebRequest = class
       private
-         FRemoteIP : String;
-         FURL : String;
-         FMethod : String;
-         FSecurity : String;
-
-         FHeaders : TStrings;
          FCookies : TStrings;
          FQueryFields : TStrings;
+         FCustom : TObject;
 
       protected
-         function GetPathInfo : String;
-         function GetQueryString : String;
+         FPathInfo : String;
+         FQueryString : String;
+
+         function GetHeaders : TStrings; virtual; abstract;
          function GetCookies : TStrings;
          function GetQueryFields : TStrings;
 
@@ -62,20 +80,26 @@ type
 
          function Header(const headerName : String) : String;
 
-         property RemoteIP : String read FRemoteIP write FRemoteIP;
-         property URL : String read FURL write FURL;
-         property Method : String read FMethod write FMethod;
-         property Security : String read FSecurity write FSecurity;
-         property PathInfo : String read GetPathInfo;
-         property QueryString : String read GetQueryString;
+         function RemoteIP : String; virtual; abstract;
+
+         function URL : String; virtual; abstract;
+         function Method : String; virtual; abstract;
+         function MethodVerb : TWebRequestMethodVerb; virtual; abstract;
+         function Security : String; virtual; abstract;
+
+         property PathInfo : String read FPathInfo write FPathInfo;
+         property QueryString : String read FQueryString write FQueryString;
          property UserAgent : String read GetUserAgent;
 
-         property Headers : TStrings read FHeaders;
+         property Headers : TStrings read GetHeaders;
          property Cookies : TStrings read GetCookies;
          property QueryFields : TStrings read GetQueryFields;
 
          property Authentication : TWebRequestAuthentication read GetAuthentication;
          property AuthenticatedUser : String read GetAuthenticatedUser;
+
+         // custom object field, freed with the request
+         property Custom : TObject read FCustom write FCustom;
    end;
 
    TWebResponse = class
@@ -87,12 +111,13 @@ type
          FHeaders : TStrings;
 
       protected
-         function GetHeaders : TStrings;
-
          procedure SetContentText(const textType : RawByteString; const text : String);
 
       public
+         constructor Create;
          destructor Destroy; override;
+
+         procedure Clear; virtual;
 
          function HasHeaders : Boolean; inline;
          function CompiledHeaders : RawByteString;
@@ -103,7 +128,7 @@ type
          property ContentType : RawByteString read FContentType write FContentType;
          property ContentEncoding : RawByteString read FContentEncoding write FContentEncoding;
 
-         property Headers : TStrings read GetHeaders;
+         property Headers : TStrings read FHeaders;
    end;
 
    IWebEnvironment = interface
@@ -136,6 +161,7 @@ const
       'None', 'Failed', 'Basic', 'Digest', 'NTLM', 'Negotiate', 'Kerberos'
    );
 
+   cHTMTL_UTF8_CONTENT_TYPE = 'text/html; charset=utf-8';
 
 implementation
 
@@ -173,7 +199,6 @@ end;
 constructor TWebRequest.Create;
 begin
    inherited;
-   FHeaders:=TFastCompareStringList.Create;
 end;
 
 // Destroy
@@ -182,7 +207,7 @@ destructor TWebRequest.Destroy;
 begin
    FQueryFields.Free;
    FCookies.Free;
-   FHeaders.Free;
+   FCustom.Free;
    inherited;
 end;
 
@@ -242,21 +267,7 @@ end;
 //
 function TWebRequest.Header(const headerName : String) : String;
 begin
-   Result:=FHeaders.Values[headerName];
-end;
-
-// GetPathInfo
-//
-function TWebRequest.GetPathInfo : String;
-begin
-   Result:=StrBeforeChar(URL, '?');
-end;
-
-// GetQueryString
-//
-function TWebRequest.GetQueryString : String;
-begin
-   Result:=StrAfterChar(URL, '?');
+   Result:=Headers.Values[headerName];
 end;
 
 // GetCookies
@@ -320,6 +331,14 @@ end;
 // ------------------ TWebResponse ------------------
 // ------------------
 
+// Create
+//
+constructor TWebResponse.Create;
+begin
+   inherited;
+   FHeaders:=TFastCompareStringList.Create;
+end;
+
 // Destroy
 //
 destructor TWebResponse.Destroy;
@@ -328,11 +347,22 @@ begin
    inherited;
 end;
 
+// Clear
+//
+procedure TWebResponse.Clear;
+begin
+   FStatusCode:=200;
+   FContentType:=cHTMTL_UTF8_CONTENT_TYPE;
+   FContentData:='';
+   FContentEncoding:='';
+   FHeaders.Clear;
+end;
+
 // HasHeaders
 //
 function TWebResponse.HasHeaders : Boolean;
 begin
-   Result:=(FHeaders<>nil);
+   Result:=(FHeaders.Count>0);
 end;
 
 // CompiledHeaders
@@ -342,18 +372,8 @@ var
    i : Integer;
 begin
    Result:='';
-   if FHeaders=nil then Exit;
    for i:=0 to Headers.Count-1 do
       Result:=Result+UTF8Encode(FHeaders.Names[i]+': '+FHeaders.ValueFromIndex[i])+#13#10;
-end;
-
-// GetHeaders
-//
-function TWebResponse.GetHeaders : TStrings;
-begin
-   if FHeaders=nil then
-      FHeaders:=TFastCompareStringList.Create;
-   Result:=FHeaders;
 end;
 
 // SetContentText

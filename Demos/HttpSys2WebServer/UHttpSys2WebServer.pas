@@ -38,7 +38,7 @@ uses
   Windows, SysUtils, Classes,
   SynZip,
   dwsHTTPSysServer, dwsHTTPSysAPI,
-  dwsUtils, dwsWebEnvironment, dwsSynopseWebEnv, dwsFileSystem,
+  dwsUtils, dwsWebEnvironment, dwsFileSystem,
   dwsDirectoryNotifier, dwsJSON, dwsXPlatform, dwsWebServerHelpers,
   DSimpleDWScript;
 
@@ -56,6 +56,9 @@ type
          FSSLRelativeURI : String;
          FDirectoryIndex : TDirectoryIndexCache;
          FAutoRedirectFolders : Boolean;
+         // Used to implement a lazy flush on FileAccessInfoCaches
+         FCacheCounter : Cardinal;
+         FFileAccessInfoCacheSize : Integer;
 
          procedure FileChanged(sender : TdwsFileNotifier; const fileName : String;
                                changeAction : TFileNotificationAction);
@@ -66,8 +69,9 @@ type
          constructor Create(const basePath : TFileName; options : TdwsJSONValue);
          destructor Destroy; override;
 
-         function Process(const inRequest : TSynHttpServerRequest;
-                          var outResponse : TSynHttpServerResponse) : cardinal;
+         procedure Process(request : TWebRequest; response : TWebResponse);
+
+         procedure Redirect301TrailingPathDelimiter(request : TWebRequest; response : TWebResponse);
 
          function FindDirectoryIndex(var pathFileName : String) : Boolean;
 
@@ -76,6 +80,7 @@ type
          property RelativeURI : String read FRelativeURI;
          property SSLRelativeURI : String read FSSLRelativeURI;
          property AutoRedirectFolders : Boolean read FAutoRedirectFolders;
+         property FileAccessInfoCacheSize : Integer read FFileAccessInfoCacheSize write FFileAccessInfoCacheSize;
   end;
 
 const
@@ -208,6 +213,8 @@ begin
       FServer.MaxInputCountLength:=serverOptions['MaxInputLength'].AsInteger;
 
       FAutoRedirectFolders:=serverOptions['AutoRedirectFolders'].AsBoolean;
+
+      FFileAccessInfoCacheSize:=256;
    finally
       serverOptions.Free;
    end;
@@ -232,110 +239,102 @@ begin
    inherited;
 end;
 
-
-function THttpSys2WebServer.Process(
-      const inRequest : TSynHttpServerRequest;
-      var outResponse : TSynHttpServerResponse) : Cardinal;
+// Process
+//
+procedure THttpSys2WebServer.Process(request : TWebRequest; response : TWebResponse);
 var
-   pathFileName : String;
-   params : String;
-   request : TSynopseWebRequest;
-   response : TSynopseWebResponse;
-   fileAttribs : Cardinal;
    noTrailingPathDelimiter : Boolean;
+   infoCache : TFileAccessInfoCache;
+   fileInfo : TFileAccessInfo;
 begin
-   HttpRequestUrlDecode(inRequest.InURL, pathFileName, params);
+   infoCache:=TFileAccessInfoCache(request.Custom);
+   if infoCache=nil then begin
+      infoCache:=TFileAccessInfoCache.Create(FileAccessInfoCacheSize);
+      request.Custom:=infoCache;
+      infoCache.CacheCounter:=FCacheCounter;
+   end else if infoCache.CacheCounter<>FCacheCounter then begin
+      infoCache.Flush;
+      infoCache.CacheCounter:=FCacheCounter;
+   end;
 
-   if not ExpandPathFileName(FPath, pathFileName) then
+   fileInfo:=infoCache.FileAccessInfo(request.PathInfo);
+   if fileInfo=nil then begin
 
-      // invalid pathFileName
-      fileAttribs:=INVALID_FILE_ATTRIBUTES
+      fileInfo:=infoCache.CreateFileAccessInfo(request.PathInfo);
 
-   else if Pos('\.', pathFileName)>0 then
+      if not ExpandPathFileName(FPath, fileInfo.CookedPathName) then
 
-      // Directories or files beginning with a '.' are invisible
-      fileAttribs:=INVALID_FILE_ATTRIBUTES
+         // invalid pathFileName
+         fileInfo.fileAttribs:=INVALID_FILE_ATTRIBUTES
 
-   else if not StrBeginsWith(pathFileName, FPath) then begin
+      else if Pos('\.', fileInfo.CookedPathName)>0 then
 
-      // request is outside base path
-      outResponse.OutContent:='<h1>Not authorized</h1>';
-      outResponse.OutContentType:=cHTMTL_UTF8_CONTENT_TYPE;
-      Result:=401;
-      Exit;
+         // Directories or files beginning with a '.' are invisible
+         fileInfo.fileAttribs:=INVALID_FILE_ATTRIBUTES
 
-   end else begin
+      else if not StrBeginsWith(fileInfo.CookedPathName, FPath) then begin
 
-      {$WARN SYMBOL_PLATFORM OFF}
-      fileAttribs:=GetFileAttributes(Pointer(pathFileName));
-      if fileAttribs<>INVALID_FILE_ATTRIBUTES then begin
-         if (fileAttribs and faHidden)<>0 then
-            fileAttribs:=INVALID_FILE_ATTRIBUTES
-         else if (fileAttribs and faDirectory)<>0 then begin
-            noTrailingPathDelimiter:=AutoRedirectFolders and (not StrEndsWith(pathFileName, '\'));
-            if not FindDirectoryIndex(pathFileName) then
-               fileAttribs:=INVALID_FILE_ATTRIBUTES
-            else if noTrailingPathDelimiter then begin
-               outResponse.OutCustomHeader:='Location: '+inRequest.InURL+'/';
-               Result:=301;
-               Exit;
+         // request is outside base path
+         fileInfo.fileAttribs:=FILE_ATTRIBUTE_SYSTEM;
+
+      end else begin
+
+         {$WARN SYMBOL_PLATFORM OFF}
+         fileInfo.fileAttribs:=GetFileAttributes(Pointer(fileInfo.CookedPathName));
+         if fileInfo.fileAttribs<>INVALID_FILE_ATTRIBUTES then begin
+            if (fileInfo.fileAttribs and faHidden)<>0 then
+               fileInfo.fileAttribs:=INVALID_FILE_ATTRIBUTES
+            else if (fileInfo.fileAttribs and faDirectory)<>0 then begin
+               noTrailingPathDelimiter:=AutoRedirectFolders and (not StrEndsWith(request.PathInfo, '/'));
+               if not FindDirectoryIndex(fileInfo.CookedPathName) then
+                  fileInfo.fileAttribs:=INVALID_FILE_ATTRIBUTES
+               else if noTrailingPathDelimiter then
+                  fileInfo.fileAttribs:=FILE_ATTRIBUTE_DIRECTORY
+               else fileInfo.FileAttribs:=FILE_ATTRIBUTE_VIRTUAL;
             end;
          end;
+         {$WARN SYMBOL_PLATFORM ON}
+
+         fileInfo.DWScript := StrEndsWith(fileInfo.CookedPathName, '.dws');
+
       end;
-      {$WARN SYMBOL_PLATFORM ON}
 
    end;
 
-   if fileAttribs=INVALID_FILE_ATTRIBUTES then begin
 
-      outResponse.OutContent:='<h1>Not found</h1>';
-      outResponse.OutContentType:=cHTMTL_UTF8_CONTENT_TYPE;
-      Result:=404;
-      Exit;
-
-   end else if StrEndsWith(pathFileName, '.dws') then begin
-
-      request:=TSynopseWebRequest.Create;
-      response:=TSynopseWebResponse.Create;
-      try
-         request.RemoteIP:=inRequest.RemoteIP;
-         request.InURL:=inRequest.InURL;
-         request.InMethod:=inRequest.InMethod;
-         request.InHeaders:=inRequest.InHeaders;
-         request.InContent:=inRequest.InContent;
-         request.InContentType:=inRequest.InContentType;
-         request.Authentication:=inRequest.Authentication;
-         request.AuthenticatedUser:=inRequest.AuthenticatedUser;
-         case inRequest.Security of
-            hrsSSL : request.Security:=Format('SSL, %d bits', [inRequest.SecurityBytes*8]);
-         else
-            request.Security:='';
-         end;
-
-         response.StatusCode:=200;
-         response.ContentType:=cHTMTL_UTF8_CONTENT_TYPE;
-
-         FDWS.HandleDWS(pathFileName, request, response);
-
-         outResponse.OutContent:=response.ContentData;
-         outResponse.OutContentType:=response.ContentType;
-         if response.HasHeaders then
-            outResponse.OutCustomHeader:=outResponse.OutCustomHeader+response.CompiledHeaders;
-
-         Result:=response.StatusCode;
-      finally
-         request.Free;
-         response.Free;
+   case fileInfo.FileAttribs of
+      INVALID_FILE_ATTRIBUTES : begin
+         response.ContentData:='<h1>Not found</h1>';
+         response.StatusCode:=404;
       end;
+      FILE_ATTRIBUTE_SYSTEM : begin
+         response.ContentData:='<h1>Not authorized</h1>';
+         response.StatusCode:=401;
+      end;
+      FILE_ATTRIBUTE_DIRECTORY :
+         Redirect301TrailingPathDelimiter(request, response);
+   else
+      if fileInfo.DWScript then begin
 
-   end else begin
+         FDWS.HandleDWS(fileInfo.CookedPathName, request, response);
 
-      // http.sys will send the specified file from kernel mode
-      outResponse.OutContent:=UTF8Encode(pathFileName);
-      outResponse.OutContentType:=HTTP_RESP_STATICFILE;
-      Result:=200; // THttpApiServer.Execute will return 404 if not found
+      end else begin
 
+         // http.sys will send the specified file from kernel mode
+         // THttpApiServer.Execute will return 404 if not found
+         response.ContentData:=UTF8Encode(fileInfo.CookedPathName);
+         response.ContentType:=HTTP_RESP_STATICFILE;
+
+      end;
    end;
+end;
+
+// Redirect301TrailingPathDelimiter
+//
+procedure THttpSys2WebServer.Redirect301TrailingPathDelimiter(request : TWebRequest; response : TWebResponse);
+begin
+   response.Headers.Add('Location='+request.PathInfo+'/');
+   response.StatusCode:=301;
 end;
 
 // FindDirectoryIndex
@@ -362,6 +361,7 @@ begin
       FDWS.FlushDWSCache;
    if (Pos('\.', fileName)<=0) and (Pos('\index.', fileName)>0) then
       FDirectoryIndex.Flush;
+   Inc(FCacheCounter);
 end;
 
 // LoadAuthenticateOptions

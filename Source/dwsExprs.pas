@@ -130,6 +130,7 @@ type
       private
          FSymbol : TSymbol;                        // pointer to the symbol
          FPosList : TSimpleList<TSymbolPosition>;  // list of positions where symbol is declared and used
+         FSourceFile : TSourceFile; // not nil only if all positions are in that file
 
       protected
          function GetPosition(index : Integer) : TSymbolPosition; inline;
@@ -520,7 +521,7 @@ type
          FOnExecutionStarted : TdwsExecutionEvent;
          FOnExecutionEnded : TdwsExecutionEvent;
 
-         FMsgs : TdwsRuntimeMessageList;
+         FRuntimeMsgs : TdwsRuntimeMessageList;
 
       protected
          procedure ReleaseObjects;
@@ -2232,8 +2233,6 @@ begin
    FProg:=aProgram;
    FProg._AddRef;
 
-   FMsgs:=TdwsRuntimeMessageList.Create;
-
    if aProgram.CompileMsgs.HasErrors then
       FProgramState:=psUndefined
    else FProgramState:=psReadyToRun;
@@ -2258,7 +2257,7 @@ begin
    FProgramInfo.Free;
    FProgInfoPool.Free;
    FResult.Free;
-   FMsgs.Free;
+   FRuntimeMsgs.Free;
    FEnvironment:=nil;
 
    FProg._Release;
@@ -2368,11 +2367,11 @@ begin
 
    except
       on e: EScriptError do begin
-         FMsgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
+         GetMsgs.AddRuntimeError(e.ScriptPos, e.Message, e.ScriptCallStack);
          FProgramState:=psRunningStopped;
       end;
       on e: Exception do begin
-         FMsgs.AddRuntimeError(LastScriptError.ScriptPos, e.Message, LastScriptCallStack);
+         GetMsgs.AddRuntimeError(LastScriptError.ScriptPos, e.Message, LastScriptCallStack);
          FProgramState:=psRunningStopped;
       end;
    end;
@@ -2746,7 +2745,9 @@ end;
 //
 function TdwsProgramExecution.GetMsgs : TdwsRuntimeMessageList;
 begin
-   Result:=FMsgs;
+   if FRuntimeMsgs=nil then
+      FRuntimeMsgs:=TdwsRuntimeMessageList.Create;
+   Result:=FRuntimeMsgs;
 end;
 
 // GetEnvironment
@@ -7611,11 +7612,15 @@ end;
 procedure TdwsSymbolDictionary.RemoveInRange(const startPos, endPos : TScriptPos);
 var
    i : Integer;
+   symPosList : TSymbolPositionList;
 begin
    if startPos.SourceFile<>endPos.SourceFile then Exit;
 
-   for i:=0 to FSymbolList.Count-1 do
-      FSymbolList[i].RemoveInRange(startPos, endPos);
+   for i:=0 to FSymbolList.Count-1 do begin
+      symPosList:=FSymbolList[i];
+      if symPosList.FSourceFile=startPos.SourceFile then
+         FSymbolList[i].RemoveInRange(startPos, endPos);
+   end;
 end;
 
 // EnumerateInRange
@@ -7780,6 +7785,11 @@ var
    symPos : TSymbolPosition;
 begin
    if (scriptPos.Line<=0) or (scriptPos.SourceFile=nil) then Exit;
+
+   if FPosList.Count=0 then
+      FSourceFile:=scriptPos.SourceFile
+   else if FSourceFile<>scriptPos.SourceFile then
+      FSourceFile:=nil;
 
    New(symPos);
    symPos.FScriptPos:=scriptPos;
