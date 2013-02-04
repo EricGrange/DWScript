@@ -46,6 +46,9 @@ const
    cLineTerminator  = #13#10;
 {$ENDIF}
 
+   // following is missing from D2010
+   INVALID_HANDLE_VALUE = DWORD(-1);
+
 procedure SetDecimalSeparator(c : Char);
 function GetDecimalSeparator : Char;
 
