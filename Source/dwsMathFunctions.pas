@@ -195,6 +195,26 @@ type
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
 
+   TInfinityFunc = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+   end;
+
+   TNaNFunc = class(TInternalMagicFloatFunction)
+      procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
+   end;
+
+   TIsNaNFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
+   end;
+
+   TIsInfiniteFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
+   end;
+
+   TIsFiniteFunc = class(TInternalMagicBoolFunction)
+      function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
+   end;
+
    TGcdFunc = class(TInternalMagicIntFunction)
       function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
    end;
@@ -630,6 +650,44 @@ begin
    Result:=PI;
 end;
 
+{ TInfinityFunc }
+
+procedure TInfinityFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+begin
+   Result:=Infinity;
+end;
+
+{ TNaNFunc }
+
+procedure TNaNFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
+begin
+   Result:=NaN;
+end;
+
+{ IsNaNFunc }
+
+function TIsNaNFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
+begin
+   Result:=IsNan(args.AsFloat[0]);
+end;
+
+{ IsInfinite }
+
+function TIsInfiniteFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
+begin
+   Result:=IsInfinite(args.AsFloat[0]);
+end;
+
+{ IsFinite }
+
+function TIsFiniteFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
+var
+   v : Double;
+begin
+   v:=args.AsFloat[0];
+   Result:=not(IsNan(v) or IsInfinite(v));
+end;
+
 { TGcdFunc }
 
 function TGcdFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
@@ -770,6 +828,12 @@ initialization
    RegisterInternalIntFunction(TClampIntFunc, 'ClampInt', ['v', cInteger, 'min', cInteger, 'max', cInteger], [iffStateLess]);
 
    RegisterInternalFloatFunction(TPiFunc, 'Pi', [], [iffStateLess]);
+   RegisterInternalFloatFunction(TInfinityFunc, 'Infinity', [], [iffStateLess]);
+   RegisterInternalFloatFunction(TNaNFunc, 'NaN', [], [iffStateLess]);
+
+   RegisterInternalBoolFunction(TIsNaNFunc, 'IsNaN', ['v', cFloat], [iffStateLess]);
+   RegisterInternalBoolFunction(TIsInfiniteFunc, 'IsInfinite', ['v', cFloat], [iffStateLess]);
+   RegisterInternalBoolFunction(TIsFiniteFunc, 'IsFinite', ['v', cFloat], [iffStateLess]);
 
    RegisterInternalIntFunction(TGcdFunc, 'Gcd', ['a', cInteger, 'b', cInteger], [iffStateLess]);
    RegisterInternalIntFunction(TLcmFunc, 'Lcm', ['a', cInteger, 'b', cInteger], [iffStateLess]);

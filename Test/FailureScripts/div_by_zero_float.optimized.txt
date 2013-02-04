@@ -1,1 +1,0 @@
-Syntax Error: Floating point division by zero [line: 1, column: 12]

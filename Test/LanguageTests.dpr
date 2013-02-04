@@ -43,6 +43,7 @@ uses
 {$R *.res}
 
 begin
+   DirectSet8087CW($133F);
    SetProcessAffinityMask(GetCurrentProcessId, Cardinal(-1));
    SetDecimalSeparator('.');
    ReportMemoryLeaksOnShutdown:=True;

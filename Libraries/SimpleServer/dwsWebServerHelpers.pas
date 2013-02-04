@@ -12,7 +12,7 @@ unit dwsWebServerHelpers;
 interface
 
 uses
-   Windows, Classes, SysUtils,
+   Windows, Classes, SysUtils, Registry,
    dwsUtils;
 
 type
@@ -68,6 +68,24 @@ type
          procedure Flush;
 
          property CacheCounter : Cardinal read FCacheCounter write FCacheCounter;
+   end;
+
+   TMIMETypeInfo = class (TRefCountedObject)
+      MIMEType : RawByteString;
+      constructor Create(const ext : String);
+   end;
+
+   TMIMETypeInfos = TSimpleNameObjectHash<TMIMETypeInfo>;
+
+   TMIMETypeCache = class
+      private
+         FList : TMIMETypeInfos;
+
+      public
+         constructor Create;
+         destructor Destroy; override;
+
+         function MIMEType(const fileName : String) : RawByteString;
    end;
 
 // Decodes an http request URL and splits path & params
@@ -297,6 +315,63 @@ begin
    FHash.Free;
    FHash:=TSimpleNameObjectHash<TFileAccessInfo>.Create;
    FSize:=0;
+end;
+
+// ------------------
+// ------------------ TMIMETypeInfo ------------------
+// ------------------
+
+// Create
+//
+constructor TMIMETypeInfo.Create(const ext : String);
+var
+   reg : TRegistry;
+begin
+   reg:=TRegistry.Create;
+   try
+      reg.RootKey:=HKEY_CLASSES_ROOT;
+      if     reg.OpenKeyReadOnly(ext)
+         and reg.ValueExists('Content Type') then
+         MIMEType:=ScriptStringToRawByteString(reg.ReadString('Content Type'));
+   finally
+      reg.Free;
+   end;
+end;
+
+// ------------------
+// ------------------ TMIMETypeCache ------------------
+// ------------------
+
+// Create
+//
+constructor TMIMETypeCache.Create;
+begin
+   inherited;
+   FList:=TMIMETypeInfos.Create;
+end;
+
+// Destroy
+//
+destructor TMIMETypeCache.Destroy;
+begin
+   inherited;
+   FList.Free;
+end;
+
+// MIMEType
+//
+function TMIMETypeCache.MIMEType(const fileName : String) : RawByteString;
+var
+   ext : String;
+   info : TMIMETypeInfo;
+begin
+   ext:=ExtractFileExt(fileName);
+   info:=FList.Objects[ext];
+   if info=nil then begin
+      info:=TMIMETypeInfo.Create(ext);
+      FList.Objects[ext]:=info;
+   end;
+   Result:=info.MIMEType;
 end;
 
 end.

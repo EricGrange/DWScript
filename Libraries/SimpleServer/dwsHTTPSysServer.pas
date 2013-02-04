@@ -41,8 +41,8 @@ uses
    ActiveX,
    SysUtils,
    Classes,
-   SynWinSock,
-   dwsHTTPSysAPI, dwsUtils, dwsWebEnvironment, dwsHttpSysWebEnv;
+   SynWinSock, Registry,
+   dwsHTTPSysAPI, dwsUtils, dwsWebEnvironment, dwsHttpSysWebEnv, dwsWebServerHelpers;
 
 type
    /// FPC 64 compatibility Integer type
@@ -201,6 +201,7 @@ type
          FMaxBandwidth : Cardinal;
          FMaxConnections : Cardinal;
          FAuthentication : Cardinal;
+         FMimeInfos : TMIMETypeCache;
 
          /// server main loop - don't change directly
          // - will call the Request public virtual method with the appropriate
@@ -211,6 +212,8 @@ type
          constructor CreateClone(From : THttpApi2Server);
 
          procedure SendStaticFile(request : PHTTP_REQUEST_V2; response : PHTTP_RESPONSE_V2);
+         procedure AdjustContentTypeFromFileName(const fileName : String; response : PHTTP_RESPONSE_V2);
+
          procedure SendError(request : PHTTP_REQUEST_V2; response : PHTTP_RESPONSE_V2;
                              statusCode : Cardinal; const errorMsg : String);
          function GetRequestContentBody(request : PHTTP_REQUEST_V2; response : PHTTP_RESPONSE_V2;
@@ -548,6 +551,7 @@ destructor THttpApi2Server.Destroy;
 var
    i : Integer;
 begin
+   FMimeInfos.Free;
    FWebRequest.Free;
    FWebResponse.Free;
 
@@ -603,11 +607,12 @@ var
    dataChunkFile : HTTP_DATA_CHUNK_FILEHANDLE;
    rangeStart, rangeLength : Int64;
    flags, bytesSent : Cardinal;
+   fileName : String;
    contentRange : RawByteString;
    R : PAnsiChar;
 begin
-   fileHandle := FileOpen(UTF8ToUnicodeString(FWebResponse.ContentData),
-                          fmOpenRead or fmShareDenyNone);
+   fileName := UTF8ToUnicodeString(FWebResponse.ContentData);
+   fileHandle := FileOpen(fileName, fmOpenRead or fmShareDenyNone);
    if PtrInt(fileHandle)<0 then begin
       SendError(request, response, 404, SysErrorMessage(GetLastError));
       exit;
@@ -618,7 +623,7 @@ begin
       flags := 0;
       dataChunkFile.ByteRange.StartingOffset.QuadPart := 0;
       Int64(dataChunkFile.ByteRange.Length.QuadPart) := -1; // to eof
-      with request^.Headers.KnownHeaders[reqRange] do
+      with request^.Headers.KnownHeaders[reqRange] do begin
          if     (RawValueLength>6)
             and StrBeginsWithA(pRawValue, 'bytes=')
             and (pRawValue[6] in ['0'..'9']) then begin
@@ -638,12 +643,27 @@ begin
                end; // "bytes=1000-" -> start=1000, len=-1 (to eof)
             end;
          end;
+      end;
+      AdjustContentTypeFromFileName(fileName, response);
       response^.EntityChunkCount := 1;
       response^.pEntityChunks := @dataChunkFile;
       HttpAPI.SendHttpResponse(FReqQueue, request^.RequestId, flags, response^,
                                nil, bytesSent, nil, 0, nil, FLogDataPtr);
    finally
       FileClose(fileHandle);
+   end;
+end;
+
+// AdjustContentTypeFromFileName
+//
+procedure THttpApi2Server.AdjustContentTypeFromFileName(const fileName : String; response : PHTTP_RESPONSE_V2);
+var
+   mimeType : RawByteString;
+begin
+   mimeType:=FMimeInfos.MIMEType(fileName);
+   with response^.Headers.KnownHeaders[reqContentType] do begin
+      pRawValue:=PAnsiChar(mimeType);
+      RawValueLength:=Length(mimeType);
    end;
 end;
 
@@ -958,6 +978,7 @@ begin
 
    FWebRequest:=THttpSysWebRequest.Create;
    FWebResponse:=THttpSysWebResponse.Create;
+   FMimeInfos:=TMIMETypeCache.Create;
 
    // reserve working buffers
    SetLength(headers, 64);

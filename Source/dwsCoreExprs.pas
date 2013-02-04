@@ -368,6 +368,7 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
          function EvalAsTData(exec : TdwsExecution) : TData; overload; inline;
          procedure EvalAsTData(exec : TdwsExecution; var result : TData); overload;
+         procedure EvalToTData(exec : TdwsExecution; var result : TData; offset : Integer);
          function EvalAsVarRecArray(exec : TdwsExecution) : TVarRecArrayContainer;
 
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
@@ -384,9 +385,12 @@ type
 
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
+         function GetBaseType : TTypeSymbol; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TTypedExpr);
+         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos;
+                            BaseExpr: TDataExpr; IndexExpr: TTypedExpr;
+                            arraySymbol : TArraySymbol);
          destructor Destroy; override;
 
          function IsWritable : Boolean; override;
@@ -410,7 +414,7 @@ type
       public
          constructor Create(prog : TdwsProgram; const pos : TScriptPos;
                             baseExpr : TDataExpr; indexExpr : TTypedExpr;
-                            lowBound, highBound : Integer);
+                            arraySymbol : TStaticArraySymbol);
 
          function IsConstant : Boolean; override;
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
@@ -3036,13 +3040,14 @@ end;
 
 // Create
 //
-constructor TArrayExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr; IndexExpr: TTypedExpr);
+constructor TArrayExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
+                              BaseExpr: TDataExpr; IndexExpr: TTypedExpr;
+                              arraySymbol : TArraySymbol);
 begin
-   inherited Create(Prog, Pos, BaseExpr.BaseType.Typ);
+   inherited Create(Prog, Pos, arraySymbol.Typ);
    FBaseExpr := BaseExpr;
    FIndexExpr := IndexExpr;
-   FElementSize := Typ.Size; // Necessary because of arrays of records!
-   FTyp:=FBaseExpr.Typ.Typ;
+   FElementSize := FTyp.Size; // Necessary because of arrays of records!
 end;
 
 // Destroy
@@ -3077,6 +3082,13 @@ begin
    Result:=2;
 end;
 
+// GetBaseType
+//
+function TArrayExpr.GetBaseType : TTypeSymbol;
+begin
+   Result:=FTyp;
+end;
+
 // ------------------
 // ------------------ TStaticArrayExpr ------------------
 // ------------------
@@ -3085,11 +3097,11 @@ end;
 //
 constructor TStaticArrayExpr.Create(prog : TdwsProgram; const pos : TScriptPos;
                                     baseExpr : TDataExpr; indexExpr : TTypedExpr;
-                                    lowBound, highBound : Integer);
+                                    arraySymbol : TStaticArraySymbol);
 begin
-   inherited Create(Prog, Pos, BaseExpr, IndexExpr);
-   FLowBound:=LowBound;
-   FCount:=HighBound-LowBound+1;
+   inherited Create(Prog, Pos, BaseExpr, IndexExpr, arraySymbol);
+   FLowBound:=arraySymbol.LowBound;
+   FCount:=arraySymbol.HighBound-arraySymbol.LowBound+1;
 end;
 
 // IsConstant
@@ -3483,7 +3495,7 @@ end;
 //
 function TArrayConstantExpr.Size : Integer;
 begin
-   Result:=ElementCount;
+   Result:=ElementCount*Typ.Typ.Size;
 end;
 
 // Eval
@@ -3532,14 +3544,26 @@ end;
 // EvalAsTData
 //
 procedure TArrayConstantExpr.EvalAsTData(exec : TdwsExecution; var result : TData);
-var
-   i : Integer;
-   expr : TTypedExpr;
 begin
    SetLength(result, Size);
+   Typ.InitData(result, 0);
+   EvalToTData(exec, result, 0);
+end;
+
+// EvalToTData
+//
+procedure TArrayConstantExpr.EvalToTData(exec : TdwsExecution; var result : TData; offset : Integer);
+var
+   i, p : Integer;
+   expr : TTypedExpr;
+begin
+   p:=offset;
    for i:=0 to FElementExprs.Count-1 do begin
       expr:=TTypedExpr(FElementExprs.List[i]);
-      expr.EvalAsVariant(exec, result[i]);
+      if expr is TArrayConstantExpr then
+         TArrayConstantExpr(expr).EvalToTData(exec, result, p)
+      else expr.EvalAsVariant(exec, result[p]);
+      Inc(p, expr.Typ.Size);
    end;
 end;
 

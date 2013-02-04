@@ -25,7 +25,7 @@ interface
 uses
    Windows, Classes, SysUtils, StrUtils,
    SynCommons, SynWinSock,
-   dwsWebEnvironment, dwsUtils, dwsHTTPSysAPI;
+   dwsWebEnvironment, dwsUtils, dwsHTTPSysAPI, dwsWebServerHelpers;
 
 type
 

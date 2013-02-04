@@ -1,0 +1,14 @@
+NAN
+-INF
+INF
+NAN
+0
+NAN
+True
+False
+False
+True
+False
+False
+False
+True

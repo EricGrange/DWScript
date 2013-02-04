@@ -401,6 +401,8 @@ type
          FOnExecutionStarted : TdwsExecutionEvent;
          FOnExecutionEnded : TdwsExecutionEvent;
 
+         F8087CW : Cardinal;
+
          function Optimize : Boolean;
 
          function CheckPropertyFuncParams(paramsA : TSymbolTable; methSym : TMethodSymbol;
@@ -1340,6 +1342,8 @@ begin
    FOnGetDefaultLocalizer := conf.DoGetLocalizer;
 
    FDataSymbolExprReuse:=TSimpleObjectObjectHash<TDataSymbol,TVarExpr>.Create;
+
+   F8087CW:=DirectSet8087CW($133F);
 end;
 
 // SetupMsgsOptions
@@ -1357,6 +1361,8 @@ end;
 //
 procedure TdwsCompiler.CleanupAfterCompile;
 begin
+   DirectSet8087CW(F8087CW);
+
    FPendingAttributes.Clear;
 
    FDataSymbolExprReuse.CleanValues;
@@ -4386,8 +4392,8 @@ var
    typ : TTypeSymbol;
 begin
    typ:=constSym.Typ;
-   if typ.Typ is TArraySymbol then
-      typ:=typ.Typ;
+///   if typ.Typ is TArraySymbol then
+///      typ:=typ.Typ;
    Result := ReadSymbol(TConstExpr.CreateTyped(FProg, typ, constSym), IsWrite)
 end;
 
@@ -4845,7 +4851,7 @@ begin
 
    errCount:=FMsgs.Count;
 
-   // There is at one index expression
+   // There is at least one index expression
    repeat
       hotPos:=FTok.HotPos;
       indexExpr := ReadExpr;
@@ -4869,19 +4875,19 @@ begin
             arraySymbol:=TStaticArraySymbol(baseType);
             if arraySymbol is TOpenArraySymbol then begin
 
-               newBaseExpr := TOpenArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
+               newBaseExpr := TOpenArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, arraySymbol)
 
             end else begin
 
                if arraySymbol.IndexType.IsOfType(FProg.TypBoolean) then begin
 
                   newBaseExpr:=TStaticArrayBoolExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
-                                                           arraySymbol.LowBound, arraySymbol.HighBound);
+                                                           arraySymbol);
 
                end else begin
 
                   newBaseExpr:=TStaticArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
-                                                       arraySymbol.LowBound, arraySymbol.HighBound);
+                                                       arraySymbol);
                   if indexExpr.IsConstant and (FMsgs.Count=errCount) then begin
                      idx:=indexExpr.EvalAsInteger(FExec);
                      if idx<arraySymbol.LowBound then
@@ -4898,7 +4904,8 @@ begin
             Assert(baseType is TDynamicArraySymbol);
 
             if FTok.Test(ttCOMMA) then
-               newBaseExpr:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr)
+               newBaseExpr:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+                                                     TDynamicArraySymbol(baseType))
             else if FTok.TestDelete(ttARIGHT) then begin
                if FTok.TestDelete(ttASSIGN) then begin
                   hotPos:=FTok.HotPos;
@@ -4908,7 +4915,8 @@ begin
                                        valueExpr.Typ, baseType.Typ);
                   Result:=TDynamicArraySetExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr);
                end else begin
-                  Result:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr);
+                  Result:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+                                                   TDynamicArraySymbol(baseType));
                end;
                Exit;
             end else begin
@@ -11116,16 +11124,17 @@ begin
    if baseType is TStaticArraySymbol then begin
 
       if baseType is TOpenArraySymbol then
-         Result:=TOpenArrayExpr.Create(FProg, scriptPos, baseExpr, indexExpr)
+         Result:=TOpenArrayExpr.Create(FProg, scriptPos, baseExpr, indexExpr,
+                                       TOpenArraySymbol(baseType))
       else begin
          Result:=TStaticArrayExpr.Create(FProg, scriptPos, baseExpr, indexExpr,
-                                         TStaticArraySymbol(baseType).LowBound,
-                                         TStaticArraySymbol(baseType).HighBound);
+                                         TStaticArraySymbol(baseType));
       end;
 
    end else if baseType is TDynamicArraySymbol then begin
 
-      Result:=TDynamicArrayExpr.Create(FProg, scriptPos, baseExpr, indexExpr);
+      Result:=TDynamicArrayExpr.Create(FProg, scriptPos, baseExpr, indexExpr,
+                                       TDynamicArraySymbol(baseType));
 
    end else Result:=nil;
 end;

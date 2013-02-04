@@ -126,6 +126,8 @@ function LoadTextFromFile(const fileName : String) : String;
 function OpenFileForSequentialReadOnly(const fileName : String) : THandle;
 procedure CloseFileHandle(hFile : THandle);
 
+function DirectSet8087CW(newValue : Word) : Word; register;
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -433,6 +435,19 @@ end;
 procedure CloseFileHandle(hFile : THandle);
 begin
    CloseHandle(hFile);
+end;
+
+// DirectSet8087CW
+//
+function DirectSet8087CW(newValue : Word) : Word;
+asm
+   push    eax
+   push    eax
+   fnstcw  [esp]
+   fnclex
+   pop     eax
+   fldcw   [esp]
+   pop     edx
 end;
 
 // ------------------
