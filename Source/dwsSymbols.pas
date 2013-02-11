@@ -562,6 +562,9 @@ type
          function IsOfType(typSym : TTypeSymbol) : Boolean;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; virtual;
          function DistanceTo(typeSym : TTypeSymbol) : Integer; virtual;
+         // doesn't treat aliases of a type as the the same type,
+         // but identical declarations are
+         function SameType(typSym : TTypeSymbol) : Boolean; virtual;
          function HasMetaSymbol : Boolean; virtual;
    end;
 
@@ -1011,6 +1014,7 @@ type
          constructor Create(const name : String; elementType, indexType : TTypeSymbol);
          procedure InitData(const Data: TData; Offset: Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function SameType(typSym : TTypeSymbol) : Boolean; override;
    end;
 
    // array [FLowBound..FHighBound] of FTyp
@@ -1030,6 +1034,7 @@ type
 
          procedure InitData(const Data: TData; Offset: Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function SameType(typSym : TTypeSymbol) : Boolean; override;
          procedure AddElement;
          function IsEmptyArray : Boolean;
 
@@ -1106,6 +1111,7 @@ type
 
          function GetIsStatic : Boolean; virtual;
          function GetIsExternal : Boolean; virtual;
+         function GetIsExternalRooted : Boolean; virtual;
          function GetExternalName : String; virtual;
          function GetIsPartial : Boolean; virtual;
 
@@ -1124,6 +1130,7 @@ type
          function FieldAtOffset(offset : Integer) : TFieldSymbol; virtual;
 
          function AllowVirtualMembers : Boolean; virtual;
+         function AllowOverloads : Boolean; virtual;
          function AllowDefaultProperty : Boolean; virtual; abstract;
 
          function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; virtual;
@@ -1144,6 +1151,7 @@ type
          property IsStatic : Boolean read GetIsStatic;
          property IsPartial : Boolean read GetIsPartial;
          property IsExternal : Boolean read GetIsExternal;
+         property IsExternalRooted : Boolean read GetIsExternalRooted;
          property ExternalName : String read GetExternalName;
    end;
 
@@ -1361,6 +1369,7 @@ type
          constructor Create(const name : String; typ : TClassSymbol);
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         function SameType(typSym : TTypeSymbol) : Boolean; override;
          function TypClassSymbol : TClassSymbol; inline;
    end;
 
@@ -1379,7 +1388,9 @@ type
    TObjectDestroyEvent = procedure (ExternalObject: TObject) of object;
 
    TClassSymbolFlag = (csfAbstract, csfExplicitAbstract, csfSealed,
-                       csfStatic, csfExternal, csfPartial, csfNoVirtualMembers);
+                       csfStatic, csfExternal, csfPartial,
+                       csfNoVirtualMembers, csfNoOverloads,
+                       csfExternalRooted);
    TClassSymbolFlags = set of TClassSymbolFlag;
 
    // type X = class ... end;
@@ -1403,6 +1414,7 @@ type
          procedure SetIsStatic(const val : Boolean); inline;
          function GetIsExternal : Boolean; override;
          procedure SetIsExternal(const val : Boolean); inline;
+         function GetIsExternalRooted : Boolean; override;
          function GetIsPartial : Boolean; override;
 
          function AllocateVMTindex : Integer;
@@ -1427,6 +1439,7 @@ type
          function  ImplementsInterface(intfSym : TInterfaceSymbol) : Boolean;
          procedure SetIsPartial; inline;
          procedure SetNoVirtualMembers; inline;
+         procedure SetNoOverloads; inline;
 
          function  FieldAtOffset(offset : Integer) : TFieldSymbol; override;
          procedure InheritFrom(ancestorClassSym : TClassSymbol);
@@ -1443,6 +1456,7 @@ type
 
          function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; override;
          function AllowVirtualMembers : Boolean; override;
+         function AllowOverloads : Boolean; override;
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
          function CreateAnonymousMethod(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
                                         isClassMethod : Boolean) : TMethodSymbol; override;
@@ -2183,6 +2197,13 @@ begin
    Result:=False;
 end;
 
+// AllowOverloads
+//
+function TCompositeTypeSymbol.AllowOverloads : Boolean;
+begin
+   Result:=True;
+end;
+
 // CreateMembersTable
 //
 function TCompositeTypeSymbol.CreateMembersTable : TMembersSymbolTable;
@@ -2203,6 +2224,13 @@ end;
 function TCompositeTypeSymbol.GetIsExternal : Boolean;
 begin
    Result:=False;
+end;
+
+// GetIsExternalRooted
+//
+function TCompositeTypeSymbol.GetIsExternalRooted : Boolean;
+begin
+   Result:=IsExternal;
 end;
 
 // GetExternalName
@@ -4093,8 +4121,15 @@ begin
 
    IsStatic:=IsStatic or ancestorClassSym.IsStatic;
 
+   if [csfExternalRooted, csfExternal]*ancestorClassSym.Flags<>[] then
+      Include(FFlags, csfExternalRooted);
+
    if csfNoVirtualMembers in ancestorClassSym.FFlags then
       SetNoVirtualMembers;
+   if    (csfNoOverloads in ancestorClassSym.FFlags)
+      or (        (csfExternalRooted in FFlags)
+          and not (csfExternal in FFlags)) then
+      SetNoOverloads;
 end;
 
 // IsCompatible
@@ -4228,6 +4263,13 @@ begin
    else Exclude(FFlags, csfExternal);
 end;
 
+// GetIsExternalRooted
+//
+function TClassSymbol.GetIsExternalRooted : Boolean;
+begin
+   Result:=IsExternal or (csfExternalRooted in FFlags);
+end;
+
 // GetIsPartial
 //
 function TClassSymbol.GetIsPartial : Boolean;
@@ -4247,6 +4289,13 @@ end;
 procedure TClassSymbol.SetNoVirtualMembers;
 begin
    Include(FFlags, csfNoVirtualMembers);
+end;
+
+// SetNoOverloads
+//
+procedure TClassSymbol.SetNoOverloads;
+begin
+   Include(FFlags, csfNoOverloads);
 end;
 
 // AllocateVMTindex
@@ -4336,6 +4385,13 @@ begin
    Result:=not (csfNoVirtualMembers in FFlags);
 end;
 
+// AllowOverloads
+//
+function TClassSymbol.AllowOverloads : Boolean;
+begin
+   Result:=not (csfNoOverloads in FFlags);
+end;
+
 // CreateSelfParameter
 //
 function TClassSymbol.CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol;
@@ -4414,6 +4470,15 @@ begin
   typSym := typSym.BaseType;
   Result :=    (typSym is TNilSymbol)
             or ((typSym is TClassOfSymbol) and Typ.IsCompatible(typSym.Typ));
+end;
+
+// SameType
+//
+function TClassOfSymbol.SameType(typSym : TTypeSymbol) : Boolean;
+begin
+   Result :=     (typSym<>nil)
+             and (typSym.ClassType=TClassOfSymbol)
+             and (Typ.SameType(typSym.Typ));
 end;
 
 // DoIsOfType
@@ -4706,7 +4771,7 @@ begin
    Result:=    (   (ClassType=other.ClassType)
                 or (    (ClassType=TParamSymbol)
                     and (other.ClassType=TParamSymbolWithDefaultValue)))
-           and (Typ=other.Typ)
+           and (Typ.SameType(other.Typ))
            and UnicodeSameText(Name, other.Name);
 end;
 
@@ -5603,6 +5668,15 @@ begin
                 and TStaticArraySymbol(typSym).IsEmptyArray));
 end;
 
+// SameType
+//
+function TDynamicArraySymbol.SameType(typSym : TTypeSymbol) : Boolean;
+begin
+   Result:=    (typSym<>nil)
+           and (typSym.ClassType=TDynamicArraySymbol)
+           and Typ.SameType(typSym.Typ);
+end;
+
 // ------------------
 // ------------------ TStaticArraySymbol ------------------
 // ------------------
@@ -5636,6 +5710,15 @@ begin
   Result :=     (typSym is TStaticArraySymbol)
             and (ElementCount = TStaticArraySymbol(typSym).ElementCount)
             and Typ.IsCompatible(typSym.Typ);
+end;
+
+// SameType
+//
+function TStaticArraySymbol.SameType(typSym : TTypeSymbol) : Boolean;
+begin
+   Result:=    (typSym<>nil)
+           and (typSym.ClassType=ClassType)
+           and (Typ.SameType(typSym.Typ));
 end;
 
 // DoIsOfType
@@ -5941,6 +6024,13 @@ begin
    else if IsCompatible(typeSym) then
       Result:=2
    else Result:=3;
+end;
+
+// SameType
+//
+function TTypeSymbol.SameType(typSym : TTypeSymbol) : Boolean;
+begin
+   Result:=(Self=typSym);
 end;
 
 // HasMetaSymbol

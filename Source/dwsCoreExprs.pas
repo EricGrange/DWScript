@@ -229,6 +229,9 @@ type
          class function CreateIntegerValue(prog : TdwsProgram; const value : Int64) : TConstExpr; overload; static;
          class function CreateIntegerValue(prog : TdwsProgram; typ : TTypeSymbol; const value : Int64) : TConstExpr; overload; static;
 
+         class function CreateFloatValue(prog : TdwsProgram; const value : Int64) : TConstExpr; overload; static;
+         class function CreateFloatValue(prog : TdwsProgram; const value : Double) : TConstExpr; overload; static;
+
          class function CreateBooleanValue(prog : TdwsProgram; const value : Boolean) : TConstExpr; overload; static;
 
          class function CreateDynamicArrayValue(prog : TdwsProgram; typ : TTypeSymbol) : TConstExpr; overload; static;
@@ -271,7 +274,7 @@ type
 
    // TConstFloatExpr
    //
-   TConstFloatExpr = class(TUnifiedConstExpr)
+   TConstFloatExpr = class sealed (TUnifiedConstExpr)
       private
          FValue : Double;
       public
@@ -1151,6 +1154,14 @@ type
                                          toTyp : TTypeSymbol; expr : TTypedExpr;
                                          reportError : Boolean) : TTypedExpr; static;
          function Eval(exec : TdwsExecution) : Variant; override;
+   end;
+
+   // Just wraps with a typ for an invalid conversion expr
+   // this is used only to keep compiling, the resulting program is not executable
+   TConvInvalidExpr = class sealed (TConvExpr)
+      public
+         constructor Create(prog : TdwsProgram; expr : TTypedExpr; toTyp : TTypeSymbol); reintroduce;
+         function IsConstant : Boolean; override;
    end;
 
    // Float(x)
@@ -2747,7 +2758,7 @@ end;
 //
 class function TConstExpr.CreateIntegerValue(prog : TdwsProgram; const value : Int64) : TConstExpr;
 begin
-   Result:=TConstIntExpr.CreateUnified(prog, Prog.TypInteger, value);
+   Result:=TConstIntExpr.CreateUnified(prog, prog.TypInteger, value);
 end;
 
 // CreateIntegerValue
@@ -2755,6 +2766,20 @@ end;
 class function TConstExpr.CreateIntegerValue(prog : TdwsProgram; typ : TTypeSymbol; const value : Int64) : TConstExpr;
 begin
    Result:=TConstIntExpr.CreateUnified(prog, typ, value);
+end;
+
+// CreateFloatValue
+//
+class function TConstExpr.CreateFloatValue(prog : TdwsProgram; const value : Int64) : TConstExpr;
+begin
+   Result:=TConstFloatExpr.CreateUnified(prog, prog.TypFloat, value);
+end;
+
+// CreateFloatValue
+//
+class function TConstExpr.CreateFloatValue(prog : TdwsProgram; const value : Double) : TConstExpr;
+begin
+   Result:=TConstFloatExpr.CreateUnified(prog, prog.TypFloat, value);
 end;
 
 // CreateBooleanValue
@@ -4482,6 +4507,25 @@ end;
 function TConvExpr.Eval(exec : TdwsExecution) : Variant;
 begin
    Assert(False);
+end;
+
+// ------------------
+// ------------------ TConvInvalidExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TConvInvalidExpr.Create(prog : TdwsProgram; expr : TTypedExpr; toTyp : TTypeSymbol);
+begin
+   inherited Create(prog, expr);
+   Typ:=toTyp;
+end;
+
+// IsConstant
+//
+function TConvInvalidExpr.IsConstant : Boolean;
+begin
+   Result:=False;
 end;
 
 // ------------------

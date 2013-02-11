@@ -402,6 +402,7 @@ type
          FOnExecutionEnded : TdwsExecutionEvent;
 
          F8087CW : Cardinal;
+         FCompilerAbort : Boolean;
 
          function Optimize : Boolean;
 
@@ -673,6 +674,8 @@ type
          procedure IncompatibleTypes(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
          procedure IncompatibleTypesWarn(const scriptPos : TScriptPos; const fmt : String; typ1, typ2 : TTypeSymbol);
 
+         function WrapWithImplicitConversion(expr : TTypedExpr; toTyp : TTypeSymbol) : TTypedExpr;
+
          function CreateProgram(const systemTable : ISystemSymbolTable;
                                 resultType : TdwsResultType;
                                 const stackParams : TStackParameters) : TdwsMainProgram;
@@ -718,6 +721,8 @@ type
 
          function Compile(const aCodeText : String; aConf : TdwsConfiguration) : IdwsProgram;
          procedure RecompileInContext(const context : IdwsProgram; const aCodeText : String; aConf : TdwsConfiguration);
+
+         procedure AbortCompilation;
 
          class function Evaluate(exec : IdwsProgramExecution; const anExpression : String;
                               options : TdwsEvaluateOptions = []) : IdwsEvaluateExpr;
@@ -1313,10 +1318,37 @@ begin
    FMsgs.AddCompilerWarningFmt(scriptPos, fmt, [typ1.Caption, typ2.Caption]);
 end;
 
+// WrapWithImplicitConversion
+//
+function TdwsCompiler.WrapWithImplicitConversion(expr : TTypedExpr; toTyp : TTypeSymbol) : TTypedExpr;
+var
+   exprTyp : TTypeSymbol;
+begin
+   if expr<>nil then
+      exprTyp:=expr.Typ
+   else exprTyp:=nil;
+
+   if exprTyp.IsOfType(FProg.TypInteger) and toTyp.IsOfType(FProg.TypFloat) then begin
+
+      if expr.ClassType=TConstIntExpr then begin
+         Result:=TConstExpr.CreateFloatValue(FProg, TConstIntExpr(expr).Value);
+         expr.Free;
+      end else Result:=TConvFloatExpr.Create(FProg, expr);
+
+   end else begin
+      // error & keep compiling
+      IncompatibleTypes(FTok.HotPos, CPE_AssignIncompatibleTypes, exprTyp, toTyp);
+      Result:=TConvInvalidExpr.Create(FProg, expr, toTyp);
+      Exit;
+   end;
+end;
+
 // SetupCompileOptions
 //
 procedure TdwsCompiler.SetupCompileOptions(conf : TdwsConfiguration);
 begin
+   FCompilerAbort := False;
+
    FFilter := conf.Filter;
    FConnectors := conf.Connectors;
    FOptions := conf.CompilerOptions;
@@ -1784,6 +1816,13 @@ begin
    CleanupAfterCompile;
 end;
 
+// AbortCompilation
+//
+procedure TdwsCompiler.AbortCompilation;
+begin
+   FCompilerAbort:=True;
+end;
+
 // Optimize
 //
 function TdwsCompiler.Optimize : Boolean;
@@ -1810,6 +1849,8 @@ begin
             reach:=rsUnReachableWarned;
             FMsgs.AddCompilerWarning(FTok.HotPos, CPW_UnReachableCode);
          end;
+         if FCompilerAbort then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_CompilationAborted);
 
          stmt:=ReadRootStatement(action);
          if Assigned(stmt) then begin
@@ -2502,7 +2543,7 @@ begin
          try
             if Assigned(typ) then begin
                if not typ.IsCompatible(expr.typ) then
-                  IncompatibleTypes(FTok.HotPos, CPE_AssignIncompatibleTypes, expr.typ, typ);
+                  expr:=WrapWithImplicitConversion(expr, typ);
             end else begin
                typ:=expr.typ;
                detachTyp:=(typ.Name='');
@@ -2510,7 +2551,8 @@ begin
 
             if (expr=nil) or (not expr.IsConstant) then begin
 
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+               if expr.ClassType<>TConvInvalidExpr then
+                  FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
                // keep compiling
                constSym:=factory.CreateConstSymbol(name, constPos, typ, nil, 0);
 
@@ -3042,6 +3084,8 @@ begin
       // handle method overloading
       if FTok.TestDelete(ttOVERLOAD) then begin
 
+         if not ownerSym.AllowOverloads then
+            FMsgs.AddCompilerError(hotPos, CPE_OverloadNotAllowed);
          if MethHasConflictingOverload(funcResult) then
             FMsgs.AddCompilerErrorFmt(hotPos, CPE_MatchingOverload, [name]);
 
@@ -3789,12 +3833,15 @@ begin
       end;
 
    except
+      on e: exception do begin
+         Assert(Assigned(e));
       // Remove any symbols in the expression's table. Table will be freed.
       if coSymbolDictionary in FOptions then
          for sym in blockExpr.Table do
             FSymbolDictionary.Remove(sym);
       blockExpr.Free;
       raise;
+      end;
    end;
 end;
 
@@ -8127,7 +8174,7 @@ begin
          try
             if Assigned(typ) then begin
                if not typ.IsCompatible(expr.typ) then
-                  IncompatibleTypes(FTok.HotPos, CPE_AssignIncompatibleTypes, expr.typ, typ);
+                  expr:=WrapWithImplicitConversion(expr, typ);
             end else begin
                typ:=expr.typ;
                detachTyp:=(typ.Name='');
@@ -8756,6 +8803,7 @@ begin
                opExpr:=CreateTypedOperatorExpr(tt, Result, right);
                if opExpr=nil then begin
                   if     ((tt=ttEQ) or (tt=ttNOTEQ))
+                     and (rightTyp<>nil)
                      and (
                              (Result.Typ is TClassSymbol)
                           or (Result.Typ is TInterfaceSymbol)
@@ -9674,13 +9722,9 @@ begin
                            defaultExpr.Free;
                            defaultExpr:=nil;
                         end else if not Typ.IsCompatible(defaultExpr.Typ) then begin
-                           if Typ.IsOfType(FProg.TypFloat) and defaultExpr.Typ.IsOfType(FProg.TypInteger) then
-                              defaultExpr:=TConvFloatExpr.Create(FProg, defaultExpr)
-                           else begin
-                              IncompatibleTypes(FTok.HotPos, CPE_IncompatibleTypes, Typ, defaultExpr.Typ);
-                              defaultExpr.Free;
-                              defaultExpr:=nil;
-                           end;
+                           defaultExpr:=WrapWithImplicitConversion(defaultExpr, Typ);
+                           if defaultExpr.ClassType=TConvInvalidExpr then
+                              FreeAndNil(defaultExpr);
                         end;
                      end else if onlyDefaultParamsNow then begin
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_DefaultValueRequired);

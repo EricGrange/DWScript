@@ -49,7 +49,7 @@ type
       procedure AddUnits(list : TIdwsUnitList);
    end;
 
-   TEmptyFunc = class(TInterfacedSelfObject, ICallable)
+   TEmptyFunc = class sealed (TInterfacedSelfObject, ICallable)
       public
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol);
          procedure InitSymbol(Symbol: TSymbol);

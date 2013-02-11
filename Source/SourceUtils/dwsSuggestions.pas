@@ -422,8 +422,11 @@ begin
    if FDynArrayHelpers=nil then begin
       p:=FProg.ProgramObject;
       FDynArrayHelpers:=TSystemSymbolTable.Create;
+      FDynArrayHelpers.AddSymbol(CreateHelper('Count', p.TypInteger, []));
       FDynArrayHelpers.AddSymbol(CreateHelper('Add', nil, ['item', dyn.Typ]));
       FDynArrayHelpers.AddSymbol(CreateHelper('Push', nil, ['item', dyn.Typ]));
+      FDynArrayHelpers.AddSymbol(CreateHelper('Pop', dyn.Typ, []));
+      FDynArrayHelpers.AddSymbol(CreateHelper('Peek', dyn.Typ, []));
       FDynArrayHelpers.AddSymbol(CreateHelper('Delete', nil, ['index', dyn.Typ, 'count', p.TypInteger]));
       FDynArrayHelpers.AddSymbol(CreateHelper('IndexOf', p.TypInteger, ['item', dyn.Typ, 'fromIndex', p.TypInteger]));
       FDynArrayHelpers.AddSymbol(CreateHelper('Insert', nil, ['index', p.TypInteger, 'item', dyn.Typ]));

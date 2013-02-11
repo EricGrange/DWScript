@@ -1,0 +1,3 @@
+Syntax Error: Expression expected [line: 4, column: 26]
+Syntax Error: Invalid Operands [line: 3, column: 6]
+Syntax Error: THEN expected [line: 4, column: 26]

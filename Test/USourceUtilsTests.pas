@@ -326,20 +326,23 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
-   CheckTrue(sugg.Count=13, 'd.');
+   CheckTrue(sugg.Count=16, 'd.');
    CheckEquals('Add', sugg.Code[0], 'd. 0');
    CheckEquals('Clear', sugg.Code[1], 'd. 1');
    CheckEquals('Copy', sugg.Code[2], 'd. 2');
-   CheckEquals('Delete', sugg.Code[3], 'd. 3');
-   CheckEquals('High', sugg.Code[4], 'd. 4');
-   CheckEquals('IndexOf', sugg.Code[5], 'd. 5');
-   CheckEquals('Insert', sugg.Code[6], 'd. 6');
-   CheckEquals('Length', sugg.Code[7], 'd. 7');
-   CheckEquals('Low', sugg.Code[8], 'd. 8');
-   CheckEquals('Push', sugg.Code[9], 'd. 9');
-   CheckEquals('Reverse', sugg.Code[10], 'd. 10');
-   CheckEquals('SetLength', sugg.Code[11], 'd. 11');
-   CheckEquals('Swap', sugg.Code[12], 'd. 12');
+   CheckEquals('Count', sugg.Code[3], 'd. 3');
+   CheckEquals('Delete', sugg.Code[4], 'd. 4');
+   CheckEquals('High', sugg.Code[5], 'd. 5');
+   CheckEquals('IndexOf', sugg.Code[6], 'd. 6');
+   CheckEquals('Insert', sugg.Code[7], 'd. 7');
+   CheckEquals('Length', sugg.Code[8], 'd. 8');
+   CheckEquals('Low', sugg.Code[9], 'd. 9');
+   CheckEquals('Peek', sugg.Code[10], 'd. 10');
+   CheckEquals('Pop', sugg.Code[11], 'd. 11');
+   CheckEquals('Push', sugg.Code[12], 'd. 12');
+   CheckEquals('Reverse', sugg.Code[13], 'd. 13');
+   CheckEquals('SetLength', sugg.Code[14], 'd. 14');
+   CheckEquals('Swap', sugg.Code[15], 'd. 15');
 end;
 
 // HelperSuggestTest

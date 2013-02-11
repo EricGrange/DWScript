@@ -128,6 +128,8 @@ type
          function Compile(const Text: String): IdwsProgram; virtual;
          procedure RecompileInContext(const prog : IdwsProgram; const text : String); virtual;
 
+         procedure AbortCompilation;
+
          procedure Lock;
          procedure UnLock;
 
@@ -1414,6 +1416,13 @@ begin
    finally
       UnLock;
    end;
+end;
+
+// AbortCompilation
+//
+procedure TDelphiWebScript.AbortCompilation;
+begin
+   FCompiler.AbortCompilation;
 end;
 
 // AddUnit

@@ -297,6 +297,7 @@ const
   CPE_NoMatchingOverloadDeclaration = 'There is no overloaded version of "%s" declared with these arguments';
   CPE_NoMatchingOverloadForCall = 'There is no overloaded version of "%s" that can be called with these arguments';
   CPE_MatchingOverload = 'Overload of "%s" will be ambiguous with a previously declared version';
+  CPE_OverloadNotAllowed = 'Overload not allowed';
   CPE_ClassMethodExpected = 'Class method expected';
   CPE_ClassMemberExpected = 'Class member expected';
   CPE_RecordTypeExpected = 'Record type expected';
@@ -362,6 +363,8 @@ const
   CPE_ConnectorInvalidSpecifier = 'Connector "%s" specialization to "%s" failed';
 
   // Others
+  CPE_CompilationAborted = 'Compilation aborted';
+
   CPE_ConstantExpressionExpected = 'Constant expression expected';
   CPE_IntegerExpressionExpected = 'Integer expression expected';
   CPE_InvalidConstType = 'Invalid const type "%s"';

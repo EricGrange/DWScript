@@ -408,10 +408,12 @@ begin
       n:=GetFileSize(hFile, nil);
       if n=INVALID_FILE_SIZE then
          RaiseLastOSError;
-      SetLength(buf, n);
-      if not ReadFile(hFile, buf[0], n, nRead, nil) then
-         RaiseLastOSError;
-      Result:=LoadTextFromBuffer(buf);
+      if n>0 then begin
+         SetLength(buf, n);
+         if not ReadFile(hFile, buf[0], n, nRead, nil) then
+            RaiseLastOSError;
+         Result:=LoadTextFromBuffer(buf);
+      end else Result:='';
    finally
       FileClose(hFile);
    end;
