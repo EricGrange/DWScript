@@ -124,11 +124,9 @@ type
          procedure AppendStringValue_BaseRelative(destAddr : Integer; const value : String);
 
          // D2010 compiler crashes when inlining those
-         {$IF CompilerVersion<22.0} {$INLINE OFF} {$IFEND}
-         procedure PushBp(Level, Bp: Integer); inline;
-         function  GetSavedBp(Level: Integer): Integer; inline;
-         procedure PopBp(Level : Integer); inline;
-         {$IF CompilerVersion<22.0} {$INLINE ON} {$IFEND}
+         procedure PushBp(Level, Bp: Integer); {$IF CompilerVersion>21.0} inline; {$IFEND}
+         function  GetSavedBp(Level: Integer): Integer; {$IF CompilerVersion>21.0} inline; {$IFEND}
+         procedure PopBp(Level : Integer); {$IF CompilerVersion>21.0} inline; {$IFEND}
 
          procedure FixBaseStack(newSize : Integer);
 
