@@ -4380,7 +4380,7 @@ begin
       namePos:=FTok.HotPos;
       operandExpr:=ReadExpr(expecting);
       try
-         if baseType.IsExternal then begin
+         if baseType.IsExternalRooted then begin
             convExpr:=TConvExternalExpr.Create(FProg, operandExpr);
             convExpr.Typ:=baseType;
          end else begin
@@ -6044,7 +6044,9 @@ begin
 
                if (funcExprParamType is TClassSymbol) or (funcExprParamType is TInterfaceSymbol) then begin
 
-                  Inc(matchDistance, (matchParamType as TStructuredTypeSymbol).NthParentOf(TStructuredTypeSymbol(funcExprParamType)));
+                  if matchParamType is TStructuredTypeSymbol then
+                     Inc(matchDistance, (matchParamType as TStructuredTypeSymbol).NthParentOf(TStructuredTypeSymbol(funcExprParamType)))
+                  else Inc(matchDistance, 256);
 
                end else begin
 

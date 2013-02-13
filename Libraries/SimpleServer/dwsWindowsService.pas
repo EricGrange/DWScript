@@ -198,8 +198,8 @@ end;
 //
 function TdwsWindowsService.LaunchedBySCM : Boolean;
 var
-	scHandle, svInfo : Integer;
-	servStat : TServiceStatus;
+   scHandle, svInfo : Integer;
+   servStat : TServiceStatus;
 begin
    Result:=False;
    scHandle:=OpenSCManager(nil, nil, GENERIC_READ);

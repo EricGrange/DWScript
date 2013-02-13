@@ -93,17 +93,17 @@ function ToBase32(value : UInt64) : String;
 const
    cBase32 : String = 'ABCDEFGHIJKLMNOPQRTSUVWXYZ234567'; //  RFC 4648
 var
-	i, n : Integer;
+   i, n : Integer;
    buf : array [0..(64 div 5)+1] of Char;
 begin
    Assert(Length(cBase32)=32);
    n:=0;
-	repeat
-		i:=(value and 31);
-		value:=(value shr 5);
-   	buf[n]:=cBase32[i+1];
+   repeat
+      i:=(value and 31);
+      value:=(value shr 5);
+      buf[n]:=cBase32[i+1];
       Inc(n);
-	until value=0;
+   until value=0;
    SetString(Result, buf, n);
 end;
 

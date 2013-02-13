@@ -5718,7 +5718,9 @@ function TStaticArraySymbol.SameType(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=    (typSym<>nil)
            and (typSym.ClassType=ClassType)
-           and (Typ.SameType(typSym.Typ));
+           and (Typ.SameType(typSym.Typ))
+           and (LowBound=TStaticArraySymbol(typSym).LowBound)
+           and (HighBound=TStaticArraySymbol(typSym).HighBound);
 end;
 
 // DoIsOfType

@@ -40,23 +40,23 @@ type
    TdwsFileChangedEvent = procedure (sender : TdwsFileNotifier; const fileName : String;
                                      changeAction : TFileNotificationAction) of object;
 
-	// TdwsDirectoryNotifier
-	//
+   // TdwsDirectoryNotifier
+   //
    TdwsDirectoryNotifier = class (TThread)
-	   private
-	      { Private Declarations }
+      private
+         { Private Declarations }
          FDirectory : String;
          FOnDirectoryChanged : TdwsDirectoryChangedEvent;
          FMode : TdwsDirectoryNotifierMode;
          FNotifyHandle : array [0..1] of THandle;
          FLastChange : TDateTime;
 
-	   protected
-	      { Protected Declarations }
+      protected
+         { Protected Declarations }
          procedure Shutdown;
 
-	   public
-	      { Public Declarations }
+      public
+         { Public Declarations }
          constructor Create(const aDirectory : String; aMode : TdwsDirectoryNotifierMode);
          destructor Destroy; override;
 
@@ -69,11 +69,11 @@ type
          property OnDirectoryChanged : TdwsDirectoryChangedEvent read FOnDirectoryChanged write FOnDirectoryChanged;
    end;
 
-	// TdwsFileNotifier
-	//
+   // TdwsFileNotifier
+   //
    TdwsFileNotifier = class (TThread)
-	   private
-	      { Private Declarations }
+      private
+         { Private Declarations }
          FDirectory : String;
          FOnFileChanged : TdwsFileChangedEvent;
          FMode : TdwsDirectoryNotifierMode;
@@ -86,12 +86,12 @@ type
          FCompletionPort : THandle;
          FLastChange : TDateTime;
 
-	   protected
-	      { Protected Declarations }
+      protected
+         { Protected Declarations }
          procedure Shutdown;
 
-	   public
-	      { Public Declarations }
+      public
+         { Public Declarations }
          constructor Create(const aDirectory : String; aMode : TdwsDirectoryNotifierMode);
          destructor Destroy; override;
 
@@ -129,7 +129,7 @@ type
 //
 constructor TdwsDirectoryNotifier.Create(const aDirectory : String; aMode : TdwsDirectoryNotifierMode);
 begin
-	inherited Create(False);
+   inherited Create(False);
    NameThreadForDebugging('DirectoryNotifier');
    FDirectory:=aDirectory;
    FMode:=aMode;
@@ -140,7 +140,7 @@ end;
 destructor TdwsDirectoryNotifier.Destroy;
 begin
    Shutdown;
-	inherited Destroy;
+   inherited Destroy;
 end;
 
 // Shutdown
