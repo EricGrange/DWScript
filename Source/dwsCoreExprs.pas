@@ -1100,6 +1100,7 @@ type
    end;
    TBoolAndExpr = class(TBooleanBinOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TVariantAndExpr = class(TVariantBinOpExpr)
      function Eval(exec : TdwsExecution) : Variant; override;
@@ -1111,6 +1112,7 @@ type
    end;
    TBoolOrExpr = class(TBooleanBinOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TVariantOrExpr = class(TVariantBinOpExpr)
      function Eval(exec : TdwsExecution) : Variant; override;
@@ -5228,6 +5230,32 @@ begin
    Result := Left.EvalAsBoolean(exec) and Right.EvalAsBoolean(exec);
 end;
 
+// Optimize
+//
+function TBoolAndExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   Result:=inherited Optimize(prog, exec);
+   if Result.ClassType=TBoolAndExpr then begin
+      if Left.IsConstant then begin
+         if Left.EvalAsBoolean(exec) then begin
+            Result:=Right;
+            Right:=nil;
+         end else begin
+            Result:=TUnifiedConstExpr.CreateBooleanValue(prog, False)
+         end;
+         Free;
+      end else if Right.IsConstant then begin
+         if Right.EvalAsBoolean(exec) then begin
+            Result:=Left;
+            Left:=nil;
+         end else begin
+            Result:=TUnifiedConstExpr.CreateBooleanValue(prog, False)
+         end;
+         Free;
+      end;
+   end;
+end;
+
 { TVariantAndExpr }
 
 function TVariantAndExpr.Eval(exec : TdwsExecution) : Variant;
@@ -5247,6 +5275,32 @@ end;
 function TBoolOrExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
    Result := Left.EvalAsBoolean(exec) or Right.EvalAsBoolean(exec);
+end;
+
+// Optimize
+//
+function TBoolOrExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   Result:=inherited Optimize(prog, exec);
+   if Result.ClassType=TBoolOrExpr then begin
+      if Left.IsConstant then begin
+         if Left.EvalAsBoolean(exec) then begin
+            Result:=TUnifiedConstExpr.CreateBooleanValue(prog, True)
+         end else begin
+            Result:=Right;
+            Right:=nil;
+         end;
+         Free;
+      end else if Right.IsConstant then begin
+         if Right.EvalAsBoolean(exec) then begin
+            Result:=TUnifiedConstExpr.CreateBooleanValue(prog, True)
+         end else begin
+            Result:=Left;
+            Left:=nil;
+         end;
+         Free;
+      end;
+   end;
 end;
 
 { TVariantOrExpr }

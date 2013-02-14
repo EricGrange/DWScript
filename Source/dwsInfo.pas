@@ -186,7 +186,7 @@ type
       function GetMember(const s: String): IInfo; override;
    end;
 
-   TInfoFunc = class(TInfo)
+   TInfoFunc = class(TInfoData)
       protected
          FClassSym: TClassSymbol;
          FExternalObject: TObject;
