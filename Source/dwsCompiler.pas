@@ -2762,6 +2762,9 @@ begin
       compositeSym:=TCompositeTypeSymbol(sym);
       if compositeSym.IsPartial or (compositeSym.UnitSymbol=CurrentUnitSymbol) then begin
 
+         if FProg.Level<>0 then
+            FMsgs.AddCompilerError(hotPos, CPE_UnexpectedMethodImplementation);
+
          // Store reference to class in dictionary
          RecordSymbolUse(sym, funcPos, [suReference]);
          Result:=ReadMethodImpl(compositeSym, funcKind, pdoClassMethod in declOptions);

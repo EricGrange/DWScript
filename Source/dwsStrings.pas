@@ -173,6 +173,7 @@ const
   CPE_StaticMethodExpected = 'Class method or constructor expected';
   CPE_UnexpectedConstructor = 'Constructor invoked on instance outside of constructor';
   CPE_UnexpectedDestructor = 'Destructor can only be invoked on instance';
+  CPE_UnexpectedMethodImplementation = 'Unexpected method implementation';
   CPE_WriteOnlyProperty = 'Can''t read a write only property';
   CPE_ReadOnlyProperty = 'Can''t set a value for a read-only property';
   CPE_ObjectReferenceExpected = 'Object reference needed to read/write an object field';
