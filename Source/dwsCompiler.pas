@@ -375,6 +375,7 @@ type
          FUnitsFromStack : TSimpleStack<String>;
          FCurrentSourceUnit : TSourceUnit;
          FCurrentUnitSymbol : TUnitMainSymbol;
+         FCurrentStructure : TCompositeTypeSymbol;
          FAnyFuncSymbol : TAnyFuncSymbol;
          FAnyTypeSymbol : TAnyTypeSymbol;
          FStandardDataSymbolFactory : IdwsDataSymbolFactory;
@@ -8165,6 +8166,7 @@ var
    exprDyn : TTypedExpr;
    detachTyp : Boolean;
    options : TdwsNameListOptions;
+   factory : IdwsDataSymbolFactory;
 begin
    names:=AcquireStringList;
    try
@@ -8182,7 +8184,9 @@ begin
       exprDyn:=nil;
       if FTok.TestDeleteAny([ttEQ, ttASSIGN])<>ttNone then begin
          detachTyp:=False;
-         expr:=ReadExpr(nil);
+         if factory=nil then
+            factory:=TCompositeTypeSymbolFactory.Create(Self, struct, cvPrivate);
+         expr:=factory.ReadExpr(nil);
          try
             if Assigned(typ) then begin
                if not typ.IsCompatible(expr.typ) then
@@ -8543,9 +8547,12 @@ end;
 function TdwsCompiler.ReadClassExpr(ownerSymbol : TCompositeTypeSymbol; expecting : TTypeSymbol = nil) : TTypedExpr;
 var
    membersTable : TSymbolTable;
+   oldStructure : TCompositeTypeSymbol;
 begin
    membersTable:=TSymbolTable.Create(ownerSymbol.Members);
+   oldStructure:=FCurrentStructure;
    try
+      FCurrentStructure:=ownerSymbol;
       membersTable.AddParent(FProg.Table);
       FProg.EnterSubTable(membersTable);
       try
@@ -8554,6 +8561,7 @@ begin
          FProg.LeaveSubTable;
       end;
    finally
+      FCurrentStructure:=oldStructure;
       membersTable.Free;
    end;
 end;
@@ -10483,6 +10491,8 @@ var
    prog : TdwsProgram;
    func : TFuncSymbol;
 begin
+   if FCurrentStructure<>nil then
+      Exit(FCurrentStructure);
    prog:=FProg;
    while prog.ClassType=TdwsProcedure do begin
       func:=TdwsProcedure(prog).Func;
