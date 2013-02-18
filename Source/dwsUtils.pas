@@ -501,6 +501,7 @@ type
 
          procedure StoreData(var buffer); overload;
          procedure StoreData(destStream : TStream); overload;
+         procedure StoreUTF8Data(destStream : TStream); overload;
    end;
 
    TFastCompareStringList = class (TStringList)
@@ -1706,6 +1707,17 @@ begin
       destStream.Write(iterator[2], n);
       iterator:=iterator[0];
    end;
+end;
+
+// StoreUTF8Data
+//
+procedure TWriteOnlyBlockStream.StoreUTF8Data(destStream : TStream);
+var
+   buf : UTF8String;
+begin
+   buf:=UTF8Encode(ToString);
+   if buf<>'' then
+      destStream.Write(buf[1], Length(buf));
 end;
 
 // Seek
