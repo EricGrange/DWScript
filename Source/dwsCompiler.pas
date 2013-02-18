@@ -4682,7 +4682,7 @@ begin
 
             expr.Free;
             expr:=nil;
-            Result:=TNullExpr.Create(FProg, aPos);
+            Result:=TErrorExpr.Create(FProg, aPos);
             FMsgs.AddCompilerError(aPos, CPE_ReadOnlyProperty)
 
          end;
@@ -8894,17 +8894,22 @@ begin
             right := ReadExprMult;
             try
                // Generate function and add left and right argument
-               if (Result.Typ=nil) or (right.Typ=nil) then
-                  FMsgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands)
-               else begin
+               if right=nil then begin
+                  FMsgs.AddCompilerError(hotPos, CPE_ExpressionExpected);
+                  opExpr:=nil;
+               end else if (Result.Typ=nil) or (right.Typ=nil) then begin
+                  FMsgs.AddCompilerError(hotPos, CPE_IncompatibleOperands);
+                  opExpr:=nil;
+               end else begin
                   opExpr:=CreateTypedOperatorExpr(tt, Result, right);
-                  if opExpr=nil then begin
+                  if opExpr=nil then
                      FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
-                     // fake result to keep compiler going and report further issues
-                     Result:=TBinaryOpExpr.Create(FProg, Result, right);
-                     Result.Typ:=FProg.TypVariant;
-                  end else Result:=opExpr;
                end;
+               if opExpr=nil then begin
+                  // fake result to keep compiler going and report further issues
+                  Result:=TBinaryOpExpr.Create(FProg, Result, right);
+                  Result.Typ:=FProg.TypVariant;
+               end else Result:=opExpr;
             except
                right.Free;
                raise;
