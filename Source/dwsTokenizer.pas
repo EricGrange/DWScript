@@ -68,6 +68,7 @@ type
    TTokenBuffer = record
       Len : Integer;
       Capacity : Integer;
+      CaseSensitive : Boolean;
       Buffer : array of Char;
       procedure AppendChar(c : Char);
       procedure Grow;
@@ -79,6 +80,7 @@ type
       procedure ToUpperStr(var result : String); overload;
       function UpperFirstChar : Char;
       function UpperMatchLen(const str : String) : Boolean;
+      function MatchLen(const str : String) : Boolean;
       procedure RaiseInvalidIntegerConstant;
       function BinToInt64 : Int64;
       function HexToInt64 : Int64;
@@ -86,6 +88,7 @@ type
       function ToFloat : Double;
       function ToType : TTokenType;
       function ToAlphaType : TTokenType;
+      function ToAlphaTypeCaseSensitive : TTokenType;
 
       class function StringToTokenType(const str : String) : TTokenType; static;
    end;
@@ -166,6 +169,7 @@ type
          FReservedNames : TTokenTypes;
          FSymbolTokens : TTokenTypes;
          FReservedTokens : TTokenTypes;
+         FCaseSensitive : Boolean;
 
       protected
          function CreateState : TState;
@@ -182,6 +186,7 @@ type
          property ReservedNames : TTokenTypes read FReservedNames write FReservedNames;
          property SymbolTokens : TTokenTypes read FSymbolTokens write FSymbolTokens;
          property ReservedTokens : TTokenTypes read FReservedTokens;
+         property CaseSensitive : Boolean read FCaseSensitive write FCaseSensitive;
    end;
 
    TTokenizerSourceInfo = record
@@ -696,7 +701,9 @@ begin
             if Buffer[1]='&' then
                Result := ttAMPAMP;
    else
-      Result:=ToAlphaType;
+      if CaseSensitive then
+         Result:=ToAlphaTypeCaseSensitive
+      else Result:=ToAlphaType;
    end;
 end;
 
@@ -798,6 +805,48 @@ begin
    end;
    for i:=0 to High(lookups^) do begin
       if UpperMatchLen(lookups^[i].Alpha) then
+         Exit(lookups^[i].Token);
+   end;
+   Result:=ttNAME;
+end;
+
+// MatchLen
+//
+function TTokenBuffer.MatchLen(const str : String) : Boolean;
+var
+   i : Integer;
+   p : PChar;
+   ch : Char;
+begin
+   p:=PChar(Pointer(str));
+   for i:=1 to Len-1 do begin
+      ch:=Buffer[i];
+      case ch of
+         'a'..'z' : if Char(Word(ch) xor $0020)<>p[i] then Exit(False);
+      else
+         Exit(False);
+      end;
+   end;
+   Result:=True;
+end;
+
+// ToAlphaTypeCaseSensitive
+//
+function TTokenBuffer.ToAlphaTypeCaseSensitive : TTokenType;
+var
+   ch : Char;
+   i : Integer;
+   lookups : PTokenAlphaLookups;
+begin
+   if (Len<2) or (Len>14) then Exit(ttNAME);
+   ch:=Buffer[0];
+   case ch of
+      'a'..'x' : lookups:=@vAlphaToTokenType[Len][Char(Word(ch) xor $0020)];
+   else
+      Exit(ttNAME);
+   end;
+   for i:=0 to High(lookups^) do begin
+      if MatchLen(lookups^[i].Alpha) then
          Exit(lookups^[i].Token);
    end;
    Result:=ttNAME;
@@ -940,6 +989,7 @@ begin
    FTokenBuf.Grow;
    FRules := rules;
    FStartState := FRules.StartState;
+   FTokenBuf.CaseSensitive := rules.CaseSensitive;
 
    SetLength(FTokenStore, 8);
 
