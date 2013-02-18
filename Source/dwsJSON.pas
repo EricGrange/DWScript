@@ -25,7 +25,7 @@ type
    TdwsJSONObject = class;
    TdwsJSONImmediate = class;
 
-   TdwsJSONWriterState = (wsNone, wsObject, wsObjectValue, wsArray, wsArrayValue, wsDone);
+   TdwsJSONWriterState = (wsNone, wsObject, wsObjectName, wsObjectValue, wsArray, wsArrayValue, wsDone);
 
    // TdwsJSONWriter
    //
@@ -349,6 +349,7 @@ type
 
    EdwsJSONException = class (Exception);
    EdwsJSONParseError = class (EdwsJSONException);
+   EdwsJSONWriterError = class (EdwsJSONException);
 
 procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : String);
 
@@ -1807,8 +1808,6 @@ end;
 //
 destructor TdwsJSONWriter.Destroy;
 begin
-   Assert(FState in [wsNone, wsDone]);
-   Assert(FStateStack.Count=0);
    if FOwnsStream then
       FStream.Free;
    FStateStack.Free;
@@ -1830,12 +1829,13 @@ end;
 //
 procedure TdwsJSONWriter.EndObject;
 begin
-   Assert(FState in [wsObject, wsObjectValue]);
-   Assert(FStateStack.Count>0);
-   FState:=TdwsJSONWriterState(FStateStack.Peek);
-   FStateStack.Pop;
-   FStream.WriteChar('}');
-   AfterWriteImmediate;
+   if FState in [wsObject, wsObjectName] then begin
+      Assert(FStateStack.Count>0);
+      FState:=TdwsJSONWriterState(FStateStack.Peek);
+      FStateStack.Pop;
+      FStream.WriteChar('}');
+      AfterWriteImmediate;
+   end else raise EdwsJSONWriterError.Create('Value expected');
 end;
 
 // BeginArray
@@ -1867,13 +1867,13 @@ procedure TdwsJSONWriter.WriteName(const aName : String);
 begin
    case FState of
       wsObject : ;
-      wsObjectValue : begin
+      wsObjectName : begin
          FStream.WriteChar(',');
       end;
    else
       Assert(False);
    end;
-   WriteString(aName);
+   WriteJavaScriptString(FStream, aName);
    FStream.WriteChar(':');
    FState:=wsObjectValue;
 end;
@@ -1994,13 +1994,15 @@ begin
    case FState of
       wsArrayValue :
          FStream.WriteChar(',');
+      wsObject :
+         raise EdwsJSONWriterError.Create('Name expected');
       wsDone :
          Assert(False);
    end;
 end;
 
 // AfterWriteImmediate
-//
+//                                                            dwswebidltokenizer
 procedure TdwsJSONWriter.AfterWriteImmediate;
 begin
    case FState of
@@ -2008,6 +2010,8 @@ begin
          FState:=wsDone;
       wsArray :
          FState:=wsArrayValue;
+      wsObjectValue :
+         FState:=wsObjectName;
    end;
 end;
 
@@ -2043,7 +2047,7 @@ end;
 procedure TdwsJSONBeautifiedWriter.LeaveIndent;
 begin
    Dec(FTabs, FIndent);
-   if FState in [wsObjectValue, wsArrayValue] then begin
+   if FState in [wsObjectName, wsArrayValue] then begin
       FStream.WriteString(#13#10);
       WriteIndents;
    end else FStream.WriteChar(' ');
@@ -2101,13 +2105,13 @@ begin
    case FState of
       wsObject :
          FStream.WriteString(#13#10);
-      wsObjectValue :
+      wsObjectName :
          FStream.WriteString(','#13#10);
    else
       Assert(False);
    end;
    WriteIndents;
-   WriteString(aName);
+   WriteJavaScriptString(FStream, aName);
    FStream.WriteString(' : ');
    FState:=wsObjectValue;
 end;

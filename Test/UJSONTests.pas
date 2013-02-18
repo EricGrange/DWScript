@@ -33,6 +33,8 @@ type
          procedure JSONInvalidNull;
          procedure JSONInvalidImmediate;
          procedure JSONMissingElementValue;
+         procedure JSONWriterNoValue;
+         procedure JSONWriterNoName;
 
       published
          procedure JSONTest;
@@ -53,6 +55,7 @@ type
          procedure SubItemFree;
          procedure ISO8601Test;
          procedure DeleteAdd;
+         procedure WriterErrors;
    end;
 
 // ------------------------------------------------------------------
@@ -334,6 +337,38 @@ begin
    TdwsJSONValue.ParseString('{"v":}');
 end;
 
+// JSONWriterNoValue
+//
+procedure TdwsJSONTests.JSONWriterNoValue;
+var
+   wr : TdwsJSONWriter;
+begin
+   wr:=TdwsJSONWriter.Create(nil);
+   try
+      wr.BeginObject;
+      wr.WriteName('Test');
+      wr.EndObject;
+   finally
+      wr.Free;
+   end;
+end;
+
+// JSONWriterNoName
+//
+procedure TdwsJSONTests.JSONWriterNoName;
+var
+   wr : TdwsJSONWriter;
+begin
+   wr:=TdwsJSONWriter.Create(nil);
+   try
+      wr.BeginObject;
+      wr.WriteInteger(123);
+      wr.EndObject;
+   finally
+      wr.Free;
+   end;
+end;
+
 // JSONEmptyObject
 //
 procedure TdwsJSONTests.JSONEmptyObject;
@@ -548,6 +583,14 @@ begin
    finally
       obj.Free;
    end;
+end;
+
+// WriterErrors
+//
+procedure TdwsJSONTests.WriterErrors;
+begin
+   CheckException(JSONWriterNoValue, EdwsJSONWriterError, 'no value');
+   CheckException(JSONWriterNoName, EdwsJSONWriterError, 'no name');
 end;
 
 // ------------------------------------------------------------------
