@@ -920,7 +920,7 @@ type
    end;
 
    // Does nothing! E. g.: "for x := 1 to 10 do {TNullExpr};"
-   TNullExpr = class(TNoResultExpr)
+   TNullExpr = class sealed (TNoResultExpr)
       procedure EvalNoResult(exec : TdwsExecution); override;
    end;
 

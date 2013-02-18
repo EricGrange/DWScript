@@ -7943,8 +7943,12 @@ begin
       FProg:=proc;
       try
          expr:=ReadExpr(propSym.Typ);
-         resultExpr:=TVarExpr.CreateTyped(FProg, proc.Func.Result);
-         proc.Expr:=CreateAssign(scriptPos, ttASSIGN, resultExpr, expr);
+         if expr=nil then
+            FMsgs.AddCompilerError(scriptPos, CPE_ExpressionExpected)
+         else begin
+            resultExpr:=TVarExpr.CreateTyped(FProg, proc.Func.Result);
+            proc.Expr:=CreateAssign(scriptPos, ttASSIGN, resultExpr, expr);
+         end;
       finally
          FProg:=oldProg;
       end;
@@ -8012,6 +8016,8 @@ begin
       try
          FPendingSetterValueExpr:=GetConstParamExpr(paramSymbol);
          instr:=ReadInstr;
+         if instr is TNullExpr then
+            FMsgs.AddCompilerWarning(scriptPos, CPW_PropertyWriterDoesNothing);
          if (instr is TVarExpr) or (instr is TFieldExpr) or (instr is TNoResultWrapperExpr) then begin
             if instr is TNoResultWrapperExpr then
                expr:=TNoResultWrapperExpr(instr).Expr
@@ -8036,6 +8042,7 @@ begin
             proc.Expr:=instr;
       finally
          FPendingSetterValueExpr.Free;
+         FPendingSetterValueExpr:=nil;
          FProg:=oldProg;
       end;
 
@@ -11011,7 +11018,7 @@ var
    classSymbol : TClassSymbol;
    intfSymbol : TInterfaceSymbol;
 begin
-   if Assigned(right.Typ) then begin
+   if (right<>nil) and (right.Typ<>nil) then begin
 
       case token of
          ttASSIGN : begin
