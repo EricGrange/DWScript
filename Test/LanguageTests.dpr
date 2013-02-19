@@ -38,7 +38,8 @@ uses
   ULocalizerTests in 'ULocalizerTests.pas',
   dwsRTTIFunctions,
   UJSONTests in 'UJSONTests.pas',
-  UJSONConnectorTests in 'UJSONConnectorTests.pas';
+  UJSONConnectorTests in 'UJSONConnectorTests.pas',
+  UTokenizerTests in 'UTokenizerTests.pas';
 
 {$R *.res}
 

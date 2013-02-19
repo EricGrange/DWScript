@@ -351,6 +351,8 @@ type
          function Remove(sym : TSymbol): Integer;
          procedure Clear;
 
+         procedure TransferSymbolsTo(destTable : TSymbolTable);
+
          function FindSymbol(const aName : String; minVisibility : TdwsVisibility;
                              ofClass : TSymbolClass = nil) : TSymbol; virtual;
          function FindTypeSymbol(const aName : String; minVisibility : TdwsVisibility) : TTypeSymbol;
@@ -5380,6 +5382,17 @@ begin
    FSymbols.Clear;
 end;
 
+// TransferSymbolsTo
+//
+procedure TSymbolTable.TransferSymbolsTo(destTable : TSymbolTable);
+var
+   i : Integer;
+begin
+   for i:=0 to Count-1 do
+      destTable.AddSymbol(Symbols[i]);
+   FSymbols.Clear;
+end;
+
 // AddParent
 //
 procedure TSymbolTable.AddParent(Parent: TSymbolTable);
@@ -6006,6 +6019,8 @@ end;
 function TTypeSymbol.DoIsOfType(typSym : TTypeSymbol) : Boolean;
 begin
    Result:=(Self=typSym.UnAliasedType);
+//   Result:=   (Self=typSym)
+//           or ((typSym<>nil) and (Self=typSym.UnAliasedType));
 end;
 
 // IsCompatible

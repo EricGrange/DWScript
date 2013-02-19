@@ -41,7 +41,7 @@ type
      ttEXTERNAL, ttFORWARD, ttEMPTY, ttIN,
      ttENSURE, ttREQUIRE, ttINVARIANTS, ttOLD,
      ttINTERFACE, ttIMPLEMENTATION, ttINITIALIZATION, ttFINALIZATION, ttHELPER,
-     ttBEGIN, ttEND, ttBREAK, ttCONTINUE, ttEXIT,
+     ttASM, ttBEGIN, ttEND, ttBREAK, ttCONTINUE, ttEXIT,
      ttIF, ttTHEN, ttELSE, ttWHILE, ttREPEAT, ttUNTIL, ttFOR, ttTO, ttDOWNTO, ttDO,
      ttCASE,
      ttTRUE, ttFALSE,
@@ -53,7 +53,7 @@ type
      ttSEMI, ttCOMMA, ttCOLON,
      ttASSIGN, ttPLUS_ASSIGN, ttMINUS_ASSIGN, ttTIMES_ASSIGN, ttDIVIDE_ASSIGN,
      ttPERCENT_ASSIGN, ttCARET_ASSIGN, ttAT_ASSIGN,
-     ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCRIGHT,
+     ttBLEFT, ttBRIGHT, ttALEFT, ttARIGHT, ttCLEFT, ttCRIGHT,
      ttDEFAULT, ttUSES, ttUNIT, ttNAMESPACE,
      ttPRIVATE, ttPROTECTED, ttPUBLIC, ttPUBLISHED,
      ttPROGRAM,
@@ -115,6 +115,7 @@ type
 
          function FindTransition(c : Char) : TTransition; inline;
          procedure AddTransition(const chrs : TCharsType; o : TTransition);
+         procedure SetTransition(c : AnsiChar; o : TTransition); inline;
          procedure SetElse(o : TTransition);
    end;
 
@@ -274,6 +275,7 @@ type
          property CurrentPos : TScriptPos read FSource.FCurPos;
 
          property ConditionalDepth : TSimpleStack<TTokenizerConditionalInfo> read FConditionalDepth;
+         property Rules : TTokenizerRules read FRules;
 
          property SwitchHandler : TSwitchHandler read FSwitchHandler write FSwitchHandler;
          property SwitchProcessor : TSwitchHandler read FSwitchProcessor write FSwitchProcessor;
@@ -294,7 +296,7 @@ const
      'EXTERNAL', 'FORWARD', 'EMPTY', 'IN',
      'ENSURE', 'REQUIRE', 'INVARIANTS', 'OLD',
      'INTERFACE', 'IMPLEMENTATION', 'INITIALIZATION', 'FINALIZATION', 'HELPER',
-     'BEGIN', 'END', 'BREAK', 'CONTINUE', 'EXIT',
+     'ASM', 'BEGIN', 'END', 'BREAK', 'CONTINUE', 'EXIT',
      'IF', 'THEN', 'ELSE', 'WHILE', 'REPEAT', 'UNTIL', 'FOR', 'TO', 'DOWNTO', 'DO',
      'CASE',
      'TRUE', 'FALSE',
@@ -306,7 +308,7 @@ const
      ';', ',', ':',
      ':=', '+=', '-=', '*=', '/=',
      '%=', '^=', '@=',
-     '(', ')', '[', ']', '}',
+     '(', ')', '[', ']', '{', '}',
      'DEFAULT', 'USES', 'UNIT', 'NAMESPACE',
      'PRIVATE', 'PROTECTED', 'PUBLIC', 'PUBLISHED',
      'PROGRAM',
@@ -681,6 +683,7 @@ begin
             if Buffer[1]='=' then
                Result := ttASSIGN; // ':='
       ',': Result := ttCOMMA;
+      '{': Result := ttCLEFT;
       '}': Result := ttCRIGHT;
       '.':
          if Len=1 then
@@ -711,7 +714,7 @@ end;
 //
 const
    cAlphaTypeTokens : TTokenTypes = [
-      ttAND, ttARRAY, ttABSTRACT, ttAS,
+      ttAND, ttARRAY, ttABSTRACT, ttAS, ttASM,
       ttBEGIN, ttBREAK,
       ttCONST, ttCLASS, ttCONSTRUCTOR, ttCASE, ttCDECL, ttCONTINUE,
       ttDO, ttDOWNTO, ttDIV, ttDEFAULT, ttDESTRUCTOR, ttDEPRECATED,
@@ -899,9 +902,16 @@ begin
    for c:=#0 to #127 do
       if c in chrs then begin
          if FTransitions[c]=nil then
-            FTransitions[c]:=o;
+            SetTransition(c, o);
       end;
    FOwnedTransitions.Add(o);
+end;
+
+// SetTransition
+//
+procedure TState.SetTransition(c : AnsiChar; o : TTransition);
+begin
+   FTransitions[c]:=o;
 end;
 
 // SetElse
@@ -912,8 +922,8 @@ var
 begin
    for c:=#1 to #127 do
       if FTransitions[c]=nil then
-        FTransitions[c]:=o;
-  FOwnedTransitions.Add(o);
+         SetTransition(c, o);
+   FOwnedTransitions.Add(o);
 end;
 
 // ------------------

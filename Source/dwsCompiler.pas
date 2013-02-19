@@ -8560,6 +8560,10 @@ begin
       finally
          FProg.LeaveSubTable;
       end;
+      // anonymous and implicit symbols might have been created,
+      // transfer them to the regular table
+      if membersTable.Count>0 then
+         membersTable.TransferSymbolsTo(FProg.Table);
    finally
       FCurrentStructure:=oldStructure;
       membersTable.Free;

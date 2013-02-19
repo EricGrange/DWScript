@@ -20,9 +20,6 @@ type
          procedure DoOnResource(compiler : TdwsCompiler; const resName : String);
 
       published
-         procedure EmptyTokenBuffer;
-         procedure IgnoreDecimalSeparator;
-         procedure TokenizerSpecials;
          procedure TokenizerErrorTransition;
          procedure TimeOutTestFinite;
          procedure TimeOutTestInfinite;
@@ -116,97 +113,6 @@ end;
 procedure TCornerCasesTests.TearDown;
 begin
    FCompiler.Free;
-end;
-
-// EmptyTokenBuffer
-//
-procedure TCornerCasesTests.EmptyTokenBuffer;
-var
-   w : TTokenBufferWrapper;
-   s : String;
-begin
-   w:=TTokenBufferWrapper.Create;
-   try
-      CheckEquals('', w.Buffer.ToStr, 'ToStr function');
-      s:='dummy';
-      w.Buffer.ToStr(s);
-      CheckEquals('', s, 'ToStr procedure');
-      s:='dummy';
-      w.Buffer.ToUpperStr(s);
-      CheckEquals('', s, 'ToUpperStr');
-      CheckEquals(#0, w.Buffer.LastChar, 'LastChar');
-   finally
-      w.Free;
-   end;
-end;
-
-// IgnoreDecimalSeparator
-//
-procedure TCornerCasesTests.IgnoreDecimalSeparator;
-var
-   w : TTokenBufferWrapper;
-   dc : Char;
-begin
-   w:=TTokenBufferWrapper.Create;
-   dc:=GetDecimalSeparator;
-   try
-      w.Buffer.AppendChar('1');
-      w.Buffer.AppendChar('.');
-      w.Buffer.AppendChar('5');
-
-      SetDecimalSeparator('.');
-      CheckEquals(1.5, w.Buffer.ToFloat, 'With dot');
-      SetDecimalSeparator(',');
-      CheckEquals(1.5, w.Buffer.ToFloat, 'With comma');
-      SetDecimalSeparator('P');
-      CheckEquals(1.5, w.Buffer.ToFloat, 'With P');
-
-   finally
-      SetDecimalSeparator(dc);
-      w.Free;
-   end;
-end;
-
-// TokenizerSpecials
-//
-procedure TCornerCasesTests.TokenizerSpecials;
-var
-   rules : TPascalTokenizerStateRules;
-   t : TTokenizer;
-   msgs : TdwsCompileMessageList;
-   sourceFile : TSourceFile;
-begin
-   msgs:=TdwsCompileMessageList.Create;
-   sourceFile:=TSourceFile.Create;
-   sourceFile.Code:='@ @= %= ^ ^= $( ? | || & &&';
-   rules:=TPascalTokenizerStateRules.Create;
-   t:=rules.CreateTokenizer(msgs);
-   try
-      t.BeginSourceFile(sourceFile);
-
-      CheckTrue(t.TestDelete(ttAT), '@');
-      CheckTrue(t.TestDelete(ttAT_ASSIGN), '@=');
-      CheckTrue(t.TestDelete(ttPERCENT_ASSIGN), '%=');
-      CheckTrue(t.TestDelete(ttCARET), '^');
-      CheckTrue(t.TestDelete(ttCARET_ASSIGN), '^=');
-      CheckTrue(t.TestDelete(ttDOLLAR), '$');
-      CheckTrue(t.TestDelete(ttBLEFT), '(');
-      CheckTrue(t.TestDelete(ttQUESTION), '?');
-      CheckTrue(t.TestDelete(ttPIPE), '|');
-      CheckTrue(t.TestDelete(ttPIPEPIPE), '||');
-      CheckTrue(t.TestDelete(ttAMP), '&');
-      CheckTrue(t.TestDelete(ttAMPAMP), '&&');
-
-      CheckTrue(t.TestAny([ttNAME])=ttNone, 'Any at end');
-      CheckTrue(t.TestDeleteAny([ttNAME])=ttNone, 'DeleteAny at end');
-
-      t.EndSourceFile;
-   finally
-      sourceFile.Free;
-      t.Free;
-      msgs.Free;
-      rules.Free;
-   end;
 end;
 
 // TokenizerErrorTransition

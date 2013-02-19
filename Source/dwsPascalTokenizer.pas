@@ -39,12 +39,18 @@ type
          sStringIndentSingle, sStringIndentSingleF : TState;
          sGreaterF, sSmallerF, sEqualF, sDotDot: TState;
 
+         FCurlyCommentTransition : TTransition;
+
       protected
          function StartState : TState; override;
+
+         procedure SetCurlyComments(const val : Boolean);
+         function GetCurlyComments : Boolean; inline;
 
       public
          constructor Create; override;
 
+         property CurlyComments : Boolean read GetCurlyComments write SetCurlyComments;
    end;
 
 const
@@ -360,6 +366,27 @@ end;
 function TPascalTokenizerStateRules.StartState : TState;
 begin
    Result:=sStart;
+end;
+
+// SetCurlyComments
+//
+procedure TPascalTokenizerStateRules.SetCurlyComments(const val : Boolean);
+begin
+   if val=CurlyComments then Exit;
+   if val then begin
+      sStart.SetTransition('{', FCurlyCommentTransition);
+      FCurlyCommentTransition:=nil;
+   end else begin
+      FCurlyCommentTransition:=sStart.FindTransition('{');
+      sStart.SetTransition('{', sStart.FindTransition(';'));
+   end;
+end;
+
+// GetCurlyComments
+//
+function TPascalTokenizerStateRules.GetCurlyComments : Boolean;
+begin
+   Result:=(FCurlyCommentTransition=nil);
 end;
 
 end.
