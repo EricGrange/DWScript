@@ -1,0 +1,4 @@
+Syntax Error: Constant "C" cannot be written to [line: 7, column: 48]
+Syntax Error: Field/method "Field" not found! [line: 8, column: 34]
+Syntax Error: Object reference needed to read/write an object field [line: 25, column: 8]
+Syntax Error: Object reference needed to read/write an object field [line: 25, column: 21]

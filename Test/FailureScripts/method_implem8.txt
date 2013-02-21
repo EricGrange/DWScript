@@ -1,0 +1,2 @@
+Syntax Error: "TTest.Test1" is declared "abstract", no implementation allowed [line: 3, column: 17]
+Syntax Error: "TTest.Test2" is declared "abstract", no implementation allowed [line: 9, column: 17]

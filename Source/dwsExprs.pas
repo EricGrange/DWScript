@@ -1176,22 +1176,22 @@ type
 
    TFuncPtrExpr = class sealed (TFuncExpr)
       private
-         FCodeExpr : TDataExpr;
+         FCodeExpr : TTypedExpr;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const pos : TScriptPos; codeExpr : TDataExpr);
+         constructor Create(prog : TdwsProgram; const pos : TScriptPos; codeExpr : TTypedExpr);
          destructor Destroy; override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
          function IsConstant : Boolean; override;
 
-         function Extract : TDataExpr; // also a destructor
+         function Extract : TTypedExpr; // also a destructor
 
-         property CodeExpr : TDataExpr read FCodeExpr write FCodeExpr;
+         property CodeExpr : TTypedExpr read FCodeExpr write FCodeExpr;
    end;
 
    TMethodObjExpr = class(TPosDataExpr)
@@ -5245,7 +5245,7 @@ end;
 
 // Create
 //
-constructor TFuncPtrExpr.Create(prog : TdwsProgram; const pos : TScriptPos; codeExpr : TDataExpr);
+constructor TFuncPtrExpr.Create(prog : TdwsProgram; const pos : TScriptPos; codeExpr : TTypedExpr);
 begin
    inherited Create(prog, pos, (codeExpr.Typ as TFuncSymbol));
    FCodeExpr:=codeExpr;
@@ -5261,7 +5261,7 @@ end;
 
 // Extract
 //
-function TFuncPtrExpr.Extract : TDataExpr;
+function TFuncPtrExpr.Extract : TTypedExpr;
 begin
    Result:=FCodeExpr;
    FCodeExpr:=nil;

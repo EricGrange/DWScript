@@ -1,3 +1,4 @@
 Syntax Error: Invalid Instruction - function or assignment expected [line: 12, column: 2]
 Syntax Error: Invalid Instruction - function or assignment expected [line: 13, column: 3]
-Syntax Error: Invalid Instruction - function or assignment expected [line: 14, column: 1]
+Syntax Error: Method "GetDef" of class "TTest" not implemented [line: 4, column: 16]
+Syntax Error: Method "SetDef" of class "TTest" not implemented [line: 5, column: 17]

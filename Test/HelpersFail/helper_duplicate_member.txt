@@ -1,0 +1,2 @@
+Syntax Error: Name "Test" already exists [line: 5, column: 14]
+Syntax Error: Name "Here" already exists [line: 7, column: 10]

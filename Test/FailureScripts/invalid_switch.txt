@@ -1,0 +1,4 @@
+Syntax Error: Compiler switch "NOP" unknown [line: 1, column: 3]
+Syntax Error: String expected [line: 3, column: 5]
+Syntax Error: Unbalanced conditional directive [line: 5, column: 3]
+Syntax Error: Unbalanced conditional directive [line: 7, column: 3]

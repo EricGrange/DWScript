@@ -1,2 +1,1 @@
 Syntax Error: Expression expected [line: 1, column: 4]
-Syntax Error: Invalid Instruction - function or assignment expected [line: 1, column: 1]

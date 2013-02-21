@@ -52,6 +52,12 @@ type
          procedure DeprecatedTdwsUnit;
          procedure OverloadForwardDictionary;
          procedure OverloadMethodDictionary;
+         procedure FilterTest;
+         procedure SubFilterTest;
+         procedure FilterNotDefined;
+         procedure ConfigNotifications;
+         procedure ConfigTimeout;
+
    end;
 
 // ------------------------------------------------------------------
@@ -95,6 +101,20 @@ procedure TScriptThread.Execute;
 begin
    FProg.Execute(FTimeOut);
    FTimeStamp:=Now;
+end;
+
+type
+   TTestFilter = class(TdwsFilter)
+      constructor TestCreate(const s : String);
+   end;
+
+// TTestFilter
+//
+constructor TTestFilter.TestCreate(const s : String);
+begin
+   inherited Create(nil);
+   if s<>'' then
+      PrivateDependencies.Add(s);
 end;
 
 // ------------------
@@ -479,20 +499,20 @@ var
 begin
    prog:=FCompiler.Compile('PrintLn(ParamCount);'
                            +'var i : Integer;'
+                           +'if ParamCount>0 then Print(Param(0));'
                            +'for i:=0 to ParamCount-1 do PrintLn(ParamStr(i));');
 
-   CheckEquals('1'#13#10'hello world'#13#10, prog.ExecuteParam('hello world').Result.ToString);
-   CheckEquals('2'#13#10'hello'#13#10'world'#13#10, prog.ExecuteParam(VarArrayOf(['hello','world'])).Result.ToString);
-
+   CheckEquals('1'#13#10'hello worldhello world'#13#10, prog.ExecuteParam('hello world').Result.ToString);
+   CheckEquals('2'#13#10'hellohello'#13#10'world'#13#10, prog.ExecuteParam(VarArrayOf(['hello','world'])).Result.ToString);
 
    SetLength(params, 0);
    CheckEquals('0'#13#10, prog.ExecuteParam(params).Result.ToString);
    SetLength(params, 1);
    params[0]:='hello';
-   CheckEquals('1'#13#10'hello'#13#10, prog.ExecuteParam(params).Result.ToString);
+   CheckEquals('1'#13#10'hellohello'#13#10, prog.ExecuteParam(params).Result.ToString);
    SetLength(params, 2);
    params[1]:=123;
-   CheckEquals('2'#13#10'hello'#13#10'123'#13#10, prog.ExecuteParam(params).Result.ToString);
+   CheckEquals('2'#13#10'hellohello'#13#10'123'#13#10, prog.ExecuteParam(params).Result.ToString);
 end;
 
 // CallFuncThatReturnsARecord
@@ -1119,6 +1139,91 @@ begin
    end;
 
    FCompiler.Config.CompilerOptions:=oldOptions;
+end;
+
+// FilterTest
+//
+procedure TCornerCasesTests.FilterTest;
+var
+   filter : TTestFilter;
+var
+   prog : IdwsProgram;
+begin
+   filter:=TTestFilter.TestCreate('');
+   FCompiler.OnInclude:=DoOnInclude;
+   FCompiler.Config.Filter:=filter;
+   try
+      prog:=FCompiler.Compile('{$F "test.dummy"}');
+      CheckEquals('', prog.Msgs.AsInfo);
+      CheckEquals('hello', prog.Execute.Result.ToString);
+
+      prog:=FCompiler.Compile('{$F "test.dummy"');
+      CheckEquals('Syntax Error: "}" expected [line: 1, column: 5]'#13#10, prog.Msgs.AsInfo);
+   finally
+      FCompiler.OnInclude:=nil;
+      filter.Free;
+   end;
+end;
+
+// SubFilterTest
+//
+procedure TCornerCasesTests.SubFilterTest;
+var
+   filter1, filter2 : TTestFilter;
+begin
+   filter1:=TTestFilter.TestCreate('abc');
+   filter2:=TTestFilter.TestCreate('def');
+   filter1.SubFilter:=filter2;
+   CheckEquals('abc,def', filter1.Dependencies.CommaText, 'dependencies 1+2');
+   CheckEquals('test', filter1.Process('test', nil), 'filter');
+   filter1.SubFilter:=nil;
+   CheckEquals('abc', filter1.Dependencies.CommaText, 'dependencies 2');
+   filter1.SubFilter:=filter2;
+   filter2.Free;
+   CheckTrue(filter1.SubFilter=nil);
+   filter1.Free;
+end;
+
+// FilterNotDefined
+//
+procedure TCornerCasesTests.FilterNotDefined;
+var
+   prog : IdwsProgram;
+begin
+   prog:=FCompiler.Compile('{$F "foo.bar"}');
+
+   CheckEquals('Syntax Error: There is no filter assigned to TDelphiWebScriptII.Config.Filter [line: 1, column: 5]'#13#10, prog.Msgs.AsInfo);
+end;
+
+// ConfigNotifications
+//
+procedure TCornerCasesTests.ConfigNotifications;
+var
+   rfs : TdwsNoFileSystem;
+   rt : TdwsResultType;
+begin
+   rfs:=TdwsNoFileSystem.Create(nil);
+   rt:=TdwsResultType.Create(nil);
+   FCompiler.Config.RuntimeFileSystem:=rfs;
+   FCompiler.Config.ResultType:=rt;
+   CheckTrue(FCompiler.Config.RuntimeFileSystem<>nil, 'rfs set');
+   CheckTrue(FCompiler.Config.ResultType<>nil, 'rt set');
+   rt.Free;
+   rfs.Free;
+   CheckTrue(FCompiler.Config.RuntimeFileSystem=nil, 'rfs cleared');
+   CheckTrue(FCompiler.Config.ResultType is TdwsDefaultResultType, 'rt cleared');
+
+end;
+
+// ConfigTimeout
+//
+procedure TCornerCasesTests.ConfigTimeout;
+begin
+   CheckEquals(0, FCompiler.Config.TimeoutMilliseconds, 'init');
+   FCompiler.Config.TimeOut:=2;
+   CheckEquals(2000, FCompiler.Config.TimeoutMilliseconds, 'timeout');
+   FCompiler.Config.TimeOut:=0;
+   CheckEquals(0, FCompiler.Config.TimeoutMilliseconds, 'cleanup');
 end;
 
 // ------------------------------------------------------------------

@@ -5,4 +5,3 @@ Syntax Error: Array method "Swap" is restricted to dynamic arrays [line: 6, colu
 Syntax Error: Array method "Delete" is restricted to dynamic arrays [line: 7, column: 3]
 Syntax Error: Array method "SetLength" is restricted to dynamic arrays [line: 8, column: 3]
 Syntax Error: Array method "Copy" is restricted to dynamic arrays [line: 9, column: 3]
-Syntax Error: Invalid Instruction - function or assignment expected [line: 9, column: 1]

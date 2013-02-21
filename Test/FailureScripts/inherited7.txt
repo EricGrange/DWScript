@@ -1,0 +1,1 @@
+Syntax Error: Class "TClass" has no default property [line: 8, column: 33]

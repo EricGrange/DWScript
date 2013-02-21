@@ -9,5 +9,8 @@ var f : Float := Abs(-vf);
 PrintLn(f);
 PrintLn(Abs(vf));
 
+var v : Variant := -3;
+PrintLn(Abs(v));
+
 
 

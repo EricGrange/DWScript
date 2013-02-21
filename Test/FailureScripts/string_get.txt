@@ -1,0 +1,2 @@
+Syntax Error: Integer expression expected [line: 3, column: 17]
+Syntax Error: "]" expected [line: 5, column: 9]
