@@ -52,6 +52,7 @@ type
          procedure DeprecatedTdwsUnit;
          procedure OverloadForwardDictionary;
          procedure OverloadMethodDictionary;
+         procedure ClassForwardDictionary;
          procedure FilterTest;
          procedure SubFilterTest;
          procedure FilterNotDefined;
@@ -1137,6 +1138,39 @@ begin
       else CheckEquals(2, symPosList.Count,
                        'B declared + reference for '+IntToStr(i)+' '+symPosList.Symbol.Name);
    end;
+
+   FCompiler.Config.CompilerOptions:=oldOptions;
+end;
+
+// ClassForwardDictionary
+//
+procedure TCornerCasesTests.ClassForwardDictionary;
+var
+   prog : IdwsProgram;
+   oldOptions : TCompilerOptions;
+   i : Integer;
+   symPosList : TSymbolPositionList;
+begin
+   oldOptions:=FCompiler.Config.CompilerOptions;
+   FCompiler.Config.CompilerOptions:=oldOptions+[coSymbolDictionary];
+
+   prog := FCompiler.Compile( 'type TTest = class;'#13#10
+                             +'type TTest = class end;');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'compile');
+   CheckEquals(1, prog.SymbolDictionary.FindSymbolUsage('TTest', suForward).ScriptPos.Line, 'forward');
+   CheckEquals(2, prog.SymbolDictionary.FindSymbolUsage('TTest', suDeclaration).ScriptPos.Line, 'declaration');
+
+
+   prog := FCompiler.Compile( 'type TTest = class partial;'#13#10
+                             +'type TTest = class partial end;'
+                             +'type TTest = class partial end;');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'compile');
+   symPosList:=prog.SymbolDictionary.FindSymbolPosList('TTest');
+   CheckTrue(symPosList.Items[0].SymbolUsages=[suForward], 'forward');
+   CheckTrue(symPosList.Items[1].SymbolUsages=[suDeclaration], 'declaration 1');
+   CheckTrue(symPosList.Items[2].SymbolUsages=[suDeclaration], 'declaration 2');
 
    FCompiler.Config.CompilerOptions:=oldOptions;
 end;

@@ -2698,7 +2698,8 @@ begin
             // Original symbol was a forward. Update symbol entry
             // If the type is in the SymbolDictionary (disabled dictionary would leave pointer nil),
             if Assigned(oldSymPos) then              // update original position information
-               oldSymPos.SymbolUsages := [suDeclaration, suForward]; // update old postion to reflect that the type was forwarded
+               if FSymbolDictionary.FindSymbolUsage(typOld, suForward)=nil then
+                  oldSymPos.SymbolUsages := [suForward]; // update old position to reflect that the type was forwarded
          end;
 
          // Add symbol position as being the type being declared (works for forwards too)
