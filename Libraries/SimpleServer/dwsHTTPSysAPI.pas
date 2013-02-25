@@ -1105,7 +1105,7 @@ var
    current : PHTTP_UNKNOWN_HEADER;
    pKnown : PHTTP_KNOWN_HEADER;
 begin
-   current := @UnknownHeaders;
+   current := @UnknownHeaders[0];
    Headers.pUnknownHeaders := current;
    Headers.UnknownHeaderCount := 0;
 
