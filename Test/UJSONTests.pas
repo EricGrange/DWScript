@@ -56,6 +56,7 @@ type
          procedure ISO8601Test;
          procedure DeleteAdd;
          procedure WriterErrors;
+         procedure ArrayTest;
    end;
 
 // ------------------------------------------------------------------
@@ -591,6 +592,40 @@ procedure TdwsJSONTests.WriterErrors;
 begin
    CheckException(JSONWriterNoValue, EdwsJSONWriterError, 'no value');
    CheckException(JSONWriterNoName, EdwsJSONWriterError, 'no name');
+end;
+
+// ArrayTest
+//
+procedure TdwsJSONTests.ArrayTest;
+var
+   jsonArray : TdwsJSONArray;
+begin
+   jsonArray :=TdwsJSONArray.Create;
+   try
+      jsonArray.Add(TdwsJSONValue.ParseString('true'));
+      jsonArray.Add(TdwsJSONValue.ParseString('false'));
+      jsonArray.Add(TdwsJSONValue.ParseString('null'));
+      jsonArray.Add(TdwsJSONValue.ParseString('"test"'));
+      jsonArray.Add(TdwsJSONValue.ParseString('{"foo":"bar"}'));
+      jsonArray.Add(TdwsJSONValue.ParseString('true'));
+      jsonArray.Add(TdwsJSONValue.ParseString('false'));
+      jsonArray.Add(TdwsJSONValue.ParseString('false'));
+      jsonArray.Add(TdwsJSONValue.ParseString('false'));
+      CheckEquals('[true,false,null,"test",{"foo":"bar"},true,false,false,false]', jsonArray.ToString, '1st');
+      jsonArray.Clear;
+      jsonArray.Add(TdwsJSONValue.ParseString('true'));
+      jsonArray.Add(TdwsJSONValue.ParseString('false'));
+      jsonArray.Add(TdwsJSONValue.ParseString('null'));
+      jsonArray.Add(TdwsJSONValue.ParseString('"test"'));
+      jsonArray.Add(TdwsJSONValue.ParseString('{"foo":"bar"}'));
+      jsonArray.Add(TdwsJSONValue.ParseString('true'));
+      jsonArray.Add(TdwsJSONValue.ParseString('false'));
+      jsonArray.Add(TdwsJSONValue.ParseString('true'));
+      jsonArray.Add(TdwsJSONValue.ParseString('false'));
+      CheckEquals('[true,false,null,"test",{"foo":"bar"},true,false,true,false]', jsonArray.ToString, '2nd');
+   finally
+      jsonArray.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------

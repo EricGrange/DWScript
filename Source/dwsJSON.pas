@@ -1424,6 +1424,7 @@ begin
       v.DecRefCount;
    end;
    FreeMem(FElements);
+   FElements:=nil;
    FCount:=0;
    FCapacity:=0;
 end;
