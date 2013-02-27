@@ -281,7 +281,7 @@ end;
 destructor TdwsSamplingDebugger.Destroy;
 begin
    FSamplings.Free;
-   FSamplingFuncStack.Clear;
+   FSamplingFuncStack.Free;
    inherited;
 end;
 
