@@ -1,0 +1,5 @@
+Syntax Error: Parameters expected [line: 1, column: 18]
+Syntax Error: Too many arguments! [line: 16, column: 11]
+Syntax Error: Too many arguments! [line: 17, column: 11]
+Syntax Error: More arguments expected! [line: 19, column: 11]
+Syntax Error: Argument 1 expects type "String" instead of "Integer" [line: 21, column: 11]

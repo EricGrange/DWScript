@@ -1388,6 +1388,8 @@ type
 
    // Call of a helper method
    THelperMethodExpr = class (TFuncExpr)
+      public
+         constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos; func : TFuncSymbol);
    end;
 
    // Call of static methods (not virtual)
@@ -5833,6 +5835,20 @@ end;
 function TMethodExpr.GetSubExprCount : Integer;
 begin
    Result:=FArgs.Count+1;
+end;
+
+// ------------------
+// ------------------ THelperMethodExpr ------------------
+// ------------------
+
+// Create
+//
+constructor THelperMethodExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos; func : TFuncSymbol);
+begin
+   if func.ClassType=TAliasMethodSymbol then
+      func:=TAliasMethodSymbol(func).Alias;
+   inherited Create(prog, scriptPos, func);
+
 end;
 
 // ------------------

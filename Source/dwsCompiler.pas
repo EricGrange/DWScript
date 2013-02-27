@@ -606,7 +606,7 @@ type
          function ReadRepeat : TProgramExpr;
          function ReadRootStatement(var action : TdwsStatementAction) : TProgramExpr;
          function ReadRootBlock(const endTokens: TTokenTypes; var finalToken: TTokenType) : TBlockExpr;
-         procedure ReadImplementationBlock;
+         function ReadImplementationBlock : TTokenType;
          procedure ReadSemiColon;
          function ReadScript(sourceFile : TSourceFile; scriptType : TScriptSourceType) : TProgramExpr;
          procedure ReadScriptImplementations;
@@ -645,6 +645,7 @@ type
          procedure AttachBaggedAttributes(symbol : TSymbol; const bag : ISymbolAttributesBag);
          procedure CheckNoPendingAttributes;
 
+         procedure AddProcHelper(func : TFuncSymbol);
          function EnumerateHelpers(typeSym : TTypeSymbol) : THelperSymbols;
          function ReadTypeHelper(expr : TTypedExpr;
                                  const name : String; const namePos : TScriptPos;
@@ -1932,8 +1933,6 @@ begin
          FTok.ConditionalDefines:=FMainProg.ConditionalDefines
       else FTok.ConditionalDefines:=TAutoStrings.Create(TStringList.Create);
 
-//!!!!      FMainProg.SourceList.Add(sourceFile.Name, sourceFile, scriptType);
-
       readingMain:=(scriptType=stMain);
       if readingMain and FTok.Test(ttUNIT) then begin
          if coContextMap in Options then begin
@@ -2005,9 +2004,10 @@ begin
          if coSymbolDictionary in Options then
             RecordSymbolUse(CurrentUnitSymbol, FTok.HotPos, [suImplementation, suImplicit]);
          if readingMain then begin
-            ReadImplementationBlock;
-            unitBlock:=ReadRootBlock([], finalToken);
-            FProg.InitExpr.AddStatement(unitBlock);
+            if ReadImplementationBlock<>ttEND then begin
+               unitBlock:=ReadRootBlock([], finalToken);
+               FProg.InitExpr.AddStatement(unitBlock);
+            end;
             FLineCount:=FLineCount+FTok.CurrentPos.Line-2;
             FTok.Free;
          end else FUnitContextStack.PushContext(Self);
@@ -2031,29 +2031,28 @@ end;
 
 // ReadImplementationBlock
 //
-procedure TdwsCompiler.ReadImplementationBlock;
+function TdwsCompiler.ReadImplementationBlock : TTokenType;
 var
-   finalToken : TTokenType;
    unitBlock : TBlockExpr;
    initializationBlock, finalizationBlock : TBlockExpr;
 begin
    initializationBlock:=nil;
    finalizationBlock:=nil;
-   unitBlock:=ReadRootBlock([ttINITIALIZATION, ttFINALIZATION], finalToken);
+   unitBlock:=ReadRootBlock([ttINITIALIZATION, ttFINALIZATION], Result);
    try
-      if finalToken=ttINITIALIZATION then begin
+      if Result=ttINITIALIZATION then begin
          FUnitSection:=secInitialization;
          if coContextMap in Options then
             FSourceContextMap.OpenContext(FTok.HotPos, FCurrentUnitSymbol, ttINITIALIZATION);
-         initializationBlock:=ReadRootBlock([ttFINALIZATION, ttEND], finalToken);
+         initializationBlock:=ReadRootBlock([ttFINALIZATION, ttEND], Result);
          if coContextMap in Options then
             FSourceContextMap.CloseContext(FTok.HotPos);
       end;
-      if finalToken=ttFINALIZATION then begin
+      if Result=ttFINALIZATION then begin
          FUnitSection:=secFinalization;
          if coContextMap in Options then
             FSourceContextMap.OpenContext(FTok.HotPos, FCurrentUnitSymbol, ttFINALIZATION);
-         finalizationBlock:=ReadRootBlock([ttEND], finalToken);
+         finalizationBlock:=ReadRootBlock([ttEND], Result);
          if coContextMap in Options then
             FSourceContextMap.CloseContext(FTok.HotPos);
       end;
@@ -2626,7 +2625,7 @@ begin
       if not ReadTypeDecl(token=ttTYPE) then Break;
       if not FTok.TestDelete(ttSEMI) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
-      token:=FTok.TestAny([ttINTERFACE, ttIMPLEMENTATION,
+      token:=FTok.TestAny([ttINTERFACE, ttIMPLEMENTATION, ttINITIALIZATION, ttFINALIZATION,
                            ttTYPE, ttVAR, ttCONST, ttEND,
                            ttCLASS, ttFUNCTION, ttPROCEDURE, ttMETHOD, ttCONSTRUCTOR, ttDESTRUCTOR,
                            ttOPERATOR]);
@@ -2887,6 +2886,11 @@ begin
                         ReadSemiColon;
                      end;
                   end;
+
+                  // helper anonymous declaration
+
+                  if FTok.TestDelete(ttHELPER) then
+                     AddProcHelper(Result);
 
                end;
 
@@ -11835,6 +11839,56 @@ begin
       ErrorDanglingAttributes;
 end;
 
+// AddProcHelper
+//
+procedure TdwsCompiler.AddProcHelper(func : TFuncSymbol);
+var
+   name : String;
+   namePos : TScriptPos;
+   helper : THelperSymbol;
+   param : TParamSymbol;
+   meth : TAliasMethodSymbol;
+   i : Integer;
+   sym : TSymbol;
+begin
+   if func.Params.Count=0 then begin
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_ParamsExpected);
+      param:=nil;
+   end else param:=func.Params[0];
+
+   if not FTok.TestDeleteNamePos(name, namePos) then
+      name:=func.Name;
+   ReadSemiColon;
+
+   if param=nil then Exit;
+
+   // find a local anonymous helper for the 1st parameter's type
+   helper:=nil;
+   for sym in FProg.Table do begin
+      if     (sym.Name='')
+         and (sym.ClassType=THelperSymbol)
+         and (THelperSymbol(sym).ForType=param.Typ) then begin
+         helper:=THelperSymbol(sym);
+         Break;
+      end;
+   end;
+
+   // create anonymous helper if necessary
+   if helper=nil then begin
+      helper:=THelperSymbol.Create('', CurrentUnitSymbol, param.Typ, FProg.Table.Count);
+      FProg.Table.AddSymbol(helper);
+   end;
+
+   // create helper method symbol
+   meth:=TAliasMethodSymbol.Create(name, func.Kind, helper, cvPublic, False);
+   meth.SetIsStatic;
+   meth.Typ:=func.Typ;
+   for i:=0 to func.Params.Count-1 do
+      meth.Params.AddSymbol(func.Params[i].Clone);
+   meth.Alias:=func;
+   helper.AddMethod(meth);
+end;
+
 // EnumerateHelpers
 //
 function TdwsCompiler.EnumerateHelpers(typeSym : TTypeSymbol) : THelperSymbols;
@@ -11893,6 +11947,8 @@ begin
             FTok.KillToken;
 
          RecordSymbolUseReference(sym, namePos, False);
+         if sym.ClassType=TAliasMethodSymbol then
+            RecordSymbolUseImplicitReference(TAliasMethodSymbol(sym).Alias, namePos, False);
 
          if sym.ClassType=TPropertySymbol then begin
 

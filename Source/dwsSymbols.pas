@@ -855,6 +855,17 @@ type
          property SubExprCount;
    end;
 
+   TAliasMethodSymbol = class sealed (TSourceMethodSymbol)
+      private
+         FAlias : TFuncSymbol;
+
+      protected
+         function GetSourcePosition : TScriptPos; override;
+
+      public
+         property Alias : TFuncSymbol read FAlias write FAlias;
+   end;
+
    TOperatorSymbol = class sealed (TSymbol)
       private
          FToken : TTokenType;
@@ -2277,6 +2288,7 @@ begin
    for i:=0 to FMembers.Count-1 do begin
       if FMembers[i] is TMethodSymbol then begin
          methSym:=TMethodSymbol(FMembers[i]);
+         if methSym.ClassType=TAliasMethodSymbol then continue;
          if not methSym.IsAbstract then begin
             if Assigned(methSym.FExecutable) then
                methSym.FExecutable.InitSymbol(FMembers[i])
@@ -6611,6 +6623,17 @@ function THelperSymbols.AddHelper(helper : THelperSymbol) : Boolean;
 begin
    Add(helper);
    Result:=False;
+end;
+
+// ------------------
+// ------------------ TAliasMethodSymbol ------------------
+// ------------------
+
+// GetSourcePosition
+//
+function TAliasMethodSymbol.GetSourcePosition : TScriptPos;
+begin
+   Result:=Alias.GetSourcePosition;
 end;
 
 end.

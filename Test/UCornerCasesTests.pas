@@ -1148,7 +1148,6 @@ procedure TCornerCasesTests.ClassForwardDictionary;
 var
    prog : IdwsProgram;
    oldOptions : TCompilerOptions;
-   i : Integer;
    symPosList : TSymbolPositionList;
 begin
    oldOptions:=FCompiler.Config.CompilerOptions;
