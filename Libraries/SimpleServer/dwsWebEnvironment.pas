@@ -82,10 +82,14 @@ type
 
          function RemoteIP : String; virtual; abstract;
 
+         function RawURL : RawByteString; virtual; abstract;
          function URL : String; virtual; abstract;
          function Method : String; virtual; abstract;
          function MethodVerb : TWebRequestMethodVerb; virtual; abstract;
          function Security : String; virtual; abstract;
+
+         function ContentData : RawByteString; virtual; abstract;
+         function ContentType : RawByteString; virtual; abstract;
 
          property PathInfo : String read FPathInfo write FPathInfo;
          property QueryString : String read FQueryString write FQueryString;

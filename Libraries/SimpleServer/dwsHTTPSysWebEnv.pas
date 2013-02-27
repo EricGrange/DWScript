@@ -73,10 +73,14 @@ type
          function RemoteIP_UTF8 : PAnsiChar;
          function RemoteIP_UTF8_Length : Integer;
 
+         function RawURL : RawByteString; override;
          function URL : String; override;
          function Method : String; override;
          function MethodVerb : TWebRequestMethodVerb; override;
          function Security : String; override;
+
+         function ContentData : RawByteString; override;
+         function ContentType : RawByteString; override;
 
          property InContent : RawByteString read FInContent write FInContent;
          property InContentType : RawByteString read FInContentType write FInContentType;
@@ -321,8 +325,6 @@ begin
    Result:=Pointer(FIP_UTF8);
 end;
 
-// URL
-
 // RemoteIP_UTF8_Length
 //
 function THttpSysWebRequest.RemoteIP_UTF8_Length : Integer;
@@ -332,6 +334,15 @@ begin
 
    Result:=Length(FIP_UTF8);
 end;
+
+// RawURL
+//
+function THttpSysWebRequest.RawURL : RawByteString;
+begin
+   Result:=Request^.pRawUrl;
+end;
+
+// URL
 //
 function THttpSysWebRequest.URL : String;
 begin
@@ -375,5 +386,20 @@ begin
       Result:=Format('SSL, %d bits', [request^.pSslInfo^.ConnectionKeySize*8])
    else Result:='';
 end;
+
+// ContentData
+//
+function THttpSysWebRequest.ContentData : RawByteString;
+begin
+   Result:=InContent;
+end;
+
+// ContentType
+//
+function THttpSysWebRequest.ContentType : RawByteString;
+begin
+   Result:=InContentType;
+end;
+
 
 end.
