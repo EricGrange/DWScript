@@ -1662,6 +1662,7 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
          procedure AddCaseCondition(cond : TCaseCondition);
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
 
          property CaseConditions : TTightList read FCaseConditions;
          property ValueExpr: TTypedExpr read FValueExpr write FValueExpr;
@@ -6410,6 +6411,38 @@ end;
 procedure TCaseExpr.AddCaseCondition(cond : TCaseCondition);
 begin
    FCaseConditions.Add(cond);
+end;
+
+// Optimize
+//
+function TCaseExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+var
+   cond : array [0..1] of TCompareCaseCondition;
+   trueIndex : Integer;
+begin
+   if     ValueExpr.Typ.IsOfType(prog.TypBoolean)
+      and (CaseConditions.Count=2)
+      and (CaseConditions.List[0] is TCompareCaseCondition)
+      and (CaseConditions.List[1] is TCompareCaseCondition) then begin
+      cond[0]:=TCompareCaseCondition(CaseConditions.List[0]);
+      cond[1]:=TCompareCaseCondition(CaseConditions.List[1]);
+      if     (cond[0].CompareExpr is TConstBooleanExpr)
+         and (cond[0].CompareExpr.ClassType=cond[1].CompareExpr.ClassType)
+         and (cond[0].CompareExpr.EvalAsBoolean(exec)=not cond[1].CompareExpr.EvalAsBoolean(exec)) then begin
+         if cond[0].CompareExpr.EvalAsBoolean(exec) then
+            trueIndex:=0
+         else trueIndex:=1;
+         Result:=TIfThenElseExpr.Create(prog, ScriptPos, ValueExpr,
+                                        cond[trueIndex].TrueExpr,
+                                        cond[1-trueIndex].TrueExpr);
+         ValueExpr:=nil;
+         cond[0].TrueExpr:=nil;
+         cond[1].TrueExpr:=nil;
+         Free;
+         Exit;
+      end;
+   end;
+   Result:=Self;
 end;
 
 // GetSubExpr

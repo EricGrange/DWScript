@@ -3892,8 +3892,11 @@ begin
                             ttEXIT, ttTRY, ttRAISE, ttCONTINUE]) of
       ttIF :
          Result := ReadIf;
-      ttCASE :
+      ttCASE : begin
          Result := ReadCase;
+         if Optimize then
+            Result := Result.Optimize(FProg, FExec);
+      end;
       ttFOR :
          Result := ReadFor;
       ttWHILE :
@@ -5606,7 +5609,7 @@ end;
 
 // ReadCase
 //
-function TdwsCompiler.ReadCase;
+function TdwsCompiler.ReadCase : TCaseExpr;
 var
    expr : TProgramExpr;
    condList : TCaseConditions;
