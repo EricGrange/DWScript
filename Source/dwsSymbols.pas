@@ -720,6 +720,7 @@ type
          property IsExternal : Boolean read GetIsExternal write SetIsExternal;
          property Kind : TFuncKind read FKind write FKind;
          property ExternalName : String read GetExternalName write SetExternalName;
+         function HasExternamName : Boolean;
          property IsLambda : Boolean read GetIsLambda write SetIsLambda;
          property Level : SmallInt read GetLevel;
          property InternalParams : TSymbolTable read FInternalParams;
@@ -1090,6 +1091,9 @@ type
          FVisibility : TdwsVisibility;
 
       public
+         constructor Create(const name : String; typ : TTypeSymbol; const value : Variant;
+                            aVisibility : TdwsVisibility = cvPublic); overload;
+
          function QualifiedName : String; override;
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
 
@@ -2790,6 +2794,15 @@ end;
 // ------------------ TClassConstSymbol ------------------
 // ------------------
 
+// Create
+//
+constructor TClassConstSymbol.Create(const name : String; typ : TTypeSymbol; const value : Variant;
+                                     aVisibility : TdwsVisibility = cvPublic);
+begin
+   inherited Create(name, typ, value);
+   Visibility:=aVisibility;
+end;
+
 // QualifiedName
 //
 function TClassConstSymbol.QualifiedName : String;
@@ -3346,6 +3359,13 @@ procedure TFuncSymbol.ClearIsForwarded;
 begin
    Dispose(FForwardPosition);
    FForwardPosition:=nil;
+end;
+
+// HasExternamName
+//
+function TFuncSymbol.HasExternamName : Boolean;
+begin
+   Result:=(FExternalName<>'');
 end;
 
 // ------------------
@@ -5279,6 +5299,9 @@ begin
                   symbolList.Add(member);
             end else if member.ClassType=TFieldSymbol then begin
                if TFieldSymbol(member).Visibility=cvPublished then
+                  symbolList.Add(member);
+            end else if member.InheritsFrom(TMethodSymbol) then begin
+               if TMethodSymbol(member).Visibility=cvPublished then
                   symbolList.Add(member);
             end;
          end;

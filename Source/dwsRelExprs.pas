@@ -51,9 +51,11 @@ type
 
    TRelEqualIntExpr = class(TRelEqualExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TRelNotEqualIntExpr = class(TRelNotEqualExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
    TRelLessIntExpr = class(TRelLessExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
@@ -65,6 +67,13 @@ type
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
    TRelGreaterEqualIntExpr = class(TRelGreaterEqualExpr)
+     function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
+   TRelIntIsZeroExpr = class(TUnaryOpBoolExpr)
+     function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+   TRelIntIsNotZeroExpr = class(TUnaryOpBoolExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
@@ -198,6 +207,21 @@ begin
    Result:=(FLeft.EvalAsInteger(exec)=FRight.EvalAsInteger(exec));
 end;
 
+// Optimize
+//
+function TRelEqualIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   if FLeft.IsConstant and (FLeft.EvalAsInteger(exec)=0) then begin
+      Result:=TRelIntIsZeroExpr.Create(prog, FRight);
+      FRight:=nil;
+      Free;
+   end else if FRight.IsConstant and (FRight.EvalAsInteger(exec)=0) then begin
+      Result:=TRelIntIsZeroExpr.Create(prog, FLeft);
+      FLeft:=nil;
+      Free;
+   end else Result:=Self;
+end;
+
 // ------------------
 // ------------------ TRelNotEqualIntExpr ------------------
 // ------------------
@@ -207,6 +231,21 @@ end;
 function TRelNotEqualIntExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
    Result:=(FLeft.EvalAsInteger(exec)<>FRight.EvalAsInteger(exec));
+end;
+
+// Optimize
+//
+function TRelNotEqualIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   if FLeft.IsConstant and (FLeft.EvalAsInteger(exec)=0) then begin
+      Result:=TRelIntIsNotZeroExpr.Create(prog, FRight);
+      FRight:=nil;
+      Free;
+   end else if FRight.IsConstant and (FRight.EvalAsInteger(exec)=0) then begin
+      Result:=TRelIntIsNotZeroExpr.Create(prog, FLeft);
+      FLeft:=nil;
+      Free;
+   end else Result:=Self;
 end;
 
 // ------------------
@@ -497,6 +536,28 @@ begin
    FLeft.EvalAsVariant(exec, lv);
    FRight.EvalAsVariant(exec, rv);
    Result:=(lv>=rv);
+end;
+
+// ------------------
+// ------------------ TRelIntIsZeroExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TRelIntIsZeroExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+begin
+   Result:=(Expr.EvalAsInteger(exec)=0);
+end;
+
+// ------------------
+// ------------------ TRelIntIsNotZeroExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TRelIntIsNotZeroExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+begin
+   Result:=(Expr.EvalAsInteger(exec)<>0);
 end;
 
 end.

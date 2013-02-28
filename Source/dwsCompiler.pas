@@ -690,7 +690,8 @@ type
          function CreateArrayExpr(const scriptPos : TScriptPos; baseExpr : TDataExpr; indexExpr : TTypedExpr) : TArrayExpr;
 
          function ResolveOperatorFor(token : TTokenType; aLeftType, aRightType : TTypeSymbol) : TOperatorSymbol;
-         function CreateTypedOperatorExpr(token : TTokenType; aLeft, aRight : TTypedExpr) : TTypedExpr;
+         function CreateTypedOperatorExpr(token : TTokenType; const scriptPos : TScriptPos;
+                                          aLeft, aRight : TTypedExpr) : TTypedExpr;
          function CreateAssignOperatorExpr(token : TTokenType; const scriptPos : TScriptPos;
                                            aLeft, aRight : TTypedExpr) : TAssignExpr;
 
@@ -8834,7 +8835,7 @@ begin
                   end;
                end;
             else
-               opExpr:=CreateTypedOperatorExpr(tt, Result, right);
+               opExpr:=CreateTypedOperatorExpr(tt, hotPos, Result, right);
                if opExpr=nil then begin
                   if     ((tt=ttEQ) or (tt=ttNOTEQ))
                      and (rightTyp<>nil)
@@ -8926,7 +8927,7 @@ begin
                   FMsgs.AddCompilerError(hotPos, CPE_IncompatibleOperands);
                   opExpr:=nil;
                end else begin
-                  opExpr:=CreateTypedOperatorExpr(tt, Result, right);
+                  opExpr:=CreateTypedOperatorExpr(tt, hotPos, Result, right);
                   if opExpr=nil then
                      FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                end;
@@ -8977,7 +8978,7 @@ begin
             if (Result.Typ=nil) or (right.Typ=nil) then
                FMsgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands)
             else begin
-               opExpr:=CreateTypedOperatorExpr(tt, Result, right);
+               opExpr:=CreateTypedOperatorExpr(tt, hotPos, Result, right);
                if opExpr=nil then begin
                   FMsgs.AddCompilerError(hotPos, CPE_InvalidOperands);
                   // fake result to keep compiler going and report further issues
@@ -9070,7 +9071,7 @@ begin
                end;
             end;
 
-            Result:=CreateTypedOperatorExpr(ttIN, left, setExpr);
+            Result:=CreateTypedOperatorExpr(ttIN, hotPos, left, setExpr);
             if Result=nil then begin
                FMsgs.AddCompilerError(hotPos, CPE_IncompatibleOperands);
                // fake result to keep compiler going and report further issues
@@ -11250,7 +11251,8 @@ end;
 
 // CreateTypedOperatorExpr
 //
-function TdwsCompiler.CreateTypedOperatorExpr(token : TTokenType; aLeft, aRight : TTypedExpr) : TTypedExpr;
+function TdwsCompiler.CreateTypedOperatorExpr(token : TTokenType; const scriptPos : TScriptPos;
+                                              aLeft, aRight : TTypedExpr) : TTypedExpr;
 var
    opSym : TOperatorSymbol;
    funcExpr : TFuncExprBase;
@@ -11258,24 +11260,23 @@ begin
    Result:=nil;
    if (aLeft=nil) or (aRight=nil) then Exit;
    opSym:=ResolveOperatorFor(token, aLeft.Typ, aRight.Typ);
-   if opSym<>nil then begin
-      if opSym.BinExprClass<>nil then
-         Result:=TBinaryOpExprClass(opSym.BinExprClass).Create(FProg, aLeft, aRight)
-      else if opSym.UsesSym<>nil then begin
-         if opSym.UsesSym is TMethodSymbol then begin
-            funcExpr:=CreateMethodExpr(FProg, TMethodSymbol(opSym.UsesSym), aLeft, rkObjRef, FTok.HotPos)
+   if opSym=nil then Exit;
 
-         end else begin
-            funcExpr:=GetFuncExpr(opSym.UsesSym);
-            funcExpr.AddArg(aLeft);
-         end;
-         funcExpr.AddArg(aRight);
-         TypeCheckArgs(funcExpr, nil);
-         if Optimize then
-            Result:=funcExpr.OptimizeToTypedExpr(FProg, FExec, funcExpr.ScriptPos)
-         else Result:=funcExpr;
+   if opSym.BinExprClass<>nil then begin
+      Result:=TBinaryOpExprClass(opSym.BinExprClass).Create(FProg, aLeft, aRight)
+   end else if opSym.UsesSym<>nil then begin
+      if opSym.UsesSym is TMethodSymbol then
+         funcExpr:=CreateMethodExpr(FProg, TMethodSymbol(opSym.UsesSym), aLeft, rkObjRef, scriptPos)
+      else begin
+         funcExpr:=GetFuncExpr(opSym.UsesSym);
+         funcExpr.AddArg(aLeft);
       end;
+      funcExpr.AddArg(aRight);
+      TypeCheckArgs(funcExpr, nil);
+      Result:=funcExpr;
    end;
+   if Optimize then
+      Result:=Result.OptimizeToTypedExpr(FProg, FExec, scriptPos);
 end;
 
 // CreateAssignOperatorExpr

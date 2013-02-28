@@ -432,9 +432,10 @@ begin
    params:=ConvertFuncParams(methParams);
 
    sym:=TMethodSymbol.Generate(table, methKind, attributes, methName, Params,
-                                 methType, cls, aVisibility, False);
+                               methType, cls, aVisibility, False);
    sym.Params.AddParent(table);
    sym.Executable := ICallable(Self);
+   sym.ExternalName := methName;
 
    // Add method to its class
    cls.AddMethod(sym);

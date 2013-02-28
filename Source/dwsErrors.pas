@@ -233,6 +233,8 @@ type
          function AddCompilerErrorFmt(const Pos: TScriptPos; const textFormat : String;
                                       const args: array of const) : TScriptMessage; overload;
 
+         function AddCompilerException(const pos : TScriptPos; e : Exception) : TScriptMessage;
+
          procedure AddCompilerStop(const Pos: TScriptPos; const Text: String;
                                    messageClass : TScriptMessageClass); overload;
          procedure AddCompilerStop(const Pos: TScriptPos; const Text: String); overload;
@@ -713,6 +715,13 @@ function TdwsCompileMessageList.AddCompilerErrorFmt(const Pos: TScriptPos;
       messageClass : TScriptMessageClass) : TScriptMessage;
 begin
    Result:=AddCompilerError(Pos, Format(textFormat, args), messageClass);
+end;
+
+// AddCompilerException
+//
+function TdwsCompileMessageList.AddCompilerException(const pos : TScriptPos; e : Exception) : TScriptMessage;
+begin
+   Result:=AddCompilerError(pos, E.Message);
 end;
 
 // AddCompilerErrorFmt

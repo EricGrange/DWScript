@@ -4106,8 +4106,10 @@ begin
       Assert(optimized is TTypedExpr);
       Result:=TTypedExpr(optimized);
    except
-      on E: Exception do
-         raise ECompileException.CreateFromException(hotPos, E)
+      on E: Exception do begin
+         prog.CompileMsgs.AddCompilerException(hotPos, E);
+         Result:=Self;
+      end;
    end;
 end;
 
