@@ -1900,9 +1900,12 @@ end;
 // WriteInteger
 //
 procedure TdwsJSONWriter.WriteInteger(const n : Int64);
+var
+   s : String;
 begin
    BeforeWriteImmediate;
-   FStream.WriteString(IntToStr(n));
+   FastInt64ToStr(n, s);
+   FStream.WriteString(s);
    AfterWriteImmediate;
 end;
 

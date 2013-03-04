@@ -1049,13 +1049,21 @@ type
       procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
    TMultIntExpr = class(TIntegerBinOpExpr)
-     function EvalAsInteger(exec : TdwsExecution) : Int64; override;
-     function EvalAsFloat(exec : TdwsExecution) : Double; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+      function EvalAsFloat(exec : TdwsExecution) : Double; override;
+      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+   end;
+   TMultIntPow2Expr = class(TUnaryOpIntExpr)
+      private
+         FShift : Integer;
+      public
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+
+         property Shift : Integer read FShift;
    end;
    TMultFloatExpr = class(TFloatBinOpExpr)
-     function EvalAsFloat(exec : TdwsExecution) : Double; override;
-     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+      function EvalAsFloat(exec : TdwsExecution) : Double; override;
+      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
    // Sqr ( a )
@@ -5081,6 +5089,9 @@ end;
 // Optimize
 //
 function TMultIntExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+var
+   mip : TMultIntPow2Expr;
+   n : Integer;
 begin
    if (FLeft is TVarExpr) and (FRight is TVarExpr) then begin
       if TVarExpr(FLeft).SameVarAs(TVarExpr(FRight)) then begin
@@ -5089,8 +5100,40 @@ begin
          Free;
          Exit;
       end;
+   end else if (FLeft is TConstIntExpr) and (not FRight.IsConstant) then begin
+      n:=WhichPowerOfTwo(TConstIntExpr(FLeft).EvalAsInteger(exec));
+      if n>0 then begin
+         mip:=TMultIntPow2Expr.Create(prog, FRight);
+         mip.FShift:=n;
+         Result:=mip;
+         FRight:=nil;
+         Free;
+         Exit;
+      end;
    end;
    Result:=inherited;
+end;
+
+// ------------------
+// ------------------ TMultIntPow2Expr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TMultIntPow2Expr.EvalAsInteger(exec : TdwsExecution) : Int64;
+{$ifdef PUREPASCAL}
+begin
+   Result:=Expr.EvalAsInteger(exec)*(Int64(2) shl FShift);
+{$else}
+asm
+   push  dword [eax + OFFSET FShift]
+   mov   eax, [eax + OFFSET FExpr]
+   mov   ecx, [eax]
+   call  dword ptr [ecx + VMTOFFSET EvalAsInteger]
+   pop   ecx
+   shld  edx, eax, cl
+   shl   eax, cl
+{$endif}
 end;
 
 // ------------------

@@ -553,8 +553,10 @@ begin
   if Assigned(FDataMaster) then
     FDataMaster.Read(FExec, FData);
 
-  SetLength(Result, FTypeSym.Size);
-  DWSCopyData(FData, FOffset, Result, 0, FTypeSym.Size);
+  if Length(FData)<>0 then begin
+     SetLength(Result, FTypeSym.Size);
+     DWSCopyData(FData, FOffset, Result, 0, FTypeSym.Size);
+  end;
 end;
 
 // GetScriptObj

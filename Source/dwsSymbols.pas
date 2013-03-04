@@ -127,6 +127,8 @@ type
          function GetSubExprCount : Integer; virtual;
 
       public
+         function  IsConstant : Boolean; virtual;
+
          function  Eval(exec : TdwsExecution) : Variant; virtual; abstract;
          function  EvalAsInteger(exec : TdwsExecution) : Int64; virtual; abstract;
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; virtual; abstract;
@@ -1143,12 +1145,15 @@ type
          procedure AddClassVar(sym : TClassVarSymbol);
          procedure AddProperty(propSym : TPropertySymbol);
          procedure AddMethod(methSym : TMethodSymbol); virtual;
+         procedure AddField(fieldSym : TFieldSymbol); virtual;
 
          function FieldAtOffset(offset : Integer) : TFieldSymbol; virtual;
 
          function AllowVirtualMembers : Boolean; virtual;
          function AllowOverloads : Boolean; virtual;
          function AllowDefaultProperty : Boolean; virtual; abstract;
+         function AllowFields : Boolean; virtual;
+         function AllowAnonymousMethods : Boolean; virtual;
 
          function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; virtual;
 
@@ -1189,8 +1194,6 @@ type
       public
          destructor Destroy; override;
 
-         procedure AddField(fieldSym : TFieldSymbol); virtual;
-
          function DuckTypedMatchingMethod(methSym : TMethodSymbol; visibility : TdwsVisibility) : TMethodSymbol; virtual;
 
          function NthParentOf(structType : TCompositeTypeSymbol) : Integer;
@@ -1221,7 +1224,7 @@ type
    // field of a script object
    TFieldSymbol = class sealed (TValueSymbol)
       protected
-         FStructSymbol : TStructuredTypeSymbol;
+         FStructSymbol : TCompositeTypeSymbol;
          FOffset : Integer;
          FVisibility : TdwsVisibility;
          FDefaultValue : TData;
@@ -1240,7 +1243,7 @@ type
 
          procedure InitData(const data : TData; structOffset : Integer);
 
-         property StructSymbol : TStructuredTypeSymbol read FStructSymbol;
+         property StructSymbol : TCompositeTypeSymbol read FStructSymbol;
          property Offset : Integer read FOffset;
          property Visibility : TdwsVisibility read FVisibility write FVisibility;
          property DefaultValue : TData read FDefaultValue write FDefaultValue;
@@ -1271,6 +1274,8 @@ type
          procedure AddField(fieldSym : TFieldSymbol); override;
          procedure AddMethod(methSym : TMethodSymbol); override;
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
+
+         function AllowFields : Boolean; override;
 
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
          function CreateAnonymousMethod(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
@@ -1472,8 +1477,12 @@ type
          function FindClassOperator(tokenType : TTokenType; paramType : TTypeSymbol) : TClassOperatorSymbol;
 
          function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; override;
+
          function AllowVirtualMembers : Boolean; override;
          function AllowOverloads : Boolean; override;
+         function AllowFields : Boolean; override;
+         function AllowAnonymousMethods : Boolean; override;
+
          function CreateSelfParameter(methSym : TMethodSymbol) : TDataSymbol; override;
          function CreateAnonymousMethod(aFuncKind : TFuncKind; aVisibility : TdwsVisibility;
                                         isClassMethod : Boolean) : TMethodSymbol; override;
@@ -1898,6 +1907,13 @@ begin
    Eval(exec);
 end;
 
+// IsConstant
+//
+function TExprBase.IsConstant : Boolean;
+begin
+   Result:=False;
+end;
+
 // ------------------
 // ------------------ TExprBaseListRec ------------------
 // ------------------
@@ -2192,6 +2208,14 @@ begin
    methSym.FStructSymbol:=Self;
 end;
 
+// AddField
+//
+procedure TCompositeTypeSymbol.AddField(fieldSym : TFieldSymbol);
+begin
+   FMembers.AddSymbol(fieldSym);
+   fieldSym.FStructSymbol:=Self;
+end;
+
 // FieldAtOffset
 //
 function TCompositeTypeSymbol.FieldAtOffset(offset : Integer) : TFieldSymbol;
@@ -2321,6 +2345,20 @@ begin
       Result:=Result.Parent;
 end;
 
+// AllowFields
+//
+function TCompositeTypeSymbol.AllowFields : Boolean;
+begin
+   Result:=False;
+end;
+
+// AllowAnonymousMethods
+//
+function TCompositeTypeSymbol.AllowAnonymousMethods : Boolean;
+begin
+   Result:=True;
+end;
+
 // ------------------
 // ------------------ TStructuredTypeSymbol ------------------
 // ------------------
@@ -2378,14 +2416,6 @@ end;
 function TStructuredTypeSymbol.GetIsForwarded : Boolean;
 begin
    Result:=Assigned(FForwardPosition);
-end;
-
-// AddField
-//
-procedure TStructuredTypeSymbol.AddField(fieldSym : TFieldSymbol);
-begin
-   FMembers.AddSymbol(fieldSym);
-   fieldSym.FStructSymbol:=Self;
 end;
 
 // DuckTypedMatchingMethod
@@ -2526,6 +2556,13 @@ end;
 procedure TRecordSymbol.Initialize(const msgs : TdwsCompileMessageList);
 begin
    CheckMethodsImplemented(msgs);
+end;
+
+// AllowFields
+//
+function TRecordSymbol.AllowFields : Boolean;
+begin
+   Result:=True;
 end;
 
 // CreateSelfParameter
@@ -4424,6 +4461,20 @@ end;
 function TClassSymbol.AllowOverloads : Boolean;
 begin
    Result:=not (csfNoOverloads in FFlags);
+end;
+
+// AllowFields
+//
+function TClassSymbol.AllowFields : Boolean;
+begin
+   Result:=True;
+end;
+
+// AllowAnonymousMethods
+//
+function TClassSymbol.AllowAnonymousMethods : Boolean;
+begin
+   Result:=(not IsExternal);
 end;
 
 // CreateSelfParameter

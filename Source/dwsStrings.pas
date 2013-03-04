@@ -221,6 +221,7 @@ const
   CPE_NoParamsExpected = 'No parameters expected';
   CPE_NoProtectedVisibilityForHelpers = 'Helpers do not supported "protected" visibility specifier';
   CPE_HelpersNotAllowedForDelegates = 'Helpers not allowed for delegates or function pointers';
+  CPE_AnonymousMethodsNotAllowedHere = 'Anonymous methods not allowed here';
 
   CPE_AttributeConstructorExpected = 'Attribute constructor expected';
   CPE_DanglingAttribute = 'Dangling attribute declaration';

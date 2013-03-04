@@ -827,7 +827,6 @@ type
          function GetBaseType : TTypeSymbol; virtual;
 
       public
-         function  IsConstant : Boolean; virtual;
          function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; virtual;
 
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -3829,13 +3828,6 @@ end;
 // ------------------
 // ------------------ TProgramExpr ------------------
 // ------------------
-
-// IsConstant
-//
-function TProgramExpr.IsConstant : Boolean;
-begin
-   Result:=False;
-end;
 
 // Optimize
 //

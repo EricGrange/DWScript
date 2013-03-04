@@ -316,6 +316,7 @@ type
                                  const data : TData; addr : Integer) : TConstSymbol;
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
       function ReadArrayConstantExpr(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
+      function ReadInitExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
    end;
 
    ISymbolAttributesBag = interface
@@ -584,6 +585,7 @@ type
          function ReadClassOperatorDecl(ClassSym: TClassSymbol) : TClassOperatorSymbol;
          procedure ReadPropertyDecl(ownerSym : TCompositeTypeSymbol; aVisibility : TdwsVisibility;
                                     classProperty : Boolean);
+         procedure ReadPropertyDeclAutoField(propSym : TPropertySymbol; classProperty : Boolean);
          function ReadPropertyDeclGetter(propSym : TPropertySymbol; var scriptPos : TScriptPos;
                                          classProperty : Boolean) : TSymbol;
          function ReadPropertyDeclSetter(propSym : TPropertySymbol; var scriptPos : TScriptPos;
@@ -660,6 +662,12 @@ type
          function  ReadUnitHeader : TScriptSourceType;
 
          function ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory) : TProgramExpr;
+         function ReadNamedVarsDecl(names : TSimpleStringList; const posArray : TScriptPosArray;
+                                    const dataSymbolFactory : IdwsDataSymbolFactory) : TProgramExpr;
+         function CreateNamedVarDeclExpr(const dataSymbolFactory : IdwsDataSymbolFactory;
+                                         const name : String; const scriptPos : TScriptPos;
+                                         typ : TTypeSymbol; var initExpr : TTypedExpr;
+                                         var sym : TDataSymbol) : TProgramExpr;
          function ReadWhile : TProgramExpr;
          function ResolveUnitReferences(scriptType : TScriptSourceType) : TIdwsUnitList;
 
@@ -868,6 +876,7 @@ type
                                     typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol; virtual;
          function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr; virtual;
          function ReadArrayConstantExpr(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
+         function ReadInitExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
    end;
 
    TCompositeTypeSymbolFactory = class (TStandardSymbolFactory)
@@ -1002,6 +1011,20 @@ end;
 function TStandardSymbolFactory.ReadArrayConstantExpr(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
 begin
    Result:=FCompiler.ReadArrayConstant(closingToken, expecting);
+end;
+
+// ReadInitExpr
+//
+function TStandardSymbolFactory.ReadInitExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
+var
+   recSym : TRecordSymbol;
+begin
+   if (expecting is TRecordSymbol) and FCompiler.FTok.Test(ttBLEFT) then begin
+      recSym:=TRecordSymbol(expecting);
+      Result:=TConstExpr.Create(FCompiler.FProg, expecting, FCompiler.ReadConstRecord(recSym), 0);
+   end else begin
+      Result:=ReadExpr(expecting)
+   end;
 end;
 
 // ------------------
@@ -2360,25 +2383,32 @@ end;
 //
 function TdwsCompiler.ReadVarDecl(const dataSymbolFactory : IdwsDataSymbolFactory) : TProgramExpr;
 var
-   x : Integer;
    names : TSimpleStringList;
-   sym : TDataSymbol;
-   typ : TTypeSymbol;
-   hotPos : TScriptPos;
    posArray : TScriptPosArray;
-   initData : TData;
-   initExpr : TTypedExpr;
-   assignExpr : TAssignExpr;
-   constExpr : TConstExpr;
-   varExpr : TVarExpr;
 begin
-   Result := nil;
-
-   initExpr := nil;
    names := AcquireStringList;
    try
       ReadNameList(names, posArray);
+      Result := ReadNamedVarsDecl(names, posArray, dataSymbolFactory);
+   finally
+      ReleaseStringList(names);
+   end;
+end;
 
+// ReadNamedVarsDecl
+//
+function TdwsCompiler.ReadNamedVarsDecl(names : TSimpleStringList; const posArray : TScriptPosArray;
+                                        const dataSymbolFactory : IdwsDataSymbolFactory) : TProgramExpr;
+var
+   x : Integer;
+   sym : TDataSymbol;
+   typ : TTypeSymbol;
+   hotPos : TScriptPos;
+   initExpr : TTypedExpr;
+begin
+   Result := nil;
+   initExpr := nil;
+   try
       hotPos:=FTok.HotPos;
 
       if FTok.TestDelete(ttCOLON) then begin
@@ -2389,13 +2419,8 @@ begin
          //    var myVar : type := expr
          typ:=ReadType('', tcVariable);
          if names.Count=1 then begin
-            if FTok.TestDelete(ttEQ) or FTok.TestDelete(ttASSIGN) then begin
-               if (typ is TRecordSymbol) and FTok.Test(ttBLEFT) then begin
-                  initExpr:=TConstExpr.Create(FProg, typ, ReadConstRecord(TRecordSymbol(typ)), 0);
-               end else begin
-                  initExpr:=dataSymbolFactory.ReadExpr(typ)
-               end;
-            end;
+            if FTok.TestDelete(ttEQ) or FTok.TestDelete(ttASSIGN) then
+               initExpr:=dataSymbolFactory.ReadInitExpr(typ);
          end;
 
       end else if FTok.TestDelete(ttEQ) or FTok.TestDelete(ttASSIGN) then begin
@@ -2430,64 +2455,78 @@ begin
       else if (typ is TClassSymbol) and TClassSymbol(typ).IsStatic then
          FMsgs.AddCompilerErrorFmt(hotPos, CPE_ClassIsStaticNoInstances, [typ.Name]);
 
-      for x:=0 to names.Count-1 do begin
-         sym:=dataSymbolFactory.CreateDataSymbol(names[x], posArray[x], typ);
+      for x:=0 to names.Count-1 do
+         Result:=CreateNamedVarDeclExpr(dataSymbolFactory, names[x], posArray[x], typ, initExpr, sym);
+   finally
+      initExpr.Free;
+   end;
+end;
 
-         varExpr:=GetVarExpr(sym);
-         if Assigned(initExpr) then begin
+// CreateNamedVarDeclExpr
+//
+function TdwsCompiler.CreateNamedVarDeclExpr(const dataSymbolFactory : IdwsDataSymbolFactory;
+                                             const name : String; const scriptPos : TScriptPos;
+                                             typ : TTypeSymbol; var initExpr : TTypedExpr;
+                                             var sym : TDataSymbol) : TProgramExpr;
+var
+   initData : TData;
+   assignExpr : TAssignExpr;
+   constExpr : TConstExpr;
+   varExpr : TVarExpr;
+begin
+   Result:=nil;
 
-            // Initialize with an expression
+   sym:=dataSymbolFactory.CreateDataSymbol(name, scriptPos, typ);
 
-            RecordSymbolUse(sym, posArray[x], [suDeclaration, suReference, suWrite]);
+   varExpr:=GetVarExpr(sym);
+   if Assigned(initExpr) then begin
 
-            Result:=CreateAssign(hotPos, ttASSIGN, varExpr, initExpr);
-            initExpr:=nil;
+      // Initialize with an expression
+      RecordSymbolUse(sym, scriptPos, [suDeclaration, suReference, suWrite]);
 
-         end else begin
+      Result:=CreateAssign(scriptPos, ttASSIGN, varExpr, initExpr);
+      initExpr:=nil;
 
-            RecordSymbolUse(sym, posArray[x], [suDeclaration]);
+   end else begin
 
-            if sym.Typ is TArraySymbol then begin
+      RecordSymbolUse(sym, scriptPos, [suDeclaration]);
 
-               // TODO: if Sym.DynamicInit?
-               FProg.InitExpr.AddStatement(
-                  TInitDataExpr.Create(FProg, hotPos, varExpr));
+      if sym.Typ is TArraySymbol then begin
 
-            end else begin
+         // TODO: if Sym.DynamicInit?
+         FProg.InitExpr.AddStatement(
+            TInitDataExpr.Create(FProg, scriptPos, varExpr));
 
-               // Initialize with default value
-               if (varExpr.Typ=FProg.TypInteger) or (varExpr.Typ is TEnumerationSymbol) then
-                  assignExpr:=TAssignConstToIntegerVarExpr.CreateVal(FProg, hotPos, varExpr, 0)
-               else if varExpr.Typ=FProg.TypFloat then
-                  assignExpr:=TAssignConstToFloatVarExpr.CreateVal(FProg, hotPos, varExpr, 0)
-               else if varExpr.Typ=FProg.TypBoolean then
-                  assignExpr:=TAssignConstToBoolVarExpr.CreateVal(FProg, hotPos, varExpr, False)
-               else if varExpr.Typ=FProg.TypString then
-                  assignExpr:=TAssignConstToStringVarExpr.CreateVal(FProg, hotPos, varExpr, '')
-               else if varExpr.Typ.ClassType=TClassSymbol then
-                  assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, hotPos, varExpr)
-               else if varExpr.Typ.ClassType=TClassOfSymbol then
-                  assignExpr:=TAssignNilClassToVarExpr.CreateVal(FProg, hotPos, varExpr)
-               else if varExpr.Typ is TFuncSymbol then
-                  assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, hotPos, varExpr)
-               else begin
-                  initData := nil;
-                  SetLength(initData, sym.Typ.Size);
-                  TDataSymbol(sym).Typ.InitData(initData, 0);
+      end else begin
 
-                  constExpr:=TConstExpr.CreateTyped(FProg, sym.Typ, initData);
-                  assignExpr:=TAssignConstDataToVarExpr.Create(FProg, hotPos, varExpr, constExpr);
-               end;
-               FProg.InitExpr.AddStatement(assignExpr);
+         // Initialize with default value
+         if (varExpr.Typ=FProg.TypInteger) or (varExpr.Typ is TEnumerationSymbol) then
+            assignExpr:=TAssignConstToIntegerVarExpr.CreateVal(FProg, scriptPos, varExpr, 0)
+         else if varExpr.Typ=FProg.TypFloat then
+            assignExpr:=TAssignConstToFloatVarExpr.CreateVal(FProg, scriptPos, varExpr, 0)
+         else if varExpr.Typ=FProg.TypBoolean then
+            assignExpr:=TAssignConstToBoolVarExpr.CreateVal(FProg, scriptPos, varExpr, False)
+         else if varExpr.Typ=FProg.TypString then
+            assignExpr:=TAssignConstToStringVarExpr.CreateVal(FProg, scriptPos, varExpr, '')
+         else if varExpr.Typ.ClassType=TClassSymbol then
+            assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, scriptPos, varExpr)
+         else if varExpr.Typ.ClassType=TClassOfSymbol then
+            assignExpr:=TAssignNilClassToVarExpr.CreateVal(FProg, scriptPos, varExpr)
+         else if varExpr.Typ is TFuncSymbol then
+            assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, scriptPos, varExpr)
+         else begin
+            initData := nil;
+            SetLength(initData, sym.Typ.Size);
+            TDataSymbol(sym).Typ.InitData(initData, 0);
 
-            end;
-
+            constExpr:=TConstExpr.CreateTyped(FProg, sym.Typ, initData);
+            assignExpr:=TAssignConstDataToVarExpr.Create(FProg, scriptPos, varExpr, constExpr);
          end;
-     end;
-  finally
-     initExpr.Free;
-     ReleaseStringList(names);
-  end;
+         FProg.InitExpr.AddStatement(assignExpr);
+
+      end;
+
+   end;
 end;
 
 // ReadConstDecl
@@ -7622,6 +7661,14 @@ begin
          if Result.Parent=nil then
             Result.InheritFrom(FProg.TypInterface);
 
+         if FTok.TestDelete(ttALEFT) then begin
+            // accept but ignore GUID
+            if not FTok.TestDelete(ttStrVal) then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
+            if not FTok.TestDelete(ttARIGHT) then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_ArrayBracketRightExpected);
+         end;
+
          while not FTok.Test(ttEND) do begin
 
             // Read methods and properties
@@ -7817,75 +7864,89 @@ begin
 
    gotReadOrWrite:=False;
 
-   if FTok.TestDelete(ttREAD) then begin
+   if     FTok.Test(ttSEMI)
+      and ownerSym.AllowFields then begin
 
       gotReadOrWrite:=True;
-      sym:=ReadPropertyDeclGetter(propSym, accessPos, classProperty);
 
-      if sym=nil then
+      // shorthand with anonymous private field
+      ReadPropertyDeclAutoField(propSym, classProperty);
 
-         // error already handled
+   end else begin
 
-      else if not sym.Typ.IsOfType(propSym.Typ) then
+      if FTok.TestDelete(ttREAD) then begin
 
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleType, [sym.Name])
+         gotReadOrWrite:=True;
 
-      else if sym is TMethodSymbol then begin
+         sym:=ReadPropertyDeclGetter(propSym, accessPos, classProperty);
 
-         if classProperty and not TMethodSymbol(sym).IsClassMethod then
-            FMsgs.AddCompilerError(accessPos, CPE_ClassMethodExpected);
-         if not CheckPropertyFuncParams(propSym.ArrayIndices, TMethodSymbol(sym), indexTyp) then
-            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleParameters, [sym.Name]);
+         if sym=nil then
 
-      end else if propSym.HasArrayIndices then begin
+            // error already handled
 
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionMethodExpected);
+         else if not sym.Typ.IsOfType(propSym.Typ) then
 
-      end else if classProperty and (sym.ClassType=TFieldSymbol) then begin
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleType, [sym.Name])
 
-         FMsgs.AddCompilerError(accessPos, CPE_ClassMemberExpected);
+         else if sym is TMethodSymbol then begin
+
+            if classProperty and not TMethodSymbol(sym).IsClassMethod then
+               FMsgs.AddCompilerError(accessPos, CPE_ClassMethodExpected);
+            if not CheckPropertyFuncParams(propSym.ArrayIndices, TMethodSymbol(sym), indexTyp) then
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleParameters, [sym.Name]);
+
+         end else if propSym.HasArrayIndices then begin
+
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_FunctionMethodExpected);
+
+         end else if classProperty and (sym.ClassType=TFieldSymbol) then begin
+
+            FMsgs.AddCompilerError(accessPos, CPE_ClassMemberExpected);
+
+         end;
+
+         propSym.ReadSym := sym;
+         RecordSymbolUse(sym, accessPos, [suReference, suRead]);
 
       end;
 
-      propSym.ReadSym := sym;
-      RecordSymbolUse(sym, accessPos, [suReference, suRead]);
-   end;
+      if FTok.TestDelete(ttWRITE) then begin
 
-   if FTok.TestDelete(ttWRITE) then begin
+         gotReadOrWrite:=True;
+         sym:=ReadPropertyDeclSetter(propSym, accessPos, classProperty);
 
-      gotReadOrWrite:=True;
-      sym:=ReadPropertyDeclSetter(propSym, accessPos, classProperty);
+         if sym=nil then
 
-      if sym=nil then
+            // error already handled
 
-         // error already handled
+         else if sym is TMethodSymbol then begin
 
-      else if sym is TMethodSymbol then begin
+            if classProperty and not TMethodSymbol(sym).IsClassMethod then
+               FMsgs.AddCompilerError(accessPos, CPE_ClassMethodExpected);
+            if    (not (TMethodSymbol(sym).Kind in [fkProcedure, fkMethod]))
+               or (TMethodSymbol(sym).Typ<>nil) then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_ProcedureMethodExpected)
+            else if not CheckPropertyFuncParams(propSym.ArrayIndices, TMethodSymbol(sym), indexTyp, propSym.Typ) then
+               FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleParameters, [sym.Name]);
 
-         if classProperty and not TMethodSymbol(sym).IsClassMethod then
-            FMsgs.AddCompilerError(accessPos, CPE_ClassMethodExpected);
-         if    (not (TMethodSymbol(sym).Kind in [fkProcedure, fkMethod]))
-            or (TMethodSymbol(sym).Typ<>nil) then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_ProcedureMethodExpected)
-         else if not CheckPropertyFuncParams(propSym.ArrayIndices, TMethodSymbol(sym), indexTyp, propSym.Typ) then
-            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleParameters, [sym.Name]);
+         end else if propSym.Typ <> sym.Typ then begin
 
-      end else if propSym.Typ <> sym.Typ then begin
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleWriteSymbol, [sym.Name]);
 
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_IncompatibleWriteSymbol, [sym.Name]);
+         end else if sym is TConstSymbol then  begin
 
-      end else if sym is TConstSymbol then  begin
+            FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConstantCannotBeWrittenTo, [sym.Name]);
 
-         FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_ConstantCannotBeWrittenTo, [sym.Name]);
+         end else if classProperty and (sym.ClassType=TFieldSymbol) then begin
 
-      end else if classProperty and (sym.ClassType=TFieldSymbol) then begin
+            FMsgs.AddCompilerError(accessPos, CPE_ClassMemberExpected);
 
-         FMsgs.AddCompilerError(accessPos, CPE_ClassMemberExpected);
+         end;
 
+         propSym.WriteSym := sym;
+         RecordSymbolUse(sym, accessPos, [suReference, suWrite]);
       end;
 
-      propSym.WriteSym := sym;
-      RecordSymbolUse(sym, accessPos, [suReference, suWrite]);
    end;
 
    if not gotReadOrWrite then
@@ -7914,6 +7975,36 @@ begin
       FSourceContextMap.OpenContext(propStartPos, propSym, ttPROPERTY);
       FSourceContextMap.CloseContext(FTok.CurrentPos);
    end;
+end;
+
+// ReadPropertyDeclAutoField
+//
+procedure TdwsCompiler.ReadPropertyDeclAutoField(propSym : TPropertySymbol; classProperty : Boolean);
+var
+   field : TFieldSymbol;
+   classVar : TDataSymbol;
+   sym : TSymbol;
+   factory : IdwsDataSymbolFactory;
+   assignExpr : TProgramExpr;
+   initExpr : TTypedExpr;
+begin
+   if classProperty then begin
+      factory:=TCompositeTypeSymbolFactory.Create(Self, propSym.OwnerSymbol, propSym.Visibility);
+      if FTok.TestDeleteAny([ttEQ, ttASSIGN])<>ttNone then
+         initExpr:=factory.ReadInitExpr(propSym.Typ)
+      else initExpr:=nil;
+      assignExpr:=CreateNamedVarDeclExpr(factory, '', FTok.HotPos, propSym.Typ, initExpr, classVar);
+      if assignExpr<>nil then
+         FProg.InitExpr.AddStatement(assignExpr);
+      sym:=classVar;
+   end else begin
+      field:=TFieldSymbol.Create('', propSym.Typ, cvPrivate);
+      field.ExternalName:=propSym.Name;
+      propSym.OwnerSymbol.AddField(field);
+      sym:=field;
+   end;
+   propSym.ReadSym:=sym;
+   propSym.WriteSym:=sym;
 end;
 
 // ReadPropertyDeclGetter
@@ -7947,6 +8038,8 @@ begin
 
       scriptPos:=FTok.HotPos;
 
+      if not propSym.OwnerSymbol.AllowAnonymousMethods then
+         FMsgs.AddCompilerError(scriptPos, CPE_AnonymousMethodsNotAllowedHere);
       meth:=propSym.OwnerSymbol.CreateAnonymousMethod(fkFunction, cvPrivate, classProperty);
       meth.Typ:=propSym.Typ;
       propSym.OwnerSymbol.AddMethod(meth);
@@ -8015,6 +8108,8 @@ begin
 
       scriptPos:=FTok.HotPos;
 
+      if not propSym.OwnerSymbol.AllowAnonymousMethods then
+         FMsgs.AddCompilerError(scriptPos, CPE_AnonymousMethodsNotAllowedHere);
       meth:=propSym.OwnerSymbol.CreateAnonymousMethod(fkProcedure, cvPrivate, classProperty);
 
       meth.AddParams(propSym.ArrayIndices);

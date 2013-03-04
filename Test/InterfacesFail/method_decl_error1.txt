@@ -1,0 +1,4 @@
+Syntax Error: Unknown name "bug" [line: 4, column: 27]
+Syntax Error: Unknown name "bugbug" [line: 5, column: 23]
+Syntax Error: Method "World" has incompatible parameters [line: 6, column: 33]
+Syntax Error: Method "Hello" has incompatible parameters [line: 6, column: 45]

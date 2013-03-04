@@ -67,16 +67,21 @@ type
    TRTTIMethodVMTMethod = class(TInternalMethod)
       procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
    end;
+   TRTTIMethodCallMethod = class(TInternalMethod)
+      procedure Execute(info : TProgramInfo; var ExternalObject: TObject); override;
+   end;
 
 type
    TRTTIMethodInfoFlags = (
-      infoAbstract = 1,
+      infoOverlap = 1,
       infoOverride = 2,
-      infoFinal = 4,
-      infoOverload = 8,
-      infoOverlap = 16,
-      infoClass = 32,
-      infoStatic = 64
+      infoStatic = 4,
+      infoClass = 8,
+      infoOverload = 16,
+      infoAbstract = 32,
+      infoFinal = 64,
+      infoConstructor = 128,
+      infoDestructor = 256
    );
 
 const
@@ -173,6 +178,9 @@ begin
    TRTTIMethodVMTMethod.Create(mkFunction, [], 'VMTIndex',
                                [], SYS_INTEGER,
                                clsMethAttribute, cvPublic, systemTable);
+   TRTTIMethodCallMethod.Create(mkFunction, [], 'Call',
+                                ['instance', SYS_VARIANT, 'args', 'array of const'], SYS_VARIANT,
+                                clsMethAttribute, cvPublic, systemTable);
 
    systemTable.AddSymbol(
       TDynamicArraySymbol.Create(SYS_TRTTIRAWATTRIBUTES,
@@ -465,6 +473,44 @@ var
 begin
    methSym:=ExternalObject as TMethodSymbol;
    Info.ResultAsInteger := methSym.VMTIndex;
+end;
+
+// ------------------
+// ------------------ TRTTIMethodCallMethod ------------------
+// ------------------
+
+// Execute
+//
+procedure TRTTIMethodCallMethod.Execute(info : TProgramInfo; var ExternalObject: TObject);
+var
+   methSym : TMethodSymbol;
+   instanceInfo : IInfo;
+   methInfo : IInfo;
+   resultInfo : IInfo;
+   data : TData;
+begin
+   methSym:=ExternalObject as TMethodSymbol;
+
+   if methSym.IsClassMethod then begin
+      if methSym.IsStatic then begin
+         SetLength(data, 1);
+         data[0]:=Int64(methSym.StructSymbol);
+         instanceInfo:=TInfoClass.Create(info, methSym.StructSymbol, data, 0);
+         methInfo:=TInfoFunc.Create(info, methSym, nil, 0, nil, nil, TClassSymbol(methSym.StructSymbol));
+      end else begin
+         SetLength(data, 1);
+         data[0]:=info.Vars['instance'].ValueAsInteger;
+         instanceInfo:=TInfoClass.Create(info, methSym.StructSymbol, data, 0);
+         methInfo:=TInfoFunc.Create(info, methSym, nil, 0, nil, IScriptObj(IUnknown(data[0])), TClassSymbol(methSym.StructSymbol));
+      end;
+   end else begin
+      data:=info.Vars['instance'].Data;
+      instanceInfo:=TInfoClassObj.Create(info, methSym.StructSymbol, data, 0);
+      methInfo:=TInfoFunc.Create(info, methSym, nil, 0, nil, IScriptObj(IUnknown(data[0])), TClassSymbol(methSym.StructSymbol));
+   end;
+   resultInfo:=methInfo.Call(info.Vars['args'].Data);
+   if methSym.Typ<>nil then
+      Info.ResultAsVariant:=resultInfo.Value;
 end;
 
 // ------------------------------------------------------------------

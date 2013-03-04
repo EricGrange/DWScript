@@ -20,7 +20,7 @@ unit dwsUtils;
 
 interface
 
-uses Classes, SysUtils, Variants, SyncObjs, dwsXPlatform;
+uses Classes, SysUtils, Variants, SyncObjs, dwsXPlatform, Math;
 
 type
 
@@ -549,10 +549,14 @@ function StrCountChar(const aStr : String; c : Char) : Integer;
 
 function Min(a, b : Integer) : Integer; inline;
 
+function WhichPowerOfTwo(const v : Int64) : Integer;
+
 function SimpleStringHash(const s : String) : Cardinal;
 
 function RawByteStringToScriptString(const s : RawByteString) : String;
 function ScriptStringToRawByteString(const s : String) : RawByteString;
+
+procedure FastInt64ToStr(const val : Int64; var s : String);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -588,6 +592,117 @@ begin
    pDest:=PByteArray(NativeUInt(Result));
    for i:=0 to n-1 do
       pDest[i]:=PByte(@pSrc[i])^;
+end;
+
+// DivMod100
+//
+function DivMod100(var dividend : Cardinal) : Cardinal;
+{$ifndef WIN32_ASM}
+var
+   divided : Cardinal;
+begin
+   divided:=dividend div 100;
+   Result:=dividend-divided*100;
+   dividend:=divided;
+{$else}
+asm
+   push  ebx
+   mov   ebx, eax
+
+   mov   eax, [eax]
+   xor   edx, edx
+
+   mov   ecx, 100
+   div   ecx
+
+   mov   [ebx], eax
+   mov   eax, edx
+   pop   ebx
+{$endif}
+end;
+
+function EightDigits(i : Cardinal; p : PChar) : Integer;
+type
+   TTwoChars = packed array [0..1] of Char;
+   PTwoChars = ^TTwoChars;
+const
+   cDigits : packed array [10..99] of TTwoChars = (
+      ('1','0'), ('1','1'), ('1','2'), ('1','3'), ('1','4'), ('1','5'), ('1','6'), ('1','7'), ('1','8'), ('1','9'),
+      ('2','0'), ('2','1'), ('2','2'), ('2','3'), ('2','4'), ('2','5'), ('2','6'), ('2','7'), ('2','8'), ('2','9'),
+      ('3','0'), ('3','1'), ('3','2'), ('3','3'), ('3','4'), ('3','5'), ('3','6'), ('3','7'), ('3','8'), ('3','9'),
+      ('4','0'), ('4','1'), ('4','2'), ('4','3'), ('4','4'), ('4','5'), ('4','6'), ('4','7'), ('4','8'), ('4','9'),
+      ('5','0'), ('5','1'), ('5','2'), ('5','3'), ('5','4'), ('5','5'), ('5','6'), ('5','7'), ('5','8'), ('5','9'),
+      ('6','0'), ('6','1'), ('6','2'), ('6','3'), ('6','4'), ('6','5'), ('6','6'), ('6','7'), ('6','8'), ('6','9'),
+      ('7','0'), ('7','1'), ('7','2'), ('7','3'), ('7','4'), ('7','5'), ('7','6'), ('7','7'), ('7','8'), ('7','9'),
+      ('8','0'), ('8','1'), ('8','2'), ('8','3'), ('8','4'), ('8','5'), ('8','6'), ('8','7'), ('8','8'), ('8','9'),
+      ('9','0'), ('9','1'), ('9','2'), ('9','3'), ('9','4'), ('9','5'), ('9','6'), ('9','7'), ('9','8'), ('9','9')
+      );
+var
+   r : Integer;
+begin
+   Result:=0;
+   Dec(p);
+   repeat
+      r:=DivMod100(i);
+      if r>=10 then begin
+         PTwoChars(p)^:=cDigits[r];
+         Dec(p, 2);
+         Inc(Result, 2);
+      end else begin
+         p[1]:=Char(Ord('0')+r);
+         if i>0 then begin
+            p[0]:='0';
+            Dec(p, 2);
+            Inc(Result, 2);
+         end else begin
+            Inc(Result);
+            Break;
+         end;
+      end;
+   until i=0;
+end;
+
+// FastInt64ToStr
+//
+procedure FastInt64ToStr(const val : Int64; var s : String);
+var
+   buf : array [0..21] of Char;
+   n, nd : Integer;
+   neg : Boolean;
+   i : UInt64;
+   next : Int64;
+begin
+   if val<0 then begin
+      neg:=True;
+      i:=-val;
+   end else begin
+      if val=0 then begin
+         s:='0';
+         Exit;
+      end else i:=val;
+      neg:=False;
+   end;
+   nd:=High(buf);
+   n:=nd;
+   while True do begin
+      if i>100000000 then begin
+         next:=i div 100000000;
+         n:=n-EightDigits(i-next*100000000, @buf[n]);
+         i:=next;
+      end else begin
+         n:=n-EightDigits(i, @buf[n]);
+         Break;
+      end;
+      Dec(nd, 8);
+      while n>nd do begin
+         buf[n]:='0';
+         Dec(n);
+      end;
+   end;
+   if neg then
+      buf[n]:='-'
+   else Inc(n);
+   SetString(s, PChar(@buf[n]), (High(buf)+1)-n);
 end;
 
 // RawByteStringToScriptString
@@ -910,6 +1025,22 @@ begin
    if a<b then
       Result:=a
    else Result:=b;
+end;
+
+// WhichPowerOfTwo
+//
+function WhichPowerOfTwo(const v : Int64) : Integer;
+var
+   n : Int64;
+begin
+   if v>0 then begin
+      for Result:=0 to 63 do begin
+         n:=Int64(1) shl Result;
+         if n>v then Break;
+         if n=v then Exit;
+      end;
+   end;
+   Result:=-1;
 end;
 
 // ------------------

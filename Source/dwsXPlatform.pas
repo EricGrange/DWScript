@@ -442,6 +442,11 @@ end;
 // DirectSet8087CW
 //
 function DirectSet8087CW(newValue : Word) : Word;
+{$IFNDEF WIN32_ASM}
+begin
+   Assert(False);
+   Result:=newValue;
+{$else}
 asm
    push    eax
    push    eax
@@ -450,6 +455,7 @@ asm
    pop     eax
    fldcw   [esp]
    pop     edx
+{$endif}
 end;
 
 // ------------------

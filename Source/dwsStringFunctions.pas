@@ -284,7 +284,8 @@ end;
 //
 procedure TIntToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
 begin
-   Result:=IntToStr(args.AsInteger[0]);
+//   Result:=IntToStr(args.AsInteger[0]);
+   FastInt64ToStr(args.AsInteger[0], Result);
 end;
 
 { TStrToIntFunc }

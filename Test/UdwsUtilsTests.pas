@@ -46,6 +46,8 @@ type
          procedure UnicodeCompareTextTest;
          procedure FastCompareTextSortedValues;
 
+         procedure FastIntToStrTest;
+
          procedure VarRecArrayTest;
    end;
 
@@ -482,6 +484,48 @@ begin
       sl.Free;
       fsl.Free;
    end;
+end;
+
+// FastIntToStrTest
+//
+procedure TdwsUtilsTests.FastIntToStrTest;
+var
+   i : Integer;
+   n : Int64;
+   s : String;
+begin
+   FastInt64ToStr(0, s);
+   CheckEquals('0', s);
+   FastInt64ToStr(123, s);
+   CheckEquals('123', s);
+   FastInt64ToStr(123456, s);
+   CheckEquals('123456', s);
+   FastInt64ToStr(1234567, s);
+   CheckEquals('1234567', s);
+   FastInt64ToStr(12345678, s);
+   CheckEquals('12345678', s);
+   FastInt64ToStr(123456789, s);
+   CheckEquals('123456789', s);
+   FastInt64ToStr(123456789123456789, s);
+   CheckEquals('123456789123456789', s);
+
+   n:=1;
+   for i:=1 to 20 do begin
+      FastInt64ToStr(n, s);
+      CheckEquals(IntToStr(n), s);
+      n:=n*10;
+   end;
+   n:=-1;
+   for i:=1 to 20 do begin
+      FastInt64ToStr(n, s);
+      CheckEquals(IntToStr(n), s);
+      n:=n*10;
+   end;
+
+   FastInt64ToStr(High(Int64), s);
+   CheckEquals(IntToStr(High(Int64)), s);
+   FastInt64ToStr(Low(Int64), s);
+   CheckEquals(IntToStr(Low(Int64)), s);
 end;
 
 // VarRecArrayTest
