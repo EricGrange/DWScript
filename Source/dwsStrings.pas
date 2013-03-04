@@ -176,6 +176,7 @@ const
   CPE_UnexpectedMethodImplementation = 'Unexpected method implementation';
   CPE_WriteOnlyProperty = 'Can''t read a write only property';
   CPE_ReadOnlyProperty = 'Can''t set a value for a read-only property';
+  CPE_CantReadProperty = 'Property cannot be read-accessed';
   CPE_ObjectReferenceExpected = 'Object reference needed to read/write an object field';
   CPE_StaticPropertyWriteExpected = 'Write access of property should be a static method';
   CPE_StaticPropertyReadExpected = 'Read access of property should be a static method';

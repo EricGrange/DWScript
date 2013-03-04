@@ -59,7 +59,7 @@ end;
 //
 procedure TScriptTests.SetUp;
 const
-   cFilter = '*.pas';
+   cFilter = 'read_self*.pas';
 var
    basePath : String;
 begin

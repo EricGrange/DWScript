@@ -1,0 +1,1 @@
+Syntax Error: Property cannot be read-accessed [line: 4, column: 30]

@@ -4633,7 +4633,9 @@ begin
    // No ReadSym
    if sym = nil then begin
 
-      FMsgs.AddCompilerError(aPos, CPE_WriteOnlyProperty);
+      if propertySym.WriteSym=nil then
+         FMsgs.AddCompilerError(aPos, CPE_CantReadProperty)
+      else FMsgs.AddCompilerError(aPos, CPE_WriteOnlyProperty);
       expr.Free;
       expr:=nil;
       Result:=TConstExpr.CreateTypedDefault(FProg, propertySym.Typ);
