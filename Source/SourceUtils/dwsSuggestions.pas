@@ -701,7 +701,7 @@ begin
          if symbolClass.InheritsFrom(TClassSymbol) then
             Result:=scClass
          else if symbolClass.InheritsFrom(TRecordSymbol) then
-            Result:=scInterface
+            Result:=scRecord
          else if symbolClass.InheritsFrom(TInterfaceSymbol) then
             Result:=scInterface
       end else if symbolClass.InheritsFrom(TMethodSymbol) then begin
