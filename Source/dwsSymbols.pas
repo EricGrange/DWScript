@@ -1681,7 +1681,6 @@ type
          function CallStackDepth : Integer; virtual; abstract;
 
          procedure DataPtr_Create(const data : TData; addr : Integer; var Result : IDataContext); inline;
-         procedure DataPtr_CreateOffset(const dataPtr : IDataContext; offset : Integer; var Result : IDataContext); inline;
          procedure DataPtr_CreateBase(addr : Integer; var Result : IDataContext); inline;
          procedure DataPtr_CreateLevel(level, addr : Integer; var Result : IDataContext); inline;
          function DataPtr_Nil : IDataContext; inline;
@@ -6429,13 +6428,6 @@ end;
 procedure TdwsExecution.DataPtr_Create(const data : TData; addr : Integer; var result : IDataContext);
 begin
    Result:=FStack.CreateDataPtr(data, addr);
-end;
-
-// DataPtr_CreateOffset
-//
-procedure TdwsExecution.DataPtr_CreateOffset(const dataPtr : IDataContext; offset : Integer; var result : IDataContext);
-begin
-   dataPtr.CreateOffset(offset, result);
 end;
 
 // DataPtr_CreateBase

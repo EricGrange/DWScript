@@ -4587,7 +4587,9 @@ begin
    if varExpr=nil then
       varExpr:=GetSelfParamExpr(selfSym);
    if fieldSym.StructSymbol.ClassType=TRecordSymbol then begin
-      Result:=TRecordExpr.Create(FProg, scriptPos, (varExpr as TDataExpr), fieldSym)
+      if varExpr.ClassType=TVarExpr then
+         Result:=TRecordVarExpr.Create(FProg, scriptPos, TVarExpr(varExpr), fieldSym)
+      else Result:=TRecordExpr.Create(FProg, scriptPos, (varExpr as TDataExpr), fieldSym)
    end else begin
       Result:=TFieldExpr.Create(FProg, FTok.HotPos, fieldSym, varExpr);
    end;

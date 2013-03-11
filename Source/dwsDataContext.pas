@@ -155,7 +155,7 @@ type
    end;
 
 procedure DWSCopyData(const sourceData : TData; sourceAddr : Integer;
-                      destData : TData; destAddr : Integer; size : Integer);
+                      const destData : TData; destAddr : Integer; size : Integer);
 function DWSSameData(const data1, data2 : TData; offset1, offset2, size : Integer) : Boolean; overload;
 function DWSSameData(const data1, data2 : TData) : Boolean; overload;
 function DWSSameVariant(const v1, v2 : Variant) : Boolean;
@@ -171,14 +171,25 @@ implementation
 // DWSCopyData
 //
 procedure DWSCopyData(const sourceData: TData; sourceAddr: Integer;
-                      destData: TData; destAddr: Integer; size: Integer);
+                      const destData: TData; destAddr: Integer; size: Integer);
+var
+   src, dest : PVariant;
 begin
+   src:=@sourceData[sourceAddr];
+   dest:=@destData[destAddr];
    while size > 0 do begin
-      VarCopy(destData[destAddr], sourceData[sourceAddr]);
-      Inc(sourceAddr);
-      Inc(destAddr);
+      VarCopy(dest^, src^);
+      Inc(src);
+      Inc(dest);
       Dec(size);
    end;
+
+//   while size > 0 do begin
+//      VarCopy(destData[destAddr], sourceData[sourceAddr]);
+//      Inc(sourceAddr);
+//      Inc(destAddr);
+//      Dec(size);
+//   end;
 end;
 
 // DWSSameData

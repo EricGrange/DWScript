@@ -33,18 +33,6 @@ type
 
    TCaseCondition = class;
 
-   IVarParamData = interface
-      function Eval : PVariant;
-
-      procedure GetDataPtr(var result : IDataContext);
-      function AsPVariant(addr : Integer) : PVariant;
-      procedure WriteData(const dataPtr : IDataContext; size : Integer);
-      procedure WriteInteger(const value : Int64);
-      procedure WriteBoolean(const value : Boolean);
-      procedure WriteFloat(const value : Double);
-      procedure WriteString(const value : String);
-   end;
-
    TVarExpr = class (TDataExpr)
       protected
          FStackAddr : Integer;
@@ -165,7 +153,7 @@ type
          constructor CreateFromVarExpr(expr : TVarExpr);
 
          function GetVarParamDataAsPointer(exec : TdwsExecution) : Pointer; inline;
-         procedure GetVarParamData(exec : TdwsExecution; var result : IVarParamData);
+         procedure GetVarParamData(exec : TdwsExecution; var result : IDataContext);
          function GetVarParamEval(exec : TdwsExecution) : PVariant; inline;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
@@ -545,6 +533,17 @@ type
          property MemberOffset : Integer read FMemberOffset;
 
          function IsWritable : Boolean; override;
+   end;
+
+   // Record expression: record.member when BaseExpr is a TVarExpr
+   TRecordVarExpr = class(TRecordExpr)
+      public
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         function EvalAsFloat(exec : TdwsExecution) : Double; override;
+         procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
+         procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
+
+         procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
    end;
 
    TInitDataExpr = class sealed (TNoResultExpr)
@@ -1282,6 +1281,7 @@ type
          property Right : TTypedExpr read FRight;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
+
          procedure TypeCheckAssign(prog : TdwsProgram); virtual;
          function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
          function  OptimizeConstAssignment(prog : TdwsProgram; exec : TdwsExecution) : TNoResultExpr;
@@ -2481,23 +2481,23 @@ end;
 
 // GetVarParamData
 //
-procedure TByRefParamExpr.GetVarParamData(exec : TdwsExecution; var result : IVarParamData);
+procedure TByRefParamExpr.GetVarParamData(exec : TdwsExecution; var result : IDataContext);
 begin
-   result:=IVarParamData(GetVarParamDataAsPointer(exec));
+   result:=IDataContext(GetVarParamDataAsPointer(exec));
 end;
 
 // GetVarParamEval
 //
 function TByRefParamExpr.GetVarParamEval(exec : TdwsExecution) : PVariant;
 begin
-   Result:=IVarParamData(GetVarParamDataAsPointer(exec)).Eval;
+   Result:=IDataContext(GetVarParamDataAsPointer(exec)).AsPVariant(0);
 end;
 
 // GetDataPtr
 //
 procedure TByRefParamExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   IVarParamData(GetVarParamDataAsPointer(exec)).GetDataPtr(result)
+   Result:=IDataContext(GetVarParamDataAsPointer(exec));
 end;
 
 // AssignValue
@@ -2511,35 +2511,35 @@ end;
 //
 procedure TByRefParamExpr.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
 begin
-   IVarParamData(GetVarParamDataAsPointer(exec)).WriteInteger(value);
+   IDataContext(GetVarParamDataAsPointer(exec)).AsInteger[0]:=value;
 end;
 
 // AssignValueAsBoolean
 //
 procedure TByRefParamExpr.AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean);
 begin
-   IVarParamData(GetVarParamDataAsPointer(exec)).WriteBoolean(value);
+   IDataContext(GetVarParamDataAsPointer(exec)).AsBoolean[0]:=value;
 end;
 
 // AssignValueAsFloat
 //
 procedure TByRefParamExpr.AssignValueAsFloat(exec : TdwsExecution; const value : Double);
 begin
-   IVarParamData(GetVarParamDataAsPointer(exec)).WriteFloat(value);
+   IDataContext(GetVarParamDataAsPointer(exec)).AsFloat[0]:=value;
 end;
 
 // AssignValueAsString
 //
 procedure TByRefParamExpr.AssignValueAsString(exec : TdwsExecution; const value : String);
 begin
-   IVarParamData(GetVarParamDataAsPointer(exec)).WriteString(value);
+   IDataContext(GetVarParamDataAsPointer(exec)).AsString[0]:=value;
 end;
 
 // AssignValueAsScriptObj
 //
 procedure TByRefParamExpr.AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj);
 begin
-   DataPtr[exec].AsInterface[0]:=value;
+   IDataContext(GetVarParamDataAsPointer(exec)).AsInterface[0]:=value;
 end;
 
 // AssignExpr
@@ -2592,11 +2592,8 @@ end;
 // GetDataPtr
 //
 procedure TByRefParentParamExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
-var
-   vpd : IVarParamData;
 begin
-   vpd:=IVarParamData(IUnknown(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel) + FStackAddr]));
-   vpd.GetDataPtr(result);
+   Result:=IDataContext(IUnknown(exec.Stack.Data[exec.Stack.GetSavedBp(FLevel) + FStackAddr]));
 end;
 
 // ------------------
@@ -3292,7 +3289,7 @@ end;
 procedure TStaticArrayExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    FBaseExpr.GetDataPtr(exec, result);
-   exec.DataPtr_CreateOffset(result, GetIndex(exec), result);
+   result.CreateOffset(GetIndex(exec), result);
 end;
 
 // GetIndex
@@ -3340,7 +3337,7 @@ begin
 
    BoundsCheck(exec, Result.DataLength, index);
 
-   exec.DataPtr_CreateOffset(Result, index, result);
+   result.CreateOffset(index, result);
 end;
 
 // IsWritable
@@ -3922,7 +3919,7 @@ end;
 procedure TRecordExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    FBaseExpr.GetDataPtr(exec, result);
-   exec.DataPtr_CreateOffset(result, FMemberOffset, result);
+   result.CreateOffset(FMemberOffset, result);
 end;
 
 // GetSubExpr
@@ -3944,6 +3941,45 @@ end;
 function TRecordExpr.IsWritable : Boolean;
 begin
    Result:=FBaseExpr.IsWritable;
+end;
+
+// ------------------
+// ------------------ TRecordVarExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TRecordVarExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result:=exec.Stack.ReadIntValue_BaseRelative(TVarExpr(BaseExpr).FStackAddr+MemberOffset);
+end;
+
+// EvalAsFloat
+//
+function TRecordVarExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+begin
+   Result:=exec.Stack.ReadFloatValue_BaseRelative(TVarExpr(BaseExpr).FStackAddr+MemberOffset);
+end;
+
+// EvalAsVariant
+//
+procedure TRecordVarExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
+begin
+   exec.Stack.ReadValue(exec.Stack.BasePointer+TVarExpr(BaseExpr).FStackAddr+MemberOffset, result);
+end;
+
+// EvalAsString
+//
+procedure TRecordVarExpr.EvalAsString(exec : TdwsExecution; var Result : String);
+begin
+   exec.Stack.ReadStrValue(exec.Stack.BasePointer+TVarExpr(BaseExpr).FStackAddr+MemberOffset, result);
+end;
+
+// GetDataPtr
+//
+procedure TRecordVarExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
+begin
+   exec.DataPtr_CreateBase(TVarExpr(BaseExpr).FStackAddr+MemberOffset, Result);
 end;
 
 // ------------------

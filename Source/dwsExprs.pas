@@ -4652,125 +4652,18 @@ begin
    end;
 end;
 
-type
-
-   TVarParamData = class (TInterfacedSelfObject, IVarParamData)
-      private
-         FDataPtr : IDataContext;
-
-      protected
-
-      public
-         constructor Create(const aDataPtr : IDataContext); overload;
-         constructor Create(exec : TdwsExecution; const aData: TData); overload;
-         constructor Create(exec : TdwsExecution; size : Integer); overload;
-
-         function Eval : PVariant;
-
-         procedure GetDataPtr(var result : IDataContext);
-         function AsPVariant(addr : Integer) : PVariant;
-         procedure WriteData(const dataPtr : IDataContext; size : Integer);
-         procedure WriteInteger(const value : Int64);
-         procedure WriteBoolean(const value : Boolean);
-         procedure WriteFloat(const value : Double);
-         procedure WriteString(const value : String);
-  end;
-
-// Create (data, addr)
-//
-constructor TVarParamData.Create(const aDataPtr : IDataContext);
-begin
-   FDataPtr:=aDataPtr;
-end;
-
-// Create (data)
-//
-constructor TVarParamData.Create(exec : TdwsExecution; const aData : TData);
-begin
-   exec.DataPtr_Create(aData, 0, FDataPtr);
-end;
-
-// Create (size)
-//
-constructor TVarParamData.Create(exec : TdwsExecution; size : Integer);
-var
-   buf : TData;
-begin
-   SetLength(buf, size);
-   exec.DataPtr_Create(buf, 0, FDataPtr);
-end;
-
-// Eval
-//
-function TVarParamData.Eval : PVariant;
-begin
-   Result:=FDataPtr.AsPVariant(0);
-end;
-
-// GetDataPtr
-//
-procedure TVarParamData.GetDataPtr(var result : IDataContext);
-begin
-   Result:=FDataPtr;
-end;
-
-// WriteData
-//
-procedure TVarParamData.WriteData(const dataPtr : IDataContext; size : Integer);
-begin
-   FDataPtr.WriteData(dataPtr, size);
-end;
-
-// WriteInteger
-//
-procedure TVarParamData.WriteInteger(const value : Int64);
-begin
-   FDataPtr.AsInteger[0]:=value;
-end;
-
-// WriteBoolean
-//
-procedure TVarParamData.WriteBoolean(const value : Boolean);
-begin
-   FDataPtr.AsBoolean[0]:=value;
-end;
-
-// WriteFloat
-//
-procedure TVarParamData.WriteFloat(const value : Double);
-begin
-   FDataPtr.AsFloat[0]:=value;
-end;
-
-// WriteString
-//
-procedure TVarParamData.WriteString(const value : String);
-begin
-   FDataPtr.AsString[0]:=value;
-end;
-
-// AsPVariant
-//
-function TVarParamData.AsPVariant(addr : Integer) : PVariant;
-begin
-   Result:=FDataPtr.AsPVariant(addr);
-end;
-
 // ExecuteAddr
 //
 procedure TPushOperator.ExecuteAddr(exec : TdwsExecution);
-var
-   vpd : IVarParamData;
 begin
-   vpd:=TVarParamData.Create(TDataExpr(FArgExpr).DataPtr[exec]);
-   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, TDataExpr(FArgExpr).DataPtr[exec]);
 end;
 
 // ExecutePassAddr
 //
 procedure TPushOperator.ExecutePassAddr(exec : TdwsExecution);
 var
-   vpd : IVarParamData;
+   vpd : IDataContext;
 begin
    TVarParamExpr(FArgExpr).GetVarParamData(exec, vpd);
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
@@ -4780,10 +4673,12 @@ end;
 //
 procedure TPushOperator.ExecuteTempAddr(exec : TdwsExecution);
 var
-   vpd : IVarParamData;
+   vpd : IDataContext;
+   data : TData;
 begin
-   vpd:=TVarParamData.Create(exec, 1);
-   FArgExpr.EvalAsVariant(exec, vpd.Eval^);
+   SetLength(data, 1);
+   FArgExpr.EvalAsVariant(exec, data[0]);
+   exec.DataPtr_Create(data, 0, vpd);
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
 end;
 
@@ -4791,12 +4686,15 @@ end;
 //
 procedure TPushOperator.ExecuteTempData(exec : TdwsExecution);
 var
-   vpd : IVarParamData;
+   vpd : IDataContext;
    dataExpr : TDataExpr;
+   data : TData;
 begin
-   vpd:=TVarParamData.Create(exec, FArgExpr.Typ.Size);
+   SetLength(data, FArgExpr.Typ.Size);
 
    dataExpr:=TDataExpr(FArgExpr);
+   exec.DataPtr_Create(data, 0, vpd);
+
    vpd.WriteData(dataExpr.DataPtr[exec], FArgExpr.Typ.Size);
 
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
@@ -4807,24 +4705,24 @@ end;
 procedure TPushOperator.ExecuteTempArrayAddr(exec : TdwsExecution);
 var
    ace : TArrayConstantExpr;
-   ivpd : IVarParamData;
-   vpd : TVarParamData;
+   vpd : IDataContext;
+   data : TData;
 begin
    ace:=TArrayConstantExpr(FArgExpr);
-   vpd:=TVarParamData.Create(exec, ace.Size);
-   ivpd:=vpd;
-   ace.EvalAsTData(exec, vpd.FDataPtr.AsPData^);
-   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, ivpd);
+   SetLength(data, ace.Size);
+
+   exec.DataPtr_Create(data, 0, vpd);
+
+   ace.EvalAsTData(exec, vpd.AsPData^);
+
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
 end;
 
 // ExecuteTempArray
 //
 procedure TPushOperator.ExecuteTempArray(exec : TdwsExecution);
-var
-   vpd : IVarParamData;
 begin
-   vpd:=TVarParamData.Create(TConstParamExpr(FArgExpr).DataPtr[exec]);
-   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, TConstParamExpr(FArgExpr).DataPtr[exec]);
 end;
 
 // ExecuteResult
@@ -6121,11 +6019,9 @@ function TProgramInfo.GetVars(const str : String): IInfo;
 
    procedure GetVarParamVars(sym : TDataSymbol; basePointer : Integer; var Result : IInfo);
    var
-      vpd : IVarParamData;
       dp : IDataContext;
    begin
-      vpd:=IVarParamData(IUnknown(Execution.Stack.Data[basePointer+sym.StackAddr]));
-      vpd.GetDataPtr(dp);
+      dp:=IDataContext(IUnknown(Execution.Stack.Data[basePointer+sym.StackAddr]));
       TInfo.SetChild(Result, Self, sym.Typ, dp);
    end;
 
@@ -6408,9 +6304,9 @@ function TProgramInfo.GetParamAsPVariant(index : Integer) : PVariant;
 
    function GetVarParam(stackAddr : Integer) : PVariant;
    var
-      vpd : IVarParamData;
+      vpd : IDataContext;
    begin
-      vpd:=IVarParamData(IUnknown(Execution.Stack.Data[stackAddr]));
+      vpd:=IDataContext(IUnknown(Execution.Stack.Data[stackAddr]));
       Result:=vpd.AsPVariant(0);
    end;
 
