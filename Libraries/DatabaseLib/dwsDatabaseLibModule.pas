@@ -243,7 +243,7 @@ begin
    scriptObj:=Info.Vars['parameters'].ScriptObj;
    dynArray:=(scriptObj.InternalObject as TScriptDynamicArray);
 
-   (ExtObject as TDataBase).Intf.Exec(Info.ParamAsString[0], dynArray.Data);
+   (ExtObject as TDataBase).Intf.Exec(Info.ParamAsString[0], dynArray.AsData);
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseMethodsInTransactionEval(
@@ -269,7 +269,7 @@ begin
    scriptObj:=Info.Vars['parameters'].ScriptObj;
    dynArray:=(scriptObj.InternalObject as TScriptDynamicArray);
 
-   ids:=(ExtObject as TDataBase).Intf.Query(Info.ParamAsString[0], dynArray.Data);
+   ids:=(ExtObject as TDataBase).Intf.Query(Info.ParamAsString[0], dynArray.AsData);
 
    dataSetInfo:=Info.Vars['DataSet'].Method['Create'].Call;
 
@@ -280,7 +280,7 @@ begin
 
    dataFieldsInfo:=dataSetInfo.Member['FFields'];
    dataFieldsArray:=(dataFieldsInfo.ScriptObj.InternalObject as TScriptDynamicArray);
-   dataFieldsArray.Length:=ids.FieldCount;
+   dataFieldsArray.ArrayLength:=ids.FieldCount;
 
    dataFieldConstructor:=Info.Vars['DataField'].Method['Create'];
    for i:=0 to ids.FieldCount-1 do begin
@@ -288,7 +288,7 @@ begin
       dataFieldObj:=TDataField.Create;
       dataFieldObj.Intf:=ids.Fields[i];
       dataFieldInfo.ExternalObject:=dataFieldObj;
-      dataFieldsArray.Data[i]:=dataFieldInfo.Value;
+      dataFieldsArray.AsData[i]:=dataFieldInfo.Value;
    end;
 
    Info.ResultAsVariant:=dataSetInfo.Value;

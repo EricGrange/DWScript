@@ -26,7 +26,7 @@ interface
 uses
    Classes, Variants, SysUtils,
    uib, uiblib, uibmetadata,
-   dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform;
+   dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext;
 
 type
 

@@ -27,7 +27,7 @@ type
 
    TRelOpExpr = class(TBinaryOpExpr)
       constructor Create(Prog: TdwsProgram; aLeft, aRight : TTypedExpr); override;
-      function Eval(exec : TdwsExecution) : Variant; override;
+      procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
    end;
    TRelOpExprClass = class of TRelOpExpr;
 
@@ -167,9 +167,9 @@ begin
    FTyp:=Prog.TypBoolean;
 end;
 
-// Eval
+// EvalAsVariant
 //
-function TRelOpExpr.Eval(exec : TdwsExecution) : Variant;
+procedure TRelOpExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
    Result:=EvalAsBoolean(exec);
 end;

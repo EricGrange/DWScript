@@ -23,9 +23,12 @@ unit dwsComConnector;
 
 interface
 
-uses Windows, Variants, Classes, SysUtils, SysConst, dwsComp, dwsSymbols,
-   dwsExprs, dwsStrings, dwsFunctions, dwsStack, ComObj, ComConst, ActiveX,
-   AxCtrls, dwsOperators, dwsUtils;
+uses
+   Windows, Variants, Classes, SysUtils, SysConst,
+   ComObj, ComConst, ActiveX, AxCtrls,
+   dwsComp, dwsSymbols, dwsDataContext,
+   dwsExprs, dwsStrings, dwsFunctions, dwsStack,
+   dwsOperators, dwsUtils;
 
 const
    COM_ConnectorCaption = 'COM Connector 1.0';
@@ -353,7 +356,7 @@ begin
       if typ is TArraySymbol then
          if not (typ is TDynamicArraySymbol) then
             Exit(False);
-      if typ is TFuncSymbol then
+      if typ.IsFuncSymbol then
          Exit(False);
    end;
    Result:=True;

@@ -29,7 +29,7 @@ interface
 uses
    Classes, Variants, SysUtils,
    SynDB, SynCommons,
-   dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform;
+   dwsUtils, dwsExprs, dwsDatabase, dwsStack, dwsXPlatform, dwsDataContext;
 
 type
 

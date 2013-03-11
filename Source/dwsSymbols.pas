@@ -24,7 +24,7 @@ unit dwsSymbols;
 interface
 
 uses SysUtils, Variants, Classes, dwsStrings, dwsErrors, dwsUtils,
-   dwsTokenizer, dwsStack, dwsXPlatform
+   dwsTokenizer, dwsStack, dwsXPlatform, dwsDataContext
    {$ifdef FPC},LazUTF8{$endif};
 
 type
@@ -279,6 +279,7 @@ type
          function SafeGetCaption : String;
          function GetCaption : String; virtual;
          function GetDescription : String; virtual;
+         function GetIsFuncSymbol : Boolean; virtual;
 
       public
          constructor Create(const aName : String; aType : TTypeSymbol);
@@ -289,6 +290,7 @@ type
 
          class function IsBaseType : Boolean; virtual;
          function IsType : Boolean; virtual;
+         function IsFuncSymbol : Boolean;
 
          function QualifiedName : String; virtual;
 
@@ -469,7 +471,7 @@ type
 
       public
          constructor Create(const name : String; typ : TTypeSymbol; const value : Variant); overload;
-         constructor Create(const name : String; typ : TTypeSymbol; const data : TData; addr: Integer); overload;
+         constructor Create(const name : String; typ : TTypeSymbol; const data : TData); overload;
 
          procedure Initialize(const msgs : TdwsCompileMessageList); override;
 
@@ -511,7 +513,7 @@ type
 
       public
          constructor Create(const aName : String; aType : TTypeSymbol;
-                            const data : TData; addr : Integer);
+                            const data : TData);
 
          function Clone : TParamSymbol; override;
          function SameParam(other : TParamSymbol) : Boolean; override;
@@ -560,6 +562,7 @@ type
 
       public
          procedure InitData(const data : TData; offset : Integer); virtual;
+
          function IsType : Boolean; override;
          function BaseType : TTypeSymbol; override;
          function UnAliasedType : TTypeSymbol; virtual;
@@ -693,6 +696,7 @@ type
          function  IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function  IsType : Boolean; override;
          procedure SetIsType;
+         function  GetIsFuncSymbol : Boolean; override;
          procedure AddParam(param : TParamSymbol);
          procedure AddParams(params : TParamsSymbolTable);
          function  HasParam(param : TParamSymbol) : Boolean;
@@ -882,7 +886,6 @@ type
 
       public
          constructor Create(const aTokenType : TTokenType);
-         destructor Destroy; override;
 
          procedure AddParam(p : TTypeSymbol);
 
@@ -1343,7 +1346,7 @@ type
          destructor Destroy; override;
 
          procedure GenerateParams(Table: TSymbolTable; const FuncParams: TParamArray);
-         procedure SetIndex(const Data: TData; Addr: Integer; Sym: TTypeSymbol);
+         procedure SetIndex(const data : TData; Sym: TTypeSymbol);
          function GetArrayIndicesDescription: String;
          function QualifiedName : String; override;
          function IsVisibleFor(const aVisibility : TdwsVisibility) : Boolean; override;
@@ -1677,6 +1680,12 @@ type
          function GetCallStack : TdwsExprLocationArray; virtual; abstract;
          function CallStackDepth : Integer; virtual; abstract;
 
+         procedure DataPtr_Create(const data : TData; addr : Integer; var Result : IDataContext); inline;
+         procedure DataPtr_CreateOffset(const dataPtr : IDataContext; offset : Integer; var Result : IDataContext); inline;
+         procedure DataPtr_CreateBase(addr : Integer; var Result : IDataContext); inline;
+         procedure DataPtr_CreateLevel(level, addr : Integer; var Result : IDataContext); inline;
+         function DataPtr_Nil : IDataContext; inline;
+
          procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : String); virtual;
          procedure LocalizeString(const aString : String; var Result : String); virtual;
 
@@ -1706,26 +1715,23 @@ type
 
    // IScriptObj
    //
-   IScriptObj = interface
+   IScriptObj = interface (IDataContext)
       ['{8D534D1E-4C6B-11D5-8DCB-0000216D9E86}']
       function GetClassSym: TClassSymbol;
-      function GetData: TData;
-      function GetInternalObject: TObject;
       function GetExternalObject: TObject;
       procedure SetExternalObject(value: TObject);
       function GetDestroyed : Boolean;
       procedure SetDestroyed(const val : Boolean);
 
       property ClassSym : TClassSymbol read GetClassSym;
-      property Data : TData read GetData;
-      property InternalObject : TObject read GetInternalObject;
+      property InternalObject : TObject read GetSelf;
       property ExternalObject : TObject read GetExternalObject write SetExternalObject;
       property Destroyed : Boolean read GetDestroyed write SetDestroyed;
+   end;
 
-      function DataOfAddr(addr : Integer) : Variant;
-      function DataOfAddrAsString(addr : Integer) : String;
-      function DataOfAddrAsInteger(addr : Integer) : Int64;
-      procedure DataOfAddrAsScriptObj(addr : Integer; var scriptObj : IScriptObj);
+   TPerfectMatchEnumerator = class
+      FuncSym, Match : TFuncSymbol;
+      function Callback(sym : TSymbol) : Boolean;
    end;
 
    // The script has to be stopped because of an error
@@ -2109,6 +2115,20 @@ end;
 function TSymbol.IsType : Boolean;
 begin
    Result:=False;
+end;
+
+// GetIsFuncSymbol
+//
+function TSymbol.GetIsFuncSymbol : Boolean;
+begin
+   Result:=False;
+end;
+
+// IsFuncSymbol
+//
+function TSymbol.IsFuncSymbol : Boolean;
+begin
+   Result:=(Self<>nil) and GetIsFuncSymbol;
 end;
 
 // QualifiedName
@@ -2988,7 +3008,7 @@ begin
             raise Exception.Create(CPE_ConstParamCantHaveDefaultValue);
 
          paramSymWithDefault:=TParamSymbolWithDefaultValue.Create(paramRec.ParamName, typSym,
-                                                                  paramRec.DefaultValue, 0);
+                                                                  paramRec.DefaultValue);
          paramSym:=paramSymWithDefault;
 
       end else begin
@@ -3242,7 +3262,7 @@ begin
       Result:=False
    else begin
       Result:=False;
-      if not (typSym is TFuncSymbol) then
+      if not typSym.IsFuncSymbol then
          Exit;
       funcSym:=TFuncSymbol(typSym);
       if Params.Count<>funcSym.Params.Count then Exit;
@@ -3266,7 +3286,7 @@ var
    funcSym : TFuncSymbol;
 begin
    Result:=    (typSym<>nil)
-           and (typSym is TFuncSymbol);
+           and typSym.IsFuncSymbol;
    if not Result then Exit;
 
    funcSym:=TFuncSymbol(typSym);
@@ -3299,6 +3319,13 @@ end;
 procedure TFuncSymbol.SetIsType;
 begin
    Include(FFlags, fsfType);
+end;
+
+// GetIsFuncSymbol
+//
+function TFuncSymbol.GetIsFuncSymbol : Boolean;
+begin
+   Result:=True;
 end;
 
 procedure TFuncSymbol.InitData(const Data: TData; Offset: Integer);
@@ -3454,24 +3481,8 @@ constructor TMethodSymbol.Generate(Table: TSymbolTable; MethKind: TMethodKind;
 var
    typSym : TTypeSymbol;
    meth : TSymbol;
+   enumerator : TPerfectMatchEnumerator;
 begin
-   // Check if name is already used
-   meth:=Cls.Members.FindSymbol(MethName, cvPrivate);
-   if meth<>nil then begin
-      if meth is TFieldSymbol then
-         raise Exception.CreateFmt(CPE_FieldExists, [MethName])
-      else if meth is TPropertySymbol then
-         raise Exception.CreateFmt(CPE_PropertyExists, [MethName])
-      else if meth is TMethodSymbol then begin
-         if TMethodSymbol(meth).StructSymbol=Cls then begin
-            if not overloaded then
-               raise Exception.CreateFmt(CPE_MethodExists, [MethName])
-            else if not TMethodSymbol(meth).IsOverloaded then
-               raise Exception.CreateFmt(UNT_PreviousNotOverloaded, [MethName])
-         end;
-      end;
-   end;
-
    // Initialize MethodSymbol
    case MethKind of
       mkConstructor:
@@ -3510,9 +3521,37 @@ begin
 
    GenerateParams(Table, MethParams);
 
+   // Check if name is already used
+   if overloaded then begin
+      enumerator:=TPerfectMatchEnumerator.Create;
+      try
+         enumerator.FuncSym:=Self;
+         Cls.Members.EnumerateSymbolsOfNameInScope(MethName, enumerator.Callback);
+         meth:=enumerator.Match;
+      finally
+         enumerator.Free;
+      end;
+   end else begin
+      meth:=Cls.Members.FindSymbol(MethName, cvPrivate);
+   end;
+   if meth<>nil then begin
+      if meth is TFieldSymbol then
+         raise Exception.CreateFmt(CPE_FieldExists, [MethName])
+      else if meth is TPropertySymbol then
+         raise Exception.CreateFmt(CPE_PropertyExists, [MethName])
+      else if meth is TMethodSymbol then begin
+         if TMethodSymbol(meth).StructSymbol=Cls then begin
+            if not overloaded then
+               raise Exception.CreateFmt(CPE_MethodExists, [MethName])
+            else if not TMethodSymbol(meth).IsOverloaded then
+               raise Exception.CreateFmt(UNT_PreviousNotOverloaded, [MethName])
+         end;
+      end;
+   end;
+
    if overloaded then
-      IsOverloaded:=True
-   else if Assigned(meth) then
+      IsOverloaded:=True;
+   if Assigned(meth) then
       SetOverlap(TMethodSymbol(meth));
 
    if Attributes = [maVirtual] then
@@ -3526,7 +3565,7 @@ begin
       else raise Exception.CreateFmt(CPE_CanNotOverride, [Name]);
    end else if Attributes = [maReintroduce] then
       //
-   else if (Attributes = [maStatic]) and IsClassMethod then
+   else if IsClassMethod and ((Attributes = [maStatic]) or (Attributes = [maStatic, maClassMethod]))  then
       SetIsStatic
    else if Attributes = [] then
       //
@@ -3919,11 +3958,11 @@ begin
    Result:=(OwnerSymbol.DefaultProperty=Self);
 end;
 
-procedure TPropertySymbol.SetIndex(const Data: TData; Addr: Integer; Sym: TTypeSymbol);
+procedure TPropertySymbol.SetIndex(const data : TData; Sym: TTypeSymbol);
 begin
    FIndexSym := Sym;
    SetLength(FIndexValue,FIndexSym.Size);
-   DWSCopyData(Data, Addr, FIndexValue, 0, FIndexSym.Size);
+   DWSCopyData(data, 0, FIndexValue, 0, FIndexSym.Size);
 end;
 
 // ------------------
@@ -4801,12 +4840,11 @@ begin
   VarCopy(FData[0], Value);
 end;
 
-constructor TConstSymbol.Create(const Name: String; Typ: TTypeSymbol; const Data: TData;
-  Addr: Integer);
+constructor TConstSymbol.Create(const Name: String; Typ: TTypeSymbol; const data : TData);
 begin
   inherited Create(Name, Typ);
   SetLength(FData, Typ.Size);
-  DWSCopyData(Data, Addr, FData, 0, Typ.Size);
+  DWSCopyData(data, 0, FData, 0, Typ.Size);
 end;
 
 function TConstSymbol.GetCaption: String;
@@ -4874,19 +4912,19 @@ end;
 // Create
 //
 constructor TParamSymbolWithDefaultValue.Create(const aName : String; aType : TTypeSymbol;
-                                                const data : TData; addr : Integer);
+                                                const data : TData);
 begin
    inherited Create(aName, aType);
    SetLength(FDefaultValue, Typ.Size);
-   if data<>nil then
-      DWSCopyData(data, addr, FDefaultValue, 0, Typ.Size);
+   if Length(data)>0 then
+      DWSCopyData(data, 0, FDefaultValue, 0, Typ.Size);
 end;
 
 // Clone
 //
 function TParamSymbolWithDefaultValue.Clone : TParamSymbol;
 begin
-   Result:=TParamSymbolWithDefaultValue.Create(Name, Typ, FDefaultValue, 0);
+   Result:=TParamSymbolWithDefaultValue.Create(Name, Typ, FDefaultValue);
 end;
 
 // SameParam
@@ -5391,7 +5429,7 @@ var
 begin
    ptrList:=FSymbols.List;
    for i:=FSymbols.Count-1 downto 0 do begin
-      if TSymbol(ptrList[i]) is TFuncSymbol then
+      if TSymbol(ptrList[i]).IsFuncSymbol then
          Exit(True);
    end;
    Result:=False;
@@ -6386,6 +6424,41 @@ begin
    Result:=aString;
 end;
 
+// DataPtr_Create
+//
+procedure TdwsExecution.DataPtr_Create(const data : TData; addr : Integer; var result : IDataContext);
+begin
+   Result:=FStack.CreateDataPtr(data, addr);
+end;
+
+// DataPtr_CreateOffset
+//
+procedure TdwsExecution.DataPtr_CreateOffset(const dataPtr : IDataContext; offset : Integer; var result : IDataContext);
+begin
+   dataPtr.CreateOffset(offset, result);
+end;
+
+// DataPtr_CreateBase
+//
+procedure TdwsExecution.DataPtr_CreateBase(addr : Integer; var result : IDataContext);
+begin
+   FStack.InitDataPtr(Result, addr);
+end;
+
+// DataPtr_CreateLevel
+//
+procedure TdwsExecution.DataPtr_CreateLevel(level, addr : Integer; var Result : IDataContext);
+begin
+   FStack.InitDataPtrLevel(Result, level, addr);
+end;
+
+// DataPtr_Nil
+//
+function TdwsExecution.DataPtr_Nil : IDataContext;
+begin
+   Result:=FStack.CreateDataPtr(nil, 0);
+end;
+
 // ------------------
 // ------------------ TConditionSymbol ------------------
 // ------------------
@@ -6461,13 +6534,6 @@ begin
    FToken:=aTokenType;
 end;
 
-// Destroy
-//
-destructor TOperatorSymbol.Destroy;
-begin
-   inherited;
-end;
-
 // AddParam
 //
 procedure TOperatorSymbol.AddParam(p : TTypeSymbol);
@@ -6520,7 +6586,7 @@ end;
 //
 function TAnyFuncSymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
-   Result:=(typSym is TFuncSymbol);
+   Result:=typSym.IsFuncSymbol;
 end;
 
 // ------------------
@@ -6708,6 +6774,27 @@ end;
 function TAliasMethodSymbol.GetSourcePosition : TScriptPos;
 begin
    Result:=Alias.GetSourcePosition;
+end;
+
+// ------------------
+// ------------------ TPerfectMatchEnumerator ------------------
+// ------------------
+
+// Callback
+//
+function TPerfectMatchEnumerator.Callback(sym : TSymbol) : Boolean;
+var
+   locSym : TFuncSymbol;
+begin
+   if sym.IsFuncSymbol then begin
+      locSym:=TFuncSymbol(sym);
+      if locSym.Level=FuncSym.Level then
+         if FuncSym.IsSameOverloadOf(locSym) then begin
+            Match:=locSym;
+            Exit(True);
+         end;
+   end;
+   Result:=False;
 end;
 
 end.

@@ -24,7 +24,8 @@ unit dwsCompiler;
 interface
 
 uses
-  Variants, Classes, SysUtils, dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors,
+  Variants, Classes, SysUtils,
+  dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors, dwsDataContext,
   dwsStrings, dwsFunctions, dwsStack, dwsCoreExprs, dwsFileSystem, dwsUtils,
   dwsMagicExprs, dwsRelExprs, dwsOperators, dwsPascalTokenizer, dwsSystemOperators,
   dwsUnitSymbols, dwsXPlatform;
@@ -313,7 +314,7 @@ type
       procedure CheckName(const name : String; const namePos : TScriptPos);
       function CreateDataSymbol(const name : String; const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol;
       function CreateConstSymbol(const name : String; const namePos : TScriptPos; typ : TTypeSymbol;
-                                 const data : TData; addr : Integer) : TConstSymbol;
+                                 const data : TData) : TConstSymbol;
       function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
       function ReadArrayConstantExpr(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
       function ReadInitExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
@@ -873,7 +874,7 @@ type
          procedure CheckName(const name : String; const namePos : TScriptPos); virtual;
          function CreateDataSymbol(const name : String; const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol; virtual;
          function CreateConstSymbol(const name : String; const namePos : TScriptPos;
-                                    typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol; virtual;
+                                    typ : TTypeSymbol; const data : TData) : TConstSymbol; virtual;
          function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr; virtual;
          function ReadArrayConstantExpr(closingToken : TTokenType; expecting : TTypeSymbol) : TArrayConstantExpr;
          function ReadInitExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
@@ -890,7 +891,7 @@ type
          procedure CheckName(const name : String; const namePos : TScriptPos); override;
          function CreateDataSymbol(const name : String; const namePos : TScriptPos; typ : TTypeSymbol) : TDataSymbol; override;
          function CreateConstSymbol(const name : String; const namePos : TScriptPos;
-                                    typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol; override;
+                                    typ : TTypeSymbol; const data : TData) : TConstSymbol; override;
          function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr; override;
    end;
 
@@ -991,10 +992,10 @@ end;
 // CreateConstSymbol
 //
 function TStandardSymbolFactory.CreateConstSymbol(const name : String; const namePos : TScriptPos;
-                                                  typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol;
+                                                  typ : TTypeSymbol; const data : TData) : TConstSymbol;
 begin
-   if data<>nil then
-      Result:=TConstSymbol.Create(name, typ, data, addr)
+   if Length(data)>0 then
+      Result:=TConstSymbol.Create(name, typ, data)
    else Result:=TConstSymbol.Create(name, typ);
    FCompiler.FProg.Table.AddSymbol(Result);
 end;
@@ -1073,11 +1074,11 @@ end;
 // CreateConstSymbol
 //
 function TCompositeTypeSymbolFactory.CreateConstSymbol(const name : String; const namePos : TScriptPos;
-                                                        typ : TTypeSymbol; const data : TData; addr : Integer) : TConstSymbol;
+                                                       typ : TTypeSymbol; const data : TData) : TConstSymbol;
 var
    classConstSym : TClassConstSymbol;
 begin
-   classConstSym:=TClassConstSymbol.Create(name, typ, data, addr);
+   classConstSym:=TClassConstSymbol.Create(name, typ, data);
    classConstSym.Visibility:=FVisibility;
    FOwnerType.AddConst(classConstSym);
    Result:=classConstSym;
@@ -2512,7 +2513,7 @@ begin
             assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, scriptPos, varExpr)
          else if varExpr.Typ.ClassType=TClassOfSymbol then
             assignExpr:=TAssignNilClassToVarExpr.CreateVal(FProg, scriptPos, varExpr)
-         else if varExpr.Typ is TFuncSymbol then
+         else if varExpr.Typ.IsFuncSymbol then
             assignExpr:=TAssignNilToVarExpr.CreateVal(FProg, scriptPos, varExpr)
          else begin
             initData := nil;
@@ -2552,12 +2553,14 @@ begin
       factory.CheckName(name, constPos);
       CheckSpecialName(name);
 
-      if FTok.TestDelete(ttCOLON) then
-         typ:=ReadType('', tcConstant)
-      else typ:=nil;
+      if FTok.TestDelete(ttCOLON) then begin
 
-      if typ is TFuncSymbol then
-         FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_InvalidConstType, [typ.Caption]);
+         typ:=ReadType('', tcConstant);
+         if typ.IsFuncSymbol then
+            FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_InvalidConstType, [typ.Caption]);
+
+      end else typ:=nil;
+
 
       if not FTok.TestDelete(ttEQ) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_EqualityExpected);
@@ -2565,7 +2568,7 @@ begin
       if typ is TRecordSymbol then begin
 
          recordData:=ReadConstRecord(TRecordSymbol(typ));
-         constSym:=factory.CreateConstSymbol(name, constPos, typ, recordData, 0);
+         constSym:=factory.CreateConstSymbol(name, constPos, typ, recordData);
 
       end else begin
 
@@ -2592,7 +2595,7 @@ begin
                if expr.ClassType<>TConvInvalidExpr then
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
                // keep compiling
-               constSym:=factory.CreateConstSymbol(name, constPos, typ, nil, 0);
+               constSym:=factory.CreateConstSymbol(name, constPos, typ, nil);
                detachTyp:=False;
 
             end else begin
@@ -2605,21 +2608,22 @@ begin
                      FProg.Table.AddSymbol(sas);
                   end;
                   if expr is TConstExpr then begin
-                     constSym:=factory.CreateConstSymbol(name, constPos, sas, TConstExpr(expr).Data[FExec], TConstExpr(expr).Addr[FExec]);
+                     constSym:=factory.CreateConstSymbol(name, constPos, sas, TConstExpr(expr).Data);
                      detachTyp:=False;
-                  end else constSym:=factory.CreateConstSymbol(name, constPos, sas, (expr as TArrayConstantExpr).EvalAsTData(FExec), 0);
+                  end else constSym:=factory.CreateConstSymbol(name, constPos, sas,
+                                                               (expr as TArrayConstantExpr).EvalAsTData(FExec));
                end else begin
                   if typ.Size=1 then begin
                      SetLength(recordData, 1);
                      expr.EvalAsVariant(FExec, recordData[0]);
-                     constSym:=factory.CreateConstSymbol(name, constPos, typ, recordData, 0);
+                     constSym:=factory.CreateConstSymbol(name, constPos, typ, recordData);
                   end else begin
                      dataExpr:=(expr as TDataExpr);
                      FExec.Stack.Push(FProg.DataSize);
                      try
-                        constSym:=factory.CreateConstSymbol(name, constPos, typ,
-                                                            dataExpr.Data[FExec],
-                                                            dataExpr.Addr[FExec]);
+                        SetLength(recordData, typ.Size);
+                        dataExpr.DataPtr[FExec].CopyData(recordData, 0, typ.Size);
+                        constSym:=factory.CreateConstSymbol(name, constPos, typ, recordData);
                      finally
                         FExec.Stack.Pop(FProg.DataSize);
                      end;
@@ -2821,7 +2825,7 @@ begin
 
       forwardedSym:=nil;
       overloadFuncSym:=nil;
-      if sym is TFuncSymbol then begin
+      if sym.IsFuncSymbol then begin
          existingFuncSym:=TFuncSymbol(sym);
          if existingFuncSym.IsOverloaded then
             overloadFuncSym:=existingFuncSym;
@@ -3673,7 +3677,7 @@ var
    funcSym : TFuncSymbol;
 begin
    Result:=False;
-   if (symbol is TFuncSymbol) and (not symbol.IsType) then begin
+   if symbol.IsFuncSymbol and (not symbol.IsType) then begin
       funcSym:=TFuncSymbol(symbol);
       if     (funcSym.Params.Count=2) and (funcSym.Typ<>nil)
          and funcSym.Typ.IsOfType(opSymbol.Typ)
@@ -3765,7 +3769,7 @@ begin
                sym:=fromTable.FindTypeSymbol(usesName, cvPublic);
             end;
          end;
-         if (sym=nil) or sym.IsType or not (sym is TFuncSymbol) then
+         if (sym=nil) or sym.IsType or not sym.IsFuncSymbol then
             FMsgs.AddCompilerError(usesPos, CPE_FunctionMethodExpected)
          else usesSym:=TFuncSymbol(sym);
       end;
@@ -3996,7 +4000,7 @@ begin
                   Result := ReadAssign(token, TDataExpr(locExpr));
                end;
             end else begin
-               if (locExpr is TDataExpr) and (locExpr.Typ is TFuncSymbol) then
+               if (locExpr is TDataExpr) and locExpr.Typ.IsFuncSymbol then
                   locExpr:=ReadFunc(TFuncSymbol(locExpr.Typ), locExpr as TDataExpr);
 
                if locExpr is TAssignExpr then
@@ -4503,7 +4507,7 @@ var
    varExpr : TVarExpr;
 begin
    varExpr:=GetVarExpr(dataSym);
-   if dataSym.Typ is TFuncSymbol then begin
+   if dataSym.Typ.IsFuncSymbol then begin
       if     FTok.Test(ttASSIGN)
          or  (    (expecting<>nil)
               and dataSym.Typ.IsOfType(expecting)
@@ -4747,7 +4751,7 @@ begin
 
       end else begin
 
-         if    FTok.Test(ttDOT) or (propertySym.Typ is TFuncSymbol) then begin
+         if    FTok.Test(ttDOT) or (propertySym.Typ.IsFuncSymbol) then begin
 
             sym:=propertySym.ReadSym;
 
@@ -4924,7 +4928,7 @@ begin
             ttBLEFT : begin
 
                baseType := Result.BaseType;
-               if baseType is TFuncSymbol then begin
+               if baseType.IsFuncSymbol then begin
                   codeExpr:=Result as TTypedExpr;
                   Result:=nil;
                   Result:=ReadFunc(TFuncSymbol(baseType), codeExpr);
@@ -5023,10 +5027,19 @@ begin
                if not baseType.Typ.IsCompatible(valueExpr.Typ) then
                   IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
                                     valueExpr.Typ, baseType.Typ);
-               Result:=TDynamicArraySetExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr);
+               if baseType.Typ.Size=1 then
+                  if baseExpr is TObjectVarExpr then
+                     Result:=TDynamicArraySetVarExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr)
+                  else Result:=TDynamicArraySetExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr)
+               else Result:=TDynamicArraySetDataExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr);
             end else begin
-               Result:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
-                                                TDynamicArraySymbol(baseType));
+               if baseExpr is TObjectVarExpr then begin
+                  Result:=TDynamicArrayVarExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+                                                      TDynamicArraySymbol(baseType));
+               end else begin
+                  Result:=TDynamicArrayExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr,
+                                                   TDynamicArraySymbol(baseType));
+               end;
             end;
             Exit;
          end else begin
@@ -5393,7 +5406,9 @@ begin
          if forExprClass=TForUpwardExpr then
             forExprClass:=TForUpwardStepExpr
          else forExprClass:=TForDownwardStepExpr;
-      end else stepExpr:=nil;
+      end else begin
+         stepExpr:=nil;
+      end;
 
       iterBlockExpr:=nil;
       Result:=forExprClass.Create(FProg, forPos);
@@ -5911,7 +5926,7 @@ function TFuncAtLevelSymbolList.Callback(sym : TSymbol) : Boolean;
 var
    locFuncSym : TFuncSymbol;
 begin
-   if sym is TFuncSymbol then begin
+   if sym.IsFuncSymbol then begin
       locFuncSym:=TFuncSymbol(sym);
       if locFuncSym.Level=Level then
          Add(locFuncSym);
@@ -6178,7 +6193,7 @@ function TFuncConflictEnumerator.Callback(sym : TSymbol) : Boolean;
 var
    locSym : TFuncSymbol;
 begin
-   if (sym<>ForwardedSym) and (sym is TFuncSymbol) then begin
+   if (sym<>ForwardedSym) and sym.IsFuncSymbol then begin
       locSym:=TFuncSymbol(sym);
       if locSym.Level=FuncSym.Level then
          if not FuncSym.IsValidOverloadOf(locSym) then
@@ -6216,27 +6231,6 @@ begin
       if not (member is TMethodSymbol) then continue;
       if not methSym.IsValidOverloadOf(TMethodSymbol(member)) then
          Exit(True);
-   end;
-   Result:=False;
-end;
-
-type
-   TPerfectMatchEnumerator = class
-      FuncSym, Match : TFuncSymbol;
-      function Callback(sym : TSymbol) : Boolean;
-   end;
-
-function TPerfectMatchEnumerator.Callback(sym : TSymbol) : Boolean;
-var
-   locSym : TFuncSymbol;
-begin
-   if sym is TFuncSymbol then begin
-      locSym:=TFuncSymbol(sym);
-      if locSym.Level=FuncSym.Level then
-         if FuncSym.IsSameOverloadOf(locSym) then begin
-            Match:=locSym;
-            Exit(True);
-         end;
    end;
    Result:=False;
 end;
@@ -6318,7 +6312,7 @@ begin
          if    (    (expecting is TNilSymbol)
                 and (funcExpr is TFuncPtrExpr)
                 and not FTok.Test(ttDOT))
-            or (    (expecting is TFuncSymbol)
+            or (    expecting.IsFuncSymbol
                 and expecting.IsCompatible(funcExpr.funcSym)) then begin
             if (funcExpr.FuncSym.Level>1) and not (coAllowClosures in Options) then
                FMsgs.AddCompilerError(funcExpr.Pos, CPE_LocalFunctionAsDelegate);
@@ -6523,8 +6517,8 @@ begin
                arg:=arg.OptimizeToTypedExpr(FProg, FExec, argPos);
 
             if     (expectedType<>nil)
-               and (arg.Typ is TFuncSymbol)
-               and not (expectedType is TFuncSymbol) then begin
+               and (arg.Typ.IsFuncSymbol)
+               and not (expectedType.IsFuncSymbol) then begin
                arg:=ReadFunc(TFuncSymbol(arg.Typ), arg as TDataExpr, nil);
             end;
 
@@ -7858,8 +7852,7 @@ begin
       if not (indexExpr is TConstExpr) then begin
          FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
       end else begin
-         propSym.SetIndex(TConstExpr(indexExpr).Data[FExec],
-                          TConstExpr(indexExpr).Addr[FExec], indexTyp);
+         propSym.SetIndex(TConstExpr(indexExpr).Data, indexTyp);
       end;
       indexExpr.Free;
    end else indexTyp:=nil;
@@ -8322,9 +8315,7 @@ begin
                   end else begin
                      FExec.Stack.Push(typ.Size);
                      try
-                        DWSCopyData((expr as TDataExpr).Data[FExec],
-                                    (expr as TDataExpr).Addr[FExec],
-                                    exprData, 0, typ.Size);
+                        (expr as TDataExpr).DataPtr[FExec].CopyData(exprData, 0, typ.Size);
                      finally
                         FExec.Stack.Pop(typ.Size);
                      end;
@@ -8411,7 +8402,7 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_ForExpected);
    hotPos:=FTok.HotPos;
    forType:=ReadType('', tcHelper);
-   if forType is TFuncSymbol then
+   if forType.IsFuncSymbol then
       FMsgs.AddCompilerError(hotPos, CPE_HelpersNotAllowedForDelegates);
    case qualifierToken of
       ttNone : ;
@@ -9285,14 +9276,14 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       procPos : TScriptPos;
       oldProg : TdwsProgram;
    begin
-      if expecting is TFuncSymbol then
+      if expecting.IsFuncSymbol then
          expectingParams:=TFuncSymbol(expecting).Params
       else expectingParams:=nil;
 
       funcSym:=ReadProcDecl(funcType, hotPos, [pdoAnonymous], expectingParams);
       FProg.Table.AddSymbol(funcSym);
 
-      if (funcSym.Typ=nil) and (expecting is TFuncSymbol) then
+      if (funcSym.Typ=nil) and (expecting.IsFuncSymbol) then
          funcSym.Typ:=TFuncSymbol(expecting).Typ;
 
       if FTok.TestDelete(ttEQGTR) then begin
@@ -9373,12 +9364,12 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
       hotPos:=FTok.HotPos;
       if expecting=nil then
          expecting:=FAnyFuncSymbol
-      else if not (expecting is TFuncSymbol) then
+      else if not (expecting.IsFuncSymbol) then
          FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
       else if expecting=FAnyFuncSymbol then
          FMsgs.AddCompilerStop(hotPos, CPE_UnexpectedAt);
       Result:=ReadTerm(isWrite, expecting);
-      if (Result.Typ=nil) or not (Result.Typ is TFuncSymbol) then begin
+      if (Result.Typ=nil) or not Result.Typ.IsFuncSymbol then begin
          if (expecting=FAnyFuncSymbol) or (Result is TConstExpr) then
             FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
          else ReportIncompatibleAt(hotPos, Result);
@@ -9658,8 +9649,7 @@ begin
                Result[memberSym.Offset]:=constExpr.EvalAsFloat(FExec)
             else if not constExpr.Typ.IsCompatible(memberSym.Typ) then
                FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_InvalidConstType, [constExpr.Typ.Caption])
-            else DWSCopyData(constExpr.Data[FExec], constExpr.Addr[FExec],
-                             result, memberSym.Offset, memberSym.Typ.Size);
+            else constExpr.DataPtr[FExec].CopyData(result, memberSym.Offset, memberSym.Typ.Size);
          end;
       finally
          expr.Free;
@@ -9746,12 +9736,11 @@ var
          if Assigned(defaultExpr) then begin
             if defaultExpr.ClassType=TArrayConstantExpr then begin
                paramSym:=TParamSymbolWithDefaultValue.Create(
-                              curName, paramType, TArrayConstantExpr(defaultExpr).EvalAsTData(FExec), 0);
+                              curName, paramType, TArrayConstantExpr(defaultExpr).EvalAsTData(FExec));
             end else begin
                paramSym:=TParamSymbolWithDefaultValue.Create(
                               curName, paramType,
-                              (defaultExpr as TConstExpr).Data[FExec],
-                              (defaultExpr as TConstExpr).Addr[FExec]);
+                              (defaultExpr as TConstExpr).Data);
             end;
          end else begin
             paramSym := TParamSymbol.Create(curName, paramType);
@@ -9842,7 +9831,7 @@ begin
 
                      if (not constParam) and (typ is TOpenArraySymbol) then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_OpenArrayParamMustBeConst);
-                     if lazyParam and (typ is TFuncSymbol) then
+                     if lazyParam and typ.IsFuncSymbol then
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_LazyParamCantBeFunctionPointer);
 
                      if FTok.TestDelete(ttEQ) then begin
@@ -11177,8 +11166,8 @@ begin
                if right.InheritsFrom(TArrayConstantExpr) then
                   Result:=TAssignArrayConstantExpr.Create(FProg, scriptPos, left, TArrayConstantExpr(right))
                else Result:=TAssignDataExpr.Create(FProg, scriptPos, left, right)
-            end else if left.Typ is TFuncSymbol then begin
-               if (right.Typ is TFuncSymbol) or (right.Typ is TNilSymbol) then begin
+            end else if left.Typ.IsFuncSymbol then begin
+               if right.Typ.IsFuncSymbol or (right.Typ is TNilSymbol) then begin
                   if right is TFuncRefExpr then begin
                      right:=TFuncRefExpr(right).Extract;
                      if right is TFuncPtrExpr then begin
@@ -11550,7 +11539,7 @@ begin
                Result:=TAssignedInstanceExpr.Create(FProg, argExpr)
             else if argTyp is TClassOfSymbol then
                Result:=TAssignedMetaClassExpr.Create(FProg, argExpr)
-            else if argTyp is TFuncSymbol then
+            else if argTyp.IsFuncSymbol then
                Result:=TAssignedFuncPtrExpr.Create(FProg, argExpr)
             else begin
                FMsgs.AddCompilerError(argPos, CPE_InvalidArgumentType);

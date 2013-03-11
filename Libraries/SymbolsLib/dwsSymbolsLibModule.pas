@@ -205,7 +205,7 @@ begin
       table := TUnitSymbol(sym).Table
     else if sym is TStructuredTypeSymbol then
       table := TClassSymbol(sym).Members
-    else if sym is TFuncSymbol then
+    else if sym.IsFuncSymbol then
       table := TFuncSymbol(sym).Params;
   end;
 
@@ -287,7 +287,7 @@ begin
     Info.ResultAsInteger := stConstant
   else if sym is TFieldSymbol then
     Info.ResultAsInteger := stField
-  else if sym is TFuncSymbol then
+  else if sym.IsFuncSymbol then
     Info.ResultAsInteger := stFunction
   else if sym is TParamSymbol then
     Info.ResultAsInteger := stParam

@@ -24,8 +24,9 @@ unit dwsDebugger;
 interface
 
 uses
-   Classes, SysUtils, dwsExprs, dwsSymbols, dwsXPlatform, dwsCompiler, dwsErrors,
-   dwsUtils, Variants, dwsXPlatformUI, dwsStack, dwsStrings, dwsUnitSymbols,
+   Classes, SysUtils, Variants,
+   dwsExprs, dwsSymbols, dwsXPlatform, dwsCompiler, dwsErrors, dwsDataContext,
+   dwsUtils, dwsXPlatformUI, dwsStack, dwsStrings, dwsUnitSymbols,
    dwsInfo;
 
 type
@@ -1267,8 +1268,7 @@ begin
       if (FValueData.Typ<>nil) then begin
          if (FValueData.Typ.Size>1) and (expr is TDataExpr) then begin
             expr.EvalNoResult(exec);
-            DWSCopyData(TDataExpr(expr).Data[exec], TDataExpr(expr).Addr[exec],
-                        FValueData.Data, 0, FValueData.Typ.Size);
+            TDataExpr(expr).DataPtr[exec].CopyData(FValueData.Data, 0, FValueData.Typ.Size);
          end else if FValueData.Typ.Size=1 then begin
             expr.EvalAsVariant(exec, FValueData.Data[0]);
          end else expr.EvalNoResult(exec);
@@ -1549,7 +1549,7 @@ end;
 //
 procedure TdwsBreakpointableLines.ProcessSymbol(sym : TSymbol);
 begin
-   if sym is TFuncSymbol then
+   if sym.IsFuncSymbol then
       ProcessFuncSymbol(TFuncSymbol(sym))
    else if sym is TStructuredTypeSymbol then
       ProcessSymbolTable(TStructuredTypeSymbol(sym).Members);

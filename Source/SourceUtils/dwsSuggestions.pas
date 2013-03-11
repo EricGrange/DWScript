@@ -600,7 +600,7 @@ begin
       while context<>nil do begin
          list.AddSymbolTable(context.LocalTable);
 
-         if context.ParentSym is TFuncSymbol then begin
+         if context.ParentSym.IsFuncSymbol then begin
             funcSym:=TFuncSymbol(Context.ParentSym);
             list.AddDirectSymbolTable(funcSym.Params);
             list.AddDirectSymbolTable(funcSym.InternalParams);
@@ -762,7 +762,7 @@ var
    alias : TAliasSymbol;
 begin
    symbol:=FList[i];
-   if symbol is TFuncSymbol then begin
+   if symbol.IsFuncSymbol then begin
 
       funcSym:=TFuncSymbol(symbol);
       Result:=funcSym.Name+' '+funcSym.ParamsDescription;

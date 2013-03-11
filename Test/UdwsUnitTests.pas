@@ -2,7 +2,9 @@ unit UdwsUnitTests;
 
 interface
 
-uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
+uses
+   Classes, SysUtils,
+   dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsDataContext,
    dwsTokenizer, dwsSymbols, dwsUtils, dwsStack;
 
 type
@@ -376,6 +378,7 @@ var
    prop : TdwsProperty;
    param : TdwsParameter;
    constant : TdwsConstant;
+   child : TdwsClass;
 begin
    cls:=FUnit.Classes.Add;
    cls.Name:='TTestClass';
@@ -440,6 +443,27 @@ begin
    meth.Overloaded:=True;
    meth.OnEval:=MethodOverloadStrEval;
 
+   meth:=cls.Methods.Add;
+   meth.Name:='VirtGetArrayProp';
+   meth.ResultType:='Integer';
+   meth.Overloaded:=True;
+   param:=meth.Parameters.Add;
+   param.DataType:='String';
+   param.Name:='v';
+   meth.OnEval:=MethodGetArrayIntEval;
+
+   meth:=cls.Methods.Add('VirtOverload', 'String');
+   meth.Parameters.Add('v', 'Integer');
+   meth.Overloaded:=True;
+   meth.Attributes:=[maVirtual];
+   meth.OnEval:=MethodOverloadIntEval;
+
+   meth:=cls.Methods.Add('VirtOverload', 'String');
+   meth.Parameters.Add('v', 'String');
+   meth.Overloaded:=True;
+   meth.Attributes:=[maVirtual];
+   meth.OnEval:=MethodOverloadStrEval;
+
    prop:=cls.Properties.Add;
    prop.Name:='MyReadOnlyProp';
    prop.DataType:='Integer';
@@ -474,6 +498,32 @@ begin
    constant.Name:='cTest';
    constant.DataType:='String';
    constant.Value:='My class const';
+
+   child:=FUnit.Classes.Add;
+   child.Name:='TTestChildClass';
+   child.Ancestor:='TTestClass';
+   child.OnCleanUp:=ClassCleanup;
+
+   meth:=child.Methods.Add;
+   meth.Name:='VirtGetArrayProp';
+   meth.ResultType:='Integer';
+   param:=meth.Parameters.Add;
+   param.DataType:='String';
+   param.Name:='v';
+   meth.Attributes:=[maOverride];
+   meth.OnEval:=MethodGetArrayIntEval;
+
+   meth:=child.Methods.Add('VirtOverload', 'String');
+   meth.Parameters.Add('v', 'Integer');
+   meth.Overloaded:=True;
+   meth.Attributes:=[maOverride];
+   meth.OnEval:=MethodOverloadIntEval;
+
+   meth:=child.Methods.Add('VirtOverload', 'String');
+   meth.Parameters.Add('v', 'String');
+   meth.Attributes:=[maOverride];
+   meth.Overloaded:=True;
+   meth.OnEval:=MethodOverloadStrEval;
 end;
 
 // DeclareTestVars

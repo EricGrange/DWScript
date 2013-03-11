@@ -34,8 +34,8 @@ object dwsSymbolsLib: TdwsSymbolsLib
         Methods = <
           item
             Name = 'Destroy'
-            OnEval = dwsUnit1ClassesTSymbolsMethodsDestroyEval
             Attributes = [maOverride]
+            OnEval = dwsUnit1ClassesTSymbolsMethodsDestroyEval
             Kind = mkDestructor
           end
           item
@@ -131,7 +131,6 @@ object dwsSymbolsLib: TdwsSymbolsLib
           end
           item
             Name = 'stArray'
-            UserDefValue = 0
             IsUserDef = True
           end
           item

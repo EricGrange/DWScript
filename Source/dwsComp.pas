@@ -24,7 +24,8 @@ unit dwsComp;
 interface
 
 uses
-  Variants, Classes, SysUtils, TypInfo, dwsCompiler, dwsExprs, dwsSymbols,
+  Variants, Classes, SysUtils, TypInfo,
+  dwsCompiler, dwsExprs, dwsSymbols, dwsDataContext,
   dwsStack, dwsFunctions, dwsStrings, dwsLanguageExtension,
   dwsTokenizer, dwsUtils, dwsOperators, dwsUnitSymbols, dwsXPlatform,
   // Built-In functions
@@ -533,9 +534,13 @@ type
    TdwsField = class(TdwsVariable)
       private
          FVisibility : TdwsVisibility;
+         FDefaultValue : Variant;
+         FHasDefaultValue : Boolean;
 
       protected
          function GetDisplayName: String; override;
+         procedure SetDefaultValue(const Value: Variant);
+         function GetHasDefaultValue : Boolean;
 
       public
          constructor Create(Collection: TCollection); override;
@@ -543,6 +548,8 @@ type
 
       published
          property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
+         property DefaultValue : Variant read FDefaultValue write SetDefaultValue stored GetHasDefaultValue;
+         property HasDefaultValue : Boolean read FHasDefaultValue write FHasDefaultValue default False;
    end;
 
    TdwsFields = class(TdwsCollection)
@@ -2878,12 +2885,18 @@ begin
    FVisibility:=cvPublic;
 end;
 
-function TdwsField.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil):
-  TSymbol;
+function TdwsField.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
+var
+   data : TData;
 begin
-  FIsGenerating := True;
-  CheckName(TClassSymbol(ParentSym).Members, Name);
-  Result := TFieldSymbol.Create(Name, GetDataType(Table, DataType), Visibility);
+   FIsGenerating := True;
+   CheckName(TClassSymbol(ParentSym).Members, Name);
+   Result := TFieldSymbol.Create(Name, GetDataType(Table, DataType), Visibility);
+   if FHasDefaultValue then begin
+      SetLength(data, 1);
+      data[0]:=FDefaultValue;
+      TFieldSymbol(Result).DefaultValue:=data;
+   end;
 end;
 
 // GetDisplayName
@@ -2891,6 +2904,21 @@ end;
 function TdwsField.GetDisplayName: String;
 begin
    Result:=TClassSymbol.VisibilityToString(Visibility)+' '+inherited GetDisplayName;
+end;
+
+// SetDefaultValue
+//
+procedure TdwsField.SetDefaultValue(const Value: Variant);
+begin
+   FDefaultValue:=Value;
+   FHasDefaultValue:=True;
+end;
+
+// GetHasDefaultValue
+//
+function TdwsField.GetHasDefaultValue : Boolean;
+begin
+   Result:=FHasDefaultValue;
 end;
 
 // ------------------
@@ -3107,7 +3135,7 @@ var
    methSymbol : TMethodSymbol;
 begin
    FIsGenerating := True;
-   CheckName(TClassSymbol(ParentSym).Members, Name);
+   CheckName(TClassSymbol(ParentSym).Members, Name, Overloaded);
 
    methSymbol := TMethodSymbol.Generate(Table, mkConstructor, Attributes, Name,
                                         GetParameters(Table), '', TClassSymbol(ParentSym),
@@ -3672,7 +3700,7 @@ begin
    if FIndexType <> '' then begin
       SetLength(indexData,1);
       indexData[0] := FIndexValue;
-      propSym.SetIndex(indexData, 0, GetDataType(Table, IndexType));
+      propSym.SetIndex(indexData, GetDataType(Table, IndexType));
    end;
 
    if IsDefault then
@@ -3843,7 +3871,7 @@ begin
    sym:=aTable.FindLocal(aName);
    if Assigned(sym) then begin
       if overloaded then begin
-         if not (    (sym is TFuncSymbol)
+         if not (    (sym.IsFuncSymbol)
                  and TFuncSymbol(sym).IsOverloaded) then
             raise Exception.CreateFmt(UNT_PreviousNotOverloaded, [aName]);
       end else raise Exception.CreateFmt(UNT_NameAlreadyExists, [aName]);
@@ -4866,7 +4894,7 @@ begin
          RaiseError;
       op.Typ:=typ;
       sym:=Table.FindTypeSymbol(UsesAccess, cvMagic);
-      if (sym=nil) or sym.IsType or not (sym is TFuncSymbol) then
+      if (sym=nil) or sym.IsType or not (sym.IsFuncSymbol) then
          raise Exception.CreateFmt(UNT_UsesAccessNotFound, [UsesAccess]);
       op.UsesSym:=TFuncSymbol(sym);
       Table.AddSymbol(op);

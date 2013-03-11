@@ -268,7 +268,6 @@ object dwsDatabaseLib: TdwsDatabaseLib
                 Name = 'index'
                 DataType = 'Integer'
               end>
-            IsDefault = False
           end>
         OnCleanUp = dwsDatabaseClassesDataBaseCleanUp
       end

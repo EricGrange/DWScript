@@ -155,7 +155,7 @@ begin
 
    for i:=0 to symDict.Count-1 do begin
       sym:=symDict.Items[i].Symbol;
-      if not (sym is TFuncSymbol) then continue;
+      if not sym.IsFuncSymbol then continue;
       funcSym:=TFuncSymbol(sym);
       if funcSym.IsType then continue;
       if (funcSym is TSourceFuncSymbol) or (funcSym is TSourceMethodSymbol) then begin

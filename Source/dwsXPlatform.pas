@@ -202,7 +202,7 @@ end;
 // InterlockedIncrement
 //
 function InterlockedIncrement(var val : Integer) : Integer;
-{$ifdef PUREPASCAL}
+{$ifndef WIN32_ASM}
 begin
    Result:=Windows.InterlockedIncrement(val);
 {$else}
@@ -217,7 +217,7 @@ end;
 // InterlockedDecrement
 //
 function InterlockedDecrement(var val : Integer) : Integer;
-{$ifdef PUREPASCAL}
+{$ifndef WIN32_ASM}
 begin
    Result:=Windows.InterlockedDecrement(val);
 {$else}
@@ -444,7 +444,6 @@ end;
 function DirectSet8087CW(newValue : Word) : Word;
 {$IFNDEF WIN32_ASM}
 begin
-   Assert(False);
    Result:=newValue;
 {$else}
 asm

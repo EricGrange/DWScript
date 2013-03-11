@@ -23,7 +23,9 @@ unit dwsMagicExprs;
 
 interface
 
-uses Classes, SysUtils, dwsExprs, dwsSymbols, dwsStack, dwsErrors, dwsFunctions,
+uses
+   Classes, SysUtils,
+   dwsExprs, dwsSymbols, dwsStack, dwsErrors, dwsFunctions, dwsDataContext,
    dwsUtils;
 
 type
@@ -33,7 +35,7 @@ type
 
    TMagicFuncDoEvalEvent = function(args : TExprBaseList) : Variant of object;
    TMagicProcedureDoEvalEvent = procedure(args : TExprBaseList) of object;
-   TMagicFuncDoEvalDataEvent = procedure(args : TExprBaseList; var result : TDataPtr) of object;
+   TMagicFuncDoEvalDataEvent = procedure(args : TExprBaseList; var result : IDataContext) of object;
    TMagicFuncDoEvalAsIntegerEvent = function(args : TExprBaseList) : Int64 of object;
    TMagicFuncDoEvalAsBooleanEvent = function(args : TExprBaseList) : Boolean of object;
    TMagicFuncDoEvalAsFloatEvent = procedure(args : TExprBaseList; var Result : Double) of object;
@@ -63,7 +65,7 @@ type
    //
    TInternalMagicDataFunction = class(TInternalMagicFunction)
       public
-         procedure DoEval(args : TExprBaseList; var result : TDataPtr); virtual; abstract;
+         procedure DoEval(args : TExprBaseList; var result : IDataContext); virtual; abstract;
          function MagicFuncExprClass : TMagicFuncExprClass; override;
    end;
    TInternalMagicDataFunctionClass = class of TInternalMagicDataFunction;
@@ -168,8 +170,7 @@ type
 
          function IsWritable : Boolean; override;
 
-         function GetData(exec : TdwsExecution) : TData; override;
-         function GetAddr(exec : TdwsExecution) : Integer; override;
+         procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
    end;
 
    // TMagicVariantFuncExpr
@@ -207,7 +208,8 @@ type
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
-         function GetData(exec : TdwsExecution) : TData; override;
+
+         procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
    end;
 
    // TMagicIntFuncExpr
@@ -478,18 +480,11 @@ begin
    Result:=False;
 end;
 
-// GetData
+// GetDataPtr
 //
-function TMagicFuncExpr.GetData(exec : TdwsExecution) : TData;
+procedure TMagicFuncExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   Result:=exec.Stack.Data;
-end;
-
-// GetAddr
-//
-function TMagicFuncExpr.GetAddr(exec : TdwsExecution) : Integer;
-begin
-   Result:=exec.Stack.BasePointer+FResultAddr;
+   exec.DataPtr_CreateBase(FResultAddr, Result);
 end;
 
 // ------------------
@@ -537,32 +532,36 @@ end;
 // EvalNoResult
 //
 procedure TMagicDataFuncExpr.EvalNoResult(exec : TdwsExecution);
+var
+   buf : IDataContext;
 begin
-   GetData(exec);
+   GetDataPtr(exec, buf);
 end;
 
 // Eval
 //
 function TMagicDataFuncExpr.Eval(exec : TdwsExecution) : Variant;
+var
+   buf : IDataContext;
 begin
-   Result:=Data[exec][Addr[exec]];
+   GetDataPtr(exec, buf);
+   buf.EvalAsVariant(0, Result);
 end;
 
-// GetData
+// GetDataPtr
 //
-function TMagicDataFuncExpr.GetData(exec : TdwsExecution) : TData;
+procedure TMagicDataFuncExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 var
    execRec : TExprBaseListExec;
-   dataPtr : TDataPtr;
 begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
    try
-      Result:=exec.Stack.Data;
-      dataPtr:=TDataPtr.Create(exec.Stack.Data, exec.Stack.BasePointer+FResultAddr);
-      FOnEval(@execRec, dataPtr);
+      exec.DataPtr_CreateBase(FResultAddr, Result);
+      FOnEval(@execRec, Result);
    except
       RaiseScriptError(exec);
+      raise;
    end;
 end;
 
@@ -818,7 +817,7 @@ var
    left : TDataExpr;
 begin
    left:=TDataExpr(FArgs.ExprBase[0]);
-   Result:=@left.Data[exec][left.Addr[exec]];
+   Result:=@left.DataPtr[exec].AsPVarDataArray[0];
    Assert(Result.VType=varInt64);
    Inc(Result.VInt64, FArgs.ExprBase[1].EvalAsInteger(exec));
 end;
@@ -848,7 +847,7 @@ var
    left : TDataExpr;
 begin
    left:=TDataExpr(FArgs.ExprBase[0]);
-   Result:=@left.Data[exec][left.Addr[exec]];
+   Result:=@left.DataPtr[exec].AsPVarDataArray[0];
    Assert(Result.VType=varInt64);
    Dec(Result.VInt64, FArgs.ExprBase[1].EvalAsInteger(exec));
 end;

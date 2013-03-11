@@ -20,7 +20,8 @@ unit dwsRTTIFunctions;
 
 interface
 
-uses dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators, dwsStack,
+uses
+   dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators, dwsStack, dwsDataContext,
    dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs, dwsUnitSymbols, dwsCoreExprs;
 
 type
@@ -233,14 +234,14 @@ begin
 
       attributes:=info.Execution.Prog.Attributes;
 
-      dynArray.Length:=attributes.Count+publishedSymbols.Count*2;
+      dynArray.ArrayLength:=attributes.Count+publishedSymbols.Count*2;
 
       for i:=0 to attributes.Count-1 do begin
          attrib:=attributes[i];
          symbolClassType:=attrib.Symbol.ClassType;
          if symbolClassType=TClassSymbol then begin
-            dynArray.Data[i*2]:=Int64(attrib.Symbol);
-            dynArray.Data[i*2+1]:=attrib.AttributeConstructor.Eval(info.Execution);
+            dynArray.AsInteger[i*2]:=Int64(attrib.Symbol);
+            dynArray.AsVariant[i*2+1]:=attrib.AttributeConstructor.Eval(info.Execution);
          end else Assert(False);
       end;
 
@@ -250,23 +251,23 @@ begin
          symbolClassType:=symbol.ClassType;
          if symbolClassType=TPropertySymbol then begin
             propertySymbol:=TPropertySymbol(symbol);
-            dynArray.Data[n]:=Int64(propertySymbol.OwnerSymbol);
+            dynArray.AsInteger[n]:=Int64(propertySymbol.OwnerSymbol);
             attribute:=rttiPropertyAttributeCreate.Call;
-            dynArray.Data[n+1]:=attribute.Value;
+            dynArray.AsVariant[n+1]:=attribute.Value;
             attribute.ExternalObject:=propertySymbol;
             Inc(n, 2);
          end else if symbolClassType=TFieldSymbol then begin
             fieldSymbol:=TFieldSymbol(symbol);
-            dynArray.Data[n]:=Int64(fieldSymbol.StructSymbol);
+            dynArray.AsInteger[n]:=Int64(fieldSymbol.StructSymbol);
             attribute:=rttiPropertyAttributeCreate.Call;
-            dynArray.Data[n+1]:=attribute.Value;
+            dynArray.AsVariant[n+1]:=attribute.Value;
             attribute.ExternalObject:=fieldSymbol;
             Inc(n, 2);
          end else if symbolClassType.InheritsFrom(TMethodSymbol) then begin
             methSymbol:=TMethodSymbol(symbol);
-            dynArray.Data[n]:=Int64(methSymbol.StructSymbol);
+            dynArray.AsInteger[n]:=Int64(methSymbol.StructSymbol);
             attribute:=rttiMethodAttributeCreate.Call;
-            dynArray.Data[n+1]:=attribute.Value;
+            dynArray.AsVariant[n+1]:=attribute.Value;
             attribute.ExternalObject:=methSymbol;
             Inc(n, 2);
          end;
@@ -392,14 +393,17 @@ procedure TRTTIPropertyGetterMethod.Execute(info : TProgramInfo; var ExternalObj
 var
    handle, propInfo : IInfo;
    propSym : TSymbol;
+   locData : IDataContext;
 begin
    propSym:=ExternalObject as TSymbol;
    handle:=info.Vars['handle'];
 
    if propSym.ClassType=TPropertySymbol then
-      propInfo:=TInfoProperty.Create(info, propSym.Typ, nil, 0, TPropertySymbol(propSym), handle.ScriptObj)
-   else if propSym.ClassType=TFieldSymbol then
-      propInfo:=TInfoData.Create(info, propSym.Typ, handle.ScriptObj.Data, TFieldSymbol(propSym).Offset);
+      propInfo:=TInfoProperty.Create(info, propSym.Typ, info.Execution.DataPtr_Nil, TPropertySymbol(propSym), handle.ScriptObj)
+   else if propSym.ClassType=TFieldSymbol then begin
+      info.Execution.DataPtr_Create(handle.ScriptObj.AsData, TFieldSymbol(propSym).Offset, locData);
+      propInfo:=TInfoData.Create(info, propSym.Typ, locData);
+   end;
 
    Info.ResultAsVariant:=propInfo.Value;
 end;
@@ -414,14 +418,17 @@ procedure TRTTIPropertySetterMethod.Execute(info : TProgramInfo; var ExternalObj
 var
    handle, propInfo : IInfo;
    propSym : TSymbol;
+   locData : IDataContext;
 begin
    propSym:=ExternalObject as TSymbol;
    handle:=info.Vars['handle'];
 
    if propSym.ClassType=TPropertySymbol then
-      propInfo:=TInfoProperty.Create(info, propSym.Typ, nil, 0, TPropertySymbol(propSym), handle.ScriptObj)
-   else if propSym.ClassType=TFieldSymbol then
-      propInfo:=TInfoData.Create(info, propSym.Typ, handle.ScriptObj.Data, TFieldSymbol(propSym).Offset);
+      propInfo:=TInfoProperty.Create(info, propSym.Typ, info.Execution.DataPtr_Nil, TPropertySymbol(propSym), handle.ScriptObj)
+   else if propSym.ClassType=TFieldSymbol then begin
+      info.Execution.DataPtr_Create(handle.ScriptObj.AsData, TFieldSymbol(propSym).Offset, locData);
+      propInfo:=TInfoData.Create(info, propSym.Typ, locData);
+   end;
 
    propInfo.Value:=Info.ValueAsVariant['value'];
 end;
@@ -488,6 +495,7 @@ var
    methInfo : IInfo;
    resultInfo : IInfo;
    data : TData;
+   locData : IDataContext;
 begin
    methSym:=ExternalObject as TMethodSymbol;
 
@@ -495,18 +503,23 @@ begin
       if methSym.IsStatic then begin
          SetLength(data, 1);
          data[0]:=Int64(methSym.StructSymbol);
-         instanceInfo:=TInfoClass.Create(info, methSym.StructSymbol, data, 0);
-         methInfo:=TInfoFunc.Create(info, methSym, nil, 0, nil, nil, TClassSymbol(methSym.StructSymbol));
+         info.Execution.DataPtr_Create(data, 0, locData);
+         instanceInfo:=TInfoClass.Create(info, methSym.StructSymbol, locData);
+         methInfo:=TInfoFunc.Create(info, methSym, info.Execution.DataPtr_Nil, nil, nil, TClassSymbol(methSym.StructSymbol));
       end else begin
          SetLength(data, 1);
          data[0]:=info.Vars['instance'].ValueAsInteger;
-         instanceInfo:=TInfoClass.Create(info, methSym.StructSymbol, data, 0);
-         methInfo:=TInfoFunc.Create(info, methSym, nil, 0, nil, IScriptObj(IUnknown(data[0])), TClassSymbol(methSym.StructSymbol));
+         info.Execution.DataPtr_Create(data, 0, locData);
+         instanceInfo:=TInfoClass.Create(info, methSym.StructSymbol, locData);
+         methInfo:=TInfoFunc.Create(info, methSym, info.Execution.DataPtr_Nil,
+                                    nil, IScriptObj(IUnknown(data[0])), TClassSymbol(methSym.StructSymbol));
       end;
    end else begin
       data:=info.Vars['instance'].Data;
-      instanceInfo:=TInfoClassObj.Create(info, methSym.StructSymbol, data, 0);
-      methInfo:=TInfoFunc.Create(info, methSym, nil, 0, nil, IScriptObj(IUnknown(data[0])), TClassSymbol(methSym.StructSymbol));
+      info.Execution.DataPtr_Create(data, 0, locData);
+      instanceInfo:=TInfoClassObj.Create(info, methSym.StructSymbol,locData);
+      methInfo:=TInfoFunc.Create(info, methSym, info.Execution.DataPtr_Nil,
+                                 nil, IScriptObj(IUnknown(data[0])), TClassSymbol(methSym.StructSymbol));
    end;
    resultInfo:=methInfo.Call(info.Vars['args'].Data);
    if methSym.Typ<>nil then

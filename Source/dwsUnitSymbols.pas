@@ -23,8 +23,10 @@ unit dwsUnitSymbols;
 
 interface
 
-uses SysUtils, dwsUtils, dwsSymbols, dwsErrors, dwsStack, dwsXPlatform,
-   dwsStrings, dwsTokenizer;
+uses
+   SysUtils,
+   dwsUtils, dwsSymbols, dwsErrors, dwsStack, dwsXPlatform,
+   dwsStrings, dwsTokenizer, dwsDataContext;
 
 type
 

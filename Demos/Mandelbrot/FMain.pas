@@ -93,8 +93,8 @@ begin
 
    SetLength(FScanLines, FBitmap.Height);
 
-//   for i:=0 to FBitmap.Height-1 do
-//      FScanLines[i]:=FBitmap.ScanLine[i];
+   for i:=0 to FBitmap.Height-1 do
+      FScanLines[i]:=FBitmap.ScanLine[i];
 end;
 
 // SetPixel
@@ -106,8 +106,8 @@ const
       $101099, $3030AA, $4040BB, $5050CC, $6060DD, $7070EE, $8080FF, $000000
       );
 begin
-//   PIntegerArray(FScanLines[y])[x]:=cColors[color];
-   FBitmap.Canvas.Pixels[x, y]:=cColors[color];
+   PIntegerArray(FScanLines[y])[x]:=cColors[color];
+//   FBitmap.Canvas.Pixels[x, y]:=cColors[color];
 end;
 
 // PaintBitmapDelphi

@@ -20,13 +20,15 @@ unit dwsMath3DFunctions;
 
 interface
 
-uses Classes, dwsFunctions, dwsExprs, dwsSymbols, dwsStack, dwsOperators,
+uses
+   Classes,
+   dwsFunctions, dwsExprs, dwsSymbols, dwsStack, dwsOperators, dwsDataContext,
    dwsStrings, dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs, dwsUnitSymbols;
 
 type
    TVectorMakeExpr = class(TInternalMagicDataFunction)
       public
-         procedure DoEval(args : TExprBaseList; var result : TDataPtr); override;
+         procedure DoEval(args : TExprBaseList; var result : IDataContext); override;
    end;
 
    TVectorToStrExpr = class(TInternalMagicStringFunction)
@@ -38,17 +40,17 @@ type
 
    TVectorAddOpExpr = class(TVectorOpExpr)
       public
-         procedure DoEval(args : TExprBaseList; var result : TDataPtr); override;
+         procedure DoEval(args : TExprBaseList; var result : IDataContext); override;
    end;
 
    TVectorSubOpExpr = class(TVectorOpExpr)
       public
-         procedure DoEval(args : TExprBaseList; var result : TDataPtr); override;
+         procedure DoEval(args : TExprBaseList; var result : IDataContext); override;
    end;
 
    TVectorCrossProductOpExpr = class(TVectorOpExpr)
       public
-         procedure DoEval(args : TExprBaseList; var result : TDataPtr); override;
+         procedure DoEval(args : TExprBaseList; var result : IDataContext); override;
    end;
 
    TVectorDotProductOpExpr = class(TInternalMagicFloatFunction)
@@ -58,7 +60,7 @@ type
 
    TVectorNormalizeExpr = class(TInternalMagicDataFunction)
       public
-         procedure DoEval(args : TExprBaseList; var result : TDataPtr); override;
+         procedure DoEval(args : TExprBaseList; var result : IDataContext); override;
    end;
 
 const
@@ -116,7 +118,7 @@ end;
 
 // DoEval
 //
-procedure TVectorMakeExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
+procedure TVectorMakeExpr.DoEval(args : TExprBaseList; var result : IDataContext);
 begin
    result[0]:=args.AsFloat[0];
    result[1]:=args.AsFloat[1];
@@ -132,7 +134,7 @@ end;
 //
 procedure TVectorToStrExpr.DoEvalAsString(args : TExprBaseList; var Result : String);
 var
-   vectorData : TDataPtr;
+   vectorData : IDataContext;
 begin
    vectorData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
    Result:=Format('[%f %f %f %f]',
@@ -146,7 +148,7 @@ end;
 
 // DoEval
 //
-procedure TVectorAddOpExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
+procedure TVectorAddOpExpr.DoEval(args : TExprBaseList; var result : IDataContext);
 var
    leftData, rightData : PVarDataArray;
 begin
@@ -165,9 +167,9 @@ end;
 
 // DoEval
 //
-procedure TVectorSubOpExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
+procedure TVectorSubOpExpr.DoEval(args : TExprBaseList; var result : IDataContext);
 var
-   leftData, rightData : TDataPtr;
+   leftData, rightData : IDataContext;
 begin
    leftData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
    rightData:=TDataExpr(args.ExprBase[1]).DataPtr[args.Exec];
@@ -184,9 +186,9 @@ end;
 
 // DoEval
 //
-procedure TVectorCrossProductOpExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
+procedure TVectorCrossProductOpExpr.DoEval(args : TExprBaseList; var result : IDataContext);
 var
-   leftData, rightData : TDataPtr;
+   leftData, rightData : IDataContext;
 begin
    leftData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
    rightData:=TDataExpr(args.ExprBase[1]).DataPtr[args.Exec];
@@ -205,7 +207,7 @@ end;
 //
 procedure TVectorDotProductOpExpr.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
 var
-   leftData, rightData : TDataPtr;
+   leftData, rightData : IDataContext;
 begin
    leftData:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
    rightData:=TDataExpr(args.ExprBase[1]).DataPtr[args.Exec];
@@ -221,10 +223,10 @@ end;
 
 // DoEval
 //
-procedure TVectorNormalizeExpr.DoEval(args : TExprBaseList; var result : TDataPtr);
+procedure TVectorNormalizeExpr.DoEval(args : TExprBaseList; var result : IDataContext);
 var
    n, invN : Double;
-   v : TDataPtr;
+   v : IDataContext;
 begin
    v:=TDataExpr(args.ExprBase[0]).DataPtr[args.Exec];
 

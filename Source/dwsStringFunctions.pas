@@ -800,7 +800,7 @@ begin
       varRecs:=TArrayConstantExpr(expr).EvalAsVarRecArray(args.Exec)
    else if expr is TByRefParamExpr then begin
       if TByRefParamExpr(expr).Typ is TOpenArraySymbol then
-         varRecs:=TVarRecArrayContainer.Create(TByRefParamExpr(expr).Data[args.Exec])
+         varRecs:=TVarRecArrayContainer.Create(TByRefParamExpr(expr).DataPtr[args.Exec].AsPData^)
    end;
    // current implementation, limitations may be relaxed later
    if varRecs=nil then raise EScriptError.Create('Constant expression or open array expected');
@@ -828,9 +828,9 @@ begin
 
       // special case, split separates all characters
       pn:=Length(str);
-      dyn.Length:=pn;
+      dyn.ArrayLength:=pn;
       for k:=1 to pn do
-         dyn.Data[k-1]:=str[k];
+         dyn.AsString[k-1]:=str[k];
 
    end else begin
 
@@ -841,13 +841,13 @@ begin
          pn:=PosEx(delim, str, p);
          if pn>0 then begin
             dyn.Insert(k);
-            dyn.Data[k]:=Copy(str, p, pn-p);
+            dyn.AsString[k]:=Copy(str, p, pn-p);
             Inc(k);
             p:=pn+nDelim;
          end else break;
       end;
       dyn.Insert(k);
-      dyn.Data[k]:=Copy(str, p, Length(str)+1-p);
+      dyn.AsString[k]:=Copy(str, p, Length(str)+1-p);
 
    end;
 
@@ -862,7 +862,7 @@ end;
 //
 procedure TStrJoinFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
 var
-   delim : String;
+   delim, item : String;
    obj : IScriptObj;
    dyn : TScriptDynamicArray;
    i : Integer;
@@ -873,20 +873,24 @@ begin
 
    delim:=args.AsString[1];
 
-   case dyn.Length of
+   case dyn.ArrayLength of
       0 : Result:='';
       1..5 : begin
-         Result:=dyn.Data[0];
-         for i:=1 to dyn.Length-1 do
-            Result:=Result+delim+dyn.Data[i];
+         dyn.EvalAsString(0, Result);
+         for i:=1 to dyn.ArrayLength-1 do begin
+            dyn.EvalAsString(i, item);
+            Result:=Result+delim+item;
+         end;
       end;
    else
       wobs:=TWriteOnlyBlockStream.Create;
       try
-         wobs.WriteString(dyn.Data[0]);
-         for i:=1 to dyn.Length-1 do begin
+         dyn.EvalAsString(0, item);
+         wobs.WriteString(item);
+         for i:=1 to dyn.ArrayLength-1 do begin
             wobs.WriteString(delim);
-            wobs.WriteString(dyn.Data[i]);
+            dyn.EvalAsString(i, item);
+            wobs.WriteString(item);
          end;
          Result:=wobs.ToString;
       finally
