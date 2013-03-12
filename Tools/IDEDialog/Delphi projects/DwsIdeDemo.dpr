@@ -36,10 +36,6 @@ uses
 
 {$R *.res}
 
-
-
-
-
 begin
   System.ReportMemoryLeaksOnShutdown := True;
 

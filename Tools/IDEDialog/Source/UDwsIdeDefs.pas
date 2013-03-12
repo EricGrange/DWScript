@@ -75,7 +75,8 @@ const
     'Element',
     'Parameter',
     'Variable',
-    'Const' );
+    'Const',
+    'Keyword' );
 
 
 function DebuggerEvaluate( ADebugger : TDwsDebugger; const AExpression : string) : String;
