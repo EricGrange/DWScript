@@ -17,7 +17,9 @@ unit UJSONTests;
 
 interface
 
-uses Classes, SysUtils, dwsXPlatformTests, dwsJSON, dwsXPlatform;
+uses
+   Classes, SysUtils, Math,
+   dwsXPlatformTests, dwsJSON, dwsXPlatform;
 
 type
 
@@ -57,6 +59,7 @@ type
          procedure DeleteAdd;
          procedure WriterErrors;
          procedure ArrayTest;
+         procedure DefaultValues;
    end;
 
 // ------------------------------------------------------------------
@@ -626,6 +629,23 @@ begin
    finally
       jsonArray.Free;
    end;
+end;
+
+// DefaultValues
+//
+procedure TdwsJSONTests.DefaultValues;
+var
+   json : TdwsJSONValue;
+begin
+   json := nil;
+
+   CheckEquals('undefined', json.AsString, 'str');
+   CheckEquals(False, json.IsNull, 'null');
+   CheckEquals(False, json.IsDefined, 'defined');
+   CheckEquals(False, json.AsBoolean, 'bool');
+   Check(IsNan(json.AsNumber), 'num');
+   CheckEquals(True, json.IsNaN, 'nan');
+   CheckEquals(0, json.AsInteger, 'int');
 end;
 
 // ------------------------------------------------------------------

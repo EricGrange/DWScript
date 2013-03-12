@@ -17,7 +17,9 @@ unit dwsJSON;
 
 interface
 
-uses Classes, SysUtils, Variants, dwsUtils, dwsXPlatform;
+uses
+   Classes, SysUtils, Variants, Math,
+   dwsUtils, dwsXPlatform;
 
 type
 
@@ -148,12 +150,14 @@ type
          procedure SetAsString(const val : String); inline;
          function GetIsNull : Boolean; inline;
          procedure SetIsNull(const val : Boolean);
-         function GetAsBoolean : Boolean;
+         function GetIsDefined : Boolean; inline;
+         function GetAsBoolean : Boolean; inline;
          procedure SetAsBoolean(const val : Boolean); inline;
          function GetAsNumber : Double;
          procedure SetAsNumber(const val : Double); inline;
-         function GetAsInteger : Int64;
-         procedure SetAsInteger(const val : Int64);
+         function GetIsNaN : Boolean;
+         function GetAsInteger : Int64; inline;
+         procedure SetAsInteger(const val : Int64); inline;
 
          procedure DoParse(initialChar : WideChar; parserState : TdwsJSONParserState); virtual; abstract;
 
@@ -193,8 +197,10 @@ type
 
          property AsString : String read GetAsString write SetAsString;
          property IsNull : Boolean read GetIsNull write SetIsNull;
+         property IsDefined : Boolean read GetIsDefined;
          property AsBoolean : Boolean read GetAsBoolean write SetAsBoolean;
          property AsNumber : Double read GetAsNumber write SetAsNumber;
+         property IsNaN : Boolean read GetIsNaN;
          property AsInteger : Int64 read GetAsInteger write SetAsInteger;
 
          const ValueTypeStrings : array [TdwsJSONValueType] of String = (
@@ -803,7 +809,9 @@ end;
 //
 function TdwsJSONValue.GetAsString : String;
 begin
-   Result:=Value.AsString;
+   if Assigned(Self) then
+      Result:=Value.AsString
+   else Result:='undefined';
 end;
 
 // SetAsString
@@ -817,7 +825,9 @@ end;
 //
 function TdwsJSONValue.GetIsNull : Boolean;
 begin
-   Result:=(ValueType=jvtNull);
+   if Assigned(Self) then
+      Result:=(ValueType=jvtNull)
+   else Result:=False;
 end;
 
 // SetIsNull
@@ -827,11 +837,20 @@ begin
    Value.IsNull:=val;
 end;
 
+// GetIsDefined
+//
+function TdwsJSONValue.GetIsDefined : Boolean;
+begin
+   Result:=Assigned(Self) and (FValueType<>jvtUndefined);
+end;
+
 // GetAsBoolean
 //
 function TdwsJSONValue.GetAsBoolean : Boolean;
 begin
-   Result:=Value.AsBoolean;
+   if Assigned(Self) then
+      Result:=Value.AsBoolean
+   else Result:=False;
 end;
 
 // SetAsBoolean
@@ -845,7 +864,9 @@ end;
 //
 function TdwsJSONValue.GetAsNumber : Double;
 begin
-   Result:=Value.AsNumber;
+   if Assigned(Self) then
+      Result:=Value.AsNumber
+   else Result:=NaN;
 end;
 
 // SetAsNumber
@@ -855,11 +876,22 @@ begin
    Value.AsNumber:=val;
 end;
 
+// GetIsNaN
+//
+function TdwsJSONValue.GetIsNaN : Boolean;
+begin
+   Result:=not (    Assigned(Self)
+                and (FValueType in [jvtNumber])
+                and Math.IsNan(Value.AsNumber));
+end;
+
 // GetAsInteger
 //
 function TdwsJSONValue.GetAsInteger : Int64;
 begin
-   Result:=Value.AsInteger;
+   if Assigned(Self) then
+      Result:=Value.AsInteger
+   else Result:=0;
 end;
 
 // SetAsInteger
@@ -1575,7 +1607,7 @@ function TdwsJSONImmediate.GetAsString : String;
 begin
    if Assigned(Self) then
       Result:=FValue
-   else Result:='';
+   else Result:='undefined';
 end;
 
 // SetAsString
@@ -1633,7 +1665,7 @@ end;
 //
 function TdwsJSONImmediate.GetAsNumber : Double;
 begin
-   if not Assigned(Self) then Exit(0);
+   if not Assigned(Self) then Exit(NaN);
    case VarType(FValue) of
       varEmpty : Result:=0;
       varBoolean : if FValue then Result:=-1 else Result:=0;
