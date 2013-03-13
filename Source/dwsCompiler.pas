@@ -9535,12 +9535,28 @@ begin
          else if trueExpr.IsOfType(FProg.TypFloat) and falseExpr.IsOfType(FProg.TypInteger) then
             falseExpr:=TConvFloatExpr.Create(FProg, falseExpr);
 
-         if falseExpr.Typ.IsCompatible(trueExpr.Typ) then
-            typ:=falseExpr.Typ
-         else begin
+         if falseExpr.Typ.IsOfType(FProg.TypNil) then begin
+
             typ:=trueExpr.Typ;
             if not typ.IsCompatible(falseExpr.Typ) then
-               FMsgs.AddCompilerError(hotPos, CPE_InvalidArgCombination);;
+               FMsgs.AddCompilerError(hotPos, CPE_InvalidArgCombination);
+
+         end else if trueExpr.Typ.IsOfType(FProg.TypNil) then begin
+
+            typ:=falseExpr.Typ;
+            if not typ.IsCompatible(trueExpr.Typ) then
+               FMsgs.AddCompilerError(hotPos, CPE_InvalidArgCombination);
+
+         end else if falseExpr.Typ.IsCompatible(trueExpr.Typ) then
+
+            typ:=falseExpr.Typ
+
+         else begin
+
+            typ:=trueExpr.Typ;
+            if not typ.IsCompatible(falseExpr.Typ) then
+               FMsgs.AddCompilerError(hotPos, CPE_InvalidArgCombination);
+
          end;
 
       end;

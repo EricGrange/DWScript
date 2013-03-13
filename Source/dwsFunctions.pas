@@ -399,7 +399,6 @@ begin
 
    if helperName<>'' then
       TdwsCompilerUtils.AddProcHelper(helperName, table, sym, nil);
- //.... dwscompiler
 end;
 
 // Create
