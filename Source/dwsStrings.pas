@@ -183,6 +183,8 @@ const
   CPE_OnlyNonVirtualClassMethodsAsStatic = 'Only non-virtual class methods can be marked as static';
   CPE_UnknownClass = 'Class "%s" not found';
   CPE_NotAClass = '"%s" is not a class';
+  CPE_NotAProperty = '"%s" is not a property';
+  CPE_CannotDemotePropertyVisibility = 'Cannot demote property visibility';
   CPE_ClassForwardAlreadyExists = 'There is already a forward declaration of the "%s" class!';
   CPE_ClassAlreadyDefined = 'Class "%s" already defined!';
   CPE_ClassWasNotPartial = 'Previous declaration of class was not "partial"';

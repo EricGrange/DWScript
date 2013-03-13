@@ -7854,7 +7854,7 @@ procedure TdwsCompiler.ReadPropertyDecl(ownerSym : TCompositeTypeSymbol; aVisibi
 var
    gotReadOrWrite : Boolean;
    name : String;
-   propSym  : TPropertySymbol;
+   propSym, promotedPropSym  : TPropertySymbol;
    sym : TSymbol;
    typ : TTypeSymbol;
    tempArrayIndices : TParamsSymbolTable;
@@ -7870,17 +7870,39 @@ begin
       FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
    // Check if property name is available
-   sym := ownerSym.Members.FindSymbolFromScope(name, CurrentStruct);
+   sym := ownerSym.Members.FindSymbolFromScope(name, ownerSym);
    if Assigned(sym) then begin
       if sym is TPropertySymbol then begin
          if TPropertySymbol(sym).OwnerSymbol = ownerSym then begin
             MemberSymbolWithNameAlreadyExists(sym, propNamePos);
             name:=''; // make anonymous to keep compiling
          end;
-      end else begin
+      end else if ownerSym.Members.HasSymbol(sym) then begin
          MemberSymbolWithNameAlreadyExists(sym, propNamePos);
          name:=''; // make anonymous to keep compiling
       end;
+   end;
+
+   if (not classProperty) and FTok.TestDelete(ttSEMI) then begin
+      // property visibility promotion
+      if sym=nil then
+         FMsgs.AddCompilerErrorFmt(propNamePos, CPE_UnknownMember, [name])
+      else if not (sym is TPropertySymbol) then
+         FMsgs.AddCompilerErrorFmt(propNamePos, CPE_NotAProperty, [sym.Name])
+      else begin
+         propSym:=TPropertySymbol(sym);
+         if propSym.Visibility>aVisibility then
+            FMsgs.AddCompilerError(propNamePos, CPE_CannotDemotePropertyVisibility)
+         else begin
+            promotedPropSym:=TPropertySymbol.Create(propSym.Name, propSym.Typ, aVisibility,
+                                                    propSym.ArrayIndices);
+            propSym.ArrayIndices.IncRefCount;
+            promotedPropSym.ReadSym:=propSym.ReadSym;
+            promotedPropSym.WriteSym:=propSym.WriteSym;
+            ownerSym.AddProperty(promotedPropSym);
+         end;
+      end;
+      Exit;
    end;
 
    if FTok.TestDelete(ttALEFT) then begin
