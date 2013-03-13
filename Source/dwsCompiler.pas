@@ -475,13 +475,14 @@ type
          function ReadField(const scriptPos : TScriptPos; selfSym : TDataSymbol;
                          fieldSym : TFieldSymbol; var varExpr : TTypedExpr) : TDataExpr; overload;
 
-         function ReadFor : TNoResultExpr;
+         function ReadFor : TProgramExpr;
          function ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr;
                             const loopVarName : String; const loopVarNamePos : TScriptPos) : TNoResultExpr;
          function ReadForStep(const forPos : TScriptPos; forExprClass : TForExprClass;
                               iterVarExpr : TIntVarExpr; var fromExpr, toExpr : TTypedExpr;
                               loopFirstStatement : TNoResultExpr) : TForExpr;
-         function ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TNoResultExpr;
+         function ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr;
+                            const loopVarName : String; const loopVarNamePos : TScriptPos) : TProgramExpr;
 
          function ReadFuncOverloaded(funcSym : TFuncSymbol; fromTable : TSymbolTable;
                                      codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
@@ -5261,7 +5262,7 @@ end;
 
 // ReadFor
 //
-function TdwsCompiler.ReadFor : TNoResultExpr;
+function TdwsCompiler.ReadFor : TProgramExpr;
 var
    forPos : TScriptPos;
    expr : TProgramExpr;
@@ -5300,7 +5301,7 @@ begin
       ttASSIGN :
          Result:=ReadForTo(forPos, loopVarExpr, loopVarName, loopVarNamePos);
       ttIN :
-         Result:=ReadForIn(forPos, loopVarExpr);
+         Result:=ReadForIn(forPos, loopVarExpr, loopVarName, loopVarNamePos);
    else
       expr.Free;
       Result:=nil;
@@ -5465,13 +5466,15 @@ end;
 
 // ReadForIn
 //
-function TdwsCompiler.ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr) : TNoResultExpr;
+function TdwsCompiler.ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr;
+                                const loopVarName : String; const loopVarNamePos : TScriptPos) : TProgramExpr;
 var
    iterVarExpr : TIntVarExpr;
    iterVarSym : TDataSymbol;
    initIterVarExpr : TAssignConstToIntegerVarExpr;
    inExpr : TProgramExpr;
    inExprVarSym : TDataSymbol;
+   loopVarSymbol : TDataSymbol;
    fromExpr, toExpr : TTypedExpr;
    forExprClass : TForExprClass;
    arraySymbol : TArraySymbol;
@@ -5479,7 +5482,7 @@ var
    inPos : TScriptPos;
    inExprAssignExpr, readArrayItemExpr : TAssignExpr;
    inExprVarExpr : TVarExpr;
-   blockExpr : TBlockExprNoTable2;
+   blockExpr : TBlockExpr;
 begin
    forExprClass:=TForUpwardExpr;
 
@@ -5489,6 +5492,7 @@ begin
 
    readArrayItemExpr:=nil;
    inExprAssignExpr:=nil;
+   blockExpr:=nil;
 
    if (inExpr is TTypedExpr) and (inExpr.ClassType<>TTypeReferenceExpr) then begin
 
@@ -5534,6 +5538,16 @@ begin
 
          fromExpr:=CreateArrayLow(inExpr, arraySymbol, False);
          toExpr:=CreateArrayHigh(inExpr, arraySymbol, False);
+
+         if loopVarExpr=nil then begin
+            blockExpr:=TBlockExpr.Create(FProg, forPos);
+            loopVarSymbol:=TDataSymbol.Create(loopVarName, arraySymbol.Typ);
+            blockExpr.Table.AddSymbol(loopVarSymbol);
+            RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
+            loopVarExpr:=GetVarExpr(loopVarSymbol);
+            FProg.InitExpr.AddStatement(TInitDataExpr.Create(FProg, loopVarNamePos, loopVarExpr));
+            loopVarExpr.IncRefCount;
+         end;
 
          iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
          readArrayItemExpr:=TAssignExpr.Create(FProg, FTok.HotPos, loopVarExpr,
@@ -5585,15 +5599,28 @@ begin
 
    end;
 
-   Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
-                       fromExpr, toExpr, readArrayItemExpr);
-
-   if inExprAssignExpr<>nil then begin
-      blockExpr:=TBlockExprNoTable2.Create(FProg, forPos);
+   if (inExprAssignExpr<>nil) and (blockExpr=nil) then begin
+      blockExpr:=TBlockExpr.Create(FProg, forPos);
       blockExpr.AddStatement(inExprAssignExpr);
-      blockExpr.AddStatement(Result);
-      Result:=blockExpr;
    end;
+   if blockExpr<>nil then
+      FProg.EnterSubTable(blockExpr.Table);
+   Result:=blockExpr;
+   try
+      Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
+                          fromExpr, toExpr, readArrayItemExpr);
+      if Optimize then
+         Result:=Result.Optimize(FProg, FExec);
+   finally
+      if blockExpr<>nil then begin
+         FProg.LeaveSubTable;
+         blockExpr.AddStatement(Result);
+         if Optimize then
+            Result:=blockExpr.Optimize(FProg, FExec)
+         else Result:=blockExpr;
+      end;
+   end;
+
 end;
 
 // WarnForVarUsage

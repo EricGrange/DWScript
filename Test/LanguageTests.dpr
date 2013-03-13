@@ -40,7 +40,8 @@ uses
   UJSONTests in 'UJSONTests.pas',
   UJSONConnectorTests in 'UJSONConnectorTests.pas',
   UTokenizerTests in 'UTokenizerTests.pas',
-  dwsDataContext in '..\Source\dwsDataContext.pas';
+  dwsDataContext in '..\Source\dwsDataContext.pas',
+  dwsCompilerUtils in '..\Source\dwsCompilerUtils.pas';
 
 {$R *.res}
 
