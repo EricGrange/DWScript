@@ -5497,7 +5497,8 @@ begin
    if (inExpr is TTypedExpr) and (inExpr.ClassType<>TTypeReferenceExpr) then begin
 
       if      inExpr.Typ.IsOfType(FProg.TypString)
-         and (   loopVarExpr.Typ.IsOfType(FProg.TypInteger)
+         and (   (loopVarExpr=nil)
+              or loopVarExpr.Typ.IsOfType(FProg.TypInteger)
               or loopVarExpr.Typ.IsOfType(FProg.TypString)) then begin
 
          if not FTok.TestDelete(ttDO) then begin
@@ -5505,12 +5506,39 @@ begin
             loopVarExpr.Free;
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
          end;
-         if loopVarExpr.Typ.IsOfType(FProg.TypInteger) then begin
+
+         if loopVarExpr=nil then begin
+
+            blockExpr:=TBlockExpr.Create(FProg, forPos);
+
+            loopVarSymbol:=TDataSymbol.Create(loopVarName, FProg.TypString);
+            blockExpr.Table.AddSymbol(loopVarSymbol);
+            RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
+            loopVarExpr:=GetVarExpr(loopVarSymbol);
+            FProg.InitExpr.AddStatement(TAssignConstToStringVarExpr.CreateVal(FProg, loopVarNamePos, loopVarExpr, ''));
+            loopVarExpr.IncRefCount;
+
+            Result:=blockExpr;
+            FProg.EnterSubTable(blockExpr.Table);
+            try
+               Result:=TForCharInStrExpr.Create(FProg, forPos, loopVarExpr as TStrVarExpr,
+                                                TTypedExpr(inExpr), ReadBlock)
+            finally
+               FProg.LeaveSubTable;
+               blockExpr.AddStatement(Result);
+               Result:=blockExpr;
+            end;
+
+         end else if loopVarExpr.Typ.IsOfType(FProg.TypInteger) then begin
+
             Result:=TForCharCodeInStrExpr.Create(FProg, forPos, loopVarExpr as TIntVarExpr,
                                                  TTypedExpr(inExpr), ReadBlock)
+
          end else begin
+
             Result:=TForCharInStrExpr.Create(FProg, forPos, loopVarExpr as TStrVarExpr,
                                              TTypedExpr(inExpr), ReadBlock);
+
          end;
          Exit;
 
