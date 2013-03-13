@@ -48,7 +48,8 @@ type
          constructor Create(table: TSymbolTable; const funcName: String;
                             const params : TParamArray; const funcType: String;
                             const flags : TInternalFunctionFlags;
-                            compositeSymbol : TCompositeTypeSymbol = nil); override;
+                            compositeSymbol : TCompositeTypeSymbol;
+                            const helperName : String); override;
          function MagicFuncExprClass : TMagicFuncExprClass; virtual; abstract;
          procedure Execute(info : TProgramInfo); override;
    end;
@@ -303,7 +304,8 @@ type
 procedure RegisterInternalIntFunction(InternalFunctionClass: TInternalMagicIntFunctionClass;
       const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
 procedure RegisterInternalBoolFunction(InternalFunctionClass: TInternalMagicBoolFunctionClass;
-      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String;
+      const flags : TInternalFunctionFlags = []; const helperName : String = '');
 procedure RegisterInternalFloatFunction(InternalFunctionClass: TInternalMagicFloatFunctionClass;
       const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
 procedure RegisterInternalStringFunction(InternalFunctionClass: TInternalMagicStringFunctionClass;
@@ -328,9 +330,10 @@ end;
 // RegisterInternalBoolFunction
 //
 procedure RegisterInternalBoolFunction(InternalFunctionClass: TInternalMagicBoolFunctionClass;
-      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String;
+      const flags : TInternalFunctionFlags = []; const helperName : String = '');
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Boolean', flags);
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Boolean', flags, helperName);
 end;
 
 // RegisterInternalFloatFunction
@@ -410,7 +413,8 @@ end;
 constructor TInternalMagicFunction.Create(table : TSymbolTable;
       const funcName : String; const params : TParamArray; const funcType : String;
       const flags : TInternalFunctionFlags;
-      compositeSymbol : TCompositeTypeSymbol = nil);
+      compositeSymbol : TCompositeTypeSymbol;
+      const helperName : String);
 var
    sym : TMagicFuncSymbol;
    ssym : TMagicStaticMethodSymbol;

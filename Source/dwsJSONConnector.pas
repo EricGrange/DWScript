@@ -754,8 +754,8 @@ begin
             else writer.WriteString('Undefined');
          end else begin
             if unk.QueryInterface(IScriptObj, scriptObj)=0 then begin
-               if scriptObj.InternalObject.ClassType=TScriptDynamicArray then
-                  StringifyDynamicArray(exec, writer, TScriptDynamicArray(scriptObj.InternalObject))
+               if scriptObj.GetSelf.ClassType=TScriptDynamicArray then
+                  StringifyDynamicArray(exec, writer, TScriptDynamicArray(scriptObj.GetSelf))
                else StringifyClass(exec, writer, scriptObj.ClassSym, scriptObj);
             end else begin
                if unk.QueryInterface(IGetSelf, getSelf)=0 then
@@ -780,7 +780,7 @@ begin
    if ct.InheritsFrom(TBaseSymbol) then
       StringifyVariant(exec, writer, dataPtr[0])
    else if ct=TDynamicArraySymbol then
-      StringifyDynamicArray(exec, writer, IScriptObj(dataPtr.AsInterface[0]).InternalObject as TScriptDynamicArray)
+      StringifyDynamicArray(exec, writer, IScriptObj(dataPtr.AsInterface[0]).GetSelf as TScriptDynamicArray)
    else if ct.InheritsFrom(TStaticArraySymbol) then
       StringifyArray(exec, writer, TStaticArraySymbol(sym).Typ, dataPtr, TStaticArraySymbol(sym).ElementCount)
    else if ct=TRecordSymbol then

@@ -529,6 +529,9 @@ type
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
+         procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
+         procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
+
          property BaseExpr : TDataExpr read FBaseExpr;
          property MemberOffset : Integer read FMemberOffset;
 
@@ -537,13 +540,21 @@ type
 
    // Record expression: record.member when BaseExpr is a TVarExpr
    TRecordVarExpr = class(TRecordExpr)
+      private
+         FVarPlusMemberOffset : Integer;
+
       public
+         constructor Create(prog : TdwsProgram; const Pos : TScriptPos; baseExpr: TVarExpr;
+                            fieldSymbol : TFieldSymbol);
+
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+
+         property VarPlusMemberOffset : Integer read FVarPlusMemberOffset write FVarPlusMemberOffset;
    end;
 
    TInitDataExpr = class sealed (TNoResultExpr)
@@ -3361,7 +3372,7 @@ begin
    FBaseExpr.EvalAsScriptObj(exec, base);
 
    index:=IndexExpr.EvalAsInteger(exec);
-   BoundsCheck(exec, TScriptDynamicArray(base.InternalObject).ArrayLength, index);
+   BoundsCheck(exec, TScriptDynamicArray(base.GetSelf).ArrayLength, index);
 
    exec.DataPtr_Create(base.AsData, index*FElementSize, Result);
 end;
@@ -3375,7 +3386,7 @@ var
    index : Integer;
 begin
    FBaseExpr.EvalAsScriptObj(exec, base);
-   dynArray:=TScriptDynamicArray(base.InternalObject);
+   dynArray:=TScriptDynamicArray(base.GetSelf);
 
    index:=IndexExpr.EvalAsInteger(exec);
    BoundsCheck(exec, dynArray.ArrayLength, index);
@@ -3446,7 +3457,7 @@ var
    index : Integer;
 begin
    base:=TObjectVarExpr(FBaseExpr).EvalAsPIScriptObj(exec);
-   dynArray:=TScriptDynamicArray(base^.InternalObject);
+   dynArray:=TScriptDynamicArray(base^.GetSelf);
 
    index:=IndexExpr.EvalAsInteger(exec);
    BoundsCheck(exec, dynArray.ArrayLength, index);
@@ -3489,7 +3500,7 @@ var
    base : IScriptObj;
 begin
    FArrayExpr.EvalAsScriptObj(exec, base);
-   dynArray:=TScriptDynamicArray(base.InternalObject);
+   dynArray:=TScriptDynamicArray(base.GetSelf);
    index:=IndexExpr.EvalAsInteger(exec);
    BoundsCheck(exec, dynArray.ArrayLength, index);
    ValueExpr.EvalAsVariant(exec, dynArray.AsPVariant(index)^);
@@ -3527,7 +3538,7 @@ var
    base : PIScriptObj;
 begin
    base:=TObjectVarExpr(ArrayExpr).EvalAsPIScriptObj(exec);
-   dynArray:=TScriptDynamicArray(base^.InternalObject);
+   dynArray:=TScriptDynamicArray(base^.GetSelf);
    index:=IndexExpr.EvalAsInteger(exec);
    BoundsCheck(exec, dynArray.ArrayLength, index);
    ValueExpr.EvalAsVariant(exec, dynArray.AsPVariant(index)^);
@@ -3547,7 +3558,7 @@ var
    dataExpr : TDataExpr;
 begin
    FArrayExpr.EvalAsScriptObj(exec, base);
-   dynArray:=TScriptDynamicArray(base.InternalObject);
+   dynArray:=TScriptDynamicArray(base.GetSelf);
    index:=IndexExpr.EvalAsInteger(exec);
    BoundsCheck(exec, dynArray.ArrayLength, index);
 
@@ -3904,7 +3915,7 @@ end;
 //
 procedure TRecordExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
-   DataPtr[exec].EvalAsVariant(0, result);
+   FBaseExpr.DataPtr[exec].EvalAsVariant(FMemberOffset, result);
 end;
 
 // EvalAsString
@@ -3920,6 +3931,26 @@ procedure TRecordExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext
 begin
    FBaseExpr.GetDataPtr(exec, result);
    result.CreateOffset(FMemberOffset, result);
+end;
+
+// AssignExpr
+//
+procedure TRecordExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
+var
+   context : IDataContext;
+begin
+   FBaseExpr.GetDataPtr(exec, context);
+   Expr.EvalAsVariant(exec, context.AsPVariant(FMemberOffset)^);
+end;
+
+// AssignValueAsFloat
+//
+procedure TRecordExpr.AssignValueAsFloat(exec : TdwsExecution; const value : Double);
+var
+   context : IDataContext;
+begin
+   FBaseExpr.GetDataPtr(exec, context);
+   context.AsFloat[FMemberOffset]:=value;
 end;
 
 // GetSubExpr
@@ -3947,39 +3978,48 @@ end;
 // ------------------ TRecordVarExpr ------------------
 // ------------------
 
+// Create
+//
+constructor TRecordVarExpr.Create(prog : TdwsProgram; const Pos : TScriptPos; baseExpr: TVarExpr;
+                            fieldSymbol : TFieldSymbol);
+begin
+   inherited Create(prog, pos, baseExpr, fieldSymbol);
+   FVarPlusMemberOffset:=MemberOffset+baseExpr.StackAddr;
+end;
+
 // EvalAsInteger
 //
 function TRecordVarExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result:=exec.Stack.ReadIntValue_BaseRelative(TVarExpr(BaseExpr).FStackAddr+MemberOffset);
+   Result:=exec.Stack.ReadIntValue_BaseRelative(VarPlusMemberOffset);
 end;
 
 // EvalAsFloat
 //
 function TRecordVarExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   Result:=exec.Stack.ReadFloatValue_BaseRelative(TVarExpr(BaseExpr).FStackAddr+MemberOffset);
+   Result:=exec.Stack.ReadFloatValue_BaseRelative(VarPlusMemberOffset);
 end;
 
 // EvalAsVariant
 //
 procedure TRecordVarExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 begin
-   exec.Stack.ReadValue(exec.Stack.BasePointer+TVarExpr(BaseExpr).FStackAddr+MemberOffset, result);
+   exec.Stack.ReadValue(exec.Stack.BasePointer+VarPlusMemberOffset, result);
 end;
 
 // EvalAsString
 //
 procedure TRecordVarExpr.EvalAsString(exec : TdwsExecution; var Result : String);
 begin
-   exec.Stack.ReadStrValue(exec.Stack.BasePointer+TVarExpr(BaseExpr).FStackAddr+MemberOffset, result);
+   exec.Stack.ReadStrValue(exec.Stack.BasePointer+VarPlusMemberOffset, result);
 end;
 
 // GetDataPtr
 //
 procedure TRecordVarExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   exec.DataPtr_CreateBase(TVarExpr(BaseExpr).FStackAddr+MemberOffset, Result);
+   exec.DataPtr_CreateBase(VarPlusMemberOffset, Result);
 end;
 
 // ------------------
@@ -4306,7 +4346,7 @@ var
    obj : IScriptObj;
 begin
    FExpr.EvalAsScriptObj(exec, obj);
-   Result:=TScriptDynamicArray(obj.InternalObject).ArrayLength+FDelta
+   Result:=TScriptDynamicArray(obj.GetSelf).ArrayLength+FDelta
 end;
 
 // ------------------
@@ -5888,7 +5928,7 @@ begin
          dyn:=TScriptDynamicArray.Create(TDynamicArraySymbol(FLeft.Typ).Typ);
          FLeft.AssignValueAsScriptObj(exec, dyn);
       end else begin
-         dyn:=TScriptDynamicArray(obj.InternalObject);
+         dyn:=TScriptDynamicArray(obj.GetSelf);
       end;
       dyn.RawCopy(srcData, 0, Length(srcData));
    end else begin
@@ -7968,7 +8008,7 @@ begin
    n:=LengthExpr.EvalAsInteger(exec);
    if n<0 then
       RaiseScriptError(exec, EScriptOutOfBounds.CreatePosFmt(FScriptPos, RTE_ArrayLengthIncorrect, [n]));
-   (obj.InternalObject as TScriptDynamicArray).ArrayLength:=n;
+   (obj.GetSelf as TScriptDynamicArray).ArrayLength:=n;
 end;
 
 // ------------------
@@ -8003,7 +8043,7 @@ var
    i1, i2 : Integer;
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
-   dyn:=TScriptDynamicArray(base.InternalObject);
+   dyn:=TScriptDynamicArray(base.GetSelf);
    i1:=Index1Expr.EvalAsInteger(exec);
    i2:=Index2Expr.EvalAsInteger(exec);
    BoundsCheck(exec, dyn.ArrayLength, i1);
@@ -8059,7 +8099,7 @@ var
    dyn : TScriptDynamicArray;
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
-   dyn:=TScriptDynamicArray(base.InternalObject);
+   dyn:=TScriptDynamicArray(base.GetSelf);
    dyn.Sort(exec, CompareExpr);
 end;
 
@@ -8091,7 +8131,7 @@ var
    dyn : TScriptDynamicArray;
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
-   dyn:=TScriptDynamicArray(base.InternalObject);
+   dyn:=TScriptDynamicArray(base.GetSelf);
    dyn.Reverse;
 end;
 
@@ -8130,7 +8170,7 @@ var
    argData : TDataExpr;
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
-   dyn:=TScriptDynamicArray(base.InternalObject);
+   dyn:=TScriptDynamicArray(base.GetSelf);
 
    for i:=0 to FArgs.Count-1 do begin
       arg:=TTypedExpr(FArgs.List[i]);
@@ -8147,7 +8187,7 @@ begin
       end else if arg.Typ.ClassType=TDynamicArraySymbol then begin
 
          arg.EvalAsScriptObj(exec, src);
-         dynSrc:=(src.InternalObject as TScriptDynamicArray);
+         dynSrc:=(src.GetSelf as TScriptDynamicArray);
 
          dyn.Concat(dynSrc);
 
@@ -8239,7 +8279,7 @@ var
    base : IScriptObj;
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
-   Result:=TScriptDynamicArray(base.InternalObject);
+   Result:=TScriptDynamicArray(base.GetSelf);
 end;
 
 // ------------------
@@ -8311,7 +8351,7 @@ var
    index, count : Integer;
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
-   dyn:=TScriptDynamicArray(base.InternalObject);
+   dyn:=TScriptDynamicArray(base.GetSelf);
    index:=IndexExpr.EvalAsInteger(exec);
    BoundsCheck(exec, dyn.ArrayLength, index);
    if CountExpr<>nil then begin
@@ -8387,7 +8427,7 @@ var
    index, count : Integer;
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
-   dyn:=TScriptDynamicArray(base.InternalObject);
+   dyn:=TScriptDynamicArray(base.GetSelf);
    if IndexExpr<>nil then begin
       index:=IndexExpr.EvalAsInteger(exec);
       BoundsCheck(exec, dyn.ArrayLength, index);
@@ -8467,7 +8507,7 @@ var
    v : Variant;
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
-   dyn:=TScriptDynamicArray(base.InternalObject);
+   dyn:=TScriptDynamicArray(base.GetSelf);
    if FFromIndexExpr<>nil then
       fromIndex:=FFromIndexExpr.EvalAsInteger(exec)
    else fromIndex:=0;
@@ -8532,7 +8572,7 @@ var
    n, index : Integer;
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
-   dyn:=TScriptDynamicArray(base.InternalObject);
+   dyn:=TScriptDynamicArray(base.GetSelf);
 
    n:=dyn.ArrayLength;
 
@@ -8618,7 +8658,7 @@ begin
    Expr.EvalAsScriptObj(exec, Result);
 
    if Assigned(Result) then begin
-      instance:=TScriptInterface(Result.InternalObject).Instance;
+      instance:=TScriptInterface(Result.GetSelf).Instance;
       if not instance.ClassSym.ResolveInterface(TInterfaceSymbol(Typ), resolved) then
          RaiseIntfCastFailed;
       intf:=TScriptInterface.Create(instance, resolved);
@@ -8646,7 +8686,7 @@ begin
    Expr.EvalAsScriptObj(exec, Result);
 
    if Assigned(Result) then begin
-      intf:=TScriptInterface(Result.InternalObject);
+      intf:=TScriptInterface(Result.GetSelf);
       Result:=intf.Instance;
       if not Result.ClassSym.IsCompatible(FTyp) then
          RaiseIntfCastFailed;

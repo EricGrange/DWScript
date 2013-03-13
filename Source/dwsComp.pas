@@ -2849,10 +2849,12 @@ begin
       Include(flags, iffDeprecated);
 
    if ResultType='' then begin
-      func:=TCustomInternalMagicProcedure.Create(table, Name, GetParameters(table), ResultType, flags);
+      func:=TCustomInternalMagicProcedure.Create(table, Name, GetParameters(table),
+                                                 ResultType, flags, nil, '');
       TCustomInternalMagicProcedure(func).FOnFastEval:=FOnFastEval;
    end else begin
-      func:=TCustomInternalMagicFunction.Create(table, Name, GetParameters(table), ResultType, flags);
+      func:=TCustomInternalMagicFunction.Create(table, Name, GetParameters(table),
+                                                ResultType, flags, nil, '');
       TCustomInternalMagicFunction(func).FOnFastEval:=FOnFastEval;
    end;
 

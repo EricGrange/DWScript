@@ -215,7 +215,7 @@ var
    dynArray : TScriptDynamicArray;
 begin
    scriptObj:=Info.Vars['parameters'].ScriptObj;
-   dynArray:=(scriptObj.InternalObject as TScriptDynamicArray);
+   dynArray:=(scriptObj.GetSelf as TScriptDynamicArray);
    db:=TdwsDatabase.CreateDataBase(Info.ParamAsString[0], dynArray.ToStringArray);
 
    ExtObject:=TDataBase.Create;
@@ -241,7 +241,7 @@ var
    dynArray : TScriptDynamicArray;
 begin
    scriptObj:=Info.Vars['parameters'].ScriptObj;
-   dynArray:=(scriptObj.InternalObject as TScriptDynamicArray);
+   dynArray:=(scriptObj.GetSelf as TScriptDynamicArray);
 
    (ExtObject as TDataBase).Intf.Exec(Info.ParamAsString[0], dynArray.AsData);
 end;
@@ -267,7 +267,7 @@ var
    i : Integer;
 begin
    scriptObj:=Info.Vars['parameters'].ScriptObj;
-   dynArray:=(scriptObj.InternalObject as TScriptDynamicArray);
+   dynArray:=(scriptObj.GetSelf as TScriptDynamicArray);
 
    ids:=(ExtObject as TDataBase).Intf.Query(Info.ParamAsString[0], dynArray.AsData);
 
@@ -279,7 +279,7 @@ begin
    dataSetInfo.ExternalObject:=dataSet;
 
    dataFieldsInfo:=dataSetInfo.Member['FFields'];
-   dataFieldsArray:=(dataFieldsInfo.ScriptObj.InternalObject as TScriptDynamicArray);
+   dataFieldsArray:=(dataFieldsInfo.ScriptObj.GetSelf as TScriptDynamicArray);
    dataFieldsArray.ArrayLength:=ids.FieldCount;
 
    dataFieldConstructor:=Info.Vars['DataField'].Method['Create'];

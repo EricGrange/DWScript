@@ -1723,7 +1723,6 @@ type
       procedure SetDestroyed(const val : Boolean);
 
       property ClassSym : TClassSymbol read GetClassSym;
-      property InternalObject : TObject read GetSelf;
       property ExternalObject : TObject read GetExternalObject write SetExternalObject;
       property Destroyed : Boolean read GetDestroyed write SetDestroyed;
    end;

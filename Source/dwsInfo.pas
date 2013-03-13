@@ -1171,7 +1171,7 @@ var
 begin
    obj:=IScriptObj(FDataPtr.AsInterface[0]);
    if obj<>nil then
-      Result:=obj.InternalObject as TScriptDynamicArray
+      Result:=obj.GetSelf as TScriptDynamicArray
    else Result:=nil;
 end;
 
@@ -1247,7 +1247,7 @@ begin
          p:=PVarData(dynArray.AsPVariant(elemOff));
          if p.VType<>varUnknown then
             raise Exception.Create(RTE_TooManyIndices);
-         dynArray:=IScriptObj(p.VUnknown).InternalObject as TScriptDynamicArray;
+         dynArray:=IScriptObj(p.VUnknown).GetSelf as TScriptDynamicArray;
       end;
    end;
 

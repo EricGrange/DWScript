@@ -183,13 +183,6 @@ begin
       Inc(dest);
       Dec(size);
    end;
-
-//   while size > 0 do begin
-//      VarCopy(destData[destAddr], sourceData[sourceAddr]);
-//      Inc(sourceAddr);
-//      Inc(destAddr);
-//      Dec(size);
-//   end;
 end;
 
 // DWSSameData

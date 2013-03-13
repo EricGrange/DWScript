@@ -23,8 +23,10 @@ unit dwsStringFunctions;
 
 interface
 
-uses Classes, SysUtils, Variants, StrUtils, dwsFunctions, dwsSymbols,
-   dwsUtils, dwsExprs, dwsCoreExprs, dwsXPlatform, dwsMagicExprs, Math, RTLConsts;
+uses
+   Classes, SysUtils, Variants, StrUtils, Math, RTLConsts,
+   dwsFunctions, dwsSymbols, dwsUtils, dwsExprs, dwsCoreExprs,
+   dwsXPlatform, dwsMagicExprs, dwsDataContext;
 
 type
 
@@ -851,7 +853,7 @@ begin
 
    end;
 
-   Result:=IScriptObj(dyn);
+   Result:=IDataContext(dyn);
 end;
 
 // ------------------
@@ -869,7 +871,7 @@ var
    wobs : TWriteOnlyBlockStream;
 begin
    args.ExprBase[0].EvalAsScriptObj(args.Exec, obj);
-   dyn:=obj.InternalObject as TScriptDynamicArray;
+   dyn:=obj.GetSelf as TScriptDynamicArray;
 
    delim:=args.AsString[1];
 
@@ -996,3 +998,4 @@ initialization
    RegisterInternalStringFunction(TGetTextFunc, '_', ['str', cString], []);
 
 end.
+

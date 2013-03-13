@@ -81,11 +81,13 @@ type
          constructor Create(table : TSymbolTable; const funcName : String;
                             const params : TParamArray; const funcType : String;
                             const flags : TInternalFunctionFlags;
-                            compositeSymbol : TCompositeTypeSymbol); overload; virtual;
+                            compositeSymbol : TCompositeTypeSymbol;
+                            const helperName : String); overload; virtual;
          constructor Create(table : TSymbolTable; const funcName : String;
                             const params : array of String; const funcType : String;
                             const flags : TInternalFunctionFlags = [];
-                            compositeSymbol : TCompositeTypeSymbol = nil); overload;
+                            compositeSymbol : TCompositeTypeSymbol = nil;
+                            const helperName : String = ''); overload;
          procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); override;
          procedure Execute(info : TProgramInfo); virtual; abstract;
    end;
@@ -211,7 +213,8 @@ type
 
 procedure RegisterInternalFunction(InternalFunctionClass: TInternalFunctionClass;
       const FuncName: String; const FuncParams: array of String;
-      const FuncType: String; const flags : TInternalFunctionFlags = []);
+      const FuncType: String; const flags : TInternalFunctionFlags = [];
+      const helperName : String = '');
 procedure RegisterInternalProcedure(InternalFunctionClass: TInternalFunctionClass;
       const FuncName: String; const FuncParams: array of String);
 
@@ -227,6 +230,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+uses dwsCompilerUtils;
 
 var
    vInternalUnit : TInternalUnit;
@@ -309,7 +314,7 @@ end;
 type
    TRegisteredInternalFunction = record
       InternalFunctionClass : TInternalFunctionClass;
-      FuncName : String;
+      FuncName, HelperName : String;
       FuncParams : TParamArray;
       FuncType : String;
       Flags : TInternalFunctionFlags;
@@ -318,20 +323,22 @@ type
 
 // RegisterInternalFunction
 //
-procedure RegisterInternalFunction(InternalFunctionClass: TInternalFunctionClass;
-                                   const FuncName: String;
-                                   const FuncParams: array of String;
-                                   const FuncType: String;
-                                   const flags : TInternalFunctionFlags = []);
+procedure RegisterInternalFunction(internalFunctionClass : TInternalFunctionClass;
+                                   const funcName : String;
+                                   const funcParams : array of String;
+                                   const funcType : String;
+                                   const flags : TInternalFunctionFlags = [];
+                                   const helperName : String = '');
 var
    rif : PRegisteredInternalFunction;
 begin
    New(rif);
-   rif.InternalFunctionClass:=InternalFunctionClass;
+   rif.InternalFunctionClass:=internalFunctionClass;
    rif.FuncName:=FuncName;
    rif.Flags:=flags;
-   rif.FuncParams:=ConvertFuncParams(FuncParams);
-   rif.FuncType:=FuncType;
+   rif.FuncParams:=ConvertFuncParams(funcParams);
+   rif.FuncType:=funcType;
+   rif.HelperName:=helperName;
 
    dwsInternalUnit.AddInternalFunction(rif);
 end;
@@ -375,7 +382,8 @@ end;
 constructor TInternalFunction.Create(table : TSymbolTable; const funcName : String;
                                      const params : TParamArray; const funcType : String;
                                      const flags : TInternalFunctionFlags;
-                                     compositeSymbol : TCompositeTypeSymbol);
+                                     compositeSymbol : TCompositeTypeSymbol;
+                                     const helperName : String);
 var
    sym: TFuncSymbol;
 begin
@@ -388,6 +396,10 @@ begin
       sym.DeprecatedMessage:=SYS_INTEGER;
    FFuncSymbol:=sym;
    table.AddSymbol(sym);
+
+   if helperName<>'' then
+      TdwsCompilerUtils.AddProcHelper(helperName, table, sym, nil);
+ //.... dwscompiler
 end;
 
 // Create
@@ -395,9 +407,13 @@ end;
 constructor TInternalFunction.Create(table: TSymbolTable; const funcName : String;
                                      const params : array of String; const funcType : String;
                                      const flags : TInternalFunctionFlags = [];
-                                     compositeSymbol : TCompositeTypeSymbol = nil);
+                                     compositeSymbol : TCompositeTypeSymbol = nil;
+                                     const helperName : String = '');
 begin
-   Create(table, funcName, ConvertFuncParams(params), funcType, flags, compositeSymbol);
+   Create(table,
+          funcName, ConvertFuncParams(params), funcType,
+          flags,
+          compositeSymbol, helperName);
 end;
 
 // Call
@@ -782,8 +798,8 @@ begin
    for i := 0 to FRegisteredInternalFunctions.Count - 1 do begin
       rif := PRegisteredInternalFunction(FRegisteredInternalFunctions[i]);
       try
-         rif.InternalFunctionClass.Create(unitTable, rif.FuncName, rif.FuncParams,
-                                          rif.FuncType, rif.Flags, nil);
+         rif.InternalFunctionClass.Create(unitTable, rif^.FuncName, rif^.FuncParams,
+                                          rif^.FuncType, rif^.Flags, nil, rif^.HelperName);
       except
          on e: Exception do
             raise Exception.CreateFmt('AddInternalFunctions failed on %s'#13#10'%s',

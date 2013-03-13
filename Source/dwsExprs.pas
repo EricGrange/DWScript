@@ -962,6 +962,9 @@ type
 
    // Encapsulates data
    TDataExpr = class(TTypedExpr)
+      protected
+         function GetDataPtrFunc(exec : TdwsExecution) : IDataContext; inline;
+
       public
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol);
 
@@ -979,7 +982,6 @@ type
          function IsWritable: Boolean; virtual;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); virtual; abstract;
-         function GetDataPtrFunc(exec : TdwsExecution) : IDataContext;
 
          property DataPtr[exec : TdwsExecution] : IDataContext read GetDataPtrFunc;
    end;
@@ -1786,7 +1788,6 @@ type
          FNextObject, FPrevObject : TScriptObj;
 
       protected
-
          function GetClassSym : TClassSymbol; virtual;
 
          function GetDestroyed : Boolean; virtual;
@@ -1800,7 +1801,7 @@ type
          property PrevObject : TScriptObj read FPrevObject write FPrevObject;
    end;
 
-   TScriptObjInstance = class (TScriptObj)
+   TScriptObjInstance = class (TScriptObj, IScriptObj)
       private
          FClassSym : TClassSymbol;
          FExternalObj : TObject;
@@ -1846,7 +1847,6 @@ type
 
       public
          constructor Create(elemTyp : TTypeSymbol);
-         destructor Destroy; override;
 
          procedure Delete(index, count : Integer);
          procedure Insert(index : Integer);
@@ -4309,12 +4309,23 @@ begin
    Result:=True;
 end;
 
+// GetDataPtrFunc
+//
+function TDataExpr.GetDataPtrFunc(exec : TdwsExecution) : IDataContext;
+begin
+   GetDataPtr(exec, Result);
+end;
+
+// AssignData
+//
 procedure TDataExpr.AssignData(exec : TdwsExecution; const source : IDataContext);
 begin
   Assert(IsWritable);
   DataPtr[exec].WriteData(source, Typ.Size);
 end;
 
+// AssignValue
+//
 procedure TDataExpr.AssignValue(exec : TdwsExecution; const Value: Variant);
 begin
   Assert(IsWritable);
@@ -4366,13 +4377,6 @@ end;
 procedure TDataExpr.AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr);
 begin
    DataPtr[exec].WriteData(DataExpr.DataPtr[exec], Typ.Size);
-end;
-
-// GetDataPtrFunc
-//
-function TDataExpr.GetDataPtrFunc(exec : TdwsExecution) : IDataContext;
-begin
-   GetDataPtr(exec, Result);
 end;
 
 // ------------------
@@ -4663,10 +4667,10 @@ end;
 //
 procedure TPushOperator.ExecutePassAddr(exec : TdwsExecution);
 var
-   vpd : IDataContext;
+   vpd : Pointer;
 begin
-   TVarParamExpr(FArgExpr).GetVarParamData(exec, vpd);
-   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
+   vpd:=TVarParamExpr(FArgExpr).GetVarParamDataAsPointer(exec);
+   exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, IUnknown(vpd));
 end;
 
 // ExecuteTempAddr
@@ -4827,9 +4831,7 @@ end;
 //
 function TFuncExpr.ExpectedArg : TParamSymbol;
 begin
-(*   if FFunc.IsOverloaded then
-      Result:=nil
-   else*) if FArgs.Count<FFunc.Params.Count then
+   if FArgs.Count<FFunc.Params.Count then
       Result:=(FFunc.Params[FArgs.Count] as TParamSymbol)
    else Result:=nil;
 end;
@@ -4994,7 +4996,7 @@ begin
       end else begin
          baseExpr.EvalAsScriptObj(exec, scriptObj);
          if baseTyp is TInterfaceSymbol then begin
-            FFuncExpr:=CreateFuncExpr(prog, funcExpr.FuncSym, scriptObj, (scriptObj.InternalObject as TScriptInterface).Typ);
+            FFuncExpr:=CreateFuncExpr(prog, funcExpr.FuncSym, scriptObj, (scriptObj.GetSelf as TScriptInterface).Typ);
          end else begin
             FFuncExpr:=CreateFuncExpr(prog, funcExpr.FuncSym, scriptObj, scriptObj.ClassSym);
          end;
@@ -5785,7 +5787,7 @@ var
 begin
    FBaseExpr.EvalAsScriptObj(exec, scriptObj);
    CheckInterface(exec, scriptObj);
-   intfObj:=TScriptInterface(scriptObj.InternalObject);
+   intfObj:=TScriptInterface(scriptObj.GetSelf);
    exec.SelfScriptObject^:=intfObj.Instance;
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FSelfAddr, intfObj.Instance);
    Result:=intfObj.VMT[TMethodSymbol(FFunc).VMTIndex];
@@ -6744,13 +6746,6 @@ begin
    FElementSize:=elemTyp.Size;
 end;
 
-// Destroy
-//
-destructor TScriptDynamicArray.Destroy;
-begin
-   inherited;
-end;
-
 // SetArrayLength
 //
 procedure TScriptDynamicArray.SetArrayLength(n : Integer);
@@ -7125,7 +7120,7 @@ begin
          if argTyp.Size = 1 then begin
             if argTyp is TDynamicArraySymbol then begin
                arg.EvalAsScriptObj(exec, obj);
-               FConnectorArgs[x][0]:=VarArrayOf(TScriptDynamicArray(obj.InternalObject).AsData);
+               FConnectorArgs[x][0]:=VarArrayOf(TScriptDynamicArray(obj.GetSelf).AsData);
             end else arg.EvalAsVariant(exec, FConnectorArgs[x][0]);
          end else begin
             sourcePtr := TDataExpr(arg).DataPtr[exec];

@@ -28,7 +28,7 @@ uses
   dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors, dwsDataContext,
   dwsStrings, dwsFunctions, dwsStack, dwsCoreExprs, dwsFileSystem, dwsUtils,
   dwsMagicExprs, dwsRelExprs, dwsOperators, dwsPascalTokenizer, dwsSystemOperators,
-  dwsUnitSymbols, dwsXPlatform;
+  dwsUnitSymbols, dwsXPlatform, dwsCompilerUtils;
 
 type
    TCompilerOption = (
@@ -11937,11 +11937,7 @@ procedure TdwsCompiler.AddProcHelper(func : TFuncSymbol);
 var
    name : String;
    namePos : TScriptPos;
-   helper : THelperSymbol;
    param : TParamSymbol;
-   meth : TAliasMethodSymbol;
-   i : Integer;
-   sym : TSymbol;
 begin
    if func.Params.Count=0 then begin
       FMsgs.AddCompilerError(FTok.HotPos, CPE_ParamsExpected);
@@ -11954,31 +11950,7 @@ begin
 
    if param=nil then Exit;
 
-   // find a local anonymous helper for the 1st parameter's type
-   helper:=nil;
-   for sym in FProg.Table do begin
-      if     (sym.Name='')
-         and (sym.ClassType=THelperSymbol)
-         and (THelperSymbol(sym).ForType=param.Typ) then begin
-         helper:=THelperSymbol(sym);
-         Break;
-      end;
-   end;
-
-   // create anonymous helper if necessary
-   if helper=nil then begin
-      helper:=THelperSymbol.Create('', CurrentUnitSymbol, param.Typ, FProg.Table.Count);
-      FProg.Table.AddSymbol(helper);
-   end;
-
-   // create helper method symbol
-   meth:=TAliasMethodSymbol.Create(name, func.Kind, helper, cvPublic, False);
-   meth.SetIsStatic;
-   meth.Typ:=func.Typ;
-   for i:=0 to func.Params.Count-1 do
-      meth.Params.AddSymbol(func.Params[i].Clone);
-   meth.Alias:=func;
-   helper.AddMethod(meth);
+   TdwsCompilerUtils.AddProcHelper(name, FProg.Table, func, CurrentUnitSymbol);
 end;
 
 // EnumerateHelpers
