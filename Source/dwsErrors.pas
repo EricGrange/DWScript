@@ -63,6 +63,8 @@ type
 
          class function Create(aSourceFile : TSourceFile; aLine, aCol : Integer) : TScriptPos; static;
 
+         procedure Clear; inline;
+
          function SamePosAs(const aPos : TScriptPos) : Boolean;
          function IsMainModule : Boolean;
          function IsSourceFile(const name : String) : Boolean;
@@ -329,6 +331,15 @@ begin
    Result.SourceFile:=aSourceFile;
    Result.Line:=aLine;
    Result.Col:=aCol;
+end;
+
+// Clear
+//
+procedure TScriptPos.Clear;
+begin
+   SourceFile:=nil;
+   Line:=0;
+   Col:=Line;
 end;
 
 // SamePosAs

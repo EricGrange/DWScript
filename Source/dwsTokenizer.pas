@@ -95,11 +95,19 @@ type
 
    TToken = ^TTokenRecord;
    TTokenRecord = record
-      FScriptPos : TScriptPos;
-      FString : String;
-      FFloat : Double;
-      FInteger : Int64;
-      FTyp : TTokenType;
+      private
+         FString : String;
+         FNext : TToken;
+
+      public
+         FScriptPos : TScriptPos;
+         FFloat : Double;
+         FInteger : Int64;
+         FTyp : TTokenType;
+
+         property AsString : String read FString;
+
+         function EmptyString : Boolean; inline;
    end;
 
    TCharsType = set of AnsiChar;
@@ -221,8 +229,7 @@ type
          FConditionalDefines : IAutoStrings;
          FConditionalDepth : TSimpleStack<TTokenizerConditionalInfo>;
 
-         FTokenStore : array of TToken;
-         FTokenStoreCount : Integer;
+         FTokenPool : TToken;
 
          FSourceStack : array of TTokenizerSourceInfo;
          FOnEndSourceFile : TTokenizerEndSourceFileEvent;
@@ -235,6 +242,7 @@ type
          procedure HandleHexa(var tokenBuf : TTokenBuffer; var result : TToken);
          procedure HandleInteger(var tokenBuf : TTokenBuffer; var result : TToken);
          procedure HandleFloat(var tokenBuf : TTokenBuffer; var result : TToken);
+         function  HandleSwitch : Boolean;
 
          procedure ConsumeToken;
 
@@ -325,6 +333,13 @@ implementation
 
 const
    cFormatSettings : TFormatSettings = ( DecimalSeparator : '.' );
+
+// EmptyString
+//
+function TTokenRecord.EmptyString : Boolean;
+begin
+   Result:=(FString='');
+end;
 
 // AppendChar
 //
@@ -1001,8 +1016,6 @@ begin
    FStartState := FRules.StartState;
    FTokenBuf.CaseSensitive := rules.CaseSensitive;
 
-   SetLength(FTokenStore, 8);
-
    FConditionalDepth:=TSimpleStack<TTokenizerConditionalInfo>.Create;
 end;
 
@@ -1013,9 +1026,10 @@ begin
    if FToken<>nil then Dispose(FToken);
    if FNextToken<>nil then Dispose(FNextToken);
 
-   while FTokenStoreCount>0 do begin
-      Dec(FTokenStoreCount);
-      Dispose(FTokenStore[FTokenStoreCount]);
+   while FTokenPool<>nil do begin
+      FToken:=FTokenPool;
+      FTokenPool:=FToken.FNext;
+      Dispose(FToken);
    end;
 
    FConditionalDepth.Free;
@@ -1295,6 +1309,7 @@ begin
          result.FTyp:=ttStrVal;
       end;
    else
+      ReleaseToken;
       AddCompilerStopFmtTokenBuffer(TOK_InvalidCharConstant)
    end;
 end;
@@ -1303,8 +1318,13 @@ end;
 //
 procedure TTokenizer.HandleBin(var tokenBuf : TTokenBuffer; var result : TToken);
 begin
-   result.FInteger:=tokenBuf.BinToInt64;
-   result.FTyp:=ttIntVal;
+   try
+      result.FInteger:=tokenBuf.BinToInt64;
+      result.FTyp:=ttIntVal;
+   except
+      ReleaseToken;
+      raise;
+   end;
 end;
 
 // HandleHexa
@@ -1315,8 +1335,8 @@ begin
       result.FInteger:=tokenBuf.HexToInt64;
       result.FTyp:=ttIntVal;
    except
-      on e : Exception do
-         AddCompilerStopFmtTokenBuffer(TOK_InvalidHexConstant);
+      ReleaseToken;
+      AddCompilerStopFmtTokenBuffer(TOK_InvalidHexConstant);
    end;
 end;
 
@@ -1330,8 +1350,8 @@ begin
       result.FInteger:=tokenBuf.ToInt64;
       result.FTyp:=ttIntVal;
    except
-      on e : Exception do
-         AddCompilerStopFmtTokenBuffer(TOK_InvalidIntegerConstant);
+      ReleaseToken;
+      AddCompilerStopFmtTokenBuffer(TOK_InvalidIntegerConstant);
    end;
 end;
 
@@ -1343,8 +1363,29 @@ begin
       result.FFloat:=tokenBuf.ToFloat;
       result.FTyp:=ttFloatVal;
    except
-      on e : EConvertError do
-         AddCompilerStopFmtTokenBuffer(TOK_InvalidFloatConstant);
+      ReleaseToken;
+      AddCompilerStopFmtTokenBuffer(TOK_InvalidFloatConstant);
+   end;
+end;
+
+// HandleSwitch
+//
+function TTokenizer.HandleSwitch : Boolean;
+begin
+   Result:=False;
+   if Assigned(FSwitchHandler) then begin
+      FSource.FHotPos.SetLineCol(FToken.FScriptPos);
+
+      // Ask parser if we should create a token or not
+      FTokenBuf.ToUpperStr(FToken.FString);
+      if FSwitchHandler(FToken.FString) then begin
+         FToken.FTyp:=ttSWITCH;
+      end else begin
+         if FToken=nil then
+            AllocateToken;
+         FTokenBuf.Len:=0;
+         Exit(True);
+      end;
    end;
 end;
 
@@ -1370,96 +1411,78 @@ procedure TTokenizer.ConsumeToken;
    // return True to reset state and continue to next token
    function DoAction(action : TConvertAction) : Boolean;
    begin
-      try
-         case action of
-            caClear : begin
-               FTokenBuf.Len:=0;
-               FToken.FScriptPos:=DefaultPos;
-            end;
-
-            // Convert name to token
-            caName : begin
-               FToken.FTyp:=FTokenBuf.ToType;
-               FTokenBuf.ToStr(FToken.FString);
-            end;
-
-            // Convert escaped name to token
-            caNameEscaped : begin
-               FToken.FTyp:=ttNAME;
-               FTokenBuf.ToStr(FToken.FString);
-            end;
-
-            // converts ASCII code to character (decimal or hex)
-            caChar, caCharHex :
-               HandleChar(FTokenBuf, FToken);
-
-            // Concatenates the parts of a String constant
-            caString : begin
-               FTokenBuf.AppendToStr(FToken.FString);
-               FToken.FTyp:=ttStrVal;
-            end;
-
-            caMultiLineString : begin
-               FTokenBuf.AppendMultiToStr(FToken.FString);
-               FToken.FTyp:=ttStrVal;
-            end;
-
-            // Converts binary number to integer
-            caBin :
-               HandleBin(FTokenBuf, FToken);
-
-            // Converts hexadecimal number to integer
-            caHex :
-               HandleHexa(FTokenBuf, FToken);
-
-            // Converts integer constants
-            caInteger :
-               HandleInteger(FTokenBuf, FToken);
-
-            // Converts Floating Point numbers
-            caFloat :
-               HandleFloat(FTokenBuf, FToken);
-
-            caSwitch :
-               if Assigned(FSwitchHandler) then begin
-                  FSource.FHotPos.SetLineCol(FToken.FScriptPos);
-
-                  // Ask parser if we should create a token or not
-                  FTokenBuf.ToUpperStr(FToken.FString);
-                  if FSwitchHandler(FToken.FString) then begin
-                     FToken.FTyp:=ttSWITCH;
-                  end else begin
-                     if FToken=nil then
-                        AllocateToken;
-                     FTokenBuf.Len:=0;
-                     Exit(True);
-                  end;
-               end;
-
-            caDotDot : begin
-               FToken.FScriptPos:=CurrentPos;
-               FToken.FScriptPos.Col:=FToken.FScriptPos.Col-1;
-               FToken.FTyp:=ttDOTDOT;
-            end;
-
-            caAmp : begin
-               FToken.FScriptPos:=CurrentPos;
-               FToken.FScriptPos.Col:=FToken.FScriptPos.Col-1;
-               FToken.FTyp:=ttAMP;
-            end;
-
-            caAmpAmp : begin
-               FToken.FScriptPos:=CurrentPos;
-               FToken.FScriptPos.Col:=FToken.FScriptPos.Col-2;
-               FToken.FTyp:=ttAMPAMP;
-            end;
+      case action of
+         caClear : begin
+            FTokenBuf.Len:=0;
+            FToken.FScriptPos:=DefaultPos;
          end;
-         FTokenBuf.Len:=0;
-         Result:=False;
-      except
-         ReleaseToken;
-         raise;
+
+         // Convert name to token
+         caName : begin
+            FToken.FTyp:=FTokenBuf.ToType;
+            FTokenBuf.ToStr(FToken.FString);
+         end;
+
+         // Convert escaped name to token
+         caNameEscaped : begin
+            FToken.FTyp:=ttNAME;
+            FTokenBuf.ToStr(FToken.FString);
+         end;
+
+         // converts ASCII code to character (decimal or hex)
+         caChar, caCharHex :
+            HandleChar(FTokenBuf, FToken);
+
+         // Concatenates the parts of a String constant
+         caString : begin
+            FTokenBuf.AppendToStr(FToken.FString);
+            FToken.FTyp:=ttStrVal;
+         end;
+
+         caMultiLineString : begin
+            FTokenBuf.AppendMultiToStr(FToken.FString);
+            FToken.FTyp:=ttStrVal;
+         end;
+
+         // Converts binary number to integer
+         caBin :
+            HandleBin(FTokenBuf, FToken);
+
+         // Converts hexadecimal number to integer
+         caHex :
+            HandleHexa(FTokenBuf, FToken);
+
+         // Converts integer constants
+         caInteger :
+            HandleInteger(FTokenBuf, FToken);
+
+         // Converts Floating Point numbers
+         caFloat :
+            HandleFloat(FTokenBuf, FToken);
+
+         caSwitch :
+            if HandleSwitch then Exit(True);
+
+         caDotDot : begin
+            FToken.FScriptPos:=CurrentPos;
+            FToken.FScriptPos.Col:=FToken.FScriptPos.Col-1;
+            FToken.FTyp:=ttDOTDOT;
+         end;
+
+         caAmp : begin
+            FToken.FScriptPos:=CurrentPos;
+            FToken.FScriptPos.Col:=FToken.FScriptPos.Col-1;
+            FToken.FTyp:=ttAMP;
+         end;
+
+         caAmpAmp : begin
+            FToken.FScriptPos:=CurrentPos;
+            FToken.FScriptPos.Col:=FToken.FScriptPos.Col-2;
+            FToken.FTyp:=ttAMPAMP;
+         end;
       end;
+      FTokenBuf.Len:=0;
+      Result:=False;
    end;
 
    // process switch instruction
@@ -1563,12 +1586,12 @@ end;
 //
 procedure TTokenizer.AllocateToken;
 begin
-   if FTokenStoreCount>0 then begin
-      Dec(FTokenStoreCount);
-      FToken:=FTokenStore[FTokenStoreCount];
+   if FTokenPool<>nil then begin
+      FToken:=FTokenPool;
+      FTokenPool:=FToken.FNext;
    end else New(FToken);
    FToken.FTyp:=ttNone;
-   FToken.FScriptPos:=cNullPos;
+   FToken.FScriptPos.Clear;
 end;
 
 // ReleaseToken
@@ -1576,10 +1599,10 @@ end;
 procedure TTokenizer.ReleaseToken;
 begin
    if FToken<>nil then begin
-      FTokenStore[FTokenStoreCount]:=FToken;
-      Inc(FTokenStoreCount);
-      if FToken.FString<>'' then
-         FToken.FString:='';
+      FToken.FNext:=FTokenPool;
+      FTokenPool:=FToken;
+      if FTokenPool.FString<>'' then
+         FTokenPool.FString:='';
       FToken:=nil;
    end;
 end;

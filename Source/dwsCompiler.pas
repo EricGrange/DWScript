@@ -3382,7 +3382,7 @@ function TdwsCompiler.ReadDeprecatedMessage : String;
 begin
    if FTok.TestDelete(ttDEPRECATED) then begin
       if FTok.Test(ttStrVal) then begin
-         Result:=FTok.GetToken.FString;
+         Result:=FTok.GetToken.AsString;
          FTok.KillToken;
       end;
       if Result='' then
@@ -4143,7 +4143,7 @@ begin
    while FTok.TestDelete(ttDOT) do begin
       if not FTok.TestName then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-      nextDottedName:=dottedName+'.'+FTok.GetToken.FString;
+      nextDottedName:=dottedName+'.'+FTok.GetToken.AsString;
       if not unitPrefix.PossibleNameSpace(nextDottedName) then Break;
       dottedName:=nextDottedName;
       FTok.KillToken;
@@ -4192,32 +4192,32 @@ begin
    namePos := FTok.HotPos;
 
    // Test for special functions
-   sk:=IdentifySpecialName(nameToken.FString);
+   sk:=IdentifySpecialName(nameToken.AsString);
    if sk<>skNone then begin
       if not (coHintsDisabled in FOptions) then
-         CheckSpecialNameCase(nameToken.FString, sk, namePos);
+         CheckSpecialNameCase(nameToken.AsString, sk, namePos);
       FTok.KillToken;
       Exit(ReadSymbol(ReadSpecialFunction(namePos, sk), isWrite, expecting));
    end;
 
    // Find name in symboltable
-   sym:=FProg.Table.FindSymbol(nameToken.FString, cvPrivate);
+   sym:=FProg.Table.FindSymbol(nameToken.AsString, cvPrivate);
    if not Assigned(sym) then begin
       Result:=ReadSelfTypeHelper(nameToken, FTok.HotPos, expecting);
       if Result<>nil then
          Exit;
       if Assigned(FOnFindUnknownName) then
-         sym:=FOnFindUnknownName(Self, nameToken.FString);
+         sym:=FOnFindUnknownName(Self, nameToken.AsString);
       if sym=nil then begin
-         sym:=FProg.Table.FindSymbol(nameToken.FString, cvMagic);
+         sym:=FProg.Table.FindSymbol(nameToken.AsString, cvMagic);
          if sym=nil then
-            FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownName, [nameToken.FString])
-         else FMsgs.AddCompilerErrorFmt(namePos, CPE_MemberSymbolNotVisible, [nameToken.FString]);
+            FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownName, [nameToken.AsString])
+         else FMsgs.AddCompilerErrorFmt(namePos, CPE_MemberSymbolNotVisible, [nameToken.AsString]);
       end;
    end;
 
    if (sym<>nil) and not (coHintsDisabled in FOptions) then
-      CheckMatchingDeclarationCase(nameToken.FString, sym, namePos);
+      CheckMatchingDeclarationCase(nameToken.AsString, sym, namePos);
 
    FTok.KillToken;
 
@@ -4236,11 +4236,11 @@ begin
             baseType:=ResolveUnitNameSpace(TUnitSymbol(baseType));
 
             namePos := FTok.HotPos;   // reuse token pos variable
-            sym := TUnitSymbol(baseType).Table.FindLocal(FTok.GetToken.FString);
+            sym := TUnitSymbol(baseType).Table.FindLocal(FTok.GetToken.AsString);
 
             if not Assigned(sym) then
                FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_UnknownNameDotName,
-                                        [baseType.Name, FTok.GetToken.FString]);
+                                        [baseType.Name, FTok.GetToken.AsString]);
 
             baseType:=sym.BaseType;
 
@@ -5396,7 +5396,7 @@ var
    iterBlockExpr : TBlockExpr;
 begin
    try
-      if FTok.Test(ttNAME) and SameText(FTok.GetToken.FString, 'step') then begin
+      if FTok.Test(ttNAME) and SameText(FTok.GetToken.AsString, 'step') then begin
          FTok.KillToken;
          FTok.Test(ttNone);
          stepPos:=FTok.HotPos;
@@ -7078,15 +7078,15 @@ begin
       posArray[n]:=FTok.HotPos;
       Inc(n);
 
-      names.Add(FTok.GetToken.FString);
+      names.Add(FTok.GetToken.AsString);
       if not (nloNoCheckSpecials in options) then
-         CheckSpecialName(FTok.GetToken.FString);
+         CheckSpecialName(FTok.GetToken.AsString);
       FTok.KillToken;
 
       while (nloAllowDots in options) and FTok.TestDelete(ttDOT) do begin
          if not FTok.TestName then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-         names[names.Count-1]:=names[names.Count-1]+'.'+FTok.GetToken.FString;
+         names[names.Count-1]:=names[names.Count-1]+'.'+FTok.GetToken.AsString;
          FTok.KillToken;
       end;
    until not FTok.TestDelete(ttCOMMA);
@@ -7104,11 +7104,13 @@ begin
             and (not TMethodSymbol(funcSym).IsClassMethod)  then
             else FMsgs.AddCompilerError(FTok.HotPos, CPE_ExternalArrayForStaticMethodsOnly);
          funcSym.ExternalName:=SYS_EXTERNAL_ARRAY
-      end else if not FTok.Test(ttStrVal) then begin
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_StringExpected);
       end else begin
-         funcSym.ExternalName:=FTok.GetToken.FString;
-         FTok.KillToken;
+         if not FTok.Test(ttStrVal) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_StringExpected)
+         else begin
+            funcSym.ExternalName:=FTok.GetToken.AsString;
+            FTok.KillToken;
+         end;
       end;
    end;
    ReadSemiColon;
@@ -7159,7 +7161,7 @@ begin
       nameToken := FTok.GetToken;
       hotPos := FTok.HotPos;
 
-      sym:=FProg.Table.FindSymbol(nameToken.FString, cvPrivate);
+      sym:=FProg.Table.FindSymbol(nameToken.AsString, cvPrivate);
       FTok.KillToken;
 
       if FTok.TestDelete(ttALEFT) then begin
@@ -7301,11 +7303,11 @@ begin
       unitSym:=ResolveUnitNameSpace(unitSym);
 
       namePos:=FTok.HotPos;   // reuse token pos variable
-      Result:=unitSym.Table.FindLocal(FTok.GetToken.FString);
+      Result:=unitSym.Table.FindLocal(FTok.GetToken.AsString);
 
       if not Assigned(Result) then
          FMsgs.AddCompilerErrorFmt(FTok.HotPos, CPE_UnknownNameDotName,
-                                   [unitSym.Name, FTok.GetToken.FString]);
+                                   [unitSym.Name, FTok.GetToken.AsString]);
 
       FTok.KillToken;
    end;
@@ -7426,7 +7428,7 @@ begin
          if FTok.TestDelete(ttEXTERNAL) then begin
             Result.IsExternal:=True;
             if FTok.Test(ttStrVal) then begin
-               Result.ExternalName:=FTok.GetToken.FString;
+               Result.ExternalName:=FTok.GetToken.AsString;
                FTok.KillToken;
             end;
          end;
@@ -8457,7 +8459,7 @@ begin
 
             if FTok.Test(ttStrVal) then begin
                if member<>nil then
-                  member.ExternalName:=FTok.GetToken.FString;
+                  member.ExternalName:=FTok.GetToken.AsString;
                FTok.KillToken;
             end else FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
 
@@ -8616,7 +8618,7 @@ begin
          while FTok.TestDelete(ttON) do begin
             if not FTok.TestName then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-            varName:=FTok.GetToken.FString;
+            varName:=FTok.GetToken.AsString;
             FTok.KillToken;
 
             if not FTok.TestDelete(ttCOLON) then
@@ -9681,10 +9683,10 @@ begin
                Result.IncRefCount;
             end else Result:=TConstFloatExpr.CreateUnified(FProg, nil, token.FFloat);
          ttStrVal :
-            if token.FString='' then begin
+            if token.EmptyString then begin
                Result:=unifiedList.EmptyString;
                Result.IncRefCount;
-            end else Result:=TConstStringExpr.CreateUnified(FProg, nil, token.FString);
+            end else Result:=TConstStringExpr.CreateUnified(FProg, nil, token.AsString);
       end;
       FTok.KillToken;
    end;
@@ -9712,15 +9714,15 @@ begin
    while not FTok.Test(ttBRIGHT) do begin
       if not FTok.TestName then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-      sym:=symbol.Members.FindLocal(FTok.GetToken.FString);
+      sym:=symbol.Members.FindLocal(FTok.GetToken.AsString);
       if not (sym is TFieldSymbol) then begin
-         FMsgs.AddCompilerErrorFmt(FTok.GetToken.FScriptPos, CPE_UnknownMember, [FTok.GetToken.FString]);
+         FMsgs.AddCompilerErrorFmt(FTok.GetToken.FScriptPos, CPE_UnknownMember, [FTok.GetToken.AsString]);
          sym:=nil;
       end;
       memberSym:=TFieldSymbol(sym);
       if memberSym<>nil then begin
          if memberSym.Visibility<cvPublic then
-            FMsgs.AddCompilerErrorFmt(FTok.GetToken.FScriptPos, CPE_MemberSymbolNotVisible, [FTok.GetToken.FString]);
+            FMsgs.AddCompilerErrorFmt(FTok.GetToken.FScriptPos, CPE_MemberSymbolNotVisible, [FTok.GetToken.AsString]);
          if memberSet[memberSym.Offset] then
             FMsgs.AddCompilerError(FTok.GetToken.FScriptPos, CPE_FieldAlreadySet);
          memberSet[memberSym.Offset]:=True;
@@ -10070,7 +10072,7 @@ begin
 
          end else begin
 
-            name:=FTok.GetToken.FString;
+            name:=FTok.GetToken.AsString;
             FTok.KillToken;
 
             if coSymbolDictionary in Options then begin
@@ -10131,7 +10133,7 @@ begin
             // skip in attempt to recover from error
             SkipUntilToken(ttCRIGHT);
          end else begin
-            FTok.ConditionalDefines.Value.Add(FTok.GetToken.FString);
+            FTok.ConditionalDefines.Value.Add(FTok.GetToken.AsString);
             FTok.KillToken;
          end;
 
@@ -10143,7 +10145,7 @@ begin
             // skip in attempt to recover from error
             SkipUntilToken(ttCRIGHT);
          end else begin
-            i:=FTok.ConditionalDefines.Value.IndexOf(FTok.GetToken.FString);
+            i:=FTok.ConditionalDefines.Value.IndexOf(FTok.GetToken.AsString);
             if i>=0 then
                FTok.ConditionalDefines.Value.Delete(i);
             FTok.KillToken;
@@ -10160,7 +10162,7 @@ begin
                   // skip in attempt to recover from error
                   SkipUntilToken(ttCRIGHT);
                end else begin
-                  conditionalTrue:=    (FTok.ConditionalDefines.Value.IndexOf(FTok.GetToken.FString)>=0)
+                  conditionalTrue:=    (FTok.ConditionalDefines.Value.IndexOf(FTok.GetToken.AsString)>=0)
                                    xor (switch = siIfNDef);
                   FTok.KillToken;
                end;
@@ -10226,7 +10228,7 @@ begin
          if not FTok.Test(ttStrVal) then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
          if Assigned(FOnResource) then
-            FOnResource(Self, FTok.GetToken.FString);
+            FOnResource(Self, FTok.GetToken.AsString);
          FTok.KillToken;
 
       end;
@@ -10238,10 +10240,10 @@ begin
             else FMsgs.AddCompilerStop(FTok.HotPos, CPE_StringExpected)
          else begin
             case switch of
-               siHint    : FMsgs.AddCompilerHint(switchPos, FTok.GetToken.FString);
-               siWarning : FMsgs.AddCompilerWarning(switchPos, FTok.GetToken.FString);
-               siError   : FMsgs.AddCompilerError(switchPos, FTok.GetToken.FString, TCompilerErrorMessage);
-               siFatal   : FMsgs.AddCompilerStop(switchPos, FTok.GetToken.FString, TCompilerErrorMessage);
+               siHint    : FMsgs.AddCompilerHint(switchPos, FTok.GetToken.AsString);
+               siWarning : FMsgs.AddCompilerWarning(switchPos, FTok.GetToken.AsString);
+               siError   : FMsgs.AddCompilerError(switchPos, FTok.GetToken.AsString, TCompilerErrorMessage);
+               siFatal   : FMsgs.AddCompilerStop(switchPos, FTok.GetToken.AsString, TCompilerErrorMessage);
             end;
             FTok.KillToken;
          end;
@@ -10293,7 +10295,7 @@ begin
    hotPos:=FTok.HotPos;
    if FTok.TestDelete(ttPERCENT) then begin
       if FTok.TestAny([ttNAME, ttFUNCTION])<>ttNone then begin
-         name:=FTok.GetToken.FString;
+         name:=FTok.GetToken.AsString;
          FTok.KillToken;
          if not FTok.TestDelete(ttPERCENT) then
             name:='';
@@ -10366,7 +10368,7 @@ begin
       end;
 
       startPos:=FTok.HotPos;
-      switch:=StringToSwitchInstruction(FTok.GetToken.FString);
+      switch:=StringToSwitchInstruction(FTok.GetToken.AsString);
       FTok.KillToken;
 
       case switch of
@@ -12193,7 +12195,7 @@ begin
       else if progMeth.SelfSym=nil then
          Exit(nil)
       else selfExpr:=GetSelfParamExpr(progMeth.SelfSym);
-      Result:=ReadTypeHelper(selfExpr, name.FString, namePos, expecting, False, True);
+      Result:=ReadTypeHelper(selfExpr, name.AsString, namePos, expecting, False, True);
       if Result=nil then
          selfExpr.Free;
    end else Result:=nil;
