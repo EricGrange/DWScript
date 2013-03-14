@@ -158,6 +158,7 @@ type
 
          // returns True if aborted
          function RecursiveEnumerateSubExprs(const callback : TExprBaseEnumeratorProc) : Boolean;
+         function ReferencesVariable(varSymbol : TDataSymbol) : Boolean; virtual;
          function IndexOfSubExpr(expr : TExprBase) : Integer;
    end;
 
@@ -1864,6 +1865,20 @@ begin
       until stack.Count=0;
    finally
       stack.Free;
+   end;
+   Result:=False;
+end;
+
+// ReferencesVariable
+//
+function TExprBase.ReferencesVariable(varSymbol : TDataSymbol) : Boolean;
+var
+   i : Integer;
+begin
+   if Self<>nil then begin
+      for i:=0 to SubExprCount-1 do
+         if SubExpr[i].ReferencesVariable(varSymbol) then
+            Exit(True)
    end;
    Result:=False;
 end;

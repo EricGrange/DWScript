@@ -5658,12 +5658,14 @@ var
    i : Integer;
    loopExpr : TProgramExpr;
    currVarExpr : TVarExpr;
+   varSymbol : TDataSymbol;
 begin
+   varSymbol:=varExpr.DataSym;
    for i:=0 to FLoopExprs.Count-1 do begin
       loopExpr:=FLoopExprs.Items[i];
       if loopExpr.InheritsFrom(TForExpr) then begin
          currVarExpr:=TForExpr(loopExpr).VarExpr;
-         if currVarExpr.SameVarAs(varExpr) then begin
+         if currVarExpr.ReferencesVariable(varSymbol) then begin
             FMsgs.AddCompilerWarning(scriptPos, CPE_AssignementToFORLoopVariable);
             Break;
          end;

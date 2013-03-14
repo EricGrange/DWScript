@@ -3375,6 +3375,7 @@ begin
    end;
 
    // the first assignment can be moved to the last of the InitExpr
+   // if its expression doesn't use the variable itself
    if i<blockExpr.SubExprCount then begin
       subExpr:=blockExpr.SubExpr[i];
       if (subExpr is TAssignExpr) and not (subExpr is TOpAssignExpr) then begin
@@ -3385,7 +3386,8 @@ begin
             initSubExpr:=InitExpr.SubExpr[j];
             initAssign:=(initSubExpr as TAssignConstExpr);
             if (initAssign.Left is TVarExpr) and (TVarExpr(initAssign.Left).DataSym=assignExprSym) then begin
-               InitExpr.ReplaceStatement(j, blockExpr.ExtractStatement(i));
+               if not assignExpr.Right.ReferencesVariable(assignExprSym) then
+                  InitExpr.ReplaceStatement(j, blockExpr.ExtractStatement(i));
             end;
          end;
       end;

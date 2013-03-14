@@ -56,7 +56,7 @@ type
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
-         function SameVarAs(expr : TVarExpr) : Boolean;
+         function ReferencesVariable(varSymbol : TDataSymbol) : Boolean; override;
 
          property StackAddr : Integer read FStackAddr;
          property DataSym : TDataSymbol read FDataSym write FDataSym;
@@ -1979,6 +1979,8 @@ type
 
          procedure EvalNoResult(exec : TdwsExecution); override;
 
+         function ReferencesVariable(varSymbol : TDataSymbol) : Boolean; override;
+
          property DoBlockExpr : TProgramExpr read FDoBlockExpr write FDoBlockExpr;
          property ExceptionVar : TDataSymbol read FExceptionVar write FExceptionVar;
    end;
@@ -2144,12 +2146,11 @@ begin
    DataPtr[exec].EvalAsVariant(0, Result);
 end;
 
-// SameVarAs
+// ReferencesVariable
 //
-function TVarExpr.SameVarAs(expr : TVarExpr) : Boolean;
+function TVarExpr.ReferencesVariable(varSymbol : TDataSymbol) : Boolean;
 begin
-   Result:=    (FStackAddr=expr.FStackAddr)
-           and (ClassType=expr.ClassType);
+   Result:=(FDataSym=varSymbol);
 end;
 
 // GetDataPtr
@@ -5354,7 +5355,7 @@ var
    n : Integer;
 begin
    if (FLeft is TVarExpr) and (FRight is TVarExpr) then begin
-      if TVarExpr(FLeft).SameVarAs(TVarExpr(FRight)) then begin
+      if FLeft.ReferencesVariable(TVarExpr(FRight).DataSym) then begin
          Result:=TSqrIntExpr.Create(Prog, FLeft);
          FLeft:=nil;
          Free;
@@ -5412,7 +5413,7 @@ end;
 function TMultFloatExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
    if (FLeft is TFloatVarExpr) and (FRight is TFloatVarExpr) then begin
-      if TFloatVarExpr(FLeft).SameVarAs(TFloatVarExpr(FRight)) then begin
+      if FLeft.ReferencesVariable(TFloatVarExpr(FRight).DataSym) then begin
          Result:=TSqrFloatExpr.Create(Prog, FLeft);
          FLeft:=nil;
          Free;
@@ -5749,7 +5750,7 @@ begin
       if leftVarExpr.ClassType=TIntVarExpr then begin
          if FRight.ClassType=TAddIntExpr then begin
             addIntExpr:=TAddIntExpr(FRight);
-            if (addIntExpr.Left is TVarExpr) and (TVarExpr(addIntExpr.Left).SameVarAs(leftVarExpr)) then begin
+            if (addIntExpr.Left is TVarExpr) and (addIntExpr.Left.ReferencesVariable(leftVarExpr.DataSym)) then begin
                Result:=TIncIntVarExpr.Create(Prog, FScriptPos, FLeft, addIntExpr.Right);
                FLeft:=nil;
                addIntExpr.Right:=nil;
@@ -5757,7 +5758,7 @@ begin
             end;
          end else if FRight.ClassType=TSubIntExpr then begin
             subIntExpr:=TSubIntExpr(FRight);
-            if (subIntExpr.Left is TVarExpr) and (TVarExpr(subIntExpr.Left).SameVarAs(leftVarExpr)) then begin
+            if (subIntExpr.Left is TVarExpr) and (subIntExpr.Left.ReferencesVariable(leftVarExpr.DataSym)) then begin
                Result:=TDecIntVarExpr.Create(Prog, FScriptPos, FLeft, subIntExpr.Right);
                FLeft:=nil;
                subIntExpr.Right:=nil;
@@ -5767,7 +5768,7 @@ begin
       end else if leftVarExpr.ClassType=TStrVarExpr then begin
          if FRight.InheritsFrom(TAddStrExpr) then begin
             addStrExpr:=TAddStrExpr(FRight);
-            if (addStrExpr.Left is TVarExpr) and (TVarExpr(addStrExpr.Left).SameVarAs(leftVarExpr)) then begin
+            if (addStrExpr.Left is TVarExpr) and (addStrExpr.Left.ReferencesVariable(leftVarExpr.DataSym)) then begin
                if addStrExpr.Right.InheritsFrom(TConstStringExpr) then begin
                   Result:=TAppendConstStringVarExpr.Create(Prog, FScriptPos, FLeft, addStrExpr.Right);
                end else begin
@@ -7714,6 +7715,14 @@ end;
 procedure TExceptDoExpr.EvalNoResult(exec : TdwsExecution);
 begin
    DoBlockExpr.EvalNoResult(exec);
+end;
+
+// ReferencesVariable
+//
+function TExceptDoExpr.ReferencesVariable(varSymbol : TDataSymbol) : Boolean;
+begin
+   Result:=   (FExceptionVar=varSymbol)
+           or inherited ReferencesVariable(varSymbol);
 end;
 
 // GetSubExpr

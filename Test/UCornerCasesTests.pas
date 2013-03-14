@@ -60,6 +60,7 @@ type
          procedure FilterNotDefined;
          procedure ConfigNotifications;
          procedure ConfigTimeout;
+         procedure CallUnitProcTest;
 
    end;
 
@@ -1259,6 +1260,32 @@ begin
    CheckEquals(2000, FCompiler.Config.TimeoutMilliseconds, 'timeout');
    FCompiler.Config.TimeOut:=0;
    CheckEquals(0, FCompiler.Config.TimeoutMilliseconds, 'cleanup');
+end;
+
+// CallUnitProcTest
+//
+procedure TCornerCasesTests.CallUnitProcTest;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   func : IInfo;
+begin
+   prog:=FCompiler.Compile( 'unit test;'#13#10
+                           +'interface'#13#10
+                           +'procedure Test;'#13#10
+                           +'implementation'#13#10
+                           +'procedure Test;'#13#10
+                           +'var myvar : Integer;'#13#10
+                           +'begin'#13#10
+                           +'   myVar := 1;'#13#10
+                           +'   myVar:=2*myvar-StrToInt(IntToStr(myvar));'#13#10
+                           +'   PrintLn(myVar);'#13#10
+                           +'end;'#13#10
+                           +'end.'#13#10);
+   exec:=prog.BeginNewExecution;
+   func:=exec.Info.Func['Test'];
+   func.Call;
+   exec.EndProgram;
 end;
 
 // ------------------------------------------------------------------
