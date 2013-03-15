@@ -39,9 +39,7 @@ uses
   dwsRTTIFunctions,
   UJSONTests in 'UJSONTests.pas',
   UJSONConnectorTests in 'UJSONConnectorTests.pas',
-  UTokenizerTests in 'UTokenizerTests.pas',
-  dwsDataContext in '..\Source\dwsDataContext.pas',
-  dwsCompilerUtils in '..\Source\dwsCompilerUtils.pas';
+  UTokenizerTests in 'UTokenizerTests.pas';
 
 {$R *.res}
 

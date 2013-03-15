@@ -26,8 +26,10 @@ interface
 uses
   Variants, Classes, SysUtils,
   dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors, dwsDataContext,
-  dwsStrings, dwsFunctions, dwsStack, dwsCoreExprs, dwsFileSystem, dwsUtils,
-  dwsMagicExprs, dwsRelExprs, dwsOperators, dwsPascalTokenizer, dwsSystemOperators,
+  dwsStrings, dwsFunctions, dwsStack,
+  dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs,
+  dwsFileSystem, dwsUtils,
+  dwsOperators, dwsPascalTokenizer, dwsSystemOperators,
   dwsUnitSymbols, dwsXPlatform, dwsCompilerUtils;
 
 type
@@ -4258,25 +4260,26 @@ begin
       symClassType:=sym.ClassType;
 
       if symClassType=TLazyParamSymbol then begin
+
          Result:=ReadSymbol(GetLazyParamExpr(TLazyParamSymbol(sym)), IsWrite, expecting);
-         Exit;
+
       end else if symClassType=TVarParamSymbol then begin
+
          Result:=ReadSymbol(GetVarParamExpr(TVarParamSymbol(sym)), IsWrite, expecting);
-         Exit;
+
       end else if symClassType=TConstParamSymbol then begin
+
          Result:=ReadSymbol(GetConstParamExpr(TConstParamSymbol(sym)), IsWrite, expecting);
-         Exit;
+
       end else if symClassType=TResourceStringSymbol then begin
+
          Result:=ReadResourceStringName(TResourceStringSymbol(sym), namePos);
-         Exit;
-      end;
 
-      if sym.InheritsFrom(TConstSymbol) then begin
+      end else if sym.InheritsFrom(TConstSymbol) then begin
+
          Result:=ReadConstName(TConstSymbol(sym), IsWrite);
-         Exit;
-      end;
 
-      if sym.InheritsFrom(TDataSymbol) then begin
+      end else if sym.InheritsFrom(TDataSymbol) then begin
 
          Result:=ReadDataSymbolName(TDataSymbol(sym), FProg.Table, isWrite, expecting);
 

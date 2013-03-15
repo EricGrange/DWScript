@@ -20,7 +20,9 @@ unit dwsDebugFunctions;
 
 interface
 
-uses Classes, Variants, SysUtils, dwsFunctions, dwsExprs, dwsSymbols, dwsUtils,
+uses
+   Classes, Variants, SysUtils,
+   dwsFunctions, dwsExprs, dwsSymbols, dwsUtils, dwsExprList,
    dwsMagicExprs, dwsUnitSymbols, dwsXPlatform;
 
 type

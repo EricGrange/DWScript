@@ -23,7 +23,9 @@ unit dwsMathFunctions;
 
 interface
 
-uses Classes, Math, dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsXPlatform;
+uses
+   Classes, Math,
+   dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsXPlatform, dwsExprList;
 
 type
 

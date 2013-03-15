@@ -21,7 +21,8 @@ unit dwsRTTIFunctions;
 interface
 
 uses
-   dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators, dwsStack, dwsDataContext,
+   dwsFunctions, dwsSymbols, dwsExprs, dwsStrings, dwsOperators,
+   dwsStack, dwsDataContext, dwsExprList,
    dwsTokenizer, SysUtils, dwsUtils, dwsMagicExprs, dwsUnitSymbols, dwsCoreExprs;
 
 type

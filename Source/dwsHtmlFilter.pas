@@ -31,7 +31,8 @@ unit dwsHtmlFilter;
 interface
 
 uses
-  Variants, Classes, SysUtils, dwsComp, dwsExprs, dwsFunctions, dwsSymbols,
+  Variants, Classes, SysUtils,
+  dwsComp, dwsExprs, dwsFunctions, dwsSymbols, dwsExprList,
   dwsErrors, dwsCompiler, dwsStrings, dwsUtils, StrUtils, dwsMagicExprs;
 
 type

@@ -551,7 +551,6 @@ var
    i : Integer;
    v : Integer;
 begin
-   //Result:=StrToInt64(ToStr);
    if Buffer[0]='$' then
       i:=1     // $ form
    else i:=2;  // 0x form

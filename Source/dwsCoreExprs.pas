@@ -25,7 +25,7 @@ interface
 
 uses
    Classes, Variants, SysUtils,
-   dwsSymbols, dwsErrors, dwsStrings, dwsDataContext,
+   dwsSymbols, dwsErrors, dwsStrings, dwsDataContext, dwsExprList,
    dwsStack, dwsExprs, dwsUtils, dwsTokenizer, dwsUnitSymbols
    {$ifdef FPC},LazUTF8{$endif};
 
@@ -67,7 +67,6 @@ type
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
          procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
          procedure AssignValueAsInteger(exec : TdwsExecution; const Value: Int64); override;
-         procedure AssignValueAsPInteger(exec : TdwsExecution; const pValue: PInt64);
 
          procedure IncValue(exec : TdwsExecution; const value: Int64);
 
@@ -520,6 +519,13 @@ type
 
          function IsConstant : Boolean; override;
 
+         procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
+         procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
+         procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
+         procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
+         procedure AssignValueAsString(exec : TdwsExecution; const value: String); override;
+         procedure AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj); override;
+
          function Eval(exec : TdwsExecution) : Variant; override;
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
@@ -528,9 +534,6 @@ type
          procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
-
-         procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
-         procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
 
          property BaseExpr : TDataExpr read FBaseExpr;
          property MemberOffset : Integer read FMemberOffset;
@@ -601,10 +604,18 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         function GetScriptObj(exec : TdwsExecution) : IScriptObj; inline;
+
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos;
                             fieldSym : TFieldSymbol; ObjExpr: TTypedExpr);
          destructor Destroy; override;
+
+         procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
+         procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
+         procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
+         procedure AssignValueAsString(exec : TdwsExecution; const value: String); override;
+         procedure AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj); override;
 
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
@@ -2242,13 +2253,6 @@ end;
 procedure TIntVarExpr.AssignValueAsInteger(exec : TdwsExecution; const value: Int64);
 begin
    exec.Stack.WriteIntValue_BaseRelative(FStackAddr, value);
-end;
-
-// AssignValueAsPInteger
-//
-procedure TIntVarExpr.AssignValueAsPInteger(exec : TdwsExecution; const pValue: PInt64);
-begin
-   exec.Stack.WriteIntValue_BaseRelative(FStackAddr, pValue);
 end;
 
 // IncValue
@@ -3944,6 +3948,26 @@ begin
    Expr.EvalAsVariant(exec, context.AsPVariant(FMemberOffset)^);
 end;
 
+// AssignValueAsInteger
+//
+procedure TRecordExpr.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
+var
+   context : IDataContext;
+begin
+   FBaseExpr.GetDataPtr(exec, context);
+   context.AsInteger[FMemberOffset]:=value;
+end;
+
+// AssignValueAsBoolean
+//
+procedure TRecordExpr.AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean);
+var
+   context : IDataContext;
+begin
+   FBaseExpr.GetDataPtr(exec, context);
+   context.AsBoolean[FMemberOffset]:=value;
+end;
+
 // AssignValueAsFloat
 //
 procedure TRecordExpr.AssignValueAsFloat(exec : TdwsExecution; const value : Double);
@@ -3952,6 +3976,26 @@ var
 begin
    FBaseExpr.GetDataPtr(exec, context);
    context.AsFloat[FMemberOffset]:=value;
+end;
+
+// AssignValueAsString
+//
+procedure TRecordExpr.AssignValueAsString(exec : TdwsExecution; const value: String);
+var
+   context : IDataContext;
+begin
+   FBaseExpr.GetDataPtr(exec, context);
+   context.AsString[FMemberOffset]:=value;
+end;
+
+// AssignValueAsScriptObj
+//
+procedure TRecordExpr.AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj);
+var
+   context : IDataContext;
+begin
+   FBaseExpr.GetDataPtr(exec, context);
+   context.AsInterface[FMemberOffset]:=value;
 end;
 
 // GetSubExpr
@@ -4176,15 +4220,39 @@ begin
    inherited;
 end;
 
-// GetDataPtr
+// AssignValueAsInteger
 //
-procedure TFieldExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
-var
-   obj : IScriptObj;
+procedure TFieldExpr.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
 begin
-   FObjectExpr.EvalAsScriptObj(exec, obj);
-   CheckScriptObject(exec, obj);
-   exec.DataPtr_Create(obj.AsData, FFieldAddr, result);
+   GetScriptObj(exec).AsInteger[FFieldAddr]:=value;
+end;
+
+// AssignValueAsBoolean
+//
+procedure TFieldExpr.AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean);
+begin
+   GetScriptObj(exec).AsBoolean[FFieldAddr]:=value;
+end;
+
+// AssignValueAsFloat
+//
+procedure TFieldExpr.AssignValueAsFloat(exec : TdwsExecution; const value : Double);
+begin
+   GetScriptObj(exec).AsFloat[FFieldAddr]:=value;
+end;
+
+// AssignValueAsString
+//
+procedure TFieldExpr.AssignValueAsString(exec : TdwsExecution; const value: String);
+begin
+   GetScriptObj(exec).AsString[FFieldAddr]:=value;
+end;
+
+// AssignValueAsScriptObj
+//
+procedure TFieldExpr.AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj);
+begin
+   GetScriptObj(exec).AsInterface[FFieldAddr]:=value;
 end;
 
 // GetSubExpr
@@ -4201,6 +4269,21 @@ begin
    Result:=1;
 end;
 
+// GetScriptObj
+//
+function TFieldExpr.GetScriptObj(exec : TdwsExecution) : IScriptObj;
+begin
+   FObjectExpr.EvalAsScriptObj(exec, Result);
+   CheckScriptObject(exec, Result);
+end;
+
+// GetDataPtr
+//
+procedure TFieldExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
+begin
+   exec.DataPtr_Create(GetScriptObj(exec).AsData, FFieldAddr, result);
+end;
+
 // Eval
 //
 function TFieldExpr.Eval(exec : TdwsExecution) : Variant;
@@ -4211,67 +4294,43 @@ end;
 // EvalAsString
 //
 procedure TFieldExpr.EvalAsString(exec : TdwsExecution; var Result : String);
-var
-   obj : IScriptObj;
 begin
-   FObjectExpr.EvalAsScriptObj(exec, obj);
-   CheckScriptObject(exec, obj);
-   obj.EvalAsString(FFieldAddr, Result);
+   GetScriptObj(exec).EvalAsString(FFieldAddr, Result);
 end;
 
 // EvalAsVariant
 //
 procedure TFieldExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
-var
-   obj : IScriptObj;
 begin
-   FObjectExpr.EvalAsScriptObj(exec, obj);
-   CheckScriptObject(exec, obj);
-   obj.EvalAsVariant(FFieldAddr, Result);
+   GetScriptObj(exec).EvalAsVariant(FFieldAddr, Result);
 end;
 
 // EvalAsInteger
 //
 function TFieldExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
-var
-   obj : IScriptObj;
 begin
-   FObjectExpr.EvalAsScriptObj(exec, obj);
-   CheckScriptObject(exec, obj);
-   Result:=obj.AsInteger[FFieldAddr];
+   Result:=GetScriptObj(exec).AsInteger[FFieldAddr];
 end;
 
 // EvalAsFloat
 //
 function TFieldExpr.EvalAsFloat(exec : TdwsExecution) : Double;
-var
-   obj : IScriptObj;
 begin
-   FObjectExpr.EvalAsScriptObj(exec, obj);
-   CheckScriptObject(exec, obj);
-   Result:=obj.AsFloat[FFieldAddr];
+   Result:=GetScriptObj(exec).AsFloat[FFieldAddr];
 end;
 
 // EvalAsBoolean
 //
 function TFieldExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
-var
-   obj : IScriptObj;
 begin
-   FObjectExpr.EvalAsScriptObj(exec, obj);
-   CheckScriptObject(exec, obj);
-   Result:=obj.AsBoolean[FFieldAddr];
+   Result:=GetScriptObj(exec).AsBoolean[FFieldAddr];
 end;
 
 // EvalAsScriptObj
 //
 procedure TFieldExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
-var
-   obj : IScriptObj;
 begin
-   FObjectExpr.EvalAsScriptObj(exec, obj);
-   CheckScriptObject(exec, obj);
-   obj.EvalAsInterface(FFieldAddr, PIUnknown(@Result)^);
+   GetScriptObj(exec).EvalAsInterface(FFieldAddr, PIUnknown(@Result)^);
 end;
 
 // ------------------
@@ -4877,7 +4936,7 @@ begin
          s:=String(varData^.VUString);
       {$endif}
       varInt64 :
-         s:=IntToStr(varData^.VInt64);
+         FastInt64ToStr(varData^.VInt64, s);
       varDouble :
          s:=FloatToStr(varData^.VDouble);
       varBoolean :

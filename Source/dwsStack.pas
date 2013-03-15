@@ -73,9 +73,8 @@ type
          procedure ClearData(addr, size : Integer); inline;
 
          procedure WriteValue(destAddr: Integer; const Value: Variant);
-         procedure WriteIntValue(destAddr: Integer; const Value: Int64); overload; inline;
-         procedure WriteIntValue_BaseRelative(destAddr: Integer; const Value: Int64); overload; inline;
-         procedure WriteIntValue_BaseRelative(destAddr: Integer; const pValue: PInt64); overload; inline;
+         procedure WriteIntValue(destAddr: Integer; const Value: Int64); inline;
+         procedure WriteIntValue_BaseRelative(destAddr: Integer; const Value: Int64); inline;
          procedure WriteFloatValue(destAddr: Integer; const Value: Double); inline;
          procedure WriteFloatValue_BaseRelative(destAddr: Integer; const Value: Double); inline;
          procedure WriteStrValue(destAddr: Integer; const Value: String); inline;
@@ -173,7 +172,6 @@ end;
 procedure TStackMixIn.CopyData(SourceAddr, DestAddr, Size: Integer);
 begin
    while Size > 0 do begin
-
       VarCopy(Data[DestAddr], Data[SourceAddr]);
       Inc(SourceAddr);
       Inc(DestAddr);
@@ -198,23 +196,6 @@ end;
 function TStackMixIn.GetFrameSize: Integer;
 begin
   Result := FStackPointer - FBasePointer;
-end;
-
-// Pop
-//
-procedure TStackMixIn.Pop(delta : Integer);
-var
-   x, sp : Integer;
-   v : PVariant;
-begin
-   sp:=FStackPointer;
-   v:=@Data[sp];
-   sp:=sp-delta;
-   for x:=1 to delta do begin
-      Dec(v);
-      VarClear(v^);
-   end;
-   FStackPointer:=sp;
 end;
 
 // GrowTo
@@ -253,22 +234,21 @@ begin
    FStackPointer := sp;
 end;
 
-procedure TStackMixIn.Reset;
+// Pop
+//
+procedure TStackMixIn.Pop(delta : Integer);
 var
-   i : Integer;
+   x, sp : Integer;
+   v : PVariant;
 begin
-   Data := nil;
-   FSize := 0;
-   FStackPointer := 0;
-   FBasePointer := 0;
-   FBaseData:=nil;
-   ClearBpStore;
-   SetLength(FBpStore, FParams.MaxLevel + 1);
-   for i:=0 to High(FBpStore) do begin
-      FBpStore[i]:=TSimpleIntegerStack.Allocate;
-      FBpStore[i].Push(0);
+   sp:=FStackPointer;
+   v:=@Data[sp];
+   sp:=sp-delta;
+   for x:=1 to delta do begin
+      Dec(v);
+      VarClear(v^);
    end;
-   FDataPtrPool.Cleanup;
+   FStackPointer:=sp;
 end;
 
 // PushBp
@@ -320,6 +300,24 @@ begin
    FStackPointer:=BasePointer;
    BasePointer:=oldBasePointer;
    PopBp(level);
+end;
+
+procedure TStackMixIn.Reset;
+var
+   i : Integer;
+begin
+   Data := nil;
+   FSize := 0;
+   FStackPointer := 0;
+   FBasePointer := 0;
+   FBaseData:=nil;
+   ClearBpStore;
+   SetLength(FBpStore, FParams.MaxLevel + 1);
+   for i:=0 to High(FBpStore) do begin
+      FBpStore[i]:=TSimpleIntegerStack.Allocate;
+      FBpStore[i].Push(0);
+   end;
+   FDataPtrPool.Cleanup;
 end;
 
 procedure TStackMixIn.ReadData(SourceAddr, DestAddr, Size: Integer; DestData: TData);
@@ -558,18 +556,6 @@ begin
    if varData.VType=varInt64 then
       varData.VInt64:=Value
    else PVariant(varData)^:=Value;
-end;
-
-// WriteIntValue_BaseRelative
-//
-procedure TStackMixIn.WriteIntValue_BaseRelative(DestAddr: Integer; const pValue: PInt64);
-var
-   varData : PVarData;
-begin
-   varData:=@FBaseData[DestAddr];
-   if varData.VType=varInt64 then
-      varData.VInt64:=pValue^
-   else PVariant(varData)^:=pValue^;
 end;
 
 // WriteFloatValue

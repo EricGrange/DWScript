@@ -23,7 +23,9 @@ unit dwsTimeFunctions;
 
 interface
 
-uses Classes, SysUtils, dwsFunctions, dwsExprs, dwsSymbols, dwsXPlatform, dwsMagicExprs;
+uses
+   Classes, SysUtils,
+   dwsFunctions, dwsExprs, dwsSymbols, dwsXPlatform, dwsExprList, dwsMagicExprs;
 
 type
 
