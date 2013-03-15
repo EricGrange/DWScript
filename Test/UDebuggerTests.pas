@@ -53,6 +53,7 @@ type
    TTestObject = class
       private
          FField : String;
+      public
          constructor Create(const value : String);
    end;
 

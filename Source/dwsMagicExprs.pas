@@ -26,7 +26,7 @@ interface
 uses
    Classes, SysUtils,
    dwsUtils, dwsErrors,
-   dwsSymbols, dwsStack, dwsExprList,
+   dwsSymbols, dwsExprList,
    dwsExprs, dwsFunctions, dwsDataContext;
 
 type
@@ -822,7 +822,7 @@ var
    left : TDataExpr;
 begin
    left:=TDataExpr(FArgs.ExprBase[0]);
-   Result:=@left.DataPtr[exec].AsPVarDataArray[0];
+   Result:=@left.DataPtr[exec].AsPVarDataArray^[0];
    Assert(Result.VType=varInt64);
    Inc(Result.VInt64, FArgs.ExprBase[1].EvalAsInteger(exec));
 end;
@@ -852,7 +852,7 @@ var
    left : TDataExpr;
 begin
    left:=TDataExpr(FArgs.ExprBase[0]);
-   Result:=@left.DataPtr[exec].AsPVarDataArray[0];
+   Result:=@left.DataPtr[exec].AsPVarDataArray^[0];
    Assert(Result.VType=varInt64);
    Dec(Result.VInt64, FArgs.ExprBase[1].EvalAsInteger(exec));
 end;

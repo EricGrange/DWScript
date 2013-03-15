@@ -109,6 +109,7 @@ type
          TrailCharacter : WideChar;
          DuplicatesOption : TdwsJSONDuplicatesOptions;
 
+      public
          constructor Create(const aStr : String);
 
          function Location : String;
@@ -1259,7 +1260,7 @@ begin
          RaiseJSONParseError('Invalid object pair name start character "%s"', c)
       end;
       {$ifdef FPC}
-      name:=UTF8Encode(ParseJSONString(c, needChar));
+      name:=UTF8Encode(parserState.ParseJSONString(c));
       {$else}
       name:=parserState.ParseJSONString(c);
       {$endif}

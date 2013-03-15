@@ -42,6 +42,12 @@
    {$IFNDEF VER200}  // D2009
       {$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
    {$ENDIF}
+   {$IFDEF VER240}
+      {$DEFINE DELPHI_XE3}
+   {$ENDIF}
+   {$IF CompilerVersion>21.0}
+      {$DEFINE DELPHI_XE_PLUS}
+   {$IFEND}
 {$ELSE}
    {$mode delphi}
    {$DEFINE PUREPASCAL}

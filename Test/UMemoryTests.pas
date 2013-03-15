@@ -50,6 +50,7 @@ type
    TTestObject = class
       private
          FAlreadyDestroyed : Boolean;
+      public
          constructor Create;
          destructor Destroy; override;
    end;

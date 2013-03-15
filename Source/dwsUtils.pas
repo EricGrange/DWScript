@@ -324,11 +324,12 @@ type
       HashCodes *MUST* be non zero }
    TSimpleHash<T> = class
       private
-         {$IF CompilerVersion = 24}
+         {$IFDEF DELPHI_XE3}
+         // workaround for XE3 compiler bug
          FBuckets : array of TSimpleHashBucket<T>;
-         {$else}
+         {$ELSE}
          FBuckets : TSimpleHashBucketArray<T>;
-         {$IFEND}
+         {$ENDIF}
          FCount : Integer;
          FGrowth : Integer;
          FCapacity : Integer;
@@ -996,7 +997,7 @@ end;
 
 // StrBeforeChar
 //
-function StrBeforeChar(const aStr : String; aChar : Char) : String; overload;
+function StrBeforeChar(const aStr : String; aChar : Char) : String;
 var
    p : Integer;
 begin
@@ -2034,9 +2035,9 @@ end;
 //
 procedure TWriteOnlyBlockStream.WriteCRLF;
 const
-   cCRLF : array [0..1] of Char = (#13, #10);
+   cCRLF : array [0..1] of WideChar = (#13, #10);
 begin
-   Write(cCRLF[0], 2*SizeOf(Char));
+   Write(cCRLF[0], 2*SizeOf(WideChar));
 end;
 
 // WriteSubString
@@ -2128,24 +2129,24 @@ procedure TSimpleHash<T>.Grow;
 var
    i, j, n : Integer;
    hashCode : Integer;
-   {$IF CompilerVersion = 24}
+   {$IFDEF DELPHI_XE3}
    oldBuckets : array of TSimpleHashBucket<T>;
    {$ELSE}
    oldBuckets : TSimpleHashBucketArray<T>;
-   {$IFEND}
+   {$ENDIF}
 begin
    if FCapacity=0 then
       FCapacity:=32
    else FCapacity:=FCapacity*2;
    FGrowth:=(FCapacity*3) div 4;
 
-   {$IF CompilerVersion = 24}
+   {$IFDEF DELPHI_XE3}
    SetLength(oldBuckets, Length(FBuckets));
    for i := 0 to Length(FBuckets) - 1 do
      oldBuckets[i] := FBuckets[i];
    {$ELSE}
    oldBuckets:=FBuckets;
-   {$IFEND}
+   {$ENDIF}
 
    FBuckets:=nil;
    SetLength(FBuckets, FCapacity);

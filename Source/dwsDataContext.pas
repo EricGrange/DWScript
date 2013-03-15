@@ -438,8 +438,13 @@ var
    p : PVarData;
 begin
    p:=@FData[FAddr+addr];
-   if p^.VType=varUString then
-      String(p^.VUString):=value
+   {$ifdef FPC}
+   if p.VType=varString then
+      String(p.VString):=value
+   {$else}
+   if p.VType=varUString then
+      String(p.VUString):=value
+   {$endif}
    else PVariant(p)^:=value;
 end;
 
@@ -547,8 +552,13 @@ var
    p : PVarData;
 begin
    p:=@FData[FAddr+addr];
-   if p^.VType=varUString then
-      result:=String(p^.VUString)
+   {$ifdef FPC}
+   if p.VType=varString then
+      result:=String(p.VString)
+   {$else}
+   if p.VType=varUString then
+      result:=String(p.VUString)
+   {$endif}
    else result:=PVariant(p)^;
 end;
 

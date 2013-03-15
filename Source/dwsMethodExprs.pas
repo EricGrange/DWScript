@@ -25,7 +25,7 @@ interface
 
 uses
    dwsErrors, dwsStrings,
-   dwsDataContext, dwsSymbols,
+   dwsSymbols, dwsDataContext,
    dwsExprs;
 
 type

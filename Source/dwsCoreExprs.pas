@@ -25,7 +25,7 @@ interface
 
 uses
    Classes, Variants, SysUtils,
-   dwsSymbols, dwsErrors, dwsStrings, dwsDataContext, dwsExprList,
+   dwsSymbols, dwsErrors, dwsStrings, dwsDataContext, dwsExprList, dwsXPlatform,
    dwsStack, dwsExprs, dwsUtils, dwsTokenizer, dwsUnitSymbols
    {$ifdef FPC},LazUTF8{$endif};
 
@@ -2079,7 +2079,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsStringFunctions, dwsXPlatform;
+uses dwsStringFunctions;
 
 type
    // this needs to be in a helper (or more precisely implemented at the top of this unit)
@@ -3444,8 +3444,13 @@ var
    p : PVarData;
 begin
    p:=PVarData(EvalItem(exec));
+   {$ifdef FPC}
+   if p.VType=varString then
+      Result:=String(p.VString)
+   {$else}
    if p.VType=varUString then
       Result:=String(p.VUString)
+   {$endif}
    else Result:=PVariant(p)^;
 end;
 
@@ -4930,7 +4935,7 @@ begin
    case varData^.VType of
       {$ifdef FPC}
       varString :
-         Result:=String(varData^.VString);
+         s:=String(varData^.VString);
       {$else}
       varUString :
          s:=String(varData^.VUString);

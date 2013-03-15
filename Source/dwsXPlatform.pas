@@ -66,10 +66,6 @@ type
    {$IFEND}
    {$ENDIF}
 
-   {$IF compilerversion = 20}
-   NativeInt = Integer; // D2009 workaround
-   {$IFEND}
-
    {$IFDEF FPC}
    TBytes = array of Byte;
 
@@ -396,6 +392,8 @@ end;
 // LoadTextFromFile
 //
 function LoadTextFromFile(const fileName : String) : String;
+const
+   INVALID_FILE_SIZE = DWORD($FFFFFFFF);
 var
    hFile : THandle;
    n, nRead : Cardinal;

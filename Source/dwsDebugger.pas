@@ -26,7 +26,7 @@ interface
 uses
    Classes, SysUtils, Variants,
    dwsExprs, dwsSymbols, dwsXPlatform, dwsCompiler, dwsErrors, dwsDataContext,
-   dwsUtils, dwsXPlatformUI, dwsStack, dwsStrings, dwsUnitSymbols,
+   dwsUtils, dwsXPlatformUI, dwsStrings, dwsUnitSymbols,
    dwsInfo;
 
 type
@@ -529,7 +529,6 @@ begin
    Synchronize(procedure begin expr:=FMain.LastDebugStepExpr end);
    Result:=expr;
 end;
-{$endif}
 
 // DebugMessage
 //
@@ -537,6 +536,7 @@ procedure TSynchronizedThreadedDebugger.DebugMessage(const msg : String);
 begin
    Synchronize(procedure begin FMain.DebugMessage(msg) end);
 end;
+{$endif}
 
 // ------------------
 // ------------------ TdwsSimpleDebugger ------------------

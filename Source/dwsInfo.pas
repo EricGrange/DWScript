@@ -596,7 +596,7 @@ begin
       varData:=PVarData(FDataPtr.AsPVariant(0));
       {$ifdef FPC}
       if varData.VType=varString then begin
-         Result:=String(varData.VString)
+         Result:=String(varData.VString);
       {$else}
       if varData.VType=varUString then begin
          Result:=String(varData.VUString);
