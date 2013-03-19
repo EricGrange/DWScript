@@ -1742,7 +1742,7 @@ end;
 //
 function TdwsExprLocation.SourceName : String;
 begin
-   Result:=Expr.ScriptPos.SourceFile.Name;
+   Result:=Expr.ScriptPos.SourceName;
 end;
 
 // Location

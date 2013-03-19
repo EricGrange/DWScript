@@ -156,7 +156,7 @@ var
    added : Boolean;
 begin
    if scriptPos.SourceFile<>nil then
-      FTemp.FSourceName:=scriptPos.SourceFile.Name
+      FTemp.FSourceName:=scriptPos.SourceName
    else FTemp.FSourceName:=MSG_MainModule;
    if funcSym<>nil then
       FTemp.FuncName:=funcSym.QualifiedName

@@ -68,6 +68,7 @@ type
          function SamePosAs(const aPos : TScriptPos) : Boolean;
          function IsMainModule : Boolean;
          function IsSourceFile(const name : String) : Boolean;
+         function SourceName : String; inline;
          function Defined : Boolean;
 
          procedure IncCol; inline;
@@ -364,6 +365,15 @@ begin
    Result:=(SourceFile<>nil) and (SourceFile.Name=name);
 end;
 
+// SourceName
+//
+function TScriptPos.SourceName : String;
+begin
+   if SourceFile<>nil then
+      Result:=SourceFile.Name
+   else Result:='';
+end;
+
 // Defined
 //
 function TScriptPos.Defined : Boolean;
@@ -512,7 +522,7 @@ begin
       if msg is TScriptMessage then begin
          srcMsg:=TScriptMessage(msg);
          sf:=TSourceFile.Create;
-         sf.Name:=srcMsg.Pos.SourceFile.Name;
+         sf.Name:=srcMsg.Pos.SourceName;
          sf.Code:=srcMsg.Pos.SourceFile.Code;
          FSourceFiles.Add(sf);
          srcMsg.FPos.SourceFile:=sf;
