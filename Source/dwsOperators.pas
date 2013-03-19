@@ -55,6 +55,7 @@ type
 
          function EnumerateOperatorsFor(aToken : TTokenType; aLeftType, aRightType : TTypeSymbol;
                                         const callback : TOperatorSymbolEnumerationCallback) : Boolean;
+         function EnumerateOperatorSymbols(const callback : TOperatorSymbolEnumerationCallback) : Boolean;
    end;
 
 
@@ -161,6 +162,23 @@ begin
       p:=@FItems[aToken][i];
       if     ((aLeftType=p.LeftType) or aLeftType.IsOfType(p.LeftType))
          and ((aRightType=p.RighType) or aRightType.IsOfType(p.RighType)) then begin
+         if callback(p.OperatorSym) then Exit(True);
+      end;
+   end;
+   Result:=False;
+end;
+
+// EnumerateOperatorSymbols
+//
+function TOperators.EnumerateOperatorSymbols(const callback : TOperatorSymbolEnumerationCallback) : Boolean;
+var
+   tt : TTokenType;
+   i : Integer;
+   p : PRegisteredOperator;
+begin
+   for tt:=Low(FItems) to High(FItems) do begin
+      for i:=0 to High(FItems[tt]) do begin
+         p:=@FItems[tt][i];
          if callback(p.OperatorSym) then Exit(True);
       end;
    end;
