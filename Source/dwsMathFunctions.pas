@@ -734,13 +734,26 @@ end;
 
 { TRandomizeFunc }
 
+{$IFOPT R+}
+  {$DEFINE RANGEON}
+  {$R-}
+{$ELSE}
+  {$UNDEF RANGEON}
+{$ENDIF}
+var
+   vSeedBase : UInt64;
 procedure TRandomizeFunc.DoEvalProc(args : TExprBaseList);
 var
    x : UInt64;
 begin
-   x:=GetSystemMilliseconds;
-   args.Exec.RandSeed:=(x shl 40) xor x;
+   x:=GetSystemMilliseconds xor vSeedBase;
+   x:=(x shl 40) xor x;
+   vSeedBase:=x;
+   args.Exec.RandSeed:=x;
 end;
+{$IFDEF RANGEON}
+  {$R+}
+{$ENDIF}
 
 { TRandGFunc }
 

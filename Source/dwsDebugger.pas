@@ -292,7 +292,7 @@ type
          FBreakpoints : TdwsDebuggerBreakpoints;
          FBreakpointsCondition : TdwsDSCBreakpoints;
          FWatches : TdwsDebuggerWatches;
-         FLastAutoProcessMessages : Cardinal;
+         FLastAutoProcessMessages : Int64;
 
          FParams : TVariantDynArray;
          FBeginOptions : TdwsDebugBeginOptions;
@@ -947,7 +947,7 @@ end;
 //
 procedure TdwsDebugger.DoDebug(exec : TdwsExecution; expr : TExprBase);
 var
-   ticks : Cardinal;
+   ticks : Int64;
 begin
    if expr is TBlockExprBase then begin
       if (expr.ClassType<>TBlockInitExpr) or (expr.SubExprCount=0) then Exit;

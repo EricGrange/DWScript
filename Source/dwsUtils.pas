@@ -665,6 +665,12 @@ end;
 
 // FastInt64ToStr
 //
+{$IFOPT R+}
+  {$DEFINE RANGEON}
+  {$R-}
+{$ELSE}
+  {$UNDEF RANGEON}
+{$ENDIF}
 procedure FastInt64ToStr(const val : Int64; var s : String);
 var
    buf : array [0..21] of Char;
@@ -675,6 +681,8 @@ var
 begin
    if val<0 then begin
       neg:=True;
+//range checking is off here because the code causes range check errors
+//code here...
       i:=-val;
    end else begin
       if val=0 then begin
@@ -705,6 +713,9 @@ begin
    else Inc(n);
    SetString(s, PChar(@buf[n]), (High(buf)+1)-n);
 end;
+{$IFDEF RANGEON}
+  {$R+}
+{$ENDIF}
 
 // RawByteStringToScriptString
 //

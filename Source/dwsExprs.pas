@@ -2961,7 +2961,6 @@ begin
    FAddrGenerator:=TAddrGeneratorRec.CreatePositive(Parent.Level + 1);
    FRootTable:=TProgramSymbolTable.Create(Parent.Table, @FAddrGenerator);
    FTable:=FRootTable;
-//   FSystemTable:=Parent.SystemTable;
    FCompileMsgs:=Parent.CompileMsgs;
    FUnitMains:=Parent.UnitMains;
 
@@ -2983,10 +2982,10 @@ end;
 
 procedure TdwsProcedure.AssignTo(sym: TFuncSymbol);
 begin
-  // Add parameter symboltable into the symboltable chain
-  FTable.InsertParent(0, sym.Params);
-  sym.Executable := ICallable(Self);
-  FFunc := sym;
+   // Add parameter symboltable into the symboltable chain
+   FTable.InsertParent(0, sym.Params);
+   sym.Executable := ICallable(Self);
+   FFunc := sym;
 end;
 
 // Call
@@ -4029,7 +4028,8 @@ end;
 procedure TDataExpr.AssignData(exec : TdwsExecution; const source : IDataContext);
 begin
   Assert(IsWritable);
-  DataPtr[exec].WriteData(source, Typ.Size);
+  if Typ.Size>0 then
+     DataPtr[exec].WriteData(source, Typ.Size);
 end;
 
 // AssignValue

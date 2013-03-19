@@ -3016,7 +3016,7 @@ begin
          guessSymPosList:=SymbolDictionary.FindSymbolPosList(guessParam);
          if guessSymPosList<>nil then begin
             symPos:=guessSymPosList.Items[guessSymPosList.Count-1];
-            if symPos.ScriptPos.SamePosAs(posArray[i]) then
+            if symPos.ScriptPos.SamePosAs(posArray[i-d]) then
                guessSymPosList.Delete(guessSymPosList.Count-1);
          end;
       end;

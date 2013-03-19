@@ -465,7 +465,7 @@ begin
    fsl:=TFastCompareTextList.Create;
    try
       for i:=1 to 50 do begin
-         k:=Round(IntPower(10, 3+Random(8)));
+         k:=Round(IntPower(10, 2+Random(8)));
          sl.Values[IntToStr(Random(k))]:=IntToStr(Random(10000));
       end;
       fsl.Assign(sl);
