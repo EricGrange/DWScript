@@ -39,7 +39,8 @@ uses
   dwsRTTIFunctions,
   UJSONTests in 'UJSONTests.pas',
   UJSONConnectorTests in 'UJSONConnectorTests.pas',
-  UTokenizerTests in 'UTokenizerTests.pas';
+  UTokenizerTests in 'UTokenizerTests.pas',
+  ULanguageExtensionTests in 'ULanguageExtensionTests.pas';
 
 {$R *.res}
 

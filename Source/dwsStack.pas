@@ -78,6 +78,7 @@ type
          procedure WriteFloatValue(destAddr: Integer; const Value: Double); inline;
          procedure WriteFloatValue_BaseRelative(destAddr: Integer; const Value: Double); inline;
          procedure WriteStrValue(destAddr: Integer; const Value: String); inline;
+         procedure WriteStrValue_BaseRelative(destAddr: Integer; const Value: String); inline;
          procedure WriteBoolValue(destAddr: Integer; const Value: Boolean); inline;
          procedure WriteInterfaceValue(destAddr: Integer; const intf: IUnknown);
 
@@ -589,6 +590,23 @@ var
    varData : PVarData;
 begin
    varData:=@Data[DestAddr];
+   {$ifdef FPC}
+   if varData.VType=varString then
+      String(varData.VString):=Value
+   {$else}
+   if varData.VType=varUString then
+      String(varData.VUString):=Value
+    {$endif}
+   else PVariant(varData)^:=Value;
+end;
+
+// WriteStrValue_BaseRelative
+//
+procedure TStackMixIn.WriteStrValue_BaseRelative(DestAddr: Integer; const Value: String);
+var
+   varData : PVarData;
+begin
+   varData:=@FBaseData[DestAddr];
    {$ifdef FPC}
    if varData.VType=varString then
       String(varData.VString):=Value
