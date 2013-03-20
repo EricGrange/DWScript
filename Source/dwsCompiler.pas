@@ -7723,8 +7723,10 @@ begin
 
          if FTok.TestDelete(ttALEFT) then begin
             // accept but ignore GUID
-            if not FTok.TestDelete(ttStrVal) then
+            if not FTok.TestDelete(ttStrVal) then begin
                FMsgs.AddCompilerError(FTok.HotPos, CPE_StringExpected);
+               FTok.SkipTo(ttARIGHT);
+            end;
             if not FTok.TestDelete(ttARIGHT) then
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ArrayBracketRightExpected);
          end;

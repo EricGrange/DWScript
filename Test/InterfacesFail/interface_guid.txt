@@ -1,0 +1,2 @@
+Syntax Error: String expected [line: 8, column: 4]
+Syntax Error: "]" expected [line: 14, column: 2]

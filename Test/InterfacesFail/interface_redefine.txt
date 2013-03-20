@@ -1,2 +1,4 @@
 Syntax Error: Interface "IMyIntf" already defined [line: 5, column: 26]
 Syntax Error: Name "TMyClass" already exists [line: 7, column: 27]
+Syntax Error: There is already a forward declaration of the "IForward" interface! [line: 11, column: 26]
+Syntax Error: Interface "IForward" isn't defined completely [line: 9, column: 26]
