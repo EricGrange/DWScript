@@ -64,15 +64,24 @@ end;
 //
 function TAutoExternalValues.FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol;
 var
+   externalSym : TExternalVarSymbol;
    readFunc : TFuncSymbol;
+   call : TCallableAutoExternal;
 begin
-   Result:=TExternalVarSymbol.Create(name, compiler.CurrentProg.TypString);
+   externalSym:=TExternalVarSymbol.Create(name, compiler.CurrentProg.TypString);
+   compiler.CurrentProg.Table.AddSymbol(externalSym);
+
+   call:=TCallableAutoExternal.Create(nil);
 
    readFunc:=TFuncSymbol.Create('_get_'+name, fkFunction, 0);
-   readFunc.Executable:=TCallableAutoExternal.Create(nil);
+   readFunc.Executable:=call;
    readFunc.Typ:=compiler.CurrentProg.TypString;
 
-   TExternalVarSymbol(Result).ReadFunc:=readFunc;
+   call._Release;
+
+   externalSym.ReadFunc:=readFunc;
+
+   Result:=externalSym;
 end;
 
 // ------------------
@@ -108,7 +117,7 @@ begin
                               +'PrintLn(World);'#13#10);
       CheckEquals('', prog.Msgs.AsInfo);
       exec:=prog.Execute;
-      CheckEquals('_get_Hello'#13#10'_get_World', exec.Result.ToString);
+      CheckEquals('_get_Hello'#13#10'_get_World'#13#10, exec.Result.ToString);
    finally
       custom.Free;
    end;
