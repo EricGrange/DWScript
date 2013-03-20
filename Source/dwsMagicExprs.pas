@@ -489,7 +489,7 @@ end;
 //
 procedure TMagicFuncExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   exec.DataPtr_CreateBase(FResultAddr, Result);
+   exec.DataContext_CreateBase(FResultAddr, Result);
 end;
 
 // ------------------
@@ -562,7 +562,7 @@ begin
    execRec.List:=@FArgs;
    execRec.Exec:=exec;
    try
-      exec.DataPtr_CreateBase(FResultAddr, Result);
+      exec.DataContext_CreateBase(FResultAddr, Result);
       FOnEval(@execRec, Result);
    except
       RaiseScriptError(exec);

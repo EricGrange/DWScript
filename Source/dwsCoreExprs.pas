@@ -2472,7 +2472,7 @@ end;
 //
 procedure TVarParentExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   exec.DataPtr_CreateLevel(FLevel, FStackAddr, Result);
+   exec.DataContext_CreateLevel(FLevel, FStackAddr, Result);
 end;
 
 // ------------------
@@ -2778,7 +2778,7 @@ end;
 //
 procedure TConstExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   exec.DataPtr_Create(FData, 0, Result);
+   exec.DataContext_Create(FData, 0, Result);
 end;
 
 // CreateTypedVariantValue
@@ -3379,7 +3379,7 @@ begin
    index:=IndexExpr.EvalAsInteger(exec);
    BoundsCheck(exec, TScriptDynamicArray(base.GetSelf).ArrayLength, index);
 
-   exec.DataPtr_Create(base.AsData, index*FElementSize, Result);
+   exec.DataContext_Create(base.AsData, index*FElementSize, Result);
 end;
 
 // EvalItem
@@ -3652,7 +3652,7 @@ end;
 procedure TArrayConstantExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    Eval(exec);
-   exec.DataPtr_Create(exec.Stack.Data, FArrayAddr, Result);
+   exec.DataContext_Create(exec.Stack.Data, FArrayAddr, Result);
 end;
 
 // GetSubExpr
@@ -4069,7 +4069,7 @@ end;
 //
 procedure TRecordVarExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   exec.DataPtr_CreateBase(VarPlusMemberOffset, Result);
+   exec.DataContext_CreateBase(VarPlusMemberOffset, Result);
 end;
 
 // ------------------
@@ -4160,7 +4160,7 @@ end;
 procedure TDynamicRecordExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    EvalNoResult(exec);
-   exec.DataPtr_Create(exec.Stack.Data, exec.Stack.BasePointer+FAddr, Result);
+   exec.DataContext_CreateBase(FAddr, Result);
 end;
 
 // GetSubExpr
@@ -4286,7 +4286,7 @@ end;
 //
 procedure TFieldExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   exec.DataPtr_Create(GetScriptObj(exec).AsData, FFieldAddr, result);
+   exec.DataContext_Create(GetScriptObj(exec).AsData, FFieldAddr, result);
 end;
 
 // Eval
@@ -5998,7 +5998,7 @@ begin
       dyn.RawCopy(srcData, 0, Length(srcData));
    end else begin
       // to static array
-      exec.DataPtr_Create(srcData, 0, dataPtr);
+      exec.DataContext_Create(srcData, 0, dataPtr);
       FLeft.AssignData(exec, dataPtr);
    end;
 end;
@@ -8330,7 +8330,7 @@ end;
 procedure TArrayDataExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    EvalNoResult(exec);
-   exec.DataPtr_Create(exec.Stack.Data, exec.Stack.BasePointer+FResultAddr, Result);
+   exec.DataContext_CreateBase(FResultAddr, Result);
 end;
 
 // GetSubExpr

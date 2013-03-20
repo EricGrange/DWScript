@@ -814,7 +814,7 @@ class procedure TJSONStringifyMethod.StringifyDynamicArray(exec : TdwsExecution;
 var
    locData : IDataContext;
 begin
-   exec.DataPtr_Create(dynArray.AsData, 0, locData);
+   exec.DataContext_Create(dynArray.AsData, 0, locData);
    StringifyArray(exec, writer, dynArray.ElementTyp, locData, dynArray.ArrayLength);
 end;
 

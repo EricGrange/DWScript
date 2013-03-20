@@ -318,7 +318,7 @@ procedure CreateInfoOnSymbol(var result : IInfo; programInfo : TProgramInfo; typ
 var
    dataPtr : IDataContext;
 begin
-   programInfo.Execution.DataPtr_Create(data, offset, dataPtr);
+   programInfo.Execution.DataContext_Create(data, offset, dataPtr);
    TInfo.SetChild(result, programInfo, typeSym, dataPtr, nil);
 end;
 
@@ -691,7 +691,8 @@ begin
   if not Assigned(sym) then
     raise Exception.CreateFmt(RTE_MethodNotFoundInClass, [s, FTypeSym.Caption]);
 
-  Result := TInfoFunc.Create(FProgramInfo, sym, FProgramInfo.Execution.DataPtr_Nil, nil, FScriptObj, TClassSymbol(FTypeSym));
+  Result := TInfoFunc.Create(FProgramInfo, sym, FProgramInfo.Execution.DataContext_Nil,
+                             nil, FScriptObj, TClassSymbol(FTypeSym));
 end;
 
 function TInfoClass.GetScriptObj: IScriptObj;
@@ -745,10 +746,11 @@ begin
       raise Exception.CreateFmt(RTE_NoMemberOfClass, [s, FTypeSym.Caption]);
 
    if member is TFieldSymbol then begin
-      FProgramInfo.Execution.DataPtr_Create(FScriptObj.AsData, TFieldSymbol(member).Offset, locData);
+      FProgramInfo.Execution.DataContext_Create(FScriptObj.AsData, TFieldSymbol(member).Offset, locData);
       SetChild(Result, FProgramInfo, member.Typ, locData);
    end else if member is TPropertySymbol then
-      Result:=TInfoProperty.Create(FProgramInfo, member.Typ, FProgramInfo.Execution.DataPtr_Nil, TPropertySymbol(member), FScriptObj)
+      Result:=TInfoProperty.Create(FProgramInfo, member.Typ, FProgramInfo.Execution.DataContext_Nil,
+                                   TPropertySymbol(member), FScriptObj)
    else raise Exception.CreateFmt(RTE_UnsupportedMemberOfClass, [member.ClassName]);
 end;
 
@@ -897,7 +899,7 @@ begin
                end else begin
                   funcExpr.EvalAsVariant(FExec, FResult[0]);
                end;
-               FProgramInfo.Execution.DataPtr_Create(FResult, 0, resultDataPtr);
+               FProgramInfo.Execution.DataContext_Create(FResult, 0, resultDataPtr);
                SetChild(Result, FProgramInfo, funcExpr.Typ, resultDataPtr);
             end else begin
                // Execute as procedure
@@ -974,7 +976,7 @@ begin
          end else begin
             funcExpr.EvalAsVariant(FExec, FResult[0]);
          end;
-         FProgramInfo.Execution.DataPtr_Create(FResult, 0, resultDataPtr);
+         FProgramInfo.Execution.DataContext_Create(FResult, 0, resultDataPtr);
          SetChild(Result, FProgramInfo, funcExpr.Typ, resultDataPtr);
       end else begin
          funcExpr.EvalNoResult(FExec);
@@ -998,7 +1000,7 @@ begin
    tp := TTempParam(FTempParams.FindSymbol(s, cvMagic));
 
    if Assigned(tp) then begin
-      FProgramInfo.Execution.DataPtr_Create(tp.FData, 0, locData);
+      FProgramInfo.Execution.DataContext_Create(tp.FData, 0, locData);
       SetChild(Result, FProgramInfo, tp.Typ, locData);
    end else raise Exception.CreateFmt(RTE_NoParameterFound, [s, FTypeSym.Caption]);
 end;
@@ -1251,7 +1253,7 @@ begin
       end;
    end;
 
-   FProgramInfo.Execution.DataPtr_Create(dynArray.AsData, elemOff, locData);
+   FProgramInfo.Execution.DataContext_Create(dynArray.AsData, elemOff, locData);
    SetChild(Result, FProgramInfo, elemTyp, locData, FDataMaster);
 end;
 
@@ -1355,7 +1357,7 @@ var
 begin
   SetLength(FData, TypeSym.Size);
   VarCopy(FData[0], Value);
-  ProgramInfo.Execution.DataPtr_Create(FData, 0, locData);
+  ProgramInfo.Execution.DataContext_Create(FData, 0, locData);
   inherited Create(ProgramInfo, TypeSym, locData);
 end;
 
@@ -1399,7 +1401,7 @@ begin
   tp := TTempParam(FTempParams.FindSymbol(s, cvMagic));
 
   if Assigned(tp) then begin
-    FProgramInfo.Execution.DataPtr_Create(tp.FData, 0, locData);
+    FProgramInfo.Execution.DataContext_Create(tp.FData, 0, locData);
     SetChild(Result, FProgramInfo, tp.Typ, locData);
   end else
     raise Exception.CreateFmt(RTE_NoIndexFound, [s, FPropSym.Name]);
@@ -1451,7 +1453,7 @@ begin
   end
   else if FPropSym.ReadSym is TFieldSymbol then
   begin
-    FProgramInfo.Execution.DataPtr_Create(FScriptObj.AsData, TFieldSymbol(FPropSym.ReadSym).Offset, locData);
+    FProgramInfo.Execution.DataContext_Create(FScriptObj.AsData, TFieldSymbol(FPropSym.ReadSym).Offset, locData);
     SetChild(func, FProgramInfo,FPropSym.ReadSym.Typ, locData);
     result := func.Data;
 {
@@ -1486,7 +1488,7 @@ begin
   end
   else if FPropSym.WriteSym is TFieldSymbol then
   begin
-    FProgramInfo.Execution.DataPtr_Create(FScriptObj.AsData, TFieldSymbol(FPropSym.WriteSym).Offset, locData);
+    FProgramInfo.Execution.DataContext_Create(FScriptObj.AsData, TFieldSymbol(FPropSym.WriteSym).Offset, locData);
     SetChild(func, FProgramInfo,FPropSym.WriteSym.Typ, locData);
     func.Data := Value;
   end
@@ -1547,7 +1549,7 @@ begin
       begin
         SetLength(resultData, 1);
         expr.EvalAsVariant(FExec, resultData[0]);
-        FProgramInfo.Execution.DataPtr_Create(resultData, 0, locData);
+        FProgramInfo.Execution.DataContext_Create(resultData, 0, locData);
         TInfo.SetChild(Result, FProgramInfo, expr.Typ, locData);
       end
       else

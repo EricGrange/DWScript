@@ -400,9 +400,10 @@ begin
    handle:=info.Vars['handle'];
 
    if propSym.ClassType=TPropertySymbol then
-      propInfo:=TInfoProperty.Create(info, propSym.Typ, info.Execution.DataPtr_Nil, TPropertySymbol(propSym), handle.ScriptObj)
+      propInfo:=TInfoProperty.Create(info, propSym.Typ, info.Execution.DataContext_Nil,
+                                     TPropertySymbol(propSym), handle.ScriptObj)
    else if propSym.ClassType=TFieldSymbol then begin
-      info.Execution.DataPtr_Create(handle.ScriptObj.AsData, TFieldSymbol(propSym).Offset, locData);
+      info.Execution.DataContext_Create(handle.ScriptObj.AsData, TFieldSymbol(propSym).Offset, locData);
       propInfo:=TInfoData.Create(info, propSym.Typ, locData);
    end;
 
@@ -425,9 +426,10 @@ begin
    handle:=info.Vars['handle'];
 
    if propSym.ClassType=TPropertySymbol then
-      propInfo:=TInfoProperty.Create(info, propSym.Typ, info.Execution.DataPtr_Nil, TPropertySymbol(propSym), handle.ScriptObj)
+      propInfo:=TInfoProperty.Create(info, propSym.Typ, info.Execution.DataContext_Nil,
+                                     TPropertySymbol(propSym), handle.ScriptObj)
    else if propSym.ClassType=TFieldSymbol then begin
-      info.Execution.DataPtr_Create(handle.ScriptObj.AsData, TFieldSymbol(propSym).Offset, locData);
+      info.Execution.DataContext_Create(handle.ScriptObj.AsData, TFieldSymbol(propSym).Offset, locData);
       propInfo:=TInfoData.Create(info, propSym.Typ, locData);
    end;
 
@@ -504,22 +506,23 @@ begin
       if methSym.IsStatic then begin
          SetLength(data, 1);
          data[0]:=Int64(methSym.StructSymbol);
-         info.Execution.DataPtr_Create(data, 0, locData);
+         info.Execution.DataContext_Create(data, 0, locData);
          instanceInfo:=TInfoClass.Create(info, methSym.StructSymbol, locData);
-         methInfo:=TInfoFunc.Create(info, methSym, info.Execution.DataPtr_Nil, nil, nil, TClassSymbol(methSym.StructSymbol));
+         methInfo:=TInfoFunc.Create(info, methSym, info.Execution.DataContext_Nil,
+                                    nil, nil, TClassSymbol(methSym.StructSymbol));
       end else begin
          SetLength(data, 1);
          data[0]:=info.Vars['instance'].ValueAsInteger;
-         info.Execution.DataPtr_Create(data, 0, locData);
+         info.Execution.DataContext_Create(data, 0, locData);
          instanceInfo:=TInfoClass.Create(info, methSym.StructSymbol, locData);
-         methInfo:=TInfoFunc.Create(info, methSym, info.Execution.DataPtr_Nil,
+         methInfo:=TInfoFunc.Create(info, methSym, info.Execution.DataContext_Nil,
                                     nil, IScriptObj(IUnknown(data[0])), TClassSymbol(methSym.StructSymbol));
       end;
    end else begin
       data:=info.Vars['instance'].Data;
-      info.Execution.DataPtr_Create(data, 0, locData);
+      info.Execution.DataContext_Create(data, 0, locData);
       instanceInfo:=TInfoClassObj.Create(info, methSym.StructSymbol,locData);
-      methInfo:=TInfoFunc.Create(info, methSym, info.Execution.DataPtr_Nil,
+      methInfo:=TInfoFunc.Create(info, methSym, info.Execution.DataContext_Nil,
                                  nil, IScriptObj(IUnknown(data[0])), TClassSymbol(methSym.StructSymbol));
    end;
    resultInfo:=methInfo.Call(info.Vars['args'].Data);

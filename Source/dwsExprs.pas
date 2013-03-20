@@ -4192,7 +4192,7 @@ end;
 procedure TFuncExprBase.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    Eval(exec);
-   exec.DataPtr_CreateBase(FResultAddr, result);
+   exec.DataContext_CreateBase(FResultAddr, result);
 end;
 
 // Initialize
@@ -4355,7 +4355,7 @@ var
 begin
    SetLength(data, 1);
    FArgExpr.EvalAsVariant(exec, data[0]);
-   exec.DataPtr_Create(data, 0, vpd);
+   exec.DataContext_Create(data, 0, vpd);
    exec.Stack.WriteInterfaceValue(exec.Stack.StackPointer+FStackAddr, vpd);
 end;
 
@@ -4370,7 +4370,7 @@ begin
    SetLength(data, FArgExpr.Typ.Size);
 
    dataExpr:=TDataExpr(FArgExpr);
-   exec.DataPtr_Create(data, 0, vpd);
+   exec.DataContext_Create(data, 0, vpd);
 
    vpd.WriteData(dataExpr.DataPtr[exec], FArgExpr.Typ.Size);
 
@@ -4388,7 +4388,7 @@ begin
    ace:=TArrayConstantExpr(FArgExpr);
    SetLength(data, ace.Size);
 
-   exec.DataPtr_Create(data, 0, vpd);
+   exec.DataContext_Create(data, 0, vpd);
 
    ace.EvalAsTData(exec, vpd.AsPData^);
 
@@ -4795,7 +4795,7 @@ var
 begin
    SetLength(data, 1);
    EvalAsVariant(exec, data[0]);
-   exec.DataPtr_Create(data, 0, result);
+   exec.DataContext_Create(data, 0, result);
 end;
 
 // ------------------
@@ -5363,7 +5363,7 @@ function TProgramInfo.GetVars(const str : String): IInfo;
       extVDM := TExternalVarDataMaster.Create(Execution, TExternalVarSymbol(sym));
       if sym.Typ is TClassSymbol then
          extVDM.Read(Execution, dat); // initialize 'Self'-Object
-      Execution.DataPtr_Create(dat, 0, locData);
+      Execution.DataContext_Create(dat, 0, locData);
       TInfo.SetChild(Result, Self, sym.Typ, locData, extVDM);
    end;
 
@@ -5375,7 +5375,7 @@ function TProgramInfo.GetVars(const str : String): IInfo;
       if sym.BaseType is TClassSymbol then begin
          SetLength(dat, 1);
          VarClear(dat[0]);
-         Execution.DataPtr_Create(dat, 0, locData);
+         Execution.DataContext_Create(dat, 0, locData);
          Result := TInfoClassObj.Create(Self, sym, locData);
       end else Result:=nil;
    end;
@@ -5403,7 +5403,7 @@ function TProgramInfo.GetVars(const str : String): IInfo;
       if (sym.ClassType=TVarParamSymbol) or (sym.Typ is TOpenArraySymbol) then begin
          GetVarParamVars(sym, basePointer, Result);
       end else begin
-         exec.DataPtr_CreateBase(sym.StackAddr, locData);
+         exec.DataContext_CreateBase(sym.StackAddr, locData);
          TInfo.SetChild(Result, pin, sym.Typ, locData);
       end;
    end;
@@ -5413,7 +5413,7 @@ function TProgramInfo.GetVars(const str : String): IInfo;
       locData : IDataContext;
    begin
       // Field of the Self object
-      Execution.DataPtr_Create(FScriptObj.AsData, sym.Offset, locData);
+      Execution.DataContext_Create(FScriptObj.AsData, sym.Offset, locData);
       TInfo.SetChild(Result, Self, sym.Typ, locData);
    end;
 
@@ -5421,7 +5421,7 @@ function TProgramInfo.GetVars(const str : String): IInfo;
    var
       locData : IDataContext;
    begin
-      Execution.DataPtr_Create(sym.Data, 0, locData);
+      Execution.DataContext_Create(sym.Data, 0, locData);
       TInfo.SetChild(Result, Self, sym.Typ, locData);
    end;
 
@@ -5457,9 +5457,10 @@ begin
   if sym.IsFuncSymbol then
   begin
     if Assigned(FScriptObj) then
-      Result := TInfoFunc.Create(Self, sym, Execution.DataPtr_Nil, nil, FScriptObj, FScriptObj.ClassSym)
+      Result := TInfoFunc.Create(Self, sym, Execution.DataContext_Nil,
+                                 nil, FScriptObj, FScriptObj.ClassSym)
     else
-      Result := TInfoFunc.Create(Self, sym, Execution.DataPtr_Nil, nil, nil, nil)
+      Result := TInfoFunc.Create(Self, sym, Execution.DataContext_Nil, nil, nil, nil)
   end
   else
     raise Exception.CreateFmt(RTE_OnlyFuncSymbols, [sym.Caption]);
@@ -5480,7 +5481,7 @@ begin
   SetLength(data, typSym.Size);
   typSym.InitData(data, 0);
 
-  Execution.DataPtr_Create(data, 0, locData);
+  Execution.DataContext_Create(data, 0, locData);
   TInfo.SetChild(Result, Self, typSym, locData);
 end;
 
@@ -6509,7 +6510,7 @@ begin
 
       for x := 0 to Length(FConnectorArgs) - 1 do
          if FConnectorParams[x].IsVarParam then begin
-            exec.DataPtr_Create(FConnectorArgs[x], 0, locData);
+            exec.DataContext_Create(FConnectorArgs[x], 0, locData);
             TDataExpr(FArgs.List[x]).AssignData(exec, locData);
          end;
 
@@ -6529,7 +6530,7 @@ end;
 procedure TConnectorCallExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    Eval(exec);
-   exec.DataPtr_Create(FResultData, 0, result);
+   exec.DataContext_Create(FResultData, 0, result);
 end;
 
 // GetSubExpr
@@ -6595,7 +6596,7 @@ end;
 procedure TConnectorReadExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    Eval(exec);
-   exec.DataPtr_Create(FResultData, 0, result);
+   exec.DataContext_Create(FResultData, 0, result);
 end;
 
 // GetSubExpr

@@ -9584,6 +9584,7 @@ var
    hotPos : TScriptPos;
    boolExpr : TTypedExpr;
    trueExpr, falseExpr : TTypedExpr;
+   trueTyp, falseTyp : TTypeSymbol;
    typ : TTypeSymbol;
 begin
    hotPos:=FTok.HotPos;
@@ -9597,48 +9598,62 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ThenExpected);
 
       trueExpr:=ReadExpr(expecting);
-      if trueExpr.Typ=nil then
+      if trueExpr=nil then
+         trueTyp:=nil
+      else trueTyp:=trueExpr.Typ;
+      if trueTyp=nil then
          FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
 
       if FTok.TestDelete(ttELSE) then begin
 
          falseExpr:=ReadExpr(expecting);
-         if falseExpr.Typ=nil then
+         if falseExpr=nil then
+            falseTyp:=nil
+         else falseTyp:=falseExpr.Typ;
+         if falseTyp=nil then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
 
-      end else falseExpr:=TConstExpr.CreateTypedDefault(FProg, trueExpr.Typ);
+      end else if trueTyp<>nil then begin
 
-      if (trueExpr.Typ=nil) or (falseExpr.Typ=nil) then begin
+         falseExpr:=TConstExpr.CreateTypedDefault(FProg, trueTyp);
+         falseTyp:=trueTyp;
+
+      end else falseTyp:=nil;
+
+      if (trueTyp=nil) or (falseTyp=nil) then begin
 
          typ:=nil;
 
       end else begin
 
-         if trueExpr.IsOfType(FProg.TypInteger) and falseExpr.IsOfType(FProg.TypFloat) then
-            trueExpr:=TConvFloatExpr.Create(FProg, trueExpr)
-         else if trueExpr.IsOfType(FProg.TypFloat) and falseExpr.IsOfType(FProg.TypInteger) then
+         if trueExpr.IsOfType(FProg.TypInteger) and falseExpr.IsOfType(FProg.TypFloat) then begin
+            trueExpr:=TConvFloatExpr.Create(FProg, trueExpr);
+            trueTyp:=trueExpr.Typ;
+         end else if trueExpr.IsOfType(FProg.TypFloat) and falseExpr.IsOfType(FProg.TypInteger) then begin
             falseExpr:=TConvFloatExpr.Create(FProg, falseExpr);
+            falseTyp:=falseExpr.Typ;
+         end;
 
-         if falseExpr.Typ.IsOfType(FProg.TypNil) then begin
+         if falseTyp.IsOfType(FProg.TypNil) then begin
 
-            typ:=trueExpr.Typ;
-            if not typ.IsCompatible(falseExpr.Typ) then
+            typ:=trueTyp;
+            if not typ.IsCompatible(falseTyp) then
                FMsgs.AddCompilerError(hotPos, CPE_InvalidArgCombination);
 
-         end else if trueExpr.Typ.IsOfType(FProg.TypNil) then begin
+         end else if trueTyp.IsOfType(FProg.TypNil) then begin
 
-            typ:=falseExpr.Typ;
-            if not typ.IsCompatible(trueExpr.Typ) then
+            typ:=falseTyp;
+            if not typ.IsCompatible(trueTyp) then
                FMsgs.AddCompilerError(hotPos, CPE_InvalidArgCombination);
 
-         end else if falseExpr.Typ.IsCompatible(trueExpr.Typ) then
+         end else if falseTyp.IsCompatible(trueTyp) then
 
             typ:=falseExpr.Typ
 
          else begin
 
-            typ:=trueExpr.Typ;
-            if not typ.IsCompatible(falseExpr.Typ) then
+            typ:=trueTyp;
+            if not typ.IsCompatible(falseTyp) then
                FMsgs.AddCompilerError(hotPos, CPE_InvalidArgCombination);
 
          end;

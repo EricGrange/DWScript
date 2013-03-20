@@ -1620,10 +1620,10 @@ type
          function GetCallStack : TdwsExprLocationArray; virtual; abstract;
          function CallStackDepth : Integer; virtual; abstract;
 
-         procedure DataPtr_Create(const data : TData; addr : Integer; var Result : IDataContext); inline;
-         procedure DataPtr_CreateBase(addr : Integer; var Result : IDataContext); inline;
-         procedure DataPtr_CreateLevel(level, addr : Integer; var Result : IDataContext); inline;
-         function DataPtr_Nil : IDataContext; inline;
+         procedure DataContext_Create(const data : TData; addr : Integer; var Result : IDataContext); inline;
+         procedure DataContext_CreateBase(addr : Integer; var Result : IDataContext); inline;
+         procedure DataContext_CreateLevel(level, addr : Integer; var Result : IDataContext); inline;
+         function DataContext_Nil : IDataContext; inline;
 
          procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : String); virtual;
          procedure LocalizeString(const aString : String; var Result : String); virtual;
@@ -6228,30 +6228,30 @@ begin
    Result:=aString;
 end;
 
-// DataPtr_Create
+// DataContext_Create
 //
-procedure TdwsExecution.DataPtr_Create(const data : TData; addr : Integer; var result : IDataContext);
+procedure TdwsExecution.DataContext_Create(const data : TData; addr : Integer; var result : IDataContext);
 begin
    Result:=FStack.CreateDataPtr(data, addr);
 end;
 
-// DataPtr_CreateBase
+// DataContext_CreateBase
 //
-procedure TdwsExecution.DataPtr_CreateBase(addr : Integer; var result : IDataContext);
+procedure TdwsExecution.DataContext_CreateBase(addr : Integer; var result : IDataContext);
 begin
    FStack.InitDataPtr(Result, addr);
 end;
 
-// DataPtr_CreateLevel
+// DataContext_CreateLevel
 //
-procedure TdwsExecution.DataPtr_CreateLevel(level, addr : Integer; var Result : IDataContext);
+procedure TdwsExecution.DataContext_CreateLevel(level, addr : Integer; var Result : IDataContext);
 begin
    FStack.InitDataPtrLevel(Result, level, addr);
 end;
 
-// DataPtr_Nil
+// DataContext_Nil
 //
-function TdwsExecution.DataPtr_Nil : IDataContext;
+function TdwsExecution.DataContext_Nil : IDataContext;
 begin
    Result:=FStack.CreateDataPtr(nil, 0);
 end;
