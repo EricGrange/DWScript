@@ -1,0 +1,5 @@
+Syntax Error: Incompatible operands [line: 5, column: 3]
+Syntax Error: Incompatible types: Cannot assign "Integer" to "String" [line: 5, column: 3]
+Syntax Error: Incompatible operands [line: 7, column: 3]
+Syntax Error: Incompatible types: Cannot assign "Integer" to "String" [line: 7, column: 3]
+Syntax Error: Incompatible operands [line: 9, column: 3]

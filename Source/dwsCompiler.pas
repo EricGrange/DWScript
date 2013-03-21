@@ -11314,13 +11314,8 @@ begin
                if classOpSymbol=nil then
                   FMsgs.AddCompilerStop(scriptPos, CPE_IncompatibleOperands);
                classOpExpr:=GetMethodExpr(classOpSymbol.UsesSym, left, rkObjRef, scriptPos, False);
-               try
-                  classOpExpr.AddArg(right);
-                  TypeCheckArgs(classOpExpr, nil);
-               except
-                  classOpExpr.Free;
-                  raise;
-               end;
+               classOpExpr.AddArg(right);
+               TypeCheckArgs(classOpExpr, nil);
                Result:=classOpExpr;
 
             end else begin
@@ -11369,14 +11364,11 @@ end;
 //
 function TdwsCompiler.CreateArrayHigh(baseExpr : TProgramExpr; typ : TArraySymbol; captureBase : Boolean) : TTypedExpr;
 begin
+   Assert(baseExpr<>nil);
    if typ is TOpenArraySymbol then begin
-      if baseExpr=nil then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-      Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(baseExpr), captureBase);
+      Result:=TOpenArrayLengthExpr.Create(FProg, baseExpr as TDataExpr, captureBase);
       TOpenArrayLengthExpr(Result).Delta:=-1;
    end else if typ is TDynamicArraySymbol then begin
-      if baseExpr=nil then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
       Result:=TArrayLengthExpr.Create(FProg, baseExpr as TTypedExpr, captureBase);
       TArrayLengthExpr(Result).Delta:=-1;
    end else begin
@@ -11391,13 +11383,10 @@ end;
 //
 function TdwsCompiler.CreateArrayLength(baseExpr : TTypedExpr; typ : TArraySymbol) : TTypedExpr;
 begin
+   Assert(baseExpr<>nil);
    if typ is TOpenArraySymbol then begin
-      if baseExpr=nil then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
-      Result:=TOpenArrayLengthExpr.Create(FProg, TDataExpr(baseExpr), True);
+      Result:=TOpenArrayLengthExpr.Create(FProg, baseExpr as TDataExpr, True);
    end else if typ is TDynamicArraySymbol then begin
-      if baseExpr=nil then
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_InvalidOperands);
       Result:=TArrayLengthExpr.Create(FProg, baseExpr, True);
    end else begin
       Assert(typ is TStaticArraySymbol);
@@ -11695,19 +11684,19 @@ begin
                if FTok.TestDelete(ttCOMMA) then begin
                   operandExpr:=ReadExpr;
                   if operandExpr=nil then
-                     FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
-                  if operandExpr.IsOfType(FProg.TypVariant) then
-                     operandExpr:=TConvIntegerExpr.Create(FProg, operandExpr);
-                  if not operandExpr.IsOfType(FProg.TypInteger) then
-                     FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
+                     FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected)
+                  else begin
+                     if operandExpr.IsOfType(FProg.TypVariant) then
+                        operandExpr:=TConvIntegerExpr.Create(FProg, operandExpr);
+                     if not operandExpr.IsOfType(FProg.TypInteger) then
+                        FMsgs.AddCompilerError(FTok.HotPos, CPE_IntegerExpected);
+                  end;
                end else operandExpr:=TConstExpr.CreateIntegerValue(FProg, 1);
                case specialKind of
                   skInc : Result:=TIncVarFuncExpr.Create(FProg, argPos, argExpr, operandExpr);
                   skDec : Result:=TDecVarFuncExpr.Create(FProg, argPos, argExpr, operandExpr);
                   skSucc : Result:=TSuccFuncExpr.Create(FProg, argPos, argExpr, operandExpr);
                   skPred : Result:=TPredFuncExpr.Create(FProg, argPos, argExpr, operandExpr);
-               else
-                  Assert(False);
                end;
                argExpr:=nil;
             end else FMsgs.AddCompilerError(argPos, CPE_IntegerExpected);

@@ -1,0 +1,2 @@
+Syntax Error: Simple type expected [line: 5, column: 11]
+Syntax Error: ")" expected. [line: 7, column: 12]
