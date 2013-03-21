@@ -43,10 +43,12 @@ type
       function GetDeprecatedMessage : String;
    end;
 
-   TIdwsUnitList = class(TSimpleList<IdwsUnit>)
-      function IndexOfName(const unitName : String) : Integer;
-      function IndexOf(const aUnit : IdwsUnit) : Integer;
-      procedure AddUnits(list : TIdwsUnitList);
+   TIdwsUnitList = class (TSimpleList<IdwsUnit>)
+      public
+         function IndexOfName(const unitName : String) : Integer;
+         function IndexOf(const aUnit : IdwsUnit) : Integer;
+         procedure AddUnits(list : TIdwsUnitList);
+         function FindDuplicateUnitName : String;
    end;
 
    TEmptyFunc = class sealed (TInterfacedSelfObject, ICallable)
@@ -846,6 +848,21 @@ var
 begin
    for i:=0 to list.Count-1 do
       Add(list[i]);
+end;
+
+// FindDuplicateUnitName
+//
+function TIdwsUnitList.FindDuplicateUnitName : String;
+var
+   i : Integer;
+begin
+   // Check for duplicate unit names
+   for i:=0 to Count-1 do begin
+      Result:=Items[i].GetUnitName;
+      if IndexOfName(Result)<>i then
+         Exit;
+   end;
+   Result:='';
 end;
 
 // IndexOf (IdwsUnit)

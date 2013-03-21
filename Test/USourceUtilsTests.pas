@@ -28,6 +28,7 @@ type
          procedure HelperSuggestTest;
          procedure SymDictFunctionForward;
          procedure SymDictInherited;
+         procedure ReferencesVars;
    end;
 
 // ------------------------------------------------------------------
@@ -452,6 +453,33 @@ begin
 
    CheckEquals(3, symPosList[1].ScriptPos.Line, 'TDerivedClass Line 3');
    Check(symPosList[1].SymbolUsages=[suImplementation], 'TDerivedClass Line 3 usage');
+end;
+
+// ReferencesVars
+//
+procedure TSourceUtilsTests.ReferencesVars;
+var
+   prog : IdwsProgram;
+   sym : TDataSymbol;
+   funcSym : TSymbol;
+   funcExec : IExecutable;
+begin
+   prog:=FCompiler.Compile( 'var i : Integer;'#13#10
+                           +'if i>0 then Inc(i);'#13#10
+                           +'function Test : Integer;'#13#10
+                           +'begin var i:=1; result:=i; end;'#13#10);
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   sym:=TDataSymbol(prog.Table.FindSymbol('i', cvMagic, TDataSymbol));
+   CheckEquals('TDataSymbol', sym.ClassName, 'i class');
+
+   CheckTrue(prog.ProgramObject.Expr.ReferencesVariable(sym), 'referenced in program');
+
+   funcSym:=prog.Table.FindSymbol('Test', cvMagic);
+   CheckEquals('TSourceFuncSymbol', funcSym.ClassName, 'Test class');
+
+   funcExec:=(funcSym as TFuncSymbol).Executable;
+   CheckFalse((funcExec.GetSelf as TdwsProgram).Expr.ReferencesVariable(sym), 'not referenced in test');
 end;
 
 // ------------------------------------------------------------------

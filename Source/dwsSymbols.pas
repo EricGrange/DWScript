@@ -1813,11 +1813,12 @@ end;
 function TExprBase.ReferencesVariable(varSymbol : TDataSymbol) : Boolean;
 var
    i : Integer;
+   sub : TExprBase;
 begin
-   if Self<>nil then begin
-      for i:=0 to SubExprCount-1 do
-         if SubExpr[i].ReferencesVariable(varSymbol) then
-            Exit(True)
+   for i:=0 to SubExprCount-1 do begin
+      sub:=SubExpr[i];
+      if (sub<>nil) and sub.ReferencesVariable(varSymbol) then
+         Exit(True)
    end;
    Result:=False;
 end;

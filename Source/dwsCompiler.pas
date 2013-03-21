@@ -1157,73 +1157,73 @@ end;
 
 function TdwsCompiler.ResolveUnitReferences(scriptType : TScriptSourceType) : TIdwsUnitList;
 var
-   x, y, z : Integer;
+   i, j, k : Integer;
    expectedUnitCount : Integer;
-   deps: TStrings;
+   deps : TStrings;
    refCount : array of Integer;
    changed : Boolean;
-   unitName: String;
+   unitName : String;
    curUnit : IdwsUnit;
 begin
+   // Check for duplicate unit names
+   unitName:=FUnits.FindDuplicateUnitName;
+   if unitName<>'' then
+      FMsgs.AddCompilerStopFmt(cNullPos, CPH_UnitAlreadyReferred, [unitName]);
+
    // initialize reference count vector
    expectedUnitCount:=FUnits.Count;
    SetLength(refCount, expectedUnitCount);
 
    // Calculate number of outgoing references
-   for x := 0 to FUnits.Count-1 do begin
-      curUnit:=FUnits[x];
+   for i:=0 to FUnits.Count-1 do begin
+      curUnit:=FUnits[i];
       if    (ufImplicitUse in curUnit.GetUnitFlags)
          or (  (scriptType<>stUnit)
              and not (coExplicitUnitUses in FOptions)) then begin
-         deps := curUnit.GetDependencies;
-         for y := 0 to deps.Count - 1 do begin
-            if FUnits.IndexOfName(deps[y]) < 0 then
-               FMsgs.AddCompilerStopFmt(cNullPos, CPE_UnitNotFound, [deps[y], curUnit.GetUnitName]);
+         deps:=curUnit.GetDependencies;
+         for j:=0 to deps.Count-1 do begin
+            if FUnits.IndexOfName(deps[j])<0 then
+               FMsgs.AddCompilerStopFmt(cNullPos, CPE_UnitNotFound,
+                                        [deps[j], curUnit.GetUnitName]);
          end;
-         refCount[x] := deps.Count;
+         refCount[i]:=deps.Count;
       end else begin
-         refCount[x] := -1;
+         refCount[i]:=-1;
          Dec(expectedUnitCount);
       end;
    end;
 
-  Result := TIdwsUnitList.Create;
-  try
+   Result:=TIdwsUnitList.Create;
 
-    // Resolve references
-    changed := True;
-    while changed do
-    begin
-      changed := False;
-      for x := 0 to FUnits.Count - 1 do begin
-        curUnit:=FUnits[x];
-        // Find unit that is not referencing other units
-        if refCount[x] = 0 then
-        begin
-          Result.Add(curUnit);
+   // Resolve references
+   repeat
+      changed:=False;
+      for i:=0 to FUnits.Count-1 do begin
+         // Find unit that is not referencing other units
+         if refCount[i]=0 then begin
+            curUnit:=FUnits[i];
+            Result.Add(curUnit);
 
-          // Remove the references to this unit from all other units
-          unitName := curUnit.GetUnitName;
-          for y := 0 to FUnits.Count - 1 do
-          begin
-            deps := FUnits[y].GetDependencies;
-            for z := 0 to deps.Count - 1 do
-              if UnicodeSameText(deps[z], unitName) then
-                Dec(refCount[y]);
-          end;
+            // Remove the references to this unit from all other units
+            unitName:=curUnit.GetUnitName;
+            for j:=0 to FUnits.Count-1 do begin
+               deps:=FUnits[j].GetDependencies;
+               for k:=0 to deps.Count-1 do begin
+                  if UnicodeSameText(deps[k], unitName) then
+                     Dec(refCount[j]);
+               end;
+            end;
 
-          refCount[x] := -1;
-          changed := True;
-        end;
+            refCount[i]:=-1;
+            changed:=True;
+         end;
       end;
-    end;
+   until not changed;
 
-    if Result.Count<>expectedUnitCount then
+   if Result.Count<>expectedUnitCount then begin
+      FreeAndNil(Result);
       FMsgs.AddCompilerStop(cNullPos, CPE_UnitCircularReference);
-  except
-    Result.Free;
-    raise;
-  end;
+   end;
 end;
 
 // EnterLoop
@@ -4720,9 +4720,9 @@ begin
       if tokenType<>ttNone then begin
 
          if tokenType<>ttASSIGN then
-            FMsgs.AddCompilerStop(FTok.HotPos, CPE_CantUseCombinedAssignmentOnProperty);
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_CantUseCombinedAssignmentOnProperty);
 
-         sym := propertySym.WriteSym;
+         sym:=propertySym.WriteSym;
 
          if sym is TFieldSymbol then begin
 

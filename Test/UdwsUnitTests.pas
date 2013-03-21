@@ -114,6 +114,10 @@ type
          procedure FastEvalTest;
 
          procedure ExplicitUses;
+
+         procedure UnknownUnit;
+         procedure CircularUnit;
+         procedure DuplicateUnit;
    end;
 
    EDelphiException = class (Exception)
@@ -1745,6 +1749,65 @@ begin
 
    finally
       FCompiler.Config.CompilerOptions:=FCompiler.Config.CompilerOptions-[coExplicitUnitUses];
+   end;
+end;
+
+// UnknownUnit
+//
+procedure TdwsUnitTests.UnknownUnit;
+var
+   un : TdwsUnit;
+   prog : IdwsProgram;
+begin
+   un:=TdwsUnit.Create(nil);
+   try
+      un.UnitName:='TestBug';
+      un.Dependencies.Add('Bogus');
+      un.Script:=FCompiler;
+
+      prog:=FCompiler.Compile('');
+      CheckEquals('Syntax Error: Unit "Bogus" referenced in unit "TestBug" not found'#13#10, prog.Msgs.AsInfo);
+   finally
+      un.Free;
+   end;
+end;
+
+// CircularUnit
+//
+procedure TdwsUnitTests.CircularUnit;
+var
+   un : TdwsUnit;
+   prog : IdwsProgram;
+begin
+   un:=TdwsUnit.Create(nil);
+   try
+      un.UnitName:='TestBug';
+      un.Dependencies.Add('TestBug');
+      un.Script:=FCompiler;
+
+      prog:=FCompiler.Compile('');
+      CheckEquals('Syntax Error: Circular referencing units detected!'#13#10, prog.Msgs.AsInfo);
+   finally
+      un.Free;
+   end;
+end;
+
+// DuplicateUnit
+//
+procedure TdwsUnitTests.DuplicateUnit;
+var
+   un : TdwsUnit;
+   prog : IdwsProgram;
+begin
+   un:=TdwsUnit.Create(nil);
+   try
+      un.UnitName:='Test';
+      un.Script:=FCompiler;
+
+      prog:=FCompiler.Compile('');
+      CheckEquals('Syntax Error: Unit "Test" redeclared'#13#10, prog.Msgs.AsInfo);
+   finally
+      un.Free;
    end;
 end;
 
