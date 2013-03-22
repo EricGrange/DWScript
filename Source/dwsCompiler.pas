@@ -1519,7 +1519,7 @@ begin
       ReadScriptImplementations;
 
       if FProg.Expr=nil then
-         FProg.Expr:=TNullExpr.Create(FProg, cNullPos);
+         FProg.Expr:=TNullExpr.Create(cNullPos);
 
       HintUnusedPrivateSymbols;
 
@@ -1704,7 +1704,7 @@ begin
       ums:=rankedUnits[i];
       if (ums<>nil) and (ums.FinalizationExpr<>nil) then begin
          if FMainProg.FinalExpr=nil then
-            FMainProg.FinalExpr:=TBlockFinalExpr.Create(FMainProg, cNullPos);
+            FMainProg.FinalExpr:=TBlockFinalExpr.Create(cNullPos);
          FMainProg.FinalExpr.AddStatement(ums.FinalizationExpr as TBlockExprBase);
          ums.FinalizationExpr.IncRefCount;
       end;
@@ -3589,7 +3589,7 @@ begin
    proc:=TdwsProcedure.Create(FProg);
    proc.SetBeginPos(funcSymbol.SourcePosition);
    proc.AssignTo(funcSymbol);
-   proc.Expr:=TNullExpr.Create(proc, funcSymbol.SourcePosition);
+   proc.Expr:=TNullExpr.Create(funcSymbol.SourcePosition);
 
    ReadSemiColon;
 end;
@@ -3954,7 +3954,7 @@ begin
             FMsgs.AddCompilerError(FTok.HotPos, CPE_BreakOutsideOfLoop)
          else if (FFinallyExprs.Count>0) and FFinallyExprs.Peek then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_BreakContinueInFinally);
-         Result := TBreakExpr.Create(FProg, FTok.HotPos);
+         Result := TBreakExpr.Create(FTok.HotPos);
          MarkLoopExitable(leBreak);
       end;
       ttEXIT : begin
@@ -3970,7 +3970,7 @@ begin
             FMsgs.AddCompilerError(FTok.HotPos, CPE_ContinueOutsideOfLoop)
          else if (FFinallyExprs.Count>0) and FFinallyExprs.Peek then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_BreakContinueInFinally);
-         Result := TContinueExpr.Create(FProg, FTok.HotPos);
+         Result := TContinueExpr.Create(FTok.HotPos);
       end;
       ttRAISE :
          Result := ReadRaise;
@@ -4026,7 +4026,7 @@ begin
                else if locExpr is TConstExpr then begin
                   locExpr.Free;
                   locExpr:=nil;
-                  Result:=TNullExpr.Create(FProg, hotPos);
+                  Result:=TNullExpr.Create(hotPos);
                   if FMsgs.Count=msgsCount then   // avoid hint on expression with issues
                      FMsgs.AddCompilerHint(hotPos, CPE_ConstantInstruction);
                end else if locExpr is TNullExpr then begin
@@ -4048,7 +4048,7 @@ begin
             raise;
          end;
       end else begin
-         Result := TNullExpr.Create(FProg, FTok.HotPos);
+         Result := TNullExpr.Create(FTok.HotPos);
       end;
    end;
 end;
@@ -4750,7 +4750,7 @@ begin
 
             expr.Free;
             expr:=nil;
-            Result:=TErrorExpr.Create(FProg, aPos);
+            Result:=TErrorExpr.Create(aPos);
             FMsgs.AddCompilerError(aPos, CPE_ReadOnlyProperty)
 
          end;
@@ -5417,7 +5417,7 @@ begin
       end;
 
       iterBlockExpr:=nil;
-      Result:=forExprClass.Create(FProg, forPos);
+      Result:=forExprClass.Create(forPos);
       EnterLoop(Result);
       try
          MarkLoopExitable(leBreak);
@@ -5737,7 +5737,7 @@ var
 begin
    condList := TCaseConditions.Create;
    try
-      Result := TCaseExpr.Create(FProg, FTok.HotPos);
+      Result := TCaseExpr.Create(FTok.HotPos);
       try
          Result.ValueExpr:=ReadExpr;
          if Result.ValueExpr.Typ=nil then
@@ -5824,7 +5824,7 @@ function TdwsCompiler.ReadWhile : TProgramExpr;
 var
    condExpr : TTypedExpr;
 begin
-   Result:=TWhileExpr.Create(FProg, FTok.HotPos);
+   Result:=TWhileExpr.Create(FTok.HotPos);
    EnterLoop(Result);
    try
       condExpr:=ReadExpr;
@@ -5858,7 +5858,7 @@ var
    tt : TTokenType;
    condExpr : TTypedExpr;
 begin
-   Result:=TRepeatExpr.Create(FProg, FTok.HotPos);
+   Result:=TRepeatExpr.Create(FTok.HotPos);
    EnterLoop(Result);
    try
       TRepeatExpr(Result).LoopExpr:=ReadBlocks([ttUNTIL], tt);
@@ -6649,12 +6649,17 @@ begin
                end else begin
 
                   if not (TTypeReferenceExpr(lowBound).Typ is TEnumerationSymbol) then
-                     FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBoundNotOrdinal);
-                  enumSymbol:=TEnumerationSymbol(TTypeReferenceExpr(lowBound).Typ);
 
-                  min.Insert0(TConstExpr.CreateIntegerValue(FProg, enumSymbol, enumSymbol.LowBound));
-                  max.Insert0(TConstExpr.CreateIntegerValue(FProg, enumSymbol, enumSymbol.HighBound));
+                     FMsgs.AddCompilerError(FTok.HotPos, CPE_ArrayBoundNotOrdinal)
 
+                  else begin
+
+                     enumSymbol:=TEnumerationSymbol(TTypeReferenceExpr(lowBound).Typ);
+
+                     min.Insert0(TConstExpr.CreateIntegerValue(FProg, enumSymbol, enumSymbol.LowBound));
+                     max.Insert0(TConstExpr.CreateIntegerValue(FProg, enumSymbol, enumSymbol.HighBound));
+
+                  end;
                end;
                lowBound.Free;
 
@@ -6721,21 +6726,16 @@ begin
             Result:=TStaticArraySymbol.Create('', typ, min[0].Typ,
                                                 min[0].EvalAsInteger(FExec),
                                                 max[0].EvalAsInteger(FExec));
-            try
-               // add outer arrays
-               for x:=1 to min.Count - 1 do begin
-                  FProg.RootTable.AddToDestructionList(Result);
-                  Result := TStaticArraySymbol.Create('', Result, min[0].Typ,
-                                 min[x].EvalAsInteger(FExec),
-                                 max[x].EvalAsInteger(FExec));
-               end;
-
-               // only outermost array is named
-               Result.SetName(TypeName);
-            except
-               Result.Free;
-               raise;
+            // add outer arrays
+            for x:=1 to min.Count - 1 do begin
+               FProg.RootTable.AddToDestructionList(Result);
+               Result := TStaticArraySymbol.Create('', Result, min[0].Typ,
+                              min[x].EvalAsInteger(FExec),
+                              max[x].EvalAsInteger(FExec));
             end;
+
+            // only outermost array is named
+            Result.SetName(TypeName);
 
          end else begin
 
@@ -8593,7 +8593,7 @@ function TdwsCompiler.ReadFinally(tryExpr : TProgramExpr) : TFinallyExpr;
 var
    tt : TTokenType;
 begin
-   Result:=TFinallyExpr.Create(FProg, tryExpr.ScriptPos);
+   Result:=TFinallyExpr.Create(tryExpr.ScriptPos);
    Result.TryExpr:=tryExpr;
    try
       FFinallyExprs.Push(True);
@@ -8616,7 +8616,7 @@ var
    varName : String;
    classSym : TTypeSymbol;
 begin
-   Result:=TExceptExpr.Create(FProg, TryExpr.ScriptPos);
+   Result:=TExceptExpr.Create(TryExpr.ScriptPos);
    try
       Result.TryExpr:=tryExpr;
       if FTok.Test(ttON) then begin
@@ -8636,7 +8636,7 @@ begin
             if not FTok.TestDelete(ttDO) then
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
 
-            doExpr:=TExceptDoExpr.Create(FProg, FTok.HotPos);
+            doExpr:=TExceptDoExpr.Create(FTok.HotPos);
             try
                doExpr.ExceptionVar:=TDataSymbol.Create(varName, ClassSym);
 
@@ -8681,7 +8681,7 @@ var
    exceptObjTyp : TSymbol;
 begin
    if FIsExcept and (FTok.Test(ttSEMI) or FTok.Test(ttEND)) then
-      Result:=TReraiseExpr.Create(FProg, FTok.HotPos)
+      Result:=TReraiseExpr.Create(FTok.HotPos)
    else begin
       exceptExpr:=ReadExpr;
       exceptObjTyp:=exceptExpr.Typ;
@@ -8704,7 +8704,7 @@ var
 begin
    exitPos:=FTok.HotPos;
    if FTok.TestAny([ttEND, ttSEMI, ttELSE, ttUNTIL])<>ttNone then
-      Result:=TExitExpr.Create(FProg, FTok.HotPos)
+      Result:=TExitExpr.Create(FTok.HotPos)
    else begin
       if not (FProg is TdwsProcedure) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NoResultRequired);
@@ -11265,7 +11265,7 @@ begin
                // error assumed to have already been reported
                left.Free;
                right.Free;
-               Result:=TNullExpr.Create(FProg, scriptPos);
+               Result:=TNullExpr.Create(scriptPos);
             end else if left.Typ.ClassType=TClassOfSymbol then begin
                Result:=TAssignClassOfExpr.Create(FProg, scriptPos, left, right);
             end else if left.Typ.ClassType=TInterfaceSymbol then begin
@@ -11341,7 +11341,7 @@ begin
       left.Free;
       right.Free;
       FMsgs.AddCompilerError(scriptPos, CPE_RightSideNeedsReturnType);
-      Result:=TNullExpr.Create(FProg, scriptPos);
+      Result:=TNullExpr.Create(scriptPos);
 
    end;
 end;
@@ -11635,7 +11635,7 @@ begin
             if coAssertions in FOptions then
                Result:=TAssertExpr.Create(FProg, namePos, argExpr, msgExpr)
             else begin
-               Result:=TNullExpr.Create(FProg, namePos);
+               Result:=TNullExpr.Create(namePos);
                argExpr.Free;
                msgExpr.Free;
             end;

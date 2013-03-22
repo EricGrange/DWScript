@@ -911,7 +911,7 @@ type
          FScriptPos : TScriptPos;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
+         constructor Create(const aPos: TScriptPos);
 
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -1443,6 +1443,8 @@ type
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsVariant(exec : TdwsExecution; var result : Variant); override;
          function IsConstant : Boolean; override;
+
+         procedure OptimizeConstantOperandsToFloats(prog : TdwsProgram; exec : TdwsExecution);
 
          property Typ : TTypeSymbol read FTyp write FTyp;
          property Left : TTypedExpr read FLeft write FLeft;
@@ -2527,7 +2529,7 @@ begin
    FRootTable := TProgramSymbolTable.Create(systemTable.SymbolTable, @FAddrGenerator);
    FTable := FRootTable;
 
-   FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
+   FInitExpr := TBlockInitExpr.Create(cNullPos);
 
    // Initialize shortcuts to often used symbols
    sysTable:=systemTable.SymbolTable;
@@ -2594,7 +2596,7 @@ begin
    FExpr.Free;
    FExpr:=nil;
    FInitExpr.Free;
-   FInitExpr:=TBlockInitExpr.Create(Self, cNullPos);
+   FInitExpr:=TBlockInitExpr.Create(cNullPos);
 end;
 
 // EnterSubTable
@@ -2964,7 +2966,7 @@ begin
    FCompileMsgs:=Parent.CompileMsgs;
    FUnitMains:=Parent.UnitMains;
 
-   FInitExpr := TBlockInitExpr.Create(Self, cNullPos);
+   FInitExpr := TBlockInitExpr.Create(cNullPos);
 
    // Connect the procedure to the root TdwsProgram
    FRoot:=Parent.Root;
@@ -3875,9 +3877,9 @@ end;
 
 // Create
 //
-constructor TNoResultExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
+constructor TNoResultExpr.Create(const aPos: TScriptPos);
 begin
-   FScriptPos:=Pos;
+   FScriptPos:=aPos;
 end;
 
 // Eval
@@ -5000,6 +5002,14 @@ begin
    Result:=FLeft.IsConstant and FRight.IsConstant;
 end;
 
+// OptimizeConstantOperandsToFloats
+//
+procedure TBinaryOpExpr.OptimizeConstantOperandsToFloats(prog : TdwsProgram; exec : TdwsExecution);
+begin
+   FLeft:=FLeft.OptimizeToFloatConstant(prog, exec);
+   FRight:=FRight.OptimizeToFloatConstant(prog, exec);
+end;
+
 // GetSubExpr
 //
 function TBinaryOpExpr.GetSubExpr(i : Integer) : TExprBase;
@@ -5136,8 +5146,7 @@ begin
       Result:=TConstFloatExpr.CreateUnified(Prog, nil, EvalAsFloat(exec));
       Free;
    end else begin
-      FLeft:=FLeft.OptimizeToFloatConstant(prog, exec);
-      FRight:=FRight.OptimizeToFloatConstant(prog, exec);
+      OptimizeConstantOperandsToFloats(prog, exec);
       Result:=Self;
    end;
 end;
@@ -7602,7 +7611,7 @@ end;
 //
 constructor TNoResultWrapperExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TTypedExpr);
 begin
-   inherited Create(Prog, Pos);
+   inherited Create(Pos);
    FExpr := Expr;
 end;
 

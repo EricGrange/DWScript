@@ -508,6 +508,7 @@ type
       protected
          FBaseExpr : TDataExpr;
          FMemberOffset : Integer;
+         FFieldSymbol : TFieldSymbol;
 
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
@@ -537,6 +538,7 @@ type
 
          property BaseExpr : TDataExpr read FBaseExpr;
          property MemberOffset : Integer read FMemberOffset;
+         property FieldSymbol : TFieldSymbol read FFieldSymbol;
 
          function IsWritable : Boolean; override;
    end;
@@ -3485,7 +3487,7 @@ end;
 constructor TDynamicArraySetExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos;
                             arrayExpr, indexExpr, valueExpr : TTypedExpr);
 begin
-   inherited Create(prog, scriptPos);
+   inherited Create(scriptPos);
    FArrayExpr:=arrayExpr;
    FIndexExpr:=indexExpr;
    FValueExpr:=valueExpr;
@@ -3876,6 +3878,7 @@ begin
    inherited Create(Prog, Pos, fieldSymbol.Typ);
    FBaseExpr := BaseExpr;
    FMemberOffset := fieldSymbol.Offset;
+   FFieldSymbol := fieldSymbol;
 end;
 
 // Destroy
@@ -4080,7 +4083,7 @@ end;
 //
 constructor TInitDataExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TDataExpr);
 begin
-   inherited Create(Prog, Pos);
+   inherited Create(Pos);
    FExpr := Expr;
 end;
 
@@ -5024,7 +5027,7 @@ end;
 //
 constructor TAssertExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; condExpr, msgExpr : TTypedExpr);
 begin
-   inherited Create(Prog, Pos);
+   inherited Create(Pos);
    FCond:=condExpr;
    FMessage:=msgExpr;
 end;
@@ -5064,7 +5067,7 @@ function TAssertExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgr
 begin
    Result:=Self;
    if FCond.IsConstant and FCond.EvalAsBoolean(exec) then begin
-      Result:=TNullExpr.Create(Prog, FScriptPos);
+      Result:=TNullExpr.Create(FScriptPos);
       Free;
    end;
 end;
@@ -5762,7 +5765,7 @@ end;
 
 constructor TAssignExpr.Create(prog : TdwsProgram; const pos : TScriptPos; left : TDataExpr; right : TTypedExpr);
 begin
-  inherited Create(Prog, Pos);
+  inherited Create(Pos);
   FLeft := Left;
   FRight := Right;
   TypeCheckAssign(Prog);
@@ -6438,7 +6441,7 @@ end;
 //
 constructor TBlockExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
 begin
-   inherited Create(Prog, Pos);
+   inherited Create(Pos);
    FTable:=TSymbolTable.Create(Prog.Table, Prog.Table.AddrGenerator);
 end;
 
@@ -6494,18 +6497,18 @@ begin
 
    if FTable.Count=0 then begin
       case FCount of
-         0 : Result:=TNullExpr.Create(Prog, FScriptPos);
+         0 : Result:=TNullExpr.Create(FScriptPos);
          1 : begin
             Result:=FStatements[0];
             FreeMem(FStatements);
          end;
       else
          case FCount of
-            2 : Result:=TBlockExprNoTable2.Create(Prog, FScriptPos);
-            3 : Result:=TBlockExprNoTable3.Create(Prog, FScriptPos);
-            4 : Result:=TBlockExprNoTable4.Create(Prog, FScriptPos);
+            2 : Result:=TBlockExprNoTable2.Create(FScriptPos);
+            3 : Result:=TBlockExprNoTable3.Create(FScriptPos);
+            4 : Result:=TBlockExprNoTable4.Create(FScriptPos);
          else
-            Result:=TBlockExprNoTable.Create(Prog, FScriptPos);
+            Result:=TBlockExprNoTable.Create(FScriptPos);
          end;
          TBlockExprNoTable(Result).FStatements:=FStatements;
          TBlockExprNoTable(Result).FCount:=FCount;
@@ -6608,7 +6611,7 @@ end;
 constructor TIfThenExpr.Create(prog : TdwsProgram; const Pos : TScriptPos;
                                condExpr : TTypedExpr; thenExpr : TProgramExpr);
 begin
-   inherited Create(prog, pos);
+   inherited Create(pos);
    FCond:=condExpr;
    FThen:=thenExpr;
 end;
@@ -6641,7 +6644,7 @@ begin
       if FCond.EvalAsBoolean(exec) then begin
          Result:=FThen;
          FThen:=nil;
-      end else Result:=TNullExpr.Create(Prog, FScriptPos);
+      end else Result:=TNullExpr.Create(FScriptPos);
       Free;
    end;
 end;
@@ -7307,9 +7310,9 @@ begin
    Result:=Self;
    if FCondExpr.IsConstant then begin
       if not FCondExpr.EvalAsBoolean(exec) then begin
-         Result:=TNullExpr.Create(prog, FScriptPos);
+         Result:=TNullExpr.Create(FScriptPos);
       end else begin
-         Result:=TLoopExpr.Create(prog, FScriptPos);
+         Result:=TLoopExpr.Create(FScriptPos);
          TLoopExpr(Result).FLoopExpr:=FLoopExpr;
          FLoopExpr:=nil;
       end;
@@ -7345,7 +7348,7 @@ function TRepeatExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgr
 begin
    Result:=Self;
    if FCondExpr.IsConstant and not FCondExpr.EvalAsBoolean(exec) then begin
-      Result:=TLoopExpr.Create(prog, FScriptPos);
+      Result:=TLoopExpr.Create(FScriptPos);
       TLoopExpr(Result).FLoopExpr:=FLoopExpr;
       FLoopExpr:=nil;
       Free;
@@ -7393,7 +7396,7 @@ end;
 //
 constructor TExitValueExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; assignExpr : TAssignExpr);
 begin
-   inherited Create(Prog, Pos);
+   inherited Create(Pos);
    FAssignExpr:=assignExpr;
 end;
 
@@ -7701,7 +7704,7 @@ end;
 //
 constructor TRaiseExpr.Create(Prog: TdwsProgram; const scriptPos : TScriptPos; ExceptionExpr: TTypedExpr);
 begin
-   inherited Create(Prog, scriptPos);
+   inherited Create(scriptPos);
    FExceptionExpr:=ExceptionExpr;
 end;
 
@@ -7812,7 +7815,7 @@ end;
 constructor TStringArraySetExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
                      StringExpr : TDataExpr; IndexExpr, ValueExpr: TTypedExpr);
 begin
-   inherited Create(Prog,Pos);
+   inherited Create(Pos);
    FStringExpr:=StringExpr;
    FIndexExpr:=IndexExpr;
    FValueExpr:=ValueExpr;
@@ -8007,7 +8010,7 @@ end;
 constructor TArrayPseudoMethodExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
                                           aBase : TTypedExpr);
 begin
-   inherited Create(prog, scriptPos);
+   inherited Create(scriptPos);
    FBaseExpr:=aBase;
 end;
 
@@ -8853,7 +8856,7 @@ end;
 constructor TSwapExpr.Create(prog : TdwsProgram; const scriptPos : TScriptPos;
                              expr0, expr1 : TDataExpr);
 begin
-   inherited Create(prog, scriptPos);
+   inherited Create(scriptPos);
    FArg0:=expr0;
    FArg1:=expr1;
 end;
@@ -8916,7 +8919,7 @@ end;
 constructor TForInStrExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos;
          aVarExpr : TVarExpr; aInExpr : TTypedExpr; aDoExpr : TProgramExpr);
 begin
-   inherited Create(aProg, aPos);
+   inherited Create(aPos);
    FVarExpr:=aVarExpr;
    FInExpr:=aInExpr;
    FDoExpr:=aDoExpr;

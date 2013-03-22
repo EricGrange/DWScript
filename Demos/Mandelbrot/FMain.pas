@@ -4,7 +4,9 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, ExtCtrls, StdCtrls, dwsComp, dwsExprs, dwsFunctions, dwsSymbols, dwsMagicExprs;
+  Dialogs, ExtCtrls, StdCtrls,
+  dwsComp, dwsExprs, dwsFunctions, dwsSymbols, dwsMagicExprs, dwsExprList,
+  dwsJIT, dwsJITx86;
 
 type
   TMainForm = class(TForm)
@@ -148,7 +150,7 @@ const
       +#13#10
       +'for i := 0 to cSize-2 do begin'#13#10
       +'   for j := 0 to cSize-2 do begin'#13#10
-      +'      x := -0.8 + 3 * i / cSize;'#13#10
+      +'      x := -0.8 + 3.0 * i / cSize;'#13#10
       +'      y := -1.4 + 2.8 * j / cSize;'#13#10
       +'      newColor := 0;'#13#10
       +'      u := 0;'#13#10
@@ -165,8 +167,13 @@ const
 
 var
    prog : IdwsProgram;
+   jitter : TdwsJITx86;
 begin
    prog:=DelphiWebScript.Compile(cSource);
+
+   jitter:=TdwsJITx86.Create;
+   jitter.GreedyJIT(prog.ProgramObject);
+   jitter.Free;
 
    if prog.Msgs.Count=0 then
       prog.Execute

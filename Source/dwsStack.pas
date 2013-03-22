@@ -40,8 +40,8 @@ type
    TStack = ^TStackMixIn;
    TStackMixIn = record
       private
-         FBasePointer : Integer;
          FBaseData : PDataArray;
+         FBasePointer : Integer;
          FBpStore : array of TSimpleIntegerStack;
          FParams : TStackParameters;
          FMaxSize : Integer;
@@ -117,6 +117,7 @@ type
          procedure Reset;
 
          property BasePointer: Integer read FBasePointer write SetBasePointer;
+         property BaseData: PDataArray read FBaseData;
          property FrameSize: Integer read GetFrameSize;
          property MaxSize: Integer read FMaxSize write FMaxSize;
          property StackPointer: Integer read FStackPointer;

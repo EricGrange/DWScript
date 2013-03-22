@@ -1,0 +1,2 @@
+Syntax Error: Bound isn't of an ordinal type [line: 2, column: 23]
+Syntax Error: "]" expected [line: 2, column: 23]
