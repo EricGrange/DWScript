@@ -64,13 +64,13 @@ type
          procedure SetExprBase(const x : Integer; expr : TExprBase); inline;
          function GetCount : Integer; inline;
 
-         function GetAsInteger(const x : Integer) : Int64;
+         function GetAsInteger(const x : Integer) : Int64; inline;
          procedure SetAsInteger(const x : Integer; const value : Int64);
-         function GetAsBoolean(const x : Integer) : Boolean;
+         function GetAsBoolean(const x : Integer) : Boolean; inline;
          procedure SetAsBoolean(const x : Integer; const value : Boolean);
-         function GetAsFloat(const x : Integer) : Double;
+         function GetAsFloat(const x : Integer) : Double; inline;
          procedure SetAsFloat(const x : Integer; const value : Double);
-         function GetAsString(const x : Integer) : String;
+         function GetAsString(const x : Integer) : String; inline;
          procedure SetAsString(const x : Integer; const value : String);
          function GetAsDataString(const x : Integer) : RawByteString;
 

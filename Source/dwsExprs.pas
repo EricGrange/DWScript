@@ -3039,6 +3039,7 @@ end;
 // OptimizeConstAssignments
 //
 procedure TdwsProcedure.OptimizeConstAssignments(blockExpr : TBlockExprBase);
+{$ifdef COALESCE_VAR_INITIALIZATION}
 var
    i, j : Integer;
    subExpr, initSubExpr : TExprBase;
@@ -3097,6 +3098,9 @@ begin
          end;
       end;
    end;
+{$else}
+begin
+{$endif}
 end;
 
 // SetBeginPos

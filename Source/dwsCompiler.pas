@@ -2488,6 +2488,12 @@ begin
       // Initialize with an expression
       RecordSymbolUse(sym, scriptPos, [suDeclaration, suReference, suWrite]);
 
+      {$ifndef COALESCE_VAR_INITIALIZATION}
+      FProg.InitExpr.AddStatement(
+         TInitDataExpr.Create(FProg, scriptPos, varExpr));
+      varExpr.IncRefCount;
+      {$endif}
+
       Result:=CreateAssign(scriptPos, ttASSIGN, varExpr, initExpr);
       initExpr:=nil;
 
@@ -6838,7 +6844,7 @@ begin
 //         delegateSym.AddParam(TConstParamSymbol.Create('item2', arraySym.Typ));
 //         argList.DefaultExpected:=TParamSymbol.Create('', delegateSym);
 
-      end else if UnicodeSameText(name, 'indexof') then begin
+      end else if UnicodeSameText(name, 'indexof') or UnicodeSameText(name, 'remove') then begin
 
          argSymTable:=TUnSortedSymbolTable.Create;
          argSymTable.AddSymbol(TParamSymbol.Create('', arraySym.Typ));
@@ -6933,6 +6939,23 @@ begin
                                                          argList[0] as TDataExpr, nil);
                argList.Clear;
             end else Result:=TArrayIndexOfExpr.Create(FProg, namePos, baseExpr, nil, nil);
+
+         end else if UnicodeSameText(name, 'remove') then begin
+
+            CheckRestricted;
+            if CheckArguments(1, 2) then begin
+               if (argList[0].Typ=nil) or not arraySym.Typ.IsCompatible(argList[0].Typ) then
+                  IncompatibleTypes(argPosArray[0], CPE_IncompatibleParameterTypes,
+                                    arraySym.Typ, argList[0].Typ);
+               if argList.Count>1 then begin
+                  if (argList[1].Typ=nil) or not argList[1].Typ.IsOfType(FProg.TypInteger) then
+                     FMsgs.AddCompilerError(argPosArray[0], CPE_IntegerExpressionExpected);
+                  Result:=TArrayRemoveExpr.Create(FProg, namePos, baseExpr,
+                                                   argList[0] as TDataExpr, argList[1]);
+               end else Result:=TArrayRemoveExpr.Create(FProg, namePos, baseExpr,
+                                                         argList[0] as TDataExpr, nil);
+               argList.Clear;
+            end else Result:=TArrayRemoveExpr.Create(FProg, namePos, baseExpr, nil, nil);
 
          end else if UnicodeSameText(name, 'insert') then begin
 

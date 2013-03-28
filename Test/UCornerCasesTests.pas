@@ -633,7 +633,9 @@ begin
                      +#9#9'TConstIntExpr'#13#10,
                MakeSubExprTree(testFuncSym.SubExpr[1]), 'Test Expr');
 
-   CheckEquals('TBlockInitExpr'#13#10,
+   CheckEquals('TBlockInitExpr'#13#10
+                  +#9'TInitDataExpr'#13#10
+                     +#9#9'TStrVarExpr'#13#10,
                MakeSubExprTree((prog as TdwsProgram).InitExpr), 'Main InitExpr');
    CheckEquals('TBlockExprNoTable3'#13#10
                   +#9'TAssignConstToStringVarExpr'#13#10

@@ -1282,7 +1282,7 @@ begin
          FValueData.Data[0]:=E.Message+' ('+E.ClassName+')';
       end;
    end;
-   CreateInfoOnSymbol(FValueInfo, nil, FValueData.Typ, FValueData.Data, 0);
+   CreateInfoOnSymbol(FValueInfo, debugger.Execution.Info, FValueData.Typ, FValueData.Data, 0);
 end;
 
 // ClearEvaluator

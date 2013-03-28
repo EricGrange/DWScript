@@ -167,6 +167,7 @@ type
          procedure AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj); override;
 
          function  Eval(exec : TdwsExecution) : Variant; override;
+         function  EvalAsFloat(exec : TdwsExecution) : Double; override;
    end;
 
    TVarParamExpr = class (TByRefParamExpr)
@@ -900,6 +901,8 @@ type
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
+         function DoEval(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
+
       public
          constructor Create(prog : TdwsProgram; const scriptPos : TScriptPos;
                             aBase : TTypedExpr; aItem : TDataExpr; aFromIndex : TTypedExpr);
@@ -911,6 +914,12 @@ type
          property BaseExpr : TTypedExpr read FBaseExpr;
          property ItemExpr : TDataExpr read FItemExpr;
          property FromIndexExpr : TTypedExpr read FFromIndexExpr;
+   end;
+
+   // Remove an element in a dynamic array (shallow comparison)
+   TArrayRemoveExpr = class(TArrayIndexOfExpr)
+      public
+         function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
    // Insert an elemet at a given index of a dynamic array
@@ -1302,7 +1311,7 @@ type
          destructor Destroy; override;
 
          property Left : TDataExpr read FLeft;
-         property Right : TTypedExpr read FRight;
+         property Right : TTypedExpr read FRight write FRight;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
 
@@ -2582,6 +2591,13 @@ end;
 function TByRefParamExpr.Eval(exec : TdwsExecution) : Variant;
 begin
    Result:=GetVarParamEval(exec)^;
+end;
+
+// EvalAsFloat
+//
+function TByRefParamExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+begin
+   Result:=IDataContext(GetVarParamDataAsPointer(exec)).AsFloat[0];
 end;
 
 // ------------------
@@ -5857,6 +5873,9 @@ var
    stringBuf : String;
 begin
    Result:=Self;
+
+   if FLeft.IsOfType(prog.TypVariant) then Exit;
+
    if FRight.IsOfType(prog.TypInteger) then begin
 
       Result:=TAssignConstToIntegerVarExpr.CreateVal(prog, FScriptPos, FLeft, FRight.EvalAsInteger(exec));
@@ -8581,11 +8600,19 @@ function TArrayIndexOfExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 var
    base : IScriptObj;
    dyn : TScriptDynamicArray;
-   fromIndex : Integer;
-   v : Variant;
 begin
    BaseExpr.EvalAsScriptObj(exec, base);
    dyn:=TScriptDynamicArray(base.GetSelf);
+   Result:=DoEval(exec, dyn);
+end;
+
+// DoEval
+//
+function TArrayIndexOfExpr.DoEval(exec : TdwsExecution; dyn : TScriptDynamicArray) : Integer;
+var
+   fromIndex : Integer;
+   v : Variant;
+begin
    if FFromIndexExpr<>nil then
       fromIndex:=FFromIndexExpr.EvalAsInteger(exec)
    else fromIndex:=0;
@@ -8616,6 +8643,29 @@ end;
 function TArrayIndexOfExpr.GetSubExprCount : Integer;
 begin
    Result:=3
+end;
+
+// ------------------
+// ------------------ TArrayRemoveExpr ------------------
+// ------------------
+
+// EvalAsInteger
+//
+function TArrayRemoveExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+var
+   index : Integer;
+   base : IScriptObj;
+   dyn : TScriptDynamicArray;
+begin
+   BaseExpr.EvalAsScriptObj(exec, base);
+   dyn:=TScriptDynamicArray(base.GetSelf);
+   index:=DoEval(exec, dyn);
+   if index>=0 then begin
+      BaseExpr.EvalAsScriptObj(exec, base);
+      dyn:=TScriptDynamicArray(base.GetSelf);
+      dyn.Delete(index, 1);
+   end;
+   Result:=index;
 end;
 
 // ------------------

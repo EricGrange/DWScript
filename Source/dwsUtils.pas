@@ -483,6 +483,9 @@ type
          function Read(var Buffer; Count: Longint): Longint; override;
          function Write(const buffer; count: Longint): Longint; override;
 
+         procedure WriteByte(b : Byte);
+         procedure WriteInt32(i : Integer);
+
          {$ifdef FPC}
          procedure WriteString(const utf8String : String); overload;
          {$endif}
@@ -497,6 +500,7 @@ type
 
          // assumes data is an utf16 String, spits out utf8 in FPC, utf16 in Delphi
          function ToString : String; override;
+         function ToBytes : TBytes;
 
          procedure Clear;
 
@@ -1946,6 +1950,20 @@ begin
    Inc(FBlockRemaining^, count);
 end;
 
+// WriteByte
+//
+procedure TWriteOnlyBlockStream.WriteByte(b : Byte);
+begin
+   Write(b, 1);
+end;
+
+// WriteInt32
+//
+procedure TWriteOnlyBlockStream.WriteInt32(i : Integer);
+begin
+   Write(i, 4);
+end;
+
 {$ifdef FPC}
 // WriteString
 //
@@ -2026,6 +2044,18 @@ begin
 
    end else Result:='';
    {$endif}
+end;
+
+// ToBytes
+//
+function TWriteOnlyBlockStream.ToBytes : TBytes;
+var
+   s : Int64;
+begin
+   s:=Size;
+   SetLength(Result, s);
+   if s>0 then
+      StoreData(Result[0]);
 end;
 
 // GetSize
