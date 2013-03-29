@@ -433,6 +433,9 @@ type
          procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+
+         property LowBound : Integer read FLowBound write FLowBound;
+         property Count : Integer read FCount write FCount;
    end;
 
    // Array expressions x[bool] for static arrays
