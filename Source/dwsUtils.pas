@@ -20,7 +20,9 @@ unit dwsUtils;
 
 interface
 
-uses Classes, SysUtils, Variants, SyncObjs, dwsXPlatform, Math;
+uses
+   Classes, SysUtils, Variants, SyncObjs, Types,
+   dwsXPlatform, Math;
 
 type
 
@@ -484,7 +486,9 @@ type
          function Write(const buffer; count: Longint): Longint; override;
 
          procedure WriteByte(b : Byte);
-         procedure WriteInt32(i : Integer);
+         procedure WriteBytes(const b : array of Byte);
+         procedure WriteInt32(const i : Integer);
+         procedure WriteDWord(const dw : DWORD);
 
          {$ifdef FPC}
          procedure WriteString(const utf8String : String); overload;
@@ -1957,11 +1961,28 @@ begin
    Write(b, 1);
 end;
 
+// WriteBytes
+//
+procedure TWriteOnlyBlockStream.WriteBytes(const b : array of Byte);
+var
+   i : Integer;
+begin
+   for i:=0 to High(b) do
+      WriteByte(b[i]);
+end;
+
 // WriteInt32
 //
-procedure TWriteOnlyBlockStream.WriteInt32(i : Integer);
+procedure TWriteOnlyBlockStream.WriteInt32(const i : Integer);
 begin
    Write(i, 4);
+end;
+
+// WriteDWord
+//
+procedure TWriteOnlyBlockStream.WriteDWord(const dw : DWORD);
+begin
+   Write(dw, 4);
 end;
 
 {$ifdef FPC}
