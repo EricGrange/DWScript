@@ -31,42 +31,41 @@ type
    end;
    TRelOpExprClass = class of TRelOpExpr;
 
-   TRelEqualExpr = class(TRelOpExpr) end;
-   TRelNotEqualExpr = class(TRelOpExpr) end;
-   TRelLessExpr = class(TRelOpExpr) end;
-   TRelLessEqualExpr = class(TRelOpExpr) end;
-   TRelGreaterExpr = class(TRelOpExpr) end;
-   TRelGreaterEqualExpr = class(TRelOpExpr) end;
-
    // boolean rel ops
 
-   TRelEqualBoolExpr = class(TRelEqualExpr)
+   TBoolRelOpExpr = class(TRelOpExpr)
+   end;
+
+   TRelEqualBoolExpr = class(TBoolRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelNotEqualBoolExpr = class(TRelNotEqualExpr)
+   TRelNotEqualBoolExpr = class(TBoolRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
    // integer rel ops
 
-   TRelEqualIntExpr = class(TRelEqualExpr)
+   TIntegerRelOpExpr = class(TRelOpExpr)
+   end;
+
+   TRelEqualIntExpr = class(TIntegerRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
-   TRelNotEqualIntExpr = class(TRelNotEqualExpr)
+   TRelNotEqualIntExpr = class(TIntegerRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
      function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
-   TRelLessIntExpr = class(TRelLessExpr)
+   TRelLessIntExpr = class(TIntegerRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelLessEqualIntExpr = class(TRelLessEqualExpr)
+   TRelLessEqualIntExpr = class(TIntegerRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelGreaterIntExpr = class(TRelGreaterExpr)
+   TRelGreaterIntExpr = class(TIntegerRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelGreaterEqualIntExpr = class(TRelGreaterEqualExpr)
+   TRelGreaterEqualIntExpr = class(TIntegerRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
@@ -79,64 +78,74 @@ type
 
    // float rel ops
 
-   TRelEqualFloatExpr = class(TRelEqualExpr)
+   TFloatRelOpExpr = class(TRelOpExpr)
+     function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+   end;
+
+   TRelEqualFloatExpr = class(TFloatRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelNotEqualFloatExpr = class(TRelNotEqualExpr)
+   TRelNotEqualFloatExpr = class(TFloatRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelLessFloatExpr = class(TRelLessExpr)
+   TRelLessFloatExpr = class(TFloatRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelLessEqualFloatExpr = class(TRelLessEqualExpr)
+   TRelLessEqualFloatExpr = class(TFloatRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelGreaterFloatExpr = class(TRelGreaterExpr)
+   TRelGreaterFloatExpr = class(TFloatRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelGreaterEqualFloatExpr = class(TRelGreaterEqualExpr)
+   TRelGreaterEqualFloatExpr = class(TFloatRelOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
    // string rel ops
 
-   TRelEqualStringExpr = class(TRelEqualExpr)
+   TRelStringOpExpr = class(TRelOpExpr)
+   end;
+
+   TRelEqualStringExpr = class(TRelStringOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelNotEqualStringExpr = class(TRelNotEqualExpr)
+   TRelNotEqualStringExpr = class(TRelStringOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelLessStringExpr = class(TRelLessExpr)
+   TRelLessStringExpr = class(TRelStringOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelLessEqualStringExpr = class(TRelLessEqualExpr)
+   TRelLessEqualStringExpr = class(TRelStringOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelGreaterStringExpr = class(TRelGreaterExpr)
+   TRelGreaterStringExpr = class(TRelStringOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelGreaterEqualStringExpr = class(TRelGreaterEqualExpr)
+   TRelGreaterEqualStringExpr = class(TRelStringOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
    // variant rel ops
 
-   TRelEqualVariantExpr = class(TRelEqualExpr)
+   TRelVariantOpExpr = class(TRelOpExpr)
+   end;
+
+   TRelEqualVariantExpr = class(TRelVariantOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelNotEqualVariantExpr = class(TRelNotEqualExpr)
+   TRelNotEqualVariantExpr = class(TRelVariantOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelLessVariantExpr = class(TRelLessExpr)
+   TRelLessVariantExpr = class(TRelVariantOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelLessEqualVariantExpr = class(TRelLessEqualExpr)
+   TRelLessEqualVariantExpr = class(TRelVariantOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelGreaterVariantExpr = class(TRelGreaterExpr)
+   TRelGreaterVariantExpr = class(TRelVariantOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
-   TRelGreaterEqualVariantExpr = class(TRelGreaterEqualExpr)
+   TRelGreaterEqualVariantExpr = class(TRelVariantOpExpr)
      function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
@@ -290,6 +299,18 @@ end;
 function TRelGreaterEqualIntExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
    Result:=(FLeft.EvalAsInteger(exec)>=FRight.EvalAsInteger(exec));
+end;
+
+// ------------------
+// ------------------ TFloatRelOpExpr ------------------
+// ------------------
+
+// Optimize
+//
+function TFloatRelOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   OptimizeConstantOperandsToFloats(prog, exec);
+   Result:=inherited;
 end;
 
 // ------------------
