@@ -40,7 +40,8 @@ uses
   UJSONTests in 'UJSONTests.pas',
   UJSONConnectorTests in 'UJSONConnectorTests.pas',
   UTokenizerTests in 'UTokenizerTests.pas',
-  ULanguageExtensionTests in 'ULanguageExtensionTests.pas';
+  ULanguageExtensionTests in 'ULanguageExtensionTests.pas',
+  UJITTests in 'UJITTests.pas';
 
 {$R *.res}
 
