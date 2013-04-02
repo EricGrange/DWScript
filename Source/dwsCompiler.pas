@@ -9712,14 +9712,11 @@ begin
       token:=FTok.GetToken;
       case tt of
          ttIntVal :
-            case token.FInteger of
-               -1..2 : begin
-                  Result:=unifiedList.Integers[token.FInteger];
-                  Result.IncRefCount;
-               end;
-            else
-               Result:=TConstIntExpr.CreateUnified(FProg, nil, token.FInteger);
-            end;
+            // can't use a "case of" or range here because of compiler bug (will do a 32bit comparison)
+            if (token.FInteger>=-1) and (token.FInteger<=2) then begin
+               Result:=unifiedList.Integers[token.FInteger];
+               Result.IncRefCount;
+            end else Result:=TConstIntExpr.CreateUnified(FProg, nil, token.FInteger);
          ttFloatVal :
             if token.FFloat=0 then begin
                Result:=unifiedList.ZeroFloat;
