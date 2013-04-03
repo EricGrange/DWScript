@@ -1277,7 +1277,6 @@ type
          FIsWritable: Boolean;
          FIsIndex: Boolean;
          FName: String;
-         FResultData: TData;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
@@ -6474,21 +6473,19 @@ end;
 function TConnectorCallExpr.Eval(exec : TdwsExecution): Variant;
 var
    sourcePtr : IDataContext;
-   dataDest : TData;
    x : Integer;
    arg : TTypedExpr;
    argTyp : TTypeSymbol;
    buf : Variant;
    obj : IScriptObj;
    locData : IDataContext;
+   resultData : TData;
 begin
    if exec.IsDebugging then
       exec.Debugger.EnterFunc(exec, Self);
 
    // Call function
    try
-      dataDest := nil;
-
       for x := 0 to Length(FConnectorArgs) - 1 do begin
          arg:=TTypedExpr(FArgs.List[x]);
          argTyp:=FConnectorParams[x].TypSym;
@@ -6499,18 +6496,17 @@ begin
             end else arg.EvalAsVariant(exec, FConnectorArgs[x][0]);
          end else begin
             sourcePtr := TDataExpr(arg).DataPtr[exec];
-            dataDest := FConnectorArgs[x];
-            sourcePtr.CopyData(dataDest, 0, argTyp.Size);
+            sourcePtr.CopyData(FConnectorArgs[x], 0, argTyp.Size);
          end;
       end;
 
       try
          // The call itself
          if FConnectorCall.NeedDirectReference then
-            FResultData := FConnectorCall.Call(TDataExpr(FBaseExpr).DataPtr[exec].AsPVariant(0)^, FConnectorArgs)
+            resultData := FConnectorCall.Call(TDataExpr(FBaseExpr).DataPtr[exec].AsPVariant(0)^, FConnectorArgs)
          else begin
             FBaseExpr.EvalAsVariant(exec, buf);
-            FResultData := FConnectorCall.Call(buf, FConnectorArgs);
+            resultData := FConnectorCall.Call(buf, FConnectorArgs);
          end;
       except
          on e: EScriptException do
@@ -6532,18 +6528,16 @@ begin
          exec.Debugger.LeaveFunc(exec, Self);
    end;
 
-   if Assigned(FResultData) then
-      Result := FResultData[0]
-   else
-      VarClear(Result);
+   if Length(resultData)>0 then
+      Result := resultData[0]
+   else VarClear(Result);
 end;
 
 // GetDataPtr
 //
 procedure TConnectorCallExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   Eval(exec);
-   exec.DataContext_Create(FResultData, 0, result);
+   result.AsVariant[0]:=Eval(exec);
 end;
 
 // GetSubExpr
