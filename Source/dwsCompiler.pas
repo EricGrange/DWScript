@@ -5566,7 +5566,7 @@ begin
             inExpr.IncRefCount;
          end;
 
-         // create anonymous iter variables & it's initialization expression
+         // create anonymous iter variables & its initialization expression
          iterVarSym:=TDataSymbol.Create('', arraySymbol.IndexType);
          FProg.Table.AddSymbol(iterVarSym);
          iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
@@ -5636,8 +5636,9 @@ begin
 
    end;
 
-   if (inExprAssignExpr<>nil) and (blockExpr=nil) then begin
-      blockExpr:=TBlockExpr.Create(FProg, forPos);
+   if inExprAssignExpr<>nil then begin
+      if blockExpr=nil then
+         blockExpr:=TBlockExpr.Create(FProg, forPos);
       blockExpr.AddStatement(inExprAssignExpr);
    end;
    if blockExpr<>nil then
