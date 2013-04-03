@@ -19,7 +19,9 @@ unit dwsAsmLibModule;
 
 interface
 
-uses Windows, Classes, SysUtils, dwsLanguageExtension, dwsComp, dwsCompiler,
+uses
+   Windows, Classes, SysUtils, dwsLanguageExtension,
+   dwsUtils, dwsComp, dwsCompiler,
    dwsExprs, dwsTokenizer, dwsSymbols, dwsErrors, dwsCoreExprs, dwsStack,
    dwsStrings, dwsXPlatform;
 
@@ -96,7 +98,7 @@ begin
    Result:=nil;
    tok:=compiler.Tokenizer;
 
-   if not (tok.TestName and SameText(tok.GetToken.FString, 'asm')) then Exit;
+   if not (tok.TestName and UnicodeSameText(tok.GetToken.AsString, 'asm')) then Exit;
 
    hotPos:=tok.HotPos;
    tok.KillToken;
@@ -123,7 +125,7 @@ begin
             ttNone :
                tok.KillToken;
             ttNAME : begin
-               nameSymbols.Add(tok.GetToken.FString);
+               nameSymbols.Add(tok.GetToken.AsString);
                tok.KillToken;
             end;
             ttSEMI, ttCOLON : begin
@@ -318,7 +320,7 @@ end;
 //
 constructor TdwsASMBlockExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; const binary : TBytes);
 begin
-   inherited Create(Prog, Pos);
+   inherited Create(Pos);
    FCodeSize:=Length(binary);
    FCodePtr:=VirtualAlloc(nil, FCodeSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
    System.Move(binary[0], FCodePtr^, FCodeSize);
