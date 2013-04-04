@@ -58,6 +58,8 @@ type
 
          function ReferencesVariable(varSymbol : TDataSymbol) : Boolean; override;
 
+         function SameDataExpr(expr : TExprBase) : Boolean; override;
+
          property StackAddr : Integer read FStackAddr;
          property DataSym : TDataSymbol read FDataSym write FDataSym;
    end;
@@ -214,6 +216,7 @@ type
          function IsConstant : Boolean; override;
          function IsWritable : Boolean; override;
          function SameValueAs(otherConst : TConstExpr) : Boolean;
+         function SameDataExpr(expr : TExprBase) : Boolean; override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
          property Data : TData read FData;
@@ -363,6 +366,7 @@ type
          procedure AddElementExpr(Prog: TdwsProgram; ElementExpr: TTypedExpr);
          procedure Prepare(Prog: TdwsProgram; ElementTyp : TTypeSymbol);
          procedure TypeCheckElements(prog : TdwsProgram);
+         procedure ElementsFromIntegerToFloat(prog : TdwsProgram);
 
          function Size : Integer; inline;
 
@@ -395,6 +399,8 @@ type
          destructor Destroy; override;
 
          function IsWritable : Boolean; override;
+
+         function SameDataExpr(expr : TExprBase) : Boolean; override;
 
          property BaseExpr : TDataExpr read FBaseExpr;
          property IndexExpr : TTypedExpr read FIndexExpr;
@@ -539,6 +545,8 @@ type
          procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+
+         function SameDataExpr(expr : TExprBase) : Boolean; override;
 
          property BaseExpr : TDataExpr read FBaseExpr;
          property MemberOffset : Integer read FMemberOffset;
@@ -2178,6 +2186,13 @@ begin
    Result:=(FDataSym=varSymbol);
 end;
 
+// SameDataExpr
+//
+function TVarExpr.SameDataExpr(expr : TExprBase) : Boolean;
+begin
+   Result:=(ClassType=expr.ClassType) and (DataSym=TVarExpr(expr).DataSym);
+end;
+
 // GetDataPtr
 //
 procedure TVarExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
@@ -2795,6 +2810,13 @@ begin
            and DWSSameData(FData, otherConst.FData, 0, 0, Length(FData));
 end;
 
+// SameDataExpr
+//
+function TConstExpr.SameDataExpr(expr : TExprBase) : Boolean;
+begin
+   Result:=(ClassType=expr.ClassType) and SameValueAs(TConstExpr(expr));
+end;
+
 // GetDataPtr
 //
 procedure TConstExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
@@ -3178,6 +3200,16 @@ end;
 function TArrayExpr.IsWritable : Boolean;
 begin
    Result:=FBaseExpr.IsWritable;
+end;
+
+// SameDataExpr
+//
+function TArrayExpr.SameDataExpr(expr : TExprBase) : Boolean;
+begin
+   Result:=    (ClassType=expr.ClassType)
+           and BaseExpr.SameDataExpr(TArrayExpr(expr).BaseExpr)
+           and (IndexExpr is TDataExpr)
+           and TDataExpr(IndexExpr).SameDataExpr(TArrayExpr(expr).IndexExpr);
 end;
 
 // GetSubExpr
@@ -3871,18 +3903,28 @@ begin
       end;
 
       // implicit cast integer to float
-      if elemTyp.IsOfType(Prog.TypFloat) then begin
-         for x:=1 to FElementExprs.Count-1 do begin
-            expr:=Elements[x];
-            if expr.Typ.IsOfType(Prog.TypInteger) then begin
-               expr:=TConvFloatExpr.Create(Prog, expr);
-               FElementExprs.List[x]:=expr;
-            end;
-         end;
-      end;
+      if elemTyp.IsOfType(prog.TypFloat) then
+         ElementsFromIntegerToFloat(prog);
 
       Typ.Typ:=elemTyp;
    end;
+end;
+
+// ElementsFromIntegerToFloat
+//
+procedure TArrayConstantExpr.ElementsFromIntegerToFloat(prog : TdwsProgram);
+var
+   x : Integer;
+   expr : TTypedExpr;
+begin
+   for x:=0 to FElementExprs.Count-1 do begin
+      expr:=Elements[x];
+      if expr.Typ.IsOfType(prog.TypInteger) then begin
+         expr:=TConvFloatExpr.Create(prog, expr);
+         FElementExprs.List[x]:=expr;
+      end;
+   end;
+   Typ.Typ:=prog.TypFloat;
 end;
 
 // ------------------
@@ -3963,6 +4005,15 @@ procedure TRecordExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext
 begin
    FBaseExpr.GetDataPtr(exec, result);
    result.CreateOffset(FMemberOffset, result);
+end;
+
+// SameDataExpr
+//
+function TRecordExpr.SameDataExpr(expr : TExprBase) : Boolean;
+begin
+   Result:=    (ClassType=expr.ClassType)
+           and (FieldSymbol=TRecordExpr(expr).FieldSymbol)
+           and BaseExpr.SameDataExpr(TRecordExpr(expr).BaseExpr);
 end;
 
 // AssignExpr
@@ -5498,8 +5549,8 @@ end;
 //
 function TMultFloatExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
-   if (FLeft is TFloatVarExpr) and (FRight is TFloatVarExpr) then begin
-      if FLeft.ReferencesVariable(TFloatVarExpr(FRight).DataSym) then begin
+   if (Left is TDataExpr) and (Right is TDataExpr) then begin
+      if TDataExpr(Left).SameDataExpr(Right) then begin
          Result:=TSqrFloatExpr.Create(Prog, FLeft);
          FLeft:=nil;
          Free;
@@ -6040,6 +6091,10 @@ begin
               or leftItemTyp.IsOfType(prog.TypVariant)) then
          prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
                                               [Right.Typ.Caption, Left.Typ.Caption]);
+   end else if     FLeft.Typ.Typ.IsOfType(prog.TypFloat)
+               and (Right is TArrayConstantExpr)
+               and Right.Typ.Typ.IsOfType(prog.TypInteger) then begin
+      TArrayConstantExpr(Right).ElementsFromIntegerToFloat(prog);
    end else inherited;
 end;
 

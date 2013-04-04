@@ -979,6 +979,8 @@ type
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); virtual; abstract;
 
          property DataPtr[exec : TdwsExecution] : IDataContext read GetDataPtrFunc;
+
+         function SameDataExpr(expr : TExprBase) : Boolean; virtual;
    end;
 
    // Encapsulates data
@@ -4055,6 +4057,13 @@ end;
 procedure TDataExpr.AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr);
 begin
    DataPtr[exec].WriteData(DataExpr.DataPtr[exec], Typ.Size);
+end;
+
+// SameDataExpr
+//
+function TDataExpr.SameDataExpr(expr : TExprBase) : Boolean;
+begin
+   Result:=False;
 end;
 
 // ------------------

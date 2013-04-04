@@ -61,6 +61,7 @@ type
          procedure ConfigNotifications;
          procedure ConfigTimeout;
          procedure CallUnitProcTest;
+         procedure NormalizeFloatArrayElements;
 
    end;
 
@@ -1288,6 +1289,35 @@ begin
    func:=exec.Info.Func['Test'];
    func.Call;
    exec.EndProgram;
+end;
+
+// NormalizeFloatArrayElements
+//
+procedure TCornerCasesTests.NormalizeFloatArrayElements;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+   a : IInfo;
+begin
+   prog:=FCompiler.Compile( 'type TFloat2 = array [0..1] of Float;'#13#10
+                           +'var a : TFloat2 = [ 1, 2 ];');
+   exec:=prog.BeginNewExecution;
+   try
+      a:=exec.Info.Vars['a'];
+      CheckTrue(VarIsFloat(a.Element([0]).Value), 'before 0');
+      CheckTrue(VarIsFloat(a.Element([1]).Value), 'before 1');
+
+      exec.RunProgram(0);
+
+      CheckTrue(VarIsFloat(a.Element([0]).Value), 'after 0');
+      CheckTrue(VarIsFloat(a.Element([1]).Value), 'after 1');
+
+      CheckEquals(1.0, exec.ExecutionObject.Stack.Data[0]);
+      CheckEquals(2.0, exec.ExecutionObject.Stack.Data[1]);
+
+   finally
+      exec.EndProgram;
+   end;
 end;
 
 // ------------------------------------------------------------------
