@@ -1965,10 +1965,11 @@ end;
 //
 procedure TWriteOnlyBlockStream.WriteBytes(const b : array of Byte);
 var
-   i : Integer;
+   n : Integer;
 begin
-   for i:=0 to High(b) do
-      WriteByte(b[i]);
+   n:=Length(b);
+   if n>0 then
+      Write(b[0], Length(b));
 end;
 
 // WriteInt32
