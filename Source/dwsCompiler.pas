@@ -8161,9 +8161,7 @@ begin
       FProg:=proc;
       try
          expr:=ReadExpr(propSym.Typ);
-         if expr=nil then
-            FMsgs.AddCompilerError(scriptPos, CPE_ExpressionExpected)
-         else begin
+         if expr<>nil then begin
             resultExpr:=TVarExpr.CreateTyped(FProg, proc.Func.Result);
             proc.Expr:=CreateAssign(scriptPos, ttASSIGN, resultExpr, expr);
          end;
@@ -9506,7 +9504,10 @@ begin
          if FPendingSetterValueExpr<>nil then begin
             Result:=FPendingSetterValueExpr;
             FPendingSetterValueExpr:=nil;
-         end else Result:=nil;
+         end else begin
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
+            Result:=nil;
+         end;
          Exit;
       end else FTok.KillToken;
    end;
@@ -9626,18 +9627,22 @@ begin
       trueExpr:=ReadExpr(expecting);
       if trueExpr=nil then
          trueTyp:=nil
-      else trueTyp:=trueExpr.Typ;
-      if trueTyp=nil then
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
+      else begin
+         trueTyp:=trueExpr.Typ;
+         if trueTyp=nil then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
+      end;
 
       if FTok.TestDelete(ttELSE) then begin
 
          falseExpr:=ReadExpr(expecting);
          if falseExpr=nil then
             falseTyp:=nil
-         else falseTyp:=falseExpr.Typ;
-         if falseTyp=nil then
-            FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
+         else begin
+            falseTyp:=falseExpr.Typ;
+            if falseTyp=nil then
+               FMsgs.AddCompilerError(FTok.HotPos, CPE_ExpressionExpected);
+         end;
 
       end else if trueTyp<>nil then begin
 

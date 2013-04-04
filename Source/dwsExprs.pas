@@ -4211,10 +4211,15 @@ end;
 // GetArgType
 //
 function TFuncExprBase.GetArgType(idx : Integer) : TTypeSymbol;
+var
+   expr : TTypedExpr;
 begin
-   if Cardinal(idx)<Cardinal(FArgs.Count) then
-      Result:=TTypedExpr(FArgs[idx]).Typ
-   else Result:=nil;
+   if Cardinal(idx)<Cardinal(FArgs.Count) then begin
+      expr:=TTypedExpr(FArgs[idx]);
+      if expr<>nil then
+         Result:=expr.Typ
+      else Result:=nil;
+   end else Result:=nil;
 end;
 
 // ------------------
