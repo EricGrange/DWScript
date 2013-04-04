@@ -622,7 +622,7 @@ type
 
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos;
-                            fieldSym : TFieldSymbol; ObjExpr: TTypedExpr);
+                            fieldSym : TFieldSymbol; objExpr: TTypedExpr);
          destructor Destroy; override;
 
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
@@ -640,6 +640,8 @@ type
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+
+         function SameDataExpr(expr : TExprBase) : Boolean; override;
 
          property ObjectExpr : TTypedExpr read FObjectExpr;
          property FieldAddr : Integer read FFieldAddr;
@@ -4283,11 +4285,11 @@ end;
 // Create
 //
 constructor TFieldExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-                              fieldSym: TFieldSymbol; ObjExpr: TTypedExpr);
+                              fieldSym: TFieldSymbol; objExpr: TTypedExpr);
 begin
    inherited Create(Prog, Pos, fieldSym.Typ);
-   FObjectExpr := ObjExpr;
-   FFieldAddr := FieldSym.Offset;
+   FObjectExpr := objExpr;
+   FFieldAddr := fieldSym.Offset;
 end;
 
 // Destroy
@@ -4360,6 +4362,16 @@ end;
 procedure TFieldExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    exec.DataContext_Create(GetScriptObj(exec).AsData, FFieldAddr, result);
+end;
+
+// SameDataExpr
+//
+function TFieldExpr.SameDataExpr(expr : TExprBase) : Boolean;
+begin
+   Result:=    (ClassType=expr.ClassType)
+           and (FieldAddr=TFieldExpr(expr).FieldAddr)
+           and (ObjectExpr is TDataExpr)
+           and ObjectExpr.SameDataExpr(TFieldExpr(expr).ObjectExpr);
 end;
 
 // Eval

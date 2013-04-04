@@ -888,6 +888,8 @@ type
 
          function IsOfType(typSym : TTypeSymbol) : Boolean;
 
+         function SameDataExpr(expr : TExprBase) : Boolean; virtual;
+
          property Typ : TTypeSymbol read FTyp write FTyp;
    end;
 
@@ -979,8 +981,6 @@ type
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); virtual; abstract;
 
          property DataPtr[exec : TdwsExecution] : IDataContext read GetDataPtrFunc;
-
-         function SameDataExpr(expr : TExprBase) : Boolean; virtual;
    end;
 
    // Encapsulates data
@@ -3814,6 +3814,13 @@ begin
            and (Typ.IsOfType(typSym));
 end;
 
+// SameDataExpr
+//
+function TTypedExpr.SameDataExpr(expr : TExprBase) : Boolean;
+begin
+   Result:=False;
+end;
+
 // GetBaseType
 //
 function TTypedExpr.GetBaseType : TTypeSymbol;
@@ -4057,13 +4064,6 @@ end;
 procedure TDataExpr.AssignDataExpr(exec : TdwsExecution; DataExpr: TDataExpr);
 begin
    DataPtr[exec].WriteData(DataExpr.DataPtr[exec], Typ.Size);
-end;
-
-// SameDataExpr
-//
-function TDataExpr.SameDataExpr(expr : TExprBase) : Boolean;
-begin
-   Result:=False;
 end;
 
 // ------------------

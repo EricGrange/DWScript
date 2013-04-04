@@ -475,7 +475,7 @@ type
          function ReadField(const scriptPos : TScriptPos; selfSym : TDataSymbol;
                             fieldSym : TFieldSymbol) : TDataExpr; overload;
          function ReadField(const scriptPos : TScriptPos; selfSym : TDataSymbol;
-                         fieldSym : TFieldSymbol; var varExpr : TTypedExpr) : TDataExpr; overload;
+                            fieldSym : TFieldSymbol; var varExpr : TTypedExpr) : TDataExpr; overload;
 
          function ReadFor : TProgramExpr;
          function ReadForTo(const forPos : TScriptPos; loopVarExpr : TVarExpr;
@@ -4614,7 +4614,7 @@ var
    typedExpr : TTypedExpr;
 begin
    try
-      typedExpr:=(expr as TTypedExpr);
+      typedExpr:=(expr as TDataExpr);
       Result:=ReadPropertyExpr(typedExpr, propertySym, isWrite);
    finally
       expr:=typedExpr;
@@ -4773,9 +4773,12 @@ begin
 
             end else if sym is TFieldSymbol then begin
 
-               if Expr.Typ is TClassOfSymbol then
+               if Expr.Typ is TClassOfSymbol then begin
                   FMsgs.AddCompilerError(FTok.HotPos, CPE_ObjectReferenceExpected);
-               Result:=TReadOnlyFieldExpr.Create(FProg, FTok.HotPos, TFieldSymbol(sym), expr);
+                  expr.Free;
+                  expr:=nil;
+               end;
+               Result:=TReadOnlyFieldExpr.Create(FProg, FTok.HotPos, TFieldSymbol(sym), expr as TDataExpr);
                expr:=nil;
 
             end else if sym is TClassVarSymbol then begin
@@ -5129,6 +5132,7 @@ begin
 
             end else if member is TFieldSymbol then begin
 
+               Assert(Result is TTypedExpr);
                Result:=ReadField(FTok.HotPos, nil, TFieldSymbol(member), TTypedExpr(Result));
 
             end else if member is TPropertySymbol then begin
@@ -12148,7 +12152,8 @@ begin
 
          if sym.ClassType=TPropertySymbol then begin
 
-            Result:=ReadPropertyExpr(expr, TPropertySymbol(sym), isWrite);
+            Assert(expr is TTypedExpr);
+            Result:=ReadPropertyExpr(TTypedExpr(expr), TPropertySymbol(sym), isWrite);
 
          end else if sym.ClassType=TClassVarSymbol then begin
 
