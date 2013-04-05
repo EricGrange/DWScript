@@ -888,7 +888,7 @@ type
 
          function IsOfType(typSym : TTypeSymbol) : Boolean;
 
-         function SameDataExpr(expr : TExprBase) : Boolean; virtual;
+         function SameDataExpr(expr : TTypedExpr) : Boolean; virtual;
 
          property Typ : TTypeSymbol read FTyp write FTyp;
    end;
@@ -3816,7 +3816,7 @@ end;
 
 // SameDataExpr
 //
-function TTypedExpr.SameDataExpr(expr : TExprBase) : Boolean;
+function TTypedExpr.SameDataExpr(expr : TTypedExpr) : Boolean;
 begin
    Result:=False;
 end;

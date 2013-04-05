@@ -58,7 +58,7 @@ type
 
          function ReferencesVariable(varSymbol : TDataSymbol) : Boolean; override;
 
-         function SameDataExpr(expr : TExprBase) : Boolean; override;
+         function SameDataExpr(expr : TTypedExpr) : Boolean; override;
 
          property StackAddr : Integer read FStackAddr;
          property DataSym : TDataSymbol read FDataSym write FDataSym;
@@ -143,6 +143,8 @@ type
          constructor Create(Prog: TdwsProgram; dataSym : TLazyParamSymbol);
          function Eval(exec : TdwsExecution) : Variant; override;
 
+         function SameDataExpr(expr : TTypedExpr) : Boolean; override;
+
          property DataSym : TLazyParamSymbol read FDataSym write FDataSym;
          property StackAddr : Integer read FStackAddr write FStackAddr;
          property Level : Integer read FLevel write FLevel;
@@ -216,7 +218,7 @@ type
          function IsConstant : Boolean; override;
          function IsWritable : Boolean; override;
          function SameValueAs(otherConst : TConstExpr) : Boolean;
-         function SameDataExpr(expr : TExprBase) : Boolean; override;
+         function SameDataExpr(expr : TTypedExpr) : Boolean; override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
          property Data : TData read FData;
@@ -400,7 +402,7 @@ type
 
          function IsWritable : Boolean; override;
 
-         function SameDataExpr(expr : TExprBase) : Boolean; override;
+         function SameDataExpr(expr : TTypedExpr) : Boolean; override;
 
          property BaseExpr : TDataExpr read FBaseExpr;
          property IndexExpr : TTypedExpr read FIndexExpr;
@@ -546,7 +548,7 @@ type
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
-         function SameDataExpr(expr : TExprBase) : Boolean; override;
+         function SameDataExpr(expr : TTypedExpr) : Boolean; override;
 
          property BaseExpr : TDataExpr read FBaseExpr;
          property MemberOffset : Integer read FMemberOffset;
@@ -641,7 +643,7 @@ type
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
-         function SameDataExpr(expr : TExprBase) : Boolean; override;
+         function SameDataExpr(expr : TTypedExpr) : Boolean; override;
 
          property ObjectExpr : TTypedExpr read FObjectExpr;
          property FieldAddr : Integer read FFieldAddr;
@@ -2190,7 +2192,7 @@ end;
 
 // SameDataExpr
 //
-function TVarExpr.SameDataExpr(expr : TExprBase) : Boolean;
+function TVarExpr.SameDataExpr(expr : TTypedExpr) : Boolean;
 begin
    Result:=(ClassType=expr.ClassType) and (DataSym=TVarExpr(expr).DataSym);
 end;
@@ -2814,7 +2816,7 @@ end;
 
 // SameDataExpr
 //
-function TConstExpr.SameDataExpr(expr : TExprBase) : Boolean;
+function TConstExpr.SameDataExpr(expr : TTypedExpr) : Boolean;
 begin
    Result:=(ClassType=expr.ClassType) and SameValueAs(TConstExpr(expr));
 end;
@@ -3206,12 +3208,11 @@ end;
 
 // SameDataExpr
 //
-function TArrayExpr.SameDataExpr(expr : TExprBase) : Boolean;
+function TArrayExpr.SameDataExpr(expr : TTypedExpr) : Boolean;
 begin
    Result:=    (ClassType=expr.ClassType)
            and BaseExpr.SameDataExpr(TArrayExpr(expr).BaseExpr)
-           and (IndexExpr is TDataExpr)
-           and TDataExpr(IndexExpr).SameDataExpr(TArrayExpr(expr).IndexExpr);
+           and IndexExpr.SameDataExpr(TArrayExpr(expr).IndexExpr);
 end;
 
 // GetSubExpr
@@ -4011,7 +4012,7 @@ end;
 
 // SameDataExpr
 //
-function TRecordExpr.SameDataExpr(expr : TExprBase) : Boolean;
+function TRecordExpr.SameDataExpr(expr : TTypedExpr) : Boolean;
 begin
    Result:=    (ClassType=expr.ClassType)
            and (FieldSymbol=TRecordExpr(expr).FieldSymbol)
@@ -4366,11 +4367,10 @@ end;
 
 // SameDataExpr
 //
-function TFieldExpr.SameDataExpr(expr : TExprBase) : Boolean;
+function TFieldExpr.SameDataExpr(expr : TTypedExpr) : Boolean;
 begin
    Result:=    (ClassType=expr.ClassType)
            and (FieldAddr=TFieldExpr(expr).FieldAddr)
-           and (ObjectExpr is TDataExpr)
            and ObjectExpr.SameDataExpr(TFieldExpr(expr).ObjectExpr);
 end;
 
@@ -4466,6 +4466,13 @@ begin
    finally
       exec.Stack.BasePointer:=oldBasePointer;
    end;
+end;
+
+// SameDataExpr
+//
+function TLazyParamExpr.SameDataExpr(expr : TTypedExpr) : Boolean;
+begin
+   Result:=False;
 end;
 
 // ------------------
@@ -5503,13 +5510,11 @@ var
    mip : TMultIntPow2Expr;
    n : Integer;
 begin
-   if (FLeft is TVarExpr) and (FRight is TVarExpr) then begin
-      if FLeft.ReferencesVariable(TVarExpr(FRight).DataSym) then begin
-         Result:=TSqrIntExpr.Create(Prog, FLeft);
-         FLeft:=nil;
-         Free;
-         Exit;
-      end;
+   if Left.SameDataExpr(Right) then begin
+      Result:=TSqrIntExpr.Create(Prog, FLeft);
+      FLeft:=nil;
+      Free;
+      Exit;
    end else if (FLeft is TConstIntExpr) and (not FRight.IsConstant) then begin
       n:=WhichPowerOfTwo(TConstIntExpr(FLeft).EvalAsInteger(exec));
       if n>0 then begin
@@ -5561,13 +5566,11 @@ end;
 //
 function TMultFloatExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 begin
-   if (Left is TDataExpr) and (Right is TDataExpr) then begin
-      if TDataExpr(Left).SameDataExpr(Right) then begin
-         Result:=TSqrFloatExpr.Create(Prog, FLeft);
-         FLeft:=nil;
-         Free;
-         Exit;
-      end;
+   if Left.SameDataExpr(Right) then begin
+      Result:=TSqrFloatExpr.Create(Prog, FLeft);
+      FLeft:=nil;
+      Free;
+      Exit;
    end;
    Result:=inherited;
 end;
