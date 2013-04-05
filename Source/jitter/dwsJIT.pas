@@ -149,6 +149,7 @@ type
 
          FFixups : TFixupLogic;
          FLoopContext : TJITLoopContext;
+         FExitTarget : TFixupTarget;
 
          FJITTedProgramExprClass : TJITTedProgramExprClass;
          FJITTedFloatExprClass : TJITTedFloatExprClass;
@@ -159,7 +160,7 @@ type
       protected
          function CreateOutput : TWriteOnlyBlockStream; virtual;
 
-         procedure StartJIT(expr : TExprBase); virtual;
+         procedure StartJIT(expr : TExprBase; exitable : Boolean); virtual;
          procedure EndJIT; virtual;
          procedure EndFloatJIT(resultHandle : Integer); virtual;
          procedure EndIntegerJIT(resultHandle : Integer); virtual;
@@ -178,7 +179,7 @@ type
          function FindJITter(exprClass : TClass) : TdwsJITter; overload;
          function FindJITter(expr : TExprBase) : TdwsJITter; overload;
 
-         function JITStatement(expr : TProgramExpr) : TJITTedProgramExpr;
+         function JITStatement(expr : TProgramExpr; exitable : Boolean) : TJITTedProgramExpr;
          function JITFloat(expr : TTypedExpr) : TJITTedFloatExpr;
          function JITInteger(expr : TTypedExpr) : TJITTedIntegerExpr;
 
@@ -189,7 +190,14 @@ type
 
          procedure CompileAssignFloat(expr : TTypedExpr; source : Integer);
 
+         function IsFloat(expr : TTypedExpr) : Boolean; overload; inline;
+         function IsFloat(typ : TTypeSymbol) : Boolean; overload;
+         function IsInteger(expr : TTypedExpr) : Boolean; overload;
+         function IsBoolean(expr : TTypedExpr) : Boolean; overload;
+
          property LoopContext : TJITLoopContext read FLoopContext;
+         property ExitTarget : TFixupTarget read FExitTarget;
+
          procedure EnterLoop(targetContinue, targetExit : TFixup);
          procedure LeaveLoop;
 
@@ -381,7 +389,7 @@ end;
 
 // JITStatement
 //
-function TdwsJIT.JITStatement(expr : TProgramExpr) : TJITTedProgramExpr;
+function TdwsJIT.JITStatement(expr : TProgramExpr; exitable : Boolean) : TJITTedProgramExpr;
 var
    jit : TdwsJITter;
 begin
@@ -393,7 +401,7 @@ begin
       Exit;
    end;
 
-   StartJIT(expr);
+   StartJIT(expr, exitable);
    jit.CompileStatement(expr);
    EndJIT;
 
@@ -410,7 +418,7 @@ var
 begin
    Result:=nil;
 
-   StartJIT(expr);
+   StartJIT(expr, False);
    outcome:=CompileFloat(expr);
    EndFloatJIT(outcome);
 
@@ -427,7 +435,7 @@ var
 begin
    Result:=nil;
 
-   StartJIT(expr);
+   StartJIT(expr, False);
    outcome:=CompileInteger(expr);
    EndIntegerJIT(outcome);
 
@@ -502,6 +510,34 @@ begin
    else jit.CompileAssignFloat(expr, source);
 end;
 
+// IsFloat
+//
+function TdwsJIT.IsFloat(expr : TTypedExpr) : Boolean;
+begin
+   Result:=IsFloat(expr.Typ);
+end;
+
+// IsFloat
+//
+function TdwsJIT.IsFloat(typ : TTypeSymbol) : Boolean;
+begin
+   Result:=(typ.UnAliasedType.ClassType=TBaseFloatSymbol);
+end;
+
+// IsInteger
+//
+function TdwsJIT.IsInteger(expr : TTypedExpr) : Boolean;
+begin
+   Result:=(expr.Typ.UnAliasedType.ClassType=TBaseIntegerSymbol);
+end;
+
+// IsBoolean
+//
+function TdwsJIT.IsBoolean(expr : TTypedExpr) : Boolean;
+begin
+   Result:=(expr.Typ.UnAliasedType.ClassType=TBaseBooleanSymbol);
+end;
+
 // EnterLoop
 //
 procedure TdwsJIT.EnterLoop(targetContinue, targetExit : TFixup);
@@ -528,16 +564,22 @@ end;
 
 // StartJIT
 //
-procedure TdwsJIT.StartJIT(expr : TExprBase);
+procedure TdwsJIT.StartJIT(expr : TExprBase; exitable : Boolean);
 begin
    FOutput.Clear;
    FOutputFailedOn:=nil;
+   if exitable then
+      FExitTarget:=Fixups.NewHangingTarget;
 end;
 
 // EndJIT
 //
 procedure TdwsJIT.EndJIT;
 begin
+   if FExitTarget<>nil then begin
+      Fixups.AddFixup(FExitTarget);
+      FExitTarget:=nil;
+   end;
    // nothing
 end;
 
@@ -591,7 +633,7 @@ begin
          if subExpr is TFuncExprBase then
             GreedyJIT(subExpr)
          else if subExpr is TProgramExpr then begin
-            statementJIT:=JITStatement(TProgramExpr(subExpr));
+            statementJIT:=JITStatement(TProgramExpr(subExpr), False);
             if statementJIT<>nil then begin
                block.ReplaceStatement(i, statementJIT);
                continue;
@@ -700,7 +742,7 @@ var
    statementJIT : TJITTedProgramExpr;
 begin
    if prog.Expr is TProgramExpr then begin
-      statementJIT:=JITStatement(TProgramExpr(prog.Expr));
+      statementJIT:=JITStatement(TProgramExpr(prog.Expr), True);
       if statementJIT<>nil then begin
          prog.Expr.Free;
          prog.Expr:=statementJIT;
