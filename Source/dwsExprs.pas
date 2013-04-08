@@ -1059,7 +1059,8 @@ type
                         potResult,
                         potResultInteger, potResultFloat, potResultBoolean,
                         potResultString, potResultConstString,
-                        potData, potLazy, potInitResult);
+                        potData, potConstData,
+                        potLazy, potInitResult);
    PPushOperator = ^TPushOperator;
    TPushOperator = packed record
       FStackAddr : Integer;
@@ -1090,6 +1091,7 @@ type
       procedure ExecuteResultString(exec : TdwsExecution);
       procedure ExecuteResultConstString(exec : TdwsExecution);
       procedure ExecuteData(exec : TdwsExecution);
+      procedure ExecuteConstData(exec : TdwsExecution);
       procedure ExecuteInitResult(exec : TdwsExecution);
       procedure ExecuteLazy(exec : TdwsExecution);
    end;
@@ -4303,7 +4305,9 @@ procedure TPushOperator.InitPushData(StackAddr: Integer; ArgExpr: TTypedExpr; Pa
 begin
    FStackAddr:=StackAddr;
    FArgExpr:=ArgExpr;
-   FTypeParamSym:=ParamSym;
+   if argExpr is TConstExpr then
+      FTypeParamSym:=TSymbol(potConstData)
+   else FTypeParamSym:=ParamSym;
 end;
 
 // InitPushInitResult
@@ -4341,6 +4345,7 @@ begin
       NativeInt(potResultString) : ExecuteResultString(exec);
       NativeInt(potResultConstString) : ExecuteResultConstString(exec);
       NativeInt(potResult) : ExecuteResult(exec);
+      NativeInt(potConstData) : ExecuteConstData(exec);
       NativeInt(potInitResult) : ExecuteInitResult(exec);
       NativeInt(potLazy) : ExecuteLazy(exec);
    else
@@ -4480,6 +4485,16 @@ begin
    dataExpr:=TDataExpr(FArgExpr);
    dataExpr.DataPtr[exec].CopyData(exec.Stack.Data, exec.Stack.StackPointer+FStackAddr,
                                    FTypeParamSym.Typ.Size);
+end;
+
+// ExecuteConstData
+//
+procedure TPushOperator.ExecuteConstData(exec : TdwsExecution);
+var
+   constExpr : TConstExpr;
+begin
+   constExpr:=TConstExpr(FArgExpr);
+   exec.Stack.WriteData(0, exec.Stack.StackPointer+FStackAddr, Length(constExpr.Data), constExpr.Data);
 end;
 
 // ExecuteInitResult
