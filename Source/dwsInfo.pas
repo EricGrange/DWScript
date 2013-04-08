@@ -710,7 +710,11 @@ begin
       if FScriptObj.ClassSym<>nil then
          Result:='destroyed '+FScriptObj.ClassSym.Name
       else Result:='destroyed object';
-   end else Result:=FScriptObj.ClassSym.Name;
+   end else begin
+      if FScriptObj.ClassSym<>nil then
+         Result:=FScriptObj.ClassSym.Name
+      else Result:='N/A';
+   end;
 end;
 
 { TInfoClassObj }
@@ -780,7 +784,7 @@ begin
    if FMembersCache=nil then
       FMembersCache:=TStringList.Create
    else FMembersCache.Clear;
-   if (FScriptObj<>nil) and (not FScriptObj.Destroyed) then
+   if (FScriptObj<>nil) and (not FScriptObj.Destroyed) and (FScriptObj.ClassSym<>nil) then
       CollectMembers(FScriptObj.ClassSym.Members);
    Result:=FMembersCache;
 end;
