@@ -453,6 +453,7 @@ begin
    sym.Params.AddParent(table);
    sym.Executable := ICallable(Self);
    sym.ExternalName := methName;
+   FFuncSymbol := sym;
 
    // Add method to its class
    cls.AddMethod(sym);
@@ -529,6 +530,7 @@ begin
                                methType, rec, aVisibility, False);
    sym.Params.AddParent(table);
    sym.Executable := ICallable(Self);
+   FFuncSymbol := sym;
 
    // Add method to its class
    rec.AddMethod(sym);
