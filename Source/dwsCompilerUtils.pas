@@ -139,7 +139,9 @@ begin
                else Result := TClassMethodStaticExpr.Create(prog, scriptPos, meth, expr)
             end else begin
                if RefKind<>rkObjRef then
-                  prog.CompileMsgs.AddCompilerError(scriptPos, CPE_StaticMethodExpected);
+                  prog.CompileMsgs.AddCompilerError(scriptPos, CPE_StaticMethodExpected)
+               else if expr.Typ is TClassOfSymbol then
+                  prog.CompileMsgs.AddCompilerError(scriptPos, CPE_ClassMethodExpected);
                if not ForceStatic and meth.IsVirtual then
                   Result := TMethodVirtualExpr.Create(prog, scriptPos, meth, expr)
                else Result := TMethodStaticExpr.Create(prog, scriptPos, meth, expr);
