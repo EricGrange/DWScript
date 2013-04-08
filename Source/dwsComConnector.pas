@@ -57,6 +57,9 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+const
+  MaxDispArgs = 64;
+
 // DwsOleCheck
 //
 procedure DwsOleCheck(Result: HResult);
@@ -98,25 +101,31 @@ type
     procedure Execute(info : TProgramInfo); override;
   end;
 
-  TComConnectorType = class(TInterfacedObject, IUnknown, IConnectorType)
-  private
-    FTable: TSymbolTable;
-  protected
-    { IConnectorType }
-    function ConnectorCaption: String;
-    function AcceptsParams(const params: TConnectorParamArray) : Boolean;
-    function HasMethod(Const MethodName: String; const Params: TConnectorParamArray;
-                       var TypSym: TTypeSymbol): IConnectorCall;
-    function HasMember(Const MemberName: String; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
-    function HasIndex(const PropName: String; const Params: TConnectorParamArray;
-                      var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
-  public
-    constructor Create(Table: TSymbolTable);
-  end;
+   TComConnectorType = class(TInterfacedSelfObject, IUnknown, IConnectorType, IConnectorEnumerator)
+      private
+         FTable : TSymbolTable;
+
+      protected
+         { IConnectorType }
+         function ConnectorCaption: String;
+         function AcceptsParams(const params: TConnectorParamArray) : Boolean;
+         function HasMethod(const MethodName: String; const Params: TConnectorParamArray;
+                            var TypSym: TTypeSymbol): IConnectorCall;
+         function HasMember(const MemberName: String; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
+         function HasIndex(const propName: String; const Params: TConnectorParamArray;
+                           var typSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
+         function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
+
+         function NewEnumerator(const base : Variant; const args : TConnectorArgs) : IUnknown;
+         function Step(const enumerator : IInterface; var data : TData) : Boolean;
+
+      public
+         constructor Create(Table: TSymbolTable);
+   end;
 
    TComConnectorCall = class(TInterfacedSelfObject, IUnknown, IConnectorCall)
       private
-         FDispId: TDispId;
+         FDispId: array[0..MaxDispArgs - 1] of Integer;
          FIsInitialized: Boolean;
          FMethodName: WideString;
          FMethodType: Cardinal;
@@ -168,50 +177,76 @@ type
   IComVariantArrayLowBoundCall = interface(IConnectorCall)
   end;
 
-  TComVariantArrayType = class(TInterfacedSelfObject, IUnknown, IConnectorType,
-      IComVariantArrayReadIndex, IComVariantArrayWriteIndex,
-      IComVariantArrayLength, IComVariantArrayDimCount,
-      IComVariantArrayHighBound, IComVariantArrayLowBound,
-      IComVariantArrayLowBoundCall, IComVariantArrayHighBoundCall,
-      IComVariantArrayLengthCall)
-  private
-    FTable: TSymbolTable;
-  protected
-    function ReadLength(const Base: Variant): TData; overload;
-    function ReadLowBound(const Base: Variant): TData; overload;
-    function ReadHighBound(const Base: Variant): TData; overload;
-    function ReadDimCount(const Base: Variant): TData;
-    procedure WriteHighBound(const Base: Variant; const Data: TData);
-    function ReadIndex(const Base: Variant; const Args: TConnectorArgs): TData;
-    function WriteIndex(const Base: Variant; const Args: TConnectorArgs): TData;
-    function ReadLength(const Base: Variant; const Args: TConnectorArgs): TData; overload;
-    function ReadLowBound(const Base: Variant; const Args: TConnectorArgs): TData; overload;
-    function ReadHighBound(const Base: Variant; const Args: TConnectorArgs): TData; overload;
-    function NeedDirectReference : Boolean;
-    { IConnectorType }
-    function ConnectorCaption: String;
-    function AcceptsParams(const params: TConnectorParamArray) : Boolean;
-    function HasMethod(Const MethodName: String; const Params: TConnectorParamArray;
-                       var TypSym: TTypeSymbol): IConnectorCall;
-    function HasMember(Const MemberName: String; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
-    function HasIndex(Const PropName: String; const Params: TConnectorParamArray;
-                      var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
-    { IConnectorCall }
-    function IComVariantArrayReadIndex.Call = ReadIndex;
-    function IComVariantArrayWriteIndex.Call = WriteIndex;
-    function IComVariantArrayLowBoundCall.Call = ReadLowBound;
-    function IComVariantArrayHighBoundCall.Call = ReadHighBound;
-    function IComVariantArrayLengthCall.Call = ReadLength;
-    { IConnectorMember }
-    function IComVariantArrayLength.Read = ReadLength;
-    function IComVariantArrayHighBound.Read = ReadHighBound;
-    function IComVariantArrayLowBound.Read = ReadLowBound;
-    function IComVariantArrayDimCount.Read = ReadDimCount;
-    procedure IComVariantArrayHighBound.Write = WriteHighBound;
-    procedure Write(const Base: Variant; const Data: TData);
-  public
-    constructor Create(Table: TSymbolTable);
-  end;
+   TComVariantArrayEnumerator = class (TInterfacedSelfObject)
+      private
+         FArray : Variant;
+         FIndex : Integer;
+
+      public
+         constructor Create(const a : Variant);
+
+         function Next(var v : Variant) : Boolean;
+   end;
+
+   TComVariantArrayType = class (TInterfacedSelfObject, IUnknown, IConnectorType,
+                                 IComVariantArrayReadIndex, IComVariantArrayWriteIndex,
+                                 IComVariantArrayLength, IComVariantArrayDimCount,
+                                 IComVariantArrayHighBound, IComVariantArrayLowBound,
+                                 IComVariantArrayLowBoundCall, IComVariantArrayHighBoundCall,
+                                 IComVariantArrayLengthCall,
+                                 IConnectorEnumerator)
+      private
+         FTable: TSymbolTable;
+
+      protected
+         function ReadLength(const Base: Variant): TData; overload;
+         function ReadLowBound(const Base: Variant): TData; overload;
+         function ReadHighBound(const Base: Variant): TData; overload;
+         function ReadDimCount(const Base: Variant): TData;
+         procedure WriteHighBound(const Base: Variant; const Data: TData);
+         function ReadIndex(const Base: Variant; const Args: TConnectorArgs): TData;
+         function WriteIndex(const Base: Variant; const Args: TConnectorArgs): TData;
+         function ReadLength(const Base: Variant; const Args: TConnectorArgs): TData; overload;
+         function ReadLowBound(const Base: Variant; const Args: TConnectorArgs): TData; overload;
+         function ReadHighBound(const Base: Variant; const Args: TConnectorArgs): TData; overload;
+
+         function NewEnumerator(const base : Variant; const args : TConnectorArgs) : IUnknown;
+         function Step(const enumerator : IInterface; var data : TData) : Boolean;
+
+         function NeedDirectReference : Boolean;
+
+         { IConnectorType }
+         function ConnectorCaption: String;
+         function AcceptsParams(const params: TConnectorParamArray) : Boolean;
+         function HasMethod(Const MethodName: String; const Params: TConnectorParamArray;
+                          var TypSym: TTypeSymbol): IConnectorCall;
+         function HasMember(Const MemberName: String; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
+         function HasIndex(Const PropName: String; const Params: TConnectorParamArray;
+                         var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
+         function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
+
+         { IConnectorCall }
+         function IComVariantArrayReadIndex.Call = ReadIndex;
+         function IComVariantArrayWriteIndex.Call = WriteIndex;
+         function IComVariantArrayLowBoundCall.Call = ReadLowBound;
+         function IComVariantArrayHighBoundCall.Call = ReadHighBound;
+         function IComVariantArrayLengthCall.Call = ReadLength;
+
+         { IConnectorMember }
+         function IComVariantArrayLength.Read = ReadLength;
+         function IComVariantArrayHighBound.Read = ReadHighBound;
+         function IComVariantArrayLowBound.Read = ReadLowBound;
+         function IComVariantArrayDimCount.Read = ReadDimCount;
+         procedure IComVariantArrayHighBound.Write = WriteHighBound;
+         procedure Write(const Base: Variant; const Data: TData);
+
+         { IConnectorEnumerator }
+         function IConnectorEnumerator.NewEnumerator = NewEnumerator;
+         function IConnectorEnumerator.Step = Step;
+
+      public
+         constructor Create(Table: TSymbolTable);
+   end;
 
 { TdwsComConnector }
 
@@ -270,7 +305,7 @@ end;
 
 procedure TCreateOleObjectFunc.Execute(info : TProgramInfo);
 begin
-  Info.ResultAsVariant := CreateOleObject(Info.ValueAsString['ClassName']);
+   Info.ResultAsVariant := CreateOleObject(Info.ValueAsString['ClassName']);
 end;
 
 { TClassIDToProgIDFunc }
@@ -323,16 +358,45 @@ begin
   FTable := Table;
 end;
 
-function TComConnectorType.HasIndex(Const PropName: String; const Params: TConnectorParamArray;
-  var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
+function TComConnectorType.HasIndex(const PropName: String; const Params: TConnectorParamArray;
+                                    var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
 var
-  methType: Cardinal;
+   methType : Cardinal;
 begin
    TypSym := FTable.FindTypeSymbol('ComVariant', cvMagic);
    if IsWrite then
       methType := DISPATCH_PROPERTYPUT
    else methType := DISPATCH_PROPERTYGET;
    Result := TComConnectorCall.Create(PropName, Params, methType);
+end;
+
+// HasEnumerator
+//
+function TComConnectorType.HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
+begin
+   typSym := FTable.FindTypeSymbol('ComVariant', cvMagic);
+   Result := IConnectorEnumerator(Self);
+end;
+
+// NewEnumerator
+//
+function TComConnectorType.NewEnumerator(const base : Variant; const args : TConnectorArgs) : IUnknown;
+begin
+   Result := IUnknown(base._NewEnum) as IEnumVariant;
+end;
+
+// Step
+//
+function TComConnectorType.Step(const enumerator : IInterface; var data : TData) : Boolean;
+var
+   fetched : LongWord;
+   ov : OleVariant;
+begin
+   if IEnumVariant(enumerator).Next(1, ov, fetched)=0 then begin
+      Result:=(fetched=1);
+      if Result then
+         data[0]:=ov;
+   end else Result:=False;
 end;
 
 function TComConnectorType.HasMember(Const MemberName: String;
@@ -369,9 +433,6 @@ begin
   Result := TComConnectorCall.Create(MethodName, Params);
 end;
 
-const
-  MaxDispArgs = 64;
-
 type
    POleParams = ^TOleParams;
    TOleParams = array[0..MaxDispArgs - 1] of PVarData;
@@ -381,8 +442,9 @@ type
    end;
    PStringDesc = ^TStringDesc;
 
-function DispatchInvoke(const dispatch: IDispatch; invKind, argCount, namedArgCount: Integer;
-                        dispIDs: PDispIDList; PParams: POleParams; PResult: PVariant): HResult; cdecl;
+function DispatchInvoke(const dispatch: IDispatch; invKind, namedArgCount : Integer;
+                        dispIDs: PDispIDList; const connArgs : TConnectorArgs;
+                        PResult: PVariant): HResult;
 var
    x, argType, strCount : Integer;
    dispParams : TDispParams;
@@ -396,10 +458,12 @@ begin
    Result := S_OK;
 
    // Fill in the dispParams struct
+   FillChar(strings, MaxDispArgs*SizeOf(TStringDesc), 0);
+   FillChar(args, MaxDispArgs*SizeOf(TVariantArg), 0);
    try
-      for x:=0 to argCount-1 do begin
-        argPtr:=@args[(argCount-1)-x];
-        param:=PParams[x];
+      argPtr:=@args[0];
+      for x:=High(connArgs) downto 0 do begin
+        param:=@connArgs[x][0];
         argType:=param.VType and varTypeMask;
 
         if (param.VType and varArray) <> 0 then begin
@@ -466,9 +530,10 @@ begin
                raise Exception.CreateFmt('Invalid data type (%d) for DWS Com-Wrapper!', [argType]);
             end;
          end;
+         Inc(argPtr);
       end;
       dispParams.rgvarg := @args;
-      dispParams.cArgs := argCount;
+      dispParams.cArgs := Length(connArgs);
 
       dispID := dispIDs[0];
 
@@ -477,25 +542,19 @@ begin
          if (Args[0].vt and varTypeMask) = varDispatch then
             InvKind := DISPATCH_PROPERTYPUTREF;
          dispParams.rgdispidNamedArgs := dispIDs;
-         dispParams.cNamedArgs := NamedArgCount + 1;
+         dispParams.cNamedArgs := namedArgCount + 1;
          dispIDs[0] := DISPID_PROPERTYPUT;
 
       end else begin
 
-         if namedArgCount=0 then
-            dispParams.rgdispidNamedArgs := nil
-         else dispParams.rgdispidNamedArgs := @dispIDs[1];
+         dispParams.rgdispidNamedArgs := @dispIDs[1];
          dispParams.cNamedArgs := namedArgCount;
 
       end;
 
-      try
-         // Invoke COM Method
-         Result := dispatch.Invoke(dispID, GUID_NULL, 0, InvKind, dispParams,
-                                   PResult, nil, nil);
-      finally
-         dispIDs[0] := dispID; // reset
-      end;
+      // Invoke COM Method
+      Result := dispatch.Invoke(dispID, GUID_NULL, 0, InvKind, dispParams,
+                                PResult, nil, nil);
 
       if Result = 0 then begin
          for x := strCount - 1 downto 0 do begin
@@ -514,14 +573,9 @@ end;
 
 function TComConnectorCall.Call(const Base: Variant; const args : TConnectorArgs) : TData;
 var
-   i : Integer;
-   paramData : array[0..MaxDispArgs-1] of PVarData;
    disp : IDispatch;
    pMethodName: PWideChar;
 begin
-   for i:=0 to Length(args) - 1 do
-      paramData[i]:=@args[i][0];
-
    disp:=Base;
    if disp=nil then
       raise EOleError.Create(CPE_NilConnectorCall);
@@ -530,14 +584,11 @@ begin
       pMethodName:=PWideChar(FMethodName);
       // Get DISPID of this method
       DwsOleCheck(disp.GetIDsOfNames(GUID_NULL, @pMethodName, 1, LOCALE_SYSTEM_DEFAULT, @FDispId));
-
       FIsInitialized:=True;
    end;
 
    SetLength(Result, 1);
-   DwsOleCheck(DispatchInvoke(disp, FMethodType, Length(args), 0, @FDispId, @paramData, @Result[0]));
-
-   disp:=nil;
+   DwsOleCheck(DispatchInvoke(disp, FMethodType, 0, @FDispId, args, @Result[0]));
 end;
 
 // NeedDirectReference
@@ -673,6 +724,14 @@ begin
   end;
 end;
 
+// HasEnumerator
+//
+function TComVariantArrayType.HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
+begin
+   typSym := FTable.FindTypeSymbol(SYS_VARIANT, cvMagic);
+   Result := IConnectorEnumerator(Self);
+end;
+
 function TComVariantArrayType.HasMember(const MemberName: String;
   var typSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
 begin
@@ -732,6 +791,20 @@ function TComVariantArrayType.ReadHighBound(const Base: Variant): TData;
 begin
   SetLength(Result, 1);
   Result[0] := VarArrayHighBound(Base, 1);
+end;
+
+// NewEnumerator
+//
+function TComVariantArrayType.NewEnumerator(const base : Variant; const args : TConnectorArgs) : IUnknown;
+begin
+   Result:=TComVariantArrayEnumerator.Create(base);
+end;
+
+// Step
+//
+function TComVariantArrayType.Step(const enumerator : IInterface; var data : TData) : Boolean;
+begin
+   Result:=((enumerator as IGetSelf).GetSelf as TComVariantArrayEnumerator).Next(data[0]);
 end;
 
 // NeedDirectReference
@@ -819,6 +892,31 @@ procedure TComVariantArraySymbol.InitData(const Dat: TData; Offset: Integer);
 begin
   Dat[Offset] := VarArrayCreate([0, -1], varVariant); // empty array
 end;
+
+{ TComVariantArrayEnumerator }
+
+// Create
+//
+constructor TComVariantArrayEnumerator.Create(const a : Variant);
+begin
+   inherited Create;
+   FArray:=a;
+   FIndex:=0;
+end;
+
+// Next
+//
+function TComVariantArrayEnumerator.Next(var v : Variant) : Boolean;
+begin
+   if FIndex<=VarArrayHighBound(FArray, 1) then begin
+
+      v:=FArray[FIndex];
+      Inc(FIndex);
+      Result:=True;
+
+   end else Result:=False;
+end;
+
 
 end.
 

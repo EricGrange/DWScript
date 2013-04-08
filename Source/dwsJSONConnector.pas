@@ -73,6 +73,7 @@ type
                             isWrite : Boolean) : IConnectorMember;
          function HasIndex(const propName : String; const params : TConnectorParamArray;
                            var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
+         function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
 
          function TypeNameCall(const base : Variant; const args : TConnectorArgs) : TData;
          function ElementNameCall(const base : Variant; const args : TConnectorArgs) : TData;
@@ -459,6 +460,13 @@ begin
 
    typSym:=FTable.FindTypeSymbol(SYS_JSON_VARIANT, cvMagic);
    Result:=TdwsJSONIndexReadCall.Create(propName);
+end;
+
+// HasEnumerator
+//
+function TdwsJSONConnectorType.HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
+begin
+   Result:=nil;
 end;
 
 // TypeNameCall

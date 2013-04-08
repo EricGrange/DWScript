@@ -485,6 +485,9 @@ type
                               loopFirstStatement : TNoResultExpr) : TForExpr;
          function ReadForIn(const forPos : TScriptPos; loopVarExpr : TVarExpr;
                             const loopVarName : String; const loopVarNamePos : TScriptPos) : TProgramExpr;
+         function ReadForInConnector(const forPos : TScriptPos;
+                            inExpr : TTypedExpr; const inPos : TScriptPos; loopVarExpr : TVarExpr;
+                            const loopVarName : String; const loopVarNamePos : TScriptPos) : TProgramExpr;
 
          function ReadFuncOverloaded(funcSym : TFuncSymbol; fromTable : TSymbolTable;
                                      codeExpr : TDataExpr = nil; expecting : TTypeSymbol = nil) : TTypedExpr;
@@ -5596,6 +5599,11 @@ begin
 
          iterVarExpr:=GetVarExpr(iterVarSym) as TIntVarExpr;
 
+      end else if inExpr.Typ is TConnectorSymbol then begin
+
+         Result:=ReadForInConnector(forPos, inExpr as TTypedExpr, inPos, loopVarExpr, loopVarName, loopVarNamePos);
+         Exit;
+
       end else begin
 
          loopVarExpr.Free;
@@ -5663,6 +5671,67 @@ begin
       end;
    end;
 
+end;
+
+// ReadForInConnector
+//
+function TdwsCompiler.ReadForInConnector(const forPos : TScriptPos;
+    inExpr : TTypedExpr; const inPos : TScriptPos; loopVarExpr : TVarExpr;
+    const loopVarName : String; const loopVarNamePos : TScriptPos) : TProgramExpr;
+var
+   connectorSymbol : TConnectorSymbol;
+   enumerator : IConnectorEnumerator;
+   itemType : TTypeSymbol;
+   blockExpr : TBlockExpr;
+   loopVarSymbol : TDataSymbol;
+   doBlock : TProgramExpr;
+begin
+   connectorSymbol:=(inExpr.Typ as TConnectorSymbol);
+
+   enumerator:=connectorSymbol.ConnectorType.HasEnumerator(itemType);
+   if enumerator=nil then
+      FMsgs.AddCompilerError(inPos, CPE_ArrayExpected);
+
+   if loopVarExpr=nil then begin
+      blockExpr:=TBlockExpr.Create(FProg, forPos);
+      loopVarSymbol:=TDataSymbol.Create(loopVarName, itemType);
+      blockExpr.Table.AddSymbol(loopVarSymbol);
+      RecordSymbolUse(loopVarSymbol, loopVarNamePos, [suDeclaration, suReference, suWrite]);
+      loopVarExpr:=GetVarExpr(loopVarSymbol);
+      FProg.InitExpr.AddStatement(TInitDataExpr.Create(FProg, loopVarNamePos, loopVarExpr));
+      loopVarExpr.IncRefCount;
+   end else begin
+      blockExpr:=nil;
+      if not loopVarExpr.Typ.IsOfType(itemType) then
+         IncompatibleTypes(loopVarNamePos, CPE_IncompatibleTypes, loopVarExpr.Typ, itemType);
+   end;
+
+   if not FTok.TestDelete(ttDO) then
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_DoExpected);
+
+   if blockExpr<>nil then
+      FProg.EnterSubTable(blockExpr.Table);
+   Result:=blockExpr;
+   try
+      try
+         doBlock:=ReadBlock;
+      except
+         loopVarExpr.Free;
+         inExpr.Free;
+         raise;
+      end;
+      Result:=TConnectorForInExpr.Create(forPos, enumerator, loopVarExpr, inExpr, doBlock);
+      if Optimize then
+         Result:=Result.Optimize(FProg, FExec);
+   finally
+      if blockExpr<>nil then begin
+         FProg.LeaveSubTable;
+         blockExpr.AddStatement(Result);
+         if Optimize then
+            Result:=blockExpr.Optimize(FProg, FExec)
+         else Result:=blockExpr;
+      end;
+   end;
 end;
 
 // WarnForVarUsage

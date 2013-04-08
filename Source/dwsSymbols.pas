@@ -917,6 +917,12 @@ type
       procedure Write(const base : Variant; const data : TData);
    end;
 
+   IConnectorEnumerator = interface (IGetSelf)
+      ['{13223223-94F0-42FC-89FB-D413DAD670B7}']
+      function NewEnumerator(const base : Variant; const args : TConnectorArgs) : IUnknown;
+      function Step(const enumerator : IInterface; var data : TData) : Boolean;
+   end;
+
    TConnectorParam = record
       IsVarParam : Boolean;
       TypSym : TTypeSymbol;
@@ -933,6 +939,7 @@ type
      function HasMember(const MemberName: String; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
      function HasIndex(const PropName: String; const Params: TConnectorParamArray;
                        var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
+     function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
    end;
 
    TConnectorSymbol = class(TBaseVariantSymbol)

@@ -358,7 +358,8 @@ end;
 //
 procedure TdwsSamplingDebugger.LeaveFunc(exec : TdwsExecution; funcExpr : TExprBase);
 begin
-   FSamplingFuncStack.Pop;
+   if (funcExpr is TFuncExprBase) then
+      FSamplingFuncStack.Pop;
    inherited;
 end;
 

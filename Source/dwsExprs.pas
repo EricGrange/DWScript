@@ -1357,6 +1357,31 @@ type
          property ValueExpr : TTypedExpr read FValueExpr write FValueExpr;
    end;
 
+   TConnectorForInExpr = class sealed (TNoResultExpr)
+      private
+         FInExpr : TTypedExpr;
+         FLoopVarExpr : TTypedExpr;
+         FDoExpr : TProgramExpr;
+         FConnectorEnumerator : IConnectorEnumerator;
+
+      protected
+         function GetSubExpr(i : Integer) : TExprBase; override;
+         function GetSubExprCount : Integer; override;
+
+      public
+         constructor Create(const scriptPos : TScriptPos;
+                            const enumerator : IConnectorEnumerator;
+                            loopVarExpr, inExpr : TTypedExpr; doExpr : TProgramExpr);
+         destructor Destroy; override;
+
+         procedure EvalNoResult(exec : TdwsExecution); override;
+
+         property ConnectorEnumerator : IConnectorEnumerator read FConnectorEnumerator write FConnectorEnumerator;
+         property InExpr : TTypedExpr read FInExpr write FInExpr;
+         property LoopVarExpr : TTypedExpr read FLoopVarExpr write FLoopVarExpr;
+         property DoExpr : TProgramExpr read FDoExpr write FDoExpr;
+   end;
+
    TUnaryOpExpr = class(TTypedExpr)
       protected
          FExpr : TTypedExpr;
@@ -6515,7 +6540,7 @@ begin
 
    // Call function
    try
-      for x := 0 to Length(FConnectorArgs) - 1 do begin
+      for x:=0 to High(FConnectorArgs) do begin
          arg:=TTypedExpr(FArgs.List[x]);
          argTyp:=FConnectorParams[x].TypSym;
          if argTyp.Size = 1 then begin
@@ -6546,11 +6571,12 @@ begin
          end;
       end;
 
-      for x := 0 to Length(FConnectorArgs) - 1 do
+      for x:=0 to High(FConnectorArgs) do begin
          if FConnectorParams[x].IsVarParam then begin
             exec.DataContext_Create(FConnectorArgs[x], 0, locData);
             TDataExpr(FArgs.List[x]).AssignData(exec, locData);
          end;
+      end;
 
    finally
       if exec.IsDebugging then
@@ -8023,6 +8049,85 @@ begin
          SetLength(Result, n+1);
          Result[n]:=Items[i];
          Inc(n);
+      end;
+   end;
+end;
+
+// ------------------
+// ------------------ TConnectorForInExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TConnectorForInExpr.Create(const scriptPos : TScriptPos;
+             const enumerator : IConnectorEnumerator;
+             loopVarExpr, inExpr : TTypedExpr; doExpr : TProgramExpr);
+begin
+   inherited Create(scriptPos);
+   Assert(loopVarExpr is TVarExpr);
+   FConnectorEnumerator:=enumerator;
+   FLoopVarExpr:=loopVarExpr;
+   FInExpr:=inExpr;
+   FDoExpr:=doExpr;
+end;
+
+// Destroy
+//
+destructor TConnectorForInExpr.Destroy;
+begin
+   inherited;
+   FLoopVarExpr.Free;
+   FInExpr.Free;
+   FDoExpr.Free;
+end;
+
+// GetSubExpr
+//
+function TConnectorForInExpr.GetSubExpr(i : Integer) : TExprBase;
+begin
+   case i of
+      0 : Result:=LoopVarExpr;
+      1 : Result:=InExpr;
+   else
+      Result:=DoExpr;
+   end;
+end;
+
+// GetSubExprCount
+//
+function TConnectorForInExpr.GetSubExprCount : Integer;
+begin
+   Result:=3;
+end;
+
+// EvalNoResult
+//
+procedure TConnectorForInExpr.EvalNoResult(exec : TdwsExecution);
+var
+   base : Variant;
+   item : TData;
+   enumData : IUnknown;
+begin
+   FInExpr.EvalAsVariant(exec, base);
+   enumData:=ConnectorEnumerator.NewEnumerator(base, nil);
+   if enumData<>nil then begin
+      SetLength(item, 1);
+      while ConnectorEnumerator.Step(enumData, item) do begin
+         TVarExpr(FLoopVarExpr).AssignValue(exec, item[0]);
+         exec.DoStep(DoExpr);
+         DoExpr.EvalNoResult(exec);
+         if exec.Status<>esrNone then begin
+            case exec.Status of
+               esrBreak : begin
+                  exec.Status:=esrNone;
+                  break;
+               end;
+               esrContinue :
+                  exec.Status:=esrNone;
+               esrExit : Exit;
+            end;
+         end;
+         exec.DoStep(Self);
       end;
    end;
 end;

@@ -5009,6 +5009,13 @@ end;
 //
 class procedure TConvStringExpr.VariantToString(const v : Variant; var s : String);
 
+   function DispatchAsString(const disp : Pointer) : String;
+   var
+      intf : IGetSelf;
+   begin
+      Result:=Format('IDispatch (%p)', [disp]);
+   end;
+
    function UnknownAsString(const unknown : IUnknown) : String;
    var
       intf : IGetSelf;
@@ -5040,6 +5047,12 @@ begin
          if varData^.VBoolean then
             s:='True'
          else s:='False';
+      varEmpty :
+         s:='Unassigned';
+      varNull :
+         s:='Null';
+      varDispatch :
+         s:=Format('IDispatch (%p)', [varData^.VDispatch]);
       varUnknown :
          s:=UnknownAsString(IUnknown(varData^.VUnknown));
    else
