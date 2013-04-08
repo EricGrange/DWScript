@@ -1,0 +1,2 @@
+Syntax Error: Expression expected [line: 2, column: 15]
+Syntax Error: Incompatible operands [line: 2, column: 13]

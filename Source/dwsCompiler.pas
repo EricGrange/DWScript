@@ -9180,7 +9180,7 @@ begin
          try
 
             // Generate function and add left and right argument
-            if (Result.Typ=nil) or (right.Typ=nil) then
+            if (Result.Typ=nil) or (right=nil) or(right.Typ=nil) then
                FMsgs.AddCompilerStop(hotPos, CPE_IncompatibleOperands)
             else begin
                opExpr:=CreateTypedOperatorExpr(tt, hotPos, Result, right);
