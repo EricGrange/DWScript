@@ -108,7 +108,8 @@ type
                             const methName : String; const methParams : array of String;
                             const methType : String; cls : TCompositeTypeSymbol;
                             aVisibility : TdwsVisibility;
-                            table : TSymbolTable);
+                            table : TSymbolTable;
+                            overloaded : Boolean = False);
    end;
 
    TInternalMethod = class(TInternalBaseMethod)
@@ -129,7 +130,8 @@ type
                             const methName : String; const methParams : array of String;
                             const methType : String; rec : TRecordSymbol;
                             aVisibility : TdwsVisibility;
-                            table : TSymbolTable);
+                            table : TSymbolTable;
+                            overloaded : Boolean = False);
    end;
 
    TInternalInitProc = procedure (systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
@@ -441,7 +443,8 @@ constructor TInternalBaseMethod.Create(methKind: TMethodKind; attributes: TMetho
                                        const methName: String; const methParams: array of String;
                                        const methType: String; cls: TCompositeTypeSymbol;
                                        aVisibility : TdwsVisibility;
-                                       table: TSymbolTable);
+                                       table: TSymbolTable;
+                                       overloaded : Boolean = False);
 var
    sym : TMethodSymbol;
    params : TParamArray;
@@ -449,7 +452,7 @@ begin
    params:=ConvertFuncParams(methParams);
 
    sym:=TMethodSymbol.Generate(table, methKind, attributes, methName, Params,
-                               methType, cls, aVisibility, False);
+                               methType, cls, aVisibility, overloaded);
    sym.Params.AddParent(table);
    sym.Executable := ICallable(Self);
    sym.ExternalName := methName;
@@ -519,7 +522,8 @@ constructor TInternalRecordMethod.Create(methKind : TMethodKind; attributes : TM
                             const methName : String; const methParams : array of String;
                             const methType : String; rec : TRecordSymbol;
                             aVisibility : TdwsVisibility;
-                            table : TSymbolTable);
+                            table : TSymbolTable;
+                            overloaded : Boolean = False);
 var
    sym : TMethodSymbol;
    params : TParamArray;
@@ -527,7 +531,7 @@ begin
    params:=ConvertFuncParams(methParams);
 
    sym:=TMethodSymbol.Generate(table, methKind, attributes, methName, Params,
-                               methType, rec, aVisibility, False);
+                               methType, rec, aVisibility, overloaded);
    sym.Params.AddParent(table);
    sym.Executable := ICallable(Self);
    FFuncSymbol := sym;
