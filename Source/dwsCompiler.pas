@@ -5308,8 +5308,9 @@ begin
       end;
 
       loopVarExpr:=TVarExpr(expr);
+      loopVarNamePos:=FTok.HotPos;
 
-      WarnForVarUsage(loopVarExpr, FTok.HotPos);
+      WarnForVarUsage(loopVarExpr, loopVarNamePos);
 
    end;
 

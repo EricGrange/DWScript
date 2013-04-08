@@ -1,0 +1,2 @@
+Syntax Error: Incompatible types: "Integer" and "ComVariant" [line: 5, column: 10]
+Syntax Error: DO expected [line: 7, column: 27]

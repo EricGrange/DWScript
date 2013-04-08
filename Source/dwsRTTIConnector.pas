@@ -211,6 +211,7 @@ type
                             isWrite : Boolean) : IConnectorMember;
          function HasIndex(const propName : String; const params : TConnectorParamArray;
                            var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
+         function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
       public
          constructor Create(table : TSymbolTable; rttiType : TRttiType);
    end;
@@ -473,6 +474,13 @@ begin
    if isWrite then
       Result:=TdwsRTTIConnectorIndexedProperty.Create(propName, params, mtPropertySet)
    else Result:=TdwsRTTIConnectorIndexedProperty.Create(propName, params, mtPropertyGet)
+end;
+
+// HasEnumerator
+//
+function TdwsRTTIConnectorType.HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
+begin
+   Result:=nil;
 end;
 
 // HasMember

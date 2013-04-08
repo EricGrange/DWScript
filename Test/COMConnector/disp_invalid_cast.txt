@@ -1,4 +1,3 @@
 Couldn't cast variant from "Dispatch" to "Integer" (EVariantTypeCastError)
-Could not convert variant of type (Dispatch) into type (OleStr)
 Couldn't cast variant from "Dispatch" to "Float" (EVariantTypeCastError)
 Couldn't cast variant from "Dispatch" to "Boolean" (EVariantTypeCastError)
