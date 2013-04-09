@@ -120,6 +120,8 @@ type
 
          procedure Add(aLine : Integer; const aSourceName : String);
 
+         procedure Clear;
+
          function BreakpointAt(const scriptPos : TScriptPos) : TdwsDebuggerBreakpoint;
 
          procedure BreakPointsChanged;
@@ -1010,6 +1012,7 @@ destructor TdwsDebuggerBreakpoints.Destroy;
 begin
    FDebugger.FBreakpoints:=nil;
    FLookupVar.Free;
+   Clean;
    inherited;
 end;
 
@@ -1023,6 +1026,13 @@ begin
    bp.Line:=aLine;
    bp.SourceName:=aSourceName;
    inherited Add(bp);
+end;
+
+// Clear
+//
+procedure TdwsDebuggerBreakpoints.Clear;
+begin
+   inherited Clean;
 end;
 
 // Compare

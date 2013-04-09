@@ -125,13 +125,12 @@ type
 
    TComConnectorCall = class(TInterfacedSelfObject, IUnknown, IConnectorCall)
       private
-         FDispId: array[0..MaxDispArgs - 1] of Integer;
-         FIsInitialized: Boolean;
-         FMethodName: WideString;
-         FMethodType: Cardinal;
+         FMethodName : WideString;
+         FPMethodName : PWideString;
+         FMethodType : Cardinal;
 
       protected
-         function Call(Const Base: Variant; const args : TConnectorArgs) : TData;
+         function Call(const Base: Variant; const args : TConnectorArgs) : TData;
          function NeedDirectReference : Boolean;
 
       public
@@ -139,43 +138,46 @@ type
                             MethodType: Cardinal = DISPATCH_METHOD);
   end;
 
-  TComConnectorMember = class(TInterfacedSelfObject, IUnknown, IConnectorMember)
-  protected
-    FDispId: TDispId;
-    FIsInitialized: Boolean;
-    FMemberName: WideString;
-    procedure GetDispId(const Disp: IDispatch);
-    function Read(const Base: Variant): TData;
-    procedure Write(const Base: Variant; const Data: TData);
-  public
-    constructor Create(MemberName: String);
-  end;
+   TComConnectorMember = class(TInterfacedSelfObject, IUnknown, IConnectorMember)
+      private
+         FMemberName : WideString;
+         FPMemberName : PWideString;
 
-  TComVariantArraySymbol = class(TConnectorSymbol)
-  public
-    constructor Create(const Name: String; const ConnectorType: IConnectorType; Typ: TTypeSymbol);
-    function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-    procedure InitData(const Dat: TData; Offset: Integer); override;
-  end;
+      protected
+         function GetDispID(const Disp: IDispatch) : Integer;
+         function Read(const Base: Variant): TData;
+         procedure Write(const Base: Variant; const Data: TData);
 
-  IComVariantArrayLength = interface(IConnectorMember)
-  end;
-  IComVariantArrayHighBound = interface(IConnectorMember)
-  end;
-  IComVariantArrayLowBound = interface(IConnectorMember)
-  end;
-  IComVariantArrayDimCount = interface(IConnectorMember)
-  end;
-  IComVariantArrayReadIndex = interface(IConnectorCall)
-  end;
-  IComVariantArrayWriteIndex = interface(IConnectorCall)
-  end;
-  IComVariantArrayLengthCall = interface(IConnectorCall)
-  end;
-  IComVariantArrayHighBoundCall = interface(IConnectorCall)
-  end;
-  IComVariantArrayLowBoundCall = interface(IConnectorCall)
-  end;
+      public
+         constructor Create(const memberName : String);
+   end;
+
+   TComVariantArraySymbol = class(TConnectorSymbol)
+      public
+         constructor Create(const name : String; const connectorType: IConnectorType; Typ: TTypeSymbol);
+
+         function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
+         procedure InitData(const Dat: TData; Offset: Integer); override;
+   end;
+
+   IComVariantArrayLength = interface(IConnectorMember)
+   end;
+   IComVariantArrayHighBound = interface(IConnectorMember)
+   end;
+   IComVariantArrayLowBound = interface(IConnectorMember)
+   end;
+   IComVariantArrayDimCount = interface(IConnectorMember)
+   end;
+   IComVariantArrayReadIndex = interface(IConnectorCall)
+   end;
+   IComVariantArrayWriteIndex = interface(IConnectorCall)
+   end;
+   IComVariantArrayLengthCall = interface(IConnectorCall)
+   end;
+   IComVariantArrayHighBoundCall = interface(IConnectorCall)
+   end;
+   IComVariantArrayLowBoundCall = interface(IConnectorCall)
+   end;
 
    TComVariantArrayEnumerator = class (TInterfacedSelfObject)
       private
@@ -218,10 +220,10 @@ type
          { IConnectorType }
          function ConnectorCaption: String;
          function AcceptsParams(const params: TConnectorParamArray) : Boolean;
-         function HasMethod(Const MethodName: String; const Params: TConnectorParamArray;
-                          var TypSym: TTypeSymbol): IConnectorCall;
-         function HasMember(Const MemberName: String; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
-         function HasIndex(Const PropName: String; const Params: TConnectorParamArray;
+         function HasMethod(const MethodName: String; const Params: TConnectorParamArray;
+                            var TypSym: TTypeSymbol): IConnectorCall;
+         function HasMember(const MemberName: String; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
+         function HasIndex(const PropName: String; const Params: TConnectorParamArray;
                          var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
          function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
 
@@ -248,7 +250,9 @@ type
          constructor Create(Table: TSymbolTable);
    end;
 
-{ TdwsComConnector }
+// ------------------
+// ------------------ TdwsComConnector ------------------
+// ------------------
 
 function TdwsComConnector.ConnectorCaption: String;
 begin
@@ -301,52 +305,66 @@ begin
   Table.AddSymbol(TComVariantArraySymbol.Create('ComVariantArray', TComVariantArrayType.Create(Table), VariantSym));
 end;
 
-{ TCreateOleObjectFunc }
+// ------------------
+// ------------------ TCreateOleObjectFunc ------------------
+// ------------------
 
 procedure TCreateOleObjectFunc.Execute(info : TProgramInfo);
 begin
-   Info.ResultAsVariant := CreateOleObject(Info.ValueAsString['ClassName']);
+   Info.ResultAsVariant := CreateOleObject(Info.ParamAsString[0]);
 end;
 
-{ TClassIDToProgIDFunc }
+// ------------------
+// ------------------ TClassIDToProgIDFunc ------------------
+// ------------------
 
 procedure TClassIDToProgIDFunc.Execute(info : TProgramInfo);
 var
    guid : TGUID;
 begin
-   guid := StringToGUID(Info.ValueAsString['ClassID']);
+   guid := StringToGUID(Info.ParamAsString[0]);
    Info.ResultAsString := ClassIDToProgID(guid);
 end;
 
-{ TGetActiveOleObjectFunc }
+// ------------------
+// ------------------ TGetActiveOleObjectFunc ------------------
+// ------------------
 
 procedure TGetActiveOleObjectFunc.Execute(info : TProgramInfo);
 begin
-  Info.ResultAsVariant := GetActiveOleObject(Info.ValueAsString['ClassName']);
+   Info.ResultAsVariant := GetActiveOleObject(Info.ParamAsString[0]);
 end;
 
-{ TOleInt32Func }
+// ------------------
+// ------------------ TOleInt32Func ------------------
+// ------------------
 
 procedure TOleInt32Func.Execute(info : TProgramInfo);
 begin
-  Info.ResultAsVariant := Int32(Info.ValueAsInteger['v']);
+   Info.ResultAsVariant := Int32(Info.ParamAsInteger[0]);
 end;
 
-{ TOleInt64Func }
+// ------------------
+// ------------------ TOleInt64Func ------------------
+// ------------------
 
 procedure TOleInt64Func.Execute(info : TProgramInfo);
 begin
-  Info.ResultAsVariant := Info.ValueAsInteger['v'];
+  Info.ResultAsVariant := Info.ParamAsInteger[0];
 end;
 
-{ TOleDateFunc }
+// ------------------
+// ------------------ TOleDateFunc ------------------
+// ------------------
 
 procedure TOleDateFunc.Execute(info : TProgramInfo);
 begin
-  Info.ResultAsVariant := VarFromDateTime(Info.ValueAsFloat['v']);
+  Info.ResultAsVariant := VarFromDateTime(Info.ParamAsFloat[0]);
 end;
 
-{ TComConnectorSymbol }
+// ------------------
+// ------------------ TComConnectorType ------------------
+// ------------------
 
 function TComConnectorType.ConnectorCaption: String;
 begin
@@ -446,7 +464,7 @@ function DispatchInvoke(const dispatch: IDispatch; invKind, namedArgCount : Inte
                         dispIDs: PDispIDList; const connArgs : TConnectorArgs;
                         PResult: PVariant): HResult;
 var
-   x, argType, strCount : Integer;
+   i, argType, strCount : Integer;
    dispParams : TDispParams;
    strings : array [0 .. MaxDispArgs-1] of TStringDesc;
    argPtr : PVariantArg;
@@ -463,8 +481,8 @@ begin
    FillChar(args, MaxDispArgs*SizeOf(TVariantArg), 0);
    try
       argPtr:=@args[0];
-      for x:=High(connArgs) downto 0 do begin
-        param:=@connArgs[x][0];
+      for i:=High(connArgs) downto 0 do begin
+        param:=@connArgs[i][0];
         argType:=param.VType and varTypeMask;
 
         if (param.VType and varArray) <> 0 then begin
@@ -528,7 +546,8 @@ begin
                   argPtr.pvarVal := PVariant(param);
                end;
             else
-               raise Exception.CreateFmt('Invalid data type (%d) for DWS Com-Wrapper!', [argType]);
+               raise Exception.CreateFmt('Unsupported data type (%d) for DWScript COM Connector!',
+                                         [argType]);
             end;
          end;
          Inc(argPtr);
@@ -560,9 +579,9 @@ begin
                                 PResult, @excepInfo, nil);
 
       if Result = 0 then begin
-         for x := strCount - 1 downto 0 do begin
-            if strings[x].PStr <> nil then
-               OleStrToStrVar(strings[x].BStr, strings[x].PStr^);
+         for i := strCount - 1 downto 0 do begin
+            if strings[i].PStr <> nil then
+               OleStrToStrVar(strings[i].BStr, strings[i].PStr^);
          end;
       end else begin
          raise EOleError.CreateFmt('OLE Error %x (%s) from %s, %s',
@@ -571,31 +590,40 @@ begin
       end;
 
    finally
-      for x := strCount - 1 downto 0 do
-         SysFreeString(strings[x].BStr);
+      for i := strCount - 1 downto 0 do
+         SysFreeString(strings[i].BStr);
    end;
 end;
 
-{ TComConnectorCall }
+// ------------------
+// ------------------ TComConnectorCall ------------------
+// ------------------
 
+// Create
+//
+constructor TComConnectorCall.Create(const MethodName: String;
+                     const Params: TConnectorParamArray; MethodType: Cardinal);
+begin
+   FMethodName:=MethodName;
+   FPMethodName:=PWideString(FMethodName);
+   FMethodType:=MethodType;
+end;
+
+// Call
+//
 function TComConnectorCall.Call(const Base: Variant; const args : TConnectorArgs) : TData;
 var
    disp : IDispatch;
-   pMethodName: PWideChar;
+   dispID : Integer;
 begin
    disp:=Base;
    if disp=nil then
       raise EOleError.Create(CPE_NilConnectorCall);
 
-   if not FIsInitialized then begin
-      pMethodName:=PWideChar(FMethodName);
-      // Get DISPID of this method
-      DwsOleCheck(disp.GetIDsOfNames(GUID_NULL, @pMethodName, 1, LOCALE_SYSTEM_DEFAULT, @FDispId));
-      FIsInitialized:=True;
-   end;
+   DwsOleCheck(disp.GetIDsOfNames(GUID_NULL, @FPMethodName, 1, LOCALE_SYSTEM_DEFAULT, @dispID));
 
    SetLength(Result, 1);
-   DwsOleCheck(DispatchInvoke(disp, FMethodType, 0, @FDispId, args, @Result[0]));
+   DwsOleCheck(DispatchInvoke(disp, FMethodType, 0, @dispID, args, @Result[0]));
 end;
 
 // NeedDirectReference
@@ -605,51 +633,51 @@ begin
    Result:=False;
 end;
 
-constructor TComConnectorCall.Create(const MethodName: String;
-                     const Params: TConnectorParamArray; MethodType: Cardinal);
+// ------------------
+// ------------------ TComConnectorMember ------------------
+// ------------------
+
+// Create
+//
+constructor TComConnectorMember.Create(const memberName : String);
 begin
-  FMethodName := MethodName;
-  FMethodType := MethodType;
+   FMemberName:=memberName;
+   FPMemberName:=PWideString(FMemberName);
 end;
 
-{ TComConnectorMember }
-
-constructor TComConnectorMember.Create(MemberName: String);
+// GetDispID
+//
+function TComConnectorMember.GetDispID(const Disp: IDispatch) : Integer;
 begin
-  FMemberName := MemberName;
+   Result:=0;
+   DwsOleCheck(disp.GetIDsOfNames(GUID_NULL, @FPMemberName, 1, LOCALE_SYSTEM_DEFAULT, @Result));
 end;
 
-procedure TComConnectorMember.GetDispId(const Disp: IDispatch);
-var
-  pMemberName: PWideChar;
-begin
-  pMemberName := PWideChar(FMemberName);
-  DwsOleCheck(disp.GetIDsOfNames(GUID_NULL, @pMemberName, 1, LOCALE_SYSTEM_DEFAULT, @FDispId));
-  FIsInitialized := True;
-end;
-
+// Read
+//
 function TComConnectorMember.Read(const Base: Variant): TData;
 var
    disp : IDispatch;
 begin
    disp:=Base;
-   if not FIsInitialized then
-      GetDispId(disp);
+
    SetLength(Result, 1);
-   Result[0] := GetDispatchPropValue(disp, FDispID);
+   Result[0] := GetDispatchPropValue(disp, GetDispId(disp));
 end;
 
+// Write
+//
 procedure TComConnectorMember.Write(const Base: Variant; const Data: TData);
 var
    disp : IDispatch;
 begin
    disp:=Base;
-   if not FIsInitialized then
-      GetDispId(disp);
-   SetDispatchPropValue(disp, FDispId, Data[0]);
+   SetDispatchPropValue(disp, GetDispID(disp), Data[0]);
 end;
 
-{ TComVariantArrayType }
+// ------------------
+// ------------------ TComVariantArrayType ------------------
+// ------------------
 
 function TComVariantArrayType.ReadIndex(const Base: Variant;
   const Args: TConnectorArgs): TData;
