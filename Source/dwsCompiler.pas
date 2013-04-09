@@ -783,6 +783,13 @@ type
          property OnRootExternalClass : TCompilerOnRootExternalClassEvent read FOnRootExternalClass write FOnRootExternalClass;
    end;
 
+const
+   cSpecialKeywords : array [TSpecialKeywordKind] of String = (
+      '', 'Abs', 'Assert', 'Assigned', 'High', 'Length', 'Low',
+      'Ord', 'SizeOf', 'Defined', 'Declared', 'Sqr', 'Inc', 'Dec', 'Succ', 'Pred',
+      'Swap', 'ConditionalDefined'
+   );
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -809,12 +816,6 @@ const
       cvPrivate, cvProtected, cvPublic, cvPublished );
    cTokenToFuncKind : array [ttFUNCTION..ttLAMBDA] of TFuncKind = (
       fkFunction, fkProcedure, fkConstructor, fkDestructor, fkMethod, fkLambda );
-
-   cSpecialKeywords : array [TSpecialKeywordKind] of String = (
-      '', 'Abs', 'Assert', 'Assigned', 'High', 'Length', 'Low',
-      'Ord', 'SizeOf', 'Defined', 'Declared', 'Sqr', 'Inc', 'Dec', 'Succ', 'Pred',
-      'Swap', 'ConditionalDefined'
-   );
 
 type
    TReachStatus = (rsReachable, rsUnReachable, rsUnReachableWarned);

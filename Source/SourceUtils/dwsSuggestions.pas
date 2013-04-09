@@ -19,8 +19,10 @@ unit dwsSuggestions;
 
 interface
 
-uses Classes, SysUtils, dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsTokenizer,
-   dwsUnitSymbols, dwsPascalTokenizer;
+uses
+   Classes, SysUtils,
+   dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsTokenizer,
+   dwsUnitSymbols, dwsPascalTokenizer, dwsCompiler;
 
 type
 
@@ -36,7 +38,8 @@ type
                              scEnum, scElement,
                              scParameter,
                              scVariable, scConst,
-                             scReservedWord);
+                             scReservedWord,
+                             scSpecialFunction);
 
    IdwsSuggestions = interface
       ['{09CA8BF2-AF3F-4B5A-B188-4B2FF574AC34}']
@@ -54,9 +57,9 @@ type
       function PartialToken : String;
    end;
 
-   // Pseudo-symbol for suggestion purposes
-   TReservedWordSymbol = class(TSymbol)
-   end;
+   // Pseudo-symbols for suggestion purposes
+   TReservedWordSymbol = class(TSymbol);
+   TSpecialFunctionSymbol = class(TSymbol);
 
    TSimpleSymbolList = class;
 
@@ -96,6 +99,7 @@ type
          FPreviousSymbol : TSymbol;
          FPreviousTokenString : String;
          FPreviousToken : TTokenType;
+         FAfterDot : Boolean;
          FLocalContext : TdwsSourceContext;
          FLocalTable : TSymbolTable;
          FContextSymbol : TSymbol;
@@ -125,6 +129,7 @@ type
          procedure AddUnitSymbol(unitSym : TUnitSymbol; list : TSimpleSymbolList);
 
          procedure AddReservedWords;
+         procedure AddSpecialFuncs;
          procedure AddImmediateSuggestions;
          procedure AddContextSuggestions;
          procedure AddUnitSuggestions;
@@ -190,8 +195,11 @@ begin
    AddUnitSuggestions;
    AddGlobalSuggestions;
 
-   if not (soNoReservedWords in options) then
-      AddReservedWords;
+   if not FAfterDot then begin
+      if not (soNoReservedWords in options) then
+         AddReservedWords;
+      AddSpecialFuncs;
+   end;
 
    FNamesLookup.Clear;
    FListLookup.Clear;
@@ -292,6 +300,7 @@ begin
    FPartialToken:=Copy(codeLine, p, FSourcePos.Col-p);
 
    if (p>1) and (codeLine[p-1]='.') then begin
+      FAfterDot:=True;
       Dec(p, 2);
       arrayItem:=MoveBackArrayBrackets;
       MoveToTokenStart;
@@ -304,7 +313,7 @@ begin
          else if FPreviousSymbol is TPropertySymbol then
             FPreviousSymbol:=TArraySymbol(FPreviousSymbol).Typ;
       end;
-   end;
+   end else FAfterDot:=False;
 
    Dec(p);
    while (p>1) do begin
@@ -499,6 +508,27 @@ begin
             list.Add(rws);
             FCleanupList.Add(rws);
          end;
+      end;
+      AddToList(list);
+   finally
+      list.Free;
+   end;
+end;
+
+// AddSpecialFuncs
+//
+procedure TdwsSuggestions.AddSpecialFuncs;
+var
+   skk : TSpecialKeywordKind;
+   sfs : TSpecialFunctionSymbol;
+   list : TSimpleSymbolList;
+begin
+   list:=TSimpleSymbolList.Create;
+   try
+      for skk:=Succ(skNone) to High(TSpecialKeywordKind) do begin
+         sfs:=TSpecialFunctionSymbol.Create(cSpecialKeywords[skk], nil);
+         list.Add(sfs);
+         FCleanupList.Add(sfs);
       end;
       AddToList(list);
    finally
@@ -735,10 +765,12 @@ begin
          else Result:=scConst
       end else Result:=scVariable;
 
- end else if symbolClass.InheritsFrom(TReservedWordSymbol) then
-    Result:=scReservedWord;
+   end else if symbolClass.InheritsFrom(TReservedWordSymbol) then
+      Result:=scReservedWord
+   else if symbolClass.InheritsFrom(TSpecialFunctionSymbol) then
+      Result:=scSpecialFunction;
 
-end;
+ end;
 
 // GetCaption
 //
@@ -792,6 +824,10 @@ begin
 
       alias:=TAliasSymbol(symbol);
       Result:=alias.Name+' = '+SafeSymbolName(alias.Typ);
+
+   end else if symbol is TSpecialFunctionSymbol then begin
+
+      Result:=symbol.Name+' ( special )';
 
    end else Result:=symbol.Name;
 end;

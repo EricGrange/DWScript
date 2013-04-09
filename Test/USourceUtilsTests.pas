@@ -84,12 +84,13 @@ begin
 
    scriptPos.Col:=3;
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
-   CheckEquals(5, sugg.Count, 'column 5');
-   CheckEquals('printit', sugg.Code[0], 'sugg 5, 0');
-   CheckEquals('Print', sugg.Code[1], 'sugg 5, 1');
-   CheckEquals('PrintLn', sugg.Code[2], 'sugg 5, 2');
-   CheckEquals('procedure', sugg.Code[3], 'sugg 5, 2');
-   CheckEquals('property', sugg.Code[4], 'sugg 5, 2');
+   CheckEquals(6, sugg.Count, 'column 6');
+   CheckEquals('printit', sugg.Code[0], 'sugg 6, 0');
+   CheckEquals('Print', sugg.Code[1], 'sugg 6, 1');
+   CheckEquals('PrintLn', sugg.Code[2], 'sugg 6, 2');
+   CheckEquals('procedure', sugg.Code[3], 'sugg 6, 3');
+   CheckEquals('property', sugg.Code[4], 'sugg 6, 4');
+   CheckEquals('Pred', sugg.Code[5], 'sugg 6, 5');
 
    scriptPos.Col:=7;
    sugg:=TdwsSuggestions.Create(prog, scriptPos);
