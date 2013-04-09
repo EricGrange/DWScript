@@ -453,6 +453,7 @@ var
    args : array [0 .. MaxDispArgs-1] of TVariantArg;
    param : PVarData;
    dispID : Integer;
+   excepInfo : TExcepInfo;
 begin
    strCount := 0;
    Result := S_OK;
@@ -552,15 +553,21 @@ begin
 
       end;
 
+      FillChar(excepInfo, SizeOf(excepInfo), 0);
+
       // Invoke COM Method
       Result := dispatch.Invoke(dispID, GUID_NULL, 0, InvKind, dispParams,
-                                PResult, nil, nil);
+                                PResult, @excepInfo, nil);
 
       if Result = 0 then begin
          for x := strCount - 1 downto 0 do begin
             if strings[x].PStr <> nil then
                OleStrToStrVar(strings[x].BStr, strings[x].PStr^);
          end;
+      end else begin
+         raise EOleError.CreateFmt('OLE Error %x (%s) from %s, %s',
+                                   [Result, SysErrorMessage(Result),
+                                    excepInfo.bstrSource, excepInfo.bstrDescription]);
       end;
 
    finally
