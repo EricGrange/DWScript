@@ -4456,14 +4456,16 @@ begin
          convExpr.Typ:=baseType;
       end else begin
          convExpr:=TObjAsClassExpr.Create(FProg, namePos, operandExpr, baseType);
-         castedExprTyp:=operandExpr.Typ;
-         if castedExprTyp<>FProg.TypNil then begin
-            if    (not (castedExprTyp is TClassSymbol))
-               or (
-                         (not TClassSymbol(castedExprTyp).IsOfType(baseType))
-                     and (not baseType.IsOfType(castedExprTyp))
-                  ) then begin
-               IncompatibleTypes(namePos, CPE_IncompatibleTypes, castedExprTyp, baseType);
+         if operandExpr<>nil then begin
+            castedExprTyp:=operandExpr.Typ;
+            if castedExprTyp<>FProg.TypNil then begin
+               if    (not (castedExprTyp is TClassSymbol))
+                  or (
+                            (not TClassSymbol(castedExprTyp).IsOfType(baseType))
+                        and (not baseType.IsOfType(castedExprTyp))
+                     ) then begin
+                  IncompatibleTypes(namePos, CPE_IncompatibleTypes, castedExprTyp, baseType);
+               end;
             end;
          end;
       end;
@@ -11969,7 +11971,11 @@ begin
       if not FTok.TestDelete(ttBRIGHT) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
 
-      if typeSym.IsOfType(FProg.TypInteger) then begin
+      if argExpr=nil then
+
+         Result:=TConstExpr.CreateTypedDefault(FProg, typeSym)
+
+      else if typeSym.IsOfType(FProg.TypInteger) then begin
 
          // Cast Integer(...)
          Result := TConvIntegerExpr.Create(FProg, argExpr);
