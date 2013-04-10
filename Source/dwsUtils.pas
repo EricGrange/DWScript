@@ -532,6 +532,16 @@ type
       function IndexOfName(const name : String): Integer; override;
    end;
 
+   TClassCloneConstructor<T: constructor> = record
+      private
+         FTemplate : T;
+         FSize : Integer;
+      public
+         procedure Initialize;
+         procedure Finalize;
+         function Create : T; inline;
+   end;
+
    ETightListOutOfBound = class(Exception)
    end;
 
@@ -3019,6 +3029,33 @@ end;
 procedure TSimpleIntegerStack.SetPeek(const item : Integer);
 begin
    FChunk.Data[FChunkIndex]:=item;
+end;
+
+// ------------------
+// ------------------ TClassCloneConstructor<T> ------------------
+// ------------------
+
+// Initialize
+//
+procedure TClassCloneConstructor<T>.Initialize;
+begin
+   FTemplate:=T.Create;
+   FSize:=TObject(FTemplate).InstanceSize;
+end;
+
+// Finalize
+//
+procedure TClassCloneConstructor<T>.Finalize;
+begin
+   FreeAndNil(FTemplate);
+end;
+
+// Create
+//
+function TClassCloneConstructor<T>.Create : T;
+begin
+   Result:=SysGetMem(FSize);
+   System.Move(Pointer(TObject(FTemplate))^, Pointer(TObject(Result))^, FSize);
 end;
 
 // ------------------------------------------------------------------

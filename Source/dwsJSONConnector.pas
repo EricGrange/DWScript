@@ -118,6 +118,13 @@ type
          function Call(const base : Variant; const args : TConnectorArgs) : TData; override;
    end;
 
+   // TdwsJSONIndexWriteCall
+   //
+   TdwsJSONIndexWriteCall = class(TdwsJSONIndexCall)
+      protected
+         function Call(const base : Variant; const args : TConnectorArgs) : TData; override;
+   end;
+
    // TdwsJSONConnectorMember
    //
    TdwsJSONConnectorMember = class(TInterfacedSelfObject, IUnknown, IConnectorMember)
@@ -144,6 +151,18 @@ type
    // TJSONParseMethod
    //
    TJSONParseMethod = class(TInternalStaticMethod)
+      procedure Execute(info : TProgramInfo); override;
+   end;
+
+   // TJSONNewObject
+   //
+   TJSONNewObject = class(TInternalStaticMethod)
+      procedure Execute(info : TProgramInfo); override;
+   end;
+
+   // TJSONNewArray
+   //
+   TJSONNewArray = class(TInternalStaticMethod)
       procedure Execute(info : TProgramInfo); override;
    end;
 
@@ -176,9 +195,11 @@ const
    cDefaultSymbolMarker = ttAT;
 
    SYS_JSON = 'JSON';
-   SYS_JSON_VARIANT = 'JSONVariant';
+   SYS_JSONVARIANT = 'JSONVariant';
    SYS_JSON_STRINGIFY = 'Stringify';
    SYS_JSON_PARSE = 'Parse';
+   SYS_JSON_NEWOBJECT = 'NewObject';
+   SYS_JSON_NEWARRAY = 'NewArray';
 
 type
    IBoxedJSONValue = interface
@@ -263,7 +284,7 @@ end;
 class procedure TBoxedJSONValue.AllocateOrGetImmediate(root, wrapped : TdwsJSONValue; var v : Variant);
 begin
    if wrapped.IsImmediateValue then
-      v:=TdwsJSONImmediate(wrapped).RawValue
+      v:=TdwsJSONImmediate(wrapped).AsVariant
    else if wrapped<>nil then
       TBoxedJSONValue.Allocate(root, wrapped, v)
    else v:=vNilJSONValue;
@@ -313,7 +334,7 @@ var
    jsonObject : TClassSymbol;
    anyType : TAnyTypeSymbol;
 begin
-   connSym:=TJSONConnectorSymbol.Create(SYS_JSON_VARIANT, TdwsJSONConnectorType.Create(table));
+   connSym:=TJSONConnectorSymbol.Create(SYS_JSONVARIANT, TdwsJSONConnectorType.Create(table));
    table.AddSymbol(connSym);
 
    jsonObject:=TClassSymbol.Create(SYS_JSON, nil);
@@ -326,17 +347,20 @@ begin
    anyType:=TAnyTypeSymbol.Create('Any Type', nil);
    table.AddSymbol(anyType);
 
-//   TJSONStringifyMethod.Create(mkClassFunction, [maStatic], SYS_JSON_STRINGIFY,
-//                               ['obj', 'Any Type'], SYS_STRING,
-//                               jsonObject, cvPublic, table);
    TJSONStringifyMethod.Create(table, SYS_JSON_STRINGIFY,
                                ['val', 'Any Type'], SYS_STRING,
                                [iffStateLess, iffStaticMethod],
                                jsonObject);
 
    TJSONParseMethod.Create(mkClassFunction, [maStatic], SYS_JSON_PARSE,
-                           ['str', SYS_STRING], SYS_JSON_VARIANT,
+                           ['str', SYS_STRING], SYS_JSONVARIANT,
                            jsonObject, cvPublic, table);
+   TJSONNewObject.Create(mkClassFunction, [maStatic], SYS_JSON_NEWOBJECT,
+                         [], SYS_JSONVARIANT,
+                         jsonObject, cvPublic, table);
+   TJSONNewArray.Create(mkClassFunction, [maStatic], SYS_JSON_NEWARRAY,
+                        [], SYS_JSONVARIANT,
+                        jsonObject, cvPublic, table);
 end;
 
 // StaticSymbols
@@ -410,8 +434,8 @@ begin
 
       if Length(params)<>1 then
          raise ECompileException.CreateFmt(CPE_BadNumberOfParameters, [1, Length(params)]);
-      if params[0].TypSym.UnAliasedType<>FTable.FindTypeSymbol(SYS_JSON_VARIANT, cvMagic) then
-         raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_JSON_VARIANT, params[0].TypSym.Caption]);
+      if params[0].TypSym.UnAliasedType<>FTable.FindTypeSymbol(SYS_JSONVARIANT, cvMagic) then
+         raise ECompileException.CreateFmt(CPE_BadParameterType, [0, SYS_JSONVARIANT, params[0].TypSym.Caption]);
 
       Result:=IJSONExtend(Self);
       typSym:=nil;
@@ -423,7 +447,7 @@ begin
 
       if UnicodeSameText(methodName, 'clone') then begin
 
-         typSym:=FTable.FindTypeSymbol(SYS_JSON_VARIANT, cvMagic);
+         typSym:=FTable.FindTypeSymbol(SYS_JSONVARIANT, cvMagic);
          Result:=IJSONClone(Self);
 
       end else begin
@@ -447,7 +471,7 @@ end;
 function TdwsJSONConnectorType.HasMember(const memberName : String; var typSym : TTypeSymbol;
                                          isWrite : Boolean) : IConnectorMember;
 begin
-   typSym:=FTable.FindTypeSymbol(SYS_JSON_VARIANT, cvMagic);
+   typSym:=FTable.FindTypeSymbol(SYS_JSONVARIANT, cvMagic);
    Result:=TdwsJSONConnectorMember.Create(memberName);
 end;
 
@@ -456,10 +480,10 @@ end;
 function TdwsJSONConnectorType.HasIndex(const propName : String; const params : TConnectorParamArray;
                                       var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
 begin
-   if isWrite then Exit(nil); // unsupported yet
-
-   typSym:=FTable.FindTypeSymbol(SYS_JSON_VARIANT, cvMagic);
-   Result:=TdwsJSONIndexReadCall.Create(propName);
+   typSym:=FTable.FindTypeSymbol(SYS_JSONVARIANT, cvMagic);
+   if isWrite then
+      Result:=TdwsJSONIndexWriteCall.Create(propName)
+   else Result:=TdwsJSONIndexReadCall.Create(propName);
 end;
 
 // HasEnumerator
@@ -619,6 +643,51 @@ begin
 end;
 
 // ------------------
+// ------------------ TdwsJSONIndexWriteCall ------------------
+// ------------------
+
+// Call
+//
+function TdwsJSONIndexWriteCall.Call(const base : Variant; const args : TConnectorArgs) : TData;
+var
+   pBase, pVal : PVarData;
+   baseValue, argValue : TdwsJSONValue;
+begin
+   pBase:=PVarData(@base);
+   if pBase^.VType=varUnknown then begin
+      baseValue:=IBoxedJSONValue(IUnknown(pBase^.VUnknown)).Value;
+      if FMethodName<>'' then
+         baseValue:=baseValue.Items[FMethodName];
+      pVal:=PVarData(@args[1][0]);
+      case pVal^.VType of
+         varUnknown :
+            argValue:=(IUnknown(pVal^.VUnknown) as IBoxedJSONValue).Value;
+         varInt64 : begin
+            argValue:=TdwsJSONImmediate.Create;
+            argValue.AsNumber:=pVal^.VInt64;
+         end;
+         varDouble : begin
+            argValue:=TdwsJSONImmediate.Create;
+            argValue.AsNumber:=pVal^.VInt64;
+         end;
+         varUString : begin
+            argValue:=TdwsJSONImmediate.Create;
+            argValue.AsString:=String(pVal^.VUString);
+         end;
+         varBoolean : begin
+            argValue:=TdwsJSONImmediate.Create;
+            argValue.AsBoolean:=pVal^.VBoolean;
+         end;
+      else
+         raise Exception.Create('Unsupported assignment');
+      end;
+      baseValue.Values[args[0][0]]:=argValue;
+   end else begin
+      raise Exception.CreateFmt('Invalid JSON write to %s', [FMethodName]);
+   end;
+end;
+
+// ------------------
 // ------------------ TdwsJSONConnectorMember ------------------
 // ------------------
 
@@ -699,6 +768,38 @@ begin
       box:=TBoxedJSONValue.Create(v, v);
       v.DecRefCount;
    end;
+   Info.ResultAsVariant:=IUnknown(IBoxedJSONValue(box));
+end;
+
+// ------------------
+// ------------------ TJSONNewObject ------------------
+// ------------------
+
+// Execute
+//
+procedure TJSONNewObject.Execute(info : TProgramInfo);
+var
+   v : TdwsJSONValue;
+   box : TBoxedJSONValue;
+begin
+   v:=TdwsJSONObject.Create;
+   box:=TBoxedJSONValue.Create(v, v);
+   Info.ResultAsVariant:=IUnknown(IBoxedJSONValue(box));
+end;
+
+// ------------------
+// ------------------ TJSONNewArray ------------------
+// ------------------
+
+// Execute
+//
+procedure TJSONNewArray.Execute(info : TProgramInfo);
+var
+   v : TdwsJSONValue;
+   box : TBoxedJSONValue;
+begin
+   v:=TdwsJSONArray.Create;
+   box:=TBoxedJSONValue.Create(v, v);
    Info.ResultAsVariant:=IUnknown(IBoxedJSONValue(box));
 end;
 
