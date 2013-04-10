@@ -1812,7 +1812,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsMethodExprs, dwsInfo, dwsCompilerUtils;
+uses dwsFunctions, dwsCoreExprs, dwsMagicExprs, dwsMethodExprs, dwsInfo,
+   dwsCompilerUtils;
 
 type
 
@@ -6563,12 +6564,13 @@ begin
             resultData := FConnectorCall.Call(buf, FConnectorArgs);
          end;
       except
-         on e: EScriptException do
+         on e: EScriptError do begin
+            EScriptError(e).ScriptPos:=ScriptPos;
             raise;
-         on e: Exception do begin
-            exec.SetScriptError(Self);
-            raise;
-         end;
+         end
+      else
+         exec.SetScriptError(Self);
+         raise;
       end;
 
       for x:=0 to High(FConnectorArgs) do begin
@@ -6648,6 +6650,11 @@ begin
       FResultData := FConnectorMember.Read(Result);
       Result := FResultData[0];
    except
+      on e: EScriptError do begin
+         EScriptError(e).ScriptPos:=ScriptPos;
+         raise;
+      end
+   else
       exec.SetScriptError(Self);
       raise;
    end;
@@ -6750,6 +6757,11 @@ begin
    try
       FConnectorMember.Write(base^, dat);
    except
+      on e: EScriptError do begin
+         EScriptError(e).ScriptPos:=ScriptPos;
+         raise;
+      end
+   else
       exec.SetScriptError(Self);
       raise;
    end;

@@ -1,1 +1,3 @@
-Attempt to call on a nil connector
+Attempt to call on a nil connector [line: 4, column: 12]
+Attempt to write on a nil connector [line: 10, column: 17]
+Attempt to read on a nil connector [line: 16, column: 16]

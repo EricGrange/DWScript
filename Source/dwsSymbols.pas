@@ -1709,7 +1709,7 @@ type
                             const aScriptPos: TScriptPos); overload;
 
          property ExceptionObj : IScriptObj read FExceptObj;
-         property ScriptPos : TScriptPos read FScriptPos;
+         property ScriptPos : TScriptPos read FScriptPos write FScriptPos;
          property ScriptCallStack : TdwsExprLocationArray read FScriptCallStack;
    end;
 

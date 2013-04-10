@@ -7663,25 +7663,30 @@ begin
          if FDoExprs.Count > 0 then begin
 
             isCaught := False;
-            objSym := exceptObj.ClassSym;
 
-            for x := 0 to FDoExprs.Count - 1 do begin
-               // Find a "on x: Class do ..." statement matching to this exception class
-               doExpr := TExceptDoExpr(FDoExprs.List[x]);
-               if doExpr.ExceptionVar.Typ.IsCompatible(objSym) then begin
-                  exec.Stack.Data[exec.Stack.BasePointer +  doExpr.FExceptionVar.StackAddr] := exceptObj;
-                  try
-                     exec.DoStep(doExpr);
-                     doExpr.EvalNoResult(exec);
-                  except
-                     on E : EReraise do isReraise := True;
+            if exceptObj<>nil then begin
+
+               objSym := exceptObj.ClassSym;
+
+               for x := 0 to FDoExprs.Count - 1 do begin
+                  // Find a "on x: Class do ..." statement matching to this exception class
+                  doExpr := TExceptDoExpr(FDoExprs.List[x]);
+                  if doExpr.ExceptionVar.Typ.IsCompatible(objSym) then begin
+                     exec.Stack.Data[exec.Stack.BasePointer +  doExpr.FExceptionVar.StackAddr] := exceptObj;
+                     try
+                        exec.DoStep(doExpr);
+                        doExpr.EvalNoResult(exec);
+                     except
+                        on E : EReraise do isReraise := True;
+                     end;
+                     if isReraise then break;
+                     VarClear(exec.Stack.Data[exec.Stack.BasePointer + doExpr.FExceptionVar.StackAddr]);
+                     isCaught := True;
+                     Break;
                   end;
-                  if isReraise then break;
-                  VarClear(exec.Stack.Data[exec.Stack.BasePointer + doExpr.FExceptionVar.StackAddr]);
-                  isCaught := True;
-                  Break;
                end;
-            end;
+
+            end else isReraise:=(FDoExprs.Count>0);
 
             if (not isReraise) and (not isCaught) then begin
                if Assigned(FElseExpr) then begin

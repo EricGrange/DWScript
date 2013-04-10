@@ -618,7 +618,7 @@ var
 begin
    disp:=Base;
    if disp=nil then
-      raise EOleError.Create(CPE_NilConnectorCall);
+      raise EScriptError.Create(CPE_NilConnectorCall);
 
    DwsOleCheck(disp.GetIDsOfNames(GUID_NULL, @FPMethodName, 1, LOCALE_SYSTEM_DEFAULT, @dispID));
 
@@ -660,6 +660,8 @@ var
    disp : IDispatch;
 begin
    disp:=Base;
+   if disp=nil then
+      raise EScriptError.Create(CPE_NilConnectorRead);
 
    SetLength(Result, 1);
    Result[0] := GetDispatchPropValue(disp, GetDispId(disp));
@@ -672,6 +674,9 @@ var
    disp : IDispatch;
 begin
    disp:=Base;
+   if disp=nil then
+      raise EScriptError.Create(CPE_NilConnectorWrite);
+
    SetDispatchPropValue(disp, GetDispID(disp), Data[0]);
 end;
 
