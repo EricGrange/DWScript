@@ -655,7 +655,7 @@ var
 begin
    pBase:=PVarData(@base);
    if pBase^.VType=varUnknown then begin
-      baseValue:=IBoxedJSONValue(IUnknown(pBase^.VUnknown)).Value;
+      baseValue:=(IUnknown(pBase^.VUnknown) as IBoxedJSONValue).Value;
       if FMethodName<>'' then
          baseValue:=baseValue.Items[FMethodName];
       pVal:=PVarData(@args[1][0]);
