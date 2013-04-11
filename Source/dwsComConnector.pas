@@ -385,7 +385,9 @@ begin
    if IsWrite then
       methType := DISPATCH_PROPERTYPUT
    else methType := DISPATCH_PROPERTYGET;
-   Result := TComConnectorCall.Create(PropName, Params, methType);
+   if PropName='' then
+      Result := TComConnectorCall.Create('Item', Params, methType)
+   else Result := TComConnectorCall.Create(PropName, Params, methType);
 end;
 
 // HasEnumerator
