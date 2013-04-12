@@ -532,7 +532,7 @@ type
       function IndexOfName(const name : String): Integer; override;
    end;
 
-   TClassCloneConstructor<T: constructor> = record
+   TClassCloneConstructor<T: class, constructor> = record
       private
          FTemplate : T;
          FSize : Integer;
