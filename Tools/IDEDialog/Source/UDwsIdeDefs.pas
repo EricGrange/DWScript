@@ -76,8 +76,7 @@ const
     'Parameter',
     'Variable',
     'Const',
-    'ReservedWord',
-    'SpecialFunction' );
+    'Keyword' );
 
 
 function DebuggerEvaluate( ADebugger : TDwsDebugger; const AExpression : string) : String;

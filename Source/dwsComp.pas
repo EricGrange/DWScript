@@ -1246,7 +1246,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses System.SyncObjs, dwsMagicExprs;
+uses dwsMagicExprs;
 
 type
    EGenerationError = class(Exception);

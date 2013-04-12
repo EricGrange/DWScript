@@ -19,8 +19,7 @@ unit dwsLanguageExtension;
 
 interface
 
-uses Classes, System.Types, dwsCompiler, dwsExprs, dwsErrors, dwsSymbols,
-     dwsUnitSymbols;
+uses Classes, dwsCompiler, dwsExprs, dwsErrors, dwsSymbols, dwsUnitSymbols;
 
 type
 

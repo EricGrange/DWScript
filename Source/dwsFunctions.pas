@@ -235,8 +235,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses System.SyncObjs,
-     dwsCompilerUtils;
+uses dwsCompilerUtils;
 
 var
    vInternalUnit : TInternalUnit;
