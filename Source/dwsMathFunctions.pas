@@ -24,7 +24,6 @@ unit dwsMathFunctions;
 interface
 
 uses
-   dwsUtils,
    Classes, Math,
    dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsXPlatform, dwsExprList;
 
@@ -182,6 +181,9 @@ type
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
 
+   TMaxIntValueFunc = class(TInternalMagicIntFunction)
+      function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
+   end;
    TMaxIntFunc = class(TInternalMagicIntFunction)
       function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
    end;
@@ -615,6 +617,13 @@ begin
    end;
 end;
 
+{ TMaxIntBalueFunc }
+
+function TMaxIntValueFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
+begin
+   Result:=MaxInt;
+end;
+
 { TMaxIntFunc }
 
 function TMaxIntFunc.DoEvalAsInteger(args : TExprBaseList) : Int64;
@@ -839,7 +848,8 @@ initialization
    RegisterInternalIntFunction(TMinIntFunc, 'Min', ['v1', cInteger, 'v2', cInteger], [iffStateLess, iffOverloaded]);
    RegisterInternalFloatFunction(TClampFunc, 'Clamp', ['v', cFloat, 'min', cFloat, 'max', cFloat], [iffStateLess]);
 
-   RegisterInternalIntFunction(TMaxIntFunc, 'MaxInt', ['v1', cInteger, 'v2', cInteger], [iffStateLess]);
+   RegisterInternalIntFunction(TMaxIntValueFunc, 'MaxInt', [], [iffStateLess, iffOverloaded]);
+   RegisterInternalIntFunction(TMaxIntFunc, 'MaxInt', ['v1', cInteger, 'v2', cInteger], [iffStateLess, iffOverloaded]);
    RegisterInternalIntFunction(TMinIntFunc, 'MinInt', ['v1', cInteger, 'v2', cInteger], [iffStateLess]);
    RegisterInternalIntFunction(TClampIntFunc, 'ClampInt', ['v', cInteger, 'min', cInteger, 'max', cInteger], [iffStateLess]);
 
