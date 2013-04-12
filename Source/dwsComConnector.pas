@@ -385,9 +385,7 @@ begin
    if IsWrite then
       methType := DISPATCH_PROPERTYPUT
    else methType := DISPATCH_PROPERTYGET;
-   if PropName='' then
-      Result := TComConnectorCall.Create('Item', Params, methType)
-   else Result := TComConnectorCall.Create(PropName, Params, methType);
+   Result := TComConnectorCall.Create(PropName, Params, methType);
 end;
 
 // HasEnumerator
@@ -622,7 +620,9 @@ begin
    if disp=nil then
       raise EScriptError.Create(CPE_NilConnectorCall);
 
-   DwsOleCheck(disp.GetIDsOfNames(GUID_NULL, @FPMethodName, 1, LOCALE_SYSTEM_DEFAULT, @dispID));
+   if FMethodName='' then
+      dispID:=0 // default method or property
+   else DwsOleCheck(disp.GetIDsOfNames(GUID_NULL, @FPMethodName, 1, LOCALE_SYSTEM_DEFAULT, @dispID));
 
    SetLength(Result, 1);
    DwsOleCheck(DispatchInvoke(disp, FMethodType, 0, @dispID, args, @Result[0]));
