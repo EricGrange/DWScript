@@ -25,7 +25,7 @@ interface
 
 uses
    dwsErrors, dwsStrings,
-   dwsSymbols, dwsDataContext,
+   dwsSymbols, dwsDataContext, dwsStack,
    dwsExprs;
 
 type
@@ -163,8 +163,7 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-uses dwsStack,
-     dwsCompilerUtils;
+uses dwsCompilerUtils;
 
 // ------------------
 // ------------------ TMethodExpr ------------------
