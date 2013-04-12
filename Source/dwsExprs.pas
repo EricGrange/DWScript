@@ -3358,8 +3358,6 @@ begin
 
    inherited Create(True);
 
-   SetThreadName('DWScript Guardian');
-
    Priority:=tpTimeCritical;
 end;
 
@@ -3481,6 +3479,8 @@ var
    millisecs : Cardinal;
    timeLeft : Int64;
 begin
+   SetThreadName('DWScript Guardian');
+
    while not Terminated do begin
 
       timeLeft:=INFINITE;
@@ -6171,8 +6171,10 @@ end;
 //
 constructor TScriptDynamicArray.Create(elemTyp : TTypeSymbol);
 begin
-   FElementTyp:=elemTyp;
-   FElementSize:=elemTyp.Size;
+   if elemTyp<>nil then begin
+      FElementTyp:=elemTyp;
+      FElementSize:=elemTyp.Size;
+   end;
 end;
 
 // SetArrayLength
