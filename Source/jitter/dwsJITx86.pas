@@ -20,7 +20,7 @@ interface
 
 {
    TODO:
-   - stack allocations
+   - range checking
 }
 
 
@@ -195,6 +195,9 @@ type
       function CompileInteger(expr : TExprBase) : Integer; override;
       procedure CompileAssignInteger(expr : TTypedExpr; source : Integer); override;
    end;
+   Tx86ObjectVar = class (TdwsJITter_x86)
+      function CompileScriptObj(expr : TExprBase) : Integer; override;
+   end;
    Tx86RecordVar = class (TdwsJITter_x86)
       function DoCompileFloat(expr : TExprBase) : TxmmRegister; override;
       procedure DoCompileAssignFloat(expr : TTypedExpr; source : TxmmRegister); override;
@@ -208,6 +211,18 @@ type
    Tx86StaticArray = class (TdwsJITter_x86)
       function DoCompileFloat(expr : TExprBase) : TxmmRegister; override;
       procedure DoCompileAssignFloat(expr : TTypedExpr; source : TxmmRegister); override;
+   end;
+   Tx86DynamicArrayBase = class (TdwsJITter_x86)
+      procedure CompileAsData(expr : TTypedExpr);
+      procedure CompileIndexToGPR(indexExpr : TTypedExpr; gpr : TgpRegister);
+   end;
+   Tx86DynamicArray = class (Tx86DynamicArrayBase)
+      function DoCompileFloat(expr : TExprBase) : TxmmRegister; override;
+      function CompileInteger(expr : TExprBase) : Integer; override;
+      function CompileScriptObj(expr : TExprBase) : Integer; override;
+   end;
+   Tx86DynamicArraySet = class (Tx86DynamicArrayBase)
+      procedure CompileStatement(expr : TExprBase); override;
    end;
 
    Tx86InterpretedExpr = class (TdwsJITter_x86)
@@ -252,14 +267,12 @@ type
 
    Tx86Loop = class (TdwsJITter_x86)
       procedure CompileStatement(expr : TExprBase); override;
-      procedure CompileStartCondition(expr : TLoopExpr; targetLoop, targetExit : TFixupTarget); virtual;
-      procedure CompileFinalCondition(expr : TLoopExpr; targetLoop, targetExit : TFixupTarget); virtual;
    end;
    Tx86Repeat = class (Tx86Loop)
-      procedure CompileFinalCondition(expr : TLoopExpr; targetLoop, targetExit : TFixupTarget); override;
+      procedure CompileStatement(expr : TExprBase); override;
    end;
    Tx86While = class (Tx86Loop)
-      procedure CompileStartCondition(expr : TLoopExpr; targetLoop, targetExit : TFixupTarget); override;
+      procedure CompileStatement(expr : TExprBase); override;
    end;
 
    Tx86ForUpward = class (TdwsJITter_x86)
@@ -292,15 +305,25 @@ type
       function DoCompileFloat(expr : TExprBase) : TxmmRegister; override;
    end;
 
+   Tx86NegInt = class (TdwsJITter_x86)
+      function CompileInteger(expr : TExprBase) : Integer; override;
+   end;
    Tx86AddInt = class (TdwsJITter_x86)
       function CompileInteger(expr : TExprBase) : Integer; override;
    end;
-//   Tx86SubInt = class (TdwsJITter_x86)
-//      function CompileInteger(expr : TExprBase) : Integer; override;
-//   end;
+   Tx86SubInt = class (TdwsJITter_x86)
+      function CompileInteger(expr : TExprBase) : Integer; override;
+   end;
 //   Tx86MultInt = class (TdwsJITter_x86)
 //      function CompileInteger(expr : TExprBase) : Integer; override;
 //   end;
+
+   Tx86Shr = class (TdwsJITter_x86)
+      function CompileInteger(expr : TExprBase) : Integer; override;
+   end;
+   Tx86Shl = class (TdwsJITter_x86)
+      function CompileInteger(expr : TExprBase) : Integer; override;
+   end;
 
    Tx86IncIntVar = class (TdwsJITter_x86)
       procedure CompileStatement(expr : TExprBase); override;
@@ -309,14 +332,13 @@ type
       procedure CompileStatement(expr : TExprBase); override;
    end;
 
-   Tx86RelEqualInt = class (TdwsJITter_x86)
-      procedure TestEqual(addr : Integer; value : Int64; targetTrue, targetFalse : TFixup);
-      procedure DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); override;
+   Tx86RelOpInt = class (TdwsJITter_x86)
+      public
+         FlagsHiPass, FlagsHiFail, FlagsLo : TboolFlags;
+         constructor Create(jit : TdwsJITx86; flagsHiPass, flagsHiFail, flagsLo : TboolFlags);
+         procedure DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); override;
    end;
-   Tx86RelNotEqualInt = class (Tx86RelEqualInt)
-      procedure DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); override;
-   end;
-   Tx86RelIntIsZero = class (Tx86RelEqualInt)
+   Tx86RelIntIsZero = class (TdwsJITter_x86)
       procedure DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); override;
    end;
    Tx86RelIntIsNotZero = class (Tx86RelIntIsZero)
@@ -340,6 +362,10 @@ type
       procedure DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); override;
    end;
 
+   Tx86ConvFloat = class (TdwsJITter_x86)
+      function DoCompileFloat(expr : TExprBase) : TxmmRegister; override;
+   end;
+
    Tx86MagicFunc = class (Tx86InterpretedExpr)
       function DoCompileFloat(expr : TExprBase) : TxmmRegister; override;
       function CompileInteger(expr : TExprBase) : Integer; override;
@@ -354,6 +380,13 @@ type
 
    Tx86SqrtFunc = class (Tx86MagicFunc)
       function DoCompileFloat(expr : TExprBase) : TxmmRegister; override;
+   end;
+
+   Tx86MinMaxFloatFunc = class (Tx86MagicFunc)
+      public
+         OP : TxmmOp;
+         constructor Create(jit : TdwsJITx86; op : TxmmOp);
+         function DoCompileFloat(expr : TExprBase) : TxmmRegister; override;
    end;
 
    Tx86RoundFunc = class (Tx86MagicFunc)
@@ -399,12 +432,22 @@ begin
 
    RegisterJITter(TFloatVarExpr,                Tx86FloatVar.Create(Self));
    RegisterJITter(TIntVarExpr,                  Tx86IntVar.Create(Self));
+   RegisterJITter(TObjectVarExpr,               Tx86ObjectVar.Create(Self));
 
+   RegisterJITter(TFieldExpr,                   Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TRecordExpr,                  Tx86InterpretedExpr.Create(Self));
    RegisterJITter(TRecordVarExpr,               Tx86RecordVar.Create(Self));
 
    RegisterJITter(TVarParamExpr,                Tx86VarParam.Create(Self));
 
    RegisterJITter(TStaticArrayExpr,             Tx86StaticArray.Create(Self));
+   RegisterJITter(TDynamicArrayExpr,            Tx86DynamicArray.Create(Self));
+   RegisterJITter(TDynamicArrayVarExpr,         Tx86DynamicArray.Create(Self));
+   RegisterJITter(TDynamicArraySetExpr,         Tx86DynamicArraySet.Create(Self));
+   RegisterJITter(TDynamicArraySetVarExpr,      Tx86DynamicArraySet.Create(Self));
+
+   RegisterJITter(TArrayLengthExpr,             Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TArraySetLengthExpr,          Tx86InterpretedExpr.Create(Self));
 
    RegisterJITter(TBlockExprNoTable,            Tx86BlockExprNoTable.Create(Self));
    RegisterJITter(TBlockExprNoTable2,           Tx86BlockExprNoTable.Create(Self));
@@ -442,15 +485,26 @@ begin
    RegisterJITter(TAbsFloatExpr,                Tx86AbsFloat.Create(Self));
    RegisterJITter(TNegFloatExpr,                Tx86NegFloat.Create(Self));
 
+   RegisterJITter(TNegIntExpr,                  Tx86NegInt.Create(Self));
    RegisterJITter(TAddIntExpr,                  Tx86AddInt.Create(Self));
-//   RegisterJITter(TSubIntExpr,                  Tx86SubInt.Create(Self));
-//   RegisterJITter(TMultIntExpr,                 Tx86MultInt.Create(Self));
+   RegisterJITter(TSubIntExpr,                  Tx86SubInt.Create(Self));
+   RegisterJITter(TMultIntExpr,                 Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TDivExpr,                     Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TModExpr,                     Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TMultIntPow2Expr,             Tx86InterpretedExpr.Create(Self));
+
+   RegisterJITter(TShrExpr,                     Tx86Shr.Create(Self));
+   RegisterJITter(TShlExpr,                     Tx86Shl.Create(Self));
 
    RegisterJITter(TIncIntVarExpr,               Tx86IncIntVar.Create(Self));
    RegisterJITter(TDecIntVarExpr,               Tx86DecIntVar.Create(Self));
 
-   RegisterJITter(TRelEqualIntExpr,             Tx86RelEqualInt.Create(Self));
-   RegisterJITter(TRelNotEqualIntExpr,          Tx86RelNotEqualInt.Create(Self));
+   RegisterJITter(TRelEqualIntExpr,             Tx86RelOpInt.Create(Self, flagsNone, flagsNZ, flagsZ));
+   RegisterJITter(TRelNotEqualIntExpr,          Tx86RelOpInt.Create(Self, flagsNZ, flagsNone, flagsNZ));
+   RegisterJITter(TRelGreaterIntExpr,           Tx86RelOpInt.Create(Self, flagsG, flagsL, flagsG));
+   RegisterJITter(TRelGreaterEqualStringExpr,   Tx86RelOpInt.Create(Self, flagsG, flagsL, flagsGE));
+   RegisterJITter(TRelLessIntExpr,              Tx86RelOpInt.Create(Self, flagsL, flagsG, flagsL));
+   RegisterJITter(TRelLessEqualIntExpr,         Tx86RelOpInt.Create(Self, flagsL, flagsG, flagsLE));
 
    RegisterJITter(TRelIntIsZeroExpr,            Tx86RelIntIsZero.Create(Self));
    RegisterJITter(TRelIntIsNotZeroExpr,         Tx86RelIntIsNotZero.Create(Self));
@@ -466,14 +520,16 @@ begin
    RegisterJITter(TBoolOrExpr,                  Tx86BoolOrExpr.Create(Self));
    RegisterJITter(TBoolAndExpr,                 Tx86BoolAndExpr.Create(Self));
 
+   RegisterJITter(TConvFloatExpr,               Tx86ConvFloat.Create(Self));
+
    RegisterJITter(TFuncExpr,                    Tx86InterpretedExpr.Create(Self));
    RegisterJITter(TMagicProcedureExpr,          Tx86InterpretedExpr.Create(Self));
    RegisterJITter(TMagicFloatFuncExpr,          Tx86MagicFunc.Create(Self));
    RegisterJITter(TMagicIntFuncExpr,            Tx86MagicFunc.Create(Self));
 
    RegisterJITter(TSqrtFunc,                    Tx86SqrtFunc.Create(Self));
-   RegisterJITter(TMaxFunc,                     Tx86FloatBinOp.Create(Self, xmm_maxsd));
-   RegisterJITter(TMinFunc,                     Tx86FloatBinOp.Create(Self, xmm_minsd));
+   RegisterJITter(TMaxFunc,                     Tx86MinMaxFloatFunc.Create(Self, xmm_maxsd));
+   RegisterJITter(TMinFunc,                     Tx86MinMaxFloatFunc.Create(Self, xmm_minsd));
    RegisterJITter(TPowerFunc,                   Tx86DirectCallFunc.Create(Self, @@vAddrPower));
    RegisterJITter(TRoundFunc,                   Tx86RoundFunc.Create(Self));
 end;
@@ -1316,59 +1372,92 @@ begin
 
    jit.ResetXMMReg;
 
+   targetLoop:=jit.Fixups.NewTarget;
    targetExit:=jit.Fixups.NewHangingTarget;
-   targetLoop:=jit.Fixups.NewHangingTarget;
 
-   CompileStartCondition(e, targetLoop, targetExit);
-
-   jit.Fixups.AddFixup(targetLoop);
+   jit.EnterLoop(targetLoop, targetExit);
 
    jit._DoStep(e.LoopExpr);
    jit.CompileStatement(e.LoopExpr);
 
-   CompileFinalCondition(e, targetLoop, targetExit);
+   jit.Fixups.NewJump(flagsNone, targetLoop);
 
    jit.Fixups.AddFixup(targetExit);
 
+   jit.LeaveLoop;
+
    jit.ResetXMMReg;
-end;
-
-// CompileStartCondition
-//
-procedure Tx86Loop.CompileStartCondition(expr : TLoopExpr; targetLoop, targetExit : TFixupTarget);
-begin
-   // nothing
-end;
-
-// CompileFinalCondition
-//
-procedure Tx86Loop.CompileFinalCondition(expr : TLoopExpr; targetLoop, targetExit : TFixupTarget);
-begin
-   // nothing
 end;
 
 // ------------------
 // ------------------ Tx86Repeat ------------------
 // ------------------
 
-// CompileFinalCondition
+// CompileStatement
 //
-procedure Tx86Repeat.CompileFinalCondition(expr : TLoopExpr; targetLoop, targetExit : TFixupTarget);
+procedure Tx86Repeat.CompileStatement(expr : TExprBase);
+var
+   e : TLoopExpr;
+   targetLoop, targetExit : TFixupTarget;
 begin
-   jit._DoStep(expr.CondExpr);
-   jit.CompileBoolean(expr.CondExpr, targetExit, targetLoop);
+   e:=TLoopExpr(expr);
+
+   jit.ResetXMMReg;
+
+   targetLoop:=jit.Fixups.NewTarget;
+   targetExit:=jit.Fixups.NewHangingTarget;
+
+   jit.EnterLoop(targetLoop, targetExit);
+
+   jit._DoStep(e.LoopExpr);
+   jit.CompileStatement(e.LoopExpr);
+
+   jit._DoStep(e.CondExpr);
+   jit.CompileBoolean(e.CondExpr, targetExit, targetLoop);
+
+   jit.Fixups.AddFixup(targetExit);
+
+   jit.LeaveLoop;
+
+   jit.ResetXMMReg;
 end;
 
 // ------------------
 // ------------------ Tx86While ------------------
 // ------------------
 
-// CompileStartCondition
+// CompileStatement
 //
-procedure Tx86While.CompileStartCondition(expr : TLoopExpr; targetLoop, targetExit : TFixupTarget);
+procedure Tx86While.CompileStatement(expr : TExprBase);
+var
+   e : TLoopExpr;
+   targetLoop, targetLoopStart, targetExit : TFixupTarget;
 begin
-   jit._DoStep(expr.CondExpr);
-   jit.CompileBoolean(expr.CondExpr, targetLoop, targetExit);
+   e:=TLoopExpr(expr);
+
+   jit.ResetXMMReg;
+
+   targetLoop:=jit.Fixups.NewTarget;
+   targetLoopStart:=jit.Fixups.NewHangingTarget;
+   targetExit:=jit.Fixups.NewHangingTarget;
+
+   jit.EnterLoop(targetLoop, targetExit);
+
+   jit._DoStep(e.CondExpr);
+   jit.CompileBoolean(e.CondExpr, targetLoopStart, targetExit);
+
+   jit.Fixups.AddFixup(targetLoopStart);
+
+   jit._DoStep(e.LoopExpr);
+   jit.CompileStatement(e.LoopExpr);
+
+   jit.Fixups.NewJump(flagsNone, targetLoop);
+
+   jit.Fixups.AddFixup(targetExit);
+
+   jit.LeaveLoop;
+
+   jit.ResetXMMReg;
 end;
 
 // ------------------
@@ -1478,7 +1567,7 @@ begin
 
       jit.Fixups.AddFixup(loopContinue);
 
-      x86._int64_inc(e.VarExpr.StackAddr, 1);
+      x86._execmem64_inc(e.VarExpr.StackAddr, 1);
 
       jit.Fixups.NewJump(flagsNone, loopStart);
 
@@ -1752,6 +1841,18 @@ begin
 end;
 
 // ------------------
+// ------------------ Tx86ObjectVar ------------------
+// ------------------
+
+// CompileScriptObj
+//
+function Tx86ObjectVar.CompileScriptObj(expr : TExprBase) : Integer;
+begin
+   Result:=Ord(gprEAX);
+   x86._mov_reg_execmem(gprEAX, TObjectVarExpr(expr).StackAddr);
+end;
+
+// ------------------
 // ------------------ Tx86RecordVar ------------------
 // ------------------
 
@@ -1911,6 +2012,155 @@ begin
 end;
 
 // ------------------
+// ------------------ Tx86DynamicArrayBase ------------------
+// ------------------
+
+// CompileAsData
+//
+procedure Tx86DynamicArrayBase.CompileAsData(expr : TTypedExpr);
+begin
+   jit.CompileScriptObj(expr);
+   x86._mov_reg_dword_ptr_reg(gprEAX, gprEAX, vmt_ScriptDynamicArray_IScriptObj_To_FData);
+end;
+
+// CompileIndexToGPR
+//
+procedure Tx86DynamicArrayBase.CompileIndexToGPR(indexExpr : TTypedExpr; gpr : TgpRegister);
+var
+   tempPtrOffset : Integer;
+begin
+   if indexExpr.ClassType=TConstIntExpr then begin
+
+      x86._mov_reg_dword(gpr, TConstIntExpr(indexExpr).Value);
+
+   end else if indexExpr.ClassType=TIntVarExpr then begin
+
+      x86._mov_reg_execmem(gpr, TIntVarExpr(indexExpr).StackAddr);
+
+   end else begin
+
+      tempPtrOffset:=jit.FPreamble.AllocateStackSpace(SizeOf(Pointer));
+      x86._mov_dword_ptr_reg_reg(gprEBP, tempPtrOffset, gprEAX);
+
+      jit.CompileInteger(indexExpr);
+      x86._mov_reg_reg(gpr, gprEAX);
+
+      x86._mov_reg_dword_ptr_reg(gprEAX, gprEBP, tempPtrOffset);
+
+   end;
+end;
+
+// ------------------
+// ------------------ Tx86DynamicArray ------------------
+// ------------------
+
+// DoCompileFloat
+//
+function Tx86DynamicArray.DoCompileFloat(expr : TExprBase) : TxmmRegister;
+var
+   e : TDynamicArrayExpr;
+begin
+   e:=TDynamicArrayExpr(expr);
+
+   CompileAsData(e.BaseExpr);
+
+   if jit.IsFloat(e) then begin
+
+      CompileIndexToGPR(e.IndexExpr, gprECX);
+
+      x86._shift_reg_imm(gpShl, gprECX, 4);
+      // TODO : range checking
+
+      Result:=jit.AllocXMMReg(e);
+      x86._movsd_reg_qword_ptr_indexed(Result, gprEAX, gprECX, 1, cVariant_DataOffset);
+
+   end else Result:=inherited;
+end;
+
+// CompileInteger
+//
+function Tx86DynamicArray.CompileInteger(expr : TExprBase) : Integer;
+var
+   e : TDynamicArrayExpr;
+begin
+   e:=TDynamicArrayExpr(expr);
+
+   CompileAsData(e.BaseExpr);
+
+   CompileIndexToGPR(e.IndexExpr, gprECX);
+
+   x86._shift_reg_imm(gpShl, gprECX, 4);
+   // TODO : range checking
+
+   x86._add_reg_reg(gprECX, gprEAX);
+   x86._mov_reg_dword_ptr_reg(gprEAX, gprECX, cVariant_DataOffset);
+   x86._mov_reg_dword_ptr_reg(gprEDX, gprECX, cVariant_DataOffset+4);
+   Result:=0;
+end;
+
+// CompileScriptObj
+//
+function Tx86DynamicArray.CompileScriptObj(expr : TExprBase) : Integer;
+var
+   e : TDynamicArrayExpr;
+begin
+   e:=TDynamicArrayExpr(expr);
+
+   CompileAsData(e.BaseExpr);
+
+   CompileIndexToGPR(e.IndexExpr, gprECX);
+
+   x86._shift_reg_imm(gpShl, gprECX, 4);
+   // TODO : range checking
+
+   Result:=Ord(gprEAX);
+   x86._mov_reg_dword_ptr_indexed(gprEAX, gprEAX, gprECX, 1, cVariant_DataOffset);
+end;
+
+// ------------------
+// ------------------ Tx86DynamicArraySet ------------------
+// ------------------
+
+// CompileStatement
+//
+procedure Tx86DynamicArraySet.CompileStatement(expr : TExprBase);
+var
+   e : TDynamicArraySetExpr;
+   reg : TxmmRegister;
+begin
+   e:=TDynamicArraySetExpr(expr);
+
+   if jit.IsFloat(e.ArrayExpr.Typ.Typ) then begin
+
+      reg:=jit.CompileFloat(e.ValueExpr);
+      CompileAsData(e.ArrayExpr);
+
+      CompileIndexToGPR(e.IndexExpr, gprECX);
+
+      x86._shift_reg_imm(gpShl, gprECX, 4);
+      // TODO : range checking
+
+      x86._movsd_qword_ptr_indexed_reg(gprEAX, gprECX, 1, cVariant_DataOffset, reg);
+
+   end else inherited;
+end;
+
+// ------------------
+// ------------------ Tx86NegInt ------------------
+// ------------------
+
+// CompileInteger
+//
+function Tx86NegInt.CompileInteger(expr : TExprBase) : Integer;
+begin
+   Result:=jit.CompileInteger(TNegIntExpr(expr).Expr);
+
+   x86._neg_reg(gprEDX);
+   x86._neg_reg(gprEAX);
+   x86._sbb_reg_int32(gprEDX, 0);
+end;
+
+// ------------------
 // ------------------ Tx86AddInt ------------------
 // ------------------
 
@@ -1922,11 +2172,15 @@ var
 begin
    e:=TAddIntExpr(expr);
 
-   if (e.Left.ClassType=TIntVarExpr) and (e.Right is TConstIntExpr) then begin
+   Result:=jit.CompileInteger(e.Left);
 
-      jit.CompileInteger(e.Left);
-      x86._inc_eaxedx_imm(TConstIntExpr(e.Right).Value);
-      Result:=0;
+   if e.Right is TConstIntExpr then begin
+
+      x86._add_eaxedx_imm(TConstIntExpr(e.Right).Value);
+
+   end else if e.Right.ClassType=TIntVarExpr then begin
+
+      x86._add_eaxedx_execmem(TIntVarExpr(e.Right).StackAddr);
 
    end else Result:=inherited;
 end;
@@ -1937,14 +2191,24 @@ end;
 
 // CompileInteger
 //
-//function Tx86SubInt.CompileInteger(expr : TExprBase) : Integer;
-//var
-//   e : TSubIntExpr;
-//begin
-//   e:=TSubIntExpr(expr);
-//
-//   Result:=inherited;
-//end;
+function Tx86SubInt.CompileInteger(expr : TExprBase) : Integer;
+var
+   e : TSubIntExpr;
+begin
+   e:=TSubIntExpr(expr);
+
+   Result:=jit.CompileInteger(e.Left);
+
+   if e.Right is TConstIntExpr then begin
+
+      x86._sub_eaxedx_imm(TConstIntExpr(e.Right).Value);
+
+   end else if e.Right.ClassType=TIntVarExpr then begin
+
+      x86._sub_eaxedx_execmem(TIntVarExpr(e.Right).StackAddr);
+
+   end else Result:=inherited;
+end;
 
 // ------------------
 // ------------------ Tx86MultInt ------------------
@@ -1962,6 +2226,48 @@ end;
 //end;
 
 // ------------------
+// ------------------ Tx86Shr ------------------
+// ------------------
+
+// CompileInteger
+//
+function Tx86Shr.CompileInteger(expr : TExprBase) : Integer;
+var
+   e : TShrExpr;
+begin
+   e:=TShrExpr(expr);
+
+   Result:=jit.CompileInteger(e.Left);
+
+   if e.Right is TConstIntExpr then begin
+
+      x86._shr_eaxedx_imm(TConstIntExpr(e.Right).Value);
+
+   end else Result:=inherited;
+end;
+
+// ------------------
+// ------------------ Tx86Shl ------------------
+// ------------------
+
+// CompileInteger
+//
+function Tx86Shl.CompileInteger(expr : TExprBase) : Integer;
+var
+   e : TShlExpr;
+begin
+   e:=TShlExpr(expr);
+
+   Result:=jit.CompileInteger(e.Left);
+
+   if e.Right is TConstIntExpr then begin
+
+      x86._shl_eaxedx_imm(TConstIntExpr(e.Right).Value);
+
+   end else Result:=inherited;
+end;
+
+// ------------------
 // ------------------ Tx86IncIntVar ------------------
 // ------------------
 
@@ -1970,14 +2276,23 @@ end;
 procedure Tx86IncIntVar.CompileStatement(expr : TExprBase);
 var
    e : TIncIntVarExpr;
+   left : TVarExpr;
 begin
    e:=TIncIntVarExpr(expr);
+   left:=e.Left as TVarExpr;
 
    if e.Right is TConstIntExpr then begin
 
-      x86._int64_inc((e.Left as TVarExpr).StackAddr, TConstIntExpr(e.Right).Value);
+      x86._execmem64_inc(left.StackAddr, TConstIntExpr(e.Right).Value);
 
-   end else inherited;
+   end else begin
+
+      jit.CompileInteger(e.Right);
+
+      x86._add_execmem_reg(left.StackAddr, 0, gprEAX);
+      x86._adc_execmem_reg(left.StackAddr, 4, gprEDX);
+
+   end;
 end;
 
 // ------------------
@@ -1988,56 +2303,76 @@ end;
 //
 procedure Tx86DecIntVar.CompileStatement(expr : TExprBase);
 var
-   e : TIncIntVarExpr;
+   e : TDecIntVarExpr;
+   left : TVarExpr;
 begin
-   e:=TIncIntVarExpr(expr);
+   e:=TDecIntVarExpr(expr);
+   left:=e.Left as TVarExpr;
 
    if e.Right is TConstIntExpr then begin
 
-      x86._int64_dec((e.Left as TVarExpr).StackAddr, TConstIntExpr(e.Right).Value);
+      x86._execmem64_dec((e.Left as TVarExpr).StackAddr, TConstIntExpr(e.Right).Value);
 
-   end else inherited;
+   end else begin
+
+      jit.CompileInteger(e.Right);
+
+      x86._sub_execmem_reg(left.StackAddr, 0, gprEAX);
+      x86._sbb_execmem_reg(left.StackAddr, 4, gprEDX);
+
+   end;
 end;
 
 // ------------------
-// ------------------ Tx86RelEqualInt ------------------
+// ------------------ Tx86RelOpInt ------------------
 // ------------------
 
-// TestEqual
+// Create
 //
-procedure Tx86RelEqualInt.TestEqual(addr : Integer; value : Int64; targetTrue, targetFalse : TFixup);
+constructor Tx86RelOpInt.Create(jit : TdwsJITx86; flagsHiPass, flagsHiFail, flagsLo : TboolFlags);
 begin
-   x86._cmp_execmem_int32(addr, 0, value);
-   jit.Fixups.NewJump(flagsNZ, targetFalse);
-   x86._cmp_execmem_int32(addr, 4, value shr 32);
-   jit.Fixups.NewConditionalJumps(flagsZ, targetTrue, targetFalse);
+   inherited Create(jit);
+   Self.FlagsHiPass:=flagsHiPass;
+   Self.FlagsHiFail:=flagsHiFail;
+   Self.FlagsLo:=flagsLo;
 end;
 
 // DoCompileBoolean
 //
-procedure Tx86RelEqualInt.DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup);
+procedure Tx86RelOpInt.DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup);
 var
-   e : TRelEqualIntExpr;
+   e : TIntegerRelOpExpr;
+   addr : Integer;
 begin
-   e:=TRelEqualIntExpr(expr);
+   e:=TIntegerRelOpExpr(expr);
 
    if (e.Left is TIntVarExpr) and (e.Right is TConstIntExpr) then begin
 
-      TestEqual(TIntVarExpr(e.Left).StackAddr, TConstIntExpr(e.Right).Value,
-                targetTrue, targetFalse);
+      addr:=TIntVarExpr(e.Left).StackAddr;
+
+      x86._cmp_execmem_int32(addr, 0, TConstIntExpr(e.Right).Value);
+      if FlagsHiPass<>flagsNone then
+         jit.Fixups.NewJump(FlagsHiPass, targetTrue);
+      if FlagsHiFail<>flagsNone then
+         jit.Fixups.NewJump(FlagsHiFail, targetFalse);
+      x86._cmp_execmem_int32(addr, 4, TConstIntExpr(e.Right).Value shr 32);
+      jit.Fixups.NewConditionalJumps(FlagsLo, targetTrue, targetFalse);
+
+   end else if e.Right is TIntVarExpr then begin
+
+      jit.CompileInteger(e.Left);
+
+      addr:=TIntVarExpr(e.Right).StackAddr;
+
+      x86._cmp_reg_execmem(gprEDX, addr, 4);
+      if FlagsHiPass<>flagsNone then
+         jit.Fixups.NewJump(FlagsHiPass, targetTrue);
+      if FlagsHiFail<>flagsNone then
+         jit.Fixups.NewJump(FlagsHiFail, targetFalse);
+      x86._cmp_reg_execmem(gprEAX, addr, 0);
+      jit.Fixups.NewConditionalJumps(FlagsLo, targetTrue, targetFalse);
 
    end else inherited;
-end;
-
-// ------------------
-// ------------------ Tx86RelNotEqualInt ------------------
-// ------------------
-
-// DoCompileBoolean
-//
-procedure Tx86RelNotEqualInt.DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup);
-begin
-   inherited DoCompileBoolean(expr, targetFalse, targetTrue);
 end;
 
 // ------------------
@@ -2049,14 +2384,29 @@ end;
 procedure Tx86RelIntIsZero.DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup);
 var
    e : TUnaryOpBoolExpr;
+   addr : Integer;
 begin
    e:=TUnaryOpBoolExpr(expr);
 
    if e.Expr is TIntVarExpr then begin
 
-      TestEqual(TIntVarExpr(e.Expr).StackAddr, 0, targetTrue, targetFalse);
+      addr:=TIntVarExpr(e.Expr).StackAddr;
 
-   end else inherited;
+      x86._cmp_execmem_int32(addr, 0, 0);
+      jit.Fixups.NewJump(flagsNZ, targetFalse);
+      x86._cmp_execmem_int32(addr, 4, 0);
+      jit.Fixups.NewConditionalJumps(flagsZ, targetTrue, targetFalse);
+
+   end else begin
+
+      jit.CompileInteger(e.Expr);
+
+      x86._cmp_reg_int32(gprEAX, 0);
+      jit.Fixups.NewJump(flagsNZ, targetFalse);
+      x86._cmp_reg_int32(gprEDX, 0);
+      jit.Fixups.NewConditionalJumps(flagsZ, targetTrue, targetFalse);
+
+   end;
 end;
 
 // ------------------
@@ -2122,10 +2472,13 @@ end;
 procedure Tx86BoolOrExpr.DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup);
 var
    e : TBooleanBinOpExpr;
+   targetFirstFalse : TFixupTarget;
 begin
    e:=TBooleanBinOpExpr(expr);
 
-   jit.CompileBoolean(e.Left, targetTrue, nil);
+   targetFirstFalse:=jit.Fixups.NewHangingTarget;
+   jit.CompileBoolean(e.Left, targetTrue, targetFirstFalse);
+   jit.Fixups.AddFixup(targetFirstFalse);
    jit.CompileBoolean(e.Right, targetTrue, targetFalse);
 end;
 
@@ -2138,10 +2491,13 @@ end;
 procedure Tx86BoolAndExpr.DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup);
 var
    e : TBooleanBinOpExpr;
+   targetFirstTrue : TFixupTarget;
 begin
    e:=TBooleanBinOpExpr(expr);
 
-   jit.CompileBoolean(e.Left, nil, targetFalse);
+   targetFirstTrue:=jit.Fixups.NewHangingTarget;
+   jit.CompileBoolean(e.Left, targetFirstTrue, targetFalse);
+   jit.Fixups.AddFixup(targetFirstTrue);
    jit.CompileBoolean(e.Right, targetTrue, targetFalse);
 end;
 
@@ -2213,7 +2569,7 @@ procedure Tx86InterpretedExpr.DoCompileBoolean(expr : TExprBase; targetTrue, tar
 begin
    jit.SaveXMMRegs;
 
-   DoCallEval(expr, vmt_TExprBase_EvalAsInteger);
+   DoCallEval(expr, vmt_TExprBase_EvalAsBoolean);
 
    jit.RestoreXMMRegs;
 
@@ -2221,6 +2577,26 @@ begin
    jit.Fixups.NewConditionalJumps(flagsNZ, targetTrue, targetFalse);
 
    jit.QueueGreed(expr);
+end;
+
+// ------------------
+// ------------------ Tx86ConvFloat ------------------
+// ------------------
+
+// DoCompileFloat
+//
+function Tx86ConvFloat.DoCompileFloat(expr : TExprBase) : TxmmRegister;
+begin
+   jit.CompileInteger(TConvFloatExpr(expr).Expr);
+
+   jit.FPreamble.NeedTempSpace(SizeOf(Double));
+
+   x86._mov_dword_ptr_reg_reg(gprESP, 0, gprEAX);
+   x86._mov_dword_ptr_reg_reg(gprESP, 4, gprEDX);
+   x86._fild_esp;
+   x86._fstp_esp;
+   Result:=jit.AllocXMMReg(expr);
+   x86._movsd_reg_esp(Result);
 end;
 
 // ------------------
@@ -2334,6 +2710,33 @@ begin
    Result:=jit.AllocXMMReg(expr);
 
    jit._xmm_reg_expr(xmm_sqrtsd, Result, TMagicFuncExpr(expr).Args[0] as TTypedExpr);
+end;
+
+// ------------------
+// ------------------ Tx86MinMaxFloatFunc ------------------
+// ------------------
+
+// Create
+//
+constructor Tx86MinMaxFloatFunc.Create(jit : TdwsJITx86; op : TxmmOp);
+begin
+   inherited Create(jit);
+   Self.OP:=op;
+end;
+
+// DoCompileFloat
+//
+function Tx86MinMaxFloatFunc.DoCompileFloat(expr : TExprBase) : TxmmRegister;
+var
+   e : TMagicFuncExpr;
+begin
+   e:=TMagicFuncExpr(expr);
+
+   Result:=jit.CompileFloat(e.Args[0] as TTypedExpr);
+
+   jit._xmm_reg_expr(OP, Result, e.Args[1] as TTypedExpr);
+
+   jit.ContainsXMMReg(Result, expr);
 end;
 
 // ------------------

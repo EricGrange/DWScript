@@ -46,6 +46,7 @@ type
          function CompileFloat(expr : TExprBase) : Integer; virtual;
          function CompileInteger(expr : TExprBase) : Integer; virtual;
          procedure CompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); virtual;
+         function CompileScriptObj(expr : TExprBase) : Integer; virtual;
 
          procedure CompileAssignFloat(expr : TTypedExpr; source : Integer); virtual;
          procedure CompileAssignInteger(expr : TTypedExpr; source : Integer); virtual;
@@ -130,6 +131,7 @@ type
       public
          Next : TQueuedJITGreed;
          Expr : TExprBase;
+         Prog : TdwsProgram;
    end;
 
    TJITLoopContext = class
@@ -189,6 +191,7 @@ type
          function CompileFloat(expr : TTypedExpr) : Integer;
          function CompileInteger(expr : TTypedExpr) : Integer;
          procedure CompileBoolean(expr : TTypedExpr; targetTrue, targetFalse : TFixup);
+         function CompileScriptObj(expr : TTypedExpr) : Integer;
 
          procedure CompileAssignFloat(expr : TTypedExpr; source : Integer);
          procedure CompileAssignInteger(expr : TTypedExpr; source : Integer);
@@ -215,7 +218,8 @@ type
          procedure GreedyJIT(prog : TdwsProgram); overload;
          procedure GreedyJITParameters(funcExpr : TFuncExprBase);
          procedure DeQueueGreed;
-         procedure QueueGreed(expr : TExprBase);
+         procedure QueueGreed(expr : TExprBase); overload;
+         procedure QueueGreed(prog : TdwsProgram); overload;
 
          property Output : TWriteOnlyBlockStream read FOutput;
          property OutputFailedOn : TExprBase read FOutputFailedOn write FOutputFailedOn;
@@ -261,6 +265,14 @@ end;
 procedure TdwsJITter.CompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup);
 begin
    jit.OutputFailedOn:=expr;
+end;
+
+// CompileScriptObj
+//
+function TdwsJITter.CompileScriptObj(expr : TExprBase) : Integer;
+begin
+   jit.OutputFailedOn:=expr;
+   Result:=0;
 end;
 
 // CompileAssignFloat
@@ -384,6 +396,8 @@ function TdwsJIT.FindJITter(exprClass : TClass) : TdwsJITter;
 var
    i : Integer;
 begin
+   if exprClass.InheritsFrom(TJITTedProgramExpr) then
+      FTempReg.Expr:=exprClass;
    FTempReg.Expr:=exprClass;
    if FRegistered.Find(FTempReg, i) then
       Result:=FRegistered.Items[i].JIT
@@ -417,7 +431,10 @@ begin
 
    if OutputFailedOn=nil then
       Result:=JITTedProgramExprClass.Create(expr, CompiledOutput)
-   else OutputDebugString(OutputFailedOn.ClassName);
+   else begin
+      OutputDebugString(OutputFailedOn.ClassName);
+      GreedyJIT(expr);
+   end;
 end;
 
 // JITFloat
@@ -506,6 +523,19 @@ begin
    if jit=nil then
       OutputFailedOn:=expr
    else jit.CompileBoolean(expr, targetTrue, targetFalse);
+end;
+
+// CompileScriptObj
+//
+function TdwsJIT.CompileScriptObj(expr : TTypedExpr) : Integer;
+var
+   jit : TdwsJITter;
+begin
+   jit:=FindJITter(expr);
+   if jit=nil then begin
+      OutputFailedOn:=expr;
+      Result:=0;
+   end else Result:=jit.CompileScriptObj(expr);
 end;
 
 // CompileAssignFloat
@@ -681,7 +711,7 @@ begin
          if executable<>nil then begin
             execObject:=executable.GetSelf;
             if execObject is TdwsProgram then
-               GreedyJIT(TdwsProgram(execObject));
+               QueueGreed(TdwsProgram(execObject));
          end;
       end;
       GreedyJITParameters(funcExpr);
@@ -692,8 +722,6 @@ begin
             GreedyJIT(subExpr);
       end;
    end;
-   if FQueuedGreed<>nil then
-      DeQueueGreed;
 end;
 
 // GreedyJITParameters
@@ -738,7 +766,9 @@ begin
       greed:=FQueuedGreed;
       FQueuedGreed:=greed.Next;
       try
-         GreedyJIT(greed.Expr);
+         if greed.Expr<>nil then
+            GreedyJIT(greed.Expr)
+         else GreedyJIT(greed.Prog);
       finally
          greed.Free;
       end;
@@ -757,6 +787,18 @@ begin
    FQueuedGreed:=greed;
 end;
 
+// QueueGreed
+//
+procedure TdwsJIT.QueueGreed(prog : TdwsProgram);
+var
+   greed : TQueuedJITGreed;
+begin
+   greed:=TQueuedJITGreed.Create;
+   greed.Prog:=prog;
+   greed.Next:=FQueuedGreed;
+   FQueuedGreed:=greed;
+end;
+
 // GreedyJIT
 //
 procedure TdwsJIT.GreedyJIT(prog : TdwsProgram);
@@ -768,11 +810,9 @@ begin
       if statementJIT<>nil then begin
          prog.Expr.Free;
          prog.Expr:=statementJIT;
-         DeQueueGreed;
-         Exit;
       end;
    end;
-   GreedyJIT(prog.Expr);
+   DeQueueGreed;
 end;
 
 // ------------------

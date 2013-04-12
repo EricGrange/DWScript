@@ -34,6 +34,10 @@ type
          procedure inc_dec_64;
          procedure mov_64;
          procedure add_sub_32;
+         procedure add_sub_execmem;
+         procedure neg_32;
+         procedure shr_shl_32;
+         procedure shr_shl_64;
          procedure xor_and_or_cmp_32;
          procedure fpu_ops;
          procedure push_pop;
@@ -41,8 +45,10 @@ type
          procedure calls;
          procedure cmp_execmem_int32;
          procedure cmp_dword_ptr_reg_reg;
+         procedure cmp_reg_int32;
          procedure boolflags;
          procedure movsd_indexed;
+         procedure mov_indexed;
    end;
 
 // ------------------------------------------------------------------
@@ -381,17 +387,17 @@ end;
 //
 procedure TJITx86Tests.inc_dec_64;
 begin
-   FStream._inc_eaxedx_imm(0);
-   FStream._inc_eaxedx_imm(1);
-   FStream._inc_eaxedx_imm($200030001);
-   FStream._inc_eaxedx_imm($112200000033);
+   FStream._add_eaxedx_imm(0);
+   FStream._add_eaxedx_imm(1);
+   FStream._add_eaxedx_imm($200030001);
+   FStream._add_eaxedx_imm($112200000033);
 
-   FStream._int64_inc(0, 1);
-   FStream._int64_inc(1, $80);
-   FStream._int64_inc($80, $200030001);
-   FStream._int64_dec(0, 1);
-   FStream._int64_dec(1, $80);
-   FStream._int64_dec($80, $200030001);
+   FStream._execmem64_inc(0, 1);
+   FStream._execmem64_inc(1, $80);
+   FStream._execmem64_inc($80, $200030001);
+   FStream._execmem64_dec(0, 1);
+   FStream._execmem64_dec(1, $80);
+   FStream._execmem64_dec($80, $200030001);
 
    CheckEquals( 'add eax, 01h'#13#10
                +'adc edx, 00000000h'#13#10
@@ -479,6 +485,113 @@ begin
    end;
 end;
 
+// add_sub_execmem
+//
+procedure TJITx86Tests.add_sub_execmem;
+var
+   reg : TgpRegister;
+   expect : String;
+begin
+   for reg:=gprEAX to gprEDI do begin
+      FStream._add_reg_execmem(reg, 1, 0);
+      FStream._add_reg_execmem(reg, $80, 0);
+      FStream._adc_reg_execmem(reg, 1, 0);
+      FStream._adc_reg_execmem(reg, $80, 0);
+      FStream._sub_reg_execmem(reg, 1, 0);
+      FStream._sub_reg_execmem(reg, $80, 0);
+      FStream._sbb_reg_execmem(reg, 1, 0);
+      FStream._sbb_reg_execmem(reg, $80, 0);
+      expect:= 'add '+cgpRegisterName[reg]+', dword ptr [ebx+18h]'#13#10
+              +'add '+cgpRegisterName[reg]+', dword ptr [ebx+00000808h]'#13#10
+              +'adc '+cgpRegisterName[reg]+', dword ptr [ebx+18h]'#13#10
+              +'adc '+cgpRegisterName[reg]+', dword ptr [ebx+00000808h]'#13#10
+              +'sub '+cgpRegisterName[reg]+', dword ptr [ebx+18h]'#13#10
+              +'sub '+cgpRegisterName[reg]+', dword ptr [ebx+00000808h]'#13#10
+              +'sbb '+cgpRegisterName[reg]+', dword ptr [ebx+18h]'#13#10
+              +'sbb '+cgpRegisterName[reg]+', dword ptr [ebx+00000808h]'#13#10
+              ;
+      CheckEquals(expect, DisasmStream);
+   end;
+   for reg:=gprEAX to gprEDI do begin
+      FStream._add_execmem_reg(1, 0, reg);
+      FStream._add_execmem_reg($80, 0, reg);
+      FStream._adc_execmem_reg(1, 0, reg);
+      FStream._adc_execmem_reg($80, 0, reg);
+      FStream._sub_execmem_reg(1, 0, reg);
+      FStream._sub_execmem_reg($80, 0, reg);
+      FStream._sbb_execmem_reg(1, 0, reg);
+      FStream._sbb_execmem_reg($80, 0, reg);
+      expect:= 'add dword ptr [ebx+18h], '+cgpRegisterName[reg]+#13#10
+              +'add dword ptr [ebx+00000808h], '+cgpRegisterName[reg]+#13#10
+              +'adc dword ptr [ebx+18h], '+cgpRegisterName[reg]+#13#10
+              +'adc dword ptr [ebx+00000808h], '+cgpRegisterName[reg]+#13#10
+              +'sub dword ptr [ebx+18h], '+cgpRegisterName[reg]+#13#10
+              +'sub dword ptr [ebx+00000808h], '+cgpRegisterName[reg]+#13#10
+              +'sbb dword ptr [ebx+18h], '+cgpRegisterName[reg]+#13#10
+              +'sbb dword ptr [ebx+00000808h], '+cgpRegisterName[reg]+#13#10
+              ;
+      CheckEquals(expect, DisasmStream);
+   end;
+end;
+
+// neg_32
+//
+procedure TJITx86Tests.neg_32;
+var
+   reg : TgpRegister;
+   expect : String;
+begin
+   for reg:=gprEAX to gprEDI do begin
+      FStream._neg_reg(reg);
+      expect:=expect+'neg '+cgpRegisterName[reg]+#13#10
+              ;
+   end;
+   CheckEquals(expect, DisasmStream);
+end;
+
+// shr_shl_32
+//
+procedure TJITx86Tests.shr_shl_32;
+var
+   reg : TgpRegister;
+   expect : String;
+begin
+   for reg:=gprEAX to gprEDI do begin
+      FStream._shift_reg_imm(gpShr, reg, 1);
+      FStream._shift_reg_imm(gpShr, reg, $7F);
+      FStream._shift_reg_imm(gpShl, reg, 1);
+      FStream._shift_reg_imm(gpShl, reg, $7F);
+      FStream._shift_reg_imm(gpSar, reg, 1);
+      FStream._shift_reg_imm(gpSar, reg, $7F);
+      FStream._shift_reg_imm(gpSal, reg, 1);
+      FStream._shift_reg_imm(gpSal, reg, $7F);
+      expect:= 'shr '+cgpRegisterName[reg]+', 1 '#13#10
+              +'shr '+cgpRegisterName[reg]+', 7Fh'#13#10
+              +'shl '+cgpRegisterName[reg]+', 1 '#13#10
+              +'shl '+cgpRegisterName[reg]+', 7Fh'#13#10
+              +'sar '+cgpRegisterName[reg]+', 1 '#13#10
+              +'sar '+cgpRegisterName[reg]+', 7Fh'#13#10
+              +'sal '+cgpRegisterName[reg]+', 1 '#13#10
+              +'sal '+cgpRegisterName[reg]+', 7Fh'#13#10
+              ;
+      CheckEquals(expect, DisasmStream);
+   end;
+end;
+
+// shr_shl_64
+//
+procedure TJITx86Tests.shr_shl_64;
+begin
+   FStream._shr_eaxedx_imm(7);
+   FStream._shl_eaxedx_imm(7);
+
+   CheckEquals( 'shrd eax, edx, 00000007h'#13#10
+               +'shr edx, 07h'#13#10
+               +'shld edx, eax, 00000007h'#13#10
+               +'shl eax, 07h'#13#10,
+               DisasmStream);
+end;
+
 // xor_and_or_32
 //
 procedure TJITx86Tests.xor_and_or_cmp_32;
@@ -514,12 +627,14 @@ procedure TJITx86Tests.fpu_ops;
 begin
    FStream._fild_execmem(0);
    FStream._fild_execmem($11);
+   FStream._fild_esp;
    FStream._fistp_esp;
    FStream._fld_esp;
    FStream._fstp_esp;
 
    CheckEquals( 'fild qword ptr ['+cgpRegisterName[cExecMemGPR]+'+08h]'#13#10
                +'fild qword ptr ['+cgpRegisterName[cExecMemGPR]+'+00000118h]'#13#10
+               +'fild qword ptr [esp]'#13#10
                +'fistp qword ptr [esp]'#13#10
                +'fld qword ptr [esp]'#13#10
                +'fstp qword ptr [esp]'#13#10
@@ -628,6 +743,22 @@ begin
    end;
 end;
 
+// cmp_reg_int32
+//
+procedure TJITx86Tests.cmp_reg_int32;
+var
+   reg : TgpRegister;
+   expect : String;
+begin
+   for reg:=gprEAX to gprEDI do begin
+      FStream._cmp_reg_int32(reg, $40);
+      FStream._cmp_reg_int32(reg, $80);
+      expect:= 'cmp '+cgpRegisterName[reg]+', 40h'#13#10
+              +'cmp '+cgpRegisterName[reg]+', 00000080h'#13#10;
+      CheckEquals(expect, DisasmStream);
+   end;
+end;
+
 // boolflags
 //
 procedure TJITx86Tests.boolflags;
@@ -723,6 +854,46 @@ begin
                         expect:=expect+'+00h';
                   end;
                   expect:=expect+'], xmm'+IntToStr(Ord(dest))+#13#10;
+               end;
+            end;
+            CheckEquals(expect, DisasmStream);
+         end;
+      end;
+   end;
+end;
+
+// mov_indexed
+//
+procedure TJITx86Tests.mov_indexed;
+var
+   offset, scale : Integer;
+   dest, base, index : TgpRegister;
+   expect : String;
+begin
+   for dest:=gprEAX to gprEDI do begin
+      for base:=gprEAX to gprEDI do begin
+         for index:=gprEAX to gprEDI do begin
+            if index=gprESP then continue;
+            expect:='';
+            for offset:=0 to 2 do begin
+               for scale:=0 to 3 do begin
+                  FStream._mov_reg_dword_ptr_indexed(dest, base, index, 1 shl scale, offset*$40);
+                  expect:=expect+'mov '+cgpRegisterName[dest]
+                                +', dword ptr ['+cgpRegisterName[base]
+                                +'+'+cgpRegisterName[index];
+                  case scale of
+                     1 : expect:=expect+'*2';
+                     2 : expect:=expect+'*4';
+                     3 : expect:=expect+'*8';
+                  end;
+                  case offset of
+                     1 : expect:=expect+'+40h';
+                     2 : expect:=expect+'+00000080h';
+                  else
+                     if base=gprEBP then
+                        expect:=expect+'+00h';
+                  end;
+                  expect:=expect+']'#13#10;
                end;
             end;
             CheckEquals(expect, DisasmStream);

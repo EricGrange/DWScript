@@ -1,0 +1,28 @@
+>> i=0, j=0
+=0 and
+=0 or
+not =0 xor
+not <>0 and
+not <>0 or
+not <>0 xor
+>> i=0, j=1
+=0 or
+=0 xor
+<>0 or
+<>0 xor
+not =0 and
+not <>0 and
+>> i=1, j=0
+=0 or
+=0 xor
+<>0 or
+<>0 xor
+not =0 and
+not <>0 and
+>> i=1, j=1
+<>0 and
+<>0 or
+not =0 and
+not =0 or
+not =0 xor
+not <>0 xor

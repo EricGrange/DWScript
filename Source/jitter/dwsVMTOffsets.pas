@@ -17,15 +17,21 @@ unit dwsVMTOffsets;
 interface
 
 uses
-   dwsDataContext, dwsSymbols;
+   dwsExprs, dwsDataContext, dwsSymbols;
 
 var
    vmt_Prepared : Boolean;
 
+   vmt_IDataContext_GetSelf : Integer;
    vmt_IDataContext_AsPVariant : Integer;
+   vmt_IDataContext_AsPData : Integer;
+   vmt_IDataContext_FData : Integer;
    vmt_TExprBase_EvalNoResult : Integer;
    vmt_TExprBase_EvalAsInteger : Integer;
    vmt_TExprBase_EvalAsFloat : Integer;
+   vmt_TExprBase_EvalAsBoolean : Integer;
+
+   vmt_ScriptDynamicArray_IScriptObj_To_FData : Integer;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -40,10 +46,24 @@ implementation
 procedure PrepareVMTOffsets;
 asm
    mov vmt_Prepared, True
+   mov vmt_IDataContext_GetSelf, VMTOFFSET IDataContext.GetSelf
+   mov vmt_IDataContext_AsPData, VMTOFFSET IDataContext.AsPData
    mov vmt_IDataContext_AsPVariant, VMTOFFSET IDataContext.AsPVariant
    mov vmt_TExprBase_EvalNoResult, VMTOFFSET TExprBase.EvalNoResult
    mov vmt_TExprBase_EvalAsInteger, VMTOFFSET TExprBase.EvalAsInteger
    mov vmt_TExprBase_EvalAsFloat, VMTOFFSET TExprBase.EvalAsFloat
+   mov vmt_TExprBase_EvalAsBoolean, VMTOFFSET TExprBase.EvalAsBoolean
+end;
+
+procedure PrepareDynArrayIDataContextToFDataOffset;
+var
+   sda : TScriptDynamicArray;
+   i : IScriptObj;
+begin
+   sda:=TScriptDynamicArray.Create(nil);
+   i:=IScriptObj(sda);
+
+   vmt_ScriptDynamicArray_IScriptObj_To_FData:=NativeInt(i.AsPData)-NativeInt(i);
 end;
 
 // ------------------------------------------------------------------
@@ -55,5 +75,6 @@ initialization
 // ------------------------------------------------------------------
 
    PrepareVMTOffsets;
+   PrepareDynArrayIDataContextToFDataOffset;
 
 end.
