@@ -3686,9 +3686,11 @@ var
    elemExpr : TTypedExpr;
 begin
    if (elementTyp<>nil) and (FTyp.Typ<>elementTyp) then begin
-      if     elementTyp.IsCompatible(FTyp.Typ)
-          or (elementTyp.IsOfType(prog.TypFloat) and FTyp.Typ.IsOfType(prog.TypInteger)) then
+      if  (elementTyp.IsOfType(prog.TypFloat) and FTyp.Typ.IsOfType(prog.TypInteger)) then begin
+         ElementsFromIntegerToFloat(prog);
+      end else if elementTyp.IsCompatible(FTyp.Typ) then begin
          (FTyp as TStaticArraySymbol).Typ:=elementTyp;
+      end;
    end;
 
    for x := 0 to FElementExprs.Count - 1 do begin
