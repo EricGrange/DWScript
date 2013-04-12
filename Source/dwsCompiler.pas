@@ -25,8 +25,7 @@ interface
 
 uses
   Variants, Classes, SysUtils,
-  dwsExprs, dwsExprList,
-  dwsSymbols, dwsTokenizer, dwsErrors, dwsDataContext,
+  dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors, dwsDataContext,
   dwsStrings, dwsFunctions, dwsStack,
   dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs,
   dwsFileSystem, dwsUtils,
@@ -5046,9 +5045,16 @@ begin
             if FTok.TestDelete(ttASSIGN) then begin
                hotPos:=FTok.HotPos;
                valueExpr:=ReadExpr(baseType.Typ);
-               if not baseType.Typ.IsCompatible(valueExpr.Typ) then
-                  IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
-                                    valueExpr.Typ, baseType.Typ);
+               if not baseType.Typ.IsCompatible(valueExpr.Typ) then begin
+                  if     valueExpr.Typ.IsOfType(FProg.TypInteger)
+                     and baseType.Typ.IsOfType(FProg.TypFloat) then begin
+                     valueExpr:=TConvFloatExpr.Create(FProg, valueExpr)
+                  end else begin
+                     IncompatibleTypes(hotPos, CPE_AssignIncompatibleTypes,
+                                       valueExpr.Typ, baseType.Typ);
+                  end;
+               end;
+
                if baseType.Typ.Size=1 then
                   if baseExpr is TObjectVarExpr then
                      Result:=TDynamicArraySetVarExpr.Create(FProg, FTok.HotPos, baseExpr, indexExpr, valueExpr)
