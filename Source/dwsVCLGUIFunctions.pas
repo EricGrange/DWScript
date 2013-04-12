@@ -25,6 +25,7 @@ interface
 
 uses
    Windows, Forms, Dialogs, Classes,
+   dwsUtils,
    dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsExprList;
 
 type

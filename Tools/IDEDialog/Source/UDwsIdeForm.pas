@@ -28,6 +28,7 @@ interface
 uses
   Types,
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  System.UITypes,
   Themes, UxTheme,
   UDwsIdeDefs,
   dwsExprs,
