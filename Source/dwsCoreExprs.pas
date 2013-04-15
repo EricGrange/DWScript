@@ -109,6 +109,7 @@ type
 
    TObjectVarExpr = class (TVarExpr)
       public
+         procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
          function EvalAsPIScriptObj(exec : TdwsExecution) : PIScriptObj; inline;
    end;
@@ -1101,7 +1102,7 @@ type
    TAddVariantExpr = class(TVariantBinOpExpr)
       procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
    end;
-   TAddStrExpr = class(TStringBinOpExpr)
+   TAddStrExpr = class sealed (TStringBinOpExpr)
       procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
    end;
    TAddIntExpr = class sealed (TIntegerBinOpExpr)
@@ -1438,6 +1439,7 @@ type
    TOpAssignExpr = class(TAssignExpr)
      function  Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
+   TOpAssignExprClass = class of TOpAssignExpr;
 
    // a += b
    TPlusAssignExpr = class(TOpAssignExpr)
@@ -2214,11 +2216,8 @@ end;
 // AssignExpr
 //
 procedure TVarExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
-var
-   buf : Variant;
 begin
-   Expr.EvalAsVariant(exec, buf);
-   DataPtr[exec][0]:=buf;
+   Expr.EvalAsVariant(exec, DataPtr[exec].AsPVariant(0)^);
 end;
 
 // AssignValue
@@ -2450,6 +2449,13 @@ end;
 // ------------------
 // ------------------ TObjectVarExpr ------------------
 // ------------------
+
+// AssignExpr
+//
+procedure TObjectVarExpr.AssignExpr(exec : TdwsExecution; Expr: TTypedExpr);
+begin
+   Expr.EvalAsVariant(exec, exec.Stack.Data[exec.Stack.BasePointer+FStackAddr]);
+end;
 
 // EvalAsScriptObj
 //
@@ -5898,38 +5904,57 @@ end;
 // Optimize
 //
 function TAssignExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+type
+   TCombinedOp = record
+      Op : TBinaryOpExprClass; Comb : TOpAssignExprClass;
+   end;
+const
+   cCombinedOps : array [0..6] of TCombinedOp = (
+      (Op: TAddIntExpr;    Comb: TPlusAssignIntExpr),
+      (Op: TSubIntExpr;    Comb: TMinusAssignIntExpr),
+      (Op: TMultIntExpr;   Comb: TMultAssignIntExpr),
+      (Op: TAddFloatExpr;  Comb: TPlusAssignFloatExpr),
+      (Op: TSubFloatExpr;  Comb: TMinusAssignFloatExpr),
+      (Op: TMultFloatExpr; Comb: TMultAssignFloatExpr),
+      (Op: TDivideExpr;    Comb: TDivideAssignExpr)
+   );
 var
+   i : Integer;
    leftVarExpr : TVarExpr;
    addIntExpr : TAddIntExpr;
    addStrExpr : TAddStrExpr;
    subIntExpr : TSubIntExpr;
+   rightClassType : TClass;
 begin
    if FRight.IsConstant then
       Exit(OptimizeConstAssignment(prog, exec));
 
    Result:=Self;
+   rightClassType:=FRight.ClassType;
    if FLeft.InheritsFrom(TVarExpr) then begin
       leftVarExpr:=TVarExpr(FLeft);
       if leftVarExpr.ClassType=TIntVarExpr then begin
-         if FRight.ClassType=TAddIntExpr then begin
+         if rightClassType=TAddIntExpr then begin
             addIntExpr:=TAddIntExpr(FRight);
             if (addIntExpr.Left is TVarExpr) and (addIntExpr.Left.ReferencesVariable(leftVarExpr.DataSym)) then begin
                Result:=TIncIntVarExpr.Create(Prog, FScriptPos, FLeft, addIntExpr.Right);
                FLeft:=nil;
                addIntExpr.Right:=nil;
                Free;
+               Exit;
             end;
-         end else if FRight.ClassType=TSubIntExpr then begin
+         end else if rightClassType=TSubIntExpr then begin
             subIntExpr:=TSubIntExpr(FRight);
             if (subIntExpr.Left is TVarExpr) and (subIntExpr.Left.ReferencesVariable(leftVarExpr.DataSym)) then begin
                Result:=TDecIntVarExpr.Create(Prog, FScriptPos, FLeft, subIntExpr.Right);
                FLeft:=nil;
                subIntExpr.Right:=nil;
                Free;
+               Exit;
             end;
          end;
       end else if leftVarExpr.ClassType=TStrVarExpr then begin
-         if FRight.InheritsFrom(TAddStrExpr) then begin
+         if rightClassType=TAddStrExpr then begin
             addStrExpr:=TAddStrExpr(FRight);
             if (addStrExpr.Left is TVarExpr) and (addStrExpr.Left.ReferencesVariable(leftVarExpr.DataSym)) then begin
                if addStrExpr.Right.InheritsFrom(TConstStringExpr) then begin
@@ -5940,7 +5965,19 @@ begin
                FLeft:=nil;
                addStrExpr.Right:=nil;
                Free;
+               Exit;
             end;
+         end;
+      end;
+   end;
+   if (Right is TBinaryOpExpr) and Left.SameDataExpr(TBinaryOpExpr(Right).Left) then begin
+      for i:=Low(cCombinedOps) to High(cCombinedOps) do begin
+         if rightClassType=cCombinedOps[i].Op then begin
+            Result:=cCombinedOps[i].Comb.Create(Prog, FScriptPos, FLeft, TBinaryOpExpr(Right).Right);
+            FLeft:=nil;
+            TBinaryOpExpr(Right).Right:=nil;
+            Free;
+            Exit;
          end;
       end;
    end;
