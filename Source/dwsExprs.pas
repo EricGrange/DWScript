@@ -1667,6 +1667,7 @@ type
          property ValueAsClassSymbol[const s : String] : TClassSymbol read GetValueAsClassSymbol;
          property ValueAsTStrings[const s : String] : TStrings read GetValueAsTStrings;
 
+         property ParamAsPVariant[index : Integer] : PVariant read GetParamAsPVariant;
          property ParamAsVariant[index : Integer] : Variant read GetParamAsVariant;
          property ParamAsInteger[index : Integer] : Int64 read GetParamAsInteger;
          property ParamAsString[index : Integer] : String read GetParamAsString;
