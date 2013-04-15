@@ -4809,7 +4809,7 @@ begin
             // fake to keep going
             expr.Free;
             expr:=nil;
-            Result:=TConstExpr.Create(FProg, propertySym.Typ, Null);
+            Result:=TConstExpr.Create(FProg, propertySym.Typ);
 
          end;
 

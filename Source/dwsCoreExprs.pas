@@ -212,6 +212,7 @@ type
       public
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); overload; virtual;
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer); overload;
+         constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol); overload;
 
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
@@ -2779,9 +2780,16 @@ end;
 //
 constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Data: TData; addr : Integer);
 begin
+   Create(Prog, Typ);
+   DWSCopyData(Data, addr, FData, 0, Typ.Size);
+end;
+
+// Create
+//
+constructor TConstExpr.Create(Prog: TdwsProgram; Typ: TTypeSymbol);
+begin
    inherited Create(Prog, Typ);
    SetLength(FData, Typ.Size);
-   DWSCopyData(Data, addr, FData, 0, Typ.Size);
 end;
 
 // Eval
