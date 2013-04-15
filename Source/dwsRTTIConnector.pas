@@ -118,6 +118,8 @@ type
          procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); virtual; abstract;
          procedure InitSymbol(symbol : TSymbol);
          procedure InitExpression(expr : TExprBase);
+         function SubExpr(i : Integer) : TExprBase;
+         function SubExprCount : Integer;
    end;
 
    TRTTIEnvironmentField = class(TRTTIEnvironmentCallable)
@@ -934,6 +936,21 @@ end;
 procedure TRTTIEnvironmentCallable.InitExpression(expr : TExprBase);
 begin
    // nothing
+end;
+
+// SubExpr
+//
+function TRTTIEnvironmentCallable.SubExpr(i : Integer) : TExprBase;
+begin
+   Result:=nil;
+end;
+
+// SubExprCount
+//
+function TRTTIEnvironmentCallable.SubExprCount : Integer;
+begin
+   Result:=0;
+
 end;
 
 // ------------------
