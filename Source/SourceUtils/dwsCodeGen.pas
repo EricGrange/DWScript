@@ -19,7 +19,7 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsUtils, dwsSymbols, dwsExprs, dwsCoreExprs, dwsDataContext,
+   dwsUtils, dwsSymbols, dwsExprs, dwsCoreExprs, dwsDataContext, dwsConstExprs,
    dwsStrings, dwsUnitSymbols, dwsErrors, dwsRTTIFunctions;
 
    // experimental codegen support classes for DWScipt

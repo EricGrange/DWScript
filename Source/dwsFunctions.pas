@@ -56,6 +56,8 @@ type
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol);
          procedure InitSymbol(Symbol: TSymbol);
          procedure InitExpression(Expr: TExprBase);
+         function SubExpr(i : Integer) : TExprBase;
+         function SubExprCount : Integer;
    end;
 
    TFunctionPrototype = class(TInterfacedSelfObject)
@@ -64,6 +66,8 @@ type
       public
          procedure InitSymbol(Symbol: TSymbol); virtual;
          procedure InitExpression(Expr: TExprBase); virtual;
+         function SubExpr(i : Integer) : TExprBase;
+         function SubExprCount : Integer;
          procedure Call(exec: TdwsProgramExecution; func: TFuncSymbol); virtual; abstract;
          property FuncSymbol : TFuncSymbol read FFuncSymbol;
    end;
@@ -369,6 +373,20 @@ procedure TEmptyFunc.InitExpression(Expr: TExprBase);
 begin
 end;
 
+// SubExpr
+//
+function TEmptyFunc.SubExpr(i : Integer) : TExprBase;
+begin
+   Result:=nil;
+end;
+
+// SubExprCount
+//
+function TEmptyFunc.SubExprCount : Integer;
+begin
+   Result:=0;
+end;
+
 { TFunctionPrototype }
 
 procedure TFunctionPrototype.InitSymbol(Symbol: TSymbol);
@@ -377,6 +395,20 @@ end;
 
 procedure TFunctionPrototype.InitExpression(Expr: TExprBase);
 begin
+end;
+
+// SubExpr
+//
+function TFunctionPrototype.SubExpr(i : Integer) : TExprBase;
+begin
+   Result:=nil;
+end;
+
+// SubExprCount
+//
+function TFunctionPrototype.SubExprCount : Integer;
+begin
+   Result:=0;
 end;
 
 // ------------------

@@ -577,6 +577,8 @@ function ScriptStringToRawByteString(const s : String) : RawByteString;
 
 procedure FastInt64ToStr(const val : Int64; var s : String);
 
+procedure VariantToString(const v : Variant; var s : String);
+
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -734,6 +736,57 @@ end;
 {$IFDEF RANGEON}
   {$R+}
 {$ENDIF}
+
+// VariantToString
+//
+procedure VariantToString(const v : Variant; var s : String);
+
+   function DispatchAsString(const disp : Pointer) : String;
+   begin
+      Result:=Format('IDispatch (%p)', [disp]);
+   end;
+
+   function UnknownAsString(const unknown : IUnknown) : String;
+   var
+      intf : IGetSelf;
+   begin
+      if unknown=nil then
+         Exit('nil');
+      if unknown.QueryInterface(IGetSelf, intf)=0 then
+         Result:=intf.ToString
+      else Result:='[IUnknown]';
+   end;
+
+var
+   varData : PVarData;
+begin
+   varData:=PVarData(@v);
+   case varData^.VType of
+      {$ifdef FPC}
+      varString :
+         s:=String(varData^.VString);
+      {$else}
+      varUString :
+         s:=String(varData^.VUString);
+      {$endif}
+      varInt64 :
+         FastInt64ToStr(varData^.VInt64, s);
+      varDouble :
+         s:=FloatToStr(varData^.VDouble);
+      varBoolean :
+         if varData^.VBoolean then
+            s:='True'
+         else s:='False';
+      varNull :
+         s:='Null';
+      varDispatch :
+         s:=Format('IDispatch (%p)', [varData^.VDispatch]);
+      varUnknown :
+         s:=UnknownAsString(IUnknown(varData^.VUnknown));
+   else
+      s:=v;
+   end;
+end;
 
 // RawByteStringToScriptString
 //

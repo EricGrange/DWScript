@@ -30,6 +30,8 @@ var
    vmt_TExprBase_EvalAsInteger : Integer;
    vmt_TExprBase_EvalAsFloat : Integer;
    vmt_TExprBase_EvalAsBoolean : Integer;
+   vmt_TExprBase_AssignValueAsFloat : Integer;
+   vmt_TExprBase_AssignValueAsInteger : Integer;
 
    vmt_ScriptDynamicArray_IScriptObj_To_FData : Integer;
 
@@ -53,6 +55,8 @@ asm
    mov vmt_TExprBase_EvalAsInteger, VMTOFFSET TExprBase.EvalAsInteger
    mov vmt_TExprBase_EvalAsFloat, VMTOFFSET TExprBase.EvalAsFloat
    mov vmt_TExprBase_EvalAsBoolean, VMTOFFSET TExprBase.EvalAsBoolean
+   mov vmt_TExprBase_AssignValueAsFloat, VMTOFFSET TExprBase.AssignValueAsFloat
+   mov vmt_TExprBase_AssignValueAsInteger, VMTOFFSET TExprBase.AssignValueAsInteger
 end;
 
 procedure PrepareDynArrayIDataContextToFDataOffset;

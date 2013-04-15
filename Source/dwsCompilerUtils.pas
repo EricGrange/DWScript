@@ -22,7 +22,7 @@ uses
    SysUtils,
    dwsErrors, dwsStrings,
    dwsSymbols, dwsUnitSymbols,
-   dwsExprs, dwsCoreExprs, dwsMethodExprs, dwsMagicExprs;
+   dwsExprs, dwsCoreExprs, dwsConstExprs, dwsMethodExprs, dwsMagicExprs;
 
 type
 

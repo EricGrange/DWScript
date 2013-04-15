@@ -25,12 +25,13 @@ interface
 
 uses
   Variants, Classes, SysUtils,
+  dwsFileSystem, dwsUtils, dwsXPlatform,
   dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors, dwsDataContext,
   dwsStrings, dwsFunctions, dwsStack,
-  dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs,
-  dwsFileSystem, dwsUtils,
+  dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs, dwsConstExprs,
+  dwsConnectorExprs, dwsConvExprs,
   dwsOperators, dwsPascalTokenizer, dwsSystemOperators,
-  dwsUnitSymbols, dwsXPlatform, dwsCompilerUtils;
+  dwsUnitSymbols, dwsCompilerUtils;
 
 type
    TCompilerOption = (
@@ -4606,9 +4607,9 @@ begin
       if varExpr.ClassType=TVarExpr then
          Result:=TRecordVarExpr.Create(FProg, scriptPos, TVarExpr(varExpr), fieldSym)
       else Result:=TRecordExpr.Create(FProg, scriptPos, (varExpr as TDataExpr), fieldSym)
-   end else begin
-      Result:=TFieldExpr.Create(FProg, FTok.HotPos, fieldSym, varExpr);
-   end;
+   end else if varExpr is TObjectVarExpr then
+      Result:=TFieldVarExpr.Create(FProg, FTok.HotPos, fieldSym, varExpr)
+   else Result:=TFieldExpr.Create(FProg, FTok.HotPos, fieldSym, varExpr);
    varExpr:=nil;
 end;
 

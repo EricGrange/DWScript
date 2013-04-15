@@ -25,8 +25,9 @@ interface
 
 uses
    Classes, SysUtils, Variants, StrUtils, Math,
-   dwsFunctions, dwsSymbols, dwsUtils, dwsExprs, dwsCoreExprs, dwsExprList,
-   dwsXPlatform, dwsMagicExprs, dwsDataContext;
+   dwsXPlatform, dwsUtils,
+   dwsFunctions, dwsSymbols, dwsExprs, dwsCoreExprs, dwsExprList,
+   dwsConstExprs, dwsMagicExprs, dwsDataContext;
 
 type
 

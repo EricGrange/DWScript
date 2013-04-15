@@ -21,3 +21,4 @@ for i := 0 to cSize-2 do begin
    end;
    PrintLn('');
 end;
+

@@ -5,10 +5,6 @@ program Mandelbrot;
 {$ENDIF}
 
 uses
-{$IFNDEF FPC}
-{$ELSE}
-  Interfaces,
-{$ENDIF}
   Forms,
   FMain in 'FMain.pas' {MainForm};
 

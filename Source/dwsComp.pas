@@ -379,6 +379,8 @@ type
          procedure Call(exec : TdwsProgramExecution; func : TFuncSymbol); virtual; abstract;
          procedure InitSymbol(symbol : TSymbol);
          procedure InitExpression(expr : TExprBase);
+         function SubExpr(i : Integer) : TExprBase;
+         function SubExprCount : Integer;
 
       public
          constructor Create(owner : TObject);
@@ -2629,6 +2631,20 @@ begin
       FOnInitExpr(FOwner, expr);
 end;
 
+// SubExpr
+//
+function TdwsCallable.SubExpr(i : Integer) : TExprBase;
+begin
+   Result:=nil;
+end;
+
+// SubExprCount
+//
+function TdwsCallable.SubExprCount : Integer;
+begin
+   Result:=0;
+end;
+
 // ------------------
 // ------------------ TdwsFunctionCallable ------------------
 // ------------------
@@ -2744,7 +2760,7 @@ end;
 function GetParameters(Symbol: TdwsSymbol; Parameters: TdwsParameters; Table: TSymbolTable): TParamArray;
 var
    i, j, elemValue: Integer;
-   name: String;
+   name, enumValue : String;
    paramSym, elemSym : TSymbol;
    param : TdwsParameter;
 begin
@@ -2769,7 +2785,10 @@ begin
          SetLength(Result[i].DefaultValue, 1);
          paramSym:=Symbol.GetDataType(Table, Result[i].ParamType);
          if paramSym is TEnumerationSymbol then begin
-            elemSym:=TEnumerationSymbol(paramSym).Elements.FindLocal(param.DefaultValue);
+            enumValue:=param.DefaultValue;
+            if UnicodeSameText(StrBeforeChar(enumValue, '.'), paramSym.Name) then
+               enumValue:=StrAfterChar(enumValue, '.');
+            elemSym:=TEnumerationSymbol(paramSym).Elements.FindLocal(enumValue);
             if elemSym=nil then
                elemValue:=param.DefaultValue
             else elemValue:=TElementSymbol(elemSym).Value;

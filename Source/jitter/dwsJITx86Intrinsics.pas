@@ -172,6 +172,10 @@ type
          procedure _adc_reg_execmem(reg : TgpRegister; stackAddr, offset : Integer);
          procedure _sub_reg_execmem(reg : TgpRegister; stackAddr, offset : Integer);
          procedure _sbb_reg_execmem(reg : TgpRegister; stackAddr, offset : Integer);
+         procedure _add_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+         procedure _adc_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+         procedure _sub_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+         procedure _sbb_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 
          procedure _neg_reg(reg : TgpRegister);
 
@@ -841,6 +845,34 @@ end;
 procedure Tx86WriteOnlyStream._sbb_reg_execmem(reg : TgpRegister; stackAddr, offset : Integer);
 begin
    _modRMSIB_regnum_ptr_reg([$1B], Ord(reg), cExecMemGPR, StackAddrToOffset(stackAddr)+offset);
+end;
+
+// _add_reg_dword_ptr_reg
+//
+procedure Tx86WriteOnlyStream._add_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+begin
+   _modRMSIB_regnum_ptr_reg([$03], Ord(dest), src, offset);
+end;
+
+// _adc_reg_dword_ptr_reg
+//
+procedure Tx86WriteOnlyStream._adc_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+begin
+   _modRMSIB_regnum_ptr_reg([$13], Ord(dest), src, offset);
+end;
+
+// _sub_reg_dword_ptr_reg
+//
+procedure Tx86WriteOnlyStream._sub_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+begin
+   _modRMSIB_regnum_ptr_reg([$2B], Ord(dest), src, offset);
+end;
+
+// _sbb_reg_dword_ptr_reg
+//
+procedure Tx86WriteOnlyStream._sbb_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+begin
+   _modRMSIB_regnum_ptr_reg([$1B], Ord(dest), src, offset);
 end;
 
 // _neg_reg

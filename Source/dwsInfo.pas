@@ -25,8 +25,10 @@ interface
 
 uses
    Classes, SysUtils, Variants,
-   dwsSymbols, dwsStack, dwsExprs, dwsFunctions, dwsDataContext,
-   dwsStrings, dwsErrors, dwsUtils, dwsXPlatform, dwsCompilerUtils;
+   dwsUtils, dwsXPlatform,
+   dwsSymbols, dwsStack, dwsExprs, dwsFunctions, dwsDataContext, dwsConstExprs,
+   dwsConnectorExprs, dwsConvExprs, dwsMethodExprs,
+   dwsStrings, dwsErrors, dwsCompilerUtils;
 
 type
 
@@ -450,7 +452,7 @@ end;
 
 function TInfo.GetValueAsString : String;
 begin
-   TConvStringExpr.VariantToString(GetValue, Result);
+   VariantToString(GetValue, Result);
 end;
 
 // GetValueAsDataString

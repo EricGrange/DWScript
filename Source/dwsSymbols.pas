@@ -23,7 +23,8 @@ unit dwsSymbols;
 
 interface
 
-uses SysUtils, Variants, Classes, dwsStrings, dwsErrors, dwsUtils,
+uses SysUtils, Variants, Classes,
+   dwsStrings, dwsErrors, dwsUtils,
    dwsTokenizer, dwsStack, dwsXPlatform, dwsDataContext
    {$ifdef FPC},LazUTF8{$endif};
 
@@ -48,6 +49,8 @@ type
    TPropertySymbol = class;
    TSymbolTable = class;
    TdwsRuntimeMessageList = class;
+   EScriptError = class;
+   EScriptErrorClass = class of EScriptError;
 
    TdwsExprLocation = record
       Expr : TExprBase;
@@ -154,12 +157,24 @@ type
          function ScriptPos : TScriptPos; virtual; abstract;
          function ScriptLocation(prog : TObject) : String; virtual; abstract;
 
+         function FuncSymQualifiedName : String; virtual;
          class function CallStackToString(const callStack : TdwsExprLocationArray) : String; static;
 
          // returns True if aborted
          function RecursiveEnumerateSubExprs(const callback : TExprBaseEnumeratorProc) : Boolean;
          function ReferencesVariable(varSymbol : TDataSymbol) : Boolean; virtual;
          function IndexOfSubExpr(expr : TExprBase) : Integer;
+
+         procedure RaiseScriptError(exec : TdwsExecution; e : EScriptError); overload;
+         procedure RaiseScriptError(exec : TdwsExecution); overload;
+         procedure RaiseScriptError(exec : TdwsExecution; const msg : String); overload;
+         procedure RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass; const msg : String); overload;
+         procedure RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass; const msg : String;
+                                    const args : array of const); overload;
+
+         procedure CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj); inline;
+         procedure RaiseObjectNotInstantiated(exec : TdwsExecution);
+         procedure RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
    end;
 
    TExprBaseClass = class of TExprBase;
@@ -169,6 +184,8 @@ type
       ['{8D534D18-4C6B-11D5-8DCB-0000216D9E86}']
       procedure InitSymbol(symbol : TSymbol);
       procedure InitExpression(expr : TExprBase);
+      function SubExpr(i : Integer) : TExprBase;
+      function SubExprCount : Integer;
    end;
 
    IBooleanEvalable = interface (IExecutable)
@@ -981,6 +998,8 @@ type
          procedure InitData(const Data: TData; Offset: Integer); override;
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          function SameType(typSym : TTypeSymbol) : Boolean; override;
+
+         class var vInitDynamicArray : procedure (typ : TTypeSymbol; var result : Variant);
    end;
 
    // array [FLowBound..FHighBound] of FTyp
@@ -1695,7 +1714,11 @@ type
          property ScriptCallStack : TdwsExprLocationArray read FScriptCallStack write FScriptCallStack;
          property RawClassName : String read FRawClassName write FRawClassName;
    end;
-   EScriptErrorClass = class of EScriptError;
+
+   EScriptStopped = class (EScriptError)
+      public
+         class procedure DoRaise(exec : TdwsExecution; stoppedOn : TExprBase); static;
+   end;
 
    // Is thrown by "raise" statements in script code
    EScriptException = class(Exception)
@@ -1728,8 +1751,6 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
-
-uses dwsExprs;
 
 const
    cDefaultRandSeed : UInt64 = 88172645463325252;
@@ -1878,6 +1899,82 @@ end;
 function TExprBase.IsConstant : Boolean;
 begin
    Result:=False;
+end;
+
+// RaiseScriptError
+//
+procedure TExprBase.RaiseScriptError(exec : TdwsExecution; e : EScriptError);
+begin
+   e.ScriptPos:=ScriptPos;
+   e.ScriptCallStack:=exec.GetCallStack;
+   raise e;
+end;
+
+// RaiseScriptError
+//
+procedure TExprBase.RaiseScriptError(exec : TdwsExecution);
+var
+   exc : Exception;
+   e : EScriptError;
+begin
+   Assert(ExceptObject is Exception);
+   exc:=Exception(ExceptObject);
+   e:=EScriptError.Create(exc.Message);
+   e.RawClassName:=exc.ClassName;
+   RaiseScriptError(exec, e);
+end;
+
+// RaiseScriptError
+//
+procedure TExprBase.RaiseScriptError(exec : TdwsExecution; const msg : String);
+begin
+   RaiseScriptError(exec, EScriptError, msg);
+end;
+
+// RaiseScriptError
+//
+procedure TExprBase.RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass; const msg : String);
+begin
+   RaiseScriptError(exec, exceptClass.Create(msg));
+end;
+
+// RaiseScriptError
+//
+procedure TExprBase.RaiseScriptError(exec : TdwsExecution; exceptClass : EScriptErrorClass;
+                                        const msg : String; const args : array of const);
+begin
+   RaiseScriptError(exec, exceptClass.CreateFmt(msg, args));
+end;
+
+// CheckScriptObject
+//
+procedure TExprBase.CheckScriptObject(exec : TdwsExecution; const scriptObj : IScriptObj);
+begin
+   if scriptObj=nil then
+      RaiseObjectNotInstantiated(exec)
+   else if scriptObj.Destroyed then
+      RaiseObjectAlreadyDestroyed(exec);
+end;
+
+// RaiseObjectNotInstantiated
+//
+procedure TExprBase.RaiseObjectNotInstantiated(exec : TdwsExecution);
+begin
+   RaiseScriptError(exec, EScriptError, RTE_ObjectNotInstantiated);
+end;
+
+// RaiseObjectAlreadyDestroyed
+//
+procedure TExprBase.RaiseObjectAlreadyDestroyed(exec : TdwsExecution);
+begin
+   RaiseScriptError(exec, EScriptError, RTE_ObjectAlreadyDestroyed);
+end;
+
+// FuncSymQualifiedName
+//
+function TExprBase.FuncSymQualifiedName : String;
+begin
+   Result:='';
 end;
 
 // ------------------
@@ -3033,20 +3130,17 @@ end;
 // GetSourceSubExpr
 //
 function TFuncSymbol.GetSourceSubExpr(i : Integer) : TExprBase;
-var
-   prog : TdwsProgram;
 begin
-   prog:=(FExecutable.GetSelf as TdwsProgram);
-   if i=0 then
-      Result:=prog.InitExpr
-   else Result:=prog.Expr;
+   Result:=FExecutable.SubExpr(i);
 end;
 
 // GetSourceSubExprCount
 //
 function TFuncSymbol.GetSourceSubExprCount : Integer;
 begin
-   Result:=Ord(FExecutable<>nil)*2;
+   if FExecutable<>nil then
+      Result:=FExecutable.SubExprCount
+   else Result:=0;
 end;
 
 // IsCompatible
@@ -5596,7 +5690,7 @@ end;
 //
 procedure TDynamicArraySymbol.InitData(const Data: TData; Offset: Integer);
 begin
-   Data[Offset]:=IScriptObj(TScriptDynamicArray.Create(Self.Typ));
+   vInitDynamicArray(Self.Typ, Data[Offset]);
 end;
 
 // DoIsOfType
@@ -6038,6 +6132,21 @@ begin
 end;
 
 // ------------------
+// ------------------ EScriptStopped ------------------
+// ------------------
+
+// DoRaise
+//
+class procedure EScriptStopped.DoRaise(exec : TdwsExecution; stoppedOn : TExprBase);
+var
+   e : EScriptStopped;
+begin
+   e:=EScriptStopped.CreatePosFmt(stoppedOn.ScriptPos, RTE_ScriptStopped, []);
+   e.ScriptCallStack:=exec.GetCallStack;
+   raise e;
+end;
+
+// ------------------
 // ------------------ EScriptException ------------------
 // ------------------
 
@@ -6288,7 +6397,7 @@ function TRuntimeErrorMessage.AsInfo: String;
 begin
    Result:=Text;
    if Length(FCallStack)>0 then
-      Result:=Result+' in '+(FCallStack[High(FCallStack)].Expr as TFuncExpr).FuncSym.QualifiedName;
+      Result:=Result+' in '+FCallStack[High(FCallStack)].Expr.FuncSymQualifiedName;
    if Pos.Defined then
       Result:=Result+Pos.AsInfo;
    if Length(FCallStack)>0 then begin

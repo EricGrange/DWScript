@@ -41,7 +41,8 @@ uses
   UJSONConnectorTests in 'UJSONConnectorTests.pas',
   UTokenizerTests in 'UTokenizerTests.pas',
   ULanguageExtensionTests in 'ULanguageExtensionTests.pas',
-  UJITTests in 'UJITTests.pas';
+  UJITTests in 'UJITTests.pas',
+  UJITx86Tests in 'UJITx86Tests.pas', Math;
 
 {$R *.res}
 
