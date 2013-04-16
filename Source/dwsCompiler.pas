@@ -4785,7 +4785,7 @@ begin
                   expr.Free;
                   expr:=nil;
                end;
-               Result:=TReadOnlyFieldExpr.Create(FProg, FTok.HotPos, TFieldSymbol(sym), expr as TDataExpr);
+               Result:=TReadOnlyFieldExpr.Create(FProg, FTok.HotPos, TFieldSymbol(sym), expr);
                expr:=nil;
 
             end else if sym is TClassVarSymbol then begin
