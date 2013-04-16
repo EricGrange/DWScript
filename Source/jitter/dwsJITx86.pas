@@ -25,7 +25,7 @@ interface
 
 
 uses
-   Classes, SysUtils, Math,
+   Classes, SysUtils, Math, Windows,
    dwsExprs, dwsSymbols, dwsErrors, dwsUtils,
    dwsCoreExprs, dwsRelExprs, dwsMagicExprs, dwsConstExprs,
    dwsMathFunctions, dwsDataContext, dwsConvExprs,
@@ -229,7 +229,7 @@ type
    end;
    Tx86DynamicArrayBase = class (Tx86InterpretedExpr)
       procedure CompileAsData(expr : TTypedExpr);
-      procedure CompileIndexToGPR(indexExpr : TTypedExpr; gpr : TgpRegister);
+      procedure CompileIndexToGPR(indexExpr : TTypedExpr; gpr : TgpRegister; var delta : Integer);
    end;
    Tx86DynamicArray = class (Tx86DynamicArrayBase)
       function DoCompileFloat(expr : TExprBase) : TxmmRegister; override;
@@ -2146,10 +2146,12 @@ end;
 
 // CompileIndexToGPR
 //
-procedure Tx86DynamicArrayBase.CompileIndexToGPR(indexExpr : TTypedExpr; gpr : TgpRegister);
+procedure Tx86DynamicArrayBase.CompileIndexToGPR(indexExpr : TTypedExpr; gpr : TgpRegister; var delta : Integer);
 var
    tempPtrOffset : Integer;
+   sign : Integer;
 begin
+   delta:=0;
    if indexExpr.ClassType=TConstIntExpr then begin
 
       x86._mov_reg_dword(gpr, TConstIntExpr(indexExpr).Value);
@@ -2159,6 +2161,23 @@ begin
       x86._mov_reg_execmem(gpr, TIntVarExpr(indexExpr).StackAddr);
 
    end else begin
+
+      if indexExpr.ClassType=TAddIntExpr then
+         sign:=1
+      else if indexExpr.ClassType=TSubIntExpr then
+         sign:=-1
+      else sign:=0;
+      if sign<>0 then begin
+         if TIntegerBinOpExpr(indexExpr).Right is TConstIntExpr then begin
+            CompileIndexToGPR(TIntegerBinOpExpr(indexExpr).Left, gpr, delta);
+            delta:=delta+sign*TConstIntExpr(TIntegerBinOpExpr(indexExpr).Right).Value;
+            Exit;
+         end else if TIntegerBinOpExpr(indexExpr).Left is TConstIntExpr then begin
+            CompileIndexToGPR(TIntegerBinOpExpr(indexExpr).Right, gpr, delta);
+            delta:=delta+sign*TConstIntExpr(TIntegerBinOpExpr(indexExpr).Left).Value;
+            Exit;
+         end;
+      end;
 
       tempPtrOffset:=jit.FPreamble.AllocateStackSpace(SizeOf(Pointer));
       x86._mov_dword_ptr_reg_reg(gprEBP, tempPtrOffset, gprEAX);
@@ -2180,6 +2199,7 @@ end;
 function Tx86DynamicArray.DoCompileFloat(expr : TExprBase) : TxmmRegister;
 var
    e : TDynamicArrayExpr;
+   delta : Integer;
 begin
    e:=TDynamicArrayExpr(expr);
 
@@ -2187,13 +2207,14 @@ begin
 
    if jit.IsFloat(e) then begin
 
-      CompileIndexToGPR(e.IndexExpr, gprECX);
+      CompileIndexToGPR(e.IndexExpr, gprECX, delta);
+      delta:=delta*SizeOf(Variant)+cVariant_DataOffset;
 
       x86._shift_reg_imm(gpShl, gprECX, 4);
       // TODO : range checking
 
       Result:=jit.AllocXMMReg(e);
-      x86._movsd_reg_qword_ptr_indexed(Result, gprEAX, gprECX, 1, cVariant_DataOffset);
+      x86._movsd_reg_qword_ptr_indexed(Result, gprEAX, gprECX, 1, delta);
 
    end else Result:=inherited;
 end;
@@ -2203,19 +2224,21 @@ end;
 function Tx86DynamicArray.CompileInteger(expr : TExprBase) : Integer;
 var
    e : TDynamicArrayExpr;
+   delta : Integer;
 begin
    e:=TDynamicArrayExpr(expr);
 
    CompileAsData(e.BaseExpr);
 
-   CompileIndexToGPR(e.IndexExpr, gprECX);
+   CompileIndexToGPR(e.IndexExpr, gprECX, delta);
+   delta:=delta*SizeOf(Variant)+cVariant_DataOffset;
 
    x86._shift_reg_imm(gpShl, gprECX, 4);
    // TODO : range checking
 
    x86._add_reg_reg(gprECX, gprEAX);
-   x86._mov_reg_dword_ptr_reg(gprEAX, gprECX, cVariant_DataOffset);
-   x86._mov_reg_dword_ptr_reg(gprEDX, gprECX, cVariant_DataOffset+4);
+   x86._mov_reg_dword_ptr_reg(gprEAX, gprECX, delta);
+   x86._mov_reg_dword_ptr_reg(gprEDX, gprECX, delta+4);
    Result:=0;
 end;
 
@@ -2224,18 +2247,20 @@ end;
 function Tx86DynamicArray.CompileScriptObj(expr : TExprBase) : Integer;
 var
    e : TDynamicArrayExpr;
+   delta : Integer;
 begin
    e:=TDynamicArrayExpr(expr);
 
    CompileAsData(e.BaseExpr);
 
-   CompileIndexToGPR(e.IndexExpr, gprECX);
+   CompileIndexToGPR(e.IndexExpr, gprECX, delta);
+   delta:=delta*SizeOf(Variant)+cVariant_DataOffset;
 
    x86._shift_reg_imm(gpShl, gprECX, 4);
    // TODO : range checking
 
    Result:=Ord(gprEAX);
-   x86._mov_reg_dword_ptr_indexed(gprEAX, gprEAX, gprECX, 1, cVariant_DataOffset);
+   x86._mov_reg_dword_ptr_indexed(gprEAX, gprEAX, gprECX, 1, delta);
 end;
 
 // DoCompileAssignFloat
@@ -2243,17 +2268,19 @@ end;
 procedure Tx86DynamicArray.DoCompileAssignFloat(expr : TTypedExpr; source : TxmmRegister);
 var
    e : TDynamicArrayExpr;
+   delta : Integer;
 begin
    e:=TDynamicArrayExpr(expr);
 
    CompileAsData(e.BaseExpr);
 
-   CompileIndexToGPR(e.IndexExpr, gprECX);
+   CompileIndexToGPR(e.IndexExpr, gprECX, delta);
+   delta:=delta*SizeOf(Variant)+cVariant_DataOffset;
 
    x86._shift_reg_imm(gpShl, gprECX, 4);
    // TODO : range checking
 
-   x86._movsd_qword_ptr_indexed_reg(gprEAX, gprECX, 1, cVariant_DataOffset, source);;
+   x86._movsd_qword_ptr_indexed_reg(gprEAX, gprECX, 1, delta, source);;
 end;
 
 // ------------------
@@ -2266,6 +2293,7 @@ procedure Tx86DynamicArraySet.CompileStatement(expr : TExprBase);
 var
    e : TDynamicArraySetExpr;
    reg : TxmmRegister;
+   delta : Integer;
 begin
    e:=TDynamicArraySetExpr(expr);
 
@@ -2274,7 +2302,8 @@ begin
       reg:=jit.CompileFloat(e.ValueExpr);
       CompileAsData(e.ArrayExpr);
 
-      CompileIndexToGPR(e.IndexExpr, gprECX);
+      CompileIndexToGPR(e.IndexExpr, gprECX, delta);
+      delta:=delta*SizeOf(Variant)+cVariant_DataOffset;
 
       x86._shift_reg_imm(gpShl, gprECX, 4);
       // TODO : range checking
@@ -2349,23 +2378,24 @@ var
 begin
    e:=TSubIntExpr(expr);
 
-   Result:=jit.CompileInteger(e.Left);
-
    if e.Right is TConstIntExpr then begin
 
+      Result:=jit.CompileInteger(e.Left);
       x86._sub_eaxedx_imm(TConstIntExpr(e.Right).Value);
 
    end else if e.Right.ClassType=TIntVarExpr then begin
 
+      Result:=jit.CompileInteger(e.Left);
       x86._sub_eaxedx_execmem(TIntVarExpr(e.Right).StackAddr);
 
    end else begin
 
+      Result:=jit.CompileInteger(e.Right);
       addr:=jit.FPreamble.AllocateStackSpace(SizeOf(Int64));
 
       x86._mov_qword_ptr_reg_eaxedx(gprEBP, addr);
 
-      jit.CompileInteger(e.Right);
+      jit.CompileInteger(e.Left);
 
       x86._sub_reg_dword_ptr_reg(gprEAX, gprEBP, addr);
       x86._sbb_reg_dword_ptr_reg(gprEDX, gprEBP, addr+4);
