@@ -522,8 +522,15 @@ end;
 
 
 procedure DwsIDE_ShowModal( AScript : TDelphiWebScript );
+var
+  DwsIdeOptions : TDwsIdeOptions;
 begin
-  DwsIDE_ShowModal( AScript, IdeOptions_Style1 );
+  if SysUtils.Win32MajorVersion >= 6 then // Vista or later...
+    DwsIdeOptions := IdeOptions_VistaOrLater
+   else
+    DwsIdeOptions := IdeOptions_Legacy;
+
+  DwsIDE_ShowModal( AScript, DwsIdeOptions );
 end;
 
 

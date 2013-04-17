@@ -26,6 +26,7 @@ interface
 uses
   Windows,
   Themes,
+  Classes,
   Graphics,
   dwsDebugger,
   SynEditHighlighter,
@@ -50,12 +51,26 @@ type
   end;
 
 
+  TSynDWSSyn_DelphiLookalike = class( TSynDWSSyn )
+    constructor Create(AOwner: TComponent); override;
+  end;
+
+
 const
-  IdeOptions_Style1 : TDwsIdeOptions = (
-    EditorHighlighterClass : TSynDWSSyn;
+  IdeOptions_Legacy   : TDwsIdeOptions = (
+    EditorHighlighterClass : TSynDWSSyn_DelphiLookalike;
     EditorFontName         : 'Courier New';
     EditorFontSize         : 10
     );
+
+  IdeOptions_VistaOrLater : TDwsIdeOptions = (
+    EditorHighlighterClass : TSynDWSSyn_DelphiLookalike;
+    EditorFontName         : 'Consolas';
+    EditorFontSize         : 11
+    );
+
+
+
 
   SuggestionCategoryNames : array[TdwsSuggestionCategory] of string = (
     'Unknown',
@@ -199,5 +214,20 @@ end;
 
 
 
+
+{ TSynDWSSyn_DelphiLookalike }
+
+constructor TSynDWSSyn_DelphiLookalike.Create(AOwner: TComponent);
+const
+  clID = clNavy;
+  clString = clBlue;
+  clComment = clGreen;
+begin
+  inherited;
+
+  KeyAttri.Foreground := clID;
+  StringAttri.Foreground := clString;
+  CommentAttri.Foreground := clComment;
+end;
 
 end.
