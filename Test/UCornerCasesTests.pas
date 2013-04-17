@@ -13,6 +13,7 @@ type
    TCornerCasesTests = class (TTestCase)
       private
          FCompiler : TDelphiWebScript;
+         FUnit : TdwsUnit;
          FLastResource : String;
 
       public
@@ -20,6 +21,8 @@ type
          procedure TearDown; override;
          procedure DoOnInclude(const scriptName : String; var scriptSource : String);
          procedure DoOnResource(compiler : TdwsCompiler; const resName : String);
+
+         procedure ReExec(info : TProgramInfo);
 
       published
          procedure TokenizerErrorTransition;
@@ -62,6 +65,7 @@ type
          procedure ConfigTimeout;
          procedure CallUnitProcTest;
          procedure NormalizeFloatArrayElements;
+         procedure MultiRunProtection;
 
    end;
 
@@ -131,12 +135,18 @@ end;
 procedure TCornerCasesTests.SetUp;
 begin
    FCompiler:=TDelphiWebScript.Create(nil);
+
+   FUnit:=TdwsUnit.Create(nil);
+   FUnit.UnitName:='CornerCases';
+   FUnit.Functions.Add('ReExec').OnEval:=ReExec;
+   FUnit.Script:=FCompiler;
 end;
 
 // TearDown
 //
 procedure TCornerCasesTests.TearDown;
 begin
+   FUnit.Free;
    FCompiler.Free;
 end;
 
@@ -231,6 +241,13 @@ begin
    FLastResource:=resName;
    if resName='missing' then
       compiler.Msgs.AddCompilerError(compiler.Tokenizer.HotPos, 'Missing resource');
+end;
+
+// ReExec
+//
+procedure TCornerCasesTests.ReExec(info : TProgramInfo);
+begin
+   info.Execution.Execute;
 end;
 
 // IncludeViaEvent
@@ -1319,6 +1336,23 @@ begin
    finally
       exec.EndProgram;
    end;
+end;
+
+// MultiRunProtection
+//
+procedure TCornerCasesTests.MultiRunProtection;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'var o := new TObject;'#13#10
+                           +'ReExec;'#13#10
+                           +'Print(''Here'');');
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   exec:=prog.Execute;
+   CheckEquals('Runtime Error: Script is already running!'#13#10, exec.Msgs.AsInfo);
+   CheckEquals('Here', exec.Result.ToString);
 end;
 
 // ------------------------------------------------------------------

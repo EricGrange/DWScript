@@ -445,7 +445,7 @@ type
       procedure ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0); overload;
       procedure ExecuteParam(const params : OleVariant; aTimeoutMilliSeconds : Integer = 0); overload;
 
-      procedure BeginProgram;
+      function  BeginProgram : Boolean;
       procedure RunProgram(aTimeoutMilliSeconds : Integer);
       procedure Stop;
       procedure EndProgram;
@@ -557,7 +557,7 @@ type
          procedure ExecuteParam(const Params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0); overload;
          procedure ExecuteParam(const Params : OleVariant; aTimeoutMilliSeconds : Integer = 0); overload;
 
-         procedure BeginProgram; virtual;
+         function  BeginProgram : Boolean; virtual;
          procedure RunProgram(aTimeoutMilliSeconds : Integer);
          procedure Stop;
          procedure EndProgram; virtual;
@@ -1824,11 +1824,12 @@ end;
 //
 procedure TdwsProgramExecution.Execute(aTimeoutMilliSeconds : Integer = 0);
 begin
-   BeginProgram;
-   if ProgramState=psRunning then
-      RunProgram(aTimeoutMilliSeconds);
-   if ProgramState in [psRunning, psRunningStopped] then
-      EndProgram;
+   if BeginProgram then begin
+      if ProgramState=psRunning then
+         RunProgram(aTimeoutMilliSeconds);
+      if ProgramState in [psRunning, psRunningStopped] then
+         EndProgram;
+   end;
 end;
 
 // ExecuteParam
@@ -1867,8 +1868,10 @@ end;
 
 // BeginProgram
 //
-procedure TdwsProgramExecution.BeginProgram;
+function TdwsProgramExecution.BeginProgram : Boolean;
 begin
+   Result:=False;
+
    // Check program state
    if FProgramState<>psReadyToRun then begin
       case FProgramState of
@@ -1920,6 +1923,8 @@ begin
 
       if not (FProg.Expr is TBlockExprBase) then
          DoStep(FProg.FExpr);
+
+      Result:=True;
 
    except
       on e: EScriptError do begin
