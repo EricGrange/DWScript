@@ -9071,7 +9071,9 @@ begin
 
          // Read right argument
          right:=ReadExprAdd;
-         rightTyp:=right.Typ;
+         if right=nil then
+            rightTyp:=nil
+         else rightTyp:=right.Typ;
          try
             case tt of
                ttIS : begin
@@ -9210,7 +9212,6 @@ begin
             try
                // Generate function and add left and right argument
                if right=nil then begin
-                  FMsgs.AddCompilerError(hotPos, CPE_ExpressionExpected);
                   opExpr:=nil;
                end else if (Result.Typ=nil) or (right.Typ=nil) then begin
                   FMsgs.AddCompilerError(hotPos, CPE_IncompatibleOperands);
