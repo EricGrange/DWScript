@@ -1,4 +1,7 @@
 Errors >>>>
 Runtime Error: User defined exception: Error message 2 [line: 8, column: 48]
+Bar [line: 13, column: 4]
+Foo [line: 22, column: 10]
+ [line: 30, column: 1]
 Result >>>>
 Exception1 caught

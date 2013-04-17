@@ -608,6 +608,9 @@ begin
    try
       Result:=FOnEval(@execRec);
    except
+      on E: EScriptException do
+         raise
+   else
       Result:=0;
       RaiseScriptError(exec);
    end;

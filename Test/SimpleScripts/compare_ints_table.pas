@@ -1,9 +1,5 @@
 var i, j : Integer;
 
-i:=0; j:=1;
-
-//if i<j then Print('ok');
-
 for i:=-1 to 1 do begin
 	for j:=-1 to 1 do begin
 		Print('**** '+IntToStr(i)+', '+IntToStr(j)+' : ');

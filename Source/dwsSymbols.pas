@@ -1733,7 +1733,7 @@ type
 
          property ExceptionObj : IScriptObj read FExceptObj;
          property ScriptPos : TScriptPos read FScriptPos write FScriptPos;
-         property ScriptCallStack : TdwsExprLocationArray read FScriptCallStack;
+         property ScriptCallStack : TdwsExprLocationArray read FScriptCallStack write FScriptCallStack;
    end;
 
    // Is thrown by failed Assert() statements in script code
@@ -6396,10 +6396,10 @@ end;
 function TRuntimeErrorMessage.AsInfo: String;
 begin
    Result:=Text;
-   if Length(FCallStack)>0 then
-      Result:=Result+' in '+FCallStack[High(FCallStack)].Expr.FuncSymQualifiedName;
    if Pos.Defined then
-      Result:=Result+Pos.AsInfo;
+      Result:=Result+Pos.AsInfo
+   else if Length(FCallStack)>0 then
+      Result:=Result+' in '+FCallStack[High(FCallStack)].Expr.FuncSymQualifiedName;
    if Length(FCallStack)>0 then begin
       Result:=result+#13#10+TExprBase.CallStackToString(FCallStack);
    end;

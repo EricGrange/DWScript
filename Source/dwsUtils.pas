@@ -1116,7 +1116,7 @@ function WhichPowerOfTwo(const v : Int64) : Integer;
 var
    n : Int64;
 begin
-   if v>0 then begin
+   if (v>0) and ((v and (v-1))=0) then begin
       for Result:=0 to 63 do begin
          n:=Int64(1) shl Result;
          if n>v then Break;

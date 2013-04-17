@@ -40,6 +40,9 @@ type
          procedure shr_shl_32;
          procedure shr_shl_64;
          procedure xor_and_or_cmp_32;
+         procedure xor_and_or_cmp_reg;
+         procedure mul_imul_reg;
+         procedure mul_imul_dword_ptr_reg;
          procedure fpu_ops;
          procedure push_pop;
          procedure nops;
@@ -360,7 +363,8 @@ begin
       expect:='';
       for src:=gprEAX to gprEDI do begin
          FStream._mov_reg_reg(dest, src);
-         expect:=expect+'mov '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10;
+         if dest<>src then
+            expect:=expect+'mov '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10;
       end;
       CheckEquals(expect, DisasmStream);
    end;
@@ -595,20 +599,28 @@ var
    expect : String;
 begin
    for reg:=gprEAX to gprEDI do begin
+      FStream._shift_reg_cl(gpShr, reg);
       FStream._shift_reg_imm(gpShr, reg, 1);
       FStream._shift_reg_imm(gpShr, reg, $7F);
+      FStream._shift_reg_cl(gpShl, reg);
       FStream._shift_reg_imm(gpShl, reg, 1);
       FStream._shift_reg_imm(gpShl, reg, $7F);
+      FStream._shift_reg_cl(gpSar, reg);
       FStream._shift_reg_imm(gpSar, reg, 1);
       FStream._shift_reg_imm(gpSar, reg, $7F);
+      FStream._shift_reg_cl(gpSal, reg);
       FStream._shift_reg_imm(gpSal, reg, 1);
       FStream._shift_reg_imm(gpSal, reg, $7F);
-      expect:= 'shr '+cgpRegisterName[reg]+', 1 '#13#10
+      expect:= 'shr '+cgpRegisterName[reg]+', cl'#13#10
+              +'shr '+cgpRegisterName[reg]+', 1 '#13#10
               +'shr '+cgpRegisterName[reg]+', 7Fh'#13#10
+              +'shl '+cgpRegisterName[reg]+', cl'#13#10
               +'shl '+cgpRegisterName[reg]+', 1 '#13#10
               +'shl '+cgpRegisterName[reg]+', 7Fh'#13#10
+              +'sar '+cgpRegisterName[reg]+', cl'#13#10
               +'sar '+cgpRegisterName[reg]+', 1 '#13#10
               +'sar '+cgpRegisterName[reg]+', 7Fh'#13#10
+              +'sal '+cgpRegisterName[reg]+', cl'#13#10
               +'sal '+cgpRegisterName[reg]+', 1 '#13#10
               +'sal '+cgpRegisterName[reg]+', 7Fh'#13#10
               ;
@@ -622,11 +634,26 @@ procedure TJITx86Tests.shr_shl_64;
 begin
    FStream._shr_eaxedx_imm(7);
    FStream._shl_eaxedx_imm(7);
+   FStream._sar_eaxedx_imm(7);
 
    CheckEquals( 'shrd eax, edx, 00000007h'#13#10
                +'shr edx, 07h'#13#10
                +'shld edx, eax, 00000007h'#13#10
-               +'shl eax, 07h'#13#10,
+               +'shl eax, 07h'#13#10
+               +'shrd eax, edx, 00000007h'#13#10
+               +'sar edx, 07h'#13#10,
+               DisasmStream);
+
+   FStream._shr_eaxedx_cl;
+   FStream._shl_eaxedx_cl;
+   FStream._sar_eaxedx_cl;
+
+   CheckEquals( 'shrd eax, edx, cl'#13#10
+               +'shr edx, cl'#13#10
+               +'shld edx, eax, cl'#13#10
+               +'shl eax, cl'#13#10
+               +'shrd eax, edx, cl'#13#10
+               +'sar edx, cl'#13#10,
                DisasmStream);
 end;
 
@@ -656,6 +683,86 @@ begin
               +'cmp '+cgpRegisterName[reg]+', 00000080h'#13#10
               ;
       CheckEquals(expect, DisasmStream);
+   end;
+end;
+
+// xor_and_or_cmp_reg
+//
+procedure TJITx86Tests.xor_and_or_cmp_reg;
+var
+   dest, src : TgpRegister;
+   expect : String;
+begin
+   for dest:=gprEAX to gprEDI do begin
+      for src:=gprEAX to gprEDI do begin
+         FStream._op_reg_reg(gpOp_xor, dest, src);
+         FStream._op_reg_reg(gpOp_and, dest, src);
+         FStream._op_reg_reg(gpOp_or, dest, src);
+         FStream._op_reg_reg(gpOp_cmp, dest, src);
+         FStream._op_reg_reg(gpOp_add, dest, src);
+         FStream._op_reg_reg(gpOp_adc, dest, src);
+         FStream._op_reg_reg(gpOp_sub, dest, src);
+         FStream._op_reg_reg(gpOp_sbb, dest, src);
+         expect:= 'xor '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10
+                 +'and '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10
+                 +'or '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10
+                 +'cmp '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10
+                 +'add '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10
+                 +'adc '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10
+                 +'sub '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10
+                 +'sbb '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10
+              ;
+         CheckEquals(expect, DisasmStream);
+      end;
+   end;
+end;
+
+// mul_imul_reg
+//
+procedure TJITx86Tests.mul_imul_reg;
+var
+   dest, src : TgpRegister;
+   expect : String;
+begin
+   for dest:=gprEAX to gprEDI do begin
+      FStream._mul_reg(dest);
+      expect:='mul '+cgpRegisterName[dest]+#13#10;
+      for src:=gprEAX to gprEDI do begin
+         FStream._imul_reg_reg(dest, src);
+         expect:= expect+'imul '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10
+              ;
+      end;
+      CheckEquals(expect, DisasmStream);
+   end;
+end;
+
+// mul_imul_dword_ptr_reg
+//
+procedure TJITx86Tests.mul_imul_dword_ptr_reg;
+var
+   reg, src : TgpRegister;
+   offset : Integer;
+   expect, offsetText : String;
+begin
+   for offset:=0 to 2 do begin
+      for src:=gprEAX to gprEDI do begin
+         case offset of
+            1 : offsetText:='+40h';
+            2 : offsetText:='+00000080h';
+         else
+            if src=gprEBP then
+               offsetText:='+00h'
+            else offsetText:='';
+         end;
+         expect:='mul dword ptr ['+cgpRegisterName[src]+offsetText+']'#13#10;
+         FStream._mul_dword_ptr_reg(src, offset*$40);
+         for reg:=gprEAX to gprEDI do begin
+            FStream._imul_reg_dword_ptr_reg(reg, src, offset*$40);
+            expect:= expect+'imul '+cgpRegisterName[reg]+', dword ptr ['+cgpRegisterName[src]+offsetText+']'#13#10
+                 ;
+         end;
+         CheckEquals(expect, DisasmStream);
+      end;
    end;
 end;
 

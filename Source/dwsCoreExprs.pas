@@ -112,6 +112,7 @@ type
    TObjectVarExpr = class (TVarExpr)
       public
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
          function EvalAsPIScriptObj(exec : TdwsExecution) : PIScriptObj; inline;
    end;
@@ -129,9 +130,15 @@ type
    TVarParentExpr = class(TVarExpr)
       protected
          FLevel: Integer;
+
       public
          constructor Create(prog : TdwsProgram; dataSym : TDataSymbol);
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
+
+         procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
+         function EvalAsFloat(exec : TdwsExecution) : Double; override;
+
          property Level : Integer read FLevel;
    end;
 
@@ -491,7 +498,13 @@ type
 
    // Field expression: obj.Field
    TFieldVarExpr = class(TFieldExpr)
+      protected
+         function GetPIScriptObj(exec : TdwsExecution) : PIScriptObj; inline;
+
       public
+         procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
+
+         function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
@@ -550,7 +563,7 @@ type
    end;
 
    // new array[length,...]
-   TNewArrayExpr = class(TArrayTypedExpr)
+   TNewArrayExpr = class(TPosDataExpr)
       private
          FLengthExprs : TTightList;
          FTyps : TTightList;
@@ -568,6 +581,8 @@ type
 
          function Eval(exec : TdwsExecution) : Variant; override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
+
+         procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
          procedure AddLengthExpr(expr : TTypedExpr; indexTyp : TTypeSymbol);
          property LengthExpr[idx : Integer] : TTypedExpr read GetLengthExpr;
@@ -2194,6 +2209,13 @@ begin
    Expr.EvalAsVariant(exec, exec.Stack.Data[exec.Stack.BasePointer+FStackAddr]);
 end;
 
+// EvalAsVariant
+//
+procedure TObjectVarExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+begin
+   exec.Stack.ReadValue(exec.Stack.BasePointer + FStackAddr, Result);
+end;
+
 // EvalAsScriptObj
 //
 procedure TObjectVarExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
@@ -2249,6 +2271,27 @@ end;
 procedure TVarParentExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
    exec.DataContext_CreateLevel(FLevel, FStackAddr, Result);
+end;
+
+// EvalAsVariant
+//
+procedure TVarParentExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
+begin
+   Result:=exec.Stack.Data[exec.Stack.GetSavedBp(FLevel)+FStackAddr];
+end;
+
+// EvalAsInteger
+//
+function TVarParentExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result:=exec.Stack.Data[exec.Stack.GetSavedBp(FLevel)+FStackAddr];
+end;
+
+// EvalAsFloat
+//
+function TVarParentExpr.EvalAsFloat(exec : TdwsExecution) : Double;
+begin
+   Result:=exec.Stack.Data[exec.Stack.GetSavedBp(FLevel)+FStackAddr];
 end;
 
 // ------------------
@@ -2433,8 +2476,7 @@ end;
 constructor TNewArrayExpr.Create(prog: TdwsProgram; const scriptPos: TScriptPos;
                                  elementTyp : TTypeSymbol);
 begin
-   inherited Create(prog, scriptPos);
-   FTyp:=TDynamicArraySymbol.Create('', elementTyp, prog.TypInteger);
+   inherited Create(prog, scriptPos, TDynamicArraySymbol.Create('', elementTyp, prog.TypInteger));
    FTyps.Add(FTyp);
 end;
 
@@ -2468,7 +2510,7 @@ procedure TNewArrayExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScri
    begin
       n:=LengthExpr[d].EvalAsInteger(exec);
       if n<0 then
-         RaiseScriptError(exec, EScriptOutOfBounds.CreatePosFmt(FScriptPos, RTE_ArrayLengthIncorrectForDimension, [n, d]));
+         RaiseScriptError(exec, EScriptOutOfBounds.CreatePosFmt(ScriptPos, RTE_ArrayLengthIncorrectForDimension, [n, d]));
       Result:=TScriptDynamicArray.Create(TDynamicArraySymbol(FTyps.List[FTyps.Count-1-d]).Typ);
       Result.ArrayLength:=n;
       Inc(d);
@@ -2480,6 +2522,17 @@ procedure TNewArrayExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScri
 
 begin
    Result:=CreateDimension(0);
+end;
+
+// GetDataPtr
+//
+procedure TNewArrayExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
+var
+   data : TData;
+begin
+   SetLength(data, 1);
+   data[0]:=Eval(exec);
+   result:=exec.Stack.CreateDataPtr(data, 0);
 end;
 
 // AddLengthExpr
@@ -3470,15 +3523,33 @@ end;
 // ------------------ TFieldVarExpr ------------------
 // ------------------
 
+// GetPIScriptObj
+//
+function TFieldVarExpr.GetPIScriptObj(exec : TdwsExecution) : PIScriptObj;
+begin
+   Result:=PIScriptObj(exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FObjectExpr).StackAddr));
+   CheckScriptObject(exec, Result^);
+end;
+
+// AssignValueAsInteger
+//
+procedure TFieldVarExpr.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
+begin
+   GetPIScriptObj(exec)^.AsInteger[FFieldAddr]:=value;
+end;
+
+// EvalAsInteger
+//
+function TFieldVarExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
+begin
+   Result:=GetPIScriptObj(exec)^.AsInteger[FFieldAddr];
+end;
+
 // EvalAsFloat
 //
 function TFieldVarExpr.EvalAsFloat(exec : TdwsExecution) : Double;
-var
-   p : PIScriptObj;
 begin
-   p:=PIScriptObj(exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FObjectExpr).StackAddr));
-   CheckScriptObject(exec, p^);
-   Result:=p^.AsFloat[FFieldAddr];
+   Result:=GetPIScriptObj(exec)^.AsFloat[FFieldAddr];
 end;
 
 // GetDataPtr
@@ -4232,19 +4303,29 @@ begin
       Result:=TSqrIntExpr.Create(Prog, FLeft);
       FLeft:=nil;
       Free;
-      Exit;
-   end else if (FLeft is TConstIntExpr) and (not FRight.IsConstant) then begin
-      n:=WhichPowerOfTwo(TConstIntExpr(FLeft).EvalAsInteger(exec));
-      if n>0 then begin
-         mip:=TMultIntPow2Expr.Create(prog, FRight);
-         mip.FShift:=n;
-         Result:=mip;
-         FRight:=nil;
-         Free;
-         Exit;
+   end else if FLeft.IsConstant then begin
+      if FRight.IsConstant then
+         Result:=inherited
+      else begin
+         n:=WhichPowerOfTwo(FLeft.EvalAsInteger(exec));
+         if n>1 then begin
+            mip:=TMultIntPow2Expr.Create(prog, FRight);
+            mip.FShift:=n-1;
+            Result:=mip;
+            FRight:=nil;
+            Free;
+         end else Result:=Self;
       end;
-   end;
-   Result:=inherited;
+   end else if FRight.IsConstant then begin
+      n:=WhichPowerOfTwo(FRight.EvalAsInteger(exec));
+      if n>1 then begin
+         mip:=TMultIntPow2Expr.Create(prog, FLeft);
+         mip.FShift:=n-1;
+         Result:=mip;
+         FLeft:=nil;
+         Free;
+      end else Result:=Self;
+   end else Result:=Self;
 end;
 
 // ------------------
@@ -4254,19 +4335,8 @@ end;
 // EvalAsInteger
 //
 function TMultIntPow2Expr.EvalAsInteger(exec : TdwsExecution) : Int64;
-{$ifndef WIN32_ASM}
 begin
    Result:=Expr.EvalAsInteger(exec)*(Int64(2) shl FShift);
-{$else}
-asm
-   push  dword [eax + OFFSET FShift]
-   mov   eax, [eax + OFFSET FExpr]
-   mov   ecx, [eax]
-   call  dword ptr [ecx + VMTOFFSET EvalAsInteger]
-   pop   ecx
-   shld  edx, eax, cl
-   shl   eax, cl
-{$endif}
 end;
 
 // ------------------
@@ -4637,7 +4707,7 @@ begin
       if leftVarExpr.ClassType=TIntVarExpr then begin
          if rightClassType=TAddIntExpr then begin
             addIntExpr:=TAddIntExpr(FRight);
-            if (addIntExpr.Left is TVarExpr) and (addIntExpr.Left.ReferencesVariable(leftVarExpr.DataSym)) then begin
+            if addIntExpr.Left.SameDataExpr(leftVarExpr) then begin
                Result:=TIncIntVarExpr.Create(Prog, FScriptPos, FLeft, addIntExpr.Right);
                FLeft:=nil;
                addIntExpr.Right:=nil;
@@ -4646,7 +4716,7 @@ begin
             end;
          end else if rightClassType=TSubIntExpr then begin
             subIntExpr:=TSubIntExpr(FRight);
-            if (subIntExpr.Left is TVarExpr) and (subIntExpr.Left.ReferencesVariable(leftVarExpr.DataSym)) then begin
+            if subIntExpr.Left.SameDataExpr(leftVarExpr) then begin
                Result:=TDecIntVarExpr.Create(Prog, FScriptPos, FLeft, subIntExpr.Right);
                FLeft:=nil;
                subIntExpr.Right:=nil;
@@ -6568,6 +6638,7 @@ procedure TRaiseExpr.EvalNoResult(exec : TdwsExecution);
 var
    exceptObj : IScriptObj;
    exceptMessage : String;
+   e : EScriptException;
 begin
    FExceptionExpr.EvalAsScriptObj(exec, exceptObj);
    CheckScriptObject(exec, exceptObj);
@@ -6575,7 +6646,10 @@ begin
    if exceptMessage<>'' then
       exceptMessage:=Format(RTE_UserDefinedException_Msg, [exceptMessage])
    else exceptMessage:=RTE_UserDefinedException;
-   raise EScriptException.Create(exceptMessage, exceptObj, FScriptPos);
+   e:=EScriptException.Create(exceptMessage, exceptObj, FScriptPos);
+   e.ScriptCallStack:=exec.GetCallStack;
+   exec.SetScriptError(Self);
+   raise e;
 end;
 
 // InterruptsFlow

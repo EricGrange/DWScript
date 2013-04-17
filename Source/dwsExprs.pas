@@ -1101,7 +1101,7 @@ type
 
       protected
          function PreCall(exec : TdwsExecution) : TFuncSymbol; virtual;
-         function PostCall(exec : TdwsExecution) : Variant; virtual;
+         procedure PostCall(exec : TdwsExecution; var Result : Variant); virtual;
 
          procedure EvalPushExprs(exec : TdwsExecution); inline;
 
@@ -1114,6 +1114,7 @@ type
          procedure AddPushExprs(prog : TdwsProgram);
 
          function Eval(exec : TdwsExecution) : Variant; override;
+
          procedure Initialize(prog : TdwsProgram); override;
          function IsWritable : Boolean; override;
 
@@ -2331,7 +2332,7 @@ procedure TdwsProgramExecution.EnterRecursion(caller : TExprBase);
 begin
    FCallStack.Push(caller);
    FCallStack.Push(FCurrentProg);
-   if FCallStack.Count div 2>FStack.MaxRecursionDepth then
+   if (FCallStack.Count shr 1)>FStack.MaxRecursionDepth then
       RaiseMaxRecursionReached;
 
    if IsDebugging then
@@ -4415,7 +4416,7 @@ begin
             exec.Stack.RestoreFrame(FLevel, oldBasePointer);
          end;
 
-         Result:=PostCall(exec);
+         PostCall(exec, Result);
       finally
          // Remove parameters from stack
          exec.Stack.Pop(FFunc.ParamSize);
@@ -4435,7 +4436,7 @@ end;
 
 // PostCall
 //
-function TFuncExpr.PostCall(exec : TdwsExecution) : Variant;
+procedure TFuncExpr.PostCall(exec : TdwsExecution; var Result : Variant);
 var
    sourceAddr, destAddr: Integer;
 begin
@@ -5764,6 +5765,7 @@ var
    member : TSymbol;
 begin
    FClassSym:=aClassSym;
+   if aClassSym=nil then Exit;
 
    if executionContext<>nil then
       executionContext.ScriptObjCreated(Self);

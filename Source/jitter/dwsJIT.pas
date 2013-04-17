@@ -29,7 +29,7 @@ type
 
    TdwsJIT = class;
 
-   TdwsJITOption = (jitoDoStep);
+   TdwsJITOption = (jitoDoStep, jitoRangeCheck);
    TdwsJITOptions = set of TdwsJITOption;
 
    TdwsJITter = class (TRefCountedObject)

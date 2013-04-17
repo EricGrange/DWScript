@@ -400,7 +400,7 @@ begin
    prog:=FCompiler.Compile('procedure Dummy; begin Dummy; end; Dummy;');
    CheckEquals('', prog.Msgs.AsInfo, 'compile');
    exec:=prog.Execute;
-   CheckEquals('Runtime Error: Maximal recursion exceeded (5 calls) in Dummy [line: 1, column: 24]'#13#10
+   CheckEquals('Runtime Error: Maximal recursion exceeded (5 calls) [line: 1, column: 24]'#13#10
                +'Dummy [line: 1, column: 24]'#13#10
                +'Dummy [line: 1, column: 24]'#13#10
                +'Dummy [line: 1, column: 24]'#13#10
@@ -422,7 +422,7 @@ begin
    prog:=FCompiler.Compile('procedure Dummy; var i : Integer; begin Dummy; end; Dummy;');
    CheckEquals('', prog.Msgs.AsInfo, 'compile');
    exec:=prog.Execute;
-   CheckEquals('Runtime Error: Maximal data size exceeded (2 Variants) in Dummy [line: 1, column: 41]'#13#10
+   CheckEquals('Runtime Error: Maximal data size exceeded (2 Variants) [line: 1, column: 41]'#13#10
                +'Dummy [line: 1, column: 41]'#13#10
                +' [line: 1, column: 53]'#13#10,
                exec.Msgs.AsInfo, 'stack overflow');
@@ -981,9 +981,10 @@ begin
    exec:=prog.CreateNewExecution;
    try
       exec.Execute;
-      CheckTrue(StrBeginsWith(exec.Msgs.AsInfo,
-         'Runtime Error: Maximal exception depth exceeded (11 nested exceptions) in Proc [line: 6, column: 3]'),
-         'exception depth');
+      CheckEquals('Runtime Error: Maximal exception depth exceeded (11 nested exceptions) [line: 4, column: 29]'#13#10
+                  +' [line: 9, column: 1]'#13#10,
+                  exec.Msgs.AsInfo,
+                  'exception depth');
    finally
       exec:=nil;
    end;

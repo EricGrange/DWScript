@@ -34,6 +34,7 @@ var
    vmt_TExprBase_AssignValueAsInteger : Integer;
 
    vmt_ScriptDynamicArray_IScriptObj_To_FData : Integer;
+   vmt_ScriptObjInstance_IScriptObj_To_FData : Integer;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -62,12 +63,18 @@ end;
 procedure PrepareDynArrayIDataContextToFDataOffset;
 var
    sda : TScriptDynamicArray;
+   soi : TScriptObjInstance;
    i : IScriptObj;
 begin
    sda:=TScriptDynamicArray.Create(nil);
    i:=IScriptObj(sda);
 
    vmt_ScriptDynamicArray_IScriptObj_To_FData:=NativeInt(i.AsPData)-NativeInt(i);
+
+   soi:=TScriptObjInstance.Create(nil);
+   i:=IScriptObj(soi);
+
+   vmt_ScriptObjInstance_IScriptObj_To_FData:=NativeInt(i.AsPData)-NativeInt(i);
 end;
 
 // ------------------------------------------------------------------

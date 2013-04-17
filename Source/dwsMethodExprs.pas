@@ -108,7 +108,7 @@ type
    // Call to a static constructor
    TConstructorStaticExpr = class(TMethodStaticExpr)
       protected
-         function PostCall(exec : TdwsExecution) : Variant; override;
+         procedure PostCall(exec : TdwsExecution; var Result : Variant); override;
          function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
 
       public
@@ -121,7 +121,7 @@ type
       private
          FExternalObject: TObject;
       protected
-         function PostCall(exec : TdwsExecution) : Variant; override;
+         procedure PostCall(exec : TdwsExecution; var Result : Variant); override;
          function PreCall(exec : TdwsExecution) : TFuncSymbol; override;
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
@@ -131,7 +131,7 @@ type
 
    TConstructorStaticObjExpr = class(TMethodStaticExpr)
       protected
-         function PostCall(exec : TdwsExecution) : Variant; override;
+         procedure PostCall(exec : TdwsExecution; var Result : Variant); override;
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
                             BaseExpr: TTypedExpr);
@@ -139,7 +139,7 @@ type
 
    TConstructorVirtualObjExpr = class(TMethodVirtualExpr)
       protected
-         function PostCall(exec : TdwsExecution): Variant; override;
+         procedure PostCall(exec : TdwsExecution; var Result : Variant); override;
       public
          constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Func: TMethodSymbol;
                             Base: TTypedExpr);
@@ -147,12 +147,12 @@ type
 
    TDestructorStaticExpr = class(TMethodStaticExpr)
       protected
-         function PostCall(exec : TdwsExecution): Variant; override;
+         procedure PostCall(exec : TdwsExecution; var Result : Variant); override;
    end;
 
    TDestructorVirtualExpr = class(TMethodVirtualExpr)
       protected
-         function PostCall(exec : TdwsExecution) : Variant; override;
+         procedure PostCall(exec : TdwsExecution; var Result : Variant); override;
    end;
 
    TFuncPtrExpr = class sealed (TFuncExpr)
@@ -447,7 +447,7 @@ end;
 
 // PostCall
 //
-function TConstructorStaticExpr.PostCall(exec : TdwsExecution) : Variant;
+procedure TConstructorStaticExpr.PostCall(exec : TdwsExecution; var Result : Variant);
 begin
    Assert(FResultAddr=-1);
    Result:=exec.SelfScriptObject^;
@@ -490,7 +490,7 @@ end;
 
 // PostCall
 //
-function TConstructorVirtualExpr.PostCall(exec : TdwsExecution) : Variant;
+procedure TConstructorVirtualExpr.PostCall(exec : TdwsExecution; var Result : Variant);
 begin
    // Return Self as Result
    Assert(FResultAddr=-1);
@@ -508,7 +508,7 @@ begin
   Typ := BaseExpr.Typ;
 end;
 
-function TConstructorStaticObjExpr.PostCall(exec : TdwsExecution) : Variant;
+procedure TConstructorStaticObjExpr.PostCall(exec : TdwsExecution; var Result : Variant);
 begin
    Result := exec.SelfScriptObject^;
 end;
@@ -524,7 +524,7 @@ begin
   Typ := Base.Typ;
 end;
 
-function TConstructorVirtualObjExpr.PostCall(exec : TdwsExecution): Variant;
+procedure TConstructorVirtualObjExpr.PostCall(exec : TdwsExecution; var Result : Variant);
 begin
    Result := exec.SelfScriptObject^;
 end;
@@ -535,7 +535,7 @@ end;
 
 // PostCall
 //
-function TDestructorStaticExpr.PostCall(exec : TdwsExecution) : Variant;
+procedure TDestructorStaticExpr.PostCall(exec : TdwsExecution; var Result : Variant);
 begin
    exec.SelfScriptObject^.Destroyed:=True;
 end;
@@ -546,7 +546,7 @@ end;
 
 // PostCall
 //
-function TDestructorVirtualExpr.PostCall(exec : TdwsExecution) : Variant;
+procedure TDestructorVirtualExpr.PostCall(exec : TdwsExecution; var Result : Variant);
 begin
    exec.SelfScriptObject^.Destroyed:=True;
 end;

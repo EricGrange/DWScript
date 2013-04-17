@@ -91,6 +91,7 @@ type
       Short1, SIB : Byte;
       Long1 : Byte;
       LongEAX : Byte;
+      RegReg : Byte;
    end;
 
    TgpShift = (gpShr = $E8, gpShl = $E0, gpSar = $F8, gpSal = $F0);
@@ -162,6 +163,7 @@ type
          procedure _set_al_flags(flags : TboolFlags);
 
          procedure _op_reg_int32(const op : TgpOP; reg : TgpRegister; value : Integer);
+         procedure _op_reg_reg(const op : TgpOP; dest, src : TgpRegister);
          procedure _cmp_reg_int32(reg : TgpRegister; value : Integer);
          procedure _add_reg_reg(dest, src : TgpRegister);
          procedure _add_reg_int32(reg : TgpRegister; value : Integer);
@@ -177,12 +179,22 @@ type
          procedure _sub_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
          procedure _sbb_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 
+         procedure _mul_reg(reg : TgpRegister);
+         procedure _mul_dword_ptr_reg(reg : TgpRegister; offset : Integer);
+         procedure _imul_reg_reg(dest, src : TgpRegister);
+         procedure _imul_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+
          procedure _neg_reg(reg : TgpRegister);
 
          procedure _shift_reg_imm(shift : TgpShift; reg : TgpRegister; value : Integer);
+         procedure _shift_reg_cl(shift : TgpShift; reg : TgpRegister);
 
          procedure _shr_eaxedx_imm(value : Integer);
          procedure _shl_eaxedx_imm(value : Integer);
+         procedure _sar_eaxedx_imm(value : Integer);
+         procedure _shr_eaxedx_cl;
+         procedure _shl_eaxedx_cl;
+         procedure _sar_eaxedx_cl;
 
          procedure _add_execmem_int32(stackAddr, offset, value : Integer);
          procedure _adc_execmem_int32(stackAddr, offset, value : Integer);
@@ -216,16 +228,15 @@ type
    end;
 
 const
-   gpOp_add : TgpOp = (Short1: $83; SIB: $C0; Long1: $81; LongEAX: $05);
-   gpOp_adc : TgpOp = (Short1: $83; SIB: $D0; Long1: $81; LongEAX: $15);
-   gpOp_sub : TgpOp = (Short1: $83; SIB: $E8; Long1: $81; LongEAX: $2D);
-   gpOp_sbb : TgpOp = (Short1: $83; SIB: $D8; Long1: $81; LongEAX: $1D);
-   gpOp_xor : TgpOp = (Short1: $83; SIB: $F0; Long1: $81; LongEAX: $35);
-   gpOp_and : TgpOp = (Short1: $83; SIB: $E0; Long1: $81; LongEAX: $25);
-   gpOp_or  : TgpOp = (Short1: $83; SIB: $C8; Long1: $81; LongEAX: $0D);
-   gpOp_cmp : TgpOp = (Short1: $83; SIB: $F8; Long1: $81; LongEAX: $3D);
+   gpOp_add : TgpOp = (Short1: $83; SIB: $C0; Long1: $81; LongEAX: $05; RegReg: $01);
+   gpOp_adc : TgpOp = (Short1: $83; SIB: $D0; Long1: $81; LongEAX: $15; RegReg: $11);
+   gpOp_sub : TgpOp = (Short1: $83; SIB: $E8; Long1: $81; LongEAX: $2D; RegReg: $29);
+   gpOp_sbb : TgpOp = (Short1: $83; SIB: $D8; Long1: $81; LongEAX: $1D; RegReg: $19);
+   gpOp_xor : TgpOp = (Short1: $83; SIB: $F0; Long1: $81; LongEAX: $35; RegReg: $31);
+   gpOp_and : TgpOp = (Short1: $83; SIB: $E0; Long1: $81; LongEAX: $25; RegReg: $21);
+   gpOp_or  : TgpOp = (Short1: $83; SIB: $C8; Long1: $81; LongEAX: $0D; RegReg: $09);
+   gpOp_cmp : TgpOp = (Short1: $83; SIB: $F8; Long1: $81; LongEAX: $3D; RegReg: $39);
 
-const
    cStackMixinBaseDataOffset = 8;
    cVariant_DataOffset = 8;
    cgpRegisterName : array [TgpRegister] of String = (
@@ -234,6 +245,7 @@ const
    cExecMemGPR = gprEBX;
 
 function NegateBoolFlags(flags : TboolFlags) : TboolFlags;
+function StackAddrToOffset(addr : Integer) : Integer;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -631,7 +643,8 @@ end;
 //
 procedure Tx86WriteOnlyStream._mov_reg_reg(dest, src : TgpRegister);
 begin
-   WriteBytes([$89, $C0+Ord(dest)+8*Ord(src)]);
+   if dest<>src then
+      WriteBytes([$89, $C0+Ord(dest)+8*Ord(src)]);
 end;
 
 // _mov_reg_dword_ptr_reg
@@ -777,6 +790,13 @@ begin
    end;
 end;
 
+// _op_reg_reg
+//
+procedure Tx86WriteOnlyStream._op_reg_reg(const op : TgpOP; dest, src : TgpRegister);
+begin
+   WriteBytes([op.RegReg, $C0+Ord(dest)+8*Ord(src)])
+end;
+
 // _cmp_reg_int32
 //
 procedure Tx86WriteOnlyStream._cmp_reg_int32(reg : TgpRegister; value : Integer);
@@ -788,7 +808,7 @@ end;
 //
 procedure Tx86WriteOnlyStream._add_reg_reg(dest, src : TgpRegister);
 begin
-   WriteBytes([$01, $C0+Ord(dest)+8*Ord(src)]);
+   _op_reg_reg(gpOp_add, dest, src);
 end;
 
 // _add_reg_int32
@@ -875,6 +895,38 @@ begin
    _modRMSIB_regnum_ptr_reg([$1B], Ord(dest), src, offset);
 end;
 
+// _mul_reg
+//
+procedure Tx86WriteOnlyStream._mul_reg(reg : TgpRegister);
+begin
+   WriteBytes([$F7, $E0+Ord(reg)]);
+end;
+
+// _mul_dword_ptr_reg
+//
+procedure Tx86WriteOnlyStream._mul_dword_ptr_reg(reg : TgpRegister; offset : Integer);
+begin
+   WriteByte($F7);
+   _modRMSIB_ptr_reg($20, reg, offset);
+end;
+
+// _imul_reg_reg
+//
+procedure Tx86WriteOnlyStream._imul_reg_reg(dest, src : TgpRegister);
+begin
+   WriteBytes([$0F, $AF, $C0+Ord(dest)*8+Ord(src)]);
+end;
+
+// _imul_reg_dword_ptr_reg
+//
+procedure Tx86WriteOnlyStream._imul_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
+begin
+   _modRMSIB_regnum_ptr_reg([$0F, $AF], Ord(dest), src, offset);
+//   asm
+//      imul eax, [eax+1];
+//   end;
+end;
+
 // _neg_reg
 //
 procedure Tx86WriteOnlyStream._neg_reg(reg : TgpRegister);
@@ -886,25 +938,93 @@ end;
 //
 procedure Tx86WriteOnlyStream._shift_reg_imm(shift : TgpShift; reg : TgpRegister; value : Integer);
 begin
-   if value=1 then
-      WriteBytes([$D1, Ord(shift)+Ord(reg)])
-   else WriteBytes([$C1, Ord(shift)+Ord(reg), value]);
+   if value<>0 then begin
+      if value=1 then
+         WriteBytes([$D1, Ord(shift)+Ord(reg)])
+      else WriteBytes([$C1, Ord(shift)+Ord(reg), value]);
+   end;
+end;
+
+// _shift_reg_cl
+//
+procedure Tx86WriteOnlyStream._shift_reg_cl(shift : TgpShift; reg : TgpRegister);
+begin
+   WriteBytes([$D3, Ord(shift)+Ord(reg)])
 end;
 
 // _shr_eaxedx_imm
 //
 procedure Tx86WriteOnlyStream._shr_eaxedx_imm(value : Integer);
 begin
-   WriteBytes([$0F, $AC, $D0, value]);
-   _shift_reg_imm(gpShr, gprEDX, value);
+   if value<32 then begin
+      // shrd eax, edx, value
+      WriteBytes([$0F, $AC, $D0, value]);
+      _shift_reg_imm(gpShr, gprEDX, value);
+   end else if value<64 then begin
+      _mov_reg_reg(gprEAX, gprEDX);
+      _shift_reg_imm(gpShr, gprEAX, value-32);
+      _xor_reg_reg(gprEDX, gprEDX);
+   end else _mov_eaxedx_imm(0);
 end;
 
 // _shl_eaxedx_imm
 //
 procedure Tx86WriteOnlyStream._shl_eaxedx_imm(value : Integer);
 begin
-   WriteBytes([$0F, $A4, $C2, value]);
-   _shift_reg_imm(gpShl, gprEAX, value);
+   if value<32 then begin
+      // shld edx, eax, value
+      WriteBytes([$0F, $A4, $C2, value]);
+      _shift_reg_imm(gpShl, gprEAX, value);
+   end else if value<64 then begin
+      _mov_reg_reg(gprEDX, gprEAX);
+      _shift_reg_imm(gpShl, gprEDX, value-32);
+      _xor_reg_reg(gprEAX, gprEAX);
+   end else _mov_eaxedx_imm(0);
+end;
+
+// _sar_eaxedx_imm
+//
+procedure Tx86WriteOnlyStream._sar_eaxedx_imm(value : Integer);
+begin
+   if value<32 then begin
+      // shrd eax, edx, value
+      WriteBytes([$0F, $AC, $D0, value]);
+      _shift_reg_imm(gpSar, gprEDX, value);
+   end else if value<64 then begin
+      _mov_reg_reg(gprEAX, gprEDX);
+      _shift_reg_imm(gpSar, gprEAX, value-32);
+      _mov_reg_dword(gprEDX, DWORD(-1));
+   end else begin;
+      _shift_reg_imm(gpSar, gprEDX, 31);
+      _mov_reg_reg(gprEAX, gprEDX);
+   end;
+end;
+
+// _shr_eaxedx_cl
+//
+procedure Tx86WriteOnlyStream._shr_eaxedx_cl;
+begin
+   // shrd eax, edx, cl
+   WriteBytes([$0F, $AD, $D0]);
+   _shift_reg_cl(gpShr, gprEDX);
+end;
+
+// _shl_eaxedx_cl
+//
+procedure Tx86WriteOnlyStream._shl_eaxedx_cl;
+begin
+   // shld edx, eax, cl
+   WriteBytes([$0F, $A5, $C2]);
+   _shift_reg_cl(gpShl, gprEAX);
+end;
+
+// _sar_eaxedx_cl
+//
+procedure Tx86WriteOnlyStream._sar_eaxedx_cl;
+begin
+   // shrd eax, edx, cl
+   WriteBytes([$0F, $AD, $D0]);
+   _shift_reg_cl(gpSar, gprEDX);
 end;
 
 // _add_execmem_int32
@@ -1047,7 +1167,7 @@ end;
 //
 procedure Tx86WriteOnlyStream._xor_reg_reg(dest, src : TgpRegister);
 begin
-   WriteBytes([$31, $C0+Ord(dest)+Ord(src)*8]);
+   _op_reg_reg(gpOp_xor, dest, src);
 end;
 
 // _call_reg
