@@ -392,13 +392,13 @@ object DwsIdeForm: TDwsIdeForm
       OnExecute = actEditorDeleteExecute
       OnUpdate = actEditorDeleteUpdate
     end
-    object actRunProcedureAtCursor: TAction
+    object actRunFunctionMethodAtCursor: TAction
       Category = 'Run'
-      Caption = 'Run Procedure At Cursor'
-      Hint = 'Runs the procedure at the cursor'
+      Caption = 'Run Function/Method At Cursor'
+      Hint = 'Runs the function or method at the cursor'
       ShortCut = 16504
-      OnExecute = actRunProcedureAtCursorExecute
-      OnUpdate = actRunProcedureAtCursorUpdate
+      OnExecute = actRunFunctionMethodAtCursorExecute
+      OnUpdate = actRunFunctionMethodAtCursorUpdate
     end
     object actCodeProposalInvoke: TAction
       Category = 'Project'
@@ -581,8 +581,8 @@ object DwsIdeForm: TDwsIdeForm
       object Run2: TMenuItem
         Action = actRun
       end
-      object RunProcedureAtCursor1: TMenuItem
-        Action = actRunProcedureAtCursor
+      object RunFunctionMethodAtCursor1: TMenuItem
+        Action = actRunFunctionMethodAtCursor
       end
       object actRunWithoutDebugging1: TMenuItem
         Action = actRunWithoutDebugging
@@ -612,7 +612,7 @@ object DwsIdeForm: TDwsIdeForm
     Left = 176
     Top = 256
     Bitmap = {
-      494C01011E002100040010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C01011E002100140010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000008000000001002000000000000080
       00000000000000000000000000000000000000000000706B67DCA39D96FEA19B
       95FEA19B95FEA19B95FEA19B95FEA19B95FEA19B96FEA19B94FEA19C94FEA19A
@@ -1754,8 +1754,8 @@ object DwsIdeForm: TDwsIdeForm
     Images = SmallImages
     Left = 176
     Top = 144
-    object RunProcedureAtCursor2: TMenuItem
-      Action = actRunProcedureAtCursor
+    object RunFunctionMethodAtCursor2: TMenuItem
+      Action = actRunFunctionMethodAtCursor
     end
     object N9: TMenuItem
       Caption = '-'

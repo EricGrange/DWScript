@@ -263,9 +263,9 @@ type
     actEditorDelete: TEditDelete;
     Delete1: TMenuItem;
     Delete2: TMenuItem;
-    actRunProcedureAtCursor: TAction;
-    RunProcedureAtCursor1: TMenuItem;
-    RunProcedureAtCursor2: TMenuItem;
+    actRunFunctionMethodAtCursor: TAction;
+    RunFunctionMethodAtCursor1: TMenuItem;
+    RunFunctionMethodAtCursor2: TMenuItem;
     N9: TMenuItem;
     Suggest1: TMenuItem;
     actCodeProposalInvoke: TAction;
@@ -338,8 +338,8 @@ type
     procedure actEditorPasteUpdate(Sender: TObject);
     procedure actEditorDeleteExecute(Sender: TObject);
     procedure actEditorDeleteUpdate(Sender: TObject);
-    procedure actRunProcedureAtCursorExecute(Sender: TObject);
-    procedure actRunProcedureAtCursorUpdate(Sender: TObject);
+    procedure actRunFunctionMethodAtCursorExecute(Sender: TObject);
+    procedure actRunFunctionMethodAtCursorUpdate(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure WMCodeSuggest( var AMessage : TMessage ); message WM_CodeSuggest;
     procedure actCodeProposalInvokeExecute(Sender: TObject);
@@ -441,11 +441,13 @@ type
          const AProjectFileName : string;
          const AIDEFormRect     : TRect );
 
-    procedure RunProcedureByName( const AName : string );
+    function  CanRunFunctionMethod(const AName: string): boolean;
+    procedure RunFunctionMethodByName( const AName : string; APrompt : boolean );
 
     procedure RefreshTabs;
     procedure RefreshTabArrows;
-    function IndexOfTab(x : Integer) : Integer;
+
+    function  IndexOfTab(x : Integer) : Integer;
 
   PUBLIC
     // IDwsIde
@@ -601,7 +603,7 @@ end;
 
 function ConfirmDlg(const AStr: string): boolean;
 begin
-  Result := TaskMessageDlg( 'Confirm', AStr, mtError, [mbYes, mbNo], 0 ) = idYes;
+  Result := TaskMessageDlg( 'Confirm', AStr, mtConfirmation, [mbYes, mbNo], 0 ) = idYes;
 end;
 
 function ConfirmDlgYesNoAbort(const AStr: string): boolean;
@@ -1133,7 +1135,21 @@ begin
   dwsDebugger1.EndDebug;
 end;
 
-procedure TDwsIdeForm.RunProcedureByName(const AName: string);
+
+function TDwsIdeForm.CanRunFunctionMethod( const AName : string ) : boolean;
+var
+  Sym : TSymbol;
+begin
+  Result := (AName <> '') and IsCompiled;
+  If Result then
+    begin
+    Sym := FProgram.Table.FindSymbol( AName, cvMagic );
+    Result := Assigned( Sym ) and (Sym is TFuncSymbol);
+    end;
+end;
+
+
+procedure TDwsIdeForm.RunFunctionMethodByName(const AName: string; APrompt : boolean);
 var
   Exec : IdwsProgramExecution;
   FunctionInfo : IInfo;
@@ -1144,11 +1160,14 @@ begin
   if not IsCompiled then
     Exit;
 
+  if APrompt and not ConfirmDlg( Format( 'Run function/method "%s"?', [AName] )) then
+    Exit;
+
   Exec := FProgram.BeginNewExecution;
   try
     FunctionInfo := Exec.Info.Func[ AName ];
     if FunctionInfo = nil then
-      raise Exception.CreateFmt('Cannot locate procedure "%s"', [AName] );
+      raise Exception.CreateFmt('Cannot locate function/method with name "%s"', [AName] );
 
     AddStatusMessage( 'Running' );
     Application.ProcessMessages;
@@ -1516,18 +1535,18 @@ end;
 
 
 
-procedure TDwsIdeForm.actRunProcedureAtCursorExecute(Sender: TObject);
+procedure TDwsIdeForm.actRunFunctionMethodAtCursorExecute(Sender: TObject);
 var
   S : string;
 begin
-  S := CurrentEditor.SelText;
-  RunProcedureByName( S );
+  S := CurrentEditor.WordAtCursor;
+  RunFunctionMethodByName( S, True );
 end;
 
-procedure TDwsIdeForm.actRunProcedureAtCursorUpdate(Sender: TObject);
+procedure TDwsIdeForm.actRunFunctionMethodAtCursorUpdate(Sender: TObject);
 begin
   With Sender as TAction do
-    Enabled := HasEditorPage and (CurrentEditor.SelLength <> 0)
+    Enabled := HasEditorPage and CanRunFunctionMethod( CurrentEditor.WordAtCursor );
 end;
 
 procedure TDwsIdeForm.actRunUnitTestsUpdate(Sender: TObject);
