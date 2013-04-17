@@ -1527,7 +1527,11 @@ end;
 //
 procedure TdwsJSONArray.Add(aValue : TdwsJSONValue);
 begin
-   Assert(aValue.Owner=nil);
+   if aValue.Owner<>nil then begin
+      aValue.IncRefCount;
+      aValue.Owner.DetachChild(aValue);
+   end;
+
    aValue.FOwner:=Self;
    if FCount=FCapacity then Grow;
    FElements^[FCount]:=aValue;
@@ -1579,21 +1583,32 @@ end;
 // DoSetElement
 //
 procedure TdwsJSONArray.DoSetElement(index : Integer; const value : TdwsJSONValue);
+var
+   v : TdwsJSONValue;
 begin
    if index<0 then
       raise EdwsJSONException.CreateFmt('Invalid array index "%d"', [index]);
 
+   if (value<>nil) and (value.Owner<>nil) then begin
+      value.IncRefCount;
+      value.Owner.DetachChild(value);
+      DoSetElement(index, value);
+      Exit;
+   end;
+
    if index<FCount then begin
 
-      if value <> nil then begin
+      if value=nil then
+         if index=FCount-1 then begin
+            DeleteIndex(index);
+            Exit;
+         end else v:=TdwsJSONImmediate.Create
+      else v:=value;
 
-         FElements[index].FOwner:=nil;
-         FElements[index].DecRefCount;
-         FElements[index]:=value;
-         value.Detach;
-         value.FOwner:=Self;
-
-      end else DeleteIndex(index);
+      FElements[index].FOwner:=nil;
+      FElements[index].DecRefCount;
+      FElements[index]:=v;
+      v.FOwner:=Self;
 
    end else if value<>nil then begin
 

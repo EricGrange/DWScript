@@ -204,27 +204,23 @@ const
 type
    IBoxedJSONValue = interface
       ['{585B989C-220C-4120-B5F4-2819A0708A80}']
-      function Root : TdwsJSONValue;
       function Value : TdwsJSONValue;
    end;
 
    TBoxedJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue)
-      FRoot : TdwsJSONValue;
       FValue : TdwsJSONValue;
 
-      constructor Create(root, wrapped : TdwsJSONValue);
+      constructor Create(wrapped : TdwsJSONValue);
       destructor Destroy; override;
 
-      function Root : TdwsJSONValue;
       function Value : TdwsJSONValue;
       function ToString : String; override;
 
-      class procedure Allocate(root, wrapped : TdwsJSONValue; var v : Variant); static;
-      class procedure AllocateOrGetImmediate(root, wrapped : TdwsJSONValue; var v : Variant); static;
+      class procedure Allocate(wrapped : TdwsJSONValue; var v : Variant); static;
+      class procedure AllocateOrGetImmediate(wrapped : TdwsJSONValue; var v : Variant); static;
    end;
 
    TBoxedNilJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue)
-      function Root : TdwsJSONValue;
       function Value : TdwsJSONValue;
       function ToString : String; override;
    end;
@@ -234,10 +230,8 @@ var
 
 // Create
 //
-constructor TBoxedJSONValue.Create(root, wrapped : TdwsJSONValue);
+constructor TBoxedJSONValue.Create(wrapped : TdwsJSONValue);
 begin
-   root.IncRefCount;
-   FRoot:=root;
    FValue:=wrapped;
 end;
 
@@ -245,14 +239,7 @@ end;
 //
 destructor TBoxedJSONValue.Destroy;
 begin
-   FRoot.DecRefCount;
-end;
-
-// Root
-//
-function TBoxedJSONValue.Root : TdwsJSONValue;
-begin
-   Result:=FRoot;
+   FValue.DecRefCount;
 end;
 
 // Value
@@ -271,30 +258,23 @@ end;
 
 // Allocate
 //
-class procedure TBoxedJSONValue.Allocate(root, wrapped : TdwsJSONValue; var v : Variant);
+class procedure TBoxedJSONValue.Allocate(wrapped : TdwsJSONValue; var v : Variant);
 var
    b : TBoxedJSONValue;
 begin
-   b:=TBoxedJSONValue.Create(root, wrapped);
+   b:=TBoxedJSONValue.Create(wrapped);
    v:=IUnknown(IBoxedJSONValue(b));
 end;
 
 // AllocateOrGetImmediate
 //
-class procedure TBoxedJSONValue.AllocateOrGetImmediate(root, wrapped : TdwsJSONValue; var v : Variant);
+class procedure TBoxedJSONValue.AllocateOrGetImmediate(wrapped : TdwsJSONValue; var v : Variant);
 begin
    if wrapped.IsImmediateValue then
       v:=TdwsJSONImmediate(wrapped).AsVariant
    else if wrapped<>nil then
-      TBoxedJSONValue.Allocate(root, wrapped, v)
+      TBoxedJSONValue.Allocate(wrapped, v)
    else v:=vNilJSONValue;
-end;
-
-// Root
-//
-function TBoxedNilJSONValue.Root : TdwsJSONValue;
-begin
-   Result:=nil;
 end;
 
 // Value
@@ -579,7 +559,7 @@ begin
    p:=PVarData(@base);
    if p^.VType=varUnknown then begin
       v:=IBoxedJSONValue(IUnknown(p^.VUnknown)).Value.Clone;
-      Result[0]:=IUnknown(IBoxedJSONValue(TBoxedJSONValue.Create(v, v)));
+      Result[0]:=IUnknown(IBoxedJSONValue(TBoxedJSONValue.Create(v)));
       v.DecRefCount;
    end else Result[0]:=vNilJSONValue;
 end;
@@ -636,7 +616,7 @@ begin
       if FMethodName<>'' then
          v:=v.Items[FMethodName];
       v:=v.Values[args[0][0]];
-      TBoxedJSONValue.AllocateOrGetImmediate(IBoxedJSONValue(IUnknown(p^.VUnknown)).Root, v, Result[0])
+      TBoxedJSONValue.AllocateOrGetImmediate(v, Result[0])
    end else begin
       Result[0]:=vNilJSONValue;
    end;
@@ -660,8 +640,11 @@ begin
          baseValue:=baseValue.Items[FMethodName];
       pVal:=PVarData(@args[1][0]);
       case pVal^.VType of
-         varUnknown :
+         varUnknown : begin
             argValue:=(IUnknown(pVal^.VUnknown) as IBoxedJSONValue).Value;
+            if argValue.Owner<>nil then
+               argValue.IncRefCount;
+         end;
          varInt64 : begin
             argValue:=TdwsJSONImmediate.Create;
             argValue.AsNumber:=pVal^.VInt64;
@@ -710,7 +693,7 @@ begin
    p:=PVarData(@base);
    if p^.VType=varUnknown then begin
       v:=IBoxedJSONValue(IUnknown(p^.VUnknown)).Value.Items[FMemberName];
-      TBoxedJSONValue.AllocateOrGetImmediate(IBoxedJSONValue(IUnknown(p^.VUnknown)).Root, v, Result[0])
+      TBoxedJSONValue.AllocateOrGetImmediate(v, Result[0])
    end else Result[0]:=vNilJSONValue;
 end;
 
@@ -726,12 +709,13 @@ begin
       baseValue:=IBoxedJSONValue(IUnknown(p^.VUnknown)).Value
    else baseValue:=nil;
 
-
    if baseValue<>nil then begin
       p:=PVarData(@data[0]);
-      if p^.VType=varUnknown then
-         dataValue:=IBoxedJSONValue(IUnknown(p^.VUnknown)).Value
-      else dataValue:=TdwsJSONImmediate.FromVariant(Variant(p^));
+      if p^.VType=varUnknown then begin
+         dataValue:=IBoxedJSONValue(IUnknown(p^.VUnknown)).Value;
+         if dataValue.Owner<>nil then
+            dataValue.IncRefCount;
+      end else dataValue:=TdwsJSONImmediate.FromVariant(Variant(p^));
    end else dataValue:=nil;
 
    baseValue.Items[FMemberName]:=dataValue;
@@ -763,9 +747,9 @@ var
 begin
    v:=TdwsJSONValue.ParseString(info.ParamAsString[0]);
    if v=nil then
-      box:=TBoxedJSONValue.Create(TdwsJSONObject.Create, nil)
+      box:=TBoxedJSONValue.Create(TdwsJSONObject.Create)
    else begin
-      box:=TBoxedJSONValue.Create(v, v);
+      box:=TBoxedJSONValue.Create(v);
       v.DecRefCount;
    end;
    Info.ResultAsVariant:=IUnknown(IBoxedJSONValue(box));
@@ -783,7 +767,7 @@ var
    box : TBoxedJSONValue;
 begin
    v:=TdwsJSONObject.Create;
-   box:=TBoxedJSONValue.Create(v, v);
+   box:=TBoxedJSONValue.Create(v);
    Info.ResultAsVariant:=IUnknown(IBoxedJSONValue(box));
 end;
 
@@ -799,7 +783,7 @@ var
    box : TBoxedJSONValue;
 begin
    v:=TdwsJSONArray.Create;
-   box:=TBoxedJSONValue.Create(v, v);
+   box:=TBoxedJSONValue.Create(v);
    Info.ResultAsVariant:=IUnknown(IBoxedJSONValue(box));
 end;
 

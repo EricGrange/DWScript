@@ -60,6 +60,7 @@ type
          procedure WriterErrors;
          procedure ArrayTest;
          procedure DefaultValues;
+         procedure RepositionInArray;
    end;
 
 // ------------------------------------------------------------------
@@ -646,6 +647,25 @@ begin
    Check(IsNan(json.AsNumber), 'num');
    CheckEquals(True, json.IsNaN, 'nan');
    CheckEquals(0, json.AsInteger, 'int');
+end;
+
+// RepositionInArray
+//
+procedure TdwsJSONTests.RepositionInArray;
+var
+   a, b : TdwsJSONValue;
+begin
+   a:=TdwsJSONArray.Create;
+   try
+      b:=TdwsJSONObject.Create;
+      a.Elements[0]:=b;
+      CheckEquals('[{}]', a.ToString);
+
+      a.Elements[1]:=b;
+      CheckEquals('[null,{}]', a.ToString);
+   finally
+      a.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------
