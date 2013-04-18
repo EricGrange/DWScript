@@ -1954,14 +1954,14 @@ procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
    var
       debugPos : TScriptPos;
    begin
-      if LastScriptError<>nil then
+      if LastScriptError<>nil then begin
          if LastScriptError is TFuncExpr then
             Msgs.AddRuntimeError(LastScriptError.ScriptPos,
                                  e.Message+' in '+TFuncExpr(LastScriptError).FuncSym.QualifiedName,
                                  LastScriptCallStack)
          else Msgs.AddRuntimeError(LastScriptError.ScriptPos, e.Message,
                                    LastScriptCallStack)
-      else if (Debugger<>nil) and (Debugger.LastDebugStepExpr<>nil) then begin
+      end else if (Debugger<>nil) and (Debugger.LastDebugStepExpr<>nil) then begin
          debugPos:=Debugger.LastDebugStepExpr.ScriptPos;
          debugPos.Col:=0;
          Msgs.AddRuntimeError(debugPos, e.Message, LastScriptCallStack)

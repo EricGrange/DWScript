@@ -6218,7 +6218,7 @@ end;
 //
 procedure TdwsExecution.ClearScriptError;
 begin
-   if FLastScriptError=nil then begin
+   if FLastScriptError<>nil then begin
       FLastScriptError:=nil;
       FLastScriptCallStack:=nil;
    end;

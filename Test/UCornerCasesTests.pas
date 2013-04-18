@@ -23,6 +23,7 @@ type
          procedure DoOnResource(compiler : TdwsCompiler; const resName : String);
 
          procedure ReExec(info : TProgramInfo);
+         procedure HostExcept(info : TProgramInfo);
 
       published
          procedure TokenizerErrorTransition;
@@ -66,8 +67,11 @@ type
          procedure CallUnitProcTest;
          procedure NormalizeFloatArrayElements;
          procedure MultiRunProtection;
+         procedure MultipleHostExceptions;
 
    end;
+
+   ETestException = class (Exception);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -139,6 +143,7 @@ begin
    FUnit:=TdwsUnit.Create(nil);
    FUnit.UnitName:='CornerCases';
    FUnit.Functions.Add('ReExec').OnEval:=ReExec;
+   FUnit.Functions.Add('HostExcept').OnEval:=HostExcept;
    FUnit.Script:=FCompiler;
 end;
 
@@ -248,6 +253,13 @@ end;
 procedure TCornerCasesTests.ReExec(info : TProgramInfo);
 begin
    info.Execution.Execute;
+end;
+
+// HostExcept
+//
+procedure TCornerCasesTests.HostExcept(info : TProgramInfo);
+begin
+   raise ETestException.Create('boom');
 end;
 
 // IncludeViaEvent
@@ -1353,6 +1365,22 @@ begin
    exec:=prog.Execute;
    CheckEquals('Runtime Error: Script is already running!'#13#10, exec.Msgs.AsInfo);
    CheckEquals('Here', exec.Result.ToString);
+end;
+
+// MultipleHostExceptions
+//
+procedure TCornerCasesTests.MultipleHostExceptions;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'try HostExcept; except Print("gobbled"); end;'#13#10
+                           +'HostExcept;'#13#10);
+   CheckEquals('', prog.Msgs.AsInfo);
+
+   exec:=prog.Execute;
+   CheckEquals('Runtime Error: boom in HostExcept [line: 2, column: 1]'#13#10, exec.Msgs.AsInfo);
+   CheckEquals('gobbled', exec.Result.ToString);
 end;
 
 // ------------------------------------------------------------------
