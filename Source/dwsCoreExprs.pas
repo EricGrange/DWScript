@@ -6638,7 +6638,6 @@ procedure TRaiseExpr.EvalNoResult(exec : TdwsExecution);
 var
    exceptObj : IScriptObj;
    exceptMessage : String;
-   exceptObjClass : TClassSymbol;
    e : EScriptException;
 begin
    FExceptionExpr.EvalAsScriptObj(exec, exceptObj);
