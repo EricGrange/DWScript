@@ -6638,14 +6638,17 @@ procedure TRaiseExpr.EvalNoResult(exec : TdwsExecution);
 var
    exceptObj : IScriptObj;
    exceptMessage : String;
+   exceptObjClass : TClassSymbol;
    e : EScriptException;
 begin
    FExceptionExpr.EvalAsScriptObj(exec, exceptObj);
    CheckScriptObject(exec, exceptObj);
    exceptObj.EvalAsString(0, exceptMessage);
-   if exceptMessage<>'' then
-      exceptMessage:=Format(RTE_UserDefinedException_Msg, [exceptMessage])
-   else exceptMessage:=RTE_UserDefinedException;
+   if exceptObj.ClassSym.Name<>SYS_EDELPHI then begin
+      if exceptMessage<>'' then
+         exceptMessage:=Format(RTE_UserDefinedException_Msg, [exceptMessage])
+      else exceptMessage:=RTE_UserDefinedException;
+   end;
    e:=EScriptException.Create(exceptMessage, exceptObj, FScriptPos);
    e.ScriptCallStack:=exec.GetCallStack;
    exec.SetScriptError(Self);

@@ -1,4 +1,4 @@
 Errors >>>>
-Runtime Error: User defined exception: Division by zero [line: 5, column: 20]
+Runtime Error: Division by zero [line: 5, column: 20]
  [line: 19, column: 2]
 Result >>>>
