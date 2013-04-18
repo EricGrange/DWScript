@@ -651,7 +651,7 @@ begin
          end;
          varDouble : begin
             argValue:=TdwsJSONImmediate.Create;
-            argValue.AsNumber:=pVal^.VInt64;
+            argValue.AsNumber:=pVal^.VDouble;
          end;
          varUString : begin
             argValue:=TdwsJSONImmediate.Create;

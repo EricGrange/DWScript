@@ -1,2 +1,2 @@
 {"Hello":"World","123":456,"Seven":7}
-{"Hello":"World","123":456,"Seven":7,"Flags":{"Bool":true},"List":["zero",null,2]}
+{"Hello":"World","123":456,"Seven":7,"Flags":{"Bool":true},"List":["zero",null,2,2.5,true]}

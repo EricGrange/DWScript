@@ -12,5 +12,7 @@ v.Flags.Bool := True;
 v.List := JSON.NewArray;
 v.List[0] := 'zero';
 v.List[2] := 2;
+v.List[4] := True;
+v.List[3] := 2.5;
 
 PrintLn(JSON.Stringify(v));
