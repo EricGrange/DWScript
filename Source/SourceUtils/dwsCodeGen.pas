@@ -1857,8 +1857,8 @@ end;
 //
 function TdwsMappedSymbolHash.GetItemHashCode(const item1 : TdwsMappedSymbol) : Integer;
 begin
-   Result:=NativeInt(item1.Symbol);
-   Result:=(Result shr 4) xor (Result shr 9);
+   Result:=NativeInt(item1.Symbol) shr 3;
+   Result:=Result xor (Result shr 15);
 end;
 
 // ------------------
