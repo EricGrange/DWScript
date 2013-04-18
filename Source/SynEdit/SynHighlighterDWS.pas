@@ -148,6 +148,12 @@ type
     procedure SetRange(Value: Pointer); override;
     function IsIdentChar(AChar: WideChar): Boolean; override;
 
+    procedure LoadDelphiStyle; virtual;
+    // ^^^
+    // This routine can be called to install a Delphi style of colors
+    // and highlighting. It modifies the basic TSynDWSSyn to reproduce
+    // the most recent Delphi editor highlighting.
+
   published
     property AsmAttri: TSynHighlighterAttributes read fAsmAttri write fAsmAttri;
     property CommentAttri: TSynHighlighterAttributes read fCommentAttri
@@ -513,6 +519,56 @@ procedure TSynDWSSyn.LFProc;
 begin
   fTokenID := tkSpace;
   inc(Run);
+end;
+
+procedure TSynDWSSyn.LoadDelphiStyle;
+
+
+   procedure AddKeyword( const AName : string );
+   var
+     I : integer;
+   begin
+     I := HashKey( @AName[1] );
+     fIdentFuncTable[I]:= KeyWordFunc;
+     fKeyWords.Add(AName);
+   end;
+
+   procedure RemoveKeyword( const AName : string );
+   var
+     I : integer;
+   begin
+     I := fKeyWords.IndexOf(AName);
+     if I <> -1 then
+       fKeywords.Delete( I );
+   end;
+
+const
+  clID = clNavy;
+  clString = clBlue;
+  clComment = clGreen;
+  cKeywordsToAdd: array[0..0] of UnicodeString = (
+      'string');
+  cKeywordsToRemove: array[0..1] of UnicodeString = (
+      'break', 'exit');
+var
+  i : integer;
+begin
+  // This routine can be called to install a Delphi style of colors
+  // and highlighting. It modifies the basic TSynDWSSyn to reproduce
+  // the most recent Delphi editor highlighting.
+
+  // Delphi colors...
+  KeyAttri.Foreground := clID;
+  StringAttri.Foreground := clString;
+  CommentAttri.Foreground := clComment;
+
+  // These are keywords highlighted in Delphi but not in TSynDWSSyn ..
+  for i:=Low(cKeywordsToAdd) to High(cKeywordsToAdd) do
+    AddKeyword( cKeywordsToAdd[i] );
+
+  // These are keywords highlighted in TSynDWSSyn but not in Delphi...
+  for i:=Low(cKeywordsToRemove) to High(cKeywordsToRemove) do
+    RemoveKeyword( cKeywordsToRemove[i] );
 end;
 
 procedure TSynDWSSyn.LowerProc;

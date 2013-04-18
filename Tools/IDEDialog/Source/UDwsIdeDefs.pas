@@ -218,16 +218,9 @@ end;
 { TSynDWSSyn_DelphiLookalike }
 
 constructor TSynDWSSyn_DelphiLookalike.Create(AOwner: TComponent);
-const
-  clID = clNavy;
-  clString = clBlue;
-  clComment = clGreen;
 begin
   inherited;
-
-  KeyAttri.Foreground := clID;
-  StringAttri.Foreground := clString;
-  CommentAttri.Foreground := clComment;
+  LoadDelphiStyle;
 end;
 
 end.

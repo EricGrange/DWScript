@@ -3029,6 +3029,7 @@ begin
      ConfirmDlgYesNoAbort(
       Format( 'File "%s" has changed. Save it now?',  [ ExtractFileName( FileName ) ] )) then
         SavetoFile( False );
+  Editor.Modified := False;
 end;
 
 
