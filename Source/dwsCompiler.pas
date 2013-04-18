@@ -4925,9 +4925,6 @@ begin
                   end else begin
 
                      // Type "array"
-                     if not (Result is TDataExpr) then
-                        dataExpr:=(Result as TDataExpr)
-                     else
                      dataExpr:=(Result as TDataExpr);
                      if baseType is TArraySymbol then
                         Result := ReadSymbolArrayExpr(dataExpr)
