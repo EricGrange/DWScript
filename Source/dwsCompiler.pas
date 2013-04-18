@@ -5701,8 +5701,10 @@ begin
    connectorSymbol:=(inExpr.Typ as TConnectorSymbol);
 
    enumerator:=connectorSymbol.ConnectorType.HasEnumerator(itemType);
-   if enumerator=nil then
+   if enumerator=nil then begin
       FMsgs.AddCompilerError(inPos, CPE_ArrayExpected);
+      itemType:=FProg.TypVariant;
+   end;
 
    if loopVarExpr=nil then begin
       blockExpr:=TBlockExpr.Create(FProg, forPos);
