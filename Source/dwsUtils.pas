@@ -2264,7 +2264,7 @@ begin
    if FCapacity=0 then
       FCapacity:=32
    else FCapacity:=FCapacity*2;
-   FGrowth:=(FCapacity*3) div 4;
+   FGrowth:=(FCapacity*11) div 16;
 
    {$IFDEF DELPHI_XE3}
    SetLength(oldBuckets, Length(FBuckets));
