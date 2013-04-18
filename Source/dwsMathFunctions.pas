@@ -169,6 +169,10 @@ type
       function DoEvalAsInteger(args : TExprBaseList) : Int64; override;
    end;
 
+   TDivModFunc = class(TInternalMagicProcedure)
+      procedure DoEvalProc(args : TExprBaseList); override;
+   end;
+
    TMaxFunc = class(TInternalMagicFloatFunction)
       procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
    end;
@@ -586,6 +590,19 @@ begin
    Result:=Sign(args.AsInteger[0]);
 end;
 
+{ TDivModFunc }
+
+procedure TDivModFunc.DoEvalProc(args : TExprBaseList);
+var
+   dividend, divisor, result : Int64;
+begin
+   dividend:=args.AsInteger[0];
+   divisor:=args.AsInteger[1];
+   result:=dividend div divisor;
+   args.AsInteger[2]:=result;
+   args.AsInteger[3]:=dividend-result*divisor;
+end;
+
 { TMaxFunc }
 
 procedure TMaxFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
@@ -841,6 +858,10 @@ initialization
 
    RegisterInternalIntFunction(TSignFunc, 'Sign', ['v', cFloat], [iffStateLess, iffOverloaded]);
    RegisterInternalIntFunction(TSignIntFunc, 'Sign', ['v', cInteger], [iffStateLess, iffOverloaded]);
+
+   RegisterInternalProcedure(TDivModFunc, 'DivMod',
+                             ['dividend', cInteger, 'divisor', cInteger,
+                              '@result', cInteger, '@remainder', cInteger]);
 
    RegisterInternalFloatFunction(TMaxFunc, 'Max', ['v1', cFloat, 'v2', cFloat], [iffStateLess, iffOverloaded]);
    RegisterInternalIntFunction(TMaxIntFunc, 'Max', ['v1', cInteger, 'v2', cInteger], [iffStateLess, iffOverloaded]);
