@@ -1491,6 +1491,7 @@ type
          function GetParamAsPVariant(index : Integer) : PVariant;
          function GetParamAsVariant(index : Integer) : Variant;
          function GetParamAsInteger(index : Integer) : Int64;
+         procedure SetParamAsInteger(index : Integer; const v : Int64);
          function GetParamAsString(index : Integer) : String;
          function GetParamAsDataString(index : Integer) : RawByteString;
          function GetParamAsFloat(index : Integer) : Double;
@@ -1535,7 +1536,7 @@ type
 
          property ParamAsPVariant[index : Integer] : PVariant read GetParamAsPVariant;
          property ParamAsVariant[index : Integer] : Variant read GetParamAsVariant;
-         property ParamAsInteger[index : Integer] : Int64 read GetParamAsInteger;
+         property ParamAsInteger[index : Integer] : Int64 read GetParamAsInteger write SetParamAsInteger;
          property ParamAsString[index : Integer] : String read GetParamAsString;
          property ParamAsDataString[index : Integer] : RawByteString read GetParamAsDataString;
          property ParamAsFloat[index : Integer] : Double read GetParamAsFloat;
@@ -5501,6 +5502,18 @@ begin
    if p^.VType=varInt64 then
       Result:=p.VInt64
    else Result:=PVariant(p)^;
+end;
+
+// SetParamAsInteger
+//
+procedure TProgramInfo.SetParamAsInteger(index : Integer; const v : Int64);
+var
+   p : PVarData;
+begin
+   p:=PVarData(GetParamAsPVariant(index));
+   if p^.VType=varInt64 then
+      p.VInt64:=v
+   else PVariant(p)^:=v;
 end;
 
 // GetParamAsString

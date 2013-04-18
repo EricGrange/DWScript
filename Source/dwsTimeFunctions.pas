@@ -110,16 +110,16 @@ type
     procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
   end;
 
-  TDecodeDateFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
+  TDecodeDateFunc = class(TInternalMagicProcedure)
+    procedure DoEvalProc(args : TExprBaseList); override;
   end;
 
   TEncodeDateFunc = class(TInternalMagicFloatFunction)
     procedure DoEvalAsFloat(args : TExprBaseList; var Result : Double); override;
   end;
 
-  TDecodeTimeFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
+  TDecodeTimeFunc = class(TInternalMagicProcedure)
+    procedure DoEvalProc(args : TExprBaseList); override;
   end;
 
   TEncodeTimeFunc = class(TInternalMagicFloatFunction)
@@ -332,14 +332,16 @@ end;
 
 { TDecodeDateFunc }
 
-procedure TDecodeDateFunc.Execute(info : TProgramInfo);
+// DoEvalProc
+//
+procedure TDecodeDateFunc.DoEvalProc(args : TExprBaseList);
 var
   y, m, d: word;
 begin
-  DecodeDate(Info.ValueAsFloat['dt'], y, m, d);
-  Info.ValueAsInteger['y'] := y;
-  Info.ValueAsInteger['m'] := m;
-  Info.ValueAsInteger['d'] := d;
+  DecodeDate(args.AsFloat[0], y, m, d);
+  args.AsInteger[1] := y;
+  args.AsInteger[2] := m;
+  args.AsInteger[3] := d;
 end;
 
 { TEncodeDateFunc }
@@ -351,15 +353,17 @@ end;
 
 { TDecodeTimeFunc }
 
-procedure TDecodeTimeFunc.Execute(info : TProgramInfo);
+// DoEvalProc
+//
+procedure TDecodeTimeFunc.DoEvalProc(args : TExprBaseList);
 var
-  h, m, s, ms: word;
+   h, m, s, ms: word;
 begin
-  DecodeTime(Info.ValueAsFloat['dt'], h, m, s, ms);
-  Info.ValueAsInteger['h'] := h;
-  Info.ValueAsInteger['m'] := m;
-  Info.ValueAsInteger['s'] := s;
-  Info.ValueAsInteger['ms'] := ms;
+   DecodeTime(args.AsFloat[0], h, m, s, ms);
+   args.AsInteger[1]:=h;
+   args.AsInteger[2]:=m;;
+   args.AsInteger[3]:=s;
+   args.AsInteger[4]:=ms;
 end;
 
 { TEncodeTimeFunc }
@@ -590,10 +594,10 @@ initialization
    RegisterInternalIntFunction(TDayOfTheWeekFunc, 'DayOfTheWeek', ['dt', cDateTime]);
    RegisterInternalStringFunction(TFormatDateTimeFunc, 'FormatDateTime', ['frm', cString, 'dt', cDateTime]);
    RegisterInternalBoolFunction(TIsLeapYearFunc, 'IsLeapYear', ['year', cInteger]);
-   RegisterInternalFunction(TIncMonthFunc, 'IncMonth', ['dt', cDateTime, 'nb', cInteger], cDateTime);
-   RegisterInternalFunction(TDecodeDateFunc, 'DecodeDate', ['dt', cDateTime, '@y', cInteger, '@m', cInteger, '@d', cInteger], '');
+   RegisterInternalFloatFunction(TIncMonthFunc, 'IncMonth', ['dt', cDateTime, 'nb', cInteger]);
+   RegisterInternalProcedure(TDecodeDateFunc, 'DecodeDate', ['dt', cDateTime, '@y', cInteger, '@m', cInteger, '@d', cInteger]);
    RegisterInternalFloatFunction(TEncodeDateFunc, 'EncodeDate', ['y', cInteger, 'm', cInteger, 'd', cInteger]);
-   RegisterInternalFunction(TDecodeTimeFunc, 'DecodeTime', ['dt', cDateTime, '@h', cInteger, '@m', cInteger, '@s', cInteger, '@ms', cInteger], '');
+   RegisterInternalProcedure(TDecodeTimeFunc, 'DecodeTime', ['dt', cDateTime, '@h', cInteger, '@m', cInteger, '@s', cInteger, '@ms', cInteger]);
    RegisterInternalFloatFunction(TEncodeTimeFunc, 'EncodeTime', ['h', cInteger, 'm', cInteger, 's', cInteger, 'ms', cInteger]);
 
    RegisterInternalFloatFunction(TFirstDayOfYearFunc, 'FirstDayOfYear', ['dt', cDateTime]);
