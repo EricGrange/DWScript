@@ -153,6 +153,11 @@ type
    end;
 
 
+  TIDESettingsRec = record
+    FormRect : TRect;
+    RightPanelWidth,
+    BottomPanelHeight : integer;
+  end;
 
 
   TDwsIdeForm = class(TForm, IDwsIde)
@@ -221,8 +226,8 @@ type
     raceInto1: TMenuItem;
     actRunWithoutDebugging: TAction;
     actRunWithoutDebugging1: TMenuItem;
-    Panel2: TPanel;
-    Splitter1: TSplitter;
+    pnlRight: TPanel;
+    SplitterRight: TSplitter;
     actFileSaveAs: TAction;
     SaveAs1: TMenuItem;
     SaveSourceDialog: TFileSaveDialog;
@@ -271,12 +276,17 @@ type
     actCodeProposalInvoke: TAction;
     pnlPageControl: TPanel;
     imgTabs: TImage;
-    Panel1: TPanel;
+    pnlBottom: TPanel;
     memOutputWindow: TMemo;
     actClearOutputWindow: TAction;
     N10: TMenuItem;
     Clearoutputwindow1: TMenuItem;
-    Panel3: TPanel;
+    pcBottomWindows: TPageControl;
+    tsMessages: TTabSheet;
+    tsOutput: TTabSheet;
+    SplitterBottom: TSplitter;
+    pnlMain: TPanel;
+    lbMessages: TListBox;
     procedure EditorChange(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure actOpenFileExecute(Sender: TObject);
@@ -349,6 +359,7 @@ type
     procedure imgTabsMouseLeave(Sender: TObject);
     procedure actClearOutputWindowExecute(Sender: TObject);
     procedure actClearOutputWindowUpdate(Sender: TObject);
+    procedure lbMessagesDblClick(Sender: TObject);
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -364,7 +375,7 @@ type
 
     FOptions : TDwsIdeOptions;
 
-    FIDEFormRect : TRect;
+    FIDESettingsRec : TIDESettingsRec;
 
     FCodeProposalForm : TDwsIdeCodeProposalForm;
 
@@ -398,6 +409,8 @@ type
     function  GetExecutableLines(const AUnitName: string): TLineNumbers;
     procedure SetScript(const Value: TDelphiWebScript);
     procedure SetScriptFolder(const Value: string);
+    procedure MakeSettingsRec;
+    procedure AddMessage(const AMessage: string; AScriptPos : PScriptPos = nil);
     property  EditorCurrentPageIndex : integer
                 read FActivePageIndex
                 write SetEditorCurrentPageIndex;
@@ -436,10 +449,10 @@ type
 
     procedure LoadSettings(
            var AProjectFileName : string;
-           var AIDEFormRect     : TRect );
+           var AIDESettingsRec : TIDESettingsRec );
     procedure SaveSettings(
          const AProjectFileName : string;
-         const AIDEFormRect     : TRect );
+         const AIDESettingsRec : TIDESettingsRec );
 
     function  CanRunFunctionMethod(const AName: string): boolean;
     procedure RunFunctionMethodByName( const AName : string; APrompt : boolean );
@@ -479,6 +492,7 @@ implementation
 
 uses
   Registry,
+  Math,
   dwsSuggestions,
   dwsDebugFunctions,
   SynHighlighterPas,
@@ -738,24 +752,64 @@ begin
     Enabled := memOutputWindow.Text <> '';
 end;
 
+
+procedure TDwsIdeForm.AddMessage( const AMessage : string; AScriptPos : PScriptPos = nil );
+begin
+  lbMessages.Items.AddObject( AMessage, Pointer(AScriptPos) );
+  pcBottomWindows.ActivePage := tsMessages;
+end;
+
+
+
 procedure TDwsIdeForm.Compile( ABuild : boolean );
+
+  procedure AddMessageInfo;
+  var
+    I : integer;
+    Pos : PScriptPos;
+  begin
+    For I := 0 to FProgram.Msgs.Count-1 do
+      begin
+      if FProgram.Msgs[I] is TScriptMessage then
+        Pos := @TScriptMessage(FProgram.Msgs[I]).Pos
+       else
+         Pos := nil;
+      AddMessage( '  ' + FProgram.Msgs[I].AsInfo, Pos );
+      end;
+  end;
+
 begin
   if ABuild or not IsCompiled then
     begin
+    lbMessages.Clear;
+    AddMessage( 'Compile started' );
+
     FScript.Config.CompilerOptions :=
       FScript.Config.CompilerOptions + [coSymbolDictionary];
 
     FProgram := FScript.Compile( ProjectSourceScript );
 
-    if FProgram.Msgs.Count = 0 then // no errors
-      AddStatusMessage( 'Compiled' )
-     else
+    If FProgram.Msgs.HasErrors then // did not compile - errors
        begin
-       GotoScriptPos( FProgram.Msgs.LastMessagePos );
-       ErrorDlg( FProgram.Msgs.AsInfo );
        AddStatusMessage( 'Error(s)' );
+       AddMessageInfo;
+       AddMessage( 'Compile complete - error(s)' );
+       GotoScriptPos( FProgram.Msgs.LastMessagePos );
        FProgram := nil;
+       ErrorDlg( FProgram.Msgs.AsInfo );
        end
+     else
+        if FProgram.Msgs.Count = 0 then // perfect compile!
+          begin
+          AddStatusMessage( 'Compiled' );
+          AddMessage( 'Compile complete - success' );
+          end
+        else // hints or warnings...
+          begin
+          AddStatusMessage( 'Compiled' );
+          AddMessageInfo;
+          AddMessage( 'Compile complete with hints/warnings' );
+          end;
     end;
 end;
 
@@ -1064,6 +1118,16 @@ begin
   StatusBar.Panels[3].Text := AStr;
 end;
 
+procedure TDwsIdeForm.MakeSettingsRec;
+begin
+  FIDESettingsRec.FormRect          := BoundsRect;
+  FIDESettingsRec.RightPanelWidth   := pnlRight.Width;
+  FIDESettingsRec.BottomPanelHeight := pnlBottom.Height;
+end;
+
+
+
+
 procedure TDwsIdeForm.AfterConstruction;
 var
   sProjectFileName : string;
@@ -1083,8 +1147,8 @@ begin
   if not DirectoryExists( ScriptFolder ) then
     Raise Exception.Create( 'For this IDE demonstration, please place a copy of the ''DWS Script Files'' folder from project source on to your desktop.' );
 
-  FIDEFormRect := BoundsRect;
-  LoadSettings( sProjectFileName, FIDEFormRect );
+  MakeSettingsRec;
+  LoadSettings( sProjectFileName, FIDESettingsRec );
 
   if FileExists(sProjectFileName) then
     LoadProjectFile( sProjectFileName )
@@ -1100,9 +1164,10 @@ end;
 
 procedure TDwsIdeForm.BeforeDestruction;
 begin
+  MakeSettingsRec;
   SaveSettings(
     ProjectFileName,
-    BoundsRect );
+    FIDESettingsRec );
 
   inherited;
 
@@ -1565,6 +1630,7 @@ begin
     Enabled := HasProject;
 end;
 
+
 procedure TDwsIdeForm.actRunWithoutDebuggingExecute(Sender: TObject);
 var
   Exec : IdwsProgramExecution;
@@ -1883,8 +1949,19 @@ begin
 end;
 
 procedure TDwsIdeForm.FormShow(Sender: TObject);
+var
+  I : integer;
 begin
-  BoundsRect := FIDEFormRect;
+  BoundsRect     := FIDESettingsRec.FormRect;
+
+  I := Max( FIDESettingsRec.RightPanelWidth, 30 );
+  I := Min( I, Width - 30 );
+  pnlRight.Width := I;
+
+  I := Max( FIDESettingsRec.BottomPanelHeight, 30 );
+  I := Min( I, Height - 30 );
+  pnlBottom.Height := I;
+
 end;
 
 function TDwsIdeForm.GetProjectSourceFileName: string;
@@ -1962,6 +2039,21 @@ end;
 function TDwsIdeForm.IsCompiled: boolean;
 begin
   Result := Assigned( FProgram );
+end;
+
+procedure TDwsIdeForm.lbMessagesDblClick(Sender: TObject);
+var
+  I : integer;
+  S : string;
+  Pos : PScriptPos;
+begin
+  I := lbMessages.ItemIndex;
+  if I < 0 then
+    Exit;
+  S := lbMessages.Items[I];
+  Pos := PScriptPos(lbMessages.Items.Objects[I]);
+  if Pos <> nil then
+    GotoScriptPos( Pos^ );
 end;
 
 procedure TDwsIdeForm.pcEditorMouseDown(Sender: TObject;
@@ -2522,7 +2614,7 @@ end;
 
 procedure TDwsIdeForm.SaveSettings(
       const AProjectFileName : string;
-      const AIDEFormRect     : TRect );
+      const AIDESettingsRec  : TIDESettingsRec );
 var
   Reg : TRegistry;
 begin
@@ -2532,11 +2624,13 @@ begin
 
     if Reg.OpenKey('SOFTWARE\DwsIde\', TRUE) then
       begin
-      Reg.WriteString('WorkingProjectFileName', AProjectFileName);
-      Reg.WriteInteger( 'IDEFormRect_Left', AIDEFormRect.Left);
-      Reg.WriteInteger( 'IDEFormRect_Top', AIDEFormRect.Top);
-      Reg.WriteInteger( 'IDEFormRect_Right', AIDEFormRect.Right);
-      Reg.WriteInteger( 'IDEFormRect_Bottom', AIDEFormRect.Bottom);
+      Reg.WriteString(  'WorkingProjectFileName', AProjectFileName);
+      Reg.WriteInteger( 'IDEFormRect_Left',       AIDESettingsRec.FormRect.Left);
+      Reg.WriteInteger( 'IDEFormRect_Top',        AIDESettingsRec.FormRect.Top);
+      Reg.WriteInteger( 'IDEFormRect_Right',      AIDESettingsRec.FormRect.Right);
+      Reg.WriteInteger( 'IDEFormRect_Bottom',     AIDESettingsRec.FormRect.Bottom);
+      Reg.WriteInteger( 'RightPanelWidth',        AIDESettingsRec.RightPanelWidth);
+      Reg.WriteInteger( 'BottomPanelHeight',      AIDESettingsRec.BottomPanelHeight);
       end;
 
   finally
@@ -2547,9 +2641,22 @@ end;
 
 procedure TDwsIdeForm.LoadSettings(
            var AProjectFileName : string;
-           var AIDEFormRect     : TRect );
+           var AIDESettingsRec : TIDESettingsRec );
 var
   Reg : TRegistry;
+
+  procedure ReadString( const AName : string; var AValue : string );
+  begin
+    if Reg.ValueExists( AName ) then
+      AValue := Reg.ReadString( AName )
+  end;
+
+  procedure ReadInteger( const AName : string; var AValue : integer );
+  begin
+    if Reg.ValueExists( AName ) then
+      AValue := Reg.ReadInteger( AName )
+  end;
+
 begin
   AProjectFileName := '';
 
@@ -2558,11 +2665,13 @@ begin
     Reg.RootKey := HKEY_CURRENT_USER;
     if Reg.OpenKey('SOFTWARE\DwsIde\', False) then
       begin
-      AProjectFileName    := Reg.ReadString( 'WorkingProjectFileName');
-      AIDEFormRect.Left   := Reg.ReadInteger( 'IDEFormRect_Left');
-      AIDEFormRect.Top    := Reg.ReadInteger( 'IDEFormRect_Top');
-      AIDEFormRect.Right  := Reg.ReadInteger( 'IDEFormRect_Right');
-      AIDEFormRect.Bottom := Reg.ReadInteger( 'IDEFormRect_Bottom');
+      ReadString(  'WorkingProjectFileName', AProjectFileName);
+      ReadInteger( 'IDEFormRect_Left',       AIDESettingsRec.FormRect.Left);
+      ReadInteger( 'IDEFormRect_Top',        AIDESettingsRec.FormRect.Top);
+      ReadInteger( 'IDEFormRect_Right',      AIDESettingsRec.FormRect.Right);
+      ReadInteger( 'IDEFormRect_Bottom',     AIDESettingsRec.FormRect.Bottom);
+      ReadInteger( 'RightPanelWidth',        AIDESettingsRec.RightPanelWidth );
+      ReadInteger( 'BottomPanelHeight',      AIDESettingsRec.BottomPanelHeight );
       end;
   finally
     Reg.Free;
@@ -2575,7 +2684,9 @@ end;
 procedure TDwsIdeForm.DoDebugMessage(const msg : String);
 begin
   memOutputWindow.Lines.Add( 'ODS: ' + msg );
+  pcBottomWindows.ActivePage := tsOutput;
 end;
+
 
 
 

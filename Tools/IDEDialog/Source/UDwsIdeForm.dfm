@@ -20,178 +20,230 @@ object DwsIdeForm: TDwsIdeForm
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
-  object Splitter1: TSplitter
-    Left = 673
-    Top = 0
-    Height = 663
-    Align = alRight
-    ExplicitLeft = 637
-    ExplicitHeight = 867
-  end
-  object pnlEditor: TPanel
+  object SplitterBottom: TSplitter
     Left = 0
-    Top = 0
-    Width = 673
-    Height = 663
-    Align = alClient
-    BevelOuter = bvNone
-    BorderWidth = 5
-    DoubleBuffered = True
-    ParentBackground = False
-    ParentDoubleBuffered = False
-    TabOrder = 0
-    object imgTabs: TImage
-      Left = 5
-      Top = 5
-      Width = 663
-      Height = 22
-      Align = alTop
-      OnMouseDown = pcEditorMouseDown
-      OnMouseLeave = imgTabsMouseLeave
-      OnMouseMove = imgTabsMouseMove
-      ExplicitLeft = 2
-      ExplicitTop = 0
-      ExplicitWidth = 627
-    end
-    object StatusBar: TStatusBar
-      Left = 5
-      Top = 639
-      Width = 663
-      Height = 19
-      Panels = <
-        item
-          Alignment = taCenter
-          Width = 84
-        end
-        item
-          Alignment = taCenter
-          Width = 72
-        end
-        item
-          Alignment = taCenter
-          Width = 84
-        end
-        item
-          Width = 50
-        end>
-    end
-    object pnlPageControl: TPanel
-      Left = 5
-      Top = 27
-      Width = 663
-      Height = 612
-      Align = alClient
-      BevelOuter = bvNone
-      ParentBackground = False
-      TabOrder = 1
-      OnResize = pnlPageControlResize
-    end
+    Top = 660
+    Width = 937
+    Height = 3
+    Cursor = crVSplit
+    Align = alBottom
+    ResizeStyle = rsUpdate
+    ExplicitTop = 0
+    ExplicitWidth = 107
   end
-  object Panel2: TPanel
-    Left = 676
-    Top = 0
-    Width = 261
-    Height = 663
-    Align = alRight
-    BevelOuter = bvNone
-    BorderWidth = 5
-    TabOrder = 1
-    inline DwsIdeLocalVariablesFrame: TDwsIdeLocalVariablesFrame
-      Left = 5
-      Top = 5
-      Width = 251
-      Height = 240
-      Align = alTop
-      TabOrder = 0
-      ExplicitLeft = 5
-      ExplicitTop = 5
-      ExplicitWidth = 251
-      inherited ListView1: TListView
-        Width = 251
-        ExplicitWidth = 251
-      end
-      inherited Panel1: TPanel
-        Width = 251
-        ExplicitWidth = 251
-      end
-    end
-    inline DwsIdeWatchesFrame: TDwsIdeWatchesFrame
-      Left = 5
-      Top = 245
-      Width = 251
-      Height = 224
-      Align = alTop
-      TabOrder = 1
-      ExplicitLeft = 5
-      ExplicitTop = 245
-      ExplicitWidth = 251
-      ExplicitHeight = 224
-      inherited lvWatches: TListView
-        Width = 251
-        Height = 207
-        ReadOnly = True
-        RowSelect = True
-        ExplicitWidth = 251
-        ExplicitHeight = 207
-      end
-      inherited Panel1: TPanel
-        Width = 251
-        ExplicitWidth = 251
-      end
-    end
-    inline DwsIdeCallStackFrame: TDwsIdeCallStackFrame
-      Left = 5
-      Top = 469
-      Width = 251
-      Height = 189
-      Align = alClient
-      TabOrder = 2
-      ExplicitLeft = 5
-      ExplicitTop = 469
-      ExplicitWidth = 251
-      ExplicitHeight = 189
-      inherited memCallStack: TMemo
-        Width = 251
-        Height = 172
-        ExplicitWidth = 251
-        ExplicitHeight = 172
-      end
-      inherited Panel1: TPanel
-        Width = 251
-        ExplicitWidth = 251
-      end
-    end
-  end
-  object Panel1: TPanel
+  object pnlBottom: TPanel
     Left = 0
     Top = 663
     Width = 937
     Height = 107
     Align = alBottom
     BevelOuter = bvNone
-    Caption = 'Panel1'
+    Caption = 'pnlBottom'
     ShowCaption = False
-    TabOrder = 2
-    object memOutputWindow: TMemo
-      Left = 0
-      Top = 17
-      Width = 937
-      Height = 90
-      Align = alClient
-      Lines.Strings = (
-        '')
-      ReadOnly = True
-      TabOrder = 0
-    end
-    object Panel3: TPanel
+    TabOrder = 0
+    object pcBottomWindows: TPageControl
       Left = 0
       Top = 0
       Width = 937
-      Height = 17
-      Align = alTop
+      Height = 107
+      ActivePage = tsMessages
+      Align = alClient
+      TabOrder = 0
+      object tsMessages: TTabSheet
+        Caption = 'Messages'
+        object lbMessages: TListBox
+          Left = 0
+          Top = 0
+          Width = 929
+          Height = 79
+          Align = alClient
+          BorderStyle = bsNone
+          ItemHeight = 13
+          TabOrder = 0
+          OnDblClick = lbMessagesDblClick
+        end
+      end
+      object tsOutput: TTabSheet
+        Caption = 'Output'
+        ImageIndex = 1
+        object memOutputWindow: TMemo
+          Left = 0
+          Top = 0
+          Width = 929
+          Height = 79
+          Align = alClient
+          BorderStyle = bsNone
+          Lines.Strings = (
+            '')
+          ReadOnly = True
+          TabOrder = 0
+        end
+      end
+    end
+  end
+  object pnlMain: TPanel
+    Left = 0
+    Top = 0
+    Width = 937
+    Height = 660
+    Align = alClient
+    BevelOuter = bvNone
+    Caption = 'pnlMain'
+    ShowCaption = False
+    TabOrder = 1
+    ExplicitLeft = 272
+    ExplicitTop = 528
+    ExplicitWidth = 185
+    ExplicitHeight = 41
+    object SplitterRight: TSplitter
+      Left = 673
+      Top = 0
+      Height = 660
+      Align = alRight
+      ResizeStyle = rsUpdate
+      ExplicitLeft = 637
+      ExplicitHeight = 867
+    end
+    object pnlRight: TPanel
+      Left = 676
+      Top = 0
+      Width = 261
+      Height = 660
+      Align = alRight
       BevelOuter = bvNone
-      Caption = 'Output'
+      BorderWidth = 5
+      TabOrder = 0
+      ExplicitHeight = 663
+      inline DwsIdeLocalVariablesFrame: TDwsIdeLocalVariablesFrame
+        Left = 5
+        Top = 5
+        Width = 251
+        Height = 240
+        Align = alTop
+        TabOrder = 0
+        ExplicitLeft = 5
+        ExplicitTop = 5
+        ExplicitWidth = 251
+        inherited ListView1: TListView
+          Width = 251
+          ExplicitWidth = 251
+        end
+        inherited Panel1: TPanel
+          Width = 251
+          ExplicitWidth = 251
+        end
+      end
+      inline DwsIdeWatchesFrame: TDwsIdeWatchesFrame
+        Left = 5
+        Top = 245
+        Width = 251
+        Height = 224
+        Align = alTop
+        TabOrder = 1
+        ExplicitLeft = 5
+        ExplicitTop = 245
+        ExplicitWidth = 251
+        ExplicitHeight = 224
+        inherited lvWatches: TListView
+          Width = 251
+          Height = 207
+          ReadOnly = True
+          RowSelect = True
+          ExplicitWidth = 251
+          ExplicitHeight = 207
+        end
+        inherited Panel1: TPanel
+          Width = 251
+          ExplicitWidth = 251
+        end
+      end
+      inline DwsIdeCallStackFrame: TDwsIdeCallStackFrame
+        Left = 5
+        Top = 469
+        Width = 251
+        Height = 186
+        Align = alClient
+        TabOrder = 2
+        ExplicitLeft = 5
+        ExplicitTop = 469
+        ExplicitWidth = 251
+        ExplicitHeight = 189
+        inherited memCallStack: TMemo
+          Width = 251
+          Height = 169
+          ExplicitWidth = 251
+          ExplicitHeight = 172
+        end
+        inherited Panel1: TPanel
+          Width = 251
+          ExplicitWidth = 251
+        end
+      end
+    end
+    object pnlEditor: TPanel
+      Left = 0
+      Top = 0
+      Width = 673
+      Height = 660
+      Align = alClient
+      BevelOuter = bvNone
+      BorderWidth = 5
+      DoubleBuffered = True
+      ParentBackground = False
+      ParentDoubleBuffered = False
       TabOrder = 1
+      ExplicitWidth = 934
+      ExplicitHeight = 663
+      object imgTabs: TImage
+        Left = 5
+        Top = 5
+        Width = 663
+        Height = 22
+        Align = alTop
+        OnMouseDown = pcEditorMouseDown
+        OnMouseLeave = imgTabsMouseLeave
+        OnMouseMove = imgTabsMouseMove
+        ExplicitLeft = 2
+        ExplicitTop = 0
+        ExplicitWidth = 627
+      end
+      object StatusBar: TStatusBar
+        Left = 5
+        Top = 636
+        Width = 663
+        Height = 19
+        Panels = <
+          item
+            Alignment = taCenter
+            Width = 84
+          end
+          item
+            Alignment = taCenter
+            Width = 72
+          end
+          item
+            Alignment = taCenter
+            Width = 84
+          end
+          item
+            Width = 50
+          end>
+        ExplicitTop = 639
+        ExplicitWidth = 924
+      end
+      object pnlPageControl: TPanel
+        Left = 5
+        Top = 27
+        Width = 663
+        Height = 609
+        Align = alClient
+        BevelOuter = bvNone
+        ParentBackground = False
+        TabOrder = 1
+        OnResize = pnlPageControlResize
+        ExplicitWidth = 924
+        ExplicitHeight = 612
+      end
     end
   end
   object ActionList1: TActionList
@@ -612,7 +664,7 @@ object DwsIdeForm: TDwsIdeForm
     Left = 176
     Top = 256
     Bitmap = {
-      494C01011E002100140010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C01011E002100240010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000008000000001002000000000000080
       00000000000000000000000000000000000000000000706B67DCA39D96FEA19B
       95FEA19B95FEA19B95FEA19B95FEA19B95FEA19B96FEA19B94FEA19C94FEA19A
