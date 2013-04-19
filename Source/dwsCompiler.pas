@@ -3530,6 +3530,10 @@ begin
          if coContextMap in FOptions then
             FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttBEGIN);
          try
+            // Set the current context's LocalTable to be the table of the new procedure
+            if coContextMap in FOptions then
+               FSourceContextMap.Current.LocalTable:=FProg.Table;
+
             // Read procedure body
             if funcSymbol.Kind<>fkLambda then begin
                if not FTok.TestDelete(ttBEGIN) then begin
@@ -3570,10 +3574,6 @@ begin
             if coContextMap in FOptions then
                FSourceContextMap.CloseContext(FTok.CurrentPos);  // close with inside procedure end
          end;
-
-         // Set the current context's LocalTable to be the table of the new procedure
-         if coContextMap in FOptions then
-            FSourceContextMap.Current.LocalTable:=FProg.Table;
       finally
          FMainProg.Compiler := nil;
          FProg := oldprog;
