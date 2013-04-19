@@ -26,7 +26,7 @@ interface
 
 uses
    Classes, SysUtils, Math, Windows,
-   dwsExprs, dwsSymbols, dwsErrors, dwsUtils,
+   dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsExprList,
    dwsCoreExprs, dwsRelExprs, dwsMagicExprs, dwsConstExprs,
    dwsMathFunctions, dwsDataContext, dwsConvExprs,
    dwsJIT, dwsJITFixups, dwsJITAllocatorWin, dwsJITx86Intrinsics, dwsVMTOffsets;
@@ -140,6 +140,9 @@ type
          procedure _xmm_reg_expr(op : TxmmOp; dest : TxmmRegister; expr : TTypedExpr);
          procedure _comisd_reg_expr(dest : TxmmRegister; expr : TTypedExpr);
 
+         function _store_eaxedx : Integer;
+         procedure _restore_eaxedx(addr : Integer);
+
          procedure _DoStep(expr : TExprBase);
          procedure _RangeCheck(expr : TExprBase; reg : TgpRegister;
                                delta, miniInclusive, maxiExclusive : Integer);
@@ -223,7 +226,9 @@ type
    Tx86VarParam = class (TdwsJITter_x86)
       class procedure CompileAsPVariant(x86 : Tx86WriteOnlyStream; expr : TByRefParamExpr);
       function DoCompileFloat(expr : TExprBase) : TxmmRegister; override;
+      function CompileInteger(expr : TExprBase) : Integer; override;
       procedure DoCompileAssignFloat(expr : TTypedExpr; source : TxmmRegister); override;
+      procedure CompileAssignInteger(expr : TTypedExpr; source : Integer); override;
    end;
 
    Tx86ArrayBase = class (Tx86InterpretedExpr)
@@ -336,6 +341,9 @@ type
    Tx86DivInt = class (Tx86InterpretedExpr)
       function CompileInteger(expr : TExprBase) : Integer; override;
    end;
+   Tx86ModInt = class (Tx86InterpretedExpr)
+      function CompileInteger(expr : TExprBase) : Integer; override;
+   end;
 
    Tx86Shr = class (TdwsJITter_x86)
       function CompileInteger(expr : TExprBase) : Integer; override;
@@ -396,11 +404,13 @@ type
       function CompileInteger(expr : TExprBase) : Integer; override;
    end;
 
-   Tx86DirectCallFunc = class (Tx86MagicFunc)
+   Tx86DirectCallFunc = class (Tx86InterpretedExpr)
       public
          AddrPtr : PPointer;
          constructor Create(jit : TdwsJITx86; addrPtr : PPointer);
+         function CompileCall(funcSym : TFuncSymbol; const args : TExprBaseListRec) : Boolean;
          function DoCompileFloat(expr : TExprBase) : TxmmRegister; override;
+         function CompileInteger(expr : TExprBase) : Integer; override;
    end;
 
    Tx86SqrtFunc = class (Tx86MagicFunc)
@@ -426,8 +436,32 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+function int64_div(a, b : Int64) : Int64;
+begin
+   Result:=a div b;
+end;
+
+function int64_mod(a, b : Int64) : Int64;
+begin
+   Result:=a mod b;
+end;
+
+function double_trunc(v : Double) : Int64;
+begin
+   Result:=Trunc(v);
+end;
+
+function double_frac(v : Double) : Double;
+begin
+   Result:=Frac(v);
+end;
+
 var
-   vAddrPower : function (const base, exponent: Double) : Double = Math.Power;
+   vAddr_Power : function (const base, exponent: Double) : Double = Math.Power;
+   vAddr_Trunc : function (v : Double) : Int64 = double_trunc;
+   vAddr_Frac : function (v : Double) : Double = double_frac;
+   vAddr_div : function (a, b : Int64) : Int64 = int64_div;
+   vAddr_mod : function (a, b : Int64) : Int64 = int64_mod;
 
 // ------------------
 // ------------------ TdwsJITx86 ------------------
@@ -522,7 +556,7 @@ begin
    RegisterJITter(TSubIntExpr,                  Tx86SubInt.Create(Self));
    RegisterJITter(TMultIntExpr,                 Tx86MultInt.Create(Self));
    RegisterJITter(TDivExpr,                     Tx86DivInt.Create(Self));
-   RegisterJITter(TModExpr,                     Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TModExpr,                     Tx86ModInt.Create(Self));
    RegisterJITter(TMultIntPow2Expr,             Tx86MultIntPow2.Create(Self));
    RegisterJITter(TIntAndExpr,                  Tx86InterpretedExpr.Create(Self));
 
@@ -565,8 +599,10 @@ begin
    RegisterJITter(TSqrtFunc,                    Tx86SqrtFunc.Create(Self));
    RegisterJITter(TMaxFunc,                     Tx86MinMaxFloatFunc.Create(Self, xmm_maxsd));
    RegisterJITter(TMinFunc,                     Tx86MinMaxFloatFunc.Create(Self, xmm_minsd));
-   RegisterJITter(TPowerFunc,                   Tx86DirectCallFunc.Create(Self, @@vAddrPower));
+   RegisterJITter(TPowerFunc,                   Tx86DirectCallFunc.Create(Self, @@vAddr_Power));
    RegisterJITter(TRoundFunc,                   Tx86RoundFunc.Create(Self));
+   RegisterJITter(TTruncFunc,                   Tx86DirectCallFunc.Create(Self, @@vAddr_Trunc));
+   RegisterJITter(TFracFunc,                    Tx86DirectCallFunc.Create(Self, @@vAddr_Frac));
 end;
 
 // Destroy
@@ -859,6 +895,21 @@ begin
       end;
 
    end;
+end;
+
+// _store_eaxedx
+//
+function TdwsJITx86._store_eaxedx : Integer;
+begin
+   Result:=FPreamble.AllocateStackSpace(SizeOf(Int64));
+   x86._mov_qword_ptr_reg_eaxedx(gprEBP, Result);
+end;
+
+// _restore_eaxedx
+//
+procedure TdwsJITx86._restore_eaxedx(addr : Integer);
+begin
+   x86._mov_eaxedx_qword_ptr_reg(gprEBP, addr);
 end;
 
 // _DoStep
@@ -1595,8 +1646,7 @@ begin
 
       jit.CompileInteger(e.ToExpr);
 
-      toValueOffset:=jit.FPreamble.AllocateStackSpace(SizeOf(Int64));
-      x86._mov_qword_ptr_reg_eaxedx(gprEBP, toValueOffset);
+      toValueOffset:=jit._store_eaxedx;
 
    end else toValueOffset:=0;
 
@@ -2112,6 +2162,24 @@ begin
    end else Result:=inherited;
 end;
 
+// CompileInteger
+//
+function Tx86VarParam.CompileInteger(expr : TExprBase) : Integer;
+var
+   e : TVarParamExpr;
+begin
+   e:=TVarParamExpr(expr);
+
+   CompileAsPVariant(x86, e);
+
+   if jit.IsInteger(e) then begin
+
+      x86._mov_eaxedx_qword_ptr_reg(gprEAX, cVariant_DataOffset);
+      Result:=0;
+
+   end else Result:=inherited;
+end;
+
 // DoCompileAssignFloat
 //
 procedure Tx86VarParam.DoCompileAssignFloat(expr : TTypedExpr; source : TxmmRegister);
@@ -2125,6 +2193,28 @@ begin
       CompileAsPVariant(x86, e);
 
       x86._movsd_qword_ptr_reg_reg(gprEAX, cVariant_DataOffset, source);
+
+   end else inherited;
+end;
+
+// CompileAssignInteger
+//
+procedure Tx86VarParam.CompileAssignInteger(expr : TTypedExpr; source : Integer);
+var
+   e : TVarParamExpr;
+   addr : Integer;
+begin
+   e:=TVarParamExpr(expr);
+
+   if jit.IsInteger(e) then begin
+
+      addr:=jit._store_eaxedx;
+
+      CompileAsPVariant(x86, e);
+
+      x86._mov_reg_reg(gprECX, gprEAX);
+      jit._restore_eaxedx(addr);
+      x86._mov_qword_ptr_reg_eaxedx(gprECX, cVariant_DataOffset);
 
    end else inherited;
 end;
@@ -2443,9 +2533,7 @@ begin
 
    end else begin
 
-      addr:=jit.FPreamble.AllocateStackSpace(SizeOf(Int64));
-
-      x86._mov_qword_ptr_reg_eaxedx(gprEBP, addr);
+      addr:=jit._store_eaxedx;
 
       jit.CompileInteger(e.Right);
 
@@ -2481,9 +2569,8 @@ begin
    end else begin
 
       Result:=jit.CompileInteger(e.Right);
-      addr:=jit.FPreamble.AllocateStackSpace(SizeOf(Int64));
 
-      x86._mov_qword_ptr_reg_eaxedx(gprEBP, addr);
+      addr:=jit._store_eaxedx;
 
       jit.CompileInteger(e.Left);
 
@@ -2508,9 +2595,8 @@ function Tx86MultInt.CompileInteger(expr : TExprBase) : Integer;
          addr:=StackAddrToOffset(TIntVarExpr(expr).StackAddr);
       end else begin
          reg:=gprEBP;
-         addr:=jit.FPreamble.AllocateStackSpace(SizeOf(Int64));
          jit.CompileInteger(expr);
-         x86._mov_qword_ptr_reg_eaxedx(reg, addr);
+         addr:=jit._store_eaxedx;
       end;
    end;
 
@@ -2594,11 +2680,12 @@ var
 begin
    e:=TDivExpr(expr);
 
+   Result:=jit.CompileInteger(e.Left);
+
    if e.Right is TConstIntExpr then begin
 
       d:=TConstIntExpr(e.Right).Value;
       if d=1 then begin
-         Result:=jit.CompileInteger(e.Left);
          Exit;
       end;
 
@@ -2606,14 +2693,44 @@ begin
          // is it a power of two?
          i:=WhichPowerOfTwo(d);
          if (i>0) and (i<=31) then begin
-            Result:=jit.CompileInteger(e.Left);
             DivideByPowerOfTwo(i);
             Exit;
          end;
       end;
 
    end;
-   Result:=inherited;
+
+   x86._push_reg(gprEDX);
+   x86._push_reg(gprEAX);
+
+   jit.CompileInteger(e.Right);
+   x86._push_reg(gprEDX);
+   x86._push_reg(gprEAX);
+
+   x86._call_absmem(@@vAddr_div);
+end;
+
+// ------------------
+// ------------------ Tx86ModInt ------------------
+// ------------------
+
+// CompileInteger
+//
+function Tx86ModInt.CompileInteger(expr : TExprBase) : Integer;
+var
+   e : TModExpr;
+begin
+   e:=TModExpr(expr);
+
+   Result:=jit.CompileInteger(e.Left);
+   x86._push_reg(gprEDX);
+   x86._push_reg(gprEAX);
+
+   jit.CompileInteger(e.Right);
+   x86._push_reg(gprEDX);
+   x86._push_reg(gprEAX);
+
+   x86._call_absmem(@@vAddr_mod);
 end;
 
 // ------------------
@@ -2665,9 +2782,7 @@ begin
 
       end else begin
 
-         addr:=jit.FPreamble.AllocateStackSpace(SizeOf(Int64));
-
-         x86._mov_qword_ptr_reg_eaxedx(gprEBP, addr);
+         addr:=jit._store_eaxedx;
 
          jit.CompileInteger(e.Right);
          x86._mov_reg_reg(gprECX, gprEAX);
@@ -2847,9 +2962,7 @@ begin
 
       jit.CompileInteger(e.Right);
 
-      addr:=jit.FPreamble.AllocateStackSpace(SizeOf(Int64));
-
-      x86._mov_qword_ptr_reg_eaxedx(gprEBP, addr);
+      addr:=jit._store_eaxedx;
 
       jit.CompileInteger(e.Left);
 
@@ -3060,33 +3173,30 @@ begin
    Self.AddrPtr:=addrPtr;
 end;
 
-// DoCompileFloat
+// CompileCall
 //
-function Tx86DirectCallFunc.DoCompileFloat(expr : TExprBase) : TxmmRegister;
+function Tx86DirectCallFunc.CompileCall(funcSym : TFuncSymbol; const args : TExprBaseListRec) : Boolean;
 var
    i, stackOffset : Integer;
-   e : TMagicFuncExpr;
-   f : TFuncSymbol;
    p : TParamSymbol;
    paramReg : array of TxmmRegister;
    paramOffset : array of Integer;
 begin
-   e:=TMagicFuncExpr(expr);
-   f:=e.FuncSym;
+   Result:=False;
 
-   SetLength(paramReg, f.Params.Count);
-   SetLength(paramOffset, f.Params.Count);
+   SetLength(paramReg, funcSym.Params.Count);
+   SetLength(paramOffset, funcSym.Params.Count);
 
    stackOffset:=0;
-   for i:=0 to f.Params.Count-1 do begin
-      p:=f.Params[i];
+   for i:=0 to funcSym.Params.Count-1 do begin
+      p:=funcSym.Params[i];
       if jit.IsFloat(p.Typ) then begin
 
-         paramReg[i]:=jit.CompileFloat(e.Args[i] as TTypedExpr);
+         paramReg[i]:=jit.CompileFloat(args[i] as TTypedExpr);
          Inc(stackOffset, SizeOf(Double));
          paramOffset[i]:=stackOffset;
 
-      end else Exit(inherited);
+      end else Exit;
    end;
 
    x86._sub_reg_int32(gprESP, stackOffset);
@@ -3100,14 +3210,49 @@ begin
 
    x86._call_absmem(addrPtr);
 
-   if jit.IsFloat(f.Typ) then begin
+   Result:=True;
+end;
+
+// DoCompileFloat
+//
+function Tx86DirectCallFunc.DoCompileFloat(expr : TExprBase) : TxmmRegister;
+var
+   e : TMagicFuncExpr;
+begin
+   e:=TMagicFuncExpr(expr);
+
+   if not CompileCall(e.FuncSym, e.Args) then begin
+
+      jit.OutputFailedOn:=expr;
+      Result:=xmm0;
+
+   end else if jit.IsFloat(e.FuncSym.Typ) then begin
 
       jit.FPreamble.NeedTempSpace(SizeOf(Double));
       x86._fstp_esp;
       Result:=jit.AllocXMMReg(expr);
       x86._movsd_reg_esp(Result);
 
-   end else Exit(inherited);
+   end else begin
+
+      jit.OutputFailedOn:=expr;
+      Result:=xmm0;
+
+   end;
+end;
+
+// CompileInteger
+//
+function Tx86DirectCallFunc.CompileInteger(expr : TExprBase) : Integer;
+var
+   e : TMagicFuncExpr;
+begin
+   e:=TMagicFuncExpr(expr);
+
+   if not CompileCall(e.FuncSym, e.Args) then
+      jit.OutputFailedOn:=expr;
+
+   Result:=0;
 end;
 
 // ------------------
