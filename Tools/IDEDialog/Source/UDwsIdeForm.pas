@@ -88,7 +88,7 @@ type
 
     procedure PaintGutterGlyphs(ACanvas: TCanvas; AClip: TRect;
                       FirstLine, LastLine: integer);
-    procedure SetCurrentLine(ALine: integer);
+    procedure SetCurrentLine(ALine: integer; ACol : integer = 1);
     procedure SynEditorClick(Sender: TObject);
     procedure SynEditorKeyDown( Sender: TObject; var Key: Word;  Shift: TShiftState );
     procedure SynEditorSpecialLineColors(Sender: TObject;
@@ -410,7 +410,9 @@ type
     procedure SetScript(const Value: TDelphiWebScript);
     procedure SetScriptFolder(const Value: string);
     procedure MakeSettingsRec;
-    procedure AddMessage(const AMessage: string; AScriptPos : PScriptPos = nil);
+    procedure AddMessage(const AMessage: string; AScriptPos : PScriptPos = nil );
+    procedure ClearMessagesWindow;
+    procedure ClearOutputWindow;
     property  EditorCurrentPageIndex : integer
                 read FActivePageIndex
                 write SetEditorCurrentPageIndex;
@@ -743,7 +745,7 @@ end;
 
 procedure TDwsIdeForm.actClearOutputWindowExecute(Sender: TObject);
 begin
-  memOutputWindow.Clear;
+  ClearOutputWindow;
 end;
 
 procedure TDwsIdeForm.actClearOutputWindowUpdate(Sender: TObject);
@@ -755,8 +757,21 @@ end;
 
 procedure TDwsIdeForm.AddMessage( const AMessage : string; AScriptPos : PScriptPos = nil );
 begin
-  lbMessages.Items.AddObject( AMessage, Pointer(AScriptPos) );
+  lbMessages.Items.AddObject( AMessage, TObject(AScriptPos) );
   pcBottomWindows.ActivePage := tsMessages;
+end;
+
+
+
+procedure TDwsIdeForm.ClearMessagesWindow;
+begin
+  lbMessages.Clear;
+end;
+
+
+procedure TDwsIdeForm.ClearOutputWindow;
+begin
+  memOutputWindow.Clear;
 end;
 
 
@@ -771,7 +786,7 @@ procedure TDwsIdeForm.Compile( ABuild : boolean );
     For I := 0 to FProgram.Msgs.Count-1 do
       begin
       if FProgram.Msgs[I] is TScriptMessage then
-        Pos := @TScriptMessage(FProgram.Msgs[I]).Pos
+        Pos := @TScriptMessage( FProgram.Msgs[I] ).Pos
        else
          Pos := nil;
       AddMessage( '  ' + FProgram.Msgs[I].AsInfo, Pos );
@@ -781,7 +796,7 @@ procedure TDwsIdeForm.Compile( ABuild : boolean );
 begin
   if ABuild or not IsCompiled then
     begin
-    lbMessages.Clear;
+    ClearMessagesWindow;
     AddMessage( 'Compile started' );
 
     FScript.Config.CompilerOptions :=
@@ -795,8 +810,7 @@ begin
        AddMessageInfo;
        AddMessage( 'Compile complete - error(s)' );
        GotoScriptPos( FProgram.Msgs.LastMessagePos );
-       FProgram := nil;
-       ErrorDlg( FProgram.Msgs.AsInfo );
+       ErrorDlg( FProgram.Msgs[ FProgram.Msgs.Count-1 ].AsInfo );
        end
      else
         if FProgram.Msgs.Count = 0 then // perfect compile!
@@ -921,7 +935,6 @@ end;
 procedure TDwsIdeForm.actEditorSelectAllExecute(Sender: TObject);
 begin
   CurrentEditor.SelectAll;
-  {$Message 'need self-contained editor page with own actions'}
 end;
 
 procedure TDwsIdeForm.actEditorSelectAllUpdate(Sender: TObject);
@@ -1139,7 +1152,7 @@ begin
   DwsIdeWatchesFrame.DwsIde        := Self;
   DwsIdeCallStackFrame.DwsIde      := Self;
 
-  memOutputWindow.Clear;
+  ClearOutputWindow;
 
   // Set the script folder, creating it if required
   ScriptFolder := IncludeTrailingBackslash(GetDesktopPath) + 'DWS Script Files';
@@ -1807,7 +1820,8 @@ begin
     if I <> -1 then
       begin
       EditorCurrentPageIndex := I;
-      CurrentEditorPage.SetCurrentLine( AScriptPos.Line );
+      CurrentEditorPage.SetCurrentLine( AScriptPos.Line, AScriptPos.Col );
+      CurrentEditor.SetFocus;
       end;
     end;
 end;
@@ -1867,6 +1881,7 @@ begin
   if IsCompiled then
     begin
     ClearExecutableLines;
+    ClearMessagesWindow;
     FProgram := nil;
     end;
   //FScript.NotifyScriptModified;
@@ -1940,6 +1955,7 @@ var
    i : Integer;
 begin
   FreeAndNil( FCodeProposalForm );
+  ClearMessagesWindow;
   dwsDebugger1.Breakpoints.Clean;
   dwsDebugger1.Watches.Clean;
   FProgram := nil;
@@ -2038,21 +2054,19 @@ end;
 
 function TDwsIdeForm.IsCompiled: boolean;
 begin
-  Result := Assigned( FProgram );
+  Result := Assigned( FProgram ) and not FProgram.Msgs.HasErrors;
 end;
 
 procedure TDwsIdeForm.lbMessagesDblClick(Sender: TObject);
 var
   I : integer;
-  S : string;
   Pos : PScriptPos;
 begin
   I := lbMessages.ItemIndex;
   if I < 0 then
     Exit;
-  S := lbMessages.Items[I];
   Pos := PScriptPos(lbMessages.Items.Objects[I]);
-  if Pos <> nil then
+  if Assigned( FProgram ) and Assigned( Pos ) then
     GotoScriptPos( Pos^ );
 end;
 
@@ -2503,7 +2517,8 @@ begin
 
   EditorCloseAllPages;
 
-  memOutputWindow.Clear;
+  ClearOutputWindow;
+  ClearMessagesWindow;
 
   FProjectFileName := AProjectFileName;
 
@@ -2533,7 +2548,8 @@ procedure TDwsIdeForm.NewProjectFile( const AProjectFileName : string );
 begin
   EditorCloseAllPages;
 
-  memOutputWindow.Clear;
+  ClearOutputWindow;
+  ClearMessagesWindow;
 
   FProjectFileName := AProjectFileName;
 end;
@@ -2989,7 +3005,7 @@ end;
 
 
 
-procedure TEditorPage.SetCurrentLine(ALine: integer);
+procedure TEditorPage.SetCurrentLine(ALine: integer; ACol : integer = 1);
 begin
   if fCurrentLine <> ALine then
   begin
@@ -2997,7 +3013,7 @@ begin
     Editor.InvalidateLine(fCurrentLine);
     fCurrentLine := ALine;
     if (fCurrentLine > 0) and (Editor.CaretY <> fCurrentLine) then
-      Editor.CaretXY := BufferCoord(1, fCurrentLine);
+      Editor.CaretXY := BufferCoord(ACol, fCurrentLine);
     Editor.InvalidateGutterLine(fCurrentLine);
     Editor.InvalidateLine(fCurrentLine);
   end;
@@ -3171,8 +3187,6 @@ begin
    Result.Top:=1+(FForm.imgTabs.Height-cCloseButtonSize) div 2;
    Result.Bottom:=Result.Top+cCloseButtonSize;
 end;
-
-{$Message 'Add editor action images'}
 
 { TOutputWindowsStringResultType }
 

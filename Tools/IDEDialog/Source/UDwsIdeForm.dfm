@@ -51,6 +51,10 @@ object DwsIdeForm: TDwsIdeForm
       TabOrder = 0
       object tsMessages: TTabSheet
         Caption = 'Messages'
+        ExplicitLeft = 0
+        ExplicitTop = 0
+        ExplicitWidth = 0
+        ExplicitHeight = 0
         object lbMessages: TListBox
           Left = 0
           Top = 0
@@ -66,6 +70,10 @@ object DwsIdeForm: TDwsIdeForm
       object tsOutput: TTabSheet
         Caption = 'Output'
         ImageIndex = 1
+        ExplicitLeft = 0
+        ExplicitTop = 0
+        ExplicitWidth = 0
+        ExplicitHeight = 0
         object memOutputWindow: TMemo
           Left = 0
           Top = 0
@@ -91,10 +99,6 @@ object DwsIdeForm: TDwsIdeForm
     Caption = 'pnlMain'
     ShowCaption = False
     TabOrder = 1
-    ExplicitLeft = 272
-    ExplicitTop = 528
-    ExplicitWidth = 185
-    ExplicitHeight = 41
     object SplitterRight: TSplitter
       Left = 673
       Top = 0
@@ -113,7 +117,6 @@ object DwsIdeForm: TDwsIdeForm
       BevelOuter = bvNone
       BorderWidth = 5
       TabOrder = 0
-      ExplicitHeight = 663
       inline DwsIdeLocalVariablesFrame: TDwsIdeLocalVariablesFrame
         Left = 5
         Top = 5
@@ -664,7 +667,7 @@ object DwsIdeForm: TDwsIdeForm
     Left = 176
     Top = 256
     Bitmap = {
-      494C01011E002100240010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C01011E002100280010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000008000000001002000000000000080
       00000000000000000000000000000000000000000000706B67DCA39D96FEA19B
       95FEA19B95FEA19B95FEA19B95FEA19B95FEA19B96FEA19B94FEA19C94FEA19A
