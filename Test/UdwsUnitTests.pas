@@ -451,6 +451,7 @@ begin
    meth.Name:='VirtGetArrayProp';
    meth.ResultType:='Integer';
    meth.Overloaded:=True;
+   meth.Attributes:=[maVirtual];
    param:=meth.Parameters.Add;
    param.DataType:='String';
    param.Name:='v';

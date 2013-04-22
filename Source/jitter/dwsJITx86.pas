@@ -1023,7 +1023,7 @@ begin
       if FFlags=flagsNone then
          output.WriteByte($EB)
       else output.WriteByte(Ord(FFlags));
-      output.WriteByte(offset-2);
+      output.WriteByte(Byte(offset-2));
 
    end else begin
 
@@ -1674,7 +1674,7 @@ begin
 
       if toValueIsConstant then begin
 
-         x86._cmp_execmem_int32(e.VarExpr.StackAddr, 4, toValue shr 32);
+         x86._cmp_execmem_int32(e.VarExpr.StackAddr, 4, Integer(toValue shr 32));
          jit.Fixups.NewJump(flagsG, loopAfter);
          jumpIfHiLower:=jit.Fixups.NewJump(flagsB);
 
@@ -2332,7 +2332,7 @@ begin
       jit.CompileScriptObj(TFieldExpr(e.BaseExpr).ObjectExpr);
       // TODO object check
       x86._mov_reg_dword_ptr_reg(gprEAX, gprEAX, vmt_ScriptObjInstance_IScriptObj_To_FData);
-      x86._add_reg_int32(gprEAX, TFieldExpr(e.BaseExpr).FieldAddr*SizeOf(Variant));
+      x86._add_reg_int32(gprEAX, TFieldExpr(e.BaseExpr).FieldSym.Offset*SizeOf(Variant));
 
       CompileIndexToGPR(e.IndexExpr, gprECX, delta);
       jit._RangeCheck(e, gprECX, delta, e.LowBound, e.LowBound+e.Count);
@@ -2922,12 +2922,12 @@ begin
 
          addr:=TIntVarExpr(e.Left).StackAddr;
 
-         x86._cmp_execmem_int32(addr, 4, TConstIntExpr(e.Right).Value shr 32);
+         x86._cmp_execmem_int32(addr, 4, Integer(TConstIntExpr(e.Right).Value shr 32));
          if FlagsHiPass<>flagsNone then
             jit.Fixups.NewJump(FlagsHiPass, targetTrue);
          if FlagsHiFail<>flagsNone then
             jit.Fixups.NewJump(FlagsHiFail, targetFalse);
-         x86._cmp_execmem_int32(addr, 0, TConstIntExpr(e.Right).Value);
+         x86._cmp_execmem_int32(addr, 0, Integer(TConstIntExpr(e.Right).Value));
          jit.Fixups.NewConditionalJumps(FlagsLo, targetTrue, targetFalse);
 
       end else begin

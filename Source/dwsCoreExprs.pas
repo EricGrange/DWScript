@@ -462,7 +462,7 @@ type
    TFieldExpr = class(TPosDataExpr)
       protected
          FObjectExpr : TTypedExpr;
-         FFieldAddr : Integer;
+         FFieldSym : TFieldSymbol;
 
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
@@ -493,7 +493,7 @@ type
          function SameDataExpr(expr : TTypedExpr) : Boolean; override;
 
          property ObjectExpr : TTypedExpr read FObjectExpr;
-         property FieldAddr : Integer read FFieldAddr;
+         property FieldSym : TFieldSymbol read FFieldSym;
    end;
 
    // Field expression: obj.Field
@@ -3386,7 +3386,7 @@ constructor TFieldExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
 begin
    inherited Create(Prog, Pos, fieldSym.Typ);
    FObjectExpr := objExpr;
-   FFieldAddr := fieldSym.Offset;
+   FFieldSym := fieldSym;
 end;
 
 // Destroy
@@ -3401,35 +3401,35 @@ end;
 //
 procedure TFieldExpr.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
 begin
-   GetScriptObj(exec).AsInteger[FFieldAddr]:=value;
+   GetScriptObj(exec).AsInteger[FieldSym.Offset]:=value;
 end;
 
 // AssignValueAsBoolean
 //
 procedure TFieldExpr.AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean);
 begin
-   GetScriptObj(exec).AsBoolean[FFieldAddr]:=value;
+   GetScriptObj(exec).AsBoolean[FieldSym.Offset]:=value;
 end;
 
 // AssignValueAsFloat
 //
 procedure TFieldExpr.AssignValueAsFloat(exec : TdwsExecution; const value : Double);
 begin
-   GetScriptObj(exec).AsFloat[FFieldAddr]:=value;
+   GetScriptObj(exec).AsFloat[FieldSym.Offset]:=value;
 end;
 
 // AssignValueAsString
 //
 procedure TFieldExpr.AssignValueAsString(exec : TdwsExecution; const value: String);
 begin
-   GetScriptObj(exec).AsString[FFieldAddr]:=value;
+   GetScriptObj(exec).AsString[FieldSym.Offset]:=value;
 end;
 
 // AssignValueAsScriptObj
 //
 procedure TFieldExpr.AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj);
 begin
-   GetScriptObj(exec).AsInterface[FFieldAddr]:=value;
+   GetScriptObj(exec).AsInterface[FieldSym.Offset]:=value;
 end;
 
 // GetSubExpr
@@ -3458,7 +3458,7 @@ end;
 //
 procedure TFieldExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
 begin
-   exec.DataContext_Create(GetScriptObj(exec).AsData, FFieldAddr, result);
+   exec.DataContext_Create(GetScriptObj(exec).AsData, FieldSym.Offset, result);
 end;
 
 // SameDataExpr
@@ -3466,7 +3466,7 @@ end;
 function TFieldExpr.SameDataExpr(expr : TTypedExpr) : Boolean;
 begin
    Result:=    (ClassType=expr.ClassType)
-           and (FieldAddr=TFieldExpr(expr).FieldAddr)
+           and (FieldSym=TFieldExpr(expr).FieldSym)
            and ObjectExpr.SameDataExpr(TFieldExpr(expr).ObjectExpr);
 end;
 
@@ -3481,42 +3481,42 @@ end;
 //
 procedure TFieldExpr.EvalAsString(exec : TdwsExecution; var Result : String);
 begin
-   GetScriptObj(exec).EvalAsString(FFieldAddr, Result);
+   GetScriptObj(exec).EvalAsString(FieldSym.Offset, Result);
 end;
 
 // EvalAsVariant
 //
 procedure TFieldExpr.EvalAsVariant(exec : TdwsExecution; var Result : Variant);
 begin
-   GetScriptObj(exec).EvalAsVariant(FFieldAddr, Result);
+   GetScriptObj(exec).EvalAsVariant(FieldSym.Offset, Result);
 end;
 
 // EvalAsInteger
 //
 function TFieldExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result:=GetScriptObj(exec).AsInteger[FFieldAddr];
+   Result:=GetScriptObj(exec).AsInteger[FieldSym.Offset];
 end;
 
 // EvalAsFloat
 //
 function TFieldExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   Result:=GetScriptObj(exec).AsFloat[FFieldAddr];
+   Result:=GetScriptObj(exec).AsFloat[FieldSym.Offset];
 end;
 
 // EvalAsBoolean
 //
 function TFieldExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
 begin
-   Result:=GetScriptObj(exec).AsBoolean[FFieldAddr];
+   Result:=GetScriptObj(exec).AsBoolean[FieldSym.Offset];
 end;
 
 // EvalAsScriptObj
 //
 procedure TFieldExpr.EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj);
 begin
-   GetScriptObj(exec).EvalAsInterface(FFieldAddr, PIUnknown(@Result)^);
+   GetScriptObj(exec).EvalAsInterface(FieldSym.Offset, PIUnknown(@Result)^);
 end;
 
 // ------------------
@@ -3535,21 +3535,21 @@ end;
 //
 procedure TFieldVarExpr.AssignValueAsInteger(exec : TdwsExecution; const value : Int64);
 begin
-   GetPIScriptObj(exec)^.AsInteger[FFieldAddr]:=value;
+   GetPIScriptObj(exec)^.AsInteger[FieldSym.Offset]:=value;
 end;
 
 // EvalAsInteger
 //
 function TFieldVarExpr.EvalAsInteger(exec : TdwsExecution) : Int64;
 begin
-   Result:=GetPIScriptObj(exec)^.AsInteger[FFieldAddr];
+   Result:=GetPIScriptObj(exec)^.AsInteger[FieldSym.Offset];
 end;
 
 // EvalAsFloat
 //
 function TFieldVarExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
-   Result:=GetPIScriptObj(exec)^.AsFloat[FFieldAddr];
+   Result:=GetPIScriptObj(exec)^.AsFloat[FieldSym.Offset];
 end;
 
 // GetDataPtr
@@ -3560,7 +3560,7 @@ var
 begin
    p:=PIScriptObj(exec.Stack.PointerToInterfaceValue_BaseRelative(TObjectVarExpr(FObjectExpr).StackAddr));
    CheckScriptObject(exec, p^);
-   exec.DataContext_Create(p^.AsPData^, FFieldAddr, result);
+   exec.DataContext_Create(p^.AsPData^, FieldSym.Offset, result);
 end;
 
 // ------------------

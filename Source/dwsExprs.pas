@@ -3120,11 +3120,6 @@ end;
 // ------------------ TPrintFunction ------------------
 // ------------------
 
-//procedure TPrintFunction.Execute(info : TProgramInfo);
-//begin
-//   info.Execution.Result.AddString(info.ParamAsString[0]);
-//end;
-
 // DoEvalProc
 //
 procedure TPrintFunction.DoEvalProc(args : TExprBaseList);
@@ -4092,8 +4087,11 @@ end;
 // InitPushTempAddr
 //
 procedure TPushOperator.InitPushTempAddr(stackAddr: Integer; argExpr: TTypedExpr);
+var
+   typ : TTypeSymbol;
 begin
-   if argExpr.Typ.Size>1 then
+   typ:=argExpr.Typ;
+   if (typ<>nil) and (typ.Size>1) then
       FTypeParamSym:=TSymbol(potTempData)
    else FTypeParamSym:=TSymbol(potTempAddr);
    FStackAddr:=stackAddr;
@@ -4115,7 +4113,9 @@ procedure TPushOperator.InitPushTempArray(stackAddr: Integer; argExpr: TTypedExp
 begin
    FTypeParamSym:=TSymbol(potTempArray);
    FStackAddr:=stackAddr;
-   FArgExpr:=argExpr as TConstParamExpr;
+   if argExpr is TConstParamExpr then
+      FArgExpr:=argExpr
+   else FArgExpr:=nil;  // error caught earlier, if not, ensure runtime crash
 end;
 
 // InitPushResult

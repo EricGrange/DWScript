@@ -345,7 +345,7 @@ begin
    if (offset>=-128) and (offset<=127) then begin
 
       if (value>=-128) and (value<=127) then
-         WriteBytes([code1, code2, offset, value])
+         WriteBytes([code1, code2, Byte(offset), Byte(value)])
       else begin
          WriteBytes([code1-2, code2, offset]);
          WriteInt32(value);
@@ -356,7 +356,7 @@ begin
       if (value>=-128) and (value<=127) then begin
          WriteBytes([code1, code2+$40]);
          WriteInt32(offset);
-         WriteByte(value);
+         WriteByte(Byte(value));
       end else begin
          WriteBytes([code1-2, code2+$40]);
          WriteInt32(offset);
@@ -388,7 +388,7 @@ begin
    if reg=gprESP then
       WriteByte($24);
    if (rm and $40)<>0 then
-      WriteByte(offset)
+      WriteByte(Byte(offset))
    else if (rm and $80)<>0 then
       WriteInt32(offset);
 end;
@@ -422,7 +422,7 @@ begin
    WriteByte(sib);
 
    if (rm and $40)<>0 then
-      WriteByte(offset)
+      WriteByte(Byte(offset))
    else if (rm and $80)<>0 then
       WriteInt32(offset);
 end;
@@ -704,8 +704,8 @@ procedure Tx86WriteOnlyStream._add_eaxedx_imm(const imm : Int64);
 begin
    if imm=0 then Exit;
 
-   _add_reg_int32(gprEAX, imm);
-   _adc_reg_int32(gprEDX, imm shr 32);
+   _add_reg_int32(gprEAX, Integer(imm));
+   _adc_reg_int32(gprEDX, Integer(imm shr 32));
 end;
 
 // _add_eaxedx_execmem
@@ -722,8 +722,8 @@ procedure Tx86WriteOnlyStream._sub_eaxedx_imm(const imm : Int64);
 begin
    if imm=0 then Exit;
 
-   _sub_reg_int32(gprEAX, imm);
-   _sbb_reg_int32(gprEDX, imm shr 32);
+   _sub_reg_int32(gprEAX, Integer(imm));
+   _sbb_reg_int32(gprEDX, Integer(imm shr 32));
 end;
 
 // _sub_eaxedx_execmem
@@ -781,7 +781,7 @@ end;
 procedure Tx86WriteOnlyStream._op_reg_int32(const op : TgpOP; reg : TgpRegister; value : Integer);
 begin
    if (value>=-128) and (value<=127) then
-      WriteBytes([op.Short1, op.SIB+Ord(reg), value])
+      WriteBytes([op.Short1, op.SIB+Ord(reg), Byte(value)])
    else begin
       if reg=gprEAX then
          WriteBytes([op.LongEAX+Ord(reg)])
@@ -1087,16 +1087,16 @@ end;
 //
 procedure Tx86WriteOnlyStream._execmem64_inc(stackAddr : Integer; const imm : Int64);
 begin
-   _add_execmem_int32(stackAddr, 0, imm);
-   _adc_execmem_int32(stackAddr, 4, imm shr 32);
+   _add_execmem_int32(stackAddr, 0, Integer(imm));
+   _adc_execmem_int32(stackAddr, 4, Integer(imm shr 32));
 end;
 
 // _execmem64_dec
 //
 procedure Tx86WriteOnlyStream._execmem64_dec(stackAddr : Integer; const imm : Int64);
 begin
-   _sub_execmem_int32(stackAddr, 0, imm);
-   _sbb_execmem_int32(stackAddr, 4, imm shr 32);
+   _sub_execmem_int32(stackAddr, 0, Integer(imm));
+   _sbb_execmem_int32(stackAddr, 4, Integer(imm shr 32));
 end;
 
 // _fild_execmem

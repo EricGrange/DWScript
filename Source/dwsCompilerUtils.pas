@@ -47,6 +47,30 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+type
+   TCheckAbstractClassConstruction = class (TErrorMessage)
+      FClassSym : TClassSymbol;
+      constructor Create(msgs: TdwsMessageList; const text : String; const p : TScriptPos;
+                         classSym : TClassSymbol); overload;
+      function IsValid : Boolean; override;
+   end;
+
+// Create
+//
+constructor TCheckAbstractClassConstruction.Create(msgs: TdwsMessageList; const text : String; const p : TScriptPos;
+                                                   classSym : TClassSymbol);
+begin
+   inherited Create(msgs, Format(MSG_Error, [text]), p);
+   FClassSym:=classSym;
+end;
+
+// IsValid
+//
+function TCheckAbstractClassConstruction.IsValid : Boolean;
+begin
+   Result:=FClassSym.IsAbstract;
+end;
+
 // CreateFuncExpr
 //
 function CreateFuncExpr(prog : TdwsProgram; funcSym: TFuncSymbol;
@@ -90,6 +114,7 @@ function CreateMethodExpr(prog: TdwsProgram; meth: TMethodSymbol; var expr: TTyp
 var
    helper : THelperSymbol;
    internalFunc : TInternalMagicFunction;
+   classSymbol : TClassSymbol;
 begin
    // Create the correct TExpr for a method symbol
    Result := nil;
@@ -120,10 +145,13 @@ begin
 
       end else if (expr.Typ is TClassOfSymbol) then begin
 
-         if expr.IsConstant and TClassOfSymbol(expr.Typ).TypClassSymbol.IsAbstract then begin
-            if meth.Kind=fkConstructor then
-               prog.CompileMsgs.AddCompilerError(scriptPos, RTE_InstanceOfAbstractClass)
-            else prog.CompileMsgs.AddCompilerError(scriptPos, CPE_AbstractClassUsage);
+         if expr.IsConstant then begin
+            classSymbol:=TClassOfSymbol(expr.Typ).TypClassSymbol;
+            if classSymbol.IsAbstract then begin
+               if meth.Kind=fkConstructor then
+                  TCheckAbstractClassConstruction.Create(prog.CompileMsgs, RTE_InstanceOfAbstractClass, scriptPos, classSymbol)
+               else TCheckAbstractClassConstruction.Create(prog.CompileMsgs, CPE_AbstractClassUsage, scriptPos, classSymbol);
+            end;
          end;
 
       end;

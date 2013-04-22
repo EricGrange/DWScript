@@ -1381,7 +1381,8 @@ type
    TClassSymbolFlag = (csfAbstract, csfExplicitAbstract, csfSealed,
                        csfStatic, csfExternal, csfPartial,
                        csfNoVirtualMembers, csfNoOverloads,
-                       csfExternalRooted);
+                       csfExternalRooted,
+                       csfInitialized);
    TClassSymbolFlags = set of TClassSymbolFlag;
 
    // type X = class ... end;
@@ -1408,11 +1409,11 @@ type
          function GetIsExternalRooted : Boolean; override;
          function GetIsPartial : Boolean; override;
 
-         function AllocateVMTindex : Integer;
-
          function DoIsOfType(typSym : TTypeSymbol) : Boolean; override;
 
-         procedure AddOverriddenInterfaceCallback(const item : TResolvedInterface);
+         procedure ProcessOverriddenInterfaceCallback(const item : TResolvedInterface);
+         procedure ProcessOverriddenInterfaces;
+         function  ProcessOverriddenInterface(const ancestorResolved : TResolvedInterface) : Boolean; // True if added
 
       public
          constructor Create(const name : String; aUnit : TSymbol);
@@ -1424,8 +1425,6 @@ type
 
          function  AddInterface(intfSym : TInterfaceSymbol; visibility : TdwsVisibility;
                                 var missingMethod : TMethodSymbol) : Boolean; // True if added
-         function  AddOverriddenInterface(const ancestorResolved : TResolvedInterface) : Boolean; // True if added
-         procedure AddOverriddenInterfaces;
          function  ResolveInterface(intfSym : TInterfaceSymbol; var resolved : TResolvedInterface) : Boolean;
          function  ImplementsInterface(intfSym : TInterfaceSymbol) : Boolean;
          procedure SetIsPartial; inline;
@@ -3465,10 +3464,14 @@ begin
    else if Attributes = [maVirtual, maAbstract] then begin
       IsVirtual := True;
       IsAbstract := True;
-   end else if Attributes = [maOverride] then begin
-      if IsOverlap then
-         SetOverride(TMethodSymbol(meth))
-      else raise Exception.CreateFmt(CPE_CanNotOverride, [Name]);
+   end else if Attributes = [maVirtual, maOverride] then begin
+      if (not IsOverlap) or (ParentMeth=nil) then
+         raise Exception.CreateFmt(CPE_CanNotOverride, [Name])
+      else if (not ParentMeth.IsVirtual)   then
+         raise Exception.CreateFmt(CPE_CantOverrideNotVirtual, [Name])
+      else if ParentMeth.IsFinal then
+         raise Exception.CreateFmt(CPE_CantOverrideFinal, [Name])
+      else SetOverride(TMethodSymbol(meth));
    end else if Attributes = [maReintroduce] then
       //
    else if IsClassMethod and ((Attributes = [maStatic]) or (Attributes = [maStatic, maClassMethod]))  then
@@ -3527,17 +3530,10 @@ end;
 // SetIsVirtual
 //
 procedure TMethodSymbol.SetIsVirtual(const val : Boolean);
-var
-   classSymbol : TClassSymbol;
 begin
-   if val then begin
-      classSymbol:=(StructSymbol as TClassSymbol);
-      Include(FAttributes, maVirtual);
-      if FVMTIndex<0 then begin
-         FVMTIndex:=classSymbol.AllocateVMTindex;
-         classSymbol.FVirtualMethodTable[FVMTIndex]:=Self;
-      end;
-   end else Exclude(FAttributes, maVirtual);
+   if val then
+      Include(FAttributes, maVirtual)
+   else Exclude(FAttributes, maVirtual);
 end;
 
 // GetIsAbstract
@@ -3693,19 +3689,12 @@ end;
 // SetOverride
 //
 procedure TMethodSymbol.SetOverride(meth: TMethodSymbol);
-var
-   classSymbol : TClassSymbol;
 begin
    FParentMeth:=meth;
    FVMTIndex:=meth.FVMTIndex;
    IsVirtual:=True;
    SetIsOverride(True);
    SetIsOverlap(False);
-
-   classSymbol:=(StructSymbol as TClassSymbol);
-   // make array unique
-   SetLength(classSymbol.FVirtualMethodTable, Length(classSymbol.FVirtualMethodTable));
-   classSymbol.FVirtualMethodTable[FVMTIndex]:=Self;
 end;
 
 // SetOverlap
@@ -3942,24 +3931,10 @@ end;
 // AddMethod
 //
 procedure TClassSymbol.AddMethod(methSym : TMethodSymbol);
-var
-   i : Integer;
-   methodSymbol : TMethodSymbol;
 begin
    inherited;
-   // Check if class is abstract or not
    if methSym.IsAbstract then
-      Include(FFlags, csfAbstract)
-   else if methSym.IsOverride and methSym.FParentMeth.IsAbstract then begin
-      Exclude(FFlags, csfAbstract);
-      for i:=0 to High(FVirtualMethodTable) do begin
-         methodSymbol:=FVirtualMethodTable[i];
-         if methodSymbol.IsAbstract then begin
-            Include(FFlags, csfAbstract);
-            Break;
-         end;
-      end;
-   end;
+      Include(FFlags, csfAbstract);
 end;
 
 // AddOperator
@@ -4009,9 +3984,9 @@ begin
    Result:=True;
 end;
 
-// AddOverriddenInterface
+// ProcessOverriddenInterface
 //
-function TClassSymbol.AddOverriddenInterface(const ancestorResolved : TResolvedInterface) : Boolean;
+function TClassSymbol.ProcessOverriddenInterface(const ancestorResolved : TResolvedInterface) : Boolean;
 var
    i : Integer;
    newResolved : TResolvedInterface;
@@ -4037,9 +4012,9 @@ begin
    end;
 end;
 
-// AddOverriddenInterfaces
+// ProcessOverriddenInterfaces
 //
-procedure TClassSymbol.AddOverriddenInterfaces;
+procedure TClassSymbol.ProcessOverriddenInterfaces;
 var
    iter : TClassSymbol;
    loopProtection : TList;
@@ -4053,7 +4028,7 @@ begin
          loopProtection.Add(iter);
          ri:=iter.Interfaces;
          if ri<>nil then begin
-            ri.Enumerate(AddOverriddenInterfaceCallback);
+            ri.Enumerate(ProcessOverriddenInterfaceCallback);
          end;
          iter:=iter.Parent;
       end;
@@ -4062,11 +4037,11 @@ begin
    end;
 end;
 
-// AddOverriddenInterfaceCallback
+// ProcessOverriddenInterfaceCallback
 //
-procedure TClassSymbol.AddOverriddenInterfaceCallback(const item : TResolvedInterface);
+procedure TClassSymbol.ProcessOverriddenInterfaceCallback(const item : TResolvedInterface);
 begin
-   AddOverriddenInterface(item);
+   ProcessOverriddenInterface(item);
 end;
 
 // ResolveInterface
@@ -4113,12 +4088,80 @@ end;
 // Initialize
 //
 procedure TClassSymbol.Initialize(const msgs : TdwsCompileMessageList);
+var
+   i, a, v : Integer;
+   differentVMT : Boolean;
+   sym : TSymbol;
+   field : TFieldSymbol;
+   meth : TMethodSymbol;
 begin
+   if csfInitialized in Flags then Exit;
+   Include(FFlags, csfInitialized);
+
    // Check validity of the class declaration
    if IsForwarded then begin
       msgs.AddCompilerErrorFmt(FForwardPosition^, CPE_ClassNotCompletelyDefined, [Name]);
       Exit;
    end;
+
+   if Parent<>nil then begin
+      Parent.Initialize(msgs);
+      a:=Parent.ScriptInstanceSize;
+      FVirtualMethodTable:=Parent.FVirtualMethodTable;
+   end else begin
+      a:=0;
+      FVirtualMethodTable:=nil;
+   end;
+   v:=Length(FVirtualMethodTable);
+   differentVMT:=False;
+
+   // remap field offset & vmt index (cares for partial classes)
+   for i:=0 to FMembers.Count-1 do begin
+      sym:=FMembers[i];
+      if sym.ClassType=TFieldSymbol then begin
+         field:=TFieldSymbol(sym);
+         field.FOffset:=a;
+         Inc(a, field.Typ.Size);
+      end else if sym is TMethodSymbol then begin
+         meth:=TMethodSymbol(sym);
+         if meth.IsVirtual then begin
+            differentVMT:=True;
+            if meth.IsOverride then
+               meth.FVMTIndex:=meth.ParentMeth.VMTIndex
+            else begin
+               meth.FVMTIndex:=v;
+               Inc(v);
+            end;
+         end;
+      end;
+   end;
+   FScriptInstanceSize:=a;
+   // prepare VMT
+   if differentVMT then begin
+      SetLength(FVirtualMethodTable, v); // make unique (and resize if necessary)
+      for sym in FMembers do begin
+         if sym is TMethodSymbol then begin
+            meth:=TMethodSymbol(sym);
+            if meth.IsVirtual then
+               FVirtualMethodTable[meth.FVMTIndex]:=meth;
+         end;
+      end;
+   end;
+   // update abstract flag
+   if csfAbstract in FFlags then begin
+      if differentVMT then begin
+         Exclude(FFlags, csfAbstract);
+         for i:=0 to High(FVirtualMethodTable) do begin
+            if FVirtualMethodTable[i].IsAbstract then begin
+               Include(FFlags, csfAbstract);
+               Break;
+            end;
+         end;
+      end else if not (csfAbstract in Parent.FFlags) then
+         Exclude(FFlags, csfAbstract);
+   end;
+   // process overridden interfaces
+   ProcessOverriddenInterfaces;
 
    CheckMethodsImplemented(msgs);
 end;
@@ -4132,8 +4175,6 @@ begin
    if csfAbstract in ancestorClassSym.FFlags then
       Include(FFlags, csfAbstract);
    FScriptInstanceSize:=ancestorClassSym.ScriptInstanceSize;
-
-   FVirtualMethodTable:=ancestorClassSym.FVirtualMethodTable;
 
    IsStatic:=IsStatic or ancestorClassSym.IsStatic;
 
@@ -4312,14 +4353,6 @@ end;
 procedure TClassSymbol.SetNoOverloads;
 begin
    Include(FFlags, csfNoOverloads);
-end;
-
-// AllocateVMTindex
-//
-function TClassSymbol.AllocateVMTindex : Integer;
-begin
-   Result:=Length(FVirtualMethodTable);
-   SetLength(FVirtualMethodTable, Result+1);
 end;
 
 // FindClassOperatorStrict
@@ -6433,7 +6466,6 @@ var
 begin
    msg:=TRuntimeErrorMessage.Create(Self, Text, scriptPos);
    msg.FCallStack:=callStack;
-   HasErrors:=True;
 end;
 
 // ------------------

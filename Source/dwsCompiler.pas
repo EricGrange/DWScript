@@ -1542,6 +1542,8 @@ begin
       if Assigned(FOnGetDefaultLocalizer) then
          FMainProg.DefaultLocalizer:=FOnGetDefaultLocalizer();
 
+      FMsgs.RemoveInvalidDeferred;
+
    except
       on e: ECompileError do
          ;
@@ -6635,8 +6637,7 @@ begin
          FMsgs.AddCompilerError(funcExpr.Pos, CPE_TooFewArguments);
    end;
 
-   if not FMsgs.HasErrors then
-      funcExpr.Initialize(FProg);
+   funcExpr.Initialize(FProg);
 end;
 
 // ReadArguments
@@ -7727,7 +7728,6 @@ begin
             if not Result.AddInterface(intfTyp, cvPrivate, missingMethod) then
                FMsgs.AddCompilerErrorFmt(namePos, CPE_MissingMethodForInterface, [missingMethod.Name, intfTyp.Name]);
          end;
-         Result.AddOverriddenInterfaces;
 
       except
          // Set Result to nil to prevent auto-forward removal then re-reraise
@@ -12470,7 +12470,7 @@ begin
    sysTable.TypException.AddProperty(propSym);
    TExceptionCreateMethod.Create(mkConstructor, [], SYS_TOBJECT_CREATE,
                                  ['Msg', SYS_STRING], '', sysTable.TypException, cvPublic, sysTable);
-   TExceptionDestroyMethod.Create(mkDestructor, [maOverride], SYS_TOBJECT_DESTROY,
+   TExceptionDestroyMethod.Create(mkDestructor, [maVirtual, maOverride], SYS_TOBJECT_DESTROY,
                                  [], '', sysTable.TypException, cvPublic, sysTable);
    TExceptionStackTraceMethod.Create(mkFunction, [], SYS_EXCEPTION_STACKTRACE,
                                  [], SYS_STRING, sysTable.TypException, cvPublic, sysTable);
@@ -12871,7 +12871,6 @@ procedure TdwsOptimizationMessageList.AddMessage(aMessage : TdwsMessage);
 begin
    inherited;
    FCompileMsgs.AddMessage(aMessage);
-   FCompileMsgs.HasErrors:=FCompileMsgs.HasErrors or HasErrors;
 end;
 
 // ------------------

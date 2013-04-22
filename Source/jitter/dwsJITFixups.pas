@@ -227,7 +227,7 @@ end;
 procedure TFixupLogic.FlushFixups(const rawCode : TBytes; outStream : TWriteOnlyBlockStream);
 var
    fixup : TFixup;
-   prevLocation : Integer;
+   prevLocation, n : Integer;
 begin
    outStream.Clear;
 
@@ -245,7 +245,9 @@ begin
    fixup:=FBase;
    prevLocation:=0;
    while fixup<>nil do begin
-      outStream.Write(rawCode[prevLocation], fixup.Location-prevLocation);
+      n:=fixup.Location-prevLocation;
+      if n>0 then
+         outStream.Write(rawCode[prevLocation], n);
       prevLocation:=fixup.Location;
       fixup.Write(outStream);
       fixup:=fixup.Next;

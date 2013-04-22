@@ -93,6 +93,9 @@ type
          constructor Create(aMessageList : TdwsMessageList; const Text: String);
 
          function AsInfo : String; virtual; abstract;
+         function IsError : Boolean; virtual;
+         function IsValid : Boolean; virtual;
+
          property Text : String read FText;
    end;
 
@@ -167,6 +170,7 @@ type
    end;
 
    TErrorMessage = class(TScriptMessage)
+      function IsError : Boolean; override;
    end;
 
    TCompilerErrorMessage = class(TErrorMessage)
@@ -183,11 +187,12 @@ type
       private
          FMessageList : TTightList;
          FSourceFiles : TTightList;
-         FHasErrors : Boolean;
+         FErrorsCount : Integer;
 
       protected
          function GetMsg(Index: Integer): TdwsMessage;
          function GetMsgCount: Integer;
+         function GetHasErrors : Boolean;
 
       public
          destructor Destroy; override;
@@ -198,12 +203,13 @@ type
          procedure AddMessage(aMessage : TdwsMessage); virtual;
          procedure AddMsgs(src : TdwsMessageList; lineOffset, colOffset : Integer);
          procedure Clear;
+         procedure RemoveInvalidDeferred;
 
          function AsInfo: String;
 
          property Msgs[index : Integer] : TdwsMessage read GetMsg; default;
          property Count : Integer read GetMsgCount;
-         property HasErrors : Boolean read FHasErrors write FHasErrors;
+         property HasErrors : Boolean read GetHasErrors;
    end;
 
    TdwsHintsLevel = (hlDisabled, hlNormal, hlStrict, hlPedantic);
@@ -484,7 +490,25 @@ procedure TdwsMessageList.Clear;
 begin
    FMessageList.Clean;
    FSourceFiles.Clean;
-   FHasErrors:=False;
+   FErrorsCount:=0;
+end;
+
+// RemoveInvalidDeferred
+//
+procedure TdwsMessageList.RemoveInvalidDeferred;
+var
+   i : Integer;
+   msg : TdwsMessage;
+begin
+   for i:=FMessageList.Count-1 downto 0 do begin
+      msg:=GetMsg(i);
+      if not msg.IsValid then begin
+         if msg.IsError then
+            Dec(FErrorsCount);
+         msg.Free;
+         FMessageList.Delete(i);
+      end;
+   end;
 end;
 
 // GetMsg
@@ -501,11 +525,20 @@ begin
    Result:=FMessageList.Count;
 end;
 
+// GetHasErrors
+//
+function TdwsMessageList.GetHasErrors : Boolean;
+begin
+   Result:=(FErrorsCount>0);
+end;
+
 // AddMessage
 //
 procedure TdwsMessageList.AddMessage(aMessage: TdwsMessage);
 begin
    FMessageList.Add(aMessage);
+   if aMessage.IsError then
+      Inc(FErrorsCount);
 end;
 
 // AddMsgs
@@ -582,6 +615,20 @@ begin
    aMessageList.AddMessage(Self);
 end;
 
+// IsError
+//
+function TdwsMessage.IsError : Boolean;
+begin
+   Result:=False;
+end;
+
+// IsValid
+//
+function TdwsMessage.IsValid : Boolean;
+begin
+   Result:=True;
+end;
+
 // ------------------
 // ------------------ TInfoMessage ------------------
 // ------------------
@@ -640,6 +687,17 @@ end;
 function TWarningMessage.AsInfo: String;
 begin
    Result:=Format(MSG_Warning, [inherited AsInfo]);
+end;
+
+// ------------------
+// ------------------ TErrorMessage ------------------
+// ------------------
+
+// IsError
+//
+function TErrorMessage.IsError : Boolean;
+begin
+   Result:=True;
 end;
 
 // ------------------
@@ -718,7 +776,6 @@ function TdwsCompileMessageList.AddCompilerError(const Pos: TScriptPos;
       const Text: String; messageClass : TScriptMessageClass) : TScriptMessage;
 begin
    Result:=messageClass.Create(Self, Text, Pos);
-   FHasErrors:=True;
 end;
 
 // AddCompilerError

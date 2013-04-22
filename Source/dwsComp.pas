@@ -702,6 +702,7 @@ type
          function GetOnEval : TMethodEvalEvent;
          procedure SetOnEval(const val : TMethodEvalEvent);
          procedure SetResultType(const Value: TDataType);
+         procedure SetAttributes(const attribs : TMethodAttributes);
 
       public
          constructor Create(collection : TCollection); override;
@@ -710,7 +711,7 @@ type
          function DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol; override;
 
       published
-         property Attributes: TMethodAttributes read FAttributes write FAttributes default [];
+         property Attributes: TMethodAttributes read FAttributes write SetAttributes default [];
          property OnEval : TMethodEvalEvent read GetOnEval write SetOnEval;
          property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
          property Kind: TMethodKind read FKind write FKind;
@@ -3083,6 +3084,16 @@ begin
       mkClassFunction:
         FKind := mkClassProcedure;
     end;
+end;
+
+// SetAttributes
+//
+procedure TdwsMethod.SetAttributes(const attribs : TMethodAttributes);
+begin
+   FAttributes:=attribs;
+   // normalize attributes
+   if maOverride in attribs then
+      Include(FAttributes, maVirtual);
 end;
 
 procedure TdwsMethod.Assign(Source: TPersistent);
