@@ -123,6 +123,7 @@ function OpenFileForSequentialReadOnly(const fileName : String) : THandle;
 procedure CloseFileHandle(hFile : THandle);
 
 function DirectSet8087CW(newValue : Word) : Word; register;
+function DirectSetMXCSR(newValue : Word) : Word; register;
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -452,6 +453,24 @@ asm
    pop     eax
    fldcw   [esp]
    pop     edx
+{$endif}
+end;
+
+// DirectSetMXCSR
+//
+function DirectSetMXCSR(newValue : Word) : Word; register;
+{$ifdef WIN32_ASM}
+asm
+   and      eax, $FFC0
+   push     eax
+   push     eax
+   stmxcsr  [esp+4]
+   ldmxcsr  [esp]
+   pop eax
+   pop eax
+{$else}
+begin
+   Result:=newValue;
 {$endif}
 end;
 
