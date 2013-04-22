@@ -3107,7 +3107,7 @@ end;
 //
 function TClassCloneConstructor<T>.Create : T;
 begin
-   Result:=SysGetMem(FSize);
+   GetMem(Pointer(TObject(Result)), FSize);
    System.Move(Pointer(TObject(FTemplate))^, Pointer(TObject(Result))^, FSize);
 end;
 
