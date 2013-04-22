@@ -4998,6 +4998,8 @@ begin
          FMsgs.AddCompilerError(hotPos, RTE_TooManyIndices);
          indexExpr.Free;
          Continue;
+      end else if indexExpr=nil then begin
+         continue;
       end;
 
       baseType := TArraySymbol(baseExpr.BaseType);
@@ -5074,6 +5076,7 @@ begin
             end;
             Exit;
          end else begin
+            baseExpr.Free;
             indexExpr.Free;
          end;
 
@@ -5085,7 +5088,7 @@ begin
    Result:=baseExpr;
 
    if not FTok.TestDelete(ttARIGHT) then
-      FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
+      FMsgs.AddCompilerError(FTok.HotPos, CPE_ArrayBracketRightExpected);
 end;
 
 // ReadSymbolMemberExpr
