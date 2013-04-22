@@ -1,0 +1,5 @@
+Syntax Error: Expression expected [line: 3, column: 28]
+Syntax Error: Expression expected [line: 7, column: 27]
+Syntax Error: Function type expected [line: 7, column: 27]
+Warning: ";" expected. [line: 7, column: 27]
+Syntax Error: BEGIN expected [line: 7, column: 27]

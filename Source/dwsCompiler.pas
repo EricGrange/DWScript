@@ -6669,22 +6669,24 @@ begin
                arg:=ReadTerm(True, expectedType)
             else arg:=ReadExpr(expectedType);
 
-            if Optimize then
-               arg:=arg.OptimizeToTypedExpr(FProg, FExec, argPos);
+            if arg<>nil then begin
+               if Optimize then
+                  arg:=arg.OptimizeToTypedExpr(FProg, FExec, argPos);
 
-            if     (expectedType<>nil)
-               and (arg.Typ.IsFuncSymbol)
-               and not (expectedType.IsFuncSymbol) then begin
-               arg:=ReadFunc(TFuncSymbol(arg.Typ), arg as TDataExpr, nil);
+               if     (expectedType<>nil)
+                  and (arg.Typ.IsFuncSymbol)
+                  and not (expectedType.IsFuncSymbol) then begin
+                  arg:=ReadFunc(TFuncSymbol(arg.Typ), arg as TDataExpr, nil);
+               end;
+
+               AddArgProc(arg);
+               n:=Length(argPosArray);
+               SetLength(argPosArray, n+1);
+               argPosArray[n]:=argPos;
+
+               if (argSym<>nil) and (argSym.ClassType=TVarParamSymbol) and (arg is TVarExpr) then
+                  WarnForVarUsage(TVarExpr(arg), argPos);
             end;
-
-            AddArgProc(arg);
-            n:=Length(argPosArray);
-            SetLength(argPosArray, n+1);
-            argPosArray[n]:=argPos;
-
-            if (argSym<>nil) and (argSym.ClassType=TVarParamSymbol) and (arg is TVarExpr) then
-               WarnForVarUsage(TVarExpr(arg), argPos);
          until not (FTok.TestDelete(ttCOMMA) and FTok.HasTokens);
          if not FTok.TestDelete(rightDelim) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
@@ -10079,14 +10081,16 @@ begin
                         exprPos:=FTok.HotPos;
                         defaultExpr:=ReadExpr;
 
-                        if (not defaultExpr.IsConstant) or (defaultExpr.Typ=nil) then begin
-                           FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
-                           defaultExpr.Free;
-                           defaultExpr:=nil;
-                        end else if not Typ.IsCompatible(defaultExpr.Typ) then begin
-                           defaultExpr:=WrapWithImplicitConversion(defaultExpr, Typ);
-                           if defaultExpr.ClassType=TConvInvalidExpr then
-                              FreeAndNil(defaultExpr);
+                        if defaultExpr<>nil then begin
+                           if (not defaultExpr.IsConstant) or (defaultExpr.Typ=nil) then begin
+                              FMsgs.AddCompilerError(FTok.HotPos, CPE_ConstantExpressionExpected);
+                              defaultExpr.Free;
+                              defaultExpr:=nil;
+                           end else if not Typ.IsCompatible(defaultExpr.Typ) then begin
+                              defaultExpr:=WrapWithImplicitConversion(defaultExpr, Typ);
+                              if defaultExpr.ClassType=TConvInvalidExpr then
+                                 FreeAndNil(defaultExpr);
+                           end;
                         end;
                      end else if onlyDefaultParamsNow then begin
                         FMsgs.AddCompilerError(FTok.HotPos, CPE_DefaultValueRequired);
