@@ -5188,7 +5188,10 @@ function TProgramInfo.GetVars(const str : String): IInfo;
       if sym.Level=pin.FLevel then
          basePointer:=exec.Stack.BasePointer
       else basePointer:=exec.Stack.GetSavedBp(pin.Level);
-      if (sym.ClassType=TVarParamSymbol) or (sym.Typ is TOpenArraySymbol) then begin
+      if    (sym is TByRefParamSymbol)
+         or (sym.Typ is TOpenArraySymbol)
+         or ((sym is TSelfSymbol) and (sym.Typ is TRecordSymbol))
+         then begin
          GetVarParamVars(sym, basePointer, Result);
       end else begin
          exec.DataContext_CreateBase(sym.StackAddr, locData);
