@@ -68,6 +68,7 @@ type
          procedure NormalizeFloatArrayElements;
          procedure MultiRunProtection;
          procedure MultipleHostExceptions;
+         procedure OverloadOverrideIndwsUnit;
 
    end;
 
@@ -1381,6 +1382,61 @@ begin
    exec:=prog.Execute;
    CheckEquals('Runtime Error: boom in HostExcept [line: 2, column: 1]'#13#10, exec.Msgs.AsInfo);
    CheckEquals('gobbled', exec.Result.ToString);
+end;
+
+// OverloadOverrideIndwsUnit
+//
+procedure TCornerCasesTests.OverloadOverrideIndwsUnit;
+var
+   un : TdwsUnit;
+   cls : TdwsClass;
+   cst : TdwsConstructor;
+begin
+   un:=TdwsUnit.Create(nil);
+   try
+      un.Name := 'dwsUnitTest';
+      un.UnitName := 'TestUnit';
+      un.Script := FCompiler;
+
+      cls:=un.Classes.Add;
+      cls.Name := 'TClassA';
+      cls.IsAbstract := True;
+
+      cst:=cls.Constructors.Add;
+      cst.Name := 'Create';
+      cst.Attributes := [maVirtual, maAbstract];
+      cst.Overloaded := True;
+      cst.Parameters.Add('Test', 'Float');
+
+      cst:=cls.Constructors.Add;
+      cst.Name := 'Create';
+      cst.Attributes := [maVirtual, maAbstract];
+      cst.Overloaded := True;
+      cst.Parameters.Add('Test', 'Float');
+      cst.Parameters.Add('B', 'Integer');
+
+      cls:=un.Classes.Add;
+      cls.Name := 'TClassB';
+      cls.Ancestor := 'TClassA';
+
+      cst:=cls.Constructors.Add;
+      cst.Name := 'Create';
+      cst.Attributes := [maOverride];
+      cst.Overloaded := True;
+      cst.Parameters.Add('Test', 'Float');
+
+      cst:=cls.Constructors.Add;
+      cst.Name := 'Create';
+      cst.Attributes := [maOverride];
+      cst.Overloaded := True;
+      cst.Parameters.Add('Test', 'Float');
+      cst.Parameters.Add('B', 'Integer');
+
+      CheckEquals('', FCompiler.Compile('').Msgs.AsInfo);
+
+   finally
+      un.Free;
+   end;
 end;
 
 // ------------------------------------------------------------------

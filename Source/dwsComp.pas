@@ -747,6 +747,7 @@ type
          function GetDisplayName: String; override;
          function GetOnEval : TAssignExternalObjectEvent;
          procedure SetOnEval(const val : TAssignExternalObjectEvent);
+         procedure SetAttributes(const attribs : TMethodAttributes);
 
       public
          constructor Create(Collection: TCollection); override;
@@ -757,7 +758,7 @@ type
       published
          property Visibility : TdwsVisibility read FVisibility write FVisibility default cvPublic;
          property OnEval : TAssignExternalObjectEvent read GetOnEval write SetOnEval;
-         property Attributes: TMethodAttributes read FAttributes write FAttributes default [];
+         property Attributes: TMethodAttributes read FAttributes write SetAttributes default [];
          property ResultType: String read GetResultType;
    end;
 
@@ -3204,6 +3205,16 @@ end;
 procedure TdwsConstructor.SetOnEval(const val : TAssignExternalObjectEvent);
 begin
    TdwsConstructorCallable(FCallable).OnEval:=val;
+end;
+
+// SetAttributes
+//
+procedure TdwsConstructor.SetAttributes(const attribs : TMethodAttributes);
+begin
+   FAttributes:=attribs;
+   // normalize attributes
+   if maOverride in attribs then
+      Include(FAttributes, maVirtual);
 end;
 
 function TdwsConstructor.GetResultType: String;
