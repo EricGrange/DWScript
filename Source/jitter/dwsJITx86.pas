@@ -243,6 +243,8 @@ type
       procedure CompileAsData(expr : TTypedExpr);
    end;
    Tx86DynamicArray = class (Tx86DynamicArrayBase)
+      procedure CompileAsItemPtr(expr : TDynamicArrayExpr; var delta : Integer);
+
       function DoCompileFloat(expr : TExprBase) : TxmmRegister; override;
       function CompileInteger(expr : TExprBase) : Integer; override;
       function CompileScriptObj(expr : TExprBase) : Integer; override;
@@ -1399,15 +1401,33 @@ procedure Tx86OpAssignFloat.CompileStatement(expr : TExprBase);
 var
    e : TOpAssignExpr;
    reg, regRight : TxmmRegister;
+   jitLeft : TdwsJITter;
+   delta : Integer;
 begin
    e:=TOpAssignExpr(expr);
 
    regRight:=jit.CompileFloat(e.Right);
-   reg:=jit.CompileFloat(e.Left);
 
-   x86._xmm_reg_reg(OP, reg, regRight);
+   if e.Left is TDynamicArrayExpr then begin
 
-   jit.CompileAssignFloat(e.Left, reg);
+      jitLeft:=jit.FindJITter(e.Left.ClassType);
+
+      (jitLeft as Tx86DynamicArray).CompileAsItemPtr(TDynamicArrayExpr(e.Left), delta);
+
+      reg:=jit.AllocXMMReg(e.Left);
+      x86._movsd_reg_qword_ptr_indexed(reg, gprEAX, gprECX, 1, delta);
+      x86._xmm_reg_reg(OP, reg, regRight);
+      x86._movsd_qword_ptr_indexed_reg(gprEAX, gprECX, 1, delta, reg);
+
+   end else begin
+
+      reg:=jit.CompileFloat(e.Left);
+
+      x86._xmm_reg_reg(OP, reg, regRight);
+
+      jit.CompileAssignFloat(e.Left, reg);
+
+   end;
 
    if regRight<>reg then
       jit.ReleaseXMMReg(regRight);
@@ -2393,6 +2413,19 @@ end;
 // ------------------ Tx86DynamicArray ------------------
 // ------------------
 
+// CompileAsItemPtr
+//
+procedure Tx86DynamicArray.CompileAsItemPtr(expr : TDynamicArrayExpr; var delta : Integer);
+begin
+   CompileAsData(expr.BaseExpr);
+
+   CompileIndexToGPR(expr.IndexExpr, gprECX, delta);
+   delta:=delta*SizeOf(Variant)*expr.Typ.Size+cVariant_DataOffset;
+
+   x86._shift_reg_imm(gpShl, gprECX, 4);
+   // TODO : range checking
+end;
+
 // DoCompileFloat
 //
 function Tx86DynamicArray.DoCompileFloat(expr : TExprBase) : TxmmRegister;
@@ -2404,13 +2437,7 @@ begin
 
    if jit.IsFloat(e) then begin
 
-      CompileAsData(e.BaseExpr);
-
-      CompileIndexToGPR(e.IndexExpr, gprECX, delta);
-      delta:=delta*SizeOf(Variant)+cVariant_DataOffset;
-
-      x86._shift_reg_imm(gpShl, gprECX, 4);
-      // TODO : range checking
+      CompileAsItemPtr(e, delta);
 
       Result:=jit.AllocXMMReg(e);
       x86._movsd_reg_qword_ptr_indexed(Result, gprEAX, gprECX, 1, delta);
@@ -2427,13 +2454,7 @@ var
 begin
    e:=TDynamicArrayExpr(expr);
 
-   CompileAsData(e.BaseExpr);
-
-   CompileIndexToGPR(e.IndexExpr, gprECX, delta);
-   delta:=delta*SizeOf(Variant)+cVariant_DataOffset;
-
-   x86._shift_reg_imm(gpShl, gprECX, 4);
-   // TODO : range checking
+   CompileAsItemPtr(e, delta);
 
    x86._mov_reg_dword_ptr_indexed(gprEDX, gprEAX, gprECX, 1, delta+4);
    x86._mov_reg_dword_ptr_indexed(gprEAX, gprEAX, gprECX, 1, delta);
@@ -2450,13 +2471,7 @@ var
 begin
    e:=TDynamicArrayExpr(expr);
 
-   CompileAsData(e.BaseExpr);
-
-   CompileIndexToGPR(e.IndexExpr, gprECX, delta);
-   delta:=delta*SizeOf(Variant)+cVariant_DataOffset;
-
-   x86._shift_reg_imm(gpShl, gprECX, 4);
-   // TODO : range checking
+   CompileAsItemPtr(e, delta);
 
    Result:=Ord(gprEAX);
    x86._mov_reg_dword_ptr_indexed(gprEAX, gprEAX, gprECX, 1, delta);
