@@ -1504,7 +1504,7 @@ type
       public
          procedure PrepareScriptObj;
 
-         function RegisterExternalObject(AObject: TObject; AutoFree: Boolean=False; ExactClassMatch: Boolean=True): Variant;
+         function RegisterExternalObject(AObject: TObject; AutoFree: Boolean=False; ExactClassMatch: Boolean=True): IScriptObj;
          function GetExternalObjForVar(const s: String): TObject;
          // cycle ancestry hierarchy and find the nearest matching type
          function FindClassMatch(AObject: TObject; ExactMatch: Boolean=True): TClassSymbol;
@@ -5629,7 +5629,7 @@ begin
   end;
 end;
 
-function TProgramInfo.RegisterExternalObject(AObject: TObject; AutoFree: Boolean; ExactClassMatch: Boolean): Variant;
+function TProgramInfo.RegisterExternalObject(AObject: TObject; AutoFree: Boolean; ExactClassMatch: Boolean): IScriptObj;
 var
   NewScriptObj: IScriptObj;
   ClassSym: TClassSymbol;
@@ -5652,10 +5652,10 @@ begin
       context := nil;
     NewScriptObj := TScriptObjInstance.Create(ClassSym, context);
     NewScriptObj.ExternalObject := AObject;
-    Result := IScriptObj(NewScriptObj);
+    Result := NewScriptObj;
   end
-  else                                     // no class returned or no object provided
-    Result := Unassigned;                  // return 'nil' Id
+  else                              // no class returned or no object provided
+    Result := nil;                  // return 'nil' Id
 end;
 
 function TProgramInfo.GetExternalObjForVar(const s: String): TObject;
