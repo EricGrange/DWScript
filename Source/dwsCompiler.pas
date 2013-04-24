@@ -26,7 +26,7 @@ interface
 uses
   Variants, Classes, SysUtils,
   dwsFileSystem, dwsUtils, dwsXPlatform,
-  dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors, dwsDataContext,
+  dwsExprs, dwsSymbols, dwsTokenizer, dwsErrors, dwsDataContext, dwsExprList,
   dwsStrings, dwsFunctions, dwsStack,
   dwsCoreExprs, dwsMagicExprs, dwsRelExprs, dwsMethodExprs, dwsConstExprs,
   dwsConnectorExprs, dwsConvExprs,

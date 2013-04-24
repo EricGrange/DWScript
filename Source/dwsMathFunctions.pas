@@ -25,6 +25,7 @@ interface
 
 uses
    Classes, Math,
+   dwsUtils,
    dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsXPlatform, dwsExprList;
 
 type
@@ -614,7 +615,7 @@ end;
 
 procedure TMinFunc.DoEvalAsFloat(args : TExprBaseList; var Result : Double);
 begin
-   Result:=Min(args.AsFloat[0], args.AsFloat[1]);
+   Result:=Math.Min(args.AsFloat[0], args.AsFloat[1]);
 end;
 
 { TClampFunc }

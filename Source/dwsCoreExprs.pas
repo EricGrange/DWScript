@@ -5369,11 +5369,8 @@ end;
 procedure TBlockExpr.EvalNoResult(exec : TdwsExecution);
 var
    i : Integer;
-   oldTable : TSymbolTable;
    expr : PProgramExpr;
 begin
-   oldTable:=exec.ContextTable;
-   exec.ContextTable:=FTable;
    expr:=@FStatements[0];
    try
       for i:=1 to FCount do begin
@@ -5382,9 +5379,7 @@ begin
          if exec.Status<>esrNone then Break;
          Inc(expr);
       end;
-      exec.ContextTable:=oldTable;
    except
-      exec.ContextTable:=oldTable;
       exec.SetScriptError(expr^);
       raise;
    end;

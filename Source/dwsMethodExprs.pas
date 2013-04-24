@@ -24,7 +24,7 @@ unit dwsMethodExprs;
 interface
 
 uses
-   dwsErrors, dwsStrings,
+   dwsErrors, dwsStrings, dwsUtils,
    dwsSymbols, dwsDataContext, dwsStack,
    dwsExprs, dwsExprList, dwsMagicExprs;
 
