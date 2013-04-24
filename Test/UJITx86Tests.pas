@@ -35,6 +35,7 @@ type
          procedure mov_64;
          procedure add_sub_32;
          procedure add_sub_execmem;
+         procedure inc_dword_ptr;
          procedure add_sub_dword_ptr_reg;
          procedure neg_32;
          procedure shr_shl_32;
@@ -534,6 +535,28 @@ begin
               +'sub dword ptr [ebx+00000808h], '+cgpRegisterName[reg]+#13#10
               +'sbb dword ptr [ebx+18h], '+cgpRegisterName[reg]+#13#10
               +'sbb dword ptr [ebx+00000808h], '+cgpRegisterName[reg]+#13#10
+              ;
+      CheckEquals(expect, DisasmStream);
+   end;
+end;
+
+// inc_dword_ptr
+//
+procedure TJITx86Tests.inc_dword_ptr;
+var
+   reg : TgpRegister;
+   expect : String;
+begin
+   for reg:=gprEAX to gprEDI do begin
+      FStream._inc_dword_ptr_reg(reg, 0);
+      FStream._inc_dword_ptr_reg(reg, $40);
+      FStream._inc_dword_ptr_reg(reg, $80);
+      if reg=gprEBP then
+         expect:='inc dword ptr ['+cgpRegisterName[reg]+'+00h]'#13#10
+      else expect:='inc dword ptr ['+cgpRegisterName[reg]+']'#13#10;
+      expect:= expect
+              +'inc dword ptr ['+cgpRegisterName[reg]+'+40h]'#13#10
+              +'inc dword ptr ['+cgpRegisterName[reg]+'+00000080h]'#13#10
               ;
       CheckEquals(expect, DisasmStream);
    end;

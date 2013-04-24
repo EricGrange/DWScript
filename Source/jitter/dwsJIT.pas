@@ -20,7 +20,7 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsExprs, dwsSymbols, dwsErrors, dwsUtils, dwsCoreExprs, dwsXPlatform,
+   dwsExprs, dwsExprList, dwsSymbols, dwsErrors, dwsUtils, dwsCoreExprs, dwsXPlatform,
    dwsRelExprs, dwsMagicExprs, dwsJITFixups;
 
 type

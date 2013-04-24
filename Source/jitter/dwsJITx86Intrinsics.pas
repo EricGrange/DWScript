@@ -179,6 +179,8 @@ type
          procedure _sub_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
          procedure _sbb_reg_dword_ptr_reg(dest, src : TgpRegister; offset : Integer);
 
+         procedure _inc_dword_ptr_reg(reg : TgpRegister; offset : Integer);
+
          procedure _mul_reg(reg : TgpRegister);
          procedure _mul_dword_ptr_reg(reg : TgpRegister; offset : Integer);
          procedure _imul_reg_reg(dest, src : TgpRegister);
@@ -205,6 +207,7 @@ type
          procedure _sub_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
          procedure _sbb_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
 
+         procedure _execmem32_inc(stackAddr : Integer; const imm : Int32);
          procedure _execmem64_inc(stackAddr : Integer; const imm : Int64);
          procedure _execmem64_dec(stackAddr : Integer; const imm : Int64);
 
@@ -895,6 +898,14 @@ begin
    _modRMSIB_regnum_ptr_reg([$1B], Ord(dest), src, offset);
 end;
 
+// _inc_dword_ptr_reg
+//
+procedure Tx86WriteOnlyStream._inc_dword_ptr_reg(reg : TgpRegister; offset : Integer);
+begin
+   WriteByte($FF);
+   _modRMSIB_ptr_reg(0, reg, offset);
+end;
+
 // _mul_reg
 //
 procedure Tx86WriteOnlyStream._mul_reg(reg : TgpRegister);
@@ -1081,6 +1092,16 @@ end;
 procedure Tx86WriteOnlyStream._sbb_execmem_reg(stackAddr, offset : Integer; reg : TgpRegister);
 begin
    _modRMSIB_reg_execmem([$19], reg, stackAddr, offset);
+end;
+
+// _execmem32_inc
+//
+procedure Tx86WriteOnlyStream._execmem32_inc(stackAddr : Integer; const imm : Int32);
+begin
+   if imm=0 then Exit;
+   if imm=1 then
+      _inc_dword_ptr_reg(cExecMemGPR, StackAddrToOffset(stackAddr))
+   else _add_execmem_int32(stackAddr, 0, imm);
 end;
 
 // _execmem64_inc

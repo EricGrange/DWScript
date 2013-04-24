@@ -54,7 +54,7 @@ type
 
    TFixupPreamble = class(TFixup)
       private
-         FPreserveExecInEDI : Boolean;
+         FPreserveExec : Boolean;
          FTempSpaceOnStack : Integer;
          FAllocatedStackSpace : Integer;
 
@@ -65,7 +65,9 @@ type
          procedure NeedTempSpace(bytes : Integer);
          function AllocateStackSpace(bytes : Integer) : Integer;
 
-         property PreserveExecInEDI : Boolean read FPreserveExecInEDI write FPreserveExecInEDI;
+         function NeedEBP : Boolean; inline;
+
+         property PreserveExec : Boolean read FPreserveExec write FPreserveExec;
          property TempSpaceOnStack : Integer read FTempSpaceOnStack write FTempSpaceOnStack;
          property AllocatedStackSpace : Integer read FAllocatedStackSpace write FAllocatedStackSpace;
    end;
@@ -104,6 +106,8 @@ type
          FSignMaskPD : TdwsJITCodeBlock;
          FBufferBlock : TdwsJITCodeBlock;
 
+         FHint32bitSymbol : TObjectsLookup;
+
       protected
          function CreateOutput : TWriteOnlyBlockStream; override;
 
@@ -126,6 +130,9 @@ type
 
          function StackAddrOfFloat(expr : TTypedExpr) : Integer;
 
+         procedure Hint32Bit(obj : TRefCountedObject);
+         function Is32BitHinted(obj : TRefCountedObject) : Boolean;
+
          property Allocator : TdwsJITAllocatorWin read FAllocator write FAllocator;
          property AbsMaskPD : Pointer read FAbsMaskPD.Code;
          property SignMaskPD : Pointer read FSignMaskPD.Code;
@@ -143,6 +150,7 @@ type
          function _store_eaxedx : Integer;
          procedure _restore_eaxedx(addr : Integer);
 
+         procedure _mov_reg_execInstance(reg : TgpRegister);
          procedure _DoStep(expr : TExprBase);
          procedure _RangeCheck(expr : TExprBase; reg : TgpRegister;
                                delta, miniInclusive, maxiExclusive : Integer);
@@ -438,6 +446,10 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+const
+   cExecInstanceGPR = gprEDI;
+   cExecInstanceEBPoffset = 4;
+
 function int64_div(a, b : Int64) : Int64;
 begin
    Result:=a div b;
@@ -484,6 +496,8 @@ begin
    FBufferBlock:=FAllocator.Allocate(TBytes.Create($66, $66, $66, $90, $66, $66, $66, $90,
                                                    $66, $66, $66, $90, $66, $66, $66, $90));
 
+   FHint32bitSymbol:=TObjectsLookup.Create;
+
    JITTedProgramExprClass:=TProgramExpr86;
    JITTedFloatExprClass:=TFloatExpr86;
    JITTedIntegerExprClass:=TIntegerExpr86;
@@ -513,6 +527,7 @@ begin
    RegisterJITter(TArrayLengthExpr,             Tx86InterpretedExpr.Create(Self));
    RegisterJITter(TArraySetLengthExpr,          Tx86InterpretedExpr.Create(Self));
 
+   RegisterJITter(TBlockExpr,                   Tx86BlockExprNoTable.Create(Self));
    RegisterJITter(TBlockExprNoTable,            Tx86BlockExprNoTable.Create(Self));
    RegisterJITter(TBlockExprNoTable2,           Tx86BlockExprNoTable.Create(Self));
    RegisterJITter(TBlockExprNoTable3,           Tx86BlockExprNoTable.Create(Self));
@@ -612,6 +627,7 @@ end;
 destructor TdwsJITx86.Destroy;
 begin
    inherited;
+   FHint32bitSymbol.Free;
    FAllocator.Free;
    FSignMaskPD.Free;
    FAbsMaskPD.Free;
@@ -770,6 +786,20 @@ begin
    else Result:=-1;
 end;
 
+// Hint32Bit
+//
+procedure TdwsJITx86.Hint32Bit(obj : TRefCountedObject);
+begin
+   FHint32bitSymbol.Add(obj);
+end;
+
+// Is32BitHinted
+//
+function TdwsJITx86.Is32BitHinted(obj : TRefCountedObject) : Boolean;
+begin
+   Result:=(FHint32bitSymbol.Count>0) and (FHint32bitSymbol.IndexOf(obj)>=0);
+end;
+
 // CompileFloat
 //
 function TdwsJITx86.CompileFloat(expr : TTypedExpr) : TxmmRegister;
@@ -807,6 +837,7 @@ procedure TdwsJITx86.StartJIT(expr : TExprBase; exitable : Boolean);
 begin
    inherited;
    ResetXMMReg;
+   FHint32bitSymbol.Clear;
    Fixups.ClearFixups;
    FPreamble:=TFixupPreamble.Create;
    Fixups.AddFixup(FPreamble);
@@ -914,6 +945,15 @@ begin
    x86._mov_eaxedx_qword_ptr_reg(gprEBP, addr);
 end;
 
+// _mov_reg_execInstance
+//
+procedure TdwsJITx86._mov_reg_execInstance(reg : TgpRegister);
+begin
+   FPreamble.PreserveExec:=True;
+
+   x86._mov_reg_dword_ptr_reg(reg, gprEBP, cExecInstanceEBPoffset);
+end;
+
 // _DoStep
 //
 var
@@ -922,9 +962,7 @@ procedure TdwsJITx86._DoStep(expr : TExprBase);
 begin
    if not (jitoDoStep in Options) then Exit;
 
-   FPreamble.PreserveExecInEDI:=True;
-
-   x86._mov_reg_reg(gprEAX, gprEDI);
+   _mov_reg_execInstance(gprEAX);
    x86._mov_reg_dword(gprEDX, DWORD(expr));
 
    x86._call_absmem(@cPtr_TdwsExecution_DoStep);
@@ -942,8 +980,6 @@ var
    passed, passedMini : TFixupTarget;
 begin
    if not (jitoRangeCheck in Options) then Exit;
-
-   FPreamble.PreserveExecInEDI:=True;
 
    passed:=Fixups.NewHangingTarget;
 
@@ -964,14 +1000,14 @@ begin
    Fixups.NewJump(flagsGE, passedMini);
 
    x86._mov_reg_reg(gprECX, reg);
-   x86._mov_reg_reg(gprEDX, gprEDI);
+   _mov_reg_execInstance(gprEDX);
    x86._mov_reg_dword(gprEAX, DWORD(expr));
    x86._call_absmem(@cPtr_TProgramExpr_RaiseLowerExceeded);
 
    Fixups.AddFixup(passedMini);
 
    x86._mov_reg_reg(gprECX, reg);
-   x86._mov_reg_reg(gprEDX, gprEDI);
+   _mov_reg_execInstance(gprEDX);
    x86._mov_reg_dword(gprEAX, DWORD(expr));
    x86._call_absmem(@cPtr_TProgramExpr_RaiseUpperExceeded);
 
@@ -1045,20 +1081,27 @@ end;
 // ------------------ TFixupPreamble ------------------
 // ------------------
 
+// NeedEBP
+//
+function TFixupPreamble.NeedEBP : Boolean;
+begin
+   Result:=(AllocatedStackSpace>0) or FPreserveExec;
+end;
+
 // GetSize
 //
 function TFixupPreamble.GetSize : Integer;
 begin
    Result:=1;
    Inc(Result, 3);
-   if AllocatedStackSpace>0 then
+   if NeedEBP then
       Inc(Result, 3);
    if TempSpaceOnStack+AllocatedStackSpace>0 then begin
       Assert(TempSpaceOnStack<=127);
       Inc(Result, 3);
    end;
-   if FPreserveExecInEDI then
-      Inc(Result, 3);
+   if FPreserveExec then
+      Inc(Result, 1);
 end;
 
 // Write
@@ -1071,12 +1114,10 @@ begin
 
    x86._push_reg(cExecMemGPR);
 
-   if FPreserveExecInEDI then begin
-      x86._push_reg(gprEDI);
-      x86._mov_reg_reg(gprEDI, gprEDX);
-   end;
+   if FPreserveExec then
+      x86._push_reg(gprEDX);
 
-   if AllocatedStackSpace>0 then begin
+   if NeedEBP then begin
       x86._push_reg(gprEBP);
       x86._mov_reg_reg(gprEBP, gprESP);
    end;
@@ -1120,13 +1161,13 @@ end;
 function TFixupPostamble.GetSize : Integer;
 begin
    Result:=0;
-   if FPreamble.AllocatedStackSpace>0 then
-      Inc(Result, 1);
    if FPreamble.TempSpaceOnStack+FPreamble.AllocatedStackSpace>0 then begin
       Assert(FPreamble.TempSpaceOnStack+FPreamble.AllocatedStackSpace<=127);
       Inc(Result, 3);
    end;
-   if FPreamble.FPreserveExecInEDI then
+   if FPreamble.NeedEBP then
+      Inc(Result, 1);
+   if FPreamble.PreserveExec then
       Inc(Result, 1);
    Inc(Result, 2);
 
@@ -1144,10 +1185,10 @@ begin
    if FPreamble.TempSpaceOnStack+FPreamble.AllocatedStackSpace>0 then
       x86._add_reg_int32(gprESP, FPreamble.TempSpaceOnStack+FPreamble.AllocatedStackSpace);
 
-   if FPreamble.AllocatedStackSpace>0 then
+   if FPreamble.NeedEBP then
       x86._pop_reg(gprEBP);
-   if FPreamble.FPreserveExecInEDI then
-      x86._pop_reg(gprEDI);
+   if FPreamble.PreserveExec then
+      x86._pop_reg(gprECX);
    x86._pop_reg(cExecMemGPR);
    x86._ret;
 
@@ -1648,6 +1689,7 @@ begin
 
       x86._mov_execmem_imm(e.VarExpr.StackAddr, fromValue);
 
+      // TODO: if toValue is dynamic Array Length, could be tagged as 32bit
       is32bit:=    (fromValue>=0)
                and toValueIsConstant
                and (Integer(toValue)=toValue)
@@ -1678,6 +1720,8 @@ begin
 
    if is32bit then begin
 
+      jit.Hint32Bit(e.VarExpr.DataSym);
+
       x86._cmp_execmem_int32(e.VarExpr.StackAddr, 0, toValue);
       jit.Fixups.NewJump(flagsG, loopAfter);
 
@@ -1686,7 +1730,7 @@ begin
 
       jit.Fixups.AddFixup(loopContinue);
 
-      x86._add_execmem_int32(e.VarExpr.StackAddr, 0, 1);
+      x86._execmem32_inc(e.VarExpr.StackAddr, 1);
 
       jit.Fixups.NewJump(flagsNone, loopStart);
 
@@ -1795,7 +1839,6 @@ begin
    e:=TFloatBinOpExpr(expr);
 
    Result:=jit.CompileFloat(e.Left);
-
    jit._xmm_reg_expr(OP, Result, e.Right);
 
    jit.ContainsXMMReg(Result, expr);
@@ -1921,9 +1964,7 @@ end;
 //
 procedure Tx86InterpretedExpr.DoCallEval(expr : TExprBase; vmt : Integer);
 begin
-   jit.FPreamble.PreserveExecInEDI:=True;
-
-   x86._mov_reg_reg(gprEDX, gprEDI);
+   jit._mov_reg_execInstance(gprEDX);
    x86._mov_reg_dword(gprEAX, DWORD(expr));
    x86._mov_reg_dword_ptr_reg(gprECX, gprEAX);
 
@@ -2070,12 +2111,20 @@ begin
 
    Result:=jit.AllocXMMReg(e);
 
-   jit.FPreamble.NeedTempSpace(SizeOf(Double));
+   if jit.Is32BitHinted(e.DataSym) then begin
 
-   x86._fild_execmem(e.StackAddr);
-   x86._fstp_esp;
+      x86._xmm_reg_execmem(xmm_cvtsi2sd, Result, e.StackAddr);
 
-   x86._movsd_reg_esp(Result);
+   end else begin
+
+      jit.FPreamble.NeedTempSpace(SizeOf(Double));
+
+      x86._fild_execmem(e.StackAddr);
+      x86._fstp_esp;
+
+      x86._movsd_reg_esp(Result);
+
+   end;
 end;
 
 // CompileInteger
