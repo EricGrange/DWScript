@@ -1600,7 +1600,6 @@ type
          FProgramState : TProgramState;  // here to reduce its offset
 
       private
-         FContextTable : TSymbolTable;
          FExternalObject : TObject;
          FUserObject : TObject;
 
@@ -1661,7 +1660,6 @@ type
 
          property ProgramState : TProgramState read FProgramState;
 
-         property ContextTable : TSymbolTable read FContextTable write FContextTable;
          property Debugger : IDebugger read FDebugger write SetDebugger;
          property IsDebugging : Boolean read FIsDebugging;
 
