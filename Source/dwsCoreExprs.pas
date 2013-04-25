@@ -506,6 +506,7 @@ type
 
          function EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function EvalAsFloat(exec : TdwsExecution) : Double; override;
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
    end;
@@ -3550,6 +3551,13 @@ end;
 function TFieldVarExpr.EvalAsFloat(exec : TdwsExecution) : Double;
 begin
    Result:=GetPIScriptObj(exec)^.AsFloat[FieldSym.Offset];
+end;
+
+// EvalAsBoolean
+//
+function TFieldVarExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+begin
+   Result:=GetPIScriptObj(exec)^.AsBoolean[FieldSym.Offset];
 end;
 
 // GetDataPtr

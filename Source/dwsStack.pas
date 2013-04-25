@@ -393,8 +393,12 @@ var
    varData : PVarData;
 begin
    varData:=@FBaseData[SourceAddr];
-   Assert(varData.VType=varDouble);
-   Result:=varData.VDouble;
+   if varData.VType=varDouble then
+      Result:=varData.VDouble
+   else begin
+      Assert(varData.VType=varInt64);
+      Result:=varData.VInt64;
+   end;
 end;
 
 // ReadStrValue
