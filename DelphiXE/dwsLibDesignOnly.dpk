@@ -72,7 +72,14 @@ contains
   dwsRTTIConnector in '..\Source\dwsRTTIConnector.pas',
   dwsXPlatformUI in '..\Source\dwsXPlatformUI.pas',
   dwsRegister in '..\source\dwsRegister.pas',
-  dwsExperts in '..\source\dwsExperts.pas';
+  dwsExperts in '..\source\dwsExperts.pas',
+  dwsCompilerUtils in '..\Source\dwsCompilerUtils.pas',
+  dwsConnectorExprs in '..\Source\dwsConnectorExprs.pas',
+  dwsConstExprs in '..\Source\dwsConstExprs.pas',
+  dwsConvExprs in '..\Source\dwsConvExprs.pas',
+  dwsDataContext in '..\Source\dwsDataContext.pas',
+  dwsExprList in '..\Source\dwsExprList.pas',
+  dwsMethodExprs in '..\Source\dwsMethodExprs.pas';
 
 end.
 

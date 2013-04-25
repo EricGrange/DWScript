@@ -69,6 +69,13 @@ contains
   dwsStringResult in '..\source\dwsStringResult.pas',
   dwsClassesLibModule in '..\Libraries\ClassesLib\dwsClassesLibModule.pas' {dwsClassesLib: TDataModule},
   dwsAsmLibModule in '..\Libraries\asmLib\dwsAsmLibModule.pas',
-  dwsSymbolsLibModule in '..\Libraries\SymbolsLib\dwsSymbolsLibModule.pas' {dwsSymbolsLib: TDataModule};
+  dwsSymbolsLibModule in '..\Libraries\SymbolsLib\dwsSymbolsLibModule.pas' {dwsSymbolsLib: TDataModule},
+  dwsCompilerUtils in '..\Source\dwsCompilerUtils.pas',
+  dwsConnectorExprs in '..\Source\dwsConnectorExprs.pas',
+  dwsConstExprs in '..\Source\dwsConstExprs.pas',
+  dwsConvExprs in '..\Source\dwsConvExprs.pas',
+  dwsDataContext in '..\Source\dwsDataContext.pas',
+  dwsExprList in '..\Source\dwsExprList.pas',
+  dwsMethodExprs in '..\Source\dwsMethodExprs.pas';
 
 end.
