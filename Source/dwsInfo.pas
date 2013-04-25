@@ -652,15 +652,27 @@ begin
   end;
 end;
 
+// SetValue
+//
 procedure TInfoData.SetValue(const Value: Variant);
 begin
-  if Assigned(FTypeSym) and (FTypeSym.Size = 1) then
-    FDataPtr[0] := Value
-  else
-    raise Exception.CreateFmt(RTE_CanNotSetValueForType, [FTypeSym.Caption]);
+   if Assigned(FTypeSym) and (FTypeSym.Size = 1) then
+      case VarType(Value) of
+         varInt64, varDouble, varBoolean, varUString, varUnknown :
+            FDataPtr[0] := Value;
+      else
+         if VarIsFloat(Value) then
+            FDataPtr[0]:=Double(Value)
+         else if VarIsOrdinal(Value) then
+            FDataPtr[0]:=Int64(Integer(Value)) // workaround for compiler bug
+         else if VarIsStr(Value) then
+            FDataPtr[0]:=String(Value)
+         else raise Exception.Create(CPE_InvalidArgumentType);
+      end
+   else raise Exception.CreateFmt(RTE_CanNotSetValueForType, [FTypeSym.Caption]);
 
-  if Assigned(FDataMaster) then
-    FDataMaster.Write(FExec, FDataPtr.AsPData^);
+   if Assigned(FDataMaster) then
+      FDataMaster.Write(FExec, FDataPtr.AsPData^);
 end;
 
 { TInfoClass }
