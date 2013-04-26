@@ -26,14 +26,6 @@ uses
 
 type
 
-   // see http://delphitools.info/2011/11/30/fixing-tcriticalsection/
-   {$HINTS OFF}
-   TFixedCriticalSection = class(TCriticalSection)
-      private
-         FDummy : array [0..95] of Byte;
-   end;
-   {$HINTS ON}
-
    // TRefCountedObject
    //
    // Uses Monitor hidden field to store refcount, so not compatible with monitor use

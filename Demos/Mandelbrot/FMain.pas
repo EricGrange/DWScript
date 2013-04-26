@@ -243,6 +243,7 @@ begin
 
    {$ifndef WIN64}
    jitter:=TdwsJITx86.Create;
+   jitter.Options:=jitter.Options-[jitoNoBranchAlignment];
    jitter.GreedyJIT(prog.ProgramObject);
    jitter.Free;
    {$endif}

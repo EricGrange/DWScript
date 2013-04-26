@@ -42,7 +42,6 @@ uses Windows, SysUtils;
 const
   INSTRUCT_LENGTH = 64;
 
-
 type
 
   TREX_Struct = packed record

@@ -48,6 +48,9 @@
    {$IF CompilerVersion>21.0}
       {$DEFINE DELPHI_XE_PLUS}
    {$IFEND}
+   {$IF CompilerVersion>23.0}
+      {$DEFINE DELPHI_XE3_PLUS}
+   {$IFEND}
 {$ELSE}
    {$mode delphi}
    {$DEFINE PUREPASCAL}

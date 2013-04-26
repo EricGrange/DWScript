@@ -49,6 +49,26 @@ const
    // following is missing from D2010
    INVALID_HANDLE_VALUE = DWORD(-1);
 
+type
+   // see http://delphitools.info/2011/11/30/fixing-tcriticalsection/
+   {$HINTS OFF}
+   TFixedCriticalSection = class
+      private
+         FDummy : array [0..95-SizeOf(TRTLCRiticalSection)-2*SizeOf(Pointer)] of Byte;
+         FCS : TRTLCriticalSection;
+
+      public
+         constructor Create;
+         destructor Destroy; override;
+
+         procedure Enter;
+         procedure Leave;
+
+         function TryEnter : Boolean;
+   end;
+   {$HINTS ON}
+
+
 procedure SetDecimalSeparator(c : Char);
 function GetDecimalSeparator : Char;
 
@@ -472,6 +492,45 @@ asm
 begin
    Result:=newValue;
 {$endif}
+end;
+
+// ------------------
+// ------------------ TFixedCriticalSection ------------------
+// ------------------
+
+// Create
+//
+constructor TFixedCriticalSection.Create;
+begin
+   InitializeCriticalSection(FCS);
+end;
+
+// Destroy
+//
+destructor TFixedCriticalSection.Destroy;
+begin
+   DeleteCriticalSection(FCS);
+end;
+
+// Enter
+//
+procedure TFixedCriticalSection.Enter;
+begin
+   EnterCriticalSection(FCS);
+end;
+
+// Leave
+//
+procedure TFixedCriticalSection.Leave;
+begin
+   LeaveCriticalSection(FCS);
+end;
+
+// TryEnter
+//
+function TFixedCriticalSection.TryEnter : Boolean;
+begin
+   Result:=TryEnterCriticalSection(FCS);
 end;
 
 // ------------------

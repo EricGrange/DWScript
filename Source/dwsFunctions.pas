@@ -24,8 +24,10 @@ unit dwsFunctions;
 interface
 
 uses
-  Classes, SysUtils, dwsExprs, dwsSymbols, dwsStrings, dwsTokenizer,
-  dwsOperators, dwsUtils, dwsUnitSymbols;
+  Classes, SysUtils,
+  dwsXPlatform, dwsUtils,
+  dwsExprs, dwsSymbols, dwsStrings, dwsTokenizer,
+  dwsOperators, dwsUnitSymbols;
 
 type
 

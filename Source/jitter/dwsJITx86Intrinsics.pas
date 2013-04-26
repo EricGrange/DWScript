@@ -437,8 +437,12 @@ end;
 // WritePointer
 //
 procedure Tx86WriteOnlyStream.WritePointer(const p : Pointer);
+var
+   ip : NativeInt;
 begin
-   Write(p, 4);
+   // use local variable to work around XE3/XE4 bug (QC #115212)
+   ip:=NativeInt(p);
+   Write(ip, SizeOf(NativeInt));
 end;
 
 // _xmm_reg_reg
