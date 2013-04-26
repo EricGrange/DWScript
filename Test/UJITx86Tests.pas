@@ -51,6 +51,7 @@ type
          procedure cmp_execmem_int32;
          procedure cmp_dword_ptr_reg_reg;
          procedure cmp_reg_int32;
+         procedure test_reg_reg;
          procedure boolflags;
          procedure movsd_indexed;
          procedure mov_indexed;
@@ -451,9 +452,16 @@ begin
             offtextA:='+00000080h';
             offtextD:='+00000084h';
          end;
-         expect:= expect
-                 +'mov eax, dword ptr ['+cgpRegisterName[reg]+offtextA+']'#13#10
-                 +'mov edx, dword ptr ['+cgpRegisterName[reg]+offtextD+']'#13#10
+         if reg<>gprEAX then begin
+            expect:= expect
+                    +'mov eax, dword ptr ['+cgpRegisterName[reg]+offtextA+']'#13#10
+                    +'mov edx, dword ptr ['+cgpRegisterName[reg]+offtextD+']'#13#10;
+         end else begin
+            expect:= expect
+                    +'mov edx, dword ptr ['+cgpRegisterName[reg]+offtextD+']'#13#10
+                    +'mov eax, dword ptr ['+cgpRegisterName[reg]+offtextA+']'#13#10;
+         end;
+         expect:=expect
                  +'mov dword ptr ['+cgpRegisterName[reg]+offtextA+'], eax'#13#10
                  +'mov dword ptr ['+cgpRegisterName[reg]+offtextD+'], edx'#13#10
                  ;
@@ -923,6 +931,23 @@ begin
       FStream._cmp_reg_int32(reg, $80);
       expect:= 'cmp '+cgpRegisterName[reg]+', 40h'#13#10
               +'cmp '+cgpRegisterName[reg]+', 00000080h'#13#10;
+      CheckEquals(expect, DisasmStream);
+   end;
+end;
+
+// test_reg_reg
+//
+procedure TJITx86Tests.test_reg_reg;
+var
+   dest, src : TgpRegister;
+   expect : String;
+begin
+   for dest:=gprEAX to gprEDI do begin
+      expect:='';
+      for src:=gprEAX to gprEDI do begin
+         FStream._test_reg_reg(dest, src);
+         expect:=expect+'test '+cgpRegisterName[dest]+', '+cgpRegisterName[src]+#13#10;
+      end;
       CheckEquals(expect, DisasmStream);
    end;
 end;

@@ -33,6 +33,7 @@ type
          FOnNeedLocation : TFixupNeedLocationEvent;
 
       protected
+         procedure OptimizeFixups;
          procedure SortFixups;
          procedure ResolveFixups;
 
@@ -42,8 +43,8 @@ type
 
          procedure AddFixup(aFixup : TFixup);
          function  NewRelativeOffset(size : Integer) : TFixupRelativeOffset;
-         function  NewTarget : TFixupTarget;
-         function  NewHangingTarget : TFixupTarget;
+         function  NewTarget(align : Boolean) : TFixupTarget;
+         function  NewHangingTarget(align : Boolean) : TFixupTarget; virtual;
 
          procedure FlushFixups(const rawCode : TBytes; outStream : TWriteOnlyBlockStream);
          procedure ClearFixups;
@@ -52,6 +53,8 @@ type
          property OnNeedLocation : TFixupNeedLocationEvent read FOnNeedLocation write FOnNeedLocation;
    end;
 
+   TFixupOptimizeAction = (foaNone, foaRemove);
+
    TFixup = class (TRefCountedObject)
       private
          FLogic : TFixupLogic;
@@ -59,15 +62,20 @@ type
          FLocation : Integer;
          FFixedLocation : Integer;
          FOrder : Integer;
+         FTargetCount : Integer;
 
       public
          function  GetSize : Integer; virtual; abstract;
          procedure Write(output : TWriteOnlyBlockStream); virtual; abstract;
 
+         function JumpLocation : Integer; virtual;
+         function Optimize : TFixupOptimizeAction; virtual;
+
          property Logic : TFixupLogic read FLogic write FLogic;
          property Next : TFixup read FNext write FNext;
          property Location : Integer read FLocation write FLocation;
          property FixedLocation : Integer read FFixedLocation write FFixedLocation;
+         property TargetCount : Integer read FTargetCount write FTargetCount;
    end;
 
    TSortedFixupList = class (TSortedList<TFixup>)
@@ -85,10 +93,13 @@ type
       private
          FTarget : TFixup;
 
-      public
-         function NewTarget : TFixupTarget;
+      protected
+         procedure SetTarget(const aTarget : TFixup);
 
-         property Target : TFixup read FTarget write FTarget;
+      public
+         function NewTarget(align : Boolean) : TFixupTarget;
+
+         property Target : TFixup read FTarget write SetTarget;
    end;
 
 
@@ -110,6 +121,24 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
+
+// ------------------
+// ------------------ TFixup ------------------
+// ------------------
+
+// JumpLocation
+//
+function TFixup.JumpLocation : Integer;
+begin
+   Result:=FixedLocation;
+end;
+
+// Optimize
+//
+function TFixup.Optimize : TFixupOptimizeAction;
+begin
+   Result:=foaNone;
+end;
 
 // ------------------
 // ------------------ TFixupLogic ------------------
@@ -150,15 +179,15 @@ end;
 
 // NewTarget
 //
-function TFixupLogic.NewTarget : TFixupTarget;
+function TFixupLogic.NewTarget(align : Boolean) : TFixupTarget;
 begin
-   Result:=TFixupTarget.Create;
+   Result:=NewHangingTarget(align);
    AddFixup(Result);
 end;
 
 // NewHangingTarget
 //
-function TFixupLogic.NewHangingTarget : TFixupTarget;
+function TFixupLogic.NewHangingTarget(align : Boolean) : TFixupTarget;
 begin
    Result:=TFixupTarget.Create;
    Result.Logic:=Self;
@@ -192,6 +221,30 @@ begin
       fixup.Next:=nil;
    finally
       ordered.Free;
+   end;
+end;
+
+// OptimizeFixups
+//
+procedure TFixupLogic.OptimizeFixups;
+var
+   fixup, next, prev : TFixup;
+begin
+   prev:=nil;
+   fixup:=FBase;
+   while fixup<>nil do begin
+      next:=fixup.Next;
+      case fixup.Optimize of
+         foaRemove : begin
+            if fixup=FBase then
+               FBase:=next
+            else prev.Next:=next;
+            fixup.Free;
+         end;
+      else
+         prev:=fixup;
+      end;
+      fixup:=next;
    end;
 end;
 
@@ -237,6 +290,8 @@ begin
    end;
 
    SortFixups;
+
+   OptimizeFixups;
 
    ResolveFixups;
 
@@ -314,12 +369,21 @@ end;
 
 // NewTarget
 //
-function TFixupTargeting.NewTarget : TFixupTarget;
+function TFixupTargeting.NewTarget(align : Boolean) : TFixupTarget;
 begin
-   Assert(Target=nil);
-   Result:=TFixupTarget.Create;
-   Logic.AddFixup(Result);
+   Result:=Logic.NewTarget(align);
    Target:=Result;
+end;
+
+// SetTarget
+//
+procedure TFixupTargeting.SetTarget(const aTarget : TFixup);
+begin
+   if FTarget<>nil then
+      FTarget.TargetCount:=FTarget.TargetCount-1;
+   FTarget:=aTarget;
+   if FTarget<>nil then
+      FTarget.TargetCount:=FTarget.TargetCount+1;
 end;
 
 // ------------------

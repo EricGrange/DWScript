@@ -260,7 +260,7 @@ begin
    FStream.WriteByte(Ord('a'));
    rel:=FFixups.NewRelativeOffset(1);
    FStream.WriteByte(Ord('b'));
-   rel.NewTarget;
+   rel.NewTarget(False);
    FStream.WriteByte(Ord('c'));
 
    FFixups.FlushFixups(FStream.ToBytes, FStream);
@@ -283,7 +283,7 @@ var
 begin
    FStream.Clear;
 
-   target:=FFixups.NewTarget;
+   target:=FFixups.NewTarget(False);
    FStream.WriteByte($90);
 
    jump:=TFixupJump.Create(flagsZ);
@@ -323,7 +323,7 @@ begin
 
    FStream.WriteByte($90);
 
-   target:=FFixups.NewTarget;
+   target:=FFixups.NewTarget(False);
    jump0.Target:=target;
    jump1.Target:=target;
 
@@ -358,7 +358,7 @@ begin
 
    FStream.WriteByte($90);
 
-   target:=FFixups.NewTarget;
+   target:=FFixups.NewTarget(False);
    jump0.Target:=target;
    jump1.Target:=target;
 

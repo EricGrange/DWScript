@@ -21,6 +21,7 @@ interface
 {
    TODO:
    - range checking
+   - check object
 }
 
 
@@ -38,15 +39,25 @@ type
       Lock : Integer;
    end;
 
+   TFixupAlignedTarget = class(TFixupTarget)
+      public
+         function  GetSize : Integer; override;
+         procedure Write(output : TWriteOnlyBlockStream); override;
+         function JumpLocation : Integer; override;
+   end;
+
    TFixupJump = class(TFixupTargeting)
       private
          FFlags : TboolFlags;
+         FLongJump : Boolean;
 
       protected
          function NearJump : Boolean;
 
       public
          constructor Create(flags : TboolFlags);
+
+         function Optimize : TFixupOptimizeAction; override;
 
          function  GetSize : Integer; override;
          procedure Write(output : TWriteOnlyBlockStream); override;
@@ -83,6 +94,16 @@ type
          procedure Write(output : TWriteOnlyBlockStream); override;
    end;
 
+   Tx86FixupLogic = class (TFixupLogic)
+      private
+         FOptions : TdwsJITOptions;
+
+      public
+         function NewHangingTarget(align : Boolean) : TFixupTarget; override;
+
+         property Options : TdwsJITOptions read FOptions write FOptions;
+   end;
+
    Tx86FixupLogicHelper = class helper for TFixupLogic
       function NewJump(flags : TboolFlags) : TFixupJump; overload;
       function NewJump(flags : TboolFlags; target : TFixup) : TFixupJump; overload;
@@ -110,6 +131,7 @@ type
 
       protected
          function CreateOutput : TWriteOnlyBlockStream; override;
+         function CreateFixupLogic : TFixupLogic; override;
 
          procedure StartJIT(expr : TExprBase; exitable : Boolean); override;
          procedure EndJIT; override;
@@ -131,6 +153,7 @@ type
          function StackAddrOfFloat(expr : TTypedExpr) : Integer;
 
          procedure Hint32Bit(obj : TRefCountedObject);
+         procedure ClearHint32Bit(obj : TRefCountedObject);
          function Is32BitHinted(obj : TRefCountedObject) : Boolean;
 
          property Allocator : TdwsJITAllocatorWin read FAllocator write FAllocator;
@@ -237,6 +260,13 @@ type
       function CompileInteger(expr : TExprBase) : Integer; override;
       procedure DoCompileAssignFloat(expr : TTypedExpr; source : TxmmRegister); override;
       procedure CompileAssignInteger(expr : TTypedExpr; source : Integer); override;
+   end;
+
+   Tx86FieldVar = class (Tx86InterpretedExpr)
+      procedure CompileToData(expr : TFieldVarExpr; dest : TgpRegister);
+      function CompileInteger(expr : TExprBase) : Integer; override;
+      procedure CompileAssignInteger(expr : TTypedExpr; source : Integer); override;
+      procedure DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup); override;
    end;
 
    Tx86ArrayBase = class (Tx86InterpretedExpr)
@@ -514,7 +544,7 @@ begin
    RegisterJITter(TRecordExpr,                  Tx86InterpretedExpr.Create(Self));
    RegisterJITter(TRecordVarExpr,               Tx86RecordVar.Create(Self));
    RegisterJITter(TFieldExpr,                   Tx86InterpretedExpr.Create(Self));
-   RegisterJITter(TFieldVarExpr,                Tx86InterpretedExpr.Create(Self));
+   RegisterJITter(TFieldVarExpr,                Tx86FieldVar.Create(Self));
 
    RegisterJITter(TVarParamExpr,                Tx86VarParam.Create(Self));
 
@@ -640,6 +670,13 @@ function TdwsJITx86.CreateOutput : TWriteOnlyBlockStream;
 begin
    x86:=Tx86WriteOnlyStream.Create;
    Result:=x86;
+end;
+
+// CreateFixupLogic
+//
+function TdwsJITx86.CreateFixupLogic : TFixupLogic;
+begin
+   Result:=Tx86FixupLogic.Create;
 end;
 
 // AllocXMMReg
@@ -793,6 +830,13 @@ begin
    FHint32bitSymbol.Add(obj);
 end;
 
+// ClearHint32Bit
+//
+procedure TdwsJITx86.ClearHint32Bit(obj : TRefCountedObject);
+begin
+   FHint32bitSymbol.Extract(obj);
+end;
+
 // Is32BitHinted
 //
 function TdwsJITx86.Is32BitHinted(obj : TRefCountedObject) : Boolean;
@@ -839,6 +883,7 @@ begin
    ResetXMMReg;
    FHint32bitSymbol.Clear;
    Fixups.ClearFixups;
+   (Fixups as Tx86FixupLogic).Options:=Options;
    FPreamble:=TFixupPreamble.Create;
    Fixups.AddFixup(FPreamble);
    FPostamble:=TFixupPostamble.Create(FPreamble);
@@ -981,7 +1026,7 @@ var
 begin
    if not (jitoRangeCheck in Options) then Exit;
 
-   passed:=Fixups.NewHangingTarget;
+   passed:=Fixups.NewHangingTarget(True);
 
    delta:=delta-miniInclusive;
    maxiExclusive:=maxiExclusive-miniInclusive;
@@ -995,7 +1040,7 @@ begin
       x86._add_reg_int32(reg, -delta);
    x86._cmp_reg_int32(reg, miniInclusive);
 
-   passedMini:=Fixups.NewHangingTarget;
+   passedMini:=Fixups.NewHangingTarget(False);
 
    Fixups.NewJump(flagsGE, passedMini);
 
@@ -1015,6 +1060,38 @@ begin
 end;
 
 // ------------------
+// ------------------ TFixupAlignedTarget ------------------
+// ------------------
+
+// GetSize
+//
+function TFixupAlignedTarget.GetSize : Integer;
+begin
+   if TargetCount=0 then begin
+      Result:=0;
+   end else begin
+      Result:=(16-(FixedLocation and $F)) and $F;
+      if Result>7 then
+         Result:=0;
+//      Result:=(4-(FixedLocation and $3)) and $3;
+   end;
+end;
+
+// Write
+//
+procedure TFixupAlignedTarget.Write(output : TWriteOnlyBlockStream);
+begin
+   (output as Tx86WriteOnlyStream)._nop(GetSize);
+end;
+
+// JumpLocation
+//
+function TFixupAlignedTarget.JumpLocation : Integer;
+begin
+   Result:=FixedLocation+GetSize;
+end;
+
+// ------------------
 // ------------------ TFixupJump ------------------
 // ------------------
 
@@ -1024,6 +1101,16 @@ constructor TFixupJump.Create(flags : TboolFlags);
 begin
    inherited Create;
    FFlags:=flags;
+end;
+
+// Optimize
+//
+function TFixupJump.Optimize : TFixupOptimizeAction;
+begin
+   if (Next=Target) and (JumpLocation=Next.Location) then begin
+      Target:=nil;
+      Result:=foaRemove;
+   end else Result:=inherited;
 end;
 
 // GetSize
@@ -1043,7 +1130,12 @@ end;
 //
 function TFixupJump.NearJump : Boolean;
 begin
-   Result:=(Abs(FixedLocation-Target.FixedLocation)<120);
+   if FLongJump then
+      Result:=False
+   else begin
+      Result:=(Abs(FixedLocation-Target.JumpLocation)<120);
+      FLongJump:=not Result;
+   end;
 end;
 
 // Write
@@ -1055,7 +1147,7 @@ begin
    if (Next=Target) and (Location=Next.Location) then
       Exit;
 
-   offset:=Target.FixedLocation-FixedLocation;
+   offset:=Target.JumpLocation-FixedLocation;
    if NearJump then begin
 
       if FFlags=flagsNone then
@@ -1194,6 +1286,20 @@ begin
 
    // pad to multiple of 16 for alignment
    x86._nop(($10-(output.Position and $F)) and $F);
+end;
+
+// ------------------
+// ------------------ Tx86FixupLogic ------------------
+// ------------------
+
+// NewHangingTarget
+//
+function Tx86FixupLogic.NewHangingTarget(align : Boolean) : TFixupTarget;
+begin
+   if align and not (jitoNoBranchAlignment in Options) then
+      Result:=TFixupAlignedTarget.Create
+   else Result:=TFixupTarget.Create;
+   Result.Logic:=Self;
 end;
 
 // ------------------
@@ -1506,8 +1612,8 @@ var
 begin
    e:=TIfThenExpr(expr);
 
-   targetTrue:=jit.Fixups.NewHangingTarget;
-   targetFalse:=jit.Fixups.NewHangingTarget;
+   targetTrue:=jit.Fixups.NewHangingTarget(False);
+   targetFalse:=jit.Fixups.NewHangingTarget(False);
 
    jit.CompileBoolean(e.CondExpr, targetTrue, targetFalse);
 
@@ -1533,9 +1639,9 @@ var
 begin
    e:=TIfThenElseExpr(expr);
 
-   targetTrue:=jit.Fixups.NewHangingTarget;
-   targetFalse:=jit.Fixups.NewHangingTarget;
-   targetDone:=jit.Fixups.NewHangingTarget;
+   targetTrue:=jit.Fixups.NewHangingTarget(False);
+   targetFalse:=jit.Fixups.NewHangingTarget(True);
+   targetDone:=jit.Fixups.NewHangingTarget(False);
 
    jit.CompileBoolean(e.CondExpr, targetTrue, targetFalse);
 
@@ -1568,8 +1674,8 @@ begin
 
    jit.ResetXMMReg;
 
-   targetLoop:=jit.Fixups.NewTarget;
-   targetExit:=jit.Fixups.NewHangingTarget;
+   targetLoop:=jit.Fixups.NewTarget(True);
+   targetExit:=jit.Fixups.NewHangingTarget(False);
 
    jit.EnterLoop(targetLoop, targetExit);
 
@@ -1600,8 +1706,8 @@ begin
 
    jit.ResetXMMReg;
 
-   targetLoop:=jit.Fixups.NewTarget;
-   targetExit:=jit.Fixups.NewHangingTarget;
+   targetLoop:=jit.Fixups.NewTarget(True);
+   targetExit:=jit.Fixups.NewHangingTarget(False);
 
    jit.EnterLoop(targetLoop, targetExit);
 
@@ -1633,9 +1739,9 @@ begin
 
    jit.ResetXMMReg;
 
-   targetLoop:=jit.Fixups.NewTarget;
-   targetLoopStart:=jit.Fixups.NewHangingTarget;
-   targetExit:=jit.Fixups.NewHangingTarget;
+   targetLoop:=jit.Fixups.NewTarget(True);
+   targetLoopStart:=jit.Fixups.NewHangingTarget(False);
+   targetExit:=jit.Fixups.NewHangingTarget(True);
 
    jit.EnterLoop(targetLoop, targetExit);
 
@@ -1671,6 +1777,7 @@ var
    loopAfter : TFixupTarget;
    fromValue, toValue : Int64;
    toValueIsConstant : Boolean;
+   toValueIs32bit : Boolean;
    toValueOffset : Integer;
    is32bit : Boolean;
 begin
@@ -1679,9 +1786,13 @@ begin
    jit.ResetXMMReg;
 
    toValueIsConstant:=(e.ToExpr is TConstIntExpr);
-   if toValueIsConstant then
-      toValue:=TConstIntExpr(e.ToExpr).Value
-   else toValue:=0;
+   if toValueIsConstant then begin
+      toValue:=TConstIntExpr(e.ToExpr).Value;
+      toValueIs32bit:=(Integer(toValue)=toValue);
+   end else begin
+      toValue:=0;
+      toValueIs32bit:=(e.ToExpr is TArrayLengthExpr)
+   end;
 
    if e.FromExpr is TConstIntExpr then begin
 
@@ -1691,8 +1802,7 @@ begin
 
       // TODO: if toValue is dynamic Array Length, could be tagged as 32bit
       is32bit:=    (fromValue>=0)
-               and toValueIsConstant
-               and (Integer(toValue)=toValue)
+               and toValueIs32bit
                and (Integer(fromValue)=fromValue);
 
    end else begin
@@ -1712,9 +1822,9 @@ begin
 
    end else toValueOffset:=0;
 
-   loopStart:=jit.Fixups.NewTarget;
-   loopContinue:=jit.Fixups.NewHangingTarget;
-   loopAfter:=jit.Fixups.NewHangingTarget;
+   loopStart:=jit.Fixups.NewTarget(True);
+   loopContinue:=jit.Fixups.NewHangingTarget(False);
+   loopAfter:=jit.Fixups.NewHangingTarget(True);
 
    jit.EnterLoop(loopContinue, loopAfter);
 
@@ -1722,7 +1832,12 @@ begin
 
       jit.Hint32Bit(e.VarExpr.DataSym);
 
-      x86._cmp_execmem_int32(e.VarExpr.StackAddr, 0, toValue);
+      if toValueIsConstant then
+         x86._cmp_execmem_int32(e.VarExpr.StackAddr, 0, toValue)
+      else begin
+         x86._mov_reg_dword_ptr_reg(gprEAX, gprEBP, toValueOffset);
+         x86._cmp_execmem_reg(e.VarExpr.StackAddr, 0, gprEAX);
+      end;
       jit.Fixups.NewJump(flagsG, loopAfter);
 
       jit._DoStep(e.DoExpr);
@@ -1758,7 +1873,7 @@ begin
 
       end;
 
-      jumpIfHiLower.NewTarget;
+      jumpIfHiLower.NewTarget(False);
 
       jit._DoStep(e.DoExpr);
       jit.CompileStatement(e.DoExpr);
@@ -1777,6 +1892,9 @@ begin
    jit.LeaveLoop;
 
    jit.Fixups.AddFixup(loopAfter);
+
+   if is32bit then
+      jit.ClearHint32Bit(e.VarExpr.DataSym);
 end;
 
 // ------------------
@@ -1853,14 +1971,30 @@ end;
 function Tx86SqrFloat.DoCompileFloat(expr : TExprBase) : TxmmRegister;
 var
    e : TSqrFloatExpr;
+   reg : TxmmRegister;
 begin
    e:=TSqrFloatExpr(expr);
 
-   Result:=jit.CompileFloat(e.Expr);
+   reg:=jit.CompileFloat(e.Expr);
 
-   x86._xmm_reg_reg(xmm_multsd, Result, Result);
+   if e.Expr is TFloatVarExpr then begin
 
-   jit.ContainsXMMReg(Result, expr);
+      Result:=jit.AllocXMMReg(e.Expr);
+
+      x86._movsd_reg_reg(Result, reg);
+      x86._xmm_reg_reg(xmm_multsd, Result, reg);
+
+      jit.ReleaseXMMReg(reg);
+
+   end else begin
+
+      Result:=reg;
+
+      x86._xmm_reg_reg(xmm_multsd, Result, Result);
+
+      jit.ContainsXMMReg(Result, expr);
+
+   end;
 end;
 
 // ------------------
@@ -2289,6 +2423,70 @@ begin
 end;
 
 // ------------------
+// ------------------ Tx86FieldVar ------------------
+// ------------------
+
+// CompileToData
+//
+procedure Tx86FieldVar.CompileToData(expr : TFieldVarExpr; dest : TgpRegister);
+begin
+   jit.CompileScriptObj(expr.ObjectExpr);
+
+   // TODO check object
+
+   x86._mov_reg_dword_ptr_reg(dest, gprEAX, vmt_ScriptObjInstance_IScriptObj_To_FData);
+end;
+
+// CompileInteger
+//
+function Tx86FieldVar.CompileInteger(expr : TExprBase) : Integer;
+var
+   e : TFieldVarExpr;
+begin
+   e:=TFieldVarExpr(expr);
+
+   CompileToData(e, gprECX);
+
+   x86._mov_eaxedx_qword_ptr_reg(gprECX, e.FieldSym.Offset*SizeOf(Variant)+cVariant_DataOffset);
+
+   Result:=0;
+end;
+
+// CompileAssignInteger
+//
+procedure Tx86FieldVar.CompileAssignInteger(expr : TTypedExpr; source : Integer);
+var
+   e : TFieldVarExpr;
+   addr : Integer;
+begin
+   e:=TFieldVarExpr(expr);
+
+   addr:=jit.FPreamble.AllocateStackSpace(SizeOf(Int64));
+   x86._mov_qword_ptr_reg_eaxedx(gprEBP, addr);
+
+   CompileToData(e, gprECX);
+
+   x86._mov_eaxedx_qword_ptr_reg(gprEBP, addr);
+   x86._mov_qword_ptr_reg_eaxedx(gprECX, e.FieldSym.Offset*SizeOf(Variant)+cVariant_DataOffset);
+end;
+
+// DoCompileBoolean
+//
+procedure Tx86FieldVar.DoCompileBoolean(expr : TExprBase; targetTrue, targetFalse : TFixup);
+var
+   e : TFieldVarExpr;
+begin
+   e:=TFieldVarExpr(expr);
+
+   CompileToData(e, gprECX);
+
+   x86._mov_reg_dword_ptr_reg(gprEAX, gprECX, e.FieldSym.Offset*SizeOf(Variant)+cVariant_DataOffset);
+   x86._test_al_al;
+
+   jit.Fixups.NewConditionalJumps(flagsNZ, targetTrue, targetFalse);
+end;
+
+// ------------------
 // ------------------ Tx86ArrayBase ------------------
 // ------------------
 
@@ -2677,8 +2875,8 @@ begin
 
    // Based on reference code from AMD Athlon Optimization guide
 
-   twomuls:=jit.Fixups.NewHangingTarget;
-   done:=jit.Fixups.NewHangingTarget;
+   twomuls:=jit.Fixups.NewHangingTarget(True);
+   done:=jit.Fixups.NewHangingTarget(True);
 
    x86._mov_reg_dword_ptr_reg(gprEDX, leftReg, leftAddr+4);    // left_hi
    x86._mov_reg_dword_ptr_reg(gprECX, rightReg, rightAddr+4);  // right_hi
@@ -2857,8 +3055,8 @@ begin
 
       x86._op_reg_int32(gpOp_and, gprECX, 63);
 
-      below32:=jit.Fixups.NewHangingTarget;
-      done:=jit.Fixups.NewHangingTarget;
+      below32:=jit.Fixups.NewHangingTarget(False);
+      done:=jit.Fixups.NewHangingTarget(False);
 
       x86._cmp_reg_int32(gprECX, 32);
       jit.Fixups.NewJump(flagsB, below32);
@@ -3067,9 +3265,9 @@ begin
 
       jit.CompileInteger(e.Expr);
 
-      x86._cmp_reg_int32(gprEAX, 0);
+      x86._test_reg_reg(gprEAX, gprEAX);
       jit.Fixups.NewJump(flagsNZ, targetFalse);
-      x86._cmp_reg_int32(gprEDX, 0);
+      x86._test_reg_reg(gprEDX, gprEDX);
       jit.Fixups.NewConditionalJumps(flagsZ, targetTrue, targetFalse);
 
    end;
@@ -3142,7 +3340,7 @@ var
 begin
    e:=TBooleanBinOpExpr(expr);
 
-   targetFirstFalse:=jit.Fixups.NewHangingTarget;
+   targetFirstFalse:=jit.Fixups.NewHangingTarget(False);
    jit.CompileBoolean(e.Left, targetTrue, targetFirstFalse);
    jit.Fixups.AddFixup(targetFirstFalse);
    jit.CompileBoolean(e.Right, targetTrue, targetFalse);
@@ -3161,7 +3359,7 @@ var
 begin
    e:=TBooleanBinOpExpr(expr);
 
-   targetFirstTrue:=jit.Fixups.NewHangingTarget;
+   targetFirstTrue:=jit.Fixups.NewHangingTarget(False);
    jit.CompileBoolean(e.Left, targetFirstTrue, targetFalse);
    jit.Fixups.AddFixup(targetFirstTrue);
    jit.CompileBoolean(e.Right, targetTrue, targetFalse);

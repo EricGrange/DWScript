@@ -29,7 +29,8 @@ type
 
    TdwsJIT = class;
 
-   TdwsJITOption = (jitoDoStep, jitoRangeCheck);
+   TdwsJITOption = (jitoDoStep, jitoRangeCheck,
+                    jitoNoBranchAlignment);
    TdwsJITOptions = set of TdwsJITOption;
 
    TdwsJITter = class (TRefCountedObject)
@@ -163,6 +164,7 @@ type
 
       protected
          function CreateOutput : TWriteOnlyBlockStream; virtual;
+         function CreateFixupLogic : TFixupLogic; virtual;
 
          procedure StartJIT(expr : TExprBase; exitable : Boolean); virtual;
          procedure EndJIT; virtual;
@@ -354,7 +356,7 @@ begin
    FOutput:=CreateOutput;
    FSeenByGreedy:=TSimpleObjectHash<TFuncSymbol>.Create;
 
-   FFixups:=TFixupLogic.Create;
+   FFixups:=CreateFixupLogic;
    FFixups.OnNeedLocation:=GetLocation;
 end;
 
@@ -376,6 +378,13 @@ end;
 function TdwsJIT.CreateOutput : TWriteOnlyBlockStream;
 begin
    Result:=TWriteOnlyBlockStream.Create;
+end;
+
+// CreateFixupLogic
+//
+function TdwsJIT.CreateFixupLogic : TFixupLogic;
+begin
+   Result:=TFixupLogic.Create;
 end;
 
 // RegisterJITter
@@ -621,7 +630,7 @@ begin
    FOutput.Clear;
    FOutputFailedOn:=nil;
    if exitable then
-      FExitTarget:=Fixups.NewHangingTarget;
+      FExitTarget:=Fixups.NewHangingTarget(False);
 end;
 
 // EndJIT
