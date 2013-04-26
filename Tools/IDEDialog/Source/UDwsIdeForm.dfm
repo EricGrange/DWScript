@@ -51,10 +51,6 @@ object DwsIdeForm: TDwsIdeForm
       TabOrder = 0
       object tsMessages: TTabSheet
         Caption = 'Messages'
-        ExplicitLeft = 0
-        ExplicitTop = 0
-        ExplicitWidth = 0
-        ExplicitHeight = 0
         object lbMessages: TListBox
           Left = 0
           Top = 0
@@ -70,10 +66,6 @@ object DwsIdeForm: TDwsIdeForm
       object tsOutput: TTabSheet
         Caption = 'Output'
         ImageIndex = 1
-        ExplicitLeft = 0
-        ExplicitTop = 0
-        ExplicitWidth = 0
-        ExplicitHeight = 0
         object memOutputWindow: TMemo
           Left = 0
           Top = 0
@@ -170,12 +162,12 @@ object DwsIdeForm: TDwsIdeForm
         ExplicitLeft = 5
         ExplicitTop = 469
         ExplicitWidth = 251
-        ExplicitHeight = 189
+        ExplicitHeight = 186
         inherited memCallStack: TMemo
           Width = 251
           Height = 169
           ExplicitWidth = 251
-          ExplicitHeight = 172
+          ExplicitHeight = 169
         end
         inherited Panel1: TPanel
           Width = 251
@@ -195,8 +187,6 @@ object DwsIdeForm: TDwsIdeForm
       ParentBackground = False
       ParentDoubleBuffered = False
       TabOrder = 1
-      ExplicitWidth = 934
-      ExplicitHeight = 663
       object imgTabs: TImage
         Left = 5
         Top = 5
@@ -231,8 +221,6 @@ object DwsIdeForm: TDwsIdeForm
           item
             Width = 50
           end>
-        ExplicitTop = 639
-        ExplicitWidth = 924
       end
       object pnlPageControl: TPanel
         Left = 5
@@ -244,8 +232,6 @@ object DwsIdeForm: TDwsIdeForm
         ParentBackground = False
         TabOrder = 1
         OnResize = pnlPageControlResize
-        ExplicitWidth = 924
-        ExplicitHeight = 612
       end
     end
   end
@@ -667,7 +653,7 @@ object DwsIdeForm: TDwsIdeForm
     Left = 176
     Top = 256
     Bitmap = {
-      494C01011E002100280010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C01011E002100300010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000008000000001002000000000000080
       00000000000000000000000000000000000000000000706B67DCA39D96FEA19B
       95FEA19B95FEA19B95FEA19B95FEA19B95FEA19B96FEA19B94FEA19C94FEA19A

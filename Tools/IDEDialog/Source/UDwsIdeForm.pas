@@ -335,7 +335,6 @@ type
     procedure actShowExecutionPointUpdate(Sender: TObject);
     procedure actProgramResetUpdate(Sender: TObject);
     procedure actViewSymbolsExecute(Sender: TObject);
-    procedure actViewSymbolsUpdate(Sender: TObject);
     constructor Create( AOwner : TComponent; const AOptions : TDwsIdeOptions ); reintroduce;
     procedure FormShow(Sender: TObject);
     procedure actEditorCopyToClipboardExecute(Sender: TObject);
@@ -360,6 +359,7 @@ type
     procedure actClearOutputWindowExecute(Sender: TObject);
     procedure actClearOutputWindowUpdate(Sender: TObject);
     procedure lbMessagesDblClick(Sender: TObject);
+    procedure actViewSymbolsUpdate(Sender: TObject);
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -413,6 +413,7 @@ type
     procedure AddMessage(const AMessage: string; AScriptPos : PScriptPos = nil );
     procedure ClearMessagesWindow;
     procedure ClearOutputWindow;
+    procedure ListSymbolTable(ATable: TSymbolTable);
     property  EditorCurrentPageIndex : integer
                 read FActivePageIndex
                 write SetEditorCurrentPageIndex;
@@ -1108,7 +1109,7 @@ end;
 procedure TDwsIdeForm.actViewSymbolsUpdate(Sender: TObject);
 begin
   With Sender as TAction do
-    Enabled := IsCompiled;
+    Enabled := Assigned( FProgram ) and (FProgram.Table.Count > 0);
 end;
 
 function TDwsIdeForm.SaveProjectAs : boolean;
@@ -1691,27 +1692,8 @@ begin
 end;
 
 procedure TDwsIdeForm.ListSymbols;
-var
-  SL : TStringList;
-  S : string;
 begin
-  Compile( False );
-  If not IsCompiled then
-    begin
-    ErrorDlg( 'Unable to compile' );
-    Exit;
-    end;
-
-  SL := TStringList.Create;
-  try
-    SymbolsToStrings( FProgram.Table, SL );
-
-    S := SL.Text;
-    ShowMessage( S );
-  finally
-    SL.Free
-  end;
-
+  ListSymbolTable( FProgram.Table );
 end;
 
 
@@ -2308,43 +2290,56 @@ begin
     EditorPage(I).ShowExecutableLines;
 end;
 
+
+
+procedure TDwsIdeForm.ListSymbolTable( ATable : TSymbolTable );
+var
+  SL : TStringList;
+  S : string;
+begin
+  SL := TStringList.Create;
+  try
+    SymbolsToStrings( ATable, SL );
+
+    S := SL.Text;
+    ShowMessage( S );
+  finally
+    SL.Free
+  end;
+
+end;
+
+
+
 procedure TDwsIdeForm.CodeSuggest( ACodeSuggestionMode : TCodeSuggestionMode );
 var
   Suggestions   : IDwsSuggestions;
   ScriptPos     : TScriptPos;
-  Script        : TDelphiWebScript;
   ScriptProgram : IdwsProgram;
 begin
   if not HasEditorPage then
     Exit;
 
-  Script := TDelphiWebScript.Create( nil );
   try
-
-    Script.OnNeedUnit := FScript.OnNeedUnit;
-    Script.OnInclude  := FScript.OnInclude;
-    Script.Config.CompilerOptions := [ coContextMap, coSymbolDictionary];
-    Script.Config.ScriptPaths.Assign( FScript.Config.ScriptPaths );
-
-    try
-      ScriptProgram := Script.Compile( ProjectSourceScript );
-    except
-    end;
-
-    if ScriptProgram = nil then
-      Exit;
-
-    ScriptPos := TScriptPos.Create( ScriptProgram.SourceList[0].SourceFile, CurrentEditor.CaretY, CurrentEditor.CaretX );
-    Suggestions := TdwsSuggestions.Create( ScriptProgram, ScriptPos );
-
-    FCodeProposalForm.Open(
-      CurrentEditor.ClientToScreen( CurrentEditor.RowColumnToPixels( CurrentEditor.DisplayXY )),
-      ACodeSuggestionMode,
-      Suggestions );
-
-  finally
-    Script.Free;
+    ScriptProgram := FScript.Compile( ProjectSourceScript );
+  except
   end;
+
+
+
+  if ScriptProgram = nil then
+    Exit;
+
+  //ListSymbolTablew( ScriptProgram.Table ); // << for debugging if required
+
+  ScriptPos := TScriptPos.Create( ScriptProgram.SourceList[0].SourceFile, CurrentEditor.CaretY, CurrentEditor.CaretX );
+  Suggestions := TdwsSuggestions.Create( ScriptProgram, ScriptPos );
+
+  FCodeProposalForm.Open(
+    CurrentEditor.ClientToScreen( CurrentEditor.RowColumnToPixels( CurrentEditor.DisplayXY )),
+    ACodeSuggestionMode,
+    Suggestions );
+
 end;
 
 

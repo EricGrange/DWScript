@@ -53,10 +53,19 @@ begin
 end;
 
 procedure TDwsIdeCodeProposalForm.DoOnSelectItem;
+var
+  S : string;
+  I : integer;
 begin
   If Assigned( FOnSelectItem ) then
     If (ListBox1.ItemIndex >= 0) and (ListBox1.ItemIndex < ListBox1.Items.Count) then
-      FOnSelectItem( ListBox1.Items[ListBox1.ItemIndex] );
+      begin
+      S := ListBox1.Items[ListBox1.ItemIndex];
+      I := Pos( ' ', S );
+      if I > 0 then
+        S := Trim(Copy( S, 1, I-1 ));
+      FOnSelectItem( S );
+      end;
   Hide;
 end;
 
