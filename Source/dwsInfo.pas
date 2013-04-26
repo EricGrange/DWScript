@@ -96,7 +96,7 @@ type
     function GetData : TData; override;
   end;
 
-   TInfoData = class(TInfo)
+   TInfoData = class (TInfo)
       protected
          function GetValue: Variant; override;
          function GetValueAsString : String; override;
@@ -106,6 +106,7 @@ type
          function GetScriptObj: IScriptObj; override;
          procedure SetData(const Value: TData); override;
          procedure SetValue(const Value: Variant); override;
+         procedure SetValueAsInteger(const Value: Int64); override;
    end;
 
   TInfoClass = class(TInfoData)
@@ -169,6 +170,7 @@ type
          function GetValue : Variant; override;
          function GetValueAsInteger : Int64; override;
          procedure SetValue(const Value: Variant); override;
+         procedure SetValueAsInteger(const Value: Int64); override;
    end;
 
    TInfoDynamicArray = class(TInfoDynamicArrayBase)
@@ -667,9 +669,19 @@ begin
             FDataPtr[0]:=Int64(Integer(Value)) // workaround for compiler bug
          else if VarIsStr(Value) then
             FDataPtr[0]:=String(Value)
-         else raise Exception.Create(CPE_InvalidArgumentType);
+         else FDataPtr[0] := Value;
       end
    else raise Exception.CreateFmt(RTE_CanNotSetValueForType, [FTypeSym.Caption]);
+
+   if Assigned(FDataMaster) then
+      FDataMaster.Write(FExec, FDataPtr.AsPData^);
+end;
+
+// SetValueAsInteger
+//
+procedure TInfoData.SetValueAsInteger(const Value: Int64);
+begin
+   FDataPtr[0]:=Value;
 
    if Assigned(FDataMaster) then
       FDataMaster.Write(FExec, FDataPtr.AsPData^);
@@ -1224,6 +1236,13 @@ end;
 // SetValue
 //
 procedure TInfoDynamicArrayLength.SetValue(const Value: Variant);
+begin
+   SetValueAsInteger(Value);
+end;
+
+// SetValueAsInteger
+//
+procedure TInfoDynamicArrayLength.SetValueAsInteger(const Value: Int64);
 begin
    SelfDynArray.ArrayLength:=Value-FDelta;
 end;
