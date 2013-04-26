@@ -451,6 +451,15 @@ begin
   Result := TComConnectorCall.Create(MethodName, Params);
 end;
 
+// RaiseOleError
+//
+procedure RaiseOleError(err : HResult; const excepInfo : TExcepInfo);
+begin
+   raise EOleError.CreateFmt('OLE Error %x (%s) from %s, %s',
+                             [err, SysErrorMessage(err),
+                              excepInfo.bstrSource, excepInfo.bstrDescription]);
+end;
+
 type
    POleParams = ^TOleParams;
    TOleParams = array[0..MaxDispArgs - 1] of PVarData;
@@ -460,6 +469,8 @@ type
    end;
    PStringDesc = ^TStringDesc;
 
+// DispatchInvoke
+//
 function DispatchInvoke(const dispatch: IDispatch; invKind, namedArgCount : Integer;
                         dispIDs: PDispIDList; const connArgs : TConnectorArgs;
                         PResult: PVariant): HResult;
@@ -578,21 +589,55 @@ begin
       Result := dispatch.Invoke(dispID, GUID_NULL, 0, InvKind, dispParams,
                                 PResult, @excepInfo, nil);
 
-      if Result = 0 then begin
+      if Result = S_OK then begin
          for i := strCount - 1 downto 0 do begin
             if strings[i].PStr <> nil then
                OleStrToStrVar(strings[i].BStr, strings[i].PStr^);
          end;
       end else begin
-         raise EOleError.CreateFmt('OLE Error %x (%s) from %s, %s',
-                                   [Result, SysErrorMessage(Result),
-                                    excepInfo.bstrSource, excepInfo.bstrDescription]);
+         RaiseOleError(Result, excepInfo);
       end;
 
    finally
       for i := strCount - 1 downto 0 do
          SysFreeString(strings[i].BStr);
    end;
+end;
+
+// DispatchGetPropOrCall
+//
+function DispatchGetPropOrCall(const disp : IDispatch; dispID : Integer) : OleVariant;
+var
+   excepInfo : TExcepInfo;
+   dispParams : TDispParams;
+   err : HResult;
+begin
+   FillChar(DispParams, SizeOf(DispParams), 0);
+   err:=disp.Invoke(dispID, GUID_NULL, 0, DISPATCH_PROPERTYGET or DISPATCH_METHOD,
+                      dispParams, @Result, @excepInfo, nil);
+   if err<>S_OK then
+      RaiseOleError(err, excepInfo);
+end;
+
+// DispatchSetProp
+//
+procedure DispatchSetProp(const disp : IDispatch; dispID : Integer;
+                          const value : OleVariant);
+const
+   dispIDNamedArgs : Longint = DISPID_PROPERTYPUT;
+var
+   excepInfo : TExcepInfo;
+   dispParams : TDispParams;
+   err : HResult;
+begin
+   dispParams.rgvarg:=@value;
+   dispParams.rgdispidNamedArgs:=@dispIDNamedArgs;
+   dispParams.cArgs:=1;
+   dispParams.cNamedArgs:=1;
+   err:=disp.Invoke(dispId, GUID_NULL, 0, DISPATCH_PROPERTYPUT, dispParams,
+                    nil, @excepInfo, nil);
+   if err<>S_OK then
+      RaiseOleError(err, excepInfo);
 end;
 
 // ------------------
@@ -666,7 +711,7 @@ begin
       raise EScriptError.Create(CPE_NilConnectorRead);
 
    SetLength(Result, 1);
-   Result[0] := GetDispatchPropValue(disp, GetDispId(disp));
+   Result[0] := DispatchGetPropOrCall(disp, GetDispId(disp));
 end;
 
 // Write
@@ -679,7 +724,7 @@ begin
    if disp=nil then
       raise EScriptError.Create(CPE_NilConnectorWrite);
 
-   SetDispatchPropValue(disp, GetDispID(disp), Data[0]);
+   DispatchSetProp(disp, GetDispID(disp), Data[0]);
 end;
 
 // ------------------
