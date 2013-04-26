@@ -4316,7 +4316,7 @@ begin
          Result:=inherited
       else begin
          n:=WhichPowerOfTwo(FLeft.EvalAsInteger(exec));
-         if n>1 then begin
+         if n>=1 then begin
             mip:=TMultIntPow2Expr.Create(prog, FRight);
             mip.FShift:=n-1;
             Result:=mip;
@@ -4326,7 +4326,7 @@ begin
       end;
    end else if FRight.IsConstant then begin
       n:=WhichPowerOfTwo(FRight.EvalAsInteger(exec));
-      if n>1 then begin
+      if n>=1 then begin
          mip:=TMultIntPow2Expr.Create(prog, FLeft);
          mip.FShift:=n-1;
          Result:=mip;
