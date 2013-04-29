@@ -10876,6 +10876,7 @@ begin
    symDic:=FMainProg.SymbolDictionary;
    for sym in FProg.Table do begin
       if sym.ClassType=TDataSymbol then begin
+         if (sym.Typ<>nil) and (sym.Typ.UnAliasedType.ClassType=TDynamicArraySymbol) then continue;
          symPosList:=symDic.FindSymbolPosList(sym);
          symDecl:=symPosList.FindUsage(suDeclaration);
          if symDecl<>nil then begin
