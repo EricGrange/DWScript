@@ -6855,13 +6855,17 @@ end;
 //
 function TdwsCompiler.ReadArrayConstant(closingToken : TTokenType;
                                         expecting : TTypeSymbol) : TArrayConstantExpr;
+var
+   expr : TTypedExpr;
 begin
    Result:=TArrayConstantExpr.Create(FProg, FTok.HotPos);
    try
       if not FTok.TestDelete(closingToken) then begin
          // At least one argument was found
          repeat
-            TArrayConstantExpr(Result).AddElementExpr(FProg, ReadExpr);
+            expr:=ReadExpr;
+            if expr<>nil then
+               TArrayConstantExpr(Result).AddElementExpr(FProg, expr);
          until not FTok.TestDelete(ttCOMMA);
 
          if not FTok.TestDelete(closingToken) then
@@ -11000,12 +11004,15 @@ function TdwsCompiler.ReadConnectorSym(const name : String; baseExpr : TTypedExp
    begin
       // Try to read the call of a connector function
       Result:=TConnectorCallExpr.Create(FProg, FTok.HotPos, Name, BaseExpr, IsWrite);
-
-      ReadArguments(Result.AddArg, ttBLEFT, ttBRIGHT, argPosArray);
-
-      if not Result.AssignConnectorSym(FProg, connectorType) then begin
+      try
+         ReadArguments(Result.AddArg, ttBLEFT, ttBRIGHT, argPosArray);
+         if not Result.AssignConnectorSym(FProg, connectorType) then begin
+            Result.Free;
+            Result:=nil;
+         end;
+      except
          Result.Free;
-         Result:=nil;
+         raise;
       end;
   end;
 

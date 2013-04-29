@@ -645,8 +645,7 @@ begin
    if arraySymbol.Typ<>Prog.TypVariant then begin
       if arraySymbol.Typ=Prog.TypNil then
          arraySymbol.Typ:=ElementExpr.Typ
-      else
-      if arraySymbol.Typ<>ElementExpr.Typ then begin
+      else if arraySymbol.Typ<>ElementExpr.Typ then begin
          if arraySymbol.Typ=Prog.TypNil then
             arraySymbol.Typ:=ElementExpr.Typ
          else if (arraySymbol.Typ=Prog.TypInteger) and (ElementExpr.Typ=Prog.TypFloat) then
