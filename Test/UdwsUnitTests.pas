@@ -1787,7 +1787,7 @@ begin
       un.Script:=FCompiler;
 
       prog:=FCompiler.Compile('');
-      CheckEquals('Syntax Error: Circular referencing units detected!'#13#10, prog.Msgs.AsInfo);
+      CheckEquals('Syntax Error: Circular referencing units detected'#13#10, prog.Msgs.AsInfo);
    finally
       un.Free;
    end;

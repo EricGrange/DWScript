@@ -1,2 +1,2 @@
-Syntax Error: More arguments expected! [line: 7, column: 5]
+Syntax Error: More arguments expected [line: 7, column: 5]
 Syntax Error: Method "Doh" of class "TMyClass" not implemented [line: 3, column: 19]

@@ -1,4 +1,4 @@
-Syntax Error: Lazy parameter can't be a function pointer [line: 3, column: 28]
+Syntax Error: Lazy parameter cannot be a function pointer [line: 3, column: 28]
 Hint: "Test" does not match case of declaration ("test") [line: 22, column: 1]
 Hint: "Test" does not match case of declaration ("test") [line: 24, column: 1]
 Hint: "Test" does not match case of declaration ("test") [line: 26, column: 1]

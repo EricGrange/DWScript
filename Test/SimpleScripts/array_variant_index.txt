@@ -1,2 +1,2 @@
-Couldn't cast variant from "UnicodeString" to "Integer" (EVariantInvalidArgError)
+Could not cast variant from "UnicodeString" to "Integer" (EVariantInvalidArgError)
 123

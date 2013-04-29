@@ -280,7 +280,7 @@ begin
 
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
 
-   CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+   CheckEquals('Compile Error: Could not find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
                prog.Msgs.AsInfo, 'include forbidden');
 
    FCompiler.OnInclude:=DoOnInclude;
@@ -332,7 +332,7 @@ begin
 
    FCompiler.Config.ScriptPaths.Clear;
    prog:=FCompiler.Compile('{$include ''test.dummy''}');
-   CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+   CheckEquals('Compile Error: Could not find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
                prog.Msgs.AsInfo, 'include via file no paths');
 
    FCompiler.Config.ScriptPaths.Add(tempDir);
@@ -393,13 +393,13 @@ begin
 
       restricted.Paths.Text:=tempDir+'\nothing';
       prog:=FCompiler.Compile('{$include ''test.dummy''}');
-      CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+      CheckEquals('Compile Error: Could not find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
                   prog.Msgs.AsInfo, 'include via file missing paths');
 
       restricted.Paths.Clear;
 
       prog:=FCompiler.Compile('{$include ''test.dummy''}');
-      CheckEquals('Compile Error: Couldn''t find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
+      CheckEquals('Compile Error: Could not find file "test.dummy" on input paths [line: 1, column: 11]'#13#10,
                   prog.Msgs.AsInfo, 'include via file restricted - no paths');
 
       restricted.Paths.Text:=tempDir;
@@ -1364,7 +1364,7 @@ begin
    CheckEquals('', prog.Msgs.AsInfo);
 
    exec:=prog.Execute;
-   CheckEquals('Runtime Error: Script is already running!'#13#10, exec.Msgs.AsInfo);
+   CheckEquals('Runtime Error: Script is already running'#13#10, exec.Msgs.AsInfo);
    CheckEquals('Here', exec.Result.ToString);
 end;
 

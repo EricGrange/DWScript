@@ -1,2 +1,2 @@
-Syntax Error: Can't use combined assignment on property [line: 9, column: 12]
-Syntax Error: Can't use combined assignment on property [line: 12, column: 16]
+Syntax Error: Cannot use combined assignment on property [line: 9, column: 12]
+Syntax Error: Cannot use combined assignment on property [line: 12, column: 16]

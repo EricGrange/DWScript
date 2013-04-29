@@ -1,2 +1,2 @@
-Syntax Error: Flags enumerations can't have user values [line: 1, column: 24]
+Syntax Error: Flags enumerations cannot have user values [line: 1, column: 24]
 Syntax Error: "(" expected. [line: 2, column: 20]

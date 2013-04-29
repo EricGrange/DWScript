@@ -1,2 +1,2 @@
-Syntax Error: Too many arguments! [line: 2, column: 14]
+Syntax Error: Too many arguments [line: 2, column: 14]
 Syntax Error: Class reference expected [line: 3, column: 15]

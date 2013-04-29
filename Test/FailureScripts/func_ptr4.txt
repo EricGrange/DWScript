@@ -1,2 +1,2 @@
-Syntax Error: More arguments expected! [line: 3, column: 7]
+Syntax Error: More arguments expected [line: 3, column: 7]
 Syntax Error: Incompatible types: "class function ClassType: TClass" and "function IntToStr(Integer): String" [line: 3, column: 6]

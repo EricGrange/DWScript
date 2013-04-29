@@ -1,6 +1,6 @@
 Syntax Error: Name "TClass" is reserved [line: 1, column: 6]
 Syntax Error: Name "TObject" is reserved [line: 2, column: 6]
-Syntax Error: There is already a forward declaration of the "TClass1" class! [line: 5, column: 21]
-Syntax Error: Class "TClass1" already defined! [line: 10, column: 6]
+Syntax Error: There is already a forward declaration of the "TClass1" class [line: 5, column: 21]
+Syntax Error: Class "TClass1" already defined [line: 10, column: 6]
 Syntax Error: Class "TClass" isn't defined completely [line: 1, column: 20]
 Syntax Error: Class "TObject" isn't defined completely [line: 2, column: 21]

@@ -1,1 +1,1 @@
-Syntax Error: Class "TBase" is sealed, inheriting is not allowed! [line: 5, column: 20]
+Syntax Error: Class "TBase" is sealed, inheriting is not allowed [line: 5, column: 20]

@@ -194,8 +194,8 @@ const
   CPE_CantImplementAFunctionType = 'Cannot implement a function type';
   CPE_ClassIsSealed = 'Class "%s" is sealed, inheriting is not allowed';
   CPE_ClassIsStaticNoInstantiation = 'Class "%s" is static, instantiation not allowed';
-  CPE_ClassIsStaticNoInstances = 'Class "%s" is static, no instances not allowed';
-  CPE_ClassAncestorNotStatic = 'Class "%s" is not static, Cannot inherit as static';
+  CPE_ClassIsStaticNoInstances = 'Class "%s" is static, no instances allowed';
+  CPE_ClassAncestorNotStatic = 'Class "%s" is not static, cannot inherit as static';
   CPE_ClassAncestorDoesNotMatch = 'Class ancestor does not match with previous declaration';
   CPE_ClassExternalAncestorMustBeExternalOrObject = 'External classes must inherit from an external class or Object';
   CPE_MustBeSubClassOf = 'Subclass of %s expected';
@@ -281,7 +281,7 @@ const
   CPE_NameIsReserved = 'Name "%s" is reserved';
   CPE_TypeExpected = 'Type expected';
   CPE_InvalidType = '%s is not a Type';
-  CPE_UnknownMember = 'There''s no accessible member with name "%s"';
+  CPE_UnknownMember = 'There is no accessible member with name "%s"';
   CPE_NoMemberExpected = 'No member expected';
   CPE_NoArrayExpected = 'Not an array';
   CPE_NoMethodExpected = 'Not a method';

@@ -1,1 +1,1 @@
-Syntax Error: More arguments expected! [line: 2, column: 12]
+Syntax Error: More arguments expected [line: 2, column: 12]

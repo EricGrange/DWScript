@@ -1,2 +1,2 @@
-Hint: Private virtual methods can't be overridden [line: 4, column: 27]
+Hint: Private virtual methods cannot be overridden [line: 4, column: 27]
 Hint: Private method "Dummy" declared but never used [line: 4, column: 20]
