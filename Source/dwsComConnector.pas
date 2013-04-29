@@ -384,7 +384,7 @@ begin
    TypSym := FTable.FindTypeSymbol('ComVariant', cvMagic);
    if IsWrite then
       methType := DISPATCH_PROPERTYPUT
-   else methType := DISPATCH_PROPERTYGET;
+   else methType := DISPATCH_PROPERTYGET or DISPATCH_METHOD;
    Result := TComConnectorCall.Create(PropName, Params, methType);
 end;
 
