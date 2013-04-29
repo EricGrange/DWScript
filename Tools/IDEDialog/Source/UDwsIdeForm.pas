@@ -2473,15 +2473,21 @@ procedure TDwsIdeForm.LoadProjectFile( const AProjectFileName : string );
 
   procedure LoadBreakpoints( AData : IXMLProjectConfigType );
   var
-    I : integer;
+    I, iEditorPage : integer;
     Breakpoint : IXMLBreakpointType;
   begin
     dwsDebugger1.Breakpoints.Clean;
     for I := 0 to AData.Breakpoints.Count-1 do
       begin
         Breakpoint := AData.Breakpoints[I];
-        dwsDebugger1.Breakpoints.Add( Breakpoint.LineNum, Breakpoint.SourceName );
-        dwsDebugger1.Breakpoints[I].Enabled := Breakpoint.Enabled;
+
+        iEditorPage := NameToEditorPageIndex( Breakpoint.SourceName );
+        If (BreakPoint.LineNum >= 1) then
+          If BreakPoint.LineNum <= EditorPage( iEditorPage ).FEditor.Lines.Count then
+            begin
+            dwsDebugger1.Breakpoints.Add( Breakpoint.LineNum, Breakpoint.SourceName );
+            dwsDebugger1.Breakpoints[I].Enabled := Breakpoint.Enabled;
+            end;
       end;
   end;
 
