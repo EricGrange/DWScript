@@ -42,7 +42,8 @@ uses
    SysUtils,
    Classes,
    SynWinSock, Registry,
-   dwsHTTPSysAPI, dwsUtils, dwsWebEnvironment, dwsHttpSysWebEnv, dwsWebServerHelpers;
+   dwsHTTPSysAPI, dwsUtils, dwsXPlatform,
+   dwsWebEnvironment, dwsHttpSysWebEnv, dwsWebServerHelpers;
 
 type
    /// FPC 64 compatibility Integer type

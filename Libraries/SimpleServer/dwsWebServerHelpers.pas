@@ -13,7 +13,7 @@ interface
 
 uses
    Windows, Classes, SysUtils, Registry,
-   dwsUtils;
+   dwsUtils, dwsXPlatform;
 
 type
    TDirectoryIndexInfo = class(TRefCountedObject)
