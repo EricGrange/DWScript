@@ -3103,7 +3103,10 @@ end;
 procedure TEditorPage.SynEditorKeyDown( Sender: TObject; var Key: Word;  Shift: TShiftState );
 begin
   inherited;
-//  Exit;
+
+  SetCurrentLine(-1);
+
+  //  Exit; << activate this to suppress code suggestion
 
   if Key = VK_OEM_PERIOD then
     PostMessage( FForm.Handle, WM_CodeSuggest,  0, 0 );
