@@ -3394,9 +3394,9 @@ end;
 function Tx86MagicFunc.DoCompileFloat(expr : TExprBase) : TxmmRegister;
 var
    jitter : TdwsJITter_x86;
-   e : TMagicFloatFuncExpr;
+   e : TMagicFuncExpr;
 begin
-   e:=(expr as TMagicFloatFuncExpr);
+   e:=(expr as TMagicFuncExpr);
 
    jitter:=TdwsJITter_x86(jit.FindJITter(TMagicFuncSymbol(e.FuncSym).InternalFunction.ClassType));
    if jitter<>nil then
