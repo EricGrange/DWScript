@@ -454,10 +454,19 @@ end;
 // RaiseOleError
 //
 procedure RaiseOleError(err : HResult; const excepInfo : TExcepInfo);
+var
+   msg : String;
 begin
-   raise EOleError.CreateFmt('OLE Error %x (%s) from %s, %s',
-                             [err, SysErrorMessage(err),
-                              excepInfo.bstrSource, excepInfo.bstrDescription]);
+   msg:=excepInfo.bstrDescription;
+   if excepInfo.bstrSource<>'' then begin
+      if msg<>'' then
+         msg:=excepInfo.bstrSource+', '+msg
+      else msg:=excepInfo.bstrSource;
+   end;
+   if msg<>'' then
+      msg:=' from '+msg;
+   raise EOleError.CreateFmt('OLE Error %x (%s)%s',
+                             [err, SysErrorMessage(err), msg]);
 end;
 
 type
