@@ -26,8 +26,8 @@ interface
 uses
    Windows, Variants, Classes, SysUtils, SysConst,
    ComObj, ComConst, ActiveX, AxCtrls,
-   dwsComp, dwsSymbols, dwsDataContext,
-   dwsExprs, dwsStrings, dwsFunctions, dwsStack,
+   dwsComp, dwsSymbols, dwsDataContext, dwsExprList,
+   dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs,
    dwsOperators, dwsUtils;
 
 const
@@ -77,29 +77,47 @@ begin
 end;
 
 type
-  TCreateOleObjectFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
-  end;
+   TCreateOleObjectFunc = class(TInternalFunction)
+      procedure Execute(info : TProgramInfo); override;
+   end;
 
-  TGetActiveOleObjectFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
-  end;
+   TGetActiveOleObjectFunc = class(TInternalFunction)
+      procedure Execute(info : TProgramInfo); override;
+   end;
 
-  TClassIDToProgIDFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
-  end;
+   TClassIDToProgIDFunc = class(TInternalFunction)
+      procedure Execute(info : TProgramInfo); override;
+   end;
 
-  TOleInt32Func = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
-  end;
+   TOleConversionFunc = class (TInternalMagicVariantFunction);
 
-  TOleInt64Func = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
-  end;
+   TOleInt16Func = class(TOleConversionFunc)
+      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+   end;
 
-  TOleDateFunc = class(TInternalFunction)
-    procedure Execute(info : TProgramInfo); override;
-  end;
+   TOleInt32Func = class(TOleConversionFunc)
+      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+   end;
+
+   TOleInt64Func = class(TOleConversionFunc)
+      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+   end;
+
+   TOleCurrencyFunc = class(TOleConversionFunc)
+      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+   end;
+
+   TOleDateFunc = class(TOleConversionFunc)
+      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+   end;
+
+   TOleSingleFunc = class(TOleConversionFunc)
+      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+   end;
+
+   TOleDoubleFunc = class(TOleConversionFunc)
+      function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
+   end;
 
    TComConnectorType = class(TInterfacedSelfObject, IUnknown, IConnectorType, IConnectorEnumerator)
       private
@@ -298,9 +316,13 @@ begin
   TClassIDToProgIDFunc.Create(Table, 'ClassIDToProgID', ['ClassID', SYS_STRING], 'String');
   TGetActiveOleObjectFunc.Create(Table, 'GetActiveOleObject', ['ClassName', SYS_STRING], 'ComVariant');
 
-  TOleInt32Func.Create(Table, 'OleInt32', ['v', SYS_INTEGER], 'ComVariant');
-  TOleInt64Func.Create(Table, 'OleInt64', ['v', SYS_INTEGER], 'ComVariant');
-  TOleDateFunc.Create(Table, 'OleDate', ['v', SYS_FLOAT], 'ComVariant');
+  TOleInt16Func.Create(Table, 'OleInt16', ['v', SYS_INTEGER], 'ComVariant', [iffStateLess]);
+  TOleInt32Func.Create(Table, 'OleInt32', ['v', SYS_INTEGER], 'ComVariant', [iffStateLess]);
+  TOleInt64Func.Create(Table, 'OleInt64', ['v', SYS_INTEGER], 'ComVariant', [iffStateLess]);
+  TOleCurrencyFunc.Create(Table, 'OleCurrency', ['v', SYS_VARIANT], 'ComVariant', [iffStateLess]);
+  TOleDateFunc.Create(Table, 'OleDate', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
+  TOleSingleFunc.Create(Table, 'OleSingle', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
+  TOleDoubleFunc.Create(Table, 'OleDouble', ['v', SYS_FLOAT], 'ComVariant', [iffStateLess]);
 
   Table.AddSymbol(TComVariantArraySymbol.Create('ComVariantArray', TComVariantArrayType.Create(Table), VariantSym));
 end;
@@ -336,30 +358,85 @@ begin
 end;
 
 // ------------------
+// ------------------ TOleInt16Func ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+function TOleInt16Func.DoEvalAsVariant(args : TExprBaseList) : Variant;
+begin
+   Result := SmallInt(args.AsInteger[0]);
+end;
+
+// ------------------
 // ------------------ TOleInt32Func ------------------
 // ------------------
 
-procedure TOleInt32Func.Execute(info : TProgramInfo);
+// DoEvalAsVariant
+//
+function TOleInt32Func.DoEvalAsVariant(args : TExprBaseList) : Variant;
 begin
-   Info.ResultAsVariant := Int32(Info.ParamAsInteger[0]);
+   Result := Int32(args.AsInteger[0]);
 end;
 
 // ------------------
 // ------------------ TOleInt64Func ------------------
 // ------------------
 
-procedure TOleInt64Func.Execute(info : TProgramInfo);
+// DoEvalAsVariant
+//
+function TOleInt64Func.DoEvalAsVariant(args : TExprBaseList) : Variant;
 begin
-  Info.ResultAsVariant := Info.ParamAsInteger[0];
+   Result := args.AsInteger[0];
+end;
+
+// ------------------
+// ------------------ TOleCurrencyFunc ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+function TOleCurrencyFunc.DoEvalAsVariant(args : TExprBaseList) : Variant;
+begin
+   args.ExprBase[0].EvalAsVariant(args.Exec, Result);
+   if VarType(Result)<>varCurrency then
+      Result:=Currency(Result);
 end;
 
 // ------------------
 // ------------------ TOleDateFunc ------------------
 // ------------------
 
-procedure TOleDateFunc.Execute(info : TProgramInfo);
+// DoEvalAsVariant
+//
+function TOleDateFunc.DoEvalAsVariant(args : TExprBaseList) : Variant;
 begin
-  Info.ResultAsVariant := VarFromDateTime(Info.ParamAsFloat[0]);
+   Result := VarFromDateTime(args.AsFloat[0]);
+end;
+
+// ------------------
+// ------------------ TOleSingleFunc ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+function TOleSingleFunc.DoEvalAsVariant(args : TExprBaseList) : Variant;
+begin
+   VarClear(Result);
+   // Needed so compiler won't generate a double precision variant
+   PVarData(@Result)^.VType := varSingle;
+   PVarData(@Result)^.VSingle := args.AsFloat[0];
+end;
+
+// ------------------
+// ------------------ TOleDoubleFunc ------------------
+// ------------------
+
+// DoEvalAsVariant
+//
+function TOleDoubleFunc.DoEvalAsVariant(args : TExprBaseList) : Variant;
+begin
+   Result := args.AsFloat[0];
 end;
 
 // ------------------
@@ -513,6 +590,10 @@ begin
          end else begin
 
             case argType of
+               varSmallint : begin
+                  argPtr.vt := VT_I2 or VT_BYREF;
+                  argPtr.plVal := @param.VSmallInt;
+               end;
                varInteger : begin
                   argPtr.vt := VT_I4 or VT_BYREF;
                   argPtr.plVal := @param.VInteger;
@@ -520,6 +601,10 @@ begin
                varInt64 : begin
                   argPtr.vt := VT_I8 or VT_BYREF;
                   argPtr.plVal := @param.VInt64;
+               end;
+               varSingle : begin
+                  argPtr.vt := VT_R4 or VT_BYREF;
+                  argPtr.pdblVal := @param.VSingle;
                end;
                varDouble : begin
                   argPtr.vt := VT_R8 or VT_BYREF;
@@ -594,6 +679,8 @@ begin
 
       FillChar(excepInfo, SizeOf(excepInfo), 0);
 
+      PVarData(PResult).VType:=varSingle;
+
       // Invoke COM Method
       Result := dispatch.Invoke(dispID, GUID_NULL, 0, InvKind, dispParams,
                                 PResult, @excepInfo, nil);
@@ -660,7 +747,7 @@ constructor TComConnectorCall.Create(const MethodName: String;
 begin
    FMethodName:=MethodName;
    FPMethodName:=PWideString(FMethodName);
-   FMethodType:=MethodType;
+   FMethodType:=MethodType or DISPATCH_PROPERTYGET;
 end;
 
 // Call
@@ -1012,7 +1099,6 @@ begin
 
    end else Result:=False;
 end;
-
 
 end.
 
