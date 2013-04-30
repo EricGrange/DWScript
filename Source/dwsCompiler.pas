@@ -641,9 +641,9 @@ type
          function ReadNegation : TTypedExpr;
          function ReadIfExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
 
-         function ReadTry : TExceptionExpr;
-         function ReadFinally(tryExpr : TProgramExpr) : TFinallyExpr;
-         function ReadExcept(tryExpr : TProgramExpr; var finalToken : TTokenType) : TExceptExpr;
+         procedure ReadTry(var Result : TExceptionExpr);
+         procedure ReadFinally(finallyExpr : TFinallyExpr);
+         procedure ReadExcept(exceptExpr : TExceptExpr; var finalToken : TTokenType);
 
          function ReadType(const typeName : String; typeContext : TdwsReadTypeContext) : TTypeSymbol;
          function ReadTypeCast(const namePos : TScriptPos; typeSym : TTypeSymbol) : TTypedExpr;
@@ -744,7 +744,8 @@ type
          procedure AbortCompilation;
 
          class function Evaluate(exec : IdwsProgramExecution; const anExpression : String;
-                              options : TdwsEvaluateOptions = []) : IdwsEvaluateExpr;
+                                 options : TdwsEvaluateOptions = [];
+                                 const scriptPos : PScriptPos = nil) : IdwsEvaluateExpr;
 
          procedure WarnForVarUsage(varExpr : TVarExpr; const scriptPos : TScriptPos);
 
@@ -2297,7 +2298,8 @@ end;
 //
 class function TdwsCompiler.Evaluate(exec : IdwsProgramExecution;
                                      const anExpression : String;
-                                     options : TdwsEvaluateOptions = []) : IdwsEvaluateExpr;
+                                     options : TdwsEvaluateOptions = [];
+                                     const scriptPos : PScriptPos = nil) : IdwsEvaluateExpr;
 var
    oldProgMsgs : TdwsCompileMessageList;
    sourceFile : TSourceFile;
@@ -2305,6 +2307,7 @@ var
    expr : TTypedExpr;
    resultObj : TdwsEvaluateExpr;
    contextProgram : TdwsProgram;
+   sourceContext : TdwsSourceContext;
    config : TdwsConfiguration;
    gotError : Boolean;
 begin
@@ -2348,7 +2351,22 @@ begin
             try
                compiler.FTok.BeginSourceFile(sourceFile);
                try
-                  expr:=compiler.ReadExpr;
+                  if scriptPos<>nil then begin
+                     sourceContext:=compiler.FSourceContextMap.FindContext(scriptPos^);
+                     while sourceContext<>nil do begin
+                        if sourceContext.LocalTable<>nil then begin
+                           compiler.FProg.EnterSubTable(sourceContext.LocalTable);
+                           Break;
+                        end;
+                        sourceContext:=sourceContext.Parent;
+                     end;
+                  end else sourceContext:=nil;
+                  try
+                     expr:=compiler.ReadExpr;
+                  finally
+                     if sourceContext<>nil then
+                        compiler.FProg.LeaveSubTable;
+                  end;
                except
                   on E : Exception do begin
                      gotError:=True;
@@ -3940,6 +3958,7 @@ var
    locExpr : TProgramExpr;
    hotPos : TScriptPos;
    msgsCount : Integer;
+   tryExpr : TExceptionExpr;
 begin
    if Assigned(FOnReadInstr) then begin
       Result:=FOnReadInstr(Self);
@@ -3976,8 +3995,16 @@ begin
          Result := ReadExit;
          MarkLoopExitable(leExit);
       end;
-      ttTRY :
-         Result := ReadTry;
+      ttTRY : begin
+         tryExpr:=nil;
+         try
+            ReadTry(tryExpr);
+            Result:=tryExpr;
+         except
+            tryExpr.Free;
+            raise;
+         end;
+      end;
       ttCONTINUE : begin
          if FLoopExprs.Count=0 then
             FMsgs.AddCompilerError(FTok.HotPos, CPE_ContinueOutsideOfLoop)
@@ -5389,8 +5416,11 @@ begin
          FMsgs.AddCompilerError(FTok.HotPos, CPE_ToOrDowntoExpected);
       end;
 
-      if loopBlockExpr<>nil then
+      if loopBlockExpr<>nil then begin
+         if coContextMap in FOptions then
+            FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttFOR);
          FProg.EnterSubTable(loopBlockExpr.Table);
+      end;
       try
          toExpr:=ReadExpr;
          if not toExpr.IsOfType(FProg.TypInteger) then
@@ -5400,8 +5430,13 @@ begin
          Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
                              fromExpr, toExpr, nil);
       finally
-         if loopBlockExpr<>nil then
+         if loopBlockExpr<>nil then begin
             FProg.LeaveSubTable;
+            if coContextMap in Options then begin
+               FSourceContextMap.Current.LocalTable:=loopBlockExpr.Table;
+               FSourceContextMap.CloseContext(FTok.CurrentPos);
+            end;
+         end;
       end;
 
    except
@@ -5670,8 +5705,11 @@ begin
          blockExpr:=TBlockExpr.Create(FProg, forPos);
       blockExpr.AddStatement(inExprAssignExpr);
    end;
-   if blockExpr<>nil then
+   if blockExpr<>nil then begin
+      if coContextMap in FOptions then
+         FSourceContextMap.OpenContext(FTok.CurrentPos, nil, ttFOR);
       FProg.EnterSubTable(blockExpr.Table);
+   end;
    Result:=blockExpr;
    try
       Result:=ReadForStep(forPos, forExprClass, iterVarExpr,
@@ -5685,6 +5723,11 @@ begin
          if Optimize then
             Result:=blockExpr.Optimize(FProg, FExec)
          else Result:=blockExpr;
+         if coContextMap in FOptions then begin
+            if blockExpr is TBlockExpr then
+               FSourceContextMap.Current.LocalTable:=TBlockExpr(blockExpr).Table;
+            FSourceContextMap.CloseContext(FTok.CurrentPos);
+         end;
       end;
    end;
 
@@ -8682,11 +8725,13 @@ end;
 
 // ReadTry
 //
-function TdwsCompiler.ReadTry: TExceptionExpr;
+procedure TdwsCompiler.ReadTry(var Result : TExceptionExpr);
 var
    tryBlock : TProgramExpr;
    tt : TTokenType;
    wasExcept : Boolean;
+   exceptExpr : TExceptExpr;
+   finallyExpr : TFinallyExpr;
 begin
    wasExcept:=FIsExcept;
    FIsExcept:=False;
@@ -8694,11 +8739,15 @@ begin
       tryBlock:=ReadBlocks([ttFINALLY, ttEXCEPT], tt);
       if tt=ttEXCEPT then begin
          FIsExcept:=True;
-         Result:=ReadExcept(tryBlock, tt);
-         if tt=ttFINALLY then
-            Result:=ReadFinally(Result);
-      end else begin
-         Result:=ReadFinally(tryBlock);
+         exceptExpr:=TExceptExpr.Create(tryBlock);
+         Result:=exceptExpr;
+         ReadExcept(exceptExpr, tt);
+         tryBlock:=Result;
+      end;
+      if tt=ttFINALLY then begin
+         finallyExpr:=TFinallyExpr.Create(tryBlock);
+         Result:=finallyExpr;
+         ReadFinally(finallyExpr);
       end;
    finally
       FIsExcept:=wasExcept;
@@ -8707,87 +8756,67 @@ end;
 
 // ReadFinally
 //
-function TdwsCompiler.ReadFinally(tryExpr : TProgramExpr) : TFinallyExpr;
+procedure TdwsCompiler.ReadFinally(finallyExpr : TFinallyExpr);
 var
    tt : TTokenType;
 begin
-   Result:=TFinallyExpr.Create(tryExpr.ScriptPos);
-   Result.TryExpr:=tryExpr;
+   FFinallyExprs.Push(True);
    try
-      FFinallyExprs.Push(True);
-      try
-         Result.HandlerExpr:=ReadBlocks([ttEND], tt);
-      finally
-         FFinallyExprs.Pop;
-      end;
-   except
-      Result.Free;
-      raise;
+      finallyExpr.HandlerExpr:=ReadBlocks([ttEND], tt);
+   finally
+      FFinallyExprs.Pop;
    end;
 end;
 
 // ReadExcept
 //
-function TdwsCompiler.ReadExcept(tryExpr : TProgramExpr; var finalToken : TTokenType) : TExceptExpr;
+procedure TdwsCompiler.ReadExcept(exceptExpr : TExceptExpr; var finalToken : TTokenType);
 var
    doExpr : TExceptDoExpr;
    varName : String;
    classSym : TTypeSymbol;
 begin
-   Result:=TExceptExpr.Create(TryExpr.ScriptPos);
-   try
-      Result.TryExpr:=tryExpr;
-      if FTok.Test(ttON) then begin
-         while FTok.TestDelete(ttON) do begin
-            if not FTok.TestName then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
-            varName:=FTok.GetToken.AsString;
-            FTok.KillToken;
+   if FTok.Test(ttON) then begin
+      while FTok.TestDelete(ttON) do begin
+         if not FTok.TestName then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
+         varName:=FTok.GetToken.AsString;
+         FTok.KillToken;
 
-            if not FTok.TestDelete(ttCOLON) then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
+         if not FTok.TestDelete(ttCOLON) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_ColonExpected);
 
-            classSym:=ReadType('', tcExceptionClass);
-            if not (classSym.BaseType is TClassSymbol) then
-               FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassRefExpected);
+         classSym:=ReadType('', tcExceptionClass);
+         if not (classSym.BaseType is TClassSymbol) then
+            FMsgs.AddCompilerError(FTok.HotPos, CPE_ClassRefExpected);
 
-            if not FTok.TestDelete(ttDO) then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
+         if not FTok.TestDelete(ttDO) then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_DoExpected);
 
-            doExpr:=TExceptDoExpr.Create(FTok.HotPos);
-            try
-               doExpr.ExceptionVar:=TDataSymbol.Create(varName, ClassSym);
+         doExpr:=TExceptDoExpr.Create(FProg, FTok.HotPos);
+         exceptExpr.AddDoExpr(DoExpr);
 
-               FProg.Table.AddSymbol(doExpr.ExceptionVar);
-               try
-                  doExpr.DoBlockExpr:=ReadBlock;
-               finally
-                  FProg.Table.Remove(doExpr.ExceptionVar);
-               end;
-            except
-               doExpr.Free;
-               raise;
-            end;
-
-            Result.AddDoExpr(DoExpr);
-
-            if FTok.TestAny([ttEND, ttELSE])=ttNone then
-               ReadSemiColon;
+         doExpr.ExceptionTable.AddSymbol(TDataSymbol.Create(varName, ClassSym));
+         FProg.EnterSubTable(doExpr.ExceptionTable);
+         try
+            doExpr.DoBlockExpr:=ReadBlock;
+         finally
+            FProg.LeaveSubTable;
          end;
 
-         if FTok.TestDelete(ttELSE) then
-            Result.ElseExpr:=ReadBlocks([ttEND, ttFINALLY], finalToken)
-         else begin
-            finalToken:=FTok.TestDeleteAny([ttEND, ttFINALLY]);
-            if finalToken=ttNone then
-               FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
-         end;
-      end else begin
-         Result.HandlerExpr:=ReadBlocks([ttEND, ttFINALLY], finalToken);
+         if FTok.TestAny([ttEND, ttELSE])=ttNone then
+            ReadSemiColon;
       end;
-   except
-      Result.Free;
-      raise;
+
+      if FTok.TestDelete(ttELSE) then
+         exceptExpr.ElseExpr:=ReadBlocks([ttEND, ttFINALLY], finalToken)
+      else begin
+         finalToken:=FTok.TestDeleteAny([ttEND, ttFINALLY]);
+         if finalToken=ttNone then
+            FMsgs.AddCompilerStop(FTok.HotPos, CPE_EndExpected);
+      end;
+   end else begin
+      exceptExpr.HandlerExpr:=ReadBlocks([ttEND, ttFINALLY], finalToken);
    end;
 end;
 

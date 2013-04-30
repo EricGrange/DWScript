@@ -29,6 +29,7 @@ type
          procedure SymDictFunctionForward;
          procedure SymDictInherited;
          procedure ReferencesVars;
+         procedure InvalidExceptSuggest;
    end;
 
 // ------------------------------------------------------------------
@@ -481,6 +482,28 @@ begin
 
    funcExec:=(funcSym as TFuncSymbol).Executable;
    CheckFalse((funcExec.GetSelf as TdwsProgram).Expr.ReferencesVariable(sym), 'not referenced in test');
+end;
+
+// InvalidExceptSuggest
+//
+procedure TSourceUtilsTests.InvalidExceptSuggest;
+var
+   prog : IdwsProgram;
+   sugg : IdwsSuggestions;
+   scriptPos : TScriptPos;
+begin
+   prog:=FCompiler.Compile( 'try'#13#10
+                           +'except'#13#10
+                           +'on e : Exception do'#13#10
+                           +'e.s'#13#10);
+
+   CheckTrue(prog.Msgs.HasErrors, 'compiled with errors');
+
+   scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 4, 4);
+
+   sugg:=TdwsSuggestions.Create(prog, scriptPos);
+   CheckEquals(1, sugg.Count, 'column 4');
+   CheckEquals('StackTrace', sugg.Code[0], 'sugg 2, 0');
 end;
 
 // ------------------------------------------------------------------

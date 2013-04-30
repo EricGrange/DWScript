@@ -333,8 +333,8 @@ type
 
          procedure ClearSuspendConditions;
 
-         function Evaluate(const expression : String) : IdwsEvaluateExpr;
-         function EvaluateAsString(const expression : String) : String;
+         function Evaluate(const expression : String; scriptPos : PScriptPos = nil) : IdwsEvaluateExpr;
+         function EvaluateAsString(const expression : String; scriptPos : PScriptPos = nil) : String;
 
          function AllowedActions : TdwsDebuggerActions;
 
@@ -850,25 +850,25 @@ end;
 
 // Evaluate
 //
-function TdwsDebugger.Evaluate(const expression : String) : IdwsEvaluateExpr;
+function TdwsDebugger.Evaluate(const expression : String; scriptPos : PScriptPos = nil) : IdwsEvaluateExpr;
 begin
    Assert(daCanEvaluate in AllowedActions, 'Evaluate not allowed');
 
    if FExecution<>nil then
-      Result:=TdwsCompiler.Evaluate(FExecution, expression)
+      Result:=TdwsCompiler.Evaluate(FExecution, expression, [], scriptPos)
    else Result:=nil;
 end;
 
 // EvaluateAsString
 //
-function TdwsDebugger.EvaluateAsString(const expression : String) : String;
+function TdwsDebugger.EvaluateAsString(const expression : String; scriptPos : PScriptPos = nil) : String;
 var
    expr : IdwsEvaluateExpr;
 begin
    if FExecution=nil then
       Exit(DBG_NotDebugging);
    try
-      expr:=Evaluate(expression);
+      expr:=Evaluate(expression, scriptPos);
       try
          Result:=DBG_NoResult;
          expr.Expression.EvalAsString(FExecution.ExecutionObject, Result);

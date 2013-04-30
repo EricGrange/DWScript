@@ -95,7 +95,7 @@ Var
 
 Begin
 
- If Flags = DISPATCH_METHOD Then
+ If (Flags and DISPATCH_METHOD) = DISPATCH_METHOD Then
   Begin
 
    If TDispParams(AParams).cNamedArgs > 0 Then

@@ -1725,6 +1725,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
+         constructor Create(tryExpr : TProgramExpr);
          destructor Destroy; override;
 
          property TryExpr : TProgramExpr read FTryExpr write FTryExpr;
@@ -1759,7 +1760,7 @@ type
    // try..except on FExceptionVar: FExceptionVar.Typ do FDoBlockExpr; ... end;
    TExceptDoExpr = class(TNoResultExpr)
       private
-         FExceptionVar : TDataSymbol;
+         FExceptionTable : TSymbolTable;
          FDoBlockExpr : TProgramExpr;
 
       protected
@@ -1767,14 +1768,16 @@ type
          function GetSubExprCount : Integer; override;
 
       public
+         constructor Create(aProg: TdwsProgram; const aPos: TScriptPos);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
 
          function ReferencesVariable(varSymbol : TDataSymbol) : Boolean; override;
+         function ExceptionVar : TDataSymbol;
 
          property DoBlockExpr : TProgramExpr read FDoBlockExpr write FDoBlockExpr;
-         property ExceptionVar : TDataSymbol read FExceptionVar write FExceptionVar;
+         property ExceptionTable : TSymbolTable read FExceptionTable;
    end;
 
    // try FTryExpr finally FHandlerExpr end;
@@ -6344,14 +6347,26 @@ begin
    Result:=1;
 end;
 
-{ TContinueExpr }
+// ------------------
+// ------------------ TContinueExpr ------------------
+// ------------------
 
 procedure TContinueExpr.EvalNoResult(exec : TdwsExecution);
 begin
    exec.Status:=esrContinue;
 end;
 
-{ TExceptionExpr }
+// ------------------
+// ------------------ TExceptionExpr ------------------
+// ------------------
+
+// Create
+//
+constructor TExceptionExpr.Create(tryExpr : TProgramExpr);
+begin
+   inherited Create(tryExpr.ScriptPos);
+   FTryExpr:=tryExpr;
+end;
 
 destructor TExceptionExpr.Destroy;
 begin
@@ -6454,6 +6469,7 @@ var
    isCaught : Boolean;
    isReraise : Boolean;
    systemExceptObject : TObject;
+   exceptVar : TDataSymbol;
 begin
    try
       exec.DoStep(FTryExpr);
@@ -6484,8 +6500,9 @@ begin
                for x := 0 to FDoExprs.Count - 1 do begin
                   // Find a "on x: Class do ..." statement matching to this exception class
                   doExpr := TExceptDoExpr(FDoExprs.List[x]);
-                  if doExpr.ExceptionVar.Typ.IsCompatible(objSym) then begin
-                     exec.Stack.Data[exec.Stack.BasePointer +  doExpr.FExceptionVar.StackAddr] := exceptObj;
+                  exceptVar:=doExpr.ExceptionVar;
+                  if exceptVar.Typ.IsCompatible(objSym) then begin
+                     exec.Stack.Data[exec.Stack.BasePointer+exceptVar.StackAddr] := exceptObj;
                      try
                         exec.DoStep(doExpr);
                         doExpr.EvalNoResult(exec);
@@ -6493,7 +6510,7 @@ begin
                         on E : EReraise do isReraise := True;
                      end;
                      if isReraise then break;
-                     VarClear(exec.Stack.Data[exec.Stack.BasePointer + doExpr.FExceptionVar.StackAddr]);
+                     VarClear(exec.Stack.Data[exec.Stack.BasePointer+exceptVar.StackAddr]);
                      isCaught := True;
                      Break;
                   end;
@@ -6693,12 +6710,20 @@ end;
 // ------------------ TExceptDoExpr ------------------
 // ------------------
 
+// Create
+//
+constructor TExceptDoExpr.Create(aProg: TdwsProgram; const aPos: TScriptPos);
+begin
+   inherited Create(aPos);
+   FExceptionTable:=TSymbolTable.Create(aProg.Table, aProg.Table.AddrGenerator);
+end;
+
 // Destroy
 //
 destructor TExceptDoExpr.Destroy;
 begin
    FDoBlockExpr.Free;
-   FExceptionVar.Free;
+   FExceptionTable.Free;
    inherited;
 end;
 
@@ -6713,8 +6738,15 @@ end;
 //
 function TExceptDoExpr.ReferencesVariable(varSymbol : TDataSymbol) : Boolean;
 begin
-   Result:=   (FExceptionVar=varSymbol)
+   Result:=   FExceptionTable.HasSymbol(varSymbol)
            or inherited ReferencesVariable(varSymbol);
+end;
+
+// ExceptionVar
+//
+function TExceptDoExpr.ExceptionVar : TDataSymbol;
+begin
+   Result:=FExceptionTable.Symbols[0] as TDataSymbol;
 end;
 
 // GetSubExpr

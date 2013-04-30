@@ -2,8 +2,10 @@ unit UDebuggerTests;
 
 interface
 
-uses Classes, SysUtils, dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs,
-   Variants, ComObj, dwsUtils, dwsSymbols, dwsDebugger, dwsStrings;
+uses
+   Classes, SysUtils, Variants, ComObj,
+   dwsXPlatformTests, dwsComp, dwsCompiler, dwsExprs, dwsErrors,
+   dwsUtils, dwsSymbols, dwsDebugger, dwsStrings;
 
 type
 
@@ -33,6 +35,7 @@ type
          procedure EvaluateSimpleTest;
          procedure EvaluateOutsideOfExec;
          procedure EvaluateContextTest;
+         procedure EvaluateLocalVar;
 
          procedure ExecutableLines;
 
@@ -77,6 +80,7 @@ var
    meth : TdwsMethod;
 begin
    FCompiler:=TDelphiWebScript.Create(nil);
+   FCompiler.Config.CompilerOptions:=[coContextMap];
    FUnits:=TdwsUnit.Create(nil);
    FUnits.UnitName:='TestUnit';
    FUnits.Script:=FCompiler;
@@ -130,9 +134,12 @@ end;
 // DoDebugEval
 //
 procedure TDebuggerTests.DoDebugEval(exec: TdwsExecution; expr: TExprBase);
+var
+   p : TScriptPos;
 begin
-   if expr.ScriptPos.Line=FDebugEvalAtLine then
-      FDebugLastEvalResult:=FDebugger.EvaluateAsString(FDebugEvalExpr);
+   p:=expr.ScriptPos;
+   if p.Line=FDebugEvalAtLine then
+      FDebugLastEvalResult:=FDebugger.EvaluateAsString(FDebugEvalExpr, @p);
 end;
 
 // DoDebugMessage
@@ -249,6 +256,36 @@ begin
    end;
 end;
 
+// EvaluateLocalVar
+//
+procedure TDebuggerTests.EvaluateLocalVar;
+var
+   prog : IdwsProgram;
+   exec : IdwsProgramExecution;
+begin
+   prog:=FCompiler.Compile( 'for var i := 1 to 1 do'#13#10
+                              +'PrintLn(i);');
+   try
+      exec:=prog.CreateNewExecution;
+      try
+         FDebugEvalExpr:='i';
+
+         FDebugEvalAtLine:=2;
+         FDebugLastEvalResult:='';
+         FDebugger.BeginDebug(exec);
+         try
+            CheckEquals('1', FDebugLastEvalResult, 'i at line 2');
+         finally
+            FDebugger.EndDebug;
+         end;
+      finally
+         exec:=nil;
+      end;
+   finally
+      prog:=nil;
+   end;
+end;
+
 // ExecutableLines
 //
 procedure TDebuggerTests.ExecutableLines;
@@ -284,20 +321,20 @@ begin
    CheckEquals('2'#13#10, prog.Execute.Result.ToString, 'Result 1');
 
    breakpointables:=TdwsBreakpointableLines.Create(prog);
-   CheckEquals('*MainModule*: 1,3,5,7,', ReportBreakpointables, 'Case 1');
+   CheckEquals('*MainModule*: 1,3,4,5,7,', ReportBreakpointables, 'Case 1');
    breakpointables.Free;
 
    prog:=FCompiler.Compile( 'var i := 1;'#13#10
                            +'procedure Test;'#13#10
-                           +'var i := 2;'#13#10
                            +'begin'#13#10
+                              +'var i := 2;'#13#10
                               +'PrintLn(i);'#13#10
                            +'end;'#13#10
                            +'i:=i+1;');
    CheckEquals('', prog.Execute.Result.ToString, 'Result 2');
 
    breakpointables:=TdwsBreakpointableLines.Create(prog);
-   CheckEquals('*MainModule*: 1,3,5,7,', ReportBreakpointables, 'Case 2');
+   CheckEquals('*MainModule*: 1,3,4,5,7,', ReportBreakpointables, 'Case 2');
    breakpointables.Free;
 end;
 
