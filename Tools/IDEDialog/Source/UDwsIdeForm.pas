@@ -782,15 +782,15 @@ procedure TDwsIdeForm.Compile( ABuild : boolean );
   procedure AddMessageInfo;
   var
     I : integer;
-    Pos : PScriptPos;
+    sPos : PScriptPos;
   begin
     For I := 0 to FProgram.Msgs.Count-1 do
       begin
       if FProgram.Msgs[I] is TScriptMessage then
-        Pos := @TScriptMessage( FProgram.Msgs[I] ).Pos
+        sPos := @TScriptMessage( FProgram.Msgs[I] ).ScriptPos
        else
-         Pos := nil;
-      AddMessage( '  ' + FProgram.Msgs[I].AsInfo, Pos );
+         sPos := nil;
+      AddMessage( '  ' + FProgram.Msgs[I].AsInfo, sPos );
       end;
   end;
 
@@ -2726,6 +2726,8 @@ constructor TEditorPage.Create(
     FEditor.Gutter.Width := 50;
     FEditor.PopupMenu := AOwner.EditorPagePopupMenu;
     FEditor.WantTabs  := True;
+    FEditor.ParentBackground := False;
+    FEditor.FontSmoothing := fsmClearType;
 
     If Assigned( AOwner.FOptions.EditorHighlighterClass ) then
       FEditor.Highlighter := AOwner.FOptions.EditorHighlighterClass.Create( Self );

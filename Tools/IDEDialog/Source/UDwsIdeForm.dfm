@@ -5,6 +5,7 @@ object DwsIdeForm: TDwsIdeForm
   ClientHeight = 770
   ClientWidth = 937
   Color = clBtnFace
+  DoubleBuffered = True
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -39,6 +40,7 @@ object DwsIdeForm: TDwsIdeForm
     Align = alBottom
     BevelOuter = bvNone
     Caption = 'pnlBottom'
+    ParentBackground = False
     ShowCaption = False
     TabOrder = 0
     object pcBottomWindows: TPageControl
@@ -66,6 +68,10 @@ object DwsIdeForm: TDwsIdeForm
       object tsOutput: TTabSheet
         Caption = 'Output'
         ImageIndex = 1
+        ExplicitLeft = 0
+        ExplicitTop = 0
+        ExplicitWidth = 0
+        ExplicitHeight = 0
         object memOutputWindow: TMemo
           Left = 0
           Top = 0
@@ -89,6 +95,8 @@ object DwsIdeForm: TDwsIdeForm
     Align = alClient
     BevelOuter = bvNone
     Caption = 'pnlMain'
+    DoubleBuffered = True
+    ParentDoubleBuffered = False
     ShowCaption = False
     TabOrder = 1
     object SplitterRight: TSplitter
@@ -108,6 +116,9 @@ object DwsIdeForm: TDwsIdeForm
       Align = alRight
       BevelOuter = bvNone
       BorderWidth = 5
+      DoubleBuffered = False
+      ParentBackground = False
+      ParentDoubleBuffered = False
       TabOrder = 0
       inline DwsIdeLocalVariablesFrame: TDwsIdeLocalVariablesFrame
         Left = 5
@@ -115,6 +126,7 @@ object DwsIdeForm: TDwsIdeForm
         Width = 251
         Height = 240
         Align = alTop
+        ParentBackground = False
         TabOrder = 0
         ExplicitLeft = 5
         ExplicitTop = 5
@@ -125,6 +137,7 @@ object DwsIdeForm: TDwsIdeForm
         end
         inherited Panel1: TPanel
           Width = 251
+          ParentBackground = False
           ExplicitWidth = 251
         end
       end
@@ -134,6 +147,7 @@ object DwsIdeForm: TDwsIdeForm
         Width = 251
         Height = 224
         Align = alTop
+        ParentBackground = False
         TabOrder = 1
         ExplicitLeft = 5
         ExplicitTop = 245
@@ -149,6 +163,7 @@ object DwsIdeForm: TDwsIdeForm
         end
         inherited Panel1: TPanel
           Width = 251
+          ParentBackground = False
           ExplicitWidth = 251
         end
       end
@@ -158,6 +173,7 @@ object DwsIdeForm: TDwsIdeForm
         Width = 251
         Height = 186
         Align = alClient
+        ParentBackground = False
         TabOrder = 2
         ExplicitLeft = 5
         ExplicitTop = 469
@@ -171,6 +187,7 @@ object DwsIdeForm: TDwsIdeForm
         end
         inherited Panel1: TPanel
           Width = 251
+          ParentBackground = False
           ExplicitWidth = 251
         end
       end
@@ -183,9 +200,8 @@ object DwsIdeForm: TDwsIdeForm
       Align = alClient
       BevelOuter = bvNone
       BorderWidth = 5
-      DoubleBuffered = True
+      FullRepaint = False
       ParentBackground = False
-      ParentDoubleBuffered = False
       TabOrder = 1
       object imgTabs: TImage
         Left = 5
@@ -229,6 +245,7 @@ object DwsIdeForm: TDwsIdeForm
         Height = 609
         Align = alClient
         BevelOuter = bvNone
+        Color = clWindow
         ParentBackground = False
         TabOrder = 1
         OnResize = pnlPageControlResize
@@ -653,7 +670,7 @@ object DwsIdeForm: TDwsIdeForm
     Left = 176
     Top = 256
     Bitmap = {
-      494C01011E002100300010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C01011E002100040010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000008000000001002000000000000080
       00000000000000000000000000000000000000000000706B67DCA39D96FEA19B
       95FEA19B95FEA19B95FEA19B95FEA19B95FEA19B96FEA19B94FEA19C94FEA19A
