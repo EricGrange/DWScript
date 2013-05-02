@@ -209,7 +209,7 @@ end;
 procedure TDwsIdeScript.GetExecutableLines( const AUnitName : string; ACallBack : TExecutableLinecallback );
 var
   I : integer;
-  Pos : TSymbolPosition;
+  symPos : TSymbolPosition;
 begin
   NeedCompile;
 
@@ -218,14 +218,14 @@ begin
 
   For I := 0 to FProgram.SymbolDictionary.Count-1 do
     begin
-    Pos := FProgram.SymbolDictionary.FindSymbolPosList(
+    symPos := FProgram.SymbolDictionary.FindSymbolPosList(
       FProgram.SymbolDictionary[I].Symbol ).FindUsage( suReference);
-    if Pos <> nil then
-      If (AUnitName = sMainModule) and Pos.ScriptPos.IsMainModule then
-        ACallback( Pos.ScriptPos.Line )
+    if symPos <> nil then
+      If (AUnitName = sMainModule) and symPos.ScriptPos.IsMainModule then
+        ACallback( symPos.ScriptPos.Line )
        else
-        if Pos.ScriptPos.IsSourceFile( AUnitName ) then
-           ACallback( Pos.ScriptPos.Line );
+        if symPos.ScriptPos.IsSourceFile( AUnitName ) then
+           ACallback( symPos.ScriptPos.Line );
     end;
 
 end;

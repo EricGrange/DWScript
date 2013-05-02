@@ -55,7 +55,7 @@ type
          FCodePtr : Pointer;
          FCodeSize : Integer;
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const binary : TBytes);
+         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; const binary : TBytes);
          destructor Destroy; override;
          procedure EvalNoResult(exec : TdwsExecution); override;
    end;
@@ -318,9 +318,9 @@ end;
 
 // Create
 //
-constructor TdwsASMBlockExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; const binary : TBytes);
+constructor TdwsASMBlockExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; const binary : TBytes);
 begin
-   inherited Create(Pos);
+   inherited Create(aScriptPos);
    FCodeSize:=Length(binary);
    FCodePtr:=VirtualAlloc(nil, FCodeSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
    System.Move(binary[0], FCodePtr^, FCodeSize);

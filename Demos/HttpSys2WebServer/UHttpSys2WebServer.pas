@@ -267,7 +267,7 @@ begin
          // invalid pathFileName
          fileInfo.fileAttribs:=INVALID_FILE_ATTRIBUTES
 
-      else if Pos('\.', fileInfo.CookedPathName)>0 then
+      else if StrContains(fileInfo.CookedPathName, '\.') then
 
          // Directories or files beginning with a '.' are invisible
          fileInfo.fileAttribs:=INVALID_FILE_ATTRIBUTES
@@ -359,7 +359,7 @@ begin
       or StrEndsWith(fileName, '.inc')
       or StrEndsWith(fileName, '.pas') then
       FDWS.FlushDWSCache;
-   if (Pos('\.', fileName)<=0) and (Pos('\index.', fileName)>0) then
+   if (not StrContains(fileName, '\.')) and StrContains(fileName, '\index.') then
       FDirectoryIndex.Flush;
    Inc(FCacheCounter);
 end;

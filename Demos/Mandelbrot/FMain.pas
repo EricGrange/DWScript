@@ -18,6 +18,7 @@ type
     LADWScript: TLabel;
     DelphiWebScript: TDelphiWebScript;
     procedure FormCreate(Sender: TObject);
+    procedure FormClick(Sender: TObject);
   private
     { Déclarations privées }
     FBitmap : TBitmap;
@@ -29,7 +30,7 @@ type
     procedure PaintBitmapDWSscript;
 //    procedure PaintBitmapLaPe;
   public
-    { Déclarations publiques }
+    procedure Benchmark;
   end;
 
 var
@@ -40,7 +41,8 @@ implementation
 {$R *.dfm}
 
 (*
-uses lptypes,lpparser, lpcompiler, lputils, lpvartypes, lpeval, lpinterpreter, lpdisassembler;
+uses lptypes, lpparser, lpcompiler, lputils, lpvartypes, lpeval, lpinterpreter,
+   lpdisassembler;
 
 procedure LaPeSetPixel(Params: PParamArray);
 begin
@@ -113,14 +115,27 @@ end;
 // FormCreate
 //
 procedure TMainForm.FormCreate(Sender: TObject);
+begin
+   RegisterInternalProcedure(TSetPixelMagic, 'SetPixel', ['x', 'Integer', 'y', 'Integer', 'color', 'Integer']);
+   Benchmark;
+end;
+
+// FormClick
+//
+procedure TMainForm.FormClick(Sender: TObject);
+begin
+   Benchmark;
+end;
+
+// Benchmark
+//
+procedure TMainForm.Benchmark;
 const
    cNB_LOOPS = 10;
 var
    tStart, tStop, tFreq : Int64;
    i : Integer;
 begin
-   RegisterInternalProcedure(TSetPixelMagic, 'SetPixel', ['x', 'Integer', 'y', 'Integer', 'color', 'Integer']);
-
    QueryPerformanceFrequency(tFreq);
 
    PrepareBitmap;

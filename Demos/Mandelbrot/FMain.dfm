@@ -15,6 +15,7 @@ object MainForm: TMainForm
   Font.Style = []
   OldCreateOrder = False
   Position = poScreenCenter
+  OnClick = FormClick
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 14
@@ -23,12 +24,14 @@ object MainForm: TMainForm
     Top = 17
     Width = 500
     Height = 500
+    OnClick = FormClick
   end
   object IMDWScript: TImage
     Left = 506
     Top = 17
     Width = 500
     Height = 500
+    OnClick = FormClick
   end
   object LADelphi: TLabel
     Left = 0

@@ -2042,14 +2042,14 @@ end;
 procedure TDwsIdeForm.lbMessagesDblClick(Sender: TObject);
 var
   I : integer;
-  Pos : PScriptPos;
+  sPos : PScriptPos;
 begin
   I := lbMessages.ItemIndex;
   if I < 0 then
     Exit;
-  Pos := PScriptPos(lbMessages.Items.Objects[I]);
-  if Assigned( FProgram ) and Assigned( Pos ) then
-    GotoScriptPos( Pos^ );
+  sPos := PScriptPos(lbMessages.Items.Objects[I]);
+  if Assigned( FProgram ) and Assigned( sPos ) then
+    GotoScriptPos( sPos^ );
 end;
 
 procedure TDwsIdeForm.pcEditorMouseDown(Sender: TObject;
