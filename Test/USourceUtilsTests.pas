@@ -281,10 +281,11 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
-   CheckTrue(sugg.Count=3, 's.');
-   CheckEquals('High', sugg.Code[0], 's. 0');
-   CheckEquals('Length', sugg.Code[1], 's. 1');
-   CheckEquals('Low', sugg.Code[2], 's. 2');
+   CheckTrue(sugg.Count=4, 's.');
+   CheckEquals('Contains', sugg.Code[0], 's. 0');
+   CheckEquals('High', sugg.Code[1], 's. 1');
+   CheckEquals('Length', sugg.Code[2], 's. 2');
+   CheckEquals('Low', sugg.Code[3], 's. 3');
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 4);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);

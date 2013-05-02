@@ -1310,11 +1310,17 @@ end;
 function TdwsCompiler.GetMethodExpr(meth: TMethodSymbol; Expr: TTypedExpr; RefKind: TRefKind;
                                     const scriptPos : TScriptPos; ForceStatic : Boolean) : TFuncExprBase;
 begin
-   Result:=CreateMethodExpr(FProg, meth, Expr, RefKind, scriptPos, ForceStatic);
+   if meth is TAliasMethodSymbol then begin
+
+      Result:=GetFuncExpr(TAliasMethodSymbol(meth).Alias);
+      Result.AddArg(expr);
+
+   end else Result:=CreateMethodExpr(FProg, meth, Expr, RefKind, scriptPos, ForceStatic);
 
    if (meth.Typ<>nil) and (meth.Typ.Size>1) then
       Result.SetResultAddr(FProg, nil);
 end;
+
 
 // MemberSymbolWithNameAlreadyExists
 //
@@ -2820,9 +2826,10 @@ begin
          if not FTok.TestDeleteNamePos(name, funcPos) then begin
             FMsgs.AddCompilerError(FTok.HotPos, CPE_NameExpected);
             name:='';
+         end else begin
+            CheckSpecialName(name);
+            sym:=FProg.Table.FindSymbol(name, cvMagic);
          end;
-         CheckSpecialName(name);
-         sym:=FProg.Table.FindSymbol(name, cvMagic);
       end;
    end else begin
       name:='';
@@ -9697,8 +9704,11 @@ begin
                expecting:=FProg.TypVariant;
             Result:=ReadNull(expecting);
          end else Result:=TTypedExpr(nameExpr);
-      end else // Constant values in the code
+      end else begin // Constant values in the code
          Result := ReadConstValue;
+         if (Result<>nil) and FTok.Test(ttDOT) then
+            Result:=(ReadSymbol(Result, isWrite) as TTypedExpr);
+      end;
    end;
 
    // No expression found
@@ -9714,6 +9724,7 @@ var
    negTerm : TTypedExpr;
    hotPos : TScriptPos;
 begin
+   FTok.TestName; // make sure hotpos is on next token
    hotPos:=FTok.HotPos;
    negTerm:=ReadTerm;
    if negTerm.IsOfType(FProg.TypInteger) then
@@ -9722,7 +9733,7 @@ begin
       negExprClass:=TNegFloatExpr
    else begin
       if not negTerm.IsOfType(FProg.TypVariant) then
-         FMsgs.AddCompilerError(FTok.HotPos, CPE_NumericalExpected);
+         FMsgs.AddCompilerError(hotPos, CPE_NumericalExpected);
       negExprClass:=TNegVariantExpr;
    end;
    Result:=negExprClass.Create(FProg, negTerm);

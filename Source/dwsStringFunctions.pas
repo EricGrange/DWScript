@@ -213,6 +213,10 @@ type
     function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
   end;
 
+  TStrContainsFunc = class(TInternalMagicBoolFunction)
+    function DoEvalAsBoolean(args : TExprBaseList) : Boolean; override;
+  end;
+
   TStrAfterFunc = class(TInternalMagicStringFunction)
     procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
@@ -752,6 +756,13 @@ begin
    end;
 end;
 
+{ TStrContainsFunc }
+
+function TStrContainsFunc.DoEvalAsBoolean(args : TExprBaseList) : Boolean;
+begin
+   Result:=StrContains(args.AsString[0], args.AsString[1]);
+end;
+
 { TStrAfterFunc }
 
 procedure TStrAfterFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
@@ -987,6 +998,8 @@ initialization
 
    RegisterInternalBoolFunction(TStrBeginsWithFunc, 'StrBeginsWith', ['str', cString, 'beginStr', cString], [iffStateLess]);
    RegisterInternalBoolFunction(TStrEndsWithFunc, 'StrEndsWith', ['str', cString, 'endStr', cString], [iffStateLess]);
+
+   RegisterInternalBoolFunction(TStrContainsFunc, 'StrContains', ['str', cString, 'subStr', cString], [iffStateLess], 'Contains');
 
    RegisterInternalStringFunction(TStrAfterFunc, 'StrAfter', ['str', cString, 'delimiter', cString], [iffStateLess]);
    RegisterInternalStringFunction(TStrBeforeFunc, 'StrBefore', ['str', cString, 'delimiter', cString], [iffStateLess]);

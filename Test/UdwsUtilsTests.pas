@@ -49,6 +49,8 @@ type
          procedure FastIntToStrTest;
 
          procedure VarRecArrayTest;
+
+         procedure StrContainsTest;
    end;
 
 // ------------------------------------------------------------------
@@ -549,6 +551,19 @@ begin
    finally
       v.Free;
    end;
+end;
+
+// StrContainsTest
+//
+procedure TdwsUtilsTests.StrContainsTest;
+begin
+   CheckTrue(StrContains('banana', 'a'));
+   CheckFalse(StrContains('banana', 'z'));
+   CheckTrue(StrContains('banana', 'na'));
+   CheckTrue(StrContains('banana', 'b'));
+   CheckTrue(StrContains('banana', 'ba'));
+   CheckTrue(StrContains('bananas', 'as'));
+   CheckTrue(StrContains('bananas', 's'));
 end;
 
 // ------------------------------------------------------------------

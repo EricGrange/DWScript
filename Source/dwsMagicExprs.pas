@@ -26,8 +26,8 @@ interface
 uses
    Classes, SysUtils,
    dwsUtils, dwsErrors,
-   dwsSymbols, dwsExprList, dwsStack,
-   dwsExprs, dwsFunctions, dwsDataContext;
+   dwsSymbols, dwsExprList, dwsStack, dwsDataContext,
+   dwsExprs, dwsFunctions;
 
 type
 
@@ -320,6 +320,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
+uses dwsCompilerUtils;
+
 // RegisterInternalIntFunction
 //
 procedure RegisterInternalIntFunction(InternalFunctionClass: TInternalMagicIntFunctionClass;
@@ -429,6 +431,7 @@ begin
       ssym.IsStateless:=(iffStateLess in flags);
       ssym.IsExternal:=True;
       compositeSymbol.AddMethod(ssym);
+      Assert(helperName=''); // unsupported
    end else begin
       sym:=TMagicFuncSymbol.Generate(table, funcName, params, funcType);
       sym.params.AddParent(table);
@@ -436,6 +439,8 @@ begin
       sym.IsStateless:=(iffStateLess in flags);
       sym.IsOverloaded:=(iffOverloaded in flags);
       table.AddSymbol(sym);
+      if helperName<>'' then
+         TdwsCompilerUtils.AddProcHelper(helperName, table, sym, nil);
    end;
 end;
 

@@ -431,7 +431,7 @@ begin
 
    clsName:=Info.ParamAsString[1];
    compClass:=nil;
-   if Pos('.', clsName)>0 then begin
+   if StrContains(clsName, '.') then begin
       compType:=vRTTIContext.FindType(clsName);
       if compType is TRttiInstanceType then
          compClass:=TRttiInstanceType(compType).MetaclassType;

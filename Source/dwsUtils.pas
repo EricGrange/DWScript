@@ -552,6 +552,8 @@ function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
 function StrBeginsWith(const aStr, aBegin : String) : Boolean;
 function StrBeginsWithA(const aStr, aBegin : RawByteString) : Boolean;
 function StrEndsWith(const aStr, aEnd : String) : Boolean;
+function StrContains(const aStr, aSubStr : String) : Boolean; overload;
+function StrContains(const aStr : String; aChar : Char) : Boolean; overload;
 
 function StrAfterChar(const aStr : String; aChar : Char) : String;
 function StrBeforeChar(const aStr : String; aChar : Char) : String;
@@ -1055,6 +1057,29 @@ begin
    if (n2>n1) or (n2=0) then
       Result:=False
    else Result:=CompareMem(@aStr[n1-n2+1], Pointer(aEnd), n2*SizeOf(Char));
+end;
+
+// StrContains (sub string)
+//
+function StrContains(const aStr, aSubStr : String) : Boolean;
+begin
+   Result:=(aSubStr='') or (Pos(aSubStr, aStr)>0);
+end;
+
+// StrContains (sub char)
+//
+function StrContains(const aStr : String; aChar : Char) : Boolean;
+var
+   p, pLast : PWideChar;
+begin
+   p:=PWideChar(Pointer(aStr));
+   pLast:=@p[Length(aStr)];
+   while p<pLast do begin
+      if p^=aChar then
+         Exit(True);
+      Inc(p);
+   end;
+   Result:=False;
 end;
 
 // StrAfterChar

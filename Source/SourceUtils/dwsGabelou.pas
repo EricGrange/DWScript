@@ -274,7 +274,7 @@ begin
       symPosList:=symDict.Items[i];
       sym:=symPosList.Symbol;
       // skip magic symbols
-      if (sym.Name='') or (Pos(' ', sym.Name)>0) then
+      if (sym.Name='') or StrContains(sym.Name, ' ') then
          continue;
       if restrictToSourceFile<>nil then begin
          symPos:=symPosList.FindUsage(suDeclaration);
