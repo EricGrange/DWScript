@@ -889,10 +889,10 @@ type
    // hosts a type reference
    TTypeReferenceExpr = class sealed (TTypedExpr)
       private
-         FPos : TScriptPos;
+         FScriptPos : TScriptPos;
 
       public
-         constructor Create(aTyp : TTypeSymbol; const scriptPos : TScriptPos);
+         constructor Create(aTyp : TTypeSymbol; const aScriptPos : TScriptPos);
 
          function Eval(exec : TdwsExecution) : Variant; override;
          function ScriptPos : TScriptPos; override;
@@ -977,14 +977,12 @@ type
    // Encapsulates data
    TPosDataExpr = class(TDataExpr)
       protected
-         FPos : TScriptPos;
+         FScriptPos : TScriptPos;
 
       public
          constructor Create(Prog: TdwsProgram; const scriptPos : TScriptPos; Typ: TTypeSymbol);
 
          function ScriptPos : TScriptPos; override;
-
-         property Pos : TScriptPos read FPos;
    end;
 
    // TExternalFuncHandler
@@ -1014,7 +1012,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(prog : TdwsProgram; const pos : TScriptPos; aFunc : TFuncSymbol);
+         constructor Create(prog : TdwsProgram; const aScriptPos : TScriptPos; aFunc : TFuncSymbol);
          destructor Destroy; override;
 
          procedure AddArg(arg : TTypedExpr);
@@ -1172,18 +1170,18 @@ type
          FBaseExpr : TDataExpr;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; BaseExpr: TDataExpr);
+         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; BaseExpr: TDataExpr);
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
    end;
 
    TSourceCondition = class (TInterfacedSelfObject, IBooleanEvalable, IStringEvalable)
       private
-         FPos : TScriptPos;
+         FScriptPos : TScriptPos;
          FTest : TTypedExpr;
          FMsg : TTypedExpr;
 
       public
-         constructor Create(const pos : TScriptPos; aTest, aMsg : TTypedExpr);
+         constructor Create(const aScriptPos: TScriptPos; aTest, aMsg : TTypedExpr);
          destructor Destroy; override;
 
          procedure InitSymbol(symbol: TSymbol);
@@ -1194,7 +1192,7 @@ type
          function EvalAsBoolean(exec : TdwsExecution) : Boolean;
          procedure EvalAsString(exec : TdwsExecution; var Result : String);
 
-         property Pos : TScriptPos read FPos write FPos;
+         property ScriptPos : TScriptPos read FScriptPos write FScriptPos;
          property Test : TTypedExpr read FTest;
          property Msg : TTypedExpr read FMsg write FMsg;
    end;
@@ -1310,7 +1308,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TTypedExpr);
+         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; Expr: TTypedExpr);
          destructor Destroy; override;
 
          procedure EvalNoResult(exec : TdwsExecution); override;
@@ -3681,11 +3679,11 @@ end;
 
 // Create
 //
-constructor TTypeReferenceExpr.Create(aTyp : TTypeSymbol; const scriptPos : TScriptPos);
+constructor TTypeReferenceExpr.Create(aTyp : TTypeSymbol; const aScriptPos : TScriptPos);
 begin
    inherited Create;
    Typ:=aTyp;
-   FPos:=scriptPos;
+   FScriptPos:=aScriptPos;
 end;
 
 // Eval
@@ -3699,7 +3697,7 @@ end;
 //
 function TTypeReferenceExpr.ScriptPos : TScriptPos;
 begin
-   Result:=FPos;
+   Result:=FScriptPos;
 end;
 
 // ------------------
@@ -3711,14 +3709,14 @@ end;
 constructor TPosDataExpr.Create(Prog: TdwsProgram; const scriptPos : TScriptPos; Typ: TTypeSymbol);
 begin
    inherited Create(Prog, Typ);
-   FPos:=scriptPos;
+   FScriptPos:=scriptPos;
 end;
 
 // ScriptPos
 //
 function TPosDataExpr.ScriptPos : TScriptPos;
 begin
-   Result:=FPos;
+   Result:=FScriptPos;
 end;
 
 // ------------------
@@ -3910,9 +3908,9 @@ end;
 
 // Create
 //
-constructor TFuncExprBase.Create(prog : TdwsProgram; const pos : TScriptPos; aFunc : TFuncSymbol);
+constructor TFuncExprBase.Create(prog : TdwsProgram; const aScriptPos: TScriptPos; aFunc : TFuncSymbol);
 begin
-   inherited Create(Prog, Pos, nil);
+   inherited Create(Prog, aScriptPos, nil);
    FFunc:=aFunc;
    if Assigned(aFunc) then
       FTyp:=aFunc.Typ;
@@ -3966,7 +3964,7 @@ begin
                                                   TCompilerErrorMessage);
          end;
          on E: Exception do begin
-            Prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_FunctionOptimizationFailed,
+            Prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_FunctionOptimizationFailed,
                                                  [FuncSym.Name, E.ClassName, E.Message],
                                                   TCompilerErrorMessage);
          end;
@@ -7051,12 +7049,12 @@ end;
 // ------------------ TMethodObjExpr ------------------
 // ------------------
 
-constructor TMethodObjExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
-  BaseExpr: TDataExpr);
+constructor TMethodObjExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
+                                  BaseExpr: TDataExpr);
 begin
-  Assert(BaseExpr.Typ is TMethodSymbol);
-  inherited Create(Prog,Pos,TMethodSymbol(BaseExpr.Typ).StructSymbol);
-  FBaseExpr := BaseExpr;
+   Assert(BaseExpr.Typ is TMethodSymbol);
+   inherited Create(Prog, aScriptPos, TMethodSymbol(BaseExpr.Typ).StructSymbol);
+   FBaseExpr := BaseExpr;
 end;
 
 // GetDataPtr
@@ -7072,9 +7070,9 @@ end;
 
 // Create
 //
-constructor TNoResultWrapperExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos; Expr: TTypedExpr);
+constructor TNoResultWrapperExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; Expr: TTypedExpr);
 begin
-   inherited Create(Pos);
+   inherited Create(aScriptPos);
    FExpr := Expr;
 end;
 
@@ -7127,10 +7125,10 @@ end;
 
 // Create
 //
-constructor TSourceCondition.Create(const pos : TScriptPos; aTest, aMsg : TTypedExpr);
+constructor TSourceCondition.Create(const aScriptPos: TScriptPos; aTest, aMsg : TTypedExpr);
 begin
    inherited Create;
-   FPos:=pos;
+   FScriptPos:=aScriptPos;
    FTest:=aTest;
    FMsg:=aMsg;
 end;
@@ -7243,7 +7241,7 @@ var
 begin
    failed:=Test(exec);
    if failed<>nil then
-      RaiseConditionFailed(exec, FProg.FFunc, failed.Pos, failed);
+      RaiseConditionFailed(exec, FProg.FFunc, failed.ScriptPos, failed);
 end;
 
 // GetConditions

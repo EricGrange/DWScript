@@ -748,10 +748,7 @@ begin
    v:=TdwsJSONValue.ParseString(info.ParamAsString[0]);
    if v=nil then
       box:=TBoxedJSONValue.Create(TdwsJSONObject.Create)
-   else begin
-      box:=TBoxedJSONValue.Create(v);
-      v.DecRefCount;
-   end;
+   else box:=TBoxedJSONValue.Create(v);
    Info.ResultAsVariant:=IUnknown(IBoxedJSONValue(box));
 end;
 

@@ -4277,7 +4277,7 @@ begin
 
             baseType:=ResolveUnitNameSpace(TUnitSymbol(baseType));
 
-            namePos := FTok.HotPos;   // reuse token pos variable
+            namePos := FTok.HotPos;
             sym := TUnitSymbol(baseType).Table.FindLocal(FTok.GetToken.AsString);
 
             if not Assigned(sym) then
@@ -6025,14 +6025,14 @@ end;
 //
 function TdwsCompiler.ReadAssign(token : TTokenType; var left : TDataExpr) : TProgramExpr;
 var
-   pos : TScriptPos;
+   hotPos : TScriptPos;
    right : TTypedExpr;
 begin
-   pos:=FTok.HotPos;
+   hotPos:=FTok.HotPos;
    right:=nil;
    try
       right:=ReadExpr(left.Typ);
-      Result:=CreateAssign(pos, token, left, right);
+      Result:=CreateAssign(hotPos, token, left, right);
       left:=nil;
    except
       left.Free;
@@ -6519,7 +6519,7 @@ begin
             or (    expecting.IsFuncSymbol
                 and expecting.IsCompatible(funcExpr.funcSym)) then begin
             if (funcExpr.FuncSym.Level>1) and not (coAllowClosures in Options) then
-               FMsgs.AddCompilerError(funcExpr.Pos, CPE_LocalFunctionAsDelegate);
+               FMsgs.AddCompilerError(funcExpr.ScriptPos, CPE_LocalFunctionAsDelegate);
             Result:=TFuncRefExpr.Create(FProg, funcExpr);
          end else begin
             if overloads<>nil then begin
@@ -6636,7 +6636,7 @@ begin
       paramSymbol:=TParamSymbol(funcSym.Params[x]);
       if x<Length(argPosArray) then
          argPos:=argPosArray[x]
-      else argPos:=funcExpr.Pos;
+      else argPos:=funcExpr.ScriptPos;
 
       if arg.ClassType=TArrayConstantExpr then
          TArrayConstantExpr(arg).Prepare(FProg, paramSymbol.Typ.Typ);
@@ -6678,9 +6678,9 @@ begin
 
    if initialErrorCount=FMsgs.Count then begin
       if tooManyArguments then
-         FMsgs.AddCompilerError(funcExpr.Pos, CPE_TooManyArguments);
+         FMsgs.AddCompilerError(funcExpr.ScriptPos, CPE_TooManyArguments);
       if tooFewArguments then
-         FMsgs.AddCompilerError(funcExpr.Pos, CPE_TooFewArguments);
+         FMsgs.AddCompilerError(funcExpr.ScriptPos, CPE_TooFewArguments);
    end;
 
    funcExpr.Initialize(FProg);
@@ -7469,7 +7469,7 @@ begin
       unitSym:=TUnitSymbol(Result.BaseType);
       unitSym:=ResolveUnitNameSpace(unitSym);
 
-      namePos:=FTok.HotPos;   // reuse token pos variable
+      namePos:=FTok.HotPos;
       Result:=unitSym.Table.FindLocal(FTok.GetToken.AsString);
 
       if not Assigned(Result) then
@@ -11134,10 +11134,10 @@ end;
 function TdwsCompiler.ReadStringArray(expr : TDataExpr; IsWrite: Boolean): TProgramExpr;
 var
    indexExpr, valueExpr: TTypedExpr;
-   pos: TScriptPos;
+   scriptPos : TScriptPos;
    n : Integer;
 begin
-   pos := FTok.HotPos;
+   scriptPos := FTok.HotPos;
    indexExpr := ReadExpr;
    try
       if not (indexExpr.IsOfType(FProg.TypInteger) or indexExpr.IsOfType(FProg.TypVariant)) then
@@ -11151,12 +11151,12 @@ begin
          if valueExpr is TConstStringExpr then begin
             n:=Length(TConstStringExpr(valueExpr).Value);
             if n<>1 then
-               FMsgs.AddCompilerErrorFmt(pos, RTE_InvalidInputDataSize, [n, 1]);
+               FMsgs.AddCompilerErrorFmt(scriptPos, RTE_InvalidInputDataSize, [n, 1]);
          end;
          if Expr is TStrVarExpr then
-            Result:=TVarStringArraySetExpr.Create(FProg, pos, expr, indexExpr, valueExpr)
-         else Result := TStringArraySetExpr.Create(FProg, pos, expr, indexExpr, valueExpr);
-      end else Result := TStringArrayOpExpr.CreatePos(FProg, pos, expr, indexExpr);
+            Result:=TVarStringArraySetExpr.Create(FProg, scriptPos, expr, indexExpr, valueExpr)
+         else Result := TStringArraySetExpr.Create(FProg, scriptPos, expr, indexExpr, valueExpr);
+      end else Result := TStringArrayOpExpr.CreatePos(FProg, scriptPos, expr, indexExpr);
    except
       indexExpr.Free;
       raise;

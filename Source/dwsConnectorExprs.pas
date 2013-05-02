@@ -47,7 +47,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const Name: String;
+         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; const Name: String;
                             BaseExpr: TTypedExpr; IsWrite: Boolean = True; IsIndex: Boolean = False);
          destructor Destroy; override;
 
@@ -76,7 +76,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos; const Name: String;
+         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; const Name: String;
                             BaseExpr: TTypedExpr);
          destructor Destroy; override;
 
@@ -154,10 +154,10 @@ implementation
 // ------------------ TConnectorExpr ------------------
 // ------------------
 
-constructor TConnectorCallExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
+constructor TConnectorCallExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
   const Name: String; BaseExpr: TTypedExpr; IsWrite: Boolean; IsIndex: Boolean);
 begin
-  inherited Create(Prog, Pos, nil);
+  inherited Create(Prog, aScriptPos, nil);
   FName := Name;
   FBaseExpr := BaseExpr;
   FIsInstruction := IsWrite;
@@ -189,7 +189,7 @@ var
 begin
   // Prepare the parameter information array to query the connector symbol
    if FArgs.Count>64 then
-      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConnectorTooManyArguments, [FArgs.Count]);
+      prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_ConnectorTooManyArguments, [FArgs.Count]);
 
    SetLength(FConnectorParams, FArgs.Count);
    for i:=0 to FArgs.Count-1 do begin
@@ -201,10 +201,10 @@ begin
 
    if not connectorType.AcceptsParams(FConnectorParams) then begin
       if FName<>'' then begin
-         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_MethodConnectorParams,
+         prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_MethodConnectorParams,
                                               [FName, connectorType.ConnectorCaption])
       end else begin
-         prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConnectorParams,
+         prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_ConnectorParams,
                                               [connectorType.ConnectorCaption]);
       end;
    end;
@@ -219,7 +219,7 @@ begin
       end;
    except
       on E: ECompileException do begin
-         prog.CompileMsgs.AddCompilerError(Pos, E.Message);
+         prog.CompileMsgs.AddCompilerError(ScriptPos, E.Message);
          Exit(False);
       end else raise;
    end;
@@ -235,7 +235,7 @@ begin
       end;
       FTyp:=typSym;
    end else begin
-      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_ConnectorCall,
+      prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_ConnectorCall,
                                            [FName, connectorType.ConnectorCaption])
    end;
 end;
@@ -346,10 +346,10 @@ begin
   Result := Assigned(FConnectorMember);
 end;
 
-constructor TConnectorReadExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos;
+constructor TConnectorReadExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
   const Name: String; BaseExpr: TTypedExpr);
 begin
-  inherited Create(Prog, Pos, nil);
+  inherited Create(Prog, aScriptPos, nil);
   FName := Name;
   FBaseExpr := BaseExpr;
 end;

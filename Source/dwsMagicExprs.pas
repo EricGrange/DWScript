@@ -269,7 +269,7 @@ type
    // Inc/Dec/Succ/Pred
    TMagicIteratorFuncExpr = class(TMagicFuncExpr)
       public
-         constructor Create(prog : TdwsProgram; const pos : TScriptPos;
+         constructor Create(prog : TdwsProgram; const aScriptPos : TScriptPos;
                             left, right : TTypedExpr); reintroduce;
          procedure EvalNoResult(exec : TdwsExecution); override;
          function Eval(exec : TdwsExecution) : Variant; override;
@@ -791,10 +791,10 @@ end;
 
 // Create
 //
-constructor TMagicIteratorFuncExpr.Create(prog : TdwsProgram; const pos : TScriptPos;
+constructor TMagicIteratorFuncExpr.Create(prog : TdwsProgram; const aScriptPos : TScriptPos;
                                           left, right : TTypedExpr);
 begin
-   inherited Create(prog, pos, nil, nil);
+   inherited Create(prog, aScriptPos, nil, nil);
    FTyp:=left.Typ;
    AddArg(left);
    AddArg(right);

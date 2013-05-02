@@ -169,7 +169,7 @@ type
          function GetElementCount : Integer; inline;
 
       public
-         constructor Create(Prog: TdwsProgram; const Pos: TScriptPos);
+         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos);
          destructor Destroy; override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
@@ -620,9 +620,9 @@ end;
 
 // Create
 //
-constructor TArrayConstantExpr.Create(Prog: TdwsProgram; const Pos: TScriptPos);
+constructor TArrayConstantExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos);
 begin
-   inherited Create(prog, pos,
+   inherited Create(prog, aScriptPos,
       TStaticArraySymbol.Create('', prog.TypNil, prog.TypInteger, 0, -1));
 end;
 
@@ -856,7 +856,7 @@ var
    elemTyp : TTypeSymbol;
 begin
    if Typ.Typ=nil then
-      prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_InvalidConstType, [SYS_VOID])
+      prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_InvalidConstType, [SYS_VOID])
    else if FElementExprs.Count>0 then begin
       elemTyp:=Elements[0].Typ;
       for x:=1 to FElementExprs.Count-1 do begin
@@ -872,7 +872,7 @@ begin
                repeat
                   elemTyp:=TStructuredTypeSymbol(elemTyp).Parent;
                   if elemTyp=nil then begin
-                     prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_AssignIncompatibleTypes,
+                     prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
                                                           [expr.Typ.Caption, Elements[0].Typ.Caption]);
                      Exit;
                   end;
@@ -880,7 +880,7 @@ begin
             end else if prog.TypVariant.IsCompatible(expr.Typ) and prog.TypVariant.IsCompatible(elemTyp) then
                elemTyp:=prog.TypVariant
             else begin
-               prog.CompileMsgs.AddCompilerErrorFmt(Pos, CPE_AssignIncompatibleTypes,
+               prog.CompileMsgs.AddCompilerErrorFmt(ScriptPos, CPE_AssignIncompatibleTypes,
                                                     [expr.Typ.Caption, elemTyp.Caption]);
                Exit;
             end;

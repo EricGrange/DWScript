@@ -563,7 +563,7 @@ type
       protected
 
       public
-         constructor Create(const pos : TScriptPos; const cond : IBooleanEvalable; const msg : IStringEvalable);
+         constructor Create(const aScriptPos: TScriptPos; const cond : IBooleanEvalable; const msg : IStringEvalable);
 
          property ScriptPos : TScriptPos read FScriptPos write FScriptPos;
          property Condition : IBooleanEvalable read FCondition write FCondition;
@@ -668,7 +668,7 @@ type
 
          function  ParamsDescription : String;
 
-         procedure SetForwardedPos(const pos : TScriptPos);
+         procedure SetForwardedPos(const aScriptPos: TScriptPos);
          procedure ClearIsForwarded;
 
          property SubExpr[i : Integer] : TExprBase read GetSourceSubExpr;
@@ -1170,7 +1170,7 @@ type
          function FindDefaultConstructor(minVisibility : TdwsVisibility) : TMethodSymbol; override;
          function AllowDefaultProperty : Boolean; override;
 
-         procedure SetForwardedPos(const pos : TScriptPos);
+         procedure SetForwardedPos(const aScriptPos: TScriptPos);
          procedure ClearIsForwarded;
 
          property IsForwarded : Boolean read GetIsForwarded;
@@ -1705,7 +1705,7 @@ type
          procedure SetScriptPos(const aPos : TScriptPos);
 
       public
-         constructor CreatePosFmt(const pos : TScriptPos; const Msg: String; const Args: array of const);
+         constructor CreatePosFmt(const aScriptPos: TScriptPos; const Msg: String; const Args: array of const);
 
          property ScriptPos : TScriptPos read FScriptPos write SetScriptPos;//FScriptPos;
          property ScriptCallStack : TdwsExprLocationArray read FScriptCallStack write FScriptCallStack;
@@ -2381,11 +2381,11 @@ end;
 
 // SetForwardedPos
 //
-procedure TStructuredTypeSymbol.SetForwardedPos(const pos : TScriptPos);
+procedure TStructuredTypeSymbol.SetForwardedPos(const aScriptPos: TScriptPos);
 begin
    if FForwardPosition=nil then
       New(FForwardPosition);
-   FForwardPosition^:=pos;
+   FForwardPosition^:=aScriptPos;
 end;
 
 // ClearIsForwarded
@@ -3313,11 +3313,11 @@ end;
 
 // SetForwardedPos
 //
-procedure TFuncSymbol.SetForwardedPos(const pos : TScriptPos);
+procedure TFuncSymbol.SetForwardedPos(const aScriptPos: TScriptPos);
 begin
    if FForwardPosition=nil then
       New(FForwardPosition);
-   FForwardPosition^:=pos;
+   FForwardPosition^:=aScriptPos;
 end;
 
 // ClearIsForwarded
@@ -6149,10 +6149,10 @@ end;
 
 // CreatePosFmt
 //
-constructor EScriptError.CreatePosFmt(const pos : TScriptPos; const Msg: String; const Args: array of const);
+constructor EScriptError.CreatePosFmt(const aScriptPos: TScriptPos; const Msg: String; const Args: array of const);
 begin
    inherited CreateFmt(msg, args);
-   FScriptPos:=pos;
+   FScriptPos:=aScriptPos;
 end;
 
 // SetScriptPos
@@ -6410,10 +6410,10 @@ end;
 
 // Create
 //
-constructor TConditionSymbol.Create(const pos : TScriptPos; const cond : IBooleanEvalable; const msg : IStringEvalable);
+constructor TConditionSymbol.Create(const aScriptPos: TScriptPos; const cond : IBooleanEvalable; const msg : IStringEvalable);
 begin
    inherited Create('', nil);
-   FScriptPos:=pos;
+   FScriptPos:=aScriptPos;
    FCondition:=cond;
    FMessage:=msg;
 end;
@@ -6427,8 +6427,8 @@ end;
 function TRuntimeErrorMessage.AsInfo: String;
 begin
    Result:=Text;
-   if Pos.Defined then
-      Result:=Result+Pos.AsInfo
+   if ScriptPos.Defined then
+      Result:=Result+ScriptPos.AsInfo
    else if Length(FCallStack)>0 then
       Result:=Result+' in '+FCallStack[High(FCallStack)].Expr.FuncSymQualifiedName;
    if Length(FCallStack)>0 then begin
