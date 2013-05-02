@@ -280,7 +280,7 @@ type
          procedure Clear; virtual;
          procedure ClearOutput; virtual;
 
-         procedure CreateDataPtr(const data : TData; addr : Integer; var result : IDataContext);
+         procedure CreateDataContext(const data : TData; addr : Integer; var result : IDataContext);
 
          property Context : TdwsProgram read FContext;
          property LocalTable : TSymbolTable read FLocalTable write FLocalTable;
@@ -533,9 +533,9 @@ begin
    FOutput.Clear;
 end;
 
-// CreateDataPtr
+// CreateDataContext
 //
-procedure TdwsCodeGen.CreateDataPtr(const data : TData; addr : Integer; var result : IDataContext);
+procedure TdwsCodeGen.CreateDataContext(const data : TData; addr : Integer; var result : IDataContext);
 begin
    result:=FDataContextPool.Create(data, addr);
 end;

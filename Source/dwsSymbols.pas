@@ -6380,7 +6380,7 @@ end;
 //
 procedure TdwsExecution.DataContext_Create(const data : TData; addr : Integer; var result : IDataContext);
 begin
-   Result:=FStack.CreateDataPtr(data, addr);
+   Result:=FStack.CreateDataContext(data, addr);
 end;
 
 // DataContext_CreateBase
@@ -6401,7 +6401,7 @@ end;
 //
 function TdwsExecution.DataContext_Nil : IDataContext;
 begin
-   Result:=FStack.CreateDataPtr(nil, 0);
+   Result:=FStack.CreateDataContext(nil, 0);
 end;
 
 // ------------------

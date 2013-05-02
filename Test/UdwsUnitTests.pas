@@ -769,7 +769,7 @@ begin
    SetLength(rec, 2);
    rec[0]:=args.AsInteger[0];
    rec[1]:=rec[0]+1;
-   Result:=IDataContext(args.Exec.Stack.CreateDataPtr(rec, 0));
+   Result:=IDataContext(args.Exec.Stack.CreateDataContext(rec, 0));
 end;
 
 // ClassConstructor

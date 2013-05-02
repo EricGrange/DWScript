@@ -2538,7 +2538,7 @@ var
 begin
    SetLength(data, 1);
    data[0]:=Eval(exec);
-   result:=exec.Stack.CreateDataPtr(data, 0);
+   result:=exec.Stack.CreateDataContext(data, 0);
 end;
 
 // AddLengthExpr
