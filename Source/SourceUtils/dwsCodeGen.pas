@@ -1935,7 +1935,8 @@ begin
                iter:=iter.Parent;
             until (iter=nil) or skip;
             if not skip then begin
-               Result:=Maps[i].NameToSymbol(name, cgssLocal);
+               iter:=Maps[i];
+               Result:=iter.NameToSymbol(name, cgssLocal);
                if Result<>nil then Break;
             end;
          end;

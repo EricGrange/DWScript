@@ -15,3 +15,8 @@ PrintLn(StrBeginsWith(v, ''));
 PrintLn(StrEndsWith('banane', 'ana'));
 PrintLn(StrEndsWith('banane', 'ane'));
 PrintLn(StrEndsWith('aba', 'banane'));
+
+PrintLn(v.StartsWith('b'));
+PrintLn(v.StartsWith('z'));
+PrintLn(v.EndsWith('b'));
+PrintLn(v.EndsWith('r'));

@@ -589,7 +589,7 @@ var
 begin
    Result:=Length(s);
    for i:=1 to Result do
-      Result:=((Result shl 2) or (Result shr 30)) xor Ord(s[i]);
+      Result:=((Result shl 3) or (Result shr 29)) xor Ord(s[i]);
 end;
 
 // ScriptStringToRawByteString

@@ -303,14 +303,17 @@ type
    end;
 
 procedure RegisterInternalIntFunction(InternalFunctionClass: TInternalMagicIntFunctionClass;
-      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String;
+      const flags : TInternalFunctionFlags = []; const helperName : String = '');
 procedure RegisterInternalBoolFunction(InternalFunctionClass: TInternalMagicBoolFunctionClass;
       const FuncName: String; const FuncParams: array of String;
       const flags : TInternalFunctionFlags = []; const helperName : String = '');
 procedure RegisterInternalFloatFunction(InternalFunctionClass: TInternalMagicFloatFunctionClass;
-      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String;
+      const flags : TInternalFunctionFlags = []; const helperName : String = '');
 procedure RegisterInternalStringFunction(InternalFunctionClass: TInternalMagicStringFunctionClass;
-      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String;
+      const flags : TInternalFunctionFlags = []; const helperName : String = '');
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -325,9 +328,10 @@ uses dwsCompilerUtils;
 // RegisterInternalIntFunction
 //
 procedure RegisterInternalIntFunction(InternalFunctionClass: TInternalMagicIntFunctionClass;
-      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String;
+      const flags : TInternalFunctionFlags = []; const helperName : String = '');
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Integer', flags);
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Integer', flags, helperName);
 end;
 
 // RegisterInternalBoolFunction
@@ -342,17 +346,19 @@ end;
 // RegisterInternalFloatFunction
 //
 procedure RegisterInternalFloatFunction(InternalFunctionClass: TInternalMagicFloatFunctionClass;
-      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String;
+      const flags : TInternalFunctionFlags = []; const helperName : String = '');
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Float', flags);
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'Float', flags, helperName);
 end;
 
 // RegisterInternalStringFunction
 //
 procedure RegisterInternalStringFunction(InternalFunctionClass: TInternalMagicStringFunctionClass;
-      const FuncName: String; const FuncParams: array of String; const flags : TInternalFunctionFlags = []);
+      const FuncName: String; const FuncParams: array of String;
+      const flags : TInternalFunctionFlags = []; const helperName : String = '');
 begin
-   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'String', flags);
+   RegisterInternalFunction(InternalFunctionClass, FuncName, FuncParams, 'String', flags, helperName);
 end;
 
 // ------------------
