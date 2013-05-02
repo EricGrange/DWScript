@@ -1295,6 +1295,14 @@ type
          function DoEvalAsVariant(args : TExprBaseList) : Variant; override;
    end;
 
+   TCustomInternalMagicDataFunction = class(TInternalMagicDataFunction)
+      private
+         FOnFastEval : TFuncFastEvalEvent;
+         FSize : Integer;
+      public
+         procedure DoEval(args : TExprBaseList; var result : IDataContext); override;
+   end;
+
 // DoEvalProc
 //
 procedure TCustomInternalMagicProcedure.DoEvalProc(args : TExprBaseList);
@@ -1307,6 +1315,19 @@ end;
 function TCustomInternalMagicFunction.DoEvalAsVariant(args : TExprBaseList) : Variant;
 begin
    Result:=FOnFastEval(args);
+end;
+
+// DoEval
+//
+procedure TCustomInternalMagicDataFunction.DoEval(args : TExprBaseList; var result : IDataContext);
+var
+   tmp : Variant;
+   pvd : PVarData;
+begin
+   tmp:=FOnFastEval(args);
+   pvd:=@tmp;
+   Assert(pvd.VType=varUnknown);
+   result.WriteData(IDataContext(IUnknown(pvd.VUnknown)), FSize);
 end;
 
 { TDelphiWebScript }
@@ -2855,15 +2876,13 @@ function TdwsFunction.DoGenerate(table : TSymbolTable; parentSym : TSymbol = nil
 var
    func : TInternalMagicFunction;
    flags : TInternalFunctionFlags;
+   resType : TTypeSymbol;
 begin
    if not Assigned(FOnFastEval) then
       Exit(inherited DoGenerate(Table, parentSym));
 
    FIsGenerating:=True;
    CheckName(table, Name);
-   if ResultType<>'' then
-      if GetDataType(table, ResultType).Size<>1 then
-         raise EGenerationError.Create('OnFastEval is only supported for result types of size 1');
 
    flags:=[];
    if Deprecated<>'' then
@@ -2874,9 +2893,17 @@ begin
                                                  ResultType, flags, nil, '');
       TCustomInternalMagicProcedure(func).FOnFastEval:=FOnFastEval;
    end else begin
-      func:=TCustomInternalMagicFunction.Create(table, Name, GetParameters(table),
-                                                ResultType, flags, nil, '');
-      TCustomInternalMagicFunction(func).FOnFastEval:=FOnFastEval;
+      resType:=GetDataType(table, ResultType);
+      if resType.Size<>1 then begin
+         func:=TCustomInternalMagicDataFunction.Create(table, Name, GetParameters(table),
+                                                       ResultType, flags, nil, '');
+         TCustomInternalMagicDataFunction(func).FOnFastEval:=FOnFastEval;
+         TCustomInternalMagicDataFunction(func).FSize:=resType.Size;
+      end else begin
+         func:=TCustomInternalMagicFunction.Create(table, Name, GetParameters(table),
+                                                   ResultType, flags, nil, '');
+         TCustomInternalMagicFunction(func).FOnFastEval:=FOnFastEval;
+      end;
    end;
 
    Result:=table.FindLocal(Name) as TMagicFuncSymbol;

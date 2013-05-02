@@ -45,6 +45,7 @@ type
          procedure FuncOverloadIntEval(Info: TProgramInfo);
          procedure FuncOverloadStrEval(Info: TProgramInfo);
          function  FuncFastEval(args : TExprBaseList) : Variant;
+         function  FuncFastPointEval(args : TExprBaseList) : Variant;
 
          procedure ClassConstructor(Info: TProgramInfo; var ExtObject: TObject);
          procedure ClassCleanup(ExternalObject: TObject);
@@ -369,6 +370,10 @@ begin
    func:=FUnit.Functions.Add('FuncFast', 'Integer');
    func.Parameters.Add('v', 'String');
    func.OnFastEval:=FuncFastEval;
+
+   func:=FUnit.Functions.Add('FuncFastPoint', 'TPoint');
+   func.Parameters.Add('i', 'Integer');
+   func.OnFastEval:=FuncFastPointEval;
 end;
 
 // DeclareTestClasses
@@ -753,6 +758,18 @@ end;
 function TdwsUnitTestsContext.FuncFastEval(args : TExprBaseList) : Variant;
 begin
    Result:=Length(args.AsString[0]);
+end;
+
+// FuncFastPointEval
+//
+function TdwsUnitTestsContext.FuncFastPointEval(args : TExprBaseList) : Variant;
+var
+   rec : TData;
+begin
+   SetLength(rec, 2);
+   rec[0]:=args.AsInteger[0];
+   rec[1]:=rec[0]+1;
+   Result:=IDataContext(args.Exec.Stack.CreateDataPtr(rec, 0));
 end;
 
 // ClassConstructor
@@ -1721,9 +1738,17 @@ begin
                            +'var f := @FuncFast;'#13#10
                            +'Print(f("test"));');
 
-   CheckEquals('', prog.Msgs.AsInfo, 'Compile');
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile 1');
 
-   CheckEquals('54', prog.Execute.Result.ToString, 'exec');
+   CheckEquals('54', prog.Execute.Result.ToString, 'exec 1');
+
+   prog:=FCompiler.Compile( 'var p := FuncFastPoint(2);'#13#10
+                           +'PrintLn(p.X);'#13#10
+                           +'PrintLn(p.Y);');
+
+   CheckEquals('', prog.Msgs.AsInfo, 'Compile 2');
+
+   CheckEquals('2'#13#10'3'#13#10, prog.Execute.Result.ToString, 'exec 2');
 end;
 
 // ExplicitUses
