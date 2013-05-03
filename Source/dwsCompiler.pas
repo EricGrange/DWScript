@@ -68,6 +68,7 @@ type
    TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
    TCompilerReadInstrSwitchEvent = function (compiler : TdwsCompiler) : Boolean of object;
    TCompilerFindUnknownNameEvent = function (compiler : TdwsCompiler; const name : String) : TSymbol of object;
+   TCompilerReadUnknownExpressionEvent = function (compiler : TdwsCompiler) : TTypedExpr of object;
    TCompilerSectionChangedEvent = procedure (compiler : TdwsCompiler) of object;
    TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile;
                                          scriptType : TScriptSourceType) of object;
@@ -343,9 +344,23 @@ type
          function Callback(opSym : TOperatorSymbol) : Boolean;
    end;
 
+   IdwsCompiler = interface
+      function Compiler : TdwsCompiler;
+
+      function GetCurrentProg : TdwsProgram;
+      function GetMsgs : TdwsCompileMessageList;
+      function GetTokenizer : TTokenizer;
+
+      property CurrentProg : TdwsProgram read GetCurrentProg;
+      property Msgs : TdwsCompileMessageList read GetMsgs;
+      property Tokenizer : TTokenizer read GetTokenizer;
+
+      function ReadExpr(expecting : TTypeSymbol = nil) : TTypedExpr;
+   end;
+
    // TdwsCompiler
    //
-   TdwsCompiler = class
+   TdwsCompiler = class (TInterfacedObject, IdwsCompiler)
       private
          FOptions : TCompilerOptions;
          FTokRules : TTokenizerRules;
@@ -399,6 +414,7 @@ type
          FOnReadInstr : TCompilerReadInstrEvent;
          FOnReadInstrSwitch : TCompilerReadInstrSwitchEvent;
          FOnFindUnknownName : TCompilerFindUnknownNameEvent;
+         FOnReadUnknownExpression : TCompilerReadUnknownExpressionEvent;
          FOnSectionChanged : TCompilerSectionChangedEvent;
          FOnReadScript : TCompilerReadScriptEvent;
          FOnGetDefaultEnvironment : TCompilerGetDefaultEnvironmentEvent;
@@ -734,6 +750,11 @@ type
          procedure ReleaseStringList(sl : TSimpleStringList);
          procedure ReleaseStringListPool;
 
+         function Compiler : TdwsCompiler;
+         function GetCurrentProg : TdwsProgram;
+         function GetMsgs : TdwsCompileMessageList;
+         function GetTokenizer : TTokenizer;
+
       public
          constructor Create;
          destructor Destroy; override;
@@ -778,6 +799,7 @@ type
          property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
          property OnReadInstrSwitch : TCompilerReadInstrSwitchEvent read FOnReadInstrSwitch write FOnReadInstrSwitch;
          property OnFindUnknownName : TCompilerFindUnknownNameEvent read FOnFindUnknownName write FOnFindUnknownName;
+         property OnReadUnknownExpression : TCompilerReadUnknownExpressionEvent read FOnReadUnknownExpression write FOnReadUnknownExpression;
          property OnSectionChanged : TCompilerSectionChangedEvent read FOnSectionChanged write FOnSectionChanged;
          property OnReadScript : TCompilerReadScriptEvent read FOnReadScript write FOnReadScript;
          property OnGetDefaultEnvironment : TCompilerGetDefaultEnvironmentEvent read FOnGetDefaultEnvironment write FOnGetDefaultEnvironment;
@@ -1756,6 +1778,34 @@ begin
       FPooledStringList:=sl.Next;
       sl.Free;
    end;
+end;
+
+// Compiler
+//
+function TdwsCompiler.Compiler : TdwsCompiler;
+begin
+   Result:=Self;
+end;
+
+// GetCurrentProg
+//
+function TdwsCompiler.GetCurrentProg : TdwsProgram;
+begin
+   Result:=CurrentProg;
+end;
+
+// GetMsgs
+//
+function TdwsCompiler.GetMsgs : TdwsCompileMessageList;
+begin
+   Result:=Msgs;
+end;
+
+// GetTokenizer
+//
+function TdwsCompiler.GetTokenizer : TTokenizer;
+begin
+   Result:=Tokenizer;
 end;
 
 // CheckMatchingDeclarationCase
@@ -4257,6 +4307,10 @@ begin
          Exit;
       if Assigned(FOnFindUnknownName) then
          sym:=FOnFindUnknownName(Self, nameToken.AsString);
+      if Assigned(FOnReadUnknownExpression) then begin
+         Result:=FOnReadUnknownExpression(Self);
+         if Result<>nil then Exit;
+      end;
       if sym=nil then begin
          sym:=FProg.Table.FindSymbol(nameToken.AsString, cvMagic);
          if sym=nil then

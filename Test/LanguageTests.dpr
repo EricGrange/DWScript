@@ -42,7 +42,8 @@ uses
   UTokenizerTests in 'UTokenizerTests.pas',
   ULanguageExtensionTests in 'ULanguageExtensionTests.pas',
   UJITTests in 'UJITTests.pas',
-  UJITx86Tests in 'UJITx86Tests.pas', Math;
+  UJITx86Tests in 'UJITx86Tests.pas',
+  dwsLinq;
 
 {$R *.res}
 

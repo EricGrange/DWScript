@@ -36,6 +36,7 @@ type
          procedure CreateSystemSymbols(table : TSystemSymbolTable); virtual;
          function StaticSymbols : Boolean; virtual;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; virtual;
+         function ReadExpression(compiler: TdwsCompiler) : TTypedExpr; virtual;
          function ReadInstrSwitch(compiler : TdwsCompiler) : Boolean; virtual;
          function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; virtual;
          procedure SectionChanged(compiler : TdwsCompiler); virtual;
@@ -65,6 +66,7 @@ type
          procedure CreateSystemSymbols(table : TSystemSymbolTable); override;
          function StaticSymbols : Boolean; override;
          function ReadInstr(compiler : TdwsCompiler) : TNoResultExpr; override;
+         function ReadExpression(compiler: TdwsCompiler) : TTypedExpr; override;
          function ReadInstrSwitch(compiler : TdwsCompiler) : Boolean; override;
          function FindUnknownName(compiler : TdwsCompiler; const name : String) : TSymbol; override;
          procedure SectionChanged(compiler : TdwsCompiler); override;
@@ -115,6 +117,13 @@ end;
 function TdwsLanguageExtension.StaticSymbols : Boolean;
 begin
    Result:=False;
+end;
+
+// ReadInstrSwitch
+//
+function TdwsLanguageExtension.ReadExpression(compiler: TdwsCompiler) : TTypedExpr;
+begin
+   Result:=nil;
 end;
 
 // ReadInstr
@@ -255,6 +264,21 @@ begin
       ext:=TdwsLanguageExtension(FList.List[i]);
       Result:=Result and ext.StaticSymbols;
    end;
+end;
+
+// ReadExpression
+//
+function TdwsLanguageExtensionAggregator.ReadExpression(compiler: TdwsCompiler): TTypedExpr;
+var
+   i : Integer;
+   ext : TdwsLanguageExtension;
+begin
+   for i:=0 to FList.Count-1 do begin
+      ext:=TdwsLanguageExtension(FList.List[i]);
+      Result:=ext.ReadExpression(compiler);
+      if Result<>nil then Exit;
+   end;
+   Result:=nil;
 end;
 
 // ReadInstr
