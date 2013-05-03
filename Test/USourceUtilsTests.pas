@@ -281,11 +281,11 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
-   CheckTrue(sugg.Count=4, 's.');
-   CheckEquals('Contains', sugg.Code[0], 's. 0');
-   CheckEquals('High', sugg.Code[1], 's. 1');
-   CheckEquals('Length', sugg.Code[2], 's. 2');
-   CheckEquals('Low', sugg.Code[3], 's. 3');
+   CheckTrue(sugg.Count>4, 's.');
+   CheckEquals('After', sugg.Code[0], 's. 0');
+   CheckEquals('Before', sugg.Code[1], 's. 1');
+   CheckEquals('Contains', sugg.Code[2], 's. 2');
+   CheckEquals('Dupe', sugg.Code[3], 's. 3');
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 4);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
@@ -364,9 +364,13 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 3, 3);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
-   CheckEquals(2, sugg.Count, 'd.');
-   CheckEquals('Hello', sugg.Code[0], 'd. 0');
-   CheckEquals('Next', sugg.Code[1], 'd. 0');
+   CheckEquals(10, sugg.Count, 'd.');
+   CheckEquals('Clamp', sugg.Code[0], 'd. 0');
+   CheckEquals('Factorial', sugg.Code[1], 'd. 1');
+   CheckEquals('Hello', sugg.Code[2], 'd. 2');
+   CheckEquals('IsPrime', sugg.Code[3], 'd. 3');
+   CheckEquals('LeastFactor', sugg.Code[4], 'd. 4');
+   CheckEquals('Next', sugg.Code[5], 'd. 5');
 end;
 
 // SymDictFunctionForward
