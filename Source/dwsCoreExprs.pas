@@ -1046,6 +1046,12 @@ type
      function EvalAsInteger(exec : TdwsExecution) : Int64; override;
    end;
 
+   // left in right (strings)
+   TStringInStringExpr = class(TBooleanBinOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
    // Assert(condition, message);
    TAssertExpr = class(TNoResultExpr)
       protected
@@ -4646,10 +4652,26 @@ begin
 end;
 
 // ------------------
+// ------------------ TStringInStringExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TStringInStringExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+var
+   leftStr, rightStr : String;
+begin
+   Left.EvalAsString(exec, leftStr);
+   Right.EvalAsString(exec, rightStr);
+   Result:=StrContains(rightStr, leftStr);
+end;
+
+// ------------------
 // ------------------ TAssignExpr ------------------
 // ------------------
 
-constructor TAssignExpr.Create(prog : TdwsProgram; const aScriptPos: TScriptPos; left : TDataExpr; right : TTypedExpr);
+constructor TAssignExpr.Create(prog : TdwsProgram; const aScriptPos: TScriptPos;
+                               left : TDataExpr; right : TTypedExpr);
 begin
   inherited Create(aScriptPos);
   FLeft := Left;

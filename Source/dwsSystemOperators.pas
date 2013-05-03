@@ -199,6 +199,8 @@ begin
    RegisterOperator(ttEQ,     TRelEqualMetaExpr,      typClassOf, typClassOf);
    RegisterOperator(ttNOTEQ,  TRelNotEqualMetaExpr,   typClassOf, typClassOf);
 
+   RegisterOperator(ttIN,     TStringInStringExpr,    typString,  typString);
+
    // combined assignment operator
 
    RegisterOperator(ttPLUS_ASSIGN,  TPlusAssignIntExpr,     typInteger,    typInteger);

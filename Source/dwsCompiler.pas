@@ -9431,15 +9431,7 @@ begin
       setExpr:=ReadExpr;
       try
 
-         if not (setExpr is TDataExpr) then begin
-
-            FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
-            // keep compiling
-            left.Free;
-            setExpr.Free;
-            Result:=TConstExpr.CreateBooleanValue(FProg, False);
-
-         end else if setExpr.Typ is TDynamicArraySymbol then begin
+         if setExpr.Typ is TDynamicArraySymbol then begin
 
             elementType:=TDynamicArraySymbol(setExpr.Typ).Typ;
             if (left.Typ=nil) or not left.Typ.IsOfType(elementType) then begin
@@ -9457,6 +9449,14 @@ begin
             Result:=TArrayIndexOfExpr.Create(FProg, hotPos, setExpr, left as TDataExpr, nil);
             Result:=TRelGreaterEqualIntExpr.Create(FProg, Result,
                                                    TConstExpr.CreateIntegerValue(FProg, 0));
+
+         end else if not (setExpr is TDataExpr) then begin
+
+            FMsgs.AddCompilerError(hotPos, CPE_ObjectExpected);
+            // keep compiling
+            left.Free;
+            setExpr.Free;
+            Result:=TConstExpr.CreateBooleanValue(FProg, False);
 
          end else begin
 
