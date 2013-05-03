@@ -4697,9 +4697,13 @@ begin
       else FMsgs.AddCompilerError(aPos, CPE_WriteOnlyProperty);
       expr.Free;
       expr:=nil;
-      Result:=TConstExpr.CreateTypedDefault(FProg, propertySym.Typ);
+      Exit(TConstExpr.CreateTypedDefault(FProg, propertySym.Typ));
 
-   end else if sym is TFieldSymbol then begin
+   end;
+
+   RecordSymbolUseImplicitReference(sym, aPos, False);
+
+   if sym is TFieldSymbol then begin
 
       // ReadSym is a field
       if Expr.Typ is TStructuredTypeMetaSymbol then
@@ -4776,6 +4780,7 @@ begin
          if sym is TFieldSymbol then begin
 
             // WriteSym is a Field
+            RecordSymbolUseImplicitReference(sym, aPos, True);
             if Expr.Typ is TClassOfSymbol then
                FMsgs.AddCompilerError(FTok.HotPos, CPE_ObjectReferenceExpected);
             fieldExpr:=ReadField(aPos, nil, TFieldSymbol(sym), expr);
@@ -4784,6 +4789,7 @@ begin
          end else if sym is TClassVarSymbol then begin
 
             // WriteSym is a class var
+            RecordSymbolUseImplicitReference(sym, aPos, True);
             expr.Free;
             expr:=nil;
             fieldExpr:=GetVarExpr(TClassVarSymbol(sym));
@@ -4793,6 +4799,7 @@ begin
 
             // WriteSym is a Method
             // Convert an assignment to a function call f := x  -->  f(x)
+            RecordSymbolUseImplicitReference(sym, aPos, False);
             Result:=ReadPropertyArrayAccessor(expr, propertySym, typedExprList, aPos, True);
 
          end else begin
