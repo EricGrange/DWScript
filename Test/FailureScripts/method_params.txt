@@ -1,1 +1,2 @@
 Syntax Error: Type expected [line: 4, column: 29]
+Syntax Error: Method "PrintMe" of class "TMyClass" not implemented [line: 4, column: 17]

@@ -1929,6 +1929,7 @@ var
    reach : TReachStatus;
    stmt : TProgramExpr;
    action : TdwsStatementAction;
+   sym : TSymbol;
 begin
    reach:=rsReachable;
    Result:=TBlockExpr.Create(FProg, FTok.HotPos);
@@ -1978,6 +1979,10 @@ begin
          end;
       end;
    except
+      // Remove any symbols in the expression's table. Table will be freed.
+      if coSymbolDictionary in FOptions then
+         for sym in Result.Table do
+            FSymbolDictionary.Remove(sym);
       Result.Free;
       raise;
    end;
@@ -3954,8 +3959,14 @@ begin
                saNone : begin
                   if not FTok.TestDelete(ttSEMI) then begin
                      token:=FTok.GetToken;
-                     if (token=nil) or (not (token.FTyp in EndTokens)) then
-                        FMsgs.AddCompilerStop(FTok.HotPos, CPE_SemiExpected);
+                     if (token=nil) or (not (token.FTyp in EndTokens)) then begin
+                        if closePos.SamePosAs(FTok.HotPos) then
+                           FMsgs.AddCompilerStop(closePos, CPE_SemiExpected)
+                        else begin
+                           closePos:=FTok.HotPos;
+                           FMsgs.AddCompilerError(closePos, CPE_SemiExpected);
+                        end;
+                     end;
                   end;
                end;
             else
@@ -3982,12 +3993,12 @@ begin
    except
       on e: exception do begin
          Assert(Assigned(e));
-      // Remove any symbols in the expression's table. Table will be freed.
-      if coSymbolDictionary in FOptions then
-         for sym in blockExpr.Table do
-            FSymbolDictionary.Remove(sym);
-      blockExpr.Free;
-      raise;
+         // Remove any symbols in the expression's table. Table will be freed.
+         if coSymbolDictionary in FOptions then
+            for sym in blockExpr.Table do
+               FSymbolDictionary.Remove(sym);
+         blockExpr.Free;
+         raise;
       end;
    end;
 end;
@@ -7520,6 +7531,7 @@ begin
    if not FTok.TestDeleteNamePos(name, namePos) then begin
       namePos:=FTok.HotPos;
       FMsgs.AddCompilerError(namePos, CPE_NameExpected);
+      FTok.KillToken;
       Result:=nil;
       Exit;
    end;
@@ -9140,8 +9152,9 @@ begin
 
       end else begin
 
-         Result:=nil;
-         FMsgs.AddCompilerStop(FTok.HotPos, CPE_TypeExpected);
+         FMsgs.AddCompilerError(FTok.HotPos, CPE_TypeExpected);
+         // keep compiling
+         Result:=FProg.TypVariant;
 
       end;
 

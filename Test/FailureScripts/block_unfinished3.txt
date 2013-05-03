@@ -1,1 +1,2 @@
 Syntax Error: ";" expected. [line: 7, column: 6]
+Syntax Error: End of block expected [line: 7, column: 6]
