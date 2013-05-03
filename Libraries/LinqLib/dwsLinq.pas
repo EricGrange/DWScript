@@ -36,7 +36,7 @@ type
    public
       procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                            scriptType : TScriptSourceType); override;
-      function ReadExpression(compiler: TdwsCompiler) : TTypedExpr; override;
+      function ReadUnknownName(compiler: TdwsCompiler) : TTypedExpr; override;
    end;
 
    TSqlList = class(TObjectList<TTypedExpr>);
@@ -255,7 +255,7 @@ begin
    end;
 end;
 
-function TdwsLinqExtension.ReadExpression(compiler: TdwsCompiler) : TTypedExpr;
+function TdwsLinqExtension.ReadUnknownName(compiler: TdwsCompiler) : TTypedExpr;
 var
    tok : TTokenizer;
 begin

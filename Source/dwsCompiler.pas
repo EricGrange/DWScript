@@ -68,7 +68,7 @@ type
    TCompilerReadInstrEvent = function (compiler : TdwsCompiler) : TNoResultExpr of object;
    TCompilerReadInstrSwitchEvent = function (compiler : TdwsCompiler) : Boolean of object;
    TCompilerFindUnknownNameEvent = function (compiler : TdwsCompiler; const name : String) : TSymbol of object;
-   TCompilerReadUnknownExpressionEvent = function (compiler : TdwsCompiler) : TTypedExpr of object;
+   TCompilerReadUnknownNameEvent = function (compiler : TdwsCompiler) : TTypedExpr of object;
    TCompilerSectionChangedEvent = procedure (compiler : TdwsCompiler) of object;
    TCompilerReadScriptEvent = procedure (compiler : TdwsCompiler; sourceFile : TSourceFile;
                                          scriptType : TScriptSourceType) of object;
@@ -414,7 +414,7 @@ type
          FOnReadInstr : TCompilerReadInstrEvent;
          FOnReadInstrSwitch : TCompilerReadInstrSwitchEvent;
          FOnFindUnknownName : TCompilerFindUnknownNameEvent;
-         FOnReadUnknownExpression : TCompilerReadUnknownExpressionEvent;
+         FOnReadUnknownName : TCompilerReadUnknownNameEvent;
          FOnSectionChanged : TCompilerSectionChangedEvent;
          FOnReadScript : TCompilerReadScriptEvent;
          FOnGetDefaultEnvironment : TCompilerGetDefaultEnvironmentEvent;
@@ -799,7 +799,7 @@ type
          property OnReadInstr : TCompilerReadInstrEvent read FOnReadInstr write FOnReadInstr;
          property OnReadInstrSwitch : TCompilerReadInstrSwitchEvent read FOnReadInstrSwitch write FOnReadInstrSwitch;
          property OnFindUnknownName : TCompilerFindUnknownNameEvent read FOnFindUnknownName write FOnFindUnknownName;
-         property OnReadUnknownExpression : TCompilerReadUnknownExpressionEvent read FOnReadUnknownExpression write FOnReadUnknownExpression;
+         property OnReadUnknownName : TCompilerReadUnknownNameEvent read FOnReadUnknownName write FOnReadUnknownName;
          property OnSectionChanged : TCompilerSectionChangedEvent read FOnSectionChanged write FOnSectionChanged;
          property OnReadScript : TCompilerReadScriptEvent read FOnReadScript write FOnReadScript;
          property OnGetDefaultEnvironment : TCompilerGetDefaultEnvironmentEvent read FOnGetDefaultEnvironment write FOnGetDefaultEnvironment;
@@ -4318,8 +4318,8 @@ begin
          Exit;
       if Assigned(FOnFindUnknownName) then
          sym:=FOnFindUnknownName(Self, nameToken.AsString);
-      if Assigned(FOnReadUnknownExpression) then begin
-         Result:=FOnReadUnknownExpression(Self);
+      if Assigned(FOnReadUnknownName) then begin
+         Result:=FOnReadUnknownName(Self);
          if Result<>nil then Exit;
       end;
       if sym=nil then begin

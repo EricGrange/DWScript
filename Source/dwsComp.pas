@@ -1406,7 +1406,7 @@ begin
       FCompiler.OnReadInstr:=FExtensions.ReadInstr;
       FCompiler.OnReadInstrSwitch:=FExtensions.ReadInstrSwitch;
       FCompiler.OnFindUnknownName:=FExtensions.FindUnknownName;
-      FCompiler.OnReadUnknownExpression := FExtensions.ReadExpression;
+      FCompiler.OnReadUnknownName:=FExtensions.ReadUnknownName;
       FCompiler.OnSectionChanged:=FExtensions.SectionChanged;
       FCompiler.OnReadScript:=FExtensions.ReadScript;
       FCompiler.OnGetDefaultEnvironment:=FExtensions.DefaultEnvironment;
@@ -1418,6 +1418,7 @@ begin
       FCompiler.OnReadInstr:=nil;
       FCompiler.OnReadInstrSwitch:=nil;
       FCompiler.OnFindUnknownName:=nil;
+      FCompiler.OnReadUnknownName:=nil;
       FCompiler.OnSectionChanged:=nil;
       FCompiler.OnReadScript:=nil;
       FCompiler.OnGetDefaultEnvironment:=nil;
