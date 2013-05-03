@@ -1945,7 +1945,7 @@ procedure TdwsProgramExecution.RunProgram(aTimeoutMilliSeconds : Integer);
    begin
       Msgs.AddRuntimeError(e.ScriptPos,
                             Copy(e.Message, 1, LastDelimiter('[', e.Message)-2)
-                           +Copy(e.Message, Pos(']', e.Message)+1, MaxInt),
+                           +StrAfterChar(e.Message, ']'),
                            e.ScriptCallStack);
    end;
 

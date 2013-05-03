@@ -774,7 +774,7 @@ begin
       n:=Length(vAlphaToTokenType[len][tokenName[3]]);
       SetLength(vAlphaToTokenType[len][tokenName[3]], n+1);
       with vAlphaToTokenType[len][tokenName[3]][n] do begin
-         Alpha:=Copy(tokenName, 3, MaxInt);
+         Alpha:=StrDeleteLeft(tokenName, 2);
          Token:=tt;
       end;
    end;

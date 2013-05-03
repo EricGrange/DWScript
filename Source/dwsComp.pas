@@ -2060,7 +2060,7 @@ begin
   { NOTE: Special handling is required for Boolean types. At least with Delphi 5 }
   if (Info.FuncSym is TMethodSymbol) and Assigned(ExtObject) then
   begin
-    propName := Copy(Info.FuncSym.Name, 4, Length(Info.FuncSym.Name));  // get property name. Trim off Get/Set prefix
+    propName := StrDeleteLeft(Info.FuncSym.Name, 3);  // get property name. Trim off Get/Set prefix
     case TMethodSymbol(Info.FuncSym).Kind of
     fkFunction  :   // function is a "Get" method
       begin

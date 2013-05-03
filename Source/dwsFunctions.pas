@@ -277,7 +277,7 @@ function ConvertFuncParams(const funcParams : array of String) : TParamArray;
    begin
       paramRec.IsVarParam:=(c='@');
       paramRec.IsConstParam:=(c='&');
-      paramRec.ParamName:=Copy(paramRec.ParamName, 2, MaxInt)
+      paramRec.ParamName:=StrDeleteLeft(paramRec.ParamName, 1)
    end;
 
    procedure ParamDefaultValue(p : Integer; paramRec : PParamRec);

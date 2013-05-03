@@ -285,7 +285,7 @@ begin
    CheckEquals('After', sugg.Code[0], 's. 0');
    CheckEquals('Before', sugg.Code[1], 's. 1');
    CheckEquals('Contains', sugg.Code[2], 's. 2');
-   CheckEquals('Dupe', sugg.Code[3], 's. 3');
+   CheckEquals('DeleteLeft', sugg.Code[3], 's. 3');
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 4);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);

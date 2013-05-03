@@ -555,6 +555,9 @@ function StrEndsWith(const aStr, aEnd : String) : Boolean;
 function StrContains(const aStr, aSubStr : String) : Boolean; overload;
 function StrContains(const aStr : String; aChar : Char) : Boolean; overload;
 
+function StrDeleteLeft(const aStr : String; n : Integer) : String;
+function StrDeleteRight(const aStr : String; n : Integer) : String;
+
 function StrAfterChar(const aStr : String; aChar : Char) : String;
 function StrBeforeChar(const aStr : String; aChar : Char) : String;
 
@@ -1064,6 +1067,20 @@ end;
 function StrContains(const aStr, aSubStr : String) : Boolean;
 begin
    Result:=(aSubStr='') or (Pos(aSubStr, aStr)>0);
+end;
+
+// StrDeleteLeft
+//
+function StrDeleteLeft(const aStr : String; n : Integer) : String;
+begin
+   Result:=Copy(aStr, n+1);
+end;
+
+// StrDeleteRight
+//
+function StrDeleteRight(const aStr : String; n : Integer) : String;
+begin
+   Result:=Copy(aStr, 1, Length(aStr)-n);
 end;
 
 // StrContains (sub char)

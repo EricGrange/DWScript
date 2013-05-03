@@ -2064,7 +2064,7 @@ begin
       p:=Pos(',', s);
       if p>0 then begin
          List.Add(Copy(s, 1, p-1));
-         s:=Copy(s, p+1, MaxInt);
+         s:=StrDeleteLeft(s, p);
       end else break;
    end;
    List.Add(s);

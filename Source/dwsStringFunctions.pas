@@ -109,6 +109,14 @@ type
     procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
   end;
 
+  TStrDeleteLeftFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+  end;
+
+  TStrDeleteRightFunc = class(TInternalMagicStringFunction)
+    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+  end;
+
   TDeleteFunc = class(TInternalMagicProcedure)
     procedure DoEvalProc(args : TExprBaseList); override;
   end;
@@ -452,6 +460,20 @@ begin
    e:=args.AsInteger[2];
    if s<1 then s:=1;
    Result:=Copy(args.AsString[0], s, e-s);
+end;
+
+{ TStrDeleteLeftFunc }
+
+procedure TStrDeleteLeftFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+begin
+   Result:=StrDeleteLeft(args.AsString[0], args.AsInteger[1]);
+end;
+
+{ TStrDeleteRightFunc }
+
+procedure TStrDeleteRightFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+begin
+   Result:=StrDeleteRight(args.AsString[0], args.AsInteger[1]);
 end;
 
 { TDeleteFunc }
@@ -991,6 +1013,8 @@ initialization
    RegisterInternalStringFunction(TCopyFunc, 'MidStr', ['str', cString, 'start', cInteger, 'count', cInteger], [iffStateLess]);
    RegisterInternalStringFunction(TSubStrFunc, 'SubStr', ['str', cString, 'start', cInteger], [iffStateLess]);
    RegisterInternalStringFunction(TSubStringFunc, 'SubString', ['str', cString, 'start', cInteger, 'end', cInteger], [iffStateLess]);
+   RegisterInternalStringFunction(TStrDeleteLeftFunc, 'StrDeleteLeft', ['str', cString, 'count', cInteger], [iffStateLess], 'DeleteLeft');
+   RegisterInternalStringFunction(TStrDeleteRightFunc, 'StrDeleteRight', ['str', cString, 'count', cInteger], [iffStateLess], 'DeleteRight');
 
    RegisterInternalStringFunction(TStringOfCharFunc, 'StringOfChar', ['ch', cString, 'count', cInteger], []);
    RegisterInternalStringFunction(TStringOfStringFunc, 'StringOfString', ['str', cString, 'count', cInteger], []);

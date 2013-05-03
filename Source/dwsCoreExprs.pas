@@ -6959,7 +6959,7 @@ begin
    else begin
       Result:=symbolTable.FindSymbol(Copy(name, 1, p-1), cvMagic);
       if Result=nil then Exit;
-      identifier:=Copy(name, p+1, MaxInt);
+      identifier:=StrDeleteLeft(name, p);
       if Result.ClassType=TUnitSymbol then
          Result:=FindSymbol(TUnitSymbol(Result).Table, identifier)
       else begin
