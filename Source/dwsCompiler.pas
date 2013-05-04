@@ -750,6 +750,8 @@ type
          procedure ReleaseStringList(sl : TSimpleStringList);
          procedure ReleaseStringListPool;
 
+         procedure OrphanObject(obj : TRefCountedObject);
+
          function Compiler : TdwsCompiler;
          function GetCurrentProg : TdwsProgram;
          function GetMsgs : TdwsCompileMessageList;
@@ -1780,6 +1782,14 @@ begin
    end;
 end;
 
+// OrphanObject
+//
+procedure TdwsCompiler.OrphanObject(obj : TRefCountedObject);
+begin
+   if obj<>nil then
+      FProg.Root.OrphanObject(obj);
+end;
+
 // Compiler
 //
 function TdwsCompiler.Compiler : TdwsCompiler;
@@ -1929,7 +1939,6 @@ var
    reach : TReachStatus;
    stmt : TProgramExpr;
    action : TdwsStatementAction;
-   sym : TSymbol;
 begin
    reach:=rsReachable;
    Result:=TBlockExpr.Create(FProg, FTok.HotPos);
@@ -1979,11 +1988,7 @@ begin
          end;
       end;
    except
-      // Remove any symbols in the expression's table. Table will be freed.
-      if coSymbolDictionary in FOptions then
-         for sym in Result.Table do
-            FSymbolDictionary.Remove(sym);
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -3076,7 +3081,7 @@ begin
             RecordSymbolUse(Result, funcPos, [suDeclaration, suImplementation])
          else RecordSymbolUse(Result, funcPos, [suImplementation]);
       except
-         Result.Free;
+         OrphanObject(Result);
          raise;
       end;
    end;
@@ -3149,7 +3154,7 @@ begin
       // Added as last step. OnExcept, won't need to be freed.
       RecordSymbolUse(Result, methPos, [suDeclaration]);
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -3892,7 +3897,7 @@ begin
          else Result.UsesSym:=usesSym;
       end;
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 
@@ -3911,7 +3916,6 @@ var
    token : TToken;
    closePos : TScriptPos; // Position at which the ending token was found (for context)
    blockExpr : TBlockExpr;
-   sym : TSymbol;
    reach : TReachStatus;
    action : TdwsStatementAction;
 begin
@@ -3991,15 +3995,8 @@ begin
       end;
 
    except
-      on e: exception do begin
-         Assert(Assigned(e));
-         // Remove any symbols in the expression's table. Table will be freed.
-         if coSymbolDictionary in FOptions then
-            for sym in blockExpr.Table do
-               FSymbolDictionary.Remove(sym);
-         blockExpr.Free;
-         raise;
-      end;
+      OrphanObject(blockExpr);
+      raise;
    end;
 end;
 
@@ -4496,7 +4493,7 @@ begin
       end;
 
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -4968,7 +4965,7 @@ begin
 
       TypeCheckArgs(Result, nil);
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -5070,7 +5067,7 @@ begin
 
       until (Expr = Result);
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -5365,7 +5362,7 @@ begin
 
       end;
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -5393,7 +5390,7 @@ begin
       else FMsgs.AddCompilerStop(FTok.HotPos,CPE_WriteOnlyProperty); // ??
       TypeCheckArgs(Result, nil);
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -5594,19 +5591,19 @@ begin
          end;
 
       except
-         iterBlockExpr.Free;
-         stepExpr.Free;
-         Result.Free;
+         OrphanObject(iterBlockExpr);
+         OrphanObject(stepExpr);
+         OrphanObject(Result);
          raise;
       end;
       LeaveLoop;
    except
-      iterVarExpr.Free;
-      fromExpr.Free;
+      OrphanObject(iterVarExpr);
+      OrphanObject(fromExpr);
       fromExpr:=nil;
-      toExpr.Free;
+      OrphanObject(toExpr);
       toExpr:=nil;
-      loopFirstStatement.Free;
+      OrphanObject(loopFirstStatement);
       raise;
    end;
 end;
@@ -5994,7 +5991,7 @@ begin
             end;
          end;
       except
-         Result.Free;
+         OrphanObject(Result);
          raise;
       end;
    finally
@@ -6063,7 +6060,7 @@ begin
 
       TWhileExpr(Result).LoopExpr := ReadBlock;
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
    LeaveLoop;
@@ -6091,7 +6088,7 @@ begin
       else if (not condExpr.IsConstant) or condExpr.EvalAsBoolean(FExec) then
          MarkLoopExitable(leBreak);
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
    LeaveLoop;
@@ -6610,7 +6607,7 @@ begin
       end;
       WarnDeprecatedFunc(funcExpr);
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -7003,7 +7000,7 @@ begin
       if Optimize then
          Result:=Result.Optimize(FProg, FExec) as TArrayConstantExpr;
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -7257,7 +7254,7 @@ begin
 
          end else FMsgs.AddCompilerStopFmt(namePos, CPE_UnknownMember, [Name]);
       except
-         Result.Free;
+         OrphanObject(Result);
          raise;
       end;
    finally
@@ -7484,7 +7481,7 @@ begin
          end;
          TypeCheckArgs(TFuncExpr(Result), argPosArray);
       except
-         Result.Free;
+         OrphanObject(Result);
          raise;
       end;
    finally
@@ -7999,7 +7996,7 @@ begin
             FProg.Table.Remove(Result);
       end;
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -8091,10 +8088,7 @@ begin
 
       ReadSemiColon;
    except
-      // Remove reference to symbol (gets freed)
-      if coSymbolDictionary in FOptions then
-         FSymbolDictionary.Remove(Result);
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -8575,10 +8569,7 @@ begin
 
       Result.IsFullyDefined:=True;
    except
-      // Removed added record symbols. Destroying object
-      if coSymbolDictionary in FOptions then
-         FSymbolDictionary.Remove(Result);
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -8795,10 +8786,7 @@ begin
       CheckNoPendingAttributes;
 
    except
-      // Removed added record symbols. Destroying object
-      if coSymbolDictionary in FOptions then
-         FSymbolDictionary.Remove(Result);
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -9285,7 +9273,7 @@ begin
          end;
       until False;
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -9354,7 +9342,7 @@ begin
             Result:=Result.OptimizeToTypedExpr(FProg, FExec, hotPos);
       until False;
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -9404,7 +9392,7 @@ begin
             Result:=Result.OptimizeToTypedExpr(FProg, FExec, hotPos);
       until False;
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -9691,7 +9679,7 @@ function TdwsCompiler.ReadTerm(isWrite : Boolean = False; expecting : TTypeSymbo
             FMsgs.AddCompilerError(hotPos, CPE_UnexpectedAt)
          else ReportIncompatibleAt(hotPos, Result);
          // keep compiling
-         Result.Free;
+         OrphanObject(Result);
          Result:=TBogusConstExpr.Create(FProg, FProg.TypNil, cNilIntf);
       end;
    end;
@@ -9738,7 +9726,7 @@ begin
          // Read expression in brackets
          Result := ReadExpr;
          if not FTok.TestDelete(ttBRIGHT) then begin
-            Result.Free;
+            OrphanObject(Result);
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
          end;
          if FTok.Test(ttDOT) then
@@ -11122,11 +11110,11 @@ function TdwsCompiler.ReadConnectorSym(const name : String; baseExpr : TTypedExp
       try
          ReadArguments(Result.AddArg, ttBLEFT, ttBRIGHT, argPosArray);
          if not Result.AssignConnectorSym(FProg, connectorType) then begin
-            Result.Free;
+            OrphanObject(Result);
             Result:=nil;
          end;
       except
-         Result.Free;
+         OrphanObject(Result);
          raise;
       end;
   end;
@@ -11150,7 +11138,7 @@ begin
       Result:=TConnectorReadExpr.Create(FProg, FTok.HotPos, name, baseExpr);
 
       if not TConnectorReadExpr(Result).AssignConnectorSym(connectorType) then begin
-         Result.Free;
+         OrphanObject(Result);
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorMember,
                                   [name, connectorType.ConnectorCaption]);
       end;
@@ -11211,7 +11199,7 @@ begin
          FMsgs.AddCompilerStopFmt(FTok.HotPos, CPE_ConnectorIndex, [ConnectorType.ConnectorCaption]);
    except
       Result.BaseExpr:=nil;
-      Result.Free;
+      OrphanObject(Result);
       raise;
   end;
 end;
@@ -11339,7 +11327,7 @@ begin
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
 
    except
-      Result.Free;
+      OrphanObject(Result);
       raise;
    end;
 end;
@@ -12086,13 +12074,13 @@ begin
          if not FTok.TestDelete(ttBRIGHT) then
             FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
       except
-         Result.Free;
+         OrphanObject(Result);
          raise;
       end;
 
    except
-      argExpr.Free;
-      msgExpr.Free;
+      OrphanObject(argExpr);
+      OrphanObject(msgExpr);
       raise;
    end;
 end;

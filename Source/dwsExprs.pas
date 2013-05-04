@@ -699,6 +699,7 @@ type
          FTimeStamp : TDateTime;
          FCompileDuration : TDateTime;
          FCompiler : TObject;
+         FOrphanedObjects : TObjectList<TRefCountedObject>;
 
          FDefaultEnvironment : IdwsEnvironment;
          FDefaultLocalizer : IdwsLocalizer;
@@ -748,6 +749,8 @@ type
          procedure DropMapAndDictionary;
 
          function CollectAllPublishedSymbols : TSimpleSymbolList;
+
+         procedure OrphanObject(obj : TRefCountedObject);
 
          property FinalExpr : TBlockFinalExpr read FFinalExpr write FFinalExpr;
 
@@ -2608,7 +2611,7 @@ begin
 
    FUnitMains:=TUnitMainSymbols.Create;
 
-   FSystemTable := systemTable;
+   FSystemTable:=systemTable;
    systemUnitTable:=TLinkedSymbolTable.Create(systemTable.SymbolTable);
    systemUnit:=TUnitMainSymbol.Create(SYS_SYSTEM, systemUnitTable, FUnitMains);
    systemUnit.ReferenceInSymbolTable(FRootTable, True);
@@ -2631,6 +2634,7 @@ begin
 
    inherited;
 
+   FOrphanedObjects.Free;
    FFinalExpr.Free;
    FSourceContextMap.Free;
    FSymbolDictionary.Free;
@@ -2851,6 +2855,15 @@ begin
    finally
       tableList.Free;
    end;
+end;
+
+// OrphanObject
+//
+procedure TdwsMainProgram.OrphanObject(obj : TRefCountedObject);
+begin
+   if FOrphanedObjects=nil then
+      FOrphanedObjects:=TObjectList<TRefCountedObject>.Create;
+   FOrphanedObjects.Add(obj);
 end;
 
 // GetConditionalDefines
