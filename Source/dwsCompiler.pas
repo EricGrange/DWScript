@@ -5356,7 +5356,7 @@ begin
 
       end else begin
 
-         expr.Free;
+         OrphanObject(expr);
          expr:=nil;
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_NameExpected);
 
@@ -5516,10 +5516,10 @@ begin
       end;
 
    except
-      loopBlockExpr.Free;
-      fromExpr.Free;
-      toExpr.Free;
-      loopVarExpr.Free;
+      OrphanObject(loopBlockExpr);
+      OrphanObject(fromExpr);
+      OrphanObject(toExpr);
+      OrphanObject(loopVarExpr);
       raise;
    end;
 
