@@ -76,6 +76,214 @@ begin
       RaiseOleError;
 end;
 
+// RaiseOleError
+//
+procedure RaiseOleError(err : HResult; const excepInfo : TExcepInfo);
+var
+   msg : String;
+begin
+   msg:=excepInfo.bstrDescription;
+   if excepInfo.bstrSource<>'' then begin
+      if msg<>'' then
+         msg:=excepInfo.bstrSource+', '+msg
+      else msg:=excepInfo.bstrSource;
+   end;
+   if msg<>'' then
+      msg:=' from '+msg;
+   raise EOleError.CreateFmt('OLE Error %x (%s)%s',
+                             [err, SysErrorMessage(err), msg]);
+end;
+
+type
+   POleParams = ^TOleParams;
+   TOleParams = array[0..MaxDispArgs - 1] of PVarData;
+   TStringDesc = record
+      BStr : PWideChar;
+      PStr : PString;
+   end;
+   PStringDesc = ^TStringDesc;
+
+// DispatchInvoke
+//
+function DispatchInvoke(const dispatch: IDispatch; invKind, namedArgCount : Integer;
+                        dispIDs: PDispIDList; const connArgs : TConnectorArgs;
+                        PResult: PVariant): HResult;
+var
+   i, argType, strCount : Integer;
+   dispParams : TDispParams;
+   strings : array [0 .. MaxDispArgs-1] of TStringDesc;
+   argPtr : PVariantArg;
+   args : array [0 .. MaxDispArgs-1] of TVariantArg;
+   param : PVarData;
+   dispID : Integer;
+   excepInfo : TExcepInfo;
+begin
+   strCount := 0;
+   Result := S_OK;
+
+   // Fill in the dispParams struct
+   FillChar(strings, MaxDispArgs*SizeOf(TStringDesc), 0);
+   FillChar(args, MaxDispArgs*SizeOf(TVariantArg), 0);
+   try
+      argPtr:=@args[0];
+      for i:=High(connArgs) downto 0 do begin
+        param:=@connArgs[i][0];
+        argType:=param.VType and varTypeMask;
+
+        if (param.VType and varArray) <> 0 then begin
+
+            argPtr.vt     := VT_ARRAY Or argType;
+            argPtr.parray := PSafeArray(param.VArray);
+
+         end else begin
+
+            case argType of
+               varSmallint : begin
+                  argPtr.vt := VT_I2 or VT_BYREF;
+                  argPtr.plVal := @param.VSmallInt;
+               end;
+               varInteger : begin
+                  argPtr.vt := VT_I4 or VT_BYREF;
+                  argPtr.plVal := @param.VInteger;
+               end;
+               varInt64 : begin
+                  argPtr.vt := VT_I8 or VT_BYREF;
+                  argPtr.plVal := @param.VInt64;
+               end;
+               varSingle : begin
+                  argPtr.vt := VT_R4 or VT_BYREF;
+                  argPtr.pdblVal := @param.VSingle;
+               end;
+               varDouble : begin
+                  argPtr.vt := VT_R8 or VT_BYREF;
+                  argPtr.pdblVal := @param.VDouble;
+               end;
+               varBoolean : begin
+                  argPtr.vt := VT_BOOL or VT_BYREF;
+                  argPtr.pbool := @param.VBoolean;
+               end;
+               varDate : begin
+                  argPtr.vt := VT_DATE or VT_BYREF;
+                  argPtr.pdate := @param.VDate;
+               end;
+               varString : begin
+                  // Transform Delphi-strings to OLE-strings
+                  strings[strCount].BStr := StringToOleStr(AnsiString(param.VString));
+                  strings[strCount].PStr := @param.VString;
+                  argPtr.vt := VT_BSTR or VT_BYREF;
+                  argPtr.pbstrVal := @strings[strCount].BStr;
+                  Inc(strCount);
+               end;
+               varUString : begin
+                  // Transform Delphi-strings to OLE-strings
+                  strings[strCount].BStr := StringToOleStr(String(param.VUString));
+                  strings[strCount].PStr := @param.VUString;
+                  argPtr.vt := VT_BSTR or VT_BYREF;
+                  argPtr.pbstrVal := @strings[strCount].BStr;
+                  Inc(strCount);
+               end;
+               varOleStr : begin
+                  argPtr.vt := VT_BSTR or VT_BYREF;
+                  argPtr.pbstrVal := @param.VOleStr;
+               end;
+               varDispatch : begin
+                  argPtr.vt := VT_DISPATCH or VT_BYREF;
+                  argPtr.pdispVal := @param.VDispatch;
+               end;
+               varError : begin
+                  argPtr.vt := VT_ERROR;
+                  argPtr.scode := DISP_E_PARAMNOTFOUND;
+               end;
+               varVariant, varEmpty, varNull : begin
+                  argPtr.vt := varVariant or VT_BYREF;
+                  argPtr.pvarVal := PVariant(param);
+               end;
+            else
+               raise Exception.CreateFmt('Unsupported data type (%d) for DWScript COM Connector!',
+                                         [argType]);
+            end;
+         end;
+         Inc(argPtr);
+      end;
+      dispParams.rgvarg := @args;
+      dispParams.cArgs := Length(connArgs);
+
+      dispID := dispIDs[0];
+
+      if InvKind = DISPATCH_PROPERTYPUT then begin
+
+         if (Args[0].vt and varTypeMask) = varDispatch then
+            InvKind := DISPATCH_PROPERTYPUTREF;
+         dispParams.rgdispidNamedArgs := dispIDs;
+         dispParams.cNamedArgs := namedArgCount + 1;
+         dispIDs[0] := DISPID_PROPERTYPUT;
+
+      end else begin
+
+         dispParams.rgdispidNamedArgs := @dispIDs[1];
+         dispParams.cNamedArgs := namedArgCount;
+
+      end;
+
+      FillChar(excepInfo, SizeOf(excepInfo), 0);
+
+      PVarData(PResult).VType:=varSingle;
+
+      // Invoke COM Method
+      Result := dispatch.Invoke(dispID, GUID_NULL, 0, InvKind, dispParams,
+                                PResult, @excepInfo, nil);
+
+      if Result = S_OK then begin
+         for i := strCount - 1 downto 0 do begin
+            if strings[i].PStr <> nil then
+               OleStrToStrVar(strings[i].BStr, strings[i].PStr^);
+         end;
+      end else begin
+         RaiseOleError(Result, excepInfo);
+      end;
+
+   finally
+      for i := strCount - 1 downto 0 do
+         SysFreeString(strings[i].BStr);
+   end;
+end;
+
+// DispatchGetPropOrCall
+//
+function DispatchGetPropOrCall(const disp : IDispatch; dispID : Integer) : OleVariant;
+var
+   excepInfo : TExcepInfo;
+   dispParams : TDispParams;
+   err : HResult;
+begin
+   FillChar(DispParams, SizeOf(DispParams), 0);
+   err:=disp.Invoke(dispID, GUID_NULL, 0, DISPATCH_PROPERTYGET or DISPATCH_METHOD,
+                      dispParams, @Result, @excepInfo, nil);
+   if err<>S_OK then
+      RaiseOleError(err, excepInfo);
+end;
+
+// DispatchSetProp
+//
+procedure DispatchSetProp(const disp : IDispatch; dispID : Integer;
+                          const value : OleVariant);
+const
+   dispIDNamedArgs : Longint = DISPID_PROPERTYPUT;
+var
+   excepInfo : TExcepInfo;
+   dispParams : TDispParams;
+   err : HResult;
+begin
+   dispParams.rgvarg:=@value;
+   dispParams.rgdispidNamedArgs:=@dispIDNamedArgs;
+   dispParams.cArgs:=1;
+   dispParams.cNamedArgs:=1;
+   err:=disp.Invoke(dispId, GUID_NULL, 0, DISPATCH_PROPERTYPUT, dispParams,
+                    nil, @excepInfo, nil);
+   if err<>S_OK then
+      RaiseOleError(err, excepInfo);
+end;
+
 type
    TCreateOleObjectFunc = class(TInternalFunction)
       procedure Execute(info : TProgramInfo); override;
@@ -476,8 +684,15 @@ end;
 // NewEnumerator
 //
 function TComConnectorType.NewEnumerator(const base : Variant; const args : TConnectorArgs) : IUnknown;
+var
+   disp : IDispatch;
+   dispIDs : Integer;
+   outValue : Variant;
 begin
-   Result := IUnknown(base._NewEnum) as IEnumVariant;
+   disp:=base;
+   dispIDs:=DISPID_NEWENUM;
+   DispatchInvoke(disp, DISPATCH_METHOD or DISPATCH_PROPERTYGET, 0, @dispIDs, nil, @outValue);
+   Result:=IUnknown(outValue);
 end;
 
 // Step
@@ -526,214 +741,6 @@ function TComConnectorType.HasMethod(Const MethodName: String;
 begin
   TypSym := FTable.FindTypeSymbol('ComVariant', cvMagic);
   Result := TComConnectorCall.Create(MethodName, Params);
-end;
-
-// RaiseOleError
-//
-procedure RaiseOleError(err : HResult; const excepInfo : TExcepInfo);
-var
-   msg : String;
-begin
-   msg:=excepInfo.bstrDescription;
-   if excepInfo.bstrSource<>'' then begin
-      if msg<>'' then
-         msg:=excepInfo.bstrSource+', '+msg
-      else msg:=excepInfo.bstrSource;
-   end;
-   if msg<>'' then
-      msg:=' from '+msg;
-   raise EOleError.CreateFmt('OLE Error %x (%s)%s',
-                             [err, SysErrorMessage(err), msg]);
-end;
-
-type
-   POleParams = ^TOleParams;
-   TOleParams = array[0..MaxDispArgs - 1] of PVarData;
-   TStringDesc = record
-      BStr : PWideChar;
-      PStr : PString;
-   end;
-   PStringDesc = ^TStringDesc;
-
-// DispatchInvoke
-//
-function DispatchInvoke(const dispatch: IDispatch; invKind, namedArgCount : Integer;
-                        dispIDs: PDispIDList; const connArgs : TConnectorArgs;
-                        PResult: PVariant): HResult;
-var
-   i, argType, strCount : Integer;
-   dispParams : TDispParams;
-   strings : array [0 .. MaxDispArgs-1] of TStringDesc;
-   argPtr : PVariantArg;
-   args : array [0 .. MaxDispArgs-1] of TVariantArg;
-   param : PVarData;
-   dispID : Integer;
-   excepInfo : TExcepInfo;
-begin
-   strCount := 0;
-   Result := S_OK;
-
-   // Fill in the dispParams struct
-   FillChar(strings, MaxDispArgs*SizeOf(TStringDesc), 0);
-   FillChar(args, MaxDispArgs*SizeOf(TVariantArg), 0);
-   try
-      argPtr:=@args[0];
-      for i:=High(connArgs) downto 0 do begin
-        param:=@connArgs[i][0];
-        argType:=param.VType and varTypeMask;
-
-        if (param.VType and varArray) <> 0 then begin
-
-            argPtr.vt     := VT_ARRAY Or argType;
-            argPtr.parray := PSafeArray(param.VArray);
-
-         end else begin
-
-            case argType of
-               varSmallint : begin
-                  argPtr.vt := VT_I2 or VT_BYREF;
-                  argPtr.plVal := @param.VSmallInt;
-               end;
-               varInteger : begin
-                  argPtr.vt := VT_I4 or VT_BYREF;
-                  argPtr.plVal := @param.VInteger;
-               end;
-               varInt64 : begin
-                  argPtr.vt := VT_I8 or VT_BYREF;
-                  argPtr.plVal := @param.VInt64;
-               end;
-               varSingle : begin
-                  argPtr.vt := VT_R4 or VT_BYREF;
-                  argPtr.pdblVal := @param.VSingle;
-               end;
-               varDouble : begin
-                  argPtr.vt := VT_R8 or VT_BYREF;
-                  argPtr.pdblVal := @param.VDouble;
-               end;
-               varBoolean : begin
-                  argPtr.vt := VT_BOOL or VT_BYREF;
-                  argPtr.pbool := @param.VBoolean;
-               end;
-               varDate : begin
-                  argPtr.vt := VT_DATE or VT_BYREF;
-                  argPtr.pdate := @param.VDate;
-               end;
-               varString : begin
-                  // Transform Delphi-strings to OLE-strings
-                  strings[strCount].BStr := StringToOleStr(AnsiString(param.VString));
-                  strings[strCount].PStr := @param.VString;
-                  argPtr.vt := VT_BSTR or VT_BYREF;
-                  argPtr.pbstrVal := @strings[strCount].BStr;
-                  Inc(strCount);
-               end;
-               varUString : begin
-                  // Transform Delphi-strings to OLE-strings
-                  strings[strCount].BStr := StringToOleStr(String(param.VUString));
-                  strings[strCount].PStr := @param.VUString;
-                  argPtr.vt := VT_BSTR or VT_BYREF;
-                  argPtr.pbstrVal := @strings[strCount].BStr;
-                  Inc(strCount);
-               end;
-               varOleStr : begin
-                  argPtr.vt := VT_BSTR or VT_BYREF;
-                  argPtr.pbstrVal := @param.VOleStr;
-               end;
-               varDispatch : begin
-                  argPtr.vt := VT_DISPATCH or VT_BYREF;
-                  argPtr.pdispVal := @param.VDispatch;
-               end;
-               varError : begin
-                  argPtr.vt := VT_ERROR;
-                  argPtr.scode := DISP_E_PARAMNOTFOUND;
-               end;
-               varVariant, varEmpty, varNull : begin
-                  argPtr.vt := varVariant or VT_BYREF;
-                  argPtr.pvarVal := PVariant(param);
-               end;
-            else
-               raise Exception.CreateFmt('Unsupported data type (%d) for DWScript COM Connector!',
-                                         [argType]);
-            end;
-         end;
-         Inc(argPtr);
-      end;
-      dispParams.rgvarg := @args;
-      dispParams.cArgs := Length(connArgs);
-
-      dispID := dispIDs[0];
-
-      if InvKind = DISPATCH_PROPERTYPUT then begin
-
-         if (Args[0].vt and varTypeMask) = varDispatch then
-            InvKind := DISPATCH_PROPERTYPUTREF;
-         dispParams.rgdispidNamedArgs := dispIDs;
-         dispParams.cNamedArgs := namedArgCount + 1;
-         dispIDs[0] := DISPID_PROPERTYPUT;
-
-      end else begin
-
-         dispParams.rgdispidNamedArgs := @dispIDs[1];
-         dispParams.cNamedArgs := namedArgCount;
-
-      end;
-
-      FillChar(excepInfo, SizeOf(excepInfo), 0);
-
-      PVarData(PResult).VType:=varSingle;
-
-      // Invoke COM Method
-      Result := dispatch.Invoke(dispID, GUID_NULL, 0, InvKind, dispParams,
-                                PResult, @excepInfo, nil);
-
-      if Result = S_OK then begin
-         for i := strCount - 1 downto 0 do begin
-            if strings[i].PStr <> nil then
-               OleStrToStrVar(strings[i].BStr, strings[i].PStr^);
-         end;
-      end else begin
-         RaiseOleError(Result, excepInfo);
-      end;
-
-   finally
-      for i := strCount - 1 downto 0 do
-         SysFreeString(strings[i].BStr);
-   end;
-end;
-
-// DispatchGetPropOrCall
-//
-function DispatchGetPropOrCall(const disp : IDispatch; dispID : Integer) : OleVariant;
-var
-   excepInfo : TExcepInfo;
-   dispParams : TDispParams;
-   err : HResult;
-begin
-   FillChar(DispParams, SizeOf(DispParams), 0);
-   err:=disp.Invoke(dispID, GUID_NULL, 0, DISPATCH_PROPERTYGET or DISPATCH_METHOD,
-                      dispParams, @Result, @excepInfo, nil);
-   if err<>S_OK then
-      RaiseOleError(err, excepInfo);
-end;
-
-// DispatchSetProp
-//
-procedure DispatchSetProp(const disp : IDispatch; dispID : Integer;
-                          const value : OleVariant);
-const
-   dispIDNamedArgs : Longint = DISPID_PROPERTYPUT;
-var
-   excepInfo : TExcepInfo;
-   dispParams : TDispParams;
-   err : HResult;
-begin
-   dispParams.rgvarg:=@value;
-   dispParams.rgdispidNamedArgs:=@dispIDNamedArgs;
-   dispParams.cArgs:=1;
-   dispParams.cNamedArgs:=1;
-   err:=disp.Invoke(dispId, GUID_NULL, 0, DISPATCH_PROPERTYPUT, dispParams,
-                    nil, @excepInfo, nil);
-   if err<>S_OK then
-      RaiseOleError(err, excepInfo);
 end;
 
 // ------------------
