@@ -2434,9 +2434,7 @@ begin
                         compiler.FProg.LeaveSubTable;
                   end;
                except
-                  on E : Exception do begin
-                     gotError:=True;
-                  end;
+                  gotError:=True;
                end;
                if compiler.FMsgs.HasErrors then begin
                   gotError:=True;
@@ -3742,8 +3740,8 @@ begin
          conditions.AddCondition(srcCond);
          funcSymbol.AddCondition(condsSymClass.Create(hotPos, srcCond, srcCond));
       except
-         testExpr.Free;
-         msgExpr.Free;
+         OrphanObject(testExpr);
+         OrphanObject(msgExpr);
          raise;
       end;
 
@@ -4066,7 +4064,7 @@ begin
             ReadTry(tryExpr);
             Result:=tryExpr;
          except
-            tryExpr.Free;
+            OrphanObject(tryExpr);
             raise;
          end;
       end;
@@ -4149,7 +4147,7 @@ begin
                end;
             end;
          except
-            locExpr.Free;
+            OrphanObject(locExpr);
             raise;
          end;
       end else begin
@@ -4229,7 +4227,7 @@ begin
          try
             Result:=ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
          except
-            varExpr.Free;
+            OrphanObject(varExpr);
             raise;
          end;
 
@@ -4451,7 +4449,7 @@ begin
          try
             propExpr:=ReadPropertyExpr(varExpr, TPropertySymbol(sym), IsWrite);
          except
-            varExpr.Free;
+            OrphanObject(varExpr);
             raise;
          end;
 
@@ -5854,8 +5852,8 @@ begin
       try
          doBlock:=ReadBlock;
       except
-         loopVarExpr.Free;
-         inExpr.Free;
+         OrphanObject(loopVarExpr);
+         OrphanObject(inExpr);
          raise;
       end;
       Result:=TConnectorForInExpr.Create(forPos, enumerator, loopVarExpr, inExpr, doBlock);
@@ -5933,9 +5931,9 @@ begin
          Result:=TIfThenExpr.Create(FProg, hotPos, condExpr, thenExpr)
       else Result:=TIfThenElseExpr.Create(FProg, hotPos, condExpr, thenExpr, elseExpr);
    except
-      condExpr.Free;
-      thenExpr.Free;
-      elseExpr.Free;
+      OrphanObject(condExpr);
+      OrphanObject(thenExpr);
+      OrphanObject(elseExpr);
       raise;
    end;
 
@@ -6027,7 +6025,7 @@ begin
          if valueExpr.Typ<>nil then
             condition.TypeCheck(FProg, valueExpr.Typ);
       except
-         exprFrom.Free;
+         OrphanObject(exprFrom);
          raise;
       end;
 
@@ -6111,9 +6109,9 @@ begin
       Result:=CreateAssign(hotPos, token, left, right);
       left:=nil;
    except
-      left.Free;
+      OrphanObject(left);
       left:=nil;
-      right.Free;
+      OrphanObject(right);
       raise;
    end;
 end;
@@ -7296,7 +7294,7 @@ begin
       if not (coHintsDisabled in FOptions) then
          CheckSpecialNameCase(name, sk, namePos);
    except
-      baseExpr.Free;
+      OrphanObject(baseExpr);
       raise;
    end;
 end;
@@ -7391,7 +7389,7 @@ begin
          if not FTok.TestDelete(ttBRIGHT) then
             FMsgs.AddCompilerStop(hotPos, CPE_BrackRightExpected);
       except
-         typedExpr.Free;
+         OrphanObject(typedExpr);
          raise;
       end;
 
@@ -7468,7 +7466,7 @@ begin
       try
          Result:=GetMethodExpr(methSym, baseExpr, rkClassOfRef, hotPos, False);
       except
-         baseExpr.Free;
+         OrphanObject(baseExpr);
          raise;
       end;
       try
@@ -7511,7 +7509,7 @@ begin
       if not FTok.TestDelete(ttARIGHT) then
          FMsgs.AddCompilerStop(FTok.HotPos, CPE_ArrayBracketRightExpected);
    except
-      newExpr.Free;
+      OrphanObject(newExpr);
       raise;
    end;
    Result:=newExpr;
@@ -8156,7 +8154,7 @@ begin
       try
          ReadArrayParams(tempArrayIndices);
       except
-         tempArrayIndices.Free;
+         OrphanObject(tempArrayIndices);
          raise;
       end;
    end else tempArrayIndices:=nil;
@@ -8937,11 +8935,11 @@ begin
                FMsgs.AddCompilerStop(FTok.HotPos, CPE_BrackRightExpected);
             Result:=TExitValueExpr.Create(FProg, exitPos, assignExpr);
          except
-            assignExpr.Free;
+            OrphanObject(assignExpr);
             raise;
          end;
       except
-         leftExpr.Free;
+         OrphanObject(leftExpr);
          raise;
       end;
    end;
@@ -9268,7 +9266,7 @@ begin
                end else Result:=opExpr;
             end;
          except
-            right.Free;
+            OrphanObject(right);
             raise;
          end;
       until False;
@@ -9333,7 +9331,7 @@ begin
                   Result.Typ:=FProg.TypVariant;
                end else Result:=opExpr;
             except
-               right.Free;
+               OrphanObject(right);
                raise;
             end;
          end;
@@ -9384,7 +9382,7 @@ begin
             end;
 
          except
-            right.Free;
+            OrphanObject(right);
             raise;
          end;
 
@@ -9459,7 +9457,7 @@ begin
                      left:=nil;
                      TypeCheckArgs(classOpExpr, argPosArray);
                   except
-                     classOpExpr.Free;
+                     OrphanObject(classOpExpr);
                      raise;
                   end;
                   Result:=classOpExpr;
@@ -9479,7 +9477,7 @@ begin
          end;
 
       except
-         setExpr.Free;
+         OrphanObject(setExpr);
          raise;
       end;
 
@@ -9895,9 +9893,9 @@ begin
 
       Result:=TIfThenElseValueExpr.Create(FProg, hotPos, typ, boolExpr, trueExpr, falseExpr);
    except
-      boolExpr.Free;
-      trueExpr.Free;
-      falseExpr.Free;
+      OrphanObject(boolExpr);
+      OrphanObject(trueExpr);
+      OrphanObject(falseExpr);
       raise;
    end;
 end;
@@ -11231,7 +11229,7 @@ begin
          else Result := TStringArraySetExpr.Create(FProg, scriptPos, expr, indexExpr, valueExpr);
       end else Result := TStringArrayOpExpr.CreatePos(FProg, scriptPos, expr, indexExpr);
    except
-      indexExpr.Free;
+      OrphanObject(indexExpr);
       raise;
    end;
 end;
@@ -12161,10 +12159,10 @@ begin
       if Optimize then
          Result:=Result.OptimizeToTypedExpr(FProg, FExec, hotPos);
 
-  except
-    argExpr.Free;
-    raise;
-  end;
+   except
+      OrphanObject(argExpr);
+      raise;
+   end;
 end;
 
 // ReadTypeExpr
