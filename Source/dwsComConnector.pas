@@ -692,7 +692,7 @@ begin
    disp:=base;
    dispIDs:=DISPID_NEWENUM;
    DispatchInvoke(disp, DISPATCH_METHOD or DISPATCH_PROPERTYGET, 0, @dispIDs, nil, @outValue);
-   Result:=IUnknown(outValue);
+   Result:=IUnknown(outValue) as IEnumVARIANT;
 end;
 
 // Step
