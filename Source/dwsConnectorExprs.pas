@@ -69,7 +69,6 @@ type
          FBaseExpr: TTypedExpr;
          FConnectorMember: IConnectorMember;
          FName: String;
-         FResultData: TData;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
@@ -81,7 +80,6 @@ type
          destructor Destroy; override;
 
          function AssignConnectorSym(ConnectorType : IConnectorType) : Boolean;
-         function Eval(exec : TdwsExecution) : Variant; override;
 
          procedure GetDataPtr(exec : TdwsExecution; var result : IDataContext); override;
 
@@ -337,14 +335,9 @@ begin
    Result:=FArgs.Count+1;
 end;
 
-{ TConnectorReadExpr }
-
-function TConnectorReadExpr.AssignConnectorSym(
-  ConnectorType: IConnectorType): Boolean;
-begin
-  FConnectorMember := ConnectorType.HasMember(FName, FTyp,False);
-  Result := Assigned(FConnectorMember);
-end;
+// ------------------
+// ------------------ TConnectorReadExpr ------------------
+// ------------------
 
 constructor TConnectorReadExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
   const Name: String; BaseExpr: TTypedExpr);
@@ -360,12 +353,23 @@ begin
   inherited;
 end;
 
-function TConnectorReadExpr.Eval(exec : TdwsExecution): Variant;
+function TConnectorReadExpr.AssignConnectorSym(
+  ConnectorType: IConnectorType): Boolean;
+begin
+  FConnectorMember := ConnectorType.HasMember(FName, FTyp,False);
+  Result := Assigned(FConnectorMember);
+end;
+
+// GetDataPtr
+//
+procedure TConnectorReadExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
+var
+   base : Variant;
+   resultData : TData;
 begin
    try
-      FBaseExpr.EvalAsVariant(exec, Result);
-      FResultData := FConnectorMember.Read(Result);
-      Result := FResultData[0];
+      FBaseExpr.EvalAsVariant(exec, base);
+      resultData:=FConnectorMember.Read(base);
    except
       on e: EScriptError do begin
          EScriptError(e).ScriptPos:=ScriptPos;
@@ -375,14 +379,8 @@ begin
       exec.SetScriptError(Self);
       raise;
    end;
-end;
 
-// GetDataPtr
-//
-procedure TConnectorReadExpr.GetDataPtr(exec : TdwsExecution; var result : IDataContext);
-begin
-   Eval(exec);
-   exec.DataContext_Create(FResultData, 0, result);
+   exec.DataContext_Create(resultData, 0, result);
 end;
 
 // GetSubExpr

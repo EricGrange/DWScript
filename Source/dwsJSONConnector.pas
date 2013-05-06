@@ -239,7 +239,7 @@ end;
 //
 destructor TBoxedJSONValue.Destroy;
 begin
-   FValue.DecRefCount;
+   FValue.Free;
 end;
 
 // Value
@@ -263,7 +263,7 @@ var
    b : TBoxedJSONValue;
 begin
    b:=TBoxedJSONValue.Create(wrapped);
-   v:=IUnknown(IBoxedJSONValue(b));
+   v:=IBoxedJSONValue(b);
 end;
 
 // AllocateOrGetImmediate
@@ -272,9 +272,10 @@ class procedure TBoxedJSONValue.AllocateOrGetImmediate(wrapped : TdwsJSONValue; 
 begin
    if wrapped.IsImmediateValue then
       v:=TdwsJSONImmediate(wrapped).AsVariant
-   else if wrapped<>nil then
-      TBoxedJSONValue.Allocate(wrapped, v)
-   else v:=vNilJSONValue;
+   else if wrapped<>nil then begin
+      wrapped.IncRefCount;
+      TBoxedJSONValue.Allocate(wrapped, v);
+   end else v:=vNilJSONValue;
 end;
 
 // Value
@@ -558,9 +559,8 @@ begin
    SetLength(Result, 1);
    p:=PVarData(@base);
    if p^.VType=varUnknown then begin
-      v:=IBoxedJSONValue(IUnknown(p^.VUnknown)).Value.Clone;
-      Result[0]:=IUnknown(IBoxedJSONValue(TBoxedJSONValue.Create(v)));
-      v.DecRefCount;
+      v:=IBoxedJSONValue(p^.VUnknown).Value.Clone;
+      Result[0]:=IBoxedJSONValue(TBoxedJSONValue.Create(v));
    end else Result[0]:=vNilJSONValue;
 end;
 
@@ -575,7 +575,7 @@ begin
    if pBase^.VType=varUnknown then begin
       pParam:=PVarData(@args[0]);
       if (pParam^.VType=varUnknown) and (pParam.VUnknown<>nil) then
-         IBoxedJSONValue(IUnknown(pBase^.VUnknown)).Value.Extend(IBoxedJSONValue(IUnknown(pParam^.VUnknown)).Value);
+         IBoxedJSONValue(pBase^.VUnknown).Value.Extend(IBoxedJSONValue(pParam^.VUnknown).Value);
    end;
 end;
 
@@ -612,7 +612,7 @@ begin
    SetLength(Result, 1);
    p:=PVarData(@base);
    if p^.VType=varUnknown then begin
-      v:=IBoxedJSONValue(IUnknown(p^.VUnknown)).Value;
+      v:=(IUnknown(p^.VUnknown) as IBoxedJSONValue).Value;
       if FMethodName<>'' then
          v:=v.Items[FMethodName];
       v:=v.Values[args[0][0]];
@@ -642,7 +642,7 @@ begin
       case pVal^.VType of
          varUnknown : begin
             argValue:=(IUnknown(pVal^.VUnknown) as IBoxedJSONValue).Value;
-            if argValue.Owner<>nil then
+            if argValue.Owner=nil then
                argValue.IncRefCount;
          end;
          varInt64 : begin
@@ -713,7 +713,7 @@ begin
       p:=PVarData(@data[0]);
       if p^.VType=varUnknown then begin
          dataValue:=IBoxedJSONValue(IUnknown(p^.VUnknown)).Value;
-         if dataValue.Owner<>nil then
+         if dataValue.Owner=nil then
             dataValue.IncRefCount;
       end else dataValue:=TdwsJSONImmediate.FromVariant(Variant(p^));
    end else dataValue:=nil;
@@ -749,7 +749,7 @@ begin
    if v=nil then
       box:=TBoxedJSONValue.Create(TdwsJSONObject.Create)
    else box:=TBoxedJSONValue.Create(v);
-   Info.ResultAsVariant:=IUnknown(IBoxedJSONValue(box));
+   Info.ResultAsVariant:=IBoxedJSONValue(box);
 end;
 
 // ------------------
@@ -765,7 +765,7 @@ var
 begin
    v:=TdwsJSONObject.Create;
    box:=TBoxedJSONValue.Create(v);
-   Info.ResultAsVariant:=IUnknown(IBoxedJSONValue(box));
+   Info.ResultAsVariant:=IBoxedJSONValue(box);
 end;
 
 // ------------------
@@ -781,7 +781,7 @@ var
 begin
    v:=TdwsJSONArray.Create;
    box:=TBoxedJSONValue.Create(v);
-   Info.ResultAsVariant:=IUnknown(IBoxedJSONValue(box));
+   Info.ResultAsVariant:=IBoxedJSONValue(box);
 end;
 
 // ------------------

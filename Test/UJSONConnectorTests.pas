@@ -46,7 +46,7 @@ implementation
 //
 procedure TJSONConnectorTests.SetUp;
 const
-   cMask = 'reposi*.pas';
+   cMask = '*.pas';
 begin
    FTests:=TStringList.Create;
    FFailures:=TStringList.Create;

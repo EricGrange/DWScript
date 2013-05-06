@@ -24,11 +24,10 @@ unit dwsComConnector;
 interface
 
 uses
-   Windows, Variants, Classes, SysUtils, SysConst,
-   ComObj, ComConst, ActiveX, AxCtrls,
-   dwsComp, dwsSymbols, dwsDataContext, dwsExprList,
-   dwsExprs, dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs,
-   dwsOperators, dwsUtils;
+   Variants, SysUtils, ComObj, ActiveX,
+   dwsUtils, dwsDataContext, dwsExprList,
+   dwsStrings, dwsFunctions, dwsStack, dwsMagicExprs,
+   dwsExprs, dwsComp, dwsSymbols, dwsOperators;
 
 const
    COM_ConnectorCaption = 'COM Connector 1.0';
@@ -58,7 +57,12 @@ implementation
 // ------------------------------------------------------------------
 
 const
-  MaxDispArgs = 64;
+   MaxDispArgs = 64;
+
+   DISP_E_PARAMNOTFOUND = HRESULT($80020004);
+
+   LOCALE_SYSTEM_DEFAULT = $0800;
+
 
 // DwsOleCheck
 //
@@ -90,7 +94,7 @@ begin
    end;
    if msg<>'' then
       msg:=' from '+msg;
-   raise EOleError.CreateFmt('OLE Error %x (%s)%s',
+   raise EOleError.CreateFmt('OLE Error %.8x (%s)%s',
                              [err, SysErrorMessage(err), msg]);
 end;
 
@@ -278,7 +282,7 @@ begin
    dispParams.rgdispidNamedArgs:=@dispIDNamedArgs;
    dispParams.cArgs:=1;
    dispParams.cNamedArgs:=1;
-   err:=disp.Invoke(dispId, GUID_NULL, 0, DISPATCH_PROPERTYPUT, dispParams,
+   err:=disp.Invoke(dispID, GUID_NULL, 0, DISPATCH_PROPERTYPUT, dispParams,
                     nil, @excepInfo, nil);
    if err<>S_OK then
       RaiseOleError(err, excepInfo);
@@ -333,13 +337,15 @@ type
 
       protected
          { IConnectorType }
-         function ConnectorCaption: String;
+         function ComVariantSymbol : TTypeSymbol;
+
+         function ConnectorCaption : String;
          function AcceptsParams(const params: TConnectorParamArray) : Boolean;
-         function HasMethod(const MethodName: String; const Params: TConnectorParamArray;
+         function HasMethod(const aMethodName: String; const aParams: TConnectorParamArray;
                             var TypSym: TTypeSymbol): IConnectorCall;
-         function HasMember(const MemberName: String; var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
-         function HasIndex(const propName: String; const Params: TConnectorParamArray;
-                           var typSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
+         function HasMember(const aMemberName: String; var typSym: TTypeSymbol; isWrite: Boolean): IConnectorMember;
+         function HasIndex(const aPropName: String; const aParams: TConnectorParamArray;
+                           var typSym: TTypeSymbol; isWrite: Boolean): IConnectorCall;
          function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
 
          function NewEnumerator(const base : Variant; const args : TConnectorArgs) : IUnknown;
@@ -356,12 +362,11 @@ type
          FMethodType : Cardinal;
 
       protected
-         function Call(const Base: Variant; const args : TConnectorArgs) : TData;
+         function Call(const base: Variant; const args : TConnectorArgs) : TData;
          function NeedDirectReference : Boolean;
 
       public
-         constructor Create(const MethodName: String; const Params: TConnectorParamArray;
-                            MethodType: Cardinal = DISPATCH_METHOD);
+         constructor Create(const aMethodName: String; aMethodType: Cardinal);
   end;
 
    TComConnectorMember = class(TInterfacedSelfObject, IUnknown, IConnectorMember)
@@ -370,9 +375,9 @@ type
          FPMemberName : PWideString;
 
       protected
-         function GetDispID(const Disp: IDispatch) : Integer;
-         function Read(const Base: Variant): TData;
-         procedure Write(const Base: Variant; const Data: TData);
+         function GetDispID(const disp: IDispatch) : Integer;
+         function Read(const base: Variant): TData;
+         procedure Write(const base: Variant; const data: TData);
 
       public
          constructor Create(const memberName : String);
@@ -383,7 +388,7 @@ type
          constructor Create(const name : String; const connectorType: IConnectorType; Typ: TTypeSymbol);
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
-         procedure InitData(const Dat: TData; Offset: Integer); override;
+         procedure InitData(const aData: TData; Offset: Integer); override;
    end;
 
    IComVariantArrayLength = interface(IConnectorMember)
@@ -651,6 +656,13 @@ end;
 // ------------------ TComConnectorType ------------------
 // ------------------
 
+// ComVariantSymbol
+//
+function TComConnectorType.ComVariantSymbol : TTypeSymbol;
+begin
+   Result:=FTable.FindTypeSymbol('ComVariant', cvMagic);
+end;
+
 function TComConnectorType.ConnectorCaption: String;
 begin
   Result := COM_ConnectorCaption;
@@ -661,24 +673,24 @@ begin
   FTable := Table;
 end;
 
-function TComConnectorType.HasIndex(const PropName: String; const Params: TConnectorParamArray;
-                                    var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorCall;
+function TComConnectorType.HasIndex(const aPropName : String; const aParams : TConnectorParamArray;
+                                    var typSym : TTypeSymbol; isWrite: Boolean): IConnectorCall;
 var
    methType : Cardinal;
 begin
-   TypSym := FTable.FindTypeSymbol('ComVariant', cvMagic);
+   typSym:=ComVariantSymbol;
    if IsWrite then
-      methType := DISPATCH_PROPERTYPUT
-   else methType := DISPATCH_PROPERTYGET or DISPATCH_METHOD;
-   Result := TComConnectorCall.Create(PropName, Params, methType);
+      methType:=DISPATCH_PROPERTYPUT
+   else methType:=DISPATCH_PROPERTYGET or DISPATCH_METHOD;
+   Result:=TComConnectorCall.Create(aPropName, methType);
 end;
 
 // HasEnumerator
 //
 function TComConnectorType.HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
 begin
-   typSym := FTable.FindTypeSymbol('ComVariant', cvMagic);
-   Result := IConnectorEnumerator(Self);
+   typSym:=ComVariantSymbol;
+   Result:=IConnectorEnumerator(Self);
 end;
 
 // NewEnumerator
@@ -709,16 +721,16 @@ begin
    end else Result:=False;
 end;
 
-function TComConnectorType.HasMember(Const MemberName: String;
-  var TypSym: TTypeSymbol; IsWrite: Boolean): IConnectorMember;
+function TComConnectorType.HasMember(const aMemberName: String;
+                                     var typSym: TTypeSymbol; isWrite: Boolean): IConnectorMember;
 begin
-  TypSym := FTable.FindTypeSymbol('ComVariant', cvMagic);
-  Result := TComConnectorMember.Create(MemberName);
+   typSym:=ComVariantSymbol;
+   Result:=TComConnectorMember.Create(aMemberName);
 end;
 
 // AcceptsParams
 //
-function TComConnectorType.AcceptsParams(const params: TConnectorParamArray) : Boolean;
+function TComConnectorType.AcceptsParams(const params : TConnectorParamArray) : Boolean;
 var
    x: Integer;
    typ : TTypeSymbol;
@@ -736,11 +748,11 @@ begin
    Result:=True;
 end;
 
-function TComConnectorType.HasMethod(Const MethodName: String;
-  const Params: TConnectorParamArray; var TypSym: TTypeSymbol): IConnectorCall;
+function TComConnectorType.HasMethod(const aMethodName: String;
+  const aParams: TConnectorParamArray; var typSym: TTypeSymbol): IConnectorCall;
 begin
-  TypSym := FTable.FindTypeSymbol('ComVariant', cvMagic);
-  Result := TComConnectorCall.Create(MethodName, Params);
+   typSym:=ComVariantSymbol;
+   Result:=TComConnectorCall.Create(aMethodName, DISPATCH_METHOD or DISPATCH_PROPERTYGET);
 end;
 
 // ------------------
@@ -749,12 +761,11 @@ end;
 
 // Create
 //
-constructor TComConnectorCall.Create(const MethodName: String;
-                     const Params: TConnectorParamArray; MethodType: Cardinal);
+constructor TComConnectorCall.Create(const aMethodName: String; aMethodType: Cardinal);
 begin
-   FMethodName:=MethodName;
+   FMethodName:=aMethodName;
    FPMethodName:=PWideString(FMethodName);
-   FMethodType:=MethodType or DISPATCH_PROPERTYGET;
+   FMethodType:=aMethodType;
 end;
 
 // Call
@@ -797,7 +808,7 @@ end;
 
 // GetDispID
 //
-function TComConnectorMember.GetDispID(const Disp: IDispatch) : Integer;
+function TComConnectorMember.GetDispID(const disp: IDispatch) : Integer;
 begin
    Result:=0;
    DwsOleCheck(disp.GetIDsOfNames(GUID_NULL, @FPMemberName, 1, LOCALE_SYSTEM_DEFAULT, @Result));
@@ -805,11 +816,11 @@ end;
 
 // Read
 //
-function TComConnectorMember.Read(const Base: Variant): TData;
+function TComConnectorMember.Read(const base: Variant): TData;
 var
    disp : IDispatch;
 begin
-   disp:=Base;
+   disp:=base;
    if disp=nil then
       raise EScriptError.Create(CPE_NilConnectorRead);
 
@@ -819,15 +830,15 @@ end;
 
 // Write
 //
-procedure TComConnectorMember.Write(const Base: Variant; const Data: TData);
+procedure TComConnectorMember.Write(const base: Variant; const data: TData);
 var
    disp : IDispatch;
 begin
-   disp:=Base;
+   disp:=base;
    if disp=nil then
       raise EScriptError.Create(CPE_NilConnectorWrite);
 
-   DispatchSetProp(disp, GetDispID(disp), Data[0]);
+   DispatchSetProp(disp, GetDispID(disp), data[0]);
 end;
 
 // ------------------
@@ -1061,7 +1072,9 @@ begin
   Result[0] := VarArrayLowBound(Base, Args[0][0]);
 end;
 
-{ TComVariantArraySymbol }
+// ------------------
+// ------------------ TComVariantArraySymbol ------------------
+// ------------------
 
 function TComVariantArraySymbol.IsCompatible(typSym : TTypeSymbol) : Boolean;
 begin
@@ -1078,12 +1091,14 @@ begin
   Self.Typ := Typ;
 end;
 
-procedure TComVariantArraySymbol.InitData(const Dat: TData; Offset: Integer);
+procedure TComVariantArraySymbol.InitData(const aData: TData; Offset: Integer);
 begin
-  Dat[Offset] := VarArrayCreate([0, -1], varVariant); // empty array
+   aData[Offset] := VarArrayCreate([0, -1], varVariant); // empty array
 end;
 
-{ TComVariantArrayEnumerator }
+// ------------------
+// ------------------ TComVariantArrayEnumerator ------------------
+// ------------------
 
 // Create
 //

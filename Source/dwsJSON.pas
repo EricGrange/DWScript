@@ -1592,8 +1592,6 @@ begin
    if (value<>nil) and (value.Owner<>nil) then begin
       value.IncRefCount;
       value.Owner.DetachChild(value);
-      DoSetElement(index, value);
-      Exit;
    end;
 
    if index<FCount then begin
