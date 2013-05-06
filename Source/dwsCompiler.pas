@@ -12530,6 +12530,8 @@ begin
    if sysTable.TypVariant<>nil then begin
       sysTable.AddSymbol(TConstSymbol.Create('Null', sysTable.TypVariant, Null));
       sysTable.AddSymbol(TConstSymbol.Create('Unassigned', sysTable.TypVariant, Unassigned));
+      if sysTable.TypVariant.SupportsEmptyParam then
+         sysTable.AddSymbol(TConstSymbol.Create('EmptyParam', sysTable.TypVariant, EmptyParam));
       sysTable.AddSymbol(TOpenArraySymbol.Create('array of const', sysTable.TypVariant, sysTable.TypInteger));
    end;
 

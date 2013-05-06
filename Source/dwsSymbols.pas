@@ -909,6 +909,7 @@ type
 
          function IsCompatible(typSym : TTypeSymbol) : Boolean; override;
          procedure InitData(const data : TData; offset : Integer); override;
+         function SupportsEmptyParam : Boolean; virtual;
    end;
 
    IConnectorType = interface;
@@ -4702,6 +4703,13 @@ end;
 procedure TBaseVariantSymbol.InitData(const data : TData; offset : Integer);
 begin
    VarClear(data[offset]);
+end;
+
+// SupportsEmptyParam
+//
+function TBaseVariantSymbol.SupportsEmptyParam : Boolean;
+begin
+   Result:=True;
 end;
 
 // ------------------
