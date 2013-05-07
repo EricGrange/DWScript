@@ -1495,6 +1495,7 @@ type
          procedure SetParamAsInteger(index : Integer; const v : Int64);
          function GetParamAsString(index : Integer) : String;
          function GetParamAsDataString(index : Integer) : RawByteString;
+         procedure SetParamAsDataString(index : Integer; const v : RawByteString);
          function GetParamAsFloat(index : Integer) : Double;
          function GetParamAsBoolean(index : Integer) : Boolean;
          function GetParamAsObject(index : Integer) : TObject;
@@ -1539,7 +1540,7 @@ type
          property ParamAsVariant[index : Integer] : Variant read GetParamAsVariant;
          property ParamAsInteger[index : Integer] : Int64 read GetParamAsInteger write SetParamAsInteger;
          property ParamAsString[index : Integer] : String read GetParamAsString;
-         property ParamAsDataString[index : Integer] : RawByteString read GetParamAsDataString;
+         property ParamAsDataString[index : Integer] : RawByteString read GetParamAsDataString write SetParamAsDataString;
          property ParamAsFloat[index : Integer] : Double read GetParamAsFloat;
          property ParamAsBoolean[index : Integer] : Boolean read GetParamAsBoolean;
          property ParamAsObject[index : Integer] : TObject read GetParamAsObject;
@@ -5552,6 +5553,13 @@ end;
 function TProgramInfo.GetParamAsDataString(index : Integer) : RawByteString;
 begin
    Result:=ScriptStringToRawByteString(GetParamAsString(index));
+end;
+
+// SetParamAsDataString
+//
+procedure TProgramInfo.SetParamAsDataString(index : Integer; const v : RawByteString);
+begin
+   GetParamAsPVariant(index)^:=RawByteStringToScriptString(v);
 end;
 
 // GetParamAsFloat

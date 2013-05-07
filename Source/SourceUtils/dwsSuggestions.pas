@@ -441,6 +441,7 @@ begin
       FDynArrayHelpers.AddSymbol(CreateHelper('Insert', nil, ['index', p.TypInteger, 'item', dyn.Typ]));
       FDynArrayHelpers.AddSymbol(CreateHelper('SetLength', nil, ['newLength', p.TypInteger]));
       FDynArrayHelpers.AddSymbol(CreateHelper('Clear', nil, []));
+      FDynArrayHelpers.AddSymbol(CreateHelper('Remove', nil, []));
       FDynArrayHelpers.AddSymbol(CreateHelper('Reverse', nil, []));
       FDynArrayHelpers.AddSymbol(CreateHelper('Swap', nil, ['index1', p.TypInteger, 'index2', p.TypInteger]));
       FDynArrayHelpers.AddSymbol(CreateHelper('Copy', nil, ['startIndex', p.TypInteger, 'count', p.TypInteger]));

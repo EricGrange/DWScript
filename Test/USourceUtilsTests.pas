@@ -284,13 +284,14 @@ begin
    CheckTrue(sugg.Count>4, 's.');
    CheckEquals('After', sugg.Code[0], 's. 0');
    CheckEquals('Before', sugg.Code[1], 's. 1');
-   CheckEquals('Contains', sugg.Code[2], 's. 2');
-   CheckEquals('DeleteLeft', sugg.Code[3], 's. 3');
+   CheckEquals('CompareText', sugg.Code[2], 's. 2');
+   CheckEquals('CompareTo', sugg.Code[3], 's. 3');
 
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 4);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
-   CheckTrue(sugg.Count=1, 's.h');
-   CheckEquals('High', sugg.Code[0], 's.h 0');
+   CheckTrue(sugg.Count=2, 's.h');
+   CheckEquals('HexToInteger', sugg.Code[0], 's.h 0');
+   CheckEquals('High', sugg.Code[1], 's.h 1');
 end;
 
 // StaticArrayTest
@@ -330,7 +331,7 @@ begin
    scriptPos:=TScriptPos.Create(prog.SourceList[0].SourceFile, 2, 3);
    sugg:=TdwsSuggestions.Create(prog, scriptPos, [soNoReservedWords]);
 
-   CheckTrue(sugg.Count=16, 'd.');
+   CheckTrue(sugg.Count=17, 'd.');
    CheckEquals('Add', sugg.Code[0], 'd. 0');
    CheckEquals('Clear', sugg.Code[1], 'd. 1');
    CheckEquals('Copy', sugg.Code[2], 'd. 2');
@@ -344,9 +345,10 @@ begin
    CheckEquals('Peek', sugg.Code[10], 'd. 10');
    CheckEquals('Pop', sugg.Code[11], 'd. 11');
    CheckEquals('Push', sugg.Code[12], 'd. 12');
-   CheckEquals('Reverse', sugg.Code[13], 'd. 13');
-   CheckEquals('SetLength', sugg.Code[14], 'd. 14');
-   CheckEquals('Swap', sugg.Code[15], 'd. 15');
+   CheckEquals('Remove', sugg.Code[13], 'd. 13');
+   CheckEquals('Reverse', sugg.Code[14], 'd. 14');
+   CheckEquals('SetLength', sugg.Code[15], 'd. 15');
+   CheckEquals('Swap', sugg.Code[16], 'd. 16');
 end;
 
 // HelperSuggestTest

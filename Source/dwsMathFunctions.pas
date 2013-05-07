@@ -847,11 +847,11 @@ initialization
    RegisterInternalFloatFunction(TIntPowerFunc, 'IntPower', ['base', cFloat, 'exponent', cInteger], [iffStateLess], 'Power');
    RegisterInternalFloatFunction(TSqrtFunc, 'Sqrt', ['v', cFloat], [iffStateLess], 'Sqrt');
    RegisterInternalFloatFunction(TIntFunc, 'Int', ['v', cFloat], [iffStateLess], 'Int');
-   RegisterInternalFloatFunction(TFracFunc, 'Frac', ['v', cFloat], [iffStateLess], 'Frac');
+   RegisterInternalFloatFunction(TFracFunc, 'Frac', ['v', cFloat], [iffStateLess], 'Fraction');
    RegisterInternalIntFunction(TFloorFunc, 'Floor', ['v', cFloat], [iffStateLess], 'Floor');
-   RegisterInternalIntFunction(TCeilFunc, 'Ceil', ['v', cFloat], [iffStateLess], 'Ceil');
+   RegisterInternalIntFunction(TCeilFunc, 'Ceil', ['v', cFloat], [iffStateLess], 'Ceiling');
 
-   RegisterInternalFunction(TTruncFunc, 'Trunc', ['v', cFloat], cInteger, [iffStateLess], 'Trunc');
+   RegisterInternalFunction(TTruncFunc, 'Trunc', ['v', cFloat], cInteger, [iffStateLess], 'Truncate');
    RegisterInternalFunction(TRoundFunc, 'Round', ['v', cFloat], cInteger, [iffStateLess], 'Round');
 
    RegisterInternalFloatFunction(TDegToRadFunc, 'DegToRad', ['a', cFloat], [iffStateLess], 'DegToRad');

@@ -666,7 +666,7 @@ type
          function  IsValidOverloadOf(other : TFuncSymbol) : Boolean;
          function  IsSameOverloadOf(other : TFuncSymbol) : Boolean; virtual;
 
-         function  ParamsDescription : String;
+         function  ParamsDescription : String; virtual;
 
          procedure SetForwardedPos(const aScriptPos: TScriptPos);
          procedure ClearIsForwarded;
@@ -827,6 +827,8 @@ type
          function GetSourcePosition : TScriptPos; override;
 
       public
+         function ParamsDescription : String; override;
+
          property Alias : TFuncSymbol read FAlias write FAlias;
    end;
 
@@ -6726,6 +6728,20 @@ end;
 function TAliasMethodSymbol.GetSourcePosition : TScriptPos;
 begin
    Result:=Alias.GetSourcePosition;
+end;
+
+// ParamsDescription
+//
+function TAliasMethodSymbol.ParamsDescription : String;
+var
+   i : Integer;
+begin
+   if Params.Count>1 then begin
+      Result:=Params.Symbols[1].Description;
+      for i:=2 to Params.Count-1 do
+         Result:=Result+'; '+Params.Symbols[i].Description;
+      Result:='('+Result+')';
+  end else Result:='()';
 end;
 
 // ------------------
