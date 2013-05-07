@@ -1,0 +1,4 @@
+GUID: Text
+GUID32: Text
+Length passed
+Changed passed

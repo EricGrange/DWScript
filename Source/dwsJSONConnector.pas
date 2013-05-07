@@ -692,7 +692,7 @@ begin
    SetLength(Result, 1);
    p:=PVarData(@base);
    if p^.VType=varUnknown then begin
-      v:=IBoxedJSONValue(IUnknown(p^.VUnknown)).Value.Items[FMemberName];
+      v:=(IUnknown(p^.VUnknown) as IBoxedJSONValue).Value.Items[FMemberName];
       TBoxedJSONValue.AllocateOrGetImmediate(v, Result[0])
    end else Result[0]:=vNilJSONValue;
 end;
@@ -712,7 +712,7 @@ begin
    if baseValue<>nil then begin
       p:=PVarData(@data[0]);
       if p^.VType=varUnknown then begin
-         dataValue:=IBoxedJSONValue(IUnknown(p^.VUnknown)).Value;
+         dataValue:=(IUnknown(p^.VUnknown) as IBoxedJSONValue).Value;
          if dataValue.Owner=nil then
             dataValue.IncRefCount;
       end else dataValue:=TdwsJSONImmediate.FromVariant(Variant(p^));

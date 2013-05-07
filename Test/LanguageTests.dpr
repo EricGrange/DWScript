@@ -23,6 +23,7 @@ uses
   UCornerCasesTests in 'UCornerCasesTests.pas',
   UdwsClassesTests in 'UdwsClassesTests.pas',
   dwsClasses in '..\Libraries\ClassesLib\dwsClasses.pas',
+  UdwsDataBaseTests in 'UdwsDataBaseTests.pas',
   UdwsFunctionsTests in 'UdwsFunctionsTests.pas',
   UCOMConnectorTests in 'UCOMConnectorTests.pas',
   UTestDispatcher in 'UTestDispatcher.pas',

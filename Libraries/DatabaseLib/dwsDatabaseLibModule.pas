@@ -73,8 +73,10 @@ type
       Info: TProgramInfo; ExtObject: TObject);
   private
     { Private declarations }
+    procedure SetScript(aScript : TDelphiWebScript);
   public
     { Public declarations }
+    property Script : TDelphiWebScript write SetScript;
   end;
 
 implementation
@@ -199,6 +201,13 @@ begin
    finally
       wr.Free;
    end;
+end;
+
+// SetScript
+//
+procedure TdwsDatabaseLib.SetScript(aScript : TDelphiWebScript);
+begin
+   dwsDatabase.Script:=aScript;
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseCleanUp(

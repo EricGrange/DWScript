@@ -1,0 +1,3 @@
+Syntax Error: "Integer" is not a class [line: 1, column: 16]
+Syntax Error: Name expected [line: 1, column: 25]
+Syntax Error: Procedure expected [line: 5, column: 22]
