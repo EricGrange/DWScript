@@ -401,7 +401,6 @@ begin
       Info.ResultAsVariant:=IUnknown(nil)
    else begin
       fieldsInfo:=Info.Vars['FFields'];
-      index:=Info.ParamAsInteger[0];
       Info.ResultAsVariant:=fieldsInfo.Element([index]).Value;
    end;
 end;
