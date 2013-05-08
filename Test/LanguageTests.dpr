@@ -44,7 +44,9 @@ uses
   ULanguageExtensionTests in 'ULanguageExtensionTests.pas',
   UJITTests in 'UJITTests.pas',
   UJITx86Tests in 'UJITx86Tests.pas',
-  dwsLinq;
+  dwsLinq,
+  ULinqTests in 'ULinqTests.pas',
+  dwsSynSQLiteDatabase in '..\Libraries\DatabaseLib\dwsSynSQLiteDatabase.pas';
 
 {$R *.res}
 
