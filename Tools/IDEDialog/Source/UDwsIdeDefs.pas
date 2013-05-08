@@ -48,6 +48,8 @@ type
     EditorHighlighterClass : TEditorHighlighterClass;
     EditorFontName         : string;
     EditorFontSize         : integer;
+    ScriptFolder           : string;
+    ProjectName            : string;
   end;
 
 
@@ -68,9 +70,6 @@ const
     EditorFontName         : 'Consolas';
     EditorFontSize         : 11
     );
-
-
-
 
   SuggestionCategoryNames : array[TdwsSuggestionCategory] of string = (
     'Unknown',
@@ -94,24 +93,20 @@ const
     'ReservedWord',
     'SpecialFunction' );
 
+  sDwsIdeProjectSourceFileExt   = '.dws';     // ext of the main file (like Delphi's dpr)
+  sDwsIdeProjectSourceFileExt2  = '.pas';     // ext of units
+  sDwsIdeProjectFileExt         = '.dwsproj'; // ext of the project file (like Delphi dproj)
 
-function DebuggerEvaluate( ADebugger : TDwsDebugger; const AExpression : string) : String;
 
-function Lighten( AColor: TColor; AFactor: Byte): TColor;
-// Lightens a color by this amount
 
+// Utility routines
 function BeginsWith( const ABeginsStr, AStr : string; AMatchCase : boolean = False ) : boolean;
 // Returns TRUE if AStr begins with ABeginsStr
 
-{$IFDEF VER240} // Delphi XE3
-  function IDEStyleServices: TCustomStyleServices;
-{$ELSE}
-  {$IFDEF VER230} // Delphi XE2
-    function IDEStyleServices: TCustomStyleServices;
-  {$ELSE}
-    function IDEStyleServices: TThemeServices;
-  {$ENDIF}
-{$ENDIF}
+function DebuggerEvaluate( ADebugger : TDwsDebugger; const AExpression : string) : String;
+
+
+
 
 implementation
 
@@ -119,7 +114,6 @@ uses
   SysUtils,
   variants,
   dwsCompiler;
-
 
 function DebuggerEvaluate( ADebugger : TDwsDebugger; const AExpression : string) : String;
 var
@@ -142,27 +136,6 @@ begin
          Result:=E.Message;
    end;
 end;
-
-
-
-function Lighten( AColor: TColor; AFactor: Byte): TColor;
-// Lightens a color by this amount
-var
-  R, G, B: Byte;
-begin
-  AColor := ColorToRGB( AColor );
-
-  R := GetRValue(AColor);
-  G := GetGValue(AColor);
-  B := GetBValue(AColor);
-
-  Inc( R, AFactor );
-  Inc( G, AFactor );
-  Inc( B, AFactor );
-
-  Result := RGB(R, G, B);
-end;
-
 
 
 function BeginsWith( const ABeginsStr, AStr : string; AMatchCase : boolean = False ) : boolean;
@@ -188,32 +161,6 @@ begin
   Result := True;
 
 end;
-
-
-
-{$IFDEF VER240} // Delphi XE3
-  function IDEStyleServices: TCustomStyleServices;
-  begin
-    Result := StyleServices;
-  end;
-{$ELSE}
-  {$IFDEF VER230} // Delphi XE2
-    function IDEStyleServices: TCustomStyleServices;
-    begin
-      Result := StyleServices;
-    end;
-  {$ELSE}
-    function IDEStyleServices: TThemeServices;
-    begin
-      Result := ThemeServices;
-    end;
-  {$ENDIF}
-{$ENDIF}
-
-
-
-
-
 
 { TSynDWSSyn_DelphiLookalike }
 

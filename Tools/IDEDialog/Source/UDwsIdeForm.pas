@@ -503,10 +503,6 @@ uses
 
 
 const
-  sProjectSourceFileExt   = '.dws';
-  sProjectSourceFileExt2  = '.pas';
-  sProjectFileExt         = '.dwsproj';
-  sMainModule             = '*MainModule*';
 
   iiExecutableLine        = 13;
   iiForwardArrow          = 16;
@@ -531,8 +527,53 @@ begin
 end;
 
 
+function Lighten( AColor: TColor; AFactor: Byte): TColor;
+// Lightens a color by this amount
+var
+  R, G, B: Byte;
+begin
+  AColor := ColorToRGB( AColor );
+
+  R := GetRValue(AColor);
+  G := GetGValue(AColor);
+  B := GetBValue(AColor);
+
+  Inc( R, AFactor );
+  Inc( G, AFactor );
+  Inc( B, AFactor );
+
+  Result := RGB(R, G, B);
+end;
 
 
+
+function  IsHostedControl(
+            AControl : TControl ) : boolean;
+// Returns TRUE if this control is hosted within another control
+begin
+  Result := AControl.Parent <> nil;
+end;
+
+
+
+{$IFDEF VER240} // Delphi XE3
+  function IDEStyleServices: TCustomStyleServices;
+  begin
+    Result := StyleServices;
+  end;
+{$ELSE}
+  {$IFDEF VER230} // Delphi XE2
+    function IDEStyleServices: TCustomStyleServices;
+    begin
+      Result := StyleServices;
+    end;
+  {$ELSE}
+    function IDEStyleServices: TThemeServices;
+    begin
+      Result := ThemeServices;
+    end;
+  {$ENDIF}
+{$ENDIF}
 
 
 
@@ -955,7 +996,7 @@ var
 begin
   sFileName := Format(
     '%sProject1%s',
-    [IncludeTrailingBackslash(FScriptFolder), sProjectFileExt] );
+    [IncludeTrailingBackslash(FScriptFolder), sDwsIdeProjectFileExt] );
   sFileName := ModifyFileNameToUniqueInProject( sFileName );
 
   NewProjectFile( sFileName );
@@ -1144,7 +1185,7 @@ end;
 
 procedure TDwsIdeForm.AfterConstruction;
 var
-  sProjectFileName : string;
+  sProjectFileName, S : string;
 begin
   inherited;
 
@@ -1155,26 +1196,52 @@ begin
 
   ClearOutputWindow;
 
-  // Set the script folder, creating it if required
-  ScriptFolder := IncludeTrailingBackslash(GetDesktopPath) + 'DWS Script Files';
+  // Set the script folder
+  if FOptions.ScriptFolder <> '' then // we have a supplied script folder..
+    begin
+    ScriptFolder := IncludeTrailingBackslash( FOptions.ScriptFolder );
+    if not DirectoryExists( ScriptFolder ) then
+      Raise Exception.CreateFmt( 'Script folder "%s" does not exist', [ScriptFolder] );
+    end
+   else
+    begin
+    // Use the default folder - the desktop for demo
+    ScriptFolder := IncludeTrailingBackslash(GetDesktopPath) + 'DWS Script Files';
+    if not DirectoryExists( ScriptFolder ) then
+      Raise Exception.Create( 'For this IDE demonstration, please place a copy of the ''DWS Script Files'' folder from project source on to your desktop.' );
+    end;
 
-  if not DirectoryExists( ScriptFolder ) then
-    Raise Exception.Create( 'For this IDE demonstration, please place a copy of the ''DWS Script Files'' folder from project source on to your desktop.' );
-
+  // Get the previously saved project settings from registry...
   MakeSettingsRec;
   LoadSettings( sProjectFileName, FIDESettingsRec );
 
+  // Try to get a project name from the supplied project name (which might be a *.dws or *.dwsproj)
+  // If there is one, this becomes our project file name.
+  if FOptions.ProjectName <> '' then
+    sProjectFileName := ScriptFolder + ChangeFileExt( FOptions.ProjectName, '.dwsproj' );
+
   if FileExists(sProjectFileName) then
-    LoadProjectFile( sProjectFileName )
+    LoadProjectFile( sProjectFileName ) // << load the dwsproj if possible
    else
-     begin
-     sProjectFileName := ScriptFolder + '\ExampleScript.dwsproj';
-     if FileExists(sProjectFileName) then
-       LoadProjectFile( sProjectFileName )
-      else
-      actFileNewProjectExecute( nil );
+    begin
+    S := ScriptFolder + ChangeFileExt( FOptions.ProjectName, '.dws' ); // try loading the main dws file...
+    if FileExists( S ) then
+      begin
+      // Here we've got a dws (main) file, so load it and make a project file from it too..
+      FProjectFileName := ChangeFileExt( S, sDwsIdeProjectFileExt );
+      EditorPageAddNew( S, True );
+      SaveProjectFileAs( FProjectFileName );
+      end
+     else
+       sProjectFileName := ScriptFolder + '\ExampleScript.dwsproj';
+       if FileExists(sProjectFileName) then // we've got the example files, so load them...
+         LoadProjectFile( sProjectFileName )
+         else
+          actFileNewProjectExecute( nil ); // could not find anything, make a new blank project
      end;
 end;
+
+
 
 procedure TDwsIdeForm.BeforeDestruction;
 begin
@@ -1354,8 +1421,8 @@ procedure TDwsIdeForm.RefreshTabs;
        If Page.IsProjectSourcefile then
          Result := cTabImageIndex_ProjectSourceFile
         else
-       if SameText( sExt, sProjectSourceFileExt ) {eg DWS}
-         or SameText( sExt, sProjectSourceFileExt2 ) {eg PAS}
+       if SameText( sExt, sDwsIdeProjectSourceFileExt ) {eg DWS}
+         or SameText( sExt, sDwsIdeProjectSourceFileExt2 ) {eg PAS}
         then
          Result := cTabImageIndex_Script
         else
@@ -1884,7 +1951,7 @@ end;
 function TDwsIdeForm.FileIsProjectSource(
   const AFileName: string): boolean;
 begin
-  Result := SameText( ExtractFileExt( AFileName ), sProjectSourceFileExt );
+  Result := SameText( ExtractFileExt( AFileName ), sDwsIdeProjectSourceFileExt );
 end;
 
 procedure TDwsIdeForm.FormCloseQuery(Sender: TObject;
@@ -2563,7 +2630,7 @@ begin
   if AProjectFileName = '' then
     Result := ''
    else
-    Result := ChangeFileExt( AProjectFileName, sProjectSourceFileExt );
+    Result := ChangeFileExt( AProjectFileName, sDwsIdeProjectSourceFileExt );
 end;
 
 function TDwsIdeForm.ModifyFileNameToUniqueInProject(
@@ -2642,10 +2709,15 @@ begin
     if Reg.OpenKey('SOFTWARE\DwsIde\', TRUE) then
       begin
       Reg.WriteString(  'WorkingProjectFileName', AProjectFileName);
-      Reg.WriteInteger( 'IDEFormRect_Left',       AIDESettingsRec.FormRect.Left);
-      Reg.WriteInteger( 'IDEFormRect_Top',        AIDESettingsRec.FormRect.Top);
-      Reg.WriteInteger( 'IDEFormRect_Right',      AIDESettingsRec.FormRect.Right);
-      Reg.WriteInteger( 'IDEFormRect_Bottom',     AIDESettingsRec.FormRect.Bottom);
+
+      if not IsHostedControl( Self ) then
+        begin
+        Reg.WriteInteger( 'IDEFormRect_Left',       AIDESettingsRec.FormRect.Left);
+        Reg.WriteInteger( 'IDEFormRect_Top',        AIDESettingsRec.FormRect.Top);
+        Reg.WriteInteger( 'IDEFormRect_Right',      AIDESettingsRec.FormRect.Right);
+        Reg.WriteInteger( 'IDEFormRect_Bottom',     AIDESettingsRec.FormRect.Bottom);
+        end;
+
       Reg.WriteInteger( 'RightPanelWidth',        AIDESettingsRec.RightPanelWidth);
       Reg.WriteInteger( 'BottomPanelHeight',      AIDESettingsRec.BottomPanelHeight);
       end;
@@ -2683,10 +2755,15 @@ begin
     if Reg.OpenKey('SOFTWARE\DwsIde\', False) then
       begin
       ReadString(  'WorkingProjectFileName', AProjectFileName);
-      ReadInteger( 'IDEFormRect_Left',       AIDESettingsRec.FormRect.Left);
-      ReadInteger( 'IDEFormRect_Top',        AIDESettingsRec.FormRect.Top);
-      ReadInteger( 'IDEFormRect_Right',      AIDESettingsRec.FormRect.Right);
-      ReadInteger( 'IDEFormRect_Bottom',     AIDESettingsRec.FormRect.Bottom);
+
+      if not IsHostedControl( Self ) then
+        begin
+        ReadInteger( 'IDEFormRect_Left',       AIDESettingsRec.FormRect.Left);
+        ReadInteger( 'IDEFormRect_Top',        AIDESettingsRec.FormRect.Top);
+        ReadInteger( 'IDEFormRect_Right',      AIDESettingsRec.FormRect.Right);
+        ReadInteger( 'IDEFormRect_Bottom',     AIDESettingsRec.FormRect.Bottom);
+        end;
+
       ReadInteger( 'RightPanelWidth',        AIDESettingsRec.RightPanelWidth );
       ReadInteger( 'BottomPanelHeight',      AIDESettingsRec.BottomPanelHeight );
       end;
@@ -2726,7 +2803,7 @@ constructor TEditorPage.Create(
     FEditor.Gutter.Width := 50;
     FEditor.PopupMenu := AOwner.EditorPagePopupMenu;
     FEditor.WantTabs  := True;
-    FEditor.ParentBackground := False;
+    //FEditor.ParentBackground := False;
     FEditor.FontSmoothing := fsmClearType;
 
     If Assigned( AOwner.FOptions.EditorHighlighterClass ) then
@@ -2804,7 +2881,7 @@ end;
 
 function TEditorPage.GetIsProjectSourcefile: boolean;
 begin
-  Result := SameText( ExtractFileExt( FileName ), sProjectSourceFileExt );
+  Result := SameText( ExtractFileExt( FileName ), sDwsIdeProjectSourceFileExt );
 end;
 
 function TEditorPage.GetIsReadOnly: boolean;
