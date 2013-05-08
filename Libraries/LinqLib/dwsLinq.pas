@@ -59,6 +59,8 @@ type
       procedure BuildWhereElement(expr: TTypedExpr; compiler: TdwsCompiler; list: TStringList);
       procedure BuildRelOpElement(expr: TRelOpExpr; compiler: TdwsCompiler;
         list: TStringList);
+      function BuildHalfRelOpElement(expr: TTypedExpr;
+        compiler: TdwsCompiler): string;
    public
       constructor Create(const tableName: string; const symbol: TDataSymbol);
       destructor Destroy; override;
@@ -263,6 +265,8 @@ begin
    if FRecursionDepth = 0 then
    begin
       result := ReadFromExpression(compiler, tok);
+      if result = nil then
+         Exit;
       TSqlFromExpr(result).Codegen(compiler);
    end
    else result := ReadSqlIdentifier(compiler, tok);
@@ -291,6 +295,7 @@ end;
 
 destructor TSqlFromExpr.Destroy;
 begin
+   FMethod.Free;
    FWhereList.Free;
    FSelectList.Free;
    inherited Destroy;
@@ -328,24 +333,23 @@ begin
    else raise Exception.CreateFmt('Unknown op type: %s.', [expr.ClassName]);
 end;
 
+function TSqlFromExpr.BuildHalfRelOpElement(expr: TTypedExpr; compiler: TdwsCompiler): string;
+begin
+   if expr.ClassType = TSqlIdentifier then
+      result := TSqlIdentifier(expr).Value
+   else begin
+      result := NewParam;
+      FParams.AddElementExpr(compiler.CurrentProg, expr);
+      expr.IncRefCount;
+   end;
+end;
+
 procedure TSqlFromExpr.BuildRelOpElement(expr: TRelOpExpr; compiler: TdwsCompiler; list: TStringList);
 var
    l, r: string;
 begin
-   if expr.Left.ClassType = TSqlIdentifier then
-      l := TSqlIdentifier(expr.Left).Value
-   else begin
-      l := NewParam;
-      FParams.AddElementExpr(compiler.CurrentProg, expr.Left);
-   end;
-
-   if expr.right.ClassType = TSqlIdentifier then
-      r := TSqlIdentifier(expr.right).Value
-   else begin
-      r := NewParam;
-      FParams.AddElementExpr(compiler.CurrentProg, expr.right);
-   end;
-
+   l := BuildHalfRelOpElement(expr.Left, compiler);
+   r := BuildHalfRelOpElement(expr.Right, compiler);
    list.Add(format('%s %s %s', [l, GetOp(expr), r]));
 end;
 
