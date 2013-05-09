@@ -11,6 +11,8 @@ type
    TSqlList = class;
    TSqlIdentifier = class;
 
+   TJoinType = (jtFull, jtLeft, jtRight, jtFullOuter, jtCross);
+
    TdwsLinqFactory = class(TdwsCustomLangageExtension)
    protected
       function CreateExtension : TdwsLanguageExtension; override;
@@ -31,15 +33,21 @@ type
       function DoReadFromExpr(const compiler: IdwsCompiler; tok: TTokenizer; db: TDataSymbol): TSqlFromExpr;
       procedure ReadWhereExprs(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
       procedure ReadSelectExprs(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
-      function ReadWhereExpr(const compiler: IdwsCompiler; tok: TTokenizer): TRelOpExpr;
-      function ReadSqlIdentifier(const compiler: IdwsCompiler;  tok: TTokenizer): TSqlIdentifier;
+      function ReadComparisonExpr(const compiler: IdwsCompiler; tok: TTokenizer): TRelOpExpr;
+      function ReadSqlIdentifier(const compiler: IdwsCompiler; tok: TTokenizer;
+        acceptStar: boolean = false): TSqlIdentifier;
+      procedure ReadJoinExpr(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
+      function ReadJoinType(const compiler: IdwsCompiler; tok: TTokenizer): TJoinType;
+      procedure ReadComparisons(const compiler: IdwsCompiler; tok: TTokenizer;
+        list: TSqlList);
    public
       procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                            scriptType : TScriptSourceType); override;
       function ReadUnknownName(compiler: TdwsCompiler) : TTypedExpr; override;
    end;
 
-   TSqlList = class(TObjectList<TTypedExpr>);
+   TSqlList = class(TObjectList<TProgramExpr>);
+   TSqlJoinExpr = class;
 
    TSqlFromExpr = class(TTypedExpr)
    private
@@ -47,6 +55,8 @@ type
       FDBSymbol: TDataSymbol;
       FWhereList: TSqlList;
       FSelectList: TSqlList;
+      FJoinList: TSqlList;
+      FDistinct: boolean;
    private
       FSQL: string;
       FParams: TArrayConstantExpr;
@@ -56,11 +66,14 @@ type
       procedure BuildQuery(compiler: TdwsCompiler);
       procedure Codegen(compiler: TdwsCompiler);
       procedure BuildWhereClause(compiler: TdwsCompiler; list: TStringList);
-      procedure BuildWhereElement(expr: TTypedExpr; compiler: TdwsCompiler; list: TStringList);
+      procedure BuildConditionElement(expr: TTypedExpr; compiler: TdwsCompiler; list: TStringList);
+      procedure BuildConditional(conditional: TSqlList; compiler: TdwsCompiler;
+        list: TStringList);
       procedure BuildRelOpElement(expr: TRelOpExpr; compiler: TdwsCompiler;
         list: TStringList);
       function BuildHalfRelOpElement(expr: TTypedExpr;
         compiler: TdwsCompiler): string;
+      procedure BuildJoinClause(compiler: TdwsCompiler; list: TStringList);
    public
       constructor Create(const tableName: string; const symbol: TDataSymbol);
       destructor Destroy; override;
@@ -70,6 +83,16 @@ type
    TSqlIdentifier = class(TConstStringExpr)
    public
       constructor Create(const name: string; const compiler: IdwsCompiler);
+   end;
+
+   TSqlJoinExpr = class(TNoResultExpr)
+   private
+      FJoinType: TJoinType;
+      FJoinExpr: TSqlIdentifier;
+      FCriteria: TSqlList;
+   public
+      constructor Create(const pos: TScriptPos; jt: TJoinType; JoinExpr: TSqlIdentifier; list: TSqlList);
+      destructor Destroy; override;
    end;
 
 implementation
@@ -118,7 +141,7 @@ begin
    end;
 end;
 
-function TdwsLinqExtension.ReadWhereExpr(const compiler: IdwsCompiler; tok: TTokenizer): TRelOpExpr;
+function TdwsLinqExtension.ReadComparisonExpr(const compiler: IdwsCompiler; tok: TTokenizer): TRelOpExpr;
 var
    expr: TTypedExpr;
 begin
@@ -133,18 +156,16 @@ begin
    end;
 end;
 
-procedure TdwsLinqExtension.ReadWhereExprs(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
+procedure TdwsLinqExtension.ReadComparisons(const compiler: IdwsCompiler; tok: TTokenizer; list: TSqlList);
 var
    expr: TTypedExpr;
 begin
-   from.FWhereList := TSqlList.Create;
-   tok.KillToken;
    repeat
-      expr := ReadWhereExpr(compiler, tok);
+      expr := ReadComparisonExpr(compiler, tok);
       try
          while tok.TestDelete(ttOr) do
-            expr := TBoolOrExpr.Create(compiler.CurrentProg, expr, ReadWhereExpr(compiler, tok));
-         from.FWhereList.Add(expr);
+            expr := TBoolOrExpr.Create(compiler.CurrentProg, expr, ReadComparisonExpr(compiler, tok));
+         List.Add(expr);
          expr := nil;
       except
          expr.Free;
@@ -153,24 +174,108 @@ begin
    until not tok.TestDelete(ttAND);
 end;
 
+procedure TdwsLinqExtension.ReadWhereExprs(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
+begin
+   from.FWhereList := TSqlList.Create;
+   tok.KillToken;
+   ReadComparisons(compiler, tok, from.FWhereList);
+end;
+
 procedure TdwsLinqExtension.ReadSelectExprs(const compiler: IdwsCompiler;
   tok: TTokenizer; from: TSqlFromExpr);
 begin
    tok.KillToken;
+   if tok.TestName and TokenEquals(tok, 'distinct') then
+   begin
+      from.FDistinct := true;
+      tok.KillToken;
+   end;
+
    if tok.TestDelete(ttTIMES) then
       Exit;
+
    from.FSelectList := TSqlList.Create;
    repeat
-      from.FSelectList.Add(ReadSqlIdentifier(compiler, tok));
+      from.FSelectList.Add(ReadSqlIdentifier(compiler, tok, true));
    until not tok.TestDelete(ttCOMMA);
+end;
+
+function TdwsLinqExtension.ReadJoinType(const compiler: IdwsCompiler; tok: TTokenizer): TJoinType;
+begin
+   result := jtFull;
+   if TokenEquals(tok, 'left') then
+   begin
+      tok.KillToken;
+      if tok.TestName and TokenEquals(tok, 'outer') then
+         tok.KillToken;
+      result := jtLeft;
+   end
+   else if TokenEquals(tok, 'right') then
+   begin
+      tok.KillToken;
+      if tok.TestName and TokenEquals(tok, 'outer') then
+         tok.KillToken;
+      result := jtRight;
+   end
+   else if TokenEquals(tok, 'full') then
+   begin
+      tok.KillToken;
+      if tok.TestName and TokenEquals(tok, 'outer') then
+      begin
+         tok.KillToken;
+         result := jtFullOuter;
+      end;
+   end
+   else if TokenEquals(tok, 'cross') then
+   begin
+      tok.KillToken;
+      result := jtCross;
+   end;
+   if not (tok.TestName and TokenEquals(tok, 'join')) then
+      Error(compiler, 'Invalid join type');
+   tok.KillToken;
+end;
+
+procedure TdwsLinqExtension.ReadJoinExpr(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
+var
+   jt: TJoinType;
+   JoinExpr: TTypedExpr;
+   list: TSqlList;
+   join: TSqlJoinExpr;
+   pos: TScriptPos;
+begin
+   pos := tok.CurrentPos;
+   jt := ReadJoinType(compiler, tok);
+   list := nil;
+   JoinExpr := compiler.ReadExpr;
+   try
+      if not (joinExpr is TSqlIdentifier) then
+         Error(compiler, 'Table name expected');
+      if jt <> jtCross then
+      begin
+         if not tok.TestDelete(ttON) then
+            Error(compiler, 'Join criteria expected');
+         list := TSqlList.Create;
+         ReadComparisons(compiler, tok, list);
+      end;
+      if from.FJoinList = nil then
+         from.FJoinList := TSqlList.Create;
+   except
+      list.Free;
+      joinExpr.Free;
+      raise;
+   end;
+   join := TSqlJoinExpr.Create(pos, jt, TSqlIdentifier(joinExpr), list);
+   join.IncRefCount;
+   from.FJoinList.Add(join);
 end;
 
 procedure TdwsLinqExtension.ReadFromExprBody(const compiler: IdwsCompiler; tok: TTokenizer;
   from: TSqlFromExpr);
 begin
-//   if TokenEquals(tok, 'join') or TokenEquals(tok, 'left') or
-//      TokenEquals(tok, 'right') or TokenEquals(tok, 'full') or TokenEquals('cross') then
-//      ;
+   while TokenEquals(tok, 'join') or TokenEquals(tok, 'left') or
+      TokenEquals(tok, 'right') or TokenEquals(tok, 'full') or TokenEquals(tok, 'cross') do
+      ReadJoinExpr(compiler, tok, from);
    if TokenEquals(tok, 'where') then
       ReadWhereExprs(compiler, tok, from);
 //   if TokenEquals(tok, 'order') then
@@ -237,7 +342,8 @@ begin
    end;
 end;
 
-function TdwsLinqExtension.ReadSqlIdentifier(const compiler: IdwsCompiler; tok : TTokenizer): TSqlIdentifier;
+function TdwsLinqExtension.ReadSqlIdentifier(const compiler: IdwsCompiler; tok : TTokenizer;
+   acceptStar: boolean = false): TSqlIdentifier;
 begin
    if not tok.TestName then
       Error(compiler, 'Identifier expected.');
@@ -247,7 +353,8 @@ begin
       if tok.TestDelete(ttDOT) then
       begin
          if not tok.TestName then
-            Error(compiler, 'Identifier expected.');
+            if not (AcceptStar and tok.Test(ttTIMES)) then
+               Error(compiler, 'Identifier expected.');
          result.Value := format('%s.%s', [result.Value, tok.GetToken.AsString]);
          tok.KillToken;
       end;
@@ -306,7 +413,10 @@ var
    i: integer;
    item: string;
 begin
-   list.Add('select');
+   if FDistinct then
+      list.Add('select distinct')
+   else list.Add('select');
+
    for i := 0 to FSelectList.Count - 1 do
    begin
       item := (FSelectList[i] as TSqlIdentifier).Value;
@@ -353,18 +463,18 @@ begin
    list.Add(format('%s %s %s', [l, GetOp(expr), r]));
 end;
 
-procedure TSqlFromExpr.BuildWhereElement(expr: TTypedExpr; compiler: TdwsCompiler; list: TStringList);
+procedure TSqlFromExpr.BuildConditionElement(expr: TTypedExpr; compiler: TdwsCompiler; list: TStringList);
 begin
    if expr is TBooleanBinOpExpr then
    begin
       list.Add('(');
-      BuildWhereElement(TBooleanBinOpExpr(expr).Left, compiler, list);
+      BuildConditionElement(TBooleanBinOpExpr(expr).Left, compiler, list);
       if expr is TBoolAndExpr then
          list.Add(') and (')
       else if expr is TBoolOrExpr then
          list.Add(') or (')
       else TdwsLinqExtension.error(compiler, 'invalid binary operator');
-      BuildWhereElement(TBooleanBinOpExpr(expr).Right, compiler, list);
+      BuildConditionElement(TBooleanBinOpExpr(expr).Right, compiler, list);
       list.add(')');
    end
    else if expr is TRelOpExpr then
@@ -372,18 +482,42 @@ begin
    else TdwsLinqExtension.error(compiler, 'invalid WHERE expression');
 end;
 
-procedure TSqlFromExpr.BuildWhereClause(compiler: TdwsCompiler; list: TStringList);
+procedure TSqlFromExpr.BuildConditional(conditional: TSqlList; compiler: TdwsCompiler; list: TStringList);
 var
    i: integer;
    expr: TTypedExpr;
 begin
-   list.Add('where');
-   for i := 0 to FWhereList.Count - 1 do
+   for i := 0 to conditional.Count - 1 do
    begin
-      expr := FWhereList[i];
-      BuildWhereElement(expr, compiler, list);
-      if i < FWhereList.Count - 1 then
+      expr := conditional[i] as TTypedExpr;
+      BuildConditionElement(expr, compiler, list);
+      if i < conditional.Count - 1 then
          list.Add('and');
+   end;
+end;
+
+procedure TSqlFromExpr.BuildWhereClause(compiler: TdwsCompiler; list: TStringList);
+begin
+   list.Add('where');
+   BuildConditional(FWhereList, compiler, list);
+end;
+
+procedure TSqlFromExpr.BuildJoinClause(compiler: TdwsCompiler; list: TStringList);
+const JOINS: array[TJoinType] of string = ('', 'left ', 'right ', 'full outer ', 'cross ');
+var
+   i: integer;
+   join: TSqlJoinExpr;
+   joinLine: string;
+begin
+   for i := 0 to FJoinList.Count - 1 do
+   begin
+      join := FJoinList[i] as TSqlJoinExpr;
+      joinLine := JOINS[join.FJoinType] + 'join ' + join.FJoinExpr.Value;
+      if assigned(join.FCriteria) then
+         joinLine := joinLine + ' on';
+      list.Add(joinLine);
+      if assigned(join.FCriteria) then
+         BuildConditional(join.FCriteria, compiler, list);
    end;
 end;
 
@@ -394,9 +528,15 @@ begin
    list := TStringList.Create;
    try
       if FSelectList = nil then
-         list.Add('select *')
+      begin
+         if FDistinct then
+            list.Add('select distinct *')
+         else list.Add('select *')
+      end
       else BuildSelectList(list);
       list.Add('from ' + FTableName);
+      if assigned(FJoinList) then
+         BuildJoinClause(compiler, list);
       if assigned(FWhereList) then
          BuildWhereClause(compiler, list);
       FSql := list.Text;
@@ -443,6 +583,23 @@ end;
 constructor TSqlIdentifier.Create(const name: string; const compiler: IdwsCompiler);
 begin
    inherited Create(compiler.CurrentProg, compiler.CurrentProg.TypVariant, name);
+end;
+
+{ TSqlJoinExpr }
+
+constructor TSqlJoinExpr.Create(const pos: TScriptPos; jt: TJoinType; JoinExpr: TSqlIdentifier; list: TSqlList);
+begin
+   inherited Create(pos);
+   FJoinType := jt;
+   FJoinExpr := JoinExpr;
+   FCriteria := list;
+end;
+
+destructor TSqlJoinExpr.Destroy;
+begin
+   FCriteria.Free;
+   FJoinExpr.Free;
+   inherited Destroy;
 end;
 
 end.
