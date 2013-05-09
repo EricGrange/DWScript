@@ -266,7 +266,6 @@ begin
       raise;
    end;
    join := TSqlJoinExpr.Create(pos, jt, TSqlIdentifier(joinExpr), list);
-   join.IncRefCount;
    from.FJoinList.Add(join);
 end;
 
@@ -405,6 +404,7 @@ begin
    FMethod.Free;
    FWhereList.Free;
    FSelectList.Free;
+   FJoinList.Free;
    inherited Destroy;
 end;
 
