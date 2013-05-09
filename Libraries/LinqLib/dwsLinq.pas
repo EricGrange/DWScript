@@ -40,6 +40,8 @@ type
       function ReadJoinType(const compiler: IdwsCompiler; tok: TTokenizer): TJoinType;
       procedure ReadComparisons(const compiler: IdwsCompiler; tok: TTokenizer;
         list: TSqlList);
+      procedure ReadOrderExprs(const compiler: IdwsCompiler; tok: TTokenizer;
+        from: TSqlFromExpr);
    public
       procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                            scriptType : TScriptSourceType); override;
@@ -56,6 +58,7 @@ type
       FWhereList: TSqlList;
       FSelectList: TSqlList;
       FJoinList: TSqlList;
+      FOrderList: TSqlList;
       FDistinct: boolean;
    private
       FSQL: string;
@@ -74,6 +77,8 @@ type
       function BuildHalfRelOpElement(expr: TTypedExpr;
         compiler: TdwsCompiler): string;
       procedure BuildJoinClause(compiler: TdwsCompiler; list: TStringList);
+      procedure BuildOrderClause(list: TStringList);
+      procedure WriteCommaList(exprs: TSqlList; list: TStringList);
    public
       constructor Create(const tableName: string; const symbol: TDataSymbol);
       destructor Destroy; override;
@@ -269,6 +274,27 @@ begin
    from.FJoinList.Add(join);
 end;
 
+procedure TdwsLinqExtension.ReadOrderExprs(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
+var
+   ident: TSqlIdentifier;
+begin
+   tok.KillToken;
+   if not (tok.TestName and TokenEquals(tok, 'by')) then
+      Error(compiler, 'Invalid ORDER BY clause');
+   tok.KillToken;
+
+   from.FOrderList := TSqlList.Create;
+   repeat
+      ident := ReadSqlIdentifier(compiler, tok);
+      if tok.TestName and (TokenEquals(tok, 'asc') or TokenEquals(tok, 'desc')) then
+      begin
+         ident.Value := format('%s %s', [ident.Value, tok.GetToken.AsString]);
+         tok.KillToken;
+      end;
+      from.FOrderList.Add(ident);
+   until not tok.TestDelete(ttCOMMA);
+end;
+
 procedure TdwsLinqExtension.ReadFromExprBody(const compiler: IdwsCompiler; tok: TTokenizer;
   from: TSqlFromExpr);
 begin
@@ -277,8 +303,8 @@ begin
       ReadJoinExpr(compiler, tok, from);
    if TokenEquals(tok, 'where') then
       ReadWhereExprs(compiler, tok, from);
-//   if TokenEquals(tok, 'order') then
-//      ;
+   if TokenEquals(tok, 'order') then
+      ReadOrderExprs(compiler, tok, from);
 //   if TokenEquals(tok, 'group') then
 //      ;
    if TokenEquals(tok, 'select') then
@@ -405,25 +431,31 @@ begin
    FWhereList.Free;
    FSelectList.Free;
    FJoinList.Free;
+   FOrderList.Free;
    inherited Destroy;
 end;
 
-procedure TSqlFromExpr.BuildSelectList(list: TStringList);
+procedure TSqlFromExpr.WriteCommaList(exprs: TSqlList; list: TStringList);
 var
    i: integer;
    item: string;
+begin
+   for i := 0 to exprs.Count - 1 do
+   begin
+      item := (exprs[i] as TSqlIdentifier).Value;
+      if i < exprs.Count - 1 then
+         item := item + ',';
+      list.Add(item)
+   end;
+end;
+
+procedure TSqlFromExpr.BuildSelectList(list: TStringList);
 begin
    if FDistinct then
       list.Add('select distinct')
    else list.Add('select');
 
-   for i := 0 to FSelectList.Count - 1 do
-   begin
-      item := (FSelectList[i] as TSqlIdentifier).Value;
-      if i < FSelectList.Count - 1 then
-         item := item + ',';
-      list.Add(item)
-   end;
+   WriteCommaList(FSelectList, list);
 end;
 
 function GetOp(expr: TRelOpExpr): string;
@@ -521,6 +553,12 @@ begin
    end;
 end;
 
+procedure TSqlFromExpr.BuildOrderClause(list: TStringList);
+begin
+   list.Add('order by');
+   WriteCommaList(FOrderList, list);
+end;
+
 procedure TSqlFromExpr.BuildQuery(compiler: TdwsCompiler);
 var
    list: TStringList;
@@ -539,6 +577,8 @@ begin
          BuildJoinClause(compiler, list);
       if assigned(FWhereList) then
          BuildWhereClause(compiler, list);
+      if assigned(FOrderList) then
+         BuildOrderClause(list);
       FSql := list.Text;
    finally
       list.Free;

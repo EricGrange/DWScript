@@ -4,10 +4,6 @@ var db := DataBase.Create('SQLite', ['.\Linq\linqtest.s3db']);
 
 for var i := 1 to 2 do
 begin
-{select tbl1.*, tbl2.name
-from TBL1
-join TBL2 on TBL2.T1_ID = tbl1.ID}
-
    var ds := from DB.TBL1
              join TBL2 on TBL2.T1_ID = TBL1.ID
              where TBL1.ID = i
