@@ -2383,6 +2383,7 @@ var
   Suggestions   : IDwsSuggestions;
   ScriptPos     : TScriptPos;
   ScriptProgram : IdwsProgram;
+  ScriptSourceItem : TScriptSourceItem;
 begin
   if not HasEditorPage then
     Exit;
@@ -2397,15 +2398,19 @@ begin
   if ScriptProgram = nil then
     Exit;
 
-  //ListSymbolTablew( ScriptProgram.Table ); // << for debugging if required
+  //ListSymbolTable( ScriptProgram.Table ); // << for debugging if required
 
-  ScriptPos := TScriptPos.Create( ScriptProgram.SourceList[0].SourceFile, CurrentEditor.CaretY, CurrentEditor.CaretX );
-  Suggestions := TdwsSuggestions.Create( ScriptProgram, ScriptPos );
+  ScriptSourceItem := ScriptProgram.SourceList.FindScriptSourceItem( CurrentEditorPage.UnitName );
+  if Assigned( ScriptSourceItem ) then
+    begin
+    ScriptPos := TScriptPos.Create( ScriptSourceItem.SourceFile, CurrentEditor.CaretY, CurrentEditor.CaretX );
+    Suggestions := TdwsSuggestions.Create( ScriptProgram, ScriptPos );
 
-  FCodeProposalForm.Open(
-    CurrentEditor.ClientToScreen( CurrentEditor.RowColumnToPixels( CurrentEditor.DisplayXY )),
-    ACodeSuggestionMode,
-    Suggestions );
+    FCodeProposalForm.Open(
+      CurrentEditor.ClientToScreen( CurrentEditor.RowColumnToPixels( CurrentEditor.DisplayXY )),
+      ACodeSuggestionMode,
+      Suggestions );
+    end;
 
 end;
 

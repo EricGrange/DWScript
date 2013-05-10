@@ -140,6 +140,15 @@ end;
 
 function BeginsWith( const ABeginsStr, AStr : string; AMatchCase : boolean = False ) : boolean;
 // Returns TRUE if AStr begins with ABeginsStr
+
+  function Min( A, B : integer ) : integer;
+  begin
+    If A <= B then
+      Result := A
+     else
+       Result := B;
+  end;
+
 var
   I : integer;
 begin
@@ -149,12 +158,12 @@ begin
 
   if AMatchCase then
     begin
-    for I := 1 to Length( ABeginsStr ) do
+    for I := 1 to Min( Length( ABeginsStr ), Length( AStr )) do
       If ABeginsStr[I] <> AStr[I] then
         Exit;
     end
    else
-    for I := 1 to Length( ABeginsStr ) do
+    for I := 1 to Min( Length( ABeginsStr ), Length( AStr )) do
       If UpCase(ABeginsStr[I]) <> UpCase(AStr[I]) then
         Exit;
 
