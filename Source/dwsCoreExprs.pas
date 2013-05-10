@@ -1050,6 +1050,13 @@ type
    TStringInStringExpr = class(TBooleanBinOpExpr)
       public
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+         function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
+   end;
+
+   // var left in const right (strings)
+   TVarStringInConstStringExpr = class(TBooleanBinOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
    // Assert(condition, message);
@@ -4664,6 +4671,30 @@ begin
    Left.EvalAsString(exec, leftStr);
    Right.EvalAsString(exec, rightStr);
    Result:=StrContains(rightStr, leftStr);
+end;
+
+// Optimize
+//
+function TStringInStringExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
+begin
+   if (Left is TStrVarExpr) and (Right is TConstStringExpr) then begin
+      Result:=TVarStringInConstStringExpr.Create(prog, Left, Right);
+      Left:=nil;
+      Right:=nil;
+      Free;
+   end else Result:=inherited;
+end;
+
+// ------------------
+// ------------------ TVarStringInConstStringExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TVarStringInConstStringExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+begin
+   Result:=StrContains(TConstStringExpr(Right).Value,
+                       exec.Stack.PointerToStringValue(TStrVarExpr(Left).StackAddr)^);
 end;
 
 // ------------------
