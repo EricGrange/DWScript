@@ -27,8 +27,34 @@ object DwsIdeDemoForm: TDwsIdeDemoForm
     Config.ScriptPaths.Strings = (
       'c:\scratch')
     Config.OnNeedUnit = DelphiWebScript1NeedUnit
-    OnNeedUnit = DelphiWebScript1NeedUnit
     Left = 168
     Top = 32
+  end
+  object dwsUnit1: TdwsUnit
+    Script = DelphiWebScript1
+    Functions = <
+      item
+        Name = 'MyUnitRec'
+        ResultType = 'TMyUnitRec'
+        OnEval = dwsUnit1FunctionsMyUnitRecEval
+      end>
+    Records = <
+      item
+        Name = 'TMyUnitRec'
+        Members = <
+          item
+            Name = 'One'
+            DataType = 'integer'
+          end
+          item
+            Name = 'Two'
+            DataType = 'integer'
+          end>
+        Properties = <>
+      end>
+    UnitName = 'dwsUnit1'
+    StaticSymbols = False
+    Left = 168
+    Top = 96
   end
 end

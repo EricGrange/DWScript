@@ -25,15 +25,18 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  dwsExprs,
   Dialogs, StdCtrls, dwsComp, dwsFunctions, dwsVCLGUIFunctions;
 
 type
   TDwsIdeDemoForm = class(TForm)
     Button1: TButton;
     DelphiWebScript1: TDelphiWebScript;
+    dwsUnit1: TdwsUnit;
     procedure Button1Click(Sender: TObject);
     function DelphiWebScript1NeedUnit(const unitName: string;
       var unitSource: string): IdwsUnit;
+    procedure dwsUnit1FunctionsMyUnitRecEval(info: TProgramInfo);
   private
     { Private declarations }
   public
@@ -51,6 +54,8 @@ uses
   SynHighlighterDWS,
   UDwsIdeDefs,
   UDwsIdeForm;
+
+
 
 
 procedure TDwsIdeDemoForm.Button1Click(Sender: TObject);
@@ -84,6 +89,19 @@ begin
     end;
   Raise Exception.CreateFmt( 'Unit file name not found "%s"', [unitName]);
 end;
+
+
+
+
+
+
+procedure TDwsIdeDemoForm.dwsUnit1FunctionsMyUnitRecEval(info: TProgramInfo);
+begin
+  Info.Vars['Result'].Member['One'].Value:=1;
+  Info.Vars['Result'].Member['Two'].Value:=2;
+end;
+
+{ TMyUnitRecFunc }
 
 
 
