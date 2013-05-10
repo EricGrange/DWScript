@@ -4061,12 +4061,13 @@ begin
   Result := FUnitName;
 end;
 
-procedure TdwsAbstractUnit.Notification(AComponent: TComponent;
-  Operation: TOperation);
+// Notification
+//
+procedure TdwsAbstractUnit.Notification(AComponent: TComponent; Operation: TOperation);
 begin
-  inherited;
-  if (Operation = opRemove) and (AComponent = FScript) then
-    FScript := nil;
+   inherited;
+   if (Operation=opRemove) and (AComponent=FScript) then
+      SetScript(nil);
 end;
 
 procedure TdwsAbstractUnit.SetDependencies(const Value: TStrings);
