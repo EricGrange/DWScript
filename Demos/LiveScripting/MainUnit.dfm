@@ -688,6 +688,22 @@ object FrmBasic: TFrmBasic
     Functions = <
       item
         Name = 'ExternalFunction'
+      end
+      item
+        Name = 'SetPixel'
+        Parameters = <
+          item
+            Name = 'x'
+            DataType = 'Integer'
+          end
+          item
+            Name = 'y'
+            DataType = 'Integer'
+          end
+          item
+            Name = 'Color'
+            DataType = 'Integer'
+          end>
       end>
     UnitName = 'ExternalUnit'
     StaticSymbols = False

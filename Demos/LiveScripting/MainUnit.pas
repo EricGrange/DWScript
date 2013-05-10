@@ -20,7 +20,7 @@ interface
 {$I dws.inc}
 
 {-$DEFINE LLVM}
-{$DEFINE LLVM_EXECUTE}
+{-$DEFINE LLVM_EXECUTE}
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
@@ -51,6 +51,7 @@ type
     AcnFileNew: TAction;
     AcnFileOpen: TFileOpen;
     AcnFileSaveScriptAs: TFileSaveAs;
+    AcnFileScriptSave: TAction;
     AcnOptions: TAction;
     AcnScriptCompile: TAction;
     AcnSearchFind: TSearchFind;
@@ -58,6 +59,7 @@ type
     ActionList: TActionList;
     DelphiWebScript: TDelphiWebScript;
     dwsRTTIConnector: TdwsRTTIConnector;
+    dwsUnitExternal: TdwsUnit;
     ListBoxCompiler: TListBox;
     ListBoxOutput: TListBox;
     MainMenu: TMainMenu;
@@ -104,16 +106,16 @@ type
     SynParameters: TSynCompletionProposal;
     TabSheetCompiler: TTabSheet;
     TabSheetOutput: TTabSheet;
-    AcnFileScriptSave: TAction;
-    dwsUnitExternal: TdwsUnit;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure AcnAutoCompileExecute(Sender: TObject);
+    procedure AcnCodeGenLLVMExecute(Sender: TObject);
     procedure AcnFileNewExecute(Sender: TObject);
     procedure AcnFileOpenAccept(Sender: TObject);
     procedure AcnFileSaveScriptAsAccept(Sender: TObject);
+    procedure AcnFileScriptSaveExecute(Sender: TObject);
     procedure AcnOptionsExecute(Sender: TObject);
     procedure AcnScriptCompileExecute(Sender: TObject);
     procedure AcnUseRTTIExecute(Sender: TObject);
@@ -125,8 +127,6 @@ type
     procedure SynEditChange(Sender: TObject);
     procedure SynEditGutterPaint(Sender: TObject; aLine, X, Y: Integer);
     procedure SynParametersExecute(Kind: SynCompletionType; Sender: TObject; var CurrentInput: string; var x, y: Integer; var CanExecute: Boolean);
-    procedure AcnCodeGenLLVMExecute(Sender: TObject);
-    procedure AcnFileScriptSaveExecute(Sender: TObject);
   private
     FRecentScriptName: TFileName;
     FRescanThread: TRescanThread;
@@ -380,6 +380,8 @@ begin
   FLLVMCodeGen.PrintToFile('dws.ir');
 
   {$IFDEF LLVM_EXECUTE}
+  Assert(LLVMInitializeNativeTarget = False);
+
   LLVMLinkInJIT;
 
   if not LLVMCreateJITCompilerForModule(JIT, FLLVMCodeGen.Module.Handle, 0, Error) then
