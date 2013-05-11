@@ -29,6 +29,12 @@ uses
   Dialogs, StdCtrls, dwsComp, dwsFunctions, dwsVCLGUIFunctions;
 
 type
+  TDemoUnitObj = class( TObject )
+  PUBLIC
+    function GetOne : integer;
+  end;
+
+
   TDwsIdeDemoForm = class(TForm)
     Button1: TButton;
     DelphiWebScript1: TDelphiWebScript;
@@ -37,8 +43,15 @@ type
     function DelphiWebScript1NeedUnit(const unitName: string;
       var unitSource: string): IdwsUnit;
     procedure dwsUnit1FunctionsMyUnitRecEval(info: TProgramInfo);
+    procedure DemoUnitClassesTDemoUnitObjMethodsGetOneEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure DemoUnitInstancesDemoUnitObjInstantiate(info: TProgramInfo;
+      var ExtObject: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
   private
     { Private declarations }
+    FDemoUnitObj : TDemoUnitObj;
   public
     { Public declarations }
   end;
@@ -95,14 +108,42 @@ end;
 
 
 
+procedure TDwsIdeDemoForm.DemoUnitClassesTDemoUnitObjMethodsGetOneEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+  Info.ResultAsInteger := TDemoUnitObj( ExtObject ).GetOne;
+end;
+
+procedure TDwsIdeDemoForm.DemoUnitInstancesDemoUnitObjInstantiate(
+  info: TProgramInfo; var ExtObject: TObject);
+begin
+  ExtObject := FDemoUnitObj;
+end;
+
 procedure TDwsIdeDemoForm.dwsUnit1FunctionsMyUnitRecEval(info: TProgramInfo);
 begin
   Info.Vars['Result'].Member['One'].Value:=1;
   Info.Vars['Result'].Member['Two'].Value:=2;
 end;
 
-{ TMyUnitRecFunc }
+procedure TDwsIdeDemoForm.FormCreate(Sender: TObject);
+begin
+  inherited;
+  FDemoUnitObj := TDemoUnitObj.Create;
+end;
 
 
+
+procedure TDwsIdeDemoForm.FormDestroy(Sender: TObject);
+begin
+  FDemoUnitObj.Free;
+end;
+
+{ TDemoUnitObj }
+
+function TDemoUnitObj.GetOne: integer;
+begin
+  Result := 1;
+end;
 
 end.

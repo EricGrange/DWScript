@@ -68,10 +68,6 @@ object DwsIdeForm: TDwsIdeForm
       object tsOutput: TTabSheet
         Caption = 'Output'
         ImageIndex = 1
-        ExplicitLeft = 0
-        ExplicitTop = 0
-        ExplicitWidth = 0
-        ExplicitHeight = 0
         object memOutputWindow: TMemo
           Left = 0
           Top = 0
@@ -454,7 +450,7 @@ object DwsIdeForm: TDwsIdeForm
       Category = 'Run'
       Caption = 'Run Function/Method At Cursor'
       Hint = 'Runs the function or method at the cursor'
-      ShortCut = 16504
+      ShortCut = 8312
       OnExecute = actRunFunctionMethodAtCursorExecute
       OnUpdate = actRunFunctionMethodAtCursorUpdate
     end
@@ -670,7 +666,7 @@ object DwsIdeForm: TDwsIdeForm
     Left = 176
     Top = 256
     Bitmap = {
-      494C01011E0021000C0010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
+      494C01011E002100140010001000FFFFFFFF2110FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000008000000001002000000000000080
       00000000000000000000000000000000000000000000706B67DCA39D96FEA19B
       95FEA19B95FEA19B95FEA19B95FEA19B95FEA19B96FEA19B94FEA19C94FEA19A
@@ -1814,6 +1810,12 @@ object DwsIdeForm: TDwsIdeForm
     Top = 144
     object RunFunctionMethodAtCursor2: TMenuItem
       Action = actRunFunctionMethodAtCursor
+    end
+    object Run3: TMenuItem
+      Action = actRun
+    end
+    object Build2: TMenuItem
+      Action = actBuild
     end
     object N9: TMenuItem
       Caption = '-'

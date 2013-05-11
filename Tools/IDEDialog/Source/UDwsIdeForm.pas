@@ -287,6 +287,8 @@ type
     SplitterBottom: TSplitter;
     pnlMain: TPanel;
     lbMessages: TListBox;
+    Run3: TMenuItem;
+    Build2: TMenuItem;
     procedure EditorChange(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure actOpenFileExecute(Sender: TObject);

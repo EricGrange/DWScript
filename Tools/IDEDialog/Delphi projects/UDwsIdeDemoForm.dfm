@@ -11,6 +11,7 @@ object DwsIdeDemoForm: TDwsIdeDemoForm
   Font.Name = 'Tahoma'
   Font.Style = []
   OldCreateOrder = False
+  OnDestroy = FormDestroy
   PixelsPerInch = 96
   TextHeight = 13
   object Button1: TButton
@@ -32,11 +33,28 @@ object DwsIdeDemoForm: TDwsIdeDemoForm
   end
   object DemoUnit: TdwsUnit
     Script = DelphiWebScript1
+    Classes = <
+      item
+        Name = 'TDemoUnitObj'
+        Methods = <
+          item
+            Name = 'GetOne'
+            ResultType = 'integer'
+            OnEval = DemoUnitClassesTDemoUnitObjMethodsGetOneEval
+            Kind = mkFunction
+          end>
+      end>
     Functions = <
       item
         Name = 'DemoUnitRec'
         ResultType = 'TDemoUnitRec'
         OnEval = dwsUnit1FunctionsMyUnitRecEval
+      end>
+    Instances = <
+      item
+        Name = 'DemoUnitObj'
+        DataType = 'TDemoUnitObj'
+        OnInstantiate = DemoUnitInstancesDemoUnitObjInstantiate
       end>
     Records = <
       item
