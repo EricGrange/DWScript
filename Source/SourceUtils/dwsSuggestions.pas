@@ -55,6 +55,7 @@ type
       function Count : Integer;
 
       function PartialToken : String;
+      function PreviousSymbol : TSymbol;
    end;
 
    // Pseudo-symbols for suggestion purposes
@@ -115,6 +116,7 @@ type
          function Count : Integer;
 
          function PartialToken : String;
+         function PreviousSymbol : TSymbol;
 
          procedure AnalyzeLocalTokens;
 
@@ -852,6 +854,11 @@ end;
 function TdwsSuggestions.PartialToken : String;
 begin
    Result:=FPartialToken;
+end;
+
+function TdwsSuggestions.PreviousSymbol: TSymbol;
+begin
+  Result := FPreviousSymbol;
 end;
 
 // ------------------

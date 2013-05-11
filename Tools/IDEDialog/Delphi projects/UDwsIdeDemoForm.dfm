@@ -30,17 +30,17 @@ object DwsIdeDemoForm: TDwsIdeDemoForm
     Left = 168
     Top = 32
   end
-  object dwsUnit1: TdwsUnit
+  object DemoUnit: TdwsUnit
     Script = DelphiWebScript1
     Functions = <
       item
-        Name = 'MyUnitRec'
-        ResultType = 'TMyUnitRec'
+        Name = 'DemoUnitRec'
+        ResultType = 'TDemoUnitRec'
         OnEval = dwsUnit1FunctionsMyUnitRecEval
       end>
     Records = <
       item
-        Name = 'TMyUnitRec'
+        Name = 'TDemoUnitRec'
         Members = <
           item
             Name = 'One'
@@ -52,7 +52,7 @@ object DwsIdeDemoForm: TDwsIdeDemoForm
           end>
         Properties = <>
       end>
-    UnitName = 'dwsUnit1'
+    UnitName = 'uDemoUnit'
     StaticSymbols = False
     Left = 168
     Top = 96

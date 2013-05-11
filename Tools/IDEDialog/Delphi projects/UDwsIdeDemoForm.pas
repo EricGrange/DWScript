@@ -32,7 +32,7 @@ type
   TDwsIdeDemoForm = class(TForm)
     Button1: TButton;
     DelphiWebScript1: TDelphiWebScript;
-    dwsUnit1: TdwsUnit;
+    DemoUnit: TdwsUnit;
     procedure Button1Click(Sender: TObject);
     function DelphiWebScript1NeedUnit(const unitName: string;
       var unitSource: string): IdwsUnit;

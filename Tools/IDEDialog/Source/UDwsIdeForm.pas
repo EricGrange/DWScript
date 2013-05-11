@@ -2406,10 +2406,11 @@ begin
     ScriptPos := TScriptPos.Create( ScriptSourceItem.SourceFile, CurrentEditor.CaretY, CurrentEditor.CaretX );
     Suggestions := TdwsSuggestions.Create( ScriptProgram, ScriptPos );
 
-    FCodeProposalForm.Open(
-      CurrentEditor.ClientToScreen( CurrentEditor.RowColumnToPixels( CurrentEditor.DisplayXY )),
-      ACodeSuggestionMode,
-      Suggestions );
+    if (ACodeSuggestionMode = csCodeProposal) or (Suggestions.PreviousSymbol <> nil) then
+      FCodeProposalForm.Open(
+        CurrentEditor.ClientToScreen( CurrentEditor.RowColumnToPixels( CurrentEditor.DisplayXY )),
+        ACodeSuggestionMode,
+        Suggestions );
     end;
 
 end;
