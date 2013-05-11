@@ -10,6 +10,7 @@ type
    TSqlFromExpr = class;
    TSqlList = class;
    TSqlIdentifier = class;
+   TSqlFunction = class;
 
    TJoinType = (jtFull, jtLeft, jtRight, jtFullOuter, jtCross);
 
@@ -42,6 +43,10 @@ type
         list: TSqlList);
       procedure ReadOrderExprs(const compiler: IdwsCompiler; tok: TTokenizer;
         from: TSqlFromExpr);
+      procedure ReadGroupByExprs(const compiler: IdwsCompiler; tok: TTokenizer;
+        from: TSqlFromExpr);
+      function ReadSqlFunction(const compiler: IdwsCompiler; tok: TTokenizer;
+        base: TSqlIdentifier): TSqlFunction;
    public
       procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                            scriptType : TScriptSourceType); override;
@@ -51,6 +56,8 @@ type
    TSqlList = class(TObjectList<TProgramExpr>);
    TSqlJoinExpr = class;
 
+   TNewParamFunc = function: string of object;
+
    TSqlFromExpr = class(TTypedExpr)
    private
       FTableName: string;
@@ -59,13 +66,14 @@ type
       FSelectList: TSqlList;
       FJoinList: TSqlList;
       FOrderList: TSqlList;
+      FGroupList: TSqlList;
       FDistinct: boolean;
    private
       FSQL: string;
       FParams: TArrayConstantExpr;
       FMethod: TMethodExpr;
       function NewParam: string;
-      procedure BuildSelectList(list: TStringList);
+      procedure BuildSelectList(list: TStringList; prog: TdwsProgram);
       procedure BuildQuery(compiler: TdwsCompiler);
       procedure Codegen(compiler: TdwsCompiler);
       procedure BuildWhereClause(compiler: TdwsCompiler; list: TStringList);
@@ -77,8 +85,9 @@ type
       function BuildHalfRelOpElement(expr: TTypedExpr;
         compiler: TdwsCompiler): string;
       procedure BuildJoinClause(compiler: TdwsCompiler; list: TStringList);
-      procedure BuildOrderClause(list: TStringList);
-      procedure WriteCommaList(exprs: TSqlList; list: TStringList);
+      procedure BuildOrderClause(list: TStringList; prog: TdwsProgram);
+      procedure WriteCommaList(exprs: TSqlList; list: TStringList; prog: TdwsProgram);
+      procedure BuildGroupClause(list: TStringList; prog: TdwsProgram);
    public
       constructor Create(const tableName: string; const symbol: TDataSymbol);
       destructor Destroy; override;
@@ -88,6 +97,18 @@ type
    TSqlIdentifier = class(TConstStringExpr)
    public
       constructor Create(const name: string; const compiler: IdwsCompiler);
+      function GetValue(params: TArrayConstantExpr; prog: TdwsProgram;
+        newParam: TNewParamFunc): string; virtual;
+   end;
+
+   TSqlFunction = class(TSqlIdentifier)
+   private
+      FFunction: TFuncExprBase;
+   public
+      constructor Create(base: TsqlIdentifier; const compiler: IdwsCompiler);
+      destructor Destroy; override;
+      function GetValue(params: TArrayConstantExpr; prog: TdwsProgram;
+        newParam: TNewParamFunc): string; override;
    end;
 
    TSqlJoinExpr = class(TNoResultExpr)
@@ -295,6 +316,22 @@ begin
    until not tok.TestDelete(ttCOMMA);
 end;
 
+procedure TdwsLinqExtension.ReadGroupByExprs(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
+var
+   ident: TSqlIdentifier;
+begin
+   tok.KillToken;
+   if not (tok.TestName and TokenEquals(tok, 'by')) then
+      Error(compiler, 'Invalid GROUP BY clause');
+   tok.KillToken;
+
+   from.FGroupList := TSqlList.Create;
+   repeat
+      ident := ReadSqlIdentifier(compiler, tok);
+      from.FGroupList.Add(ident);
+   until not tok.TestDelete(ttCOMMA);
+end;
+
 procedure TdwsLinqExtension.ReadFromExprBody(const compiler: IdwsCompiler; tok: TTokenizer;
   from: TSqlFromExpr);
 begin
@@ -303,10 +340,10 @@ begin
       ReadJoinExpr(compiler, tok, from);
    if TokenEquals(tok, 'where') then
       ReadWhereExprs(compiler, tok, from);
+   if TokenEquals(tok, 'group') then
+      ReadGroupByExprs(compiler, tok, from);
    if TokenEquals(tok, 'order') then
       ReadOrderExprs(compiler, tok, from);
-//   if TokenEquals(tok, 'group') then
-//      ;
    if TokenEquals(tok, 'select') then
       ReadSelectExprs(compiler, tok, from);
 end;
@@ -367,6 +404,20 @@ begin
    end;
 end;
 
+function TdwsLinqExtension.ReadSqlFunction(const compiler: IdwsCompiler; tok : TTokenizer;
+   base: TSqlIdentifier): TSqlFunction;
+begin
+   result := TSqlFunction.Create(base, compiler);
+   base.Free;
+   if tok.TestDelete(ttBRIGHT) then
+      Exit;
+   repeat
+      result.FFunction.AddArg(compiler.ReadExpr);
+   until not tok.TestDelete(ttCOMMA);
+   if not tok.TestDelete(ttBRIGHT) then
+      Error(compiler, 'Close parenthesis expected.');
+end;
+
 function TdwsLinqExtension.ReadSqlIdentifier(const compiler: IdwsCompiler; tok : TTokenizer;
    acceptStar: boolean = false): TSqlIdentifier;
 begin
@@ -382,7 +433,9 @@ begin
                Error(compiler, 'Identifier expected.');
          result.Value := format('%s.%s', [result.Value, tok.GetToken.AsString]);
          tok.KillToken;
-      end;
+      end
+      else if tok.TestDelete(ttBLEFT) then
+         result := ReadSqlFunction(compiler, tok, result);
    except
       result.Free;
       raise;
@@ -432,30 +485,31 @@ begin
    FSelectList.Free;
    FJoinList.Free;
    FOrderList.Free;
+   FGroupList.Free;
    inherited Destroy;
 end;
 
-procedure TSqlFromExpr.WriteCommaList(exprs: TSqlList; list: TStringList);
+procedure TSqlFromExpr.WriteCommaList(exprs: TSqlList; list: TStringList; prog: TdwsProgram);
 var
    i: integer;
    item: string;
 begin
    for i := 0 to exprs.Count - 1 do
    begin
-      item := (exprs[i] as TSqlIdentifier).Value;
+      item := (exprs[i] as TSqlIdentifier).GetValue(FParams, prog, self.NewParam);
       if i < exprs.Count - 1 then
          item := item + ',';
       list.Add(item)
    end;
 end;
 
-procedure TSqlFromExpr.BuildSelectList(list: TStringList);
+procedure TSqlFromExpr.BuildSelectList(list: TStringList; prog: TdwsProgram);
 begin
    if FDistinct then
       list.Add('select distinct')
    else list.Add('select');
 
-   WriteCommaList(FSelectList, list);
+   WriteCommaList(FSelectList, list, prog);
 end;
 
 function GetOp(expr: TRelOpExpr): string;
@@ -553,10 +607,16 @@ begin
    end;
 end;
 
-procedure TSqlFromExpr.BuildOrderClause(list: TStringList);
+procedure TSqlFromExpr.BuildOrderClause(list: TStringList; prog: TdwsProgram);
 begin
    list.Add('order by');
-   WriteCommaList(FOrderList, list);
+   WriteCommaList(FOrderList, list, prog);
+end;
+
+procedure TSqlFromExpr.BuildGroupClause(list: TStringList; prog: TdwsProgram);
+begin
+   list.Add('group by');
+   WriteCommaList(FGroupList, list, prog);
 end;
 
 procedure TSqlFromExpr.BuildQuery(compiler: TdwsCompiler);
@@ -571,14 +631,16 @@ begin
             list.Add('select distinct *')
          else list.Add('select *')
       end
-      else BuildSelectList(list);
+      else BuildSelectList(list, compiler.CurrentProg);
       list.Add('from ' + FTableName);
       if assigned(FJoinList) then
          BuildJoinClause(compiler, list);
       if assigned(FWhereList) then
          BuildWhereClause(compiler, list);
+      if assigned(FGroupList) then
+         BuildGroupClause(list, compiler.CurrentProg);
       if assigned(FOrderList) then
-         BuildOrderClause(list);
+         BuildOrderClause(list, compiler.CurrentProg);
       FSql := list.Text;
    finally
       list.Free;
@@ -625,6 +687,11 @@ begin
    inherited Create(compiler.CurrentProg, compiler.CurrentProg.TypVariant, name);
 end;
 
+function TSqlIdentifier.GetValue(params: TArrayConstantExpr; prog: TdwsProgram; newParam: TNewParamFunc): string;
+begin
+   result := self.Value;
+end;
+
 { TSqlJoinExpr }
 
 constructor TSqlJoinExpr.Create(const pos: TScriptPos; jt: TJoinType; JoinExpr: TSqlIdentifier; list: TSqlList);
@@ -640,6 +707,44 @@ begin
    FCriteria.Free;
    FJoinExpr.Free;
    inherited Destroy;
+end;
+
+{ TSqlFunction }
+
+constructor TSqlFunction.Create(base: TsqlIdentifier; const compiler: IdwsCompiler);
+begin
+   inherited Create(base.Value, compiler);
+   FFunction := TFuncExprBase.Create(compiler.CurrentProg, compiler.Tokenizer.CurrentPos, nil);
+end;
+
+destructor TSqlFunction.Destroy;
+begin
+  FFunction.Free;
+  inherited Destroy;
+end;
+
+function TSqlFunction.GetValue(params: TArrayConstantExpr; prog: TdwsProgram; newParam: TNewParamFunc): string;
+var
+   sl: TStringList;
+   i: integer;
+   arg: TExprBase;
+begin
+   sl := TStringList.Create;
+   try
+      for i := 0 to FFunction.Args.Count - 1 do
+      begin
+         arg := FFunction.Args[i];
+         if arg is TsqlIdentifier then
+            sl.Add(TsqlIdentifier(arg).GetValue(params, prog, newParam))
+         else begin
+            sl.Add(newParam());
+            params.AddElementExpr(prog, arg as TTypedExpr);
+         end;
+      end;
+      result := self.Value + '(' + sl.CommaText + ')';
+   finally
+      sl.Free;
+   end;
 end;
 
 end.
