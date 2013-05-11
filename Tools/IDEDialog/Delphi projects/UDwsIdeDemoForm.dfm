@@ -36,13 +36,41 @@ object DwsIdeDemoForm: TDwsIdeDemoForm
     Classes = <
       item
         Name = 'TDemoUnitObj'
+        Constructors = <
+          item
+            Name = 'Create'
+            OnEval = DemoUnitClassesTDemoUnitObjConstructorsCreateEval
+          end>
         Methods = <
           item
             Name = 'GetOne'
             ResultType = 'integer'
             OnEval = DemoUnitClassesTDemoUnitObjMethodsGetOneEval
             Kind = mkFunction
+          end
+          item
+            Name = 'GetSubObj1'
+            ResultType = 'TSubObj1'
+            OnEval = DemoUnitClassesTDemoUnitObjMethodsGetSubObj1Eval
+            Kind = mkFunction
           end>
+        OnCleanUp = DemoUnitClassesTDemoUnitObjCleanUp
+      end
+      item
+        Name = 'TSubObj1'
+        Constructors = <
+          item
+            Name = 'Create'
+            OnEval = DemoUnitClassesTSubObj1ConstructorsCreateEval
+          end>
+        Methods = <
+          item
+            Name = 'GetOne'
+            ResultType = 'integer'
+            OnEval = DemoUnitClassesTSubObj1MethodsGetOneEval
+            Kind = mkFunction
+          end>
+        OnCleanUp = DemoUnitClassesTSubObj1CleanUp
       end>
     Functions = <
       item

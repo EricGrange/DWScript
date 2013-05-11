@@ -29,9 +29,25 @@ uses
   Dialogs, StdCtrls, dwsComp, dwsFunctions, dwsVCLGUIFunctions;
 
 type
-  TDemoUnitObj = class( TObject )
+  TBaseObj = class( TObject )
+  PRIVATE
+   FScriptObj : Variant;
+  end;
+
+
+  TSubObj1 = class( TBaseObj )
   PUBLIC
     function GetOne : integer;
+  end;
+
+  TDemoUnitObj = class( TBaseObj )
+    constructor Create;
+    destructor  Destroy; override;
+  PRIVATE
+    FSubObj1 : TSubObj1;
+  PUBLIC
+    function GetOne : integer;
+    function GetSubObj1 : TSubObj1;
   end;
 
 
@@ -47,8 +63,17 @@ type
       ExtObject: TObject);
     procedure DemoUnitInstancesDemoUnitObjInstantiate(info: TProgramInfo;
       var ExtObject: TObject);
-    procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure DemoUnitClassesTSubObj1MethodsGetOneEval(Info: TProgramInfo;
+      ExtObject: TObject);
+    procedure DemoUnitClassesTDemoUnitObjMethodsGetSubObj1Eval(
+      Info: TProgramInfo; ExtObject: TObject);
+    procedure DemoUnitClassesTDemoUnitObjConstructorsCreateEval(
+      Info: TProgramInfo; var ExtObject: TObject);
+    procedure DemoUnitClassesTSubObj1ConstructorsCreateEval(Info: TProgramInfo;
+      var ExtObject: TObject);
+    procedure DemoUnitClassesTDemoUnitObjCleanUp(ExternalObject: TObject);
+    procedure DemoUnitClassesTSubObj1CleanUp(ExternalObject: TObject);
   private
     { Private declarations }
     FDemoUnitObj : TDemoUnitObj;
@@ -108,15 +133,69 @@ end;
 
 
 
+procedure TDwsIdeDemoForm.DemoUnitClassesTDemoUnitObjCleanUp(
+  ExternalObject: TObject);
+begin
+  if ExternalObject <> FDemoUnitObj then
+    FreeAndNil( ExternalObject );
+end;
+
+procedure TDwsIdeDemoForm.DemoUnitClassesTDemoUnitObjConstructorsCreateEval(
+  Info: TProgramInfo; var ExtObject: TObject);
+begin
+  ExtObject := TDemoUnitObj.Create;
+end;
+
 procedure TDwsIdeDemoForm.DemoUnitClassesTDemoUnitObjMethodsGetOneEval(
   Info: TProgramInfo; ExtObject: TObject);
 begin
-  Info.ResultAsInteger := TDemoUnitObj( ExtObject ).GetOne;
+  Info.ResultAsInteger:= (ExtObject as TDemoUnitObj).GetOne;
+end;
+
+
+procedure TDwsIdeDemoForm.DemoUnitClassesTDemoUnitObjMethodsGetSubObj1Eval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+  DemoUnitObj: TDemoUnitObj;
+  SubObj1 : TSubObj1;
+begin
+  DemoUnitObj := ExtObject as TDemoUnitObj;
+  SubObj1 := DemoUnitObj.GetSubObj1;
+
+  if VarIsEmpty(SubObj1.FScriptObj) then
+    SubObj1.FScriptObj := Info.Vars[SubObj1.ClassName].GetConstructor('Create',
+      SubObj1).Call.Value;
+  Info.ResultAsVariant := SubObj1.FScriptObj;
+end;
+
+
+
+
+
+procedure TDwsIdeDemoForm.DemoUnitClassesTSubObj1CleanUp(
+  ExternalObject: TObject);
+begin
+  FreeAndNil( ExternalObject );
+end;
+
+procedure TDwsIdeDemoForm.DemoUnitClassesTSubObj1ConstructorsCreateEval(
+  Info: TProgramInfo; var ExtObject: TObject);
+begin
+  ExtObject := TSubObj1.Create;
+end;
+
+procedure TDwsIdeDemoForm.DemoUnitClassesTSubObj1MethodsGetOneEval(
+  Info: TProgramInfo; ExtObject: TObject);
+begin
+  Info.ResultAsInteger:= (ExtObject as TSubObj1).GetOne;
 end;
 
 procedure TDwsIdeDemoForm.DemoUnitInstancesDemoUnitObjInstantiate(
   info: TProgramInfo; var ExtObject: TObject);
 begin
+  If not Assigned( FDemoUnitObj ) then
+   FDemoUnitObj := TDemoUnitObj.Create;
+
   ExtObject := FDemoUnitObj;
 end;
 
@@ -126,14 +205,6 @@ begin
   Info.Vars['Result'].Member['Two'].Value:=2;
 end;
 
-procedure TDwsIdeDemoForm.FormCreate(Sender: TObject);
-begin
-  inherited;
-  FDemoUnitObj := TDemoUnitObj.Create;
-end;
-
-
-
 procedure TDwsIdeDemoForm.FormDestroy(Sender: TObject);
 begin
   FDemoUnitObj.Free;
@@ -141,7 +212,31 @@ end;
 
 { TDemoUnitObj }
 
+constructor TDemoUnitObj.Create;
+begin
+  inherited;
+  FSubObj1 := TSubObj1.Create;
+end;
+
+destructor TDemoUnitObj.Destroy;
+begin
+  FSubObj1.Free;
+  inherited;
+end;
+
 function TDemoUnitObj.GetOne: integer;
+begin
+  Result := 1;
+end;
+
+function TDemoUnitObj.GetSubObj1: TSubObj1;
+begin
+  Result := FSubObj1;
+end;
+
+{ TSubObj1 }
+
+function TSubObj1.GetOne: integer;
 begin
   Result := 1;
 end;

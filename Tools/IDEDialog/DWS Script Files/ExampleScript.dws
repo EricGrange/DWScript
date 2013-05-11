@@ -46,6 +46,7 @@ end;
 procedure DemonstrationOf_DemoUnit;
 var
   MyObj := TDemoUnitObj.Create;
+  Test := TSubObj1.Create;
 begin
   // uDemoUnit is an example of the dwsUnit component which has been
   // used to define items 'outside' of the script at design time.
@@ -55,14 +56,19 @@ begin
   Assert( DemoUnitRec.One = 1 );
   Assert( DemoUnitRec.Two = 2 );
 
-
   // My Obj is a local variable above of TDemoUnitObj a class
-  // defined at design time in DemoUnit, but instantiated above.
+  // defined at design time in DemoUnit, but instantiated locally here above.
   Assert( MyObj.GetOne = 1 );
 
   // DemoUnitObj is an instance of a TDemoUnitObj class
   // defined at design time in DemoUnit.
   Assert( DemoUnitObj.GetOne = 1 );
+  Assert( MyObj.GetSubObj1.GetOne = 1 );
+
+  // .. as above, but GetSubObj1 calls a method that returns
+  // another class.
+  Assert( DemoUnitObj.GetSubObj1.GetOne = 1 );
+//  Assert( Test.GetOne = 1 );
 end;
 
 
