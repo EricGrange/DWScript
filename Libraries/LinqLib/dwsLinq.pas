@@ -29,6 +29,7 @@ type
       FDatasetSymbol: TClassSymbol;
       FRecursionDepth: integer;
       function EnsureDatabase(const compiler: IdwsCompiler): boolean;
+      function ReadExpression(const compiler: IdwsCompiler; tok: TTokenizer): TTypedExpr;
       procedure ReadFromExprBody(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
       function ReadFromExpression(const compiler: IdwsCompiler; tok : TTokenizer) : TSqlFromExpr;
       function DoReadFromExpr(const compiler: IdwsCompiler; tok: TTokenizer; db: TDataSymbol): TSqlFromExpr;
@@ -171,7 +172,7 @@ function TdwsLinqExtension.ReadComparisonExpr(const compiler: IdwsCompiler; tok:
 var
    expr: TTypedExpr;
 begin
-   expr := compiler.readExpr;
+   expr := ReadExpression(compiler, tok);
    try
       if not(expr is TRelOpExpr) then
          Error(compiler, 'Comparison expected');
@@ -198,6 +199,13 @@ begin
          raise;
       end;
    until not tok.TestDelete(ttAND);
+end;
+
+function TdwsLinqExtension.ReadExpression(const compiler: IdwsCompiler; tok: TTokenizer): TTypedExpr;
+begin
+   if tok.TestDelete(ttAMP) then
+      result := self.ReadSqlIdentifier(compiler, tok, true)
+   else result := compiler.ReadExpr();
 end;
 
 procedure TdwsLinqExtension.ReadWhereExprs(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
@@ -273,7 +281,7 @@ begin
    pos := tok.CurrentPos;
    jt := ReadJoinType(compiler, tok);
    list := nil;
-   JoinExpr := compiler.ReadExpr;
+   JoinExpr := ReadExpression(compiler, tok);
    try
       if not (joinExpr is TSqlIdentifier) then
          Error(compiler, 'Table name expected');
@@ -412,7 +420,7 @@ begin
    if tok.TestDelete(ttBRIGHT) then
       Exit;
    repeat
-      result.FFunction.AddArg(compiler.ReadExpr);
+      result.FFunction.AddArg(ReadExpression(compiler, tok));
    until not tok.TestDelete(ttCOMMA);
    if not tok.TestDelete(ttBRIGHT) then
       Error(compiler, 'Close parenthesis expected.');
