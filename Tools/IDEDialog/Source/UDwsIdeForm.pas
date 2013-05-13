@@ -1740,9 +1740,15 @@ begin
 end;
 
 function TDwsIdeForm.ProjectSourceScript: string;
+var
+  sFileName : string;
 begin
   EditorSaveAllIfModified( False );
-  Result := TextFileToString( ProjectSourceFileName );
+  sFileName := ProjectSourceFileName;
+  if FileExists( sFileName ) then
+    Result := TextFileToString( sFileName )
+   else
+     Result := '';
 end;
 
 procedure TDwsIdeForm.DoOnClickEditorPageTabContextMenuPageItem(
