@@ -57,6 +57,8 @@ const
   SYS_TCUSTOMATTRIBUTE = 'TCustomAttribute';
   SYS_IINTERFACE = 'IInterface';
 
+  SYS_MainModule = '*MainModule*';
+
   SYS_EXTERNAL_ARRAY = '[]';
 
   // Compiler switches
@@ -467,7 +469,7 @@ const
 
   // Constants of TMsgs in dwsErrors.pas
   MSG_DatatypeMissing = 'Invalid type: %s';
-  MSG_MainModule = '*MainModule*';
+  MSG_MainModule = SYS_MainModule;
   MSG_MainFunction = '*Main*';
   MSG_DeprecatedEmptyMsg = '!';
   MSG_Info = 'Info: %s';

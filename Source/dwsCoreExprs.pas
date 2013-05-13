@@ -1059,6 +1059,12 @@ type
          function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
    end;
 
+   // const left in var right (strings)
+   TConstStringInVarStringExpr = class(TBooleanBinOpExpr)
+      public
+         function EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
+   end;
+
    // Assert(condition, message);
    TAssertExpr = class(TNoResultExpr)
       protected
@@ -4682,6 +4688,11 @@ begin
       Left:=nil;
       Right:=nil;
       Free;
+   end else if (Left is TConstStringExpr) and (Right is TStrVarExpr) then begin
+      Result:=TConstStringInVarStringExpr.Create(prog, Left, Right);
+      Left:=nil;
+      Right:=nil;
+      Free;
    end else Result:=inherited;
 end;
 
@@ -4695,6 +4706,18 @@ function TVarStringInConstStringExpr.EvalAsBoolean(exec : TdwsExecution) : Boole
 begin
    Result:=StrContains(TConstStringExpr(Right).Value,
                        exec.Stack.PointerToStringValue(TStrVarExpr(Left).StackAddr)^);
+end;
+
+// ------------------
+// ------------------ TConstStringInVarStringExpr ------------------
+// ------------------
+
+// EvalAsBoolean
+//
+function TConstStringInVarStringExpr.EvalAsBoolean(exec : TdwsExecution) : Boolean;
+begin
+   Result:=StrContains(exec.Stack.PointerToStringValue(TStrVarExpr(Right).StackAddr)^,
+                       TConstStringExpr(Left).Value);
 end;
 
 // ------------------
