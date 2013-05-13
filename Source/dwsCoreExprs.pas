@@ -94,6 +94,7 @@ type
          procedure AssignExpr(exec : TdwsExecution; Expr: TTypedExpr); override;
          procedure AssignValue(exec : TdwsExecution; const Value: Variant); override;
          procedure AssignValueAsString(exec : TdwsExecution; const Value: String); override;
+         procedure AssignValueAsWideChar(exec : TdwsExecution; aChar : WideChar);
          function  SetChar(exec : TdwsExecution; index : Integer; c : WideChar) : Boolean;
          procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
          procedure Append(exec : TdwsExecution; const value : String);
@@ -2164,6 +2165,26 @@ procedure TStrVarExpr.AssignValueAsString(exec : TdwsExecution; const value: Str
 begin
    exec.Stack.WriteStrValue(exec.Stack.BasePointer + FStackAddr, value);
 end;
+
+// AssignValueAsWideChar
+//
+procedure TStrVarExpr.AssignValueAsWideChar(exec : TdwsExecution; aChar : WideChar);
+{$ifdef FPC}
+begin
+   if charCode<128 then
+      AssignValueAsString(exec, Char(charCode))
+   else AssignValueAsString(exec, UTF8Encode(WideChar(charCode)));
+end;
+{$else}
+var
+   pstr : PUnicodeString;
+begin
+   pstr:=exec.Stack.PointerToStringValue(exec.Stack.BasePointer + FStackAddr);
+   if Length(pstr^)=1 then
+      pstr^[1]:=aChar
+   else pstr^:=aChar;
+end;
+{$endif}
 
 // SetChar
 //
@@ -8015,12 +8036,15 @@ var
    code, i : Integer;
    p : PWideChar;
    s : UnicodeString;
+   strVarExpr : TStrVarExpr;
 begin
    {$ifdef FPC}
    FInExpr.EvalAsUnicodeString(exec, s);
    {$else}
    FInExpr.EvalAsString(exec, s);
    {$endif}
+
+   strVarExpr:=TStrVarExpr(FVarExpr);
 
    p:=PWideChar(s);
    for i:=1 to Length(s) do begin
@@ -8029,20 +8053,14 @@ begin
       case code of
          $D800..$DBFF : // high surrogate
             {$ifdef FPC}
-            FVarExpr.AssignValueAsString(exec, UTF8Encode(WideChar(code)+p^));
+            strVarExpr.AssignValueAsString(exec, UTF8Encode(WideChar(code)+p^));
             {$else}
-            FVarExpr.AssignValueAsString(exec, WideChar(code)+p^);
+            strVarExpr.AssignValueAsString(exec, WideChar(code)+p^);
             {$endif}
          $DC00..$DFFF : //low surrogate
             continue;
       else
-         {$ifdef FPC}
-         if code<128 then
-            FVarExpr.AssignValueAsString(exec, Char(code))
-         else FVarExpr.AssignValueAsString(exec, UTF8Encode(WideChar(code)));
-         {$else}
-         FVarExpr.AssignValueAsString(exec, WideChar(code));
-         {$endif}
+         strVarExpr.AssignValueAsWideChar(exec, WideChar(code));
       end;
 
       exec.DoStep(FDoExpr);
