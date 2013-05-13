@@ -548,6 +548,8 @@ function UnicodeCompareLen(p1, p2 : PChar; n : Integer) : Integer;
 function UnicodeCompareText(const s1, s2 : String) : Integer;
 function UnicodeSameText(const s1, s2 : String) : Boolean;
 
+function StrNonNilLength(const aString : String) : Integer; inline;
+
 function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
 function StrBeginsWith(const aStr, aBegin : String) : Boolean;
 function StrBeginsWithA(const aStr, aBegin : RawByteString) : Boolean;
@@ -1010,6 +1012,13 @@ begin
    Result:=(Length(s1)=Length(s2)) and (UnicodeCompareText(s1, s2)=0)
 end;
 
+// StrNonNilLength
+//
+function StrNonNilLength(const aString : String) : Integer;
+begin
+   Result:=PInteger(NativeUInt(Pointer(aString))-4)^;
+end;
+
 // StrIBeginsWith
 //
 function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
@@ -1066,7 +1075,22 @@ end;
 //
 function StrContains(const aStr, aSubStr : String) : Boolean;
 begin
-   Result:=(aSubStr='') or (Pos(aSubStr, aStr)>0);
+   if aSubStr='' then
+      Result:=True
+   else if StrNonNilLength(aSubStr)=1 then
+      Result:=StrContains(aStr, aSubStr[1])
+   else Result:=(Pos(aSubStr, aStr)>0);
+end;
+
+// StrContains (sub char)
+//
+function StrContains(const aStr : String; aChar : Char) : Boolean;
+var
+   i : Integer;
+begin
+   for i:=0 to Length(aStr)-1 do
+      if aStr[i+1]=aChar then Exit(True);
+   Result:=False;
 end;
 
 // StrDeleteLeft
@@ -1081,22 +1105,6 @@ end;
 function StrDeleteRight(const aStr : String; n : Integer) : String;
 begin
    Result:=Copy(aStr, 1, Length(aStr)-n);
-end;
-
-// StrContains (sub char)
-//
-function StrContains(const aStr : String; aChar : Char) : Boolean;
-var
-   p, pLast : PWideChar;
-begin
-   p:=PWideChar(Pointer(aStr));
-   pLast:=@p[Length(aStr)];
-   while p<pLast do begin
-      if p^=aChar then
-         Exit(True);
-      Inc(p);
-   end;
-   Result:=False;
 end;
 
 // StrAfterChar
