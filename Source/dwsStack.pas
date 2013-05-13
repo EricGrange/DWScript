@@ -98,7 +98,7 @@ type
 
          function  PointerToIntValue(addr : Integer) : PInt64;
          function  PointerToFloatValue_BaseRelative(addr : Integer) : PDouble;
-         function  PointerToStringValue(addr : Integer) : PString;
+         function  PointerToStringValue(addr : Integer) : PString; inline;
          function  PointerToInterfaceValue_BaseRelative(addr : Integer) : PIUnknown;
 
          procedure InitDataPtr(var dataPtr : IDataContext; addr : Integer); inline;
