@@ -100,8 +100,8 @@ const
 
 
 // Utility routines
-function BeginsWith( const ABeginsStr, AStr : string; AMatchCase : boolean = False ) : boolean;
-// Returns TRUE if AStr begins with ABeginsStr
+function BeginsWith( const AFragment, AStr : string; AMatchCase : boolean = False ) : boolean;
+// Returns TRUE if AStr begins with AFragment
 
 function DebuggerEvaluate( ADebugger : TDwsDebugger; const AExpression : string) : String;
 
@@ -138,33 +138,30 @@ begin
 end;
 
 
-function BeginsWith( const ABeginsStr, AStr : string; AMatchCase : boolean = False ) : boolean;
-// Returns TRUE if AStr begins with ABeginsStr
-
-  function Min( A, B : integer ) : integer;
-  begin
-    If A <= B then
-      Result := A
-     else
-       Result := B;
-  end;
-
+function BeginsWith( const AFragment, AStr : string; AMatchCase : boolean = False ) : boolean;
+// Returns TRUE if AStr begins with AFragment
 var
   I : integer;
 begin
   Result := False;
-  If ABeginsStr = '' then
+  If AFragment = '' then
+    Exit;
+
+  If AStr = '' then
+    Exit;
+
+  if Length( AStr ) < Length( AFragment ) then
     Exit;
 
   if AMatchCase then
     begin
-    for I := 1 to Min( Length( ABeginsStr ), Length( AStr )) do
-      If ABeginsStr[I] <> AStr[I] then
+    for I := 1 to Length( AFragment ) do
+      If AFragment[I] <> AStr[I] then
         Exit;
     end
    else
-    for I := 1 to Min( Length( ABeginsStr ), Length( AStr )) do
-      If UpCase(ABeginsStr[I]) <> UpCase(AStr[I]) then
+    for I := 1 to Length( AFragment ) do
+      If UpCase(AFragment[I]) <> UpCase(AStr[I]) then
         Exit;
 
   Result := True;

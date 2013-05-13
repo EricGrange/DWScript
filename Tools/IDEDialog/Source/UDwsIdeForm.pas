@@ -54,7 +54,7 @@ uses
   UDwsIdeCodeProposalForm,
   Menus, ToolWin, ActnCtrls,
   ImgList, UDwsIdeLocalVariablesFrame, UDwsIdeWatchesFrame, UDwsIdeCallStackFrame,
-  StdActns;
+  StdActns, SynEditMiscClasses, SynEditSearch, SynEditPlugins, SynMacroRecorder;
 
 
 const
@@ -243,8 +243,6 @@ type
     ViewSymbols1: TMenuItem;
     EditorPagePopupMenu: TPopupMenu;
     MenuItem1: TMenuItem;
-    MenuItem2: TMenuItem;
-    MenuItem3: TMenuItem;
     MenuItem4: TMenuItem;
     MenuItem5: TMenuItem;
     MenuItem6: TMenuItem;
@@ -289,6 +287,15 @@ type
     lbMessages: TListBox;
     Run3: TMenuItem;
     Build2: TMenuItem;
+    actSearchFind: TSearchFind;
+    Search1: TMenuItem;
+    Find1: TMenuItem;
+    SynEditSearch1: TSynEditSearch;
+    actSearchReplace: TSearchReplace;
+    Replace1: TMenuItem;
+    actEditorUndo: TEditUndo;
+    Undo1: TMenuItem;
+    SynMacroRecorder: TSynMacroRecorder;
     procedure EditorChange(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure actOpenFileExecute(Sender: TObject);
@@ -339,16 +346,6 @@ type
     procedure actViewSymbolsExecute(Sender: TObject);
     constructor Create( AOwner : TComponent; const AOptions : TDwsIdeOptions ); reintroduce;
     procedure FormShow(Sender: TObject);
-    procedure actEditorCopyToClipboardExecute(Sender: TObject);
-    procedure actEditorCopyToClipboardUpdate(Sender: TObject);
-    procedure actEditorSelectAllExecute(Sender: TObject);
-    procedure actEditorSelectAllUpdate(Sender: TObject);
-    procedure actEditorCutExecute(Sender: TObject);
-    procedure actEditorCutUpdate(Sender: TObject);
-    procedure actEditorPasteExecute(Sender: TObject);
-    procedure actEditorPasteUpdate(Sender: TObject);
-    procedure actEditorDeleteExecute(Sender: TObject);
-    procedure actEditorDeleteUpdate(Sender: TObject);
     procedure actRunFunctionMethodAtCursorExecute(Sender: TObject);
     procedure actRunFunctionMethodAtCursorUpdate(Sender: TObject);
     procedure FormCreate(Sender: TObject);
@@ -932,60 +929,6 @@ begin
   CodeSuggest( csCodeProposal );
 end;
 
-procedure TDwsIdeForm.actEditorCopyToClipboardExecute(Sender: TObject);
-begin
-  CurrentEditor.CopyToClipboard;
-end;
-
-procedure TDwsIdeForm.actEditorCopyToClipboardUpdate(Sender: TObject);
-begin
-  With Sender as TAction do
-    Enabled := HasEditorPage;
-end;
-
-procedure TDwsIdeForm.actEditorCutExecute(Sender: TObject);
-begin
-  CurrentEditor.CutToClipboard;
-end;
-
-procedure TDwsIdeForm.actEditorCutUpdate(Sender: TObject);
-begin
-  With Sender as TAction do
-    Enabled := HasEditorPage;
-end;
-
-procedure TDwsIdeForm.actEditorDeleteExecute(Sender: TObject);
-begin
-  CurrentEditor.ClearSelection;
-end;
-
-procedure TDwsIdeForm.actEditorDeleteUpdate(Sender: TObject);
-begin
-  With Sender as TAction do
-    Enabled := HasEditorPage;
-end;
-
-procedure TDwsIdeForm.actEditorPasteExecute(Sender: TObject);
-begin
-  CurrentEditor.PasteFromClipboard;
-end;
-
-procedure TDwsIdeForm.actEditorPasteUpdate(Sender: TObject);
-begin
-  With Sender as TAction do
-    Enabled := HasEditorPage;
-end;
-
-procedure TDwsIdeForm.actEditorSelectAllExecute(Sender: TObject);
-begin
-  CurrentEditor.SelectAll;
-end;
-
-procedure TDwsIdeForm.actEditorSelectAllUpdate(Sender: TObject);
-begin
-  With Sender as TAction do
-    Enabled := HasEditorPage;
-end;
 
 procedure TDwsIdeForm.actExitExecute(Sender: TObject);
 begin
@@ -2212,12 +2155,6 @@ begin
   // so we can load an 'output window' connection here..
   FScript.Config.ResultType := TOutputWindowStringResultType.Create( FScript, Self );
 
-  //FScriptFolder := FScript.Config.ScriptPaths[0];
-
-  //OpenFileDialog.DefaultFolder    := FScriptFolder;
-  //OpenProjectDialog.DefaultFolder := FScriptFolder;
-  //SaveProjectDialog.DefaultFolder := FScriptFolder;
-
 end;
 
 procedure TDwsIdeForm.SetScriptFolder(const Value: string);
@@ -2245,6 +2182,14 @@ begin
       page := EditorPage( Value );
       page.Visible:=False;
       page.Parent:=nil;
+
+      // Disconnect search items
+      page.Editor.SearchEngine := nil;
+      If actSearchFind.Dialog <> nil then
+        actSearchFind.Dialog.CloseDialog;
+      If actSearchReplace.Dialog <> nil then
+        actSearchReplace.Dialog.CloseDialog;
+
      end;
 
     if (Value >= 0) and (Value < FPages.Count) then
@@ -2256,6 +2201,12 @@ begin
       page.Parent:=pnlPageControl;
       page.Visible:=True;
       page.Editor.Repaint;
+
+      // Connect the search engine
+      page.Editor.SearchEngine := SynEditSearch1;
+
+      // Focus the new editor now ...
+      ActiveControl := page.Editor;
       end;
 
    finally
@@ -2290,6 +2241,9 @@ procedure TDwsIdeForm.UpdateTimerTimer(Sender: TObject);
     SInsert    = 'Insert';
     SOverwrite = 'Overwrite';
     SReadOnly  = 'Read Only';
+  const
+    MacroRecorderStates : array[ TSynMacroState ] of string = (
+      'Stopped', 'Recording', 'Playing', 'Paused' );
   var
     ptCaret: TPoint;
     Editor : TSynEdit;
@@ -2312,7 +2266,12 @@ procedure TDwsIdeForm.UpdateTimerTimer(Sender: TObject);
         StatusBar.Panels[2].Text := SReadOnly
        else
          if Editor.InsertMode then
-          StatusBar.Panels[2].Text := SInsert
+            begin
+            If SynMacroRecorder.State <> msStopped then
+              StatusBar.Panels[2].Text := UpperCase(MacroRecorderStates[SynMacroRecorder.State])
+             else
+            StatusBar.Panels[2].Text := SInsert
+            end
          else
            StatusBar.Panels[2].Text := SOverwrite;
       end
@@ -2814,6 +2773,8 @@ constructor TEditorPage.Create(
     //FEditor.ParentBackground := False;
     FEditor.FontSmoothing := fsmClearType;
 
+    FForm.SynMacroRecorder.AddEditor( FEditor );
+
     If Assigned( AOwner.FOptions.EditorHighlighterClass ) then
       FEditor.Highlighter := AOwner.FOptions.EditorHighlighterClass.Create( Self );
     If AOwner.FOptions.EditorFontName <> '' then
@@ -2834,7 +2795,12 @@ constructor TEditorPage.Create(
       eoSmartTabs,
       eoTabsToSpaces,
       eoTrimTrailingSpaces,
-      eoRightMouseMovesCursor];
+      eoRightMouseMovesCursor,
+      eoDragDropEditing,
+      eoEnhanceEndKey,
+      eoGroupUndo,
+      eoSmartTabDelete
+      ];
 
     FEditor.OnSpecialLineColors := SynEditorSpecialLineColors;
     FEditor.OnGutterClick := SynEditorGutterClick;
@@ -2872,6 +2838,7 @@ end;
 
 destructor TEditorPage.Destroy;
 begin
+  FForm.SynMacroRecorder.RemoveEditor( FEditor );
   FEditor.Free;
 
   inherited;
