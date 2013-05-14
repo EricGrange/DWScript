@@ -1513,6 +1513,8 @@ type
          function FindSymbolInUnits(const Name: String): TSymbol; overload;
          function GetTemp(const DataType: String): IInfo;
 
+         procedure RaiseExceptObj(const msg : String; const obj : IScriptObj);
+
          property Table : TSymbolTable read FTable write FTable;
          property Execution : TdwsProgramExecution read FExecution write FExecution;
          property Level : Integer read FLevel write FLevel;
@@ -5286,6 +5288,13 @@ begin
 
   Execution.DataContext_Create(data, 0, locData);
   TInfo.SetChild(Result, Self, typSym, locData);
+end;
+
+// RaiseExceptObj
+//
+procedure TProgramInfo.RaiseExceptObj(const msg : String; const obj : IScriptObj);
+begin
+   raise EScriptException.Create(msg, obj, cNullPos);
 end;
 
 procedure TProgramInfo.SetFuncSym(const Value: TFuncSymbol);
