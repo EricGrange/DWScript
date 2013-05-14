@@ -41,21 +41,21 @@ type
    //
    TdwsHtmlFilter = class(TdwsFilter)
       private
-         FPatternOpen: String;
-         FPatternClose: String;
-         FPatternEval: String;
+         FPatternOpen: UnicodeString;
+         FPatternClose: UnicodeString;
+         FPatternEval: UnicodeString;
 
       public
          constructor Create(AOwner: TComponent); override;
 
          procedure CheckPatterns;
 
-         function Process(const Text: String; Msgs: TdwsMessageList): String; override;
+         function Process(const Text: UnicodeString; Msgs: TdwsMessageList): UnicodeString; override;
 
       published
-         property PatternClose: String read FPatternClose write FPatternClose;
-         property PatternEval: String read FPatternEval write FPatternEval;
-         property PatternOpen: String read FPatternOpen write FPatternOpen;
+         property PatternClose: UnicodeString read FPatternClose write FPatternClose;
+         property PatternEval: UnicodeString read FPatternEval write FPatternEval;
+         property PatternOpen: UnicodeString read FPatternOpen write FPatternOpen;
    end;
 
   TdwsHtmlUnit = class(TdwsUnitComponent)
@@ -99,9 +99,9 @@ end;
 
 // Process
 //
-function TdwsHtmlFilter.Process(const Text: String; Msgs: TdwsMessageList): String;
+function TdwsHtmlFilter.Process(const Text: UnicodeString; Msgs: TdwsMessageList): UnicodeString;
 
-   procedure StuffString(const str: String; start, stop : Integer;
+   procedure StuffString(const str: UnicodeString; start, stop : Integer;
                          dest : TWriteOnlyBlockStream);
    var
       isQuoted: Boolean;
@@ -163,7 +163,7 @@ function TdwsHtmlFilter.Process(const Text: String; Msgs: TdwsMessageList): Stri
 var
    p, start, stop : Integer;
    isEval : Boolean;
-   input : String;
+   input : UnicodeString;
    output : TWriteOnlyBlockStream;
 begin
    CheckPatterns;

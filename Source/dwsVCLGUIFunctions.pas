@@ -25,7 +25,7 @@ interface
 
 uses
    Windows, Forms, Dialogs, Classes,
-   dwsUtils,
+   dwsUtils, dwsStrings,
    dwsFunctions, dwsExprs, dwsSymbols, dwsMagicExprs, dwsExprList;
 
 type
@@ -35,19 +35,13 @@ type
   end;
 
   TInputBoxFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
   TdwsGUIFunctions = class(TComponent)
   end;
 
 implementation
-
-const // type constants
-  cFloat = 'Float';
-  cInteger = 'Integer';
-  cString = 'String';
-  cBoolean = 'Boolean';
 
 { TShowMessageFunc }
 
@@ -62,14 +56,14 @@ end;
 
 // DoEvalAsString
 //
-procedure TInputBoxFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TInputBoxFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=InputBox(args.AsString[0], args.AsString[1], args.AsString[2]);
 end;
 
 initialization
 
-   RegisterInternalProcedure(TShowMessageFunc, 'ShowMessage', ['msg', cString]);
-   RegisterInternalStringFunction(TInputBoxFunc, 'InputBox', ['aCaption', cString, 'aPrompt', cString, 'aDefault', cString]);
+   RegisterInternalProcedure(TShowMessageFunc, 'ShowMessage', ['msg', SYS_STRING]);
+   RegisterInternalStringFunction(TInputBoxFunc, 'InputBox', ['aCaption', SYS_STRING, 'aPrompt', SYS_STRING, 'aDefault', SYS_STRING]);
   
 end.

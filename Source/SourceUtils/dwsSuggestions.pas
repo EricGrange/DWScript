@@ -43,18 +43,18 @@ type
 
    IdwsSuggestions = interface
       ['{09CA8BF2-AF3F-4B5A-B188-4B2FF574AC34}']
-      function GetCode(i : Integer) : String;
+      function GetCode(i : Integer) : UnicodeString;
       function GetCategory(i : Integer) : TdwsSuggestionCategory;
-      function GetCaption(i : Integer) : String;
+      function GetCaption(i : Integer) : UnicodeString;
       function GetSymbols(i : Integer) : TSymbol;
 
-      property Code[i : Integer] : String read GetCode;
+      property Code[i : Integer] : UnicodeString read GetCode;
       property Category[i : Integer] : TdwsSuggestionCategory read GetCategory;
-      property Caption[i : Integer] : String read GetCaption;
+      property Caption[i : Integer] : UnicodeString read GetCaption;
       property Symbols[i : Integer] : TSymbol read GetSymbols;
       function Count : Integer;
 
-      function PartialToken : String;
+      function PartialToken : UnicodeString;
       function PreviousSymbol : TSymbol;
    end;
 
@@ -96,9 +96,9 @@ type
          FCleanupList : TTightList;
          FListLookup : TObjectsLookup;
          FNamesLookup : TStringList;
-         FPartialToken : String;
+         FPartialToken : UnicodeString;
          FPreviousSymbol : TSymbol;
-         FPreviousTokenString : String;
+         FPreviousTokenString : UnicodeString;
          FPreviousToken : TTokenType;
          FAfterDot : Boolean;
          FLocalContext : TdwsSourceContext;
@@ -109,13 +109,13 @@ type
          FDynArrayHelpers : TSymbolTable;
 
       protected
-         function GetCode(i : Integer) : String;
+         function GetCode(i : Integer) : UnicodeString;
          function GetCategory(i : Integer) : TdwsSuggestionCategory;
-         function GetCaption(i : Integer) : String;
+         function GetCaption(i : Integer) : UnicodeString;
          function GetSymbols(i : Integer) : TSymbol;
          function Count : Integer;
 
-         function PartialToken : String;
+         function PartialToken : UnicodeString;
          function PreviousSymbol : TSymbol;
 
          procedure AnalyzeLocalTokens;
@@ -123,7 +123,7 @@ type
          procedure AddToList(aList : TSimpleSymbolList);
          function IsContextSymbol(sym : TSymbol) : Boolean;
 
-         function CreateHelper(const name : String; resultType : TTypeSymbol;
+         function CreateHelper(const name : UnicodeString; resultType : TTypeSymbol;
                                const args : array of const) : TFuncSymbol;
          procedure AddStaticArrayHelpers(list : TSimpleSymbolList);
          procedure AddDynamicArrayHelpers(dyn : TDynamicArraySymbol; list : TSimpleSymbolList);
@@ -224,7 +224,7 @@ end;
 //
 procedure TdwsSuggestions.AnalyzeLocalTokens;
 var
-   codeLine : String;
+   codeLine : UnicodeString;
    p, p2 : Integer;
 
    function MoveBackArrayBrackets : Boolean;
@@ -387,7 +387,7 @@ end;
 
 // CreateHelper
 //
-function TdwsSuggestions.CreateHelper(const name : String; resultType : TTypeSymbol;
+function TdwsSuggestions.CreateHelper(const name : UnicodeString; resultType : TTypeSymbol;
                                       const args : array of const) : TFuncSymbol;
 var
    i : Integer;
@@ -402,7 +402,7 @@ begin
    for i:=0 to (Length(args) div 2)-1 do begin
       Assert(args[i*2].VType=vtUnicodeString);
       Assert(args[i*2+1].VType=vtObject);
-      p:=TParamSymbol.Create(String(args[i*2].VUnicodeString), TObject(args[i*2+1].VObject) as TTypeSymbol);
+      p:=TParamSymbol.Create(UnicodeString(args[i*2].VUnicodeString), TObject(args[i*2+1].VObject) as TTypeSymbol);
       Result.Params.AddSymbol(p);
    end;
 end;
@@ -484,7 +484,7 @@ end;
 //
 procedure TdwsSuggestions.AddReservedWords;
 
-   function IsAlpha(const s : String) : Boolean;
+   function IsAlpha(const s : UnicodeString) : Boolean;
    var
       i : Integer;
    begin
@@ -711,7 +711,7 @@ end;
 
 // GetCode
 //
-function TdwsSuggestions.GetCode(i : Integer) : String;
+function TdwsSuggestions.GetCode(i : Integer) : UnicodeString;
 begin
    Result:=FList[i].Name;
 end;
@@ -777,9 +777,9 @@ begin
 
 // GetCaption
 //
-function TdwsSuggestions.GetCaption(i : Integer) : String;
+function TdwsSuggestions.GetCaption(i : Integer) : UnicodeString;
 
-   function SafeSymbolName(symbol : TSymbol) : String;
+   function SafeSymbolName(symbol : TSymbol) : UnicodeString;
    begin
       if symbol<>nil then begin
          Result:=symbol.Name;
@@ -851,7 +851,7 @@ end;
 
 // PartialToken
 //
-function TdwsSuggestions.PartialToken : String;
+function TdwsSuggestions.PartialToken : UnicodeString;
 begin
    Result:=FPartialToken;
 end;

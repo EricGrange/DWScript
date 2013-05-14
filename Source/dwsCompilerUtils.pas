@@ -28,7 +28,7 @@ type
 
    TdwsCompilerUtils = class
       public
-         class procedure AddProcHelper(const name : String;
+         class procedure AddProcHelper(const name : UnicodeString;
                                        table : TSymbolTable; func : TFuncSymbol;
                                        unitSymbol : TUnitMainSymbol); static;
    end;
@@ -50,14 +50,14 @@ implementation
 type
    TCheckAbstractClassConstruction = class (TErrorMessage)
       FClassSym : TClassSymbol;
-      constructor Create(msgs: TdwsMessageList; const text : String; const p : TScriptPos;
+      constructor Create(msgs: TdwsMessageList; const text : UnicodeString; const p : TScriptPos;
                          classSym : TClassSymbol); overload;
       function IsValid : Boolean; override;
    end;
 
 // Create
 //
-constructor TCheckAbstractClassConstruction.Create(msgs: TdwsMessageList; const text : String; const p : TScriptPos;
+constructor TCheckAbstractClassConstruction.Create(msgs: TdwsMessageList; const text : UnicodeString; const p : TScriptPos;
                                                    classSym : TClassSymbol);
 begin
    inherited Create(msgs, Format(MSG_Error, [text]), p);
@@ -243,7 +243,7 @@ end;
 
 // AddProcHelper
 //
-class procedure TdwsCompilerUtils.AddProcHelper(const name : String;
+class procedure TdwsCompilerUtils.AddProcHelper(const name : UnicodeString;
                                                 table : TSymbolTable; func : TFuncSymbol;
                                                 unitSymbol : TUnitMainSymbol);
 var

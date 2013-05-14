@@ -33,7 +33,7 @@ type
 
    TComplexToStrExpr = class(TInternalMagicStringFunction)
       public
-         procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+         procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
    end;
 
    TAbsComplexExpr = class(TUnaryOpFloatExpr)
@@ -137,7 +137,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TComplexToStrExpr.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TComplexToStrExpr.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
    cmplxData : IDataContext;
    r, i : Double;

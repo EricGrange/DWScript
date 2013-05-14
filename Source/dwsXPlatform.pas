@@ -72,7 +72,7 @@ type
 procedure SetDecimalSeparator(c : Char);
 function GetDecimalSeparator : Char;
 
-procedure CollectFiles(const directory, fileMask : String; list : TStrings);
+procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings);
 
 type
    {$IFNDEF FPC}
@@ -89,18 +89,18 @@ type
    {$IFDEF FPC}
    TBytes = array of Byte;
 
-   RawByteString = String;
+   RawByteString = UnicodeString;
 
    PNativeInt = ^NativeInt;
    PUInt64 = ^UInt64;
    {$ENDIF}
 
    TPath = class
-      class function GetTempFileName : String; static;
+      class function GetTempFileName : UnicodeString; static;
    end;
 
    TFile = class
-      class function ReadAllBytes(const filename : String) : TBytes; static;
+      class function ReadAllBytes(const filename : UnicodeString) : TBytes; static;
    end;
 
    TdwsThread = class (TThread)
@@ -114,8 +114,8 @@ type
 function GetSystemMilliseconds : Int64;
 function UTCDateTime : TDateTime;
 
-function AnsiCompareText(const S1, S2 : String) : Integer;
-function AnsiCompareStr(const S1, S2 : String) : Integer;
+function AnsiCompareText(const S1, S2 : UnicodeString) : Integer;
+function AnsiCompareStr(const S1, S2 : UnicodeString) : Integer;
 function UnicodeComparePChars(p1 : PChar; n1 : Integer; p2 : PChar; n2 : Integer) : Integer; overload;
 function UnicodeComparePChars(p1, p2 : PChar; n : Integer) : Integer; overload;
 
@@ -124,9 +124,9 @@ function InterlockedDecrement(var val : Integer) : Integer; {$IFDEF PUREPASCAL} 
 
 procedure SetThreadName(const threadName : PAnsiChar; threadID : Cardinal = Cardinal(-1));
 
-procedure OutputDebugString(const msg : String);
+procedure OutputDebugString(const msg : UnicodeString);
 
-procedure WriteToOSEventLog(const logName, logCaption, logDetails : String;
+procedure WriteToOSEventLog(const logName, logCaption, logDetails : UnicodeString;
                             const logRawData : RawByteString = ''); overload;
 
 function TryTextToFloat(const s : PChar; var value : Extended;
@@ -136,10 +136,10 @@ function TryTextToFloat(const s : PChar; var value : Extended;
 procedure VarCopy(out dest : Variant; const src : Variant); inline;
 {$endif}
 
-function LoadTextFromBuffer(const buf : TBytes) : String;
-function LoadTextFromStream(aStream : TStream) : String;
-function LoadTextFromFile(const fileName : String) : String;
-function OpenFileForSequentialReadOnly(const fileName : String) : THandle;
+function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
+function LoadTextFromStream(aStream : TStream) : UnicodeString;
+function LoadTextFromFile(const fileName : UnicodeString) : UnicodeString;
+function OpenFileForSequentialReadOnly(const fileName : UnicodeString) : THandle;
 procedure CloseFileHandle(hFile : THandle);
 
 function DirectSet8087CW(newValue : Word) : Word; register;
@@ -178,14 +178,14 @@ end;
 
 // AnsiCompareText
 //
-function AnsiCompareText(const S1, S2: String) : Integer;
+function AnsiCompareText(const S1, S2: UnicodeString) : Integer;
 begin
    Result:=SysUtils.AnsiCompareText(S1, S2);
 end;
 
 // AnsiCompareStr
 //
-function AnsiCompareStr(const S1, S2: String) : Integer;
+function AnsiCompareStr(const S1, S2: UnicodeString) : Integer;
 begin
    Result:=SysUtils.AnsiCompareStr(S1, S2);
 end;
@@ -277,14 +277,14 @@ end;
 
 // OutputDebugString
 //
-procedure OutputDebugString(const msg : String);
+procedure OutputDebugString(const msg : UnicodeString);
 begin
    Windows.OutputDebugString(PChar(msg));
 end;
 
 // WriteToOSEventLog
 //
-procedure WriteToOSEventLog(const logName, logCaption, logDetails : String;
+procedure WriteToOSEventLog(const logName, logCaption, logDetails : UnicodeString;
                             const logRawData : RawByteString = '');
 var
   eventSource : THandle;
@@ -338,7 +338,7 @@ end;
 
 // CollectFiles
 //
-procedure CollectFiles(const directory, fileMask : String; list : TStrings);
+procedure CollectFiles(const directory, fileMask : UnicodeString; list : TStrings);
 var
    searchRec : TSearchRec;
    found : Integer;
@@ -385,7 +385,7 @@ end;
 
 // LoadTextFromBuffer
 //
-function LoadTextFromBuffer(const buf : TBytes) : String;
+function LoadTextFromBuffer(const buf : TBytes) : UnicodeString;
 var
    n : Integer;
    encoding : TEncoding;
@@ -399,7 +399,7 @@ end;
 
 // LoadTextFromStream
 //
-function LoadTextFromStream(aStream : TStream) : String;
+function LoadTextFromStream(aStream : TStream) : UnicodeString;
 var
    n : Integer;
    buf : TBytes;
@@ -412,7 +412,7 @@ end;
 
 // LoadTextFromFile
 //
-function LoadTextFromFile(const fileName : String) : String;
+function LoadTextFromFile(const fileName : UnicodeString) : UnicodeString;
 const
    INVALID_FILE_SIZE = DWORD($FFFFFFFF);
 var
@@ -440,7 +440,7 @@ end;
 
 // OpenFileForSequentialReadOnly
 //
-function OpenFileForSequentialReadOnly(const fileName : String) : THandle;
+function OpenFileForSequentialReadOnly(const fileName : UnicodeString) : THandle;
 begin
    Result:=CreateFile(PChar(fileName), GENERIC_READ, FILE_SHARE_READ+FILE_SHARE_WRITE,
                       nil, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, 0);
@@ -539,7 +539,7 @@ end;
 
 // GetTempFileName
 //
-class function TPath.GetTempFileName : String;
+class function TPath.GetTempFileName : UnicodeString;
 {$IFDEF VER200} // Delphi 2009
 var
    tempPath, tempFileName : array [0..MAX_PATH] of WideChar; // Buf sizes are MAX_PATH+1
@@ -563,7 +563,7 @@ end;
 
 // ReadAllBytes
 //
-class function TFile.ReadAllBytes(const filename : String) : TBytes;
+class function TFile.ReadAllBytes(const filename : UnicodeString) : TBytes;
 {$IFDEF VER200} // Delphi 2009
 var
    fileStream : TFileStream;

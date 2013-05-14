@@ -22,7 +22,7 @@ interface
 
 uses
    Classes, Variants, SysUtils,
-   dwsFunctions, dwsExprs, dwsSymbols, dwsUtils, dwsExprList,
+   dwsFunctions, dwsExprs, dwsSymbols, dwsUtils, dwsExprList, dwsStrings,
    dwsMagicExprs, dwsUnitSymbols, dwsXPlatform;
 
 type
@@ -47,7 +47,7 @@ end;
 
 initialization
 
-   RegisterInternalProcedure(TOutputDebugStringFunc, 'OutputDebugString', ['m', 'String']);
+   RegisterInternalProcedure(TOutputDebugStringFunc, 'OutputDebugString', ['m', SYS_STRING]);
 
 end.
 

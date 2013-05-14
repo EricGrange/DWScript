@@ -297,16 +297,24 @@ var
    var
       i, j : Integer;
       lines : TBits;
+      sourceNames : TStringList;
    begin
       Result:='';
-      for i:=0 to breakpointables.Count-1 do begin
-         if i>0 then
-            Result:=Result+#13#10;
-         Result:=Result+breakpointables.SourceName[i]+': ';
-         lines:=breakpointables.SourceLines[i];
-         for j:=0 to lines.Size-1 do
-            if lines[j] then
-               Result:=Result+IntToStr(j)+',';
+      sourceNames:=TStringList.Create;
+      try
+         breakpointables.Enumerate(sourceNames);
+         sourceNames.Sort;
+         for i:=0 to sourceNames.Count-1 do begin
+            if i>0 then
+               Result:=Result+#13#10;
+            Result:=Result+sourceNames[i]+': ';
+            lines:=sourceNames.Objects[i] as TBits;
+            for j:=0 to lines.Size-1 do
+               if lines[j] then
+                  Result:=Result+IntToStr(j)+',';
+         end;
+      finally
+         sourceNames.Free;
       end;
    end;
 

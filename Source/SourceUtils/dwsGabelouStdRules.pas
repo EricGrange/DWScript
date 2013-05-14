@@ -166,12 +166,12 @@ end;
 //
 procedure TGR_ConstantNamingRules.EvaluateSymbol(const aSymbolList : TSymbolPositionList; msgs : TdwsMessageList);
 
-   function ChecksCPrefix(const s : String) : Boolean;
+   function ChecksCPrefix(const s : UnicodeString) : Boolean;
    begin
       Result:=(Length(s)>=2) and (s[1]='c') and TCharacter.IsUpper(s[2]);
    end;
 
-   function ChecksAllCapsUpToUnderscore(const s : String) : Boolean;
+   function ChecksAllCapsUpToUnderscore(const s : UnicodeString) : Boolean;
    var
       c : Char;
       i : Integer;

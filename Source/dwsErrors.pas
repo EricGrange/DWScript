@@ -37,16 +37,16 @@ type
    TSourceFile = class (TRefCountedObject)
       private
          FLineCount : Integer;
-         FCode : String;
+         FCode : UnicodeString;
 
       {$ifdef FPC}
       protected
-         procedure SetCode(const sourceCode : String);
+         procedure SetCode(const sourceCode : UnicodeString);
       {$endif}
 
       public
-         Name : String;
-         property Code : String read FCode write {$ifdef FPC}SetCode{$else}FCode{$endif};
+         Name : UnicodeString;
+         property Code : UnicodeString read FCode write {$ifdef FPC}SetCode{$else}FCode{$endif};
          function LineCount : Integer;
    end;
 
@@ -67,8 +67,8 @@ type
 
          function SamePosAs(const aPos : TScriptPos) : Boolean;
          function IsMainModule : Boolean;
-         function IsSourceFile(const name : String) : Boolean;
-         function SourceName : String; inline;
+         function IsSourceFile(const name : UnicodeString) : Boolean;
+         function SourceName : UnicodeString; inline;
          function Defined : Boolean;
 
          procedure IncCol; inline;
@@ -78,7 +78,7 @@ type
 
          function IsBeforeOrEqual(const aPos : TScriptPos) : Boolean;
 
-         function AsInfo : String;
+         function AsInfo : UnicodeString;
    end;
    TScriptPosArray = array of TScriptPos; // dynamic array that can hold ScriptPos settings (needed for ReadNameList)
 
@@ -87,34 +87,34 @@ type
    TdwsMessage = class abstract (TRefCountedObject)
       private
          FMsgs : TdwsMessageList;
-         FText : String;
+         FText : UnicodeString;
 
       public
-         constructor Create(aMessageList : TdwsMessageList; const Text: String);
+         constructor Create(aMessageList : TdwsMessageList; const Text: UnicodeString);
 
-         function AsInfo : String; virtual; abstract;
+         function AsInfo : UnicodeString; virtual; abstract;
          function IsError : Boolean; virtual;
          function IsValid : Boolean; virtual;
 
-         property Text : String read FText;
+         property Text : UnicodeString read FText;
    end;
 
    TInfoMessage = class(TdwsMessage)
-      function AsInfo: String; override;
+      function AsInfo: UnicodeString; override;
    end;
 
    IAutoFixSourceBuffer = interface
 
-      function GetLines(idx : Integer) : String;
-      procedure SetLines(idx : Integer; const newLine : String);
+      function GetLines(idx : Integer) : UnicodeString;
+      procedure SetLines(idx : Integer; const newLine : UnicodeString);
       function GetCount : Integer;
 
-      property Lines[idx : Integer] : String read GetLines write SetLines;
+      property Lines[idx : Integer] : UnicodeString read GetLines write SetLines;
       property Count : Integer read GetCount;
 
-      function CodeAt(col, line, nb : Integer) : String;
-      procedure ReplaceAt(col, line, nb : Integer; const newText : String);
-      procedure InsertLine(line : Integer; const lineText : String);
+      function CodeAt(col, line, nb : Integer) : UnicodeString;
+      procedure ReplaceAt(col, line, nb : Integer; const newText : UnicodeString);
+      procedure InsertLine(line : Integer; const lineText : UnicodeString);
       procedure DeleteLine(line : Integer);
 
       procedure MoveCursorTo(col, row : Integer);
@@ -126,19 +126,19 @@ type
    //
    TdwsAutoFixAction = class abstract
       private
-         FCaption : String;
+         FCaption : UnicodeString;
          FMsg : TScriptMessage;
          FNextAction : TdwsAutoFixAction;
 
       public
-         constructor Create(msg : TScriptMessage; const caption : String);
+         constructor Create(msg : TScriptMessage; const caption : UnicodeString);
          destructor Destroy; override;
 
-         function Apply(const buffer : IAutoFixSourceBuffer) : String; virtual; abstract;
+         function Apply(const buffer : IAutoFixSourceBuffer) : UnicodeString; virtual; abstract;
          function Detach : TdwsAutoFixAction; virtual;
 
          property Msg : TScriptMessage read FMsg write FMsg;
-         property Caption : String read FCaption;
+         property Caption : UnicodeString read FCaption;
          property NextAction : TdwsAutoFixAction read FNextAction;
    end;
 
@@ -150,15 +150,15 @@ type
          FAutoFix : TdwsAutoFixAction;
 
       public
-         constructor Create(msgs: TdwsMessageList; const text : String; const p : TScriptPos); overload;
+         constructor Create(msgs: TdwsMessageList; const text : UnicodeString; const p : TScriptPos); overload;
          destructor Destroy; override;
 
-         function AsInfo : String; override;
+         function AsInfo : UnicodeString; override;
 
          function Pos : TScriptPos; deprecated 'Renamed as ScriptPos';
          function Line : Integer; inline;
          function Col : Integer; inline;
-         function SourceName : String; inline;
+         function SourceName : UnicodeString; inline;
 
          property ScriptPos : TScriptPos read FScriptPos write FScriptPos;
          property AutoFix : TdwsAutoFixAction read FAutoFix write FAutoFix;
@@ -167,11 +167,11 @@ type
    TScriptMessageClass = class of TScriptMessage;
 
    THintMessage = class(TScriptMessage)
-      function AsInfo: String; override;
+      function AsInfo: UnicodeString; override;
    end;
 
    TWarningMessage = class(TScriptMessage)
-      function AsInfo: String; override;
+      function AsInfo: UnicodeString; override;
    end;
 
    TErrorMessage = class(TScriptMessage)
@@ -179,11 +179,11 @@ type
    end;
 
    TCompilerErrorMessage = class(TErrorMessage)
-      function AsInfo: String; override;
+      function AsInfo: UnicodeString; override;
    end;
 
    TSyntaxErrorMessage = class(TErrorMessage)
-      function AsInfo: String; override;
+      function AsInfo: UnicodeString; override;
    end;
 
    // TdwsMessageList
@@ -202,7 +202,7 @@ type
       public
          destructor Destroy; override;
 
-         procedure AddInfo(const Text: String);
+         procedure AddInfo(const Text: UnicodeString);
          function LastMessagePos : TScriptPos;
 
          procedure AddMessage(aMessage : TdwsMessage); virtual;
@@ -210,7 +210,7 @@ type
          procedure Clear;
          procedure RemoveInvalidDeferred;
 
-         function AsInfo: String;
+         function AsInfo: UnicodeString;
 
          property Msgs[index : Integer] : TdwsMessage read GetMsg; default;
          property Count : Integer read GetMsgCount;
@@ -227,34 +227,34 @@ type
          FWarningsDisabled : Boolean;
 
       public
-         function AddCompilerInfo(const Text: String) : TInfoMessage;
+         function AddCompilerInfo(const Text: UnicodeString) : TInfoMessage;
 
-         function AddCompilerHint(const aScriptPos: TScriptPos; const Text : String;
+         function AddCompilerHint(const aScriptPos: TScriptPos; const Text : UnicodeString;
                                   const aLevel : TdwsHintsLevel = hlNormal) : TScriptMessage; overload;
-         function AddCompilerHintFmt(const aScriptPos: TScriptPos; const textFormat : String;
+         function AddCompilerHintFmt(const aScriptPos: TScriptPos; const textFormat : UnicodeString;
                                      const args : array of const;
                                      const aLevel : TdwsHintsLevel = hlNormal) : TScriptMessage; overload;
 
-         function AddCompilerWarning(const aScriptPos: TScriptPos; const Text: String) : TScriptMessage;
-         function AddCompilerWarningFmt(const aScriptPos: TScriptPos; const textFormat : String;
+         function AddCompilerWarning(const aScriptPos: TScriptPos; const Text: UnicodeString) : TScriptMessage;
+         function AddCompilerWarningFmt(const aScriptPos: TScriptPos; const textFormat : UnicodeString;
                                         const args: array of const) : TScriptMessage;
 
-         function AddCompilerError(const aScriptPos: TScriptPos; const Text: String;
+         function AddCompilerError(const aScriptPos: TScriptPos; const Text: UnicodeString;
                                    messageClass : TScriptMessageClass) : TScriptMessage; overload;
-         function AddCompilerError(const aScriptPos: TScriptPos; const Text: String) : TScriptMessage; overload;
-         function AddCompilerErrorFmt(const aScriptPos: TScriptPos; const textFormat : String;
+         function AddCompilerError(const aScriptPos: TScriptPos; const Text: UnicodeString) : TScriptMessage; overload;
+         function AddCompilerErrorFmt(const aScriptPos: TScriptPos; const textFormat : UnicodeString;
                                       const args: array of const; messageClass : TScriptMessageClass) : TScriptMessage; overload;
-         function AddCompilerErrorFmt(const aScriptPos: TScriptPos; const textFormat : String;
+         function AddCompilerErrorFmt(const aScriptPos: TScriptPos; const textFormat : UnicodeString;
                                       const args: array of const) : TScriptMessage; overload;
 
          function AddCompilerException(const aScriptPos: TScriptPos; e : Exception) : TScriptMessage;
 
-         procedure AddCompilerStop(const aScriptPos: TScriptPos; const Text: String;
+         procedure AddCompilerStop(const aScriptPos: TScriptPos; const Text: UnicodeString;
                                    messageClass : TScriptMessageClass); overload;
-         procedure AddCompilerStop(const aScriptPos: TScriptPos; const Text: String); overload;
-         procedure AddCompilerStopFmt(const aScriptPos: TScriptPos; const textFormat : String;
+         procedure AddCompilerStop(const aScriptPos: TScriptPos; const Text: UnicodeString); overload;
+         procedure AddCompilerStopFmt(const aScriptPos: TScriptPos; const textFormat : UnicodeString;
                                       const args: array of const; messageClass : TScriptMessageClass); overload;
-         procedure AddCompilerStopFmt(const aScriptPos: TScriptPos; const textFormat : String;
+         procedure AddCompilerStopFmt(const aScriptPos: TScriptPos; const textFormat : UnicodeString;
                                       const args: array of const); overload;
 
          property HintsLevel : TdwsHintsLevel read FHintsLevel write FHintsLevel;
@@ -279,7 +279,7 @@ type
          FScriptPos : TScriptPos;
 
       public
-         constructor CreatePosFmt(const aScriptPos: TScriptPos; const Msg: String; const Args: array of const);
+         constructor CreatePosFmt(const aScriptPos: TScriptPos; const Msg: UnicodeString; const Args: array of const);
          constructor CreateFromException(const aScriptPos: TScriptPos; e : Exception);
 
          property ScriptPos : TScriptPos read FScriptPos write FScriptPos;
@@ -299,26 +299,26 @@ type
    //
    TdwsAFAReplace = class (TdwsAutoFixAction)
       private
-         FOldText  : String;
-         FNewText : String;
+         FOldText  : UnicodeString;
+         FNewText : UnicodeString;
 
       public
-         function Apply(const buffer : IAutoFixSourceBuffer) : String; override;
+         function Apply(const buffer : IAutoFixSourceBuffer) : UnicodeString; override;
 
-         property OldText : String read FOldText write FOldText;
-         property NewText : String read FNewText write FNewText;
+         property OldText : UnicodeString read FOldText write FOldText;
+         property NewText : UnicodeString read FNewText write FNewText;
    end;
 
    // TdwsAFAAddImplementation
    //
    TdwsAFAAddImplementation = class (TdwsAutoFixAction)
       private
-         FText : String;
+         FText : UnicodeString;
 
       public
-         function Apply(const buffer : IAutoFixSourceBuffer) : String; override;
+         function Apply(const buffer : IAutoFixSourceBuffer) : UnicodeString; override;
 
-         property Text : String read FText write FText;
+         property Text : UnicodeString read FText write FText;
    end;
 
 const
@@ -371,14 +371,14 @@ end;
 
 // IsSourceFile
 //
-function TScriptPos.IsSourceFile(const name : String) : Boolean;
+function TScriptPos.IsSourceFile(const name : UnicodeString) : Boolean;
 begin
    Result:=(SourceFile<>nil) and (SourceFile.Name=name);
 end;
 
 // SourceName
 //
-function TScriptPos.SourceName : String;
+function TScriptPos.SourceName : UnicodeString;
 begin
    if SourceFile<>nil then
       Result:=SourceFile.Name
@@ -433,7 +433,7 @@ end;
 
 // AsInfo
 //
-function TScriptPos.AsInfo : String;
+function TScriptPos.AsInfo : UnicodeString;
 begin
    if SourceFile=nil then
       Result:=''
@@ -462,7 +462,7 @@ end;
 
 // CreatePosFmt
 //
-constructor ECompileException.CreatePosFmt(const aScriptPos: TScriptPos; const Msg: String; const Args: array of const);
+constructor ECompileException.CreatePosFmt(const aScriptPos: TScriptPos; const Msg: UnicodeString; const Args: array of const);
 begin
    inherited CreateFmt(msg, args);
    FScriptPos:=aScriptPos;
@@ -577,7 +577,7 @@ end;
 
 // AddInfo
 //
-procedure TdwsMessageList.AddInfo(const Text: String);
+procedure TdwsMessageList.AddInfo(const Text: UnicodeString);
 begin
    AddMessage(TInfoMessage.Create(Self, Text));
 end;
@@ -598,7 +598,7 @@ end;
 
 // AsInfo
 //
-function TdwsMessageList.AsInfo: String;
+function TdwsMessageList.AsInfo: UnicodeString;
 var
    i: Integer;
 begin
@@ -613,7 +613,7 @@ end;
 
 // Create
 //
-constructor TdwsMessage.Create(aMessageList : TdwsMessageList; const Text: String);
+constructor TdwsMessage.Create(aMessageList : TdwsMessageList; const Text: UnicodeString);
 begin
    FMsgs:=aMessageList;
    FText:=Text;
@@ -640,7 +640,7 @@ end;
 
 // AsInfo
 //
-function TInfoMessage.AsInfo: String;
+function TInfoMessage.AsInfo: UnicodeString;
 begin
    Result:=Format(MSG_Info, [Text]);
 end;
@@ -651,7 +651,7 @@ end;
 
 // Create
 //
-constructor TScriptMessage.Create(Msgs: TdwsMessageList; const Text: String; const P: TScriptPos);
+constructor TScriptMessage.Create(Msgs: TdwsMessageList; const Text: UnicodeString; const P: TScriptPos);
 begin
    inherited Create(Msgs, Text);
    ScriptPos:=P;
@@ -667,7 +667,7 @@ end;
 
 // AsInfo
 //
-function TScriptMessage.AsInfo: String;
+function TScriptMessage.AsInfo: UnicodeString;
 begin
    Result:=FText+ScriptPos.AsInfo
 end;
@@ -695,7 +695,7 @@ end;
 
 // SourceName
 //
-function TScriptMessage.SourceName : String;
+function TScriptMessage.SourceName : UnicodeString;
 begin
    Result:=ScriptPos.SourceName;
 end;
@@ -706,7 +706,7 @@ end;
 
 // AsInfo
 //
-function THintMessage.AsInfo: String;
+function THintMessage.AsInfo: UnicodeString;
 begin
    Result:=Format(MSG_Hint, [inherited AsInfo]);
 end;
@@ -717,7 +717,7 @@ end;
 
 // AsInfo
 //
-function TWarningMessage.AsInfo: String;
+function TWarningMessage.AsInfo: UnicodeString;
 begin
    Result:=Format(MSG_Warning, [inherited AsInfo]);
 end;
@@ -739,7 +739,7 @@ end;
 
 // AsInfo
 //
-function TCompilerErrorMessage.AsInfo: String;
+function TCompilerErrorMessage.AsInfo: UnicodeString;
 begin
    Result:=Format(MSG_CompileError, [inherited AsInfo]);
 end;
@@ -750,7 +750,7 @@ end;
 
 // AsInfo
 //
-function TSyntaxErrorMessage.AsInfo: String;
+function TSyntaxErrorMessage.AsInfo: UnicodeString;
 begin
    Result:=Format(MSG_SyntaxError, [inherited AsInfo]);
 end;
@@ -761,7 +761,7 @@ end;
 
 // AddCompilerInfo
 //
-function TdwsCompileMessageList.AddCompilerInfo(const Text: String) : TInfoMessage;
+function TdwsCompileMessageList.AddCompilerInfo(const Text: UnicodeString) : TInfoMessage;
 begin
    Result:=TInfoMessage.Create(Self, Text);
 end;
@@ -769,7 +769,7 @@ end;
 // AddCompilerHint
 //
 function TdwsCompileMessageList.AddCompilerHint(const aScriptPos: TScriptPos;
-      const Text: String; const aLevel : TdwsHintsLevel = hlNormal) : TScriptMessage;
+      const Text: UnicodeString; const aLevel : TdwsHintsLevel = hlNormal) : TScriptMessage;
 begin
    if aLevel<=HintsLevel then
       Result:=THintMessage.Create(Self, Text, aScriptPos)
@@ -779,7 +779,7 @@ end;
 // AddCompilerHintFmt
 //
 function TdwsCompileMessageList.AddCompilerHintFmt(const aScriptPos: TScriptPos;
-               const textFormat : String; const args: array of const;
+               const textFormat : UnicodeString; const args: array of const;
                const aLevel : TdwsHintsLevel = hlNormal) : TScriptMessage;
 begin
    Result:=AddCompilerHint(aScriptPos, Format(textFormat, args), aLevel);
@@ -788,7 +788,7 @@ end;
 // AddCompilerWarning
 //
 function TdwsCompileMessageList.AddCompilerWarning(const aScriptPos: TScriptPos;
-      const Text: String) : TScriptMessage;
+      const Text: UnicodeString) : TScriptMessage;
 begin
    if not WarningsDisabled then
       Result:=TWarningMessage.Create(Self, Text, aScriptPos)
@@ -798,7 +798,7 @@ end;
 // AddCompilerWarningFmt
 //
 function TdwsCompileMessageList.AddCompilerWarningFmt(const aScriptPos: TScriptPos;
-      const textFormat : String; const args: array of const) : TScriptMessage;
+      const textFormat : UnicodeString; const args: array of const) : TScriptMessage;
 begin
    Result:=AddCompilerWarning(aScriptPos, Format(textFormat, args));
 end;
@@ -806,7 +806,7 @@ end;
 // AddCompilerError
 //
 function TdwsCompileMessageList.AddCompilerError(const aScriptPos: TScriptPos;
-      const Text: String; messageClass : TScriptMessageClass) : TScriptMessage;
+      const Text: UnicodeString; messageClass : TScriptMessageClass) : TScriptMessage;
 begin
    Result:=messageClass.Create(Self, Text, aScriptPos);
 end;
@@ -814,7 +814,7 @@ end;
 // AddCompilerError
 //
 function TdwsCompileMessageList.AddCompilerError(const aScriptPos: TScriptPos;
-      const Text: String) : TScriptMessage;
+      const Text: UnicodeString) : TScriptMessage;
 begin
    Result:=AddCompilerError(aScriptPos, Text, TSyntaxErrorMessage);
 end;
@@ -822,7 +822,7 @@ end;
 // AddCompilerErrorFmt
 //
 function TdwsCompileMessageList.AddCompilerErrorFmt(const aScriptPos: TScriptPos;
-      const textFormat: String; const args: array of const;
+      const textFormat: UnicodeString; const args: array of const;
       messageClass : TScriptMessageClass) : TScriptMessage;
 begin
    Result:=AddCompilerError(aScriptPos, Format(textFormat, args), messageClass);
@@ -838,7 +838,7 @@ end;
 // AddCompilerErrorFmt
 //
 function TdwsCompileMessageList.AddCompilerErrorFmt(const aScriptPos: TScriptPos;
-      const textFormat: String; const args: array of const) : TScriptMessage;
+      const textFormat: UnicodeString; const args: array of const) : TScriptMessage;
 begin
    Result:=AddCompilerErrorFmt(aScriptPos, textFormat, args, TSyntaxErrorMessage);
 end;
@@ -846,7 +846,7 @@ end;
 // AddCompilerStop
 //
 procedure TdwsCompileMessageList.AddCompilerStop(const aScriptPos: TScriptPos;
-      const Text: String; messageClass : TScriptMessageClass);
+      const Text: UnicodeString; messageClass : TScriptMessageClass);
 begin
    AddCompilerError(aScriptPos, Text, messageClass);
    raise ECompileError.Create(Text);
@@ -855,7 +855,7 @@ end;
 // AddCompilerStop
 //
 procedure TdwsCompileMessageList.AddCompilerStop(const aScriptPos: TScriptPos;
-                                                 const Text: String);
+                                                 const Text: UnicodeString);
 begin
    AddCompilerStop(aScriptPos, Text, TSyntaxErrorMessage);
 end;
@@ -863,7 +863,7 @@ end;
 // AddCompilerStopFmt
 //
 procedure TdwsCompileMessageList.AddCompilerStopFmt(const aScriptPos: TScriptPos;
-      const textFormat : String; const args: array of const;
+      const textFormat : UnicodeString; const args: array of const;
       messageClass : TScriptMessageClass);
 begin
    AddCompilerStop(aScriptPos, Format(textFormat, args), messageClass);
@@ -872,7 +872,7 @@ end;
 // AddCompilerStopFmt
 //
 procedure TdwsCompileMessageList.AddCompilerStopFmt(const aScriptPos: TScriptPos;
-      const textFormat : String; const args: array of const);
+      const textFormat : UnicodeString; const args: array of const);
 begin
    AddCompilerStop(aScriptPos, Format(textFormat, args), TSyntaxErrorMessage);
 end;
@@ -884,7 +884,7 @@ end;
 {$ifdef FPC}
 // SetCode
 //
-procedure TSourceFile.SetCode(const sourceCode: String);
+procedure TSourceFile.SetCode(const sourceCode: UnicodeString);
 begin
    if Length(sourceCode)>3 then begin
       if (Ord(sourceCode[1])=$EF) and (Ord(sourceCode[2])=$BB) and (Ord(sourceCode[3])=$BF) then begin
@@ -923,7 +923,7 @@ end;
 
 // Create
 //
-constructor TdwsAutoFixAction.Create(msg : TScriptMessage; const caption : String);
+constructor TdwsAutoFixAction.Create(msg : TScriptMessage; const caption : UnicodeString);
 begin
    inherited Create;
    FCaption:=caption;
@@ -955,9 +955,9 @@ end;
 
 // Apply
 //
-function TdwsAFAReplace.Apply(const buffer : IAutoFixSourceBuffer) : String;
+function TdwsAFAReplace.Apply(const buffer : IAutoFixSourceBuffer) : UnicodeString;
 var
-   check : String;
+   check : UnicodeString;
 begin
    check:=buffer.CodeAt(Msg.ScriptPos.Col, Msg.ScriptPos.Line, Length(OldText));
    if check=OldText then begin
@@ -972,7 +972,7 @@ end;
 
 // Apply
 //
-function TdwsAFAAddImplementation.Apply(const buffer : IAutoFixSourceBuffer) : String;
+function TdwsAFAAddImplementation.Apply(const buffer : IAutoFixSourceBuffer) : UnicodeString;
 var
    i : Integer;
    sl : TStringList;

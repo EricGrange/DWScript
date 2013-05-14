@@ -54,7 +54,7 @@ type
   end;
 
   TVarToStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
 implementation
@@ -117,7 +117,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TVarToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TVarToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
    v : Variant;
 begin
@@ -130,7 +130,7 @@ end;
 procedure InitVariants(systemTable : TSystemSymbolTable; unitSyms : TUnitMainSymbols;
                        unitTable : TSymbolTable);
 type
-   TVarTypeRec = packed record n : String; v : Word; end;
+   TVarTypeRec = packed record n : UnicodeString; v : Word; end;
 const
    cVarTypes : array [0..25] of TVarTypeRec = (
       (n:'Empty'; v:varEmpty),         (n:'Null'; v:varNull),

@@ -34,11 +34,11 @@ type
 
    IDataMaster = interface
       ['{8D534D17-4C6B-11D5-8DCB-0000216D9E86}']
-      function GetCaption : String;
+      function GetCaption : UnicodeString;
       function GetSize : Integer;
       procedure Read(exec : TdwsExecution; const data : TData);
       procedure Write(exec : TdwsExecution; const data : TData);
-      property Caption : String read GetCaption;
+      property Caption : UnicodeString read GetCaption;
       property Size : Integer read GetSize;
    end;
 
@@ -54,14 +54,14 @@ type
 
          function GetData : TData; virtual;
          function GetExternalObject : TObject; virtual;
-         function GetMember(const s : String) : IInfo; virtual;
+         function GetMember(const s : UnicodeString) : IInfo; virtual;
          function GetFieldMemberNames : TStrings; virtual;
-         function GetMethod(const s : String) : IInfo; virtual;
+         function GetMethod(const s : UnicodeString) : IInfo; virtual;
          function GetScriptObj : IScriptObj; virtual;
-         function GetParameter(const s : String) : IInfo; virtual;
+         function GetParameter(const s : UnicodeString) : IInfo; virtual;
          function GetTypeSym : TSymbol;
          function GetValue : Variant; virtual;
-         function GetValueAsString : String; virtual;
+         function GetValueAsString : UnicodeString; virtual;
          function GetValueAsDataString : RawByteString; virtual;
          function GetValueAsInteger : Int64; virtual;
          function GetValueAsBoolean : Boolean; virtual;
@@ -79,7 +79,7 @@ type
          function Call : IInfo; overload; virtual;
          function Call(const params : array of Variant) : IInfo; overload; virtual;
          function Element(const indices : array of Integer) : IInfo; virtual;
-         function GetConstructor(const methName : String; extObject : TObject) : IInfo; virtual;
+         function GetConstructor(const methName : UnicodeString; extObject : TObject) : IInfo; virtual;
 
          property DataPtr : IDataContext read FDataPtr write FDataPtr;
 
@@ -99,7 +99,7 @@ type
    TInfoData = class (TInfo)
       protected
          function GetValue: Variant; override;
-         function GetValueAsString : String; override;
+         function GetValueAsString : UnicodeString; override;
          function GetValueAsInteger : Int64; override;
          function GetValueAsFloat : Double; override;
          function GetData : TData; override;
@@ -111,9 +111,9 @@ type
 
   TInfoClass = class(TInfoData)
     FScriptObj: IScriptObj;
-    function GetConstructor(const MethName: String; ExtObject: TObject): IInfo; override;
-    function GetMethod(const s: String): IInfo; override;
-    function GetValueAsString : String; override;
+    function GetConstructor(const MethName: UnicodeString; ExtObject: TObject): IInfo; override;
+    function GetMethod(const s: UnicodeString): IInfo; override;
+    function GetValueAsString : UnicodeString; override;
     function GetScriptObj: IScriptObj; override;
     function GetInherited: IInfo; override;
   end;
@@ -124,7 +124,7 @@ type
                        const DataPtr: IDataContext;
                        const DataMaster: IDataMaster = nil);
     destructor Destroy; override;
-    function GetMember(const s : String): IInfo; override;
+    function GetMember(const s : UnicodeString): IInfo; override;
     function GetFieldMemberNames : TStrings; override;
     function GetExternalObject: TObject; override;
     procedure SetExternalObject(ExtObject: TObject); override;
@@ -146,14 +146,14 @@ type
    TInfoRecord = class(TInfoData)
       FMembersCache : TStrings;
       destructor Destroy; override;
-      function GetMember(const s: String): IInfo; override;
+      function GetMember(const s: UnicodeString): IInfo; override;
       function GetFieldMemberNames : TStrings; override;
    end;
 
    TInfoStaticArray = class(TInfoData)
       function Element(const Indices: array of Integer): IInfo; override;
-      function GetMember(const s: String): IInfo; override;
-      function GetValueAsString : String; override;
+      function GetMember(const s: UnicodeString): IInfo; override;
+      function GetValueAsString : UnicodeString; override;
    end;
 
    TInfoDynamicArrayBase = class (TInfoData)
@@ -179,15 +179,15 @@ type
 
       public
          function Element(const indices : array of Integer) : IInfo; override;
-         function GetMember(const s: String): IInfo; override;
-         function GetValueAsString : String; override;
+         function GetMember(const s: UnicodeString): IInfo; override;
+         function GetValueAsString : UnicodeString; override;
          function GetData : TData; override;
          procedure SetData(const Value: TData); override;
    end;
 
    TInfoOpenArray = class(TInfoStaticArray)
       function Element(const Indices: array of Integer): IInfo; override;
-      function GetMember(const s: String): IInfo; override;
+      function GetMember(const s: UnicodeString): IInfo; override;
    end;
 
    TInfoFunc = class(TInfoData)
@@ -205,7 +205,7 @@ type
 
          function CreateTempFuncExpr : TFuncExprBase;
          procedure InitTempParams;
-         function GetParameter(const s: String): IInfo; override;
+         function GetParameter(const s: UnicodeString): IInfo; override;
          function GetExternalObject: TObject; override;
          procedure SetExternalObject(ExtObject: TObject); override;
          function GetInherited: IInfo; override;
@@ -229,7 +229,7 @@ type
          procedure AssignIndices(const Func: IInfo; FuncParams: TSymbolTable);
       protected
          procedure InitTempParams;
-         function GetParameter(const s: String): IInfo; override;
+         function GetParameter(const s: UnicodeString): IInfo; override;
          function GetValue: Variant; override;
          function GetData : TData; override;
          procedure SetData(const Value: TData); override;
@@ -242,18 +242,18 @@ type
    end;
 
    TInfoConnector = class(TInfoData)
-      function GetMethod(const s: String): IInfo; override;
-      function GetMember(const s: String): IInfo; override;
+      function GetMethod(const s: UnicodeString): IInfo; override;
+      function GetMember(const s: UnicodeString): IInfo; override;
    end;
 
    TInfoConnectorCall = class(TInfo)
       protected
-         FName: String;
+         FName: UnicodeString;
          FConnectorType: IConnectorType;
       public
          constructor Create(ProgramInfo: TProgramInfo; TypeSym: TSymbol;
                             const DataPtr: IDataContext;
-                            const ConnectorType: IConnectorType; const Name: String);
+                            const ConnectorType: IConnectorType; const Name: UnicodeString);
          function Call(const Params: array of Variant): IInfo; overload; override;
    end;
 
@@ -261,7 +261,7 @@ type
       private
          FCaller: TdwsProgramExecution;
          FSym: TSymbol;
-         function GetCaption: String;
+         function GetCaption: UnicodeString;
          function GetSize: Integer;
       public
          constructor Create(Caller: TdwsProgramExecution; Sym: TSymbol);
@@ -278,10 +278,10 @@ type
    TConnectorMemberDataMaster = class(TDataMaster)
       private
          FBaseValue: Variant;
-         FName: String;
+         FName: UnicodeString;
 
       public
-         constructor Create(Caller: TdwsProgramExecution; Sym: TSymbol; const BaseValue: Variant; const Name: String);
+         constructor Create(Caller: TdwsProgramExecution; Sym: TSymbol; const BaseValue: Variant; const Name: UnicodeString);
          procedure Read(exec : TdwsExecution; const Data: TData); override;
          procedure Write(exec : TdwsExecution; const Data: TData); override;
    end;
@@ -398,7 +398,7 @@ begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['Element', FTypeSym.Caption]);
 end;
 
-function TInfo.GetConstructor(const MethName: String; ExtObject: TObject): IInfo;
+function TInfo.GetConstructor(const MethName: UnicodeString; ExtObject: TObject): IInfo;
 begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['GetConstructor', FTypeSym.Caption]);
 end;
@@ -415,7 +415,7 @@ end;
 
 // GetMember
 //
-function TInfo.GetMember(const s : String) : IInfo;
+function TInfo.GetMember(const s : UnicodeString) : IInfo;
 begin
    raise Exception.CreateFmt(RTE_InvalidOp, ['Member', FTypeSym.Caption]);
 end;
@@ -427,7 +427,7 @@ begin
    Result:=nil;
 end;
 
-function TInfo.GetMethod(const s: String): IInfo;
+function TInfo.GetMethod(const s: UnicodeString): IInfo;
 begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['Method', FTypeSym.Caption]);
 end;
@@ -437,7 +437,7 @@ begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['Obj', FTypeSym.Caption]);
 end;
 
-function TInfo.GetParameter(const s: String): IInfo;
+function TInfo.GetParameter(const s: UnicodeString): IInfo;
 begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['Parameter', FTypeSym.Caption]);
 end;
@@ -452,7 +452,7 @@ begin
   raise Exception.CreateFmt(RTE_InvalidOp, ['Value', FTypeSym.Caption]);
 end;
 
-function TInfo.GetValueAsString : String;
+function TInfo.GetValueAsString : UnicodeString;
 begin
    VariantToString(GetValue, Result);
 end;
@@ -592,7 +592,7 @@ end;
 
 // GetValueAsString
 //
-function TInfoData.GetValueAsString : String;
+function TInfoData.GetValueAsString : UnicodeString;
 var
    varData : PVarData;
 begin
@@ -600,10 +600,10 @@ begin
       varData:=PVarData(FDataPtr.AsPVariant(0));
       {$ifdef FPC}
       if varData.VType=varString then begin
-         Result:=String(varData.VString);
+         Result:=UnicodeString(varData.VString);
       {$else}
       if varData.VType=varUString then begin
-         Result:=String(varData.VUString);
+         Result:=UnicodeString(varData.VUString);
       {$endif}
          Exit;
       end;
@@ -668,7 +668,7 @@ begin
          else if VarIsOrdinal(Value) then
             FDataPtr[0]:=Int64(Integer(Value)) // workaround for compiler bug
          else if VarIsStr(Value) then
-            FDataPtr[0]:=String(Value)
+            FDataPtr[0]:=UnicodeString(Value)
          else FDataPtr[0] := Value;
       end
    else raise Exception.CreateFmt(RTE_CanNotSetValueForType, [FTypeSym.Caption]);
@@ -689,7 +689,7 @@ end;
 
 { TInfoClass }
 
-function TInfoClass.GetConstructor(const MethName: String;
+function TInfoClass.GetConstructor(const MethName: UnicodeString;
   ExtObject: TObject): IInfo;
 begin
   Result := GetMethod(MethName);
@@ -702,7 +702,7 @@ begin
            FDataPtr, FDataMaster);
 end;
 
-function TInfoClass.GetMethod(const s: String): IInfo;
+function TInfoClass.GetMethod(const s: UnicodeString): IInfo;
 var
   sym: TSymbol;
 begin
@@ -728,7 +728,7 @@ end;
 
 // GetValueAsString
 //
-function TInfoClass.GetValueAsString : String;
+function TInfoClass.GetValueAsString : UnicodeString;
 begin
    if FScriptObj=nil then
       Result:='(nil)'
@@ -766,7 +766,7 @@ end;
 
 // GetMember
 //
-function TInfoClassObj.GetMember(const s : String) : IInfo;
+function TInfoClassObj.GetMember(const s : UnicodeString) : IInfo;
 var
    member : TSymbol;
    locData : IDataContext;
@@ -1019,7 +1019,7 @@ end;
 
 // GetParameter
 //
-function TInfoFunc.GetParameter(const s: String): IInfo;
+function TInfoFunc.GetParameter(const s: UnicodeString): IInfo;
 var
    tp: TTempParam;
    locData : IDataContext;
@@ -1100,7 +1100,7 @@ begin
    inherited;
 end;
 
-function TInfoRecord.GetMember(const s: String): IInfo;
+function TInfoRecord.GetMember(const s: UnicodeString): IInfo;
 var
    sym: TSymbol;
    locData : IDataContext;
@@ -1168,7 +1168,7 @@ begin
    SetChild(Result, FProgramInfo, elemTyp, locData, FDataMaster);
 end;
 
-function TInfoStaticArray.GetMember(const s: String): IInfo;
+function TInfoStaticArray.GetMember(const s: UnicodeString): IInfo;
 var
   h, l: Integer;
 begin
@@ -1186,7 +1186,7 @@ end;
 
 // GetValueAsString
 //
-function TInfoStaticArray.GetValueAsString : String;
+function TInfoStaticArray.GetValueAsString : UnicodeString;
 begin
    Result:=FTypeSym.Description;
 end;
@@ -1296,7 +1296,7 @@ end;
 
 // GetMember
 //
-function TInfoDynamicArray.GetMember(const s: String): IInfo;
+function TInfoDynamicArray.GetMember(const s: UnicodeString): IInfo;
 begin
    if UnicodeSameText('length', s) then
       Result:=TInfoDynamicArrayLength.Create(FProgramInfo, DataPtr, 0)
@@ -1309,7 +1309,7 @@ end;
 
 // GetValueAsString
 //
-function TInfoDynamicArray.GetValueAsString : String;
+function TInfoDynamicArray.GetValueAsString : UnicodeString;
 begin
    Result:=FTypeSym.Description;
 end;
@@ -1347,7 +1347,7 @@ end;
 
 // GetMember
 //
-function TInfoOpenArray.GetMember(const s: String): IInfo;
+function TInfoOpenArray.GetMember(const s: UnicodeString): IInfo;
 begin
    if UnicodeSameText('length', s) then
       Result := TInfoConst.Create(FProgramInfo, FProgramInfo.Execution.Prog.TypInteger, FDataPtr.DataLength)
@@ -1427,7 +1427,7 @@ begin
   inherited;
 end;
 
-function TInfoProperty.GetParameter(const s: String): IInfo;
+function TInfoProperty.GetParameter(const s: UnicodeString): IInfo;
 var
   tp: TTempParam;
   locData : IDataContext;
@@ -1464,7 +1464,7 @@ end;
 
 procedure TInfoProperty.AssignIndices(const Func: IInfo; FuncParams: TSymbolTable);
 var
-  paramName: String;
+  paramName: UnicodeString;
   x: Integer;
   destParam: IInfo;
 begin
@@ -1506,7 +1506,7 @@ end;
 procedure TInfoProperty.SetData(const Value: TData);
 var
   func: IInfo;
-  paramName: String;
+  paramName: UnicodeString;
   params: TSymbolTable;
   locData : IDataContext;
 begin
@@ -1543,13 +1543,13 @@ end;
 
 { TInfoConnector }
 
-function TInfoConnector.GetMember(const s: String): IInfo;
+function TInfoConnector.GetMember(const s: UnicodeString): IInfo;
 begin
   TInfo.SetChild(Result, FProgramInfo, FTypeSym, FDataPtr,
                  TConnectorMemberDataMaster.Create(FExec, FTypeSym, s, FDataPtr[0]));
 end;
 
-function TInfoConnector.GetMethod(const s: String): IInfo;
+function TInfoConnector.GetMethod(const s: UnicodeString): IInfo;
 begin
   Result := TInfoConnectorCall.Create(FProgramInfo, FTypeSym,
                                       FDataPtr, TConnectorSymbol(FTypeSym).ConnectorType, s);
@@ -1559,7 +1559,7 @@ end;
 
 constructor TInfoConnectorCall.Create(ProgramInfo: TProgramInfo;
   TypeSym: TSymbol; const DataPtr: IDataContext;
-  const ConnectorType: IConnectorType; const Name: String);
+  const ConnectorType: IConnectorType; const Name: UnicodeString);
 begin
   inherited Create(ProgramInfo, TypeSym, DataPtr);
   FConnectorType := ConnectorType;
@@ -1611,7 +1611,7 @@ begin
   FSym := Sym;
 end;
 
-function TDataMaster.GetCaption: String;
+function TDataMaster.GetCaption: UnicodeString;
 begin
   Result := FSym.Caption;
 end;
@@ -1688,7 +1688,7 @@ end;
 // Create
 //
 constructor TConnectorMemberDataMaster.Create(Caller: TdwsProgramExecution;
-   Sym: TSymbol; const BaseValue: Variant; const Name: String);
+   Sym: TSymbol; const BaseValue: Variant; const Name: UnicodeString);
 begin
    inherited Create(Caller, Sym);
    FName := Name;

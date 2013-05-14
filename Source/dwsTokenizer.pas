@@ -73,14 +73,14 @@ type
       procedure AppendChar(c : Char);
       procedure Grow;
       function LastChar : Char;
-      function ToStr : String; overload; inline;
-      procedure ToStr(var result : String); overload;
-      procedure AppendMultiToStr(var result : String);
-      procedure AppendToStr(var result : String);
-      procedure ToUpperStr(var result : String); overload;
+      function ToStr : UnicodeString; overload; inline;
+      procedure ToStr(var result : UnicodeString); overload;
+      procedure AppendMultiToStr(var result : UnicodeString);
+      procedure AppendToStr(var result : UnicodeString);
+      procedure ToUpperStr(var result : UnicodeString); overload;
       function UpperFirstChar : Char;
-      function UpperMatchLen(const str : String) : Boolean;
-      function MatchLen(const str : String) : Boolean;
+      function UpperMatchLen(const str : UnicodeString) : Boolean;
+      function MatchLen(const str : UnicodeString) : Boolean;
       procedure RaiseInvalidIntegerConstant;
       function BinToInt64 : Int64;
       function HexToInt64 : Int64;
@@ -90,13 +90,13 @@ type
       function ToAlphaType : TTokenType;
       function ToAlphaTypeCaseSensitive : TTokenType;
 
-      class function StringToTokenType(const str : String) : TTokenType; static;
+      class function StringToTokenType(const str : UnicodeString) : TTokenType; static;
    end;
 
    TToken = ^TTokenRecord;
    TTokenRecord = record
       private
-         FString : String;
+         FString : UnicodeString;
          FNext : TToken;
 
       public
@@ -105,7 +105,7 @@ type
          FInteger : Int64;
          FTyp : TTokenType;
 
-         property AsString : String read FString;
+         property AsString : UnicodeString read FString;
 
          function EmptyString : Boolean; inline;
    end;
@@ -153,10 +153,10 @@ type
 
    TErrorTransition = class(TTransition)
       private
-         ErrorMessage : String;
+         ErrorMessage : UnicodeString;
 
       public
-         constructor Create(const msg : String);
+         constructor Create(const msg : UnicodeString);
    end;
 
    TCheckTransition = class(TTransition);
@@ -167,7 +167,7 @@ type
       constructor Create(nstate: TState; opts: TTransitionOptions; actn: TConvertAction);
    end;
 
-   TSwitchHandler = function(const switchName : String) : Boolean of object;
+   TSwitchHandler = function(const switchName : UnicodeString) : Boolean of object;
 
    TTokenizer = class;
 
@@ -199,7 +199,7 @@ type
    end;
 
    TTokenizerSourceInfo = record
-      FText : String;
+      FText : UnicodeString;
       FDefaultPos : TScriptPos;
       FHotPos : TScriptPos;
       FCurPos : TScriptPos;
@@ -247,7 +247,7 @@ type
          procedure ConsumeToken;
 
          procedure ReadToken;
-         procedure AddCompilerStopFmtTokenBuffer(const formatString : String);
+         procedure AddCompilerStopFmtTokenBuffer(const formatString : UnicodeString);
 
       public
          constructor Create(rules : TTokenizerRules; msgs : TdwsCompileMessageList);
@@ -267,17 +267,17 @@ type
          function TestName : Boolean;
          function TestAnyName : Boolean;
 
-         function TestDeleteNamePos(var aName : String; var aPos : TScriptPos) : Boolean; inline;
-         function TestDeleteAnyNamePos(var aName : String; var aPos : TScriptPos) : Boolean; inline;
+         function TestDeleteNamePos(var aName : UnicodeString; var aPos : TScriptPos) : Boolean; inline;
+         function TestDeleteAnyNamePos(var aName : UnicodeString; var aPos : TScriptPos) : Boolean; inline;
 
          procedure SkipTo(t : TTokenType);
 
          procedure SimulateToken(t : TTokenType; const scriptPos : TScriptPos);
-         procedure SimulateStringToken(const scriptPos : TScriptPos; const str : String);
-         procedure SimulateNameToken(const scriptPos : TScriptPos; const name : String);
+         procedure SimulateStringToken(const scriptPos : TScriptPos; const str : UnicodeString);
+         procedure SimulateNameToken(const scriptPos : TScriptPos; const name : UnicodeString);
 
          property PosPtr : PChar read FSource.FPosPtr;
-         property Text : String read FSource.FText;
+         property Text : UnicodeString read FSource.FText;
          property DefaultPos : TScriptPos read FSource.FDefaultPos;
          property HotPos : TScriptPos read FSource.FHotPos;
          property CurrentPos : TScriptPos read FSource.FCurPos;
@@ -292,7 +292,7 @@ type
    end;
 
 const
-   cTokenStrings : array [TTokenType] of String = (
+   cTokenStrings : array [TTokenType] of UnicodeString = (
      '', 'StrVal', 'IntVal', 'FloatVal', 'NAME', 'SWITCH',
      'LAZY', 'VAR', 'CONST', 'RESOURCESTRING',
      'TYPE', 'RECORD', 'ARRAY', 'SET', '.', '..', 'OF', 'ENUM', 'FLAGS',
@@ -371,14 +371,14 @@ end;
 
 // ToStr
 //
-function TTokenBuffer.ToStr : String;
+function TTokenBuffer.ToStr : UnicodeString;
 begin
    ToStr(Result);
 end;
 
 // ToStr
 //
-procedure TTokenBuffer.ToStr(var result : String);
+procedure TTokenBuffer.ToStr(var result : UnicodeString);
 begin
    if Len=0 then
       result:=''
@@ -390,7 +390,7 @@ end;
 
 // AppendToStr
 //
-procedure TTokenBuffer.AppendToStr(var result : String);
+procedure TTokenBuffer.AppendToStr(var result : UnicodeString);
 var
    n : Integer;
 begin
@@ -403,7 +403,7 @@ end;
 
 // AppendMultiToStr
 //
-procedure TTokenBuffer.AppendMultiToStr(var result : String);
+procedure TTokenBuffer.AppendMultiToStr(var result : UnicodeString);
 var
    i, n, k, minWhite, white : Integer;
    leftWhite, firstIsCRLF, firstLine : Boolean;
@@ -483,7 +483,7 @@ end;
 
 // ToUpperStr
 //
-procedure TTokenBuffer.ToUpperStr(var result : String);
+procedure TTokenBuffer.ToUpperStr(var result : UnicodeString);
 var
    i : Integer;
    ch : Char;
@@ -753,7 +753,7 @@ const
       ttXOR ];
 type
    TTokenAlphaLookup = record
-      Alpha : String;
+      Alpha : UnicodeString;
       Token : TTokenType;
    end;
    TTokenAlphaLookups = array of TTokenAlphaLookup;
@@ -764,7 +764,7 @@ var
 procedure PrepareAlphaToTokenType;
 var
    n, len : Integer;
-   tokenName : String;
+   tokenName : UnicodeString;
    tt : TTokenType;
 begin
    for tt in cAlphaTypeTokens do begin
@@ -786,7 +786,7 @@ end;
 
 // UpperMatchLen
 //
-function TTokenBuffer.UpperMatchLen(const str : String) : Boolean;
+function TTokenBuffer.UpperMatchLen(const str : UnicodeString) : Boolean;
 var
    i : Integer;
    p : PChar;
@@ -829,7 +829,7 @@ end;
 
 // MatchLen
 //
-function TTokenBuffer.MatchLen(const str : String) : Boolean;
+function TTokenBuffer.MatchLen(const str : UnicodeString) : Boolean;
 var
    i : Integer;
    p : PChar;
@@ -871,7 +871,7 @@ end;
 
 // StringToTokenType
 //
-class function TTokenBuffer.StringToTokenType(const str : String) : TTokenType;
+class function TTokenBuffer.StringToTokenType(const str : UnicodeString) : TTokenType;
 var
    c : Char;
    buffer : TTokenBuffer;
@@ -971,7 +971,7 @@ end;
 // ------------------ TErrorTransition ------------------
 // ------------------
 
-constructor TErrorTransition.Create(const msg : String);
+constructor TErrorTransition.Create(const msg : UnicodeString);
 begin
    IsError:=True;
    ErrorMessage:=msg;
@@ -1101,9 +1101,9 @@ end;
 
 // AddCompilerStopFmtTokenBuffer
 //
-procedure TTokenizer.AddCompilerStopFmtTokenBuffer(const formatString : String);
+procedure TTokenizer.AddCompilerStopFmtTokenBuffer(const formatString : UnicodeString);
 var
-   buf : String;
+   buf : UnicodeString;
 begin
    buf:=FTokenBuf.ToStr;
    FMsgs.AddCompilerStopFmt(CurrentPos, formatString, [buf]);
@@ -1201,7 +1201,7 @@ end;
 
 // TestDeleteNamePos
 //
-function TTokenizer.TestDeleteNamePos(var aName : String; var aPos : TScriptPos) : Boolean;
+function TTokenizer.TestDeleteNamePos(var aName : UnicodeString; var aPos : TScriptPos) : Boolean;
 begin
    if not TestName then
       Result:=False
@@ -1215,7 +1215,7 @@ end;
 
 // TestDeleteAnyNamePos
 //
-function TTokenizer.TestDeleteAnyNamePos(var aName : String; var aPos : TScriptPos) : Boolean;
+function TTokenizer.TestDeleteAnyNamePos(var aName : UnicodeString; var aPos : TScriptPos) : Boolean;
 begin
    if not TestAnyName then
       Result:=False
@@ -1248,7 +1248,7 @@ end;
 
 // SimulateStringToken
 //
-procedure TTokenizer.SimulateStringToken(const scriptPos : TScriptPos; const str : String);
+procedure TTokenizer.SimulateStringToken(const scriptPos : TScriptPos; const str : UnicodeString);
 begin
    SimulateToken(ttStrVal, scriptPos);
    FToken.FString:=str;
@@ -1256,7 +1256,7 @@ end;
 
 // SimulateNameToken
 //
-procedure TTokenizer.SimulateNameToken(const scriptPos : TScriptPos; const name : String);
+procedure TTokenizer.SimulateNameToken(const scriptPos : TScriptPos; const name : UnicodeString);
 begin
    SimulateToken(ttNAME, scriptPos);
    FToken.FString:=name;

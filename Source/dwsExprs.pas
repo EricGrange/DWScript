@@ -55,7 +55,7 @@ type
    TProgramExpr = class;
 
    TVariantDynArray = array of Variant;
-   TStringDynArray = array of String;
+   TStringDynArray = array of UnicodeString;
 
    TProgramExprList = array[0..MaxInt shr 4] of TProgramExpr;
    PProgramExprList = ^TProgramExprList;
@@ -68,15 +68,15 @@ type
    // A specific ScriptSource entry. The text of the script contained in that unit.
    TScriptSourceItem = class (TRefCountedObject)
       private
-         FNameReference : String;
+         FNameReference : UnicodeString;
          FSourceFile : TSourceFile;
          FSourceType : TScriptSourceType;
 
       public
-         constructor Create(const ANameReference: String; ASourceFile: TSourceFile; ASourceType: TScriptSourceType);
+         constructor Create(const ANameReference: UnicodeString; ASourceFile: TSourceFile; ASourceType: TScriptSourceType);
          destructor Destroy; override;
 
-         property NameReference : String read FNameReference write FNameReference;
+         property NameReference : UnicodeString read FNameReference write FNameReference;
          property SourceFile : TSourceFile read FSourceFile;
          property SourceType : TScriptSourceType read FSourceType;
    end;
@@ -95,11 +95,11 @@ type
          destructor Destroy; override;
 
          procedure Clear;
-         function Add(const nameReference, code: String; sourceType: TScriptSourceType) : TSourceFile;
+         function Add(const nameReference, code: UnicodeString; sourceType: TScriptSourceType) : TSourceFile;
 
-         function FindScriptSourceItem(const SourceFileName: String): TScriptSourceItem; overload;
+         function FindScriptSourceItem(const SourceFileName: UnicodeString): TScriptSourceItem; overload;
 
-         function IndexOf(const SourceFileName: String): Integer; overload;
+         function IndexOf(const SourceFileName: UnicodeString): Integer; overload;
 
          property Count : Integer read FSourceList.FCount;
 
@@ -138,7 +138,7 @@ type
          function GetPosition(index : Integer) : TSymbolPosition; inline;
 
          // Used by TSymbolDictionary. Not meaningful to make public (symbol is known).
-         function FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : String) : TSymbol; overload;
+         function FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : UnicodeString) : TSymbol; overload;
 
       public
          constructor Create(ASymbol: TSymbol);
@@ -189,13 +189,13 @@ type
          procedure ReplaceSymbolAt(oldSym, newSym : TSymbol; const scriptPos : TScriptPos);
          procedure ChangeUsageAt(const scriptPos : TScriptPos; const addUsages, removeUsages : TSymbolUsages);
 
-         function FindSymbolAtPosition(aCol, aLine: Integer; const sourceFile : String): TSymbol; overload;
+         function FindSymbolAtPosition(aCol, aLine: Integer; const sourceFile : UnicodeString): TSymbol; overload;
          function FindSymbolPosList(sym: TSymbol): TSymbolPositionList; overload;  // return list of symbol
-         function FindSymbolPosList(const symName: String): TSymbolPositionList; overload;  // return list of symbol
-         function FindSymbolPosListOfType(const symName: String; symbolType: TSymbolClass): TSymbolPositionList; // return list of symbol given the desired type
+         function FindSymbolPosList(const symName: UnicodeString): TSymbolPositionList; overload;  // return list of symbol
+         function FindSymbolPosListOfType(const symName: UnicodeString; symbolType: TSymbolClass): TSymbolPositionList; // return list of symbol given the desired type
          function FindSymbolUsage(symbol: TSymbol; symbolUse: TSymbolUsage): TSymbolPosition; overload;
-         function FindSymbolUsage(const symName: String; symbolUse: TSymbolUsage): TSymbolPosition; overload;
-         function FindSymbolUsageOfType(const symName: String; symbolType: TSymbolClass; symbolUse: TSymbolUsage): TSymbolPosition;
+         function FindSymbolUsage(const symName: UnicodeString; symbolUse: TSymbolUsage): TSymbolPosition; overload;
+         function FindSymbolUsageOfType(const symName: UnicodeString; symbolType: TSymbolClass; symbolUse: TSymbolUsage): TSymbolPosition;
          function FindSymbolByUsageAtLine(const scriptPos : TScriptPos; symbolUse: TSymbolUsage) : TSymbol;
 
          function Count : Integer; inline;
@@ -226,7 +226,7 @@ type
                             aParentSymbol : TSymbol; aToken : TTokenType);
          destructor Destroy; override;
 
-         function IsPositionInContext(aCol, aLine : Integer; const sourceName : String) : Boolean;
+         function IsPositionInContext(aCol, aLine : Integer; const sourceName : UnicodeString) : Boolean;
          function HasParentSymbolOfClass(SymbolType: TSymbolClass; SearchParents: Boolean): Boolean;
 
          function FindContext(parentSymbol : TSymbol) : TdwsSourceContext;
@@ -277,7 +277,7 @@ type
          // return the first context group based on its parent
          function FindContext(AParentSymbol : TSymbol) : TdwsSourceContext; overload;
          function FindContext(aCol, aLine : Integer; sourceFile : TSourceFile) : TdwsSourceContext; overload;
-         function FindContext(aCol, aLine : Integer; const sourceName : String) : TdwsSourceContext; overload;
+         function FindContext(aCol, aLine : Integer; const sourceName : UnicodeString) : TdwsSourceContext; overload;
          function FindContext(const ScriptPos : TScriptPos) : TdwsSourceContext; overload;
          function FindContextByToken(aToken : TTokenType) : TdwsSourceContext;
          procedure EnumerateContextsOfSymbol(aParentSymbol : TSymbol; const callBack : TdwsSourceContextCallBack);
@@ -335,7 +335,7 @@ type
       public
          constructor Create(resultType : TdwsResultType); virtual;
 
-         procedure AddString(const str : String); virtual; abstract;
+         procedure AddString(const str : UnicodeString); virtual; abstract;
          procedure AddCRLF; virtual;
          procedure Clear; virtual; abstract;
 
@@ -346,19 +346,19 @@ type
    TdwsDefaultResult = class(TdwsResult)
       private
          FTextBuilder : TWriteOnlyBlockStream;
-         function GetText : String; inline;
+         function GetText : UnicodeString; inline;
 
       public
          constructor Create(resultType : TdwsResultType); override;
          destructor Destroy; override;
 
-         procedure AddString(const str : String); override;
+         procedure AddString(const str : UnicodeString); override;
          procedure AddCRLF; override;
          procedure Clear; override;
-         function ToString : String; override;
+         function ToString : UnicodeString; override;
          function ToDataString : RawByteString; override;
 
-         property Text : String read GetText;
+         property Text : UnicodeString read GetText;
    end;
 
    TdwsResultType = class(TComponent)
@@ -424,8 +424,8 @@ type
 
    IdwsLocalizer = interface (IGetSelf)
       ['{2AFDC297-FF85-43F5-9913-45DE5C1330AB}']
-      procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : String);
-      procedure LocalizeString(const aString : String; var Result : String);
+      procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString);
+      procedure LocalizeString(const aString : UnicodeString; var Result : UnicodeString);
    end;
 
    TProgramInfo = class;
@@ -566,15 +566,15 @@ type
          function GetCallStack : TdwsExprLocationArray; override;
          function CallStackLastExpr : TExprBase;
 
-         class function CallStackToString(const callStack : TdwsExprLocationArray) : String; static;
-         procedure RaiseAssertionFailed(const msg : String; const scriptPos : TScriptPos);
-         procedure RaiseAssertionFailedFmt(const fmt : String; const args : array of const; const scriptPos : TScriptPos);
+         class function CallStackToString(const callStack : TdwsExprLocationArray) : UnicodeString; static;
+         procedure RaiseAssertionFailed(const msg : UnicodeString; const scriptPos : TScriptPos);
+         procedure RaiseAssertionFailedFmt(const fmt : UnicodeString; const args : array of const; const scriptPos : TScriptPos);
 
          function AcquireProgramInfo(funcSym : TFuncSymbol) : TProgramInfo;
          procedure ReleaseProgramInfo(info : TProgramInfo);
 
-         procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : String); override;
-         procedure LocalizeString(const aString : String; var Result : String); override;
+         procedure LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString); override;
+         procedure LocalizeString(const aString : UnicodeString; var Result : UnicodeString); override;
 
          property Prog : TdwsMainProgram read FProg;
          property CurrentProg : TdwsProgram read FCurrentProg write SetCurrentProg;
@@ -742,7 +742,7 @@ type
          function ExecuteParam(const params : TVariantDynArray; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
          function ExecuteParam(const params : OleVariant; aTimeoutMilliSeconds : Integer = 0) : IdwsProgramExecution; overload;
 
-         function GetSourceFile(const aSourceFile : String) : TSourceFile;
+         function GetSourceFile(const aSourceFile : UnicodeString) : TSourceFile;
 
          function NextStackLevel(level : Integer) : Integer;
 
@@ -839,7 +839,7 @@ type
          function  EvalAsInteger(exec : TdwsExecution) : Int64; override;
          function  EvalAsBoolean(exec : TdwsExecution) : Boolean; override;
          function  EvalAsFloat(exec : TdwsExecution) : Double; override;
-         procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
+         procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
          procedure EvalAsVariant(exec : TdwsExecution; var Result : Variant); override;
          procedure EvalAsScriptObj(exec : TdwsExecution; var Result : IScriptObj); override;
 
@@ -847,13 +847,13 @@ type
          procedure AssignValueAsInteger(exec : TdwsExecution; const value : Int64); override;
          procedure AssignValueAsBoolean(exec : TdwsExecution; const value : Boolean); override;
          procedure AssignValueAsFloat(exec : TdwsExecution; const value : Double); override;
-         procedure AssignValueAsString(exec : TdwsExecution; const value: String); override;
+         procedure AssignValueAsString(exec : TdwsExecution; const value: UnicodeString); override;
          procedure AssignValueAsScriptObj(exec : TdwsExecution; const value : IScriptObj); override;
 
          procedure RaiseUpperExceeded(exec : TdwsExecution; index : Integer);
          procedure RaiseLowerExceeded(exec : TdwsExecution; index : Integer);
 
-         function ScriptLocation(prog : TObject) : String; override;
+         function ScriptLocation(prog : TObject) : UnicodeString; override;
 
          function InterruptsFlow : Boolean; virtual;
 
@@ -1119,7 +1119,7 @@ type
          procedure Initialize(prog : TdwsProgram); override;
          function IsWritable : Boolean; override;
 
-         function FuncSymQualifiedName : String; override;
+         function FuncSymQualifiedName : UnicodeString; override;
 
          property CallerID : TFuncExpr read FCallerID write FCallerID;
    end;
@@ -1193,7 +1193,7 @@ type
          function SubExprCount : Integer;
 
          function EvalAsBoolean(exec : TdwsExecution) : Boolean;
-         procedure EvalAsString(exec : TdwsExecution; var Result : String);
+         procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
 
          property ScriptPos : TScriptPos read FScriptPos write FScriptPos;
          property Test : TTypedExpr read FTest;
@@ -1288,7 +1288,7 @@ type
          function Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr; override;
    end;
 
-   // String unary result
+   // UnicodeString unary result
    TUnaryOpStringExpr = class(TUnaryOpExpr)
       public
          constructor Create(prog : TdwsProgram; expr : TTypedExpr); override;
@@ -1407,17 +1407,17 @@ type
       function Call: IInfo; overload;
       function Call(const Params: array of Variant): IInfo; overload;
       function Element(const Indices: array of Integer): IInfo;
-      function GetConstructor(const MethName: String; ExtObject: TObject): IInfo;
+      function GetConstructor(const MethName: UnicodeString; ExtObject: TObject): IInfo;
       function GetData : TData;
       function GetExternalObject: TObject;
-      function GetMember(const s: String): IInfo;
+      function GetMember(const s: UnicodeString): IInfo;
       function GetFieldMemberNames : TStrings;
-      function GetMethod(const s: String): IInfo;
+      function GetMethod(const s: UnicodeString): IInfo;
       function GetScriptObj: IScriptObj;
-      function GetParameter(const s: String): IInfo;
+      function GetParameter(const s: UnicodeString): IInfo;
       function GetTypeSym: TSymbol;
       function GetValue : Variant;
-      function GetValueAsString : String;
+      function GetValueAsString : UnicodeString;
       function GetValueAsDataString : RawByteString;
       function GetValueAsInteger : Int64;
       function GetValueAsBoolean : Boolean;
@@ -1430,15 +1430,15 @@ type
 
       property Data: TData read GetData write SetData;
       property ExternalObject: TObject read GetExternalObject write SetExternalObject;
-      property Member[const s : String]: IInfo read GetMember;
+      property Member[const s : UnicodeString]: IInfo read GetMember;
       property FieldMemberNames : TStrings read GetFieldMemberNames;
-      property Method[const s : String]: IInfo read GetMethod;
+      property Method[const s : UnicodeString]: IInfo read GetMethod;
 
       property ScriptObj: IScriptObj read GetScriptObj;
-      property Parameter[const s: String]: IInfo read GetParameter;
+      property Parameter[const s: UnicodeString]: IInfo read GetParameter;
       property TypeSym: TSymbol read GetTypeSym;
       property Value: Variant read GetValue write SetValue;
-      property ValueAsString : String read GetValueAsString;
+      property ValueAsString : UnicodeString read GetValueAsString;
       property ValueAsDataString : RawByteString read GetValueAsDataString;
       property ValueAsInteger : Int64 read GetValueAsInteger write SetValueAsInteger;
       property ValueAsBoolean : Boolean read GetValueAsBoolean;
@@ -1455,35 +1455,35 @@ type
          FTable: TSymbolTable;
 
       protected
-         function GetData(const s: String): TData;
-         function GetFunc(const s: String): IInfo;
+         function GetData(const s: UnicodeString): TData;
+         function GetFunc(const s: UnicodeString): IInfo;
          procedure SetFuncSym(const Value: TFuncSymbol);
-         function GetValueAsVariant(const s: String): Variant;
-         function GetVars(const str: String): IInfo;
-         procedure SetData(const s: String; const Value: TData);
-         procedure SetValueAsVariant(const s: String; const Value: Variant);
+         function GetValueAsVariant(const s: UnicodeString): Variant;
+         function GetVars(const str: UnicodeString): IInfo;
+         procedure SetData(const s: UnicodeString; const Value: TData);
+         procedure SetValueAsVariant(const s: UnicodeString; const Value: Variant);
          function GetResultAsVariant: Variant;
          function GetResultVars: IInfo;
 
-         function GetValueAsString(const s: String): String;
-         procedure SetValueAsString(const s: String; const Value: String);
-         function GetValueAsChar(const s: String): WideChar;
-         function GetValueAsDataString(const s: String): RawByteString;
-         procedure SetValueAsDataString(const s: String; const Value: RawByteString);
-         function GetValueAsInteger(const s: String): Int64;
-         procedure SetValueAsInteger(const s: String; const Value: Int64);
-         function GetValueAsBoolean(const s: String): Boolean;
-         procedure SetValueAsBoolean(const s: String; const Value: Boolean);
-         function GetValueAsFloat(const s: String): Double;
-         procedure SetValueAsFloat(const s: String; const Value: Double);
-         function GetValueAsObject(const s: String): TObject;
-         function GetValueAsClassSymbol(const s: String): TClassSymbol;
-         function GetValueAsTStrings(const s: String): TStrings;
+         function GetValueAsString(const s: UnicodeString): UnicodeString;
+         procedure SetValueAsString(const s: UnicodeString; const Value: UnicodeString);
+         function GetValueAsChar(const s: UnicodeString): WideChar;
+         function GetValueAsDataString(const s: UnicodeString): RawByteString;
+         procedure SetValueAsDataString(const s: UnicodeString; const Value: RawByteString);
+         function GetValueAsInteger(const s: UnicodeString): Int64;
+         procedure SetValueAsInteger(const s: UnicodeString; const Value: Int64);
+         function GetValueAsBoolean(const s: UnicodeString): Boolean;
+         procedure SetValueAsBoolean(const s: UnicodeString; const Value: Boolean);
+         function GetValueAsFloat(const s: UnicodeString): Double;
+         procedure SetValueAsFloat(const s: UnicodeString; const Value: Double);
+         function GetValueAsObject(const s: UnicodeString): TObject;
+         function GetValueAsClassSymbol(const s: UnicodeString): TClassSymbol;
+         function GetValueAsTStrings(const s: UnicodeString): TStrings;
 
          function GetResultAsPVariant : PVariant;
 
          procedure SetResultAsVariant(const Value: Variant);
-         procedure SetResultAsString(const value : String);
+         procedure SetResultAsString(const value : UnicodeString);
          procedure SetResultAsDataString(const value : RawByteString);
          procedure SetResultAsInteger(const value : Int64);
          procedure SetResultAsBoolean(const value : Boolean);
@@ -1493,7 +1493,7 @@ type
          function GetParamAsVariant(index : Integer) : Variant;
          function GetParamAsInteger(index : Integer) : Int64;
          procedure SetParamAsInteger(index : Integer; const v : Int64);
-         function GetParamAsString(index : Integer) : String;
+         function GetParamAsString(index : Integer) : UnicodeString;
          function GetParamAsDataString(index : Integer) : RawByteString;
          procedure SetParamAsDataString(index : Integer; const v : RawByteString);
          function GetParamAsFloat(index : Integer) : Double;
@@ -1501,53 +1501,53 @@ type
          function GetParamAsObject(index : Integer) : TObject;
 
          function CreateUnitList : TList;
-         function FindSymbolInUnits(AUnitList: TList; const Name: String): TSymbol; overload;
+         function FindSymbolInUnits(AUnitList: TList; const Name: UnicodeString): TSymbol; overload;
 
       public
          procedure PrepareScriptObj;
 
          function RegisterExternalObject(AObject: TObject; AutoFree: Boolean=False; ExactClassMatch: Boolean=True): IScriptObj;
-         function GetExternalObjForVar(const s: String): TObject;
+         function GetExternalObjForVar(const s: UnicodeString): TObject;
          // cycle ancestry hierarchy and find the nearest matching type
          function FindClassMatch(AObject: TObject; ExactMatch: Boolean=True): TClassSymbol;
-         function FindSymbolInUnits(const Name: String): TSymbol; overload;
-         function GetTemp(const DataType: String): IInfo;
+         function FindSymbolInUnits(const Name: UnicodeString): TSymbol; overload;
+         function GetTemp(const DataType: UnicodeString): IInfo;
 
-         procedure RaiseExceptObj(const msg : String; const obj : IScriptObj);
+         procedure RaiseExceptObj(const msg : UnicodeString; const obj : IScriptObj);
 
          property Table : TSymbolTable read FTable write FTable;
          property Execution : TdwsProgramExecution read FExecution write FExecution;
          property Level : Integer read FLevel write FLevel;
-         property Data[const s: String]: TData read GetData write SetData;
-         property Func[const s: String]: IInfo read GetFunc;
+         property Data[const s: UnicodeString]: TData read GetData write SetData;
+         property Func[const s: UnicodeString]: IInfo read GetFunc;
          property FuncSym: TFuncSymbol read FFuncSym write SetFuncSym;
-         property Method[const s: String]: IInfo read GetFunc;
+         property Method[const s: UnicodeString]: IInfo read GetFunc;
          property ScriptObj: IScriptObj read FScriptObj write FScriptObj;
          property ResultAsVariant: Variant read GetResultAsVariant write SetResultAsVariant;
          property ResultVars: IInfo read GetResultVars;
-         property Vars[const s: String]: IInfo read GetVars;
+         property Vars[const s: UnicodeString]: IInfo read GetVars;
 
-         property ValueAsVariant[const s : String] : Variant read GetValueAsVariant write SetValueAsVariant;
-         property ValueAsChar[const s : String] : WideChar read GetValueAsChar;
-         property ValueAsString[const s : String] : String read GetValueAsString write SetValueAsString;
-         property ValueAsDataString[const s : String] : RawByteString read GetValueAsDataString write SetValueAsDataString;
-         property ValueAsInteger[const s : String] : Int64 read GetValueAsInteger write SetValueAsInteger;
-         property ValueAsBoolean[const s : String] : Boolean read GetValueAsBoolean write SetValueAsBoolean;
-         property ValueAsFloat[const s : String] : Double read GetValueAsFloat write SetValueAsFloat;
-         property ValueAsObject[const s : String] : TObject read GetValueAsObject;
-         property ValueAsClassSymbol[const s : String] : TClassSymbol read GetValueAsClassSymbol;
-         property ValueAsTStrings[const s : String] : TStrings read GetValueAsTStrings;
+         property ValueAsVariant[const s : UnicodeString] : Variant read GetValueAsVariant write SetValueAsVariant;
+         property ValueAsChar[const s : UnicodeString] : WideChar read GetValueAsChar;
+         property ValueAsString[const s : UnicodeString] : UnicodeString read GetValueAsString write SetValueAsString;
+         property ValueAsDataString[const s : UnicodeString] : RawByteString read GetValueAsDataString write SetValueAsDataString;
+         property ValueAsInteger[const s : UnicodeString] : Int64 read GetValueAsInteger write SetValueAsInteger;
+         property ValueAsBoolean[const s : UnicodeString] : Boolean read GetValueAsBoolean write SetValueAsBoolean;
+         property ValueAsFloat[const s : UnicodeString] : Double read GetValueAsFloat write SetValueAsFloat;
+         property ValueAsObject[const s : UnicodeString] : TObject read GetValueAsObject;
+         property ValueAsClassSymbol[const s : UnicodeString] : TClassSymbol read GetValueAsClassSymbol;
+         property ValueAsTStrings[const s : UnicodeString] : TStrings read GetValueAsTStrings;
 
          property ParamAsPVariant[index : Integer] : PVariant read GetParamAsPVariant;
          property ParamAsVariant[index : Integer] : Variant read GetParamAsVariant;
          property ParamAsInteger[index : Integer] : Int64 read GetParamAsInteger write SetParamAsInteger;
-         property ParamAsString[index : Integer] : String read GetParamAsString;
+         property ParamAsString[index : Integer] : UnicodeString read GetParamAsString;
          property ParamAsDataString[index : Integer] : RawByteString read GetParamAsDataString write SetParamAsDataString;
          property ParamAsFloat[index : Integer] : Double read GetParamAsFloat;
          property ParamAsBoolean[index : Integer] : Boolean read GetParamAsBoolean;
          property ParamAsObject[index : Integer] : TObject read GetParamAsObject;
 
-         property ResultAsString : String write SetResultAsString;
+         property ResultAsString : UnicodeString write SetResultAsString;
          property ResultAsDataString : RawByteString write SetResultAsDataString;
          property ResultAsBoolean : Boolean write SetResultAsBoolean;
          property ResultAsInteger : Int64 write SetResultAsInteger;
@@ -1594,7 +1594,7 @@ type
          destructor Destroy; override;
          procedure BeforeDestruction; override;
 
-         function ToString : String; override;
+         function ToString : UnicodeString; override;
 
          procedure ClearData; override;
 
@@ -1633,7 +1633,7 @@ type
          function IndexOf(const item : Variant; fromIndex : Integer) : Integer; overload;
          function IndexOfFuncPtr(const item : Variant; fromIndex : Integer) : Integer; overload;
 
-         function ToString : String; override;
+         function ToString : UnicodeString; override;
          function ToStringArray : TStringDynArray;
 
          procedure ReplaceData(const newData : TData); override;
@@ -1658,7 +1658,7 @@ type
                             executionContext : TdwsProgramExecution = nil);
          procedure BeforeDestruction; override;
 
-         function ToString : String; override;
+         function ToString : UnicodeString; override;
 
          property Typ : TInterfaceSymbol read FTyp;
          property Instance : IScriptObj read FInstance;
@@ -1667,7 +1667,7 @@ type
 
    EdwsVariantTypeCastError = class(EVariantTypeCastError)
       public
-         constructor Create(const v : Variant; const desiredType : String;
+         constructor Create(const v : Variant; const desiredType : UnicodeString;
                             originalException : Exception);
    end;
 
@@ -1762,7 +1762,7 @@ end;
 
 // RaiseVariableNotFound
 //
-procedure RaiseVariableNotFound(const s : String);
+procedure RaiseVariableNotFound(const s : UnicodeString);
 begin
    raise Exception.CreateFmt(RTE_VariableNotFound, [s]);
 end;
@@ -2075,24 +2075,24 @@ end;
 
 // CallStackToString
 //
-class function TdwsProgramExecution.CallStackToString(const callStack : TdwsExprLocationArray) : String;
+class function TdwsProgramExecution.CallStackToString(const callStack : TdwsExprLocationArray) : UnicodeString;
 begin
    Result:=TExprBase.CallStackToString(callStack);
 end;
 
 // RaiseAssertionFailed
 //
-procedure TdwsProgramExecution.RaiseAssertionFailed(const msg : String; const scriptPos : TScriptPos);
+procedure TdwsProgramExecution.RaiseAssertionFailed(const msg : UnicodeString; const scriptPos : TScriptPos);
 begin
    RaiseAssertionFailedFmt(RTE_AssertionFailed, [scriptPos.AsInfo, msg], scriptPos);
 end;
 
 // RaiseAssertionFailedFmt
 //
-procedure TdwsProgramExecution.RaiseAssertionFailedFmt(const fmt : String; const args : array of const; const scriptPos : TScriptPos);
+procedure TdwsProgramExecution.RaiseAssertionFailedFmt(const fmt : UnicodeString; const args : array of const; const scriptPos : TScriptPos);
 var
    exceptObj : IScriptObj;
-   fmtMsg : String;
+   fmtMsg : UnicodeString;
 begin
    fmtMsg:=Format(fmt, args);
    exceptObj:=IScriptObj(IUnknown(ProgramInfo.Vars[SYS_EASSERTIONFAILED].Method[SYS_TOBJECT_CREATE].Call([fmtMsg]).Value));
@@ -2129,7 +2129,7 @@ end;
 
 // LocalizeSymbol
 //
-procedure TdwsProgramExecution.LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : String);
+procedure TdwsProgramExecution.LocalizeSymbol(aResSymbol : TResourceStringSymbol; var Result : UnicodeString);
 begin
    if Assigned(Localizer) then
       Localizer.LocalizeSymbol(aResSymbol, Result)
@@ -2138,7 +2138,7 @@ end;
 
 // LocalizeString
 //
-procedure TdwsProgramExecution.LocalizeString(const aString : String; var Result : String);
+procedure TdwsProgramExecution.LocalizeString(const aString : UnicodeString; var Result : UnicodeString);
 begin
    if Assigned(Localizer) then
       Localizer.LocalizeString(aString, Result)
@@ -2774,7 +2774,7 @@ end;
 
 // GetSourceFile
 //
-function TdwsMainProgram.GetSourceFile(const aSourceFile : String) : TSourceFile;
+function TdwsMainProgram.GetSourceFile(const aSourceFile : UnicodeString) : TSourceFile;
 var
    i : Integer;
 begin
@@ -3138,7 +3138,7 @@ end;
 //
 procedure TPrintFunction.DoEvalProc(args : TExprBaseList);
 var
-   buf : String;
+   buf : UnicodeString;
 begin
    args.ExprBase[0].EvalAsString(args.Exec, buf);
    (args.Exec as TdwsProgramExecution).Result.AddString(buf);
@@ -3152,7 +3152,7 @@ end;
 //
 procedure TPrintLnFunction.DoEvalProc(args : TExprBaseList);
 var
-   buf : String;
+   buf : UnicodeString;
    result : TdwsResult;
 begin
    args.List.ExprBase[0].EvalAsString(args.Exec, buf);
@@ -3183,7 +3183,7 @@ end;
 
 // AddString
 //
-procedure TdwsDefaultResult.AddString(const str : String);
+procedure TdwsDefaultResult.AddString(const str : UnicodeString);
 begin
    FTextBuilder.WriteString(str);
 end;
@@ -3204,7 +3204,7 @@ end;
 
 // ToString
 //
-function TdwsDefaultResult.ToString : String;
+function TdwsDefaultResult.ToString : UnicodeString;
 begin
    Result:=GetText;
 end;
@@ -3218,7 +3218,7 @@ end;
 
 // GetText
 //
-function TdwsDefaultResult.GetText : String;
+function TdwsDefaultResult.GetText : UnicodeString;
 begin
    Result:=FTextBuilder.ToString;
 end;
@@ -3480,7 +3480,7 @@ end;
 
 // AssignValueAsString
 //
-procedure TProgramExpr.AssignValueAsString(exec : TdwsExecution; const value: String);
+procedure TProgramExpr.AssignValueAsString(exec : TdwsExecution; const value: UnicodeString);
 begin
    AssignValue(exec, value);
 end;
@@ -3546,7 +3546,7 @@ end;
 
 // EvalAsString
 //
-procedure TProgramExpr.EvalAsString(exec : TdwsExecution; var Result : String);
+procedure TProgramExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
 var
    v : Variant;
    p : PVarData;
@@ -3556,16 +3556,16 @@ begin
       p:=PVarData(@v);
       {$ifdef FPC}
       if p^.VType=varString then
-         Result:=String(p.VString)
+         Result:=UnicodeString(p.VString)
       {$else}
       if p^.VType=varUString then
-         Result:=String(p.VUString)
+         Result:=UnicodeString(p.VUString)
       {$endif}
       else VariantToString(v, Result);
    except
       // standardize RTL message
       on E : EVariantError do begin
-         raise EdwsVariantTypeCastError.Create(v, 'String', E);
+         raise EdwsVariantTypeCastError.Create(v, SYS_STRING, E);
       end else raise;
    end;
 end;
@@ -3586,7 +3586,7 @@ end;
 
 // ScriptLocation
 //
-function TProgramExpr.ScriptLocation(prog : TObject) : String;
+function TProgramExpr.ScriptLocation(prog : TObject) : UnicodeString;
 begin
    if prog is TdwsProcedure then
       Result:=TdwsProcedure(prog).Func.QualifiedName+ScriptPos.AsInfo
@@ -4316,7 +4316,7 @@ end;
 //
 procedure TPushOperator.ExecuteResultString(exec : TdwsExecution);
 var
-   buf : String;
+   buf : UnicodeString;
 begin
    FArgExpr.EvalAsString(exec, buf);
    exec.Stack.WriteStrValue(exec.Stack.StackPointer+FStackAddr,
@@ -4534,7 +4534,7 @@ end;
 
 // FuncSymQualifiedName
 //
-function TFuncExpr.FuncSymQualifiedName : String;
+function TFuncExpr.FuncSymQualifiedName : UnicodeString;
 begin
    Result:=FuncSym.QualifiedName;
 end;
@@ -4893,7 +4893,7 @@ end;
 //
 procedure TStringBinOpExpr.EvalAsVariant(exec : TdwsExecution; var result : Variant);
 var
-   buf : String;
+   buf : UnicodeString;
 begin
    EvalAsString(exec, buf);
    Result:=buf;
@@ -4903,7 +4903,7 @@ end;
 //
 function TStringBinOpExpr.Optimize(prog : TdwsProgram; exec : TdwsExecution) : TProgramExpr;
 var
-   buf : String;
+   buf : UnicodeString;
 begin
    if IsConstant then begin
       EvalAsString(exec, buf);
@@ -5106,7 +5106,7 @@ end;
 //
 function TUnaryOpStringExpr.Eval(exec : TdwsExecution) : Variant;
 var
-   buf : String;
+   buf : UnicodeString;
 begin
    EvalAsString(exec, buf);
    Result:=buf;
@@ -5133,27 +5133,27 @@ end;
 
 { TProgramInfo }
 
-function TProgramInfo.GetValueAsVariant(const s: String): Variant;
+function TProgramInfo.GetValueAsVariant(const s: UnicodeString): Variant;
 begin
   Result := GetVars(s).Value;
 end;
 
-function TProgramInfo.GetData(const s: String): TData;
+function TProgramInfo.GetData(const s: UnicodeString): TData;
 begin
   Result := GetVars(s).Data;
 end;
 
-procedure TProgramInfo.SetValueAsVariant(const s: String; const Value: Variant);
+procedure TProgramInfo.SetValueAsVariant(const s: UnicodeString; const Value: Variant);
 begin
   GetVars(s).Value := Value;
 end;
 
-procedure TProgramInfo.SetData(const s: String; const Value: TData);
+procedure TProgramInfo.SetData(const s: UnicodeString; const Value: TData);
 begin
   GetVars(s).Data := Value;
 end;
 
-function TProgramInfo.GetVars(const str : String): IInfo;
+function TProgramInfo.GetVars(const str : UnicodeString): IInfo;
 
    procedure GetExternalVarSymbolInfo(sym : TSymbol; var Result : IInfo);
    var
@@ -5250,7 +5250,7 @@ begin
    else RaiseOnlyVarSymbols(sym);
 end;
 
-function TProgramInfo.GetFunc(const s: String): IInfo;
+function TProgramInfo.GetFunc(const s: UnicodeString): IInfo;
 var
   sym: TSymbol;
 begin
@@ -5271,7 +5271,7 @@ begin
     raise Exception.CreateFmt(RTE_OnlyFuncSymbols, [sym.Caption]);
 end;
 
-function TProgramInfo.GetTemp(const DataType: String): IInfo;
+function TProgramInfo.GetTemp(const DataType: UnicodeString): IInfo;
 var
   data: TData;
   typSym: TTypeSymbol;
@@ -5292,7 +5292,7 @@ end;
 
 // RaiseExceptObj
 //
-procedure TProgramInfo.RaiseExceptObj(const msg : String; const obj : IScriptObj);
+procedure TProgramInfo.RaiseExceptObj(const msg : UnicodeString; const obj : IScriptObj);
 begin
    raise EScriptException.Create(msg, obj, cNullPos);
 end;
@@ -5318,21 +5318,21 @@ begin
    Result:=GetVars(SYS_RESULT);
 end;
 
-function TProgramInfo.GetValueAsString(const s: String): String;
+function TProgramInfo.GetValueAsString(const s: UnicodeString): UnicodeString;
 begin
   Result:=GetVars(s).ValueAsString;
 end;
 
-procedure TProgramInfo.SetValueAsString(const s: String; const Value: String);
+procedure TProgramInfo.SetValueAsString(const s: UnicodeString; const Value: UnicodeString);
 begin
   GetVars(s).Value:=Value;
 end;
 
 // GetValueAsChar
 //
-function TProgramInfo.GetValueAsChar(const s: String): WideChar;
+function TProgramInfo.GetValueAsChar(const s: UnicodeString): WideChar;
 var
-   buf : String;
+   buf : UnicodeString;
 begin
    buf:=GetVars(s).ValueAsString;
    if buf<>'' then
@@ -5342,49 +5342,49 @@ end;
 
 // GetValueAsDataString
 //
-function TProgramInfo.GetValueAsDataString(const s: String): RawByteString;
+function TProgramInfo.GetValueAsDataString(const s: UnicodeString): RawByteString;
 begin
    Result:=ScriptStringToRawByteString(GetValueAsString(s));
 end;
 
 // SetValueAsDataString
 //
-procedure TProgramInfo.SetValueAsDataString(const s: String; const Value: RawByteString);
+procedure TProgramInfo.SetValueAsDataString(const s: UnicodeString; const Value: RawByteString);
 begin
    SetValueAsString(s, RawByteStringToScriptString(Value));
 end;
 
-function TProgramInfo.GetValueAsInteger(const s: String): Int64;
+function TProgramInfo.GetValueAsInteger(const s: UnicodeString): Int64;
 begin
   Result:=GetVars(s).ValueAsInteger;
 end;
 
-procedure TProgramInfo.SetValueAsInteger(const s: String; const Value: Int64);
+procedure TProgramInfo.SetValueAsInteger(const s: UnicodeString; const Value: Int64);
 begin
   GetVars(s).Value:=Value;
 end;
 
-function TProgramInfo.GetValueAsBoolean(const s: String): Boolean;
+function TProgramInfo.GetValueAsBoolean(const s: UnicodeString): Boolean;
 begin
   Result:=GetVars(s).Value;
 end;
 
-procedure TProgramInfo.SetValueAsBoolean(const s: String; const Value: Boolean);
+procedure TProgramInfo.SetValueAsBoolean(const s: UnicodeString; const Value: Boolean);
 begin
   GetVars(s).Value:=Value;
 end;
 
-function TProgramInfo.GetValueAsFloat(const s: String): Double;
+function TProgramInfo.GetValueAsFloat(const s: UnicodeString): Double;
 begin
   Result:=GetVars(s).ValueAsFloat;
 end;
 
-procedure TProgramInfo.SetValueAsFloat(const s: String; const Value: Double);
+procedure TProgramInfo.SetValueAsFloat(const s: UnicodeString; const Value: Double);
 begin
   GetVars(s).Value:=Value;
 end;
 
-function TProgramInfo.GetValueAsObject(const s: String): TObject;
+function TProgramInfo.GetValueAsObject(const s: UnicodeString): TObject;
 var
    info : IInfo;
    scriptobj : IScriptObj;
@@ -5400,12 +5400,12 @@ end;
 
 // GetValueAsClassSymbol
 //
-function TProgramInfo.GetValueAsClassSymbol(const s: String): TClassSymbol;
+function TProgramInfo.GetValueAsClassSymbol(const s: UnicodeString): TClassSymbol;
 begin
    Result:=TClassSymbol(GetVars(s).ValueAsInteger);
 end;
 
-function TProgramInfo.GetValueAsTStrings(const s: String): TStrings;
+function TProgramInfo.GetValueAsTStrings(const s: UnicodeString): TStrings;
 var
    obj : TObject;
 begin
@@ -5441,7 +5441,7 @@ end;
 
 // SetResultAsString
 //
-procedure TProgramInfo.SetResultAsString(const value : String);
+procedure TProgramInfo.SetResultAsString(const value : UnicodeString);
 begin
    GetResultAsPVariant^:=value;
 end;
@@ -5542,17 +5542,17 @@ end;
 
 // GetParamAsString
 //
-function TProgramInfo.GetParamAsString(index : Integer) : String;
+function TProgramInfo.GetParamAsString(index : Integer) : UnicodeString;
 var
    p : PVarData;
 begin
    p:=PVarData(GetParamAsPVariant(index));
    {$ifdef FPC}
    if p^.VType=varString then
-      Result:=String(p.VString)
+      Result:=UnicodeString(p.VString)
    {$else}
    if p^.VType=varUString then
-      Result:=String(p.VUString)
+      Result:=UnicodeString(p.VUString)
    {$endif}
    else VariantToString(PVariant(p)^, Result);
 end;
@@ -5634,7 +5634,7 @@ begin
       begin
         ParentRTTI := GetTypeData(AObject.ClassInfo).ParentInfo;
         repeat
-          typeSym := FindSymbolInUnits(unitList, String(ParentRTTI^.Name));
+          typeSym := FindSymbolInUnits(unitList, UnicodeString(ParentRTTI^.Name));
           if Assigned(typeSym) and (typeSym is TClassSymbol) then       // match found, stop searching
           begin
             Result := TClassSymbol(typeSym);
@@ -5686,7 +5686,7 @@ begin
     Result := nil;                  // return 'nil' Id
 end;
 
-function TProgramInfo.GetExternalObjForVar(const s: String): TObject;
+function TProgramInfo.GetExternalObjForVar(const s: UnicodeString): TObject;
 var
   sObj: IScriptObj;
 begin
@@ -5697,7 +5697,7 @@ begin
     Result := nil;
 end;
 
-function TProgramInfo.FindSymbolInUnits(AUnitList: TList; const Name: String): TSymbol;
+function TProgramInfo.FindSymbolInUnits(AUnitList: TList; const Name: UnicodeString): TSymbol;
 var
   i: Integer;
 begin
@@ -5718,7 +5718,7 @@ begin
    FScriptObj:=FExecution.SelfScriptObject^;
 end;
 
-function TProgramInfo.FindSymbolInUnits(const Name: String): TSymbol;
+function TProgramInfo.FindSymbolInUnits(const Name: UnicodeString): TSymbol;
 var
   list: TList;
 begin
@@ -5868,7 +5868,7 @@ end;
 
 // ToString
 //
-function TScriptObjInstance.ToString : String;
+function TScriptObjInstance.ToString : UnicodeString;
 begin
    Result:=FClassSym.Name;
 end;
@@ -6155,7 +6155,7 @@ end;
 
 // ToString
 //
-function TScriptDynamicArray.ToString : String;
+function TScriptDynamicArray.ToString : UnicodeString;
 begin
    Result:='array of '+FElementTyp.Name;
 end;
@@ -6204,7 +6204,7 @@ end;
 
 // ToString
 //
-function TScriptInterface.ToString : String;
+function TScriptInterface.ToString : UnicodeString;
 begin
    Result:=FTyp.ClassName;
 end;
@@ -6253,7 +6253,7 @@ end;
 
 // FindSymbolAtPosition
 //
-function TdwsSymbolDictionary.FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : String) : TSymbol;
+function TdwsSymbolDictionary.FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : UnicodeString) : TSymbol;
 var
    i : Integer;
 begin
@@ -6292,7 +6292,7 @@ end;
 
 // FindSymbolPosList
 //
-function TdwsSymbolDictionary.FindSymbolPosList(const symName : String) : TSymbolPositionList;
+function TdwsSymbolDictionary.FindSymbolPosList(const symName : UnicodeString) : TSymbolPositionList;
 var
    i : Integer;
 begin
@@ -6427,7 +6427,7 @@ begin
    else Result:=nil;
 end;
 
-function TdwsSymbolDictionary.FindSymbolUsage(const SymName: String;
+function TdwsSymbolDictionary.FindSymbolUsage(const SymName: UnicodeString;
   SymbolUse: TSymbolUsage): TSymbolPosition;
 var
   list: TSymbolPositionList;
@@ -6438,7 +6438,7 @@ begin
     Result := list.FindUsage(SymbolUse);
 end;
 
-function TdwsSymbolDictionary.FindSymbolUsageOfType(const SymName: String;
+function TdwsSymbolDictionary.FindSymbolUsageOfType(const SymName: UnicodeString;
   SymbolType: TSymbolClass; SymbolUse: TSymbolUsage): TSymbolPosition;
 var
   list: TSymbolPositionList;
@@ -6471,7 +6471,7 @@ begin
    Result:=nil;
 end;
 
-function TdwsSymbolDictionary.FindSymbolPosListOfType(const SymName: String;
+function TdwsSymbolDictionary.FindSymbolPosListOfType(const SymName: UnicodeString;
   SymbolType: TSymbolClass): TSymbolPositionList;
 var
   x: Integer;
@@ -6546,7 +6546,7 @@ end;
 
 // FindSymbolAtPosition
 //
-function TSymbolPositionList.FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : String): TSymbol;
+function TSymbolPositionList.FindSymbolAtPosition(aCol, aLine : Integer; const sourceFile : UnicodeString): TSymbol;
 var
    i : Integer;
    symPos : TSymbolPosition;
@@ -6749,7 +6749,7 @@ end;
 
 // IsPositionInContext
 //
-function TdwsSourceContext.IsPositionInContext(aCol, aLine : Integer; const sourceName : String) : Boolean;
+function TdwsSourceContext.IsPositionInContext(aCol, aLine : Integer; const sourceName : UnicodeString) : Boolean;
 begin
    // check if the position is in the same SourceFile
    if sourceName<>'' then begin // if empty, don't check it
@@ -6857,7 +6857,7 @@ end;
 
 // FindContext
 //
-function TdwsSourceContextMap.FindContext(aCol, aLine : Integer; const sourceName : String) : TdwsSourceContext;
+function TdwsSourceContextMap.FindContext(aCol, aLine : Integer; const sourceName : UnicodeString) : TdwsSourceContext;
 var
    returnContext : TdwsSourceContext;    // Gets set to the context found
    hitEnd : Boolean;            // Followed branch to end, stop searching
@@ -6979,7 +6979,7 @@ end;
 // ------------------ TScriptSourceItem ------------------
 // ------------------
 
-constructor TScriptSourceItem.Create(const ANameReference: String; ASourceFile: TSourceFile;
+constructor TScriptSourceItem.Create(const ANameReference: UnicodeString; ASourceFile: TSourceFile;
   ASourceType: TScriptSourceType);
 begin
    FNameReference := ANameReference;
@@ -7018,7 +7018,7 @@ end;
 
 // Add
 //
-function TScriptSourceList.Add(const nameReference, code: String;
+function TScriptSourceList.Add(const nameReference, code: UnicodeString;
    sourceType: TScriptSourceType) : TSourceFile;
 var
    srcItem : TScriptSourceItem;
@@ -7055,7 +7055,7 @@ end;
 
 // FindScriptSourceItem
 //
-function TScriptSourceList.FindScriptSourceItem(const sourceFileName: String): TScriptSourceItem;
+function TScriptSourceList.FindScriptSourceItem(const sourceFileName: UnicodeString): TScriptSourceItem;
 var
    x : Integer;
 begin
@@ -7065,7 +7065,7 @@ begin
    else Result:=nil;
 end;
 
-function TScriptSourceList.IndexOf(const SourceFileName: String): Integer;
+function TScriptSourceList.IndexOf(const SourceFileName: UnicodeString): Integer;
 var
    x: Integer;
 begin
@@ -7211,7 +7211,7 @@ end;
 
 // EvalAsString
 //
-procedure TSourceCondition.EvalAsString(exec : TdwsExecution; var Result : String);
+procedure TSourceCondition.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
 begin
    FMsg.EvalAsString(exec, Result);
 end;
@@ -7290,7 +7290,7 @@ end;
 procedure TSourcePreConditions.RaiseConditionFailed(exec : TdwsExecution;
    funcSym : TFuncSymbol; const scriptPos : TScriptPos; const msg : IStringEvalable);
 var
-   msgStr : String;
+   msgStr : UnicodeString;
 begin
    msg.EvalAsString(exec, msgStr);
    (exec as TdwsProgramExecution).RaiseAssertionFailedFmt(
@@ -7306,7 +7306,7 @@ end;
 procedure TSourcePostConditions.RaiseConditionFailed(exec : TdwsExecution;
    funcSym : TFuncSymbol; const scriptPos : TScriptPos; const msg : IStringEvalable);
 var
-   msgStr : String;
+   msgStr : UnicodeString;
 begin
    msg.EvalAsString(exec, msgStr);
    (exec as TdwsProgramExecution).RaiseAssertionFailedFmt(
@@ -7380,7 +7380,7 @@ end;
 // Create
 //
 constructor EdwsVariantTypeCastError.Create(const v : Variant;
-      const desiredType : String; originalException : Exception);
+      const desiredType : UnicodeString; originalException : Exception);
 begin
    inherited CreateFmt(RTE_VariantCastFailed,
                        [VarTypeAsText(VarType(v)), desiredType, originalException.ClassName])

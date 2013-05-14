@@ -52,8 +52,8 @@ type
          procedure BeginArray; virtual;
          procedure EndArray; virtual;
 
-         procedure WriteName(const aName : String); virtual;
-         procedure WriteString(const str : String);
+         procedure WriteName(const aName : UnicodeString); virtual;
+         procedure WriteString(const str : UnicodeString);
          procedure WriteNumber(const n : Double);
          procedure WriteInteger(const n : Int64);
          procedure WriteBoolean(b : Boolean);
@@ -63,9 +63,9 @@ type
          procedure WriteDate(dt : TDateTime); overload;
 
          procedure WriteStrings(const str : TStrings); overload;
-         procedure WriteStrings(const str : array of String); overload;
+         procedure WriteStrings(const str : array of UnicodeString); overload;
 
-         function ToString : String; override;
+         function ToString : UnicodeString; override;
 
          property Stream : TWriteOnlyBlockStream read FStream write FStream;
    end;
@@ -93,7 +93,7 @@ type
          procedure BeginArray; override;
          procedure EndArray; override;
 
-         procedure WriteName(const aName : String); override;
+         procedure WriteName(const aName : UnicodeString); override;
    end;
 
    TdwsJSONDuplicatesOptions = (jdoAccept, jdoOverwrite);
@@ -110,9 +110,9 @@ type
          DuplicatesOption : TdwsJSONDuplicatesOptions;
 
       public
-         constructor Create(const aStr : String);
+         constructor Create(const aStr : UnicodeString);
 
-         function Location : String;
+         function Location : UnicodeString;
 
          function NeedChar : WideChar; inline;
          function SkipBlanks(currentChar : WideChar) : WideChar; inline;
@@ -134,24 +134,24 @@ type
          procedure DetachChild(child : TdwsJSONValue); virtual;
 
          function GetValueType : TdwsJSONValueType; virtual; abstract;
-         function GetName(index : Integer) : String;
-         function DoGetName(index : Integer) : String; virtual;
+         function GetName(index : Integer) : UnicodeString;
+         function DoGetName(index : Integer) : UnicodeString; virtual;
          function GetElement(index : Integer) : TdwsJSONValue; inline;
          function DoGetElement(index : Integer) : TdwsJSONValue; virtual;
          procedure SetElement(index : Integer; const value : TdwsJSONValue); inline;
          procedure DoSetElement(index : Integer; const value : TdwsJSONValue); virtual; abstract;
-         function GetItem(const name : String) : TdwsJSONValue; inline;
-         function DoGetItem(const name : String) : TdwsJSONValue; virtual;
-         procedure SetItem(const name : String; const value : TdwsJSONValue); inline;
-         procedure DoSetItem(const name : String; const value : TdwsJSONValue); virtual; abstract;
+         function GetItem(const name : UnicodeString) : TdwsJSONValue; inline;
+         function DoGetItem(const name : UnicodeString) : TdwsJSONValue; virtual;
+         procedure SetItem(const name : UnicodeString; const value : TdwsJSONValue); inline;
+         procedure DoSetItem(const name : UnicodeString; const value : TdwsJSONValue); virtual; abstract;
          function DoElementCount : Integer; virtual;
          function GetValue(const index : Variant) : TdwsJSONValue;
          procedure SetValue(const index : Variant; const aValue : TdwsJSONValue);
 
          function GetIsImmediateValue : Boolean; virtual;
 
-         function GetAsString : String; inline;
-         procedure SetAsString(const val : String); inline;
+         function GetAsString : UnicodeString; inline;
+         procedure SetAsString(const val : UnicodeString); inline;
          function GetIsNull : Boolean; inline;
          procedure SetIsNull(const val : Boolean);
          function GetIsDefined : Boolean; inline;
@@ -168,29 +168,29 @@ type
          function DoClone : TdwsJSONValue; virtual; abstract;
          procedure DoExtend(other : TdwsJSONValue); virtual; abstract;
 
-         class procedure RaiseJSONException(const msg : String); static;
-         class procedure RaiseJSONParseError(const msg : String; c : WideChar = #0); static;
+         class procedure RaiseJSONException(const msg : UnicodeString); static;
+         class procedure RaiseJSONParseError(const msg : UnicodeString; c : WideChar = #0); static;
 
          class function Parse(parserState : TdwsJSONParserState) : TdwsJSONValue; static;
 
       public
          destructor Destroy; override;
 
-         class function ParseString(const json : String;
+         class function ParseString(const json : UnicodeString;
                                     duplicatesOption : TdwsJSONDuplicatesOptions = jdoOverwrite) : TdwsJSONValue; static;
-         class function ParseFile(const fileName : String) : TdwsJSONValue; static;
+         class function ParseFile(const fileName : UnicodeString) : TdwsJSONValue; static;
 
          function Clone : TdwsJSONValue;
          procedure Extend(other : TdwsJSONValue);
 
          procedure WriteTo(writer : TdwsJSONWriter); virtual; abstract;
-         function ToString : String; reintroduce;
-         function ToBeautifiedString(initialTabs : Integer = 0; indentTabs : Integer = 1) : String;
+         function ToString : UnicodeString; reintroduce;
+         function ToBeautifiedString(initialTabs : Integer = 0; indentTabs : Integer = 1) : UnicodeString;
          procedure Detach;
 
          property Owner : TdwsJSONValue read FOwner;
-         property Items[const name : String] : TdwsJSONValue read GetItem write SetItem;
-         property Names[index : Integer] : String read GetName;
+         property Items[const name : UnicodeString] : TdwsJSONValue read GetItem write SetItem;
+         property Names[index : Integer] : UnicodeString read GetName;
          property Elements[index : Integer] : TdwsJSONValue read GetElement write SetElement;
          function ElementCount : Integer;
          property Values[const index : Variant] : TdwsJSONValue read GetValue write SetValue; default;
@@ -199,7 +199,7 @@ type
          function Value : TdwsJSONImmediate; inline;
          function ValueType : TdwsJSONValueType; inline;
 
-         property AsString : String read GetAsString write SetAsString;
+         property AsString : UnicodeString read GetAsString write SetAsString;
          property IsNull : Boolean read GetIsNull write SetIsNull;
          property IsDefined : Boolean read GetIsDefined;
          property AsBoolean : Boolean read GetAsBoolean write SetAsBoolean;
@@ -207,13 +207,13 @@ type
          property IsNaN : Boolean read GetIsNaN;
          property AsInteger : Int64 read GetAsInteger write SetAsInteger;
 
-         const ValueTypeStrings : array [TdwsJSONValueType] of String = (
+         const ValueTypeStrings : array [TdwsJSONValueType] of UnicodeString = (
             'Undefined', 'Null', 'Object', 'Array', 'String', 'Number', 'Boolean'
             );
    end;
 
    TdwsJSONPair = record
-      Name : String;
+      Name : UnicodeString;
       Hash : Cardinal;
       Value : TdwsJSONValue;
    end;
@@ -231,17 +231,17 @@ type
       protected
          procedure Grow;
          procedure SetCapacity(newCapacity : Integer);
-         function IndexOfName(const name : String) : Integer;
+         function IndexOfName(const name : UnicodeString) : Integer;
          function IndexOfValue(const aValue : TdwsJSONValue) : Integer;
          procedure DetachChild(child : TdwsJSONValue); override;
          procedure DetachIndex(i : Integer);
 
          function GetValueType : TdwsJSONValueType; override;
-         function DoGetName(index : Integer) : String; override;
+         function DoGetName(index : Integer) : UnicodeString; override;
          function DoGetElement(index : Integer) : TdwsJSONValue; override;
          procedure DoSetElement(index : Integer; const value : TdwsJSONValue); override;
-         function DoGetItem(const name : String) : TdwsJSONValue; override;
-         procedure DoSetItem(const name : String; const value : TdwsJSONValue); override;
+         function DoGetItem(const name : UnicodeString) : TdwsJSONValue; override;
+         procedure DoSetItem(const name : UnicodeString; const value : TdwsJSONValue); override;
          function DoElementCount : Integer; override;
 
          procedure DoParse(initialChar : WideChar; parserState : TdwsJSONParserState); override;
@@ -256,16 +256,16 @@ type
 
          procedure Clear;
 
-         procedure Add(const aName : String; aValue : TdwsJSONValue);
+         procedure Add(const aName : UnicodeString; aValue : TdwsJSONValue);
 
-         function AddObject(const name : String) : TdwsJSONObject;
+         function AddObject(const name : UnicodeString) : TdwsJSONObject;
 
-         function AddArray(const name : String) : TdwsJSONArray;
+         function AddArray(const name : UnicodeString) : TdwsJSONArray;
 
-         function AddValue(const name : String) : TdwsJSONImmediate; overload;
-         function AddValue(const name, value : String) : TdwsJSONImmediate; overload;
-         function AddValue(const name : String; const value : Double) : TdwsJSONImmediate; overload;
-         function AddValue(const name : String; const value : Boolean) : TdwsJSONImmediate; overload;
+         function AddValue(const name : UnicodeString) : TdwsJSONImmediate; overload;
+         function AddValue(const name, value : UnicodeString) : TdwsJSONImmediate; overload;
+         function AddValue(const name : UnicodeString; const value : Double) : TdwsJSONImmediate; overload;
+         function AddValue(const name : UnicodeString; const value : Boolean) : TdwsJSONImmediate; overload;
 
          procedure WriteTo(writer : TdwsJSONWriter); override;
 
@@ -290,11 +290,11 @@ type
          procedure DeleteIndex(idx : Integer);
 
          function GetValueType : TdwsJSONValueType; override;
-         function DoGetName(index : Integer) : String; override;
+         function DoGetName(index : Integer) : UnicodeString; override;
          function DoGetElement(index : Integer) : TdwsJSONValue; override;
          procedure DoSetElement(index : Integer; const value : TdwsJSONValue); override;
-         function DoGetItem(const name : String) : TdwsJSONValue; override;
-         procedure DoSetItem(const name : String; const value : TdwsJSONValue); override;
+         function DoGetItem(const name : UnicodeString) : TdwsJSONValue; override;
+         procedure DoSetItem(const name : UnicodeString; const value : TdwsJSONValue); override;
          function DoElementCount : Integer; override;
 
          procedure DoParse(initialChar : WideChar; parserState : TdwsJSONParserState); override;
@@ -325,14 +325,14 @@ type
          FType : TdwsJSONValueType;
 
       protected
-         procedure DoSetItem(const name : String; const value : TdwsJSONValue); override;
+         procedure DoSetItem(const name : UnicodeString; const value : TdwsJSONValue); override;
          procedure DoSetElement(index : Integer; const value : TdwsJSONValue); override;
 
          function GetValueType : TdwsJSONValueType; override;
          function GetAsVariant : Variant;
          procedure SetAsVariant(const val : Variant);
-         function GetAsString : String; inline;
-         procedure SetAsString(const val : String); inline;
+         function GetAsString : UnicodeString; inline;
+         procedure SetAsString(const val : UnicodeString); inline;
          function GetIsNull : Boolean; inline;
          procedure SetIsNull(const val : Boolean);
          function GetAsBoolean : Boolean;
@@ -352,7 +352,7 @@ type
       public
          destructor Destroy; override;
 
-         class function ParseString(const json : String) : TdwsJSONImmediate; static;
+         class function ParseString(const json : UnicodeString) : TdwsJSONImmediate; static;
          class function FromVariant(const v : Variant) : TdwsJSONImmediate; static;
 
          function Clone : TdwsJSONImmediate;
@@ -360,7 +360,7 @@ type
          procedure WriteTo(writer : TdwsJSONWriter); override;
 
          property AsVariant : Variant read GetAsVariant write SetAsVariant;
-         property AsString : String read GetAsString write SetAsString;
+         property AsString : UnicodeString read GetAsString write SetAsString;
          property IsNull : Boolean read GetIsNull write SetIsNull;
          property AsBoolean : Boolean read GetAsBoolean write SetAsBoolean;
          property AsNumber : Double read GetAsNumber write SetAsNumber;
@@ -371,7 +371,7 @@ type
    EdwsJSONParseError = class (EdwsJSONException);
    EdwsJSONWriterError = class (EdwsJSONException);
 
-procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : String);
+procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : UnicodeString);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -393,7 +393,7 @@ var
 
 // Create
 //
-constructor TdwsJSONParserState.Create(const aStr : String);
+constructor TdwsJSONParserState.Create(const aStr : UnicodeString);
 begin
    {$ifdef FPC}
    Str:=UTF8Decode(aStr);
@@ -421,7 +421,7 @@ end;
 
 // Location
 //
-function TdwsJSONParserState.Location : String;
+function TdwsJSONParserState.Location : UnicodeString;
 begin
    if (Line=0) then begin
       Result:=Format('line 1, col %d',
@@ -536,7 +536,7 @@ end;
 procedure TdwsJSONParserState.ParseHugeJSONNumber(
       initialChars : PChar; initialCharCount : Integer; var result : Double);
 var
-   buf : String;
+   buf : UnicodeString;
    c : WideChar;
 begin
    SetString(buf, initialChars, initialCharCount);
@@ -586,7 +586,7 @@ end;
 
 // WriteJavaScriptString
 //
-procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : String);
+procedure WriteJavaScriptString(destStream : TWriteOnlyBlockStream; const str : UnicodeString);
 
    procedure WriteUTF16(destStream : TWriteOnlyBlockStream; c : Integer);
    const
@@ -692,7 +692,7 @@ end;
 
 // ParseString
 //
-class function TdwsJSONValue.ParseString(const json : String;
+class function TdwsJSONValue.ParseString(const json : UnicodeString;
                                          duplicatesOption : TdwsJSONDuplicatesOptions = jdoOverwrite) : TdwsJSONValue;
 var
    parserState : TdwsJSONParserState;
@@ -717,7 +717,7 @@ end;
 
 // ParseFile
 //
-class function TdwsJSONValue.ParseFile(const fileName : String) : TdwsJSONValue;
+class function TdwsJSONValue.ParseFile(const fileName : UnicodeString) : TdwsJSONValue;
 begin
    Result:=ParseString(LoadTextFromFile(fileName));
 end;
@@ -743,7 +743,7 @@ end;
 
 // ToString
 //
-function TdwsJSONValue.ToString : String;
+function TdwsJSONValue.ToString : UnicodeString;
 var
    writer : TdwsJSONWriter;
 begin
@@ -759,7 +759,7 @@ end;
 
 // ToBeautifiedString
 //
-function TdwsJSONValue.ToBeautifiedString(initialTabs, indentTabs : Integer) : String;
+function TdwsJSONValue.ToBeautifiedString(initialTabs, indentTabs : Integer) : UnicodeString;
 var
    writer : TdwsJSONBeautifiedWriter;
 begin
@@ -857,7 +857,7 @@ end;
 
 // GetAsString
 //
-function TdwsJSONValue.GetAsString : String;
+function TdwsJSONValue.GetAsString : UnicodeString;
 begin
    if Assigned(Self) then
       Result:=Value.AsString
@@ -866,7 +866,7 @@ end;
 
 // SetAsString
 //
-procedure TdwsJSONValue.SetAsString(const val : String);
+procedure TdwsJSONValue.SetAsString(const val : UnicodeString);
 begin
    Value.AsString:=val;
 end;
@@ -960,7 +960,7 @@ end;
 
 // GetName
 //
-function TdwsJSONValue.GetName(index : Integer) : String;
+function TdwsJSONValue.GetName(index : Integer) : UnicodeString;
 begin
    if Assigned(Self) then
       Result:=DoGetName(index)
@@ -969,7 +969,7 @@ end;
 
 // DoGetName
 //
-function TdwsJSONValue.DoGetName(index : Integer) : String;
+function TdwsJSONValue.DoGetName(index : Integer) : UnicodeString;
 begin
    Result:='';
 end;
@@ -1001,7 +1001,7 @@ end;
 
 // GetItem
 //
-function TdwsJSONValue.GetItem(const name : String) : TdwsJSONValue;
+function TdwsJSONValue.GetItem(const name : UnicodeString) : TdwsJSONValue;
 begin
    if Assigned(Self) then
       Result:=DoGetItem(name)
@@ -1010,14 +1010,14 @@ end;
 
 // DoGetItem
 //
-function TdwsJSONValue.DoGetItem(const name : String) : TdwsJSONValue;
+function TdwsJSONValue.DoGetItem(const name : UnicodeString) : TdwsJSONValue;
 begin
    Result:=nil;
 end;
 
 // SetItem
 //
-procedure TdwsJSONValue.SetItem(const name : String; const value : TdwsJSONValue);
+procedure TdwsJSONValue.SetItem(const name : UnicodeString; const value : TdwsJSONValue);
 begin
    if Assigned(Self) then
       DoSetItem(name, value)
@@ -1026,20 +1026,20 @@ end;
 
 // RaiseJSONException
 //
-class procedure TdwsJSONValue.RaiseJSONException(const msg : String);
+class procedure TdwsJSONValue.RaiseJSONException(const msg : UnicodeString);
 begin
    raise EdwsJSONException.Create(msg);
 end;
 
 // RaiseJSONParseError
 //
-class procedure TdwsJSONValue.RaiseJSONParseError(const msg : String; c : WideChar = #0);
+class procedure TdwsJSONValue.RaiseJSONParseError(const msg : UnicodeString; c : WideChar = #0);
 begin
    if c<=#31 then
       raise EdwsJSONParseError.CreateFmt(msg, [IntToStr(Ord(c))])
    else if c>#127 then
       raise EdwsJSONParseError.CreateFmt(msg, ['U+'+IntToHex(Ord(c), 4)])
-   else raise EdwsJSONParseError.CreateFmt(msg, [String(c)]);
+   else raise EdwsJSONParseError.CreateFmt(msg, [UnicodeString(c)]);
 end;
 
 // ------------------
@@ -1121,7 +1121,7 @@ end;
 
 // Add
 //
-procedure TdwsJSONObject.Add(const aName : String; aValue : TdwsJSONValue);
+procedure TdwsJSONObject.Add(const aName : UnicodeString; aValue : TdwsJSONValue);
 begin
    Assert(aValue.Owner=nil);
    aValue.FOwner:=Self;
@@ -1134,7 +1134,7 @@ end;
 
 // AddObject
 //
-function TdwsJSONObject.AddObject(const name : String) : TdwsJSONObject;
+function TdwsJSONObject.AddObject(const name : UnicodeString) : TdwsJSONObject;
 begin
    Result:=vObject.Create;
    Add(name, Result);
@@ -1142,7 +1142,7 @@ end;
 
 // AddArray
 //
-function TdwsJSONObject.AddArray(const name : String) : TdwsJSONArray;
+function TdwsJSONObject.AddArray(const name : UnicodeString) : TdwsJSONArray;
 begin
    Result:=vArray.Create;
    Add(name, Result);
@@ -1150,7 +1150,7 @@ end;
 
 // AddValue
 //
-function TdwsJSONObject.AddValue(const name : String) : TdwsJSONImmediate;
+function TdwsJSONObject.AddValue(const name : UnicodeString) : TdwsJSONImmediate;
 begin
    Result:=vImmediate.Create;
    Add(name, Result);
@@ -1174,7 +1174,7 @@ end;
 
 // AddValue (string)
 //
-function TdwsJSONObject.AddValue(const name, value : String) : TdwsJSONImmediate;
+function TdwsJSONObject.AddValue(const name, value : UnicodeString) : TdwsJSONImmediate;
 begin
    Result:=AddValue(name);
    Result.AsString:=value;
@@ -1182,7 +1182,7 @@ end;
 
 // AddValue (number)
 //
-function TdwsJSONObject.AddValue(const name : String; const value : Double) : TdwsJSONImmediate;
+function TdwsJSONObject.AddValue(const name : UnicodeString; const value : Double) : TdwsJSONImmediate;
 begin
    Result:=AddValue(name);
    Result.AsNumber:=value;
@@ -1190,7 +1190,7 @@ end;
 
 // AddValue (bool)
 //
-function TdwsJSONObject.AddValue(const name : String; const value : Boolean) : TdwsJSONImmediate;
+function TdwsJSONObject.AddValue(const name : UnicodeString; const value : Boolean) : TdwsJSONImmediate;
 begin
    Result:=AddValue(name);
    Result.AsBoolean:=value;
@@ -1236,7 +1236,7 @@ end;
 
 // DoGetName
 //
-function TdwsJSONObject.DoGetName(index : Integer) : String;
+function TdwsJSONObject.DoGetName(index : Integer) : UnicodeString;
 begin
    if Cardinal(index)<Cardinal(FCount) then
       Result:=FItems^[index].Name
@@ -1281,7 +1281,7 @@ end;
 
 // DoGetItem
 //
-function TdwsJSONObject.DoGetItem(const name : String) : TdwsJSONValue;
+function TdwsJSONObject.DoGetItem(const name : UnicodeString) : TdwsJSONValue;
 var
    i : Integer;
 begin
@@ -1293,7 +1293,7 @@ end;
 
 // DoSetItem
 //
-procedure TdwsJSONObject.DoSetItem(const name : String; const value : TdwsJSONValue);
+procedure TdwsJSONObject.DoSetItem(const name : UnicodeString; const value : TdwsJSONValue);
 var
    i : Integer;
 begin
@@ -1308,7 +1308,7 @@ end;
 procedure TdwsJSONObject.DoParse(initialChar : WideChar; parserState : TdwsJSONParserState);
 var
    c : WideChar;
-   name : String;
+   name : UnicodeString;
    locValue : TdwsJSONValue;
 begin
    Assert(initialChar='{');
@@ -1388,7 +1388,7 @@ end;
 
 // IndexOfName
 //
-function TdwsJSONObject.IndexOfName(const name : String) : Integer;
+function TdwsJSONObject.IndexOfName(const name : UnicodeString) : Integer;
 var
    i : Integer;
    h : Cardinal;
@@ -1564,7 +1564,7 @@ end;
 
 // DoGetName
 //
-function TdwsJSONArray.DoGetName(index : Integer) : String;
+function TdwsJSONArray.DoGetName(index : Integer) : UnicodeString;
 begin
    if Cardinal(index)<Cardinal(FCount) then
       Result:=IntToStr(index)
@@ -1620,7 +1620,7 @@ end;
 
 // DoGetItem
 //
-function TdwsJSONArray.DoGetItem(const name : String) : TdwsJSONValue;
+function TdwsJSONArray.DoGetItem(const name : UnicodeString) : TdwsJSONValue;
 var
    i : Integer;
 begin
@@ -1630,7 +1630,7 @@ end;
 
 // DoSetItem
 //
-procedure TdwsJSONArray.DoSetItem(const name : String; const value : TdwsJSONValue);
+procedure TdwsJSONArray.DoSetItem(const name : UnicodeString; const value : TdwsJSONValue);
 var
    i : Integer;
 begin
@@ -1698,7 +1698,7 @@ end;
 
 // GetAsString
 //
-function TdwsJSONImmediate.GetAsString : String;
+function TdwsJSONImmediate.GetAsString : UnicodeString;
 begin
    if Assigned(Self) then
       case FType of
@@ -1717,7 +1717,7 @@ end;
 
 // SetAsString
 //
-procedure TdwsJSONImmediate.SetAsString(const val : String);
+procedure TdwsJSONImmediate.SetAsString(const val : UnicodeString);
 begin
    if FType<>jvtString then
       PPointer(@FData)^:=nil;
@@ -1905,7 +1905,7 @@ end;
 
 // ParseString
 //
-class function TdwsJSONImmediate.ParseString(const json : String) : TdwsJSONImmediate;
+class function TdwsJSONImmediate.ParseString(const json : UnicodeString) : TdwsJSONImmediate;
 var
    locValue : TdwsJSONValue;
 begin
@@ -1928,7 +1928,7 @@ end;
 
 // DoSetItem
 //
-procedure TdwsJSONImmediate.DoSetItem(const name : String; const value : TdwsJSONValue);
+procedure TdwsJSONImmediate.DoSetItem(const name : UnicodeString; const value : TdwsJSONValue);
 begin
    raise EdwsJSONException.CreateFmt('Can''t set member "%s" of immediate value', [name]);
 end;
@@ -1974,7 +1974,7 @@ begin
       if VarIsNumeric(val) then
          AsNumber:=Double(val)
       else if VarIsStr(val) then
-         AsString:=String(val)
+         AsString:=UnicodeString(val)
       else raise EdwsJSONException.CreateFmt('Unsupported VarType in FromVariant (%d)',
                                              [VarType(val)]);
    end;
@@ -2054,7 +2054,7 @@ end;
 
 // WriteName
 //
-procedure TdwsJSONWriter.WriteName(const aName : String);
+procedure TdwsJSONWriter.WriteName(const aName : UnicodeString);
 begin
    case FState of
       wsObject : ;
@@ -2071,7 +2071,7 @@ end;
 
 // WriteString
 //
-procedure TdwsJSONWriter.WriteString(const str : String);
+procedure TdwsJSONWriter.WriteString(const str : UnicodeString);
 begin
    BeforeWriteImmediate;
    WriteJavaScriptString(FStream, str);
@@ -2091,7 +2091,7 @@ end;
 //
 procedure TdwsJSONWriter.WriteInteger(const n : Int64);
 var
-   s : String;
+   s : UnicodeString;
 begin
    BeforeWriteImmediate;
    FastInt64ToStr(n, s);
@@ -2164,7 +2164,7 @@ end;
 
 // WriteStrings
 //
-procedure TdwsJSONWriter.WriteStrings(const str : array of String);
+procedure TdwsJSONWriter.WriteStrings(const str : array of UnicodeString);
 var
    i : Integer;
 begin
@@ -2176,7 +2176,7 @@ end;
 
 // ToString
 //
-function TdwsJSONWriter.ToString : String;
+function TdwsJSONWriter.ToString : UnicodeString;
 begin
    Result:=FStream.ToString;
 end;
@@ -2294,7 +2294,7 @@ end;
 
 // WriteName
 //
-procedure TdwsJSONBeautifiedWriter.WriteName(const aName : String);
+procedure TdwsJSONBeautifiedWriter.WriteName(const aName : UnicodeString);
 begin
    case FState of
       wsObject :

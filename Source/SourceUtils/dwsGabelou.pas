@@ -26,21 +26,21 @@ type
    TGabelouMessage = class(TScriptMessage)
       public
          constructor Create(msgs : TdwsMessageList;
-                            const msgFmt : String; const args : array of const;
+                            const msgFmt : UnicodeString; const args : array of const;
                             const scriptPos : TScriptPos);
          constructor CreateOnSymbolPosList(
                             msgs : TdwsMessageList; symPosList : TSymbolPositionList;
-                            const description : String);
+                            const description : UnicodeString);
 
-         function AsInfo : String; override;
+         function AsInfo : UnicodeString; override;
    end;
 
    IdwsGabelouRule = interface
-      function GetName : String;
-      function GetDescription : String;
+      function GetName : UnicodeString;
+      function GetDescription : UnicodeString;
 
-      property Name : String read GetName;
-      property Description : String read GetDescription;
+      property Name : UnicodeString read GetName;
+      property Description : UnicodeString read GetDescription;
 
       procedure Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList;
                          const restrictToSourceFile : TSourceFile);
@@ -48,11 +48,11 @@ type
 
    TdwsGabelouRule = class abstract (TInterfacedSelfObject, IdwsGabelouRule)
       private
-         FName : String;
-         FDescription : String;
+         FName : UnicodeString;
+         FDescription : UnicodeString;
 
-         function GetName : String;
-         function GetDescription : String;
+         function GetName : UnicodeString;
+         function GetDescription : UnicodeString;
 
       public
          constructor Create; virtual;
@@ -60,8 +60,8 @@ type
          procedure Evaluate(const aProg : IdwsProgram; msgs : TdwsMessageList;
                             const restrictToSourceFile : TSourceFile); virtual; abstract;
 
-         property Name : String read FName write FName;
-         property Description : String read FDescription write FDescription;
+         property Name : UnicodeString read FName write FName;
+         property Description : UnicodeString read FDescription write FDescription;
    end;
 
    TdwsGabelouRuleClass = class of TdwsGabelouRule;
@@ -120,14 +120,14 @@ end;
 
 // GetName
 //
-function TdwsGabelouRule.GetName : String;
+function TdwsGabelouRule.GetName : UnicodeString;
 begin
    Result:=FName;
 end;
 
 // GetDescription
 //
-function TdwsGabelouRule.GetDescription : String;
+function TdwsGabelouRule.GetDescription : UnicodeString;
 begin
    Result:=FDescription;
 end;
@@ -297,7 +297,7 @@ end;
 // Create
 //
 constructor TGabelouMessage.Create(msgs : TdwsMessageList;
-                            const msgFmt : String; const args : array of const;
+                            const msgFmt : UnicodeString; const args : array of const;
                             const scriptPos : TScriptPos);
 begin
    inherited Create(msgs, Format(msgFmt, args), scriptPos);
@@ -307,7 +307,7 @@ end;
 //
 constructor TGabelouMessage.CreateOnSymbolPosList(
                             msgs : TdwsMessageList; symPosList : TSymbolPositionList;
-                            const description : String);
+                            const description : UnicodeString);
 begin
    inherited Create(msgs, Format('"%s", %s', [symPosList.Symbol.Name, description]),
                     symPosList.Items[0].ScriptPos);
@@ -315,7 +315,7 @@ end;
 
 // AsInfo
 //
-function TGabelouMessage.AsInfo: String;
+function TGabelouMessage.AsInfo: UnicodeString;
 begin
    Result:=Format(GAB_HintMessage, [inherited AsInfo]);
 end;

@@ -27,8 +27,8 @@ type
    // provide various metrics on compiled programs
 
    IdwsMetric = interface (IGetSelf)
-      function GetName : String;
-      property Name : String read GetName;
+      function GetName : UnicodeString;
+      property Name : UnicodeString read GetName;
 
       function GetCount : Integer;
       property Count : Integer read GetCount;
@@ -43,7 +43,7 @@ type
 
    TdwsMetric = class abstract (TInterfacedSelfObject, IdwsMetric)
       private
-         FName : String;
+         FName : UnicodeString;
          FValue : Double;
          FValueMin : Double;
          FValueMax : Double;
@@ -53,10 +53,10 @@ type
          function GetValue : Double;
          function GetValueMin : Double;
          function GetValueMax : Double;
-         function GetName : String;
+         function GetName : UnicodeString;
          function GetCount : Integer;
 
-         property Name : String read FName write FName;
+         property Name : UnicodeString read FName write FName;
          property Count : Integer read FCount write FCount;
          property Value : Double read FValue write FValue;
          property ValueMin : Double read FValueMin write FValueMin;
@@ -125,7 +125,7 @@ end;
 
 // GetName
 //
-function TdwsMetric.GetName : String;
+function TdwsMetric.GetName : UnicodeString;
 begin
    Result:=FName;
 end;

@@ -40,14 +40,14 @@ type
          FIsInstruction: Boolean;
          FIsWritable: Boolean;
          FIsIndex: Boolean;
-         FName: String;
+         FName: UnicodeString;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; const Name: String;
+         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; const Name: UnicodeString;
                             BaseExpr: TTypedExpr; IsWrite: Boolean = True; IsIndex: Boolean = False);
          destructor Destroy; override;
 
@@ -68,14 +68,14 @@ type
       private
          FBaseExpr: TTypedExpr;
          FConnectorMember: IConnectorMember;
-         FName: String;
+         FName: UnicodeString;
 
       protected
          function GetSubExpr(i : Integer) : TExprBase; override;
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; const Name: String;
+         constructor Create(Prog: TdwsProgram; const aScriptPos: TScriptPos; const Name: UnicodeString;
                             BaseExpr: TTypedExpr);
          destructor Destroy; override;
 
@@ -93,7 +93,7 @@ type
          FBaseExpr: TTypedExpr;
          FValueExpr: TTypedExpr;
          FConnectorMember: IConnectorMember;
-         FName: String;
+         FName: UnicodeString;
          FScriptPos : TScriptPos;
 
       protected
@@ -101,7 +101,7 @@ type
          function GetSubExprCount : Integer; override;
 
       public
-         constructor Create(Prog: TdwsProgram; const scriptPos: TScriptPos; const Name: String;
+         constructor Create(Prog: TdwsProgram; const scriptPos: TScriptPos; const Name: UnicodeString;
                             BaseExpr, ValueExpr: TTypedExpr);
          destructor Destroy; override;
 
@@ -153,7 +153,7 @@ implementation
 // ------------------
 
 constructor TConnectorCallExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
-  const Name: String; BaseExpr: TTypedExpr; IsWrite: Boolean; IsIndex: Boolean);
+  const Name: UnicodeString; BaseExpr: TTypedExpr; IsWrite: Boolean; IsIndex: Boolean);
 begin
   inherited Create(Prog, aScriptPos, nil);
   FName := Name;
@@ -340,7 +340,7 @@ end;
 // ------------------
 
 constructor TConnectorReadExpr.Create(Prog: TdwsProgram; const aScriptPos: TScriptPos;
-  const Name: String; BaseExpr: TTypedExpr);
+  const Name: UnicodeString; BaseExpr: TTypedExpr);
 begin
   inherited Create(Prog, aScriptPos, nil);
   FName := Name;
@@ -402,7 +402,7 @@ end;
 // ------------------
 
 constructor TConnectorWriteExpr.Create(prog : TdwsProgram; const scriptPos: TScriptPos;
-  const Name: String; BaseExpr, ValueExpr: TTypedExpr);
+  const Name: UnicodeString; BaseExpr, ValueExpr: TTypedExpr);
 begin
    inherited Create;
    FScriptPos:=scriptPos;

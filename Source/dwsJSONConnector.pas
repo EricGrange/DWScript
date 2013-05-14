@@ -63,15 +63,15 @@ type
          FLowValue : TData;
 
       protected
-         function ConnectorCaption : String;
+         function ConnectorCaption : UnicodeString;
          function AcceptsParams(const params : TConnectorParamArray) : Boolean;
          function NeedDirectReference : Boolean;
 
-         function HasMethod(const methodName : String; const params : TConnectorParamArray;
+         function HasMethod(const methodName : UnicodeString; const params : TConnectorParamArray;
                             var typSym : TTypeSymbol) : IConnectorCall;
-         function HasMember(const memberName : String; var typSym : TTypeSymbol;
+         function HasMember(const memberName : UnicodeString; var typSym : TTypeSymbol;
                             isWrite : Boolean) : IConnectorMember;
-         function HasIndex(const propName : String; const params : TConnectorParamArray;
+         function HasIndex(const propName : UnicodeString; const params : TConnectorParamArray;
                            var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
          function HasEnumerator(var typSym: TTypeSymbol) : IConnectorEnumerator;
 
@@ -99,16 +99,16 @@ type
    //
    TdwsJSONIndexCall = class(TInterfacedSelfObject, IUnknown, IConnectorCall)
       private
-         FMethodName : String;
+         FMethodName : UnicodeString;
 
       protected
          function Call(const base : Variant; const args : TConnectorArgs) : TData; virtual; abstract;
          function NeedDirectReference : Boolean;
 
       public
-         constructor Create(const methodName : String);
+         constructor Create(const methodName : UnicodeString);
 
-         property CallMethodName : String read FMethodName write FMethodName;
+         property CallMethodName : UnicodeString read FMethodName write FMethodName;
    end;
 
    // TdwsJSONIndexReadCall
@@ -129,16 +129,16 @@ type
    //
    TdwsJSONConnectorMember = class(TInterfacedSelfObject, IUnknown, IConnectorMember)
       private
-         FMemberName : String;
+         FMemberName : UnicodeString;
 
       protected
          function Read(const base : Variant) : TData;
          procedure Write(const base : Variant; const data : TData);
 
       public
-         constructor Create(const memberName : String);
+         constructor Create(const memberName : UnicodeString);
 
-         property MemberName : String read FMemberName write FMemberName;
+         property MemberName : UnicodeString read FMemberName write FMemberName;
    end;
 
    // TJSONConnectorSymbol
@@ -169,7 +169,7 @@ type
    // TJSONStringifyMethod
    //
    TJSONStringifyMethod = class (TInternalMagicStringFunction)
-      procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+      procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
 
       class procedure StringifyVariant(exec : TdwsExecution; writer : TdwsJSONWriter; const v : Variant); static;
       class procedure StringifySymbol(exec : TdwsExecution; writer : TdwsJSONWriter; sym : TSymbol; const dataPtr : IDataContext); static;
@@ -214,7 +214,7 @@ type
       destructor Destroy; override;
 
       function Value : TdwsJSONValue;
-      function ToString : String; override;
+      function ToString : UnicodeString; override;
 
       class procedure Allocate(wrapped : TdwsJSONValue; var v : Variant); static;
       class procedure AllocateOrGetImmediate(wrapped : TdwsJSONValue; var v : Variant); static;
@@ -222,7 +222,7 @@ type
 
    TBoxedNilJSONValue = class (TInterfacedSelfObject, IBoxedJSONValue)
       function Value : TdwsJSONValue;
-      function ToString : String; override;
+      function ToString : UnicodeString; override;
    end;
 
 var
@@ -251,7 +251,7 @@ end;
 
 // ToString
 //
-function TBoxedJSONValue.ToString : String;
+function TBoxedJSONValue.ToString : UnicodeString;
 begin
    Result:=FValue.ToString;
 end;
@@ -369,7 +369,7 @@ end;
 
 // ConnectorCaption
 //
-function TdwsJSONConnectorType.ConnectorCaption : String;
+function TdwsJSONConnectorType.ConnectorCaption : UnicodeString;
 begin
    Result:='JSON Connector 1.0';
 end;
@@ -390,7 +390,7 @@ end;
 
 // HasMethod
 //
-function TdwsJSONConnectorType.HasMethod(const methodName : String; const params : TConnectorParamArray;
+function TdwsJSONConnectorType.HasMethod(const methodName : UnicodeString; const params : TConnectorParamArray;
                                        var typSym : TTypeSymbol) : IConnectorCall;
 begin
    if UnicodeSameText(methodName, 'typename') then begin
@@ -449,7 +449,7 @@ end;
 
 // HasMember
 //
-function TdwsJSONConnectorType.HasMember(const memberName : String; var typSym : TTypeSymbol;
+function TdwsJSONConnectorType.HasMember(const memberName : UnicodeString; var typSym : TTypeSymbol;
                                          isWrite : Boolean) : IConnectorMember;
 begin
    typSym:=FTable.FindTypeSymbol(SYS_JSONVARIANT, cvMagic);
@@ -458,7 +458,7 @@ end;
 
 // HasIndex
 //
-function TdwsJSONConnectorType.HasIndex(const propName : String; const params : TConnectorParamArray;
+function TdwsJSONConnectorType.HasIndex(const propName : UnicodeString; const params : TConnectorParamArray;
                                       var typSym : TTypeSymbol; isWrite : Boolean) : IConnectorCall;
 begin
    typSym:=FTable.FindTypeSymbol(SYS_JSONVARIANT, cvMagic);
@@ -585,7 +585,7 @@ end;
 
 // Create
 //
-constructor TdwsJSONIndexCall.Create(const methodName : String);
+constructor TdwsJSONIndexCall.Create(const methodName : UnicodeString);
 begin
    inherited Create;
    FMethodName:=methodName;
@@ -655,7 +655,7 @@ begin
          end;
          varUString : begin
             argValue:=TdwsJSONImmediate.Create;
-            argValue.AsString:=String(pVal^.VUString);
+            argValue.AsString:=UnicodeString(pVal^.VUString);
          end;
          varBoolean : begin
             argValue:=TdwsJSONImmediate.Create;
@@ -676,7 +676,7 @@ end;
 
 // Create
 //
-constructor TdwsJSONConnectorMember.Create(const memberName : String);
+constructor TdwsJSONConnectorMember.Create(const memberName : UnicodeString);
 begin
    inherited Create;
    FMemberName:=memberName;
@@ -790,7 +790,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TJSONStringifyMethod.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TJSONStringifyMethod.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
    writer : TdwsJSONWriter;
    stream : TWriteOnlyBlockStream;

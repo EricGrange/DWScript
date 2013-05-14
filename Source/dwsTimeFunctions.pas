@@ -25,8 +25,8 @@ interface
 
 uses
    Classes, SysUtils,
-   dwsUtils,
-   dwsFunctions, dwsExprs, dwsSymbols, dwsXPlatform, dwsExprList, dwsMagicExprs;
+   dwsUtils, dwsStrings, dwsXPlatform,
+   dwsFunctions, dwsExprs, dwsSymbols, dwsExprList, dwsMagicExprs;
 
 type
 
@@ -47,7 +47,7 @@ type
   end;
 
   TDateTimeToStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
   TStrToDateTimeFunc = class(TInternalMagicFloatFunction)
@@ -59,7 +59,7 @@ type
   end;
 
   TDateToStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
   TStrToDateFunc = class(TInternalMagicFloatFunction)
@@ -71,7 +71,7 @@ type
   end;
 
   TTimeToStrFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
   TStrToTimeFunc = class(TInternalMagicFloatFunction)
@@ -83,11 +83,11 @@ type
   end;
 
   TDateToISO8601Func = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
   TDateTimeToISO8601Func = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
   TDayOfWeekFunc = class(TInternalMagicIntFunction)
@@ -99,7 +99,7 @@ type
   end;
 
   TFormatDateTimeFunc = class(TInternalMagicStringFunction)
-    procedure DoEvalAsString(args : TExprBaseList; var Result : String); override;
+    procedure DoEvalAsString(args : TExprBaseList; var Result : UnicodeString); override;
   end;
 
   TIsLeapYearFunc = class(TInternalMagicBoolFunction)
@@ -174,10 +174,8 @@ implementation
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
 
-const // type constants
-  cInteger = 'Integer';
-  cString = 'String';
-  cDateTime = 'Float';
+const
+  cDateTime = SYS_FLOAT;
 
 { TNowFunc }
 
@@ -211,7 +209,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TDateTimeToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TDateTimeToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=DateTimeToStr(args.AsFloat[0]);
 end;
@@ -234,7 +232,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TDateToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TDateToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=DateToStr(args.AsFloat[0]);
 end;
@@ -257,7 +255,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TTimeToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TTimeToStrFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=TimeToStr(args.AsFloat[0]);
 end;
@@ -278,14 +276,14 @@ end;
 
 { TDateToISO8601Func }
 
-procedure TDateToISO8601Func.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TDateToISO8601Func.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=FormatDateTime('yyyy-mm-dd', args.AsFloat[0]);
 end;
 
 { TDateTimeToISO8601Func }
 
-procedure TDateTimeToISO8601Func.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TDateTimeToISO8601Func.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 var
    dt : TDateTime;
 begin
@@ -311,7 +309,7 @@ end;
 
 // DoEvalAsString
 //
-procedure TFormatDateTimeFunc.DoEvalAsString(args : TExprBaseList; var Result : String);
+procedure TFormatDateTimeFunc.DoEvalAsString(args : TExprBaseList; var Result : UnicodeString);
 begin
    Result:=FormatDateTime(args.AsString[0], args.AsFloat[1]);
 end;
@@ -576,29 +574,29 @@ initialization
    RegisterInternalFloatFunction(TUTCDateTimeFunc, 'UTCDateTime', []);
 
    RegisterInternalStringFunction(TDateTimeToStrFunc, 'DateTimeToStr', ['dt', cDateTime]);
-   RegisterInternalFloatFunction(TStrToDateTimeFunc, 'StrToDateTime', ['str', cString]);
-   RegisterInternalFloatFunction(TStrToDateTimeDefFunc, 'StrToDateTimeDef', ['str', cString, 'def', cDateTime]);
+   RegisterInternalFloatFunction(TStrToDateTimeFunc, 'StrToDateTime', ['str', SYS_STRING]);
+   RegisterInternalFloatFunction(TStrToDateTimeDefFunc, 'StrToDateTimeDef', ['str', SYS_STRING, 'def', cDateTime]);
 
    RegisterInternalStringFunction(TDateToStrFunc, 'DateToStr', ['dt', cDateTime]);
-   RegisterInternalFloatFunction(TStrToDateFunc, 'StrToDate', ['str', cString]);
-   RegisterInternalFloatFunction(TStrToDateDefFunc, 'StrToDateDef', ['str', cString, 'def', cDateTime]);
+   RegisterInternalFloatFunction(TStrToDateFunc, 'StrToDate', ['str', SYS_STRING]);
+   RegisterInternalFloatFunction(TStrToDateDefFunc, 'StrToDateDef', ['str', SYS_STRING, 'def', cDateTime]);
 
    RegisterInternalStringFunction(TDateToISO8601Func, 'DateToISO8601', ['dt', cDateTime]);
    RegisterInternalStringFunction(TDateTimeToISO8601Func, 'DateTimeToISO8601', ['dt', cDateTime]);
 
    RegisterInternalStringFunction(TTimeToStrFunc, 'TimeToStr', ['dt', cDateTime]);
-   RegisterInternalFloatFunction(TStrToTimeFunc, 'StrToTime', ['str', cString]);
-   RegisterInternalFloatFunction(TStrToTimeDefFunc, 'StrToTimeDef', ['str', cString, 'def', cDateTime]);
+   RegisterInternalFloatFunction(TStrToTimeFunc, 'StrToTime', ['str', SYS_STRING]);
+   RegisterInternalFloatFunction(TStrToTimeDefFunc, 'StrToTimeDef', ['str', SYS_STRING, 'def', cDateTime]);
 
    RegisterInternalIntFunction(TDayOfWeekFunc, 'DayOfWeek', ['dt', cDateTime]);
    RegisterInternalIntFunction(TDayOfTheWeekFunc, 'DayOfTheWeek', ['dt', cDateTime]);
-   RegisterInternalStringFunction(TFormatDateTimeFunc, 'FormatDateTime', ['frm', cString, 'dt', cDateTime]);
-   RegisterInternalBoolFunction(TIsLeapYearFunc, 'IsLeapYear', ['year', cInteger]);
-   RegisterInternalFloatFunction(TIncMonthFunc, 'IncMonth', ['dt', cDateTime, 'nb', cInteger]);
-   RegisterInternalProcedure(TDecodeDateFunc, 'DecodeDate', ['dt', cDateTime, '@y', cInteger, '@m', cInteger, '@d', cInteger]);
-   RegisterInternalFloatFunction(TEncodeDateFunc, 'EncodeDate', ['y', cInteger, 'm', cInteger, 'd', cInteger]);
-   RegisterInternalProcedure(TDecodeTimeFunc, 'DecodeTime', ['dt', cDateTime, '@h', cInteger, '@m', cInteger, '@s', cInteger, '@ms', cInteger]);
-   RegisterInternalFloatFunction(TEncodeTimeFunc, 'EncodeTime', ['h', cInteger, 'm', cInteger, 's', cInteger, 'ms', cInteger]);
+   RegisterInternalStringFunction(TFormatDateTimeFunc, 'FormatDateTime', ['frm', SYS_STRING, 'dt', cDateTime]);
+   RegisterInternalBoolFunction(TIsLeapYearFunc, 'IsLeapYear', ['year', SYS_INTEGER]);
+   RegisterInternalFloatFunction(TIncMonthFunc, 'IncMonth', ['dt', cDateTime, 'nb', SYS_INTEGER]);
+   RegisterInternalProcedure(TDecodeDateFunc, 'DecodeDate', ['dt', cDateTime, '@y', SYS_INTEGER, '@m', SYS_INTEGER, '@d', SYS_INTEGER]);
+   RegisterInternalFloatFunction(TEncodeDateFunc, 'EncodeDate', ['y', SYS_INTEGER, 'm', SYS_INTEGER, 'd', SYS_INTEGER]);
+   RegisterInternalProcedure(TDecodeTimeFunc, 'DecodeTime', ['dt', cDateTime, '@h', SYS_INTEGER, '@m', SYS_INTEGER, '@s', SYS_INTEGER, '@ms', SYS_INTEGER]);
+   RegisterInternalFloatFunction(TEncodeTimeFunc, 'EncodeTime', ['h', SYS_INTEGER, 'm', SYS_INTEGER, 's', SYS_INTEGER, 'ms', SYS_INTEGER]);
 
    RegisterInternalFloatFunction(TFirstDayOfYearFunc, 'FirstDayOfYear', ['dt', cDateTime]);
    RegisterInternalFloatFunction(TFirstDayOfNextYearFunc, 'FirstDayOfNextYear', ['dt', cDateTime]);

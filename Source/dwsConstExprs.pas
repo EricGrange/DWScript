@@ -121,11 +121,11 @@ type
    //
    TConstStringExpr = class(TUnifiedConstExpr)
       private
-         FValue : String;
+         FValue : UnicodeString;
       public
          constructor Create(Prog: TdwsProgram; Typ: TTypeSymbol; const Value: Variant); override;
-         procedure EvalAsString(exec : TdwsExecution; var Result : String); override;
-         property Value : String read FValue write FValue;
+         procedure EvalAsString(exec : TdwsExecution; var Result : UnicodeString); override;
+         property Value : UnicodeString read FValue write FValue;
    end;
 
    TStandardIntegersConstIntExprArray = array [-1..2] of TUnifiedConstExpr;
@@ -514,7 +514,7 @@ end;
 
 // EvalAsString
 //
-procedure TConstStringExpr.EvalAsString(exec : TdwsExecution; var Result : String);
+procedure TConstStringExpr.EvalAsString(exec : TdwsExecution; var Result : UnicodeString);
 {$ifdef PUREPASCAL}
 begin
    Result:=FValue;
@@ -553,7 +553,7 @@ end;
 //
 procedure TUnifiedConstList.Precharge(prog : TdwsMainProgram; systemTable : TSystemSymbolTable);
 const
-   cEmptyString : String = '';
+   cEmptyString : UnicodeString = '';
    cZeroFloat : Double = 0;
    cNilIntf : IUnknown = nil;
 var
@@ -587,9 +587,9 @@ begin
          if rawResult=0 then begin
             case vd1.VType of
                {$ifdef FPC}
-               varString : rawResult:=CompareStr(String(vd1.VString), String(vd2.VString));
+               varString : rawResult:=CompareStr(UnicodeString(vd1.VString), UnicodeString(vd2.VString));
                {$else}
-               varUString : rawResult:=CompareStr(String(vd1.VUString), String(vd2.VUString));
+               varUString : rawResult:=CompareStr(UnicodeString(vd1.VUString), UnicodeString(vd2.VUString));
                {$endif}
                varInt64 : rawResult:=vd1.VInt64-vd2.VInt64;
                varBoolean : rawResult:=Integer(vd1.VBoolean)-Integer(vd2.VBoolean);

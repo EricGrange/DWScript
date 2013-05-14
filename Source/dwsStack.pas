@@ -79,8 +79,8 @@ type
          procedure WriteIntValue_BaseRelative(destAddr: Integer; const Value: Int64); inline;
          procedure WriteFloatValue(destAddr: Integer; const Value: Double); inline;
          procedure WriteFloatValue_BaseRelative(destAddr: Integer; const Value: Double); inline;
-         procedure WriteStrValue(destAddr: Integer; const Value: String); inline;
-         procedure WriteStrValue_BaseRelative(destAddr: Integer; const Value: String); inline;
+         procedure WriteStrValue(destAddr: Integer; const Value: UnicodeString); inline;
+         procedure WriteStrValue_BaseRelative(destAddr: Integer; const Value: UnicodeString); inline;
          procedure WriteBoolValue(destAddr: Integer; const Value: Boolean); inline;
          procedure WriteInterfaceValue(destAddr: Integer; const intf: IUnknown);
 
@@ -92,7 +92,7 @@ type
          function  ReadIntAsFloatValue_BaseRelative(SourceAddr: Integer) : Double; inline;
          function  ReadFloatValue(SourceAddr: Integer) : Double; inline;
          function  ReadFloatValue_BaseRelative(SourceAddr: Integer) : Double; inline;
-         procedure ReadStrValue(SourceAddr: Integer; var Result : String);
+         procedure ReadStrValue(SourceAddr: Integer; var Result : UnicodeString);
          function  ReadBoolValue(SourceAddr: Integer): Boolean;
          procedure ReadInterfaceValue(SourceAddr: Integer; var Result : IUnknown);
 
@@ -106,7 +106,7 @@ type
          function  CreateDataContext(const data : TData; addr : Integer) : TDataContext; inline;
 
          procedure IncIntValue_BaseRelative(destAddr : Integer; const value : Int64); inline;
-         procedure AppendStringValue_BaseRelative(destAddr : Integer; const value : String);
+         procedure AppendStringValue_BaseRelative(destAddr : Integer; const value : UnicodeString);
 
          // D2010 compiler crashes when inlining those
          procedure PushBp(Level, Bp: Integer); {$IFDEF DELPHI_XE_PLUS} inline; {$ENDIF}
@@ -404,17 +404,17 @@ end;
 
 // ReadStrValue
 //
-procedure TStackMixIn.ReadStrValue(SourceAddr: Integer; var Result : String);
+procedure TStackMixIn.ReadStrValue(SourceAddr: Integer; var Result : UnicodeString);
 var
    varData : PVarData;
 begin
    varData:=@Data[SourceAddr];
    {$ifdef FPC}
    if varData.VType=varString then
-      Result:=String(varData.VString)
+      Result:=UnicodeString(varData.VString)
    {$else}
    if varData.VType=varUString then
-      Result:=String(varData.VUString)
+      Result:=UnicodeString(varData.VUString)
    {$endif}
    else Result:=PVariant(varData)^;
 end;
@@ -521,17 +521,17 @@ end;
 
 // AppendStringValue_BaseRelative
 //
-procedure TStackMixIn.AppendStringValue_BaseRelative(destAddr : Integer; const value : String);
+procedure TStackMixIn.AppendStringValue_BaseRelative(destAddr : Integer; const value : UnicodeString);
 var
    varData : PVarData;
 begin
    varData:=@FBaseData[destAddr];
    {$ifdef FPC}
    Assert(varData.VType=varString);
-   String(varData.VString):=String(varData.VString)+value
+   UnicodeString(varData.VString):=UnicodeString(varData.VString)+value
    {$else}
    Assert(varData.VType=varUString);
-   String(varData.VUString):=String(varData.VUString)+value
+   UnicodeString(varData.VUString):=UnicodeString(varData.VUString)+value
    {$endif}
 end;
 
@@ -604,34 +604,34 @@ end;
 
 // WriteStrValue
 //
-procedure TStackMixIn.WriteStrValue(DestAddr: Integer; const Value: String);
+procedure TStackMixIn.WriteStrValue(DestAddr: Integer; const Value: UnicodeString);
 var
    varData : PVarData;
 begin
    varData:=@Data[DestAddr];
    {$ifdef FPC}
    if varData.VType=varString then
-      String(varData.VString):=Value
+      UnicodeString(varData.VString):=Value
    {$else}
    if varData.VType=varUString then
-      String(varData.VUString):=Value
+      UnicodeString(varData.VUString):=Value
     {$endif}
    else PVariant(varData)^:=Value;
 end;
 
 // WriteStrValue_BaseRelative
 //
-procedure TStackMixIn.WriteStrValue_BaseRelative(DestAddr: Integer; const Value: String);
+procedure TStackMixIn.WriteStrValue_BaseRelative(DestAddr: Integer; const Value: UnicodeString);
 var
    varData : PVarData;
 begin
    varData:=@FBaseData[DestAddr];
    {$ifdef FPC}
    if varData.VType=varString then
-      String(varData.VString):=Value
+      UnicodeString(varData.VString):=Value
    {$else}
    if varData.VType=varUString then
-      String(varData.VUString):=Value
+      UnicodeString(varData.VUString):=Value
     {$endif}
    else PVariant(varData)^:=Value;
 end;
@@ -669,15 +669,15 @@ begin
    varData:=@Data[DestAddr];
    {$ifdef FPC}
    if varData.VType=varString then
-      if index>Length(String(varData.VString)) then
+      if index>Length(UnicodeString(varData.VString)) then
          Exit(False)
-      else String(varData.VString)[index]:=c
+      else UnicodeString(varData.VString)[index]:=c
    else PVariant(varData)^[index]:=Char(c);
    {$else}
    if varData.VType=varUString then
-      if index>Length(String(varData.VUString)) then
+      if index>Length(UnicodeString(varData.VUString)) then
          Exit(False)
-      else String(varData.VUString)[index]:=c
+      else UnicodeString(varData.VUString)[index]:=c
    else PVariant(varData)^[index]:=c;
    {$endif}
    Result:=True;

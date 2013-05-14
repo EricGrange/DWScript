@@ -2665,10 +2665,9 @@ begin
 
   Breakpointables := TdwsBreakpointableLines.Create( FProgram );
   try
-    I := Breakpointables.IndexOfSource( AUnitName );
-    if I >= 0 then
+    Lines := Breakpointables.SourceLines[ AUnitName ];
+    if Lines <> nil then
       begin
-      Lines := Breakpointables.SourceLines[I];
       For I := 1 to Lines.Size-1 do
         if Lines[I] then
           AppendLineNum( I );

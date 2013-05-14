@@ -70,8 +70,8 @@ type
          procedure SetAsBoolean(const x : Integer; const value : Boolean);
          function GetAsFloat(const x : Integer) : Double; inline;
          procedure SetAsFloat(const x : Integer; const value : Double);
-         function GetAsString(const x : Integer) : String; inline;
-         procedure SetAsString(const x : Integer; const value : String);
+         function GetAsString(const x : Integer) : UnicodeString; inline;
+         procedure SetAsString(const x : Integer; const value : UnicodeString);
          function GetAsDataString(const x : Integer) : RawByteString;
 
       public
@@ -84,7 +84,7 @@ type
          property AsInteger[const x : Integer] : Int64 read GetAsInteger write SetAsInteger;
          property AsBoolean[const x : Integer] : Boolean read GetAsBoolean write SetAsBoolean;
          property AsFloat[const x : Integer] : Double read GetAsFloat write SetAsFloat;
-         property AsString[const x : Integer] : String read GetAsString write SetAsString;
+         property AsString[const x : Integer] : UnicodeString read GetAsString write SetAsString;
          property AsDataString[const x : Integer] : RawByteString read GetAsDataString;
    end;
 
@@ -227,14 +227,14 @@ end;
 
 // GetAsString
 //
-function TExprBaseListExec.GetAsString(const x : Integer) : String;
+function TExprBaseListExec.GetAsString(const x : Integer) : UnicodeString;
 begin
    ExprBase[x].EvalAsString(Exec, Result);
 end;
 
 // SetAsString
 //
-procedure TExprBaseListExec.SetAsString(const x : Integer; const value : String);
+procedure TExprBaseListExec.SetAsString(const x : Integer; const value : UnicodeString);
 begin
    ExprBase[x].AssignValueAsString(Exec, value);
 end;

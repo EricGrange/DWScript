@@ -92,7 +92,7 @@ type
       private
          FIntegers : array of Int64;
          FFloats : array of Extended;
-         FStrings : array of String;
+         FStrings : array of UnicodeString;
 
          function AddVarRec : PVarRec;
 
@@ -106,7 +106,7 @@ type
          procedure AddBoolean(const b : Boolean);
          procedure AddInteger(const i : Int64);
          procedure AddFloat(const f : Double);
-         procedure AddString(const s : String);
+         procedure AddString(const s : UnicodeString);
 
          procedure Initialize;
    end;
@@ -357,11 +357,11 @@ type
 
    TSimpleRefCountedObjectHash = class (TSimpleObjectHash<TRefCountedObject>);
 
-   TSimpleNameObjectHash<T{$IFNDEF FPC}: TRefCountedObject{$ENDIF}> = class
+   TSimpleNameObjectHash<T{$IFNDEF FPC}: class{$ENDIF}> = class
       type
          TNameObjectHashBucket = record
             HashCode : Cardinal;
-            Name : String;
+            Name : UnicodeString;
             Obj : T;
          end;
          TNameObjectHashBuckets = array of TNameObjectHashBucket;
@@ -377,13 +377,19 @@ type
          function SameItem(const item1, item2 : TNameObjectHashBucket) : Boolean;
          function GetItemHashCode(const item1 : TNameObjectHashBucket) : Integer;
 
-         function GetObjects(const aName : String) : T;
-         procedure SetObjects(const aName : String; obj : T);
+         function GetObjects(const aName : UnicodeString) : T;
+         procedure SetObjects(const aName : UnicodeString; obj : T);
 
       public
-         function AddObject(const aName : String; aObj : T; replace : Boolean = False) : Boolean;
+         function AddObject(const aName : UnicodeString; aObj : T; replace : Boolean = False) : Boolean;
 
-         property Objects[const aName : String] : T read GetObjects write SetObjects; default;
+         procedure Clean;
+         procedure Clear;
+
+         property Objects[const aName : UnicodeString] : T read GetObjects write SetObjects; default;
+         property Count : Integer read FCount;
+
+         procedure Enumerate(destinationList : TStrings);
    end;
 
    TObjectObjectHashBucket<TKey, TValue{$IFNDEF FPC}: TRefCountedObject{$ENDIF}> = record
@@ -395,7 +401,7 @@ type
       type
          TObjectObjectHashBucket = record
             HashCode : Cardinal;
-            Name : String;
+            Name : UnicodeString;
             Key : TKey;
             Value : TValue;
          end;
@@ -482,11 +488,7 @@ type
          procedure WriteInt32(const i : Integer);
          procedure WriteDWord(const dw : DWORD);
 
-         {$ifdef FPC}
-         procedure WriteString(const utf8String : String); overload;
-         {$endif}
-
-         // must be strictly an utf16 String
+         // must be strictly an utf16 UnicodeString
          procedure WriteString(const utf16String : UnicodeString); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos : Integer); overload;
          procedure WriteSubString(const utf16String : UnicodeString; startPos, length : Integer); overload;
@@ -494,7 +496,7 @@ type
          procedure WriteChar(utf16Char : WideChar); inline;
          procedure WriteDigits(value : Int64; digits : Integer);
 
-         // assumes data is an utf16 String, spits out utf8 in FPC, utf16 in Delphi
+         // assumes data is an utf16 UnicodeString, spits out utf8 in FPC, utf16 in Delphi
          function ToString : String; override;
          function ToBytes : TBytes;
 
@@ -509,19 +511,19 @@ type
       {$ifdef FPC}
       function DoCompareText(const s1,s2 : string) : PtrInt; override;
       {$else}
-      function CompareStrings(const S1, S2: String): Integer; override;
+      function CompareStrings(const S1, S2: UnicodeString): Integer; override;
       {$endif}
-      function IndexOfName(const name : String): Integer; override;
+      function IndexOfName(const name : UnicodeString): Integer; override;
    end;
 
    TFastCompareTextList = class (TStringList)
       {$ifdef FPC}
       function DoCompareText(const s1,s2 : string) : PtrInt; override;
       {$else}
-      function CompareStrings(const S1, S2: String): Integer; override;
+      function CompareStrings(const S1, S2: UnicodeString): Integer; override;
       {$endif}
-      function FindName(const name : String; var index : Integer) : Boolean;
-      function IndexOfName(const name : String): Integer; override;
+      function FindName(const name : UnicodeString; var index : Integer) : Boolean;
+      function IndexOfName(const name : UnicodeString): Integer; override;
    end;
 
    TClassCloneConstructor<T: class, constructor> = record
@@ -540,43 +542,43 @@ type
 const
    cMSecToDateTime : Double = 1/(24*3600*1000);
 
-procedure UnifyAssignString(const fromStr : String; var toStr : String);
-function  UnifiedString(const fromStr : String) : String; inline;
+procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString);
+function  UnifiedString(const fromStr : UnicodeString) : UnicodeString; inline;
 procedure TidyStringsUnifier;
 
 function UnicodeCompareLen(p1, p2 : PChar; n : Integer) : Integer;
-function UnicodeCompareText(const s1, s2 : String) : Integer;
-function UnicodeSameText(const s1, s2 : String) : Boolean;
+function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
+function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
 
-function StrNonNilLength(const aString : String) : Integer; inline;
+function StrNonNilLength(const aString : UnicodeString) : Integer; inline;
 
-function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
-function StrBeginsWith(const aStr, aBegin : String) : Boolean;
+function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
+function StrBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 function StrBeginsWithA(const aStr, aBegin : RawByteString) : Boolean;
-function StrEndsWith(const aStr, aEnd : String) : Boolean;
-function StrContains(const aStr, aSubStr : String) : Boolean; overload;
-function StrContains(const aStr : String; aChar : Char) : Boolean; overload;
+function StrEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
+function StrContains(const aStr, aSubStr : UnicodeString) : Boolean; overload;
+function StrContains(const aStr : UnicodeString; aChar : Char) : Boolean; overload;
 
-function StrDeleteLeft(const aStr : String; n : Integer) : String;
-function StrDeleteRight(const aStr : String; n : Integer) : String;
+function StrDeleteLeft(const aStr : UnicodeString; n : Integer) : UnicodeString;
+function StrDeleteRight(const aStr : UnicodeString; n : Integer) : UnicodeString;
 
-function StrAfterChar(const aStr : String; aChar : Char) : String;
-function StrBeforeChar(const aStr : String; aChar : Char) : String;
+function StrAfterChar(const aStr : UnicodeString; aChar : Char) : UnicodeString;
+function StrBeforeChar(const aStr : UnicodeString; aChar : Char) : UnicodeString;
 
-function StrCountChar(const aStr : String; c : Char) : Integer;
+function StrCountChar(const aStr : UnicodeString; c : Char) : Integer;
 
 function Min(a, b : Integer) : Integer; inline;
 
 function WhichPowerOfTwo(const v : Int64) : Integer;
 
-function SimpleStringHash(const s : String) : Cardinal;
+function SimpleStringHash(const s : UnicodeString) : Cardinal;
 
-function RawByteStringToScriptString(const s : RawByteString) : String;
-function ScriptStringToRawByteString(const s : String) : RawByteString;
+function RawByteStringToScriptString(const s : RawByteString) : UnicodeString;
+function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString;
 
-procedure FastInt64ToStr(const val : Int64; var s : String);
+procedure FastInt64ToStr(const val : Int64; var s : UnicodeString);
 
-procedure VariantToString(const v : Variant; var s : String);
+procedure VariantToString(const v : Variant; var s : UnicodeString);
 
 // ------------------------------------------------------------------
 // ------------------------------------------------------------------
@@ -588,7 +590,7 @@ implementation
 
 // SimpleStringHash
 //
-function SimpleStringHash(const s : String) : Cardinal;
+function SimpleStringHash(const s : UnicodeString) : Cardinal;
 var
    i : Integer;
 begin
@@ -599,7 +601,7 @@ end;
 
 // ScriptStringToRawByteString
 //
-function ScriptStringToRawByteString(const s : String) : RawByteString;
+function ScriptStringToRawByteString(const s : UnicodeString) : RawByteString;
 var
    i, n : Integer;
    pSrc : PChar;
@@ -690,7 +692,7 @@ end;
 {$ELSE}
   {$UNDEF RANGEON}
 {$ENDIF}
-procedure FastInt64ToStr(const val : Int64; var s : String);
+procedure FastInt64ToStr(const val : Int64; var s : UnicodeString);
 var
    buf : array [0..21] of Char;
    n, nd : Integer;
@@ -738,14 +740,14 @@ end;
 
 // VariantToString
 //
-procedure VariantToString(const v : Variant; var s : String);
+procedure VariantToString(const v : Variant; var s : UnicodeString);
 
-   function DispatchAsString(const disp : Pointer) : String;
+   function DispatchAsString(const disp : Pointer) : UnicodeString;
    begin
       Result:=Format('IDispatch (%p)', [disp]);
    end;
 
-   function UnknownAsString(const unknown : IUnknown) : String;
+   function UnknownAsString(const unknown : IUnknown) : UnicodeString;
    var
       intf : IGetSelf;
    begin
@@ -763,10 +765,10 @@ begin
    case varData^.VType of
       {$ifdef FPC}
       varString :
-         s:=String(varData^.VString);
+         s:=UnicodeString(varData^.VString);
       {$else}
       varUString :
-         s:=String(varData^.VUString);
+         s:=UnicodeString(varData^.VUString);
       {$endif}
       varInt64 :
          FastInt64ToStr(varData^.VInt64, s);
@@ -789,7 +791,7 @@ end;
 
 // RawByteStringToScriptString
 //
-function RawByteStringToScriptString(const s : RawByteString) : String;
+function RawByteStringToScriptString(const s : RawByteString) : UnicodeString;
 var
    i, n : Integer;
    pSrc : PByteArray;
@@ -805,7 +807,7 @@ begin
 end;
 
 // ------------------
-// ------------------ String Unifier ------------------
+// ------------------ UnicodeString Unifier ------------------
 // ------------------
 
 type
@@ -837,9 +839,9 @@ var
 // CompareStrings
 //
 {$ifndef FPC}
-function TFastCompareStringList.CompareStrings(const S1, S2: String): Integer;
+function TFastCompareStringList.CompareStrings(const S1, S2: UnicodeString): Integer;
 {$else}
-function TFastCompareStringList.DoCompareText(const S1, S2: String): Integer;
+function TFastCompareStringList.DoCompareText(const S1, S2: UnicodeString): Integer;
 {$endif}
 begin
    Result:=CompareStr(S1, S2);
@@ -847,7 +849,7 @@ end;
 
 // IndexOfName
 //
-function TFastCompareStringList.IndexOfName(const name : String): Integer;
+function TFastCompareStringList.IndexOfName(const name : UnicodeString): Integer;
 var
    n, nc : Integer;
    nvs : Char;
@@ -907,7 +909,7 @@ end;
 
 // UnifyAssignString
 //
-procedure UnifyAssignString(const fromStr : String; var toStr : String);
+procedure UnifyAssignString(const fromStr : UnicodeString; var toStr : UnicodeString);
 var
    i : Integer;
    sl : TUnifierStringList;
@@ -926,7 +928,7 @@ end;
 
 // UnifiedString
 //
-function UnifiedString(const fromStr : String) : String;
+function UnifiedString(const fromStr : UnicodeString) : UnicodeString;
 begin
    UnifyAssignString(fromStr, Result);
 end;
@@ -979,7 +981,7 @@ end;
 // UnicodeCompareText
 //
 {$R-}
-function UnicodeCompareText(const s1, s2 : String) : Integer;
+function UnicodeCompareText(const s1, s2 : UnicodeString) : Integer;
 var
    n1, n2 : Integer;
    ps1, ps2 : PChar;
@@ -1007,21 +1009,21 @@ end;
 
 // UnicodeSameText
 //
-function UnicodeSameText(const s1, s2 : String) : Boolean;
+function UnicodeSameText(const s1, s2 : UnicodeString) : Boolean;
 begin
    Result:=(Length(s1)=Length(s2)) and (UnicodeCompareText(s1, s2)=0)
 end;
 
 // StrNonNilLength
 //
-function StrNonNilLength(const aString : String) : Integer;
+function StrNonNilLength(const aString : UnicodeString) : Integer;
 begin
    Result:=PInteger(NativeUInt(Pointer(aString))-4)^;
 end;
 
 // StrIBeginsWith
 //
-function StrIBeginsWith(const aStr, aBegin : String) : Boolean;
+function StrIBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 var
    n1, n2 : Integer;
 begin
@@ -1034,7 +1036,7 @@ end;
 
 // StrBeginsWith
 //
-function StrBeginsWith(const aStr, aBegin : String) : Boolean;
+function StrBeginsWith(const aStr, aBegin : UnicodeString) : Boolean;
 var
    n1, n2 : Integer;
 begin
@@ -1060,7 +1062,7 @@ end;
 
 // StrEndsWith
 //
-function StrEndsWith(const aStr, aEnd : String) : Boolean;
+function StrEndsWith(const aStr, aEnd : UnicodeString) : Boolean;
 var
    n1, n2 : Integer;
 begin
@@ -1073,7 +1075,7 @@ end;
 
 // StrContains (sub string)
 //
-function StrContains(const aStr, aSubStr : String) : Boolean;
+function StrContains(const aStr, aSubStr : UnicodeString) : Boolean;
 begin
    if aSubStr='' then
       Result:=True
@@ -1084,7 +1086,7 @@ end;
 
 // StrContains (sub char)
 //
-function StrContains(const aStr : String; aChar : Char) : Boolean;
+function StrContains(const aStr : UnicodeString; aChar : Char) : Boolean;
 var
    i : Integer;
 begin
@@ -1095,21 +1097,21 @@ end;
 
 // StrDeleteLeft
 //
-function StrDeleteLeft(const aStr : String; n : Integer) : String;
+function StrDeleteLeft(const aStr : UnicodeString; n : Integer) : UnicodeString;
 begin
    Result:=Copy(aStr, n+1);
 end;
 
 // StrDeleteRight
 //
-function StrDeleteRight(const aStr : String; n : Integer) : String;
+function StrDeleteRight(const aStr : UnicodeString; n : Integer) : UnicodeString;
 begin
    Result:=Copy(aStr, 1, Length(aStr)-n);
 end;
 
 // StrAfterChar
 //
-function StrAfterChar(const aStr : String; aChar : Char) : String;
+function StrAfterChar(const aStr : UnicodeString; aChar : Char) : UnicodeString;
 var
    p : Integer;
 begin
@@ -1121,7 +1123,7 @@ end;
 
 // StrBeforeChar
 //
-function StrBeforeChar(const aStr : String; aChar : Char) : String;
+function StrBeforeChar(const aStr : UnicodeString; aChar : Char) : UnicodeString;
 var
    p : Integer;
 begin
@@ -1133,7 +1135,7 @@ end;
 
 // StrCountChar
 //
-function StrCountChar(const aStr : String; c : Char) : Integer;
+function StrCountChar(const aStr : UnicodeString; c : Char) : Integer;
 var
    i : Integer;
 begin
@@ -1175,9 +1177,9 @@ end;
 // CompareStrings
 //
 {$ifndef FPC}
-function TFastCompareTextList.CompareStrings(const S1, S2: String): Integer;
+function TFastCompareTextList.CompareStrings(const S1, S2: UnicodeString): Integer;
 {$else}
-function TFastCompareTextList.DoCompareText(const S1, S2: String): Integer;
+function TFastCompareTextList.DoCompareText(const S1, S2: UnicodeString): Integer;
 {$endif}
 begin
    Result:=UnicodeCompareText(s1, s2);
@@ -1185,10 +1187,10 @@ end;
 
 // FindName
 //
-function TFastCompareTextList.FindName(const name : String; var index : Integer) : Boolean;
+function TFastCompareTextList.FindName(const name : UnicodeString; var index : Integer) : Boolean;
 var
    lo, hi, mid, cmp, n, nc : Integer;
-   initial : String;
+   initial : UnicodeString;
    list : TStringListList;
 begin
    Result:=False;
@@ -1223,7 +1225,7 @@ end;
 
 // IndexOfName
 //
-function TFastCompareTextList.IndexOfName(const name : String): Integer;
+function TFastCompareTextList.IndexOfName(const name : UnicodeString): Integer;
 var
    n, nc : Integer;
    nvs : Char;
@@ -1342,7 +1344,7 @@ end;
 
 // AddString
 //
-procedure TVarRecArrayContainer.AddString(const s : String);
+procedure TVarRecArrayContainer.AddString(const s : UnicodeString);
 var
    n : Integer;
 begin
@@ -2094,7 +2096,7 @@ end;
 {$ifdef FPC}
 // WriteString
 //
-procedure TWriteOnlyBlockStream.WriteString(const utf8String : String); overload;
+procedure TWriteOnlyBlockStream.WriteString(const utf8String : UnicodeString); overload;
 begin
    WriteString(UTF8Decode(utf8String));
 end;
@@ -2148,7 +2150,7 @@ end;
 
 // ToString
 //
-function TWriteOnlyBlockStream.ToString : String;
+function TWriteOnlyBlockStream.ToString : UnicodeString;
 {$ifdef FPC}
 var
    uniBuf : UnicodeString;
@@ -2674,7 +2676,7 @@ end;
 
 // GetObjects
 //
-function TSimpleNameObjectHash<T>.GetObjects(const aName : String) : T;
+function TSimpleNameObjectHash<T>.GetObjects(const aName : UnicodeString) : T;
 var
    h : Cardinal;
    i : Integer;
@@ -2708,14 +2710,14 @@ end;
 
 // SetObjects
 //
-procedure TSimpleNameObjectHash<T>.SetObjects(const aName : String; obj : T);
+procedure TSimpleNameObjectHash<T>.SetObjects(const aName : UnicodeString; obj : T);
 begin
    AddObject(aName, obj, True);
 end;
 
 // AddObject
 //
-function TSimpleNameObjectHash<T>.AddObject(const aName : String; aObj : T;
+function TSimpleNameObjectHash<T>.AddObject(const aName : UnicodeString; aObj : T;
                                             replace : Boolean = False) : Boolean;
 var
    i : Integer;
@@ -2746,6 +2748,40 @@ begin
    end;
    Inc(FCount);
    Result:=True;
+end;
+
+// Clean
+//
+procedure TSimpleNameObjectHash<T>.Clean;
+var
+   i : Integer;
+begin
+   for i:=0 to FCapacity-1 do begin
+      if FBuckets[i].HashCode<>0 then
+         FreeAndNil(FBuckets[i].Obj);
+   end;
+   Clear;
+end;
+
+// Clear
+//
+procedure TSimpleNameObjectHash<T>.Clear;
+begin
+   SetLength(FBuckets, 0);
+   FCount:=0;
+   FCapacity:=0;
+end;
+
+// Enumerate
+//
+procedure TSimpleNameObjectHash<T>.Enumerate(destinationList : TStrings);
+var
+   i : Integer;
+begin
+   for i:=0 to FCapacity-1 do begin
+      if FBuckets[i].HashCode<>0 then
+         destinationList.AddObject(FBuckets[i].Name, FBuckets[i].Obj);
+   end;
 end;
 
 // ------------------
