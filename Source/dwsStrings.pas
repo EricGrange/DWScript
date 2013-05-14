@@ -590,6 +590,9 @@ const
   UNT_DatatypeNotSpecified = 'DataType not specified for property "%s" of class "%s"';
   UNT_AutoInstantiateWithoutClass = 'AutoInstantiate is true but DataType "%s" is not a class';
 
+  UNT_InterfaceAlreadyDefined = 'Interface already defined';
+  UNT_InterfaceNameAlreadyDefined = 'The interface "%s" is already used for another symbol %s';
+
   UNT_ClassAlreadyDefined = 'Class already defined';
   UNT_ClassNameAlreadyDefined = 'The class "%s" is already used for another symbol %s';
   UNT_SuperClassUnknwon = 'Superclass "%s" not found';

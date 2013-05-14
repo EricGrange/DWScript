@@ -69,7 +69,6 @@ type
          procedure MultiRunProtection;
          procedure MultipleHostExceptions;
          procedure OverloadOverrideIndwsUnit;
-
    end;
 
    ETestException = class (Exception);

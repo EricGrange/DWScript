@@ -3598,8 +3598,52 @@ end;
 // DoGenerate
 //
 function TdwsInterface.DoGenerate(Table: TSymbolTable; ParentSym: TSymbol = nil): TSymbol;
+var
+   x : Integer;
+   sym : TSymbol;
+   intfSym, ancestorSym : TInterfaceSymbol;
 begin
-   Result:=nil; // TODO
+   FIsGenerating := True;
+
+   intfSym := nil;
+   sym := GetUnit.Table.FindSymbol(Name, cvMagic);
+
+   if Assigned(sym) then begin
+      if sym is TInterfaceSymbol then begin
+         intfSym:=TInterfaceSymbol(sym);
+         if not intfSym.IsForwarded then
+            raise Exception.Create(UNT_InterfaceAlreadyDefined);
+      end else begin
+         raise Exception.CreateFmt(UNT_InterfaceNameAlreadyDefined,
+                                  [Name, sym.Caption]);
+      end;
+   end;
+
+   if not Assigned(intfSym) then
+      intfSym := TInterfaceSymbol.Create(Name, nil);
+
+   try
+      ancestorSym := (GetUnit.GetSymbol(Table, FAncestor) as TInterfaceSymbol);
+      if ancestorSym <> nil then
+         intfSym.InheritFrom(ancestorSym);
+
+      for x := 0 to FMethods.Count - 1 do
+         intfSym.AddMethod(TMethodSymbol(TdwsMethod(FMethods.Items[x]).Generate(Table, intfSym)));
+
+      for x := 0 to FProperties.Count - 1 do
+         intfSym.AddProperty(TPropertySymbol(TdwsProperty(FProperties.Items[x]).Generate(Table, intfSym)));
+
+      GetUnit.Table.AddSymbol(intfSym);
+   except
+      if not intfSym.IsForwarded then
+         intfSym.Free;
+      raise;
+   end;
+
+   if intfSym.IsForwarded then
+      intfSym.ClearIsForwarded;
+
+   Result:=intfSym;
 end;
 
 // GetDisplayName

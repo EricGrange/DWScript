@@ -611,11 +611,22 @@ end;
 //
 function TdwsRTTIExposer.ExposeRTTIInterface(intf : TRttiInterfaceType;
                                       const options : TdwsRTTIExposerOptions) : TdwsInterface;
+var
+   rttiMeth : TRttiMethod;
+   rttiParam : TRttiParameter;
+   meth : TdwsMethod;
 begin
    Result:=Interfaces.Add;
    Result.Name:=dwsPublished.NameOf(intf);
 
-   // todo
+   for rttiMeth in intf.GetMethods do begin
+      meth:=Result.Methods.Add;
+      meth.Name:=rttiMeth.Name;
+      meth.ResultType:=RTTITypeToScriptType(rttiMeth.ReturnType);
+
+      for rttiParam in rttiMeth.GetParameters do
+         ExposeRTTIParameter(rttiParam, meth.Parameters, options);
+   end;
 end;
 
 // DoStandardCleanUp
