@@ -105,6 +105,9 @@ function BeginsWith( const AFragment, AStr : string; AMatchCase : boolean = Fals
 
 function DebuggerEvaluate( ADebugger : TDwsDebugger; const AExpression : string) : String;
 
+function IsValidIdentifier( const AName : string ) : boolean;
+// Returns TRUE if this name is an identifier i.e
+// a word starting with a letter and having chars 2..n as letters or numbers.
 
 
 
@@ -167,6 +170,35 @@ begin
   Result := True;
 
 end;
+
+
+function IsValidIdentifier( const AName : string ) : boolean;
+// Returns TRUE if this name is an identifier i.e
+// a word starting with a letter and having chars 2..n as letters or numbers.
+const
+  AllowedFirstChar = ['A'..'Z', 'a'..'z', '_' ];
+  AllowedSubsequentChars = AllowedFirstChar + ['0'..'9'];
+var
+  I : integer;
+begin
+  Result := False;
+
+  If Length( AName ) < 1 then
+    Exit;
+
+  If not CharInSet(AName[1], AllowedFirstChar ) then
+    Exit;
+
+  For I := 2 to Length( AName ) do
+    If not CharInSet(AName[I], AllowedSubsequentChars) then
+      Exit;
+
+  Result := True;
+
+end;
+
+
+
 
 { TSynDWSSyn_DelphiLookalike }
 

@@ -225,7 +225,6 @@ type
     actTraceInto: TAction;
     raceInto1: TMenuItem;
     actRunWithoutDebugging: TAction;
-    actRunWithoutDebugging1: TMenuItem;
     pnlRight: TPanel;
     SplitterRight: TSplitter;
     actFileSaveAs: TAction;
@@ -266,9 +265,6 @@ type
     actEditorDelete: TEditDelete;
     Delete1: TMenuItem;
     Delete2: TMenuItem;
-    actRunFunctionMethodAtCursor: TAction;
-    RunFunctionMethodAtCursor1: TMenuItem;
-    RunFunctionMethodAtCursor2: TMenuItem;
     N9: TMenuItem;
     Suggest1: TMenuItem;
     actCodeProposalInvoke: TAction;
@@ -296,6 +292,7 @@ type
     actEditorUndo: TEditUndo;
     Undo1: TMenuItem;
     SynMacroRecorder: TSynMacroRecorder;
+    RunWithoutDebugging1: TMenuItem;
     procedure EditorChange(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure actOpenFileExecute(Sender: TObject);
@@ -322,7 +319,6 @@ type
     procedure actToggleReadOnlyUpdate(Sender: TObject);
     procedure actRunExecute(Sender: TObject);
     procedure actRunUpdate(Sender: TObject);
-    procedure actRunUnitTestsUpdate(Sender: TObject);
     procedure actBuildExecute(Sender: TObject);
     procedure dwsDebugger1Debug(exec: TdwsExecution; expr: TExprBase);
     procedure dwsDebugger1DebugStart(exec: TdwsExecution);
@@ -346,8 +342,6 @@ type
     procedure actViewSymbolsExecute(Sender: TObject);
     constructor Create( AOwner : TComponent; const AOptions : TDwsIdeOptions ); reintroduce;
     procedure FormShow(Sender: TObject);
-    procedure actRunFunctionMethodAtCursorExecute(Sender: TObject);
-    procedure actRunFunctionMethodAtCursorUpdate(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure WMCodeSuggest( var AMessage : TMessage ); message WM_CodeSuggest;
     procedure actCodeProposalInvokeExecute(Sender: TObject);
@@ -387,6 +381,7 @@ type
     FTabArrowLeft, FTabArrowRight : TRect;
     FPages : TSimpleList<TEditorPage>;
 
+    function  TryRunSelection( ADebug : boolean ) : boolean;
     procedure DoDebugMessage(const msg : String);
     procedure CodeSuggest( ACodeSuggestionMode : TCodeSuggestionMode);
     procedure DoOnCodeSuggestionFormSelectItem( const AItemText : string );
@@ -403,7 +398,7 @@ type
 
     procedure SetEditorCurrentPageIndex(const Value: integer);
     procedure SetProjectFileName(const Value: string);
-    procedure GotoScriptPos(AScriptPos: TScriptPos);
+    procedure GotoScriptPos(AScriptPos: TScriptPos; AHiddenMainModule : boolean = False);
     procedure ResetProgram;
     function  GetExecutableLines(const AUnitName: string): TLineNumbers;
     procedure SetScript(const Value: TDelphiWebScript);
@@ -442,7 +437,7 @@ type
     procedure ClearAllBreakpoints;
     procedure ClearExecutableLines;
     procedure AddStatusMessage( const AStr : string );
-    procedure Compile( ABuild : boolean );
+    procedure Compile( ABuild : boolean; const AScript : string = '' );
     function  IsCompiled: boolean;
     property  ScriptFolder : string
                 read FScriptFolder
@@ -456,8 +451,7 @@ type
          const AProjectFileName : string;
          const AIDESettingsRec : TIDESettingsRec );
 
-    function  CanRunFunctionMethod(const AName: string): boolean;
-    procedure RunFunctionMethodByName( const AName : string; APrompt : boolean );
+    procedure RunFunctionMethodByName( const AUnit, AName : string; AWithDebugging, APrompt : boolean );
 
     procedure RefreshTabs;
     procedure RefreshTabArrows;
@@ -817,7 +811,7 @@ end;
 
 
 
-procedure TDwsIdeForm.Compile( ABuild : boolean );
+procedure TDwsIdeForm.Compile( ABuild : boolean; const AScript : string = '' );
 
   procedure AddMessageInfo;
   var
@@ -834,6 +828,8 @@ procedure TDwsIdeForm.Compile( ABuild : boolean );
       end;
   end;
 
+var
+  sScript : string;
 begin
   if ABuild or not IsCompiled then
     begin
@@ -843,14 +839,19 @@ begin
     FScript.Config.CompilerOptions :=
       FScript.Config.CompilerOptions + [coSymbolDictionary];
 
-    FProgram := FScript.Compile( ProjectSourceScript );
+    if AScript <> '' then
+      sScript := AScript
+     else
+      sScript := ProjectSourceScript;
+
+    FProgram := FScript.Compile( sScript );
 
     If FProgram.Msgs.HasErrors then // did not compile - errors
        begin
        AddStatusMessage( 'Error(s)' );
        AddMessageInfo;
        AddMessage( 'Compile complete - error(s)' );
-       GotoScriptPos( FProgram.Msgs.LastMessagePos );
+       GotoScriptPos( FProgram.Msgs.LastMessagePos, AScript <> '' );
        ErrorDlg( FProgram.Msgs[ FProgram.Msgs.Count-1 ].AsInfo );
        end
      else
@@ -1227,72 +1228,68 @@ begin
 end;
 
 
-function TDwsIdeForm.CanRunFunctionMethod( const AName : string ) : boolean;
-var
-  Sym : TSymbol;
-begin
-  Result := (AName <> '') and IsCompiled;
-  If Result then
-    begin
-    Sym := FProgram.Table.FindSymbol( AName, cvMagic );
-    Result := Assigned( Sym ) and (Sym is TFuncSymbol);
-    end;
-end;
 
-
-procedure TDwsIdeForm.RunFunctionMethodByName(const AName: string; APrompt : boolean);
+procedure TDwsIdeForm.RunFunctionMethodByName(const AUnit, AName: string; AWithDebugging, APrompt : boolean);
+const
+  sScriptTemplate =
+      'uses %s;'#13#10
+    + 'begin'#13#10
+    + '%s'#13#10
+    + 'end;'#13#10;
 var
   Exec : IdwsProgramExecution;
-  FunctionInfo : IInfo;
   Stopwatch : TStopwatch;
+  sScript : string;
 begin
-  If not IsCompiled then
-    Compile( False );
-  if not IsCompiled then
-    Exit;
-
   if APrompt and not ConfirmDlg( Format( 'Run function/method "%s"?', [AName] )) then
     Exit;
 
-  Exec := FProgram.BeginNewExecution;
+  EditorSaveAllIfModified( False );
+
+  sScript := Format( sScriptTemplate, [AUnit, AName] );
+  Compile( True, sScript );
+  if not IsCompiled then
+    Exit;
+
+  AddStatusMessage( 'Running' );
+  Application.ProcessMessages;
+  ShowExecutableLines;
+
+  Exec := FProgram.CreateNewExecution;
+  Stopwatch := TStopwatch.Create;
+  Stopwatch.Start;
   try
-    FunctionInfo := Exec.Info.Func[ AName ];
-    if FunctionInfo = nil then
-      raise Exception.CreateFmt('Cannot locate function/method with name "%s"', [AName] );
-
-    AddStatusMessage( 'Running' );
-    Application.ProcessMessages;
-
-    try
-      Stopwatch := TStopwatch.Create;
-      Stopwatch.Start;
-      try
-        FunctionInfo.Call;
-      finally
-        Stopwatch.Stop;
-        Exec.EndProgram;
+    If AWithDebugging then
+      dwsDebugger1.BeginDebug( Exec )
+     else
+      begin
+      Exec.BeginProgram;
+      Exec.RunProgram( 0 );
       end;
-    except
-      On E:Exception do
-        ShowMessage( E.Message );
-    end;
+  finally
+    Stopwatch.Stop;
+    If AWithDebugging then
+      dwsDebugger1.EndDebug
+     else
+      Exec.EndProgram;
 
+    ClearExecutableLines;
     if Exec.Msgs.Count > 0 then
       begin
       AddStatusMessage( 'Errors' );
-      ShowMessage(Exec.Msgs.AsInfo)
+      GotoScriptPos( Exec.Msgs.LastMessagePos, True );
+      ErrorDlg(Exec.Msgs.AsInfo);
       end
      else
       If Stopwatch.Elapsed.TotalSeconds < 1.0 then
         AddStatusMessage( Format( 'Completed in %0.3f ms', [Stopwatch.Elapsed.TotalMilliseconds] ))
        else
         AddStatusMessage( Format( 'Completed in %0.3f s', [Stopwatch.Elapsed.TotalSeconds] ));
-  finally
-    Exec := nil;
   end;
-
-
 end;
+
+
+
 
 // RefreshTabs
 //
@@ -1588,6 +1585,9 @@ procedure TDwsIdeForm.actRunExecute(Sender: TObject);
   var
     Exec : IdwsProgramExecution;
   begin
+    If not HasProject then
+      raise EDwsIde.Create( 'Cannot run without a project file');
+
     Compile( False );
     If not IsCompiled then
       Exit;
@@ -1612,12 +1612,14 @@ procedure TDwsIdeForm.actRunExecute(Sender: TObject);
 
   end;
 
+
 begin
   try
     If dwsDebugger1.State = dsDebugSuspended then
       dwsDebugger1.Resume
      else
-       NewRun;
+       If not TryRunSelection( True ) then
+          NewRun;
   except
     on E:Exception do
       ErrorDlg( E.Message );
@@ -1626,75 +1628,80 @@ end;
 
 
 
-procedure TDwsIdeForm.actRunFunctionMethodAtCursorExecute(Sender: TObject);
-var
-  S : string;
-begin
-  S := CurrentEditor.WordAtCursor;
-  RunFunctionMethodByName( S, True );
-end;
-
-procedure TDwsIdeForm.actRunFunctionMethodAtCursorUpdate(Sender: TObject);
-begin
-  With Sender as TAction do
-    Enabled := HasEditorPage and CanRunFunctionMethod( CurrentEditor.WordAtCursor );
-end;
-
-procedure TDwsIdeForm.actRunUnitTestsUpdate(Sender: TObject);
-begin
-  With Sender as TAction do
-    {$IFDEF ArtDunit}
-      Visible := True;
-    {$ELSE}
-      Visible := False;
-    {$ENDIF}
-end;
-
 procedure TDwsIdeForm.actRunUpdate(Sender: TObject);
 begin
   With Sender as TAction do
-    Enabled := HasProject;
+    Enabled := HasEditorPage;
 end;
+
+
+function TDwsIdeForm.TryRunSelection( ADebug : boolean ) : boolean;
+var
+  S : string;
+begin
+  Result := CurrentEditor.SelAvail;
+  if Result then
+    begin
+    S := CurrentEditor.SelText;
+    if IsValidIdentifier( S ) then
+      RunFunctionMethodByName( CurrentEditorPage.UnitName, S, ADebug, True {prompt} );
+    end;
+
+end;
+
+
 
 
 procedure TDwsIdeForm.actRunWithoutDebuggingExecute(Sender: TObject);
-var
-  Exec : IdwsProgramExecution;
-  Stopwatch : TStopwatch;
-begin
-  AddStatusMessage( 'Running' );
-  Application.ProcessMessages;
-  Compile( False );
-  if not IsCompiled then
-    Exit;
 
-  Exec := FProgram.CreateNewExecution;
-  Exec.BeginProgram;
-  Stopwatch := TStopwatch.Create;
-  Stopwatch.Start;
-  try
-    Exec.RunProgram( 0 );
-    Exec.EndProgram;
-  finally
-    Stopwatch.Stop;
+  procedure RunAll;
+  var
+    Exec : IdwsProgramExecution;
+    Stopwatch : TStopwatch;
+  begin
+    If not HasProject then
+      raise EDwsIde.Create( 'Cannot run without a project file');
+
+    AddStatusMessage( 'Running' );
+    Application.ProcessMessages;
+    Compile( False );
+    if not IsCompiled then
+      Exit;
+
+    Exec := FProgram.CreateNewExecution;
+    Exec.BeginProgram;
+    Stopwatch := TStopwatch.Create;
+    Stopwatch.Start;
+    try
+      Exec.RunProgram( 0 );
+      Exec.EndProgram;
+    finally
+      Stopwatch.Stop;
+    end;
+
+    if Exec.Msgs.Count > 0 then
+      begin
+      AddStatusMessage( 'Errors' );
+      ShowMessage(Exec.Msgs.AsInfo)
+      end
+     else
+      If Stopwatch.Elapsed.TotalSeconds < 1.0 then
+        AddStatusMessage( Format( 'Completed in %0.3f ms', [Stopwatch.Elapsed.TotalMilliseconds] ))
+       else
+        AddStatusMessage( Format( 'Completed in %0.3f s', [Stopwatch.Elapsed.TotalSeconds] ));
   end;
 
-  if Exec.Msgs.Count > 0 then
-    begin
-    AddStatusMessage( 'Errors' );
-    ShowMessage(Exec.Msgs.AsInfo)
-    end
-   else
-    If Stopwatch.Elapsed.TotalSeconds < 1.0 then
-      AddStatusMessage( Format( 'Completed in %0.3f ms', [Stopwatch.Elapsed.TotalMilliseconds] ))
-     else
-      AddStatusMessage( Format( 'Completed in %0.3f s', [Stopwatch.Elapsed.TotalSeconds] ));
+
+begin
+  if not TryRunSelection( False ) then
+    RunAll;
 end;
+
 
 procedure TDwsIdeForm.actRunWithoutDebuggingUpdate(Sender: TObject);
 begin
   With Sender as TAction do
-    Enabled := HasProject;
+    Enabled := HasEditorPage;
 end;
 
 procedure TDwsIdeForm.EditorPageAddNew(const AFileName: string; ALoadFile : boolean );
@@ -1805,7 +1812,7 @@ begin
 end;
 
 
-procedure TDwsIdeForm.GotoScriptPos( AScriptPos : TScriptPos );
+procedure TDwsIdeForm.GotoScriptPos( AScriptPos : TScriptPos; AHiddenMainModule : boolean = False );
 var
   S : string;
   I : integer;
@@ -1814,7 +1821,12 @@ begin
     begin
     S := AScriptPos.SourceFile.Name;
     if S = '*MainModule*' then
-      I := ProjectSourceFileIndex
+      begin
+      if AHiddenMainModule then
+        I := -1
+       else
+        I := ProjectSourceFileIndex
+      end
      else
       I := NameToEditorPageIndex( S );
     if I <> -1 then
@@ -2522,12 +2534,13 @@ procedure TDwsIdeForm.LoadProjectFile( const AProjectFileName : string );
         Breakpoint := AData.Breakpoints[I];
 
         iEditorPage := NameToEditorPageIndex( Breakpoint.SourceName );
-        If (BreakPoint.LineNum >= 1) then
-          If BreakPoint.LineNum <= EditorPage( iEditorPage ).FEditor.Lines.Count then
-            begin
-            dwsDebugger1.Breakpoints.Add( Breakpoint.LineNum, Breakpoint.SourceName );
-            dwsDebugger1.Breakpoints[I].Enabled := Breakpoint.Enabled;
-            end;
+        if iEditorPage <> -1 then
+          If (BreakPoint.LineNum >= 1) then
+            If BreakPoint.LineNum <= EditorPage( iEditorPage ).FEditor.Lines.Count then
+              begin
+              dwsDebugger1.Breakpoints.Add( Breakpoint.LineNum, Breakpoint.SourceName );
+              dwsDebugger1.Breakpoints[I].Enabled := Breakpoint.Enabled;
+              end;
       end;
   end;
 

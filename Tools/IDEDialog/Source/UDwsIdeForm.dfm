@@ -438,14 +438,6 @@ object DwsIdeForm: TDwsIdeForm
       Hint = 'Delete|Erases the selection'
       ShortCut = 16430
     end
-    object actRunFunctionMethodAtCursor: TAction
-      Category = 'Run'
-      Caption = 'Run Function/Method At Cursor'
-      Hint = 'Runs the function or method at the cursor'
-      ShortCut = 8312
-      OnExecute = actRunFunctionMethodAtCursorExecute
-      OnUpdate = actRunFunctionMethodAtCursorUpdate
-    end
     object actCodeProposalInvoke: TAction
       Category = 'Project'
       Caption = 'Code Proposal'
@@ -663,12 +655,6 @@ object DwsIdeForm: TDwsIdeForm
       Caption = 'Run'
       object Run2: TMenuItem
         Action = actRun
-      end
-      object RunFunctionMethodAtCursor1: TMenuItem
-        Action = actRunFunctionMethodAtCursor
-      end
-      object actRunWithoutDebugging1: TMenuItem
-        Action = actRunWithoutDebugging
       end
       object StepOver1: TMenuItem
         Action = actStepOver
@@ -1969,11 +1955,11 @@ object DwsIdeForm: TDwsIdeForm
     Images = SmallImages
     Left = 176
     Top = 144
-    object RunFunctionMethodAtCursor2: TMenuItem
-      Action = actRunFunctionMethodAtCursor
-    end
     object Run3: TMenuItem
       Action = actRun
+    end
+    object RunWithoutDebugging1: TMenuItem
+      Action = actRunWithoutDebugging
     end
     object Build2: TMenuItem
       Action = actBuild
