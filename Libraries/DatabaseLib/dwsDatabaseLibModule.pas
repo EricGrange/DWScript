@@ -4,7 +4,7 @@ interface
 
 uses
   SysUtils, Classes,
-  dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase, dwsJSON;
+  dwsStrings, dwsComp, dwsExprs, dwsSymbols, dwsStack, dwsDatabase, dwsJSON, dwsErrors;
 
 type
 
@@ -71,9 +71,12 @@ type
       ExtObject: TObject);
     procedure dwsDatabaseClassesDataSetMethodsStringifyAllEval(
       Info: TProgramInfo; ExtObject: TObject);
+    procedure dwsDatabaseClassesDataSetMethodsFindFieldEval(Info: TProgramInfo;
+      ExtObject: TObject);
   private
     { Private declarations }
     procedure SetScript(aScript : TDelphiWebScript);
+    procedure RaiseDBException(Info: TProgramInfo; const msg : String);
   public
     { Public declarations }
     property Script : TDelphiWebScript write SetScript;
@@ -82,6 +85,9 @@ type
 implementation
 
 {$R *.dfm}
+
+resourcestring
+   FIELD_NOT_FOUND = 'Field ''%s'' not found';
 
 type
    TDataBase = class
@@ -208,6 +214,17 @@ end;
 procedure TdwsDatabaseLib.SetScript(aScript : TDelphiWebScript);
 begin
    dwsDatabase.Script:=aScript;
+end;
+
+// RaiseDBException
+//
+procedure TdwsDatabaseLib.RaiseDBException(Info: TProgramInfo; const msg : String);
+var
+   exceptObj : IScriptObj;
+begin
+   exceptObj:=Info.Vars['EDBException'].Method[SYS_TOBJECT_CREATE].Call([msg]).ScriptObj;
+   (exceptObj.ExternalObject as TdwsExceptionContext).Skip(1); // temporary constructor expression
+   Info.RaiseExceptObj(msg, exceptObj);
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataBaseCleanUp(
@@ -400,6 +417,23 @@ begin
 end;
 
 procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsFieldByNameEval(
+  Info: TProgramInfo; ExtObject: TObject);
+var
+   fieldName : String;
+   fieldsInfo : IInfo;
+   index : Integer;
+begin
+   fieldName:=Info.ParamAsString[0];
+   index:=(ExtObject as TDataSet).IndexOfField(fieldName);
+   if index<0 then
+      RaiseDBException(Info, Format(FIELD_NOT_FOUND, [fieldName]))
+   else begin
+      fieldsInfo:=Info.Vars['FFields'];
+      Info.ResultAsVariant:=fieldsInfo.Element([index]).Value;
+   end;
+end;
+
+procedure TdwsDatabaseLib.dwsDatabaseClassesDataSetMethodsFindFieldEval(
   Info: TProgramInfo; ExtObject: TObject);
 var
    fieldsInfo : IInfo;

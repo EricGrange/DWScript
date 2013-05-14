@@ -175,6 +175,17 @@ object dwsDatabaseLib: TdwsDatabaseLib
             Kind = mkFunction
           end
           item
+            Name = 'FindField'
+            Parameters = <
+              item
+                Name = 'fieldName'
+                DataType = 'String'
+              end>
+            ResultType = 'DataField'
+            OnEval = dwsDatabaseClassesDataSetMethodsFindFieldEval
+            Kind = mkFunction
+          end
+          item
             Name = 'AsString'
             Parameters = <
               item
@@ -323,6 +334,10 @@ object dwsDatabaseLib: TdwsDatabaseLib
             Kind = mkFunction
           end>
         OnCleanUp = dwsDatabaseClassesDataBaseCleanUp
+      end
+      item
+        Name = 'EDBException'
+        Ancestor = 'Exception'
       end>
     Enumerations = <
       item
