@@ -151,11 +151,6 @@ type
 var
   FrmBasic: TFrmBasic;
 
-procedure ExternalFunction; cdecl;
-
-exports
-  ExternalFunction name 'ExternalFunction';
-
 implementation
 
 {$R *.dfm}
@@ -274,11 +269,6 @@ begin
   end;
 end;
 
-procedure ExternalFunction; cdecl;
-begin
-  ShowMessage('Test');
-end;
-
 procedure TFrmBasic.DoGetSelfInstance(Info: TProgramInfo);
 begin
   Info.ResultAsVariant := TdwsRTTIVariant.FromObject(Self);
@@ -372,6 +362,7 @@ var
   Fn: PLLVMValue;
   Args, Ret: PLLVMGenericValue;
   M: PLLVMModule;
+  Target: PAnsiChar;
 {$ENDIF}
 {$ENDIF}
 begin
@@ -386,15 +377,9 @@ begin
 
   if not LLVMCreateJITCompilerForModule(JIT, FLLVMCodeGen.Module.Handle, 0, Error) then
   try
-    if not LLVMFindFunction(JIT, 'ExternalFunction', Fn) then
-    begin
-      LLVMAddGlobalMapping(JIT, Fn, @ExternalFunction);
-    end;
-
-    if not LLVMFindFunction(JIT, 'Exec', Fn) then
+    if not LLVMFindFunction(JIT, 'main', Fn) then
     begin
       Ret := LLVMRunFunction(JIT, Fn, 0, Args);
-      Assert(LLVMGenericValueToInt(Ret, True) = 2);
       LLVMDisposeGenericValue(Ret);
     end;
 
