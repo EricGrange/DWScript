@@ -4,6 +4,7 @@ interface
 uses
    Classes,
    dwsComp, dwsCompiler, dwsLanguageExtension, dwsSymbols, dwsExprs, dwsUtils,
+   dwsXPlatform,
    dwsTokenizer, dwsErrors, dwsConstExprs, dwsRelExprs, dwsMethodExprs;
 
 type
