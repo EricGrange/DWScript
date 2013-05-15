@@ -25,7 +25,7 @@ type
 implementation
 uses
    SysUtils,
-   dwsXPlatform, dwsExprs;
+   dwsXPlatform, dwsExprs, dwsLinqSql;
 
 { TLinqTests }
 
@@ -104,6 +104,7 @@ begin
    FDataBaseLib:=TdwsDatabaseLib.Create(FCompiler);
    FDataBaseLib.dwsDatabase.StaticSymbols := false;
    FDataBaseLib.Script:=FCompiler;
+   dwsLinqSql.TLinqSqlExtension.Create(FCompiler).LinqFactory := FLinq;
 end;
 
 procedure TLinqTests.TearDown;

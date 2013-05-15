@@ -8,51 +8,71 @@ uses
    dwsTokenizer, dwsErrors, dwsConstExprs, dwsRelExprs, dwsMethodExprs, dwsCoreExprs;
 
 type
-   TSqlFromExpr = class;
    TSqlList = class;
    TSqlIdentifier = class;
    TSqlFunction = class;
-   TLinqIntoExpr = class;
+   TSqlJoinExpr = class;
+
+   ILinqQueryBuilder = interface
+      function From(value: TSqlIdentifier; base: TDataSymbol): TTypedExpr;
+      function Join(from: TTypedExpr; value: TSqlJoinExpr): TTypedExpr;
+      function Where(from: TTypedExpr; list: TSqlList): TTypedExpr;
+      function Group(from: TTypedExpr; list: TSqlList): TTypedExpr;
+      function Order(from: TTypedExpr; list: TSqlList): TTypedExpr;
+      function Select(from: TTypedExpr; list: TSqlList): TTypedExpr;
+      function Into(from: TTypedExpr; value: TFuncPtrExpr; aPos: TScriptPos): TTypedExpr;
+      function Distinct(from: TTypedExpr): TTypedExpr;
+      procedure Finalize(From: TTypedExpr);
+   end;
+   TLinqQueryBuilderFactory = function(compiler: TdwsCompiler; symbol: TTypeSymbol): ILinqQueryBuilder;
 
    TJoinType = (jtFull, jtLeft, jtRight, jtFullOuter, jtCross);
 
    TdwsLinqFactory = class(TdwsCustomLangageExtension)
+   private
+      FQueryBuilders: TSimpleList<TLinqQueryBuilderFactory>;
    protected
       function CreateExtension : TdwsLanguageExtension; override;
+   public
+      constructor Create(AOwner: TComponent); override;
+      destructor Destroy; override;
+      procedure RegisterSource(factory: TLinqQueryBuilderFactory);
    end;
 
    TdwsLinqExtension = class(TdwsLanguageExtension)
-   private //utility functions
+   public //utility functions
       class procedure Error(const compiler: IdwsCompiler; const msg: string); overload;
       class procedure Error(const compiler: IdwsCompiler; const msg: string; const args: array of const); overload;
+   private //utility functions
       function TokenEquals(tok: TTokenizer; const value: string): boolean; inline;
    private
-      FDatabaseSymbol: TClassSymbol;
-      FDatasetSymbol: TClassSymbol;
       FRecursionDepth: integer;
-      function EnsureDatabase(const compiler: IdwsCompiler): boolean;
+      FQueryBuilder: ILinqQueryBuilder;
+      FQueryBuilders: TSimpleList<TLinqQueryBuilderFactory>;
       function ReadExpression(const compiler: IdwsCompiler; tok: TTokenizer): TTypedExpr;
-      procedure ReadFromExprBody(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
-      function ReadFromExpression(const compiler: IdwsCompiler; tok : TTokenizer) : TSqlFromExpr;
-      function DoReadFromExpr(const compiler: IdwsCompiler; tok: TTokenizer; db: TDataSymbol): TSqlFromExpr;
-      procedure ReadWhereExprs(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
-      procedure ReadSelectExprs(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
+      procedure ReadFromExprBody(const compiler: IdwsCompiler; tok: TTokenizer; from: TTypedExpr);
+      function ReadFromExpression(const compiler: IdwsCompiler; tok : TTokenizer) : TTypedExpr;
+      function DoReadFromExpr(const compiler: IdwsCompiler; tok: TTokenizer; db: TDataSymbol): TTypedExpr;
+      procedure ReadWhereExprs(const compiler: IdwsCompiler; tok: TTokenizer; var from: TTypedExpr);
+      procedure ReadSelectExprs(const compiler: IdwsCompiler; tok: TTokenizer; var from: TTypedExpr);
       function ReadComparisonExpr(const compiler: IdwsCompiler; tok: TTokenizer): TRelOpExpr;
       function ReadSqlIdentifier(const compiler: IdwsCompiler; tok: TTokenizer;
         acceptStar: boolean = false): TSqlIdentifier;
-      procedure ReadJoinExpr(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
+      procedure ReadJoinExpr(const compiler: IdwsCompiler; tok: TTokenizer; var from: TTypedExpr);
       function ReadJoinType(const compiler: IdwsCompiler; tok: TTokenizer): TJoinType;
       procedure ReadComparisons(const compiler: IdwsCompiler; tok: TTokenizer;
         list: TSqlList);
       procedure ReadOrderExprs(const compiler: IdwsCompiler; tok: TTokenizer;
-        from: TSqlFromExpr);
+        var from: TTypedExpr);
       procedure ReadGroupByExprs(const compiler: IdwsCompiler; tok: TTokenizer;
-        from: TSqlFromExpr);
+        var from: TTypedExpr);
       function ReadSqlFunction(const compiler: IdwsCompiler; tok: TTokenizer;
         base: TSqlIdentifier): TSqlFunction;
       function ReadIntoExpression(const compiler: IdwsCompiler; tok: TTokenizer;
-        base: TSqlFromExpr): TLinqIntoExpr;
-      function ValidIntoExpr(target: TTypedExpr): boolean;
+        base: TTypedExpr): TTypedExpr;
+      function ValidIntoExpr(from, target: TTypedExpr): boolean;
+    function findQueryBuilder(const compiler: IdwsCompiler; typ: TTypeSymbol;
+      out builder: ILinqQueryBuilder): boolean;
    public
       procedure ReadScript(compiler : TdwsCompiler; sourceFile : TSourceFile;
                            scriptType : TScriptSourceType); override;
@@ -60,45 +80,8 @@ type
    end;
 
    TSqlList = class(TObjectList<TProgramExpr>);
-   TSqlJoinExpr = class;
 
    TNewParamFunc = function: string of object;
-
-   TSqlFromExpr = class(TTypedExpr)
-   private
-      FTableName: string;
-      FDBSymbol: TDataSymbol;
-      FWhereList: TSqlList;
-      FSelectList: TSqlList;
-      FJoinList: TSqlList;
-      FOrderList: TSqlList;
-      FGroupList: TSqlList;
-      FDistinct: boolean;
-   private
-      FSQL: string;
-      FParams: TArrayConstantExpr;
-      FMethod: TMethodExpr;
-      function NewParam: string;
-      procedure BuildSelectList(list: TStringList; prog: TdwsProgram);
-      procedure BuildQuery(compiler: TdwsCompiler);
-      procedure Codegen(compiler: TdwsCompiler);
-      procedure BuildWhereClause(compiler: TdwsCompiler; list: TStringList);
-      procedure BuildConditionElement(expr: TTypedExpr; compiler: TdwsCompiler; list: TStringList);
-      procedure BuildConditional(conditional: TSqlList; compiler: TdwsCompiler;
-        list: TStringList);
-      procedure BuildRelOpElement(expr: TRelOpExpr; compiler: TdwsCompiler;
-        list: TStringList);
-      function BuildHalfRelOpElement(expr: TTypedExpr;
-        compiler: TdwsCompiler): string;
-      procedure BuildJoinClause(compiler: TdwsCompiler; list: TStringList);
-      procedure BuildOrderClause(list: TStringList; prog: TdwsProgram);
-      procedure WriteCommaList(exprs: TSqlList; list: TStringList; prog: TdwsProgram);
-      procedure BuildGroupClause(list: TStringList; prog: TdwsProgram);
-   public
-      constructor Create(const tableName: string; const symbol: TDataSymbol);
-      destructor Destroy; override;
-      function Eval(exec : TdwsExecution) : Variant; override;
-   end;
 
    TSqlIdentifier = class(TConstStringExpr)
    public
@@ -125,36 +108,9 @@ type
    public
       constructor Create(const pos: TScriptPos; jt: TJoinType; JoinExpr: TSqlIdentifier; list: TSqlList);
       destructor Destroy; override;
-   end;
-
-   TLinqIntoExpr = class(TTypedExpr)
-   private
-      FBase: TSqlFromExpr;
-      FInto: TFuncPtrExpr;
-      FAssign: TAssignExpr;
-      FData: TDataSymbol;
-      FFree: TMethodStaticExpr;
-   public
-      constructor Create(base: TSqlFromExpr; into: TFuncPtrExpr;
-        const compiler: IdwsCompiler; const aPos: TScriptPos);
-      destructor Destroy; override;
-   end;
-
-   TLinqIntoSingleExpr = class(TLinqIntoExpr)
-   private
-      FStep: TMethodStaticExpr;
-   public
-      constructor Create(base: TSqlFromExpr; into: TFuncPtrExpr;
-        const compiler: IdwsCompiler; const aPos: TScriptPos; dsSymbol: TClassSymbol);
-      destructor Destroy; override;
-      function Eval(exec : TdwsExecution) : Variant; override;
-   end;
-
-   TLinqIntoSetExpr = class(TLinqIntoExpr)
-   public
-      constructor Create(base: TSqlFromExpr; into: TFuncPtrExpr;
-        const compiler: IdwsCompiler; const aPos: TScriptPos);
-      function  Eval(exec : TdwsExecution) : Variant; override;
+      property JoinType: TJoinType read FJoinType;
+      property JoinExpr: TSqlIdentifier read FJoinExpr;
+      property Criteria: TSqlList read FCriteria;
    end;
 
 implementation
@@ -164,9 +120,27 @@ uses
 
 { TdwsLinqFactory }
 
+constructor TdwsLinqFactory.Create(AOwner: TComponent);
+begin
+   FQueryBuilders := TSimpleList<TLinqQueryBuilderFactory>.Create;
+   inherited Create(AOwner);
+end;
+
+destructor TdwsLinqFactory.Destroy;
+begin
+   FQueryBuilders.Free;
+   inherited Destroy;
+end;
+
+procedure TdwsLinqFactory.RegisterSource(factory: TLinqQueryBuilderFactory);
+begin
+   FQueryBuilders.Add(factory);
+end;
+
 function TdwsLinqFactory.CreateExtension: TdwsLanguageExtension;
 begin
    Result:=TdwsLinqExtension.Create;
+   TdwsLinqExtension(result).FQueryBuilders := self.FQueryBuilders;
 end;
 
 { TdwsLinqExtension }
@@ -181,26 +155,6 @@ class procedure TdwsLinqExtension.Error(const compiler: IdwsCompiler; const msg:
   const args: array of const);
 begin
    error(compiler, format(msg, args));
-end;
-
-function TdwsLinqExtension.EnsureDatabase(const compiler: IdwsCompiler): boolean;
-var
-   db: TUnitMainSymbol;
-begin
-   result := true;
-   if FDatabaseSymbol = nil then
-   begin
-      db := compiler.CurrentProg.UnitMains.Find('System.Data');
-      if assigned(db) then
-      begin
-         FDatabaseSymbol := db.Table.FindTypeLocal('Database') as TClassSymbol;
-         FDatasetSymbol := db.Table.FindTypeLocal('Dataset') as TClassSymbol;
-      end;
-      if FDatabaseSymbol = nil then
-         Error(compiler, 'Database type not found in script');
-      if FDatasetSymbol = nil then
-         Error(compiler, 'Dataset type not found in script');
-   end;
 end;
 
 function TdwsLinqExtension.ReadComparisonExpr(const compiler: IdwsCompiler; tok: TTokenizer): TRelOpExpr;
@@ -243,30 +197,36 @@ begin
    else result := compiler.ReadExpr();
 end;
 
-procedure TdwsLinqExtension.ReadWhereExprs(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
+procedure TdwsLinqExtension.ReadWhereExprs(const compiler: IdwsCompiler; tok: TTokenizer; var from: TTypedExpr);
+var
+   list: TSqlList;
 begin
-   from.FWhereList := TSqlList.Create;
+   list := TSqlList.Create;
    tok.KillToken;
-   ReadComparisons(compiler, tok, from.FWhereList);
+   ReadComparisons(compiler, tok, list);
+   from := FQueryBuilder.Where(from, list);
 end;
 
 procedure TdwsLinqExtension.ReadSelectExprs(const compiler: IdwsCompiler;
-  tok: TTokenizer; from: TSqlFromExpr);
+  tok: TTokenizer; var from: TTypedExpr);
+var
+   list: TSqlList;
 begin
    tok.KillToken;
    if tok.TestName and TokenEquals(tok, 'distinct') then
    begin
-      from.FDistinct := true;
+      from := FQueryBuilder.Distinct(from);
       tok.KillToken;
    end;
 
    if tok.TestDelete(ttTIMES) then
       Exit;
 
-   from.FSelectList := TSqlList.Create;
+   list := TSqlList.Create;
    repeat
-      from.FSelectList.Add(ReadSqlIdentifier(compiler, tok, true));
+      list.Add(ReadSqlIdentifier(compiler, tok, true));
    until not tok.TestDelete(ttCOMMA);
+   from := FQueryBuilder.Select(from, list);
 end;
 
 function TdwsLinqExtension.ReadJoinType(const compiler: IdwsCompiler; tok: TTokenizer): TJoinType;
@@ -305,7 +265,7 @@ begin
    tok.KillToken;
 end;
 
-procedure TdwsLinqExtension.ReadJoinExpr(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
+procedure TdwsLinqExtension.ReadJoinExpr(const compiler: IdwsCompiler; tok: TTokenizer; var from: TTypedExpr);
 var
    jt: TJoinType;
    JoinExpr: TTypedExpr;
@@ -327,27 +287,26 @@ begin
          list := TSqlList.Create;
          ReadComparisons(compiler, tok, list);
       end;
-      if from.FJoinList = nil then
-         from.FJoinList := TSqlList.Create;
    except
       list.Free;
       joinExpr.Free;
       raise;
    end;
    join := TSqlJoinExpr.Create(pos, jt, TSqlIdentifier(joinExpr), list);
-   from.FJoinList.Add(join);
+   from := FQueryBuilder.Join(from, join)
 end;
 
-procedure TdwsLinqExtension.ReadOrderExprs(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
+procedure TdwsLinqExtension.ReadOrderExprs(const compiler: IdwsCompiler; tok: TTokenizer; var from: TTypedExpr);
 var
    ident: TSqlIdentifier;
+   list: TSqlList;
 begin
    tok.KillToken;
    if not (tok.TestName and TokenEquals(tok, 'by')) then
       Error(compiler, 'Invalid ORDER BY clause');
    tok.KillToken;
 
-   from.FOrderList := TSqlList.Create;
+   list := TSqlList.Create;
    repeat
       ident := ReadSqlIdentifier(compiler, tok);
       if tok.TestName and (TokenEquals(tok, 'asc') or TokenEquals(tok, 'desc')) then
@@ -355,28 +314,29 @@ begin
          ident.Value := format('%s %s', [ident.Value, tok.GetToken.AsString]);
          tok.KillToken;
       end;
-      from.FOrderList.Add(ident);
+      list.Add(ident);
    until not tok.TestDelete(ttCOMMA);
+   from := FQueryBuilder.Order(from, list);
 end;
 
-procedure TdwsLinqExtension.ReadGroupByExprs(const compiler: IdwsCompiler; tok: TTokenizer; from: TSqlFromExpr);
+procedure TdwsLinqExtension.ReadGroupByExprs(const compiler: IdwsCompiler; tok: TTokenizer; var from: TTypedExpr);
 var
-   ident: TSqlIdentifier;
+   list: TSqlList;
 begin
    tok.KillToken;
    if not (tok.TestName and TokenEquals(tok, 'by')) then
       Error(compiler, 'Invalid GROUP BY clause');
    tok.KillToken;
 
-   from.FGroupList := TSqlList.Create;
+   list := TSqlList.Create;
    repeat
-      ident := ReadSqlIdentifier(compiler, tok);
-      from.FGroupList.Add(ident);
+      list.Add(ReadSqlIdentifier(compiler, tok));
    until not tok.TestDelete(ttCOMMA);
+   from := FQueryBuilder.Group(from, list);
 end;
 
 procedure TdwsLinqExtension.ReadFromExprBody(const compiler: IdwsCompiler; tok: TTokenizer;
-  from: TSqlFromExpr);
+  from: TTypedExpr);
 begin
    while TokenEquals(tok, 'join') or TokenEquals(tok, 'left') or
       TokenEquals(tok, 'right') or TokenEquals(tok, 'full') or TokenEquals(tok, 'cross') do
@@ -392,34 +352,50 @@ begin
 end;
 
 function TdwsLinqExtension.DoReadFromExpr(const compiler: IdwsCompiler; tok: TTokenizer;
-  db: TDataSymbol): TSqlFromExpr;
+  db: TDataSymbol): TTypedExpr;
 var
-   token: TToken;
+   id: TTypedExpr;
 begin
-   token := tok.GetToken;
-   result := TSqlFromExpr.Create(token.AsString, db);
+   id := self.ReadExpression(compiler, tok);
+   if not (id is TSqlIdentifier) then
+      Error(compiler, 'SQL identifier expected');
+   result := FQueryBuilder.From(TSqlIdentifier(id), db);
    try
-      tok.KillToken;
       case tok.TestAny([ttSEMI, ttNAME]) of
          ttSemi: ;
          ttName: ReadFromExprBody(compiler, tok, result);
          else Error(compiler, 'Linq keyword expected');
       end;
-      result.Typ := FDatasetSymbol;
    except
       result.Free;
       raise;
    end;
 end;
 
-function TdwsLinqExtension.ReadFromExpression(const compiler: IdwsCompiler; tok : TTokenizer): TSqlFromExpr;
+function TdwsLinqExtension.findQueryBuilder(const compiler: IdwsCompiler; typ: TTypeSymbol;
+  out builder: ILinqQueryBuilder): boolean;
+var
+   factory: TLinqQueryBuilderFactory;
+   i: integer;
+begin
+   builder := nil;
+   for i := 0 to self.FQueryBuilders.Count - 1 do
+   begin
+      factory := FQueryBuilders[i];
+      builder := factory(compiler.Compiler, typ);
+      if assigned(builder) then
+         Exit(true);
+   end;
+   result := false;
+end;
+
+function TdwsLinqExtension.ReadFromExpression(const compiler: IdwsCompiler; tok : TTokenizer): TTypedExpr;
 var
    symbol: TSymbol;
+   factory: TLinqQueryBuilderFactory;
 begin
    result := nil;
    if not (tok.TestName and TokenEquals(tok, 'from')) then Exit;
-   if not EnsureDatabase(compiler) then
-      Exit;
    try
       inc(FRecursionDepth);
       try
@@ -428,8 +404,8 @@ begin
          if tok.TestName then
          begin
             symbol := compiler.CurrentProg.Table.FindSymbol(tok.GetToken.AsString, cvMagic);
-            if not ((symbol is TDataSymbol) and (symbol.Typ.IsCompatible(FDatabaseSymbol))) then
-               Error(compiler, '"%s" is not a database', [tok.GetToken.AsString]);
+            if not ((symbol is TDataSymbol) and findQueryBuilder(compiler, symbol.typ, FQueryBuilder)) then
+               Error(compiler, '"%s" is not a valid dwsLinq data source', [tok.GetToken.AsString]);
          end
          else Error(compiler, 'Identifier expected.');
          tok.KillToken;
@@ -485,7 +461,7 @@ begin
    end;
 end;
 
-function TdwsLinqExtension.ValidIntoExpr(target: TTypedExpr): boolean;
+function TdwsLinqExtension.ValidIntoExpr(from, target: TTypedExpr): boolean;
 var
    base: TFuncSymbol;
    returnType: TTypeSymbol;
@@ -496,7 +472,7 @@ begin
    base := TFuncRefExpr(target).FuncExpr.FuncSym;
    if base.Params.Count <> 1 then
       Exit;
-   if base.GetParamType(0) <> FDatasetSymbol then
+   if base.GetParamType(0) <> from.Typ then
       Exit;
    returnType := base.Typ;
    if returnType = nil then
@@ -505,7 +481,7 @@ begin
 end;
 
 function TdwsLinqExtension.ReadIntoExpression(const compiler: IdwsCompiler;
-  tok : TTokenizer; base: TSqlFromExpr): TLinqIntoExpr;
+  tok : TTokenizer; base: TTypedExpr): TTypedExpr;
 var
    target: TTypedExpr;
    targetFunc: TFuncPtrExpr;
@@ -514,12 +490,10 @@ begin
    aPos := tok.CurrentPos;
    tok.KillToken;
    target := compiler.ReadExpr();
-   if not ValidIntoExpr(target) then
+   if not ValidIntoExpr(base, target) then
       Error(compiler, 'Into expression must be a valid function reference.');
    targetFunc := TFuncPtrExpr.Create(compiler.CurrentProg, aPos, target);
-   if targetFunc.FuncSym.Typ is TArraySymbol then
-      result := TLinqIntoSetExpr.Create(base, targetFunc, compiler, aPos)
-   else result := TLinqIntoSingleExpr.Create(base, targetFunc, compiler, aPos, FDatasetSymbol);
+   result := FQueryBuilder.Into(base, targetFunc, aPos);
 end;
 
 function TdwsLinqExtension.ReadUnknownName(compiler: TdwsCompiler) : TTypedExpr;
@@ -532,9 +506,9 @@ begin
       result := ReadFromExpression(compiler, tok);
       if result = nil then
          Exit;
-      TSqlFromExpr(result).Codegen(compiler);
+      FQueryBuilder.Finalize(result);
       if TokenEquals(tok, 'into') then
-         result := ReadIntoExpression(compiler, tok, TSqlFromExpr(result));
+         result := ReadIntoExpression(compiler, tok, result);
    end
    else result := ReadSqlIdentifier(compiler, tok);
 end;
@@ -543,223 +517,11 @@ procedure TdwsLinqExtension.ReadScript(compiler: TdwsCompiler;
   sourceFile: TSourceFile; scriptType: TScriptSourceType);
 begin
    inherited;
-   FDatabaseSymbol := nil;
 end;
 
 function TdwsLinqExtension.TokenEquals(tok: TTokenizer; const value: string): boolean;
 begin
    result := UnicodeSameText(tok.GetToken.AsString, value);
-end;
-
-{ TSqlFromExpr }
-
-constructor TSqlFromExpr.Create(const tableName: string; const symbol: TDataSymbol);
-begin
-   inherited Create;
-   FTableName := tableName;
-   FDBSymbol := symbol;
-end;
-
-destructor TSqlFromExpr.Destroy;
-begin
-   FMethod.Free;
-   FWhereList.Free;
-   FSelectList.Free;
-   FJoinList.Free;
-   FOrderList.Free;
-   FGroupList.Free;
-   inherited Destroy;
-end;
-
-procedure TSqlFromExpr.WriteCommaList(exprs: TSqlList; list: TStringList; prog: TdwsProgram);
-var
-   i: integer;
-   item: string;
-begin
-   for i := 0 to exprs.Count - 1 do
-   begin
-      item := (exprs[i] as TSqlIdentifier).GetValue(FParams, prog, self.NewParam);
-      if i < exprs.Count - 1 then
-         item := item + ',';
-      list.Add(item)
-   end;
-end;
-
-procedure TSqlFromExpr.BuildSelectList(list: TStringList; prog: TdwsProgram);
-begin
-   if FDistinct then
-      list.Add('select distinct')
-   else list.Add('select');
-
-   WriteCommaList(FSelectList, list, prog);
-end;
-
-function GetOp(expr: TRelOpExpr): string;
-begin
-   if expr.ClassType = TRelEqualVariantExpr then
-      result := '='
-   else if expr.ClassType = TRelNotEqualVariantExpr then
-      result := '<>'
-   else if expr.ClassType = TRelLessVariantExpr then
-      result := '<'
-   else if expr.ClassType = TRelLessEqualVariantExpr then
-      result := '<='
-   else if expr.ClassType = TRelGreaterVariantExpr then
-      result := '>'
-   else if expr.ClassType = TRelGreaterEqualVariantExpr then
-      result := '>='
-   else raise Exception.CreateFmt('Unknown op type: %s.', [expr.ClassName]);
-end;
-
-function TSqlFromExpr.BuildHalfRelOpElement(expr: TTypedExpr; compiler: TdwsCompiler): string;
-begin
-   if expr.ClassType = TSqlIdentifier then
-      result := TSqlIdentifier(expr).Value
-   else begin
-      result := NewParam;
-      FParams.AddElementExpr(compiler.CurrentProg, expr);
-      expr.IncRefCount;
-   end;
-end;
-
-procedure TSqlFromExpr.BuildRelOpElement(expr: TRelOpExpr; compiler: TdwsCompiler; list: TStringList);
-var
-   l, r: string;
-begin
-   l := BuildHalfRelOpElement(expr.Left, compiler);
-   r := BuildHalfRelOpElement(expr.Right, compiler);
-   list.Add(format('%s %s %s', [l, GetOp(expr), r]));
-end;
-
-procedure TSqlFromExpr.BuildConditionElement(expr: TTypedExpr; compiler: TdwsCompiler; list: TStringList);
-begin
-   if expr is TBooleanBinOpExpr then
-   begin
-      list.Add('(');
-      BuildConditionElement(TBooleanBinOpExpr(expr).Left, compiler, list);
-      if expr is TBoolAndExpr then
-         list.Add(') and (')
-      else if expr is TBoolOrExpr then
-         list.Add(') or (')
-      else TdwsLinqExtension.error(compiler, 'invalid binary operator');
-      BuildConditionElement(TBooleanBinOpExpr(expr).Right, compiler, list);
-      list.add(')');
-   end
-   else if expr is TRelOpExpr then
-      BuildRelOpElement(TRelOpExpr(expr), compiler, list)
-   else TdwsLinqExtension.error(compiler, 'invalid WHERE expression');
-end;
-
-procedure TSqlFromExpr.BuildConditional(conditional: TSqlList; compiler: TdwsCompiler; list: TStringList);
-var
-   i: integer;
-   expr: TTypedExpr;
-begin
-   for i := 0 to conditional.Count - 1 do
-   begin
-      expr := conditional[i] as TTypedExpr;
-      BuildConditionElement(expr, compiler, list);
-      if i < conditional.Count - 1 then
-         list.Add('and');
-   end;
-end;
-
-procedure TSqlFromExpr.BuildWhereClause(compiler: TdwsCompiler; list: TStringList);
-begin
-   list.Add('where');
-   BuildConditional(FWhereList, compiler, list);
-end;
-
-procedure TSqlFromExpr.BuildJoinClause(compiler: TdwsCompiler; list: TStringList);
-const JOINS: array[TJoinType] of string = ('', 'left ', 'right ', 'full outer ', 'cross ');
-var
-   i: integer;
-   join: TSqlJoinExpr;
-   joinLine: string;
-begin
-   for i := 0 to FJoinList.Count - 1 do
-   begin
-      join := FJoinList[i] as TSqlJoinExpr;
-      joinLine := JOINS[join.FJoinType] + 'join ' + join.FJoinExpr.Value;
-      if assigned(join.FCriteria) then
-         joinLine := joinLine + ' on';
-      list.Add(joinLine);
-      if assigned(join.FCriteria) then
-         BuildConditional(join.FCriteria, compiler, list);
-   end;
-end;
-
-procedure TSqlFromExpr.BuildOrderClause(list: TStringList; prog: TdwsProgram);
-begin
-   list.Add('order by');
-   WriteCommaList(FOrderList, list, prog);
-end;
-
-procedure TSqlFromExpr.BuildGroupClause(list: TStringList; prog: TdwsProgram);
-begin
-   list.Add('group by');
-   WriteCommaList(FGroupList, list, prog);
-end;
-
-procedure TSqlFromExpr.BuildQuery(compiler: TdwsCompiler);
-var
-   list: TStringList;
-begin
-   list := TStringList.Create;
-   try
-      if FSelectList = nil then
-      begin
-         if FDistinct then
-            list.Add('select distinct *')
-         else list.Add('select *')
-      end
-      else BuildSelectList(list, compiler.CurrentProg);
-      list.Add('from ' + FTableName);
-      if assigned(FJoinList) then
-         BuildJoinClause(compiler, list);
-      if assigned(FWhereList) then
-         BuildWhereClause(compiler, list);
-      if assigned(FGroupList) then
-         BuildGroupClause(list, compiler.CurrentProg);
-      if assigned(FOrderList) then
-         BuildOrderClause(list, compiler.CurrentProg);
-      FSql := list.Text;
-   finally
-      list.Free;
-   end;
-end;
-
-procedure TSqlFromExpr.Codegen(compiler: TdwsCompiler);
-var
-   query: TMethodSymbol;
-   prog: TdwsProgram;
-   base: TVarExpr;
-   pos: TScriptPos;
-   arr: TTypedExpr;
-begin
-   query := (FDBSymbol.Typ as TClassSymbol).Members.FindSymbol('query', cvMagic) as TMethodSymbol;
-   prog := compiler.CurrentProg;
-   pos := compiler.Tokenizer.CurrentPos;
-   base := TVarExpr.CreateTyped(prog, FDBSymbol);
-
-   FParams := TArrayConstantExpr.Create(prog, pos);
-   BuildQuery(compiler);
-
-   FMethod := TMethodStaticExpr.Create(prog, pos, query, base);
-   FMethod.AddArg(TConstStringExpr.Create(prog, nil, FSql));
-   arr := TConvStaticArrayToDynamicExpr.Create(prog, FParams, TDynamicArraySymbol(query.Params.Symbols[1].Typ));
-   FMethod.AddArg(arr);
-   FMethod.Initialize(prog);
-end;
-
-function TSqlFromExpr.Eval(exec: TdwsExecution): Variant;
-begin
-   FMethod.EvalAsVariant(exec, result);
-end;
-
-function TSqlFromExpr.NewParam: string;
-begin
-   result := ':p' + IntToStr(FParams.Size + 1);
 end;
 
 { TSqlIdentifier }
@@ -827,97 +589,6 @@ begin
    finally
       sl.Free;
    end;
-end;
-
-{ TLinqIntoExpr }
-
-constructor TLinqIntoExpr.Create(base: TSqlFromExpr; into: TFuncPtrExpr;
-  const compiler: IdwsCompiler; const aPos: TScriptPos);
-var
-   dsVar: TObjectVarExpr;
-   prog: TdwsProgram;
-   freeSym: TMethodSymbol;
-begin
-   inherited Create;
-   FBase := base;
-   FInto := into;
-   prog := compiler.CurrentProg;
-   FData := TDataSymbol.Create('', FBase.Typ);
-   FData.AllocateStackAddr(prog.Table.AddrGenerator);
-   dsVar := TObjectVarExpr.Create(prog, FData);
-   FBase.FMethod.IncRefCount;
-   FAssign := TAssignExpr.Create(prog, aPos, dsVar, FBase.FMethod);
-   dsVar.IncRefCount;
-   FInto.AddArg(dsVar);
-   FInto.Initialize(prog);
-   freeSym := (prog.Table.FindTypeSymbol('TObject', cvMagic) as TClassSymbol).Members.FindSymbol('Free', cvMagic) as TMethodSymbol;
-   dsVar.IncRefCount;
-   FFree := TMethodStaticExpr.Create(prog, aPos, freeSym, dsVar);
-end;
-
-destructor TLinqIntoExpr.Destroy;
-begin
-   FBase.Free;
-   FInto.Free;
-   FTyp.Free;
-   FAssign.Free;
-   FData.Free;
-   FFree.Free;
-   inherited;
-end;
-
-{ TLinqIntoSingleExpr }
-
-constructor TLinqIntoSingleExpr.Create(base: TSqlFromExpr; into: TFuncPtrExpr;
-  const compiler: IdwsCompiler; const aPos: TScriptPos; dsSymbol: TClassSymbol);
-begin
-   inherited Create(base, into, compiler, aPos);
-   self.Typ := TDynamicArraySymbol.Create('', into.FuncSym.Result.Typ, compiler.CurrentProg.TypInteger);
-   FAssign.Left.IncRefCount;
-   FStep := TMethodStaticExpr.Create(compiler.CurrentProg, aPos,
-     dsSymbol.Members.FindSymbol('Step', cvMagic) as TMethodSymbol, FAssign.Left);
-end;
-
-destructor TLinqIntoSingleExpr.Destroy;
-begin
-   FStep.Free;
-   inherited Destroy;
-end;
-
-function TLinqIntoSingleExpr.Eval(exec: TdwsExecution): Variant;
-var
-   dyn: TScriptDynamicArray;
-   n: integer;
-begin
-   FAssign.EvalNoResult(exec);
-   dyn := TScriptDynamicArray.Create(FTyp);
-   n := 0;
-
-   while FStep.EvalAsBoolean(exec) do
-   begin
-      dyn.ArrayLength := n + 1;
-      dyn.AsPVariant(n)^ := FInto.Eval(exec);
-      inc(n);
-   end;
-   result := IScriptObj(dyn);
-   FFree.Eval(exec);
-end;
-
-{ TLinqIntoSetExpr }
-
-constructor TLinqIntoSetExpr.Create(base: TSqlFromExpr; into: TFuncPtrExpr;
-  const compiler: IdwsCompiler; const aPos: TScriptPos);
-begin
-   inherited Create(base, into, compiler, aPos);
-   self.Typ := into.FuncSym.Result.Typ;
-   self.Typ.IncRefCount;
-end;
-
-function TLinqIntoSetExpr.Eval(exec: TdwsExecution): Variant;
-begin
-   FAssign.EvalNoResult(exec);
-   FInto.EvalAsVariant(exec, result);
-   FFree.Eval(exec);
 end;
 
 end.
