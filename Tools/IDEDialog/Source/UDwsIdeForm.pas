@@ -293,6 +293,8 @@ type
     Undo1: TMenuItem;
     SynMacroRecorder: TSynMacroRecorder;
     RunWithoutDebugging1: TMenuItem;
+    actClearMessageWindow: TAction;
+    Clearmessagewindow1: TMenuItem;
     procedure EditorChange(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure actOpenFileExecute(Sender: TObject);
@@ -353,6 +355,8 @@ type
     procedure actClearOutputWindowUpdate(Sender: TObject);
     procedure lbMessagesDblClick(Sender: TObject);
     procedure actViewSymbolsUpdate(Sender: TObject);
+    procedure actClearMessageWindowExecute(Sender: TObject);
+    procedure actClearMessageWindowUpdate(Sender: TObject);
   private
     { Private declarations }
     FScript : TDelphiWebScript;
@@ -405,7 +409,7 @@ type
     procedure SetScriptFolder(const Value: string);
     procedure MakeSettingsRec;
     procedure AddMessage(const AMessage: string; AScriptPos : PScriptPos = nil );
-    procedure ClearMessagesWindow;
+    procedure ClearMessageWindow;
     procedure ClearOutputWindow;
     procedure ListSymbolTable(ATable: TSymbolTable);
     property  EditorCurrentPageIndex : integer
@@ -778,9 +782,20 @@ end;
 
 
 
+procedure TDwsIdeForm.actClearMessageWindowExecute(Sender: TObject);
+begin
+  ClearMessageWindow;
+end;
+
+procedure TDwsIdeForm.actClearMessageWindowUpdate(Sender: TObject);
+begin
+  With Sender as TAction do
+    Enabled := lbMessages.Count > 0;
+end;
+
 procedure TDwsIdeForm.actClearOutputWindowExecute(Sender: TObject);
 begin
-  ClearOutputWindow;
+  ClearMessageWindow;
 end;
 
 procedure TDwsIdeForm.actClearOutputWindowUpdate(Sender: TObject);
@@ -798,7 +813,7 @@ end;
 
 
 
-procedure TDwsIdeForm.ClearMessagesWindow;
+procedure TDwsIdeForm.ClearMessageWindow;
 begin
   lbMessages.Clear;
 end;
@@ -833,7 +848,7 @@ var
 begin
   if ABuild or not IsCompiled then
     begin
-    ClearMessagesWindow;
+    ClearMessageWindow;
     AddMessage( 'Compile started' );
 
     FScript.Config.CompilerOptions :=
@@ -1893,7 +1908,7 @@ begin
   if IsCompiled then
     begin
     ClearExecutableLines;
-    ClearMessagesWindow;
+    ClearMessageWindow;
     FProgram := nil;
     end;
   //FScript.NotifyScriptModified;
@@ -1967,7 +1982,7 @@ var
    i : Integer;
 begin
   FreeAndNil( FCodeProposalForm );
-  ClearMessagesWindow;
+  ClearMessageWindow;
   dwsDebugger1.Breakpoints.Clean;
   dwsDebugger1.Watches.Clean;
   FProgram := nil;
@@ -2572,7 +2587,7 @@ begin
   EditorCloseAllPages;
 
   ClearOutputWindow;
-  ClearMessagesWindow;
+  ClearMessageWindow;
 
   FProjectFileName := AProjectFileName;
 
@@ -2603,7 +2618,7 @@ begin
   EditorCloseAllPages;
 
   ClearOutputWindow;
-  ClearMessagesWindow;
+  ClearMessageWindow;
 
   FProjectFileName := AProjectFileName;
 end;
