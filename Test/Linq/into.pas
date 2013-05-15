@@ -8,11 +8,8 @@ end;
 function processor2(ds: Dataset): array of integer;
 begin
    var value := ds.FieldByName('VALUE_1');
-   while not ds.eof do
-   begin
+   while ds.step do
       result.add(value.AsInteger);
-      ds.Next;
-   end
 end;
 
 var db := DataBase.Create('SQLite', ['.\Linq\linqtest.s3db']);
