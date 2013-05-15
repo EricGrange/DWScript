@@ -2288,7 +2288,7 @@ begin
   typSym := Table.FindTypeLocal(AClassType);
   // Get the type symbol of this variable
   if not (typSym is TTypeSymbol) then
-    raise Exception.CreateFmt(UNT_DatatypeUnknown, [Name]);
+    raise Exception.CreateFmt(UNT_DatatypeUnknown, [AClassType]);
 
   if typSym is TClassSymbol then
   begin
